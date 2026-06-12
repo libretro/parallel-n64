@@ -79,28 +79,39 @@ static void fifo_flush_to_rdp(RdpFifo *f)
     f->used = 0;
 }
 
-void rdp_emit_hle_process_dlist(void)
+
+static int gsp_params_at_task_start;
+
+/* Re-evaluate every microcode-build-specific parameter from a (data, text)
+ * segment pair: the triangle-setup scale constants, the clip profile, the
+ * near-plane mode, the clip-lerp build, the clip-fan orientation and the
+ * G_BRANCH_Z/W flavor. Called at task start and again at every mid-list
+ * G_LOAD_UCODE, since titles like Excitebike 64 swap between microcode
+ * builds with different schemes inside one display list. */
+void gsp_detect_ucode_params(GSPState *st, const unsigned char *rdram,
+                             unsigned int rdram_size,
+                             unsigned int ud, unsigned int ut)
 {
-    unsigned char *rdram;
-    unsigned char *dmem;
-    unsigned int   rdram_size;
-    unsigned int   dl_addr;
-    unsigned int   fifo_base;
-
-    rdram      = plugin_get_rdram();
-    dmem       = plugin_get_dmem();
-    rdram_size = plugin_get_rdram_size();
-    if (rdram == 0 || dmem == 0 || rdram_size == 0)
-        return;
-
-
-    if (!s_inited)
+    int ut_is_task_start = gsp_params_at_task_start;
+    /* The data address at a mid-list G_LOAD_UCODE comes from the staged
+     * G_RDPHALF_1 word, which display lists also use for branch targets;
+     * validate that it really points at an F3DEX2-family data segment
+     * before trusting any of its fields. Every known build carries the
+     * v31 constant row prefix ffff 0004 0008 7f00 at data + 0x1b0. */
+    if (ud != 0 && ud + 0x1c0 <= rdram_size)
     {
-        gsp_init(&s_gsp);
-        s_inited = 1;
+        if (!(rdram[(ud + 0x1b0) ^ 3] == 0xffu
+              && rdram[(ud + 0x1b1) ^ 3] == 0xffu
+              && rdram[(ud + 0x1b2) ^ 3] == 0x00u
+              && rdram[(ud + 0x1b3) ^ 3] == 0x04u
+              && rdram[(ud + 0x1b4) ^ 3] == 0x00u
+              && rdram[(ud + 0x1b5) ^ 3] == 0x08u
+              && rdram[(ud + 0x1b6) ^ 3] == 0x7fu
+              && rdram[(ud + 0x1b7) ^ 3] == 0x00u))
+            ud = 0;
     }
-    gsp_task_reset(&s_gsp);
-
+    else
+        ud = 0;
     /* Triangle-setup scale constants live in a microcode constants vector
      * loaded from the ucode data segment. Their location and lane layout
      * changed between revisions:
@@ -118,7 +129,7 @@ void rdp_emit_hle_process_dlist(void)
      * unrelated constants and mis-sets every triangle edge). If neither
      * layout validates, keep the 2.0xH defaults. */
     {
-        unsigned int ud = read_dmem_u32(dmem, 0xfd8) & 0x00ffffffu;
+        /* ud from caller */
         if (ud != 0 && ud + 0x1d0 <= rdram_size)
         {
             int32_t dxs  = (int32_t)((rdram[(ud + 0x1c4) ^ 3] << 8)
@@ -141,35 +152,18 @@ void rdp_emit_hle_process_dlist(void)
                                |  rdram[(ud + 0x1c5) ^ 3]);
             }
             if (dxs > 0 && idys > 0 && (int64_t)dxs * idys == 0x20000)
-                gsp_set_tri_scales(&s_gsp, dxs, idys, fmsk, vcrb);
+                gsp_set_tri_scales(st, dxs, idys, fmsk, vcrb);
 
         }
     }
 
-
-    /* the FIFO lives in host memory; the top 256 KiB of RDRAM is used
-     * only as the virtual address range the DPC registers report */
-    if (rdram_size < (512u * 1024u))
-        return;
-    fifo_base = rdram_size - HLE_FIFO_CAP;
-    rdp_fifo_init(&s_fifo, s_fifo_storage, fifo_base, HLE_FIFO_CAP);
-    s_fifo.flush = fifo_flush_to_rdp;
-
-    dl_addr = read_dmem_u32(dmem, TASK_DATA_PTR_DMEM) & 0x00ffffffu;
-    if (dl_addr == 0 || dl_addr >= rdram_size)
-        return;
-
-    /* walk the display list, emitting RDP commands into the FIFO. textured/
-     * z_buffered default off here; a gDP/state-translation follow-up sets the
-     * render mode and the per-frame setup commands. */
-    f3dex2_seg_reset();
 
     /* Seed the other-modes mirror from the microcode data defaults
      * (pair at ucode_data + 0xc8 -> DMEM 0xc8): the baseline the partial
      * 0xE2/0xE3 writes merge into for games that never send a wholesale
      * G_RDPSETOTHERMODE. Applied after the per-task reset. */
     {
-        unsigned int ud = read_dmem_u32(dmem, 0xfd8) & 0x00ffffffu;
+        /* ud from caller */
         if (ud != 0 && ud + 0xd0 <= rdram_size)
         {
             unsigned int oh = ((unsigned int)rdram[(ud + 0xc8) ^ 3] << 24)
@@ -180,7 +174,12 @@ void rdp_emit_hle_process_dlist(void)
                             | ((unsigned int)rdram[(ud + 0xcd) ^ 3] << 16)
                             | ((unsigned int)rdram[(ud + 0xce) ^ 3] << 8)
                             |  (unsigned int)rdram[(ud + 0xcf) ^ 3];
-            if ((oh >> 24) == 0xefu)
+            /* The microcode's own gSPLoadUcode path preserves the
+             * other-modes state across the swap (Kirby 64's S2DEX
+             * round-trips validate pixel-exact only without a mid-list
+             * re-seed), so the data-segment defaults only apply at task
+             * start. */
+            if (ut_is_task_start && (oh >> 24) == 0xefu)
                 f3dex2_set_othermode_init(oh, ol);
 
             /* near clip-plane row (clip-ratio table at data + 0x180, row 5
@@ -194,7 +193,7 @@ void rdp_emit_hle_process_dlist(void)
                 int16_t nw = (int16_t)((rdram[(ud + 0x1ae) ^ 3] << 8)
                                       | rdram[(ud + 0x1af) ^ 3]);
                 if (nw == 1 && (nz == 0 || nz == 1))
-                    s_gsp.clip_near_z = (int)nz;
+                    st->clip_near_z = (int)nz;
             }
         }
     }
@@ -205,7 +204,7 @@ void rdp_emit_hle_process_dlist(void)
      * vabs. Scan the microcode text image, overlays included, for the
      * instruction and pick the build accordingly. */
     {
-        unsigned int ut = read_dmem_u32(dmem, 0xfd0) & 0x00ffffffu;
+        /* ut from caller */
         int found = 0;
         if (ut != 0 && ut + 0x1800 <= rdram_size)
         {
@@ -231,7 +230,7 @@ void rdp_emit_hle_process_dlist(void)
      * where 2.05+/F3DZEX2 fans ascending pairs from the LAST vertex
      * (lhu v0, 0x3cc(s2)). Scan the text image for the 2.04H form. */
     {
-        unsigned int ut = read_dmem_u32(dmem, 0xfd0) & 0x00ffffffu;
+        /* ut from caller */
         int first = 0;
         if (ut != 0 && ut + 0x1800 <= rdram_size)
         {
@@ -248,7 +247,7 @@ void rdp_emit_hle_process_dlist(void)
                 }
             }
         }
-        s_gsp.clip_fan_first = first;
+        st->clip_fan_first = first;
     }
 
     /* G_BRANCH_Z/W probe: opcode 0x04 compares a vertex field against the
@@ -259,7 +258,7 @@ void rdp_emit_hle_process_dlist(void)
      * Scan the text for the table-lookup/load pair, masking the register
      * fields. */
     {
-        unsigned int ut = read_dmem_u32(dmem, 0xfd0) & 0x00ffffffu;
+        /* ut from caller */
         int z_mode = 0;
         if (ut != 0 && ut + 0x1800 <= rdram_size)
         {
@@ -289,8 +288,53 @@ void rdp_emit_hle_process_dlist(void)
                 }
             }
         }
-        s_gsp.branch_z_mode = z_mode;
+        st->branch_z_mode = z_mode;
     }
+}
+
+void rdp_emit_hle_process_dlist(void)
+{
+    unsigned char *rdram;
+    unsigned char *dmem;
+    unsigned int   rdram_size;
+    unsigned int   dl_addr;
+    unsigned int   fifo_base;
+
+    rdram      = plugin_get_rdram();
+    dmem       = plugin_get_dmem();
+    rdram_size = plugin_get_rdram_size();
+    if (rdram == 0 || dmem == 0 || rdram_size == 0)
+        return;
+
+
+    if (!s_inited)
+    {
+        gsp_init(&s_gsp);
+        s_inited = 1;
+    }
+    gsp_task_reset(&s_gsp);
+
+    /* the FIFO lives in host memory; the top 256 KiB of RDRAM is used
+     * only as the virtual address range the DPC registers report */
+    if (rdram_size < (512u * 1024u))
+        return;
+    fifo_base = rdram_size - HLE_FIFO_CAP;
+    rdp_fifo_init(&s_fifo, s_fifo_storage, fifo_base, HLE_FIFO_CAP);
+    s_fifo.flush = fifo_flush_to_rdp;
+
+    dl_addr = read_dmem_u32(dmem, TASK_DATA_PTR_DMEM) & 0x00ffffffu;
+    if (dl_addr == 0 || dl_addr >= rdram_size)
+        return;
+
+    /* walk the display list, emitting RDP commands into the FIFO. textured/
+     * z_buffered default off here; a gDP/state-translation follow-up sets the
+     * render mode and the per-frame setup commands. */
+    f3dex2_seg_reset();
+    gsp_params_at_task_start = 1;
+    gsp_detect_ucode_params(&s_gsp, rdram, rdram_size,
+                            read_dmem_u32(dmem, 0xfd8) & 0x00ffffffu,
+                            read_dmem_u32(dmem, 0xfd0) & 0x00ffffffu);
+    gsp_params_at_task_start = 0;
     f3dex2_set_rdram(rdram);
     f3dex2_set_rdram_size(rdram_size);
     f3dex2_set_task_ucode(rdram, read_dmem_u32(dmem, 0xfd0) & 0x00ffffffu);

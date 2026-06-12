@@ -588,9 +588,16 @@ void f3dex2_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
             unsigned int text = seg_addr(w1);
             s_ucode_class = probe_ucode_class(r, text);
             /* The microcode reload re-DMAs the data segment, restoring
-             * the S2DEX scissor/status defaults. */
+             * the S2DEX scissor/status defaults. The data address was
+             * staged by the preceding G_RDPHALF_1; re-detect the clip
+             * profile from it, since titles like Excitebike 64 swap
+             * between microcode builds with different clip schemes
+             * mid-list. */
             if (s_ucode_class == UCODE_S2DEX2)
                 s2dex_reset();
+            else
+                gsp_detect_ucode_params(gsp, r, s_rdram_size,
+                                        seg_addr(s_half1), text);
             break;
         }
 

@@ -130,6 +130,9 @@ typedef struct GSPState
 
 /* lifecycle */
 void gsp_init(GSPState *s);
+void gsp_detect_ucode_params(GSPState *st, const unsigned char *rdram,
+                             unsigned int rdram_size,
+                             unsigned int ud, unsigned int ut);
 
 /* MOVEMEM G_MV_LIGHT slots 0 and 1: the texture-coordinate-generation
  * lookat X/Y direction vectors (s8 at bytes 8..10 of the Light struct). */
