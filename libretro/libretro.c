@@ -367,10 +367,12 @@ static void core_settings_set_defaults(void)
    {
       if (rsp_var.value && !strcmp(rsp_var.value, "auto"))
          core_settings_autoselect_rsp_plugin();
-#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-      if (rsp_var.value && !strcmp(rsp_var.value, "hle") && !vulkan_inited)
+      /* Honor an explicit HLE request on any backend.  The HLE RSP feeds the
+       * graphics plugin a display list; both angrylion and parallel-rdp can
+       * rasterize it (the latter via the shared HLE command emitter), so HLE
+       * is no longer OpenGL-only and is never overridden under Vulkan. */
+      if (rsp_var.value && !strcmp(rsp_var.value, "hle"))
          rsp_plugin = RSP_HLE;
-#endif
       if (rsp_var.value && !strcmp(rsp_var.value, "cxd4"))
          rsp_plugin = RSP_CXD4;
       if (rsp_var.value && !strcmp(rsp_var.value, "parallel"))
@@ -401,6 +403,9 @@ static void core_settings_autoselect_rsp_plugin(void)
    if (!strcmp((const char*)ROM_HEADER.Name, "CONKER BFD"))
       rsp_plugin = RSP_HLE;
 
+   /* Auto mode only: with Vulkan up the best default is the parallel RSP.
+    * This is the autoselect default; it does NOT override an explicit user
+    * choice (handled in the caller), so "hle" + parallel/Vulkan still works. */
    if (vulkan_inited)
    {
 #if defined(HAVE_PARALLEL_RSP)
@@ -2304,23 +2309,7 @@ bool retro_load_game(const struct retro_game_info *game)
       }
    }
 
-   if (vulkan_inited)
-   {
-      // success condition - vulkan inited which means we are parallel
-      switch (rsp_plugin)
-      {
-         case RSP_HLE:
-#if defined(HAVE_PARALLEL_RSP)
-            rsp_plugin = RSP_PARALLEL;
-#else
-            rsp_plugin = RSP_CXD4;
-#endif
-            break;
-         default:
-            break;
-      }
-   }
-   else if (gl_inited)
+   if (gl_inited)
    {
       // we are not vulkan, defer to opengl - it is assumed it always exists, otherwise fail
       switch (gfx_plugin)
