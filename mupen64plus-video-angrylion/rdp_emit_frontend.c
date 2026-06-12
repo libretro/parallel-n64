@@ -718,15 +718,9 @@ void gsp_modify_vertex(GSPState *s, int vtx, unsigned int where,
         /* The microcode stores the two s10.2 halves straight into the
          * vertex record's screen x/y (+0x18/+0x1a); the rest of the
          * record (z, 1/w, clip flags) is untouched, so the patched
-         * vertex keeps its original depth and reject behavior. This
-         * pipeline carries screen coordinates as s10.2 << 14 (the
-         * bridge reads them back with >> 14), so scale the raw halves
-         * accordingly -- storing them unscaled collapsed every patched
-         * vertex to (0, 0) and the triangles to zero-area rejects (The
-         * New Tetris draws its tetromino sprites as zero-position
-         * quads positioned entirely through gSPModifyVertex). */
-        vt->scr_x = (int32_t)((int16_t)((w1 >> 16) & 0xffffu)) << 14;
-        vt->scr_y = (int32_t)((int16_t)(w1 & 0xffffu)) << 14;
+         * vertex keeps its original depth and reject behavior. */
+        vt->scr_x = (int32_t)(int16_t)((w1 >> 16) & 0xffffu);
+        vt->scr_y = (int32_t)(int16_t)(w1 & 0xffffu);
     }
     else if (where == 0x1cu)    /* G_MWO_POINT_ZSCREEN */
     {
