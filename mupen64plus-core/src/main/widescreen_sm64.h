@@ -1,7 +1,7 @@
 /* AUTO-GENERATED — do not edit by hand.
  * Super Mario 64 (USA v1.0, sha1 9bef1128...) 16:9 widescreen table,
- * assembled from gamemasterplc's bass ASM widescreen patch.  All 345 hunk
- * offsets verified against stock USA bytes.  Author: libretroadmin */
+ * assembled from gamemasterplc's bass ASM widescreen patch and boot-verified
+ * headless (reaches frame 200, non-black). 344 hunks. Author: libretroadmin */
 
 static const struct rompatch_word widescreen_sm64_us_words[] = {
    { 0x001efcu, 0x3c090050u, 0x3c09006au, ROMPATCH_WF_NONE },
@@ -20,7 +20,6 @@ static const struct rompatch_word widescreen_sm64_us_words[] = {
    { 0x002968u, 0x35cec01cu, 0x35ce401cu, ROMPATCH_WF_NONE },
    { 0x002994u, 0x3c09f64fu, 0x3c09f66au, ROMPATCH_WF_NONE },
    { 0x002998u, 0x3529c3bcu, 0x352943bcu, ROMPATCH_WF_NONE },
-   { 0x0029a4u, 0x240b03a0u, 0x240b03a0u, ROMPATCH_WF_NONE },
    { 0x0039a8u, 0x3c0e8000u, 0x3c0e8060u, ROMPATCH_WF_NONE },
    { 0x0039b4u, 0x25ce0400u, 0x25ce0000u, ROMPATCH_WF_NONE },
    { 0x0039c4u, 0x3c188039u, 0x3c188040u, ROMPATCH_WF_NONE },
@@ -226,7 +225,7 @@ static const struct rompatch_word widescreen_sm64_us_words[] = {
    { 0x226520u, 0x240600abu, 0xafad0040u, ROMPATCH_WF_NONE },
    { 0x226524u, 0x0c05d74bu, 0x26100001u, ROMPATCH_WF_NONE },
    { 0x226528u, 0x2407002fu, 0x2401000fu, ROMPATCH_WF_NONE },
-   { 0x22652cu, 0x83a4006bu, 0x1601ffffu, ROMPATCH_WF_NONE },
+   { 0x22652cu, 0x83a4006bu, 0x1601ffe5u, ROMPATCH_WF_NONE },
    { 0x226530u, 0x24050001u, 0x00000000u, ROMPATCH_WF_NONE },
    { 0x226534u, 0x240600d5u, 0x8fad0040u, ROMPATCH_WF_NONE },
    { 0x226538u, 0x0c05d6e4u, 0x25adffc4u, ROMPATCH_WF_NONE },
