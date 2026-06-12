@@ -19,6 +19,10 @@ void deinit();
 void begin_frame();
 
 void process_commands();
+/* Redirect command ingest to an HLE-synthesized host FIFO for the next
+ * process_commands() call(s); pass (nullptr,0,0) to restore guest-RDRAM
+ * ingest.  Used by the HLE-emitter graphics path (parallel_hle.cpp). */
+void set_hle_cmd_buffer(const uint8_t *buf, uint32_t base_byte_addr, uint32_t len_bytes);
 extern const struct retro_hw_render_interface_vulkan *vulkan;
 
 extern unsigned width;

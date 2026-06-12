@@ -6,6 +6,9 @@
 #include <string.h>
 #include <boolean.h>
 
+/* HLE-emitter graphics path (parallel_hle.cpp) */
+void parallel_hle_process_dlist(void);
+
 extern "C" {
 extern int retro_return(bool just_flipping);
 
@@ -45,6 +48,9 @@ void parallelMoveScreen(int xpos, int ypos)
 
 void parallelProcessDList(void)
 {
+	/* RSP-HLE handed us a GFX task: walk the display list through the shared
+	 * HLE command emitter and rasterize the synthesized RDP FIFO. */
+	parallel_hle_process_dlist();
 }
 
 void parallelProcessRDPList(void)

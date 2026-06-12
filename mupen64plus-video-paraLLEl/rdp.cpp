@@ -20,6 +20,17 @@ static int cmd_ptr;
 static uint32_t cmd_data[0x00040000 >> 2];
 static uint64_t pending_timeline_value, timeline_value;
 
+/* HLE command-FIFO redirect.  The HLE emitter synthesizes an RDP command list
+ * into a host buffer (out of guest RDRAM, so Expansion Pak games are not
+ * corrupted) and reports it as occupying [hle_cmd_base, hle_cmd_base+len).
+ * When active, process_commands() ingests the command words from this host
+ * buffer instead of guest DRAM; the address range is otherwise identical, so
+ * texture/image reads still hit real RDRAM.  Cleared after each submit, so the
+ * LLE path (real games feeding the RDP) is completely unaffected. */
+static const uint8_t *hle_cmd_buf = nullptr;
+static uint32_t hle_cmd_base = 0;
+static uint32_t hle_cmd_len = 0;
+
 static unique_ptr<Util::TimelineTraceFile> timeline_trace_file;
 static unique_ptr<CommandProcessor> frontend;
 static unique_ptr<Device> device;
@@ -44,6 +55,13 @@ static const unsigned cmd_len_lut[64] = {
 	1, 1, 1, 1, 2, 2, 1, 1, 1, 1, 1,  1,  1,  1,  1,  1,
 	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,  1,  1,  1,  1,  1,
 };
+
+void set_hle_cmd_buffer(const uint8_t *buf, uint32_t base_byte_addr, uint32_t len_bytes)
+{
+	hle_cmd_buf = buf;
+	hle_cmd_base = base_byte_addr;
+	hle_cmd_len = len_bytes;
+}
 
 void process_commands()
 {
@@ -78,11 +96,29 @@ void process_commands()
 		}
 		else
 		{
+			/* Source the command words from the HLE host buffer when a
+			 * synthesized FIFO is active, else from guest RDRAM.  Chosen
+			 * once here, not per word: a base-pointer swap, no hot-path cost. */
+			bool from_hle = (hle_cmd_buf != nullptr
+			                 && DP_CURRENT >= hle_cmd_base
+			                 && (DP_CURRENT - hle_cmd_base) < hle_cmd_len);
 			do
 			{
-				offset &= 0xFFFFF8;
-				cmd_data[2 * cmd_ptr + 0] = *reinterpret_cast<const uint32_t *>(DRAM + offset);
-				cmd_data[2 * cmd_ptr + 1] = *reinterpret_cast<const uint32_t *>(DRAM + offset + 4);
+				const uint8_t *p;
+				if (from_hle)
+				{
+					uint32_t rel = offset - hle_cmd_base;
+					if (rel + 8 > hle_cmd_len)
+						break;
+					p = hle_cmd_buf + rel;
+				}
+				else
+				{
+					offset &= 0xFFFFF8;
+					p = DRAM + offset;
+				}
+				cmd_data[2 * cmd_ptr + 0] = *reinterpret_cast<const uint32_t *>(p);
+				cmd_data[2 * cmd_ptr + 1] = *reinterpret_cast<const uint32_t *>(p + 4);
 				offset += sizeof(uint64_t);
 				cmd_ptr++;
 			} while (--length > 0);

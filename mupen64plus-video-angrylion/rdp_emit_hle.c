@@ -18,22 +18,21 @@
 #include "rdp_emit_hle.h"
 #include "rdp_emit_f3dex2.h"
 #include "rdp_emit_rsp.h"
+#include "rdp_emit_backend.h"
 
-/* angrylion's RDRAM/DMEM/DPC accessors (interface.c) */
-extern unsigned char *plugin_get_rdram(void);
-extern unsigned int   plugin_get_rdram_size(void);
-extern unsigned char *plugin_get_dmem(void);
-extern unsigned int **plugin_get_dp_registers(void);
-extern void           n64video_process_list(void);
-extern void           n64video_set_hle_cmd_buffer(const unsigned int *buf,
-                          unsigned int base_byte_addr, unsigned int len_bytes);
+/* The active rasterizer backend (angrylion or parallel-rdp).  Installed via
+ * rdp_emit_set_backend() at plugin connect time.  The display-list walk,
+ * microcode detection and command encoding below are identical for either;
+ * only RDRAM/DMEM access and the finished-FIFO submit go through this. */
+static const RdpEmitBackend *s_backend = 0;
+
+void rdp_emit_set_backend(const RdpEmitBackend *be)
+{
+    if (be != 0)
+        s_backend = be;
+}
 
 #define TASK_DATA_PTR_DMEM 0xff0u   /* OSTask data ptr, DMEM byte offset */
-
-/* word-indexed DPC registers, matching plugin_get_dp_registers() ordering */
-#define DPC_START   0
-#define DPC_END     1
-#define DPC_CURRENT 2
 
 static GSPState s_gsp;
 static RdpFifo  s_fifo;
@@ -60,22 +59,17 @@ static unsigned int read_dmem_u32(const unsigned char *dmem, unsigned int ofs)
  * the batch) and by the activation below for the final batch. */
 static void fifo_flush_to_rdp(RdpFifo *f)
 {
-    unsigned int **dp;
     if (f->used == 0)
         return;
-    dp = plugin_get_dp_registers();
-    if (dp == 0)
+    if (s_backend == 0 || s_backend->submit == 0)
     {
         f->used = 0;
         return;
     }
-    *dp[DPC_START]   = (unsigned int)f->base;
-    *dp[DPC_CURRENT] = (unsigned int)f->base;
-    *dp[DPC_END]     = (unsigned int)(f->base + f->used);
-    n64video_set_hle_cmd_buffer((const unsigned int *)f->storage,
-                                f->base, f->used);
-    n64video_process_list();
-    n64video_set_hle_cmd_buffer(0, 0, 0);
+    /* The backend points its DPC registers at [base, base+used), fetches the
+     * command words from f->storage (guest RDRAM at `base` is never written),
+     * runs its RDP, and restores guest-RDRAM command fetch on return. */
+    s_backend->submit(f->storage, f->base, f->used);
     f->used = 0;
 }
 
@@ -300,9 +294,13 @@ void rdp_emit_hle_process_dlist(void)
     unsigned int   dl_addr;
     unsigned int   fifo_base;
 
-    rdram      = plugin_get_rdram();
-    dmem       = plugin_get_dmem();
-    rdram_size = plugin_get_rdram_size();
+    if (s_backend == 0 || s_backend->get_rdram == 0
+        || s_backend->get_dmem == 0 || s_backend->get_rdram_size == 0)
+        return;
+
+    rdram      = s_backend->get_rdram();
+    dmem       = s_backend->get_dmem();
+    rdram_size = s_backend->get_rdram_size();
     if (rdram == 0 || dmem == 0 || rdram_size == 0)
         return;
 

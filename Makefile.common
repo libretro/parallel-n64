@@ -604,13 +604,11 @@ SOURCES_C   += $(VIDEODIR_GLIDE)/Glitch64/glitch64_combiner.c \
             $(VIDEODIR_GLIDE)/Glitch64/glitch64_textures.c
 endif
 
-ifeq ($(HAVE_THR_AL), 1)
-CFLAGS      += -DHAVE_THR_AL
-CXXFLAGS    += -DHAVE_THR_AL
-### Angrylion's renderer ###
-SOURCES_CXX += $(VIDEODIR_ANGRYLION)/parallel_al.cpp
-SOURCES_C   += $(VIDEODIR_ANGRYLION)/interface.c \
-				   $(VIDEODIR_ANGRYLION)/n64video.c \
+### Shared HLE command emitter (backend-agnostic) ###
+# The rdp_emit_* sources walk an F3DEX2/S2DEX display list and synthesize a
+# standard RDP command FIFO; they are used by both the angrylion and the
+# parallel-rdp HLE-graphics paths.  Built once if either backend is enabled.
+RDP_EMIT_SOURCES_C := \
 				   $(VIDEODIR_ANGRYLION)/rdp_emit.c \
 				   $(VIDEODIR_ANGRYLION)/rdp_emit_bridge.c \
 				   $(VIDEODIR_ANGRYLION)/rdp_emit_rsp.c \
@@ -618,6 +616,17 @@ SOURCES_C   += $(VIDEODIR_ANGRYLION)/interface.c \
 				   $(VIDEODIR_ANGRYLION)/rdp_emit_s2dex.c \
 				   $(VIDEODIR_ANGRYLION)/rdp_emit_f3dex2.c \
 				   $(VIDEODIR_ANGRYLION)/rdp_emit_hle.c
+
+HAVE_RDP_EMIT := 0
+
+ifeq ($(HAVE_THR_AL), 1)
+CFLAGS      += -DHAVE_THR_AL
+CXXFLAGS    += -DHAVE_THR_AL
+### Angrylion's renderer ###
+SOURCES_CXX += $(VIDEODIR_ANGRYLION)/parallel_al.cpp
+SOURCES_C   += $(VIDEODIR_ANGRYLION)/interface.c \
+				   $(VIDEODIR_ANGRYLION)/n64video.c
+HAVE_RDP_EMIT := 1
 ifeq ($(HAVE_RDP_DUMP), 1)
 	SOURCES_C += $(VIDEODIR_ANGRYLION)/rdp_dump.c
 	CFLAGS   += -DHAVE_RDP_DUMP
@@ -631,9 +640,15 @@ ifeq ($(HAVE_PARALLEL),1)
 	CFLAGS   += $(PARALLEL_RDP_CFLAGS) -DHAVE_PARALLEL
 	CXXFLAGS += $(PARALLEL_RDP_CXXFLAGS) -DHAVE_PARALLEL
 	INCFLAGS += $(PARALLEL_RDP_INCLUDE_DIRS)
-	SOURCES_CXX += $(PARALLEL_RDP_SOURCES_CXX) $(VIDEODIR_PARALLEL)/parallel.cpp $(VIDEODIR_PARALLEL)/rdp.cpp
+	SOURCES_CXX += $(PARALLEL_RDP_SOURCES_CXX) $(VIDEODIR_PARALLEL)/parallel.cpp $(VIDEODIR_PARALLEL)/rdp.cpp $(VIDEODIR_PARALLEL)/parallel_hle.cpp
 	SOURCES_C += $(PARALLEL_RDP_SOURCES_C)
 	LDFLAGS += $(PARALLEL_RDP_LDFLAGS)
+	HAVE_RDP_EMIT := 1
+endif
+
+### Build the shared HLE command emitter once if any backend needs it ###
+ifeq ($(HAVE_RDP_EMIT), 1)
+	SOURCES_C += $(RDP_EMIT_SOURCES_C)
 endif
 
 ifeq ($(HAVE_PARALLEL_RSP), 1)

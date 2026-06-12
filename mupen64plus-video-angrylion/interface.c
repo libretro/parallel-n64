@@ -27,6 +27,44 @@ int ProcessDListShown = 0;
 
 extern GFX_INFO gfx_info;
 #include "rdp_emit_hle.h"
+#include "rdp_emit_backend.h"
+
+extern void n64video_process_list(void);
+extern void n64video_set_hle_cmd_buffer(const unsigned int *buf,
+                  unsigned int base_byte_addr, unsigned int len_bytes);
+/* defined later in this file */
+uint32_t** plugin_get_dp_registers(void);
+uint8_t*   plugin_get_rdram(void);
+uint32_t   plugin_get_rdram_size(void);
+uint8_t*   plugin_get_dmem(void);
+
+/* angrylion's HLE-emitter backend: hand a synthesized RDP command FIFO to
+ * angrylion's command processor.  The FIFO lives in host memory; point the
+ * DPC registers at its reported virtual range, redirect the command fetch to
+ * it, run the list, then restore guest-RDRAM fetch.  DPC register order is
+ * start/end/current (word-indexed), matching plugin_get_dp_registers(). */
+static void al_hle_submit(const unsigned char *storage,
+                          unsigned int base_byte_addr, unsigned int len_bytes)
+{
+    unsigned int **dp = plugin_get_dp_registers();
+    if (dp == 0)
+        return;
+    *dp[0] = base_byte_addr;                 /* DPC_START   */
+    *dp[2] = base_byte_addr;                 /* DPC_CURRENT */
+    *dp[1] = base_byte_addr + len_bytes;     /* DPC_END     */
+    n64video_set_hle_cmd_buffer((const unsigned int *)storage,
+                                base_byte_addr, len_bytes);
+    n64video_process_list();
+    n64video_set_hle_cmd_buffer(0, 0, 0);
+}
+
+static const RdpEmitBackend al_hle_backend =
+{
+    plugin_get_rdram,
+    plugin_get_rdram_size,
+    plugin_get_dmem,
+    al_hle_submit
+};
 
 extern unsigned int screen_width, screen_height;
 extern uint32_t screen_pitch;
@@ -332,6 +370,7 @@ void angrylionProcessDList(void)
    /* HLE-graphics path. The core only routes display lists here when the RSP
     * plugin is HLE; under cxd4/parallel the RDP is fed via ProcessRDPList and
     * this entry is unused, so there is no cost to the low-level path. */
+   rdp_emit_set_backend(&al_hle_backend);
    rdp_emit_hle_process_dlist();
 }
 
