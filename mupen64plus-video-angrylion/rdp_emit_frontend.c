@@ -367,6 +367,8 @@ void gsp_set_texture(GSPState *s, unsigned int scale_s, unsigned int scale_t,
  * currently active viewport/perspNorm, mirroring the microcode's
  * vertices_store (G_VTX and the clipper's generated vertices both pass
  * through it; the triangle write only reloads the stored results). */
+static void gsp_clip_vertex_flags(const GSPState *st, GSPVertex *vt);
+
 static void gsp_vertex_screen(GSPState *s, GSPVertex *vt)
 {
     BridgeVertex bv;
@@ -596,39 +598,8 @@ void gsp_vertex(GSPState *s, const unsigned char *rdram, unsigned int addr,
          * VCH rule also flags vertices behind the eye, which is what lets
          * the RSP reject the near geometry slivers a guard-band clipper
          * would otherwise rasterize. */
-        {
-            int32_t comps[4];
-            int ax;
-            unsigned int fl = 0;
-            comps[0] = vt->cx; comps[1] = vt->cy;
-            comps[2] = vt->cz; comps[3] = vt->cw;
-            for (ax = 0; ax < 4; ax++)
-            {
-                int sn = ((comps[ax] ^ vt->cw) < 0);
-                int nb = sn ? (comps[ax] <= -vt->cw) : (vt->cw < 0);
-                int pb = sn ? (vt->cw < 0) : (comps[ax] >= vt->cw);
-                if (nb) fl |= 1u << (4 + ax);   /* CLIP_NX..CLIP_NW */
-                if (pb) fl |= 1u << (12 + ax);  /* CLIP_PX..CLIP_PW */
-            }
-            /* The scaled (clip-ratio) half of VTX_CLIP: the same VCH
-             * sign-aware compare against ratio * w (the default ratio is
-             * 2; the products need 33 bits). The clipper's x/y conditions
-             * test these bits. */
-            {
-                int32_t w2 = rsp_clip_scale_w(vt->cw, s->clip_ratio);
-                for (ax = 0; ax < 3; ax++)
-                {
-                    int32_t cp = comps[ax];
-                    int sn = ((cp ^ w2) < 0);
-                    int nb = sn ? (cp <= -w2) : (w2 < 0);
-                    int pb = sn ? (w2 < 0) : (cp >= w2);
-                    if (nb) fl |= 1u << (20 + ax);
-                    if (pb) fl |= 1u << (28 + ax);
-                }
-            }
-            vt->clip = (int)fl;
-            gsp_vertex_screen(s, vt);
-        }
+        gsp_clip_vertex_flags(s, vt);
+        gsp_vertex_screen(s, vt);
     }
 }
 
@@ -810,31 +781,70 @@ static const unsigned int gsp_clip_cond_mask[6] = {
     1u << 20            /* CLIP_NX << SCAL                   */
 };
 
-/* Recompute the stored VCH outcodes for a clip-generated vertex. */
+/* One lane of the microcode's VCH/VCL outcode compare on (int:frac)
+ * pairs, exact to the hardware's boundary rules: opposite signs use the
+ * int sum, deferring to the fraction sum when the ints land on -1 (a
+ * carry up to and including 0x10000 keeps the le bit) or exactly 0
+ * (only a zero or exactly-1.0 fraction sum does); same signs use the
+ * int difference, deferring to an unsigned fraction compare on equal
+ * ints. Validated bit-exact against 35k stored flag words and the raw
+ * compare captures of both VCH rounds. */
+static void gsp_vch_vcl_lane(int32_t vsi, int32_t vsf,
+                             int32_t vti, int32_t vtf, int *le, int *ge)
+{
+    int32_t a = (int32_t)(int16_t)vsi;
+    int32_t b = (int32_t)(int16_t)vti;
+    if ((a ^ b) < 0)
+    {
+        int32_t sum = a + b;
+        *ge = (b < 0);
+        if (sum == -1)
+            *le = (vsf + vtf) <= 0x10000;
+        else if (sum == 0)
+            *le = ((vsf + vtf) == 0) || ((vsf + vtf) == 0x10000);
+        else
+            *le = (sum < 0);
+    }
+    else
+    {
+        int32_t d = a - b;
+        *le = (b < 0);
+        if (d == 0)
+            *ge = (vsf >= vtf);
+        else
+            *ge = (d > 0);
+    }
+}
+
+/* Recompute the stored VCH/VCL outcodes for a vertex: the screen-space
+ * word compares each lane against w, and the guard word compares
+ * against the clip-ratio-scaled w with the w lane's fraction replaced
+ * by the z fraction (the microcode reloads it before the second
+ * compare, turning that lane into the fraction-level far test). */
 static void gsp_clip_vertex_flags(const GSPState *st, GSPVertex *vt)
 {
-    int32_t comps[4];
-    int ax;
+    int32_t ci[4], cf[4];
+    int ax, le, ge;
     unsigned int fl = 0;
     int32_t w2;
-    comps[0] = vt->cx; comps[1] = vt->cy;
-    comps[2] = vt->cz; comps[3] = vt->cw;
+    ci[0] = (vt->cx >> 16) & 0xffff; cf[0] = vt->cx & 0xffff;
+    ci[1] = (vt->cy >> 16) & 0xffff; cf[1] = vt->cy & 0xffff;
+    ci[2] = (vt->cz >> 16) & 0xffff; cf[2] = vt->cz & 0xffff;
+    ci[3] = (vt->cw >> 16) & 0xffff; cf[3] = vt->cw & 0xffff;
     for (ax = 0; ax < 4; ax++)
     {
-        int sn = ((comps[ax] ^ vt->cw) < 0);
-        int nb = sn ? (comps[ax] <= -vt->cw) : (vt->cw < 0);
-        int pb = sn ? (vt->cw < 0) : (comps[ax] >= vt->cw);
-        if (nb) fl |= 1u << (4 + ax);
-        if (pb) fl |= 1u << (12 + ax);
+        gsp_vch_vcl_lane(ci[ax], cf[ax], ci[3], cf[3], &le, &ge);
+        if (le) fl |= 1u << (4 + ax);
+        if (ge) fl |= 1u << (12 + ax);
     }
     w2 = rsp_clip_scale_w(vt->cw, st->clip_ratio);
-    for (ax = 0; ax < 3; ax++)
+    for (ax = 0; ax < 4; ax++)
     {
-        int sn = ((comps[ax] ^ w2) < 0);
-        int nb = sn ? (comps[ax] <= -w2) : (w2 < 0);
-        int pb = sn ? (w2 < 0) : (comps[ax] >= w2);
-        if (nb) fl |= 1u << (20 + ax);
-        if (pb) fl |= 1u << (28 + ax);
+        int32_t vsf = (ax == 3) ? cf[2] : cf[ax];
+        gsp_vch_vcl_lane(ci[ax], vsf, (w2 >> 16) & 0xffff, w2 & 0xffff,
+                         &le, &ge);
+        if (le) fl |= 1u << (20 + ax);
+        if (ge) fl |= 1u << (28 + ax);
     }
     vt->clip = (int)fl;
 }
