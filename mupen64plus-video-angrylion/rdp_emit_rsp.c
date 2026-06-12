@@ -735,7 +735,7 @@ void rsp_clip_lerp(const int32_t on_pos[4], const int32_t off_pos[4],
 {
     int32_t v8[4], v9[4], v10[4], v11[4]; /* frac/int lanes */
     int32_t co[4];
-    int32_t rcp_lo, rcp_hi, abs2, fade, onfade;
+    int32_t rcp_lo, rcp_hi, abs2, fade, onfade, onfade_i;
     int32_t r2_lo, r2_hi, x_lo, x_hi;
     RspAcc acc;
     int L;
@@ -847,11 +847,22 @@ void rsp_clip_lerp(const int32_t on_pos[4], const int32_t off_pos[4],
         int32_t vcc = (fi < 1);
         int32_t ne, cob;
         ff = vcc ? ff : 0xffff;
-        fi = (fi < 1) ? fi : 1;            /* vlt result = min */
         cob = (ff - 1 < 0);
         ne  = (ff != 1);
         vcc = (fi > 0) | ((fi == 0) & !(ne & cob));
         fade = vcc ? ff : 1;
+        /* A factor whose integer lane went negative (the reciprocal
+         * pipeline under endpoints with saturated 0x7fff w lanes can
+         * produce one) selects the on-side endpoint outright: fade 0
+         * with onfade an exact 1.0. Kirby 64's insert-matrix streak
+         * particles re-clip such a corner; flooring it through the
+         * 1/65536 sliver instead loses the stored T by one (757 for
+         * the RSP's 758) and the framebuffer-feedback cutscene keeps
+         * the residue. */
+        if (fi < 0)
+            fade = 0;
+        onfade_i = (fade == 0) ? 1 : 0;
+        (void)fi;
     }
     acc = p_udn(fade, -1);
     onfade = acc_clamp_low(acc);            /* 0x10000 - fade, low half */
@@ -864,6 +875,7 @@ void rsp_clip_lerp(const int32_t on_pos[4], const int32_t off_pos[4],
         acc  = p_udl(off, fade) + p_udm(ofi, fade);
         acc += p_udl(onf, onfade);
         acc += p_udm(oni, onfade);
+        acc += p_udn(onf, onfade_i) + p_udh(oni, onfade_i);
         pi = acc_clamp_mid(acc);
         pf = acc_clamp_low(acc);
         out_pos[L] = (int32_t)(((uint32_t)U16(pi) << 16) | (uint32_t)U16(pf));
@@ -874,6 +886,7 @@ void rsp_clip_lerp(const int32_t on_pos[4], const int32_t off_pos[4],
     {
         acc  = p_udm(S16(off_attr[L]) & 0xffff, fade);
         acc += p_udm(S16(on_attr[L]) & 0xffff, onfade);
+        acc += p_udh(S16(on_attr[L]) & 0xffff, onfade_i);
         out_attr[L] = (int16_t)acc_clamp_mid(acc);
     }
 }
