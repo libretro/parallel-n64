@@ -9,6 +9,7 @@
 /* Per-game verified word tables. */
 #include "widescreen_sm64.h"
 #include "widescreen_sm64_eu.h"
+#include "widescreen_sm64_jp.h"
 
 /* Registry: one entry per supported game/ratio.  Add new games here.
  *
@@ -33,6 +34,14 @@ static const struct rompatch_profile widescreen_profiles[] = {
       widescreen_sm64_eu_words,
       sizeof(widescreen_sm64_eu_words) /
          sizeof(widescreen_sm64_eu_words[0]),
+      16, 9                                     /* aspect ratio */
+   },
+   {
+      "Super Mario 64 (Japan) 16:9",
+      { 'N', 'S', 'M' },                       /* header 0x3B..0x3D */
+      widescreen_sm64_jp_words,
+      sizeof(widescreen_sm64_jp_words) /
+         sizeof(widescreen_sm64_jp_words[0]),
       16, 9                                     /* aspect ratio */
    },
 };
