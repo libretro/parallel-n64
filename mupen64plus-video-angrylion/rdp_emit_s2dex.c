@@ -50,6 +50,15 @@ void s2dex_set_scissor(unsigned int w0, unsigned int w1)
  * (the data segment, status words included, is re-DMAed). */
 static unsigned int s_obj_status[4];
 
+/* DMEM 0x2ae: the tile-7 history byte. G_OBJ_LOADTXTR emits a leading
+ * TILESYNC only when the previous tile-7 user was also a texture load
+ * (the byte holds 0x81; the background renderers store their render-tile
+ * parity instead, and the data segment ships 0x80, so the first load
+ * after a microcode reload never syncs). A deduped load skips the byte
+ * entirely. Modeled as: set by loads and the BG renderers' strip loads,
+ * cleared by the data reload; the load syncs when set. */
+static int s_obj_tile7_used;
+
 void s2dex_reset(void)
 {
     /* Mirror the values the S2DEX2 data segment ships for these DMEM
@@ -64,6 +73,7 @@ void s2dex_reset(void)
     s_scis_lry = 0x3c0;
     s_obj_status[0] = s_obj_status[1] = 0;
     s_obj_status[2] = s_obj_status[3] = 0;
+    s_obj_tile7_used = 0;
 }
 
 /* ---- G_OBJ_LOADTXTR ----------------------------------------------------- */
@@ -119,6 +129,14 @@ int s2dex_obj_loadtxtr(const unsigned char *rdram, unsigned int rdram_bytes,
     if ((s_obj_status[sid] & mask) == flag)
         return 1;                       /* already resident */
     s_obj_status[sid] = (s_obj_status[sid] & ~mask) | flag;
+
+    if (s_obj_tile7_used)
+    {
+        cw[0] = (int32_t)0x28000000u;   /* tilesync against the last load */
+        cw[1] = 0;
+        rdp_fifo_append(fifo, cw, 2);
+    }
+    s_obj_tile7_used = 1;
 
     image = segfn(image);
 
@@ -349,6 +367,7 @@ void s2dex_bg_1cyc(const unsigned char *rdram, unsigned int rdram_bytes,
      * needed = (frameW_px * scale + bilerp) * 32 texel-units (vmudn scale x
      * frameW with the x0x200 fold), bounded by imageW * 32; line = 1 +
      * ((min + add) * mul >> 16) using the per-size table. */
+    s_obj_tile7_used = 1;
     siz_add = s2dex_siz_tab[image_siz][0];
     siz_mul = s2dex_siz_tab[image_siz][1];
     {
@@ -790,6 +809,7 @@ void s2dex_bg_copy(const unsigned char *rdram, unsigned int rdram_bytes,
     tmem_size_w  = bg_rd_u16(rdram, bg_addr + 0x24);
     tmem_size    = bg_rd_u16(rdram, bg_addr + 0x26);
 
+    s_obj_tile7_used = 1;
     if (tmem_h == 0u || tmem_w == 0u)
         return;
 
