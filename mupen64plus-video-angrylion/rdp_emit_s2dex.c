@@ -255,6 +255,7 @@ static uint32_t bg_inv_scale(unsigned int scale)
 void s2dex_bg_1cyc(const unsigned char *rdram, unsigned int rdram_bytes,
                    unsigned int bg_addr, RdpFifo *fifo)
 {
+
     /* uObjScaleBg fields (all big-endian) */
     unsigned int image_x, image_w, image_y, image_h;        /* u10.5 / u10.2 */
     int          frame_x, frame_y;                          /* s10.2 */
@@ -788,6 +789,7 @@ void s2dex_bg_1cyc(const unsigned char *rdram, unsigned int rdram_bytes,
 void s2dex_bg_copy(const unsigned char *rdram, unsigned int rdram_bytes,
                    unsigned int bg_addr, RdpFifo *fifo)
 {
+
     unsigned int image_x, image_w, image_y, image_h;
     int          frame_x, frame_y;
     unsigned int frame_w, frame_h;
@@ -798,6 +800,8 @@ void s2dex_bg_copy(const unsigned char *rdram, unsigned int rdram_bytes,
     unsigned int clip_ulx, clip_uly, draw_w_q, draw_h_q;
     unsigned int copy_clip_t_q;             /* top clip, 10.2 */
     unsigned int settimg_w0, load_w0, load_w1, line_field;
+    unsigned int x_phase_s;         /* sub-chunk X offset, s10.5 texels */
+    unsigned int siz_add_c;
     unsigned int ptr, t1, rows, adv, s_flip_coord;
     unsigned int clip_skip, x_units;
     int          a0;
@@ -830,6 +834,7 @@ void s2dex_bg_copy(const unsigned char *rdram, unsigned int rdram_bytes,
     s_obj_tile7_used = 1;
     if (tmem_h == 0u || tmem_w == 0u)
         return;
+    siz_add_c = s2dex_siz_tab[image_siz][0];
 
     /* scissor intersection (IMEM 0x1b4-0x204); copy mode is 1:1 so the
      * clip works in 10.2 directly. */
@@ -861,6 +866,13 @@ void s2dex_bg_copy(const unsigned char *rdram, unsigned int rdram_bytes,
          * and so both contribute to the seam reservation. */
         x_units = ((((unsigned int)clip_l) << image_siz) >> 5)
                 + (((unsigned int)image_x << image_siz) >> 8);
+        /* the sub-chunk part of the X offset that the 8-byte-aligned
+         * pointer skip can't absorb becomes the strips' S coordinate,
+         * and the row loads widen by the same amount: a 3-texel left
+         * clip of an RGBA16 frame copy loads texels 0..302 and draws
+         * with S = 3.0 (lrs 0x4bb / s 0x60 against the RSP). */
+        x_phase_s = ((((unsigned int)clip_l) << 3)
+                     + (unsigned int)image_x) & siz_add_c;
         {
             /* the imageY scroll (u10.5, integral rows) adds to the
              * clipped top: it advances the start pointer and shrinks the
@@ -912,7 +924,8 @@ void s2dex_bg_copy(const unsigned char *rdram, unsigned int rdram_bytes,
         /* LOADTILE: lrs is computed from the drawn width (IMEM 0x338-0x340,
          * v10[4]*4-1) in 16-bit texel units, lrt comes from the struct */
         load_w0 = 0xf4000000u;
-        load_w1 = (((((draw_w_q << image_siz >> 2) - 1u) & 0xfffu)
+        load_w1 = (((((((draw_w_q + (x_phase_s >> 3)) << image_siz) >> 2)
+                      - 1u) & 0xfffu)
                     | 0x7000u) << 12)
                 | tmem_load_th;
         adv     = (tmem_size << 16) | tmem_load_sh;
@@ -928,7 +941,8 @@ void s2dex_bg_copy(const unsigned char *rdram, unsigned int rdram_bytes,
     /* horizontal flip mirrors about the inclusive right edge: S becomes
      * -(drawW-0.25px) in s10.5 into the always-mirrored render tile */
     s_flip_coord = (image_flip_c & 1u)
-                 ? ((0u - (draw_w_q - 1u) * 8u) & 0xffffu) : 0u;
+                 ? ((0u - (draw_w_q - 1u) * 8u) & 0xffffu)
+                 : (x_phase_s & 0xffffu);
 
     ptr  = image_ptr + clip_skip;
     t1   = clip_uly;
