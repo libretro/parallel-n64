@@ -37,6 +37,7 @@
 #include "main.h"
 #include "util.h"
 #include "framerate_unlock.h"
+#include "widescreen.h"
 
 #include "memory/memory.h"
 #include "osal/preproc.h"
@@ -66,6 +67,7 @@ unsigned alternate_vi_timing = 0;
 int           g_count_per_scanline = DEFAULT_COUNT_PER_SCANLINE;
 int           g_force_parallel_sync = 0;
 int           g_framerate_unlock_hint = 0;
+int           g_widescreen_hint = 0;
 
 extern bool frame_dupe;
 extern uint32_t OverrideSaveType;
@@ -198,6 +200,12 @@ m64p_error open_rom(const unsigned char* romimage, unsigned int size)
     * RDRAM, so the patch reaches the executing code without a DMA hook. */
    if (g_framerate_unlock_hint)
       framerate_unlock_apply(g_rom, g_rom_size);
+
+   /* Game-specific widescreen (Hint).  Same fail-safe model; on success the
+    * applied aspect ratio is read by the libretro layer to update geometry. */
+   widescreen_reset();
+   if (g_widescreen_hint)
+      widescreen_apply(g_rom, g_rom_size);
 
    /* Identity string for savestate validation: derived from the header
     * (CRC words, cartridge ID, region) instead of an MD5 of the whole

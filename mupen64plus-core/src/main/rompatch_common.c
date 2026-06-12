@@ -82,7 +82,8 @@ static int rompatch_try_profile(unsigned char *rom, int size,
    return 1;
 }
 
-int rompatch_apply_registry(unsigned char *rom, int size,
+const struct rompatch_profile *rompatch_apply_registry(
+      unsigned char *rom, int size,
       const struct rompatch_profile *profiles, size_t profile_count,
       const char *tag)
 {
@@ -90,7 +91,7 @@ int rompatch_apply_registry(unsigned char *rom, int size,
    for (i = 0; i < profile_count; i++)
    {
       if (rompatch_try_profile(rom, size, &profiles[i], tag))
-         return 1;
+         return &profiles[i];
    }
-   return 0;
+   return NULL;
 }

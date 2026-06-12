@@ -84,6 +84,20 @@ struct retro_core_option_v2_definition option_defs_us[] = {
         "disabled"
     },
     {
+        CORE_NAME "-widescreen-hint",
+        "Game-specific widescreen (Hint)",
+        NULL,
+        "Applies a verified widescreen patch to recognised, byte-matching ROMs (currently Super Mario 64 USA v1.0, 16:9) and updates the aspect ratio to match. Not bit-exact emulation; unrecognised ROMs and ROM hacks are left untouched. Reload content to take effect.",
+        NULL,
+        NULL,
+        {
+            {"disabled", NULL},
+            {"enabled",  NULL},
+            { NULL, NULL },
+        },
+        "disabled"
+    },
+    {
         CORE_NAME "-cpucore",
         "CPU Core",
         NULL,

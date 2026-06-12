@@ -40,12 +40,19 @@ struct rompatch_profile
    char                        cart[3];     /* header 0x3B..0x3D, e.g. "NSM" */
    const struct rompatch_word *words;
    size_t                      word_count;
+   /* Optional aspect ratio this patch produces, as a fraction (e.g. 16/9).
+    * Both zero means "no aspect change" (e.g. a framerate patch).  Categories
+    * that care (widescreen) read these after a successful apply. */
+   int                         aspect_num;
+   int                         aspect_den;
 };
 
 /* Try each profile in 'profiles' against the z64-normalised ROM image.
- * Returns 1 and patches in-place if a profile fully verifies; 0 (untouched)
- * otherwise.  'tag' is used for logging only. */
-int rompatch_apply_registry(unsigned char *rom, int size,
+ * On the first profile that fully verifies, applies it in place and returns
+ * a pointer to that profile (so the caller can read e.g. its aspect ratio).
+ * Returns NULL if none matched (image left untouched).  'tag' is for logging. */
+const struct rompatch_profile *rompatch_apply_registry(
+      unsigned char *rom, int size,
       const struct rompatch_profile *profiles, size_t profile_count,
       const char *tag);
 

@@ -16,15 +16,17 @@ static const struct rompatch_profile framerate_unlock_profiles[] = {
       { 'N', 'S', 'M' },                       /* header 0x3B..0x3D */
       framerate_unlock_sm64_us_words,
       sizeof(framerate_unlock_sm64_us_words) /
-         sizeof(framerate_unlock_sm64_us_words[0])
+         sizeof(framerate_unlock_sm64_us_words[0]),
+      0, 0                                      /* no aspect change */
    },
 };
 
 int framerate_unlock_apply(unsigned char *rom, int size)
 {
-   return rompatch_apply_registry(rom, size,
+   const struct rompatch_profile *p = rompatch_apply_registry(rom, size,
          framerate_unlock_profiles,
          sizeof(framerate_unlock_profiles) /
             sizeof(framerate_unlock_profiles[0]),
          "framerate-unlock hint");
+   return p ? 1 : 0;
 }
