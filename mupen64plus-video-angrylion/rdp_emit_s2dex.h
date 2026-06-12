@@ -18,6 +18,7 @@ unsigned int gsp_seg_addr_rsp(unsigned int w1);
 /* Latched RDP scissor (G_SETSCISSOR passthrough; the microcode splits the
  * command into DMEM 0x204/0x208 and the BG path clips the frame to it). */
 void s2dex_set_scissor(unsigned int w0, unsigned int w1);
+void s2dex_emit_scissor(RdpFifo *fifo);
 
 void s2dex_reset(void);
 int s2dex_obj_loadtxtr(const unsigned char *rdram, unsigned int rdram_bytes,

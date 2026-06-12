@@ -809,6 +809,11 @@ void f3dex2_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
                  * renderer, mirroring the microcode's command splitter. */
                 if (rdp_id == 0x2d)
                     s2dex_set_scissor(w0, w1);
+                /* The S2DEX2 rectangle handler restores the display
+                 * list's scissor before every G_TEXRECT it forwards. */
+                if (s_ucode_class == UCODE_S2DEX2 &&
+                    (rdp_id == 0x24 || rdp_id == 0x25))
+                    s2dex_emit_scissor(fifo);
                 /* sniff Set Tile (0xF5 -> 0x35) for the wrap masks: the
                  * texture-coordinate wrap fold in gsp_triangle may shift a
                  * triangle's S/T plane only by multiples of the tile's mask

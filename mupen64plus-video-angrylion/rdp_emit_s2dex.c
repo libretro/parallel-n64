@@ -34,12 +34,28 @@ void s2dex_set_obj_rendermode(unsigned int w1)
     s_obj_rendermode = w1 & 0xffu;
 }
 
+/* the raw G_SETSCISSOR words, re-emitted in front of display-list
+ * texture rectangles while the S2DEX2 microcode is loaded (its
+ * background renderers may leave a narrowed scissor behind, so the
+ * rectangle handler restores the list's scissor first). */
+static unsigned int s_scis_w0, s_scis_w1;
+
 void s2dex_set_scissor(unsigned int w0, unsigned int w1)
 {
     s_scis_ulx = (w0 >> 12) & 0xfffu;
     s_scis_uly = w0 & 0xfffu;
     s_scis_lrx = (w1 >> 12) & 0xfffu;
     s_scis_lry = w1 & 0xfffu;
+    s_scis_w0 = w0;
+    s_scis_w1 = w1;
+}
+
+void s2dex_emit_scissor(RdpFifo *fifo)
+{
+    int32_t cw[2];
+    cw[0] = (int32_t)s_scis_w0;
+    cw[1] = (int32_t)s_scis_w1;
+    rdp_fifo_append(fifo, cw, 2);
 }
 
 /* DMEM 0x8c-0x9b: the four texture-load status words used by the
@@ -71,6 +87,8 @@ void s2dex_reset(void)
     s_scis_ulx = s_scis_uly = 0;
     s_scis_lrx = 0x500;
     s_scis_lry = 0x3c0;
+    s_scis_w0 = 0xed000000u;
+    s_scis_w1 = 0x005003c0u;
     s_obj_status[0] = s_obj_status[1] = 0;
     s_obj_status[2] = s_obj_status[3] = 0;
     s_obj_tile7_used = 0;
