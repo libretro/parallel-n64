@@ -243,7 +243,7 @@ int write_rsp_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask
           l        = sp->regs[SP_RD_LEN_REG];
           length   = ((l & 0xfff) | 7) + 1;
           count    = ((l >> 12) & 0xff) + 1;
-          skip     = ((l >> 20) & 0xfff);
+          skip     = ((l >> 23) & 0x1ff) << 3;
 
           dma_sp_write(sp, length, count, skip);
           break;
@@ -251,7 +251,7 @@ int write_rsp_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask
           l        = sp->regs[SP_WR_LEN_REG];
           length   = ((l & 0xfff) | 7) + 1;
           count    = ((l >> 12) & 0xff) + 1;
-          skip     = ((l >> 20) & 0xfff);
+          skip     = ((l >> 23) & 0x1ff) << 3;
           dma_sp_read(sp, length, count, skip);
           break;
        case SP_SEMAPHORE_REG:
