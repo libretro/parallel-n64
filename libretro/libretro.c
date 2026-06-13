@@ -1564,15 +1564,35 @@ void update_variables(bool startup)
 
    CFG_HLE_GFX = 0;
 
+   /* Whether to translate the GFX task to HLE rather than running the LLE
+    * microcode is, in general, the user's choice via the RSP plugin option.
+    * Historically the core force-enabled HLE GFX whenever the active video
+    * plugin was not the one paired with the build's native LLE path
+    * (angrylion for the threaded software build, parallel for the Vulkan
+    * build). That silently overrode an explicit "cxd4" selection, making a
+    * requested LLE run secretly execute the HLE emitter. Only apply that
+    * fallback when the RSP plugin is left on "auto"; an explicit choice is
+    * honoured as-is. */
+   {
+      struct retro_variable rsp_var = { CORE_NAME "-rspplugin", 0 };
+      int rsp_is_auto = 1;
+      environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &rsp_var);
+      if (rsp_var.value && strcmp(rsp_var.value, "auto") != 0)
+         rsp_is_auto = 0;
+
+      if (rsp_is_auto)
+      {
 #ifdef HAVE_THR_AL
-   if (gfx_plugin != GFX_ANGRYLION)
-      CFG_HLE_GFX = 1;
+         if (gfx_plugin != GFX_ANGRYLION)
+            CFG_HLE_GFX = 1;
 #endif
 
 #ifdef HAVE_PARALLEL
-   if (gfx_plugin != GFX_PARALLEL)
-      CFG_HLE_GFX = 1;
+         if (gfx_plugin != GFX_PARALLEL)
+            CFG_HLE_GFX = 1;
 #endif
+      }
+   }
    CFG_HLE_AUD = 0; /* There is no HLE audio code in libretro audio plugin. */
 
    var.key = "parallel-n64-filtering";
