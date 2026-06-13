@@ -48,18 +48,19 @@ static const struct cart_delaysi_entry { char id[4]; unsigned char delaysi; } lu
    { "NYK", 0 }, /* Yakouchuu II - Satsujin Kouro */
 };
 
-/* Header-CRC delay-SI remainder: build-specific overrides a cartridge ID
- * cannot express, since the affected build shares its id with releases
- * that must keep the default.  The Super Mario 64 60fps V2 hack's
- * per-frame controller polling bypasses the SI access arbitration, so
- * its in-game save races the EEPROM transaction's SI completion event
- * and loses the wakeup when completion is delayed -- the save thread
- * then sleeps forever in osRecvMesg.  Immediate completion closes the
- * window; the shared NSM id rules out a title-wide entry, as vanilla
- * SM64 must keep the default. */
-static const uint64_t lut_delaysi[][2] = {
-   { 0xe5e9f5fbe1c4551dULL, 0 }, /* Super Mario 64 60fps V2 */
-};
+/* Header-CRC DelaySI overrides have been removed.  The only entry was the
+ * Super Mario 64 60fps V2 hack: its per-frame controller polling bypasses the
+ * SI access arbitration, so its in-game save raced the EEPROM transaction's
+ * SI completion event and lost the wakeup when completion was delayed (the
+ * save thread then slept forever in osRecvMesg).  A per-CRC entry was needed
+ * because the hack shares the vanilla "NSM" cart id, which must keep the
+ * default.  That race is now fixed generically in the SI controller by
+ * serializing overlapping SI DMAs -- see si_flush_pending_dma() -- which
+ * closes the window for every ROM, including runtime-patched (widescreen /
+ * cheat) images a CRC could never match, and without forcing immediate SI
+ * completion for a whole title.  Per-cart-ID DelaySI overrides for titles
+ * that misbehave with delayed SI for other reasons remain in lut_delaysi_id
+ * above. */
 
 static const char lut_audiosignal_id[][4] = {
    "NHT", /* Hydro Thunder */

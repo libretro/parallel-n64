@@ -462,15 +462,10 @@ m64p_error open_rom(const unsigned char* romimage, unsigned int size)
       }
    }
 
-   for (i = 0; i < sizeof(lut_delaysi)/sizeof(lut_delaysi[0]); ++i)
-   {
-      if (lut_delaysi[i][0] == lut_id)
-      {
-         g_delay_si = (unsigned char)lut_delaysi[i][1];
-         DebugMessage(M64MSG_INFO, "DelaySI set to %u.", g_delay_si);
-         break;
-      }
-   }
+   /* Per-CRC DelaySI overrides removed: the only entry (the SM64 60fps save
+    * freeze) is now fixed generically by serializing overlapping SI DMAs in
+    * the SI controller.  Per-cart-ID DelaySI overrides are still applied
+    * above via lut_delaysi_id. */
 
    /* print out a bunch of info about the ROM */
    DebugMessage(M64MSG_INFO, "Goodname: %s", ROM_SETTINGS.goodname);
