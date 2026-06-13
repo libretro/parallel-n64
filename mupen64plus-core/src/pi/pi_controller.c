@@ -74,7 +74,7 @@ static void dma_pi_read(struct pi_controller *pi)
    if (pi->regs[PI_CART_ADDR_REG] >= 0x05000000 && pi->regs[PI_CART_ADDR_REG] < 0x06000000)
    {
       //64DD BUFFER WRITES
-      length = (pi->regs[PI_RD_LEN_REG] & 0xFFFFFF) + 1;
+      length = ((pi->regs[PI_RD_LEN_REG] & 0xFFFFFF) | 1) + 1;
       i = (pi->regs[PI_CART_ADDR_REG] - 0x05000000) & 0x1FFFFFF;
 
       if (pi->regs[PI_CART_ADDR_REG] == 0x05000400)
@@ -125,7 +125,7 @@ static void dma_pi_read(struct pi_controller *pi)
          && pi->regs[PI_CART_ADDR_REG] < 0x14000000)
    {
       //CART ROM
-      length = (pi->regs[PI_RD_LEN_REG] & 0xFFFFFF) + 1;
+      length = ((pi->regs[PI_RD_LEN_REG] & 0xFFFFFF) | 1) + 1;
       i = (pi->regs[PI_CART_ADDR_REG] - 0x10000000);
 
       length = (i + length) > pi->cart_rom.rom_size ?
@@ -160,7 +160,7 @@ static void dma_pi_read(struct pi_controller *pi)
          && pi->regs[PI_CART_ADDR_REG] < 0x1fff0000)
    {
       //SC64 BUFFER
-      length = (pi->regs[PI_RD_LEN_REG] & 0xFFFFFF) + 1;
+      length = ((pi->regs[PI_RD_LEN_REG] & 0xFFFFFF) | 1) + 1;
       i = (pi->regs[PI_CART_ADDR_REG] - 0x1ffe0000);
 
       length = (i + length) > 8192 ? (8192 - i) : length;
