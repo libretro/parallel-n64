@@ -517,8 +517,16 @@ void f3dex2_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
                 unsigned int off = w0 & 0xffffu;
                 if (off == 0x04u || off == 0x0cu)
                 {
+                    /* Any positive ratio is legal: the value is written
+                     * verbatim into the DMEM clip table's w column, and
+                     * the VCH scale multiply clamps it through the
+                     * accumulator like every other ratio. Excitebike 64
+                     * runs its 3D scenes at FRUSTRATIO_6 (the gbi's
+                     * maximum); the old <= 4 guard silently dropped that,
+                     * leaving the walker's scaled outcodes and clip
+                     * planes at whatever ratio was set before. */
                     int rv = (int)(int16_t)(w1 & 0xffffu);
-                    if (rv > 0 && rv <= 4)
+                    if (rv > 0)
                         gsp->clip_ratio = rv;
                 }
             }
