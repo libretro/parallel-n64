@@ -5425,39 +5425,6 @@ void *new_dynarec_tlb_refill(u_int inst_addr, u_int mem_addr, int w)
   else
     reg[rs]=(int64_t)(((uint64_t)reg[rs]&~(uint64_t)0xffffffff)|low);
 
-  /* SM64 60fps-patch out-of-bounds render-index guard.  The community
-   * "SM64 60fps V2" ROM patch (applied only via the framerate-unlock profile)
-   * has a latent bug: on the frame(s) after an in-game save returns to the
-   * castle lobby, its interpolation path makes the render thread read a vertex
-   * index from a stale/over-read table and dereference base + index*12 with a
-   * bogus index.  Observed bad effective addresses include 0x7fffc954 (a
-   * negative-index underflow just below RDRAM), 0x00000040 (a near-null index)
-   * and 0xfd700040 (a huge positive index reaching KSEG2/3), seen as both loads
-   * and stores (the bogus index addresses both source reads and result writes).
-   * All fall outside the only range SM64 ever legitimately touches game data in:
-   * KSEG0/KSEG1 RDRAM, 0x80000000-0xbfffffff.  Retail SM64 does not use the TLB
-   * for game data, so any data access below 0x80000000 or at/above 0xc0000000 is
-   * the patch's bad index.  Unguarded, the access misses the TLB and libultra
-   * faults+stops the render thread (OS_STATE_STOPPED|OS_FLAG_FAULT), freezing
-   * the game on a fully rendered, input-dead lobby.  The V2 image is byte-exact
-   * and must not be edited.  Scoped strictly to an active framerate-unlock
-   * profile and to a data access whose target is outside RDRAM space: swallow
-   * the fault and resume one instruction past the faulting access instead of
-   * vectoring to the guest exception handler.  (inst_addr&~3)+4 is the next
-   * instruction for a normal access and the post-delay-slot address for one in
-   * a branch delay slot; both let the dynarec re-enter cleanly via block lookup.
-   * The reg[rs] base writeback above already ran; a swallowed load keeps the
-   * destination register's prior value and a swallowed store is dropped (it
-   * could only have corrupted memory or faulted via the same bad index).  A
-   * single stale/dropped vertex on an interpolated frame is imperceptible,
-   * whereas the unguarded fault is a hard hang. */
-  {
-    extern int g_framerate_unlock_active;
-    if (g_framerate_unlock_active
-          && (mem_addr < 0x80000000u || mem_addr >= 0xc0000000u))
-      return get_addr_ht((inst_addr & ~3) + 4);
-  }
-
   /* TLB refill exception */
   if (g_dev.r4300.special_rom == RAT_ATTACK)
     return get_addr_ht(0x80000000);
