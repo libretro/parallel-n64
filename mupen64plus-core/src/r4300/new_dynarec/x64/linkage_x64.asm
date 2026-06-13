@@ -364,7 +364,7 @@ _E2:
 _E3:
     ;Unwind straight to new_dyna_start's frame.  A fixed constant is not
     ;enough: cc_interrupt is also reached through jump_eret (_E11), one
-    ;call level deeper, and with NO_LIBCO this path runs every frame.
+    ;call level deeper.
     mov     rsp,    [rel dyna_entry_rsp]
     ;restore callee-save registers
     pop     rbp
@@ -497,7 +497,6 @@ new_dyna_start:
     mov     [rel dyna_entry_rsp],    rsp
     add     rsp,    -56
     ;Resume at pcaddr (seeded to the boot vector by new_dynarec_init):
-    ;NO_LIBCO re-enters here once per frame.
     mov     ARG1_REG,    [rel pcaddr]
     CALL_C  get_addr_ht
     mov     ecx,    [rel next_interrupt]

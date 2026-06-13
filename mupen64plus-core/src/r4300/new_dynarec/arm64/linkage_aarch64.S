@@ -391,7 +391,6 @@ GLOBAL_FUNCTION(_new_dyna_start):
     stp    x29,x30,[x16,#80]
     sub    x29, x16, #152
     /* Resume at pcaddr (seeded to the boot vector by new_dynarec_init):
-     * NO_LIBCO re-enters here once per frame. */
     ldr    w0, [x29, #272 ] /* pcaddr */
     bl     _get_addr_ht
     ldr    w1, [x29, #256 ] /* next_interrupt */

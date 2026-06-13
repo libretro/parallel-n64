@@ -503,8 +503,7 @@ _E2:
     jmp     eax
 _E3:
     ;Unwind straight to new_dyna_start's frame.  Depth-independent so the
-    ;frame_break exit is safe from every cc_interrupt call site, and this
-    ;path runs every frame with NO_LIBCO.
+    ;frame_break exit is safe from every cc_interrupt call site.
     mov     esp,    [dyna_entry_rsp]
     pop     edi            ;restore edi
     pop     esi            ;restore esi
@@ -634,7 +633,6 @@ new_dyna_start:
     mov     [dyna_entry_rsp],    esp
     add     esp,    -8    ;align stack
     ;Resume at pcaddr (seeded to the boot vector by new_dynarec_init):
-    ;NO_LIBCO re-enters here once per frame.
     push    DWORD [pcaddr]
     call    get_addr_ht
     mov     edi,    DWORD [next_interrupt]
