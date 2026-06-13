@@ -449,4 +449,20 @@ static const struct rompatch_word framerate_unlock_sm64_us_words[] = {
    { 0x7d0fe4u, 0xffffffffu, 0x03e00008u, ROMPATCH_WF_NONE }, /* new code (0xFF pad) */
    { 0x7d0fe8u, 0xffffffffu, 0x27bd0028u, ROMPATCH_WF_NONE }, /* new code (0xFF pad) */
    { 0x7d0ffcu, 0xffffffffu, 0x00000000u, ROMPATCH_WF_NONE }, /* new code (0xFF pad) */
+   /* Fix: ACT_STAR_DANCE_NO_EXIT (0x1327) dead-end freeze after collecting a
+    * star. The 60fps re-entry path leaves Mario in the cutscene-group action
+    * 0x1327 whose handler (0x802598d0) has no exit, because the star-dance
+    * animation frame is advanced past its loop end and is_anim_at_end() never
+    * trips, so the dance never completes and Mario locks up (no input, no jump
+    * sound). Overlay the handler's state dispatch with a direct
+    * set_mario_action(m, ACT_IDLE, 0) so control is restored once Mario is in
+    * this stuck action. Only action 0x1327 dispatches here (jump-table index
+    * 0x27 -> 0x802598d0); the normal star dance (0x1302/0x1307 via
+    * general_star_dance_handler at 0x80258184) is untouched. */
+   { 0x0148fcu, 0x8fae0030u, 0x3c050c40u, ROMPATCH_WF_NONE }, /* lui  a1,0x0c40        */
+   { 0x014900u, 0x95d00018u, 0x34a50201u, ROMPATCH_WF_NONE }, /* ori  a1,a1,0x201 (IDLE)*/
+   { 0x014904u, 0x1200000cu, 0x8fa40030u, ROMPATCH_WF_NONE }, /* lw   a0,48(sp) (m)     */
+   { 0x014908u, 0x00000000u, 0x0c0962c9u, ROMPATCH_WF_NONE }, /* jal  set_mario_action  */
+   { 0x01490cu, 0x24010001u, 0x00003025u, ROMPATCH_WF_NONE }, /* move a2,zero (delay)   */
+   { 0x014910u, 0x1201003du, 0x100000b8u, ROMPATCH_WF_NONE }, /* b    0x80259bf4        */
 };
