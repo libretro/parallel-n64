@@ -27,6 +27,7 @@
 #include "../main/rom.h"
 #include "../memory/memory.h"
 #include "../r4300/r4300_core.h"
+#include "../r4300/interrupt.h"
 #include "../ri/ri_controller.h"
 #include "../ri/safe_rdram.h"
 
@@ -41,6 +42,40 @@ enum
 
 };
 
+/* The SI is a serial bus: hardware completes one PIF/EEPROM transaction
+ * before the next can begin -- two SI DMAs never overlap.  With delayed SI
+ * completion (g_delay_si), the emulated guest can issue a new SI DMA while a
+ * previous one's completion interrupt is still pending in the event queue.
+ * That window is where the SM64 60fps hacks freeze on an in-game save: the
+ * hack's per-frame controller poll issues a read DMA between the EEPROM write
+ * DMA and its SI interrupt, and the save thread's osRecvMesg wakeup is lost.
+ *
+ * Resolve it generically (no per-ROM CRC list): if a previous SI DMA is still
+ * in flight when a new one is requested, deliver the pending completion now,
+ * mirroring the hardware serialization, then let the new DMA proceed.  This
+ * closes the race for every title -- including ones whose ROM bytes have been
+ * patched at runtime (widescreen / cheat hacks), where a CRC match would not
+ * fire. */
+static void si_flush_pending_dma(struct si_controller* si)
+{
+   if ((si->regs[SI_STATUS_REG] & SI_STATUS_DMA_BUSY) == 0)
+      return;
+   if (get_event(SI_INT) == NULL)
+      return;
+
+   /* Cancel the scheduled completion and deliver it now, using the same
+    * immediate-completion path as the g_delay_si == 0 case below (a plain
+    * signal_rcp_interrupt, which schedules the interrupt check) rather than
+    * the event-dispatcher's si_end_of_dma_event(): we are running inside the
+    * SI register write that kicked the new DMA, not inside the interrupt
+    * event loop. */
+   remove_event(SI_INT);
+   si->pif.ram[0x3f] = 0x0;
+   si->regs[SI_STATUS_REG] &= ~SI_STATUS_DMA_BUSY;
+   si->regs[SI_STATUS_REG] |= SI_STATUS_INTERRUPT;
+   signal_rcp_interrupt(si->r4300, MI_INTR_SI);
+}
+
 static void dma_si_write(struct si_controller* si)
 {
    int i;
@@ -50,6 +85,9 @@ static void dma_si_write(struct si_controller* si)
       DebugMessage(M64MSG_ERROR, "dma_si_write(): unknown SI use");
       return;
    }
+
+   /* serialize with any SI DMA still in flight (hardware cannot overlap) */
+   si_flush_pending_dma(si);
 
    for (i = 0; i < PIF_RAM_SIZE; i += 4)
    {
@@ -82,6 +120,9 @@ static void dma_si_read(struct si_controller* si)
       DebugMessage(M64MSG_ERROR, "dma_si_read(): unknown SI use");
       return;
    }
+
+   /* serialize with any SI DMA still in flight (hardware cannot overlap) */
+   si_flush_pending_dma(si);
 
    update_pif_read(si);
 
