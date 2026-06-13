@@ -297,6 +297,7 @@ extern uint32_t send_allist_to_hle_rsp;
 void do_SP_Task(struct rsp_core* sp)
 {
     uint32_t save_pc = sp->regs2[SP_PC_REG] & ~0xfff;
+    uint32_t sp_delay_time = 0;
 
     if (sp->mem[0xfc0/4] == 1)
     {
@@ -330,6 +331,8 @@ void do_SP_Task(struct rsp_core* sp)
 	    }
 	}
 
+        sp_delay_time = 1000;
+
         protect_framebuffers(sp->dp);
     }
     else if (sp->mem[0xfc0/4] == 2)
@@ -349,6 +352,8 @@ void do_SP_Task(struct rsp_core* sp)
         }
         timed_section_end(TIMED_SECTION_AUDIO);
         sp->regs2[SP_PC_REG] |= save_pc;
+
+        sp_delay_time = 4000;
     }
     else
     {
@@ -364,7 +369,7 @@ void do_SP_Task(struct rsp_core* sp)
         cp0_update_count();
 
 	sp->rsp_task_locked = 1;
-	add_interrupt_event(SP_INT, 1000);
+	add_interrupt_event(SP_INT, sp_delay_time);
     }
 }
 
