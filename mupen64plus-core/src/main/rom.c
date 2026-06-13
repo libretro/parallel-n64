@@ -67,6 +67,11 @@ unsigned alternate_vi_timing = 0;
 int           g_count_per_scanline = DEFAULT_COUNT_PER_SCANLINE;
 int           g_force_parallel_sync = 0;
 int           g_framerate_unlock_hint = 0;
+/* Set to 1 only when a framerate-unlock profile actually MATCHED and was applied
+ * to the loaded ROM (distinct from the user hint above).  Used to scope the
+ * SM64 60fps-patch out-of-bounds-render-index guard in the dynarec TLB fault
+ * path so it never affects stock ROMs or other titles. */
+int           g_framerate_unlock_active = 0;
 int           g_widescreen_hint = 0;
 
 extern bool frame_dupe;
@@ -199,7 +204,7 @@ m64p_error open_rom(const unsigned char* romimage, unsigned int size)
     * normalised to big-endian z64 and is the exact image the PI DMAs into
     * RDRAM, so the patch reaches the executing code without a DMA hook. */
    if (g_framerate_unlock_hint)
-      framerate_unlock_apply(g_rom, g_rom_size);
+      g_framerate_unlock_active = framerate_unlock_apply(g_rom, g_rom_size);
 
    /* Game-specific widescreen (Hint).  Same fail-safe model; on success the
     * applied aspect ratio is read by the libretro layer to update geometry. */
