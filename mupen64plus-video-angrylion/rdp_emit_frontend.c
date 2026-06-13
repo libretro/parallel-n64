@@ -164,6 +164,7 @@ void gsp_init(GSPState *s)
     s->clip_ratio = 2;
     s->clip_near_z = 0;
     s->clip_fan_first = 0;
+    s->clip_reject = 0;
     s->branch_z_mode = 0;
     s->branch_z_mode = 0;
     s->tri_dx_scale  = 0x4000;
@@ -328,6 +329,7 @@ void gsp_task_reset(GSPState *s)
     s->clip_ratio = 2;
     s->clip_near_z = 0;
     s->clip_fan_first = 0;
+    s->clip_reject = 0;
 }
 
 void gsp_combine_matrices(GSPState *s)
@@ -1098,7 +1100,21 @@ int gsp_triangle(GSPState *s, int32_t *cmd, int i0, int i1, int i2,
     np = 3;
 #define GSP_CLIP_TRIGGER ((1u << 20) | (1u << 21) | (1u << 28) | (1u << 29) \
                         | (1u << 14) | (1u << 7))
-    if ((oa | ob | oc) & (GSP_CLIP_TRIGGER
+    if (s->clip_reject)
+    {
+        /* F3DLX.Rej / F3DZEX.Rej have no polygon clipper. The rejection
+         * microcode drops a triangle whole when any vertex falls outside
+         * the guard band (the same scaled x/y outcodes the clipper would
+         * trigger on) or behind the eye; geometry inside the band is
+         * passed straight to the rasterizer, which the scissor then trims
+         * to the screen. Mirror that: reject on the clip trigger instead
+         * of subdividing, so the emitter does not fabricate the boundary
+         * fan triangles a clipper would. Excitebike 64 swaps to this
+         * build (alongside F3DEX.NoN) for its 3D scenes. */
+        if ((oa | ob | oc) & (GSP_CLIP_TRIGGER | (1u << 6)))
+            return 0;
+    }
+    else if ((oa | ob | oc) & (GSP_CLIP_TRIGGER
                           | (s->clip_near_z ? (1u << 6) : 0u)))
     {
         /* Polygon clip against the guard band the way the RSP microcode

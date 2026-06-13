@@ -88,6 +88,7 @@ typedef struct GSPState
      * last polygon vertex with ascending pairs (F3DEX2 2.05+/F3DZEX2),
      * 1 = fan from the first vertex with descending pairs (2.04H). */
     int clip_fan_first;
+    int clip_reject;  /* F3DLX.Rej/F3DZEX.Rej: whole-tri reject, no clipper */
     /* G_BRANCH_Z (F3DEX2: compare 32-bit screen z) vs G_BRANCH_W
      * (F3DZEX2: compare s16 clip-w integer) for opcode 0x04. */
     int branch_z_mode;

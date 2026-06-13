@@ -218,6 +218,36 @@ void gsp_detect_ucode_params(GSPState *st, const unsigned char *rdram,
         rsp_set_clip_lerp_204h(!found);
     }
 
+    /* Rejection-microcode probe: F3DLX.Rej / F3DZEX.Rej carry ".Rej" in
+     * the microcode ID string. The string sits in the shared text/data
+     * region the ucode_data DMA brings in, at data + 0x146 (the
+     * displayListStack/ID area, 0x138-0x180 in the microcode's DMEM map;
+     * the v31 constant row this detector already keys on is at data +
+     * 0x1b0 in the same segment). These builds have no polygon clipper:
+     * a triangle past a fixed rejection bound is dropped whole rather
+     * than subdivided, so the emitter must not run guard-band clipping
+     * for them. Excitebike 64's title runs its 3D model under F3DLX.Rej
+     * while its 2D/HUD passes use F3DEX.NoN. */
+    {
+        int rej = 0;
+        if (ud != 0 && ud + 0x160 <= rdram_size)
+        {
+            unsigned int k;
+            for (k = 0x130; k + 4 <= 0x160; k++)
+            {
+                if (rdram[(ud + k + 0) ^ 3] == 0x2eu    /* . */
+                    && rdram[(ud + k + 1) ^ 3] == 0x52u /* R */
+                    && rdram[(ud + k + 2) ^ 3] == 0x65u /* e */
+                    && rdram[(ud + k + 3) ^ 3] == 0x6au)/* j */
+                {
+                    rej = 1;
+                    break;
+                }
+            }
+        }
+        st->clip_reject = rej;
+    }
+
     /* Clip-fan probe: the 2.04H clipper triangulates its output polygon
      * from the FIRST vertex with descending pairs (its draw loop reads
      * the pair through the output cursor: lhu v0, 0x3cc(s5) = 96a203cc),
