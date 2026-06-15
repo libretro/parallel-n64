@@ -266,35 +266,7 @@ void cheat_apply_cheats(int entry)
              execute_cheat(0x80381BEF, 0x0000, NULL);
        }
     }
-    else if (!strcmp((char *)ROM_HEADER.Name, "DONKEY KONG 64"))
-    {
-       switch (ROM_HEADER.destination_code)
-       {
-          case 'J': /* Japan */
-             execute_cheat(0x806170A2, 0x0000, NULL);
-             break;
-          case 'A': /* Japan / USA */
-          case 'E': /* USA */
-             execute_cheat(0x80619632, 0x0000, NULL);
-             break;
-          case 'D': /* Germany */
-          case 'F': /* France */
-          case 'I': /* Italy */
-          case 'S': /* Spain */
-          case 0x50:
-          case 0x58:
-          case 0x20:
-          case 0x21:
-          case 0x38:
-          case 0x70:
-             execute_cheat(0x806128E2, 0x0000, NULL);
-             break;
-          default:
-             break;
 
-       }
-    }
-    
     g_frameCheatStatus &= ~LPL_USED_CHEATS;
     if (list_empty(&active_cheats))
         return;
