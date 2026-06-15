@@ -243,7 +243,13 @@ int write_rsp_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask
           l        = sp->regs[SP_RD_LEN_REG];
           length   = ((l & 0xfff) | 7) + 1;
           count    = ((l >> 12) & 0xff) + 1;
-          skip     = ((l >> 23) & 0x1ff) << 3;
+          /* SP DMA length register: length [11:0], count [19:12], skip [31:20]
+           * (the per-line stride).  The previous form ((l >> 23) & 0x1ff) << 3
+           * read only bits [31:23] and forced the low three bits of the skip to
+           * zero, truncating any stride that was not a multiple of 8 and
+           * dropping bits [22:20] entirely.  Use the full 12-bit field
+           * (matches mupen64plus-next / hardware). */
+          skip     = ((l >> 20) & 0xfff);
 
           dma_sp_write(sp, length, count, skip);
           break;
@@ -251,7 +257,8 @@ int write_rsp_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask
           l        = sp->regs[SP_WR_LEN_REG];
           length   = ((l & 0xfff) | 7) + 1;
           count    = ((l >> 12) & 0xff) + 1;
-          skip     = ((l >> 23) & 0x1ff) << 3;
+          /* skip = bits [31:20], see SP_RD_LEN_REG above */
+          skip     = ((l >> 20) & 0xfff);
           dma_sp_read(sp, length, count, skip);
           break;
        case SP_SEMAPHORE_REG:
