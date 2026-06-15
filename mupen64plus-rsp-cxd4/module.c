@@ -46,32 +46,18 @@ static m64p_handle l_ConfigRsp;
 
 NOINLINE void update_conf(const char* source)
 {
+    /* All CFG_* options default to 0.  CFG_HLE_GFX = 0 keeps display-list
+     * processing in this LLE RSP rather than handing it to the graphics
+     * plugin, which is the correct default for every title.
+     *
+     * A per-game block used to force CFG_HLE_GFX = 0 for a handful of
+     * custom-microcode titles (World Driver Championship, Indiana Jones,
+     * Rogue Squadron, Battle for Naboo, Stunt Racer 64, Gauntlet Legends).
+     * It dated from when the HLE graphics plugins could not handle those
+     * microcodes; GLideN64 supports them now, and in any case the block was
+     * a dead no-op -- it only ever set the value that the memset above had
+     * already established.  Removed. */
     memset(conf, 0, sizeof(conf));
-#if 0
-#ifndef __LIBRETRO__
-    CFG_HLE_GFX = ConfigGetParamBool(l_ConfigRsp, "DisplayListToGraphicsPlugin");
-    CFG_HLE_AUD = ConfigGetParamBool(l_ConfigRsp, "AudioListToAudioPlugin");
-    CFG_WAIT_FOR_CPU_HOST = ConfigGetParamBool(l_ConfigRsp, "WaitForCPUHost");
-    CFG_MEND_SEMAPHORE_LOCK = ConfigGetParamBool(l_ConfigRsp, "SupportCPUSemaphoreLock");
-#endif
-#endif
-
-#if 1
-      if (strstr((char*)ROM_HEADER.Name, (const char*)"WORLD DRIVER CHAMP") != NULL)
-         CFG_HLE_GFX = 0;
-     else if (strstr((char*)ROM_HEADER.Name, (const char*)"Indiana Jones") != NULL)
-         CFG_HLE_GFX = 0;
-     else if (strstr((char*)ROM_HEADER.Name, (const char*)"Rogue Squadron") != NULL)
-         CFG_HLE_GFX = 0;
-     else if (strstr((char*)ROM_HEADER.Name, (const char*)"rogue squadron") != NULL)
-         CFG_HLE_GFX = 0;
-     else if (strstr((char*)ROM_HEADER.Name, (const char*)"Battle for Naboo") != NULL)
-         CFG_HLE_GFX = 0;
-     else if (strstr((char*)ROM_HEADER.Name, (const char*)"Stunt Racer 64") != NULL)
-         CFG_HLE_GFX = 0;
-     else if (strstr((char*)ROM_HEADER.Name, (const char*)"GAUNTLET LEGENDS") != NULL)
-         CFG_HLE_GFX = 0;
-#endif
 }
 
 extern void DebugMessage(int level, const char *message, ...);
