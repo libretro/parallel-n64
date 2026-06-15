@@ -119,7 +119,13 @@ int read_vi_regs(void* opaque, uint32_t address, uint32_t *word)
         if (alternate_vi_timing)
            vi->regs[VI_CURRENT_REG] = elapsed % (NTSC_VERTICAL_RESOLUTION + 1);
         else
-           vi->regs[VI_CURRENT_REG] = elapsed / g_count_per_scanline;
+        {
+           unsigned int cps = (vi->regs[VI_V_SYNC_REG] != 0)
+              ? (vi->clock / vi->expected_refresh_rate)
+                 / (vi->regs[VI_V_SYNC_REG] + 1)
+              : (unsigned int)g_count_per_scanline;
+           vi->regs[VI_CURRENT_REG] = elapsed / cps;
+        }
         vi->regs[VI_CURRENT_REG] = (vi->regs[VI_CURRENT_REG] & (~1)) | vi->field;
     }
 
@@ -178,7 +184,17 @@ void vi_vertical_interrupt_event(struct vi_controller* vi)
    if (vi->regs[VI_V_SYNC_REG] == 0)
       vi->delay = 500000;
    else
-      vi->delay = (vi->regs[VI_V_SYNC_REG] + 1) * g_count_per_scanline;
+   {
+      /* Derive cycles-per-scanline from the VI clock and refresh rate, as
+       * mupen64plus-next and cen64 do, rather than a fixed 1500. At the
+       * usual V_SYNC=525 this yields 1542 (= 48681812 / 60 / 526), so the
+       * VI period is 526*1542 = 811092 cycles instead of 526*1500 = 789000,
+       * matching real NTSC hardware (~2.7% correction). */
+      unsigned int count_per_scanline =
+         (vi->clock / vi->expected_refresh_rate)
+         / (vi->regs[VI_V_SYNC_REG] + 1);
+      vi->delay = (vi->regs[VI_V_SYNC_REG] + 1) * count_per_scanline;
+   }
 
    vi->next_vi += vi->delay;
    add_interrupt_event_count(VI_INT, vi->next_vi);
