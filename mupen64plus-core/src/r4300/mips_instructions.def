@@ -1565,7 +1565,12 @@ DECLARE_INSTRUCTION(DSRAV)
 DECLARE_INSTRUCTION(MULT)
 {
    int64_t temp;
-   temp = rrs * rrt;
+   /* R4300 MULT multiplies the low 32 bits of each operand (as signed
+    * 32-bit values) into a 64-bit product. Use rrs32/rrt32 rather than the
+    * full 64-bit registers so the result is correct even when a register's
+    * upper 32 bits are not a clean sign-extension of its lower half (matches
+    * mupen64plus-next and this file's own MULTU). */
+   temp = (int64_t)rrs32 * (int64_t)rrt32;
    hi = temp >> 32;
    lo = SE32(temp);
    ADD_TO_PC(1);
