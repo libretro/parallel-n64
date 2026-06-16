@@ -26,6 +26,7 @@
 #include <stdint.h>
 
 struct pi_controller;
+struct storage_backend_interface;
 
 enum { FLASHRAM_SIZE = 0x20000 };
 
@@ -40,10 +41,10 @@ enum flashram_mode
 
 struct flashram
 {
-   /* external sram storage */
-   void* user_data;
-   void (*save)(void*);
-   uint8_t* data;
+   /* backing store reached through next's storage_backend_interface
+    * (parallel-n64's libretro save-RAM backend). */
+   void* storage;
+   const struct storage_backend_interface* istorage;
 
    enum flashram_mode mode;
    uint64_t status;
@@ -52,13 +53,10 @@ struct flashram
 };
 
 void init_flashram(struct flashram* flashram,
-      void* user_data,
-      void (*save)(void*),
-      uint8_t* data);
+      void* storage,
+      const struct storage_backend_interface* istorage);
 
 void poweron_flashram(struct flashram* flashram);
-
-void flashram_save(struct flashram* flashram);
 
 void format_flashram(uint8_t* flash);
 

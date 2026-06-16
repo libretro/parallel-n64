@@ -66,6 +66,7 @@ struct pi_controller
 
     struct cart_rom cart_rom;
     struct flashram flashram;
+    struct libretro_storage flashram_storage;
     struct sram sram;
     struct libretro_storage sram_storage;
     struct dd_rom dd_rom;

@@ -27,17 +27,16 @@
 #include "../memory/memory.h"
 #include "../rcp/ri/ri_controller.h"
 #include "../rdram/safe_rdram.h"
+#include "../../backends/api/storage_backend.h"
 
 #include <string.h>
 
 void init_flashram(struct flashram* flashram,
-      void* user_data,
-      void (*save)(void*),
-      uint8_t* data)
+      void* storage,
+      const struct storage_backend_interface* istorage)
 {
-   flashram->user_data = user_data;
-   flashram->save = save;
-   flashram->data = data;
+   flashram->storage  = storage;
+   flashram->istorage = istorage;
 }
 
 static void flashram_command(struct pi_controller *pi, uint32_t command)
@@ -45,6 +44,7 @@ static void flashram_command(struct pi_controller *pi, uint32_t command)
    unsigned int i;
    struct flashram *flashram = &pi->flashram;
    uint8_t *dram             = (uint8_t*)pi->ri->rdram->dram;
+   uint8_t *mem              = flashram->istorage->data(flashram->storage);
 
    switch (command & 0xff000000)
    {
@@ -73,9 +73,9 @@ static void flashram_command(struct pi_controller *pi, uint32_t command)
                   for (i=flashram->erase_offset; i<(flashram->erase_offset+128); ++i)
                   {
                      if ((i^S8) < (unsigned)FLASHRAM_SIZE)
-                        flashram->data[i^S8] = 0xff;
+                        mem[i^S8] = 0xff;
                   }
-                  flashram_save(flashram);
+                  flashram->istorage->save(flashram->storage, 0, FLASHRAM_SIZE);
                }
                break;
             case FLASHRAM_MODE_WRITE:
@@ -84,9 +84,9 @@ static void flashram_command(struct pi_controller *pi, uint32_t command)
                   {
                      const unsigned int flash_i = (flashram->erase_offset+i)^S8;
                      if (flash_i >= (unsigned)FLASHRAM_SIZE) continue;
-                     flashram->data[flash_i] = rdram_safe_read_byte(dram, (flashram->write_pointer+i)^S8);
+                     mem[flash_i] = rdram_safe_read_byte(dram, (flashram->write_pointer+i)^S8);
                   }
-                  flashram_save(flashram);
+                  flashram->istorage->save(flashram->storage, 0, FLASHRAM_SIZE);
                }
                break;
             case FLASHRAM_MODE_STATUS:
@@ -120,11 +120,6 @@ void poweron_flashram(struct flashram* flashram)
    flashram->status        = 0;
    flashram->erase_offset  = 0;
    flashram->write_pointer = 0;
-}
-
-void flashram_save(struct flashram* flashram)
-{
-   flashram->save(flashram->user_data);
 }
 
 void format_flashram(uint8_t* flash)
@@ -166,7 +161,7 @@ void dma_read_flashram(struct pi_controller *pi)
    unsigned int i, length;
    struct flashram* flashram = &pi->flashram;
    uint32_t *dram            = pi->ri->rdram->dram;
-   uint8_t *mem              = flashram->data;
+   uint8_t *mem              = flashram->istorage->data(flashram->storage);
 
    switch (flashram->mode)
    {
