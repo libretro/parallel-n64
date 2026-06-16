@@ -216,7 +216,7 @@ int read_ai_regs(void* opaque, uint32_t address, uint32_t* value)
        {
 		   //should never read greater than the fifo length
 		   unsigned int diff =ai->fifo[0].length - ai->last_read;
-		   unsigned char *p = (unsigned char*)&ai->ri->rdram.dram[ai->fifo[0].address / 4];
+		   unsigned char *p = (unsigned char*)&ai->ri->rdram->dram[ai->fifo[0].address / 4];
 		   ai->push_audio_samples(&ai->backend,p + diff,ai->last_read - *value);
 			 
 		 }
@@ -275,7 +275,7 @@ void ai_end_of_dma_event(struct ai_controller* ai)
    if (ai->last_read != 0)
    {
       unsigned int diff = ai->fifo[0].length - ai->last_read;
-      unsigned char *p = (unsigned char*)&ai->ri->rdram.dram[ai->fifo[0].address/4];
+      unsigned char *p = (unsigned char*)&ai->ri->rdram->dram[ai->fifo[0].address/4];
       ai->push_audio_samples(&ai->backend,
          p + diff, ai->last_read);
       ai->last_read = 0;

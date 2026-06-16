@@ -47,7 +47,7 @@ int read_rdram_regs(void* opaque, uint32_t address, uint32_t* value)
     struct ri_controller* ri = (struct ri_controller*)opaque;
     uint32_t reg             = RDRAM_REG(address);
 
-    *value                   = (reg < RDRAM_REGS_COUNT) ? ri->rdram.regs[reg] : 0u;
+    *value                   = (reg < RDRAM_REGS_COUNT) ? ri->rdram->regs[reg] : 0u;
 
     return 0;
 }
@@ -58,7 +58,7 @@ int write_rdram_regs(void* opaque, uint32_t address, uint32_t value, uint32_t ma
     uint32_t reg             = RDRAM_REG(address);
 
     if (reg < RDRAM_REGS_COUNT)
-        ri->rdram.regs[reg] = MASKED_WRITE(&ri->rdram.regs[reg], value, mask);
+        ri->rdram->regs[reg] = MASKED_WRITE(&ri->rdram->regs[reg], value, mask);
 
     return 0;
 }
@@ -67,13 +67,13 @@ int write_rdram_regs(void* opaque, uint32_t address, uint32_t value, uint32_t ma
 int read_rdram_dram(void* opaque, uint32_t address, uint32_t* value)
 {
     struct ri_controller* ri = (struct ri_controller*)opaque;
-    *value = rdram_safe_read_word(ri->rdram.dram, address);
+    *value = rdram_safe_read_word(ri->rdram->dram, address);
     return 0;
 }
 
 int write_rdram_dram(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
 {
     struct ri_controller* ri = (struct ri_controller*)opaque;
-    rdram_safe_masked_write_word(ri->rdram.dram, address, value, mask);
+    rdram_safe_masked_write_word(ri->rdram->dram, address, value, mask);
     return 0;
 }

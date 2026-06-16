@@ -113,16 +113,16 @@ int savestates_load_m64p(const unsigned char *data, size_t size)
    curr += 32;
 
    /* Parse savestate */
-   g_dev.ri.rdram.regs[RDRAM_CONFIG_REG] = GETDATA(curr, uint32_t);
-   g_dev.ri.rdram.regs[RDRAM_DEVICE_ID_REG] = GETDATA(curr, uint32_t);
-   g_dev.ri.rdram.regs[RDRAM_DELAY_REG] = GETDATA(curr, uint32_t);
-   g_dev.ri.rdram.regs[RDRAM_MODE_REG] = GETDATA(curr, uint32_t);
-   g_dev.ri.rdram.regs[RDRAM_REF_INTERVAL_REG] = GETDATA(curr, uint32_t);
-   g_dev.ri.rdram.regs[RDRAM_REF_ROW_REG] = GETDATA(curr, uint32_t);
-   g_dev.ri.rdram.regs[RDRAM_RAS_INTERVAL_REG] = GETDATA(curr, uint32_t);
-   g_dev.ri.rdram.regs[RDRAM_MIN_INTERVAL_REG] = GETDATA(curr, uint32_t);
-   g_dev.ri.rdram.regs[RDRAM_ADDR_SELECT_REG] = GETDATA(curr, uint32_t);
-   g_dev.ri.rdram.regs[RDRAM_DEVICE_MANUF_REG] = GETDATA(curr, uint32_t);
+   g_dev.rdram.regs[RDRAM_CONFIG_REG] = GETDATA(curr, uint32_t);
+   g_dev.rdram.regs[RDRAM_DEVICE_ID_REG] = GETDATA(curr, uint32_t);
+   g_dev.rdram.regs[RDRAM_DELAY_REG] = GETDATA(curr, uint32_t);
+   g_dev.rdram.regs[RDRAM_MODE_REG] = GETDATA(curr, uint32_t);
+   g_dev.rdram.regs[RDRAM_REF_INTERVAL_REG] = GETDATA(curr, uint32_t);
+   g_dev.rdram.regs[RDRAM_REF_ROW_REG] = GETDATA(curr, uint32_t);
+   g_dev.rdram.regs[RDRAM_RAS_INTERVAL_REG] = GETDATA(curr, uint32_t);
+   g_dev.rdram.regs[RDRAM_MIN_INTERVAL_REG] = GETDATA(curr, uint32_t);
+   g_dev.rdram.regs[RDRAM_ADDR_SELECT_REG] = GETDATA(curr, uint32_t);
+   g_dev.rdram.regs[RDRAM_DEVICE_MANUF_REG] = GETDATA(curr, uint32_t);
 
    curr += 4; /* Padding from old implementation */
    g_dev.mi.regs[MI_INIT_MODE_REG] = GETDATA(curr, uint32_t);
@@ -230,7 +230,7 @@ int savestates_load_m64p(const unsigned char *data, size_t size)
    g_dev.dp.dps_regs[DPS_BUFTEST_ADDR_REG] = GETDATA(curr, uint32_t);
    g_dev.dp.dps_regs[DPS_BUFTEST_DATA_REG] = GETDATA(curr, uint32_t);
 
-   COPYARRAY(g_dev.ri.rdram.dram, curr, uint32_t, RDRAM_MAX_SIZE/4);
+   COPYARRAY(g_dev.rdram.dram, curr, uint32_t, RDRAM_MAX_SIZE/4);
    COPYARRAY(g_dev.sp.mem, curr, uint32_t, SP_MEM_SIZE/4);
    COPYARRAY(g_dev.pif.ram, curr, uint8_t, PIF_RAM_SIZE);
 
@@ -405,16 +405,16 @@ int savestates_save_m64p(unsigned char *data, size_t size)
 
    PUTARRAY(ROM_SETTINGS.MD5, curr, char, 32);
 
-   PUTDATA(curr, uint32_t, g_dev.ri.rdram.regs[RDRAM_CONFIG_REG]);
-   PUTDATA(curr, uint32_t, g_dev.ri.rdram.regs[RDRAM_DEVICE_ID_REG]);
-   PUTDATA(curr, uint32_t, g_dev.ri.rdram.regs[RDRAM_DELAY_REG]);
-   PUTDATA(curr, uint32_t, g_dev.ri.rdram.regs[RDRAM_MODE_REG]);
-   PUTDATA(curr, uint32_t, g_dev.ri.rdram.regs[RDRAM_REF_INTERVAL_REG]);
-   PUTDATA(curr, uint32_t, g_dev.ri.rdram.regs[RDRAM_REF_ROW_REG]);
-   PUTDATA(curr, uint32_t, g_dev.ri.rdram.regs[RDRAM_RAS_INTERVAL_REG]);
-   PUTDATA(curr, uint32_t, g_dev.ri.rdram.regs[RDRAM_MIN_INTERVAL_REG]);
-   PUTDATA(curr, uint32_t, g_dev.ri.rdram.regs[RDRAM_ADDR_SELECT_REG]);
-   PUTDATA(curr, uint32_t, g_dev.ri.rdram.regs[RDRAM_DEVICE_MANUF_REG]);
+   PUTDATA(curr, uint32_t, g_dev.rdram.regs[RDRAM_CONFIG_REG]);
+   PUTDATA(curr, uint32_t, g_dev.rdram.regs[RDRAM_DEVICE_ID_REG]);
+   PUTDATA(curr, uint32_t, g_dev.rdram.regs[RDRAM_DELAY_REG]);
+   PUTDATA(curr, uint32_t, g_dev.rdram.regs[RDRAM_MODE_REG]);
+   PUTDATA(curr, uint32_t, g_dev.rdram.regs[RDRAM_REF_INTERVAL_REG]);
+   PUTDATA(curr, uint32_t, g_dev.rdram.regs[RDRAM_REF_ROW_REG]);
+   PUTDATA(curr, uint32_t, g_dev.rdram.regs[RDRAM_RAS_INTERVAL_REG]);
+   PUTDATA(curr, uint32_t, g_dev.rdram.regs[RDRAM_MIN_INTERVAL_REG]);
+   PUTDATA(curr, uint32_t, g_dev.rdram.regs[RDRAM_ADDR_SELECT_REG]);
+   PUTDATA(curr, uint32_t, g_dev.rdram.regs[RDRAM_DEVICE_MANUF_REG]);
 
    PUTDATA(curr, uint32_t, 0);
    PUTDATA(curr, uint32_t, g_dev.mi.regs[MI_INIT_MODE_REG]);
@@ -546,7 +546,7 @@ int savestates_save_m64p(unsigned char *data, size_t size)
    PUTDATA(curr, uint32_t, g_dev.dp.dps_regs[DPS_BUFTEST_ADDR_REG]);
    PUTDATA(curr, uint32_t, g_dev.dp.dps_regs[DPS_BUFTEST_DATA_REG]);
 
-   PUTARRAY(g_dev.ri.rdram.dram, curr, uint32_t, RDRAM_MAX_SIZE/4);
+   PUTARRAY(g_dev.rdram.dram, curr, uint32_t, RDRAM_MAX_SIZE/4);
    PUTARRAY(g_dev.sp.mem, curr, uint32_t, SP_MEM_SIZE/4);
    PUTARRAY(g_dev.pif.ram, curr, uint8_t, PIF_RAM_SIZE);
 

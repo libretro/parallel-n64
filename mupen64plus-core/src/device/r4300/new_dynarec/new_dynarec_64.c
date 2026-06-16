@@ -310,7 +310,7 @@ static int rdram_checksum(void)
     unsigned int temp=sum;
     sum<<=1;
     sum|=(~temp)>>31;
-    sum^=((u_int *)g_dev.ri.rdram.dram)[i];
+    sum^=((u_int *)g_dev.rdram.dram)[i];
   }
   return sum;
 }
@@ -1278,10 +1278,10 @@ void invalidate_block(u_int block)
     if(vpage>2047||(head->vaddr>>12)==block) { // Ignore vaddr hash collision
       get_bounds((intptr_t)head->addr,&start,&end);
       //DebugMessage(M64MSG_VERBOSE, "start: %x end: %x",start,end);
-      if((start!=0)&&(page<2048)&&((start-(uintptr_t)g_dev.ri.rdram.dram)>=0)&&((end-(uintptr_t)g_dev.ri.rdram.dram)<0x800000)) {
-        if(((start-(uintptr_t)g_dev.ri.rdram.dram)>>12)<=page&&((end-1-(uintptr_t)g_dev.ri.rdram.dram)>>12)>=page) {
-          if((((start-(uintptr_t)g_dev.ri.rdram.dram)>>12)&2047)<first) first=((start-(uintptr_t)g_dev.ri.rdram.dram)>>12)&2047;
-          if((((end-1-(uintptr_t)g_dev.ri.rdram.dram)>>12)&2047)>last) last=((end-1-(uintptr_t)g_dev.ri.rdram.dram)>>12)&2047;
+      if((start!=0)&&(page<2048)&&((start-(uintptr_t)g_dev.rdram.dram)>=0)&&((end-(uintptr_t)g_dev.rdram.dram)<0x800000)) {
+        if(((start-(uintptr_t)g_dev.rdram.dram)>>12)<=page&&((end-1-(uintptr_t)g_dev.rdram.dram)>>12)>=page) {
+          if((((start-(uintptr_t)g_dev.rdram.dram)>>12)&2047)<first) first=((start-(uintptr_t)g_dev.rdram.dram)>>12)&2047;
+          if((((end-1-(uintptr_t)g_dev.rdram.dram)>>12)&2047)>last) last=((end-1-(uintptr_t)g_dev.rdram.dram)>>12)&2047;
         }
       }
     }
@@ -1311,12 +1311,12 @@ void invalidate_block(u_int block)
   if(block<0x100000&&tlb_LUT_w[block]) {
     assert(tlb_LUT_r[block]==tlb_LUT_w[block]);
     // CHECK: Is this right?
-    memory_map[block]=((uintptr_t)g_dev.ri.rdram.dram+(uintptr_t)((tlb_LUT_w[block]&0xFFFFF000)-0x80000000)-(block<<12))>>2;
+    memory_map[block]=((uintptr_t)g_dev.rdram.dram+(uintptr_t)((tlb_LUT_w[block]&0xFFFFF000)-0x80000000)-(block<<12))>>2;
     u_int real_block=tlb_LUT_w[block]>>12;
     invalid_code[real_block]=1;
-    if(real_block>=0x80000&&real_block<0x80800) memory_map[real_block]=((uintptr_t)g_dev.ri.rdram.dram-0x80000000)>>2;
+    if(real_block>=0x80000&&real_block<0x80800) memory_map[real_block]=((uintptr_t)g_dev.rdram.dram-0x80000000)>>2;
   }
-  else if(block>=0x80000&&block<0x80800) memory_map[block]=((uintptr_t)g_dev.ri.rdram.dram-0x80000000)>>2;
+  else if(block>=0x80000&&block<0x80800) memory_map[block]=((uintptr_t)g_dev.rdram.dram-0x80000000)>>2;
   #ifdef USE_MINI_HT
   memset(mini_ht,-1,sizeof(mini_ht));
   #endif
@@ -1377,7 +1377,7 @@ void invalidate_all_pages(void)
   // TLB
   for(page=0;page<0x100000;page++) {
     if(tlb_LUT_r[page]) {
-      memory_map[page]=((uintptr_t)g_dev.ri.rdram.dram+(uintptr_t)((tlb_LUT_r[page]&0xFFFFF000)-0x80000000)-(page<<12))>>2;
+      memory_map[page]=((uintptr_t)g_dev.rdram.dram+(uintptr_t)((tlb_LUT_r[page]&0xFFFFF000)-0x80000000)-(page<<12))>>2;
       if(!tlb_LUT_w[page]||!invalid_code[page])
         memory_map[page]|=WRITE_PROTECT; // Write protect
     }
@@ -1419,8 +1419,8 @@ void clean_blocks(u_int page)
           u_int i;
           u_int inv=0;
           get_bounds((intptr_t)head->addr,&start,&end);
-          if(start-(uintptr_t)g_dev.ri.rdram.dram<0x800000) {
-            for(i=(start-(uintptr_t)g_dev.ri.rdram.dram+0x80000000)>>12;i<=(end-1-(uintptr_t)g_dev.ri.rdram.dram+0x80000000)>>12;i++) {
+          if(start-(uintptr_t)g_dev.rdram.dram<0x800000) {
+            for(i=(start-(uintptr_t)g_dev.rdram.dram+0x80000000)>>12;i<=(end-1-(uintptr_t)g_dev.rdram.dram+0x80000000)>>12;i++) {
               inv|=invalid_code[i];
             }
           }
@@ -2167,7 +2167,7 @@ static int mchecksum(void)
     unsigned int temp=sum;
     sum<<=1;
     sum|=(~temp)>>31;
-    sum^=((u_int *)g_dev.ri.rdram.dram)[i];
+    sum^=((u_int *)g_dev.rdram.dram)[i];
   }
   return sum;
 }
@@ -2974,7 +2974,7 @@ static void load_assemble(int i,struct regstat *i_regs)
         {
           //emit_xorimm(addr,3,tl);
           //gen_tlb_addr_r(tl,map);
-          //emit_movsbl_indexed((intptr_t)g_dev.ri.rdram.dram-0x80000000,tl,tl);
+          //emit_movsbl_indexed((intptr_t)g_dev.rdram.dram-0x80000000,tl,tl);
           int x=0;
           if(!c) emit_xorimm(addr,3,tl);
           else x=((constmap[i][s]+offset)^3)-(constmap[i][s]+offset);
@@ -3009,7 +3009,7 @@ static void load_assemble(int i,struct regstat *i_regs)
             #ifdef RAM_OFFSET
             emit_movswl_indexed(x,tl,tl);
             #else
-            emit_movswl_indexed((intptr_t)g_dev.ri.rdram.dram-0x80000000+x,tl,tl);
+            emit_movswl_indexed((intptr_t)g_dev.rdram.dram-0x80000000+x,tl,tl);
             #endif
           }
         }
@@ -3023,7 +3023,7 @@ static void load_assemble(int i,struct regstat *i_regs)
   if (opcode[i]==0x23) { // LW
     if(!c||memtarget) {
       if(!dummy) {
-        //emit_readword_indexed((intptr_t)g_dev.ri.rdram.dram-0x80000000,addr,tl);
+        //emit_readword_indexed((intptr_t)g_dev.rdram.dram-0x80000000,addr,tl);
         #ifdef HOST_IMM_ADDR32
         if(c)
           emit_readword_tlb(constmap[i][s]+offset,map,tl);
@@ -3048,7 +3048,7 @@ static void load_assemble(int i,struct regstat *i_regs)
         {
           //emit_xorimm(addr,3,tl);
           //gen_tlb_addr_r(tl,map);
-          //emit_movzbl_indexed((intptr_t)g_dev.ri.rdram.dram-0x80000000,tl,tl);
+          //emit_movzbl_indexed((intptr_t)g_dev.rdram.dram-0x80000000,tl,tl);
           int x=0;
           if(!c) emit_xorimm(addr,3,tl);
           else x=((constmap[i][s]+offset)^3)-(constmap[i][s]+offset);
@@ -3083,7 +3083,7 @@ static void load_assemble(int i,struct regstat *i_regs)
             #ifdef RAM_OFFSET
             emit_movzwl_indexed(x,tl,tl);
             #else
-            emit_movzwl_indexed((intptr_t)g_dev.ri.rdram.dram-0x80000000+x,tl,tl);
+            emit_movzwl_indexed((intptr_t)g_dev.rdram.dram-0x80000000+x,tl,tl);
             #endif
           }
         }
@@ -3098,7 +3098,7 @@ static void load_assemble(int i,struct regstat *i_regs)
     assert(th>=0);
     if(!c||memtarget) {
       if(!dummy) {
-        //emit_readword_indexed((intptr_t)g_dev.ri.rdram.dram-0x80000000,addr,tl);
+        //emit_readword_indexed((intptr_t)g_dev.rdram.dram-0x80000000,addr,tl);
         #ifdef HOST_IMM_ADDR32
         if(c)
           emit_readword_tlb(constmap[i][s]+offset,map,tl);
@@ -3118,8 +3118,8 @@ static void load_assemble(int i,struct regstat *i_regs)
     if(!c||memtarget) {
       if(!dummy) {
         //gen_tlb_addr_r(tl,map);
-        //if(th>=0) emit_readword_indexed((intptr_t)g_dev.ri.rdram.dram-0x80000000,addr,th);
-        //emit_readword_indexed((intptr_t)g_dev.ri.rdram.dram-0x7FFFFFFC,addr,tl);
+        //if(th>=0) emit_readword_indexed((intptr_t)g_dev.rdram.dram-0x80000000,addr,th);
+        //emit_readword_indexed((intptr_t)g_dev.rdram.dram-0x7FFFFFFC,addr,tl);
         #ifdef HOST_IMM_ADDR32
         if(c)
           emit_readdword_tlb(constmap[i][s]+offset,map,th,tl);
@@ -3252,7 +3252,7 @@ static void store_assemble(int i,struct regstat *i_regs)
       if(!c) emit_xorimm(addr,3,temp);
       else x=((constmap[i][s]+offset)^3)-(constmap[i][s]+offset);
       //gen_tlb_addr_w(temp,map);
-      //emit_writebyte_indexed(tl,(intptr_t)g_dev.ri.rdram.dram-0x80000000,temp);
+      //emit_writebyte_indexed(tl,(intptr_t)g_dev.rdram.dram-0x80000000,temp);
       emit_writebyte_indexed_tlb(tl,x,temp,map,temp);
     }
     type=STOREB_STUB;
@@ -3269,14 +3269,14 @@ static void store_assemble(int i,struct regstat *i_regs)
         gen_tlb_addr_w(temp,map);
         emit_writehword_indexed(tl,x,temp);
       }else {
-        emit_writehword_indexed(tl,(intptr_t)g_dev.ri.rdram.dram-0x80000000+x,temp);
+        emit_writehword_indexed(tl,(intptr_t)g_dev.rdram.dram-0x80000000+x,temp);
       }
     }
     type=STOREH_STUB;
   }
   if (opcode[i]==0x2B) { // SW
     if(!c||memtarget)
-      //emit_writeword_indexed(tl,(intptr_t)g_dev.ri.rdram.dram-0x80000000,addr);
+      //emit_writeword_indexed(tl,(intptr_t)g_dev.rdram.dram-0x80000000,addr);
       emit_writeword_indexed_tlb(tl,0,addr,map,temp);
     type=STOREW_STUB;
   }
@@ -3284,13 +3284,13 @@ static void store_assemble(int i,struct regstat *i_regs)
     if(!c||memtarget) {
       if(rs2[i]) {
         assert(th>=0);
-        //emit_writeword_indexed(th,(intptr_t)g_dev.ri.rdram.dram-0x80000000,addr);
-        //emit_writeword_indexed(tl,(intptr_t)g_dev.ri.rdram.dram-0x7FFFFFFC,addr);
+        //emit_writeword_indexed(th,(intptr_t)g_dev.rdram.dram-0x80000000,addr);
+        //emit_writeword_indexed(tl,(intptr_t)g_dev.rdram.dram-0x7FFFFFFC,addr);
         emit_writedword_indexed_tlb(th,tl,0,addr,map,temp);
       }else{
         // Store zero
-        //emit_writeword_indexed(tl,(intptr_t)g_dev.ri.rdram.dram-0x80000000,temp);
-        //emit_writeword_indexed(tl,(intptr_t)g_dev.ri.rdram.dram-0x7FFFFFFC,temp);
+        //emit_writeword_indexed(tl,(intptr_t)g_dev.rdram.dram-0x80000000,temp);
+        //emit_writeword_indexed(tl,(intptr_t)g_dev.rdram.dram-0x7FFFFFFC,temp);
         emit_writedword_indexed_tlb(tl,tl,0,addr,map,temp);
       }
     }
@@ -3417,8 +3417,8 @@ static void storelr_assemble(int i,struct regstat *i_regs)
     if(map<0) emit_loadreg(ROREG,map=HOST_TEMPREG);
     gen_tlb_addr_w(temp,map);
     #else
-    if((uintptr_t)g_dev.ri.rdram.dram!=0x80000000) 
-      emit_addimm_no_flags((uintptr_t)g_dev.ri.rdram.dram-(uintptr_t)0x80000000,temp);
+    if((uintptr_t)g_dev.rdram.dram!=0x80000000) 
+      emit_addimm_no_flags((uintptr_t)g_dev.rdram.dram-(uintptr_t)0x80000000,temp);
     #endif
   }else{ // using tlb
     int map=get_reg(i_regs->regmap,TLREG);
@@ -3587,7 +3587,7 @@ static void storelr_assemble(int i,struct regstat *i_regs)
     if(map<0) map=HOST_TEMPREG;
     gen_orig_addr_w(temp,map);
     #else
-    emit_addimm_no_flags((uintptr_t)0x80000000-(uintptr_t)g_dev.ri.rdram.dram,temp);
+    emit_addimm_no_flags((uintptr_t)0x80000000-(uintptr_t)g_dev.rdram.dram,temp);
     #endif
     #if defined(HOST_IMM8)
     int ir=get_reg(i_regs->regmap,INVCP);
@@ -3751,7 +3751,7 @@ static void c1ls_assemble(int i,struct regstat *i_regs)
   if (opcode[i]==0x31) { // LWC1
     //if(s>=0&&!c&&!offset) emit_mov(s,tl);
     //gen_tlb_addr_r(ar,map);
-    //emit_readword_indexed((intptr_t)g_dev.ri.rdram.dram-0x80000000,tl,tl);
+    //emit_readword_indexed((intptr_t)g_dev.rdram.dram-0x80000000,tl,tl);
     #ifdef HOST_IMM_ADDR32
     if(c) emit_readword_tlb(constmap[i][s]+offset,map,tl);
     else
@@ -3763,8 +3763,8 @@ static void c1ls_assemble(int i,struct regstat *i_regs)
     assert(th>=0);
     //if(s>=0&&!c&&!offset) emit_mov(s,tl);
     //gen_tlb_addr_r(ar,map);
-    //emit_readword_indexed((intptr_t)g_dev.ri.rdram.dram-0x80000000,tl,th);
-    //emit_readword_indexed((intptr_t)g_dev.ri.rdram.dram-0x7FFFFFFC,tl,tl);
+    //emit_readword_indexed((intptr_t)g_dev.rdram.dram-0x80000000,tl,th);
+    //emit_readword_indexed((intptr_t)g_dev.rdram.dram-0x7FFFFFFC,tl,tl);
     #ifdef HOST_IMM_ADDR32
     if(c) emit_readdword_tlb(constmap[i][s]+offset,map,th,tl);
     else
@@ -3773,14 +3773,14 @@ static void c1ls_assemble(int i,struct regstat *i_regs)
     type=LOADD_STUB;
   }
   if (opcode[i]==0x39) { // SWC1
-    //emit_writeword_indexed(tl,(intptr_t)g_dev.ri.rdram.dram-0x80000000,temp);
+    //emit_writeword_indexed(tl,(intptr_t)g_dev.rdram.dram-0x80000000,temp);
     emit_writeword_indexed_tlb(tl,0,offset||c||s<0?temp:s,map,temp);
     type=STOREW_STUB;
   }
   if (opcode[i]==0x3D) { // SDC1
     assert(th>=0);
-    //emit_writeword_indexed(th,(intptr_t)g_dev.ri.rdram.dram-0x80000000,temp);
-    //emit_writeword_indexed(tl,(intptr_t)g_dev.ri.rdram.dram-0x7FFFFFFC,temp);
+    //emit_writeword_indexed(th,(intptr_t)g_dev.rdram.dram-0x80000000,temp);
+    //emit_writeword_indexed(tl,(intptr_t)g_dev.rdram.dram-0x7FFFFFFC,temp);
     emit_writedword_indexed_tlb(th,tl,0,offset||c||s<0?temp:s,map,temp);
     type=STORED_STUB;
   }
@@ -4177,7 +4177,7 @@ static void address_generation(int i,struct regstat *i_regs,signed char entry[])
                 #if NEW_DYNAREC==NEW_DYNAREC_ARM64 || NEW_DYNAREC==NEW_DYNAREC_AMD64
                 emit_movimm(((constmap[i][rs]+offset)&0xFFFFFFFC),ra);
                 #else
-                emit_movimm(((constmap[i][rs]+offset)&0xFFFFFFFC)+(intptr_t)g_dev.ri.rdram.dram-0x80000000,ra);
+                emit_movimm(((constmap[i][rs]+offset)&0xFFFFFFFC)+(intptr_t)g_dev.rdram.dram-0x80000000,ra);
                 #endif
               }else
               #endif
@@ -4188,7 +4188,7 @@ static void address_generation(int i,struct regstat *i_regs,signed char entry[])
                 #if NEW_DYNAREC==NEW_DYNAREC_ARM64 || NEW_DYNAREC==NEW_DYNAREC_AMD64
                 emit_movimm(((constmap[i][rs]+offset)&0xFFFFFFF8),ra);
                 #else
-                emit_movimm(((constmap[i][rs]+offset)&0xFFFFFFF8)+(intptr_t)g_dev.ri.rdram.dram-0x80000000,ra);
+                emit_movimm(((constmap[i][rs]+offset)&0xFFFFFFF8)+(intptr_t)g_dev.rdram.dram-0x80000000,ra);
                 #endif
               }else
               #endif
@@ -4203,7 +4203,7 @@ static void address_generation(int i,struct regstat *i_regs,signed char entry[])
                 #if NEW_DYNAREC==NEW_DYNAREC_ARM64 || NEW_DYNAREC==NEW_DYNAREC_AMD64
                 emit_movimm(constmap[i][rs]+offset,ra);
                 #else
-                emit_movimm(constmap[i][rs]+offset+(intptr_t)g_dev.ri.rdram.dram-0x80000000,ra);
+                emit_movimm(constmap[i][rs]+offset+(intptr_t)g_dev.rdram.dram-0x80000000,ra);
                 #endif
               }else
               #endif
@@ -4264,7 +4264,7 @@ static void address_generation(int i,struct regstat *i_regs,signed char entry[])
             #if NEW_DYNAREC==NEW_DYNAREC_ARM64 || NEW_DYNAREC==NEW_DYNAREC_AMD64
             emit_movimm(((constmap[i+1][rs]+offset)&0xFFFFFFFC),ra);
             #else
-            emit_movimm(((constmap[i+1][rs]+offset)&0xFFFFFFFC)+(intptr_t)g_dev.ri.rdram.dram-0x80000000,ra);
+            emit_movimm(((constmap[i+1][rs]+offset)&0xFFFFFFFC)+(intptr_t)g_dev.rdram.dram-0x80000000,ra);
             #endif
           }else
           #endif
@@ -4275,7 +4275,7 @@ static void address_generation(int i,struct regstat *i_regs,signed char entry[])
             #if NEW_DYNAREC==NEW_DYNAREC_ARM64 || NEW_DYNAREC==NEW_DYNAREC_AMD64
             emit_movimm(((constmap[i+1][rs]+offset)&0xFFFFFFF8),ra);
             #else
-            emit_movimm(((constmap[i+1][rs]+offset)&0xFFFFFFF8)+(intptr_t)g_dev.ri.rdram.dram-0x80000000,ra);
+            emit_movimm(((constmap[i+1][rs]+offset)&0xFFFFFFF8)+(intptr_t)g_dev.rdram.dram-0x80000000,ra);
             #endif
           }else
           #endif
@@ -4290,7 +4290,7 @@ static void address_generation(int i,struct regstat *i_regs,signed char entry[])
             #if NEW_DYNAREC==NEW_DYNAREC_ARM64 || NEW_DYNAREC==NEW_DYNAREC_AMD64
             emit_movimm(constmap[i+1][rs]+offset,ra);
             #else
-            emit_movimm(constmap[i+1][rs]+offset+(intptr_t)g_dev.ri.rdram.dram-0x80000000,ra);
+            emit_movimm(constmap[i+1][rs]+offset+(intptr_t)g_dev.rdram.dram-0x80000000,ra);
             #endif
           }else
           #endif
@@ -4338,7 +4338,7 @@ static int get_final_value(int hr, int i, int *value)
             #if NEW_DYNAREC==NEW_DYNAREC_ARM64 || NEW_DYNAREC==NEW_DYNAREC_AMD64
             *value=constmap[i][hr]+imm[i+2];
             #else
-            *value=constmap[i][hr]+imm[i+2]+(intptr_t)g_dev.ri.rdram.dram-0x80000000;
+            *value=constmap[i][hr]+imm[i+2]+(intptr_t)g_dev.rdram.dram-0x80000000;
             #endif
           }else
           #endif
@@ -4357,7 +4357,7 @@ static int get_final_value(int hr, int i, int *value)
           #if NEW_DYNAREC==NEW_DYNAREC_ARM64 || NEW_DYNAREC==NEW_DYNAREC_AMD64
           *value=constmap[i][hr]+imm[i+1];
           #else
-          *value=constmap[i][hr]+imm[i+1]+(intptr_t)g_dev.ri.rdram.dram-0x80000000;
+          *value=constmap[i][hr]+imm[i+1]+(intptr_t)g_dev.rdram.dram-0x80000000;
           #endif
         }else
         #endif
@@ -7945,7 +7945,7 @@ void new_dynarec_init(void)
   for(n=0;n<524288;n++) // 0 .. 0x7FFFFFFF
     memory_map[n]=-1;
   for(n=524288;n<526336;n++) // 0x80000000 .. 0x807FFFFF
-    memory_map[n]=((uintptr_t)g_dev.ri.rdram.dram-0x80000000)>>2;
+    memory_map[n]=((uintptr_t)g_dev.rdram.dram-0x80000000)>>2;
   for(n=526336;n<1048576;n++) // 0x80800000 .. 0xFFFFFFFF
     memory_map[n]=-1;
   for(n=0;n<0x8000;n++) { // 0 .. 0x7FFFFFFF
@@ -8045,7 +8045,7 @@ static int new_recompile_block_impl(int addr)
   start = (u_int)addr&~3;
   //assert(((u_int)addr&1)==0);
   if ((int)addr >= 0xa0000000 && (int)addr < 0xa07fffff) {
-    source = (u_int *)((uintptr_t)g_dev.ri.rdram.dram+start-0xa0000000);
+    source = (u_int *)((uintptr_t)g_dev.rdram.dram+start-0xa0000000);
     pagelimit = 0xa07fffff;
   }
   else if ((int)addr >= 0xa4000000 && (int)addr < 0xa4001000) {
@@ -8053,13 +8053,13 @@ static int new_recompile_block_impl(int addr)
     pagelimit = 0xa4001000;
   }
   else if ((int)addr >= 0x80000000 && (int)addr < 0x80800000) {
-    source = (u_int *)((uintptr_t)g_dev.ri.rdram.dram+start-0x80000000);
+    source = (u_int *)((uintptr_t)g_dev.rdram.dram+start-0x80000000);
     pagelimit = 0x80800000;
   }
   else if ((signed int)addr >= (signed int)0xC0000000) {
     //DebugMessage(M64MSG_VERBOSE, "addr=%x mm=%x",(u_int)addr,(memory_map[start>>12]<<2));
     //if(tlb_LUT_r[start>>12])
-      //source = (u_int *)(((intptr_t)g_dev.ri.rdram.dram)+(tlb_LUT_r[start>>12]&0xFFFFF000)+(((int)addr)&0xFFF)-0x80000000);
+      //source = (u_int *)(((intptr_t)g_dev.rdram.dram)+(tlb_LUT_r[start>>12]&0xFFFFF000)+(((int)addr)&0xFFF)-0x80000000);
     if((intptr_t)memory_map[start>>12]>=0) {
       source = (u_int *)((uintptr_t)(start+(uintptr_t)(memory_map[start>>12]<<2)));
       pagelimit=(start+4096)&0xFFFFF000;
@@ -11320,8 +11320,8 @@ static int new_recompile_block_impl(int addr)
        * relative to RDRAM - on Windows this crashed GoldenEye 007
        * shortly after boot.  Skip pages that do not resolve into
        * RDRAM, matching the guard used by the dirty-restore path. */
-      if(map_addr-(uintptr_t)g_dev.ri.rdram.dram<0x800000) {
-        j=(map_addr-(uintptr_t)g_dev.ri.rdram.dram+(uintptr_t)0x80000000)>>12;
+      if(map_addr-(uintptr_t)g_dev.rdram.dram<0x800000) {
+        j=(map_addr-(uintptr_t)g_dev.rdram.dram+(uintptr_t)0x80000000)>>12;
         invalid_code[j]=0;
         memory_map[j]|=WRITE_PROTECT;
         //DebugMessage(M64MSG_VERBOSE, "write protect physical page: %x (virtual %x)",j<<12,start);
@@ -11430,7 +11430,7 @@ void TLBWI_new(void)
     if(i<0x80000||i>0xBFFFF)
     {
       if(tlb_LUT_r[i]) {
-        memory_map[i]=((uintptr_t)g_dev.ri.rdram.dram+(uintptr_t)((tlb_LUT_r[i]&0xFFFFF000)-0x80000000)-(i<<12))>>2;
+        memory_map[i]=((uintptr_t)g_dev.rdram.dram+(uintptr_t)((tlb_LUT_r[i]&0xFFFFF000)-0x80000000)-(i<<12))>>2;
         // FIXME: should make sure the physical page is invalid too
         if(!tlb_LUT_w[i]||!invalid_code[i]) {
           memory_map[i]|=WRITE_PROTECT; // Write protect
@@ -11454,7 +11454,7 @@ void TLBWI_new(void)
     if(i<0x80000||i>0xBFFFF)
     {
       if(tlb_LUT_r[i]) {
-        memory_map[i]=((uintptr_t)g_dev.ri.rdram.dram+(uintptr_t)((tlb_LUT_r[i]&0xFFFFF000)-0x80000000)-(i<<12))>>2;
+        memory_map[i]=((uintptr_t)g_dev.rdram.dram+(uintptr_t)((tlb_LUT_r[i]&0xFFFFF000)-0x80000000)-(i<<12))>>2;
         // FIXME: should make sure the physical page is invalid too
         if(!tlb_LUT_w[i]||!invalid_code[i]) {
           memory_map[i]|=WRITE_PROTECT; // Write protect
@@ -11508,7 +11508,7 @@ void TLBWR_new(void)
     if(i<0x80000||i>0xBFFFF)
     {
       if(tlb_LUT_r[i]) {
-        memory_map[i]=((uintptr_t)g_dev.ri.rdram.dram+(uintptr_t)((tlb_LUT_r[i]&0xFFFFF000)-0x80000000)-(i<<12))>>2;
+        memory_map[i]=((uintptr_t)g_dev.rdram.dram+(uintptr_t)((tlb_LUT_r[i]&0xFFFFF000)-0x80000000)-(i<<12))>>2;
         // FIXME: should make sure the physical page is invalid too
         if(!tlb_LUT_w[i]||!invalid_code[i]) {
           memory_map[i]|=WRITE_PROTECT; // Write protect
@@ -11532,7 +11532,7 @@ void TLBWR_new(void)
     if(i<0x80000||i>0xBFFFF)
     {
       if(tlb_LUT_r[i]) {
-        memory_map[i]=((uintptr_t)g_dev.ri.rdram.dram+(uintptr_t)((tlb_LUT_r[i]&0xFFFFF000)-0x80000000)-(i<<12))>>2;
+        memory_map[i]=((uintptr_t)g_dev.rdram.dram+(uintptr_t)((tlb_LUT_r[i]&0xFFFFF000)-0x80000000)-(i<<12))>>2;
         // FIXME: should make sure the physical page is invalid too
         if(!tlb_LUT_w[i]||!invalid_code[i]) {
           memory_map[i]|=WRITE_PROTECT; // Write protect

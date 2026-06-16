@@ -43,11 +43,13 @@ enum ri_registers
     RI_REGS_COUNT
 };
 
+struct rdram;
+
 struct ri_controller
 {
     uint32_t regs[RI_REGS_COUNT];
 
-    struct rdram rdram;
+    struct rdram* rdram;
 };
 
 void init_ri(struct ri_controller* ri,

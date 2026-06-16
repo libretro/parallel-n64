@@ -44,7 +44,7 @@ static void flashram_command(struct pi_controller *pi, uint32_t command)
 {
    unsigned int i;
    struct flashram *flashram = &pi->flashram;
-   uint8_t *dram             = (uint8_t*)pi->ri->rdram.dram;
+   uint8_t *dram             = (uint8_t*)pi->ri->rdram->dram;
 
    switch (command & 0xff000000)
    {
@@ -165,7 +165,7 @@ void dma_read_flashram(struct pi_controller *pi)
    unsigned int dram_addr, cart_addr;
    unsigned int i, length;
    struct flashram* flashram = &pi->flashram;
-   uint32_t *dram            = pi->ri->rdram.dram;
+   uint32_t *dram            = pi->ri->rdram->dram;
    uint8_t *mem              = flashram->data;
 
    switch (flashram->mode)

@@ -31,6 +31,7 @@
 #include "rcp/pi/pi_controller.h"
 #include "r4300/r4300_core.h"
 #include "rcp/rdp/rdp_core.h"
+#include "rdram/rdram.h"
 #include "rcp/ri/ri_controller.h"
 #include "rcp/rsp/rsp_core.h"
 #include "pif/pif.h"
@@ -49,6 +50,7 @@ struct device
     struct rsp_core sp;
     struct ai_controller ai;
     struct pi_controller pi;
+    struct rdram rdram;
     struct ri_controller ri;
     struct pif pif;
     struct si_controller si;

@@ -79,6 +79,7 @@ void init_device(
          flashram_user_data, flashram_save, flashram_data,
          sram_user_data, sram_save, sram_data,
          &dev->dd, &dev->mi, &dev->ri, &dev->dp);
+   dev->ri.rdram = &dev->rdram;
    init_ri(&dev->ri, dram, dram_size);
    dev->si.pif = &dev->pif;
    init_si(&dev->si,

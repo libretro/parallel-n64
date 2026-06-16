@@ -92,7 +92,7 @@ static void dma_si_write(struct si_controller* si)
    for (i = 0; i < PIF_RAM_SIZE; i += 4)
    {
       const uint32_t dram_i = (si->regs[SI_DRAM_ADDR_REG] & UINT32_C(0xFFFFFFFC))+i;
-      const uint32_t value = rdram_safe_read_word(si->ri->rdram.dram, dram_i);
+      const uint32_t value = rdram_safe_read_word(si->ri->rdram->dram, dram_i);
       *((uint32_t*)(&si->pif->ram[i])) = sl(value);
    }
 
@@ -130,7 +130,7 @@ static void dma_si_read(struct si_controller* si)
    {
       const uint32_t dram_i = (si->regs[SI_DRAM_ADDR_REG] & UINT32_C(0xFFFFFFFC))+i;
       const uint32_t value = *(uint32_t*)(&si->pif->ram[i]);
-      rdram_safe_write_word(si->ri->rdram.dram, dram_i, sl(value));
+      rdram_safe_write_word(si->ri->rdram->dram, dram_i, sl(value));
    }
    cp0_update_count();
 

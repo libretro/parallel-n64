@@ -50,7 +50,7 @@ static void do_sp_dma(struct rsp_core* sp, const struct sp_dma* dma)
     unsigned int dramaddr = dma->dramaddr & 0xfffff8;
 
     unsigned char *spmem = (unsigned char*)sp->mem + (dma->memaddr & 0x1000);
-    unsigned char *dram  = (unsigned char*)sp->ri->rdram.dram;
+    unsigned char *dram  = (unsigned char*)sp->ri->rdram->dram;
 
     if (dma->dir == SP_DMA_WRITE)
     {

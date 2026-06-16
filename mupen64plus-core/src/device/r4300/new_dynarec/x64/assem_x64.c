@@ -2079,7 +2079,7 @@ static void emit_readword_indexed(intptr_t addr, int rs, int rt)
 static void emit_readword_indexed_tlb(int addr, int rs, int map, int rt)
 {
   assert(map>=0);
-  /*if(map<0) emit_readword_indexed(addr+(intptr_t)g_dev.ri.rdram.dram-0x80000000LL, rs, rt);
+  /*if(map<0) emit_readword_indexed(addr+(intptr_t)g_dev.rdram.dram-0x80000000LL, rs, rt);
   else*/ {
     assem_debug("mov %x(%%%s,%%%s),%%%s",addr,regname[rs],regname[map],regname[rt]);
     assert(rs!=ESP);
@@ -2220,7 +2220,7 @@ static void emit_movsbl_indexed(uintptr_t addr, int rs, int rt)
 static void emit_movsbl_indexed_tlb(int addr, int rs, int map, int rt)
 {
   assert(map>=0);
-  /*if(map<0) emit_movsbl_indexed(addr+(intptr_t)g_dev.ri.rdram.dram-0x80000000LL, rs, rt);
+  /*if(map<0) emit_movsbl_indexed(addr+(intptr_t)g_dev.rdram.dram-0x80000000LL, rs, rt);
   else*/ {
     assem_debug("movsbl %x(%%%s,%%%s),%%%s",addr,regname[rs],regname[map],regname[rt]);
     assert(rs!=ESP);
@@ -2270,7 +2270,7 @@ static void emit_movswl_indexed(uintptr_t addr, int rs, int rt)
 static void emit_movswl_indexed_tlb(int addr, int rs, int map, int rt)
 {
   assert(map>=0);
-  /*if(map<0) emit_movswl_indexed(addr+(intptr_t)g_dev.ri.rdram.dram-0x80000000LL, rs, rt);
+  /*if(map<0) emit_movswl_indexed(addr+(intptr_t)g_dev.rdram.dram-0x80000000LL, rs, rt);
   else*/ {
     assem_debug("movswl %x(%%%s,%%%s),%%%s",addr,regname[rs],regname[map],regname[rt]);
     assert(rs!=ESP);
@@ -2320,7 +2320,7 @@ static void emit_movzbl_indexed(uintptr_t addr, int rs, int rt)
 static void emit_movzbl_indexed_tlb(int addr, int rs, int map, int rt)
 {
   assert(map>=0);
-  /*if(map<0) emit_movzbl_indexed(addr+(intptr_t)g_dev.ri.rdram.dram-0x80000000LL, rs, rt);
+  /*if(map<0) emit_movzbl_indexed(addr+(intptr_t)g_dev.rdram.dram-0x80000000LL, rs, rt);
   else*/ {
     assem_debug("movzbl %x(%%%s,%%%s),%%%s",addr,regname[rs],regname[map],regname[rt]);
     assert(rs!=ESP);
@@ -2370,7 +2370,7 @@ static void emit_movzwl_indexed(uintptr_t addr, int rs, int rt)
 static void emit_movzwl_indexed_tlb(int addr, int rs, int map, int rt)
 {
   assert(map>=0);
-  /*if(map<0) emit_movzwl_indexed(addr+(intptr_t)g_dev.ri.rdram.dram-0x80000000LL, rs, rt);
+  /*if(map<0) emit_movzwl_indexed(addr+(intptr_t)g_dev.rdram.dram-0x80000000LL, rs, rt);
   else*/ {
     assem_debug("movzwl %x(%%%s,%%%s),%%%s",addr,regname[rs],regname[map],regname[rt]);
     assert(rs!=ESP);
@@ -2456,7 +2456,7 @@ static void emit_writeword_indexed_tlb(int rt, int addr, int rs, int map, int te
 {
   (void)temp;
   assert(map>=0);
-  /*if(map<0) emit_writeword_indexed(rt, addr+(intptr_t)g_dev.ri.rdram.dram-0x80000000LL, rs);
+  /*if(map<0) emit_writeword_indexed(rt, addr+(intptr_t)g_dev.rdram.dram-0x80000000LL, rs);
   else*/ {
     assem_debug("mov %%%s,%x(%%%s,%%%s)",regname[rt],addr,regname[rs],regname[map]);
     assert(rs!=ESP);
@@ -2521,7 +2521,7 @@ static void emit_writehword_indexed(int rt, intptr_t addr, int rs)
 static void emit_writehword_indexed_tlb(int rt, int addr, int rs, int map)
 {
   assert(map>=0);
-  /*if(map<0) emit_writehword_indexed(rt, addr+(intptr_t)g_dev.ri.rdram.dram-0x80000000LL, rs);
+  /*if(map<0) emit_writehword_indexed(rt, addr+(intptr_t)g_dev.rdram.dram-0x80000000LL, rs);
   else*/
   {
     assem_debug("movw %%%s,%x(%%%s,%%%s)",regname[rt]+1,addr,regname[rs],regname[map]);
@@ -2580,7 +2580,7 @@ static void emit_writebyte_indexed_tlb(int rt, int addr, int rs, int map, int te
 {
   (void)temp;
   assert(map>=0);
-  /*if(map<0) emit_writebyte_indexed(rt, addr+(intptr_t)g_dev.ri.rdram.dram-0x80000000LL, rs);
+  /*if(map<0) emit_writebyte_indexed(rt, addr+(intptr_t)g_dev.rdram.dram-0x80000000LL, rs);
   else*/
   {
     assem_debug("movb %%%cl,%x(%%%s,%%%s)",regname[rt][1],addr,regname[rs],regname[map]);
@@ -5478,5 +5478,5 @@ static void arch_init()
   rounding_modes[2]=0xB3F; // ceil
   rounding_modes[3]=0x73F; // floor
 
-  ram_offset=((intptr_t)g_dev.ri.rdram.dram-(intptr_t)0x80000000LL)>>2; // same >>2 convention as the memory_map entries (see arm64)
+  ram_offset=((intptr_t)g_dev.rdram.dram-(intptr_t)0x80000000LL)>>2; // same >>2 convention as the memory_map entries (see arm64)
 }

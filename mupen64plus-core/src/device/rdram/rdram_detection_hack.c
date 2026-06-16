@@ -39,5 +39,5 @@ void force_detected_rdram_size_hack(void)
         ? 0x318
         : 0x3f0;
 
-    g_dev.ri.rdram.dram[address/4] = g_dev.ri.rdram.dram_size;
+    g_dev.rdram.dram[address/4] = g_dev.rdram.dram_size;
 }

@@ -96,7 +96,7 @@ static void dma_pi_read(struct pi_controller *pi)
          (0x7FFFFF - pi->regs[PI_DRAM_ADDR_REG]) : length;
 
       dram_address = pi->regs[PI_DRAM_ADDR_REG];
-      dram = (uint8_t*)pi->ri->rdram.dram;
+      dram = (uint8_t*)pi->ri->rdram->dram;
 
       pre_framebuffer_dma_read(&pi->dp->fb, dram_address, length);
 
@@ -147,7 +147,7 @@ static void dma_pi_read(struct pi_controller *pi)
 
       dram_address = pi->regs[PI_DRAM_ADDR_REG];
       rom_address = (pi->regs[PI_CART_ADDR_REG] - 0x10000000);
-      dram = (uint8_t*)pi->ri->rdram.dram;
+      dram = (uint8_t*)pi->ri->rdram->dram;
       rom = pi->cart_rom.rom;
 
       pre_framebuffer_dma_read(&pi->dp->fb, dram_address, length);
@@ -181,7 +181,7 @@ static void dma_pi_read(struct pi_controller *pi)
 
       dram_address = pi->regs[PI_DRAM_ADDR_REG];
       rom_address = (pi->regs[PI_CART_ADDR_REG] - 0x1ffe0000);
-      dram = (uint8_t*)pi->ri->rdram.dram;
+      dram = (uint8_t*)pi->ri->rdram->dram;
       rom = pi->summercart.buffer;
 
       pre_framebuffer_dma_read(&pi->dp->fb, dram_address, length);
@@ -270,7 +270,7 @@ static void dma_pi_write(struct pi_controller *pi)
             (0x7FFFFF - pi->regs[PI_DRAM_ADDR_REG]) : length;
 
          dram_address = pi->regs[PI_DRAM_ADDR_REG];
-         dram = (uint8_t*)pi->ri->rdram.dram;
+         dram = (uint8_t*)pi->ri->rdram->dram;
 
          for (i = 0; i < length; ++i)
          {
@@ -338,7 +338,7 @@ static void dma_pi_write(struct pi_controller *pi)
 
       dram_address = pi->regs[PI_DRAM_ADDR_REG];
       rom_address = (pi->regs[PI_CART_ADDR_REG] - 0x06000000) & 0x3fffff;
-      dram = (uint8_t*)pi->ri->rdram.dram;
+      dram = (uint8_t*)pi->ri->rdram->dram;
       rom = pi->dd_rom.rom;
    }
    else if (pi->regs[PI_CART_ADDR_REG] >= 0x1ffe0000 && pi->regs[PI_CART_ADDR_REG] < 0x1fff0000)
@@ -365,7 +365,7 @@ static void dma_pi_write(struct pi_controller *pi)
 
       dram_address = pi->regs[PI_DRAM_ADDR_REG];
       rom_address = (pi->regs[PI_CART_ADDR_REG] - 0x1ffe0000);
-      dram = (uint8_t*)pi->ri->rdram.dram;
+      dram = (uint8_t*)pi->ri->rdram->dram;
       rom = pi->summercart.buffer;
    }
    else
@@ -399,7 +399,7 @@ static void dma_pi_write(struct pi_controller *pi)
       if (!AllowLargeRoms) {
          rom_address &= 0x3ffffff;
       }
-      dram = (uint8_t*)pi->ri->rdram.dram;
+      dram = (uint8_t*)pi->ri->rdram->dram;
       rom = pi->cart_rom.rom;
    }
 
