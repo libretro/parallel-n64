@@ -78,7 +78,7 @@ void init_device(
          ddrom, ddrom_size,
          flashram_user_data, flashram_save, flashram_data,
          sram_user_data, sram_save, sram_data,
-         &dev->mi, &dev->ri);
+         &dev->dd, &dev->mi, &dev->ri, &dev->dp);
    init_ri(&dev->ri, dram, dram_size);
    init_si(&dev->si,
          eeprom_user_data,

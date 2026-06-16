@@ -38,6 +38,8 @@
 struct r4300_core;
 struct mi_controller;
 struct ri_controller;
+struct rdp_core;
+struct dd_controller;
 
 enum pi_registers
 {
@@ -69,8 +71,10 @@ struct pi_controller
 
     int use_flashram;
 
+    struct dd_controller* dd;
     struct mi_controller* mi;
     struct ri_controller *ri;
+    struct rdp_core* dp;
 };
 
 void init_pi(struct pi_controller* pi,
@@ -78,8 +82,10 @@ void init_pi(struct pi_controller* pi,
                 uint8_t* ddrom, size_t ddrom_size,
                 void* flashram_user_data, void (*flashram_save)(void*), uint8_t* flashram_data,
                 void* sram_user_data, void (*sram_save)(void*), uint8_t* sram_data,
+                struct dd_controller* dd,
                 struct mi_controller* mi,
-                struct ri_controller *ri);
+                struct ri_controller *ri,
+                struct rdp_core* dp);
 
 void poweron_pi(struct pi_controller* pi);
 

@@ -82,7 +82,7 @@ static void dma_pi_read(struct pi_controller *pi)
          i -= 0x400;
          length = (i + length) > 0x100 ? (0x100 - i) : length;
          rom_address = (pi->regs[PI_CART_ADDR_REG] - 0x05000400) & 0x3fffff;
-         rom = g_dev.dd.sec_buf;
+         rom = pi->dd->sec_buf;
       }
       else
       {
@@ -98,7 +98,7 @@ static void dma_pi_read(struct pi_controller *pi)
       dram_address = pi->regs[PI_DRAM_ADDR_REG];
       dram = (uint8_t*)pi->ri->rdram.dram;
 
-      pre_framebuffer_dma_read(&g_dev.dp.fb, dram_address, length);
+      pre_framebuffer_dma_read(&pi->dp->fb, dram_address, length);
 
       for (i = 0; i < length; ++i)
       {
@@ -150,7 +150,7 @@ static void dma_pi_read(struct pi_controller *pi)
       dram = (uint8_t*)pi->ri->rdram.dram;
       rom = pi->cart_rom.rom;
 
-      pre_framebuffer_dma_read(&g_dev.dp.fb, dram_address, length);
+      pre_framebuffer_dma_read(&pi->dp->fb, dram_address, length);
 
       for (i = 0; i < length; ++i)
          rom[(rom_address + i) ^ S8] = dram[(dram_address + i) ^ S8];
@@ -184,7 +184,7 @@ static void dma_pi_read(struct pi_controller *pi)
       dram = (uint8_t*)pi->ri->rdram.dram;
       rom = pi->summercart.buffer;
 
-      pre_framebuffer_dma_read(&g_dev.dp.fb, dram_address, length);
+      pre_framebuffer_dma_read(&pi->dp->fb, dram_address, length);
 
       for (i = 0; i < length; ++i)
          rom[(rom_address + i) ^ S8] = dram[(dram_address + i) ^ S8];
@@ -244,14 +244,14 @@ static void dma_pi_write(struct pi_controller *pi)
             i -= 0x400;
             length = (i + length) > 0x100 ? (0x100 - i) : length;
             rom_address = (pi->regs[PI_CART_ADDR_REG] - 0x05000400) & 0x3fffff;
-            rom = g_dev.dd.sec_buf;
+            rom = pi->dd->sec_buf;
          }
          else if (pi->regs[PI_CART_ADDR_REG] == 0x05000000)
          {
             /* C2 BUFFER */
             rom_address = (pi->regs[PI_CART_ADDR_REG] - 0x05000000) & 0x3fffff;
             length      = (i + length) > 0x400 ? (0x400 - i) : length;
-            rom         = g_dev.dd.c2_buf;
+            rom         = pi->dd->c2_buf;
          }
          else
          {
@@ -280,7 +280,7 @@ static void dma_pi_write(struct pi_controller *pi)
 
          invalidate_r4300_cached_code(0x80000000 + dram_address, length);
          invalidate_r4300_cached_code(0xa0000000 + dram_address, length);
-         post_framebuffer_dma_write(&g_dev.dp.fb, dram_address, length);
+         post_framebuffer_dma_write(&pi->dp->fb, dram_address, length);
       }
       else
       {
@@ -410,7 +410,7 @@ static void dma_pi_write(struct pi_controller *pi)
 
    invalidate_r4300_cached_code(0x80000000 + dram_address, length);
    invalidate_r4300_cached_code(0xa0000000 + dram_address, length);
-   post_framebuffer_dma_write(&g_dev.dp.fb, dram_address, length);
+   post_framebuffer_dma_write(&pi->dp->fb, dram_address, length);
 
    /* HACK: monitor PI DMA to trigger RDRAM size detection
     * hack just before initial cart ROM loading. */
@@ -433,8 +433,10 @@ void init_pi(struct pi_controller* pi,
                 uint8_t *ddrom, size_t ddrom_size,
                 void* flashram_user_data, void (*flashram_save)(void*), uint8_t* flashram_data,
                 void* sram_user_data, void (*sram_save)(void*), uint8_t* sram_data,
+                struct dd_controller* dd,
                 struct mi_controller* mi,
-                struct ri_controller *ri)
+                struct ri_controller *ri,
+                struct rdp_core* dp)
 {
    init_cart_rom(&pi->cart_rom, rom, rom_size);
    init_dd_rom(&pi->dd_rom, ddrom, ddrom_size);
@@ -444,8 +446,10 @@ void init_pi(struct pi_controller* pi,
 
    pi->use_flashram = 0;
 
+   pi->dd = dd;
    pi->mi = mi;
    pi->ri    = ri;
+   pi->dp = dp;
 }
 
 /* Initializes the PI. */
@@ -482,12 +486,12 @@ int write_pi_regs(void* opaque, uint32_t address,
       {
          if (value == 0x05000000)
          {
-            g_dev.dd.regs[ASIC_CMD_STATUS] &= ~0x1C000000;
+            pi->dd->regs[ASIC_CMD_STATUS] &= ~0x1C000000;
             dd_pi_test();
          }
          else if (value == 0x05000400)
          {
-            g_dev.dd.regs[ASIC_CMD_STATUS] &= ~0x4C000000;
+            pi->dd->regs[ASIC_CMD_STATUS] &= ~0x4C000000;
             dd_pi_test();
          }
          break;
@@ -532,6 +536,6 @@ void pi_end_of_dma_event(struct pi_controller* pi)
 
    if ((pi->regs[PI_CART_ADDR_REG] == 0x05000000) || (pi->regs[PI_CART_ADDR_REG] == 0x05000400))
    {
-      dd_update_bm(&g_dev.dd);
+      dd_update_bm(pi->dd);
    }
 }
