@@ -26,6 +26,7 @@
 
 #include "../../api/m64p_types.h"
 #include "../../api/callbacks.h"
+#include "../../backends/libretro_clock.h"
 #include "../memory/memory.h"
 #include "../../plugin/core_plugin.h"
 #include "../r4300/r4300_core.h"
@@ -100,7 +101,14 @@ void init_pif(struct pif *pif,
          eeprom_data, eeprom_size, eeprom_user_data, eeprom_save);
    init_eeprom(&pif->eeprom,
          (uint16_t)eeprom_id, &pif->eeprom_storage, &g_ilibretro_storage);
-   init_af_rtc(&pif->af_rtc, af_rtc_user_data, af_rtc_get_time);
+   /* af_rtc now sources base time through next's clock_backend interface
+    * (g_ilibretro_clock returns time(NULL), which af_rtc runs through
+    * localtime()), equivalent to the former get_time_using_C_localtime source.
+    * The upstream af_rtc_user_data / af_rtc_get_time params are retained in the
+    * init chain for ABI stability but are no longer used here. */
+   (void)af_rtc_user_data;
+   (void)af_rtc_get_time;
+   init_af_rtc(&pif->af_rtc, NULL, &g_ilibretro_clock);
    init_cic_using_ipl3(&pif->cic, ipl3);
 }
 

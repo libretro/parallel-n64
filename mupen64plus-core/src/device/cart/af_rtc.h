@@ -25,27 +25,28 @@
 #include <stdint.h>
 
 struct tm;
+struct clock_backend_interface;
 
 struct af_rtc
 {
    /* block 0: control register (little-endian: data[0]=low, data[1]=high).
     * Bit 0 write-protects block 1, bit 1 write-protects block 2; bit 9 (the
-    * 0x0200 power-on default) marks the timer active. Previously block 0 was
-    * hardcoded to 0x0200 on read and ignored on write; modelling it as real
-    * state matches mupen64plus-next / hardware. */
+    * 0x0200 power-on default) marks the timer active. */
    uint16_t control;
 
-   /* external time source */
-   void* user_data;
-   const struct tm* (*get_time)(void*);
+   /* External time source. parallel-n64 binds this to next's clock_backend
+    * interface (get_time -> time_t), but keeps pn64's struct tm + PL_RTC_OFFSET
+    * model and savestate format on top of it (see af_rtc.c). */
+   void* clock;
+   const struct clock_backend_interface* iclock;
 };
 
 const struct tm* af_rtc_get_time(struct af_rtc* rtc);
 void af_rtc_set_time(struct af_rtc* rtc, struct tm* timestamp);
 
 void init_af_rtc(struct af_rtc* rtc,
-      void* user_data,
-      const struct tm* (*get_time)(void*));
+      void* clock,
+      const struct clock_backend_interface* iclock);
 
 void poweron_af_rtc(struct af_rtc* rtc);
 

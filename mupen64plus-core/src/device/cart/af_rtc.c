@@ -1,28 +1,29 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
-* Mupen64plus - af_rtc.c *
-* Mupen64Plus homepage: http://code.google.com/p/mupen64plus/ *
-* Copyright (C) 2014 Bobby Smiles *
-* *
-* This program is free software; you can redistribute it and/or modify *
-* it under the terms of the GNU General Public License as published by *
-* the Free Software Foundation; either version 2 of the License, or *
-* (at your option) any later version. *
-* *
-* This program is distributed in the hope that it will be useful, *
-* but WITHOUT ANY WARRANTY; without even the implied warranty of *
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the *
-* GNU General Public License for more details. *
-* *
-* You should have received a copy of the GNU General Public License *
-* along with this program; if not, write to the *
-* Free Software Foundation, Inc., *
-* 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA. *
-* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+ *   Mupen64plus - af_rtc.c                                                *
+ *   Mupen64Plus homepage: http://code.google.com/p/mupen64plus/           *
+ *   Copyright (C) 2014 Bobby Smiles                                       *
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ *   This program is distributed in the hope that it will be useful,       *
+ *   but WITHOUT ANY WARRANTY; without even the implied warranty of        *
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         *
+ *   GNU General Public License for more details.                          *
+ *                                                                         *
+ *   You should have received a copy of the GNU General Public License     *
+ *   along with this program; if not, write to the                         *
+ *   Free Software Foundation, Inc.,                                       *
+ *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "af_rtc.h"
 
 #include "../../api/m64p_types.h"
 #include "../../api/callbacks.h"
+#include "../../backends/api/clock_backend.h"
 
 #include <time.h>
 #include <stdlib.h>
@@ -39,13 +40,19 @@ static uint8_t byte2bcd(int n)
    return ((n / 10) << 4) | (n % 10);
 }
 
+/* parallel-n64 reads wall-clock time through next's clock_backend (which
+ * returns a time_t), converts it to a broken-down struct tm, and applies the
+ * PL_RTC_OFFSET-derived s_rtcOffset. This keeps pn64's struct tm-based RTC
+ * model and the PL_RTC_OFFSET feature while sourcing the base time through the
+ * same backend interface the other cart chips use. */
 const struct tm* af_rtc_get_time(struct af_rtc* rtc) {
-   const struct tm *now = rtc->get_time( rtc->user_data );
-   memcpy( &s_time, now, sizeof(struct tm) );
-   
+   time_t now = rtc->iclock->get_time(rtc->clock);
+   const struct tm *bt = localtime(&now);
+   memcpy( &s_time, bt, sizeof(struct tm) );
+
    s_time.tm_sec += s_rtcOffset;
    mktime( &s_time );
-   
+
    return &s_time;
 }
 
@@ -53,11 +60,11 @@ void af_rtc_set_time(struct af_rtc* rtc, struct tm *timestamp) {
    af_rtc_get_time( rtc );
    const time_t now = mktime( &s_time );
    const time_t then = mktime( timestamp );
-   
+
    if( now == -1 || then == -1 ) return;
    const double offset = difftime( then, now );
    if( offset < (double)INT_MIN || offset > (double)(INT_MAX - 61) ) return;
-   
+
    s_rtcOffset = (int)offset;
 }
 
@@ -127,19 +134,19 @@ void af_rtc_write_command(struct af_rtc *rtc, uint8_t* cmd)
 void poweron_af_rtc(struct af_rtc* rtc)
 {
    /* power-on default: blocks 1 & 2 read/write, timer active (matches
-    * mupen64plus-next). Time state itself lives in the external get_time
-    * source plus the PL_RTC_OFFSET applied in af_rtc_get_time. */
+    * mupen64plus-next). Time state itself lives in the external clock backend
+    * plus the PL_RTC_OFFSET applied in af_rtc_get_time. */
    rtc->control = 0x0200;
 }
 
 void init_af_rtc(struct af_rtc* rtc,
-      void* user_data,
-      const struct tm* (*get_time)(void*))
+      void* clock,
+      const struct clock_backend_interface* iclock)
 {
-   rtc->user_data = user_data;
-   rtc->get_time = get_time;
+   rtc->clock  = clock;
+   rtc->iclock = iclock;
    rtc->control = 0x0200;
-   
+
    errno = 0;
    const char *offsetStr = getenv( "PL_RTC_OFFSET" );
    if( offsetStr && offsetStr[0] != '\0' ) {
