@@ -464,6 +464,7 @@ void poweron_pi(struct pi_controller* pi)
     poweron_cart_rom(&pi->cart->cart_rom);
     poweron_dd_rom(&pi->dd_rom);
     poweron_flashram(&pi->cart->flashram);
+    poweron_is_viewer(&pi->cart->is_viewer);
 }
 
 /* Reads a word from the PI MMIO register space. */

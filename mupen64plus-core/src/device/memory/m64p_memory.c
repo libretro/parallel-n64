@@ -925,6 +925,49 @@ static void write_rom(void)
 }
 
 
+/* IS-Viewer debug device page handlers (homebrew/test ROM printf output).
+ * Wrap the cart/is_viewer.c accessors in pn64's page-handler table form. */
+static void read_isviewer(void)
+{
+    readw(read_is_viewer, &g_dev.cart.is_viewer, mupencoreaddress, rdword);
+}
+
+static void read_isviewerb(void)
+{
+    readb(read_is_viewer, &g_dev.cart.is_viewer, mupencoreaddress, rdword);
+}
+
+static void read_isviewerh(void)
+{
+    readh(read_is_viewer, &g_dev.cart.is_viewer, mupencoreaddress, rdword);
+}
+
+static void read_isviewerd(void)
+{
+    readd(read_is_viewer, &g_dev.cart.is_viewer, mupencoreaddress, rdword);
+}
+
+static void write_isviewer(void)
+{
+    writew(write_is_viewer, &g_dev.cart.is_viewer, mupencoreaddress, cpu_word);
+}
+
+static void write_isviewerb(void)
+{
+    writeb(write_is_viewer, &g_dev.cart.is_viewer, mupencoreaddress, cpu_byte);
+}
+
+static void write_isviewerh(void)
+{
+    writeh(write_is_viewer, &g_dev.cart.is_viewer, mupencoreaddress, cpu_hword);
+}
+
+static void write_isviewerd(void)
+{
+    writed(write_is_viewer, &g_dev.cart.is_viewer, mupencoreaddress, cpu_dword);
+}
+
+
 static void read_pif(void)
 {
     readw(read_pif_ram, &g_dev.si, mupencoreaddress, rdword);
@@ -1257,6 +1300,11 @@ void poweron_memory(void)
       map_region(0x9000+i, M64P_MEM_NOTHING, RW(nothing));
       map_region(0xb000+i, M64P_MEM_NOTHING, RW(nothing));
    }
+
+   /* map IS-Viewer debug device at 0x13ff0000 (page 0x3ff of the cart range),
+    * overriding the inert ROM/nothing mapping for that page. */
+   map_region(0x93ff, M64P_MEM_NOTHING, R(isviewer), W(isviewer));
+   map_region(0xb3ff, M64P_MEM_NOTHING, R(isviewer), W(isviewer));
 
    /* map PIF RAM */
    map_region(0x9fc0, M64P_MEM_PIF, RW(pif));
