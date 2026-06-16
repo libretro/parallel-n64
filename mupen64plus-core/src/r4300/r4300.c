@@ -53,12 +53,17 @@ unsigned int llbit;
  * where 'stop' itself lives in RECOMPILER_MEMORY: the aarch64 linkage
  * reaches it adrp-style, like base_addr. */
 int frame_break;
+/* Referenced unconditionally by cp0.c / exception.c / interrupt.c /
+ * reset.c / pure_interp.c on every architecture, so it must be defined on
+ * every architecture -- not just the x86 (NEW_DYNAREC < ARM) path. Keeping
+ * it inside the arch guard below left it undefined on arm/arm64, breaking
+ * the link there. A plain global like frame_break above. */
+int g_cp0_cycle_count = 0;
 #if !defined(__arm64__) && !defined(__aarch64__)
 int stop;
 #if NEW_DYNAREC < NEW_DYNAREC_ARM
 int64_t reg[32], hi, lo;
 uint32_t next_interrupt;
-int g_cp0_cycle_count = 0;
 struct precomp_instr *PC;
 #endif
 #endif
