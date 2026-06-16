@@ -22,6 +22,7 @@
 #include "device.h"
 
 #include "../backends/libretro_clock.h"
+#include "dd/dd_disk.h"
 
 #include "rcp/ai/ai_controller.h"
 #include "memory/memory.h"
@@ -135,8 +136,20 @@ void init_device(
       }
       else
       {
-         size_t disk_data_size =
-            (disk_data == dd_disk) ? dd_disk_size : (size_t)MAME_FORMAT_DUMP_SIZE;
+         /* For MAME/SDK scan returns the input unchanged; for D64 it returns a
+          * freshly-allocated, expanded buffer (and freed the input). In the D64
+          * case the original buffer was the heap allocation owned by the disk
+          * lifecycle glue, so hand the new pointer back to it to track. The
+          * expanded D64 buffer spans exactly offset_ram + size_ram (= next's
+          * full_d64_size), which is the precise allocation size. */
+         size_t disk_data_size;
+         if (disk_data == dd_disk)
+            disk_data_size = dd_disk_size;
+         else
+         {
+            disk_data_size = offset_ram + size_ram;
+            dd_disk_set_expanded(disk_data, (int)disk_data_size);
+         }
 
          /* underlying bytes wrapped by the libretro storage backend */
          init_libretro_storage(&dev->dd_disk_storage, disk_data, disk_data_size, NULL, NULL);
