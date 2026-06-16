@@ -33,6 +33,13 @@ enum rumble_action
 
 struct rumblepak
 {
+    /* last value written to the rumble control register (0xc000).
+     * Tracked so the rumble state reflects the most recent write and can
+     * be re-evaluated; matches mupen64plus-next, which keys rumble off
+     * this register rather than recomputing from the raw command each
+     * time. */
+    uint8_t state;
+
     /* external rumble sink */
     void* user_data;
     void (*rumble)(void*,enum rumble_action);
