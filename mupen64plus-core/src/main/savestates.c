@@ -52,7 +52,7 @@
 #include "../device/cart/af_rtc.h"
 #include "../device/pif/pif.h"
 #include "../device/controllers/game_controller.h"
-#include "../device/controllers/transferpak.h"
+#include "../device/controllers/paks/transferpak.h"
 #include "../gb/gb_cart.h"
 #include "../gb/mbc3_rtc.h"
 #include "../osal/preproc.h"

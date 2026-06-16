@@ -20,12 +20,12 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "transferpak.h"
-#include "game_controller.h"
+#include "../game_controller.h"
 
-#include "../../api/m64p_types.h"
-#include "../../api/callbacks.h"
+#include "../../../api/m64p_types.h"
+#include "../../../api/callbacks.h"
 
-#include "../../gb/gb_cart.h"
+#include "../../../gb/gb_cart.h"
 
 #include <string.h>
 

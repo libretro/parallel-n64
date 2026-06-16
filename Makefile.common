@@ -151,13 +151,13 @@ SOURCES_C += \
 	$(CORE_DIR)/src/device/pif/n64_cic_nus_6105.c \
 	$(CORE_DIR)/src/device/pif/pif.c \
 	$(CORE_DIR)/src/device/cart/af_rtc.c \
-	$(CORE_DIR)/src/device/controllers/biopak.c \
+	$(CORE_DIR)/src/device/controllers/paks/biopak.c \
 	$(CORE_DIR)/src/device/pif/cic.c \
 	$(CORE_DIR)/src/device/cart/eeprom.c \
 	$(CORE_DIR)/src/device/controllers/game_controller.c \
-	$(CORE_DIR)/src/device/controllers/mempak.c \
-	$(CORE_DIR)/src/device/controllers/rumblepak.c \
-	$(CORE_DIR)/src/device/controllers/transferpak.c \
+	$(CORE_DIR)/src/device/controllers/paks/mempak.c \
+	$(CORE_DIR)/src/device/controllers/paks/rumblepak.c \
+	$(CORE_DIR)/src/device/controllers/paks/transferpak.c \
 	$(CORE_DIR)/src/plugin/plugin.c \
 	$(CORE_DIR)/src/plugin/get_time_using_C_localtime.c \
 	$(CORE_DIR)/src/plugin/rumble_via_input_plugin.c \

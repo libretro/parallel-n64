@@ -22,7 +22,7 @@
 #include "rumble_via_input_plugin.h"
 #include "core_plugin.h"
 
-#include "../device/controllers/rumblepak.h"
+#include "../device/controllers/paks/rumblepak.h"
 
 #include <string.h>
 

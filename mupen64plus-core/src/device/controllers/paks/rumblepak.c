@@ -20,7 +20,7 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "rumblepak.h"
-#include "game_controller.h"
+#include "../game_controller.h"
 
 #include <string.h>
 

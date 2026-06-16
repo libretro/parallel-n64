@@ -28,10 +28,10 @@
  * external input source. */
 
 #include "biopak.h"
-#include "game_controller.h"
+#include "../game_controller.h"
 
-#include "../../api/m64p_types.h"
-#include "../../api/callbacks.h"
+#include "../../../api/m64p_types.h"
+#include "../../../api/callbacks.h"
 
 #include <time.h>
 #include <string.h>

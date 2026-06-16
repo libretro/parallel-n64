@@ -19,7 +19,7 @@
 * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA. *
 * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 #include "mempak.h"
-#include "game_controller.h"
+#include "../game_controller.h"
 
 #include <stdint.h>
 #include <string.h>

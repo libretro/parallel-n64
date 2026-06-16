@@ -25,10 +25,10 @@
 #include <stdint.h>
 #include <stddef.h>
 
-#include "mempak.h"
-#include "rumblepak.h"
-#include "transferpak.h"
-#include "biopak.h"
+#include "paks/mempak.h"
+#include "paks/rumblepak.h"
+#include "paks/transferpak.h"
+#include "paks/biopak.h"
 
 #include "../../api/m64p_plugin.h"
 #include "../../backends/api/joybus.h"
