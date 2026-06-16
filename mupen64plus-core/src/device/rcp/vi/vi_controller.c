@@ -41,7 +41,8 @@ extern unsigned alternate_vi_timing;
 void init_vi(struct vi_controller* vi,
       unsigned int clock, unsigned int expected_refresh_rate,
       /* unsigned int count_per_scanline, unsigned int alternate_timing, */
-      struct mi_controller* mi)
+      struct mi_controller* mi,
+      struct rdp_core* dp)
 {
    vi->clock = clock;
    vi->expected_refresh_rate = expected_refresh_rate;
@@ -50,6 +51,7 @@ void init_vi(struct vi_controller* vi,
    vi->alternate_timing      = alternate_timing;
 #endif
    vi->mi = mi;
+   vi->dp = dp;
 }
 
 unsigned int vi_clock_from_tv_standard(m64p_system_type tv_standard)
@@ -247,8 +249,8 @@ void vi_vertical_interrupt_event(struct vi_controller* vi)
     * half-rendered frame (DK64 / Banjo-Kazooie boot logos are the classic
     * repros). The deferred update is flushed by update_dpc_status() when
     * CLR_FREEZE is written, paired with the deferred DP_INT. */
-   if (g_dev.dp.do_on_unfreeze & DELAY_DP_INT)
-      g_dev.dp.do_on_unfreeze |= DELAY_UPDATESCREEN;
+   if (vi->dp->do_on_unfreeze & DELAY_DP_INT)
+      vi->dp->do_on_unfreeze |= DELAY_UPDATESCREEN;
    else
       gfx.updateScreen();
 

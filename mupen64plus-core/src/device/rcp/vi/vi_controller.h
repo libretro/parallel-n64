@@ -32,6 +32,7 @@
 
 struct r4300_core;
 struct mi_controller;
+struct rdp_core;
 
 enum vi_registers
 {
@@ -64,12 +65,14 @@ struct vi_controller
     unsigned int next_vi;
 
     struct mi_controller* mi;
+    struct rdp_core* dp;
 };
 
 void init_vi(struct vi_controller* vi,
       unsigned int clock, unsigned int expected_refresh_rate,
       /* unsigned int count_per_scanline, unsigned int alternate_timing, */
-      struct mi_controller* mi);
+      struct mi_controller* mi,
+      struct rdp_core* dp);
 
 unsigned int vi_clock_from_tv_standard(m64p_system_type tv_standard);
 unsigned int vi_expected_refresh_rate_from_tv_standard(m64p_system_type tv_standard);

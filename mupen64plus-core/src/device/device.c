@@ -92,7 +92,7 @@ void init_device(
          (ddrom + 0x40) : (rom + 0x40),                       /* ipl3 */
          &dev->mi, &dev->ri);
 
-   init_vi(&dev->vi, vi_clock, expected_refresh_rate, &dev->mi);
+   init_vi(&dev->vi, vi_clock, expected_refresh_rate, &dev->mi, &dev->dp);
    init_dd(&dev->dd, &dev->r4300, dd_disk, dd_disk_size);
 }
 
