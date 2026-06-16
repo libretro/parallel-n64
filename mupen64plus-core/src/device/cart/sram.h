@@ -25,23 +25,25 @@
 #include <stdint.h>
 
 struct pi_controller;
+struct storage_backend_interface;
 
 enum { SRAM_SIZE = 0x8000 };
 
+/* Adopt next's storage-backed sram struct: the backing buffer is reached
+ * through a storage_backend_interface (parallel-n64's libretro save-RAM
+ * backend) rather than a raw data pointer + save callback. */
 struct sram
 {
-   /* external sram storage */
-   void* user_data;
-   void (*save)(void*);
-   uint8_t* data;
+   void* storage;
+   const struct storage_backend_interface* istorage;
 };
 
-void init_sram(struct sram* sram, void* user_data, void (*save)(void*), uint8_t* data);
-
-void sram_save(struct sram* sram);
+void init_sram(struct sram* sram, void* storage, const struct storage_backend_interface* istorage);
 
 void format_sram(uint8_t* sram);
 
+/* parallel-n64 PI DMA entry points (kept so pi_controller's DMA dispatch is
+ * unchanged). They preserve pn64's bounds-checked addressing. */
 void dma_write_sram(struct pi_controller* pi);
 void dma_read_sram(struct pi_controller* pi);
 

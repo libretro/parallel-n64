@@ -28,6 +28,7 @@
 #include "../../cart/cart_rom.h"
 #include "../../cart/flashram.h"
 #include "../../cart/sram.h"
+#include "../../../backends/libretro_storage.h"
 #include "../../dd/dd_rom.h"
 #include "summercart.h"
 
@@ -66,6 +67,7 @@ struct pi_controller
     struct cart_rom cart_rom;
     struct flashram flashram;
     struct sram sram;
+    struct libretro_storage sram_storage;
     struct dd_rom dd_rom;
     struct summercart summercart;
 

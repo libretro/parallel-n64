@@ -441,7 +441,9 @@ void init_pi(struct pi_controller* pi,
    init_cart_rom(&pi->cart_rom, rom, rom_size);
    init_dd_rom(&pi->dd_rom, ddrom, ddrom_size);
    init_flashram(&pi->flashram, flashram_user_data, flashram_save, flashram_data);
-   init_sram(&pi->sram, sram_user_data, sram_save, sram_data);
+   init_libretro_storage(&pi->sram_storage,
+         sram_data, SRAM_SIZE, sram_user_data, sram_save);
+   init_sram(&pi->sram, &pi->sram_storage, &g_ilibretro_storage);
    init_summercart(&pi->summercart);
 
    pi->use_flashram = 0;
