@@ -2275,7 +2275,8 @@ static void format_saved_memory(void)
    format_mempak(saved_memory.mempack[1]);
    format_mempak(saved_memory.mempack[2]);
    format_mempak(saved_memory.mempack[3]);
-   format_disk(saved_memory.disk);
+   /* region 13: 64DD disk no longer pre-formatted here; format detection and
+    * expansion are handled by scan_and_expand_disk_format at device init. */
 }
 
 bool retro_load_game(const struct retro_game_info *game)

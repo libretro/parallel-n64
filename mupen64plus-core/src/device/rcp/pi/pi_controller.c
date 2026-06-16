@@ -55,6 +55,17 @@ enum
    PI_STATUS_CLR_INTR  = 0x02
 };
 
+/* region 13: parallel-n64-specific PI<->DD glue. The original dd_controller
+ * defined dd_pi_test(); next's controller does not, so the small helper lives
+ * here where it is used (PI cartridge-address pokes to the DD buffer regions).
+ * It clears the DD interrupt (IP3) cause bit and re-evaluates interrupts. */
+static void dd_pi_test(void)
+{
+    g_cp0_regs[CP0_CAUSE_REG] &= ~0x00000800;
+    cp0_update_count();
+    check_interrupt();
+}
+
 /* Copies data from the PI into RDRAM */
 static void dma_pi_read(struct pi_controller *pi)
 {
@@ -82,7 +93,7 @@ static void dma_pi_read(struct pi_controller *pi)
          i -= 0x400;
          length = (i + length) > 0x100 ? (0x100 - i) : length;
          rom_address = (pi->regs[PI_CART_ADDR_REG] - 0x05000400) & 0x3fffff;
-         rom = pi->dd->sec_buf;
+         rom = pi->dd->ds_buf;
       }
       else
       {
@@ -245,14 +256,14 @@ static void dma_pi_write(struct pi_controller *pi)
             i -= 0x400;
             length = (i + length) > 0x100 ? (0x100 - i) : length;
             rom_address = (pi->regs[PI_CART_ADDR_REG] - 0x05000400) & 0x3fffff;
-            rom = pi->dd->sec_buf;
+            rom = pi->dd->ds_buf;
          }
          else if (pi->regs[PI_CART_ADDR_REG] == 0x05000000)
          {
             /* C2 BUFFER */
             rom_address = (pi->regs[PI_CART_ADDR_REG] - 0x05000000) & 0x3fffff;
             length      = (i + length) > 0x400 ? (0x400 - i) : length;
-            rom         = pi->dd->c2_buf;
+            rom         = pi->dd->c2s_buf;
          }
          else
          {
@@ -492,12 +503,12 @@ int write_pi_regs(void* opaque, uint32_t address,
       {
          if (value == 0x05000000)
          {
-            pi->dd->regs[ASIC_CMD_STATUS] &= ~0x1C000000;
+            pi->dd->regs[DD_ASIC_CMD_STATUS] &= ~0x1C000000;
             dd_pi_test();
          }
          else if (value == 0x05000400)
          {
-            pi->dd->regs[ASIC_CMD_STATUS] &= ~0x4C000000;
+            pi->dd->regs[DD_ASIC_CMD_STATUS] &= ~0x4C000000;
             dd_pi_test();
          }
          break;

@@ -178,6 +178,7 @@ SOURCES_C += \
 	$(CORE_DIR)/src/device/dd/dd_controller.c \
 	$(CORE_DIR)/src/device/dd/dd_rom.c \
 	$(CORE_DIR)/src/device/dd/dd_disk.c \
+	$(CORE_DIR)/src/device/dd/disk.c \
 	$(CORE_DIR)/src/device/rcp/ri/ri_controller.c \
 	$(CORE_DIR)/src/device/rdram/rdram.c \
 	$(CORE_DIR)/src/device/rdram/rdram_detection_hack.c \

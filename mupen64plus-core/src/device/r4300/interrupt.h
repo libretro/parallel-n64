@@ -62,4 +62,13 @@ void load_eventqueue_infos(char *buf);
  * within this core's event-type space. */
 #define RSP_DMA_EVT 0x1000
 
+/* region 13: 64DD ASIC interrupt events (mupen64plus-next's DD controller).
+ * next uses 0x1000/0x2000/0x4000, but 0x1000 collides with RSP_DMA_EVT here,
+ * so these are shifted up; the numeric values only need to be unique within
+ * this core's event-type space. The dd_controller shim maps next's names to
+ * these. */
+#define DD_MC_INT   0x2000
+#define DD_BM_INT   0x4000
+#define DD_DV_INT   0x8000
+
 #endif /* M64P_R4300_INTERUPT_H */

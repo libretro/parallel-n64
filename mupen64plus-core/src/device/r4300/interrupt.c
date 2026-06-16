@@ -610,6 +610,22 @@ void gen_interrupt(void)
 #endif
          break;
 
+      /* region 13: 64DD ASIC events. The handlers (from the next-derived DD
+       * controller) drive the mecha/buffer-manager/drive state machines and
+       * raise the DD interrupt (IP3) themselves; we just dequeue the event. */
+      case DD_MC_INT:
+         remove_interrupt_event();
+         dd_mecha_int_handler(&g_dev.dd);
+         break;
+      case DD_BM_INT:
+         remove_interrupt_event();
+         dd_bm_int_handler(&g_dev.dd);
+         break;
+      case DD_DV_INT:
+         remove_interrupt_event();
+         dd_dv_int_handler(&g_dev.dd);
+         break;
+
       default:
          DebugMessage(M64MSG_ERROR, "Unknown interrupt queue event type %.8X.", q.first->data.type);
          remove_interrupt_event();
