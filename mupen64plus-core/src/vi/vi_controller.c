@@ -135,6 +135,30 @@ int read_vi_regs(void* opaque, uint32_t address, uint32_t *word)
 }
 
 /* Writes a word to the VI MMIO register space. */
+/* Arm the VI interrupt event when (and only when) the game has configured a valid
+ * VI_V_INTR compare line within the field (V_INTR < V_SYNC) and no VI event is already
+ * queued. Mirrors mupen64plus-next's set_vi_vertical_interrupt. This is what defers the
+ * first VI until the game sets up the VI -- avoiding the spurious early boot VIs that the
+ * old unconditional power-on arm produced. */
+static void set_vi_vertical_interrupt(struct vi_controller* vi)
+{
+   if (get_event(VI_INT) == NULL
+       && (vi->regs[VI_V_INTR_REG] < vi->regs[VI_V_SYNC_REG]))
+   {
+      unsigned int cps;
+      cp0_update_count();
+      if (vi->regs[VI_V_SYNC_REG] == 0)
+         vi->delay = 500000;
+      else
+      {
+         cps = (vi->clock / vi->expected_refresh_rate) / (vi->regs[VI_V_SYNC_REG] + 1);
+         vi->delay = (vi->regs[VI_V_SYNC_REG] + 1) * cps;
+      }
+      vi->next_vi = r4300_cp0_regs()[CP0_COUNT_REG] + vi->delay;
+      add_interrupt_event_count(VI_INT, vi->next_vi);
+   }
+}
+
 int write_vi_regs(void* opaque, uint32_t address,
       uint32_t word, uint32_t mask)
 {
@@ -161,6 +185,16 @@ int write_vi_regs(void* opaque, uint32_t address,
 
        case VI_CURRENT_REG:
           clear_rcp_interrupt(vi->r4300, MI_INTR_VI);
+          return 0;
+
+       case VI_V_SYNC_REG:
+          vi->regs[VI_V_SYNC_REG] = MASKED_WRITE(&vi->regs[VI_V_SYNC_REG], word, mask);
+          set_vi_vertical_interrupt(vi);
+          return 0;
+
+       case VI_V_INTR_REG:
+          vi->regs[VI_V_INTR_REG] = MASKED_WRITE(&vi->regs[VI_V_INTR_REG], word, mask);
+          set_vi_vertical_interrupt(vi);
           return 0;
     }
 

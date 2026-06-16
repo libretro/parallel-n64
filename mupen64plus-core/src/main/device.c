@@ -107,8 +107,11 @@ void poweron_device(struct device* dev)
     poweron_dd(&dev->dd);
     poweron_memory();
 
-    /* XXX: somewhat cheating to put it here but not really other option.
-     * Proper fix would probably trigerring the first vi
-     * when VI_CONTROL_REG[1:0] is set to non zero value */
-    add_interrupt_event_count(VI_INT, dev->vi.next_vi);
+    /* Defer the first VI interrupt until the game configures the VI (V_SYNC != 0),
+     * matching mupen64plus-next. Arming it unconditionally at power-on (at next_vi
+     * = 5000) fired spurious early VI interrupts before the game had set up the VI,
+     * skewing boot timing by ~15 frames vs hardware/next. The VI is armed instead
+     * from write_vi_regs (set_vi_vertical_interrupt) once V_SYNC/V_INTR are set. */
+    if (dev->vi.regs[VI_V_SYNC_REG] != 0)
+        add_interrupt_event_count(VI_INT, dev->vi.next_vi);
 }
