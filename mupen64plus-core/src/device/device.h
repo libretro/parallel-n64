@@ -33,6 +33,7 @@
 #include "rcp/rdp/rdp_core.h"
 #include "rcp/ri/ri_controller.h"
 #include "rcp/rsp/rsp_core.h"
+#include "pif/pif.h"
 #include "rcp/si/si_controller.h"
 #include "rcp/vi/vi_controller.h"
 
@@ -49,6 +50,7 @@ struct device
     struct ai_controller ai;
     struct pi_controller pi;
     struct ri_controller ri;
+    struct pif pif;
     struct si_controller si;
     struct vi_controller vi;
     struct dd_controller dd;

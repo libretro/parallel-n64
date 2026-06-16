@@ -35,7 +35,7 @@
  */
 void force_detected_rdram_size_hack(void)
 {
-    uint32_t address = (g_dev.si.pif.cic.version != CIC_X105)
+    uint32_t address = (g_dev.pif.cic.version != CIC_X105)
         ? 0x318
         : 0x3f0;
 

@@ -31,6 +31,7 @@
 #endif
 
 struct r4300_core;
+struct pif;
 struct mi_controller;
 struct ri_controller;
 
@@ -50,9 +51,9 @@ struct si_controller
 {
     uint32_t regs[SI_REGS_COUNT];
 
-    struct pif pif;
 
     struct mi_controller* mi;
+    struct pif* pif;
     struct ri_controller *ri;
 };
 

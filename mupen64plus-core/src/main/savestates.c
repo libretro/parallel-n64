@@ -232,7 +232,7 @@ int savestates_load_m64p(const unsigned char *data, size_t size)
 
    COPYARRAY(g_dev.ri.rdram.dram, curr, uint32_t, RDRAM_MAX_SIZE/4);
    COPYARRAY(g_dev.sp.mem, curr, uint32_t, SP_MEM_SIZE/4);
-   COPYARRAY(g_dev.si.pif.ram, curr, uint8_t, PIF_RAM_SIZE);
+   COPYARRAY(g_dev.pif.ram, curr, uint8_t, PIF_RAM_SIZE);
 
    /* extra rsp handshake state (since 1.2) - companion to the
     * parallel-rsp accuracy backport; upstream mupen64plus-core#1153
@@ -314,7 +314,7 @@ int savestates_load_m64p(const unsigned char *data, size_t size)
       struct tm timestamp;
       COPYARRAY( ((void*)&timestamp), curr, int, 9 );
       to_little_endian_buffer( (int*)&timestamp, 4, 9 );
-      af_rtc_set_time( &g_dev.si.pif.af_rtc, &timestamp );
+      af_rtc_set_time( &g_dev.pif.af_rtc, &timestamp );
    }
 
    /* Transfer Pak / GB cart volatile state (since 1.3); see the matching
@@ -324,7 +324,7 @@ int savestates_load_m64p(const unsigned char *data, size_t size)
    if (version >= 0x00010003) {
       for (i = 0; i < GAME_CONTROLLERS_COUNT; ++i)
       {
-         struct transferpak* tpk = &g_dev.si.pif.controllers[i].transferpak;
+         struct transferpak* tpk = &g_dev.pif.controllers[i].transferpak;
          struct gb_cart* gb = &tpk->gb_cart;
          struct mbc3_rtc* rtc = &gb->rtc;
          int j;
@@ -548,7 +548,7 @@ int savestates_save_m64p(unsigned char *data, size_t size)
 
    PUTARRAY(g_dev.ri.rdram.dram, curr, uint32_t, RDRAM_MAX_SIZE/4);
    PUTARRAY(g_dev.sp.mem, curr, uint32_t, SP_MEM_SIZE/4);
-   PUTARRAY(g_dev.si.pif.ram, curr, uint8_t, PIF_RAM_SIZE);
+   PUTARRAY(g_dev.pif.ram, curr, uint8_t, PIF_RAM_SIZE);
 
    /* extra rsp handshake state (since 1.2) - see savestates_load_m64p */
    PUTDATA(curr, uint32_t, g_dev.sp.rsp_task_locked);
@@ -617,7 +617,7 @@ int savestates_save_m64p(unsigned char *data, size_t size)
       curr += sizeof(queue) - queuelength;
    }
 
-   const struct tm *timestamp = af_rtc_get_time( &g_dev.si.pif.af_rtc );
+   const struct tm *timestamp = af_rtc_get_time( &g_dev.pif.af_rtc );
    PUTARRAY( timestamp, curr, int, 9 );
    to_little_endian_buffer( (curr - 36), 4, 9 );
 
@@ -633,7 +633,7 @@ int savestates_save_m64p(unsigned char *data, size_t size)
     * so the layout stays trivially seekable across versions. */
    for (i = 0; i < GAME_CONTROLLERS_COUNT; ++i)
    {
-      struct transferpak* tpk = &g_dev.si.pif.controllers[i].transferpak;
+      struct transferpak* tpk = &g_dev.pif.controllers[i].transferpak;
       struct gb_cart* gb = &tpk->gb_cart;
       struct mbc3_rtc* rtc = &gb->rtc;
       int j;

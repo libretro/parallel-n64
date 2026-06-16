@@ -70,7 +70,7 @@ static void si_flush_pending_dma(struct si_controller* si)
     * SI register write that kicked the new DMA, not inside the interrupt
     * event loop. */
    remove_event(SI_INT);
-   si->pif.ram[0x3f] = 0x0;
+   si->pif->ram[0x3f] = 0x0;
    si->regs[SI_STATUS_REG] &= ~SI_STATUS_DMA_BUSY;
    si->regs[SI_STATUS_REG] |= SI_STATUS_INTERRUPT;
    signal_rcp_interrupt(si->mi, MI_INTR_SI);
@@ -93,7 +93,7 @@ static void dma_si_write(struct si_controller* si)
    {
       const uint32_t dram_i = (si->regs[SI_DRAM_ADDR_REG] & UINT32_C(0xFFFFFFFC))+i;
       const uint32_t value = rdram_safe_read_word(si->ri->rdram.dram, dram_i);
-      *((uint32_t*)(&si->pif.ram[i])) = sl(value);
+      *((uint32_t*)(&si->pif->ram[i])) = sl(value);
    }
 
    update_pif_write(si);
@@ -129,7 +129,7 @@ static void dma_si_read(struct si_controller* si)
    for (i = 0; i < PIF_RAM_SIZE; i += 4)
    {
       const uint32_t dram_i = (si->regs[SI_DRAM_ADDR_REG] & UINT32_C(0xFFFFFFFC))+i;
-      const uint32_t value = *(uint32_t*)(&si->pif.ram[i]);
+      const uint32_t value = *(uint32_t*)(&si->pif->ram[i]);
       rdram_safe_write_word(si->ri->rdram.dram, dram_i, sl(value));
    }
    cp0_update_count();
@@ -161,7 +161,7 @@ void init_si(struct si_controller* si,
    si->mi = mi;
    si->ri    = ri;
 
-   init_pif(&si->pif,
+   init_pif(si->pif,
          eeprom_user_data, eeprom_save, eeprom_data, eeprom_size, eeprom_id,
          af_rtc_user_data, af_rtc_get_time, ipl3 
          );
@@ -171,7 +171,7 @@ void poweron_si(struct si_controller* si)
 {
     memset(si->regs, 0, SI_REGS_COUNT*sizeof(uint32_t));
 
-    poweron_pif(&si->pif);
+    poweron_pif(si->pif);
 }
 
 
@@ -229,7 +229,7 @@ void si_end_of_dma_event(struct si_controller* si)
     * controller data is filled by update_pif_read() in dma_si_read()
     * BEFORE this event fires anyway, so this poll never freshened the
     * read it preceded -- it was both wrong and useless. */
-   si->pif.ram[0x3f] = 0x0;
+   si->pif->ram[0x3f] = 0x0;
 
    /* trigger SI interrupt */
    si->regs[SI_STATUS_REG] &= ~SI_STATUS_DMA_BUSY;

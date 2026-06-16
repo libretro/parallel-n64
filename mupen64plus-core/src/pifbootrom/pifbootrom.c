@@ -111,7 +111,7 @@ void pifbootrom_hle_execute(struct device *dev)
     mupencorereg[19] = rom_type;     /* s3 */
     mupencorereg[20] = tv_type;      /* s4 */
     mupencorereg[21] = reset_type;   /* s5 */
-    mupencorereg[22] = dev->si.pif.cic.seed;/* s6 */
+    mupencorereg[22] = dev->pif.cic.seed;/* s6 */
     mupencorereg[23] = s7;           /* s7 */
 
     /* required by CIC x105 */

@@ -120,7 +120,7 @@ int read_pif_ram(void* opaque, uint32_t address, uint32_t* value)
       return -1;
    }
 
-   memcpy(value, si->pif.ram + addr, sizeof(*value));
+   memcpy(value, si->pif->ram + addr, sizeof(*value));
    *value = sl(*value);
    return 0;
 }
@@ -136,13 +136,13 @@ int write_pif_ram(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
       return -1;
    }
 
-   si->pif.ram[addr] = MASKED_WRITE((uint32_t*)(&si->pif.ram[addr]), sl(value), sl(mask));
+   si->pif->ram[addr] = MASKED_WRITE((uint32_t*)(&si->pif->ram[addr]), sl(value), sl(mask));
 
    if ((addr == 0x3c) && (mask & 0xff))
    {
-      if (si->pif.ram[0x3f] == 0x08)
+      if (si->pif->ram[0x3f] == 0x08)
       {
-         si->pif.ram[0x3f] = 0;
+         si->pif->ram[0x3f] = 0;
          cp0_update_count();
          add_interrupt_event(SI_INT, /*0x100*/0x900);
       }
@@ -157,7 +157,7 @@ int write_pif_ram(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
 void update_pif_write(struct si_controller *si)
 {
    int i=0, channel=0;
-   struct pif* pif = &si->pif;
+   struct pif* pif = si->pif;
 
    pif->cic_challenge = 0;
 
@@ -246,7 +246,7 @@ void update_pif_write(struct si_controller *si)
 
 void update_pif_read(struct si_controller *si)
 {
-   struct pif* pif = &si->pif;
+   struct pif* pif = si->pif;
 
    int i=0, channel=0;
 

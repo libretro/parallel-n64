@@ -80,6 +80,7 @@ void init_device(
          sram_user_data, sram_save, sram_data,
          &dev->dd, &dev->mi, &dev->ri, &dev->dp);
    init_ri(&dev->ri, dram, dram_size);
+   dev->si.pif = &dev->pif;
    init_si(&dev->si,
          eeprom_user_data,
          eeprom_save,
