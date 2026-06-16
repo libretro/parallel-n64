@@ -1823,6 +1823,8 @@ void update_variables(bool startup)
             p1_pak = PLUGIN_RAW;
          else if (!strcmp(pk1var.value, "memory"))
             p1_pak = PLUGIN_MEMPAK;
+         else if (!strcmp(pk1var.value, "biosensor"))
+            p1_pak = PLUGIN_BIOPAK;
 
          /* If controller struct is not initialised yet, set pad_pak_types instead
           * which will be looked at when initialising the controllers. */
@@ -1843,6 +1845,8 @@ void update_variables(bool startup)
             p2_pak = PLUGIN_RAW;
          else if (!strcmp(pk2var.value, "memory"))
             p2_pak = PLUGIN_MEMPAK;
+         else if (!strcmp(pk2var.value, "biosensor"))
+            p2_pak = PLUGIN_BIOPAK;
 
          if (controller[1].control)
             controller[1].control->Plugin = p2_pak;
@@ -1861,6 +1865,8 @@ void update_variables(bool startup)
             p3_pak = PLUGIN_RAW;
          else if (!strcmp(pk3var.value, "memory"))
             p3_pak = PLUGIN_MEMPAK;
+         else if (!strcmp(pk3var.value, "biosensor"))
+            p3_pak = PLUGIN_BIOPAK;
 
          if (controller[2].control)
             controller[2].control->Plugin = p3_pak;
@@ -1879,6 +1885,8 @@ void update_variables(bool startup)
             p4_pak = PLUGIN_RAW;
          else if (!strcmp(pk4var.value, "memory"))
             p4_pak = PLUGIN_MEMPAK;
+         else if (!strcmp(pk4var.value, "biosensor"))
+            p4_pak = PLUGIN_BIOPAK;
 
          if (controller[3].control)
             controller[3].control->Plugin = p4_pak;

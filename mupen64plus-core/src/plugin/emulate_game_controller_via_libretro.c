@@ -1150,6 +1150,8 @@ EXPORT void CALL inputInitiateControllers(CONTROL_INFO ControlInfo)
           controller[i].control->Plugin = PLUGIN_MEMPAK;
        else if (pad_pak_types[i] == PLUGIN_RAW)
           controller[i].control->Plugin = PLUGIN_RAW;
+       else if (pad_pak_types[i] == PLUGIN_BIOPAK)
+          controller[i].control->Plugin = PLUGIN_BIOPAK;
        else
           controller[i].control->Plugin = PLUGIN_NONE;
     }
@@ -1204,6 +1206,7 @@ int egcvip_is_connected(void* opaque, enum pak_type* pak)
     case PLUGIN_MEMPAK: *pak = PAK_MEM; break;
     case PLUGIN_RUMBLE_PAK: *pak = PAK_RUMBLE; break;
     case PLUGIN_TRANSFER_PAK: *pak = PAK_TRANSFER; break;
+    case PLUGIN_BIOPAK: *pak = PAK_BIO; break;
 
     case PLUGIN_RAW:
         /* historically PLUGIN_RAW has been mostly (exclusively ?) used for rumble,

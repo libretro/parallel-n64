@@ -36,6 +36,7 @@ extern "C" {
 #define PLUGIN_RUMBLE_PAK           3 /* not implemented for non raw data */
 #define PLUGIN_TRANSFER_PAK         4 /* not implemented for non raw data */
 #define PLUGIN_RAW                  5 /* the controller plugin is passed in raw data */
+#define PLUGIN_BIOPAK               6 /* N64 Bio Sensor (Tetris 64); parallel-n64 extension */
 
 /***** Structures *****/
 typedef struct {
