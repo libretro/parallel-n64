@@ -172,9 +172,13 @@ static int read_gb_cart_mbc3(struct gb_cart* gb_cart, uint16_t address, uint8_t*
       case (0xa000 >> 13):
          if (gb_cart->has_rtc && (gb_cart->ram_bank >= 0x08 && gb_cart->ram_bank <= 0x0c))
          {
-            /* XXX: implement RTC read */
-            DebugMessage(M64MSG_WARNING, "RTC read not implemented !");
-            memset(data, 0, 0x20);
+            /* RTC register select via ram_bank 0x08..0x0c -> reg 0..4.
+             * The selected register is mirrored across the whole transfer
+             * block, matching MBC3 behaviour where any access in the
+             * 0xa000-0xbfff window returns the currently selected register. */
+            uint8_t reg = read_mbc3_rtc_regs(&gb_cart->rtc,
+                                             gb_cart->ram_bank - 0x08);
+            memset(data, reg, 0x20);
          }
          else if (gb_cart->ram != NULL)
          {
@@ -236,15 +240,16 @@ static int write_gb_cart_mbc3(struct gb_cart* gb_cart, uint16_t address, const u
          break;
 
       case (0x6000 >> 13):
-         /* XXX: implement timer update */
-         DebugMessage(M64MSG_WARNING, "Timer update not implemented !");
+         /* RTC latch clock data: 0x00 then 0x01 latches current time */
+         if (gb_cart->has_rtc)
+            latch_mbc3_rtc_regs(&gb_cart->rtc, data[0]);
          break;
 
       case (0xa000 >> 13):
          if (gb_cart->has_rtc && (gb_cart->ram_bank >= 0x8 && gb_cart->ram_bank <= 0xc))
          {
-            /* XXX: implement RTC write */
-            DebugMessage(M64MSG_WARNING, "RTC write not implemented !");
+            write_mbc3_rtc_regs(&gb_cart->rtc,
+                                gb_cart->ram_bank - 0x08, data[0]);
          }
          else if (gb_cart->ram != NULL)
          {
@@ -615,6 +620,8 @@ int init_gb_cart(struct gb_cart* gb_cart, uint8_t *rom, size_t rom_size)
    gb_cart->rom_bank = 1;
    gb_cart->ram_bank = 0;
    gb_cart->has_rtc = (type->extra_devices & GED_RTC) ? 1 : 0;
+   if (gb_cart->has_rtc)
+      poweron_mbc3_rtc(&gb_cart->rtc);
    gb_cart->read_gb_cart = type->read_gb_cart;
    gb_cart->write_gb_cart = type->write_gb_cart;
    return 0;
