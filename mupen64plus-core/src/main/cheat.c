@@ -22,11 +22,11 @@
 
 // gameshark and xploder64 reference: http://doc.kodewerx.net/hacking_n64.html 
 
-#include "api/m64p_types.h"
-#include "api/callbacks.h"
-#include "api/config.h"
+#include "../api/m64p_types.h"
+#include "../api/callbacks.h"
+#include "../api/core_config.h"
 
-#include "memory/memory.h"
+#include "../device/memory/memory.h"
 #include "cheat.h"
 #include "main.h"
 #include "device.h"

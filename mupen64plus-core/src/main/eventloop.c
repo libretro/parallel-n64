@@ -26,11 +26,11 @@
 #include "main.h"
 #include "eventloop.h"
 #include "util.h"
-#include "api/callbacks.h"
-#include "api/config.h"
-#include "api/m64p_config.h"
-#include "plugin/plugin.h"
-#include "r4300/reset.h"
+#include "../api/callbacks.h"
+#include "../api/core_config.h"
+#include "../api/m64p_config.h"
+#include "../plugin/core_plugin.h"
+#include "../device/r4300/reset.h"
 
 /* version number for CoreEvents config section */
 #define CONFIG_PARAM_VERSION 1.00

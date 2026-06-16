@@ -21,15 +21,15 @@
 
 #include "device.h"
 
-#include "ai/ai_controller.h"
-#include "memory/memory.h"
-#include "pi/pi_controller.h"
-#include "r4300/r4300_core.h"
-#include "rdp/rdp_core.h"
-#include "ri/ri_controller.h"
-#include "rsp/rsp_core.h"
-#include "si/si_controller.h"
-#include "vi/vi_controller.h"
+#include "../device/rcp/ai/ai_controller.h"
+#include "../device/memory/memory.h"
+#include "../device/rcp/pi/pi_controller.h"
+#include "../device/r4300/r4300_core.h"
+#include "../device/rcp/rdp/rdp_core.h"
+#include "../device/rcp/ri/ri_controller.h"
+#include "../device/rcp/rsp/rsp_core.h"
+#include "../device/rcp/si/si_controller.h"
+#include "../device/rcp/vi/vi_controller.h"
 
 
 void init_device(

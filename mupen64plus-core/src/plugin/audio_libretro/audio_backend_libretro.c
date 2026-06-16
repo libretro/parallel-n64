@@ -51,15 +51,15 @@
  *   between AI DMA completion scheduling and VI vertical-interrupt
  *   scheduling. 2048 stereo frames * 4 bytes = 8 KB total. */
 
-#include "api/m64p_types.h"
+#include "../../api/m64p_types.h"
 #include <libretro.h>
-#include "ai/ai_controller.h"
-#include "main/main.h"
-#include "main/device.h"
-#include "main/rom.h"
-#include "plugin/plugin.h"
-#include "ri/ri_controller.h"
-#include "vi/vi_controller.h"
+#include "../../device/rcp/ai/ai_controller.h"
+#include "../../main/main.h"
+#include "../../main/device.h"
+#include "../../main/rom.h"
+#include "../core_plugin.h"
+#include "../../device/rcp/ri/ri_controller.h"
+#include "../../device/rcp/vi/vi_controller.h"
 
 #include <stdint.h>
 #include <stddef.h>

@@ -34,18 +34,18 @@
 #include "m64p_config.h"
 #include "m64p_frontend.h"
 #include "audio_backend.h"
-#include "config.h"
+#include "core_config.h"
 #include "vidext.h"
 #include "../main/cheat.h"
 
-#include "main/main.h"
-#include "main/device.h"
-#include "main/rom.h"
-#include "main/version.h"
-#include "main/util.h"
-#include "dd/dd_rom.h"
-#include "dd/dd_disk.h"
-#include "plugin/plugin.h"
+#include "../main/main.h"
+#include "../main/device.h"
+#include "../main/rom.h"
+#include "../main/version.h"
+#include "../main/util.h"
+#include "../device/dd/dd_rom.h"
+#include "../device/dd/dd_disk.h"
+#include "../plugin/core_plugin.h"
 
 /* some local state variables */
 static int l_CoreInit   = 0;

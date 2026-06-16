@@ -28,19 +28,19 @@
 #include <boolean.h>
 
 #define M64P_CORE_PROTOTYPES 1
-#include "api/m64p_types.h"
-#include "api/callbacks.h"
-#include "api/config.h"
-#include "api/m64p_config.h"
+#include "../api/m64p_types.h"
+#include "../api/callbacks.h"
+#include "../api/core_config.h"
+#include "../api/m64p_config.h"
 
 #include "rom.h"
 #include "main.h"
 #include "util.h"
 
-#include "memory/memory.h"
-#include "osal/preproc.h"
+#include "../device/memory/memory.h"
+#include "../osal/preproc.h"
 
-#include "../r4300/r4300.h"
+#include "../device/r4300/r4300.h"
 
 #define DEFAULT 16
 

@@ -32,10 +32,10 @@
 #define M64P_CORE_PROTOTYPES 1
 #include "m64p_types.h"
 #include "m64p_config.h"
-#include "config.h"
+#include "core_config.h"
 #include "callbacks.h"
 
-#include "main/util.h"
+#include "../main/util.h"
 
 /* Cxd4 RSP */
 #include "../../../mupen64plus-rsp-cxd4/config.h"

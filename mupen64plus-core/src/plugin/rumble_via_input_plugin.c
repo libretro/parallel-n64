@@ -20,9 +20,9 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "rumble_via_input_plugin.h"
-#include "plugin.h"
+#include "core_plugin.h"
 
-#include "si/rumblepak.h"
+#include "../device/controllers/rumblepak.h"
 
 #include <string.h>
 

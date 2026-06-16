@@ -23,8 +23,8 @@
 #ifndef __MAIN_H__
 #define __MAIN_H__
 
-#include "api/m64p_types.h"
-#include "osal/preproc.h"
+#include "../api/m64p_types.h"
+#include "../osal/preproc.h"
 
 #include <stdint.h>
 

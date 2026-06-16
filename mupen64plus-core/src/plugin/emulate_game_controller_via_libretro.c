@@ -20,12 +20,12 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "emulate_game_controller_via_input_plugin.h"
-#include "plugin.h"
+#include "core_plugin.h"
 
-#include "api/m64p_plugin.h"
+#include "../api/m64p_plugin.h"
 #include <libretro.h>
-#include "si/game_controller.h"
-#include "si/pif.h"
+#include "../device/controllers/game_controller.h"
+#include "../device/pif/pif.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -37,7 +37,7 @@
 #endif
 
 /* snprintf not available in MSVC 2010 and earlier */
-#include "api/msvc_compat.h"
+#include "../api/msvc_compat.h"
 
 extern retro_environment_t environ_cb;
 extern retro_input_state_t input_cb;

@@ -23,7 +23,7 @@
 #ifndef __ROM_H__
 #define __ROM_H__
 
-#include "api/m64p_types.h"
+#include "../api/m64p_types.h"
 
 /* ROM Loading and Saving functions */
 

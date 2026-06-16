@@ -24,25 +24,25 @@
 #include <stdlib.h>
 #include <stdint.h>
 
-#include "plugin.h"
+#include "core_plugin.h"
 
-#include "r4300/r4300_core.h"
-#include "../rdp/rdp_core.h"
-#include "../rsp/rsp_core.h"
+#include "../device/r4300/r4300_core.h"
+#include "../device/rcp/rdp/rdp_core.h"
+#include "../device/rcp/rsp/rsp_core.h"
 
-#include "../vi/vi_controller.h"
+#include "../device/rcp/vi/vi_controller.h"
 
-#include "api/callbacks.h"
-#include "api/m64p_common.h"
-#include "api/m64p_plugin.h"
-#include "api/m64p_types.h"
+#include "../api/callbacks.h"
+#include "../api/m64p_common.h"
+#include "../api/m64p_plugin.h"
+#include "../api/m64p_types.h"
 
-#include "main/main.h"
-#include "main/device.h"
-#include "main/rom.h"
-#include "dd/dd_rom.h"
-#include "main/version.h"
-#include "memory/memory.h"
+#include "../main/main.h"
+#include "../main/device.h"
+#include "../main/rom.h"
+#include "../device/dd/dd_rom.h"
+#include "../main/version.h"
+#include "../device/memory/memory.h"
 
 static unsigned int dummy;
 

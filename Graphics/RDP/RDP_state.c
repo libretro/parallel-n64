@@ -4,7 +4,7 @@
 #include "../RSP/RSP_state.h"
 
 #include "../GBI.h"
-#include "../plugin/plugin.h"
+#include "plugin/core_plugin.h"
 
 RDPInfo		      __RDP;
 struct gdp_global g_gdp;

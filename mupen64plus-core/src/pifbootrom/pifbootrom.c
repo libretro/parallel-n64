@@ -24,18 +24,18 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "api/m64p_types.h"
-#include "main/device.h"
-#include "ai/ai_controller.h"
-#include "pi/pi_controller.h"
-#include "r4300/cp0_private.h"
-#include "r4300/mi_controller.h"
-#include "r4300/r4300.h"
-#include "r4300/r4300_core.h"
-#include "rsp/rsp_core.h"
-#include "si/si_controller.h"
-#include "vi/vi_controller.h"
-#include "main/rom.h"
+#include "../api/m64p_types.h"
+#include "../main/device.h"
+#include "../device/rcp/ai/ai_controller.h"
+#include "../device/rcp/pi/pi_controller.h"
+#include "../device/r4300/cp0_private.h"
+#include "../device/rcp/mi/mi_controller.h"
+#include "../device/r4300/r4300.h"
+#include "../device/r4300/r4300_core.h"
+#include "../device/rcp/rsp/rsp_core.h"
+#include "../device/rcp/si/si_controller.h"
+#include "../device/rcp/vi/vi_controller.h"
+#include "../main/rom.h"
 
 static unsigned int get_tv_type(void)
 {

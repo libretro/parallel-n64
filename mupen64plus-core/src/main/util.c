@@ -37,7 +37,7 @@
 
 #include "rom.h"
 #include "util.h"
-#include "osal/preproc.h"
+#include "../osal/preproc.h"
 
 /**********************
    Byte swap utilities

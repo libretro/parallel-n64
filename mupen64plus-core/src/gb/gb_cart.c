@@ -25,9 +25,9 @@
 
 #include "gb_cart.h"
 
-#include "api/m64p_types.h"
-#include "api/callbacks.h"
-#include "main/util.h"
+#include "../api/m64p_types.h"
+#include "../api/callbacks.h"
+#include "../main/util.h"
 
 static int read_gb_cart_normal(struct gb_cart* gb_cart, uint16_t address, uint8_t* data)
 {
