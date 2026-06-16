@@ -42,7 +42,6 @@
 
 #include "../pi/summercart.h"
 
-#include "../ext/libpl.h"
 
 
 #include <stddef.h>
@@ -1032,37 +1031,6 @@ static void write_ddipl(void)
 }
 
 
-static void read_lplb(void) {
-    readb(read_libpl, NULL, mupencoreaddress, rdword);
-}
-
-static void read_lplh(void) {
-    readh(read_libpl, NULL, mupencoreaddress, rdword);
-}
-
-static void read_lpl(void) {
-    readw(read_libpl, NULL, mupencoreaddress, rdword);
-}
-
-static void read_lpld(void) {
-    readd(read_libpl, NULL, mupencoreaddress, rdword);
-}
-
-static void write_lplb(void) {
-    writeb(write_libpl, NULL, mupencoreaddress, cpu_byte);
-}
-
-static void write_lplh(void) {
-    writeh(write_libpl, NULL, mupencoreaddress, cpu_hword);
-}
-
-static void write_lpl(void) {
-    writew(write_libpl, NULL, mupencoreaddress, cpu_word);
-}
-
-static void write_lpld(void) {
-    writed(write_libpl, NULL, mupencoreaddress, cpu_dword);
-}
 
 static void read_screg(void)
 {
@@ -1305,8 +1273,6 @@ void poweron_memory(void)
    }
    
    
-   /* libpl extensions */
-   map_region(0xbffb, M64P_MEM_NOTHING, RW(lpl));
 
    /* map SummerCart64 */
    map_region(0x9fff, M64P_MEM_NOTHING, RW(screg));

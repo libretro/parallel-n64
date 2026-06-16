@@ -27,7 +27,6 @@
 #include "api/config.h"
 
 #include "memory/memory.h"
-#include "ext/libpl.h"
 #include "cheat.h"
 #include "main.h"
 #include "device.h"
@@ -217,7 +216,6 @@ void cheat_apply_cheats(int entry)
    }
 #endif
 
-    g_frameCheatStatus &= ~LPL_USED_CHEATS;
     if (list_empty(&active_cheats))
         return;
 
@@ -225,7 +223,6 @@ void cheat_apply_cheats(int entry)
     {
         if (cheat->enabled)
         {
-            libpl_set_cheats_used();
             cheat->was_enabled = 1;
             switch(entry)
             {

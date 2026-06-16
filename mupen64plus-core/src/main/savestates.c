@@ -55,7 +55,6 @@
 #include "../si/transferpak.h"
 #include "../gb/gb_cart.h"
 #include "../gb/mbc3_rtc.h"
-#include "../ext/libpl.h"
 #include "osal/preproc.h"
 
 extern uint32_t RollbackRtcOnLoadState;
@@ -366,8 +365,6 @@ int savestates_load_m64p(const unsigned char *data, size_t size)
       }
    }
 
-   libpl_change_savestate_token();
-   g_cheatStatus |= LPL_USED_SAVESTATES;
 
    /* deliver callback to indicate 
     * completion of state loading operation */
