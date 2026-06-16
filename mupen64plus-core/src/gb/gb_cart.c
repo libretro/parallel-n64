@@ -420,6 +420,11 @@ static int write_gb_cart_mmm01(struct gb_cart* gb_cart, uint16_t address, const 
 
 static int read_gb_cart_pocket_cam(struct gb_cart* gb_cart, uint16_t address, uint8_t* data)
 {
+   /* The GB Camera (M64282FP sensor) has no host capture backend in this
+    * tree, so there is no image to return. Fill the transfer block with a
+    * defined blank (white) value instead of leaving the caller's buffer
+    * uninitialised, which previously leaked stack garbage to the guest. */
+   memset(data, 0xff, 0x20);
    return 0;
 }
 
