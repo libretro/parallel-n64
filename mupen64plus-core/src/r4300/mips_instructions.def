@@ -1824,125 +1824,39 @@ DECLARE_INSTRUCTION(DSUBU)
    ADD_TO_PC(1);
 }
 
-DECLARE_INSTRUCTION(TEQ)
-{
-   if (rrs == rrt)
-   {
-     DebugMessage(M64MSG_ERROR, "trap exception in TEQ");
-     mupencorestop=1;
-   }
-   ADD_TO_PC(1);
+/* MIPS conditional trap instructions. When the condition holds, a Trap
+ * exception (ExcCode = Tr) is raised through the normal exception path -- the
+ * same mechanism SYSCALL/BREAK use below. Previously these stubs merely logged
+ * and halted the core (mupencorestop=1), which killed emulation outright on any
+ * title that legitimately executes a trap (e.g. compiler-emitted overflow or
+ * bounds checks). Conditions follow the MIPS ISA: the *IU forms sign-extend the
+ * 16-bit immediate to 64 bits and THEN compare unsigned. */
+#define DECLARE_TRAP(name, cond) \
+DECLARE_INSTRUCTION(name) \
+{ \
+   if (cond) \
+   { \
+      g_cp0_regs[CP0_CAUSE_REG] = CP0_CAUSE_EXCCODE_TR; \
+      exception_general(); \
+   } \
+   else \
+   { \
+      ADD_TO_PC(1); \
+   } \
 }
 
-DECLARE_INSTRUCTION(TNE)
-{
-   if (rrs != rrt)
-   {
-     DebugMessage(M64MSG_ERROR, "trap exception in TNE");
-     mupencorestop=1;
-   }
-   ADD_TO_PC(1);
-}
-
-DECLARE_INSTRUCTION(TGE)
-{
-   if (rrs >= rrt)
-   {
-     DebugMessage(M64MSG_ERROR, "trap exception in TGE");
-     mupencorestop=1;
-   }
-   ADD_TO_PC(1);
-}
-
-DECLARE_INSTRUCTION(TGEU)
-{
-   if ((uint64_t)rrs >= (uint64_t)rrt)
-   {
-     DebugMessage(M64MSG_ERROR, "trap exception in TGEU");
-     mupencorestop=1;
-   }
-   ADD_TO_PC(1);
-}
-
-DECLARE_INSTRUCTION(TLT)
-{
-   if (rrs < rrt)
-   {
-     DebugMessage(M64MSG_ERROR, "trap exception in TLT");
-     mupencorestop=1;
-   }
-   ADD_TO_PC(1);
-}
-
-DECLARE_INSTRUCTION(TLTU)
-{
-   if ((uint64_t)rrs < (uint64_t)rrt)
-   {
-     DebugMessage(M64MSG_ERROR, "trap exception in TLTU");
-     mupencorestop=1;
-   }
-   ADD_TO_PC(1);
-}
-
-DECLARE_INSTRUCTION(TEQI)
-{
-   if (rrs == iimmediate)
-   {
-     DebugMessage(M64MSG_ERROR, "trap exception in TEQI");
-     mupencorestop=1;
-   }
-   ADD_TO_PC(1);
-}
-
-DECLARE_INSTRUCTION(TNEI)
-{
-   if (rrs != iimmediate)
-   {
-     DebugMessage(M64MSG_ERROR, "trap exception in TNEI");
-     mupencorestop=1;
-   }
-   ADD_TO_PC(1);
-}
-
-DECLARE_INSTRUCTION(TGEI)
-{
-   if (rrs >= iimmediate)
-   {
-     DebugMessage(M64MSG_ERROR, "trap exception in TGEI");
-     mupencorestop=1;
-   }
-   ADD_TO_PC(1);
-}
-
-DECLARE_INSTRUCTION(TGEIU)
-{
-   if ((uint64_t)rrs >= (uint64_t)iimmediate)
-   {
-     DebugMessage(M64MSG_ERROR, "trap exception in TGEIU");
-     mupencorestop=1;
-   }
-   ADD_TO_PC(1);
-}
-
-DECLARE_INSTRUCTION(TLTI)
-{
-   if (rrs < iimmediate)
-   {
-     DebugMessage(M64MSG_ERROR, "trap exception in TLTI");
-     mupencorestop=1;
-   }
-   ADD_TO_PC(1);
-}
-
-DECLARE_INSTRUCTION(TLTIU)
-{
-   if ((uint64_t)rrs == (uint64_t)iimmediate)
-   {
-     DebugMessage(M64MSG_ERROR, "trap exception in TLTIU");
-     mupencorestop=1;
-   }
-   ADD_TO_PC(1);
-}
+DECLARE_TRAP(TGE,   rrs >= rrt)
+DECLARE_TRAP(TGEU,  (uint64_t)rrs >= (uint64_t)rrt)
+DECLARE_TRAP(TLT,   rrs < rrt)
+DECLARE_TRAP(TLTU,  (uint64_t)rrs < (uint64_t)rrt)
+DECLARE_TRAP(TEQ,   rrs == rrt)
+DECLARE_TRAP(TNE,   rrs != rrt)
+DECLARE_TRAP(TGEI,  rrs >= iimmediate)
+DECLARE_TRAP(TGEIU, (uint64_t)rrs >= (uint64_t)(int64_t)iimmediate)
+DECLARE_TRAP(TLTI,  rrs < iimmediate)
+DECLARE_TRAP(TLTIU, (uint64_t)rrs < (uint64_t)(int64_t)iimmediate)
+DECLARE_TRAP(TEQI,  rrs == iimmediate)
+DECLARE_TRAP(TNEI,  rrs != iimmediate)
 
 DECLARE_INSTRUCTION(DSLL)
 {
