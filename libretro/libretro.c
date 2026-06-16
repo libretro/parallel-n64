@@ -2665,7 +2665,10 @@ size_t retro_get_memory_size(unsigned type)
 
 size_t retro_serialize_size (void)
 {
-    return 16788348 + 1024; /* < 16MB and some change... ouch */
+    /* < 16MB and some change... ouch.  The trailing 1024 bytes is slack
+     * beyond the actual state size; the v1.3 Transfer Pak / MBC3 RTC block
+     * (4 controllers * 50 bytes = 200 bytes) lives inside this margin. */
+    return 16788348 + 1024;
 }
 
 bool retro_serialize(void *data, size_t size)

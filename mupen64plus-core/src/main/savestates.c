@@ -50,13 +50,18 @@
 #include "../si/si_controller.h"
 #include "../vi/vi_controller.h"
 #include "../si/af_rtc.h"
+#include "../si/pif.h"
+#include "../si/game_controller.h"
+#include "../si/transferpak.h"
+#include "../gb/gb_cart.h"
+#include "../gb/mbc3_rtc.h"
 #include "../ext/libpl.h"
 #include "osal/preproc.h"
 
 extern uint32_t RollbackRtcOnLoadState;
 
 static const char* savestate_magic = "M64+SAVE";
-static const int savestate_latest_version = 0x00010002;  /* 1.2 */
+static const int savestate_latest_version = 0x00010003;  /* 1.3 */
 
 #define GETARRAY(buff, type, count) \
     (to_little_endian_buffer(buff, sizeof(type),count), \
@@ -94,7 +99,7 @@ int savestates_load_m64p(const unsigned char *data, size_t size)
    version = (version << 8) | *curr++;
    version = (version << 8) | *curr++;
 
-   if(version != 0x00010000 && version != 0x00010001 && version != 0x00010002)
+   if(version != 0x00010000 && version != 0x00010001 && version != 0x00010002 && version != 0x00010003)
       return 0;
 
    /* Identity check.  New states carry the "M64H"-prefixed header
@@ -312,7 +317,37 @@ int savestates_load_m64p(const unsigned char *data, size_t size)
       to_little_endian_buffer( (int*)&timestamp, 4, 9 );
       af_rtc_set_time( &g_dev.si.pif.af_rtc, &timestamp );
    }
-   
+
+   /* Transfer Pak / GB cart volatile state (since 1.3); see the matching
+    * block in savestates_save_m64p for the rationale and layout.  Older
+    * states simply lack this block, so the GB cart keeps the state it was
+    * initialised with at load_game time (the prior behaviour). */
+   if (version >= 0x00010003) {
+      for (i = 0; i < GAME_CONTROLLERS_COUNT; ++i)
+      {
+         struct transferpak* tpk = &g_dev.si.pif.controllers[i].transferpak;
+         struct gb_cart* gb = &tpk->gb_cart;
+         struct mbc3_rtc* rtc = &gb->rtc;
+         int j;
+
+         tpk->enabled             = GETDATA(curr, uint32_t);
+         tpk->bank                = GETDATA(curr, uint32_t);
+         tpk->access_mode         = GETDATA(curr, uint32_t);
+         tpk->access_mode_changed = GETDATA(curr, uint32_t);
+
+         gb->rom_bank = GETDATA(curr, uint32_t);
+         gb->ram_bank = GETDATA(curr, uint32_t);
+         gb->has_rtc  = GETDATA(curr, uint32_t);
+
+         for (j = 0; j < MBC3_RTC_REGS_COUNT; ++j)
+            rtc->regs[j] = GETDATA(curr, uint8_t);
+         for (j = 0; j < MBC3_RTC_REGS_COUNT; ++j)
+            rtc->latched_regs[j] = GETDATA(curr, uint8_t);
+         rtc->latch     = GETDATA(curr, uint32_t);
+         rtc->last_time = (time_t)GETDATA(curr, int64_t);
+      }
+   }
+
    libpl_change_savestate_token();
    g_cheatStatus |= LPL_USED_SAVESTATES;
 
@@ -570,6 +605,40 @@ int savestates_save_m64p(unsigned char *data, size_t size)
    const struct tm *timestamp = af_rtc_get_time( &g_dev.si.pif.af_rtc );
    PUTARRAY( timestamp, curr, int, 9 );
    to_little_endian_buffer( (curr - 36), 4, 9 );
+
+   /* Transfer Pak / GB cart volatile state (since 1.3).
+    *
+    * This persists the runtime state needed to keep a mid-play savestate
+    * coherent for Transfer Pak titles: the pak access state, the GB cart
+    * bank registers, and the MBC3 RTC (regs / latched regs / latch / last
+    * update time).  GB cart *RAM* (battery save data) is intentionally NOT
+    * stored here -- that belongs in the save-file path, not the savestate.
+    *
+    * The block is a fixed size (independent of whether a cart is inserted)
+    * so the layout stays trivially seekable across versions. */
+   for (i = 0; i < GAME_CONTROLLERS_COUNT; ++i)
+   {
+      struct transferpak* tpk = &g_dev.si.pif.controllers[i].transferpak;
+      struct gb_cart* gb = &tpk->gb_cart;
+      struct mbc3_rtc* rtc = &gb->rtc;
+      int j;
+
+      PUTDATA(curr, uint32_t, tpk->enabled);
+      PUTDATA(curr, uint32_t, tpk->bank);
+      PUTDATA(curr, uint32_t, tpk->access_mode);
+      PUTDATA(curr, uint32_t, tpk->access_mode_changed);
+
+      PUTDATA(curr, uint32_t, gb->rom_bank);
+      PUTDATA(curr, uint32_t, gb->ram_bank);
+      PUTDATA(curr, uint32_t, gb->has_rtc);
+
+      for (j = 0; j < MBC3_RTC_REGS_COUNT; ++j)
+         PUTDATA(curr, uint8_t, rtc->regs[j]);
+      for (j = 0; j < MBC3_RTC_REGS_COUNT; ++j)
+         PUTDATA(curr, uint8_t, rtc->latched_regs[j]);
+      PUTDATA(curr, uint32_t, rtc->latch);
+      PUTDATA(curr, int64_t, (int64_t)rtc->last_time);
+   }
 
    /* Deliver callback to indicate completion 
     * of state saving operation */
