@@ -27,6 +27,8 @@
 #include "../../api/m64p_plugin.h"
 #include "../../api/callbacks.h"
 
+#include "../../backends/api/controller_input_backend.h"
+
 #include "../../../libretro/libretro_memory.h"
 
 #include <stdint.h>
@@ -300,3 +302,149 @@ void read_controller(struct game_controller* cont, uint8_t* cmd)
           read_controller_read_gcn_buttons(cont, cmd); break;
     }
 }
+
+
+/* ----------------------------------------------------------------------------
+ * mupen64plus-next joybus controller device (region 12c).
+ *
+ * This coexists with parallel-n64's flat process_controller_command above. It
+ * addresses the controller's pak polymorphically through cont->ipak/cont->pak
+ * and reads input through cont->icin/cont->cin (the controller_input_backend
+ * bridge wired up at PIF init). The PIF channel dispatch is switched over to
+ * g_ijoybus_device_controller in the PIF convergence step; until then this is
+ * dormant.
+ * ------------------------------------------------------------------------- */
+
+enum {
+    CONT_STATUS_PAK_PRESENT = 0x01,
+    CONT_STATUS_PAK_CHANGED = 0x02
+};
+
+static void jb_pak_read_block(struct game_controller* cont,
+    const uint8_t* addr_acrc, uint8_t* data, uint8_t* dcrc)
+{
+    uint16_t address = (addr_acrc[0] << 8) | (addr_acrc[1] & 0xe0);
+
+    if (cont->ipak != NULL) {
+        cont->ipak->read(cont->pak, address, data, PAK_CHUNK_SIZE);
+        *dcrc = pak_data_crc(data);
+    } else {
+        *dcrc = ~pak_data_crc(data);
+    }
+}
+
+static void jb_pak_write_block(struct game_controller* cont,
+    const uint8_t* addr_acrc, const uint8_t* data, uint8_t* dcrc)
+{
+    uint16_t address = (addr_acrc[0] << 8) | (addr_acrc[1] & 0xe0);
+    uint8_t tmp[PAK_CHUNK_SIZE];
+
+    if (cont->ipak != NULL) {
+        cont->ipak->write(cont->pak, address, data, PAK_CHUNK_SIZE);
+        memcpy(tmp, data, PAK_CHUNK_SIZE);
+        *dcrc = pak_data_crc(tmp);
+    } else {
+        memcpy(tmp, data, PAK_CHUNK_SIZE);
+        *dcrc = ~pak_data_crc(tmp);
+    }
+}
+
+static void standard_controller_reset(struct game_controller* cont)
+{
+    cont->status = 0x00;
+
+    if (cont->ipak != NULL) {
+        cont->status |= CONT_STATUS_PAK_PRESENT;
+    } else {
+        cont->status |= CONT_STATUS_PAK_CHANGED;
+    }
+}
+
+static void mouse_controller_reset(struct game_controller* cont)
+{
+    cont->status = 0x00;
+}
+
+const struct game_controller_flavor g_standard_controller_flavor =
+{
+    "Standard controller",
+    JDT_JOY_ABS_COUNTERS | JDT_JOY_PORT,
+    standard_controller_reset
+};
+
+const struct game_controller_flavor g_mouse_controller_flavor =
+{
+    "Mouse controller",
+    JDT_JOY_REL_COUNTERS,
+    mouse_controller_reset
+};
+
+static void poweron_game_controller(void* jbd)
+{
+    struct game_controller* cont = (struct game_controller*)jbd;
+
+    if (cont->flavor != NULL)
+        cont->flavor->reset(cont);
+
+    if (cont->flavor == &g_standard_controller_flavor && cont->ipak != NULL) {
+        cont->ipak->plug(cont->pak);
+    }
+}
+
+static void process_controller_command_joybus(void* jbd,
+    const uint8_t* tx, const uint8_t* tx_buf,
+    uint8_t* rx, uint8_t* rx_buf)
+{
+    struct game_controller* cont = (struct game_controller*)jbd;
+    uint32_t input_ = 0;
+    uint8_t cmd = tx_buf[0];
+
+    /* if controller can't be polled, consider it absent */
+    if (cont->icin == NULL
+     || cont->icin->get_input(cont->cin, &input_) != M64ERR_SUCCESS) {
+        *rx |= 0x80;
+        return;
+    }
+
+    switch (cmd)
+    {
+    case JCMD_RESET:
+        if (cont->flavor != NULL)
+            cont->flavor->reset(cont);
+        /* fall through */
+    case JCMD_STATUS: {
+        JOYBUS_CHECK_COMMAND_FORMAT(1, 3)
+
+        rx_buf[0] = (uint8_t)(cont->flavor->type >> 0);
+        rx_buf[1] = (uint8_t)(cont->flavor->type >> 8);
+        rx_buf[2] = cont->status;
+    } break;
+
+    case JCMD_CONTROLLER_READ: {
+        JOYBUS_CHECK_COMMAND_FORMAT(1, 4)
+
+        *((uint32_t*)(rx_buf)) = input_;
+    } break;
+
+    case JCMD_PAK_READ: {
+        JOYBUS_CHECK_COMMAND_FORMAT(3, 33)
+        jb_pak_read_block(cont, &tx_buf[1], &rx_buf[0], &rx_buf[32]);
+    } break;
+
+    case JCMD_PAK_WRITE: {
+        JOYBUS_CHECK_COMMAND_FORMAT(35, 1)
+        jb_pak_write_block(cont, &tx_buf[1], &tx_buf[3], &rx_buf[0]);
+    } break;
+
+    default:
+        DebugMessage(M64MSG_WARNING, "cont: Unknown command %02x %02x %02x",
+            *tx, *rx, cmd);
+    }
+}
+
+const struct joybus_device_interface g_ijoybus_device_controller =
+{
+    poweron_game_controller,
+    process_controller_command_joybus,
+    NULL
+};

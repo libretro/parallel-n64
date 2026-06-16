@@ -20,6 +20,7 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "rumblepak.h"
+#include "game_controller.h"
 
 #include <string.h>
 
@@ -64,3 +65,29 @@ void rumblepak_write_command(struct rumblepak* rpk, uint16_t address, const uint
       set_rumble_reg(rpk, (size > 0) ? data[size - 1] : 0x00);
    }
 }
+
+/* mupen64plus-next pak_interface vtable (region 12c). Bridges the joybus
+ * controller device onto parallel-n64's rumblepak. unplug stops rumbling, as
+ * in next; read/write pass through to the command functions. */
+static void plug_rumblepak(void* pak)   { (void)pak; }
+static void unplug_rumblepak(void* pak)
+{
+    /* stop rumbling if the pak is disconnected */
+    rumblepak_rumble((struct rumblepak*)pak, RUMBLE_STOP);
+}
+static void read_rumblepak(void* pak, uint16_t address, uint8_t* data, size_t size)
+{
+    rumblepak_read_command((struct rumblepak*)pak, address, data, size);
+}
+static void write_rumblepak(void* pak, uint16_t address, const uint8_t* data, size_t size)
+{
+    rumblepak_write_command((struct rumblepak*)pak, address, data, size);
+}
+const struct pak_interface g_irumblepak =
+{
+    "Rumble pak",
+    plug_rumblepak,
+    unplug_rumblepak,
+    read_rumblepak,
+    write_rumblepak
+};

@@ -22,6 +22,7 @@
 #ifndef M64P_SI_MEMPAK_H
 #define M64P_SI_MEMPAK_H
 
+struct pak_interface;
 #include <stdint.h>
 #include <stddef.h>
 
@@ -43,5 +44,9 @@ void format_mempak(uint8_t* mempak);
 
 void mempak_read_command(struct mempak* mpk, uint16_t address, uint8_t* data, size_t size);
 void mempak_write_command(struct mempak* mpk, uint16_t address, const uint8_t* data, size_t size);
+
+
+/* mupen64plus-next pak_interface (region 12c) */
+extern const struct pak_interface g_imempak;
 
 #endif

@@ -20,6 +20,7 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "transferpak.h"
+#include "game_controller.h"
 
 #include "../../api/m64p_types.h"
 #include "../../api/callbacks.h"
@@ -167,3 +168,25 @@ void transferpak_write_command(struct transferpak* tpk, uint16_t address, const 
         DebugMessage(M64MSG_WARNING, "Unknown tpak write: %04x <- %02x", address, *data);
     }
 }
+
+/* mupen64plus-next pak_interface vtable (region 12c). Bridges the joybus
+ * controller device onto parallel-n64's transferpak read/write command functions.
+ * plug/unplug are no-ops: pn64 paks are always-present nested structs. */
+static void plug_transferpak(void* pak)   { (void)pak; }
+static void unplug_transferpak(void* pak) { (void)pak; }
+static void read_transferpak(void* pak, uint16_t address, uint8_t* data, size_t size)
+{
+    transferpak_read_command((struct transferpak*)pak, address, data, size);
+}
+static void write_transferpak(void* pak, uint16_t address, const uint8_t* data, size_t size)
+{
+    transferpak_write_command((struct transferpak*)pak, address, data, size);
+}
+const struct pak_interface g_itransferpak =
+{
+    "Transfer pak",
+    plug_transferpak,
+    unplug_transferpak,
+    read_transferpak,
+    write_transferpak
+};

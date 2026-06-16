@@ -22,6 +22,7 @@
 #ifndef M64P_SI_BIOPAK_H
 #define M64P_SI_BIOPAK_H
 
+struct pak_interface;
 #include <stddef.h>
 #include <stdint.h>
 
@@ -38,5 +39,9 @@ void init_biopak(struct biopak* bpk, unsigned int bpm);
 
 void biopak_read_command(struct biopak* bpk, uint16_t address, uint8_t* data, size_t size);
 void biopak_write_command(struct biopak* bpk, uint16_t address, const uint8_t* data, size_t size);
+
+
+/* mupen64plus-next pak_interface (region 12c) */
+extern const struct pak_interface g_ibiopak;
 
 #endif

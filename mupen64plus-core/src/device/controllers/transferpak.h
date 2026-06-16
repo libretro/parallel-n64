@@ -22,6 +22,7 @@
 #ifndef M64P_SI_TRANSFERPAK_H
 #define M64P_SI_TRANSFERPAK_H
 
+struct pak_interface;
 #include <stdint.h>
 
 #include "../../gb/gb_cart.h"
@@ -48,5 +49,9 @@ void release_transferpak(struct transferpak* tpk);
 
 void transferpak_read_command(struct transferpak* tpk, uint16_t address, uint8_t* data, size_t size);
 void transferpak_write_command(struct transferpak* tpk, uint16_t address, const uint8_t* data, size_t size);
+
+
+/* mupen64plus-next pak_interface (region 12c) */
+extern const struct pak_interface g_itransferpak;
 
 #endif

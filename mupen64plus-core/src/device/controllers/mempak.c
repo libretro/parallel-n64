@@ -19,6 +19,7 @@
 * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA. *
 * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 #include "mempak.h"
+#include "game_controller.h"
 
 #include <stdint.h>
 #include <string.h>
@@ -106,3 +107,25 @@ void mempak_write_command(struct mempak* mpk, uint16_t address, const uint8_t *d
       mempak_save(mpk);
    }
 }
+
+/* mupen64plus-next pak_interface vtable (region 12c). Bridges the joybus
+ * controller device onto parallel-n64's mempak read/write command functions.
+ * plug/unplug are no-ops: pn64 paks are always-present nested structs. */
+static void plug_mempak(void* pak)   { (void)pak; }
+static void unplug_mempak(void* pak) { (void)pak; }
+static void read_mempak(void* pak, uint16_t address, uint8_t* data, size_t size)
+{
+    mempak_read_command((struct mempak*)pak, address, data, size);
+}
+static void write_mempak(void* pak, uint16_t address, const uint8_t* data, size_t size)
+{
+    mempak_write_command((struct mempak*)pak, address, data, size);
+}
+const struct pak_interface g_imempak =
+{
+    "Memory pak",
+    plug_mempak,
+    unplug_mempak,
+    read_mempak,
+    write_mempak
+};
