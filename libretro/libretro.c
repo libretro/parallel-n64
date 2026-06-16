@@ -263,9 +263,6 @@ static void n64DebugCallback(void* aContext, int aLevel, const char* aMessage)
 
 extern m64p_rom_header ROM_HEADER;
 extern int g_force_parallel_sync;
-extern int g_framerate_unlock_hint;
-extern int g_widescreen_hint;
-extern float widescreen_active_aspect(void);
 
 static void core_settings_autoselect_gfx_plugin(void)
 {
@@ -939,15 +936,12 @@ static m64p_system_type rom_country_code_to_system_type(char country_code)
 void retro_get_system_av_info(struct retro_system_av_info *info)
 {
    m64p_system_type region = rom_country_code_to_system_type(ROM_HEADER.destination_code);
-   float ws_aspect = widescreen_active_aspect();
 
    info->geometry.base_width   = screen_width;
    info->geometry.base_height  = screen_height;
    info->geometry.max_width    = screen_width;
    info->geometry.max_height   = screen_height;
-   /* A game-specific widescreen patch overrides the configured aspect so the
-    * frontend renders the wider image at the correct ratio (e.g. 16:9). */
-   info->geometry.aspect_ratio = (ws_aspect > 0.0f) ? ws_aspect : screen_aspect_ratio;
+   info->geometry.aspect_ratio = screen_aspect_ratio;
    info->timing.fps = (region == SYSTEM_PAL) ? 50.0 : (60.13);                /* TODO: Actual timing  */
    info->timing.sample_rate = (double)get_audio_sample_rate_libretro();
 }
@@ -1256,16 +1250,6 @@ static int parse_mouse_button(const char* value)
 void update_variables(bool startup)
 {
    struct retro_variable var;
-
-   var.key = CORE_NAME "-framerate-unlock-hint";
-   var.value = NULL;
-   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
-      g_framerate_unlock_hint = !strcmp(var.value, "enabled");
-
-   var.key = CORE_NAME "-widescreen-hint";
-   var.value = NULL;
-   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
-      g_widescreen_hint = !strcmp(var.value, "enabled");
 
 #if defined(HAVE_PARALLEL)
    var.key = "parallel-n64-parallel-rdp-synchronous";

@@ -34,8 +34,6 @@ extern unsigned char* g_rom;
 extern int g_rom_size;
 extern int g_count_per_scanline;
 extern int g_force_parallel_sync;
-extern int g_framerate_unlock_hint;
-extern int g_widescreen_hint;
 extern unsigned char g_fixed_audio_pos;
 
 typedef struct _rom_params
