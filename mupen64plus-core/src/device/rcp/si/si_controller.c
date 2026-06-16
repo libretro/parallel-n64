@@ -73,7 +73,7 @@ static void si_flush_pending_dma(struct si_controller* si)
    si->pif.ram[0x3f] = 0x0;
    si->regs[SI_STATUS_REG] &= ~SI_STATUS_DMA_BUSY;
    si->regs[SI_STATUS_REG] |= SI_STATUS_INTERRUPT;
-   signal_rcp_interrupt(si->r4300, MI_INTR_SI);
+   signal_rcp_interrupt(si->mi, MI_INTR_SI);
 }
 
 static void dma_si_write(struct si_controller* si)
@@ -107,7 +107,7 @@ static void dma_si_write(struct si_controller* si)
    else
    {
       si->regs[SI_STATUS_REG] |= SI_STATUS_INTERRUPT;
-      signal_rcp_interrupt(si->r4300, MI_INTR_SI);
+      signal_rcp_interrupt(si->mi, MI_INTR_SI);
    }
 }
 
@@ -142,7 +142,7 @@ static void dma_si_read(struct si_controller* si)
    else
    {
       si->regs[SI_STATUS_REG] |= SI_STATUS_INTERRUPT;
-      signal_rcp_interrupt(si->r4300, MI_INTR_SI);
+      signal_rcp_interrupt(si->mi, MI_INTR_SI);
    }
 }
 
@@ -155,10 +155,10 @@ void init_si(struct si_controller* si,
       void* af_rtc_user_data,
       const struct tm* (*af_rtc_get_time)(void*),
       const uint8_t* ipl3,
-      struct r4300_core* r4300,
+      struct mi_controller* mi,
       struct ri_controller *ri)
 {
-   si->r4300 = r4300;
+   si->mi = mi;
    si->ri    = ri;
 
    init_pif(&si->pif,
@@ -208,7 +208,7 @@ int write_si_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
 
        case SI_STATUS_REG:
           si->regs[SI_STATUS_REG] &= ~SI_STATUS_INTERRUPT;
-          clear_rcp_interrupt(si->r4300, MI_INTR_SI);
+          clear_rcp_interrupt(si->mi, MI_INTR_SI);
           break;
     }
 
@@ -234,5 +234,5 @@ void si_end_of_dma_event(struct si_controller* si)
    /* trigger SI interrupt */
    si->regs[SI_STATUS_REG] &= ~SI_STATUS_DMA_BUSY;
    si->regs[SI_STATUS_REG] |= SI_STATUS_INTERRUPT;
-   raise_rcp_interrupt(si->r4300, MI_INTR_SI);
+   raise_rcp_interrupt(si->mi, MI_INTR_SI);
 }

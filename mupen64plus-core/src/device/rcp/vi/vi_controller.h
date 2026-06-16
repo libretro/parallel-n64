@@ -31,6 +31,7 @@
 #endif
 
 struct r4300_core;
+struct mi_controller;
 
 enum vi_registers
 {
@@ -62,13 +63,13 @@ struct vi_controller
     unsigned int delay;
     unsigned int next_vi;
 
-    struct r4300_core* r4300;
+    struct mi_controller* mi;
 };
 
 void init_vi(struct vi_controller* vi,
       unsigned int clock, unsigned int expected_refresh_rate,
       /* unsigned int count_per_scanline, unsigned int alternate_timing, */
-      struct r4300_core* r4300);
+      struct mi_controller* mi);
 
 unsigned int vi_clock_from_tv_standard(m64p_system_type tv_standard);
 unsigned int vi_expected_refresh_rate_from_tv_standard(m64p_system_type tv_standard);

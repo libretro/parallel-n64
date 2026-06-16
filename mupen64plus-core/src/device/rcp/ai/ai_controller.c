@@ -40,7 +40,7 @@ void init_ai(struct ai_controller* ai,
       void * user_data,
       void (*set_audio_format)(void*,unsigned int, unsigned int),
       void (*push_audio_samples)(void*,const void*,size_t),
-      struct r4300_core* r4300,
+      struct mi_controller* mi,
       struct ri_controller *ri,
       struct vi_controller* vi,
       unsigned int fixed_audio_pos
@@ -50,7 +50,7 @@ void init_ai(struct ai_controller* ai,
    ai->set_audio_format   = set_audio_format;
    ai->push_audio_samples = push_audio_samples;
 
-   ai->r4300 = r4300;
+   ai->mi = mi;
    ai->ri    = ri;
    ai->vi    = vi;
    ai->fixed_audio_pos = fixed_audio_pos;
@@ -252,7 +252,7 @@ int write_ai_regs(void* opaque, uint32_t address,
          return 0;
 
       case AI_STATUS_REG:
-         clear_rcp_interrupt(ai->r4300, MI_INTR_AI);
+         clear_rcp_interrupt(ai->mi, MI_INTR_AI);
          return 0;
       case AI_BITRATE_REG:
       case AI_DACRATE_REG:
@@ -282,5 +282,5 @@ void ai_end_of_dma_event(struct ai_controller* ai)
    } 
  
    fifo_pop(ai);
-   raise_rcp_interrupt(ai->r4300, MI_INTR_AI);
+   raise_rcp_interrupt(ai->mi, MI_INTR_AI);
 }

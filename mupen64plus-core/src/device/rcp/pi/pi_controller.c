@@ -433,7 +433,7 @@ void init_pi(struct pi_controller* pi,
                 uint8_t *ddrom, size_t ddrom_size,
                 void* flashram_user_data, void (*flashram_save)(void*), uint8_t* flashram_data,
                 void* sram_user_data, void (*sram_save)(void*), uint8_t* sram_data,
-                struct r4300_core* r4300,
+                struct mi_controller* mi,
                 struct ri_controller *ri)
 {
    init_cart_rom(&pi->cart_rom, rom, rom_size);
@@ -444,7 +444,7 @@ void init_pi(struct pi_controller* pi,
 
    pi->use_flashram = 0;
 
-   pi->r4300 = r4300;
+   pi->mi = mi;
    pi->ri    = ri;
 }
 
@@ -504,7 +504,7 @@ int write_pi_regs(void* opaque, uint32_t address,
 
       case PI_STATUS_REG:
          if (value & mask & 2)
-            clear_rcp_interrupt(pi->r4300, MI_INTR_PI);
+            clear_rcp_interrupt(pi->mi, MI_INTR_PI);
          return 0;
 
       case PI_BSD_DOM1_LAT_REG:
@@ -528,7 +528,7 @@ int write_pi_regs(void* opaque, uint32_t address,
 void pi_end_of_dma_event(struct pi_controller* pi)
 {
    pi->regs[PI_STATUS_REG] &= ~(PI_STATUS_DMA_BUSY | PI_STATUS_IO_BUSY);
-   raise_rcp_interrupt(pi->r4300, MI_INTR_PI);
+   raise_rcp_interrupt(pi->mi, MI_INTR_PI);
 
    if ((pi->regs[PI_CART_ADDR_REG] == 0x05000000) || (pi->regs[PI_CART_ADDR_REG] == 0x05000400))
    {

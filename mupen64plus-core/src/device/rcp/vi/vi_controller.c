@@ -41,7 +41,7 @@ extern unsigned alternate_vi_timing;
 void init_vi(struct vi_controller* vi,
       unsigned int clock, unsigned int expected_refresh_rate,
       /* unsigned int count_per_scanline, unsigned int alternate_timing, */
-      struct r4300_core* r4300)
+      struct mi_controller* mi)
 {
    vi->clock = clock;
    vi->expected_refresh_rate = expected_refresh_rate;
@@ -49,7 +49,7 @@ void init_vi(struct vi_controller* vi,
    vi->count_per_scanline    = count_per_scanline;
    vi->alternate_timing      = alternate_timing;
 #endif
-   vi->r4300 = r4300;
+   vi->mi = mi;
 }
 
 unsigned int vi_clock_from_tv_standard(m64p_system_type tv_standard)
@@ -192,7 +192,7 @@ int write_vi_regs(void* opaque, uint32_t address,
           return 0;
 
        case VI_CURRENT_REG:
-          clear_rcp_interrupt(vi->r4300, MI_INTR_VI);
+          clear_rcp_interrupt(vi->mi, MI_INTR_VI);
           return 0;
 
        case VI_V_SYNC_REG:
@@ -268,5 +268,5 @@ void vi_vertical_interrupt_event(struct vi_controller* vi)
     * stalls rendering rather than merely dropping a vblank. The MI mask
     * (raise_rcp_interrupt checks MI_INTR_MASK_REG) is the correct place
     * for a game to suppress the interrupt if it wants to. */
-   raise_rcp_interrupt(vi->r4300, MI_INTR_VI);
+   raise_rcp_interrupt(vi->mi, MI_INTR_VI);
 }

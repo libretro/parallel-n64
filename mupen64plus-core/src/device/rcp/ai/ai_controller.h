@@ -32,6 +32,7 @@
 #endif
 
 struct r4300_core;
+struct mi_controller;
 struct ri_controller;
 struct vi_controller;
 
@@ -69,7 +70,7 @@ struct ai_controller
    void (*set_audio_format)(void*,unsigned int, unsigned int);
    void (*push_audio_samples)(void*,const void*,size_t);
 
-   struct r4300_core* r4300;
+   struct mi_controller* mi;
    struct ri_controller* ri;
    struct vi_controller* vi;
    uint32_t fixed_audio_pos;
@@ -82,7 +83,7 @@ void init_ai(struct ai_controller* ai,
       void * user_data,
       void (*set_audio_format)(void*,unsigned int, unsigned int),
       void (*push_audio_samples)(void*,const void*,size_t),
-      struct r4300_core* r4300,
+      struct mi_controller* mi,
       struct ri_controller *ri,
       struct vi_controller* vi,
       unsigned int fixed_audio_pos

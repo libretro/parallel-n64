@@ -94,7 +94,7 @@ int write_mi_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
     case MI_INIT_MODE_REG:
         if (update_mi_init_mode(&r4300->mi->regs[MI_INIT_MODE_REG], value & mask) != 0)
         {
-            clear_rcp_interrupt(r4300, MI_INTR_DP);
+            clear_rcp_interrupt(r4300->mi, MI_INTR_DP);
         }
         break;
     case MI_INTR_MASK_REG:
@@ -122,24 +122,24 @@ int write_mi_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
 }
 
 /* interrupt execution is immediate (if not masked) */
-void raise_rcp_interrupt(struct r4300_core* r4300, uint32_t mi_intr)
+void raise_rcp_interrupt(struct mi_controller* mi, uint32_t mi_intr)
 {
-    r4300->mi->regs[MI_INTR_REG] |= mi_intr;
+    mi->regs[MI_INTR_REG] |= mi_intr;
 
-    if (r4300->mi->regs[MI_INTR_REG] & r4300->mi->regs[MI_INTR_MASK_REG])
+    if (mi->regs[MI_INTR_REG] & mi->regs[MI_INTR_MASK_REG])
         raise_maskable_interrupt(0x400);
 }
 
 /* interrupt execution is scheduled (if not masked) */
-void signal_rcp_interrupt(struct r4300_core* r4300, uint32_t mi_intr)
+void signal_rcp_interrupt(struct mi_controller* mi, uint32_t mi_intr)
 {
-    r4300->mi->regs[MI_INTR_REG] |= mi_intr;
+    mi->regs[MI_INTR_REG] |= mi_intr;
     check_interrupt();
 }
 
-void clear_rcp_interrupt(struct r4300_core* r4300, uint32_t mi_intr)
+void clear_rcp_interrupt(struct mi_controller* mi, uint32_t mi_intr)
 {
-    r4300->mi->regs[MI_INTR_REG] &= ~mi_intr;
+    mi->regs[MI_INTR_REG] &= ~mi_intr;
     check_interrupt();
 }
 

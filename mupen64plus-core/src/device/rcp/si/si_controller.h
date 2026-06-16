@@ -31,6 +31,7 @@
 #endif
 
 struct r4300_core;
+struct mi_controller;
 struct ri_controller;
 
 enum si_registers
@@ -51,7 +52,7 @@ struct si_controller
 
     struct pif pif;
 
-    struct r4300_core* r4300;
+    struct mi_controller* mi;
     struct ri_controller *ri;
 };
 
@@ -66,7 +67,7 @@ void init_si(struct si_controller* si,
       void* af_rtc_user_data,
       const struct tm* (*af_rtc_get_time)(void*),
       const uint8_t* ipl3,
-      struct r4300_core* r4300,
+      struct mi_controller* mi,
       struct ri_controller *ri);
 
 void poweron_si(struct si_controller* si);

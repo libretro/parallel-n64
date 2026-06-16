@@ -162,11 +162,11 @@ static void update_sp_status(struct rsp_core* sp, uint32_t w)
 
     /* clear SP interrupt */
     if ((w & 0x18) == 0x8)
-       clear_rcp_interrupt(sp->r4300, MI_INTR_SP);
+       clear_rcp_interrupt(sp->mi, MI_INTR_SP);
 
     /* set SP interrupt */
     if ((w & 0x18) == 0x10)
-       signal_rcp_interrupt(sp->r4300, MI_INTR_SP);
+       signal_rcp_interrupt(sp->mi, MI_INTR_SP);
 
     /* clear / set single step */
     if ((w & 0x60) == 0x20) sp->regs[SP_STATUS_REG] &= ~SP_STATUS_SSTEP;
@@ -182,7 +182,7 @@ static void update_sp_status(struct rsp_core* sp, uint32_t w)
     {
          sp->regs[SP_STATUS_REG] |= SP_STATUS_SIG0;
          if (sp->audio_signal)
-             signal_rcp_interrupt(sp->r4300, MI_INTR_SP);
+             signal_rcp_interrupt(sp->mi, MI_INTR_SP);
      }
 
     /* clear / set signal 1 */
@@ -222,12 +222,12 @@ static void update_sp_status(struct rsp_core* sp, uint32_t w)
 }
 
 void init_rsp(struct rsp_core* sp,
-                 struct r4300_core* r4300,
+                 struct mi_controller* mi,
                  struct rdp_core* dp,
                  struct ri_controller* ri,
 		 uint32_t audio_signal)
 {
-    sp->r4300        = r4300;
+    sp->mi        = mi;
     sp->dp           = dp;
     sp->ri           = ri;
     sp->audio_signal = audio_signal;
@@ -365,9 +365,9 @@ void do_SP_Task(struct rsp_core* sp)
         sp->regs2[SP_PC_REG] |= save_pc;
         new_frame();
 
-        if (sp->r4300->mi->regs[MI_INTR_REG] & MI_INTR_DP)
+        if (sp->mi->regs[MI_INTR_REG] & MI_INTR_DP)
 	{
-	    sp->r4300->mi->regs[MI_INTR_REG] &= ~MI_INTR_DP;
+	    sp->mi->regs[MI_INTR_REG] &= ~MI_INTR_DP;
 	    /* If the DP is frozen the game expects no DP interrupt
 	     * to be observed until it later clears FREEZE -- holding
 	     * the interrupt back avoids races between the gfx task
@@ -431,7 +431,7 @@ void do_SP_Task(struct rsp_core* sp)
 void rsp_interrupt_event(struct rsp_core* sp)
 {
    if ((sp->regs[SP_STATUS_REG] & SP_STATUS_INTR_BREAK) != 0)
-      raise_rcp_interrupt(sp->r4300, MI_INTR_SP);
+      raise_rcp_interrupt(sp->mi, MI_INTR_SP);
 }
 
 void rsp_dma_event(struct rsp_core* sp)

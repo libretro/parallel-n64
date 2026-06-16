@@ -43,7 +43,7 @@ static void update_dpc_status(struct rdp_core* dp, uint32_t w)
        * See do_SP_Task and vi_vertical_interrupt_event for the
        * stalls that set these flags. */
       if (dp->do_on_unfreeze & DELAY_DP_INT)
-         signal_rcp_interrupt(dp->r4300, MI_INTR_DP);
+         signal_rcp_interrupt(dp->mi, MI_INTR_DP);
       if (dp->do_on_unfreeze & DELAY_UPDATESCREEN)
       {
          /* The plugin latches the deferred frame; it is presented at
@@ -68,11 +68,11 @@ static void update_dpc_status(struct rdp_core* dp, uint32_t w)
 
 
 void init_rdp(struct rdp_core* dp,
-                 struct r4300_core* r4300,
+                 struct mi_controller* mi,
                  struct rsp_core* sp,
                  struct ri_controller *ri)
 {
-    dp->r4300 = r4300;
+    dp->mi = mi;
     dp->sp    = sp;
     dp->ri    = ri;
 }
@@ -127,7 +127,7 @@ int write_dpc_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask
          unprotect_framebuffers(dp);
          gfx.processRDPList();
          protect_framebuffers(dp);
-         signal_rcp_interrupt(dp->r4300, MI_INTR_DP);
+         signal_rcp_interrupt(dp->mi, MI_INTR_DP);
          break;
    }
 
@@ -158,5 +158,5 @@ int write_dps_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask
 
 void rdp_interrupt_event(struct rdp_core* dp)
 {
-   raise_rcp_interrupt(dp->r4300, MI_INTR_DP);
+   raise_rcp_interrupt(dp->mi, MI_INTR_DP);
 }

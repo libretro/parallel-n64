@@ -65,19 +65,20 @@ void init_device(
 {
    init_r4300(&dev->r4300, emumode, count_per_op, special_rom);
    dev->r4300.mi = &dev->mi;
-   init_rdp(&dev->dp, &dev->r4300, &dev->sp, &dev->ri);
-   init_rsp(&dev->sp, &dev->r4300, &dev->dp, &dev->ri, audio_signal);
+   dev->mi.r4300 = &dev->r4300;
+   init_rdp(&dev->dp, &dev->mi, &dev->sp, &dev->ri);
+   init_rsp(&dev->sp, &dev->mi, &dev->dp, &dev->ri, audio_signal);
    init_ai(&dev->ai, ai_user_data,
          ai_set_audio_format,
          ai_push_audio_samples,
-         &dev->r4300, &dev->ri, &dev->vi,
+         &dev->mi, &dev->ri, &dev->vi,
 	 fixed_audio_pos);
    init_pi(&dev->pi,
          rom, rom_size,
          ddrom, ddrom_size,
          flashram_user_data, flashram_save, flashram_data,
          sram_user_data, sram_save, sram_data,
-         &dev->r4300, &dev->ri);
+         &dev->mi, &dev->ri);
    init_ri(&dev->ri, dram, dram_size);
    init_si(&dev->si,
          eeprom_user_data,
@@ -89,9 +90,9 @@ void init_device(
          af_rtc_get_time,
          ((ddrom != NULL) && (ddrom_size != 0) && (rom == NULL) && (rom_size == 0)) ?
          (ddrom + 0x40) : (rom + 0x40),                       /* ipl3 */
-         &dev->r4300, &dev->ri);
+         &dev->mi, &dev->ri);
 
-   init_vi(&dev->vi, vi_clock, expected_refresh_rate, &dev->r4300);
+   init_vi(&dev->vi, vi_clock, expected_refresh_rate, &dev->mi);
    init_dd(&dev->dd, &dev->r4300, dd_disk, dd_disk_size);
 }
 

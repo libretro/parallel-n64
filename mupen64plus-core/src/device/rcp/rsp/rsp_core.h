@@ -37,6 +37,7 @@
 #endif
 
 struct r4300_core;
+struct mi_controller;
 struct rdp_core;
 struct ri_controller;
 
@@ -115,13 +116,13 @@ struct rsp_core
      * state. Completion is timed via the RSP_DMA_EVT interrupt event. */
     struct sp_dma fifo[SP_DMA_FIFO_SIZE];
 
-    struct r4300_core* r4300;
+    struct mi_controller* mi;
     struct rdp_core* dp;
     struct ri_controller* ri;
 };
 
 void init_rsp(struct rsp_core* sp,
-                 struct r4300_core* r4300,
+                 struct mi_controller* mi,
                  struct rdp_core* dp,
                  struct ri_controller* ri,
 		 uint32_t audio_signal);

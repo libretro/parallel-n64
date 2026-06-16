@@ -35,6 +35,7 @@
 #endif
 
 struct r4300_core;
+struct mi_controller;
 struct rsp_core;
 struct ri_controller;
 
@@ -98,13 +99,13 @@ struct rdp_core
 
     struct fb fb;
 
-    struct r4300_core* r4300;
+    struct mi_controller* mi;
     struct rsp_core* sp;
     struct ri_controller* ri;
 };
 
 void init_rdp(struct rdp_core* dp,
-                 struct r4300_core* r4300,
+                 struct mi_controller* mi,
                  struct rsp_core* sp,
                  struct ri_controller* ri);
 
