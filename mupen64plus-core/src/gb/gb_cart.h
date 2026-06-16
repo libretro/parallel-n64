@@ -25,6 +25,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "mbc3_rtc.h"
+
 struct gb_cart
 {
     uint8_t* rom;
@@ -36,6 +38,8 @@ struct gb_cart
     unsigned int rom_bank;
     unsigned int ram_bank;
     unsigned int has_rtc;
+
+    struct mbc3_rtc rtc;
 
     int (*read_gb_cart)(struct gb_cart* gb_cart, uint16_t address, uint8_t* data);
     int (*write_gb_cart)(struct gb_cart* gb_cart, uint16_t address, const uint8_t* data);
