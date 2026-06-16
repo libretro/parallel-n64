@@ -20,6 +20,7 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "pifbootrom.h"
+#include "../device/cart/cart.h"
 
 #include <stdint.h>
 #include <string.h>
@@ -62,16 +63,16 @@ void pifbootrom_hle_execute(struct device *dev)
     unsigned int s7         = 0;              /* ??? */
     unsigned int tv_type    = get_tv_type();  /* 0:PAL, 1:NTSC, 2:MPAL */
     
-    if ((g_ddrom != NULL) && (g_ddrom_size != 0) && (dev->pi.cart_rom.rom == NULL) && (dev->pi.cart_rom.rom_size == 0))
+    if ((g_ddrom != NULL) && (g_ddrom_size != 0) && (dev->cart.cart_rom.rom == NULL) && (dev->cart.cart_rom.rom_size == 0))
     {
       /* 64DD IPL */
       bsd_dom1_config = *(uint32_t*)g_ddrom;
       rom_type = 1;
     }
-    else if (dev->pi.cart_rom.rom != NULL)
+    else if (dev->cart.cart_rom.rom != NULL)
     {
       /* N64 ROM */
-      bsd_dom1_config = *(uint32_t*)dev->pi.cart_rom.rom;
+      bsd_dom1_config = *(uint32_t*)dev->cart.cart_rom.rom;
     }
     /* else: neither a cart ROM nor a valid 64DD IPL is present; leave
      * bsd_dom1_config at 0 instead of dereferencing a NULL rom pointer */
@@ -97,7 +98,7 @@ void pifbootrom_hle_execute(struct device *dev)
 
     dev->mi.regs[MI_INTR_REG] &= ~(MI_INTR_PI | MI_INTR_VI | MI_INTR_AI | MI_INTR_SP);
 
-    if ((g_ddrom != NULL) && (g_ddrom_size != 0) && (dev->pi.cart_rom.rom == NULL) && (dev->pi.cart_rom.rom_size == 0))
+    if ((g_ddrom != NULL) && (g_ddrom_size != 0) && (dev->cart.cart_rom.rom == NULL) && (dev->cart.cart_rom.rom_size == 0))
     {
       //64DD IPL
       memcpy((unsigned char*)dev->sp.mem+0x40, g_ddrom+0x40, 0xfc0);
@@ -105,7 +106,7 @@ void pifbootrom_hle_execute(struct device *dev)
     else
     {
       /* N64 ROM */
-      memcpy((unsigned char*)dev->sp.mem+0x40, dev->pi.cart_rom.rom+0x40, 0xfc0);
+      memcpy((unsigned char*)dev->sp.mem+0x40, dev->cart.cart_rom.rom+0x40, 0xfc0);
     }
 
     mupencorereg[19] = rom_type;     /* s3 */

@@ -28,6 +28,7 @@
 #include "rcp/ai/ai_controller.h"
 #include "dd/dd_controller.h"
 #include "rcp/mi/mi_controller.h"
+#include "cart/cart.h"
 #include "rcp/pi/pi_controller.h"
 #include "r4300/r4300_core.h"
 #include "rcp/rdp/rdp_core.h"
@@ -55,6 +56,7 @@ struct device
     struct pif pif;
     struct si_controller si;
     struct vi_controller vi;
+    struct cart cart;
     struct dd_controller dd;
 };
 

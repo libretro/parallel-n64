@@ -241,11 +241,11 @@ int savestates_load_m64p(const unsigned char *data, size_t size)
    if (version >= 0x00010002)
       g_dev.sp.rsp_task_locked = GETDATA(curr, uint32_t);
 
-   g_dev.pi.use_flashram = GETDATA(curr, int);
-   g_dev.pi.flashram.mode = GETDATA(curr, int);
-   g_dev.pi.flashram.status = GETDATA(curr, unsigned long long);
-   g_dev.pi.flashram.erase_offset = GETDATA(curr, unsigned int);
-   g_dev.pi.flashram.write_pointer = GETDATA(curr, unsigned int);
+   g_dev.cart.use_flashram = GETDATA(curr, int);
+   g_dev.cart.flashram.mode = GETDATA(curr, int);
+   g_dev.cart.flashram.status = GETDATA(curr, unsigned long long);
+   g_dev.cart.flashram.erase_offset = GETDATA(curr, unsigned int);
+   g_dev.cart.flashram.write_pointer = GETDATA(curr, unsigned int);
 
    COPYARRAY(tlb_LUT_r, curr, unsigned int, 0x100000);
    COPYARRAY(tlb_LUT_w, curr, unsigned int, 0x100000);
@@ -314,7 +314,7 @@ int savestates_load_m64p(const unsigned char *data, size_t size)
       struct tm timestamp;
       COPYARRAY( ((void*)&timestamp), curr, int, 9 );
       to_little_endian_buffer( (int*)&timestamp, 4, 9 );
-      af_rtc_set_time( &g_dev.pif.af_rtc, &timestamp );
+      af_rtc_set_time( &g_dev.cart.af_rtc, &timestamp );
    }
 
    /* Transfer Pak / GB cart volatile state (since 1.3); see the matching
@@ -553,11 +553,11 @@ int savestates_save_m64p(unsigned char *data, size_t size)
    /* extra rsp handshake state (since 1.2) - see savestates_load_m64p */
    PUTDATA(curr, uint32_t, g_dev.sp.rsp_task_locked);
 
-   PUTDATA(curr, int, g_dev.pi.use_flashram);
-   PUTDATA(curr, int, g_dev.pi.flashram.mode);
-   PUTDATA(curr, unsigned long long, g_dev.pi.flashram.status);
-   PUTDATA(curr, unsigned int, g_dev.pi.flashram.erase_offset);
-   PUTDATA(curr, unsigned int, g_dev.pi.flashram.write_pointer);
+   PUTDATA(curr, int, g_dev.cart.use_flashram);
+   PUTDATA(curr, int, g_dev.cart.flashram.mode);
+   PUTDATA(curr, unsigned long long, g_dev.cart.flashram.status);
+   PUTDATA(curr, unsigned int, g_dev.cart.flashram.erase_offset);
+   PUTDATA(curr, unsigned int, g_dev.cart.flashram.write_pointer);
 
    PUTARRAY(tlb_LUT_r, curr, unsigned int, 0x100000);
    PUTARRAY(tlb_LUT_w, curr, unsigned int, 0x100000);
@@ -617,7 +617,7 @@ int savestates_save_m64p(unsigned char *data, size_t size)
       curr += sizeof(queue) - queuelength;
    }
 
-   const struct tm *timestamp = af_rtc_get_time( &g_dev.pif.af_rtc );
+   const struct tm *timestamp = af_rtc_get_time( &g_dev.cart.af_rtc );
    PUTARRAY( timestamp, curr, int, 9 );
    to_little_endian_buffer( (curr - 36), 4, 9 );
 

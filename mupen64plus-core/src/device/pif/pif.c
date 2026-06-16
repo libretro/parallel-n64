@@ -20,6 +20,7 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "pif.h"
+#include "../cart/cart.h"
 #include "n64_cic_nus_6105.h"
 #include "../controllers/game_controller.h"
 #include "../rcp/si/si_controller.h"
@@ -52,12 +53,12 @@ static void process_cart_command(struct pif* pif, uint8_t* cmd)
 {
    switch (cmd[2])
    {
-      case PIF_CMD_STATUS: eeprom_status_command(&pif->eeprom, cmd); break;
-      case PIF_CMD_EEPROM_READ: eeprom_read_command(&pif->eeprom, cmd); break;
-      case PIF_CMD_EEPROM_WRITE: eeprom_write_command(&pif->eeprom, cmd); break;
-      case PIF_CMD_AF_RTC_STATUS: af_rtc_status_command(&pif->af_rtc, cmd); break;
-      case PIF_CMD_AF_RTC_READ: af_rtc_read_command(&pif->af_rtc, cmd); break;
-      case PIF_CMD_AF_RTC_WRITE: af_rtc_write_command(&pif->af_rtc, cmd); break;
+      case PIF_CMD_STATUS: eeprom_status_command(&pif->cart->eeprom, cmd); break;
+      case PIF_CMD_EEPROM_READ: eeprom_read_command(&pif->cart->eeprom, cmd); break;
+      case PIF_CMD_EEPROM_WRITE: eeprom_write_command(&pif->cart->eeprom, cmd); break;
+      case PIF_CMD_AF_RTC_STATUS: af_rtc_status_command(&pif->cart->af_rtc, cmd); break;
+      case PIF_CMD_AF_RTC_READ: af_rtc_read_command(&pif->cart->af_rtc, cmd); break;
+      case PIF_CMD_AF_RTC_WRITE: af_rtc_write_command(&pif->cart->af_rtc, cmd); break;
       default:
          DebugMessage(M64MSG_ERROR, "unknown PIF command: %02x", cmd[2]);
    }
@@ -97,10 +98,10 @@ void init_pif(struct pif *pif,
             );
    }
 
-   init_libretro_storage(&pif->eeprom_storage,
+   init_libretro_storage(&pif->cart->eeprom_storage,
          eeprom_data, eeprom_size, eeprom_user_data, eeprom_save);
-   init_eeprom(&pif->eeprom,
-         (uint16_t)eeprom_id, &pif->eeprom_storage, &g_ilibretro_storage);
+   init_eeprom(&pif->cart->eeprom,
+         (uint16_t)eeprom_id, &pif->cart->eeprom_storage, &g_ilibretro_storage);
    /* af_rtc now sources base time through next's clock_backend interface
     * (g_ilibretro_clock returns time(NULL), which af_rtc runs through
     * localtime()), equivalent to the former get_time_using_C_localtime source.
@@ -108,14 +109,14 @@ void init_pif(struct pif *pif,
     * init chain for ABI stability but are no longer used here. */
    (void)af_rtc_user_data;
    (void)af_rtc_get_time;
-   init_af_rtc(&pif->af_rtc, NULL, &g_ilibretro_clock);
+   init_af_rtc(&pif->cart->af_rtc, NULL, &g_ilibretro_clock);
    init_cic_using_ipl3(&pif->cic, ipl3);
 }
 
 void poweron_pif(struct pif* pif)
 {
    memset(pif->ram, 0, PIF_RAM_SIZE);
-   poweron_af_rtc(&pif->af_rtc);
+   poweron_af_rtc(&pif->cart->af_rtc);
 }
 
 int read_pif_ram(void* opaque, uint32_t address, uint32_t* value)

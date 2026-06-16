@@ -1,4 +1,5 @@
 #include "pi_controller.h"
+#include "../../cart/cart.h"
 
 #define M64P_CORE_PROTOTYPES 1
 #include "../../../main/util.h"
@@ -23,7 +24,7 @@ static uint8_t* summercart_sd_addr(struct pi_controller* pi)
     }
     if (addr >= 0x10000000 && addr+size <= 0x10000000+0x4000000)
     {
-        return pi->cart_rom.rom + (addr - 0x10000000);
+        return pi->cart->cart_rom.rom + (addr - 0x10000000);
     }
     return NULL;
 }

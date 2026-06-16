@@ -200,7 +200,7 @@ int write_dd_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
 
       case ASIC_CMD_STATUS:
          /* ASIC Commands */
-         timeinfo = (struct tm*)af_rtc_get_time(&g_dev.pif.af_rtc);
+         timeinfo = (struct tm*)af_rtc_get_time(&g_dev.cart.af_rtc);
 
          switch (value >> 16)
          {

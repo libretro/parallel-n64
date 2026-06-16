@@ -36,6 +36,7 @@
 #define PI_REG(a) ((a & 0x3f) >> 2)
 #endif
 
+struct cart;
 struct r4300_core;
 struct mi_controller;
 struct ri_controller;
@@ -64,16 +65,11 @@ struct pi_controller
 {
     uint32_t regs[PI_REGS_COUNT];
 
-    struct cart_rom cart_rom;
-    struct flashram flashram;
-    struct libretro_storage flashram_storage;
-    struct sram sram;
-    struct libretro_storage sram_storage;
     struct dd_rom dd_rom;
     struct summercart summercart;
 
-    int use_flashram;
 
+    struct cart* cart;
     struct dd_controller* dd;
     struct mi_controller* mi;
     struct ri_controller *ri;

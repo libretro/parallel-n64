@@ -73,6 +73,7 @@ void init_device(
          ai_push_audio_samples,
          &dev->mi, &dev->ri, &dev->vi,
 	 fixed_audio_pos);
+   dev->pi.cart = &dev->cart;
    init_pi(&dev->pi,
          rom, rom_size,
          ddrom, ddrom_size,
@@ -82,6 +83,7 @@ void init_device(
    dev->ri.rdram = &dev->rdram;
    init_ri(&dev->ri, dram, dram_size);
    dev->si.pif = &dev->pif;
+   dev->pif.cart = &dev->cart;
    init_si(&dev->si,
          eeprom_user_data,
          eeprom_save,

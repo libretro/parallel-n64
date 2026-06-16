@@ -20,6 +20,7 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "cart_rom.h"
+#include "cart.h"
 #include "../rcp/pi/pi_controller.h"
 
 void init_cart_rom(struct cart_rom* cart_rom,
@@ -41,14 +42,14 @@ int read_cart_rom(void* opaque, uint32_t address, uint32_t* value)
     struct pi_controller* pi    = (struct pi_controller*)opaque;
     uint32_t addr               = ROM_ADDR(address);
 
-    if (pi->cart_rom.rom_written)
+    if (pi->cart->cart_rom.rom_written)
     {
-        *value                   = pi->cart_rom.last_write;
-        pi->cart_rom.rom_written = 0;
+        *value                   = pi->cart->cart_rom.last_write;
+        pi->cart->cart_rom.rom_written = 0;
     }
-    else if (addr < pi->cart_rom.rom_size)
+    else if (addr < pi->cart->cart_rom.rom_size)
     {
-        *value = *(uint32_t*)(pi->cart_rom.rom + addr);
+        *value = *(uint32_t*)(pi->cart->cart_rom.rom + addr);
     }
     else
     {
@@ -61,8 +62,8 @@ int read_cart_rom(void* opaque, uint32_t address, uint32_t* value)
 int write_cart_rom(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
 {
     struct pi_controller* pi     = (struct pi_controller*)opaque;
-    pi->cart_rom.last_write      = value & mask;
-    pi->cart_rom.rom_written     = 1;
+    pi->cart->cart_rom.last_write      = value & mask;
+    pi->cart->cart_rom.rom_written     = 1;
 
     return 0;
 }

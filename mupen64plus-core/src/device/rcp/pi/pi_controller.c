@@ -110,10 +110,10 @@ static void dma_pi_read(struct pi_controller *pi)
    else if (pi->regs[PI_CART_ADDR_REG] >= 0x08000000
          && pi->regs[PI_CART_ADDR_REG] < 0x08010000)
    {
-      if (pi->use_flashram != 1)
+      if (pi->cart->use_flashram != 1)
       {
          dma_write_sram(pi);
-         pi->use_flashram = -1;
+         pi->cart->use_flashram = -1;
       }
       else
       {
@@ -127,12 +127,12 @@ static void dma_pi_read(struct pi_controller *pi)
       length = ((pi->regs[PI_RD_LEN_REG] & 0xFFFFFF) | 1) + 1;
       i = (pi->regs[PI_CART_ADDR_REG] - 0x10000000);
 
-      length = (i + length) > pi->cart_rom.rom_size ?
-         (pi->cart_rom.rom_size - i) : length;
+      length = (i + length) > pi->cart->cart_rom.rom_size ?
+         (pi->cart->cart_rom.rom_size - i) : length;
       length = (pi->regs[PI_DRAM_ADDR_REG] + length) > 0x7FFFFF ?
          (0x7FFFFF - pi->regs[PI_DRAM_ADDR_REG]) : length;
 
-      if (i > pi->cart_rom.rom_size || pi->regs[PI_DRAM_ADDR_REG] > 0x7FFFFF || !pi->summercart.cfg_rom_write)
+      if (i > pi->cart->cart_rom.rom_size || pi->regs[PI_DRAM_ADDR_REG] > 0x7FFFFF || !pi->summercart.cfg_rom_write)
       {
          /* mark both DMA and IO as busy */
          pi->regs[PI_STATUS_REG] |=
@@ -148,7 +148,7 @@ static void dma_pi_read(struct pi_controller *pi)
       dram_address = pi->regs[PI_DRAM_ADDR_REG];
       rom_address = (pi->regs[PI_CART_ADDR_REG] - 0x10000000);
       dram = (uint8_t*)pi->ri->rdram->dram;
-      rom = pi->cart_rom.rom;
+      rom = pi->cart->cart_rom.rom;
 
       pre_framebuffer_dma_read(&pi->dp->fb, dram_address, length);
 
@@ -222,10 +222,10 @@ static void dma_pi_write(struct pi_controller *pi)
       /* XXX: end of domain is wrong ? */
       if (pi->regs[PI_CART_ADDR_REG] >= 0x08000000 && pi->regs[PI_CART_ADDR_REG] < 0x08010000)
       {
-         if (pi->use_flashram != 1)
+         if (pi->cart->use_flashram != 1)
          {
             dma_read_sram(pi);
-            pi->use_flashram = -1;
+            pi->cart->use_flashram = -1;
          }
          else
          {
@@ -376,12 +376,12 @@ static void dma_pi_write(struct pi_controller *pi)
       if (!AllowLargeRoms) {
          i &= 0x3ffffff;
       }
-      length = (i + length) > pi->cart_rom.rom_size ?
-         (pi->cart_rom.rom_size - i) : length;
+      length = (i + length) > pi->cart->cart_rom.rom_size ?
+         (pi->cart->cart_rom.rom_size - i) : length;
       length = (pi->regs[PI_DRAM_ADDR_REG] + length) > 0x7FFFFF ?
          (0x7FFFFF - pi->regs[PI_DRAM_ADDR_REG]) : length;
 
-      if (i > pi->cart_rom.rom_size || pi->regs[PI_DRAM_ADDR_REG] > 0x7FFFFF)
+      if (i > pi->cart->cart_rom.rom_size || pi->regs[PI_DRAM_ADDR_REG] > 0x7FFFFF)
       {
          /* mark both DMA and IO as busy */
          pi->regs[PI_STATUS_REG] |=
@@ -400,7 +400,7 @@ static void dma_pi_write(struct pi_controller *pi)
          rom_address &= 0x3ffffff;
       }
       dram = (uint8_t*)pi->ri->rdram->dram;
-      rom = pi->cart_rom.rom;
+      rom = pi->cart->cart_rom.rom;
    }
 
    for (i = 0; i < length; ++i) {
@@ -438,17 +438,17 @@ void init_pi(struct pi_controller* pi,
                 struct ri_controller *ri,
                 struct rdp_core* dp)
 {
-   init_cart_rom(&pi->cart_rom, rom, rom_size);
+   init_cart_rom(&pi->cart->cart_rom, rom, rom_size);
    init_dd_rom(&pi->dd_rom, ddrom, ddrom_size);
-   init_libretro_storage(&pi->flashram_storage,
+   init_libretro_storage(&pi->cart->flashram_storage,
          flashram_data, FLASHRAM_SIZE, flashram_user_data, flashram_save);
-   init_flashram(&pi->flashram, &pi->flashram_storage, &g_ilibretro_storage);
-   init_libretro_storage(&pi->sram_storage,
+   init_flashram(&pi->cart->flashram, &pi->cart->flashram_storage, &g_ilibretro_storage);
+   init_libretro_storage(&pi->cart->sram_storage,
          sram_data, SRAM_SIZE, sram_user_data, sram_save);
-   init_sram(&pi->sram, &pi->sram_storage, &g_ilibretro_storage);
+   init_sram(&pi->cart->sram, &pi->cart->sram_storage, &g_ilibretro_storage);
    init_summercart(&pi->summercart);
 
-   pi->use_flashram = 0;
+   pi->cart->use_flashram = 0;
 
    pi->dd = dd;
    pi->mi = mi;
@@ -461,9 +461,9 @@ void poweron_pi(struct pi_controller* pi)
 {
     memset(pi->regs, 0, PI_REGS_COUNT*sizeof(uint32_t));
 
-    poweron_cart_rom(&pi->cart_rom);
+    poweron_cart_rom(&pi->cart->cart_rom);
     poweron_dd_rom(&pi->dd_rom);
-    poweron_flashram(&pi->flashram);
+    poweron_flashram(&pi->cart->flashram);
 }
 
 /* Reads a word from the PI MMIO register space. */

@@ -20,6 +20,7 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "sram.h"
+#include "cart.h"
 #include "../rcp/pi/pi_controller.h"
 
 #include "../memory/memory.h"
@@ -50,7 +51,7 @@ void dma_write_sram(struct pi_controller* pi)
    size_t i;
    size_t length = (pi->regs[PI_RD_LEN_REG] & 0xffffff) + 1;
 
-   uint8_t* sram = pi->sram.istorage->data(pi->sram.storage);
+   uint8_t* sram = pi->cart->sram.istorage->data(pi->cart->sram.storage);
    uint8_t* dram = (uint8_t*)pi->ri->rdram->dram;
    uint32_t cart_addr = pi->regs[PI_CART_ADDR_REG] - 0x08000000;
    uint32_t dram_addr = pi->regs[PI_DRAM_ADDR_REG];
@@ -62,7 +63,7 @@ void dma_write_sram(struct pi_controller* pi)
       sram[sram_i] = rdram_safe_read_byte(dram, (dram_addr+i)^S8);
    }
 
-   pi->sram.istorage->save(pi->sram.storage, 0, SRAM_SIZE);
+   pi->cart->sram.istorage->save(pi->cart->sram.storage, 0, SRAM_SIZE);
 }
 
 void dma_read_sram(struct pi_controller* pi)
@@ -70,7 +71,7 @@ void dma_read_sram(struct pi_controller* pi)
    size_t i;
    size_t length = (pi->regs[PI_WR_LEN_REG] & 0xffffff) + 1;
 
-   uint8_t* sram = pi->sram.istorage->data(pi->sram.storage);
+   uint8_t* sram = pi->cart->sram.istorage->data(pi->cart->sram.storage);
    uint8_t* dram = (uint8_t*)pi->ri->rdram->dram;
    uint32_t cart_addr = (pi->regs[PI_CART_ADDR_REG] - 0x08000000) & 0xffff;
    uint32_t dram_addr = pi->regs[PI_DRAM_ADDR_REG];
