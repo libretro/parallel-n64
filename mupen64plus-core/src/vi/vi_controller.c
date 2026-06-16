@@ -125,6 +125,14 @@ int read_vi_regs(void* opaque, uint32_t address, uint32_t *word)
                  / (vi->regs[VI_V_SYNC_REG] + 1)
               : (unsigned int)g_count_per_scanline;
            vi->regs[VI_CURRENT_REG] = elapsed / cps;
+
+           /* Wrap VI_CURRENT into [0, VI_V_SYNC) as real hardware does and as
+            * mupen64plus-next does; a game polling VI_CURRENT in a raster wait
+            * loop expects the line counter to stay within the field height
+            * rather than run past it. */
+           if (vi->regs[VI_V_SYNC_REG] != 0
+               && vi->regs[VI_CURRENT_REG] >= vi->regs[VI_V_SYNC_REG])
+              vi->regs[VI_CURRENT_REG] -= vi->regs[VI_V_SYNC_REG];
         }
         vi->regs[VI_CURRENT_REG] = (vi->regs[VI_CURRENT_REG] & (~1)) | vi->field;
     }
