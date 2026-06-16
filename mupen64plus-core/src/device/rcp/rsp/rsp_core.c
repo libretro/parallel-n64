@@ -365,9 +365,9 @@ void do_SP_Task(struct rsp_core* sp)
         sp->regs2[SP_PC_REG] |= save_pc;
         new_frame();
 
-        if (sp->r4300->mi.regs[MI_INTR_REG] & MI_INTR_DP)
+        if (sp->r4300->mi->regs[MI_INTR_REG] & MI_INTR_DP)
 	{
-	    sp->r4300->mi.regs[MI_INTR_REG] &= ~MI_INTR_DP;
+	    sp->r4300->mi->regs[MI_INTR_REG] &= ~MI_INTR_DP;
 	    /* If the DP is frozen the game expects no DP interrupt
 	     * to be observed until it later clears FREEZE -- holding
 	     * the interrupt back avoids races between the gfx task

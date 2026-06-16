@@ -27,6 +27,7 @@
 
 #include "../device/rcp/ai/ai_controller.h"
 #include "../device/dd/dd_controller.h"
+#include "../device/rcp/mi/mi_controller.h"
 #include "../device/rcp/pi/pi_controller.h"
 #include "../device/r4300/r4300_core.h"
 #include "../device/rcp/rdp/rdp_core.h"
@@ -42,6 +43,7 @@
 struct device
 {
     struct r4300_core r4300;
+    struct mi_controller mi;
     struct rdp_core dp;
     struct rsp_core sp;
     struct ai_controller ai;

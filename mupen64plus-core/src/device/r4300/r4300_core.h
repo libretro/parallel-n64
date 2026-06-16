@@ -56,7 +56,7 @@ struct r4300_core
       int delay_slot_compiled;
    } recomp;
 
-   struct mi_controller mi;
+   struct mi_controller* mi;
 
    uint32_t special_rom;
 };

@@ -95,7 +95,7 @@ void pifbootrom_hle_execute(struct device *dev)
     dev->vi.regs[VI_CURRENT_REG] = 0;
     dev->vi.regs[VI_H_START_REG] = 0;
 
-    dev->r4300.mi.regs[MI_INTR_REG] &= ~(MI_INTR_PI | MI_INTR_VI | MI_INTR_AI | MI_INTR_SP);
+    dev->mi.regs[MI_INTR_REG] &= ~(MI_INTR_PI | MI_INTR_VI | MI_INTR_AI | MI_INTR_SP);
 
     if ((g_ddrom != NULL) && (g_ddrom_size != 0) && (dev->pi.cart_rom.rom == NULL) && (dev->pi.cart_rom.rom_size == 0))
     {

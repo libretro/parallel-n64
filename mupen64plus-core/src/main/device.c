@@ -64,6 +64,7 @@ void init_device(
       )
 {
    init_r4300(&dev->r4300, emumode, count_per_op, special_rom);
+   dev->r4300.mi = &dev->mi;
    init_rdp(&dev->dp, &dev->r4300, &dev->sp, &dev->ri);
    init_rsp(&dev->sp, &dev->r4300, &dev->dp, &dev->ri, audio_signal);
    init_ai(&dev->ai, ai_user_data,

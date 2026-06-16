@@ -78,7 +78,7 @@ int read_mi_regs(void* opaque, uint32_t address, uint32_t* value)
     struct r4300_core* r4300 = (struct r4300_core*)opaque;
     uint32_t reg = mi_reg(address);
 
-    *value = (reg < MI_REGS_COUNT) ? r4300->mi.regs[reg] : 0u;
+    *value = (reg < MI_REGS_COUNT) ? r4300->mi->regs[reg] : 0u;
 
     return 0;
 }
@@ -92,13 +92,13 @@ int write_mi_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
     switch(reg)
     {
     case MI_INIT_MODE_REG:
-        if (update_mi_init_mode(&r4300->mi.regs[MI_INIT_MODE_REG], value & mask) != 0)
+        if (update_mi_init_mode(&r4300->mi->regs[MI_INIT_MODE_REG], value & mask) != 0)
         {
             clear_rcp_interrupt(r4300, MI_INTR_DP);
         }
         break;
     case MI_INTR_MASK_REG:
-        update_mi_intr_mask(&r4300->mi.regs[MI_INTR_MASK_REG], value & mask);
+        update_mi_intr_mask(&r4300->mi->regs[MI_INTR_MASK_REG], value & mask);
 
         check_interrupt();
         cp0_update_count();
@@ -124,22 +124,22 @@ int write_mi_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
 /* interrupt execution is immediate (if not masked) */
 void raise_rcp_interrupt(struct r4300_core* r4300, uint32_t mi_intr)
 {
-    r4300->mi.regs[MI_INTR_REG] |= mi_intr;
+    r4300->mi->regs[MI_INTR_REG] |= mi_intr;
 
-    if (r4300->mi.regs[MI_INTR_REG] & r4300->mi.regs[MI_INTR_MASK_REG])
+    if (r4300->mi->regs[MI_INTR_REG] & r4300->mi->regs[MI_INTR_MASK_REG])
         raise_maskable_interrupt(0x400);
 }
 
 /* interrupt execution is scheduled (if not masked) */
 void signal_rcp_interrupt(struct r4300_core* r4300, uint32_t mi_intr)
 {
-    r4300->mi.regs[MI_INTR_REG] |= mi_intr;
+    r4300->mi->regs[MI_INTR_REG] |= mi_intr;
     check_interrupt();
 }
 
 void clear_rcp_interrupt(struct r4300_core* r4300, uint32_t mi_intr)
 {
-    r4300->mi.regs[MI_INTR_REG] &= ~mi_intr;
+    r4300->mi->regs[MI_INTR_REG] &= ~mi_intr;
     check_interrupt();
 }
 

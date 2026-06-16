@@ -125,11 +125,11 @@ int savestates_load_m64p(const unsigned char *data, size_t size)
    g_dev.ri.rdram.regs[RDRAM_DEVICE_MANUF_REG] = GETDATA(curr, uint32_t);
 
    curr += 4; /* Padding from old implementation */
-   g_dev.r4300.mi.regs[MI_INIT_MODE_REG] = GETDATA(curr, uint32_t);
+   g_dev.mi.regs[MI_INIT_MODE_REG] = GETDATA(curr, uint32_t);
    curr += 4; // Duplicate MI init mode flags from old implementation
-   g_dev.r4300.mi.regs[MI_VERSION_REG] = GETDATA(curr, uint32_t);
-   g_dev.r4300.mi.regs[MI_INTR_REG] = GETDATA(curr, uint32_t);
-   g_dev.r4300.mi.regs[MI_INTR_MASK_REG] = GETDATA(curr, uint32_t);
+   g_dev.mi.regs[MI_VERSION_REG] = GETDATA(curr, uint32_t);
+   g_dev.mi.regs[MI_INTR_REG] = GETDATA(curr, uint32_t);
+   g_dev.mi.regs[MI_INTR_MASK_REG] = GETDATA(curr, uint32_t);
    curr += 4; /* Padding from old implementation. */
    curr += 8; // Duplicated MI intr flags and padding from old implementation
 
@@ -417,21 +417,21 @@ int savestates_save_m64p(unsigned char *data, size_t size)
    PUTDATA(curr, uint32_t, g_dev.ri.rdram.regs[RDRAM_DEVICE_MANUF_REG]);
 
    PUTDATA(curr, uint32_t, 0);
-   PUTDATA(curr, uint32_t, g_dev.r4300.mi.regs[MI_INIT_MODE_REG]);
-   PUTDATA(curr, uint8_t, g_dev.r4300.mi.regs[MI_INIT_MODE_REG] & 0x7F);
-   PUTDATA(curr, uint8_t, (g_dev.r4300.mi.regs[MI_INIT_MODE_REG] & 0x80) != 0);
-   PUTDATA(curr, uint8_t, (g_dev.r4300.mi.regs[MI_INIT_MODE_REG] & 0x100) != 0);
-   PUTDATA(curr, uint8_t, (g_dev.r4300.mi.regs[MI_INIT_MODE_REG] & 0x200) != 0);
-   PUTDATA(curr, uint32_t, g_dev.r4300.mi.regs[MI_VERSION_REG]);
-   PUTDATA(curr, uint32_t, g_dev.r4300.mi.regs[MI_INTR_REG]);
-   PUTDATA(curr, uint32_t, g_dev.r4300.mi.regs[MI_INTR_MASK_REG]);
+   PUTDATA(curr, uint32_t, g_dev.mi.regs[MI_INIT_MODE_REG]);
+   PUTDATA(curr, uint8_t, g_dev.mi.regs[MI_INIT_MODE_REG] & 0x7F);
+   PUTDATA(curr, uint8_t, (g_dev.mi.regs[MI_INIT_MODE_REG] & 0x80) != 0);
+   PUTDATA(curr, uint8_t, (g_dev.mi.regs[MI_INIT_MODE_REG] & 0x100) != 0);
+   PUTDATA(curr, uint8_t, (g_dev.mi.regs[MI_INIT_MODE_REG] & 0x200) != 0);
+   PUTDATA(curr, uint32_t, g_dev.mi.regs[MI_VERSION_REG]);
+   PUTDATA(curr, uint32_t, g_dev.mi.regs[MI_INTR_REG]);
+   PUTDATA(curr, uint32_t, g_dev.mi.regs[MI_INTR_MASK_REG]);
    PUTDATA(curr, uint32_t, 0); /* Padding from old implementation */
-   PUTDATA(curr, uint8_t, (g_dev.r4300.mi.regs[MI_INTR_MASK_REG] & 0x1) != 0);
-   PUTDATA(curr, uint8_t, (g_dev.r4300.mi.regs[MI_INTR_MASK_REG] & 0x2) != 0);
-   PUTDATA(curr, uint8_t, (g_dev.r4300.mi.regs[MI_INTR_MASK_REG] & 0x4) != 0);
-   PUTDATA(curr, uint8_t, (g_dev.r4300.mi.regs[MI_INTR_MASK_REG] & 0x8) != 0);
-   PUTDATA(curr, uint8_t, (g_dev.r4300.mi.regs[MI_INTR_MASK_REG] & 0x10) != 0);
-   PUTDATA(curr, uint8_t, (g_dev.r4300.mi.regs[MI_INTR_MASK_REG] & 0x20) != 0);
+   PUTDATA(curr, uint8_t, (g_dev.mi.regs[MI_INTR_MASK_REG] & 0x1) != 0);
+   PUTDATA(curr, uint8_t, (g_dev.mi.regs[MI_INTR_MASK_REG] & 0x2) != 0);
+   PUTDATA(curr, uint8_t, (g_dev.mi.regs[MI_INTR_MASK_REG] & 0x4) != 0);
+   PUTDATA(curr, uint8_t, (g_dev.mi.regs[MI_INTR_MASK_REG] & 0x8) != 0);
+   PUTDATA(curr, uint8_t, (g_dev.mi.regs[MI_INTR_MASK_REG] & 0x10) != 0);
+   PUTDATA(curr, uint8_t, (g_dev.mi.regs[MI_INTR_MASK_REG] & 0x20) != 0);
    PUTDATA(curr, uint16_t, 0); // Padding from old implementation
 
    PUTDATA(curr, uint32_t, g_dev.pi.regs[PI_DRAM_ADDR_REG]);

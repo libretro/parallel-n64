@@ -63,7 +63,7 @@ void poweron_r4300(struct r4300_core* r4300)
    /* setup CP1 registers */
    poweron_cp1();
 
-   poweron_mi(&r4300->mi);
+   poweron_mi(r4300->mi);
 }
 
 int64_t* r4300_regs(void)

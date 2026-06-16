@@ -132,7 +132,7 @@ static m64p_error plugin_start_gfx(void)
    gfx_info.RDRAM = (unsigned char *) g_rdram;
    gfx_info.DMEM = (unsigned char *) g_dev.sp.mem;
    gfx_info.IMEM = (unsigned char *) g_dev.sp.mem + 0x1000;
-   gfx_info.MI_INTR_REG = &(g_dev.r4300.mi.regs[MI_INTR_REG]);
+   gfx_info.MI_INTR_REG = &(g_dev.mi.regs[MI_INTR_REG]);
    gfx_info.DPC_START_REG = &(g_dev.dp.dpc_regs[DPC_START_REG]);
    gfx_info.DPC_END_REG = &(g_dev.dp.dpc_regs[DPC_END_REG]);
    gfx_info.DPC_CURRENT_REG = &(g_dev.dp.dpc_regs[DPC_CURRENT_REG]);
@@ -243,7 +243,7 @@ static m64p_error plugin_start_rsp(void)
    rsp_info.RDRAM = (unsigned char *) g_rdram;
    rsp_info.DMEM = (unsigned char *) g_dev.sp.mem;
    rsp_info.IMEM = (unsigned char *) g_dev.sp.mem + 0x1000;
-   rsp_info.MI_INTR_REG = &g_dev.r4300.mi.regs[MI_INTR_REG];
+   rsp_info.MI_INTR_REG = &g_dev.mi.regs[MI_INTR_REG];
    rsp_info.SP_MEM_ADDR_REG = &g_dev.sp.regs[SP_MEM_ADDR_REG];
    rsp_info.SP_DRAM_ADDR_REG = &g_dev.sp.regs[SP_DRAM_ADDR_REG];
    rsp_info.SP_RD_LEN_REG = &g_dev.sp.regs[SP_RD_LEN_REG];
