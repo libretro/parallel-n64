@@ -496,7 +496,6 @@ static void nmi_int_handler(void)
 
 void gen_interrupt(void)
 {
-   { static unsigned long g=0; if(((g++)&0xFFFFF)==0){ FILE*f=fopen("/tmp/gi_trace.txt","a"); if(f){ fprintf(f,"gen#%lu COUNT=%08x ni=%08x cc=%d head=%d\n",g,g_cp0_regs[CP0_COUNT_REG],next_interrupt,g_cp0_cycle_count, q.first?q.first->data.type:-1); fclose(f);} } }
    if (mupencorestop == 1)
    {
       g_gs_vi_counter = 0; /* debug */
