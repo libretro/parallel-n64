@@ -193,6 +193,7 @@ SOURCES_C += \
 	$(CORE_DIR)/src/backends/libretro_clock.c \
 	$(CORE_DIR)/src/device/cart/flashram.c \
 	$(CORE_DIR)/src/device/cart/cart_rom.c \
+	$(CORE_DIR)/src/device/cart/cart.c \
 	$(CORE_DIR)/src/device/cart/is_viewer.c \
 	$(CORE_DIR)/src/device/rcp/pi/summercart.c \
 	$(CORE_DIR)/src/util/array_io.c \

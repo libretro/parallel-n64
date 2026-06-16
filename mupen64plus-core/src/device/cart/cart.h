@@ -30,14 +30,19 @@
 #include "sram.h"
 
 #include "../../backends/libretro_storage.h"
+#include "../../backends/api/joybus.h"
+
+struct r4300_core;
+struct pi_controller;
+struct clock_backend_interface;
+struct storage_backend_interface;
 
 /* Group the cart save chips and ROM into a single device-level struct, matching
  * mupen64plus-next's struct cart. Unlike next (which binds the save chips to
  * file_storage), parallel-n64 keeps its libretro save-RAM backends, so the
- * per-chip libretro_storage objects live here alongside the chips. The cart
- * dispatch / joybus device (next's cart.c, get_pi_dma_handler) is NOT adopted;
- * pn64 keeps its existing PIF and PI DMA dispatch, so this is a passive grouping
- * struct. */
+ * per-chip libretro_storage objects live here alongside the chips. The joybus
+ * cart device and the cart_dom2/dom3 DMA dispatch below are imported from next
+ * (region 12); they are wired into the PIF/PI paths in later steps. */
 struct cart
 {
     struct af_rtc af_rtc;
@@ -56,5 +61,19 @@ struct cart
     struct libretro_storage flashram_storage;
     struct libretro_storage sram_storage;
 };
+
+/* PI dom2 (save chip) MMIO + DMA dispatch, routing between sram and flashram by
+ * use_flashram, matching mupen64plus-next. */
+void read_cart_dom2(void* opaque, uint32_t address, uint32_t* value);
+void write_cart_dom2(void* opaque, uint32_t address, uint32_t value, uint32_t mask);
+
+unsigned int cart_dom2_dma_read(void* opaque, const uint8_t* dram, uint32_t dram_addr, uint32_t cart_addr, uint32_t length);
+unsigned int cart_dom2_dma_write(void* opaque, uint8_t* dram, uint32_t dram_addr, uint32_t cart_addr, uint32_t length);
+unsigned int cart_dom3_dma_read(void* opaque, const uint8_t* dram, uint32_t dram_addr, uint32_t cart_addr, uint32_t length);
+unsigned int cart_dom3_dma_write(void* opaque, uint8_t* dram, uint32_t dram_addr, uint32_t cart_addr, uint32_t length);
+
+/* Joybus cart device (eeprom + AF-RTC PIF-channel commands) */
+extern const struct joybus_device_interface
+    g_ijoybus_device_cart;
 
 #endif

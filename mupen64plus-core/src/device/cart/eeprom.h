@@ -25,6 +25,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "../../backends/api/joybus.h"
+
 struct storage_backend_interface;
 
 /* Joybus EEPROM status type field as it appears on the wire (3 bytes).
@@ -33,9 +35,8 @@ struct storage_backend_interface;
  * variants. */
 enum
 {
-   JDT_EEPROM_NONE = UINT32_C(0xffffff),
-   JDT_EEPROM_4K   = UINT32_C(0x008000),
-   JDT_EEPROM_16K  = UINT32_C(0x00c000)
+   JDT_EEPROM_NONE = UINT32_C(0xffffff)
+   /* JDT_EEPROM_4K / JDT_EEPROM_16K come from backends/api/joybus.h */
 };
 
 /* Adopt mupen64plus-next's storage-backed eeprom struct: the backing buffer is
