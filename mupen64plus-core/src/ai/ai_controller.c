@@ -73,7 +73,11 @@ static uint32_t get_remaining_dma_length(struct ai_controller* ai)
       return 0;
 
    cp0_regs = r4300_cp0_regs();
-   if (*next_ai_event <= cp0_regs[CP0_COUNT_REG])
+   /* Use a signed-delta comparison so the test stays correct when CP0 COUNT
+    * wraps past 2^32, matching the cycle-count model already used in
+    * interrupt.c (and mupen64plus-next). An unsigned '<=' would mis-order the
+    * event time and the current count across a wrap. */
+   if ((int)(cp0_regs[CP0_COUNT_REG] - *next_ai_event) >= 0)
       return 0;
 
    remaining_dma_duration = *next_ai_event - cp0_regs[CP0_COUNT_REG];
