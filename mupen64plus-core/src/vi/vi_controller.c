@@ -251,14 +251,14 @@ void vi_vertical_interrupt_event(struct vi_controller* vi)
    /* toggle vi field if in interlaced mode */
    vi->field ^= (vi->regs[VI_STATUS_REG] >> 6) & 0x1;
 
-   /* Raise the VI interrupt only when the half-line compare target
-    * (VI_V_INTR) falls within the field. A game that parks VI_V_INTR at
-    * or beyond VI_V_SYNC does so precisely to suppress the interrupt --
-    * the compared scanline is never reached -- so firing it anyway feeds
-    * the game spurious VI interrupts. The per-field reschedule above is
-    * left unconditional: VI_INT is also this core's frame-loop heartbeat,
-    * so it must keep arriving even when the interrupt itself is masked
-    * out this way. */
-   if (vi->regs[VI_V_INTR_REG] < vi->regs[VI_V_SYNC_REG])
-      raise_rcp_interrupt(vi->r4300, MI_INTR_VI);
+   /* Raise the VI interrupt every field, matching mupen64plus-next and
+    * hardware. An earlier revision gated this on (VI_V_INTR < VI_V_SYNC)
+    * to suppress supposedly-spurious interrupts, but that is wrong: when a
+    * game parks VI_V_INTR at or beyond VI_V_SYNC (a normal idiom, e.g.
+    * Excitebike 64) the gate silently drops the entire VI interrupt
+    * stream. Because VI_INT is also this core's frame-loop heartbeat, that
+    * stalls rendering rather than merely dropping a vblank. The MI mask
+    * (raise_rcp_interrupt checks MI_INTR_MASK_REG) is the correct place
+    * for a game to suppress the interrupt if it wants to. */
+   raise_rcp_interrupt(vi->r4300, MI_INTR_VI);
 }
