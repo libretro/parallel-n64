@@ -1893,22 +1893,6 @@ struct retro_core_option_v2_definition option_defs_us[] = {
         "NONE"
     },
     {
-        CORE_NAME "-ISViewer",
-        "IS Viewer emulation",
-        NULL,
-        NULL,
-        NULL,
-        NULL,
-        {
-            {"disabled", "Disabled"},
-            {"silent", "Silent"},
-            {"stdout", "Write to standard output"},
-            {"parallel", "Parallel Launcher integration"},
-            { NULL, NULL }
-        },
-        "silent"
-    },
-    {
         CORE_NAME "-sdcard",
         "Emulate flashcart SD drive",
         NULL,

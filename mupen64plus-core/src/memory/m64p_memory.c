@@ -40,7 +40,6 @@
 #include "../vi/vi_controller.h"
 #include "../dd/dd_controller.h"
 
-#include "../pi/is_viewer.h"
 #include "../pi/summercart.h"
 
 #include "../ext/libpl.h"
@@ -1032,37 +1031,6 @@ static void write_ddipl(void)
    writew(write_dd_ipl, &g_dev.pi, mupencoreaddress, cpu_word);
 }
 
-static void read_isvb(void) {
-    readb(read_is_viewer, NULL, mupencoreaddress, rdword);
-}
-
-static void read_isvh(void) {
-    readh(read_is_viewer, NULL, mupencoreaddress, rdword);
-}
-
-static void read_isv(void) {
-    readw(read_is_viewer, NULL, mupencoreaddress, rdword);
-}
-
-static void read_isvd(void) {
-    readd(read_is_viewer, NULL, mupencoreaddress, rdword);
-}
-
-static void write_isvb(void) {
-    writeb(write_is_viewer, NULL, mupencoreaddress, cpu_byte);
-}
-
-static void write_isvh(void) {
-    writeh(write_is_viewer, NULL, mupencoreaddress, cpu_hword);
-}
-
-static void write_isv(void) {
-    writew(write_is_viewer, NULL, mupencoreaddress, cpu_word);
-}
-
-static void write_isvd(void) {
-    writed(write_is_viewer, NULL, mupencoreaddress, cpu_dword);
-}
 
 static void read_lplb(void) {
     readb(read_libpl, NULL, mupencoreaddress, rdword);
@@ -1336,10 +1304,6 @@ void poweron_memory(void)
       map_region(0xb000+i, M64P_MEM_NOTHING, R(echo), W(nothing));
    }
    
-   /* map IS-Viewer */
-   if( g_dev.pi.cart_rom.rom_size <= 0x04000000u ) {
-      map_region(0xb3ff, M64P_MEM_NOTHING, RW(isv));
-   }
    
    /* libpl extensions */
    map_region(0xbffb, M64P_MEM_NOTHING, RW(lpl));
