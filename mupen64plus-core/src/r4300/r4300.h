@@ -32,6 +32,7 @@
 extern struct precomp_instr *PC;
 extern int64_t reg[32], hi, lo;
 extern uint32_t next_interrupt;
+extern int g_cp0_cycle_count;
 extern int stop;
 #define mupencorePC PC
 #define mupencorereg reg

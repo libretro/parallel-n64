@@ -20,6 +20,7 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "api/callbacks.h"
+extern int g_cp0_cycle_count;
 #include "api/m64p_types.h"
 #include "cp0_private.h"
 #include "exception.h"
@@ -108,6 +109,7 @@ void TLB_refill_exception(uint32_t address, int w)
       {
          skip_jump = mupencorePC->addr;
          next_interrupt = 0;
+         g_cp0_cycle_count = 0;
       }
    }
 }
@@ -142,6 +144,7 @@ void exception_general(void)
       {
          skip_jump = mupencorePC->addr;
          next_interrupt = 0;
+         g_cp0_cycle_count = 0;
       }
    }
 }

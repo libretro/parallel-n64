@@ -20,6 +20,7 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include <stdint.h>
+extern int g_cp0_cycle_count;
 
 #if !defined(__arm64__) && !defined(__aarch64__)
 #define mupencorereg reg
@@ -89,21 +90,22 @@ static void InterpretOpcode(void);
          cp0_update_count(); \
       } \
       last_addr = interp_PC.addr; \
-      if (next_interrupt <= g_cp0_regs[CP0_COUNT_REG]) gen_interrupt(); \
+      if (g_cp0_cycle_count >= 0) gen_interrupt(); \
    } \
    static void name##_IDLE(uint32_t op) \
    { \
       const int take_jump = (condition); \
-      int skip; \
       if (cop1 && check_cop1_unusable()) return; \
       if (take_jump) \
       { \
          cp0_update_count(); \
-         skip = next_interrupt - g_cp0_regs[CP0_COUNT_REG]; \
-         if (skip > 3) g_cp0_regs[CP0_COUNT_REG] += (skip & UINT32_C(0xFFFFFFFC)); \
-         else name(op); \
+         if (g_cp0_cycle_count < 0) \
+         { \
+            g_cp0_regs[CP0_COUNT_REG] -= (uint32_t)g_cp0_cycle_count; \
+            g_cp0_cycle_count = 0; \
+         } \
       } \
-      else name(op); \
+      name(op); \
    }
 #define CHECK_MEMORY()
 

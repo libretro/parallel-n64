@@ -58,6 +58,7 @@ int stop;
 #if NEW_DYNAREC < NEW_DYNAREC_ARM
 int64_t reg[32], hi, lo;
 uint32_t next_interrupt;
+int g_cp0_cycle_count = 0;
 struct precomp_instr *PC;
 #endif
 #endif

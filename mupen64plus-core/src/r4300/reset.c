@@ -23,6 +23,7 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include <stdint.h>
+extern int g_cp0_cycle_count;
 
 #include "cached_interp.h"
 #include "interrupt.h"
@@ -45,6 +46,7 @@ void reset_hard(void)
    pifbootrom_hle_execute(&g_dev);
    last_addr = UINT32_C(0xa4000040);
    next_interrupt = 624999;
+   g_cp0_cycle_count = -(int)next_interrupt;
    init_interrupt();
 
    g_dev.vi.delay = g_dev.vi.next_vi = 5000;

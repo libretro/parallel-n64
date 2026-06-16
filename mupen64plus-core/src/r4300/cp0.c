@@ -20,6 +20,7 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include <stdint.h>
+extern int g_cp0_cycle_count;
 #include <string.h>
 
 #include "cp0_private.h"
@@ -98,7 +99,11 @@ void cp0_update_count(void)
    if (r4300emu != CORE_DYNAREC_ARI64)
    {
 #endif
-      g_cp0_regs[CP0_COUNT_REG] += ((mupencorePC->addr - last_addr) >> 2) * count_per_op;
+      {
+         uint32_t cnt = ((mupencorePC->addr - last_addr) >> 2) * count_per_op;
+         g_cp0_regs[CP0_COUNT_REG] += cnt;
+         g_cp0_cycle_count        += (int)cnt;
+      }
       last_addr = mupencorePC->addr;
 #ifdef NEW_DYNAREC
    }

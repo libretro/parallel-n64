@@ -23,6 +23,8 @@
 
 #include "interrupt.h"
 
+extern int g_cp0_cycle_count;
+
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -130,39 +132,17 @@ static void clear_queue(struct interrupt_queue *_q)
    clear_pool(&_q->pool);
 }
 
-static int SPECIAL_done = 0;
 
 static int before_event(unsigned int evt1, unsigned int evt2, int type2)
 {
+   /* m64p-next model: order events relative to the exact pending interrupt
+    * time by backing the baseline off by cycle_count. */
    uint32_t count = g_cp0_regs[CP0_COUNT_REG];
-
-   if(evt1 - count < UINT32_C(0x80000000))
-   {
-      if(evt2 - count < UINT32_C(0x80000000))
-      {
-         if((evt1 - count) < (evt2 - count))
-            return 1;
-         return 0;
-      }
-      else
-      {
-         if((count - evt2) < UINT32_C(0x10000000))
-         {
-            switch(type2)
-            {
-               case SPECIAL_INT:
-                  if(SPECIAL_done)
-                     return 1;
-                  break;
-               default:
-                  break;
-            }
-            return 0;
-         }
-         return 1;
-      }
-   }
-   else return 0;
+   (void)type2;
+   if (g_cp0_cycle_count > 0)
+      count -= (uint32_t)g_cp0_cycle_count;
+   if ((evt1 - count) < (evt2 - count)) return 1;
+   return 0;
 }
 
 void add_interrupt_event(int type, unsigned int delay)
@@ -174,11 +154,6 @@ void add_interrupt_event_count(int type, unsigned int count)
 {
    struct node* event;
    struct node* e;
-   int special;
-
-   special = (type == SPECIAL_INT);
-
-   if(g_cp0_regs[CP0_COUNT_REG] > UINT32_C(0x80000000)) SPECIAL_done = 0;
 
    if (get_event(type))
    {
@@ -199,19 +174,17 @@ void add_interrupt_event_count(int type, unsigned int count)
    {
       q.first = event;
       event->next = NULL;
-      next_interrupt = q.first->data.count;
    }
-   else if (before_event(count, q.first->data.count, q.first->data.type) && !special)
+   else if (before_event(count, q.first->data.count, q.first->data.type))
    {
       event->next = q.first;
       q.first = event;
-      next_interrupt = q.first->data.count;
    }
    else
    {
       for(e = q.first;
             e->next != NULL &&
-            (!before_event(count, e->next->data.count, e->next->data.type) || special);
+            (!before_event(count, e->next->data.count, e->next->data.type));
             e = e->next);
 
       if (e->next == NULL)
@@ -221,28 +194,26 @@ void add_interrupt_event_count(int type, unsigned int count)
       }
       else
       {
-         if (!special)
-            for(; e->next != NULL && e->next->data.count == count; e = e->next);
-
+         for(; e->next != NULL && e->next->data.count == count; e = e->next);
          event->next = e->next;
          e->next = event;
       }
    }
+
+   next_interrupt    = q.first->data.count;
+   g_cp0_cycle_count = (int)(g_cp0_regs[CP0_COUNT_REG] - q.first->data.count);
 }
 
 static void remove_interrupt_event(void)
 {
    struct node* e = q.first;
-   uint32_t count = g_cp0_regs[CP0_COUNT_REG];
 
    q.first = e->next;
-
    free_node(&q.pool, e);
 
-   next_interrupt = (q.first != NULL
-         && (q.first->data.count >count 
-            || (count - q.first->data.count) < UINT32_C(0x80000000)))
-      ? q.first->data.count
+   next_interrupt    = (q.first != NULL) ? q.first->data.count : 0;
+   g_cp0_cycle_count = (q.first != NULL)
+      ? (int)(g_cp0_regs[CP0_COUNT_REG] - q.first->data.count)
       : 0;
 }
 
@@ -307,8 +278,19 @@ void translate_event_queue(unsigned int base)
    {
       e->data.count = (e->data.count - g_cp0_regs[CP0_COUNT_REG]) + base;
    }
+
+   g_cp0_regs[CP0_COUNT_REG] = base;
+   add_interrupt_event_count(SPECIAL_INT,
+         ((g_cp0_regs[CP0_COUNT_REG] & UINT32_C(0x80000000)) ^ UINT32_C(0x80000000)));
+
+   /* count_per_op nudge to avoid COUNT==COMPARE mis-order */
+   g_cp0_regs[CP0_COUNT_REG] += count_per_op;
+   g_cp0_cycle_count         += (int)count_per_op;
    add_interrupt_event_count(COMPARE_INT, g_cp0_regs[CP0_COMPARE_REG]);
-   add_interrupt_event_count(SPECIAL_INT, 0);
+   g_cp0_regs[CP0_COUNT_REG] -= count_per_op;
+
+   if (q.first != NULL)
+      g_cp0_cycle_count = (int)(g_cp0_regs[CP0_COUNT_REG] - q.first->data.count);
 }
 
 int save_eventqueue_infos(char *buf)
@@ -344,11 +326,9 @@ void load_eventqueue_infos(char *buf)
 
 void init_interrupt(void)
 {
-   SPECIAL_done = 1;
-
-
    clear_queue(&q);
-   add_interrupt_event_count(SPECIAL_INT, 0);
+   add_interrupt_event_count(SPECIAL_INT,
+         ((g_cp0_regs[CP0_COUNT_REG] & UINT32_C(0x80000000)) ^ UINT32_C(0x80000000)));
 }
 
 void check_interrupt(void)
@@ -371,6 +351,7 @@ void check_interrupt(void)
       }
 
       event->data.count = next_interrupt = g_cp0_regs[CP0_COUNT_REG];
+      g_cp0_cycle_count = 0;
       event->data.type = CHECK_INT;
 
       if (q.first == NULL)
@@ -428,20 +409,25 @@ void raise_maskable_interrupt(uint32_t cause)
 
 static void special_int_handler(void)
 {
-   if (g_cp0_regs[CP0_COUNT_REG] > UINT32_C(0x10000000))
-      return;
-
-   SPECIAL_done = 1;
+   /* m64p-next: reschedule the housekeeping interrupt at the next half of the
+    * 32-bit COUNT space; this keeps the wrap-handling without an absolute flag. */
    remove_interrupt_event();
-   add_interrupt_event_count(SPECIAL_INT, 0);
+   add_interrupt_event_count(SPECIAL_INT,
+         ((g_cp0_regs[CP0_COUNT_REG] & UINT32_C(0x80000000)) ^ UINT32_C(0x80000000)));
 }
 
 static void compare_int_handler(void)
 {
    remove_interrupt_event();
-   g_cp0_regs[CP0_COUNT_REG]+=count_per_op;
+   /* Add count_per_op to avoid wrong event order when COUNT == COMPARE. */
+   g_cp0_regs[CP0_COUNT_REG] += count_per_op;
+   g_cp0_cycle_count        += (int)count_per_op;
    add_interrupt_event_count(COMPARE_INT, g_cp0_regs[CP0_COMPARE_REG]);
-   g_cp0_regs[CP0_COUNT_REG]-=count_per_op;
+   g_cp0_regs[CP0_COUNT_REG] -= count_per_op;
+
+   /* Recompute cycle_count in case COMPARE is now the first event. */
+   if (q.first != NULL)
+      g_cp0_cycle_count = (int)(g_cp0_regs[CP0_COUNT_REG] - q.first->data.count);
 
    raise_maskable_interrupt(CP0_CAUSE_IP7);
 }
@@ -510,6 +496,7 @@ static void nmi_int_handler(void)
 
 void gen_interrupt(void)
 {
+   { static unsigned long g=0; if(((g++)&0xFFFFF)==0){ FILE*f=fopen("/tmp/gi_trace.txt","a"); if(f){ fprintf(f,"gen#%lu COUNT=%08x ni=%08x cc=%d head=%d\n",g,g_cp0_regs[CP0_COUNT_REG],next_interrupt,g_cp0_cycle_count, q.first?q.first->data.type:-1); fclose(f);} } }
    if (mupencorestop == 1)
    {
       g_gs_vi_counter = 0; /* debug */
@@ -532,9 +519,10 @@ void gen_interrupt(void)
       uint32_t count = g_cp0_regs[CP0_COUNT_REG];
       skip_jump = 0;
 
-      next_interrupt = (q.first->data.count > count 
-            || (count - q.first->data.count) < UINT32_C(0x80000000))
-         ? q.first->data.count
+      (void)count;
+      next_interrupt    = (q.first != NULL) ? q.first->data.count : 0;
+      g_cp0_cycle_count = (q.first != NULL)
+         ? (int)(g_cp0_regs[CP0_COUNT_REG] - q.first->data.count)
          : 0;
 
       last_addr = dest;
