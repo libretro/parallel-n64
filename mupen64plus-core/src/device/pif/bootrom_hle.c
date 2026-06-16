@@ -1,5 +1,5 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- *   Mupen64plus - pifbootrom.c                                            *
+ *   Mupen64plus - bootrom_hle.c                                            *
  *   Mupen64Plus homepage: http://code.google.com/p/mupen64plus/           *
  *   Copyright (C) 2016 Bobby Smiles                                       *
  *                                                                         *
@@ -19,24 +19,24 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include "pifbootrom.h"
-#include "../device/cart/cart.h"
+#include "bootrom_hle.h"
+#include "../cart/cart.h"
 
 #include <stdint.h>
 #include <string.h>
 
-#include "../api/m64p_types.h"
-#include "../device/device.h"
-#include "../device/rcp/ai/ai_controller.h"
-#include "../device/rcp/pi/pi_controller.h"
-#include "../device/r4300/cp0_private.h"
-#include "../device/rcp/mi/mi_controller.h"
-#include "../device/r4300/r4300.h"
-#include "../device/r4300/r4300_core.h"
-#include "../device/rcp/rsp/rsp_core.h"
-#include "../device/rcp/si/si_controller.h"
-#include "../device/rcp/vi/vi_controller.h"
-#include "../main/rom.h"
+#include "../../api/m64p_types.h"
+#include "../device.h"
+#include "../rcp/ai/ai_controller.h"
+#include "../rcp/pi/pi_controller.h"
+#include "../r4300/cp0_private.h"
+#include "../rcp/mi/mi_controller.h"
+#include "../r4300/r4300.h"
+#include "../r4300/r4300_core.h"
+#include "../rcp/rsp/rsp_core.h"
+#include "../rcp/si/si_controller.h"
+#include "../rcp/vi/vi_controller.h"
+#include "../../main/rom.h"
 
 static unsigned int get_tv_type(void)
 {
@@ -55,7 +55,7 @@ static unsigned int get_tv_type(void)
 }
 
 /* Simulates end result of PIFBootROM execution */
-void pifbootrom_hle_execute(struct device *dev)
+void pif_bootrom_hle_execute(struct device *dev)
 {
     uint32_t bsd_dom1_config = 0;
     unsigned int rom_type   = 0;              /* 0:Cart, 1:DD */

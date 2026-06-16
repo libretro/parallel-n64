@@ -28,7 +28,7 @@ extern int g_cp0_cycle_count;
 #include "cached_interp.h"
 #include "interrupt.h"
 #include "../device.h"
-#include "../../pifbootrom/pifbootrom.h"
+#include "../pif/bootrom_hle.h"
 #include "../../main/main.h"
 #include "r4300.h"
 #include "r4300_core.h"
@@ -43,7 +43,7 @@ void reset_hard(void)
 {
    poweron_device(&g_dev);
 
-   pifbootrom_hle_execute(&g_dev);
+   pif_bootrom_hle_execute(&g_dev);
    last_addr = UINT32_C(0xa4000040);
    next_interrupt = 624999;
    g_cp0_cycle_count = -(int)next_interrupt;
