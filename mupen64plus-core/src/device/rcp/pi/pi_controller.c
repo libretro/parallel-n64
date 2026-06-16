@@ -110,15 +110,15 @@ static void dma_pi_read(struct pi_controller *pi)
    else if (pi->regs[PI_CART_ADDR_REG] >= 0x08000000
          && pi->regs[PI_CART_ADDR_REG] < 0x08010000)
    {
-      if (pi->cart->use_flashram != 1)
-      {
-         dma_write_sram(pi);
-         pi->cart->use_flashram = -1;
-      }
-      else
-      {
-         dma_write_flashram(pi);
-      }
+      /* region 12e: route the save-chip DMA (DRAM->cart) through next's cart
+       * dom2 dispatch. cart_dom2_dma_read selects sram/flashram by use_flashram
+       * exactly as the old inline dispatch did, and the underlying accessors use
+       * rdram_safe_* for the DRAM side, preserving pn64's bounds safety. */
+      uint32_t length    = (pi->regs[PI_RD_LEN_REG] & 0xffffff) + 1;
+      uint32_t cart_addr = pi->regs[PI_CART_ADDR_REG] - 0x08000000;
+      uint32_t dram_addr = pi->regs[PI_DRAM_ADDR_REG];
+      cart_dom2_dma_read(pi->cart, (const uint8_t*)pi->ri->rdram->dram,
+            dram_addr, cart_addr, length);
    }
    else if (pi->regs[PI_CART_ADDR_REG] >= 0x10000000
          && pi->regs[PI_CART_ADDR_REG] < 0x14000000)
@@ -222,15 +222,16 @@ static void dma_pi_write(struct pi_controller *pi)
       /* XXX: end of domain is wrong ? */
       if (pi->regs[PI_CART_ADDR_REG] >= 0x08000000 && pi->regs[PI_CART_ADDR_REG] < 0x08010000)
       {
-         if (pi->cart->use_flashram != 1)
-         {
-            dma_read_sram(pi);
-            pi->cart->use_flashram = -1;
-         }
-         else
-         {
-            dma_read_flashram(pi);
-         }
+         /* region 12e: route the save-chip DMA (cart->DRAM) through next's cart
+          * dom2 dispatch. cart_dom2_dma_write selects sram/flashram by
+          * use_flashram as the old inline dispatch did; the accessors use
+          * rdram_safe_* for the DRAM side. The cart address is masked to 0xffff
+          * inside the sram accessor, matching the old dma_read_sram. */
+         uint32_t length    = (pi->regs[PI_WR_LEN_REG] & 0xffffff) + 1;
+         uint32_t cart_addr = (pi->regs[PI_CART_ADDR_REG] - 0x08000000) & 0xffff;
+         uint32_t dram_addr = pi->regs[PI_DRAM_ADDR_REG];
+         cart_dom2_dma_write(pi->cart, (uint8_t*)pi->ri->rdram->dram,
+               dram_addr, cart_addr, length);
       }
       else if (pi->regs[PI_CART_ADDR_REG] >= 0x05000000 && pi->regs[PI_CART_ADDR_REG] < 0x06000000)
       {

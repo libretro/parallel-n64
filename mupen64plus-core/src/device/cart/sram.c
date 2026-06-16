@@ -46,43 +46,6 @@ void format_sram(uint8_t* sram)
    memset(sram, 0, SRAM_SIZE);
 }
 
-void dma_write_sram(struct pi_controller* pi)
-{
-   size_t i;
-   size_t length = (pi->regs[PI_RD_LEN_REG] & 0xffffff) + 1;
-
-   uint8_t* sram = pi->cart->sram.istorage->data(pi->cart->sram.storage);
-   uint8_t* dram = (uint8_t*)pi->ri->rdram->dram;
-   uint32_t cart_addr = pi->regs[PI_CART_ADDR_REG] - 0x08000000;
-   uint32_t dram_addr = pi->regs[PI_DRAM_ADDR_REG];
-
-   for(i = 0; i < length; ++i)
-   {
-      const unsigned int sram_i = (cart_addr+i)^S8;
-      if (sram_i >= (unsigned)SRAM_SIZE) continue;
-      sram[sram_i] = rdram_safe_read_byte(dram, (dram_addr+i)^S8);
-   }
-
-   pi->cart->sram.istorage->save(pi->cart->sram.storage, 0, SRAM_SIZE);
-}
-
-void dma_read_sram(struct pi_controller* pi)
-{
-   size_t i;
-   size_t length = (pi->regs[PI_WR_LEN_REG] & 0xffffff) + 1;
-
-   uint8_t* sram = pi->cart->sram.istorage->data(pi->cart->sram.storage);
-   uint8_t* dram = (uint8_t*)pi->ri->rdram->dram;
-   uint32_t cart_addr = (pi->regs[PI_CART_ADDR_REG] - 0x08000000) & 0xffff;
-   uint32_t dram_addr = pi->regs[PI_DRAM_ADDR_REG];
-
-   for(i = 0; i < length; ++i)
-   {
-      const unsigned int sram_i = (cart_addr+i)^S8;
-      rdram_safe_write_byte(dram, (dram_addr+i)^S8, (sram_i < (unsigned)SRAM_SIZE) ? sram[sram_i] : 0);
-   }
-}
-
 /* mupen64plus-next-style accessors (used by the joybus/PI-DMA cart dispatch).
  * These take the operands explicitly (next form) rather than reading the PI
  * registers, and keep parallel-n64's bounds-checked addressing: the cart
@@ -101,7 +64,7 @@ unsigned int sram_dma_read(void* opaque, const uint8_t* dram, uint32_t dram_addr
    {
       const unsigned int sram_i = (cart_addr+i)^S8;
       if (sram_i >= (unsigned)SRAM_SIZE) continue;
-      mem[sram_i] = dram[(dram_addr+i)^S8];
+      mem[sram_i] = rdram_safe_read_byte(dram, (dram_addr+i)^S8);
    }
 
    sram->istorage->save(sram->storage, 0, SRAM_SIZE);
@@ -121,7 +84,7 @@ unsigned int sram_dma_write(void* opaque, uint8_t* dram, uint32_t dram_addr, uin
    for (i = 0; i < length; ++i)
    {
       const unsigned int sram_i = (cart_addr+i)^S8;
-      dram[(dram_addr+i)^S8] = (sram_i < (unsigned)SRAM_SIZE) ? mem[sram_i] : 0;
+      rdram_safe_write_byte(dram, (dram_addr+i)^S8, (sram_i < (unsigned)SRAM_SIZE) ? mem[sram_i] : 0);
    }
 
    return /* length / 8 */0x1000;

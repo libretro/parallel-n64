@@ -42,11 +42,6 @@ void init_sram(struct sram* sram, void* storage, const struct storage_backend_in
 
 void format_sram(uint8_t* sram);
 
-/* parallel-n64 PI DMA entry points (kept so pi_controller's DMA dispatch is
- * unchanged). They preserve pn64's bounds-checked addressing. */
-void dma_write_sram(struct pi_controller* pi);
-void dma_read_sram(struct pi_controller* pi);
-
 /* mupen64plus-next-style accessors (used by the joybus/PI-DMA cart dispatch) */
 unsigned int sram_dma_read(void* opaque, const uint8_t* dram, uint32_t dram_addr, uint32_t cart_addr, uint32_t length);
 unsigned int sram_dma_write(void* opaque, uint8_t* dram, uint32_t dram_addr, uint32_t cart_addr, uint32_t length);

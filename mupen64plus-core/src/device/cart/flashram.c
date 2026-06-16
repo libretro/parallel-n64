@@ -158,51 +158,7 @@ int write_flashram_command(void* opaque, uint32_t address, uint32_t value, uint3
    return 0;
 }
 
-void dma_read_flashram(struct pi_controller *pi)
-{
-   unsigned int dram_addr, cart_addr;
-   unsigned int i, length;
-   struct flashram* flashram = &pi->cart->flashram;
-   uint32_t *dram            = pi->ri->rdram->dram;
-   uint8_t *mem              = flashram->istorage->data(flashram->storage);
 
-   switch (flashram->mode)
-   {
-      case FLASHRAM_MODE_STATUS:
-         dram[pi->regs[PI_DRAM_ADDR_REG]/4]   = (uint32_t)(flashram->status >> 32);
-         dram[pi->regs[PI_DRAM_ADDR_REG]/4+1] = (uint32_t)(flashram->status);
-         break;
-      case FLASHRAM_MODE_READ:
-         length = (pi->regs[PI_WR_LEN_REG] & 0xffffff) + 1;
-         dram_addr = pi->regs[PI_DRAM_ADDR_REG];
-         cart_addr = ((pi->regs[PI_CART_ADDR_REG]-0x08000000)&0xffff)*2;
-
-         for (i = 0; i < length; ++i)
-         {
-            const unsigned int cart_i = (cart_addr+i)^S8;
-            rdram_safe_write_byte(dram, (dram_addr+i)^S8, (cart_i < (unsigned)FLASHRAM_SIZE) ? mem[cart_i] : 0);
-         }
-         break;
-      default:
-         DebugMessage(M64MSG_WARNING, "unknown dma_read_flashram: %x", flashram->mode);
-         break;
-   }
-}
-
-void dma_write_flashram(struct pi_controller *pi)
-{
-   struct flashram *flashram = &pi->cart->flashram;
-
-   switch (flashram->mode)
-   {
-      case FLASHRAM_MODE_WRITE:
-         flashram->write_pointer = pi->regs[PI_DRAM_ADDR_REG];
-         break;
-      default:
-         DebugMessage(M64MSG_ERROR, "unknown dma_write_flashram: %x", flashram->mode);
-         break;
-   }
-}
 
 /* mupen64plus-next-style accessors (used by the joybus/PI-DMA cart dispatch).
  * These present next's (opaque, ...) signatures but drive parallel-n64's
@@ -259,7 +215,7 @@ unsigned int flashram_dma_write(void* opaque, uint8_t* dram, uint32_t dram_addr,
          for (i = 0; i < length; ++i)
          {
             const unsigned int cart_i = (cart+i)^S8;
-            dram[(dram_addr+i)^S8] = (cart_i < (unsigned)FLASHRAM_SIZE) ? mem[cart_i] : 0;
+            rdram_safe_write_byte(dram, (dram_addr+i)^S8, (cart_i < (unsigned)FLASHRAM_SIZE) ? mem[cart_i] : 0);
          }
          break;
       }
