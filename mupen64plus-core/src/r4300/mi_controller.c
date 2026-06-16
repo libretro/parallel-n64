@@ -102,7 +102,7 @@ int write_mi_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
 
         check_interrupt();
         cp0_update_count();
-        if (next_interrupt <= cp0_regs[CP0_COUNT_REG])
+        if ((int)(cp0_regs[CP0_COUNT_REG] - next_interrupt) >= 0)
         {
             /* This call runs in the middle of a JIT store handler.  On
              * the ari64 backend that context has no consumer for the
