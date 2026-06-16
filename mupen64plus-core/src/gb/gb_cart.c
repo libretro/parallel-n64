@@ -160,12 +160,12 @@ static int read_gb_cart_mbc3(struct gb_cart* gb_cart, uint16_t address, uint8_t*
          if (offset < gb_cart->rom_size)
          {
             memcpy(data, &gb_cart->rom[offset], 0x20);
-            DebugMessage(M64MSG_WARNING, "MBC3 read ROM bank %d (%08x)", gb_cart->rom_bank, offset);
+            DebugMessage(M64MSG_WARNING, "MBC3 read ROM bank %d (%08x)", gb_cart->rom_bank, (unsigned)offset);
             dump_32_bytes(data);
          }
          else
          {
-            DebugMessage(M64MSG_WARNING, "Out of bound read to GB ROM %08x", offset);
+            DebugMessage(M64MSG_WARNING, "Out of bound read to GB ROM %08x", (unsigned)offset);
          }
          break;
 
@@ -186,12 +186,12 @@ static int read_gb_cart_mbc3(struct gb_cart* gb_cart, uint16_t address, uint8_t*
             if (offset < gb_cart->ram_size)
             {
                memcpy(data, &gb_cart->ram[offset], 0x20);
-               DebugMessage(M64MSG_WARNING, "MBC3 read RAM bank %d (%08x)", gb_cart->ram_bank, offset);
+               DebugMessage(M64MSG_WARNING, "MBC3 read RAM bank %d (%08x)", gb_cart->ram_bank, (unsigned)offset);
                dump_32_bytes(data);
             }
             else
             {
-               DebugMessage(M64MSG_WARNING, "Out of bound read from GB RAM %08x", offset);
+               DebugMessage(M64MSG_WARNING, "Out of bound read from GB RAM %08x", (unsigned)offset);
             }
          }
          else
@@ -257,11 +257,11 @@ static int write_gb_cart_mbc3(struct gb_cart* gb_cart, uint16_t address, const u
             if (offset < gb_cart->ram_size)
             {
                memcpy(&gb_cart->ram[offset], data, 0x20);
-               DebugMessage(M64MSG_WARNING, "MBC3 write RAM bank %d (%08x)", gb_cart->ram_bank, offset);
+               DebugMessage(M64MSG_WARNING, "MBC3 write RAM bank %d (%08x)", gb_cart->ram_bank, (unsigned)offset);
             }
             else
             {
-               DebugMessage(M64MSG_WARNING, "Out of bound read from GB RAM %08x", offset);
+               DebugMessage(M64MSG_WARNING, "Out of bound read from GB RAM %08x", (unsigned)offset);
             }
          }
          else
@@ -309,12 +309,12 @@ static int read_gb_cart_mbc5(struct gb_cart* gb_cart, uint16_t address, uint8_t*
          if (offset < gb_cart->rom_size)
          {
             memcpy(data, &gb_cart->rom[offset], 0x20);
-            DebugMessage(M64MSG_WARNING, "MBC5 read ROM bank %d (%08x)", gb_cart->rom_bank, offset);
+            DebugMessage(M64MSG_WARNING, "MBC5 read ROM bank %d (%08x)", gb_cart->rom_bank, (unsigned)offset);
             dump_32_bytes(data);
          }
          else
          {
-            DebugMessage(M64MSG_WARNING, "Out of bound read to GB ROM %08x", offset);
+            DebugMessage(M64MSG_WARNING, "Out of bound read to GB ROM %08x", (unsigned)offset);
          }
          break;
 
@@ -325,12 +325,12 @@ static int read_gb_cart_mbc5(struct gb_cart* gb_cart, uint16_t address, uint8_t*
             if (offset < gb_cart->ram_size)
             {
                memcpy(data, &gb_cart->ram[offset], 0x20);
-               DebugMessage(M64MSG_WARNING, "MBC5 read RAM bank %d (%08x)", gb_cart->ram_bank, offset);
+               DebugMessage(M64MSG_WARNING, "MBC5 read RAM bank %d (%08x)", gb_cart->ram_bank, (unsigned)offset);
                dump_32_bytes(data);
             }
             else
             {
-               DebugMessage(M64MSG_WARNING, "Out of bound read from GB RAM %08x", offset);
+               DebugMessage(M64MSG_WARNING, "Out of bound read from GB RAM %08x", (unsigned)offset);
             }
          }
          else
@@ -388,11 +388,11 @@ static int write_gb_cart_mbc5(struct gb_cart* gb_cart, uint16_t address, const u
             if (offset < gb_cart->ram_size)
             {
                memcpy(&gb_cart->ram[offset], data, 0x20);
-               DebugMessage(M64MSG_WARNING, "MBC5 write RAM bank %d (%08x)", gb_cart->ram_bank, offset);
+               DebugMessage(M64MSG_WARNING, "MBC5 write RAM bank %d (%08x)", gb_cart->ram_bank, (unsigned)offset);
             }
             else
             {
-               DebugMessage(M64MSG_WARNING, "Out of bound read from GB RAM %08x", offset);
+               DebugMessage(M64MSG_WARNING, "Out of bound read from GB RAM %08x", (unsigned)offset);
             }
          }
          else
@@ -605,7 +605,7 @@ int init_gb_cart(struct gb_cart* gb_cart, uint8_t *rom, size_t rom_size)
          ram = (uint8_t*)malloc(ram_size);
          if (ram == NULL)
          {
-            DebugMessage(M64MSG_ERROR, "Cannot allocate enough memory for GB RAM (%d bytes)", ram_size);
+            DebugMessage(M64MSG_ERROR, "Cannot allocate enough memory for GB RAM (%zu bytes)", ram_size);
             err = -1;
             goto free_rom;
          }
@@ -613,7 +613,7 @@ int init_gb_cart(struct gb_cart* gb_cart, uint8_t *rom, size_t rom_size)
 #if 0
          read_from_file("./pkmb.sav", ram, ram_size);
 #endif
-         DebugMessage(M64MSG_INFO, "Using a %d bytes GB RAM", ram_size);
+         DebugMessage(M64MSG_INFO, "Using a %zu bytes GB RAM", ram_size);
       }
    }
 
