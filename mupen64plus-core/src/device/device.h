@@ -25,16 +25,16 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "../device/rcp/ai/ai_controller.h"
-#include "../device/dd/dd_controller.h"
-#include "../device/rcp/mi/mi_controller.h"
-#include "../device/rcp/pi/pi_controller.h"
-#include "../device/r4300/r4300_core.h"
-#include "../device/rcp/rdp/rdp_core.h"
-#include "../device/rcp/ri/ri_controller.h"
-#include "../device/rcp/rsp/rsp_core.h"
-#include "../device/rcp/si/si_controller.h"
-#include "../device/rcp/vi/vi_controller.h"
+#include "rcp/ai/ai_controller.h"
+#include "dd/dd_controller.h"
+#include "rcp/mi/mi_controller.h"
+#include "rcp/pi/pi_controller.h"
+#include "r4300/r4300_core.h"
+#include "rcp/rdp/rdp_core.h"
+#include "rcp/ri/ri_controller.h"
+#include "rcp/rsp/rsp_core.h"
+#include "rcp/si/si_controller.h"
+#include "rcp/vi/vi_controller.h"
 
 /* Device structure is a container for the n64 submodules
  * FIXME: should also include memory submodule, but not possible atm

@@ -55,7 +55,7 @@
 #include <libretro.h>
 #include "../../device/rcp/ai/ai_controller.h"
 #include "../../main/main.h"
-#include "../../main/device.h"
+#include "../../device/device.h"
 #include "../../main/rom.h"
 #include "../core_plugin.h"
 #include "../../device/rcp/ri/ri_controller.h"

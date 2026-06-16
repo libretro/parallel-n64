@@ -46,7 +46,7 @@
  *                 The memory address of the store is in the 'address' global.
  */
 
-#include "../../main/device.h"
+#include "../device.h"
 #include "fpu.h"
 
 DECLARE_INSTRUCTION(NI)

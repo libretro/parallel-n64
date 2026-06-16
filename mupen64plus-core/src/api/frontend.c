@@ -39,7 +39,7 @@
 #include "../main/cheat.h"
 
 #include "../main/main.h"
-#include "../main/device.h"
+#include "../device/device.h"
 #include "../main/rom.h"
 #include "../main/version.h"
 #include "../main/util.h"

@@ -25,7 +25,7 @@
 #include <string.h>
 
 #include "../api/m64p_types.h"
-#include "../main/device.h"
+#include "../device/device.h"
 #include "../device/rcp/ai/ai_controller.h"
 #include "../device/rcp/pi/pi_controller.h"
 #include "../device/r4300/cp0_private.h"

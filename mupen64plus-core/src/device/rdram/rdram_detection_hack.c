@@ -23,7 +23,7 @@
 #include "../rcp/ri/ri_controller.h"
 
 #include "../../main/main.h"
-#include "../../main/device.h"
+#include "../device.h"
 #include "../rcp/si/si_controller.h"
 
 #include <stdint.h>

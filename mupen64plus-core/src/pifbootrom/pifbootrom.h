@@ -22,7 +22,7 @@
 #ifndef M64P_DEVICE_PIFBOOTROM_PIFBOOTROM_H
 #define M64P_DEVICE_PIFBOOTROM_PIFBOOTROM_H
 
-#include "../main/device.h"
+#include "../device/device.h"
 
 struct device;
 

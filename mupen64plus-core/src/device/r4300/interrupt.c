@@ -40,7 +40,7 @@ extern int g_cp0_cycle_count;
 #include "../dd/dd_controller.h"
 #include "exception.h"
 #include "../../main/main.h"
-#include "../../main/device.h"
+#include "../device.h"
 #include "../../main/savestates.h"
 #include "../rcp/mi/mi_controller.h"
 #include "new_dynarec/new_dynarec.h"

@@ -31,7 +31,7 @@
 #include "cp1_private.h"
 #include "interrupt.h"
 #include "../../main/main.h"
-#include "../../main/device.h"
+#include "../device.h"
 #include "../../main/rom.h"
 #include "new_dynarec/new_dynarec.h"
 #include "ops.h"

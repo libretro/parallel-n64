@@ -33,7 +33,7 @@
 #include "../api/core_config.h"
 
 #include "savestates.h"
-#include "device.h"
+#include "../device/device.h"
 #include "main.h"
 #include "rom.h"
 #include "util.h"

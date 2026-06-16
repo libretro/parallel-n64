@@ -32,7 +32,7 @@
 #include "../../../api/m64p_types.h"
 #include "../../../api/callbacks.h"
 #include "../../../main/main.h"
-#include "../../../main/device.h"
+#include "../../device.h"
 #include "../../memory/memory.h"
 #include "../cached_interp.h"
 #include "../recomp.h"

@@ -45,7 +45,7 @@
 
 #include "main.h"
 #include "cheat.h"
-#include "device.h"
+#include "../device/device.h"
 #include "eventloop.h"
 #include "rom.h"
 #include "savestates.h"

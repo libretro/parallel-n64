@@ -24,7 +24,7 @@
 #include "../../api/m64p_types.h"
 #include "../../api/callbacks.h"
 
-#include "../../main/device.h"
+#include "../device.h"
 #include "../../main/main.h"
 
 #include "../r4300/new_dynarec/new_dynarec.h"

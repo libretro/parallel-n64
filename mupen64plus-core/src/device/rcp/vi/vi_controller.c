@@ -22,7 +22,7 @@
 #include "vi_controller.h"
 
 #include "../../../main/main.h"
-#include "../../../main/device.h"
+#include "../../device.h"
 #include "../../../main/rom.h"
 #include "../../memory/memory.h"
 #include "../../../plugin/core_plugin.h"

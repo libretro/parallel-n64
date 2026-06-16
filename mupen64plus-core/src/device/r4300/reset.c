@@ -27,7 +27,7 @@ extern int g_cp0_cycle_count;
 
 #include "cached_interp.h"
 #include "interrupt.h"
-#include "../../main/device.h"
+#include "../device.h"
 #include "../../pifbootrom/pifbootrom.h"
 #include "../../main/main.h"
 #include "r4300.h"

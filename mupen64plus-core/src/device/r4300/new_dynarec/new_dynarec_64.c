@@ -32,7 +32,7 @@
 #include "clear_cache.h"
 
 #include "../../../main/main.h"
-#include "../../../main/device.h"
+#include "../../device.h"
 #include "../../memory/memory.h"
 #include "../../rcp/rsp/rsp_core.h"
 #include "new_dynarec.h"

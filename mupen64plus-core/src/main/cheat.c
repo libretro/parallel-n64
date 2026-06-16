@@ -29,7 +29,7 @@
 #include "../device/memory/memory.h"
 #include "cheat.h"
 #include "main.h"
-#include "device.h"
+#include "../device/device.h"
 #include "rom.h"
 #include "list.h"
 #include "eventloop.h"

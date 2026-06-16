@@ -42,7 +42,7 @@
 #include "cached_interp.h"
 #include "cp0_private.h"
 #include "../../main/main.h"
-#include "../../main/device.h"
+#include "../device.h"
 #include "../../main/profile.h"
 #include "../memory/memory.h"
 #include "ops.h"
