@@ -23,27 +23,20 @@
 
 #include "../../api/m64p_types.h"
 #include "../../api/callbacks.h"
+#include "../../backends/api/storage_backend.h"
 
 #include <string.h>
 
-void init_eeprom(struct eeprom *eeprom,
-      void *user_data,
-      void (*save)(void*),
-      uint8_t *data,
-      size_t size,
-      uint32_t id)
-{
-   /* connect saved_memory.eeprom to eeprom */
-   eeprom->user_data = user_data;
-   eeprom->save      = save;
-   eeprom->data      = data;
-   eeprom->size      = size;
-   eeprom->id        = id;
-}
+enum { EEPROM_BLOCK_SIZE = 8 };
 
-void eeprom_save(struct eeprom* eeprom)
+void init_eeprom(struct eeprom* eeprom,
+      uint16_t type,
+      void* storage,
+      const struct storage_backend_interface* istorage)
 {
-   eeprom->save(eeprom->user_data);
+   eeprom->type     = type;
+   eeprom->storage  = storage;
+   eeprom->istorage = istorage;
 }
 
 void format_eeprom(uint8_t* eeprom, size_t size)
@@ -51,64 +44,80 @@ void format_eeprom(uint8_t* eeprom, size_t size)
    memset(eeprom, 0xff, size);
 }
 
+/* next-style block accessors: read/write one 8-byte block through the storage
+ * backend. The persisted byte layout (block * 8, linear, no byte-swap) is
+ * identical to parallel-n64's previous implementation, so existing eeprom
+ * saves remain compatible. */
+void eeprom_read_block(struct eeprom* eeprom, uint8_t block, uint8_t* data)
+{
+   unsigned int address = block * EEPROM_BLOCK_SIZE;
+
+   if (address < eeprom->istorage->size(eeprom->storage))
+   {
+      memcpy(data, eeprom->istorage->data(eeprom->storage) + address, EEPROM_BLOCK_SIZE);
+   }
+   else
+   {
+      DebugMessage(M64MSG_WARNING, "Invalid access to eeprom address=%04x", address);
+   }
+}
+
+void eeprom_write_block(struct eeprom* eeprom, uint8_t block, const uint8_t* data, uint8_t* status)
+{
+   unsigned int address = block * EEPROM_BLOCK_SIZE;
+
+   if (address < eeprom->istorage->size(eeprom->storage))
+   {
+      memcpy(eeprom->istorage->data(eeprom->storage) + address, data, EEPROM_BLOCK_SIZE);
+      eeprom->istorage->save(eeprom->storage, address, EEPROM_BLOCK_SIZE);
+      if (status != NULL)
+         *status = 0x00;
+   }
+   else
+   {
+      DebugMessage(M64MSG_WARNING, "Invalid access to eeprom address=%04x", address);
+   }
+}
+
+/* parallel-n64 PIF-command entry points. These keep pn64's process_cart_command
+ * dispatch and wire behaviour unchanged; they delegate the data movement to the
+ * block accessors above. */
 void eeprom_status_command(struct eeprom* eeprom, uint8_t* cmd)
 {
    /* Restore the pre-4ad4dc5b wire shape: cmd[5] is hard-zeroed
-    * rather than carrying bits 16..23 of eeprom->id. The wider
-    * id field exists so a future patch can signal "no EEPROM
-    * present" properly (via cmd[1] |= 0x80, the standard PIF
-    * "no device on channel" flag), but until that lands, leaving
-    * the high byte at zero keeps the response shape identical
-    * to what every released N64 game expected. The '& 0xff'
-    * masks on the low/mid byte writes survive the revert: they
-    * are no-ops for 4K (0x008000) and 16K (0x00c000) but defend
-    * the wire bytes against a future widening of id beyond
-    * 0xffff. */
+    * rather than carrying bits 16..23 of the eeprom type. Leaving
+    * the high byte at zero keeps the response shape identical to
+    * what every released N64 game expected. The '& 0xff' masks on
+    * the low/mid byte writes are no-ops for 4K (0x008000) and 16K
+    * (0x00c000) but defend the wire bytes against a future widening
+    * of the type beyond 0xffff. The value is sourced from
+    * eeprom->type (next's field) instead of the former id field. */
    if (cmd[1] != 3)
    {
       cmd[1] |= 0x40;
       if ((cmd[1] & 3) > 0)
-         cmd[3] = (eeprom->id & 0xff);
+         cmd[3] = (eeprom->type & 0xff);
       if ((cmd[1] & 3) > 1)
-         cmd[4] = (eeprom->id >> 8) & 0xff;
+         cmd[4] = (eeprom->type >> 8) & 0xff;
       if ((cmd[1] & 3) > 2)
          cmd[5] = 0;
    }
    else
    {
-      cmd[3] = (eeprom->id & 0xff);
-      cmd[4] = (eeprom->id >> 8) & 0xff;
+      cmd[3] = (eeprom->type & 0xff);
+      cmd[4] = (eeprom->type >> 8) & 0xff;
       cmd[5] = 0;
    }
 }
 
 void eeprom_read_command(struct eeprom* eeprom, uint8_t* cmd)
 {
-   uint16_t address = cmd[3] * 8;
-   uint8_t* data = &cmd[4];
-   /* read 8-byte block */
-   if (address < eeprom->size)
-   {
-      memcpy(data, &eeprom->data[address], 8);
-   }
-   else
-   {
-      DebugMessage(M64MSG_WARNING, "Invalid access to eeprom address=%04x", address);
-   }
+   /* cmd[3] is the block index; the 8-byte payload goes to cmd[4..11]. */
+   eeprom_read_block(eeprom, cmd[3], &cmd[4]);
 }
 
 void eeprom_write_command(struct eeprom* eeprom, uint8_t* cmd)
 {
-   uint16_t address = cmd[3] * 8;
-   const uint8_t* data = &cmd[4];
-   /* write 8-byte block */
-   if (address < eeprom->size)
-   {
-      memcpy(&eeprom->data[address], data, 8);
-      eeprom_save(eeprom);
-   }
-   else
-   {
-      DebugMessage(M64MSG_WARNING, "Invalid access to eeprom address=%04x", address);
-   }
+   /* cmd[3] is the block index; the 8-byte payload is at cmd[4..11]. */
+   eeprom_write_block(eeprom, cmd[3], &cmd[4], NULL);
 }

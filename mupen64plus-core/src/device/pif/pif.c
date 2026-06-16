@@ -96,8 +96,10 @@ void init_pif(struct pif *pif,
             );
    }
 
+   init_libretro_storage(&pif->eeprom_storage,
+         eeprom_data, eeprom_size, eeprom_user_data, eeprom_save);
    init_eeprom(&pif->eeprom,
-         eeprom_user_data, eeprom_save, eeprom_data, eeprom_size, eeprom_id);
+         (uint16_t)eeprom_id, &pif->eeprom_storage, &g_ilibretro_storage);
    init_af_rtc(&pif->af_rtc, af_rtc_user_data, af_rtc_get_time);
    init_cic_using_ipl3(&pif->cic, ipl3);
 }

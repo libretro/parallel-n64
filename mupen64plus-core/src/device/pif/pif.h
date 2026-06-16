@@ -27,6 +27,7 @@
 #include "../cart/af_rtc.h"
 #include "cic.h"
 #include "../cart/eeprom.h"
+#include "../../backends/libretro_storage.h"
 #include "../controllers/game_controller.h"
 
 #ifndef PIF_RAM_ADDR
@@ -67,6 +68,7 @@ struct pif
 
    struct game_controller controllers[GAME_CONTROLLERS_COUNT];
    struct eeprom eeprom;
+   struct libretro_storage eeprom_storage;
    struct af_rtc af_rtc;
 
    struct cic cic;
