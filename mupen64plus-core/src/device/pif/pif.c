@@ -49,21 +49,6 @@ void print_pif(struct pif* pif)
 }
 #endif
 
-static void process_cart_command(struct pif* pif, uint8_t* cmd)
-{
-   switch (cmd[2])
-   {
-      case PIF_CMD_STATUS: eeprom_status_command(&pif->cart->eeprom, cmd); break;
-      case PIF_CMD_EEPROM_READ: eeprom_read_command(&pif->cart->eeprom, cmd); break;
-      case PIF_CMD_EEPROM_WRITE: eeprom_write_command(&pif->cart->eeprom, cmd); break;
-      case PIF_CMD_AF_RTC_STATUS: af_rtc_status_command(&pif->cart->af_rtc, cmd); break;
-      case PIF_CMD_AF_RTC_READ: af_rtc_read_command(&pif->cart->af_rtc, cmd); break;
-      case PIF_CMD_AF_RTC_WRITE: af_rtc_write_command(&pif->cart->af_rtc, cmd); break;
-      default:
-         DebugMessage(M64MSG_ERROR, "unknown PIF command: %02x", cmd[2]);
-   }
-}
-
 static void game_controller_dummy_save(void *user_data)
 {
 }
@@ -97,6 +82,18 @@ void init_pif(struct pif *pif,
             rvip_rumble
             );
    }
+
+   /* region 12d: bind PIF joybus channels: 0-3 -> controllers, 4 -> cart. The
+    * controller joybus device delegates command processing to pn64's flat
+    * handler (which supports GameCube controllers and resolves the connected
+    * pak live), so no per-controller backend/flavor wiring is needed here. */
+   for (i = 0; i < GAME_CONTROLLERS_COUNT; ++i)
+   {
+      pif->channels[i].jbd  = &pif->controllers[i];
+      pif->channels[i].ijbd = &g_ijoybus_device_controller;
+   }
+   pif->channels[4].jbd  = pif->cart;
+   pif->channels[4].ijbd = &g_ijoybus_device_cart;
 
    init_libretro_storage(&pif->cart->eeprom_storage,
          eeprom_data, eeprom_size, eeprom_user_data, eeprom_save);
@@ -234,10 +231,33 @@ void update_pif_write(struct si_controller *si)
                   if (Controls[channel].Present && Controls[channel].RawData)
                      input.controllerCommand(channel, &pif->ram[i]);
                   else
-                     process_controller_command(&pif->controllers[channel], &pif->ram[i]);
+                  {
+                     /* region 12d: dispatch through the joybus controller device.
+                      * Set up the channel's Tx/Rx pointers into PIF RAM (as next's
+                      * setup_pif_channel does); the controller device delegates to
+                      * pn64's flat handler, which resolves the live pak itself. */
+                     struct pif_channel* ch = &pif->channels[channel];
+                     uint8_t tx = pif->ram[i] & 0x3f;
+                     ch->tx     = &pif->ram[i];
+                     ch->rx     = &pif->ram[i+1];
+                     ch->tx_buf = &pif->ram[i+2];
+                     ch->rx_buf = &pif->ram[i+2+tx];
+                     if (ch->ijbd != NULL)
+                        ch->ijbd->process(ch->jbd, ch->tx, ch->tx_buf, ch->rx, ch->rx_buf);
+                  }
                }
                else if (channel == 4)
-                  process_cart_command(pif, &pif->ram[i]);
+               {
+                  /* region 12d: cart joybus device (eeprom + AF-RTC commands) */
+                  struct pif_channel* ch = &pif->channels[4];
+                  uint8_t tx = pif->ram[i] & 0x3f;
+                  ch->tx     = &pif->ram[i];
+                  ch->rx     = &pif->ram[i+1];
+                  ch->tx_buf = &pif->ram[i+2];
+                  ch->rx_buf = &pif->ram[i+2+tx];
+                  if (ch->ijbd != NULL)
+                     ch->ijbd->process(ch->jbd, ch->tx, ch->tx_buf, ch->rx, ch->rx_buf);
+               }
                else
                   DebugMessage(M64MSG_ERROR, "channel >= 4 in update_pif_write");
                i += pif->ram[i] + (pif->ram[(i+1)] & 0x3F) + 1;
@@ -298,6 +318,11 @@ void update_pif_read(struct si_controller *si)
                         Controls[channel].RawData)
                      input.readController(channel, &pif->ram[i]);
                   else
+                     /* region 12d: the read pass re-samples buttons (pn64's
+                      * two-pass latency behaviour). The controller joybus device
+                      * delegates writes to the flat handler; reads stay on the
+                      * flat read_controller, which only re-runs the button-read
+                      * commands -- identical memory, identical timing. */
                      read_controller(&pif->controllers[channel], &pif->ram[i]);
                }
                i += pif->ram[i] + (pif->ram[(i+1)] & 0x3F) + 1;

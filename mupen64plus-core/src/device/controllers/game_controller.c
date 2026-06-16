@@ -320,34 +320,7 @@ enum {
     CONT_STATUS_PAK_CHANGED = 0x02
 };
 
-static void jb_pak_read_block(struct game_controller* cont,
-    const uint8_t* addr_acrc, uint8_t* data, uint8_t* dcrc)
-{
-    uint16_t address = (addr_acrc[0] << 8) | (addr_acrc[1] & 0xe0);
 
-    if (cont->ipak != NULL) {
-        cont->ipak->read(cont->pak, address, data, PAK_CHUNK_SIZE);
-        *dcrc = pak_data_crc(data);
-    } else {
-        *dcrc = ~pak_data_crc(data);
-    }
-}
-
-static void jb_pak_write_block(struct game_controller* cont,
-    const uint8_t* addr_acrc, const uint8_t* data, uint8_t* dcrc)
-{
-    uint16_t address = (addr_acrc[0] << 8) | (addr_acrc[1] & 0xe0);
-    uint8_t tmp[PAK_CHUNK_SIZE];
-
-    if (cont->ipak != NULL) {
-        cont->ipak->write(cont->pak, address, data, PAK_CHUNK_SIZE);
-        memcpy(tmp, data, PAK_CHUNK_SIZE);
-        *dcrc = pak_data_crc(tmp);
-    } else {
-        memcpy(tmp, data, PAK_CHUNK_SIZE);
-        *dcrc = ~pak_data_crc(tmp);
-    }
-}
 
 static void standard_controller_reset(struct game_controller* cont)
 {
@@ -396,50 +369,16 @@ static void process_controller_command_joybus(void* jbd,
     uint8_t* rx, uint8_t* rx_buf)
 {
     struct game_controller* cont = (struct game_controller*)jbd;
-    uint32_t input_ = 0;
-    uint8_t cmd = tx_buf[0];
 
-    /* if controller can't be polled, consider it absent */
-    if (cont->icin == NULL
-     || cont->icin->get_input(cont->cin, &input_) != M64ERR_SUCCESS) {
-        *rx |= 0x80;
-        return;
-    }
-
-    switch (cmd)
-    {
-    case JCMD_RESET:
-        if (cont->flavor != NULL)
-            cont->flavor->reset(cont);
-        /* fall through */
-    case JCMD_STATUS: {
-        JOYBUS_CHECK_COMMAND_FORMAT(1, 3)
-
-        rx_buf[0] = (uint8_t)(cont->flavor->type >> 0);
-        rx_buf[1] = (uint8_t)(cont->flavor->type >> 8);
-        rx_buf[2] = cont->status;
-    } break;
-
-    case JCMD_CONTROLLER_READ: {
-        JOYBUS_CHECK_COMMAND_FORMAT(1, 4)
-
-        *((uint32_t*)(rx_buf)) = input_;
-    } break;
-
-    case JCMD_PAK_READ: {
-        JOYBUS_CHECK_COMMAND_FORMAT(3, 33)
-        jb_pak_read_block(cont, &tx_buf[1], &rx_buf[0], &rx_buf[32]);
-    } break;
-
-    case JCMD_PAK_WRITE: {
-        JOYBUS_CHECK_COMMAND_FORMAT(35, 1)
-        jb_pak_write_block(cont, &tx_buf[1], &tx_buf[3], &rx_buf[0]);
-    } break;
-
-    default:
-        DebugMessage(M64MSG_WARNING, "cont: Unknown command %02x %02x %02x",
-            *tx, *rx, cmd);
-    }
+    /* region 12d: delegate to parallel-n64's flat command handler, which is a
+     * superset of next's joybus controller handler -- it additionally supports
+     * GameCube controllers (PIF_CMD_GCN_SHORTPOLL) and pn64's full pak switch.
+     * The joybus Tx/Rx pointers all index into the same PIF RAM buffer, so tx
+     * is exactly the cmd pointer the flat handler expects (cmd[0]=tx, cmd[1]=rx,
+     * cmd[2]=command). This keeps next's channel/joybus dispatch structure while
+     * losing none of pn64's controller features. */
+    (void)tx_buf; (void)rx; (void)rx_buf;
+    process_controller_command(cont, (uint8_t*)tx);
 }
 
 const struct joybus_device_interface g_ijoybus_device_controller =
@@ -448,3 +387,5 @@ const struct joybus_device_interface g_ijoybus_device_controller =
     process_controller_command_joybus,
     NULL
 };
+
+

@@ -44,6 +44,21 @@ enum
    PIF_RAM_SIZE = 0x40
 };
 
+/* PIF channel count (4 controllers + cart), matching mupen64plus-next. */
+enum { PIF_CHANNELS_COUNT = 5 };
+
+/* PIF channel: binds a joybus device to its Tx/Rx slots in PIF RAM (region 12d) */
+struct pif_channel
+{
+    void* jbd;
+    const struct joybus_device_interface* ijbd;
+
+    uint8_t* tx;
+    uint8_t* tx_buf;
+    uint8_t* rx;
+    uint8_t* rx_buf;
+};
+
 enum pif_commands
 {
    PIF_CMD_STATUS          = 0x00,
@@ -73,6 +88,10 @@ struct pif
    struct cic cic;
 
    struct cart* cart;
+
+   /* joybus channel bindings (region 12d): channels 0-3 -> controllers,
+    * channel 4 -> cart. Populated at init/reset; used by the channel dispatch. */
+   struct pif_channel channels[PIF_CHANNELS_COUNT];
 };
 
 void init_pif(struct pif *pif,

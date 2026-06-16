@@ -32,4 +32,5 @@ int egcvip_is_connected(void* opaque, enum pak_type* pak);
 uint32_t egcvip_get_input(void* opaque);
 BUTTONS_GCN egcvip_get_gcn_input(void* opaque, int analogMode);
 
+
 #endif

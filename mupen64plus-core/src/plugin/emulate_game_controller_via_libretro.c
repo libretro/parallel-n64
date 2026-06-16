@@ -1229,6 +1229,8 @@ uint32_t egcvip_get_input(void* opaque)
 
 }
 
+
+
 BUTTONS_GCN egcvip_get_gcn_input(void* opaque, int analogMode)
 {
     BUTTONS_GCN ret = { 0 };
