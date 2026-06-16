@@ -73,6 +73,14 @@ static const struct cart_sidma_entry { char id[4]; unsigned char sidmaduration; 
    { "NT6", 0x64 }, /* Tetris 64 */
 };
 
+/* Cartridge-ID keyed AI DMA duration modifier (percentage; 100 = unchanged).
+ * A handful of titles need their AI DMA timing scaled to get correct audio
+ * pitch/sync, since the duration estimate is not cycle-exact. Values match
+ * mupen64plus-next's per-ROM AiDmaModifier database. */
+static const struct cart_aidma_entry { char id[4]; unsigned char aidmamodifier; } lut_aidmamodifier_id[] = {
+   { "NPG", 88 }, /* Hey You, Pikachu! / Pikachu Genki Dechu (J) */
+};
+
 /* Cartridge-ID keyed save-type database.
  *
  * Keyed on ROM header bytes 0x3B-0x3D (media format + 2-character game

@@ -206,6 +206,7 @@ typedef struct
    unsigned char players; /* Local players 0-4, 2/3/4 way Netplay indicated by 5/6/7. */
    unsigned char rumble;  /* 0 - No, 1 - Yes boolean for rumble support. */
    unsigned int sidmaduration;
+   unsigned int aidmamodifier; /* percentage modifier for AI DMA duration (100 = unchanged) */
 } m64p_rom_settings;
 
 /* ----------------------------------------- */

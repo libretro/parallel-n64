@@ -205,6 +205,7 @@ m64p_error open_rom(const unsigned char* romimage, unsigned int size)
    ROM_SETTINGS.MD5[32] = '\0';
    
    ROM_SETTINGS.sidmaduration = 0x900;
+   ROM_SETTINGS.aidmamodifier = 100; /* 100% = unmodified AI DMA duration */
 
    /* add some useful properties to ROM_PARAMS */
    ROM_PARAMS.systemtype = rom_country_code_to_system_type(ROM_HEADER.destination_code);
@@ -385,6 +386,7 @@ m64p_error open_rom(const unsigned char* romimage, unsigned int size)
       strcpy(ROM_SETTINGS.goodname, ROM_PARAMS.headername);
       strcat(ROM_SETTINGS.goodname, " (unknown rom)");
       ROM_SETTINGS.sidmaduration = 0x900;
+      ROM_SETTINGS.aidmamodifier = 100;
       ROM_SETTINGS.status = 0;
       ROM_SETTINGS.players = 0;
       ROM_SETTINGS.rumble = 0;
@@ -425,6 +427,16 @@ m64p_error open_rom(const unsigned char* romimage, unsigned int size)
       {
          ROM_SETTINGS.sidmaduration = lut_sidmaduration_id[i].sidmaduration;
          DebugMessage(M64MSG_INFO, "SI DMA Duration set to %u.", ROM_SETTINGS.sidmaduration);
+         break;
+      }
+   }
+
+   for (i = 0; i < sizeof(lut_aidmamodifier_id)/sizeof(lut_aidmamodifier_id[0]); ++i)
+   {
+      if (!strncmp(lut_aidmamodifier_id[i].id, cart_id, 3))
+      {
+         ROM_SETTINGS.aidmamodifier = lut_aidmamodifier_id[i].aidmamodifier;
+         DebugMessage(M64MSG_INFO, "AI DMA Modifier set to %u%%.", ROM_SETTINGS.aidmamodifier);
          break;
       }
    }

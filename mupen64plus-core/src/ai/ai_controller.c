@@ -22,6 +22,7 @@
 #include "ai_controller.h"
 
 #include "api/audio_backend.h"
+#include "main/rom.h"
 #include "memory/memory.h"
 #include "r4300/r4300_core.h"
 #include "ri/ri_controller.h"
@@ -145,6 +146,13 @@ static void do_dma(struct ai_controller* ai, struct ai_dma* dma)
 static void fifo_push(struct ai_controller* ai)
 {
    unsigned int duration = get_dma_duration(ai);
+
+   /* Per-ROM AI DMA timing adjustment (percentage; 100 = unchanged). A few
+    * titles (e.g. Hey You, Pikachu!) need their AI DMA duration scaled to get
+    * correct audio pitch/sync. Mirrors mupen64plus-next's AiDmaModifier; the
+    * value is resolved per cart id in rom.c and defaults to 100. */
+   if (ROM_SETTINGS.aidmamodifier != 100)
+      duration = (unsigned int)(((uint64_t)duration * ROM_SETTINGS.aidmamodifier) / 100);
 
    if (ai->regs[AI_STATUS_REG] & AI_STATUS_BUSY)
    {
