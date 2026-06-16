@@ -29,6 +29,8 @@
 #include "../rcp/ri/ri_controller.h"
 #include "../rdram/safe_rdram.h"
 #include "../../backends/api/storage_backend.h"
+#include "../../main/main.h"
+#include "../device.h"
 
 #include <string.h>
 
@@ -200,4 +202,89 @@ void dma_write_flashram(struct pi_controller *pi)
          DebugMessage(M64MSG_ERROR, "unknown dma_write_flashram: %x", flashram->mode);
          break;
    }
+}
+
+/* mupen64plus-next-style accessors (used by the joybus/PI-DMA cart dispatch).
+ * These present next's (opaque, ...) signatures but drive parallel-n64's
+ * existing flashram mode/status machine rather than next's silicon_id/page_buf
+ * model, so the save protocol and status words are unchanged. Note the naming
+ * follows next's PI-perspective convention, which is inverted relative to
+ * pn64's dma_*_flashram(pi) helpers:
+ *   flashram_dma_write == cart -> DRAM (status/array read-back)  [pn64 dma_read]
+ *   flashram_dma_read  == DRAM -> cart (program staging)         [pn64 dma_write] */
+void read_flashram(void* opaque, uint32_t address, uint32_t* value)
+{
+   struct flashram* flashram = (struct flashram*)opaque;
+
+   if ((address & 0xffff) != 0)
+   {
+      DebugMessage(M64MSG_ERROR, "unknown read in read_flashram()");
+      return;
+   }
+   *value = (uint32_t)(flashram->status >> 32);
+}
+
+void write_flashram(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
+{
+   struct flashram* flashram = (struct flashram*)opaque;
+   (void)flashram;
+
+   if ((address & 0xffff) != 0)
+   {
+      DebugMessage(M64MSG_ERROR, "unknown write in write_flashram()");
+      return;
+   }
+   /* pn64's flashram_command takes the pi_controller (its execute path reads
+    * DRAM for the WRITE mode); reach it through the device global, matching
+    * write_flashram_command's behaviour. */
+   flashram_command(&g_dev.pi, value & mask);
+}
+
+unsigned int flashram_dma_write(void* opaque, uint8_t* dram, uint32_t dram_addr, uint32_t cart_addr, uint32_t length)
+{
+   /* cart -> DRAM: status report or array read-back (pn64 dma_read_flashram) */
+   struct flashram* flashram = (struct flashram*)opaque;
+   const uint8_t* mem = flashram->istorage->data(flashram->storage);
+   unsigned int i;
+
+   switch (flashram->mode)
+   {
+      case FLASHRAM_MODE_STATUS:
+         ((uint32_t*)dram)[dram_addr/4]   = (uint32_t)(flashram->status >> 32);
+         ((uint32_t*)dram)[dram_addr/4+1] = (uint32_t)(flashram->status);
+         break;
+      case FLASHRAM_MODE_READ:
+      {
+         uint32_t cart = (cart_addr & 0xffff) * 2;
+         for (i = 0; i < length; ++i)
+         {
+            const unsigned int cart_i = (cart+i)^S8;
+            dram[(dram_addr+i)^S8] = (cart_i < (unsigned)FLASHRAM_SIZE) ? mem[cart_i] : 0;
+         }
+         break;
+      }
+      default:
+         DebugMessage(M64MSG_WARNING, "unknown flashram_dma_write: %x", flashram->mode);
+         break;
+   }
+
+   return /* length / 8 */0x1000;
+}
+
+unsigned int flashram_dma_read(void* opaque, const uint8_t* dram, uint32_t dram_addr, uint32_t cart_addr, uint32_t length)
+{
+   /* DRAM -> cart: program staging (pn64 dma_write_flashram sets write_pointer) */
+   struct flashram* flashram = (struct flashram*)opaque;
+
+   switch (flashram->mode)
+   {
+      case FLASHRAM_MODE_WRITE:
+         flashram->write_pointer = dram_addr;
+         break;
+      default:
+         DebugMessage(M64MSG_ERROR, "unknown flashram_dma_read: %x", flashram->mode);
+         break;
+   }
+
+   return /* length / 8 */0x1000;
 }

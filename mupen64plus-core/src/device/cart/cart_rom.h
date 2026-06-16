@@ -46,4 +46,8 @@ void poweron_cart_rom(struct cart_rom* cart_rom);
 int read_cart_rom(void* opaque, uint32_t address, uint32_t* value);
 int write_cart_rom(void* opaque, uint32_t address, uint32_t value, uint32_t mask);
 
+/* mupen64plus-next-style ROM DMA accessors (used by the joybus/PI-DMA cart dispatch) */
+unsigned int cart_rom_dma_read(void* opaque, const uint8_t* dram, uint32_t dram_addr, uint32_t cart_addr, uint32_t length);
+unsigned int cart_rom_dma_write(void* opaque, uint8_t* dram, uint32_t dram_addr, uint32_t cart_addr, uint32_t length);
+
 #endif

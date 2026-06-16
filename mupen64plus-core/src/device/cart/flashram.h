@@ -66,4 +66,10 @@ int write_flashram_command(void* opaque, uint32_t address, uint32_t value, uint3
 void dma_read_flashram(struct pi_controller* pi);
 void dma_write_flashram(struct pi_controller* pi);
 
+/* mupen64plus-next-style accessors (used by the joybus/PI-DMA cart dispatch) */
+void read_flashram(void* opaque, uint32_t address, uint32_t* value);
+void write_flashram(void* opaque, uint32_t address, uint32_t value, uint32_t mask);
+unsigned int flashram_dma_write(void* opaque, uint8_t* dram, uint32_t dram_addr, uint32_t cart_addr, uint32_t length);
+unsigned int flashram_dma_read(void* opaque, const uint8_t* dram, uint32_t dram_addr, uint32_t cart_addr, uint32_t length);
+
 #endif

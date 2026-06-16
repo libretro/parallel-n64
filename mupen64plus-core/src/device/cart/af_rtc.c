@@ -131,6 +131,65 @@ void af_rtc_write_command(struct af_rtc *rtc, uint8_t* cmd)
    }
 }
 
+/* mupen64plus-next-style block accessors (used by the joybus cart device). These
+ * present next's (block, data, status) interface, but read/write through
+ * parallel-n64's struct tm + control-register model rather than next's
+ * now/last_update_rtc accumulator, so the time source and savestate format are
+ * unchanged. */
+void af_rtc_read_block(struct af_rtc* rtc, uint8_t block, uint8_t* data, uint8_t* status)
+{
+   const struct tm *rtc_time;
+
+   switch (block)
+   {
+      case 0:
+         data[0] = (uint8_t)(rtc->control >> 0);
+         data[1] = (uint8_t)(rtc->control >> 8);
+         *status = 0x00;
+         break;
+      case 1:
+         DebugMessage(M64MSG_ERROR, "AF-RTC reading block 1 is not implemented !");
+         break;
+      case 2:
+         rtc_time = af_rtc_get_time(rtc);
+         data[0] = byte2bcd(rtc_time->tm_sec);
+         data[1] = byte2bcd(rtc_time->tm_min);
+         data[2] = 0x80 + byte2bcd(rtc_time->tm_hour);
+         data[3] = byte2bcd(rtc_time->tm_mday);
+         data[4] = byte2bcd(rtc_time->tm_wday);
+         data[5] = byte2bcd(rtc_time->tm_mon + 1);
+         data[6] = byte2bcd(rtc_time->tm_year);
+         data[7] = byte2bcd(rtc_time->tm_year / 100);
+         *status = 0x00;
+         break;
+      default:
+         DebugMessage(M64MSG_ERROR, "AF-RTC read invalid block: %u", block);
+   }
+}
+
+void af_rtc_write_block(struct af_rtc* rtc, uint8_t block, const uint8_t* data, uint8_t* status)
+{
+   switch (block)
+   {
+      case 0:
+         rtc->control = (uint16_t)((data[1] << 8) | data[0]);
+         *status = 0x00;
+         break;
+      case 1:
+         if (rtc->control & 0x01)
+            break;
+         DebugMessage(M64MSG_ERROR, "AF-RTC writing block 1 is not implemented !");
+         break;
+      case 2:
+         if (rtc->control & 0x02)
+            break;
+         DebugMessage(M64MSG_ERROR, "AF-RTC writing block 2 is not implemented !");
+         break;
+      default:
+         DebugMessage(M64MSG_ERROR, "AF-RTC write invalid block: %u", block);
+   }
+}
+
 void poweron_af_rtc(struct af_rtc* rtc)
 {
    /* power-on default: blocks 1 & 2 read/write, timer active (matches

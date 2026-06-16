@@ -82,3 +82,73 @@ void dma_read_sram(struct pi_controller* pi)
       rdram_safe_write_byte(dram, (dram_addr+i)^S8, (sram_i < (unsigned)SRAM_SIZE) ? sram[sram_i] : 0);
    }
 }
+
+/* mupen64plus-next-style accessors (used by the joybus/PI-DMA cart dispatch).
+ * These take the operands explicitly (next form) rather than reading the PI
+ * registers, and keep parallel-n64's bounds-checked addressing: the cart
+ * address is masked to 0xffff (next) but every byte is still range-checked
+ * against SRAM_SIZE so the 0x8000-0xffff half cannot read/write out of bounds. */
+unsigned int sram_dma_read(void* opaque, const uint8_t* dram, uint32_t dram_addr, uint32_t cart_addr, uint32_t length)
+{
+   /* DRAM -> SRAM (the save write) */
+   size_t i;
+   struct sram* sram = (struct sram*)opaque;
+   uint8_t* mem = sram->istorage->data(sram->storage);
+
+   cart_addr &= 0xffff;
+
+   for (i = 0; i < length; ++i)
+   {
+      const unsigned int sram_i = (cart_addr+i)^S8;
+      if (sram_i >= (unsigned)SRAM_SIZE) continue;
+      mem[sram_i] = dram[(dram_addr+i)^S8];
+   }
+
+   sram->istorage->save(sram->storage, 0, SRAM_SIZE);
+
+   return /* length / 8 */0x1000;
+}
+
+unsigned int sram_dma_write(void* opaque, uint8_t* dram, uint32_t dram_addr, uint32_t cart_addr, uint32_t length)
+{
+   /* SRAM -> DRAM (the read back) */
+   size_t i;
+   struct sram* sram = (struct sram*)opaque;
+   const uint8_t* mem = sram->istorage->data(sram->storage);
+
+   cart_addr &= 0xffff;
+
+   for (i = 0; i < length; ++i)
+   {
+      const unsigned int sram_i = (cart_addr+i)^S8;
+      dram[(dram_addr+i)^S8] = (sram_i < (unsigned)SRAM_SIZE) ? mem[sram_i] : 0;
+   }
+
+   return /* length / 8 */0x1000;
+}
+
+void read_sram(void* opaque, uint32_t address, uint32_t* value)
+{
+   struct sram* sram = (struct sram*)opaque;
+   const uint8_t* mem = sram->istorage->data(sram->storage);
+
+   address &= 0xffff;
+   if (address + sizeof(uint32_t) <= (unsigned)SRAM_SIZE)
+      *value = *(uint32_t*)(mem + address);
+   else
+      *value = 0;
+}
+
+void write_sram(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
+{
+   struct sram* sram = (struct sram*)opaque;
+   uint8_t* mem = sram->istorage->data(sram->storage);
+
+   address &= 0xffff;
+   if (address + sizeof(uint32_t) <= (unsigned)SRAM_SIZE)
+   {
+      uint32_t* dst = (uint32_t*)(mem + address);
+      *dst = MASKED_WRITE(dst, value, mask);
+      sram->istorage->save(sram->storage, address, sizeof(value));
+   }
+}
