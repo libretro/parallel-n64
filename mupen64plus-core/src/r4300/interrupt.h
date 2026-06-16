@@ -57,5 +57,9 @@ void load_eventqueue_infos(char *buf);
 #define HW2_INT     0x200
 #define NMI_INT     0x400
 #define CART_INT    0x800
+/* RSP DMA completion event. Distinct from next's value (0x800) because that
+ * collides with CART_INT here; the numeric value only needs to be unique
+ * within this core's event-type space. */
+#define RSP_DMA_EVT 0x1000
 
 #endif /* M64P_R4300_INTERUPT_H */

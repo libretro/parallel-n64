@@ -85,6 +85,22 @@ enum sp_registers2
     SP_REGS2_COUNT
 };
 
+enum sp_dma_dir
+{
+    SP_DMA_READ,
+    SP_DMA_WRITE
+};
+
+enum { SP_DMA_FIFO_SIZE = 2 };
+
+struct sp_dma
+{
+    uint32_t dir;
+    uint32_t length;
+    uint32_t memaddr;
+    uint32_t dramaddr;
+};
+
 struct rsp_core
 {
     uint32_t mem[SP_MEM_SIZE/4];
@@ -92,6 +108,12 @@ struct rsp_core
     uint32_t regs2[SP_REGS2_COUNT];
     uint32_t rsp_task_locked;
     uint32_t audio_signal;
+
+    /* Hardware RSP DMA engine FIFO (2-deep). Mirrors mupen64plus-next:
+     * a DMA started while one is already in flight is queued rather than
+     * executed immediately, and SP_DMA_BUSY/SP_DMA_FULL reflect real queue
+     * state. Completion is timed via the RSP_DMA_EVT interrupt event. */
+    struct sp_dma fifo[SP_DMA_FIFO_SIZE];
 
     struct r4300_core* r4300;
     struct rdp_core* dp;
@@ -118,5 +140,6 @@ int write_rsp_regs2(void* opaque, uint32_t address, uint32_t value, uint32_t mas
 void do_SP_Task(struct rsp_core* sp);
 
 void rsp_interrupt_event(struct rsp_core* sp);
+void rsp_dma_event(struct rsp_core* sp);
 
 #endif

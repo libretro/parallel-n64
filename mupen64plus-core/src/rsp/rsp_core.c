@@ -36,57 +36,119 @@
 #include <stdio.h>
 #include <string.h>
 
-static void dma_sp_write(struct rsp_core* sp, unsigned length, unsigned count, unsigned skip)
+static void do_sp_dma(struct rsp_core* sp, const struct sp_dma* dma)
 {
     unsigned int i,j;
-    unsigned int memaddr  = sp->regs[SP_MEM_ADDR_REG] & 0xff8;
-    unsigned int dramaddr = sp->regs[SP_DRAM_ADDR_REG] & 0xfffff8;
 
-    unsigned char *spmem  = (unsigned char*)sp->mem + (sp->regs[SP_MEM_ADDR_REG] & 0x1000);
-    unsigned char *dram   = (unsigned char*)sp->ri->rdram.dram;
+    unsigned int l = dma->length;
 
-    for(j = 0; j < count; j++)
+    unsigned int length = ((l & 0xfff) | 7) + 1;
+    unsigned int count  = ((l >> 12) & 0xff) + 1;
+    unsigned int skip   = ((l >> 20) & 0xfff);
+
+    unsigned int memaddr  = dma->memaddr  & 0xff8;
+    unsigned int dramaddr = dma->dramaddr & 0xfffff8;
+
+    unsigned char *spmem = (unsigned char*)sp->mem + (dma->memaddr & 0x1000);
+    unsigned char *dram  = (unsigned char*)sp->ri->rdram.dram;
+
+    if (dma->dir == SP_DMA_WRITE)
     {
-        pre_framebuffer_dma_read(&g_dev.dp.fb, dramaddr, length);
-
-        for(i = 0; i < length; i++)
+        /* RDRAM -> SP memory */
+        for(j = 0; j < count; j++)
         {
-            spmem[(memaddr^S8) & 0xfffu] = rdram_safe_read_byte(dram, dramaddr^S8);
-            memaddr++;
-            dramaddr++;
+            pre_framebuffer_dma_read(&g_dev.dp.fb, dramaddr, length);
+
+            for(i = 0; i < length; i++)
+            {
+                spmem[(memaddr^S8) & 0xfffu] = rdram_safe_read_byte(dram, dramaddr^S8);
+                memaddr++;
+                dramaddr++;
+            }
+            dramaddr += skip;
         }
-        dramaddr+=skip;
+    }
+    else
+    {
+        /* SP memory -> RDRAM */
+        for(j = 0; j < count; j++)
+        {
+            for(i = 0; i < length; i++)
+            {
+                rdram_safe_write_byte(dram, dramaddr^S8, spmem[(memaddr^S8) & 0xfffu]);
+                memaddr++;
+                dramaddr++;
+            }
+            post_framebuffer_dma_write(&g_dev.dp.fb, dramaddr - length, length);
+            dramaddr += skip;
+        }
     }
 
     sp->regs[SP_MEM_ADDR_REG]  = memaddr  & 0xfff;
     sp->regs[SP_DRAM_ADDR_REG] = dramaddr & 0xffffff;
     sp->regs[SP_RD_LEN_REG]    = 0xff8;
+
+    /* schedule end of dma event (hardware-accurate completion latency) */
+    cp0_update_count();
+    add_interrupt_event(RSP_DMA_EVT, (count * length) / 8);
 }
 
-static void dma_sp_read(struct rsp_core* sp, unsigned length, unsigned count, unsigned skip)
+/* Queue a DMA into the 2-deep RSP DMA FIFO. The first DMA starts
+ * immediately; a DMA requested while one is in flight is queued and runs
+ * when the in-flight one completes (fifo_pop, from the RSP_DMA_EVT handler).
+ *
+ * dir is the FIFO direction; note the N64 quirk that SP_RD_LEN writes are
+ * RDRAM->SPMEM (SP_DMA_WRITE here) and SP_WR_LEN writes are SPMEM->RDRAM
+ * (SP_DMA_READ here), matching mupen64plus-next's naming. */
+static void fifo_push(struct rsp_core* sp, uint32_t dir)
 {
-    unsigned int i,j;
-    unsigned int memaddr  = sp->regs[SP_MEM_ADDR_REG] & 0xff8;
-    unsigned int dramaddr = sp->regs[SP_DRAM_ADDR_REG] & 0xfffff8;
-
-    unsigned char *spmem  = (unsigned char*)sp->mem + (sp->regs[SP_MEM_ADDR_REG] & 0x1000);
-    unsigned char *dram   = (unsigned char*)sp->ri->rdram.dram;
-
-    for(j = 0; j < count; j++)
+    if (sp->regs[SP_DMA_FULL_REG])
     {
-        for(i = 0; i < length; i++)
-        {
-            rdram_safe_write_byte(dram, dramaddr^S8, spmem[(memaddr^S8) & 0xfffu]);
-            memaddr++;
-            dramaddr++;
-        }
-        post_framebuffer_dma_write(&g_dev.dp.fb, dramaddr - length, length);
-        dramaddr+=skip;
+        /* FIFO already holds a queued DMA; the hardware cannot accept a
+         * third, so drop this request. */
+        return;
     }
 
-    sp->regs[SP_MEM_ADDR_REG]  = memaddr  & 0xfff;
-    sp->regs[SP_DRAM_ADDR_REG] = dramaddr & 0xffffff;
-    sp->regs[SP_RD_LEN_REG]    = 0xff8;
+    if (sp->regs[SP_DMA_BUSY_REG])
+    {
+        sp->fifo[1].dir      = dir;
+        sp->fifo[1].length   = (dir == SP_DMA_WRITE) ? sp->regs[SP_RD_LEN_REG] : sp->regs[SP_WR_LEN_REG];
+        sp->fifo[1].memaddr  = sp->regs[SP_MEM_ADDR_REG];
+        sp->fifo[1].dramaddr = sp->regs[SP_DRAM_ADDR_REG];
+        sp->regs[SP_DMA_FULL_REG]  = 1;
+        sp->regs[SP_STATUS_REG]   |= SP_STATUS_DMA_FULL;
+    }
+    else
+    {
+        sp->fifo[0].dir      = dir;
+        sp->fifo[0].length   = (dir == SP_DMA_WRITE) ? sp->regs[SP_RD_LEN_REG] : sp->regs[SP_WR_LEN_REG];
+        sp->fifo[0].memaddr  = sp->regs[SP_MEM_ADDR_REG];
+        sp->fifo[0].dramaddr = sp->regs[SP_DRAM_ADDR_REG];
+        sp->regs[SP_DMA_BUSY_REG]  = 1;
+        sp->regs[SP_STATUS_REG]   |= SP_STATUS_DMA_BUSY;
+
+        do_sp_dma(sp, &sp->fifo[0]);
+    }
+}
+
+static void fifo_pop(struct rsp_core* sp)
+{
+    if (sp->regs[SP_DMA_FULL_REG])
+    {
+        sp->fifo[0].dir      = sp->fifo[1].dir;
+        sp->fifo[0].length   = sp->fifo[1].length;
+        sp->fifo[0].memaddr  = sp->fifo[1].memaddr;
+        sp->fifo[0].dramaddr = sp->fifo[1].dramaddr;
+        sp->regs[SP_DMA_FULL_REG]  = 0;
+        sp->regs[SP_STATUS_REG]   &= ~SP_STATUS_DMA_FULL;
+
+        do_sp_dma(sp, &sp->fifo[0]);
+    }
+    else
+    {
+        sp->regs[SP_DMA_BUSY_REG]  = 0;
+        sp->regs[SP_STATUS_REG]   &= ~SP_STATUS_DMA_BUSY;
+    }
 }
 
 static void update_sp_status(struct rsp_core* sp, uint32_t w)
@@ -176,6 +238,7 @@ void poweron_rsp(struct rsp_core* sp)
     memset(sp->mem, 0, SP_MEM_SIZE);
     memset(sp->regs, 0, SP_REGS_COUNT*sizeof(uint32_t));
     memset(sp->regs2, 0, SP_REGS2_COUNT*sizeof(uint32_t));
+    memset(sp->fifo, 0, SP_DMA_FIFO_SIZE*sizeof(struct sp_dma));
 
     sp->rsp_task_locked     = 0;
     sp->regs[SP_STATUS_REG] = 1;
@@ -220,7 +283,6 @@ int read_rsp_regs(void* opaque, uint32_t address, uint32_t* value)
 
 int write_rsp_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
 {
-   unsigned l, length, count, skip;
    struct rsp_core* sp = (struct rsp_core*)opaque;
    uint32_t reg        = RSP_REG(address);
 
@@ -240,26 +302,12 @@ int write_rsp_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask
     switch(reg)
     {
        case SP_RD_LEN_REG:
-          l        = sp->regs[SP_RD_LEN_REG];
-          length   = ((l & 0xfff) | 7) + 1;
-          count    = ((l >> 12) & 0xff) + 1;
-          /* SP DMA length register: length [11:0], count [19:12], skip [31:20]
-           * (the per-line stride).  The previous form ((l >> 23) & 0x1ff) << 3
-           * read only bits [31:23] and forced the low three bits of the skip to
-           * zero, truncating any stride that was not a multiple of 8 and
-           * dropping bits [22:20] entirely.  Use the full 12-bit field
-           * (matches mupen64plus-next / hardware). */
-          skip     = ((l >> 20) & 0xfff);
-
-          dma_sp_write(sp, length, count, skip);
+          /* RDRAM -> SP memory; length decode happens in do_sp_dma */
+          fifo_push(sp, SP_DMA_WRITE);
           break;
        case SP_WR_LEN_REG:
-          l        = sp->regs[SP_WR_LEN_REG];
-          length   = ((l & 0xfff) | 7) + 1;
-          count    = ((l >> 12) & 0xff) + 1;
-          /* skip = bits [31:20], see SP_RD_LEN_REG above */
-          skip     = ((l >> 20) & 0xfff);
-          dma_sp_read(sp, length, count, skip);
+          /* SP memory -> RDRAM */
+          fifo_push(sp, SP_DMA_READ);
           break;
        case SP_SEMAPHORE_REG:
           sp->regs[SP_SEMAPHORE_REG] = 0;
@@ -384,4 +432,11 @@ void rsp_interrupt_event(struct rsp_core* sp)
 {
    if ((sp->regs[SP_STATUS_REG] & SP_STATUS_INTR_BREAK) != 0)
       raise_rcp_interrupt(sp->r4300, MI_INTR_SP);
+}
+
+void rsp_dma_event(struct rsp_core* sp)
+{
+   /* An in-flight RSP DMA has completed: advance the FIFO, starting the
+    * next queued transfer if one is pending. */
+   fifo_pop(sp);
 }

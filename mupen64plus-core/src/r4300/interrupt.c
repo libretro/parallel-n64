@@ -570,6 +570,11 @@ void gen_interrupt(void)
          rsp_interrupt_event(&g_dev.sp);
          break;
 
+      case RSP_DMA_EVT:
+         remove_interrupt_event();
+         rsp_dma_event(&g_dev.sp);
+         break;
+
       case DP_INT:
          remove_interrupt_event();
          rdp_interrupt_event(&g_dev.dp);

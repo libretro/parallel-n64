@@ -61,7 +61,7 @@
 extern uint32_t RollbackRtcOnLoadState;
 
 static const char* savestate_magic = "M64+SAVE";
-static const int savestate_latest_version = 0x00010003;  /* 1.3 */
+static const int savestate_latest_version = 0x00010004;  /* 1.4 */
 
 #define GETARRAY(buff, type, count) \
     (to_little_endian_buffer(buff, sizeof(type),count), \
@@ -99,7 +99,7 @@ int savestates_load_m64p(const unsigned char *data, size_t size)
    version = (version << 8) | *curr++;
    version = (version << 8) | *curr++;
 
-   if(version != 0x00010000 && version != 0x00010001 && version != 0x00010002 && version != 0x00010003)
+   if(version != 0x00010000 && version != 0x00010001 && version != 0x00010002 && version != 0x00010003 && version != 0x00010004)
       return 0;
 
    /* Identity check.  New states carry the "M64H"-prefixed header
@@ -345,6 +345,24 @@ int savestates_load_m64p(const unsigned char *data, size_t size)
             rtc->latched_regs[j] = GETDATA(curr, uint8_t);
          rtc->latch     = GETDATA(curr, uint32_t);
          rtc->last_time = (time_t)GETDATA(curr, int64_t);
+      }
+   }
+
+   /* RSP DMA FIFO state (since 1.4). The SP_DMA_BUSY/FULL register bits and
+    * any pending RSP_DMA_EVT are already restored (via the SP register block
+    * and the event queue respectively); this restores the two FIFO transfer
+    * descriptors so a state saved with a DMA still queued resumes correctly.
+    * Older states lack this block: the FIFO is left zeroed (its power-on
+    * state), which is correct because pre-1.4 builds executed SP DMA
+    * synchronously and never had an in-flight transfer at a save point. */
+   if (version >= 0x00010004) {
+      int k;
+      for (k = 0; k < SP_DMA_FIFO_SIZE; ++k)
+      {
+         g_dev.sp.fifo[k].dir      = GETDATA(curr, uint32_t);
+         g_dev.sp.fifo[k].length   = GETDATA(curr, uint32_t);
+         g_dev.sp.fifo[k].memaddr  = GETDATA(curr, uint32_t);
+         g_dev.sp.fifo[k].dramaddr = GETDATA(curr, uint32_t);
       }
    }
 
@@ -638,6 +656,18 @@ int savestates_save_m64p(unsigned char *data, size_t size)
          PUTDATA(curr, uint8_t, rtc->latched_regs[j]);
       PUTDATA(curr, uint32_t, rtc->latch);
       PUTDATA(curr, int64_t, (int64_t)rtc->last_time);
+   }
+
+   /* RSP DMA FIFO state (since 1.4); see the matching load block. */
+   {
+      int k;
+      for (k = 0; k < SP_DMA_FIFO_SIZE; ++k)
+      {
+         PUTDATA(curr, uint32_t, g_dev.sp.fifo[k].dir);
+         PUTDATA(curr, uint32_t, g_dev.sp.fifo[k].length);
+         PUTDATA(curr, uint32_t, g_dev.sp.fifo[k].memaddr);
+         PUTDATA(curr, uint32_t, g_dev.sp.fifo[k].dramaddr);
+      }
    }
 
    /* Deliver callback to indicate completion 
