@@ -77,8 +77,9 @@ void af_rtc_read_command(struct af_rtc *rtc, uint8_t *cmd)
    switch (cmd[3])
    {
       case 0:
-         cmd[4] = 0x00;
-         cmd[5] = 0x02;
+         /* block 0: report the control register (little-endian) */
+         cmd[4] = (uint8_t)(rtc->control >> 0);
+         cmd[5] = (uint8_t)(rtc->control >> 8);
          cmd[12] = 0x00;
          break;
       case 1:
@@ -101,8 +102,34 @@ void af_rtc_read_command(struct af_rtc *rtc, uint8_t *cmd)
 
 void af_rtc_write_command(struct af_rtc *rtc, uint8_t* cmd)
 {
-   /* write RTC block */
-   DebugMessage(M64MSG_ERROR, "AF-RTC write command: not yet implemented");
+   /* write RTC block (cmd[3]: block number, data follows from cmd[4]) */
+   switch (cmd[3])
+   {
+      case 0:
+         /* block 0 sets the control register (little-endian) */
+         rtc->control = (uint16_t)((cmd[5] << 8) | cmd[4]);
+         break;
+      case 1:
+         /* block 1 is write-protected while control bit 0 is set */
+         if (rtc->control & 0x01)
+            break;
+         DebugMessage(M64MSG_ERROR, "AF-RTC write command: block 1 not yet implemented");
+         break;
+      case 2:
+         /* block 2 (the clock) is write-protected while control bit 1 is set */
+         if (rtc->control & 0x02)
+            break;
+         DebugMessage(M64MSG_ERROR, "AF-RTC write command: block 2 not yet implemented");
+         break;
+   }
+}
+
+void poweron_af_rtc(struct af_rtc* rtc)
+{
+   /* power-on default: blocks 1 & 2 read/write, timer active (matches
+    * mupen64plus-next). Time state itself lives in the external get_time
+    * source plus the PL_RTC_OFFSET applied in af_rtc_get_time. */
+   rtc->control = 0x0200;
 }
 
 void init_af_rtc(struct af_rtc* rtc,
@@ -111,6 +138,7 @@ void init_af_rtc(struct af_rtc* rtc,
 {
    rtc->user_data = user_data;
    rtc->get_time = get_time;
+   rtc->control = 0x0200;
    
    errno = 0;
    const char *offsetStr = getenv( "PL_RTC_OFFSET" );

@@ -28,6 +28,13 @@ struct tm;
 
 struct af_rtc
 {
+   /* block 0: control register (little-endian: data[0]=low, data[1]=high).
+    * Bit 0 write-protects block 1, bit 1 write-protects block 2; bit 9 (the
+    * 0x0200 power-on default) marks the timer active. Previously block 0 was
+    * hardcoded to 0x0200 on read and ignored on write; modelling it as real
+    * state matches mupen64plus-next / hardware. */
+   uint16_t control;
+
    /* external time source */
    void* user_data;
    const struct tm* (*get_time)(void*);
@@ -39,6 +46,8 @@ void af_rtc_set_time(struct af_rtc* rtc, struct tm* timestamp);
 void init_af_rtc(struct af_rtc* rtc,
       void* user_data,
       const struct tm* (*get_time)(void*));
+
+void poweron_af_rtc(struct af_rtc* rtc);
 
 void af_rtc_status_command(struct af_rtc* rtc, uint8_t* cmd);
 void af_rtc_read_command(struct af_rtc* rtc, uint8_t* cmd);
