@@ -105,6 +105,7 @@ static void controller_status_command(struct game_controller* cont, uint8_t* cmd
     case PAK_MEM:
     case PAK_RUMBLE:
     case PAK_TRANSFER:
+    case PAK_BIO:
         cmd[5] = 1;
         break;
 
@@ -157,6 +158,9 @@ static void controller_read_pak_command(struct game_controller* cont, uint8_t* c
        case PAK_TRANSFER:
           transferpak_read_command(&cont->transferpak, address, data, PAK_CHUNK_SIZE);
           break;
+       case PAK_BIO:
+          biopak_read_command(&cont->biopak, address, data, PAK_CHUNK_SIZE);
+          break;
        default:
           DebugMessage(M64MSG_WARNING, "Unknown plugged pak %d", (int)pak);
     }
@@ -195,6 +199,9 @@ static void controller_write_pak_command(struct game_controller* cont, uint8_t* 
           break;
        case PAK_TRANSFER:
           transferpak_write_command(&cont->transferpak, address, data, PAK_CHUNK_SIZE);
+          break;
+       case PAK_BIO:
+          biopak_write_command(&cont->biopak, address, data, PAK_CHUNK_SIZE);
           break;
        default:
           DebugMessage(M64MSG_WARNING, "Unknown plugged pak %d", (int)pak);
@@ -238,6 +245,11 @@ void init_game_controller(struct game_controller *cont,
 
    init_mempak(&cont->mempak, mpk_user_data, mpk_save, mpk_data);
    init_rumblepak(&cont->rumblepak, rpk_user_data, rpk_rumble);
+
+   /* The bio sensor synthesises its pulse from the wall clock and needs no
+    * external input, so it is initialised here with a resting default rate
+    * (72 BPM) rather than threading a new parameter through every caller. */
+   init_biopak(&cont->biopak, 72);
 }
 
 int game_controller_is_connected(struct game_controller* cont, enum pak_type* pak)

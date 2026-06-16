@@ -28,6 +28,7 @@
 #include "mempak.h"
 #include "rumblepak.h"
 #include "transferpak.h"
+#include "biopak.h"
 
 #include "api/m64p_plugin.h"
 
@@ -36,7 +37,8 @@ enum pak_type
     PAK_NONE,
     PAK_MEM,
     PAK_RUMBLE,
-    PAK_TRANSFER
+    PAK_TRANSFER,
+    PAK_BIO
 };
 
 enum cont_type
@@ -58,6 +60,7 @@ struct game_controller
     struct mempak mempak;
     struct rumblepak rumblepak;
     struct transferpak transferpak;
+    struct biopak biopak;
 };
 
 void init_game_controller(struct game_controller *cont,
