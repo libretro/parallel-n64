@@ -75,7 +75,14 @@ extern recompiler_memory_layout_t memory_layout;
 #define RML_SIZE_BRANCH_TARGET     RML_SIZE_ROUNDING_MODES    + 16
 #define RML_SIZE_PC                RML_SIZE_BRANCH_TARGET     + 8
 #define RML_SIZE_FAKE_PC           RML_SIZE_PC                + 8
-#define RML_SIZE_RAM_OFFSET        RML_SIZE_FAKE_PC           + 208
+/* rml_fake_pc (sizeof struct precomp_instr = 208) is followed by int
+ * __reserved1[3] (12 bytes) and then the 8-byte-aligned uint64_t rml_ram_offset,
+ * so the step from fake_pc to ram_offset is 208 + 12 + 4 (alignment) = 224, not
+ * 208. The previous +208 left every offset from ram_offset onward (mini_ht,
+ * restore_candidate, instr_addr, link_register, memory_map) 16 bytes below their
+ * true struct positions; the RML_CHECK_SIZE asserts below catch this under C11+,
+ * and the hand-written offsets in linkage_aarch64.S are corrected to match. */
+#define RML_SIZE_RAM_OFFSET        RML_SIZE_FAKE_PC           + 224
 #define RML_SIZE_MINI_HT           RML_SIZE_RAM_OFFSET        + 8
 #define RML_SIZE_RESTORE_CANDIDATE RML_SIZE_MINI_HT           + 512
 #define RML_SIZE_INSTR_ADDR        RML_SIZE_RESTORE_CANDIDATE + 512
