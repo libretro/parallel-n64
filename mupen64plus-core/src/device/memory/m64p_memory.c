@@ -50,7 +50,12 @@
 #if !defined(__arm64__) && !defined(__aarch64__)
 #if NEW_DYNAREC < NEW_DYNAREC_ARM
 // address : address of the read/write operation being done
+/* region 14 / Phase 2d (increment 13): on x64 the address storage is in the
+ * embedded hot-state struct (mem_address, via mupencoreaddress in memory.h);
+ * only x86 keeps the flat definition. */
+#if !defined(_M_X64)
 uint32_t address = 0;
+#endif
 #endif
 
 // values that are being written are stored in these variables

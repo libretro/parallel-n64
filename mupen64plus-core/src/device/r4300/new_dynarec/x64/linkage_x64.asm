@@ -144,7 +144,6 @@ cextern new_dynarec_tlb_refill
 cextern next_interrupt
 cextern frame_break
 cextern dyna_entry_rsp
-cextern address
 cextern invalid_code
 cextern hash_table
 
@@ -159,6 +158,7 @@ cextern g_dev
 %define g_dev_r4300_new_dynarec_hot_state_hi                 (g_dev + offsetof_struct_device_r4300 + offsetof_struct_r4300_core_new_dynarec_hot_state + offsetof_struct_new_dynarec_hot_state_hi)
 %define g_dev_r4300_new_dynarec_hot_state_lo                 (g_dev + offsetof_struct_device_r4300 + offsetof_struct_r4300_core_new_dynarec_hot_state + offsetof_struct_new_dynarec_hot_state_lo)
 %define g_dev_r4300_new_dynarec_hot_state_regs               (g_dev + offsetof_struct_device_r4300 + offsetof_struct_r4300_core_new_dynarec_hot_state + offsetof_struct_new_dynarec_hot_state_regs)
+%define g_dev_r4300_new_dynarec_hot_state_mem_address        (g_dev + offsetof_struct_device_r4300 + offsetof_struct_r4300_core_new_dynarec_hot_state + offsetof_struct_new_dynarec_hot_state_mem_address)
 %define g_dev_r4300_new_dynarec_hot_state_cp0_regs           (g_dev + offsetof_struct_device_r4300 + offsetof_struct_r4300_core_new_dynarec_hot_state + offsetof_struct_new_dynarec_hot_state_cp0_regs)
 %define g_dev_r4300_new_dynarec_hot_state_memory_map         (g_dev + offsetof_struct_device_r4300 + offsetof_struct_r4300_core_new_dynarec_hot_state + offsetof_struct_new_dynarec_hot_state_memory_map)
 %define g_dev_r4300_new_dynarec_hot_state_restore_candidate  (g_dev + offsetof_struct_device_r4300 + offsetof_struct_r4300_core_new_dynarec_hot_state + offsetof_struct_new_dynarec_hot_state_restore_candidate)
@@ -593,7 +593,7 @@ invalidate_block_call:
 ;tlb_exception with eax = read(0)/write(1) and r9d = the address.
 
 read_nomem_new:
-    mov     r9d,    [rel address]
+    mov     r9d,    [rel g_dev_r4300_new_dynarec_hot_state_mem_address]
     mov     ecx,    r9d
     shr     ecx,    12
     lea     r10,    [rel g_dev_r4300_new_dynarec_hot_state_memory_map]
@@ -606,7 +606,7 @@ read_nomem_new:
     ret
 
 read_nomemb_new:
-    mov     r9d,    [rel address]
+    mov     r9d,    [rel g_dev_r4300_new_dynarec_hot_state_mem_address]
     mov     ecx,    r9d
     shr     ecx,    12
     lea     r10,    [rel g_dev_r4300_new_dynarec_hot_state_memory_map]
@@ -621,7 +621,7 @@ read_nomemb_new:
     ret
 
 read_nomemh_new:
-    mov     r9d,    [rel address]
+    mov     r9d,    [rel g_dev_r4300_new_dynarec_hot_state_mem_address]
     mov     ecx,    r9d
     shr     ecx,    12
     lea     r10,    [rel g_dev_r4300_new_dynarec_hot_state_memory_map]
@@ -636,7 +636,7 @@ read_nomemh_new:
     ret
 
 read_nomemd_new:
-    mov     r9d,    [rel address]
+    mov     r9d,    [rel g_dev_r4300_new_dynarec_hot_state_mem_address]
     mov     ecx,    r9d
     shr     ecx,    12
     lea     r10,    [rel g_dev_r4300_new_dynarec_hot_state_memory_map]
@@ -711,14 +711,14 @@ write_nomemd_new:
     ret
 
 write_rdram_new:
-    mov     r9d,    [rel address]
+    mov     r9d,    [rel g_dev_r4300_new_dynarec_hot_state_mem_address]
     mov     rdx,    [rel g_dev_r4300_new_dynarec_hot_state_ram_offset]
     mov     ecx,    [rel g_dev_r4300_new_dynarec_hot_state_wword]
     mov     [r9+rdx*4],    ecx
     jmp     _E12
 
 write_rdramb_new:
-    mov     r9d,    [rel address]
+    mov     r9d,    [rel g_dev_r4300_new_dynarec_hot_state_mem_address]
     mov     rdx,    [rel g_dev_r4300_new_dynarec_hot_state_ram_offset]
     mov     eax,    r9d
     xor     eax,    3
@@ -727,7 +727,7 @@ write_rdramb_new:
     jmp     _E12
 
 write_rdramh_new:
-    mov     r9d,    [rel address]
+    mov     r9d,    [rel g_dev_r4300_new_dynarec_hot_state_mem_address]
     mov     rdx,    [rel g_dev_r4300_new_dynarec_hot_state_ram_offset]
     mov     eax,    r9d
     xor     eax,    2
@@ -736,7 +736,7 @@ write_rdramh_new:
     jmp     _E12
 
 write_rdramd_new:
-    mov     r9d,    [rel address]
+    mov     r9d,    [rel g_dev_r4300_new_dynarec_hot_state_mem_address]
     mov     rdx,    [rel g_dev_r4300_new_dynarec_hot_state_ram_offset]
     mov     ecx,    [rel g_dev_r4300_new_dynarec_hot_state_wdword+4]
     mov     [r9+rdx*4],    ecx
@@ -745,7 +745,7 @@ write_rdramd_new:
     jmp     _E12
 
 do_invalidate:
-    mov     r9d,    [rel address]
+    mov     r9d,    [rel g_dev_r4300_new_dynarec_hot_state_mem_address]
 _E12:
     ;r9d = address; r9 must survive for the caller
     mov     ecx,    r9d

@@ -3305,7 +3305,7 @@ static void do_readstub(int n)
     ftable=(intptr_t)readmem;
   if(type==LOADD_STUB)
     ftable=(intptr_t)readmemd;
-  emit_writeword(rs,(intptr_t)&address);
+  emit_writeword(rs,(intptr_t)&mupencoreaddress);
   emit_shrimm(rs,16,addr);
   emit_loadhandler(ftable,addr,addr);
   emit_pusha();
@@ -3390,9 +3390,9 @@ static void inline_readstub(int type, int i, u_int addr, signed char regmap[], i
   if(type==LOADD_STUB)
     ftable=(intptr_t)readmemd;
   #ifdef HOST_IMM_ADDR32
-  emit_writeword_imm(addr,(intptr_t)&address);
+  emit_writeword_imm(addr,(intptr_t)&mupencoreaddress);
   #else
-  emit_writeword(rs,(intptr_t)&address);
+  emit_writeword(rs,(intptr_t)&mupencoreaddress);
   #endif
   emit_pusha();
   if((signed int)addr>=(signed int)0xC0000000) {
@@ -3498,7 +3498,7 @@ static void do_writestub(int n)
     ftable=(intptr_t)writemem;
   if(type==STORED_STUB)
     ftable=(intptr_t)writememd;
-  emit_writeword(rs,(intptr_t)&address);
+  emit_writeword(rs,(intptr_t)&mupencoreaddress);
   emit_shrimm(rs,16,addr);
   emit_loadhandler(ftable,addr,addr);
   if(type==STOREB_STUB)
@@ -3574,7 +3574,7 @@ static void inline_writestub(int type, int i, u_int addr, signed char regmap[], 
     ftable=(intptr_t)writemem;
   if(type==STORED_STUB)
     ftable=(intptr_t)writememd;
-  emit_writeword(rs,(intptr_t)&address);
+  emit_writeword(rs,(intptr_t)&mupencoreaddress);
   if(type==STOREB_STUB)
     emit_writebyte(rt,(intptr_t)&cpu_byte);
   if(type==STOREH_STUB)

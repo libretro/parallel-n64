@@ -43,8 +43,19 @@
 #define write_dword_in_memory() writememd[mupencoreaddress >>16]()
 
 #if !defined(__arm64__) && !defined(__aarch64__)
+#if defined(_M_X64)
+/* region 14 / Phase 2d (increment 13): the memory-access address moves into
+ * g_dev.r4300.new_dynarec_hot_state (member mem_address, offset 0x118 -- named
+ * mem_address, not 'address', to avoid the pervasive 'address' parameter-name
+ * collision throughout the memory accessors and m64p_types.h). Like reg, the
+ * bare token 'address' is NOT aliased; the C memory layer already reaches the
+ * global through mupencoreaddress, and the Hacktarux JIT's bare &address sites
+ * are rewritten to &mupencoreaddress. */
+#define mupencoreaddress (g_dev.r4300.new_dynarec_hot_state.mem_address)
+#else
 extern uint32_t address;
 #define mupencoreaddress address
+#endif
 #if defined(_M_X64)
 /* region 14 / Phase 2d (increment 6): on x64 the width-specific read/write
  * staging bytes cpu_byte/cpu_hword have their storage in
@@ -55,7 +66,7 @@ extern uint32_t address;
  *
  * region 14 / Phase 2d (increment 7): cpu_word and cpu_dword join them, aliased
  * onto the shared-region members wword/wdword (next's names for the same write
- * staging). address remains flat for now (migrated in a later increment). */
+ * staging). */
 #define cpu_byte         (g_dev.r4300.new_dynarec_hot_state.hs_cpu_byte)
 #define cpu_hword        (g_dev.r4300.new_dynarec_hot_state.hs_cpu_hword)
 #define cpu_word         (g_dev.r4300.new_dynarec_hot_state.wword)
