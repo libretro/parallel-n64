@@ -454,22 +454,12 @@ void poweron_dd(struct dd_controller* dd)
     dd->timer_standby = 3;
     dd_dv_sleep(dd);
 
-    /* Only present a 64DD ASIC when 64DD hardware is actually attached, i.e. a
-     * DD IPL ROM was loaded (dd->rom). parallel-n64 always constructs and maps
-     * the DD controller (init_device calls init_dd even for a plain cartridge),
-     * so without this gate the DD register space would report a valid retail
-     * drive ID (0x00030000) for every game. 64DD-aware titles such as F-Zero X
-     * probe the ASIC at boot; seeing a present-but-never-ready drive, they wait
-     * forever -> black screen, no audio/input. With no DD IPL the ASIC ID reads
-     * 0 and those titles correctly conclude there is no drive and boot normally. */
-    if (dd->rom != NULL) {
-        dd->regs[DD_ASIC_ID_REG] = 0x00030000;
-        dd->regs[DD_ASIC_CMD_STATUS] |= DD_STATUS_RST_STATE;
-        if (dd->idisk != NULL) {
-            dd->regs[DD_ASIC_CMD_STATUS] |= DD_STATUS_DISK_PRES;
-            if (dd->disk->development)
-                dd->regs[DD_ASIC_ID_REG] = 0x00040000;
-        }
+    dd->regs[DD_ASIC_ID_REG] = 0x00030000;
+    dd->regs[DD_ASIC_CMD_STATUS] |= DD_STATUS_RST_STATE;
+    if (dd->idisk != NULL) {
+        dd->regs[DD_ASIC_CMD_STATUS] |= DD_STATUS_DISK_PRES;
+        if (dd->disk->development)
+            dd->regs[DD_ASIC_ID_REG] = 0x00040000;
     }
 }
 
