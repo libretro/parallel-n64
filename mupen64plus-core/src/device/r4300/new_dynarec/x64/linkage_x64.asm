@@ -142,7 +142,6 @@ cextern clean_blocks
 cextern invalidate_block
 cextern new_dynarec_tlb_refill
 cextern next_interrupt
-cextern stop
 cextern frame_break
 cextern dyna_entry_rsp
 cextern g_cp0_regs
@@ -160,6 +159,7 @@ cextern g_dev
 %define g_dev_r4300_new_dynarec_hot_state_pcaddr            (g_dev + offsetof_struct_device_r4300 + offsetof_struct_r4300_core_new_dynarec_hot_state + offsetof_struct_new_dynarec_hot_state_pcaddr)
 %define g_dev_r4300_new_dynarec_hot_state_pending_exception  (g_dev + offsetof_struct_device_r4300 + offsetof_struct_r4300_core_new_dynarec_hot_state + offsetof_struct_new_dynarec_hot_state_pending_exception)
 %define g_dev_r4300_new_dynarec_hot_state_cycle_count       (g_dev + offsetof_struct_device_r4300 + offsetof_struct_r4300_core_new_dynarec_hot_state + offsetof_struct_new_dynarec_hot_state_cycle_count)
+%define g_dev_r4300_new_dynarec_hot_state_stop              (g_dev + offsetof_struct_device_r4300 + offsetof_struct_r4300_core_new_dynarec_hot_state + offsetof_struct_new_dynarec_hot_state_stop)
 %define g_dev_r4300_new_dynarec_hot_state_memory_map         (g_dev + offsetof_struct_device_r4300 + offsetof_struct_r4300_core_new_dynarec_hot_state + offsetof_struct_new_dynarec_hot_state_memory_map)
 %define g_dev_r4300_new_dynarec_hot_state_restore_candidate  (g_dev + offsetof_struct_device_r4300 + offsetof_struct_r4300_core_new_dynarec_hot_state + offsetof_struct_new_dynarec_hot_state_restore_candidate)
 %define g_dev_r4300_new_dynarec_hot_state_hs_cpu_byte        (g_dev + offsetof_struct_device_r4300 + offsetof_struct_r4300_core_new_dynarec_hot_state + offsetof_struct_new_dynarec_hot_state_hs_cpu_byte)
@@ -333,7 +333,7 @@ _E1:
     mov     CCREG,    [rel g_cp0_regs+36]
     mov     eax,    [rel next_interrupt]
     mov     ecx,    [rel g_dev_r4300_new_dynarec_hot_state_pending_exception]
-    mov     edx,    [rel stop]
+    mov     edx,    [rel g_dev_r4300_new_dynarec_hot_state_stop]
     or      edx,    [rel frame_break]    ;frame boundary: unwind like stop, without teardown
 %ifdef WIN64
     add     rsp,    64

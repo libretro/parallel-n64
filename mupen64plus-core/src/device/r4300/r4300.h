@@ -33,10 +33,21 @@ extern struct precomp_instr *PC;
 extern int64_t reg[32], hi, lo;
 extern uint32_t next_interrupt;
 extern int g_cp0_cycle_count;
-extern int stop;
 #define mupencorePC PC
 #define mupencorereg reg
+#if defined(_M_X64)
+/* region 14 / Phase 2d (increment 9): the core stop flag's storage moves into
+ * g_dev.r4300.new_dynarec_hot_state (member stop, offset 0x10c). The alias is on
+ * mupencorestop -- the name every C consumer uses -- rather than on the bare
+ * token 'stop', which is also a struct member name in libretro.h
+ * (retro_camera_callback::stop) and must not be clobbered. The linkage addresses
+ * the member g_dev-relative. Every mupencorestop use-site is in a function body
+ * where g_dev is in scope. (reg/hi/lo above are migrated in later increments.) */
+#define mupencorestop (g_dev.r4300.new_dynarec_hot_state.stop)
+#else
+extern int stop;
 #define mupencorestop stop
+#endif
 #else
 #include "new_dynarec/arm64/memory_layout_arm64.h"
 #define mupencorePC    (RECOMPILER_MEMORY->rml_PC)

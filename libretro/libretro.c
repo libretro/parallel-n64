@@ -11,6 +11,11 @@
 #include "api/m64p_frontend.h"
 #include "plugin/core_plugin.h"
 #include "api/m64p_types.h"
+/* region 14 / Phase 2d (increment 9): mupencorestop is aliased to
+ * g_dev.r4300.new_dynarec_hot_state.stop on x64 (see r4300.h); this TU uses it,
+ * so it needs the complete struct device (main.h alone only forward-declares
+ * g_dev). */
+#include "device/device.h"
 #include "device/r4300/r4300.h"
 #include "device/memory/memory.h"
 #include "main/main.h"

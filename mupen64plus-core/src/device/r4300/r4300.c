@@ -60,7 +60,11 @@ int frame_break;
  * the link there. A plain global like frame_break above. */
 int g_cp0_cycle_count = 0;
 #if !defined(__arm64__) && !defined(__aarch64__)
+/* region 14 / Phase 2d (increment 9): on x64 stop's storage is in the embedded
+ * hot-state struct (see r4300.h alias); only x86 keeps the flat definition. */
+#if !defined(_M_X64)
 int stop;
+#endif
 #if NEW_DYNAREC < NEW_DYNAREC_ARM
 int64_t reg[32], hi, lo;
 uint32_t next_interrupt;
