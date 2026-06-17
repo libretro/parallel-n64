@@ -149,8 +149,6 @@ cextern g_cp0_regs
 cextern reg
 cextern hi
 cextern lo
-cextern memory_map
-cextern restore_candidate
 cextern address
 cextern readmem_dword
 cextern cpu_word
@@ -167,6 +165,8 @@ cextern g_dev
 %define g_dev_r4300_new_dynarec_hot_state_pcaddr            (g_dev + offsetof_struct_device_r4300 + offsetof_struct_r4300_core_new_dynarec_hot_state + offsetof_struct_new_dynarec_hot_state_pcaddr)
 %define g_dev_r4300_new_dynarec_hot_state_pending_exception  (g_dev + offsetof_struct_device_r4300 + offsetof_struct_r4300_core_new_dynarec_hot_state + offsetof_struct_new_dynarec_hot_state_pending_exception)
 %define g_dev_r4300_new_dynarec_hot_state_cycle_count       (g_dev + offsetof_struct_device_r4300 + offsetof_struct_r4300_core_new_dynarec_hot_state + offsetof_struct_new_dynarec_hot_state_cycle_count)
+%define g_dev_r4300_new_dynarec_hot_state_memory_map         (g_dev + offsetof_struct_device_r4300 + offsetof_struct_r4300_core_new_dynarec_hot_state + offsetof_struct_new_dynarec_hot_state_memory_map)
+%define g_dev_r4300_new_dynarec_hot_state_restore_candidate  (g_dev + offsetof_struct_device_r4300 + offsetof_struct_r4300_core_new_dynarec_hot_state + offsetof_struct_new_dynarec_hot_state_restore_candidate)
 %define g_dev_r4300_new_dynarec_hot_state_last_count        (g_dev + offsetof_struct_device_r4300 + offsetof_struct_r4300_core_new_dynarec_hot_state + offsetof_struct_new_dynarec_hot_state_last_count)
 %define g_dev_r4300_new_dynarec_hot_state_ram_offset        (g_dev + offsetof_struct_device_r4300 + offsetof_struct_r4300_core_new_dynarec_hot_state + offsetof_struct_new_dynarec_hot_state_ram_offset)
 
@@ -245,7 +245,7 @@ verify_code_vm:
     lea     r10d,    [-1+ARG1_REG64+ARG3_REG64*1]
     shr     CCREG,    12
     shr     r10d,    12
-    lea     r11,    [rel memory_map]
+    lea     r11,    [rel g_dev_r4300_new_dynarec_hot_state_memory_map]
     mov     rax,    [r11+CCREG64*8]
     test    rax,    rax
     js      _D4
@@ -325,7 +325,7 @@ cc_interrupt:
     shr     CCREG,    19
     mov     dword [rel g_dev_r4300_new_dynarec_hot_state_pending_exception],    0
     and     CCREG,    01fch
-    lea     r10,    [rel restore_candidate]
+    lea     r10,    [rel g_dev_r4300_new_dynarec_hot_state_restore_candidate]
     cmp     dword [r10+CCREG64],    0
     jne     _E4
 _E1:
@@ -596,7 +596,7 @@ read_nomem_new:
     mov     r9d,    [rel address]
     mov     ecx,    r9d
     shr     ecx,    12
-    lea     r10,    [rel memory_map]
+    lea     r10,    [rel g_dev_r4300_new_dynarec_hot_state_memory_map]
     mov     r10,    [r10+rcx*8]
     mov     eax,    0
     test    r10,    r10
@@ -609,7 +609,7 @@ read_nomemb_new:
     mov     r9d,    [rel address]
     mov     ecx,    r9d
     shr     ecx,    12
-    lea     r10,    [rel memory_map]
+    lea     r10,    [rel g_dev_r4300_new_dynarec_hot_state_memory_map]
     mov     r10,    [r10+rcx*8]
     mov     eax,    0
     test    r10,    r10
@@ -624,7 +624,7 @@ read_nomemh_new:
     mov     r9d,    [rel address]
     mov     ecx,    r9d
     shr     ecx,    12
-    lea     r10,    [rel memory_map]
+    lea     r10,    [rel g_dev_r4300_new_dynarec_hot_state_memory_map]
     mov     r10,    [r10+rcx*8]
     mov     eax,    0
     test    r10,    r10
@@ -639,7 +639,7 @@ read_nomemd_new:
     mov     r9d,    [rel address]
     mov     ecx,    r9d
     shr     ecx,    12
-    lea     r10,    [rel memory_map]
+    lea     r10,    [rel g_dev_r4300_new_dynarec_hot_state_memory_map]
     mov     r10,    [r10+rcx*8]
     mov     eax,    0
     test    r10,    r10
@@ -655,7 +655,7 @@ write_nomem_new:
     call    do_invalidate
     mov     ecx,    r9d
     shr     ecx,    12
-    lea     r10,    [rel memory_map]
+    lea     r10,    [rel g_dev_r4300_new_dynarec_hot_state_memory_map]
     mov     r10,    [r10+rcx*8]
     mov     eax,    1
     shl     r10,    2    ;carry = write protect bit
@@ -668,7 +668,7 @@ write_nomemb_new:
     call    do_invalidate
     mov     ecx,    r9d
     shr     ecx,    12
-    lea     r10,    [rel memory_map]
+    lea     r10,    [rel g_dev_r4300_new_dynarec_hot_state_memory_map]
     mov     r10,    [r10+rcx*8]
     mov     eax,    1
     shl     r10,    2    ;carry = write protect bit
@@ -683,7 +683,7 @@ write_nomemh_new:
     call    do_invalidate
     mov     ecx,    r9d
     shr     ecx,    12
-    lea     r10,    [rel memory_map]
+    lea     r10,    [rel g_dev_r4300_new_dynarec_hot_state_memory_map]
     mov     r10,    [r10+rcx*8]
     mov     eax,    1
     shl     r10,    2    ;carry = write protect bit
@@ -698,7 +698,7 @@ write_nomemd_new:
     call    do_invalidate
     mov     ecx,    r9d
     shr     ecx,    12
-    lea     r10,    [rel memory_map]
+    lea     r10,    [rel g_dev_r4300_new_dynarec_hot_state_memory_map]
     mov     r10,    [r10+rcx*8]
     mov     eax,    1
     shl     r10,    2    ;carry = write protect bit

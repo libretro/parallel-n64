@@ -122,6 +122,16 @@ struct new_dynarec_hot_state
  * the member access is well-formed. No flat extern/definition remains on x64. */
 #define pcaddr            (g_dev.r4300.new_dynarec_hot_state.pcaddr)
 #define pending_exception (g_dev.r4300.new_dynarec_hot_state.pending_exception)
+/* region 14 / Phase 2d (increment 5): memory_map (the 1M-entry TLB mapping
+ * table) and restore_candidate (code-invalidation bookkeeping bitmap) likewise
+ * move into the embedded struct. Both are JIT-private -- their only use-sites are
+ * in new_dynarec_64.c, which is included into a TU that has g_dev in scope -- but
+ * several of those uses precede the assem_x64.c include point, so the alias is
+ * defined here (header) rather than in assem_x64.c to cover the whole TU. The
+ * asm_defines generator and the offset-assert block undefine these around their
+ * offsetof() uses so the bare member name is visible there. */
+#define memory_map        (g_dev.r4300.new_dynarec_hot_state.memory_map)
+#define restore_candidate (g_dev.r4300.new_dynarec_hot_state.restore_candidate)
 #else
 /* x86 / arm (32-bit ari64): still flat globals defined in the backend. */
 #ifdef __cplusplus

@@ -49,6 +49,19 @@
 #include <stddef.h>
 #include <stdint.h>
 
+/* new_dynarec.h aliases some hot-state fields to g_dev.r4300.new_dynarec_hot_state.<f>
+ * macros (region 14, Phase 2d) so the JIT and the C use-sites can address them
+ * uniformly. This generator's whole job is to emit the *raw struct offsets* via
+ * offsetof(struct new_dynarec_hot_state, <field>), which needs the bare member
+ * identifier -- the aliases would expand inside offsetof() and not compile. Drop
+ * them here; this TU never dereferences the live state, it only inspects layout.
+ * (Harmless no-ops for fields that are not currently aliased.) */
+#undef pcaddr
+#undef pending_exception
+#undef cycle_count
+#undef memory_map
+#undef restore_candidate
+
 #define HEX(n) ((n) >= 10 ? ('a' + ((n) - 10)) : ('0' + (n)))
 
 /* Creates a structure whose bytes form a string like

@@ -82,10 +82,11 @@ static void ldr_merge_x64(void);
 #define multdiv_rs_scratch  (g_dev.r4300.new_dynarec_hot_state.multdiv_rs_scratch)
 #define multdiv_rt_scratch  (g_dev.r4300.new_dynarec_hot_state.multdiv_rt_scratch)
 #define multdiv_fake_pc     (g_dev.r4300.new_dynarec_hot_state.multdiv_fake_pc)
-uint64_t memory_map[1048576];
+/* region 14 / Phase 2d (increment 5): memory_map and restore_candidate are
+ * aliased onto the embedded struct in new_dynarec.h (included above), so no flat
+ * definition remains here. */
 #define mini_ht             (g_dev.r4300.new_dynarec_hot_state.mini_ht)
 #define rounding_modes      (g_dev.r4300.new_dynarec_hot_state.rounding_modes)
-u_char restore_candidate[512];
 
 /* Code cache: static BSS placement keeps every RIP-relative 32-bit
  * displacement and rel32 helper call in generated code within range. */
