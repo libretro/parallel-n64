@@ -355,6 +355,14 @@ else ifneq (,$(findstring osx,$(platform)))
 	# being linked" warning against the 11.0 link. Pass MINVERSION through
 	# ASFLAGS so the object's minimum-OS load command matches the rest of the build.
 	ASFLAGS += $(MINVERSION)
+	# Same reasoning for the C/C++ objects: with -flto -fwhole-program the final
+	# code generation happens at link time from the bitcode, and its deployment
+	# target comes from the per-TU compile flags, not LDFLAGS. Without MINVERSION
+	# in CFLAGS/CXXFLAGS the LTO intermediate (/tmp/lto.o) defaults to the SDK
+	# version and triggers the same "newer macOS version" warning. MINVERSION is
+	# final here (after the arch reassignment above), so add it to both.
+	CFLAGS   += $(MINVERSION)
+	CXXFLAGS += $(MINVERSION)
 # iOS
 else ifneq (,$(findstring ios,$(platform)))
    ifeq ($(IOSSDK),)
