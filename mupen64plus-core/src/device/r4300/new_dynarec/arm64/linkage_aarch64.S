@@ -124,6 +124,40 @@
 #define _write_rdramh_new       write_rdramh_new
 #endif
 
+/* region 14 / Phase 3a: symbolic field offsets into the recompiler_memory_layout
+ * struct (RECOMPILER_MEMORY, held in x29 across the dynarec). Previously every
+ * [x29, #N] access here used a bare numeric literal maintained by hand; those
+ * literals are now derived from these named constants so the layout has a single
+ * place to update and so a future migration onto new_dynarec_hot_state can swap
+ * the right-hand sides without touching the body. The values are unchanged --
+ * they equal offsetof(recompiler_memory_layout_t, rml_<field>) and are verified
+ * against the C struct under both the arm64-apple and aarch64 ABIs. This is the
+ * GAS "symbol = value" form, accepted by both the Apple and GNU assemblers (the
+ * same form next uses for its fp_* offsets). */
+rml_off_next_interrupt     = 256
+rml_off_cycle_count        = 260
+rml_off_last_count         = 264
+rml_off_pending_exception  = 268
+rml_off_pcaddr             = 272
+rml_off_stop               = 276
+rml_off_invc_ptr           = 280
+rml_off_address            = 288
+rml_off_readmem_dword      = 296
+rml_off_cpu_dword          = 304
+rml_off_cpu_word           = 312
+rml_off_cpu_hword          = 316
+rml_off_cpu_byte           = 318
+rml_off_reg                = 328
+rml_off_hi                 = 584
+rml_off_lo                 = 592
+rml_off_g_cp0_regs         = 600
+rml_off_branch_target      = 1256
+rml_off_ram_offset         = 1480
+rml_off_restore_candidate  = 2000
+rml_off_instr_addr         = 2512
+rml_off_link_register      = 2520
+rml_off_memory_map         = 2528
+
 TEXT_SECTION
 
 GLOBAL_FUNCTION(_dyna_linker):
@@ -133,12 +167,12 @@ GLOBAL_FUNCTION(_dyna_linker_ds):
     brk 0
 
 GLOBAL_FUNCTION(_jump_vaddr):
-    str    w20, [x29, #260 ] /* cycle_count */
-    ldr    w16, [x29, #264 ] /* last_count */
+    str    w20, [x29, #rml_off_cycle_count ] /* cycle_count */
+    ldr    w16, [x29, #rml_off_last_count ] /* last_count */
     add    w20, w16, w20 /* Count */
-    str    w20, [x29, #636 ] /* g_cp0_regs+36 */ /* Count */
+    str    w20, [x29, #rml_off_g_cp0_regs+36 ] /* g_cp0_regs+36 */ /* Count */
     bl     _get_addr_ht
-    ldr    w20, [x29, #260 ] /* cycle_count */
+    ldr    w20, [x29, #rml_off_cycle_count ] /* cycle_count */
     br     x0
     /*adrp   x1, hash_table
     add    x1, x1, :lo12:hash_table
@@ -161,7 +195,7 @@ GLOBAL_FUNCTION(_jump_vaddr):
     br     x1*/
     
 GLOBAL_FUNCTION(_verify_code_ds):
-    str    w19, [x29, #1256 ] /* branch_target */
+    str    w19, [x29, #rml_off_branch_target ] /* branch_target */
     
 GLOBAL_FUNCTION(_verify_code_vm):
     /* w0 = instruction pointer (virtual address) */
@@ -171,7 +205,7 @@ GLOBAL_FUNCTION(_verify_code_vm):
     mov    w4, #0xC0000000
     cmp    w1, w4
     b.lt   .verify_code_thunk
-    add    x8, x29, #2528 /* memory_map */
+    add    x8, x29, #rml_off_memory_map /* memory_map */
     lsr    w4, w1, #12
     add    w5, w1, w3
     sub    w5, w5, #1
@@ -223,7 +257,7 @@ GLOBAL_FUNCTION(_verify_code):
 .D3:
     cmp    w4, w5
 .D4:
-    ldr    w19, [x29, #1256 ] /* branch_target */
+    ldr    w19, [x29, #rml_off_branch_target ] /* branch_target */
     b.eq   .D6
 .D5:
     bl     _get_addr
@@ -232,14 +266,14 @@ GLOBAL_FUNCTION(_verify_code):
     ret
     
 GLOBAL_FUNCTION(_cc_interrupt):
-    ldr    w0, [x29, #264 ] /* last_count */
+    ldr    w0, [x29, #rml_off_last_count ] /* last_count */
     add    w20, w0, w20 /* Count */
-    str    wzr, [x29, #268 ] /* pending_exception */
+    str    wzr, [x29, #rml_off_pending_exception ] /* pending_exception */
     mov    w1, #0x1fc
     lsr    w0, w20, #19
     and    w1, w1, w0 
-    add    x0, x29, 2000 /* restore_candidate */
-    str    w20, [x29, #636 ] /* g_cp0_regs+36 */ /* Count */
+    add    x0, x29, rml_off_restore_candidate /* restore_candidate */
+    str    w20, [x29, #rml_off_g_cp0_regs+36 ] /* g_cp0_regs+36 */ /* Count */
     ldr    w22, [x1, x0]
     mov    x20, x30 /* Save link register */
     tst    w22, w22
@@ -247,15 +281,15 @@ GLOBAL_FUNCTION(_cc_interrupt):
 .E1:
     bl     _gen_interrupt
     mov    x30, x20 /* Restore link register */
-    ldr    w20, [x29, #636 ] /* g_cp0_regs+36 */ /* Count */
-    ldr    w0, [x29, #256 ] /* next_interrupt */
-    ldr    w1, [x29, #268 ] /* pending_exception */
-    ldr    w2, [x29, #276 ] /* stop */
+    ldr    w20, [x29, #rml_off_g_cp0_regs+36 ] /* g_cp0_regs+36 */ /* Count */
+    ldr    w0, [x29, #rml_off_next_interrupt ] /* next_interrupt */
+    ldr    w1, [x29, #rml_off_pending_exception ] /* pending_exception */
+    ldr    w2, [x29, #rml_off_stop ] /* stop */
     adrp   x3, SYM_HI(_frame_break)
     add    x3, x3, SYM_LO(_frame_break)
     ldr    w3, [x3]
     orr    w2, w2, w3 /* frame boundary: unwind like stop, without teardown */
-    str    w0, [x29, #264 ] /* last_count */
+    str    w0, [x29, #rml_off_last_count ] /* last_count */
     sub    w20, w20, w0
     tst    w2, w2
     b.ne   .E3
@@ -263,7 +297,7 @@ GLOBAL_FUNCTION(_cc_interrupt):
     b.ne   .E2
     ret
 .E2:
-    ldr    w0, [x29, #272 ] /* pcaddr */
+    ldr    w0, [x29, #rml_off_pcaddr ] /* pcaddr */
     bl     _get_addr_ht
     br     x0
 .E3:
@@ -293,11 +327,11 @@ GLOBAL_FUNCTION(_cc_interrupt):
     b      .E1
     
 GLOBAL_FUNCTION(_do_interrupt):
-    ldr    w0, [x29, #272 ] /* pcaddr */
+    ldr    w0, [x29, #rml_off_pcaddr ] /* pcaddr */
     bl     _get_addr_ht
-    ldr    w1, [x29, #256 ] /* next_interrupt */
-    ldr    w20, [x29, #636 ] /* g_cp0_regs+36 */ /* Count */
-    str    w1, [x29, #264 ] /* last_count */
+    ldr    w1, [x29, #rml_off_next_interrupt ] /* next_interrupt */
+    ldr    w20, [x29, #rml_off_g_cp0_regs+36 ] /* g_cp0_regs+36 */ /* Count */
+    str    w1, [x29, #rml_off_last_count ] /* last_count */
     sub    w20, w20, w1
     add    w20, w20, #2
     br     x0
@@ -305,13 +339,13 @@ GLOBAL_FUNCTION(_do_interrupt):
 GLOBAL_FUNCTION(_fp_exception):
     mov    w2, #0x10000000
 .F1:
-    ldr    w1, [x29, #648 ] /* g_cp0_regs+48 */ /* Status */
+    ldr    w1, [x29, #rml_off_g_cp0_regs+48 ] /* g_cp0_regs+48 */ /* Status */
     mov    w3, #0x80000000
-    str    w0, [x29, #656 ] /* g_cp0_regs+56 */ /* EPC */
+    str    w0, [x29, #rml_off_g_cp0_regs+56 ] /* g_cp0_regs+56 */ /* EPC */
     orr    w1, w1, #2
     add    w2, w2, #0x2c
-    str    w1, [x29, #648 ] /* g_cp0_regs+48 */ /* Status */
-    str    w2, [x29, #652 ] /* g_cp0_regs+52 */ /* Cause */
+    str    w1, [x29, #rml_off_g_cp0_regs+48 ] /* g_cp0_regs+48 */ /* Status */
+    str    w2, [x29, #rml_off_g_cp0_regs+52 ] /* g_cp0_regs+52 */ /* Cause */
     add    w0, w3, #0x180
     bl     _get_addr_ht
     br     x0
@@ -322,32 +356,32 @@ GLOBAL_FUNCTION(_fp_exception_ds):
     b      .F1
     
 GLOBAL_FUNCTION(_jump_syscall):
-    ldr    w1, [x29, #648 ] /* g_cp0_regs+48 */ /* Status */
+    ldr    w1, [x29, #rml_off_g_cp0_regs+48 ] /* g_cp0_regs+48 */ /* Status */
     mov    w3, #0x80000000
-    str    w0, [x29, #656 ] /* g_cp0_regs+56 */ /* EPC */
+    str    w0, [x29, #rml_off_g_cp0_regs+56 ] /* g_cp0_regs+56 */ /* EPC */
     orr    w1, w1, #2
     mov    w2, #0x20
-    str    w1, [x29, #648 ] /* g_cp0_regs+48 */ /* Status */
-    str    w2, [x29, #652 ] /* g_cp0_regs+52 */ /* Cause */
+    str    w1, [x29, #rml_off_g_cp0_regs+48 ] /* g_cp0_regs+48 */ /* Status */
+    str    w2, [x29, #rml_off_g_cp0_regs+52 ] /* g_cp0_regs+52 */ /* Cause */
     add    w0, w3, #0x180
     bl     _get_addr_ht
     br     x0
 
 GLOBAL_FUNCTION(_jump_eret):
-    ldr    w1, [x29, #648 ] /* g_cp0_regs+48 */ /* Status */
-    ldr    w0, [x29, #264 ] /* last_count */
+    ldr    w1, [x29, #rml_off_g_cp0_regs+48 ] /* g_cp0_regs+48 */ /* Status */
+    ldr    w0, [x29, #rml_off_last_count ] /* last_count */
     bic    w1, w1, #2
     add    w20, w0, w20
-    str    w1, [x29, #648 ] /* g_cp0_regs+48 */ /* Status */
-    str    w20, [x29, #636 ] /* g_cp0_regs+36 */ /* Count */
+    str    w1, [x29, #rml_off_g_cp0_regs+48 ] /* g_cp0_regs+48 */ /* Status */
+    str    w20, [x29, #rml_off_g_cp0_regs+36 ] /* g_cp0_regs+36 */ /* Count */
     bl     _check_interrupt
-    ldr    w1, [x29, #256 ] /* next_interrupt */
-    ldr    w0, [x29, #656 ] /* g_cp0_regs+56 */ /* EPC */
-    str    w1, [x29, #264 ] /* last_count */
+    ldr    w1, [x29, #rml_off_next_interrupt ] /* next_interrupt */
+    ldr    w0, [x29, #rml_off_g_cp0_regs+56 ] /* g_cp0_regs+56 */ /* EPC */
+    str    w1, [x29, #rml_off_last_count ] /* last_count */
     subs   w20, w20, w1
     b.pl   .E11
 .E8:
-    add    x6, x29, #584 /* reg+256 */
+    add    x6, x29, #rml_off_reg+256 /* reg+256 */
     mov    w5, #248
     mov    w1, #0
 .E9:
@@ -360,13 +394,13 @@ GLOBAL_FUNCTION(_jump_eret):
     adc    w1, w1, w1
     subs   w5, w5, #8
     b.ne    .E9
-    ldr    w2, [x29, #584 ] /* hi */
-    ldr    w3, [x29, #588 ] /* hi+4 */
+    ldr    w2, [x29, #rml_off_hi ] /* hi */
+    ldr    w3, [x29, #rml_off_hi+4 ] /* hi+4 */
     eor    w3, w3, w2, asr #31
     tst    w3, w3
     b.ne   .E10
-    ldr    w2, [x29, #592 ] /* lo */
-    ldr    w3, [x29, #596 ] /* lo+4 */
+    ldr    w2, [x29, #rml_off_lo ] /* lo */
+    ldr    w3, [x29, #rml_off_lo+4 ] /* lo+4 */
     eor    w3, w3, w2, asr #31
 .E10:
     subs   w3, w3, #1
@@ -374,9 +408,9 @@ GLOBAL_FUNCTION(_jump_eret):
     bl     _get_addr_32
     br     x0
 .E11:
-    str    w0, [x29, #272 ] /* pcaddr */
+    str    w0, [x29, #rml_off_pcaddr ] /* pcaddr */
     bl     _cc_interrupt
-    ldr    w0, [x29, #272 ] /* pcaddr */
+    ldr    w0, [x29, #rml_off_pcaddr ] /* pcaddr */
     b      .E8
 
 GLOBAL_FUNCTION(_new_dyna_start):
@@ -391,11 +425,11 @@ GLOBAL_FUNCTION(_new_dyna_start):
     stp    x29,x30,[x16,#80]
     sub    x29, x16, #152
     /* Resume at pcaddr (seeded to the boot vector by new_dynarec_init):
-    ldr    w0, [x29, #272 ] /* pcaddr */
+    ldr    w0, [x29, #rml_off_pcaddr ] /* pcaddr */
     bl     _get_addr_ht
-    ldr    w1, [x29, #256 ] /* next_interrupt */
-    ldr    w20, [x29, #636 ] /* g_cp0_regs+36 */ /* Count */
-    str    w1, [x29, #264 ] /* last_count */
+    ldr    w1, [x29, #rml_off_next_interrupt ] /* next_interrupt */
+    ldr    w20, [x29, #rml_off_g_cp0_regs+36 ] /* g_cp0_regs+36 */ /* Count */
+    str    w1, [x29, #rml_off_last_count ] /* last_count */
     sub    w20, w20, w1
     br     x0
     
@@ -487,44 +521,44 @@ GLOBAL_FUNCTION(_invalidate_addr_x28):
     brk 0
     
 GLOBAL_FUNCTION(_write_rdram_new):
-    ldr    x3, [x29, #1480 ] /* ram_offset */
-    ldr    w2, [x29, #288 ] /* address */
-    ldr    w0, [x29, #312 ] /* cpu_word */
+    ldr    x3, [x29, #rml_off_ram_offset ] /* ram_offset */
+    ldr    w2, [x29, #rml_off_address ] /* address */
+    ldr    w0, [x29, #rml_off_cpu_word ] /* cpu_word */
     str    w0, [x2, x3, lsl #2]
     b      .E12
     
 GLOBAL_FUNCTION(_write_rdramb_new):
-    ldr    x3, [x29, #1480 ] /* ram_offset */
-    ldr    w2, [x29, #288 ] /* address */
-    ldrb   w0, [x29, #318 ] /* cpu_byte */
+    ldr    x3, [x29, #rml_off_ram_offset ] /* ram_offset */
+    ldr    w2, [x29, #rml_off_address ] /* address */
+    ldrb   w0, [x29, #rml_off_cpu_byte ] /* cpu_byte */
     eor    w2, w2, #3
     lsl    x3, x3, #2
     strb   w0, [x2, x3]
     b      .E12
     
 GLOBAL_FUNCTION(_write_rdramh_new):
-    ldr    x3, [x29, #1480 ] /* ram_offset */
-    ldr    w2, [x29, #288 ] /* address */
-    ldrh   w0, [x29, #316 ] /* cpu_hword */
+    ldr    x3, [x29, #rml_off_ram_offset ] /* ram_offset */
+    ldr    w2, [x29, #rml_off_address ] /* address */
+    ldrh   w0, [x29, #rml_off_cpu_hword ] /* cpu_hword */
     eor    w2, w2, #2
     lsl    x3, x3, #2
     strh   w0, [x2, x3]
     b      .E12
     
 GLOBAL_FUNCTION(_write_rdramd_new):
-    ldr    x3, [x29, #1480 ] /* ram_offset */
-    ldr    w2, [x29, #288 ] /* address */
-    ldr    w0, [x29, #304 ] /* cpu_dword */
-    ldr    w1, [x29, #308 ] /* cpu_dword+4 */
+    ldr    x3, [x29, #rml_off_ram_offset ] /* ram_offset */
+    ldr    w2, [x29, #rml_off_address ] /* address */
+    ldr    w0, [x29, #rml_off_cpu_dword ] /* cpu_dword */
+    ldr    w1, [x29, #rml_off_cpu_dword+4 ] /* cpu_dword+4 */
     add    x3, x2, x3, lsl #2
     str    w0, [x3, #4]
     str    w1, [x3]
     b      .E12
 
 LOCAL_FUNCTION(_do_invalidate):
-    ldr    w2, [x29, #288 ] /* address */
+    ldr    w2, [x29, #rml_off_address ] /* address */
 .E12:
-    ldr    x1, [x29, #280 ] /* invc_ptr */
+    ldr    x1, [x29, #rml_off_invc_ptr ] /* invc_ptr */
     lsr    w0, w2, #12
     ldrb   w2, [x1, x0]
     tst    w2, w2
@@ -547,21 +581,21 @@ LOCAL_FUNCTION(_do_invalidate):
 
 GLOBAL_FUNCTION(_read_nomem_new):
     /* w3 = instr addr/flags */
-    ldr    w2, [x29, #288 ] /* address */
-    add    x4, x29, #2528 /* memory_map */
+    ldr    w2, [x29, #rml_off_address ] /* address */
+    add    x4, x29, #rml_off_memory_map /* memory_map */
     lsr    w0, w2, #12
     ldr    x4, [x4, x0, lsl #3]
     mov    w1, #8
     tst    x4, x4
     b.mi   .tlb_exception_thunk
     ldr    w0, [x2, x4, lsl #2]
-    str    w0, [x29, #296 ] /* readmem_dword */
+    str    w0, [x29, #rml_off_readmem_dword ] /* readmem_dword */
     ret
     
 GLOBAL_FUNCTION(_read_nomemb_new):
     /* w3 = instr addr/flags */
-    ldr    w2, [x29, #288 ] /* address */
-    add    x4, x29, #2528 /* memory_map */
+    ldr    w2, [x29, #rml_off_address ] /* address */
+    add    x4, x29, #rml_off_memory_map /* memory_map */
     lsr    w0, w2, #12
     ldr    x4, [x4, x0, lsl #3]
     mov    w1, #8
@@ -570,13 +604,13 @@ GLOBAL_FUNCTION(_read_nomemb_new):
     eor    w2, w2, #3
     lsl    x4, x4, #2
     ldrb   w0, [x2, x4]
-    str    w0, [x29, #296 ] /* readmem_dword */
+    str    w0, [x29, #rml_off_readmem_dword ] /* readmem_dword */
     ret
     
 GLOBAL_FUNCTION(_read_nomemh_new):
     /* w3 = instr addr/flags */
-    ldr    w2, [x29, #288 ] /* address */
-    add    x4, x29, #2528 /* memory_map */
+    ldr    w2, [x29, #rml_off_address ] /* address */
+    add    x4, x29, #rml_off_memory_map /* memory_map */
     lsr    w0, w2, #12
     ldr    x4, [x4, x0, lsl #3]
     mov    w1, #8
@@ -585,13 +619,13 @@ GLOBAL_FUNCTION(_read_nomemh_new):
     lsl    x4, x4, #2
     eor    w2, w2, #2
     ldrh   w0, [x2, x4]
-    str    w0, [x29, #296 ] /* readmem_dword */
+    str    w0, [x29, #rml_off_readmem_dword ] /* readmem_dword */
     ret
     
 GLOBAL_FUNCTION(_read_nomemd_new):
     /* w3 = instr addr/flags */
-    ldr    w2, [x29, #288 ] /* address */
-    add    x4, x29, #2528 /* memory_map */
+    ldr    w2, [x29, #rml_off_address ] /* address */
+    add    x4, x29, #rml_off_memory_map /* memory_map */
     lsr    w0, w2, #12
     ldr    x4, [x4, x0, lsl #3]
     mov    w1, #8
@@ -600,37 +634,37 @@ GLOBAL_FUNCTION(_read_nomemd_new):
     add    x4, x2, x4, lsl #2
     ldr    w0, [x4]
     ldr    w1, [x4, #4]
-    str    w0, [x29, #300 ] /* readmem_dword+4 */
-    str    w1, [x29, #296 ] /* readmem_dword */
+    str    w0, [x29, #rml_off_readmem_dword+4 ] /* readmem_dword+4 */
+    str    w1, [x29, #rml_off_readmem_dword ] /* readmem_dword */
     ret
     
 GLOBAL_FUNCTION(_write_nomem_new):
     /* w3 = instr addr/flags */
-    str    w3, [x29, #2512 ] /* instr_addr */
-    str    x30, [x29, #2520 ] /* link_register */
+    str    w3, [x29, #rml_off_instr_addr ] /* instr_addr */
+    str    x30, [x29, #rml_off_link_register ] /* link_register */
     bl     _do_invalidate
-    ldr    w3, [x29, #2512 ] /* instr_addr */
-    ldr    x30, [x29, #2520 ] /* link_register */
-    ldr    w2, [x29, #288 ] /* address */
-    add    x4, x29, #2528 /* memory_map */
+    ldr    w3, [x29, #rml_off_instr_addr ] /* instr_addr */
+    ldr    x30, [x29, #rml_off_link_register ] /* link_register */
+    ldr    w2, [x29, #rml_off_address ] /* address */
+    add    x4, x29, #rml_off_memory_map /* memory_map */
     lsr    w0, w2, #12
     ldr    x4, [x4, x0, lsl #3]
     mov    w1, #0xc
     tst    x4, #0x4000000000000000
     b.ne   .tlb_exception_thunk
-    ldr    w0, [x29, #312 ] /* cpu_word */
+    ldr    w0, [x29, #rml_off_cpu_word ] /* cpu_word */
     str    w0, [x2, x4, lsl #2]
     ret
     
 GLOBAL_FUNCTION(_write_nomemb_new):
     /* w3 = instr addr/flags */
-    str    w3, [x29, #2512 ] /* instr_addr */
-    str    x30, [x29, #2520 ] /* link_register */
+    str    w3, [x29, #rml_off_instr_addr ] /* instr_addr */
+    str    x30, [x29, #rml_off_link_register ] /* link_register */
     bl     _do_invalidate
-    ldr    w3, [x29, #2512 ] /* instr_addr */
-    ldr    x30, [x29, #2520 ] /* link_register */
-    ldr    w2, [x29, #288 ] /* address */
-    add    x4, x29, #2528 /* memory_map */
+    ldr    w3, [x29, #rml_off_instr_addr ] /* instr_addr */
+    ldr    x30, [x29, #rml_off_link_register ] /* link_register */
+    ldr    w2, [x29, #rml_off_address ] /* address */
+    add    x4, x29, #rml_off_memory_map /* memory_map */
     lsr    w0, w2, #12
     ldr    x4, [x4, x0, lsl #3]
     mov    w1, #0xc
@@ -638,19 +672,19 @@ GLOBAL_FUNCTION(_write_nomemb_new):
     b.ne   .tlb_exception_thunk
     lsl    x4, x4, #2
     eor    w2, w2, #3
-    ldrb   w0, [x29, #318 ] /* cpu_byte */
+    ldrb   w0, [x29, #rml_off_cpu_byte ] /* cpu_byte */
     strb   w0, [x2, x4]
     ret
     
 GLOBAL_FUNCTION(_write_nomemh_new):
     /* w3 = instr addr/flags */
-    str    w3, [x29, #2512 ] /* instr_addr */
-    str    x30, [x29, #2520 ] /* link_register */
+    str    w3, [x29, #rml_off_instr_addr ] /* instr_addr */
+    str    x30, [x29, #rml_off_link_register ] /* link_register */
     bl     _do_invalidate
-    ldr    w3, [x29, #2512 ] /* instr_addr */
-    ldr    x30, [x29, #2520 ] /* link_register */
-    ldr    w2, [x29, #288 ] /* address */
-    add    x4, x29, #2528 /* memory_map */
+    ldr    w3, [x29, #rml_off_instr_addr ] /* instr_addr */
+    ldr    x30, [x29, #rml_off_link_register ] /* link_register */
+    ldr    w2, [x29, #rml_off_address ] /* address */
+    add    x4, x29, #rml_off_memory_map /* memory_map */
     lsr    w0, w2, #12
     ldr    x4, [x4, x0, lsl #3]
     mov    w1, #0xc
@@ -658,27 +692,27 @@ GLOBAL_FUNCTION(_write_nomemh_new):
     b.ne   .tlb_exception_thunk
     lsl    x4, x4, #2
     eor    w2, w2, #2
-    ldrh   w0, [x29, #316 ] /* cpu_hword */
+    ldrh   w0, [x29, #rml_off_cpu_hword ] /* cpu_hword */
     strh   w0, [x2, x4]
     ret
     
 GLOBAL_FUNCTION(_write_nomemd_new):
     /* w3 = instr addr/flags */
-    str    w3, [x29, #2512 ] /* instr_addr */
-    str    x30, [x29, #2520 ] /* link_register */
+    str    w3, [x29, #rml_off_instr_addr ] /* instr_addr */
+    str    x30, [x29, #rml_off_link_register ] /* link_register */
     bl     _do_invalidate
-    ldr    w3, [x29, #2512 ] /* instr_addr */
-    ldr    x30, [x29, #2520 ] /* link_register */
-    ldr    w2, [x29, #288 ] /* address */
-    add    x4, x29, #2528 /* memory_map */
+    ldr    w3, [x29, #rml_off_instr_addr ] /* instr_addr */
+    ldr    x30, [x29, #rml_off_link_register ] /* link_register */
+    ldr    w2, [x29, #rml_off_address ] /* address */
+    add    x4, x29, #rml_off_memory_map /* memory_map */
     lsr    w0, w2, #12
     ldr    x4, [x4, x0, lsl #3]
     mov    w1, #0xc
     tst    x4, #0x4000000000000000
     b.ne   .tlb_exception_thunk
     lsl    x4, x4, #2
-    ldr    w0, [x29, #308 ] /* cpu_dword+4 */
-    ldr    w1, [x29, #304 ] /* cpu_dword */
+    ldr    w0, [x29, #rml_off_cpu_dword+4 ] /* cpu_dword+4 */
+    ldr    w1, [x29, #rml_off_cpu_dword ] /* cpu_dword */
     str    w0, [x4]
     str    w1, [x4, #4]
     ret
@@ -687,23 +721,23 @@ LOCAL_FUNCTION(_tlb_exception):
     /* w1 = cause */
     /* w2 = address */
     /* w3 = instr addr/flags */
-    ldr    w4, [x29, #648 ] /* g_cp0_regs+48 */ /* Status */
-    add    x5, x29, #2528 /* memory_map */
+    ldr    w4, [x29, #rml_off_g_cp0_regs+48 ] /* g_cp0_regs+48 */ /* Status */
+    add    x5, x29, #rml_off_memory_map /* memory_map */
     lsr    w6, w3, #12
     orr    w1, w1, w3, lsl #31
     orr    w4, w4, #2
     ldr    x7, [x5, x6, lsl #3]
     bic    w8, w3, #3
-    str    w4, [x29, #648 ] /* g_cp0_regs+48 */ /* Status */
+    str    w4, [x29, #rml_off_g_cp0_regs+48 ] /* g_cp0_regs+48 */ /* Status */
     mov    w6, #0x6000000
     movk   w6, #0x22
-    str    w1, [x29, #652 ] /* g_cp0_regs+52 */ /* Cause */
+    str    w1, [x29, #rml_off_g_cp0_regs+52 ] /* g_cp0_regs+52 */ /* Cause */
     ldr    w0, [x8, x7, lsl #2]
     add    w4, w8, w1, asr #29
-    add    x5, x29, #328 /* reg */
-    str    w4, [x29, #656 ] /* g_cp0_regs+56 */ /* EPC */
+    add    x5, x29, #rml_off_reg /* reg */
+    str    w4, [x29, #rml_off_g_cp0_regs+56 ] /* g_cp0_regs+56 */ /* EPC */
     mov    w7, #0xf8
-    ldr    w8, [x29, #616 ] /* g_cp0_regs+16 */ /* Context */
+    ldr    w8, [x29, #rml_off_g_cp0_regs+16 ] /* g_cp0_regs+16 */ /* Context */
     lsl    w1, w0, #16
     lsr    w4, w0, #26
     and    w4, w4, #31
@@ -721,20 +755,20 @@ LOCAL_FUNCTION(_tlb_exception):
     tst    w3, #2
     str    w2, [x5, x7]
     add    w4, w2, w1, asr #16
-    add    x6, x29, #332 /* reg+4 */
+    add    x6, x29, #rml_off_reg+4 /* reg+4 */
     asr    w3, w2, #31
-    str    w4, [x29, #632 ] /* g_cp0_regs+32 */ /* BadVAddr */
+    str    w4, [x29, #rml_off_g_cp0_regs+32 ] /* g_cp0_regs+32 */ /* BadVAddr */
     add    w0, w0, #0x180
     and    w4, w9, w4, lsr #9
     b.eq   .G2
     str    w3, [x6, x7]
 .G2:
     orr    w8, w8, w4
-    str    w8, [x29, #616 ] /* g_cp0_regs+16 */ /* Context */
+    str    w8, [x29, #rml_off_g_cp0_regs+16 ] /* g_cp0_regs+16 */ /* Context */
     bl     _get_addr_ht
-    ldr    w1, [x29, #256 ] /* next_interrupt */
-    ldr    w20, [x29, #636 ] /* g_cp0_regs+36 */ /* Count */
-    str    w1, [x29, #264 ] /* last_count */
+    ldr    w1, [x29, #rml_off_next_interrupt ] /* next_interrupt */
+    ldr    w20, [x29, #rml_off_g_cp0_regs+36 ] /* g_cp0_regs+36 */ /* Count */
+    str    w1, [x29, #rml_off_last_count ] /* last_count */
     sub    w20, w20, w1
     br     x0
     
