@@ -32,6 +32,10 @@
 ;r12/r13 are scratch for this file: the JIT never allocates them and
 ;the C ABI preserves them.
 
+; region 14 / Phase 2d: struct offsets for addressing migrated hot-state fields
+; through g_dev (generated from the C struct; see tools/gen_asm_defines.awk).
+%include "asm_defines_nasm.h"
+
 %ifdef LEADING_UNDERSCORE
     %macro  cglobal 1
       global  _%1
@@ -140,7 +144,6 @@ cextern new_dynarec_tlb_refill
 cextern pcaddr
 cextern pending_exception
 cextern cycle_count
-cextern last_count
 cextern next_interrupt
 cextern stop
 cextern frame_break
@@ -158,8 +161,14 @@ cextern cpu_dword
 cextern cpu_hword
 cextern cpu_byte
 cextern invalid_code
-cextern ram_offset
 cextern hash_table
+
+; region 14 / Phase 2d (increment 2): hot-state fields migrated into the embedded
+; struct are addressed through g_dev plus the generated structural + field offsets,
+; instead of as flat symbols. Compose the full displacement once per field.
+cextern g_dev
+%define g_dev_r4300_new_dynarec_hot_state_last_count        (g_dev + offsetof_struct_device_r4300 + offsetof_struct_r4300_core_new_dynarec_hot_state + offsetof_struct_new_dynarec_hot_state_last_count)
+%define g_dev_r4300_new_dynarec_hot_state_ram_offset        (g_dev + offsetof_struct_device_r4300 + offsetof_struct_r4300_core_new_dynarec_hot_state + offsetof_struct_new_dynarec_hot_state_ram_offset)
 
 section .text
 
@@ -299,7 +308,7 @@ cc_interrupt:
     ;callee-saved so the C calls below preserve them for free; here the
     ;volatile allocatables must be saved explicitly (same invariant the
     ;invalidate_block thunk already honors).
-    add     CCREG,    [rel last_count]
+    add     CCREG,    [rel g_dev_r4300_new_dynarec_hot_state_last_count]
     push    rax
     push    rcx
     push    rdx
@@ -331,7 +340,7 @@ _E1:
 %else
     add     rsp,    48
 %endif
-    mov     [rel last_count],    eax
+    mov     [rel g_dev_r4300_new_dynarec_hot_state_last_count],    eax
     sub     CCREG,    eax
     test    edx,    edx
     jne     _E3
@@ -401,7 +410,7 @@ do_interrupt:
     CALL_C  get_addr_ht
     mov     CCREG,    [rel g_cp0_regs+36]
     mov     edx,    [rel next_interrupt]
-    mov     [rel last_count],    edx
+    mov     [rel g_dev_r4300_new_dynarec_hot_state_last_count],    edx
     sub     CCREG,    edx
     add     CCREG,    2
     jmp     rax
@@ -430,14 +439,14 @@ jump_syscall:
 
 jump_eret:
     mov     ecx,    [rel g_cp0_regs+48]    ;Status
-    add     CCREG,    [rel last_count]
+    add     CCREG,    [rel g_dev_r4300_new_dynarec_hot_state_last_count]
     and     ecx,    0FFFFFFFDh
     mov     [rel g_cp0_regs+36],    CCREG    ;Count
     mov     [rel g_cp0_regs+48],    ecx      ;Status
     CALL_C  check_interrupt
     mov     eax,    [rel next_interrupt]
     mov     CCREG,    [rel g_cp0_regs+36]
-    mov     [rel last_count],    eax
+    mov     [rel g_dev_r4300_new_dynarec_hot_state_last_count],    eax
     sub     CCREG,    eax
     mov     eax,    [rel g_cp0_regs+56]    ;EPC
     jns     _E11
@@ -501,7 +510,7 @@ new_dyna_start:
     CALL_C  get_addr_ht
     mov     ecx,    [rel next_interrupt]
     mov     CCREG,    [rel g_cp0_regs+36]
-    mov     [rel last_count],    ecx
+    mov     [rel g_dev_r4300_new_dynarec_hot_state_last_count],    ecx
     sub     CCREG,    ecx
     jmp     rax
 
@@ -703,14 +712,14 @@ write_nomemd_new:
 
 write_rdram_new:
     mov     r9d,    [rel address]
-    mov     rdx,    [rel ram_offset]
+    mov     rdx,    [rel g_dev_r4300_new_dynarec_hot_state_ram_offset]
     mov     ecx,    [rel cpu_word]
     mov     [r9+rdx*4],    ecx
     jmp     _E12
 
 write_rdramb_new:
     mov     r9d,    [rel address]
-    mov     rdx,    [rel ram_offset]
+    mov     rdx,    [rel g_dev_r4300_new_dynarec_hot_state_ram_offset]
     mov     eax,    r9d
     xor     eax,    3
     mov     cl,     byte [rel cpu_byte]
@@ -719,7 +728,7 @@ write_rdramb_new:
 
 write_rdramh_new:
     mov     r9d,    [rel address]
-    mov     rdx,    [rel ram_offset]
+    mov     rdx,    [rel g_dev_r4300_new_dynarec_hot_state_ram_offset]
     mov     eax,    r9d
     xor     eax,    2
     mov     cx,     word [rel cpu_hword]
@@ -728,7 +737,7 @@ write_rdramh_new:
 
 write_rdramd_new:
     mov     r9d,    [rel address]
-    mov     rdx,    [rel ram_offset]
+    mov     rdx,    [rel g_dev_r4300_new_dynarec_hot_state_ram_offset]
     mov     ecx,    [rel cpu_dword+4]
     mov     [r9+rdx*4],    ecx
     mov     ecx,    [rel cpu_dword]
@@ -769,7 +778,7 @@ tlb_exception:
     CALL_C  new_dynarec_tlb_refill
     mov     ecx,    [rel next_interrupt]
     mov     CCREG,    [rel g_cp0_regs+36]
-    mov     [rel last_count],    ecx
+    mov     [rel g_dev_r4300_new_dynarec_hot_state_last_count],    ecx
     sub     CCREG,    ecx
     jmp     rax
 

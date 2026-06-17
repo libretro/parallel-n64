@@ -121,15 +121,17 @@ void breakpoint(void);
 extern u_char extra_memory[1<<TARGET_SIZE_2];
 
 extern int cycle_count;
-extern int last_count;
 extern int branch_target;
-extern uint64_t ram_offset;
 extern uint64_t readmem_dword;
 extern struct precomp_instr fake_pc;
 extern uint64_t memory_map[1048576];
+extern u_char restore_candidate[512];
 /* mini_ht and rounding_modes migrated to struct new_dynarec_hot_state
  * (region 14, Phase 2d increment 1); they are macro-aliased in assem_x64.c
- * onto g_dev.r4300.new_dynarec_hot_state and no longer exist as flat symbols. */
-extern u_char restore_candidate[512];
+ * onto g_dev.r4300.new_dynarec_hot_state and no longer exist as flat symbols.
+ * last_count and ram_offset migrated likewise in increment 2 (with their
+ * linkage_x64.asm references repointed in lockstep). restore_candidate stays
+ * a flat global -- mupen64plus-next keeps it a flat static too, and it is used
+ * in the shared new_dynarec_64.c body (before the x64 assem alias point). */
 
 #endif /* M64P_R4300_ASSEM_X64_H */

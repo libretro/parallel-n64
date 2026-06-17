@@ -40,9 +40,14 @@ void invalidate_block_edi(void);
 int pcaddr;
 int pending_exception;
 int cycle_count;
-int last_count;
+/* region 14 / Phase 2d (increment 2): last_count and ram_offset move into the
+ * embedded struct. Unlike increment 1 these ARE referenced by linkage_x64.asm,
+ * so the asm side is repointed in lockstep (cextern g_dev + the
+ * g_dev_r4300_new_dynarec_hot_state_* %defines). Both are JIT-private (no
+ * non-JIT C use-sites), so no interpreter/interrupt code changes. */
+#define last_count          (g_dev.r4300.new_dynarec_hot_state.last_count)
 int branch_target;
-uint64_t ram_offset;
+#define ram_offset          (g_dev.r4300.new_dynarec_hot_state.ram_offset)
 uint64_t readmem_dword;
 struct precomp_instr fake_pc;
 
