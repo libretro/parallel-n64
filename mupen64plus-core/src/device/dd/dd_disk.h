@@ -34,8 +34,4 @@ extern int            g_dd_disk_size;
 m64p_error open_dd_disk(const unsigned char* diskimage, unsigned int size);
 m64p_error close_dd_disk(void);
 
-/* Update the global disk pointer after a D64 dump is expanded/relocated at
- * device init (the original buffer is freed by that expansion). */
-void dd_disk_set_expanded(unsigned char* expanded, int expanded_size);
-
 #endif
