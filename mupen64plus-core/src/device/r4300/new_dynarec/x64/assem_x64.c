@@ -39,7 +39,13 @@ void invalidate_block_edi(void);
  * extra_memory below and new_dynarec_init). */
 int pcaddr;
 int pending_exception;
-int cycle_count;
+/* region 14 / Phase 2d (increment 3): cycle_count moves into the embedded
+ * struct. Like last_count (increment 2) it is referenced by linkage_x64.asm,
+ * so the asm side is repointed in lockstep. cycle_count is JIT/asm-internal:
+ * its only C use-sites are the x64 JIT itself (assem_x64.c '&cycle_count' and
+ * the linkage), so no interpreter/interrupt code changes. (The interpreter's
+ * cycle accounting goes through g_cp0_regs[CP0_COUNT_REG], not this field.) */
+#define cycle_count         (g_dev.r4300.new_dynarec_hot_state.cycle_count)
 /* region 14 / Phase 2d (increment 2): last_count and ram_offset move into the
  * embedded struct. Unlike increment 1 these ARE referenced by linkage_x64.asm,
  * so the asm side is repointed in lockstep (cextern g_dev + the

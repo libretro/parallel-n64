@@ -120,7 +120,6 @@ void breakpoint(void);
  * and text (see new_dynarec_init). */
 extern u_char extra_memory[1<<TARGET_SIZE_2];
 
-extern int cycle_count;
 extern int branch_target;
 extern uint64_t readmem_dword;
 extern struct precomp_instr fake_pc;

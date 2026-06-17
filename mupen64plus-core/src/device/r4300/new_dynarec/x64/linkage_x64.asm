@@ -143,7 +143,6 @@ cextern invalidate_block
 cextern new_dynarec_tlb_refill
 cextern pcaddr
 cextern pending_exception
-cextern cycle_count
 cextern next_interrupt
 cextern stop
 cextern frame_break
@@ -167,6 +166,7 @@ cextern hash_table
 ; struct are addressed through g_dev plus the generated structural + field offsets,
 ; instead of as flat symbols. Compose the full displacement once per field.
 cextern g_dev
+%define g_dev_r4300_new_dynarec_hot_state_cycle_count       (g_dev + offsetof_struct_device_r4300 + offsetof_struct_r4300_core_new_dynarec_hot_state + offsetof_struct_new_dynarec_hot_state_cycle_count)
 %define g_dev_r4300_new_dynarec_hot_state_last_count        (g_dev + offsetof_struct_device_r4300 + offsetof_struct_r4300_core_new_dynarec_hot_state + offsetof_struct_new_dynarec_hot_state_last_count)
 %define g_dev_r4300_new_dynarec_hot_state_ram_offset        (g_dev + offsetof_struct_device_r4300 + offsetof_struct_r4300_core_new_dynarec_hot_state + offsetof_struct_new_dynarec_hot_state_ram_offset)
 
@@ -227,9 +227,9 @@ _C2:
     lea     rax,    [rax+16]
     je      _C1
     ;No hit on hash table, call compiler
-    mov     [rel cycle_count],    CCREG
+    mov     [rel g_dev_r4300_new_dynarec_hot_state_cycle_count],    CCREG
     CALL_C  get_addr
-    mov     CCREG,    [rel cycle_count]
+    mov     CCREG,    [rel g_dev_r4300_new_dynarec_hot_state_cycle_count]
     jmp     rax
 
 verify_code_ds:
@@ -240,7 +240,7 @@ verify_code_vm:
     ;ARG4_REG = pcaddr
     cmp     ARG1_REG,    0C0000000h
     jl      verify_code
-    mov     [rel cycle_count],    CCREG
+    mov     [rel g_dev_r4300_new_dynarec_hot_state_cycle_count],    CCREG
     mov     CCREG,    ARG1_REG
     lea     r10d,    [-1+ARG1_REG64+ARG3_REG64*1]
     shr     CCREG,    12
@@ -258,7 +258,7 @@ _D1:
     inc     CCREG
     cmp     CCREG,    r10d
     jbe     _D1
-    mov     CCREG,    [rel cycle_count]
+    mov     CCREG,    [rel g_dev_r4300_new_dynarec_hot_state_cycle_count]
 
 verify_code:
     ;ARG1_REG64 = source
@@ -285,7 +285,7 @@ _D2:
 _D3:
     ret
 _D4:
-    mov     CCREG,    [rel cycle_count]
+    mov     CCREG,    [rel g_dev_r4300_new_dynarec_hot_state_cycle_count]
 _D5:
     ;Code has changed, recompile.  Discard our own return address and
     ;jump straight to the fresh block.
@@ -357,9 +357,9 @@ _E1:
 _E2:
     ;Pending exception: jump to the handler instead of returning
     mov     ARG1_REG,    [rel pcaddr]
-    mov     [rel cycle_count],    CCREG
+    mov     [rel g_dev_r4300_new_dynarec_hot_state_cycle_count],    CCREG
     CALL_C  get_addr_ht    ;rsp == 0 mod 16 here
-    mov     CCREG,    [rel cycle_count]
+    mov     CCREG,    [rel g_dev_r4300_new_dynarec_hot_state_cycle_count]
     mov     r10,    rax
 %ifndef WIN64
     pop     rdi
@@ -480,9 +480,9 @@ _E10:
     adc     r10d,    r10d
     mov     ARG1_REG,    eax
     mov     ARG2_REG,    r10d
-    mov     [rel cycle_count],    CCREG
+    mov     [rel g_dev_r4300_new_dynarec_hot_state_cycle_count],    CCREG
     CALL_C  get_addr_32
-    mov     CCREG,    [rel cycle_count]
+    mov     CCREG,    [rel g_dev_r4300_new_dynarec_hot_state_cycle_count]
     jmp     rax
 _E11:
     mov     [rel pcaddr],    eax
