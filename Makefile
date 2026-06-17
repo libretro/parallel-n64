@@ -1120,8 +1120,12 @@ else
 	$(CC_AS) $(ASFLAGS) -c $< $(OBJOUT)$@
 endif
 
+# nasm is invoked from the repo root, so it needs an include search path to
+# the directory holding the COMMITTED asm_defines_nasm.h that linkage_x64.asm
+# %includes (region 14). The -i flag only points nasm at that committed
+# header; nothing is generated at build time.
 %.o: %.asm
-	$(NASM) $(NASMFLAGS) -o $@ $<
+	$(NASM) $(NASMFLAGS) -i$(ASM_DEFINES_DIR)/ -o $@ $<
 
 # region 14: the x64 asm_defines headers (x64/asm_defines_{nasm,gas}.h) are
 # GENERATED from the shared C struct (new_dynarec_hot_state) but COMMITTED to the
