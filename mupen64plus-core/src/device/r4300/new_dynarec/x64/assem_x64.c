@@ -37,8 +37,10 @@ void invalidate_block_edi(void);
  * with RIP-relative addressing, so they are plain globals; only the
  * code cache itself needs the static placement guarantee (see
  * extra_memory below and new_dynarec_init). */
-int pcaddr;
-int pending_exception;
+/* region 14 / Phase 2d (increment 4): pcaddr and pending_exception now live in
+ * g_dev.r4300.new_dynarec_hot_state. The alias is defined once in new_dynarec.h
+ * (included by this TU before assem_x64.c) so it covers both the JIT codegen
+ * here and the non-JIT C use-sites; no flat definition remains. */
 /* region 14 / Phase 2d (increment 3): cycle_count moves into the embedded
  * struct. Like last_count (increment 2) it is referenced by linkage_x64.asm,
  * so the asm side is repointed in lockstep. cycle_count is JIT/asm-internal:

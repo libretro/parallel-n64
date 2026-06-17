@@ -22,6 +22,11 @@
 #include <string.h>
 
 #include "r4300_core.h"
+/* region 14 / Phase 2d (increment 4): pcaddr/pending_exception are aliased to
+ * g_dev.r4300.new_dynarec_hot_state on x64 (see new_dynarec.h); savestates_load_set_pc
+ * below uses them, so this TU needs the complete struct device and g_dev. */
+#include "../device.h"
+#include "../../main/main.h"
 
 #include "cached_interp.h"
 #include "cp0_private.h"

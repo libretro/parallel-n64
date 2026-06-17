@@ -141,8 +141,6 @@ cextern check_interrupt
 cextern clean_blocks
 cextern invalidate_block
 cextern new_dynarec_tlb_refill
-cextern pcaddr
-cextern pending_exception
 cextern next_interrupt
 cextern stop
 cextern frame_break
@@ -166,6 +164,8 @@ cextern hash_table
 ; struct are addressed through g_dev plus the generated structural + field offsets,
 ; instead of as flat symbols. Compose the full displacement once per field.
 cextern g_dev
+%define g_dev_r4300_new_dynarec_hot_state_pcaddr            (g_dev + offsetof_struct_device_r4300 + offsetof_struct_r4300_core_new_dynarec_hot_state + offsetof_struct_new_dynarec_hot_state_pcaddr)
+%define g_dev_r4300_new_dynarec_hot_state_pending_exception  (g_dev + offsetof_struct_device_r4300 + offsetof_struct_r4300_core_new_dynarec_hot_state + offsetof_struct_new_dynarec_hot_state_pending_exception)
 %define g_dev_r4300_new_dynarec_hot_state_cycle_count       (g_dev + offsetof_struct_device_r4300 + offsetof_struct_r4300_core_new_dynarec_hot_state + offsetof_struct_new_dynarec_hot_state_cycle_count)
 %define g_dev_r4300_new_dynarec_hot_state_last_count        (g_dev + offsetof_struct_device_r4300 + offsetof_struct_r4300_core_new_dynarec_hot_state + offsetof_struct_new_dynarec_hot_state_last_count)
 %define g_dev_r4300_new_dynarec_hot_state_ram_offset        (g_dev + offsetof_struct_device_r4300 + offsetof_struct_r4300_core_new_dynarec_hot_state + offsetof_struct_new_dynarec_hot_state_ram_offset)
@@ -323,7 +323,7 @@ cc_interrupt:
 %endif
     mov     [rel g_cp0_regs+36],    CCREG    ;Count
     shr     CCREG,    19
-    mov     dword [rel pending_exception],    0
+    mov     dword [rel g_dev_r4300_new_dynarec_hot_state_pending_exception],    0
     and     CCREG,    01fch
     lea     r10,    [rel restore_candidate]
     cmp     dword [r10+CCREG64],    0
@@ -332,7 +332,7 @@ _E1:
     call    gen_interrupt
     mov     CCREG,    [rel g_cp0_regs+36]
     mov     eax,    [rel next_interrupt]
-    mov     ecx,    [rel pending_exception]
+    mov     ecx,    [rel g_dev_r4300_new_dynarec_hot_state_pending_exception]
     mov     edx,    [rel stop]
     or      edx,    [rel frame_break]    ;frame boundary: unwind like stop, without teardown
 %ifdef WIN64
@@ -356,7 +356,7 @@ _E1:
     ret
 _E2:
     ;Pending exception: jump to the handler instead of returning
-    mov     ARG1_REG,    [rel pcaddr]
+    mov     ARG1_REG,    [rel g_dev_r4300_new_dynarec_hot_state_pcaddr]
     mov     [rel g_dev_r4300_new_dynarec_hot_state_cycle_count],    CCREG
     CALL_C  get_addr_ht    ;rsp == 0 mod 16 here
     mov     CCREG,    [rel g_dev_r4300_new_dynarec_hot_state_cycle_count]
@@ -406,7 +406,7 @@ _E6:
     jmp     _E1
 
 do_interrupt:
-    mov     ARG1_REG,    [rel pcaddr]
+    mov     ARG1_REG,    [rel g_dev_r4300_new_dynarec_hot_state_pcaddr]
     CALL_C  get_addr_ht
     mov     CCREG,    [rel g_cp0_regs+36]
     mov     edx,    [rel next_interrupt]
@@ -485,9 +485,9 @@ _E10:
     mov     CCREG,    [rel g_dev_r4300_new_dynarec_hot_state_cycle_count]
     jmp     rax
 _E11:
-    mov     [rel pcaddr],    eax
+    mov     [rel g_dev_r4300_new_dynarec_hot_state_pcaddr],    eax
     call    cc_interrupt
-    mov     eax,    [rel pcaddr]
+    mov     eax,    [rel g_dev_r4300_new_dynarec_hot_state_pcaddr]
     jmp     _E8
 
 new_dyna_start:
@@ -506,7 +506,7 @@ new_dyna_start:
     mov     [rel dyna_entry_rsp],    rsp
     add     rsp,    -56
     ;Resume at pcaddr (seeded to the boot vector by new_dynarec_init):
-    mov     ARG1_REG,    [rel pcaddr]
+    mov     ARG1_REG,    [rel g_dev_r4300_new_dynarec_hot_state_pcaddr]
     CALL_C  get_addr_ht
     mov     ecx,    [rel next_interrupt]
     mov     CCREG,    [rel g_cp0_regs+36]

@@ -113,6 +113,17 @@ struct new_dynarec_hot_state
 };
 
 #if !defined(__arm64__) && !defined(__aarch64__)
+#if (NEW_DYNAREC == NEW_DYNAREC_AMD64)
+/* region 14 / Phase 2d (increment 4): on x64 the storage for pcaddr and
+ * pending_exception lives in g_dev.r4300.new_dynarec_hot_state (Phase 2c). The
+ * JIT aliases them in assem_x64.c; the non-JIT C use-sites (interrupt.c,
+ * reset.c, r4300.c, r4300_core.c) resolve the same member through this macro.
+ * Those TUs include device.h (complete struct device) and main.h (g_dev), so
+ * the member access is well-formed. No flat extern/definition remains on x64. */
+#define pcaddr            (g_dev.r4300.new_dynarec_hot_state.pcaddr)
+#define pending_exception (g_dev.r4300.new_dynarec_hot_state.pending_exception)
+#else
+/* x86 / arm (32-bit ari64): still flat globals defined in the backend. */
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -120,6 +131,7 @@ extern int pcaddr;
 extern int pending_exception;
 #ifdef __cplusplus
 }
+#endif
 #endif
 #else
 #include "arm64/memory_layout_arm64.h"
