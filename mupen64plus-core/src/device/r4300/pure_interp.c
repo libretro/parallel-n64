@@ -23,7 +23,17 @@
 extern int g_cp0_cycle_count;
 
 #if !defined(__arm64__) && !defined(__aarch64__)
+#if defined(_M_X64)
+/* region 14 / Phase 2d (increment 12): on x64 the register file is the embedded
+ * hot-state struct member, reached via mupencorereg (see r4300.h). pure_interp.c
+ * carries its own mupencorereg definition, so mirror the struct alias here and
+ * pull in the complete struct device + g_dev. */
+#include "../device.h"
+#include "../../main/main.h"
+#define mupencorereg (g_dev.r4300.new_dynarec_hot_state.regs)
+#else
 #define mupencorereg reg
+#endif
 #else
 #include "new_dynarec/arm64/memory_layout_arm64.h"
 #define mupencorereg (RECOMPILER_MEMORY->rml_reg)

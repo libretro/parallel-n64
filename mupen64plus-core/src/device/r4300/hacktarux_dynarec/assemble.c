@@ -30,6 +30,9 @@
 #include "../recomph.h"
 #include "../recomp.h"
 #include "../r4300.h"
+/* region 14 / Phase 2d (increment 12): mupencorereg reg-file alias needs g_dev. */
+#include "../../device.h"
+#include "../../../main/main.h"
 
 /* (64-bit x86_64 only) */
 typedef struct _riprelative_table

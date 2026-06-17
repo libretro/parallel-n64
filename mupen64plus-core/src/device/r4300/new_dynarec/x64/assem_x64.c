@@ -1048,7 +1048,7 @@ static void emit_loadreg(int r, int hr)
   }
   else
   {
-    intptr_t addr=((intptr_t)reg)+((r&63)<<3)+((r&64)>>4);
+    intptr_t addr=((intptr_t)mupencorereg)+((r&63)<<3)+((r&64)>>4);
     if((r&63)==HIREG) addr=(intptr_t)&hi+((r&64)>>4);
     if((r&63)==LOREG) addr=(intptr_t)&lo+((r&64)>>4);
     if(r==CCREG) addr=(intptr_t)&cycle_count;
@@ -1064,7 +1064,7 @@ static void emit_loadreg(int r, int hr)
 }
 static void emit_storereg(int r, int hr)
 {
-  intptr_t addr=((intptr_t)reg)+((r&63)<<3)+((r&64)>>4);
+  intptr_t addr=((intptr_t)mupencorereg)+((r&63)<<3)+((r&64)>>4);
   if((r&63)==HIREG) addr=(intptr_t)&hi+((r&64)>>4);
   if((r&63)==LOREG) addr=(intptr_t)&lo+((r&64)>>4);
   if(r==CCREG) addr=(intptr_t)&cycle_count;
@@ -5443,13 +5443,13 @@ void *new_dynarec_tlb_refill(u_int inst_addr, u_int mem_addr, int w)
   u_int low;
   int i;
   if(count&&((0x06000022u>>(count-1))&1))
-    low=(u_int)reg[rs]; /* LWL/LWR/LDL/LDR: address reg was masked, keep it */
+    low=(u_int)mupencorereg[rs]; /* LWL/LWR/LDL/LDR: address reg was masked, keep it */
   else
     low=mem_addr-(u_int)(int)(short)instr;
   if(inst_addr&2)
-    reg[rs]=(int64_t)(int32_t)low;
+    mupencorereg[rs]=(int64_t)(int32_t)low;
   else
-    reg[rs]=(int64_t)(((uint64_t)reg[rs]&~(uint64_t)0xffffffff)|low);
+    mupencorereg[rs]=(int64_t)(((uint64_t)mupencorereg[rs]&~(uint64_t)0xffffffff)|low);
 
   /* TLB refill exception */
   if (g_dev.r4300.special_rom == RAT_ATTACK)

@@ -29,6 +29,9 @@
 #include "../../../api/callbacks.h"
 #include "../recomp.h"
 #include "../r4300.h"
+/* region 14 / Phase 2d (increment 12): mupencorereg reg-file alias needs g_dev. */
+#include "../../device.h"
+#include "../../../main/main.h"
 #include "../recomph.h"
 
 static struct precomp_instr *last_access[8];
@@ -54,7 +57,7 @@ void init_cache(struct precomp_instr* start)
 #endif
    }
 
-   r0 = (native_type*)reg;
+   r0 = (native_type*)mupencorereg;
 }
 
 void free_all_registers(void)
@@ -825,7 +828,7 @@ static void build_wrapper(struct precomp_instr *instr, unsigned char* pCode, str
 
    *pCode++ = 0x48;
    *pCode++ = 0xB8;
-   *((uint64_t*) pCode) = (uint64_t)&reg[0];
+   *((uint64_t*) pCode) = (uint64_t)&mupencorereg[0];
    pCode += 8;
 
    for (i=7; i>=0; i--)
@@ -837,13 +840,13 @@ static void build_wrapper(struct precomp_instr *instr, unsigned char* pCode, str
         *pCode++ = 0x48;
         *pCode++ = 0x8B;
         *pCode++ = 0x80 | (i << 3);
-        riprel = (int64_t) ((unsigned char *) instr->reg_cache_infos.needed_registers[i] - (unsigned char *) &reg[0]);
+        riprel = (int64_t) ((unsigned char *) instr->reg_cache_infos.needed_registers[i] - (unsigned char *) &mupencorereg[0]);
         *((int *) pCode) = (int) riprel;
         pCode += 4;
         if (riprel >= 0x7fffffffLL || riprel < -0x80000000LL)
         {
            DebugMessage(M64MSG_ERROR, "build_wrapper error: reg[%i] offset too big for relative address from %p to %p",
-                 i, (void*)(&reg[0]), instr->reg_cache_infos.needed_registers[i]);
+                 i, (void*)(&mupencorereg[0]), instr->reg_cache_infos.needed_registers[i]);
 #if !defined(_MSC_VER)
            asm(" int $3; ");
 #endif

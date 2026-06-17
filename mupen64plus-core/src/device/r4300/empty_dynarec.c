@@ -20,6 +20,11 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
+/* region 14 / Phase 2d (increment 12): assemble.h inline helpers use the
+ * mupencorereg reg-file alias (g_dev hot-state); pull in g_dev + r4300.h. */
+#include "../device.h"
+#include "../../main/main.h"
+#include "r4300.h"
 #include "recomp.h"
 
 /* This fixes compilation for classic and rpi platforms by adding some stubs */

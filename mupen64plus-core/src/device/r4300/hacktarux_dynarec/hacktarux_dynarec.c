@@ -180,7 +180,7 @@ void dyna_start(void *code)
      " pop  %%r12              \n"
      " pop  %%rbx              \n"
      : [save_rsp]"=m"(save_rsp), [save_rip]"=m"(save_rip), [return_address]"=m"(return_address)
-     : "b" (code), [reg]"m"(*reg)
+     : "b" (code), [reg]"m"(*mupencorereg)
      : "%rax", "memory"
      );
 #else
@@ -215,7 +215,7 @@ void dyna_start(void *code)
      " pop  %%r12              \n"
      " pop  %%rbx              \n"
      : [save_rsp]"=m"(save_rsp), [save_rip]"=m"(save_rip), [return_address]"=m"(return_address)
-     : "b" (code), [reg]"m"(*reg)
+     : "b" (code), [reg]"m"(*mupencorereg)
      : "%rax", "memory"
      );
 #endif
@@ -1211,21 +1211,21 @@ void genjal(void)
    gendelayslot();
 
 #ifdef __x86_64__
-   mov_m32rel_imm32((unsigned int *)(reg + 31), dst->addr + 4);
+   mov_m32rel_imm32((unsigned int *)(mupencorereg + 31), dst->addr + 4);
    if (((dst->addr + 4) & 0x80000000))
-      mov_m32rel_imm32((unsigned int *)(&reg[31])+1, 0xFFFFFFFF);
+      mov_m32rel_imm32((unsigned int *)(&mupencorereg[31])+1, 0xFFFFFFFF);
    else
-      mov_m32rel_imm32((unsigned int *)(&reg[31])+1, 0);
+      mov_m32rel_imm32((unsigned int *)(&mupencorereg[31])+1, 0);
 
    naddr = ((dst-1)->f.j.inst_index<<2) | (dst->addr & 0xF0000000);
 
    mov_m32rel_imm32((void*)(&last_addr), naddr);
 #else
-   mov_m32_imm32((unsigned int *)(reg + 31), dst->addr + 4);
+   mov_m32_imm32((unsigned int *)(mupencorereg + 31), dst->addr + 4);
    if (((dst->addr + 4) & 0x80000000))
-      mov_m32_imm32((unsigned int *)(&reg[31])+1, 0xFFFFFFFF);
+      mov_m32_imm32((unsigned int *)(&mupencorereg[31])+1, 0xFFFFFFFF);
    else
-      mov_m32_imm32((unsigned int *)(&reg[31])+1, 0);
+      mov_m32_imm32((unsigned int *)(&mupencorereg[31])+1, 0);
 
    naddr = ((dst-1)->f.j.inst_index<<2) | (dst->addr & 0xF0000000);
 
@@ -1253,11 +1253,11 @@ void genjal_out(void)
    gendelayslot();
 
 #ifdef __x86_64__
-   mov_m32rel_imm32((unsigned int *)(reg + 31), dst->addr + 4);
+   mov_m32rel_imm32((unsigned int *)(mupencorereg + 31), dst->addr + 4);
    if (((dst->addr + 4) & 0x80000000))
-      mov_m32rel_imm32((unsigned int *)(&reg[31])+1, 0xFFFFFFFF);
+      mov_m32rel_imm32((unsigned int *)(&mupencorereg[31])+1, 0xFFFFFFFF);
    else
-      mov_m32rel_imm32((unsigned int *)(&reg[31])+1, 0);
+      mov_m32rel_imm32((unsigned int *)(&mupencorereg[31])+1, 0);
 
    naddr = ((dst-1)->f.j.inst_index<<2) | (dst->addr & 0xF0000000);
 
@@ -1269,11 +1269,11 @@ void genjal_out(void)
    mov_reg64_imm64(RAX, (uint64_t) jump_to_func);
    call_reg64(RAX);
 #else
-   mov_m32_imm32((unsigned int *)(reg + 31), dst->addr + 4);
+   mov_m32_imm32((unsigned int *)(mupencorereg + 31), dst->addr + 4);
    if (((dst->addr + 4) & 0x80000000))
-      mov_m32_imm32((unsigned int *)(&reg[31])+1, 0xFFFFFFFF);
+      mov_m32_imm32((unsigned int *)(&mupencorereg[31])+1, 0xFFFFFFFF);
    else
-      mov_m32_imm32((unsigned int *)(&reg[31])+1, 0);
+      mov_m32_imm32((unsigned int *)(&mupencorereg[31])+1, 0);
 
    naddr = ((dst-1)->f.j.inst_index<<2) | (dst->addr & 0xF0000000);
 
@@ -3114,7 +3114,7 @@ void genlwc1(void)
    gencheck_cop1_unusable();
 
 #ifdef __x86_64__
-   mov_xreg32_m32rel(EAX, (unsigned int *)(&reg[dst->f.lf.base]));
+   mov_xreg32_m32rel(EAX, (unsigned int *)(&mupencorereg[dst->f.lf.base]));
    add_eax_imm32((int)dst->f.lf.offset);
    mov_reg32_reg32(EBX, EAX);
    mov_reg64_imm64(RSI, (uint64_t) readmem);
@@ -3148,7 +3148,7 @@ void genlwc1(void)
    mov_xreg64_m64rel(RBX, (uint64_t *)(&reg_cop1_simple[dst->f.lf.ft])); // 7
    mov_preg64_reg32(RBX, EAX); // 2
 #else
-   mov_eax_memoffs32((unsigned int *)(&reg[dst->f.lf.base]));
+   mov_eax_memoffs32((unsigned int *)(&mupencorereg[dst->f.lf.base]));
    add_eax_imm32((int)dst->f.lf.offset);
    mov_reg32_reg32(EBX, EAX);
    if(g_dev.r4300.recomp.fast_memory)
@@ -3189,7 +3189,7 @@ void genldc1(void)
    gencheck_cop1_unusable();
 
 #ifdef __x86_64__
-   mov_xreg32_m32rel(EAX, (unsigned int *)(&reg[dst->f.lf.base]));
+   mov_xreg32_m32rel(EAX, (unsigned int *)(&mupencorereg[dst->f.lf.base]));
    add_eax_imm32((int)dst->f.lf.offset);
    mov_reg32_reg32(EBX, EAX);
    mov_reg64_imm64(RSI, (uint64_t) readmemd);
@@ -3225,7 +3225,7 @@ void genldc1(void)
    shr_reg64_imm8(RAX, 32); // 4
    mov_preg64_reg32(RBX, EAX); // 2
 #else
-   mov_eax_memoffs32((unsigned int *)(&reg[dst->f.lf.base]));
+   mov_eax_memoffs32((unsigned int *)(&mupencorereg[dst->f.lf.base]));
    add_eax_imm32((int)dst->f.lf.offset);
    mov_reg32_reg32(EBX, EAX);
    if(g_dev.r4300.recomp.fast_memory)
@@ -3318,7 +3318,7 @@ void genswc1(void)
 #ifdef __x86_64__
    mov_xreg64_m64rel(RDX, (uint64_t *)(&reg_cop1_simple[dst->f.lf.ft]));
    mov_reg32_preg64(ECX, RDX);
-   mov_xreg32_m32rel(EAX, (unsigned int *)(&reg[dst->f.lf.base]));
+   mov_xreg32_m32rel(EAX, (unsigned int *)(&mupencorereg[dst->f.lf.base]));
    add_eax_imm32((int)dst->f.lf.offset);
    mov_reg32_reg32(EBX, EAX);
    mov_reg64_imm64(RSI, (uint64_t) writemem);
@@ -3373,7 +3373,7 @@ void genswc1(void)
 #else
    mov_reg32_m32(EDX, (unsigned int*)(&reg_cop1_simple[dst->f.lf.ft]));
    mov_reg32_preg32(ECX, EDX);
-   mov_eax_memoffs32((unsigned int *)(&reg[dst->f.lf.base]));
+   mov_eax_memoffs32((unsigned int *)(&mupencorereg[dst->f.lf.base]));
    add_eax_imm32((int)dst->f.lf.offset);
    mov_reg32_reg32(EBX, EAX);
    if(g_dev.r4300.recomp.fast_memory)
@@ -3433,7 +3433,7 @@ void gensdc1(void)
    mov_xreg64_m64rel(RSI, (uint64_t *)(&reg_cop1_double[dst->f.lf.ft]));
    mov_reg32_preg64(ECX, RSI);
    mov_reg32_preg64pimm32(EDX, RSI, 4);
-   mov_xreg32_m32rel(EAX, (unsigned int *)(&reg[dst->f.lf.base]));
+   mov_xreg32_m32rel(EAX, (unsigned int *)(&mupencorereg[dst->f.lf.base]));
    add_eax_imm32((int)dst->f.lf.offset);
    mov_reg32_reg32(EBX, EAX);
    mov_reg64_imm64(RSI, (uint64_t) writememd);
@@ -3491,7 +3491,7 @@ void gensdc1(void)
    mov_reg32_m32(ESI, (unsigned int*)(&reg_cop1_double[dst->f.lf.ft]));
    mov_reg32_preg32(ECX, ESI);
    mov_reg32_preg32pimm32(EDX, ESI, 4);
-   mov_eax_memoffs32((unsigned int *)(&reg[dst->f.lf.base]));
+   mov_eax_memoffs32((unsigned int *)(&mupencorereg[dst->f.lf.base]));
    add_eax_imm32((int)dst->f.lf.offset);
    mov_reg32_reg32(EBX, EAX);
    if(g_dev.r4300.recomp.fast_memory)
@@ -6022,16 +6022,16 @@ void genbgezl_idle(void)
 
 static void genbranchlink(void)
 {
-   int r31_64bit = is64((unsigned int*)&reg[31]);
+   int r31_64bit = is64((unsigned int*)&mupencorereg[31]);
 
    if (r31_64bit == 0)
    {
 #ifdef __x86_64__
-      int r31 = allocate_register_32_w((unsigned int *)&reg[31]);
+      int r31 = allocate_register_32_w((unsigned int *)&mupencorereg[31]);
 
       mov_reg32_imm32(r31, dst->addr+8);
 #else
-      int r31 = allocate_register_w((unsigned int *)&reg[31]);
+      int r31 = allocate_register_w((unsigned int *)&mupencorereg[31]);
 
       mov_reg32_imm32(r31, dst->addr+8);
 #endif
@@ -6039,29 +6039,29 @@ static void genbranchlink(void)
    else if (r31_64bit == -1)
    {
 #ifdef __x86_64__
-      mov_m32rel_imm32((unsigned int *)&reg[31], dst->addr + 8);
+      mov_m32rel_imm32((unsigned int *)&mupencorereg[31], dst->addr + 8);
       if (dst->addr & 0x80000000)
-         mov_m32rel_imm32(((unsigned int *)&reg[31])+1, 0xFFFFFFFF);
+         mov_m32rel_imm32(((unsigned int *)&mupencorereg[31])+1, 0xFFFFFFFF);
       else
-         mov_m32rel_imm32(((unsigned int *)&reg[31])+1, 0);
+         mov_m32rel_imm32(((unsigned int *)&mupencorereg[31])+1, 0);
 #else
-      mov_m32_imm32((unsigned int *)&reg[31], dst->addr + 8);
+      mov_m32_imm32((unsigned int *)&mupencorereg[31], dst->addr + 8);
       if (dst->addr & 0x80000000)
-         mov_m32_imm32(((unsigned int *)&reg[31])+1, 0xFFFFFFFF);
+         mov_m32_imm32(((unsigned int *)&mupencorereg[31])+1, 0xFFFFFFFF);
       else
-         mov_m32_imm32(((unsigned int *)&reg[31])+1, 0);
+         mov_m32_imm32(((unsigned int *)&mupencorereg[31])+1, 0);
 #endif
    }
    else
    {
 #ifdef __x86_64__
-      int r31 = allocate_register_64_w((uint64_t*)&reg[31]);
+      int r31 = allocate_register_64_w((uint64_t*)&mupencorereg[31]);
 
       mov_reg32_imm32(r31, dst->addr+8);
       movsxd_reg64_reg32(r31, r31);
 #else
-      int r311 = allocate_64_register1_w((unsigned int *)&reg[31]);
-      int r312 = allocate_64_register2_w((unsigned int *)&reg[31]);
+      int r311 = allocate_64_register1_w((unsigned int *)&mupencorereg[31]);
+      int r312 = allocate_64_register2_w((unsigned int *)&mupencorereg[31]);
 
       mov_reg32_imm32(r311, dst->addr+8);
       if (dst->addr & 0x80000000)

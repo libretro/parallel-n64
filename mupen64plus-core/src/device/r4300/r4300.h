@@ -33,7 +33,6 @@ extern struct precomp_instr *PC;
 extern uint32_t next_interrupt;
 extern int g_cp0_cycle_count;
 #define mupencorePC PC
-#define mupencorereg reg
 #if defined(_M_X64)
 /* region 14 / Phase 2d (increment 9): the core stop flag's storage moves into
  * g_dev.r4300.new_dynarec_hot_state (member stop, offset 0x10c). The alias is on
@@ -44,17 +43,31 @@ extern int g_cp0_cycle_count;
  * where g_dev is in scope.
  *
  * region 14 / Phase 2d (increment 10): the multiply/divide accumulators hi and
- * lo move into the struct too (members hi 0x240, lo 0x248). Unlike reg these are
- * not declared in the Hacktarux assemble.h, and the bare tokens 'hi'/'lo' do not
- * collide with any reachable header identifier, so they are aliased directly.
- * Consumers are the interpreter, the cached-interp mult/div ops, the Ari64 JIT,
- * the Hacktarux JIT (which takes &hi/&lo) and the linkage; all see g_dev. reg is
- * migrated in a later increment (it has its own assemble.h declarations). */
+ * lo move into the struct too (members hi 0x240, lo 0x248). The bare tokens
+ * 'hi'/'lo' do not collide with any reachable header identifier, so they are
+ * aliased directly. Consumers are the interpreter, the cached-interp mult/div
+ * ops, the Ari64 JIT, the Hacktarux JIT (which takes &hi/&lo) and the linkage.
+ *
+ * region 14 / Phase 2d (increment 12): the general-purpose register file moves
+ * into the struct as member regs (0x140). Unlike hi/lo, the bare token 'reg'
+ * CANNOT be aliased: it is pervasively used as a function-parameter name in the
+ * Hacktarux register allocator (regcache.h/.c: free_register(int reg), ...) and
+ * as a local register-number variable in the Ari64 JIT (assem_x64.c). So the
+ * alias is placed on mupencorereg -- the collision-free indirection that already
+ * exists -- and the *global register-file* use-sites (reg[i], &reg[i],
+ * (uint8_t*)reg) are rewritten to mupencorereg; 'reg' as a parameter or local is
+ * left untouched. mupencorereg is an array lvalue, so indexing and address-of
+ * behave exactly as before. assemble.h carries an identical guarded alias (it is
+ * pulled in early via recomp.h), so this is guarded too; identical macro
+ * definitions coexist without warning. */
+#ifndef mupencorereg
+#define mupencorereg  (g_dev.r4300.new_dynarec_hot_state.regs)
+#endif
 #define mupencorestop (g_dev.r4300.new_dynarec_hot_state.stop)
 #define hi            (g_dev.r4300.new_dynarec_hot_state.hi)
 #define lo            (g_dev.r4300.new_dynarec_hot_state.lo)
-extern int64_t reg[32];
 #else
+#define mupencorereg reg
 extern int64_t reg[32], hi, lo;
 extern int stop;
 #define mupencorestop stop

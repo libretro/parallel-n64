@@ -41,6 +41,9 @@
 #include "interrupt.h"
 #include "macros.h"
 #include "../../main/main.h"
+/* region 14 / Phase 2d (increment 12): mupencorereg (reg file) is a g_dev
+ * hot-state member on x64; needs the complete struct device. */
+#include "../device.h"
 #include "../memory/memory.h"
 #include "ops.h"
 #include "r4300.h"

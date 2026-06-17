@@ -144,7 +144,6 @@ cextern new_dynarec_tlb_refill
 cextern next_interrupt
 cextern frame_break
 cextern dyna_entry_rsp
-cextern reg
 cextern address
 cextern invalid_code
 cextern hash_table
@@ -159,6 +158,7 @@ cextern g_dev
 %define g_dev_r4300_new_dynarec_hot_state_stop              (g_dev + offsetof_struct_device_r4300 + offsetof_struct_r4300_core_new_dynarec_hot_state + offsetof_struct_new_dynarec_hot_state_stop)
 %define g_dev_r4300_new_dynarec_hot_state_hi                 (g_dev + offsetof_struct_device_r4300 + offsetof_struct_r4300_core_new_dynarec_hot_state + offsetof_struct_new_dynarec_hot_state_hi)
 %define g_dev_r4300_new_dynarec_hot_state_lo                 (g_dev + offsetof_struct_device_r4300 + offsetof_struct_r4300_core_new_dynarec_hot_state + offsetof_struct_new_dynarec_hot_state_lo)
+%define g_dev_r4300_new_dynarec_hot_state_regs               (g_dev + offsetof_struct_device_r4300 + offsetof_struct_r4300_core_new_dynarec_hot_state + offsetof_struct_new_dynarec_hot_state_regs)
 %define g_dev_r4300_new_dynarec_hot_state_cp0_regs           (g_dev + offsetof_struct_device_r4300 + offsetof_struct_r4300_core_new_dynarec_hot_state + offsetof_struct_new_dynarec_hot_state_cp0_regs)
 %define g_dev_r4300_new_dynarec_hot_state_memory_map         (g_dev + offsetof_struct_device_r4300 + offsetof_struct_r4300_core_new_dynarec_hot_state + offsetof_struct_new_dynarec_hot_state_memory_map)
 %define g_dev_r4300_new_dynarec_hot_state_restore_candidate  (g_dev + offsetof_struct_device_r4300 + offsetof_struct_r4300_core_new_dynarec_hot_state + offsetof_struct_new_dynarec_hot_state_restore_candidate)
@@ -454,7 +454,7 @@ _E8:
     ;Scan the 64-bit register file to build the is32 mask for get_addr_32
     mov     r9d,    248
     xor     r10d,    r10d
-    lea     r11,    [rel reg]
+    lea     r11,    [rel g_dev_r4300_new_dynarec_hot_state_regs]
 _E9:
     mov     ecx,    [r11+r9]
     mov     edx,    [r11+r9+4]

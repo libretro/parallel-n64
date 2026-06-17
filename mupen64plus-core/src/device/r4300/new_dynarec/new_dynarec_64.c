@@ -2240,7 +2240,7 @@ static int rchecksum(void)
   int i;
   int sum=0;
   for(i=0;i<64;i++)
-    sum^=((u_int *)reg)[i];
+    sum^=((u_int *)mupencorereg)[i];
   return sum;
 }
 
@@ -2249,7 +2249,7 @@ static void rlist(void)
   int i;
   DebugMessage(M64MSG_VERBOSE, "TRACE: ");
   for(i=0;i<32;i++)
-    DebugMessage(M64MSG_VERBOSE, "r%d:%8x%8x ",i,((int *)(reg+i))[1],((int *)(reg+i))[0]);
+    DebugMessage(M64MSG_VERBOSE, "r%d:%8x%8x ",i,((int *)(mupencorereg+i))[1],((int *)(mupencorereg+i))[0]);
   DebugMessage(M64MSG_VERBOSE, "TRACE: ");
   for(i=0;i<32;i++)
     DebugMessage(M64MSG_VERBOSE, "f%d:%8x%8x ",i,((int*)reg_cop1_simple[i])[1],*((int*)reg_cop1_simple[i]));

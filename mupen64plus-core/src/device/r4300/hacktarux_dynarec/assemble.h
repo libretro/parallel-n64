@@ -32,9 +32,36 @@
 
 #include <retro_inline.h>
 
+/* region 14 / Phase 2d (increment 12): the inline JIT helpers below
+ * (rel_r15_offset and the _m*rel emitters) reference the register-file base via
+ * mupencorereg. assemble.h is pulled in early (r4300.h -> recomp.h -> assemble.h,
+ * and on arm64 via the same chain) before the backend headers define the alias,
+ * so define it here, guarded, for every backend:
+ *   x64  -> embedded hot-state struct member (needs struct device + g_dev)
+ *   x86  -> the flat reg[] global
+ *   arm64-> the RECOMPILER_MEMORY register block
+ * r4300.h / pure_interp.c guard their own copies, so these coexist. */
+#ifndef mupencorereg
+#if !defined(__arm64__) && !defined(__aarch64__)
+#if defined(_M_X64)
+#include "../../device.h"
+#include "../../../main/main.h"
+#define mupencorereg (g_dev.r4300.new_dynarec_hot_state.regs)
+#else
+extern int64_t reg[32];
+#define mupencorereg reg
+#endif
+#else
+#include "../new_dynarec/arm64/memory_layout_arm64.h"
+#define mupencorereg (RECOMPILER_MEMORY->rml_reg)
+#endif
+#endif
+
 #ifndef __arm64__
 #if defined(__x86_64__) || (_M_X64)
-extern int64_t reg[32];
+/* region 14 / Phase 2d (increment 12): register file is the hot-state struct
+ * member on x64, reached via mupencorereg (defined at the top of this header for
+ * all backends); no flat extern here. */
 typedef uint64_t native_type;
 
 #define RAX 0
@@ -130,12 +157,12 @@ static INLINE int64_t LLABS(int64_t i)
 static INLINE int rel_r15_offset(void *dest, const char *op_name)
 {
    /* calculate the destination pointer's offset from the base of the r4300 registers */
-   int64_t rel_offset = (int64_t) ((uint8_t *) dest - (uint8_t *) reg);
+   int64_t rel_offset = (int64_t) ((uint8_t *) dest - (uint8_t *) mupencorereg);
 
 #ifdef DEBUG
    if (LLABS(rel_offset) > 0x7fffffff)
    {
-      DebugMessage(M64MSG_ERROR, "Error: destination %p more than 2GB away from r15 base %p in %s()", dest, (void*)reg, op_name);
+      DebugMessage(M64MSG_ERROR, "Error: destination %p more than 2GB away from r15 base %p in %s()", dest, (void*)mupencorereg, op_name);
 #if 0
       OSAL_BREAKPOINT_INTERRUPT;
 #endif
