@@ -56,8 +56,13 @@ uint32_t address = 0;
 // values that are being written are stored in these variables
 #if NEW_DYNAREC < NEW_DYNAREC_ARM
 uint32_t cpu_word;
+/* region 14 / Phase 2d (increment 6): on x64, cpu_byte/cpu_hword storage moved
+ * into the embedded hot-state struct (see memory.h aliases); only x86 keeps the
+ * flat definitions here. */
+#if !defined(_M_X64)
 uint8_t cpu_byte;
 uint16_t cpu_hword;
+#endif
 uint64_t cpu_dword;
 #endif
 #endif

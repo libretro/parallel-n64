@@ -44,10 +44,24 @@
 
 #if !defined(__arm64__) && !defined(__aarch64__)
 extern uint32_t address, cpu_word;
-extern uint8_t cpu_byte;
-extern uint16_t cpu_hword;
 extern uint64_t cpu_dword;
 #define mupencoreaddress address
+#if defined(_M_X64)
+/* region 14 / Phase 2d (increment 6): on x64 the width-specific read/write
+ * staging bytes cpu_byte/cpu_hword have their storage in
+ * g_dev.r4300.new_dynarec_hot_state (members hs_cpu_byte/hs_cpu_hword -- the hs_
+ * prefix avoids colliding with these very macros). The memory layer, the Ari64
+ * JIT and the Hacktarux dynarec all reach the same member through these aliases;
+ * every use-site is in a function body where g_dev is in scope. The remaining
+ * staging globals (address, cpu_word, cpu_dword) are migrated in later
+ * increments. */
+#define cpu_byte         (g_dev.r4300.new_dynarec_hot_state.hs_cpu_byte)
+#define cpu_hword        (g_dev.r4300.new_dynarec_hot_state.hs_cpu_hword)
+#else
+/* x86 (32-bit ari64): still flat globals defined in the memory layer. */
+extern uint8_t cpu_byte;
+extern uint16_t cpu_hword;
+#endif
 #else
 #include "../r4300/new_dynarec/arm64/memory_layout_arm64.h"
 #define mupencoreaddress (RECOMPILER_MEMORY->rml_address)
