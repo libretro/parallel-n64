@@ -150,7 +150,6 @@ cextern reg
 cextern hi
 cextern lo
 cextern address
-cextern readmem_dword
 cextern invalid_code
 cextern hash_table
 
@@ -167,6 +166,7 @@ cextern g_dev
 %define g_dev_r4300_new_dynarec_hot_state_hs_cpu_hword       (g_dev + offsetof_struct_device_r4300 + offsetof_struct_r4300_core_new_dynarec_hot_state + offsetof_struct_new_dynarec_hot_state_hs_cpu_hword)
 %define g_dev_r4300_new_dynarec_hot_state_wword              (g_dev + offsetof_struct_device_r4300 + offsetof_struct_r4300_core_new_dynarec_hot_state + offsetof_struct_new_dynarec_hot_state_wword)
 %define g_dev_r4300_new_dynarec_hot_state_wdword             (g_dev + offsetof_struct_device_r4300 + offsetof_struct_r4300_core_new_dynarec_hot_state + offsetof_struct_new_dynarec_hot_state_wdword)
+%define g_dev_r4300_new_dynarec_hot_state_rdword             (g_dev + offsetof_struct_device_r4300 + offsetof_struct_r4300_core_new_dynarec_hot_state + offsetof_struct_new_dynarec_hot_state_rdword)
 %define g_dev_r4300_new_dynarec_hot_state_last_count        (g_dev + offsetof_struct_device_r4300 + offsetof_struct_r4300_core_new_dynarec_hot_state + offsetof_struct_new_dynarec_hot_state_last_count)
 %define g_dev_r4300_new_dynarec_hot_state_ram_offset        (g_dev + offsetof_struct_device_r4300 + offsetof_struct_r4300_core_new_dynarec_hot_state + offsetof_struct_new_dynarec_hot_state_ram_offset)
 
@@ -602,7 +602,7 @@ read_nomem_new:
     test    r10,    r10
     js      tlb_exception
     mov     ecx,    [r9+r10*4]
-    mov     [rel readmem_dword],    ecx
+    mov     [rel g_dev_r4300_new_dynarec_hot_state_rdword],    ecx
     ret
 
 read_nomemb_new:
@@ -617,7 +617,7 @@ read_nomemb_new:
     mov     edx,    r9d
     xor     edx,    3
     movzx   ecx,    byte [rdx+r10*4]
-    mov     [rel readmem_dword],    ecx
+    mov     [rel g_dev_r4300_new_dynarec_hot_state_rdword],    ecx
     ret
 
 read_nomemh_new:
@@ -632,7 +632,7 @@ read_nomemh_new:
     mov     edx,    r9d
     xor     edx,    2
     movzx   ecx,    word [rdx+r10*4]
-    mov     [rel readmem_dword],    ecx
+    mov     [rel g_dev_r4300_new_dynarec_hot_state_rdword],    ecx
     ret
 
 read_nomemd_new:
@@ -646,9 +646,9 @@ read_nomemd_new:
     js      tlb_exception
     lea     rdx,    [r9+r10*4]
     mov     ecx,    [rdx+4]
-    mov     [rel readmem_dword],    ecx
+    mov     [rel g_dev_r4300_new_dynarec_hot_state_rdword],    ecx
     mov     ecx,    [rdx]
-    mov     [rel readmem_dword+4],    ecx
+    mov     [rel g_dev_r4300_new_dynarec_hot_state_rdword+4],    ecx
     ret
 
 write_nomem_new:

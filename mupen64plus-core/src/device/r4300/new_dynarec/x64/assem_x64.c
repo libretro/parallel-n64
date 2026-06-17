@@ -56,7 +56,16 @@ void invalidate_block_edi(void);
 #define last_count          (g_dev.r4300.new_dynarec_hot_state.last_count)
 int branch_target;
 #define ram_offset          (g_dev.r4300.new_dynarec_hot_state.ram_offset)
-uint64_t readmem_dword;
+/* region 14 / Phase 2d (increment 8): the Ari64 read-staging value storage
+ * readmem_dword moves into the embedded struct as member rdword (next's name for
+ * the same slot, offset 0x120). This is the JIT's transfer slot, distinct from
+ * the memory layer's global 'uint64_t *rdword' read-destination pointer -- they
+ * share a stem but are different objects in different scopes. The classic
+ * 'rdword=&readmem_dword' wiring (in new_dynarec_64.c) now reads
+ * 'rdword = &g_dev...rdword' (global pointer at the struct slot), which is
+ * exactly the intended aliasing. readmem_dword is JIT/asm-internal with no
+ * Hacktarux or interpreter use-sites. */
+#define readmem_dword       (g_dev.r4300.new_dynarec_hot_state.rdword)
 struct precomp_instr fake_pc;
 
 /* region 14 / Phase 2d (increment 1): these JIT-private hot-state fields now

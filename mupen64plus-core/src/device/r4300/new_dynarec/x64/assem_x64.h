@@ -121,7 +121,6 @@ void breakpoint(void);
 extern u_char extra_memory[1<<TARGET_SIZE_2];
 
 extern int branch_target;
-extern uint64_t readmem_dword;
 extern struct precomp_instr fake_pc;
 /* mini_ht and rounding_modes migrated to struct new_dynarec_hot_state
  * (region 14, Phase 2d increment 1); they are macro-aliased in assem_x64.c
