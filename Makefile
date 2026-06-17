@@ -495,7 +495,7 @@ else ifeq ($(platform), emscripten)
    HAVE_NEON = 0
    PLATFORM_EXT := unix
    STATIC_LINKING = 1
-   SOURCES_C += $(CORE_DIR)/src/r4300/empty_dynarec.c
+   SOURCES_C += $(CORE_DIR)/src/device/r4300/empty_dynarec.c
 
 # PlayStation Vita
 else ifneq (,$(findstring vita,$(platform)))
@@ -517,7 +517,7 @@ else ifneq (,$(findstring vita,$(platform)))
    CFLAGS += -DVITA -lm
    VITA = 1
    HAVE_PARALLEL=0
-   SOURCES_C += $(CORE_DIR)/src/r4300/empty_dynarec.c
+   SOURCES_C += $(CORE_DIR)/src/device/r4300/empty_dynarec.c
 
    PLATFORM_EXT := unix
    STATIC_LINKING=1
@@ -541,7 +541,7 @@ else ifneq (,$(findstring windows_msvc2017,$(platform)))
 	endif
 
     WITH_DYNAREC :=
-    SOURCES_C += $(CORE_DIR)/src/r4300/empty_dynarec.c
+    SOURCES_C += $(CORE_DIR)/src/device/r4300/empty_dynarec.c
 
 	CFLAGS += $(MSVC2017CompileFlags)
 	CXXFLAGS += $(MSVC2017CompileFlags)
