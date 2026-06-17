@@ -199,13 +199,20 @@ Each step must compile clean (full sweep) AND be smoke-testable on the 9950X3D
 before the next. arm/arm64 stay on flat globals behind `#ifdef` until a later,
 hardware-validated phase.
 
-* **2a — struct definition (no behaviour change).** Define `struct
-  new_dynarec_hot_state` in pn64's new_dynarec.h matching next's field order for the
-  shared fields, with pn64-extras appended. Embed it + move `extra_memory` into
-  `struct r4300_core`. Do NOT yet repoint anything — add the struct alongside the
-  existing globals, asserting `sizeof`/offsets via static asserts vs next's known
-  offsets. Confirms layout before any codegen change. (Open question §5.5 --
-  dynarec_local / host-reg save -- was RESOLVED in Phase 1: not an x64 concern.)
+* **2a — struct definition + layout validation (no behaviour change). [DONE]**
+  Defined `struct new_dynarec_hot_state` in pn64's new_dynarec.h matching next's
+  field order for the shared region (dynarec_local..memory_map), with pn64-extras
+  (cpu_byte/hword, last_count, ldlr_block, multdiv staging, restore_candidate)
+  appended AFTER. The 23 shared-field offsets are pinned to next's known x64
+  values by negative-array-bound static asserts in new_dynarec_64.c (MSVC-C89-safe);
+  all pass, so the layout is byte-identical to next for the shared region. The
+  struct is DORMANT — defined and validated, but nothing references it yet, and the
+  flat globals remain the live state. NOTE: embedding the struct + extra_memory into
+  struct r4300_core was deliberately deferred to 2c (rather than done here), because
+  embedding while the flat globals are still live would bloat g_dev by ~40MB of dead
+  weight and perturb savestate/layout for a dormant struct; per §4 the embed must be
+  atomic with the codegen repoint anyway. (Open question §5.5 — dynarec_local /
+  host-reg save — was RESOLVED in Phase 1: not an x64 concern.)
 
 * **2b — asm_defines generation.** Wire recomp_dbg offset emission; produce
   `x64/asm_defines_{nasm,gas}.h` from the struct. Verify the generated offsets match

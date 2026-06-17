@@ -73,8 +73,48 @@
 #error Unsupported dynarec architecture
 #endif
 
-// Uncomment this line to debug cycle count:
-//#define DEBUG_CYCLE_COUNT 1
+/* region 14 / Phase 2a: pin the SHARED region of struct new_dynarec_hot_state to
+ * mupen64plus-next's known x86-64 offsets. These are the offsets next's
+ * asm_defines_nasm.h encodes for the x64 backend; matching them guarantees that
+ * when 2b generates parallel-n64's asm_defines from this struct and 2c/2d repoint
+ * the codegen/linkage, the emitted addresses line up with the same layout next
+ * uses. A mismatch here is the single most dangerous failure mode (a wrong offset
+ * is silent at runtime), so it is caught at compile time instead.
+ *
+ * Uses a negative-array-bound typedef rather than _Static_assert for portability
+ * to the MSVC C89 build of the dynarec. __LINE__ keeps the typedef names unique. */
+#if (NEW_DYNAREC == NEW_DYNAREC_AMD64)
+#define HOTSTATE_ASSERT_CAT2(a,b) a##b
+#define HOTSTATE_ASSERT_CAT(a,b)  HOTSTATE_ASSERT_CAT2(a,b)
+#define HOTSTATE_OFFSET_ASSERT(field, expected) \
+    typedef char HOTSTATE_ASSERT_CAT(hotstate_off_check_,__LINE__) \
+        [(offsetof(struct new_dynarec_hot_state, field) == (expected)) ? 1 : -1]
+
+HOTSTATE_OFFSET_ASSERT(dynarec_local,   0x000);
+HOTSTATE_OFFSET_ASSERT(cycle_count,     0x100);
+HOTSTATE_OFFSET_ASSERT(pending_exception,0x104);
+HOTSTATE_OFFSET_ASSERT(pcaddr,          0x108);
+HOTSTATE_OFFSET_ASSERT(stop,            0x10c);
+HOTSTATE_OFFSET_ASSERT(invc_ptr,        0x110);
+HOTSTATE_OFFSET_ASSERT(cp1_fcr0,        0x134);
+HOTSTATE_OFFSET_ASSERT(cp1_fcr31,       0x138);
+HOTSTATE_OFFSET_ASSERT(regs,            0x140);
+HOTSTATE_OFFSET_ASSERT(hi,              0x240);
+HOTSTATE_OFFSET_ASSERT(lo,              0x248);
+HOTSTATE_OFFSET_ASSERT(cp0_regs,        0x250);
+HOTSTATE_OFFSET_ASSERT(cp1_regs_simple, 0x2d8);
+HOTSTATE_OFFSET_ASSERT(cp1_regs_double, 0x3d8);
+HOTSTATE_OFFSET_ASSERT(rounding_modes,  0x4e0);
+HOTSTATE_OFFSET_ASSERT(branch_target,   0x4f0);
+HOTSTATE_OFFSET_ASSERT(pc,              0x4f8);
+HOTSTATE_OFFSET_ASSERT(fake_pc,         0x500);
+HOTSTATE_OFFSET_ASSERT(rs,              0x5d0);
+HOTSTATE_OFFSET_ASSERT(rt,              0x5d8);
+HOTSTATE_OFFSET_ASSERT(rd,              0x5e0);
+HOTSTATE_OFFSET_ASSERT(mini_ht,         0x5f0);
+HOTSTATE_OFFSET_ASSERT(memory_map,      0x7f0);
+#endif
+
 
 // Uncomment these two lines to generate debug output:
 //#define ASSEM_DEBUG 1
