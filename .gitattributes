@@ -1,0 +1,6 @@
+# region 14: the generated x64 asm_defines headers are committed as source and
+# must stay byte-stable across platforms. Marking them -text stops git from
+# converting their line endings (which on Windows otherwise left them
+# permanently "modified" against the committed LF versions and broke patch apply).
+mupen64plus-core/src/device/r4300/new_dynarec/x64/asm_defines_nasm.h -text
+mupen64plus-core/src/device/r4300/new_dynarec/x64/asm_defines_gas.h -text

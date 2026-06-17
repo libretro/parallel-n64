@@ -31,6 +31,10 @@
 #include "interrupt.h"
 #include "../rcp/mi/mi_controller.h"
 #include "tlb.h"
+#ifdef NEW_DYNAREC
+#include "new_dynarec/new_dynarec.h" /* struct new_dynarec_hot_state */
+#include "../../osal/preproc.h"      /* ALIGN */
+#endif
 
 struct r4300_core
 {
@@ -59,6 +63,20 @@ struct r4300_core
    struct mi_controller* mi;
 
    uint32_t special_rom;
+
+#ifdef NEW_DYNAREC
+   /* region 14 / Phase 2c: converging toward mupen64plus-next's embedded
+    * dynarec state. The JIT code cache (extra_memory) and the hot state live
+    * together here so that, like next, both sit in one BSS object inside g_dev
+    * and every RIP-relative displacement / rel32 call in generated code stays
+    * within +/-2GB range. These are DORMANT for now: the x64 dynarec and its
+    * hand-written linkage still reference the flat globals of the same name.
+    * The codegen/linkage repoint onto these members (and removal of the flat
+    * globals) is Phase 2d. extra_memory must precede new_dynarec_hot_state to
+    * mirror next's layout (so the generated structural offsets match). */
+   ALIGN(4096, char extra_memory[1 << 25]); /* 32 MB, == x64 TARGET_SIZE_2 */
+   struct new_dynarec_hot_state new_dynarec_hot_state;
+#endif
 };
 
 void init_r4300(struct r4300_core* r4300, unsigned int emumode, unsigned int count_per_op, int special_rom);

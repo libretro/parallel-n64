@@ -65,7 +65,10 @@ struct new_dynarec_hot_state
     int pcaddr;
     int stop;
     char* invc_ptr;
-    uint32_t address;
+    uint32_t mem_address; /* named mem_address (not 'address') to avoid the
+                           * memory.h flat 'address' extern / arm64
+                           * RECOMPILER_MEMORY macro collision; next's
+                           * asm_defines exports this field as mem_address too */
     uint64_t rdword;
     uint64_t wdword;
     uint32_t wword;
@@ -91,9 +94,12 @@ struct new_dynarec_hot_state
     uintptr_t memory_map[1048576];
 
     /* --- parallel-n64-specific extensions (after the next-shared region) --- */
-    /* width-specific memory transfer staging used by the memory layer */
-    uint8_t  cpu_byte;
-    uint16_t cpu_hword;
+    /* width-specific memory transfer staging used by the memory layer.
+     * Named with an hs_ prefix to avoid colliding with memory.h's flat
+     * cpu_byte/cpu_hword externs (non-arm64) and RECOMPILER_MEMORY macros
+     * (arm64), which would otherwise rewrite these declarations. */
+    uint8_t  hs_cpu_byte;
+    uint16_t hs_cpu_hword;
     /* cycle accounting carried across blocks */
     int last_count;
     /* LDL/LDR operand staging (this tree calls void merge shims) */

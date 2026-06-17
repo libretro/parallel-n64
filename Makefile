@@ -1109,27 +1109,28 @@ endif
 %.o: %.asm
 	$(NASM) $(NASMFLAGS) -o $@ $<
 
-# region 14 / Phase 2b: generate the x64 asm_defines headers from the shared C
-# struct. asm_defines.c bakes each struct offset into the object as a printable
-# "@ASM_DEFINE ..." string; strings|awk turns those into nasm+gas headers. This
-# keeps the assembly's struct offsets locked to the C definition (one source of
-# truth). The linkage .asm depends on the gas header so it regenerates on a
-# struct change. Adopted from mupen64plus-next.
+# region 14: the x64 asm_defines headers (x64/asm_defines_{nasm,gas}.h) are
+# GENERATED from the shared C struct (new_dynarec_hot_state) but COMMITTED to the
+# tree and treated as source. A normal build NEVER regenerates or touches them --
+# doing so on every compile needlessly rebuilt the assembly and (on Windows, via
+# line-ending conversion) left the working tree permanently dirty. They are also
+# marked -text in .gitattributes so git never rewrites their line endings.
+#
+# They only need refreshing when struct new_dynarec_hot_state (or struct
+# r4300_core's dynarec members) changes, via the explicit `make asm-defines-regen`
+# target below; the refreshed headers are then committed. Mechanism: asm_defines.c
+# bakes each struct offset into its object as a printable "@ASM_DEFINE ..." string;
+# strings|awk turns those into the headers. Adopted from mupen64plus-next.
 AWK     ?= awk
 STRINGS ?= strings
 TR      ?= tr
 ASM_DEFINES_DIR := $(CORE_DIR)/src/device/r4300/new_dynarec/x64
 
-ifeq ($(ASM_DEFINES_X64), 1)
-$(CORE_DIR)/src/asm_defines/asm_defines.o: $(CORE_DIR)/src/asm_defines/asm_defines.c
-	$(CC) $(CFLAGS) $(DYNAFLAGS) -c $< $(OBJOUT)$@
-
-$(ASM_DEFINES_DIR)/asm_defines_gas.h: $(ASM_DEFINES_DIR)/asm_defines_nasm.h
-$(ASM_DEFINES_DIR)/asm_defines_nasm.h: $(CORE_DIR)/src/asm_defines/asm_defines.o
-	$(STRINGS) "$<" | $(TR) -d '\r' | $(AWK) -v dest_dir="$(ASM_DEFINES_DIR)" -f $(CORE_DIR)/tools/gen_asm_defines.awk
-
-$(CORE_DIR)/src/device/r4300/new_dynarec/x64/linkage_x64.o: $(ASM_DEFINES_DIR)/asm_defines_gas.h
-endif
+.PHONY: asm-defines-regen
+asm-defines-regen:
+	$(CC) $(CFLAGS) $(DYNAFLAGS) -DNEW_DYNAREC=2 -c $(CORE_DIR)/src/asm_defines/asm_defines.c $(OBJOUT)$(CORE_DIR)/src/asm_defines/asm_defines.o
+	$(STRINGS) "$(CORE_DIR)/src/asm_defines/asm_defines.o" | $(TR) -d '\r' | $(AWK) -v dest_dir="$(ASM_DEFINES_DIR)" -f $(CORE_DIR)/tools/gen_asm_defines.awk
+	$(RM) $(CORE_DIR)/src/asm_defines/asm_defines.o
 
 mupen64plus-video-gliden64/src/%.o: mupen64plus-video-gliden64/src/%.c
 	$(CC) -I$(VIDEODIR_GLIDEN64)/src -I$(VIDEODIR_GLIDEN64)/src/osal $(CPPFLAGS) $(CFLAGS) -c $< $(OBJOUT)$@

@@ -43,6 +43,8 @@
  */
 
 #include "device/r4300/new_dynarec/new_dynarec.h"
+#include "device/device.h"
+#include "device/r4300/r4300_core.h"
 
 #include <stddef.h>
 #include <stdint.h>
@@ -83,6 +85,15 @@
             __offsetof_struct_##s##_##m, \
             offsetof(struct s, m))
 
+/* Structural offsets: how to reach the hot state from g_dev.
+ * Phase 2c added the embedding (extra_memory + new_dynarec_hot_state in
+ * struct r4300_core), so these are now well-defined. The linkage composes
+ * g_dev + offsetof(device,r4300) + offsetof(r4300_core,new_dynarec_hot_state)
+ * + offsetof(new_dynarec_hot_state,FIELD) to address a hot-state member. */
+DEFINE(device, r4300);
+DEFINE(r4300_core, new_dynarec_hot_state);
+DEFINE(r4300_core, extra_memory);
+
 /* hot_state field offsets (shared region; pinned to next's x64 layout by the
  * static asserts in new_dynarec_64.c). */
 DEFINE(new_dynarec_hot_state, dynarec_local);
@@ -91,7 +102,7 @@ DEFINE(new_dynarec_hot_state, pending_exception);
 DEFINE(new_dynarec_hot_state, pcaddr);
 DEFINE(new_dynarec_hot_state, stop);
 DEFINE(new_dynarec_hot_state, invc_ptr);
-DEFINE(new_dynarec_hot_state, address);
+DEFINE(new_dynarec_hot_state, mem_address);
 DEFINE(new_dynarec_hot_state, rdword);
 DEFINE(new_dynarec_hot_state, wdword);
 DEFINE(new_dynarec_hot_state, wword);
@@ -115,7 +126,7 @@ DEFINE(new_dynarec_hot_state, mini_ht);
 DEFINE(new_dynarec_hot_state, memory_map);
 
 /* parallel-n64-specific hot_state extensions (appended after the shared region) */
-DEFINE(new_dynarec_hot_state, cpu_byte);
-DEFINE(new_dynarec_hot_state, cpu_hword);
+DEFINE(new_dynarec_hot_state, hs_cpu_byte);
+DEFINE(new_dynarec_hot_state, hs_cpu_hword);
 DEFINE(new_dynarec_hot_state, last_count);
 DEFINE(new_dynarec_hot_state, restore_candidate);
