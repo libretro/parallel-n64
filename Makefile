@@ -349,6 +349,12 @@ else ifneq (,$(findstring osx,$(platform)))
 	CXXFLAGS  += $(ARCHFLAGS)
 	LDFLAGS += $(ARCHFLAGS)
 	CC_AS = perl ./tools/gas-preprocessor-new.pl -arch arm64 -- $(CC)
+	# The .S linkage object (linkage_aarch64.S) is assembled via CC_AS, which
+	# otherwise inherits no deployment target and gets stamped with the SDK
+	# default (e.g. macOS 13.0), producing a "built for newer macOS version than
+	# being linked" warning against the 11.0 link. Pass MINVERSION through
+	# ASFLAGS so the object's minimum-OS load command matches the rest of the build.
+	ASFLAGS += $(MINVERSION)
 # iOS
 else ifneq (,$(findstring ios,$(platform)))
    ifeq ($(IOSSDK),)
