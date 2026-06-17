@@ -99,9 +99,13 @@
 #pragma push_macro("pcaddr")
 #pragma push_macro("pending_exception")
 #pragma push_macro("memory_map")
+#pragma push_macro("hi")
+#pragma push_macro("lo")
 #undef pcaddr
 #undef pending_exception
 #undef memory_map
+#undef hi
+#undef lo
 
 HOTSTATE_OFFSET_ASSERT(dynarec_local,   0x000);
 HOTSTATE_OFFSET_ASSERT(cycle_count,     0x100);
@@ -127,6 +131,8 @@ HOTSTATE_OFFSET_ASSERT(rd,              0x5e0);
 HOTSTATE_OFFSET_ASSERT(mini_ht,         0x5f0);
 HOTSTATE_OFFSET_ASSERT(memory_map,      0x7f0);
 
+#pragma pop_macro("lo")
+#pragma pop_macro("hi")
 #pragma pop_macro("memory_map")
 #pragma pop_macro("pending_exception")
 #pragma pop_macro("pcaddr")

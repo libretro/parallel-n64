@@ -30,7 +30,6 @@
 
 #if !defined(__arm64__) && !defined(__aarch64__)
 extern struct precomp_instr *PC;
-extern int64_t reg[32], hi, lo;
 extern uint32_t next_interrupt;
 extern int g_cp0_cycle_count;
 #define mupencorePC PC
@@ -42,9 +41,21 @@ extern int g_cp0_cycle_count;
  * token 'stop', which is also a struct member name in libretro.h
  * (retro_camera_callback::stop) and must not be clobbered. The linkage addresses
  * the member g_dev-relative. Every mupencorestop use-site is in a function body
- * where g_dev is in scope. (reg/hi/lo above are migrated in later increments.) */
+ * where g_dev is in scope.
+ *
+ * region 14 / Phase 2d (increment 10): the multiply/divide accumulators hi and
+ * lo move into the struct too (members hi 0x240, lo 0x248). Unlike reg these are
+ * not declared in the Hacktarux assemble.h, and the bare tokens 'hi'/'lo' do not
+ * collide with any reachable header identifier, so they are aliased directly.
+ * Consumers are the interpreter, the cached-interp mult/div ops, the Ari64 JIT,
+ * the Hacktarux JIT (which takes &hi/&lo) and the linkage; all see g_dev. reg is
+ * migrated in a later increment (it has its own assemble.h declarations). */
 #define mupencorestop (g_dev.r4300.new_dynarec_hot_state.stop)
+#define hi            (g_dev.r4300.new_dynarec_hot_state.hi)
+#define lo            (g_dev.r4300.new_dynarec_hot_state.lo)
+extern int64_t reg[32];
 #else
+extern int64_t reg[32], hi, lo;
 extern int stop;
 #define mupencorestop stop
 #endif

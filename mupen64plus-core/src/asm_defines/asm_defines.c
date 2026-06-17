@@ -61,6 +61,8 @@
 #undef cycle_count
 #undef memory_map
 #undef restore_candidate
+#undef hi
+#undef lo
 
 #define HEX(n) ((n) >= 10 ? ('a' + ((n) - 10)) : ('0' + (n)))
 

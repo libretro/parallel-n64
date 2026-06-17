@@ -146,8 +146,6 @@ cextern frame_break
 cextern dyna_entry_rsp
 cextern g_cp0_regs
 cextern reg
-cextern hi
-cextern lo
 cextern address
 cextern invalid_code
 cextern hash_table
@@ -160,6 +158,8 @@ cextern g_dev
 %define g_dev_r4300_new_dynarec_hot_state_pending_exception  (g_dev + offsetof_struct_device_r4300 + offsetof_struct_r4300_core_new_dynarec_hot_state + offsetof_struct_new_dynarec_hot_state_pending_exception)
 %define g_dev_r4300_new_dynarec_hot_state_cycle_count       (g_dev + offsetof_struct_device_r4300 + offsetof_struct_r4300_core_new_dynarec_hot_state + offsetof_struct_new_dynarec_hot_state_cycle_count)
 %define g_dev_r4300_new_dynarec_hot_state_stop              (g_dev + offsetof_struct_device_r4300 + offsetof_struct_r4300_core_new_dynarec_hot_state + offsetof_struct_new_dynarec_hot_state_stop)
+%define g_dev_r4300_new_dynarec_hot_state_hi                 (g_dev + offsetof_struct_device_r4300 + offsetof_struct_r4300_core_new_dynarec_hot_state + offsetof_struct_new_dynarec_hot_state_hi)
+%define g_dev_r4300_new_dynarec_hot_state_lo                 (g_dev + offsetof_struct_device_r4300 + offsetof_struct_r4300_core_new_dynarec_hot_state + offsetof_struct_new_dynarec_hot_state_lo)
 %define g_dev_r4300_new_dynarec_hot_state_memory_map         (g_dev + offsetof_struct_device_r4300 + offsetof_struct_r4300_core_new_dynarec_hot_state + offsetof_struct_new_dynarec_hot_state_memory_map)
 %define g_dev_r4300_new_dynarec_hot_state_restore_candidate  (g_dev + offsetof_struct_device_r4300 + offsetof_struct_r4300_core_new_dynarec_hot_state + offsetof_struct_new_dynarec_hot_state_restore_candidate)
 %define g_dev_r4300_new_dynarec_hot_state_hs_cpu_byte        (g_dev + offsetof_struct_device_r4300 + offsetof_struct_r4300_core_new_dynarec_hot_state + offsetof_struct_new_dynarec_hot_state_hs_cpu_byte)
@@ -464,13 +464,13 @@ _E9:
     adc     r10d,    r10d
     sub     r9,     8
     jne     _E9
-    lea     r11,    [rel hi]
+    lea     r11,    [rel g_dev_r4300_new_dynarec_hot_state_hi]
     mov     ecx,    [r11]
     mov     edx,    [r11+4]
     sar     ecx,    31
     xor     edx,    ecx
     jne     _E10
-    lea     r11,    [rel lo]
+    lea     r11,    [rel g_dev_r4300_new_dynarec_hot_state_lo]
     mov     ecx,    [r11]
     mov     edx,    [r11+4]
     sar     ecx,    31

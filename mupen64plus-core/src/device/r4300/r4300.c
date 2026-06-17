@@ -66,7 +66,13 @@ int g_cp0_cycle_count = 0;
 int stop;
 #endif
 #if NEW_DYNAREC < NEW_DYNAREC_ARM
+/* region 14 / Phase 2d (increment 10): on x64 hi/lo storage moved into the
+ * embedded hot-state struct (see r4300.h aliases); reg stays flat for now. */
+#if defined(_M_X64)
+int64_t reg[32];
+#else
 int64_t reg[32], hi, lo;
+#endif
 uint32_t next_interrupt;
 struct precomp_instr *PC;
 #endif
