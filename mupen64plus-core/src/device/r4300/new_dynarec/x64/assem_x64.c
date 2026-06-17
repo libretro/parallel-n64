@@ -46,29 +46,32 @@ uint64_t ram_offset;
 uint64_t readmem_dword;
 struct precomp_instr fake_pc;
 
-/* LDL/LDR merge staging: this tree's ldl_merge/ldr_merge take their
- * operands as C arguments (the arm64-era signatures), but building the
- * two 64-bit arguments from split 32-bit register halves in the JIT is
- * hazard-prone, so the generated code stages them in this block and
- * calls a void shim instead. */
-static struct
-{
-  uint64_t rt; /* original, replaced with the merge result */
-  uint64_t rs; /* loaded doubleword */
-  u_int shift;
-} ldlr_block;
+/* region 14 / Phase 2d (increment 1): these JIT-private hot-state fields now
+ * have their storage in the embedded struct g_dev.r4300.new_dynarec_hot_state
+ * (Phase 2c), rather than flat file-globals here. They are aliased by macro so
+ * the codegen below is textually unchanged: &ldlr_block.rt, (intptr_t)mini_ht,
+ * &rounding_modes[i], etc. all resolve to the struct member. This group is
+ * C-only -- none of these symbols appear in linkage_x64.asm -- so no hand-written
+ * assembly changes here. (memory_map / restore_candidate / ram_offset etc. are
+ * also referenced by the linkage and are migrated in a later increment.)
+ *
+ * LDL/LDR merge staging: this tree's ldl_merge/ldr_merge take their operands as
+ * C arguments (the arm64-era signatures), but building the two 64-bit arguments
+ * from split 32-bit register halves in the JIT is hazard-prone, so the generated
+ * code stages them in this block and calls a void shim instead. */
+#define ldlr_block          (g_dev.r4300.new_dynarec_hot_state.ldlr_block)
 
 static void ldl_merge_x64(void);
 static void ldr_merge_x64(void);
 /* 64-bit mult/div go through the cached interpreter ops, which take
  * their operands through precomp_instr pointers. fake_pc only has one
  * transfer slot (readmem_dword), so use a private instr with two. */
-static int64_t multdiv_rs_scratch;
-static int64_t multdiv_rt_scratch;
-static struct precomp_instr multdiv_fake_pc;
+#define multdiv_rs_scratch  (g_dev.r4300.new_dynarec_hot_state.multdiv_rs_scratch)
+#define multdiv_rt_scratch  (g_dev.r4300.new_dynarec_hot_state.multdiv_rt_scratch)
+#define multdiv_fake_pc     (g_dev.r4300.new_dynarec_hot_state.multdiv_fake_pc)
 uint64_t memory_map[1048576];
-ALIGN(8, uint64_t mini_ht[32][2]);
-u_int rounding_modes[4];
+#define mini_ht             (g_dev.r4300.new_dynarec_hot_state.mini_ht)
+#define rounding_modes      (g_dev.r4300.new_dynarec_hot_state.rounding_modes)
 u_char restore_candidate[512];
 
 /* Code cache: static BSS placement keeps every RIP-relative 32-bit
