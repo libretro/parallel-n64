@@ -124,39 +124,38 @@
 #define _write_rdramh_new       write_rdramh_new
 #endif
 
-/* region 14 / Phase 3a: symbolic field offsets into the recompiler_memory_layout
- * struct (RECOMPILER_MEMORY, held in x29 across the dynarec). Previously every
- * [x29, #N] access here used a bare numeric literal maintained by hand; those
- * literals are now derived from these named constants so the layout has a single
- * place to update and so a future migration onto new_dynarec_hot_state can swap
- * the right-hand sides without touching the body. The values are unchanged --
- * they equal offsetof(recompiler_memory_layout_t, rml_<field>) and are verified
- * against the C struct under both the arm64-apple and aarch64 ABIs. This is the
- * GAS "symbol = value" form, accepted by both the Apple and GNU assemblers (the
- * same form next uses for its fp_* offsets). */
-rml_off_next_interrupt     = 256
-rml_off_cycle_count        = 260
-rml_off_last_count         = 264
-rml_off_pending_exception  = 268
-rml_off_pcaddr             = 272
-rml_off_stop               = 276
-rml_off_invc_ptr           = 280
-rml_off_address            = 288
-rml_off_readmem_dword      = 296
-rml_off_cpu_dword          = 304
-rml_off_cpu_word           = 312
-rml_off_cpu_hword          = 316
-rml_off_cpu_byte           = 318
-rml_off_reg                = 328
-rml_off_hi                 = 584
-rml_off_lo                 = 592
-rml_off_g_cp0_regs         = 600
-rml_off_branch_target      = 1256
-rml_off_ram_offset         = 1480
-rml_off_restore_candidate  = 2000
-rml_off_instr_addr         = 2512
-rml_off_link_register      = 2520
-rml_off_memory_map         = 2528
+/* region 14 / Phase 3b: the field offsets into recompiler_memory_layout
+ * (RECOMPILER_MEMORY, held in x29) are bound here to the RML_SIZE_* chain in the
+ * shared rml_offsets.h, the same chain the C struct asserts on. The trampoline's
+ * [x29, #rml_off_<field>] displacements therefore track the struct layout from a
+ * single source; there are no hand-typed numeric literals to drift. (Sub-field
+ * accesses keep their +N arithmetic at the use sites, e.g. rml_off_hi+4.) These
+ * use the GAS "symbol = value" form accepted by both the Apple and GNU
+ * assemblers. */
+#include "rml_offsets.h"
+rml_off_next_interrupt     = RML_SIZE_NEXT_INTERRUPT
+rml_off_cycle_count        = RML_SIZE_CYCLE_COUNT
+rml_off_last_count         = RML_SIZE_LAST_COUNT
+rml_off_pending_exception  = RML_SIZE_PENDING_EXCEPTION
+rml_off_pcaddr             = RML_SIZE_PCADDR
+rml_off_stop               = RML_SIZE_STOP
+rml_off_invc_ptr           = RML_SIZE_INVC_PTR
+rml_off_address            = RML_SIZE_ADDRESS
+rml_off_readmem_dword      = RML_SIZE_READMEM_DWORD
+rml_off_cpu_dword          = RML_SIZE_CPU_DWORD
+rml_off_cpu_word           = RML_SIZE_CPU_WORD
+rml_off_cpu_hword          = RML_SIZE_CPU_HWORD
+rml_off_cpu_byte           = RML_SIZE_CPU_BYTE
+rml_off_reg                = RML_SIZE_REG
+rml_off_hi                 = RML_SIZE_HI
+rml_off_lo                 = RML_SIZE_LO
+rml_off_g_cp0_regs         = RML_SIZE_G_CP0_REGS
+rml_off_branch_target      = RML_SIZE_BRANCH_TARGET
+rml_off_ram_offset         = RML_SIZE_RAM_OFFSET
+rml_off_restore_candidate  = RML_SIZE_RESTORE_CANDIDATE
+rml_off_instr_addr         = RML_SIZE_INSTR_ADDR
+rml_off_link_register      = RML_SIZE_LINK_REGISTER
+rml_off_memory_map         = RML_SIZE_MEMORY_MAP
 
 TEXT_SECTION
 

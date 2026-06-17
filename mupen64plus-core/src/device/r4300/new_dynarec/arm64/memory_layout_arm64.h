@@ -47,40 +47,11 @@ typedef struct recompiler_memory_layout
 extern recompiler_memory_layout_t memory_layout;
 #define RECOMPILER_MEMORY (&memory_layout)
 
-// Copied from linkage_aarch64.S declaration
-#define RML_SIZE_EXTRA_MEMORY 0
-#define RML_SIZE_DYNAREC_LOCAL     RML_SIZE_EXTRA_MEMORY      + 0
-#define RML_SIZE_NEXT_INTERRUPT    RML_SIZE_DYNAREC_LOCAL     + 256
-#define RML_SIZE_CYCLE_COUNT       RML_SIZE_NEXT_INTERRUPT    + 4
-#define RML_SIZE_LAST_COUNT        RML_SIZE_CYCLE_COUNT       + 4
-#define RML_SIZE_PENDING_EXCEPTION RML_SIZE_LAST_COUNT        + 4
-#define RML_SIZE_PCADDR            RML_SIZE_PENDING_EXCEPTION + 4
-#define RML_SIZE_STOP              RML_SIZE_PCADDR            + 4
-#define RML_SIZE_INVC_PTR          RML_SIZE_STOP              + 4
-#define RML_SIZE_ADDRESS           RML_SIZE_INVC_PTR          + 8
-#define RML_SIZE_READMEM_DWORD     RML_SIZE_ADDRESS           + 8
-#define RML_SIZE_CPU_DWORD         RML_SIZE_READMEM_DWORD     + 8
-#define RML_SIZE_CPU_WORD          RML_SIZE_CPU_DWORD         + 8
-#define RML_SIZE_CPU_HWORD         RML_SIZE_CPU_WORD          + 4
-#define RML_SIZE_CPU_BYTE          RML_SIZE_CPU_HWORD         + 2
-#define RML_SIZE_FCR0              RML_SIZE_CPU_HWORD         + 4
-#define RML_SIZE_FCR31             RML_SIZE_FCR0              + 4
-#define RML_SIZE_REG               RML_SIZE_FCR31             + 4
-#define RML_SIZE_HI                RML_SIZE_REG               + 256
-#define RML_SIZE_LO                RML_SIZE_HI                + 8
-#define RML_SIZE_G_CP0_REGS        RML_SIZE_LO                + 8
-#define RML_SIZE_REG_COP1_SIMPLE   RML_SIZE_G_CP0_REGS        + 128
-#define RML_SIZE_REG_COP1_DOUBLE   RML_SIZE_REG_COP1_SIMPLE   + 256
-#define RML_SIZE_ROUNDING_MODES    RML_SIZE_REG_COP1_DOUBLE   + 256
-#define RML_SIZE_BRANCH_TARGET     RML_SIZE_ROUNDING_MODES    + 16
-#define RML_SIZE_PC                RML_SIZE_BRANCH_TARGET     + 8
-#define RML_SIZE_FAKE_PC           RML_SIZE_PC                + 8
-#define RML_SIZE_RAM_OFFSET        RML_SIZE_FAKE_PC           + 208
-#define RML_SIZE_MINI_HT           RML_SIZE_RAM_OFFSET        + 8
-#define RML_SIZE_RESTORE_CANDIDATE RML_SIZE_MINI_HT           + 512
-#define RML_SIZE_INSTR_ADDR        RML_SIZE_RESTORE_CANDIDATE + 512
-#define RML_SIZE_LINK_REGISTER     RML_SIZE_INSTR_ADDR        + 8
-#define RML_SIZE_MEMORY_MAP        RML_SIZE_LINK_REGISTER     + 8
+/* region 14 / Phase 3b: the RML_SIZE_* offset chain now lives in the shared,
+ * preprocessor-only rml_offsets.h so the C struct asserts below and the
+ * assembler (linkage_aarch64.S) derive from one source instead of two
+ * hand-kept copies. */
+#include "rml_offsets.h"
 
 #if __STDC_VERSION__ > 201112L
 #define RML_CHECK_SIZE(name, off) _Static_assert(offsetof(recompiler_memory_layout_t, name) == (off), "Recompiler layout for '" #name "' does not match asm")
