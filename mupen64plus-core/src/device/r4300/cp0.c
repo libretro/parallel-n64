@@ -25,6 +25,11 @@ extern int g_cp0_cycle_count;
 
 #include "cp0_private.h"
 #include "exception.h"
+/* region 14 / Phase 2d (increment 11): g_cp0_regs is aliased to
+ * g_dev.r4300.new_dynarec_hot_state.cp0_regs on x64 (see cp0_private.h); this TU
+ * uses it throughout, so it needs the complete struct device and g_dev. */
+#include "../device.h"
+#include "../../main/main.h"
 #include "new_dynarec/new_dynarec.h"
 #include "r4300.h"
 #include "recomp.h"
@@ -35,7 +40,12 @@ extern int g_cp0_cycle_count;
 #if NEW_DYNAREC < NEW_DYNAREC_ARM
 /* ARM backend requires a different memory layout
  * and therefore manually allocate that variable */
+/* region 14 / Phase 2d (increment 11): on x64 g_cp0_regs storage is in the
+ * embedded hot-state struct (see cp0_private.h alias); only x86 keeps the flat
+ * definition. */
+#if !defined(_M_X64)
 uint32_t g_cp0_regs[CP0_REGS_COUNT];
+#endif
 #endif
 #endif
 

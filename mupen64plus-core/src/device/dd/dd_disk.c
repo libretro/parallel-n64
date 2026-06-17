@@ -35,6 +35,10 @@
 #include "../../api/m64p_config.h"
 #include "../../api/m64p_types.h"
 #include "../../main/main.h"
+/* region 14 / Phase 2d (increment 11): g_cp0_regs is aliased to
+ * g_dev.r4300.new_dynarec_hot_state.cp0_regs on x64; this needs the complete
+ * struct device (main.h above only declares g_dev). */
+#include "../device.h"
 #include "../../main/rom.h"
 #include "../../main/util.h"
 #include "../r4300/cp0.h"

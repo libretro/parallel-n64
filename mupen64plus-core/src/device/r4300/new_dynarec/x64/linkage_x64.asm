@@ -144,7 +144,6 @@ cextern new_dynarec_tlb_refill
 cextern next_interrupt
 cextern frame_break
 cextern dyna_entry_rsp
-cextern g_cp0_regs
 cextern reg
 cextern address
 cextern invalid_code
@@ -160,6 +159,7 @@ cextern g_dev
 %define g_dev_r4300_new_dynarec_hot_state_stop              (g_dev + offsetof_struct_device_r4300 + offsetof_struct_r4300_core_new_dynarec_hot_state + offsetof_struct_new_dynarec_hot_state_stop)
 %define g_dev_r4300_new_dynarec_hot_state_hi                 (g_dev + offsetof_struct_device_r4300 + offsetof_struct_r4300_core_new_dynarec_hot_state + offsetof_struct_new_dynarec_hot_state_hi)
 %define g_dev_r4300_new_dynarec_hot_state_lo                 (g_dev + offsetof_struct_device_r4300 + offsetof_struct_r4300_core_new_dynarec_hot_state + offsetof_struct_new_dynarec_hot_state_lo)
+%define g_dev_r4300_new_dynarec_hot_state_cp0_regs           (g_dev + offsetof_struct_device_r4300 + offsetof_struct_r4300_core_new_dynarec_hot_state + offsetof_struct_new_dynarec_hot_state_cp0_regs)
 %define g_dev_r4300_new_dynarec_hot_state_memory_map         (g_dev + offsetof_struct_device_r4300 + offsetof_struct_r4300_core_new_dynarec_hot_state + offsetof_struct_new_dynarec_hot_state_memory_map)
 %define g_dev_r4300_new_dynarec_hot_state_restore_candidate  (g_dev + offsetof_struct_device_r4300 + offsetof_struct_r4300_core_new_dynarec_hot_state + offsetof_struct_new_dynarec_hot_state_restore_candidate)
 %define g_dev_r4300_new_dynarec_hot_state_hs_cpu_byte        (g_dev + offsetof_struct_device_r4300 + offsetof_struct_r4300_core_new_dynarec_hot_state + offsetof_struct_new_dynarec_hot_state_hs_cpu_byte)
@@ -321,7 +321,7 @@ cc_interrupt:
     push    rdi
     sub     rsp,    48    ;align stack (entry: rsp == 8 mod 16, +40 saved)
 %endif
-    mov     [rel g_cp0_regs+36],    CCREG    ;Count
+    mov     [rel g_dev_r4300_new_dynarec_hot_state_cp0_regs+36],    CCREG    ;Count
     shr     CCREG,    19
     mov     dword [rel g_dev_r4300_new_dynarec_hot_state_pending_exception],    0
     and     CCREG,    01fch
@@ -330,7 +330,7 @@ cc_interrupt:
     jne     _E4
 _E1:
     call    gen_interrupt
-    mov     CCREG,    [rel g_cp0_regs+36]
+    mov     CCREG,    [rel g_dev_r4300_new_dynarec_hot_state_cp0_regs+36]
     mov     eax,    [rel next_interrupt]
     mov     ecx,    [rel g_dev_r4300_new_dynarec_hot_state_pending_exception]
     mov     edx,    [rel g_dev_r4300_new_dynarec_hot_state_stop]
@@ -408,7 +408,7 @@ _E6:
 do_interrupt:
     mov     ARG1_REG,    [rel g_dev_r4300_new_dynarec_hot_state_pcaddr]
     CALL_C  get_addr_ht
-    mov     CCREG,    [rel g_cp0_regs+36]
+    mov     CCREG,    [rel g_dev_r4300_new_dynarec_hot_state_cp0_regs+36]
     mov     edx,    [rel next_interrupt]
     mov     [rel g_dev_r4300_new_dynarec_hot_state_last_count],    edx
     sub     CCREG,    edx
@@ -419,11 +419,11 @@ fp_exception:
     ;eax = pcaddr
     mov     edx,    01000002ch
 _E7:
-    mov     ecx,    [rel g_cp0_regs+48]
+    mov     ecx,    [rel g_dev_r4300_new_dynarec_hot_state_cp0_regs+48]
     or      ecx,    2
-    mov     [rel g_cp0_regs+48],    ecx    ;Status
-    mov     [rel g_cp0_regs+52],    edx    ;Cause
-    mov     [rel g_cp0_regs+56],    eax    ;EPC
+    mov     [rel g_dev_r4300_new_dynarec_hot_state_cp0_regs+48],    ecx    ;Status
+    mov     [rel g_dev_r4300_new_dynarec_hot_state_cp0_regs+52],    edx    ;Cause
+    mov     [rel g_dev_r4300_new_dynarec_hot_state_cp0_regs+56],    eax    ;EPC
     mov     ARG1_REG,    080000180h
     CALL_C  get_addr_ht
     jmp     rax
@@ -438,17 +438,17 @@ jump_syscall:
     jmp     _E7
 
 jump_eret:
-    mov     ecx,    [rel g_cp0_regs+48]    ;Status
+    mov     ecx,    [rel g_dev_r4300_new_dynarec_hot_state_cp0_regs+48]    ;Status
     add     CCREG,    [rel g_dev_r4300_new_dynarec_hot_state_last_count]
     and     ecx,    0FFFFFFFDh
-    mov     [rel g_cp0_regs+36],    CCREG    ;Count
-    mov     [rel g_cp0_regs+48],    ecx      ;Status
+    mov     [rel g_dev_r4300_new_dynarec_hot_state_cp0_regs+36],    CCREG    ;Count
+    mov     [rel g_dev_r4300_new_dynarec_hot_state_cp0_regs+48],    ecx      ;Status
     CALL_C  check_interrupt
     mov     eax,    [rel next_interrupt]
-    mov     CCREG,    [rel g_cp0_regs+36]
+    mov     CCREG,    [rel g_dev_r4300_new_dynarec_hot_state_cp0_regs+36]
     mov     [rel g_dev_r4300_new_dynarec_hot_state_last_count],    eax
     sub     CCREG,    eax
-    mov     eax,    [rel g_cp0_regs+56]    ;EPC
+    mov     eax,    [rel g_dev_r4300_new_dynarec_hot_state_cp0_regs+56]    ;EPC
     jns     _E11
 _E8:
     ;Scan the 64-bit register file to build the is32 mask for get_addr_32
@@ -509,7 +509,7 @@ new_dyna_start:
     mov     ARG1_REG,    [rel g_dev_r4300_new_dynarec_hot_state_pcaddr]
     CALL_C  get_addr_ht
     mov     ecx,    [rel next_interrupt]
-    mov     CCREG,    [rel g_cp0_regs+36]
+    mov     CCREG,    [rel g_dev_r4300_new_dynarec_hot_state_cp0_regs+36]
     mov     [rel g_dev_r4300_new_dynarec_hot_state_last_count],    ecx
     sub     CCREG,    ecx
     jmp     rax
@@ -777,7 +777,7 @@ tlb_exception:
     mov     ARG3_REG,    eax
     CALL_C  new_dynarec_tlb_refill
     mov     ecx,    [rel next_interrupt]
-    mov     CCREG,    [rel g_cp0_regs+36]
+    mov     CCREG,    [rel g_dev_r4300_new_dynarec_hot_state_cp0_regs+36]
     mov     [rel g_dev_r4300_new_dynarec_hot_state_last_count],    ecx
     sub     CCREG,    ecx
     jmp     rax

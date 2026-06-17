@@ -25,7 +25,17 @@
 #include "cp0.h"
 
 #if !defined(__arm64__) && !defined(__aarch64__)
+#if defined(_M_X64)
+/* region 14 / Phase 2d (increment 11): the CP0 register file g_cp0_regs moves
+ * into g_dev.r4300.new_dynarec_hot_state (member cp0_regs[32], offset 0x250).
+ * The alias is an array lvalue, so g_cp0_regs[i], &g_cp0_regs[i], memset() and
+ * sizeof() all behave exactly as before. Consumers span the interpreter, CP0
+ * core, exception path, the Ari64 JIT and the Hacktarux JIT; each use-site is in
+ * a function body where g_dev is in scope. */
+#define g_cp0_regs (g_dev.r4300.new_dynarec_hot_state.cp0_regs)
+#else
 extern uint32_t g_cp0_regs[CP0_REGS_COUNT];
+#endif
 #else
 #include "new_dynarec/arm64/memory_layout_arm64.h"
 #define g_cp0_regs (RECOMPILER_MEMORY->rml_g_cp0_regs)

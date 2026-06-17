@@ -27,6 +27,10 @@
 
 #include "../../api/m64p_types.h"
 #include "../device.h"
+/* region 14 / Phase 2d (increment 11): g_cp0_regs is aliased to
+ * g_dev.r4300.new_dynarec_hot_state.cp0_regs on x64; g_dev is declared in
+ * main.h (device.h above only defines struct device). */
+#include "../../main/main.h"
 #include "../rcp/ai/ai_controller.h"
 #include "../rcp/pi/pi_controller.h"
 #include "../r4300/cp0_private.h"
