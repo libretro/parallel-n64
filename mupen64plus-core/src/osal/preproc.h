@@ -24,15 +24,6 @@
 #ifndef OSAL_PREPROC_H
 #define OSAL_PREPROC_H
 
-/* portable inline qualifier (matches mupen64plus-next's osal/preproc.h) */
-#ifndef osal_inline
-#if defined(_MSC_VER)
-#define osal_inline __inline
-#else
-#define osal_inline inline
-#endif
-#endif
-
 #if defined(_WIN32) && !defined(__MINGW32__)
 
   /* macros */

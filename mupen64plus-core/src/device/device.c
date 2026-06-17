@@ -21,8 +21,6 @@
 
 #include "device.h"
 
-#include "../backends/libretro_clock.h"
-
 #include "rcp/ai/ai_controller.h"
 #include "memory/memory.h"
 #include "rcp/pi/pi_controller.h"
@@ -99,75 +97,7 @@ void init_device(
          &dev->mi, &dev->ri);
 
    init_vi(&dev->vi, vi_clock, expected_refresh_rate, &dev->mi, &dev->dp);
-
-   /* region 13: set up the 64DD disk in next's storage-backed model, then init
-    * the DD controller. Only wire a disk if one was supplied. */
-   if (dd_disk != NULL && dd_disk_size != 0)
-   {
-      unsigned int format = 0, development = 0;
-      size_t offset_sys = 0, offset_id = 0, offset_ram = 0, size_ram = 0;
-      uint8_t* disk_data;
-
-      /* scan_and_expand_disk_format inspects the raw dump, reports the format
-       * and the system/id/ram offsets, and returns the (possibly relocated)
-       * disk buffer. For D64 it allocates a fresh expanded buffer AND frees the
-       * input; for MAME/SDK it returns the input unchanged; on an unrecognised
-       * dump it returns NULL. The returned pointer is what we must hand to the
-       * storage backend.
-       *
-       * NOTE: the D64 path frees its input, so it must only ever be given a
-       * malloc'd buffer. parallel-n64's libretro loader currently gates
-       * open_dd_disk to MAME/SDK sizes, so D64 dumps do not reach here and the
-       * input (the persistent saved_memory.disk buffer) is never freed. Enabling
-       * D64 requires routing a heap-owned disk buffer through the frontend. */
-      disk_data = scan_and_expand_disk_format(dd_disk, dd_disk_size,
-            &format, &development, &offset_sys, &offset_id, &offset_ram, &size_ram);
-
-      if (disk_data == NULL)
-      {
-         /* Unrecognised disk: leave the DD without a disk rather than wiring a
-          * bad image. */
-         init_dd(&dev->dd,
-               NULL, &g_ilibretro_clock,
-               (const uint32_t*)ddrom, ddrom_size,
-               NULL, NULL,
-               &dev->r4300);
-      }
-      else
-      {
-         size_t disk_data_size =
-            (disk_data == dd_disk) ? dd_disk_size : (size_t)MAME_FORMAT_DUMP_SIZE;
-
-         /* underlying bytes wrapped by the libretro storage backend */
-         init_libretro_storage(&dev->dd_disk_storage, disk_data, disk_data_size, NULL, NULL);
-
-         dev->dd_disk.storage        = &dev->dd_disk_storage;
-         dev->dd_disk.istorage       = &g_ilibretro_storage;
-         dev->dd_disk.save_storage   = &dev->dd_disk_storage;
-         dev->dd_disk.isave_storage  = &g_ilibretro_storage;
-         dev->dd_disk.format         = (uint8_t)format;
-         dev->dd_disk.development     = (uint8_t)development;
-         dev->dd_disk.offset_sys     = offset_sys;
-         dev->dd_disk.offset_id      = offset_id;
-         dev->dd_disk.offset_ram     = offset_ram;
-
-         GenerateLBAToPhysTable(&dev->dd_disk);
-
-         init_dd(&dev->dd,
-               NULL, &g_ilibretro_clock,
-               (const uint32_t*)ddrom, ddrom_size,
-               &dev->dd_disk, &g_istorage_disk_full,
-               &dev->r4300);
-      }
-   }
-   else
-   {
-      init_dd(&dev->dd,
-            NULL, &g_ilibretro_clock,
-            (const uint32_t*)ddrom, ddrom_size,
-            NULL, NULL,
-            &dev->r4300);
-   }
+   init_dd(&dev->dd, &dev->r4300, dd_disk, dd_disk_size);
 }
 
 void poweron_device(struct device* dev)

@@ -27,8 +27,6 @@
 
 #include "rcp/ai/ai_controller.h"
 #include "dd/dd_controller.h"
-#include "dd/disk.h"
-#include "../backends/libretro_storage.h"
 #include "rcp/mi/mi_controller.h"
 #include "cart/cart.h"
 #include "rcp/pi/pi_controller.h"
@@ -60,12 +58,6 @@ struct device
     struct vi_controller vi;
     struct cart cart;
     struct dd_controller dd;
-
-    /* region 13: 64DD disk (next storage-backed model). The disk struct holds
-     * format/geometry derived by scan_and_expand_disk_format; its underlying
-     * bytes are wrapped by the libretro storage backend. */
-    struct dd_disk dd_disk;
-    struct libretro_storage dd_disk_storage;
 };
 
 /* Setup device "static" properties.  */
