@@ -90,6 +90,17 @@
     typedef char HOTSTATE_ASSERT_CAT(hotstate_off_check_,__LINE__) \
         [(offsetof(struct new_dynarec_hot_state, field) == (expected)) ? 1 : -1]
 
+/* region 14 / Phase 2d (increment 4): pcaddr and pending_exception are macro
+ * aliases (defined in new_dynarec.h, included above) that expand to a struct
+ * member access. offsetof() below needs the bare member identifier, so suspend
+ * the aliases across the assert block and restore them afterwards for the JIT
+ * body. The other fields named here are either not yet aliased or are aliased
+ * only later in assem_x64.c (included well below this point), so they are fine. */
+#pragma push_macro("pcaddr")
+#pragma push_macro("pending_exception")
+#undef pcaddr
+#undef pending_exception
+
 HOTSTATE_OFFSET_ASSERT(dynarec_local,   0x000);
 HOTSTATE_OFFSET_ASSERT(cycle_count,     0x100);
 HOTSTATE_OFFSET_ASSERT(pending_exception,0x104);
@@ -113,6 +124,9 @@ HOTSTATE_OFFSET_ASSERT(rt,              0x5d8);
 HOTSTATE_OFFSET_ASSERT(rd,              0x5e0);
 HOTSTATE_OFFSET_ASSERT(mini_ht,         0x5f0);
 HOTSTATE_OFFSET_ASSERT(memory_map,      0x7f0);
+
+#pragma pop_macro("pending_exception")
+#pragma pop_macro("pcaddr")
 #endif
 
 
