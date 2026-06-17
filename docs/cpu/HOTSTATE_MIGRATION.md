@@ -214,9 +214,18 @@ hardware-validated phase.
   atomic with the codegen repoint anyway. (Open question §5.5 — dynarec_local /
   host-reg save — was RESOLVED in Phase 1: not an x64 concern.)
 
-* **2b — asm_defines generation.** Wire recomp_dbg offset emission; produce
-  `x64/asm_defines_{nasm,gas}.h` from the struct. Verify the generated offsets match
-  the static-assert expectations from 2a. Pure build-tooling; no runtime change yet.
+* **2b — asm_defines generation. [DONE]** Adopted mupen64plus-next's string-embed
+  mechanism (not recomp_dbg's runtime table): src/asm_defines/asm_defines.c bakes each
+  struct offset into its object as a printable "@ASM_DEFINE offsetof_struct_X_Y 0x..."
+  string; tools/gen_asm_defines.awk extracts them (strings|tr|awk) into
+  x64/asm_defines_{nasm,gas}.h. Makefile wires asm_defines.o -> headers and makes
+  linkage_x64.o depend on the gas header (scoped to x86_64 + Ari64). The generated
+  hot_state field offsets match the 2a static asserts AND next's committed x64
+  asm_defines byte-for-byte (0 mismatches across all 23 shared fields); generation is
+  reproducible. Pure build-tooling -- the linkage does not yet %include the headers
+  (that is 2d), so there is no runtime change. Only the within-hot_state FIELD offsets
+  are emitted here; the structural offsets (device->r4300, r4300->hot_state,
+  r4300->extra_memory) are added in 2c when the struct is embedded into r4300_core.
 
 * **2c — codegen repoint (assem_x64.c).** Change every hot-state emit-site from
   `&GLOBAL` to `&g_dev.r4300.new_dynarec_hot_state.FIELD`. Remove the flat global

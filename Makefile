@@ -1109,6 +1109,28 @@ endif
 %.o: %.asm
 	$(NASM) $(NASMFLAGS) -o $@ $<
 
+# region 14 / Phase 2b: generate the x64 asm_defines headers from the shared C
+# struct. asm_defines.c bakes each struct offset into the object as a printable
+# "@ASM_DEFINE ..." string; strings|awk turns those into nasm+gas headers. This
+# keeps the assembly's struct offsets locked to the C definition (one source of
+# truth). The linkage .asm depends on the gas header so it regenerates on a
+# struct change. Adopted from mupen64plus-next.
+AWK     ?= awk
+STRINGS ?= strings
+TR      ?= tr
+ASM_DEFINES_DIR := $(CORE_DIR)/src/device/r4300/new_dynarec/x64
+
+ifeq ($(ASM_DEFINES_X64), 1)
+$(CORE_DIR)/src/asm_defines/asm_defines.o: $(CORE_DIR)/src/asm_defines/asm_defines.c
+	$(CC) $(CFLAGS) $(DYNAFLAGS) -c $< $(OBJOUT)$@
+
+$(ASM_DEFINES_DIR)/asm_defines_gas.h: $(ASM_DEFINES_DIR)/asm_defines_nasm.h
+$(ASM_DEFINES_DIR)/asm_defines_nasm.h: $(CORE_DIR)/src/asm_defines/asm_defines.o
+	$(STRINGS) "$<" | $(TR) -d '\r' | $(AWK) -v dest_dir="$(ASM_DEFINES_DIR)" -f $(CORE_DIR)/tools/gen_asm_defines.awk
+
+$(CORE_DIR)/src/device/r4300/new_dynarec/x64/linkage_x64.o: $(ASM_DEFINES_DIR)/asm_defines_gas.h
+endif<
+
 mupen64plus-video-gliden64/src/%.o: mupen64plus-video-gliden64/src/%.c
 	$(CC) -I$(VIDEODIR_GLIDEN64)/src -I$(VIDEODIR_GLIDEN64)/src/osal $(CPPFLAGS) $(CFLAGS) -c $< $(OBJOUT)$@
 

@@ -240,6 +240,10 @@ ifdef WITH_DYNAREC
 			DYNAFLAGS += -DNEW_DYNAREC=2
 			SOURCES_C += $(CORE_DIR)/src/device/r4300/new_dynarec/new_dynarec_64.c
 			SOURCES_NASM += $(CORE_DIR)/src/device/r4300/new_dynarec/x64/linkage_x64.asm
+			# region 14 / Phase 2b: generate x64/asm_defines_{nasm,gas}.h from the
+			# shared C struct (new_dynarec_hot_state) so the hand-written linkage
+			# can reach struct members by generated offset rather than flat symbol.
+			ASM_DEFINES_X64 := 1
 		endif
 
 ifneq (,$(findstring msvc,$(platform)))
