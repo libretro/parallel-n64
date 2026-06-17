@@ -43,8 +43,7 @@
 #define write_dword_in_memory() writememd[mupencoreaddress >>16]()
 
 #if !defined(__arm64__) && !defined(__aarch64__)
-extern uint32_t address, cpu_word;
-extern uint64_t cpu_dword;
+extern uint32_t address;
 #define mupencoreaddress address
 #if defined(_M_X64)
 /* region 14 / Phase 2d (increment 6): on x64 the width-specific read/write
@@ -52,15 +51,21 @@ extern uint64_t cpu_dword;
  * g_dev.r4300.new_dynarec_hot_state (members hs_cpu_byte/hs_cpu_hword -- the hs_
  * prefix avoids colliding with these very macros). The memory layer, the Ari64
  * JIT and the Hacktarux dynarec all reach the same member through these aliases;
- * every use-site is in a function body where g_dev is in scope. The remaining
- * staging globals (address, cpu_word, cpu_dword) are migrated in later
- * increments. */
+ * every use-site is in a function body where g_dev is in scope.
+ *
+ * region 14 / Phase 2d (increment 7): cpu_word and cpu_dword join them, aliased
+ * onto the shared-region members wword/wdword (next's names for the same write
+ * staging). address remains flat for now (migrated in a later increment). */
 #define cpu_byte         (g_dev.r4300.new_dynarec_hot_state.hs_cpu_byte)
 #define cpu_hword        (g_dev.r4300.new_dynarec_hot_state.hs_cpu_hword)
+#define cpu_word         (g_dev.r4300.new_dynarec_hot_state.wword)
+#define cpu_dword        (g_dev.r4300.new_dynarec_hot_state.wdword)
 #else
 /* x86 (32-bit ari64): still flat globals defined in the memory layer. */
 extern uint8_t cpu_byte;
 extern uint16_t cpu_hword;
+extern uint32_t cpu_word;
+extern uint64_t cpu_dword;
 #endif
 #else
 #include "../r4300/new_dynarec/arm64/memory_layout_arm64.h"

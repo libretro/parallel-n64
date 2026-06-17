@@ -151,8 +151,6 @@ cextern hi
 cextern lo
 cextern address
 cextern readmem_dword
-cextern cpu_word
-cextern cpu_dword
 cextern invalid_code
 cextern hash_table
 
@@ -167,6 +165,8 @@ cextern g_dev
 %define g_dev_r4300_new_dynarec_hot_state_restore_candidate  (g_dev + offsetof_struct_device_r4300 + offsetof_struct_r4300_core_new_dynarec_hot_state + offsetof_struct_new_dynarec_hot_state_restore_candidate)
 %define g_dev_r4300_new_dynarec_hot_state_hs_cpu_byte        (g_dev + offsetof_struct_device_r4300 + offsetof_struct_r4300_core_new_dynarec_hot_state + offsetof_struct_new_dynarec_hot_state_hs_cpu_byte)
 %define g_dev_r4300_new_dynarec_hot_state_hs_cpu_hword       (g_dev + offsetof_struct_device_r4300 + offsetof_struct_r4300_core_new_dynarec_hot_state + offsetof_struct_new_dynarec_hot_state_hs_cpu_hword)
+%define g_dev_r4300_new_dynarec_hot_state_wword              (g_dev + offsetof_struct_device_r4300 + offsetof_struct_r4300_core_new_dynarec_hot_state + offsetof_struct_new_dynarec_hot_state_wword)
+%define g_dev_r4300_new_dynarec_hot_state_wdword             (g_dev + offsetof_struct_device_r4300 + offsetof_struct_r4300_core_new_dynarec_hot_state + offsetof_struct_new_dynarec_hot_state_wdword)
 %define g_dev_r4300_new_dynarec_hot_state_last_count        (g_dev + offsetof_struct_device_r4300 + offsetof_struct_r4300_core_new_dynarec_hot_state + offsetof_struct_new_dynarec_hot_state_last_count)
 %define g_dev_r4300_new_dynarec_hot_state_ram_offset        (g_dev + offsetof_struct_device_r4300 + offsetof_struct_r4300_core_new_dynarec_hot_state + offsetof_struct_new_dynarec_hot_state_ram_offset)
 
@@ -660,7 +660,7 @@ write_nomem_new:
     mov     eax,    1
     shl     r10,    2    ;carry = write protect bit
     jc      tlb_exception
-    mov     ecx,    [rel cpu_word]
+    mov     ecx,    [rel g_dev_r4300_new_dynarec_hot_state_wword]
     mov     [r9+r10],    ecx
     ret
 
@@ -704,16 +704,16 @@ write_nomemd_new:
     shl     r10,    2    ;carry = write protect bit
     jc      tlb_exception
     lea     rdx,    [r9+r10]
-    mov     ecx,    [rel cpu_dword+4]
+    mov     ecx,    [rel g_dev_r4300_new_dynarec_hot_state_wdword+4]
     mov     [rdx],    ecx
-    mov     ecx,    [rel cpu_dword]
+    mov     ecx,    [rel g_dev_r4300_new_dynarec_hot_state_wdword]
     mov     [rdx+4],    ecx
     ret
 
 write_rdram_new:
     mov     r9d,    [rel address]
     mov     rdx,    [rel g_dev_r4300_new_dynarec_hot_state_ram_offset]
-    mov     ecx,    [rel cpu_word]
+    mov     ecx,    [rel g_dev_r4300_new_dynarec_hot_state_wword]
     mov     [r9+rdx*4],    ecx
     jmp     _E12
 
@@ -738,9 +738,9 @@ write_rdramh_new:
 write_rdramd_new:
     mov     r9d,    [rel address]
     mov     rdx,    [rel g_dev_r4300_new_dynarec_hot_state_ram_offset]
-    mov     ecx,    [rel cpu_dword+4]
+    mov     ecx,    [rel g_dev_r4300_new_dynarec_hot_state_wdword+4]
     mov     [r9+rdx*4],    ecx
-    mov     ecx,    [rel cpu_dword]
+    mov     ecx,    [rel g_dev_r4300_new_dynarec_hot_state_wdword]
     mov     [r9+rdx*4+4],    ecx
     jmp     _E12
 
