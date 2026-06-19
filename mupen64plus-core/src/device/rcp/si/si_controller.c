@@ -25,7 +25,7 @@
 #include "../../../api/callbacks.h"
 #include "../../../main/main.h"
 #include "../../../main/rom.h"
-#include "../../memory/memory.h"
+#include "../../memory/m64p_memory.h"
 #include "../../r4300/r4300_core.h"
 #include "../../r4300/interrupt.h"
 #include "../ri/ri_controller.h"

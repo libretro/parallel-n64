@@ -22,7 +22,7 @@
 #include "rdram.h"
 #include "../rcp/ri/ri_controller.h"
 
-#include "../memory/memory.h"
+#include "../memory/m64p_memory.h"
 #include "safe_rdram.h"
 
 #include <string.h>

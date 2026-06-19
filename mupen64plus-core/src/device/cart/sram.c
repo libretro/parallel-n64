@@ -23,7 +23,7 @@
 #include "cart.h"
 #include "../rcp/pi/pi_controller.h"
 
-#include "../memory/memory.h"
+#include "../memory/m64p_memory.h"
 
 #include "../rcp/ri/ri_controller.h"
 #include "../rdram/safe_rdram.h"

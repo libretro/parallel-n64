@@ -46,7 +46,7 @@ extern "C" {
 #endif
 #include "../../../main/main.h"
 #include "../../device.h"
-#include "../../memory/memory.h"
+#include "../../memory/m64p_memory.h"
 #include "../../rcp/rsp/rsp_core.h"
 #include "../cached_interp.h"
 #include "../cp0_private.h"

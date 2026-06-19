@@ -17,7 +17,7 @@
  * g_dev). */
 #include "device/device.h"
 #include "device/r4300/r4300.h"
-#include "device/memory/memory.h"
+#include "device/memory/m64p_memory.h"
 #include "main/main.h"
 #include "main/cheat.h"
 #include "main/version.h"

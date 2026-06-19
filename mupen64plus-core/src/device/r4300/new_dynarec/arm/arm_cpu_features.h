@@ -1,6 +1,6 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *   Mupen64plus - arm_cpu_features.h                                      *
- *   Mupen64Plus homepage: http://code.google.com/p/mupen64plus/           *
+ *   Mupen64Plus homepage: https://mupen64plus.org/                        *
  *   Copyright (C) 2015 Gilles Siberlin                                    *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
@@ -19,8 +19,8 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef ARM_CPU_FEATURES_H
-#define ARM_CPU_FEATURES_H
+#ifndef M64P_DEVICE_R4300_NEW_DYNAREC_ARM_ARM_CPU_FEATURES_H
+#define M64P_DEVICE_R4300_NEW_DYNAREC_ARM_ARM_CPU_FEATURES_H
 
 typedef struct
 {
@@ -43,4 +43,4 @@ extern arm_cpu_features_t arm_cpu_features;
 void detect_arm_cpu_features(void);
 void print_arm_cpu_features(void);
 
-#endif /* ARM_CPU_FEATURES_H */
+#endif /* M64P_DEVICE_R4300_NEW_DYNAREC_ARM_ARM_CPU_FEATURES_H */

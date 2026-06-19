@@ -1,5 +1,5 @@
-#ifndef M64P_R4300_ASSEM_ARM_H
-#define M64P_R4300_ASSEM_ARM_H
+#ifndef M64P_DEVICE_R4300_NEW_DYNAREC_ARM_ASSEM_ARM_H
+#define M64P_DEVICE_R4300_NEW_DYNAREC_ARM_ASSEM_ARM_H
 
 #define HOST_REGS 13
 #define HOST_CCREG 10
@@ -33,16 +33,13 @@
 
 #define FP 11
 #define LR 14
+#define CALLER_SAVED_REGS 0x100f
 #define HOST_TEMPREG 14
 
 // Note: FP is set to &dynarec_local when executing generated code.
 // Thus the local variables are actually global and not on the stack.
 
-extern char *invc_ptr;
-extern char extra_memory[33554432];
-
-#define BASE_ADDR ((int)(&extra_memory))
-//#define TARGET_SIZE_2 24 // 2^24 = 16 megabytes
 #define TARGET_SIZE_2 25 // 2^25 = 32 megabytes
+#define JUMP_TABLE_SIZE (sizeof(jump_table_symbols)*2)
 
-#endif /* M64P_R4300_ASSEM_ARM_H */
+#endif /* M64P_DEVICE_R4300_NEW_DYNAREC_ARM_ASSEM_ARM_H */

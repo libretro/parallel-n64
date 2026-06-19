@@ -23,7 +23,7 @@
 
 #include "../../../api/audio_backend.h"
 #include "../../../main/rom.h"
-#include "../../memory/memory.h"
+#include "../../memory/m64p_memory.h"
 #include "../../r4300/r4300_core.h"
 #include "../ri/ri_controller.h"
 #include "../vi/vi_controller.h"

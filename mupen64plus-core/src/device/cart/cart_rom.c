@@ -22,7 +22,7 @@
 #include "cart_rom.h"
 #include "cart.h"
 #include "../rcp/pi/pi_controller.h"
-#include "../memory/memory.h"
+#include "../memory/m64p_memory.h"
 #include "../r4300/r4300_core.h"
 
 void init_cart_rom(struct cart_rom* cart_rom,

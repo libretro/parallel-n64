@@ -1,6 +1,6 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *   Mupen64plus - instr_counters.h                                        *
- *   Mupen64Plus homepage: http://code.google.com/p/mupen64plus/           *
+ *   Mupen64Plus homepage: https://mupen64plus.org/                        *
  *   Copyright (C) 2002 Hacktarux                                          *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
@@ -19,13 +19,11 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef M64P_R4300_INSTR_COUNTERS_H
-#define M64P_R4300_INSTR_COUNTERS_H
+#ifndef M64P_DEVICE_R4300_INSTR_COUNTERS_H
+#define M64P_DEVICE_R4300_INSTR_COUNTERS_H
 
-#if defined(COUNT_INSTR)
 extern unsigned int instr_count[132];
 
 void instr_counters_print(void);
-#endif /* COUNT_INSTR */
 
-#endif /* M64P_R4300_INSTR_COUNTERS_H */
+#endif /* M64P_DEVICE_R4300_INSTR_COUNTERS_H */

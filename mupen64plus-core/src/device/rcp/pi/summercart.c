@@ -1,3 +1,4 @@
+#include <stdbool.h>
 #include "pi_controller.h"
 #include "../../cart/cart.h"
 

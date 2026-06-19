@@ -22,7 +22,7 @@
 #ifndef M64P_BACKENDS_API_CONTROLLER_INPUT_BACKEND_H
 #define M64P_BACKENDS_API_CONTROLLER_INPUT_BACKEND_H
 
-#include "../../api/m64p_types.h"
+#include "api/m64p_types.h"
 
 #include <stdint.h>
 

@@ -19,6 +19,7 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
+#include "../device/controllers/game_controller.h"
 #include "rumble_via_input_plugin.h"
 #include "core_plugin.h"
 

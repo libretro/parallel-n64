@@ -39,6 +39,14 @@
 #include "util.h"
 #include "../osal/preproc.h"
 
+#ifndef OSAL_DIR_SEPARATORS
+#if defined(WIN32) || defined(_WIN32) || defined(__MINGW32__)
+#define OSAL_DIR_SEPARATORS "\\/"
+#else
+#define OSAL_DIR_SEPARATORS "/"
+#endif
+#endif
+
 /**********************
    Byte swap utilities
  **********************/

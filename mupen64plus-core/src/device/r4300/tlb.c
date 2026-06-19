@@ -22,7 +22,7 @@
 #include "tlb.h"
 
 #include "../../api/m64p_types.h"
-#include "exception.h"
+#include "cp0.h"
 #include "../../main/rom.h"
 
 tlb tlb_e[32];

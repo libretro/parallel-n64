@@ -22,7 +22,7 @@
 #include "device.h"
 
 #include "rcp/ai/ai_controller.h"
-#include "memory/memory.h"
+#include "memory/m64p_memory.h"
 #include "rcp/pi/pi_controller.h"
 #include "r4300/r4300_core.h"
 #include "rcp/rdp/rdp_core.h"

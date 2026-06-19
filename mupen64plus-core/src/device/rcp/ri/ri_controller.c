@@ -21,7 +21,7 @@
 
 #include "ri_controller.h"
 
-#include "../../memory/memory.h"
+#include "../../memory/m64p_memory.h"
 
 #include <string.h>
 

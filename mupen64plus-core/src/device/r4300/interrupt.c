@@ -38,7 +38,7 @@ extern int g_cp0_cycle_count;
 #include "cached_interp.h"
 #include "cp0_private.h"
 #include "../dd/dd_controller.h"
-#include "exception.h"
+#include "cp0.h"
 #include "../../main/main.h"
 #include "../device.h"
 #include "../../main/savestates.h"

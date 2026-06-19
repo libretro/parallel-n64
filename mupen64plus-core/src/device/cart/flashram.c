@@ -25,7 +25,7 @@
 
 #include "../../api/m64p_types.h"
 #include "../../api/callbacks.h"
-#include "../memory/memory.h"
+#include "../memory/m64p_memory.h"
 #include "../rcp/ri/ri_controller.h"
 #include "../rdram/safe_rdram.h"
 #include "../../backends/api/storage_backend.h"

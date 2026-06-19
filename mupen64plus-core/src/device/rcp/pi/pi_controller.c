@@ -26,7 +26,7 @@
 #include "../../../api/m64p_types.h"
 #include "../../../main/main.h"
 #include "../../device.h"
-#include "../../memory/memory.h"
+#include "../../memory/m64p_memory.h"
 #include "../../r4300/cp0.h"
 #include "../../r4300/cp0_private.h"
 #include "../../r4300/r4300_core.h"

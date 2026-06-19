@@ -36,14 +36,14 @@
 #include "cached_interp.h"
 #include "cp0_private.h"
 #include "cp1_private.h"
-#include "exception.h"
+#include "cp0.h"
 #include "interrupt.h"
 #include "macros.h"
 #include "../../main/main.h"
 /* region 14 / Phase 2d (increment 12): mupencorereg (reg file) is a g_dev
  * hot-state member on x64; needs the complete struct device. */
 #include "../device.h"
-#include "../memory/memory.h"
+#include "../memory/m64p_memory.h"
 #include "ops.h"
 #include "r4300.h"
 #include "recomp.h"

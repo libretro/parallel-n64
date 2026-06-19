@@ -37,7 +37,7 @@
 #include "main.h"
 #include "util.h"
 
-#include "../device/memory/memory.h"
+#include "../device/memory/m64p_memory.h"
 #include "../osal/preproc.h"
 
 #include "../device/r4300/r4300.h"

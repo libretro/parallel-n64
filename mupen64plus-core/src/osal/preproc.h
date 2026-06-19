@@ -1,6 +1,6 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *   Mupen64plus-core - osal/preproc.h                                     *
- *   Mupen64Plus homepage: http://code.google.com/p/mupen64plus/           *
+ *   Mupen64Plus homepage: https://mupen64plus.org/                        *
  *   Copyright (C) 2009 Richard Goedeken                                   *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
@@ -8,7 +8,7 @@
  *   the Free Software Foundation; either version 2 of the License, or     *
  *   (at your option) any later version.                                   *
  *                                                                         *
- *   This program is distributed in the hope that it will be useful,       * 
+ *   This program is distributed in the hope that it will be useful,       *
  *   but WITHOUT ANY WARRANTY; without even the implied warranty of        *
  *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         *
  *   GNU General Public License for more details.                          *
@@ -18,16 +18,22 @@
  *   Free Software Foundation, Inc.,                                       *
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
-                       
+
 /* this header file is for system-dependent #defines, #includes, and typedefs */
 
-#ifndef OSAL_PREPROC_H
+#if !defined (OSAL_PREPROC_H)
 #define OSAL_PREPROC_H
 
-#if defined(_WIN32) && !defined(__MINGW32__)
+#if _MSC_VER
 
   /* macros */
+  #define OSAL_BREAKPOINT_INTERRUPT __debugbreak();
   #define ALIGN(BYTES,DATA) __declspec(align(BYTES)) DATA
+  #define osal_inline __inline
+
+  #define OSAL_WARNING_PUSH __pragma(warning(push))
+  #define OSAL_WARNING_POP  __pragma(warning(pop))
+  #define OSAL_NO_WARNING_FPTR_VOIDP_CAST __pragma(warning(disable:4055 4152))
 
   /* string functions */
   #define osal_insensitive_strcmp(x, y) _stricmp(x, y)
@@ -36,37 +42,62 @@
   /* for isnan() */
   #include <float.h>
 
-  #define OSAL_DIR_SEPARATORS           "\\/"
-  #define PATH_MAX _MAX_PATH
+#if defined(_M_X64) || (_M_IX86_FP > 0)
+  #include <immintrin.h>
+  #define OSAL_SSE
+#endif
 
-#else  /* Not _WIN32 */
-
+#else  /* Not WIN32 */
   /* for strcasecmp */
   #include <strings.h>
 
-  // macros
+  /* macros */
+  #define OSAL_BREAKPOINT_INTERRUPT __asm__(" int $3; ");
   #define ALIGN(BYTES,DATA) DATA __attribute__((aligned(BYTES)))
+  #define osal_inline inline
 
-  // string functions
+  #define OSAL_WARNING_PUSH _Pragma("GCC diagnostic push")
+  #define OSAL_WARNING_POP  _Pragma("GCC diagnostic pop")
+  #define OSAL_NO_WARNING_FPTR_VOIDP_CAST _Pragma("GCC diagnostic ignored \"-Wpedantic\"")
+
+  /* string functions */
   #define osal_insensitive_strcmp(x, y) strcasecmp(x, y)
 
-  #include <limits.h>  // for PATH_MAX
-
-  /* MinGW builds take this branch (it skips the MSVC-only redefines
-   * above) but still target Windows, where backslash is the native
-   * path separator. */
-#if defined(_WIN32)
-  #define OSAL_DIR_SEPARATORS           "\\/"
-#else
-  #define OSAL_DIR_SEPARATORS           "/"
+#ifdef __SSE__
+  #include <immintrin.h>
+  #define OSAL_SSE
 #endif
 
-  /* PATH_MAX only may be defined by limits.h */
-  #ifndef PATH_MAX
-    #define PATH_MAX 4096
+#endif
+
+/* sign-extension macros */
+#define SE8(a)  ((int64_t) ((int8_t) (a)))
+#define SE16(a) ((int64_t) ((int16_t) (a)))
+#define SE32(a) ((int64_t) ((int32_t) (a)))
+
+#if !defined(M64P_BIG_ENDIAN)
+  #if defined(__GNUC__) && (__GNUC__ > 4  || (__GNUC__ == 4 && __GNUC_MINOR__ >= 3))
+    #define tohl(x) __builtin_bswap32((x))
+  #else
+    #define tohl(x) \
+    ( \
+    (((x) & 0x000000FF) << 24) | \
+    (((x) & 0x0000FF00) <<  8) | \
+    (((x) & 0x00FF0000) >>  8) | \
+    (((x) & 0xFF000000) >> 24) \
+    )
   #endif
-
+  #define S8 3
+  #define S16 2
+  #define Sh16 1
+#else
+  #define tohl(x) (x)
+  #define S8 0
+  #define S16 0
+  #define Sh16 0
 #endif
+
+#define fromhl(x) tohl((x))
 
 #endif /* OSAL_PREPROC_H */
 

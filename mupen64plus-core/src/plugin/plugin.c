@@ -42,7 +42,7 @@
 #include "../main/rom.h"
 #include "../device/dd/dd_rom.h"
 #include "../main/version.h"
-#include "../device/memory/memory.h"
+#include "../device/memory/m64p_memory.h"
 
 static unsigned int dummy;
 

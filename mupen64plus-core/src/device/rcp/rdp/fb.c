@@ -22,7 +22,7 @@
 #include "fb.h"
 #include "rdp_core.h"
 
-#include "../../memory/memory.h"
+#include "../../memory/m64p_memory.h"
 #include "../../../plugin/core_plugin.h"
 #include "../../r4300/r4300_core.h"
 #include "../ri/ri_controller.h"

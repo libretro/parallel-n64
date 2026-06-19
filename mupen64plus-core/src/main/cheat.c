@@ -26,7 +26,7 @@
 #include "../api/callbacks.h"
 #include "../api/core_config.h"
 
-#include "../device/memory/memory.h"
+#include "../device/memory/m64p_memory.h"
 #include "cheat.h"
 #include "main.h"
 #include "../device/device.h"

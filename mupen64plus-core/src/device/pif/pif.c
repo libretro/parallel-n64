@@ -28,7 +28,7 @@
 #include "../../api/m64p_types.h"
 #include "../../api/callbacks.h"
 #include "../../backends/libretro_clock.h"
-#include "../memory/memory.h"
+#include "../memory/m64p_memory.h"
 #include "../../plugin/core_plugin.h"
 #include "../r4300/r4300_core.h"
 

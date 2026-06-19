@@ -51,7 +51,7 @@
 #include "util.h"
 
 #include "../device/rcp/ai/ai_controller.h"
-#include "../device/memory/memory.h"
+#include "../device/memory/m64p_memory.h"
 #include "../osal/preproc.h"
 #include "../device/rcp/pi/pi_controller.h"
 #include "../plugin/core_plugin.h"
