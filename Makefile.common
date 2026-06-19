@@ -145,8 +145,9 @@ SOURCES_C += \
 	$(CORE_DIR)/src/main/savestates.c \
 	$(CORE_DIR)/src/main/util.c \
 	$(CORE_DIR)/src/device/memory/m64p_memory.c \
-	$(CORE_DIR)/src/gb/gb_cart.c \
-	$(CORE_DIR)/src/gb/mbc3_rtc.c \
+	$(CORE_DIR)/src/device/gb/gb_cart.c \
+	$(CORE_DIR)/src/device/gb/mbc3_rtc.c \
+	$(CORE_DIR)/src/device/gb/m64282fp.c \
 	$(CORE_DIR)/src/device/pif/n64_cic_nus_6105.c \
 	$(CORE_DIR)/src/device/pif/pif.c \
 	$(CORE_DIR)/src/device/cart/af_rtc.c \
@@ -164,8 +165,8 @@ SOURCES_C += \
 	$(CORE_DIR)/src/device/r4300/r4300.c \
 	$(CORE_DIR)/src/device/r4300/cached_interp.c \
 	$(CORE_DIR)/src/device/r4300/cp0.c \
-	$(CORE_DIR)/src/device/r4300/cp1.c \
 	$(CORE_DIR)/src/device/r4300/exception.c \
+	$(CORE_DIR)/src/device/r4300/cp1.c \
 	$(CORE_DIR)/src/device/r4300/instr_counters.c \
 	$(CORE_DIR)/src/device/r4300/interrupt.c \
 	$(CORE_DIR)/src/device/rcp/mi/mi_controller.c \
@@ -236,11 +237,13 @@ ifdef WITH_DYNAREC
 			SOURCES_NASM += $(CORE_DIR)/src/device/r4300/new_dynarec/x64/linkage_x64.asm
 		endif
 
+ifeq ($(WANT_HACKTARUX), 1)
 ifneq (,$(findstring msvc,$(platform)))
 ifeq ($(WITH_DYNAREC), $(filter $(WITH_DYNAREC), x86_64 x64))
 	SOURCES_ASM += $(CORE_DIR)/src/device/r4300/hacktarux_dynarec/dyna_start_nasm_x64.S
 else ifeq ($(WITH_DYNAREC), $(filter $(WITH_DYNAREC), i386 i686))
 	SOURCES_ASM += $(CORE_DIR)/src/device/r4300/hacktarux_dynarec/dyna_start_nasm_x86.S
+endif
 endif
 endif
 
@@ -268,15 +271,19 @@ ifeq ($(WITH_DYNAREC), aarch64)
 endif
 
 ifeq ($(WITH_DYNAREC), $(filter $(WITH_DYNAREC), i386 i686 x86 x86_64 x64))
-		DYNAFLAGS += -DHAVE_DYNAREC_HACKTARUX
 ifneq ($(NOSSE), 1)
 ifeq (,$(findstring msvc,$(platform)))
 		CPUFLAGS += -msse -msse2
 endif
 endif
+# --- hacktarux JIT temporarily disabled; focus on new_dynarec (ari64).
+#     re-enable with WANT_HACKTARUX=1 once ari64 is validated, then backport. ---
+ifeq ($(WANT_HACKTARUX), 1)
+		DYNAFLAGS += -DHAVE_DYNAREC_HACKTARUX
 		SOURCES_C += $(CORE_DIR)/src/device/r4300/hacktarux_dynarec/assemble.c \
 						 $(CORE_DIR)/src/device/r4300/hacktarux_dynarec/regcache.c \
 						 $(CORE_DIR)/src/device/r4300/hacktarux_dynarec/hacktarux_dynarec.c
+endif
 endif
 endif
 

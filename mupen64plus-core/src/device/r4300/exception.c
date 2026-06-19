@@ -26,7 +26,7 @@ extern int g_cp0_cycle_count;
 #include "exception.h"
 #include "../../main/main.h"
 #include "../device.h"
-#include "../memory/memory.h"
+#include "../memory/m64p_memory.h"
 #include "r4300.h"
 #include "r4300_core.h"
 #include "recomp.h"
