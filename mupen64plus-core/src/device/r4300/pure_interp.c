@@ -55,6 +55,7 @@ extern int g_cp0_cycle_count;
 #include "cp0_private.h"
 #include "cp1_private.h"
 #include "cp0.h"
+#include "exception.h"
 #include "interrupt.h"
 #include "../../main/main.h"
 #include "../memory/m64p_memory.h"

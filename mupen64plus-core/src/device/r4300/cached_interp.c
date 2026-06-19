@@ -37,6 +37,7 @@
 #include "cp0_private.h"
 #include "cp1_private.h"
 #include "cp0.h"
+#include "exception.h"
 #include "interrupt.h"
 #include "macros.h"
 #include "../../main/main.h"

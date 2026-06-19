@@ -25,6 +25,7 @@ extern int g_cp0_cycle_count;
 
 #include "cp0_private.h"
 #include "cp0.h"
+#include "exception.h"
 /* region 14 / Phase 2d (increment 11): g_cp0_regs is aliased to
  * g_dev.r4300.new_dynarec_hot_state.cp0_regs on x64 (see cp0_private.h); this TU
  * uses it throughout, so it needs the complete struct device and g_dev. */
