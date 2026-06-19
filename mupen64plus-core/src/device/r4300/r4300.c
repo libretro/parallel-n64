@@ -24,7 +24,6 @@
 #include <string.h>
 
 #include "../../api/callbacks.h"
-#include "../../api/debugger.h"
 #include "../../api/m64p_types.h"
 #include "cached_interp.h"
 #include "cp0_private.h"

@@ -39,7 +39,6 @@
 #include "../api/callbacks.h"
 #include "../api/core_config.h"
 #include "../api/m64p_config.h"
-#include "../api/debugger.h"
 #include "../api/m64p_vidext.h"
 #include "../api/vidext.h"
 
@@ -170,7 +169,6 @@ int main_set_core_defaults(void)
 #endif
    ConfigSetDefaultBool(g_CoreConfig, "NoCompiledJump", 0, "Disable compiled jump commands in dynamic recompiler (should be set to False) ");
    ConfigSetDefaultBool(g_CoreConfig, "DisableExtraMem", 0, "Disable 4MB expansion RAM pack. May be necessary for some games");
-   ConfigSetDefaultBool(g_CoreConfig, "EnableDebugger", 0, "Activate the R4300 debugger when ROM execution begins, if core was built with Debugger support");
    ConfigSetDefaultInt(g_CoreConfig, "CountPerOp", 0, "Force number of cycles per emulated instruction.");
    ConfigSetDefaultBool(g_CoreConfig, "DelaySI", 1, "Delay interrupt after DMA SI read/write");
 

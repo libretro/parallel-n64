@@ -28,7 +28,6 @@
 #include "regcache.h"
 #include "interpret.h"
 
-#include "../../../api/debugger.h"
 #include "../../../api/m64p_types.h"
 #include "../../../api/callbacks.h"
 #include "../../../main/main.h"

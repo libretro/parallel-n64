@@ -48,7 +48,6 @@ extern int g_cp0_cycle_count;
 #endif
 
 #include "../../api/callbacks.h"
-#include "../../api/debugger.h"
 #include "../../api/m64p_types.h"
 /* TLBWrite requires invalid_code and blocks from cached_interp.h, but only if
  * (at run time) the active core is not the Pure Interpreter. */
