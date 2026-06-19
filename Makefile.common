@@ -141,7 +141,6 @@ SOURCES_C += \
 	$(CORE_DIR)/src/main/eventloop.c \
 	$(CORE_DIR)/src/main/main.c \
 	$(CORE_DIR)/src/device/device.c \
-	$(CORE_DIR)/src/main/profile.c \
 	$(CORE_DIR)/src/main/rom.c \
 	$(CORE_DIR)/src/main/savestates.c \
 	$(CORE_DIR)/src/main/util.c \

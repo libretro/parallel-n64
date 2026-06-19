@@ -23,7 +23,6 @@
 
 #include "../../../main/main.h"
 #include "../../device.h"
-#include "../../../main/profile.h"
 #include "../../../main/rom.h"
 #include "../../memory/memory.h"
 #include "../../../plugin/core_plugin.h"
@@ -359,9 +358,7 @@ void do_SP_Task(struct rsp_core* sp)
         unprotect_framebuffers(sp->dp);
 
         sp->regs2[SP_PC_REG] &= 0xfff;
-        timed_section_start(TIMED_SECTION_GFX);
         rsp.doRspCycles(0xffffffff);
-        timed_section_end(TIMED_SECTION_GFX);
         sp->regs2[SP_PC_REG] |= save_pc;
         new_frame();
 
@@ -394,7 +391,6 @@ void do_SP_Task(struct rsp_core* sp)
     {
        /* Audio List */
         sp->regs2[SP_PC_REG] &= 0xfff;
-        timed_section_start(TIMED_SECTION_AUDIO);
         if (send_allist_to_hle_rsp == 0)
            rsp.doRspCycles(0xffffffff);
         else
@@ -405,7 +401,6 @@ void do_SP_Task(struct rsp_core* sp)
            plugin_ensure_hle_audio_ready();
            hleDoRspCycles(0xffffffff);
         }
-        timed_section_end(TIMED_SECTION_AUDIO);
         sp->regs2[SP_PC_REG] |= save_pc;
 
         sp_delay_time = 4000;

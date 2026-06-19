@@ -198,19 +198,12 @@ static void FIN_BLOCK(void)
 static void NOTCOMPILED(void)
 {
    uint32_t *mem = fast_mem_access(blocks[mupencorePC->addr>>12]->start);
-#ifdef CORE_DBG
-   DebugMessage(M64MSG_INFO, "NOTCOMPILED: addr = %x ops = %lx", mupencorePC->addr, (long) mupencorePC->ops);
-#endif
 
    if (mem != NULL)
       recompile_block(mem, blocks[mupencorePC->addr >> 12], mupencorePC->addr);
    else
       DebugMessage(M64MSG_ERROR, "not compiled exception");
 
-#if 0
-   /* The preceeding update_debugger SHOULD be unnecessary since it should have been
-      called before NOTCOMPILED would have been executed */
-#endif
    mupencorePC->ops();
    if (r4300emu == CORE_DYNAREC)
    {

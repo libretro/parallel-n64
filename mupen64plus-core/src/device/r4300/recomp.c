@@ -24,9 +24,6 @@
 #include <string.h>
 
 #define __STDC_FORMAT_MACROS
-#ifdef CORE_DBG
-#include <inttypes.h>
-#endif
 
 #if defined(__GNUC__)
 #include <unistd.h>
@@ -43,7 +40,6 @@
 #include "cp0_private.h"
 #include "../../main/main.h"
 #include "../device.h"
-#include "../../main/profile.h"
 #include "../memory/memory.h"
 #include "ops.h"
 #include "r4300.h"
@@ -2178,10 +2174,6 @@ void init_block(struct precomp_block *block)
 {
    int i, length, already_exist = 1;
    static int init_length;
-   timed_section_start(TIMED_SECTION_COMPILER);
-#ifdef CORE_DBG
-   DebugMessage(M64MSG_INFO, "init block %" PRIX32 " - %" PRIX32, block->start, block->end);
-#endif
 
    length = get_block_length(block);
 
@@ -2336,7 +2328,6 @@ void init_block(struct precomp_block *block)
          init_block(blocks[alt_addr>>12]);
       }
    }
-   timed_section_end(TIMED_SECTION_COMPILER);
 }
 
 void free_block(struct precomp_block *block)
@@ -2365,7 +2356,6 @@ void recompile_block(const uint32_t *source, struct precomp_block *block, uint32
 {
    uint32_t i;
    int length, finished=0;
-   timed_section_start(TIMED_SECTION_COMPILER);
    length = (block->end-block->start)/4;
    dst_block = block;
 
@@ -2473,11 +2463,6 @@ void recompile_block(const uint32_t *source, struct precomp_block *block, uint32
       free_assembler(&block->jumps_table, &block->jumps_number, &block->riprel_table, &block->riprel_number);
    }
 #endif
-
-#ifdef CORE_DBG
-   DebugMessage(M64MSG_INFO, "block recompiled (%" PRIX32 "-%" PRIX32 ")", func, block->start+i*4);
-#endif
-   timed_section_end(TIMED_SECTION_COMPILER);
 }
 
 static int is_jump(void)
