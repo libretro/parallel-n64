@@ -1,10 +1,7 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- *   Mupen64plus - savestates.h                                            *
- *   Mupen64Plus homepage: http://code.google.com/p/mupen64plus/           *
- *   Copyright (C) 2012 CasualJames                                        *
- *   Copyright (C) 2009 Olejl Tillin9                                      *
- *   Copyright (C) 2008 Richard42 Tillin9                                  *
- *   Copyright (C) 2002 Hacktarux                                          *
+ *   Mupen64plus - m64282fp.h                                              *
+ *   Mupen64Plus homepage: https://mupen64plus.org/                        *
+ *   Copyright (C) 2017 Bobby Smiles                                       *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
  *   it under the terms of the GNU General Public License as published by  *
@@ -22,23 +19,32 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef __SAVESTAVES_H__
-#define __SAVESTAVES_H__
+#ifndef M64P_DEVICE_GB_M64282FP_H
+#define M64P_DEVICE_GB_M64282FP_H
 
-typedef enum _savestates_job
+#include <stdint.h>
+
+enum
 {
-    savestates_job_nothing,
-    savestates_job_load,
-    savestates_job_save
-} savestates_job;
+    M64282FP_SENSOR_W = 128,
+    M64282FP_SENSOR_H = 128,
+};
 
-int savestates_load_m64p(const unsigned char *data, size_t size);
-int savestates_save_m64p(unsigned char *data, size_t size);
-savestates_job savestates_get_job(void);
-void savestates_set_job(savestates_job j);
-void savestates_save(void);
-void savestates_load(void);
+enum m64282fp_registers
+{
+    M64282FP_Z_O,
+    M64282FP_N_VH_G,
+    M64282FP_C_LO,
+    M64282FP_C_HI,
+    M64282FP_P,
+    M64282FP_M,
+    M64282FP_X,
+    M64282FP_E_I_V,
+    M64282FP_REGS_COUNT
+};
 
+void process_m64282fp_image(
+    uint8_t img[M64282FP_SENSOR_H][M64282FP_SENSOR_W],
+    const uint8_t regs[M64282FP_REGS_COUNT]);
 
-#endif /* __SAVESTAVES_H__ */
-
+#endif

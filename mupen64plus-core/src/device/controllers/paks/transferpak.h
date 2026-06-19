@@ -25,7 +25,7 @@
 struct pak_interface;
 #include <stdint.h>
 
-#include "../../../gb/gb_cart.h"
+#include "../../gb/gb_cart.h"
 
 enum cart_access_mode
 {

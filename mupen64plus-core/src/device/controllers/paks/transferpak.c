@@ -25,7 +25,7 @@
 #include "../../../api/m64p_types.h"
 #include "../../../api/callbacks.h"
 
-#include "../../../gb/gb_cart.h"
+#include "../../gb/gb_cart.h"
 
 #include <string.h>
 

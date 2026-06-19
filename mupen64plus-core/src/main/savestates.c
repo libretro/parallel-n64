@@ -39,7 +39,7 @@
 #include "util.h"
 
 #include "../device/rcp/ai/ai_controller.h"
-#include "../device/memory/memory.h"
+#include "../device/memory/m64p_memory.h"
 #include "../device/r4300/cp1.h"
 #include "../device/rcp/pi/pi_controller.h"
 #include "../plugin/core_plugin.h"
@@ -53,8 +53,8 @@
 #include "../device/pif/pif.h"
 #include "../device/controllers/game_controller.h"
 #include "../device/controllers/paks/transferpak.h"
-#include "../gb/gb_cart.h"
-#include "../gb/mbc3_rtc.h"
+#include "../device/gb/gb_cart.h"
+#include "../device/gb/mbc3_rtc.h"
 #include "../osal/preproc.h"
 
 extern uint32_t RollbackRtcOnLoadState;
