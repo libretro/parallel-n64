@@ -32,19 +32,19 @@
 #include "../../../api/callbacks.h"
 #include "../../../main/main.h"
 #include "../../device.h"
-#include "../../memory/memory.h"
+#include "../../memory/m64p_memory.h"
 #include "../cached_interp.h"
 #include "../recomp.h"
 #include "../cp0_private.h"
 #include "../cp1_private.h"
-#include "../exception.h"
+#include "../cp0.h"
 #include "../interrupt.h"
 #include "../r4300.h"
 #include "../macros.h"
 #include "../ops.h"
 #include "../recomp.h"
 #include "../recomph.h"
-#include "../exception.h"
+#include "../cp0.h"
 
 #if !defined(offsetof)
 #define offsetof(TYPE,MEMBER) ((unsigned int) &((TYPE*)0)->MEMBER)
@@ -359,7 +359,7 @@ void gencheck_cop1_unusable(void)
    jne_rj(0);
    jump_start_rel8();
 
-   gencallinterp((native_type)check_cop1_unusable, 0);
+   gencallinterp((native_type)dynarec_check_cop1_unusable, 0);
 
    jump_end_rel8();
 }
@@ -4109,7 +4109,7 @@ void gensyscall(void)
    simplify_access();
    mov_m32_imm32(&g_cp0_regs[CP0_CAUSE_REG], 8 << 2);
 #endif
-   gencallinterp((native_type)exception_general, 0);
+   gencallinterp((native_type)dynarec_exception_general, 0);
 #endif
 }
 
