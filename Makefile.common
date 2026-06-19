@@ -194,11 +194,7 @@ SOURCES_C += \
 	$(CORE_DIR)/src/device/cart/cart_rom.c \
 	$(CORE_DIR)/src/device/cart/cart.c \
 	$(CORE_DIR)/src/device/cart/is_viewer.c \
-	$(CORE_DIR)/src/device/rcp/pi/summercart.c \
-	$(CORE_DIR)/src/util/array_io.c \
-	$(CORE_DIR)/src/util/random.c
-
-#	$(CORE_DIR)/src/main/ini_reader.c \
+	$(CORE_DIR)/src/device/rcp/pi/summercart.c
 
 ifeq ($(PLATFORM_EXT), win32)
 DYNAFLAGS += -DWIN32
