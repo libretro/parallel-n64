@@ -232,6 +232,8 @@ ifdef WITH_DYNAREC
 		DYNAFLAGS += -D_M_IX86
 		CFLAGS += -DARCH_MIN_SSE2 
 		CXXFLAGS += -DARCH_MIN_SSE2
+		# Default the ari64 new dynarec on for a bare x86 build.
+		HAVE_ARI64_X86 ?= 1
 		ifeq ($(HAVE_ARI64_X86), 1)
 			DYNAFLAGS += -DNEW_DYNAREC=1
 			SOURCES_C += $(CORE_DIR)/src/device/r4300/new_dynarec/new_dynarec.c
@@ -243,6 +245,11 @@ ifdef WITH_DYNAREC
 		DYNAFLAGS += -D_M_X64
 		CFLAGS += -DARCH_MIN_SSE2
 		CXXFLAGS += -DARCH_MIN_SSE2
+		# Default both x86_64 dynarecs on for a bare build: the ari64 new dynarec
+		# (default backend) and the classic Hacktarux dynarec (runtime-selectable
+		# alongside it). Pass HAVE_ARI64_X64=0 / WANT_HACKTARUX=0 to opt out.
+		HAVE_ARI64_X64 ?= 1
+		WANT_HACKTARUX ?= 1
 		ifeq ($(HAVE_ARI64_X64), 1)
 			DYNAFLAGS += -DNEW_DYNAREC=2
 			SOURCES_C += $(CORE_DIR)/src/device/r4300/new_dynarec/new_dynarec.c
