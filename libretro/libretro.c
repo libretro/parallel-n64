@@ -2715,11 +2715,16 @@ size_t retro_get_memory_size(unsigned type)
 
 size_t retro_serialize_size (void)
 {
-    /* < 16MB and some change... ouch.  The trailing 1024 bytes is slack
-     * beyond the actual state size; the v1.3 Transfer Pak / MBC3 RTC block
-     * (200 bytes) and the v1.4 RSP DMA FIFO block (32 bytes) both live
-     * inside this margin. */
-    return 16788348 + 1024;
+    /* savestates_save_m64p writes a fixed-size state. The previous value
+     * (16788348 + 1024) was 208 bytes too small once the v1.3 Transfer Pak /
+     * MBC3 RTC block is written unconditionally for all four controllers
+     * (50 bytes each = 200) alongside the v1.4 RSP DMA FIFO block: the real
+     * trailer is 1232 bytes, not the 1024 that was budgeted, so retro_serialize
+     * overran the frontend's buffer by 208 bytes and corrupted the heap (a
+     * crash on Save State). The state is deterministic and the same size for
+     * every ROM and CPU core (measured 16789580), so size it to the actual
+     * maximum plus a real 1KB margin. */
+    return 16789580 + 1024;
 }
 
 bool retro_serialize(void *data, size_t size)
