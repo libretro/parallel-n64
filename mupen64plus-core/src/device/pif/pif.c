@@ -1,6 +1,6 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *   Mupen64plus - pif.c                                                   *
- *   Mupen64Plus homepage: http://code.google.com/p/mupen64plus/           *
+ *   Mupen64Plus homepage: https://mupen64plus.org/                        *
  *   Copyright (C) 2002 Hacktarux                                          *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
@@ -20,320 +20,379 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "pif.h"
-#include "../cart/cart.h"
 #include "n64_cic_nus_6105.h"
-#include "../controllers/game_controller.h"
-#include "../rcp/si/si_controller.h"
 
-#include "../../api/m64p_types.h"
-#include "../../api/callbacks.h"
-#include "../../backends/libretro_clock.h"
-#include "../memory/memory.h"
-#include "../../plugin/core_plugin.h"
-#include "../r4300/r4300_core.h"
-
-#include "../../plugin/emulate_game_controller_via_input_plugin.h"
-#include "../../plugin/rumble_via_input_plugin.h"
-
+#include <assert.h>
+#include <stdint.h>
 #include <string.h>
+
+#include "api/callbacks.h"
+#include "api/m64p_plugin.h"
+#include "api/m64p_types.h"
+#include "backends/api/joybus.h"
+#include "device/memory/m64p_memory.h"
+#include "device/r4300/r4300_core.h"
+#include "device/rcp/si/si_controller.h"
+#include "plugin/plugin.h"
+#include "main/netplay.h"
+
+#define __STDC_FORMAT_MACROS
+#include <inttypes.h>
 
 //#define DEBUG_PIF
 #ifdef DEBUG_PIF
 void print_pif(struct pif* pif)
 {
-   int i;
-   for (i=0; i<(64/8); i++)
-      DebugMessage(M64MSG_INFO, "%x %x %x %x | %x %x %x %x",
-            pif->ram[i*8+0], pif->ram[i*8+1], pif->ram[i*8+2], pif->ram[i*8+3],
-            pif->ram[i*8+4], pif->ram[i*8+5], pif->ram[i*8+6], pif->ram[i*8+7]);
+    int i;
+    for (i=0; i<(64/8); i++) {
+        DebugMessage(M64MSG_INFO, "%02" PRIX8 " %02" PRIX8 " %02" PRIX8 " %02" PRIX8 " | %02" PRIX8 " %02" PRIX8 " %02" PRIX8 " %02" PRIX8,
+                     pif->ram[i*8+0], pif->ram[i*8+1],pif->ram[i*8+2], pif->ram[i*8+3],
+                     pif->ram[i*8+4], pif->ram[i*8+5],pif->ram[i*8+6], pif->ram[i*8+7]);
+    }
+
+    for(i = 0; i < PIF_CHANNELS_COUNT; ++i) {
+        if (pif->channels[i].tx != NULL) {
+            DebugMessage(M64MSG_INFO, "Channel %u, tx=%02x rx=%02x cmd=%02x",
+                i,
+                *(pif->channels[i].tx),
+                *(pif->channels[i].rx),
+                pif->channels[i].tx_buf[0]);
+        }
+    }
 }
 #endif
 
-static void game_controller_dummy_save(void *user_data)
+static void process_channel(struct pif_channel* channel)
 {
+    /* don't process channel if it has been disabled */
+    if (channel->tx == NULL) {
+        return;
+    }
+
+    /* reset Tx/Rx just in case */
+    *channel->tx &= 0x3f;
+    *channel->rx &= 0x3f;
+
+    /* set NoResponse if no device is connected */
+    if (channel->ijbd == NULL) {
+        *channel->rx |= 0x80;
+        return;
+    }
+
+    /* do device processing */
+    channel->ijbd->process(channel->jbd,
+        channel->tx, channel->tx_buf,
+        channel->rx, channel->rx_buf);
 }
 
-void init_pif(struct pif *pif,
-      void *eeprom_user_data,
-      void (*eeprom_save)(void*),
-      uint8_t *eeprom_data,
-      size_t eeprom_size,
-      uint32_t eeprom_id,
-      void* af_rtc_user_data,
-      const struct tm* (*af_rtc_get_time)(void*),
-      const uint8_t *ipl3
-      )
+static void post_setup_channel(struct pif_channel* channel)
 {
-   size_t i;
+    if ((channel->ijbd == NULL)
+    || (channel->ijbd->post_setup == NULL)) {
+        return;
+    }
 
-   for (i = 0; i < GAME_CONTROLLERS_COUNT; ++i)
-   {
-      static int32_t channels[] = { 0, 1, 2, 3 };
-      init_game_controller(
-            &pif->controllers[i], 
-            (void*)&channels[i],
-            egcvip_is_connected,
-            egcvip_get_input,
-            egcvip_get_gcn_input,
-            NULL,
-            &game_controller_dummy_save,
-            &saved_memory.mempack[i][0],
-            &channels[i],
-            rvip_rumble
-            );
-   }
+    channel->ijbd->post_setup(channel->jbd,
+        channel->tx, channel->tx_buf,
+        channel->rx, channel->rx_buf);
+}
 
-   /* region 12d: bind PIF joybus channels: 0-3 -> controllers, 4 -> cart. The
-    * controller joybus device delegates command processing to pn64's flat
-    * handler (which supports GameCube controllers and resolves the connected
-    * pak live), so no per-controller backend/flavor wiring is needed here. */
-   for (i = 0; i < GAME_CONTROLLERS_COUNT; ++i)
-   {
-      pif->channels[i].jbd  = &pif->controllers[i];
-      pif->channels[i].ijbd = &g_ijoybus_device_controller;
-   }
-   pif->channels[4].jbd  = pif->cart;
-   pif->channels[4].ijbd = &g_ijoybus_device_cart;
+void disable_pif_channel(struct pif_channel* channel)
+{
+    channel->tx = NULL;
+    channel->rx = NULL;
+    channel->tx_buf = NULL;
+    channel->rx_buf = NULL;
+}
 
-   init_libretro_storage(&pif->cart->eeprom_storage,
-         eeprom_data, eeprom_size, eeprom_user_data, eeprom_save);
-   init_eeprom(&pif->cart->eeprom,
-         (uint16_t)eeprom_id, &pif->cart->eeprom_storage, &g_ilibretro_storage);
-   /* af_rtc now sources base time through next's clock_backend interface
-    * (g_ilibretro_clock returns time(NULL), which af_rtc runs through
-    * localtime()), equivalent to the former get_time_using_C_localtime source.
-    * The upstream af_rtc_user_data / af_rtc_get_time params are retained in the
-    * init chain for ABI stability but are no longer used here. */
-   (void)af_rtc_user_data;
-   (void)af_rtc_get_time;
-   init_af_rtc(&pif->cart->af_rtc, NULL, &g_ilibretro_clock);
-   init_cic_using_ipl3(&pif->cic, ipl3);
+size_t setup_pif_channel(struct pif_channel* channel, uint8_t* buf)
+{
+    uint8_t tx = buf[0] & 0x3f;
+    uint8_t rx = buf[1] & 0x3f;
+
+    /* XXX: check out of bounds accesses */
+
+    channel->tx = buf;
+    channel->rx = buf + 1;
+    channel->tx_buf = buf + 2;
+    channel->rx_buf = buf + 2 + tx;
+
+    post_setup_channel(channel);
+
+    return 2 + tx + rx;
+}
+
+void init_pif(struct pif* pif,
+    uint8_t* pif_base,
+    void* jbds[PIF_CHANNELS_COUNT],
+    const struct joybus_device_interface* ijbds[PIF_CHANNELS_COUNT],
+    const uint8_t* ipl3,
+    struct r4300_core* r4300,
+    struct si_controller* si)
+{
+    size_t i;
+
+    pif->base = pif_base;
+    pif->ram = pif_base + 0x7c0;
+
+    for (i = 0; i < PIF_CHANNELS_COUNT; ++i) {
+        pif->channels[i].jbd = jbds[i];
+        pif->channels[i].ijbd = ijbds[i];
+    }
+
+    init_cic_using_ipl3(&pif->cic, ipl3);
+
+    pif->r4300 = r4300;
+    pif->si = si;
+}
+
+void reset_pif(struct pif* pif, unsigned int reset_type)
+{
+    size_t i;
+
+    /* HACK: for allowing pifbootrom execution */
+    unsigned int rom_type = (pif->cic.version == CIC_8303 || pif->cic.version == CIC_8401 || pif->cic.version == CIC_8501) ? 1 : 0;
+    unsigned int s7 = 0;
+
+    /* 0:ColdReset, 1:NMI */
+    assert((reset_type & ~0x1) == 0);
+
+    /* disable channel processing */
+    for (i = 0; i < PIF_CHANNELS_COUNT; ++i) {
+        disable_pif_channel(&pif->channels[i]);
+    }
+
+    /* set PIF_24 with reset informations */
+    uint32_t* pif24 = (uint32_t*)(pif->ram + 0x24);
+    *pif24 = (uint32_t)
+         (((rom_type      & 0x1) << 19)
+        | ((s7            & 0x1) << 18)
+        | ((reset_type    & 0x1) << 17)
+        | ((pif->cic.seed & 0xff) << 8)
+        | 0x3f);
+    *pif24 = fromhl(*pif24);
+
+    /* clear PIF flags */
+    pif->ram[0x3f] = 0x00;
+}
+
+void setup_channels_format(struct pif* pif)
+{
+    size_t i = 0;
+    size_t k = 0;
+
+    while (i < PIF_RAM_SIZE && k < PIF_CHANNELS_COUNT)
+    {
+        switch(pif->ram[i])
+        {
+        case 0x00: /* skip channel */
+            disable_pif_channel(&pif->channels[k++]);
+            ++i;
+            break;
+
+        case 0xff: /* dummy data */
+            ++i;
+            break;
+
+        case 0xfe: /* end of channel setup - remaining channels are disabled */
+            while (k < PIF_CHANNELS_COUNT) {
+                disable_pif_channel(&pif->channels[k++]);
+            }
+            break;
+
+        case 0xfd: /* channel reset - send reset command and discard the results */ {
+            static uint8_t dummy_reset_buffer[PIF_CHANNELS_COUNT][6];
+
+            /* setup reset command Tx=1, Rx=3, cmd=0xff */
+            dummy_reset_buffer[k][0] = 0x01;
+            dummy_reset_buffer[k][1] = 0x03;
+            dummy_reset_buffer[k][2] = 0xff;
+
+            setup_pif_channel(&pif->channels[k], dummy_reset_buffer[k]);
+            ++k;
+            ++i;
+            }
+            break;
+
+        default: /* setup channel */
+
+            /* HACK?: some games sends bogus PIF commands while accessing controller paks
+             * Yoshi Story, Top Gear Rally 2, Indiana Jones, ...
+             * When encountering such commands, we skip this bogus byte.
+             */
+            if ((i+1 < PIF_RAM_SIZE) && (pif->ram[i+1] == 0xfe)) {
+                ++i;
+                continue;
+            }
+
+            if ((i + 2) >= PIF_RAM_SIZE) {
+                DebugMessage(M64MSG_WARNING, "Truncated PIF command ! Stopping PIF channel processing");
+                i = PIF_RAM_SIZE;
+                continue;
+            }
+
+
+            i += setup_pif_channel(&pif->channels[k++], &pif->ram[i]);
+        }
+    }
+
+    /* Zilmar-Spec plugin expect a call with control_id = -1 when RAM processing is done */
+    if (input.controllerCommand) {
+        input.controllerCommand(-1, NULL);
+    }
+
+#ifdef DEBUG_PIF
+    DebugMessage(M64MSG_INFO, "PIF setup channel");
+    print_pif(pif);
+#endif
+}
+
+static void process_cic_challenge(struct pif* pif)
+{
+    char challenge[30], response[30];
+    size_t i;
+
+    /* format the 'challenge' message into 30 nibbles for X-Scale's CIC code */
+    for (i = 0; i < 15; ++i)
+    {
+        challenge[i*2]   = (pif->ram[0x30+i] >> 4) & 0x0f;
+        challenge[i*2+1] =  pif->ram[0x30+i]       & 0x0f;
+    }
+
+    /* calculate the proper response for the given challenge (X-Scale's algorithm) */
+    n64_cic_nus_6105(challenge, response, CHL_LEN - 2);
+    pif->ram[0x2e] = 0;
+    pif->ram[0x2f] = 0;
+
+    /* re-format the 'response' into a byte stream */
+    for (i = 0; i < 15; ++i)
+    {
+        pif->ram[0x30+i] = (response[i*2] << 4) + response[i*2+1];
+    }
+
+#ifdef DEBUG_PIF
+    DebugMessage(M64MSG_INFO, "PIF cic challenge");
+    print_pif(pif);
+#endif
 }
 
 void poweron_pif(struct pif* pif)
 {
-   memset(pif->ram, 0, PIF_RAM_SIZE);
-   poweron_af_rtc(&pif->cart->af_rtc);
+    memset(pif->ram, 0, PIF_RAM_SIZE);
+
+    reset_pif(pif, 0); /* cold reset */
 }
 
-int read_pif_ram(void* opaque, uint32_t address, uint32_t* value)
+void read_pif_mem(void* opaque, uint32_t address, uint32_t* value)
 {
-   struct si_controller* si = (struct si_controller*)opaque;
-   uint32_t addr            = PIF_RAM_ADDR(address);
+    struct pif* pif = (struct pif*)opaque;
+    uint32_t addr = pif_address(address);
 
-   if (addr >= PIF_RAM_SIZE)
-   {
-      DebugMessage(M64MSG_ERROR, "Invalid PIF address: %08x", address);
-      *value = 0;
-      return -1;
-   }
-
-   memcpy(value, si->pif->ram + addr, sizeof(*value));
-   *value = sl(*value);
-   return 0;
+    memcpy(value, pif->base + addr, sizeof(*value));
+    if (addr >= PIF_ROM_SIZE)
+        *value = tohl(*value);
 }
 
-int write_pif_ram(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
+void write_pif_mem(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
 {
-   struct si_controller* si = (struct si_controller*)opaque;
-   uint32_t addr            = PIF_RAM_ADDR(address);
+    struct pif* pif = (struct pif*)opaque;
+    uint32_t addr = pif_address(address);
 
-   if (addr >= PIF_RAM_SIZE)
-   {
-      DebugMessage(M64MSG_ERROR, "Invalid PIF address: %08x", address);
-      return -1;
-   }
+    if (addr < PIF_ROM_SIZE)
+    {
+        DebugMessage(M64MSG_ERROR, "Invalid write to PIF ROM: %08" PRIX32, address);
+        return;
+    }
 
-   si->pif->ram[addr] = MASKED_WRITE((uint32_t*)(&si->pif->ram[addr]), sl(value), sl(mask));
+    masked_write((uint32_t*)(&pif->base[addr]), fromhl(value), fromhl(mask));
 
-   if ((addr == 0x3c) && (mask & 0xff))
-   {
-      if (si->pif->ram[0x3f] == 0x08)
-      {
-         si->pif->ram[0x3f] = 0;
-         cp0_update_count();
-         add_interrupt_event(SI_INT, /*0x100*/0x900);
-      }
-      else
-      {
-         update_pif_write(si);
-      }
-   }
-   return 0;
+    pif->si->dma_dir = SI_DMA_WRITE;
+
+    cp0_update_count(pif->r4300);
+    pif->si->regs[SI_STATUS_REG] |= (SI_STATUS_DMA_BUSY | SI_STATUS_IO_BUSY);
+    add_interrupt_event(&pif->r4300->cp0, SI_INT, pif->si->dma_duration);
 }
 
-void update_pif_write(struct si_controller *si)
+
+void process_pif_ram(struct pif* pif)
 {
-   int i=0, channel=0;
-   struct pif* pif = si->pif;
+    uint8_t flags = pif->ram[0x3f];
+    uint8_t clrmask = 0x00;
+    size_t k;
 
-   pif->cic_challenge = 0;
-
-   if (pif->ram[0x3F] > 1)
-   {
-      int8_t challenge[30], response[30];
-
-      switch (pif->ram[0x3F])
-      {
-         case 0x02:
+    if (flags == 0) {
 #ifdef DEBUG_PIF
-            DebugMessage(M64MSG_INFO, "update_pif_write() pif_ram[0x3f] = 2 - CIC challenge");
+        DebugMessage(M64MSG_INFO, "PIF process pif ram status=0x00");
+        print_pif(pif);
 #endif
-            // format the 'challenge' message into 30 nibbles for X-Scale's CIC code
-            for (i = 0; i < 15; i++)
-            {
-               challenge[i*2] =   (pif->ram[48+i] >> 4) & 0x0f;
-               challenge[i*2+1] =  pif->ram[48+i]       & 0x0f;
-            }
-            // calculate the proper response for the given challenge (X-Scale's algorithm)
-            n64_cic_nus_6105(challenge, response, CHL_LEN - 2);
-            pif->ram[46] = 0;
-            pif->ram[47] = 0;
-            // re-format the 'response' into a byte stream
-            for (i = 0; i < 15; i++)
-               pif->ram[48+i] = (response[i*2] << 4) + response[i*2+1];
-            // the last byte (2 nibbles) is always 0
-            pif->ram[63] = 0;
-            pif->cic_challenge = 1;
-            break;
-         case 0x08:
+        return;
+    }
+
+    if (flags & 0x01)
+    {
+        /* setup channels then clear format flag */
+        setup_channels_format(pif);
+        clrmask |= 0x01;
+    }
+
+    if (flags & 0x02)
+    {
+        /* disable channel processing when doing CIC challenge */
+        for (k = 0; k < PIF_CHANNELS_COUNT; ++k) {
+            disable_pif_channel(&pif->channels[k]);
+        }
+
+        /* CIC Challenge */
+        process_cic_challenge(pif);
+        clrmask |= 0x02;
+    }
+
+    if (flags & 0x08)
+    {
+        clrmask |= 0x08;
+    }
+
+    if (flags & 0x30)
+    {
+        pif->ram[0x3f] = 0x80;
+    }
+
 #ifdef DEBUG_PIF
-            DebugMessage(M64MSG_INFO, "update_pif_write() pif_ram[0x3f] = 8");
+    if (flags & 0xf4)
+    {
+        DebugMessage(M64MSG_ERROR, "error in process_pif_ram(): %" PRIX8, flags);
+    }
 #endif
-            pif->ram[0x3F] = 0;
-            break;
-         default:
-            DebugMessage(M64MSG_ERROR, "error in update_pif_write(): %x", pif->ram[0x3F]);
-      }
-      return;
-   }
-   while (i<0x40)
-   {
-      switch (pif->ram[i])
-      {
-         case 0x00:
-            channel++;
-            if (channel > 6) i=0x40;
-            break;
-         case 0xFF:
-            break;
-         default:
-            if (!(pif->ram[i] & 0xC0))
-            {
-               if (i+1 >= PIF_RAM_SIZE)
-               {
-                  DebugMessage(M64MSG_WARNING, "Truncated PIF command ! Stopping PIF channel processing");
-                  i=0x40;
-                  break;
-               }
-               if (channel < 4)
-               {
-                  if (Controls[channel].Present && Controls[channel].RawData)
-                     input.controllerCommand(channel, &pif->ram[i]);
-                  else
-                  {
-                     /* region 12d: dispatch through the joybus controller device.
-                      * Set up the channel's Tx/Rx pointers into PIF RAM (as next's
-                      * setup_pif_channel does); the controller device delegates to
-                      * pn64's flat handler, which resolves the live pak itself. */
-                     struct pif_channel* ch = &pif->channels[channel];
-                     uint8_t tx = pif->ram[i] & 0x3f;
-                     ch->tx     = &pif->ram[i];
-                     ch->rx     = &pif->ram[i+1];
-                     ch->tx_buf = &pif->ram[i+2];
-                     ch->rx_buf = &pif->ram[i+2+tx];
-                     if (ch->ijbd != NULL)
-                        ch->ijbd->process(ch->jbd, ch->tx, ch->tx_buf, ch->rx, ch->rx_buf);
-                  }
-               }
-               else if (channel == 4)
-               {
-                  /* region 12d: cart joybus device (eeprom + AF-RTC commands) */
-                  struct pif_channel* ch = &pif->channels[4];
-                  uint8_t tx = pif->ram[i] & 0x3f;
-                  ch->tx     = &pif->ram[i];
-                  ch->rx     = &pif->ram[i+1];
-                  ch->tx_buf = &pif->ram[i+2];
-                  ch->rx_buf = &pif->ram[i+2+tx];
-                  if (ch->ijbd != NULL)
-                     ch->ijbd->process(ch->jbd, ch->tx, ch->tx_buf, ch->rx, ch->rx_buf);
-               }
-               else
-                  DebugMessage(M64MSG_ERROR, "channel >= 4 in update_pif_write");
-               i += pif->ram[i] + (pif->ram[(i+1)] & 0x3F) + 1;
-               channel++;
-            }
-            else
-               i=0x40;
-      }
-      i++;
-   }
 
-   //pif->ram[0x3F] = 0;
-   
-   /* notify the INPUT plugin that we're at the end of PIF ram processing */
-   input.controllerCommand(-1, NULL);
+    pif->ram[0x3f] &= ~clrmask;
 }
 
-void update_pif_read(struct si_controller *si)
+void update_pif_ram(struct pif* pif)
 {
-   struct pif* pif = si->pif;
+    size_t k;
 
-   int i=0, channel=0;
+    /* perform PIF/Channel communications */
+    for (k = 0; k < PIF_CHANNELS_COUNT; ++k) {
+        process_channel(&pif->channels[k]);
+    }
 
-   /* When PIF ram contains a CIC challenge result, do not
-    * process the memory as if it were normal commands. */
-   if (pif->cic_challenge)
-      return;
+    /* Zilmar-Spec plugin expect a call with control_id = -1 when RAM processing is done */
+    if (input.readController) {
+        input.readController(-1, NULL);
+    }
 
-   while (i<0x40)
-   {
-      switch (pif->ram[i])
-      {
-         case 0x00:
-            channel++;
-            if (channel > 6) i=0x40;
-            break;
-         case 0xFE:
-            i = 0x40;
-            break;
-         case 0xFF:
-            break;
-         case 0xB4:
-         case 0x56:
-         case 0xB8:
-            break;
-         default:
-            if (!(pif->ram[i] & 0xC0))
-            {
-               if (i+1 >= PIF_RAM_SIZE)
-               {
-                  DebugMessage(M64MSG_WARNING, "Truncated PIF command ! Stopping PIF channel processing");
-                  i=0x40;
-                  break;
-               }
-               if (channel < 4)
-               {
-                  if (Controls[channel].Present &&
-                        Controls[channel].RawData)
-                     input.readController(channel, &pif->ram[i]);
-                  else
-                     /* region 12d: the read pass re-samples buttons (pn64's
-                      * two-pass latency behaviour). The controller joybus device
-                      * delegates writes to the flat handler; reads stay on the
-                      * flat read_controller, which only re-runs the button-read
-                      * commands -- identical memory, identical timing. */
-                     read_controller(&pif->controllers[channel], &pif->ram[i]);
-               }
-               i += pif->ram[i] + (pif->ram[(i+1)] & 0x3F) + 1;
-               channel++;
-            }
-            else
-               i=0x40;
-      }
-      i++;
-   }
+    netplay_update_input(pif);
 
-   /* notify the INPUT plugin that we're at the end of PIF ram processing */
-   input.readController(-1, NULL);
+#ifdef DEBUG_PIF
+    DebugMessage(M64MSG_INFO, "PIF post read");
+    print_pif(pif);
+#endif
 }
+
+void hw2_int_handler(void* opaque)
+{
+    struct pif* pif = (struct pif*)opaque;
+
+    raise_maskable_interrupt(pif->r4300, CP0_CAUSE_IP4);
+}
+

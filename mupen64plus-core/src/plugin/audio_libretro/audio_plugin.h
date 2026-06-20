@@ -30,3 +30,6 @@ void     flush_audio_libretro(void);
 unsigned get_audio_sample_rate_libretro(void);
 
 #endif
+
+struct audio_out_backend_interface;
+extern const struct audio_out_backend_interface audio_out_backend_libretro;

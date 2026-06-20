@@ -1,6 +1,6 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *   Mupen64plus - af_rtc.h                                                *
- *   Mupen64Plus homepage: http://code.google.com/p/mupen64plus/           *
+ *   Mupen64Plus homepage: https://mupen64plus.org/                        *
  *   Copyright (C) 2014 Bobby Smiles                                       *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
@@ -19,43 +19,36 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef M64P_SI_AF_RTC_H
-#define M64P_SI_AF_RTC_H
+#ifndef M64P_DEVICE_SI_AF_RTC_H
+#define M64P_DEVICE_SI_AF_RTC_H
 
 #include <stdint.h>
+#include <time.h>
 
-struct tm;
 struct clock_backend_interface;
 
 struct af_rtc
 {
-   /* block 0: control register (little-endian: data[0]=low, data[1]=high).
-    * Bit 0 write-protects block 1, bit 1 write-protects block 2; bit 9 (the
-    * 0x0200 power-on default) marks the timer active. */
-   uint16_t control;
+    /* block 0 */
+    uint16_t control;
+    /* block 2 */
+    time_t now;
 
-   /* External time source. parallel-n64 binds this to next's clock_backend
-    * interface (get_time -> time_t), but keeps pn64's struct tm + PL_RTC_OFFSET
-    * model and savestate format on top of it (see af_rtc.c). */
-   void* clock;
-   const struct clock_backend_interface* iclock;
+    time_t last_update_rtc;
+    void* clock;
+    const struct clock_backend_interface* iclock;
 };
 
-const struct tm* af_rtc_get_time(struct af_rtc* rtc);
-void af_rtc_set_time(struct af_rtc* rtc, struct tm* timestamp);
-
 void init_af_rtc(struct af_rtc* rtc,
-      void* clock,
-      const struct clock_backend_interface* iclock);
+                 void* clock,
+                 const struct clock_backend_interface* iclock);
 
 void poweron_af_rtc(struct af_rtc* rtc);
 
-void af_rtc_status_command(struct af_rtc* rtc, uint8_t* cmd);
-void af_rtc_read_command(struct af_rtc* rtc, uint8_t* cmd);
-void af_rtc_write_command(struct af_rtc* rtc, uint8_t* cmd);
+void af_rtc_read_block(struct af_rtc* rtc,
+    uint8_t block, uint8_t* data, uint8_t* status);
 
-/* mupen64plus-next-style block accessors (used by the joybus cart device) */
-void af_rtc_read_block(struct af_rtc* rtc, uint8_t block, uint8_t* data, uint8_t* status);
-void af_rtc_write_block(struct af_rtc* rtc, uint8_t block, const uint8_t* data, uint8_t* status);
+void af_rtc_write_block(struct af_rtc* rtc,
+    uint8_t block, const uint8_t* data, uint8_t* status);
 
 #endif

@@ -22,27 +22,22 @@
 #ifndef M64P_DEVICE_CART_CART_H
 #define M64P_DEVICE_CART_CART_H
 
+#include "backends/api/joybus.h"
+
 #include "af_rtc.h"
 #include "cart_rom.h"
 #include "eeprom.h"
 #include "flashram.h"
-#include "is_viewer.h"
 #include "sram.h"
 
-#include "../../backends/libretro_storage.h"
-#include "../../backends/api/joybus.h"
+#include <stddef.h>
+#include <stdint.h>
 
 struct r4300_core;
 struct pi_controller;
 struct clock_backend_interface;
 struct storage_backend_interface;
 
-/* Group the cart save chips and ROM into a single device-level struct, matching
- * mupen64plus-next's struct cart. Unlike next (which binds the save chips to
- * file_storage), parallel-n64 keeps its libretro save-RAM backends, so the
- * per-chip libretro_storage objects live here alongside the chips. The joybus
- * cart device and the cart_dom2/dom3 DMA dispatch below are imported from next
- * (region 12); they are wired into the PIF/PI paths in later steps. */
 struct cart
 {
     struct af_rtc af_rtc;
@@ -51,19 +46,29 @@ struct cart
     struct flashram flashram;
     struct sram sram;
 
-    /* IS-Viewer debug device (homebrew/test ROM printf output at 0x13ff0000) */
-    struct is_viewer is_viewer;
-
     int use_flashram;
-
-    /* parallel-n64 libretro save-RAM backends for the save chips */
-    struct libretro_storage eeprom_storage;
-    struct libretro_storage flashram_storage;
-    struct libretro_storage sram_storage;
 };
 
-/* PI dom2 (save chip) MMIO + DMA dispatch, routing between sram and flashram by
- * use_flashram, matching mupen64plus-next. */
+
+void init_cart(struct cart* cart,
+               /* AF-RTC */
+               void* af_rtc_clock, const struct clock_backend_interface* iaf_rtc_clock,
+               /* cart ROM */
+               uint8_t* rom, size_t rom_size,
+               struct r4300_core* r4300,
+               struct pi_controller* pi,
+               /* eeprom */
+               uint16_t eeprom_type,
+               void* eeprom_storage, const struct storage_backend_interface* ieeprom_storage,
+               /* flashram */
+               uint32_t flashram_type,
+               void* flashram_storage, const struct storage_backend_interface* iflashram_storage,
+               const uint8_t* dram,
+               /* sram */
+               void* sram_storage, const struct storage_backend_interface* isram_storage);
+
+void poweron_cart(struct cart* cart);
+
 void read_cart_dom2(void* opaque, uint32_t address, uint32_t* value);
 void write_cart_dom2(void* opaque, uint32_t address, uint32_t value, uint32_t mask);
 
@@ -72,7 +77,6 @@ unsigned int cart_dom2_dma_write(void* opaque, uint8_t* dram, uint32_t dram_addr
 unsigned int cart_dom3_dma_read(void* opaque, const uint8_t* dram, uint32_t dram_addr, uint32_t cart_addr, uint32_t length);
 unsigned int cart_dom3_dma_write(void* opaque, uint8_t* dram, uint32_t dram_addr, uint32_t cart_addr, uint32_t length);
 
-/* Joybus cart device (eeprom + AF-RTC PIF-channel commands) */
 extern const struct joybus_device_interface
     g_ijoybus_device_cart;
 

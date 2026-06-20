@@ -95,7 +95,11 @@ struct retro_core_option_v2_definition option_defs_us[] = {
         "cached_interpreter"
 #else
 #ifdef DYNAREC
+#if defined(HAVE_DYNAREC_HACKTARUX) && defined(NEW_DYNAREC)
+        "dynamic_recompiler_ari64"
+#else
         "dynamic_recompiler"
+#endif
 #else
         "cached_interpreter"
 #endif

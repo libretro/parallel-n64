@@ -1,6 +1,6 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *   Mupen64plus - cic.h                                                   *
- *   Mupen64Plus homepage: http://code.google.com/p/mupen64plus/           *
+ *   Mupen64Plus homepage: https://mupen64plus.org/                        *
  *   Copyright (C) 2014 Bobby Smiles                                       *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
@@ -19,8 +19,8 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef M64P_SI_CIC_H
-#define M64P_SI_CIC_H
+#ifndef M64P_DEVICE_SI_CIC_H
+#define M64P_DEVICE_SI_CIC_H
 
 enum cic_version
 {
@@ -29,15 +29,16 @@ enum cic_version
     CIC_X103,
     CIC_X105,
     CIC_X106,
+    CIC_5101,
     CIC_5167,
     CIC_8303,
-    CIC_USDD,
-    CIC_DVDD,
-    CIC_5101
+    CIC_8401,
+    CIC_8501
 };
 
 struct cic
 {
+    const char* name;
     enum cic_version version;
     unsigned int seed;
 };

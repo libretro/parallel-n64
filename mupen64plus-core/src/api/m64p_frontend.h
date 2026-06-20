@@ -1,6 +1,6 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *   Mupen64plus-core - m64p_frontend.h                                    *
- *   Mupen64Plus homepage: http://code.google.com/p/mupen64plus/           *
+ *   Mupen64Plus homepage: https://mupen64plus.org/                        *
  *   Copyright (C) 2009 Richard Goedeken                                   *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
@@ -23,7 +23,7 @@
  * designed for use by the front-end user interface.
  */
 
-#ifndef M64P_FRONTEND_H
+#if !defined(M64P_FRONTEND_H)
 #define M64P_FRONTEND_H
 
 #include "m64p_types.h"
@@ -61,6 +61,26 @@ typedef m64p_error (*ptr_CoreShutdown)(void);
 EXPORT m64p_error CALL CoreShutdown(void);
 #endif
 
+/* CoreAttachPlugin()
+ *
+ * This function attaches the given plugin to the emulator core. There can only
+ * be one plugin of each type attached to the core at any given time. 
+ */
+typedef m64p_error (*ptr_CoreAttachPlugin)(m64p_plugin_type, m64p_dynlib_handle);
+#if defined(M64P_CORE_PROTOTYPES)
+EXPORT m64p_error CALL CoreAttachPlugin(m64p_plugin_type, m64p_dynlib_handle);
+#endif
+
+/* CoreDetachPlugin()
+ *
+ * This function detaches the given plugin from the emulator core, and re-attaches
+ * the 'dummy' plugin functions. 
+ */
+typedef m64p_error (*ptr_CoreDetachPlugin)(m64p_plugin_type);
+#if defined(M64P_CORE_PROTOTYPES)
+EXPORT m64p_error CALL CoreDetachPlugin(m64p_plugin_type);
+#endif
+
 /* CoreDoCommand()
  *
  * This function sends a command to the emulator core.
@@ -68,6 +88,39 @@ EXPORT m64p_error CALL CoreShutdown(void);
 typedef m64p_error (*ptr_CoreDoCommand)(m64p_command, int, void *);
 #if defined(M64P_CORE_PROTOTYPES)
 EXPORT m64p_error CALL CoreDoCommand(m64p_command, int, void *);
+#endif
+
+/* CoreOverrideVidExt()
+ *
+ * This function overrides the core's internal SDL-based OpenGL functions. This
+ * override functionality allows a front-end to define its own video extension
+ * functions to be used instead of the SDL functions. If any of the function
+ * pointers in the structure are NULL, the override function will be disabled
+ * and the core's internal SDL functions will be used.
+ */
+typedef m64p_error (*ptr_CoreOverrideVidExt)(m64p_video_extension_functions *);
+#if defined(M64P_CORE_PROTOTYPES)
+EXPORT m64p_error CALL CoreOverrideVidExt(m64p_video_extension_functions *);
+#endif
+
+/* CoreAddCheat()
+ *
+ * This function will add a Cheat Function to a list of currently active cheats
+ * which are applied to the open ROM.
+ */
+typedef m64p_error (*ptr_CoreAddCheat)(const char *, m64p_cheat_code *, int);
+#if defined(M64P_CORE_PROTOTYPES)
+EXPORT m64p_error CALL CoreAddCheat(const char *, m64p_cheat_code *, int);
+#endif
+
+/* CoreCheatEnabled()
+ *
+ * This function will enable or disable a Cheat Function which is in the list of
+ * currently active cheats.
+ */
+typedef m64p_error (*ptr_CoreCheatEnabled)(const char *, int);
+#if defined(M64P_CORE_PROTOTYPES)
+EXPORT m64p_error CALL CoreCheatEnabled(const char *, int);
 #endif
 
 /* CoreGetRomSettings()
@@ -79,23 +132,6 @@ typedef m64p_error (*ptr_CoreGetRomSettings)(m64p_rom_settings *, int, int, int)
 #if defined(M64P_CORE_PROTOTYPES)
 EXPORT m64p_error CALL CoreGetRomSettings(m64p_rom_settings *, int, int, int);
 #endif
-
-/* CoreSetAudioInterfaceBackend()
- *
- * This function allows the frontend to specify the audio backend to be used by
- * the AI controller. If any of the function pointers in the structure are NULL,
- * a dummy backend will be used (eg no sound).
- */
-typedef m64p_error (*ptr_CoreSetAudioInterfaceBackend)(const struct m64p_audio_backend *);
-#if defined(M64P_CORE_PROTOTYPES)
-EXPORT m64p_error CALL CoreSetAudioInterfaceBackend(const struct m64p_audio_backend *);
-#endif
-
-EXPORT m64p_error CALL CoreAddCheat(const char *CheatName, m64p_cheat_code *CodeList, int NumCodes);
-
-EXPORT m64p_error CALL CoreCheatEnabled(const char *CheatName, int Enabled);
-
-EXPORT m64p_error CALL CoreCheatClearAll(void);
 
 #ifdef __cplusplus
 }

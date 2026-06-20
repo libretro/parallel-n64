@@ -220,3 +220,26 @@ void push_audio_samples_via_libretro(void *user_data,
          flush_audio_libretro();
    }
 }
+
+/* ---- next-style audio_out_backend_interface adapter ---------------------
+ * next's init_ai() takes a (void* aout, const struct audio_out_backend_interface*)
+ * pair. Wrap the existing libretro audio bridge in that interface so next's
+ * ai_controller can drive it unchanged. set_frequency drops the 'bits' arg
+ * (libretro output is always the fixed format push_audio_samples emits). */
+#include "backends/api/audio_out_backend.h"
+
+static void libretro_aout_set_frequency(void* aout, unsigned int frequency)
+{
+   set_audio_format_via_libretro(aout, frequency, 16);
+}
+
+static void libretro_aout_push_samples(void* aout, const void* samples, size_t size)
+{
+   push_audio_samples_via_libretro(aout, samples, size);
+}
+
+const struct audio_out_backend_interface audio_out_backend_libretro =
+{
+   libretro_aout_set_frequency,
+   libretro_aout_push_samples
+};

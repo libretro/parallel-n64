@@ -1,6 +1,6 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *   Mupen64plus - transferpak.c                                           *
- *   Mupen64Plus homepage: http://code.google.com/p/mupen64plus/           *
+ *   Mupen64Plus homepage: https://mupen64plus.org/                        *
  *   Copyright (C) 2014 Bobby Smiles                                       *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
@@ -19,13 +19,18 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
+/* This work is based on the NRage plugin source.
+ * Transfer pak emulation is certainly NOT accurate
+ * but without proper reverse-engineering this as good as we can get.
+ */
+
 #include "transferpak.h"
-#include "../game_controller.h"
 
-#include "../../../api/m64p_types.h"
-#include "../../../api/callbacks.h"
+#include "api/m64p_types.h"
+#include "api/callbacks.h"
 
-#include "../../../gb/gb_cart.h"
+#include "device/gb/gb_cart.h"
+#include "device/controllers/game_controller.h"
 
 #include <string.h>
 
@@ -35,29 +40,56 @@ static uint16_t gb_cart_address(unsigned int bank, uint16_t address)
     return (address & 0x3fff) | ((bank & 0x3) * 0x4000) ;
 }
 
-
-int init_transferpak(struct transferpak* tpk, uint8_t *rom, size_t rom_size)
+void init_transferpak(struct transferpak* tpk, struct gb_cart* gb_cart)
 {
-    memset(tpk, 0, sizeof(*tpk));
+    tpk->gb_cart = gb_cart;
+}
 
-    tpk->access_mode = (init_gb_cart(&tpk->gb_cart, rom, rom_size) != 0)
+void poweron_transferpak(struct transferpak* tpk)
+{
+    tpk->enabled = 0;
+    tpk->bank = 0;
+    tpk->access_mode = (tpk->gb_cart == NULL)
         ? CART_NOT_INSERTED
         : CART_ACCESS_MODE_0;
     tpk->access_mode_changed = 0x44;
 
-    return 0;
+    if (tpk->gb_cart != NULL) {
+        poweron_gb_cart(tpk->gb_cart);
+    }
 }
 
-void release_transferpak(struct transferpak* tpk)
+void change_gb_cart(struct transferpak* tpk, struct gb_cart* gb_cart)
 {
-    release_gb_cart(&tpk->gb_cart);
+    tpk->enabled = 0;
+
+    if (gb_cart == NULL) {
+        tpk->access_mode = CART_NOT_INSERTED;
+    }
+    else {
+        tpk->access_mode = CART_ACCESS_MODE_0;
+        poweron_gb_cart(gb_cart);
+    }
+
+    tpk->gb_cart = gb_cart;
 }
 
-void transferpak_read_command(struct transferpak* tpk, uint16_t address, uint8_t* data, size_t size)
+static void plug_transferpak(void* pak)
 {
+    struct transferpak* tpk = (struct transferpak*)pak;
+    poweron_transferpak(tpk);
+}
+
+static void unplug_transferpak(void* pak)
+{
+}
+
+static void read_transferpak(void* pak, uint16_t address, uint8_t* data, size_t size)
+{
+    struct transferpak* tpk = (struct transferpak*)pak;
     uint8_t value;
 
-    DebugMessage(M64MSG_WARNING, "tpak read: %04x", address);
+    DebugMessage(M64MSG_VERBOSE, "tpak read: %04x", address);
 
     switch(address >> 12)
     {
@@ -67,7 +99,7 @@ void transferpak_read_command(struct transferpak* tpk, uint16_t address, uint8_t
               ? 0x84
               : 0x00;
 
-        DebugMessage(M64MSG_WARNING, "tpak get cart state: %02x", value);
+        DebugMessage(M64MSG_VERBOSE, "tpak get cart state: %02x", value);
         memset(data, value, size);
         break;
 
@@ -75,7 +107,7 @@ void transferpak_read_command(struct transferpak* tpk, uint16_t address, uint8_t
         /* get gb cart access mode */
         if (tpk->enabled)
         {
-            DebugMessage(M64MSG_WARNING, "tpak get access mode: %02x", tpk->access_mode);
+            DebugMessage(M64MSG_VERBOSE, "tpak get access mode: %02x", tpk->access_mode);
             memset(data, tpk->access_mode, size);
             if (tpk->access_mode != CART_NOT_INSERTED)
             {
@@ -92,8 +124,11 @@ void transferpak_read_command(struct transferpak* tpk, uint16_t address, uint8_t
         /* read gb cart */
         if (tpk->enabled)
         {
-            DebugMessage(M64MSG_WARNING, "tpak read cart: %04x", address);
-            read_gb_cart(&tpk->gb_cart, gb_cart_address(tpk->bank, address), data);
+            DebugMessage(M64MSG_VERBOSE, "tpak read cart: %04x", address);
+
+            if (tpk->gb_cart != NULL) {
+                read_gb_cart(tpk->gb_cart, gb_cart_address(tpk->bank, address), data, size);
+            }
         }
         break;
 
@@ -102,26 +137,29 @@ void transferpak_read_command(struct transferpak* tpk, uint16_t address, uint8_t
     }
 }
 
-void transferpak_write_command(struct transferpak* tpk, uint16_t address, const uint8_t* data, size_t size)
+static void write_transferpak(void* pak, uint16_t address, const uint8_t* data, size_t size)
 {
-    DebugMessage(M64MSG_WARNING, "tpak write: %04x <- %02x", address, *data);
+    struct transferpak* tpk = (struct transferpak*)pak;
+    uint8_t value = data[size-1];
+
+    DebugMessage(M64MSG_VERBOSE, "tpak write: %04x <- %02x", address, value);
 
     switch(address >> 12)
     {
     case 0x8:
         /* enable / disable gb cart */
-        switch(*data)
+        switch(value)
         {
         case 0xfe:
             tpk->enabled = 0;
-            DebugMessage(M64MSG_WARNING, "tpak disabled");
+            DebugMessage(M64MSG_VERBOSE, "tpak disabled");
             break;
         case 0x84:
             tpk->enabled = 1;
-            DebugMessage(M64MSG_WARNING, "tpak enabled");
+            DebugMessage(M64MSG_VERBOSE, "tpak enabled");
             break;
         default:
-            DebugMessage(M64MSG_WARNING, "Unknown tpak write: %04x <- %02x", address, *data);
+            DebugMessage(M64MSG_WARNING, "Unknown tpak write: %04x <- %02x", address, value);
         }
         break;
 
@@ -129,8 +167,8 @@ void transferpak_write_command(struct transferpak* tpk, uint16_t address, const 
         /* set gb cart bank */
         if (tpk->enabled)
         {
-            tpk->bank = *data;
-            DebugMessage(M64MSG_WARNING, "tpak set bank %02x", tpk->bank);
+            tpk->bank = value;
+            DebugMessage(M64MSG_VERBOSE, "tpak set bank %02x", tpk->bank);
         }
         break;
 
@@ -140,16 +178,16 @@ void transferpak_write_command(struct transferpak* tpk, uint16_t address, const 
         {
             tpk->access_mode_changed = 0x04;
 
-            tpk->access_mode = ((*data & 1) == 0)
+            tpk->access_mode = ((value & 1) == 0)
                               ? CART_ACCESS_MODE_0
                               : CART_ACCESS_MODE_1;
 
-            if ((*data & 0xfe) != 0)
+            if ((value & 0xfe) != 0)
             {
-                DebugMessage(M64MSG_WARNING, "Unknwon tpak write: %04x <- %02x", address, *data);
+                DebugMessage(M64MSG_WARNING, "Unknown tpak write: %04x <- %02x", address, value);
             }
 
-            DebugMessage(M64MSG_WARNING, "tpak set access mode %02x", tpk->access_mode);
+            DebugMessage(M64MSG_VERBOSE, "tpak set access mode %02x", tpk->access_mode);
         }
         break;
 
@@ -160,28 +198,19 @@ void transferpak_write_command(struct transferpak* tpk, uint16_t address, const 
         /* write gb cart */
 //        if (tpk->enabled)
         {
-            DebugMessage(M64MSG_WARNING, "tpak write gb: %04x <- %02x", address, *data);
-            write_gb_cart(&tpk->gb_cart, gb_cart_address(tpk->bank, address), data);
+            DebugMessage(M64MSG_VERBOSE, "tpak write gb: %04x <- %02x", address, value);
+
+            if (tpk->gb_cart != NULL) {
+                write_gb_cart(tpk->gb_cart, gb_cart_address(tpk->bank, address), data, size);
+            }
         }
         break;
     default:
-        DebugMessage(M64MSG_WARNING, "Unknown tpak write: %04x <- %02x", address, *data);
+        DebugMessage(M64MSG_WARNING, "Unknown tpak write: %04x <- %02x", address, value);
     }
 }
 
-/* mupen64plus-next pak_interface vtable (region 12c). Bridges the joybus
- * controller device onto parallel-n64's transferpak read/write command functions.
- * plug/unplug are no-ops: pn64 paks are always-present nested structs. */
-static void plug_transferpak(void* pak)   { (void)pak; }
-static void unplug_transferpak(void* pak) { (void)pak; }
-static void read_transferpak(void* pak, uint16_t address, uint8_t* data, size_t size)
-{
-    transferpak_read_command((struct transferpak*)pak, address, data, size);
-}
-static void write_transferpak(void* pak, uint16_t address, const uint8_t* data, size_t size)
-{
-    transferpak_write_command((struct transferpak*)pak, address, data, size);
-}
+/* Transfer pak definition */
 const struct pak_interface g_itransferpak =
 {
     "Transfer pak",

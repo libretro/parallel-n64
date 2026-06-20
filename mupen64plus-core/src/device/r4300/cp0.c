@@ -1,6 +1,6 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *   Mupen64plus - cp0.c                                                   *
- *   Mupen64Plus homepage: http://code.google.com/p/mupen64plus/           *
+ *   Mupen64Plus homepage: https://mupen64plus.org/                        *
  *   Copyright (C) 2002 Hacktarux                                          *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
@@ -20,102 +20,315 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include <stdint.h>
-extern int g_cp0_cycle_count;
 #include <string.h>
 
-#include "cp0_private.h"
-#include "exception.h"
-/* region 14 / Phase 2d (increment 11): g_cp0_regs is aliased to
- * g_dev.r4300.new_dynarec_hot_state.cp0_regs on x64 (see cp0_private.h); this TU
- * uses it throughout, so it needs the complete struct device and g_dev. */
-#include "../device.h"
-#include "../../main/main.h"
+#include "cp0.h"
+#include "r4300_core.h"
 #include "new_dynarec/new_dynarec.h"
-#include "r4300.h"
 #include "recomp.h"
 
-
-/* global variable */
-#if !defined(__arm64__) && !defined(__aarch64__)
-#if NEW_DYNAREC < NEW_DYNAREC_ARM
-/* ARM backend requires a different memory layout
- * and therefore manually allocate that variable */
-/* region 14 / Phase 2d (increment 11): on x64 g_cp0_regs storage is in the
- * embedded hot-state struct (see cp0_private.h alias); only x86 keeps the flat
- * definition. */
-#if !defined(_M_X64)
-uint32_t g_cp0_regs[CP0_REGS_COUNT];
-#endif
-#endif
+#ifdef COMPARE_CORE
+#include "api/debugger.h"
 #endif
 
-/* CP0 write latch: every MTC0 stores its source-register value here
- * regardless of which CP0 register was targeted. Reads from CP0
- * registers that don't physically exist (rfs == 7, 21..25, 31)
- * return this latched value instead of zero, matching real R4300
- * hardware. Defined as a plain global rather than going through the
- * arm64 memory_layout_arm64 struct since the dynarec backends invoke
- * MFC0/MTC0 via cached_interpreter_table function pointers and never
- * access the latch directly from JIT code. */
-uint64_t cp0_latch;
-
-void init_cp0(unsigned int _count_per_op)
-{
-#if 0
-   count_per_op = _count_per_op;
+#ifdef DBG
+#include "debugger/dbg_debugger.h"
 #endif
-}
-
-void poweron_cp0(void)
-{
-   memset(g_cp0_regs, 0, CP0_REGS_COUNT * sizeof(g_cp0_regs[0]));
-   g_cp0_regs[CP0_RANDOM_REG] = UINT32_C(31);
-   g_cp0_regs[CP0_STATUS_REG]= UINT32_C(0x34000000);
-   set_fpr_pointers(g_cp0_regs[CP0_STATUS_REG]);
-   g_cp0_regs[CP0_CONFIG_REG]= UINT32_C(0x6e463);
-   g_cp0_regs[CP0_PREVID_REG] = UINT32_C(0xb10);
-   g_cp0_regs[CP0_COUNT_REG] = UINT32_C(0x5000);
-   g_cp0_regs[CP0_CAUSE_REG] = UINT32_C(0x5C);
-   g_cp0_regs[CP0_CONTEXT_REG] = UINT32_C(0x7FFFF0);
-   g_cp0_regs[CP0_EPC_REG] = UINT32_C(0xFFFFFFFF);
-   g_cp0_regs[CP0_BADVADDR_REG] = UINT32_C(0xFFFFFFFF);
-   g_cp0_regs[CP0_ERROREPC_REG] = UINT32_C(0xFFFFFFFF);
-
-   init_interrupt();
-
-   poweron_tlb();
-}
 
 /* global functions */
-uint32_t* r4300_cp0_regs(void)
+void init_cp0(struct cp0* cp0, unsigned int count_per_op, unsigned int count_per_op_denom_pot, struct new_dynarec_hot_state* new_dynarec_hot_state, const struct interrupt_handler* interrupt_handlers)
 {
-    return g_cp0_regs;
+    cp0->count_per_op = count_per_op;
+    cp0->count_per_op_denom_pot = count_per_op_denom_pot;
+    /* Always store the ari64 hot-state pointer; accessors gate its use. */
+    cp0->new_dynarec_hot_state = new_dynarec_hot_state;
+
+    memcpy(cp0->interrupt_handlers, interrupt_handlers, CP0_INTERRUPT_HANDLERS_COUNT*sizeof(*interrupt_handlers));
 }
 
-int check_cop1_unusable(void)
+void poweron_cp0(struct cp0* cp0)
 {
-   if (!(g_cp0_regs[CP0_STATUS_REG] & CP0_STATUS_CU1))
-   {
-      g_cp0_regs[CP0_CAUSE_REG] = CP0_CAUSE_EXCCODE_CPU | CP0_CAUSE_CE1;
-      exception_general();
-      return 1;
-   }
-   return 0;
+    uint32_t* cp0_regs;
+    unsigned int* cp0_next_interrupt;
+    int* cp0_cycle_count;
+
+    cp0_regs = r4300_cp0_regs(cp0);
+    cp0_next_interrupt = r4300_cp0_next_interrupt(cp0);
+    cp0_cycle_count = r4300_cp0_cycle_count(cp0);
+
+    memset(cp0_regs, 0, CP0_REGS_COUNT * sizeof(cp0_regs[0]));
+    cp0_regs[CP0_RANDOM_REG] = UINT32_C(31);
+    cp0_regs[CP0_STATUS_REG]= UINT32_C(0x34000000);
+    cp0_regs[CP0_CONFIG_REG]= UINT32_C(0x6e463);
+    cp0_regs[CP0_PREVID_REG] = UINT32_C(0xb10);
+    cp0_regs[CP0_COUNT_REG] = UINT32_C(0x5000);
+    cp0_regs[CP0_CAUSE_REG] = UINT32_C(0x5c);
+    cp0_regs[CP0_CONTEXT_REG] = UINT32_C(0x7ffff0);
+    cp0_regs[CP0_EPC_REG] = UINT32_C(0xffffffff);
+    cp0_regs[CP0_BADVADDR_REG] = UINT32_C(0xffffffff);
+    cp0_regs[CP0_ERROREPC_REG] = UINT32_C(0xffffffff);
+
+    /* XXX: clarify what is done on poweron, in soft_reset and in execute... */
+    cp0->interrupt_unsafe_state = 0;
+    *cp0_next_interrupt = 0;
+    *cp0_cycle_count = 0;
+    cp0->last_addr = UINT32_C(0xbfc00000);
+
+    init_interrupt(cp0);
+
+    poweron_tlb(&cp0->tlb);
 }
 
-void cp0_update_count(void)
+
+/* ari64 keeps the live CP0 regs/latch/cycle_count in its hot state; the
+ * interpreters and Hacktarux use the cp0 struct fields. Dispatch on the
+ * selected backend (globals, since cp0 has no emumode of its own). */
+extern unsigned int r4300_emumode;
+extern unsigned int r4300_jit_backend;
+
+static int cp0_uses_ari64_hot_state(struct cp0* cp0)
 {
-#ifdef NEW_DYNAREC
-   if (r4300emu != CORE_DYNAREC_ARI64)
-   {
-#endif
-      {
-         uint32_t cnt = ((mupencorePC->addr - last_addr) >> 2) * count_per_op;
-         g_cp0_regs[CP0_COUNT_REG] += cnt;
-         g_cp0_cycle_count        += (int)cnt;
-      }
-      last_addr = mupencorePC->addr;
-#ifdef NEW_DYNAREC
-   }
+    return (cp0->new_dynarec_hot_state != NULL)
+        && (r4300_emumode == EMUMODE_DYNAREC)
+        && (r4300_jit_backend == R4300_JIT_ARI64);
+}
+
+uint32_t* r4300_cp0_regs(struct cp0* cp0)
+{
+    return cp0_uses_ari64_hot_state(cp0)
+        ? cp0->new_dynarec_hot_state->cp0_regs
+        : cp0->regs;
+}
+
+uint64_t* r4300_cp0_latch(struct cp0* cp0)
+{
+    return cp0_uses_ari64_hot_state(cp0)
+        ? &cp0->new_dynarec_hot_state->cp0_latch
+        : &cp0->latch;
+}
+
+uint32_t* r4300_cp0_last_addr(struct cp0* cp0)
+{
+    return &cp0->last_addr;
+}
+
+unsigned int* r4300_cp0_next_interrupt(struct cp0* cp0)
+{
+    return &cp0->next_interrupt;
+}
+
+int* r4300_cp0_cycle_count(struct cp0* cp0)
+{
+    return cp0_uses_ari64_hot_state(cp0)
+        ? &cp0->new_dynarec_hot_state->cycle_count
+        : &cp0->cycle_count;
+}
+
+
+int check_cop1_unusable(struct r4300_core* r4300)
+{
+    uint32_t* cp0_regs = r4300_cp0_regs(&r4300->cp0);
+
+    if (!(cp0_regs[CP0_STATUS_REG] & CP0_STATUS_CU1))
+    {
+        cp0_regs[CP0_CAUSE_REG] = CP0_CAUSE_EXCCODE_CPU | CP0_CAUSE_CE1;
+        exception_general(r4300);
+        return 1;
+    }
+    return 0;
+}
+
+int check_cop2_unusable(struct r4300_core* r4300)
+{
+    uint32_t* cp0_regs = r4300_cp0_regs(&r4300->cp0);
+
+    if (!(cp0_regs[CP0_STATUS_REG] & CP0_STATUS_CU2))
+    {
+        cp0_regs[CP0_CAUSE_REG] = CP0_CAUSE_EXCCODE_CPU | CP0_CAUSE_CE2;
+        exception_general(r4300);
+        return 1;
+    }
+    return 0;
+}
+
+void cp0_update_count(struct r4300_core* r4300)
+{
+    struct cp0* cp0 = &r4300->cp0;
+    uint32_t* cp0_regs = r4300_cp0_regs(cp0);
+
+    /* ari64, when it is the active dynarec, maintains COUNT from its hot-state
+     * cycle counter; every other path (interpreters, and the Hacktarux dynarec)
+     * derives it from the PC delta. */
+    if (!(r4300->emumode == EMUMODE_DYNAREC && r4300_jit_backend == R4300_JIT_ARI64))
+    {
+        uint32_t count = ((*r4300_pc(r4300) - cp0->last_addr) >> 2) * cp0->count_per_op;
+        if (r4300->cp0.count_per_op_denom_pot) {
+            count += (1 << r4300->cp0.count_per_op_denom_pot) - 1;
+            count >>= r4300->cp0.count_per_op_denom_pot;
+        }
+        cp0_regs[CP0_COUNT_REG] += count;
+        *r4300_cp0_cycle_count(cp0) += count;
+        cp0->last_addr = *r4300_pc(r4300);
+    }
+    else
+        cp0_regs[CP0_COUNT_REG] = *r4300_cp0_next_interrupt(cp0) + *r4300_cp0_cycle_count(cp0);
+
+#ifdef COMPARE_CORE
+   if (r4300->delay_slot)
+     CoreCompareCallback();
 #endif
 }
+
+static void exception_epilog(struct r4300_core* r4300)
+{
+    int in_dynarec = (r4300->emumode == EMUMODE_DYNAREC);
+#ifdef HAVE_DYNAREC_HACKTARUX
+    int hacktarux_dynarec_active =
+        in_dynarec && (r4300_jit_backend == R4300_JIT_HACKTARUX);
+#else
+    int hacktarux_dynarec_active = 0;
+#endif
+    int do_epilog;
+
+#if !defined(NO_ASM) && defined(HAVE_DYNAREC_HACKTARUX)
+    /* Hacktarux dynarec: jump back into generated code (unless it was running
+     * the interpreter fallback for this block). */
+    if (hacktarux_dynarec_active)
+    {
+        dyna_jump();
+        if (!r4300->recomp.dyna_interp) { r4300->delay_slot = 0; }
+    }
+#endif
+
+    /* Run the interpreter-style epilog when not executing in active JIT code.
+     * Hacktarux: when not in dynarec, or when the block fell back to the
+     * interpreter (recomp.dyna_interp). ari64: only when not in dynarec
+     * (it has no interpreter-fallback flag). */
+    if (hacktarux_dynarec_active)
+        do_epilog = !in_dynarec || r4300->recomp.dyna_interp;
+    else
+        do_epilog = !in_dynarec;
+
+    if (do_epilog)
+    {
+        r4300->recomp.dyna_interp = 0;
+        if (r4300->delay_slot)
+        {
+            r4300->skip_jump = *r4300_pc(r4300);
+            *r4300_cp0_next_interrupt(&r4300->cp0) = 0;
+            *r4300_cp0_cycle_count(&r4300->cp0) = 0;
+        }
+    }
+}
+
+
+void TLB_refill_exception(struct r4300_core* r4300, uint32_t address, int w)
+{
+    uint32_t* cp0_regs = r4300_cp0_regs(&r4300->cp0);
+    int usual_handler = 0, i;
+
+    if (r4300->emumode != EMUMODE_DYNAREC && w != 2) {
+        cp0_update_count(r4300);
+    }
+
+    cp0_regs[CP0_CAUSE_REG] = (w == 1)
+        ? CP0_CAUSE_EXCCODE_TLBS
+        : CP0_CAUSE_EXCCODE_TLBL;
+
+    cp0_regs[CP0_BADVADDR_REG] = address;
+    cp0_regs[CP0_CONTEXT_REG] = (cp0_regs[CP0_CONTEXT_REG] & UINT32_C(0xFF80000F))
+        | ((address >> 9) & UINT32_C(0x007FFFF0));
+    cp0_regs[CP0_ENTRYHI_REG] = address & UINT32_C(0xFFFFE000);
+
+    if (cp0_regs[CP0_STATUS_REG] & CP0_STATUS_EXL)
+    {
+        generic_jump_to(r4300, UINT32_C(0x80000180));
+
+
+        if (r4300->delay_slot == 1 || r4300->delay_slot == 3) {
+            cp0_regs[CP0_CAUSE_REG] |= CP0_CAUSE_BD;
+        }
+        else {
+            cp0_regs[CP0_CAUSE_REG] &= ~CP0_CAUSE_BD;
+        }
+    }
+    else
+    {
+        if (r4300->emumode != EMUMODE_PURE_INTERPRETER)
+        {
+            cp0_regs[CP0_EPC_REG] = (w != 2)
+                ? *r4300_pc(r4300)
+                : address;
+        }
+        else {
+            cp0_regs[CP0_EPC_REG] = *r4300_pc(r4300);
+        }
+
+        cp0_regs[CP0_CAUSE_REG] &= ~CP0_CAUSE_BD;
+        cp0_regs[CP0_STATUS_REG] |= CP0_STATUS_EXL;
+
+        if (address >= UINT32_C(0x80000000) && address < UINT32_C(0xc0000000)) {
+            usual_handler = 1;
+        }
+
+        for (i = 0; i < 32; i++)
+        {
+            if (/*r4300->cp0.tlb.entries[i].v_even &&*/ address >= r4300->cp0.tlb.entries[i].start_even &&
+                    address <= r4300->cp0.tlb.entries[i].end_even) {
+                usual_handler = 1;
+            }
+            if (/*r4300->cp0.tlb.entries[i].v_odd &&*/ address >= r4300->cp0.tlb.entries[i].start_odd &&
+                    address <= r4300->cp0.tlb.entries[i].end_odd) {
+                usual_handler = 1;
+            }
+        }
+
+        generic_jump_to(r4300, (usual_handler)
+                ? UINT32_C(0x80000180)
+                : UINT32_C(0x80000000));
+    }
+
+    if (r4300->delay_slot == 1 || r4300->delay_slot == 3)
+    {
+        cp0_regs[CP0_CAUSE_REG] |= CP0_CAUSE_BD;
+        cp0_regs[CP0_EPC_REG] -= 4;
+    }
+    else
+    {
+        cp0_regs[CP0_CAUSE_REG] &= ~CP0_CAUSE_BD;
+    }
+    if (w != 2) {
+        cp0_regs[CP0_EPC_REG] -= 4;
+    }
+
+    r4300->cp0.last_addr = *r4300_pc(r4300);
+
+    exception_epilog(r4300);
+}
+
+void exception_general(struct r4300_core* r4300)
+{
+    uint32_t* cp0_regs = r4300_cp0_regs(&r4300->cp0);
+
+    cp0_update_count(r4300);
+    cp0_regs[CP0_STATUS_REG] |= CP0_STATUS_EXL;
+
+    cp0_regs[CP0_EPC_REG] = *r4300_pc(r4300);
+
+    if (r4300->delay_slot == 1 || r4300->delay_slot == 3)
+    {
+        cp0_regs[CP0_CAUSE_REG] |= CP0_CAUSE_BD;
+        cp0_regs[CP0_EPC_REG] -= 4;
+    }
+    else
+    {
+        cp0_regs[CP0_CAUSE_REG] &= ~CP0_CAUSE_BD;
+    }
+
+    generic_jump_to(r4300, UINT32_C(0x80000180));
+
+    r4300->cp0.last_addr = *r4300_pc(r4300);
+
+    exception_epilog(r4300);
+}
+

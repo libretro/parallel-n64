@@ -1,6 +1,6 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *   Mupen64plus - si_controller.h                                         *
- *   Mupen64Plus homepage: http://code.google.com/p/mupen64plus/           *
+ *   Mupen64Plus homepage: https://mupen64plus.org/                        *
  *   Copyright (C) 2014 Bobby Smiles                                       *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
@@ -19,21 +19,23 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef SI_SI_CONTROLLER_H
-#define SI_SI_CONTROLLER_H
+#ifndef M64P_DEVICE_RCP_SI_SI_CONTROLLER_H
+#define M64P_DEVICE_RCP_SI_SI_CONTROLLER_H
 
 #include <stdint.h>
 
-#include "../../pif/pif.h"
+#include "osal/preproc.h"
 
-#ifndef SI_REG
-#define SI_REG(a) ((a & 0x1f) >> 2)
-#endif
-
-struct r4300_core;
-struct pif;
 struct mi_controller;
 struct ri_controller;
+struct pif;
+
+enum si_dma_dir
+{
+    SI_NO_DMA,
+    SI_DMA_READ,
+    SI_DMA_WRITE
+};
 
 enum si_registers
 {
@@ -47,35 +49,44 @@ enum si_registers
     SI_REGS_COUNT
 };
 
+enum
+{
+    /* SI_STATUS - read */
+    SI_STATUS_DMA_BUSY  = 0x0001,
+    SI_STATUS_IO_BUSY   = 0x0002,
+    SI_STATUS_DMA_ERROR = 0x0008,
+    SI_STATUS_INTERRUPT = 0x1000,
+};
+
 struct si_controller
 {
     uint32_t regs[SI_REGS_COUNT];
+    unsigned char dma_dir;
 
+    unsigned int dma_duration;
 
     struct mi_controller* mi;
     struct pif* pif;
-    struct ri_controller *ri;
+    struct ri_controller* ri;
 };
 
+static osal_inline uint32_t si_reg(uint32_t address)
+{
+    return (address & 0xffff) >> 2;
+}
 
 
 void init_si(struct si_controller* si,
-      void* eeprom_user_data,
-      void (*eeprom_save)(void*),
-      uint8_t* eeprom_data,
-      size_t eeprom_size,
-      uint32_t eeeprom_id,
-      void* af_rtc_user_data,
-      const struct tm* (*af_rtc_get_time)(void*),
-      const uint8_t* ipl3,
-      struct mi_controller* mi,
-      struct ri_controller *ri);
+             unsigned int dma_duration,
+             struct mi_controller* mi,
+             struct pif* pif,
+             struct ri_controller* ri);
 
 void poweron_si(struct si_controller* si);
 
-int read_si_regs(void* opaque, uint32_t address, uint32_t* value);
-int write_si_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask);
+void read_si_regs(void* opaque, uint32_t address, uint32_t* value);
+void write_si_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask);
 
-void si_end_of_dma_event(struct si_controller* si);
+void si_end_of_dma_event(void* opaque);
 
 #endif

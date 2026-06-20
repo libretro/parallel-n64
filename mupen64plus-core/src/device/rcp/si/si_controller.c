@@ -1,6 +1,6 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *   Mupen64plus - si_controller.c                                         *
- *   Mupen64Plus homepage: http://code.google.com/p/mupen64plus/           *
+ *   Mupen64Plus homepage: https://mupen64plus.org/                        *
  *   Copyright (C) 2014 Bobby Smiles                                       *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
@@ -21,218 +21,157 @@
 
 #include "si_controller.h"
 
-#include "../../../api/m64p_types.h"
-#include "../../../api/callbacks.h"
-#include "../../../main/main.h"
-#include "../../../main/rom.h"
-#include "../../memory/memory.h"
-#include "../../r4300/r4300_core.h"
-#include "../../r4300/interrupt.h"
-#include "../ri/ri_controller.h"
-#include "../../rdram/safe_rdram.h"
-
 #include <string.h>
 
-enum
+#include "api/callbacks.h"
+#include "api/m64p_types.h"
+#include "device/memory/m64p_memory.h"
+#include "device/pif/pif.h"
+#include "device/r4300/r4300_core.h"
+#include "device/rcp/mi/mi_controller.h"
+#include "device/rcp/ri/ri_controller.h"
+#include "device/rdram/rdram.h"
+#include "osal/preproc.h"
+
+static int validate_dma(struct si_controller* si, uint32_t reg)
 {
-   SI_STATUS_DMA_BUSY  = 0x0001,
-   SI_STATUS_RD_BUSY   = 0x0002,
-   SI_STATUS_DMA_ERROR = 0x0008,
-   SI_STATUS_INTERRUPT = 0x1000,
+    if ((si->regs[reg] & 0x1fffffff) != 0x1fc007c0)
+    {
+        DebugMessage(M64MSG_ERROR, "Unknown SI DMA PIF address: %08x", si->regs[reg]);
+        return 0;
+    }
 
-};
+    /* if DMA already busy, error, and ignore request */
+    if (si->regs[SI_STATUS_REG] & SI_STATUS_DMA_BUSY) {
+        si->regs[SI_STATUS_REG] |= SI_STATUS_DMA_ERROR;
+        return 0;
+    }
 
-/* The SI is a serial bus: hardware completes one PIF/EEPROM transaction
- * before the next can begin -- two SI DMAs never overlap.  With delayed SI
- * completion (g_delay_si), the emulated guest can issue a new SI DMA while a
- * previous one's completion interrupt is still pending in the event queue.
- * That window is where the SM64 60fps hacks freeze on an in-game save: the
- * hack's per-frame controller poll issues a read DMA between the EEPROM write
- * DMA and its SI interrupt, and the save thread's osRecvMesg wakeup is lost.
- *
- * Resolve it generically (no per-ROM CRC list): if a previous SI DMA is still
- * in flight when a new one is requested, deliver the pending completion now,
- * mirroring the hardware serialization, then let the new DMA proceed.  This
- * closes the race for every title -- including ones whose ROM bytes have been
- * patched at runtime (widescreen / cheat hacks), where a CRC match would not
- * fire. */
-static void si_flush_pending_dma(struct si_controller* si)
+    return 1;
+}
+
+static void copy_pif_rdram(struct si_controller* si)
 {
-   if ((si->regs[SI_STATUS_REG] & SI_STATUS_DMA_BUSY) == 0)
-      return;
-   if (get_event(SI_INT) == NULL)
-      return;
+    size_t i;
+    /* DRAM address must be word-aligned */
+    uint32_t dram_addr = si->regs[SI_DRAM_ADDR_REG] & ~UINT32_C(3);
 
-   /* Cancel the scheduled completion and deliver it now, using the same
-    * immediate-completion path as the g_delay_si == 0 case below (a plain
-    * signal_rcp_interrupt, which schedules the interrupt check) rather than
-    * the event-dispatcher's si_end_of_dma_event(): we are running inside the
-    * SI register write that kicked the new DMA, not inside the interrupt
-    * event loop. */
-   remove_event(SI_INT);
-   si->pif->ram[0x3f] = 0x0;
-   si->regs[SI_STATUS_REG] &= ~SI_STATUS_DMA_BUSY;
-   si->regs[SI_STATUS_REG] |= SI_STATUS_INTERRUPT;
-   signal_rcp_interrupt(si->mi, MI_INTR_SI);
+    uint32_t* pif_ram = (uint32_t*)si->pif->ram;
+    uint32_t* dram = (uint32_t*)(&si->ri->rdram->dram[rdram_dram_address(dram_addr)]);
+
+    if (si->dma_dir == SI_DMA_WRITE) {
+        for(i = 0; i < (PIF_RAM_SIZE / 4); ++i) {
+            pif_ram[i] = fromhl(dram[i]);
+        }
+    }
+    else if (si->dma_dir == SI_DMA_READ) {
+        for(i = 0; i < (PIF_RAM_SIZE / 4); ++i) {
+            dram[i] = tohl(pif_ram[i]);
+        }
+    }
 }
 
 static void dma_si_write(struct si_controller* si)
 {
-   int i;
+    if (!validate_dma(si, SI_PIF_ADDR_WR64B_REG))
+        return;
 
-   if (si->regs[SI_PIF_ADDR_WR64B_REG] != 0x1FC007C0)
-   {
-      DebugMessage(M64MSG_ERROR, "dma_si_write(): unknown SI use");
-      return;
-   }
+    si->dma_dir = SI_DMA_WRITE;
 
-   /* serialize with any SI DMA still in flight (hardware cannot overlap) */
-   si_flush_pending_dma(si);
+    copy_pif_rdram(si);
 
-   for (i = 0; i < PIF_RAM_SIZE; i += 4)
-   {
-      const uint32_t dram_i = (si->regs[SI_DRAM_ADDR_REG] & UINT32_C(0xFFFFFFFC))+i;
-      const uint32_t value = rdram_safe_read_word(si->ri->rdram->dram, dram_i);
-      *((uint32_t*)(&si->pif->ram[i])) = sl(value);
-   }
-
-   update_pif_write(si);
-   cp0_update_count();
-
-   if (g_delay_si)
-   {
-      si->regs[SI_STATUS_REG] |= SI_STATUS_DMA_BUSY;
-      add_interrupt_event(SI_INT, ROM_SETTINGS.sidmaduration);
-   }
-   else
-   {
-      si->regs[SI_STATUS_REG] |= SI_STATUS_INTERRUPT;
-      signal_rcp_interrupt(si->mi, MI_INTR_SI);
-   }
+    cp0_update_count(si->mi->r4300);
+    si->regs[SI_STATUS_REG] |= SI_STATUS_DMA_BUSY;
+    add_interrupt_event(&si->mi->r4300->cp0, SI_INT, si->dma_duration + add_random_interrupt_time(si->mi->r4300));
 }
 
 static void dma_si_read(struct si_controller* si)
 {
-   int i;
+    if (!validate_dma(si, SI_PIF_ADDR_RD64B_REG))
+        return;
 
-   if (si->regs[SI_PIF_ADDR_RD64B_REG] != 0x1FC007C0)
-   {
-      DebugMessage(M64MSG_ERROR, "dma_si_read(): unknown SI use");
-      return;
-   }
+    si->dma_dir = SI_DMA_READ;
 
-   /* serialize with any SI DMA still in flight (hardware cannot overlap) */
-   si_flush_pending_dma(si);
+    update_pif_ram(si->pif);
 
-   update_pif_read(si);
-
-   for (i = 0; i < PIF_RAM_SIZE; i += 4)
-   {
-      const uint32_t dram_i = (si->regs[SI_DRAM_ADDR_REG] & UINT32_C(0xFFFFFFFC))+i;
-      const uint32_t value = *(uint32_t*)(&si->pif->ram[i]);
-      rdram_safe_write_word(si->ri->rdram->dram, dram_i, sl(value));
-   }
-   cp0_update_count();
-
-   if (g_delay_si)
-   {
-      si->regs[SI_STATUS_REG] |= SI_STATUS_DMA_BUSY;
-      add_interrupt_event(SI_INT, ROM_SETTINGS.sidmaduration);
-   }
-   else
-   {
-      si->regs[SI_STATUS_REG] |= SI_STATUS_INTERRUPT;
-      signal_rcp_interrupt(si->mi, MI_INTR_SI);
-   }
+    cp0_update_count(si->mi->r4300);
+    si->regs[SI_STATUS_REG] |= SI_STATUS_DMA_BUSY;
+    add_interrupt_event(&si->mi->r4300->cp0, SI_INT, si->dma_duration + add_random_interrupt_time(si->mi->r4300));
 }
 
 void init_si(struct si_controller* si,
-      void* eeprom_user_data,
-      void (*eeprom_save)(void*),
-      uint8_t* eeprom_data,
-      size_t eeprom_size,
-      uint32_t eeprom_id,
-      void* af_rtc_user_data,
-      const struct tm* (*af_rtc_get_time)(void*),
-      const uint8_t* ipl3,
-      struct mi_controller* mi,
-      struct ri_controller *ri)
+             unsigned int dma_duration,
+             struct mi_controller* mi,
+             struct pif* pif,
+             struct ri_controller* ri)
 {
-   si->mi = mi;
-   si->ri    = ri;
-
-   init_pif(si->pif,
-         eeprom_user_data, eeprom_save, eeprom_data, eeprom_size, eeprom_id,
-         af_rtc_user_data, af_rtc_get_time, ipl3 
-         );
+    si->dma_duration = dma_duration;
+    si->mi = mi;
+    si->pif = pif;
+    si->ri = ri;
 }
 
 void poweron_si(struct si_controller* si)
 {
     memset(si->regs, 0, SI_REGS_COUNT*sizeof(uint32_t));
-
-    poweron_pif(si->pif);
+    si->dma_dir = SI_NO_DMA;
 }
 
 
-int read_si_regs(void* opaque, uint32_t address, uint32_t* value)
+void read_si_regs(void* opaque, uint32_t address, uint32_t* value)
 {
     struct si_controller* si = (struct si_controller*)opaque;
-    uint32_t reg             = SI_REG(address);
+    uint32_t reg = si_reg(address);
 
-    *value                   = (reg < SI_REGS_COUNT) ? si->regs[reg] : 0u;
-
-    return 0;
+    *value = si->regs[reg];
 }
 
-int write_si_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
+void write_si_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
 {
     struct si_controller* si = (struct si_controller*)opaque;
-    uint32_t reg             = SI_REG(address);
+    uint32_t reg = si_reg(address);
 
     switch (reg)
     {
-       case SI_DRAM_ADDR_REG:
-          si->regs[SI_DRAM_ADDR_REG] = MASKED_WRITE(&si->regs[SI_DRAM_ADDR_REG], value, mask);
-          break;
+    case SI_DRAM_ADDR_REG:
+        masked_write(&si->regs[SI_DRAM_ADDR_REG], value, mask);
+        break;
 
-       case SI_PIF_ADDR_RD64B_REG:
-          si->regs[SI_PIF_ADDR_RD64B_REG] = MASKED_WRITE(&si->regs[SI_PIF_ADDR_RD64B_REG], value, mask);
-          dma_si_read(si);
-          break;
+    case SI_PIF_ADDR_RD64B_REG:
+        masked_write(&si->regs[SI_PIF_ADDR_RD64B_REG], value, mask);
+        dma_si_read(si);
+        break;
 
-       case SI_PIF_ADDR_WR64B_REG:
-          si->regs[SI_PIF_ADDR_WR64B_REG] = MASKED_WRITE(&si->regs[SI_PIF_ADDR_WR64B_REG], value, mask);
-          dma_si_write(si);
-          break;
+    case SI_PIF_ADDR_WR64B_REG:
+        masked_write(&si->regs[SI_PIF_ADDR_WR64B_REG], value, mask);
+        dma_si_write(si);
+        break;
 
-       case SI_STATUS_REG:
-          si->regs[SI_STATUS_REG] &= ~SI_STATUS_INTERRUPT;
-          clear_rcp_interrupt(si->mi, MI_INTR_SI);
-          break;
+    case SI_STATUS_REG:
+        /* clear si interrupt */
+        si->regs[SI_STATUS_REG] &= ~SI_STATUS_INTERRUPT;
+        clear_rcp_interrupt(si->mi, MI_INTR_SI);
+        break;
     }
-
-    return 0;
 }
 
-void si_end_of_dma_event(struct si_controller* si)
+void si_end_of_dma_event(void* opaque)
 {
-   /* Do NOT poll input here. Input is polled exactly once per frame from
-    * main_on_vi_event() (the VI frame boundary), which is the single
-    * poll_cb() call libretro expects per retro_run. The SI DMA can
-    * complete one or more times per frame (every controller read, plus
-    * controller-pak/rumble writes), so polling here produced multiple,
-    * input-count-dependent poll_cb() calls per retro_run -- breaking the
-    * libretro polling contract and making the input the game reads depend
-    * on sub-frame SI timing rather than being a clean per-frame value
-    * (a determinism hazard for run-ahead / netplay / movie replay). The
-    * controller data is filled by update_pif_read() in dma_si_read()
-    * BEFORE this event fires anyway, so this poll never freshened the
-    * read it preceded -- it was both wrong and useless. */
-   si->pif->ram[0x3f] = 0x0;
+    struct si_controller* si = (struct si_controller*)opaque;
 
-   /* trigger SI interrupt */
-   si->regs[SI_STATUS_REG] &= ~SI_STATUS_DMA_BUSY;
-   si->regs[SI_STATUS_REG] |= SI_STATUS_INTERRUPT;
-   raise_rcp_interrupt(si->mi, MI_INTR_SI);
+    /* DRAM -> PIF : start the PIF processing */
+    if (si->dma_dir == SI_DMA_WRITE)
+        process_pif_ram(si->pif);
+    /* PIF -> DRAM : copy to RDRAM */
+    else if (si->dma_dir == SI_DMA_READ)
+        copy_pif_rdram(si);
+
+    /* end DMA */
+    si->dma_dir = SI_NO_DMA;
+    si->regs[SI_STATUS_REG] &= ~(SI_STATUS_DMA_BUSY | SI_STATUS_IO_BUSY);
+
+    /* raise si interrupt */
+    si->regs[SI_STATUS_REG] |= SI_STATUS_INTERRUPT;
+    raise_rcp_interrupt(si->mi, MI_INTR_SI);
 }
+

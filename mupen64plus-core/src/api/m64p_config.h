@@ -1,6 +1,6 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *   Mupen64plus-core - m64p_config.h                                      *
- *   Mupen64Plus homepage: http://code.google.com/p/mupen64plus/           *
+ *   Mupen64Plus homepage: https://mupen64plus.org/                        *
  *   Copyright (C) 2009 Richard Goedeken                                   *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
@@ -23,7 +23,7 @@
  * configuration handling functions.
  */
 
-#ifndef M64P_CONFIG_H
+#if !defined(M64P_CONFIG_H)
 #define M64P_CONFIG_H
 
 #include "m64p_types.h"
@@ -118,6 +118,16 @@ EXPORT m64p_error CALL ConfigRevertChanges(const char *SectionName);
 typedef m64p_error (*ptr_ConfigSetParameter)(m64p_handle, const char *, m64p_type, const void *);
 #if defined(M64P_CORE_PROTOTYPES)
 EXPORT m64p_error CALL ConfigSetParameter(m64p_handle, const char *, m64p_type, const void *);
+#endif
+
+/* ConfigSetParameterHelp()
+ *
+ * This function sets the help string of one of the emulator's configuration
+ * parameters.
+ */
+typedef m64p_error (*ptr_ConfigSetParameterHelp)(m64p_handle, const char *, const char *);
+#if defined(M64P_CORE_PROTOTYPES)
+EXPORT m64p_error CALL ConfigSetParameterHelp(m64p_handle, const char *, const char *);
 #endif
 
 /* ConfigGetParameter()
@@ -234,9 +244,69 @@ typedef const char * (*ptr_ConfigGetUserCachePath)(void);
 EXPORT const char * CALL ConfigGetUserCachePath(void);
 #endif
 
+/* ConfigExternalOpen()
+ *
+ * This function reads the contents of the config file into memory
+ * and returns M64ERR_SUCCESS if successful.
+ */
+typedef m64p_error (*ptr_ConfigExternalOpen)(const char *, m64p_handle *);
+#if defined(M64P_CORE_PROTOTYPES)
+EXPORT m64p_error CALL ConfigExternalOpen(const char *, m64p_handle *);
+#endif
+
+/* ConfigExternalClose()
+ *
+ * Frees the memory pointer created by ConfigExternalOpen.
+ */
+typedef m64p_error (*ptr_ConfigExternalClose)(m64p_handle);
+#if defined(M64P_CORE_PROTOTYPES)
+EXPORT m64p_error CALL ConfigExternalClose(m64p_handle);
+#endif
+
+/* ConfigExternalGetParameter()
+ *
+ * This functions allows a plugin to leverage the built-in ini parser to read
+ * any cfg/ini file. It will return M64ERR_SUCCESS if the item was found.
+ */
+typedef m64p_error (*ptr_ConfigExternalGetParameter)(m64p_handle, const char *, const char *, char *, int);
+#if defined(M64P_CORE_PROTOTYPES)
+EXPORT m64p_error CALL ConfigExternalGetParameter(m64p_handle, const char *, const char *, char *, int);
+#endif
+
+/* ConfigSendNetplayConfig()
+ *
+ * This function allows plugins to take advantage of the netplay TCP connection
+ * to send configuration data to the netplay server.
+ */
+
+typedef m64p_error (*ptr_ConfigSendNetplayConfig)(char*, int);
+#if defined(M64P_CORE_PROTOTYPES)
+EXPORT m64p_error CALL ConfigSendNetplayConfig(char*, int);
+#endif
+
+/* ConfigReceiveNetplayConfig()
+ *
+ * This function allows plugins to take advantage of the netplay TCP connection
+ * to receive configuration data from the netplay server.
+ */
+
+typedef m64p_error (*ptr_ConfigReceiveNetplayConfig)(char*, int);
+#if defined(M64P_CORE_PROTOTYPES)
+EXPORT m64p_error CALL ConfigReceiveNetplayConfig(char*, int);
+#endif
+
+/* ConfigOverrideUserPaths()
+ *
+ * This function allows overriding the paths returned by
+ * ConfigGetUserDataPath and ConfigGetUserCachePath
+ */
+typedef m64p_error (*ptr_ConfigOverrideUserPaths)(const char*, const char*);
+#if defined(M64P_CORE_PROTOTYPES)
+EXPORT m64p_error CALL ConfigOverrideUserPaths(const char*, const char*);
+#endif
+
 #ifdef __cplusplus
 }
 #endif
 
 #endif /* #define M64P_CONFIG_H */
-

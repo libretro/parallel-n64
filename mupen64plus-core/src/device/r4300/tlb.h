@@ -1,6 +1,6 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *   Mupen64plus - tlb.h                                                   *
- *   Mupen64Plus homepage: http://code.google.com/p/mupen64plus/           *
+ *   Mupen64Plus homepage: https://mupen64plus.org/                        *
  *   Copyright (C) 2002 Hacktarux                                          *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
@@ -19,15 +19,15 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef M64P_R4300_TLB_H
-#define M64P_R4300_TLB_H
+#ifndef M64P_DEVICE_R4300_TLB_H
+#define M64P_DEVICE_R4300_TLB_H
 
+#include <stddef.h>
 #include <stdint.h>
-#include <string.h>
 
-#include "r4300_core.h"
+struct r4300_core;
 
-typedef struct _tlb
+struct tlb_entry
 {
    short mask;
    unsigned int vpn2;
@@ -43,23 +43,27 @@ typedef struct _tlb
    char v_odd;
    char r;
    //int check_parity_mask;
-   
+
    unsigned int start_even;
    unsigned int end_even;
    unsigned int phys_even;
    unsigned int start_odd;
    unsigned int end_odd;
    unsigned int phys_odd;
-} tlb;
+};
 
-extern tlb tlb_e[32];
-extern uint32_t tlb_LUT_r[0x100000];
-extern uint32_t tlb_LUT_w[0x100000];
+struct tlb
+{
+    struct tlb_entry entries[32];
+    uint32_t LUT_r[0x100000];
+    uint32_t LUT_w[0x100000];
+};
 
-void poweron_tlb(void);
+void poweron_tlb(struct tlb* tlb);
 
-void tlb_unmap(tlb *entry);
-void tlb_map(tlb *entry);
-uint32_t virtual_to_physical_address(struct r4300_core *r4300, uint32_t addresse, int w);
+void tlb_unmap(struct tlb* tlb, size_t entry);
+void tlb_map(struct tlb* tlb, size_t entry);
 
-#endif /* M64P_R4300_TLB_H */
+uint32_t virtual_to_physical_address(struct r4300_core* r4300, uint32_t address, int w);
+
+#endif /* M64P_DEVICE_R4300_TLB_H */

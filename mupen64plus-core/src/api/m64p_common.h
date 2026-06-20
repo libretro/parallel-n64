@@ -1,6 +1,6 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *   Mupen64plus-core - m64p_common.h                                      *
- *   Mupen64Plus homepage: http://code.google.com/p/mupen64plus/           *
+ *   Mupen64Plus homepage: https://mupen64plus.org/                        *
  *   Copyright (C) 2009 Richard Goedeken                                   *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
@@ -24,7 +24,7 @@
  * to the dynamic libraries.
  */
 
-#ifndef M64P_COMMON_H
+#if !defined(M64P_COMMON_H)
 #define M64P_COMMON_H
 
 #include "m64p_types.h"
@@ -60,6 +60,26 @@ EXPORT m64p_error CALL CoreGetAPIVersions(int *, int *, int *, int *);
 typedef const char * (*ptr_CoreErrorMessage)(m64p_error);
 #if defined(M64P_CORE_PROTOTYPES)
 EXPORT const char * CALL CoreErrorMessage(m64p_error);
+#endif
+
+/* PluginStartup()
+ *
+ * This function initializes a plugin for use by allocating memory, creating
+ * data structures, and loading the configuration data.
+*/
+typedef m64p_error (*ptr_PluginStartup)(m64p_dynlib_handle, void *, void (*)(void *, int, const char *));
+#if defined(M64P_PLUGIN_PROTOTYPES) || defined(M64P_CORE_PROTOTYPES)
+EXPORT m64p_error CALL PluginStartup(m64p_dynlib_handle, void *, void (*)(void *, int, const char *));
+#endif
+
+/* PluginShutdown()
+ *
+ * This function destroys data structures and releases memory allocated by
+ * the plugin library.
+*/
+typedef m64p_error (*ptr_PluginShutdown)(void);
+#if defined(M64P_PLUGIN_PROTOTYPES) || defined(M64P_CORE_PROTOTYPES)
+EXPORT m64p_error CALL PluginShutdown(void);
 #endif
 
 #ifdef __cplusplus

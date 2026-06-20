@@ -1,6 +1,6 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *   Mupen64plus - tlb.c                                                   *
- *   Mupen64Plus homepage: http://code.google.com/p/mupen64plus/           *
+ *   Mupen64Plus homepage: https://mupen64plus.org/                        *
  *   Copyright (C) 2002 Hacktarux                                          *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
@@ -20,121 +20,162 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "tlb.h"
+extern unsigned int IgnoreTLBExceptions;
 
-#include "../../api/m64p_types.h"
-#include "exception.h"
-#include "../../main/rom.h"
+#include "api/m64p_types.h"
+#include "device/r4300/r4300_core.h"
+#include "device/rdram/rdram.h"
 
-tlb tlb_e[32];
+#include <assert.h>
+#include <string.h>
 
-uint32_t tlb_LUT_r[0x100000];
-uint32_t tlb_LUT_w[0x100000];
+extern unsigned int r4300_jit_backend;
 
-void poweron_tlb(void)
+void poweron_tlb(struct tlb* tlb)
 {
-   /* clear TLB entries */		
-   memset(tlb_e, 0, 32 * sizeof(tlb_e[0]));		
-   memset(tlb_LUT_r, 0, 0x100000 * sizeof(tlb_LUT_r[0]));		
-   memset(tlb_LUT_w, 0, 0x100000 * sizeof(tlb_LUT_w[0]));
+    /* clear TLB entries */
+    memset(tlb->entries, 0, 32 * sizeof(tlb->entries[0]));
+    memset(tlb->LUT_r, 0, 0x100000 * sizeof(tlb->LUT_r[0]));
+    memset(tlb->LUT_w, 0, 0x100000 * sizeof(tlb->LUT_w[0]));
 }
 
-void tlb_unmap(tlb *entry)
+void tlb_unmap(struct tlb* tlb, size_t entry)
 {
     unsigned int i;
+    const struct tlb_entry* e;
 
-    if (entry->v_even)
+    assert(entry < 32);
+    e = &tlb->entries[entry];
+
+    if (e->v_even)
     {
-        for (i=entry->start_even; i<entry->end_even; i += 0x1000)
-            tlb_LUT_r[i>>12] = 0;
-        if (entry->d_even)
-            for (i=entry->start_even; i<entry->end_even; i += 0x1000)
-                tlb_LUT_w[i>>12] = 0;
+        for (i=e->start_even; i<e->end_even; i += 0x1000)
+            tlb->LUT_r[i>>12] = 0;
+        if (e->d_even)
+            for (i=e->start_even; i<e->end_even; i += 0x1000)
+                tlb->LUT_w[i>>12] = 0;
     }
 
-    if (entry->v_odd)
+    if (e->v_odd)
     {
-        for (i=entry->start_odd; i<entry->end_odd; i += 0x1000)
-            tlb_LUT_r[i>>12] = 0;
-        if (entry->d_odd)
-            for (i=entry->start_odd; i<entry->end_odd; i += 0x1000)
-                tlb_LUT_w[i>>12] = 0;
+        for (i=e->start_odd; i<e->end_odd; i += 0x1000)
+            tlb->LUT_r[i>>12] = 0;
+        if (e->d_odd)
+            for (i=e->start_odd; i<e->end_odd; i += 0x1000)
+                tlb->LUT_w[i>>12] = 0;
     }
 }
 
-void tlb_map(tlb *entry)
+void tlb_map(struct tlb* tlb, size_t entry)
 {
     unsigned int i;
+    const struct tlb_entry* e;
 
-    if (entry->v_even)
+    assert(entry < 32);
+    e = &tlb->entries[entry];
+
+    if (e->v_even)
     {
-        if (entry->start_even < entry->end_even &&
-            !(entry->start_even >= 0x80000000 && entry->end_even < 0xC0000000) &&
-            entry->phys_even < 0x20000000)
+        if (e->start_even < e->end_even &&
+            !(e->start_even >= 0x80000000 && e->end_even < 0xC0000000) &&
+            e->phys_even < 0x20000000)
         {
-            for (i=entry->start_even;i<entry->end_even;i+=0x1000)
-                tlb_LUT_r[i>>12] = UINT32_C(0x80000000) | (entry->phys_even + (i - entry->start_even) + 0xFFF);
-            if (entry->d_even)
-                for (i=entry->start_even;i<entry->end_even;i+=0x1000)
-                    tlb_LUT_w[i>>12] = UINT32_C(0x80000000) | (entry->phys_even + (i - entry->start_even) + 0xFFF);
+            for (i=e->start_even;i<e->end_even;i+=0x1000)
+                tlb->LUT_r[i>>12] = UINT32_C(0x80000000) | (e->phys_even + (i - e->start_even) + 0xFFF);
+            if (e->d_even)
+                for (i=e->start_even;i<e->end_even;i+=0x1000)
+                    tlb->LUT_w[i>>12] = UINT32_C(0x80000000) | (e->phys_even + (i - e->start_even) + 0xFFF);
         }
     }
 
-    if (entry->v_odd)
+    if (e->v_odd)
     {
-        if (entry->start_odd < entry->end_odd &&
-            !(entry->start_odd >= 0x80000000 && entry->end_odd < 0xC0000000) &&
-            entry->phys_odd < 0x20000000)
+        if (e->start_odd < e->end_odd &&
+            !(e->start_odd >= 0x80000000 && e->end_odd < 0xC0000000) &&
+            e->phys_odd < 0x20000000)
         {
-            for (i=entry->start_odd;i<entry->end_odd;i+=0x1000)
-                tlb_LUT_r[i>>12] = UINT32_C(0x80000000) | (entry->phys_odd + (i - entry->start_odd) + 0xFFF);
-            if (entry->d_odd)
-                for (i=entry->start_odd;i<entry->end_odd;i+=0x1000)
-                    tlb_LUT_w[i>>12] = UINT32_C(0x80000000) | (entry->phys_odd + (i - entry->start_odd) + 0xFFF);
+            for (i=e->start_odd;i<e->end_odd;i+=0x1000)
+                tlb->LUT_r[i>>12] = UINT32_C(0x80000000) | (e->phys_odd + (i - e->start_odd) + 0xFFF);
+            if (e->d_odd)
+                for (i=e->start_odd;i<e->end_odd;i+=0x1000)
+                    tlb->LUT_w[i>>12] = UINT32_C(0x80000000) | (e->phys_odd + (i - e->start_odd) + 0xFFF);
         }
     }
 }
 
-uint32_t virtual_to_physical_address(struct r4300_core *r4300, uint32_t addresse, int w)
+uint32_t virtual_to_physical_address(struct r4300_core* r4300, uint32_t address, int w)
 {
-    if (addresse >= UINT32_C(0x7f000000) && addresse < UINT32_C(0x80000000) && r4300->special_rom == GOLDEN_EYE)
+    const struct tlb* tlb = &r4300->cp0.tlb;
+    unsigned int addr = address >> 12;
+
+    /* ari64 verification of its memory_map mirror; only valid when ari64 is the
+     * active dynarec. */
+    if (r4300_jit_backend == R4300_JIT_ARI64 && r4300->emumode == EMUMODE_DYNAREC)
     {
-        /**************************************************
-         GoldenEye 007 hack allows for use of TLB.
-         Recoded by okaygo to support all US, J, and E ROMS.
-        **************************************************/
-        switch (ROM_HEADER.destination_code & UINT16_C(0xFF))
+        intptr_t map = r4300->new_dynarec_hot_state.memory_map[addr];
+        if ((tlb->LUT_w[addr]) && (w == 1))
         {
-           case 0x45:
-              /* U */
-              return UINT32_C(0xb0034b30) + (addresse & UINT32_C(0xFFFFFF));
-           case 0x4A:
-              /* J */
-              return UINT32_C(0xb0034b70) + (addresse & UINT32_C(0xFFFFFF));
-           case 0x50:
-              /* E */
-              return UINT32_C(0xb00329f0) + (addresse & UINT32_C(0xFFFFFF));
-           default:
-              /* UNKNOWN COUNTRY CODE FOR GOLDENEYE USING AMERICAN VERSION HACK */
-              break;
+            assert(map == (((uintptr_t)r4300->rdram->dram + (uintptr_t)((tlb->LUT_w[addr] & 0xFFFFF000) - 0x80000000) - (address & 0xFFFFF000)) >> 2));
         }
-        return UINT32_C(0xb0034b30) + (addresse & UINT32_C(0xFFFFFF));
+        else if ((tlb->LUT_r[addr]) && (w == 0))
+        {
+            assert((map&~WRITE_PROTECT) == (((uintptr_t)r4300->rdram->dram + (uintptr_t)((tlb->LUT_r[addr] & 0xFFFFF000) - 0x80000000) - (address & 0xFFFFF000)) >> 2));
+            if (map & WRITE_PROTECT)
+            {
+                assert(tlb->LUT_w[addr] == 0);
+            }
+        }
+        else {
+            assert(map < 0);
+        }
     }
 
     if (w == 1)
     {
-        if (tlb_LUT_w[addresse>>12])
-            return (tlb_LUT_w[addresse>>12] & UINT32_C(0xFFFFF000)) | (addresse & UINT32_C(0xFFF));
+        if (tlb->LUT_w[addr])
+            return (tlb->LUT_w[addr] & UINT32_C(0xFFFFF000)) | (address & UINT32_C(0xFFF));
     }
     else
     {
-        if (tlb_LUT_r[addresse>>12])
-            return (tlb_LUT_r[addresse>>12] & UINT32_C(0xFFFFF000)) | (addresse & UINT32_C(0xFFF));
+        if (tlb->LUT_r[addr])
+            return (tlb->LUT_r[addr] & UINT32_C(0xFFFFF000)) | (address & UINT32_C(0xFFF));
+    }
+    //printf("tlb exception !!! @ %x, %x, add:%x\n", address, w, r4300->pc->addr);
+    //getchar();
+
+    if (r4300_jit_backend == R4300_JIT_ARI64)
+    {
+        if(IgnoreTLBExceptions == 0) {
+            /* False, Default Behaviour */
+            TLB_refill_exception(r4300, address, w);
+        } else if(IgnoreTLBExceptions == 1) {
+            /* OnlyNotEnabled */
+            if(r4300->emumode == EMUMODE_DYNAREC)
+            {
+                if(using_tlb)
+                {
+                    TLB_refill_exception(r4300, address, w);
+                }
+            } else {
+                TLB_refill_exception(r4300, address, w);
+            }
+        } else if(IgnoreTLBExceptions == 2)
+        {
+            /* AlwaysIgnoreTLB */
+            /* Use-case GdbStub... */
+        }
+    }
+    else
+    {
+        if(IgnoreTLBExceptions == 2)
+        {
+            /* AlwaysIgnoreTLB */
+            /* Use-case for Interpreter-only GdbStub... */
+        } else {
+            TLB_refill_exception(r4300, address, w);
+        }
     }
 
-    //printf("tlb exception !!! @ %x, %x, add:%x\n", addresse, w, mupencorePC->addr);
-    //getchar();
-    if (r4300->special_rom != RAT_ATTACK)
-       TLB_refill_exception(addresse,w);
     //return 0x80000000;
     return 0x00000000;
 }

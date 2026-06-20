@@ -1,6 +1,6 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *   Mupen64plus - rdp_core.c                                              *
- *   Mupen64Plus homepage: http://code.google.com/p/mupen64plus/           *
+ *   Mupen64Plus homepage: https://mupen64plus.org/                        *
  *   Copyright (C) 2014 Bobby Smiles                                       *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
@@ -21,60 +21,52 @@
 
 #include "rdp_core.h"
 
-#include "../../memory/memory.h"
-#include "../../../plugin/core_plugin.h"
-#include "../../r4300/r4300_core.h"
-#include "../rsp/rsp_core.h"
-
 #include <string.h>
+
+#include "device/memory/m64p_memory.h"
+#include "device/rcp/mi/mi_controller.h"
+#include "device/rcp/rsp/rsp_core.h"
+#include "plugin/plugin.h"
 
 static void update_dpc_status(struct rdp_core* dp, uint32_t w)
 {
-   /* clear / set xbus_dmem_dma */
-   if (w & DPC_STATUS_CLR_XBUS_DMEM_DMA) dp->dpc_regs[DPC_STATUS_REG] &= ~DPC_STATUS_XBUS_DMEM_DMA;
-   if (w & DPC_STATUS_SET_XBUS_DMEM_DMA) dp->dpc_regs[DPC_STATUS_REG] |= DPC_STATUS_XBUS_DMEM_DMA;
+    /* clear / set xbus_dmem_dma */
+    if (w & DPC_CLR_XBUS_DMEM_DMA) dp->dpc_regs[DPC_STATUS_REG] &= ~DPC_STATUS_XBUS_DMEM_DMA;
+    if (w & DPC_SET_XBUS_DMEM_DMA) dp->dpc_regs[DPC_STATUS_REG] |= DPC_STATUS_XBUS_DMEM_DMA;
 
-   /* clear / set freeze */
-   if (w & DPC_STATUS_CLR_FREEZE)
-   {
-      dp->dpc_regs[DPC_STATUS_REG] &= ~DPC_STATUS_FREEZE;
+    /* clear / set freeze */
+    if (w & DPC_CLR_FREEZE)
+    {
+        dp->dpc_regs[DPC_STATUS_REG] &= ~DPC_STATUS_FREEZE;
 
-      /* flush work that was deferred while DP was frozen.
-       * See do_SP_Task and vi_vertical_interrupt_event for the
-       * stalls that set these flags. */
-      if (dp->do_on_unfreeze & DELAY_DP_INT)
-         signal_rcp_interrupt(dp->mi, MI_INTR_DP);
-      if (dp->do_on_unfreeze & DELAY_UPDATESCREEN)
-      {
-         /* The plugin latches the deferred frame; it is presented at
-          * the end of the slice ended by the VI interrupt. */
-         gfx.updateScreen();
-      }
-      dp->do_on_unfreeze = 0;
-   }
+        if (dp->do_on_unfreeze & DELAY_DP_INT)
+            signal_rcp_interrupt(dp->mi, MI_INTR_DP);
+        if (dp->do_on_unfreeze & DELAY_UPDATESCREEN)
+            gfx.updateScreen();
+        dp->do_on_unfreeze = 0;
+    }
+    if (w & DPC_SET_FREEZE) dp->dpc_regs[DPC_STATUS_REG] |= DPC_STATUS_FREEZE;
 
-   if (w & DPC_STATUS_SET_FREEZE) dp->dpc_regs[DPC_STATUS_REG] |= DPC_STATUS_FREEZE;
+    /* clear / set flush */
+    if (w & DPC_CLR_FLUSH) dp->dpc_regs[DPC_STATUS_REG] &= ~DPC_STATUS_FLUSH;
+    if (w & DPC_SET_FLUSH) dp->dpc_regs[DPC_STATUS_REG] |= DPC_STATUS_FLUSH;
 
-   /* clear / set flush */
-   if (w & DPC_STATUS_CLR_FLUSH) dp->dpc_regs[DPC_STATUS_REG] &= ~DPC_STATUS_FLUSH;
-   if (w & DPC_STATUS_SET_FLUSH) dp->dpc_regs[DPC_STATUS_REG] |= DPC_STATUS_FLUSH;
-
-   /* clear hardware counters */
-   if (w & DPC_STATUS_CLR_TMEM_CTR)  dp->dpc_regs[DPC_TMEM_REG]     = 0;
-   if (w & DPC_STATUS_CLR_PIPE_CTR)  dp->dpc_regs[DPC_PIPEBUSY_REG] = 0;
-   if (w & DPC_STATUS_CLR_CMD_CTR)   dp->dpc_regs[DPC_BUFBUSY_REG]  = 0;
-   if (w & DPC_STATUS_CLR_CLOCK_CTR) dp->dpc_regs[DPC_CLOCK_REG]    = 0;
+    /* clear clock counter */
+    if (w & DPC_CLR_CLOCK_CTR) dp->dpc_regs[DPC_CLOCK_REG] = 0;
 }
 
 
 void init_rdp(struct rdp_core* dp,
-                 struct mi_controller* mi,
-                 struct rsp_core* sp,
-                 struct ri_controller *ri)
+              struct rsp_core* sp,
+              struct mi_controller* mi,
+              struct memory* mem,
+              struct rdram* rdram,
+              struct r4300_core* r4300)
 {
+    dp->sp = sp;
     dp->mi = mi;
-    dp->sp    = sp;
-    dp->ri    = ri;
+
+    init_fb(&dp->fb, mem, rdram, r4300);
 }
 
 void poweron_rdp(struct rdp_core* dp)
@@ -82,81 +74,75 @@ void poweron_rdp(struct rdp_core* dp)
     memset(dp->dpc_regs, 0, DPC_REGS_COUNT*sizeof(uint32_t));
     memset(dp->dps_regs, 0, DPS_REGS_COUNT*sizeof(uint32_t));
     dp->dpc_regs[DPC_STATUS_REG] |= DPC_STATUS_START_GCLK;
+
     dp->do_on_unfreeze = 0;
 
     poweron_fb(&dp->fb);
 }
 
 
-int read_dpc_regs(void* opaque, uint32_t address, uint32_t* value)
+void read_dpc_regs(void* opaque, uint32_t address, uint32_t* value)
 {
     struct rdp_core* dp = (struct rdp_core*)opaque;
-    uint32_t reg        = DPC_REG(address);
+    uint32_t reg = dpc_reg(address);
 
-    *value              = (reg < DPC_REGS_COUNT) ? dp->dpc_regs[reg] : 0u;
-
-    return 0;
+    *value = dp->dpc_regs[reg];
 }
 
-int write_dpc_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
-{
-   struct rdp_core* dp = (struct rdp_core*)opaque;
-   uint32_t reg        = DPC_REG(address);
-
-   switch(reg)
-   {
-      case DPC_STATUS_REG:
-         update_dpc_status(dp, value & mask);
-      case DPC_CURRENT_REG:
-      case DPC_CLOCK_REG:
-      case DPC_BUFBUSY_REG:
-      case DPC_PIPEBUSY_REG:
-      case DPC_TMEM_REG:
-         return 0;
-   }
-
-   if (reg < DPC_REGS_COUNT)
-       dp->dpc_regs[reg] = MASKED_WRITE(&dp->dpc_regs[reg], value, mask);
-
-   switch(reg)
-   {
-      case DPC_START_REG:
-         dp->dpc_regs[DPC_CURRENT_REG] = dp->dpc_regs[DPC_START_REG];
-         break;
-      case DPC_END_REG:
-         unprotect_framebuffers(dp);
-         gfx.processRDPList();
-         protect_framebuffers(dp);
-         signal_rcp_interrupt(dp->mi, MI_INTR_DP);
-         break;
-   }
-
-   return 0;
-}
-
-
-int read_dps_regs(void* opaque, uint32_t address, uint32_t* value)
+void write_dpc_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
 {
     struct rdp_core* dp = (struct rdp_core*)opaque;
-    uint32_t reg        = DPS_REG(address);
+    uint32_t reg = dpc_reg(address);
 
-    *value = (reg < DPS_REGS_COUNT) ? dp->dps_regs[reg] : 0u;
+    switch(reg)
+    {
+    case DPC_STATUS_REG:
+        update_dpc_status(dp, value & mask);
+    case DPC_CURRENT_REG:
+    case DPC_CLOCK_REG:
+    case DPC_BUFBUSY_REG:
+    case DPC_PIPEBUSY_REG:
+    case DPC_TMEM_REG:
+        return;
+    }
 
-    return 0;
+    masked_write(&dp->dpc_regs[reg], value, mask);
+
+    switch(reg)
+    {
+    case DPC_START_REG:
+        dp->dpc_regs[DPC_CURRENT_REG] = dp->dpc_regs[DPC_START_REG];
+        break;
+    case DPC_END_REG:
+        unprotect_framebuffers(&dp->fb);
+        gfx.processRDPList();
+        protect_framebuffers(&dp->fb);
+        signal_rcp_interrupt(dp->mi, MI_INTR_DP);
+        break;
+    }
 }
 
-int write_dps_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
+
+void read_dps_regs(void* opaque, uint32_t address, uint32_t* value)
 {
     struct rdp_core* dp = (struct rdp_core*)opaque;
-    uint32_t reg        = DPS_REG(address);
+    uint32_t reg = dps_reg(address);
 
-    if (reg < DPS_REGS_COUNT)
-        dp->dps_regs[reg] = MASKED_WRITE(&dp->dps_regs[reg], value, mask);
-
-    return 0;
+    *value = dp->dps_regs[reg];
 }
 
-void rdp_interrupt_event(struct rdp_core* dp)
+void write_dps_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
 {
-   raise_rcp_interrupt(dp->mi, MI_INTR_DP);
+    struct rdp_core* dp = (struct rdp_core*)opaque;
+    uint32_t reg = dps_reg(address);
+
+    masked_write(&dp->dps_regs[reg], value, mask);
 }
+
+void rdp_interrupt_event(void* opaque)
+{
+    struct rdp_core* dp = (struct rdp_core*)opaque;
+
+    raise_rcp_interrupt(dp->mi, MI_INTR_DP);
+}
+

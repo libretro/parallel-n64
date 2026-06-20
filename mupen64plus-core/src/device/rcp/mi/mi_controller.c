@@ -1,6 +1,6 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *   Mupen64plus - mi_controller.c                                         *
- *   Mupen64Plus homepage: http://code.google.com/p/mupen64plus/           *
+ *   Mupen64Plus homepage: https://mupen64plus.org/                        *
  *   Copyright (C) 2014 Bobby Smiles                                       *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
@@ -23,10 +23,9 @@
 
 #include <string.h>
 
-#include "../../r4300/cp0.h"
-#include "../../r4300/interrupt.h"
-#include "../../r4300/r4300.h"
-#include "../../r4300/r4300_core.h"
+#include "device/r4300/cp0.h"
+#include "device/r4300/interrupt.h"
+#include "device/r4300/r4300_core.h"
 
 static int update_mi_init_mode(uint32_t* mi_init_mode, uint32_t w)
 {
@@ -66,6 +65,12 @@ static void update_mi_intr_mask(uint32_t* mi_intr_mask, uint32_t w)
     if (w & 0x800) *mi_intr_mask |= MI_INTR_DP;
 }
 
+
+void init_mi(struct mi_controller* mi, struct r4300_core* r4300)
+{
+    mi->r4300 = r4300;
+}
+
 void poweron_mi(struct mi_controller* mi)
 {
     memset(mi->regs, 0, MI_REGS_COUNT*sizeof(uint32_t));
@@ -73,73 +78,61 @@ void poweron_mi(struct mi_controller* mi)
 }
 
 
-int read_mi_regs(void* opaque, uint32_t address, uint32_t* value)
+void read_mi_regs(void* opaque, uint32_t address, uint32_t* value)
 {
-    struct r4300_core* r4300 = (struct r4300_core*)opaque;
+    struct mi_controller* mi = (struct mi_controller*)opaque;
     uint32_t reg = mi_reg(address);
 
-    *value = (reg < MI_REGS_COUNT) ? r4300->mi->regs[reg] : 0u;
-
-    return 0;
+    *value = mi->regs[reg];
 }
 
-int write_mi_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
+void write_mi_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
 {
-    struct r4300_core* r4300 = (struct r4300_core*)opaque;
+    struct mi_controller* mi = (struct mi_controller*)opaque;
     uint32_t reg = mi_reg(address);
-    const uint32_t* cp0_regs = r4300_cp0_regs();
+
+    int* cp0_cycle_count = r4300_cp0_cycle_count(&mi->r4300->cp0);
 
     switch(reg)
     {
     case MI_INIT_MODE_REG:
-        if (update_mi_init_mode(&r4300->mi->regs[MI_INIT_MODE_REG], value & mask) != 0)
+        if (update_mi_init_mode(&mi->regs[MI_INIT_MODE_REG], value & mask) != 0)
         {
-            clear_rcp_interrupt(r4300->mi, MI_INTR_DP);
+            clear_rcp_interrupt(mi, MI_INTR_DP);
         }
         break;
     case MI_INTR_MASK_REG:
-        update_mi_intr_mask(&r4300->mi->regs[MI_INTR_MASK_REG], value & mask);
+        update_mi_intr_mask(&mi->regs[MI_INTR_MASK_REG], value & mask);
 
-        check_interrupt();
-        cp0_update_count();
-        if ((int)(cp0_regs[CP0_COUNT_REG] - next_interrupt) >= 0)
-        {
-            /* This call runs in the middle of a JIT store handler.  On
-             * the ari64 backend that context has no consumer for the
-             * pcaddr/pending_exception redirect (cc_interrupt clears
-             * pending_exception before, and checks it only after, its
-             * own gen_interrupt call), so gen_interrupt must not process
-             * events that redirect execution from here -- see the
-             * interrupt_unsafe_state checks in gen_interrupt. */
-            interrupt_unsafe_state = 1;
-            gen_interrupt();
-            interrupt_unsafe_state = 0;
-        }
+        r4300_check_interrupt(mi->r4300, CP0_CAUSE_IP2, mi->regs[MI_INTR_REG] & mi->regs[MI_INTR_MASK_REG]);
+        cp0_update_count(mi->r4300);
+        if (*cp0_cycle_count >= 0) gen_interrupt(mi->r4300);
         break;
     }
-
-    return 0;
 }
 
-/* interrupt execution is immediate (if not masked) */
+/* interrupt execution is immediate (if not masked)
+ * Should only be called inside interrupt event handlers.
+ * For other cases use signal_rcp_interrupt
+ */
 void raise_rcp_interrupt(struct mi_controller* mi, uint32_t mi_intr)
 {
     mi->regs[MI_INTR_REG] |= mi_intr;
 
     if (mi->regs[MI_INTR_REG] & mi->regs[MI_INTR_MASK_REG])
-        raise_maskable_interrupt(0x400);
+        raise_maskable_interrupt(mi->r4300, CP0_CAUSE_IP2);
 }
 
 /* interrupt execution is scheduled (if not masked) */
 void signal_rcp_interrupt(struct mi_controller* mi, uint32_t mi_intr)
 {
     mi->regs[MI_INTR_REG] |= mi_intr;
-    check_interrupt();
+    r4300_check_interrupt(mi->r4300, CP0_CAUSE_IP2, mi->regs[MI_INTR_REG] & mi->regs[MI_INTR_MASK_REG]);
 }
 
 void clear_rcp_interrupt(struct mi_controller* mi, uint32_t mi_intr)
 {
     mi->regs[MI_INTR_REG] &= ~mi_intr;
-    check_interrupt();
+    r4300_check_interrupt(mi->r4300, CP0_CAUSE_IP2, mi->regs[MI_INTR_REG] & mi->regs[MI_INTR_MASK_REG]);
 }
 

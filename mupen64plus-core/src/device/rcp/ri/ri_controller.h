@@ -1,6 +1,6 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *   Mupen64plus - ri_controller.h                                         *
- *   Mupen64Plus homepage: http://code.google.com/p/mupen64plus/           *
+ *   Mupen64Plus homepage: https://mupen64plus.org/                        *
  *   Copyright (C) 2014 Bobby Smiles                                       *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
@@ -19,16 +19,15 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef M64P_RI_RI_CONTROLLER_H
-#define M64P_RI_RI_CONTROLLER_H
+#ifndef M64P_DEVICE_RCP_RI_RI_CONTROLLER_H
+#define M64P_DEVICE_RCP_RI_RI_CONTROLLER_H
 
+#include <stddef.h>
 #include <stdint.h>
 
-#include "../../rdram/rdram.h"
+#include "osal/preproc.h"
 
-#ifndef RI_REG
-#define RI_REG(a) ((a & 0x1f) >> 2)
-#endif
+struct rdram;
 
 enum ri_registers
 {
@@ -43,8 +42,6 @@ enum ri_registers
     RI_REGS_COUNT
 };
 
-struct rdram;
-
 struct ri_controller
 {
     uint32_t regs[RI_REGS_COUNT];
@@ -52,13 +49,26 @@ struct ri_controller
     struct rdram* rdram;
 };
 
-void init_ri(struct ri_controller* ri,
-      uint32_t* dram,
-      size_t dram_size);
+static osal_inline uint32_t ri_reg(uint32_t address)
+{
+    return (address & 0xffff) >> 2;
+}
+
+static osal_inline uint16_t ri_address_to_id_field(uint32_t address)
+{
+    /* XXX: pure guessing, need harware test */
+    return (uint16_t)(((address >> 20) == 0x03f)
+        ? (address & 0x0007fc00) >> 10   /* RDRAM registers id_field: [19..10] */
+        : (address & 0x00f00000) >> 20); /* RDRAM memory    id_field: [23..20] */
+}
+
+
+
+void init_ri(struct ri_controller* ri, struct rdram* rdram);
 
 void poweron_ri(struct ri_controller* ri);
 
-int read_ri_regs(void* opaque, uint32_t address, uint32_t* value);
-int write_ri_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask);
+void read_ri_regs(void* opaque, uint32_t address, uint32_t* value);
+void write_ri_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask);
 
 #endif

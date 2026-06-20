@@ -1,6 +1,6 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *   Mupen64plus - ri_controller.c                                         *
- *   Mupen64Plus homepage: http://code.google.com/p/mupen64plus/           *
+ *   Mupen64Plus homepage: https://mupen64plus.org/                        *
  *   Copyright (C) 2014 Bobby Smiles                                       *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
@@ -21,50 +21,34 @@
 
 #include "ri_controller.h"
 
-#include "../../memory/memory.h"
-
 #include <string.h>
 
-void init_ri(struct ri_controller* ri,
-      uint32_t* dram,
-      size_t dram_size)
+#include "device/memory/m64p_memory.h"
+
+void init_ri(struct ri_controller* ri, struct rdram* rdram)
 {
-   init_rdram(ri->rdram, dram, dram_size);
+    ri->rdram = rdram;
 }
 
-/* Initializes the RI. */
 void poweron_ri(struct ri_controller* ri)
 {
-   memset(ri->regs, 0, RI_REGS_COUNT*sizeof(uint32_t));
-
-   poweron_rdram(ri->rdram);
-
-   /* MESS uses these, so we will too? (backported from CEN64) */
-   ri->regs[RI_MODE_REG]    = 0xE;
-   ri->regs[RI_CONFIG_REG]  = 0x40;
-   ri->regs[RI_SELECT_REG]  = 0x14;
-   ri->regs[RI_REFRESH_REG] = 0x63634;
+    memset(ri->regs, 0, RI_REGS_COUNT*sizeof(uint32_t));
 }
 
-/* Reads a word from the RI MMIO rgister space. */
-int read_ri_regs(void* opaque, uint32_t address, uint32_t *word)
-{
-   struct ri_controller* ri = (struct ri_controller*)opaque;
-    uint32_t reg             = RI_REG(address);
 
-    *word                   = (reg < RI_REGS_COUNT) ? ri->regs[reg] : 0u;
-
-    return 0;
-}
-
-/* Writes a word from the RI MMIO register space. */
-int write_ri_regs(void* opaque, uint32_t address, uint32_t word, uint32_t mask)
+void read_ri_regs(void* opaque, uint32_t address, uint32_t* value)
 {
     struct ri_controller* ri = (struct ri_controller*)opaque;
-    uint32_t reg             = RI_REG(address);
+    uint32_t reg = ri_reg(address);
 
-    if (reg < RI_REGS_COUNT)
-        ri->regs[reg] = MASKED_WRITE(&ri->regs[reg], word, mask);
-
-    return 0;
+    *value = ri->regs[reg];
 }
+
+void write_ri_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
+{
+    struct ri_controller* ri = (struct ri_controller*)opaque;
+    uint32_t reg = ri_reg(address);
+
+    masked_write(&ri->regs[reg], value, mask);
+}
+

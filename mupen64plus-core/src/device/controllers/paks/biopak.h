@@ -19,29 +19,19 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef M64P_SI_BIOPAK_H
-#define M64P_SI_BIOPAK_H
+#ifndef M64P_DEVICE_CONTROLLERS_PAKS_BIOPAK_H
+#define M64P_DEVICE_CONTROLLERS_PAKS_BIOPAK_H
 
-struct pak_interface;
-#include <stddef.h>
-#include <stdint.h>
+#include "device/controllers/game_controller.h"
 
-/* N64 Bio Sensor (heart rate sensor, used by Tetris 64). The pak reports a
- * square wave at the configured pulse rate; the game derives BPM from the
- * edges. Implementation based on raphnet's notes:
- * http://www.raphnet.net/divers/n64_bio_sensor/index_en.php */
 struct biopak
 {
-   unsigned int bpm;
+    unsigned int bpm;
 };
 
-void init_biopak(struct biopak* bpk, unsigned int bpm);
+void init_biopak(struct biopak* bpk,
+    unsigned int bpm);
 
-void biopak_read_command(struct biopak* bpk, uint16_t address, uint8_t* data, size_t size);
-void biopak_write_command(struct biopak* bpk, uint16_t address, const uint8_t* data, size_t size);
-
-
-/* mupen64plus-next pak_interface (region 12c) */
 extern const struct pak_interface g_ibiopak;
 
 #endif

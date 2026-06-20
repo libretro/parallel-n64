@@ -1,6 +1,6 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *   Mupen64plus-core - m64p_plugin.h                                      *
- *   Mupen64Plus homepage: http://code.google.com/p/mupen64plus/           *
+ *   Mupen64Plus homepage: https://mupen64plus.org/                        *
  *   Copyright (C) 2002 Hacktarux                                          *
  *   Copyright (C) 2009 Richard Goedeken                                   *
  *                                                                         *
@@ -20,10 +20,9 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef M64P_PLUGIN_H
+#if !defined(M64P_PLUGIN_H)
 #define M64P_PLUGIN_H
 
-#include <stdint.h>
 #include "m64p_types.h"
 
 #ifdef __cplusplus
@@ -36,34 +35,34 @@ extern "C" {
 #define PLUGIN_RUMBLE_PAK           3 /* not implemented for non raw data */
 #define PLUGIN_TRANSFER_PAK         4 /* not implemented for non raw data */
 #define PLUGIN_RAW                  5 /* the controller plugin is passed in raw data */
-#define PLUGIN_BIOPAK               6 /* N64 Bio Sensor (Tetris 64); parallel-n64 extension */
+#define PLUGIN_BIO_PAK              6
 
 /***** Structures *****/
 typedef struct {
-    uint8_t * RDRAM;
-    uint8_t * DMEM;
-    uint8_t * IMEM;
+    unsigned char * RDRAM;
+    unsigned char * DMEM;
+    unsigned char * IMEM;
 
-    uint32_t * MI_INTR_REG;
+    unsigned int * MI_INTR_REG;
 
-    uint32_t * SP_MEM_ADDR_REG;
-    uint32_t * SP_DRAM_ADDR_REG;
-    uint32_t * SP_RD_LEN_REG;
-    uint32_t * SP_WR_LEN_REG;
-    uint32_t * SP_STATUS_REG;
-    uint32_t * SP_DMA_FULL_REG;
-    uint32_t * SP_DMA_BUSY_REG;
-    uint32_t * SP_PC_REG;
-    uint32_t * SP_SEMAPHORE_REG;
+    unsigned int * SP_MEM_ADDR_REG;
+    unsigned int * SP_DRAM_ADDR_REG;
+    unsigned int * SP_RD_LEN_REG;
+    unsigned int * SP_WR_LEN_REG;
+    unsigned int * SP_STATUS_REG;
+    unsigned int * SP_DMA_FULL_REG;
+    unsigned int * SP_DMA_BUSY_REG;
+    unsigned int * SP_PC_REG;
+    unsigned int * SP_SEMAPHORE_REG;
 
-    uint32_t * DPC_START_REG;
-    uint32_t * DPC_END_REG;
-    uint32_t * DPC_CURRENT_REG;
-    uint32_t * DPC_STATUS_REG;
-    uint32_t * DPC_CLOCK_REG;
-    uint32_t * DPC_BUFBUSY_REG;
-    uint32_t * DPC_PIPEBUSY_REG;
-    uint32_t * DPC_TMEM_REG;
+    unsigned int * DPC_START_REG;
+    unsigned int * DPC_END_REG;
+    unsigned int * DPC_CURRENT_REG;
+    unsigned int * DPC_STATUS_REG;
+    unsigned int * DPC_CLOCK_REG;
+    unsigned int * DPC_BUFBUSY_REG;
+    unsigned int * DPC_PIPEBUSY_REG;
+    unsigned int * DPC_TMEM_REG;
 
     void (*CheckInterrupts)(void);
     void (*ProcessDlistList)(void);
@@ -73,67 +72,83 @@ typedef struct {
 } RSP_INFO;
 
 typedef struct {
-    uint8_t * HEADER;  /* This is the rom header (first 40h bytes of the rom) */
-    uint8_t * RDRAM;
-    uint8_t * DMEM;
-    uint8_t * IMEM;
+    unsigned char * HEADER;  /* This is the rom header (first 40h bytes of the rom) */
+    unsigned char * RDRAM;
+    unsigned char * DMEM;
+    unsigned char * IMEM;
 
-    uint32_t * MI_INTR_REG;
+    unsigned int * MI_INTR_REG;
 
-    uint32_t * DPC_START_REG;
-    uint32_t * DPC_END_REG;
-    uint32_t * DPC_CURRENT_REG;
-    uint32_t * DPC_STATUS_REG;
-    uint32_t * DPC_CLOCK_REG;
-    uint32_t * DPC_BUFBUSY_REG;
-    uint32_t * DPC_PIPEBUSY_REG;
-    uint32_t * DPC_TMEM_REG;
+    unsigned int * DPC_START_REG;
+    unsigned int * DPC_END_REG;
+    unsigned int * DPC_CURRENT_REG;
+    unsigned int * DPC_STATUS_REG;
+    unsigned int * DPC_CLOCK_REG;
+    unsigned int * DPC_BUFBUSY_REG;
+    unsigned int * DPC_PIPEBUSY_REG;
+    unsigned int * DPC_TMEM_REG;
 
-    uint32_t * VI_STATUS_REG;
-    uint32_t * VI_ORIGIN_REG;
-    uint32_t * VI_WIDTH_REG;
-    uint32_t * VI_INTR_REG;
-    uint32_t * VI_V_CURRENT_LINE_REG;
-    uint32_t * VI_TIMING_REG;
-    uint32_t * VI_V_SYNC_REG;
-    uint32_t * VI_H_SYNC_REG;
-    uint32_t * VI_LEAP_REG;
-    uint32_t * VI_H_START_REG;
-    uint32_t * VI_V_START_REG;
-    uint32_t * VI_V_BURST_REG;
-    uint32_t * VI_X_SCALE_REG;
-    uint32_t * VI_Y_SCALE_REG;
+    unsigned int * VI_STATUS_REG;
+    unsigned int * VI_ORIGIN_REG;
+    unsigned int * VI_WIDTH_REG;
+    unsigned int * VI_INTR_REG;
+    unsigned int * VI_V_CURRENT_LINE_REG;
+    unsigned int * VI_TIMING_REG;
+    unsigned int * VI_V_SYNC_REG;
+    unsigned int * VI_H_SYNC_REG;
+    unsigned int * VI_LEAP_REG;
+    unsigned int * VI_H_START_REG;
+    unsigned int * VI_V_START_REG;
+    unsigned int * VI_V_BURST_REG;
+    unsigned int * VI_X_SCALE_REG;
+    unsigned int * VI_Y_SCALE_REG;
 
     void (*CheckInterrupts)(void);
+
+    /* The GFX_INFO.version parameter was added in version 2.5.1 of the core.
+       Plugins should ensure the core is at least this version before
+       attempting to read GFX_INFO.version. */
+    unsigned int version;
+    /* SP_STATUS_REG and RDRAM_SIZE were added in version 2 of GFX_INFO.version.
+       Plugins should only attempt to read these values if GFX_INFO.version is at least 2. */
+
+    /* The RSP plugin should set (HALT | BROKE | TASKDONE) *before* calling ProcessDList.
+       It should not modify SP_STATUS_REG after ProcessDList has returned.
+       This will allow the GFX plugin to unset these bits if it needs. */
+    unsigned int * SP_STATUS_REG;
+    const unsigned int * RDRAM_SIZE;
 } GFX_INFO;
 
-extern GFX_INFO gfx_info;
-
 typedef struct {
-    uint8_t * RDRAM;
-    uint8_t * DMEM;
-    uint8_t * IMEM;
+    unsigned char * RDRAM;
+    unsigned char * DMEM;
+    unsigned char * IMEM;
 
-    uint32_t * MI_INTR_REG;
+    unsigned int * MI_INTR_REG;
 
-    uint32_t * AI_DRAM_ADDR_REG;
-    uint32_t * AI_LEN_REG;
-    uint32_t * AI_CONTROL_REG;
-    uint32_t * AI_STATUS_REG;
-    uint32_t * AI_DACRATE_REG;
-    uint32_t * AI_BITRATE_REG;
+    unsigned int * AI_DRAM_ADDR_REG;
+    unsigned int * AI_LEN_REG;
+    unsigned int * AI_CONTROL_REG;
+    unsigned int * AI_STATUS_REG;
+    unsigned int * AI_DACRATE_REG;
+    unsigned int * AI_BITRATE_REG;
 
     void (*CheckInterrupts)(void);
 } AUDIO_INFO;
 
+/*** Controller types ****/
+#define CONT_TYPE_STANDARD          0
+#define CONT_TYPE_VRU               1
+
 typedef struct {
     int Present;
     int RawData;
-    int  Plugin;
+    int Plugin;
+    int Type;
 } CONTROL;
 
 typedef union {
-    uint32_t Value;
+    unsigned int Value;
     struct {
         unsigned R_DPAD       : 1;
         unsigned L_DPAD       : 1;
@@ -157,58 +172,6 @@ typedef union {
         signed   Y_AXIS       : 8;
     };
 } BUTTONS;
-
-typedef struct {
-    
-    uint16_t A_BUTTON     : 1;
-    uint16_t B_BUTTON     : 1;
-    uint16_t X_BUTTON     : 1;
-    uint16_t Y_BUTTON     : 1;
-    uint16_t START_BUTTON : 1;
-    uint16_t GET_ORIGIN   : 1;
-    uint16_t              : 2;
-
-    uint16_t L_DPAD       : 1;
-    uint16_t R_DPAD       : 1;
-    uint16_t D_DPAD       : 1;
-    uint16_t U_DPAD       : 1;
-    uint16_t Z_TRIG       : 1;
-    uint16_t R_BUTTON     : 1;
-    uint16_t L_BUTTON     : 1;
-    uint16_t USE_ORIGIN   : 1;
-
-    uint8_t  X_AXIS;
-    uint8_t  Y_AXIS;
-	union {
-		struct {
-            uint8_t C_X      : 8, C_Y      : 8;
-			uint8_t L_TRIG   : 4, R_TRIG   : 4;
-			uint8_t A_ANALOG : 4, B_ANALOG : 4;
-		} MODE0;
-
-		struct {
-            uint8_t C_X      : 4, C_Y      : 4;
-			uint8_t L_TRIG   : 8, R_TRIG   : 8;
-            uint8_t A_ANALOG : 4, B_ANALOG : 4;
-		} MODE1;
-
-		struct {
-            uint8_t C_X      : 4, C_Y      : 4;
-			uint8_t L_TRIG   : 4, R_TRIG   : 4;
-            uint8_t A_ANALOG : 8, B_ANALOG : 8;
-		} MODE2;
-
-		struct {
-            uint8_t C_X      : 8, C_Y      : 8;
-			uint8_t L_TRIG   : 8, R_TRIG   : 8;
-		} MODE3;
-
-		struct {
-            uint8_t C_X      : 8, C_Y      : 8;
-            uint8_t A_ANALOG : 8, B_ANALOG : 8;
-		} MODE4;
-	};
-} BUTTONS_GCN;
 
 typedef struct {
     CONTROL *Controls;      /* A pointer to an array of 4 controllers .. eg:
@@ -254,17 +217,17 @@ EXPORT void CALL ResizeVideoOutput(int width, int height);
 /* frame buffer plugin spec extension */
 typedef struct
 {
-   uint32_t addr;
-   uint32_t size;
-   uint32_t width;
-   uint32_t height;
+   unsigned int addr;
+   unsigned int size;
+   unsigned int width;
+   unsigned int height;
 } FrameBufferInfo;
-typedef void (*ptr_FBRead)(uint32_t addr);
-typedef void (*ptr_FBWrite)(uint32_t addr, uint32_t size);
+typedef void (*ptr_FBRead)(unsigned int addr);
+typedef void (*ptr_FBWrite)(unsigned int addr, unsigned int size);
 typedef void (*ptr_FBGetFrameBufferInfo)(void *p);
 #if defined(M64P_PLUGIN_PROTOTYPES)
-EXPORT void CALL FBRead(uint32_t addr);
-EXPORT void CALL FBWrite(uint32_t addr, uint32_t size);
+EXPORT void CALL FBRead(unsigned int addr);
+EXPORT void CALL FBWrite(unsigned int addr, unsigned int size);
 EXPORT void CALL FBGetFrameBufferInfo(void *p);
 #endif
 
@@ -295,24 +258,39 @@ EXPORT const char * CALL VolumeGetString(void);
 #endif
 
 /* input plugin function pointers */
-typedef void (*ptr_ControllerCommand)(int Control, uint8_t *Command);
+typedef void (*ptr_ControllerCommand)(int Control, unsigned char *Command);
 typedef void (*ptr_GetKeys)(int Control, BUTTONS *Keys);
-typedef void (*ptr_GetKeysGCN)(int Control, BUTTONS_GCN *Keys);
 typedef void (*ptr_InitiateControllers)(CONTROL_INFO ControlInfo);
-typedef void (*ptr_ReadController)(int Control, uint8_t *Command);
+typedef void (*ptr_ReadController)(int Control, unsigned char *Command);
+typedef void (*ptr_SDL_KeyDown)(int keymod, int keysym);
+typedef void (*ptr_SDL_KeyUp)(int keymod, int keysym);
+typedef void (*ptr_RenderCallback)(void);
+typedef void (*ptr_SendVRUWord)(uint16_t length, uint16_t *word, uint8_t lang);
+typedef void (*ptr_SetMicState)(int state);
+typedef void (*ptr_ReadVRUResults)(uint16_t *error_flags, uint16_t *num_results, uint16_t *mic_level, uint16_t *voice_level, uint16_t *voice_length, uint16_t *matches);
+typedef void (*ptr_ClearVRUWords)(uint8_t length);
+typedef void (*ptr_SetVRUWordMask)(uint8_t length, uint8_t *mask);
 #if defined(M64P_PLUGIN_PROTOTYPES)
-EXPORT void CALL ControllerCommand(int Control, uint8_t *Command);
+EXPORT void CALL ControllerCommand(int Control, unsigned char *Command);
 EXPORT void CALL GetKeys(int Control, BUTTONS *Keys);
 EXPORT void CALL InitiateControllers(CONTROL_INFO ControlInfo);
-EXPORT void CALL ReadController(int Control, uint8_t *Command);
+EXPORT void CALL ReadController(int Control, unsigned char *Command);
+EXPORT void CALL SDL_KeyDown(int keymod, int keysym);
+EXPORT void CALL SDL_KeyUp(int keymod, int keysym);
+EXPORT void CALL RenderCallback(void);
+EXPORT void CALL SendVRUWord(uint16_t length, uint16_t *word, uint8_t lang);
+EXPORT void CALL SetMicState(int state);
+EXPORT void CALL ReadVRUResults(uint16_t *error_flags, uint16_t *num_results, uint16_t *mic_level, uint16_t *voice_level, uint16_t *voice_length, uint16_t *matches);
+EXPORT void CALL ClearVRUWords(uint8_t length);
+EXPORT void CALL SetVRUWordMask(uint8_t length, uint8_t *mask);
 #endif
 
 /* RSP plugin function pointers */
-typedef uint32_t (*ptr_DoRspCycles)(uint32_t Cycles);
-typedef void (*ptr_InitiateRSP)(RSP_INFO Rsp_Info, uint32_t *CycleCount);
+typedef unsigned int (*ptr_DoRspCycles)(unsigned int Cycles);
+typedef void (*ptr_InitiateRSP)(RSP_INFO Rsp_Info, unsigned int *CycleCount);
 #if defined(M64P_PLUGIN_PROTOTYPES)
-EXPORT uint32_t CALL DoRspCycles(uint32_t Cycles);
-EXPORT void CALL InitiateRSP(RSP_INFO Rsp_Info, uint32_t *CycleCount);
+EXPORT unsigned int CALL DoRspCycles(unsigned int Cycles);
+EXPORT void CALL InitiateRSP(RSP_INFO Rsp_Info, unsigned int *CycleCount);
 #endif
 
 #ifdef __cplusplus

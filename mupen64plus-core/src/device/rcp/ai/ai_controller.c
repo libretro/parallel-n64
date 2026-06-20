@@ -1,6 +1,6 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *   Mupen64plus - ai_controller.c                                         *
- *   Mupen64Plus homepage: http://code.google.com/p/mupen64plus/           *
+ *   Mupen64Plus homepage: https://mupen64plus.org/                        *
  *   Copyright (C) 2014 Bobby Smiles                                       *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
@@ -21,266 +21,217 @@
 
 #include "ai_controller.h"
 
-#include "../../../api/audio_backend.h"
-#include "../../../main/rom.h"
-#include "../../memory/memory.h"
-#include "../../r4300/r4300_core.h"
-#include "../ri/ri_controller.h"
-#include "../vi/vi_controller.h"
-
 #include <string.h>
 
-enum
-{
-   AI_STATUS_BUSY = 0x40000000,
-   AI_STATUS_FULL = 0x80000000
-};
+#include "backends/api/audio_out_backend.h"
+#include "device/memory/m64p_memory.h"
+#include "device/r4300/r4300_core.h"
+#include "device/rcp/mi/mi_controller.h"
+#include "device/rcp/ri/ri_controller.h"
+#include "device/rcp/vi/vi_controller.h"
+#include "device/rdram/rdram.h"
 
-void init_ai(struct ai_controller* ai,
-      void * user_data,
-      void (*set_audio_format)(void*,unsigned int, unsigned int),
-      void (*push_audio_samples)(void*,const void*,size_t),
-      struct mi_controller* mi,
-      struct ri_controller *ri,
-      struct vi_controller* vi,
-      unsigned int fixed_audio_pos
-      )
-{
-   ai->user_data          = user_data;
-   ai->set_audio_format   = set_audio_format;
-   ai->push_audio_samples = push_audio_samples;
 
-   ai->mi = mi;
-   ai->ri    = ri;
-   ai->vi    = vi;
-   ai->fixed_audio_pos = fixed_audio_pos;
-}
+#define AI_STATUS_BUSY UINT32_C(0x40000000)
+#define AI_STATUS_FULL UINT32_C(0x80000000)
 
 
 static uint32_t get_remaining_dma_length(struct ai_controller* ai)
 {
-   uint64_t dma_length;
-   unsigned int *next_ai_event;
-   unsigned int remaining_dma_duration;
-   const uint32_t* cp0_regs;
+    unsigned int* next_ai_event;
+    unsigned int remaining_dma_duration;
+    const uint32_t* cp0_regs;
 
-   if (ai->fifo[0].duration == 0)
-      return 0;
+    if (ai->fifo[0].duration == 0)
+        return 0;
 
-   cp0_update_count();
-   next_ai_event          = get_event(AI_INT);
+    cp0_update_count(ai->mi->r4300);
+    next_ai_event = get_event(&ai->mi->r4300->cp0.q, AI_INT);
+    if (next_ai_event == NULL)
+        return 0;
 
-   if (next_ai_event == NULL)
-      return 0;
+    cp0_regs = r4300_cp0_regs(&ai->mi->r4300->cp0);
+    if ((int)(cp0_regs[CP0_COUNT_REG] - *next_ai_event) >= 0)
+        return 0;
 
-   cp0_regs = r4300_cp0_regs();
-   /* Use a signed-delta comparison so the test stays correct when CP0 COUNT
-    * wraps past 2^32, matching the cycle-count model already used in
-    * interrupt.c (and mupen64plus-next). An unsigned '<=' would mis-order the
-    * event time and the current count across a wrap. */
-   if ((int)(cp0_regs[CP0_COUNT_REG] - *next_ai_event) >= 0)
-      return 0;
+    remaining_dma_duration = *next_ai_event - cp0_regs[CP0_COUNT_REG];
 
-   remaining_dma_duration = *next_ai_event - cp0_regs[CP0_COUNT_REG];
-
-   dma_length = (uint64_t)remaining_dma_duration * ai->fifo[0].length / ai->fifo[0].duration;
-   return dma_length & ~7;
+    uint64_t dma_length = (uint64_t)remaining_dma_duration * ai->fifo[0].length / ai->fifo[0].duration;
+    return dma_length&~7;
 }
 
 static unsigned int get_dma_duration(struct ai_controller* ai)
 {
-   unsigned int samples_per_sec = ai->vi->clock / (1 + ai->regs[AI_DACRATE_REG]);
-   unsigned int bytes_per_sample = 4; /* XXX: assume 16bit stereo - should depends on bitrate instead */
-   unsigned int cpu_counts_per_sec = ai->vi->delay == 0
-      ? ai->vi->clock
-      : ai->vi->delay * ai->vi->expected_refresh_rate; /* estimate cpu counts/sec using VI */
+    unsigned int samples_per_sec = ai->vi->clock / (1 + ai->regs[AI_DACRATE_REG]);
+    unsigned int bytes_per_sample = 4; /* XXX: assume 16bit stereo - should depends on bitrate instead */
+    unsigned int cpu_counts_per_sec = ai->vi->delay == 0 ? ai->vi->clock : ai->vi->delay * ai->vi->expected_refresh_rate; /* estimate cpu counts/sec using VI */
 
-   return ai->regs[AI_LEN_REG] * (cpu_counts_per_sec / (bytes_per_sample * samples_per_sec));
+    return ai->regs[AI_LEN_REG] * (cpu_counts_per_sec / (bytes_per_sample * samples_per_sec));
 }
+
 
 static void do_dma(struct ai_controller* ai, struct ai_dma* dma)
 {
-   /* lazy initialization of sample format */
-   if (ai->samples_format_changed)
-   {
-      unsigned int frequency = (ai->regs[AI_DACRATE_REG] == 0)
-         ? 44100 /* default sample rate */
-         : ai->vi->clock / (1 + ai->regs[AI_DACRATE_REG]);
+    /* lazy initialization of sample format */
+    if (ai->samples_format_changed)
+    {
+        unsigned int frequency = (ai->regs[AI_DACRATE_REG] == 0)
+            ? 44100 /* default sample rate */
+            : ai->vi->clock / (1 + ai->regs[AI_DACRATE_REG]);
 
-      unsigned int bits      = (ai->regs[AI_BITRATE_REG] == 0)
-         ? 16 /* default bit rate */
-         : 1 + ai->regs[AI_BITRATE_REG];
+        ai->iaout->set_frequency(ai->aout, frequency);
 
-      ai->set_audio_format(ai, frequency, bits);
+        ai->samples_format_changed = 0;
+    }
 
-      ai->samples_format_changed = 0;
-      ai->last_read = 0;
-   }
+    ai->last_read = dma->length;
 
-   ai->last_read = dma->length;
+    if (ai->delayed_carry) dma->address += 0x2000;
 
-   /* Hardware AI address-carry behavior: when the previous DMA ended
-    * exactly on a 0x2000 boundary, the next DMA's effective address
-    * is offset by 0x2000. Without this carry the second buffer of
-    * audio in Twisted Edge Snowboarding (and a handful of similar
-    * titles that ping-pong two 0x2000-aligned buffers) is read from
-    * the wrong DRAM offset and produces stuttering/looping audio.
-    * Set delayed_carry now for the *next* DMA when this one ends
-    * on a 0x2000 boundary; clear it otherwise. fifo_pop clears it
-    * when the engine drains to idle so a fresh start doesn't inherit
-    * a stale carry. */
-   if (ai->delayed_carry)
-      dma->address += 0x2000;
+    if (((dma->address + dma->length) & 0x1FFF) == 0)
+        ai->delayed_carry = 1;
+    else
+        ai->delayed_carry = 0;
 
-   if (((dma->address + dma->length) & 0x1FFF) == 0)
-      ai->delayed_carry = 1;
-   else
-      ai->delayed_carry = 0;
-
-   /* schedule end of dma event */
-   cp0_update_count();
-   add_interrupt_event(AI_INT, dma->duration);
+    /* schedule end of dma event */
+    cp0_update_count(ai->mi->r4300);
+    add_interrupt_event(&ai->mi->r4300->cp0, AI_INT, dma->duration);
 }
 
-/* Fill the next FIFO entry in the DMA engine. */
 static void fifo_push(struct ai_controller* ai)
 {
-   unsigned int duration = get_dma_duration(ai);
+    unsigned int duration = get_dma_duration(ai) * ai->dma_modifier;
 
-   /* Per-ROM AI DMA timing adjustment (percentage; 100 = unchanged). A few
-    * titles (e.g. Hey You, Pikachu!) need their AI DMA duration scaled to get
-    * correct audio pitch/sync. Mirrors mupen64plus-next's AiDmaModifier; the
-    * value is resolved per cart id in rom.c and defaults to 100. */
-   if (ROM_SETTINGS.aidmamodifier != 100)
-      duration = (unsigned int)(((uint64_t)duration * ROM_SETTINGS.aidmamodifier) / 100);
+    if (ai->regs[AI_STATUS_REG] & AI_STATUS_BUSY)
+    {
+        ai->fifo[1].address = ai->regs[AI_DRAM_ADDR_REG];
+        ai->fifo[1].length = ai->regs[AI_LEN_REG] & ~UINT32_C(7);
+        ai->fifo[1].duration = duration;
+        ai->regs[AI_STATUS_REG] |= AI_STATUS_FULL;
+    }
+    else
+    {
+        ai->fifo[0].address = ai->regs[AI_DRAM_ADDR_REG];
+        ai->fifo[0].length = ai->regs[AI_LEN_REG] & ~UINT32_C(7);
+        ai->fifo[0].duration = duration;
+        ai->regs[AI_STATUS_REG] |= AI_STATUS_BUSY;
 
-   if (ai->regs[AI_STATUS_REG] & AI_STATUS_BUSY)
-   {
-      ai->fifo[1].address = ai->regs[AI_DRAM_ADDR_REG];
-      ai->fifo[1].length = ai->regs[AI_LEN_REG] & ~UINT32_C(7);
-      ai->fifo[1].duration = duration;
-      ai->regs[AI_STATUS_REG] |= AI_STATUS_FULL;
-   }
-   else
-   {
-      /* If we're not DMA-ing already, start DMA engine. */
-      ai->fifo[0].address = ai->regs[AI_DRAM_ADDR_REG];
-      ai->fifo[0].length = ai->regs[AI_LEN_REG] & ~UINT32_C(7);
-      ai->fifo[0].duration = duration;
-      ai->regs[AI_STATUS_REG] |= AI_STATUS_BUSY;
-
-      do_dma(ai, &ai->fifo[0]);
-   }
+        do_dma(ai, &ai->fifo[0]);
+    }
 }
-
 
 static void fifo_pop(struct ai_controller* ai)
 {
-   if (ai->regs[AI_STATUS_REG] & AI_STATUS_FULL)
-   {
-      ai->fifo[0].address  = ai->fifo[1].address;
-      ai->fifo[0].length   = ai->fifo[1].length;
-      ai->fifo[0].duration = ai->fifo[1].duration;
-      ai->regs[AI_STATUS_REG] &= ~AI_STATUS_FULL;
+    if (ai->regs[AI_STATUS_REG] & AI_STATUS_FULL)
+    {
+        ai->fifo[0].address = ai->fifo[1].address;
+        ai->fifo[0].length = ai->fifo[1].length;
+        ai->fifo[0].duration = ai->fifo[1].duration;
+        ai->regs[AI_STATUS_REG] &= ~AI_STATUS_FULL;
 
-      do_dma(ai, &ai->fifo[0]);
-   }
-   else
-   {
-      ai->regs[AI_STATUS_REG] &= ~AI_STATUS_BUSY;
-      ai->delayed_carry = 0;
-   }
+        do_dma(ai, &ai->fifo[0]);
+    }
+    else
+    {
+        ai->regs[AI_STATUS_REG] &= ~AI_STATUS_BUSY;
+        ai->delayed_carry = 0;
+    }
 }
 
-/* Initializes the AI. */
+
+void init_ai(struct ai_controller* ai,
+             struct mi_controller* mi,
+             struct ri_controller* ri,
+             struct vi_controller* vi,
+             void* aout,
+             const struct audio_out_backend_interface* iaout,
+             float dma_modifier)
+{
+    ai->mi = mi;
+    ai->ri = ri;
+    ai->vi = vi;
+    ai->aout = aout;
+    ai->iaout = iaout;
+    ai->dma_modifier = dma_modifier;
+}
+
 void poweron_ai(struct ai_controller* ai)
 {
     memset(ai->regs, 0, AI_REGS_COUNT*sizeof(uint32_t));
     memset(ai->fifo, 0, AI_DMA_FIFO_SIZE*sizeof(struct ai_dma));
     ai->samples_format_changed = 0;
-    ai->delayed_carry          = 0;
-    ai->audio_pos = 0;
-	  ai->last_read = 0;
+    ai->last_read = 0;
+    ai->delayed_carry = 0;
 }
 
-/* Reads a word from the AI MMIO register space. */
-int read_ai_regs(void* opaque, uint32_t address, uint32_t* value)
+void read_ai_regs(void* opaque, uint32_t address, uint32_t* value)
 {
     struct ai_controller* ai = (struct ai_controller*)opaque;
-    uint32_t reg = AI_REG(address);
+    uint32_t reg = ai_reg(address);
 
     if (reg == AI_LEN_REG)
     {
-       *value = get_remaining_dma_length(ai);
-       if (*value < ai->last_read)
-       {
-		   //should never read greater than the fifo length
-		   unsigned int diff =ai->fifo[0].length - ai->last_read;
-		   unsigned char *p = (unsigned char*)&ai->ri->rdram->dram[ai->fifo[0].address / 4];
-		   ai->push_audio_samples(&ai->backend,p + diff,ai->last_read - *value);
-			 
-		 }
-		  ai->last_read = *value;
+        *value = get_remaining_dma_length(ai);
+        if (*value < ai->last_read)
+        {
+            unsigned int diff = ai->fifo[0].length - ai->last_read;
+            unsigned char *p = (unsigned char*)&ai->ri->rdram->dram[ai->fifo[0].address/4];
+            ai->iaout->push_samples(ai->aout, p + diff, ai->last_read - *value);
+            ai->last_read = *value;
+        }
     }
     else
-        *value = (reg < AI_REGS_COUNT) ? ai->regs[reg] : 0u;
-
-    return 0;
+    {
+        *value = ai->regs[reg];
+    }
 }
 
-/* Writes a word to the AI MMIO register space. */
-int write_ai_regs(void* opaque, uint32_t address,
-      uint32_t value, uint32_t mask)
+void write_ai_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
 {
-   struct ai_controller* ai = (struct ai_controller*)opaque;
-   uint32_t reg = AI_REG(address);
+    struct ai_controller* ai = (struct ai_controller*)opaque;
+    uint32_t reg = ai_reg(address);
 
-   switch (reg)
-   {
-      case AI_DRAM_ADDR_REG:
-         ai->regs[AI_DRAM_ADDR_REG] = MASKED_WRITE(&ai->regs[AI_DRAM_ADDR_REG], value, mask);
-         if (ai->fixed_audio_pos)
-	 {
-             if (ai->audio_pos == 0)
-                 ai->audio_pos = ai->regs[AI_DRAM_ADDR_REG];
-             ai->regs[AI_DRAM_ADDR_REG] = ai->audio_pos;
-         }
-         return 0;
-      case AI_LEN_REG:
-         ai->regs[AI_LEN_REG] = MASKED_WRITE(&ai->regs[AI_LEN_REG], value, mask);
-         fifo_push(ai);
-         return 0;
+    switch (reg)
+    {
+    case AI_LEN_REG:
+        masked_write(&ai->regs[AI_LEN_REG], value, mask);
+        if (ai->regs[AI_LEN_REG] != 0) {
+            fifo_push(ai);
+        }
+        else {
+            /* stop sound */
+        }
+        return;
 
-      case AI_STATUS_REG:
-         clear_rcp_interrupt(ai->mi, MI_INTR_AI);
-         return 0;
-      case AI_BITRATE_REG:
-      case AI_DACRATE_REG:
-         /* lazy audio format setting */
-         if ((ai->regs[reg]) != (value & mask))
+    case AI_STATUS_REG:
+        clear_rcp_interrupt(ai->mi, MI_INTR_AI);
+        return;
+
+    case AI_DACRATE_REG:
+        /* lazy audio format setting */
+        if ((ai->regs[reg]) != (value & mask))
             ai->samples_format_changed = 1;
 
-         ai->regs[reg] = MASKED_WRITE(&ai->regs[reg], value, mask);
-         return 0;
-   }
+        masked_write(&ai->regs[reg], value, mask);
+        return;
+    }
 
-   if (reg < AI_REGS_COUNT)
-       ai->regs[reg] = MASKED_WRITE(&ai->regs[reg], value, mask);
-
-   return 0;
+    masked_write(&ai->regs[reg], value, mask);
 }
 
-void ai_end_of_dma_event(struct ai_controller* ai)
+void ai_end_of_dma_event(void* opaque)
 {
-   if (ai->last_read != 0)
-   {
-      unsigned int diff = ai->fifo[0].length - ai->last_read;
-      unsigned char *p = (unsigned char*)&ai->ri->rdram->dram[ai->fifo[0].address/4];
-      ai->push_audio_samples(&ai->backend,
-         p + diff, ai->last_read);
-      ai->last_read = 0;
-   } 
- 
-   fifo_pop(ai);
-   raise_rcp_interrupt(ai->mi, MI_INTR_AI);
+    struct ai_controller* ai = (struct ai_controller*)opaque;
+
+    if (ai->last_read != 0)
+    {
+        unsigned int diff = ai->fifo[0].length - ai->last_read;
+        unsigned char *p = (unsigned char*)&ai->ri->rdram->dram[ai->fifo[0].address/4];
+        ai->iaout->push_samples(ai->aout, p + diff, ai->last_read);
+        ai->last_read = 0;
+    }
+
+    fifo_pop(ai);
+    raise_rcp_interrupt(ai->mi, MI_INTR_AI);
 }
+

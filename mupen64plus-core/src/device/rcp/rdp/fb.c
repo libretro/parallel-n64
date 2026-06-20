@@ -1,6 +1,6 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *   Mupen64plus - fb.c                                                    *
- *   Mupen64Plus homepage: http://code.google.com/p/mupen64plus/           *
+ *   Mupen64Plus homepage: https://mupen64plus.org/                        *
  *   Copyright (C) 2014 Bobby Smiles                                       *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
@@ -20,225 +20,249 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "fb.h"
-#include "rdp_core.h"
 
-#include "../../memory/memory.h"
-#include "../../../plugin/core_plugin.h"
-#include "../../r4300/r4300_core.h"
-#include "../ri/ri_controller.h"
+#include "api/m64p_types.h"
+#include "api/callbacks.h"
+#include "device/memory/m64p_memory.h"
+#include "device/r4300/r4300_core.h"
+#include "device/rdram/rdram.h"
+#include "osal/preproc.h"
+#include "plugin/plugin.h"
 
 #include <string.h>
 
+extern unsigned int r4300_jit_backend;
+
+static osal_inline size_t fb_buffer_size(const FrameBufferInfo* fb_info)
+{
+    return fb_info->width * fb_info->height * fb_info->size;
+}
+
+void pre_framebuffer_read(struct fb* fb, uint32_t address)
+{
+    if (!fb->infos[0].addr) {
+        return;
+    }
+
+    size_t i;
+
+    for (i = 0; i < FB_INFOS_COUNT; ++i) {
+
+        /* skip empty fb info */
+        if (fb->infos[i].addr == 0) {
+            continue;
+        }
+
+        /* if address in within a fb and its page is dirty,
+         * notify GFX plugin and mark page as not dirty */
+        uint32_t begin = fb->infos[i].addr;
+        uint32_t end   = fb->infos[i].addr + fb_buffer_size(&fb->infos[i]) - 1;
+
+        if ((address >= begin) && (address <= end) && (fb->dirty_page[address >> 12])) {
+            gfx.fBRead(address);
+            fb->dirty_page[address >> 12] = 0;
+        }
+    }
+}
+
+void post_framebuffer_write(struct fb* fb, uint32_t address, uint32_t length)
+{
+    if (!fb->infos[0].addr) {
+        return;
+    }
+
+    size_t i, j;
+    unsigned char size;
+    if (length % 4 == 0)
+        size = 4;
+    else if (length % 2 == 0)
+        size = 2;
+    else
+        size = 1;
+
+    for (i = 0; i < FB_INFOS_COUNT; ++i) {
+
+        /* skip empty fb info */
+        if (fb->infos[i].addr == 0) {
+            continue;
+        }
+
+        /* if address in within a fb notify GFX plugin */
+        uint32_t begin = fb->infos[i].addr;
+        uint32_t end   = fb->infos[i].addr + fb_buffer_size(&fb->infos[i]) - 1;
+
+        for (j = 0; j < length; j += size) {
+            if ((address + j >= begin) && (address + j <= end)) {
+                gfx.fBWrite(address + j, size);
+            }
+        }
+    }
+}
+
+
+void init_fb(struct fb* fb,
+             struct memory* mem,
+             struct rdram* rdram,
+             struct r4300_core* r4300)
+{
+    fb->mem = mem;
+    fb->rdram = rdram;
+    fb->r4300 = r4300;
+}
+
 void poweron_fb(struct fb* fb)
 {
-    memset(fb, 0, sizeof(*fb));
+    memset(fb->dirty_page, 0, FB_DIRTY_PAGES_COUNT*sizeof(fb->dirty_page[0]));
+    memset(fb->infos, 0, FB_INFOS_COUNT*sizeof(fb->infos[0]));
     fb->once = 1;
 }
 
-
-static void pre_framebuffer_read(struct fb* fb, uint32_t address)
+void read_rdram_fb(void* opaque, uint32_t address, uint32_t* value)
 {
-    size_t i;
+    struct fb* fb = (struct fb*)opaque;
+    pre_framebuffer_read(fb, address);
+    read_rdram_dram(fb->rdram, address, value);
+}
 
-    for(i = 0; i < FB_INFOS_COUNT; ++i)
+void write_rdram_fb(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
+{
+    struct fb* fb = (struct fb*)opaque;
+    write_rdram_dram(fb->rdram, address, value, mask);
+
+    uint32_t addr = address & ~0x3;
+    size_t size = 4;
+
+    switch(mask)
     {
-        if (fb->infos[i].addr)
-        {
-            unsigned int start = fb->infos[i].addr & 0x7FFFFF;
-            unsigned int end   = start + fb->infos[i].width*
-                               fb->infos[i].height*
-                               fb->infos[i].size - 1;
+    case 0x000000ff:
+        addr += (3 ^ S8);
+        size = 1;
+        break;
 
-            if ((address & 0x7FFFFF) >= start && (address & 0x7FFFFF) <= end &&
-                    fb->dirty_page[(address & 0x7FFFFF)>>12])
-            {
-                gfx.fBRead(address);
-                fb->dirty_page[(address & 0x7FFFFF)>>12] = 0;
-            }
-        }
+    case 0x0000ff00:
+        addr += (2 ^ S8);
+        size = 1;
+        break;
+
+    case 0x00ff0000:
+        addr += (1 ^ S8);
+        size = 1;
+        break;
+
+    case 0xff000000:
+        addr += (0 ^ S8);
+        size = 1;
+        break;
+
+    case 0x0000ffff:
+        addr += (2 ^ S16);
+        size = 2;
+        break;
+
+    case 0xffff0000:
+        addr += (0 ^ S16);
+        size = 2;
+        break;
+
+    case 0xffffff00:
+        addr += (0 ^ Sh16);
+        size = 3;
+        break;
+
+    case 0x00ffffff:
+        addr += (1 ^ Sh16);
+        size = 3;
+        break;
+
+    case 0xffffffff:
+        addr += 0;
+        size = 4;
+        break;
+
+    default:
+        DebugMessage(M64MSG_WARNING, "Unknown mask %08x !!!", mask);
     }
-}
 
-static void post_framebuffer_write(struct fb* fb, uint32_t address, uint32_t mask)
-{
-    size_t i;
-
-    for(i = 0; i < FB_INFOS_COUNT; ++i)
-    {
-        if (fb->infos[i].addr)
-        {
-            unsigned int start = fb->infos[i].addr & 0x7FFFFF;
-            unsigned int end   = start + fb->infos[i].width*
-                               fb->infos[i].height*
-                               fb->infos[i].size - 1;
-            if ((address & 0x7FFFFF) >= start && (address & 0x7FFFFF) <= end)
-            {
-                uint32_t addr = address & ~UINT32_C(0x3);
-                size_t size = 4;
-
-                switch (mask)
-                {
-                case 0x000000ff: addr += (3 ^ S8);  size = 1; break;
-                case 0x0000ff00: addr += (2 ^ S8);  size = 1; break;
-                case 0x00ff0000: addr += (1 ^ S8);  size = 1; break;
-                case 0xff000000: addr += (0 ^ S8);  size = 1; break;
-                case 0x0000ffff: addr += (2 ^ S16); size = 2; break;
-                case 0xffff0000: addr += (0 ^ S16); size = 2; break;
-                case 0xffffff00: addr += (0 ^ Sh16); size = 3; break;
-                case 0x00ffffff: addr += (1 ^ Sh16); size = 3; break;
-                case 0xffffffff: size = 4; break;
-                default: break; /* unknown mask: fall back to full word */
-                }
-
-                gfx.fBWrite(addr, size);
-            }
-        }
-    }
-}
-
-int read_rdram_fb(void* opaque, uint32_t address, uint32_t* value)
-{
-    struct rdp_core* dp = (struct rdp_core*)opaque;
-    pre_framebuffer_read(&dp->fb, address);
-    return read_rdram_dram(dp->ri, address, value);
-}
-
-int write_rdram_fb(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
-{
-    struct rdp_core* dp = (struct rdp_core*)opaque;
-    int rval = write_rdram_dram(dp->ri, address, value, mask);
-    post_framebuffer_write(&dp->fb, address, mask);
-    return rval;
-}
-
-/* Notify the GFX plugin that an upcoming PI DMA *read* from RDRAM
- * (i.e. dram-to-cart save / screenshot dumps) overlaps a tracked
- * framebuffer; the plugin may need to flush pending writes back into
- * RDRAM before we transfer it out. Fast no-op when nothing is
- * registered. */
-void pre_framebuffer_dma_read(struct fb* fb, uint32_t address, uint32_t length)
-{
-    uint32_t addr;
-    uint32_t end = address + length;
-
-    if (!fb->infos[0].addr)
-        return;
-
-    for (addr = address & ~UINT32_C(3); addr < end; addr += 4)
-        pre_framebuffer_read(fb, addr);
-}
-
-/* Notify the GFX plugin that a PI DMA *write* into RDRAM (cart-to-dram,
- * the common case for streamed framebuffer effects) modified bytes that
- * overlap a tracked framebuffer; the plugin needs to re-upload the
- * affected texels. Fast no-op when nothing is registered. */
-void post_framebuffer_dma_write(struct fb* fb, uint32_t address, uint32_t length)
-{
-    uint32_t addr;
-    uint32_t end = address + length;
-
-    if (!fb->infos[0].addr)
-        return;
-
-    for (addr = address & ~UINT32_C(3); addr < end; addr += 4)
-        post_framebuffer_write(fb, addr, UINT32_C(0xffffffff));
+    post_framebuffer_write(fb, addr, size);
 }
 
 
-#define R(x) read_ ## x ## b, read_ ## x ## h, read_ ## x, read_ ## x ## d
-#define W(x) write_ ## x ## b, write_ ## x ## h, write_ ## x, write_ ## x ## d
+#define R(x) read_ ## x
+#define W(x) write_ ## x
 #define RW(x) R(x), W(x)
 
-void protect_framebuffers(struct rdp_core* dp)
+void protect_framebuffers(struct fb* fb)
 {
-    struct fb* fb = &dp->fb;
+    size_t i, j;
+    struct mem_mapping fb_mapping = { 0, 0, M64P_MEM_RDRAM, { fb, RW(rdram_fb) } };
 
-    if (gfx.fBGetFrameBufferInfo && gfx.fBRead && gfx.fBWrite)
-        gfx.fBGetFrameBufferInfo(fb->infos);
+    /* check API support */
+    if (!(gfx.fBGetFrameBufferInfo && gfx.fBRead && gfx.fBWrite)
+        || fb->r4300->emumode == EMUMODE_DYNAREC /* Dynarecs currently miss some of the read/writes needed for FBInfo */) {
+        return;
+    }
 
-    if (!gfx.fBGetFrameBufferInfo)
-       return;
-    if (!gfx.fBRead && gfx.fBWrite)
-       return;
+    /* ask fb info to gfx plugin */
+    gfx.fBGetFrameBufferInfo(fb->infos);
 
-    if (fb->infos[0].addr)
-    {
-       size_t i;
-       for(i = 0; i < FB_INFOS_COUNT; ++i)
-       {
-          if (fb->infos[i].addr)
-          {
-             int j;
-             int start  = fb->infos[i].addr & 0x7FFFFF;
-             int end    = start + fb->infos[i].width*
-                fb->infos[i].height*
-                fb->infos[i].size - 1;
-             int start1 = start >> 12;
-             int end1   = end   >> 12;
+    /* return early if not FB info is present */
+    if (fb->infos[0].addr == 0) {
+        return;
+    }
 
-             start >>= 16;
-             end   >>= 16;
+    for (i = 0; i < FB_INFOS_COUNT; ++i) {
 
-             for (j = start; j <= end; j++)
-             {
-                map_region(0x8000+j, M64P_MEM_RDRAM, RW(rdramFB));
-                map_region(0xa000+j, M64P_MEM_RDRAM, RW(rdramFB));
-             }
+        /* skip empty fb info */
+        if (fb->infos[i].addr == 0) {
+            continue;
+        }
 
-             start <<= 4;
-             end   <<= 4;
+        /* map fb rw handlers */
+        fb_mapping.begin = fb->infos[i].addr;
+        fb_mapping.end   = fb->infos[i].addr + fb_buffer_size(&fb->infos[i]) - 1;
+        apply_mem_mapping(fb->mem, &fb_mapping);
 
-             for (j=start; j<=end; j++)
-             {
-                if (j >= start1 && j <= end1)
-                   fb->dirty_page[j] = 1;
-                else
-                   fb->dirty_page[j] = 0;
-             }
+        /* mark all pages that are within a fb as dirty */
+        for (j = fb_mapping.begin >> 12; j <= (fb_mapping.end >> 12); ++j) {
+            fb->dirty_page[j] = 1;
+        }
 
-             /* disable "fast memory" if framebuffer handlers are used */
-             if (fb->once != 0)
-             {
-                fb->once = 0;
-                dp->mi->r4300->recomp.fast_memory = 0;
-                invalidate_r4300_cached_code(0, 0);
-             }
-          }
-       }
+        /* disable dynarec "fast memory" code generation to avoid direct memory accesses */
+        if (fb->once) {
+            fb->once = 0;
+            /* The Hacktarux dynarec must drop fast_memory so its generated
+             * framebuffer writes route through the dirty-page-tracking handler;
+             * ari64 manages this via its own memory map. Runtime dispatch since
+             * both backends are compiled in. */
+            if (r4300_jit_backend == R4300_JIT_HACKTARUX)
+                fb->r4300->recomp.fast_memory = 0;
+
+            /* also need to invalidate cached code to regen non fast memory code path */
+            invalidate_r4300_cached_code(fb->r4300, 0, 0);
+        }
     }
 }
 
-void unprotect_framebuffers(struct rdp_core* dp)
+void unprotect_framebuffers(struct fb* fb)
 {
-    struct fb* fb = &dp->fb;
+    size_t i;
+    struct mem_mapping ram_mapping = { 0, 0, M64P_MEM_RDRAM, { fb->rdram, RW(rdram_dram) } };
 
-    if (!gfx.fBGetFrameBufferInfo)
-       return;
-    if (!gfx.fBRead && gfx.fBWrite)
-       return;
-    
-    if (fb->infos[0].addr)
-    {
-       size_t i;
+    /* return early if FB info is not supported or empty */
+    if (!fb->infos[0].addr) {
+        return;
+    }
 
-       for(i = 0; i < FB_INFOS_COUNT; ++i)
-       {
-          if (fb->infos[i].addr)
-          {
-             int j;
-             int start = fb->infos[i].addr & 0x7FFFFF;
-             int end   = start + fb->infos[i].width *
-                fb->infos[i].height*
-                fb->infos[i].size - 1;
-             start     = start >> 16;
-             end       = end >> 16;
+    for (i = 0; i < FB_INFOS_COUNT; ++i) {
 
-             for (j = start; j <= end; j++)
-             {
-                map_region(0x8000+j, M64P_MEM_RDRAM, RW(rdram));
-                map_region(0xa000+j, M64P_MEM_RDRAM, RW(rdram));
-             }
-          }
-       }
+        /* skip empty fb info */
+        if (fb->infos[i].addr == 0) {
+            continue;
+        }
+
+        /* restore ram rw handlers */
+        ram_mapping.begin = fb->infos[i].addr;
+        ram_mapping.end   = fb->infos[i].addr + fb_buffer_size(&fb->infos[i]) - 1;
+        apply_mem_mapping(fb->mem, &ram_mapping);
     }
 }

@@ -1,6 +1,6 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *   Mupen64plus - ai_controller.h                                         *
- *   Mupen64Plus homepage: http://code.google.com/p/mupen64plus/           *
+ *   Mupen64Plus homepage: https://mupen64plus.org/                        *
  *   Copyright (C) 2014 Bobby Smiles                                       *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
@@ -19,22 +19,18 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef M64P_AI_AI_CONTROLLER_H
-#define M64P_AI_AI_CONTROLLER_H
-
-#include "../../../api/m64p_types.h"
+#ifndef M64P_DEVICE_RCP_AI_AI_CONTROLLER_H
+#define M64P_DEVICE_RCP_AI_AI_CONTROLLER_H
 
 #include <stddef.h>
 #include <stdint.h>
 
-#ifndef AI_REG
-#define AI_REG(a) ((a & 0x1f) >> 2)
-#endif
+#include "osal/preproc.h"
 
-struct r4300_core;
 struct mi_controller;
 struct ri_controller;
 struct vi_controller;
+struct audio_out_backend_interface;
 
 enum ai_registers
 {
@@ -49,51 +45,48 @@ enum ai_registers
 
 struct ai_dma
 {
-   uint32_t address;
-   uint32_t length;
-   unsigned int duration;
+    uint32_t address;
+    uint32_t length;
+    unsigned int duration;
 };
 
 enum { AI_DMA_FIFO_SIZE = 2 };
 
 struct ai_controller
 {
-   uint32_t regs[AI_REGS_COUNT];
-   struct ai_dma fifo[AI_DMA_FIFO_SIZE];
-   unsigned int samples_format_changed;
-   unsigned int delayed_carry;
+    uint32_t regs[AI_REGS_COUNT];
+    struct ai_dma fifo[AI_DMA_FIFO_SIZE];
+    unsigned int samples_format_changed;
+    uint32_t last_read;
+    uint32_t delayed_carry;
+    float dma_modifier;
 
-   struct m64p_audio_backend backend;
+    struct mi_controller* mi;
+    struct ri_controller* ri;
+    struct vi_controller* vi;
 
-   /* external speaker output */
-   void* user_data;
-   void (*set_audio_format)(void*,unsigned int, unsigned int);
-   void (*push_audio_samples)(void*,const void*,size_t);
-
-   struct mi_controller* mi;
-   struct ri_controller* ri;
-   struct vi_controller* vi;
-   uint32_t fixed_audio_pos;
-   uint32_t audio_pos;
-   uint32_t last_read;
+    void* aout;
+    const struct audio_out_backend_interface* iaout;
 };
 
+static osal_inline uint32_t ai_reg(uint32_t address)
+{
+    return (address & 0xffff) >> 2;
+}
 
 void init_ai(struct ai_controller* ai,
-      void * user_data,
-      void (*set_audio_format)(void*,unsigned int, unsigned int),
-      void (*push_audio_samples)(void*,const void*,size_t),
-      struct mi_controller* mi,
-      struct ri_controller *ri,
-      struct vi_controller* vi,
-      unsigned int fixed_audio_pos
-      );
+             struct mi_controller* mi,
+             struct ri_controller* ri,
+             struct vi_controller* vi,
+             void* aout,
+             const struct audio_out_backend_interface* iaout,
+             float dma_modifier);
 
 void poweron_ai(struct ai_controller* ai);
 
-int read_ai_regs(void* opaque, uint32_t address, uint32_t* value);
-int write_ai_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask);
+void read_ai_regs(void* opaque, uint32_t address, uint32_t* value);
+void write_ai_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask);
 
-void ai_end_of_dma_event(struct ai_controller* ai);
+void ai_end_of_dma_event(void* opaque);
 
 #endif

@@ -1,6 +1,6 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *   Mupen64plus - arm_cpu_features.c                                      *
- *   Mupen64Plus homepage: http://code.google.com/p/mupen64plus/           *
+ *   Mupen64Plus homepage: https://mupen64plus.org/                        *
  *   Copyright (C) 2015 Gilles Siberlin                                    *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
@@ -23,7 +23,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "../../../../api/callbacks.h"
+#include "api/callbacks.h"
 #include "arm_cpu_features.h"
 
 arm_cpu_features_t arm_cpu_features;
@@ -38,7 +38,7 @@ static unsigned char check_arm_cpu_feature(const char* feature)
     if (pFile != NULL)
     {
         char line[1024];
-        
+
         while (fgets(line , sizeof(line) , pFile) != NULL)
         {
             if (strncmp(line, "Features\t: ", 11))
@@ -46,7 +46,7 @@ static unsigned char check_arm_cpu_feature(const char* feature)
 
             if (strstr(line + 11, feature) != NULL)
                 status = 1;
-            
+
             break;
         }
         fclose(pFile);
@@ -62,14 +62,14 @@ static unsigned char get_arm_cpu_implementer(void)
     if (pFile != NULL)
     {
         char line[1024];
-        
+
         while (fgets(line , sizeof(line) , pFile) != NULL)
         {
             if (strncmp(line, "CPU implementer\t: ", 18))
                 continue;
-            
+
             sscanf(line+18, "0x%02hhx", &implementer);
-            
+
             break;
         }
         fclose(pFile);
@@ -85,14 +85,14 @@ static unsigned short get_arm_cpu_part(void)
     if (pFile != NULL)
     {
         char line[1024];
-        
+
         while (fgets(line , sizeof(line) , pFile) != NULL)
         {
             if (strncmp(line, "CPU part\t: ", 11))
                 continue;
-            
+
             sscanf(line+11, "0x%03hx", &part);
-            
+
             break;
         }
         fclose(pFile);
@@ -115,7 +115,7 @@ void detect_arm_cpu_features(void)
     arm_cpu_features.VFPv4    = check_arm_cpu_feature("vfpv4");
     arm_cpu_features.IDIVa    = check_arm_cpu_feature("idiva");
     arm_cpu_features.IDIVt    = check_arm_cpu_feature("idivt");
-    
+
     // Qualcomm Krait supports IDIVa but it doesn't report it. Check for krait.
     if (get_arm_cpu_implementer() == 0x51 && get_arm_cpu_part() == 0x6F)
         arm_cpu_features.IDIVa = arm_cpu_features.IDIVt = 1;

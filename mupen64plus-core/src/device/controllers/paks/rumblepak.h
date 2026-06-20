@@ -1,6 +1,6 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *   Mupen64plus - rumblepak.h                                             *
- *   Mupen64Plus homepage: http://code.google.com/p/mupen64plus/           *
+ *   Mupen64Plus homepage: https://mupen64plus.org/                        *
  *   Copyright (C) 2014 Bobby Smiles                                       *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
@@ -19,42 +19,28 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef M64P_SI_RUMBLEPAK_H
-#define M64P_SI_RUMBLEPAK_H
+#ifndef M64P_DEVICE_SI_RUMBLEPAK_H
+#define M64P_DEVICE_SI_RUMBLEPAK_H
 
-struct pak_interface;
-#include <stdint.h>
 #include <stddef.h>
+#include <stdint.h>
 
-enum rumble_action
-{
-    RUMBLE_STOP,
-    RUMBLE_START
-};
+struct rumble_backend_interface;
 
 struct rumblepak
 {
-    /* last value written to the rumble control register (0xc000).
-     * Tracked so the rumble state reflects the most recent write and can
-     * be re-evaluated; matches mupen64plus-next, which keys rumble off
-     * this register rather than recomputing from the raw command each
-     * time. */
     uint8_t state;
-
-    /* external rumble sink */
-    void* user_data;
-    void (*rumble)(void*,enum rumble_action);
+    void* rumble;
+    const struct rumble_backend_interface* irumble;
 };
 
-void init_rumblepak(struct rumblepak* rpk, void* user_data, void (*rumble)(void*,enum rumble_action));
+void init_rumblepak(struct rumblepak* rpk,
+    void* rumble, const struct rumble_backend_interface* irumble);
 
-void rumblepak_rumble(struct rumblepak* rpk, enum rumble_action action);
+void poweron_rumblepak(struct rumblepak* rpk);
 
-void rumblepak_read_command(struct rumblepak* rpk, uint16_t address, uint8_t* data, size_t size);
-void rumblepak_write_command(struct rumblepak* rpk, uint16_t address, const uint8_t* data, size_t size);
+void set_rumble_reg(struct rumblepak* rpk, uint8_t value);
 
-
-/* mupen64plus-next pak_interface (region 12c) */
 extern const struct pak_interface g_irumblepak;
 
 #endif

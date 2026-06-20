@@ -1,6 +1,6 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *   Mupen64plus - pif.h                                                   *
- *   Mupen64Plus homepage: http://code.google.com/p/mupen64plus/           *
+ *   Mupen64Plus homepage: https://mupen64plus.org/                        *
  *   Copyright (C) 2002 Hacktarux                                          *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
@@ -19,35 +19,24 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef M64P_SI_PIF_H
-#define M64P_SI_PIF_H
+#ifndef M64P_DEVICE_SI_PIF_H
+#define M64P_DEVICE_SI_PIF_H
 
+#include <stddef.h>
 #include <stdint.h>
 
-#include "../cart/af_rtc.h"
 #include "cic.h"
-#include "../cart/eeprom.h"
-#include "../../backends/libretro_storage.h"
-#include "../controllers/game_controller.h"
 
-#ifndef PIF_RAM_ADDR
-#define PIF_RAM_ADDR(a)    (((a) & 0xfffc) - 0x7c0)
-#endif
+#include "osal/preproc.h"
 
-enum
-{
-   GAME_CONTROLLERS_COUNT = 4
-};
+struct joybus_device_interface;
+struct r4300_core;
+struct si_controller;
 
-enum
-{
-   PIF_RAM_SIZE = 0x40
-};
-
-/* PIF channel count (4 controllers + cart), matching mupen64plus-next. */
+enum { PIF_ROM_SIZE = 0x7c0 };
+enum { PIF_RAM_SIZE = 0x40 };
 enum { PIF_CHANNELS_COUNT = 5 };
 
-/* PIF channel: binds a joybus device to its Tx/Rx slots in PIF RAM (region 12d) */
 struct pif_channel
 {
     void* jbd;
@@ -59,58 +48,48 @@ struct pif_channel
     uint8_t* rx_buf;
 };
 
-enum pif_commands
-{
-   PIF_CMD_STATUS          = 0x00,
-   PIF_CMD_CONTROLLER_READ = 0x01,
-   PIF_CMD_PAK_READ        = 0x02,
-   PIF_CMD_PAK_WRITE       = 0x03,
-   PIF_CMD_EEPROM_READ     = 0x04,
-   PIF_CMD_EEPROM_WRITE    = 0x05,
-   PIF_CMD_AF_RTC_STATUS   = 0x06,
-   PIF_CMD_AF_RTC_READ     = 0x07,
-   PIF_CMD_AF_RTC_WRITE    = 0x08,
-   PIF_CMD_GCN_SHORTPOLL   = 0x40,
-   PIF_CMD_RESET           = 0xff
-};
-
-struct si_controller;
-
-struct cart;
+void disable_pif_channel(struct pif_channel* channel);
+size_t setup_pif_channel(struct pif_channel* channel, uint8_t* buf);
 
 struct pif
 {
-   uint8_t ram[PIF_RAM_SIZE];
-   uint8_t cic_challenge;
+    uint8_t* base;
+    uint8_t* ram;
+    struct pif_channel channels[PIF_CHANNELS_COUNT];
 
-   struct game_controller controllers[GAME_CONTROLLERS_COUNT];
+    struct cic cic;
 
-   struct cic cic;
-
-   struct cart* cart;
-
-   /* joybus channel bindings (region 12d): channels 0-3 -> controllers,
-    * channel 4 -> cart. Populated at init/reset; used by the channel dispatch. */
-   struct pif_channel channels[PIF_CHANNELS_COUNT];
+    struct r4300_core* r4300;
+    struct si_controller* si;
 };
 
-void init_pif(struct pif *pif,
-      void *eeprom_user_data,
-      void (*eeprom_save)(void*),
-      uint8_t *eeprom_data,
-      size_t eeprom_size,
-      uint32_t eeprom_id,
-      void* af_rtc_user_data,
-      const struct tm* (*af_rtc_get_time)(void*),
-      const uint8_t *ipl3
-      );
+static osal_inline uint32_t pif_address(uint32_t address)
+{
+    return (address & 0xfffc);
+}
+
+
+void init_pif(struct pif* pif,
+    uint8_t* pif_base,
+    void* jbds[PIF_CHANNELS_COUNT],
+    const struct joybus_device_interface* ijbds[PIF_CHANNELS_COUNT],
+    const uint8_t* ipl3,
+    struct r4300_core* r4300,
+    struct si_controller* si);
 
 void poweron_pif(struct pif* pif);
 
-int read_pif_ram(void* opaque, uint32_t address, uint32_t* value);
-int write_pif_ram(void* opaque, uint32_t address, uint32_t value, uint32_t mask);
+void reset_pif(struct pif* pif, unsigned int reset_type);
 
-void update_pif_write(struct si_controller* si);
-void update_pif_read(struct si_controller* si);
+void setup_channels_format(struct pif* pif);
+
+void read_pif_mem(void* opaque, uint32_t address, uint32_t* value);
+void write_pif_mem(void* opaque, uint32_t address, uint32_t value, uint32_t mask);
+
+void process_pif_ram(struct pif* pif);
+void update_pif_ram(struct pif* pif);
+
+void hw2_int_handler(void* opaque);
 
 #endif
+

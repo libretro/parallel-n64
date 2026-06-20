@@ -1,6 +1,6 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *   Mupen64plus - plugin.c                                                *
- *   Mupen64Plus homepage: http://code.google.com/p/mupen64plus/           *
+ *   Mupen64Plus homepage: https://mupen64plus.org/                        *
  *   Copyright (C) 2002 Hacktarux                                          *
  *   Copyright (C) 2009 Richard Goedeken                                   *
  *                                                                         *
@@ -20,40 +20,34 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include <stdio.h>
-#include <stdlib.h>
 #include <stdint.h>
+#include <stdlib.h>
+#include <string.h>
 
-#include "core_plugin.h"
+#include "api/callbacks.h"
+#include "api/m64p_common.h"
+#include "api/m64p_plugin.h"
+#include "api/m64p_types.h"
+#include "device/memory/m64p_memory.h"
+#include "device/rcp/ai/ai_controller.h"
+#include "device/rcp/mi/mi_controller.h"
+#include "device/rcp/rdp/rdp_core.h"
+#include "device/rcp/rsp/rsp_core.h"
+#include "device/rcp/vi/vi_controller.h"
+#include "dummy_audio.h"
+#include "dummy_input.h"
+#include "main/main.h"
+#include "main/rom.h"
+#include "main/version.h"
+#include "osal/dynamiclib.h"
+#include "plugin.h"
+#include "mupen64plus-next_common.h"
 
-#include "../device/r4300/r4300_core.h"
-#include "../device/rcp/rdp/rdp_core.h"
-#include "../device/rcp/rsp/rsp_core.h"
+#include <stdio.h>
 
-#include "../device/rcp/vi/vi_controller.h"
+CONTROL Controls[4];
+void ResizeVideoOutput(int width, int height){
 
-#include "../api/callbacks.h"
-#include "../api/m64p_common.h"
-#include "../api/m64p_plugin.h"
-#include "../api/m64p_types.h"
-
-#include "../main/main.h"
-#include "../device/device.h"
-#include "../main/rom.h"
-#include "../device/dd/dd_rom.h"
-#include "../main/version.h"
-#include "../device/memory/memory.h"
-
-static unsigned int dummy;
-
-/* local functions */
-static void EmptyFunc(void)
-{
-}
-
-static m64p_error EmptyGetVersionFunc(m64p_plugin_type *PluginType, int *PluginVersion, int *APIVersion, const char **PluginNamePtr, int *Capabilities)
-{
-   return M64ERR_SUCCESS;
 }
 /* local data structures and functions */
 #define DEFINE_GFX(X) \
@@ -76,7 +70,7 @@ static m64p_error EmptyGetVersionFunc(m64p_plugin_type *PluginType, int *PluginV
     EXPORT void CALL X##FBWrite(unsigned int addr, unsigned int size); \
     EXPORT void CALL X##FBGetFrameBufferInfo(void *p); \
     \
-    static const gfx_plugin_functions gfx_##X = { \
+    gfx_plugin_functions gfx_##X = { \
         X##PluginGetVersion, \
         X##ChangeWindow, \
         X##InitiateGFX, \
@@ -91,126 +85,87 @@ static m64p_error EmptyGetVersionFunc(m64p_plugin_type *PluginType, int *PluginV
         X##ViWidthChanged, \
         X##ReadScreen2, \
         X##SetRenderingCallback, \
+        ResizeVideoOutput, \
         X##FBRead, \
         X##FBWrite, \
         X##FBGetFrameBufferInfo \
     }
 
-DEFINE_GFX(angrylion);
-#ifdef HAVE_RICE
-DEFINE_GFX(rice);
-#endif
-#ifdef HAVE_GLN64
 DEFINE_GFX(gln64);
+#if defined(HAVE_THR_AL)
+DEFINE_GFX(angrylion);
 #endif
-#ifdef HAVE_GLIDEN64
-DEFINE_GFX(gliden64);
-#endif
-#ifdef HAVE_GLIDE64
-DEFINE_GFX(glide64);
-#endif
-#ifdef HAVE_PARALLEL
+#if defined(HAVE_PARALLEL_RDP)
 DEFINE_GFX(parallel);
 #endif
 
 gfx_plugin_functions gfx;
 GFX_INFO gfx_info;
+audio_plugin_functions audio;
+input_plugin_functions input;
+rsp_plugin_functions rsp;
+RSP_INFO rsp_info;
 
-static m64p_error plugin_start_gfx(void)
-{
-   /* fill in the GFX_INFO data structure */
-   if ((g_ddrom != NULL) && (g_ddrom_size != 0) && (g_rom == NULL) && (g_rom_size == 0))
-   {
-      //fill in 64DD IPL header
-      gfx_info.HEADER = (unsigned char *) g_ddrom;
-   }
-   else
-   {
-      //fill in regular N64 ROM header
-      gfx_info.HEADER = (unsigned char *) g_rom;
-   }
-   gfx_info.RDRAM = (unsigned char *) g_rdram;
-   gfx_info.DMEM = (unsigned char *) g_dev.sp.mem;
-   gfx_info.IMEM = (unsigned char *) g_dev.sp.mem + 0x1000;
-   gfx_info.MI_INTR_REG = &(g_dev.mi.regs[MI_INTR_REG]);
-   gfx_info.DPC_START_REG = &(g_dev.dp.dpc_regs[DPC_START_REG]);
-   gfx_info.DPC_END_REG = &(g_dev.dp.dpc_regs[DPC_END_REG]);
-   gfx_info.DPC_CURRENT_REG = &(g_dev.dp.dpc_regs[DPC_CURRENT_REG]);
-   gfx_info.DPC_STATUS_REG = &(g_dev.dp.dpc_regs[DPC_STATUS_REG]);
-   gfx_info.DPC_CLOCK_REG = &(g_dev.dp.dpc_regs[DPC_CLOCK_REG]);
-   gfx_info.DPC_BUFBUSY_REG = &(g_dev.dp.dpc_regs[DPC_BUFBUSY_REG]);
-   gfx_info.DPC_PIPEBUSY_REG = &(g_dev.dp.dpc_regs[DPC_PIPEBUSY_REG]);
-   gfx_info.DPC_TMEM_REG = &(g_dev.dp.dpc_regs[DPC_TMEM_REG]);
-   gfx_info.VI_STATUS_REG = &(g_dev.vi.regs[VI_STATUS_REG]);
-   gfx_info.VI_ORIGIN_REG = &(g_dev.vi.regs[VI_ORIGIN_REG]);
-   gfx_info.VI_WIDTH_REG = &(g_dev.vi.regs[VI_WIDTH_REG]);
-   gfx_info.VI_INTR_REG = &(g_dev.vi.regs[VI_V_INTR_REG]);
-   gfx_info.VI_V_CURRENT_LINE_REG = &(g_dev.vi.regs[VI_CURRENT_REG]);
-   gfx_info.VI_TIMING_REG = &(g_dev.vi.regs[VI_BURST_REG]);
-   gfx_info.VI_V_SYNC_REG = &(g_dev.vi.regs[VI_V_SYNC_REG]);
-   gfx_info.VI_H_SYNC_REG = &(g_dev.vi.regs[VI_H_SYNC_REG]);
-   gfx_info.VI_LEAP_REG = &(g_dev.vi.regs[VI_LEAP_REG]);
-   gfx_info.VI_H_START_REG = &(g_dev.vi.regs[VI_H_START_REG]);
-   gfx_info.VI_V_START_REG = &(g_dev.vi.regs[VI_V_START_REG]);
-   gfx_info.VI_V_BURST_REG = &(g_dev.vi.regs[VI_V_BURST_REG]);
-   gfx_info.VI_X_SCALE_REG = &(g_dev.vi.regs[VI_X_SCALE_REG]);
-   gfx_info.VI_Y_SCALE_REG = &(g_dev.vi.regs[VI_Y_SCALE_REG]);
-   gfx_info.CheckInterrupts = EmptyFunc;
+const audio_plugin_functions dummy_audio = {
+    dummyaudio_PluginGetVersion,
+    dummyaudio_AiDacrateChanged,
+    dummyaudio_AiLenChanged,
+    dummyaudio_InitiateAudio,
+    dummyaudio_ProcessAList,
+    dummyaudio_RomClosed,
+    dummyaudio_RomOpen,
+    dummyaudio_SetSpeedFactor,
+    dummyaudio_VolumeUp,
+    dummyaudio_VolumeDown,
+    dummyaudio_VolumeGetLevel,
+    dummyaudio_VolumeSetLevel,
+    dummyaudio_VolumeMute,
+    dummyaudio_VolumeGetString
+};
 
-   /* call the audio plugin */
-   if (!gfx.initiateGFX(gfx_info))
-   {
-      printf("plugin_start_gfx fail.\n");
-      return M64ERR_PLUGIN_FAIL;
-   }
 
-   printf("plugin_start_gfx success.\n");
-
-   return M64ERR_SUCCESS;
-}
-
-/* INPUT */
 extern m64p_error inputPluginGetVersion(m64p_plugin_type *PluginType, int *PluginVersion,
                                               int *APIVersion, const char **PluginNamePtr, int *Capabilities);
 extern void inputInitiateControllers (CONTROL_INFO ControlInfo);
+extern void inputGetKeys_default(int Control, BUTTONS * Keys );
 extern void inputControllerCommand(int Control, unsigned char *Command);
 extern void inputInitiateControllers(CONTROL_INFO ControlInfo);
 extern void inputReadController(int Control, unsigned char *Command);
 extern int  inputRomOpen(void);
 extern void inputRomClosed(void);
 
-input_plugin_functions input = {
+
+const input_plugin_functions dummy_input = {
     inputPluginGetVersion,
     inputControllerCommand,
-    NULL,
+    inputGetKeys_default,
     inputInitiateControllers,
     inputReadController,
     inputRomClosed,
     inputRomOpen,
+    dummyinput_SDL_KeyDown,
+    dummyinput_SDL_KeyUp,
+    dummyinput_RenderCallback,
+    dummy_SendVRUWord,
+    dummy_SetMicState,
+    dummy_ReadVRUResults,
+    dummy_ClearVRUWords,
+    dummy_SetVRUWordMask
 };
 
+static AUDIO_INFO audio_info;
 static CONTROL_INFO control_info;
-CONTROL Controls[4];
+static int l_RspAttached = 0;
+static int l_InputAttached = 0;
+static int l_AudioAttached = 0;
+static int l_GfxAttached = 0;
 
-static m64p_error plugin_start_input(void)
+static unsigned int dummy;
+
+/* local functions */
+static void EmptyFunc(void)
 {
-   int i;
-
-   /* fill in the CONTROL_INFO data structure */
-   control_info.Controls = Controls;
-   for (i=0; i<4; i++)
-   {
-      Controls[i].Present = CONT_NONE;
-      Controls[i].RawData = 0;
-      Controls[i].Plugin = PLUGIN_NONE;
-   }
-
-   /* call the input plugin */
-   input.initiateControllers(control_info);
-
-   return M64ERR_SUCCESS;
 }
-
 /* RSP */
 #define DEFINE_RSP(X) \
     EXPORT m64p_error CALL X##PluginGetVersion(m64p_plugin_type *, int *, int *, const char **, int *); \
@@ -218,149 +173,311 @@ static m64p_error plugin_start_input(void)
     EXPORT void CALL X##InitiateRSP(RSP_INFO Rsp_Info, unsigned int *CycleCount); \
     EXPORT void CALL X##RomClosed(void); \
     \
-    static const rsp_plugin_functions rsp_##X = { \
+    const rsp_plugin_functions rsp_##X = { \
         X##PluginGetVersion, \
         X##DoRspCycles, \
         X##InitiateRSP, \
         X##RomClosed \
     }
 
+// Define RSP Interfaces
 DEFINE_RSP(hle);
-DEFINE_RSP(cxd4);
+
 #ifdef HAVE_PARALLEL_RSP
 DEFINE_RSP(parallelRSP);
-#endif
+#endif // HAVE_PARALLEL_RSP
 
-rsp_plugin_functions rsp;
-RSP_INFO rsp_info;
+#if HAVE_LLE
+DEFINE_RSP(cxd4);
+#endif // HAVE_LLE
 
-/* Set from the libretro core option "send audio lists to HLE RSP". */
-extern uint32_t send_allist_to_hle_rsp;
+static void                     (*l_mainRenderCallback)(int) = NULL;
+static ptr_SetRenderingCallback   l_old1SetRenderingCallback = NULL;
+
+static void backcompat_videoRenderCallback(int unused)  // this function will be called by the video plugin as the render callback
+{
+    if (l_mainRenderCallback != NULL)
+        l_mainRenderCallback(1);  // assume screen is always freshly redrawn (otherwise screenshots won't work w/ OSD enabled)
+}
+
+static void backcompat_setRenderCallbackIntercept(void (*callback)(int))
+{
+    l_mainRenderCallback = callback;
+}
+
+m64p_error plugin_start_gfx(void)
+{
+    printf("plugin_start_gfx\n");
+
+    uint8_t media = *((uint8_t*)mem_base_u32(g_mem_base, MM_CART_ROM) + (0x3b ^ S8));
+
+    /* Here we feed 64DD IPL ROM header to GFX plugin if 64DD is present.
+     * We use g_media_loader.get_dd_rom to detect 64DD presence
+     * instead of g_dev because the latter is not yet initialized at plugin_start time */
+    /* XXX: Not sure it is the best way to convey which game is being played to the GFX plugin
+     * as 64DD IPL is the same for all 64DD games... */
+    char* dd_ipl_rom_filename = (g_media_loader.get_dd_rom == NULL)
+        ? NULL
+        : g_media_loader.get_dd_rom(g_media_loader.cb_data);
+
+    uint32_t rom_base = (g_rom_size == 0 || (dd_ipl_rom_filename != NULL && strlen(dd_ipl_rom_filename) != 0 && media != 'C'))
+        ? MM_DD_ROM
+        : MM_CART_ROM;
+
+    free(dd_ipl_rom_filename);
+
+    /* fill in the GFX_INFO data structure */
+    gfx_info.HEADER = (unsigned char *)mem_base_u32(g_mem_base, rom_base);
+    gfx_info.RDRAM = (unsigned char *)mem_base_u32(g_mem_base, MM_RDRAM_DRAM);
+    gfx_info.DMEM = (unsigned char *)mem_base_u32(g_mem_base, MM_RSP_MEM);
+    gfx_info.IMEM = (unsigned char *)mem_base_u32(g_mem_base, MM_RSP_MEM + 0x1000);
+    gfx_info.MI_INTR_REG = &(g_dev.mi.regs[MI_INTR_REG]);
+    gfx_info.DPC_START_REG = &(g_dev.dp.dpc_regs[DPC_START_REG]);
+    gfx_info.DPC_END_REG = &(g_dev.dp.dpc_regs[DPC_END_REG]);
+    gfx_info.DPC_CURRENT_REG = &(g_dev.dp.dpc_regs[DPC_CURRENT_REG]);
+    gfx_info.DPC_STATUS_REG = &(g_dev.dp.dpc_regs[DPC_STATUS_REG]);
+    gfx_info.DPC_CLOCK_REG = &(g_dev.dp.dpc_regs[DPC_CLOCK_REG]);
+    gfx_info.DPC_BUFBUSY_REG = &(g_dev.dp.dpc_regs[DPC_BUFBUSY_REG]);
+    gfx_info.DPC_PIPEBUSY_REG = &(g_dev.dp.dpc_regs[DPC_PIPEBUSY_REG]);
+    gfx_info.DPC_TMEM_REG = &(g_dev.dp.dpc_regs[DPC_TMEM_REG]);
+    gfx_info.VI_STATUS_REG = &(g_dev.vi.regs[VI_STATUS_REG]);
+    gfx_info.VI_ORIGIN_REG = &(g_dev.vi.regs[VI_ORIGIN_REG]);
+    gfx_info.VI_WIDTH_REG = &(g_dev.vi.regs[VI_WIDTH_REG]);
+    gfx_info.VI_INTR_REG = &(g_dev.vi.regs[VI_V_INTR_REG]);
+    gfx_info.VI_V_CURRENT_LINE_REG = &(g_dev.vi.regs[VI_CURRENT_REG]);
+    gfx_info.VI_TIMING_REG = &(g_dev.vi.regs[VI_BURST_REG]);
+    gfx_info.VI_V_SYNC_REG = &(g_dev.vi.regs[VI_V_SYNC_REG]);
+    gfx_info.VI_H_SYNC_REG = &(g_dev.vi.regs[VI_H_SYNC_REG]);
+    gfx_info.VI_LEAP_REG = &(g_dev.vi.regs[VI_LEAP_REG]);
+    gfx_info.VI_H_START_REG = &(g_dev.vi.regs[VI_H_START_REG]);
+    gfx_info.VI_V_START_REG = &(g_dev.vi.regs[VI_V_START_REG]);
+    gfx_info.VI_V_BURST_REG = &(g_dev.vi.regs[VI_V_BURST_REG]);
+    gfx_info.VI_X_SCALE_REG = &(g_dev.vi.regs[VI_X_SCALE_REG]);
+    gfx_info.VI_Y_SCALE_REG = &(g_dev.vi.regs[VI_Y_SCALE_REG]);
+    gfx_info.CheckInterrupts = EmptyFunc;
+    
+    gfx_info.version = 2; //Version 2 added SP_STATUS_REG and RDRAM_SIZE
+    gfx_info.SP_STATUS_REG = &g_dev.sp.regs[SP_STATUS_REG];
+    gfx_info.RDRAM_SIZE = (unsigned int*) &g_dev.rdram.dram_size;
+
+    /* call the audio plugin */
+    if (!gfx.initiateGFX(gfx_info))
+        return M64ERR_PLUGIN_FAIL;
+
+    return M64ERR_SUCCESS;
+}
+
+static void plugin_disconnect_audio(void)
+{
+    audio = dummy_audio;
+    l_AudioAttached = 0;
+}
+
+static m64p_error plugin_start_audio(void)
+{
+    /* fill in the AUDIO_INFO data structure */
+    audio_info.RDRAM = (unsigned char *)mem_base_u32(g_mem_base, MM_RDRAM_DRAM);
+    audio_info.DMEM = (unsigned char *)mem_base_u32(g_mem_base, MM_RSP_MEM);
+    audio_info.IMEM = (unsigned char *)mem_base_u32(g_mem_base, MM_RSP_MEM + 0x1000);
+    audio_info.MI_INTR_REG = &(g_dev.mi.regs[MI_INTR_REG]);
+    audio_info.AI_DRAM_ADDR_REG = &(g_dev.ai.regs[AI_DRAM_ADDR_REG]);
+    audio_info.AI_LEN_REG = &(g_dev.ai.regs[AI_LEN_REG]);
+    audio_info.AI_CONTROL_REG = &(g_dev.ai.regs[AI_CONTROL_REG]);
+    audio_info.AI_STATUS_REG = &dummy;
+    audio_info.AI_DACRATE_REG = &(g_dev.ai.regs[AI_DACRATE_REG]);
+    audio_info.AI_BITRATE_REG = &(g_dev.ai.regs[AI_BITRATE_REG]);
+    audio_info.CheckInterrupts = EmptyFunc;
+
+    /* call the audio plugin */
+    if (!audio.initiateAudio(audio_info))
+        return M64ERR_PLUGIN_FAIL;
+
+    return M64ERR_SUCCESS;
+}
+
+static void plugin_disconnect_input(void)
+{
+    input = dummy_input;
+    l_InputAttached = 0;
+}
+
+static m64p_error plugin_start_input(void)
+{
+    int i;
+
+    /* fill in the CONTROL_INFO data structure */
+    control_info.Controls = Controls;
+    for (i=0; i<4; i++)
+      {
+         Controls[i].Present = 0;
+         Controls[i].RawData = 0;
+         Controls[i].Plugin = PLUGIN_NONE;
+         Controls[i].Type = CONT_TYPE_STANDARD;
+      }
+
+    /* call the input plugin */
+    input.initiateControllers(control_info);
+
+    return M64ERR_SUCCESS;
+}
 
 static m64p_error plugin_start_rsp(void)
 {
-   /* fill in the RSP_INFO data structure */
-   rsp_info.RDRAM = (unsigned char *) g_rdram;
-   rsp_info.DMEM = (unsigned char *) g_dev.sp.mem;
-   rsp_info.IMEM = (unsigned char *) g_dev.sp.mem + 0x1000;
-   rsp_info.MI_INTR_REG = &g_dev.mi.regs[MI_INTR_REG];
-   rsp_info.SP_MEM_ADDR_REG = &g_dev.sp.regs[SP_MEM_ADDR_REG];
-   rsp_info.SP_DRAM_ADDR_REG = &g_dev.sp.regs[SP_DRAM_ADDR_REG];
-   rsp_info.SP_RD_LEN_REG = &g_dev.sp.regs[SP_RD_LEN_REG];
-   rsp_info.SP_WR_LEN_REG = &g_dev.sp.regs[SP_WR_LEN_REG];
-   rsp_info.SP_STATUS_REG = &g_dev.sp.regs[SP_STATUS_REG];
-   rsp_info.SP_DMA_FULL_REG = &g_dev.sp.regs[SP_DMA_FULL_REG];
-   rsp_info.SP_DMA_BUSY_REG = &g_dev.sp.regs[SP_DMA_BUSY_REG];
-   rsp_info.SP_PC_REG = &g_dev.sp.regs2[SP_PC_REG];
-   rsp_info.SP_SEMAPHORE_REG = &g_dev.sp.regs[SP_SEMAPHORE_REG];
-   rsp_info.DPC_START_REG = &g_dev.dp.dpc_regs[DPC_START_REG];
-   rsp_info.DPC_END_REG = &g_dev.dp.dpc_regs[DPC_END_REG];
-   rsp_info.DPC_CURRENT_REG = &g_dev.dp.dpc_regs[DPC_CURRENT_REG];
-   rsp_info.DPC_STATUS_REG = &g_dev.dp.dpc_regs[DPC_STATUS_REG];
-   rsp_info.DPC_CLOCK_REG = &g_dev.dp.dpc_regs[DPC_CLOCK_REG];
-   rsp_info.DPC_BUFBUSY_REG = &g_dev.dp.dpc_regs[DPC_BUFBUSY_REG];
-   rsp_info.DPC_PIPEBUSY_REG = &g_dev.dp.dpc_regs[DPC_PIPEBUSY_REG];
-   rsp_info.DPC_TMEM_REG = &g_dev.dp.dpc_regs[DPC_TMEM_REG];
-   rsp_info.CheckInterrupts = EmptyFunc;
-   rsp_info.ProcessDlistList = gfx.processDList;
-   rsp_info.ProcessAlistList = NULL;
-   rsp_info.ProcessRdpList = gfx.processRDPList;
-   rsp_info.ShowCFB = gfx.showCFB;
+    /* fill in the RSP_INFO data structure */
+    rsp_info.RDRAM = (unsigned char *)mem_base_u32(g_mem_base, MM_RDRAM_DRAM);
+    rsp_info.DMEM = (unsigned char *)mem_base_u32(g_mem_base, MM_RSP_MEM);
+    rsp_info.IMEM = (unsigned char *)mem_base_u32(g_mem_base, MM_RSP_MEM + 0x1000);
+    rsp_info.MI_INTR_REG = &g_dev.mi.regs[MI_INTR_REG];
+    rsp_info.SP_MEM_ADDR_REG = &g_dev.sp.regs[SP_MEM_ADDR_REG];
+    rsp_info.SP_DRAM_ADDR_REG = &g_dev.sp.regs[SP_DRAM_ADDR_REG];
+    rsp_info.SP_RD_LEN_REG = &g_dev.sp.regs[SP_RD_LEN_REG];
+    rsp_info.SP_WR_LEN_REG = &g_dev.sp.regs[SP_WR_LEN_REG];
+    rsp_info.SP_STATUS_REG = &g_dev.sp.regs[SP_STATUS_REG];
+    rsp_info.SP_DMA_FULL_REG = &g_dev.sp.regs[SP_DMA_FULL_REG];
+    rsp_info.SP_DMA_BUSY_REG = &g_dev.sp.regs[SP_DMA_BUSY_REG];
+    rsp_info.SP_PC_REG = &g_dev.sp.regs2[SP_PC_REG];
+    rsp_info.SP_SEMAPHORE_REG = &g_dev.sp.regs[SP_SEMAPHORE_REG];
+    rsp_info.DPC_START_REG = &g_dev.dp.dpc_regs[DPC_START_REG];
+    rsp_info.DPC_END_REG = &g_dev.dp.dpc_regs[DPC_END_REG];
+    rsp_info.DPC_CURRENT_REG = &g_dev.dp.dpc_regs[DPC_CURRENT_REG];
+    rsp_info.DPC_STATUS_REG = &g_dev.dp.dpc_regs[DPC_STATUS_REG];
+    rsp_info.DPC_CLOCK_REG = &g_dev.dp.dpc_regs[DPC_CLOCK_REG];
+    rsp_info.DPC_BUFBUSY_REG = &g_dev.dp.dpc_regs[DPC_BUFBUSY_REG];
+    rsp_info.DPC_PIPEBUSY_REG = &g_dev.dp.dpc_regs[DPC_PIPEBUSY_REG];
+    rsp_info.DPC_TMEM_REG = &g_dev.dp.dpc_regs[DPC_TMEM_REG];
+    rsp_info.CheckInterrupts = EmptyFunc;
+    rsp_info.ProcessDlistList = gfx.processDList;
+    rsp_info.ProcessAlistList = audio.processAList;
+    rsp_info.ProcessRdpList = gfx.processRDPList;
+    rsp_info.ShowCFB = gfx.showCFB;
 
-   /* call the RSP plugin  */
-   rsp.initiateRSP(rsp_info, NULL);
+    /* call the RSP plugin  */
+    rsp.initiateRSP(rsp_info, NULL);
 
-   /* See plugin_ensure_hle_audio_ready(): when the user routes audio
-    * lists to the HLE RSP under a different primary RSP, the HLE plugin
-    * state must be initialized before any audio task is dispatched to
-    * it. Do it now if the option is already on at load; the lazy hook in
-    * do_SP_Task() covers the case where it is toggled on later. */
-   plugin_ensure_hle_audio_ready();
-
-   return M64ERR_SUCCESS;
+    return M64ERR_SUCCESS;
 }
 
-/* HLE's global state is set up only by hleInitiateRSP(), which normally
- * runs only when HLE is the selected RSP. When "send audio lists to HLE
- * RSP" is enabled with cxd4/parallel as the primary RSP, do_SP_Task()
- * still calls hleDoRspCycles() for audio tasks, which would otherwise
- * run on uninitialized state and crash. This initializes HLE on demand
- * from the rsp_info captured in plugin_start_rsp(). Idempotent and safe
- * to call every audio task: it only does work once, and never when HLE
- * is already the primary RSP. */
-void plugin_ensure_hle_audio_ready(void)
+m64p_error plugin_start(m64p_plugin_type type)
 {
-   static int hle_audio_ready = 0;
+    switch(type)
+    {
+        case M64PLUGIN_RSP:
+            return plugin_start_rsp();
+        case M64PLUGIN_GFX:
+            return plugin_start_gfx();
+        case M64PLUGIN_AUDIO:
+            return plugin_start_audio();
+        case M64PLUGIN_INPUT:
+            return plugin_start_input();
+        default:
+            return M64ERR_INPUT_INVALID;
+    }
 
-   if (hle_audio_ready)
-      return;
-   if (!send_allist_to_hle_rsp)
-      return;
-   if (rsp.initiateRSP == hleInitiateRSP)
+    return M64ERR_INTERNAL;
+}
+
+m64p_error plugin_check(void)
+{
+    if (!l_GfxAttached)
+        DebugMessage(M64MSG_WARNING, "No video plugin attached.  There will be no video output.");
+    if (!l_RspAttached)
+        DebugMessage(M64MSG_WARNING, "No RSP plugin attached.  The video output will be corrupted.");
+    if (!l_AudioAttached)
+        DebugMessage(M64MSG_WARNING, "No audio plugin attached.  There will be no sound output.");
+    if (!l_InputAttached)
+        DebugMessage(M64MSG_WARNING, "No input plugin attached.  You won't be able to control the game.");
+
+    return M64ERR_SUCCESS;
+}
+
+enum rdp_plugin_type current_rdp_type = RDP_PLUGIN_NONE;
+enum rsp_plugin_type current_rsp_type = RSP_PLUGIN_NONE;
+
+void plugin_connect_rdp_api(enum rdp_plugin_type type)
+{
+   switch (type)
    {
-      hle_audio_ready = 1; /* HLE is primary; already initialized */
-      return;
+      case RDP_PLUGIN_GLIDEN64:
+      case RDP_PLUGIN_ANGRYLION:
+      case RDP_PLUGIN_PARALLEL:
+         current_rdp_type = type;
+         break;
+      case RSP_PLUGIN_NONE:
+      default:
+         break;
    }
+}
 
-   hleInitiateRSP(rsp_info, NULL);
-   hle_audio_ready = 1;
+void plugin_connect_rsp_api(enum rsp_plugin_type type)
+{
+   switch (type)
+   {
+      case RSP_PLUGIN_HLE:
+      case RSP_PLUGIN_CXD4:
+      case RSP_PLUGIN_PARALLEL:
+         current_rsp_type = type;
+         break;
+      case RSP_PLUGIN_NONE:
+      default:
+         break;
+   }
 }
 
 /* global functions */
-void plugin_connect_all(enum gfx_plugin_type gfx_plugin, enum rsp_plugin_type rsp_plugin)
+void plugin_connect_all()
 {
-   switch (gfx_plugin)
-   {
-      case GFX_ANGRYLION:
+    switch (current_rdp_type)
+    {
+       case RDP_PLUGIN_ANGRYLION:
 #ifdef HAVE_THR_AL
-         gfx = gfx_angrylion;
+          gfx = gfx_angrylion;
 #endif
-         break;
-      case GFX_PARALLEL:
-#ifdef HAVE_PARALLEL
-         gfx = gfx_parallel;
+          break;
+       case RDP_PLUGIN_PARALLEL:
+#ifdef HAVE_PARALLEL_RDP
+          gfx = gfx_parallel;
 #endif
-         break;
-      case GFX_RICE:
-#ifdef HAVE_RICE
-         gfx = gfx_rice;
-         break;
-#endif
-      case GFX_GLN64:
-#ifdef HAVE_GLN64
-         gfx = gfx_gln64;
-         break;
-#endif
-      case GFX_GLIDEN64:
-#ifdef HAVE_GLIDEN64
-         gfx = gfx_gliden64;
-         break;
-#endif
+          break;
+       case RDP_PLUGIN_GLIDEN64:
+          gfx = gfx_gln64;
+          break;
+      case RDP_PLUGIN_NONE:
       default:
-#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-         gfx = gfx_glide64;
-#elif defined(HAVE_THR_AL)
-         gfx = gfx_angrylion;
-#endif
          break;
-   }
+    }
 
-   switch (rsp_plugin)
-   {
-      case RSP_CXD4:
-         rsp = rsp_cxd4;
-         break;
-#ifdef HAVE_PARALLEL_RSP
-      case RSP_PARALLEL:
-         rsp = rsp_parallelRSP;
-         break;
-#endif
-      default:
+    l_GfxAttached = 1;
+    plugin_start_gfx();
+
+    switch (current_rsp_type)
+    {
+      case RSP_PLUGIN_HLE:
          rsp = rsp_hle;
          break;
-   }
+      case RSP_PLUGIN_CXD4:
+#ifdef HAVE_LLE
+         rsp = rsp_cxd4;
+#endif // HAVE_LLE
+         break;
+      case RSP_PLUGIN_PARALLEL:
+#ifdef HAVE_PARALLEL_RSP
+         rsp = rsp_parallelRSP;
+#endif // HAVE_PARALLEL_RSP
+         break;
+      case RSP_PLUGIN_NONE:
+      default:
+         break;
+    }
 
-   plugin_start_gfx();
-   plugin_start_input();
-   plugin_start_rsp();
+    l_RspAttached = 1;
+    plugin_start_rsp();
+
+    audio = dummy_audio;
+    l_AudioAttached = 1;
+    //plugin_start_audio();
+    
+    input = dummy_input;
+    l_InputAttached = 1;
+    plugin_start_input();
 }
+
