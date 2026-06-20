@@ -23,9 +23,7 @@
 
 #include <libretro_private.h>
 
-#ifdef __LIBRETRO__
 #include <mupen64plus-next_common.h>
-#endif // __LIBRETRO__
 
 #include "memory/m64p_memory.h"
 #include "pif/pif.h"

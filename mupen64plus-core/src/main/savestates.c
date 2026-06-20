@@ -254,16 +254,16 @@ int savestates_load_m64p(const unsigned char *data, size_t size)
    set_fpr_pointers(&g_dev.r4300.cp1, cp0_regs[CP0_STATUS_REG]);
    *r4300_mult_lo(&g_dev.r4300) = GETDATA(curr, int64_t);
    *r4300_mult_hi(&g_dev.r4300) = GETDATA(curr, int64_t);
-   COPYARRAY(r4300_cp1_regs(&g_dev.r4300), curr, int64_t, 32);
+   COPYARRAY(r4300_cp1_regs(&g_dev.r4300.cp1), curr, int64_t, 32);
 
    /* 32-bit FPR mode requires data shuffling because 
     * 64-bit layout is always stored in savestate file */
    if ((cp0_regs[CP0_STATUS_REG] & UINT32_C(0x04000000)) == 0)  
       set_fpr_pointers(&g_dev.r4300.cp1, cp0_regs[CP0_STATUS_REG]);
-   *r4300_cp1_fcr0(&g_dev.r4300) = GETDATA(curr, uint32_t);
+   *r4300_cp1_fcr0(&g_dev.r4300.cp1) = GETDATA(curr, uint32_t);
    FCR31 = GETDATA(curr, uint32_t);
-   *r4300_cp1_fcr31(&g_dev.r4300) = FCR31;
-   update_x86_rounding_mode(FCR31);
+   *r4300_cp1_fcr31(&g_dev.r4300.cp1) = FCR31;
+   update_x86_rounding_mode(&g_dev.r4300.cp1);
 
    for (i = 0; i < 32; i++)
    {
@@ -323,7 +323,7 @@ int savestates_load_m64p(const unsigned char *data, size_t size)
       for (i = 0; i < GAME_CONTROLLERS_COUNT; ++i)
       {
          struct transferpak* tpk = &g_dev.transferpaks[i];
-         struct gb_cart* gb = &tpk->gb_cart;
+         struct gb_cart* gb = tpk->gb_cart;
          struct mbc3_rtc* rtc = &gb->rtc;
          int j;
 
@@ -566,12 +566,12 @@ int savestates_save_m64p(unsigned char *data, size_t size)
 
    if ((cp0_regs[CP0_STATUS_REG] & UINT32_C(0x04000000)) == 0) // FR bit == 0 means 32-bit (MIPS I) FGR mode
       set_fpr_pointers(&g_dev.r4300.cp1, cp0_regs[CP0_STATUS_REG]);
-   PUTARRAY(r4300_cp1_regs(&g_dev.r4300), curr, int64_t, 32);
+   PUTARRAY(r4300_cp1_regs(&g_dev.r4300.cp1), curr, int64_t, 32);
    if ((cp0_regs[CP0_STATUS_REG] & UINT32_C(0x04000000)) == 0)
       set_fpr_pointers(&g_dev.r4300.cp1, cp0_regs[CP0_STATUS_REG]);  // put it back in 32-bit mode
 
-   PUTDATA(curr, uint32_t, *r4300_cp1_fcr0(&g_dev.r4300));
-   PUTDATA(curr, uint32_t, *r4300_cp1_fcr31(&g_dev.r4300));
+   PUTDATA(curr, uint32_t, *r4300_cp1_fcr0(&g_dev.r4300.cp1));
+   PUTDATA(curr, uint32_t, *r4300_cp1_fcr31(&g_dev.r4300.cp1));
 
    for (i = 0; i < 32; i++)
    {
@@ -631,7 +631,7 @@ int savestates_save_m64p(unsigned char *data, size_t size)
    for (i = 0; i < GAME_CONTROLLERS_COUNT; ++i)
    {
       struct transferpak* tpk = &g_dev.transferpaks[i];
-      struct gb_cart* gb = &tpk->gb_cart;
+      struct gb_cart* gb = tpk->gb_cart;
       struct mbc3_rtc* rtc = &gb->rtc;
       int j;
 

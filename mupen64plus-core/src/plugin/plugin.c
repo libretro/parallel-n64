@@ -41,9 +41,7 @@
 #include "main/version.h"
 #include "osal/dynamiclib.h"
 #include "plugin.h"
-#ifdef __LIBRETRO__
 #include "mupen64plus-next_common.h"
-#endif
 
 #include <stdio.h>
 
@@ -392,7 +390,6 @@ m64p_error plugin_check(void)
     return M64ERR_SUCCESS;
 }
 
-#ifdef __LIBRETRO__
 enum rdp_plugin_type current_rdp_type = RDP_PLUGIN_NONE;
 enum rsp_plugin_type current_rsp_type = RSP_PLUGIN_NONE;
 
@@ -483,25 +480,4 @@ void plugin_connect_all()
     l_InputAttached = 1;
     plugin_start_input();
 }
-#else
-/* global functions */
-void plugin_connect_all()
-{
-    gfx = gfx_gln64;
-    l_GfxAttached = 1;
-    plugin_start_gfx();
-
-    rsp = rsp_hle;
-    l_RspAttached = 1;
-    plugin_start_rsp();
-
-    audio = dummy_audio;
-    l_AudioAttached = 1;
-    //plugin_start_audio();
-    
-    input = dummy_input;
-    l_InputAttached = 1;
-    plugin_start_input();
-}
-#endif
 

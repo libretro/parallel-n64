@@ -53,13 +53,8 @@ unsigned int savestates_get_slot(void);
 void savestates_set_autoinc_slot(int b);
 void savestates_inc_slot(void);
 
-#ifndef __LIBRETRO__
 int savestates_save_m64p(unsigned char *data, size_t size);
 int savestates_load_m64p(const unsigned char *data, size_t size);
-#else
-
-
-#endif
 
 #endif /* __SAVESTAVES_H__ */
 

@@ -88,7 +88,6 @@
 #include <sys/stat.h>
 #endif
 
-#ifdef __LIBRETRO__
 #include <file/file_path.h>
 #ifndef PATH_DEFAULT_SLASH
 #if defined(_WIN32)
@@ -99,7 +98,6 @@
 #endif
 #include <libretro_memory.h>
 #include <mupen64plus-next_common.h>
-#endif // __LIBRETRO__
 
 #ifdef DBG
 #include "debugger/dbg_debugger.h"
@@ -879,13 +877,13 @@ static void open_mpk_file(struct file_storage* storage)
 {
     if (!netplay_is_init())
     {
-        storage->data = saved_memory.mempack;
+        storage->data = saved_memory.mempack[0];
         storage->size = MEMPAK_SIZE * 4;
     }
     else
     {
         // First we save them with what we have
-        storage->data = saved_memory.mempack;
+        storage->data = saved_memory.mempack[0];
         storage->size = MEMPAK_SIZE * 4;
         // If player 1 we send, otherwise we recieve
         netplay_read_storage("mempak.mpk", storage->data, storage->size);
@@ -1071,7 +1069,7 @@ static int load_dd_disk(struct dd_disk* dd_disk, const struct storage_backend_in
     }
 
     /* Determine save file name */
-    char* save_filename = get_dd_disk_save_path(dd_disk_filename, save_format);
+    const char* save_filename = get_dd_disk_save_path(dd_disk_filename, save_format);
     if (save_filename == NULL) {
         DebugMessage(M64MSG_ERROR, "Failed to get DD save path, DD will be read-only.");
         save_format = -1;
