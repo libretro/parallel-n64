@@ -152,7 +152,11 @@ void run_r4300(struct r4300_core* r4300)
          * pcaddr / recompiled address). The start call returns on frame_break
          * (yield) or on a real stop; only tear down on a real stop. */
         static int l_dyna_inited = 0;
+#ifdef HAVE_DYNAREC_HACKTARUX
         int hacktarux = (r4300_jit_backend == R4300_JIT_HACKTARUX);
+#else
+        int hacktarux = 0;
+#endif
 
         if (!l_dyna_inited)
         {
@@ -165,6 +169,7 @@ void run_r4300(struct r4300_core* r4300)
             {
                 new_dynarec_init();
             }
+#ifdef HAVE_DYNAREC_HACKTARUX
             else
             {
                 r4300->cached_interp.fin_block = dynarec_fin_block;
@@ -174,6 +179,7 @@ void run_r4300(struct r4300_core* r4300)
                 r4300->cached_interp.free_block = dynarec_free_block;
                 r4300->cached_interp.recompile_block = dynarec_recompile_block;
             }
+#endif
             l_dyna_inited = 1;
         }
 
@@ -181,6 +187,7 @@ void run_r4300(struct r4300_core* r4300)
         {
             new_dyna_start();
         }
+#ifdef HAVE_DYNAREC_HACKTARUX
         else
         {
             dyna_start(dynarec_setup_code);
@@ -194,6 +201,7 @@ void run_r4300(struct r4300_core* r4300)
             profile_write_end_of_code_blocks(r4300);
 #endif
         }
+#endif
 
         if (!frame_break)
         {
@@ -484,10 +492,12 @@ void generic_jump_to(struct r4300_core* r4300, uint32_t address)
             r4300->new_dynarec_hot_state.pcaddr = address;
             r4300->new_dynarec_hot_state.pending_exception = 1;
         }
+#ifdef HAVE_DYNAREC_HACKTARUX
         else
         {
             dynarec_jump_to(r4300, address);
         }
+#endif
         break;
 #endif
 

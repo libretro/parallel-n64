@@ -546,7 +546,7 @@ void gen_interrupt(struct r4300_core* r4300)
     if (*r4300_stop(r4300) == 1)
     {
         g_gs_vi_counter = 0; /* debug */
-#ifndef NO_ASM
+#if !defined(NO_ASM) && defined(HAVE_DYNAREC_HACKTARUX)
         /* Stop the Hacktarux generated code; ari64 has its own stop path. */
         if (r4300_jit_backend == R4300_JIT_HACKTARUX)
             dyna_stop(r4300);

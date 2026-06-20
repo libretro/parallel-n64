@@ -182,11 +182,15 @@ void cp0_update_count(struct r4300_core* r4300)
 static void exception_epilog(struct r4300_core* r4300)
 {
     int in_dynarec = (r4300->emumode == EMUMODE_DYNAREC);
+#ifdef HAVE_DYNAREC_HACKTARUX
     int hacktarux_dynarec_active =
         in_dynarec && (r4300_jit_backend == R4300_JIT_HACKTARUX);
+#else
+    int hacktarux_dynarec_active = 0;
+#endif
     int do_epilog;
 
-#ifndef NO_ASM
+#if !defined(NO_ASM) && defined(HAVE_DYNAREC_HACKTARUX)
     /* Hacktarux dynarec: jump back into generated code (unless it was running
      * the interpreter fallback for this block). */
     if (hacktarux_dynarec_active)
