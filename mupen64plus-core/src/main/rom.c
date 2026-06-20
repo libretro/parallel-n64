@@ -40,6 +40,7 @@
 #include "device/device.h"
 #include "main.h"
 #include "md5.h"
+#include "mupen64plus.ini.h"
 #include "osal/preproc.h"
 #include "rom.h"
 #include "util.h"
@@ -578,24 +579,21 @@ static void romdatabase_resolve(void)
 
 void romdatabase_open(void)
 {
-    FILE *fPtr;
     char buffer[256];
     romdatabase_search* search = NULL;
     romdatabase_search** next_search;
 
     int counter, value, lineno;
     unsigned char index;
-    const char *pathname = ConfigGetSharedDataFilepath("mupen64plus.ini");
+    /* The ROM database is baked into the build (mupen64plus.ini.h provides the
+     * 'inifile' string) and parsed straight from memory, so there is no
+     * dependency on an external mupen64plus.ini and no disk access. cursor
+     * walks the embedded text one line at a time, mirroring the previous
+     * fgets() loop. */
+    const char *cursor = inifile;
 
     if(g_romdatabase.have_database)
         return;
-
-    /* Open romdatabase. */
-    if (pathname == NULL || (fPtr = fopen(pathname, "rb")) == NULL)
-    {
-        DebugMessage(M64MSG_ERROR, "Unable to open rom database file '%s'.", pathname);
-        return;
-    }
 
     g_romdatabase.have_database = 1;
 
@@ -608,11 +606,28 @@ void romdatabase_open(void)
 
     next_search = &g_romdatabase.list;
 
-    /* Parse ROM database file */
-    for (lineno = 1; fgets(buffer, 255, fPtr) != NULL; lineno++)
+    /* Parse ROM database from the embedded string */
+    for (lineno = 1; ; lineno++)
     {
-        char *line = buffer;
-        ini_line l = ini_parse_line(&line);
+        const char *nl;
+        size_t len;
+        char *line;
+        ini_line l;
+
+        if (*cursor == '\0')
+            break;
+
+        /* Copy one line (without the newline) into buffer. */
+        nl = strchr(cursor, '\n');
+        len = (nl != NULL) ? (size_t)(nl - cursor) : strlen(cursor);
+        if (len >= sizeof(buffer))
+            len = sizeof(buffer) - 1;
+        memcpy(buffer, cursor, len);
+        buffer[len] = '\0';
+        cursor = (nl != NULL) ? (nl + 1) : (cursor + strlen(cursor));
+
+        line = buffer;
+        l = ini_parse_line(&line);
         switch (l.type)
         {
         case INI_SECTION:
@@ -863,7 +878,6 @@ void romdatabase_open(void)
         }
     }
 
-    fclose(fPtr);
     romdatabase_resolve();
 }
 
