@@ -1,6 +1,6 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *   Mupen64plus - memory.h                                                *
- *   Mupen64Plus homepage: http://code.google.com/p/mupen64plus/           *
+ *   Mupen64Plus homepage: https://mupen64plus.org/                        *
  *   Copyright (C) 2002 Hacktarux                                          *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
@@ -19,139 +19,96 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef M64P_MEMORY_MEMORY_H
-#define M64P_MEMORY_MEMORY_H
+#ifndef M64P_DEVICE_MEMORY_MEMORY_H
+#define M64P_DEVICE_MEMORY_MEMORY_H
 
+#include <stddef.h>
 #include <stdint.h>
 
-#ifndef MASKED_WRITE
-#define MASKED_WRITE(dst, value, mask) ((*(dst) & ~(mask)) | ((value) & (mask)))
+#include "osal/preproc.h"
+
+enum { RDRAM_MAX_SIZE = 0x800000 };
+enum { CART_ROM_MAX_SIZE = 0x4000000 };
+enum { DD_ROM_MAX_SIZE = 0x400000 };
+
+typedef void (*read32fn)(void*,uint32_t,uint32_t*);
+typedef void (*write32fn)(void*,uint32_t,uint32_t,uint32_t);
+
+struct mem_handler
+{
+    void* opaque;
+    read32fn read32;
+    write32fn write32;
+};
+
+struct retroarch_mem_mapping {
+    void* ptr;
+    size_t len;
+    uint64_t flags;
+};
+struct mem_mapping
+{
+    uint32_t begin;
+    uint32_t end;       /* inclusive */
+    int type;
+    struct mem_handler handler;
+    struct retroarch_mem_mapping retroarch_mapping;
+};
+
+struct memory
+{
+    struct mem_handler handlers[0x10000];
+    void* base;
+
+#ifdef DBG
+    int memtype[0x10000];
+    unsigned char bp_checks[0x10000];
+    struct mem_handler saved_handlers[0x10000];
+    struct mem_handler dbg_handler;
+#endif
+};
+
+static osal_inline void masked_write(uint32_t* dst, uint32_t value, uint32_t mask)
+{
+    *dst = (*dst & ~mask) | (value & mask);
+}
+
+void init_memory(struct memory* mem,
+                 struct mem_mapping* mappings, size_t mappings_count,
+                 void* base,
+                 struct mem_handler* dbg_handler);
+
+static osal_inline const struct mem_handler* mem_get_handler(const struct memory* mem, uint32_t address)
+{
+    return &mem->handlers[address >> 16];
+}
+
+static osal_inline void mem_read32(const struct mem_handler* handler, uint32_t address, uint32_t* value)
+{
+    handler->read32(handler->opaque, address, value);
+}
+
+static osal_inline void mem_write32(const struct mem_handler* handler, uint32_t address, uint32_t value, uint32_t mask)
+{
+    handler->write32(handler->opaque, address, value, mask);
+}
+
+void apply_mem_mapping(struct memory* mem, const struct mem_mapping* mapping);
+
+void* init_mem_base(void);
+void release_mem_base(void* mem_base);
+uint32_t* mem_base_u32(void* mem_base, uint32_t address);
+
+void read_with_bp_checks(void* opaque, uint32_t address, uint32_t* value);
+void write_with_bp_checks(void* opaque, uint32_t address, uint32_t value, uint32_t mask);
+
+#ifdef DBG
+void activate_memory_break_read(struct memory* mem, uint32_t address);
+void deactivate_memory_break_read(struct memory* mem, uint32_t address);
+void activate_memory_break_write(struct memory* mem, uint32_t address);
+void deactivate_memory_break_write(struct memory* mem, uint32_t address);
+int get_memory_type(struct memory* mem, uint32_t address);
 #endif
 
-#include "libretro_memory.h"
-
-#define AI_STATUS_FIFO_FULL	0x80000000		/* Bit 31: full */
-#define AI_STATUS_DMA_BUSY	   0x40000000		/* Bit 30: busy */
-
-#define read_word_in_memory() readmem[mupencoreaddress>>16]()
-#define read_byte_in_memory() readmemb[mupencoreaddress>>16]()
-#define read_hword_in_memory() readmemh[mupencoreaddress>>16]()
-#define read_dword_in_memory() readmemd[mupencoreaddress>>16]()
-#define write_word_in_memory() writemem[mupencoreaddress>>16]()
-#define write_byte_in_memory() writememb[mupencoreaddress >>16]()
-#define write_hword_in_memory() writememh[mupencoreaddress >>16]()
-#define write_dword_in_memory() writememd[mupencoreaddress >>16]()
-
-#if !defined(__arm64__) && !defined(__aarch64__)
-#if defined(_M_X64)
-/* region 14 / Phase 2d (increment 13): the memory-access address moves into
- * g_dev.r4300.new_dynarec_hot_state (member mem_address, offset 0x118 -- named
- * mem_address, not 'address', to avoid the pervasive 'address' parameter-name
- * collision throughout the memory accessors and m64p_types.h). Like reg, the
- * bare token 'address' is NOT aliased; the C memory layer already reaches the
- * global through mupencoreaddress, and the Hacktarux JIT's bare &address sites
- * are rewritten to &mupencoreaddress. */
-#define mupencoreaddress (g_dev.r4300.new_dynarec_hot_state.mem_address)
-#else
-extern uint32_t address;
-#define mupencoreaddress address
-#endif
-#if defined(_M_X64)
-/* region 14 / Phase 2d (increment 6): on x64 the width-specific read/write
- * staging bytes cpu_byte/cpu_hword have their storage in
- * g_dev.r4300.new_dynarec_hot_state (members hs_cpu_byte/hs_cpu_hword -- the hs_
- * prefix avoids colliding with these very macros). The memory layer, the Ari64
- * JIT and the Hacktarux dynarec all reach the same member through these aliases;
- * every use-site is in a function body where g_dev is in scope.
- *
- * region 14 / Phase 2d (increment 7): cpu_word and cpu_dword join them, aliased
- * onto the shared-region members wword/wdword (next's names for the same write
- * staging). */
-#define cpu_byte         (g_dev.r4300.new_dynarec_hot_state.hs_cpu_byte)
-#define cpu_hword        (g_dev.r4300.new_dynarec_hot_state.hs_cpu_hword)
-#define cpu_word         (g_dev.r4300.new_dynarec_hot_state.wword)
-#define cpu_dword        (g_dev.r4300.new_dynarec_hot_state.wdword)
-#else
-/* x86 (32-bit ari64): still flat globals defined in the memory layer. */
-extern uint8_t cpu_byte;
-extern uint16_t cpu_hword;
-extern uint32_t cpu_word;
-extern uint64_t cpu_dword;
-#endif
-#else
-#include "../r4300/new_dynarec/arm64/memory_layout_arm64.h"
-#define mupencoreaddress (RECOMPILER_MEMORY->rml_address)
-#define cpu_word         (RECOMPILER_MEMORY->rml_cpu_word)
-#define cpu_byte         (RECOMPILER_MEMORY->rml_cpu_byte)
-#define cpu_hword        (RECOMPILER_MEMORY->rml_cpu_hword)
-#define cpu_dword        (RECOMPILER_MEMORY->rml_cpu_dword)
-#endif
-extern uint64_t *rdword;
-
-extern void (*readmem[0x10000])(void);
-extern void (*readmemb[0x10000])(void);
-extern void (*readmemh[0x10000])(void);
-extern void (*readmemd[0x10000])(void);
-extern void (*writemem[0x10000])(void);
-extern void (*writememb[0x10000])(void);
-extern void (*writememh[0x10000])(void);
-extern void (*writememd[0x10000])(void);
-
-#ifdef MSB_FIRST
-#define sl(mot) mot
-#define S8 0
-#define S16 0
-#define Sh16 0
-#else
-#define sl(mot) \
-( \
-((mot & 0x000000FF) << 24) | \
-((mot & 0x0000FF00) <<  8) | \
-((mot & 0x00FF0000) >>  8) | \
-((mot & 0xFF000000) >> 24) \
-)
-
-#define S8 3
-#define S16 2
-#define Sh16 1
 #endif
 
-void poweron_memory(void);
-
-void map_region(uint16_t region,
-      int type,
- void (*read8)(void),
- void (*read16)(void),
- void (*read32)(void),
- void (*read64)(void),
- void (*write8)(void),
- void (*write16)(void),
- void (*write32)(void),
- void (*write64)(void));
-
-/* XXX: cannot make them static because of dynarec + rdp fb */
-void read_rdram(void);
-void read_rdramb(void);
-void read_rdramh(void);
-void read_rdramd(void);
-void write_rdram(void);
-void write_rdramb(void);
-void write_rdramh(void);
-void write_rdramd(void);
-
-void read_rdramFB(void);
-void read_rdramFBb(void);
-void read_rdramFBh(void);
-void read_rdramFBd(void);
-void write_rdramFB(void);
-void write_rdramFBb(void);
-void write_rdramFBh(void);
-void write_rdramFBd(void);
-
-/* Returns a pointer to a block of contiguous memory
- * Can access RDRAM, SP_DMEM, SP_IMEM and ROM, using TLB if necessary
- * Useful for getting fast access to a zone with executable code. */
-uint32_t *fast_mem_access(uint32_t address);
-
-
-#endif

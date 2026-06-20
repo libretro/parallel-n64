@@ -1,6 +1,6 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *   Mupen64plus - instr_counters.c                                        *
- *   Mupen64Plus homepage: http://code.google.com/p/mupen64plus/           *
+ *   Mupen64Plus homepage: https://mupen64plus.org/                        *
  *   Copyright (C) 2002 Hacktarux                                          *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
@@ -19,13 +19,13 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#if defined(COUNT_INSTR)
+#include "instr_counters.h"
 
 #include <stdio.h>
 #include <string.h>
 
-#include "../../api/callbacks.h"
-#include "../../api/m64p_types.h"
+#include "api/callbacks.h"
+#include "api/m64p_types.h"
 
 /* various constants */
 static char instr_name[][10] =
@@ -50,7 +50,7 @@ static char instr_name[][10] =
 };
 
 static unsigned int instr_type[131] =
-{ 
+{
     9, 10,  6,  6,  7,  7,  7,  7,  3,  3,  4,  4,  3,  4,  4,  0,
     7,  7,  7,  7,  4,  4,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
     1,  1,  1,  1,  1,  1,  1,  0,  0,  0,  0,  1,  1,  1,  1,  7,
@@ -100,5 +100,3 @@ void instr_counters_print(void)
         DebugMessage(M64MSG_INFO, "%20s: %04.1f%% (%i)", instr_typename[i], (float) iTypeCount[i] * 100.0 / iTotal, iTypeCount[i]);
     }
 }
-
-#endif /* COUNT_INSTR */

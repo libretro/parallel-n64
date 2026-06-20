@@ -1,7 +1,7 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- *   Mupen64plus - cp0_private.h                                           *
- *   Mupen64Plus homepage: http://code.google.com/p/mupen64plus/           *
- *   Copyright (C) 2002 Hacktarux                                          *
+ *   Mupen64plus-core - api/debugger.h                                     *
+ *   Mupen64Plus homepage: https://mupen64plus.org/                        *
+ *   Copyright (C) 2009 Richard Goedeken                                   *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
  *   it under the terms of the GNU General Public License as published by  *
@@ -19,32 +19,29 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef M64P_R4300_CP0_PRIVATE_H
-#define M64P_R4300_CP0_PRIVATE_H
+/* This file contains the definitions for debugger functions which will be
+ * called from the other Core modules
+ */
 
-#include "cp0.h"
+#if !defined(API_DEBUGGER_H)
+#define API_DEBUGGER_H
 
-#if !defined(__arm64__) && !defined(__aarch64__)
-#if defined(_M_X64)
-/* region 14 / Phase 2d (increment 11): the CP0 register file g_cp0_regs moves
- * into g_dev.r4300.new_dynarec_hot_state (member cp0_regs[32], offset 0x250).
- * The alias is an array lvalue, so g_cp0_regs[i], &g_cp0_regs[i], memset() and
- * sizeof() all behave exactly as before. Consumers span the interpreter, CP0
- * core, exception path, the Ari64 JIT and the Hacktarux JIT; each use-site is in
- * a function body where g_dev is in scope. */
-#define g_cp0_regs (g_dev.r4300.new_dynarec_hot_state.cp0_regs)
-#else
-extern uint32_t g_cp0_regs[CP0_REGS_COUNT];
-#endif
-#else
-#include "new_dynarec/arm64/memory_layout_arm64.h"
-#define g_cp0_regs (RECOMPILER_MEMORY->rml_g_cp0_regs)
-#endif
+#include "m64p_types.h"
 
-/* CP0 write latch, see cp0.c for details. */
-extern uint64_t cp0_latch;
+/* Debugger Definitions */
 
-int check_cop1_unusable(void);
+typedef enum {
+    DEBUG_UI_INIT = 1,
+    DEBUG_UI_UPDATE,
+    DEBUG_UI_VI,
+    DEBUG_CORE_COMPARE
+  } eDbgCallbackType;
 
-#endif /* M64P_R4300_CP0_PRIVATE_H */
+/* Functions for use by the Core, to send information back to the front-end app */
+extern int DebuggerCallbacksAreSet(void);
+extern void DebuggerCallback(eDbgCallbackType type, unsigned int param);
+extern void CoreCompareCallback(void);
+extern void CoreCompareDataSync(int length, void *ptr);
+
+#endif /* API_DEBUGGER_H */
 

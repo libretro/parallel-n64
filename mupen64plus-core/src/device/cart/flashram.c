@@ -1,6 +1,7 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *   Mupen64plus - flashram.c                                              *
- *   Mupen64Plus homepage: http://code.google.com/p/mupen64plus/           *
+ *   Mupen64Plus homepage: https://mupen64plus.org/                        *
+ *   Copyright (C) 2014 Bobby Smiles                                       *
  *   Copyright (C) 2002 Hacktarux                                          *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
@@ -20,227 +21,222 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "flashram.h"
-#include "cart.h"
-#include "../rcp/pi/pi_controller.h"
-
-#include "../../api/m64p_types.h"
-#include "../../api/callbacks.h"
-#include "../memory/m64p_memory.h"
-#include "../rcp/ri/ri_controller.h"
-#include "../rdram/safe_rdram.h"
-#include "../../backends/api/storage_backend.h"
-#include "../../main/main.h"
-#include "../device.h"
 
 #include <string.h>
 
-void init_flashram(struct flashram* flashram,
-      void* storage,
-      const struct storage_backend_interface* istorage)
+#include "api/callbacks.h"
+#include "api/m64p_types.h"
+#include "backends/api/storage_backend.h"
+#include "device/memory/m64p_memory.h"
+
+#define __STDC_FORMAT_MACROS
+#include <inttypes.h>
+
+
+static void flashram_command(struct flashram* flashram, uint32_t command)
 {
-   flashram->storage  = storage;
-   flashram->istorage = istorage;
+    unsigned int i;
+    unsigned int offset;
+    uint8_t* mem = flashram->istorage->data(flashram->storage);
+
+    switch (command & 0xff000000)
+    {
+    case 0x3c000000:
+        /* set chip erase mode */
+        flashram->mode = FLASHRAM_MODE_CHIP_ERASE;
+        break;
+
+    case 0x4b000000:
+        /* set sector erase mode, set erase sector */
+        flashram->mode = FLASHRAM_MODE_SECTOR_ERASE;
+        flashram->erase_page = (command & 0xffff);
+        break;
+
+    case 0x78000000:
+        /* set erase busy flag */
+        flashram->status |= 0x02;
+
+        /* do chip/sector erase */
+        if (flashram->mode == FLASHRAM_MODE_SECTOR_ERASE) {
+            offset = (flashram->erase_page & 0xff80) * 128;
+            memset(mem + offset, 0xff, 128*128);
+            flashram->istorage->save(flashram->storage, offset, 128*128);
+        }
+        else if (flashram->mode == FLASHRAM_MODE_CHIP_ERASE){
+            memset(mem, 0xff, FLASHRAM_SIZE);
+            flashram->istorage->save(flashram->storage, 0, FLASHRAM_SIZE);
+        }
+        else {
+            DebugMessage(M64MSG_WARNING, "Unexpected erase command (mode=%x)", flashram->mode);
+        }
+
+        /* clear erase busy flag, set erase success flag, transition to status mode */
+        flashram->status &= ~UINT32_C(0x02);
+        flashram->status |= 0x08;
+        flashram->mode = FLASHRAM_MODE_STATUS;
+        break;
+
+    case 0xa5000000:
+        /* set program busy flag */
+        flashram->status |= 0x01;
+
+        /* program selected page */
+        offset = (command & 0xffff) * 128;
+        for (i = 0; i < 128; ++i) {
+            mem[(offset+i)^S8] = flashram->page_buf[i];
+        }
+        flashram->istorage->save(flashram->storage, offset, 128);
+
+        /* clear program busy flag, set program success flag, transition to status mode */
+        flashram->status &= ~UINT32_C(0x01);
+        flashram->status |= 0x04;
+        flashram->mode = FLASHRAM_MODE_STATUS;
+        break;
+
+    case 0xb4000000:
+        /* set page program mode */
+        flashram->mode = FLASHRAM_MODE_PAGE_PROGRAM;
+        break;
+
+    case 0xd2000000:
+        /* set status mode */
+        flashram->mode = FLASHRAM_MODE_STATUS;
+        break;
+
+    case 0xe1000000:
+        /* set silicon_id mode */
+        flashram->mode = FLASHRAM_MODE_READ_SILICON_ID;
+        flashram->status |= 0x01; /* Needed for Pokemon Puzzle League */
+        break;
+
+    case 0xf0000000:
+        /* set read mode */
+        flashram->mode = FLASHRAM_MODE_READ_ARRAY;
+        break;
+
+    default:
+        DebugMessage(M64MSG_WARNING, "unknown flashram command: %" PRIX32, command);
+    }
 }
 
-static void flashram_command(struct pi_controller *pi, uint32_t command)
-{
-   unsigned int i;
-   struct flashram *flashram = &pi->cart->flashram;
-   uint8_t *dram             = (uint8_t*)pi->ri->rdram->dram;
-   uint8_t *mem              = flashram->istorage->data(flashram->storage);
 
-   switch (command & 0xff000000)
-   {
-      case 0x4b000000:
-         flashram->erase_offset = (command & 0xffff) * 128;
-         break;
-      case 0x78000000:
-         flashram->mode = FLASHRAM_MODE_ERASE;
-         flashram->status = 0x1111800800c20000LL;
-         break;
-      case 0xa5000000:
-         flashram->erase_offset = (command & 0xffff) * 128;
-         flashram->status = 0x1111800400c20000LL;
-         break;
-      case 0xb4000000:
-         flashram->mode = FLASHRAM_MODE_WRITE;
-         break;
-      case 0xd2000000:  // execute
-         switch (flashram->mode)
-         {
-            case FLASHRAM_MODE_NOPES:
-            case FLASHRAM_MODE_READ:
-               break;
-            case FLASHRAM_MODE_ERASE:
-               {
-                  for (i=flashram->erase_offset; i<(flashram->erase_offset+128); ++i)
-                  {
-                     if ((i^S8) < (unsigned)FLASHRAM_SIZE)
-                        mem[i^S8] = 0xff;
-                  }
-                  flashram->istorage->save(flashram->storage, 0, FLASHRAM_SIZE);
-               }
-               break;
-            case FLASHRAM_MODE_WRITE:
-               {
-                  for(i = 0; i < 128; ++i)
-                  {
-                     const unsigned int flash_i = (flashram->erase_offset+i)^S8;
-                     if (flash_i >= (unsigned)FLASHRAM_SIZE) continue;
-                     mem[flash_i] = rdram_safe_read_byte(dram, (flashram->write_pointer+i)^S8);
-                  }
-                  flashram->istorage->save(flashram->storage, 0, FLASHRAM_SIZE);
-               }
-               break;
-            case FLASHRAM_MODE_STATUS:
-               break;
-            default:
-               DebugMessage(M64MSG_WARNING, "unknown flashram command with mode:%x", (int)flashram->mode);
-               break;
-         }
-         flashram->mode = FLASHRAM_MODE_NOPES;
-         break;
-      case 0xe1000000:
-         flashram->mode = FLASHRAM_MODE_STATUS;
-         flashram->status = 0x1111800100c20000LL;
-         flashram->status |= 0x01; /* Needed for Pokemon Puzzle League */
-         break;
-      case 0xf0000000:
-         flashram->mode = FLASHRAM_MODE_READ;
-         flashram->status = 0x11118004f0000000LL;
-         break;
-      case 0x00000000:
-         break;
-      default:
-         DebugMessage(M64MSG_WARNING, "unknown flashram command: %x", (int)command);
-         break;
-   }
+void init_flashram(struct flashram* flashram,
+                   uint32_t flashram_id,
+                   void* storage, const struct storage_backend_interface* istorage)
+{
+    flashram->silicon_id[0] = FLASHRAM_TYPE_ID;
+    flashram->silicon_id[1] = flashram_id;
+    flashram->storage = storage;
+    flashram->istorage = istorage;
 }
 
 void poweron_flashram(struct flashram* flashram)
 {
-   flashram->mode          = FLASHRAM_MODE_NOPES;
-   flashram->status        = 0;
-   flashram->erase_offset  = 0;
-   flashram->write_pointer = 0;
+    flashram->mode = FLASHRAM_MODE_READ_ARRAY;
+    flashram->status = 0x00;
+    flashram->erase_page = 0;
+    memset(flashram->page_buf, 0xff, 128);
 }
 
 void format_flashram(uint8_t* flash)
 {
-   memset(flash, 0xff, FLASHRAM_SIZE);
+    memset(flash, 0xff, FLASHRAM_SIZE);
 }
 
-int read_flashram_status(void* opaque, uint32_t address, uint32_t* value)
-{
-   struct pi_controller* pi = (struct pi_controller*)opaque;
-
-   if ((pi->cart->use_flashram == -1) || ((address & 0xffff) != 0))
-   {
-      DebugMessage(M64MSG_ERROR, "unknown read in read_flashram_status()");
-      return -1;
-   }
-   pi->cart->use_flashram = 1;
-   *value = pi->cart->flashram.status >> 32;
-   return 0;
-}
-
-int write_flashram_command(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
-{
-   struct pi_controller* pi = (struct pi_controller*)opaque;
-
-   if ((pi->cart->use_flashram == -1) || ((address & 0xffff) != 0))
-   {
-      DebugMessage(M64MSG_ERROR, "unknown write in write_flashram_command()");
-      return -1;
-   }
-   pi->cart->use_flashram = 1;
-   flashram_command(pi, value & mask);
-   return 0;
-}
-
-
-
-/* mupen64plus-next-style accessors (used by the joybus/PI-DMA cart dispatch).
- * These present next's (opaque, ...) signatures but drive parallel-n64's
- * existing flashram mode/status machine rather than next's silicon_id/page_buf
- * model, so the save protocol and status words are unchanged. Note the naming
- * follows next's PI-perspective convention, which is inverted relative to
- * pn64's dma_*_flashram(pi) helpers:
- *   flashram_dma_write == cart -> DRAM (status/array read-back)  [pn64 dma_read]
- *   flashram_dma_read  == DRAM -> cart (program staging)         [pn64 dma_write] */
 void read_flashram(void* opaque, uint32_t address, uint32_t* value)
 {
-   struct flashram* flashram = (struct flashram*)opaque;
+    struct flashram* flashram = (struct flashram*)opaque;
 
-   if ((address & 0xffff) != 0)
-   {
-      DebugMessage(M64MSG_ERROR, "unknown read in read_flashram()");
-      return;
-   }
-   *value = (uint32_t)(flashram->status >> 32);
+    if ((address & 0x1ffff) == 0x00000 && flashram->mode == FLASHRAM_MODE_STATUS) {
+        /* read Status register */
+        *value = flashram->status;
+    }
+    else if ((address & 0x1ffff) == 0x0000 && flashram->mode == FLASHRAM_MODE_READ_ARRAY) {
+        /* flashram MMIO read are not supported except for the "dummy" read @0x0000 done before DMA.
+         * returns a "dummy" value. */
+        *value = 0;
+    }
+    else {
+        /* other accesses are not implemented */
+        DebugMessage(M64MSG_WARNING, "unknown Flashram read IO (mode=%x) @%08x", flashram->mode, address);
+    }
 }
 
 void write_flashram(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
 {
-   struct flashram* flashram = (struct flashram*)opaque;
-   (void)flashram;
+    struct flashram* flashram = (struct flashram*)opaque;
 
-   if ((address & 0xffff) != 0)
-   {
-      DebugMessage(M64MSG_ERROR, "unknown write in write_flashram()");
-      return;
-   }
-   /* pn64's flashram_command takes the pi_controller (its execute path reads
-    * DRAM for the WRITE mode); reach it through the device global, matching
-    * write_flashram_command's behaviour. */
-   flashram_command(&g_dev.pi, value & mask);
+    if ((address & 0x1ffff) == 0x00000 && flashram->mode == FLASHRAM_MODE_STATUS) {
+        /* clear/set Status register */
+        flashram->status = (value & mask) & 0xff;
+    }
+    else if ((address & 0x1ffff) == 0x10000) {
+        /* set command */
+        flashram_command(flashram, value & mask);
+    }
+    else {
+        /* other accesses are not implemented */
+        DebugMessage(M64MSG_WARNING, "unknown Flashram write IO (mode=%x) @%08x <- %08x & %08x", flashram->mode, address, value, mask);
+    }
 }
+
 
 unsigned int flashram_dma_write(void* opaque, uint8_t* dram, uint32_t dram_addr, uint32_t cart_addr, uint32_t length)
 {
-   /* cart -> DRAM: status report or array read-back (pn64 dma_read_flashram) */
-   struct flashram* flashram = (struct flashram*)opaque;
-   const uint8_t* mem = flashram->istorage->data(flashram->storage);
-   unsigned int i;
+    size_t i;
+    struct flashram* flashram = (struct flashram*)opaque;
+    const uint8_t* mem = flashram->istorage->data(flashram->storage);
 
-   switch (flashram->mode)
-   {
-      case FLASHRAM_MODE_STATUS:
-         ((uint32_t*)dram)[dram_addr/4]   = (uint32_t)(flashram->status >> 32);
-         ((uint32_t*)dram)[dram_addr/4+1] = (uint32_t)(flashram->status);
-         break;
-      case FLASHRAM_MODE_READ:
-      {
-         uint32_t cart = (cart_addr & 0xffff) * 2;
-         for (i = 0; i < length; ++i)
-         {
-            const unsigned int cart_i = (cart+i)^S8;
-            rdram_safe_write_byte(dram, (dram_addr+i)^S8, (cart_i < (unsigned)FLASHRAM_SIZE) ? mem[cart_i] : 0);
-         }
-         break;
-      }
-      default:
-         DebugMessage(M64MSG_WARNING, "unknown flashram_dma_write: %x", flashram->mode);
-         break;
-   }
+    if ((cart_addr & 0x1ffff) == 0x00000 && length == 8 && flashram->mode == FLASHRAM_MODE_READ_SILICON_ID) {
+        /* read Silicon ID using DMA */
+        ((uint32_t*)dram)[dram_addr/4+0] = flashram->silicon_id[0];
+        ((uint32_t*)dram)[dram_addr/4+1] = flashram->silicon_id[1];
+    }
+    else if ((cart_addr & 0x1ffff) < 0x10000 && flashram->mode == FLASHRAM_MODE_READ_ARRAY) {
 
-   return /* length / 8 */0x1000;
+        /* adjust flashram address before starting DMA. */
+        if (flashram->silicon_id[1] == MX29L1100_ID
+            || flashram->silicon_id[1] == MX29L0000_ID
+            || flashram->silicon_id[1] == MX29L0001_ID) {
+            /* "old" flash needs special address adjusting */
+            cart_addr = (cart_addr & 0xffff) * 2;
+        }
+        else {
+            /* "new" flash doesn't require special address adjusting at DMA start. */
+            cart_addr &= 0xffff;
+        }
+
+        /* do actual DMA */
+        for(i = 0; i < length; ++i) {
+            dram[(dram_addr+i)^S8] = mem[(cart_addr+i)^S8];
+        }
+    }
+    else {
+        /* other accesses are not implemented */
+        DebugMessage(M64MSG_WARNING, "unknown Flashram DMA Write (mode=%x) @%08x <- %08x length=%08x",
+            flashram->mode, dram_addr, cart_addr, length);
+    }
+
+    return /* length / 8 */0x1000;
 }
 
 unsigned int flashram_dma_read(void* opaque, const uint8_t* dram, uint32_t dram_addr, uint32_t cart_addr, uint32_t length)
 {
-   /* DRAM -> cart: program staging (pn64 dma_write_flashram sets write_pointer) */
-   struct flashram* flashram = (struct flashram*)opaque;
+    struct flashram* flashram = (struct flashram*)opaque;
+    unsigned int i;
 
-   switch (flashram->mode)
-   {
-      case FLASHRAM_MODE_WRITE:
-         flashram->write_pointer = dram_addr;
-         break;
-      default:
-         DebugMessage(M64MSG_ERROR, "unknown flashram_dma_read: %x", flashram->mode);
-         break;
-   }
+    if ((cart_addr & 0x1ffff) == 0x00000 && length == 128 && flashram->mode == FLASHRAM_MODE_PAGE_PROGRAM) {
+        /* load page buf using DMA */
+        for(i = 0; i < length; ++i) {
+            flashram->page_buf[i] = dram[(dram_addr+i)^S8];
+        }
+    }
+    else {
+        /* other accesses are not implemented */
+        DebugMessage(M64MSG_WARNING, "unknown Flashram DMA Read (mode=%x) @%08x <- %08x length=%08x",
+            flashram->mode, cart_addr, dram_addr, length);
+    }
 
-   return /* length / 8 */0x1000;
+    return /* length / 8 */0x1000;
 }
+

@@ -1,6 +1,6 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *   Mupen64plus - cart_rom.c                                              *
- *   Mupen64Plus homepage: http://code.google.com/p/mupen64plus/           *
+ *   Mupen64Plus homepage: https://mupen64plus.org/                        *
  *   Copyright (C) 2014 Bobby Smiles                                       *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
@@ -20,67 +20,74 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "cart_rom.h"
-#include "cart.h"
-#include "../rcp/pi/pi_controller.h"
-#include "../memory/m64p_memory.h"
-#include "../r4300/r4300_core.h"
+
+#define M64P_CORE_PROTOTYPES 1
+#include "api/callbacks.h"
+#include "api/m64p_types.h"
+
+#include "device/memory/m64p_memory.h"
+#include "device/r4300/r4300_core.h"
+#include "device/rcp/pi/pi_controller.h"
+
+#define __STDC_FORMAT_MACROS
+#include <inttypes.h>
+
+#define CART_ROM_ADDR_MASK UINT32_C(0x03ffffff);
+
 
 void init_cart_rom(struct cart_rom* cart_rom,
-                      uint8_t* rom, size_t rom_size)
+                   uint8_t* rom, size_t rom_size,
+                   struct r4300_core* r4300,
+                   struct pi_controller* pi)
 {
-    cart_rom->rom      = rom;
+    cart_rom->rom = rom;
     cart_rom->rom_size = rom_size;
+
+    cart_rom->r4300 = r4300;
+    cart_rom->pi = pi;
 }
 
 void poweron_cart_rom(struct cart_rom* cart_rom)
 {
-    cart_rom->last_write  = 0;
-    cart_rom->rom_written = 0;
+    cart_rom->last_write = 0;
 }
 
 
-int read_cart_rom(void* opaque, uint32_t address, uint32_t* value)
+void read_cart_rom(void* opaque, uint32_t address, uint32_t* value)
 {
-    struct pi_controller* pi    = (struct pi_controller*)opaque;
-    uint32_t addr               = ROM_ADDR(address);
+    struct cart_rom* cart_rom = (struct cart_rom*)opaque;
+    uint32_t addr = rom_address(address);
 
-    if (pi->cart->cart_rom.rom_written)
+    if (cart_rom->pi->regs[PI_STATUS_REG] & PI_STATUS_IO_BUSY)
     {
-        *value                   = pi->cart->cart_rom.last_write;
-        pi->cart->cart_rom.rom_written = 0;
-    }
-    else if (addr < pi->cart->cart_rom.rom_size)
-    {
-        *value = *(uint32_t*)(pi->cart->cart_rom.rom + addr);
+        *value = cart_rom->last_write;
     }
     else
     {
-        *value = 0;
+        *value = *(uint32_t*)(cart_rom->rom + addr);
     }
-
-    return 0;
 }
 
-int write_cart_rom(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
+void write_cart_rom(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
 {
-    struct pi_controller* pi     = (struct pi_controller*)opaque;
-    pi->cart->cart_rom.last_write      = value & mask;
-    pi->cart->cart_rom.rom_written     = 1;
+    struct cart_rom* cart_rom = (struct cart_rom*)opaque;
+    cart_rom->last_write = value & mask;
 
-    return 0;
+    if (!validate_pi_request(cart_rom->pi))
+        return;
+
+    /* Mark IO as busy */
+    cart_rom->pi->regs[PI_STATUS_REG] |= PI_STATUS_IO_BUSY;
+    cp0_update_count(cart_rom->r4300);
+    add_interrupt_event(&cart_rom->r4300->cp0, PI_INT, 0x1000);
 }
 
-/* mupen64plus-next-style ROM DMA accessors (used by the joybus/PI-DMA cart
- * dispatch). cart_rom_dma_write copies ROM -> DRAM (the normal cartridge read);
- * cart_rom_dma_read (DRAM -> ROM) is not a real operation and is a no-op, as in
- * next. These take the cart_rom struct directly (next form). parallel-n64s
- * existing inline pi_controller ROM DMA path -- with its summercart cfg_rom_write
- * gating and framebuffer DMA hooks -- is left in place; these accessors are the
- * convergent core copy that the cart dispatch will route through. */
 unsigned int cart_rom_dma_read(void* opaque, const uint8_t* dram, uint32_t dram_addr, uint32_t cart_addr, uint32_t length)
 {
-    (void)opaque; (void)dram; (void)dram_addr; (void)cart_addr;
-    /* DMA writing to cart ROM is not a real operation */
+    cart_addr &= CART_ROM_ADDR_MASK;
+
+    DebugMessage(M64MSG_WARNING, "DMA Writing to CART_ROM: 0x%" PRIX32 " -> 0x%" PRIX32 " (0x%" PRIX32 ")", dram_addr, cart_addr, length);
+
     return /* length / 8 */0x1000;
 }
 
@@ -90,28 +97,32 @@ unsigned int cart_rom_dma_write(void* opaque, uint8_t* dram, uint32_t dram_addr,
     struct cart_rom* cart_rom = (struct cart_rom*)opaque;
     const uint8_t* mem = cart_rom->rom;
 
-    cart_addr &= 0x03ffffff;
+    cart_addr &= CART_ROM_ADDR_MASK;
 
     if (cart_addr + length < cart_rom->rom_size)
     {
-        for (i = 0; i < length; ++i)
+        for(i = 0; i < length; ++i) {
             dram[(dram_addr+i)^S8] = mem[(cart_addr+i)^S8];
+        }
     }
     else
     {
         unsigned int diff = (cart_rom->rom_size <= cart_addr)
             ? 0
-            : (unsigned int)(cart_rom->rom_size - cart_addr);
+            : cart_rom->rom_size - cart_addr;
 
-        for (i = 0; i < diff; ++i)
+        for (i = 0; i < diff; ++i) {
             dram[(dram_addr+i)^S8] = mem[(cart_addr+i)^S8];
-        for (; i < length; ++i)
+        }
+        for (; i < length; ++i) {
             dram[(dram_addr+i)^S8] = 0;
+        }
     }
 
-    /* invalidate any cached code at the destination */
-    invalidate_r4300_cached_code(0x80000000 + dram_addr, length);
-    invalidate_r4300_cached_code(0xa0000000 + dram_addr, length);
+    /* invalidate cached code */
+    invalidate_r4300_cached_code(cart_rom->r4300, 0x80000000 + dram_addr, length);
+    invalidate_r4300_cached_code(cart_rom->r4300, 0xa0000000 + dram_addr, length);
 
-    return /* length / 8 */0x1000;
+    return (length / 8) + add_random_interrupt_time(cart_rom->r4300);
 }
+

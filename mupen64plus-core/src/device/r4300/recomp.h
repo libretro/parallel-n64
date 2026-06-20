@@ -1,6 +1,6 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *   Mupen64plus - recomp.h                                                *
- *   Mupen64Plus homepage: http://code.google.com/p/mupen64plus/           *
+ *   Mupen64Plus homepage: https://mupen64plus.org/                        *
  *   Copyright (C) 2002 Hacktarux                                          *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
@@ -19,36 +19,44 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef M64P_R4300_RECOMP_H
-#define M64P_R4300_RECOMP_H
-
-#include <stdint.h>
-
-#if defined(__LIBRETRO_WIN64__)
-#define __x86_64__
-#endif
+#ifndef M64P_DEVICE_R4300_RECOMP_H
+#define M64P_DEVICE_R4300_RECOMP_H
 
 #include <stddef.h>
+#include <stdint.h>
 
-#include "recomp_types.h"
+struct r4300_core;
+struct precomp_block;
 
-void recompile_block(const uint32_t *source, struct precomp_block *block, uint32_t func);
-void init_block(struct precomp_block *block);
-void free_block(struct precomp_block *block);
-void recompile_opcode(void);
+void dynarec_init_block(struct r4300_core* r4300, uint32_t address);
+void dynarec_free_block(struct precomp_block* block);
+void dynarec_recompile_block(struct r4300_core* r4300, const uint32_t* source, struct precomp_block* block, uint32_t func);
+void recompile_opcode(struct r4300_core* r4300);
 void dyna_jump(void);
-void dyna_start(void *code);
-void dyna_stop(void);
+void dyna_start(void (*code)(void));
+void dyna_stop(struct r4300_core* r4300);
 void *realloc_exec(void *ptr, size_t oldsize, size_t newsize);
 
-extern struct precomp_instr *dst; /* precomp_instr structure for instruction being recompiled */
+void dynarec_jump_to(struct r4300_core* r4300, uint32_t address);
 
-extern int no_compiled_jump;
+void dynarec_fin_block(void);
+void dynarec_notcompiled(void);
+void dynarec_notcompiled2(void);
+void dynarec_setup_code(void);
+void dynarec_jump_to_recomp_address(void);
+void dynarec_exception_general(void);
+int dynarec_check_cop1_unusable(void);
+void dynarec_cp0_update_count(void);
+void dynarec_gen_interrupt(void);
+int dynarec_read_aligned_word(void);
+int dynarec_write_aligned_word(void);
+int dynarec_read_aligned_dword(void);
+int dynarec_write_aligned_dword(void);
 
-#ifdef DYNAREC
-#include "hacktarux_dynarec/assemble.h"
+
+#if defined(PROFILE_R4300)
+void profile_write_end_of_code_blocks(struct r4300_core* r4300);
 #endif
-#include "hacktarux_dynarec/regcache.h"
 
-#endif /* M64P_R4300_RECOMP_H */
+#endif /* M64P_DEVICE_R4300_RECOMP_H */
 

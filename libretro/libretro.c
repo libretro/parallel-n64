@@ -1,4 +1,25 @@
 #include <stdio.h>
+#include <mupen64plus-next_common.h>
+
+/* libretro-fork compat: legacy CONT_* controller-presence + M64CMD_DDROM_OPEN +
+ * mempak format defaults, retained for the fork's libretro glue (next dropped
+ * these names but the underlying values are unchanged). */
+#ifndef CONT_NONE
+#define CONT_NONE     0
+#define CONT_JOYPAD   1
+#define CONT_MOUSE    2
+#define CONT_GCN      4
+#endif
+#ifndef M64CMD_DDROM_OPEN
+#define M64CMD_DDROM_OPEN 25
+#endif
+#ifndef DEFAULT_MEMPAK_DEVICEID
+#define DEFAULT_MEMPAK_DEVICEID 0x0500
+#define DEFAULT_MEMPAK_BANKS    1
+#define DEFAULT_MEMPAK_VERSION  0
+#endif
+
+uint8_t* g_dd_disk;
 #include <stdlib.h>
 #include <string.h>
 
@@ -22,7 +43,7 @@
 #include "main/cheat.h"
 #include "main/version.h"
 #include "main/savestates.h"
-#include "device/dd/dd_disk.h"
+#include "device/dd/disk.h"
 #include "device/rcp/pi/pi_controller.h"
 #include "device/pif/pif.h"
 #include "libretro_memory.h"
@@ -82,7 +103,30 @@ retro_video_refresh_t video_cb                    = NULL;
 retro_input_poll_t poll_cb                        = NULL;
 retro_input_state_t input_cb                      = NULL;
 retro_audio_sample_batch_t audio_batch_cb         = NULL;
+uint32_t CountPerScanlineOverride = 0;
 retro_environment_t environ_cb                    = NULL;
+/* mupen64plus-next core globals consumed by the adopted main.c/rom.c */
+uint32_t CountPerOp = 0;
+uint32_t CountPerOpDenomPot = 0;
+uint32_t ForceDisableExtraMem = 0;
+uint32_t EnableThreadedRenderer = 0;
+char* retro_dd_path_img = NULL;
+/* fork-specific frame/sync globals (declared extern above; defined here) */
+int frame_break = 0;
+int g_count_per_scanline = 0;
+int g_force_parallel_sync = 0;
+/* controller c-button state + transferpak paths (next libretro globals) */
+int r_cbutton, l_cbutton, d_cbutton, u_cbutton;
+char* retro_transferpak_rom_path = NULL;
+char* retro_transferpak_ram_path = NULL;
+
+/* fork 64DD: a fresh disk image is an empty (zeroed) buffer; the IPL writes
+ * its own structure on first use. next has no format_disk, so define it here. */
+void format_disk(uint8_t* disk)
+{
+   if (disk) memset(disk, 0, 0x0435B0C0);
+}
+uint32_t IgnoreTLBExceptions = 0;
 
 /* Implemented in mupen64plus-core/src/plugin/audio_libretro/
  * audio_backend_libretro.c. flush_audio_libretro drains the per-frame
@@ -113,6 +157,8 @@ static const struct retro_subsystem_info subsystems[] = {
 save_memory_data saved_memory;
 
 static bool stop_stepping;
+extern unsigned int r4300_emumode;
+int g_real_stop = 0; /* genuine emulation stop, vs per-frame mupencorestop yield */
 extern int frame_break; /* r4300: unwinds the CPU cores at the frame boundary */
 
 float polygonOffsetFactor           = 0.0f;
@@ -147,7 +193,7 @@ static bool     context_setup_first_init = false;
 bool frame_dupe                     = false;
 
 uint32_t gfx_plugin_accuracy        = 2;
-static enum rsp_plugin_type
+static enum fork_rsp_plugin_type
                  rsp_plugin;
 uint32_t screen_width               = 640;
 uint32_t screen_height              = 480;
@@ -769,7 +815,23 @@ static void emu_step_initialize(void)
    core_settings_autoselect_gfx_plugin();
    core_settings_autoselect_rsp_plugin();
 
-   plugin_connect_all(gfx_plugin, rsp_plugin);
+   /* Bridge fork gfx_plugin/rsp_plugin enums -> next current_rdp_type/
+    * current_rsp_type, which next's plugin_connect_all() dispatches on. */
+   switch (gfx_plugin)
+   {
+      case GFX_ANGRYLION: current_rdp_type = RDP_PLUGIN_ANGRYLION; break;
+      case GFX_PARALLEL:  current_rdp_type = RDP_PLUGIN_PARALLEL;  break;
+      case GFX_GLIDEN64:  current_rdp_type = RDP_PLUGIN_GLIDEN64;  break;
+      default:            current_rdp_type = RDP_PLUGIN_GLIDEN64;  break;
+   }
+   switch (rsp_plugin)
+   {
+      case RSP_HLE:      current_rsp_type = RSP_PLUGIN_HLE;      break;
+      case RSP_CXD4:     current_rsp_type = RSP_PLUGIN_CXD4;     break;
+      case RSP_PARALLEL: current_rsp_type = RSP_PLUGIN_PARALLEL; break;
+      default:           current_rsp_type = RSP_PLUGIN_HLE;      break;
+   }
+   plugin_connect_all();
 
    if (log_cb)
       log_cb(RETRO_LOG_INFO, "EmuThread: M64CMD_EXECUTE.\n");
@@ -869,7 +931,7 @@ static void EmuThreadStep(void)
      * condition in the emulated CPU, ...), r4300_execute has already torn
      * the dynarec down -- never re-enter it.  This mirrors the libco
      * behaviour of switching into a dead emulator thread. */
-    if (mupencorestop)
+    if (g_real_stop)
         return;
 
     stop_stepping = false;
@@ -937,7 +999,7 @@ static m64p_system_type rom_country_code_to_system_type(char country_code)
 
 void retro_get_system_av_info(struct retro_system_av_info *info)
 {
-   m64p_system_type region = rom_country_code_to_system_type(ROM_HEADER.destination_code);
+   m64p_system_type region = rom_country_code_to_system_type(ROM_HEADER.Country_code);
 
    info->geometry.base_width   = screen_width;
    info->geometry.base_height  = screen_height;
@@ -950,7 +1012,7 @@ void retro_get_system_av_info(struct retro_system_av_info *info)
 
 unsigned retro_get_region (void)
 {
-   m64p_system_type region = rom_country_code_to_system_type(ROM_HEADER.destination_code);
+   m64p_system_type region = rom_country_code_to_system_type(ROM_HEADER.Country_code);
    return ((region == SYSTEM_PAL) ? RETRO_REGION_PAL : RETRO_REGION_NTSC);
 }
 
@@ -1088,6 +1150,8 @@ static bool retro_init_gl(bool core)
    return false;
 #endif
 }
+
+
 
 void retro_init(void)
 {
@@ -1252,6 +1316,23 @@ static int parse_mouse_button(const char* value)
 void update_variables(bool startup)
 {
    struct retro_variable var;
+
+   /* CPU core selection: pure interpreter (0), cached interpreter (1),
+    * or dynamic recompiler (2+). next reads r4300_emumode at init_device;
+    * the fork exposes it via the parallel-n64-cpucore core option. */
+   {
+      struct retro_variable cpuvar;
+      cpuvar.key = "parallel-n64-cpucore";
+      cpuvar.value = NULL;
+      if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &cpuvar) && cpuvar.value)
+      {
+         if (!strcmp(cpuvar.value, "pure_interpreter"))   r4300_emumode = 0;
+         else if (!strcmp(cpuvar.value, "cached_interpreter")) r4300_emumode = 1;
+         else                                             r4300_emumode = 2; /* dynarec */
+      }
+      else
+         r4300_emumode = 2; /* default: dynamic recompiler */
+   }
 
 #if defined(HAVE_PARALLEL)
    var.key = "parallel-n64-parallel-rdp-synchronous";
@@ -1810,7 +1891,7 @@ void update_variables(bool startup)
          else if (!strcmp(pk1var.value, "memory"))
             p1_pak = PLUGIN_MEMPAK;
          else if (!strcmp(pk1var.value, "biosensor"))
-            p1_pak = PLUGIN_BIOPAK;
+            p1_pak = PLUGIN_BIO_PAK;
 
          /* If controller struct is not initialised yet, set pad_pak_types instead
           * which will be looked at when initialising the controllers. */
@@ -1832,7 +1913,7 @@ void update_variables(bool startup)
          else if (!strcmp(pk2var.value, "memory"))
             p2_pak = PLUGIN_MEMPAK;
          else if (!strcmp(pk2var.value, "biosensor"))
-            p2_pak = PLUGIN_BIOPAK;
+            p2_pak = PLUGIN_BIO_PAK;
 
          if (controller[1].control)
             controller[1].control->Plugin = p2_pak;
@@ -1852,7 +1933,7 @@ void update_variables(bool startup)
          else if (!strcmp(pk3var.value, "memory"))
             p3_pak = PLUGIN_MEMPAK;
          else if (!strcmp(pk3var.value, "biosensor"))
-            p3_pak = PLUGIN_BIOPAK;
+            p3_pak = PLUGIN_BIO_PAK;
 
          if (controller[2].control)
             controller[2].control->Plugin = p3_pak;
@@ -1872,7 +1953,7 @@ void update_variables(bool startup)
          else if (!strcmp(pk4var.value, "memory"))
             p4_pak = PLUGIN_MEMPAK;
          else if (!strcmp(pk4var.value, "biosensor"))
-            p4_pak = PLUGIN_BIOPAK;
+            p4_pak = PLUGIN_BIO_PAK;
 
          if (controller[3].control)
             controller[3].control->Plugin = p4_pak;
@@ -2275,10 +2356,17 @@ static void format_saved_memory(void)
    format_sram(saved_memory.sram);
    format_eeprom(saved_memory.eeprom, sizeof(saved_memory.eeprom));
    format_flashram(saved_memory.flashram);
-   format_mempak(saved_memory.mempack[0]);
-   format_mempak(saved_memory.mempack[1]);
-   format_mempak(saved_memory.mempack[2]);
-   format_mempak(saved_memory.mempack[3]);
+   {
+      int mp_i, mp_k;
+      for (mp_i = 0; mp_i < 4; ++mp_i)
+      {
+         uint32_t serial[6];
+         for (mp_k = 0; mp_k < 6; ++mp_k) serial[mp_k] = rand();
+         format_mempak(saved_memory.mempack[mp_i], serial,
+                       DEFAULT_MEMPAK_DEVICEID, DEFAULT_MEMPAK_BANKS,
+                       DEFAULT_MEMPAK_VERSION);
+      }
+   }
    format_disk(saved_memory.disk);
 }
 
@@ -2598,7 +2686,7 @@ void *retro_get_memory_data(unsigned type)
 {
    switch (type)
    {
-   case RETRO_MEMORY_SYSTEM_RAM: return g_rdram;
+   case RETRO_MEMORY_SYSTEM_RAM: return g_dev.rdram.dram;
    case RETRO_MEMORY_SAVE_RAM:   return &saved_memory;
    }
 
@@ -2713,7 +2801,7 @@ unsigned retro_api_version(void) { return RETRO_API_VERSION; }
 
 void retro_cheat_reset(void)
 {
-	cheat_delete_all();
+	cheat_delete_all(&g_cheat_ctx);
 }
 
 void retro_cheat_set(unsigned index, bool enabled, const char* codeLine)
@@ -2758,8 +2846,8 @@ void retro_cheat_set(unsigned index, bool enabled, const char* codeLine)
    }
 
 	//Assign to mupenCode
-	cheat_add_new(name,mupenCode,partCount/2);
-	cheat_set_enabled(name,enabled);
+	cheat_add_new(&g_cheat_ctx, name,mupenCode,partCount/2);
+	cheat_set_enabled(&g_cheat_ctx, name, enabled);
 }
 
 
@@ -2814,6 +2902,11 @@ int retro_return(bool just_flipping)
 
    stop_stepping = true;
    frame_break = 1;
+   /* Break the device-execution loop for this frame. main_run() clears this
+    * and re-enters run_device() on the next slice; EmuThreadStep distinguishes
+    * a real stop (mupencorestop latched by CoreDoCommand STOP) from this
+    * per-frame yield via stop_stepping. */
+   mupencorestop = 1;
 
    return 0;
 }

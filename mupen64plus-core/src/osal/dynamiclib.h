@@ -1,7 +1,7 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- *   Mupen64plus - exception.h                                             *
- *   Mupen64Plus homepage: http://code.google.com/p/mupen64plus/           *
- *   Copyright (C) 2002 Hacktarux                                          *
+ *   Mupen64plus-core - osal/dynamiclib.h                                  *
+ *   Mupen64Plus homepage: https://mupen64plus.org/                        *
+ *   Copyright (C) 2009 Richard Goedeken                                   *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
  *   it under the terms of the GNU General Public License as published by  *
@@ -19,13 +19,12 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef M64P_R4300_EXCEPTION_H
-#define M64P_R4300_EXCEPTION_H
+#if !defined(OSAL_DYNAMICLIB_H)
+#define OSAL_DYNAMICLIB_H
 
-#include <stdint.h>
+#include "api/m64p_types.h"
 
-void TLB_refill_exception(uint32_t addresse, int w);
-void exception_general(void);
+m64p_function osal_dynlib_getproc(m64p_dynlib_handle LibHandle, const char *pccProcedureName);
 
-#endif /* M64P_R4300_EXCEPTION_H */
+#endif /* #define OSAL_DYNAMICLIB_H */
 

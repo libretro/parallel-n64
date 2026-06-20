@@ -1,6 +1,6 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *   Mupen64plus - game_controller.h                                       *
- *   Mupen64Plus homepage: http://code.google.com/p/mupen64plus/           *
+ *   Mupen64Plus homepage: https://mupen64plus.org/                        *
  *   Copyright (C) 2014 Bobby Smiles                                       *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
@@ -19,42 +19,17 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef M64P_SI_GAME_CONTROLLER_H
-#define M64P_SI_GAME_CONTROLLER_H
+#ifndef M64P_DEVICE_SI_GAME_CONTROLLER_H
+#define M64P_DEVICE_SI_GAME_CONTROLLER_H
 
-#include <stdint.h>
+#include "backends/api/joybus.h"
+
 #include <stddef.h>
-
-#include "paks/mempak.h"
-#include "paks/rumblepak.h"
-#include "paks/transferpak.h"
-#include "paks/biopak.h"
-
-#include "../../api/m64p_plugin.h"
-#include "../../backends/api/joybus.h"
+#include <stdint.h>
 
 struct game_controller;
 struct controller_input_backend_interface;
 
-enum pak_type
-{
-    PAK_NONE,
-    PAK_MEM,
-    PAK_RUMBLE,
-    PAK_TRANSFER,
-    PAK_BIO
-};
-
-enum cont_type
-{
-    CONT_NONE = 0,
-    CONT_JOYPAD = 1,
-    CONT_MOUSE = 2,
-    CONT_GCN = 3,
-};
-
-/* mupen64plus-next controller polymorphism (flavor) descriptor. Imported as part
- * of the joybus controller convergence (region 12c). */
 struct game_controller_flavor
 {
     const char* name;
@@ -64,9 +39,6 @@ struct game_controller_flavor
     void (*reset)(struct game_controller* cont);
 };
 
-/* mupen64plus-next generic pak vtable. parallel-n64 keeps its concrete nested
- * paks (mempak/rumblepak/transferpak/biopak) for its existing dispatch; this
- * interface lets the joybus controller device address a pak polymorphically. */
 struct pak_interface
 {
     const char* name;
@@ -78,22 +50,8 @@ struct pak_interface
 
 struct game_controller
 {
-    /* external controller input (parallel-n64's existing callback model) */
-    void* user_data;
-    int (*is_connected)(void*,enum pak_type*);
-    uint32_t (*get_input)(void*);
-    BUTTONS_GCN (*get_gcn_input)(void*, int analogMode);
-
-    struct mempak mempak;
-    struct rumblepak rumblepak;
-    struct transferpak transferpak;
-    struct biopak biopak;
-
-    /* mupen64plus-next joybus-device state (region 12c). These coexist with the
-     * fields above: pn64's flat process_controller_command keeps using the
-     * callbacks/nested paks, while the joybus g_ijoybus_device_controller path
-     * uses these. */
     uint8_t status;
+
     const struct game_controller_flavor* flavor;
 
     void* cin;
@@ -109,32 +67,21 @@ struct game_controller
     uint16_t word[40];
 };
 
-void init_game_controller(struct game_controller *cont,
-      void *cont_user_data,
-      int (*cont_is_connected)(void*,enum pak_type*),
-      uint32_t (*cont_get_input)(void*),
-      BUTTONS_GCN (*cont_get_gcn_input)(void*, int),
-      void* mpk_user_data,
-      void (*mpk_save)(void*),
-      uint8_t* mpk_data,
-      void* rpk_user_data,
-      void (*rpk_rumble)(void*,enum rumble_action));
+void init_game_controller(struct game_controller* cont,
+    const struct game_controller_flavor* flavor,
+    void* cin, const struct controller_input_backend_interface* icin,
+    void* pak, const struct pak_interface* ipak);
 
-int game_controller_is_connected(struct game_controller* cont, enum pak_type* pak);
-uint32_t game_controller_get_input(struct game_controller* cont);
-BUTTONS_GCN game_controller_gcn_get_input(struct game_controller* cont, int analogMode);
 
-void process_controller_command(struct game_controller* cont, uint8_t* cmd);
-void read_controller(struct game_controller* cont, uint8_t* cmd);
+void change_pak(struct game_controller* cont,
+                void* pak, const struct pak_interface* ipak);
 
-/* mupen64plus-next joybus controller device + flavors (region 12c). The joybus
- * process handler coexists with pn64's flat process_controller_command above;
- * it is wired into the PIF channel dispatch in the PIF convergence step. */
+/* Controller Joybus interface */
 extern const struct joybus_device_interface
     g_ijoybus_device_controller;
 
+/* Controller flavors */
 extern const struct game_controller_flavor g_standard_controller_flavor;
 extern const struct game_controller_flavor g_mouse_controller_flavor;
-
 
 #endif

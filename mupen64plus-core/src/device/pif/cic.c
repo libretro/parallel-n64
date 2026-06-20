@@ -1,6 +1,6 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *   Mupen64plus - cic.c                                                   *
- *   Mupen64Plus homepage: http://code.google.com/p/mupen64plus/           *
+ *   Mupen64Plus homepage: https://mupen64plus.org/                        *
  *   Copyright (C) 2014 Bobby Smiles                                       *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
@@ -21,12 +21,16 @@
 
 #include "cic.h"
 
-#include "../../api/m64p_types.h"
-#include "../../api/callbacks.h"
-
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
+
+#include "api/callbacks.h"
+#include "api/m64p_types.h"
+
+#define __STDC_FORMAT_MACROS
+#include <inttypes.h>
+
 
 void init_cic_using_ipl3(struct cic* cic, const void* ipl3)
 {
@@ -35,16 +39,16 @@ void init_cic_using_ipl3(struct cic* cic, const void* ipl3)
 
     static const struct cic cics[] =
     {
-        { CIC_X101, 0x3f },
-        { CIC_X102, 0x3f },
-        { CIC_X103, 0x78 },
-        { CIC_X105, 0x91 },
-        { CIC_X106, 0x85 },
-        { CIC_5167, 0xdd },
-        { CIC_8303, 0xdd },
-        { CIC_USDD, 0xde },
-        { CIC_DVDD, 0xdd },
-        { CIC_5101, 0xac }
+        { "5101", CIC_5101, 0xac },
+        { "X101", CIC_X101, 0x3f },
+        { "X102", CIC_X102, 0x3f },
+        { "X103", CIC_X103, 0x78 },
+        { "X105", CIC_X105, 0x91 },
+        { "X106", CIC_X106, 0x85 },
+        { "5167", CIC_5167, 0xdd },
+        { "8303", CIC_8303, 0xdd },
+        { "8401", CIC_8401, 0xdd },
+        { "8501", CIC_8501, 0xde }
     };
 
     for (i = 0; i < 0xfc0/4; i++)
@@ -52,41 +56,24 @@ void init_cic_using_ipl3(struct cic* cic, const void* ipl3)
 
     switch(crc)
     {
-       default:
-          DebugMessage(M64MSG_WARNING,
-                "Unknown CIC type (%08x)! using CIC 6102.", crc);
-       case 0x000000D057C85244LL: /* CIC_X102 */
-          i = 1;
-          break;
-       case 0x000000D0027FDF31LL: /* CIC_X101 */
-       case 0x000000CFFB631223LL: /* CIC_X101 */
-          i = 0;
-          break;
-       case 0x000000D6497E414BLL: /* CIC_X103 */
-          i = 2;
-          break;
-       case 0x0000011A49F60E96LL: /* CIC_X105 */
-          i = 3;
-          break;
-       case 0x000000D6D5BE5580LL: /* CIC_X106 */
-          i = 4;
-          break;
-       case UINT64_C(0x000001053BC19870): /* CIC_5167 */
-          i = 5;
-          break;
-       case UINT64_C(0x000000D2E53EF008): /* CIC_8303 */
-          i = 6;
-          break;
-       case UINT64_C(0x000000D2E53E5DDA): /* CIC_USDD */
-          i = 7;
-          break;
-       case UINT64_C(0x000000D2E53EF39F): /* CIC_DVDD */
-          i = 8;
-          break;
-       case UINT64_C(0x000000A5F80BF620): /* CIC 5101 (Aleck64) */
-          i = 9;
-          break;
+        default:
+            DebugMessage(M64MSG_WARNING, "Unknown CIC type (%016" PRIX64 ")! using CIC 6102.", crc);
+            /* fall through */
+        case UINT64_C(0x000000D057C85244): i = 2; break; /* CIC_X102 */
+        case UINT64_C(0x000000D0027FDF31):               /* CIC_X101 */
+        case UINT64_C(0x000000CFFB631223): i = 1; break; /* CIC_X101 */
+        case UINT64_C(0x000000D6497E414B): i = 3; break; /* CIC_X103 */
+        case UINT64_C(0x0000011A49F60E96): i = 4; break; /* CIC_X105 */
+        case UINT64_C(0x000000D6D5BE5580): i = 5; break; /* CIC_X106 */
+        case UINT64_C(0x000001053BC19870): i = 6; break; /* CIC 5167 */
+        case UINT64_C(0x000000A5F80BF620): i = 0; break; /* CIC 5101 */
+        case UINT64_C(0x000000D2E53EF008): i = 7; break; /* CIC 8303 */
+        case UINT64_C(0x000000D2E53EF39F): i = 8; break; /* CIC 8401 */
+        case UINT64_C(0x000000D2E53E5DDA): i = 9; break; /* CIC 8501 */
     }
 
     memcpy(cic, &cics[i], sizeof(*cic));
+
+    DebugMessage(M64MSG_INFO, "Using CIC type %s", cic->name);
 }
+

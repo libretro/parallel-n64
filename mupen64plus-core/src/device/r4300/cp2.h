@@ -1,7 +1,7 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- *   Mupen64plus - rdram_detection_hack.c                                  *
- *   Mupen64Plus homepage: http://code.google.com/p/mupen64plus/           *
- *   Copyright (C) 2014 Bobby Smiles                                       *
+ *   Mupen64plus - cp2.h                                                   *
+ *   Mupen64Plus homepage: https://mupen64plus.org/                        *
+ *   Copyright (C) 2002 Hacktarux                                          *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
  *   it under the terms of the GNU General Public License as published by  *
@@ -19,25 +19,27 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include "rdram_detection_hack.h"
-#include "../rcp/ri/ri_controller.h"
-
-#include "../../main/main.h"
-#include "../device.h"
-#include "../rcp/si/si_controller.h"
+#ifndef M64P_DEVICE_R4300_CP2_H
+#define M64P_DEVICE_R4300_CP2_H
 
 #include <stdint.h>
+#include "osal/preproc.h"
+#include "new_dynarec/new_dynarec.h"
 
-/* HACK: force detected RDRAM size
- * This hack is triggered just before initial ROM loading (see pi_controller.c)
- *
- * Proper emulation of RI/RDRAM subsystem is required to avoid this hack.
- */
-void force_detected_rdram_size_hack(void)
+struct cp2
 {
-    uint32_t address = (g_dev.pif.cic.version != CIC_X105)
-        ? 0x318
-        : 0x3f0;
+    uint64_t latch;
 
-    g_dev.rdram.dram[address/4] = g_dev.rdram.dram_size;
-}
+#ifdef NEW_DYNAREC
+    /* New dynarec uses a different memory layout */
+    struct new_dynarec_hot_state* new_dynarec_hot_state;
+#endif
+};
+
+void init_cp2(struct cp2* cp2, struct new_dynarec_hot_state* new_dynarec_hot_state);
+void poweron_cp2(struct cp2* cp2);
+
+uint64_t* r4300_cp2_latch(struct cp2* cp2);
+
+#endif /* M64P_DEVICE_R4300_CP2_H */
+

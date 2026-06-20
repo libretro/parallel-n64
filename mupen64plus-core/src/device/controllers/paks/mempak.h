@@ -1,6 +1,6 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *   Mupen64plus - mempak.h                                                *
- *   Mupen64Plus homepage: http://code.google.com/p/mupen64plus/           *
+ *   Mupen64Plus homepage: https://mupen64plus.org/                        *
  *   Copyright (C) 2014 Bobby Smiles                                       *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
@@ -19,34 +19,36 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef M64P_SI_MEMPAK_H
-#define M64P_SI_MEMPAK_H
+#ifndef M64P_DEVICE_SI_MEMPAK_H
+#define M64P_DEVICE_SI_MEMPAK_H
 
-struct pak_interface;
-#include <stdint.h>
 #include <stddef.h>
+#include <stdint.h>
+
+struct storage_backend_interface;
+
+#define DEFAULT_MEMPAK_DEVICEID UINT16_C(0x0001)
+#define DEFAULT_MEMPAK_BANKS    UINT8_C(0x01)
+#define DEFAULT_MEMPAK_VERSION  UINT8_C(0x00)
 
 struct mempak
 {
-    /* external mpk storage */
-    void* user_data;
-    void (*save)(void*);
-    uint8_t* data;
+    void* storage;
+    const struct storage_backend_interface* istorage;
 };
 
 enum { MEMPAK_SIZE = 0x8000 };
 
-void init_mempak(struct mempak* mpk, void* user_data, void (*save)(void*), uint8_t* data);
+void format_mempak(uint8_t* mem,
+    const uint32_t serial[6],
+    uint16_t device_id,
+    uint8_t banks,
+    uint8_t version);
 
-void mempak_save(struct mempak* mpk);
+void init_mempak(struct mempak* mpk,
+                 void* storage,
+                 const struct storage_backend_interface* istorage);
 
-void format_mempak(uint8_t* mempak);
-
-void mempak_read_command(struct mempak* mpk, uint16_t address, uint8_t* data, size_t size);
-void mempak_write_command(struct mempak* mpk, uint16_t address, const uint8_t* data, size_t size);
-
-
-/* mupen64plus-next pak_interface (region 12c) */
 extern const struct pak_interface g_imempak;
 
 #endif

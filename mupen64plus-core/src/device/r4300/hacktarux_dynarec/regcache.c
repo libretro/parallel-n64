@@ -32,7 +32,6 @@
 /* region 14 / Phase 2d (increment 12): mupencorereg reg-file alias needs g_dev. */
 #include "../../device.h"
 #include "../../../main/main.h"
-#include "../recomph.h"
 
 static struct precomp_instr *last_access[8];
 static struct precomp_instr *free_since[8];

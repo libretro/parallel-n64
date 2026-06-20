@@ -19,11 +19,13 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef M64P_GB_MBC3_RTC_H
-#define M64P_GB_MBC3_RTC_H
+#ifndef M64P_DEVICE_GB_MBC3_RTC_H
+#define M64P_DEVICE_GB_MBC3_RTC_H
 
 #include <stdint.h>
 #include <time.h>
+
+struct clock_backend_interface;
 
 enum mbc3_rtc_registers
 {
@@ -34,7 +36,7 @@ enum mbc3_rtc_registers
     MBC3_RTC_DAYS_H,    /* bits 0-8: days counter (0-511) */
                         /* bits 9-13: zeros ? */
                         /* bits 14: halt (0: stop timer, 1: active timer) */
-                        /* bits 15: carry (0: no overflow, 1: counter overflowed) */
+                        /* bits 15: carry (0: no overflow, 1: couter overflowed) */
     MBC3_RTC_REGS_COUNT
 };
 
@@ -46,7 +48,14 @@ struct mbc3_rtc
     uint8_t latched_regs[MBC3_RTC_REGS_COUNT];
 
     time_t last_time;
+
+    void* clock;
+    const struct clock_backend_interface* iclock;
 };
+
+void init_mbc3_rtc(struct mbc3_rtc* rtc,
+                   void* clock,
+                   const struct clock_backend_interface* iclock);
 
 void poweron_mbc3_rtc(struct mbc3_rtc* rtc);
 

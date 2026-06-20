@@ -15,7 +15,7 @@ enum gfx_plugin_type
    GFX_GLIDEN64,
 };
 
-enum rsp_plugin_type
+enum fork_rsp_plugin_type
 {
    RSP_HLE = 0,
    RSP_CXD4,

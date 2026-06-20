@@ -1,6 +1,6 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *   Mupen64plus - mi_controller.h                                         *
- *   Mupen64Plus homepage: http://code.google.com/p/mupen64plus/           *
+ *   Mupen64Plus homepage: https://mupen64plus.org/                        *
  *   Copyright (C) 2014 Bobby Smiles                                       *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
@@ -19,10 +19,12 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef M64P_R4300_MI_CONTROLLER_H
-#define M64P_R4300_MI_CONTROLLER_H
+#ifndef M64P_DEVICE_RCP_MI_MI_CONTROLLER_H
+#define M64P_DEVICE_RCP_MI_MI_CONTROLLER_H
 
 #include <stdint.h>
+
+#include "osal/preproc.h"
 
 struct r4300_core;
 
@@ -53,15 +55,16 @@ struct mi_controller
     struct r4300_core* r4300;
 };
 
-static uint32_t mi_reg(uint32_t address)
+static osal_inline uint32_t mi_reg(uint32_t address)
 {
     return (address & 0xffff) >> 2;
 }
 
+void init_mi(struct mi_controller* mi, struct r4300_core* r4300);
 void poweron_mi(struct mi_controller* mi);
 
-int read_mi_regs(void* opaque, uint32_t address, uint32_t* value);
-int write_mi_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask);
+void read_mi_regs(void* opaque, uint32_t address, uint32_t* value);
+void write_mi_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask);
 
 void raise_rcp_interrupt(struct mi_controller* mi, uint32_t mi_intr);
 void signal_rcp_interrupt(struct mi_controller* mi, uint32_t mi_intr);

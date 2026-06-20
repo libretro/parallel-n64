@@ -38,13 +38,10 @@
 #include "new_dynarec.h"
 #include "../../../main/rom.h"
 #include "../cached_interp.h"
-#include "../cp0_private.h"
-#include "../cp1_private.h"
 #include "../interrupt.h"
 #include "../ops.h"
 #include "../r4300.h"
 #include "../recomp.h"
-#include "../recomph.h"
 #include "../tlb.h"
 #include "../fpu.h"
 

@@ -20,6 +20,7 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "../device/controllers/game_controller.h"
+#include "../backends/api/rumble_backend.h"
 #include "rumble_via_input_plugin.h"
 #include "core_plugin.h"
 

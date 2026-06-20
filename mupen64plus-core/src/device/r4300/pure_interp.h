@@ -1,6 +1,6 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *   Mupen64plus - pure_interp.h                                           *
- *   Mupen64Plus homepage: http://code.google.com/p/mupen64plus/           *
+ *   Mupen64Plus homepage: https://mupen64plus.org/                        *
  *   Copyright (C) 2002 Hacktarux                                          *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
@@ -19,10 +19,11 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef M64P_R4300_PURE_INTERP_H
-#define M64P_R4300_PURE_INTERP_H
+#ifndef M64P_DEVICE_R4300_PURE_INTERP_H
+#define M64P_DEVICE_R4300_PURE_INTERP_H
 
-void pure_interpreter_init(void);
-void pure_interpreter(void);
+struct r4300_core;
 
-#endif /* M64P_R4300_PURE_INTERP_H */
+void run_pure_interpreter(struct r4300_core* r4300);
+
+#endif /* M64P_DEVICE_R4300_PURE_INTERP_H */

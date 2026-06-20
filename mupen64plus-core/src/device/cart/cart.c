@@ -21,15 +21,14 @@
 
 #include "cart.h"
 
-#include "../../api/callbacks.h"
-#include "../../api/m64p_types.h"
+#include "api/callbacks.h"
+#include "api/m64p_types.h"
+
+#include "main/rom.h"
 
 #include <stdint.h>
 #include <string.h>
 
-/* Joybus cart device: handles the eeprom and AF-RTC PIF-channel commands,
- * imported from mupen64plus-next. Routes through parallel-n64's chip block
- * accessors (added in region 12a). */
 static void process_cart_command(void* jbd,
     const uint8_t* tx, const uint8_t* tx_buf,
     uint8_t* rx, uint8_t* rx_buf)
@@ -100,9 +99,56 @@ const struct joybus_device_interface
     NULL
 };
 
-/* PI dom2 (save chip) MMIO dispatch: route to sram or flashram by use_flashram,
- * matching next. The address-format check that next performs for the flashram
- * branch lives in parallel-n64's read_flashram/write_flashram accessors. */
+void init_cart(struct cart* cart,
+               /* AF-RTC */
+               void* af_rtc_clock, const struct clock_backend_interface* iaf_rtc_clock,
+               /* cart ROM */
+               uint8_t* rom, size_t rom_size,
+               struct r4300_core* r4300,
+               struct pi_controller* pi,
+               /* eeprom */
+               uint16_t eeprom_type,
+               void* eeprom_storage, const struct storage_backend_interface* ieeprom_storage,
+               /* flashram */
+               uint32_t flashram_type,
+               void* flashram_storage, const struct storage_backend_interface* iflashram_storage,
+               const uint8_t* dram,
+               /* sram */
+               void* sram_storage, const struct storage_backend_interface* isram_storage)
+{
+    init_af_rtc(&cart->af_rtc,
+        af_rtc_clock, iaf_rtc_clock);
+
+    init_cart_rom(&cart->cart_rom,
+        rom, rom_size,
+        r4300,
+        pi);
+
+    init_eeprom(&cart->eeprom,
+        eeprom_type, eeprom_storage, ieeprom_storage);
+
+    init_flashram(&cart->flashram,
+        flashram_type,
+        flashram_storage, iflashram_storage);
+
+    init_sram(&cart->sram,
+        sram_storage, isram_storage);
+
+    if (ROM_SETTINGS.savetype == SAVETYPE_SRAM)
+        cart->use_flashram = -1;
+    else if (ROM_SETTINGS.savetype == SAVETYPE_FLASH_RAM)
+        cart->use_flashram = 1;
+    else
+        cart->use_flashram = 0;
+}
+
+void poweron_cart(struct cart* cart)
+{
+    poweron_af_rtc(&cart->af_rtc);
+    poweron_cart_rom(&cart->cart_rom);
+    poweron_flashram(&cart->flashram);
+}
+
 void read_cart_dom2(void* opaque, uint32_t address, uint32_t* value)
 {
     struct cart* cart = (struct cart*)opaque;
@@ -113,6 +159,12 @@ void read_cart_dom2(void* opaque, uint32_t address, uint32_t* value)
     }
     else
     {
+        if ((address & 0xffff) != 0)
+        {
+            DebugMessage(M64MSG_ERROR, "unknown read in read_cart_dom2()");
+            return;
+        }
+
         cart->use_flashram = 1;
         read_flashram(&cart->flashram, address, value);
     }
@@ -128,6 +180,12 @@ void write_cart_dom2(void* opaque, uint32_t address, uint32_t value, uint32_t ma
     }
     else
     {
+        if ((address & 0xffff) != 0)
+        {
+            DebugMessage(M64MSG_ERROR, "unknown write in write_cart_dom2()");
+            return;
+        }
+
         cart->use_flashram = 1;
         write_flashram(&cart->flashram, address, value, mask);
     }
@@ -180,3 +238,4 @@ unsigned int cart_dom3_dma_write(void* opaque, uint8_t* dram, uint32_t dram_addr
     struct cart* cart = (struct cart*)opaque;
     return cart_rom_dma_write(&cart->cart_rom, dram, dram_addr, cart_addr, length);
 }
+

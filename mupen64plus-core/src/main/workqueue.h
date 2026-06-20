@@ -1,7 +1,7 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- *   Mupen64plus - cp1_private.h                                           *
- *   Mupen64Plus homepage: http://code.google.com/p/mupen64plus/           *
- *   Copyright (C) 2002 Hacktarux                                          *
+ *   Mupen64plus - util.h                                                  *
+ *   Mupen64Plus homepage: https://mupen64plus.org/                        *
+ *   Copyright (C) 2012 Mupen64plus development team                       *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
  *   it under the terms of the GNU General Public License as published by  *
@@ -19,27 +19,49 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef M64P_R4300_CP1_PRIVATE_H
-#define M64P_R4300_CP1_PRIVATE_H
+#ifndef __WORKQUEUE_H__
+#define __WORKQUEUE_H__
 
-#include <stdint.h>
+#include "list.h"
+#include "osal/preproc.h"
 
-#include "cp1.h"
+struct work_struct;
 
-#if !defined(__arm64__) && !defined(__aarch64__)
-extern float *reg_cop1_simple[32];
-extern double *reg_cop1_double[32];
-extern uint32_t FCR0, FCR31;
+typedef void (*work_func_t)(struct work_struct *work);
+struct work_struct {
+    work_func_t func;
+    struct list_head list;
+};
+
+static osal_inline void init_work(struct work_struct *work, work_func_t func)
+{
+    INIT_LIST_HEAD(&work->list);
+    work->func = func;
+}
+
+#ifdef M64P_PARALLEL
+
+int workqueue_init(void);
+void workqueue_shutdown(void);
+int queue_work(struct work_struct *work);
+
 #else
-#include "new_dynarec/arm64/memory_layout_arm64.h"
-#define reg_cop1_simple (RECOMPILER_MEMORY->rml_reg_cop1_simple)
-#define reg_cop1_double (RECOMPILER_MEMORY->rml_reg_cop1_double)
-#define FCR0            (RECOMPILER_MEMORY->rml_FCR0)
-#define FCR31           (RECOMPILER_MEMORY->rml_FCR31)
+
+static osal_inline int workqueue_init(void)
+{
+    return 0;
+}
+
+static osal_inline void workqueue_shutdown(void)
+{
+}
+
+static osal_inline int queue_work(struct work_struct *work)
+{
+    work->func(work);
+    return 0;
+}
+
 #endif
-extern int64_t reg_cop1_fgr_64[32];
-extern uint32_t rounding_mode;
 
-#endif /* M64P_R4300_CP1_PRIVATE_H */
-
-
+#endif

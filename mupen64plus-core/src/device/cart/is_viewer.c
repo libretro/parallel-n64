@@ -22,8 +22,8 @@
 #include "is_viewer.h"
 
 #define M64P_CORE_PROTOTYPES 1
-#include "../../api/callbacks.h"
-#include "../../main/util.h"
+#include "api/callbacks.h"
+#include "main/util.h"
 
 #define __STDC_FORMAT_MACROS
 #include <inttypes.h>
@@ -38,16 +38,15 @@ void poweron_is_viewer(struct is_viewer* is_viewer)
     is_viewer->buffer_pos = 0;
 }
 
-int read_is_viewer(void* opaque, uint32_t address, uint32_t* value)
+void read_is_viewer(void* opaque, uint32_t address, uint32_t* value)
 {
     struct is_viewer* is_viewer = (struct is_viewer*)opaque;
     address &= IS_ADDR_MASK;
     memcpy(value, &is_viewer->data[address], 4);
     *value = big32(*value);
-    return 0;
 }
 
-int write_is_viewer(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
+void write_is_viewer(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
 {
     struct is_viewer* is_viewer = (struct is_viewer*)opaque;
     address &= IS_ADDR_MASK;
@@ -63,7 +62,7 @@ int write_is_viewer(void* opaque, uint32_t address, uint32_t value, uint32_t mas
                 memset(is_viewer->output_buffer, 0, IS_BUFFER_SIZE);
                 is_viewer->buffer_pos = 0;
                 DebugMessage(M64MSG_WARNING, "IS64: prevented buffer overflow, cleared buffer");
-                return 0;
+                return;
             }
 
             memcpy(&is_viewer->output_buffer[is_viewer->buffer_pos], &is_viewer->data[0x20], word);
@@ -87,5 +86,4 @@ int write_is_viewer(void* opaque, uint32_t address, uint32_t value, uint32_t mas
         word = big32(word);
         memcpy(&is_viewer->data[address], &word, sizeof(word));
     }
-    return 0;
 }

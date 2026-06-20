@@ -1,6 +1,6 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *   Mupen64plus - cart_rom.h                                              *
- *   Mupen64Plus homepage: http://code.google.com/p/mupen64plus/           *
+ *   Mupen64Plus homepage: https://mupen64plus.org/                        *
  *   Copyright (C) 2014 Bobby Smiles                                       *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
@@ -19,34 +19,43 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef M64P_PI_CART_ROM_H
-#define M64P_PI_CART_ROM_H
+#ifndef M64P_DEVICE_PI_CART_ROM_H
+#define M64P_DEVICE_PI_CART_ROM_H
 
 #include <stddef.h>
 #include <stdint.h>
 
-#ifndef ROM_ADDR
-#define ROM_ADDR(a)  ((a & 0x0ffffffc))
-#endif
+#include "osal/preproc.h"
+
+struct r4300_core;
+struct pi_controller;
 
 struct cart_rom
 {
-   uint8_t* rom;
-   size_t rom_size;
+    uint8_t* rom;
+    size_t rom_size;
 
-   uint32_t last_write;
-   uint32_t rom_written;
+    uint32_t last_write;
+
+    struct r4300_core* r4300;
+    struct pi_controller* pi;
 };
 
+static osal_inline uint32_t rom_address(uint32_t address)
+{
+    return (address & 0x03fffffc);
+}
+
 void init_cart_rom(struct cart_rom* cart_rom,
-                      uint8_t* rom, size_t rom_size);
+                   uint8_t* rom, size_t rom_size,
+                   struct r4300_core* r4300,
+                   struct pi_controller* pi);
 
 void poweron_cart_rom(struct cart_rom* cart_rom);
 
-int read_cart_rom(void* opaque, uint32_t address, uint32_t* value);
-int write_cart_rom(void* opaque, uint32_t address, uint32_t value, uint32_t mask);
+void read_cart_rom(void* opaque, uint32_t address, uint32_t* value);
+void write_cart_rom(void* opaque, uint32_t address, uint32_t value, uint32_t mask);
 
-/* mupen64plus-next-style ROM DMA accessors (used by the joybus/PI-DMA cart dispatch) */
 unsigned int cart_rom_dma_read(void* opaque, const uint8_t* dram, uint32_t dram_addr, uint32_t cart_addr, uint32_t length);
 unsigned int cart_rom_dma_write(void* opaque, uint8_t* dram, uint32_t dram_addr, uint32_t cart_addr, uint32_t length);
 

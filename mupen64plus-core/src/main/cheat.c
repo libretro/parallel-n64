@@ -1,6 +1,6 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *   Mupen64plus - cheat.c                                                 *
- *   Mupen64Plus homepage: http://code.google.com/p/mupen64plus/           *
+ *   Mupen64Plus homepage: https://mupen64plus.org/                        *
  *   Copyright (C) 2009 Richard Goedeken                                   *
  *   Copyright (C) 2008 Okaygo                                             *
  *                                                                         *
@@ -20,38 +20,38 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-// gameshark and xploder64 reference: http://doc.kodewerx.net/hacking_n64.html 
+/* gameshark and xploder64 reference: http://doc.kodewerx.net/hacking_n64.html */
 
-#include "../api/m64p_types.h"
-#include "../api/callbacks.h"
-#include "../api/core_config.h"
 
-#include "../device/memory/m64p_memory.h"
-#include "cheat.h"
-#include "main.h"
-#include "../device/device.h"
-#include "rom.h"
-#include "list.h"
-#include "eventloop.h"
+#define __STDC_FORMAT_MACROS
+#include <inttypes.h>
 
-#include <stdlib.h>
+#include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
-/* Local definitions */
-#define CHEAT_CODE_MAGIC_VALUE 0xDEAD0000
-#define ARRAY_SIZE(x) (sizeof(x)/sizeof(x[0]))
+#include "cheat.h"
+#include "eventloop.h"
+#include "list.h"
 
-typedef struct cheat_code
-{
-    unsigned int address;
-    int value;
-    int old_value;
+#include "api/callbacks.h"
+#include "api/m64p_types.h"
+#include "device/r4300/r4300_core.h"
+#include "device/rdram/rdram.h"
+#include "osal/preproc.h"
+
+/* local definitions */
+#define CHEAT_CODE_MAGIC_VALUE UINT32_C(0xDEAD0000)
+
+typedef struct cheat_code {
+    uint32_t address;
+    uint32_t value;
+    uint32_t old_value;
     struct list_head list;
 } cheat_code_t;
 
-typedef struct cheat
-{
+typedef struct cheat {
     char *name;
     int enabled;
     int was_enabled;
@@ -59,102 +59,103 @@ typedef struct cheat
     struct list_head list;
 } cheat_t;
 
-/* Local variables */
-static LIST_HEAD(active_cheats);
-extern unsigned int frame_dupe;
-
-/* Private functions */
-static uint16_t read_address_16bit(unsigned int address)
+/* private functions */
+static uint16_t read_address_16bit(struct r4300_core* r4300, uint32_t address)
 {
-    return *(uint16_t*)(((uint8_t*)g_dev.rdram.dram + ((address & 0xFFFFFF)^S16)));
+    return *(uint16_t*)(((unsigned char*)r4300->rdram->dram + ((address & 0xFFFFFF)^S16)));
 }
 
-static uint8_t read_address_8bit(unsigned int address)
+static uint8_t read_address_8bit(struct r4300_core* r4300, uint32_t address)
 {
-    return *(unsigned char *)(((unsigned char*)g_dev.rdram.dram + ((address & 0xFFFFFF)^S8)));
+    return *(uint8_t*)(((unsigned char*)r4300->rdram->dram + ((address & 0xFFFFFF)^S8)));
 }
 
-static void update_address_16bit(unsigned int address, unsigned short new_value)
+static void update_address_16bit(struct r4300_core* r4300, uint32_t address, uint16_t new_value)
 {
-    *(uint16_t *)(((uint8_t*)g_dev.rdram.dram + ((address & 0xFFFFFF)^S16))) = new_value;
+    *(uint16_t*)(((unsigned char*)r4300->rdram->dram + ((address & 0xFFFFFF)^S16))) = new_value;
+    /* mask out bit 24 which is used by GS codes to specify 8/16 bits */
+    address &= 0xfeffffff;
+    invalidate_r4300_cached_code(r4300, address, 2);
 }
 
-static void update_address_8bit(unsigned int address, unsigned char new_value)
+static void update_address_8bit(struct r4300_core* r4300, uint32_t address, uint8_t new_value)
 {
-     *(uint8_t *)(((uint8_t*)g_dev.rdram.dram + ((address & 0xFFFFFF)^S8))) = new_value;
+    *(uint8_t*)(((unsigned char*)r4300->rdram->dram + ((address & 0xFFFFFF)^S8))) = new_value;
+    invalidate_r4300_cached_code(r4300, address, 1);
 }
 
-static int address_equal_to_8bit(unsigned int address, unsigned char value)
+static int address_equal_to_8bit(struct r4300_core* r4300, uint32_t address, uint8_t value)
 {
-    unsigned char value_read;
-    value_read = *(unsigned char *)(((unsigned char*)g_dev.rdram.dram + ((address & 0xFFFFFF)^S8)));
+    uint8_t value_read;
+    value_read = *(uint8_t*)(((unsigned char*)r4300->rdram->dram + ((address & 0xFFFFFF)^S8)));
     return value_read == value;
 }
 
-static int address_equal_to_16bit(unsigned int address, unsigned short value)
+static int address_equal_to_16bit(struct r4300_core* r4300, uint32_t address, uint16_t value)
 {
-    unsigned short value_read;
-    value_read = *(unsigned short *)(((unsigned char*)g_dev.rdram.dram + ((address & 0xFFFFFF)^S16)));
+    uint16_t value_read;
+    value_read = *(unsigned short *)(((unsigned char*)r4300->rdram->dram + ((address & 0xFFFFFF)^S16)));
     return value_read == value;
 }
 
-// individual application - returns 0 if we are supposed to skip the next cheat
-// (only really used on conditional codes)
-static int execute_cheat(unsigned int address, unsigned short value, int *old_value)
+/* individual application - returns 0 if we are supposed to skip the next cheat
+ * (only really used on conditional codes)
+ */
+static int execute_cheat(struct r4300_core* r4300, uint32_t address, uint32_t value, uint32_t* old_value)
 {
-   switch (address & 0xFF000000)
-   {
-      case 0x80000000:
-      case 0x88000000:
-      case 0xA0000000:
-      case 0xA8000000:
-      case 0xF0000000:
-         // if pointer to old value is valid and uninitialized, write current value to it
-         if(old_value && (*old_value == CHEAT_CODE_MAGIC_VALUE))
-            *old_value = (int) read_address_8bit(address);
-         update_address_8bit(address,(unsigned char) value);
-         return 1;
-      case 0x81000000:
-      case 0x89000000:
-      case 0xA1000000:
-      case 0xA9000000:
-      case 0xF1000000:
-         // if pointer to old value is valid and uninitialized, write current value to it
-         if(old_value && (*old_value == CHEAT_CODE_MAGIC_VALUE))
-            *old_value = (int) read_address_16bit(address);
-         update_address_16bit(address,value);
-         return 1;
-      case 0xD0000000:
-      case 0xD8000000:
-         return address_equal_to_8bit(address,(unsigned char) value);
-      case 0xD1000000:
-      case 0xD9000000:
-         return address_equal_to_16bit(address,value);
-      case 0xD2000000:
-      case 0xDB000000:
-         return !(address_equal_to_8bit(address,(unsigned char) value));
-      case 0xD3000000:
-      case 0xDA000000:
-         return !(address_equal_to_16bit(address,value));
-      case 0xEE000000:
-         // most likely, this doesnt do anything.
-         execute_cheat(0xF1000318, 0x0040, NULL);
-         execute_cheat(0xF100031A, 0x0000, NULL);
-         return 1;
-   }
-
-   return 1;
+    switch (address & 0xFF000000)
+    {
+    case 0x80000000:
+    case 0x88000000:
+    case 0xA0000000:
+    case 0xA8000000:
+    case 0xF0000000:
+        /* if pointer to old value is valid and uninitialized, write current value to it */
+        if (old_value && (*old_value == CHEAT_CODE_MAGIC_VALUE)) {
+            *old_value = read_address_8bit(r4300, address);
+        }
+        update_address_8bit(r4300, address, (uint8_t)value);
+        return 1;
+    case 0x81000000:
+    case 0x89000000:
+    case 0xA1000000:
+    case 0xA9000000:
+    case 0xF1000000:
+        /* if pointer to old value is valid and uninitialized, write current value to it */
+        if (old_value && (*old_value == CHEAT_CODE_MAGIC_VALUE)) {
+            *old_value = read_address_16bit(r4300, address);
+        }
+        update_address_16bit(r4300, address, (uint16_t)value);
+        return 1;
+    case 0xD0000000:
+    case 0xD8000000:
+        return address_equal_to_8bit(r4300, address, (uint8_t)value);
+    case 0xD1000000:
+    case 0xD9000000:
+        return address_equal_to_16bit(r4300, address, (uint16_t)value);
+    case 0xD2000000:
+    case 0xDB000000:
+        return !(address_equal_to_8bit(r4300, address, (uint8_t)value));
+    case 0xD3000000:
+    case 0xDA000000:
+        return !(address_equal_to_16bit(r4300, address, (uint16_t)value));
+    case 0xEE000000:
+        /* most likely, this doesnt do anything. */
+        execute_cheat(r4300, 0xF1000318, 0x0040, NULL);
+        execute_cheat(r4300, 0xF100031A, 0x0000, NULL);
+        return 1;
+    default:
+        return 1;
+    }
 }
 
-static cheat_t *find_or_create_cheat(const char *name)
+static cheat_t *find_or_create_cheat(struct cheat_ctx* ctx, const char *name)
 {
     cheat_t *cheat;
     int found = 0;
 
-    list_for_each_entry_t(cheat, &active_cheats, cheat_t, list)
-    {
-        if (strcmp(cheat->name, name) == 0)
-        {
+    list_for_each_entry_t(cheat, &ctx->active_cheats, cheat_t, list) {
+        if (strcmp(cheat->name, name) == 0) {
             found = 1;
             break;
         }
@@ -165,10 +166,9 @@ static cheat_t *find_or_create_cheat(const char *name)
         /* delete any pre-existing cheat codes */
         cheat_code_t *code, *safe;
 
-        list_for_each_entry_safe_t(code, safe, &cheat->cheat_codes, cheat_code_t, list)
-        {
-             list_del(&code->list);
-             free(code);
+        list_for_each_entry_safe_t(code, safe, &cheat->cheat_codes, cheat_code_t, list) {
+            list_del(&code->list);
+            free(code);
         }
 
         cheat->enabled = 0;
@@ -181,171 +181,144 @@ static cheat_t *find_or_create_cheat(const char *name)
         cheat->enabled = 0;
         cheat->was_enabled = 0;
         INIT_LIST_HEAD(&cheat->cheat_codes);
-        list_add_tail(&cheat->list, &active_cheats);
+        list_add_tail(&cheat->list, &ctx->active_cheats);
     }
 
     return cheat;
 }
 
 
-// public functions
-void cheat_init(void)
+/* public functions */
+void cheat_init(struct cheat_ctx* ctx)
 {
+    ctx->mutex = NULL; //SDL_CreateMutex();
+    INIT_LIST_HEAD(&ctx->active_cheats);
 }
 
-void cheat_uninit(void)
+void cheat_uninit(struct cheat_ctx* ctx)
 {
+    if (ctx->mutex != NULL) {
+        //SDL_DestroyMutex(ctx->mutex);
+    }
+    ctx->mutex = NULL;
 }
 
-void cheat_apply_cheats(int entry)
+void cheat_apply_cheats(struct cheat_ctx* ctx, struct r4300_core* r4300, int entry)
 {
     cheat_t *cheat;
     cheat_code_t *code;
-    int skip;
-    int execute_next;
-
-
-#if 0
-   if ((
-         strncmp((char *)ROM_HEADER.Name, (const char *)"BANJO KAZOOIE 2", 15) == 0
-         || strncmp((char *)ROM_HEADER.Name, (const char *)"BANJO TOOIE", 11) == 0
-         ) && entry == ENTRY_VI)
-   {
-      execute_cheat(0x8107913C, 0x0000, NULL);
-      execute_cheat(0x8107913E, 0x0000, NULL);
-   }
-#endif
-
-    if (list_empty(&active_cheats))
+    int cond_failed;
+    
+    if (list_empty(&ctx->active_cheats))
         return;
 
-    list_for_each_entry_t(cheat, &active_cheats, cheat_t, list)
-    {
+    list_for_each_entry_t(cheat, &ctx->active_cheats, cheat_t, list) {
         if (cheat->enabled)
         {
             cheat->was_enabled = 1;
             switch(entry)
             {
-                case ENTRY_BOOT:
-                    list_for_each_entry_t(code, &cheat->cheat_codes, cheat_code_t, list)
-                    {
-                        // code should only be written once at boot time
-                        if((code->address & 0xF0000000) == 0xF0000000)
-                            execute_cheat(code->address, code->value, &code->old_value);
+            case ENTRY_BOOT:
+                list_for_each_entry_t(code, &cheat->cheat_codes, cheat_code_t, list) {
+                    /* code should only be written once at boot time */
+                    if ((code->address & 0xF0000000) == 0xF0000000) {
+                        execute_cheat(r4300, code->address, code->value, &code->old_value);
                     }
-                    break;
-                case ENTRY_VI:
-                    skip = 0;
-                    execute_next = 0;
-                    list_for_each_entry_t(code, &cheat->cheat_codes, cheat_code_t, list)
+                }
+                break;
+            case ENTRY_VI:
+                /* a cheat starts without failed preconditions */
+                cond_failed = 0;
+
+                list_for_each_entry_t(code, &cheat->cheat_codes, cheat_code_t, list) {
+                    /* conditional cheat codes */
+                    if ((code->address & 0xF0000000) == 0xD0000000)
                     {
-                        if (skip)
-                        {
-                            skip = 0;
-                            continue;
+                        /* if code needs GS button pressed and it's not, skip it */
+                        if (((code->address & 0xFF000000) == 0xD8000000 ||
+                                    (code->address & 0xFF000000) == 0xD9000000 ||
+                                    (code->address & 0xFF000000) == 0xDA000000 ||
+                                    (code->address & 0xFF000000) == 0xDB000000) &&
+                                !event_gameshark_active()) {
+                            /* if condition false, skip next code non-test code */
+                            cond_failed = 1;
                         }
-                        if (execute_next)
-                        {
-                            execute_next = 0;
 
-                            // if code needs GS button pressed, don't save old value
-                            if(((code->address & 0xFF000000) == 0xD8000000 ||
-                                (code->address & 0xFF000000) == 0xD9000000 ||
-                                (code->address & 0xFF000000) == 0xDA000000 ||
-                                (code->address & 0xFF000000) == 0xDB000000))
-                               execute_cheat(code->address, code->value, NULL);
-                            else
-                               execute_cheat(code->address, code->value, &code->old_value);
-
-                            continue;
-                        }
-                        // conditional cheat codes
-                        if((code->address & 0xF0000000) == 0xD0000000)
-                        {
-                            // if code needs GS button pressed and it's not, skip it
-                            if(((code->address & 0xFF000000) == 0xD8000000 ||
-                                (code->address & 0xFF000000) == 0xD9000000 ||
-                                (code->address & 0xFF000000) == 0xDA000000 ||
-                                (code->address & 0xFF000000) == 0xDB000000) &&
-                               !event_gameshark_active())
-                            {
-                                // skip next code
-                                skip = 1;
-                                continue;
-                            }
-
-                            if (execute_cheat(code->address, code->value, NULL))
-                            {
-                                // if condition true, execute next cheat code
-                                execute_next = 1;
-                            }
-                            else
-                            {
-                                // if condition false, skip next code
-                                skip = 1;
-                                continue;
-                            }
-                        }
-                        // GS button triggers cheat code
-                        else if((code->address & 0xFF000000) == 0x88000000 ||
-                                (code->address & 0xFF000000) == 0x89000000 ||
-                                (code->address & 0xFF000000) == 0xA8000000 ||
-                                (code->address & 0xFF000000) == 0xA9000000)
-                        {
-                            if(event_gameshark_active())
-                                execute_cheat(code->address, code->value, NULL);
-                        }
-                        // normal cheat code
-                        else
-                        {
-                            // exclude boot-time cheat codes
-                            if((code->address & 0xF0000000) != 0xF0000000)
-                                execute_cheat(code->address, code->value, &code->old_value);
+                        /* if condition false, skip next code non-test code */
+                        if (!execute_cheat(r4300, code->address, code->value, NULL)) {
+                            cond_failed = 1;
                         }
                     }
-                    break;
-                default:
-                    break;
+                    else {
+                        /* preconditions were false for this non-test code
+                         * reset the condition state and skip the cheat
+                         */
+                        if (cond_failed) {
+                            cond_failed = 0;
+                            continue;
+                        }
+
+                        switch (code->address & 0xFF000000) {
+                        /* GS button triggers cheat code */
+                        case 0x88000000:
+                        case 0x89000000:
+                        case 0xA8000000:
+                        case 0xA9000000:
+                            if (event_gameshark_active()) {
+                                execute_cheat(r4300, code->address, code->value, NULL);
+                            }
+                            break;
+                            /* normal cheat code */
+                        default:
+                            /* exclude boot-time cheat codes */
+                            if ((code->address & 0xF0000000) != 0xF0000000) {
+                                execute_cheat(r4300, code->address, code->value, &code->old_value);
+                            }
+                            break;
+                        }
+                    }
+                }
+                break;
+            default:
+                break;
             }
         }
-        // if cheat was enabled, but is now disabled, restore old memory values
+        /* if cheat was enabled, but is now disabled, restore old memory values */
         else if (cheat->was_enabled)
         {
             cheat->was_enabled = 0;
             switch(entry)
             {
-                case ENTRY_VI:
-                    list_for_each_entry_t(code, &cheat->cheat_codes, cheat_code_t, list) {
-                        // set memory back to old value and clear saved copy of old value
-                        if(code->old_value != CHEAT_CODE_MAGIC_VALUE)
-                        {
-                            execute_cheat(code->address, code->old_value, NULL);
-                            code->old_value = CHEAT_CODE_MAGIC_VALUE;
-                        }
+            case ENTRY_VI:
+                list_for_each_entry_t(code, &cheat->cheat_codes, cheat_code_t, list) {
+                    /* set memory back to old value and clear saved copy of old value */
+                    if(code->old_value != CHEAT_CODE_MAGIC_VALUE)
+                    {
+                        execute_cheat(r4300, code->address, code->old_value, NULL);
+                        code->old_value = CHEAT_CODE_MAGIC_VALUE;
                     }
-                    break;
-                default:
-                    break;
+                }
+                break;
+            default:
+                break;
             }
         }
     }
 }
 
 
-void cheat_delete_all(void)
+void cheat_delete_all(struct cheat_ctx* ctx)
 {
     cheat_t *cheat, *safe_cheat;
     cheat_code_t *code, *safe_code;
 
-    if (list_empty(&active_cheats))
+    if (list_empty(&ctx->active_cheats))
         return;
 
-    list_for_each_entry_safe_t(cheat, safe_cheat, &active_cheats, cheat_t, list)
-    {
+    list_for_each_entry_safe_t(cheat, safe_cheat, &ctx->active_cheats, cheat_t, list) {
         free(cheat->name);
 
-        list_for_each_entry_safe_t(code, safe_code, &cheat->cheat_codes, cheat_code_t, list)
-        {
+        list_for_each_entry_safe_t(code, safe_code, &cheat->cheat_codes, cheat_code_t, list) {
             list_del(&code->list);
             free(code);
         }
@@ -354,15 +327,14 @@ void cheat_delete_all(void)
     }
 }
 
-int cheat_set_enabled(const char *name, int enabled)
+int cheat_set_enabled(struct cheat_ctx* ctx, const char* name, int enabled)
 {
     cheat_t *cheat = NULL;
 
-    if (list_empty(&active_cheats))
+    if (list_empty(&ctx->active_cheats))
         return 0;
 
-    list_for_each_entry_t(cheat, &active_cheats, cheat_t, list)
-    {
+    list_for_each_entry_t(cheat, &ctx->active_cheats, cheat_t, list) {
         if (strcmp(name, cheat->name) == 0)
         {
             cheat->enabled = enabled;
@@ -373,54 +345,158 @@ int cheat_set_enabled(const char *name, int enabled)
     return 0;
 }
 
-int cheat_add_new(const char *name, m64p_cheat_code *code_list, int num_codes)
+int cheat_add_new(struct cheat_ctx* ctx, const char* name, m64p_cheat_code* code_list, int num_codes)
 {
     cheat_t *cheat;
     int i, j;
 
     /* create a new cheat function or erase the codes in an existing cheat function */
-    cheat = find_or_create_cheat(name);
+    cheat = find_or_create_cheat(ctx, name);
     if (cheat == NULL)
+    {
         return 0;
+    }
 
-    cheat->enabled = 1; /* default for new cheats is enabled */
+    /* default for new cheats is enabled */
+    cheat->enabled = 1;
 
     for (i = 0; i < num_codes; i++)
     {
         /* if this is a 'patch' code, convert it and dump out all of the individual codes */
         if ((code_list[i].address & 0xFFFF0000) == 0x50000000 && i < num_codes - 1)
         {
-           int code_count = ((code_list[i].address & 0xFF00) >> 8);
-           int incr_addr  = code_list[i].address & 0xFF;
-           int incr_value = code_list[i].value;
-           int cur_addr   = code_list[i+1].address;
-           int cur_value  = code_list[i+1].value;
-
-           i += 1;
-
-           for (j = 0; j < code_count; j++)
-           {
-              cheat_code_t *code = malloc(sizeof(*code));
-              code->address = cur_addr;
-              code->value = cur_value;
-              code->old_value = CHEAT_CODE_MAGIC_VALUE;
-              list_add_tail(&code->list, &cheat->cheat_codes);
-              cur_addr += incr_addr;
-              cur_value += incr_value;
-           }
+            int code_count = ((code_list[i].address & 0xFF00) >> 8);
+            int incr_addr = code_list[i].address & 0xFF;
+            int incr_value = code_list[i].value;
+            int cur_addr = code_list[i+1].address;
+            int cur_value = code_list[i+1].value;
+            i += 1;
+            for (j = 0; j < code_count; j++)
+            {
+                cheat_code_t *code = malloc(sizeof(*code));
+                code->address = cur_addr;
+                code->value = cur_value;
+                code->old_value = CHEAT_CODE_MAGIC_VALUE;
+                list_add_tail(&code->list, &cheat->cheat_codes);
+                cur_addr += incr_addr;
+                cur_value += incr_value;
+            }
         }
         else
         {
-           /* just a normal code */
-           cheat_code_t *code = malloc(sizeof(*code));
-
-           code->address   = code_list[i].address;
-           code->value     = code_list[i].value;
-           code->old_value = CHEAT_CODE_MAGIC_VALUE;
-
-           list_add_tail(&code->list, &cheat->cheat_codes);
+            /* just a normal code */
+            cheat_code_t *code = malloc(sizeof(*code));
+            code->address = code_list[i].address;
+            code->value = code_list[i].value;
+            code->old_value = CHEAT_CODE_MAGIC_VALUE;
+            list_add_tail(&code->list, &cheat->cheat_codes);
         }
     }
 
     return 1;
+}
+
+static char *strtok_compat(char *str, const char *delim, char **saveptr)
+{
+    char *p;
+
+    if (str == NULL)
+        str = *saveptr;
+
+    if (str == NULL)
+        return NULL;
+
+    str += strspn(str, delim);
+    if ((p = strpbrk(str, delim)) != NULL) {
+        *saveptr = p + 1;
+        *p = '\0';
+    } else {
+        *saveptr = NULL;
+    }
+    return str;
+}
+
+static int cheat_parse_hacks_code(char *code, m64p_cheat_code **hack)
+{
+    char *saveptr = NULL;
+    char *input, *token;
+    int num_codes;
+    m64p_cheat_code *hackbuf;
+    int ret;
+
+    *hack = NULL;
+
+    /* count number of possible cheatcodes */
+    input = code;
+    num_codes = 0;
+    while ((strchr(input, ','))) {
+        input++;
+        num_codes++;
+    }
+    num_codes++;
+
+    /* allocate buffer */
+    hackbuf = malloc(sizeof(*hackbuf) * num_codes);
+    if (!hackbuf)
+        return 0;
+
+    /* parse cheatcodes */
+    input = code;
+    num_codes = 0;
+    while ((token = strtok_compat(input, ",", &saveptr))) {
+        input = NULL;
+
+        ret = sscanf(token, "%08" SCNx32 " %04X", &hackbuf[num_codes].address,
+                (unsigned int*)&hackbuf[num_codes].value);
+        if (ret == 2)
+            num_codes++;
+    }
+
+    if (num_codes == 0)
+        free(hackbuf);
+    else
+        *hack = hackbuf;
+
+    return num_codes;
+}
+
+int cheat_add_hacks(struct cheat_ctx* ctx, const char* rom_cheats)
+{
+    char *cheat_raw = NULL;
+    char *saveptr = NULL;
+    char *input, *token;
+    unsigned int i = 0;
+    int num_codes;
+    char cheatname[32];
+    m64p_cheat_code *hack;
+
+    if (!rom_cheats)
+        return 0;
+
+    /* copy ini entry for tokenizing */
+    cheat_raw = strdup(rom_cheats);
+    if (!cheat_raw)
+        goto out;
+
+    /* split into cheats for the cheat engine */
+    input = cheat_raw;
+    while ((token = strtok_compat(input, ";", &saveptr))) {
+        input = NULL;
+
+        snprintf(cheatname, sizeof(cheatname), "HACK%u", i);
+        cheatname[sizeof(cheatname) - 1] = '\0';
+
+        /* parse and add cheat */
+        num_codes = cheat_parse_hacks_code(token, &hack);
+        if (num_codes <= 0)
+            continue;
+
+        cheat_add_new(ctx, cheatname, hack, num_codes);
+        free(hack);
+        i++;
+    }
+
+out:
+    free(cheat_raw);
+    return 0;
 }

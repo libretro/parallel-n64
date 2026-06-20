@@ -1,6 +1,6 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *   Mupen64plus - sram.h                                                  *
- *   Mupen64Plus homepage: http://code.google.com/p/mupen64plus/           *
+ *   Mupen64Plus homepage: https://mupen64plus.org/                        *
  *   Copyright (C) 2014 Bobby Smiles                                       *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
@@ -19,30 +19,26 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef M64P_PI_SRAM_H
-#define M64P_PI_SRAM_H
+#ifndef M64P_DEVICE_PI_SRAM_H
+#define M64P_DEVICE_PI_SRAM_H
 
 #include <stdint.h>
 
-struct pi_controller;
 struct storage_backend_interface;
 
 enum { SRAM_SIZE = 0x8000 };
 
-/* Adopt next's storage-backed sram struct: the backing buffer is reached
- * through a storage_backend_interface (parallel-n64's libretro save-RAM
- * backend) rather than a raw data pointer + save callback. */
 struct sram
 {
-   void* storage;
-   const struct storage_backend_interface* istorage;
+    void* storage;
+    const struct storage_backend_interface* istorage;
 };
-
-void init_sram(struct sram* sram, void* storage, const struct storage_backend_interface* istorage);
 
 void format_sram(uint8_t* sram);
 
-/* mupen64plus-next-style accessors (used by the joybus/PI-DMA cart dispatch) */
+void init_sram(struct sram* sram,
+               void* storage, const struct storage_backend_interface* istorage);
+
 unsigned int sram_dma_read(void* opaque, const uint8_t* dram, uint32_t dram_addr, uint32_t cart_addr, uint32_t length);
 unsigned int sram_dma_write(void* opaque, uint8_t* dram, uint32_t dram_addr, uint32_t cart_addr, uint32_t length);
 void read_sram(void* opaque, uint32_t address, uint32_t* value);

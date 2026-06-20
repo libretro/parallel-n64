@@ -1,6 +1,6 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *   Mupen64plus - main.h                                                  *
- *   Mupen64Plus homepage: http://code.google.com/p/mupen64plus/           *
+ *   Mupen64Plus homepage: https://mupen64plus.org/                        *
  *   Copyright (C) 2012 CasualJames                                        *
  *   Copyright (C) 2002 Blight                                             *
  *                                                                         *
@@ -23,51 +23,92 @@
 #ifndef __MAIN_H__
 #define __MAIN_H__
 
-#include "../api/m64p_types.h"
-#include "../osal/preproc.h"
-
 #include <stdint.h>
 
-enum { RDRAM_MAX_SIZE = 0x800000 };
+#include "api/m64p_types.h"
+#include "main/cheat.h"
+#include "device/device.h"
+#include "osal/preproc.h"
+
+#if defined(__GNUC__)
+#define ATTR_FMT(fmtpos, attrpos) __attribute__ ((format (printf, fmtpos, attrpos)))
+#else
+#define ATTR_FMT(fmtpos, attrpos)
+#endif
 
 /* globals */
 extern m64p_handle g_CoreConfig;
 
-extern int g_MemHasBeenBSwapped;
-extern int g_DDMemHasBeenBSwapped;
+extern int g_RomWordsLittleEndian;
 extern int g_EmulatorRunning;
+extern int g_rom_pause;
 
-extern ALIGN(4096, uint32_t g_rdram[RDRAM_MAX_SIZE/4]);
+extern struct cheat_ctx g_cheat_ctx;
+
+extern void* g_mem_base;
 
 extern struct device g_dev;
 
-extern m64p_frame_callback g_FrameCallback;
+extern m64p_media_loader g_media_loader;
 
-extern int g_delay_si;
+extern m64p_frame_callback g_FrameCallback;
 
 extern int g_gs_vi_counter;
 
+const char* get_savestatepath(void);
+const char* get_savesrampath(void);
+const char* get_savestatefilename(void);
+
 void new_frame(void);
+void new_vi(void);
+
+void main_switch_next_pak(int control_id);
+void main_switch_plugin_pak(int control_id);
+void main_change_gb_cart(int control_id);
 
 int  main_set_core_defaults(void);
-void main_message(m64p_msg_level level, unsigned int osd_corner, const char *format, ...);
+void main_message(m64p_msg_level level, unsigned int osd_corner, const char *format, ...) ATTR_FMT(3, 4);
 
-m64p_error main_init(void);
-m64p_error main_pre_run(void);
 m64p_error main_run(void);
-void mupen_main_exit(void);
-void mupen_main_stop(void);
+void main_stop(void);
 void main_toggle_pause(void);
 void main_advance_one(void);
-void main_check_inputs(void);
 
-void main_on_vi_event(void);
+void main_speedup(int percent);
+void main_speeddown(int percent);
+void main_set_fastforward(int enable);
+void main_speedlimiter_toggle(void);
+
+void main_take_next_screenshot(void);
+
+void main_state_set_slot(int slot);
+void main_state_inc_slot(void);
+void main_state_load(const char *filename);
+void main_state_save(int format, const char *filename);
 
 m64p_error main_core_state_query(m64p_core_param param, int *rval);
 m64p_error main_core_state_set(m64p_core_param param, int val);
 
+m64p_error main_get_screen_size(int *width, int *height);
 m64p_error main_read_screen(void *pixels, int bFront);
+
+m64p_error main_volume_up(void);
+m64p_error main_volume_down(void);
+m64p_error main_volume_get_level(int *level);
+m64p_error main_volume_set_level(int level);
+m64p_error main_volume_mute(void);
+int        main_volume_get_muted(void);
 
 m64p_error main_reset(int do_hard_reset);
 
+m64p_error open_pif(const unsigned char* pifimage, unsigned int size);
+m64p_error close_pif(void);
+
 #endif /* __MAIN_H__ */
+
+
+/* libretro-fork threading entry points */
+m64p_error main_pre_run(void);
+void mupen_main_stop(void);
+void mupen_main_exit(void);
+extern void* g_mem_base;

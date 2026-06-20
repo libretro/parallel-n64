@@ -1,6 +1,6 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *   Mupen64plus - bootrom_hle.h                                           *
- *   Mupen64Plus homepage: http://code.google.com/p/mupen64plus/           *
+ *   Mupen64Plus homepage: https://mupen64plus.org/                        *
  *   Copyright (C) 2016 Bobby Smiles                                       *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
@@ -22,12 +22,10 @@
 #ifndef M64P_DEVICE_PIF_BOOTROM_HLE_H
 #define M64P_DEVICE_PIF_BOOTROM_HLE_H
 
-#include "../device.h"
+struct r4300_core;
 
-struct device;
-
-/* Simulates end result of PIF BootROM execution.
- * This bypasses entirely the execution of the real PIF BootROM. */
-void pif_bootrom_hle_execute(struct device* dev);
+/* Simulates end result of PIFBootROM execution.
+ * This bypasses entirely the execution of real PIFBootROM */
+void pif_bootrom_hle_execute(struct r4300_core* r4300);
 
 #endif

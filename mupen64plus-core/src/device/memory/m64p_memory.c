@@ -1,6 +1,6 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *   Mupen64plus - memory.c                                                *
- *   Mupen64Plus homepage: http://code.google.com/p/mupen64plus/           *
+ *   Mupen64Plus homepage: https://mupen64plus.org/                        *
  *   Copyright (C) 2002 Hacktarux                                          *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
@@ -21,1386 +21,300 @@
 
 #include "m64p_memory.h"
 
-#include "../../api/m64p_types.h"
-#include "../../api/callbacks.h"
+#include "api/callbacks.h"
+#include "api/m64p_types.h"
 
-#include "../device.h"
-#include "../../main/main.h"
+#include "device/device.h"
+#include "device/rcp/rsp/rsp_core.h"
+#include "device/pif/pif.h"
 
-#include "../r4300/new_dynarec/new_dynarec.h"
-#include "../r4300/r4300_core.h"
+#ifdef DBG
+#include <string.h>
 
-#include "../rcp/rdp/rdp_core.h"
-#include "../rcp/rsp/rsp_core.h"
+#include "device/r4300/r4300_core.h"
 
-#include "../rcp/ai/ai_controller.h"
-#include "../rcp/pi/pi_controller.h"
-#include "../rcp/ri/ri_controller.h"
-#include "../rcp/si/si_controller.h"
-#include "../rcp/vi/vi_controller.h"
-#include "../dd/dd_controller.h"
+#include "debugger/dbg_breakpoints.h"
+#include "debugger/dbg_memory.h"
+#endif
 
-#include "../rcp/pi/summercart.h"
-
-
-
+#include <assert.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <stdlib.h>
 
-#if !defined(__arm64__) && !defined(__aarch64__)
-#if NEW_DYNAREC < NEW_DYNAREC_ARM
-// address : address of the read/write operation being done
-/* region 14 / Phase 2d (increment 13): on x64 the address storage is in the
- * embedded hot-state struct (mem_address, via mupencoreaddress in memory.h);
- * only x86 keeps the flat definition. */
-#if !defined(_M_X64)
-uint32_t address = 0;
-#endif
+#if defined(_WIN32) || defined(HAVE_LIBNX)
+#include <malloc.h>
 #endif
 
-// values that are being written are stored in these variables
-#if NEW_DYNAREC < NEW_DYNAREC_ARM
-/* region 14 / Phase 2d (increments 6-7): on x64, cpu_byte/cpu_hword/cpu_word/
- * cpu_dword storage moved into the embedded hot-state struct (see memory.h
- * aliases); only x86 keeps the flat definitions here. */
-#if !defined(_M_X64)
-uint32_t cpu_word;
-uint8_t cpu_byte;
-uint16_t cpu_hword;
-uint64_t cpu_dword;
-#endif
-#endif
-#endif
 
-// address where the read value will be stored
-uint64_t* rdword;
+#ifdef DBG
+enum
+{
+    BP_CHECK_READ  = 0x1,
+    BP_CHECK_WRITE = 0x2,
+};
 
-// hash tables of read functions
-void (*readmem[0x10000])(void);
-void (*readmemb[0x10000])(void);
-void (*readmemh[0x10000])(void);
-void (*readmemd[0x10000])(void);
+void read_with_bp_checks(void* opaque, uint32_t address, uint32_t* value)
+{
+    struct r4300_core* r4300 = (struct r4300_core*)opaque;
+    uint16_t region = address >> 16;
 
-// hash tables of write functions
-void (*writemem[0x10000])(void);
-void (*writememb[0x10000])(void);
-void (*writememd[0x10000])(void);
-void (*writememh[0x10000])(void);
+    /* only check bp if active */
+    if (r4300->mem->bp_checks[region] & BP_CHECK_READ) {
+        check_breakpoints_on_mem_access(*r4300_pc(r4300)-0x4, address, 4,
+                M64P_BKP_FLAG_ENABLED | M64P_BKP_FLAG_READ);
+    }
 
-typedef int (*readfn)(void*,uint32_t,uint32_t*);
-typedef int (*writefn)(void*,uint32_t,uint32_t,uint32_t);
+    mem_read32(&r4300->mem->saved_handlers[region], address, value);
+}
 
-#ifndef BYTE4_XOR_BE
-#ifdef MSB_FIRST
-#define BYTE4_XOR_BE(a) (a)
+void write_with_bp_checks(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
+{
+    struct r4300_core* r4300 = (struct r4300_core*)opaque;
+    uint16_t region = address >> 16;
+
+    /* only check bp if active */
+    if (r4300->mem->bp_checks[region] & BP_CHECK_WRITE) {
+        check_breakpoints_on_mem_access(*r4300_pc(r4300)-0x4, address, 4,
+                M64P_BKP_FLAG_ENABLED | M64P_BKP_FLAG_WRITE);
+    }
+
+    mem_write32(&r4300->mem->saved_handlers[region], address, value, mask);
+}
+
+void activate_memory_break_read(struct memory* mem, uint32_t address)
+{
+    uint16_t region = address >> 16;
+    struct mem_handler* dbg_handler = &mem->dbg_handler;
+    struct mem_handler* handler = &mem->handlers[region];
+    struct mem_handler* saved_handler = &mem->saved_handlers[region];
+    unsigned char* bp_check = &mem->bp_checks[region];
+
+    /* if neither read nor write bp is active, set dbg_handler */
+    if (!(*bp_check & (BP_CHECK_READ | BP_CHECK_WRITE))) {
+        *saved_handler = *handler;
+        *handler = *dbg_handler;
+    }
+
+    /* activate bp read */
+    *bp_check |= BP_CHECK_READ;
+}
+
+void deactivate_memory_break_read(struct memory* mem, uint32_t address)
+{
+    uint16_t region = address >> 16;
+    struct mem_handler* handler = &mem->handlers[region];
+    struct mem_handler* saved_handler = &mem->saved_handlers[region];
+    unsigned char* bp_check = &mem->bp_checks[region];
+
+    /* desactivate bp read */
+    *bp_check &= ~BP_CHECK_READ;
+
+    /* if neither read nor write bp is active, restore handler */
+    if (!(*bp_check & (BP_CHECK_READ | BP_CHECK_WRITE))) {
+        *handler = *saved_handler;
+    }
+}
+
+void activate_memory_break_write(struct memory* mem, uint32_t address)
+{
+    uint16_t region = address >> 16;
+    struct mem_handler* dbg_handler = &mem->dbg_handler;
+    struct mem_handler* handler = &mem->handlers[region];
+    struct mem_handler* saved_handler = &mem->saved_handlers[region];
+    unsigned char* bp_check = &mem->bp_checks[region];
+
+    /* if neither read nor write bp is active, set dbg_handler */
+    if (!(*bp_check & (BP_CHECK_READ | BP_CHECK_WRITE))) {
+        *saved_handler = *handler;
+        *handler = *dbg_handler;
+    }
+
+    /* activate bp write */
+    *bp_check |= BP_CHECK_WRITE;
+}
+
+void deactivate_memory_break_write(struct memory* mem, uint32_t address)
+{
+    uint16_t region = address >> 16;
+    struct mem_handler* handler = &mem->handlers[region];
+    struct mem_handler* saved_handler = &mem->saved_handlers[region];
+    unsigned char* bp_check = &mem->bp_checks[region];
+
+    /* desactivate bp write */
+    *bp_check &= ~BP_CHECK_WRITE;
+
+    /* if neither read nor write bp is active, restore handler */
+    if (!(*bp_check & (BP_CHECK_READ | BP_CHECK_WRITE))) {
+        *handler = *saved_handler;
+    }
+}
+
+int get_memory_type(struct memory* mem, uint32_t address)
+{
+    return mem->memtype[address >> 16];
+}
 #else
-#define BYTE4_XOR_BE(a) ((a) ^ 3)
-#endif
-#endif
+void read_with_bp_checks(void* opaque, uint32_t address, uint32_t* value)
+{
+}
 
-#ifndef BSHIFT
-#define BSHIFT(a) (BYTE4_XOR_BE((a & 3)) << 3)
-#endif
-
-#ifndef HSHIFT
-#define HSHIFT(a) (((a & 2) ^ 2) << 3)
+void write_with_bp_checks(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
+{
+}
 #endif
 
-static int readb(readfn read_word, void* opaque, uint32_t address, uint64_t* value)
-{
-   uint32_t w;
-   unsigned shift = BSHIFT(address);
-   int     result = read_word(opaque, address, &w);
-   *value = (w >> shift) & 0xff;
-   return result;
-}
-
-static int readh(readfn read_word, void* opaque, uint32_t address, uint64_t* value)
-{
-   uint32_t w;
-   unsigned shift = HSHIFT(address);
-   int result     = read_word(opaque, address, &w);
-   *value = (w >> shift) & 0xffff;
-   return result;
-}
-
-static int readw(readfn read_word, void* opaque, uint32_t address, uint64_t* value)
-{
-   uint32_t w;
-   int result = read_word(opaque, address, &w);
-   *value = w;
-   return result;
-}
-
-static int readd(readfn read_word, void* opaque, uint32_t address, uint64_t* value)
-{
-   uint32_t w[2];
-   int result =
-      read_word(opaque, address , &w[0]);
-   read_word(opaque, address + 4, &w[1]);
-   *value = ((uint64_t)w[0] << 32) | w[1];
-   return result;
-}
-
-static int writeb(writefn write_word, void *opaque, uint32_t address, uint8_t value)
-{
-   unsigned int shift = BSHIFT(address);
-   uint32_t w         = (uint32_t)value << shift;
-   uint32_t mask      = (uint32_t)0xff << shift;
-   return write_word(opaque, address, w, mask);
-}
-
-static int writeh(writefn write_word, void *opaque, uint32_t address, uint16_t value)
-{
-   unsigned int shift = HSHIFT(address);
-   uint32_t w         = (uint32_t)value << shift;
-   uint32_t mask      = (uint32_t)0xffff << shift;
-   return write_word(opaque, address, w, mask);
-}
-
-static int writew(writefn write_word, void *opaque, uint32_t address, uint32_t value)
-{
-   return write_word(opaque, address, value, ~0U);
-}
-
-static int writed(writefn write_word, void *opaque, uint32_t address, uint64_t value)
-{
-   int result;
-   const uint64_t doubleword = (uint64_t)value;
-   const uint32_t word_hi    = (uint32_t)(doubleword >> 32);
-   const uint32_t word_lo    = (uint32_t)(doubleword >>  0);
-
-   result =
-      write_word(opaque, address + 0, word_hi, ~0U);
-   write_word   (opaque, address + 4, word_lo, ~0U);
-   return result;
-}
-
-static void read_nothing(void)
-{
-    *rdword = 0;
-}
-
-static void read_nothingb(void)
-{
-    *rdword = 0;
-}
-
-static void read_nothingh(void)
-{
-    *rdword = 0;
-}
-
-static void read_nothingd(void)
-{
-    *rdword = 0;
-}
-
-static void write_nothing(void)
-{
-}
-
-static void write_nothingb(void)
-{
-}
-
-static void write_nothingh(void)
-{
-}
-
-static void write_nothingd(void)
-{
-}
-
-static void read_echo(void)
-{
-    const uint32_t w = mupencoreaddress & 0xFFFFu;
-    *rdword = w | (w << 16);
-}
-
-static void read_echob(void)
-{
-    *rdword = ((mupencoreaddress % 2) ? mupencoreaddress : (mupencoreaddress >> 8)) & 0xFFu;
-}
-
-static void read_echoh(void)
-{
-    *rdword = mupencoreaddress & 0xFFFFu;
-}
-
-static void read_echod(void)
-{
-    // This is a crash on console, so just read 0
-    *rdword = 0;
-}
-
-static void read_nomem(void)
-{
-    mupencoreaddress = virtual_to_physical_address(&g_dev.r4300, mupencoreaddress,0);
-    if (mupencoreaddress == 0x00000000) return;
-    read_word_in_memory();
-}
-
-static void read_nomemb(void)
-{
-    mupencoreaddress = virtual_to_physical_address(&g_dev.r4300, mupencoreaddress,0);
-    if (mupencoreaddress == 0x00000000) return;
-    read_byte_in_memory();
-}
-
-static void read_nomemh(void)
-{
-    mupencoreaddress = virtual_to_physical_address(&g_dev.r4300, mupencoreaddress,0);
-    if (mupencoreaddress == 0x00000000) return;
-    read_hword_in_memory();
-}
-
-static void read_nomemd(void)
-{
-    mupencoreaddress = virtual_to_physical_address(&g_dev.r4300, mupencoreaddress,0);
-    if (mupencoreaddress == 0x00000000) return;
-    read_dword_in_memory();
-}
-
-static void write_nomem(void)
-{
-    invalidate_r4300_cached_code(mupencoreaddress, 4);
-    mupencoreaddress = virtual_to_physical_address(&g_dev.r4300, mupencoreaddress,1);
-    if (mupencoreaddress == 0x00000000) return;
-    write_word_in_memory();
-}
-
-static void write_nomemb(void)
-{
-    invalidate_r4300_cached_code(mupencoreaddress, 1);
-    mupencoreaddress = virtual_to_physical_address(&g_dev.r4300, mupencoreaddress,1);
-    if (mupencoreaddress == 0x00000000) return;
-    write_byte_in_memory();
-}
-
-static void write_nomemh(void)
-{
-    invalidate_r4300_cached_code(mupencoreaddress, 2);
-    mupencoreaddress = virtual_to_physical_address(&g_dev.r4300, mupencoreaddress,1);
-    if (mupencoreaddress == 0x00000000) return;
-    write_hword_in_memory();
-}
-
-static void write_nomemd(void)
-{
-    invalidate_r4300_cached_code(mupencoreaddress, 8);
-    mupencoreaddress = virtual_to_physical_address(&g_dev.r4300, mupencoreaddress,1);
-    if (mupencoreaddress == 0x00000000) return;
-    write_dword_in_memory();
-}
-
-
-void read_rdram(void)
-{
-    readw(read_rdram_dram, &g_dev.ri, mupencoreaddress, rdword);
-}
-
-void read_rdramb(void)
-{
-    readb(read_rdram_dram, &g_dev.ri, mupencoreaddress, rdword);
-}
-
-void read_rdramh(void)
-{
-    readh(read_rdram_dram, &g_dev.ri, mupencoreaddress, rdword);
-}
-
-void read_rdramd(void)
-{
-    readd(read_rdram_dram, &g_dev.ri, mupencoreaddress, rdword);
-}
-
-void write_rdram(void)
-{
-    writew(write_rdram_dram, &g_dev.ri, mupencoreaddress, cpu_word);
-}
-
-void write_rdramb(void)
-{
-    writeb(write_rdram_dram, &g_dev.ri, mupencoreaddress, cpu_byte);
-}
-
-void write_rdramh(void)
-{
-    writeh(write_rdram_dram, &g_dev.ri, mupencoreaddress, cpu_hword);
-}
-
-void write_rdramd(void)
-{
-    writed(write_rdram_dram, &g_dev.ri, mupencoreaddress, cpu_dword);
-}
-
-
-void read_rdramFB(void)
-{
-    readw(read_rdram_fb, &g_dev.dp, mupencoreaddress, rdword);
-}
-
-void read_rdramFBb(void)
-{
-    readb(read_rdram_fb, &g_dev.dp, mupencoreaddress, rdword);
-}
-
-void read_rdramFBh(void)
-{
-    readh(read_rdram_fb, &g_dev.dp, mupencoreaddress, rdword);
-}
-
-void read_rdramFBd(void)
-{
-    readd(read_rdram_fb, &g_dev.dp, mupencoreaddress, rdword);
-}
-
-void write_rdramFB(void)
-{
-    writew(write_rdram_fb, &g_dev.dp, mupencoreaddress, cpu_word);
-}
-
-void write_rdramFBb(void)
-{
-    writeb(write_rdram_fb, &g_dev.dp, mupencoreaddress, cpu_byte);
-}
-
-void write_rdramFBh(void)
-{
-    writeh(write_rdram_fb, &g_dev.dp, mupencoreaddress, cpu_hword);
-}
-
-void write_rdramFBd(void)
-{
-    writed(write_rdram_fb, &g_dev.dp, mupencoreaddress, cpu_dword);
-}
-
-
-static void read_rdramreg(void)
-{
-    readw(read_rdram_regs, &g_dev.ri, mupencoreaddress, rdword);
-}
-
-static void read_rdramregb(void)
-{
-    readb(read_rdram_regs, &g_dev.ri, mupencoreaddress, rdword);
-}
-
-static void read_rdramregh(void)
-{
-    readh(read_rdram_regs, &g_dev.ri, mupencoreaddress, rdword);
-}
-
-static void read_rdramregd(void)
-{
-    readd(read_rdram_regs, &g_dev.ri, mupencoreaddress, rdword);
-}
-
-static void write_rdramreg(void)
-{
-    writew(write_rdram_regs, &g_dev.ri, mupencoreaddress, cpu_word);
-}
-
-static void write_rdramregb(void)
-{
-    writeb(write_rdram_regs, &g_dev.ri, mupencoreaddress, cpu_byte);
-}
-
-static void write_rdramregh(void)
-{
-    writeh(write_rdram_regs, &g_dev.ri, mupencoreaddress, cpu_hword);
-}
-
-static void write_rdramregd(void)
-{
-    writed(write_rdram_regs, &g_dev.ri, mupencoreaddress, cpu_dword);
-}
-
-
-static void read_rspmem(void)
-{
-    readw(read_rsp_mem, &g_dev.sp, mupencoreaddress, rdword);
-}
-
-static void read_rspmemb(void)
-{
-    readb(read_rsp_mem, &g_dev.sp, mupencoreaddress, rdword);
-}
-
-static void read_rspmemh(void)
-{
-    readh(read_rsp_mem, &g_dev.sp, mupencoreaddress, rdword);
-}
-
-static void read_rspmemd(void)
-{
-    readd(read_rsp_mem, &g_dev.sp, mupencoreaddress, rdword);
-}
-
-static void write_rspmem(void)
-{
-    writew(write_rsp_mem, &g_dev.sp, mupencoreaddress, cpu_word);
-}
-
-static void write_rspmemb(void)
-{
-    writeb(write_rsp_mem, &g_dev.sp, mupencoreaddress, cpu_byte);
-}
-
-static void write_rspmemh(void)
-{
-    writeh(write_rsp_mem, &g_dev.sp, mupencoreaddress, cpu_hword);
-}
-
-static void write_rspmemd(void)
-{
-    writed(write_rsp_mem, &g_dev.sp, mupencoreaddress, cpu_dword);
-}
-
-
-static void read_rspreg(void)
-{
-    readw(read_rsp_regs, &g_dev.sp, mupencoreaddress, rdword);
-}
-
-static void read_rspregb(void)
-{
-    readb(read_rsp_regs, &g_dev.sp, mupencoreaddress, rdword);
-}
-
-static void read_rspregh(void)
-{
-    readh(read_rsp_regs, &g_dev.sp, mupencoreaddress, rdword);
-}
-
-static void read_rspregd(void)
-{
-    readd(read_rsp_regs, &g_dev.sp, mupencoreaddress, rdword);
-}
-
-static void write_rspreg(void)
-{
-    writew(write_rsp_regs, &g_dev.sp, mupencoreaddress, cpu_word);
-}
-
-static void write_rspregb(void)
-{
-    writeb(write_rsp_regs, &g_dev.sp, mupencoreaddress, cpu_byte);
-}
-
-static void write_rspregh(void)
-{
-    writeh(write_rsp_regs, &g_dev.sp, mupencoreaddress, cpu_hword);
-}
-
-static void write_rspregd(void)
-{
-    writed(write_rsp_regs, &g_dev.sp, mupencoreaddress, cpu_dword);
-}
-
-
-static void read_rspreg2(void)
-{
-    readw(read_rsp_regs2, &g_dev.sp, mupencoreaddress, rdword);
-}
-
-static void read_rspreg2b(void)
-{
-    readb(read_rsp_regs2, &g_dev.sp, mupencoreaddress, rdword);
-}
-
-static void read_rspreg2h(void)
-{
-    readh(read_rsp_regs2, &g_dev.sp, mupencoreaddress, rdword);
-}
-
-static void read_rspreg2d(void)
-{
-    readd(read_rsp_regs2, &g_dev.sp, mupencoreaddress, rdword);
-}
-
-static void write_rspreg2(void)
-{
-    writew(write_rsp_regs2, &g_dev.sp, mupencoreaddress, cpu_word);
-}
-
-static void write_rspreg2b(void)
-{
-    writeb(write_rsp_regs2, &g_dev.sp, mupencoreaddress, cpu_byte);
-}
-
-static void write_rspreg2h(void)
-{
-    writeh(write_rsp_regs2, &g_dev.sp, mupencoreaddress, cpu_hword);
-}
-
-static void write_rspreg2d(void)
-{
-    writed(write_rsp_regs2, &g_dev.sp, mupencoreaddress, cpu_dword);
-}
-
-
-static void read_dp(void)
-{
-    readw(read_dpc_regs, &g_dev.dp, mupencoreaddress, rdword);
-}
-
-static void read_dpb(void)
-{
-    readb(read_dpc_regs, &g_dev.dp, mupencoreaddress, rdword);
-}
-
-static void read_dph(void)
-{
-    readh(read_dpc_regs, &g_dev.dp, mupencoreaddress, rdword);
-}
-
-static void read_dpd(void)
-{
-    readd(read_dpc_regs, &g_dev.dp, mupencoreaddress, rdword);
-}
-
-static void write_dp(void)
-{
-    writew(write_dpc_regs, &g_dev.dp, mupencoreaddress, cpu_word);
-}
-
-static void write_dpb(void)
-{
-    writeb(write_dpc_regs, &g_dev.dp, mupencoreaddress, cpu_byte);
-}
-
-static void write_dph(void)
-{
-    writeh(write_dpc_regs, &g_dev.dp, mupencoreaddress, cpu_hword);
-}
-
-static void write_dpd(void)
-{
-    writed(write_dpc_regs, &g_dev.dp, mupencoreaddress, cpu_dword);
-}
-
-
-static void read_dps(void)
-{
-    readw(read_dps_regs, &g_dev.dp, mupencoreaddress, rdword);
-}
-
-static void read_dpsb(void)
-{
-    readb(read_dps_regs, &g_dev.dp, mupencoreaddress, rdword);
-}
-
-static void read_dpsh(void)
-{
-    readh(read_dps_regs, &g_dev.dp, mupencoreaddress, rdword);
-}
-
-static void read_dpsd(void)
-{
-    readd(read_dps_regs, &g_dev.dp, mupencoreaddress, rdword);
-}
-
-static void write_dps(void)
-{
-    writew(write_dps_regs, &g_dev.dp, mupencoreaddress, cpu_word);
-}
-
-static void write_dpsb(void)
-{
-    writeb(write_dps_regs, &g_dev.dp, mupencoreaddress, cpu_byte);
-}
-
-static void write_dpsh(void)
-{
-    writeh(write_dps_regs, &g_dev.dp, mupencoreaddress, cpu_hword);
-}
-
-static void write_dpsd(void)
-{
-    writed(write_dps_regs, &g_dev.dp, mupencoreaddress, cpu_dword);
-}
-
-
-static void read_mi(void)
-{
-    readw(read_mi_regs, &g_dev.r4300, mupencoreaddress, rdword);
-}
-
-static void read_mib(void)
-{
-    readb(read_mi_regs, &g_dev.r4300, mupencoreaddress, rdword);
-}
-
-static void read_mih(void)
-{
-    readh(read_mi_regs, &g_dev.r4300, mupencoreaddress, rdword);
-}
-
-static void read_mid(void)
-{
-    readd(read_mi_regs, &g_dev.r4300, mupencoreaddress, rdword);
-}
-
-void write_mi(void)
-{
-    writew(write_mi_regs, &g_dev.r4300, mupencoreaddress, cpu_word);
-}
-
-void write_mib(void)
-{
-    writeb(write_mi_regs, &g_dev.r4300, mupencoreaddress, cpu_byte);
-}
-
-void write_mih(void)
-{
-    writeh(write_mi_regs, &g_dev.r4300, mupencoreaddress, cpu_hword);
-}
-
-void write_mid(void)
-{
-    writed(write_mi_regs, &g_dev.r4300, mupencoreaddress, cpu_dword);
-}
-
-
-static void read_vi(void)
-{
-    readw(read_vi_regs, &g_dev.vi, mupencoreaddress, rdword);
-}
-
-static void read_vib(void)
-{
-    readb(read_vi_regs, &g_dev.vi, mupencoreaddress, rdword);
-}
-
-static void read_vih(void)
-{
-    readh(read_vi_regs, &g_dev.vi, mupencoreaddress, rdword);
-}
-
-static void read_vid(void)
-{
-    readd(read_vi_regs, &g_dev.vi, mupencoreaddress, rdword);
-}
-
-static void write_vi(void)
-{
-    writew(write_vi_regs, &g_dev.vi, mupencoreaddress, cpu_word);
-}
-
-static void write_vib(void)
-{
-    writeb(write_vi_regs, &g_dev.vi, mupencoreaddress, cpu_byte);
-}
-
-static void write_vih(void)
-{
-    writeh(write_vi_regs, &g_dev.vi, mupencoreaddress, cpu_hword);
-}
-
-static void write_vid(void)
-{
-    writed(write_vi_regs, &g_dev.vi, mupencoreaddress, cpu_dword);
-}
-
-
-static void read_ai(void)
-{
-    readw(read_ai_regs, &g_dev.ai, mupencoreaddress, rdword);
-}
-
-static void read_aib(void)
-{
-    readb(read_ai_regs, &g_dev.ai, mupencoreaddress, rdword);
-}
-
-static void read_aih(void)
-{
-    readh(read_ai_regs, &g_dev.ai, mupencoreaddress, rdword);
-}
-
-static void read_aid(void)
-{
-    readd(read_ai_regs, &g_dev.ai, mupencoreaddress, rdword);
-}
-
-static void write_ai(void)
-{
-    writew(write_ai_regs, &g_dev.ai, mupencoreaddress, cpu_word);
-}
-
-static void write_aib(void)
-{
-    writeb(write_ai_regs, &g_dev.ai, mupencoreaddress, cpu_byte);
-}
-
-static void write_aih(void)
-{
-    writeh(write_ai_regs, &g_dev.ai, mupencoreaddress, cpu_hword);
-}
-
-static void write_aid(void)
-{
-    writed(write_ai_regs, &g_dev.ai, mupencoreaddress, cpu_dword);
-}
-
-
-static void read_pi(void)
-{
-    readw(read_pi_regs, &g_dev.pi, mupencoreaddress, rdword);
-}
-
-static void read_pib(void)
-{
-    readb(read_pi_regs, &g_dev.pi, mupencoreaddress, rdword);
-}
-
-static void read_pih(void)
-{
-    readh(read_pi_regs, &g_dev.pi, mupencoreaddress, rdword);
-}
-
-static void read_pid(void)
-{
-    readd(read_pi_regs, &g_dev.pi, mupencoreaddress, rdword);
-}
-
-static void write_pi(void)
-{
-    writew(write_pi_regs, &g_dev.pi, mupencoreaddress, cpu_word);
-}
-
-static void write_pib(void)
-{
-    writeb(write_pi_regs, &g_dev.pi, mupencoreaddress, cpu_byte);
-}
-
-static void write_pih(void)
-{
-    writeh(write_pi_regs, &g_dev.pi, mupencoreaddress, cpu_hword);
-}
-
-static void write_pid(void)
-{
-    writed(write_pi_regs, &g_dev.pi, mupencoreaddress, cpu_dword);
-}
-
-
-static void read_ri(void)
-{
-    readw(read_ri_regs, &g_dev.ri, mupencoreaddress, rdword);
-}
-
-static void read_rib(void)
-{
-    readb(read_ri_regs, &g_dev.ri, mupencoreaddress, rdword);
-}
-
-static void read_rih(void)
-{
-    readh(read_ri_regs, &g_dev.ri, mupencoreaddress, rdword);
-}
-
-static void read_rid(void)
-{
-    readd(read_ri_regs, &g_dev.ri, mupencoreaddress, rdword);
-}
-
-static void write_ri(void)
-{
-    writew(write_ri_regs, &g_dev.ri, mupencoreaddress, cpu_word);
-}
-
-static void write_rib(void)
-{
-    writeb(write_ri_regs, &g_dev.ri, mupencoreaddress, cpu_byte);
-}
-
-static void write_rih(void)
-{
-    writeh(write_ri_regs, &g_dev.ri, mupencoreaddress, cpu_hword);
-}
-
-static void write_rid(void)
-{
-    writed(write_ri_regs, &g_dev.ri, mupencoreaddress, cpu_dword);
-}
-
-
-static void read_si(void)
-{
-    readw(read_si_regs, &g_dev.si, mupencoreaddress, rdword);
-}
-
-static void read_sib(void)
-{
-    readb(read_si_regs, &g_dev.si, mupencoreaddress, rdword);
-}
-
-static void read_sih(void)
-{
-    readh(read_si_regs, &g_dev.si, mupencoreaddress, rdword);
-}
-
-static void read_sid(void)
-{
-    readd(read_si_regs, &g_dev.si, mupencoreaddress, rdword);
-}
-
-static void write_si(void)
-{
-    writew(write_si_regs, &g_dev.si, mupencoreaddress, cpu_word);
-}
-
-static void write_sib(void)
-{
-    writeb(write_si_regs, &g_dev.si, mupencoreaddress, cpu_byte);
-}
-
-static void write_sih(void)
-{
-    writeh(write_si_regs, &g_dev.si, mupencoreaddress, cpu_hword);
-}
-
-static void write_sid(void)
-{
-    writed(write_si_regs, &g_dev.si, mupencoreaddress, cpu_dword);
-}
-
-static void read_pi_flashram_status(void)
-{
-    readw(read_flashram_status, &g_dev.pi, mupencoreaddress, rdword);
-}
-
-static void read_pi_flashram_statusb(void)
-{
-    readb(read_flashram_status, &g_dev.pi, mupencoreaddress, rdword);
-}
-
-static void read_pi_flashram_statush(void)
-{
-    readh(read_flashram_status, &g_dev.pi, mupencoreaddress, rdword);
-}
-
-static void read_pi_flashram_statusd(void)
-{
-    readd(read_flashram_status, &g_dev.pi, mupencoreaddress, rdword);
-}
-
-static void write_pi_flashram_command(void)
-{
-    writew(write_flashram_command, &g_dev.pi, mupencoreaddress, cpu_word);
-}
-
-static void write_pi_flashram_commandb(void)
-{
-    writeb(write_flashram_command, &g_dev.pi, mupencoreaddress, cpu_byte);
-}
-
-static void write_pi_flashram_commandh(void)
-{
-    writeh(write_flashram_command, &g_dev.pi, mupencoreaddress, cpu_hword);
-}
-
-static void write_pi_flashram_commandd(void)
-{
-    writed(write_flashram_command, &g_dev.pi, mupencoreaddress, cpu_dword);
-}
-
-
-static void read_rom(void)
-{
-    readw(read_cart_rom, &g_dev.pi, mupencoreaddress, rdword);
-}
-
-static void read_romb(void)
-{
-    readb(read_cart_rom, &g_dev.pi, mupencoreaddress, rdword);
-}
-
-static void read_romh(void)
-{
-    readh(read_cart_rom, &g_dev.pi, mupencoreaddress, rdword);
-}
-
-static void read_romd(void)
-{
-    readd(read_cart_rom, &g_dev.pi, mupencoreaddress, rdword);
-}
-
-static void write_rom(void)
-{
-    writew(write_cart_rom, &g_dev.pi, mupencoreaddress, cpu_word);
-}
-
-
-/* IS-Viewer debug device page handlers (homebrew/test ROM printf output).
- * Wrap the cart/is_viewer.c accessors in pn64's page-handler table form. */
-static void read_isviewer(void)
-{
-    readw(read_is_viewer, &g_dev.cart.is_viewer, mupencoreaddress, rdword);
-}
-
-static void read_isviewerb(void)
-{
-    readb(read_is_viewer, &g_dev.cart.is_viewer, mupencoreaddress, rdword);
-}
-
-static void read_isviewerh(void)
-{
-    readh(read_is_viewer, &g_dev.cart.is_viewer, mupencoreaddress, rdword);
-}
-
-static void read_isviewerd(void)
-{
-    readd(read_is_viewer, &g_dev.cart.is_viewer, mupencoreaddress, rdword);
-}
-
-static void write_isviewer(void)
-{
-    writew(write_is_viewer, &g_dev.cart.is_viewer, mupencoreaddress, cpu_word);
-}
-
-static void write_isviewerb(void)
-{
-    writeb(write_is_viewer, &g_dev.cart.is_viewer, mupencoreaddress, cpu_byte);
-}
-
-static void write_isviewerh(void)
-{
-    writeh(write_is_viewer, &g_dev.cart.is_viewer, mupencoreaddress, cpu_hword);
-}
-
-static void write_isviewerd(void)
-{
-    writed(write_is_viewer, &g_dev.cart.is_viewer, mupencoreaddress, cpu_dword);
-}
-
-
-static void read_pif(void)
-{
-    readw(read_pif_ram, &g_dev.si, mupencoreaddress, rdword);
-}
-
-static void read_pifb(void)
-{
-    readb(read_pif_ram, &g_dev.si, mupencoreaddress, rdword);
-}
-
-static void read_pifh(void)
-{
-    readh(read_pif_ram, &g_dev.si, mupencoreaddress, rdword);
-}
-
-static void read_pifd(void)
-{
-    readd(read_pif_ram, &g_dev.si, mupencoreaddress, rdword);
-}
-
-static void write_pif(void)
-{
-    writew(write_pif_ram, &g_dev.si, mupencoreaddress, cpu_word);
-}
-
-static void write_pifb(void)
-{
-    writeb(write_pif_ram, &g_dev.si, mupencoreaddress, cpu_byte);
-}
-
-static void write_pifh(void)
-{
-    writeh(write_pif_ram, &g_dev.si, mupencoreaddress, cpu_hword);
-}
-
-static void write_pifd(void)
-{
-    writed(write_pif_ram, &g_dev.si, mupencoreaddress, cpu_dword);
-}
-
-static void read_dd(void)
-{
-    readw(read_dd_regs, &g_dev.dd, mupencoreaddress, rdword);
-}
-
-static void read_ddb(void)
-{
-    readb(read_dd_regs, &g_dev.dd, mupencoreaddress, rdword);
-}
-
-static void read_ddh(void)
-{
-    readh(read_dd_regs, &g_dev.dd, mupencoreaddress, rdword);
-}
-
-static void read_ddd(void)
-{
-    readd(read_dd_regs, &g_dev.dd, mupencoreaddress, rdword);
-}
-
-static void write_dd(void)
-{
-    writew(write_dd_regs, &g_dev.dd, mupencoreaddress, cpu_word);
-}
-
-static void write_ddb(void)
-{
-    writeb(write_dd_regs, &g_dev.dd, mupencoreaddress, cpu_byte);
-}
-
-static void write_ddh(void)
-{
-    writeh(write_dd_regs, &g_dev.dd, mupencoreaddress, cpu_hword);
-}
-
-static void write_ddd(void)
-{
-    writed(write_dd_regs, &g_dev.dd, mupencoreaddress, cpu_dword);
-}
-
-static void read_ddipl(void)
-{
-   readw(read_dd_ipl, &g_dev.pi, mupencoreaddress, rdword);
-}
-
-static void read_ddiplb(void)
-{
-   readb(read_dd_ipl, &g_dev.pi, mupencoreaddress, rdword);
-}
-
-static void read_ddiplh(void)
-{
-   readh(read_dd_ipl, &g_dev.pi, mupencoreaddress, rdword);
-}
-
-static void read_ddipld(void)
-{
-   readd(read_dd_ipl, &g_dev.pi, mupencoreaddress, rdword);
-}
-
-static void write_ddipl(void)
-{
-   writew(write_dd_ipl, &g_dev.pi, mupencoreaddress, cpu_word);
-}
-
-
-
-static void read_screg(void)
-{
-    readw(read_summercart_regs, &g_dev.pi, mupencoreaddress, rdword);
-}
-
-static void read_scregb(void)
-{
-    readb(read_summercart_regs, &g_dev.pi, mupencoreaddress, rdword);
-}
-
-static void read_scregh(void)
-{
-    readh(read_summercart_regs, &g_dev.pi, mupencoreaddress, rdword);
-}
-
-static void read_scregd(void)
-{
-    readd(read_summercart_regs, &g_dev.pi, mupencoreaddress, rdword);
-}
-
-static void write_screg(void)
-{
-    writew(write_summercart_regs, &g_dev.pi, mupencoreaddress, cpu_word);
-}
-
-static void write_scregb(void)
-{
-    writeb(write_summercart_regs, &g_dev.pi, mupencoreaddress, cpu_byte);
-}
-
-static void write_scregh(void)
-{
-    writeh(write_summercart_regs, &g_dev.pi, mupencoreaddress, cpu_hword);
-}
-
-static void write_scregd(void)
-{
-    writed(write_summercart_regs, &g_dev.pi, mupencoreaddress, cpu_dword);
-}
-
-
-#define R(x) read_ ## x ## b, read_ ## x ## h, read_ ## x, read_ ## x ## d
-#define W(x) write_ ## x ## b, write_ ## x ## h, write_ ## x, write_ ## x ## d
-#define RW(x) R(x), W(x)
-
-void poweron_memory(void)
-{
-   int i;
-
-
-   /* clear mappings */
-   for (i = 0; i < 0x10000; ++i)
-   {
-      map_region(i, M64P_MEM_NOMEM, RW(nomem));
-   }
-
-   /* map RDRAM */
-   for (i = 0; i< 0x80; ++i)
-   {
-      map_region(0x8000+i, M64P_MEM_RDRAM, RW(rdram));
-      map_region(0xa000+i, M64P_MEM_RDRAM, RW(rdram));
-   }
-
-   for(i = 0x80; i < 0x3f0; ++i)
-   {
-      map_region(0x8000+i, M64P_MEM_NOTHING, RW(nothing));
-      map_region(0xa000+i, M64P_MEM_NOTHING, RW(nothing));
-   }
-
-   /* map RDRAM registers */
-   map_region(0x83f0, M64P_MEM_RDRAMREG, RW(rdramreg));
-   map_region(0xa3f0, M64P_MEM_RDRAMREG, RW(rdramreg));
-   for(i = 1; i < 0x10; ++i)
-   {
-      map_region(0x83f0+i, M64P_MEM_NOTHING, RW(nothing));
-      map_region(0xa3f0+i, M64P_MEM_NOTHING, RW(nothing));
-   }
-
-   /* map RSP memory */
-   map_region(0x8400, M64P_MEM_RSPMEM, RW(rspmem));
-   map_region(0xa400, M64P_MEM_RSPMEM, RW(rspmem));
-   for (i=0x1; i<0x4; i++)
-   {
-      map_region(0x8400+i, M64P_MEM_NOTHING, RW(nothing));
-      map_region(0xa400+i, M64P_MEM_NOTHING, RW(nothing));
-   }
-
-   /* map RSP registers (1) */
-   map_region(0x8404, M64P_MEM_RSPREG, RW(rspreg));
-   map_region(0xa404, M64P_MEM_RSPREG, RW(rspreg));
-   for (i=0x5; i<0x8; i++)
-   {
-      map_region(0x8400+i, M64P_MEM_NOTHING, RW(nothing));
-      map_region(0xa400+i, M64P_MEM_NOTHING, RW(nothing));
-   }
-
-   /* map RSP registers (2) */
-   map_region(0x8408, M64P_MEM_RSP, RW(rspreg2));
-   map_region(0xa408, M64P_MEM_RSP, RW(rspreg2));
-
-   for(i = 0x9; i < 0x10; ++i)
-   {
-      map_region(0x8400+i, M64P_MEM_NOTHING, RW(nothing));
-      map_region(0xa400+i, M64P_MEM_NOTHING, RW(nothing));
-   }
-
-   /* map DPC registers */
-   map_region(0x8410, M64P_MEM_DP, RW(dp));
-   map_region(0xa410, M64P_MEM_DP, RW(dp));
-   for(i = 1; i < 0x10; ++i)
-   {
-      map_region(0x8410+i, M64P_MEM_NOTHING, RW(nothing));
-      map_region(0xa410+i, M64P_MEM_NOTHING, RW(nothing));
-   }
-
-   map_region(0x8420, M64P_MEM_DPS, RW(dps));
-   map_region(0xa420, M64P_MEM_DPS, RW(dps));
-   for(i = 1; i < 0x10; ++i)
-   {
-      map_region(0x8420+i, M64P_MEM_NOTHING, RW(nothing));
-      map_region(0xa420+i, M64P_MEM_NOTHING, RW(nothing));
-   }
-
-   /* map MI registers */
-   map_region(0x8430, M64P_MEM_MI, RW(mi));
-   map_region(0xa430, M64P_MEM_MI, RW(mi));
-
-   for(i = 1; i < 0x10; ++i)
-   {
-      map_region(0x8430+i, M64P_MEM_NOTHING, RW(nothing));
-      map_region(0xa430+i, M64P_MEM_NOTHING, RW(nothing));
-   }
-
-   /* map VI registers */
-   map_region(0x8440, M64P_MEM_VI, RW(vi));
-   map_region(0xa440, M64P_MEM_VI, RW(vi));
-   for(i = 1; i < 0x10; ++i)
-   {
-      map_region(0x8440+i, M64P_MEM_NOTHING, RW(nothing));
-      map_region(0xa440+i, M64P_MEM_NOTHING, RW(nothing));
-   }
-
-   /* map AI registers */
-   map_region(0x8450, M64P_MEM_AI, RW(ai));
-   map_region(0xa450, M64P_MEM_AI, RW(ai));
-
-   for(i = 1; i < 0x10; ++i)
-   {
-      map_region(0x8450+i, M64P_MEM_NOTHING, RW(nothing));
-      map_region(0xa450+i, M64P_MEM_NOTHING, RW(nothing));
-   }
-
-   /* map PI registers */
-
-   map_region(0x8460, M64P_MEM_PI, RW(pi));
-   map_region(0xa460, M64P_MEM_PI, RW(pi));
-   for(i = 1; i < 0x10; ++i)
-   {
-      map_region(0x8460+i, M64P_MEM_NOTHING, RW(nothing));
-      map_region(0xa460+i, M64P_MEM_NOTHING, RW(nothing));
-   }
-
-   /* map RI registers */
-   map_region(0x8470, M64P_MEM_RI, RW(ri));
-   map_region(0xa470, M64P_MEM_RI, RW(ri));
-   for(i = 1; i < 0x10; ++i)
-   {
-      map_region(0x8470+i, M64P_MEM_NOTHING, RW(nothing));
-      map_region(0xa470+i, M64P_MEM_NOTHING, RW(nothing));
-   }
-
-    /* map SI registers */
-   map_region(0x8480, M64P_MEM_SI, RW(si));
-   map_region(0xa480, M64P_MEM_SI, RW(si));
-   for(i = 0x481; i < 0x500; ++i)
-   {
-      map_region(0x8000+i, M64P_MEM_NOTHING, RW(nothing));
-      map_region(0xa000+i, M64P_MEM_NOTHING, RW(nothing));
-   }
-
-   /* map DD registers */
-   map_region(0x8500, M64P_MEM_DD, RW(dd));
-   map_region(0xa500, M64P_MEM_DD, RW(dd));
-   for(i = 0x501; i < 0x600; ++i)
-   {
-      map_region(0x8000+i, M64P_MEM_NOTHING, RW(nothing));
-      map_region(0xa000+i, M64P_MEM_NOTHING, RW(nothing));
-   }
-
-   /* map DD IPL ROM */
-   for (i = 0x600; i < 0x640; ++i)
-   {
-      map_region(0x8000 + i, M64P_MEM_DD, R(ddipl), W(nothing));
-      map_region(0xa000 + i, M64P_MEM_DD, R(ddipl), W(nothing));
-   }
-   for (i = 0x640; i < 0x800; ++i)
-   {
-      map_region(0x8000 + i, M64P_MEM_NOTHING, RW(nothing));
-      map_region(0xa000 + i, M64P_MEM_NOTHING, RW(nothing));
-   }
-
-   /* map flashram/sram */
-   map_region(0x8800, M64P_MEM_FLASHRAMSTAT, R(pi_flashram_status), W(nothing));
-   map_region(0xa800, M64P_MEM_FLASHRAMSTAT, R(pi_flashram_status), W(nothing));
-   map_region(0x8801, M64P_MEM_NOTHING, R(nothing), W(pi_flashram_command));
-   map_region(0xa801, M64P_MEM_NOTHING, R(nothing), W(pi_flashram_command));
-   for(i = 0x802; i < 0x1000; ++i)
-   {
-      map_region(0x8000+i, M64P_MEM_NOTHING, RW(nothing));
-      map_region(0xa000+i, M64P_MEM_NOTHING, RW(nothing));
-   }
-
-   /* map cart ROM */
-
-   for(i = 0; i < (g_dev.cart.cart_rom.rom_size >> 16); ++i)
-   {
-      map_region(0x9000+i, M64P_MEM_ROM, R(rom), W(nothing));
-      map_region(0xb000+i, M64P_MEM_ROM, R(rom),
-            write_nothingb, write_nothingh, write_rom, write_nothingd);
-   }
-   for(i = (g_dev.cart.cart_rom.rom_size >> 16); i < 0xfc0; ++i)
-   {
-      map_region(0x9000+i, M64P_MEM_NOTHING, RW(nothing));
-      map_region(0xb000+i, M64P_MEM_NOTHING, RW(nothing));
-   }
-
-   /* map IS-Viewer debug device at 0x13ff0000 (page 0x3ff of the cart range),
-    * overriding the inert ROM/nothing mapping for that page. */
-   map_region(0x93ff, M64P_MEM_NOTHING, R(isviewer), W(isviewer));
-   map_region(0xb3ff, M64P_MEM_NOTHING, R(isviewer), W(isviewer));
-
-   /* map PIF RAM */
-   map_region(0x9fc0, M64P_MEM_PIF, RW(pif));
-   map_region(0xbfc0, M64P_MEM_PIF, RW(pif));
-   for(i = 0xfc1; i < 0xfd0; ++i)
-   {
-      map_region(0x9000+i, M64P_MEM_NOTHING, RW(nothing));
-      map_region(0xb000+i, M64P_MEM_NOTHING, RW(nothing));
-   }
-   for(i = 0xfd0; i < 0x1000; ++i)
-   {
-      map_region(0x9000+i, M64P_MEM_NOTHING, RW(nothing));
-      map_region(0xb000+i, M64P_MEM_NOTHING, R(echo), W(nothing));
-   }
-   
-   
-
-   /* map SummerCart64 */
-   map_region(0x9fff, M64P_MEM_NOTHING, RW(screg));
-   map_region(0xbfff, M64P_MEM_NOTHING, RW(screg));
-}
-
-static void map_region_t(uint16_t region, int type)
-{
-   (void)region;
-   (void)type;
-}
-
-static void map_region_r(uint16_t region,
- void (*read8)(void),
- void (*read16)(void),
- void (*read32)(void),
- void (*read64)(void))
-{
-   {
-      readmemb[region] = read8;
-      readmemh[region] = read16;
-      readmem [region] = read32;
-      readmemd[region] = read64;
-   }
-}
-
-void map_region_w(uint16_t region,
- void (*write8)(void),
- void (*write16)(void),
- void (*write32)(void),
- void (*write64)(void))
-{
-   {
-      writememb[region] = write8;
-      writememh[region] = write16;
-      writemem [region] = write32;
-      writememd[region] = write64;
-   }
-}
-
-void map_region(uint16_t region,
-      int type,
- void (*read8)(void),
- void (*read16)(void),
- void (*read32)(void),
- void (*read64)(void),
- void (*write8)(void),
- void (*write16)(void),
- void (*write32)(void),
- void (*write64)(void))
-{
-   map_region_t(region, type);
-   map_region_r(region, read8, read16, read32, read64);
-   map_region_w(region, write8, write16, write32, write64);
-}
-
-uint32_t *fast_mem_access(uint32_t address)
-{
-   /* This code is performance critical, specially on pure interpreter mode.
-    * Removing error checking saves some time, but the emulator may crash. */
-   if ((address & 0xc0000000) != 0x80000000)
-      address = virtual_to_physical_address(&g_dev.r4300, address, 2);
-
-   address &= UINT32_C(0x1ffffffc);
-
-   if (address < RDRAM_MAX_SIZE)
-      return (uint32_t*)((uint8_t*)g_dev.rdram.dram + address);
-   else if (address >= UINT32_C(0x10000000))
-      return (uint32_t*)((uint8_t*)g_dev.cart.cart_rom.rom + address - UINT32_C(0x10000000));
-   else if ((address & UINT32_C(0xffffe000)) == UINT32_C(0x04000000))
-      return (uint32_t*)((uint8_t*)g_dev.sp.mem + (address & UINT32_C(0x1ffc)));
-   return NULL;
+void init_memory(struct memory* mem,
+                 struct mem_mapping* mappings, size_t mappings_count,
+                 void* base,
+                 struct mem_handler* dbg_handler)
+{
+    size_t m;
+
+#ifdef DBG
+    memset(mem->bp_checks, 0, 0x10000*sizeof(mem->bp_checks[0]));
+    memcpy(&mem->dbg_handler, dbg_handler, sizeof(*dbg_handler));
+#endif
+
+    mem->base = base;
+
+    for(m = 0; m < mappings_count; ++m) {
+        apply_mem_mapping(mem, &mappings[m]);
+    }
+}
+
+static void map_region(struct memory* mem,
+                       uint16_t region,
+                       int type,
+                       const struct mem_handler* handler)
+{
+#ifdef DBG
+    /* set region type */
+    mem->memtype[region] = type;
+
+    /* set handler */
+    if (lookup_breakpoint(((uint32_t)region << 16), 0x10000,
+                          M64P_BKP_FLAG_ENABLED) != -1)
+    {
+        mem->saved_handlers[region] = *handler;
+        mem->handlers[region] = mem->dbg_handler;
+    }
+    else
+#endif
+    {
+        (void)type;
+        mem->handlers[region] = *handler;
+    }
+}
+
+void apply_mem_mapping(struct memory* mem, const struct mem_mapping* mapping)
+{
+    size_t i;
+    uint16_t begin = mapping->begin >> 16;
+    uint16_t end   = mapping->end   >> 16;
+
+    for (i = begin; i <= end; ++i) {
+        map_region(mem, i, mapping->type, &mapping->handler);
+    }
+}
+
+/* For paraLLEl-RDP which needs to import RDRAM as a host pointer with potentially 64k of alignment. */
+enum { MB_RDRAM_DRAM_ALIGNMENT_REQUIREMENT = 64 * 1024 };
+
+enum {
+    MB_RDRAM_DRAM = 0,
+    MB_CART_ROM = MB_RDRAM_DRAM + RDRAM_MAX_SIZE,
+    MB_RSP_MEM  = MB_CART_ROM   + CART_ROM_MAX_SIZE,
+    MB_DD_ROM   = MB_RSP_MEM    + SP_MEM_SIZE,
+    MB_PIF_MEM  = MB_DD_ROM     + DD_ROM_MAX_SIZE,
+    MB_MAX_SIZE = MB_PIF_MEM    + PIF_ROM_SIZE + PIF_RAM_SIZE,
+    MB_MAX_SIZE_FULL = 0x20000000
+};
+
+/* Use LSB of mem_base pointer to encode mem_base mode
+ * 1: compressed, 0: full
+ */
+#define MEM_BASE_MODE(mem_base) ((uintptr_t)(mem_base) & 0x1)
+#define MEM_BASE_PTR(mem_base)  ((void*)((uintptr_t)(mem_base) & ~0x1))
+#define SET_MEM_BASE_MODE(mem_base) (mem_base = (void*)((uintptr_t)(mem_base) | 0x1))
+
+void* init_mem_base(void)
+{
+    void* mem_base;
+
+    /* First try the full mem base alloc */
+#ifdef _WIN32
+    mem_base = _aligned_malloc(MB_MAX_SIZE_FULL, MB_RDRAM_DRAM_ALIGNMENT_REQUIREMENT);
+#else
+#ifdef HAVE_LIBNX
+    if (!(mem_base = memalign(MB_RDRAM_DRAM_ALIGNMENT_REQUIREMENT, MB_MAX_SIZE_FULL)))
+        mem_base = NULL;
+#else
+    if (posix_memalign(&mem_base, MB_RDRAM_DRAM_ALIGNMENT_REQUIREMENT, MB_MAX_SIZE_FULL) != 0)
+        mem_base = NULL;
+#endif // HAVE_LIBNX
+#endif
+    if (mem_base == NULL) {
+        /* if it failed, try the compressed mem base alloc */
+        mem_base = malloc(MB_MAX_SIZE);
+        if (mem_base != NULL) {
+            /* Compressed mem base mode has LSB = 1 */
+            assert(MEM_BASE_MODE(mem_base) == 0);
+            SET_MEM_BASE_MODE(mem_base);
+            DebugMessage(M64MSG_INFO, "Using compressed mem base");
+        }
+    }
+    else {
+        /* Full mem base mode has LSB = 0 */
+        assert(MEM_BASE_MODE(mem_base) == 0);
+        DebugMessage(M64MSG_INFO, "Using full mem base");
+    }
+
+    return mem_base;
+}
+
+void release_mem_base(void* mem_base)
+{
+#ifdef _WIN32
+    if (MEM_BASE_MODE(mem_base) == 0)
+        _aligned_free(MEM_BASE_PTR(mem_base));
+    else
+#endif
+        free(MEM_BASE_PTR(mem_base));
+}
+
+uint32_t* mem_base_u32(void* mem_base, uint32_t address)
+{
+    uint32_t* mem;
+
+    if (MEM_BASE_MODE(mem_base) == 0) {
+        /* In full mem base mode, use simple pointer arithmetic */
+        mem = (uint32_t*)((uint8_t*)mem_base + address);
+    }
+    else {
+        /* In compressed mem base mode, select appropriate mem_base offset */
+        mem_base = MEM_BASE_PTR(mem_base);
+
+        if (address < RDRAM_MAX_SIZE) {
+            mem = (uint32_t*)((uint8_t*)mem_base + (address - MM_RDRAM_DRAM + MB_RDRAM_DRAM));
+        }
+        else if (address >= MM_CART_ROM) {
+            if ((address & UINT32_C(0xfff00000)) == MM_PIF_MEM) {
+                mem = (uint32_t*)((uint8_t*)mem_base + (address - MM_PIF_MEM + MB_PIF_MEM));
+            } else {
+                mem = (uint32_t*)((uint8_t*)mem_base + (address - MM_CART_ROM + MB_CART_ROM));
+            }
+        }
+        else if ((address & UINT32_C(0xfe000000)) ==  MM_DD_ROM) {
+            mem = (uint32_t*)((uint8_t*)mem_base + (address - MM_DD_ROM + MB_DD_ROM));
+        }
+        else if ((address & UINT32_C(0xffffe000)) == MM_RSP_MEM) {
+            mem = (uint32_t*)((uint8_t*)mem_base + (address - MM_RSP_MEM + MB_RSP_MEM));
+        }
+        else {
+            mem = NULL;
+        }
+    }
+
+    return mem;
 }

@@ -1,6 +1,6 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *   Mupen64plus - cp1.h                                                   *
- *   Mupen64Plus homepage: http://code.google.com/p/mupen64plus/           *
+ *   Mupen64Plus homepage: https://mupen64plus.org/                        *
  *   Copyright (C) 2002 Hacktarux                                          *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
@@ -19,24 +19,102 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef M64P_R4300_CP1_H
-#define M64P_R4300_CP1_H
+#ifndef M64P_DEVICE_R4300_CP1_H
+#define M64P_DEVICE_R4300_CP1_H
 
 #include <stdint.h>
+#include "osal/preproc.h"
+#include "new_dynarec/new_dynarec.h"
 
-void poweron_cp1(void);
+typedef union {
+    int64_t  dword;
+    double   float64;
+    float    float32[2];
+}cp1_reg;
 
-int64_t* r4300_cp1_regs(void);
-float** r4300_cp1_regs_simple(void);
-double** r4300_cp1_regs_double(void);
+struct cp1
+{
+    cp1_reg regs[32];
 
-uint32_t* r4300_cp1_fcr0(void);
-uint32_t* r4300_cp1_fcr31(void);
+#ifndef NEW_DYNAREC
+	/* New dynarec uses a different memory layout */
+    uint32_t fcr0;
+    uint32_t fcr31;
 
-void shuffle_fpr_data(uint32_t oldStatus, uint32_t newStatus);
-void set_fpr_pointers(uint32_t newStatus);
+    float* regs_simple[32];
+    double* regs_double[32];
+#endif
 
-void update_x86_rounding_mode(uint32_t FCR31);
+    /* This is the x86 version of the rounding mode contained in FCR31.
+     * It should not really be here. Its size should also really be uint16_t,
+     * because FLDCW (Floating-point LoaD Control Word) loads 16-bit control
+     * words. However, x86/gcop1.c and x86-64/gcop1.c update this variable
+     * using 32-bit stores. */
+    uint32_t rounding_mode;
 
-#endif /* M64P_R4300_CP1_H */
+#ifdef OSAL_SSE
+    uint32_t flush_mode;
+#endif
+
+#ifdef NEW_DYNAREC
+	/* New dynarec uses a different memory layout */
+    struct new_dynarec_hot_state* new_dynarec_hot_state;
+#endif
+};
+
+#ifndef NEW_DYNAREC
+#define R4300_CP1_REGS_S_OFFSET (\
+    offsetof(struct r4300_core, cp1) + \
+    offsetof(struct cp1, regs_simple))
+#else
+#define R4300_CP1_REGS_S_OFFSET (\
+    offsetof(struct r4300_core, new_dynarec_hot_state) + \
+    offsetof(struct new_dynarec_hot_state, cp1_regs_simple))
+#endif
+
+#ifndef NEW_DYNAREC
+#define R4300_CP1_REGS_D_OFFSET (\
+    offsetof(struct r4300_core, cp1) + \
+    offsetof(struct cp1, regs_double))
+#else
+#define R4300_CP1_REGS_D_OFFSET (\
+    offsetof(struct r4300_core, new_dynarec_hot_state) + \
+    offsetof(struct new_dynarec_hot_state, cp1_regs_double))
+#endif
+
+#ifndef NEW_DYNAREC
+#define R4300_CP1_FCR0_OFFSET (\
+    offsetof(struct r4300_core, cp1) + \
+    offsetof(struct cp1, fcr0))
+#else
+#define R4300_CP1_FCR0_OFFSET (\
+    offsetof(struct r4300_core, new_dynarec_hot_state) + \
+    offsetof(struct new_dynarec_hot_state, cp1_fcr0))
+#endif
+
+#ifndef NEW_DYNAREC
+#define R4300_CP1_FCR31_OFFSET (\
+    offsetof(struct r4300_core, cp1) + \
+    offsetof(struct cp1, fcr31))
+#else
+#define R4300_CP1_FCR31_OFFSET (\
+    offsetof(struct r4300_core, new_dynarec_hot_state) + \
+    offsetof(struct new_dynarec_hot_state, cp1_fcr31))
+#endif
+
+void init_cp1(struct cp1* cp1, struct new_dynarec_hot_state* new_dynarec_hot_state);
+void poweron_cp1(struct cp1* cp1);
+
+cp1_reg* r4300_cp1_regs(struct cp1* cp1);
+float** r4300_cp1_regs_simple(struct cp1* cp1);
+double** r4300_cp1_regs_double(struct cp1* cp1);
+
+uint32_t* r4300_cp1_fcr0(struct cp1* cp1);
+uint32_t* r4300_cp1_fcr31(struct cp1* cp1);
+
+void set_fpr_pointers(struct cp1* cp1, uint32_t newStatus);
+
+void update_x86_rounding_mode(struct cp1* cp1);
+
+#endif /* M64P_DEVICE_R4300_CP1_H */
 

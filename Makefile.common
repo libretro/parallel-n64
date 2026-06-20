@@ -47,6 +47,9 @@ endif
 INCFLAGS += \
 	-I$(CORE_DIR)/src \
 	-I$(CORE_DIR)/src/api \
+	-I$(CORE_DIR)/custom \
+	-I$(CORE_DIR)/subprojects/md5 \
+	-I$(CORE_DIR)/subprojects/xxhash \
 	-I$(ROOT_DIR)/include \
 	-I$(AUDIO_LIBRETRO_DIR) \
 	-I$(LIBRETRO_COMM_DIR)/include \
@@ -123,6 +126,8 @@ SOURCES_C += $(RSPDIR)/src/alist.c \
     $(RSPDIR)/src/hle_plugin.c
 
 SOURCES_C += $(CXD4DIR)/rsp.c
+CFLAGS   += -DHAVE_LLE
+CXXFLAGS += -DHAVE_LLE
 
 ifeq ($(HAVE_RSP_DUMP), 1)
 SOURCES_CXX += $(CXD4DIR)/rsp_dump.cpp
@@ -142,6 +147,7 @@ SOURCES_C += \
 	$(CORE_DIR)/src/main/main.c \
 	$(CORE_DIR)/src/device/device.c \
 	$(CORE_DIR)/src/main/rom.c \
+	$(CORE_DIR)/subprojects/md5/md5.c \
 	$(CORE_DIR)/src/main/savestates.c \
 	$(CORE_DIR)/src/main/util.c \
 	$(CORE_DIR)/src/device/memory/m64p_memory.c \
@@ -155,32 +161,33 @@ SOURCES_C += \
 	$(CORE_DIR)/src/device/pif/cic.c \
 	$(CORE_DIR)/src/device/cart/eeprom.c \
 	$(CORE_DIR)/src/device/controllers/game_controller.c \
+	$(CORE_DIR)/src/device/controllers/vru_controller.c \
 	$(CORE_DIR)/src/device/controllers/paks/mempak.c \
 	$(CORE_DIR)/src/device/controllers/paks/rumblepak.c \
 	$(CORE_DIR)/src/device/controllers/paks/transferpak.c \
 	$(CORE_DIR)/src/plugin/plugin.c \
+	$(CORE_DIR)/src/plugin/dummy_audio.c \
+	$(CORE_DIR)/src/plugin/dummy_input.c \
+	$(CORE_DIR)/src/plugin/dummy_rsp.c \
+	$(CORE_DIR)/src/plugin/dummy_video.c \
 	$(CORE_DIR)/src/plugin/get_time_using_C_localtime.c \
 	$(CORE_DIR)/src/plugin/rumble_via_input_plugin.c \
 	$(CORE_DIR)/src/device/pif/bootrom_hle.c \
-	$(CORE_DIR)/src/device/r4300/r4300.c \
 	$(CORE_DIR)/src/device/r4300/cached_interp.c \
 	$(CORE_DIR)/src/device/r4300/cp0.c \
-	$(CORE_DIR)/src/device/r4300/exception.c \
 	$(CORE_DIR)/src/device/r4300/cp1.c \
+	$(CORE_DIR)/src/device/r4300/cp2.c \
+	$(CORE_DIR)/src/device/r4300/idec.c \
 	$(CORE_DIR)/src/device/r4300/instr_counters.c \
 	$(CORE_DIR)/src/device/r4300/interrupt.c \
 	$(CORE_DIR)/src/device/rcp/mi/mi_controller.c \
 	$(CORE_DIR)/src/device/r4300/pure_interp.c \
 	$(CORE_DIR)/src/device/r4300/r4300_core.c \
-	$(CORE_DIR)/src/device/r4300/recomp.c \
-	$(CORE_DIR)/src/device/r4300/reset.c \
 	$(CORE_DIR)/src/device/r4300/tlb.c \
 	$(CORE_DIR)/src/device/dd/dd_controller.c \
-	$(CORE_DIR)/src/device/dd/dd_rom.c \
-	$(CORE_DIR)/src/device/dd/dd_disk.c \
+	$(CORE_DIR)/src/device/dd/disk.c \
 	$(CORE_DIR)/src/device/rcp/ri/ri_controller.c \
 	$(CORE_DIR)/src/device/rdram/rdram.c \
-	$(CORE_DIR)/src/device/rdram/rdram_detection_hack.c \
 	$(CORE_DIR)/src/device/rcp/si/si_controller.c \
 	$(CORE_DIR)/src/device/rcp/vi/vi_controller.c \
 	$(CORE_DIR)/src/device/rcp/rdp/rdp_core.c \
@@ -190,12 +197,17 @@ SOURCES_C += \
 	$(CORE_DIR)/src/device/rcp/pi/pi_controller.c \
 	$(CORE_DIR)/src/device/cart/sram.c \
 	$(CORE_DIR)/src/backends/libretro_storage.c \
+	$(CORE_DIR)/src/backends/file_storage.c \
+	$(CORE_DIR)/src/backends/clock_ctime_plus_delta.c \
+	$(CORE_DIR)/src/backends/dummy_video_capture.c \
+	$(CORE_DIR)/src/backends/api/video_capture_backend.c \
+	$(CORE_DIR)/src/backends/plugins_compat/audio_plugin_compat.c \
+	$(CORE_DIR)/src/backends/plugins_compat/input_plugin_compat.c \
 	$(CORE_DIR)/src/backends/libretro_clock.c \
 	$(CORE_DIR)/src/device/cart/flashram.c \
 	$(CORE_DIR)/src/device/cart/cart_rom.c \
 	$(CORE_DIR)/src/device/cart/cart.c \
 	$(CORE_DIR)/src/device/cart/is_viewer.c \
-	$(CORE_DIR)/src/device/rcp/pi/summercart.c
 
 ifeq ($(PLATFORM_EXT), win32)
 DYNAFLAGS += -DWIN32
@@ -233,7 +245,7 @@ ifdef WITH_DYNAREC
 		CXXFLAGS += -DARCH_MIN_SSE2
 		ifeq ($(HAVE_ARI64_X64), 1)
 			DYNAFLAGS += -DNEW_DYNAREC=2
-			SOURCES_C += $(CORE_DIR)/src/device/r4300/new_dynarec/new_dynarec_64.c
+			SOURCES_C += $(CORE_DIR)/src/device/r4300/new_dynarec/new_dynarec.c
 			SOURCES_NASM += $(CORE_DIR)/src/device/r4300/new_dynarec/x64/linkage_x64.asm
 		endif
 
@@ -282,12 +294,12 @@ ifeq ($(WANT_HACKTARUX), 1)
 		DYNAFLAGS += -DHAVE_DYNAREC_HACKTARUX
 		SOURCES_C += $(CORE_DIR)/src/device/r4300/hacktarux_dynarec/assemble.c \
 						 $(CORE_DIR)/src/device/r4300/hacktarux_dynarec/regcache.c \
-						 $(CORE_DIR)/src/device/r4300/hacktarux_dynarec/hacktarux_dynarec.c
+						 $(CORE_DIR)/src/device/r4300/hacktarux_dynarec/hacktarux_dynarec.c \
+						 $(CORE_DIR)/src/device/r4300/recomp.c
 endif
 endif
 endif
 
-SOURCES_C += $(CORE_DIR)/src/device/r4300/empty_dynarec.c
 
 ifeq ($(NATIVE_MARCH), 1)
 	CPUFLAGS += -march=native
@@ -380,8 +392,8 @@ else
 endif
 
 ifeq ($(HAVE_GLIDEN64),1)
-CFLAGS   += -DHAVE_GLIDEN64 -DMUPENPLUSAPI
-CXXFLAGS += -DHAVE_GLIDEN64 -DMUPENPLUSAPI
+CFLAGS   += -DHAVE_GLIDEN64 -DMUPENPLUSAPI -D__LIBRETRO__
+CXXFLAGS += -DHAVE_GLIDEN64 -DMUPENPLUSAPI -D__LIBRETRO__
 
 # xxhash 0.8 is a single-header library; the implementation is inlined
 # into CRC_OPT.cpp via #define XXH_INLINE_ALL. No separate xxhash.c

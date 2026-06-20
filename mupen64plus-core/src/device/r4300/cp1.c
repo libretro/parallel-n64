@@ -1,6 +1,6 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *   Mupen64plus - cp1.c                                                   *
- *   Mupen64Plus homepage: http://code.google.com/p/mupen64plus/           *
+ *   Mupen64Plus homepage: https://mupen64plus.org/                        *
  *   Copyright (C) 2002 Hacktarux                                          *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
@@ -23,194 +23,141 @@
 #include <string.h>
 
 #include "cp0.h"
+#include "cp1.h"
 
 #include "new_dynarec/new_dynarec.h"
 
-#if !defined(__arm64__) && !defined(__aarch64__)
-#if NEW_DYNAREC < NEW_DYNAREC_ARM
-float *reg_cop1_simple[32];
-double *reg_cop1_double[32];
-uint32_t FCR0, FCR31;
+#define FCR31_FS_BIT UINT32_C(0x1000000)
+
+#ifdef M64P_BIG_ENDIAN
+#define DOUBLE_HALF_XOR 1
 #else
-/* The ARM32 new_dynarec backend manually allocates these variables as
- * part of the extra_memory blob in linkage_arm.S (see GLOBAL_VARIABLE
- * entries there). They are real globals at the linker level; this file
- * just needs extern declarations so the C compiler can reference them. */
-extern float *reg_cop1_simple[32];
-extern double *reg_cop1_double[32];
-extern uint32_t FCR0, FCR31;
-#endif
-#else
-/* ARM64 backend requires a different memory layout
- * and therefore manually allocates these variables */
-#include "new_dynarec/arm64/memory_layout_arm64.h"
-#define reg_cop1_simple (RECOMPILER_MEMORY->rml_reg_cop1_simple)
-#define reg_cop1_double (RECOMPILER_MEMORY->rml_reg_cop1_double)
-#define FCR0            (RECOMPILER_MEMORY->rml_FCR0)
-#define FCR31           (RECOMPILER_MEMORY->rml_FCR31)
+#define DOUBLE_HALF_XOR 0
 #endif
 
-int64_t reg_cop1_fgr_64[32];
+void init_cp1(struct cp1* cp1, struct new_dynarec_hot_state* new_dynarec_hot_state)
+{
+#ifdef NEW_DYNAREC
+    cp1->new_dynarec_hot_state = new_dynarec_hot_state;
+#endif
+}
 
-/* This is the x86 version of the rounding mode contained in FCR31.
- * It should not really be here. Its size should also really be uint16_t,
- * because FLDCW (Floating-point LoaD Control Word) loads 16-bit control
- * words. However, x86/gcop1.c and x86-64/gcop1.c update this variable
- * using 32-bit stores. */
-uint32_t rounding_mode = UINT32_C(0x33F);
+void poweron_cp1(struct cp1* cp1)
+{
+    memset(cp1->regs, 0, 32 * sizeof(cp1->regs[0]));
+    *r4300_cp1_fcr0(cp1) = UINT32_C(0xA00);
+    *r4300_cp1_fcr31(cp1) = 0;
+
+    set_fpr_pointers(cp1, UINT32_C(0x34000000)); /* c0_status value at poweron */
+#ifdef OSAL_SSE
+    cp1->flush_mode = _MM_GET_FLUSH_ZERO_MODE();
+#endif
+    update_x86_rounding_mode(cp1);
+}
+
+
+cp1_reg* r4300_cp1_regs(struct cp1* cp1)
+{
+    return cp1->regs;
+}
+
+float** r4300_cp1_regs_simple(struct cp1* cp1)
+{
+#ifndef NEW_DYNAREC
+	/* New dynarec uses a different memory layout */
+    return cp1->regs_simple;
+#else
+    return cp1->new_dynarec_hot_state->cp1_regs_simple;
+#endif
+}
+
+double** r4300_cp1_regs_double(struct cp1* cp1)
+{
+#ifndef NEW_DYNAREC
+	/* New dynarec uses a different memory layout */
+    return cp1->regs_double;
+#else
+    return cp1->new_dynarec_hot_state->cp1_regs_double;
+#endif
+}
+
+uint32_t* r4300_cp1_fcr0(struct cp1* cp1)
+{
+#ifndef NEW_DYNAREC
+	/* New dynarec uses a different memory layout */
+    return &cp1->fcr0;
+#else
+    return &cp1->new_dynarec_hot_state->cp1_fcr0;
+#endif
+}
+
+uint32_t* r4300_cp1_fcr31(struct cp1* cp1)
+{
+#ifndef NEW_DYNAREC
+	/* New dynarec uses a different memory layout */
+    return &cp1->fcr31;
+#else
+    return &cp1->new_dynarec_hot_state->cp1_fcr31;
+#endif
+}
+
+void set_fpr_pointers(struct cp1* cp1, uint32_t newStatus)
+{
+    int i;
+
+    // update the FPR register pointers
+    if ((newStatus & CP0_STATUS_FR) == 0)
+    {
+        for (i = 0; i < 32; i++)
+        {
+            (r4300_cp1_regs_simple(cp1))[i] = &cp1->regs[i & ~1].float32[(i & 1) ^ DOUBLE_HALF_XOR];
+            (r4300_cp1_regs_double(cp1))[i] = &cp1->regs[i & ~1].float64;
+        }
+    }
+    else
+    {
+        for (i = 0; i < 32; i++)
+        {
+            (r4300_cp1_regs_simple(cp1))[i] = &cp1->regs[i].float32[DOUBLE_HALF_XOR];
+            (r4300_cp1_regs_double(cp1))[i] = &cp1->regs[i].float64;
+        }
+    }
+}
 
 /* XXX: This shouldn't really be here, but rounding_mode is used by the
  * Hacktarux JIT and updated by CTC1 and saved states. Figure out a better
  * place for this. */
-void update_x86_rounding_mode(uint32_t _FCR31)
+void update_x86_rounding_mode(struct cp1* cp1)
 {
-   switch (_FCR31 & 3)
-   {
-      case 0: /* Round to nearest, or to even if equidistant */
-         rounding_mode = UINT32_C(0x33F);
-         break;
-      case 1: /* Truncate (toward 0) */
-         rounding_mode = UINT32_C(0xF3F);
-         break;
-      case 2: /* Round up (toward +Inf) */
-         rounding_mode = UINT32_C(0xB3F);
-         break;
-      case 3: /* Round down (toward -Inf) */
-         rounding_mode = UINT32_C(0x73F);
-         break;
-   }
-}
+    uint32_t fcr31 = *r4300_cp1_fcr31(cp1);
 
-void poweron_cp1(void)
-{
-   memset(reg_cop1_fgr_64, 0, 32 * sizeof(reg_cop1_fgr_64[0]));
-   FCR0 = UINT32_C(0xA00);
-   FCR31=0;
-   update_x86_rounding_mode(FCR31);
-}
+#ifdef OSAL_SSE
+    uint32_t flush_mode;
+    if (fcr31 & 2)
+        flush_mode = (fcr31 & FCR31_FS_BIT) ? _MM_FLUSH_ZERO_OFF : _MM_FLUSH_ZERO_ON;
+    else
+        flush_mode = _MM_FLUSH_ZERO_ON;
 
-int64_t* r4300_cp1_regs(void)
-{
-    return reg_cop1_fgr_64;
-}
-
-float** r4300_cp1_regs_simple(void)
-{
-    return reg_cop1_simple;
-}
-
-double** r4300_cp1_regs_double(void)
-{
-    return reg_cop1_double;
-}
-
-uint32_t* r4300_cp1_fcr0(void)
-{
-    return &FCR0;
-}
-
-uint32_t* r4300_cp1_fcr31(void)
-{
-    return &FCR31;
-}
-
-
-
-/* Refer to Figure 6-2 on page 155 and explanation on page B-11
-   of MIPS R4000 Microprocessor User's Manual (Second Edition)
-   by Joe Heinrich.
-*/
-void shuffle_fpr_data(uint32_t oldStatus, uint32_t newStatus)
-{
-   int i;
-   int32_t temp_fgr_32[32];
-   if ((newStatus & CP0_STATUS_FR) == (oldStatus & CP0_STATUS_FR))
-      return;
-
-   /* pack or unpack the FGR register data */
-   if (newStatus & CP0_STATUS_FR)
-   {
-      /* switching into 64-bit mode
-       * retrieve 32 FPR values from packed 32-bit FGR registers */
-      for (i = 0; i < 32; i++)
-      {
-#ifdef MSB_FIRST
-         temp_fgr_32[i] = *((int32_t *) &reg_cop1_fgr_64[i>>1] + ((i & 1) ^ 1));
-#else
-         temp_fgr_32[i] = *((int32_t *) &reg_cop1_fgr_64[i>>1] + ((i & 1) ^ 0));
+    if (flush_mode != cp1->flush_mode)
+    {
+        _MM_SET_FLUSH_ZERO_MODE(flush_mode);
+        cp1->flush_mode = flush_mode;
+    }
 #endif
-      }
-      // unpack them into 32 64-bit registers, taking the high 32-bits from their temporary place in the upper 16 FGRs
-      for (i = 0; i < 32; i++)
-      {
-         int32_t high32 = *((int32_t *) &reg_cop1_fgr_64[(i>>1)+16] + (i & 1));
-#ifdef MSB_FIRST
-         *((int32_t *) &reg_cop1_fgr_64[i])         = high32;
-         *((int32_t *) &reg_cop1_fgr_64[i] + 1)     = temp_fgr_32[i];
-#else
-         *((int32_t *) &reg_cop1_fgr_64[i])         = temp_fgr_32[i];
-         *((int32_t *) &reg_cop1_fgr_64[i] + 1)     = high32;
-#endif
-      }
-   }
-   else
-   {
-      /* switching into 32-bit mode
-       * retrieve the high 32 bits from each 64-bit FGR register and store in temp array */
-      for (i = 0; i < 32; i++)
-      {
-#ifdef MSB_FIRST
-         temp_fgr_32[i] = *((int32_t *) &reg_cop1_fgr_64[i]);
-#else
-         temp_fgr_32[i] = *((int32_t *) &reg_cop1_fgr_64[i] + 1);
-#endif
-      }
-      // take the low 32 bits from each register and pack them together into 64-bit pairs
-      for (i = 0; i < 16; i++)
-      {
-#ifdef MSB_FIRST
-         uint32_t least32 = *((uint32_t *) &reg_cop1_fgr_64[i*2]  + 1);
-         uint32_t most32 = *((uint32_t *) &reg_cop1_fgr_64[i*2+1] + 1);
-#else
-         uint32_t least32 = *((uint32_t *) &reg_cop1_fgr_64[i*2]);
-         uint32_t most32 = *((uint32_t *) &reg_cop1_fgr_64[i*2+1]);
-#endif
-         reg_cop1_fgr_64[i] = ((uint64_t) most32 << 32) | (uint64_t) least32;
-      }
-      /* store the high bits in the upper 16 FGRs, which wont be accessible in 32-bit mode */
-      for (i = 0; i < 32; i++)
-         *((int32_t *) &reg_cop1_fgr_64[(i>>1)+16] + (i & 1)) = temp_fgr_32[i];
-   }
+
+    switch (fcr31 & 3)
+    {
+    case 0: /* Round to nearest, or to even if equidistant */
+        cp1->rounding_mode = UINT32_C(0x33F);
+        break;
+    case 1: /* Truncate (toward 0) */
+        cp1->rounding_mode = UINT32_C(0xF3F);
+        break;
+    case 2: /* Round up (toward +Inf) */
+        cp1->rounding_mode = UINT32_C(0xB3F);
+        break;
+    case 3: /* Round down (toward -Inf) */
+        cp1->rounding_mode = UINT32_C(0x73F);
+        break;
+    }
 }
-
-void set_fpr_pointers(uint32_t newStatus)
-{
-   int i;
-
-   /* update the FPR register pointers */
-   if (newStatus & CP0_STATUS_FR)
-   {
-      for (i = 0; i < 32; i++)
-      {
-         reg_cop1_double[i] = (double*) &reg_cop1_fgr_64[i];
-#ifdef MSB_FIRST
-         reg_cop1_simple[i] = ((float*) &reg_cop1_fgr_64[i]) + 1;
-#else
-         reg_cop1_simple[i] = ((float*) &reg_cop1_fgr_64[i]);
-#endif
-      }
-   }
-   else
-   {
-      for (i = 0; i < 32; i++)
-      {
-         reg_cop1_double[i] = (double*) &reg_cop1_fgr_64[i>>1];
-#ifdef MSB_FIRST
-         reg_cop1_simple[i] = ((float*) &reg_cop1_fgr_64[i>>1]) + ((i & 1) ^ 1);
-#else
-         reg_cop1_simple[i] = ((float*) &reg_cop1_fgr_64[i>>1]) + ((i & 1) ^ 0);
-#endif
-      }
-   }
-}
-

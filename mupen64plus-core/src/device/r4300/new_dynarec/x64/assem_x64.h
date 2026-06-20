@@ -1,10 +1,5 @@
-#ifndef M64P_R4300_ASSEM_X64_H
-#define M64P_R4300_ASSEM_X64_H
-
-#include <stdint.h>
-#include <sys/types.h>
-
-#include "../../recomp_types.h"
+#ifndef M64P_DEVICE_R4300_NEW_DYNAREC_X64_ASSEM_X64_H
+#define M64P_DEVICE_R4300_NEW_DYNAREC_X64_ASSEM_X64_H
 
 #define EAX 0
 #define ECX 1
@@ -40,20 +35,23 @@
 //#define IMM_PREFETCH 1
 #define NATIVE_64 1
 #define RAM_OFFSET 1
+#define NEED_INVC_PTR 1
 #define INVERTED_CARRY 1
 //#define DESTRUCTIVE_WRITEBACK 1
 #define DESTRUCTIVE_SHIFT 1
 #define USE_MINI_HT 1
 
-#define BASE_ADDR ((intptr_t)(&extra_memory))
 #define TARGET_SIZE_2 25 // 2^25 = 32 megabytes
-#define JUMP_TABLE_SIZE 0 // Not needed for x64
+#define JUMP_TABLE_SIZE 0 // Not needed for x86
 
 #ifdef _WIN32
 /* Microsoft x64 calling convention:
    func(rcx, rdx, r8, r9) {return rax;}
-   The registers RAX, RCX, RDX, R8-R11 are volatile (caller-saved).
-   The registers RBX, RBP, RDI, RSI, RSP, R12-R15 are nonvolatile. */
+   callee-save: %rbx %rbp %rdi %rsi %rsp %r12-%r15
+
+The registers RAX, RCX, RDX, R8, R9, R10, R11 are considered volatile (caller-saved).
+The registers RBX, RBP, RDI, RSI, RSP, R12, R13, R14, and R15 are considered nonvolatile (callee-saved).*/
+
 #define ARG1_REG ECX
 #define ARG2_REG EDX
 #define ARG3_REG R8
@@ -61,10 +59,13 @@
 #define CALLER_SAVED_REGS 0xF07
 #define HOST_CCREG ESI
 #else
-/* System V amd64 calling convention:
+/* amd64 calling convention:
    func(rdi, rsi, rdx, rcx, r8, r9) {return rax;}
-   The registers RAX, RCX, RDX, RSI, RDI, R8-R11 are volatile (caller-saved).
-   The registers RBX, RBP, RSP, R12-R15 are nonvolatile. */
+   callee-save: %rbp %rbx %r12-%r15
+
+The registers RAX, RCX, RDX, RSI, RDI, R8, R9, R10, R11 are considered volatile (caller-saved).
+The registers RBX, RBP, RSP, R12, R13, R14, and R15 are considered nonvolatile (callee-saved).*/
+
 #define ARG1_REG EDI
 #define ARG2_REG ESI
 #define ARG3_REG EDX
@@ -73,61 +74,4 @@
 #define HOST_CCREG EBX
 #endif
 
-void jump_vaddr_eax(void);
-void jump_vaddr_ecx(void);
-void jump_vaddr_edx(void);
-void jump_vaddr_ebx(void);
-void jump_vaddr_ebp(void);
-void jump_vaddr_esi(void);
-void jump_vaddr_edi(void);
-void invalidate_block_eax(void);
-void invalidate_block_ecx(void);
-void invalidate_block_edx(void);
-void invalidate_block_ebx(void);
-void invalidate_block_ebp(void);
-void invalidate_block_esi(void);
-void invalidate_block_edi(void);
-void verify_code(void);
-void verify_code_vm(void);
-void verify_code_ds(void);
-void cc_interrupt(void);
-void do_interrupt(void);
-void fp_exception(void);
-void fp_exception_ds(void);
-void jump_syscall(void);
-void jump_eret(void);
-void read_nomem_new(void);
-void read_nomemb_new(void);
-void read_nomemh_new(void);
-void read_nomemd_new(void);
-void write_nomem_new(void);
-void write_nomemb_new(void);
-void write_nomemh_new(void);
-void write_nomemd_new(void);
-void write_rdram_new(void);
-void write_rdramb_new(void);
-void write_rdramh_new(void);
-void write_rdramd_new(void);
-void breakpoint(void);
-
-/* W^X toggling is an arm64/Apple JIT concern; the x64 code cache is a
- * static RWX blob, so these are no-ops here. */
-#define apple_jit_wx_unprotect_enter() do{}while(0)
-#define apple_jit_wx_unprotect_exit()  do{}while(0)
-
-/* Code cache: a static BSS blob so that RIP-relative 32-bit
- * displacements in generated code always reach the core's data
- * and text (see new_dynarec_init). */
-extern u_char extra_memory[1<<TARGET_SIZE_2];
-
-extern int branch_target;
-extern struct precomp_instr fake_pc;
-/* mini_ht and rounding_modes migrated to struct new_dynarec_hot_state
- * (region 14, Phase 2d increment 1); they are macro-aliased in assem_x64.c
- * onto g_dev.r4300.new_dynarec_hot_state and no longer exist as flat symbols.
- * last_count and ram_offset migrated likewise in increment 2 (with their
- * linkage_x64.asm references repointed in lockstep). restore_candidate stays
- * a flat global -- mupen64plus-next keeps it a flat static too, and it is used
- * in the shared new_dynarec_64.c body (before the x64 assem alias point). */
-
-#endif /* M64P_R4300_ASSEM_X64_H */
+#endif /* M64P_DEVICE_R4300_NEW_DYNAREC_X64_ASSEM_X64_H */

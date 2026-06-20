@@ -1,6 +1,6 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *   Mupen64plus - rumblepak.c                                             *
- *   Mupen64Plus homepage: http://code.google.com/p/mupen64plus/           *
+ *   Mupen64Plus homepage: https://mupen64plus.org/                        *
  *   Copyright (C) 2014 Bobby Smiles                                       *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
@@ -20,69 +20,72 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "rumblepak.h"
-#include "../game_controller.h"
+
+#include "backends/api/rumble_backend.h"
+#include "device/controllers/game_controller.h"
 
 #include <string.h>
 
-void init_rumblepak(struct rumblepak* rpk, void* user_data, void (*rumble)(void*,enum rumble_action))
+void set_rumble_reg(struct rumblepak* rpk, uint8_t value)
 {
-   rpk->user_data = user_data;
-   rpk->rumble = rumble;
-   rpk->state = 0x00;
+    rpk->state = value;
+    rpk->irumble->exec(rpk->rumble, (rpk->state == 0) ? RUMBLE_STOP : RUMBLE_START);
 }
 
-void rumblepak_rumble(struct rumblepak* rpk, enum rumble_action action)
+void init_rumblepak(struct rumblepak* rpk,
+    void* rumble, const struct rumble_backend_interface* irumble)
 {
-    rpk->rumble(rpk->user_data, action);
+    rpk->rumble = rumble;
+    rpk->irumble = irumble;
 }
 
-/* Latch the rumble control register and drive the sink accordingly.
- * Centralising this (mirroring mupen64plus-next) keeps rpk->state and the
- * actual rumble action in sync from a single place. */
-static void set_rumble_reg(struct rumblepak* rpk, uint8_t value)
+void poweron_rumblepak(struct rumblepak* rpk)
 {
-   rpk->state = value;
-   rumblepak_rumble(rpk, (rpk->state == 0) ? RUMBLE_STOP : RUMBLE_START);
+    set_rumble_reg(rpk, 0x00);
 }
 
-void rumblepak_read_command(struct rumblepak* rpk, uint16_t address, uint8_t *data, size_t size)
+static void plug_rumblepak(void* pak)
 {
-   uint8_t value = 0x00;
+    struct rumblepak* rpk = (struct rumblepak*)pak;
 
-   if ((address >= 0x8000) && (address < 0x9000))
-      value = 0x80;
-
-   memset(data, value, size);
+    poweron_rumblepak(rpk);
 }
 
-void rumblepak_write_command(struct rumblepak* rpk, uint16_t address, const uint8_t* data, size_t size)
-{
-   if (address == 0xc000)
-   {
-      /* The rumble control value is the last byte of the written block
-       * (PAK_CHUNK_SIZE bytes), not the first. Previously this keyed off
-       * data[0]; use data[size-1] to match hardware / mupen64plus-next. */
-      set_rumble_reg(rpk, (size > 0) ? data[size - 1] : 0x00);
-   }
-}
-
-/* mupen64plus-next pak_interface vtable (region 12c). Bridges the joybus
- * controller device onto parallel-n64's rumblepak. unplug stops rumbling, as
- * in next; read/write pass through to the command functions. */
-static void plug_rumblepak(void* pak)   { (void)pak; }
 static void unplug_rumblepak(void* pak)
 {
-    /* stop rumbling if the pak is disconnected */
-    rumblepak_rumble((struct rumblepak*)pak, RUMBLE_STOP);
+    struct rumblepak* rpk = (struct rumblepak*)pak;
+
+    /* Stop rumbling if pak gets disconnected */
+    set_rumble_reg(rpk, 0x00);
 }
+
 static void read_rumblepak(void* pak, uint16_t address, uint8_t* data, size_t size)
 {
-    rumblepak_read_command((struct rumblepak*)pak, address, data, size);
+    uint8_t value;
+
+    if ((address >= 0x8000) && (address < 0x9000))
+    {
+        value = 0x80;
+    }
+    else
+    {
+        value = 0x00;
+    }
+
+    memset(data, value, size);
 }
+
 static void write_rumblepak(void* pak, uint16_t address, const uint8_t* data, size_t size)
 {
-    rumblepak_write_command((struct rumblepak*)pak, address, data, size);
+    struct rumblepak* rpk = (struct rumblepak*)pak;
+
+    if (address == 0xc000)
+    {
+        set_rumble_reg(rpk, data[size - 1]);
+    }
 }
+
+/* Rumble pak definition */
 const struct pak_interface g_irumblepak =
 {
     "Rumble pak",

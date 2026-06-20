@@ -23,7 +23,6 @@
 #ifndef __ASSEMBLE_H__
 #define __ASSEMBLE_H__
 
-#include "../recomph.h"
 #include "../../../api/callbacks.h"
 #include "../../../osal/preproc.h"
 

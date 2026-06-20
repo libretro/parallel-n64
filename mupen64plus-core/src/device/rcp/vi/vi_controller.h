@@ -1,6 +1,6 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *   Mupen64plus - vi_controller.h                                         *
- *   Mupen64Plus homepage: http://code.google.com/p/mupen64plus/           *
+ *   Mupen64Plus homepage: https://mupen64plus.org/                        *
  *   Copyright (C) 2014 Bobby Smiles                                       *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
@@ -19,18 +19,13 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef M64P_VI_VI_CONTROLLER_H
-#define M64P_VI_VI_CONTROLLER_H
+#ifndef M64P_DEVICE_RCP_VI_VI_CONTROLLER_H
+#define M64P_DEVICE_RCP_VI_VI_CONTROLLER_H
 
 #include <stdint.h>
+#include "api/m64p_types.h"
+#include "osal/preproc.h"
 
-#include "../../../api/m64p_types.h"
-
-#ifndef VI_REG
-#define VI_REG(a) ((a & 0x3f) >> 2)
-#endif
-
-struct r4300_core;
 struct mi_controller;
 struct rdp_core;
 
@@ -57,31 +52,34 @@ struct vi_controller
 {
     uint32_t regs[VI_REGS_COUNT];
     unsigned int field;
+    unsigned int delay;
 
     unsigned int clock;
     unsigned int expected_refresh_rate;
-
-    unsigned int delay;
-    unsigned int next_vi;
+    unsigned int count_per_scanline;
 
     struct mi_controller* mi;
     struct rdp_core* dp;
 };
 
-void init_vi(struct vi_controller* vi,
-      unsigned int clock, unsigned int expected_refresh_rate,
-      /* unsigned int count_per_scanline, unsigned int alternate_timing, */
-      struct mi_controller* mi,
-      struct rdp_core* dp);
+static osal_inline uint32_t vi_reg(uint32_t address)
+{
+    return (address & 0xffff) >> 2;
+}
+
 
 unsigned int vi_clock_from_tv_standard(m64p_system_type tv_standard);
 unsigned int vi_expected_refresh_rate_from_tv_standard(m64p_system_type tv_standard);
+void set_vi_vertical_interrupt(struct vi_controller* vi);
+
+void init_vi(struct vi_controller* vi, unsigned int clock, unsigned int expected_refresh_rate,
+             struct mi_controller* mi, struct rdp_core* dp);
 
 void poweron_vi(struct vi_controller* vi);
 
-int read_vi_regs(void* opaque, uint32_t address, uint32_t* value);
-int write_vi_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask);
+void read_vi_regs(void* opaque, uint32_t address, uint32_t* value);
+void write_vi_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask);
 
-void vi_vertical_interrupt_event(struct vi_controller* vi);
+void vi_vertical_interrupt_event(void* opaque);
 
 #endif

@@ -27,7 +27,6 @@
 #include "../../../api/m64p_types.h"
 #include "../../../api/callbacks.h"
 #include "../../../osal/preproc.h"
-#include "../recomph.h"
 #include "../recomp.h"
 #include "../r4300.h"
 /* region 14 / Phase 2d (increment 12): mupencorereg reg-file alias needs g_dev. */

@@ -1,6 +1,6 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *   Mupen64plus - rdram.h                                                 *
- *   Mupen64Plus homepage: http://code.google.com/p/mupen64plus/           *
+ *   Mupen64Plus homepage: https://mupen64plus.org/                        *
  *   Copyright (C) 2014 Bobby Smiles                                       *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
@@ -19,15 +19,15 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef M64P_RI_RDRAM_H
-#define M64P_RI_RDRAM_H
+#ifndef M64P_DEVICE_RCP_RI_RDRAM_H
+#define M64P_DEVICE_RCP_RI_RDRAM_H
 
 #include <stddef.h>
 #include <stdint.h>
 
-#ifndef RDRAM_REG
-#define RDRAM_REG(a)    ((a & 0x3ff) >> 2)
-#endif
+#include "osal/preproc.h"
+
+struct r4300_core;
 
 enum rdram_registers
 {
@@ -44,24 +44,40 @@ enum rdram_registers
     RDRAM_REGS_COUNT
 };
 
+/* IPL3 rdram initialization accepts up to 8 RDRAM modules */
+enum { RDRAM_MAX_MODULES_COUNT = 8 };
+
 struct rdram
 {
-    uint32_t regs[RDRAM_REGS_COUNT];
+    uint32_t regs[RDRAM_MAX_MODULES_COUNT][RDRAM_REGS_COUNT];
+
     uint32_t* dram;
     size_t dram_size;
+
+    struct r4300_core* r4300;
 };
 
+static osal_inline uint32_t rdram_reg(uint32_t address)
+{
+    return (address & 0x3ff) >> 2;
+}
+
+static osal_inline uint32_t rdram_dram_address(uint32_t address)
+{
+    return (address & 0xffffff) >> 2;
+}
 
 void init_rdram(struct rdram* rdram,
-                   uint32_t* dram,
-                   size_t dram_size);
+                uint32_t* dram,
+                size_t dram_size,
+                struct r4300_core* r4300);
 
 void poweron_rdram(struct rdram* rdram);
 
-int read_rdram_regs(void* opaque, uint32_t address, uint32_t* value);
-int write_rdram_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask);
+void read_rdram_regs(void* opaque, uint32_t address, uint32_t* value);
+void write_rdram_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask);
 
-int read_rdram_dram(void* opaque, uint32_t address, uint32_t* value);
-int write_rdram_dram(void* opaque, uint32_t address, uint32_t value, uint32_t mask);
+void read_rdram_dram(void* opaque, uint32_t address, uint32_t* value);
+void write_rdram_dram(void* opaque, uint32_t address, uint32_t value, uint32_t mask);
 
 #endif

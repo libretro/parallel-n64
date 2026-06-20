@@ -35,15 +35,12 @@
 #include "../../memory/m64p_memory.h"
 #include "../cached_interp.h"
 #include "../recomp.h"
-#include "../cp0_private.h"
-#include "../cp1_private.h"
 #include "../cp0.h"
 #include "../interrupt.h"
 #include "../r4300.h"
 #include "../macros.h"
 #include "../ops.h"
 #include "../recomp.h"
-#include "../recomph.h"
 #include "../cp0.h"
 
 #if !defined(offsetof)

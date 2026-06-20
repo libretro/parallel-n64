@@ -1,6 +1,6 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *   Mupen64plus - rdp_core.h                                              *
- *   Mupen64Plus homepage: http://code.google.com/p/mupen64plus/           *
+ *   Mupen64Plus homepage: https://mupen64plus.org/                        *
  *   Copyright (C) 2014 Bobby Smiles                                       *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
@@ -19,53 +19,38 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef M64P_RDP_RDP_CORE_H
-#define M64P_RDP_RDP_CORE_H
+#ifndef M64P_DEVICE_RCP_RDP_RDP_CORE_H
+#define M64P_DEVICE_RCP_RDP_RDP_CORE_H
 
 #include <stdint.h>
 
 #include "fb.h"
+#include "osal/preproc.h"
 
-#ifndef DPC_REG
-#define DPC_REG(a)   ((a & 0x1f) >> 2)
-#endif
-
-#ifndef DPS_REG
-#define DPS_REG(a)   ((a & 0x1f) >> 2)
-#endif
-
-struct r4300_core;
 struct mi_controller;
 struct rsp_core;
-struct ri_controller;
 
 enum
 {
-   /* DPC status - read */
-   DPC_STATUS_XBUS_DMEM_DMA = 0x001,
-   DPC_STATUS_FREEZE        = 0x002,
-   DPC_STATUS_FLUSH         = 0x004,
-   DPC_STATUS_START_GCLK    = 0x008,
-   DPC_STATUS_CBUF_READY    = 0x080,
-   /* DPC status - write */
-   DPC_STATUS_CLR_XBUS_DMEM_DMA = 0x001,
-   DPC_STATUS_SET_XBUS_DMEM_DMA = 0x002,
-   DPC_STATUS_CLR_FREEZE        = 0x004,
-   DPC_STATUS_SET_FREEZE        = 0x008,
-   DPC_STATUS_CLR_FLUSH         = 0x010,
-   DPC_STATUS_SET_FLUSH         = 0x020,
-   DPC_STATUS_CLR_TMEM_CTR      = 0x040,
-   DPC_STATUS_CLR_PIPE_CTR      = 0x080,
-   DPC_STATUS_CLR_CMD_CTR       = 0x100,
-   DPC_STATUS_CLR_CLOCK_CTR     = 0x200,
-};
-
-/* Work that was deferred while DPC_STATUS_FREEZE was set; flushed
- * when CLR_FREEZE is written to DPC_STATUS_REG. */
-enum
-{
-   DELAY_DP_INT        = 0x001,
-   DELAY_UPDATESCREEN  = 0x002
+    /* DPC status - read */
+    DPC_STATUS_XBUS_DMEM_DMA = 0x001,
+    DPC_STATUS_FREEZE        = 0x002,
+    DPC_STATUS_FLUSH         = 0x004,
+    DPC_STATUS_START_GCLK    = 0x008,
+    DPC_STATUS_CBUF_READY    = 0x080,
+    DPC_STATUS_END_VALID     = 0x200,
+    DPC_STATUS_START_VALID   = 0x400,
+    /* DPC status - write */
+    DPC_CLR_XBUS_DMEM_DMA        = 0x001,
+    DPC_SET_XBUS_DMEM_DMA        = 0x002,
+    DPC_CLR_FREEZE               = 0x004,
+    DPC_SET_FREEZE               = 0x008,
+    DPC_CLR_FLUSH                = 0x010,
+    DPC_SET_FLUSH                = 0x020,
+    DPC_CLR_TMEM_CTR             = 0x040,
+    DPC_CLR_PIPE_CTR             = 0x080,
+    DPC_CLR_CMD_CTR              = 0x100,
+    DPC_CLR_CLOCK_CTR            = 0x200
 };
 
 enum dpc_registers
@@ -90,6 +75,11 @@ enum dps_registers
     DPS_REGS_COUNT
 };
 
+enum
+{
+    DELAY_DP_INT = 0x001,
+    DELAY_UPDATESCREEN = 0x002
+};
 
 struct rdp_core
 {
@@ -99,24 +89,35 @@ struct rdp_core
 
     struct fb fb;
 
-    struct mi_controller* mi;
     struct rsp_core* sp;
-    struct ri_controller* ri;
+    struct mi_controller* mi;
 };
 
+static osal_inline uint32_t dpc_reg(uint32_t address)
+{
+    return (address & 0xffff) >> 2;
+}
+
+static osal_inline uint32_t dps_reg(uint32_t address)
+{
+    return (address & 0xffff) >> 2;
+}
+
 void init_rdp(struct rdp_core* dp,
-                 struct mi_controller* mi,
-                 struct rsp_core* sp,
-                 struct ri_controller* ri);
+              struct rsp_core* sp,
+              struct mi_controller* mi,
+              struct memory* mem,
+              struct rdram* rdram,
+              struct r4300_core* r4300);
 
 void poweron_rdp(struct rdp_core* dp);
 
-int read_dpc_regs(void* opaque, uint32_t address, uint32_t* value);
-int write_dpc_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask);
+void read_dpc_regs(void* opaque, uint32_t address, uint32_t* value);
+void write_dpc_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask);
 
-int read_dps_regs(void* opaque, uint32_t address, uint32_t* value);
-int write_dps_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask);
+void read_dps_regs(void* opaque, uint32_t address, uint32_t* value);
+void write_dps_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask);
 
-void rdp_interrupt_event(struct rdp_core* dp);
+void rdp_interrupt_event(void* opaque);
 
 #endif

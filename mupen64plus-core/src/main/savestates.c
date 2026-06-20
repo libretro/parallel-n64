@@ -84,7 +84,7 @@ int savestates_load_m64p(const unsigned char *data, size_t size)
    int version;
    int i;
    uint32_t FCR31;
-   uint32_t* cp0_regs = r4300_cp0_regs();
+   uint32_t* cp0_regs = r4300_cp0_regs(&g_dev.r4300.cp0);
    unsigned char *curr = (unsigned char*)data; // < HACK
 
    /* Read and check Mupen64Plus magic number. */
@@ -113,16 +113,16 @@ int savestates_load_m64p(const unsigned char *data, size_t size)
    curr += 32;
 
    /* Parse savestate */
-   g_dev.rdram.regs[RDRAM_CONFIG_REG] = GETDATA(curr, uint32_t);
-   g_dev.rdram.regs[RDRAM_DEVICE_ID_REG] = GETDATA(curr, uint32_t);
-   g_dev.rdram.regs[RDRAM_DELAY_REG] = GETDATA(curr, uint32_t);
-   g_dev.rdram.regs[RDRAM_MODE_REG] = GETDATA(curr, uint32_t);
-   g_dev.rdram.regs[RDRAM_REF_INTERVAL_REG] = GETDATA(curr, uint32_t);
-   g_dev.rdram.regs[RDRAM_REF_ROW_REG] = GETDATA(curr, uint32_t);
-   g_dev.rdram.regs[RDRAM_RAS_INTERVAL_REG] = GETDATA(curr, uint32_t);
-   g_dev.rdram.regs[RDRAM_MIN_INTERVAL_REG] = GETDATA(curr, uint32_t);
-   g_dev.rdram.regs[RDRAM_ADDR_SELECT_REG] = GETDATA(curr, uint32_t);
-   g_dev.rdram.regs[RDRAM_DEVICE_MANUF_REG] = GETDATA(curr, uint32_t);
+   g_dev.rdram.regs[0][RDRAM_CONFIG_REG] = GETDATA(curr, uint32_t);
+   g_dev.rdram.regs[0][RDRAM_DEVICE_ID_REG] = GETDATA(curr, uint32_t);
+   g_dev.rdram.regs[0][RDRAM_DELAY_REG] = GETDATA(curr, uint32_t);
+   g_dev.rdram.regs[0][RDRAM_MODE_REG] = GETDATA(curr, uint32_t);
+   g_dev.rdram.regs[0][RDRAM_REF_INTERVAL_REG] = GETDATA(curr, uint32_t);
+   g_dev.rdram.regs[0][RDRAM_REF_ROW_REG] = GETDATA(curr, uint32_t);
+   g_dev.rdram.regs[0][RDRAM_RAS_INTERVAL_REG] = GETDATA(curr, uint32_t);
+   g_dev.rdram.regs[0][RDRAM_MIN_INTERVAL_REG] = GETDATA(curr, uint32_t);
+   g_dev.rdram.regs[0][RDRAM_ADDR_SELECT_REG] = GETDATA(curr, uint32_t);
+   g_dev.rdram.regs[0][RDRAM_DEVICE_MANUF_REG] = GETDATA(curr, uint32_t);
 
    curr += 4; /* Padding from old implementation */
    g_dev.mi.regs[MI_INIT_MODE_REG] = GETDATA(curr, uint32_t);
@@ -244,77 +244,75 @@ int savestates_load_m64p(const unsigned char *data, size_t size)
    g_dev.cart.use_flashram = GETDATA(curr, int);
    g_dev.cart.flashram.mode = GETDATA(curr, int);
    g_dev.cart.flashram.status = GETDATA(curr, unsigned long long);
-   g_dev.cart.flashram.erase_offset = GETDATA(curr, unsigned int);
-   g_dev.cart.flashram.write_pointer = GETDATA(curr, unsigned int);
 
-   COPYARRAY(tlb_LUT_r, curr, unsigned int, 0x100000);
-   COPYARRAY(tlb_LUT_w, curr, unsigned int, 0x100000);
+   COPYARRAY(g_dev.r4300.cp0.tlb.LUT_r, curr, unsigned int, 0x100000);
+   COPYARRAY(g_dev.r4300.cp0.tlb.LUT_w, curr, unsigned int, 0x100000);
 
-   *r4300_llbit() = GETDATA(curr, unsigned int);
-   COPYARRAY(r4300_regs(), curr, int64_t, 32);
+   *r4300_llbit(&g_dev.r4300) = GETDATA(curr, unsigned int);
+   COPYARRAY(r4300_regs(&g_dev.r4300), curr, int64_t, 32);
    COPYARRAY(cp0_regs, curr, uint32_t, 32);
-   set_fpr_pointers(cp0_regs[CP0_STATUS_REG]);
-   *r4300_mult_lo() = GETDATA(curr, int64_t);
-   *r4300_mult_hi() = GETDATA(curr, int64_t);
-   COPYARRAY(r4300_cp1_regs(), curr, int64_t, 32);
+   set_fpr_pointers(&g_dev.r4300.cp1, cp0_regs[CP0_STATUS_REG]);
+   *r4300_mult_lo(&g_dev.r4300) = GETDATA(curr, int64_t);
+   *r4300_mult_hi(&g_dev.r4300) = GETDATA(curr, int64_t);
+   COPYARRAY(r4300_cp1_regs(&g_dev.r4300), curr, int64_t, 32);
 
    /* 32-bit FPR mode requires data shuffling because 
     * 64-bit layout is always stored in savestate file */
    if ((cp0_regs[CP0_STATUS_REG] & UINT32_C(0x04000000)) == 0)  
-      shuffle_fpr_data(UINT32_C(0x04000000), 0);
-   *r4300_cp1_fcr0() = GETDATA(curr, uint32_t);
+      set_fpr_pointers(&g_dev.r4300.cp1, cp0_regs[CP0_STATUS_REG]);
+   *r4300_cp1_fcr0(&g_dev.r4300) = GETDATA(curr, uint32_t);
    FCR31 = GETDATA(curr, uint32_t);
-   *r4300_cp1_fcr31() = FCR31;
+   *r4300_cp1_fcr31(&g_dev.r4300) = FCR31;
    update_x86_rounding_mode(FCR31);
 
    for (i = 0; i < 32; i++)
    {
-      tlb_e[i].mask       = GETDATA(curr, short);
+      g_dev.r4300.cp0.tlb.entries[i].mask       = GETDATA(curr, short);
       curr += 2;
 
-      tlb_e[i].vpn2       = GETDATA(curr, unsigned int);
-      tlb_e[i].g          = GETDATA(curr, char);
-      tlb_e[i].asid       = GETDATA(curr, unsigned char);
+      g_dev.r4300.cp0.tlb.entries[i].vpn2       = GETDATA(curr, unsigned int);
+      g_dev.r4300.cp0.tlb.entries[i].g          = GETDATA(curr, char);
+      g_dev.r4300.cp0.tlb.entries[i].asid       = GETDATA(curr, unsigned char);
       curr += 2;
 
-      tlb_e[i].pfn_even   = GETDATA(curr, unsigned int);
-      tlb_e[i].c_even     = GETDATA(curr, char);
-      tlb_e[i].d_even     = GETDATA(curr, char);
-      tlb_e[i].v_even     = GETDATA(curr, char);
+      g_dev.r4300.cp0.tlb.entries[i].pfn_even   = GETDATA(curr, unsigned int);
+      g_dev.r4300.cp0.tlb.entries[i].c_even     = GETDATA(curr, char);
+      g_dev.r4300.cp0.tlb.entries[i].d_even     = GETDATA(curr, char);
+      g_dev.r4300.cp0.tlb.entries[i].v_even     = GETDATA(curr, char);
       curr++;
 
-      tlb_e[i].pfn_odd    = GETDATA(curr, unsigned int);
-      tlb_e[i].c_odd      = GETDATA(curr, char);
-      tlb_e[i].d_odd      = GETDATA(curr, char);
-      tlb_e[i].v_odd      = GETDATA(curr, char);
-      tlb_e[i].r          = GETDATA(curr, char);
+      g_dev.r4300.cp0.tlb.entries[i].pfn_odd    = GETDATA(curr, unsigned int);
+      g_dev.r4300.cp0.tlb.entries[i].c_odd      = GETDATA(curr, char);
+      g_dev.r4300.cp0.tlb.entries[i].d_odd      = GETDATA(curr, char);
+      g_dev.r4300.cp0.tlb.entries[i].v_odd      = GETDATA(curr, char);
+      g_dev.r4300.cp0.tlb.entries[i].r          = GETDATA(curr, char);
 
-      tlb_e[i].start_even = GETDATA(curr, unsigned int);
-      tlb_e[i].end_even   = GETDATA(curr, unsigned int);
-      tlb_e[i].phys_even  = GETDATA(curr, unsigned int);
-      tlb_e[i].start_odd  = GETDATA(curr, unsigned int);
-      tlb_e[i].end_odd    = GETDATA(curr, unsigned int);
-      tlb_e[i].phys_odd   = GETDATA(curr, unsigned int);
+      g_dev.r4300.cp0.tlb.entries[i].start_even = GETDATA(curr, unsigned int);
+      g_dev.r4300.cp0.tlb.entries[i].end_even   = GETDATA(curr, unsigned int);
+      g_dev.r4300.cp0.tlb.entries[i].phys_even  = GETDATA(curr, unsigned int);
+      g_dev.r4300.cp0.tlb.entries[i].start_odd  = GETDATA(curr, unsigned int);
+      g_dev.r4300.cp0.tlb.entries[i].end_odd    = GETDATA(curr, unsigned int);
+      g_dev.r4300.cp0.tlb.entries[i].phys_odd   = GETDATA(curr, unsigned int);
    }
 
-   savestates_load_set_pc(GETDATA(curr, uint32_t));
+   savestates_load_set_pc(&g_dev.r4300, GETDATA(curr, uint32_t));
 
-   *r4300_next_interrupt() = GETDATA(curr, unsigned int);
-   g_dev.vi.next_vi  = GETDATA(curr, unsigned int);
+   *r4300_cp0_next_interrupt(&g_dev.r4300.cp0) = GETDATA(curr, unsigned int);
+   g_dev.vi.delay  = GETDATA(curr, unsigned int);
    g_dev.vi.field    = GETDATA(curr, unsigned int);
 
    memcpy(queue, curr, sizeof(queue));
    to_little_endian_buffer(queue, 4, 256);
-   load_eventqueue_infos(queue);
+   load_eventqueue_infos(&g_dev.r4300.cp0, queue);
    curr += sizeof(queue);
 
-   *r4300_last_addr() = *r4300_pc();
+   *r4300_cp0_last_addr(&g_dev.r4300.cp0) = *r4300_pc(&g_dev.r4300);
    
    if( RollbackRtcOnLoadState && version >= 0x00010001 ) {
       struct tm timestamp;
+      /* af_rtc: next stores control/now/last_update_rtc (not tm) */
       COPYARRAY( ((void*)&timestamp), curr, int, 9 );
-      to_little_endian_buffer( (int*)&timestamp, 4, 9 );
-      af_rtc_set_time( &g_dev.cart.af_rtc, &timestamp );
+      g_dev.cart.af_rtc.control = (uint16_t)timestamp.tm_year;
    }
 
    /* Transfer Pak / GB cart volatile state (since 1.3); see the matching
@@ -324,7 +322,7 @@ int savestates_load_m64p(const unsigned char *data, size_t size)
    if (version >= 0x00010003) {
       for (i = 0; i < GAME_CONTROLLERS_COUNT; ++i)
       {
-         struct transferpak* tpk = &g_dev.pif.controllers[i].transferpak;
+         struct transferpak* tpk = &g_dev.transferpaks[i];
          struct gb_cart* gb = &tpk->gb_cart;
          struct mbc3_rtc* rtc = &gb->rtc;
          int j;
@@ -336,7 +334,7 @@ int savestates_load_m64p(const unsigned char *data, size_t size)
 
          gb->rom_bank = GETDATA(curr, uint32_t);
          gb->ram_bank = GETDATA(curr, uint32_t);
-         gb->has_rtc  = GETDATA(curr, uint32_t);
+         (void)GETDATA(curr, uint32_t); /* has_rtc dropped (next gb_cart) */
 
          for (j = 0; j < MBC3_RTC_REGS_COUNT; ++j)
             rtc->regs[j] = GETDATA(curr, uint8_t);
@@ -378,7 +376,7 @@ int savestates_save_m64p(unsigned char *data, size_t size)
    unsigned char outbuf[4];
    int i, queuelength;
    char queue[1024];
-   uint32_t* cp0_regs = r4300_cp0_regs();
+   uint32_t* cp0_regs = r4300_cp0_regs(&g_dev.r4300.cp0);
    unsigned char *curr = (unsigned char*)data;
 
    if (!curr)
@@ -392,7 +390,7 @@ int savestates_save_m64p(unsigned char *data, size_t size)
       return 0;
    }
 
-   queuelength = save_eventqueue_infos(queue);
+   queuelength = save_eventqueue_infos(&g_dev.r4300.cp0, queue);
 
    // Write the save state data to memory
    PUTARRAY(savestate_magic, curr, unsigned char, 8);
@@ -405,16 +403,16 @@ int savestates_save_m64p(unsigned char *data, size_t size)
 
    PUTARRAY(ROM_SETTINGS.MD5, curr, char, 32);
 
-   PUTDATA(curr, uint32_t, g_dev.rdram.regs[RDRAM_CONFIG_REG]);
-   PUTDATA(curr, uint32_t, g_dev.rdram.regs[RDRAM_DEVICE_ID_REG]);
-   PUTDATA(curr, uint32_t, g_dev.rdram.regs[RDRAM_DELAY_REG]);
-   PUTDATA(curr, uint32_t, g_dev.rdram.regs[RDRAM_MODE_REG]);
-   PUTDATA(curr, uint32_t, g_dev.rdram.regs[RDRAM_REF_INTERVAL_REG]);
-   PUTDATA(curr, uint32_t, g_dev.rdram.regs[RDRAM_REF_ROW_REG]);
-   PUTDATA(curr, uint32_t, g_dev.rdram.regs[RDRAM_RAS_INTERVAL_REG]);
-   PUTDATA(curr, uint32_t, g_dev.rdram.regs[RDRAM_MIN_INTERVAL_REG]);
-   PUTDATA(curr, uint32_t, g_dev.rdram.regs[RDRAM_ADDR_SELECT_REG]);
-   PUTDATA(curr, uint32_t, g_dev.rdram.regs[RDRAM_DEVICE_MANUF_REG]);
+   PUTDATA(curr, uint32_t, g_dev.rdram.regs[0][RDRAM_CONFIG_REG]);
+   PUTDATA(curr, uint32_t, g_dev.rdram.regs[0][RDRAM_DEVICE_ID_REG]);
+   PUTDATA(curr, uint32_t, g_dev.rdram.regs[0][RDRAM_DELAY_REG]);
+   PUTDATA(curr, uint32_t, g_dev.rdram.regs[0][RDRAM_MODE_REG]);
+   PUTDATA(curr, uint32_t, g_dev.rdram.regs[0][RDRAM_REF_INTERVAL_REG]);
+   PUTDATA(curr, uint32_t, g_dev.rdram.regs[0][RDRAM_REF_ROW_REG]);
+   PUTDATA(curr, uint32_t, g_dev.rdram.regs[0][RDRAM_RAS_INTERVAL_REG]);
+   PUTDATA(curr, uint32_t, g_dev.rdram.regs[0][RDRAM_MIN_INTERVAL_REG]);
+   PUTDATA(curr, uint32_t, g_dev.rdram.regs[0][RDRAM_ADDR_SELECT_REG]);
+   PUTDATA(curr, uint32_t, g_dev.rdram.regs[0][RDRAM_DEVICE_MANUF_REG]);
 
    PUTDATA(curr, uint32_t, 0);
    PUTDATA(curr, uint32_t, g_dev.mi.regs[MI_INIT_MODE_REG]);
@@ -556,57 +554,55 @@ int savestates_save_m64p(unsigned char *data, size_t size)
    PUTDATA(curr, int, g_dev.cart.use_flashram);
    PUTDATA(curr, int, g_dev.cart.flashram.mode);
    PUTDATA(curr, unsigned long long, g_dev.cart.flashram.status);
-   PUTDATA(curr, unsigned int, g_dev.cart.flashram.erase_offset);
-   PUTDATA(curr, unsigned int, g_dev.cart.flashram.write_pointer);
 
-   PUTARRAY(tlb_LUT_r, curr, unsigned int, 0x100000);
-   PUTARRAY(tlb_LUT_w, curr, unsigned int, 0x100000);
+   PUTARRAY(g_dev.r4300.cp0.tlb.LUT_r, curr, unsigned int, 0x100000);
+   PUTARRAY(g_dev.r4300.cp0.tlb.LUT_w, curr, unsigned int, 0x100000);
 
-   PUTDATA(curr, unsigned int, *r4300_llbit());
-   PUTARRAY(r4300_regs(), curr, int64_t, 32);
+   PUTDATA(curr, unsigned int, *r4300_llbit(&g_dev.r4300));
+   PUTARRAY(r4300_regs(&g_dev.r4300), curr, int64_t, 32);
    PUTARRAY(cp0_regs, curr, uint32_t, 32);
-   PUTDATA(curr, int64_t, *r4300_mult_lo());
-   PUTDATA(curr, int64_t, *r4300_mult_hi());
+   PUTDATA(curr, int64_t, *r4300_mult_lo(&g_dev.r4300));
+   PUTDATA(curr, int64_t, *r4300_mult_hi(&g_dev.r4300));
 
    if ((cp0_regs[CP0_STATUS_REG] & UINT32_C(0x04000000)) == 0) // FR bit == 0 means 32-bit (MIPS I) FGR mode
-      shuffle_fpr_data(0, UINT32_C(0x04000000));  // shuffle data into 64-bit register format for storage
-   PUTARRAY(r4300_cp1_regs(), curr, int64_t, 32);
+      set_fpr_pointers(&g_dev.r4300.cp1, cp0_regs[CP0_STATUS_REG]);
+   PUTARRAY(r4300_cp1_regs(&g_dev.r4300), curr, int64_t, 32);
    if ((cp0_regs[CP0_STATUS_REG] & UINT32_C(0x04000000)) == 0)
-      shuffle_fpr_data(UINT32_C(0x04000000), 0);  // put it back in 32-bit mode
+      set_fpr_pointers(&g_dev.r4300.cp1, cp0_regs[CP0_STATUS_REG]);  // put it back in 32-bit mode
 
-   PUTDATA(curr, uint32_t, *r4300_cp1_fcr0());
-   PUTDATA(curr, uint32_t, *r4300_cp1_fcr31());
+   PUTDATA(curr, uint32_t, *r4300_cp1_fcr0(&g_dev.r4300));
+   PUTDATA(curr, uint32_t, *r4300_cp1_fcr31(&g_dev.r4300));
 
    for (i = 0; i < 32; i++)
    {
-      PUTDATA(curr, short, tlb_e[i].mask);
+      PUTDATA(curr, short, g_dev.r4300.cp0.tlb.entries[i].mask);
       PUTDATA(curr, short, 0);
-      PUTDATA(curr, unsigned int, tlb_e[i].vpn2);
-      PUTDATA(curr, char, tlb_e[i].g);
-      PUTDATA(curr, unsigned char, tlb_e[i].asid);
+      PUTDATA(curr, unsigned int, g_dev.r4300.cp0.tlb.entries[i].vpn2);
+      PUTDATA(curr, char, g_dev.r4300.cp0.tlb.entries[i].g);
+      PUTDATA(curr, unsigned char, g_dev.r4300.cp0.tlb.entries[i].asid);
       PUTDATA(curr, short, 0);
-      PUTDATA(curr, unsigned int, tlb_e[i].pfn_even);
-      PUTDATA(curr, char, tlb_e[i].c_even);
-      PUTDATA(curr, char, tlb_e[i].d_even);
-      PUTDATA(curr, char, tlb_e[i].v_even);
+      PUTDATA(curr, unsigned int, g_dev.r4300.cp0.tlb.entries[i].pfn_even);
+      PUTDATA(curr, char, g_dev.r4300.cp0.tlb.entries[i].c_even);
+      PUTDATA(curr, char, g_dev.r4300.cp0.tlb.entries[i].d_even);
+      PUTDATA(curr, char, g_dev.r4300.cp0.tlb.entries[i].v_even);
       PUTDATA(curr, char, 0);
-      PUTDATA(curr, unsigned int, tlb_e[i].pfn_odd);
-      PUTDATA(curr, char, tlb_e[i].c_odd);
-      PUTDATA(curr, char, tlb_e[i].d_odd);
-      PUTDATA(curr, char, tlb_e[i].v_odd);
-      PUTDATA(curr, char, tlb_e[i].r);
+      PUTDATA(curr, unsigned int, g_dev.r4300.cp0.tlb.entries[i].pfn_odd);
+      PUTDATA(curr, char, g_dev.r4300.cp0.tlb.entries[i].c_odd);
+      PUTDATA(curr, char, g_dev.r4300.cp0.tlb.entries[i].d_odd);
+      PUTDATA(curr, char, g_dev.r4300.cp0.tlb.entries[i].v_odd);
+      PUTDATA(curr, char, g_dev.r4300.cp0.tlb.entries[i].r);
 
-      PUTDATA(curr, unsigned int, tlb_e[i].start_even);
-      PUTDATA(curr, unsigned int, tlb_e[i].end_even);
-      PUTDATA(curr, unsigned int, tlb_e[i].phys_even);
-      PUTDATA(curr, unsigned int, tlb_e[i].start_odd);
-      PUTDATA(curr, unsigned int, tlb_e[i].end_odd);
-      PUTDATA(curr, unsigned int, tlb_e[i].phys_odd);
+      PUTDATA(curr, unsigned int, g_dev.r4300.cp0.tlb.entries[i].start_even);
+      PUTDATA(curr, unsigned int, g_dev.r4300.cp0.tlb.entries[i].end_even);
+      PUTDATA(curr, unsigned int, g_dev.r4300.cp0.tlb.entries[i].phys_even);
+      PUTDATA(curr, unsigned int, g_dev.r4300.cp0.tlb.entries[i].start_odd);
+      PUTDATA(curr, unsigned int, g_dev.r4300.cp0.tlb.entries[i].end_odd);
+      PUTDATA(curr, unsigned int, g_dev.r4300.cp0.tlb.entries[i].phys_odd);
    }
-   PUTDATA(curr, uint32_t, *r4300_pc());
+   PUTDATA(curr, uint32_t, *r4300_pc(&g_dev.r4300));
 
-   PUTDATA(curr, unsigned int, *r4300_next_interrupt());
-   PUTDATA(curr, unsigned int, g_dev.vi.next_vi);
+   PUTDATA(curr, unsigned int, *r4300_cp0_next_interrupt(&g_dev.r4300.cp0));
+   PUTDATA(curr, unsigned int, g_dev.vi.delay);
    PUTDATA(curr, unsigned int, g_dev.vi.field);
 
    to_little_endian_buffer(queue, 4, queuelength/4);
@@ -617,8 +613,9 @@ int savestates_save_m64p(unsigned char *data, size_t size)
       curr += sizeof(queue) - queuelength;
    }
 
-   const struct tm *timestamp = af_rtc_get_time( &g_dev.cart.af_rtc );
-   PUTARRAY( timestamp, curr, int, 9 );
+   struct tm af_rtc_tm; memset(&af_rtc_tm, 0, sizeof(af_rtc_tm));
+   af_rtc_tm.tm_year = (int)g_dev.cart.af_rtc.control;
+   PUTARRAY( &af_rtc_tm, curr, int, 9 );
    to_little_endian_buffer( (curr - 36), 4, 9 );
 
    /* Transfer Pak / GB cart volatile state (since 1.3).
@@ -633,7 +630,7 @@ int savestates_save_m64p(unsigned char *data, size_t size)
     * so the layout stays trivially seekable across versions. */
    for (i = 0; i < GAME_CONTROLLERS_COUNT; ++i)
    {
-      struct transferpak* tpk = &g_dev.pif.controllers[i].transferpak;
+      struct transferpak* tpk = &g_dev.transferpaks[i];
       struct gb_cart* gb = &tpk->gb_cart;
       struct mbc3_rtc* rtc = &gb->rtc;
       int j;
@@ -645,7 +642,7 @@ int savestates_save_m64p(unsigned char *data, size_t size)
 
       PUTDATA(curr, uint32_t, gb->rom_bank);
       PUTDATA(curr, uint32_t, gb->ram_bank);
-      PUTDATA(curr, uint32_t, gb->has_rtc);
+      PUTDATA(curr, uint32_t, 0); /* has_rtc dropped (next gb_cart) */
 
       for (j = 0; j < MBC3_RTC_REGS_COUNT; ++j)
          PUTDATA(curr, uint8_t, rtc->regs[j]);
@@ -673,3 +670,22 @@ int savestates_save_m64p(unsigned char *data, size_t size)
 
    return 1;
 }
+
+/* ---- libretro-fork savestate job/slot stubs -----------------------------
+ * The RetroArch frontend manages save slots itself and drives save/load
+ * through the buffer-based savestates_save_m64p/load_m64p above. next's
+ * upstream job/slot scheduler (SDL-mutex based) is not used here; these
+ * stubs satisfy frontend.c / CoreDoCommand without pulling in SDL. */
+static unsigned int l_savestate_slot = 0;
+
+savestates_job savestates_get_job(void) { return savestates_job_nothing; }
+void savestates_set_job(savestates_job j, savestates_type t, const char *fn)
+{ (void)j; (void)t; (void)fn; }
+void savestates_select_slot(unsigned int s) { l_savestate_slot = s; }
+unsigned int savestates_get_slot(void) { return l_savestate_slot; }
+void savestates_inc_slot(void) { l_savestate_slot = (l_savestate_slot + 1) % 10; }
+void savestates_set_autoinc_slot(int b) { (void)b; }
+void savestates_init(void) { }
+void savestates_deinit(void) { }
+int  savestates_save(void) { return 0; }
+int  savestates_load(void) { return 0; }

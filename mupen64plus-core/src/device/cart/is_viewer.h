@@ -36,7 +36,7 @@ struct is_viewer
 
 void poweron_is_viewer(struct is_viewer* is_viewer);
 
-int read_is_viewer(void* opaque, uint32_t address, uint32_t* value);
-int write_is_viewer(void* opaque, uint32_t address, uint32_t value, uint32_t mask);
+void read_is_viewer(void* opaque, uint32_t address, uint32_t* value);
+void write_is_viewer(void* opaque, uint32_t address, uint32_t value, uint32_t mask);
 
 #endif

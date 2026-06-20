@@ -8,6 +8,8 @@
 
 #include "m64p_plugin.h"
 
+extern GFX_INFO gfx_info;
+
 #ifdef __cplusplus
 extern "C" {
 #endif

@@ -1,6 +1,6 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *   Mupen64plus - transferpak.h                                           *
- *   Mupen64Plus homepage: http://code.google.com/p/mupen64plus/           *
+ *   Mupen64Plus homepage: https://mupen64plus.org/                        *
  *   Copyright (C) 2014 Bobby Smiles                                       *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
@@ -19,13 +19,13 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#ifndef M64P_SI_TRANSFERPAK_H
-#define M64P_SI_TRANSFERPAK_H
+#ifndef M64P_DEVICE_SI_TRANSFERPAK_H
+#define M64P_DEVICE_SI_TRANSFERPAK_H
 
-struct pak_interface;
+#include <stddef.h>
 #include <stdint.h>
 
-#include "../../gb/gb_cart.h"
+struct gb_cart;
 
 enum cart_access_mode
 {
@@ -41,17 +41,13 @@ struct transferpak
     unsigned int access_mode;
     unsigned int access_mode_changed;
 
-    struct gb_cart gb_cart;
+    struct gb_cart* gb_cart;
 };
 
-int init_transferpak(struct transferpak* tpk, uint8_t *rom, size_t rom_size);
-void release_transferpak(struct transferpak* tpk);
+void init_transferpak(struct transferpak* tpk, struct gb_cart* gb_cart);
+void poweron_transferpak(struct transferpak* tpk);
 
-void transferpak_read_command(struct transferpak* tpk, uint16_t address, uint8_t* data, size_t size);
-void transferpak_write_command(struct transferpak* tpk, uint16_t address, const uint8_t* data, size_t size);
+void change_gb_cart(struct transferpak* tpk, struct gb_cart* gb_cart);
 
-
-/* mupen64plus-next pak_interface (region 12c) */
 extern const struct pak_interface g_itransferpak;
-
 #endif
