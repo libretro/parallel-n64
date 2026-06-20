@@ -907,14 +907,18 @@ ifeq ($(WITH_DYNAREC), $(filter $(WITH_DYNAREC), x86_64 x64))
    endif
 endif
 ifeq ($(WITH_DYNAREC), x86)
-   ifneq (,$(findstring unix,$(platform)))
-      HAVE_ARI64_X86 = 1
-      NASMFLAGS = -f elf32 -DELF_TYPE
-   else ifneq (,$(findstring win,$(platform)))
-      HAVE_ARI64_X86 = 1
-      NASMFLAGS = -f win32
-   endif
+   # The 32-bit (i686) ari64 dynarec is not built: its win32 linkage is emitted
+   # without the leading-underscore symbol decoration the Win32 cdecl ABI
+   # requires (NASMFLAGS lacks -DLEADING_UNDERSCORE), so it does not link, and
+   # the path is otherwise unvalidated in this fork. Leave HAVE_ARI64_X86 off so
+   # i686 builds the interpreters only. Set HAVE_ARI64_X86=1 explicitly to opt in
+   # if/when the 32-bit linkage is fixed.
    ifeq ($(HAVE_ARI64_X86), 1)
+      ifneq (,$(findstring unix,$(platform)))
+         NASMFLAGS = -f elf32 -DELF_TYPE
+      else ifneq (,$(findstring win,$(platform)))
+         NASMFLAGS = -f win32 -DLEADING_UNDERSCORE
+      endif
       # The generated code and linkage only keep 4-byte stack alignment
       # (the pre-SSE i386 ABI); have gcc realign in functions that spill
       # SSE registers instead of assuming 16-byte incoming alignment.

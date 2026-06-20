@@ -506,8 +506,10 @@ void reset_hard_handler(void* opaque)
     {
         if (!hacktarux)
         {
+#ifdef NEW_DYNAREC
             new_dynarec_cleanup();
             new_dynarec_init();
+#endif
         }
         else
         {

@@ -167,7 +167,9 @@ void run_r4300(struct r4300_core* r4300)
 
             if (!hacktarux)
             {
+#ifdef NEW_DYNAREC
                 new_dynarec_init();
+#endif
             }
 #ifdef HAVE_DYNAREC_HACKTARUX
             else
@@ -185,7 +187,9 @@ void run_r4300(struct r4300_core* r4300)
 
         if (!hacktarux)
         {
+#ifdef NEW_DYNAREC
             new_dyna_start();
+#endif
         }
 #ifdef HAVE_DYNAREC_HACKTARUX
         else
@@ -205,8 +209,10 @@ void run_r4300(struct r4300_core* r4300)
 
         if (!frame_break)
         {
+#ifdef NEW_DYNAREC
             if (!hacktarux)
                 new_dynarec_cleanup();
+#endif
             free_blocks(&r4300->cached_interp);
             r4300->recomp.dyna_setup_started = 0; /* next ROM boots from start_address */
             l_dyna_inited = 0; /* allow re-init for the next ROM */
@@ -461,11 +467,13 @@ void invalidate_r4300_cached_code(struct r4300_core* r4300, uint32_t address, si
 {
     if (r4300->emumode != EMUMODE_PURE_INTERPRETER)
     {
+#ifdef NEW_DYNAREC
         if (r4300->emumode == EMUMODE_DYNAREC && r4300_jit_backend == R4300_JIT_ARI64)
         {
             invalidate_cached_code_new_dynarec(r4300, address, size);
         }
         else
+#endif
         {
             invalidate_cached_code_hacktarux(r4300, address, size);
         }

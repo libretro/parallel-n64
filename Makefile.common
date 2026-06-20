@@ -219,12 +219,13 @@ endif
 
 ### DYNAREC ###
 ifdef WITH_DYNAREC
-	DYNAFLAGS += -DDYNAREC
 	ifeq ($(WITH_DYNAREC), arm)
+		DYNAFLAGS += -DDYNAREC
 		DYNAFLAGS += -DNEW_DYNAREC=3
 	endif
 
 	ifeq ($(WITH_DYNAREC), aarch64)
+		DYNAFLAGS += -DDYNAREC
 		DYNAFLAGS += -DNEW_DYNAREC=4
 	endif
 
@@ -232,9 +233,16 @@ ifdef WITH_DYNAREC
 		DYNAFLAGS += -D_M_IX86
 		CFLAGS += -DARCH_MIN_SSE2 
 		CXXFLAGS += -DARCH_MIN_SSE2
-		# Default the ari64 new dynarec on for a bare x86 build.
-		HAVE_ARI64_X86 ?= 1
+		# NOTE: the 32-bit (x86/i686) ari64 dynarec is NOT built by default: its
+		# codegen unit (new_dynarec/x86/assem_x86.c, which defines new_dyna_start,
+		# invalidate_block_*, jump_vaddr_*, the dyna_linker family, ...) is not
+		# wired into the build, so enabling it produces an unlinkable core. i686
+		# therefore runs the interpreters only. Do not default HAVE_ARI64_X86 on.
+		# -DDYNAREC is only set when a backend is actually compiled, otherwise the
+		# core references ari64 entry points (new_dyna_start, ...) that do not
+		# exist and fails to link.
 		ifeq ($(HAVE_ARI64_X86), 1)
+			DYNAFLAGS += -DDYNAREC
 			DYNAFLAGS += -DNEW_DYNAREC=1
 			SOURCES_C += $(CORE_DIR)/src/device/r4300/new_dynarec/new_dynarec.c
 			SOURCES_NASM += $(CORE_DIR)/src/device/r4300/new_dynarec/x86/linkage_x86.asm
@@ -242,6 +250,7 @@ ifdef WITH_DYNAREC
 	endif
 
 	ifeq ($(WITH_DYNAREC), x86_64)
+		DYNAFLAGS += -DDYNAREC
 		DYNAFLAGS += -D_M_X64
 		CFLAGS += -DARCH_MIN_SSE2
 		CXXFLAGS += -DARCH_MIN_SSE2
