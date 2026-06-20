@@ -40,9 +40,8 @@ void init_cp0(struct cp0* cp0, unsigned int count_per_op, unsigned int count_per
 {
     cp0->count_per_op = count_per_op;
     cp0->count_per_op_denom_pot = count_per_op_denom_pot;
-#ifdef NEW_DYNAREC
+    /* Always store the ari64 hot-state pointer; accessors gate its use. */
     cp0->new_dynarec_hot_state = new_dynarec_hot_state;
-#endif
 
     memcpy(cp0->interrupt_handlers, interrupt_handlers, CP0_INTERRUPT_HANDLERS_COUNT*sizeof(*interrupt_handlers));
 }
@@ -81,24 +80,31 @@ void poweron_cp0(struct cp0* cp0)
 }
 
 
+/* ari64 keeps the live CP0 regs/latch/cycle_count in its hot state; the
+ * interpreters and Hacktarux use the cp0 struct fields. Dispatch on the
+ * selected backend (globals, since cp0 has no emumode of its own). */
+extern unsigned int r4300_emumode;
+extern unsigned int r4300_jit_backend;
+
+static int cp0_uses_ari64_hot_state(struct cp0* cp0)
+{
+    return (cp0->new_dynarec_hot_state != NULL)
+        && (r4300_emumode == EMUMODE_DYNAREC)
+        && (r4300_jit_backend == R4300_JIT_ARI64);
+}
+
 uint32_t* r4300_cp0_regs(struct cp0* cp0)
 {
-#ifndef NEW_DYNAREC
-    return cp0->regs;
-#else
-	/* New dynarec uses a different memory layout */
-    return cp0->new_dynarec_hot_state->cp0_regs;
-#endif
+    return cp0_uses_ari64_hot_state(cp0)
+        ? cp0->new_dynarec_hot_state->cp0_regs
+        : cp0->regs;
 }
 
 uint64_t* r4300_cp0_latch(struct cp0* cp0)
 {
-#ifndef NEW_DYNAREC
-    return &cp0->latch;
-#else
-    /* New dynarec uses a different memory layout */
-    return &cp0->new_dynarec_hot_state->cp0_latch;
-#endif
+    return cp0_uses_ari64_hot_state(cp0)
+        ? &cp0->new_dynarec_hot_state->cp0_latch
+        : &cp0->latch;
 }
 
 uint32_t* r4300_cp0_last_addr(struct cp0* cp0)
@@ -113,12 +119,9 @@ unsigned int* r4300_cp0_next_interrupt(struct cp0* cp0)
 
 int* r4300_cp0_cycle_count(struct cp0* cp0)
 {
-#ifndef NEW_DYNAREC
-    return &cp0->cycle_count;
-#else
-    /* New dynarec uses a different memory layout */
-    return &cp0->new_dynarec_hot_state->cycle_count;
-#endif
+    return cp0_uses_ari64_hot_state(cp0)
+        ? &cp0->new_dynarec_hot_state->cycle_count
+        : &cp0->cycle_count;
 }
 
 
@@ -153,10 +156,11 @@ void cp0_update_count(struct r4300_core* r4300)
     struct cp0* cp0 = &r4300->cp0;
     uint32_t* cp0_regs = r4300_cp0_regs(cp0);
 
-#ifdef NEW_DYNAREC
-    if (r4300->emumode != EMUMODE_DYNAREC)
+    /* ari64, when it is the active dynarec, maintains COUNT from its hot-state
+     * cycle counter; every other path (interpreters, and the Hacktarux dynarec)
+     * derives it from the PC delta. */
+    if (!(r4300->emumode == EMUMODE_DYNAREC && r4300_jit_backend == R4300_JIT_ARI64))
     {
-#endif
         uint32_t count = ((*r4300_pc(r4300) - cp0->last_addr) >> 2) * cp0->count_per_op;
         if (r4300->cp0.count_per_op_denom_pot) {
             count += (1 << r4300->cp0.count_per_op_denom_pot) - 1;
@@ -165,42 +169,45 @@ void cp0_update_count(struct r4300_core* r4300)
         cp0_regs[CP0_COUNT_REG] += count;
         *r4300_cp0_cycle_count(cp0) += count;
         cp0->last_addr = *r4300_pc(r4300);
-#ifdef NEW_DYNAREC
     }
     else
         cp0_regs[CP0_COUNT_REG] = *r4300_cp0_next_interrupt(cp0) + *r4300_cp0_cycle_count(cp0);
-#endif
 
 #ifdef COMPARE_CORE
    if (r4300->delay_slot)
      CoreCompareCallback();
 #endif
-/*#ifdef DBG
-   if (g_DebuggerActive && !r4300->delay_slot) update_debugger(*r4300_pc(r4300));
-#endif
-*/
 }
 
 static void exception_epilog(struct r4300_core* r4300)
 {
+    int in_dynarec = (r4300->emumode == EMUMODE_DYNAREC);
+    int hacktarux_dynarec_active =
+        in_dynarec && (r4300_jit_backend == R4300_JIT_HACKTARUX);
+    int do_epilog;
+
 #ifndef NO_ASM
-#ifndef NEW_DYNAREC
-    if (r4300->emumode == EMUMODE_DYNAREC)
+    /* Hacktarux dynarec: jump back into generated code (unless it was running
+     * the interpreter fallback for this block). */
+    if (hacktarux_dynarec_active)
     {
         dyna_jump();
         if (!r4300->recomp.dyna_interp) { r4300->delay_slot = 0; }
     }
 #endif
-#endif
 
-#ifndef NEW_DYNAREC
-    if (r4300->emumode != EMUMODE_DYNAREC || r4300->recomp.dyna_interp)
+    /* Run the interpreter-style epilog when not executing in active JIT code.
+     * Hacktarux: when not in dynarec, or when the block fell back to the
+     * interpreter (recomp.dyna_interp). ari64: only when not in dynarec
+     * (it has no interpreter-fallback flag). */
+    if (hacktarux_dynarec_active)
+        do_epilog = !in_dynarec || r4300->recomp.dyna_interp;
+    else
+        do_epilog = !in_dynarec;
+
+    if (do_epilog)
     {
         r4300->recomp.dyna_interp = 0;
-#else
-    if (r4300->emumode != EMUMODE_DYNAREC)
-    {
-#endif
         if (r4300->delay_slot)
         {
             r4300->skip_jump = *r4300_pc(r4300);

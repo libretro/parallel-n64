@@ -24,6 +24,7 @@
 
 #include "cp0.h"
 #include "cp1.h"
+#include "r4300_core.h"
 
 #include "new_dynarec/new_dynarec.h"
 
@@ -37,9 +38,9 @@
 
 void init_cp1(struct cp1* cp1, struct new_dynarec_hot_state* new_dynarec_hot_state)
 {
-#ifdef NEW_DYNAREC
+    /* Always store the ari64 hot-state pointer; the dispatch helpers gate its
+     * use on the selected backend. */
     cp1->new_dynarec_hot_state = new_dynarec_hot_state;
-#endif
 }
 
 void poweron_cp1(struct cp1* cp1)
@@ -56,6 +57,19 @@ void poweron_cp1(struct cp1* cp1)
 }
 
 
+/* ari64 keeps the live fcr0/fcr31 and FPR pointer tables in its hot state; the
+ * interpreters and Hacktarux use the cp1 struct fields. Dispatch on the
+ * selected backend. */
+extern unsigned int r4300_emumode;
+extern unsigned int r4300_jit_backend;
+
+static int cp1_uses_ari64_hot_state(struct cp1* cp1)
+{
+    return (cp1->new_dynarec_hot_state != NULL)
+        && (r4300_emumode == EMUMODE_DYNAREC)
+        && (r4300_jit_backend == R4300_JIT_ARI64);
+}
+
 cp1_reg* r4300_cp1_regs(struct cp1* cp1)
 {
     return cp1->regs;
@@ -63,42 +77,30 @@ cp1_reg* r4300_cp1_regs(struct cp1* cp1)
 
 float** r4300_cp1_regs_simple(struct cp1* cp1)
 {
-#ifndef NEW_DYNAREC
-	/* New dynarec uses a different memory layout */
-    return cp1->regs_simple;
-#else
-    return cp1->new_dynarec_hot_state->cp1_regs_simple;
-#endif
+    return cp1_uses_ari64_hot_state(cp1)
+        ? cp1->new_dynarec_hot_state->cp1_regs_simple
+        : cp1->regs_simple;
 }
 
 double** r4300_cp1_regs_double(struct cp1* cp1)
 {
-#ifndef NEW_DYNAREC
-	/* New dynarec uses a different memory layout */
-    return cp1->regs_double;
-#else
-    return cp1->new_dynarec_hot_state->cp1_regs_double;
-#endif
+    return cp1_uses_ari64_hot_state(cp1)
+        ? cp1->new_dynarec_hot_state->cp1_regs_double
+        : cp1->regs_double;
 }
 
 uint32_t* r4300_cp1_fcr0(struct cp1* cp1)
 {
-#ifndef NEW_DYNAREC
-	/* New dynarec uses a different memory layout */
-    return &cp1->fcr0;
-#else
-    return &cp1->new_dynarec_hot_state->cp1_fcr0;
-#endif
+    return cp1_uses_ari64_hot_state(cp1)
+        ? &cp1->new_dynarec_hot_state->cp1_fcr0
+        : &cp1->fcr0;
 }
 
 uint32_t* r4300_cp1_fcr31(struct cp1* cp1)
 {
-#ifndef NEW_DYNAREC
-	/* New dynarec uses a different memory layout */
-    return &cp1->fcr31;
-#else
-    return &cp1->new_dynarec_hot_state->cp1_fcr31;
-#endif
+    return cp1_uses_ari64_hot_state(cp1)
+        ? &cp1->new_dynarec_hot_state->cp1_fcr31
+        : &cp1->fcr31;
 }
 
 void set_fpr_pointers(struct cp1* cp1, uint32_t newStatus)

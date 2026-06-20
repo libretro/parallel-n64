@@ -182,11 +182,11 @@ enum {
 
 struct cp0
 {
-#ifndef NEW_DYNAREC
-	/* New dynarec uses a different memory layout */
+    /* CP0 registers. ari64 keeps the live copy in
+     * new_dynarec_hot_state.cp0_regs; the interpreters and Hacktarux use these.
+     * Both always present for runtime-selectable dynarecs. */
     uint32_t regs[CP0_REGS_COUNT];
     uint64_t latch;
-#endif
 
     /* set to avoid savestates/reset if state may be inconsistent
      * (e.g. in the middle of an instruction) */
@@ -195,17 +195,12 @@ struct cp0
     struct interrupt_queue q;
     unsigned int next_interrupt;
 
-#ifndef NEW_DYNAREC
-	/* New dynarec uses a different memory layout */
     int cycle_count;
-#endif
 
     struct interrupt_handler interrupt_handlers[CP0_INTERRUPT_HANDLERS_COUNT];
 
-#ifdef NEW_DYNAREC
-	/* New dynarec uses a different memory layout */
+    /* ari64 hot state pointer (NULL/unused for the other cores). */
     struct new_dynarec_hot_state* new_dynarec_hot_state;
-#endif
 
     uint32_t last_addr;
     unsigned int count_per_op;
@@ -214,15 +209,11 @@ struct cp0
     struct tlb tlb;
 };
 
-#ifndef NEW_DYNAREC
+/* idec.c Hacktarux codegen targets cp0.regs; ari64 uses its own cp0_regs
+ * offset through generated code. */
 #define R4300_CP0_REGS_OFFSET (\
     offsetof(struct r4300_core, cp0) + \
     offsetof(struct cp0, regs))
-#else
-#define R4300_CP0_REGS_OFFSET (\
-    offsetof(struct r4300_core, new_dynarec_hot_state) + \
-    offsetof(struct new_dynarec_hot_state, cp0_regs))
-#endif
 
 void init_cp0(struct cp0* cp0, unsigned int count_per_op, unsigned int count_per_op_denom_pot, struct new_dynarec_hot_state* new_dynarec_hot_state, const struct interrupt_handler* interrupt_handlers);
 void poweron_cp0(struct cp0* cp0);

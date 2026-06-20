@@ -31,6 +31,8 @@
 
 #include <string.h>
 
+extern unsigned int r4300_jit_backend;
+
 static osal_inline size_t fb_buffer_size(const FrameBufferInfo* fb_info)
 {
     return fb_info->width * fb_info->height * fb_info->size;
@@ -228,9 +230,12 @@ void protect_framebuffers(struct fb* fb)
         /* disable dynarec "fast memory" code generation to avoid direct memory accesses */
         if (fb->once) {
             fb->once = 0;
-#ifndef NEW_DYNAREC
-            fb->r4300->recomp.fast_memory = 0;
-#endif
+            /* The Hacktarux dynarec must drop fast_memory so its generated
+             * framebuffer writes route through the dirty-page-tracking handler;
+             * ari64 manages this via its own memory map. Runtime dispatch since
+             * both backends are compiled in. */
+            if (r4300_jit_backend == R4300_JIT_HACKTARUX)
+                fb->r4300->recomp.fast_memory = 0;
 
             /* also need to invalidate cached code to regen non fast memory code path */
             invalidate_r4300_cached_code(fb->r4300, 0, 0);

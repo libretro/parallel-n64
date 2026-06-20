@@ -158,6 +158,7 @@ save_memory_data saved_memory;
 
 static bool stop_stepping;
 extern unsigned int r4300_emumode;
+extern unsigned int r4300_jit_backend;
 int g_real_stop = 0; /* genuine emulation stop, vs per-frame mupencorestop yield */
 extern int frame_break; /* r4300: unwinds the CPU cores at the frame boundary */
 
@@ -1319,16 +1320,31 @@ void update_variables(bool startup)
 
    /* CPU core selection: pure interpreter (0), cached interpreter (1),
     * or dynamic recompiler (2+). next reads r4300_emumode at init_device;
-    * the fork exposes it via the parallel-n64-cpucore core option. */
+    * the fork exposes it via the parallel-n64-cpucore core option. When both
+    * dynarecs are compiled in, the dropdown also distinguishes the JIT backend
+    * (dynamic_recompiler -> Hacktarux, dynamic_recompiler_ari64 -> ari64), which
+    * sets r4300_jit_backend. */
    {
       struct retro_variable cpuvar;
       cpuvar.key = "parallel-n64-cpucore";
       cpuvar.value = NULL;
+      r4300_jit_backend = 0; /* default: ari64 */
       if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &cpuvar) && cpuvar.value)
       {
          if (!strcmp(cpuvar.value, "pure_interpreter"))   r4300_emumode = 0;
          else if (!strcmp(cpuvar.value, "cached_interpreter")) r4300_emumode = 1;
-         else                                             r4300_emumode = 2; /* dynarec */
+         else
+         {
+            r4300_emumode = 2; /* dynarec */
+#if defined(HAVE_DYNAREC_HACKTARUX) && defined(NEW_DYNAREC)
+            /* With both backends built, "dynamic_recompiler" selects Hacktarux
+             * and "dynamic_recompiler_ari64" selects ari64. */
+            if (!strcmp(cpuvar.value, "dynamic_recompiler_ari64"))
+               r4300_jit_backend = 0; /* R4300_JIT_ARI64 */
+            else
+               r4300_jit_backend = 1; /* R4300_JIT_HACKTARUX */
+#endif
+         }
       }
       else
          r4300_emumode = 2; /* default: dynamic recompiler */
@@ -2912,6 +2928,10 @@ int retro_return(bool just_flipping)
     * a real stop (mupencorestop latched by CoreDoCommand STOP) from this
     * per-frame yield via stop_stepping. */
    mupencorestop = 1;
+   /* mupencorestop aliases ari64's hot-state stop; also set the active backend's
+    * stop via the accessor so the Hacktarux dynarec (which checks r4300->stop in
+    * gen_interrupt) actually yields at the VI frame boundary. */
+   *r4300_stop(&g_dev.r4300) = 1;
 
    return 0;
 }

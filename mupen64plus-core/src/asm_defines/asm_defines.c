@@ -80,16 +80,12 @@
 /* Structure members definitions */
 DEFINE(device, r4300);
 
-#ifndef NEW_DYNAREC
-/* New dynarec uses a different memory layout */
 DEFINE(r4300_core, regs);
 DEFINE(r4300_core, hi);
 DEFINE(r4300_core, lo);
 
 DEFINE(r4300_core, stop);
-#endif
 
-#if !defined(NEW_DYNAREC)
 DEFINE(r4300_core, recomp);
 
 #if defined(__x86_64__)
@@ -104,14 +100,10 @@ DEFINE(recomp, save_edi);
 DEFINE(recomp, save_eip);
 #endif
 DEFINE(recomp, return_address);
-#endif /* !NEW_DYNAREC */
 
 DEFINE(r4300_core, cp0);
-#ifndef NEW_DYNAREC
-/* New dynarec uses a different memory layout */
 DEFINE(cp0, regs);
 DEFINE(cp0, next_interrupt);
-#endif
 DEFINE(cp0, last_addr);
 DEFINE(cp0, count_per_op);
 DEFINE(cp0, tlb);
@@ -123,7 +115,6 @@ DEFINE(tlb, LUT_w);
 DEFINE(r4300_core, cached_interp);
 DEFINE(cached_interp, invalid_code);
 
-#ifdef NEW_DYNAREC
 DEFINE(r4300_core, new_dynarec_hot_state);
 DEFINE(r4300_core, extra_memory);
 DEFINE(new_dynarec_hot_state, dynarec_local);
@@ -149,4 +140,3 @@ DEFINE(new_dynarec_hot_state, rt);
 DEFINE(new_dynarec_hot_state, rd);
 DEFINE(new_dynarec_hot_state, mini_ht);
 DEFINE(new_dynarec_hot_state, memory_map);
-#endif

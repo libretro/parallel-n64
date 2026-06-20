@@ -43,21 +43,18 @@
 void init_r4300(struct r4300_core* r4300, struct memory* mem, struct mi_controller* mi, struct rdram* rdram, const struct interrupt_handler* interrupt_handlers,
     unsigned int emumode, unsigned int count_per_op, unsigned int count_per_op_denom_pot, int no_compiled_jump, int randomize_interrupt, uint32_t start_address)
 {
+    /* Both dynarec layouts coexist; always pass the real hot-state pointer (the
+     * cpN accessors gate its use on the selected backend) and always initialise
+     * the Hacktarux recomp fields. */
     struct new_dynarec_hot_state* new_dynarec_hot_state =
-#ifdef NEW_DYNAREC
         &r4300->new_dynarec_hot_state;
-#else
-        NULL;
-#endif
 
     r4300->emumode = emumode;
     init_cp0(&r4300->cp0, count_per_op, count_per_op_denom_pot, new_dynarec_hot_state, interrupt_handlers);
     init_cp1(&r4300->cp1, new_dynarec_hot_state);
     init_cp2(&r4300->cp2, new_dynarec_hot_state);
 
-#ifndef NEW_DYNAREC
     r4300->recomp.no_compiled_jump = no_compiled_jump;
-#endif
 
     r4300->mem = mem;
     r4300->mi = mi;
@@ -81,8 +78,7 @@ void poweron_r4300(struct r4300_core* r4300)
     r4300->reset_hard_job = 0;
 
 
-    /* recomp init */
-#ifndef NEW_DYNAREC
+    /* recomp init (Hacktarux dynarec state; always present) */
     r4300->recomp.delay_slot_compiled = 0;
     r4300->recomp.fast_memory = 1;
     r4300->recomp.local_rs = 0;
@@ -111,7 +107,7 @@ void poweron_r4300(struct r4300_core* r4300)
 #endif
 
     r4300->recomp.branch_taken = 0;
-#endif /* !NEW_DYNAREC */
+    r4300->recomp.dyna_setup_started = 0;
 
     /* setup CP0 registers */
     poweron_cp0(&r4300->cp0);
@@ -151,43 +147,62 @@ void run_r4300(struct r4300_core* r4300)
 #if defined(DYNAREC)
     else if (r4300->emumode >= 2)
     {
-        /* Re-enterable per-frame (fork has no libco): initialise the dynarec
-         * once, then each slice re-enters new_dyna_start (which resumes at the
-         * seeded pcaddr). new_dyna_start returns on frame_break (yield) or on a
-         * real stop; only tear down on a real stop. */
+        /* Re-enterable per-frame (fork has no libco): initialise the selected
+         * dynarec once, then each slice re-enters it (resuming at the seeded
+         * pcaddr / recompiled address). The start call returns on frame_break
+         * (yield) or on a real stop; only tear down on a real stop. */
         static int l_dyna_inited = 0;
+        int hacktarux = (r4300_jit_backend == R4300_JIT_HACKTARUX);
+
         if (!l_dyna_inited)
         {
-            DebugMessage(M64MSG_INFO, "Starting R4300 emulator: Dynamic Recompiler");
+            DebugMessage(M64MSG_INFO, "Starting R4300 emulator: Dynamic Recompiler (%s)",
+                hacktarux ? "Hacktarux" : "Ari64");
             r4300->emumode = EMUMODE_DYNAREC;
             init_blocks(&r4300->cached_interp);
-#ifdef NEW_DYNAREC
-            new_dynarec_init();
+
+            if (!hacktarux)
+            {
+                new_dynarec_init();
+            }
+            else
+            {
+                r4300->cached_interp.fin_block = dynarec_fin_block;
+                r4300->cached_interp.not_compiled = dynarec_notcompiled;
+                r4300->cached_interp.not_compiled2 = dynarec_notcompiled2;
+                r4300->cached_interp.init_block = dynarec_init_block;
+                r4300->cached_interp.free_block = dynarec_free_block;
+                r4300->cached_interp.recompile_block = dynarec_recompile_block;
+            }
             l_dyna_inited = 1;
         }
-        new_dyna_start();
+
+        if (!hacktarux)
+        {
+            new_dyna_start();
+        }
+        else
+        {
+            dyna_start(dynarec_setup_code);
+            /* The trailing pc++ is end-of-run cleanup from the original
+             * run-to-completion model; under the per-frame yield it would
+             * corrupt the PC the next slice resumes from, so only advance on a
+             * genuine stop. */
+            if (!frame_break)
+                (*r4300_pc_struct(r4300))++;
+#if defined(PROFILE_R4300)
+            profile_write_end_of_code_blocks(r4300);
+#endif
+        }
+
         if (!frame_break)
         {
-            new_dynarec_cleanup();
+            if (!hacktarux)
+                new_dynarec_cleanup();
+            free_blocks(&r4300->cached_interp);
+            r4300->recomp.dyna_setup_started = 0; /* next ROM boots from start_address */
             l_dyna_inited = 0; /* allow re-init for the next ROM */
         }
-#else
-        r4300->cached_interp.fin_block = dynarec_fin_block;
-        r4300->cached_interp.not_compiled = dynarec_notcompiled;
-        r4300->cached_interp.not_compiled2 = dynarec_notcompiled2;
-        r4300->cached_interp.init_block = dynarec_init_block;
-        r4300->cached_interp.free_block = dynarec_free_block;
-        r4300->cached_interp.recompile_block = dynarec_recompile_block;
-
-
-        dyna_start(dynarec_setup_code);
-        (*r4300_pc_struct(r4300))++;
-#if defined(PROFILE_R4300)
-        profile_write_end_of_code_blocks(r4300);
-#endif
-#endif
-        if (!frame_break)
-            free_blocks(&r4300->cached_interp);
     }
 #endif
     else /* if (r4300->emumode == EMUMODE_INTERPRETER) */
@@ -247,31 +262,36 @@ void run_r4300(struct r4300_core* r4300)
 #endif
 }
 
+/* ari64 keeps the live CPU registers/hi/lo/stop/pc inside new_dynarec_hot_state
+ * (its generated code addresses them there); the interpreters and the Hacktarux
+ * dynarec use the base struct fields. These accessors return whichever the
+ * currently active core uses. The backend is fixed for a session (selected at
+ * load time), so this is a cheap branch, not a hot-path hazard. */
+static int r4300_uses_ari64_hot_state(struct r4300_core* r4300)
+{
+    return (r4300->emumode == EMUMODE_DYNAREC)
+        && (r4300_jit_backend == R4300_JIT_ARI64);
+}
+
 int64_t* r4300_regs(struct r4300_core* r4300)
 {
-#ifndef NEW_DYNAREC
-    return r4300->regs;
-#else
-    return r4300->new_dynarec_hot_state.regs;
-#endif
+    return r4300_uses_ari64_hot_state(r4300)
+        ? r4300->new_dynarec_hot_state.regs
+        : r4300->regs;
 }
 
 int64_t* r4300_mult_hi(struct r4300_core* r4300)
 {
-#ifndef NEW_DYNAREC
-    return &r4300->hi;
-#else
-    return &r4300->new_dynarec_hot_state.hi;
-#endif
+    return r4300_uses_ari64_hot_state(r4300)
+        ? &r4300->new_dynarec_hot_state.hi
+        : &r4300->hi;
 }
 
 int64_t* r4300_mult_lo(struct r4300_core* r4300)
 {
-#ifndef NEW_DYNAREC
-    return &r4300->lo;
-#else
-    return &r4300->new_dynarec_hot_state.lo;
-#endif
+    return r4300_uses_ari64_hot_state(r4300)
+        ? &r4300->new_dynarec_hot_state.lo
+        : &r4300->lo;
 }
 
 unsigned int* r4300_llbit(struct r4300_core* r4300)
@@ -281,31 +301,23 @@ unsigned int* r4300_llbit(struct r4300_core* r4300)
 
 uint32_t* r4300_pc(struct r4300_core* r4300)
 {
-#ifdef NEW_DYNAREC
-    return (r4300->emumode == EMUMODE_DYNAREC)
+    return r4300_uses_ari64_hot_state(r4300)
         ? (uint32_t*)&r4300->new_dynarec_hot_state.pcaddr
         : &(*r4300_pc_struct(r4300))->addr;
-#else
-    return &(*r4300_pc_struct(r4300))->addr;
-#endif
 }
 
 struct precomp_instr** r4300_pc_struct(struct r4300_core* r4300)
 {
-#ifndef NEW_DYNAREC
-    return &r4300->pc;
-#else
-    return &r4300->new_dynarec_hot_state.pc;
-#endif
+    return r4300_uses_ari64_hot_state(r4300)
+        ? &r4300->new_dynarec_hot_state.pc
+        : &r4300->pc;
 }
 
 int* r4300_stop(struct r4300_core* r4300)
 {
-#ifndef NEW_DYNAREC
-    return &r4300->stop;
-#else
-    return &r4300->new_dynarec_hot_state.stop;
-#endif
+    return r4300_uses_ari64_hot_state(r4300)
+        ? &r4300->new_dynarec_hot_state.stop
+        : &r4300->stop;
 }
 
 unsigned int get_r4300_emumode(struct r4300_core* r4300)
@@ -441,13 +453,11 @@ void invalidate_r4300_cached_code(struct r4300_core* r4300, uint32_t address, si
 {
     if (r4300->emumode != EMUMODE_PURE_INTERPRETER)
     {
-#ifdef NEW_DYNAREC
-        if (r4300->emumode == EMUMODE_DYNAREC)
+        if (r4300->emumode == EMUMODE_DYNAREC && r4300_jit_backend == R4300_JIT_ARI64)
         {
             invalidate_cached_code_new_dynarec(r4300, address, size);
         }
         else
-#endif
         {
             invalidate_cached_code_hacktarux(r4300, address, size);
         }
@@ -469,12 +479,15 @@ void generic_jump_to(struct r4300_core* r4300, uint32_t address)
 
 #ifndef NO_ASM
     case EMUMODE_DYNAREC:
-#ifdef NEW_DYNAREC
-        r4300->new_dynarec_hot_state.pcaddr = address;
-        r4300->new_dynarec_hot_state.pending_exception = 1;
-#else
-        dynarec_jump_to(r4300, address);
-#endif
+        if (r4300_jit_backend == R4300_JIT_ARI64)
+        {
+            r4300->new_dynarec_hot_state.pcaddr = address;
+            r4300->new_dynarec_hot_state.pending_exception = 1;
+        }
+        else
+        {
+            dynarec_jump_to(r4300, address);
+        }
         break;
 #endif
 

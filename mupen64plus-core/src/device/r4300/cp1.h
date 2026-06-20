@@ -36,14 +36,14 @@ struct cp1
 {
     cp1_reg regs[32];
 
-#ifndef NEW_DYNAREC
-	/* New dynarec uses a different memory layout */
+    /* ari64 keeps fcr0/fcr31 and the simple/double register pointer tables in
+     * its hot state; the interpreters and Hacktarux use these. Both present for
+     * runtime-selectable dynarecs. */
     uint32_t fcr0;
     uint32_t fcr31;
 
     float* regs_simple[32];
     double* regs_double[32];
-#endif
 
     /* This is the x86 version of the rounding mode contained in FCR31.
      * It should not really be here. Its size should also really be uint16_t,
@@ -56,51 +56,27 @@ struct cp1
     uint32_t flush_mode;
 #endif
 
-#ifdef NEW_DYNAREC
-	/* New dynarec uses a different memory layout */
+    /* ari64 hot state pointer (NULL/unused for the other cores). */
     struct new_dynarec_hot_state* new_dynarec_hot_state;
-#endif
 };
 
-#ifndef NEW_DYNAREC
+/* Hacktarux codegen offsets target the cp1 struct fields; ari64 uses its own
+ * cp1_regs_simple/double offsets through generated code. */
 #define R4300_CP1_REGS_S_OFFSET (\
     offsetof(struct r4300_core, cp1) + \
     offsetof(struct cp1, regs_simple))
-#else
-#define R4300_CP1_REGS_S_OFFSET (\
-    offsetof(struct r4300_core, new_dynarec_hot_state) + \
-    offsetof(struct new_dynarec_hot_state, cp1_regs_simple))
-#endif
 
-#ifndef NEW_DYNAREC
 #define R4300_CP1_REGS_D_OFFSET (\
     offsetof(struct r4300_core, cp1) + \
     offsetof(struct cp1, regs_double))
-#else
-#define R4300_CP1_REGS_D_OFFSET (\
-    offsetof(struct r4300_core, new_dynarec_hot_state) + \
-    offsetof(struct new_dynarec_hot_state, cp1_regs_double))
-#endif
 
-#ifndef NEW_DYNAREC
 #define R4300_CP1_FCR0_OFFSET (\
     offsetof(struct r4300_core, cp1) + \
     offsetof(struct cp1, fcr0))
-#else
-#define R4300_CP1_FCR0_OFFSET (\
-    offsetof(struct r4300_core, new_dynarec_hot_state) + \
-    offsetof(struct new_dynarec_hot_state, cp1_fcr0))
-#endif
 
-#ifndef NEW_DYNAREC
 #define R4300_CP1_FCR31_OFFSET (\
     offsetof(struct r4300_core, cp1) + \
     offsetof(struct cp1, fcr31))
-#else
-#define R4300_CP1_FCR31_OFFSET (\
-    offsetof(struct r4300_core, new_dynarec_hot_state) + \
-    offsetof(struct new_dynarec_hot_state, cp1_fcr31))
-#endif
 
 void init_cp1(struct cp1* cp1, struct new_dynarec_hot_state* new_dynarec_hot_state);
 void poweron_cp1(struct cp1* cp1);

@@ -1366,6 +1366,10 @@ extern input_plugin_functions dummy_input;
 extern audio_plugin_functions dummy_audio;
 
 unsigned int r4300_emumode;
+/* Which JIT backend EMUMODE_DYNAREC uses: 0 = ari64 new dynarec, 1 = Hacktarux.
+ * Set from the parallel-n64-dynarec core option; only consulted when emumode is
+ * EMUMODE_DYNAREC. */
+unsigned int r4300_jit_backend;
 size_t rdram_size;
 
 m64p_error main_run(void)
@@ -1694,7 +1698,19 @@ m64p_error main_run(void)
 
     if (l_setup_done) {
         /* per-frame re-entry: clear the per-frame yield flag and run a slice
-         * (run_device returns when retro_return sets mupencorestop again) */
+         * (run_device returns when retro_return sets mupencorestop again).
+         * Clear the active backend's stop via the accessor (ari64 keeps it in
+         * new_dynarec_hot_state, Hacktarux/interpreters in the base struct), and
+         * ALSO clear mupencorestop: it is hardcoded to ari64's hot-state stop
+         * (r4300.h) and gates retro_return's early-out, so in Hacktarux mode it
+         * would otherwise stay latched from the first frame and retro_return
+         * could never arm the next frame-break. */
+        *r4300_stop(&g_dev.r4300) = 0;
+        /* mupencorestop (r4300.h) is hardcoded to ari64's hot-state stop and
+         * gates retro_return's early-out; clear it directly so that in Hacktarux
+         * mode -- where *r4300_stop() is the base-struct field, a different
+         * location -- it does not stay latched from the first frame and block
+         * retro_return from arming the next frame-break. */
         g_dev.r4300.new_dynarec_hot_state.stop = 0;
         run_device(&g_dev);
         return M64ERR_SUCCESS;

@@ -892,10 +892,29 @@ void dynarec_setup_code(void)
 {
     struct r4300_core* r4300 = &g_dev.r4300;
 
-    /* The dynarec jumps here after we call dyna_start and it prepares
-     * Here we need to prepare the initial code block and jump to it
-     */
-    dynarec_jump_to(r4300, r4300->start_address);
+    /* The dynarec jumps here after dyna_start prepares the stack. On the first
+     * slice resume at the boot vector; on later per-frame slices the CPU left
+     * off mid-stream (the fork has no libco, so dyna_start is re-entered every
+     * frame). If the VI interrupt that ended the previous slice latched a
+     * pending jump in skip_jump (gen_interrupt's dyna_jump bailed on the stop
+     * flag before consuming it), that is the true resume target; otherwise use
+     * the live PC. */
+    uint32_t resume_addr;
+    if (!r4300->recomp.dyna_setup_started)
+        resume_addr = r4300->start_address;
+    else if (r4300->skip_jump)
+    {
+        resume_addr = r4300->skip_jump;
+        r4300->skip_jump = 0;
+    }
+    else if (r4300->pc != NULL)
+        resume_addr = r4300->pc->addr;
+    else
+        resume_addr = r4300->start_address;
+
+    r4300->recomp.dyna_setup_started = 1;
+
+    dynarec_jump_to(r4300, resume_addr);
 
     /* Prevent segfault on failed dynarec_jump_to */
     if (!r4300->cached_interp.actual->block || !r4300->cached_interp.actual->code) {
@@ -931,7 +950,7 @@ void dynarec_cp0_update_count(void)
 }
 
 /* Parameterless version of gen_interrupt to ease usage in dynarec. */
-void dynarec_gen_interrupt(void)
+void dynarec_gen_interrupt_hacktarux(void)
 {
     gen_interrupt(&g_dev.r4300);
 }

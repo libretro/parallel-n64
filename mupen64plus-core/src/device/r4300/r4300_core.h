@@ -67,15 +67,24 @@ enum {
     EMUMODE_DYNAREC          = 2,
 };
 
+/* JIT backend used when emumode == EMUMODE_DYNAREC. */
+enum {
+    R4300_JIT_ARI64    = 0, /* new dynarec (Ari64) */
+    R4300_JIT_HACKTARUX = 1  /* classic Hacktarux dynarec */
+};
+extern unsigned int r4300_jit_backend;
+
 
 struct r4300_core
 {
-#ifndef NEW_DYNAREC
-	/* New dynarec uses a different memory layout */
+    /* CPU registers. With the ari64 new dynarec these live in
+     * new_dynarec_hot_state.regs (the JIT addresses them by fixed offset); the
+     * Hacktarux dynarec and the interpreters use these. For runtime-selectable
+     * dynarecs both storages exist and the r4300_regs()/r4300_mult_*()/
+     * r4300_stop() accessors return whichever the active core uses. */
     int64_t regs[32];
     int64_t hi;
     int64_t lo;
-#endif
     unsigned int llbit;
 
     struct precomp_instr* pc;
@@ -83,10 +92,7 @@ struct r4300_core
     unsigned int delay_slot;
     uint32_t skip_jump;
 
-#ifndef NEW_DYNAREC
-	/* New dynarec uses a different memory layout */
     int stop;
-#endif
 
     /* When reset_hard_job is set, next interrupt will cause hard reset */
     int reset_hard_job;
@@ -98,8 +104,7 @@ struct r4300_core
      * XXX: more work is needed to correctly encapsulate these */
     struct cached_interp cached_interp;
 
-#ifndef NEW_DYNAREC
-    /* from recomp.c.
+    /* from recomp.c (Hacktarux dynarec).
      * XXX: more work is needed to correctly encapsulate these */
     struct recomp {
         int init_length;
@@ -160,6 +165,11 @@ struct r4300_core
         int64_t local_rs;
         unsigned int dyna_interp;
 
+        /* Per-frame re-entry flag for the fork's frame_break model: cleared on a
+         * real stop, set after the first dyna_start slice so dynarec_setup_code
+         * resumes at the live PC instead of restarting at the boot vector. */
+        unsigned int dyna_setup_started;
+
 #if defined(__x86_64__)
         unsigned long long shift;
 #else
@@ -177,13 +187,12 @@ struct r4300_core
         uint32_t wword;
         uint64_t wdword;
     } recomp;
-#else
-    /* FIXME: better put that near linkage_arm code
-     * to help generate call beyond the +/-32MB range.
-     */
+
+    /* ari64 new dynarec hot state. extra_memory is a large scratch buffer the
+     * JIT wants near its generated code; it is always reserved so the layout is
+     * identical whether or not ari64 is the selected core. */
     ALIGN(4096, char extra_memory[33554432]);
     struct new_dynarec_hot_state new_dynarec_hot_state;
-#endif /* NEW_DYNAREC */
 
     unsigned int emumode;
 
@@ -205,14 +214,11 @@ struct r4300_core
 #define R4300_KSEG0 UINT32_C(0x80000000)
 #define R4300_KSEG1 UINT32_C(0xa0000000)
 
-#ifndef NEW_DYNAREC
+/* Used by idec.c for the Hacktarux recompiler's GPR addressing, which targets
+ * r4300->regs. ari64 addresses new_dynarec_hot_state.regs through its own
+ * generated offsets and does not use this macro. */
 #define R4300_REGS_OFFSET \
     offsetof(struct r4300_core, regs)
-#else
-#define R4300_REGS_OFFSET (\
-    offsetof(struct r4300_core, new_dynarec_hot_state) + \
-    offsetof(struct new_dynarec_hot_state, regs))
-#endif
 
 void init_r4300(struct r4300_core* r4300, struct memory* mem, struct mi_controller* mi, struct rdram* rdram, const struct interrupt_handler* interrupt_handlers, unsigned int emumode, unsigned int count_per_op, unsigned int count_per_op_denom_pot, int no_compiled_jump, int randomize_interrupt, uint32_t start_address);
 void poweron_r4300(struct r4300_core* r4300);

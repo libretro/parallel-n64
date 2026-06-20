@@ -25,16 +25,20 @@
 #include "cp0.h"
 #include "cp1.h"
 #include "cp2.h"
+#include "r4300_core.h"
 
 #include "new_dynarec/new_dynarec.h"
 
 #define FCR31_FS_BIT UINT32_C(0x2000000)
 
+extern unsigned int r4300_emumode;
+extern unsigned int r4300_jit_backend;
+
 void init_cp2(struct cp2* cp2, struct new_dynarec_hot_state* new_dynarec_hot_state)
 {
-#ifdef NEW_DYNAREC
+    /* Always store the ari64 hot-state pointer; the accessor gates its use on
+     * the selected backend. */
     cp2->new_dynarec_hot_state = new_dynarec_hot_state;
-#endif
 }
 
 void poweron_cp2(struct cp2* cp2)
@@ -44,11 +48,10 @@ void poweron_cp2(struct cp2* cp2)
 
 uint64_t* r4300_cp2_latch(struct cp2* cp2)
 {
-#ifndef NEW_DYNAREC
-    /* New dynarec uses a different memory layout */
-    return &cp2->latch;
-#else
-    return &cp2->new_dynarec_hot_state->cp2_latch;
-#endif
+    return ((cp2->new_dynarec_hot_state != NULL)
+        && (r4300_emumode == EMUMODE_DYNAREC)
+        && (r4300_jit_backend == R4300_JIT_ARI64))
+        ? &cp2->new_dynarec_hot_state->cp2_latch
+        : &cp2->latch;
 }
 

@@ -29,6 +29,8 @@ extern unsigned int IgnoreTLBExceptions;
 #include <assert.h>
 #include <string.h>
 
+extern unsigned int r4300_jit_backend;
+
 void poweron_tlb(struct tlb* tlb)
 {
     /* clear TLB entries */
@@ -106,8 +108,9 @@ uint32_t virtual_to_physical_address(struct r4300_core* r4300, uint32_t address,
     const struct tlb* tlb = &r4300->cp0.tlb;
     unsigned int addr = address >> 12;
 
-#ifdef NEW_DYNAREC
-    if (r4300->emumode == EMUMODE_DYNAREC)
+    /* ari64 verification of its memory_map mirror; only valid when ari64 is the
+     * active dynarec. */
+    if (r4300_jit_backend == R4300_JIT_ARI64 && r4300->emumode == EMUMODE_DYNAREC)
     {
         intptr_t map = r4300->new_dynarec_hot_state.memory_map[addr];
         if ((tlb->LUT_w[addr]) && (w == 1))
@@ -126,7 +129,6 @@ uint32_t virtual_to_physical_address(struct r4300_core* r4300, uint32_t address,
             assert(map < 0);
         }
     }
-#endif
 
     if (w == 1)
     {
@@ -141,35 +143,38 @@ uint32_t virtual_to_physical_address(struct r4300_core* r4300, uint32_t address,
     //printf("tlb exception !!! @ %x, %x, add:%x\n", address, w, r4300->pc->addr);
     //getchar();
 
-#ifdef NEW_DYNAREC
-    if(IgnoreTLBExceptions == 0) {
-        /* False, Default Behaviour */
-        TLB_refill_exception(r4300, address, w);
-    } else if(IgnoreTLBExceptions == 1) {
-        /* OnlyNotEnabled */
-        if(r4300->emumode == EMUMODE_DYNAREC)
-        {
-            if(using_tlb)
+    if (r4300_jit_backend == R4300_JIT_ARI64)
+    {
+        if(IgnoreTLBExceptions == 0) {
+            /* False, Default Behaviour */
+            TLB_refill_exception(r4300, address, w);
+        } else if(IgnoreTLBExceptions == 1) {
+            /* OnlyNotEnabled */
+            if(r4300->emumode == EMUMODE_DYNAREC)
             {
+                if(using_tlb)
+                {
+                    TLB_refill_exception(r4300, address, w);
+                }
+            } else {
                 TLB_refill_exception(r4300, address, w);
             }
+        } else if(IgnoreTLBExceptions == 2)
+        {
+            /* AlwaysIgnoreTLB */
+            /* Use-case GdbStub... */
+        }
+    }
+    else
+    {
+        if(IgnoreTLBExceptions == 2)
+        {
+            /* AlwaysIgnoreTLB */
+            /* Use-case for Interpreter-only GdbStub... */
         } else {
             TLB_refill_exception(r4300, address, w);
         }
-    } else if(IgnoreTLBExceptions == 2)
-    {
-        /* AlwaysIgnoreTLB */
-        /* Use-case GdbStub... */
     }
-#else
-    if(IgnoreTLBExceptions == 2)
-    {
-        /* AlwaysIgnoreTLB */
-        /* Use-case for Interpreter-only GdbStub... */
-    } else {
-        TLB_refill_exception(r4300, address, w);
-    }
-#endif // NEW_DYNAREC
 
     //return 0x80000000;
     return 0x00000000;

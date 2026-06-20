@@ -46,6 +46,8 @@
 #include "main/main.h"
 #include "main/savestates.h"
 
+extern unsigned int r4300_jit_backend;
+
 
 /***************************************************************************
  * Pool of Single Linked List Nodes
@@ -462,10 +464,8 @@ void nmi_int_handler(void* opaque)
         cp0_regs[CP0_ERROREPC_REG]-=4;
     }
     r4300->delay_slot = 0;
-#ifndef NEW_DYNAREC
     r4300->recomp.dyna_interp = 0;
-#endif
-    // set next instruction address to reset vector
+    /* set next instruction address to reset vector */
     r4300->cp0.last_addr = r4300->start_address;
     generic_jump_to(r4300, r4300->start_address);
 }
@@ -476,8 +476,11 @@ void reset_hard_handler(void* opaque)
 {
     struct device* dev = (struct device*)opaque;
     struct r4300_core* r4300 = &dev->r4300;
+    int hacktarux = (r4300_jit_backend == R4300_JIT_HACKTARUX);
 
-#ifndef NEW_DYNAREC
+    /* The recomp block is always present now; save the Hacktarux dynarec's
+     * re-entry registers across the power-on so they can be restored if that
+     * backend is the one in use. */
 #if defined(__x86_64__)
     long long save_rsp = r4300->recomp.save_rsp;
     long long save_rip = r4300->recomp.save_rip;
@@ -488,7 +491,6 @@ void reset_hard_handler(void* opaque)
     long save_edi = r4300->recomp.save_edi;
     long save_esp = r4300->recomp.save_esp;
     long save_eip = r4300->recomp.save_eip;
-#endif
 #endif
 
     poweron_device(dev);
@@ -502,22 +504,25 @@ void reset_hard_handler(void* opaque)
     *r4300_pc_struct(r4300) = &r4300->interp_PC;
     if (r4300->emumode >= 2)
     {
-#ifdef NEW_DYNAREC
-        new_dynarec_cleanup();
-        new_dynarec_init();
-#else
+        if (!hacktarux)
+        {
+            new_dynarec_cleanup();
+            new_dynarec_init();
+        }
+        else
+        {
 #if defined(__x86_64__)
-        r4300->recomp.save_rsp = save_rsp;
-        r4300->recomp.save_rip = save_rip;
+            r4300->recomp.save_rsp = save_rsp;
+            r4300->recomp.save_rip = save_rip;
 #else
-        r4300->recomp.save_ebp = save_ebp;
-        r4300->recomp.save_ebx = save_ebx;
-        r4300->recomp.save_esi = save_esi;
-        r4300->recomp.save_edi = save_edi;
-        r4300->recomp.save_esp = save_esp;
-        r4300->recomp.save_eip = save_eip;
+            r4300->recomp.save_ebp = save_ebp;
+            r4300->recomp.save_ebx = save_ebx;
+            r4300->recomp.save_esi = save_esi;
+            r4300->recomp.save_edi = save_edi;
+            r4300->recomp.save_esp = save_esp;
+            r4300->recomp.save_eip = save_eip;
 #endif
-#endif
+        }
     }
     generic_jump_to(r4300, r4300->cp0.last_addr);
 }
@@ -540,11 +545,11 @@ void gen_interrupt(struct r4300_core* r4300)
 
     if (*r4300_stop(r4300) == 1)
     {
-        g_gs_vi_counter = 0; // debug
+        g_gs_vi_counter = 0; /* debug */
 #ifndef NO_ASM
-#ifndef NEW_DYNAREC
-        dyna_stop(r4300);
-#endif
+        /* Stop the Hacktarux generated code; ari64 has its own stop path. */
+        if (r4300_jit_backend == R4300_JIT_HACKTARUX)
+            dyna_stop(r4300);
 #endif
     }
 

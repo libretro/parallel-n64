@@ -30,10 +30,8 @@ struct cp2
 {
     uint64_t latch;
 
-#ifdef NEW_DYNAREC
-    /* New dynarec uses a different memory layout */
+    /* ari64 hot state pointer (NULL/unused for the other cores). */
     struct new_dynarec_hot_state* new_dynarec_hot_state;
-#endif
 };
 
 void init_cp2(struct cp2* cp2, struct new_dynarec_hot_state* new_dynarec_hot_state);

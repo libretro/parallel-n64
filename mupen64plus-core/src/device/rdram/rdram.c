@@ -30,6 +30,8 @@
 
 #include <string.h>
 
+extern unsigned int r4300_jit_backend;
+
 #define RDRAM_BCAST_ADDRESS_MASK UINT32_C(0x00080000)
 
 
@@ -116,10 +118,16 @@ static void map_corrupt_rdram(struct rdram* rdram, int corrupt)
     mapping.handler.write32 = write_rdram_dram;
 
     apply_mem_mapping(rdram->r4300->mem, &mapping);
-#ifndef NEW_DYNAREC
-    rdram->r4300->recomp.fast_memory = (corrupt) ? 0 : 1;
-    invalidate_r4300_cached_code(rdram->r4300, 0, 0);
-#endif
+    /* The Hacktarux dynarec must drop fast_memory during RDRAM control
+     * calibration so its generated loads/stores route through the corrupted
+     * handler (which is how IPL3 detects the RAM size); ari64 handles this in
+     * its own memory map and must not touch recomp.fast_memory. Dispatch at
+     * runtime since both backends are compiled in. */
+    if (r4300_jit_backend == R4300_JIT_HACKTARUX)
+    {
+        rdram->r4300->recomp.fast_memory = (corrupt) ? 0 : 1;
+        invalidate_r4300_cached_code(rdram->r4300, 0, 0);
+    }
 }
 
 

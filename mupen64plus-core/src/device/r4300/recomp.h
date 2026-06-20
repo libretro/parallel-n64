@@ -47,7 +47,7 @@ void dynarec_jump_to_recomp_address(void);
 void dynarec_exception_general(void);
 int dynarec_check_cop1_unusable(void);
 void dynarec_cp0_update_count(void);
-void dynarec_gen_interrupt(void);
+void dynarec_gen_interrupt_hacktarux(void);
 int dynarec_read_aligned_word(void);
 int dynarec_write_aligned_word(void);
 int dynarec_read_aligned_dword(void);

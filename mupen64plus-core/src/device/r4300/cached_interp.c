@@ -50,20 +50,21 @@
 #define UPDATE_DEBUGGER() do { } while(0)
 #endif
 
+extern unsigned int r4300_jit_backend;
+
 #define DECLARE_R4300 struct r4300_core* r4300 = &g_dev.r4300;
 #define PCADDR *r4300_pc(r4300)
-#ifdef NEW_DYNAREC
+/* When ari64 is the active dynarec, PC advances live in its hot state
+ * (fake_pc/pcaddr); the interpreters and the Hacktarux dynarec advance the
+ * precomp_instr pointer directly. */
 #define ADD_TO_PC(x) \
-    if (r4300->emumode != EMUMODE_DYNAREC) \
+    if (!(r4300_jit_backend == R4300_JIT_ARI64 && r4300->emumode == EMUMODE_DYNAREC)) \
       (*r4300_pc_struct(r4300)) += x; \
     else \
     { \
       assert(*r4300_pc_struct(r4300) == &r4300->new_dynarec_hot_state.fake_pc); \
       r4300->new_dynarec_hot_state.pcaddr += x*4; \
     }
-#else
-#define ADD_TO_PC(x) (*r4300_pc_struct(r4300)) += x;
-#endif
 #define DECLARE_INSTRUCTION(name) void cached_interp_##name(void)
 
 #define DECLARE_JUMP(name, destination, condition, link, likely, cop1) \

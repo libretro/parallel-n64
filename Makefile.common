@@ -248,22 +248,18 @@ ifdef WITH_DYNAREC
 			SOURCES_C += $(CORE_DIR)/src/device/r4300/new_dynarec/new_dynarec.c
 			SOURCES_NASM += $(CORE_DIR)/src/device/r4300/new_dynarec/x64/linkage_x64.asm
 		endif
-
-ifeq ($(WANT_HACKTARUX), 1)
-ifneq (,$(findstring msvc,$(platform)))
-ifeq ($(WITH_DYNAREC), $(filter $(WITH_DYNAREC), x86_64 x64))
-	SOURCES_ASM += $(CORE_DIR)/src/device/r4300/hacktarux_dynarec/dyna_start_nasm_x64.S
-else ifeq ($(WITH_DYNAREC), $(filter $(WITH_DYNAREC), i386 i686))
-	SOURCES_ASM += $(CORE_DIR)/src/device/r4300/hacktarux_dynarec/dyna_start_nasm_x86.S
-endif
-endif
-endif
-
-#ifneq (,$(findstring msvc,$(platform)))
-#	SOURCES_ASM += $(CORE_DIR)/src/device/r4300/hacktarux_dynarec/dyna_start.S
-#endif
-
-endif
+		# Hacktarux dynarec, selectable alongside ari64 at runtime. Its nasm
+		# dyna_start uses the same asm_defines header (now carrying both offset
+		# sets) and the same %.o: %.asm rule as ari64's linkage.
+		ifeq ($(WANT_HACKTARUX), 1)
+			DYNAFLAGS += -DHAVE_DYNAREC_HACKTARUX
+			SOURCES_C += $(CORE_DIR)/src/device/r4300/hacktarux_dynarec/assemble.c \
+						 $(CORE_DIR)/src/device/r4300/hacktarux_dynarec/regcache.c \
+						 $(CORE_DIR)/src/device/r4300/hacktarux_dynarec/hacktarux_dynarec.c \
+						 $(CORE_DIR)/src/device/r4300/recomp.c
+			SOURCES_NASM += $(CORE_DIR)/src/device/r4300/hacktarux_dynarec/dyna_start.asm
+		endif
+	endif
 
 ifeq ($(WITH_DYNAREC), arm)
 		SOURCES_C += $(CORE_DIR)/src/device/r4300/new_dynarec/new_dynarec.c \
@@ -287,15 +283,6 @@ ifneq ($(NOSSE), 1)
 ifeq (,$(findstring msvc,$(platform)))
 		CPUFLAGS += -msse -msse2
 endif
-endif
-# --- hacktarux JIT temporarily disabled; focus on new_dynarec (ari64).
-#     re-enable with WANT_HACKTARUX=1 once ari64 is validated, then backport. ---
-ifeq ($(WANT_HACKTARUX), 1)
-		DYNAFLAGS += -DHAVE_DYNAREC_HACKTARUX
-		SOURCES_C += $(CORE_DIR)/src/device/r4300/hacktarux_dynarec/assemble.c \
-						 $(CORE_DIR)/src/device/r4300/hacktarux_dynarec/regcache.c \
-						 $(CORE_DIR)/src/device/r4300/hacktarux_dynarec/hacktarux_dynarec.c \
-						 $(CORE_DIR)/src/device/r4300/recomp.c
 endif
 endif
 endif
