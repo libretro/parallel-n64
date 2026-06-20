@@ -324,7 +324,6 @@ int savestates_load_m64p(const unsigned char *data, size_t size)
       {
          struct transferpak* tpk = &g_dev.transferpaks[i];
          struct gb_cart* gb = tpk->gb_cart;
-         struct mbc3_rtc* rtc = &gb->rtc;
          int j;
 
          tpk->enabled             = GETDATA(curr, uint32_t);
@@ -332,16 +331,37 @@ int savestates_load_m64p(const unsigned char *data, size_t size)
          tpk->access_mode         = GETDATA(curr, uint32_t);
          tpk->access_mode_changed = GETDATA(curr, uint32_t);
 
-         gb->rom_bank = GETDATA(curr, uint32_t);
-         gb->ram_bank = GETDATA(curr, uint32_t);
-         (void)GETDATA(curr, uint32_t); /* has_rtc dropped (next gb_cart) */
+         /* Mirror the save side: the block is always present and fixed-size,
+          * but gb_cart is NULL when no transferpak/GB cart is inserted. Read
+          * and discard the bytes in that case rather than dereferencing NULL. */
+         if (gb != NULL)
+         {
+            struct mbc3_rtc* rtc = &gb->rtc;
 
-         for (j = 0; j < MBC3_RTC_REGS_COUNT; ++j)
-            rtc->regs[j] = GETDATA(curr, uint8_t);
-         for (j = 0; j < MBC3_RTC_REGS_COUNT; ++j)
-            rtc->latched_regs[j] = GETDATA(curr, uint8_t);
-         rtc->latch     = GETDATA(curr, uint32_t);
-         rtc->last_time = (time_t)GETDATA(curr, int64_t);
+            gb->rom_bank = GETDATA(curr, uint32_t);
+            gb->ram_bank = GETDATA(curr, uint32_t);
+            (void)GETDATA(curr, uint32_t); /* has_rtc dropped (next gb_cart) */
+
+            for (j = 0; j < MBC3_RTC_REGS_COUNT; ++j)
+               rtc->regs[j] = GETDATA(curr, uint8_t);
+            for (j = 0; j < MBC3_RTC_REGS_COUNT; ++j)
+               rtc->latched_regs[j] = GETDATA(curr, uint8_t);
+            rtc->latch     = GETDATA(curr, uint32_t);
+            rtc->last_time = (time_t)GETDATA(curr, int64_t);
+         }
+         else
+         {
+            (void)GETDATA(curr, uint32_t); /* rom_bank */
+            (void)GETDATA(curr, uint32_t); /* ram_bank */
+            (void)GETDATA(curr, uint32_t); /* has_rtc */
+
+            for (j = 0; j < MBC3_RTC_REGS_COUNT; ++j)
+               (void)GETDATA(curr, uint8_t); /* rtc regs */
+            for (j = 0; j < MBC3_RTC_REGS_COUNT; ++j)
+               (void)GETDATA(curr, uint8_t); /* rtc latched_regs */
+            (void)GETDATA(curr, uint32_t); /* rtc latch */
+            (void)GETDATA(curr, int64_t);  /* rtc last_time */
+         }
       }
    }
 
@@ -632,7 +652,6 @@ int savestates_save_m64p(unsigned char *data, size_t size)
    {
       struct transferpak* tpk = &g_dev.transferpaks[i];
       struct gb_cart* gb = tpk->gb_cart;
-      struct mbc3_rtc* rtc = &gb->rtc;
       int j;
 
       PUTDATA(curr, uint32_t, tpk->enabled);
@@ -640,16 +659,39 @@ int savestates_save_m64p(unsigned char *data, size_t size)
       PUTDATA(curr, uint32_t, tpk->access_mode);
       PUTDATA(curr, uint32_t, tpk->access_mode_changed);
 
-      PUTDATA(curr, uint32_t, gb->rom_bank);
-      PUTDATA(curr, uint32_t, gb->ram_bank);
-      PUTDATA(curr, uint32_t, 0); /* has_rtc dropped (next gb_cart) */
+      /* gb_cart is NULL unless a transferpak with a GB cartridge is inserted
+       * (the common case is none). Write a zeroed, fixed-size block so the
+       * layout stays seekable regardless; the matching load skips it the same
+       * way. Dereferencing gb here crashed savestates for every game without a
+       * transferpak. */
+      if (gb != NULL)
+      {
+         struct mbc3_rtc* rtc = &gb->rtc;
 
-      for (j = 0; j < MBC3_RTC_REGS_COUNT; ++j)
-         PUTDATA(curr, uint8_t, rtc->regs[j]);
-      for (j = 0; j < MBC3_RTC_REGS_COUNT; ++j)
-         PUTDATA(curr, uint8_t, rtc->latched_regs[j]);
-      PUTDATA(curr, uint32_t, rtc->latch);
-      PUTDATA(curr, int64_t, (int64_t)rtc->last_time);
+         PUTDATA(curr, uint32_t, gb->rom_bank);
+         PUTDATA(curr, uint32_t, gb->ram_bank);
+         PUTDATA(curr, uint32_t, 0); /* has_rtc dropped (next gb_cart) */
+
+         for (j = 0; j < MBC3_RTC_REGS_COUNT; ++j)
+            PUTDATA(curr, uint8_t, rtc->regs[j]);
+         for (j = 0; j < MBC3_RTC_REGS_COUNT; ++j)
+            PUTDATA(curr, uint8_t, rtc->latched_regs[j]);
+         PUTDATA(curr, uint32_t, rtc->latch);
+         PUTDATA(curr, int64_t, (int64_t)rtc->last_time);
+      }
+      else
+      {
+         PUTDATA(curr, uint32_t, 0); /* rom_bank */
+         PUTDATA(curr, uint32_t, 0); /* ram_bank */
+         PUTDATA(curr, uint32_t, 0); /* has_rtc */
+
+         for (j = 0; j < MBC3_RTC_REGS_COUNT; ++j)
+            PUTDATA(curr, uint8_t, 0); /* rtc regs */
+         for (j = 0; j < MBC3_RTC_REGS_COUNT; ++j)
+            PUTDATA(curr, uint8_t, 0); /* rtc latched_regs */
+         PUTDATA(curr, uint32_t, 0); /* rtc latch */
+         PUTDATA(curr, int64_t, (int64_t)0); /* rtc last_time */
+      }
    }
 
    /* RSP DMA FIFO state (since 1.4); see the matching load block. */
