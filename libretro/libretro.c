@@ -1324,6 +1324,7 @@ void update_variables(bool startup)
     * dynarecs are compiled in, the dropdown also distinguishes the JIT backend
     * (dynamic_recompiler -> Hacktarux, dynamic_recompiler_ari64 -> ari64), which
     * sets r4300_jit_backend. */
+   if (startup)
    {
       struct retro_variable cpuvar;
       cpuvar.key = "parallel-n64-cpucore";
@@ -1349,6 +1350,11 @@ void update_variables(bool startup)
       else
          r4300_emumode = 2; /* default: dynamic recompiler */
    }
+   /* NOTE: the CPU core / JIT backend is applied at startup only. Changing it in
+    * the Quick Menu while content is running must NOT switch dynarecs on the fly
+    * -- the live backend's recompiled blocks and register state are not valid for
+    * the other backend, so a mid-run flip would crash. The new selection takes
+    * effect on the next core restart, matching upstream behaviour. */
 
 #if defined(HAVE_PARALLEL)
    var.key = "parallel-n64-parallel-rdp-synchronous";
