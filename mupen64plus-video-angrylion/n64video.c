@@ -274,8 +274,20 @@ static uint32_t rdp_fetch_cmd_word(uint32_t idx)
 void n64video_process_list(void)
 {
     uint32_t** dp_reg = config.gfx.dp_reg;
-    uint32_t dp_current_al = (*dp_reg[DP_CURRENT] & ~7) >> 2;
-    uint32_t dp_end_al = (*dp_reg[DP_END] & ~7) >> 2;
+    uint32_t dp_current_al;
+    uint32_t dp_end_al;
+
+    /* On a ROM reload, initiateGFX's n64video_config_init() memsets config
+     * (clearing gfx.dp_reg to NULL) before romOpen restores it. With the
+     * libco-free per-frame model the CPU resumes mid-stream, so the RSP can
+     * feed an RDP list (run_task -> n64video_process_list) in that window with
+     * gfx.dp_reg still NULL -> dp_reg[DP_CURRENT] dereferences NULL+offset.
+     * Nothing can be processed yet; bail rather than crash. */
+    if (dp_reg == NULL)
+        return;
+
+    dp_current_al = (*dp_reg[DP_CURRENT] & ~7) >> 2;
+    dp_end_al = (*dp_reg[DP_END] & ~7) >> 2;
 
     // don't do anything if the RDP has crashed or the registers are not set up correctly
     if (rdp_pipeline_crashed || dp_end_al <= dp_current_al) {

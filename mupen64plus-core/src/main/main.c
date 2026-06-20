@@ -120,6 +120,7 @@ int         g_EmulatorRunning = 0;      // need separate boolean to tell if emul
 
 
 int g_rom_pause;
+extern int frame_break; /* r4300: per-frame yield flag set by retro_return at VI */
 
 struct cheat_ctx g_cheat_ctx;
 
@@ -1378,19 +1379,26 @@ m64p_error main_run(void)
     int32_t si_dma_duration;
     int32_t no_compiled_jump;
     int32_t randomize_interrupt;
-    struct file_storage eep;
-    struct file_storage fla;
-    struct file_storage sra;
+    /* These backends/storages are stored by address into g_dev by init_device
+     * and dereferenced throughout emulation. With the libco-free per-frame model
+     * main_run() returns after every frame, so they must NOT live on the stack
+     * (that memory is reused once main_run returns, leaving g_dev pointing at
+     * garbage -- e.g. ai->iaout->set_frequency jumping to a stale address). They
+     * are set up once (l_setup_done) and torn down once on a real stop, so file
+     * scope is correct and does not leak. */
+    static struct file_storage eep;
+    static struct file_storage fla;
+    static struct file_storage sra;
     size_t dd_rom_size;
-    struct dd_disk dd_disk;
+    static struct dd_disk dd_disk;
     m64p_error failure_rval;
-    struct audio_out_backend_interface audio_out_backend_libretro;
+    static struct audio_out_backend_interface audio_out_backend_libretro;
 
-    int control_ids[GAME_CONTROLLERS_COUNT];
-    struct controller_input_compat cin_compats[GAME_CONTROLLERS_COUNT];
+    static int control_ids[GAME_CONTROLLERS_COUNT];
+    static struct controller_input_compat cin_compats[GAME_CONTROLLERS_COUNT];
 
-    struct file_storage mpk_storages[GAME_CONTROLLERS_COUNT];
-    struct file_storage mpk;
+    static struct file_storage mpk_storages[GAME_CONTROLLERS_COUNT];
+    static struct file_storage mpk;
 
     void* gbcam_backend;
     const struct video_capture_backend_interface* igbcam_backend;
@@ -1522,8 +1530,8 @@ m64p_error main_run(void)
     }
 
     /* setup pif channel devices */
-    void* joybus_devices[PIF_CHANNELS_COUNT];
-    const struct joybus_device_interface* ijoybus_devices[PIF_CHANNELS_COUNT];
+    static void* joybus_devices[PIF_CHANNELS_COUNT];
+    static const struct joybus_device_interface* ijoybus_devices[PIF_CHANNELS_COUNT];
 
     memset(&g_dev.gb_carts, 0, GAME_CONTROLLERS_COUNT*sizeof(*g_dev.gb_carts));
     memset(&l_gb_carts_data, 0, GAME_CONTROLLERS_COUNT*sizeof(*l_gb_carts_data));
@@ -1741,6 +1749,16 @@ m64p_error main_run(void)
     pif_bootrom_hle_execute(&g_dev.r4300);
 
     run_device(&g_dev);
+
+    /* Per-frame yield (frame_break set by retro_return at the VI interrupt):
+     * the game is still running, so return WITHOUT tearing anything down. The
+     * next retro_run re-enters via the l_setup_done path above. Only a genuine
+     * stop (frame_break clear) falls through to the teardown below. */
+    if (frame_break)
+        return M64ERR_SUCCESS;
+
+    /* Genuine stop: allow the one-time setup to run again for the next ROM. */
+    l_setup_done = 0;
 
     /* release gb_carts */
     for(i = 0; i < GAME_CONTROLLERS_COUNT; ++i) {

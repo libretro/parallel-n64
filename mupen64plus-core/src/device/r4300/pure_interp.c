@@ -1,3 +1,4 @@
+#include <stdio.h>
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *   Mupen64plus - pure_interp.c                                           *
  *   Mupen64Plus homepage: https://mupen64plus.org/                        *
@@ -765,7 +766,10 @@ void run_pure_interpreter(struct r4300_core* r4300)
 
    while (!*r4300_stop(r4300))
    {
-     if (frame_break) { frame_break = 0; return; }
+     /* Yield this frame. Leave frame_break set so main_run() takes its
+      * per-frame return path (not the teardown); EmuThreadStep clears it at
+      * the start of the next slice, matching the dynarec/cached cores. */
+     if (frame_break) { return; }
 #ifdef COMPARE_CORE
      CoreCompareCallback();
 #endif
@@ -774,4 +778,13 @@ void run_pure_interpreter(struct r4300_core* r4300)
 #endif
      InterpretOpcode(r4300);
    }
+
+   /* The loop also exits when retro_return set mupencorestop for a per-frame
+    * yield (the VI interrupt fires mid-instruction, so *r4300_stop is seen by
+    * the while condition before the frame_break check above). Distinguish that
+    * yield from a genuine stop: only on a real stop (frame_break clear) do we
+    * reset so the next ROM re-seeds the boot PC. On a yield, leave l_pi_started
+    * set so the next slice resumes from interp_PC. */
+   if (!frame_break)
+      l_pi_started = 0;
 }

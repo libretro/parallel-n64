@@ -674,6 +674,15 @@ void n64video_update_screen(void)
     // parse and check some common registers
     vi_reg_ptr = config.gfx.vi_reg;
 
+    /* On a ROM reload the plugin is reconnected in two steps: initiateGFX runs
+     * n64video_config_init() which memsets config (clearing gfx.vi_reg), and
+     * romOpen later restores gfx.vi_reg = plugin_get_vi_registers(). If a VI
+     * interrupt fires in that window the resumed CPU calls updateScreen() with
+     * gfx.vi_reg still NULL, so vi_reg_ptr[...] dereferences NULL. Nothing is
+     * ready to present yet -- skip this update rather than crash. */
+    if (vi_reg_ptr == NULL)
+        return;
+
 #ifdef HAVE_RDP_DUMP
     rdp_dump_flush_dram(config.gfx.rdram, config.gfx.rdram_size);
     rdp_dump_flush_hidden_dram(rdram_hidden, sizeof(rdram_hidden));

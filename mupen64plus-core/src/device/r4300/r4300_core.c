@@ -167,7 +167,10 @@ void run_r4300(struct r4300_core* r4300)
         }
         new_dyna_start();
         if (!frame_break)
+        {
             new_dynarec_cleanup();
+            l_dyna_inited = 0; /* allow re-init for the next ROM */
+        }
 #else
         r4300->cached_interp.fin_block = dynarec_fin_block;
         r4300->cached_interp.not_compiled = dynarec_notcompiled;
@@ -221,7 +224,10 @@ void run_r4300(struct r4300_core* r4300)
         run_cached_interpreter(r4300);
 
         if (!frame_break)
+        {
             free_blocks(&r4300->cached_interp);
+            l_cached_inited = 0; /* allow re-init for the next ROM */
+        }
     }
 
     if (frame_break)
