@@ -37,6 +37,14 @@ static unique_ptr<Device> device;
 static unique_ptr<Context> context;
 static QueryPoolHandle begin_ts, end_ts;
 
+/* Set true only when init() fully succeeds (including the device meeting
+ * parallel-RDP's feature requirements). The frame-driving entry points
+ * (begin_frame / process_commands / complete_frame) hard no-op when this is
+ * false, so that a failed/unsupported init -- e.g. a MoltenVK build lacking the
+ * 8/16-bit storage parallel-RDP needs -- degrades to "nothing rendered" instead
+ * of dereferencing a half-initialized Vulkan device and crashing. */
+static bool device_supported = false;
+
 static vector<retro_vulkan_image> retro_images;
 static vector<ImageHandle> retro_image_handles;
 unsigned width, height;
@@ -65,6 +73,9 @@ void set_hle_cmd_buffer(const uint8_t *buf, uint32_t base_byte_addr, uint32_t le
 
 void process_commands()
 {
+	if (!device_supported)
+		return;
+
 	const uint32_t DP_CURRENT = *GET_GFX_INFO(DPC_CURRENT_REG) & 0x00FFFFF8;
 	const uint32_t DP_END = *GET_GFX_INFO(DPC_END_REG) & 0x00FFFFF8;
 
@@ -176,6 +187,9 @@ void profile_refresh_end()
 
 void begin_frame()
 {
+	if (!device_supported)
+		return;
+
 	unsigned mask = vulkan->get_sync_index_mask(vulkan->handle);
 	unsigned num_frames = 0;
 	for (unsigned i = 0; i < 32; i++)
@@ -277,11 +291,13 @@ bool init()
 	pending_timeline_value = 0;
 	width = 0;
 	height = 0;
+	device_supported = true;
 	return true;
 }
 
 void deinit()
 {
+	device_supported = false;
 	begin_ts.reset();
 	end_ts.reset();
 	retro_image_handles.clear();
@@ -347,6 +363,9 @@ static void complete_frame_error()
 
 void complete_frame()
 {
+	if (!device_supported)
+		return;
+
 	if (!frontend)
 	{
 		complete_frame_error();

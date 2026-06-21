@@ -887,8 +887,11 @@ void reinit_gfx_plugin(void)
              if (log_cb)
                 log_cb(RETRO_LOG_ERROR, "Failed to obtain Vulkan interface.\n");
           }
-          else
-             parallel_init(vulkan);
+          else if (!parallel_init(vulkan))
+          {
+             if (log_cb)
+                log_cb(RETRO_LOG_ERROR, "parallel-RDP init failed (device unsupported); nothing will be rendered.\n");
+          }
 #endif
           break;
     }
