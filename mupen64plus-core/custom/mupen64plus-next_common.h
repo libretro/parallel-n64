@@ -152,7 +152,7 @@ extern uint32_t OverscanBottom;
 #define RETRO_MEMORY_TRANSFERPAK 0x100 + 2
 #define RETRO_GAME_TYPE_TRANSFERPAK 2
 
-#if defined(HAVE_PARALLEL_RDP)
+#if defined(HAVE_PARALLEL)
 #define FLAVOUR_VERSION "-Vulkan"
 #elif defined(HAVE_OPENGLES2)
 #define FLAVOUR_VERSION "-GLES2"

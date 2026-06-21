@@ -95,7 +95,7 @@ DEFINE_GFX(gln64);
 #if defined(HAVE_THR_AL)
 DEFINE_GFX(angrylion);
 #endif
-#if defined(HAVE_PARALLEL_RDP)
+#if defined(HAVE_PARALLEL)
 DEFINE_GFX(parallel);
 #endif
 
@@ -434,7 +434,7 @@ void plugin_connect_all()
 #endif
           break;
        case RDP_PLUGIN_PARALLEL:
-#ifdef HAVE_PARALLEL_RDP
+#ifdef HAVE_PARALLEL
           gfx = gfx_parallel;
 #endif
           break;
