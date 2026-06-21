@@ -277,9 +277,6 @@ GLOBAL_FUNCTION new_dyna_start
     add    x16, x16, PAGE_OFF(g_dev)
     movl   x1, (device_r4300_new_dynarec_hot_state_dynarec_local + saved_context)
     add    x16, x16, x1
-    adrp   x1, PAGE_ADDR(base_addr_rx)
-    add    x1, x1, PAGE_OFF(base_addr_rx)
-    mov    w0, #0xa4000000
     stp    x19,x20,[x16,#0]
     stp    x21,x22,[x16,#16]
     stp    x23,x24,[x16,#32]
@@ -287,11 +284,17 @@ GLOBAL_FUNCTION new_dyna_start
     stp    x27,x28,[x16,#64]
     stp    x29,x30,[x16,#80]
     sub    x29, x16, #saved_context
-    ldr    x19, [x1]
-    add    w0, w0, #0x40
-    bl     GLABEL(new_recompile_block)
+    /* Resume at pcaddr (seeded to the boot vector 0xa4000040 by
+     * new_dynarec_init, then holding the live PC), so new_dyna_start is
+     * re-enterable per frame under the fork's libco-free frame-break model.
+     * get_addr_ht compiles the block if needed and returns its host (RX)
+     * address. The original next code recompiled the boot block and jumped to
+     * base_addr_rx unconditionally, which on re-entry restarted execution at
+     * the boot vector every frame -- this matches the x64 linkage adaptation. */
+    ldr    w0, [x29, #fp_pcaddr]
+    bl     GLABEL(get_addr_ht)
     ldr    w20, [x29, #fp_cycle_count]
-    br     x19
+    br     x0
 
 GLOBAL_FUNCTION breakpoint
     brk 0
