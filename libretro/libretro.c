@@ -823,6 +823,9 @@ static void emu_step_initialize(void)
       case GFX_ANGRYLION: current_rdp_type = RDP_PLUGIN_ANGRYLION; break;
       case GFX_PARALLEL:  current_rdp_type = RDP_PLUGIN_PARALLEL;  break;
       case GFX_GLIDEN64:  current_rdp_type = RDP_PLUGIN_GLIDEN64;  break;
+      case GFX_RICE:      current_rdp_type = RDP_PLUGIN_RICE;      break;
+      case GFX_GLN64:     current_rdp_type = RDP_PLUGIN_GLN64;     break;
+      case GFX_GLIDE64:   current_rdp_type = RDP_PLUGIN_GLIDE64;   break;
       default:            current_rdp_type = RDP_PLUGIN_GLIDEN64;  break;
    }
    switch (rsp_plugin)

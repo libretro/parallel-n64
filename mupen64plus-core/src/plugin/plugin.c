@@ -98,6 +98,15 @@ DEFINE_GFX(angrylion);
 #if defined(HAVE_PARALLEL)
 DEFINE_GFX(parallel);
 #endif
+#if defined(HAVE_RICE)
+DEFINE_GFX(rice);
+#endif
+#if defined(HAVE_GLIDEN64)
+DEFINE_GFX(gliden64);
+#endif
+#if defined(HAVE_GLIDE64)
+DEFINE_GFX(glide64);
+#endif
 
 gfx_plugin_functions gfx;
 GFX_INFO gfx_info;
@@ -438,8 +447,27 @@ void plugin_connect_all()
           gfx = gfx_parallel;
 #endif
           break;
-       case RDP_PLUGIN_GLIDEN64:
+       case RDP_PLUGIN_RICE:
+#ifdef HAVE_RICE
+          gfx = gfx_rice;
+#endif
+          break;
+       case RDP_PLUGIN_GLN64:
+#ifdef HAVE_GLN64
           gfx = gfx_gln64;
+#endif
+          break;
+       case RDP_PLUGIN_GLIDE64:
+#ifdef HAVE_GLIDE64
+          gfx = gfx_glide64;
+#endif
+          break;
+       case RDP_PLUGIN_GLIDEN64:
+#ifdef HAVE_GLIDEN64
+          gfx = gfx_gliden64;
+#else
+          gfx = gfx_gln64;
+#endif
           break;
       case RDP_PLUGIN_NONE:
       default:
