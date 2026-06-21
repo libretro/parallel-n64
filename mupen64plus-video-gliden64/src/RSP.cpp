@@ -260,20 +260,32 @@ void RSP_Init()
 {
 	if (RDRAMSize == 0) {
 #ifdef OS_WINDOWS
-		// Calculate RDRAM size by intentionally causing an access violation
-		u32 test;
-		try
+		/* RDRAM, like HEADER, is only populated once the core has called
+		 * initiateGFX (CommonAPIImpl::_initiateGFX: RDRAM = _gfxInfo.RDRAM).
+		 * On the early-RomOpen path RDRAM is still NULL here, so the probe
+		 * below would read 0x7FFFFF bytes off a NULL pointer. The probe also
+		 * relies on a C++ try/catch catching the access violation, which only
+		 * works with MSVC /EHa -- under MinGW/GCC a hardware access violation
+		 * is not caught by catch(...), so a bad read becomes an uncaught
+		 * SIGSEGV. Only probe when RDRAM is valid; otherwise leave RDRAMSize
+		 * at 0 so the real RomOpen re-probes and reports the actual size once
+		 * RDRAM is set. */
+		if (RDRAM != nullptr)
 		{
-			test = RDRAM[0x007FFFFF] + 1;
+			u32 test;
+			try
+			{
+				test = RDRAM[0x007FFFFF] + 1;
+			}
+			catch (...)
+			{
+				test = 0;
+			}
+			if (test > 0)
+				RDRAMSize = 0x7FFFFF;
+			else
+				RDRAMSize = 0x3FFFFF;
 		}
-		catch (...)
-		{
-			test = 0;
-		}
-		if (test > 0)
-			RDRAMSize = 0x7FFFFF;
-		else
-			RDRAMSize = 0x3FFFFF;
 #else // OS_WINDOWS
 		RDRAMSize = 1024 * 1024 * 8 - 1;
 #endif // OS_WINDOWS
