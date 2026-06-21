@@ -283,20 +283,33 @@ void RSP_Init()
 	RSP.LLE = false;
 	RSP.infloop = false;
 
-	// get the name of the ROM
-	char romname[21];
-	for (int i = 0; i < 20; ++i)
-		romname[i] = HEADER[(32 + i) ^ 3];
-	romname[20] = 0;
+	/* HEADER points at the ROM header and is only populated once the core has
+	 * called initiateGFX (CommonAPIImpl::_initiateGFX: HEADER = _gfxInfo.HEADER).
+	 * On some front-end paths (e.g. the libretro core on macOS arm64) a GL context
+	 * reset drives RomOpen -> RSP_Init before initiateGFX has run, so HEADER is
+	 * still NULL; reading HEADER[(32+i)^3] then dereferences a near-NULL address
+	 * and crashes. Only derive the ROM name (and its per-game hacks) when HEADER
+	 * is valid -- RSP_Init runs again from the real RomOpen once it is set. The
+	 * tail (setDepthClearColor / FindPluginPath / RSP_SetDefaultState) must still
+	 * run on every call, so it stays outside this guard. */
+	if (HEADER != nullptr)
+	{
+		// get the name of the ROM
+		char romname[21];
+		size_t len;
+		for (int i = 0; i < 20; ++i)
+			romname[i] = HEADER[(32 + i) ^ 3];
+		romname[20] = 0;
 
-	// remove all trailing spaces
-	while (romname[strlen(romname) - 1] == ' ')
-		romname[strlen(romname) - 1] = 0;
+		// remove all trailing spaces
+		for (len = strlen(romname); len > 0 && romname[len - 1] == ' '; --len)
+			romname[len - 1] = 0;
 
-	if (strcmp(RSP.romname, romname) != 0)
-		TFH.shutdown();
+		if (strcmp(RSP.romname, romname) != 0)
+			TFH.shutdown();
 
-	strncpy(RSP.romname, romname, 21);
+		strncpy(RSP.romname, romname, 21);
+	}
 	setDepthClearColor();
 	config.generalEmulation.hacks = 0;
 	if (strstr(RSP.romname, (const char *)"OgreBattle64") != nullptr)
