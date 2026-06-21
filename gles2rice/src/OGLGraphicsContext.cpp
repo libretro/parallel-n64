@@ -17,6 +17,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 
 #include "osal_opengl.h"
+#include <glsm/glsm.h>
 
 #define M64P_PLUGIN_PROTOTYPES 1
 #include "m64p_plugin.h"
@@ -34,7 +35,8 @@ COGLGraphicsContext::COGLGraphicsContext() :
     m_pVendorStr(NULL),
     m_pRenderStr(NULL),
     m_pExtensionStr(NULL),
-    m_pVersionStr(NULL)
+    m_pVersionStr(NULL),
+    m_vao(0)
 {
 }
 
@@ -96,6 +98,33 @@ void COGLGraphicsContext::InitState(void)
     m_pExtensionStr = glGetString(GL_EXTENSIONS);
     m_pVersionStr = glGetString(GL_VERSION);
     m_pVendorStr = glGetString(GL_VENDOR);
+
+    /* A vertex array object must be bound for any draw to be valid under a
+     * core-profile GL context.  rice feeds geometry through client-side vertex
+     * arrays (glVertexAttribPointer with app pointers, no VBO); with no VAO
+     * bound the driver rejects every draw and nothing reaches the framebuffer
+     * -- a black screen with audio and input still working.  The frontend can
+     * hand back a core/core-forward context even for a compatibility request
+     * (RetroArch's "glcore" driver always does), so bind a VAO here.
+     *
+     * Resolve the entry points through the frontend's get_proc_address rather
+     * than glsm's wrappers: rglBindVertexArray() also re-binds a framebuffer,
+     * which is wrong this early in setup.  Guard on the resolved pointers --
+     * a legacy context without VAO support returns NULL and needs no VAO, and
+     * blindly calling a NULL glGenVertexArrays is exactly what crashed the
+     * "glcore" path. */
+    if (m_vao == 0)
+    {
+        void (*genVAO)(GLsizei, GLuint*) =
+            (void (*)(GLsizei, GLuint*))glsm_get_proc_address("glGenVertexArrays");
+        void (*bindVAO)(GLuint) =
+            (void (*)(GLuint))glsm_get_proc_address("glBindVertexArray");
+        if (genVAO && bindVAO)
+        {
+            genVAO(1, &m_vao);
+            bindVAO(m_vao);
+        }
+    }
 
     glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
     glClearDepth(1.0f);
