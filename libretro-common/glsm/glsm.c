@@ -3160,9 +3160,28 @@ static void glsm_state_setup(void)
    gl_state.colorlogicop                = GL_COPY;
 #endif
 
-#ifdef CORE
-   glGenVertexArrays(1, &gl_state.vao);
-#endif
+   /* A vertex array object must be bound for any draw to be valid under a
+    * core-profile GL context.  The frontend can return a core or core-forward
+    * context even for a RETRO_HW_CONTEXT_OPENGL (compatibility) request --
+    * RetroArch's "glcore" driver always does -- so this cannot be gated on the
+    * compile-time CORE flag.  Plugins that draw from client-side vertex arrays
+    * with no VAO of their own (rice, gln64) otherwise render nothing: a black
+    * screen with audio and input still working.
+    *
+    * Generate one VAO and bind it here, in glsm_state_setup(), which runs with
+    * the context current and after rglgen_resolve_symbols(); glGenVertexArrays
+    * is glsm's own correctly-resolved entry point, so there is no proc-address
+    * lookup or calling-convention hazard.  Leave gl_state.bindvertex.array at 0
+    * so glsm_state_unbind()/glsm_state_bind() do not touch this VAO -- it simply
+    * stays bound for the lifetime of the context.  Guard on the resolved
+    * pointer: a legacy context without VAO support leaves it NULL and needs no
+    * VAO, so this is a clean no-op there. */
+   if (glGenVertexArrays && glBindVertexArray)
+   {
+      if (gl_state.vao == 0)
+         glGenVertexArrays(1, &gl_state.vao);
+      glBindVertexArray(gl_state.vao);
+   }
 }
 
 static void glsm_state_bind(void)
