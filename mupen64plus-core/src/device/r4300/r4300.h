@@ -77,13 +77,21 @@ extern int g_cp0_cycle_count;
 #define mupencorestop (g_dev.r4300.stop)
 #endif
 #else
-#include "new_dynarec/arm64/memory_layout_arm64.h"
-#define mupencorePC    (RECOMPILER_MEMORY->rml_PC)
-#define mupencorereg   (RECOMPILER_MEMORY->rml_reg)
-#define hi             (RECOMPILER_MEMORY->rml_hi)
-#define next_interrupt (RECOMPILER_MEMORY->rml_next_interrupt)
-#define lo             (RECOMPILER_MEMORY->rml_lo)
-#define mupencorestop  (RECOMPILER_MEMORY->rml_stop)
+/* aarch64: the unified new_dynarec.c arm64 path uses the same
+ * new_dynarec_hot_state model as x86_64 (it addresses regs/hi/lo/stop/pc through
+ * that struct), so alias the core register/stop tokens to it here too, mirroring
+ * the _M_X64 branch above. (The older recompiler_memory_layout / RECOMPILER_MEMORY
+ * model went with new_dynarec_64.c, which is no longer built.) */
+extern struct precomp_instr *PC;
+extern uint32_t next_interrupt;
+extern int g_cp0_cycle_count;
+#define mupencorePC PC
+#ifndef mupencorereg
+#define mupencorereg  (g_dev.r4300.new_dynarec_hot_state.regs)
+#endif
+#define mupencorestop (g_dev.r4300.new_dynarec_hot_state.stop)
+#define hi            (g_dev.r4300.new_dynarec_hot_state.hi)
+#define lo            (g_dev.r4300.new_dynarec_hot_state.lo)
 #endif
 extern int frame_break;
 extern unsigned int llbit;
