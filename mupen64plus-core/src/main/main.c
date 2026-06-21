@@ -271,10 +271,16 @@ static void main_check_inputs(void)
 /*********************************************************************************************************
 * global functions, for adjusting the core emulator behavior
 */
-extern void Config_LoadConfig();
 int main_set_core_defaults(void)
 {
+    /* Config_LoadConfig is provided by the GLideN64 video plugin
+     * (Config_mupenplus.cpp). GLideN64 is not built on GLES2-only targets
+     * (e.g. webos-armv7), so only call it when GLideN64 is compiled in;
+     * otherwise the reference is left undefined at link time. */
+#ifdef HAVE_GLIDEN64
+    extern void Config_LoadConfig();
     Config_LoadConfig();
+#endif
     return 1;
 }
 
