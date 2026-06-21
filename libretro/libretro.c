@@ -75,6 +75,10 @@ int InitGfx(void);
 int glide64InitGfx(void);
 void gles2n64_reset(void);
 #endif
+#if defined(HAVE_RICE)
+extern int  riceRomOpen(void);
+extern void riceRomClosed(void);
+#endif
 
 #if defined(HAVE_PARALLEL)
 #include "../mupen64plus-video-paraLLEl/parallel.h"
@@ -877,7 +881,17 @@ void reinit_gfx_plugin(void)
           break;
        case GFX_RICE:
 #ifdef HAVE_RICE
-          /* TODO/FIXME */
+          {
+             /* rice's RomClosed dereferences singletons (CGraphicsContext::Get()
+              * etc.) that are NULL until the first RomOpen, so -- unlike the
+              * gliden64 branch -- it must not run on the initial connect. Only
+              * tear down once rice has actually been opened. */
+             static bool rice_opened = false;
+             if (rice_opened)
+                riceRomClosed();
+             riceRomOpen();
+             rice_opened = true;
+          }
 #endif
           break;
        case GFX_ANGRYLION:
