@@ -277,9 +277,9 @@ void step_SP_commands(uint32_t inst)
     endian_swap[01] = (u8)((inst >> 16) & 0xFF);
     endian_swap[02] = (u8)((inst >>  8) & 0xFF);
     endian_swap[03] = (u8)((inst >>  0) & 0xFF);
-    sprintf(&offset[0], "%03X", GET_RCP_REG(SP_PC_REG) & 0xFFF);
-    sprintf(&code[0], "%08X", inst);
-    strcpy(text, offset);
+    snprintf(&offset[0], sizeof(offset), "%03X", GET_RCP_REG(SP_PC_REG) & 0xFFF);
+    snprintf(&code[0], sizeof(code), "%08X", inst);
+    snprintf(text, sizeof(text), "%s", offset);
     my_strcat(text, "\n");
     my_strcat(text, code);
     message(text); /* PC offset, MIPS hex. */
