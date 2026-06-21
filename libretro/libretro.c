@@ -1180,11 +1180,23 @@ static bool retro_init_gl(bool core)
 
 
 
+/* mupen64plus config subsystem (mupen64plus-core/src/api/config.c). The rice
+ * video plugin reads its settings -- including the output resolution -- through
+ * ConfigOpenSection()/ConfigGetParam*(), all of which return M64ERR_NOT_INIT
+ * until ConfigInit() flips the subsystem on. */
+extern m64p_error ConfigInit(const char *ConfigDirOverride, const char *DataDirOverride);
+
 void retro_init(void)
 {
    struct retro_log_callback log;
    unsigned colorMode = RETRO_PIXEL_FORMAT_XRGB8888;
    uint64_t serialization_quirks = RETRO_SERIALIZATION_QUIRK_MUST_INITIALIZE;
+
+   /* Bring up the config subsystem before any plugin tries to open its config
+    * section.  Without this, rice's LoadConfiguration() bails early (sections
+    * never open), windowSetting.uDisplayWidth/Height stay 0, and the renderer
+    * draws into a 0x0 viewport -- a black screen with working audio. */
+   ConfigInit(NULL, NULL);
 
    screen_pitch = 0;
 
