@@ -112,6 +112,7 @@ uint32_t virtual_to_physical_address(struct r4300_core* r4300, uint32_t address,
      * active dynarec. */
     if (r4300_jit_backend == R4300_JIT_ARI64 && r4300->emumode == EMUMODE_DYNAREC)
     {
+#ifdef NEW_DYNAREC
         intptr_t map = r4300->new_dynarec_hot_state.memory_map[addr];
         if ((tlb->LUT_w[addr]) && (w == 1))
         {
@@ -128,6 +129,7 @@ uint32_t virtual_to_physical_address(struct r4300_core* r4300, uint32_t address,
         else {
             assert(map < 0);
         }
+#endif
     }
 
     if (w == 1)
@@ -152,10 +154,14 @@ uint32_t virtual_to_physical_address(struct r4300_core* r4300, uint32_t address,
             /* OnlyNotEnabled */
             if(r4300->emumode == EMUMODE_DYNAREC)
             {
+#ifdef NEW_DYNAREC
                 if(using_tlb)
                 {
                     TLB_refill_exception(r4300, address, w);
                 }
+#else
+                TLB_refill_exception(r4300, address, w);
+#endif
             } else {
                 TLB_refill_exception(r4300, address, w);
             }

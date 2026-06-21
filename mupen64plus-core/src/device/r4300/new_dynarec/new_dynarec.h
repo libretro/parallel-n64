@@ -82,7 +82,33 @@ struct new_dynarec_hot_state
     uintptr_t mini_ht[32][2];
     uintptr_t memory_map[1048576];
 #else
-    char dummy;
+    /* No ari64 dynarec compiled in (e.g. i686 interpreter-only build). The JIT
+     * is not present, so its fixed-offset layout and the multi-megabyte
+     * memory_map / mini_ht / dynarec_local scratch are unnecessary; but the
+     * portable register/stop accessors and the runtime backend dispatch still
+     * reference these small members (in branches that are dead without ari64),
+     * so they must exist for those translation units to compile. */
+    int cycle_count;
+    int pending_exception;
+    int pcaddr;
+    int stop;
+    uint32_t cp1_fcr0;
+    uint32_t cp1_fcr31;
+    int64_t  regs[32];
+    int64_t  hi;
+    int64_t  lo;
+    uint32_t cp0_regs[32];
+    uint64_t cp0_latch;
+    float* cp1_regs_simple[32];
+    double* cp1_regs_double[32];
+    uint64_t cp2_latch;
+    int branch_target;
+    struct precomp_instr* pc;
+    struct precomp_instr fake_pc;
+    int64_t rs;
+    int64_t rt;
+    int64_t rd;
+    intptr_t ram_offset;
 #endif
 };
 

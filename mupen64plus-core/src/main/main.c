@@ -1710,8 +1710,12 @@ m64p_error main_run(void)
          * gates retro_return's early-out; clear it directly so that in Hacktarux
          * mode -- where *r4300_stop() is the base-struct field, a different
          * location -- it does not stay latched from the first frame and block
-         * retro_return from arming the next frame-break. */
+         * retro_return from arming the next frame-break. The hot-state stop only
+         * exists when the ari64 dynarec is compiled in (NEW_DYNAREC); without it
+         * there is no separate ari64 stop and *r4300_stop() above is sufficient. */
+#ifdef NEW_DYNAREC
         g_dev.r4300.new_dynarec_hot_state.stop = 0;
+#endif
         run_device(&g_dev);
         return M64ERR_SUCCESS;
     }

@@ -67,10 +67,14 @@ extern int g_cp0_cycle_count;
 #define hi            (g_dev.r4300.new_dynarec_hot_state.hi)
 #define lo            (g_dev.r4300.new_dynarec_hot_state.lo)
 #else
-#define mupencorereg reg
-extern int64_t reg[32], hi, lo;
-extern int stop;
-#define mupencorestop stop
+/* No _M_X64 hot state and no ari64 dynarec (e.g. i686 interpreter-only): the
+ * old reg/hi/lo/stop globals lived in the ari64 new_dynarec translation unit,
+ * which is not built here, so alias the always-present base-struct members
+ * instead (the interpreters address these directly). */
+#define mupencorereg  (g_dev.r4300.regs)
+#define hi            (g_dev.r4300.hi)
+#define lo            (g_dev.r4300.lo)
+#define mupencorestop (g_dev.r4300.stop)
 #endif
 #else
 #include "new_dynarec/arm64/memory_layout_arm64.h"
