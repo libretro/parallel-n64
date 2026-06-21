@@ -5,6 +5,7 @@
 #define HOST_CCREG 10
 #define HOST_BTREG 8
 #define EXCLUDE_REG 11
+#define IS_REG_EXCLUDED(hr) ((hr)==EXCLUDE_REG)
 
 #define HOST_IMM8 1
 #define HAVE_CMOV_IMM 1

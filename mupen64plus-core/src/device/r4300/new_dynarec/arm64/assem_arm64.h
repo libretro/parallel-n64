@@ -5,6 +5,14 @@
 #define HOST_CCREG 20 /* callee-save */
 #define HOST_BTREG 19 /* callee-save */
 #define EXCLUDE_REG 29 /* FP */
+#if defined(__APPLE__)
+/* x18 is the platform-reserved register on Apple arm64; the OS may
+   modify it at any time (thread-local storage, signal handlers, etc.).
+   The JIT must never allocate it for guest registers. */
+#define IS_REG_EXCLUDED(hr) ((hr)==EXCLUDE_REG||(hr)==18)
+#else
+#define IS_REG_EXCLUDED(hr) ((hr)==EXCLUDE_REG)
+#endif
 
 //#define DISABLE_BLOCK_LINKING 1
 #define NATIVE_64 1

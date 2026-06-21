@@ -30,6 +30,7 @@
 #define HOST_REGS 8
 #define HOST_BTREG EBP
 #define EXCLUDE_REG ESP
+#define IS_REG_EXCLUDED(hr) ((hr)==EXCLUDE_REG)
 #define HOST_TEMPREG R15
 
 //#define IMM_PREFETCH 1

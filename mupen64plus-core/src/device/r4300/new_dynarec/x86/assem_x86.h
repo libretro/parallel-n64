@@ -14,6 +14,7 @@
 #define HOST_CCREG ESI
 #define HOST_BTREG EBP
 #define EXCLUDE_REG ESP
+#define IS_REG_EXCLUDED(hr) ((hr)==EXCLUDE_REG)
 
 //#define IMM_PREFETCH 1
 #define HOST_IMM_ADDR32 1
