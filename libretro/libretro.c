@@ -908,11 +908,17 @@ void deinit_gfx_plugin(void)
 #if defined(HAVE_PARALLEL)
           parallel_deinit();
 #endif
-      case GFX_GLN64:
-      case GFX_GLIDEN64:
-          glsm_ctl(GLSM_CTL_STATE_CONTEXT_DESTROY, NULL);
+          break;
+       case GFX_ANGRYLION:
           break;
        default:
+          /* All GL renderers (gln64 / gliden64 / glide64 / rice) bring up the
+           * glsm context via the default case in context_reset(); tear it down
+           * symmetrically here.  parallel (Vulkan) and angrylion (software)
+           * never touch glsm, so they must not fall into this path -- doing so
+           * drove GLSM_CTL_STATE_CONTEXT_DESTROY on a context glsm never set up,
+           * which hung content-close on the parallel back-end. */
+          glsm_ctl(GLSM_CTL_STATE_CONTEXT_DESTROY, NULL);
           break;
     }
 }
