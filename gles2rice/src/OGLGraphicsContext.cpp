@@ -34,8 +34,7 @@ COGLGraphicsContext::COGLGraphicsContext() :
     m_pVendorStr(NULL),
     m_pRenderStr(NULL),
     m_pExtensionStr(NULL),
-    m_pVersionStr(NULL),
-    m_vao(0)
+    m_pVersionStr(NULL)
 {
 }
 
@@ -97,17 +96,6 @@ void COGLGraphicsContext::InitState(void)
     m_pExtensionStr = glGetString(GL_EXTENSIONS);
     m_pVersionStr = glGetString(GL_VERSION);
     m_pVendorStr = glGetString(GL_VENDOR);
-
-    /* A vertex array object must be bound for any draw to be valid under a
-     * core-profile GL context.  rice feeds geometry through client-side vertex
-     * arrays (glVertexAttribPointer with app pointers, no VBO); with no VAO
-     * bound the driver rejects every draw and nothing reaches the framebuffer
-     * -- a black screen with audio/input still working.  A single VAO bound
-     * here, kept current for the plugin's lifetime, satisfies the requirement
-     * and is a no-op on a compatibility context. */
-    if (m_vao == 0)
-        glGenVertexArrays(1, &m_vao);
-    glBindVertexArray(m_vao);
 
     glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
     glClearDepth(1.0f);

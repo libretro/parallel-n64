@@ -56,11 +56,6 @@ protected:
     const unsigned char*    m_pExtensionStr;
     const char* m_pWglExtensionStr;
     const unsigned char*    m_pVersionStr;
-
-    /* Vertex array object kept bound so rice's client-side vertex arrays draw
-     * under a core-profile GL context (see InitState).  Typed as unsigned int
-     * (== GLuint) so this header needs no GL include. */
-    unsigned int            m_vao;
 };
 
 #endif
