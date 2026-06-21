@@ -286,7 +286,12 @@ ifeq ($(WITH_DYNAREC), arm)
 endif
 
 ifeq ($(WITH_DYNAREC), aarch64)
-		SOURCES_C += $(CORE_DIR)/src/device/r4300/new_dynarec/new_dynarec_64.c
+		# Use the unified new_dynarec.c (it includes arm64/assem_arm64.c for the
+		# NEW_DYNAREC_ARM64 path and uses the current struct-based core API). The
+		# old new_dynarec_64.c is a pre-migration arm64 copy that still references
+		# the removed global API (g_cp0_regs, memory_map, tlb_LUT_r, g_rom, ...)
+		# and no longer compiles against the imported core.
+		SOURCES_C += $(CORE_DIR)/src/device/r4300/new_dynarec/new_dynarec.c
 		SOURCES_C += $(CORE_DIR)/src/device/r4300/new_dynarec/arm64/apple_jit_protect.c
 		SOURCES_C += $(CORE_DIR)/src/device/r4300/new_dynarec/arm64/trampoline_arm64.c
 
