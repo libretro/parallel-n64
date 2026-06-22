@@ -128,6 +128,8 @@ typedef struct glsm_ctx_params
 
 GLuint glsm_get_current_framebuffer(void);
 
+bool glsm_context_is_core(void);
+
 RETRO_END_DECLS
 
 #endif

@@ -3182,27 +3182,19 @@ static void glsm_state_setup(void)
     * -- so a VAO must be bound.  RetroArch's "gl" (gl2) driver creates a
     * compatibility context, where client arrays are valid and a VAO is neither
     * required nor wanted; binding one there only perturbs the GL state the gl2
-    * driver tracks (corrupting its menu/OSD).  So detect the *granted* profile
-    * at runtime and only bind on a real core-profile context, leaving the
-    * compatibility path exactly as it was.
-    *
-    * GL_CONTEXT_PROFILE_MASK exists only on GL 3.2+.  On a core context it
-    * reports GL_CONTEXT_CORE_PROFILE_BIT; on a compatibility context the
-    * compatibility bit; on the gl2 driver's pre-3.2 context the query is an
-    * invalid enum and leaves the value 0.  Bind a VAO only when the core bit is
-    * set. */
-#ifndef GL_CONTEXT_PROFILE_MASK
-#define GL_CONTEXT_PROFILE_MASK           0x9126
-#endif
-#ifndef GL_CONTEXT_CORE_PROFILE_BIT
-#define GL_CONTEXT_CORE_PROFILE_BIT       0x00000001
-#endif
+    * driver tracks (corrupting its menu/OSD).  So bind a VAO only on a real
+    * core-profile context. */
 #ifndef HAVE_OPENGLES
    {
-      GLint profile_mask = 0;
-      if (majorVersion > 3 || (majorVersion == 3 && minorVersion >= 2))
-         glGetIntegerv(GL_CONTEXT_PROFILE_MASK, &profile_mask);
-      if ((profile_mask & GL_CONTEXT_CORE_PROFILE_BIT)
+      /* Use the context type RetroArch actually requested rather than the
+       * queried profile mask. The profile mask is unreliable -- NVIDIA reports
+       * the core-profile bit even on a compatibility context -- so querying it
+       * made glsm bind a VAO on RA's "gl" (gl2) driver, which uses no VAO and
+       * assumes default vertex-array state; the core's VAO capture then diverged
+       * from what RA composited and the screen went black. context_type is set
+       * from params.core when the context is requested, so it reflects exactly
+       * whether RA asked for a core (glcore) or compatibility (gl) context. */
+      if (hw_render.context_type == RETRO_HW_CONTEXT_OPENGL_CORE
             && glGenVertexArrays && glBindVertexArray)
       {
          if (gl_state.vao == 0)
@@ -3528,6 +3520,16 @@ static bool glsm_state_ctx_init(glsm_ctx_params_t *params)
 GLuint glsm_get_current_framebuffer(void)
 {
    return hw_render.get_current_framebuffer();
+}
+
+/* Whether RetroArch requested a core-profile context (its "glcore" driver), as
+ * opposed to a compatibility context (its "gl" driver). Based on the context
+ * type glsm itself recorded when the context was requested, which is reliable;
+ * GL_CONTEXT_PROFILE_MASK is not, since NVIDIA reports the core bit even on a
+ * compatibility context. */
+bool glsm_context_is_core(void)
+{
+   return hw_render.context_type == RETRO_HW_CONTEXT_OPENGL_CORE;
 }
 
 void* glsm_get_proc_address(const char* sym)
