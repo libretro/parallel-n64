@@ -3209,6 +3209,7 @@ static void glsm_state_setup(void)
 static void glsm_state_bind(void)
 {
    unsigned i;
+   { static unsigned long _bc=0; if((_bc++ % 200)==0) fprintf(stderr,"[GLSM-DBG] bind #%lu fbo=%u depthtest=%d depthmask.used=%d depthfunc.used=%d depthrange.used=%d cleardepth.used=%d\n", _bc, (unsigned)default_framebuffer, gl_state.cap_state[SGL_DEPTH_TEST], gl_state.depthmask.used, gl_state.depthfunc.used, gl_state.depthrange.used, gl_state.cleardepth.used); }
    /* The frontend can hand back a different target framebuffer between frames
     * (RetroArch's "gl"/gl2 driver recreates or rotates its render target on
     * resize, shader-pass changes, and similar). default_framebuffer is captured
@@ -3391,6 +3392,7 @@ static void glsm_state_bind(void)
 static void glsm_state_unbind(void)
 {
    unsigned i;
+   { static unsigned long _uc=0; if((_uc++ % 200)==0) fprintf(stderr,"[GLSM-DBG] unbind #%lu\n", _uc); }
    for (i = 0; i < SGL_CAP_MAX; i ++)
    {
       if (gl_state.cap_state[i])
