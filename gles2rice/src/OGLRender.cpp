@@ -422,9 +422,13 @@ bool OGLRender::RenderTexRect()
             -inv + g_texRectTVtx[0].x / w, inv - g_texRectTVtx[0].y / h, depth, 1
     };
 
+    glEnableVertexAttribArray(VS_COLOR);
     glVertexAttribPointer(VS_COLOR, 4, GL_FLOAT,GL_TRUE, 0, &colour );
+    glEnableVertexAttribArray(VS_POSITION);
     glVertexAttribPointer(VS_POSITION,4,GL_FLOAT,GL_FALSE,0,&vertices);
+    glEnableVertexAttribArray(VS_TEXCOORD0);
     glVertexAttribPointer(VS_TEXCOORD0,2,GL_FLOAT,GL_FALSE, 0, &tex);
+    glEnableVertexAttribArray(VS_TEXCOORD1);
     glVertexAttribPointer(VS_TEXCOORD1,2,GL_FLOAT,GL_FALSE, 0, &tex2);
     glDrawArrays(GL_TRIANGLE_FAN,0,4);
 
@@ -465,7 +469,9 @@ bool OGLRender::RenderFillRect(uint32_t dwColor, float depth)
             -inv + m_fillRectVtx[0].x / w, inv - m_fillRectVtx[0].y / h, depth, 1
     };
 
+    glEnableVertexAttribArray(VS_COLOR);
     glVertexAttribPointer(VS_COLOR, 4, GL_FLOAT,GL_FALSE, 0, &colour );
+    glEnableVertexAttribArray(VS_POSITION);
     glVertexAttribPointer(VS_POSITION,4,GL_FLOAT,GL_FALSE,0,&vertices);
     glDisableVertexAttribArray(VS_TEXCOORD0);
     glDisableVertexAttribArray(VS_TEXCOORD1);
@@ -502,6 +508,21 @@ bool OGLRender::RenderFlushTris()
     ApplyZBias(m_dwZBias);  // set the bias factors
 
     glViewportWrapper(windowSetting.vpLeftW, windowSetting.uDisplayHeight - windowSetting.vpTopW - windowSetting.vpHeightW, windowSetting.vpWidthW, windowSetting.vpHeightW, false);
+
+    /* Enable and point the vertex attribute arrays for the geometry draw. They
+     * are otherwise only set up on a shader-combiner change, but the libretro
+     * frontend resets GL state each frame, so on a frame where the combiner did
+     * not change they would be left disabled and the draw rejected. */
+    glEnableVertexAttribArray(VS_POSITION);
+    glVertexAttribPointer(VS_POSITION,4,GL_FLOAT,GL_FALSE,sizeof(float)*5,&(g_vtxProjected5[0][0]));
+    glEnableVertexAttribArray(VS_COLOR);
+    glVertexAttribPointer(VS_COLOR,4,GL_UNSIGNED_BYTE,GL_TRUE,sizeof(uint8_t)*4,&(g_oglVtxColors[0][0]));
+    glEnableVertexAttribArray(VS_TEXCOORD0);
+    glVertexAttribPointer(VS_TEXCOORD0,2,GL_FLOAT,GL_FALSE,sizeof(TLITVERTEX),&(g_vtxBuffer[0].tcord[0].u));
+    glEnableVertexAttribArray(VS_TEXCOORD1);
+    glVertexAttribPointer(VS_TEXCOORD1,2,GL_FLOAT,GL_FALSE,sizeof(TLITVERTEX),&(g_vtxBuffer[0].tcord[1].u));
+    glEnableVertexAttribArray(VS_FOG);
+    glVertexAttribPointer(VS_FOG,1,GL_FLOAT,GL_FALSE,sizeof(float)*5,&(g_vtxProjected5[0][4]));
 
     //if options.bOGLVertexClipper == false )
     {
@@ -577,9 +598,13 @@ void OGLRender::DrawSimple2DTexture(float x0, float y0, float x1, float y1, floa
             -inv + g_texRectTVtx[3].x/ w, inv - g_texRectTVtx[3].y/ h, -g_texRectTVtx[3].z,1
     };
 
+    glEnableVertexAttribArray(VS_COLOR);
     glVertexAttribPointer(VS_COLOR, 4, GL_FLOAT,GL_FALSE, 0, &colour );
+    glEnableVertexAttribArray(VS_POSITION);
     glVertexAttribPointer(VS_POSITION,4,GL_FLOAT,GL_FALSE,0,&vertices);
+    glEnableVertexAttribArray(VS_TEXCOORD0);
     glVertexAttribPointer(VS_TEXCOORD0,2,GL_FLOAT,GL_FALSE, 0, &tex);
+    glEnableVertexAttribArray(VS_TEXCOORD1);
     glVertexAttribPointer(VS_TEXCOORD1,2,GL_FLOAT,GL_FALSE, 0, &tex2);
     glDrawArrays(GL_TRIANGLES,0,6);
 
@@ -618,7 +643,9 @@ void OGLRender::DrawSimpleRect(int nX0, int nY0, int nX1, int nY1, uint32_t dwCo
             -inv + m_simpleRectVtx[0].x / w, inv - m_simpleRectVtx[0].y / h, -depth, 1
     };
 
+    glEnableVertexAttribArray(VS_COLOR);
     glVertexAttribPointer(VS_COLOR, 4, GL_FLOAT,GL_FALSE, 0, &colour );
+    glEnableVertexAttribArray(VS_POSITION);
     glVertexAttribPointer(VS_POSITION,4,GL_FLOAT,GL_FALSE,0,&vertices);
     glDisableVertexAttribArray(VS_TEXCOORD0);
     glDisableVertexAttribArray(VS_TEXCOORD1);
