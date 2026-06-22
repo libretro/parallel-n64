@@ -2550,7 +2550,7 @@ void retro_unload_game(void)
 static void glsm_exit(void)
 {
 #ifndef HAVE_SHARED_CONTEXT
-   if (mupencorestop)
+   if (g_real_stop)
       return;
 #ifdef HAVE_THR_AL
    if (gfx_plugin == GFX_ANGRYLION)
@@ -2567,7 +2567,7 @@ static void glsm_exit(void)
 static void glsm_enter(void)
 {
 #ifndef HAVE_SHARED_CONTEXT
-   if (mupencorestop)
+   if (g_real_stop)
       return;
 #ifdef HAVE_THR_AL
    if (gfx_plugin == GFX_ANGRYLION)
