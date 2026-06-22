@@ -1415,7 +1415,34 @@ m64p_error main_run(void)
 
     /* XXX: select type of flashram from db */
     uint32_t flashram_type = MX29L1100_ID;
-    
+
+    /* Per-frame re-entry (libco-free model): once the device has been set up,
+     * every subsequent main_run() only advances one frame slice and returns.
+     * This check must come first so the one-time initialization below -- config
+     * reads, ROM byte-swap, storage-file opening, 64DD load, controller setup
+     * and its logging -- does NOT re-run on every frame (it was spamming the log
+     * with controller/pak messages once per frame and redundantly reinitializing
+     * everything). The re-entry path only touches globals, so it is safe here. */
+    if (l_setup_done) {
+        /* Clear the per-frame yield flag and run a slice (run_device returns
+         * when retro_return sets mupencorestop again). Clear the active
+         * backend's stop via the accessor (ari64 keeps it in
+         * new_dynarec_hot_state, Hacktarux/interpreters in the base struct). */
+        *r4300_stop(&g_dev.r4300) = 0;
+        /* mupencorestop (r4300.h) is hardcoded to ari64's hot-state stop and
+         * gates retro_return's early-out; clear it directly so that in Hacktarux
+         * mode -- where *r4300_stop() is the base-struct field, a different
+         * location -- it does not stay latched from the first frame and block
+         * retro_return from arming the next frame-break. The hot-state stop only
+         * exists when the ari64 dynarec is compiled in (NEW_DYNAREC); without it
+         * there is no separate ari64 stop and *r4300_stop() above is sufficient. */
+#ifdef NEW_DYNAREC
+        g_dev.r4300.new_dynarec_hot_state.stop = 0;
+#endif
+        run_device(&g_dev);
+        return M64ERR_SUCCESS;
+    }
+
     emumode = r4300_emumode;
     randomize_interrupt = 0; // We don't want this right now
     no_compiled_jump = 0;
@@ -1702,29 +1729,6 @@ m64p_error main_run(void)
         ijoybus_devices[i] = &g_ijoybus_device_cart;
     }
 
-    if (l_setup_done) {
-        /* per-frame re-entry: clear the per-frame yield flag and run a slice
-         * (run_device returns when retro_return sets mupencorestop again).
-         * Clear the active backend's stop via the accessor (ari64 keeps it in
-         * new_dynarec_hot_state, Hacktarux/interpreters in the base struct), and
-         * ALSO clear mupencorestop: it is hardcoded to ari64's hot-state stop
-         * (r4300.h) and gates retro_return's early-out, so in Hacktarux mode it
-         * would otherwise stay latched from the first frame and retro_return
-         * could never arm the next frame-break. */
-        *r4300_stop(&g_dev.r4300) = 0;
-        /* mupencorestop (r4300.h) is hardcoded to ari64's hot-state stop and
-         * gates retro_return's early-out; clear it directly so that in Hacktarux
-         * mode -- where *r4300_stop() is the base-struct field, a different
-         * location -- it does not stay latched from the first frame and block
-         * retro_return from arming the next frame-break. The hot-state stop only
-         * exists when the ari64 dynarec is compiled in (NEW_DYNAREC); without it
-         * there is no separate ari64 stop and *r4300_stop() above is sufficient. */
-#ifdef NEW_DYNAREC
-        g_dev.r4300.new_dynarec_hot_state.stop = 0;
-#endif
-        run_device(&g_dev);
-        return M64ERR_SUCCESS;
-    }
     l_setup_done = 1;
     init_device(&g_dev,
                 g_mem_base,
