@@ -3160,8 +3160,45 @@ static void glsm_state_setup(void)
    gl_state.colorlogicop                = GL_COPY;
 #endif
 
-#ifdef CORE
-   glGenVertexArrays(1, &gl_state.vao);
+   /* A vertex array object must be bound for any draw to be valid under a
+    * core-profile GL context.  Whether we got one is a runtime property of the
+    * context the frontend actually created -- not a compile-time choice, and
+    * not something to do unconditionally.
+    *
+    * RetroArch's "glcore" driver creates a core-profile context: plugins that
+    * draw from client-side vertex arrays with no VAO of their own (rice, gln64)
+    * render nothing there -- a black screen with audio and input still working
+    * -- so a VAO must be bound.  RetroArch's "gl" (gl2) driver creates a
+    * compatibility context, where client arrays are valid and a VAO is neither
+    * required nor wanted; binding one there only perturbs the GL state the gl2
+    * driver tracks (corrupting its menu/OSD).  So detect the *granted* profile
+    * at runtime and only bind on a real core-profile context, leaving the
+    * compatibility path exactly as it was.
+    *
+    * GL_CONTEXT_PROFILE_MASK exists only on GL 3.2+.  On a core context it
+    * reports GL_CONTEXT_CORE_PROFILE_BIT; on a compatibility context the
+    * compatibility bit; on the gl2 driver's pre-3.2 context the query is an
+    * invalid enum and leaves the value 0.  Bind a VAO only when the core bit is
+    * set. */
+#ifndef GL_CONTEXT_PROFILE_MASK
+#define GL_CONTEXT_PROFILE_MASK           0x9126
+#endif
+#ifndef GL_CONTEXT_CORE_PROFILE_BIT
+#define GL_CONTEXT_CORE_PROFILE_BIT       0x00000001
+#endif
+#ifndef HAVE_OPENGLES
+   {
+      GLint profile_mask = 0;
+      if (majorVersion > 3 || (majorVersion == 3 && minorVersion >= 2))
+         glGetIntegerv(GL_CONTEXT_PROFILE_MASK, &profile_mask);
+      if ((profile_mask & GL_CONTEXT_CORE_PROFILE_BIT)
+            && glGenVertexArrays && glBindVertexArray)
+      {
+         if (gl_state.vao == 0)
+            glGenVertexArrays(1, &gl_state.vao);
+         glBindVertexArray(gl_state.vao);
+      }
+   }
 #endif
 }
 
