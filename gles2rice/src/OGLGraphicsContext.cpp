@@ -104,37 +104,26 @@ void COGLGraphicsContext::InitState(void)
      * arrays (glVertexAttribPointer with app pointers, no VBO); under a core
      * profile, with no VAO bound the driver rejects every draw and nothing
      * reaches the framebuffer.  RetroArch's "glcore" driver hands back a
-     * core-profile context (even for a compatibility request), so a VAO is
-     * needed there.  The "gl" (gl2) driver hands back a compatibility context,
-     * where client arrays are valid and a VAO is neither required nor wanted.
+     * core-profile context, so a VAO is needed there.  The "gl" (gl2) driver
+     * hands back a compatibility context, where client arrays are valid and a
+     * VAO is neither required nor wanted.
      *
-     * The VAO entry points resolve on a compatibility context too, so their
-     * mere availability is NOT a signal to bind one -- a modern NVIDIA gl2
-     * context reports GL 4.x compatibility and exposes them.  Detect the actual
-     * granted profile and only bind on a real core context.  GL_CONTEXT_PROFILE_MASK
-     * exists from GL 3.2 on: a core context reports the core bit, a compatibility
-     * context the compatibility bit, an older context fails the query (value
-     * stays 0).  Resolve through the frontend's get_proc_address rather than
-     * glsm's wrappers (rglBindVertexArray also re-binds a framebuffer, wrong
-     * this early in setup). */
-    if (m_vao == 0)
+     * Use the context type RetroArch requested (glsm_context_is_core) rather
+     * than querying GL_CONTEXT_PROFILE_MASK: NVIDIA reports the core-profile
+     * bit even on a compatibility context, so the mask query would bind a VAO
+     * on the "gl" driver and black-screen it.  Resolve the entry points through
+     * the frontend's get_proc_address rather than glsm's wrappers
+     * (rglBindVertexArray also re-binds a framebuffer, wrong this early). */
+    if (m_vao == 0 && glsm_context_is_core())
     {
-        GLint major = 0, minor = 0, profile_mask = 0;
-        glGetIntegerv(GL_MAJOR_VERSION, &major);
-        glGetIntegerv(GL_MINOR_VERSION, &minor);
-        if (major > 3 || (major == 3 && minor >= 2))
-            glGetIntegerv(0x9126 /*GL_CONTEXT_PROFILE_MASK*/, &profile_mask);
-        if (profile_mask & 0x00000001 /*GL_CONTEXT_CORE_PROFILE_BIT*/)
+        void (*genVAO)(GLsizei, GLuint*) =
+            (void (*)(GLsizei, GLuint*))glsm_get_proc_address("glGenVertexArrays");
+        void (*bindVAO)(GLuint) =
+            (void (*)(GLuint))glsm_get_proc_address("glBindVertexArray");
+        if (genVAO && bindVAO)
         {
-            void (*genVAO)(GLsizei, GLuint*) =
-                (void (*)(GLsizei, GLuint*))glsm_get_proc_address("glGenVertexArrays");
-            void (*bindVAO)(GLuint) =
-                (void (*)(GLuint))glsm_get_proc_address("glBindVertexArray");
-            if (genVAO && bindVAO)
-            {
-                genVAO(1, &m_vao);
-                bindVAO(m_vao);
-            }
+            genVAO(1, &m_vao);
+            bindVAO(m_vao);
         }
     }
 
