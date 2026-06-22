@@ -855,18 +855,10 @@ void OGLRender::EndRendering(void)
 
 void OGLRender::glViewportWrapper(GLint x, GLint y, GLsizei width, GLsizei height, bool flag)
 {
-    static GLint mx=0,my=0;
-    static GLsizei m_width=0, m_height=0;
-    static bool mflag=true;
-
-    if( x!=mx || y!=my || width!=m_width || height!=m_height || mflag!=flag)
-    {
-        mx=x;
-        my=y;
-        m_width=width;
-        m_height=height;
-        mflag=flag;
-        glViewport(x,y,width,height);
-    }
+    /* Always set the viewport. Caching it here is unsafe: glsm re-applies its
+     * own tracked viewport every frame, so a stale local cache would let rice
+     * skip a needed glViewport and render into the wrong region. The glsm
+     * wrapper still avoids a redundant GL call when nothing actually changed. */
+    glViewport(x, y, width, height);
 }
 
