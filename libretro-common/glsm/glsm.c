@@ -3306,6 +3306,9 @@ static void glsm_state_bind(void)
    if (gl_state.depthmask.used)
       glDepthMask(gl_state.depthmask.mask);
 
+   if (gl_state.depthrange.used)
+      rglDepthRange(gl_state.depthrange.zNear, gl_state.depthrange.zFar);
+
    if (gl_state.polygonoffset.used)
       glPolygonOffset(
             gl_state.polygonoffset.factor,
