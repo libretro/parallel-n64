@@ -3387,6 +3387,40 @@ static void glsm_state_unbind(void)
    glActiveTexture(GL_TEXTURE0);
 
 
+   /* Unbind any textures the core left bound on each unit, then leave unit 0
+    * active. RetroArch's gl2 driver does not defensively rebind every unit, so
+    * a leftover core texture corrupts its own rendering on the compatibility
+    * path (no VAO isolates this). */
+   {
+      int t;
+      for (t = (int)glsm_max_textures - 1; t >= 0; t--)
+      {
+         if (t < 32 && gl_state.bind_textures.ids[t])
+         {
+            glActiveTexture(GL_TEXTURE0 + t);
+            glBindTexture(gl_state.bind_textures.target[t]
+                  ? gl_state.bind_textures.target[t] : GL_TEXTURE_2D, 0);
+         }
+      }
+      glActiveTexture(GL_TEXTURE0);
+   }
+
+   /* The core feeds geometry through client arrays and may leave a vertex
+    * buffer bound; the frontend assumes none is bound when it issues its own
+    * client-array draws. Unbind it. On a core profile the VAO glsm binds
+    * isolates this, but the compatibility path has no VAO, so do it explicitly.
+    * The element array buffer leaks the same way and breaks the frontend's
+    * indexed draws, so unbind it too. */
+   if (gl_state.array_buffer != 0)
+      glBindBuffer(GL_ARRAY_BUFFER, 0);
+   if (gl_state.index_buffer != 0)
+      glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+
+   /* Restore the default pixel-store alignment the frontend expects. */
+   glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+   glPixelStorei(GL_PACK_ALIGNMENT, 4);
+
+
 #ifndef HAVE_OPENGLES2
    if (gl_state.bindvertex.array != 0)
       glBindVertexArray(0);
