@@ -233,6 +233,7 @@ struct gl_cached_state
    } framebuf[2];
 
    GLuint vao;
+   int fbo_cleared_once;
    GLuint array_buffer;
    GLuint index_buffer;
    GLuint program;
@@ -3261,6 +3262,25 @@ static void glsm_state_bind(void)
       gl_state.framebuf[1].desired_location = default_framebuffer;
    }
 
+   /* The first time the hardware-render framebuffer is bound, clear it once in
+    * full. RetroArch's gl driver allocates the FBO at the next power of two of
+    * the content size (e.g. 1024x1024 for 640x480); the N64 renderers only ever
+    * touch their content region, so the rest would otherwise show whatever the
+    * frontend left there (corruption around the image). The untouched region is
+    * never written again, so a single clear makes it permanently black --
+    * clearing every frame would wipe content for renderers that rely on
+    * framebuffer persistence. Scissor is taken from glsm's tracked cap. */
+   if (!gl_state.fbo_cleared_once)
+   {
+      int scissor_on = gl_state.cap_state[SGL_SCISSOR_TEST];
+      if (scissor_on)
+         glDisable(gl_state.cap_translate[SGL_SCISSOR_TEST]);
+      glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+      glClear(GL_COLOR_BUFFER_BIT);
+      if (scissor_on)
+         glEnable(gl_state.cap_translate[SGL_SCISSOR_TEST]);
+      gl_state.fbo_cleared_once = 1;
+   }
    /* Restore the core's read buffer for the default framebuffer. rglReadBuffer
     * only tracks it for the default FB, and the read FB has just been bound to
     * the default above, so this targets the right framebuffer. Without this the
