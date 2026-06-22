@@ -529,6 +529,12 @@ bool OGLRender::RenderFlushTris()
         glDrawElements( GL_TRIANGLES, gRSP.numVertices, GL_UNSIGNED_SHORT, g_vtxIndex );
     }
 
+    /* Fog is only used by this geometry draw. Disable it here so it is not left
+     * enabled -- still pointing at g_vtxProjected5 with a 5-float stride -- for
+     * the rect/blit draws (DrawSimple2DTexture, the TRIANGLE_FANs), which use a
+     * different vertex layout and would read fog out of bounds and crash. */
+    glDisableVertexAttribArray(VS_FOG);
+
     if( !gRDP.bFogEnableInBlender && gRSP.bFogEnabled )
     {
        TurnFogOnOff(true);
@@ -602,6 +608,7 @@ void OGLRender::DrawSimple2DTexture(float x0, float y0, float x1, float y1, floa
     glVertexAttribPointer(VS_COLOR, 4, GL_FLOAT,GL_FALSE, 0, &colour );
     glEnableVertexAttribArray(VS_POSITION);
     glVertexAttribPointer(VS_POSITION,4,GL_FLOAT,GL_FALSE,0,&vertices);
+    glDisableVertexAttribArray(VS_FOG);
     glEnableVertexAttribArray(VS_TEXCOORD0);
     glVertexAttribPointer(VS_TEXCOORD0,2,GL_FLOAT,GL_FALSE, 0, &tex);
     glEnableVertexAttribArray(VS_TEXCOORD1);
