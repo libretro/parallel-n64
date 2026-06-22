@@ -38,6 +38,28 @@ extern "C"
 				return MODE_CHECK_FLAGS;
 			}
 		}
+		else if (rd == CP0_REGISTER_CMD_STATUS ||
+		         rd == CP0_REGISTER_CMD_CLOCK ||
+		         rd == CP0_REGISTER_CMD_BUSY ||
+		         rd == CP0_REGISTER_CMD_PIPE_BUSY)
+		{
+			/* A microcode can spin reading the RDP (DPC) busy registers while
+			 * it waits for the render command stream to drain. The RDP runs
+			 * asynchronously on its own thread here, and at content close it
+			 * stops advancing these registers, so the poll would never observe
+			 * the not-busy state and the RSP run loop would never exit -- the
+			 * emulation thread hangs inside this function. Unlike SP_STATUS,
+			 * these reads had no timeout. Bound them the same way: after
+			 * SP_STATUS_TIMEOUT consecutive reads, force the RSP to halt so the
+			 * run loop terminates. (The counter is reset at the top of each
+			 * DoRspCycles task, so this only fires on a genuine stuck spin.) */
+			RSP::MFC0_count[rt] += 1;
+			if (RSP::MFC0_count[rt] >= RSP::SP_STATUS_TIMEOUT)
+			{
+				*RSP::rsp.SP_STATUS_REG |= SP_STATUS_HALT;
+				return MODE_CHECK_FLAGS;
+			}
+		}
 #endif
 
 #if 0 // FIXME: this is broken with upstream mupen64plus-core
