@@ -2946,22 +2946,17 @@ int retro_return(bool just_flipping)
 
    if (just_flipping)
    {
-      switch (gfx_plugin)
-      {
-         case GFX_GLIDE64:
-         case GFX_GLN64:
-         case GFX_RICE:
-            /* These render straight into the single hardware FBO and
-             * clear it when the next frame begins, so the completed
-             * image only exists right now: present immediately. */
-            present_frame();
-            break;
-         default:
-            /* The frame persists (offscreen blit, set_image, software
-             * buffer): present once at the end of the slice. */
-            frame_latched = true;
-            break;
-      }
+      /* Latch the frame for presentation after the glsm state is unbound.
+       * video_cb must not run while glsm still has the core's GL state bound
+       * (FBO, program, textures): the frontend composites the hardware frame
+       * inside video_cb and needs its own restored state, exactly as upstream
+       * presents these renderers only after GLSM_CTL_STATE_UNBIND. Presenting
+       * from here -- inside the bind window, as OGL_SwapBuffers does -- left the
+       * screen black and corrupted the frontend on the compatibility gl driver
+       * (the glcore path tolerated the dirty state and so masked it). The frame
+       * still exists in the single hardware FBO when emu_step_render presents it
+       * immediately after glsm_exit, before the next slice clears it. */
+      frame_latched = true;
       return 0;
    }
 
