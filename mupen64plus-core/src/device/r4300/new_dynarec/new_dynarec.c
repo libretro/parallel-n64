@@ -8825,11 +8825,15 @@ void new_dynarec_cleanup(void)
 
 int new_recompile_block(int addr)
 {
-  // On macOS arm64, this indirect call through the DebugMessage callback
-  // pointer serves as a full pipeline+compiler barrier that is required
-  // for reliable MAP_JIT W^X toggling. Without it, the CPU may execute
-  // stale icache entries after rapid W^X transitions.
-  DebugMessage(M64MSG_VERBOSE, "jit %x", (unsigned)addr);
+#if defined(__APPLE__) && defined(__aarch64__)
+  // On macOS arm64, a full compiler/memory barrier here is required for
+  // reliable MAP_JIT W^X toggling: without it the CPU may execute stale
+  // icache entries after rapid W^X transitions. This previously rode on an
+  // indirect call through the DebugMessage callback, which also logged on
+  // every compiled block and flooded the log on all platforms. Use an
+  // explicit barrier instead and keep it scoped to the platform that needs it.
+  __asm__ __volatile__("" ::: "memory");
+#endif
   jit_write_enable();
 #if defined(RECOMPILER_DEBUG) && !defined(RECOMP_DBG)
   recomp_dbg_block(addr);
