@@ -1014,7 +1014,11 @@ void rglFramebufferTexture2D(GLenum target, GLenum attachment,
       }
       else
       {
-         abort();
+         /* An attachment other than COLOR0/DEPTH (stencil, depth-stencil, or a
+          * higher colour attachment) is still valid -- pass it through rather
+          * than aborting the whole process. We just do not cache it. */
+         bindFBO(target);
+         glFramebufferTexture2D(target, attachment, textarget, texture, level);
       }
    } else {
       bindFBO(target);
@@ -1249,7 +1253,10 @@ void rglFramebufferRenderbuffer(GLenum target, GLenum attachment,
             framebuffers[gl_state.framebuf[type].location]->depth_attachment = renderbuffer;
          }
       } else {
-         abort();
+         /* Other valid attachments (stencil, depth-stencil, COLOR1+): pass
+          * through instead of aborting the process; just do not cache them. */
+         bindFBO(target);
+         glFramebufferRenderbuffer(target, attachment, renderbuffertarget, renderbuffer);
       }
    } else {
       bindFBO(target);
@@ -3337,7 +3344,21 @@ static void glsm_state_bind(void)
             gl_state.stencilfunc.mask);
 
    glActiveTexture(GL_TEXTURE0 + active_texture);
-   glBindTexture(gl_state.bind_textures.target[active_texture], gl_state.bind_textures.ids[active_texture]);
+   /* Restore the texture binding on every unit the core uses, not just the
+    * currently-active one. The N64 renderers bind textures on units 0 and 1
+    * (multitexturing); restoring only the active unit left unit 1 pointing at
+    * whatever the frontend last bound, so the core sampled the wrong texture. */
+   {
+      int u;
+      for (u = 0; u < (int)glsm_max_textures && u < 32; u++)
+      {
+         glActiveTexture(GL_TEXTURE0 + u);
+         glBindTexture(gl_state.bind_textures.target[u]
+               ? gl_state.bind_textures.target[u] : GL_TEXTURE_2D,
+               gl_state.bind_textures.ids[u]);
+      }
+      glActiveTexture(GL_TEXTURE0 + active_texture);
+   }
 }
 
 static void glsm_state_unbind(void)
