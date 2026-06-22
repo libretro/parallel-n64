@@ -74,6 +74,7 @@ static int            s_zbuffered;
 static unsigned int   s_othermode_h;
 static unsigned int   s_othermode_l;
 static int            s_dl_depth;
+static unsigned int   s_geom;   /* geometry mode in native F3D bit layout */
 
 static unsigned int rd32(const unsigned char *r, unsigned int a)
 {
@@ -105,6 +106,23 @@ static int in_range(unsigned int a, unsigned int bytes)
 }
 
 /* ---- setup ---------------------------------------------------------------*/
+/* F3D packs the cull / smooth-shade geometry-mode bits differently from
+ * F3DEX2; the shared frontend interprets the mode in the F3DEX2 layout. Remap
+ * the three bits that moved so culling and flat/smooth shading are correct:
+ *   F3D G_SHADING_SMOOTH 0x000200 -> F3DEX2 0x200000
+ *   F3D G_CULL_FRONT     0x001000 -> F3DEX2 0x000200
+ *   F3D G_CULL_BACK      0x002000 -> F3DEX2 0x000400
+ * All other bits (G_ZBUFFER/G_SHADE/G_FOG/G_LIGHTING/G_TEXTURE_GEN/...) share
+ * the same position in both. */
+static unsigned int f3d_xlate_geom(unsigned int m)
+{
+    unsigned int o = m & ~(0x000200u | 0x001000u | 0x002000u);
+    if (m & 0x000200u) o |= 0x200000u;
+    if (m & 0x001000u) o |= 0x000200u;
+    if (m & 0x002000u) o |= 0x000400u;
+    return o;
+}
+
 void f3d_seg_reset(void)
 {
     int i;
@@ -113,6 +131,7 @@ void f3d_seg_reset(void)
     s_textured  = 0;
     s_zbuffered = 0;
     s_dl_depth  = 0;
+    s_geom      = 0;
 }
 
 void f3d_set_rdram(unsigned char *rdram)        { s_rdram = rdram; }
@@ -278,11 +297,13 @@ void f3d_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
             break;
 
         case F3D_SETGEOMETRYMODE:
-            gsp_set_geometry_mode(gsp, gsp_get_geometry_mode(gsp) | w1);
+            s_geom |= w1;
+            gsp_set_geometry_mode(gsp, f3d_xlate_geom(s_geom));
             break;
 
         case F3D_CLEARGEOMETRYMODE:
-            gsp_set_geometry_mode(gsp, gsp_get_geometry_mode(gsp) & ~w1);
+            s_geom &= ~w1;
+            gsp_set_geometry_mode(gsp, f3d_xlate_geom(s_geom));
             break;
 
         case F3D_TEXTURE:
