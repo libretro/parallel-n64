@@ -222,6 +222,7 @@ struct gl_cached_state
 
    struct
    {
+      bool used;
       GLenum mode;
    } readbuffer;
 
@@ -483,7 +484,10 @@ void rglReadBuffer(GLenum mode)
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES) && defined(HAVE_OPENGLES3)
    glReadBuffer(mode);
    if (gl_state.framebuf[1].desired_location == default_framebuffer)
+   {
+      gl_state.readbuffer.used = true;
       gl_state.readbuffer.mode = mode;
+   }
 #endif
 }
 
@@ -3264,6 +3268,14 @@ static void glsm_state_bind(void)
       gl_state.framebuf[0].desired_location = default_framebuffer;
       gl_state.framebuf[1].desired_location = default_framebuffer;
    }
+
+   /* Restore the core's read buffer for the default framebuffer. rglReadBuffer
+    * only tracks it for the default FB, and the read FB has just been bound to
+    * the default above, so this targets the right framebuffer. Without this the
+    * core's glReadPixels/glBlitFramebuffer read from whatever buffer the
+    * frontend last selected. */
+   if (gl_state.readbuffer.used)
+      rglReadBuffer(gl_state.readbuffer.mode);
 
    for(i = 0; i < SGL_CAP_MAX; i ++)
    {
