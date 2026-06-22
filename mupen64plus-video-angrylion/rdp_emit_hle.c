@@ -368,10 +368,31 @@ void rdp_emit_hle_process_dlist(void)
         if (f3d_is_ucode(rdram, rdram_size, ut))
         {
             /* Plain Fast3D (e.g. Super Mario 64): different geometry opcode
-             * encoding from F3DEX2, dispatched separately. */
+             * encoding from F3DEX2, dispatched separately. gsp_detect_ucode_
+             * params() validates ud against the F3DEX2 clip-table signature
+             * and zeroes it for F3D, so F3D never inherits its data-segment
+             * defaults there. Seed the other-modes mirror from the F3D data
+             * segment here instead: the default pair lives at ud+0x118 (not
+             * the F3DEX2 ud+0xc8). Partial SETOTHERMODE_H/L writes merge into
+             * this baseline; without it bit 19 (G_MDSFT_TEXTPERSP) and the
+             * dither/filter defaults are zero, so perspective-correct
+             * texturing is off and the deformed head mesh smears and holes. */
             f3d_seg_reset();
             f3d_set_rdram(rdram);
             f3d_set_rdram_size(rdram_size);
+            if (ud != 0 && ud + 0x120u <= rdram_size)
+            {
+                unsigned int oh = ((unsigned int)rdram[(ud + 0x118) ^ 3] << 24)
+                                | ((unsigned int)rdram[(ud + 0x119) ^ 3] << 16)
+                                | ((unsigned int)rdram[(ud + 0x11a) ^ 3] << 8)
+                                |  (unsigned int)rdram[(ud + 0x11b) ^ 3];
+                unsigned int ol = ((unsigned int)rdram[(ud + 0x11c) ^ 3] << 24)
+                                | ((unsigned int)rdram[(ud + 0x11d) ^ 3] << 16)
+                                | ((unsigned int)rdram[(ud + 0x11e) ^ 3] << 8)
+                                |  (unsigned int)rdram[(ud + 0x11f) ^ 3];
+                if ((oh >> 24) == 0xefu)
+                    f3d_set_othermode_init(oh, ol);
+            }
             f3d_run_dl(&s_gsp, &s_fifo, dl_addr, 0, 0);
         }
         else
