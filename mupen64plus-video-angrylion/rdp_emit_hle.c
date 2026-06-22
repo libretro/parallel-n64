@@ -17,6 +17,7 @@
 #include <stdlib.h>
 #include "rdp_emit_hle.h"
 #include "rdp_emit_f3dex2.h"
+#include "rdp_emit_f3d.h"
 #include "rdp_emit_rsp.h"
 #include "rdp_emit_backend.h"
 
@@ -358,15 +359,29 @@ void rdp_emit_hle_process_dlist(void)
      * z_buffered default off here; a gDP/state-translation follow-up sets the
      * render mode and the per-frame setup commands. */
     f3dex2_seg_reset();
-    gsp_params_at_task_start = 1;
-    gsp_detect_ucode_params(&s_gsp, rdram, rdram_size,
-                            read_dmem_u32(dmem, 0xfd8) & 0x00ffffffu,
-                            read_dmem_u32(dmem, 0xfd0) & 0x00ffffffu);
-    gsp_params_at_task_start = 0;
-    f3dex2_set_rdram(rdram);
-    f3dex2_set_rdram_size(rdram_size);
-    f3dex2_set_task_ucode(rdram, read_dmem_u32(dmem, 0xfd0) & 0x00ffffffu);
-    f3dex2_run_dl(&s_gsp, &s_fifo, dl_addr, 0, 0);
+    {
+        unsigned int ut = read_dmem_u32(dmem, 0xfd0) & 0x00ffffffu;
+        unsigned int ud = read_dmem_u32(dmem, 0xfd8) & 0x00ffffffu;
+        gsp_params_at_task_start = 1;
+        gsp_detect_ucode_params(&s_gsp, rdram, rdram_size, ud, ut);
+        gsp_params_at_task_start = 0;
+        if (f3d_is_ucode(rdram, rdram_size, ut))
+        {
+            /* Plain Fast3D (e.g. Super Mario 64): different geometry opcode
+             * encoding from F3DEX2, dispatched separately. */
+            f3d_seg_reset();
+            f3d_set_rdram(rdram);
+            f3d_set_rdram_size(rdram_size);
+            f3d_run_dl(&s_gsp, &s_fifo, dl_addr, 0, 0);
+        }
+        else
+        {
+            f3dex2_set_rdram(rdram);
+            f3dex2_set_rdram_size(rdram_size);
+            f3dex2_set_task_ucode(rdram, ut);
+            f3dex2_run_dl(&s_gsp, &s_fifo, dl_addr, 0, 0);
+        }
+    }
 
     /* terminate the command list with exactly one SYNC_FULL (RDP cmd 0x29).
      * angrylion needs this to flush/complete the frame; the dispatcher drops
