@@ -213,6 +213,12 @@ void f3d_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
     if (z_buffered) s_zbuffered = z_buffered;
     if (r == 0)
         return;
+    if (s_dl_depth == 0)
+        /* Fast3D clips triangles against the near plane (z + w >= 0); it is
+         * not a NoN ("no near clip") microcode like F3DEX2, so enable the
+         * frontend's near-plane clip for this task instead of letting
+         * near-crossing geometry be disposed by the guard band. */
+        gsp->clip_near_z = 1;
     if (s_dl_depth >= F3D_DL_MAX_DEPTH)
         return;
     s_dl_depth++;
