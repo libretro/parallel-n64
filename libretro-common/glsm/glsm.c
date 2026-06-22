@@ -3205,6 +3205,21 @@ static void glsm_state_setup(void)
 static void glsm_state_bind(void)
 {
    unsigned i;
+   /* The frontend can hand back a different target framebuffer between frames
+    * (RetroArch's "gl"/gl2 driver recreates or rotates its render target on
+    * resize, shader-pass changes, and similar). default_framebuffer is captured
+    * once at context reset, so re-query the live framebuffer here and render
+    * into the one the frontend is actually compositing this frame -- otherwise
+    * the core draws into a stale FBO and the screen stays black on the gl
+    * driver. No VAO is involved; this is plain framebuffer-binding state. */
+   default_framebuffer = glsm_get_current_framebuffer();
+   /* Keep the per-id tracking slot allocated for whatever id the frontend
+    * returned, matching the one-time allocation done at context setup, so a
+    * later lookup keyed on this id cannot dereference a NULL slot. */
+   if (default_framebuffer < MAX_FRAMEBUFFERS &&
+         framebuffers[default_framebuffer] == NULL)
+      framebuffers[default_framebuffer] =
+         (struct gl_framebuffers*)calloc(1, sizeof(struct gl_framebuffers));
 #ifndef HAVE_OPENGLES2
    if (gl_state.bindvertex.array != 0) {
       glBindVertexArray(gl_state.bindvertex.array);
@@ -3239,6 +3254,8 @@ static void glsm_state_bind(void)
       glBindFramebuffer(GL_FRAMEBUFFER, default_framebuffer);
       gl_state.framebuf[0].location = default_framebuffer;
       gl_state.framebuf[1].location = default_framebuffer;
+      gl_state.framebuf[0].desired_location = default_framebuffer;
+      gl_state.framebuf[1].desired_location = default_framebuffer;
    }
 
    for(i = 0; i < SGL_CAP_MAX; i ++)
