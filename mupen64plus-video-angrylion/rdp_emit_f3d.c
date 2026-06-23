@@ -217,8 +217,17 @@ void f3d_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
         /* Fast3D clips triangles against the near plane (z + w >= 0); it is
          * not a NoN ("no near clip") microcode like F3DEX2, so enable the
          * frontend's near-plane clip for this task instead of letting
-         * near-crossing geometry be disposed by the guard band. */
+         * near-crossing geometry be disposed by the guard band. Fast3D also
+         * uses FRUSTRATIO_1 (clip-to-screen) as its default clip ratio rather
+         * than the guard-band ratio of the F3DEX family: with the wider ratio
+         * its large camera-straddling quads (the water/mist sheets in Jolly
+         * Roger Bay) keep their off-screen-top vertices out at the guard band
+         * instead of on the screen edge, so the visible span interpolates over
+         * a different extent and the misted water hovers up in the air. Clamp
+         * the default to 1 for this task; an explicit gSPClipRatio still
+         * overrides it. */
         gsp->clip_near_z = 1;
+        gsp->clip_ratio = 1;
     if (s_dl_depth >= F3D_DL_MAX_DEPTH)
         return;
     s_dl_depth++;
