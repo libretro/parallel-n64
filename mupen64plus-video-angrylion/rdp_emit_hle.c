@@ -216,6 +216,17 @@ void gsp_detect_ucode_params(GSPState *st, const unsigned char *rdram,
                 }
             }
         }
+        /* Plain Fast3D (Super Mario 64 et al.) is neither F3DEX2 2.05+ nor
+         * the 2.04H build: its clip overlay uses the standard reciprocal
+         * sign step, not the 2.04H vabs-of-zero quirk. The probe above only
+         * distinguishes 2.05+ (guard instruction present) from "everything
+         * else", which would wrongly hand Fast3D the 2.04H behaviour and
+         * collapse the boundary-vertex fade to 0 wherever an off vertex
+         * lands exactly on a clip plane (cr.off == 0) -- e.g. the SM64
+         * title's screen-edge background tiles, which then lose their
+         * texture and render gray. Force the standard lerp for Fast3D. */
+        if (f3d_is_ucode(rdram, rdram_size, ut))
+            found = 1;
         rsp_set_clip_lerp_204h(!found);
     }
 
