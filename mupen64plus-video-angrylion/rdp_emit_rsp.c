@@ -1072,7 +1072,6 @@ int rsp_tri_write(int32_t *ew,
     int32_t y_spx_i, y_spx_f;
     Rsp32 xh, xm;
     int32_t max_iw;
-    Rsp32 inv_max;
     Rsp32 wnorm[3];
     int32_t at_i[3][8], at_f[3][8];       /* [vertex][lane r g b a s t w z] */
     Rsp32 dA_H[8], dA_M[8], dA_x[8], dA_y[8], dAdX[8], dAdY[8], dAdE[8], base[8];
@@ -1245,18 +1244,17 @@ int rsp_tri_write(int32_t *ew,
         max_iw = iw[0];
         if (iw[1] > max_iw) max_iw = iw[1];
         if (iw[2] > max_iw) max_iw = iw[2];
-        inv_max = mk32(rsp_rcp32(max_iw));   /* raw reciprocal, no Newton */
         for (vi = 0; vi < 3; vi++)
         {
-            Rsp32 w32 = mk32(iw[vi]);
-            /* vmudm Wi*max_f ; vmadl Wf*max_f ; vmadn out_f Wf*max_i ;
-             * vmadh out_i Wi*max_i */
-            acc = p_udm(w32.i, inv_max.f);
-            acc += p_udl(w32.f, inv_max.f);
-            acc += p_udn(w32.f, inv_max.i);
-            wnorm[vi].f = acc_clamp_low(acc);
-            acc += p_udh(w32.i, inv_max.i);
-            wnorm[vi].i = acc_clamp_mid(acc);
+            /* Shared per-vertex perspective normalizer.  The LLE RSP emits
+             * floor(0x8000 * iw / max) here (equivalently the W lane becomes
+             * floor(0x7fff * iw / (2*max))); the raw reciprocal-multiply path
+             * biases this high by ~11 ulp, drifting the perspective gradient.
+             * Form the quotient directly to match the LLE-emitted value. */
+            int64_t pq = (int64_t)iw[vi] << 15;
+            pq = (max_iw != 0) ? (pq / (int64_t)max_iw) : 0;
+            wnorm[vi].f = (int32_t)(pq & 0xffff);
+            wnorm[vi].i = (int32_t)((pq >> 16) & 0xffff);
         }
         {
             const RspTriVtx *vv[3];
