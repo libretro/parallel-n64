@@ -451,10 +451,21 @@ void f3d_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
             break;
 
         case F3D_RDPHALF_CONT:
-        case F3D_RDPHALF_1:
         case F3D_RDPHALF_2:
             /* Staged texrect coordinates; consumed by the G_TEXRECT handler
              * below. A stray RDPHALF outside a texrect is a no-op. */
+            break;
+
+        case F3D_RDPHALF_1:
+            /* On the old F3D microcode (retail Super Mario 64) gSPPerspNormalize
+             * is not a G_MOVEWORD: it stores the perspective-normalize factor in
+             * the RDPHALF_1 slot with a bare G_RDPHALF_1 word, and the vertex
+             * transform reads perspNorm from that slot. (The newer GBI / F3DEX2
+             * path uses G_MOVEWORD/G_MW_PERSPNORM, handled above.) The texrect
+             * tail RDPHALF words are consumed inline by the 0xE4/0xE5 assembler
+             * and never reach here, so a G_RDPHALF_1 seen at this point is the
+             * perspective-normalize write; mirror the slot into perspNorm. */
+            gsp_set_persp_norm(gsp, w1 & 0xffffu);
             break;
 
         default:
