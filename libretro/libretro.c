@@ -164,6 +164,13 @@ static bool stop_stepping;
 extern unsigned int r4300_emumode;
 extern unsigned int r4300_jit_backend;
 int g_real_stop = 0; /* genuine emulation stop, vs per-frame mupencorestop yield */
+/* Set while content is being torn down (retro_unload_game), cleared on the
+ * next load (retro_load_game). Unlike g_real_stop it has a per-content
+ * lifecycle, and unlike mupencorestop it is not toggled every frame. The RSP
+ * plugin's run loop polls it so a stale task cannot spin forever in the
+ * close-content EmuThreadStep(): parallel-rsp's DoRspCycles otherwise loops
+ * until SP_STATUS_HALT, which a torn-down task never reaches. */
+int g_rsp_force_halt = 0;
 extern int frame_break; /* r4300: unwinds the CPU cores at the frame boundary */
 
 float polygonOffsetFactor           = 0.0f;
@@ -1689,8 +1696,6 @@ void update_variables(bool startup)
 #endif
 
 
-   CFG_HLE_GFX = 0;
-
    /* Whether to translate the GFX task to HLE rather than running the LLE
     * microcode is, in general, the user's choice via the RSP plugin option.
     * Historically the core force-enabled HLE GFX whenever the active video
@@ -1699,25 +1704,37 @@ void update_variables(bool startup)
     * build). That silently overrode an explicit "cxd4" selection, making a
     * requested LLE run secretly execute the HLE emitter. Only apply that
     * fallback when the RSP plugin is left on "auto"; an explicit choice is
-    * honoured as-is. */
+    * honoured as-is.
+    *
+    * This decision is latched at load (startup): the live RSP plugin is
+    * connected once, in emu_step_initialize(), and is never reconnected on
+    * a mid-run option change. Re-deriving CFG_HLE_GFX from a changed
+    * -rspplugin while the old RSP plugin keeps running desynced the GFX
+    * path from the live RSP and left parallel-rsp spinning at close-content
+    * (its DoRspCycles loop never reaching SP_STATUS_HALT). Honour the RSP
+    * plugin choice on the next content load instead. */
+   if (startup)
    {
-      struct retro_variable rsp_var = { CORE_NAME "-rspplugin", 0 };
-      int rsp_is_auto = 1;
-      environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &rsp_var);
-      if (rsp_var.value && strcmp(rsp_var.value, "auto") != 0)
-         rsp_is_auto = 0;
-
-      if (rsp_is_auto)
+      CFG_HLE_GFX = 0;
       {
+         struct retro_variable rsp_var = { CORE_NAME "-rspplugin", 0 };
+         int rsp_is_auto = 1;
+         environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &rsp_var);
+         if (rsp_var.value && strcmp(rsp_var.value, "auto") != 0)
+            rsp_is_auto = 0;
+
+         if (rsp_is_auto)
+         {
 #ifdef HAVE_THR_AL
-         if (gfx_plugin != GFX_ANGRYLION)
-            CFG_HLE_GFX = 1;
+            if (gfx_plugin != GFX_ANGRYLION)
+               CFG_HLE_GFX = 1;
 #endif
 
 #ifdef HAVE_PARALLEL
-         if (gfx_plugin != GFX_PARALLEL)
-            CFG_HLE_GFX = 1;
+            if (gfx_plugin != GFX_PARALLEL)
+               CFG_HLE_GFX = 1;
 #endif
+         }
       }
    }
    CFG_HLE_AUD = 0; /* There is no HLE audio code in libretro audio plugin. */
@@ -2495,6 +2512,7 @@ bool retro_load_game(const struct retro_game_info *game)
    }
 
    mupencorestop      = false;
+   g_rsp_force_halt   = 0;
    /* Finish ROM load before doing anything funny,
     * so we can return failure if needed. */
    emu_step_load_data();
@@ -2526,6 +2544,11 @@ bool retro_load_game_special(unsigned game_type, const struct retro_game_info *i
 
 void retro_unload_game(void)
 {
+    /* Force the RSP plugin's run loop to bail: the EmuThreadStep() below
+     * drives one more emulation step, and parallel-rsp's DoRspCycles spins
+     * until SP_STATUS_HALT, which a half-finished task may never reach.
+     * Cleared again in retro_load_game(). */
+    g_rsp_force_halt = 1;
     mupencorestop = 1;
     first_time = 1;
 

@@ -25,6 +25,11 @@ int SP_STATUS_TIMEOUT;
 
 extern "C"
 {
+	/* Defined by the libretro frontend (libretro.c); set in
+	 * retro_unload_game while content is being torn down. The run loop
+	 * below bails on it instead of spinning until a SP_STATUS_HALT that a
+	 * half-finished task may never set. */
+	extern int g_rsp_force_halt;
 	// Hack entry point to use when loading savestates when we're tracing.
 	void rsp_clear_registers()
 	{
@@ -52,6 +57,8 @@ extern "C"
 
 	EXPORT unsigned int CALL parallelRSPDoRspCycles(unsigned int cycles)
 	{
+		if (g_rsp_force_halt)
+			return 0;
 		if (*RSP::rsp.SP_STATUS_REG & (SP_STATUS_HALT | SP_STATUS_BROKE))
 			return 0;
 
@@ -71,6 +78,8 @@ extern "C"
 
 		while (!(*RSP::rsp.SP_STATUS_REG & SP_STATUS_HALT))
 		{
+			if (g_rsp_force_halt)
+				break;
 			auto mode = RSP::cpu.run();
 			if (mode == RSP::MODE_CHECK_FLAGS && (*RSP::cpu.get_state().cp0.irq & 1))
 				break;
