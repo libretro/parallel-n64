@@ -281,6 +281,23 @@ static Rsp32 mk32(int32_t w)
     return v;
 }
 
+/* (r32(a) * b64) >> 16 with mac32's int16:frac16 saturation, but the reciprocal
+ * b carried in 64 bits.  On near-degenerate slivers the signed area collapses
+ * toward zero and the int16:frac16 inv_dx saturates at ~2^31, capping every
+ * gradient far below the LLE; widening the reciprocal lets the gradient reach
+ * its correct magnitude (the final coefficient still fits int16:frac16). */
+static Rsp32 mac32_wide(Rsp32 a, int64_t b64, RspAcc *acc_out)
+{
+    Rsp32 o;
+    int64_t acc = ((int64_t)r32(a) * b64) >> 16;
+    int64_t hi  = acc >> 16;
+    if (hi < -32768)     { o.f = 0x0000; o.i = -32768 & 0xffff; }
+    else if (hi > 32767) { o.f = 0xffff; o.i = 32767; }
+    else                 { o.f = (int32_t)(acc & 0xffff); o.i = (int32_t)(hi & 0xffff); }
+    if (acc_out) *acc_out = acc;
+    return o;
+}
+
 /* Canonical 32x32 fixed multiply chain:
  *   vmudl af*bf; vmadm ai*bf; vmadn out_f af*bi; vmadh out_i ai*bi
  * Returns the (i,f) pair with the exact extraction clamps, and optionally
@@ -1065,6 +1082,7 @@ int rsp_tri_write(int32_t *ew,
     const RspTriVtx *vh, *vm, *vl, *tmpv;
     int32_t cross_i, cross_f;
     Rsp32 inv_cross, nr, inv_dx;
+    int64_t inv_dx_64;
     int32_t inv_dy_m_32, inv_dy_l_32;     /* single-precision reciprocals */
     Rsp32 inv_dy_m_sc, inv_dy_l_sc, inv_dy_lm_sc;
     Rsp32 dxldy, dxmdy, dxhdy;
@@ -1138,6 +1156,7 @@ int rsp_tri_write(int32_t *ew,
         nr.i = acc_clamp_mid(acc);
         /* inv_dx = nr * inv_cross */
         inv_dx = mac32(nr, inv_cross, 0);
+        inv_dx_64 = ((int64_t)r32(nr) * (int64_t)r32(inv_cross)) >> 16;
     }
     inv_dy_m_32 = rsp_rcp16(mh_y);
     inv_dy_l_32 = rsp_rcp16(lh_y);
@@ -1304,11 +1323,11 @@ int rsp_tri_write(int32_t *ew,
         dA_y[k].f = (int32_t)((acc >> 16) & 0xffff);
 
         /* dAdX = dA_x * inv_dx */
-        dAdX[k] = mac32(dA_x[k], inv_dx, 0);
+        dAdX[k] = mac32_wide(dA_x[k], inv_dx_64, 0);
 
         /* dAdY = dA_y * inv_dx ; then the accumulator CONTINUES:
          * dAdE = dAdY + dAdX * dxhdy */
-        dAdY[k] = mac32(dA_y[k], inv_dx, &acc);
+        dAdY[k] = mac32_wide(dA_y[k], inv_dx_64, &acc);
         acc += p_udl(dAdX[k].f, dxhdy.f);
         acc += p_udm(dAdX[k].i, dxhdy.f);
         acc += p_udn(dAdX[k].f, dxhdy.i);
