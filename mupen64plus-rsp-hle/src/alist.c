@@ -66,7 +66,17 @@ static int16_t* alist_s16(struct hle_t* hle, uint16_t dmem)
 
 static void sample_mix(int16_t* dst, int16_t src, int16_t gain)
 {
-    *dst = clamp_s16(*dst + ((src * gain) >> 15));
+    /* aspMain mixes as vmulf(dst, 0x7fff) followed by vmacf(src, gain) on the
+     * same vector accumulator, i.e.
+     *   clamp_s16((0x8000 + 2*dst*0x7fff + 2*src*gain) >> 16),
+     * the same form already used by the cxd4-validated nead mixer
+     * (alist_mix_nead) and FILTER. The previous dst + (src*gain)>>15 form
+     * omitted the 0x7fff per-mix attenuation of the running mix: harmless on a
+     * single quiet mix, but it costs an LSB once the mixed buffer is loud and
+     * the error then persists in the accumulated buffer, drifting from LLE. */
+    int64_t acc = 0x8000 + 2 * (int64_t)((int32_t)(*dst) * 0x7fff)
+                         + 2 * (int64_t)((int32_t)src * (int32_t)gain);
+    *dst = clamp_s16((int_fast32_t)(acc >> 16));
 }
 
 static void alist_envmix_mix(size_t n, int16_t** dst, const int16_t* gains, int16_t src)
