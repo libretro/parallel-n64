@@ -22,6 +22,7 @@
 #define F3D_MOVEMEM            0x03
 #define F3D_VTX                0x04
 #define F3D_DL                 0x06
+#define F3D_TRI2               0xB1   /* Doom 64 ucode: gSP1Quadrangle, 2 tris */
 #define F3D_RDPHALF_CONT       0xB2
 #define F3D_RDPHALF_2          0xB3
 #define F3D_RDPHALF_1          0xB4
@@ -162,6 +163,37 @@ int f3d_is_ucode(const unsigned char *rdram, unsigned int rdram_size,
     return 0;
 }
 
+/* Doom 64 ships a custom Fast3D-derived microcode that reports the very same
+ * RSP-SW-Version word (0x201d0110) as Super Mario 64's Fast3D, so f3d_is_ucode
+ * cannot tell them apart -- yet their geometry encodings differ (Doom 64 packs
+ * triangle indices x2 and uses gSP1Quadrangle/0xB1, where SM64 packs x10 and
+ * never emits 0xB1). Distinguish by a checksum over the ucode text, the way HLE
+ * plugins routinely fingerprint a microcode. The two diverge within the first
+ * text block; 0xc00 bytes is ample and matches the value computed for the USA
+ * build. */
+static unsigned int f3d_text_crc(const unsigned char *rdram,
+                                 unsigned int rdram_size, unsigned int text)
+{
+    unsigned int i, cs = 0;
+    for (i = 0; i < 0xc00u && (text + i) < rdram_size; i++)
+        cs = cs * 131u + rdram[(text + i) ^ 3];
+    return cs;
+}
+
+int f3d_is_doom64_ucode(const unsigned char *rdram, unsigned int rdram_size,
+                        unsigned int text)
+{
+    if (rdram == 0 || text == 0)
+        return 0;
+    return f3d_text_crc(rdram, rdram_size, text) == 0x5efb67cau;
+}
+
+/* 0 = plain Fast3D (Super Mario 64); 1 = Doom 64's variant. Set once per task
+ * before the top-level walk; the recursive F3D_DL descent inherits it. */
+static int s_variant_d64 = 0;
+void f3d_set_variant(int doom64) { s_variant_d64 = doom64 ? 1 : 0; }
+
+
 /* ---- RDP pass-through (microcode-independent), mirrors rdp_emit_f3dex2.c --*/
 static void rdp_passthrough(GSPState *gsp, RdpFifo *fifo, int cmd,
                             unsigned int w0, unsigned int w1)
@@ -259,9 +291,22 @@ void f3d_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
 
         case F3D_VTX:
         {
-            int n  = (int)((w0 >> 20) & 0x0f) + 1;
-            int v0 = (int)((w0 >> 16) & 0x0f);
+            int n, v0;
             unsigned int va = seg_phys(w1);
+            if (s_variant_d64)
+            {
+                /* Doom 64 gSPVertex(v, n, 0): the count is carried in the low
+                 * byte as n*16-1 (the DMA byte length minus one); destination
+                 * is always slot 0 (every batch is reloaded from 0, which is
+                 * why its quad fans always index from vertex 0). */
+                n  = (int)(((w0 & 0xffu) + 1u) >> 4);
+                v0 = 0;
+            }
+            else
+            {
+                n  = (int)((w0 >> 20) & 0x0f) + 1;
+                v0 = (int)((w0 >> 16) & 0x0f);
+            }
             if (n > 0 && in_range(va, (unsigned int)n * 16u))
                 gsp_vertex(gsp, r, va, n, v0);
             break;
@@ -269,12 +314,38 @@ void f3d_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
 
         case F3D_TRI1:
         {
-            int a = (int)((w1 >> 16) & 0xff) / 10;
-            int b = (int)((w1 >>  8) & 0xff) / 10;
-            int c = (int)((w1 >>  0) & 0xff) / 10;
+            int s = s_variant_d64 ? 2 : 10;
+            int a = (int)((w1 >> 16) & 0xff) / s;
+            int b = (int)((w1 >>  8) & 0xff) / s;
+            int c = (int)((w1 >>  0) & 0xff) / s;
             int32_t cw[220];
             int nc = gsp_triangle(gsp, cw, a, b, c, s_textured, s_zbuffered);
             if (nc > 0) rdp_fifo_append(fifo, cw, nc);
+            break;
+        }
+
+        case F3D_TRI2:
+        {
+            /* Doom 64's gSP1Quadrangle (0xB1): two triangles, the first three
+             * indices in w0's low 24 bits, the second three in w1's, each byte
+             * a vertex index times two. This carries the bulk of Doom 64's
+             * world geometry (wall and flat quads). SM64's Fast3D never emits
+             * this opcode, so the gate keeps that path untouched. */
+            if (s_variant_d64)
+            {
+                int a0 = (int)((w0 >> 16) & 0xff) / 2;
+                int b0 = (int)((w0 >>  8) & 0xff) / 2;
+                int c0 = (int)((w0 >>  0) & 0xff) / 2;
+                int a1 = (int)((w1 >> 16) & 0xff) / 2;
+                int b1 = (int)((w1 >>  8) & 0xff) / 2;
+                int c1 = (int)((w1 >>  0) & 0xff) / 2;
+                int32_t cw[220];
+                int nc;
+                nc = gsp_triangle(gsp, cw, a0, b0, c0, s_textured, s_zbuffered);
+                if (nc > 0) rdp_fifo_append(fifo, cw, nc);
+                nc = gsp_triangle(gsp, cw, a1, b1, c1, s_textured, s_zbuffered);
+                if (nc > 0) rdp_fifo_append(fifo, cw, nc);
+            }
             break;
         }
 
@@ -283,10 +354,11 @@ void f3d_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
             /* G_QUAD on F3D builds that use 0xB5 for quads: four indices in w1,
              * emitted as two triangles (a,b,c) + (a,c,d). Lines proper are not
              * modeled; the quad reading is harmless for line content. */
-            int a = (int)((w1 >> 24) & 0xff) / 10;
-            int b = (int)((w1 >> 16) & 0xff) / 10;
-            int c = (int)((w1 >>  8) & 0xff) / 10;
-            int d = (int)((w1 >>  0) & 0xff) / 10;
+            int s = s_variant_d64 ? 2 : 10;
+            int a = (int)((w1 >> 24) & 0xff) / s;
+            int b = (int)((w1 >> 16) & 0xff) / s;
+            int c = (int)((w1 >>  8) & 0xff) / s;
+            int d = (int)((w1 >>  0) & 0xff) / s;
             int32_t cw[220];
             int nc;
             nc = gsp_triangle(gsp, cw, a, b, c, s_textured, s_zbuffered);

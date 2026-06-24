@@ -31,6 +31,14 @@ void f3d_set_rdram(unsigned char *rdram);
 void f3d_set_rdram_size(unsigned int size);
 void f3d_set_othermode_init(unsigned int h, unsigned int l);
 
+/* Returns nonzero if the ucode text at `text` is Doom 64's Fast3D variant
+ * (shares SM64's version word but differs in geometry encoding). Call
+ * f3d_set_variant() with the result before f3d_run_dl() so the walker selects
+ * Doom 64's vertex/triangle decode for that task. */
+int  f3d_is_doom64_ucode(const unsigned char *rdram, unsigned int rdram_size,
+                         unsigned int text);
+void f3d_set_variant(int doom64);
+
 /* Walk an F3D display list at RDRAM byte address `addr`, transforming geometry
  * through `gsp` and appending RDP commands to `fifo`. Recurses into nested
  * display lists up to a bounded depth. */

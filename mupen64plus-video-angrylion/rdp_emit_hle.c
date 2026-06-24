@@ -391,6 +391,7 @@ void rdp_emit_hle_process_dlist(void)
             f3d_seg_reset();
             f3d_set_rdram(rdram);
             f3d_set_rdram_size(rdram_size);
+            f3d_set_variant(f3d_is_doom64_ucode(rdram, rdram_size, ut));
             if (ud != 0 && ud + 0x120u <= rdram_size)
             {
                 unsigned int oh = ((unsigned int)rdram[(ud + 0x118) ^ 3] << 24)
