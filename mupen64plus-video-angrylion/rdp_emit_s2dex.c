@@ -1308,13 +1308,18 @@ static void s2dex_draw_obj(GSPState *gsp, const unsigned char *r,
      * texel every four pixels with the raw U10.5 extent), mapping only the
      * texture's left/top quarter across the quad. Scaling the extent by 4
      * brings the sample rate to 1 texel/pixel, cxd4-matched (dsdx 8 -> 32). */
+    /* The object Y axis is inverted (the matrix anchor is the sprite's
+     * bottom, objY counts up), so the screen-top corner samples the image
+     * bottom and the screen-bottom corner the image top: T runs t_ext at
+     * uly down to 0 at lry. Mapping T=0 to the screen top instead drew the
+     * sprite upside down. */
     {
         int s_ext = (int)(imageW << 2);
         int t_ext = (int)(imageH << 2);
-        s2dex_set_corner(&gsp->vtx[S2DEX_SPR_V0 + 0], ulx, uly, 0,     0);
-        s2dex_set_corner(&gsp->vtx[S2DEX_SPR_V0 + 1], lrx, uly, s_ext, 0);
-        s2dex_set_corner(&gsp->vtx[S2DEX_SPR_V0 + 2], ulx, lry, 0,     t_ext);
-        s2dex_set_corner(&gsp->vtx[S2DEX_SPR_V0 + 3], lrx, lry, s_ext, t_ext);
+        s2dex_set_corner(&gsp->vtx[S2DEX_SPR_V0 + 0], ulx, uly, 0,     t_ext);
+        s2dex_set_corner(&gsp->vtx[S2DEX_SPR_V0 + 1], lrx, uly, s_ext, t_ext);
+        s2dex_set_corner(&gsp->vtx[S2DEX_SPR_V0 + 2], ulx, lry, 0,     0);
+        s2dex_set_corner(&gsp->vtx[S2DEX_SPR_V0 + 3], lrx, lry, s_ext, 0);
     }
 
     nc = gsp_triangle(gsp, tribuf, S2DEX_SPR_V0 + 0, S2DEX_SPR_V0 + 2,
