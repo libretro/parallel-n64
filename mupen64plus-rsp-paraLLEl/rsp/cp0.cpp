@@ -60,24 +60,34 @@ extern "C"
 				return MODE_CHECK_FLAGS;
 			}
 		}
-#endif
-
-#if 0 // FIXME: this is broken with upstream mupen64plus-core
-		if (rd == CP0_REGISTER_SP_SEMAPHORE)
+		else if (rd == CP0_REGISTER_SP_SEMAPHORE)
 		{
-			if (*rsp->cp0.cr[CP0_REGISTER_SP_SEMAPHORE])
+			/* The set-on-read / clear-on-write semantics of the SP
+			 * semaphore register are owned by mupen64plus-core
+			 * (read_rsp_regs/write_rsp_regs in rsp_core.c). The old
+			 * code here mutated cp0.cr[SP_SEMAPHORE] from the plugin
+			 * side as well, which raced the core's copy -- that is the
+			 * "broken with upstream mupen64plus-core" the FIXME warned
+			 * about. We must NOT touch the register value here.
+			 *
+			 * The only safe, useful part of the original intent is the
+			 * spin guard: a microcode busy-waiting on a semaphore the
+			 * CPU never releases would spin this read forever and hang
+			 * the emulation thread. Bound it like SP_STATUS and the DPC
+			 * busy registers above, but with a heavier increment since a
+			 * non-zero semaphore read is almost certainly a CPU wait, so
+			 * we want to bail out sooner. (The counter is reset at the
+			 * top of each DoRspCycles task, so this only fires on a
+			 * genuine stuck spin.) */
+			if (res)
 			{
-#ifdef PARALLEL_INTEGRATION
-				RSP::MFC0_count[rt] += 8; // Almost certainly waiting on the CPU. Timeout faster.
+				RSP::MFC0_count[rt] += 8;
 				if (RSP::MFC0_count[rt] >= RSP::SP_STATUS_TIMEOUT)
 				{
 					*RSP::rsp.SP_STATUS_REG |= SP_STATUS_HALT;
 					return MODE_CHECK_FLAGS;
 				}
-#endif
 			}
-			else
-				*rsp->cp0.cr[CP0_REGISTER_SP_SEMAPHORE] = 1;
 		}
 #endif
 
