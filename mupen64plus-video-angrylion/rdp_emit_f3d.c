@@ -323,17 +323,23 @@ void f3d_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
             unsigned int va = seg_phys(w1);
             if (s_variant_d64)
             {
-                /* Doom 64 gSPVertex(v, n, 0): w0 packs the count as n<<10 with
-                 * the DMA byte length minus one (n*16-1) in the low bits, and
-                 * destination is always slot 0 (every batch reloads from 0,
-                 * which is why its quad fans always index from vertex 0).
-                 * Decode n from the count field, NOT from the low byte: the
-                 * low byte holds (n*16-1)&0xff, which aliases once n>16 (e.g.
-                 * n=6 and n=22 both yield low byte 0x5f), truncating large
-                 * batches to 6 and leaving the unloaded high slots stale --
-                 * the source of Doom 64's stretched stray triangles. */
+                /* gSPVertex(v, n, v0) on this Fast3D/F3DEX-family microcode
+                 * (shared by Doom 64 and Turok): w0 packs the count as n<<10
+                 * with the DMA byte length minus one (n*16-1) in the low bits,
+                 * and the destination index as (v0 << 1) in the param byte
+                 * (bits 16..23). Decode n from the count field, NOT from the
+                 * low byte: the low byte holds (n*16-1)&0xff, which aliases
+                 * once n>16 (e.g. n=6 and n=22 both yield low byte 0x5f),
+                 * truncating large batches to 6 and leaving the unloaded high
+                 * slots stale -- the source of Doom 64's stretched stray
+                 * triangles. Doom 64 always loads to slot 0 (param byte 0), but
+                 * Turok's title logo streams later batches into the upper half
+                 * of the vertex buffer (v0=16, param byte 0x20) while keeping
+                 * the lower half live; forcing v0=0 clobbered slots 0..15 and
+                 * left the quads that index 16..31 reading stale vertices,
+                 * which sheared the logo into stray triangles. */
                 n  = (int)((w0 >> 10) & 0x3fu);
-                v0 = 0;
+                v0 = (int)(((w0 >> 16) & 0xffu) >> 1);
             }
             else
             {
