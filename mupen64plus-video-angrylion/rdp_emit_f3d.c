@@ -227,15 +227,19 @@ int f3d_is_mk64_ucode(const unsigned char *rdram, unsigned int rdram_size,
     if (rdram == 0 || text == 0)
         return 0;
     cs = f3d_text_crc(rdram, rdram_size, text);
-    /* Mario Kart 64 runs the stock gspF3DEX (v1) text (0x07832fe7), the same
-     * GBI family as the Doom 64/Bomberman 64 path: gSPVertex packs the count
-     * as (n<<10)|(16n-1), the triangle commands halve their byte vertex
-     * indices, and gSP2Triangles arrives as the 0xB1 two-triangle opcode.
-     * Without the variant flag it falls through to SM64's (n<<20)/divide-by-
-     * ten decode, so every in-race triangle indexes past the loaded vertices
-     * and the whole 3D scene rasterizes to nothing (black races), while the
-     * 2D TEXRECT title/menu survives. */
-    return cs == 0x07832fe7u;
+    /* Mario Kart 64 runs two members of the same F3DEX (v1) GBI family: the
+     * stock gspF3DEX text (0x07832fe7) for single-player races, the title and
+     * all menus, and gspF3DLX (0x3cc59c57) for the split-screen multiplayer
+     * race -- F3DLX differs only in a cheaper subpixel calculation and shares
+     * the vertex/index encoding exactly: gSPVertex packs the count as
+     * (n<<10)|(16n-1) with n=(w0>>10)&0x3f, the triangle commands halve their
+     * byte vertex indices, and gSP2Triangles arrives as the 0xB1 two-triangle
+     * opcode. Both want the same decode. Without the variant flag the text
+     * falls through to SM64's (n<<20)/divide-by-ten decode, so every race
+     * triangle indexes past the loaded vertices: the single-player demo (and
+     * now the split-screen demo) rasterizes to garbage while the 2D TEXRECT
+     * title/menu survives. */
+    return cs == 0x07832fe7u || cs == 0x3cc59c57u;
 }
 
 /* The automap/menu line microcode (gspL3DEX): same opcode family, but its
