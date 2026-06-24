@@ -328,6 +328,46 @@ void gsp_detect_ucode_params(GSPState *st, const unsigned char *rdram,
     }
 }
 
+/* Recognise the F3DEX (v1) graphics-microcode family generically, by the
+ * human-readable signature SGI embeds in every Gfx microcode's data segment:
+ * "RSP Gfx ucode F3DEX ...", and its siblings F3DLX/F3DLP/F3DEX.NoN/etc. The
+ * task's OSTask carries the data-segment pointer and size at DMEM 0xfd8/0xfdc;
+ * the string sits a few hundred bytes in, so a single bounded scan over the
+ * (~2 KiB) data segment identifies the family without a per-game text-CRC
+ * allowlist. The plain Fast3D builds (Super Mario 64, Wave Race 64) carry an
+ * "RSP SW Version" string instead and never match here, so they keep the SM64
+ * divide-by-ten / Wave Race divide-by-five decode handled elsewhere. F3DEX2
+ * (GBI 2) is routed to its own walker before this point and never reaches it.
+ * One short scan replaces (and costs less than) the chain of full-text CRCs it
+ * supersedes. */
+static int f3d_ucode_is_f3dex1_family(const unsigned char *rdram,
+                                      unsigned int rdram_size,
+                                      unsigned int ud, unsigned int uds)
+{
+    static const char pat[] = "RSP Gfx ucode F3D";
+    unsigned int span = sizeof(pat) - 1u;
+    unsigned int hi, b;
+    if (rdram == 0 || ud == 0)
+        return 0;
+    if (uds == 0 || uds > 0x4000u)
+        uds = 0x1000u;          /* sane bound if the size field is absent/odd */
+    hi = ud + uds;
+    if (hi > rdram_size)
+        hi = rdram_size;
+    if (hi < ud + span)
+        return 0;
+    for (b = ud; b + span <= hi; b++)
+    {
+        unsigned int k;
+        for (k = 0; k < span; k++)
+            if (rdram[(b + k) ^ 3] != (unsigned char)pat[k])
+                break;
+        if (k == span)
+            return 1;
+    }
+    return 0;
+}
+
 void rdp_emit_hle_process_dlist(void)
 {
     unsigned char *rdram;
@@ -391,10 +431,9 @@ void rdp_emit_hle_process_dlist(void)
             f3d_seg_reset();
             f3d_set_rdram(rdram);
             f3d_set_rdram_size(rdram_size);
-            f3d_set_variant(f3d_is_doom64_ucode(rdram, rdram_size, ut) ||
-                            f3d_is_mk64_ucode(rdram, rdram_size, ut) ||
-                            f3d_is_bm64_ucode(rdram, rdram_size, ut) ||
-                            f3d_is_hexen_ucode(rdram, rdram_size, ut));
+            f3d_set_variant(f3d_ucode_is_f3dex1_family(
+                                rdram, rdram_size, ud,
+                                read_dmem_u32(dmem, 0xfdc)));
             f3d_set_line_variant(f3d_is_doom64_line_ucode(rdram, rdram_size, ut));
             f3d_set_variant_wr64(f3d_is_wr64_ucode(rdram, rdram_size, ut));
             if (ud != 0 && ud + 0x120u <= rdram_size)
