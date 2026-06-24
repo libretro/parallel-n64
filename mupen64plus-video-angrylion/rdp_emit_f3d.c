@@ -295,11 +295,16 @@ void f3d_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
             unsigned int va = seg_phys(w1);
             if (s_variant_d64)
             {
-                /* Doom 64 gSPVertex(v, n, 0): the count is carried in the low
-                 * byte as n*16-1 (the DMA byte length minus one); destination
-                 * is always slot 0 (every batch is reloaded from 0, which is
-                 * why its quad fans always index from vertex 0). */
-                n  = (int)(((w0 & 0xffu) + 1u) >> 4);
+                /* Doom 64 gSPVertex(v, n, 0): w0 packs the count as n<<10 with
+                 * the DMA byte length minus one (n*16-1) in the low bits, and
+                 * destination is always slot 0 (every batch reloads from 0,
+                 * which is why its quad fans always index from vertex 0).
+                 * Decode n from the count field, NOT from the low byte: the
+                 * low byte holds (n*16-1)&0xff, which aliases once n>16 (e.g.
+                 * n=6 and n=22 both yield low byte 0x5f), truncating large
+                 * batches to 6 and leaving the unloaded high slots stale --
+                 * the source of Doom 64's stretched stray triangles. */
+                n  = (int)((w0 >> 10) & 0x3fu);
                 v0 = 0;
             }
             else
