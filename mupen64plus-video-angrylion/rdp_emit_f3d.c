@@ -214,12 +214,28 @@ int f3d_is_doom64_line_ucode(const unsigned char *rdram, unsigned int rdram_size
     return f3d_text_crc(rdram, rdram_size, text) == 0x6b8e293du;
 }
 
+/* Wave Race 64's plain Fast3D build. It shares SM64's RSP version word but a
+ * third opcode encoding: gSPVertex packs the count as n<<9 with the byte
+ * length (16n-1) in the low bits and the destination as (v0)*5 in the param
+ * byte, and gSP1Triangle/G_QUAD index vertices times five (SM64 times ten,
+ * Doom 64 times two). Detected by text CRC so SM64 and Doom 64 keep their own
+ * decodes. */
+int f3d_is_wr64_ucode(const unsigned char *rdram, unsigned int rdram_size,
+                      unsigned int text)
+{
+    if (rdram == 0 || text == 0)
+        return 0;
+    return f3d_text_crc(rdram, rdram_size, text) == 0xc6d28214u;
+}
+
 /* 0 = plain Fast3D (Super Mario 64); 1 = Doom 64's variant. Set once per task
  * before the top-level walk; the recursive F3D_DL descent inherits it. */
 static int s_variant_d64 = 0;
 static int s_variant_line = 0;   /* 1 => Doom 64 automap line ucode (gspL3DEX) */
+static int s_variant_wr64 = 0;   /* 1 => Wave Race 64 (n<<9 vtx, x5 indices) */
 void f3d_set_variant(int doom64) { s_variant_d64 = doom64 ? 1 : 0; }
 void f3d_set_line_variant(int line) { s_variant_line = line ? 1 : 0; }
+void f3d_set_variant_wr64(int wr64) { s_variant_wr64 = wr64 ? 1 : 0; }
 
 
 /* ---- RDP pass-through (microcode-independent), mirrors rdp_emit_f3dex2.c --*/
@@ -326,7 +342,15 @@ void f3d_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
         {
             int n, v0;
             unsigned int va = seg_phys(w1);
-            if (s_variant_d64)
+            if (s_variant_wr64)
+            {
+                /* Wave Race 64's plain Fast3D gSPVertex packs the count as
+                 * n<<9 with the byte length (16n-1) in the low bits, and the
+                 * destination as (v0)*5 in the param byte (bits 16..23). */
+                n  = (int)((w0 >> 9) & 0x7fu);
+                v0 = (int)(((w0 >> 16) & 0xffu) / 5u);
+            }
+            else if (s_variant_d64)
             {
                 /* gSPVertex(v, n, v0) on this Fast3D/F3DEX-family microcode
                  * (shared by Doom 64 and Turok): w0 packs the count as n<<10
@@ -358,7 +382,7 @@ void f3d_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
 
         case F3D_TRI1:
         {
-            int s = s_variant_d64 ? 2 : 10;
+            int s = s_variant_wr64 ? 5 : (s_variant_d64 ? 2 : 10);
             int a = (int)((w1 >> 16) & 0xff) / s;
             int b = (int)((w1 >>  8) & 0xff) / s;
             int c = (int)((w1 >>  0) & 0xff) / s;
@@ -412,7 +436,7 @@ void f3d_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
             /* G_QUAD on F3D builds that use 0xB5 for quads: four indices in w1,
              * emitted as two triangles (a,b,c) + (a,c,d). */
             {
-            int s = s_variant_d64 ? 2 : 10;
+            int s = s_variant_wr64 ? 5 : (s_variant_d64 ? 2 : 10);
             int a = (int)((w1 >> 24) & 0xff) / s;
             int b = (int)((w1 >> 16) & 0xff) / s;
             int c = (int)((w1 >>  8) & 0xff) / s;
