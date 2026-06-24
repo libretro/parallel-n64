@@ -37,7 +37,10 @@ void f3d_set_othermode_init(unsigned int h, unsigned int l);
  * Doom 64's vertex/triangle decode for that task. */
 int  f3d_is_doom64_ucode(const unsigned char *rdram, unsigned int rdram_size,
                          unsigned int text);
+int  f3d_is_doom64_line_ucode(const unsigned char *rdram, unsigned int rdram_size,
+                              unsigned int text);
 void f3d_set_variant(int doom64);
+void f3d_set_line_variant(int line);
 
 /* Walk an F3D display list at RDRAM byte address `addr`, transforming geometry
  * through `gsp` and appending RDP commands to `fifo`. Recurses into nested

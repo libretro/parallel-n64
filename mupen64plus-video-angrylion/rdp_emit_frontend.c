@@ -12,6 +12,7 @@
 #include "rdp_emit_rsp.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <math.h>
 #include "rdp_emit_recip.h"
 
 /* read a signed 16-bit big-endian halfword from RDRAM (N64 byte order) */
@@ -1053,6 +1054,75 @@ static void gsp_fold_st(GSPState *s, GSPVertex *v)
                 }
         }
     }
+}
+
+/* gsp_line: render a Doom 64 automap G_LINE3D (gSPLine3D v0,v1) as the
+ * gspL3DEX line microcode does -- expand the segment between two stored
+ * vertices into a thin screen-space quad and emit it as two triangles.
+ * The two endpoints carry their store-time screen snapshot (scr_x/scr_y in
+ * s15.16, .25-quantized; 1 pixel == 0x10000); offset each perpendicular to
+ * the segment by a half line width and feed the four corners straight to the
+ * bridge with their screen coordinates authoritative (scr_valid). */
+int gsp_line(GSPState *s, int32_t *cmd, int i0, int i1, int width_q)
+{
+    GSPVertex e[2];
+    BridgeVertex bv[4];
+    double dx, dy, len, ox, oy, halfw;
+    int32_t oxi, oyi;
+    int total = 0, nc, k;
+    static const int corner_src[4] = { 0, 0, 1, 1 };
+    static const int corner_sgn[4] = { +1, -1, -1, +1 };
+    int z_buffered = (s->geometry_mode & GEOM_ZBUFFER) ? 1 : 0;
+
+    if (i0 < 0 || i0 >= GSP_MAX_VERTICES ||
+        i1 < 0 || i1 >= GSP_MAX_VERTICES)
+        return 0;
+    e[0] = s->vtx[i0];
+    e[1] = s->vtx[i1];
+
+    dx = (double)(e[1].scr_x - e[0].scr_x);
+    dy = (double)(e[1].scr_y - e[0].scr_y);
+    len = sqrt(dx * dx + dy * dy);
+    if (len < 1.0)
+        return 0;                       /* zero-length: nothing to draw */
+
+    /* Half line width in screen units (1 pixel == 0x10000). gSPLine3D passes
+     * width 0, for which the L3DEX line is ~1.6 px wide; 0xD000 (0.81 px) half
+     * width matches the antialiased reference. The command's width byte (set
+     * only by gSPLineW3D) widens the segment beyond that. */
+    halfw = 0xD000 + ((double)width_q * 0x8000);
+    ox = -dy / len * halfw;             /* screen-perpendicular, unit * halfw */
+    oy =  dx / len * halfw;
+    oxi = (int32_t)(ox < 0 ? ox - 0.5 : ox + 0.5);
+    oyi = (int32_t)(oy < 0 ? oy - 0.5 : oy + 0.5);
+
+    for (k = 0; k < 4; k++)
+    {
+        const GSPVertex *src = &e[corner_src[k]];
+        BridgeVertex *o = &bv[k];
+        o->cx = src->cx; o->cy = src->cy; o->cz = src->cz; o->cw = src->cw;
+        o->r = src->r; o->g = src->g; o->b = src->b; o->a = src->a;
+        o->s = src->s; o->t = src->t; o->sv = src->sv; o->tv = src->tv;
+        o->scr_valid = 1;
+        o->scr_x = src->scr_x + corner_sgn[k] * oxi;
+        o->scr_y = src->scr_y + corner_sgn[k] * oyi;
+        o->scr_z = src->scr_z;
+        o->w_raw = src->w_raw;
+        o->rsp_ok = src->rsp_ok;
+        o->rsp_invw = src->rsp_invw;
+    }
+
+    /* two triangles forming the quad (0,1,2) + (0,2,3); cull_mode 0 so neither
+     * winding is dropped, shaded (vertex colour), untextured. */
+    nc = bridge_add_triangle(cmd + total, &bv[0], &bv[1], &bv[2], &s->viewport,
+                             0, z_buffered, 1, 0, 0, s->tex_tile, s->tex_level,
+                             s->tex_w, s->tex_h);
+    if (nc > 0) total += nc;
+    nc = bridge_add_triangle(cmd + total, &bv[0], &bv[2], &bv[3], &s->viewport,
+                             0, z_buffered, 1, 0, 0, s->tex_tile, s->tex_level,
+                             s->tex_w, s->tex_h);
+    if (nc > 0) total += nc;
+    return total;
 }
 
 int gsp_triangle(GSPState *s, int32_t *cmd, int i0, int i1, int i2,

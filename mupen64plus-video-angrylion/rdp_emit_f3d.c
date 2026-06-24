@@ -160,6 +160,14 @@ int f3d_is_ucode(const unsigned char *rdram, unsigned int rdram_size,
     w1 = *(const unsigned int *)(rdram + text + 4u);
     if (w1 == 0x201d0110u)      /* RSP SW Version 2.0X (Super Mario 64) */
         return 1;
+    /* Doom 64's menu/automap line ucode (gspL3DEX) is the same Fast3D opcode
+     * family but boots differently, so its word at text+4 is not the SM64
+     * version word. It is still an F3D microcode (G_VTX 0x04, G_LINE3D 0xB5);
+     * recognise it by text checksum so it walks the F3D path rather than being
+     * misrouted to the F3DEX2 walker (whose opcode numbers differ entirely,
+     * which dropped the whole automap). */
+    if (f3d_is_doom64_ucode(rdram, rdram_size, text))
+        return 1;
     return 0;
 }
 
@@ -183,15 +191,35 @@ static unsigned int f3d_text_crc(const unsigned char *rdram,
 int f3d_is_doom64_ucode(const unsigned char *rdram, unsigned int rdram_size,
                         unsigned int text)
 {
+    unsigned int cs;
     if (rdram == 0 || text == 0)
         return 0;
-    return f3d_text_crc(rdram, rdram_size, text) == 0x5efb67cau;
+    cs = f3d_text_crc(rdram, rdram_size, text);
+    /* Doom 64 ships two Fast3D-derived microcodes that share SM64's opcode
+     * encoding: the in-game world ucode (0x5efb67ca) and the menu/automap
+     * line ucode (0x6b8e293d, gspL3DEX) that draws the automap with G_LINE3D
+     * (0xB5). Both want the Doom 64 vertex/index decode. */
+    return cs == 0x5efb67cau || cs == 0x6b8e293du;
+}
+
+/* The automap/menu line microcode (gspL3DEX): same opcode family, but its
+ * G_LINE3D (0xB5) is a real two-vertex line (gSPLine3D), not the four-index
+ * G_QUAD the in-game ucode never emits. Distinguished by its own text CRC so
+ * the line is only expanded for the automap, leaving the world path untouched. */
+int f3d_is_doom64_line_ucode(const unsigned char *rdram, unsigned int rdram_size,
+                             unsigned int text)
+{
+    if (rdram == 0 || text == 0)
+        return 0;
+    return f3d_text_crc(rdram, rdram_size, text) == 0x6b8e293du;
 }
 
 /* 0 = plain Fast3D (Super Mario 64); 1 = Doom 64's variant. Set once per task
  * before the top-level walk; the recursive F3D_DL descent inherits it. */
 static int s_variant_d64 = 0;
+static int s_variant_line = 0;   /* 1 => Doom 64 automap line ucode (gspL3DEX) */
 void f3d_set_variant(int doom64) { s_variant_d64 = doom64 ? 1 : 0; }
+void f3d_set_line_variant(int line) { s_variant_line = line ? 1 : 0; }
 
 
 /* ---- RDP pass-through (microcode-independent), mirrors rdp_emit_f3dex2.c --*/
@@ -356,9 +384,23 @@ void f3d_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
 
         case F3D_LINE3D:
         {
+            if (s_variant_line)
+            {
+                /* Doom 64 automap (gspL3DEX): gSPLine3D(v0,v1,flag). The two
+                 * vertex indices live in w1 -- (v0*2)<<16 | (v1*2)<<8 -- and
+                 * the low byte carries the line width (0 for gSPLine3D). Draw
+                 * the segment as a width-expanded screen-space quad. */
+                int a = (int)((w1 >> 16) & 0xff) / 2;
+                int b = (int)((w1 >>  8) & 0xff) / 2;
+                int wd = (int)(w1 & 0xff);
+                int32_t cw[220];
+                int nc = gsp_line(gsp, cw, a, b, wd);
+                if (nc > 0) rdp_fifo_append(fifo, cw, nc);
+                break;
+            }
             /* G_QUAD on F3D builds that use 0xB5 for quads: four indices in w1,
-             * emitted as two triangles (a,b,c) + (a,c,d). Lines proper are not
-             * modeled; the quad reading is harmless for line content. */
+             * emitted as two triangles (a,b,c) + (a,c,d). */
+            {
             int s = s_variant_d64 ? 2 : 10;
             int a = (int)((w1 >> 24) & 0xff) / s;
             int b = (int)((w1 >> 16) & 0xff) / s;
@@ -370,6 +412,7 @@ void f3d_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
             if (nc > 0) rdp_fifo_append(fifo, cw, nc);
             nc = gsp_triangle(gsp, cw, a, c, d, s_textured, s_zbuffered);
             if (nc > 0) rdp_fifo_append(fifo, cw, nc);
+            }
             break;
         }
 
