@@ -226,6 +226,20 @@ void gsp_init(GSPState *s)
             s->lights_valid = 0;
         }
     }
+    /* F3DEX seeds a default LookAt at task boot (gdSPDefLookAt: right = +X,
+     * up = +Y) so that environment-mapped texture generation (G_TEXTURE_GEN)
+     * works before -- or entirely without -- an explicit gSPLookAt. Mario
+     * Kart 64's attract-mode Nintendo logo relies on this: it never issues a
+     * LookAt MOVEMEM, so with a zeroed direction rsp_texgen collapses every
+     * vertex to the same texel and the reflective chrome reads as flat gold.
+     * The s8 unit magnitude matches FTOFRAC8(1.0). Lists that load their own
+     * LookAt overwrite these slots. */
+    s->lookat_raw[0][0] = 0x7f;
+    s->lookat_raw[0][1] = 0;
+    s->lookat_raw[0][2] = 0;
+    s->lookat_raw[1][0] = 0;
+    s->lookat_raw[1][1] = 0x7f;
+    s->lookat_raw[1][2] = 0;
     s->tex_tile = 0;
     s->tex_level = 0;
     s->tex_w = 32;
