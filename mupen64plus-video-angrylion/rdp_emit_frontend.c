@@ -226,19 +226,25 @@ void gsp_init(GSPState *s)
             s->lights_valid = 0;
         }
     }
-    /* F3DEX seeds a default LookAt at task boot (gdSPDefLookAt: right = +X,
-     * up = +Y) so that environment-mapped texture generation (G_TEXTURE_GEN)
-     * works before -- or entirely without -- an explicit gSPLookAt. Mario
-     * Kart 64's attract-mode Nintendo logo relies on this: it never issues a
-     * LookAt MOVEMEM, so with a zeroed direction rsp_texgen collapses every
-     * vertex to the same texel and the reflective chrome reads as flat gold.
-     * The s8 unit magnitude matches FTOFRAC8(1.0). Lists that load their own
-     * LookAt overwrite these slots. */
-    s->lookat_raw[0][0] = 0x7f;
-    s->lookat_raw[0][1] = 0;
+    /* F3DEX seeds a default LookAt at task boot so that environment-mapped
+     * texture generation (G_TEXTURE_GEN) works before -- or entirely without
+     * -- an explicit gSPLookAt. Mario Kart 64's attract-mode Nintendo logo
+     * relies on this: it never issues a LookAt MOVEMEM, so with a zeroed
+     * direction rsp_texgen collapses every vertex to the same texel and the
+     * reflective chrome reads as a flat gold blob.
+     *
+     * The S texgen coordinate is generated against slot 0 and T against slot 1.
+     * The microcode's default orients them so S follows +Y and T follows +X
+     * (the transpose of the gdSPDefLookAt right=+X / up=+Y convention): seed
+     * slot 0 = +Y and slot 1 = +X to reproduce the LLE reference's S/T mapping
+     * exactly -- the opposite assignment leaves the reflection's specular band
+     * mirrored and oversaturated. The s8 magnitude matches FTOFRAC8(1.0); lists
+     * that load their own LookAt overwrite both slots. */
+    s->lookat_raw[0][0] = 0;
+    s->lookat_raw[0][1] = 0x7f;
     s->lookat_raw[0][2] = 0;
-    s->lookat_raw[1][0] = 0;
-    s->lookat_raw[1][1] = 0x7f;
+    s->lookat_raw[1][0] = 0x7f;
+    s->lookat_raw[1][1] = 0;
     s->lookat_raw[1][2] = 0;
     s->tex_tile = 0;
     s->tex_level = 0;
