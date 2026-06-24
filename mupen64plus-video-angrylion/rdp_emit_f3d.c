@@ -202,6 +202,24 @@ int f3d_is_doom64_ucode(const unsigned char *rdram, unsigned int rdram_size,
     return cs == 0x5efb67cau || cs == 0x6b8e293du;
 }
 
+int f3d_is_bm64_ucode(const unsigned char *rdram, unsigned int rdram_size,
+                      unsigned int text)
+{
+    unsigned int cs;
+    if (rdram == 0 || text == 0)
+        return 0;
+    cs = f3d_text_crc(rdram, rdram_size, text);
+    /* Bomberman 64 ships its own Fast3D binary (0x89892d18) -- distinct from
+     * Doom 64's, but built on the same F3DEX (v1) GBI: gSPVertex packs the
+     * count as (n<<10)|(16n-1) with n = (w0>>10)&0x3f, gSP1Triangle halves the
+     * byte indices, and gSP1Quadrangle arrives as the 0xB1 two-triangle quad.
+     * It therefore wants the same vertex/index decode as the Doom 64 family;
+     * without this it falls through to SM64's (n<<20)/divide-by-ten decode,
+     * collapsing every world triangle so only the TEXRECT HUD survives over the
+     * fill-cleared backdrop. */
+    return cs == 0x89892d18u;
+}
+
 /* The automap/menu line microcode (gspL3DEX): same opcode family, but its
  * G_LINE3D (0xB5) is a real two-vertex line (gSPLine3D), not the four-index
  * G_QUAD the in-game ucode never emits. Distinguished by its own text CRC so

@@ -39,6 +39,10 @@ int  f3d_is_doom64_ucode(const unsigned char *rdram, unsigned int rdram_size,
                          unsigned int text);
 int  f3d_is_doom64_line_ucode(const unsigned char *rdram, unsigned int rdram_size,
                               unsigned int text);
+/* Bomberman 64's Fast3D binary -- a different microcode from Doom 64's but the
+ * same F3DEX (v1) vertex/index encoding, so it drives the same variant decode. */
+int  f3d_is_bm64_ucode(const unsigned char *rdram, unsigned int rdram_size,
+                       unsigned int text);
 void f3d_set_variant(int doom64);
 void f3d_set_line_variant(int line);
 int  f3d_is_wr64_ucode(const unsigned char *rdram, unsigned int rdram_size,
