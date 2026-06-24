@@ -77,6 +77,12 @@ static void fifo_flush_to_rdp(RdpFifo *f)
 
 static int gsp_params_at_task_start;
 
+/* F3DEX (v1) family classifier: 0 = not this family, 1 = F3D vertex family,
+ * 2 = L3D line family. Defined below; forward-declared so the per-task setup
+ * can route and configure the L3DEX line ucode the same way as the dispatcher. */
+static int f3d_ucode_family(const unsigned char *rdram, unsigned int rdram_size,
+                            unsigned int ud, unsigned int uds);
+
 /* Re-evaluate every microcode-build-specific parameter from a (data, text)
  * segment pair: the triangle-setup scale constants, the clip profile, the
  * near-plane mode, the clip-lerp build, the clip-fan orientation and the
@@ -224,8 +230,13 @@ void gsp_detect_ucode_params(GSPState *st, const unsigned char *rdram,
          * collapse the boundary-vertex fade to 0 wherever an off vertex
          * lands exactly on a clip plane (cr.off == 0) -- e.g. the SM64
          * title's screen-edge background tiles, which then lose their
-         * texture and render gray. Force the standard lerp for Fast3D. */
-        if (f3d_is_ucode(rdram, rdram_size, ut))
+         * texture and render gray. Force the standard lerp for Fast3D. The
+         * L3DEX line ucode is Fast3D-family too but lacks the version word, so
+         * fold in the data-segment family check (uds unknown here, the scanner
+         * defaults its bound); the "fifo" guard inside it keeps F3DEX2 builds,
+         * which reach this through their own path, classified as non-family. */
+        if (f3d_is_ucode(rdram, rdram_size, ut)
+            || f3d_ucode_family(rdram, rdram_size, ud, 0u) != 0)
             found = 1;
         rsp_set_clip_lerp_204h(!found);
     }
@@ -330,22 +341,28 @@ void gsp_detect_ucode_params(GSPState *st, const unsigned char *rdram,
 
 /* Recognise the F3DEX (v1) graphics-microcode family generically, by the
  * human-readable signature SGI embeds in every Gfx microcode's data segment:
- * "RSP Gfx ucode F3DEX ...", and its siblings F3DLX/F3DLP/F3DEX.NoN/etc. The
- * task's OSTask carries the data-segment pointer and size at DMEM 0xfd8/0xfdc;
- * the string sits a few hundred bytes in, so a single bounded scan over the
- * (~2 KiB) data segment identifies the family without a per-game text-CRC
- * allowlist. The plain Fast3D builds (Super Mario 64, Wave Race 64) carry an
- * "RSP SW Version" string instead and never match here, so they keep the SM64
- * divide-by-ten / Wave Race divide-by-five decode handled elsewhere. F3DEX2
- * (GBI 2) is routed to its own walker before this point and never reaches it.
+ * "RSP Gfx ucode F3DEX ..." and its siblings (F3DLX/F3DLP/F3DEX.NoN), plus the
+ * line variant "RSP Gfx ucode L3DEX ...". The task's OSTask carries the data-
+ * segment pointer and size at DMEM 0xfd8/0xfdc; the string sits a few hundred
+ * bytes in, so a single bounded scan over the (~2 KiB) data segment classifies
+ * the microcode without a per-game text-CRC allowlist.
+ *
+ * Returns 0 for anything else (the plain Fast3D builds in Super Mario 64 and
+ * Wave Race 64 carry an "RSP SW Version" string and never match, keeping their
+ * divide-by-ten / divide-by-five decode; S2DEX/ZSort and friends fall through
+ * too), 1 for the vertex family ("F3D" stem) and 2 for the line family ("L3D"
+ * stem, gspL3DEX). Both 1 and 2 use the v1 (n<<10)|(16n-1) vertex count and the
+ * halved triangle indices; 2 additionally draws G_LINE3D as a real two-vertex
+ * line, so the automap that L3DEX renders needs both the variant decode and the
+ * line expansion. F3DEX2 (GBI 2) is routed to its own walker before this runs.
  * One short scan replaces (and costs less than) the chain of full-text CRCs it
  * supersedes. */
-static int f3d_ucode_is_f3dex1_family(const unsigned char *rdram,
-                                      unsigned int rdram_size,
-                                      unsigned int ud, unsigned int uds)
+static int f3d_ucode_family(const unsigned char *rdram,
+                            unsigned int rdram_size,
+                            unsigned int ud, unsigned int uds)
 {
-    static const char pat[] = "RSP Gfx ucode F3D";
-    unsigned int span = sizeof(pat) - 1u;
+    static const char pre[] = "RSP Gfx ucode ";
+    unsigned int plen = sizeof(pre) - 1u;
     unsigned int hi, b;
     if (rdram == 0 || ud == 0)
         return 0;
@@ -354,16 +371,36 @@ static int f3d_ucode_is_f3dex1_family(const unsigned char *rdram,
     hi = ud + uds;
     if (hi > rdram_size)
         hi = rdram_size;
-    if (hi < ud + span)
+    if (hi < ud + plen + 3u)
         return 0;
-    for (b = ud; b + span <= hi; b++)
+    for (b = ud; b + plen + 3u <= hi; b++)
     {
         unsigned int k;
-        for (k = 0; k < span; k++)
-            if (rdram[(b + k) ^ 3] != (unsigned char)pat[k])
+        unsigned char c0, c1, c2;
+        for (k = 0; k < plen; k++)
+            if (rdram[(b + k) ^ 3] != (unsigned char)pre[k])
                 break;
-        if (k == span)
-            return 1;
+        if (k != plen)
+            continue;
+        c0 = rdram[(b + plen + 0u) ^ 3];
+        c1 = rdram[(b + plen + 1u) ^ 3];
+        c2 = rdram[(b + plen + 2u) ^ 3];
+        if (!((c0 == 'F' || c0 == 'L') && c1 == '3' && c2 == 'D'))
+            return 0;           /* S2DEX, ZSortp, etc. -- not this family */
+        /* L3DEX and F3DEX each exist in a GBI 1 build ("... 1.21") and a GBI 2
+         * build ("... fifo 2.xx"); only GBI 1 belongs on the F3D walker. The
+         * stem width varies (F3DEX, F3DEX.NoN, L3DEX), so scan the short name
+         * field that follows it for the "fifo" token that tags every GBI 2
+         * build and reject those. */
+        {
+            unsigned int j, lim = b + plen + 28u;
+            if (lim > hi) lim = hi;
+            for (j = b + plen + 3u; j + 4u <= lim; j++)
+                if (rdram[(j + 0u) ^ 3] == 'f' && rdram[(j + 1u) ^ 3] == 'i' &&
+                    rdram[(j + 2u) ^ 3] == 'f' && rdram[(j + 3u) ^ 3] == 'o')
+                    return 0;
+        }
+        return (c0 == 'L') ? 2 : 1;
     }
     return 0;
 }
@@ -413,10 +450,20 @@ void rdp_emit_hle_process_dlist(void)
     {
         unsigned int ut = read_dmem_u32(dmem, 0xfd0) & 0x00ffffffu;
         unsigned int ud = read_dmem_u32(dmem, 0xfd8) & 0x00ffffffu;
+        int fam;
         gsp_params_at_task_start = 1;
         gsp_detect_ucode_params(&s_gsp, rdram, rdram_size, ud, ut);
         gsp_params_at_task_start = 0;
-        if (f3d_is_ucode(rdram, rdram_size, ut))
+        /* Classify the Gfx ucode family from the SGI name string in its data
+         * segment: the F3D vertex family (F3DEX/F3DLX/F3DLP, fam 1) and the L3D
+         * line family (L3DEX, fam 2) are both GBI 1 and both belong on the F3D
+         * walker. f3d_is_ucode routes the vertex ucodes by their SM64-shaped
+         * version word, but the L3DEX line ucode boots differently and has no
+         * such word, so route it here by family instead -- otherwise Doom 64's
+         * and Hexen's automaps fall through to the F3DEX2 walker and scatter. */
+        fam = f3d_ucode_family(rdram, rdram_size, ud,
+                               read_dmem_u32(dmem, 0xfdc));
+        if (f3d_is_ucode(rdram, rdram_size, ut) || fam != 0)
         {
             /* Plain Fast3D (e.g. Super Mario 64): different geometry opcode
              * encoding from F3DEX2, dispatched separately. gsp_detect_ucode_
@@ -431,10 +478,8 @@ void rdp_emit_hle_process_dlist(void)
             f3d_seg_reset();
             f3d_set_rdram(rdram);
             f3d_set_rdram_size(rdram_size);
-            f3d_set_variant(f3d_ucode_is_f3dex1_family(
-                                rdram, rdram_size, ud,
-                                read_dmem_u32(dmem, 0xfdc)));
-            f3d_set_line_variant(f3d_is_doom64_line_ucode(rdram, rdram_size, ut));
+            f3d_set_variant(fam != 0);
+            f3d_set_line_variant(fam == 2);
             f3d_set_variant_wr64(f3d_is_wr64_ucode(rdram, rdram_size, ut));
             if (ud != 0 && ud + 0x120u <= rdram_size)
             {

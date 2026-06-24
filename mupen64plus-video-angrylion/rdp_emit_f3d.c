@@ -160,25 +160,20 @@ int f3d_is_ucode(const unsigned char *rdram, unsigned int rdram_size,
     w1 = *(const unsigned int *)(rdram + text + 4u);
     if (w1 == 0x201d0110u)      /* RSP SW Version 2.0X (Super Mario 64) */
         return 1;
-    /* Doom 64's menu/automap line ucode (gspL3DEX) is the same Fast3D opcode
-     * family but boots differently, so its word at text+4 is not the SM64
-     * version word. It is still an F3D microcode (G_VTX 0x04, G_LINE3D 0xB5);
-     * recognise it by text checksum so it walks the F3D path rather than being
-     * misrouted to the F3DEX2 walker (whose opcode numbers differ entirely,
-     * which dropped the whole automap). */
-    if (f3d_is_doom64_ucode(rdram, rdram_size, text))
-        return 1;
+    /* The L3DEX line microcode boots differently and its word at text+4 is not
+     * the SM64 version word, so it is not recognised here; the dispatcher
+     * routes it onto the F3D walker by its data-segment family name instead
+     * (see f3d_ucode_family), which also keeps Doom 64's and Hexen's automaps
+     * off the F3DEX2 path. */
     return 0;
 }
 
-/* Doom 64 ships a custom Fast3D-derived microcode that reports the very same
- * RSP-SW-Version word (0x201d0110) as Super Mario 64's Fast3D, so f3d_is_ucode
- * cannot tell them apart -- yet their geometry encodings differ (Doom 64 packs
- * triangle indices x2 and uses gSP1Quadrangle/0xB1, where SM64 packs x10 and
- * never emits 0xB1). Distinguish by a checksum over the ucode text, the way HLE
- * plugins routinely fingerprint a microcode. The two diverge within the first
- * text block; 0xc00 bytes is ample and matches the value computed for the USA
- * build. */
+/* Fingerprint a microcode by a checksum over its text image, the way HLE
+ * plugins routinely identify a build. Only Wave Race 64's plain Fast3D variant
+ * still needs this (its data segment carries no "RSP Gfx ucode" name string, so
+ * the family scanner cannot see it); every other family is recognised from that
+ * name. The builds diverge within the first text block, so 0xc00 bytes suffice
+ * and match the value computed for the USA cart. */
 static unsigned int f3d_text_crc(const unsigned char *rdram,
                                  unsigned int rdram_size, unsigned int text)
 {
@@ -186,32 +181,6 @@ static unsigned int f3d_text_crc(const unsigned char *rdram,
     for (i = 0; i < 0xc00u && (text + i) < rdram_size; i++)
         cs = cs * 131u + rdram[(text + i) ^ 3];
     return cs;
-}
-
-int f3d_is_doom64_ucode(const unsigned char *rdram, unsigned int rdram_size,
-                        unsigned int text)
-{
-    unsigned int cs;
-    if (rdram == 0 || text == 0)
-        return 0;
-    cs = f3d_text_crc(rdram, rdram_size, text);
-    /* Doom 64 ships two Fast3D-derived microcodes that share SM64's opcode
-     * encoding: the in-game world ucode (0x5efb67ca) and the menu/automap
-     * line ucode (0x6b8e293d, gspL3DEX) that draws the automap with G_LINE3D
-     * (0xB5). Both want the Doom 64 vertex/index decode. */
-    return cs == 0x5efb67cau || cs == 0x6b8e293du;
-}
-
-/* The automap/menu line microcode (gspL3DEX): same opcode family, but its
- * G_LINE3D (0xB5) is a real two-vertex line (gSPLine3D), not the four-index
- * G_QUAD the in-game ucode never emits. Distinguished by its own text CRC so
- * the line is only expanded for the automap, leaving the world path untouched. */
-int f3d_is_doom64_line_ucode(const unsigned char *rdram, unsigned int rdram_size,
-                             unsigned int text)
-{
-    if (rdram == 0 || text == 0)
-        return 0;
-    return f3d_text_crc(rdram, rdram_size, text) == 0x6b8e293du;
 }
 
 /* Wave Race 64's plain Fast3D build. It shares SM64's RSP version word but a
