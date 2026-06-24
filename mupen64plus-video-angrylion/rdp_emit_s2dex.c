@@ -19,6 +19,36 @@
 #include <string.h>
 #include "rdp_emit_s2dex.h"
 #include "rdp_emit_recip.h"
+#include "rdp_emit_frontend.h"
+
+/* S2DEX sprite quad uses four scratch vertex slots at the top of the RSP
+ * vertex buffer so it never clobbers geometry a surrounding display list
+ * loaded into the low indices. */
+#define S2DEX_SPR_V0 60
+
+/* A screen-space sprite corner: position is s10.2 << 14 (the bridge reads
+ * it back >> 14), texcoords are S10.5 in the high half (sv/tv keep the raw
+ * short), shade is a flat white (0..255 as s15.16), and w is a constant so
+ * the texture maps affinely (only the S:T:W ratio matters, and an equal w
+ * on every corner removes perspective). */
+static void s2dex_set_corner(GSPVertex *v, int sx, int sy,
+                             int sval, int tval)
+{
+    memset(v, 0, sizeof(*v));
+    v->scr_x = (int32_t)sx << 14;
+    v->scr_y = (int32_t)sy << 14;
+    v->scr_z = 0;
+    v->cw    = 0x00010000;          /* w == 1.0 (s15.16) */
+    v->w_raw = (int64_t)0x40000000; /* normalised affine W */
+    v->rsp_ok = 0;
+    v->rsp_invw = 0;
+    v->s  = (int32_t)sval << 16;
+    v->t  = (int32_t)tval << 16;
+    v->sv = (int16_t)sval;
+    v->tv = (int16_t)tval;
+    v->r = v->g = v->b = v->a = (int32_t)0xff << 16;
+    v->clip = 0;
+}
 
 /* ---- latched RSP state ------------------------------------------------- */
 
@@ -92,6 +122,7 @@ void s2dex_reset(void)
     s_obj_status[0] = s_obj_status[1] = 0;
     s_obj_status[2] = s_obj_status[3] = 0;
     s_obj_tile7_used = 0;
+    s2dex1_reset();
 }
 
 /* ---- G_OBJ_LOADTXTR ----------------------------------------------------- */
@@ -172,12 +203,19 @@ int s2dex_obj_loadtxtr(const unsigned char *rdram, unsigned int rdram_bytes,
     }
     else if (type == 0x00001033u)       /* G_OBJLT_TXTRBLOCK */
     {
-        cw[0] = (int32_t)0x3d100000u;
+        /* SETTIMG width-1 = tsize>>2 (the block's TMEM word span scaled
+         * back to the 16-bit load pitch); without it the LOADBLOCK dxt
+         * walks the wrong DRAM lines and nothing reaches TMEM. tsize is the
+         * 64-bit-TMEM-word count-1 (GS_TB_TSIZE = GS_PIX2TMEM(pix,siz)-1);
+         * the LOADBLOCK lrs is in 16-bit texels, and each TMEM word holds
+         * four of them, so the block span is tsize<<2 (cxd4-verified: 399
+         * words -> lrs 1596, filling the full tile rather than a quarter). */
+        cw[0] = (int32_t)(0x3d100000u | ((tsize >> 2) & 0xfffu));
         cw[1] = (int32_t)image;
         cw[2] = (int32_t)(0x35100000u | (tmem & 0x1ffu));
         cw[3] = (int32_t)0x27000000u;
         cw[4] = (int32_t)0x33000000u;
-        cw[5] = (int32_t)(0x27000000u | ((tsize & 0xfffu) << 12)
+        cw[5] = (int32_t)(0x27000000u | (((tsize << 2) & 0xfffu) << 12)
                           | (tline & 0xfffu));
         rdp_fifo_append(fifo, cw, 6);
     }
@@ -1097,4 +1135,206 @@ void s2dex_bg_copy(const unsigned char *rdram, unsigned int rdram_bytes,
     }
 wrap_done:;
     }
+}
+
+/* ======================================================================== *
+ *  S2DEX (GBI 1) object matrix + sprite/rectangle rendering.
+ *
+ *  Standalone S2DEX 1.xx games (e.g. Yoshi's Story) drive the whole frame
+ *  with the sprite command set rather than switching to it for a single BG
+ *  rect the way the Zelda engine does. The object commands draw a uObjSprite
+ *  (gs2dex.h, 24 bytes) as a screen-space textured quad transformed by the
+ *  2D object matrix (G_OBJ_MOVEMEM, default identity). With an identity (or
+ *  pure-scale) matrix the quad is axis aligned, so it maps directly onto a
+ *  single RDP TEXTURE_RECTANGLE; the render tile is set from the sprite's
+ *  own fmt/siz/stride/TMEM-address/palette (gSPSetSpriteTile).
+ *
+ *  Coordinate math follows the decode in GLideN64's gSPObjSprite (constants
+ *  from S2DEXCoordCorrector, the v1.06 / non-1.3 default-rendermode lane:
+ *  A1 = 0, A3 = -2, B0 = 0xfffffffc, B3 = 1):
+ *      ulx = objX + A3 ; uly = objY + A3
+ *      lrx = (((imageW - A1) << 8) * (0x80007fff / scaleW)) >> 32 + ulx
+ *      lry = (((imageH - A1) << 8) * (0x80007fff / scaleH)) >> 32 + uly
+ *      x0  = (mtxX + B3) & B0   (0 for identity) ; screen = x0 + mtx*corner
+ *  TEXRECT s/t start at 0; the per-pixel texel step is the sprite scale
+ *  itself (dsdx = scaleW, dtdy = scaleH; u5.10 == s5.10 at 1.0 = 0x400).
+ * ======================================================================== */
+
+/* DMEM object matrix (uObjMtx_t): A,B,C,D s15.16, X,Y s10.2, BaseScale u5.10.
+ * Reset to identity at task start; G_OBJ_MOVEMEM (0xdc) overwrites it. */
+static int          s_objmtx_a = 0x00010000, s_objmtx_b = 0;
+static int          s_objmtx_c = 0,          s_objmtx_d = 0x00010000;
+static int          s_objmtx_x = 0,          s_objmtx_y = 0;
+
+void s2dex1_reset(void)
+{
+    s_objmtx_a = 0x00010000; s_objmtx_b = 0;
+    s_objmtx_c = 0;          s_objmtx_d = 0x00010000;
+    s_objmtx_x = 0;          s_objmtx_y = 0;
+}
+
+void s2dex_obj_movemem(const unsigned char *r, unsigned int rdram_bytes,
+                       unsigned int w0, unsigned int addr)
+{
+    /* gSPObjMatrix encodes w0 = (cmd<<24)|(dmasize-1<<16)|(dmem_offset):
+     * a full uObjMtx load targets DMEM offset 0; a sub-matrix update
+     * (gSPObjSubMatrix) targets offset 0x10 and ships only X,Y,BaseScale. */
+    unsigned int dmem_off = w0 & 0xffffu;
+    if (addr + 24u > rdram_bytes)
+        return;
+    if (dmem_off == 0u)
+    {
+        s_objmtx_a = (int)bg_rd_u32(r, addr + 0x00);
+        s_objmtx_b = (int)bg_rd_u32(r, addr + 0x04);
+        s_objmtx_c = (int)bg_rd_u32(r, addr + 0x08);
+        s_objmtx_d = (int)bg_rd_u32(r, addr + 0x0c);
+        s_objmtx_x = (int)(short)bg_rd_u16(r, addr + 0x10);
+        s_objmtx_y = (int)(short)bg_rd_u16(r, addr + 0x12);
+    }
+    else
+    {
+        s_objmtx_x = (int)(short)bg_rd_u16(r, addr + 0x00);
+        s_objmtx_y = (int)(short)bg_rd_u16(r, addr + 0x02);
+    }
+}
+
+/* draw a uObjSprite at addr as a TEXTURE_RECTANGLE. use_matrix applies the
+ * object matrix translation/scale (gSPObjSprite); gSPObjRectangle passes 0. */
+static void s2dex_draw_obj(GSPState *gsp, const unsigned char *r,
+                           unsigned int rdram_bytes,
+                           unsigned int addr, int use_matrix, RdpFifo *fifo)
+{
+    int          objX, objY;
+    unsigned int scaleW, scaleH, imageW, imageH, imageStride, imageAdrs;
+    unsigned int imageFmt, imageSiz, imagePal;
+    int          ulx, uly, lrx, lry;
+    int          sax, say, w_q, h_q;
+    unsigned int tw, th, lrs, lrt;
+    unsigned int settile_w0, settile_w1, settsz_w1;
+    int32_t      cw[6];
+    int32_t      tribuf[220];
+    int          nc;
+
+    if (addr + 24u > rdram_bytes)
+        return;
+
+    objX        = (int)(short)bg_rd_u16(r, addr + 0x00);
+    scaleW      =            bg_rd_u16(r, addr + 0x02);
+    imageW      =            bg_rd_u16(r, addr + 0x04);
+    objY        = (int)(short)bg_rd_u16(r, addr + 0x08);
+    scaleH      =            bg_rd_u16(r, addr + 0x0a);
+    imageH      =            bg_rd_u16(r, addr + 0x0c);
+    imageStride =            bg_rd_u16(r, addr + 0x10);
+    imageAdrs   =            bg_rd_u16(r, addr + 0x12);
+    imageFmt    = r[(addr + 0x14) ^ 3];
+    imageSiz    = r[(addr + 0x15) ^ 3];
+    imagePal    = r[(addr + 0x16) ^ 3];
+    /* imageFlags (FLIPS/FLIPT) at +0x17 -- TODO */
+
+    if (scaleW == 0u) scaleW = 1u;
+    if (scaleH == 0u) scaleH = 1u;
+
+    /* cxd4-derived screen mapping for an S2DEX OBJ sprite (verified
+     * bit-exact against the LLE RSP for Yoshi's Story: the "Nintendo
+     * PRESENTS" logo lands at xh=384, xl=892, yh=383, yl=579).
+     *
+     * The object matrix translation (X,Y) is the sprite's BOTTOM-LEFT
+     * screen anchor in s10.2. objX runs right; objY runs UP -- the OBJ
+     * Y axis is inverted relative to the screen -- so objY subtracts from
+     * the anchor. The drawn extent is the sprite's texel size scaled by
+     * its own u5.10 scale: extent_s10.2 = (imageU10.5 * scaleU5.10) >> 13,
+     * less one screen pixel (the RSP's inclusive right/bottom edge).
+     *
+     * The 2x2 part (A) carries the (square, unrotated) zoom Yoshi uses;
+     * B/C shear and a distinct D are not exercised by the test content and
+     * are left unmodelled (identity A == 0x00010000 reduces to objX/objY).
+     */
+    if (use_matrix)
+    {
+        sax = s_objmtx_x + (int)(((long long)objX * s_objmtx_a) >> 16);
+        say = s_objmtx_y - (int)(((long long)objY * s_objmtx_a) >> 16);
+    }
+    else
+    {
+        sax = objX;
+        say = -objY;
+    }
+
+    w_q = (int)(((unsigned long long)imageW * scaleW) >> 13) - 4;
+    h_q = (int)(((unsigned long long)imageH * scaleH) >> 13) - 4;
+    if (w_q < 0) w_q = 0;
+    if (h_q < 0) h_q = 0;
+
+    ulx = sax;                  /* left   */
+    lrx = sax + w_q;            /* right  */
+    lry = say;                  /* bottom */
+    uly = say - h_q;            /* top    */
+
+    if (lrx <= ulx || lry <= uly)
+        return;
+
+    /* Screen-space sprite corners are passed straight to the triangle
+     * rasterizer as s10.2; off-screen-negative upper-left corners are left
+     * unclamped (a TEXRECT's 12-bit unsigned field would have to clamp, but
+     * a triangle's signed edge coordinates do not, and the RDP scissor trims
+     * the off-screen part). */
+
+    tw = (imageW >> 5); if (tw == 0u) tw = 1u;
+    th = (imageH >> 5); if (th == 0u) th = 1u;
+    lrs = (tw - 1u) << 2;
+    lrt = (th - 1u) << 2;
+
+    /* SET_TILE (render tile 0) from the sprite's image attributes. */
+    settile_w0 = 0xf5000000u | ((imageFmt & 7u) << 21) | ((imageSiz & 3u) << 19)
+               | ((imageStride & 0x1ffu) << 9) | (imageAdrs & 0x1ffu);
+    /* tile 0, palette, clamp S and T (cm = G_TX_CLAMP = 2). */
+    settile_w1 = ((imagePal & 0xfu) << 20) | (2u << 18) | (2u << 8);
+    /* SET_TILE_SIZE w1: tile 0, lrs/lrt (10.2). */
+    settsz_w1  = ((lrs & 0xfffu) << 12) | (lrt & 0xfffu);
+
+    cw[0] = (int32_t)settile_w0;
+    cw[1] = (int32_t)settile_w1;
+    cw[2] = (int32_t)0xf2000000u;               /* SET_TILE_SIZE w0 (uls=ult=0) */
+    cw[3] = (int32_t)settsz_w1;
+    rdp_fifo_append(fifo, cw, 4);
+
+    /* Emit the sprite as two shaded textured triangles, the way the S2DEX
+     * RSP microcode does (a TEXRECT cannot supply the SHADE the sprite's
+     * combiner multiplies by, so a texrect comes out black). Texcoords run
+     * 0..imageW / 0..imageH in S10.5 across the quad; the shade is flat
+     * white so TEXEL*SHADE == TEXEL. */
+    /* The triangle bridge's affine-W normalisation lands the per-pixel S/T
+     * gradient at a quarter of the texel rate (the I4 sampler advances one
+     * texel every four pixels with the raw U10.5 extent), mapping only the
+     * texture's left/top quarter across the quad. Scaling the extent by 4
+     * brings the sample rate to 1 texel/pixel, cxd4-matched (dsdx 8 -> 32). */
+    {
+        int s_ext = (int)(imageW << 2);
+        int t_ext = (int)(imageH << 2);
+        s2dex_set_corner(&gsp->vtx[S2DEX_SPR_V0 + 0], ulx, uly, 0,     0);
+        s2dex_set_corner(&gsp->vtx[S2DEX_SPR_V0 + 1], lrx, uly, s_ext, 0);
+        s2dex_set_corner(&gsp->vtx[S2DEX_SPR_V0 + 2], ulx, lry, 0,     t_ext);
+        s2dex_set_corner(&gsp->vtx[S2DEX_SPR_V0 + 3], lrx, lry, s_ext, t_ext);
+    }
+
+    nc = gsp_triangle(gsp, tribuf, S2DEX_SPR_V0 + 0, S2DEX_SPR_V0 + 2,
+                      S2DEX_SPR_V0 + 1, 1, 0);
+    if (nc > 0) rdp_fifo_append(fifo, tribuf, nc);
+    nc = gsp_triangle(gsp, tribuf, S2DEX_SPR_V0 + 1, S2DEX_SPR_V0 + 2,
+                      S2DEX_SPR_V0 + 3, 1, 0);
+    if (nc > 0) rdp_fifo_append(fifo, tribuf, nc);
+}
+
+void s2dex_obj_sprite(GSPState *gsp, const unsigned char *r,
+                      unsigned int rdram_bytes,
+                      unsigned int addr, RdpFifo *fifo)
+{
+    s2dex_draw_obj(gsp, r, rdram_bytes, addr, 1, fifo);
+}
+
+void s2dex_obj_rectangle(GSPState *gsp, const unsigned char *r,
+                         unsigned int rdram_bytes,
+                         unsigned int addr, RdpFifo *fifo)
+{
+    s2dex_draw_obj(gsp, r, rdram_bytes, addr, 0, fifo);
 }

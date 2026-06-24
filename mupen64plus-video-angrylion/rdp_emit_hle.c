@@ -13,8 +13,6 @@
  *   gcc -std=c89 -pedantic -Wall -Wdeclaration-after-statement -Werror
  */
 
-#include <stdio.h>
-#include <stdlib.h>
 #include "rdp_emit_hle.h"
 #include "rdp_emit_f3dex2.h"
 #include "rdp_emit_f3d.h"
@@ -432,6 +430,44 @@ static int f3d_ucode_family(const unsigned char *rdram,
     return 0;
 }
 
+/* Recognise standalone S2DEX (GBI 1) by the same SGI data-segment signature:
+ * "RSP Gfx ucode S2DEX  1.xx ...". The GBI 2 build is "S2DEX2 ..." and is
+ * already routed by probe_ucode_class' text version word, so a '2' directly
+ * after the stem rejects it here. Yoshi's Story and other sprite-driven games
+ * carry a build-specific text version word (e.g. 0x4a00002c) that the version
+ * probe does not match, so without this they fall through to the F3DEX2 walker
+ * and render nothing. */
+static int s2dex1_ucode_match(const unsigned char *rdram,
+                              unsigned int rdram_size,
+                              unsigned int ud, unsigned int uds)
+{
+    static const char pre[] = "RSP Gfx ucode S2DEX";
+    unsigned int plen = sizeof(pre) - 1u;
+    unsigned int hi, b;
+    if (rdram == 0 || ud == 0)
+        return 0;
+    if (uds == 0 || uds > 0x4000u)
+        uds = 0x1000u;
+    hi = ud + uds;
+    if (hi > rdram_size)
+        hi = rdram_size;
+    if (hi < ud + plen + 1u)
+        return 0;
+    for (b = ud; b + plen + 1u <= hi; b++)
+    {
+        unsigned int k;
+        for (k = 0; k < plen; k++)
+            if (rdram[(b + k) ^ 3] != (unsigned char)pre[k])
+                break;
+        if (k != plen)
+            continue;
+        if (rdram[(b + plen) ^ 3] == '2')   /* "S2DEX2" -> GBI 2 path */
+            return 0;
+        return 1;
+    }
+    return 0;
+}
+
 void rdp_emit_hle_process_dlist(void)
 {
     unsigned char *rdram;
@@ -528,6 +564,11 @@ void rdp_emit_hle_process_dlist(void)
             f3dex2_set_rdram(rdram);
             f3dex2_set_rdram_size(rdram_size);
             f3dex2_set_task_ucode(rdram, ut);
+            /* Standalone S2DEX (GBI 1) is not caught by the text version probe;
+             * detect it by data-segment name and force the GBI 1 sprite class. */
+            if (s2dex1_ucode_match(rdram, rdram_size, ud,
+                                   read_dmem_u32(dmem, 0xfdc)))
+                f3dex2_force_class_s2dex1();
             f3dex2_run_dl(&s_gsp, &s_fifo, dl_addr, 0, 0);
         }
     }

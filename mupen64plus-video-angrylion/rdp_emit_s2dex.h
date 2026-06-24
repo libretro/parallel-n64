@@ -36,4 +36,17 @@ void s2dex_bg_1cyc(const unsigned char *rdram, unsigned int rdram_bytes,
 void s2dex_bg_copy(const unsigned char *rdram, unsigned int rdram_bytes,
                    unsigned int bg_addr, RdpFifo *fifo);
 
+/* S2DEX (GBI 1) standalone sprite/rectangle/object-matrix commands. */
+struct GSPState;
+
+void s2dex1_reset(void);
+void s2dex_obj_movemem(const unsigned char *r, unsigned int rdram_bytes,
+                       unsigned int w0, unsigned int addr);
+void s2dex_obj_sprite(struct GSPState *gsp, const unsigned char *r,
+                      unsigned int rdram_bytes,
+                      unsigned int addr, RdpFifo *fifo);
+void s2dex_obj_rectangle(struct GSPState *gsp, const unsigned char *r,
+                         unsigned int rdram_bytes,
+                         unsigned int addr, RdpFifo *fifo);
+
 #endif

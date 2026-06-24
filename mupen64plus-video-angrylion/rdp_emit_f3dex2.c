@@ -81,6 +81,7 @@ static unsigned int s_half1;
 #define UCODE_F3DEX2 0
 #define UCODE_L3DEX2 1
 #define UCODE_S2DEX2 2
+#define UCODE_S2DEX1 3
 static int s_ucode_class;
 
 static int probe_ucode_class(const unsigned char *r, unsigned int text)
@@ -174,6 +175,15 @@ static unsigned char *s_rdram_base = 0;
 void f3dex2_set_task_ucode(const unsigned char *rdram, unsigned int text)
 {
     s_ucode_class = probe_ucode_class(rdram, text);
+}
+
+/* Standalone S2DEX 1.xx (Yoshi's Story etc.) carries a build-specific text
+ * version word rather than the S2DEX2 signature probe_ucode_class knows, so
+ * the HLE entry detects it from the data-segment name string and forces the
+ * GBI 1 sprite class here, after the text probe has run. */
+void f3dex2_force_class_s2dex1(void)
+{
+    s_ucode_class = UCODE_S2DEX1;
 }
 
 void f3dex2_set_rdram(unsigned char *rdram)
@@ -290,11 +300,130 @@ void f3dex2_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
         pc += 8;
         cmd = (int)((w0 >> 24) & 0xff);
 
+
+
         /* The low opcode space is class-specific: under S2DEX2 it is the
          * sprite/object command set, under L3DEX2 0x08 is G_LINE3D. Route
          * those before the F3DEX2 interpretation; the shared flow-control
          * and RDP-passthrough opcodes (0xD7..0xFF minus the class
          * differences) fall through to the main switch. */
+        if (s_ucode_class == UCODE_S2DEX1)
+        {
+            /* Standalone S2DEX 1.06 (GBI 1) is the F3DEX command set with the
+             * 2D object commands overlaid: the low opcodes 0x01/0x03/0x04/0x06
+             * keep their F3DEX meaning (G_MTX / G_MOVEMEM / G_VTX / G_DL) and
+             * the sprite/object commands live at the high opcodes 0xb0-0xc4 and
+             * 0xe4 (gs2dex.h !F3DEX_GBI_2 build). Nested display lists (G_DL,
+             * 0x06) MUST be followed -- the object draws live inside them. */
+            switch (cmd)
+            {
+            case 0x00:                          /* G_SPNOOP */
+                break;
+            case 0xb8:                          /* G_ENDDL */
+                running = 0;
+                break;
+            case 0x06:                          /* G_DL: nested display list */
+            {
+                unsigned int da = seg_addr(w1);
+                if (addr_in_range(da, 8u))
+                    f3dex2_run_dl(gsp, fifo, da, 0, 0);
+                /* w0 bit0 = G_DL_NOPUSH (branch): end this list after */
+                if (w0 & 0x00010000u)
+                    running = 0;
+                break;
+            }
+            case 0xc1:                          /* G_OBJ_LOADTXTR */
+                s2dex_obj_loadtxtr(r, s_rdram_size, seg_addr(w1), fifo, seg_addr);
+                break;
+            case 0xc2:                          /* G_OBJ_LDTX_SPRITE (txtr+sprite) */
+                s2dex_obj_loadtxtr(r, s_rdram_size, seg_addr(w1), fifo, seg_addr);
+                s2dex_obj_sprite(gsp, r, s_rdram_size, seg_addr(w1) + 24u, fifo);
+                break;
+            case 0xc3:                          /* G_OBJ_LDTX_RECT (txtr+rect) */
+                s2dex_obj_loadtxtr(r, s_rdram_size, seg_addr(w1), fifo, seg_addr);
+                s2dex_obj_rectangle(gsp, r, s_rdram_size, seg_addr(w1) + 24u, fifo);
+                break;
+            case 0xb1:                          /* G_OBJ_RENDERMODE */
+                s2dex_set_obj_rendermode(w1);
+                break;
+            case 0x03:                          /* G_OBJ_RECTANGLE */
+                s2dex_obj_rectangle(gsp, r, s_rdram_size, seg_addr(w1), fifo);
+                break;
+            case 0x04:                          /* G_OBJ_SPRITE */
+                s2dex_obj_sprite(gsp, r, s_rdram_size, seg_addr(w1), fifo);
+                break;
+            case 0x05:                          /* G_OBJ_MOVEMEM (object matrix) */
+                s2dex_obj_movemem(r, s_rdram_size, w0, seg_addr(w1));
+                break;
+            case 0xb9:                          /* G_SETOTHERMODE_L (GBI 1) */
+            case 0xba:                          /* G_SETOTHERMODE_H (GBI 1) */
+            {
+                unsigned int length = w0 & 0xffu;
+                unsigned int shift  = (w0 >> 8) & 0xffu;
+                unsigned int mask;
+                int32_t two[2];
+                if (length >= 32u)
+                    mask = 0xffffffffu;
+                else
+                    mask = ((1u << length) - 1u) << shift;
+                if (cmd == 0xba)
+                    s_othermode_h = (s_othermode_h & ~mask)
+                                  | ((unsigned int)w1 & mask)
+                                  | (0x2fu << 24);
+                else
+                    s_othermode_l = (s_othermode_l & ~mask)
+                                  | ((unsigned int)w1 & mask);
+                two[0] = (int32_t)(s_othermode_h | (0x2fu << 24));
+                two[1] = (int32_t)s_othermode_l;
+                rdp_fifo_append(fifo, two, 2);
+                break;
+            }
+            case 0xbc:                          /* G_MOVEWORD (GBI 1) */
+            {
+                int index = (int)(w0 & 0xffu);
+                if (index == G_MW_SEGMENT)
+                {
+                    unsigned int seg = ((w0 >> 8) & 0xffffu) >> 2;
+                    if (seg < 16u)
+                        s_seg_table[seg] = w1;
+                }
+                break;
+            }
+            case 0xb0:                          /* G_SELECT_DL (not modelled) */
+            case 0xb2:                          /* G_OBJ_RECTANGLE_R (rotated; TODO) */
+            case 0xc4:                          /* G_OBJ_LDTX_RECT_R (rotated; TODO) */
+            case 0x01:                          /* G_MTX (F3DEX base; 2D unused) */
+            case 0x02:                          /* reserved / G_MOVEMEM lane */
+            case 0xbb:                          /* G_TEXTURE (sprite tile sets scale) */
+            case 0xb3:                          /* G_RDPHALF_2 */
+            case 0xb4:                          /* G_RDPHALF_1 */
+            case 0xb6:                          /* G_(CLEAR)GEOMETRYMODE (unused 2D) */
+            case 0xb7:
+            case 0xe4:                          /* G_RDPHALF_0 */
+                break;
+            default:
+                if (cmd >= 0xe5)                /* RDP hardware command */
+                {
+                    int rdp_id = cmd & 0x3f;
+                    int32_t two[2];
+                    two[0] = (int32_t)w0;
+                    /* SET_COLOR_IMAGE (0x3f), SET_Z_IMAGE (0x3e) and
+                     * SET_TEXTURE_IMAGE (0x3d) carry a DRAM pointer in w1
+                     * that may be segmented; the S2DEX microcode resolves it
+                     * before the command reaches the RDP, just as the F3DEX2
+                     * splitter does. Forwarding the raw segmented pointer
+                     * masked the framebuffer address to 0, so the logo task
+                     * rendered to a null color image (whole frame black). */
+                    if (rdp_id == 0x3f || rdp_id == 0x3e || rdp_id == 0x3d)
+                        two[1] = (int32_t)seg_addr_rsp(w1);
+                    else
+                        two[1] = (int32_t)w1;
+                    rdp_fifo_append(fifo, two, 2);
+                }
+                break;
+            }
+            continue;
+        }
         if (s_ucode_class == UCODE_S2DEX2)
         {
             int s2 = 1;
