@@ -271,6 +271,33 @@ void gsp_detect_ucode_params(GSPState *st, const unsigned char *rdram,
         st->clip_reject = rej;
     }
 
+    /* F3DFLX.Rej ("FLX" rejection build, used by F-Zero X's in-race racer
+     * models) does not implement the lookat texture-coordinate generator: it
+     * leaves the vertex-supplied S/T in place even while G_TEXTURE_GEN is set
+     * in the geometry mode. Detect the build by name so the emitter honors the
+     * explicit per-vertex texcoords instead of running standard texgen. */
+    {
+        int flx = 0;
+        if (ud != 0 && ud + 0x160 <= rdram_size)
+        {
+            unsigned int k;
+            for (k = 0x100; k + 6 <= 0x160; k++)
+            {
+                if (rdram[(ud + k + 0) ^ 3] == 0x46u    /* F */
+                    && rdram[(ud + k + 1) ^ 3] == 0x33u /* 3 */
+                    && rdram[(ud + k + 2) ^ 3] == 0x44u /* D */
+                    && rdram[(ud + k + 3) ^ 3] == 0x46u /* F */
+                    && rdram[(ud + k + 4) ^ 3] == 0x4cu /* L */
+                    && rdram[(ud + k + 5) ^ 3] == 0x58u)/* X */
+                {
+                    flx = 1;
+                    break;
+                }
+            }
+        }
+        st->no_texgen = flx;
+    }
+
     /* Clip-fan probe: the 2.04H clipper triangulates its output polygon
      * from the FIRST vertex with descending pairs (its draw loop reads
      * the pair through the output cursor: lhu v0, 0x3cc(s5) = 96a203cc),

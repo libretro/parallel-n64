@@ -568,10 +568,18 @@ void f3dex2_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
                 }
                 else
                 {
-                    /* slots 0/1: the texgen lookat X/Y directions */
+                    /* slots 0/1: the texgen lookat X/Y directions. F3DFLX
+                     * repurposes the n==1 entry as the reflection "alpha
+                     * light" (an s16 direction) and the custom routine reads
+                     * it from slot 0. */
                     unsigned int la = seg_addr(w1);
                     if (addr_in_range(la, 24u))
-                        gsp_set_lookat(gsp, r, la, n);
+                    {
+                        if (gsp->no_texgen && n == 1)
+                            gsp_set_alpha_light(gsp, r, la, 0);
+                        else
+                            gsp_set_lookat(gsp, r, la, n);
+                    }
                 }
             }
             break;
@@ -587,6 +595,32 @@ void f3dex2_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
         case 0xE1:                       /* G_RDPHALF_1: stage branch target */
             s_half1 = w1;
             break;
+
+        case 0xD6:                       /* G_DMA_IO (gSPDmaRead/Write) */
+        {
+            /* F3DFLX's racer draw streams a 1D reflection ramp into DMEM with
+             * gSPDmaRead(0x8B0, ...) just before the body. The microcode's
+             * custom lighting routine indexes it with the lookat dot product
+             * to produce a per-vertex fog factor (the "reflection"). The HLE
+             * vertex path needs the ramp to reproduce that alpha, so capture
+             * it on the DMEM-read direction. */
+            unsigned int flag = (w0 >> 23) & 1u;
+            unsigned int size = (w0 & 0xfffu) + 1u;
+            if (flag == 0u && size <= sizeof(gsp->reflect_lut))
+            {
+                unsigned int src = seg_addr(w1);
+                if (src != 0u && src + size <= s_rdram_size)
+                {
+                    unsigned int k;
+                    for (k = 0; k < size; k++)
+                        gsp->reflect_lut[k] = r[(src + k) ^ 3u];
+                    for (; k < sizeof(gsp->reflect_lut); k++)
+                        gsp->reflect_lut[k] = 0u;
+                    gsp->reflect_valid = 1;
+                }
+            }
+            break;
+        }
 
         case 0xDD:                       /* G_LOAD_UCODE (gSPLoadUcodeEx) */
         {

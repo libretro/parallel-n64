@@ -89,6 +89,11 @@ typedef struct GSPState
      * 1 = fan from the first vertex with descending pairs (2.04H). */
     int clip_fan_first;
     int clip_reject;  /* F3DLX.Rej/F3DZEX.Rej: whole-tri reject, no clipper */
+    int no_texgen;    /* F3DFLX.Rej: texgen drives reflection alpha, not S/T */
+    int reflect_valid;            /* F3DFLX: reflection LUT captured this task */
+    unsigned char reflect_lut[256]; /* 1D reflection ramp DMA'd to DMEM by the
+                                       F3DFLX racer draw (gSPDmaRead): the lookat
+                                       dot product indexes it to a fog factor */
     /* G_BRANCH_Z (F3DEX2: compare 32-bit screen z) vs G_BRANCH_W
      * (F3DZEX2: compare s16 clip-w integer) for opcode 0x04. */
     int branch_z_mode;
@@ -137,6 +142,7 @@ void gsp_detect_ucode_params(GSPState *st, const unsigned char *rdram,
 
 /* MOVEMEM G_MV_LIGHT slots 0 and 1: the texture-coordinate-generation
  * lookat X/Y direction vectors (s8 at bytes 8..10 of the Light struct). */
+void gsp_set_alpha_light(GSPState *s, const unsigned char *rdram, unsigned int addr, int index);
 void gsp_set_lookat(GSPState *s, const unsigned char *rdram,
                     unsigned int addr, int index);
 

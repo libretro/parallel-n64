@@ -11,7 +11,6 @@
 #include "rdp_emit_frontend.h"
 #include "rdp_emit_rsp.h"
 #include <stdio.h>
-#include <stdlib.h>
 #include <math.h>
 #include "rdp_emit_recip.h"
 
@@ -166,6 +165,8 @@ void gsp_init(GSPState *s)
     s->clip_near_z = 0;
     s->clip_fan_first = 0;
     s->clip_reject = 0;
+    s->no_texgen = 0;
+    s->reflect_valid = 0;
     s->branch_z_mode = 0;
     s->branch_z_mode = 0;
     s->tri_dx_scale  = 0x4000;
@@ -295,6 +296,62 @@ void gsp_matrix_pop(GSPState *s)
     }
 }
 
+void gsp_set_alpha_light(GSPState *s, const unsigned char *rdram,
+                         unsigned int addr, int index)
+{
+    int32_t d[3];
+    int64_t mag_sq;
+    int64_t mag;
+    int k;
+    if (index < 0 || index > 1)
+        return;
+    /* F3DFLX's "alpha light" (gSPLookAtY of an unk_Light) is the reflection
+     * direction. Unlike a normal s8 lookat, its direction is an s16 vector
+     * (the game stores the unit reflection vector * 16383) at byte offset 8.
+     * Scale it into the s8 unit range the model-space transform consumes; the
+     * transform's own vrsq pass then renormalizes it RSP-exactly. */
+    d[0] = (int32_t)read_s16_be(rdram, addr + 8);
+    d[1] = (int32_t)read_s16_be(rdram, addr + 10);
+    d[2] = (int32_t)read_s16_be(rdram, addr + 12);
+    mag_sq = (int64_t)d[0] * d[0] + (int64_t)d[1] * d[1] + (int64_t)d[2] * d[2];
+    /* integer floor(sqrt) of the magnitude (no float in the RSP path) */
+    mag = 0;
+    {
+        int64_t bit = (int64_t)1 << 46;
+        int64_t v = mag_sq;
+        while (bit > v)
+            bit >>= 2;
+        while (bit != 0)
+        {
+            if (v >= mag + bit)
+            {
+                v -= mag + bit;
+                mag = (mag >> 1) + bit;
+            }
+            else
+                mag >>= 1;
+            bit >>= 2;
+        }
+    }
+    if (mag < 1)
+        mag = 1;
+    for (k = 0; k < 3; k++)
+    {
+        int64_t num = (int64_t)d[k] * 127;
+        int32_t v;
+        if (num >= 0)
+            v = (int32_t)((num + mag / 2) / mag);
+        else
+            v = -(int32_t)((-num + mag / 2) / mag);
+        if (v > 127)
+            v = 127;
+        else if (v < -128)
+            v = -128;
+        s->lookat_raw[index][k] = v;
+    }
+    s->lights_valid = 0;   /* force the model-space re-transform */
+}
+
 void gsp_set_lookat(GSPState *s, const unsigned char *rdram,
                     unsigned int addr, int index)
 {
@@ -351,6 +408,8 @@ void gsp_task_reset(GSPState *s)
     s->clip_near_z = 0;
     s->clip_fan_first = 0;
     s->clip_reject = 0;
+    s->no_texgen = 0;
+    s->reflect_valid = 0;
 }
 
 void gsp_combine_matrices(GSPState *s)
@@ -415,6 +474,8 @@ void gsp_vertex(GSPState *s, const unsigned char *rdram, unsigned int addr,
         int32_t ox, oy, oz;
         int64_t cx, cy, cz, cw;
         int st_s, st_t;
+        int has_refl = 0;
+        int32_t refl_a = 0;
         GSPVertex *vt;
         if (idx < 0 || idx >= GSP_MAX_VERTICES)
             continue;
@@ -561,7 +622,8 @@ void gsp_vertex(GSPState *s, const unsigned char *rdram, unsigned int addr,
                 vt->a = (int32_t)read_u8_n64(rdram, base + 15) << 16;
             }
 
-            if (s->geometry_mode & 0x00040000u) /* G_TEXTURE_GEN */
+            if ((s->geometry_mode & 0x00040000u) /* G_TEXTURE_GEN */
+                && !s->no_texgen)
             {
                 /* lights_texgenmain: generated coordinates from the raw s8
                  * normal against the two transformed lookat directions
@@ -574,6 +636,29 @@ void gsp_vertex(GSPState *s, const unsigned char *rdram, unsigned int addr,
                 rsp_texgen(nrm, s->lookat[0], s->lookat[1], linear, &gs, &gt);
                 st_s = gs;
                 st_t = gt;
+            }
+            else if (s->no_texgen && s->reflect_valid
+                     && (s->geometry_mode & 0x00040000u))
+            {
+                /* F3DFLX reflection: the same lookat dot product the standard
+                 * texgen would turn into a texture coordinate is instead used
+                 * as an index into the 1D ramp DMA'd to DMEM, and the fetched
+                 * value becomes the vertex fog factor (carried in alpha). The
+                 * vertex-supplied S/T are left untouched for the body decal.
+                 * gSPLookAtY drives the effect, so the lookat-Y coordinate
+                 * (gt) is the index; the ramp is 256 entries, so the S10.5
+                 * coordinate's whole-texel field (>> 7 of the [0,0x7fff]
+                 * texgen output) selects the entry. */
+                int32_t nrm[3], gs, gt;
+                unsigned int ri;
+                nrm[0] = nxb; nrm[1] = nyb; nrm[2] = nzb;
+                rsp_texgen(nrm, s->lookat[0], s->lookat[1], 0, &gs, &gt);
+                /* The slot-0 (alpha light) dot is the reflection coordinate.
+                 * gs is 0x4000 + 0x4000*dot, so gs >> 7 is 128 + 128*dot,
+                 * the signed ramp index the F3DFLX routine looks up. */
+                ri = ((unsigned int)gs >> 7) & 0xffu;
+                refl_a = (int32_t)s->reflect_lut[ri] << 16;
+                has_refl = 1;
             }
         }
         else
@@ -613,6 +698,14 @@ void gsp_vertex(GSPState *s, const unsigned char *rdram, unsigned int addr,
             }
             vt->a = fa << 16;
         }
+
+        /* F3DFLX's "reflection" is this fog factor, computed from the lookat
+         * ramp above instead of from screen Z. It overrides whatever alpha the
+         * lighting/fog path produced so the blender mixes the racer fog colour
+         * by the reflection amount (mostly zero -> body colour, peaks -> shiny
+         * highlight). */
+        if (has_refl)
+            vt->a = refl_a;
 
         /* Store the RSP's per-vertex clip outcode (the VCH sign-aware
          * screen-plane compare, bits N/P per x, y, z axis -- the SCRN half
