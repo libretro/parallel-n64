@@ -274,20 +274,25 @@ void f3d_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
     if (r == 0)
         return;
     if (s_dl_depth == 0)
-        /* Fast3D clips triangles against the near plane (z + w >= 0); it is
-         * not a NoN ("no near clip") microcode like F3DEX2, so enable the
-         * frontend's near-plane clip for this task instead of letting
-         * near-crossing geometry be disposed by the guard band. Fast3D also
-         * uses FRUSTRATIO_1 (clip-to-screen) as its default clip ratio rather
-         * than the guard-band ratio of the F3DEX family: with the wider ratio
-         * its large camera-straddling quads (the water/mist sheets in Jolly
-         * Roger Bay) keep their off-screen-top vertices out at the guard band
-         * instead of on the screen edge, so the visible span interpolates over
-         * a different extent and the misted water hovers up in the air. Clamp
-         * the default to 1 for this task; an explicit gSPClipRatio still
-         * overrides it. */
-        gsp->clip_near_z = 1;
+    {
+        /* SM64-era plain Fast3D clips triangles against the near plane
+         * (z + w >= 0); enabling the frontend's near-plane clip keeps its
+         * large camera-straddling quads (the water/mist sheets in Jolly Roger
+         * Bay) from being disposed by the guard band. The Doom 64 / Turok
+         * build, by contrast, is a NoN ("no near clip") F3DEX-family
+         * microcode: it lets behind-the-eye geometry fall out through the
+         * guard band rather than clipping it at z + w = 0. Forcing the near
+         * clip on that variant severed wall quads the moment the camera
+         * pressed against them (Turok, standing point-blank to a wall) along
+         * z + w = 0 and resampled the surviving remainder, so the wall showed
+         * sharp mid-range texels where the LLE RSP shows the blurred
+         * point-blank surface. Gate the near clip to the plain-Fast3D variant.
+         * Both keep FRUSTRATIO_1 (clip-to-screen) as the default clip ratio
+         * rather than the guard-band ratio of the wider F3DEX family; an
+         * explicit gSPClipRatio still overrides it. */
+        gsp->clip_near_z = s_variant_d64 ? 0 : 1;
         gsp->clip_ratio = 1;
+    }
     if (s_dl_depth >= F3D_DL_MAX_DEPTH)
         return;
     s_dl_depth++;
