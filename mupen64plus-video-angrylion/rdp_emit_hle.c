@@ -392,6 +392,7 @@ void rdp_emit_hle_process_dlist(void)
             f3d_set_rdram(rdram);
             f3d_set_rdram_size(rdram_size);
             f3d_set_variant(f3d_is_doom64_ucode(rdram, rdram_size, ut) ||
+                            f3d_is_mk64_ucode(rdram, rdram_size, ut) ||
                             f3d_is_bm64_ucode(rdram, rdram_size, ut));
             f3d_set_line_variant(f3d_is_doom64_line_ucode(rdram, rdram_size, ut));
             f3d_set_variant_wr64(f3d_is_wr64_ucode(rdram, rdram_size, ut));
