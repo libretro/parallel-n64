@@ -182,6 +182,17 @@ static void f3ddkr_run_dl_n(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
 void f3ddkr_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
                    int textured, int z_buffered)
 {
+    /* DKR's F3DDKR is a standard (non-NoN) F3D-family microcode: dRspInit
+     * carries gsSPClipRatio(FRUSTRATIO_2) and no No-Nearclipping markers, so
+     * the near plane is z + w, not w alone.  The shared GSPState defaults
+     * clip_near_z to 0 (the NoN / w-only plane), and the DKR walker -- unlike
+     * the F3D walker -- never raised it, so the polygon clipper intersected
+     * against w = 0.  Vertices straddling the eye then clipped to cw == 0
+     * (or a hair negative), which the perspective divide cannot project and
+     * saturates to the screen-coordinate clamp.  Clip at z + w like the rest
+     * of the F3D family so the boundary vertex lands just in front of the eye
+     * with a small positive w. */
+    gsp->clip_near_z = 1;
     f3ddkr_run_dl_impl(gsp, fifo, addr, 0, textured, z_buffered);
 }
 
