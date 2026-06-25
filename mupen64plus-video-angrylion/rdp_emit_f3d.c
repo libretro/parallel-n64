@@ -397,31 +397,48 @@ void f3d_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
 
         case F3D_TRI1:
         {
-            int s = s_variant_wr64 ? 5 : ((s_variant_d64 || s_variant_f3dex) ? 2 : 10);
-            int a = (int)((w1 >> 16) & 0xff) / s;
-            int b = (int)((w1 >>  8) & 0xff) / s;
-            int c = (int)((w1 >>  0) & 0xff) / s;
             int32_t cw[220];
-            int nc = gsp_triangle(gsp, cw, a, b, c, s_textured, s_zbuffered);
+            int a, b, c, nc;
+            /* GoldenEye/Perfect Dark (F3DEX GBI1) store the vertex index as
+             * (slot * 10) -- the value the microcode's 0x2d0 index->offset
+             * table emits -- so the slot is byte/10. The buffer is 16 slots,
+             * and the microcode masks the index to 4 bits (andi 0xf), so wrap
+             * to 0..15. Other F3D-family ucodes keep their byte/divisor form. */
+            if (s_variant_f3dex)
+            {
+                a = (((int)((w1 >> 16) & 0xff)) / 10) & 15;
+                b = (((int)((w1 >>  8) & 0xff)) / 10) & 15;
+                c = (((int)((w1 >>  0) & 0xff)) / 10) & 15;
+            }
+            else
+            {
+                int s = s_variant_wr64 ? 5 : (s_variant_d64 ? 2 : 10);
+                a = (int)((w1 >> 16) & 0xff) / s;
+                b = (int)((w1 >>  8) & 0xff) / s;
+                c = (int)((w1 >>  0) & 0xff) / s;
+            }
+            nc = gsp_triangle(gsp, cw, a, b, c, s_textured, s_zbuffered);
             if (nc > 0) rdp_fifo_append(fifo, cw, nc);
             break;
         }
 
         case F3D_TRI2:
         {
-            /* Doom 64's gSP1Quadrangle (0xB1): two triangles, the first three
-             * indices in w0's low 24 bits, the second three in w1's, each byte
-             * a vertex index times two. This carries the bulk of Doom 64's
-             * world geometry (wall and flat quads). SM64's Fast3D never emits
-             * this opcode, so the gate keeps that path untouched. */
+            /* 0xB1 = two triangles, the first three indices in w0's low 24
+             * bits, the second three in w1's. Doom 64's gSP1Quadrangle scales
+             * each byte by two; GoldenEye/Perfect Dark (F3DEX GBI1) store the
+             * index as slot*10 (the 0x2d0 table value) and mask to the 16-slot
+             * buffer. SM64's Fast3D never emits 0xB1, so it is untouched. */
             if (s_variant_d64 || s_variant_f3dex)
             {
-                int a0 = (int)((w0 >> 16) & 0xff) / 2;
-                int b0 = (int)((w0 >>  8) & 0xff) / 2;
-                int c0 = (int)((w0 >>  0) & 0xff) / 2;
-                int a1 = (int)((w1 >> 16) & 0xff) / 2;
-                int b1 = (int)((w1 >>  8) & 0xff) / 2;
-                int c1 = (int)((w1 >>  0) & 0xff) / 2;
+                int td = s_variant_f3dex ? 10 : 2;
+                int mk = s_variant_f3dex ? 15 : 255;
+                int a0 = (((int)((w0 >> 16) & 0xff)) / td) & mk;
+                int b0 = (((int)((w0 >>  8) & 0xff)) / td) & mk;
+                int c0 = (((int)((w0 >>  0) & 0xff)) / td) & mk;
+                int a1 = (((int)((w1 >> 16) & 0xff)) / td) & mk;
+                int b1 = (((int)((w1 >>  8) & 0xff)) / td) & mk;
+                int c1 = (((int)((w1 >>  0) & 0xff)) / td) & mk;
                 int32_t cw[220];
                 int nc;
                 nc = gsp_triangle(gsp, cw, a0, b0, c0, s_textured, s_zbuffered);
