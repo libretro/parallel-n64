@@ -834,7 +834,13 @@ void gsp_vertex_dkr(GSPState *s, const unsigned char *rdram, unsigned int addr,
         vt->r = (int32_t)read_u8_n64(rdram, base + 6) << 16;
         vt->g = (int32_t)read_u8_n64(rdram, base + 7) << 16;
         vt->b = (int32_t)read_u8_n64(rdram, base + 8) << 16;
-        vt->a = (int32_t)read_u8_n64(rdram, base + 9) << 16;
+        /* DKR DMA vertices: the 4th colour byte is NOT routed to shade alpha by
+         * the RSP -- shade alpha stays 0 (verified against the cxd4 LLE path,
+         * which produces shade_color.a == 0 for every DKR DMA triangle).  The
+         * accurate angrylion blender reads blender_shade_alpha = shade.a; if we
+         * forward the raw byte (often 0xff) the 2-cycle blend crushes the
+         * combiner output toward black.  Force it to 0 to match the RSP. */
+        vt->a = 0;
 
         vt->s = 0;
         vt->t = 0;
