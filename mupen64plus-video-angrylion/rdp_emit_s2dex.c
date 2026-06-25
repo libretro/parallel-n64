@@ -1367,8 +1367,23 @@ static void s2dex_draw_obj(GSPState *gsp, const unsigned char *r,
         say = -objY;
     }
 
-    w_q = (int)(((unsigned long long)imageW * scaleW) >> 13);
-    h_q = (int)(((unsigned long long)imageH * scaleH) >> 13);
+    /* The OBJ sprite's scaleW/scaleH are an inverse texel step (u5.10 dsdx),
+     * not a forward multiplier: a SMALLER scale draws a LARGER sprite. The
+     * drawn span is (texels - 1) (the RDP's inclusive right/bottom edge drops
+     * the last texel) divided by that step: screen_px = (texels-1)*1024/scale,
+     * texels = imageW>>5; in 10.2 screen units that is ((imageW>>5)-1)*4096
+     * /scale. This reduces to the old (imageW*scale>>13)-4 at scale==0x400
+     * (unity), so unity-scale sprites -- the scene, titles, the matrix-zoomed
+     * enemies -- stay stream-identical, while sub-unity fills (Yoshi's Story's
+     * pause panel, built from 0x44/0x55-scale sprites) take their true extent
+     * instead of collapsing to a few pixels. cxd4-derived: imageW 512, scaleW
+     * 0x44, A unity -> 232 px; scaleH 0x55, |D| 0.449 -> 81 px (both exact). */
+    {
+        int wt = ((int)imageW >> 5) - 1;
+        int ht = ((int)imageH >> 5) - 1;
+        w_q = (wt > 0) ? (wt * 4096) / (int)scaleW : 0;
+        h_q = (ht > 0) ? (ht * 4096) / (int)scaleH : 0;
+    }
     /* The object matrix scales the sprite's extent, not just its anchor: a
      * gSPObjSprite zoomed by A/D (e.g. Yoshi's Story enemies at A=0x5999,
      * D=-0x5999 ~ 0.35x) must shrink the drawn quad by the same factor, or
@@ -1382,8 +1397,6 @@ static void s2dex_draw_obj(GSPState *gsp, const unsigned char *r,
         w_q = (int)(((long long)w_q * sa) >> 16);
         h_q = (int)(((long long)h_q * sd) >> 16);
     }
-    w_q -= 4;
-    h_q -= 4;
     if (w_q < 0) w_q = 0;
     if (h_q < 0) h_q = 0;
 
