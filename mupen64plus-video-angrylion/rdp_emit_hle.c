@@ -624,6 +624,25 @@ void rdp_emit_hle_process_dlist(void)
                             || f3dex1_data_family(rdram, rdram_size, ud));
             f3d_set_line_variant(fam == 2);
             f3d_set_variant_wr64(f3d_is_wr64_ucode(rdram, rdram_size, ut));
+            /* GoldenEye 007 / Perfect Dark run an early F3DEX (GBI 1) build
+             * whose RSP version word at text+4 (0x201d0110) is the same one
+             * SM64's plain Fast3D carries, so it reaches this F3D walker. It
+             * is NOT Fast3D: per its gbi, vertex triangle indices are scaled
+             * x2 (not x10) and opcode 0xB1 is G_TRI2 (two triangles per
+             * command), which carries the bulk of the world geometry. Decoded
+             * as Fast3D, 0xB1 is dropped and 0xBF reads the wrong indices, so
+             * most of each level fails to render. Select the F3DEX decode by
+             * the build's distinct first instruction word at text+0. */
+            {
+                unsigned int t0 = (ut + 4u <= (rdram_size ? rdram_size
+                                                          : 0x800000u))
+                    ? (((unsigned int)rdram[ut ^ 3] << 24)
+                       | ((unsigned int)rdram[(ut + 1) ^ 3] << 16)
+                       | ((unsigned int)rdram[(ut + 2) ^ 3] << 8)
+                       |  (unsigned int)rdram[(ut + 3) ^ 3])
+                    : 0u;
+                f3d_set_variant_f3dex(t0 == 0x090005eau);
+            }
             if (ud != 0 && ud + 0x120u <= rdram_size)
             {
                 unsigned int oh = ((unsigned int)rdram[(ud + 0x118) ^ 3] << 24)

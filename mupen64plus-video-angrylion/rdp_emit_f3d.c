@@ -228,6 +228,9 @@ int f3d_is_wr64_ucode(const unsigned char *rdram, unsigned int rdram_size,
 static int s_variant_d64 = 0;
 static int s_variant_line = 0;   /* 1 => Doom 64 automap line ucode (gspL3DEX) */
 static int s_variant_wr64 = 0;   /* 1 => Wave Race 64 (n<<9 vtx, x5 indices) */
+static int s_variant_f3dex = 0;  /* 1 => F3DEX GBI1 (GoldenEye/Perfect Dark): x2
+                                  * vertex indices and 0xB1 = G_TRI2 (two tris) */
+void f3d_set_variant_f3dex(int v) { s_variant_f3dex = v ? 1 : 0; }
 void f3d_set_variant(int doom64) { s_variant_d64 = doom64 ? 1 : 0; }
 void f3d_set_line_variant(int line) { s_variant_line = line ? 1 : 0; }
 void f3d_set_variant_wr64(int wr64) { s_variant_wr64 = wr64 ? 1 : 0; }
@@ -394,7 +397,7 @@ void f3d_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
 
         case F3D_TRI1:
         {
-            int s = s_variant_wr64 ? 5 : (s_variant_d64 ? 2 : 10);
+            int s = s_variant_wr64 ? 5 : ((s_variant_d64 || s_variant_f3dex) ? 2 : 10);
             int a = (int)((w1 >> 16) & 0xff) / s;
             int b = (int)((w1 >>  8) & 0xff) / s;
             int c = (int)((w1 >>  0) & 0xff) / s;
@@ -411,7 +414,7 @@ void f3d_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
              * a vertex index times two. This carries the bulk of Doom 64's
              * world geometry (wall and flat quads). SM64's Fast3D never emits
              * this opcode, so the gate keeps that path untouched. */
-            if (s_variant_d64)
+            if (s_variant_d64 || s_variant_f3dex)
             {
                 int a0 = (int)((w0 >> 16) & 0xff) / 2;
                 int b0 = (int)((w0 >>  8) & 0xff) / 2;

@@ -36,6 +36,7 @@ void f3d_set_line_variant(int line);
 int  f3d_is_wr64_ucode(const unsigned char *rdram, unsigned int rdram_size,
                        unsigned int text);
 void f3d_set_variant_wr64(int wr64);
+void f3d_set_variant_f3dex(int v);
 
 /* Walk an F3D display list at RDRAM byte address `addr`, transforming geometry
  * through `gsp` and appending RDP commands to `fifo`. Recurses into nested
