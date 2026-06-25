@@ -125,6 +125,7 @@ typedef struct _rsp_plugin_functions
 } rsp_plugin_functions;
 
 extern rsp_plugin_functions rsp;
+extern rsp_plugin_functions rsp_audio;
 
 #endif
 

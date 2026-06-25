@@ -365,7 +365,7 @@ void do_SP_Task(struct rsp_core* sp)
 #if defined(PROFILE)
         timed_section_start(TIMED_SECTION_AUDIO);
 #endif
-        rsp.doRspCycles(0xffffffff);
+        rsp_audio.doRspCycles(0xffffffff);
 #if defined(PROFILE)
         timed_section_end(TIMED_SECTION_AUDIO);
 #endif

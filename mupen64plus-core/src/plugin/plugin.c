@@ -113,7 +113,16 @@ GFX_INFO gfx_info;
 audio_plugin_functions audio;
 input_plugin_functions input;
 rsp_plugin_functions rsp;
+/* Plugin used to run audio (type 2) RSP tasks. Normally the same as the
+ * active RSP, but when send_allist_to_hle_rsp is set and the active RSP is an
+ * accurate LLE plugin (cxd4/parallel-rsp), audio lists are routed to the HLE
+ * RSP instead -- the LLE RSP plugins do not process audio, so without this the
+ * game would have no sound. */
+rsp_plugin_functions rsp_audio;
 RSP_INFO rsp_info;
+
+/* Set from the libretro "Audio Processing (HLE RSP)" core option. */
+extern uint32_t send_allist_to_hle_rsp;
 
 const audio_plugin_functions dummy_audio = {
     dummyaudio_PluginGetVersion,
@@ -362,6 +371,22 @@ static m64p_error plugin_start_rsp(void)
 
     /* call the RSP plugin  */
     rsp.initiateRSP(rsp_info, NULL);
+
+    /* Decide which plugin processes audio (type 2) tasks. The accurate LLE RSP
+     * plugins (cxd4, parallel-rsp) do not emulate the audio microcode, so when
+     * one of them is active and the user asked for HLE audio, route audio lists
+     * to the HLE RSP. It must be initialised with the same RSP_INFO so its
+     * DMEM/RDRAM pointers are valid. When the active RSP already is HLE, or the
+     * option is off, audio stays on the active RSP. */
+    if (send_allist_to_hle_rsp && current_rsp_type != RSP_PLUGIN_HLE)
+    {
+        rsp_hle.initiateRSP(rsp_info, NULL);
+        rsp_audio = rsp_hle;
+    }
+    else
+    {
+        rsp_audio = rsp;
+    }
 
     return M64ERR_SUCCESS;
 }
