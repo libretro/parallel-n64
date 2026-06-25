@@ -942,11 +942,26 @@ void s2dex_bg_copy(const unsigned char *rdram, unsigned int rdram_bytes,
              * image-side row budget identically (traced: a2 = rows<<2,
              * v0 = base + tmemSizeW*rows*4) */
             unsigned int y_rows = (image_y >> 5) & 0x3ffu;
-            unsigned int raw = tmem_size_w
-                * ((((unsigned int)clip_t) >> 2) + y_rows)
-                + x_units;
+            unsigned int rowcount = (((unsigned int)clip_t) >> 2) + y_rows;
+            unsigned int ih_q = image_h & 0xfffcu;
+            unsigned int new_cct = copy_clip_t_q + (y_rows << 2);
+            unsigned int raw;
+            /* A scroll that carries the clipped start past the image bottom
+             * wraps to the top: the copy-mode background repeats every
+             * image_h rows, so rejoin at the top instead of dropping the
+             * whole layer (Bangai-O walls/scenery vanishing for a frame or
+             * two while scrolling vertically). */
+            if (ih_q != 0u)
+            {
+                while (new_cct >= ih_q)
+                {
+                    new_cct  -= ih_q;
+                    rowcount -= ih_q >> 2;
+                }
+            }
+            raw = tmem_size_w * rowcount + x_units;
             clip_skip = (raw >> 1) << 3;
-            copy_clip_t_q += y_rows << 2;
+            copy_clip_t_q = new_cct;
         }
     }
 
