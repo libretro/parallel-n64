@@ -14316,6 +14316,10 @@ void ColorCombinerToExtension(void)
          ext_local = GR_CMBX_CONSTANT_COLOR;
          ext_local_a = GR_CMBX_CONSTANT_ALPHA;
          break;
+      default:
+         ext_local = GR_CMBX_ZERO;
+         ext_local_a = GR_CMBX_ZERO;
+         break;
    };
    switch (cmb.c_oth)
    {
@@ -14330,6 +14334,10 @@ void ColorCombinerToExtension(void)
       case GR_COMBINE_OTHER_CONSTANT:
          ext_other = GR_CMBX_CONSTANT_COLOR;
          ext_other_a = GR_CMBX_CONSTANT_ALPHA;
+         break;
+      default:
+         ext_other = GR_CMBX_ZERO;
+         ext_other_a = GR_CMBX_ZERO;
          break;
    };
    switch (cmb.c_fac)
