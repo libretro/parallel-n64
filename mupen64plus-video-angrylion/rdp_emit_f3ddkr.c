@@ -49,6 +49,8 @@ typedef signed   __int32 dkr_int32_t;
 #define DKR_G_SETGEOMETRYMODE   0xB7
 #define DKR_G_CLEARGEOMETRYMODE 0xB6
 #define DKR_G_TEXTURE 0xBB
+#define DKR_G_SETOTHERMODE_H    0xBA
+#define DKR_G_SETOTHERMODE_L    0xB9
 
 /* G_MOVEWORD indices used by DKR. The index byte is the low 8 bits of w0
  * (gImmp21 packs G_MOVEWORD as cmd<<24 | offset<<8 | index); GLideN64's
@@ -77,6 +79,8 @@ static int   s_zbuffered = 0;
 static int   s_dl_depth  = 0;
 static int   s_mtx_slot  = 0;   /* active MVP slot selected by gSPSelectMatrixDKR */
 static int   s_billboard = 0;   /* G_MW_BILLBOARD state (decode only for now) */
+static unsigned int s_othermode_h = 0;
+static unsigned int s_othermode_l = 0;
 static int   s_vtx_top   = 0;   /* next free vertex slot for G_VTX_APPEND */
 
 /* ---- helpers (mirror rdp_emit_f3d.c) ------------------------------------ */
@@ -116,6 +120,8 @@ void f3ddkr_seg_reset(void)
     s_mtx_slot  = 0;
     s_billboard = 0;
     s_vtx_top   = 0;
+    s_othermode_h = 0;
+    s_othermode_l = 0;
 }
 
 void f3ddkr_set_rdram(unsigned char *rdram)   { s_rdram = rdram; }
@@ -381,6 +387,38 @@ static void f3ddkr_run_dl_impl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
             gsp_set_geometry_mode(gsp, gsp_get_geometry_mode(gsp) & ~w1);
             break;
 
+        case DKR_G_SETOTHERMODE_H:
+        case DKR_G_SETOTHERMODE_L:
+        {
+            /* F3D partial other-modes write (DKR binds these to the stock
+             * F3D_SetOtherMode_H/L).  shift/length are direct (not the
+             * F3DEX2 inverted form) and w1 already holds the positioned bits.
+             * DKR uses these to flip the cycle type to FILL for its color /
+             * Z-buffer clears -- if they are dropped the Z clear never runs in
+             * FILL mode, the Z buffer is left at "near", and every 3D pixel
+             * fails the depth test (the whole 3D scene renders black behind
+             * the 2D HUD).  Maintain the running H/L mode words and re-emit a
+             * full RDP SET_OTHER_MODES so angrylion picks up the change. */
+            unsigned int shift = (w0 >> 8) & 0xffu;
+            unsigned int length = w0 & 0xffu;
+            unsigned int mask;
+            int32_t two[2];
+            if (length >= 32u || shift >= 32u)
+                mask = 0xffffffffu;
+            else
+                mask = ((1u << length) - 1u) << shift;
+            if (cmd == DKR_G_SETOTHERMODE_H)
+                s_othermode_h = (s_othermode_h & ~mask) | ((unsigned int)w1 & mask);
+            else
+                s_othermode_l = (s_othermode_l & ~mask) | ((unsigned int)w1 & mask);
+            s_zbuffered = (((s_othermode_l >> 4) & 1u) ||
+                           ((s_othermode_l >> 5) & 1u)) ? 1 : 0;
+            two[0] = (int32_t)(s_othermode_h | (0x2fu << 24));
+            two[1] = (int32_t)s_othermode_l;
+            rdp_fifo_append(fifo, two, 2);
+            break;
+        }
+
         case DKR_G_ENDDL:
             running = 0;
             break;
@@ -444,6 +482,14 @@ static void f3ddkr_run_dl_impl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
                         two[1] = (int32_t)seg_rsp(w1);
                     else
                         two[1] = (int32_t)w1;
+                    /* A full SET_OTHER_MODES (0x2f) reseeds the running H/L
+                     * mode words so subsequent G_SETOTHERMODE_H/L partial
+                     * writes merge onto the correct base instead of zero. */
+                    if (rdp_id == 0x2f)
+                    {
+                        s_othermode_h = (unsigned int)w0 & 0x00ffffffu;
+                        s_othermode_l = (unsigned int)w1;
+                    }
                     rdp_fifo_append(fifo, two, 2);
                 }
             }
