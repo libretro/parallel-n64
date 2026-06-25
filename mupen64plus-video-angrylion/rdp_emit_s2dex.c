@@ -1405,7 +1405,8 @@ static void s2dex_draw_obj(GSPState *gsp, const unsigned char *r,
     lry = say;                  /* bottom */
     uly = say - h_q;            /* top    */
 
-    if (lrx <= ulx || lry <= uly)
+    if ((lrx <= ulx || lry <= uly) &&
+        !(use_matrix && (s_objmtx_b != 0 || s_objmtx_c != 0)))
         return;
 
 
@@ -1458,6 +1459,45 @@ static void s2dex_draw_obj(GSPState *gsp, const unsigned char *r,
                           | ((unsigned int)th_t & 0xffffu));
         cw[3] = (int32_t)(((bsx & 0xffffu) << 16) | (bsy & 0xffffu));
         rdp_fifo_append(fifo, cw, 4);
+        return;
+    }
+
+    /* Rotated / sheared object: the 2x2 object matrix maps the sprite's
+     * object-space rectangle to a screen parallelogram. The |A|/|D|-only
+     * extent path collapses such a sprite to zero width or height (A or D is
+     * 0 for a 90-degree rotation), so transform the four corners through the
+     * full [A B; C D] (s15.16) about the bottom-left anchor instead. Only
+     * objects that actually carry off-diagonal terms take this path; pure
+     * zoom/translate sprites (B==C==0) keep the axis-aligned path below. */
+    if (use_matrix && (s_objmtx_b != 0 || s_objmtx_c != 0))
+    {
+        int wt = ((int)imageW >> 5) - 1;
+        int ht = ((int)imageH >> 5) - 1;
+        long long ow = (wt > 0) ? ((long long)wt * 4096) / (long long)scaleW : 0;
+        long long oh = (ht > 0) ? ((long long)ht * 4096) / (long long)scaleH : 0;
+        int s_ext = (int)(imageW << 2);
+        int t_ext = (int)(imageH << 2);
+        int tlx, tly, trx, try_s, blx, bly, brx, bry;
+        /* bottom-left = anchor; +ow along object X, +oh along object Y */
+        blx = sax; bly = say;
+        brx = sax + (int)(((long long)s_objmtx_a * ow) >> 16);
+        bry = say + (int)(((long long)s_objmtx_c * ow) >> 16);
+        tlx = sax + (int)(((long long)s_objmtx_b * oh) >> 16);
+        tly = say + (int)(((long long)s_objmtx_d * oh) >> 16);
+        trx = sax + (int)(((long long)s_objmtx_a * ow
+                         + (long long)s_objmtx_b * oh) >> 16);
+        try_s = say + (int)(((long long)s_objmtx_c * ow
+                         + (long long)s_objmtx_d * oh) >> 16);
+        s2dex_set_corner(&gsp->vtx[S2DEX_SPR_V0 + 0], tlx, tly, 0,     t_ext);
+        s2dex_set_corner(&gsp->vtx[S2DEX_SPR_V0 + 1], trx, try_s, s_ext, t_ext);
+        s2dex_set_corner(&gsp->vtx[S2DEX_SPR_V0 + 2], blx, bly, 0,     0);
+        s2dex_set_corner(&gsp->vtx[S2DEX_SPR_V0 + 3], brx, bry, s_ext, 0);
+        nc = gsp_triangle(gsp, tribuf, S2DEX_SPR_V0 + 0, S2DEX_SPR_V0 + 2,
+                          S2DEX_SPR_V0 + 1, 1, 0);
+        if (nc > 0) rdp_fifo_append(fifo, tribuf, nc);
+        nc = gsp_triangle(gsp, tribuf, S2DEX_SPR_V0 + 1, S2DEX_SPR_V0 + 2,
+                          S2DEX_SPR_V0 + 3, 1, 0);
+        if (nc > 0) rdp_fifo_append(fifo, tribuf, nc);
         return;
     }
 
