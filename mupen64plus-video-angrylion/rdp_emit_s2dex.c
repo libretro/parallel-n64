@@ -226,16 +226,25 @@ int s2dex_obj_loadtxtr(const unsigned char *rdram, unsigned int rdram_bytes,
     }
     else if (type == 0x00fc1034u)       /* G_OBJLT_TXTRTILE */
     {
-        /* twidth = tsize, theight = tline per the GS_TT_* encodings:
-         * SETTIMG width = (tsize >> 2) + 1 pixels, LOADTILE lrs/lrt
-         * from the encoded fields. Marked for oracle validation when
-         * content reaches it. */
-        cw[0] = (int32_t)(0x3d100000u | ((tsize >> 2) & 0xfffu));
+        /* G_OBJLT_TXTRTILE loads the tile with a SETTIMG/SETTILE/LOADTILE
+         * triple. The fields decode as: SETTIMG image width-1 = tsize (the
+         * GS_TT_TWIDTH texel count); the load tile's line stride in 64-bit
+         * TMEM words = (tsize >> 2) + 1; and the LOAD_TILE lower-right S is in
+         * 10.2 texel units, so tsize is shifted left 2 (GS_TT_THEIGHT, tline,
+         * is already 10.2 and passes through). The original code put tsize>>2
+         * in the SETTIMG width, left the load tile's line at 0 and forwarded
+         * tsize raw as lrs, so the LOAD_TILE never strode between rows and read
+         * a quarter-width strip -- every OBJ sprite sampling the tile drew
+         * garbage (Yoshi's Story's level border frame is ~60 of them).
+         * cxd4-matched: tsize 11 / tline 83 -> SETTIMG 0x3d10000b,
+         * SETTILE 0x35100600, LOAD_TILE 0x2702c053. */
+        cw[0] = (int32_t)(0x3d100000u | (tsize & 0xfffu));
         cw[1] = (int32_t)image;
-        cw[2] = (int32_t)(0x35100000u | (tmem & 0x1ffu));
+        cw[2] = (int32_t)(0x35100000u | ((((tsize >> 2) + 1u) & 0x1ffu) << 9)
+                          | (tmem & 0x1ffu));
         cw[3] = (int32_t)0x27000000u;
         cw[4] = (int32_t)0x34000000u;
-        cw[5] = (int32_t)(0x27000000u | ((tsize & 0xfffu) << 12)
+        cw[5] = (int32_t)(0x27000000u | (((tsize << 2) & 0xfffu) << 12)
                           | (tline & 0xfffu));
         rdp_fifo_append(fifo, cw, 6);
     }
