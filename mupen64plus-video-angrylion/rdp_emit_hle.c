@@ -431,19 +431,30 @@ static int f3d_ucode_family(const unsigned char *rdram,
     return 0;
 }
 
-/* Recognise standalone S2DEX (GBI 1) by the same SGI data-segment signature:
- * "RSP Gfx ucode S2DEX  1.xx ...". The GBI 2 build is "S2DEX2 ..." and is
- * already routed by probe_ucode_class' text version word, so a '2' directly
- * after the stem rejects it here. Yoshi's Story and other sprite-driven games
- * carry a build-specific text version word (e.g. 0x4a00002c) that the version
- * probe does not match, so without this they fall through to the F3DEX2 walker
- * and render nothing. */
+/* Recognise standalone S2DEX (GBI 1) by the SGI data-segment signature
+ * "RSP Gfx ucode S2DEX  1.xx ...". Yoshi's Story, Bangai-O and other
+ * sprite-driven GBI 1 titles carry a build-specific text version word
+ * (e.g. 0x4a00002c) that probe_ucode_class does not match, so without this
+ * they fall through to the F3DEX2 walker and render nothing.
+ *
+ * The match keys on the task's *primary* (first) "RSP Gfx ucode " signature,
+ * not on any S2DEX string anywhere in the data segment. The combined SDK
+ * ucode objects shipped by a large class of F3DEX2 titles -- Dr. Mario 64,
+ * AI Shougi 3, GT64, Carmageddon 64, Big Mountain 2000, 64 Oozumou 2, Densha
+ * de Go!, Doraemon 3, ... -- keep a resident "RSP Gfx ucode S2DEX  1.07 ..."
+ * author string deeper in the *same* data segment as their F3DEX2 microcode.
+ * A scan that returned on the first S2DEX hit anywhere therefore misrouted
+ * every one of those F3DEX2 tasks to the sprite decoder and rendered black.
+ * The task's own microcode is named by the first signature in its segment, so
+ * we require that first signature to be S2DEX (and GBI 1: not "S2DEX2", and
+ * with no "fifo"/"xbus" GBI 2 token, which the c81f2018 text probe already
+ * routes as UCODE_S2DEX2). */
 static int s2dex1_ucode_match(const unsigned char *rdram,
                               unsigned int rdram_size,
                               unsigned int ud, unsigned int uds)
 {
-    static const char pre[] = "RSP Gfx ucode S2DEX";
-    unsigned int plen = sizeof(pre) - 1u;
+    static const char pre[] = "RSP Gfx ucode ";
+    unsigned int plen = sizeof(pre) - 1u;   /* 14 */
     unsigned int hi, b;
     if (rdram == 0 || ud == 0)
         return 0;
@@ -452,9 +463,9 @@ static int s2dex1_ucode_match(const unsigned char *rdram,
     hi = ud + uds;
     if (hi > rdram_size)
         hi = rdram_size;
-    if (hi < ud + plen + 1u)
+    if (hi < ud + plen + 6u)
         return 0;
-    for (b = ud; b + plen + 1u <= hi; b++)
+    for (b = ud; b + plen + 6u <= hi; b++)
     {
         unsigned int k;
         for (k = 0; k < plen; k++)
@@ -462,8 +473,31 @@ static int s2dex1_ucode_match(const unsigned char *rdram,
                 break;
         if (k != plen)
             continue;
-        if (rdram[(b + plen) ^ 3] == '2')   /* "S2DEX2" -> GBI 2 path */
-            return 0;
+        /* First signature located: it identifies the task's own microcode. */
+        if (rdram[(b + plen + 0u) ^ 3] != 'S' ||
+            rdram[(b + plen + 1u) ^ 3] != '2' ||
+            rdram[(b + plen + 2u) ^ 3] != 'D' ||
+            rdram[(b + plen + 3u) ^ 3] != 'E' ||
+            rdram[(b + plen + 4u) ^ 3] != 'X')
+            return 0;           /* primary ucode is F3DEX/L3DEX/etc., not S2DEX */
+        if (rdram[(b + plen + 5u) ^ 3] == '2')
+            return 0;           /* "S2DEX2" -> GBI 2, routed by the text probe */
+        /* GBI 2 S2DEX is "S2DEX       fifo 2.0x" / "... xbus 2.0x"; the GBI 1
+         * build carries a bare "1.xx" version with no fifo/xbus token. Reject
+         * the GBI 2 form so only the genuine S2DEX 1.xx sprite ucode matches. */
+        {
+            unsigned int j, lim = b + plen + 28u;
+            if (lim > hi) lim = hi;
+            for (j = b + plen + 5u; j + 4u <= lim; j++)
+            {
+                if (rdram[(j + 0u) ^ 3] == 'f' && rdram[(j + 1u) ^ 3] == 'i' &&
+                    rdram[(j + 2u) ^ 3] == 'f' && rdram[(j + 3u) ^ 3] == 'o')
+                    return 0;
+                if (rdram[(j + 0u) ^ 3] == 'x' && rdram[(j + 1u) ^ 3] == 'b' &&
+                    rdram[(j + 2u) ^ 3] == 'u' && rdram[(j + 3u) ^ 3] == 's')
+                    return 0;
+            }
+        }
         return 1;
     }
     return 0;
