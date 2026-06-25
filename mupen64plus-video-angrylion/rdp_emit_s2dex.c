@@ -34,6 +34,17 @@
 static void s2dex_set_corner(GSPVertex *v, int sx, int sy,
                              int sval, int tval)
 {
+    /* S10.5 texel coordinates are a signed 16-bit attribute; the 4x extent of
+     * a full-width (8192-texel) sprite reaches 0x8000, one past the positive
+     * limit, which overflows the s15.16 store below (32768<<16 == INT32_MIN)
+     * and flips the title's S negative (it samples off-texture and vanishes).
+     * Saturate S to the representable range -- the real RSP stops the inclusive
+     * right edge at texel 255 (S 0x1FE0), so clamping 0x8000 to 0x7FFF is
+     * sub-texel and matches the LLE sample. T is left as-is: the affected
+     * sprites here never exceed the T range, and tall-texture T saturation is a
+     * separate, unverified case. */
+    if (sval >  0x7fff) sval =  0x7fff;
+    if (sval < -0x8000) sval = -0x8000;
     memset(v, 0, sizeof(*v));
     v->scr_x = (int32_t)sx << 14;
     v->scr_y = (int32_t)sy << 14;
