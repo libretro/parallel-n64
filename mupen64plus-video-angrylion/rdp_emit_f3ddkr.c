@@ -134,7 +134,7 @@ int f3ddkr_is_ucode(const unsigned char *rdram, unsigned int rdram_size,
     unsigned short tbl[40];
     unsigned short counts_val[40];
     int counts_n[40];
-    int i, j, ncv, best, op7;
+    int i, j, ncv, best;
     (void)uds;
     if (rdram == 0 || ud == 0 || ud + 0xbc + 40u * 2u > rdram_size)
         return 0;
@@ -153,13 +153,26 @@ int f3ddkr_is_ucode(const unsigned char *rdram, unsigned int rdram_size,
     best = 0;
     for (j = 1; j < ncv; j++)
         if (counts_n[j] > counts_n[best]) best = j;
-    /* opcode 0x07 = G_DMADL: a real (non-null) handler marks F3DDKR. Require
-     * the table to actually be a dispatch table (the null entry must repeat,
-     * i.e. several NOP opcodes) so random data does not pass. */
-    op7 = (int)tbl[7];
+    /* opcode 0x07 = G_DMADL and 0x05 = G_TRIN must both have real (non-null)
+     * handlers, AND opcode 0x01 (G_MTX) must be the null stub. This triple is
+     * what makes the test exclusive to F3DDKR: DKR routes matrices through its
+     * DMA path and leaves the direct G_MTX opcode unhandled, whereas every
+     * stock F3D/F3DEX-family microcode (including Doom 64's F3D line ucode)
+     * implements G_MTX with a real handler. Requiring G_MTX to be null is what
+     * prevents this detector from hijacking other F3D-family tasks -- an
+     * earlier version keyed on G_DMADL alone and false-positived on them. */
     if (counts_n[best] < 4)
         return 0;
-    return (op7 != (int)counts_val[best]) ? 1 : 0;
+    {
+        int op7  = (int)tbl[7];
+        int op5  = (int)tbl[5];
+        int op1  = (int)tbl[1];
+        int nullv = (int)counts_val[best];
+        if (op7 == nullv) return 0;   /* G_DMADL must be implemented */
+        if (op5 == nullv) return 0;   /* G_TRIN must be implemented */
+        if (op1 != nullv) return 0;   /* G_MTX must be UNhandled (DKR-only) */
+        return 1;
+    }
 }
 
 /* ---- the F3DDKR walker --------------------------------------------------- */
