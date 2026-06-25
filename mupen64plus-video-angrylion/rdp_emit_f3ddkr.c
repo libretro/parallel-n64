@@ -109,41 +109,53 @@ void f3ddkr_seg_reset(void)
 void f3ddkr_set_rdram(unsigned char *rdram)   { s_rdram = rdram; }
 void f3ddkr_set_rdram_size(unsigned int size) { s_rdram_size = size; }
 
-/* Recognise the F3DDKR custom microcode by its data-segment structure. The
- * task data segment is reachable but the human-readable "RSP Gfx ucode ..."
- * string is absent (Rare custom build), so key on the structural facts that
- * hold for the F3DDKR data image and not for F3DEX/F3DEX2:
- *   - it is NOT F3DEX2: the v31 constant row ffff 0004 0008 7f00 at data+0x1b0
- *     (the positive F3DEX2 marker the dispatcher already keys on) is absent;
- *   - it is NOT the stock F3DEX-v1 GBI-1 data image either: the F3D-family
- *     0xef G_SETOTHERMODE init tag at data+0x118 is absent (the stock build
- *     carries it; the DKR build does not lay its data segment out that way).
- * This routes the genuinely-custom Rare microcode to this walker while leaving
- * stock F3DEX/F3DEX2 on their own paths. (A positive F3DDKR fingerprint -- a
- * text-image opcode signature -- is the intended hardening once the build's
- * ucode text can be inspected; this negative-space test is conservative and
- * only fires when neither stock family claims the task.)
+/* Recognise the F3DDKR custom microcode by a positive fingerprint in its GBI
+ * command dispatch table (data+0xbc, u16 IMEM handler addresses indexed by
+ * opcode). F3DDKR shares F3D's lineage -- same boot word (text+4 = 0x201d0110)
+ * and the same 0xef othermode-init tag at data+0x118 as stock F3DEX v1 -- so
+ * neither the boot word nor the data-segment tags distinguish it. What does
+ * distinguish it is that DKR implements opcode 0x07 (G_DMADL,
+ * gDkrDmaDisplayList): its table slot points at a real handler, whereas stock
+ * F3DEX/F3D leave that opcode at the table's null/NOP stub. (Verified against
+ * the retail F3DDKR xbus data segment: op 0x07 -> 0x145c, a real handler,
+ * while the most-common "null" entry is 0x10a8; stock gspF3DEX.fifo leaves
+ * op 0x07 at its own null stub 0x109c.)
  *
- * NOTE: this is the one part of the walker NOT yet validated against the real
- * F3DDKR data segment (its bytes live only in the retail ROM). The decode
- * logic below is derived from the game's own GBI and is the reliable part;
- * this detector's exact offsets want a cart/dump confirmation. */
+ * The null stub value differs per build, so compute it as the most frequent
+ * table entry and test that G_DMADL's slot is something else. This is robust
+ * across the DKR/JFG/Mickey F3DDKR family without a per-build constant. */
 int f3ddkr_is_ucode(const unsigned char *rdram, unsigned int rdram_size,
                     unsigned int ud, unsigned int uds)
 {
+    unsigned short tbl[40];
+    unsigned short counts_val[40];
+    int counts_n[40];
+    int i, j, ncv, best, op7;
     (void)uds;
-    if (rdram == 0 || ud == 0 || ud + 0x1c0u > rdram_size)
+    if (rdram == 0 || ud == 0 || ud + 0xbc + 40u * 2u > rdram_size)
         return 0;
-    /* reject F3DEX2 (v31 row present) */
-    if (rdram[(ud + 0x1b0) ^ 3] == 0xffu && rdram[(ud + 0x1b1) ^ 3] == 0xffu
-        && rdram[(ud + 0x1b2) ^ 3] == 0x00u && rdram[(ud + 0x1b3) ^ 3] == 0x04u
-        && rdram[(ud + 0x1b4) ^ 3] == 0x00u && rdram[(ud + 0x1b5) ^ 3] == 0x08u
-        && rdram[(ud + 0x1b6) ^ 3] == 0x7fu && rdram[(ud + 0x1b7) ^ 3] == 0x00u)
+    /* read the dispatch table */
+    for (i = 0; i < 40; i++)
+        tbl[i] = (unsigned short)(((unsigned int)rdram[(ud + 0xbc + i * 2u) ^ 3] << 8)
+                                 | (unsigned int)rdram[(ud + 0xbd + i * 2u) ^ 3]);
+    /* find the most frequent entry (the null/NOP handler) */
+    ncv = 0;
+    for (i = 0; i < 40; i++)
+    {
+        for (j = 0; j < ncv; j++)
+            if (counts_val[j] == tbl[i]) { counts_n[j]++; break; }
+        if (j == ncv) { counts_val[ncv] = tbl[i]; counts_n[ncv] = 1; ncv++; }
+    }
+    best = 0;
+    for (j = 1; j < ncv; j++)
+        if (counts_n[j] > counts_n[best]) best = j;
+    /* opcode 0x07 = G_DMADL: a real (non-null) handler marks F3DDKR. Require
+     * the table to actually be a dispatch table (the null entry must repeat,
+     * i.e. several NOP opcodes) so random data does not pass. */
+    op7 = (int)tbl[7];
+    if (counts_n[best] < 4)
         return 0;
-    /* reject stock F3DEX-v1 GBI-1 (F3D-family othermode-init tag present) */
-    if (rdram[(ud + 0x118) ^ 3] == 0xefu)
-        return 0;
-    return 1;
+    return (op7 != (int)counts_val[best]) ? 1 : 0;
 }
 
 /* ---- the F3DDKR walker --------------------------------------------------- */
