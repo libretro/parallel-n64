@@ -169,6 +169,12 @@ void gsp_set_texture(GSPState *s, unsigned int scale_s, unsigned int scale_t,
 void gsp_vertex(GSPState *s, const unsigned char *rdram, unsigned int addr,
                 int n, int v0);
 
+/* DKR (F3DDKR) 10-byte pos+RGBA vertex load (see rdp_emit_frontend.c). */
+void gsp_vertex_dkr(GSPState *s, const unsigned char *rdram, unsigned int addr,
+                    int n, int v0);
+/* DKR: set a cached vertex's per-vertex S/T from a gSPPolygon entry. */
+void gsp_set_vertex_st(GSPState *s, int idx, int st_s, int st_t);
+
 /* emit a triangle from three cached vertex indices via the bridge.
  * Writes the RDP command words to cmd; returns the word count. */
 /* F3DEX2 geometry mode (cull bits etc). Set by G_GEOMETRYMODE; consulted by

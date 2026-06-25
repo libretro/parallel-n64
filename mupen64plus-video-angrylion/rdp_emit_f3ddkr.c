@@ -54,6 +54,10 @@ typedef signed   __int32 dkr_int32_t;
 #define DKR_MW_BILLBOARD 0x02
 #define DKR_MW_MVPMATRIX 0x0A
 
+/* G_VTX_APPEND lives in the full w0 word (GLideN64 tests w0 & 0x00010000);
+ * the gSPVertexDKR macro ORs v0's low bit, which lands here. */
+#define F3DDKR_VTX_APPEND 0x00010000u
+
 #define DKR_DL_MAX_DEPTH 10
 
 /* ---- module state -------------------------------------------------------- */
@@ -205,58 +209,81 @@ void f3ddkr_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
 
         case DKR_G_VTX:
         {
-            /* gSPVertexDKR. Recover n and the append flag from the parameter
-             * word (w0 bits 16..23 per the gDma1p packing; w0 low 16 bits hold
-             * the DMA byte length). The append flag (G_VTX_APPEND, bit 0)
-             * places this batch after the previously-loaded vertices instead
-             * of resetting the buffer to index 0. The frontend's gsp_vertex
-             * has no append state, so the walker tracks the write base. */
-            unsigned int param = (w0 >> 16) & 0xffu;
-            int n  = (int)((param >> 3) & 0x1fu) + 1;
-            int append = (int)(param & 0x01u);   /* G_VTX_APPEND */
+            /* gSPVertexDKR. Verified bit layout (GLideN64 F3DDKR_DMA_Vtx,
+             * cross-checked against the decomp gDma1p packing): vertex count
+             * n = ((w0 >> 19) & 0x1f) + 1, and the destination base index is
+             * ((w0 >> 9) & 0x1f). G_VTX_APPEND (w0 bit 0) appends after the
+             * running write cursor; when billboarding is active an append
+             * starts at index 1 (vertex 0 is the anchor). DKR vertices are
+             * the 10-byte pos+RGBA format, loaded via gsp_vertex_dkr. */
+            int append = (int)(w0 & F3DDKR_VTX_APPEND);
+            int n  = (int)((w0 >> 19) & 0x1fu) + 1;
+            int dst;
             unsigned int va = seg_phys(w1);
-            int v0 = append ? s_vtx_top : 0;
-            /* TODO(billboard): when s_billboard is set, these vertices must be
-             * offset by vertex 0 post-MVP / pre-perspective-divide. Not yet
-             * implemented; plain 3D geometry (non-billboard) is unaffected. */
-            if (n > 0 && v0 >= 0 && v0 + n <= GSP_MAX_VERTICES
-                && in_range(va, (unsigned int)n * 16u))
+            if (append)
             {
-                gsp_vertex(gsp, r, va, n, v0);
-                s_vtx_top = v0 + n;
+                if (s_billboard && s_vtx_top == 0)
+                    s_vtx_top = 1;
+            }
+            else
+                s_vtx_top = 0;
+            dst = s_vtx_top + (int)((w0 >> 9) & 0x1fu);
+            if (n > 0 && dst >= 0 && dst + n <= GSP_MAX_VERTICES
+                && in_range(va, (unsigned int)n * 10u))
+            {
+                gsp_vertex_dkr(gsp, r, va, n, dst);
+                s_vtx_top += n;
             }
             break;
         }
 
         case DKR_G_TRIN:
         {
-            /* gSPPolygon: batched triangle list. numTris-1 is in w0 bits
-             * 20..27 (the macro shifts ((numTris-1)<<4|texEnabled) left 16),
-             * texEnabled in bit 16; w1 -> triangle array (4 bytes each). */
-            unsigned int hdr = (w0 >> 16) & 0xffu;
-            int num_tris = (int)((hdr >> 4) & 0x0fu) + 1;
-            int tex_en   = (int)(hdr & 0x01u);
+            /* gSPPolygon: a batch of DKR triangles. Verified layout
+             * (GLideN64 F3DDKR_DMA_Tri + DKRTriangle struct):
+             *   count    = ((w0 >> 20) & 0x0f) + 1
+             *   texture  =  (w0 >> 16) & 0x0f
+             *   w1       -> array of 16-byte DKRTriangle entries:
+             *     +0 u8 v2  +1 u8 v1  +2 u8 v0  +3 u8 flag
+             *     +4 s16 t0 +6 s16 s0  +8 s16 t1 +10 s16 s1
+             *     +12 s16 t2 +14 s16 s2
+             * The S/T are per-vertex S10.5 texel coords carried on the
+             * triangle (not the vertex), so patch them into the three cached
+             * vertices before emitting. flag bit 0x40 selects cull mode but a
+             * triangle is still drawn; we emit unconditionally (the rasterizer
+             * honours the geometry-mode cull). */
+            int num_tris = (int)((w0 >> 20) & 0x0fu) + 1;
+            int tex_en   = (int)((w0 >> 16) & 0x0fu);
             unsigned int ta = seg_phys(w1);
             int oldtex = s_textured;
             int t;
             if (tex_en) s_textured = 1;
-            if (in_range(ta, (unsigned int)num_tris * 4u))
+            if (in_range(ta, (unsigned int)num_tris * 16u))
             {
                 for (t = 0; t < num_tris; t++)
                 {
-                    unsigned int e = ta + (unsigned int)t * 4u;
-                    int i0 = (int)r[(e + 0) ^ 3];
-                    int i1 = (int)r[(e + 1) ^ 3];
-                    int i2 = (int)r[(e + 2) ^ 3];
-                    /* byte 3 = per-triangle flags (e.g. TRIN_*_TEXTURE); the
-                     * texture-enable is honoured at the batch level above. */
+                    unsigned int e = ta + (unsigned int)t * 16u;
+                    int v2 = (int)r[(e + 0) ^ 3];
+                    int v1 = (int)r[(e + 1) ^ 3];
+                    int v0 = (int)r[(e + 2) ^ 3];
                     int32_t cmdw[220];
-                    int nc = gsp_triangle(gsp, cmdw, i0, i1, i2,
-                                          s_textured, s_zbuffered);
+                    int nc;
+                    gsp_set_vertex_st(gsp, v0,
+                        (int)(short)((r[(e + 6) ^ 3] << 8) | r[(e + 7) ^ 3]),
+                        (int)(short)((r[(e + 4) ^ 3] << 8) | r[(e + 5) ^ 3]));
+                    gsp_set_vertex_st(gsp, v1,
+                        (int)(short)((r[(e + 10) ^ 3] << 8) | r[(e + 11) ^ 3]),
+                        (int)(short)((r[(e + 8) ^ 3] << 8) | r[(e + 9) ^ 3]));
+                    gsp_set_vertex_st(gsp, v2,
+                        (int)(short)((r[(e + 14) ^ 3] << 8) | r[(e + 15) ^ 3]),
+                        (int)(short)((r[(e + 12) ^ 3] << 8) | r[(e + 13) ^ 3]));
+                    nc = gsp_triangle(gsp, cmdw, v0, v1, v2,
+                                      s_textured, s_zbuffered);
                     if (nc > 0) rdp_fifo_append(fifo, cmdw, nc);
                 }
             }
             s_textured = oldtex;
+            s_vtx_top = 0;   /* DKR resets the vertex cursor after a polygon batch */
             break;
         }
 

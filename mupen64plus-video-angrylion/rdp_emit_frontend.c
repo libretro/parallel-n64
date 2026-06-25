@@ -721,6 +721,82 @@ void gsp_vertex(GSPState *s, const unsigned char *rdram, unsigned int addr,
 
 #define GEOM_ZBUFFER    0x00000001u
 
+/* DKR: patch a cached vertex's texel coordinate from a gSPPolygon entry. The
+ * DKRTriangle carries per-vertex S10.5 S/T; apply the same tex-scale fold the
+ * normal vertex load uses so the edgewalker sees consistent texel units. */
+void gsp_set_vertex_st(GSPState *s, int idx, int st_s, int st_t)
+{
+    GSPVertex *vt;
+    if (idx < 0 || idx >= GSP_MAX_VERTICES)
+        return;
+    vt = &s->vtx[idx];
+    vt->s  = (int32_t)(((int64_t)st_s * (int64_t)s->tex_scale_s) << 1);
+    vt->t  = (int32_t)(((int64_t)st_t * (int64_t)s->tex_scale_t) << 1);
+    vt->sv = (int16_t)(((int64_t)st_s * (int64_t)s->tex_scale_s) >> 16);
+    vt->tv = (int16_t)(((int64_t)st_t * (int64_t)s->tex_scale_t) >> 16);
+}
+
+/* DKR (F3DDKR) vertex load. The DKR microcode uses a compact 10-byte vertex
+ * format -- position (s16 x,y,z) + RGBA (u8 each), no texture coordinate and
+ * no normal -- unlike the 16-byte F3DEX Vtx that gsp_vertex reads. Layout
+ * (verified against the retail F3DDKR xbus microcode and GLideN64's
+ * gSPLoadDMAVertexData):
+ *     +0 s16 x   +2 s16 y   +4 s16 z   +6 u8 r  +7 u8 g  +8 u8 b  +9 u8 a
+ * Transform/clip/screen are identical to gsp_vertex; only the read differs.
+ * Colour is the vertex RGBA directly (DKR's geometry is vertex-coloured, not
+ * lit through the F3DEX lighting path). Texture coordinates are zero here; the
+ * gSPPolygon tex-enable + the active tile drive texturing at draw time. */
+void gsp_vertex_dkr(GSPState *s, const unsigned char *rdram, unsigned int addr,
+                    int n, int v0)
+{
+    int i;
+    if (!s->combined_valid)
+        gsp_combine_matrices(s);
+
+    for (i = 0; i < n; i++)
+    {
+        unsigned int base = addr + (unsigned int)i * 10u;
+        int idx = v0 + i;
+        int32_t ox, oy, oz;
+        int64_t cx, cy, cz, cw;
+        GSPVertex *vt;
+        if (idx < 0 || idx >= GSP_MAX_VERTICES)
+            continue;
+        vt = &s->vtx[idx];
+
+        ox = read_s16_be(rdram, base + 0);
+        oy = read_s16_be(rdram, base + 2);
+        oz = read_s16_be(rdram, base + 4);
+
+        cx = (int64_t)ox * s->combined[0][0] + (int64_t)oy * s->combined[1][0]
+           + (int64_t)oz * s->combined[2][0] + (int64_t)s->combined[3][0];
+        cy = (int64_t)ox * s->combined[0][1] + (int64_t)oy * s->combined[1][1]
+           + (int64_t)oz * s->combined[2][1] + (int64_t)s->combined[3][1];
+        cz = (int64_t)ox * s->combined[0][2] + (int64_t)oy * s->combined[1][2]
+           + (int64_t)oz * s->combined[2][2] + (int64_t)s->combined[3][2];
+        cw = (int64_t)ox * s->combined[0][3] + (int64_t)oy * s->combined[1][3]
+           + (int64_t)oz * s->combined[2][3] + (int64_t)s->combined[3][3];
+
+        vt->cx = gsp_mvp_readback(cx, (int64_t)oz * (s->combined[2][0] >> 16));
+        vt->cy = gsp_mvp_readback(cy, (int64_t)oz * (s->combined[2][1] >> 16));
+        vt->cz = gsp_mvp_readback(cz, (int64_t)oz * (s->combined[2][2] >> 16));
+        vt->cw = gsp_mvp_readback(cw, (int64_t)oz * (s->combined[2][3] >> 16));
+
+        vt->r = (int32_t)read_u8_n64(rdram, base + 6) << 16;
+        vt->g = (int32_t)read_u8_n64(rdram, base + 7) << 16;
+        vt->b = (int32_t)read_u8_n64(rdram, base + 8) << 16;
+        vt->a = (int32_t)read_u8_n64(rdram, base + 9) << 16;
+
+        vt->s = 0;
+        vt->t = 0;
+        vt->sv = 0;
+        vt->tv = 0;
+
+        gsp_clip_vertex_flags(s, vt);
+        gsp_vertex_screen(s, vt);
+    }
+}
+
 void gsp_set_tri_scales(GSPState *s, int32_t dx_scale, int32_t idy_scale,
                         int32_t frac_mask, int32_t vcr_bound)
 {
