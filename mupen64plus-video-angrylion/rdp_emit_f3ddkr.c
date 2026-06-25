@@ -259,7 +259,7 @@ static void f3ddkr_run_dl_impl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
             if (n > 0 && dst >= 0 && dst + n <= GSP_MAX_VERTICES
                 && in_range(va, (unsigned int)n * 10u))
             {
-                gsp_vertex_dkr(gsp, r, va, n, dst);
+                gsp_vertex_dkr(gsp, r, va, n, dst, s_billboard);
                 s_vtx_top += n;
             }
             break;

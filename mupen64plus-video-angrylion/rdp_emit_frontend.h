@@ -175,7 +175,7 @@ void gsp_vertex(GSPState *s, const unsigned char *rdram, unsigned int addr,
 
 /* DKR (F3DDKR) 10-byte pos+RGBA vertex load (see rdp_emit_frontend.c). */
 void gsp_vertex_dkr(GSPState *s, const unsigned char *rdram, unsigned int addr,
-                    int n, int v0);
+                    int n, int v0, int billboard);
 /* DKR: set a cached vertex's per-vertex S/T from a gSPPolygon entry. */
 void gsp_set_vertex_st(GSPState *s, int idx, int st_s, int st_t);
 

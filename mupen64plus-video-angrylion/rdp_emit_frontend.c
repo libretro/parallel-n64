@@ -781,7 +781,7 @@ void gsp_set_vertex_st(GSPState *s, int idx, int st_s, int st_t)
  * lit through the F3DEX lighting path). Texture coordinates are zero here; the
  * gSPPolygon tex-enable + the active tile drive texturing at draw time. */
 void gsp_vertex_dkr(GSPState *s, const unsigned char *rdram, unsigned int addr,
-                    int n, int v0)
+                    int n, int v0, int billboard)
 {
     int i;
     if (!s->combined_valid)
@@ -815,6 +815,21 @@ void gsp_vertex_dkr(GSPState *s, const unsigned char *rdram, unsigned int addr,
         vt->cy = gsp_mvp_readback(cy, (int64_t)oz * (s->combined[2][1] >> 16));
         vt->cz = gsp_mvp_readback(cz, (int64_t)oz * (s->combined[2][2] >> 16));
         vt->cw = gsp_mvp_readback(cw, (int64_t)oz * (s->combined[2][3] >> 16));
+
+        /* Billboarding (gSPVertexDKR with billboard enabled): vertices loaded
+         * at idx >= 1 are camera-facing offsets relative to the anchor at
+         * vertex 0.  The microcode adds vertex 0's transformed clip position
+         * onto each (GLideN64 gSPBillboardVertex: vtx += vtx0).  Without this
+         * the offset vertices land at raw clip-space and the sprite collapses
+         * to a degenerate / off-screen quad (the DKR intro Diddy/palms blob). */
+        if (billboard && idx >= 1)
+        {
+            const GSPVertex *a = &s->vtx[0];
+            vt->cx += a->cx;
+            vt->cy += a->cy;
+            vt->cz += a->cz;
+            vt->cw += a->cw;
+        }
 
         vt->r = (int32_t)read_u8_n64(rdram, base + 6) << 16;
         vt->g = (int32_t)read_u8_n64(rdram, base + 7) << 16;
