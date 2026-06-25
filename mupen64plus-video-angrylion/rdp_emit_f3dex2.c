@@ -425,15 +425,81 @@ void f3dex2_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
             case 0xb0:                          /* G_SELECT_DL (not modelled) */
             case 0xb2:                          /* G_OBJ_RECTANGLE_R (rotated; TODO) */
             case 0xc4:                          /* G_OBJ_LDTX_RECT_R (rotated; TODO) */
-            case 0x01:                          /* G_MTX (F3DEX base; 2D unused) */
-            case 0x02:                          /* reserved / G_MOVEMEM lane */
             case 0xbb:                          /* G_TEXTURE (sprite tile sets scale) */
-            case 0xb3:                          /* G_RDPHALF_2 */
-            case 0xb4:                          /* G_RDPHALF_1 */
+            case 0xb3:                          /* G_RDPHALF_2 (texrect tail) */
+            case 0xb4:                          /* G_RDPHALF_1 (texrect tail) */
             case 0xb6:                          /* G_(CLEAR)GEOMETRYMODE (unused 2D) */
             case 0xb7:
-            case 0xe4:                          /* G_RDPHALF_0 */
                 break;
+            case 0xe4:                          /* G_TEXRECT */
+            case 0xe5:                          /* G_TEXRECTFLIP */
+            {
+                /* TEXTURE_RECTANGLE is a 4-word RDP command (angrylion reads
+                 * 16 bytes for ids 0x24/0x25). GBI1 S2DEX delivers it as three
+                 * DL commands: the G_TEXRECT(FLIP) word pair (xl/yl/xh/yh +
+                 * tile) followed by two G_RDPHALF commands carrying the texel
+                 * tail -- RDPHALF_1 (0xB4) the s/t pair and RDPHALF_2 (0xB3)
+                 * the dsdx/dtdy pair. The opcode was mis-tagged G_RDPHALF_0
+                 * and dropped, so the hundreds of texrects Yoshi's Story blits
+                 * to build the level backdrop -- into an offscreen image the
+                 * G_BG_1CYC compositor later draws -- never reached the RDP and
+                 * the stage rendered black. Assemble the full 4-word command
+                 * and skip the two RDPHALF words. */
+                unsigned int st = 0u, dxy = 0u;
+                unsigned int c0;
+                int32_t tr[4];
+                c0 = rd_u32_be(r, pc);
+                if (((c0 >> 24) & 0xffu) == 0xb4u)        /* s, t */
+                {
+                    st = rd_u32_be(r, pc + 4);
+                    pc += 8;
+                }
+                else if (((c0 >> 24) & 0xffu) == 0xb3u)   /* dsdx, dtdy */
+                {
+                    dxy = rd_u32_be(r, pc + 4);
+                    pc += 8;
+                }
+                c0 = rd_u32_be(r, pc);
+                if (((c0 >> 24) & 0xffu) == 0xb4u)
+                {
+                    st = rd_u32_be(r, pc + 4);
+                    pc += 8;
+                }
+                else if (((c0 >> 24) & 0xffu) == 0xb3u)
+                {
+                    dxy = rd_u32_be(r, pc + 4);
+                    pc += 8;
+                }
+                tr[0] = (int32_t)w0;    /* keep raw 0xE4/0xE5 byte + xh/yh */
+                tr[1] = (int32_t)w1;    /* tile + xl/yl */
+                tr[2] = (int32_t)st;    /* s, t       (RDPHALF_1) */
+                tr[3] = (int32_t)dxy;   /* dsdx, dtdy (RDPHALF_2) */
+                rdp_fifo_append(fifo, tr, 4);
+                break;
+            }
+            case 0x01:                          /* S2DEX1 G_BG_1CYC */
+            {
+                /* GBI1 S2DEX draws scrolling level backgrounds with
+                 * gSPBgRect1Cyc (opcode 0x01), not F3DEX geometry. Yoshi's
+                 * Story's in-game scenery is several of these stacked BG
+                 * layers; dropping them left the whole stage black. Route to
+                 * the same transcribed BG renderer the S2DEX2 path uses. */
+                unsigned int bga = seg_addr(w1);
+                if (addr_in_range(bga, 40u))
+                    s2dex_bg_1cyc(r, s_rdram_size ? s_rdram_size
+                                                  : (8u * 1024u * 1024u),
+                                  bga, fifo);
+                break;
+            }
+            case 0x02:                          /* S2DEX1 G_BG_COPY */
+            {
+                unsigned int bga = seg_addr(w1);
+                if (addr_in_range(bga, 40u))
+                    s2dex_bg_copy(r, s_rdram_size ? s_rdram_size
+                                                  : (8u * 1024u * 1024u),
+                                  bga, fifo);
+                break;
+            }
             default:
                 if (cmd >= 0xe5)                /* RDP hardware command */
                 {
