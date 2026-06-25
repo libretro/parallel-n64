@@ -160,10 +160,29 @@ int f3ddkr_is_ucode(const unsigned char *rdram, unsigned int rdram_size,
 }
 
 /* ---- the F3DDKR walker --------------------------------------------------- */
+static void f3ddkr_run_dl_impl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
+                               int max_cmds, int textured, int z_buffered);
+static void f3ddkr_run_dl_n(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
+                            int n, int textured, int z_buffered);
+
 void f3ddkr_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
                    int textured, int z_buffered)
 {
+    f3ddkr_run_dl_impl(gsp, fifo, addr, 0, textured, z_buffered);
+}
+
+/* count-delimited entry (gDkrDmaDisplayList): walk exactly n commands. */
+static void f3ddkr_run_dl_n(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
+                            int n, int textured, int z_buffered)
+{
+    f3ddkr_run_dl_impl(gsp, fifo, addr, n, textured, z_buffered);
+}
+
+static void f3ddkr_run_dl_impl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
+                               int max_cmds, int textured, int z_buffered)
+{
     int guard = 0;
+    int count = 0;
     unsigned int pc = addr;
     int running = 1;
     const unsigned char *r = s_rdram;
@@ -178,10 +197,15 @@ void f3ddkr_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
 
     while (running && guard++ < 100000)
     {
-        unsigned int w0 = rd32(r, pc);
-        unsigned int w1 = rd32(r, pc + 4);
-        int cmd = (int)((w0 >> 24) & 0xff);
+        unsigned int w0, w1;
+        int cmd;
+        if (max_cmds > 0 && count >= max_cmds)
+            break;
+        w0 = rd32(r, pc);
+        w1 = rd32(r, pc + 4);
+        cmd = (int)((w0 >> 24) & 0xff);
         pc += 8;
+        count++;
 
         switch (cmd)
         {
@@ -304,13 +328,18 @@ void f3ddkr_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
 
         case DKR_G_DMADL:
         {
-            /* gDkrDmaDisplayList: like G_DL but the count is carried in w0
-             * (bits 16..23) rather than relying on a G_ENDDL terminator. We
-             * still walk to the embedded terminator, which is equivalent for
-             * a well-formed list. */
-            unsigned int da = seg_phys(w1);
-            if (in_range(da, 8u))
-                f3ddkr_run_dl(gsp, fifo, da, s_textured, s_zbuffered);
+            /* gDkrDmaDisplayList: a DMA display-list call whose length is the
+             * command COUNT carried in w0 bits 16..23 -- the sublist is NOT
+             * G_ENDDL-terminated (DKR's models and the texture-header `cmd`
+             * arrays are emitted as fixed-length blocks). Walk exactly that
+             * many 8-byte commands. This is the primary path DKR geometry
+             * arrives through, so treating it like G_DL (run-to-terminator)
+             * either overran or under-ran every model block. */
+            unsigned int num = (w0 >> 16) & 0xffu;
+            unsigned int da  = seg_phys(w1);
+            if (num > 0u && in_range(da, num * 8u))
+                f3ddkr_run_dl_n(gsp, fifo, da, (int)num,
+                                s_textured, s_zbuffered);
             break;
         }
 
