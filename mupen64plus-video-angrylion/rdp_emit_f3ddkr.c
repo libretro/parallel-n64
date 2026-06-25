@@ -50,8 +50,16 @@ typedef signed   __int32 dkr_int32_t;
 #define DKR_G_CLEARGEOMETRYMODE 0xB6
 #define DKR_G_TEXTURE 0xBB
 
-/* G_MOVEWORD indices used by DKR */
+/* G_MOVEWORD indices used by DKR. The index byte is the low 8 bits of w0
+ * (gImmp21 packs G_MOVEWORD as cmd<<24 | offset<<8 | index); GLideN64's
+ * F3DDKR_MoveWord likewise reads _SHIFTR(w0,0,8). G_MW_SEGMENT is the stock
+ * F3D segment-base move that gSPSegment/rsp_segment emit: DKR uses it to point
+ * SEGMENT_FRAMEBUFFER/ZBUFFER/MAIN at the live buffers each frame, so the
+ * walker must record it or the SET_COLOR_IMAGE/SET_*_IMAGE seg lookups below
+ * resolve against a zero base and angrylion renders over low RDRAM (incl. the
+ * 0x180 exception vectors -> CPU wedges in the exception handler). */
 #define DKR_MW_BILLBOARD 0x02
+#define DKR_MW_SEGMENT   0x06
 #define DKR_MW_MVPMATRIX 0x0A
 
 /* G_VTX_APPEND lives in the full w0 word (GLideN64 tests w0 & 0x00010000);
@@ -344,13 +352,23 @@ static void f3ddkr_run_dl_impl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
 
         case DKR_G_MOVEWORD:
         {
-            unsigned int index = (w0 >> 16) & 0xffu;
+            /* Index is the low byte of w0 (matches GLideN64 F3DDKR_MoveWord /
+             * the gImmp21 G_MOVEWORD packing), not bits 16-23. */
+            unsigned int index = w0 & 0xffu;
             if (index == DKR_MW_BILLBOARD)
                 s_billboard = (w1 != 0u) ? 1 : 0;
             else if (index == DKR_MW_MVPMATRIX)
             {
                 s_mtx_slot = (int)((w1 >> 6) & 0x03u);
                 gsp_select_matrix_dkr(gsp, s_mtx_slot);
+            }
+            else if (index == DKR_MW_SEGMENT)
+            {
+                /* gSPSegment(seg,base): offset field = seg*4, so the segment
+                 * number is bits 10-13 of w0; base is the low 24 bits of w1
+                 * (GLideN64: gSPSegment(_SHIFTR(w0,10,4), w1 & 0x00FFFFFF)). */
+                unsigned int seg = (w0 >> 10) & 0x0fu;
+                s_seg[seg] = w1 & 0x00ffffffu;
             }
             break;
         }
