@@ -1260,8 +1260,23 @@ static void s2dex_draw_obj(GSPState *gsp, const unsigned char *r,
         say = -objY;
     }
 
-    w_q = (int)(((unsigned long long)imageW * scaleW) >> 13) - 4;
-    h_q = (int)(((unsigned long long)imageH * scaleH) >> 13) - 4;
+    w_q = (int)(((unsigned long long)imageW * scaleW) >> 13);
+    h_q = (int)(((unsigned long long)imageH * scaleH) >> 13);
+    /* The object matrix scales the sprite's extent, not just its anchor: a
+     * gSPObjSprite zoomed by A/D (e.g. Yoshi's Story enemies at A=0x5999,
+     * D=-0x5999 ~ 0.35x) must shrink the drawn quad by the same factor, or
+     * the full-size texel span is stretched across the zoomed screen rect
+     * and the sprite smears. Titles that draw at unity (A=0x10000) are
+     * unaffected. Use |A| for width and |D| for height (B/C unmodelled). */
+    if (use_matrix)
+    {
+        int sa = (s_objmtx_a < 0) ? -s_objmtx_a : s_objmtx_a;
+        int sd = (s_objmtx_d < 0) ? -s_objmtx_d : s_objmtx_d;
+        w_q = (int)(((long long)w_q * sa) >> 16);
+        h_q = (int)(((long long)h_q * sd) >> 16);
+    }
+    w_q -= 4;
+    h_q -= 4;
     if (w_q < 0) w_q = 0;
     if (h_q < 0) h_q = 0;
 
