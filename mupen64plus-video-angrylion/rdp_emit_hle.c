@@ -16,6 +16,7 @@
 #include "rdp_emit_hle.h"
 #include "rdp_emit_f3dex2.h"
 #include "rdp_emit_f3d.h"
+#include "rdp_emit_f3ddkr.h"
 #include "rdp_emit_rsp.h"
 #include "rdp_emit_backend.h"
 
@@ -583,7 +584,20 @@ void rdp_emit_hle_process_dlist(void)
          * and Hexen's automaps fall through to the F3DEX2 walker and scatter. */
         fam = f3d_ucode_family(rdram, rdram_size, ud,
                                read_dmem_u32(dmem, 0xfdc));
-        if (f3d_is_ucode(rdram, rdram_size, ut) || fam != 0)
+        if (f3ddkr_is_ucode(rdram, rdram_size, ud,
+                            read_dmem_u32(dmem, 0xfdc)))
+        {
+            /* F3DDKR (Diddy Kong Racing custom microcode): a GBI 1 derivative
+             * with its own command set (gSPPolygon batched triangles, indexed
+             * matrices, billboarding). Neither the F3D nor F3DEX2 walker can
+             * decode it; route to the dedicated walker. Checked first so its
+             * custom data segment is never mis-claimed by the stock paths. */
+            f3ddkr_seg_reset();
+            f3ddkr_set_rdram(rdram);
+            f3ddkr_set_rdram_size(rdram_size);
+            f3ddkr_run_dl(&s_gsp, &s_fifo, dl_addr, 0, 0);
+        }
+        else if (f3d_is_ucode(rdram, rdram_size, ut) || fam != 0)
         {
             /* Plain Fast3D (e.g. Super Mario 64): different geometry opcode
              * encoding from F3DEX2, dispatched separately. gsp_detect_ucode_
