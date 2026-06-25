@@ -1477,17 +1477,34 @@ static void s2dex_draw_obj(GSPState *gsp, const unsigned char *r,
         long long oh = (ht > 0) ? ((long long)ht * 4096) / (long long)scaleH : 0;
         int s_ext = (int)(imageW << 2);
         int t_ext = (int)(imageH << 2);
+        /* Object-space rectangle, anchored at (objX,objY), extending +ow
+         * along object X and +oh along object Y (the same span the
+         * axis-aligned path uses before the matrix). Map all four corners
+         * through the full [A B; C D] (s15.16) about the matrix origin; the
+         * negative D term carries the object-to-screen Y flip exactly as the
+         * axis-aligned path's say/uly do, so B==C==0 reproduces it bit for
+         * bit. The |A|/|D| extent shortcut above cannot place these corners
+         * because it drops the B*objY / C*objX cross terms, which for a
+         * rotated petal are the whole displacement. */
+        long long ox0 = (long long)objX, oy0 = (long long)objY;
+        long long ox1 = ox0 + ow, oy1 = oy0 + oh;
         int tlx, tly, trx, try_s, blx, bly, brx, bry;
-        /* bottom-left = anchor; +ow along object X, +oh along object Y */
-        blx = sax; bly = say;
-        brx = sax + (int)(((long long)s_objmtx_a * ow) >> 16);
-        bry = say + (int)(((long long)s_objmtx_c * ow) >> 16);
-        tlx = sax + (int)(((long long)s_objmtx_b * oh) >> 16);
-        tly = say + (int)(((long long)s_objmtx_d * oh) >> 16);
-        trx = sax + (int)(((long long)s_objmtx_a * ow
-                         + (long long)s_objmtx_b * oh) >> 16);
-        try_s = say + (int)(((long long)s_objmtx_c * ow
-                         + (long long)s_objmtx_d * oh) >> 16);
+        blx = s_objmtx_x + (int)(((long long)s_objmtx_a * ox0
+                               + (long long)s_objmtx_b * oy0) >> 16);
+        bly = s_objmtx_y + (int)(((long long)s_objmtx_c * ox0
+                               + (long long)s_objmtx_d * oy0) >> 16);
+        brx = s_objmtx_x + (int)(((long long)s_objmtx_a * ox1
+                               + (long long)s_objmtx_b * oy0) >> 16);
+        bry = s_objmtx_y + (int)(((long long)s_objmtx_c * ox1
+                               + (long long)s_objmtx_d * oy0) >> 16);
+        tlx = s_objmtx_x + (int)(((long long)s_objmtx_a * ox0
+                               + (long long)s_objmtx_b * oy1) >> 16);
+        tly = s_objmtx_y + (int)(((long long)s_objmtx_c * ox0
+                               + (long long)s_objmtx_d * oy1) >> 16);
+        trx = s_objmtx_x + (int)(((long long)s_objmtx_a * ox1
+                               + (long long)s_objmtx_b * oy1) >> 16);
+        try_s = s_objmtx_y + (int)(((long long)s_objmtx_c * ox1
+                               + (long long)s_objmtx_d * oy1) >> 16);
         s2dex_set_corner(&gsp->vtx[S2DEX_SPR_V0 + 0], tlx, tly, 0,     t_ext);
         s2dex_set_corner(&gsp->vtx[S2DEX_SPR_V0 + 1], trx, try_s, s_ext, t_ext);
         s2dex_set_corner(&gsp->vtx[S2DEX_SPR_V0 + 2], blx, bly, 0,     0);
