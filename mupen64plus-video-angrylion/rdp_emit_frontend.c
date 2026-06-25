@@ -284,6 +284,40 @@ void gsp_matrix_load(GSPState *s, const unsigned char *rdram, unsigned int addr,
     s->combined_valid = 0;
 }
 
+/* DKR (F3DDKR) indexed matrix load (gSPMatrixDKR). Unlike the F3DEX push/pop
+ * stack, DKR keeps a small bank of model matrices addressed by `index` (slot
+ * 0/1/2) and bakes projection into them, so the projection matrix is identity
+ * and the combined transform is simply the active modelview slot. Semantics
+ * mirror GLideN64's gSPDMAMatrix: load into modelview[index] (copy, or
+ * multiply against slot 0 when `multiply`), set that slot active, and reset
+ * projection to identity. */
+void gsp_matrix_dkr(GSPState *s, const unsigned char *rdram, unsigned int addr,
+                    int index, int multiply)
+{
+    int32_t m[4][4];
+    if (index < 0 || index >= GSP_MTX_STACK)
+        index = 0;
+    load_n64_matrix(m, rdram, addr);
+    if (multiply)
+        mtx_mul(s->modelview[index], m, s->modelview[0]);
+    else
+        mtx_copy(s->modelview[index], m);
+    s->modelview_top = index;
+    mtx_identity(s->projection);
+    s->lights_valid = 0;
+    s->combined_valid = 0;
+}
+
+/* DKR (F3DDKR) active-matrix select (gSPSelectMatrixDKR / G_MW_MVPMATRIX). */
+void gsp_select_matrix_dkr(GSPState *s, int index)
+{
+    if (index < 0 || index >= GSP_MTX_STACK)
+        return;
+    s->modelview_top = index;
+    s->combined_valid = 0;
+    s->lights_valid = 0;
+}
+
 void gsp_matrix_pop(GSPState *s)
 {
     /* do_popmtx only zeroes mvpValid/lightsValid when bytes were

@@ -158,6 +158,10 @@ void gsp_task_reset(GSPState *s);
 void gsp_matrix_load(GSPState *s, const unsigned char *rdram, unsigned int addr,
                      int projection, int load, int push);
 void gsp_matrix_pop(GSPState *s);
+/* DKR (F3DDKR) indexed matrix load + active-slot select. */
+void gsp_matrix_dkr(GSPState *s, const unsigned char *rdram, unsigned int addr,
+                    int index, int multiply);
+void gsp_select_matrix_dkr(GSPState *s, int index);
 void gsp_combine_matrices(GSPState *s);
 
 /* viewport (addr -> N64 Vp struct in RDRAM), and texture scale state */

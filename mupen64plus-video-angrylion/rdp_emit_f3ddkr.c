@@ -211,19 +211,18 @@ static void f3ddkr_run_dl_impl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
         {
         case DKR_G_MTX:
         {
-            /* gSPMatrixDKR: param (w0 low bits) carries (slot) << 6 plus the
-             * F3D load/projection bits. The matrix is 64 bytes in RDRAM. The
-             * indexed slot selects which of the DKR matrix registers receives
-             * it; we map slot 0 -> modelview load, and treat the active MVP
-             * (s_mtx_slot) as the combined transform source. */
-            int projection = (int)((w0 >> 16) & 0x01) ? 1 : 0;
-            int load       = (int)((w0 >> 16) & 0x02) ? 1 : 0;
-            int push       = (int)((w0 >> 16) & 0x04) ? 1 : 0;
-            unsigned int ma = seg_phys(w1);
-            if (in_range(ma, 64u))
+            /* gSPMatrixDKR. Verified layout (GLideN64 F3DDKR_DMA_Mtx): the
+             * length field (w0 low 16) is 64; the matrix index lives in
+             * w0 bits 22..23 for the DKR build (multiply is always 0 for
+             * DKR -- the JFG build uses bit 23 for multiply, but DKR copies).
+             * Projection is identity in this model, so the load goes to the
+             * indexed modelview slot and that slot becomes the active MVP. */
+            unsigned int len = w0 & 0xffffu;
+            unsigned int ma  = seg_phys(w1);
+            if (len == 64u && in_range(ma, 64u))
             {
-                gsp_matrix_load(gsp, r, ma, projection, load, push);
-                gsp_combine_matrices(gsp);
+                int index = (int)((w0 >> 22) & 0x03u);
+                gsp_matrix_dkr(gsp, r, ma, index, 0);
             }
             break;
         }
@@ -349,7 +348,10 @@ static void f3ddkr_run_dl_impl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
             if (index == DKR_MW_BILLBOARD)
                 s_billboard = (w1 != 0u) ? 1 : 0;
             else if (index == DKR_MW_MVPMATRIX)
+            {
                 s_mtx_slot = (int)((w1 >> 6) & 0x03u);
+                gsp_select_matrix_dkr(gsp, s_mtx_slot);
+            }
             break;
         }
 
