@@ -681,6 +681,39 @@ void f3d_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
             break;
 
         case F3D_RDPHALF_1:
+            /* GoldenEye and Perfect Dark draw the level backdrop (the gradient
+             * sky and horizon) by streaming a complete RDP edge-triangle
+             * command through the G_RDPHALF channel: the first G_RDPHALF_1
+             * carries the triangle command word (an edge-triangle opcode,
+             * 0x08..0x0f, in its high byte) and each following G_RDPHALF_1 /
+             * G_RDPHALF_CONT carries one more command word. The RSP accumulates
+             * them and forwards the finished command to the RDP. Reassemble the
+             * stream and forward it. Gated on the F3DEX (GoldenEye/Perfect Dark)
+             * variant and the edge-triangle signature so the SM64 perspnorm use
+             * of a bare G_RDPHALF_1 below, and the texrect coordinate tail words
+             * (consumed inline by the 0xE4/0xE5 assembler, which never reach
+             * this case), are both untouched. */
+            if (s_variant_f3dex && ((w1 >> 24) & 0x3f) >= 0x08
+                                && ((w1 >> 24) & 0x3f) <= 0x0f)
+            {
+                int32_t raw[40];
+                int wi = 0;
+                raw[wi++] = (int32_t)w1;
+                while (wi < 40)
+                {
+                    unsigned int nx = rd32(r, pc);
+                    int nhc = (int)((nx >> 24) & 0xff);
+                    if (nhc != F3D_RDPHALF_1 && nhc != F3D_RDPHALF_CONT &&
+                        nhc != F3D_RDPHALF_2)
+                        break;
+                    raw[wi++] = (int32_t)rd32(r, pc + 4);
+                    pc += 8;
+                }
+                while (wi < 40)
+                    raw[wi++] = 0;
+                rdp_fifo_append(fifo, raw, 40);
+                break;
+            }
             /* On the old F3D microcode (retail Super Mario 64) gSPPerspNormalize
              * is not a G_MOVEWORD: it stores the perspective-normalize factor in
              * the RDPHALF_1 slot with a bare G_RDPHALF_1 word, and the vertex
