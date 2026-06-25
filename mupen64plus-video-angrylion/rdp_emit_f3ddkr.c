@@ -265,6 +265,16 @@ void f3ddkr_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
                     int v0 = (int)r[(e + 2) ^ 3];
                     int32_t cmdw[220];
                     int nc;
+                    /* Reject triangles whose indices fall outside the vertex
+                     * buffer or past the highest vertex actually loaded this
+                     * batch. Without this a malformed or partially-restored
+                     * (savestate) display list indexes stale/garbage vertices
+                     * and gsp_triangle emits a degenerate RDP triangle that
+                     * can wedge the rasterizer. */
+                    if (v0 < 0 || v0 >= GSP_MAX_VERTICES
+                        || v1 < 0 || v1 >= GSP_MAX_VERTICES
+                        || v2 < 0 || v2 >= GSP_MAX_VERTICES)
+                        continue;
                     gsp_set_vertex_st(gsp, v0,
                         (int)(short)((r[(e + 6) ^ 3] << 8) | r[(e + 7) ^ 3]),
                         (int)(short)((r[(e + 4) ^ 3] << 8) | r[(e + 5) ^ 3]));
