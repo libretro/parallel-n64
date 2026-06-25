@@ -1300,7 +1300,20 @@ static void s2dex_obj_coords(int use_matrix, int objX, int objY,
     }
 
     *xh_o = xh; *yh_o = yh; *xl_o = xl; *yl_o = yl;
-    *sh_o = sh; *th_o = th; *bsx_o = bsx; *bsy_o = bsy;
+    *sh_o = sh; *th_o = th;
+    /* TEXRECT texel step per screen pixel (dsdx/dtdy, s5.10, 1.0 == 0x400).
+     * gSPObjRectangleR (use_matrix == 1) zooms by the object matrix, and the
+     * microcode's latched BaseScale already carries scale/|zoom| -- Yoshi's
+     * Story's RECTANGLE_R pause dialog relies on this exact value. But
+     * gSPObjRectangle (use_matrix == 0) bypasses the matrix, so the step is
+     * the sprite's own scale; the previous code used the latched BaseScale
+     * unconditionally, and Bakuretsu Muteki Bangaioh's in-game pause leaves
+     * BaseScale at a stale 0xffff (its panels are use_matrix == 0), so every
+     * panel TEXRECT carried dsdx = dtdy = 0xffff and garbled the frozen-
+     * screen texture into horizontal bands. Select per use_matrix so both
+     * games match cxd4 (Bangai-O 0x400, Yoshi 0x04ae). */
+    *bsx_o = use_matrix ? bsx : sprW;
+    *bsy_o = use_matrix ? bsy : sprH;
 }
 
 /* draw a uObjSprite at addr as a TEXTURE_RECTANGLE. use_matrix applies the
