@@ -22,6 +22,16 @@ typedef void *GLeglImageOES;
 #if !defined(GL_OES_fixed_point) && !defined(HAVE_OPENGLES2)
 typedef GLint GLfixed;
 #endif
+/* GLdouble is not part of the OpenGL ES 2.0 base headers. Some platforms
+ * (e.g. desktop Mesa) happen to define it as a side effect of an unrelated
+ * extension block in gl2ext.h (GL_NV_path_rendering, GL_EXT_direct_state_access),
+ * but minimal/cross GLES2 toolchains do not, leaving the glDepthRange and
+ * glClearDepth prototypes below referencing an undefined type. Provide a
+ * fallback unless one of those extension blocks (which already typedef it)
+ * has been seen, so we neither leave it undefined nor duplicate the typedef. */
+#if defined(HAVE_OPENGLES2) && !defined(GL_NV_path_rendering) && !defined(GL_EXT_direct_state_access)
+typedef double GLdouble;
+#endif
 
 typedef void (GL_APIENTRYP RGLSYMGLBLENDBARRIERKHRPROC) (void);
 typedef void (GL_APIENTRYP RGLSYMGLDEBUGMESSAGECONTROLKHRPROC) (GLenum source, GLenum type, GLenum severity, GLsizei count, const GLuint *ids, GLboolean enabled);
