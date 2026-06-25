@@ -48,5 +48,8 @@ void s2dex_obj_sprite(struct GSPState *gsp, const unsigned char *r,
 void s2dex_obj_rectangle(struct GSPState *gsp, const unsigned char *r,
                          unsigned int rdram_bytes,
                          unsigned int addr, RdpFifo *fifo);
+void s2dex_obj_rectangle_r(struct GSPState *gsp, const unsigned char *r,
+                           unsigned int rdram_bytes,
+                           unsigned int addr, RdpFifo *fifo);
 
 #endif

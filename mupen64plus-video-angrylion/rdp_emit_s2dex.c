@@ -53,6 +53,11 @@ static void s2dex_set_corner(GSPVertex *v, int sx, int sy,
 /* ---- latched RSP state ------------------------------------------------- */
 
 /* DMEM 0x268: G_OBJ_RENDERMODE w1 low byte (handler at IMEM 0xe8). */
+/* Index a u32 corrector table as little-endian s16[] (as the microcode does). */
+#define S2DEX_S16AT(arr, i) \
+    ((int)(short)(((i) & 1u) ? (unsigned short)((arr)[(i) >> 1] >> 16) \
+                              : (unsigned short)((arr)[(i) >> 1] & 0xffffu)))
+
 static unsigned int s_obj_rendermode;
 
 /* DMEM 0x204/0x208: scissor fields split from the G_SETSCISSOR passthrough
@@ -1165,12 +1170,14 @@ wrap_done:;
 static int          s_objmtx_a = 0x00010000, s_objmtx_b = 0;
 static int          s_objmtx_c = 0,          s_objmtx_d = 0x00010000;
 static int          s_objmtx_x = 0,          s_objmtx_y = 0;
+static int          s_objmtx_bsx = 0x0400,   s_objmtx_bsy = 0x0400;
 
 void s2dex1_reset(void)
 {
     s_objmtx_a = 0x00010000; s_objmtx_b = 0;
     s_objmtx_c = 0;          s_objmtx_d = 0x00010000;
     s_objmtx_x = 0;          s_objmtx_y = 0;
+    s_objmtx_bsx = 0x0400;   s_objmtx_bsy = 0x0400;
 }
 
 void s2dex_obj_movemem(const unsigned char *r, unsigned int rdram_bytes,
@@ -1188,21 +1195,100 @@ void s2dex_obj_movemem(const unsigned char *r, unsigned int rdram_bytes,
         s_objmtx_b = (int)bg_rd_u32(r, addr + 0x04);
         s_objmtx_c = (int)bg_rd_u32(r, addr + 0x08);
         s_objmtx_d = (int)bg_rd_u32(r, addr + 0x0c);
-        s_objmtx_x = (int)(short)bg_rd_u16(r, addr + 0x10);
-        s_objmtx_y = (int)(short)bg_rd_u16(r, addr + 0x12);
+        s_objmtx_x   = (int)(short)bg_rd_u16(r, addr + 0x10);
+        s_objmtx_y   = (int)(short)bg_rd_u16(r, addr + 0x12);
+        s_objmtx_bsx = (int)bg_rd_u16(r, addr + 0x14);
+        s_objmtx_bsy = (int)bg_rd_u16(r, addr + 0x16);
     }
     else
     {
-        s_objmtx_x = (int)(short)bg_rd_u16(r, addr + 0x00);
-        s_objmtx_y = (int)(short)bg_rd_u16(r, addr + 0x02);
+        s_objmtx_x   = (int)(short)bg_rd_u16(r, addr + 0x00);
+        s_objmtx_y   = (int)(short)bg_rd_u16(r, addr + 0x02);
+        s_objmtx_bsx = (int)bg_rd_u16(r, addr + 0x04);
+        s_objmtx_bsy = (int)bg_rd_u16(r, addr + 0x06);
     }
+}
+
+/* OBJ screen/texture coordinates, per olivieryuyu's decoding of the S2DEX
+ * microcode. Both gSPObjRectangle(_R) and the BaseScale form of gSPObjSprite
+ * build their rect this way: a render-mode corrector biases the edges and the
+ * per-axis reciprocal is 0x80007FFF/scale. Outputs are s10.2 screen (xh/yh/
+ * xl/yl) and s10.5 texture origin (sh/th); dsdx/dtdy are BaseScaleX/Y. */
+static void s2dex_obj_coords(int use_matrix, int objX, int objY,
+                             unsigned int imageW, unsigned int imageH,
+                             unsigned int scaleW, unsigned int scaleH,
+                             short *xh_o, short *yh_o, short *xl_o, short *yl_o,
+                             short *sh_o, short *th_o,
+                             unsigned int *bsx_o, unsigned int *bsy_o)
+{
+    static const unsigned int A01[8] = {
+        0x00000000u, 0x00100020u, 0x00200040u, 0x00300060u,
+        0x0000FFF4u, 0x00100014u, 0x00200034u, 0x00300054u };
+    static const unsigned int A23[4] = {
+        0x0001FFFEu, 0xFFFEFFFEu, 0x00010000u, 0x00000000u };
+    static const unsigned int B03[4] = {
+        0xFFFC0000u, 0x00000001u, 0xFFFF0003u, 0xFFF00000u };
+    unsigned int rm = s_obj_rendermode;
+    unsigned int O1 = (rm & 0x70u) >> 3;   /* SHRINK1|SHRINK2|WIDEN */
+    unsigned int O2 = (rm & 0x18u) >> 2;   /* SHRINK1|BILERP */
+    unsigned int O3 = (rm & 0x08u) >> 1;   /* BILERP */
+    int A0 = S2DEX_S16AT(A01, (0u + O1) ^ 1u);
+    int A1 = S2DEX_S16AT(A01, (1u + O1) ^ 1u);
+    int A2 = S2DEX_S16AT(A23, (0u + O2) ^ 1u);
+    int B0 = S2DEX_S16AT(B03, (0u + O3) ^ 1u);
+    int B2 = S2DEX_S16AT(B03, (2u + O3) ^ 1u);
+    unsigned int sprW = scaleW ? scaleW : 1u;
+    unsigned int sprH = scaleH ? scaleH : 1u;
+    unsigned int bsx  = (unsigned int)(s_objmtx_bsx ? s_objmtx_bsx : 1);
+    unsigned int bsy  = (unsigned int)(s_objmtx_bsy ? s_objmtx_bsy : 1);
+    short xh, xl, yh, yl, sh, th;
+
+    if (use_matrix)
+    {
+        unsigned int swe = ((unsigned int)bsx * 0x40u * sprW) >> 16;
+        unsigned int she = ((unsigned int)bsy * 0x40u * sprH) >> 16;
+        int xhp, xlp, yhp, ylp;
+        if (!swe) swe = 1u;
+        if (!she) she = 1u;
+        xhp = (int)((((long long)objX << 16) * 0x0800
+                    * (0x80007FFFu / bsx)) >> 32)
+            + (((s_objmtx_x + A2) & B0) << 16);
+        xh  = (short)(xhp >> 16);
+        xlp = xhp + (int)((((long long)(imageW - A1) << 24)
+                    * (0x80007FFFu / swe)) >> 32);
+        xl  = (short)(xlp >> 16);
+        yhp = (int)((((long long)objY << 16) * 0x0800
+                    * (0x80007FFFu / bsy)) >> 32)
+            + (((s_objmtx_y + A2) & B0) << 16);
+        yh  = (short)(yhp >> 16);
+        ylp = yhp + (int)((((long long)(imageH - A1) << 24)
+                    * (0x80007FFFu / she)) >> 32);
+        yl  = (short)(ylp >> 16);
+        sh  = (short)(A0 + B2);
+        th  = (short)(sh - (int)(((yh & 3) * 0x0200 * she) >> 16));
+    }
+    else
+    {
+        xh = (short)((objX + A2) & B0);
+        xl = (short)((int)((((unsigned long long)(imageW - A1) << 24)
+              * (0x80007FFFu / sprW)) >> 48) + xh);
+        yh = (short)((objY + A2) & B0);
+        yl = (short)((int)((((unsigned long long)(imageH - A1) << 24)
+              * (0x80007FFFu / sprH)) >> 48) + yh);
+        sh = (short)(A0 + B2);
+        th = (short)(sh - (int)(((yh & 3) * 0x0200 * sprH) >> 16));
+    }
+
+    *xh_o = xh; *yh_o = yh; *xl_o = xl; *yl_o = yl;
+    *sh_o = sh; *th_o = th; *bsx_o = bsx; *bsy_o = bsy;
 }
 
 /* draw a uObjSprite at addr as a TEXTURE_RECTANGLE. use_matrix applies the
  * object matrix translation/scale (gSPObjSprite); gSPObjRectangle passes 0. */
 static void s2dex_draw_obj(GSPState *gsp, const unsigned char *r,
                            unsigned int rdram_bytes,
-                           unsigned int addr, int use_matrix, RdpFifo *fifo)
+                           unsigned int addr, int use_matrix, int as_rect,
+                           RdpFifo *fifo)
 {
     int          objX, objY;
     unsigned int scaleW, scaleH, imageW, imageH, imageStride, imageAdrs;
@@ -1288,6 +1374,7 @@ static void s2dex_draw_obj(GSPState *gsp, const unsigned char *r,
     if (lrx <= ulx || lry <= uly)
         return;
 
+
     /* Screen-space sprite corners are passed straight to the triangle
      * rasterizer as s10.2; off-screen-negative upper-left corners are left
      * unclamped (a TEXRECT's 12-bit unsigned field would have to clamp, but
@@ -1312,6 +1399,33 @@ static void s2dex_draw_obj(GSPState *gsp, const unsigned char *r,
     cw[2] = (int32_t)0xf2000000u;               /* SET_TILE_SIZE w0 (uls=ult=0) */
     cw[3] = (int32_t)settsz_w1;
     rdp_fifo_append(fifo, cw, 4);
+
+    /* gSPObjRectangle / gSPObjRectangleR build a TextureRectangle from the
+     * uObjSprite and hand it straight to the RDP (per the S2DEX manual): in
+     * copy / 1-2 cycle mode the rectangle is a TEXRECT, not a shaded quad.
+     * Yoshi's Story's pause dialog draws its panel text this way (RECTANGLE_R
+     * with a per-line OBJ matrix). The texel step per screen pixel is the
+     * sprite scale divided by the matrix zoom: dsdx = scaleW / |A| in s5.10,
+     * matching the LLE stream (scaleW 0x400 / A 0xb3ca -> 0x05b2). */
+    if (as_rect)
+    {
+        short xh, xl, yh, yl, sh, th_t;
+        unsigned int bsx, bsy, u_ulx, u_uly, u_lrx, u_lry;
+        s2dex_obj_coords(use_matrix, objX, objY, imageW, imageH,
+                         scaleW, scaleH, &xh, &yh, &xl, &yl, &sh, &th_t,
+                         &bsx, &bsy);
+        u_ulx = (unsigned int)xh & 0xfffu;
+        u_uly = (unsigned int)yh & 0xfffu;
+        u_lrx = (unsigned int)xl & 0xfffu;
+        u_lry = (unsigned int)yl & 0xfffu;
+        cw[0] = (int32_t)(0x24000000u | (u_lrx << 12) | u_lry);
+        cw[1] = (int32_t)((u_ulx << 12) | u_uly);   /* tile 0 */
+        cw[2] = (int32_t)((((unsigned int)sh & 0xffffu) << 16)
+                          | ((unsigned int)th_t & 0xffffu));
+        cw[3] = (int32_t)(((bsx & 0xffffu) << 16) | (bsy & 0xffffu));
+        rdp_fifo_append(fifo, cw, 4);
+        return;
+    }
 
     /* Emit the sprite as two shaded textured triangles, the way the S2DEX
      * RSP microcode does (a TEXRECT cannot supply the SHADE the sprite's
@@ -1349,12 +1463,19 @@ void s2dex_obj_sprite(GSPState *gsp, const unsigned char *r,
                       unsigned int rdram_bytes,
                       unsigned int addr, RdpFifo *fifo)
 {
-    s2dex_draw_obj(gsp, r, rdram_bytes, addr, 1, fifo);
+    s2dex_draw_obj(gsp, r, rdram_bytes, addr, 1, 0, fifo);
+}
+
+void s2dex_obj_rectangle_r(GSPState *gsp, const unsigned char *r,
+                           unsigned int rdram_bytes,
+                           unsigned int addr, RdpFifo *fifo)
+{
+    s2dex_draw_obj(gsp, r, rdram_bytes, addr, 1, 1, fifo);
 }
 
 void s2dex_obj_rectangle(GSPState *gsp, const unsigned char *r,
                          unsigned int rdram_bytes,
                          unsigned int addr, RdpFifo *fifo)
 {
-    s2dex_draw_obj(gsp, r, rdram_bytes, addr, 0, fifo);
+    s2dex_draw_obj(gsp, r, rdram_bytes, addr, 0, 0, fifo);
 }

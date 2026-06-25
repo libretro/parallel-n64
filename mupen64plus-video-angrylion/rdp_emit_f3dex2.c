@@ -422,9 +422,12 @@ void f3dex2_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
                 }
                 break;
             }
+            case 0xc4:                          /* G_OBJ_LDTX_RECT_R: load + rect_R */
+                s2dex_obj_loadtxtr(r, s_rdram_size, seg_addr(w1), fifo, seg_addr);
+                s2dex_obj_rectangle_r(gsp, r, s_rdram_size, seg_addr(w1) + 24u, fifo);
+                break;
             case 0xb0:                          /* G_SELECT_DL (not modelled) */
             case 0xb2:                          /* G_OBJ_RECTANGLE_R (rotated; TODO) */
-            case 0xc4:                          /* G_OBJ_LDTX_RECT_R (rotated; TODO) */
             case 0xbb:                          /* G_TEXTURE (sprite tile sets scale) */
             case 0xb3:                          /* G_RDPHALF_2 (texrect tail) */
             case 0xb4:                          /* G_RDPHALF_1 (texrect tail) */
