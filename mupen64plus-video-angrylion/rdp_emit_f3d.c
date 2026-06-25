@@ -136,6 +136,32 @@ void f3d_seg_reset(void)
 }
 
 void f3d_set_rdram(unsigned char *rdram)        { s_rdram = rdram; }
+
+/* Mid-list ucode-swap routing (Yoshi's Story title: an S2DEX 1.06 list that
+ * hot-swaps to F3DEX.NoN via G_LOAD_UCODE/0xAF to draw its geometry, then
+ * swaps back). When s_stop_uc is set, the walker treats a 0xAF as the end of
+ * the F3DEX.NoN section, records the pc of that command so the S2DEX1 walker
+ * can resume there, and returns. */
+static int          s_stop_uc;
+static unsigned int s_resume_pc;
+static int          s_uc_stop_depth = -1;
+static int          s_stopped_at_uc;
+void f3d_set_stop_on_ucode(int on)
+{
+    s_stop_uc = on ? 1 : 0;
+    if (on)
+        s_stopped_at_uc = 0;
+    else
+        s_uc_stop_depth = -1;
+}
+unsigned int f3d_get_resume_pc(void)            { return s_resume_pc; }
+int f3d_stopped_at_ucode(void)                  { return s_stopped_at_uc; }
+void f3d_import_segments(const unsigned int *src)
+{
+    int i;
+    for (i = 0; i < 16; i++)
+        s_seg[i] = src[i];
+}
 void f3d_set_rdram_size(unsigned int size)      { s_rdram_size = size; }
 
 void f3d_set_othermode_init(unsigned int h, unsigned int l)
@@ -282,12 +308,29 @@ void f3d_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
         return;
     s_dl_depth++;
 
+    /* Only the outermost F3DEX.NoN walk (the one entered from the S2DEX1
+     * host list) ends at a G_LOAD_UCODE; a 0xAF reached inside a nested
+     * G_DL must not hijack the resume point (that aliased the outer section
+     * to a backward branch and span-looped the walker). */
+    if (s_stop_uc && s_uc_stop_depth < 0)
+        s_uc_stop_depth = s_dl_depth;
+
     while (running && guard++ < 100000)
     {
         unsigned int w0 = rd32(r, pc);
         unsigned int w1 = rd32(r, pc + 4);
         int cmd = (int)((w0 >> 24) & 0xff);
         pc += 8;
+
+        if (s_stop_uc && cmd == 0xAF && s_dl_depth == s_uc_stop_depth)
+        {
+            s_stopped_at_uc = 1;
+            /* End of the F3DEX.NoN section: hand control back to the S2DEX1
+             * walker at this G_LOAD_UCODE so it can swap interpretation. */
+            s_resume_pc = pc - 8u;
+            running = 0;
+            continue;
+        }
 
         switch (cmd)
         {

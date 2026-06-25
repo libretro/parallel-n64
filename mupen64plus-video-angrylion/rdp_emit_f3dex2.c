@@ -12,6 +12,7 @@
 
 #include "rdp_emit_f3dex2.h"
 #include "rdp_emit_s2dex.h"
+#include "rdp_emit_f3d.h"
 
 /* F3DEX2 command bytes (high byte of w0) */
 #define F3DEX2_VTX        0x01
@@ -315,6 +316,38 @@ void f3dex2_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
              * the sprite/object commands live at the high opcodes 0xb0-0xc4 and
              * 0xe4 (gs2dex.h !F3DEX_GBI_2 build). Nested display lists (G_DL,
              * 0x06) MUST be followed -- the object draws live inside them. */
+            if (cmd == 0xaf)   /* G_LOAD_UCODE (GBI1): mid-list ucode swap */
+            {
+                unsigned int t = seg_addr(w1);
+                /* S2DEX 1.06 lists (Yoshi's Story title) hot-swap to an
+                 * F3DEX.NoN build to draw geometry, then swap back. When the
+                 * loaded microcode is an F3D vertex-family build, route the
+                 * section through the F3D walker (its NoN/extended encoding
+                 * matches the Doom 64 / Turok family), stopping at the next
+                 * G_LOAD_UCODE so 2D object drawing resumes here. */
+                if (f3d_is_ucode(s_rdram_base, s_rdram_size, t))
+                {
+                    f3d_set_rdram(s_rdram_base);
+                    f3d_set_rdram_size(s_rdram_size);
+                    f3d_set_variant(1);          /* n<<10 vtx / x2 indices */
+                    f3d_set_line_variant(0);
+                    f3d_set_variant_wr64(0);
+                    f3d_import_segments(s_seg_table);
+                    f3d_set_stop_on_ucode(1);
+                    f3d_run_dl(gsp, fifo, pc, s_textured, s_zbuffered);
+                    f3d_set_stop_on_ucode(0);
+                    if (f3d_stopped_at_ucode())
+                        pc = f3d_get_resume_pc();
+                    else
+                    {
+                        /* The inline F3DEX.NoN run hit G_ENDDL, not a swap-back:
+                         * G_LOAD_UCODE does not branch, so this ends the host
+                         * display list too. */
+                        running = 0;
+                    }
+                }
+                continue;
+            }
             switch (cmd)
             {
             case 0x00:                          /* G_SPNOOP */

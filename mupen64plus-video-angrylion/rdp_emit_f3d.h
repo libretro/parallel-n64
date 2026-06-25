@@ -43,6 +43,14 @@ void f3d_set_variant_wr64(int wr64);
 void f3d_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
                 int textured, int z_buffered);
 
+/* Mid-list ucode-swap support: route an embedded F3DEX.NoN section (entered
+ * from an S2DEX 1.06 list via G_LOAD_UCODE) through the F3D walker, stopping
+ * at the next G_LOAD_UCODE so the host list can resume. */
+void f3d_set_stop_on_ucode(int on);
+unsigned int f3d_get_resume_pc(void);
+int f3d_stopped_at_ucode(void);
+void f3d_import_segments(const unsigned int *src);
+
 #ifdef __cplusplus
 }
 #endif
