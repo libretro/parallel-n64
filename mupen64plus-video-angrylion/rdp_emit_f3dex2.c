@@ -134,8 +134,23 @@ static void seg_reset(void)
     s_zbuffered = 0;
     s_dl_depth  = 0;
     /* command byte 0x2f in bits 29-24 so the high word is a valid
-     * SET_OTHER_MODES when forwarded; mode bits start cleared (1-cycle). */
-    s_othermode_h = 0x2fu << 24;
+     * SET_OTHER_MODES when forwarded; mode bits start cleared (1-cycle).
+     *
+     * The S2DEX1 data segment ships its other-modes-high default with the
+     * low six bits set (alpha_dither = G_AD_DISABLE, the reserved blend
+     * mask = 0xf): bits the RSP seeds once at task boot and that S2DEX1
+     * titles -- Bangai-O, Yoshi's Story -- never re-send, relying on the
+     * resident value. We do not observe the task-boot seed when replaying
+     * from a mid-game savestate, and unlike the real RSP we re-derive the
+     * mode every frame, so without restoring those bits the OBJ sprites
+     * pick up alpha_dither = G_AD_PATTERN: the dither then lifts the
+     * fully-transparent palette entries (alpha 0) over the alpha-compare
+     * threshold, so the sprite's clear regions paint solid instead of
+     * keying out (Bangai-O's boss and Sonic portrait rendered as banded
+     * boxes). Seed the S2DEX1 default; F3DEX2 / S2DEX2 keep the bare
+     * 1-cycle reset, matching their own data-segment defaults. */
+    s_othermode_h = (0x2fu << 24)
+                  | (s_ucode_class == UCODE_S2DEX1 ? 0x3fu : 0x00u);
     s_othermode_l = 0u;
 }
 
