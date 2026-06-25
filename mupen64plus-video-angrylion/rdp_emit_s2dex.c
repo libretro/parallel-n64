@@ -1346,8 +1346,9 @@ static void s2dex_draw_obj(GSPState *gsp, const unsigned char *r,
      */
     if (use_matrix)
     {
+        int say_d = (s_objmtx_d < 0) ? -s_objmtx_d : s_objmtx_d;
         sax = s_objmtx_x + (int)(((long long)objX * s_objmtx_a) >> 16);
-        say = s_objmtx_y - (int)(((long long)objY * s_objmtx_a) >> 16);
+        say = s_objmtx_y - (int)(((long long)objY * say_d) >> 16);
     }
     else
     {
