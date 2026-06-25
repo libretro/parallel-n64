@@ -367,6 +367,49 @@ static void f3ddkr_run_dl_impl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
             running = 0;
             break;
 
+        case 0xe4: /* G_TEXRECT */
+        case 0xe5: /* G_TEXRECTFLIP */
+        {
+            /* TEXTURE_RECTANGLE is a 4-word RDP command (angrylion reads 16
+             * bytes for ids 0x24/0x25). DKR's gsDPTextureRectangle emits it as
+             * two contiguous 64-bit words: the rect word pair (here in w0/w1)
+             * followed immediately by the s/t and dsdx/dtdy word pair. (DKR
+             * also has a gsSPTextureRectangle form that delivers the tail as
+             * two G_RDPHALF immediate commands, 0xB3/0xB2; handle both.) The
+             * plain pass-through forwarded only the first 2 words, so angrylion
+             * consumed the following command as the texrect tail and the
+             * rectangle never rendered -- this is why DKR's texture-rectangle
+             * UI (the title logo, HUD) drew nothing under HLE. Assemble the
+             * full 4-word command and advance past the consumed tail. */
+            unsigned int n0 = rd32(r, pc);
+            unsigned int n1 = rd32(r, pc + 4);
+            int32_t tr[4];
+            unsigned int tail_cmd = (n0 >> 24) & 0xffu;
+            tr[0] = (int32_t)w0;
+            tr[1] = (int32_t)w1;
+            if (tail_cmd == 0xb3u || tail_cmd == 0xb2u
+                || tail_cmd == 0xf1u || tail_cmd == 0xe1u)
+            {
+                /* RDPHALF form: two immediate commands carry the coords. */
+                unsigned int m0, m1;
+                tr[2] = (int32_t)n1;          /* first RDPHALF payload  */
+                m0 = rd32(r, pc + 8);
+                m1 = rd32(r, pc + 12);
+                (void)m0;
+                tr[3] = (int32_t)m1;          /* second RDPHALF payload */
+                pc += 16;
+            }
+            else
+            {
+                /* contiguous gsDP form: the next word pair IS the coords. */
+                tr[2] = (int32_t)n0;          /* s, t          */
+                tr[3] = (int32_t)n1;          /* dsdx, dtdy    */
+                pc += 8;
+            }
+            rdp_fifo_append(fifo, tr, 4);
+            break;
+        }
+
         default:
             /* RDP pass-through opcodes (0xC8..0xFF) and any DKR command not
              * yet decoded. The shared RDP commands (SET_*, TEXRECT, sync) are
