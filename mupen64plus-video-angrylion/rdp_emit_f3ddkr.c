@@ -131,48 +131,32 @@ void f3ddkr_set_rdram_size(unsigned int size) { s_rdram_size = size; }
 int f3ddkr_is_ucode(const unsigned char *rdram, unsigned int rdram_size,
                     unsigned int ud, unsigned int uds)
 {
-    unsigned short tbl[40];
-    unsigned short counts_val[40];
-    int counts_n[40];
-    int i, j, ncv, best;
+    unsigned short tbl[16];
+    int i;
     (void)uds;
-    if (rdram == 0 || ud == 0 || ud + 0xbc + 40u * 2u > rdram_size)
+    if (rdram == 0 || ud == 0 || ud + 0xbc + 16u * 2u > rdram_size)
         return 0;
-    /* read the dispatch table */
-    for (i = 0; i < 40; i++)
+    for (i = 0; i < 16; i++)
         tbl[i] = (unsigned short)(((unsigned int)rdram[(ud + 0xbc + i * 2u) ^ 3] << 8)
                                  | (unsigned int)rdram[(ud + 0xbd + i * 2u) ^ 3]);
-    /* find the most frequent entry (the null/NOP handler) */
-    ncv = 0;
-    for (i = 0; i < 40; i++)
-    {
-        for (j = 0; j < ncv; j++)
-            if (counts_val[j] == tbl[i]) { counts_n[j]++; break; }
-        if (j == ncv) { counts_val[ncv] = tbl[i]; counts_n[ncv] = 1; ncv++; }
-    }
-    best = 0;
-    for (j = 1; j < ncv; j++)
-        if (counts_n[j] > counts_n[best]) best = j;
-    /* opcode 0x07 = G_DMADL and 0x05 = G_TRIN must both have real (non-null)
-     * handlers, AND opcode 0x01 (G_MTX) must be the null stub. This triple is
-     * what makes the test exclusive to F3DDKR: DKR routes matrices through its
-     * DMA path and leaves the direct G_MTX opcode unhandled, whereas every
-     * stock F3D/F3DEX-family microcode (including Doom 64's F3D line ucode)
-     * implements G_MTX with a real handler. Requiring G_MTX to be null is what
-     * prevents this detector from hijacking other F3D-family tasks -- an
-     * earlier version keyed on G_DMADL alone and false-positived on them. */
-    if (counts_n[best] < 4)
-        return 0;
-    {
-        int op7  = (int)tbl[7];
-        int op5  = (int)tbl[5];
-        int op1  = (int)tbl[1];
-        int nullv = (int)counts_val[best];
-        if (op7 == nullv) return 0;   /* G_DMADL must be implemented */
-        if (op5 == nullv) return 0;   /* G_TRIN must be implemented */
-        if (op1 != nullv) return 0;   /* G_MTX must be UNhandled (DKR-only) */
+    /* Match F3DDKR by an exact fingerprint of its GBI command dispatch table
+     * (data+0xbc, u16 IMEM handler addresses). These four handler addresses
+     * at these table positions are specific to the F3DDKR microcode image and
+     * are shared by the us/eu/jp DKR builds (same ucode). A non-DKR microcode
+     * would have to place four identical handler addresses at the same four
+     * table slots to collide, which does not happen in practice -- this is
+     * what makes the detector exclusive and stops it from hijacking other
+     * F3D-family tasks (the earlier slot-pattern heuristic was not opcode-
+     * accurate because the dispatch index is shifted, so it pattern-matched
+     * bytes and false-positived on Doom 64 / Yoshi's Story).
+     *
+     * Verified against the retail F3DDKR xbus data segment:
+     *   tbl[0]=0x1340 tbl[5]=0x1358 tbl[7]=0x145c tbl[8]=0x146c
+     * and against gspF3DEX.fifo, which matches none of them. */
+    if (tbl[0] == 0x1340 && tbl[5] == 0x1358
+        && tbl[7] == 0x145c && tbl[8] == 0x146c)
         return 1;
-    }
+    return 0;
 }
 
 /* ---- the F3DDKR walker --------------------------------------------------- */
