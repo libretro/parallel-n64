@@ -1405,8 +1405,7 @@ static void s2dex_draw_obj(GSPState *gsp, const unsigned char *r,
     lry = say;                  /* bottom */
     uly = say - h_q;            /* top    */
 
-    if ((lrx <= ulx || lry <= uly) &&
-        !(use_matrix && (s_objmtx_b != 0 || s_objmtx_c != 0)))
+    if ((lrx <= ulx || lry <= uly) && !use_matrix)
         return;
 
 
@@ -1462,14 +1461,19 @@ static void s2dex_draw_obj(GSPState *gsp, const unsigned char *r,
         return;
     }
 
-    /* Rotated / sheared object: the 2x2 object matrix maps the sprite's
-     * object-space rectangle to a screen parallelogram. The |A|/|D|-only
-     * extent path collapses such a sprite to zero width or height (A or D is
-     * 0 for a 90-degree rotation), so transform the four corners through the
-     * full [A B; C D] (s15.16) about the bottom-left anchor instead. Only
-     * objects that actually carry off-diagonal terms take this path; pure
-     * zoom/translate sprites (B==C==0) keep the axis-aligned path below. */
-    if (use_matrix && (s_objmtx_b != 0 || s_objmtx_c != 0))
+    /* Object matrix sprite: map the sprite's object-space rectangle through
+     * the full signed [A B; C D] (s15.16) about the matrix origin (X,Y), per
+     * S2DEX gSPObjSprite (x' = A*x + B*y + X, y' = C*x + D*y + Y). This covers
+     * rotation/shear (B/C != 0), but ALSO the axis-aligned flips: a sprite
+     * with A<0 (or D<0) extends left/up from the anchor, which the old |A|/|D|
+     * extent path got wrong by always extending right/down -- a flipped piece
+     * (Yoshi's Story's in-level fortune-flower head, objX=-64 A=-0x10000)
+     * landed on the wrong side of its anchor. For B==C==0, A>0, D<0 this
+     * reproduces the axis-aligned path bit for bit (the negative D carries the
+     * object-to-screen Y flip); for A<0 it now places the flipped sprite on
+     * the side cxd4 does. The extent (ow/oh) is the same inverse-texel-step
+     * span the axis-aligned path uses, so sprite size is unchanged. */
+    if (use_matrix)
     {
         int wt = ((int)imageW >> 5) - 1;
         int ht = ((int)imageH >> 5) - 1;
