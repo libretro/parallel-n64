@@ -14684,6 +14684,10 @@ void TexColorCombinerToExtension (int32_t tmu)
          tc_ext_c = GR_CMBX_DETAIL_FACTOR;
          tc_ext_c_invert = 1;
          break;
+      default:
+         tc_ext_c = GR_CMBX_ZERO;
+         tc_ext_c_invert = 0;
+         break;
    }
 
    switch (tmu_func)
@@ -14782,6 +14786,14 @@ void TexColorCombinerToExtension (int32_t tmu)
          tc_ext_d = GR_CMBX_LOCAL_TEXTURE_ALPHA;
          tc_ext_d_invert = 0;
          break;
+      default:
+         tc_ext_a = GR_CMBX_LOCAL_TEXTURE_RGB;
+         tc_ext_a_mode = GR_FUNC_MODE_ZERO;
+         tc_ext_b = GR_CMBX_LOCAL_TEXTURE_RGB;
+         tc_ext_b_mode = GR_FUNC_MODE_ZERO;
+         tc_ext_d = GR_CMBX_ZERO;
+         tc_ext_d_invert = 0;
+         break;
    }
 
    if (tmu == GR_TMU0)
@@ -14861,6 +14873,10 @@ void TexAlphaCombinerToExtension (int32_t tmu)
          ta_ext_c = GR_CMBX_DETAIL_FACTOR;
          ta_ext_c_invert = 1;
          break;
+      default:
+         ta_ext_c = GR_CMBX_ZERO;
+         ta_ext_c_invert = 0;
+         break;
    }
 
    switch (tmu_a_func)
@@ -14927,6 +14943,14 @@ void TexAlphaCombinerToExtension (int32_t tmu)
          ta_ext_b = GR_CMBX_LOCAL_TEXTURE_ALPHA;
          ta_ext_b_mode = GR_FUNC_MODE_NEGATIVE_X;
          ta_ext_d = GR_CMBX_B;
+         ta_ext_d_invert = 0;
+         break;
+      default:
+         ta_ext_a = GR_CMBX_LOCAL_TEXTURE_ALPHA;
+         ta_ext_a_mode = GR_FUNC_MODE_ZERO;
+         ta_ext_b = GR_CMBX_LOCAL_TEXTURE_ALPHA;
+         ta_ext_b_mode = GR_FUNC_MODE_ZERO;
+         ta_ext_d = GR_CMBX_ZERO;
          ta_ext_d_invert = 0;
          break;
    }
