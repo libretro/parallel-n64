@@ -468,6 +468,63 @@ static int s2dex1_ucode_match(const unsigned char *rdram,
     return 0;
 }
 
+/* Recognise the F3DEX (v1, GBI 1) family from the *structure* of its data
+ * segment, with no dependence on the "RSP Gfx ucode ..." signature string.
+ * The Rare engine titles (Banjo-Kazooie/Tooie, Diddy Kong Racing, Donkey
+ * Kong 64, Jet Force Gemini) ship the stock gspF3DEX.fifo microcode with that
+ * author string zeroed out, so f3d_ucode_family()'s name scan misses them and
+ * the dispatcher leaves the F3D walker in its plain-Fast3D decode (gSPVertex
+ * count ((w0>>20)&0xf)+1, gSP1Triangle indices /10). F3DEX v1 is GBI 1 and
+ * needs the n<<10 / index*2 decode instead, so without recognising the family
+ * their geometry collapses.
+ *
+ * These markers were read out of the public SDK gspF3DEX.fifo object (.data,
+ * SP_UCODE_DATA_SIZE = 0x800) and hold across the whole v1 vertex family
+ * (F3DEX/F3DLX, NoN and base):
+ *   - data+0x1b0 is NOT the F3DEX2 v31 constant row ffff 0004 0008 7f00 (that
+ *     row is the positive F3DEX2 marker the dispatcher already keys on, so its
+ *     absence keeps this test off every GBI 2 build);
+ *   - data+0x118 carries the 0xef-tagged G_SETOTHERMODE init word the F3D
+ *     walker already reads from this offset (the dispatcher's f3d othermode
+ *     seed), present in the F3DEX-family data image and not in F3DEX2's;
+ *   - the GBI command dispatch table at data+0xb8 is densely populated with
+ *     IMEM handler addresses (every entry in [0x1000,0x2000) until the 0x0000
+ *     terminator): the v1 build fills all 39 slots, where a GBI 2 segment has
+ *     no such table here at all.
+ * Requiring all three keeps the test specific to the F3DEX v1 GBI-1 vertex
+ * family; it is used only to *select the GBI 1 decode*, never to re-route, so
+ * a miss leaves existing behaviour untouched. */
+static int f3dex1_data_family(const unsigned char *rdram,
+                              unsigned int rdram_size, unsigned int ud)
+{
+    unsigned int i, dense, total;
+    if (rdram == 0 || ud == 0 || ud + 0x1c0u > rdram_size)
+        return 0;
+    /* reject F3DEX2 (v31 constant row present) */
+    if (rdram[(ud + 0x1b0) ^ 3] == 0xffu && rdram[(ud + 0x1b1) ^ 3] == 0xffu
+        && rdram[(ud + 0x1b2) ^ 3] == 0x00u && rdram[(ud + 0x1b3) ^ 3] == 0x04u
+        && rdram[(ud + 0x1b4) ^ 3] == 0x00u && rdram[(ud + 0x1b5) ^ 3] == 0x08u
+        && rdram[(ud + 0x1b6) ^ 3] == 0x7fu && rdram[(ud + 0x1b7) ^ 3] == 0x00u)
+        return 0;
+    /* F3D-family othermode-init tag */
+    if (rdram[(ud + 0x118) ^ 3] != 0xefu)
+        return 0;
+    /* dense GBI dispatch table at data+0xb8 */
+    dense = 0;
+    total = 0;
+    for (i = 0; i < 48u; i++)
+    {
+        unsigned int v = ((unsigned int)rdram[(ud + 0xb8 + i * 2u) ^ 3] << 8)
+                       |  (unsigned int)rdram[(ud + 0xb9 + i * 2u) ^ 3];
+        if (v == 0u)
+            break;
+        total++;
+        if (v >= 0x1000u && v < 0x2000u)
+            dense++;
+    }
+    return (total >= 30u && dense == total) ? 1 : 0;
+}
+
 void rdp_emit_hle_process_dlist(void)
 {
     unsigned char *rdram;
@@ -541,7 +598,16 @@ void rdp_emit_hle_process_dlist(void)
             f3d_seg_reset();
             f3d_set_rdram(rdram);
             f3d_set_rdram_size(rdram_size);
-            f3d_set_variant(fam != 0);
+            /* GBI 1 (F3DEX v1) needs the n<<10 / index*2 vertex+triangle
+             * decode. f3d_ucode_family() matches it by the SGI name string,
+             * but the Rare-engine titles (Banjo-Kazooie/Tooie, DKR, DK64,
+             * Jet Force Gemini) strip that string, so fall back to the
+             * structural data-segment family probe. Either signal selects the
+             * GBI 1 decode; plain Fast3D (SM64) matches neither and keeps its
+             * own path. The line variant stays gated on the name family (only
+             * gspL3DEX, which the structural probe does not assert). */
+            f3d_set_variant(fam != 0
+                            || f3dex1_data_family(rdram, rdram_size, ud));
             f3d_set_line_variant(fam == 2);
             f3d_set_variant_wr64(f3d_is_wr64_ucode(rdram, rdram_size, ut));
             if (ud != 0 && ud + 0x120u <= rdram_size)
