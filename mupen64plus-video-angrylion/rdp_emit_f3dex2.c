@@ -509,6 +509,15 @@ void f3dex2_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
                     int rdp_id = cmd & 0x3f;
                     int32_t two[2];
                     two[0] = (int32_t)w0;
+                    /* sniff Set Scissor (0xED -> 0x2d) into the shadow the
+                     * S2DEX1 background renderer clips against: BG_COPY /
+                     * BG_1CYC read s_scis_ulx to align their strips, and the
+                     * game (e.g. Bangai-O) sets an inset 8,8 scissor once and
+                     * leaves it resident, so without this the strips draw from
+                     * 0,0 and the whole BG shifts 8 texels. The S2DEX2 block
+                     * already does this; the GBI1 path was missing it. */
+                    if (rdp_id == 0x2d)
+                        s2dex_set_scissor(w0, w1);
                     /* SET_COLOR_IMAGE (0x3f), SET_Z_IMAGE (0x3e) and
                      * SET_TEXTURE_IMAGE (0x3d) carry a DRAM pointer in w1
                      * that may be segmented; the S2DEX microcode resolves it

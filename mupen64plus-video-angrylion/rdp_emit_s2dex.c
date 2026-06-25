@@ -1572,5 +1572,5 @@ void s2dex_obj_rectangle(GSPState *gsp, const unsigned char *r,
                          unsigned int rdram_bytes,
                          unsigned int addr, RdpFifo *fifo)
 {
-    s2dex_draw_obj(gsp, r, rdram_bytes, addr, 0, 0, fifo);
+    s2dex_draw_obj(gsp, r, rdram_bytes, addr, 0, 1, fifo);
 }
