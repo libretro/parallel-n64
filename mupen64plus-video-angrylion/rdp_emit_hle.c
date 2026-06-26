@@ -618,10 +618,10 @@ void rdp_emit_hle_process_dlist(void)
          * and Hexen's automaps fall through to the F3DEX2 walker and scatter. */
         fam = f3d_ucode_family(rdram, rdram_size, ud,
                                read_dmem_u32(dmem, 0xfdc));
-        /* default: full parallelism; the f3dex2/S2DEX branch re-enables the
-         * texture barrier below only for S2DEX tasks. */
-        if (s_backend && s_backend->set_s2dex_texsync)
-            s_backend->set_s2dex_texsync(0);
+        /* default: full parallelism; the f3dex2/S2DEX branch re-enables
+         * single-worker rasterization below only for S2DEX tasks. */
+        if (s_backend && s_backend->set_serial)
+            s_backend->set_serial(0);
         if (f3ddkr_is_ucode(rdram, rdram_size, ud,
                             read_dmem_u32(dmem, 0xfdc)))
         {
@@ -706,15 +706,14 @@ void rdp_emit_hle_process_dlist(void)
             if (s2dex1_ucode_match(rdram, rdram_size, ud,
                                    read_dmem_u32(dmem, 0xfdc)))
                 f3dex2_force_class_s2dex1();
-            /* Scope the threaded-rasterizer SET_TEXTURE_IMAGE barrier to
-             * S2DEX tasks (see n64video.c): the 2D BG is emitted strip by
-             * strip and a later strip blends/AA-samples pixels an earlier
-             * strip wrote, which races across worker scanline bands at >1
-             * worker. F3DEX2/L3DEX2 (3D) keep full texture-load parallelism.
-             * Set before the walk so a mid-walk FIFO-overflow flush is
-             * covered too; the class is already resolved at this point. */
-            if (s_backend && s_backend->set_s2dex_texsync)
-                s_backend->set_s2dex_texsync(f3dex2_class_is_s2dex());
+            /* Rasterize S2DEX tasks on a single worker (see n64video.c): the
+             * 2D BG is emitted strip by strip and a later strip blends/AA-
+             * samples pixels an earlier strip wrote, which races across worker
+             * scanline bands at >1 worker. F3DEX2/L3DEX2 (3D) keep full
+             * multithreading. Set before the walk so a mid-walk FIFO-overflow
+             * flush is covered too; the class is already resolved here. */
+            if (s_backend && s_backend->set_serial)
+                s_backend->set_serial(f3dex2_class_is_s2dex());
             f3dex2_run_dl(&s_gsp, &s_fifo, dl_addr, 0, 0);
         }
     }

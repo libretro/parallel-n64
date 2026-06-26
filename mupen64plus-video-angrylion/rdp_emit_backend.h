@@ -45,10 +45,11 @@ typedef struct RdpEmitBackend
 
     /* Optional (may be NULL). The HLE dispatcher calls this with 1 before
      * submitting an S2DEX task and 0 otherwise, so a multithreaded software
-     * rasterizer can force a worker barrier on the S2DEX 2D-background's
-     * per-strip texture loads (which otherwise race across scanline bands).
-     * GPU backends with their own ordering (parallel-rdp) leave this NULL. */
-    void           (*set_s2dex_texsync)(int on);
+     * rasterizer can rasterize the S2DEX 2D background on a single worker
+     * (its per-strip blend/AA reads otherwise race the previous strip's
+     * still-pending writes across worker scanline bands). GPU backends with
+     * their own ordering (parallel-rdp) leave this NULL. */
+    void           (*set_serial)(int on);
 } RdpEmitBackend;
 
 /* Install the active backend.  The pointer must outlive all subsequent

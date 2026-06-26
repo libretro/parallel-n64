@@ -69,7 +69,7 @@ static const RdpEmitBackend par_hle_backend =
     par_get_rdram_size,
     par_get_dmem,
     par_hle_submit,
-    nullptr     /* set_s2dex_texsync: parallel-rdp orders its own work */
+    nullptr     /* set_serial: parallel-rdp orders its own work */
 };
 
 /* Called from parallelProcessDList() (parallel.cpp). */

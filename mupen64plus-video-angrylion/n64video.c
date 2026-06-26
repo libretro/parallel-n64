@@ -129,25 +129,30 @@ static uint32_t rdp_cmd_len;
 // multithreaded mode
 static bool rdp_cmd_sync[64];
 
-/* When set, SET_TEXTURE_IMAGE acts as a worker barrier regardless of the
- * configured sync level. The HLE S2DEX path enables this per task: its 2D
- * background is emitted strip by strip as SETTIMG/LOADTILE/TEXRECT triples,
- * and a later strip blends/AA-samples framebuffer pixels an earlier strip
- * wrote. Workers own contiguous scanline bands, so across a band edge that
- * read can race the still-pending write of the previous strip, leaving
- * interleaved-scanline streaks (StarCraft 64's terrain, only at >1 worker).
- * Forcing the per-strip SETTIMG to flush serializes write-then-read. Scoped
- * to S2DEX tasks so F3DEX2 (3D) keeps full texture-load parallelism. */
-static bool rdp_cmd_s2dex_texsync;
+/* When set, the current task is rasterized on worker 0 only. The HLE S2DEX
+ * path enables this per task: its 2D background is emitted strip by strip as
+ * SETTIMG/LOADTILE/TEXRECT triples, and a later strip blends/AA-samples
+ * framebuffer pixels an earlier strip wrote. Workers own contiguous scanline
+ * bands replayed at independent paces, so across a band edge that read can
+ * race the still-pending write of the previous strip, leaving interleaved-
+ * scanline streaks (StarCraft 64's terrain, only at >1 worker). A per-strip
+ * SET_TEXTURE_IMAGE barrier does not cover it (the collision is between
+ * concurrently rasterized overlapping strips, not at one sync point), so the
+ * BG is rasterized serially instead; the single-worker output is identical to
+ * the LLE oracle. Scoped to S2DEX tasks so F3DEX2/L3DEX2 (3D) keep full
+ * multithreading. */
+static bool rdp_serial_task;
 
-void n64video_set_s2dex_texsync(int on)
+void n64video_set_serial(int on)
 {
-    rdp_cmd_s2dex_texsync = on ? true : false;
+    rdp_serial_task = on ? true : false;
 }
 
 static void cmd_run_buffered(uint32_t worker_id)
 {
     uint32_t pos;
+    if (rdp_serial_task && worker_id != 0)
+        return;
     for (pos = 0; pos < rdp_cmd_buf_pos; pos++)
         rdp_cmd(worker_id, rdp_cmd_buf[pos]);
 }
@@ -447,8 +452,7 @@ void n64video_process_list(void)
                     rdp_cmd_buf_pos++;
 
                     // flush buffer when it is full or when the current command requires a sync
-                    if (rdp_cmd_buf_pos >= CMD_BUFFER_SIZE || rdp_cmd_sync[rdp_cmd_id] ||
-                        (rdp_cmd_s2dex_texsync && rdp_cmd_id == CMD_ID_SET_TEXTURE_IMAGE)) {
+                    if (rdp_cmd_buf_pos >= CMD_BUFFER_SIZE || rdp_cmd_sync[rdp_cmd_id]) {
                         cmd_flush();
                     }
                 }
