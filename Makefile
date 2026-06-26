@@ -124,6 +124,10 @@ ifneq (,$(findstring unix,$(platform)))
 
    HAVE_THR_AL=1
    LDFLAGS += -lpthread
+   # clock_gettime (libretro-common features_cpu.c) lives in librt on
+   # pre-2.17 glibc and some cross toolchains; harmless on modern glibc
+   # where it is in libc (the linker drops the unused -lrt).
+   LDFLAGS += -lrt
 
 
 
