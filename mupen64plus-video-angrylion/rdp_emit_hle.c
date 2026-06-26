@@ -560,6 +560,38 @@ static int f3dex1_data_family(const unsigned char *rdram,
     return (total >= 30u && dense == total) ? 1 : 0;
 }
 
+/* Recognise a GBI 1 F3D-family data segment by its other-mode init tag alone,
+ * with no dependence on the name string or the dense GBI dispatch table that
+ * f3dex1_data_family() requires. Wipeout 64 re-loads its F3DLX build through a
+ * second data image that carries neither: the only string in it is "RSP SW
+ * Version: 2.0H" at +0x270, and the 0xb8 dispatch table is absent, so both the
+ * f3d_ucode_family() name scan and f3dex1_data_family() miss it and the task
+ * falls through to the F3DEX2 walker -- which then mis-decodes its GBI 1
+ * vertex/triangle stream (every intro and menu screen renders black or, where
+ * a mis-read opcode lands on the BG handler, as garbage).
+ *
+ * data+0x118 holds the 0xef-tagged G_SETOTHERMODE word the F3D walker already
+ * seeds from; it is present across the F3DEX v1 (GBI 1) family and absent on
+ * every F3DEX2/S2DEX2 (GBI 2) build, which instead carry 0x00 there and the
+ * ffff0004 0008 7f00 v31 constant row at data+0x1b0. Requiring the tag present
+ * and that v31 row absent keeps this strictly off GBI 2. It is used only for an
+ * otherwise-unclassified task (neither the text version probe nor the name
+ * family matched), so plain Fast3D keeps its own decode; the caller further
+ * excludes the GBI 1 S2DEX sprite ucode by name, leaving only the F3DEX/F3DLX/
+ * L3DEX vertex-line family to route onto the F3D walker. */
+static int f3d_gbi1_othermode_data(const unsigned char *rdram,
+                                   unsigned int rdram_size, unsigned int ud)
+{
+    if (rdram == 0 || ud == 0 || ud + 0x1c0u > rdram_size)
+        return 0;
+    if (rdram[(ud + 0x1b0) ^ 3] == 0xffu && rdram[(ud + 0x1b1) ^ 3] == 0xffu
+        && rdram[(ud + 0x1b2) ^ 3] == 0x00u && rdram[(ud + 0x1b3) ^ 3] == 0x04u
+        && rdram[(ud + 0x1b4) ^ 3] == 0x00u && rdram[(ud + 0x1b5) ^ 3] == 0x08u
+        && rdram[(ud + 0x1b6) ^ 3] == 0x7fu && rdram[(ud + 0x1b7) ^ 3] == 0x00u)
+        return 0;                       /* F3DEX2/S2DEX2 v31 row -> GBI 2 */
+    return rdram[(ud + 0x118) ^ 3] == 0xefu;
+}
+
 void rdp_emit_hle_process_dlist(void)
 {
     unsigned char *rdram;
@@ -606,6 +638,7 @@ void rdp_emit_hle_process_dlist(void)
         unsigned int ut = read_dmem_u32(dmem, 0xfd0) & 0x00ffffffu;
         unsigned int ud = read_dmem_u32(dmem, 0xfd8) & 0x00ffffffu;
         int fam;
+        int gbi1_oth;
         gsp_params_at_task_start = 1;
         gsp_detect_ucode_params(&s_gsp, rdram, rdram_size, ud, ut);
         gsp_params_at_task_start = 0;
@@ -618,6 +651,15 @@ void rdp_emit_hle_process_dlist(void)
          * and Hexen's automaps fall through to the F3DEX2 walker and scatter. */
         fam = f3d_ucode_family(rdram, rdram_size, ud,
                                read_dmem_u32(dmem, 0xfdc));
+        /* Otherwise-unclassified task (no text version match, no name family):
+         * route a nameless GBI 1 F3D-family data image onto the F3D walker
+         * instead of letting it fall through to F3DEX2. Excludes the GBI 1
+         * S2DEX sprite ucode (matched by name) so only the vertex-line family
+         * is re-routed. */
+        gbi1_oth = (!f3d_is_ucode(rdram, rdram_size, ut) && fam == 0)
+                && f3d_gbi1_othermode_data(rdram, rdram_size, ud)
+                && !s2dex1_ucode_match(rdram, rdram_size, ud,
+                                       read_dmem_u32(dmem, 0xfdc));
         /* default: full parallelism; the f3dex2/S2DEX branch re-enables
          * single-worker rasterization below only for S2DEX tasks. */
         if (s_backend && s_backend->set_serial)
@@ -635,7 +677,7 @@ void rdp_emit_hle_process_dlist(void)
             f3ddkr_set_rdram_size(rdram_size);
             f3ddkr_run_dl(&s_gsp, &s_fifo, dl_addr, 0, 0);
         }
-        else if (f3d_is_ucode(rdram, rdram_size, ut) || fam != 0)
+        else if (f3d_is_ucode(rdram, rdram_size, ut) || fam != 0 || gbi1_oth)
         {
             /* Plain Fast3D (e.g. Super Mario 64): different geometry opcode
              * encoding from F3DEX2, dispatched separately. gsp_detect_ucode_
@@ -659,7 +701,8 @@ void rdp_emit_hle_process_dlist(void)
              * own path. The line variant stays gated on the name family (only
              * gspL3DEX, which the structural probe does not assert). */
             f3d_set_variant(fam != 0
-                            || f3dex1_data_family(rdram, rdram_size, ud));
+                            || f3dex1_data_family(rdram, rdram_size, ud)
+                            || gbi1_oth);
             f3d_set_line_variant(fam == 2);
             f3d_set_variant_wr64(f3d_is_wr64_ucode(rdram, rdram_size, ut));
             /* GoldenEye 007 / Perfect Dark run an early F3DEX (GBI 1) build
