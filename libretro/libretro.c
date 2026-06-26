@@ -2841,7 +2841,25 @@ bool retro_unserialize(const void * data, size_t size)
        return false;
 
     if (savestates_load_m64p(data, size))
+    {
+        /* The rumble motor is a latched on/off state driven by the game
+         * writing to PAK_IO_RUMBLE; it is transient PIF/controller state and
+         * is not part of the savestate. Loading a state while the motor is
+         * latched on leaves the frontend rumbling indefinitely, since the
+         * matching "off" write from the game is never replayed. Force both
+         * motors off on all ports after a load; if the game still wants
+         * rumble, its next PAK_IO_RUMBLE write re-enables it within a frame. */
+        if (rumble.set_rumble_state)
+        {
+            unsigned port;
+            for (port = 0; port < 4; port++)
+            {
+                rumble.set_rumble_state(port, RETRO_RUMBLE_WEAK, 0);
+                rumble.set_rumble_state(port, RETRO_RUMBLE_STRONG, 0);
+            }
+        }
         return true;
+    }
 
     return false;
 }
