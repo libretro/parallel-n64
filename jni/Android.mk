@@ -34,7 +34,7 @@ endif
 
 include $(ROOT_DIR)/Makefile.common
 
-COREFLAGS := -ffast-math -DM64P_CORE_PROTOTYPES -D_ENDUSER_RELEASE -DM64P_PLUGIN_API -D__LIBRETRO__ -DINLINE="inline" -DANDROID -DARM_FIX $(GLFLAGS) $(INCFLAGS) $(DYNAFLAGS)
+COREFLAGS := -ffast-math -DM64P_CORE_PROTOTYPES -DM64P_PLUGIN_API -D__LIBRETRO__ -DINLINE="inline" -DANDROID -DARM_FIX $(GLFLAGS) $(INCFLAGS) $(DYNAFLAGS)
 
 GIT_VERSION := " $(shell git rev-parse --short HEAD || echo unknown)"
 ifneq ($(GIT_VERSION)," unknown")

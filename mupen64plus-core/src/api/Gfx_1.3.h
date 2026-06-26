@@ -95,20 +95,10 @@ void WriteLog(m64p_msg_level level, const char *msg, ...);
 #include <string.h>
 #include <stdarg.h>
 
-#define _ENDUSER_RELEASE_
-
-#ifndef _ENDUSER_RELEASE_
-#define BRIGHT_RED			// Keep enabled, option in dialog
-#endif
-
-#define COLORED_DEBUGGER	// ;) pretty colors
-
-// rdram mask at 0x400000 bytes (bah, not right for majora's mask)
-//#define BMASK	0x7FFFFF
+/* rdram mask at 0x400000 bytes (bah, not right for majora's mask) */
 extern uint32_t BMASK;
 
 extern uint32_t update_screen_count;
-extern uint32_t resolutions[0x18][2];
 
 #ifdef LOGGING
 #define LOG(...) WriteLog(M64MSG_INFO, __VA_ARGS__)
@@ -139,9 +129,6 @@ extern uint32_t resolutions[0x18][2];
 #define RDP_E(x)
 #define FRDP_E(x, ...)
 #endif
-
-extern int romopen;
-extern int debugging;
 
 extern int exception;
 extern GFX_INFO gfx_info;

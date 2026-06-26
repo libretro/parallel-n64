@@ -64,7 +64,6 @@ extern uint32_t screen_aspectmodehint;
 #define G64_VERSION "G64 Mk2"
 #define RELTIME "Date: " __DATE__// " Time: " __TIME__
 
-int romopen = false;
 int exception = false;
 
 /* custom macros made up by cxd4 for tracking the system type better */
@@ -491,7 +490,6 @@ output:   none
 *******************************************************************/
 void glide64RomClosed (void)
 {
-   romopen = false;
    ReleaseGfx ();
 }
 
@@ -520,7 +518,6 @@ int glide64RomOpen (void)
    char name[21] = "DEFAULT";
 
    no_dlist = true;
-   romopen = true;
    ucode_error_report = true;	// allowed to report ucode errors
    rdp_reset ();
 
