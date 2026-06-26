@@ -77,6 +77,92 @@ static unsigned int   s_othermode_l;
 static int            s_dl_depth;
 static unsigned int   s_geom;   /* geometry mode in native F3D bit layout */
 
+/* ---- Wipeout 64 sprite microcode (custom F3DLX-derived ucode) -------------
+ * Its 2D content (menu background, text, intro screens) is drawn by a custom
+ * opcode triple that no standard walker decodes:
+ *     09 0000<len> <addr>   load a <len>=0x18 (24) byte sprite struct @ <addr>
+ *     BE 000000   <size>    texrect dsdx/dtdy (0x0400/0x0400)
+ *     BD 000000   <pos>     screen position; emits the sprite
+ * 0xBD/0xBE collide with F3D G_POPMTX/G_CULLDL, so the sprite path is gated on
+ * having just seen the non-standard 0x09 (which no real F3D ucode emits).
+ *
+ * The struct fields drive the RDP commands (reverse-engineered from the ucode
+ * text at ut=0x7d70): word0 = texture image address, word1 = palette/TLUT
+ * address, +0x08/+0x0a = height/width, +0x0e = CI format. For the menu every
+ * sprite is a 32x32 CI8 tile, so the tile/load/sync setup is identical across
+ * sprites and only the two image addresses and the screen rectangle vary. The
+ * ucode writes the addresses into SETTIMG raw (no segment indirection -- the
+ * routine it calls after each command is the RDP-FIFO flush, not a resolver). */
+static int          s_spr_have;          /* a 0x09 struct is loaded */
+static unsigned int s_spr_struct[6];     /* the 24-byte struct */
+static unsigned int s_spr_size;          /* BE operand (dsdx/dtdy) */
+
+static unsigned int seg_phys(unsigned int w1);
+
+static void f3d_emit_sprite(RdpFifo *fifo, unsigned int pos)
+{
+    int32_t w[4];
+    unsigned int texaddr = seg_phys(s_spr_struct[0]);    /* word0 */
+    unsigned int paladdr = seg_phys(s_spr_struct[1]);    /* word1 */
+    unsigned int texh  = (s_spr_struct[2] >> 16) & 0xffffu;  /* +0x08 texture height */
+    unsigned int width =  s_spr_struct[2]        & 0xffffu;  /* +0x0a width */
+    unsigned int disph = (s_spr_struct[3] >> 16) & 0xffffu;  /* +0x0c displayed height */
+    unsigned int fmt   = (s_spr_struct[3] >>  8) & 0xffu;    /* +0x0e 2 = CI */
+    unsigned int siz   =  s_spr_struct[3]        & 0xffu;    /* +0x0f size selector */
+    unsigned int soff  = (s_spr_struct[4] >> 16) & 0xffffu;  /* +0x10 atlas S offset */
+    unsigned int toff  =  s_spr_struct[4]        & 0xffffu;  /* +0x12 atlas T offset */
+
+    unsigned int xh = (pos >> 16) & 0xffffu;               /* screen X (10.2) */
+    unsigned int xl = xh + (width << 2);
+    unsigned int yh = pos & 0xffffu;                       /* screen Y (10.2) */
+    unsigned int yl = yh + (disph << 2);
+    unsigned int dsdx = (s_spr_size >> 16) & 0xffffu;
+    unsigned int dtdy = s_spr_size & 0xffffu;
+
+    unsigned int timgw = ((texh + 1u) >> 1) - 1u;            /* SETTIMG width field */
+    unsigned int t3    = (siz == 0u) ? 1u : 2u;              /* LOADTILE S pack shift */
+    unsigned int s1    = toff;                              /* tile T low  (atlas) */
+    unsigned int s2    = toff + disph - 1u;                 /* tile T high (atlas) */
+    unsigned int loadsl = soff << t3;                       /* LOADTILE S low  */
+    unsigned int loadsh = (soff + width - 1u) << t3;        /* LOADTILE S high */
+    unsigned int line;                                      /* tile line in 64b words */
+    unsigned int fsbyte = ((fmt << 2) | 1u) << 3;           /* texture fmt/siz = 0x48 (CI8) */
+
+    if (siz == 0u)      line = ((width << 2) + 63u) >> 6;    /* 32-bit pack path */
+    else if (siz == 1u) line = (width + 7u) >> 3;           /* 8-bit path */
+    else                line = ((width << 1) + 7u) >> 3;    /* 16-bit path */
+
+    /* palette: SETTIMG -> SYNC_TILE -> SETTILE -> SYNC_LOAD -> LOADTLUT -> PIPESYNC */
+    w[0] = (int32_t)0xfd100000u; w[1] = (int32_t)paladdr;    rdp_fifo_append(fifo, w, 2);
+    w[0] = (int32_t)0xe8000000u; w[1] = 0;                   rdp_fifo_append(fifo, w, 2);
+    w[0] = (int32_t)0xf5000100u; w[1] = (int32_t)0x07000000u;rdp_fifo_append(fifo, w, 2);
+    w[0] = (int32_t)0xe6000000u; w[1] = 0;                   rdp_fifo_append(fifo, w, 2);
+    w[0] = (int32_t)0xf0000000u; w[1] = (int32_t)0x0703c000u;rdp_fifo_append(fifo, w, 2);
+    w[0] = (int32_t)0xe7000000u; w[1] = 0;                   rdp_fifo_append(fifo, w, 2);
+    /* render mode for the sprite */
+    w[0] = (int32_t)0xef008cffu; w[1] = (int32_t)0x00504a54u;rdp_fifo_append(fifo, w, 2);
+    /* texture: SETTIMG -> SETTILE(load) -> SYNC_LOAD -> LOADTILE -> PIPESYNC -> SETTILE(rend) -> SETTILESIZE */
+    w[0] = (int32_t)(0xfd000000u | (fsbyte << 16) | timgw);
+    w[1] = (int32_t)texaddr;                                 rdp_fifo_append(fifo, w, 2);
+    w[0] = (int32_t)(0xf5000000u | (fmt << 21) | (1u << 19) | (line << 9));
+    w[1] = (int32_t)0x07080200u;                             rdp_fifo_append(fifo, w, 2);
+    w[0] = (int32_t)0xe6000000u; w[1] = 0;                   rdp_fifo_append(fifo, w, 2);
+    w[0] = (int32_t)(0xf4000000u | (loadsl << 12) | (s1 << 2));
+    w[1] = (int32_t)((7u << 24) | (loadsh << 12) | (s2 << 2));rdp_fifo_append(fifo, w, 2);
+    w[0] = (int32_t)0xe7000000u; w[1] = 0;                   rdp_fifo_append(fifo, w, 2);
+    w[0] = (int32_t)(0xf5000000u | (fmt << 21) | (siz << 19) | (line << 9));
+    w[1] = (int32_t)0x00080200u;                             rdp_fifo_append(fifo, w, 2);
+    w[0] = (int32_t)0xf2000000u;
+    w[1] = (int32_t)((((width - 1u) << 2) << 12) | ((s2 - s1) << 2));
+    rdp_fifo_append(fifo, w, 2);
+    /* TEXTURE_RECTANGLE */
+    w[0] = (int32_t)(0xe4000000u | (xl << 12) | yl);
+    w[1] = (int32_t)((xh << 12) | yh);
+    w[2] = 0;
+    w[3] = (int32_t)((dsdx << 16) | dtdy);
+    rdp_fifo_append(fifo, w, 4);
+}
+
 static unsigned int rd32(const unsigned char *r, unsigned int a)
 {
     unsigned int limit = s_rdram_size ? s_rdram_size : (8u * 1024u * 1024u);
@@ -306,6 +392,7 @@ void f3d_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
          * explicit gSPClipRatio still overrides it. */
         gsp->clip_near_z = s_variant_d64 ? 0 : 1;
         gsp->clip_ratio = 1;
+        s_spr_have = 0;
     }
     if (s_dl_depth >= F3D_DL_MAX_DEPTH)
         return;
@@ -348,7 +435,30 @@ void f3d_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
             break;
         }
 
+        case 0x09:
+            /* Wipeout sprite ucode: load the 24-byte sprite struct from w1
+             * (w0&0x1ff is the byte length, always 0x18). Marks the sprite
+             * path active so the following 0xBE/0xBD act as size/draw. */
+            {
+                unsigned int sa = seg_phys(w1);
+                if (in_range(sa, 24u))
+                {
+                    int i;
+                    for (i = 0; i < 6; i++)
+                        s_spr_struct[i] = rd32(r, sa + (unsigned int)i * 4u);
+                    s_spr_have = 1;
+                }
+            }
+            break;
+
         case F3D_POPMTX:
+            /* Wipeout sprite ucode: 0xBD carries the screen position and emits
+             * the sprite (gated on a preceding 0x09 struct load). */
+            if (s_spr_have)
+            {
+                f3d_emit_sprite(fifo, w1);
+                break;
+            }
             /* F3D pops one modelview level (w1 selects modelview/projection). */
             gsp_matrix_pop(gsp);
             break;
@@ -669,6 +779,12 @@ void f3d_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
         }
 
         case F3D_CULLDL:
+            /* Wipeout sprite ucode: 0xBE carries the texrect dsdx/dtdy. */
+            if (s_spr_have)
+            {
+                s_spr_size = w1;
+                break;
+            }
             /* gSPCullDisplayList: rejects the whole list if a vertex span is
              * fully off-screen. Not modeled -- drawing the content is correct,
              * only slower. */
