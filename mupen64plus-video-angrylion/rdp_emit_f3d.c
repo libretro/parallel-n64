@@ -119,7 +119,9 @@ static void f3d_emit_sprite(RdpFifo *fifo, unsigned int pos)
     unsigned int dsdx = (s_spr_size >> 16) & 0xffffu;
     unsigned int dtdy = s_spr_size & 0xffffu;
 
-    unsigned int timgw = ((texh + 1u) >> 1) - 1u;            /* SETTIMG width field */
+    unsigned int timgw = (siz == 0u)
+                       ? (((texh + 1u) >> 1) - 1u)          /* CI4: 2 texels/byte */
+                       : ((texh << (siz - 1u)) - 1u);       /* CI8: 1 texel/byte (texh-1) */
     unsigned int t3    = (siz == 0u) ? 1u : 2u;              /* LOADTILE S pack shift */
     unsigned int s1    = toff;                              /* tile T low  (atlas) */
     unsigned int s2    = toff + disph - 1u;                 /* tile T high (atlas) */
@@ -137,10 +139,14 @@ static void f3d_emit_sprite(RdpFifo *fifo, unsigned int pos)
     w[0] = (int32_t)0xe8000000u; w[1] = 0;                   rdp_fifo_append(fifo, w, 2);
     w[0] = (int32_t)0xf5000100u; w[1] = (int32_t)0x07000000u;rdp_fifo_append(fifo, w, 2);
     w[0] = (int32_t)0xe6000000u; w[1] = 0;                   rdp_fifo_append(fifo, w, 2);
-    w[0] = (int32_t)0xf0000000u; w[1] = (int32_t)0x0703c000u;rdp_fifo_append(fifo, w, 2);
+    w[0] = (int32_t)0xf0000000u;
+    w[1] = (int32_t)(0x07000000u | (((siz == 0u) ? 15u : 255u) << 14));
+    rdp_fifo_append(fifo, w, 2);
     w[0] = (int32_t)0xe7000000u; w[1] = 0;                   rdp_fifo_append(fifo, w, 2);
-    /* render mode for the sprite */
-    w[0] = (int32_t)0xef008cffu; w[1] = (int32_t)0x00504a54u;rdp_fifo_append(fifo, w, 2);
+    /* render mode for the sprite (CI8 content tiles differ from CI4 text) */
+    w[0] = (int32_t)0xef008cffu;
+    w[1] = (int32_t)((siz == 0u) ? 0x00504a54u : 0x00504244u);
+    rdp_fifo_append(fifo, w, 2);
     /* texture: SETTIMG -> SETTILE(load) -> SYNC_LOAD -> LOADTILE -> PIPESYNC -> SETTILE(rend) -> SETTILESIZE */
     w[0] = (int32_t)(0xfd000000u | (fsbyte << 16) | timgw);
     w[1] = (int32_t)texaddr;                                 rdp_fifo_append(fifo, w, 2);
