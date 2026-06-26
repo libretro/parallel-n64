@@ -391,10 +391,17 @@ else ifneq (,$(findstring ios,$(platform)))
       CXXFLAGS += -Wc++11-extensions -std=c++11 -stdlib=libc++ -Wc++11-long-long
       HAVE_NEON=0
    else
-      CPUFLAGS += -marm -mcpu=cortex-a8 -mfpu=neon -mfloat-abi=softfp
+      # -mcpu=cortex-a8 is only valid for a pure 32-bit armv7 invocation.
+      # clang rejects it when arm64 is also in the target arch list (e.g. the
+      # fat armv7+arm64 ios10 super-script build, which sets both -arch flags
+      # in CC), so only emit it when arm64 is not among the target arches.
+      CPUFLAGS += -mfpu=neon -mfloat-abi=softfp
+      ifeq (,$(findstring arm64,$(CC)))
+         CPUFLAGS += -marm -mcpu=cortex-a8
+         CC = clang -arch armv7 -isysroot $(IOSSDK)
+         CXX = clang++ -arch armv7 -isysroot $(IOSSDK)
+      endif
       PLATCFLAGS += -marm
-      CC = clang -arch armv7 -isysroot $(IOSSDK)
-      CXX = clang++ -arch armv7 -isysroot $(IOSSDK)
       HAVE_NEON=1
    endif
    CC_AS = perl ./tools/gas-preprocessor.pl $(CC)
