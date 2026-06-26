@@ -509,7 +509,7 @@ void s2dex_bg_1cyc(const unsigned char *rdram, unsigned int rdram_bytes,
                            + (prodw >> 16) * 0x200u) & 0xffffu;
             drawnw32 = drawnw_fold + 0xbu;
         }
-        while (startx32 >= imagew32)            /* IMEM 0x800-0x814 */
+        while (startx32 >= imagew32 && imagew32 != 0u)  /* IMEM 0x800-0x814 */
         {
             startx32 -= imagew32;
             starty32 += 0x20u;
