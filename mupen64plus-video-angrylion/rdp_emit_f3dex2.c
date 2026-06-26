@@ -202,6 +202,15 @@ void f3dex2_force_class_s2dex1(void)
     s_ucode_class = UCODE_S2DEX1;
 }
 
+/* 1 when the current task's ucode is an S2DEX (GBI 1 or GBI 2) sprite/BG
+ * build, 0 for F3DEX2/L3DEX2. The HLE dispatcher uses this to scope the
+ * threaded-rasterizer SET_TEXTURE_IMAGE barrier to the S2DEX BG path. */
+int f3dex2_class_is_s2dex(void)
+{
+    return (s_ucode_class == UCODE_S2DEX1 || s_ucode_class == UCODE_S2DEX2)
+           ? 1 : 0;
+}
+
 void f3dex2_set_rdram(unsigned char *rdram)
 {
     s_rdram_base = rdram;

@@ -129,6 +129,22 @@ static uint32_t rdp_cmd_len;
 // multithreaded mode
 static bool rdp_cmd_sync[64];
 
+/* When set, SET_TEXTURE_IMAGE acts as a worker barrier regardless of the
+ * configured sync level. The HLE S2DEX path enables this per task: its 2D
+ * background is emitted strip by strip as SETTIMG/LOADTILE/TEXRECT triples,
+ * and a later strip blends/AA-samples framebuffer pixels an earlier strip
+ * wrote. Workers own contiguous scanline bands, so across a band edge that
+ * read can race the still-pending write of the previous strip, leaving
+ * interleaved-scanline streaks (StarCraft 64's terrain, only at >1 worker).
+ * Forcing the per-strip SETTIMG to flush serializes write-then-read. Scoped
+ * to S2DEX tasks so F3DEX2 (3D) keeps full texture-load parallelism. */
+static bool rdp_cmd_s2dex_texsync;
+
+void n64video_set_s2dex_texsync(int on)
+{
+    rdp_cmd_s2dex_texsync = on ? true : false;
+}
+
 static void cmd_run_buffered(uint32_t worker_id)
 {
     uint32_t pos;
@@ -431,7 +447,8 @@ void n64video_process_list(void)
                     rdp_cmd_buf_pos++;
 
                     // flush buffer when it is full or when the current command requires a sync
-                    if (rdp_cmd_buf_pos >= CMD_BUFFER_SIZE || rdp_cmd_sync[rdp_cmd_id]) {
+                    if (rdp_cmd_buf_pos >= CMD_BUFFER_SIZE || rdp_cmd_sync[rdp_cmd_id] ||
+                        (rdp_cmd_s2dex_texsync && rdp_cmd_id == CMD_ID_SET_TEXTURE_IMAGE)) {
                         cmd_flush();
                     }
                 }
