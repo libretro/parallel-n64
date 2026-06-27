@@ -113,9 +113,7 @@ static void f3d_emit_sprite(RdpFifo *fifo, unsigned int pos)
     unsigned int toff  =  s_spr_struct[4]        & 0xffffu;  /* +0x12 atlas T offset */
 
     unsigned int xh = (pos >> 16) & 0xffffu;               /* screen X (10.2) */
-    unsigned int xl = xh + (width << 2);
     unsigned int yh = pos & 0xffffu;                       /* screen Y (10.2) */
-    unsigned int yl = yh + (disph << 2);
     unsigned int dsdx = (s_spr_size >> 16) & 0xffffu;
     unsigned int dtdy = s_spr_size & 0xffffu;
 
@@ -147,26 +145,97 @@ static void f3d_emit_sprite(RdpFifo *fifo, unsigned int pos)
     w[0] = (int32_t)0xef008cffu;
     w[1] = (int32_t)((siz == 0u) ? 0x00504a54u : 0x00504244u);
     rdp_fifo_append(fifo, w, 2);
-    /* texture: SETTIMG -> SETTILE(load) -> SYNC_LOAD -> LOADTILE -> PIPESYNC -> SETTILE(rend) -> SETTILESIZE */
-    w[0] = (int32_t)(0xfd000000u | (fsbyte << 16) | timgw);
-    w[1] = (int32_t)texaddr;                                 rdp_fifo_append(fifo, w, 2);
-    w[0] = (int32_t)(0xf5000000u | (fmt << 21) | (1u << 19) | (line << 9));
-    w[1] = (int32_t)0x07080200u;                             rdp_fifo_append(fifo, w, 2);
-    w[0] = (int32_t)0xe6000000u; w[1] = 0;                   rdp_fifo_append(fifo, w, 2);
-    w[0] = (int32_t)(0xf4000000u | (loadsl << 12) | (s1 << 2));
-    w[1] = (int32_t)((7u << 24) | (loadsh << 12) | (s2 << 2));rdp_fifo_append(fifo, w, 2);
-    w[0] = (int32_t)0xe7000000u; w[1] = 0;                   rdp_fifo_append(fifo, w, 2);
-    w[0] = (int32_t)(0xf5000000u | (fmt << 21) | (siz << 19) | (line << 9));
-    w[1] = (int32_t)0x00080200u;                             rdp_fifo_append(fifo, w, 2);
-    w[0] = (int32_t)0xf2000000u;
-    w[1] = (int32_t)((((width - 1u) << 2) << 12) | ((s2 - s1) << 2));
-    rdp_fifo_append(fifo, w, 2);
-    /* TEXTURE_RECTANGLE */
-    w[0] = (int32_t)(0xe4000000u | (xl << 12) | yl);
-    w[1] = (int32_t)((xh << 12) | yh);
-    w[2] = 0;
-    w[3] = (int32_t)((dsdx << 16) | dtdy);
-    rdp_fifo_append(fifo, w, 4);
+    /* texture: SETTIMG -> SETTILE(load), then a per-band SYNC_LOAD ->
+     * LOADTILE -> PIPESYNC -> SETTILE(rend) -> SETTILESIZE -> TEXRECT.
+     *
+     * The screen rectangle is the texel extent divided by the texrect step:
+     * an unscaled sprite (dsdx=dtdy=0x400) yields width<<2 / disph<<2 exactly
+     * as before, but a stretched sprite (Wipeout's full-screen rippling
+     * overlay is a 64x64 CI8 tile drawn with dsdx=0x0c8) expands to its true
+     * on-screen size. A CI image larger than the 2 KB low TMEM half (the TLUT
+     * occupies the high half) cannot be loaded in one shot, so it is split
+     * into vertical bands of at most (2048 / bytes-per-row) rows -- the same
+     * strip-tiling the microcode does -- with a one-row overlap for bilerp
+     * continuity. Small atlas glyphs fit one band and keep the old output. */
+    {
+        unsigned int bpr = (siz == 0u) ? ((width + 1u) >> 1)   /* CI4 */
+                         : (siz == 1u) ? width                  /* CI8 */
+                         : (width << 1);                        /* 16-bit */
+        unsigned int max_rows = (bpr != 0u && bpr <= 2048u)
+                              ? (2048u / bpr) : disph;
+        unsigned int strw = (dsdx != 0u) ? ((width << 12) / dsdx)
+                                         : (width << 2);
+        unsigned int full_h = (dtdy != 0u) ? ((disph << 12) / dtdy)
+                                           : (disph << 2);
+        unsigned int xl2 = xh + strw;
+
+
+        /* SETTIMG + load-tile SETTILE are constant across bands */
+        w[0] = (int32_t)(0xfd000000u | (fsbyte << 16) | timgw);
+        w[1] = (int32_t)texaddr;                             rdp_fifo_append(fifo, w, 2);
+        w[0] = (int32_t)(0xf5000000u | (fmt << 21) | (1u << 19) | (line << 9));
+        w[1] = (int32_t)0x07080200u;                         rdp_fifo_append(fifo, w, 2);
+
+        if (disph <= max_rows) {
+            /* one band: the whole image fits the low TMEM half. No overlap;
+             * th = s2 = toff+disph-1 keeps unscaled atlas glyphs byte-exact. */
+            unsigned int yl2 = yh + full_h;
+            w[0] = (int32_t)0xe6000000u; w[1] = 0;           rdp_fifo_append(fifo, w, 2);
+            w[0] = (int32_t)(0xf4000000u | (loadsl << 12) | (s1 << 2));
+            w[1] = (int32_t)((7u << 24) | (loadsh << 12) | (s2 << 2));
+            rdp_fifo_append(fifo, w, 2);
+            w[0] = (int32_t)0xe7000000u; w[1] = 0;           rdp_fifo_append(fifo, w, 2);
+            w[0] = (int32_t)(0xf5000000u | (fmt << 21) | (siz << 19) | (line << 9));
+            w[1] = (int32_t)0x00080200u;                     rdp_fifo_append(fifo, w, 2);
+            w[0] = (int32_t)0xf2000000u;
+            w[1] = (int32_t)((((width - 1u) << 2) << 12) | ((s2 - s1) << 2));
+            rdp_fifo_append(fifo, w, 2);
+            w[0] = (int32_t)(0xe4000000u | (xl2 << 12) | yl2);
+            w[1] = (int32_t)((xh << 12) | yh);
+            w[2] = 0;
+            w[3] = (int32_t)((dsdx << 16) | dtdy);
+            rdp_fifo_append(fifo, w, 4);
+        } else {
+            /* TMEM-limited: split into vertical bands of (max_rows) texels with
+             * a one-row overlap (advance = max_rows-1) for bilerp continuity,
+             * exactly as the microcode does. Band height is a fixed ceil-to-
+             * pixel of the advance; the last band fills to the true extent. The
+             * accumulated sub-texel fraction lands in each band's T coordinate. */
+            unsigned int adv   = (max_rows > 1u) ? (max_rows - 1u) : 1u;
+            unsigned int dt4   = dtdy << 2;
+            unsigned int bandh = (dtdy != 0u)
+                               ? ((((adv << 12) + dt4 - 1u) / dt4) << 2)
+                               : (adv << 2);
+            unsigned int bfrac = ((bandh * dtdy) >> 7) - (adv << 5);
+            unsigned int b;
+            for (b = 0u; b * adv < disph; b++) {
+                unsigned int tl   = s1 + b * adv;
+                unsigned int th   = (b * adv + adv < disph)
+                                  ? (tl + adv) : (s1 + disph);
+                unsigned int lrt  = th - tl;
+                unsigned int yh_b = (b * bandh < full_h) ? (b * bandh) : full_h;
+                unsigned int yl_b = ((b + 1u) * bandh < full_h)
+                                  ? ((b + 1u) * bandh) : full_h;
+                unsigned int tc   = b * bfrac;
+
+                w[0] = (int32_t)0xe6000000u; w[1] = 0;       rdp_fifo_append(fifo, w, 2);
+                w[0] = (int32_t)(0xf4000000u | (loadsl << 12) | (tl << 2));
+                w[1] = (int32_t)((7u << 24) | (loadsh << 12) | (th << 2));
+                rdp_fifo_append(fifo, w, 2);
+                w[0] = (int32_t)0xe7000000u; w[1] = 0;       rdp_fifo_append(fifo, w, 2);
+                w[0] = (int32_t)(0xf5000000u | (fmt << 21) | (siz << 19) | (line << 9));
+                w[1] = (int32_t)0x00080200u;                 rdp_fifo_append(fifo, w, 2);
+                w[0] = (int32_t)0xf2000000u;
+                w[1] = (int32_t)((((width - 1u) << 2) << 12) | (lrt << 2));
+                rdp_fifo_append(fifo, w, 2);
+                w[0] = (int32_t)(0xe4000000u | (xl2 << 12) | yl_b);
+                w[1] = (int32_t)((xh << 12) | yh_b);
+                w[2] = (int32_t)tc;
+                w[3] = (int32_t)((dsdx << 16) | dtdy);
+                rdp_fifo_append(fifo, w, 4);
+            }
+        }
+    }
 }
 
 static unsigned int rd32(const unsigned char *r, unsigned int a)
