@@ -129,6 +129,22 @@ static uint32_t rdp_cmd_len;
 // multithreaded mode
 static bool rdp_cmd_sync[64];
 
+/* When set, the multithreaded command processor flushes (barriers all
+ * workers) after every framebuffer-writing rectangle primitive instead of
+ * letting the workers free-run through the buffered chunk. This is needed
+ * only for S2DEX background strips, where a later strip blends/AA-reads
+ * framebuffer pixels an earlier overlapping strip is still writing from a
+ * different worker's scanline band (StarCraft 64 terrain streaks at
+ * THREADS>1). It is scoped to the BG-strip drain via the RdpFifo `barrier`
+ * field (see fifo_flush_to_rdp) so OBJ sprites and 3D geometry keep
+ * free-running; a blanket per-draw flush over a whole S2DEX task barriered
+ * hundreds of unrelated OBJ draws and cratered the frame rate. */
+static bool rdp_serial_task;
+
+void n64video_set_serial(int on)
+{
+    rdp_serial_task = on ? true : false;
+}
 
 static void cmd_run_buffered(uint32_t worker_id)
 {
@@ -432,7 +448,11 @@ void n64video_process_list(void)
                     rdp_cmd_buf_pos++;
 
                     // flush buffer when it is full or when the current command requires a sync
-                    if (rdp_cmd_buf_pos >= CMD_BUFFER_SIZE || rdp_cmd_sync[rdp_cmd_id]) {
+                    if (rdp_cmd_buf_pos >= CMD_BUFFER_SIZE || rdp_cmd_sync[rdp_cmd_id]
+                        || (rdp_serial_task
+                            && (rdp_cmd_id == CMD_ID_TEXTURE_RECTANGLE
+                                || rdp_cmd_id == CMD_ID_TEXTURE_RECTANGLE_FLIP
+                                || rdp_cmd_id == CMD_ID_FILL_RECTANGLE))) {
                         cmd_flush();
                     }
                 }
