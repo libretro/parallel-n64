@@ -141,6 +141,19 @@ static bool rdp_cmd_sync[64];
  * BG is rasterized serially instead; the single-worker output is identical to
  * the LLE oracle. Scoped to S2DEX tasks so F3DEX2/L3DEX2 (3D) keep full
  * multithreading. */
+/* When set, every framebuffer-writing draw in the current task forces a worker
+ * flush, so each draw is rasterized to completion across all workers before the
+ * next one runs. The HLE S2DEX path enables this per task: its 2D background is
+ * emitted strip by strip as SETTIMG/LOADTILE/TEXRECT triples, and a later strip
+ * blends/AA-samples framebuffer pixels an earlier strip wrote. Workers own
+ * interleaved scanlines replayed at independent paces within a buffered chunk,
+ * so without a per-draw flush a later strip's read can race the still-pending
+ * write of an earlier overlapping strip, leaving interleaved-scanline streaks
+ * (StarCraft 64's terrain, only at >1 worker). Flushing per draw keeps every
+ * worker active (unlike single-worker serialization, which both drops the other
+ * workers' scanlines and tanks 2D throughput) while making the output identical
+ * to the LLE oracle. Scoped to S2DEX tasks so F3DEX2/L3DEX2 (3D) keep the full
+ * free-running fast path. GPU backends with their own ordering leave it NULL. */
 static bool rdp_serial_task;
 
 void n64video_set_serial(int on)
@@ -151,8 +164,6 @@ void n64video_set_serial(int on)
 static void cmd_run_buffered(uint32_t worker_id)
 {
     uint32_t pos;
-    if (rdp_serial_task && worker_id != 0)
-        return;
     for (pos = 0; pos < rdp_cmd_buf_pos; pos++)
         rdp_cmd(worker_id, rdp_cmd_buf[pos]);
 }
@@ -451,8 +462,15 @@ void n64video_process_list(void)
                     // increment buffer position
                     rdp_cmd_buf_pos++;
 
-                    // flush buffer when it is full or when the current command requires a sync
-                    if (rdp_cmd_buf_pos >= CMD_BUFFER_SIZE || rdp_cmd_sync[rdp_cmd_id]) {
+                    // flush buffer when it is full, when the current command
+                    // requires a sync, or (for S2DEX tasks) after each
+                    // framebuffer-writing draw, so an overlapping later strip
+                    // never reads a previous strip's still-pending write.
+                    if (rdp_cmd_buf_pos >= CMD_BUFFER_SIZE || rdp_cmd_sync[rdp_cmd_id] ||
+                        (rdp_serial_task &&
+                         (rdp_cmd_id == CMD_ID_TEXTURE_RECTANGLE ||
+                          rdp_cmd_id == CMD_ID_TEXTURE_RECTANGLE_FLIP ||
+                          rdp_cmd_id == CMD_ID_FILL_RECTANGLE))) {
                         cmd_flush();
                     }
                 }
