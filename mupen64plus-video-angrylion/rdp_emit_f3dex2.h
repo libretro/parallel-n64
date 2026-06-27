@@ -32,11 +32,6 @@ typedef struct RdpFifo
      * SYNC_FULL, which leaves the game waiting forever on the RDP
      * interrupt (video freezes while audio keeps running). */
     void         (*flush)(struct RdpFifo *f);
-    /* When non-zero, the next flush() drains the accumulated commands with
-     * the rasterizer's per-draw worker barrier engaged (n64video_set_serial).
-     * Set only around S2DEX BG-strip emission so the cross-strip framebuffer
-     * race is serialized without barriering unrelated OBJ/3D draws. */
-    int            barrier;
 } RdpFifo;
 
 void rdp_fifo_init(RdpFifo *f, unsigned char *storage,

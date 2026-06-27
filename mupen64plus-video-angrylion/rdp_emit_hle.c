@@ -20,11 +20,6 @@
 #include "rdp_emit_rsp.h"
 #include "rdp_emit_backend.h"
 
-/* Implemented by the angrylion software rasterizer (n64video.c, always
- * compiled in). Engaging it for a non-angrylion backend is harmless: that
- * backend's submit ignores the flag and orders its own work. */
-extern void n64video_set_serial(int on);
-
 /* The active rasterizer backend (angrylion or parallel-rdp).  Installed via
  * rdp_emit_set_backend() at plugin connect time.  The display-list walk,
  * microcode detection and command encoding below are identical for either;
@@ -74,9 +69,7 @@ static void fifo_flush_to_rdp(RdpFifo *f)
     /* The backend points its DPC registers at [base, base+used), fetches the
      * command words from f->storage (guest RDRAM at `base` is never written),
      * runs its RDP, and restores guest-RDRAM command fetch on return. */
-    n64video_set_serial(f->barrier);
     s_backend->submit(f->storage, f->base, f->used);
-    n64video_set_serial(0);
     f->used = 0;
 }
 

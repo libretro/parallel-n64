@@ -224,7 +224,6 @@ void rdp_fifo_init(RdpFifo *f, unsigned char *storage,
     f->used    = 0;
     f->cap     = cap;
     f->flush   = 0;
-    f->barrier = 0;
 }
 
 void rdp_fifo_append(RdpFifo *f, const int32_t *words, int count)
@@ -292,36 +291,6 @@ static int addr_in_range(unsigned int a, unsigned int bytes)
 {
     unsigned int limit = s_rdram_size ? s_rdram_size : (8u * 1024u * 1024u);
     return (a < limit) && (bytes <= limit) && (a + bytes <= limit);
-}
-
-/* Emit an S2DEX background through `fn` (s2dex_bg_1cyc or s2dex_bg_copy),
- * engaging the rasterizer's per-draw worker barrier for the copy-cycle path
- * only.
- *
- * A background is drawn as a column of strips. The copy-cycle strips
- * (gSPBgRectCopy) snap their lower edge to a four-line boundary (the RDP
- * forces yl |= 3 in COPY/FILL cycle), so consecutive strips overlap and a
- * full-screen copy pass overlaps every tiled strip beneath it. At THREADS>1
- * the angrylion workers free-run through the buffered chunk on interleaved
- * scanlines, so an overlapping copy strip can land on rows a neighbouring
- * strip has not finished, shredding the image into horizontal bands
- * (StarCraft 64 terrain). Draining the queue with fifo->barrier set
- * serializes those strips. One-cycle backgrounds (Yoshi's Story's stacked
- * scenery, Worms) do not snap/overlap this way and render correctly
- * free-running, so they pay no barrier; the drain-before keeps the barrier
- * off the preceding OBJ/3D draws as well. */
-static void s2dex_bg_barriered(
-    void (*fn)(const unsigned char *, unsigned int, unsigned int, RdpFifo *),
-    const unsigned char *rdram, unsigned int rdram_bytes,
-    unsigned int bg_addr, RdpFifo *fifo)
-{
-    if (fifo->flush)
-        fifo->flush(fifo);              /* drain preceding draws free-running */
-    fifo->barrier = (fn == s2dex_bg_copy) ? 1 : 0;
-    fn(rdram, rdram_bytes, bg_addr, fifo);
-    if (fifo->flush)
-        fifo->flush(fifo);              /* drain BG strips (barriered iff copy) */
-    fifo->barrier = 0;
 }
 
 void f3dex2_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
@@ -544,9 +513,8 @@ void f3dex2_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
                  * the same transcribed BG renderer the S2DEX2 path uses. */
                 unsigned int bga = seg_addr(w1);
                 if (addr_in_range(bga, 40u))
-                    s2dex_bg_barriered(s2dex_bg_1cyc, r,
-                                  s_rdram_size ? s_rdram_size
-                                               : (8u * 1024u * 1024u),
+                    s2dex_bg_1cyc(r, s_rdram_size ? s_rdram_size
+                                                  : (8u * 1024u * 1024u),
                                   bga, fifo);
                 break;
             }
@@ -554,9 +522,8 @@ void f3dex2_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
             {
                 unsigned int bga = seg_addr(w1);
                 if (addr_in_range(bga, 40u))
-                    s2dex_bg_barriered(s2dex_bg_copy, r,
-                                  s_rdram_size ? s_rdram_size
-                                               : (8u * 1024u * 1024u),
+                    s2dex_bg_copy(r, s_rdram_size ? s_rdram_size
+                                                  : (8u * 1024u * 1024u),
                                   bga, fifo);
                 break;
             }
@@ -665,9 +632,8 @@ void f3dex2_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
              * them to the transcribed S2DEX2 background renderer. */
             unsigned int bga = seg_addr(w1);
             if (addr_in_range(bga, 40u))
-                s2dex_bg_barriered(s2dex_bg_1cyc, r,
-                              s_rdram_size ? s_rdram_size
-                                           : (8u * 1024u * 1024u),
+                s2dex_bg_1cyc(r, s_rdram_size ? s_rdram_size
+                                              : (8u * 1024u * 1024u),
                               bga, fifo);
             break;
         }
@@ -677,9 +643,8 @@ void f3dex2_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
             /* gSPBgRectCopy: the transcribed copy-mode renderer */
             unsigned int bga = seg_addr(w1);
             if (addr_in_range(bga, 40u))
-                s2dex_bg_barriered(s2dex_bg_copy, r,
-                              s_rdram_size ? s_rdram_size
-                                           : (8u * 1024u * 1024u),
+                s2dex_bg_copy(r, s_rdram_size ? s_rdram_size
+                                              : (8u * 1024u * 1024u),
                               bga, fifo);
             break;
         }
