@@ -740,6 +740,20 @@ void f3d_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
             unsigned int ss = (unsigned int)((w1 >> 16) & 0xffff);
             unsigned int ts = (unsigned int)(w1 & 0xffff);
             s_textured = (on != 0) ? 1 : 0;
+            /* A G_TEXTURE carrying a zero S/T scale must not overwrite the
+             * active scale that bakes vertex texcoords. Wipeout 64's custom
+             * ucode emits 0xBB commands with w1==0 (both on==0 and on==1)
+             * between vertex loads; taking the zero literally made every
+             * subsequently-transformed vertex bake tv = (st*scale)>>16 = 0,
+             * flattening the affected texture to a single texel. A zero
+             * texture scale is never valid for a textured draw (it collapses
+             * all texels to one), and the LLE RSP retains the last real scale,
+             * so preserve it when the command provides none. */
+            if (ss == 0 && ts == 0)
+            {
+                ss = gsp->tex_scale_s;
+                ts = gsp->tex_scale_t;
+            }
             gsp_set_texture(gsp, ss, ts, tile, level, gsp->tex_w, gsp->tex_h);
             break;
         }
