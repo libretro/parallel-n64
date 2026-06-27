@@ -141,9 +141,20 @@ static void f3d_emit_sprite(RdpFifo *fifo, unsigned int pos)
     w[1] = (int32_t)(0x07000000u | (((siz == 0u) ? 15u : 255u) << 14));
     rdp_fifo_append(fifo, w, 2);
     w[0] = (int32_t)0xe7000000u; w[1] = 0;                   rdp_fifo_append(fifo, w, 2);
-    /* render mode for the sprite (CI8 content tiles differ from CI4 text) */
-    w[0] = (int32_t)0xef008cffu;
-    w[1] = (int32_t)((siz == 0u) ? 0x00504a54u : 0x00504244u);
+    /* render mode: a scaled (magnified) sprite -- the Wipeout full-screen
+     * rippling-water menu overlay -- is drawn 2x2 bilinear like the microcode
+     * (sample_type=1) with the matching coverage/z rendermode bits; 1:1 atlas
+     * glyphs stay point-sampled, exactly as before. The microcode selects the
+     * filter purely on whether the texrect step is unity (0x400), verified
+     * against the cxd4 LLE RSP: every scaled texrect is bilinear, every 1:1
+     * texrect is point. */
+    if (dsdx != 0x400u || dtdy != 0x400u) {
+        w[0] = (int32_t)0xef00acffu;                       /* sample_type = 1 */
+        w[1] = (int32_t)(((siz == 0u) ? 0x00504a54u : 0x00504244u) | 0x810u);
+    } else {
+        w[0] = (int32_t)0xef008cffu;                       /* sample_type = 0 */
+        w[1] = (int32_t)((siz == 0u) ? 0x00504a54u : 0x00504244u);
+    }
     rdp_fifo_append(fifo, w, 2);
     /* texture: SETTIMG -> SETTILE(load), then a per-band SYNC_LOAD ->
      * LOADTILE -> PIPESYNC -> SETTILE(rend) -> SETTILESIZE -> TEXRECT.
