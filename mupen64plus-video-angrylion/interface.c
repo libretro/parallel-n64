@@ -63,8 +63,7 @@ static const RdpEmitBackend al_hle_backend =
     plugin_get_rdram,
     plugin_get_rdram_size,
     plugin_get_dmem,
-    al_hle_submit,
-    n64video_set_serial
+    al_hle_submit
 };
 
 extern unsigned int screen_width, screen_height;
