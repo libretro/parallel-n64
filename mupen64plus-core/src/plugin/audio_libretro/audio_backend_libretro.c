@@ -45,11 +45,16 @@
  *   at 50 Hz video with the N64 game producing audio at 48 kHz (the
  *   highest rate the AI controller's BITRATE divider permits, well
  *   above any actual N64 game's choice). 48000 / 50 = 960 stereo
- *   frames per video frame. Doubling that absorbs the bursty mid-frame
- *   push schedule that some games use (multiple smaller AI DMAs per
- *   frame instead of one large one) plus any momentary phase drift
- *   between AI DMA completion scheduling and VI vertical-interrupt
- *   scheduling. 2048 stereo frames * 4 bytes = 8 KB total. */
+ *   frames per video frame. Beyond the single-frame working set, the
+ *   per-run delivery smoother (see flush_audio_libretro below) carries a
+ *   few VI fields of audio between flushes to even out games with a
+ *   bursty mixer cadence, so the accumulator must also hold that carry:
+ *   up to the high-water mark (4 fields) plus one run's push before the
+ *   once-per-run drain. Sizing the buffer at 8192 stereo frames (~8.5
+ *   fields even at the 960-frame worst case, 32 KB total) keeps that
+ *   working set well clear of the capacity, so the emergency mid-frame
+ *   drain in push_audio_samples_via_libretro is never reached by any
+ *   real game. */
 
 #include "../../api/m64p_types.h"
 #include <libretro.h>
@@ -68,22 +73,37 @@
 extern retro_audio_sample_batch_t audio_batch_cb;
 extern retro_environment_t        environ_cb;
 
-#define AUDIO_ACC_FRAMES   2048u
+#define AUDIO_ACC_FRAMES   8192u
 
 static int16_t  audio_acc[AUDIO_ACC_FRAMES * 2];
 static size_t   audio_acc_frames;        /* stereo frames currently held */
 static unsigned current_sample_rate;     /* 0 until first set_audio_format */
 
+/* Per-retro_run audio-delivery smoother state (see flush_audio_libretro). */
+#define SMOOTH_RATE_WINDOW  512u   /* cap on the running-mean window     */
+#define SMOOTH_SETPOINT_F   3u     /* carry setpoint, in fields (= rate)  */
+#define SMOOTH_HIWATER_F    4u     /* hard-drain threshold, in fields     */
+
+static unsigned long smooth_pushed_this_run; /* frames pushed since last flush */
+static unsigned long smooth_rate_q16;        /* running mean of frames/run, Q16 */
+static unsigned long smooth_runs;            /* retro_run count (window ramp)   */
+
 void init_audio_libretro(void)
 {
    audio_acc_frames = 0;
    current_sample_rate = 0;
+   smooth_pushed_this_run = 0;
+   smooth_rate_q16 = 0;
+   smooth_runs = 0;
 }
 
 void deinit_audio_libretro(void)
 {
    audio_acc_frames = 0;
    current_sample_rate = 0;
+   smooth_pushed_this_run = 0;
+   smooth_rate_q16 = 0;
+   smooth_runs = 0;
 }
 
 unsigned get_audio_sample_rate_libretro(void)
@@ -94,32 +114,136 @@ unsigned get_audio_sample_rate_libretro(void)
    return current_sample_rate ? current_sample_rate : 32040u;
 }
 
-/* Drain the per-frame accumulator to the libretro frontend in a single
- * audio_batch_cb call (looped only to absorb partial-consume by the
- * frontend; in practice the first call accepts all frames). */
-void flush_audio_libretro(void)
+/* Emit the first n stereo frames of the accumulator to the frontend in a
+ * single audio_batch_cb call (looped only to absorb a partial-consume by
+ * the frontend) and shift any remainder down to the front of audio_acc so
+ * it carries into the next run. n is clamped to what is actually held. */
+static void emit_frames(size_t n)
 {
    const int16_t *out;
    size_t         remaining;
+   size_t         consumed;
+   size_t         left;
 
-   if (audio_acc_frames == 0)
+   if (n == 0)
       return;
+   if (n > audio_acc_frames)
+      n = audio_acc_frames;
 
    out       = audio_acc;
-   remaining = audio_acc_frames;
+   remaining = n;
 
    while (remaining)
    {
       size_t ret = audio_batch_cb(out, remaining);
       if (ret == 0)
-         break;                          /* frontend backpressure; drop the
+         break;                          /* frontend backpressure; keep the
                                           * remainder rather than stall the
                                           * emulator */
       remaining -= ret;
       out       += ret * 2;
    }
 
-   audio_acc_frames = 0;
+   consumed = n - remaining;
+   left     = audio_acc_frames - consumed;
+   if (left != 0 && consumed != 0)
+      memmove(audio_acc, audio_acc + consumed * 2,
+              left * 2 * sizeof(int16_t));
+   audio_acc_frames = left;
+}
+
+/* Per-retro_run audio-delivery smoother.
+ *
+ * Most games push roughly one VI field of audio per retro_run, so the
+ * accumulator drains as a steady ~1-field batch every frame. Some games
+ * service their audio mixer on an irregular cadence: Doom 64 runs it on
+ * alternate VI fields (pushing ~2 fields one run, nothing the next);
+ * Perfect Dark runs it every retrace but with a variable per-tick sample
+ * count and occasional catch-up frames, so its per-run push is a skewed
+ * mix of 0 / 1-tick / 2-tick bursts. Either way the unsmoothed drain
+ * emits a bursty pattern. A frontend with elastic dynamic-rate control
+ * absorbs that, but the exact-content-framerate + scanline-sync path
+ * cannot -- the ripple manifests as audio crackle and the video throttles
+ * to a lower equilibrium (e.g. ~50 fps on a 60 Hz title).
+ *
+ * We even out delivery with a small controller. Each retro_run it emits a
+ * target close to the game's true mean production rate and carries the
+ * remainder in audio_acc, holding a few fields of cushion so a zero-push
+ * run never starves the output:
+ *
+ *   rate   : running mean of frames pushed per run (Q16). A true mean
+ *            (window ramps to 512, then fixed) -- NOT a fast EMA, which
+ *            would settle biased high on a skewed burst distribution and
+ *            then over-emit during transitions, draining the cushion and
+ *            starving real audio (observed as a frame-rate dip whenever
+ *            the soundscape changed).
+ *   emit   = rate + ((carry - SETPOINT*rate) >> 3)  (proportional pull of
+ *            the carry toward the cushion setpoint; gain 1/8).
+ *   clamps : 0 <= emit <= 1.5*rate normally; if the carry exceeds HIWATER
+ *            fields (a sustained production spike) drain down to two fields
+ *            this run so the carry stays well under the buffer; never emit
+ *            more than is held (no fabrication).
+ *
+ * Total sample count and ordering are preserved exactly; only the per-run
+ * partition changes. The rate is derived from observed production, not the
+ * declared timing.fps (a fixed constant that does not match every title),
+ * so it cannot be skewed by that constant. Games that already deliver one
+ * field per run see emit == their per-run push, making the controller a
+ * cadence no-op for them (a constant few-field phase offset established at
+ * boot, negligible against the frontend's own audio buffering). */
+void flush_audio_libretro(void)
+{
+   unsigned long w;
+   unsigned long rate;
+   long          num;
+   long          err;
+   long          emit;
+   long          cap;
+   size_t        held;
+
+   /* Fold the run that just finished into the running-mean rate (Q16).
+    * w ramps 1..SMOOTH_RATE_WINDOW so this is a true cumulative average
+    * over a bounded window rather than a fast EMA. */
+   w = ++smooth_runs;
+   if (w > SMOOTH_RATE_WINDOW)
+      w = SMOOTH_RATE_WINDOW;
+   num = (long)(smooth_pushed_this_run << 16) - (long)smooth_rate_q16;
+   smooth_rate_q16 = (unsigned long)((long)smooth_rate_q16 + num / (long)w);
+   smooth_pushed_this_run = 0;
+
+   held = audio_acc_frames;
+   if (held == 0)
+      return;
+
+   rate = smooth_rate_q16 >> 16;
+   if (rate == 0)
+   {
+      /* no production history yet (silent boot): pass straight through */
+      emit_frames(held);
+      return;
+   }
+
+   /* proportional pull of the carry toward the SETPOINT-field cushion */
+   err  = (long)held - (long)(SMOOTH_SETPOINT_F * rate);
+   emit = (long)rate + (err >> 3);
+
+   /* normal bounds: never negative, never more than 1.5 fields per run */
+   cap = (long)((rate * 3u) / 2u);
+   if (emit < 0)
+      emit = 0;
+   if (emit > cap)
+      emit = cap;
+
+   /* sustained production spike: hard-drain down to two fields so the
+    * carry can never approach the accumulator capacity */
+   if (held > SMOOTH_HIWATER_F * rate)
+      emit = (long)held - (long)(2u * rate);
+
+   /* never emit more than is actually held */
+   if (emit > (long)held)
+      emit = (long)held;
+
+   emit_frames((size_t)emit);
 }
 
 /* bits is ignored: the AI controller always produces 16-bit stereo.
@@ -135,6 +259,13 @@ void set_audio_format_via_libretro(void *user_data,
       return;
 
    current_sample_rate = frequency;
+
+   /* the production-rate estimate is in absolute frames/run, which scales
+    * with the sample rate; reset it so the smoother re-converges to the
+    * new title's cadence instead of dragging the old rate along */
+   smooth_rate_q16        = 0;
+   smooth_runs            = 0;
+   smooth_pushed_this_run = 0;
 
    if (environ_cb)
    {
@@ -187,7 +318,9 @@ void push_audio_samples_via_libretro(void *user_data,
    frames = size >> 2;                   /* 4 bytes per stereo frame */
 
    if (audio_acc_frames + frames > AUDIO_ACC_FRAMES)
-      flush_audio_libretro();
+      emit_frames(audio_acc_frames);     /* emergency full drain; the
+                                          * smoother runs once per run from
+                                          * flush_audio_libretro, not here */
 
    off = 0;
    while (off < frames)
@@ -213,11 +346,12 @@ void push_audio_samples_via_libretro(void *user_data,
 #endif
       }
 
-      audio_acc_frames += chunk;
-      off              += chunk;
+      audio_acc_frames       += chunk;
+      smooth_pushed_this_run += chunk;   /* feeds the running-mean rate */
+      off                    += chunk;
 
       if (audio_acc_frames == AUDIO_ACC_FRAMES && off < frames)
-         flush_audio_libretro();
+         emit_frames(audio_acc_frames);  /* emergency full drain */
    }
 }
 
