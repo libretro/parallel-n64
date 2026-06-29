@@ -237,9 +237,18 @@ int savestates_load_m64p(const unsigned char *data, size_t size)
    /* extra rsp handshake state (since 1.2) - companion to the
     * parallel-rsp accuracy backport; upstream mupen64plus-core#1153
     * persists rsp_status/first_run/rsp_wait, whose fork-equivalent
-    * here is the rsp_task_locked flag. */
+    * here is the rsp_task_locked flag. Pre-1.2 states predate this
+    * field; like the 1.4 RSP DMA FIFO block below, give them the
+    * power-on default (0, unlocked) rather than leaving whatever was
+    * live before the load. A stale rsp_task_locked == 1 makes
+    * rsp_core's run gating treat a task as perpetually held against
+    * the restored SP_STATUS/event queue, so the CPU spins waiting on
+    * an SP interrupt that never arrives -- the emulated machine makes
+    * no forward progress (one frame, then a hang) on load. */
    if (version >= 0x00010002)
       g_dev.sp.rsp_task_locked = GETDATA(curr, uint32_t);
+   else
+      g_dev.sp.rsp_task_locked = 0;
 
    g_dev.cart.use_flashram = GETDATA(curr, int);
    g_dev.cart.flashram.mode = GETDATA(curr, int);
