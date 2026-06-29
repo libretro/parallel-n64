@@ -206,9 +206,9 @@ bool frame_dupe                     = false;
 
 /* Set per retro_run from RETRO_ENVIRONMENT_GET_AUDIO_VIDEO_ENABLE: nonzero
  * means the frontend will discard this frame's video (a run-ahead "future"
- * frame or a rewind re-simulation).  Read by the angrylion / parallel-RDP
- * plugins to skip their VI scan-out on hidden frames.  Non-static: the
- * plugins extern it. */
+ * frame or a rewind re-simulation).  Consulted only in emu_step_render to
+ * withhold the final video_cb on such frames; the renderers themselves run
+ * unchanged so no display state desyncs and save/load stays correct. */
 int frame_hidden                    = 0;
 
 uint32_t gfx_plugin_accuracy        = 2;

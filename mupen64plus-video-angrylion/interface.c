@@ -19,10 +19,6 @@ extern void DebugMessage(int level, const char *message, ...);
 
 int retro_return(bool just_flipping);
 
-/* Set by the libretro front-end (libretro.c) once per retro_run; nonzero on
- * a run-ahead / rewind frame whose video the frontend will discard. */
-extern int frame_hidden;
-
 #define DP_INTERRUPT    0x20
 
 static bool angrylion_init = false;
@@ -428,16 +424,6 @@ void angrylionUpdateScreen(void)
 {
 #ifdef HAVE_FRAMESKIP
     static int counter;
-#endif
-    /* Run-ahead / rewind hidden frame: this VI filter (AA, divot, fetch and
-     * scale into prescale[]) is purely display output and is regenerated on
-     * the next shown frame, but it is multithreaded and easily the most
-     * expensive per-frame step in the software path.  Skipping it on the
-     * frames the frontend is going to discard is what makes preemptive-frames
-     * run-ahead affordable; the RDP framebuffer in RDRAM is untouched. */
-    if (frame_hidden)
-        return;
-#ifdef HAVE_FRAMESKIP
     if (counter++ < skip)
         return;
     counter = 0;
