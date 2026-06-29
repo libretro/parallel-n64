@@ -12,6 +12,10 @@ void parallel_hle_process_dlist(void);
 extern "C" {
 extern int retro_return(bool just_flipping);
 
+/* Set by the libretro front-end (libretro.c) once per retro_run; nonzero on
+ * a run-ahead / rewind frame whose video the frontend will discard. */
+extern int frame_hidden;
+
 void parallelChangeWindow(void)
 {
 }
@@ -69,6 +73,13 @@ int parallelRomOpen(void)
 
 void parallelUpdateScreen(void)
 {
+	/* Hidden run-ahead / rewind frame: skip the VI scan-out (complete_frame
+	 * builds the displayable image and the front-end would only discard it)
+	 * and do not latch a frame for presentation.  RDP::process_commands()
+	 * still runs every frame via parallelProcessRDPList, so the framebuffer
+	 * in RDRAM stays correct for games that read it back. */
+	if (frame_hidden)
+		return;
 	RDP::complete_frame();
 	retro_return(true);
 }

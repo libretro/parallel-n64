@@ -204,6 +204,13 @@ static bool     context_setup_first_init = false;
 
 bool frame_dupe                     = false;
 
+/* Set per retro_run from RETRO_ENVIRONMENT_GET_AUDIO_VIDEO_ENABLE: nonzero
+ * means the frontend will discard this frame's video (a run-ahead "future"
+ * frame or a rewind re-simulation).  Read by the angrylion / parallel-RDP
+ * plugins to skip their VI scan-out on hidden frames.  Non-static: the
+ * plugins extern it. */
+int frame_hidden                    = 0;
+
 uint32_t gfx_plugin_accuracy        = 2;
 static enum fork_rsp_plugin_type
                  rsp_plugin;
@@ -805,6 +812,19 @@ static void present_frame(void)
  * retro_return), whose presents happen at their swap points. */
 void emu_step_render(void)
 {
+   /* Hidden run-ahead / rewind frame: the frontend has video disabled and
+    * will throw this frame away, so issue no video_cb at all.  Presenting
+    * here -- above all a RETRO_HW_FRAME_BUFFER_VALID parallel-RDP frame --
+    * while the frontend's video path is torn down for run-ahead is what
+    * crashed single-instance run-ahead.  Skipping the dupe path too keeps
+    * us from feeding the frontend a stale buffer on the hidden frame. */
+   if (frame_hidden)
+   {
+      frame_latched   = false;
+      frame_presented = false;
+      return;
+   }
+
    if (frame_latched)
    {
       frame_latched = false;
@@ -2619,9 +2639,33 @@ static void glsm_enter(void)
 }
 #endif
 
+/* RETRO_ENVIRONMENT_GET_AUDIO_VIDEO_ENABLE flag bits.  The libretro.h
+ * bundled in this tree defines the environment call number (47) but not
+ * the enum of returned flag values, so define the two bits we consult. */
+#ifndef RETRO_AV_ENABLE_VIDEO
+#define RETRO_AV_ENABLE_VIDEO (1 << 0)
+#endif
+#ifndef RETRO_AV_ENABLE_AUDIO
+#define RETRO_AV_ENABLE_AUDIO (1 << 1)
+#endif
+
 void retro_run (void)
 {
    static bool updated = false;
+
+   /* Per-frame run-ahead / rewind hidden-frame detection.  The frontend
+    * toggles RETRO_ENVIRONMENT_GET_AUDIO_VIDEO_ENABLE around every
+    * retro_run: when the video bit is clear, the frame this call produces
+    * is discarded (a run-ahead future frame, or a rewind re-simulation).
+    * Latch it before stepping the device so the VI scan-out and the
+    * presentation path can both skip the work. */
+   {
+      int av_enable = RETRO_AV_ENABLE_VIDEO | RETRO_AV_ENABLE_AUDIO;
+      if (environ_cb(RETRO_ENVIRONMENT_GET_AUDIO_VIDEO_ENABLE, &av_enable))
+         frame_hidden = (av_enable & RETRO_AV_ENABLE_VIDEO) ? 0 : 1;
+      else
+         frame_hidden = 0;
+   }
 
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE, &updated) && updated)
    {
