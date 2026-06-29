@@ -1808,7 +1808,7 @@ void update_variables(bool startup)
    var.value = NULL;
 
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
-      astick_deadzone = (int)(atoi(var.value) * 0.01f * 0x8000);
+      astick_deadzone = ( atoi(var.value) * 0x8000 ) / 100;
 
    var.key = "parallel-n64-astick-snap-angle-active";
    var.value = NULL;

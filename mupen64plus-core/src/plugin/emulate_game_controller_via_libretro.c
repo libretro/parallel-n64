@@ -28,10 +28,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
-
-#define ROUND(x)    floor((x) + 0.5)
-
 /* snprintf not available in MSVC 2010 and earlier */
 #include "api/msvc_compat.h"
 
@@ -278,28 +274,90 @@ EXPORT void CALL inputControllerCommand(int Control, unsigned char *Command)
 #define CSTICK_DOWN 0x400
 
 
+/* ----------------------------------------------------------------------
+ *  Deterministic fixed-point analog deadzone
+ *
+ *  The main N64 stick deadzone ran in float through a polar
+ *  sqrt/atan2/sin/cos round-trip, feeding the emulated controller axes.
+ *  float sqrt/atan2/trig is not bit-reproducible across architectures or
+ *  libm implementations, so two netplay peers could derive different
+ *  axis values from identical stick input and desync.
+ *
+ *  The polar round-trip collapses to a plain radial scale: since
+ *  cos(atan2(y,x)) == x / radius and sin(atan2(y,x)) == y / radius, the
+ *  rescaled cartesian output is just (x,y) * radius_final / radius, with
+ *  radius_final = (radius - dz) * 80 * sensitivity / ((ASTICK_MAX - dz)
+ *  * 100) (the ASTICK_MAX of the deadzone rescale cancels the 1/ASTICK_MAX
+ *  of the N64 range conversion).  No trig, one integer sqrt, fully
+ *  deterministic.  The old ROUND() was floor(v + 0.5), reproduced here as
+ *  a floor-division of (2*num + den) / (2*den).
+ * -------------------------------------------------------------------- */
+
+/* 64-bit integer square root (binary, no FPU); returns floor(sqrt(x)). */
+static uint32_t analog_isqrt64(uint64_t x)
+{
+   uint64_t res = 0;
+   uint64_t bit = (uint64_t)1 << 62;
+
+   while (bit > x)
+      bit >>= 2;
+
+   while (bit != 0)
+   {
+      if (x >= res + bit)
+      {
+         x   -= res + bit;
+         res  = (res >> 1) + bit;
+      }
+      else
+         res >>= 1;
+      bit >>= 2;
+   }
+   return (uint32_t)res;
+}
+
+/* floor(a / b) for b > 0 (true floor, toward -inf; C '/' truncates). */
+static int32_t analog_floor_div(int64_t a, int64_t b)
+{
+   int64_t q = a / b;
+   if ((a % b) != 0 && a < 0)
+      q--;
+   return (int32_t)q;
+}
+
 static void inputGetKeys_reuse(int16_t analogX, int16_t analogY, int Control, BUTTONS* Keys)
 {
-   double radius, angle;
+   uint32_t radius;
    //  Keys->Value |= input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_XX)    ? 0x4000 : 0; // Mempak switch
    //  Keys->Value |= input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_XX)    ? 0x8000 : 0; // Rumblepak switch
 
    analogX = input_cb(Control, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_LEFT, RETRO_DEVICE_ID_ANALOG_X);
    analogY = input_cb(Control, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_LEFT, RETRO_DEVICE_ID_ANALOG_Y);
 
-   // Convert cartesian coordinate analog stick to polar coordinates
-   radius = sqrt(analogX * analogX + analogY * analogY);
-   angle = atan2(analogY, analogX);
+   // Integer stick radius (replaces the polar sqrt/atan2 round-trip)
+   radius = analog_isqrt64( (uint64_t)((int64_t)analogX * analogX)
+                          + (uint64_t)((int64_t)analogY * analogY) );
 
-   if (radius > astick_deadzone)
+   if ((int)radius > astick_deadzone)
    {
-      // Re-scale analog stick range to negate deadzone (makes slow movements possible)
-      radius = (radius - astick_deadzone)*((float)ASTICK_MAX/(ASTICK_MAX - astick_deadzone));
-      // N64 Analog stick range is from -80 to 80
-      radius *= 80.0 / ASTICK_MAX * (astick_sensitivity / 100.0);
-      // Convert back to cartesian coordinates
-      Keys->X_AXIS = +(int32_t)ROUND(radius * cos(angle));
-      Keys->Y_AXIS = -(int32_t)ROUND(radius * sin(angle));
+      // Re-scale to negate deadzone and map to the N64 -80..80 range,
+      // applying sensitivity, as a single rational radial scale:
+      //   out = (x,y) * (radius - dz) * 80 * sens
+      //              / (radius * (ASTICK_MAX - dz) * 100)
+      // ROUND(v) == floor(v + 0.5) == floor_div(2*num + den, 2*den).
+      int denom_dz = ASTICK_MAX - astick_deadzone;
+      int64_t num_scale, den, nx, ny;
+      if (denom_dz < 1)
+         denom_dz = 1;
+
+      num_scale = (int64_t)((int)radius - astick_deadzone) * 80 * astick_sensitivity;
+      den       = (int64_t)radius * denom_dz * 100;
+
+      nx = (int64_t)analogX * num_scale;
+      ny = (int64_t)analogY * num_scale;
+
+      Keys->X_AXIS = +analog_floor_div(2 * nx + den, 2 * den);
+      Keys->Y_AXIS = -analog_floor_div(2 * ny + den, 2 * den);
    }
    else
    {
