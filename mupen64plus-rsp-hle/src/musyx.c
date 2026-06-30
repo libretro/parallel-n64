@@ -191,10 +191,17 @@ static int32_t dot4(const int16_t *x, const int16_t *y)
     size_t i;
     int32_t accu = 0;
 
+    /* The MusyX resample FIR is a 4-tap multiply-accumulate. On the RSP this
+     * runs through the 48-bit vector accumulator (VMUDH/VMADH..VMADN) and is
+     * signed-saturated ONCE, on readout. Accumulate the products at full
+     * precision and shift once here; the caller applies the single clamp_s16.
+     * (Matches mix_fir4() in this same ucode and cxd4's VMADN/VMADH semantics.
+     * The previous per-tap >>15 + clamp_s16 lost precision and saturated
+     * intermediates the hardware accumulator would have carried.) */
     for (i = 0; i < 4; ++i)
-        accu = clamp_s16(accu + (((int32_t)x[i] * (int32_t)y[i]) >> 15));
+        accu += (int32_t)x[i] * (int32_t)y[i];
 
-    return accu;
+    return accu >> 15;
 }
 
 /**************************************************************************
