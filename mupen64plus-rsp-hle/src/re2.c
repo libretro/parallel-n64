@@ -99,17 +99,15 @@ void resize_bilinear_task(struct hle_t* hle)
 
 static uint32_t YCbCr_to_RGBA(uint8_t Y, uint8_t Cb, uint8_t Cr)
 {
-    int r, g, b;
-
     /* The RSP has no FPU: the video ucode does this with truncating VMUDM and
      * 16-bit coefficients held in DMEM. Those coefficients (read straight from
      * the RE2 ucode_data) are 38155, 45941, 23401, 11277, 58065 over 1<<16, so
      * the divide is >>16. The previous double form only approximated those
      * coefficients (e.g. 0.582199097 vs the exact 38155/65536) and disagreed
      * with the hardware in a handful of cases; this is the exact integer form. */
-    r = (Y * 38155 + 45941 * (Cr - 128)) >> 16;
-    g = (Y * 38155 - 23401 * (Cr - 128) - 11277 * (Cb - 128)) >> 16;
-    b = (Y * 38155 + 58065 * (Cb - 128)) >> 16;
+    int r = (Y * 38155 + 45941 * (Cr - 128)) >> 16;
+    int g = (Y * 38155 - 23401 * (Cr - 128) - 11277 * (Cb - 128)) >> 16;
+    int b = (Y * 38155 + 58065 * (Cb - 128)) >> 16;
 
     r = SATURATE8(r);
     g = SATURATE8(g);
