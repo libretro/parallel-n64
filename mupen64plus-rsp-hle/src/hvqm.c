@@ -198,10 +198,16 @@ static struct RGBA YCbCr_to_RGBA(int16_t Y, int16_t Cb, int16_t Cr, uint8_t alph
 {
     struct RGBA color;
 
-    //Format S10.6
-    int r = (int)(((double)Y + 0.5) + (1.765625 * (double)(Cr - 128)));
-    int g = (int)(((double)Y + 0.5) - (0.34375 * (double)(Cr - 128)) - (0.71875 * (double)(Cb - 128)));
-    int b = (int)(((double)Y + 0.5) + (1.40625 * (double)(Cb - 128)));
+    /* S10.6 fixed point (the RSP has no FPU; the previous double form only
+     * approximated it). The coefficients are exact in S10.6 -- 113/64, 22/64,
+     * 46/64, 90/64 -- the +32 is the 0.5 rounding bias, and >>6 is the S10.6
+     * divide. Verified bit-identical to the old double form after SATURATE8
+     * over the full input range (Y in [-512,768], Cb,Cr in [0,255]): the only
+     * place an arithmetic-shift floor differs from the double's truncate is on
+     * negative results, which SATURATE8 clamps to 0 either way. */
+    int r = (64 * (int)Y + 32 + 113 * ((int)Cr - 128)) >> 6;
+    int g = (64 * (int)Y + 32 -  22 * ((int)Cr - 128) -  46 * ((int)Cb - 128)) >> 6;
+    int b = (64 * (int)Y + 32 +  90 * ((int)Cb - 128)) >> 6;
 
     color.r = SATURATE8(r);
     color.g = SATURATE8(g);
