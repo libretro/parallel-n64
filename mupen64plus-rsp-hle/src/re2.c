@@ -42,9 +42,6 @@ void resize_bilinear_task(struct hle_t* hle)
     int dst_height = *dram_u32(hle, data_ptr + 12);
     int x_ratio = *dram_u32(hle, data_ptr + 16);
     int y_ratio = *dram_u32(hle, data_ptr + 20);
-#if 0 /* unused, but keep it for documentation purpose */
-    int dst_stride = *dram_u32(hle, data_ptr + 24);
-#endif
     int src_offset = *dram_u32(hle, data_ptr + 36);
 
     int a, b, c ,d, index, y_index, xr, yr, blue, green, red, addr, i, j;
@@ -131,11 +128,6 @@ void decode_video_frame_task(struct hle_t* hle)
     int pDestination = *dram_u32(hle, data_ptr + 12);
     int nMovieWidth = *dram_u32(hle, data_ptr + 16);
     int nMovieHeight = *dram_u32(hle, data_ptr + 20);
-#if 0 /* unused, but keep it for documentation purpose */
-    int nRowsPerDMEM = *dram_u32(hle, data_ptr + 24);
-    int nDMEMPerFrame = *dram_u32(hle, data_ptr + 28);
-    int nLengthSkipCount = *dram_u32(hle, data_ptr + 32);
-#endif
     int nScreenDMAIncrement = *dram_u32(hle, data_ptr + 36);
 
     int i, j;
@@ -196,12 +188,6 @@ void fill_video_double_buffer_task(struct hle_t* hle)
     int stride = *dram_u32(hle, data_ptr + 0x1c) >> 1;
 
     assert((*dram_u32(hle, data_ptr + 0x28) >> 16) == 0x8000);
-
-#if 0 /* unused, but keep it for documentation purpose */
-    int arg3 = *dram_u32(hle, data_ptr + 0xc);
-    int arg5 = *dram_u32(hle, data_ptr + 0x14);
-    int arg6 = *dram_u32(hle, data_ptr + 0x18);
-#endif
 
     int i, j;
     int r, g, b;
