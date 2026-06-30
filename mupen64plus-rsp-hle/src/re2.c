@@ -104,14 +104,20 @@ static uint32_t YCbCr_to_RGBA(uint8_t Y, uint8_t Cb, uint8_t Cr)
 {
     int r, g, b;
 
-    r = (int)(((double)Y * 0.582199097) + (0.701004028 * (double)(Cr - 128)));
-    g = (int)(((double)Y * 0.582199097) - (0.357070923 * (double)(Cr - 128)) - (0.172073364 * (double)(Cb - 128)));
-    b = (int)(((double)Y * 0.582199097) + (0.886001587 * (double)(Cb - 128)));
-    
+    /* The RSP has no FPU: the video ucode does this with truncating VMUDM and
+     * 16-bit coefficients held in DMEM. Those coefficients (read straight from
+     * the RE2 ucode_data) are 38155, 45941, 23401, 11277, 58065 over 1<<16, so
+     * the divide is >>16. The previous double form only approximated those
+     * coefficients (e.g. 0.582199097 vs the exact 38155/65536) and disagreed
+     * with the hardware in a handful of cases; this is the exact integer form. */
+    r = (Y * 38155 + 45941 * (Cr - 128)) >> 16;
+    g = (Y * 38155 - 23401 * (Cr - 128) - 11277 * (Cb - 128)) >> 16;
+    b = (Y * 38155 + 58065 * (Cb - 128)) >> 16;
+
     r = SATURATE8(r);
     g = SATURATE8(g);
     b = SATURATE8(b);
-    
+
     return (r << 24) | (g << 16) | (b << 8) | 0;
 }
 
