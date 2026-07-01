@@ -25,24 +25,11 @@
 #include "api/m64p_plugin.h"
 #include "api/m64p_types.h"
 
-extern m64p_error dummyinput_PluginGetVersion(m64p_plugin_type *PluginType, int *PluginVersion,
-                                              int *APIVersion, const char **PluginNamePtr, int *Capabilities);
-extern void dummyinput_InitiateControllers (CONTROL_INFO ControlInfo);
-extern void dummyinput_GetKeys(int Control, BUTTONS * Keys );
-extern void dummyinput_ControllerCommand(int Control, unsigned char *Command);
-extern void dummyinput_GetKeys(int Control, BUTTONS * Keys);
-extern void dummyinput_InitiateControllers(CONTROL_INFO ControlInfo);
-extern void dummyinput_ReadController(int Control, unsigned char *Command);
-extern int  dummyinput_RomOpen(void);
-extern void dummyinput_RomClosed(void);
-extern void dummyinput_SDL_KeyDown(int keymod, int keysym);
-extern void dummyinput_SDL_KeyUp(int keymod, int keysym);
 extern void dummyinput_RenderCallback(void);
 extern void dummy_SendVRUWord(uint16_t length, uint16_t *word, uint8_t lang);
 extern void dummy_SetMicState(int state);
 extern void dummy_ReadVRUResults(uint16_t *error_flags, uint16_t *num_results, uint16_t *mic_level, uint16_t *voice_level, uint16_t *voice_length, uint16_t *matches);
 extern void dummy_ClearVRUWords(uint8_t length);
-extern void dummy_SetVRUWordMask(uint8_t length, uint8_t *mask);
 
 #endif /* DUMMY_INPUT_H */
 
