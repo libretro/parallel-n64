@@ -153,7 +153,10 @@ EXPORT m64p_error CALL CoreDoCommand(m64p_command Command, int ParamInt, void *P
             cheat_uninit(&g_cheat_ctx);
             return close_rom();
         case M64CMD_DISK_OPEN:
-            if (g_EmulatorRunning || l_DiskOpen || l_ROMOpen)
+            /* A cartridge ROM being open is not a conflict: 64DD combo titles
+             * (e.g. Expansion Kit disks) require both the cart and the disk to
+             * be loaded, and the frontend opens the ROM before the disk. */
+            if (g_EmulatorRunning || l_DiskOpen)
                 return M64ERR_INVALID_STATE;
             if (ParamPtr != NULL)
                 return M64ERR_INPUT_INVALID;
