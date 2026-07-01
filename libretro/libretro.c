@@ -31,7 +31,7 @@ uint8_t* g_dd_disk;
 #endif
 
 #include "api/m64p_frontend.h"
-#include "plugin/core_plugin.h"
+#include "plugin/plugin.h"
 #include "api/m64p_types.h"
 /* region 14 / Phase 2d (increment 9): mupencorestop is aliased to
  * g_dev.r4300.new_dynarec_hot_state.stop on x64 (see r4300.h); this TU uses it,

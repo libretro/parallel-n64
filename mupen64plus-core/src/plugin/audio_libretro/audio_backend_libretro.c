@@ -62,7 +62,7 @@
 #include "../../main/main.h"
 #include "../../device/device.h"
 #include "../../main/rom.h"
-#include "../core_plugin.h"
+#include "../plugin.h"
 #include "../../device/rcp/ri/ri_controller.h"
 #include "../../device/rcp/vi/vi_controller.h"
 

@@ -35,6 +35,7 @@ extern CONTROL Controls[4];
 extern m64p_error plugin_connect(m64p_plugin_type, m64p_dynlib_handle plugin_handle);
 extern m64p_error plugin_start(m64p_plugin_type);
 extern m64p_error plugin_check(void);
+extern void plugin_connect_all(void);
 
 enum { NUM_CONTROLLER = 4 };
 extern CONTROL Controls[NUM_CONTROLLER];

@@ -29,7 +29,7 @@
 #include "../api/callbacks.h"
 #include "../api/core_config.h"
 #include "../api/m64p_config.h"
-#include "../plugin/core_plugin.h"
+#include "../plugin/plugin.h"
 
 /* version number for CoreEvents config section */
 #define CONFIG_PARAM_VERSION 1.00
