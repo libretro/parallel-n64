@@ -705,96 +705,6 @@ void new_frame(void)
     }
 }
 
-/*
-#define SAMPLE_COUNT 1
-static void apply_speed_limiter(void)
-{
-    static unsigned long totalVIs = 0;
-    static int resetOnce = 0;
-    static int lastSpeedFactor = 100;
-    static unsigned int StartFPSTime = 0;
-    static const double defaultSpeedFactor = 100.0;
-#ifdef HAVE_LIBNX
-    unsigned int CurrentFPSTime = armTicksToNs(armGetSystemTick()) / 1000000;
-#else
-    unsigned int CurrentFPSTime = SDL_GetTicks();
-#endif // HAVE_LIBNX
-    static double sleepTimes[SAMPLE_COUNT];
-    static unsigned int sleepTimesIndex = 0;
-
-    // calculate frame duration based upon ROM setting (50/60hz) and mupen64plus speed adjustment
-    const double VILimitMilliseconds = 1000.0 / g_dev.vi.expected_refresh_rate;
-    const double SpeedFactorMultiple = defaultSpeedFactor/l_SpeedFactor;
-    const double AdjustedLimit = VILimitMilliseconds * SpeedFactorMultiple;
-    
-    //if this is the first time or we are resuming from pause
-    if(StartFPSTime == 0 || !resetOnce || lastSpeedFactor != l_SpeedFactor)
-    {
-       StartFPSTime = CurrentFPSTime;
-       totalVIs = 0;
-       resetOnce = 1;
-    }
-    else
-    {
-        ++totalVIs;
-    }
-
-    lastSpeedFactor = l_SpeedFactor;
-
-#if defined(PROFILE)
-    timed_section_start(TIMED_SECTION_IDLE);
-#endif
-
-#ifdef DBG
-    if(g_DebuggerActive) DebuggerCallback(DEBUG_UI_VI, 0);
-#endif
-
-    double totalElapsedGameTime = AdjustedLimit*totalVIs;
-    double elapsedRealTime = CurrentFPSTime - StartFPSTime;
-    double sleepTime = totalElapsedGameTime - elapsedRealTime;
-
-    //Reset if the sleep needed is an unreasonable value
-    static const double minSleepNeeded = -50;
-    static const double maxSleepNeeded = 50;
-    if(sleepTime < minSleepNeeded || sleepTime > (maxSleepNeeded*SpeedFactorMultiple))
-    {
-       resetOnce = 0;
-    }
-
-    sleepTimes[sleepTimesIndex%SAMPLE_COUNT] = sleepTime;
-    sleepTimesIndex++;
-
-    unsigned int elementsForAverage = sleepTimesIndex > SAMPLE_COUNT ? SAMPLE_COUNT : sleepTimesIndex;
-
-    // compute the average sleepTime
-    double sum = 0;
-    unsigned int index;
-    for(index = 0; index < elementsForAverage; index++)
-    {
-        sum += sleepTimes[index];
-    }
-
-    double averageSleep = sum/elementsForAverage;
-
-    int sleepMs = (int)averageSleep;
-
-    if(sleepMs > 0 && l_MainSpeedLimit)
-    {
-       //DebugMessage(M64MSG_VERBOSE, "    apply_speed_limiter(): Waiting %ims", sleepMs);
-#ifdef HAVE_LIBNX
-       svcSleepThread(sleepMs * 1000000);
-#else
-       SDL_Delay(sleepMs);
-#endif // HAVE_LIBNX
-    }
-
-
-#if defined(PROFILE)
-    timed_section_end(TIMED_SECTION_IDLE);
-#endif
-}
-*/
-
 /* TODO: make a GameShark module and move that there */
 static void gs_apply_cheats(struct cheat_ctx* ctx)
 {
@@ -833,7 +743,6 @@ void new_vi(void)
 
     gs_apply_cheats(&g_cheat_ctx);
 
-    // apply_speed_limiter();
     main_check_inputs();
 
     netplay_check_sync(&g_dev.r4300.cp0);
@@ -1049,13 +958,9 @@ static int load_dd_disk(struct dd_disk* dd_disk, const struct storage_backend_in
         ? (retro_dd_path_img ? strdup(retro_dd_path_img) : NULL)
         : g_media_loader.get_dd_disk(g_media_loader.cb_data);
 
-    //printf("Load DD disk %s\n", dd_disk_filename);
-    //fflush(stdout);
-
     /* handle the no disk case */
-    if (dd_disk_filename == NULL || strlen(dd_disk_filename) == 0) {
+    if (dd_disk_filename == NULL || strlen(dd_disk_filename) == 0)
         goto no_disk;
-    }
 
     /* Get DD Disk size */
     size_t dd_size = 0;
