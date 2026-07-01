@@ -523,28 +523,6 @@ const char* namefrompath(const char* path)
         return path;
 }
 
-static int is_path_separator(char c)
-{
-    return strchr(OSAL_DIR_SEPARATORS, c) != NULL;
-}
-
-char* combinepath(const char* first, const char *second)
-{
-    size_t len_first, off_second = 0;
-
-    if (first == NULL || second == NULL)
-        return NULL;
-
-    len_first = strlen(first);
-
-    while (is_path_separator(first[len_first-1]))
-        len_first--;
-
-    while (is_path_separator(second[off_second]))
-        off_second++;
-
-    return formatstr("%.*s%c%s", (int) len_first, first, OSAL_DIR_SEPARATORS[0], second + off_second);
-}
 
 /**********************
     String utilities
@@ -580,28 +558,6 @@ char *trim(char *str)
     str[end - start] = '\0';
 
     return str;
-}
-
-int string_replace_chars(char* str, const char* chars, const char r)
-{
-    int i, y;
-    int str_size, chars_size;
-    int replacements = 0;
-
-    str_size   = strlen(str);
-    chars_size = strlen(chars);
-
-    for (i = 0; i < str_size; i++) {
-        for (y = 0; y < chars_size; y++) {
-            if (str[i] == chars[y]) {
-                str[i] = r;
-                replacements++;
-                break;
-            }
-        }
-    }
-
-    return replacements;
 }
 
 int string_to_int(const char *str, int *result)
@@ -651,43 +607,6 @@ int parse_hex(const char *str, unsigned char *output, size_t output_size)
     return 1;
 }
 
-char *formatstr(const char *fmt, ...)
-{
-	int size = 128, ret;
-	char *str = (char *)malloc(size), *newstr;
-	va_list args;
-
-	/* There are two implementations of vsnprintf we have to deal with:
-	 * C99 version: Returns the number of characters which would have been written
-	 *              if the buffer had been large enough, and -1 on failure.
-	 * Windows version: Returns the number of characters actually written,
-	 *                  and -1 on failure or truncation.
-	 * NOTE: An implementation equivalent to the Windows one appears in glibc <2.1.
-	 */
-	while (str != NULL)
-	{
-		va_start(args, fmt);
-		ret = vsnprintf(str, size, fmt, args);
-		va_end(args);
-
-		// Successful result?
-		if (ret >= 0 && ret < size)
-			return str;
-
-		// Increment the capacity of the buffer
-		if (ret >= size)
-			size = ret + 1; // C99 version: We got the needed buffer size
-		else
-			size *= 2; // Windows version: Keep guessing
-
-		newstr = (char *)realloc(str, size);
-		if (newstr == NULL)
-			free(str);
-		str = newstr;
-	}
-
-	return NULL;
-}
 
 ini_line ini_parse_line(char **lineptr)
 {

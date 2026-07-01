@@ -202,7 +202,6 @@ const char* namefrompath(const char* path);
 /* Creates a path string by joining two path strings.
  * The given path strings may or may not start or end with a path separator.
  * Returns a malloc'd string with the resulting path. */
-char* combinepath(const char* first, const char *second);
 
 /**********************
     String utilities
@@ -224,7 +223,6 @@ char *trim(char *str);
  /* Replaces all occurences of any char in chars with r in string.
   * returns amount of replaced chars
   */
-int string_replace_chars(char *str, const char *chars, const char r);
 
 /* Converts an string to an integer.
  * Returns 1 on success, 0 on failure. 'result' is undefined on failure.
@@ -244,7 +242,6 @@ int parse_hex(const char *str, unsigned char *output, size_t output_size);
 
 /* Formats an string, using the same syntax as printf.
  * Returns the result in a malloc'd string. */
-char* formatstr(const char* fmt, ...) ATTR_FMT(1, 2);
 
 typedef enum _ini_line_type
 {
