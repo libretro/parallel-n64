@@ -29,11 +29,6 @@
 
 #include <stdint.h>
 
-/* Audio Out backend interface */
-
-extern const struct audio_out_backend_interface
-    g_iaudio_out_backend_plugin_compat;
-
 /* Controller Input backend interface */
 
 struct controller_input_compat

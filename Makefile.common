@@ -201,7 +201,6 @@ SOURCES_C += \
 	$(CORE_DIR)/src/backends/clock_ctime_plus_delta.c \
 	$(CORE_DIR)/src/backends/dummy_video_capture.c \
 	$(CORE_DIR)/src/backends/api/video_capture_backend.c \
-	$(CORE_DIR)/src/backends/plugins_compat/audio_plugin_compat.c \
 	$(CORE_DIR)/src/backends/plugins_compat/input_plugin_compat.c \
 	$(CORE_DIR)/src/backends/libretro_clock.c \
 	$(CORE_DIR)/src/device/cart/flashram.c \
