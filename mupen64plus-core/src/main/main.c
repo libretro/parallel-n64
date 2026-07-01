@@ -948,6 +948,7 @@ static void open_eep_file(struct file_storage* storage)
     }
 }
 
+extern char* retro_dd_path_rom;
 static void load_dd_rom(uint8_t* rom, size_t* rom_size, uint8_t* disk_region)
 {
     /* set the DD rom region */
@@ -971,7 +972,12 @@ static void load_dd_rom(uint8_t* rom, size_t* rom_size, uint8_t* disk_region)
     strcat(pathname, PATH_DEFAULT_SLASH());
     strcat(pathname, "IPL.n64");
 
-    if(retro_dd_path_img)
+    if(retro_dd_path_rom && strlen(retro_dd_path_rom) > 0)
+    {
+        /* explicit IPL path staged by the libretro frontend */
+        dd_ipl_rom_filename = retro_dd_path_rom;
+    }
+    else if(retro_dd_path_img)
     {
         dd_ipl_rom_filename = pathname;
     }

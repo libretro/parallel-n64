@@ -266,8 +266,9 @@ m64p_error open_disk(void)
     int i;
 
     /* ask the core loader for DD disk filename */
+    extern char* retro_dd_path_img;
     char* dd_disk_filename = (g_media_loader.get_dd_disk == NULL)
-        ? NULL
+        ? (retro_dd_path_img ? strdup(retro_dd_path_img) : NULL)
         : g_media_loader.get_dd_disk(g_media_loader.cb_data);
 
     /* handle the no disk case */

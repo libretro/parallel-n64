@@ -115,6 +115,7 @@ uint32_t CountPerOpDenomPot = 0;
 uint32_t ForceDisableExtraMem = 0;
 uint32_t EnableThreadedRenderer = 0;
 char* retro_dd_path_img = NULL;
+char* retro_dd_path_rom = NULL;
 /* fork-specific frame/sync globals (declared extern above; defined here) */
 int frame_break = 0;
 int g_count_per_scanline = 0;
@@ -668,10 +669,6 @@ static bool emu_step_load_data()
    if (disk_data != NULL && disk_size != 0)
    {
       /* 64DD Disk loading */
-      char disk_ipl_path[256];
-      FILE *fPtr;
-      long romlength = 0;
-      uint8_t* ipl_data = NULL;
 
       loaded = true;
       if (!environ_cb(RETRO_ENVIRONMENT_GET_SYSTEM_DIRECTORY, &dir) || !dir)
@@ -680,70 +677,52 @@ static bool emu_step_load_data()
       /* connect saved_memory.disk to disk */
       g_dd_disk = saved_memory.disk;
 
-      if (log_cb)
-         log_cb(RETRO_LOG_INFO, "EmuThread: M64CMD_DISK_OPEN\n");
-      printf("M64CMD_DISK_OPEN\n");
-
-      if(CoreDoCommand(M64CMD_DISK_OPEN, disk_size, (void*)disk_data))
+      /* The current core reads the DD disk and IPL by *filename*
+       * (open_disk() for MD5/settings and load_dd_disk() for the drive both
+       * fall back to retro_dd_path_img; load_dd_rom() reads the IPL from the
+       * system dir).  The old buffer-based M64CMD_DISK_OPEN/M64CMD_DDROM_OPEN
+       * commands this block used to call are a stale API the core no longer
+       * implements, so DISK_OPEN(buffer) was rejected and 64DD never loaded.
+       * Stage the disk image to a file and point the loader at it. */
       {
-         if (log_cb)
-            log_cb(RETRO_LOG_ERROR, "mupen64plus: Failed to load DISK\n");
-         goto load_fail;
+         char disk_tmp_path[512];
+         FILE* df;
+
+         snprintf(disk_tmp_path, sizeof(disk_tmp_path), "%s%cparallel_n64_dd_disk.ndd", dir, slash);
+         df = fopen(disk_tmp_path, "wb");
+         if (df == NULL)
+         {
+            if (log_cb)
+               log_cb(RETRO_LOG_ERROR, "mupen64plus: couldn't stage DD disk image\n");
+            goto load_fail;
+         }
+         fwrite(disk_data, 1, disk_size, df);
+         fclose(df);
+
+         if (retro_dd_path_img)
+            free(retro_dd_path_img);
+         retro_dd_path_img = strdup(disk_tmp_path);
+
+         /* IPL: load_dd_rom() prefers retro_dd_path_rom when set */
+         if (retro_dd_path_rom)
+            free(retro_dd_path_rom);
+         {
+            char ipl_path[512];
+            snprintf(ipl_path, sizeof(ipl_path), "%s%c64DD_IPL.bin", dir, slash);
+            retro_dd_path_rom = strdup(ipl_path);
+         }
       }
 
       free(disk_data);
       disk_data = NULL;
 
-      /* 64DD IPL LOAD - assumes "64DD_IPL.bin" is in system folder */
-      sprintf(disk_ipl_path, "%s%c64DD_IPL.bin", dir, slash);
-
       if (log_cb)
-         log_cb(RETRO_LOG_INFO, "64DD_IPL.bin path: %s\n", disk_ipl_path);
+         log_cb(RETRO_LOG_INFO, "EmuThread: M64CMD_DISK_OPEN\n");
 
-      fPtr = fopen(disk_ipl_path, "rb");
-      if (fPtr == NULL)
+      if(CoreDoCommand(M64CMD_DISK_OPEN, 0, NULL))
       {
          if (log_cb)
-            log_cb(RETRO_LOG_ERROR, "mupen64plus: Failed to load DISK IPL\n");
-         goto load_fail;
-      }
-
-      fseek(fPtr, 0L, SEEK_END);
-      romlength = ftell(fPtr);
-      fseek(fPtr, 0L, SEEK_SET);
-
-      ipl_data = malloc(romlength);
-      if (ipl_data == NULL)
-      {
-         if (log_cb)
-            log_cb(RETRO_LOG_ERROR, "mupen64plus: couldn't allocate DISK IPL buffer\n");
-         fclose(fPtr);
-         free(ipl_data);
-         ipl_data = NULL;
-         goto load_fail;
-      }
-
-      if (fread(ipl_data, 1, romlength, fPtr) != romlength)
-      {
-         if (log_cb)
-            log_cb(RETRO_LOG_ERROR, "mupen64plus: couldn't read DISK IPL file to buffer\n");
-         fclose(fPtr);
-         free(ipl_data);
-         ipl_data = NULL;
-         goto load_fail;
-      }
-      fclose(fPtr);
-
-      if (log_cb)
-         log_cb(RETRO_LOG_INFO, "EmuThread: M64CMD_DDROM_OPEN\n");
-      printf("M64CMD_DDROM_OPEN\n");
-
-      if(CoreDoCommand(M64CMD_DDROM_OPEN, romlength, (void*)ipl_data))
-      {
-         if (log_cb)
-            log_cb(RETRO_LOG_ERROR, "mupen64plus: Failed to load DDROM\n");
-         free(ipl_data);
-         ipl_data = NULL;
+            log_cb(RETRO_LOG_ERROR, "mupen64plus: Failed to load DISK\n");
          goto load_fail;
       }
 
