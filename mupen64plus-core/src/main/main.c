@@ -68,6 +68,7 @@
 #include "callbacks.h"
 #include "plugin/plugin.h"
 #include "plugin/dummy_input.h"
+#include "plugin/dummy_audio.h"
 #if defined(PROFILE)
 #include "profile.h"
 #endif
@@ -723,7 +724,6 @@ void main_change_gb_cart(int control_id)
 */
 extern gfx_plugin_functions gfx_gln64;
 extern rsp_plugin_functions rsp_hle;
-extern audio_plugin_functions dummy_audio;
 
 unsigned int r4300_emumode;
 /* Which JIT backend EMUMODE_DYNAREC uses: 0 = ari64 new dynarec, 1 = Hacktarux.
@@ -1101,7 +1101,7 @@ m64p_error main_run(void)
     {
         goto on_gfx_open_failure;
     }
-    if (!audio.romOpen())
+    if (!dummyaudio_RomOpen())
     {
         goto on_audio_open_failure;
     }
@@ -1156,7 +1156,7 @@ m64p_error main_run(void)
     /* Emulation stopped */
     rsp.romClosed();
     inputRomClosed();
-    audio.romClosed();
+    dummyaudio_RomClosed();
     gfx.romClosed();
 
     // clean up
@@ -1178,7 +1178,7 @@ on_disk_failure:
     rsp.romClosed();
     inputRomClosed();
 on_input_open_failure:
-    audio.romClosed();
+    dummyaudio_RomClosed();
 on_audio_open_failure:
     gfx.romClosed();
 on_gfx_open_failure:
@@ -1289,5 +1289,5 @@ void mupen_main_exit(void)
    if (rsp.romClosed)   rsp.romClosed();
    inputRomClosed();
    if (gfx.romClosed)   gfx.romClosed();
-   if (audio.romClosed) audio.romClosed();
+   dummyaudio_RomClosed();
 }

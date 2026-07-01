@@ -72,26 +72,6 @@ typedef struct _gfx_plugin_functions
 
 extern gfx_plugin_functions gfx;
 
-/* audio plugin function pointers */
-typedef struct _audio_plugin_functions
-{
-	ptr_PluginGetVersion  getVersion;
-	ptr_AiDacrateChanged  aiDacrateChanged;
-	ptr_AiLenChanged      aiLenChanged;
-	ptr_InitiateAudio     initiateAudio;
-	ptr_ProcessAList      processAList;
-	ptr_RomClosed         romClosed;
-	ptr_RomOpen           romOpen;
-	ptr_SetSpeedFactor    setSpeedFactor;
-	ptr_VolumeUp          volumeUp;
-	ptr_VolumeDown        volumeDown;
-	ptr_VolumeGetLevel    volumeGetLevel;
-	ptr_VolumeSetLevel    volumeSetLevel;
-	ptr_VolumeMute        volumeMute;
-	ptr_VolumeGetString   volumeGetString;
-} audio_plugin_functions;
-
-extern audio_plugin_functions audio;
 
 /* Direct libretro input entry points. Formerly these were dispatched
  * through the input_plugin_functions struct, which in this build was a

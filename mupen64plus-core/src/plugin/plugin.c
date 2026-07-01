@@ -109,7 +109,6 @@ DEFINE_GFX(glide64);
 
 gfx_plugin_functions gfx;
 GFX_INFO gfx_info;
-audio_plugin_functions audio;
 rsp_plugin_functions rsp;
 /* Plugin used to run audio (type 2) RSP tasks. Normally the same as the
  * active RSP, but when send_allist_to_hle_rsp is set and the active RSP is an
@@ -122,33 +121,15 @@ RSP_INFO rsp_info;
 /* Set from the libretro "Audio Processing (HLE RSP)" core option. */
 extern uint32_t send_allist_to_hle_rsp;
 
-const audio_plugin_functions dummy_audio = {
-    dummyaudio_PluginGetVersion,
-    dummyaudio_AiDacrateChanged,
-    dummyaudio_AiLenChanged,
-    dummyaudio_InitiateAudio,
-    dummyaudio_ProcessAList,
-    dummyaudio_RomClosed,
-    dummyaudio_RomOpen,
-    dummyaudio_SetSpeedFactor,
-    dummyaudio_VolumeUp,
-    dummyaudio_VolumeDown,
-    dummyaudio_VolumeGetLevel,
-    dummyaudio_VolumeSetLevel,
-    dummyaudio_VolumeMute,
-    dummyaudio_VolumeGetString
-};
 
 
 
-static AUDIO_INFO audio_info;
 static CONTROL_INFO control_info;
 static int l_RspAttached = 0;
 static int l_InputAttached = 0;
 static int l_AudioAttached = 0;
 static int l_GfxAttached = 0;
 
-static unsigned int dummy;
 
 /* local functions */
 static void EmptyFunc(void)
@@ -241,28 +222,6 @@ m64p_error plugin_start_gfx(void)
     return M64ERR_SUCCESS;
 }
 
-static m64p_error plugin_start_audio(void)
-{
-    /* fill in the AUDIO_INFO data structure */
-    audio_info.RDRAM = (unsigned char *)mem_base_u32(g_mem_base, MM_RDRAM_DRAM);
-    audio_info.DMEM = (unsigned char *)mem_base_u32(g_mem_base, MM_RSP_MEM);
-    audio_info.IMEM = (unsigned char *)mem_base_u32(g_mem_base, MM_RSP_MEM + 0x1000);
-    audio_info.MI_INTR_REG = &(g_dev.mi.regs[MI_INTR_REG]);
-    audio_info.AI_DRAM_ADDR_REG = &(g_dev.ai.regs[AI_DRAM_ADDR_REG]);
-    audio_info.AI_LEN_REG = &(g_dev.ai.regs[AI_LEN_REG]);
-    audio_info.AI_CONTROL_REG = &(g_dev.ai.regs[AI_CONTROL_REG]);
-    audio_info.AI_STATUS_REG = &dummy;
-    audio_info.AI_DACRATE_REG = &(g_dev.ai.regs[AI_DACRATE_REG]);
-    audio_info.AI_BITRATE_REG = &(g_dev.ai.regs[AI_BITRATE_REG]);
-    audio_info.CheckInterrupts = EmptyFunc;
-
-    /* call the audio plugin */
-    if (!audio.initiateAudio(audio_info))
-        return M64ERR_PLUGIN_FAIL;
-
-    return M64ERR_SUCCESS;
-}
-
 static m64p_error plugin_start_input(void)
 {
     int i;
@@ -309,7 +268,7 @@ static m64p_error plugin_start_rsp(void)
     rsp_info.DPC_TMEM_REG = &g_dev.dp.dpc_regs[DPC_TMEM_REG];
     rsp_info.CheckInterrupts = EmptyFunc;
     rsp_info.ProcessDlistList = gfx.processDList;
-    rsp_info.ProcessAlistList = audio.processAList;
+    rsp_info.ProcessAlistList = dummyaudio_ProcessAList;
     rsp_info.ProcessRdpList = gfx.processRDPList;
     rsp_info.ShowCFB = gfx.showCFB;
 
@@ -343,8 +302,6 @@ m64p_error plugin_start(m64p_plugin_type type)
             return plugin_start_rsp();
         case M64PLUGIN_GFX:
             return plugin_start_gfx();
-        case M64PLUGIN_AUDIO:
-            return plugin_start_audio();
         case M64PLUGIN_INPUT:
             return plugin_start_input();
         default:
@@ -439,10 +396,7 @@ void plugin_connect_all()
     l_RspAttached = 1;
     plugin_start_rsp();
 
-    audio = dummy_audio;
     l_AudioAttached = 1;
-    //plugin_start_audio();
-    
     l_InputAttached = 1;
     plugin_start_input();
 }
