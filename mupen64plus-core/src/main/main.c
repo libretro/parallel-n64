@@ -1615,7 +1615,7 @@ m64p_error main_run(void)
                 no_compiled_jump,
                 randomize_interrupt,
                 g_start_address,
-                &g_dev.ai, &audio_out_backend_libretro, ((float)ROM_SETTINGS.aidmamodifier / 100.0),
+                &g_dev.ai, &audio_out_backend_libretro, ROM_SETTINGS.aidmamodifier,
                 si_dma_duration,
                 rdram_size,
                 joybus_devices, ijoybus_devices,

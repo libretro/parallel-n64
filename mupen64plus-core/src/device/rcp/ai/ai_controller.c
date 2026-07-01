@@ -100,7 +100,11 @@ static void do_dma(struct ai_controller* ai, struct ai_dma* dma)
 
 static void fifo_push(struct ai_controller* ai)
 {
-    unsigned int duration = get_dma_duration(ai) * ai->dma_modifier;
+    /* dma_modifier is an integer percentage (100 == unscaled). Use 64-bit
+     * integer math for determinism: floating-point scaling here varied by
+     * platform/FP flags and lost precision past 2^24. */
+    unsigned int duration = (unsigned int)(
+            ((uint64_t)get_dma_duration(ai) * ai->dma_modifier) / 100);
 
     if (ai->regs[AI_STATUS_REG] & AI_STATUS_BUSY)
     {
@@ -145,7 +149,7 @@ void init_ai(struct ai_controller* ai,
              struct vi_controller* vi,
              void* aout,
              const struct audio_out_backend_interface* iaout,
-             float dma_modifier)
+             unsigned int dma_modifier)
 {
     ai->mi = mi;
     ai->ri = ri;
