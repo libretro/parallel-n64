@@ -591,11 +591,11 @@ static void InnerLoop(struct hle_t* hle,
         }
         v0  = v2 + v4;
         v18 = v6 + v8;
-        /* Clamp(v0); */
-        /* Clamp(v18); */
-        /* clamp??? */
-        *(int16_t *)(hle->mp3_buffer + (outPtr ^ S16)) = v0;
-        *(int16_t *)(hle->mp3_buffer + ((outPtr + 2)^S16)) = v18;
+        /* The RSP synthesis reads these sums out of the vector accumulator with
+         * a saturating extract (VMACF/VADD signed-clamp to s16); the plain cast
+         * below wrapped instead, turning loud-passage overflow into clicks. */
+        *(int16_t *)(hle->mp3_buffer + (outPtr ^ S16)) = clamp_s16(v0);
+        *(int16_t *)(hle->mp3_buffer + ((outPtr + 2)^S16)) = clamp_s16(v18);
         outPtr += 4;
         addptr += 0x30;
         offset += 0x38;
@@ -646,11 +646,9 @@ static void InnerLoop(struct hle_t* hle,
         }
         v0  = v2 + v4;
         v18 = v6 + v8;
-        /* Clamp(v0); */
-        /* Clamp(v18); */
-        /* clamp??? */
-        *(int16_t *)(hle->mp3_buffer + ((outPtr + 2)^S16)) = v0;
-        *(int16_t *)(hle->mp3_buffer + ((outPtr + 4)^S16)) = v18;
+        /* Saturating extract, as above. */
+        *(int16_t *)(hle->mp3_buffer + ((outPtr + 2)^S16)) = clamp_s16(v0);
+        *(int16_t *)(hle->mp3_buffer + ((outPtr + 4)^S16)) = clamp_s16(v18);
         outPtr += 4;
         addptr -= 0x50;
     }
