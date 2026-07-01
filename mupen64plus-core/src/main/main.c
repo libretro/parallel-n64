@@ -124,7 +124,6 @@ m64p_media_loader g_media_loader;
 int g_gs_vi_counter = 0;
 
 /** static (local) variables **/
-static int   l_CurrentFrame = 0;         // frame counter
 
 /* compatible paks */
 enum { PAK_MAX_SIZE = 5 };
@@ -212,7 +211,6 @@ static void video_plugin_render_callback(int bScreenRedrawn)
 void new_frame(void)
 {
     /* advance the current frame */
-    l_CurrentFrame++;
 }
 
 /* TODO: make a GameShark module and move that there */
