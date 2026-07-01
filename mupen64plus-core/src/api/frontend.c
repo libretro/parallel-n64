@@ -43,7 +43,6 @@
 #include "main/version.h"
 #include "main/cheat.h"
 #include "main/workqueue.h"
-#include "main/netplay.h"
 #include "plugin/plugin.h"
 #include "vidext.h"
 
@@ -196,116 +195,18 @@ EXPORT m64p_error CALL CoreDoCommand(m64p_command Command, int ParamInt, void *P
                 memcpy((char *)ParamPtr + 0x20, ROM_PARAMS.headername, size);
             }
             return M64ERR_SUCCESS;
-        case M64CMD_ROM_GET_SETTINGS:
-            if (!l_ROMOpen && !l_DiskOpen)
-                return M64ERR_INVALID_STATE;
-            if (ParamPtr == NULL)
-                return M64ERR_INPUT_ASSERT;
-            if (sizeof(m64p_rom_settings) < ParamInt)
-                ParamInt = sizeof(m64p_rom_settings);
-            memcpy(ParamPtr, &ROM_SETTINGS, ParamInt);
-            return M64ERR_SUCCESS;
-        case M64CMD_ROM_SET_SETTINGS:
-            if (g_EmulatorRunning || (!l_ROMOpen && !l_DiskOpen))
-                return M64ERR_INVALID_STATE;
-            if (ParamPtr == NULL)
-                return M64ERR_INPUT_ASSERT;
-            if ((int)sizeof(m64p_rom_settings) < ParamInt)
-                ParamInt = sizeof(m64p_rom_settings);
-            memcpy(&ROM_SETTINGS, ParamPtr, ParamInt);
-            return M64ERR_SUCCESS;
         case M64CMD_EXECUTE:
             if (g_EmulatorRunning || (!l_ROMOpen && !l_DiskOpen))
                 return M64ERR_INVALID_STATE;
             /* the main_run() function will not return until the player has quit the game */
             rval = main_run();
             return rval;
-        case M64CMD_STOP:
-            if (!g_EmulatorRunning)
-                return M64ERR_INVALID_STATE;
-            /* this stop function is asynchronous.  The emulator may not terminate until later */
-            return main_core_state_set(M64CORE_EMU_STATE, M64EMU_STOPPED);
-        case M64CMD_PAUSE:
-            if (!g_EmulatorRunning)
-                return M64ERR_INVALID_STATE;
-            return main_core_state_set(M64CORE_EMU_STATE, M64EMU_PAUSED);
-        case M64CMD_RESUME:
-            if (!g_EmulatorRunning)
-                return M64ERR_INVALID_STATE;
-            return main_core_state_set(M64CORE_EMU_STATE, M64EMU_RUNNING);
-        case M64CMD_CORE_STATE_QUERY:
-            if (ParamPtr == NULL)
-                return M64ERR_INPUT_ASSERT;
-            return main_core_state_query((m64p_core_param) ParamInt, (int *) ParamPtr);
-        case M64CMD_CORE_STATE_SET:
-            if (ParamPtr == NULL)
-                return M64ERR_INPUT_ASSERT;
-            return main_core_state_set((m64p_core_param) ParamInt, *((int *)ParamPtr));
-        case M64CMD_STATE_LOAD:
-            return M64ERR_SUCCESS;
-        case M64CMD_STATE_SAVE:
-            if (!g_EmulatorRunning)
-                return M64ERR_INVALID_STATE;
-            if (ParamPtr != NULL && (ParamInt < 1 || ParamInt > 3))
-                return M64ERR_INPUT_INVALID;
-            return M64ERR_SUCCESS;
-        case M64CMD_STATE_SET_SLOT:
-            if (ParamInt < 0 || ParamInt > 9)
-                return M64ERR_INPUT_INVALID;
-            return main_core_state_set(M64CORE_SAVESTATE_SLOT, ParamInt);
-        case M64CMD_SEND_SDL_KEYDOWN:
-            if (!g_EmulatorRunning)
-                return M64ERR_INVALID_STATE;
-            keysym = ParamInt & 0xffff;
-            keymod = (ParamInt >> 16) & 0xffff;
-            return M64ERR_SUCCESS;
-        case M64CMD_SEND_SDL_KEYUP:
-            if (!g_EmulatorRunning)
-                return M64ERR_INVALID_STATE;
-            keysym = ParamInt & 0xffff;
-            keymod = (ParamInt >> 16) & 0xffff;
-            return M64ERR_SUCCESS;
-        case M64CMD_SET_FRAME_CALLBACK:
-            g_FrameCallback = (m64p_frame_callback) ParamPtr;
-            return M64ERR_SUCCESS;
-        case M64CMD_TAKE_NEXT_SCREENSHOT:
-            if (!g_EmulatorRunning)
-                return M64ERR_INVALID_STATE;
-            return M64ERR_SUCCESS;
         case M64CMD_RESET:
             if (!g_EmulatorRunning)
                 return M64ERR_INVALID_STATE;
             if (ParamInt < 0 || ParamInt > 1)
                 return M64ERR_INPUT_INVALID;
             return main_reset(ParamInt);
-        case M64CMD_ADVANCE_FRAME:
-            if (!g_EmulatorRunning)
-                return M64ERR_INVALID_STATE;
-            return M64ERR_SUCCESS;
-        case M64CMD_NETPLAY_INIT:
-            if (ParamInt < 1 || ParamPtr == NULL)
-                return M64ERR_INPUT_INVALID;
-            return netplay_start(ParamPtr, ParamInt);
-        case M64CMD_NETPLAY_CONTROL_PLAYER:
-            if (ParamInt < 1 || ParamInt > 4 || ParamPtr == NULL)
-                return M64ERR_INPUT_INVALID;
-            if (netplay_register_player(ParamInt - 1, Controls[netplay_next_controller()].Plugin, Controls[netplay_next_controller()].RawData, *(uint32_t*)ParamPtr))
-            {
-                netplay_set_controller(ParamInt - 1);
-                return M64ERR_SUCCESS;
-            }
-            else
-                return M64ERR_INPUT_ASSERT; // player already in use
-        case M64CMD_NETPLAY_GET_VERSION:
-            if (ParamPtr == NULL)
-                return M64ERR_INPUT_INVALID;
-            *(uint32_t*)ParamPtr = NETPLAY_CORE_VERSION;
-            if (ParamInt == NETPLAY_CORE_VERSION)
-                return M64ERR_SUCCESS;
-            else
-                return M64ERR_INCOMPATIBLE;
-        case M64CMD_NETPLAY_CLOSE:
-            return netplay_stop();
         default:
             return M64ERR_INPUT_INVALID;
     }
@@ -325,8 +226,6 @@ EXPORT m64p_error CALL CoreAddCheat(const char *CheatName, m64p_cheat_code *Code
 {
     if (!l_CoreInit)
         return M64ERR_NOT_INIT;
-    if (netplay_is_init())
-        return M64ERR_INVALID_STATE;
     if (CheatName == NULL || CodeList == NULL)
         return M64ERR_INPUT_ASSERT;
     if (strlen(CheatName) < 1 || NumCodes < 1)
@@ -342,8 +241,6 @@ EXPORT m64p_error CALL CoreCheatEnabled(const char *CheatName, int Enabled)
 {
     if (!l_CoreInit)
         return M64ERR_NOT_INIT;
-    if (netplay_is_init())
-        return M64ERR_INVALID_STATE;
     if (CheatName == NULL)
         return M64ERR_INPUT_ASSERT;
 

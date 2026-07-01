@@ -72,9 +72,7 @@
 #endif
 #include "rom.h"
 #include "savestates.h"
-#include "screenshot.h"
 #include "util.h"
-#include "netplay.h"
 
 #include <libretro_private.h>
 
@@ -104,13 +102,9 @@
 /** globals **/
 m64p_handle g_CoreConfig = NULL;
 
-m64p_frame_callback g_FrameCallback = NULL;
-
 int         g_RomWordsLittleEndian = 0; // after loading, ROM words are in native N64 byte order (big endian). We will swap them on x86
 int         g_EmulatorRunning = 0;      // need separate boolean to tell if emulator is running, since --nogui doesn't use a thread
 
-
-int g_rom_pause;
 extern int frame_break; /* r4300: per-frame yield flag set by retro_return at VI */
 
 struct cheat_ctx g_cheat_ctx;
@@ -131,10 +125,6 @@ int g_gs_vi_counter = 0;
 
 /** static (local) variables **/
 static int   l_CurrentFrame = 0;         // frame counter
-static int   l_TakeScreenshot = 0;       // Tell OSD Rendering callback to take a screenshot just before drawing the OSD
-static int   l_SpeedFactor = 100;        // percentage of nominal game speed at which emulator is running
-static int   l_FrameAdvance = 0;         // variable to check if we pause on next frame
-static int   l_MainSpeedLimit = 1;       // insert delay during vi_interrupt to keep speed at real-time
 
 /* compatible paks */
 enum { PAK_MAX_SIZE = 5 };
@@ -150,66 +140,7 @@ struct xoshiro256pp_state l_mpk_idgen;
 * static functions
 */
 
-static const char *get_savepathdefault(const char *configpath)
-{
-    return "";
-}
-
-static char *get_save_filename(void)
-{
-    static char filename[256];
-
-    int format = ConfigGetParamInt(g_CoreConfig, "SaveFilenameFormat");
-
-    if (format == 0) {
-        snprintf(filename, 256, "%s", ROM_PARAMS.headername);
-    } else /* if (format == 1) */ {
-        if (strstr(ROM_SETTINGS.goodname, "(unknown rom)") == NULL) {
-            snprintf(filename, 256, "%.32s-%.8s", ROM_SETTINGS.goodname, ROM_SETTINGS.MD5);
-        } else if (ROM_HEADER.Name[0] != 0) {
-            snprintf(filename, 256, "%s-%.8s", ROM_PARAMS.headername, ROM_SETTINGS.MD5);
-        } else {
-            snprintf(filename, 256, "unknown-%.8s", ROM_SETTINGS.MD5);
-        }
-    }
-
-    /* sanitize filename */
-    string_replace_chars(filename, ":<>\"/\\|?*", '_');
-
-    return filename;
-}
-
-static char *get_mempaks_path(void)
-{
-    return "";
-}
-
-static char *get_eeprom_path(void)
-{
-    return "";
-}
-
-static char *get_sram_path(void)
-{
-    return "";
-}
-
-static char *get_flashram_path(void)
-{
-    return "";
-}
-
 static char *get_gb_ram_path(const char* gbrom, unsigned int control_id)
-{
-    return "";
-}
-
-const char *get_savestatepath(void)
-{
-    return "";
-}
-
-const char *get_savesrampath(void)
 {
     return "";
 }
@@ -225,12 +156,6 @@ const char *get_dd_disk_save_path(const char* diskname, int save_format)
         strcat(newPath, ".ram");
 
     return newPath;
-}
-
-const char *get_savestatefilename(void)
-{
-    /* return same file name as save files */
-    return get_save_filename();
 }
 
 void main_message(m64p_msg_level level, unsigned int corner, const char *format, ...)
@@ -259,378 +184,6 @@ static void main_check_inputs(void)
 /*********************************************************************************************************
 * global functions, for adjusting the core emulator behavior
 */
-int main_set_core_defaults(void)
-{
-    /* Config_LoadConfig is provided by the GLideN64 video plugin
-     * (Config_mupenplus.cpp). GLideN64 is not built on GLES2-only targets
-     * (e.g. webos-armv7), so only call it when GLideN64 is compiled in;
-     * otherwise the reference is left undefined at link time. */
-#ifdef HAVE_GLIDEN64
-    extern void Config_LoadConfig();
-    Config_LoadConfig();
-#endif
-    return 1;
-}
-
-void main_speeddown(int percent)
-{
-    if (netplay_is_init())
-        return;
-
-    if (l_SpeedFactor - percent > 10)  /* 10% minimum speed */
-    {
-        l_SpeedFactor -= percent;
-        audio.setSpeedFactor(l_SpeedFactor);
-        StateChanged(M64CORE_SPEED_FACTOR, l_SpeedFactor);
-    }
-}
-
-void main_speedup(int percent)
-{
-    if (netplay_is_init())
-        return;
-
-    if (l_SpeedFactor + percent < 300) /* 300% maximum speed */
-    {
-        l_SpeedFactor += percent;
-        audio.setSpeedFactor(l_SpeedFactor);
-        StateChanged(M64CORE_SPEED_FACTOR, l_SpeedFactor);
-    }
-}
-
-static void main_speedset(int percent)
-{
-    if (netplay_is_init())
-        return;
-
-    if (percent < 1 || percent > 1000)
-    {
-        DebugMessage(M64MSG_WARNING, "Invalid speed setting %i percent", percent);
-        return;
-    }
-    // disable fast-forward if it's enabled
-    main_set_fastforward(0);
-    // set speed
-    l_SpeedFactor = percent;
-    audio.setSpeedFactor(l_SpeedFactor);
-    StateChanged(M64CORE_SPEED_FACTOR, l_SpeedFactor);
-}
-
-void main_set_fastforward(int enable)
-{
-    if (netplay_is_init())
-        return;
-
-    static int ff_state = 0;
-    static int SavedSpeedFactor = 100;
-
-    if (enable && !ff_state)
-    {
-        ff_state = 1; /* activate fast-forward */
-        SavedSpeedFactor = l_SpeedFactor;
-        l_SpeedFactor = 250;
-        audio.setSpeedFactor(l_SpeedFactor);
-        StateChanged(M64CORE_SPEED_FACTOR, l_SpeedFactor);
-    }
-    else if (!enable && ff_state)
-    {
-        ff_state = 0; /* de-activate fast-forward */
-        l_SpeedFactor = SavedSpeedFactor;
-        audio.setSpeedFactor(l_SpeedFactor);
-        StateChanged(M64CORE_SPEED_FACTOR, l_SpeedFactor);
-    }
-
-}
-
-static void main_set_speedlimiter(int enable)
-{
-    if (netplay_is_init() && !netplay_lag())
-        return;
-
-    l_MainSpeedLimit = enable ? 1 : 0;
-}
-
-static int main_is_paused(void)
-{
-    return (g_EmulatorRunning && g_rom_pause);
-}
-
-void main_toggle_pause(void)
-{
-    if (!g_EmulatorRunning)
-        return;
-
-    if (netplay_is_init())
-        return;
-
-    if (g_rom_pause)
-    {
-        DebugMessage(M64MSG_STATUS, "Emulation continued.");
-        StateChanged(M64CORE_EMU_STATE, M64EMU_RUNNING);
-    }
-    else
-    {
-        DebugMessage(M64MSG_STATUS, "Emulation paused.");
-        StateChanged(M64CORE_EMU_STATE, M64EMU_PAUSED);
-    }
-
-    g_rom_pause = !g_rom_pause;
-    l_FrameAdvance = 0;
-}
-
-void main_advance_one(void)
-{
-    l_FrameAdvance = 1;
-    g_rom_pause = 0;
-    StateChanged(M64CORE_EMU_STATE, M64EMU_RUNNING);
-}
-
-static void main_draw_volume_osd(void)
-{
-    return;
-}
-
-/* this function could be called as a result of a keypress, joystick/button movement,
-   LIRC command, or 'testshots' command-line option timer */
-void main_take_next_screenshot(void)
-{
-    l_TakeScreenshot = l_CurrentFrame + 1;
-}
-
-void main_state_set_slot(int slot)
-{
-    if (slot < 0 || slot > 9)
-    {
-        DebugMessage(M64MSG_WARNING, "Invalid savestate slot '%i' in main_state_set_slot().  Using 0", slot);
-        slot = 0;
-    }
-
-    savestates_select_slot(slot);
-}
-
-void main_state_inc_slot(void)
-{
-    savestates_inc_slot();
-}
-
-void main_state_load(const char *filename)
-{
-    if (netplay_is_init())
-        return;
-
-    if (filename == NULL) // Save to slot
-        savestates_set_job(savestates_job_load, savestates_type_m64p, NULL);
-    else
-        savestates_set_job(savestates_job_load, savestates_type_unknown, filename);
-}
-
-void main_state_save(int format, const char *filename)
-{
-    if (netplay_is_init())
-        return;
-
-    if (filename == NULL) // Save to slot
-        savestates_set_job(savestates_job_save, savestates_type_m64p, NULL);
-    else // Save to file
-        savestates_set_job(savestates_job_save, (savestates_type)format, filename);
-}
-
-m64p_error main_core_state_query(m64p_core_param param, int *rval)
-{
-    switch (param)
-    {
-        case M64CORE_EMU_STATE:
-            if (!g_EmulatorRunning)
-                *rval = M64EMU_STOPPED;
-            else if (g_rom_pause)
-                *rval = M64EMU_PAUSED;
-            else
-                *rval = M64EMU_RUNNING;
-            break;
-        case M64CORE_VIDEO_MODE:
-                *rval = M64VIDEO_FULLSCREEN;
-            break;
-        case M64CORE_SAVESTATE_SLOT:
-            *rval = savestates_get_slot();
-            break;
-        case M64CORE_SPEED_FACTOR:
-            *rval = l_SpeedFactor;
-            break;
-        case M64CORE_SPEED_LIMITER:
-            *rval = l_MainSpeedLimit;
-            break;
-        case M64CORE_VIDEO_SIZE:
-        {
-            int width, height;
-            if (!g_EmulatorRunning)
-                return M64ERR_INVALID_STATE;
-            main_get_screen_size(&width, &height);
-            *rval = (width << 16) + height;
-            break;
-        }
-        case M64CORE_AUDIO_VOLUME:
-        {
-            if (!g_EmulatorRunning)
-                return M64ERR_INVALID_STATE;    
-            return main_volume_get_level(rval);
-        }
-        case M64CORE_AUDIO_MUTE:
-            *rval = main_volume_get_muted();
-            break;
-        case M64CORE_INPUT_GAMESHARK:
-            *rval = event_gameshark_active();
-            break;
-        // these are only used for callbacks; they cannot be queried or set
-        case M64CORE_SCREENSHOT_CAPTURED:
-        case M64CORE_STATE_LOADCOMPLETE:
-        case M64CORE_STATE_SAVECOMPLETE:
-            return M64ERR_INPUT_INVALID;
-        default:
-            return M64ERR_INPUT_INVALID;
-    }
-
-    return M64ERR_SUCCESS;
-}
-
-m64p_error main_core_state_set(m64p_core_param param, int val)
-{
-    switch (param)
-    {
-        case M64CORE_EMU_STATE:
-            if (!g_EmulatorRunning)
-                return M64ERR_INVALID_STATE;
-            if (val == M64EMU_STOPPED)
-            {        
-                /* this stop function is asynchronous.  The emulator may not terminate until later */
-                main_stop();
-                return M64ERR_SUCCESS;
-            }
-            else if (val == M64EMU_RUNNING)
-            {
-                if (main_is_paused())
-                    main_toggle_pause();
-                return M64ERR_SUCCESS;
-            }
-            else if (val == M64EMU_PAUSED)
-            {    
-                if (!main_is_paused())
-                    main_toggle_pause();
-                return M64ERR_SUCCESS;
-            }
-            return M64ERR_INPUT_INVALID;
-        case M64CORE_VIDEO_MODE:
-            if (!g_EmulatorRunning)
-                return M64ERR_INVALID_STATE;
-            gfx.changeWindow();
-            return M64ERR_SUCCESS;
-        case M64CORE_SAVESTATE_SLOT:
-            if (val < 0 || val > 9)
-                return M64ERR_INPUT_INVALID;
-            savestates_select_slot(val);
-            return M64ERR_SUCCESS;
-        case M64CORE_SPEED_FACTOR:
-            if (!g_EmulatorRunning)
-                return M64ERR_INVALID_STATE;
-            main_speedset(val);
-            return M64ERR_SUCCESS;
-        case M64CORE_SPEED_LIMITER:
-            main_set_speedlimiter(val);
-            return M64ERR_SUCCESS;
-        case M64CORE_VIDEO_SIZE:
-        {
-            // the front-end app is telling us that the user has resized the video output frame, and so
-            // we should try to update the video plugin accordingly.  First, check state
-            int width, height;
-            if (!g_EmulatorRunning)
-                return M64ERR_INVALID_STATE;
-            width = (val >> 16) & 0xffff;
-            height = val & 0xffff;
-            // then call the video plugin.  if the video plugin supports resizing, it will resize its viewport and call
-            // VidExt_ResizeWindow to update the window manager handling our opengl output window
-            gfx.resizeVideoOutput(width, height);
-            return M64ERR_SUCCESS;
-        }
-        case M64CORE_AUDIO_VOLUME:
-            if (!g_EmulatorRunning)
-                return M64ERR_INVALID_STATE;
-            if (val < 0 || val > 100)
-                return M64ERR_INPUT_INVALID;
-            return main_volume_set_level(val);
-        case M64CORE_AUDIO_MUTE:
-            if ((main_volume_get_muted() && !val) || (!main_volume_get_muted() && val))
-                return main_volume_mute();
-            return M64ERR_SUCCESS;
-        case M64CORE_INPUT_GAMESHARK:
-            if (!g_EmulatorRunning)
-                return M64ERR_INVALID_STATE;
-            event_set_gameshark(val);
-            return M64ERR_SUCCESS;
-        // these are only used for callbacks; they cannot be queried or set
-        case M64CORE_STATE_LOADCOMPLETE:
-        case M64CORE_STATE_SAVECOMPLETE:
-            return M64ERR_INPUT_INVALID;
-        default:
-            return M64ERR_INPUT_INVALID;
-    }
-}
-
-m64p_error main_get_screen_size(int *width, int *height)
-{
-    gfx.readScreen(NULL, width, height, 0);
-    return M64ERR_SUCCESS;
-}
-
-m64p_error main_read_screen(void *pixels, int bFront)
-{
-    int width_trash, height_trash;
-    gfx.readScreen(pixels, &width_trash, &height_trash, bFront);
-    return M64ERR_SUCCESS;
-}
-
-m64p_error main_volume_up(void)
-{
-    int level = 0;
-    audio.volumeUp();
-    main_volume_get_level(&level);
-    StateChanged(M64CORE_AUDIO_VOLUME, level);
-    return M64ERR_SUCCESS;
-}
-
-m64p_error main_volume_down(void)
-{
-    int level = 0;
-    audio.volumeDown();
-    main_volume_get_level(&level);
-    StateChanged(M64CORE_AUDIO_VOLUME, level);
-    return M64ERR_SUCCESS;
-}
-
-m64p_error main_volume_get_level(int *level)
-{
-    *level = audio.volumeGetLevel();
-    return M64ERR_SUCCESS;
-}
-
-m64p_error main_volume_set_level(int level)
-{
-    audio.volumeSetLevel(level);
-    level = audio.volumeGetLevel();
-    StateChanged(M64CORE_AUDIO_VOLUME, level);
-    return M64ERR_SUCCESS;
-}
-
-m64p_error main_volume_mute(void)
-{
-    audio.volumeMute();
-    StateChanged(M64CORE_AUDIO_MUTE, main_volume_get_muted());
-    return M64ERR_SUCCESS;
-}
-
-int main_volume_get_muted(void)
-{
-    return (audio.volumeGetLevel() == 0);
-}
-
 m64p_error main_reset(int do_hard_reset)
 {
     if (do_hard_reset) {
@@ -658,17 +211,8 @@ static void video_plugin_render_callback(int bScreenRedrawn)
 
 void new_frame(void)
 {
-    if (g_FrameCallback != NULL)
-        (*g_FrameCallback)(l_CurrentFrame);
-
     /* advance the current frame */
     l_CurrentFrame++;
-
-    if (l_FrameAdvance) {
-        g_rom_pause = 1;
-        l_FrameAdvance = 0;
-        StateChanged(M64CORE_EMU_STATE, M64EMU_PAUSED);
-    }
 }
 
 /* TODO: make a GameShark module and move that there */
@@ -688,17 +232,6 @@ static void gs_apply_cheats(struct cheat_ctx* ctx)
     }
 }
 
-static void pause_loop(void)
-{
-    if(g_rom_pause)
-    {
-        while(g_rom_pause)
-        {
-            main_check_inputs();
-        }
-    }
-}
-
 /* called on vertical interrupt.
  * Allow the core to perform various things */
 void new_vi(void)
@@ -710,8 +243,6 @@ void new_vi(void)
     gs_apply_cheats(&g_cheat_ctx);
 
     main_check_inputs();
-
-    netplay_check_sync(&g_dev.r4300.cp0);
     retro_return(false);
 }
 
@@ -757,70 +288,26 @@ void save_storage_file_libretro(void* storage)
 
 static void open_mpk_file(struct file_storage* storage)
 {
-    if (!netplay_is_init())
-    {
-        storage->data = saved_memory.mempack[0];
-        storage->size = MEMPAK_SIZE * 4;
-    }
-    else
-    {
-        // First we save them with what we have
-        storage->data = saved_memory.mempack[0];
-        storage->size = MEMPAK_SIZE * 4;
-        // If player 1 we send, otherwise we recieve
-        netplay_read_storage("mempak.mpk", storage->data, storage->size);
-    }
+	storage->data = saved_memory.mempack[0];
+	storage->size = MEMPAK_SIZE * 4;
 }
 
 static void open_fla_file(struct file_storage* storage)
 {
-    if (!netplay_is_init())
-    {
         storage->data = saved_memory.flashram;
         storage->size = FLASHRAM_SIZE;
-    }
-    else
-    {
-        // First we save them with what we have
-        storage->data = saved_memory.flashram;
-        storage->size = FLASHRAM_SIZE;
-        // If player 1 we send, otherwise we recieve
-        netplay_read_storage("flashram.fla", storage->data, storage->size);
-    }
 }
 
 static void open_sra_file(struct file_storage* storage)
 {
-    if (!netplay_is_init())
-    {
         storage->data = saved_memory.sram;
         storage->size = SRAM_SIZE;
-    }
-    else
-    {
-        // First we save them with what we have
-        storage->data = saved_memory.sram;
-        storage->size = SRAM_SIZE;
-        // If player 1 we send, otherwise we recieve
-        netplay_read_storage("saveram.sra", storage->data, storage->size);
-    }
 }
 
 static void open_eep_file(struct file_storage* storage)
 {
-    if (!netplay_is_init())
-    {
         storage->data = saved_memory.eeprom;
         storage->size = EEPROM_MAX_SIZE;
-    }
-    else
-    {
-        // First we save them with what we have
-        storage->data = saved_memory.eeprom;
-        storage->size = EEPROM_MAX_SIZE;
-        // If player 1 we send, otherwise we recieve
-        netplay_read_storage("eeprom.eep", storage->data, storage->size);
-    }
 }
 
 extern char* retro_dd_path_rom;
@@ -1338,12 +825,10 @@ m64p_error main_run(void)
     }
 
     /* Seed MPK ID gen using current time */
-    uint64_t mpk_seed = !netplay_is_init() ? (uint64_t)time(NULL) : 0;
+    uint64_t mpk_seed = (uint64_t)time(NULL);
     l_mpk_idgen = xoshiro256pp_seed(mpk_seed);
 
-    no_compiled_jump = 0; //ConfigGetParamBool(g_CoreConfig, "NoCompiledJump");
-    //We disable any randomness for netplay
-    //randomize_interrupt = !netplay_is_init() ? ConfigGetParamBool(g_CoreConfig, "RandomizeInterrupt") : 0;
+    no_compiled_jump = 0;
 
     if (ROM_SETTINGS.disableextramem)
         disable_extra_mem = ROM_SETTINGS.disableextramem;
@@ -1357,9 +842,6 @@ m64p_error main_run(void)
         count_per_op_denom_pot = 20;
 
     si_dma_duration = ROM_SETTINGS.sidmaduration;
-
-    //During netplay, player 1 is the source of truth for these settings
-    netplay_sync_settings(&count_per_op, &count_per_op_denom_pot, &disable_extra_mem, &si_dma_duration, &emumode, &no_compiled_jump);
 
     rdram_size = (disable_extra_mem == 0) ? 0x800000 : 0x400000;
 
@@ -1451,13 +933,9 @@ m64p_error main_run(void)
     memset(&l_gb_carts_data, 0, GAME_CONTROLLERS_COUNT*sizeof(*l_gb_carts_data));
     memset(cin_compats, 0, GAME_CONTROLLERS_COUNT*sizeof(*cin_compats));
 
-    netplay_read_registration(cin_compats);
-
-    for (i = 0; i < GAME_CONTROLLERS_COUNT; ++i) {
-
-        //During netplay, we "trick" the input plugin
-        //by replacing the regular control_id with the ID that is controlling the player during netplay
-        control_ids[i] = netplay_is_init() ? netplay_get_controller(i) : (int)i;
+    for (i = 0; i < GAME_CONTROLLERS_COUNT; ++i)
+    {
+        control_ids[i] = (int)i;
 
         /* if input plugin requests RawData let the input plugin do the channel device processing */
         if (Controls[i].RawData) {
@@ -1474,7 +952,6 @@ m64p_error main_run(void)
             cin_compats[i].cont = &g_dev.controllers[i];
             cin_compats[i].last_pak_type = Controls[i].Plugin;
             cin_compats[i].last_input = 0;
-            cin_compats[i].netplay_count = 0;
             cin_compats[i].event_first = NULL;
 
             Controls[i].Plugin = PLUGIN_NONE;
@@ -1502,7 +979,6 @@ m64p_error main_run(void)
             cin_compats[i].tpk = &g_dev.transferpaks[i];
             cin_compats[i].last_pak_type = Controls[i].Plugin;
             cin_compats[i].last_input = 0;
-            cin_compats[i].netplay_count = 0;
             cin_compats[i].event_first = NULL;
 
             l_gb_carts_data[i].control_id = (int)i;
@@ -1646,7 +1122,7 @@ m64p_error main_run(void)
         goto on_input_open_failure;
     }
 
-    // setup rendering callback from video plugin to the core, for screenshots and On-Screen-Display
+    // setup rendering callback from video plugin to the core
     gfx.setRenderingCallback(video_plugin_render_callback);
 
     g_EmulatorRunning = 1;
@@ -1752,12 +1228,6 @@ void main_stop(void)
         return;
 
     DebugMessage(M64MSG_STATUS, "Stopping emulation.");
-
-    if (g_rom_pause)
-    {
-        g_rom_pause = 0;
-        StateChanged(M64CORE_EMU_STATE, M64EMU_RUNNING);
-    }
 
     stop_device(&g_dev);
 }

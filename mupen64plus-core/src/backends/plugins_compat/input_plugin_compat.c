@@ -27,7 +27,6 @@
 #include "plugin/plugin.h"
 
 #include "main/main.h"
-#include "main/netplay.h"
 
 #include <stdint.h>
 #include <string.h>
@@ -62,29 +61,8 @@ static m64p_error input_plugin_get_input(void* opaque, uint32_t* input_)
     int pak_change_requested = 0;
 
     /* first poll controller */
-    if (!netplay_is_init())
-    {
-        if (input.getKeys)
-            input.getKeys(cin_compat->control_id, &keys);
-    }
-    else
-    {
-        int netplay_controller = netplay_get_controller(cin_compat->control_id);
-        if (netplay_controller >= 0)
-        {
-            //Here we "trick" the input plugin
-            //by passing it the controller number that is controlling the player during netplay
-            uint8_t plugin = Controls[netplay_controller].Plugin;
-            uint8_t present = Controls[netplay_controller].Present;
-            if (input.getKeys)
-                input.getKeys(netplay_controller, &keys);
-
-            Controls[netplay_controller].Plugin = plugin;
-            Controls[netplay_controller].Present = present;
-        }
-        cin_compat->last_input = keys.Value; //disable pak switching for netplay
-        cin_compat->last_pak_type = Controls[cin_compat->control_id].Plugin; //disable pak switching for netplay
-    }
+    if (input.getKeys)
+	    input.getKeys(cin_compat->control_id, &keys);
 
     /* return an error if controller is not plugged */
     if (!Controls[cin_compat->control_id].Present) {
