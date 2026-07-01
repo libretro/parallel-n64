@@ -68,6 +68,7 @@ void init_cic_using_ipl3(struct cic* cic, const void* ipl3)
         case UINT64_C(0x000001053BC19870): i = 6; break; /* CIC 5167 */
         case UINT64_C(0x000000A5F80BF620): i = 0; break; /* CIC 5101 */
         case UINT64_C(0x000000D2E53EF008): i = 7; break; /* CIC 8303 */
+        case UINT64_C(0x000000D23829ED4C): i = 7; break; /* CIC 8303 (alt 64DD IPL: deviplcart) */
         case UINT64_C(0x000000D2E53EF39F): i = 8; break; /* CIC 8401 */
         case UINT64_C(0x000000D2E53E5DDA): i = 9; break; /* CIC 8501 */
     }
