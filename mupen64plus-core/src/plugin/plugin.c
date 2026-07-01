@@ -35,7 +35,6 @@
 #include "device/rcp/rsp/rsp_core.h"
 #include "device/rcp/vi/vi_controller.h"
 #include "dummy_audio.h"
-#include "dummy_input.h"
 #include "main/main.h"
 #include "main/rom.h"
 #include "main/version.h"
@@ -111,7 +110,6 @@ DEFINE_GFX(glide64);
 gfx_plugin_functions gfx;
 GFX_INFO gfx_info;
 audio_plugin_functions audio;
-input_plugin_functions input;
 rsp_plugin_functions rsp;
 /* Plugin used to run audio (type 2) RSP tasks. Normally the same as the
  * active RSP, but when send_allist_to_hle_rsp is set and the active RSP is an
@@ -142,34 +140,6 @@ const audio_plugin_functions dummy_audio = {
 };
 
 
-extern m64p_error inputPluginGetVersion(m64p_plugin_type *PluginType, int *PluginVersion,
-                                              int *APIVersion, const char **PluginNamePtr, int *Capabilities);
-extern void inputInitiateControllers (CONTROL_INFO ControlInfo);
-extern void inputGetKeys_default(int Control, BUTTONS * Keys );
-extern void inputControllerCommand(int Control, unsigned char *Command);
-extern void inputInitiateControllers(CONTROL_INFO ControlInfo);
-extern void inputReadController(int Control, unsigned char *Command);
-extern int  inputRomOpen(void);
-extern void inputRomClosed(void);
-
-
-const input_plugin_functions dummy_input = {
-    inputPluginGetVersion,
-    inputControllerCommand,
-    inputGetKeys_default,
-    inputInitiateControllers,
-    inputReadController,
-    inputRomClosed,
-    inputRomOpen,
-    dummyinput_SDL_KeyDown,
-    dummyinput_SDL_KeyUp,
-    dummyinput_RenderCallback,
-    dummy_SendVRUWord,
-    dummy_SetMicState,
-    dummy_ReadVRUResults,
-    dummy_ClearVRUWords,
-    dummy_SetVRUWordMask
-};
 
 static AUDIO_INFO audio_info;
 static CONTROL_INFO control_info;
@@ -308,7 +278,7 @@ static m64p_error plugin_start_input(void)
       }
 
     /* call the input plugin */
-    input.initiateControllers(control_info);
+    inputInitiateControllers(control_info);
 
     return M64ERR_SUCCESS;
 }
@@ -473,7 +443,6 @@ void plugin_connect_all()
     l_AudioAttached = 1;
     //plugin_start_audio();
     
-    input = dummy_input;
     l_InputAttached = 1;
     plugin_start_input();
 }

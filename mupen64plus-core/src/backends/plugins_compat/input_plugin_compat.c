@@ -61,8 +61,7 @@ static m64p_error input_plugin_get_input(void* opaque, uint32_t* input_)
     int pak_change_requested = 0;
 
     /* first poll controller */
-    if (input.getKeys)
-	    input.getKeys(cin_compat->control_id, &keys);
+    inputGetKeys_default(cin_compat->control_id, &keys);
 
     /* return an error if controller is not plugged */
     if (!Controls[cin_compat->control_id].Present) {
@@ -132,9 +131,6 @@ static void input_plugin_rumble_exec(void* opaque, enum rumble_action action)
 {
     int control_id = *(int*)opaque;
 
-    if (input.controllerCommand == NULL) {
-        return;
-    }
 
     //This is for netplay, -1 means there is no local controller controlling this player
     if (control_id == -1) {
@@ -159,7 +155,7 @@ static void input_plugin_rumble_exec(void* opaque, enum rumble_action action)
     memset(cmd + 5, rumble_data, 0x20);
     cmd[0x25] = 0; /* dummy data CRC */
 
-    input.controllerCommand(control_id, cmd);
+    inputControllerCommand(control_id, cmd);
 }
 
 const struct rumble_backend_interface
@@ -175,9 +171,6 @@ static void input_plugin_read_controller(void* opaque,
 {
     int control_id = *(int*)opaque;
 
-    if (input.readController == NULL) {
-        return;
-    }
 
     //This is for netplay, -1 means there is no local controller controlling this player
     if (control_id == -1) {
@@ -185,7 +178,7 @@ static void input_plugin_read_controller(void* opaque,
     }
 
     /* UGLY: use negative offsets to get access to non-const tx pointer */
-    input.readController(control_id, rx - 1);
+    inputReadController(control_id, rx - 1);
 }
 
 void input_plugin_controller_command(void* opaque,
@@ -194,16 +187,13 @@ void input_plugin_controller_command(void* opaque,
 {
     int control_id = *(int*)opaque;
 
-    if (input.controllerCommand == NULL) {
-        return;
-    }
 
     //This is for netplay, -1 means there is no local controller controlling this player
     if (control_id == -1) {
         return;
     }
 
-    input.controllerCommand(control_id, tx);
+    inputControllerCommand(control_id, tx);
 }
 
 const struct joybus_device_interface

@@ -67,6 +67,7 @@
 #include "main.h"
 #include "callbacks.h"
 #include "plugin/plugin.h"
+#include "plugin/dummy_input.h"
 #if defined(PROFILE)
 #include "profile.h"
 #endif
@@ -201,11 +202,7 @@ m64p_error main_reset(int do_hard_reset)
 
 static void video_plugin_render_callback(int bScreenRedrawn)
 {
-    // if the input plugin specified a render callback, call it now
-    if(input.renderCallback)
-    {
-        input.renderCallback();
-    }
+    dummyinput_RenderCallback();
 }
 
 void new_frame(void)
@@ -726,7 +723,6 @@ void main_change_gb_cart(int control_id)
 */
 extern gfx_plugin_functions gfx_gln64;
 extern rsp_plugin_functions rsp_hle;
-extern input_plugin_functions dummy_input;
 extern audio_plugin_functions dummy_audio;
 
 unsigned int r4300_emumode;
@@ -1109,7 +1105,7 @@ m64p_error main_run(void)
     {
         goto on_audio_open_failure;
     }
-    if (!input.romOpen())
+    if (!inputRomOpen())
     {
         goto on_input_open_failure;
     }
@@ -1159,7 +1155,7 @@ m64p_error main_run(void)
 
     /* Emulation stopped */
     rsp.romClosed();
-    input.romClosed();
+    inputRomClosed();
     audio.romClosed();
     gfx.romClosed();
 
@@ -1180,7 +1176,7 @@ m64p_error main_run(void)
 on_disk_failure:
     failure_rval = M64ERR_INVALID_STATE;
     rsp.romClosed();
-    input.romClosed();
+    inputRomClosed();
 on_input_open_failure:
     audio.romClosed();
 on_audio_open_failure:
@@ -1291,7 +1287,7 @@ void mupen_main_stop(void)
 void mupen_main_exit(void)
 {
    if (rsp.romClosed)   rsp.romClosed();
-   if (input.romClosed) input.romClosed();
+   inputRomClosed();
    if (gfx.romClosed)   gfx.romClosed();
    if (audio.romClosed) audio.romClosed();
 }

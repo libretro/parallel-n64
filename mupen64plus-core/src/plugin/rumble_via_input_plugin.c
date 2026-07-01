@@ -50,6 +50,5 @@ void rvip_rumble(void* opaque, enum rumble_action action)
     memset(cmd + 5, rumble_data, 0x20);
     cmd[0x25] = 0; /* dummy data CRC */
 
-    if (input.controllerCommand)
-        input.controllerCommand(channel, cmd);
+    inputControllerCommand(channel, cmd);
 }

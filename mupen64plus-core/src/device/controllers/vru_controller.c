@@ -27,6 +27,7 @@
 #include "backends/api/controller_input_backend.h"
 #include "backends/api/joybus.h"
 #include "plugin/plugin.h"
+#include "plugin/dummy_input.h"
 #include "main/rom.h"
 
 #ifdef COMPARE_CORE
@@ -170,12 +171,12 @@ static void process_vru_command(void* jbd,
                     {
                         ++length;
                     }
-                    input.sendVRUWord(length, &cont->word[offset], 1);
+                    dummy_SendVRUWord(length, &cont->word[offset], 1);
                 }
                 else
                 {
                     ++offset;
-                    input.sendVRUWord(length, &cont->word[offset], 0);
+                    dummy_SendVRUWord(length, &cont->word[offset], 0);
                 }
             }
             else
@@ -197,17 +198,17 @@ static void process_vru_command(void* jbd,
         rx_buf[0] = vru_data_crc(&tx_buf[3], 4);
         if (rx_buf[0] == 0x4E)
         {
-            input.setMicState(1);
+            dummy_SetMicState(1);
             cont->voice_init = 2;
         }
         else if (rx_buf[0] == 0xEF)
         {
-            input.setMicState(0);
+            dummy_SetMicState(0);
         }
         else if (tx_buf[3] == 0x2)
         {
             cont->voice_init = 0;
-            input.clearVRUWords(tx_buf[5]);
+            dummy_ClearVRUWords(tx_buf[5]);
         }
         cont->status = 0; /* status is always set to 0 after a write */
     } break;
@@ -215,7 +216,7 @@ static void process_vru_command(void* jbd,
     case JCMD_VRU_WRITE_INIT: {
         JOYBUS_CHECK_COMMAND_FORMAT(3, 1)
         if (*((uint16_t*)(&tx_buf[1])) == 0)
-            input.setMicState(0);
+            dummy_SetMicState(0);
         rx_buf[0] = 0;
     } break;
 
@@ -224,7 +225,7 @@ static void process_vru_command(void* jbd,
         *((uint16_t*)(&rx_buf[0])) = 0x8000; /* as per zoinkity https://pastebin.com/6UiErk5h */
         *((uint16_t*)(&rx_buf[2])) = 0x0F00; /* as per zoinkity https://pastebin.com/6UiErk5h */
         *((uint16_t*)(&rx_buf[34])) = 0x0040; /* as per zoinkity https://pastebin.com/6UiErk5h */
-        input.readVRUResults((uint16_t*)&rx_buf[4] /*error flags*/, (uint16_t*)&rx_buf[6] /*number of results*/, (uint16_t*)&rx_buf[8] /*mic level*/, \
+        dummy_ReadVRUResults((uint16_t*)&rx_buf[4] /*error flags*/, (uint16_t*)&rx_buf[6] /*number of results*/, (uint16_t*)&rx_buf[8] /*mic level*/, \
             (uint16_t*)&rx_buf[10] /*voice level*/, (uint16_t*)&rx_buf[12] /*voice length*/, (uint16_t*)&rx_buf[14] /*matches*/);
         rx_buf[36] = vru_data_crc(&rx_buf[0], 36);
         cont->voice_state = VOICE_STATUS_START;

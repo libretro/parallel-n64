@@ -93,27 +93,16 @@ typedef struct _audio_plugin_functions
 
 extern audio_plugin_functions audio;
 
-/* input plugin function pointers */
-typedef struct _input_plugin_functions
-{
-	ptr_PluginGetVersion    getVersion;
-	ptr_ControllerCommand   controllerCommand;
-	ptr_GetKeys             getKeys;
-	ptr_InitiateControllers initiateControllers;
-	ptr_ReadController      readController;
-	ptr_RomClosed           romClosed;
-	ptr_RomOpen             romOpen;
-	ptr_SDL_KeyDown         keyDown;
-	ptr_SDL_KeyUp           keyUp;
-	ptr_RenderCallback      renderCallback;
-	ptr_SendVRUWord         sendVRUWord;
-	ptr_SetMicState         setMicState;
-	ptr_ReadVRUResults      readVRUResults;
-	ptr_ClearVRUWords       clearVRUWords;
-	ptr_SetVRUWordMask      setVRUWordMask;
-} input_plugin_functions;
-
-extern input_plugin_functions input;
+/* Direct libretro input entry points. Formerly these were dispatched
+ * through the input_plugin_functions struct, which in this build was a
+ * compile-time-constant table (dummy_input) that never changed, so the
+ * indirection is replaced with direct calls. */
+extern void inputControllerCommand(int Control, unsigned char *Command);
+extern void inputGetKeys_default(int Control, BUTTONS *Keys);
+extern void inputInitiateControllers(CONTROL_INFO ControlInfo);
+extern void inputReadController(int Control, unsigned char *Command);
+extern int  inputRomOpen(void);
+extern void inputRomClosed(void);
 
 /* RSP plugin function pointers */
 typedef struct _rsp_plugin_functions

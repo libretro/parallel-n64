@@ -66,19 +66,14 @@ typedef struct _gfx_plugin_functions
 
 extern gfx_plugin_functions gfx;
 
-/* input plugin function pointers */
-typedef struct _input_plugin_functions
-{
-	ptr_PluginGetVersion    getVersion;
-	ptr_ControllerCommand   controllerCommand;
-	ptr_GetKeys             getKeys;
-	ptr_InitiateControllers initiateControllers;
-	ptr_ReadController      readController;
-	ptr_RomClosed           romClosed;
-	ptr_RomOpen             romOpen;
-} input_plugin_functions;
-
-extern input_plugin_functions input;
+/* Direct libretro input entry points (formerly the input plugin struct,
+ * a compile-time-constant table that never changed at runtime). */
+extern void inputControllerCommand(int Control, unsigned char *Command);
+extern void inputGetKeys_default(int Control, BUTTONS *Keys);
+extern void inputInitiateControllers(CONTROL_INFO ControlInfo);
+extern void inputReadController(int Control, unsigned char *Command);
+extern int  inputRomOpen(void);
+extern void inputRomClosed(void);
 
 /* RSP plugin function pointers */
 typedef struct _rsp_plugin_functions

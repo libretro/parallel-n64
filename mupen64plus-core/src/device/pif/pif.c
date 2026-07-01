@@ -236,9 +236,7 @@ void setup_channels_format(struct pif* pif)
     }
 
     /* Zilmar-Spec plugin expect a call with control_id = -1 when RAM processing is done */
-    if (input.controllerCommand) {
-        input.controllerCommand(-1, NULL);
-    }
+    inputControllerCommand(-1, NULL);
 
 #ifdef DEBUG_PIF
     DebugMessage(M64MSG_INFO, "PIF setup channel");
@@ -376,8 +374,7 @@ void update_pif_ram(struct pif* pif)
     }
 
     /* Zilmar-Spec plugin expect a call with control_id = -1 when RAM processing is done */
-    if (input.readController)
-        input.readController(-1, NULL);
+    inputReadController(-1, NULL);
 
 #ifdef DEBUG_PIF
     DebugMessage(M64MSG_INFO, "PIF post read");
