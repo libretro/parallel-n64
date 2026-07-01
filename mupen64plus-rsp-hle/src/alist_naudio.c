@@ -289,7 +289,10 @@ void alist_process_naudio(struct hle_t* hle)
 
 void alist_process_naudio_bk(struct hle_t* hle)
 {
-    /* TODO: see what differs from alist_process_naudio */
+    /* Same command ABI as alist_process_naudio (only the ucode CRC
+     * differs). Opcode 0x0e stays NAUDIO_02B0 (the SETVOL-rate handler),
+     * not a pole filter: Banjo-Kazooie's audio library emits A_POLEF
+     * there, but this ucode does not implement it (confirmed against LLE). */
     static const acmd_callback_t ABI[0x10] = {
         SPNOOP,         ADPCM,          CLEARBUFF,      ENVMIXER,
         LOADBUFF,       RESAMPLE,       SAVEBUFF,       NAUDIO_0000,
@@ -303,7 +306,8 @@ void alist_process_naudio_bk(struct hle_t* hle)
 
 void alist_process_naudio_dk(struct hle_t* hle)
 {
-    /* TODO: see what differs from alist_process_naudio */
+    /* Differs from alist_process_naudio only at opcodes 7 and 8, which
+     * dispatch to MIXER here instead of the unknown-command handler. */
     static const acmd_callback_t ABI[0x10] = {
         SPNOOP,         ADPCM,          CLEARBUFF,      ENVMIXER,
         LOADBUFF,       RESAMPLE,       SAVEBUFF,       MIXER,
