@@ -138,7 +138,7 @@ static void RESAMPLE(struct hle_t* hle, uint32_t w1, uint32_t w2)
     alist_resample(
             hle,
             flags & 0x1,
-            false,          /* TODO: check which ABI supports it */
+            false,          /* flag2 bit never set by this ABI (verified) */
             hle->alist_nead.out,
             hle->alist_nead.in,
             (hle->alist_nead.count + 0xf) & ~0xf,

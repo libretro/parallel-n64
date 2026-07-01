@@ -238,7 +238,7 @@ static void RESAMPLE(struct hle_t* hle, uint32_t w1, uint32_t w2)
     alist_resample(
             hle,
             flags & A_INIT,
-            false,          /* TODO: check which ABI supports it */
+            false,          /* flag2 bit never set by this ABI (verified) */
             dmemo,
             dmemi,
             NAUDIO_COUNT,
