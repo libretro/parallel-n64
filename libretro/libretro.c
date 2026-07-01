@@ -24,6 +24,7 @@ uint8_t* g_dd_disk;
 #include <string.h>
 
 #include <libretro.h>
+#include <streams/file_stream.h>
 
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
 #include <glsm/glsmsym.h>
@@ -686,18 +687,24 @@ static bool emu_step_load_data()
        * Stage the disk image to a file and point the loader at it. */
       {
          char disk_tmp_path[512];
-         FILE* df;
+         RFILE* df;
 
          snprintf(disk_tmp_path, sizeof(disk_tmp_path), "%s%cparallel_n64_dd_disk.ndd", dir, slash);
-         df = fopen(disk_tmp_path, "wb");
+         df = filestream_open(disk_tmp_path, RETRO_VFS_FILE_ACCESS_WRITE, RETRO_VFS_FILE_ACCESS_HINT_NONE);
          if (df == NULL)
          {
             if (log_cb)
                log_cb(RETRO_LOG_ERROR, "mupen64plus: couldn't stage DD disk image\n");
             goto load_fail;
          }
-         fwrite(disk_data, 1, disk_size, df);
-         fclose(df);
+         if (filestream_write(df, disk_data, disk_size) != (int64_t)disk_size)
+         {
+            if (log_cb)
+               log_cb(RETRO_LOG_ERROR, "mupen64plus: short write staging DD disk image\n");
+            filestream_close(df);
+            goto load_fail;
+         }
+         filestream_close(df);
 
          if (retro_dd_path_img)
             free(retro_dd_path_img);
