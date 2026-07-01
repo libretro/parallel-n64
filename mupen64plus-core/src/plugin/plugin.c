@@ -34,7 +34,6 @@
 #include "device/rcp/rdp/rdp_core.h"
 #include "device/rcp/rsp/rsp_core.h"
 #include "device/rcp/vi/vi_controller.h"
-#include "dummy_audio.h"
 #include "main/main.h"
 #include "main/rom.h"
 #include "main/version.h"
@@ -268,7 +267,7 @@ static m64p_error plugin_start_rsp(void)
     rsp_info.DPC_TMEM_REG = &g_dev.dp.dpc_regs[DPC_TMEM_REG];
     rsp_info.CheckInterrupts = EmptyFunc;
     rsp_info.ProcessDlistList = gfx.processDList;
-    rsp_info.ProcessAlistList = dummyaudio_ProcessAList;
+    rsp_info.ProcessAlistList = NULL; /* no audio-plugin AList handler; audio type-2 tasks run on the HLE RSP (rsp_audio) */
     rsp_info.ProcessRdpList = gfx.processRDPList;
     rsp_info.ShowCFB = gfx.showCFB;
 

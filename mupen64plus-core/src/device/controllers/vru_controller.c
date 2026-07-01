@@ -27,7 +27,6 @@
 #include "backends/api/controller_input_backend.h"
 #include "backends/api/joybus.h"
 #include "plugin/plugin.h"
-#include "plugin/dummy_input.h"
 #include "main/rom.h"
 
 #ifdef COMPARE_CORE
@@ -36,6 +35,18 @@
 
 #include <stdint.h>
 #include <string.h>
+
+/* This libretro build has no voice-recognition backend. The VRU command
+ * parser below drives these no-op sinks; they mark where a real microphone /
+ * voice backend would attach. */
+static void vru_send_word(uint16_t length, uint16_t *word, uint8_t lang)
+{ (void)length; (void)word; (void)lang; }
+static void vru_set_mic_state(int state)
+{ (void)state; }
+static void vru_read_results(uint16_t *error_flags, uint16_t *num_results, uint16_t *mic_level, uint16_t *voice_level, uint16_t *voice_length, uint16_t *matches)
+{ (void)error_flags; (void)num_results; (void)mic_level; (void)voice_level; (void)voice_length; (void)matches; }
+static void vru_clear_words(uint8_t length)
+{ (void)length; }
 
 enum voice_status
 {
@@ -171,12 +182,12 @@ static void process_vru_command(void* jbd,
                     {
                         ++length;
                     }
-                    dummy_SendVRUWord(length, &cont->word[offset], 1);
+                    vru_send_word(length, &cont->word[offset], 1);
                 }
                 else
                 {
                     ++offset;
-                    dummy_SendVRUWord(length, &cont->word[offset], 0);
+                    vru_send_word(length, &cont->word[offset], 0);
                 }
             }
             else
@@ -198,17 +209,17 @@ static void process_vru_command(void* jbd,
         rx_buf[0] = vru_data_crc(&tx_buf[3], 4);
         if (rx_buf[0] == 0x4E)
         {
-            dummy_SetMicState(1);
+            vru_set_mic_state(1);
             cont->voice_init = 2;
         }
         else if (rx_buf[0] == 0xEF)
         {
-            dummy_SetMicState(0);
+            vru_set_mic_state(0);
         }
         else if (tx_buf[3] == 0x2)
         {
             cont->voice_init = 0;
-            dummy_ClearVRUWords(tx_buf[5]);
+            vru_clear_words(tx_buf[5]);
         }
         cont->status = 0; /* status is always set to 0 after a write */
     } break;
@@ -216,7 +227,7 @@ static void process_vru_command(void* jbd,
     case JCMD_VRU_WRITE_INIT: {
         JOYBUS_CHECK_COMMAND_FORMAT(3, 1)
         if (*((uint16_t*)(&tx_buf[1])) == 0)
-            dummy_SetMicState(0);
+            vru_set_mic_state(0);
         rx_buf[0] = 0;
     } break;
 
@@ -225,7 +236,7 @@ static void process_vru_command(void* jbd,
         *((uint16_t*)(&rx_buf[0])) = 0x8000; /* as per zoinkity https://pastebin.com/6UiErk5h */
         *((uint16_t*)(&rx_buf[2])) = 0x0F00; /* as per zoinkity https://pastebin.com/6UiErk5h */
         *((uint16_t*)(&rx_buf[34])) = 0x0040; /* as per zoinkity https://pastebin.com/6UiErk5h */
-        dummy_ReadVRUResults((uint16_t*)&rx_buf[4] /*error flags*/, (uint16_t*)&rx_buf[6] /*number of results*/, (uint16_t*)&rx_buf[8] /*mic level*/, \
+        vru_read_results((uint16_t*)&rx_buf[4] /*error flags*/, (uint16_t*)&rx_buf[6] /*number of results*/, (uint16_t*)&rx_buf[8] /*mic level*/, \
             (uint16_t*)&rx_buf[10] /*voice level*/, (uint16_t*)&rx_buf[12] /*voice length*/, (uint16_t*)&rx_buf[14] /*matches*/);
         rx_buf[36] = vru_data_crc(&rx_buf[0], 36);
         cont->voice_state = VOICE_STATUS_START;

@@ -67,8 +67,6 @@
 #include "main.h"
 #include "callbacks.h"
 #include "plugin/plugin.h"
-#include "plugin/dummy_input.h"
-#include "plugin/dummy_audio.h"
 #if defined(PROFILE)
 #include "profile.h"
 #endif
@@ -203,7 +201,7 @@ m64p_error main_reset(int do_hard_reset)
 
 static void video_plugin_render_callback(int bScreenRedrawn)
 {
-    dummyinput_RenderCallback();
+    (void)bScreenRedrawn;
 }
 
 void new_frame(void)
@@ -1101,10 +1099,6 @@ m64p_error main_run(void)
     {
         goto on_gfx_open_failure;
     }
-    if (!dummyaudio_RomOpen())
-    {
-        goto on_audio_open_failure;
-    }
     if (!inputRomOpen())
     {
         goto on_input_open_failure;
@@ -1156,7 +1150,6 @@ m64p_error main_run(void)
     /* Emulation stopped */
     rsp.romClosed();
     inputRomClosed();
-    dummyaudio_RomClosed();
     gfx.romClosed();
 
     // clean up
@@ -1178,8 +1171,6 @@ on_disk_failure:
     rsp.romClosed();
     inputRomClosed();
 on_input_open_failure:
-    dummyaudio_RomClosed();
-on_audio_open_failure:
     gfx.romClosed();
 on_gfx_open_failure:
     /* release gb_carts */
@@ -1289,5 +1280,4 @@ void mupen_main_exit(void)
    if (rsp.romClosed)   rsp.romClosed();
    inputRomClosed();
    if (gfx.romClosed)   gfx.romClosed();
-   dummyaudio_RomClosed();
 }
