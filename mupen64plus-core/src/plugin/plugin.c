@@ -285,12 +285,6 @@ m64p_error plugin_start_gfx(void)
     return M64ERR_SUCCESS;
 }
 
-static void plugin_disconnect_audio(void)
-{
-    audio = dummy_audio;
-    l_AudioAttached = 0;
-}
-
 static m64p_error plugin_start_audio(void)
 {
     /* fill in the AUDIO_INFO data structure */
@@ -311,12 +305,6 @@ static m64p_error plugin_start_audio(void)
         return M64ERR_PLUGIN_FAIL;
 
     return M64ERR_SUCCESS;
-}
-
-static void plugin_disconnect_input(void)
-{
-    input = dummy_input;
-    l_InputAttached = 0;
 }
 
 static m64p_error plugin_start_input(void)
@@ -426,36 +414,6 @@ m64p_error plugin_check(void)
 
 enum rdp_plugin_type current_rdp_type = RDP_PLUGIN_NONE;
 enum rsp_plugin_type current_rsp_type = RSP_PLUGIN_NONE;
-
-void plugin_connect_rdp_api(enum rdp_plugin_type type)
-{
-   switch (type)
-   {
-      case RDP_PLUGIN_GLIDEN64:
-      case RDP_PLUGIN_ANGRYLION:
-      case RDP_PLUGIN_PARALLEL:
-         current_rdp_type = type;
-         break;
-      case RSP_PLUGIN_NONE:
-      default:
-         break;
-   }
-}
-
-void plugin_connect_rsp_api(enum rsp_plugin_type type)
-{
-   switch (type)
-   {
-      case RSP_PLUGIN_HLE:
-      case RSP_PLUGIN_CXD4:
-      case RSP_PLUGIN_PARALLEL:
-         current_rsp_type = type;
-         break;
-      case RSP_PLUGIN_NONE:
-      default:
-         break;
-   }
-}
 
 /* global functions */
 void plugin_connect_all()

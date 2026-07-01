@@ -280,10 +280,6 @@ void main_switch_plugin_pak(int control_id)
     main_switch_pak(control_id);
 }
 
-void save_storage_file_libretro(void* storage)
-{
-}
-
 static void open_mpk_file(struct file_storage* storage)
 {
 	storage->data = saved_memory.mempack[0];

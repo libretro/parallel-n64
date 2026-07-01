@@ -54,8 +54,6 @@ enum rsp_plugin_type
    RSP_PLUGIN_MAX
 };
 
-void plugin_connect_rsp_api(enum rsp_plugin_type type);
-void plugin_connect_rdp_api(enum rdp_plugin_type type);
 void plugin_connect_all();
 
 uint32_t get_retro_screen_width();
