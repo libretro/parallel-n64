@@ -209,20 +209,6 @@ DEFINE_RSP(parallelRSP);
 DEFINE_RSP(cxd4);
 #endif // HAVE_LLE
 
-static void                     (*l_mainRenderCallback)(int) = NULL;
-static ptr_SetRenderingCallback   l_old1SetRenderingCallback = NULL;
-
-static void backcompat_videoRenderCallback(int unused)  // this function will be called by the video plugin as the render callback
-{
-    if (l_mainRenderCallback != NULL)
-        l_mainRenderCallback(1);  // assume screen is always freshly redrawn (otherwise screenshots won't work w/ OSD enabled)
-}
-
-static void backcompat_setRenderCallbackIntercept(void (*callback)(int))
-{
-    l_mainRenderCallback = callback;
-}
-
 m64p_error plugin_start_gfx(void)
 {
     printf("plugin_start_gfx\n");
