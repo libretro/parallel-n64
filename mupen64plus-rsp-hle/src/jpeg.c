@@ -72,7 +72,7 @@ static void ReorderSubBlock(int16_t *dst, const int16_t *src, const unsigned int
 static void MultSubBlocks(int16_t *dst, const int16_t *src1, const int16_t *src2, unsigned int shift);
 static void ScaleSubBlock(int16_t *dst, const int16_t *src, int16_t scale);
 static void RShiftSubBlock(int16_t *dst, const int16_t *src, unsigned int shift);
-static void InverseDCT1D(const float *const x, float *dst, unsigned int stride);
+static void InverseDCT1D(const int64_t *x, int64_t *dst, unsigned int stride);
 static void InverseDCTSubBlock(int16_t *dst, const int16_t *src);
 static void RescaleYSubBlock(int16_t *dst, const int16_t *src);
 static void RescaleUVSubBlock(int16_t *dst, const int16_t *src);
@@ -117,19 +117,22 @@ static const unsigned int TRANSPOSE_TABLE[SUBBLOCK_SIZE] = {
 
 /* IDCT related constants
  * Cn = alpha * cos(n * PI / 16) (alpha is chosen such as C4 = 1) */
-static const float IDCT_C3 = 1.175875602f;
-static const float IDCT_C6 = 0.541196100f;
-static const float IDCT_K[10] = {
-     0.765366865f,   /*  C2-C6         */
-    -1.847759065f,   /* -C2-C6         */
-    -0.390180644f,   /*  C5-C3         */
-    -1.961570561f,   /* -C5-C3         */
-     1.501321110f,   /*  C1+C3-C5-C7   */
-     2.053119869f,   /*  C1+C3-C5+C7   */
-     3.072711027f,   /*  C1+C3+C5-C7   */
-     0.298631336f,   /* -C1+C3+C5-C7   */
-    -0.899976223f,   /*  C7-C3         */
-    -2.562915448f    /* -C1-C3         */
+/* The RSP has no FPU; these are the same constants in S15.16 fixed point
+ * (value * 2^16, rounded to nearest), so the transform below is integer-only. */
+#define IDCT_SHIFT 16
+static const int64_t IDCT_C3 =  77062; /*  1.175875602 * 2^16 */
+static const int64_t IDCT_C6 =  35468; /*  0.541196100 * 2^16 */
+static const int64_t IDCT_K[10] = {
+     50159,   /*  C2-C6        =  0.765366865 */
+   -121095,   /* -C2-C6        = -1.847759065 */
+    -25571,   /*  C5-C3        = -0.390180644 */
+   -128553,   /* -C5-C3        = -1.961570561 */
+     98391,   /*  C1+C3-C5-C7  =  1.501321110 */
+    134553,   /*  C1+C3-C5+C7  =  2.053119869 */
+    201373,   /*  C1+C3+C5-C7  =  3.072711027 */
+     19571,   /* -C1+C3+C5-C7  =  0.298631336 */
+    -58981,   /*  C7-C3        = -0.899976223 */
+   -167963    /* -C1-C3        = -2.562915448 */
 };
 
 
@@ -301,13 +304,18 @@ static uint32_t GetUYVY(int16_t y1, int16_t y2, int16_t u, int16_t v)
 
 static uint16_t GetRGBA(int16_t y, int16_t u, int16_t v)
 {
-    const float fY = (float)y + 2048.0f;
-    const float fU = (float)u;
-    const float fV = (float)v;
+    /* No FPU on the RSP: the YCbCr->RGB coefficients are held in S15.16 fixed
+     * point (value * 2^16) and the whole channel sum is formed at that scale
+     * before a single >>16, matching the old single (int16_t) truncation.
+     *   1.4025 -> 91914, 0.3443 -> 22561, 0.7144 -> 46827, 1.7729 -> 116192 */
+    const int32_t base = ((int32_t)y + 2048) << 16;
 
-    const uint16_t r = clamp_RGBA_component((int16_t)(fY               + 1.4025 * fV));
-    const uint16_t g = clamp_RGBA_component((int16_t)(fY - 0.3443 * fU - 0.7144 * fV));
-    const uint16_t b = clamp_RGBA_component((int16_t)(fY + 1.7729 * fU));
+    const uint16_t r = clamp_RGBA_component(
+        (int16_t)((base + 91914 * (int32_t)v) >> 16));
+    const uint16_t g = clamp_RGBA_component(
+        (int16_t)((base - 22561 * (int32_t)u - 46827 * (int32_t)v) >> 16));
+    const uint16_t b = clamp_RGBA_component(
+        (int16_t)((base + 116192 * (int32_t)u) >> 16));
 
     return (r << 4) | (g >> 1) | (b >> 6) | 1;
 }
@@ -515,12 +523,17 @@ static void RShiftSubBlock(int16_t *dst, const int16_t *src, unsigned int shift)
  * Implementation based on Wikipedia :
  * http://fr.wikipedia.org/wiki/Transform%C3%A9e_en_cosinus_discr%C3%A8te
  **************************************************************************/
-static void InverseDCT1D(const float *const x, float *dst, unsigned int stride)
+static void InverseDCT1D(const int64_t *x, int64_t *dst, unsigned int stride)
 {
-    float e[4];
-    float f[4];
-    float x26, x1357, x15, x37, x17, x35;
+    int64_t e[4];
+    int64_t f[4];
+    int64_t x26, x1357, x15, x37, x17, x35;
 
+    /* The IDCT_* constants are at scale 2^IDCT_SHIFT, so every product below is
+     * at scale 2^IDCT_SHIFT relative to x[]. The two purely additive terms
+     * f[0]/f[1] are shifted up by IDCT_SHIFT to match. The result therefore
+     * carries IDCT_SHIFT extra fractional bits compared with the input, which
+     * is what lets the row pass feed the column pass without losing precision. */
     x15   = IDCT_K[2] * (x[1] + x[5]);
     x37   = IDCT_K[3] * (x[3] + x[7]);
     x17   = IDCT_K[8] * (x[1] + x[7]);
@@ -528,8 +541,8 @@ static void InverseDCT1D(const float *const x, float *dst, unsigned int stride)
     x1357 = IDCT_C3   * (x[1] + x[3] + x[5] + x[7]);
     x26   = IDCT_C6   * (x[2] + x[6]);
 
-    f[0] = x[0] + x[4];
-    f[1] = x[0] - x[4];
+    f[0] = (x[0] + x[4]) << IDCT_SHIFT;
+    f[1] = (x[0] - x[4]) << IDCT_SHIFT;
     f[2] = x26  + IDCT_K[0] * x[2];
     f[3] = x26  + IDCT_K[1] * x[6];
 
@@ -557,25 +570,27 @@ static void InverseDCT1D(const float *const x, float *dst, unsigned int stride)
 
 static void InverseDCTSubBlock(int16_t *dst, const int16_t *src)
 {
-    float x[8];
-    float block[SUBBLOCK_SIZE];
+    int64_t x[8];
+    int64_t block[SUBBLOCK_SIZE];
     unsigned int i, j;
 
-    /* idct 1d on rows (+transposition) */
+    /* idct 1d on rows (+transposition); input scale 0 -> block scale 2^16 */
     for (i = 0; i < 8; ++i) {
         for (j = 0; j < 8; ++j)
-            x[j] = (float)src[i * 8 + j];
+            x[j] = (int64_t)src[i * 8 + j];
 
         InverseDCT1D(x, &block[i], 8);
     }
 
-    /* idct 1d on columns (thanks to previous transposition) */
+    /* idct 1d on columns (thanks to previous transposition); block scale 2^16
+     * -> x scale 2^32. Drop the 2*IDCT_SHIFT fractional bits (truncating toward
+     * zero, matching the old (int16_t) float cast), wrap to 16 bits, then the
+     * C4 = 1 normalization implies a division by 8. */
     for (i = 0; i < 8; ++i) {
         InverseDCT1D(&block[i * 8], x, 1);
 
-        /* C4 = 1 normalization implies a division by 8 */
         for (j = 0; j < 8; ++j)
-            dst[i + j * 8] = (int16_t)x[j] >> 3;
+            dst[i + j * 8] = (int16_t)(x[j] >> (2 * IDCT_SHIFT)) >> 3;
     }
 }
 
