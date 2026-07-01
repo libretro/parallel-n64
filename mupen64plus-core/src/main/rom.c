@@ -355,10 +355,15 @@ m64p_error open_disk(void)
     /* set system type */
     ROM_PARAMS.systemtype = SYSTEM_NTSC;
 
-    /* clear rom header & size */
-    memset(&ROM_HEADER, 0, sizeof(m64p_rom_header));
-    memset(ROM_PARAMS.headername, 0, 20);
-    g_rom_size = 0;
+    /* clear rom header & size, but only for a disk-only boot.  A 64DD combo
+     * (cartridge + expansion disk, e.g. F-Zero X + Expansion Kit) opens the
+     * cartridge ROM first; g_rom_size / ROM_HEADER then describe that cart and
+     * must be preserved, otherwise the device boots the disk IPL instead of
+     * the cartridge and the disk-side software reports the cart as missing. */
+    if (g_rom_size == 0) {
+        memset(&ROM_HEADER, 0, sizeof(m64p_rom_header));
+        memset(ROM_PARAMS.headername, 0, 20);
+    }
 
     close_file_storage(fstorage);
     free(fstorage);
