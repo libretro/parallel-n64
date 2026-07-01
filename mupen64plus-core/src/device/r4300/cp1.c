@@ -30,7 +30,7 @@
 
 #define FCR31_FS_BIT UINT32_C(0x1000000)
 
-#ifdef M64P_BIG_ENDIAN
+#ifdef MSB_FIRST
 #define DOUBLE_HALF_XOR 1
 #else
 #define DOUBLE_HALF_XOR 0

@@ -140,7 +140,7 @@ static void InterpretOpcode(struct r4300_core* r4300);
 #define cffd FD_OF(op)
 
 // 32 bits macros
-#ifndef M64P_BIG_ENDIAN
+#ifndef MSB_FIRST
 #define rrt32 *((int32_t*) &r4300_regs(r4300)[RT_OF(op)])
 #define rrd32 *((int32_t*) &r4300_regs(r4300)[RD_OF(op)])
 #define rrs32 *((int32_t*) &r4300_regs(r4300)[RS_OF(op)])

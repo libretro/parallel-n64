@@ -173,7 +173,7 @@ void cached_interp_##name##_IDLE(void) \
 #define cffd (*r4300_pc_struct(r4300))->f.cf.fd
 
 /* 32 bits macros */
-#ifndef M64P_BIG_ENDIAN
+#ifndef MSB_FIRST
 #define rrt32 *((int32_t*) (*r4300_pc_struct(r4300))->f.r.rt)
 #define rrd32 *((int32_t*) (*r4300_pc_struct(r4300))->f.r.rd)
 #define rrs32 *((int32_t*) (*r4300_pc_struct(r4300))->f.r.rs)

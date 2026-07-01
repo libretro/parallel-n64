@@ -245,14 +245,14 @@ void swap_buffer(void *buffer, size_t length, size_t count)
 
 void to_little_endian_buffer(void *buffer, size_t length, size_t count)
 {
-#if defined(M64P_BIG_ENDIAN)
+#if defined(MSB_FIRST)
     swap_buffer(buffer, length, count);
 #endif
 }
 
 void to_big_endian_buffer(void *buffer, size_t length, size_t count)
 {
-#if !defined(M64P_BIG_ENDIAN)
+#if !defined(MSB_FIRST)
     swap_buffer(buffer, length, count);
 #endif
 }

@@ -75,7 +75,7 @@
 #define SE16(a) ((int64_t) ((int16_t) (a)))
 #define SE32(a) ((int64_t) ((int32_t) (a)))
 
-#if !defined(M64P_BIG_ENDIAN)
+#if !defined(MSB_FIRST)
   #if defined(__GNUC__) && (__GNUC__ > 4  || (__GNUC__ == 4 && __GNUC_MINOR__ >= 3))
     #define tohl(x) __builtin_bswap32((x))
   #else

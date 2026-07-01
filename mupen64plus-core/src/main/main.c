@@ -848,7 +848,7 @@ m64p_error main_run(void)
     cheat_add_hacks(&g_cheat_ctx, ROM_PARAMS.cheats);
 
     /* do byte-swapping if it hasn't been done yet */
-#if !defined(M64P_BIG_ENDIAN)
+#if !defined(MSB_FIRST)
     if (g_RomWordsLittleEndian == 0)
     {
         swap_buffer((uint8_t*)mem_base_u32(g_mem_base, MM_CART_ROM), 4, g_rom_size/4);
