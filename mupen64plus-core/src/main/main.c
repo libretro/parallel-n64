@@ -952,7 +952,6 @@ m64p_error main_run(void)
             cin_compats[i].cont = &g_dev.controllers[i];
             cin_compats[i].last_pak_type = Controls[i].Plugin;
             cin_compats[i].last_input = 0;
-            cin_compats[i].event_first = NULL;
 
             Controls[i].Plugin = PLUGIN_NONE;
 
@@ -979,7 +978,6 @@ m64p_error main_run(void)
             cin_compats[i].tpk = &g_dev.transferpaks[i];
             cin_compats[i].last_pak_type = Controls[i].Plugin;
             cin_compats[i].last_input = 0;
-            cin_compats[i].event_first = NULL;
 
             l_gb_carts_data[i].control_id = (int)i;
 
