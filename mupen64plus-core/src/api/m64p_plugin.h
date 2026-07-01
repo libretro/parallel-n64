@@ -231,18 +231,6 @@ EXPORT void CALL FBWrite(unsigned int addr, unsigned int size);
 EXPORT void CALL FBGetFrameBufferInfo(void *p);
 #endif
 
-/* audio plugin function pointers */
-typedef void (*ptr_AiDacrateChanged)(int SystemType);
-typedef void (*ptr_AiLenChanged)(void);
-typedef int  (*ptr_InitiateAudio)(AUDIO_INFO Audio_Info);
-typedef void (*ptr_ProcessAList)(void);
-typedef void (*ptr_SetSpeedFactor)(int percent);
-typedef void (*ptr_VolumeUp)(void);
-typedef void (*ptr_VolumeDown)(void);
-typedef int  (*ptr_VolumeGetLevel)(void);
-typedef void (*ptr_VolumeSetLevel)(int level);
-typedef void (*ptr_VolumeMute)(void);
-typedef const char * (*ptr_VolumeGetString)(void);
 #if defined(M64P_PLUGIN_PROTOTYPES)
 EXPORT void CALL AiDacrateChanged(int SystemType);
 EXPORT void CALL AiLenChanged(void);
@@ -257,19 +245,6 @@ EXPORT void CALL VolumeMute(void);
 EXPORT const char * CALL VolumeGetString(void);
 #endif
 
-/* input plugin function pointers */
-typedef void (*ptr_ControllerCommand)(int Control, unsigned char *Command);
-typedef void (*ptr_GetKeys)(int Control, BUTTONS *Keys);
-typedef void (*ptr_InitiateControllers)(CONTROL_INFO ControlInfo);
-typedef void (*ptr_ReadController)(int Control, unsigned char *Command);
-typedef void (*ptr_SDL_KeyDown)(int keymod, int keysym);
-typedef void (*ptr_SDL_KeyUp)(int keymod, int keysym);
-typedef void (*ptr_RenderCallback)(void);
-typedef void (*ptr_SendVRUWord)(uint16_t length, uint16_t *word, uint8_t lang);
-typedef void (*ptr_SetMicState)(int state);
-typedef void (*ptr_ReadVRUResults)(uint16_t *error_flags, uint16_t *num_results, uint16_t *mic_level, uint16_t *voice_level, uint16_t *voice_length, uint16_t *matches);
-typedef void (*ptr_ClearVRUWords)(uint8_t length);
-typedef void (*ptr_SetVRUWordMask)(uint8_t length, uint8_t *mask);
 #if defined(M64P_PLUGIN_PROTOTYPES)
 EXPORT void CALL ControllerCommand(int Control, unsigned char *Command);
 EXPORT void CALL GetKeys(int Control, BUTTONS *Keys);
