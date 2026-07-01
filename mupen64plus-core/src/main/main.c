@@ -78,11 +78,6 @@
 
 #include <libretro_private.h>
 
-#ifdef M64P_NETPLAY
-#undef SDL_GetTicks
-#include <SDL2/SDL.h>
-#endif // M64P_NETPLAY
-
 #ifdef HAVE_LIBNX
 #include <switch.h>
 #include <sys/stat.h>
@@ -102,10 +97,6 @@
 #ifdef DBG
 #include "debugger/dbg_debugger.h"
 #endif
-
-#ifdef WITH_LIRC
-#include "lirc.h"
-#endif //WITH_LIRC
 
 /* version number for Core config section */
 #define CONFIG_PARAM_VERSION 1.01
@@ -258,9 +249,6 @@ void main_message(m64p_msg_level level, unsigned int corner, const char *format,
 extern retro_input_poll_t poll_cb;
 static void main_check_inputs(void)
 {
-#ifdef WITH_LIRC
-    lircCheckInput();
-#endif
     if(!(current_rdp_type == RDP_PLUGIN_GLIDEN64 && EnableThreadedRenderer))
     {
         // Input Polling will be forced to early if Threaded GLideN64
@@ -361,28 +349,6 @@ static void main_set_speedlimiter(int enable)
 
     l_MainSpeedLimit = enable ? 1 : 0;
 }
-
-#if 0
-void main_speedlimiter_toggle(void)
-{
-    if (netplay_is_init())
-        return;
-
-    l_MainSpeedLimit = !l_MainSpeedLimit;
-    main_set_speedlimiter(l_MainSpeedLimit);
-
-    if (l_MainSpeedLimit) /* fix naturally occuring audio desync */
-    {
-        main_toggle_pause();
-        SDL_Delay(1000);
-        main_toggle_pause();
-        main_message(M64MSG_STATUS, OSD_BOTTOM_LEFT, "Speed limiter enabled");
-    }
-
-    else
-        main_message(M64MSG_STATUS, OSD_BOTTOM_LEFT, "Speed limiter disabled");
-}
-#endif
 
 static int main_is_paused(void)
 {
