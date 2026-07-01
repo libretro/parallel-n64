@@ -569,22 +569,27 @@ void alist_process_nead_ac(struct hle_t* hle)
 
 void alist_process_nead_mats(struct hle_t* hle)
 {
-    /* FIXME: implement proper ucode
-     * Forward the task if possible,
-     * otherwise better to have no sound than garbage sound
-     */
-    if (HleForwardTask(hle->user_defined) != 0) {
-        rsp_break(hle, SP_STATUS_TASKDONE);
-    }
+    /* Mario Artist: Talent Studio (64DD), ucode signature 0x1f701238.
+     * The command jump table (ucode_data + 0x10, indexed by cmd = w1 >> 24)
+     * was extracted from the running ucode and matches the nead_oot command
+     * layout for all 0x18 entries. */
+    static const acmd_callback_t ABI[0x18] = {
+        UNKNOWN,        ADPCM,          CLEARBUFF,      UNKCMD3,
+        ADDMIXER,       RESAMPLE,       RESAMPLE_ZOH,   FILTER,
+        SETBUFF,        DUPLICATE,      DMEMMOVE,       LOADADPCM,
+        MIXER,          INTERLEAVE,     HILOGAIN,       SETLOOP,
+        NEAD_16,        INTERL,         ENVSETUP1,      ENVMIXER,
+        LOADBUFF,       SAVEBUFF,       ENVSETUP2,      S8DEC
+    };
+
+    alist_process(hle, ABI, 0x18);
+    rsp_break(hle, SP_STATUS_TASKDONE);
 }
 
 void alist_process_nead_efz(struct hle_t* hle)
 {
-    /* FIXME: implement proper ucode
-     * Forward the task if possible,
-     * otherwise use FZero ucode which should be very similar
-     */
-    if (HleForwardTask(hle->user_defined) != 0) {
-        alist_process_nead_fz(hle);
-    }
+    /* F-Zero X: Expansion Kit (64DD), ucode signature 0x1f4c1230.
+     * The Expansion Kit reuses the F-Zero X cartridge audio engine and shares
+     * its nead_fz command layout, so dispatch through the same processor. */
+    alist_process_nead_fz(hle);
 }
