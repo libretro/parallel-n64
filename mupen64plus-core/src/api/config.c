@@ -87,17 +87,6 @@ static config_list l_ConfigListSaved = NULL;
 /* local functions */
 /* --------------- */
 
-static int is_numeric(const char *string)
-{
-    char chTemp[16];
-    float fTemp;
-    int rval = sscanf(string, "%f%8s", &fTemp, chTemp);
-
-    /* I want to find exactly one matched input item: a number with no garbage on the end */
-    /* I use sscanf() instead of a custom loop because this routine must handle locales in which the decimal separator is not '.' */
-    return (rval == 1);
-}
-
 /* This function returns a pointer to the pointer of the requested section
  * (i.e. a pointer the next field of the previous element, or to the first node).
  *
