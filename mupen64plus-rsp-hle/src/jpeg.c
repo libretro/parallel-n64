@@ -518,10 +518,8 @@ static void RShiftSubBlock(int16_t *dst, const int16_t *src, unsigned int shift)
 }
 
 /***************************************************************************
- * Fast 2D IDCT using separable formulation and normalization
- * Computations use single precision floats
- * Implementation based on Wikipedia :
- * http://fr.wikipedia.org/wiki/Transform%C3%A9e_en_cosinus_discr%C3%A8te
+ * Fast 2D IDCT using a separable formulation and normalization,
+ * computed entirely in S15.16 fixed point (see IDCT_K/IDCT_C* above).
  **************************************************************************/
 static void InverseDCT1D(const int64_t *x, int64_t *dst, unsigned int stride)
 {
