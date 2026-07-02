@@ -60,6 +60,9 @@ uint8_t* g_dd_disk;
 #endif
 
 #include <glsm/glsmsym.h>
+#if !defined(HAVE_OPENGL) && !defined(HAVE_OPENGLES)
+bool glsm_ctl(enum glsm_state_ctl state, void *data) { return false; }
+#endif
 
 #ifndef PRESCALE_WIDTH
 #define PRESCALE_WIDTH  640

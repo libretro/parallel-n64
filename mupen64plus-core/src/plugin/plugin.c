@@ -89,7 +89,9 @@ void ResizeVideoOutput(int width, int height){
         X##FBGetFrameBufferInfo \
     }
 
+#if defined(HAVE_GLN64)
 DEFINE_GFX(gln64);
+#endif
 #if defined(HAVE_THR_AL)
 DEFINE_GFX(angrylion);
 #endif
@@ -360,7 +362,7 @@ void plugin_connect_all()
        case RDP_PLUGIN_GLIDEN64:
 #ifdef HAVE_GLIDEN64
           gfx = gfx_gliden64;
-#else
+#elif defined(HAVE_GLN64)
           gfx = gfx_gln64;
 #endif
           break;
