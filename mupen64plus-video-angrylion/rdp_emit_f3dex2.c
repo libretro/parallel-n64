@@ -568,13 +568,39 @@ void f3dex2_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
                 s2dex_obj_loadtxtr(r, s_rdram_size, seg_addr(w1), fifo,
                                    seg_addr);
                 break;
-            case 0x01: case 0x02: case 0x04:
-            case 0x06: case 0x07: case 0x08: case 0xDA: case 0xDC:
-                /* The remaining object commands (G_OBJ_RECTANGLE/_R,
-                 * G_OBJ_SPRITE, G_SELECT_DL, G_OBJ_LDTX_*, G_OBJ_MOVEMEM)
-                 * are consumed without effect until content that uses
-                 * them surfaces; mis-reading them as F3DEX2 packets would
-                 * corrupt the rest of the list. */
+            case 0x01:                  /* G_OBJ_RECTANGLE */
+                s2dex_obj_rectangle(gsp, r, s_rdram_size, seg_addr(w1), fifo);
+                break;
+            case 0x02:                  /* G_OBJ_SPRITE */
+                s2dex_obj_sprite(gsp, r, s_rdram_size, seg_addr(w1), fifo);
+                break;
+            case 0x06:                  /* G_OBJ_LDTX_SPRITE (txtr + sprite) */
+                s2dex_obj_loadtxtr(r, s_rdram_size, seg_addr(w1), fifo,
+                                   seg_addr);
+                s2dex_obj_sprite(gsp, r, s_rdram_size, seg_addr(w1) + 24u,
+                                 fifo);
+                break;
+            case 0x07:                  /* G_OBJ_LDTX_RECT (txtr + rect) */
+                s2dex_obj_loadtxtr(r, s_rdram_size, seg_addr(w1), fifo,
+                                   seg_addr);
+                s2dex_obj_rectangle(gsp, r, s_rdram_size, seg_addr(w1) + 24u,
+                                    fifo);
+                break;
+            case 0x08:                  /* G_OBJ_LDTX_RECT_R (txtr + rect_R) */
+                s2dex_obj_loadtxtr(r, s_rdram_size, seg_addr(w1), fifo,
+                                   seg_addr);
+                s2dex_obj_rectangle_r(gsp, r, s_rdram_size, seg_addr(w1) + 24u,
+                                      fifo);
+                break;
+            case 0xDA:                  /* G_OBJ_RECTANGLE_R */
+                s2dex_obj_rectangle_r(gsp, r, s_rdram_size, seg_addr(w1), fifo);
+                break;
+            case 0xDC:                  /* G_OBJ_MOVEMEM (object matrix) */
+                s2dex_obj_movemem(r, s_rdram_size, w0, seg_addr(w1));
+                break;
+            case 0x04:                  /* G_SELECT_DL / G_RDPHALF_0: consume */
+                /* Not modelled; consume so the rest of the list is not
+                 * mis-read as F3DEX2 packets. */
                 break;
             default:
                 s2 = 0;
