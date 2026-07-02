@@ -14,6 +14,13 @@
 #include "rdp_emit_s2dex.h"
 #include "rdp_emit_f3d.h"
 
+/* Opt-in RDP-stream probe (set env SOTE_RDP_LOG=1). Logs the RDP commands
+ * that bear on the 2D overlay -- texrects, scissor, prim-depth, othermode,
+ * combine, tile/texture loads -- so the emitted stream can be compared
+ * against the cxd4 LLE reference. No effect unless the env var is set. */
+#include <stdio.h>
+#include <stdlib.h>
+
 /* F3DEX2 command bytes (high byte of w0) */
 #define F3DEX2_VTX        0x01
 #define F3DEX2_TRI1       0x05
@@ -226,10 +233,56 @@ void rdp_fifo_init(RdpFifo *f, unsigned char *storage,
     f->flush   = 0;
 }
 
+static int sote_rdp_log   = -1;   /* -1 = env not yet checked */
+static int sote_rdp_lines = 0;
+
+static void sote_rdp_probe(const int32_t *words, int count)
+{
+    unsigned int op;
+    int k;
+    if (sote_rdp_log < 0)
+        sote_rdp_log = (getenv("SOTE_RDP_LOG") != NULL) ? 1 : 0;
+    if (!sote_rdp_log || count <= 0 || sote_rdp_lines >= 6000)
+        return;
+    op = ((unsigned int)words[0] >> 24) & 0xffu;
+    /* texrect, scissor, setprimdepth, othermode, combine, tluts, tiles,
+     * tile-size, load block/tile, set-tex-image, prim/fill/env color */
+    switch (op)
+    {
+    case 0xE4u: case 0xE5u: case 0xEDu: case 0xEEu: case 0xEFu:
+    case 0xF0u: case 0xF2u: case 0xF3u: case 0xF4u: case 0xF5u:
+    case 0xF7u: case 0xFAu: case 0xFBu: case 0xFCu: case 0xFDu:
+        break;
+    default:
+        return;
+    }
+    fprintf(stderr, "SOTE_RDP %02x:", op);
+    for (k = 0; k < count && k < 4; k++)
+        fprintf(stderr, " %08x", (unsigned int)words[k]);
+    if (op == 0xE4u || op == 0xE5u)
+    {
+        unsigned int w0 = (unsigned int)words[0];
+        unsigned int w1 = (count > 1) ? (unsigned int)words[1] : 0u;
+        fprintf(stderr, "  [texrect ul=(%u,%u) lr=(%u,%u) tile=%u]",
+                ((w1 >> 12) & 0xfffu) >> 2, (w1 & 0xfffu) >> 2,
+                ((w0 >> 12) & 0xfffu) >> 2, (w0 & 0xfffu) >> 2,
+                (w1 >> 24) & 0x7u);
+    }
+    else if (op == 0xEFu)   /* RDPSETOTHERMODE: z-cmp/upd + z-source in w1 */
+    {
+        unsigned int lo = (count > 1) ? (unsigned int)words[1] : 0u;
+        fprintf(stderr, "  [othermode zcmp=%u zupd=%u zsrc_prim=%u]",
+                (lo >> 4) & 1u, (lo >> 5) & 1u, (lo >> 2) & 1u);
+    }
+    fprintf(stderr, "\n");
+    sote_rdp_lines++;
+}
+
 void rdp_fifo_append(RdpFifo *f, const int32_t *words, int count)
 {
     int i;
     unsigned int off;
+    sote_rdp_probe(words, count);
     if (f->used + (unsigned int)count * 4u > f->cap)
     {
         /* Heavy frames (camera swings over a full scene) can exceed the
