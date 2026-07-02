@@ -738,6 +738,10 @@ void rdp_emit_hle_process_dlist(void)
                  * renders. Route it to the x2 decode by its boot signature. */
                 if (t0 == 0x090005f8u)
                     f3d_set_variant(1);
+                /* ...but the stock F3DEX GBI1 near-clips (it is not a NoN
+                 * build like Doom 64 / Turok), so keep the near-plane clip on
+                 * for it while it uses the x2 decode. */
+                f3d_set_f3dex_nearclip(t0 == 0x090005f8u);
             }
             if (ud != 0 && ud + 0x120u <= rdram_size)
             {

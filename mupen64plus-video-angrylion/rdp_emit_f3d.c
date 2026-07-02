@@ -402,10 +402,15 @@ static int s_variant_line = 0;   /* 1 => Doom 64 automap line ucode (gspL3DEX) *
 static int s_variant_wr64 = 0;   /* 1 => Wave Race 64 (n<<9 vtx, x5 indices) */
 static int s_variant_f3dex = 0;  /* 1 => F3DEX GBI1 (GoldenEye/Perfect Dark): x2
                                   * vertex indices and 0xB1 = G_TRI2 (two tris) */
+static int s_f3dex_nearclip = 0; /* 1 => a d64-decode (x2) build that DOES clip
+                                  * against the near plane, unlike the Doom 64 /
+                                  * Turok NoN builds: the stock SGI F3DEX GBI1
+                                  * used by Star Wars: Shadows of the Empire. */
 void f3d_set_variant_f3dex(int v) { s_variant_f3dex = v ? 1 : 0; }
 void f3d_set_variant(int doom64) { s_variant_d64 = doom64 ? 1 : 0; }
 void f3d_set_line_variant(int line) { s_variant_line = line ? 1 : 0; }
 void f3d_set_variant_wr64(int wr64) { s_variant_wr64 = wr64 ? 1 : 0; }
+void f3d_set_f3dex_nearclip(int v) { s_f3dex_nearclip = v ? 1 : 0; }
 
 
 /* ---- RDP pass-through (microcode-independent), mirrors rdp_emit_f3dex2.c --*/
@@ -476,7 +481,13 @@ void f3d_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
          * Both keep FRUSTRATIO_1 (clip-to-screen) as the default clip ratio
          * rather than the guard-band ratio of the wider F3DEX family; an
          * explicit gSPClipRatio still overrides it. */
-        gsp->clip_near_z = s_variant_d64 ? 0 : 1;
+        /* Shadows of the Empire runs the stock SGI F3DEX GBI1, which -- like
+         * plain Fast3D -- clips against the near plane; only the Doom 64 /
+         * Turok NoN builds let behind-the-eye geometry fall out through the
+         * guard band. It takes the same x2 (d64) vertex/triangle decode, so
+         * gate the near-clip suppression on the NoN builds alone, keeping the
+         * near clip for the stock build. */
+        gsp->clip_near_z = (s_variant_d64 && !s_f3dex_nearclip) ? 0 : 1;
         gsp->clip_ratio = 1;
         s_spr_have = 0;
     }
