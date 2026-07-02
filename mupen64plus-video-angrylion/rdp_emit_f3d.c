@@ -791,22 +791,8 @@ void f3d_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
 
         case F3D_MOVEMEM:
         {
-            /* The move index sits in different bits depending on how the GBI
-             * built the command. Plain Fast3D's gMoveMem puts the index byte
-             * in w0 bits 16..23. The F3DEX GBI 1 gSPViewport/gSPLight build
-             * the command with gDma2p, which packs cmd:8 | (ofs/8):8 |
-             * ((len-1)/8):8 | idx:8 -- so the index is in the LOW byte and
-             * bits 16..23 hold ofs/8 (0 for the viewport). Every real move
-             * index (G_MV_VIEWPORT..G_MV_MATRIX_x) is >= 0x80, so when bits
-             * 16..23 do not hold one, take the low byte instead. This leaves
-             * plain Fast3D untouched (its index is already >= 0x80 up there)
-             * and recovers the F3DEX viewport/light loads -- without the
-             * viewport, every transformed vertex is scaled by a stale
-             * viewport and the world renders distorted. */
             unsigned int idx = (w0 >> 16) & 0xffu;
             unsigned int ma  = seg_phys(w1);
-            if (idx < 0x80u)
-                idx = w0 & 0xffu;
             if (idx == F3D_MV_VIEWPORT)
             {
                 if (in_range(ma, 16u))
