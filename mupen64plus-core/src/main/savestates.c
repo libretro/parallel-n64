@@ -219,7 +219,17 @@ int savestates_load_m64p(const unsigned char *data, size_t size)
    g_dev.dp.dpc_regs[DPC_CURRENT_REG] = GETDATA(curr, uint32_t);
    curr += 4; /* Padding from old implementation. */
    g_dev.dp.dpc_regs[DPC_STATUS_REG] = GETDATA(curr, uint32_t);
-   curr += 12; // Duplicated DPC flags and padding from old implementation
+   curr += 11; // Duplicated DPC status flag bytes from old implementation
+   /* The final byte of the old 12-byte flag/padding block was always
+    * written as zero; it now carries dp->do_on_unfreeze so that a DP
+    * interrupt parked while DPC_STATUS_FREEZE is set (do_SP_Task defers
+    * it to the game's CLR_FREEZE write) survives a savestate. States
+    * from older cores hold zero here, which is the old load behavior.
+    * Without this, a state captured inside the freeze window loses the
+    * parked interrupt: the game's in-flight frame never retires and it
+    * softlocks immediately on load (Blast Corps' logo cadence parks a
+    * DP interrupt during most of every frame). */
+   g_dev.dp.do_on_unfreeze = GETDATA(curr, uint8_t);
    g_dev.dp.dpc_regs[DPC_CLOCK_REG] = GETDATA(curr, uint32_t);
    g_dev.dp.dpc_regs[DPC_BUFBUSY_REG] = GETDATA(curr, uint32_t);
    g_dev.dp.dpc_regs[DPC_PIPEBUSY_REG] = GETDATA(curr, uint32_t);
@@ -562,7 +572,8 @@ int savestates_save_m64p(unsigned char *data, size_t size)
    PUTDATA(curr, uint8_t, (g_dev.dp.dpc_regs[DPC_STATUS_REG] & 0x100) != 0);
    PUTDATA(curr, uint8_t, (g_dev.dp.dpc_regs[DPC_STATUS_REG] & 0x200) != 0);
    PUTDATA(curr, uint8_t, (g_dev.dp.dpc_regs[DPC_STATUS_REG] & 0x400) != 0);
-   PUTDATA(curr, uint8_t, 0);
+   /* was always-zero padding; see the matching read above */
+   PUTDATA(curr, uint8_t, g_dev.dp.do_on_unfreeze);
    PUTDATA(curr, uint32_t, g_dev.dp.dpc_regs[DPC_CLOCK_REG]);
    PUTDATA(curr, uint32_t, g_dev.dp.dpc_regs[DPC_BUFBUSY_REG]);
    PUTDATA(curr, uint32_t, g_dev.dp.dpc_regs[DPC_PIPEBUSY_REG]);
