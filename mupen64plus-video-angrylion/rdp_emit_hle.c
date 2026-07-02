@@ -719,25 +719,31 @@ void rdp_emit_hle_process_dlist(void)
                        |  (unsigned int)rdram[(ut + 3) ^ 3])
                     : 0u;
                 f3d_set_variant_f3dex(t0 == 0x090005eau);
-                /* Star Wars: Shadows of the Empire runs the stock early F3DEX
-                 * (GBI 1) build -- data-segment name "RSP SW Version: 2.0D,
-                 * 04-01-96", text+0 boot word 0x090005f8 -- compiled with
-                 * -DF3DEX_GBI. Like GoldenEye's build it carries the SM64
-                 * version word at text+4 (0x201d0110), so it reaches this F3D
-                 * walker, but it is NOT the Rare F3DEX above: it uses the
-                 * stock SGI encoding, where gSP1Triangle indices are scaled x2
-                 * (not x10), 0xB1 is G_TRI2 (two triangles, indices x2, not
-                 * Rare's G_TRI4), and gSPVertex packs n<<10 with (v0)*2 -- i.e.
-                 * the same x2 F3DEX-family decode as the Doom 64 / Turok path.
-                 * Its data segment carries no dense GBI dispatch table and no
-                 * 0xef-tagged G_SETOTHERMODE init word, so the name family scan
-                 * (name is "RSP SW Version", not "RSP Gfx ucode"), the
-                 * f3dex1_data_family() probe and the gbi1_oth probe all miss it
-                 * and it is left on the default x10 plain-Fast3D decode: 0xBF
-                 * reads the wrong slots and 0xB1 is misread, so the world never
-                 * renders. Route it to the x2 decode by its boot signature. */
+                /* Star Wars: Shadows of the Empire runs an early "RSP SW
+                 * Version: 2.0D, 04-01-96" graphics build (text+0 boot word
+                 * 0x090005f8). It carries the SM64 version word at text+4
+                 * (0x201d0110), so it reaches this F3D walker rather than the
+                 * F3DEX2 one. Its geometry is encoded like Wave Race 64's
+                 * F3DBETA -- gSPVertex packs the count as n<<9 (not n<<10) and
+                 * gSP1Triangle / G_QUAD index vertices *5 (recovered by /5) --
+                 * NOT the x2 F3DEX / Doom 64 encoding, confirmed from its live
+                 * display list. Select it by its boot signature below. */
                 if (t0 == 0x090005f8u)
-                    f3d_set_variant(1);
+                {
+                    /* Correction: this build's geometry is not the x2 (d64)
+                     * F3DEX encoding but the F3DBETA one Wave Race 64 uses,
+                     * confirmed from its live display list -- gSPVertex packs
+                     * the count as n<<9 (not n<<10) and gSP1Triangle / G_QUAD
+                     * index vertices *5 (recovered by /5), not *2. Its data
+                     * segment carries the 0xef G_SETOTHERMODE tag, so the
+                     * gbi1_oth probe above already selected the x2 decode;
+                     * decoded that way only half of each batch's vertices load
+                     * and the triangle indices fall on stale slots, stretching
+                     * the model into off-screen streaks. Clear the x2 decode
+                     * and select the wr64 (n<<9, /5) path instead. */
+                    f3d_set_variant(0);
+                    f3d_set_variant_wr64(1);
+                }
             }
             if (ud != 0 && ud + 0x120u <= rdram_size)
             {
