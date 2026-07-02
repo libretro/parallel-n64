@@ -226,6 +226,23 @@ void rdp_fifo_init(RdpFifo *f, unsigned char *storage,
     f->flush   = 0;
 }
 
+static int s_dl_has_fullsync;
+
+void rdp_fifo_fullsync_reset(void)
+{
+    s_dl_has_fullsync = 0;
+}
+
+void rdp_fifo_fullsync_note(void)
+{
+    s_dl_has_fullsync = 1;
+}
+
+int rdp_fifo_fullsync_seen(void)
+{
+    return s_dl_has_fullsync;
+}
+
 void rdp_fifo_append(RdpFifo *f, const int32_t *words, int count)
 {
     int i;
@@ -1168,7 +1185,11 @@ void f3dex2_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
                  * implements; 0x31 (G_SETKEY*) is not, so skip it. SYNC_FULL
                  * (0x29) is dropped here too: the activation appends exactly
                  * one frame terminator, and forwarding the list's own trailing
-                 * G_RDPFULLSYNC as well would complete the frame twice. */
+                 * G_RDPFULLSYNC as well would complete the frame twice. Its
+                 * presence is recorded so the activation knows the task asked
+                 * for a full sync at all. */
+                if (rdp_id == 0x29)
+                    rdp_fifo_fullsync_note();
                 if (rdp_id >= 0x24 && rdp_id <= 0x3f &&
                     rdp_id != 0x31 && rdp_id != 0x29)
                 {

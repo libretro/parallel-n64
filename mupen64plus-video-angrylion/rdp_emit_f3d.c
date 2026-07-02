@@ -431,7 +431,10 @@ static void rdp_passthrough(GSPState *gsp, RdpFifo *fifo, int cmd,
     }
     /* 0x24..0x3f are the RDP non-triangle commands angrylion implements; skip
      * 0x31 (G_SETKEY*, unimplemented) and 0x29 (SYNC_FULL, the activation
-     * appends exactly one frame terminator itself). */
+     * appends exactly one frame terminator itself, but records that the list
+     * requested one). */
+    if (rdp_id == 0x29)
+        rdp_fifo_fullsync_note();
     if (rdp_id >= 0x24 && rdp_id <= 0x3f && rdp_id != 0x31 && rdp_id != 0x29)
     {
         int32_t two[2];

@@ -484,6 +484,8 @@ static void f3ddkr_run_dl_impl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
             if (cmd >= 0xc8 && cmd <= 0xff)
             {
                 int rdp_id = cmd & 0x3f;
+                if (rdp_id == 0x29)
+                    rdp_fifo_fullsync_note();
                 if (rdp_id >= 0x24 && rdp_id <= 0x3f
                     && rdp_id != 0x31 && rdp_id != 0x29)
                 {

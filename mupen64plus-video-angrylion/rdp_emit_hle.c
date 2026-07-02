@@ -610,6 +610,9 @@ void rdp_emit_hle_process_dlist(void)
     if (rdram == 0 || dmem == 0 || rdram_size == 0)
         return;
 
+    /* forget any fullsync seen by a previous task before the parsers run */
+    rdp_fifo_fullsync_reset();
+
 
     if (!s_inited)
     {
@@ -774,10 +777,17 @@ void rdp_emit_hle_process_dlist(void)
         }
     }
 
-    /* terminate the command list with exactly one SYNC_FULL (RDP cmd 0x29).
-     * angrylion needs this to flush/complete the frame; the dispatcher drops
-     * the display list's own trailing G_RDPFULLSYNC (see rdp_emit_f3dex2.c) so
-     * that the frame is completed once, not twice. */
+    /* terminate the command list with exactly one SYNC_FULL (RDP cmd 0x29),
+     * but only when the display list itself contained a G_RDPFULLSYNC: the
+     * parsers drop the list's own trailing G_RDPFULLSYNC (see
+     * rdp_emit_f3dex2.c) so that the frame is completed once, not twice.
+     * A display list without any G_RDPFULLSYNC raises no DP interrupt on
+     * hardware, and games keep track of which tasks full-sync: Blast Corps'
+     * scheduler retires a frame on every DP-done message and dereferences a
+     * NULL frame pointer when one arrives for a task that never requested a
+     * full sync (its first display list after the Rareware logo), faulting
+     * the scheduler thread and softlocking the game. */
+    if (rdp_fifo_fullsync_seen())
     {
         int32_t sync[2];
         sync[0] = (int32_t)0x29000000u;

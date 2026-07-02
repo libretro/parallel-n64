@@ -38,6 +38,17 @@ void rdp_fifo_init(RdpFifo *f, unsigned char *storage,
                    unsigned int base, unsigned int cap);
 void rdp_fifo_append(RdpFifo *f, const int32_t *words, int count);
 
+/* Tracks whether the display list being parsed contained a G_RDPFULLSYNC
+ * (RDP command 0x29). The parsers drop the command itself (the HLE
+ * activation appends the frame terminator), but the activation must know
+ * whether the list requested one at all: on hardware a task whose display
+ * list never issues G_RDPFULLSYNC raises no DP interrupt, and games track
+ * which tasks full-sync (Blast Corps' scheduler faults on a NULL frame
+ * pointer if a DP-done arrives for a task that never requested one). */
+void rdp_fifo_fullsync_reset(void);
+void rdp_fifo_fullsync_note(void);
+int  rdp_fifo_fullsync_seen(void);
+
 /* Walk an F3DEX2 display list starting at RDRAM byte address `addr`,
  * transforming geometry through `gsp` and appending RDP commands to `fifo`.
  * `textured`/`z_buffered` select the triangle variant for emitted tris
