@@ -890,6 +890,21 @@ void f3d_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
                 }
                 break;
             }
+            case F3D_MW_LIGHTCOL:
+            {
+                /* gSPLightColor: overwrite a light's RGB in place (packed
+                 * RGBA in w1); the offset selects the light (aLIGHT_1=0x00,
+                 * aLIGHT_2=0x20, ...). Previously dropped, which left the
+                 * stale G_MOVEMEM color -- e.g. Robotron 64's title head,
+                 * whose flesh tint is applied via LIGHTCOL over a
+                 * gray-loaded light. */
+                unsigned int loff = (w0 >> 8) & 0xffffu;
+                gsp_set_light_color(gsp, (int)(loff / 0x20u),
+                                    (int32_t)((w1 >> 24) & 0xffu),
+                                    (int32_t)((w1 >> 16) & 0xffu),
+                                    (int32_t)((w1 >>  8) & 0xffu));
+                break;
+            }
             default:
                 break;
             }
