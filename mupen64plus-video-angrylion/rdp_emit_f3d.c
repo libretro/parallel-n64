@@ -711,10 +711,28 @@ void f3d_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
         {
             int nopush = (int)((w0 >> 16) & 0xff) == F3D_DL_NOPUSH;
             unsigned int da = seg_phys(w1);
-            if (in_range(da, 8u))
-                f3d_run_dl(gsp, fifo, da, s_textured, s_zbuffered);
             if (nopush)
-                running = 0;   /* branch (no return) ends this list */
+            {
+                /* gSPBranchList is a jump, not a call: the DL pointer moves to
+                 * the target and the current list continues there, with no
+                 * return and no push onto the DL stack. Recursing here (like a
+                 * pushed gSPDisplayList) inflated s_dl_depth by one per branch.
+                 * Shadows of the Empire chains its 2D overlay / HUD lists
+                 * through dozens of branches, so the depth ran past
+                 * F3D_DL_MAX_DEPTH and the walk aborted before the 560
+                 * briefing/HUD texrects, dropping every one of them. Jump
+                 * instead; the guard below still bounds runaway branch loops. */
+                if (in_range(da, 8u))
+                {
+                    pc = da;
+                    continue;
+                }
+                running = 0;   /* unresolvable target: end this list */
+            }
+            else if (in_range(da, 8u))
+            {
+                f3d_run_dl(gsp, fifo, da, s_textured, s_zbuffered);
+            }
             break;
         }
 
