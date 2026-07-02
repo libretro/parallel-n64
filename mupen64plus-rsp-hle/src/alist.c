@@ -115,7 +115,7 @@ void alist_process(struct hle_t* hle, const acmd_callback_t abi[], unsigned int 
     const uint32_t *alist = dram_u32(hle, *dmem_u32(hle, TASK_DATA_PTR));
     const uint32_t *const alist_end = alist + (*dmem_u32(hle, TASK_DATA_SIZE) >> 2);
 
-    while (alist != alist_end) {
+    while (alist_end - alist >= 2) {
         w1 = *(alist++);
         w2 = *(alist++);
 
