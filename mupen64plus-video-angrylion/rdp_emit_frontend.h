@@ -205,7 +205,7 @@ int gsp_triangle(GSPState *s, int32_t *cmd, int i0, int i1, int i2,
                  int textured, int z_buffered);
 /* Expand a G_LINE3D (gSPLine3D) between two stored vertices into a thin
  * screen-space quad and emit it; used by the Doom 64 automap line ucode. */
-int gsp_line(GSPState *s, int32_t *cmd, int i0, int i1, int width_q, int x_expand);
+int gsp_line(GSPState *s, int32_t *cmd, int i0, int i1, int width_q);
 
 #ifdef __cplusplus
 }

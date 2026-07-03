@@ -1307,7 +1307,7 @@ static void gsp_fold_st(GSPState *s, GSPVertex *v)
  * s15.16, .25-quantized; 1 pixel == 0x10000); offset each perpendicular to
  * the segment by a half line width and feed the four corners straight to the
  * bridge with their screen coordinates authoritative (scr_valid). */
-int gsp_line(GSPState *s, int32_t *cmd, int i0, int i1, int width_q, int x_expand)
+int gsp_line(GSPState *s, int32_t *cmd, int i0, int i1, int width_q)
 {
     GSPVertex e[2];
     BridgeVertex bv[4];
@@ -1330,35 +1330,32 @@ int gsp_line(GSPState *s, int32_t *cmd, int i0, int i1, int width_q, int x_expan
     if (len < 1.0)
         return 0;                       /* zero-length: nothing to draw */
 
-    if (x_expand)
+    /* Both line microcodes expand the segment along one axis by a constant
+     * (wd + 3) / 2 pixels, whatever the slope of the other axis: the two
+     * walked edges of the emitted parallelogram carry the segment's own
+     * slope and sit that far apart. Verified against each microcode's own
+     * RDP stream: Doom 64's gspL3DEX automap frame carries XM - XH == 1.500
+     * (gSPLine3D width 0) on every non-horizontal wall and on the rotated
+     * player-arrow strokes (dx/dy 0.415 and 1.0 alike), and Blast Corps'
+     * Fast3D line build carries 2.000 (width 1) out to dx/dy ~ 4.5. A
+     * segment whose endpoints share the same quantized scanline has no
+     * representable edge slope, and the stream shows the microcode switching
+     * to the transposed form there: a (wd + 3) / 2 pixel tall horizontal
+     * band between the raw endpoint x's. 1 pixel == 0x10000; the endpoint
+     * screen snapshots are already .25-quantized. */
+    (void)len; (void)ox; (void)oy; (void)dx;
+    halfw = (double)(width_q + 3) * 0x4000;
+    if (e[0].scr_y == e[1].scr_y)
     {
-        /* Blast Corps' Fast3D line build expands the segment along X only:
-         * the emitted command is a parallelogram whose two walked edges
-         * carry the segment's own slope and sit a constant (wd + 3) / 2
-         * pixels apart horizontally (verified against the microcode's own
-         * RDP stream: XM - XH == 2.000 for its width-1 trails at every
-         * sampled slope, up to dx/dy ~ 4.5). Offset the endpoints by half
-         * of that in X and let the quad's two triangles tile the same
-         * parallelogram. 1 pixel == 0x10000. */
-        (void)len;
-        halfw = (double)(width_q + 3) * 0x4000;
-        oxi = (int32_t)(halfw + 0.5);
-        oyi = 0;
+        oxi = 0;
+        oyi = (int32_t)(halfw + 0.5);
     }
     else
     {
-        /* Doom 64's gspL3DEX automap lines: expand perpendicular to the
-         * segment. gSPLine3D passes width 0, for which the L3DEX line is
-         * ~1.6 px wide; 0xD000 (0.81 px) half width matches the antialiased
-         * hardware reference at every angle (pure-X expansion collapses the
-         * automap's horizontal walls to invisible slivers). The width byte
-         * (gSPLineW3D) widens beyond that. */
-        halfw = 0xD000 + ((double)width_q * 0x8000);
-        ox = -dy / len * halfw;
-        oy =  dx / len * halfw;
-        oxi = (int32_t)(ox < 0 ? ox - 0.5 : ox + 0.5);
-        oyi = (int32_t)(oy < 0 ? oy - 0.5 : oy + 0.5);
+        oxi = (int32_t)(halfw + 0.5);
+        oyi = 0;
     }
+    (void)dy;
 
     for (k = 0; k < 4; k++)
     {
