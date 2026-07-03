@@ -1071,6 +1071,391 @@ static Rsp32 sub32(Rsp32 a, Rsp32 b)
     return o;
 }
 
+/* Single-command line emitter: the L3DEX-family line microcodes draw each
+ * gSPLine3D segment as one shade-triangle command in the YM==YL
+ * parallelogram form -- two walked edges carrying the segment's own
+ * VRCP-computed slope a constant (wd + 3) / 2 pixels apart -- rather than
+ * a quad split into two triangles. The split's shared diagonal is walked
+ * by two commands and its antialias coverage double-blends; the single
+ * command has no interior edge. Coefficients transcribed from the
+ * microcode streams of Doom 64's automap (every wall and player-arrow
+ * stroke) and Blast Corps' J-Bomb trails:
+ *   - endpoints sorted by y; YH/YL are the raw stored screen y's, YM = YL;
+ *   - XH/XM anchor at (x_top -/+ (wd+3)/4 px) + dXdY * y_spx, the same
+ *     subpixel anchor walk as the triangle write, with dXdY from the
+ *     single-precision VRCP reciprocal of the y span;
+ *   - a segment whose endpoints share a quantized scanline becomes the
+ *     transposed form: a (wd+3)/2 px tall band between the raw endpoint
+ *     x's in segment order, slopes zero, lft from the x order;
+ *   - shade attributes are the top endpoint's integer colours with zero
+ *     fractions (the raw path, like the 2D overlay quads); the gradients
+ *     are DaDe == DaDy = delta * rcp(dy) per lane along the walk, with
+ *     DrDx zero, and zero entirely for the transposed form;
+ *   - the XL/DxL pair is never walked (zero rows) and is emitted as zero
+ *     (Doom 64's build zeroes it; Blast Corps leaves stale DMEM there,
+ *     which cannot be reproduced and renders identically). */
+static int rsp_line_write_xmajor(int32_t *cmd,
+                                 const RspTriVtx *vh, const RspTriVtx *vl,
+                                 int width_q, int32_t dx_scale,
+                                 int32_t idy_scale, int32_t slope_mask)
+{
+    int32_t h102 = (int32_t)(width_q + 3);          /* (wd+3)/4 px in 10.2 */
+    int32_t yh102 = (int32_t)vh->y - h102;
+    int32_t ym102 = (int32_t)vh->y + h102;
+    int32_t yl102 = (int32_t)vl->y + h102;
+    Rsp32 slope, xh;
+    int lft;
+    int32_t attr_i[4], dattr[4], dattr_x[4];
+    int k;
+
+    if (yl102 < 0)
+        return 0;
+
+    /* slope and attribute gradients. The edge step DrDe is the y-major
+     * delta * rcp(dy) chain; the span step DrDx takes the second
+     * reciprocal the microcode computes up front, rcp(dx); DrDy is
+     * emitted zero in this form. */
+    {
+        int32_t dy102 = (int32_t)(int16_t)(vl->y - vh->y);
+        int32_t dx102 = (int32_t)(int16_t)(vl->x - vh->x);
+        int32_t idy32 = rsp_rcp16(dy102);
+        int32_t idx32 = rsp_rcp16(dx102);
+        Rsp32 idy_sc, idx_sc, dxv;
+        RspAcc acc;
+        Rsp32 rcp = mk32(idy32);
+        Rsp32 rcx = mk32(idx32);
+        acc = p_udl(rcp.f, idy_scale);
+        acc += p_udm(rcp.i, idy_scale);
+        idy_sc.i = acc_clamp_mid(acc);
+        idy_sc.f = acc_clamp_low(acc);
+        acc = p_udl(rcx.f, idy_scale);
+        acc += p_udm(rcx.i, idy_scale);
+        idx_sc.i = acc_clamp_mid(acc);
+        idx_sc.f = acc_clamp_low(acc);
+        acc = p_udm(dx102, dx_scale);
+        dxv.i = acc_clamp_mid(acc);
+        dxv.f = acc_clamp_low(acc);
+        slope = mac32(dxv, idy_sc, 0);
+        slope.f &= slope_mask;
+        lft = dx102 < 0 ? 1 : 0;
+
+        {
+            int32_t dl[4];
+            dl[0] = vl->r - vh->r; dl[1] = vl->g - vh->g;
+            dl[2] = vl->b - vh->b; dl[3] = vl->a - vh->a;
+            for (k = 0; k < 4; k++)
+            {
+                Rsp32 dv;
+                dv.i = dl[k]; dv.f = 0;
+                dattr[k]   = r32(mac32(dv, idy_sc, 0));
+                dattr_x[k] = r32(mac32(dv, idx_sc, 0));
+            }
+        }
+    }
+    attr_i[0] = vh->r; attr_i[1] = vh->g; attr_i[2] = vh->b; attr_i[3] = vh->a;
+
+    /* XH anchor walk from the top endpoint's x; attribute walk beside it */
+    {
+        int32_t vh_y = yh102 < 0 ? 0 : yh102;
+        int32_t frac = (U16(vh_y) * 0x4000) & 0xffff;
+        int32_t y_spx_f = (0 - frac) & 0xffff;
+        int32_t y_spx_i = (0 - (frac != 0 ? 1 : 0)) & 0xffff;
+        RspAcc acc = p_udn(0x4000, (int32_t)vh->x);
+        acc += p_udl(slope.f, y_spx_f);
+        acc += p_udm(slope.i, y_spx_f);
+        acc += p_udn(slope.f, y_spx_i);
+        xh.f = acc_clamp_low(acc);
+        acc += p_udh(slope.i, y_spx_i);
+        xh.i = acc_clamp_mid(acc);
+        if (yh102 < 0)
+        {
+            int64_t d = ((int64_t)r32(slope)
+                         * (int64_t)((0 - yh102) << 14)) >> 16;
+            int64_t v = (((int64_t)(int16_t)xh.i) << 16) | (uint32_t)U16(xh.f);
+            v += d;
+            xh.i = (int32_t)((v >> 16) & 0xffff);
+            xh.f = (int32_t)(v & 0xffff);
+        }
+        if (frac)
+        {
+            for (k = 0; k < 4; k++)
+            {
+                int64_t v = ((int64_t)attr_i[k] << 16)
+                          - (((int64_t)dattr[k] * (int64_t)frac) >> 16);
+                attr_i[k] = (int32_t)(v >> 16) & 0xffff;
+            }
+        }
+        if (yh102 < 0)
+        {
+            for (k = 0; k < 4; k++)
+            {
+                int64_t v = ((int64_t)attr_i[k] << 16)
+                          + (((int64_t)dattr[k]
+                              * (int64_t)((0 - yh102) << 14)) >> 16);
+                attr_i[k] = (int32_t)(v >> 16) & 0xffff;
+            }
+        }
+    }
+
+    {
+        int32_t yh_emit = yh102 < 0 ? 0 : yh102;
+        int32_t ym_emit = ym102 < 0 ? 0 : ym102;
+        cmd[0] = (int32_t)(0xCC000000u | ((uint32_t)(lft & 1) << 23)
+                           | ((uint32_t)yl102 & 0x3fffu));
+        cmd[1] = (int32_t)((((uint32_t)ym_emit & 0x3fffu) << 16)
+                           | ((uint32_t)yh_emit & 0x3fffu));
+    }
+    cmd[2] = (int32_t)vh->x << 14;                     /* XL: band boundary */
+    cmd[3] = (int32_t)((((uint32_t)U16(slope.i)) << 16) | (uint32_t)U16(slope.f));
+    cmd[4] = (int32_t)((((uint32_t)U16(xh.i)) << 16) | (uint32_t)U16(xh.f));
+    cmd[5] = cmd[3];
+    cmd[6] = (int32_t)vh->x << 14;                     /* XM: vertical cap */
+    cmd[7] = 0;
+    cmd[8]  = (int32_t)((((uint32_t)attr_i[0] & 0xffffu) << 16) | ((uint32_t)attr_i[1] & 0xffffu));
+    cmd[9]  = (int32_t)((((uint32_t)attr_i[2] & 0xffffu) << 16) | ((uint32_t)attr_i[3] & 0xffffu));
+    cmd[10] = (int32_t)((((uint32_t)(dattr_x[0] >> 16) & 0xffffu) << 16)
+                        | ((uint32_t)(dattr_x[1] >> 16) & 0xffffu));
+    cmd[11] = (int32_t)((((uint32_t)(dattr_x[2] >> 16) & 0xffffu) << 16)
+                        | ((uint32_t)(dattr_x[3] >> 16) & 0xffffu));
+    cmd[12] = 0; cmd[13] = 0;
+    cmd[14] = (int32_t)((((uint32_t)dattr_x[0] & 0xffffu) << 16)
+                        | ((uint32_t)dattr_x[1] & 0xffffu));
+    cmd[15] = (int32_t)((((uint32_t)dattr_x[2] & 0xffffu) << 16)
+                        | ((uint32_t)dattr_x[3] & 0xffffu));
+    cmd[16] = (int32_t)((((uint32_t)(dattr[0] >> 16) & 0xffffu) << 16)
+                        | ((uint32_t)(dattr[1] >> 16) & 0xffffu));
+    cmd[17] = (int32_t)((((uint32_t)(dattr[2] >> 16) & 0xffffu) << 16)
+                        | ((uint32_t)(dattr[3] >> 16) & 0xffffu));
+    cmd[18] = 0; cmd[19] = 0;                          /* DrDy: zero here */
+    cmd[20] = (int32_t)((((uint32_t)dattr[0] & 0xffffu) << 16)
+                        | ((uint32_t)dattr[1] & 0xffffu));
+    cmd[21] = (int32_t)((((uint32_t)dattr[2] & 0xffffu) << 16)
+                        | ((uint32_t)dattr[3] & 0xffffu));
+    cmd[22] = 0; cmd[23] = 0;
+    return 24;
+}
+
+int rsp_line_write(int32_t *cmd, const RspTriVtx *e0, const RspTriVtx *e1,
+                   int width_q, int32_t dx_scale, int32_t idy_scale,
+                   int32_t slope_mask)
+{
+    const RspTriVtx *vh, *vl;
+    int32_t half;                 /* (wd+3)/4 px in s15.16 */
+    int32_t yh102, yl102;
+    Rsp32 slope, xh, xm;
+    int lft;
+    int32_t attr_i[4], dattr[4];
+    int k;
+
+    half = (int32_t)(width_q + 3) << 14;
+
+    if (e0->y == e1->y)
+    {
+        /* transposed: horizontal band. The microcode's XH edge and base
+         * colour come from the command's second vertex operand (e1 here),
+         * per its own stream. */
+        int32_t y102 = e0->y;
+        int32_t yh_q = ((y102 << 14) - half) >> 14;
+        int32_t yl_q = ((y102 << 14) + half) >> 14;
+        if (yl_q < 0)
+            return 0;
+        if (yh_q < 0)
+            yh_q = 0;
+        lft = (e1->x <= e0->x) ? 1 : 0;
+        cmd[0] = (int32_t)(0xCC000000u | ((uint32_t)(lft & 1) << 23)
+                           | ((uint32_t)yl_q & 0x3fffu));
+        cmd[1] = (int32_t)((((uint32_t)yl_q & 0x3fffu) << 16)
+                           | ((uint32_t)yh_q & 0x3fffu));
+        cmd[2] = 0; cmd[3] = 0;                       /* XL edge: not walked */
+        cmd[4] = (int32_t)e1->x << 14; cmd[5] = 0;     /* XH */
+        cmd[6] = (int32_t)e0->x << 14; cmd[7] = 0;     /* XM */
+        cmd[8]  = (int32_t)((((uint32_t)e1->r & 0xffffu) << 16) | ((uint32_t)e1->g & 0xffffu));
+        cmd[9]  = (int32_t)((((uint32_t)e1->b & 0xffffu) << 16) | ((uint32_t)e1->a & 0xffffu));
+        for (k = 10; k < 24; k++)
+            cmd[k] = 0;
+        return 24;
+    }
+
+    if (e0->y < e1->y) { vh = e0; vl = e1; }
+    else               { vh = e1; vl = e0; }
+    yh102 = vh->y; yl102 = vl->y;
+
+    /* Majorness: a segment wider than tall walks x in the microcode and
+     * is emitted in a third form (transcribed from the Blast Corps line
+     * build's stream; not yet captured on gspL3DEX): the y span expanded
+     * by (wd + 3) / 4 px on both ends (vertical end caps), YM at
+     * y_top + h, the major XH edge anchor-walked from the top endpoint's
+     * x at the segment slope, and the XL / XM edges at the raw top x --
+     * XL carrying the slope (the band's other boundary, reaching the
+     * bottom endpoint's x at YL) and XM vertical (the entry cap). Ties
+     * stay y-major (a 45-degree J-Bomb segment appears in the y-major
+     * form). */
+    {
+        int32_t dyv = (int32_t)(int16_t)(yl102 - yh102);
+        int32_t dxv2 = (int32_t)(int16_t)(vl->x - vh->x);
+        int32_t ady = dyv < 0 ? -dyv : dyv;
+        int32_t adx = dxv2 < 0 ? -dxv2 : dxv2;
+        if (adx > ady)
+            return rsp_line_write_xmajor(cmd, vh, vl, width_q,
+                                         dx_scale, idy_scale, slope_mask);
+    }
+
+    /* The 14-bit command Y fields cannot encode negative coordinates:
+     * the microcode drops segments entirely above the screen and clips
+     * a crossing segment's top to y = 0, leaving the anchor walked to
+     * the boundary (verified on the automap's off-screen walls; only
+     * the vertical case appears in the capture, where the anchor is
+     * unchanged). The bottom and X directions stay with the scissor. */
+    if (yl102 < 0)
+        return 0;
+
+    /* Slope: the single-precision VRCP reciprocal of the 10.2 y span,
+     * scaled and multiplied through the same lane chain as the triangle
+     * write, with the fraction masked by the microcode's v30 constant
+     * 0xFFF8 before both the anchor walk and the emitted command words
+     * (the -1.0 automap slopes land exact only when the mask follows the
+     * signed multiply; the line microcode's own sequence at 0xb44..0xb78
+     * of the Blast Corps build applies the same VAND). A handful of
+     * Blast Corps slopes still differ from the microcode's stream in the
+     * last masked fraction bit -- its multiply keeps a different
+     * intermediate radix -- which is below a 1/8192-pixel edge offset. */
+    {
+        int32_t dy102 = (int32_t)(int16_t)(yl102 - yh102);
+        int32_t dx102 = (int32_t)(int16_t)(vl->x - vh->x);
+        int32_t idy32 = rsp_rcp16(dy102);
+        Rsp32 idy_sc, dxv;
+        RspAcc acc;
+        int32_t dxs_i, dxs_f;
+        Rsp32 rcp = mk32(idy32);
+        acc = p_udl(rcp.f, idy_scale);
+        acc += p_udm(rcp.i, idy_scale);
+        idy_sc.i = acc_clamp_mid(acc);
+        idy_sc.f = acc_clamp_low(acc);
+        acc = p_udm(dx102, dx_scale);
+        dxs_i = acc_clamp_mid(acc);
+        dxs_f = acc_clamp_low(acc);
+        dxv.i = dxs_i; dxv.f = dxs_f;
+        slope = mac32(dxv, idy_sc, 0);
+        slope.f &= slope_mask;
+
+        /* per-lane attribute walk gradients: delta * rcp(dy) on the same
+         * scaled reciprocal */
+        /* Shade attributes: the base is the top endpoint's integer colour
+         * walked to the first covered scanline by the same subpixel step
+         * as the X anchor -- attr + DaDe * y_spx, truncated to the integer
+         * with the fraction discarded (Blast Corps' fog-faded trail
+         * alphas pin this: alpha 0x70 at y frac .5 with gradient +0.296
+         * lands as 0x6f in the microcode's stream, fraction zero; Doom's
+         * flat colours are walk-invariant). The gradient is
+         * (bottom - top) * rcp(dy), unmasked; colour deltas are plain
+         * units, not 10.2, so the reciprocal chain takes them undivided. */
+        {
+            int32_t dl[4];
+            dl[0] = vl->r - vh->r; dl[1] = vl->g - vh->g;
+            dl[2] = vl->b - vh->b; dl[3] = vl->a - vh->a;
+            for (k = 0; k < 4; k++)
+            {
+                Rsp32 dv;
+                dv.i = dl[k]; dv.f = 0;
+                dattr[k] = r32(mac32(dv, idy_sc, 0));
+            }
+        }
+        attr_i[0] = vh->r; attr_i[1] = vh->g; attr_i[2] = vh->b; attr_i[3] = vh->a;
+    }
+
+    /* subpixel anchor: y_spx = -(frac of vh->y), 15.16 lanes */
+    {
+        int32_t vh_y = yh102 < 0 ? 0 : (int32_t)vh->y;
+        int32_t frac = (U16(vh_y) * 0x4000) & 0xffff;
+        int32_t y_spx_f = (0 - frac) & 0xffff;
+        int32_t y_spx_i = (0 - (frac != 0 ? 1 : 0)) & 0xffff;
+        int pass;
+        for (pass = 0; pass < 2; pass++)
+        {
+            int32_t base_x102 = (int32_t)vh->x;
+            int32_t basex_i, basex_f;
+            Rsp32 *out = pass ? &xm : &xh;
+            RspAcc acc = p_udn(0x4000, base_x102);      /* x << 14 */
+            if (yh102 < 0)
+            {
+                /* clip walk: x += slope * (0 - y_top) px */
+                int64_t d = ((int64_t)r32(slope)
+                             * (int64_t)((0 - yh102) << 14)) >> 16;
+                acc += (RspAcc)d;
+            }
+            acc += p_udl(slope.f, y_spx_f);
+            acc += p_udm(slope.i, y_spx_f);
+            acc += p_udn(slope.f, y_spx_i);
+            out->f = acc_clamp_low(acc);
+            acc += p_udh(slope.i, y_spx_i);
+            out->i = acc_clamp_mid(acc);
+            /* -/+ half in 15.16 across the int:frac pair */
+            basex_i = out->i; basex_f = out->f;
+            {
+                int64_t v = (((int64_t)(int16_t)basex_i) << 16) | (uint32_t)U16(basex_f);
+                v += pass ? (int64_t)half : -(int64_t)half;
+                out->i = (int32_t)((v >> 16) & 0xffff);
+                out->f = (int32_t)(v & 0xffff);
+            }
+        }
+    }
+    lft = 1;
+
+    /* attribute anchor walk (see above): integer part kept, fraction
+     * discarded */
+    {
+        int32_t vh_y = yh102 < 0 ? 0 : (int32_t)vh->y;
+        int32_t frac = (U16(vh_y) * 0x4000) & 0xffff;
+        if (frac)
+        {
+            for (k = 0; k < 4; k++)
+            {
+                int64_t v = ((int64_t)attr_i[k] << 16)
+                          - (((int64_t)dattr[k] * (int64_t)frac) >> 16);
+                attr_i[k] = (int32_t)(v >> 16) & 0xffff;
+            }
+        }
+        if (yh102 < 0)
+        {
+            for (k = 0; k < 4; k++)
+            {
+                int64_t v = ((int64_t)attr_i[k] << 16)
+                          + (((int64_t)dattr[k]
+                              * (int64_t)((0 - yh102) << 14)) >> 16);
+                attr_i[k] = (int32_t)(v >> 16) & 0xffff;
+            }
+        }
+    }
+
+    {
+        int32_t yh_emit = yh102 < 0 ? 0 : yh102;
+        cmd[0] = (int32_t)(0xCC000000u | (1u << 23) | ((uint32_t)yl102 & 0x3fffu));
+        cmd[1] = (int32_t)((((uint32_t)yl102 & 0x3fffu) << 16)
+                           | ((uint32_t)yh_emit & 0x3fffu));
+    }
+    cmd[2] = 0; cmd[3] = 0;
+    cmd[4] = (int32_t)((((uint32_t)U16(xh.i)) << 16) | (uint32_t)U16(xh.f));
+    cmd[5] = (int32_t)((((uint32_t)U16(slope.i)) << 16) | (uint32_t)U16(slope.f));
+    cmd[6] = (int32_t)((((uint32_t)U16(xm.i)) << 16) | (uint32_t)U16(xm.f));
+    cmd[7] = cmd[5];
+    cmd[8]  = (int32_t)((((uint32_t)attr_i[0] & 0xffffu) << 16) | ((uint32_t)attr_i[1] & 0xffffu));
+    cmd[9]  = (int32_t)((((uint32_t)attr_i[2] & 0xffffu) << 16) | ((uint32_t)attr_i[3] & 0xffffu));
+    cmd[10] = 0; cmd[11] = 0;                          /* DrDx int */
+    cmd[12] = 0; cmd[13] = 0;                          /* rgba frac */
+    cmd[14] = 0; cmd[15] = 0;                          /* DrDx frac */
+    cmd[16] = (int32_t)((((uint32_t)(dattr[0] >> 16) & 0xffffu) << 16)
+                        | ((uint32_t)(dattr[1] >> 16) & 0xffffu));   /* DrDe int */
+    cmd[17] = (int32_t)((((uint32_t)(dattr[2] >> 16) & 0xffffu) << 16)
+                        | ((uint32_t)(dattr[3] >> 16) & 0xffffu));
+    cmd[18] = cmd[16]; cmd[19] = cmd[17];              /* DrDy int */
+    cmd[20] = (int32_t)((((uint32_t)dattr[0] & 0xffffu) << 16)
+                        | ((uint32_t)dattr[1] & 0xffffu));           /* DrDe frac */
+    cmd[21] = (int32_t)((((uint32_t)dattr[2] & 0xffffu) << 16)
+                        | ((uint32_t)dattr[3] & 0xffffu));
+    cmd[22] = cmd[20]; cmd[23] = cmd[21];              /* DrDy frac */
+    return 24;
+}
+
 int rsp_tri_write(int32_t *ew,
                   const RspTriVtx *v1c, const RspTriVtx *v2c,
                   const RspTriVtx *v3c,

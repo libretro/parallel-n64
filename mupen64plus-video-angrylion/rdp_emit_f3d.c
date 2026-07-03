@@ -1,5 +1,4 @@
 #include <stdio.h>
-#include <stdlib.h>
 /* rdp_emit_f3d.c -- F3D (Fast3D / "RSP SW 2.0X") display-list dispatcher for
  * the angrylion HLE path. See rdp_emit_f3d.h.
  *
@@ -519,6 +518,8 @@ void f3d_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
          * explicit gSPClipRatio still overrides it. */
         gsp->clip_near_z = s_variant_d64 ? 0 : 1;
         gsp->clip_ratio = 1;
+        gsp->fog_off = (s_variant_line && s_variant_d64) ? 1 : 0;
+        gsp->line_alpha_mask = (s_variant_line && s_variant_d64) ? 1 : 0;
         s_spr_have = 0;
     }
     if (s_dl_depth >= F3D_DL_MAX_DEPTH)

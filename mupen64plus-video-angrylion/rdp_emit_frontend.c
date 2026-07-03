@@ -708,7 +708,7 @@ void gsp_vertex(GSPState *s, const unsigned char *rdram, unsigned int addr,
         vt->sv = (int16_t)(((int64_t)st_s * (int64_t)s->tex_scale_s) >> 16);
         vt->tv = (int16_t)(((int64_t)st_t * (int64_t)s->tex_scale_t) >> 16);
 
-        if (s->geometry_mode & 0x00010000u)     /* G_FOG */
+        if ((s->geometry_mode & 0x00010000u) && !s->fog_off)   /* G_FOG */
         {
             /* With fog enabled the RSP replaces the shade alpha with the fog
              * factor: alpha = clamp(ndc_z * fog_m + fog_o, 0, 255), where
@@ -1309,84 +1309,44 @@ static void gsp_fold_st(GSPState *s, GSPVertex *v)
  * bridge with their screen coordinates authoritative (scr_valid). */
 int gsp_line(GSPState *s, int32_t *cmd, int i0, int i1, int width_q)
 {
-    GSPVertex e[2];
-    BridgeVertex bv[4];
-    double dx, dy, len, ox, oy, halfw;
-    int32_t oxi, oyi;
-    int total = 0, nc, k;
-    static const int corner_src[4] = { 0, 0, 1, 1 };
-    static const int corner_sgn[4] = { +1, -1, -1, +1 };
-    int z_buffered = (s->geometry_mode & GEOM_ZBUFFER) ? 1 : 0;
+    RspTriVtx r[2];
+    const GSPVertex *e;
+    int k;
 
     if (i0 < 0 || i0 >= GSP_MAX_VERTICES ||
         i1 < 0 || i1 >= GSP_MAX_VERTICES)
         return 0;
-    e[0] = s->vtx[i0];
-    e[1] = s->vtx[i1];
 
-    dx = (double)(e[1].scr_x - e[0].scr_x);
-    dy = (double)(e[1].scr_y - e[0].scr_y);
-    len = sqrt(dx * dx + dy * dy);
-    if (len < 1.0)
-        return 0;                       /* zero-length: nothing to draw */
-
-    /* Both line microcodes expand the segment along one axis by a constant
-     * (wd + 3) / 2 pixels, whatever the slope of the other axis: the two
-     * walked edges of the emitted parallelogram carry the segment's own
-     * slope and sit that far apart. Verified against each microcode's own
-     * RDP stream: Doom 64's gspL3DEX automap frame carries XM - XH == 1.500
-     * (gSPLine3D width 0) on every non-horizontal wall and on the rotated
-     * player-arrow strokes (dx/dy 0.415 and 1.0 alike), and Blast Corps'
-     * Fast3D line build carries 2.000 (width 1) out to dx/dy ~ 4.5. A
-     * segment whose endpoints share the same quantized scanline has no
-     * representable edge slope, and the stream shows the microcode switching
-     * to the transposed form there: a (wd + 3) / 2 pixel tall horizontal
-     * band between the raw endpoint x's. 1 pixel == 0x10000; the endpoint
-     * screen snapshots are already .25-quantized. */
-    (void)len; (void)ox; (void)oy; (void)dx;
-    halfw = (double)(width_q + 3) * 0x4000;
-    if (e[0].scr_y == e[1].scr_y)
+    /* The line microcodes emit each segment as a single YM==YL
+     * parallelogram command (see rsp_line_write); build the two endpoint
+     * records from the stored screen snapshots and colours. */
+    for (k = 0; k < 2; k++)
     {
-        oxi = 0;
-        oyi = (int32_t)(halfw + 0.5);
-    }
-    else
-    {
-        oxi = (int32_t)(halfw + 0.5);
-        oyi = 0;
-    }
-    (void)dy;
-
-    for (k = 0; k < 4; k++)
-    {
-        const GSPVertex *src = &e[corner_src[k]];
-        BridgeVertex *o = &bv[k];
-        o->cx = src->cx; o->cy = src->cy; o->cz = src->cz; o->cw = src->cw;
-        o->r = src->r; o->g = src->g; o->b = src->b; o->a = src->a;
-        o->s = src->s; o->t = src->t; o->sv = src->sv; o->tv = src->tv;
-        o->scr_valid = 1;
-        o->scr_x = src->scr_x + corner_sgn[k] * oxi;
-        o->scr_y = src->scr_y + corner_sgn[k] * oyi;
-        o->scr_z = src->scr_z;
-        o->w_raw = src->w_raw;
-        o->rsp_ok = src->rsp_ok;
-        o->rsp_invw = src->rsp_invw;
-        o->flat2d = src->flat2d;
+        e = &s->vtx[k ? i1 : i0];
+        r[k].x = (int16_t)(e->scr_x >> 14);
+        r[k].y = (int16_t)(e->scr_y >> 14);
+        r[k].z = e->scr_z;
+        r[k].r = (e->r >> 16) & 0xff;
+        r[k].g = (e->g >> 16) & 0xff;
+        r[k].b = (e->b >> 16) & 0xff;
+        r[k].a = (e->a >> 16) & 0xff;
+        /* gspL3DEX's vertex path drops the two low alpha bits (every
+         * 255-alpha automap vertex reaches the RDP as 252 in the
+         * microcode's own stream); Blast Corps' line build passes the
+         * byte through raw (its fog-authored trail alphas 0x72/0x6f
+         * arrive exact). */
+        if (s->line_alpha_mask)
+            r[k].a &= 0xfc;
+        r[k].s = 0; r[k].t = 0;
+        r[k].invw = e->rsp_invw;
+        r[k].flat2d = 0;
     }
 
-    /* two triangles forming the quad (0,1,2) + (0,2,3); cull_mode 0 so neither
-     * winding is dropped, shaded (vertex colour), untextured. */
-    nc = bridge_add_triangle(cmd + total, &bv[0], &bv[1], &bv[2], &s->viewport,
-                             0, z_buffered, 1, 0, 0, s->tex_tile, s->tex_level,
-                             s->tex_w, s->tex_h);
-    if (nc > 0) total += nc;
-    nc = bridge_add_triangle(cmd + total, &bv[0], &bv[2], &bv[3], &s->viewport,
-                             0, z_buffered, 1, 0, 0, s->tex_tile, s->tex_level,
-                             s->tex_w, s->tex_h);
-    if (nc > 0) total += nc;
-    return total;
+    return rsp_line_write(cmd, &r[0], &r[1], width_q,
+                          s->viewport.tri_dx_scale ? s->viewport.tri_dx_scale : 0x4000,
+                          s->viewport.tri_idy_scale ? s->viewport.tri_idy_scale : 0x0008,
+                          (int32_t)0xfff8);
 }
-
 int gsp_triangle(GSPState *s, int32_t *cmd, int i0, int i1, int i2,
                  int textured, int z_buffered)
 {

@@ -89,6 +89,11 @@ typedef struct GSPState
      * clipping (z + w >= 0). Selects the near plane the polygon clipper
      * uses and the VCH outcode bit that gates and rejects against it. */
     int clip_near_z;
+    /* The reduced line microcodes (gspL3DEX and Blast Corps' Fast3D line
+     * build) have no lighting or fog block: vertex alpha stays the display
+     * list's raw byte even with G_FOG set in the geometry mode. */
+    int fog_off;
+    int line_alpha_mask;   /* gspL3DEX: shade alpha & 0xfc on line commands */
     /* Fan pivot of the polygon clipper's triangulation: 0 = fan from the
      * last polygon vertex with ascending pairs (F3DEX2 2.05+/F3DZEX2),
      * 1 = fan from the first vertex with descending pairs (2.04H). */
