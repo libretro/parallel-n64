@@ -704,7 +704,7 @@ void f3d_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
                 int b = (int)((w1 >>  8) & 0xff) / s;
                 int wd = (int)(w1 & 0xff);
                 int32_t cw[220];
-                int nc = gsp_line(gsp, cw, a, b, wd);
+                int nc = gsp_line(gsp, cw, a, b, wd, !s_variant_d64);
                 if (nc > 0) rdp_fifo_append(fifo, cw, nc);
                 break;
             }
