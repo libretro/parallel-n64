@@ -1,3 +1,5 @@
+#include <stdio.h>
+#include <stdlib.h>
 /* rdp_emit_f3d.c -- F3D (Fast3D / "RSP SW 2.0X") display-list dispatcher for
  * the angrylion HLE path. See rdp_emit_f3d.h.
  *
@@ -413,7 +415,8 @@ int f3d_is_bcline_ucode(const unsigned char *rdram, unsigned int rdram_size,
 /* Fighting Force 64's F3D build draws its HUD (the health-bar gradient)
  * through a 2D overlay extension on the 0xB2 opcode: sub-op 0x18 writes a
  * vertex slot's screen position directly (two 10.2 coordinates in w1,
- * bypassing the transform), sub-op 0x10 writes the slot's RGBA colour, and
+ * bypassing the transform), sub-op 0x14 the slot's S10.5 texel
+ * coordinates, sub-op 0x10 its RGBA colour, and
  * an ordinary G_TRI/quad then draws from those slots. Stock Fast3D uses
  * 0xB2 as G_RDPHALF_CONT, so the extension is gated on the build's text
  * CRC (it carries no ucode name string). Without it the quad draws stale
@@ -703,10 +706,32 @@ void f3d_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
                 int a1 = (int)((w1 >> 16) & 0xff) / 2;
                 int b1 = (int)((w1 >>  8) & 0xff) / 2;
                 int c1 = (int)((w1 >>  0) & 0xff) / 2;
-                nc = gsp_triangle(gsp, cw, a0, b0, c0, s_textured, s_zbuffered);
-                if (nc > 0) rdp_fifo_append(fifo, cw, nc);
-                nc = gsp_triangle(gsp, cw, a1, b1, c1, s_textured, s_zbuffered);
-                if (nc > 0) rdp_fifo_append(fifo, cw, nc);
+                if (s_variant_ff2d
+                    && a1 >= 0 && a1 < GSP_MAX_VERTICES
+                    && gsp->vtx[a1].rsp_invw == (int32_t)0x7fff0000
+                    && gsp->vtx[a1].cw == 0x10000)
+                {
+                    /* Fighting Force 64's 2D overlay quads (vertex slots
+                     * injected by the 0xB2 extension above): the microcode
+                     * emits the lower half first and forces both halves
+                     * left-major, so the shared diagonal is walked with
+                     * identical coefficients by both commands and the
+                     * antialias coverage tiles without a seam. Mirror the
+                     * order and flip the second triangle's winding; drawn
+                     * with the walker's order the diagonal double-blends
+                     * into a dim streak across the glyphs. */
+                    nc = gsp_triangle(gsp, cw, c1, b1, a1, s_textured, s_zbuffered);
+                    if (nc > 0) rdp_fifo_append(fifo, cw, nc);
+                    nc = gsp_triangle(gsp, cw, a0, b0, c0, s_textured, s_zbuffered);
+                    if (nc > 0) rdp_fifo_append(fifo, cw, nc);
+                }
+                else
+                {
+                    nc = gsp_triangle(gsp, cw, a0, b0, c0, s_textured, s_zbuffered);
+                    if (nc > 0) rdp_fifo_append(fifo, cw, nc);
+                    nc = gsp_triangle(gsp, cw, a1, b1, c1, s_textured, s_zbuffered);
+                    if (nc > 0) rdp_fifo_append(fifo, cw, nc);
+                }
             }
             break;
         }
@@ -1016,10 +1041,22 @@ void f3d_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
                         v->clip = 0;
                         v->cx = 0; v->cy = 0; v->cz = 0;
                         v->cw = 0x10000;
-                        v->s = 0; v->t = 0; v->sv = 0; v->tv = 0;
+                        /* Texture coordinates are staged by a preceding
+                         * sub-op 0x14 write; do not disturb them here. */
                         v->w_raw = 0x10000;
                         v->rsp_ok = 1;
                         v->rsp_invw = 0x7fff0000;
+                    }
+                    else if (sub == 0x14)
+                    {
+                        /* two S10.5 texel coordinates (0x20 == 1 texel); the
+                         * title-screen glyph quads map 1:1. Store the RSP's
+                         * VTX_TC shorts and their doubled form the way the
+                         * transform path does. */
+                        v->sv = (int16_t)((w1 >> 16) & 0xffffu);
+                        v->tv = (int16_t)(w1 & 0xffffu);
+                        v->s = (int32_t)v->sv << 1;
+                        v->t = (int32_t)v->tv << 1;
                     }
                     else if (sub == 0x10)
                     {
@@ -1028,6 +1065,9 @@ void f3d_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
                         v->b = (int32_t)((w1 >>  8) & 0xffu) << 16;
                         v->a = (int32_t)(w1 & 0xffu) << 16;
                     }
+                    /* sub 0x1c carries a per-vertex W; every observed use is
+                     * zero (flat 2D) and the injected vertices are already
+                     * flat, so it needs no action. */
                 }
                 break;
             }
