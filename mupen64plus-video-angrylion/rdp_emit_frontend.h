@@ -41,6 +41,11 @@ typedef struct GSPVertex
     int64_t w_raw;
     int     rsp_ok;
     int32_t rsp_invw;
+    /* Fighting Force 64's 0xB2 overlay vertices: screen-space injected,
+     * drawn by the microcode's simplified 2D triangle path with raw,
+     * unnormalized texture/W attributes (no per-vertex perspective
+     * normalizer, integer colours). */
+    int     flat2d;
 } GSPVertex;
 
 /* VCH clip outcode bits, matching the F3DEX2 VTX_CLIP screen layout:

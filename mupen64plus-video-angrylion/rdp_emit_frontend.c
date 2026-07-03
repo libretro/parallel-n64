@@ -1371,6 +1371,7 @@ int gsp_line(GSPState *s, int32_t *cmd, int i0, int i1, int width_q)
         o->w_raw = src->w_raw;
         o->rsp_ok = src->rsp_ok;
         o->rsp_invw = src->rsp_invw;
+        o->flat2d = src->flat2d;
     }
 
     /* two triangles forming the quad (0,1,2) + (0,2,3); cull_mode 0 so neither
@@ -1508,6 +1509,7 @@ int gsp_triangle(GSPState *s, int32_t *cmd, int i0, int i1, int i2,
             v0.scr_x = tv[0].scr_x; v0.scr_y = tv[0].scr_y;
             v0.scr_z = tv[0].scr_z; v0.w_raw = tv[0].w_raw;
             v0.rsp_ok = tv[0].rsp_ok; v0.rsp_invw = tv[0].rsp_invw;
+            v0.flat2d = tv[0].flat2d;
             v1.cx = tv[1].cx; v1.cy = tv[1].cy; v1.cz = tv[1].cz; v1.cw = tv[1].cw;
             v1.r = tv[1].r; v1.g = tv[1].g; v1.b = tv[1].b; v1.a = tv[1].a;
             v1.s = tv[1].s; v1.t = tv[1].t;
@@ -1516,6 +1518,7 @@ int gsp_triangle(GSPState *s, int32_t *cmd, int i0, int i1, int i2,
             v1.scr_x = tv[1].scr_x; v1.scr_y = tv[1].scr_y;
             v1.scr_z = tv[1].scr_z; v1.w_raw = tv[1].w_raw;
             v1.rsp_ok = tv[1].rsp_ok; v1.rsp_invw = tv[1].rsp_invw;
+            v1.flat2d = tv[1].flat2d;
             v2.cx = tv[2].cx; v2.cy = tv[2].cy; v2.cz = tv[2].cz; v2.cw = tv[2].cw;
             v2.r = tv[2].r; v2.g = tv[2].g; v2.b = tv[2].b; v2.a = tv[2].a;
             v2.s = tv[2].s; v2.t = tv[2].t;
@@ -1524,6 +1527,7 @@ int gsp_triangle(GSPState *s, int32_t *cmd, int i0, int i1, int i2,
             v2.scr_x = tv[2].scr_x; v2.scr_y = tv[2].scr_y;
             v2.scr_z = tv[2].scr_z; v2.w_raw = tv[2].w_raw;
             v2.rsp_ok = tv[2].rsp_ok; v2.rsp_invw = tv[2].rsp_invw;
+            v2.flat2d = tv[2].flat2d;
             nc = bridge_add_triangle(cmd + total, &v0, &v1, &v2, &s->viewport,
                                      textured, z_buffered,
                                      (s->geometry_mode & 0x00000004u) ? 1 : 0,

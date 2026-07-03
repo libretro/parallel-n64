@@ -41,6 +41,9 @@ typedef struct RspTriVtx
     int32_t  r, g, b, a;/* 8-bit colour values */
     int32_t  s, t;      /* texture coordinates as stored in VTX_TC_VEC */
     int32_t  invw;      /* VTX_INV_W 32-bit value (rsp_vtx_invw) */
+    int      flat2d;    /* raw attribute path: skip the perspective
+                           normalizer and colour rounding (Fighting
+                           Force 64's 2D overlay microcode) */
 } RspTriVtx;
 
 /* dx_scale/idy_scale/frac_mask/vcr_bound are the per-microcode triangle

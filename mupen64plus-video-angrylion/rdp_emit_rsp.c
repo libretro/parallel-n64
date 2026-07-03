@@ -1244,8 +1244,19 @@ int rsp_tri_write(int32_t *ew,
             const RspTriVtx *cv = smooth ? vv[vi] : v1c;
             at_i[vi][0] = cv->r;  at_i[vi][1] = cv->g;  at_i[vi][2] = cv->b;
             at_i[vi][3] = vv[vi]->a;
-            at_f[vi][0] = 0x8000; at_f[vi][1] = 0x8000;
-            at_f[vi][2] = 0x8000; at_f[vi][3] = 0x8000;
+            /* The transform path carries the RSP's half-step colour bias;
+             * the 2D overlay path loads integer colours with zero
+             * fractions. */
+            if (vv[vi]->flat2d)
+            {
+                at_f[vi][0] = 0; at_f[vi][1] = 0;
+                at_f[vi][2] = 0; at_f[vi][3] = 0;
+            }
+            else
+            {
+                at_f[vi][0] = 0x8000; at_f[vi][1] = 0x8000;
+                at_f[vi][2] = 0x8000; at_f[vi][3] = 0x8000;
+            }
             at_i[vi][4] = 0; at_f[vi][4] = 0;
             at_i[vi][5] = 0; at_f[vi][5] = 0;
             at_i[vi][6] = 0; at_f[vi][6] = 0;
@@ -1255,7 +1266,31 @@ int rsp_tri_write(int32_t *ew,
     }
 
     /* ---- texture S/T/W attributes ---- */
-    if (textured)
+    if (textured && vh->flat2d && vm->flat2d && vl->flat2d)
+    {
+        /* Fighting Force 64's 2D overlay path: the microcode's simplified
+         * triangle writer loads the stored texel shorts and the 0x7fff W
+         * lane directly, with no per-vertex perspective normalizer (its
+         * quads are flat). Matching the normalized path here halves every
+         * texture attribute; with the overlay's persp_tex_en off there is
+         * no per-pixel division to cancel the halving and the glyphs
+         * sample the wrong texels. */
+        int vi;
+        const RspTriVtx *vv[3];
+        vv[0] = vh; vv[1] = vm; vv[2] = vl;
+        for (vi = 0; vi < 3; vi++)
+        {
+            int lane;
+            for (lane = 4; lane <= 6; lane++)
+            {
+                int32_t a16 = (lane == 4) ? vv[vi]->s
+                            : (lane == 5) ? vv[vi]->t : 0x7fff;
+                at_i[vi][lane] = a16;
+                at_f[vi][lane] = 0;
+            }
+        }
+    }
+    else if (textured)
     {
         int32_t iw[3];
         int vi;

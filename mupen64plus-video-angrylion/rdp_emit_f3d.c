@@ -1046,6 +1046,7 @@ void f3d_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
                         v->w_raw = 0x10000;
                         v->rsp_ok = 1;
                         v->rsp_invw = 0x7fff0000;
+                        v->flat2d = 1;
                     }
                     else if (sub == 0x14)
                     {

@@ -40,6 +40,7 @@ typedef struct BridgeVertex
     int64_t w_raw;                  /* (pn << 41) / cw, 0 for w <= 0 */
     int     rsp_ok;
     int32_t rsp_invw;
+    int     flat2d;
 } BridgeVertex;
 
 /* cull_mode: bit 0 = G_CULL_FRONT, bit 1 = G_CULL_BACK (the geometry-mode

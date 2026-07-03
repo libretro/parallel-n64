@@ -204,6 +204,7 @@ static int try_rsp_tri_write(int32_t *cmd,
         r[i].s = tcs;
         r[i].t = tct;
         r[i].invw = ev[i]->rsp_invw;
+        r[i].flat2d = bv[i]->flat2d;
     }
     return rsp_tri_write(cmd, &r[0], &r[1], &r[2],
                          textured, z_buffered, shaded, smooth, tile, level,
