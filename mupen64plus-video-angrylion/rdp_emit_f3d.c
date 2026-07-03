@@ -318,6 +318,7 @@ static int          s_stop_uc;
 static unsigned int s_resume_pc;
 static int          s_uc_stop_depth = -1;
 static int          s_stopped_at_uc;
+static unsigned int s_last_rdphalf1;
 void f3d_set_stop_on_ucode(int on)
 {
     s_stop_uc = on ? 1 : 0;
@@ -962,6 +963,40 @@ void f3d_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
              * only slower. */
             break;
 
+        case 0xAF:
+            /* G_LOAD_UCODE (gsSPLoadUcodeEx): the RSP reloads the microcode
+             * named by w1 with the data segment staged through the preceding
+             * G_RDPHALF_1, and the new microcode's DMEM initialisation
+             * replaces the RDP other-modes with the defaults stored in its
+             * data segment (the EF command image at data + 0x118) -- the same
+             * words the per-task setup reads for the primary microcode.
+             * Fighting Force 64 swaps microcodes mid-list around its menu
+             * text; without the reload the walker's accumulated other-modes
+             * leak into the overlay's glyph rectangles (a TLUT mode left
+             * enabled turns the IA font invisible). The overlay command sets
+             * used by known titles stay F3D-compatible, so the walk simply
+             * continues. An armed S2DEX handoff stops at 0xAF before this
+             * case is reached. */
+            {
+                unsigned int ud = seg_phys(s_last_rdphalf1);
+                if (ud != 0 && in_range(ud, 0x120u))
+                {
+                    unsigned int oh = ((unsigned int)r[(ud + 0x118) ^ 3] << 24)
+                                    | ((unsigned int)r[(ud + 0x119) ^ 3] << 16)
+                                    | ((unsigned int)r[(ud + 0x11a) ^ 3] << 8)
+                                    |  (unsigned int)r[(ud + 0x11b) ^ 3];
+                    unsigned int ol = ((unsigned int)r[(ud + 0x11c) ^ 3] << 24)
+                                    | ((unsigned int)r[(ud + 0x11d) ^ 3] << 16)
+                                    | ((unsigned int)r[(ud + 0x11e) ^ 3] << 8)
+                                    |  (unsigned int)r[(ud + 0x11f) ^ 3];
+                    /* The reload is silent: the microcode's next
+                     * SETOTHERMODE emits from the fresh base. */
+                    if ((oh >> 24) == 0xefu)
+                        f3d_set_othermode_init(oh, ol);
+                }
+            }
+            break;
+
         case F3D_RDPHALF_CONT:
             /* Fighting Force 64's 2D overlay extension (see
              * f3d_is_ff2d_ucode above). */
@@ -1003,6 +1038,10 @@ void f3d_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
             break;
 
         case F3D_RDPHALF_1:
+            /* gsSPLoadUcode stages the new microcode's data address through
+             * G_RDPHALF_1 immediately before G_LOAD_UCODE; remember it for
+             * the 0xAF handler below. */
+            s_last_rdphalf1 = w1;
             /* GoldenEye and Perfect Dark draw the level backdrop (the gradient
              * sky and horizon) by streaming a complete RDP edge-triangle
              * command through the G_RDPHALF channel: the first G_RDPHALF_1
