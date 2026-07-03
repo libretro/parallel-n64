@@ -395,6 +395,20 @@ int f3d_is_wr64_ucode(const unsigned char *rdram, unsigned int rdram_size,
     return f3d_text_crc(rdram, rdram_size, text) == 0xc6d28214u;
 }
 
+/* Blast Corps' line-capable Fast3D build (the J-Bomb bonus-stage select and
+ * carrier scenes): a name-stripped Rare Fast3D variant whose 0xB5 opcode is
+ * gSPLine3D -- (v0*10)<<16 | (v1*10)<<8 | width -- not G_QUAD. Decoded as a
+ * quad it emits a shaded fan across consecutive polyline vertices (the giant
+ * white/red wedge over the planet). Detected by text CRC like Wave Race 64:
+ * the build carries no "RSP Gfx ucode" name string for the family scanner. */
+int f3d_is_bcline_ucode(const unsigned char *rdram, unsigned int rdram_size,
+                        unsigned int text)
+{
+    if (rdram == 0 || text == 0)
+        return 0;
+    return f3d_text_crc(rdram, rdram_size, text) == 0xa96befadu;
+}
+
 /* 0 = plain Fast3D (Super Mario 64); 1 = Doom 64's variant. Set once per task
  * before the top-level walk; the recursive F3D_DL descent inherits it. */
 static int s_variant_d64 = 0;
@@ -680,12 +694,14 @@ void f3d_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
         {
             if (s_variant_line)
             {
-                /* Doom 64 automap (gspL3DEX): gSPLine3D(v0,v1,flag). The two
-                 * vertex indices live in w1 -- (v0*2)<<16 | (v1*2)<<8 -- and
-                 * the low byte carries the line width (0 for gSPLine3D). Draw
-                 * the segment as a width-expanded screen-space quad. */
-                int a = (int)((w1 >> 16) & 0xff) / 2;
-                int b = (int)((w1 >>  8) & 0xff) / 2;
+                /* gSPLine3D(v0,v1,flag): the two vertex indices live in w1
+                 * -- (v0*k)<<16 | (v1*k)<<8 with the family's index scale k
+                 * (Doom 64 gspL3DEX x2, Blast Corps' Fast3D line build x10)
+                 * -- and the low byte carries the line width. Draw the
+                 * segment as a width-expanded screen-space quad. */
+                int s = s_variant_wr64 ? 5 : (s_variant_d64 ? 2 : 10);
+                int a = (int)((w1 >> 16) & 0xff) / s;
+                int b = (int)((w1 >>  8) & 0xff) / s;
                 int wd = (int)(w1 & 0xff);
                 int32_t cw[220];
                 int nc = gsp_line(gsp, cw, a, b, wd);
@@ -978,6 +994,7 @@ void f3d_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
             break;
 
         default:
+            
             /* TEXTURE_RECTANGLE (0xE4) / _FLIP (0xE5) is a 4-word RDP command,
              * but F3D delivers it split: the G_TEXRECT word pair carries the
              * rectangle + tile, and the following two G_RDPHALF commands carry

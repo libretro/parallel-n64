@@ -1330,15 +1330,21 @@ int gsp_line(GSPState *s, int32_t *cmd, int i0, int i1, int width_q)
     if (len < 1.0)
         return 0;                       /* zero-length: nothing to draw */
 
-    /* Half line width in screen units (1 pixel == 0x10000). gSPLine3D passes
-     * width 0, for which the L3DEX line is ~1.6 px wide; 0xD000 (0.81 px) half
-     * width matches the antialiased reference. The command's width byte (set
-     * only by gSPLineW3D) widens the segment beyond that. */
-    halfw = 0xD000 + ((double)width_q * 0x8000);
-    ox = -dy / len * halfw;             /* screen-perpendicular, unit * halfw */
-    oy =  dx / len * halfw;
-    oxi = (int32_t)(ox < 0 ? ox - 0.5 : ox + 0.5);
-    oyi = (int32_t)(oy < 0 ? oy - 0.5 : oy + 0.5);
+    /* The line microcode expands the segment along X only: the emitted
+     * command is a parallelogram whose two walked edges carry the segment's
+     * own slope and sit a constant (wd + 3) / 2 pixels apart horizontally,
+     * whatever the direction (verified against the microcode's own RDP
+     * stream: XM - XH == 2.000 for Blast Corps' width-1 trails on every
+     * slope; (0 + 3) / 2 matches the ~1.5 px Doom 64 automap lines). Offset
+     * the endpoints by half of that in X and let the quad's two triangles
+     * tile the same parallelogram. 1 pixel == 0x10000. */
+    (void)len;
+    halfw = (double)(width_q + 3) * 0x4000;
+    ox = halfw;
+    oy = 0.0;
+    oxi = (int32_t)(ox + 0.5);
+    oyi = 0;
+    (void)dy; (void)dx;
 
     for (k = 0; k < 4; k++)
     {

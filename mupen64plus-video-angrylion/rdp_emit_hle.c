@@ -699,10 +699,21 @@ void rdp_emit_hle_process_dlist(void)
              * GBI 1 decode; plain Fast3D (SM64) matches neither and keeps its
              * own path. The line variant stays gated on the name family (only
              * gspL3DEX, which the structural probe does not assert). */
-            f3d_set_variant(fam != 0
-                            || f3dex1_data_family(rdram, rdram_size, ud)
-                            || gbi1_oth);
-            f3d_set_line_variant(fam == 2);
+            /* Blast Corps' line-capable Fast3D build (J-Bomb bonus scenes)
+             * keeps the plain Fast3D vertex/index encoding but its data
+             * segment trips the GBI 1 othermode probe, which would select
+             * the n<<10 vertex decode (count field reads zero, so no
+             * vertices load and the gSPLine3D segments collapse or connect
+             * stale slots). Recognise the build by text CRC and pin the
+             * plain decode with the line opcode enabled. */
+            {
+                int bcline = f3d_is_bcline_ucode(rdram, rdram_size, ut);
+                f3d_set_variant(!bcline
+                                && (fam != 0
+                                    || f3dex1_data_family(rdram, rdram_size, ud)
+                                    || gbi1_oth));
+                f3d_set_line_variant(fam == 2 || bcline);
+            }
             f3d_set_variant_wr64(f3d_is_wr64_ucode(rdram, rdram_size, ut));
             /* GoldenEye 007 / Perfect Dark run an early F3DEX (GBI 1) build
              * whose RSP version word at text+4 (0x201d0110) is the same one
