@@ -409,6 +409,26 @@ int f3d_is_bcline_ucode(const unsigned char *rdram, unsigned int rdram_size,
     return f3d_text_crc(rdram, rdram_size, text) == 0xa96befadu;
 }
 
+/* Fighting Force 64's F3D build draws its HUD (the health-bar gradient)
+ * through a 2D overlay extension on the 0xB2 opcode: sub-op 0x18 writes a
+ * vertex slot's screen position directly (two 10.2 coordinates in w1,
+ * bypassing the transform), sub-op 0x10 writes the slot's RGBA colour, and
+ * an ordinary G_TRI/quad then draws from those slots. Stock Fast3D uses
+ * 0xB2 as G_RDPHALF_CONT, so the extension is gated on the build's text
+ * CRC (it carries no ucode name string). Without it the quad draws stale
+ * transformed vertices: a white triangle floating mid-screen and a health
+ * bar left black. */
+int f3d_is_ff2d_ucode(const unsigned char *rdram, unsigned int rdram_size,
+                      unsigned int text)
+{
+    if (rdram == 0 || text == 0)
+        return 0;
+    return f3d_text_crc(rdram, rdram_size, text) == 0x89bf13b3u;
+}
+
+static int s_variant_ff2d = 0;
+void f3d_set_variant_ff2d(int ff2d) { s_variant_ff2d = ff2d ? 1 : 0; }
+
 /* 0 = plain Fast3D (Super Mario 64); 1 = Doom 64's variant. Set once per task
  * before the top-level walk; the recursive F3D_DL descent inherits it. */
 static int s_variant_d64 = 0;
@@ -943,6 +963,40 @@ void f3d_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
             break;
 
         case F3D_RDPHALF_CONT:
+            /* Fighting Force 64's 2D overlay extension (see
+             * f3d_is_ff2d_ucode above). */
+            if (s_variant_ff2d)
+            {
+                int sub  = (int)((w0 >> 16) & 0xff);
+                int slot = (int)(w0 & 0xffff) >> 1;
+                if (slot >= 0 && slot < GSP_MAX_VERTICES)
+                {
+                    GSPVertex *v = &gsp->vtx[slot];
+                    if (sub == 0x18)
+                    {
+                        /* two 10.2 screen coordinates; snapshots are s15.16 */
+                        v->scr_x = (int32_t)((w1 >> 16) & 0xffffu) << 14;
+                        v->scr_y = (int32_t)(w1 & 0xffffu) << 14;
+                        v->scr_z = 0;
+                        v->clip = 0;
+                        v->cx = 0; v->cy = 0; v->cz = 0;
+                        v->cw = 0x10000;
+                        v->s = 0; v->t = 0; v->sv = 0; v->tv = 0;
+                        v->w_raw = 0x10000;
+                        v->rsp_ok = 1;
+                        v->rsp_invw = 0x7fff0000;
+                    }
+                    else if (sub == 0x10)
+                    {
+                        v->r = (int32_t)((w1 >> 24) & 0xffu) << 16;
+                        v->g = (int32_t)((w1 >> 16) & 0xffu) << 16;
+                        v->b = (int32_t)((w1 >>  8) & 0xffu) << 16;
+                        v->a = (int32_t)(w1 & 0xffu) << 16;
+                    }
+                }
+                break;
+            }
+            /* fall through: stock Fast3D stages texrect words here */
         case F3D_RDPHALF_2:
             /* Staged texrect coordinates; consumed by the G_TEXRECT handler
              * below. A stray RDPHALF outside a texrect is a no-op. */

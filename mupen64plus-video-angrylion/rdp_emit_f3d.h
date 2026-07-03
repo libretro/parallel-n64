@@ -33,6 +33,9 @@ void f3d_set_othermode_init(unsigned int h, unsigned int l);
 
 void f3d_set_variant(int doom64);
 void f3d_set_line_variant(int line);
+int  f3d_is_ff2d_ucode(const unsigned char *rdram, unsigned int rdram_size,
+                       unsigned int text);
+void f3d_set_variant_ff2d(int ff2d);
 int  f3d_is_bcline_ucode(const unsigned char *rdram, unsigned int rdram_size,
                          unsigned int text);
 int  f3d_is_wr64_ucode(const unsigned char *rdram, unsigned int rdram_size,
