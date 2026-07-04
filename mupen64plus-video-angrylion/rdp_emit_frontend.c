@@ -1342,10 +1342,49 @@ int gsp_line(GSPState *s, int32_t *cmd, int i0, int i1, int width_q)
         r[k].flat2d = 0;
     }
 
-    return rsp_line_write(cmd, &r[0], &r[1], width_q,
-                          s->viewport.tri_dx_scale ? s->viewport.tri_dx_scale : 0x4000,
-                          s->viewport.tri_idy_scale ? s->viewport.tri_idy_scale : 0x0008,
-                          (int32_t)0xfff8);
+    /* Both line microcode builds emit a Set Scissor ahead of every line
+     * command: a full-height window over the segment's x extent when the
+     * segment is wider than tall (the x-major and transposed forms'
+     * edges overshoot the endpoints horizontally at the cap scanlines),
+     * and a restore of the display list's current scissor otherwise.
+     * The window keeps the current scissor's y range and flag bits.
+     * Rejected segments emit neither. */
+    {
+        int n = rsp_line_write(cmd + 2, &r[0], &r[1], width_q,
+                               s->viewport.tri_dx_scale ? s->viewport.tri_dx_scale : 0x4000,
+                               s->viewport.tri_idy_scale ? s->viewport.tri_idy_scale : 0x0008,
+                               (int32_t)0xfff8);
+        if (n == 0 || !s->scis_valid)
+        {
+            int k;
+            if (n == 0)
+                return 0;
+            for (k = 0; k < n; k++)
+                cmd[k] = cmd[k + 2];
+            return n;
+        }
+        {
+            int32_t dxa = (int32_t)r[1].x - (int32_t)r[0].x;
+            int32_t dya = (int32_t)r[1].y - (int32_t)r[0].y;
+            if (dxa < 0) dxa = -dxa;
+            if (dya < 0) dya = -dya;
+            if (dxa > dya)
+            {
+                int32_t x0 = r[0].x < r[1].x ? r[0].x : r[1].x;
+                int32_t x1 = r[0].x < r[1].x ? r[1].x : r[0].x;
+                cmd[0] = (int32_t)((s->scis_w0 & 0xff000fffu)
+                                   | (((uint32_t)x0 & 0xfffu) << 12));
+                cmd[1] = (int32_t)((s->scis_w1 & 0x03000fffu)
+                                   | (((uint32_t)x1 & 0xfffu) << 12));
+            }
+            else
+            {
+                cmd[0] = s->scis_w0;
+                cmd[1] = s->scis_w1;
+            }
+        }
+        return n + 2;
+    }
 }
 int gsp_triangle(GSPState *s, int32_t *cmd, int i0, int i1, int i2,
                  int textured, int z_buffered)

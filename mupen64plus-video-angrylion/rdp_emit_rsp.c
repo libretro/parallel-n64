@@ -1154,10 +1154,14 @@ static int rsp_line_write_xmajor(int32_t *cmd,
     }
     attr_i[0] = vh->r; attr_i[1] = vh->g; attr_i[2] = vh->b; attr_i[3] = vh->a;
 
-    /* XH anchor walk from the top endpoint's x; attribute walk beside it */
+    /* XH anchor walk from the top endpoint's x; attribute walk beside
+     * it. A YH pushed negative by the width expansion is emitted raw --
+     * the Y fields are signed and gspL3DEX's rotated-automap stream
+     * carries -0.75 unclamped, with the anchor's subpixel walk taking
+     * the negative coordinate's fraction as-is (unlike the y-major
+     * form, which clamps a clipped-off top endpoint to the boundary). */
     {
-        int32_t vh_y = yh102 < 0 ? 0 : yh102;
-        int32_t frac = (U16(vh_y) * 0x4000) & 0xffff;
+        int32_t frac = (U16(yh102) * 0x4000) & 0xffff;
         int32_t y_spx_f = (0 - frac) & 0xffff;
         int32_t y_spx_i = (0 - (frac != 0 ? 1 : 0)) & 0xffff;
         RspAcc acc = p_udn(0x4000, (int32_t)vh->x);
@@ -1167,15 +1171,6 @@ static int rsp_line_write_xmajor(int32_t *cmd,
         xh.f = acc_clamp_low(acc);
         acc += p_udh(slope.i, y_spx_i);
         xh.i = acc_clamp_mid(acc);
-        if (yh102 < 0)
-        {
-            int64_t d = ((int64_t)r32(slope)
-                         * (int64_t)((0 - yh102) << 14)) >> 16;
-            int64_t v = (((int64_t)(int16_t)xh.i) << 16) | (uint32_t)U16(xh.f);
-            v += d;
-            xh.i = (int32_t)((v >> 16) & 0xffff);
-            xh.f = (int32_t)(v & 0xffff);
-        }
         if (frac)
         {
             for (k = 0; k < 4; k++)
@@ -1185,26 +1180,12 @@ static int rsp_line_write_xmajor(int32_t *cmd,
                 attr_i[k] = (int32_t)(v >> 16) & 0xffff;
             }
         }
-        if (yh102 < 0)
-        {
-            for (k = 0; k < 4; k++)
-            {
-                int64_t v = ((int64_t)attr_i[k] << 16)
-                          + (((int64_t)dattr[k]
-                              * (int64_t)((0 - yh102) << 14)) >> 16);
-                attr_i[k] = (int32_t)(v >> 16) & 0xffff;
-            }
-        }
     }
 
-    {
-        int32_t yh_emit = yh102 < 0 ? 0 : yh102;
-        int32_t ym_emit = ym102 < 0 ? 0 : ym102;
-        cmd[0] = (int32_t)(0xCC000000u | ((uint32_t)(lft & 1) << 23)
-                           | ((uint32_t)yl102 & 0x3fffu));
-        cmd[1] = (int32_t)((((uint32_t)ym_emit & 0x3fffu) << 16)
-                           | ((uint32_t)yh_emit & 0x3fffu));
-    }
+    cmd[0] = (int32_t)(0xCC000000u | ((uint32_t)(lft & 1) << 23)
+                       | ((uint32_t)yl102 & 0x3fffu));
+    cmd[1] = (int32_t)((((uint32_t)ym102 & 0x3fffu) << 16)
+                       | ((uint32_t)yh102 & 0x3fffu));
     cmd[2] = (int32_t)vh->x << 14;                     /* XL: band boundary */
     cmd[3] = (int32_t)((((uint32_t)U16(slope.i)) << 16) | (uint32_t)U16(slope.f));
     cmd[4] = (int32_t)((((uint32_t)U16(xh.i)) << 16) | (uint32_t)U16(xh.f));

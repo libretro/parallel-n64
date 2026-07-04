@@ -94,6 +94,10 @@ typedef struct GSPState
      * list's raw byte even with G_FOG set in the geometry mode. */
     int fog_off;
     int line_alpha_mask;   /* gspL3DEX: shade alpha & 0xfc on line commands */
+    /* current RDP scissor, tracked for the line microcodes' per-line
+     * scissor emission */
+    int32_t scis_w0, scis_w1;
+    int scis_valid;
     /* Fan pivot of the polygon clipper's triangulation: 0 = fan from the
      * last polygon vertex with ascending pairs (F3DEX2 2.05+/F3DZEX2),
      * 1 = fan from the first vertex with descending pairs (2.04H). */

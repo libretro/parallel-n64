@@ -458,6 +458,15 @@ static void rdp_passthrough(GSPState *gsp, RdpFifo *fifo, int cmd,
         int zu = (int)((w1 >> 5) & 1);
         s_zbuffered = (zc || zu) ? 1 : 0;
     }
+    /* Set Scissor (0xED -> 0x2d): the line microcodes emit a scissor before
+     * every line command (see gsp_line), restoring this tracked value for
+     * the y-major form. */
+    if (rdp_id == 0x2d)
+    {
+        gsp->scis_w0 = (int32_t)w0;
+        gsp->scis_w1 = (int32_t)w1;
+        gsp->scis_valid = 1;
+    }
     /* Set Tile (0xF5 -> 0x35): cache the wrap mask exponents the texcoord fold
      * in gsp_triangle needs. */
     if (rdp_id == 0x35)
