@@ -1370,9 +1370,9 @@ int gsp_line(GSPState *s, int32_t *cmd, int i0, int i1, int width_q)
             if (fa && fb)
                 return 0;       /* both out on the plane: degenerate */
             if (fa)
-                gsp_clip_subdivide(s, &va, &vb, &va, cr);
+                gsp_clip_subdivide(s, &va, &va, &vb, cr);
             else if (fb)
-                gsp_clip_subdivide(s, &vb, &va, &vb, cr);
+                gsp_clip_subdivide(s, &vb, &vb, &va, cr);
         }
     }
 

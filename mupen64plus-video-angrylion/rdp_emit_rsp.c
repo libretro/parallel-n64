@@ -820,6 +820,29 @@ void rsp_clip_lerp(const int32_t on_pos[4], const int32_t off_pos[4],
      * collapses and the boundary vertex lands elsewhere. Tiny
      * perspNorm scales (Super Smash Bros. sends 8) make zero integer
      * sums routine, so model the build the microcode actually is. */
+    if (s_clip_lerp_l3dex)
+    {
+        /* The line microcode stages the sign fold as two multiplies: an
+         * unconditional x2 (vmudn/vmadh by $v31[2]) and, when the folded
+         * denominator's scalar sign check (the bgez at text 0x990) sees
+         * a negative sum, a second pass by $v31[3] = -1. Two clamp
+         * roundings instead of the single +-2 multiply: the low halves
+         * differ by an ulp on negative denominators, which is where the
+         * remaining top-plane clip vertices sat. */
+        acc = p_udn(rcp_lo, 2);
+        rcp_lo = acc_clamp_low(acc);
+        acc += p_udh(rcp_hi, 2);
+        rcp_hi = acc_clamp_mid(acc);
+        if (S16(v11[3]) < 0)
+        {
+            acc = p_udn(rcp_lo, -1);
+            rcp_lo = acc_clamp_low(acc);
+            acc += p_udh(rcp_hi, -1);
+            rcp_hi = acc_clamp_mid(acc);
+        }
+    }
+    else
+    {
     if (s_clip_lerp_204h && S16(v11[3]) == 0)
         abs2 = 0;
     else if (S16(v11[3] | 1) > 0)  abs2 = 2;
@@ -828,12 +851,20 @@ void rsp_clip_lerp(const int32_t on_pos[4], const int32_t off_pos[4],
     rcp_lo = acc_clamp_low(acc);
     acc += p_udh(rcp_hi, abs2);
     rcp_hi = acc_clamp_mid(acc);
+    }
     /* veq/vmrg: keep the low half if the scaled high half is 0, else
      * saturate to 0xFFFF. */
     if (S16(rcp_hi) != 0)
         rcp_lo = 0xffff;
     /* (v11:v10) = diff * rcp ~= 1 */
-    acc = p_udl(v10[3], rcp_lo) + p_udm(v11[3], rcp_lo);
+    /* The Doom 64 line microcode seeds this accumulator with
+     * vmudl $v31, $v31[5] before the multiply (text 0x9d8); on the
+     * factor lane that is 0xFFFF * 4 >> 16 = 3, a three-ulp bias the
+     * F3DEX2 chain does not have. It is what keeps a generated vertex
+     * on the inside of the plane it was clipped against, which in turn
+     * decides the stored quarter-pixel at a screen edge. */
+    acc = s_clip_lerp_l3dex ? 3 : 0;
+    acc += p_udl(v10[3], rcp_lo) + p_udm(v11[3], rcp_lo);
     v11[3] = acc_clamp_mid(acc);
     v10[3] = acc_clamp_low(acc);
     /* second reciprocal, of the ~1 value */
@@ -901,7 +932,14 @@ void rsp_clip_lerp(const int32_t on_pos[4], const int32_t off_pos[4],
     v10[3] = acc_clamp_low(acc);
     acc += p_udh(v9[3], r2_hi);
     v11[3] = acc_clamp_mid(acc);
-    acc = p_udl(v10[3], rcp_lo) + p_udm(v11[3], rcp_lo);
+    /* The Doom 64 line microcode seeds this accumulator with
+     * vmudl $v31, $v31[5] before the multiply (text 0x9d8); on the
+     * factor lane that is 0xFFFF * 4 >> 16 = 3, a three-ulp bias the
+     * F3DEX2 chain does not have. It is what keeps a generated vertex
+     * on the inside of the plane it was clipped against, which in turn
+     * decides the stored quarter-pixel at a screen edge. */
+    acc = s_clip_lerp_l3dex ? 3 : 0;
+    acc += p_udl(v10[3], rcp_lo) + p_udm(v11[3], rcp_lo);
     v11[3] = acc_clamp_mid(acc);
     v10[3] = acc_clamp_low(acc);
     /* Clamp the factor to (0, 1]: vlt/vmrg/vsubc/vge/vmrg on lane 3.
