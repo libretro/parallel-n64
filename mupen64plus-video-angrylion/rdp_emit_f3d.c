@@ -17,6 +17,7 @@
 
 #include "rdp_emit_f3d.h"
 #include "rdp_emit_frontend.h"
+#include "rdp_emit_rsp.h"
 
 /* ---- F3D command bytes (high byte of w0) ---------------------------------*/
 #define F3D_MTX                0x01
@@ -440,7 +441,12 @@ static int s_variant_wr64 = 0;   /* 1 => Wave Race 64 (n<<9 vtx, x5 indices) */
 static int s_variant_f3dex = 0;  /* 1 => F3DEX GBI1 (GoldenEye/Perfect Dark): x2
                                   * vertex indices and 0xB1 = G_TRI2 (two tris) */
 void f3d_set_variant_f3dex(int v) { s_variant_f3dex = v ? 1 : 0; }
-void f3d_set_variant(int doom64) { s_variant_d64 = doom64 ? 1 : 0; }
+void f3d_set_variant(int doom64)
+{
+    s_variant_d64 = doom64 ? 1 : 0;
+    rsp_set_vtx_invw_2rd(s_variant_d64);
+    rsp_set_clip_lerp_l3dex(s_variant_d64);
+}
 void f3d_set_line_variant(int line) { s_variant_line = line ? 1 : 0; }
 void f3d_set_variant_wr64(int wr64) { s_variant_wr64 = wr64 ? 1 : 0; }
 
@@ -529,6 +535,7 @@ void f3d_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
         gsp->clip_ratio = 1;
         gsp->fog_off = (s_variant_line && s_variant_d64) ? 1 : 0;
         gsp->line_alpha_mask = (s_variant_line && s_variant_d64) ? 1 : 0;
+        gsp->line_clip_3d = (s_variant_line && s_variant_d64) ? 1 : 0;
         gsp->line_xl[0] = 0;
         gsp->line_xl[1] = 0;
         s_spr_have = 0;
@@ -1135,8 +1142,16 @@ void f3d_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
              * path uses G_MOVEWORD/G_MW_PERSPNORM, handled above.) The texrect
              * tail RDPHALF words are consumed inline by the 0xE4/0xE5 assembler
              * and never reach here, so a G_RDPHALF_1 seen at this point is the
-             * perspective-normalize write; mirror the slot into perspNorm. */
-            gsp_set_persp_norm(gsp, w1 & 0xffffu);
+             * perspective-normalize write; mirror the slot into perspNorm.
+             * Doom 64's gspL3DEX repurposes the RDPHALF_1 slot for packed
+             * segment parameters (18 per automap task); mirroring those
+             * would clobber the real perspNorm between the vertex loads and
+             * the draws, which moves the clip lerp's reprojection of
+             * generated vertices (bottom-edge clips land at 240.0 instead
+             * of the microcode's 239.75). Blast Corps' Fast3D line build
+             * keeps the old-F3D bare-RDPHALF_1 perspNorm convention. */
+            if (!s_variant_d64)
+                gsp_set_persp_norm(gsp, w1 & 0xffffu);
             break;
 
         default:

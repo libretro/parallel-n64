@@ -1311,6 +1311,7 @@ int gsp_line(GSPState *s, int32_t *cmd, int i0, int i1, int width_q)
 {
     RspTriVtx r[2];
     const GSPVertex *e;
+    GSPVertex va, vb;
     int k;
 
     if (i0 < 0 || i0 >= GSP_MAX_VERTICES ||
@@ -1331,12 +1332,56 @@ int gsp_line(GSPState *s, int32_t *cmd, int i0, int i1, int width_q)
     if ((s->vtx[i0].clip & s->vtx[i1].clip & 0x7fff7fffu) != 0)
         return 0;
 
+    /* Segment clip: when an endpoint carries scaled (guard-band) clip
+     * outcodes, the microcode 3D-clips the segment against the flagged
+     * homogeneous planes through the same clip-lerp routine the triangle
+     * clipper uses: the out endpoint is replaced by the plane
+     * intersection interpolated in clip space with the RSP's exact
+     * reciprocal chain, colours interpolated alongside, and the new
+     * vertex re-run through the standard projection and outcode
+     * computation. Screen-only overhangs (out at most a couple of
+     * pixels, below the scaled compare) stay unclipped and draw raw,
+     * matching the microcode's own stream. */
+    va = s->vtx[i0];
+    vb = s->vtx[i1];
+    if (s->line_clip_3d)
+    {
+        int cond;
+        for (cond = 0; cond < 6; cond++)
+        {
+            unsigned int mask = gsp_clip_cond_mask[cond];
+            int16_t cr[4];
+            unsigned int fa, fb;
+            cr[0] = gsp_clip_ratio_rows[cond][0];
+            cr[1] = gsp_clip_ratio_rows[cond][1];
+            cr[2] = gsp_clip_ratio_rows[cond][2];
+            cr[3] = gsp_clip_ratio_rows[cond][3];
+            if (cond == 0)
+            {
+                cr[2] = (int16_t)s->clip_near_z;
+                if (s->clip_near_z)
+                    mask = 1u << 6;
+            }
+            if (cond >= 2)
+                cr[3] = (int16_t)((cr[3] < 0) ? -s->clip_ratio
+                                              : s->clip_ratio);
+            fa = (unsigned int)va.clip & mask;
+            fb = (unsigned int)vb.clip & mask;
+            if (fa && fb)
+                return 0;       /* both out on the plane: degenerate */
+            if (fa)
+                gsp_clip_subdivide(s, &va, &vb, &va, cr);
+            else if (fb)
+                gsp_clip_subdivide(s, &vb, &va, &vb, cr);
+        }
+    }
+
     /* The line microcodes emit each segment as a single YM==YL
      * parallelogram command (see rsp_line_write); build the two endpoint
      * records from the stored screen snapshots and colours. */
     for (k = 0; k < 2; k++)
     {
-        e = &s->vtx[k ? i1 : i0];
+        e = k ? &vb : &va;
         r[k].x = (int16_t)(e->scr_x >> 14);
         r[k].y = (int16_t)(e->scr_y >> 14);
         r[k].z = e->scr_z;

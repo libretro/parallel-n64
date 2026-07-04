@@ -343,6 +343,7 @@ int32_t rsp_vtx_invw(int32_t w)
     return (int32_t)(((uint32_t)U16(o.i) << 16) | (uint32_t)U16(o.f));
 }
 
+
 /* ---- lighting ---------------------------------------------------------- */
 
 /* VMULF/VMACF accumulator helpers: product terms are doubled, VMULF seeds
@@ -738,6 +739,20 @@ int32_t rsp_clip_scale_w(int32_t w, int ratio)
 /* Clip-lerp build selector: 0 = F3DEX2 2.05+/F3DZEX2 (vor 1 before the
  * sign-extraction vabs), 1 = the 2.04H build (raw sum). Chosen per task
  * from the microcode text (see the probe in rdp_emit_hle.c). */
+static int s_clip_lerp_l3dex = 0;
+
+void rsp_set_clip_lerp_l3dex(int on)
+{
+    s_clip_lerp_l3dex = on ? 1 : 0;
+}
+
+static int s_vtx_invw_2rd = 0;
+
+void rsp_set_vtx_invw_2rd(int on)
+{
+    s_vtx_invw_2rd = on ? 1 : 0;
+}
+
 static int s_clip_lerp_204h = 0;
 
 void rsp_set_clip_lerp_204h(int on)
@@ -828,6 +843,41 @@ void rsp_clip_lerp(const int32_t on_pos[4], const int32_t off_pos[4],
         r2_lo = r & 0xffff;
         r2_hi = (r >> 16) & 0xffff;
     }
+    if (s_clip_lerp_l3dex)
+    {
+        /* The Doom 64 line microcode's refinement routine (an overlay of
+         * the text at 0xef8, DMA'd to IMEM 0 and reached by the clip's
+         * jal): the second reciprocal is doubled up front and the
+         * Newton-Raphson step is r' = r * (2 - r * v), staged as the
+         * vmudn/vmadh x2 pair, the r * v mac chain, a 32-bit vsubc/vsub
+         * against 2.0, and the final mac. Algebraically the same as the
+         * F3DEX2 (4 - 4x) form below but the roundings differ within a
+         * couple of ulps, which decides which side of a screen edge the
+         * generated vertex re-projects to. */
+        acc = p_udn(r2_lo, 2);
+        r2_lo = acc_clamp_low(acc);
+        acc += p_udh(r2_hi, 2);
+        r2_hi = acc_clamp_mid(acc);
+        acc = p_udl(r2_lo, v10[3]) + p_udm(r2_hi, v10[3]);
+        acc += p_udn(r2_lo, v11[3]);
+        x_lo = acc_clamp_low(acc);
+        acc += p_udh(r2_hi, v11[3]);
+        x_hi = acc_clamp_mid(acc);
+        {
+            int64_t dd = (int64_t)0x00020000 -
+                (int64_t)(int32_t)(((uint32_t)U16(x_hi) << 16) |
+                                   (uint32_t)U16(x_lo));
+            x_lo = (int32_t)(dd & 0xffff);
+            x_hi = (int32_t)((dd >> 16) & 0xffff);
+        }
+        acc = p_udl(r2_lo, x_lo) + p_udm(r2_hi, x_lo);
+        acc += p_udn(r2_lo, x_hi);
+        r2_lo = acc_clamp_low(acc);
+        acc += p_udh(r2_hi, x_hi);
+        r2_hi = acc_clamp_mid(acc);
+    }
+    else
+    {
     /* Newton-Raphson: x = r * v; v' = 4 - 4x; r' = r * v' */
     acc = p_udl(r2_lo, v10[3]) + p_udm(r2_hi, v10[3]);
     acc += p_udn(r2_lo, v11[3]);
@@ -844,6 +894,7 @@ void rsp_clip_lerp(const int32_t on_pos[4], const int32_t off_pos[4],
     r2_lo = acc_clamp_low(acc);
     acc += p_udh(r2_hi, x_hi);
     r2_hi = acc_clamp_mid(acc);
+    }
     /* A * refined reciprocal, then * rcp again */
     acc = p_udl(v8[3], r2_lo) + p_udm(v9[3], r2_lo);
     acc += p_udn(v8[3], r2_hi);
@@ -936,13 +987,41 @@ int rsp_vtx_screen(int32_t cx, int32_t cy, int32_t cz, int32_t cw,
 
     /* 1/w' with the Newton-Raphson step, exactly as rsp_vtx_invw */
     r = mk32(rsp_rcp32((int32_t)(((uint32_t)U16(pw.i) << 16) | (uint32_t)U16(pw.f))));
-    t = mac32(pw, r, 0);
-    acc = p_udh(1, 4);
-    acc += p_udn(t.f, -4);
-    u.f = acc_clamp_low(acc);
-    acc += p_udh(t.i, -4);
-    u.i = acc_clamp_mid(acc);
-    iw = mac32(u, r, 0);
+    if (s_vtx_invw_2rd)
+    {
+        /* The Doom 64 line microcode's reciprocal routine (gspL3DEX text
+         * 0xef8): the raw reciprocal is doubled first and the refinement
+         * is r' = r * (2 - r * w), staged vmudn x2 / vmadh x2, the r * w
+         * mac chain, a 32-bit vsubc/vsub against 2.0, and the final mac.
+         * Off the clip boundary this agrees with the F3DEX2 (4 - 4x)
+         * form, but the rounding differs within half an ulp of w' * r ==
+         * 1, which is exactly where the clip lerp's generated vertices
+         * land: a bottom-edge clip stores y 239.75 through this chain
+         * and 240.0 through the other. */
+        acc = p_udn(r.f, 2);
+        r.f = acc_clamp_low(acc);
+        acc += p_udh(r.i, 2);
+        r.i = acc_clamp_mid(acc);
+        t = mac32(r, pw, 0);
+        {
+            int64_t dd = (int64_t)0x00020000 -
+                (int64_t)(int32_t)(((uint32_t)U16(t.i) << 16) |
+                                   (uint32_t)U16(t.f));
+            u.f = (int32_t)(dd & 0xffff);
+            u.i = (int32_t)((dd >> 16) & 0xffff);
+        }
+        iw = mac32(r, u, 0);
+    }
+    else
+    {
+        t = mac32(pw, r, 0);
+        acc = p_udh(1, 4);
+        acc += p_udn(t.f, -4);
+        u.f = acc_clamp_low(acc);
+        acc += p_udh(t.i, -4);
+        u.i = acc_clamp_mid(acc);
+        iw = mac32(u, r, 0);
+    }
     if (invw_out)
         *invw_out = (int32_t)(((uint32_t)U16(iw.i) << 16) | (uint32_t)U16(iw.f));
 

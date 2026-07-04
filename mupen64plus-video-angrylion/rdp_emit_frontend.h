@@ -94,6 +94,8 @@ typedef struct GSPState
      * list's raw byte even with G_FOG set in the geometry mode. */
     int fog_off;
     int line_alpha_mask;   /* gspL3DEX: shade alpha & 0xfc on line commands */
+    int line_clip_3d;      /* gspL3DEX: 3D-clip flagged line segments; Blast
+                              Corps' Fast3D line build draws them raw */
     /* current RDP scissor, tracked for the line microcodes' per-line
      * scissor emission */
     int32_t scis_w0, scis_w1;
