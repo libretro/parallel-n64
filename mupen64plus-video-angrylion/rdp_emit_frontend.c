@@ -1317,6 +1317,20 @@ int gsp_line(GSPState *s, int32_t *cmd, int i0, int i1, int width_q)
         i1 < 0 || i1 >= GSP_MAX_VERTICES)
         return 0;
 
+    /* Trivial rejection: a segment whose endpoints share a set clip
+     * outcode bit is dropped whole (the classic outcode AND test on the
+     * vertex processor's VCH flags; the 0x8000 bit of each half rides
+     * along on every vertex and is excluded). On a zoomed-out Doom 64
+     * automap this rejects 181 of 288 segments, matching the microcode's
+     * stream exactly; segments with only one endpoint out are drawn
+     * full-length with raw coordinates (overhangs to 20 px appear in the
+     * stream unclipped). A segment crossing the screen with both
+     * endpoints out far enough to flag would be 3D-clipped by the
+     * microcode instead; none appears in any capture and it stays
+     * unimplemented. */
+    if ((s->vtx[i0].clip & s->vtx[i1].clip & 0x7fff7fffu) != 0)
+        return 0;
+
     /* The line microcodes emit each segment as a single YM==YL
      * parallelogram command (see rsp_line_write); build the two endpoint
      * records from the stored screen snapshots and colours. */
@@ -1353,7 +1367,7 @@ int gsp_line(GSPState *s, int32_t *cmd, int i0, int i1, int width_q)
         int n = rsp_line_write(cmd + 2, &r[0], &r[1], width_q,
                                s->viewport.tri_dx_scale ? s->viewport.tri_dx_scale : 0x4000,
                                s->viewport.tri_idy_scale ? s->viewport.tri_idy_scale : 0x0008,
-                               (int32_t)0xfff8);
+                               (int32_t)0xfff8, s->line_xl);
         if (n == 0 || !s->scis_valid)
         {
             int k;
@@ -1372,6 +1386,14 @@ int gsp_line(GSPState *s, int32_t *cmd, int i0, int i1, int width_q)
             {
                 int32_t x0 = r[0].x < r[1].x ? r[0].x : r[1].x;
                 int32_t x1 = r[0].x < r[1].x ? r[1].x : r[0].x;
+                int32_t c0 = (int32_t)((s->scis_w0 >> 12) & 0xfff);
+                int32_t c1 = (int32_t)((s->scis_w1 >> 12) & 0xfff);
+                /* the window is clamped into the current scissor's x
+                 * range (an off-screen endpoint would otherwise wrap in
+                 * the 12-bit field) */
+                if (x0 < c0) x0 = c0;
+                if (x1 > c1) x1 = c1;
+                if (x1 < x0) x1 = x0;
                 cmd[0] = (int32_t)((s->scis_w0 & 0xff000fffu)
                                    | (((uint32_t)x0 & 0xfffu) << 12));
                 cmd[1] = (int32_t)((s->scis_w1 & 0x03000fffu)

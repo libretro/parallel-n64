@@ -98,6 +98,9 @@ typedef struct GSPState
      * scissor emission */
     int32_t scis_w0, scis_w1;
     int scis_valid;
+    /* the line microcodes' XL/DxL DMEM slot: written by every x-major
+     * line, carried inert into y-major and transposed commands */
+    int32_t line_xl[2];
     /* Fan pivot of the polygon clipper's triangulation: 0 = fan from the
      * last polygon vertex with ascending pairs (F3DEX2 2.05+/F3DZEX2),
      * 1 = fan from the first vertex with descending pairs (2.04H). */

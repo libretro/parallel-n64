@@ -529,6 +529,8 @@ void f3d_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
         gsp->clip_ratio = 1;
         gsp->fog_off = (s_variant_line && s_variant_d64) ? 1 : 0;
         gsp->line_alpha_mask = (s_variant_line && s_variant_d64) ? 1 : 0;
+        gsp->line_xl[0] = 0;
+        gsp->line_xl[1] = 0;
         s_spr_have = 0;
     }
     if (s_dl_depth >= F3D_DL_MAX_DEPTH)

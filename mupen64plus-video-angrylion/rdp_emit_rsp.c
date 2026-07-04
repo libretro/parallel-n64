@@ -1097,7 +1097,8 @@ static Rsp32 sub32(Rsp32 a, Rsp32 b)
 static int rsp_line_write_xmajor(int32_t *cmd,
                                  const RspTriVtx *vh, const RspTriVtx *vl,
                                  int width_q, int32_t dx_scale,
-                                 int32_t idy_scale, int32_t slope_mask)
+                                 int32_t idy_scale, int32_t slope_mask,
+                                 int32_t *xl_dmem)
 {
     int32_t h102 = (int32_t)(width_q + 3);          /* (wd+3)/4 px in 10.2 */
     int32_t yh102 = (int32_t)vh->y - h102;
@@ -1188,6 +1189,8 @@ static int rsp_line_write_xmajor(int32_t *cmd,
                        | ((uint32_t)yh102 & 0x3fffu));
     cmd[2] = (int32_t)vh->x << 14;                     /* XL: band boundary */
     cmd[3] = (int32_t)((((uint32_t)U16(slope.i)) << 16) | (uint32_t)U16(slope.f));
+    xl_dmem[0] = cmd[2];
+    xl_dmem[1] = cmd[3];
     cmd[4] = (int32_t)((((uint32_t)U16(xh.i)) << 16) | (uint32_t)U16(xh.f));
     cmd[5] = cmd[3];
     cmd[6] = (int32_t)vh->x << 14;                     /* XM: vertical cap */
@@ -1218,7 +1221,7 @@ static int rsp_line_write_xmajor(int32_t *cmd,
 
 int rsp_line_write(int32_t *cmd, const RspTriVtx *e0, const RspTriVtx *e1,
                    int width_q, int32_t dx_scale, int32_t idy_scale,
-                   int32_t slope_mask)
+                   int32_t slope_mask, int32_t *xl_dmem)
 {
     const RspTriVtx *vh, *vl;
     int32_t half;                 /* (wd+3)/4 px in s15.16 */
@@ -1247,7 +1250,9 @@ int rsp_line_write(int32_t *cmd, const RspTriVtx *e0, const RspTriVtx *e1,
                            | ((uint32_t)yl_q & 0x3fffu));
         cmd[1] = (int32_t)((((uint32_t)yl_q & 0x3fffu) << 16)
                            | ((uint32_t)yh_q & 0x3fffu));
-        cmd[2] = 0; cmd[3] = 0;                       /* XL edge: not walked */
+        /* XL edge: never walked; the command carries whatever the last
+         * x-major line left in the DMEM slot (zero on a fresh task) */
+        cmd[2] = xl_dmem[0]; cmd[3] = xl_dmem[1];
         cmd[4] = (int32_t)e1->x << 14; cmd[5] = 0;     /* XH */
         cmd[6] = (int32_t)e0->x << 14; cmd[7] = 0;     /* XM */
         cmd[8]  = (int32_t)((((uint32_t)e1->r & 0xffffu) << 16) | ((uint32_t)e1->g & 0xffffu));
@@ -1278,7 +1283,8 @@ int rsp_line_write(int32_t *cmd, const RspTriVtx *e0, const RspTriVtx *e1,
         int32_t adx = dxv2 < 0 ? -dxv2 : dxv2;
         if (adx > ady)
             return rsp_line_write_xmajor(cmd, vh, vl, width_q,
-                                         dx_scale, idy_scale, slope_mask);
+                                         dx_scale, idy_scale, slope_mask,
+                                         xl_dmem);
     }
 
     /* The 14-bit command Y fields cannot encode negative coordinates:
@@ -1414,7 +1420,7 @@ int rsp_line_write(int32_t *cmd, const RspTriVtx *e0, const RspTriVtx *e1,
         cmd[1] = (int32_t)((((uint32_t)yl102 & 0x3fffu) << 16)
                            | ((uint32_t)yh_emit & 0x3fffu));
     }
-    cmd[2] = 0; cmd[3] = 0;
+    cmd[2] = xl_dmem[0]; cmd[3] = xl_dmem[1];     /* stale DMEM, not walked */
     cmd[4] = (int32_t)((((uint32_t)U16(xh.i)) << 16) | (uint32_t)U16(xh.f));
     cmd[5] = (int32_t)((((uint32_t)U16(slope.i)) << 16) | (uint32_t)U16(slope.f));
     cmd[6] = (int32_t)((((uint32_t)U16(xm.i)) << 16) | (uint32_t)U16(xm.f));
