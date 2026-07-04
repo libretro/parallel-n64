@@ -466,7 +466,11 @@ void s2dex_bg_1cyc(const unsigned char *rdram, unsigned int rdram_bytes,
 
         draw_w = (int)frame_w - (int)excess_w - clip_l - clip_r;
         draw_h = (int)frame_h - (int)excess_h - clip_t - clip_b;
-        if (draw_w < 1 || draw_h < 1)
+        /* the microcode bails only when the clip goes negative: a
+         * zero-width frame (Worms Armageddon ships one at the right
+         * screen edge) still emits its texture load and a degenerate
+         * zero-coverage strip, cxd4-matched. */
+        if (draw_w < 0 || draw_h < 0)
             return;
 
         clip_ulx    = (unsigned int)(frame_x + clip_l) & 0xfffu;
