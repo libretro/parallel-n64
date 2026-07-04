@@ -1302,8 +1302,13 @@ static int rsp_line_write_xmajor(int32_t *cmd,
 
     cmd[0] = (int32_t)(0xCC000000u | ((uint32_t)(lft & 1) << 23)
                        | ((uint32_t)yl102 & 0x3fffu));
+    /* The microcode stores the YH halfword register raw: a negative
+     * top -- the width expansion or a clipped vertex's cap extension --
+     * carries its full 16-bit sign (the rotated and synthetic streams'
+     * -0.75 tops are 0xFFFD, never 14-bit masked; the rasterizer sign
+     * extends from bit 13 either way, so only the stream bytes differ). */
     cmd[1] = (int32_t)((((uint32_t)ym102 & 0x3fffu) << 16)
-                       | ((uint32_t)yh102 & 0x3fffu));
+                       | ((uint32_t)U16(yh102)));
     cmd[2] = (int32_t)vh->x << 14;                     /* XL: band boundary */
     cmd[3] = (int32_t)((((uint32_t)U16(slope.i)) << 16) | (uint32_t)U16(slope.f));
     xl_dmem[0] = cmd[2];
