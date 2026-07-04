@@ -243,6 +243,15 @@ int savestates_load_m64p(const unsigned char *data, size_t size)
    COPYARRAY(g_dev.rdram.dram, curr, uint32_t, RDRAM_MAX_SIZE/4);
    COPYARRAY(g_dev.sp.mem, curr, uint32_t, SP_MEM_SIZE/4);
    COPYARRAY(g_dev.pif.ram, curr, uint8_t, PIF_RAM_SIZE);
+   /* The joybus channel layout (each channel's tx/rx pointers into PIF RAM)
+    * is derived state set up when the game writes a command block with the
+    * format flag, and is not part of the savestate. Games that format the
+    * block once and then poll it with read DMAs only (Doom 64) lose all
+    * controller input when a state is loaded into a session whose channels
+    * do not happen to match -- the resident command block is in the saved
+    * PIF RAM, but no format write ever recurs to rebuild the channels.
+    * Re-derive them from the restored PIF RAM. */
+   setup_channels_format(&g_dev.pif);
 
    /* extra rsp handshake state (since 1.2) - companion to the
     * parallel-rsp accuracy backport; upstream mupen64plus-core#1153
