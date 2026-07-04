@@ -21,6 +21,7 @@ void s2dex_set_scissor(unsigned int w0, unsigned int w1);
 void s2dex_emit_scissor(RdpFifo *fifo);
 
 void s2dex_reset(void);
+void s2dex_set_version2(int on);
 int s2dex_obj_loadtxtr(const unsigned char *rdram, unsigned int rdram_bytes,
                        unsigned int ta, RdpFifo *fifo,
                        unsigned int (*segfn)(unsigned int));

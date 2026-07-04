@@ -1,3 +1,4 @@
+#include <stdio.h>
 /* rdp_emit_s2dex.c -- S2DEX2 background renderer for the angrylion HLE path.
  *
  * Zelda-engine games draw pre-rendered backgrounds (title screens, image
@@ -119,6 +120,16 @@ static unsigned int s_obj_status[4];
  * after a microcode reload never syncs). A deduped load skips the byte
  * entirely. Modeled as: set by loads and the BG renderers' strip loads,
  * cleared by the data reload; the load syncs when set. */
+static int s_obj_drawn = 0;            /* a rect consumed the last load */
+static unsigned int s_obj_rtile = 0;    /* S2DEX2 render tile 0 <-> 2 */
+
+static int s_s2dex2 = 0;
+
+void s2dex_set_version2(int on)
+{
+    s_s2dex2 = on ? 1 : 0;
+}
+
 static int s_obj_tile7_used;
 
 void s2dex_reset(void)
@@ -130,6 +141,8 @@ void s2dex_reset(void)
      * the RDP scissor before gSPLoadUcodeL and never resend it, so a
      * zeroed shadow would clip every background strip away. */
     s_obj_rendermode = 0;
+    s_obj_drawn = 0;
+    s_obj_rtile = 0;
     s_scis_ulx = s_scis_uly = 0;
     s_scis_lrx = 0x500;
     s_scis_lry = 0x3c0;
@@ -162,6 +175,7 @@ int s2dex_obj_loadtxtr(const unsigned char *rdram, unsigned int rdram_bytes,
                        unsigned int (*segfn)(unsigned int))
 {
     unsigned int type, image, tmem, tsize, tline, sid, flag, mask;
+    int drawn_since;
     int32_t cw[6];
     if (ta + 24 > rdram_bytes)
         return 1;
@@ -195,13 +209,15 @@ int s2dex_obj_loadtxtr(const unsigned char *rdram, unsigned int rdram_bytes,
         return 1;                       /* already resident */
     s_obj_status[sid] = (s_obj_status[sid] & ~mask) | flag;
 
-    if (s_obj_tile7_used)
+    if (s_obj_tile7_used && !(s_s2dex2 && type == 0x00001033u))
     {
         cw[0] = (int32_t)0x28000000u;   /* tilesync against the last load */
         cw[1] = 0;
         rdp_fifo_append(fifo, cw, 2);
     }
     s_obj_tile7_used = 1;
+    drawn_since = s_obj_drawn;
+    s_obj_drawn = 0;
 
     image = segfn(image);
 
@@ -226,14 +242,31 @@ int s2dex_obj_loadtxtr(const unsigned char *rdram, unsigned int rdram_bytes,
          * the LOADBLOCK lrs is in 16-bit texels, and each TMEM word holds
          * four of them, so the block span is tsize<<2 (cxd4-verified: 399
          * words -> lrs 1596, filling the full tile rather than a quarter). */
-        cw[0] = (int32_t)(0x3d100000u | ((tsize >> 2) & 0xfffu));
+        /* S2DEX2 stores the raw TMEM word count in the SETTIMG width
+         * (Worms Armageddon, cxd4-matched: tsize 11 -> 0x3d10000b); the
+         * S2DEX1 build scales it back to the 16-bit load pitch
+         * (Yoshi's Story, cxd4-matched as below). The LOADBLOCK span and
+         * dxt are unchanged between the builds. */
+        cw[0] = (int32_t)(0x3d100000u
+                          | ((s_s2dex2 ? tsize : (tsize >> 2)) & 0xfffu));
         cw[1] = (int32_t)image;
         cw[2] = (int32_t)(0x35100000u | (tmem & 0x1ffu));
         cw[3] = (int32_t)0x27000000u;
-        cw[4] = (int32_t)0x33000000u;
-        cw[5] = (int32_t)(0x27000000u | (((tsize << 2) & 0xfffu) << 12)
+        rdp_fifo_append(fifo, cw, 4);
+        if (s_s2dex2 && drawn_since)
+        {
+            /* S2DEX2 issues a LOADSYNC between the load tile setup and
+             * the LOADBLOCK when a rectangle consumed the previous load
+             * (the first load of a task goes unsynced); the S2DEX1 build
+             * fences with the leading TILESYNC above instead. */
+            cw[0] = (int32_t)0x26000000u;
+            cw[1] = 0;
+            rdp_fifo_append(fifo, cw, 2);
+        }
+        cw[0] = (int32_t)0x33000000u;
+        cw[1] = (int32_t)(0x27000000u | (((tsize << 2) & 0xfffu) << 12)
                           | (tline & 0xfffu));
-        rdp_fifo_append(fifo, cw, 6);
+        rdp_fifo_append(fifo, cw, 2);
     }
     else if (type == 0x00fc1034u)       /* G_OBJLT_TXTRTILE */
     {
@@ -1252,6 +1285,7 @@ void s2dex_obj_movemem(const unsigned char *r, unsigned int rdram_bytes,
 static void s2dex_obj_coords(int use_matrix, int objX, int objY,
                              unsigned int imageW, unsigned int imageH,
                              unsigned int scaleW, unsigned int scaleH,
+                             unsigned int flags,
                              short *xh_o, short *yh_o, short *xl_o, short *yl_o,
                              short *sh_o, short *th_o,
                              unsigned int *bsx_o, unsigned int *bsy_o)
@@ -1314,6 +1348,21 @@ static void s2dex_obj_coords(int use_matrix, int objX, int objY,
         th = (short)(sh - (int)(((yh & 3) * 0x0200 * sprH) >> 16));
     }
 
+    /* uObjSprite imageFlags: G_OBJ_FLAG_FLIPS (bit 0) mirrors the sprite
+     * horizontally -- the texel walk starts at the right edge and steps
+     * backward: S0 = imageW - 16 (the mirror of the unflipped -16 start,
+     * both in 10.5) with dsdx negated. Worms Armageddon's left-facing
+     * worms and crosshairs are drawn this way (cxd4: S 0x01f0, dsdx
+     * 0xfc00 for a 16-texel sprite). FLIPT (bit 4) is the vertical
+     * analog, unobserved so far and mirrored symmetrically. */
+    if (flags & 0x01u)
+        sh = (short)((int)(short)imageW + (A0 + B2) - 1);
+    if (flags & 0x10u)
+        th = (short)((int)(short)imageH + (A0 + B2) - 1
+                     - (int)(((yh & 3) * 0x0200 *
+                              (use_matrix ? ((unsigned int)(s_objmtx_bsy ?
+                               s_objmtx_bsy : 1) * 0x40u * sprH) >> 16
+                                          : sprH)) >> 16));
     *xh_o = xh; *yh_o = yh; *xl_o = xl; *yl_o = yl;
     *sh_o = sh; *th_o = th;
     /* TEXRECT texel step per screen pixel (dsdx/dtdy, s5.10, 1.0 == 0x400).
@@ -1327,8 +1376,12 @@ static void s2dex_obj_coords(int use_matrix, int objX, int objY,
      * panel TEXRECT carried dsdx = dtdy = 0xffff and garbled the frozen-
      * screen texture into horizontal bands. Select per use_matrix so both
      * games match cxd4 (Bangai-O 0x400, Yoshi 0x04ae). */
-    *bsx_o = use_matrix ? bsx : sprW;
-    *bsy_o = use_matrix ? bsy : sprH;
+    *bsx_o = (use_matrix ? bsx : sprW);
+    *bsy_o = (use_matrix ? bsy : sprH);
+    if (flags & 0x01u)
+        *bsx_o = (0u - *bsx_o) & 0xffffu;
+    if (flags & 0x10u)
+        *bsy_o = (0u - *bsy_o) & 0xffffu;
 }
 
 /* draw a uObjSprite at addr as a TEXTURE_RECTANGLE. use_matrix applies the
@@ -1340,11 +1393,12 @@ static void s2dex_draw_obj(GSPState *gsp, const unsigned char *r,
 {
     int          objX, objY;
     unsigned int scaleW, scaleH, imageW, imageH, imageStride, imageAdrs;
-    unsigned int imageFmt, imageSiz, imagePal;
+    unsigned int imageFmt, imageSiz, imagePal, imageFlags;
     int          ulx, uly, lrx, lry;
     int          sax, say, w_q, h_q;
     unsigned int tw, th, lrs, lrt;
     unsigned int settile_w0, settile_w1, settsz_w1;
+    unsigned int rtile;
     int32_t      cw[6];
     int32_t      tribuf[220];
     int          nc;
@@ -1363,7 +1417,7 @@ static void s2dex_draw_obj(GSPState *gsp, const unsigned char *r,
     imageFmt    = r[(addr + 0x14) ^ 3];
     imageSiz    = r[(addr + 0x15) ^ 3];
     imagePal    = r[(addr + 0x16) ^ 3];
-    /* imageFlags (FLIPS/FLIPT) at +0x17 -- TODO */
+    imageFlags  = r[(addr + 0x17) ^ 3];
 
     if (scaleW == 0u) scaleW = 1u;
     if (scaleH == 0u) scaleH = 1u;
@@ -1445,16 +1499,28 @@ static void s2dex_draw_obj(GSPState *gsp, const unsigned char *r,
 
     tw = (imageW >> 5); if (tw == 0u) tw = 1u;
     th = (imageH >> 5); if (th == 0u) th = 1u;
+    rtile = 0u;
     lrs = (tw - 1u) << 2;
     lrt = (th - 1u) << 2;
 
     /* SET_TILE (render tile 0) from the sprite's image attributes. */
     settile_w0 = 0xf5000000u | ((imageFmt & 7u) << 21) | ((imageSiz & 3u) << 19)
                | ((imageStride & 0x1ffu) << 9) | (imageAdrs & 0x1ffu);
-    /* tile 0, palette, clamp S and T (cm = G_TX_CLAMP = 2). */
-    settile_w1 = ((imagePal & 0xfu) << 20) | (2u << 18) | (2u << 8);
-    /* SET_TILE_SIZE w1: tile 0, lrs/lrt (10.2). */
-    settsz_w1  = ((lrs & 0xfffu) << 12) | (lrt & 0xfffu);
+    /* Render tile, palette, clamp S and T (cm = G_TX_CLAMP = 2). The
+     * S2DEX2 object pipeline double-buffers the render tile descriptor,
+     * alternating tiles 0 and 2 per drawn object so the next tile can be
+     * configured while the previous rectangle is still in flight (which
+     * is also why the draws carry no syncs between them); S2DEX1 keeps
+     * the single render tile 0. */
+    if (s_s2dex2)
+    {
+        rtile = s_obj_rtile;
+        s_obj_rtile ^= 2u;
+    }
+    settile_w1 = (rtile << 24)
+               | ((imagePal & 0xfu) << 20) | (2u << 18) | (2u << 8);
+    /* SET_TILE_SIZE w1: render tile, lrs/lrt (10.2). */
+    settsz_w1  = (rtile << 24) | ((lrs & 0xfffu) << 12) | (lrt & 0xfffu);
 
     cw[0] = (int32_t)settile_w0;
     cw[1] = (int32_t)settile_w1;
@@ -1474,20 +1540,48 @@ static void s2dex_draw_obj(GSPState *gsp, const unsigned char *r,
         short xh, xl, yh, yl, sh, th_t;
         unsigned int bsx, bsy, u_ulx, u_uly, u_lrx, u_lry;
         s2dex_obj_coords(use_matrix, objX, objY, imageW, imageH,
-                         scaleW, scaleH, &xh, &yh, &xl, &yl, &sh, &th_t,
+                         scaleW, scaleH, imageFlags,
+                         &xh, &yh, &xl, &yl, &sh, &th_t,
                          &bsx, &bsy);
+        /* The TEXRECT coordinate fields are 12-bit unsigned: the
+         * microcode clips the rectangle against the screen instead of
+         * letting a negative corner wrap. A clipped-off left/top edge
+         * advances the texel start by the removed span times the raw
+         * (pre-flip) step -- cxd4: a flipped sprite at ulx -11.5 px
+         * emits ulx 0 with S walked from 0x1ef down to 0x07f -- and an
+         * overhanging right/bottom edge clamps to the 320x240 screen
+         * with the start untouched. */
+        if (xh < 0)
+        {
+            /* raw (pre-flip-negation) texel step */
+            int stepx = (int)(int16_t)(unsigned short)bsx;
+            if (stepx < 0) stepx = -stepx;
+            sh = (short)(sh + (((int)xh * stepx) >> 7));
+            xh = 0;
+        }
+        if (yh < 0)
+        {
+            int stepy = (int)(int16_t)(unsigned short)bsy;
+            if (stepy < 0) stepy = -stepy;
+            th_t = (short)(th_t + (((int)yh * stepy) >> 7));
+            yh = 0;
+        }
+        if (xl > 0x500) xl = 0x500;
+        if (yl > 0x3c0) yl = 0x3c0;
         u_ulx = (unsigned int)xh & 0xfffu;
         u_uly = (unsigned int)yh & 0xfffu;
         u_lrx = (unsigned int)xl & 0xfffu;
         u_lry = (unsigned int)yl & 0xfffu;
         cw[0] = (int32_t)(0x24000000u | (u_lrx << 12) | u_lry);
-        cw[1] = (int32_t)((u_ulx << 12) | u_uly);   /* tile 0 */
+        cw[1] = (int32_t)((rtile << 24) | (u_ulx << 12) | u_uly);
         cw[2] = (int32_t)((((unsigned int)sh & 0xffffu) << 16)
                           | ((unsigned int)th_t & 0xffffu));
         cw[3] = (int32_t)(((bsx & 0xffffu) << 16) | (bsy & 0xffffu));
         rdp_fifo_append(fifo, cw, 4);
+        s_obj_drawn = 1;
         return;
     }
+    s_obj_drawn = 1;
 
     /* Object matrix sprite: map the sprite's object-space rectangle through
      * the full signed [A B; C D] (s15.16) about the matrix origin (X,Y), per

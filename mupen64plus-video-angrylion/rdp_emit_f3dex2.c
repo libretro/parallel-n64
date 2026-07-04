@@ -191,6 +191,7 @@ static unsigned char *s_rdram_base = 0;
 void f3dex2_set_task_ucode(const unsigned char *rdram, unsigned int text)
 {
     s_ucode_class = probe_ucode_class(rdram, text);
+    s2dex_set_version2(s_ucode_class == UCODE_S2DEX2);
 }
 
 /* Standalone S2DEX 1.xx (Yoshi's Story etc.) carries a build-specific text
@@ -200,6 +201,7 @@ void f3dex2_set_task_ucode(const unsigned char *rdram, unsigned int text)
 void f3dex2_force_class_s2dex1(void)
 {
     s_ucode_class = UCODE_S2DEX1;
+    s2dex_set_version2(0);
 }
 
 /* 1 when the current task's ucode is an S2DEX (GBI 1 or GBI 2) sprite/BG

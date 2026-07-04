@@ -98,6 +98,14 @@ void gsp_detect_ucode_params(GSPState *st, const unsigned char *rdram,
      * validate that it really points at an F3DEX2-family data segment
      * before trusting any of its fields. Every known build carries the
      * v31 constant row prefix ffff 0004 0008 7f00 at data + 0x1b0. */
+    /* The other-modes default pair below self-validates on its 0xEF
+     * command byte and applies only at task start, when the data address
+     * is the OSTask's own field; a pure S2DEX2 segment (no 3D constants,
+     * so no v31 row -- Worms Armageddon's terrain tasks) must still get
+     * its seed. Keep the unvalidated address for that read only. */
+    unsigned int ud_task = (ut_is_task_start
+                            && ud != 0
+                            && ud + 0xd0 <= rdram_size) ? ud : 0;
     if (ud != 0 && ud + 0x1c0 <= rdram_size)
     {
         if (!(rdram[(ud + 0x1b0) ^ 3] == 0xffu
@@ -163,17 +171,20 @@ void gsp_detect_ucode_params(GSPState *st, const unsigned char *rdram,
      * 0xE2/0xE3 writes merge into for games that never send a wholesale
      * G_RDPSETOTHERMODE. Applied after the per-task reset. */
     {
-        /* ud from caller */
-        if (ud != 0 && ud + 0xd0 <= rdram_size)
+        /* the task-start address: the seed self-validates on its 0xEF
+         * command byte, so the F3DEX2 v31-row gate is not required and
+         * would reject pure S2DEX2 segments */
+        unsigned int uds = ud ? ud : ud_task;
+        if (uds != 0 && uds + 0xd0 <= rdram_size)
         {
-            unsigned int oh = ((unsigned int)rdram[(ud + 0xc8) ^ 3] << 24)
-                            | ((unsigned int)rdram[(ud + 0xc9) ^ 3] << 16)
-                            | ((unsigned int)rdram[(ud + 0xca) ^ 3] << 8)
-                            |  (unsigned int)rdram[(ud + 0xcb) ^ 3];
-            unsigned int ol = ((unsigned int)rdram[(ud + 0xcc) ^ 3] << 24)
-                            | ((unsigned int)rdram[(ud + 0xcd) ^ 3] << 16)
-                            | ((unsigned int)rdram[(ud + 0xce) ^ 3] << 8)
-                            |  (unsigned int)rdram[(ud + 0xcf) ^ 3];
+            unsigned int oh = ((unsigned int)rdram[(uds + 0xc8) ^ 3] << 24)
+                            | ((unsigned int)rdram[(uds + 0xc9) ^ 3] << 16)
+                            | ((unsigned int)rdram[(uds + 0xca) ^ 3] << 8)
+                            |  (unsigned int)rdram[(uds + 0xcb) ^ 3];
+            unsigned int ol = ((unsigned int)rdram[(uds + 0xcc) ^ 3] << 24)
+                            | ((unsigned int)rdram[(uds + 0xcd) ^ 3] << 16)
+                            | ((unsigned int)rdram[(uds + 0xce) ^ 3] << 8)
+                            |  (unsigned int)rdram[(uds + 0xcf) ^ 3];
             /* The microcode's own gSPLoadUcode path preserves the
              * other-modes state across the swap (Kirby 64's S2DEX
              * round-trips validate pixel-exact only without a mid-list
