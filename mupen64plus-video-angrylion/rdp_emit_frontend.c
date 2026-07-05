@@ -1175,6 +1175,33 @@ static int clip_polygon_guard(GSPState *st, GSPVertex *poly, int n)
         }
         if (cond >= 2)  /* the +-x/+-y guard-band planes scale with the ratio */
             cr[3] = (int16_t)((cr[3] < 0) ? -st->clip_ratio : st->clip_ratio);
+        if (st->clip_fan_first == 2)
+        {
+            /* Wipeout 64's clip driver (overlay i764-i7dc) walks the
+             * pointer list linearly from vertex 0 -- vertex first, then
+             * the crossing on its outgoing edge -- and closes the wrap
+             * edge last, so the rebuilt list starts with vertex 0's
+             * contribution and any wrap-edge crossing lands at the end.
+             * The standard walk starts at the wrap edge, rotating the
+             * list (and the fan cut from it). */
+            for (i = 0; i < n; i++)
+            {
+                int inx = (i + 1 == n) ? 0 : (i + 1);
+                unsigned int f2 = (unsigned int)poly[i].clip & mask;
+                unsigned int fn = (unsigned int)poly[inx].clip & mask;
+                if (!f2 && m < GSP_CLIP_MAX)
+                    tmp[m++] = poly[i];
+                if ((f2 != fn) && m < GSP_CLIP_MAX)
+                {
+                    const GSPVertex *onv  = f2 ? &poly[inx] : &poly[i];
+                    const GSPVertex *offv = f2 ? &poly[i]   : &poly[inx];
+                    gsp_clip_subdivide(st, &tmp[m], onv, offv, cr);
+                    m++;
+                }
+            }
+        }
+        else
+        {
         f3 = (unsigned int)poly[n - 1].clip & mask;
         i3 = n - 1;
         for (i = 0; i < n; i++)
@@ -1194,6 +1221,7 @@ static int clip_polygon_guard(GSPState *st, GSPVertex *poly, int n)
                 tmp[m++] = poly[i];
             f3 = f2;
             i3 = i;
+        }
         }
         for (i = 0; i < m; i++)
             poly[i] = tmp[i];
@@ -1491,9 +1519,22 @@ int gsp_triangle(GSPState *s, int32_t *cmd, int i0, int i1, int i2,
     ob = (unsigned int)b->clip;
     oc = (unsigned int)c->clip;
 
-    poly[0] = *a;
-    poly[1] = *b;
-    poly[2] = *c;
+    if (s->clip_fan_first == 2)
+    {
+        /* Wipeout 64's clip driver (overlay IMEM 0x748, i764: sh
+         * r3/r2/r1) seeds its working list with the triangle vertices
+         * reversed, so the rebuilt polygon -- and the fan cut from it --
+         * walk the opposite way around. */
+        poly[0] = *c;
+        poly[1] = *b;
+        poly[2] = *a;
+    }
+    else
+    {
+        poly[0] = *a;
+        poly[1] = *b;
+        poly[2] = *c;
+    }
 
     np = 3;
 #define GSP_CLIP_TRIGGER ((1u << 20) | (1u << 21) | (1u << 28) | (1u << 29) \
@@ -1543,7 +1584,17 @@ int gsp_triangle(GSPState *s, int32_t *cmd, int i0, int i1, int i2,
              * (0,n-2,n-1), (0,n-3,n-2), ..., (0,1,2). The triangle sets
              * differ (different pivot), so this is visible wherever a
              * clipped polygon has more than three vertices. */
-            if (s->clip_fan_first)
+            if (s->clip_fan_first == 2)
+            {
+                /* Wipeout 64 (i934-i95c): pivot on the FIRST list vertex,
+                 * walk ascending consecutive pairs, and the resident tri
+                 * write takes the args reversed (list[i+2], list[i+1],
+                 * pivot). */
+                tv[0] = poly[i + 2];
+                tv[1] = poly[i + 1];
+                tv[2] = poly[0];
+            }
+            else if (s->clip_fan_first)
             {
                 tv[0] = poly[0];
                 tv[1] = poly[np - 2 - i];

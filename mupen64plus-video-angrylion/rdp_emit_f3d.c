@@ -16,6 +16,7 @@
  */
 
 #include "rdp_emit_f3d.h"
+#include "rdp_emit_bridge.h"
 #include "rdp_emit_frontend.h"
 #include "rdp_emit_rsp.h"
 
@@ -449,6 +450,15 @@ void f3d_set_variant(int doom64)
 }
 void f3d_set_line_variant(int line) { s_variant_line = line ? 1 : 0; }
 void f3d_set_variant_wr64(int wr64) { s_variant_wr64 = wr64 ? 1 : 0; }
+static int s_variant_wo64 = 0;
+void f3d_set_variant_wo64(int wo64)
+{
+    s_variant_wo64 = wo64 ? 1 : 0;
+    rsp_set_vtx_y_round(wo64);
+    bridge_set_clip_degenerate_cull(wo64);
+    if (wo64)
+        rsp_set_clip_lerp_wo64(1);
+}
 
 
 /* ---- RDP pass-through (microcode-independent), mirrors rdp_emit_f3dex2.c --*/
@@ -533,6 +543,17 @@ void f3d_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
          * explicit gSPClipRatio still overrides it. */
         gsp->clip_near_z = s_variant_d64 ? 0 : 1;
         gsp->clip_ratio = 1;
+        if (s_variant_wo64)
+        {
+            /* Wipeout 64's data-segment plane table (data + 0x70):
+             * -x, -y, +x, +y, far, z + w near -- the reverse of the
+             * F3DEX iteration order, with the near clip on and no
+             * guard band. The iteration order decides the clip fan's
+             * vertex sequence, hence the triangulation. */
+            gsp->clip_near_z = 1;
+            gsp->clip_fan_first = 2;
+            gsp->clip_ratio = 1;
+        }
         gsp->fog_off = (s_variant_line && s_variant_d64) ? 1 : 0;
         gsp->line_alpha_mask = (s_variant_line && s_variant_d64) ? 1 : 0;
         gsp->line_clip_3d = (s_variant_line && s_variant_d64) ? 1 : 0;

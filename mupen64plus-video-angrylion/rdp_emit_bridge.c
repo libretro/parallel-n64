@@ -131,6 +131,14 @@ void bridge_compute_screen(const BridgeVertex *v, const BridgeViewport *vp,
     *out_rsp_invw = e->rsp_invw;
 }
 
+static int s_clip_degenerate_cull = 0;
+
+/* Enable the zero-area reject on clip-generated (screen-authoritative but
+ * out-of-reciprocal-domain) sub-triangles. Off by default so titles whose
+ * clip fragments were not audited against this keep their prior output;
+ * Wipeout 64's F3DLX clip path turns it on. */
+void bridge_set_clip_degenerate_cull(int on) { s_clip_degenerate_cull = on ? 1 : 0; }
+
 static void clip_to_emit(EmitVertex *e, const BridgeVertex *v,
                          const BridgeViewport *vp, int64_t *w_raw)
 {
@@ -255,6 +263,27 @@ int bridge_add_triangle(int32_t *cmd,
                    : (int32_t)cr;
         if (!((magic[cull_mode & 3] + (unsigned int)c6) & 0x80000000u))
             return 0;
+        if (c6 == 0)
+            return 0;
+    }
+    else if (s_clip_degenerate_cull
+             && v0->scr_valid && v1->scr_valid && v2->scr_valid)
+    {
+        /* Clip-generated vertices carry authoritative screen positions
+         * even when their near-plane w falls outside the reciprocal's
+         * exact domain (rsp_ok clear). The RSP still runs its zero-area
+         * degenerate reject on the tri-setup positions, so a clipped
+         * sliver that collapses onto one scanline is dropped. Apply just
+         * that reject here (the signed face cull needs the exact cross
+         * sign, which the fallback screen positions do not guarantee, so
+         * it stays gated on rsp_ok above). */
+        int32_t x0 = a.x >> 14, y0 = a.y >> 14;
+        int32_t x1 = b.x >> 14, y1 = b.y >> 14;
+        int32_t x2 = c.x >> 14, y2 = c.y >> 14;
+        int64_t cr = (int64_t)(x0 - x1) * (y0 - y2)
+                   + (int64_t)(x0 - x2) * (y1 - y0);
+        int32_t c6 = (cr > 32767) ? 32767 : (cr < -32768) ? -32768
+                   : (int32_t)cr;
         if (c6 == 0)
             return 0;
     }

@@ -740,10 +740,12 @@ int32_t rsp_clip_scale_w(int32_t w, int ratio)
  * sign-extraction vabs), 1 = the 2.04H build (raw sum). Chosen per task
  * from the microcode text (see the probe in rdp_emit_hle.c). */
 static int s_clip_lerp_l3dex = 0;
+static int s_clip_lerp_seed3 = 0;   /* the l3dex +3 accumulator seed */
 
 void rsp_set_clip_lerp_l3dex(int on)
 {
     s_clip_lerp_l3dex = on ? 1 : 0;
+    s_clip_lerp_seed3 = on ? 1 : 0;
 }
 
 static int s_vtx_invw_2rd = 0;
@@ -751,6 +753,28 @@ static int s_vtx_invw_2rd = 0;
 void rsp_set_vtx_invw_2rd(int on)
 {
     s_vtx_invw_2rd = on ? 1 : 0;
+}
+
+static int s_vtx_y_round = 0;
+
+/* Wipeout 64 stores vertex screen Y rounded to whole pixels (cxd4:
+ * every stored y integral while x keeps quarter fractions; 122.5 -> 123,
+ * 124.25 -> 124 -- round half up on the 10.2 value). */
+void rsp_set_vtx_y_round(int on)
+{
+    s_vtx_y_round = on ? 1 : 0;
+}
+
+/* Wipeout 64's clip build: the l3dex two-rounding fold without the +3
+ * accumulator seed (its overlay at text 0xf80 stages r' = r * (2 - r*d)
+ * against the DMEM 0x60 constant row and never seeds the factor MAC). */
+void rsp_set_clip_lerp_wo64(int on)
+{
+    if (on)
+    {
+        s_clip_lerp_l3dex = 1;
+        s_clip_lerp_seed3 = 0;
+    }
 }
 
 static int s_clip_lerp_204h = 0;
@@ -863,7 +887,7 @@ void rsp_clip_lerp(const int32_t on_pos[4], const int32_t off_pos[4],
      * F3DEX2 chain does not have. It is what keeps a generated vertex
      * on the inside of the plane it was clipped against, which in turn
      * decides the stored quarter-pixel at a screen edge. */
-    acc = s_clip_lerp_l3dex ? 3 : 0;
+    acc = s_clip_lerp_seed3 ? 3 : 0;
     acc += p_udl(v10[3], rcp_lo) + p_udm(v11[3], rcp_lo);
     v11[3] = acc_clamp_mid(acc);
     v10[3] = acc_clamp_low(acc);
@@ -938,7 +962,7 @@ void rsp_clip_lerp(const int32_t on_pos[4], const int32_t off_pos[4],
      * F3DEX2 chain does not have. It is what keeps a generated vertex
      * on the inside of the plane it was clipped against, which in turn
      * decides the stored quarter-pixel at a screen edge. */
-    acc = s_clip_lerp_l3dex ? 3 : 0;
+    acc = s_clip_lerp_seed3 ? 3 : 0;
     acc += p_udl(v10[3], rcp_lo) + p_udm(v11[3], rcp_lo);
     v11[3] = acc_clamp_mid(acc);
     v10[3] = acc_clamp_low(acc);
@@ -1091,6 +1115,15 @@ int rsp_vtx_screen(int32_t cx, int32_t cy, int32_t cz, int32_t cw,
 
     *sx102 = (int32_t)(int16_t)scr_i[0];
     *sy102 = (int32_t)(int16_t)scr_i[1];
+    if (s_vtx_y_round)
+    {
+        /* Wipeout 64 stores vertex screen Y rounded half-up to whole
+         * pixels (cxd4: every stored y integral -- 122.5 -> 123,
+         * 124.25 -> 124 -- while x keeps its fractions). The 480-line
+         * interlaced viewport renders each field at whole-line
+         * granularity. */
+        *sy102 = (*sy102 + 2) & ~3;
+    }
     /* vertices_store clamps the screen z's integer lane to >= 0 with vge
      * before storing VTX_SCR_Z; the fraction halfword is stored from the
      * unclamped register. Geometry behind z = 0 (no-z billboards) carries

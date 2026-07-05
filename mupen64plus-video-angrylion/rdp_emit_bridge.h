@@ -54,6 +54,7 @@ void bridge_compute_screen(const BridgeVertex *v, const BridgeViewport *vp,
                            int32_t *x, int32_t *y, int32_t *z,
                            int64_t *w_raw, int *rsp_ok, int32_t *rsp_invw);
 
+void bridge_set_clip_degenerate_cull(int on);
 int bridge_add_triangle(int32_t *cmd,
                         const BridgeVertex *v0, const BridgeVertex *v1,
                         const BridgeVertex *v2,

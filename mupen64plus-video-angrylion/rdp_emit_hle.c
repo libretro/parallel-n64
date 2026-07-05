@@ -745,6 +745,10 @@ void rdp_emit_hle_process_dlist(void)
                        |  (unsigned int)rdram[(ut + 3) ^ 3])
                     : 0u;
                 f3d_set_variant_f3dex(t0 == 0x090005eau);
+                /* Wipeout 64's F3DLX fork: raw-doubled saturated vertex
+                 * 1/w and the seedless l3dex clip fold (build id = the
+                 * boot jump word, same keying as the F3DEX probe). */
+                f3d_set_variant_wo64(t0 == 0x090005d8u);
                 /* Star Wars: Shadows of the Empire runs an early "RSP SW
                  * Version: 2.0D, 04-01-96" graphics build (text+0 boot word
                  * 0x090005f8). It carries the SM64 version word at text+4
