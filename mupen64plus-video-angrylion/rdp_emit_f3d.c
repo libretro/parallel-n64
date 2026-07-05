@@ -144,19 +144,29 @@ static void f3d_emit_sprite(RdpFifo *fifo, unsigned int pos)
     w[1] = (int32_t)(0x07000000u | (((siz == 0u) ? 15u : 255u) << 14));
     rdp_fifo_append(fifo, w, 2);
     w[0] = (int32_t)0xe7000000u; w[1] = 0;                   rdp_fifo_append(fifo, w, 2);
-    /* render mode: a scaled (magnified) sprite -- the Wipeout full-screen
-     * rippling-water menu overlay -- is drawn 2x2 bilinear like the microcode
-     * (sample_type=1) with the matching coverage/z rendermode bits; 1:1 atlas
-     * glyphs stay point-sampled, exactly as before. The microcode selects the
-     * filter purely on whether the texrect step is unity (0x400), verified
-     * against the cxd4 LLE RSP: every scaled texrect is bilinear, every 1:1
-     * texrect is point. */
+    /* render mode: the microcode selects the sprite's sampling and depth
+     * behaviour purely on the texrect *step*, not the texel size, verified
+     * against the cxd4 LLE RSP. A scaled sprite (dsdx/dtdy != unity -- the
+     * Wipeout full-screen rippling-water menu overlay) is drawn 2x2 bilinear
+     * (sample_type=1) with z-compare against the scene: the |0x810 sets
+     * z_compare_en plus the z_mode.transparent bits. A 1:1 sprite -- every atlas
+     * glyph, including the CHECK / POSITION / LAP HUD text -- stays point-sampled
+     * (sample_type=0) and is drawn with z-compare *off*, so it always composites
+     * over the geometry.
+     *
+     * The low word is 0x00504244 for both CI4 and CI8. The earlier code folded
+     * 0x810 into a separate CI4 constant (0x00504a54), so 1:1 CI4 glyphs were
+     * emitted with z_compare_en set; at the race-start camera pan -- where the
+     * craft and track write near-plane Z across the HUD band -- the entire text
+     * overlay then lost the depth test and vanished, diverging from the LLE RSP
+     * which leaves z-compare off for every unscaled sprite regardless of texel
+     * size. Key the z bits on the step, matching cxd4. */
     if (dsdx != 0x400u || dtdy != 0x400u) {
         w[0] = (int32_t)0xef00acffu;                       /* sample_type = 1 */
-        w[1] = (int32_t)(((siz == 0u) ? 0x00504a54u : 0x00504244u) | 0x810u);
+        w[1] = (int32_t)(0x00504244u | 0x810u);
     } else {
         w[0] = (int32_t)0xef008cffu;                       /* sample_type = 0 */
-        w[1] = (int32_t)((siz == 0u) ? 0x00504a54u : 0x00504244u);
+        w[1] = (int32_t)0x00504244u;
     }
     rdp_fifo_append(fifo, w, 2);
     /* texture: SETTIMG -> SETTILE(load), then a per-band SYNC_LOAD ->
