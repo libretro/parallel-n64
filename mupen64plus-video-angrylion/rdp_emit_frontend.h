@@ -182,6 +182,8 @@ void gsp_matrix_dkr(GSPState *s, const unsigned char *rdram, unsigned int addr,
                     int index, int multiply);
 void gsp_select_matrix_dkr(GSPState *s, int index);
 void gsp_combine_matrices(GSPState *s);
+void gsp_force_matrix_chunk(GSPState *s, const unsigned char *rdram,
+                            unsigned int addr, unsigned int offset);
 
 /* viewport (addr -> N64 Vp struct in RDRAM), and texture scale state */
 void gsp_set_viewport(GSPState *s, const unsigned char *rdram, unsigned int addr);

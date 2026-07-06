@@ -57,7 +57,10 @@
 #define F3D_MV_LOOKATY         0x82
 #define F3D_MV_LOOKATX         0x84
 #define F3D_MV_L0              0x86
-#define F3D_MV_MATRIX_1        0x9E
+#define F3D_MV_MATRIX_1        0x9E   /* gSPForceMatrix: bytes  0..15 */
+#define F3D_MV_MATRIX_2        0x98   /*                 bytes 16..31 */
+#define F3D_MV_MATRIX_3        0x9A   /*                 bytes 32..47 */
+#define F3D_MV_MATRIX_4        0x9C   /*                 bytes 48..63 */
 
 /* G_MOVEWORD index (w0 & 0xff) */
 #define F3D_MW_MATRIX          0x00
@@ -1011,6 +1014,16 @@ void f3d_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
             {
                 if (in_range(ma, 16u))
                     gsp_set_lookat(gsp, r, ma, 1);
+            }
+            else if (idx == F3D_MV_MATRIX_1 || idx == F3D_MV_MATRIX_2
+                     || idx == F3D_MV_MATRIX_3 || idx == F3D_MV_MATRIX_4)
+            {
+                /* gSPForceMatrix (Top Gear Rally loads a combined matrix
+                 * per object): four 16-byte chunks addressed by index. */
+                static const unsigned char moff[4] = { 16, 32, 48, 0 };
+                if (in_range(ma, 16u))
+                    gsp_force_matrix_chunk(gsp, r, ma,
+                                           moff[(idx - F3D_MV_MATRIX_2) >> 1]);
             }
             else if (idx >= F3D_MV_L0)
             {

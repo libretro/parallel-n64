@@ -452,6 +452,31 @@ void gsp_combine_matrices(GSPState *s)
     s->combined_valid = 1;
 }
 
+/* gSPForceMatrix: G_MOVEMEM straight into the combined-matrix DMEM slot,
+ * 16 bytes per command across G_MV_MATRIX_1..4 (byte offsets 0/16/32/48
+ * of the 64-byte N64 matrix: 32 bytes of s16 integer parts row-major,
+ * then 32 bytes of fractions). The forced product stays valid until the
+ * next G_MTX load rebuilds it from the stacks. */
+void gsp_force_matrix_chunk(GSPState *s, const unsigned char *rdram,
+                            unsigned int addr, unsigned int offset)
+{
+    int k;
+    for (k = 0; k < 8; k++)
+    {
+        unsigned int v = ((unsigned int)rdram[(addr + (unsigned int)k * 2u) ^ 3u] << 8)
+                       | (unsigned int)rdram[(addr + (unsigned int)k * 2u + 1u) ^ 3u];
+        int elem = (int)((offset & 16u) ? 8 : 0) + k;
+        int rr = elem >> 2, cc = elem & 3;
+        if (offset < 32u)
+            s->combined[rr][cc] = (int32_t)(((uint32_t)v << 16)
+                                | ((uint32_t)s->combined[rr][cc] & 0xffffu));
+        else
+            s->combined[rr][cc] = (int32_t)(((uint32_t)s->combined[rr][cc]
+                                             & 0xffff0000u) | v);
+    }
+    s->combined_valid = 1;
+}
+
 void gsp_set_viewport(GSPState *s, const unsigned char *rdram, unsigned int addr)
 {
     /* N64 Vp: vscale[0..3] then vtrans[0..3] (s16). X/Y are 10.2 fixed (the .2
