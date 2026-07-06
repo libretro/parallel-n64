@@ -100,6 +100,7 @@ static unsigned int   s_geom;   /* geometry mode in native F3D bit layout */
 static int          s_spr_have;          /* a 0x09 struct is loaded */
 static unsigned int s_spr_struct[6];     /* the 24-byte struct */
 static unsigned int s_spr_size;          /* BE operand (dsdx/dtdy) */
+static unsigned int s_spr_flip;          /* BE w0 low 16: mirror flags */
 
 static unsigned int seg_phys(unsigned int w1);
 
@@ -120,6 +121,13 @@ static void f3d_emit_sprite(RdpFifo *fifo, unsigned int pos)
     unsigned int yh = pos & 0xffffu;                       /* screen Y (10.2) */
     unsigned int dsdx = (s_spr_size >> 16) & 0xffffu;
     unsigned int dtdy = s_spr_size & 0xffffu;
+    /* 0xBE w0 low bytes mirror the sprite: the game-select menu draws its
+     * full-screen rippling overlay twice, the second pass with 0x0101 --
+     * both axes reversed -- so the two ripple layers interfere. Only the
+     * combined form appears in Wipeout's display lists; byte 0 is taken as
+     * the S mirror and byte 1 as the T mirror. */
+    unsigned int sflip = s_spr_flip & 0x00ffu;
+    unsigned int tflip = (s_spr_flip >> 8) & 0xffu;
 
     unsigned int timgw = (siz == 0u)
                        ? (((texh + 1u) >> 1) - 1u)          /* CI4: 2 texels/byte */
@@ -129,6 +137,11 @@ static void f3d_emit_sprite(RdpFifo *fifo, unsigned int pos)
     unsigned int s2    = toff + disph - 1u;                 /* tile T high (atlas) */
     unsigned int loadsl = soff << t3;                       /* LOADTILE S low  */
     unsigned int loadsh = (soff + width - 1u) << t3;        /* LOADTILE S high */
+    /* CI4 packs two texels per byte and the image is loaded through a CI8
+     * tile, so an odd atlas S offset puts the tile origin one texel before
+     * the glyph; the microcode compensates in the texrect S start (+1 texel),
+     * matching the LLE RSP's 0x0020 on every odd-soff glyph. */
+    unsigned int ssub = (siz == 0u && (soff & 1u)) ? 0x20u : 0u;
     unsigned int line;                                      /* tile line in 64b words */
     unsigned int fsbyte = ((fmt << 2) | 1u) << 3;           /* texture fmt/siz = 0x48 (CI8) */
 
@@ -145,31 +158,37 @@ static void f3d_emit_sprite(RdpFifo *fifo, unsigned int pos)
     w[1] = (int32_t)(0x07000000u | (((siz == 0u) ? 15u : 255u) << 14));
     rdp_fifo_append(fifo, w, 2);
     w[0] = (int32_t)0xe7000000u; w[1] = 0;                   rdp_fifo_append(fifo, w, 2);
-    /* render mode: the microcode selects the sprite's sampling and depth
-     * behaviour purely on the texrect *step*, not the texel size, verified
-     * against the cxd4 LLE RSP. A scaled sprite (dsdx/dtdy != unity -- the
-     * Wipeout full-screen rippling-water menu overlay) is drawn 2x2 bilinear
-     * (sample_type=1) with z-compare against the scene: the |0x810 sets
-     * z_compare_en plus the z_mode.transparent bits. A 1:1 sprite -- every atlas
-     * glyph, including the CHECK / POSITION / LAP HUD text -- stays point-sampled
-     * (sample_type=0) and is drawn with z-compare *off*, so it always composites
-     * over the geometry.
+    /* render mode: the microcode's sprite routine emits the game's *current*
+     * other-modes for every sprite -- the low word verbatim from the shadow
+     * the display list accumulated through G_SETOTHERMODE_L, the high word
+     * likewise but with TEXTLUT forced to G_TT_RGBA16 (these are CI textures;
+     * the routine owns the palette load). Verified against the cxd4 LLE RSP
+     * in both contexts that previously seemed to need different constants:
      *
-     * The low word is 0x00504244 for both CI4 and CI8. The earlier code folded
-     * 0x810 into a separate CI4 constant (0x00504a54), so 1:1 CI4 glyphs were
-     * emitted with z_compare_en set; at the race-start camera pan -- where the
-     * craft and track write near-plane Z across the HUD band -- the entire text
-     * overlay then lost the depth test and vanished, diverging from the LLE RSP
-     * which leaves z-compare off for every unscaled sprite regardless of texel
-     * size. Key the z bits on the step, matching cxd4. */
-    if (dsdx != 0x400u || dtdy != 0x400u) {
-        w[0] = (int32_t)0xef00acffu;                       /* sample_type = 1 */
-        w[1] = (int32_t)(0x00504244u | 0x810u);
-    } else {
-        w[0] = (int32_t)0xef008cffu;                       /* sample_type = 0 */
-        w[1] = (int32_t)0x00504244u;
-    }
+     * - Race HUD: the game runs with 0x00504244 (z-compare off, point
+     *   sampled), so every 1:1 atlas glyph -- CHECK / POSITION / LAP --
+     *   composites over the near-plane geometry at the race-start camera pan.
+     * - Game-select menu: the game sets 0x00504a50 (z_compare_en +
+     *   z_mode.transparent) with G_SETOTHERMODE_L before the 32x30 backdrop
+     *   tiles, then back for the text glyphs. The backdrop therefore z-fails
+     *   over the spinning centre logo (drawn first, closer Z) and the logo
+     *   stays solid red; emitting the glyph constant here instead let the
+     *   tiles overwrite the logo, leaving a dark embossed silhouette.
+     * - The stretched rippling overlay (dsdx=0x0c8) is drawn while the game's
+     *   shadow holds 0x00504a54 / bilinear (othermode_h sample_type set), so
+     *   the previous step-keyed |0x810 and sample-type selection fall out of
+     *   the shadow naturally in both the menu and the race.
+     *
+     * Two ucode-fixed details remain: the 0xEF tag byte, and TEXTLUT --
+     * bits 14-15 of the high word are cleared and set to 2 (G_TT_RGBA16). */
+    w[0] = (int32_t)(0xef000000u | (s_othermode_h & 0x00ff3fffu) | 0x8000u);
+    w[1] = (int32_t)s_othermode_l;
     rdp_fifo_append(fifo, w, 2);
+    /* The routine writes this othermode back into the shared DMEM shadow, so
+     * the game's later partial G_SETOTHERMODE_H/L merges re-emit with TEXTLUT
+     * still enabled -- the LLE RSP shows 8cff/acff (not 0cff/2cff) on every
+     * re-emission that follows a sprite. Mirror that into the walker shadow. */
+    s_othermode_h = (s_othermode_h & ~0x0000c000u) | 0x8000u;
     /* texture: SETTIMG -> SETTILE(load), then a per-band SYNC_LOAD ->
      * LOADTILE -> PIPESYNC -> SETTILE(rend) -> SETTILESIZE -> TEXRECT.
      *
@@ -217,8 +236,10 @@ static void f3d_emit_sprite(RdpFifo *fifo, unsigned int pos)
             rdp_fifo_append(fifo, w, 2);
             w[0] = (int32_t)(0xe4000000u | (xl2 << 12) | yl2);
             w[1] = (int32_t)((xh << 12) | yh);
-            w[2] = 0;
-            w[3] = (int32_t)((dsdx << 16) | dtdy);
+            w[2] = (int32_t)(((sflip ? ((width - 1u) << 5) : ssub) << 16)
+                             | (tflip ? ((s2 - s1) << 5) : 0u));
+            w[3] = (int32_t)(((sflip ? ((0x10000u - dsdx) & 0xffffu) : dsdx) << 16)
+                             | (tflip ? ((0x10000u - dtdy) & 0xffffu) : dtdy));
             rdp_fifo_append(fifo, w, 4);
         } else {
             /* TMEM-limited: split into vertical bands of (max_rows) texels with
@@ -232,6 +253,15 @@ static void f3d_emit_sprite(RdpFifo *fifo, unsigned int pos)
                                ? ((((adv << 12) + dt4 - 1u) / dt4) << 2)
                                : (adv << 2);
             unsigned int bfrac = ((bandh * dtdy) >> 7) - (adv << 5);
+            /* T-mirrored pass: the microcode walks the same screen bands but
+             * loads each band's mirrored row range [end-th, end-tl] and steps
+             * T backwards from the far edge. Its descending accumulator is
+             * the ceiling counterpart of the ascending pass's floor: each
+             * band's global start is (end<<5) - b*ceil(bandh*dtdy/128),
+             * reproduced bit-exactly from the LLE RSP's three overlay bands
+             * (0x3e0 / 0x3dc / 0x038 with ults 33 / 2 / 0). */
+            unsigned int tend  = s1 + disph;
+            unsigned int cstep = ((bandh * dtdy) + 127u) >> 7;
             unsigned int b;
             for (b = 0u; b * adv < disph; b++) {
                 unsigned int tl   = s1 + b * adv;
@@ -242,10 +272,14 @@ static void f3d_emit_sprite(RdpFifo *fifo, unsigned int pos)
                 unsigned int yl_b = ((b + 1u) * bandh < full_h)
                                   ? ((b + 1u) * bandh) : full_h;
                 unsigned int tc   = b * bfrac;
+                unsigned int ldl  = tflip ? (tend - th) : tl;
+                unsigned int ldh  = tflip ? (tend - tl) : th;
+                if (tflip)
+                    tc = ((tend << 5) - b * cstep) - (ldl << 5);
 
                 w[0] = (int32_t)0xe6000000u; w[1] = 0;       rdp_fifo_append(fifo, w, 2);
-                w[0] = (int32_t)(0xf4000000u | (loadsl << 12) | (tl << 2));
-                w[1] = (int32_t)((7u << 24) | (loadsh << 12) | (th << 2));
+                w[0] = (int32_t)(0xf4000000u | (loadsl << 12) | (ldl << 2));
+                w[1] = (int32_t)((7u << 24) | (loadsh << 12) | (ldh << 2));
                 rdp_fifo_append(fifo, w, 2);
                 w[0] = (int32_t)0xe7000000u; w[1] = 0;       rdp_fifo_append(fifo, w, 2);
                 w[0] = (int32_t)(0xf5000000u | (fmt << 21) | (siz << 19) | (line << 9));
@@ -255,8 +289,9 @@ static void f3d_emit_sprite(RdpFifo *fifo, unsigned int pos)
                 rdp_fifo_append(fifo, w, 2);
                 w[0] = (int32_t)(0xe4000000u | (xl2 << 12) | yl_b);
                 w[1] = (int32_t)((xh << 12) | yh_b);
-                w[2] = (int32_t)tc;
-                w[3] = (int32_t)((dsdx << 16) | dtdy);
+                w[2] = (int32_t)(((sflip ? ((width - 1u) << 5) : ssub) << 16) | tc);
+                w[3] = (int32_t)(((sflip ? ((0x10000u - dsdx) & 0xffffu) : dsdx) << 16)
+                                 | (tflip ? ((0x10000u - dtdy) & 0xffffu) : dtdy));
                 rdp_fifo_append(fifo, w, 4);
             }
         }
@@ -1032,6 +1067,7 @@ void f3d_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
             if (s_spr_have)
             {
                 s_spr_size = w1;
+                s_spr_flip = (unsigned int)w0 & 0xffffu;
                 break;
             }
             /* gSPCullDisplayList: rejects the whole list if a vertex span is
