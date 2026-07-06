@@ -941,11 +941,13 @@ void f3d_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
 
         case F3D_SETGEOMETRYMODE:
             s_geom |= w1;
+            s_textured = (int)((s_geom >> 1) & 1u);
             gsp_set_geometry_mode(gsp, f3d_xlate_geom(s_geom));
             break;
 
         case F3D_CLEARGEOMETRYMODE:
             s_geom &= ~w1;
+            s_textured = (int)((s_geom >> 1) & 1u);
             gsp_set_geometry_mode(gsp, f3d_xlate_geom(s_geom));
             break;
 
@@ -956,7 +958,18 @@ void f3d_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
             int tile  = (int)((w0 >> 8) & 0x07);
             unsigned int ss = (unsigned int)((w1 >> 16) & 0xffff);
             unsigned int ts = (unsigned int)(w1 & 0xffff);
-            s_textured = (on != 0) ? 1 : 0;
+            /* The microcode's G_TEXTURE handler folds the on flag into
+             * bit 1 of the geometry-mode word (G_TEXTURE_ENABLE) --
+             * Silicon Valley's build at 0x1248: lh geom+2; andi 0xfffd;
+             * on<<1; or; sh -- and the triangle write forms its RDP
+             * opcode as 0xC8 | (geometry mode & 0xff) (its 0x1a78/0x1a8c:
+             * lb geom.byte3; ori 0xc8). A gSPClearGeometryMode covering
+             * bit 1 therefore turns texturing off with no further
+             * G_TEXTURE command; Silicon Valley clears 0xFFFFFFFF per
+             * world cell and re-enables selectively. Track the bit in
+             * the shadow word and derive the textured flag from it. */
+            s_geom = (s_geom & ~2u) | ((on != 0) ? 2u : 0u);
+            s_textured = (int)((s_geom >> 1) & 1u);
             /* A G_TEXTURE carrying a zero S/T scale must not overwrite the
              * active scale that bakes vertex texcoords. Wipeout 64's custom
              * ucode emits 0xBB commands with w1==0 (both on==0 and on==1)
