@@ -42,6 +42,19 @@ void alist_repeat64(struct hle_t* hle, uint16_t dmemo, uint16_t dmemi, uint8_t c
 void alist_copy_blocks(struct hle_t* hle, uint16_t dmemo, uint16_t dmemi, uint16_t block_size, uint8_t count);
 void alist_interleave(struct hle_t* hle, uint16_t dmemo, uint16_t left, uint16_t right, uint16_t count);
 
+void alist_envmix_audio1(
+        struct hle_t* hle,
+        bool init,
+        bool aux,
+        uint16_t dmem_dl, uint16_t dmem_dr,
+        uint16_t dmem_wl, uint16_t dmem_wr,
+        uint16_t dmemi, uint16_t count,
+        int16_t dry, int16_t wet,
+        const int16_t *vol,
+        const int16_t *target,
+        const int32_t *rate,
+        uint32_t address);
+
 void alist_envmix_exp(
         struct hle_t* hle,
         bool init,

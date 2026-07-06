@@ -263,6 +263,220 @@ void alist_interleave(struct hle_t* hle, uint16_t dmemo, uint16_t left, uint16_t
 }
 
 
+/* ENVMIXER as the audio 1.0 aspMain microcode computes it: the state is
+ * the raw 0x50-byte DMEM image of five vector quads -- the left volume
+ * hi/lo pair, the right volume hi/lo pair, and a parameter vector of
+ * [l_target, l_rate_hi, l_rate_lo, r_target, r_rate_hi, r_rate_lo, dry,
+ * wet] -- and games seed that image from the CPU and start voices with
+ * non-init commands, so the layout is a contract, not an internal
+ * detail. Each 8-sample block multiplies the per-lane 32-bit volumes by
+ * the Q16.16 rate through the vmudl/vmadm/vmadn/vmadh idiom (the RSP's
+ * saturations included) and clamps the result to the target, and each
+ * sample mixes as clamp((2*dst*0x7fff + 2*in*gain + 0x8000) >> 16) --
+ * one vmulf/vmacf accumulator, not an integer add. */
+static int16_t audio1_acc_hi(int64_t acc)
+{
+    int64_t v = acc >> 16;
+    if (v > 32767) return 32767;
+    if (v < -32768) return -32768;
+    return (int16_t)v;
+}
+
+static uint16_t audio1_acc_lo(int64_t acc)
+{
+    int64_t hi = acc >> 31;
+    if (hi == 0 || hi == -1)
+        return (uint16_t)(acc & 0xffff);
+    return (acc < 0) ? 0u : 0xffffu;
+}
+
+void alist_envmix_audio1(
+        struct hle_t* hle,
+        bool init,
+        bool aux,
+        uint16_t dmem_dl, uint16_t dmem_dr,
+        uint16_t dmem_wl, uint16_t dmem_wr,
+        uint16_t dmemi, uint16_t count,
+        int16_t dry, int16_t wet,
+        const int16_t *vol,
+        const int16_t *target,
+        const int32_t *rate,
+        uint32_t address)
+{
+    const int16_t* const in = (int16_t*)(hle->alist_buffer + dmemi);
+    int16_t* const dl = (int16_t*)(hle->alist_buffer + dmem_dl);
+    int16_t* const dr = (int16_t*)(hle->alist_buffer + dmem_dr);
+    int16_t* const wl = (int16_t*)(hle->alist_buffer + dmem_wl);
+    int16_t* const wr = (int16_t*)(hle->alist_buffer + dmem_wr);
+
+    int16_t  lhi[8], rhi[8];
+    uint16_t llo[8], rlo[8];
+    int16_t  params[8];
+    unsigned i, ptr = 0;
+
+    /* On init the microcode interpolates the eight volume lanes from
+     * the base volume toward vol * rate through the ramp-fraction table
+     * [0x2000..0xffff], which seeds the per-sample stagger the steady
+     * blocks then carry multiplicatively; the base volume's low half
+     * starts at zero. */
+    if (init) {
+        static const uint16_t frac[8] = {
+            0x2000, 0x4000, 0x6000, 0x8000, 0xa000, 0xc000, 0xe000, 0xffff
+        };
+        int64_t acc;
+        int32_t dhi_l, dhi_r;
+        uint16_t dlo_l, dlo_r;
+
+        params[0] = target[0];
+        params[1] = (int16_t)(rate[0] >> 16);
+        params[2] = (int16_t)(rate[0] & 0xffff);
+        params[3] = target[1];
+        params[4] = (int16_t)(rate[1] >> 16);
+        params[5] = (int16_t)(rate[1] & 0xffff);
+        params[6] = dry;
+        params[7] = wet;
+
+        /* delta = vol * rate - (vol:stale_lo), as the vmudm/vmadh pair
+         * followed by the borrow subtract computes it */
+        acc  = (int64_t)vol[0] * (uint16_t)params[2];
+        acc += ((int64_t)vol[0] * params[1]) << 16;
+        dlo_l = (uint16_t)(acc & 0xffff);
+        dhi_l = audio1_acc_hi(acc);
+        {
+            dhi_l = dhi_l - vol[0];
+        }
+        acc  = (int64_t)vol[1] * (uint16_t)params[5];
+        acc += ((int64_t)vol[1] * params[4]) << 16;
+        dlo_r = (uint16_t)(acc & 0xffff);
+        dhi_r = audio1_acc_hi(acc);
+        {
+            dhi_r = dhi_r - vol[1];
+        }
+
+        for (i = 0; i < 8; ++i) {
+            acc  = ((int64_t)((uint32_t)frac[i] * dlo_l)) >> 16;
+            acc += (int64_t)frac[i] * (int16_t)dhi_l;
+            acc += ((int64_t)1 * vol[0]) << 16;
+            lhi[i] = audio1_acc_hi(acc);
+            llo[i] = audio1_acc_lo(acc);
+
+            acc  = ((int64_t)((uint32_t)frac[i] * dlo_r)) >> 16;
+            acc += (int64_t)frac[i] * (int16_t)dhi_r;
+            acc += ((int64_t)1 * vol[1]) << 16;
+            rhi[i] = audio1_acc_hi(acc);
+            rlo[i] = audio1_acc_lo(acc);
+        }
+
+        /* the first block's volumes clamp to the target before use */
+        for (i = 0; i < 8; ++i) {
+            lhi[i] = (params[1] > 0)
+                ? (lhi[i] > params[0] ? params[0] : lhi[i])
+                : (lhi[i] < params[0] ? params[0] : lhi[i]);
+            rhi[i] = (params[4] > 0)
+                ? (rhi[i] > params[3] ? params[3] : rhi[i])
+                : (rhi[i] < params[3] ? params[3] : rhi[i]);
+        }
+
+        {
+            int16_t lgd[8], lgw[8], rgd[8], rgw[8];
+            for (i = 0; i < 8; ++i) {
+                lgd[i] = clamp_s16((int32_t)(((int64_t)2*lhi[i]*params[6] + 0x8000) >> 16));
+                lgw[i] = clamp_s16((int32_t)(((int64_t)2*lhi[i]*params[7] + 0x8000) >> 16));
+                rgd[i] = clamp_s16((int32_t)(((int64_t)2*rhi[i]*params[6] + 0x8000) >> 16));
+                rgw[i] = clamp_s16((int32_t)(((int64_t)2*rhi[i]*params[7] + 0x8000) >> 16));
+            }
+            for (i = 0; i < 8 && count >= 2; ++i, ++ptr, count -= 2) {
+                int16_t x = in[ptr^S];
+                acc = (int64_t)2*dl[ptr^S]*32767 + 0x8000 + (int64_t)2*x*lgd[i];
+                dl[ptr^S] = audio1_acc_hi(acc);
+                acc = (int64_t)2*dr[ptr^S]*32767 + 0x8000 + (int64_t)2*x*rgd[i];
+                dr[ptr^S] = audio1_acc_hi(acc);
+                if (aux) {
+                    acc = (int64_t)2*wl[ptr^S]*32767 + 0x8000 + (int64_t)2*x*lgw[i];
+                    wl[ptr^S] = audio1_acc_hi(acc);
+                    acc = (int64_t)2*wr[ptr^S]*32767 + 0x8000 + (int64_t)2*x*rgw[i];
+                    wr[ptr^S] = audio1_acc_hi(acc);
+                }
+            }
+        }
+    } else {
+        for (i = 0; i < 8; ++i) {
+            lhi[i] = (int16_t)*dram_u16(hle, address + i*2);
+            llo[i] = *dram_u16(hle, address + 0x10 + i*2);
+            rhi[i] = (int16_t)*dram_u16(hle, address + 0x20 + i*2);
+            rlo[i] = *dram_u16(hle, address + 0x30 + i*2);
+        }
+        for (i = 0; i < 8; ++i)
+            params[i] = (int16_t)*dram_u16(hle, address + 0x40 + i*2);
+    }
+
+    for (; count >= 16; count -= 16) {
+        int16_t lgain_dry[8], lgain_wet[8], rgain_dry[8], rgain_wet[8];
+
+        /* per-lane 32-bit volume *= Q16.16 rate, RSP saturations included */
+        for (i = 0; i < 8; ++i) {
+            int64_t acc;
+            int16_t hi;
+
+            acc  = ((int64_t)((uint32_t)llo[i] * (uint16_t)params[2])) >> 16;
+            acc += (int64_t)lhi[i] * (uint16_t)params[2];
+            acc += (int64_t)llo[i] * params[1];
+            acc += ((int64_t)lhi[i] * params[1]) << 16;
+            hi = audio1_acc_hi(acc);
+            llo[i] = audio1_acc_lo(acc);
+            /* rate is Q16.16: a nonzero integer part means the volume
+             * is rising and the microcode clips it to the target from
+             * above (vcl); a pure fraction is a decay and the target is
+             * a floor (vge). The direction registers are literally the
+             * rate-hi lanes read back out of the parameter vector. */
+            lhi[i] = (params[1] > 0)
+                ? (hi > params[0] ? params[0] : hi)
+                : (hi < params[0] ? params[0] : hi);
+
+            acc  = ((int64_t)((uint32_t)rlo[i] * (uint16_t)params[5])) >> 16;
+            acc += (int64_t)rhi[i] * (uint16_t)params[5];
+            acc += (int64_t)rlo[i] * params[4];
+            acc += ((int64_t)rhi[i] * params[4]) << 16;
+            hi = audio1_acc_hi(acc);
+            rlo[i] = audio1_acc_lo(acc);
+            rhi[i] = (params[4] > 0)
+                ? (hi > params[3] ? params[3] : hi)
+                : (hi < params[3] ? params[3] : hi);
+        }
+
+        for (i = 0; i < 8; ++i) {
+            lgain_dry[i] = clamp_s16((int32_t)(((int64_t)2*lhi[i]*params[6] + 0x8000) >> 16));
+            lgain_wet[i] = clamp_s16((int32_t)(((int64_t)2*lhi[i]*params[7] + 0x8000) >> 16));
+            rgain_dry[i] = clamp_s16((int32_t)(((int64_t)2*rhi[i]*params[6] + 0x8000) >> 16));
+            rgain_wet[i] = clamp_s16((int32_t)(((int64_t)2*rhi[i]*params[7] + 0x8000) >> 16));
+        }
+
+        for (i = 0; i < 8; ++i, ++ptr) {
+            int16_t x = in[ptr^S];
+            int64_t acc;
+
+            acc = (int64_t)2*dl[ptr^S]*32767 + 0x8000 + (int64_t)2*x*lgain_dry[i];
+            dl[ptr^S] = audio1_acc_hi(acc);
+            acc = (int64_t)2*dr[ptr^S]*32767 + 0x8000 + (int64_t)2*x*rgain_dry[i];
+            dr[ptr^S] = audio1_acc_hi(acc);
+            if (aux) {
+                acc = (int64_t)2*wl[ptr^S]*32767 + 0x8000 + (int64_t)2*x*lgain_wet[i];
+                wl[ptr^S] = audio1_acc_hi(acc);
+                acc = (int64_t)2*wr[ptr^S]*32767 + 0x8000 + (int64_t)2*x*rgain_wet[i];
+                wr[ptr^S] = audio1_acc_hi(acc);
+            }
+        }
+    }
+
+    for (i = 0; i < 8; ++i) {
+        *dram_u16(hle, address + i*2)        = (uint16_t)lhi[i];
+        *dram_u16(hle, address + 0x10 + i*2) = llo[i];
+        *dram_u16(hle, address + 0x20 + i*2) = (uint16_t)rhi[i];
+        *dram_u16(hle, address + 0x30 + i*2) = rlo[i];
+        *dram_u16(hle, address + 0x40 + i*2) = (uint16_t)params[i];
+    }
+}
+
 void alist_envmix_exp(
         struct hle_t* hle,
         bool init,
@@ -1056,9 +1270,20 @@ void alist_polef(
             frame[i] = *alist_s16(hle, dmemi);
 
         for(i = 0; i < 8; ++i) {
-            int32_t accu = frame[i] * gain;
-            accu += h1[i]*l1 + h2_before[i]*l2 + rdot(i, h2, frame);
-            dst[i^S] = clamp_s16(accu >> 14);
+            /* The microcode accumulates every term -- the gained input,
+             * the two recursive taps and the staircase dot product --
+             * in the RSP's 48-bit accumulator and only saturates the
+             * final >> 14 read-out. Up to eleven full-scale 32-bit
+             * products go in, which overflows a 32-bit sum: the first
+             * loud passage through the filter wraps instead of
+             * saturating and the output picks up broadband error
+             * against the LLE RSP. */
+            unsigned j;
+            int64_t accu = (int64_t)frame[i] * gain;
+            accu += (int64_t)h1[i] * l1 + (int64_t)h2_before[i] * l2;
+            for(j = 0; j < i; ++j)
+                accu += (int64_t)h2[j] * frame[i - 1 - j];
+            dst[i^S] = clamp_s16((int32_t)(accu >> 14));
         }
 
         l1 = dst[6^S];

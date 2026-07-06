@@ -70,7 +70,7 @@ static void ENVMIXER(struct hle_t* hle, uint32_t w1, uint32_t w2)
     uint8_t  flags   = (w1 >> 16);
     uint32_t address = get_address(hle, w2);
 
-    alist_envmix_exp(
+    alist_envmix_audio1(
             hle,
             flags & A_INIT,
             flags & A_AUX,
