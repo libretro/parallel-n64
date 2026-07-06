@@ -461,9 +461,14 @@ int f3d_is_wr64_ucode(const unsigned char *rdram, unsigned int rdram_size,
 int f3d_is_seta_ucode(const unsigned char *rdram, unsigned int rdram_size,
                       unsigned int text)
 {
+    unsigned int cs;
     if (rdram == 0 || text == 0)
         return 0;
-    return f3d_text_crc(rdram, rdram_size, text) == 0x99b3558au;
+    cs = f3d_text_crc(rdram, rdram_size, text);
+    /* 0x99b3.. = the "2.0D, 04-01-96" build (Eikou no Saint Andrews);
+     * 0x8eb6.. = the "2.0G, 09-30-96" revision (Morita Shougi 64) -- same
+     * zeroed boot slot, data layout, and display-list conventions. */
+    return cs == 0x99b3558au || cs == 0x8eb6aa3fu;
 }
 
 /* Blast Corps' line-capable Fast3D build (the J-Bomb bonus-stage select and
