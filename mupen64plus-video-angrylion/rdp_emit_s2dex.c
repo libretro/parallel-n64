@@ -74,7 +74,8 @@ static unsigned int s_obj_rendermode;
 
 /* DMEM 0x204/0x208: scissor fields split from the G_SETSCISSOR passthrough
  * (shared splitter at IMEM 0x158-0x18c): 10.2 ulx/lrx and uly/lry. */
-static unsigned int s_scis_ulx, s_scis_uly, s_scis_lrx, s_scis_lry;
+static unsigned int s_scis_ulx = 0, s_scis_uly = 0;
+static unsigned int s_scis_lrx = 0x500, s_scis_lry = 0x3c0;
 
 void s2dex_set_obj_rendermode(unsigned int w1)
 {
@@ -85,7 +86,7 @@ void s2dex_set_obj_rendermode(unsigned int w1)
  * texture rectangles while the S2DEX2 microcode is loaded (its
  * background renderers may leave a narrowed scissor behind, so the
  * rectangle handler restores the list's scissor first). */
-static unsigned int s_scis_w0, s_scis_w1;
+static unsigned int s_scis_w0 = 0xed000000u, s_scis_w1 = 0x005003c0u;
 
 void s2dex_set_scissor(unsigned int w0, unsigned int w1)
 {
@@ -143,11 +144,15 @@ void s2dex_reset(void)
     s_obj_rendermode = 0;
     s_obj_drawn = 0;
     s_obj_rtile = 0;
-    s_scis_ulx = s_scis_uly = 0;
-    s_scis_lrx = 0x500;
-    s_scis_lry = 0x3c0;
-    s_scis_w0 = 0xed000000u;
-    s_scis_w1 = 0x005003c0u;
+    /* The scissor shadow deliberately survives the reset: the microcode
+     * writes its DMEM state back over the data segment at task end, so a
+     * scissor set in an earlier task persists into later ones. AI Shougi 3's
+     * title sets the 640x480 scissor in one task and draws its full-frame
+     * BG_COPY from the next with no scissor command of its own; re-seeding
+     * the shipped 320x240 default here clipped that background to the top-
+     * left quadrant. The one-time 320x240 seed (the static initialisers
+     * above) still covers lists that never set a scissor before their first
+     * background, e.g. Zelda's pre-rendered rooms after gSPLoadUcodeL. */
     s_obj_status[0] = s_obj_status[1] = 0;
     s_obj_status[2] = s_obj_status[3] = 0;
     s_obj_tile7_used = 0;
