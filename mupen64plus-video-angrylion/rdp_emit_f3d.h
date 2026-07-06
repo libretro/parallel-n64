@@ -30,6 +30,9 @@ void f3d_seg_reset(void);
 void f3d_set_rdram(unsigned char *rdram);
 void f3d_set_rdram_size(unsigned int size);
 void f3d_set_othermode_init(unsigned int h, unsigned int l);
+int f3d_is_bhline_ucode(const unsigned char *rdram, unsigned int rdram_size,
+                        unsigned int text);
+void f3d_set_variant_bhline(int bh);
 
 void f3d_set_variant(int doom64);
 void f3d_set_line_variant(int line);

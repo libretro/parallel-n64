@@ -1258,11 +1258,32 @@ static Rsp32 sub32(Rsp32 a, Rsp32 b)
  *   - the XL/DxL pair is never walked (zero rows) and is emitted as zero
  *     (Doom 64's build zeroes it; Blast Corps leaves stale DMEM there,
  *     which cannot be reproduced and renders identically). */
+/* Append the 4-word z coefficient block of a z-buffered line: the top
+ * endpoint's screen z as the base, the segment's z delta over its major
+ * span as DzDe (and DzDy, mirroring the shade convention of the line
+ * forms), and a zero DzDx: the line body is at most a few pixels wide,
+ * so the across-line depth step is visually irrelevant while the
+ * along-line interpolation carries the primitive's depth. Body
+ * Harvest's line build interpolates all three on the RSP; this is the
+ * linear approximation of its stream, not a transcription. */
+static void rsp_line_z_block(int32_t *zw, int32_t zh, int32_t zl,
+                             int32_t major_span_q)
+{
+    int32_t dzde = 0;
+    if (major_span_q > 0)
+        dzde = (int32_t)((((int64_t)zl - (int64_t)zh) * 4)
+                         / (int64_t)major_span_q);
+    zw[0] = zh;
+    zw[1] = 0;             /* DzDx */
+    zw[2] = dzde;          /* DzDe */
+    zw[3] = dzde;          /* DzDy */
+}
+
 static int rsp_line_write_xmajor(int32_t *cmd,
                                  const RspTriVtx *vh, const RspTriVtx *vl,
                                  int width_q, int32_t dx_scale,
                                  int32_t idy_scale, int32_t slope_mask,
-                                 int32_t *xl_dmem)
+                                 int32_t *xl_dmem, int zbuf)
 {
     int32_t h102 = (int32_t)(width_q + 3);          /* (wd+3)/4 px in 10.2 */
     int32_t yh102 = (int32_t)vh->y - h102;
@@ -1347,7 +1368,8 @@ static int rsp_line_write_xmajor(int32_t *cmd,
         }
     }
 
-    cmd[0] = (int32_t)(0xCC000000u | ((uint32_t)(lft & 1) << 23)
+    cmd[0] = (int32_t)((zbuf ? 0xCD000000u : 0xCC000000u)
+                       | ((uint32_t)(lft & 1) << 23)
                        | ((uint32_t)yl102 & 0x3fffu));
     /* The microcode stores the YH halfword register raw: a negative
      * top -- the width expansion or a clipped vertex's cap extension --
@@ -1385,12 +1407,19 @@ static int rsp_line_write_xmajor(int32_t *cmd,
     cmd[21] = (int32_t)((((uint32_t)dattr[2] & 0xffffu) << 16)
                         | ((uint32_t)dattr[3] & 0xffffu));
     cmd[22] = 0; cmd[23] = 0;
+    if (zbuf)
+    {
+        int32_t span = (int32_t)(int16_t)(vl->x - vh->x);
+        if (span < 0) span = -span;
+        rsp_line_z_block(cmd + 24, vh->z, vl->z, span);
+        return 28;
+    }
     return 24;
 }
 
 int rsp_line_write(int32_t *cmd, const RspTriVtx *e0, const RspTriVtx *e1,
                    int width_q, int32_t dx_scale, int32_t idy_scale,
-                   int32_t slope_mask, int32_t *xl_dmem)
+                   int32_t slope_mask, int32_t *xl_dmem, int zbuf)
 {
     const RspTriVtx *vh, *vl;
     int32_t half;                 /* (wd+3)/4 px in s15.16 */
@@ -1415,7 +1444,8 @@ int rsp_line_write(int32_t *cmd, const RspTriVtx *e0, const RspTriVtx *e1,
         if (yh_q < 0)
             yh_q = 0;
         lft = (e1->x <= e0->x) ? 1 : 0;
-        cmd[0] = (int32_t)(0xCC000000u | ((uint32_t)(lft & 1) << 23)
+        cmd[0] = (int32_t)((zbuf ? 0xCD000000u : 0xCC000000u)
+                           | ((uint32_t)(lft & 1) << 23)
                            | ((uint32_t)yl_q & 0x3fffu));
         cmd[1] = (int32_t)((((uint32_t)yl_q & 0x3fffu) << 16)
                            | ((uint32_t)yh_q & 0x3fffu));
@@ -1428,6 +1458,13 @@ int rsp_line_write(int32_t *cmd, const RspTriVtx *e0, const RspTriVtx *e1,
         cmd[9]  = (int32_t)((((uint32_t)e1->b & 0xffffu) << 16) | ((uint32_t)e1->a & 0xffffu));
         for (k = 10; k < 24; k++)
             cmd[k] = 0;
+        if (zbuf)
+        {
+            int32_t span = (int32_t)(int16_t)(e1->x - e0->x);
+            if (span < 0) span = -span;
+            rsp_line_z_block(cmd + 24, e1->z, e0->z, span);
+            return 28;
+        }
         return 24;
     }
 
@@ -1453,7 +1490,7 @@ int rsp_line_write(int32_t *cmd, const RspTriVtx *e0, const RspTriVtx *e1,
         if (adx > ady)
             return rsp_line_write_xmajor(cmd, vh, vl, width_q,
                                          dx_scale, idy_scale, slope_mask,
-                                         xl_dmem);
+                                         xl_dmem, zbuf);
     }
 
     /* The 14-bit command Y fields cannot encode negative coordinates:
@@ -1585,7 +1622,8 @@ int rsp_line_write(int32_t *cmd, const RspTriVtx *e0, const RspTriVtx *e1,
 
     {
         int32_t yh_emit = yh102 < 0 ? 0 : yh102;
-        cmd[0] = (int32_t)(0xCC000000u | (1u << 23) | ((uint32_t)yl102 & 0x3fffu));
+        cmd[0] = (int32_t)((zbuf ? 0xCD000000u : 0xCC000000u)
+                           | (1u << 23) | ((uint32_t)yl102 & 0x3fffu));
         cmd[1] = (int32_t)((((uint32_t)yl102 & 0x3fffu) << 16)
                            | ((uint32_t)yh_emit & 0x3fffu));
     }
@@ -1609,6 +1647,13 @@ int rsp_line_write(int32_t *cmd, const RspTriVtx *e0, const RspTriVtx *e1,
     cmd[21] = (int32_t)((((uint32_t)dattr[2] & 0xffffu) << 16)
                         | ((uint32_t)dattr[3] & 0xffffu));
     cmd[22] = cmd[20]; cmd[23] = cmd[21];              /* DrDy frac */
+    if (zbuf)
+    {
+        int32_t span = (int32_t)(int16_t)(yl102 - yh102);
+        if (span < 0) span = -span;
+        rsp_line_z_block(cmd + 24, vh->z, vl->z, span);
+        return 28;
+    }
     return 24;
 }
 

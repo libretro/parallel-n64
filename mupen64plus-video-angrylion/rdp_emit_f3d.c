@@ -444,6 +444,21 @@ static unsigned int f3d_text_crc(const unsigned char *rdram,
  * byte, and gSP1Triangle/G_QUAD index vertices times five (SM64 times ten,
  * Doom 64 times two). Detected by text CRC so SM64 and Doom 64 keep their own
  * decodes. */
+/* Body Harvest's custom F3DEX-derived build implements gSPLine3DW on
+ * 0xB5 (stock F3DEX leaves it a no-op; F3DLX repurposes it as G_QUAD):
+ * the enemies' plasma bolts are z-buffered shaded line segments.
+ * Detected by text CRC so the fam-1 default keeps the quad decode. */
+int f3d_is_bhline_ucode(const unsigned char *rdram, unsigned int rdram_size,
+                        unsigned int text)
+{
+    if (rdram == 0 || text == 0)
+        return 0;
+    return f3d_text_crc(rdram, rdram_size, text) == 0x9c727d8eu;
+}
+
+static int s_variant_bhline = 0;
+void f3d_set_variant_bhline(int bh) { s_variant_bhline = bh ? 1 : 0; }
+
 int f3d_is_wr64_ucode(const unsigned char *rdram, unsigned int rdram_size,
                       unsigned int text)
 {
@@ -629,9 +644,13 @@ void f3d_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
             gsp->clip_fan_first = 2;
             gsp->clip_ratio = 1;
         }
-        gsp->fog_off = (s_variant_line && s_variant_d64) ? 1 : 0;
-        gsp->line_alpha_mask = (s_variant_line && s_variant_d64) ? 1 : 0;
-        gsp->line_clip_3d = (s_variant_line && s_variant_d64) ? 1 : 0;
+        gsp->fog_off = (s_variant_line && s_variant_d64
+                        && !s_variant_bhline) ? 1 : 0;
+        gsp->line_alpha_mask = (s_variant_line && s_variant_d64
+                                && !s_variant_bhline) ? 1 : 0;
+        gsp->line_clip_3d = (s_variant_line && s_variant_d64
+                             && !s_variant_bhline) ? 1 : 0;
+        gsp->line_z = s_variant_bhline;
         gsp->line_xl[0] = 0;
         gsp->line_xl[1] = 0;
         s_spr_have = 0;

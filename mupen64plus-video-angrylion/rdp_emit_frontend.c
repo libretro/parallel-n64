@@ -1465,7 +1465,8 @@ int gsp_line(GSPState *s, int32_t *cmd, int i0, int i1, int width_q)
         int n = rsp_line_write(cmd + 2, &r[0], &r[1], width_q,
                                s->viewport.tri_dx_scale ? s->viewport.tri_dx_scale : 0x4000,
                                s->viewport.tri_idy_scale ? s->viewport.tri_idy_scale : 0x0008,
-                               (int32_t)0xfff8, s->line_xl);
+                               (int32_t)0xfff8, s->line_xl,
+                               s->line_z && (s->geometry_mode & GEOM_ZBUFFER));
         if (n == 0 || !s->scis_valid)
         {
             int k;

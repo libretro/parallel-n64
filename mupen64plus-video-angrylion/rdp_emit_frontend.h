@@ -93,6 +93,9 @@ typedef struct GSPState
      * build) have no lighting or fog block: vertex alpha stays the display
      * list's raw byte even with G_FOG set in the geometry mode. */
     int fog_off;
+    int line_z;            /* Body Harvest's line build: z-buffered lines
+                              (emit the triangle's z block, interpolated
+                              along the segment) */
     int line_alpha_mask;   /* gspL3DEX: shade alpha & 0xfc on line commands */
     int line_clip_3d;      /* gspL3DEX: 3D-clip flagged line segments; Blast
                               Corps' Fast3D line build draws them raw */

@@ -54,7 +54,7 @@ typedef struct RspTriVtx
  * setup constants; see GSPState tri_dx_scale and friends. */
 int rsp_line_write(int32_t *cmd, const RspTriVtx *e0, const RspTriVtx *e1,
                    int width_q, int32_t dx_scale, int32_t idy_scale,
-                   int32_t slope_mask, int32_t *xl_dmem);
+                   int32_t slope_mask, int32_t *xl_dmem, int zbuf);
 int rsp_tri_write(int32_t *ew,
                   const RspTriVtx *v1c, const RspTriVtx *v2c,
                   const RspTriVtx *v3c,

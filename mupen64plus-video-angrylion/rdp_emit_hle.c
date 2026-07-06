@@ -732,11 +732,13 @@ void rdp_emit_hle_process_dlist(void)
              * plain decode with the line opcode enabled. */
             {
                 int bcline = f3d_is_bcline_ucode(rdram, rdram_size, ut);
+                int bhline = f3d_is_bhline_ucode(rdram, rdram_size, ut);
                 f3d_set_variant(!bcline && !seta
                                 && (fam != 0
                                     || f3dex1_data_family(rdram, rdram_size, ud)
                                     || gbi1_oth));
-                f3d_set_line_variant(fam == 2 || bcline);
+                f3d_set_line_variant(fam == 2 || bcline || bhline);
+                f3d_set_variant_bhline(bhline);
                 f3d_set_variant_ff2d(f3d_is_ff2d_ucode(rdram, rdram_size, ut));
             }
             f3d_set_variant_wr64(f3d_is_wr64_ucode(rdram, rdram_size, ut));
