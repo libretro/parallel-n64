@@ -161,14 +161,21 @@ static int32_t rsp_div_core(int32_t in32)
     if (data < 0)
         data = (data >= -32768) ? -data : ~data;
 
-    addr = data;
+    /* Normalize in unsigned arithmetic: the loop shifts the operand's
+     * leading one up into bit 31, and doing that on a signed int is a
+     * signed overflow the optimizer may assume away -- at -O2 the value-
+     * range assumption perturbed the reciprocal, and with it every
+     * attribute slope downstream, differently per surrounding codegen. */
     shift = 0;
-    if (data != 0)
     {
-        for (shift = 0; addr >= 0; addr <<= 1, shift++)
-            ;
+        uint32_t ua = (uint32_t)data;
+        if (data != 0)
+        {
+            for (shift = 0; (ua & 0x80000000u) == 0u; ua <<= 1, shift++)
+                ;
+        }
+        addr = (int32_t)((ua >> 22) & 0x1ffu);
     }
-    addr = (addr >> 22) & 0x1ff;
     shift ^= 31;
     out = (int32_t)((0x40000000u | ((uint32_t)div_rom[addr] << 14)) >> shift);
     if (in32 == 0)
@@ -203,14 +210,21 @@ int32_t rsp_rsq32(int32_t in32)
     if (data < 0)
         data = (data >= -32768) ? -data : ~data;
 
-    addr = data;
+    /* Normalize in unsigned arithmetic: the loop shifts the operand's
+     * leading one up into bit 31, and doing that on a signed int is a
+     * signed overflow the optimizer may assume away -- at -O2 the value-
+     * range assumption perturbed the reciprocal, and with it every
+     * attribute slope downstream, differently per surrounding codegen. */
     shift = 0;
-    if (data != 0)
     {
-        for (shift = 0; addr >= 0; addr <<= 1, shift++)
-            ;
+        uint32_t ua = (uint32_t)data;
+        if (data != 0)
+        {
+            for (shift = 0; (ua & 0x80000000u) == 0u; ua <<= 1, shift++)
+                ;
+        }
+        addr = (int32_t)((ua >> 22) & 0x1ffu);
     }
-    addr = (addr >> 22) & 0x1ff;
     addr &= 0x1fe;
     addr |= 0x200 | (shift & 1);
     shift ^= 31;
