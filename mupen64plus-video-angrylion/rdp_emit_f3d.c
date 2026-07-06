@@ -1198,6 +1198,32 @@ void f3d_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
              * below. A stray RDPHALF outside a texrect is a no-op. */
             break;
 
+        case 0xB0:
+        {
+            /* G_BRANCHZ (gsSPBranchLessZ / gsSPBranchLessZraw, GBI 1): branch
+             * -- not call -- to the display list staged by the preceding
+             * G_RDPHALF_1 when the referenced vertex's 32-bit screen-Z word
+             * is below the command's threshold. w0 packs the vertex index
+             * twice (bits 12-23 as index*5, bits 0-11 as index*2); the
+             * F3DEX 1.x line compares the stored screen Z, the same
+             * vertex+0x1c word its F3DEX2 successor loads. Choro Q 64
+             * LOD-selects every racer with it -- the chase-cam car sits
+             * closest, so dropping the opcode left the player's own car
+             * invisible (its hi-LOD sub-list was never entered). */
+            int bv = (int)((w0 & 0xfffu) >> 1);
+            unsigned int ba = seg_rsp(s_last_rdphalf1) & 0x00ffffffu;
+            unsigned int pw = (pc >= 16u) ? rd32(r, pc - 16u) : 0u;
+            /* The gbi macros always emit the pair G_RDPHALF_1 + G_BRANCHZ
+             * back to back, so require the staged address to come from the
+             * immediately preceding command; a fork that repurposes the
+             * 0xB0 byte then never takes a branch off a stale slot. */
+            if (((pw >> 24) & 0xffu) == F3D_RDPHALF_1
+                && bv >= 0 && bv < GSP_MAX_VERTICES && in_range(ba, 8u)
+                && gsp->vtx[bv].scr_z < (int32_t)w1)
+                pc = ba;
+            break;
+        }
+
         case F3D_RDPHALF_1:
             /* gsSPLoadUcode stages the new microcode's data address through
              * G_RDPHALF_1 immediately before G_LOAD_UCODE; remember it for
