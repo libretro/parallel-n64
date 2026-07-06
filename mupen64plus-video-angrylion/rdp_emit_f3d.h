@@ -40,7 +40,10 @@ int  f3d_is_bcline_ucode(const unsigned char *rdram, unsigned int rdram_size,
                          unsigned int text);
 int  f3d_is_wr64_ucode(const unsigned char *rdram, unsigned int rdram_size,
                        unsigned int text);
+int  f3d_is_seta_ucode(const unsigned char *rdram, unsigned int rdram_size,
+                       unsigned int text);
 void f3d_set_variant_wr64(int wr64);
+void f3d_set_variant_seta(int v);
 void f3d_set_variant_wo64(int wo64);
 void f3d_set_variant_f3dex(int v);
 

@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 /* rdp_emit_f3d.c -- F3D (Fast3D / "RSP SW 2.0X") display-list dispatcher for
  * the angrylion HLE path. See rdp_emit_f3d.h.
  *
@@ -336,6 +337,9 @@ static int in_range(unsigned int a, unsigned int bytes)
  *   F3D G_CULL_BACK      0x002000 -> F3DEX2 0x000400
  * All other bits (G_ZBUFFER/G_SHADE/G_FOG/G_LIGHTING/G_TEXTURE_GEN/...) share
  * the same position in both. */
+static int s_variant_seta = 0;
+void f3d_set_variant_seta(int v) { s_variant_seta = v ? 1 : 0; }
+
 static unsigned int f3d_xlate_geom(unsigned int m)
 {
     unsigned int o = m & ~(0x000200u | 0x001000u | 0x002000u);
@@ -443,6 +447,23 @@ int f3d_is_wr64_ucode(const unsigned char *rdram, unsigned int rdram_size,
     if (rdram == 0 || text == 0)
         return 0;
     return f3d_text_crc(rdram, rdram_size, text) == 0xc6d28214u;
+}
+
+/* Eikou no Saint Andrews (SETA, 1996): a custom graphics microcode on the
+ * "RSP SW Version: 2.0D, 04-01-96" base whose display lists use the stock
+ * GBI 1 command encoding. Its text boots through a zeroed jump slot (word 0
+ * is 0, the code proper starts at +0x10) so every boot-word probe misses,
+ * and its data segment is a custom table with neither the SGI name string
+ * nor the F3D othermode-default pair, so the family and GBI 1 data probes
+ * miss too -- the task fell through to the F3DEX2 walker, which decodes
+ * GBI 1 words as garbage (the title screen drew as scattered gray blocks).
+ * Detect it by text CRC like the other name-stripped builds. */
+int f3d_is_seta_ucode(const unsigned char *rdram, unsigned int rdram_size,
+                      unsigned int text)
+{
+    if (rdram == 0 || text == 0)
+        return 0;
+    return f3d_text_crc(rdram, rdram_size, text) == 0x99b3558au;
 }
 
 /* Blast Corps' line-capable Fast3D build (the J-Bomb bonus-stage select and
@@ -965,7 +986,16 @@ void f3d_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
             if (idx == F3D_MV_VIEWPORT)
             {
                 if (in_range(ma, 16u))
+                {
                     gsp_set_viewport(gsp, r, ma);
+                    /* SETA's custom transform maps NDC +Y down the screen:
+                     * the attract fly-over's triangles land mirrored around
+                     * vtrans.y against the LLE RSP (y 88.75 vs 151.25 about
+                     * the 120-line centre) with X exact. Negate the loaded
+                     * Y scale so the shared vertex pipeline flips to match. */
+                    if (s_variant_seta)
+                        gsp->viewport.vscale_y = -gsp->viewport.vscale_y;
+                }
             }
             else if (idx == F3D_MV_LOOKATX)
             {

@@ -1,3 +1,5 @@
+#include <stdio.h>
+#include <stdlib.h>
 /* rdp_emit_hle.c -- activation glue for the angrylion HLE-graphics path.
  *
  * Called from angrylionProcessDList(). The core wires ProcessDList only when
@@ -653,6 +655,8 @@ void rdp_emit_hle_process_dlist(void)
         unsigned int ud = read_dmem_u32(dmem, 0xfd8) & 0x00ffffffu;
         int fam;
         int gbi1_oth;
+        int seta;
+        unsigned int ud_om;
         gsp_params_at_task_start = 1;
         gsp_detect_ucode_params(&s_gsp, rdram, rdram_size, ud, ut);
         gsp_params_at_task_start = 0;
@@ -674,6 +678,15 @@ void rdp_emit_hle_process_dlist(void)
                 && f3d_gbi1_othermode_data(rdram, rdram_size, ud)
                 && !s2dex1_ucode_match(rdram, rdram_size, ud,
                                        read_dmem_u32(dmem, 0xfdc));
+        /* SETA's custom 2.0D build (Eikou no Saint Andrews) misses every
+         * probe above (see f3d_is_seta_ucode); its lists are stock GBI 1
+         * commands with the plain Fast3D geometry conventions -- G_VTX packs
+         * (n-1)<<4 in the parameter byte with 16-byte vertices, and the
+         * triangle indices are times ten, confirmed from its live attract
+         * display list -- so it routes to the F3D walker with the plain
+         * decode, not the GBI 1 x2 or the F3DBETA one. */
+        seta = f3d_is_seta_ucode(rdram, rdram_size, ut);
+        gbi1_oth = gbi1_oth || seta;
         if (f3ddkr_is_ucode(rdram, rdram_size, ud,
                             read_dmem_u32(dmem, 0xfdc)))
         {
@@ -719,7 +732,7 @@ void rdp_emit_hle_process_dlist(void)
              * plain decode with the line opcode enabled. */
             {
                 int bcline = f3d_is_bcline_ucode(rdram, rdram_size, ut);
-                f3d_set_variant(!bcline
+                f3d_set_variant(!bcline && !seta
                                 && (fam != 0
                                     || f3dex1_data_family(rdram, rdram_size, ud)
                                     || gbi1_oth));
@@ -727,6 +740,7 @@ void rdp_emit_hle_process_dlist(void)
                 f3d_set_variant_ff2d(f3d_is_ff2d_ucode(rdram, rdram_size, ut));
             }
             f3d_set_variant_wr64(f3d_is_wr64_ucode(rdram, rdram_size, ut));
+            f3d_set_variant_seta(seta);
             /* GoldenEye 007 / Perfect Dark run an early F3DEX (GBI 1) build
              * whose RSP version word at text+4 (0x201d0110) is the same one
              * SM64's plain Fast3D carries, so it reaches this F3D walker. It
@@ -775,16 +789,22 @@ void rdp_emit_hle_process_dlist(void)
                     f3d_set_variant_wr64(1);
                 }
             }
-            if (ud != 0 && ud + 0x120u <= rdram_size)
+            /* The F3D data segment ships its other-mode default pair at
+             * +0x118; SETA's custom layout keeps the same 0xEF pair at +0xb8. */
+            if (seta)
+                ud_om = ud + 0xb8u <= rdram_size - 8u ? ud + 0xb8u : 0u;
+            else
+                ud_om = ud + 0x118u;
+            if (ud != 0 && ud_om != 0u && ud_om + 8u <= rdram_size)
             {
-                unsigned int oh = ((unsigned int)rdram[(ud + 0x118) ^ 3] << 24)
-                                | ((unsigned int)rdram[(ud + 0x119) ^ 3] << 16)
-                                | ((unsigned int)rdram[(ud + 0x11a) ^ 3] << 8)
-                                |  (unsigned int)rdram[(ud + 0x11b) ^ 3];
-                unsigned int ol = ((unsigned int)rdram[(ud + 0x11c) ^ 3] << 24)
-                                | ((unsigned int)rdram[(ud + 0x11d) ^ 3] << 16)
-                                | ((unsigned int)rdram[(ud + 0x11e) ^ 3] << 8)
-                                |  (unsigned int)rdram[(ud + 0x11f) ^ 3];
+                unsigned int oh = ((unsigned int)rdram[(ud_om + 0) ^ 3] << 24)
+                                | ((unsigned int)rdram[(ud_om + 1) ^ 3] << 16)
+                                | ((unsigned int)rdram[(ud_om + 2) ^ 3] << 8)
+                                |  (unsigned int)rdram[(ud_om + 3) ^ 3];
+                unsigned int ol = ((unsigned int)rdram[(ud_om + 4) ^ 3] << 24)
+                                | ((unsigned int)rdram[(ud_om + 5) ^ 3] << 16)
+                                | ((unsigned int)rdram[(ud_om + 6) ^ 3] << 8)
+                                |  (unsigned int)rdram[(ud_om + 7) ^ 3];
                 if ((oh >> 24) == 0xefu)
                     f3d_set_othermode_init(oh, ol);
             }
