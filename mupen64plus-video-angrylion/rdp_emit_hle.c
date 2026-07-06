@@ -646,6 +646,17 @@ void rdp_emit_hle_process_dlist(void)
     if (dl_addr == 0 || dl_addr >= rdram_size)
         return;
 
+    /* The OSTask names the RDRAM matrix stack (dram_stack at DMEM 0xfe0,
+     * dram_stack_size at 0xfe4); the microcode pushes and pops through
+     * it and drops pushes at base + size. */
+    {
+        unsigned int ms = read_dmem_u32(dmem, 0xfe0u) & 0x00ffffffu;
+        unsigned int msz = read_dmem_u32(dmem, 0xfe4u);
+        if (ms >= rdram_size || msz > 0x1000u)
+            ms = 0;
+        gsp_set_matrix_stack(&s_gsp, rdram, ms, msz);
+    }
+
     /* walk the display list, emitting RDP commands into the FIFO. textured/
      * z_buffered default off here; a gDP/state-translation follow-up sets the
      * render mode and the per-frame setup commands. */

@@ -253,6 +253,41 @@ void gsp_init(GSPState *s)
     s->tex_h = 32;
 }
 
+/* The microcode's matrix stack lives in RDRAM, in the area the game
+ * names with the OSTask dram_stack / dram_stack_size fields. A push
+ * DMAs the current top out to the write pointer and a pop DMAs the
+ * previous slot back in, so the walker mirrors both directions: the
+ * matrix a pop restores is whatever the RDRAM slot holds, and a push
+ * that has reached base + size is dropped outright -- gspF3D skips the
+ * DMA and the pointer bump with a beq against the limit word and only
+ * performs the concatenation. */
+static void store_n64_matrix(unsigned char *rdram, unsigned int addr,
+                             int32_t m[4][4])
+{
+    int e;
+    for (e = 0; e < 16; e++)
+    {
+        int32_t v = m[e >> 2][e & 3];
+        unsigned int hi = addr + (unsigned int)(e * 2);
+        unsigned int lo = hi + 32u;
+        *(unsigned short *)(rdram + (hi ^ RDRAM_S16)) =
+            (unsigned short)((v >> 16) & 0xffff);
+        *(unsigned short *)(rdram + (lo ^ RDRAM_S16)) =
+            (unsigned short)(v & 0xffff);
+    }
+}
+
+static unsigned char *s_stack_rdram;
+
+void gsp_set_matrix_stack(GSPState *s, unsigned char *rdram,
+                          unsigned int base, unsigned int size)
+{
+    s_stack_rdram = rdram;
+    s->mtx_stack_base = base;
+    s->mtx_stack_ptr = base;
+    s->mtx_stack_limit = base + size;
+}
+
 void gsp_matrix_load(GSPState *s, const unsigned char *rdram, unsigned int addr,
                      int projection, int load, int push)
 {
@@ -270,8 +305,34 @@ void gsp_matrix_load(GSPState *s, const unsigned char *rdram, unsigned int addr,
     {
         if (push && s->modelview_top < GSP_MTX_STACK - 1)
         {
-            mtx_copy(s->modelview[s->modelview_top + 1], s->modelview[s->modelview_top]);
-            s->modelview_top++;
+            /* Space Station Silicon Valley hands the microcode an
+             * 0x80-byte stack -- two slots -- and its object lists push
+             * four deep. The pushes past the limit never happen on the
+             * RSP, and modelling the drop is what keeps the later pops
+             * pairing with the pushes the microcode actually performed;
+             * a walker with a private 16-deep stack restores matrices
+             * the RSP never saved, and every transform downstream rides
+             * the wrong parent (the crash-pod interior transforms into
+             * degenerate clip space and the scene renders black). */
+            if (s->mtx_stack_base != 0u)
+            {
+                if (s->mtx_stack_ptr != s->mtx_stack_limit)
+                {
+                    if (s_stack_rdram != 0)
+                        store_n64_matrix(s_stack_rdram, s->mtx_stack_ptr,
+                                         s->modelview[s->modelview_top]);
+                    s->mtx_stack_ptr += 0x40u;
+                    mtx_copy(s->modelview[s->modelview_top + 1],
+                             s->modelview[s->modelview_top]);
+                    s->modelview_top++;
+                }
+            }
+            else
+            {
+                mtx_copy(s->modelview[s->modelview_top + 1],
+                         s->modelview[s->modelview_top]);
+                s->modelview_top++;
+            }
         }
         if (load)
             mtx_copy(s->modelview[s->modelview_top], m);
@@ -318,16 +379,52 @@ void gsp_select_matrix_dkr(GSPState *s, int index)
     s->lights_valid = 0;
 }
 
-void gsp_matrix_pop(GSPState *s)
+void gsp_matrix_pop(GSPState *s, const unsigned char *rdram)
 {
     /* do_popmtx only zeroes mvpValid/lightsValid when bytes were
-     * actually popped from the matrix stack. */
+     * actually popped from the matrix stack. The pop reloads the top
+     * from the RDRAM slot; at the base it is a complete no-op (the
+     * microcode branches past the DMA and the pointer store). */
+    if (s->mtx_stack_base != 0u)
+    {
+        if (s->mtx_stack_ptr > s->mtx_stack_base && rdram != 0)
+        {
+            if (s->modelview_top > 0)
+                s->modelview_top--;
+            s->mtx_stack_ptr -= 0x40u;
+            load_n64_matrix(s->modelview[s->modelview_top],
+                            rdram, s->mtx_stack_ptr);
+            s->combined_valid = 0;
+            s->lights_valid = 0;
+        }
+        return;
+    }
     if (s->modelview_top > 0)
     {
         s->modelview_top--;
         s->combined_valid = 0;
         s->lights_valid = 0;
     }
+}
+
+/* gSPCullDisplayList: AND the stored VCH screen outcodes -- the x/y/z
+ * lanes on both sides, the same 0x7070 mask the triangle trivial
+ * reject applies to the per-vertex flag halfword -- across the vertex
+ * span. Nonzero means every vertex sits outside the same screen plane
+ * and the microcode returns from the current display list on the spot,
+ * through the G_ENDDL code. Everything after the command in that list
+ * is skipped, so the walker must stop the list rather than merely skip
+ * the draw: a culled tail can carry matrix and other state the
+ * microcode never executes. */
+int gsp_culldl_test(const GSPState *s, int v0, int vn)
+{
+    unsigned int acc = ~0u;
+    int i;
+    if (v0 < 0 || vn < v0 || vn >= GSP_MAX_VERTICES)
+        return 0;
+    for (i = v0; i <= vn; i++)
+        acc &= (unsigned int)s->vtx[i].clip;
+    return (acc & 0x7070u) != 0u;
 }
 
 void gsp_set_alpha_light(GSPState *s, const unsigned char *rdram,

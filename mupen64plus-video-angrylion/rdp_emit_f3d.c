@@ -785,7 +785,7 @@ void f3d_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
                 break;
             }
             /* F3D pops one modelview level (w1 selects modelview/projection). */
-            gsp_matrix_pop(gsp);
+            gsp_matrix_pop(gsp, r);
             break;
 
         case F3D_VTX:
@@ -1224,9 +1224,19 @@ void f3d_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
                 s_spr_flip = (unsigned int)w0 & 0xffffu;
                 break;
             }
-            /* gSPCullDisplayList: rejects the whole list if a vertex span is
-             * fully off-screen. Not modeled -- drawing the content is correct,
-             * only slower. */
+            /* gSPCullDisplayList: the microcode ANDs the span's stored
+             * screen outcodes and, when every vertex is outside the
+             * same plane, returns from the current display list
+             * immediately through the G_ENDDL code. Ending the list is
+             * a state matter, not just a speed-up: the skipped tail can
+             * carry matrix and other state commands the microcode never
+             * executes. */
+            {
+                int v0 = (int)(((w0 >> 16) & 0xffu) / 2u);
+                int vn = (int)((w1 & 0xffu) / 2u);
+                if (gsp_culldl_test(gsp, v0, vn))
+                    running = 0;
+            }
             break;
 
         case 0xAF:

@@ -93,6 +93,9 @@ typedef struct GSPState
      * build) have no lighting or fog block: vertex alpha stays the display
      * list's raw byte even with G_FOG set in the geometry mode. */
     int fog_off;
+    unsigned int mtx_stack_ptr;
+    unsigned int mtx_stack_base;
+    unsigned int mtx_stack_limit;
     int line_z;            /* Body Harvest's line build: z-buffered lines
                               (emit the triangle's z block, interpolated
                               along the segment) */
@@ -179,7 +182,10 @@ void gsp_task_reset(GSPState *s);
 /* matrix ops (addr is an RDRAM byte address to a 4x4 N64 fixed-point matrix) */
 void gsp_matrix_load(GSPState *s, const unsigned char *rdram, unsigned int addr,
                      int projection, int load, int push);
-void gsp_matrix_pop(GSPState *s);
+void gsp_matrix_pop(GSPState *s, const unsigned char *rdram);
+void gsp_set_matrix_stack(GSPState *s, unsigned char *rdram,
+                          unsigned int base, unsigned int size);
+int gsp_culldl_test(const GSPState *s, int v0, int vn);
 /* DKR (F3DDKR) indexed matrix load + active-slot select. */
 void gsp_matrix_dkr(GSPState *s, const unsigned char *rdram, unsigned int addr,
                     int index, int multiply);

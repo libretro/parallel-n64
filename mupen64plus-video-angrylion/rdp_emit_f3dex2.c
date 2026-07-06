@@ -667,7 +667,7 @@ void f3dex2_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
              * draws with a stale limb matrix. */
             unsigned int npop = w1 >> 6;
             while (npop--)
-                gsp_matrix_pop(gsp);
+                gsp_matrix_pop(gsp, r);
             break;
         }
 
