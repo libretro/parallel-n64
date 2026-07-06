@@ -66,6 +66,12 @@ void f3dex2_set_rdram_size(unsigned int size);
 void f3dex2_set_rdram(unsigned char *rdram);
 void f3dex2_set_task_ucode(const unsigned char *rdram, unsigned int text);
 void f3dex2_force_class_s2dex1(void);
+void f3dex2_import_segments(const unsigned int *src);
+/* Data-segment name probe for the standalone S2DEX 1.xx (GBI 1) sprite/BG
+ * microcode (defined in rdp_emit_hle.c, shared with the mid-list G_LOAD_UCODE
+ * handoff in the F3D walker). */
+int s2dex1_ucode_match(const unsigned char *rdram, unsigned int rdram_size,
+                       unsigned int ud, unsigned int uds);
 int  f3dex2_class_is_s2dex(void);
 
 void f3dex2_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,

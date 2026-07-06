@@ -16,6 +16,7 @@
  */
 
 #include "rdp_emit_f3d.h"
+#include "rdp_emit_f3dex2.h"
 #include "rdp_emit_bridge.h"
 #include "rdp_emit_frontend.h"
 #include "rdp_emit_rsp.h"
@@ -1053,7 +1054,40 @@ void f3d_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
              * continues. An armed S2DEX handoff stops at 0xAF before this
              * case is reached. */
             {
-                unsigned int ud = seg_phys(s_last_rdphalf1);
+                unsigned int ud  = seg_phys(s_last_rdphalf1);
+                unsigned int uds = (w0 & 0xffffu) + 1u;
+                /* SimCity 2000 (Japan) hot-swaps its F3DEX.NoN / F3DLX.Rej
+                 * vertex lists to S2DEX 1.03 mid-list to blit the composed
+                 * terrain map to the framebuffer (G_BG_1CYC splits it into
+                 * full-width TMEM strips). S2DEX's command set is not
+                 * F3D-compatible -- its low opcodes collide with G_MTX/
+                 * G_MOVEMEM -- so walking on eats the background draw and the
+                 * terrain never appears. Detect the staged data segment by
+                 * its S2DEX 1.xx name and hand the rest of the list to the
+                 * S2DEX GBI 1 walker; its own G_LOAD_UCODE handler routes any
+                 * later F3D vertex section back through this walker, so the
+                 * alternation unwinds naturally and this invocation is done. */
+                if (s_last_rdphalf1 != 0 && ud != 0 &&
+                    s2dex1_ucode_match(s_rdram, s_rdram_size, ud, uds))
+                {
+                    f3dex2_set_rdram(s_rdram);
+                    f3dex2_set_rdram_size(s_rdram_size);
+                    f3dex2_set_task_ucode(s_rdram, seg_phys(w1));
+                    f3dex2_force_class_s2dex1();
+                    f3dex2_import_segments(s_seg);
+                    /* The RSP's gSPLoadUcode preserves the other-modes state
+                     * across the swap (per-task seeding notes in
+                     * rdp_emit_hle.c, validated pixel-exact on Kirby 64's
+                     * round-trips), so hand the walker's accumulated shadow
+                     * to the S2DEX side: its G_BG_1CYC compositor emits
+                     * SETOTHERMODE from that base, and a stale shadow left
+                     * G_TC_CONV selected -- every CI8 background texel then
+                     * went through the YUV converter and drew black. */
+                    f3dex2_set_othermode_init(s_othermode_h, s_othermode_l);
+                    f3dex2_run_dl(gsp, fifo, pc, s_textured, s_zbuffered);
+                    running = 0;
+                    break;
+                }
                 if (ud != 0 && in_range(ud, 0x120u))
                 {
                     unsigned int oh = ((unsigned int)r[(ud + 0x118) ^ 3] << 24)

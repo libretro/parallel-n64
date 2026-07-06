@@ -194,6 +194,18 @@ void f3dex2_set_task_ucode(const unsigned char *rdram, unsigned int text)
     s2dex_set_version2(s_ucode_class == UCODE_S2DEX2);
 }
 
+/* Adopt the caller's segment table for a mid-list microcode handoff: when a
+ * vertex-family (F3D/F3DEX GBI 1) list hot-swaps to S2DEX with G_LOAD_UCODE,
+ * the segment registers persist across the swap on the RSP, so the S2DEX
+ * section resolves its background/object pointers through the same table the
+ * F3D walker accumulated. */
+void f3dex2_import_segments(const unsigned int *src)
+{
+    int i;
+    for (i = 0; i < 16; i++)
+        s_seg_table[i] = src[i];
+}
+
 /* Standalone S2DEX 1.xx (Yoshi's Story etc.) carries a build-specific text
  * version word rather than the S2DEX2 signature probe_ucode_class knows, so
  * the HLE entry detects it from the data-segment name string and forces the

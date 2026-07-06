@@ -460,7 +460,7 @@ static int f3d_ucode_family(const unsigned char *rdram,
  * we require that first signature to be S2DEX (and GBI 1: not "S2DEX2", and
  * with no "fifo"/"xbus" GBI 2 token, which the c81f2018 text probe already
  * routes as UCODE_S2DEX2). */
-static int s2dex1_ucode_match(const unsigned char *rdram,
+int s2dex1_ucode_match(const unsigned char *rdram,
                               unsigned int rdram_size,
                               unsigned int ud, unsigned int uds)
 {
