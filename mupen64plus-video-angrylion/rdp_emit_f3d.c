@@ -153,6 +153,70 @@ static void f3d_emit_sprite(RdpFifo *fifo, unsigned int pos)
     else if (siz == 1u) line = (width + 7u) >> 3;           /* 8-bit path */
     else                line = ((width << 1) + 7u) >> 3;    /* 16-bit path */
 
+    /* Space Station Silicon Valley's intro build feeds the same 24-byte
+     * struct with fmt = 0 / siz = 2: a direct RGBA16 image (the boot
+     * logos and intro stills, 320x240, palette word zero). Its routine
+     * has no palette or other-modes preamble at all -- one SETTIMG of
+     * the whole image and a strip loop of LOADTILE row windows, six
+     * rows per strip for a 320-wide image (the full 4 KB of TMEM; no
+     * TLUT resides in the high half), each strip drawn 1:1 with S = T =
+     * 0 against a render tile whose size is just the strip height.
+     * Transcribed from the cxd4 LLE stream of the Take-Two logo. */
+    if (fmt == 0u)
+    {
+        unsigned int bpr = width << 1;                       /* RGBA16 */
+        unsigned int max_rows = (bpr != 0u && bpr <= 4096u)
+                              ? (4096u / bpr) : disph;
+        unsigned int strw = (dsdx != 0u) ? ((width << 12) / dsdx)
+                                         : (width << 2);
+        unsigned int xl2 = xh + strw;
+        unsigned int r0;
+
+        if (max_rows == 0u)
+            return;
+
+        /* The routine opens by re-emitting the display list's current
+         * other-modes shadow verbatim (no TEXTLUT force, no write-back
+         * -- unlike the CI routine below). */
+        w[0] = (int32_t)(0xef000000u | (s_othermode_h & 0x00ffffffu));
+        w[1] = (int32_t)s_othermode_l;
+        rdp_fifo_append(fifo, w, 2);
+
+        for (r0 = 0u; r0 < disph; r0 += max_rows)
+        {
+            unsigned int h = (disph - r0 < max_rows) ? (disph - r0)
+                                                     : max_rows;
+            unsigned int t0 = toff + r0;
+            unsigned int yh_b = yh + (unsigned int)(((uint64_t)r0 << 12)
+                                     / (dtdy ? dtdy : 0x400u));
+            unsigned int yl_b = yh + (unsigned int)(((uint64_t)(r0 + h) << 12)
+                                     / (dtdy ? dtdy : 0x400u));
+
+            /* SETTIMG + the load-tile SETTILE are re-emitted per strip */
+            w[0] = (int32_t)(0xfd100000u | (width - 1u));
+            w[1] = (int32_t)texaddr;                         rdp_fifo_append(fifo, w, 2);
+            w[0] = (int32_t)(0xf5000000u | (2u << 19) | (line << 9));
+            w[1] = (int32_t)0x07080200u;                     rdp_fifo_append(fifo, w, 2);
+            w[0] = (int32_t)0xe6000000u; w[1] = 0;           rdp_fifo_append(fifo, w, 2);
+            w[0] = (int32_t)(0xf4000000u | (soff << 14) | (t0 << 2));
+            w[1] = (int32_t)((7u << 24) | (((soff + width - 1u) << 2) << 12)
+                             | ((t0 + h - 1u) << 2));
+            rdp_fifo_append(fifo, w, 2);
+            w[0] = (int32_t)0xe7000000u; w[1] = 0;           rdp_fifo_append(fifo, w, 2);
+            w[0] = (int32_t)(0xf5000000u | (2u << 19) | (line << 9));
+            w[1] = (int32_t)0x00080200u;                     rdp_fifo_append(fifo, w, 2);
+            w[0] = (int32_t)0xf2000000u;
+            w[1] = (int32_t)((((width - 1u) << 2) << 12) | ((h - 1u) << 2));
+            rdp_fifo_append(fifo, w, 2);
+            w[0] = (int32_t)(0xe4000000u | (xl2 << 12) | yl_b);
+            w[1] = (int32_t)((xh << 12) | yh_b);
+            w[2] = 0;
+            w[3] = (int32_t)((dsdx << 16) | dtdy);
+            rdp_fifo_append(fifo, w, 4);
+        }
+        return;
+    }
+
     /* palette: SETTIMG -> SYNC_TILE -> SETTILE -> SYNC_LOAD -> LOADTLUT -> PIPESYNC */
     w[0] = (int32_t)0xfd100000u; w[1] = (int32_t)paladdr;    rdp_fifo_append(fifo, w, 2);
     w[0] = (int32_t)0xe8000000u; w[1] = 0;                   rdp_fifo_append(fifo, w, 2);
