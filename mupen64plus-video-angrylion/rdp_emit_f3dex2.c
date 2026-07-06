@@ -1081,13 +1081,17 @@ void f3dex2_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
                 mask = 0xffffffffu;
             else
                 mask = ((1u << len) - 1u) << shift;
+            /* As in the GBI1 handler: the microcode clears the field but
+             * ORs the full w1, so bits outside the addressed field stick.
+             * SDK-built lists never carry any, but sloppy lists (Top Gear
+             * Rally on GBI1) depend on the hardware behavior. */
             if (cmd == F3DEX2_SETOTHERMODE_H)
                 s_othermode_h = (s_othermode_h & ~mask)
-                              | ((unsigned int)w1 & mask)
+                              | (unsigned int)w1
                               | (0x2fu << 24);
             else
                 s_othermode_l = (s_othermode_l & ~mask)
-                              | ((unsigned int)w1 & mask);
+                              | (unsigned int)w1;
             s_zbuffered = (((s_othermode_l >> 4) & 1u) ||
                            ((s_othermode_l >> 5) & 1u)) ? 1 : 0;
             two[0] = (int32_t)(s_othermode_h | (0x2fu << 24));

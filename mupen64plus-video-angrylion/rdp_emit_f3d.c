@@ -972,13 +972,23 @@ void f3d_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
                 mask = 0xffffffffu;
             else
                 mask = ((1u << length) - 1u) << shift;
+            /* The microcode's handler clears the field with the mask but
+             * ORs in the *whole* w1: any bits the display list carries
+             * outside the addressed field stick. Top Gear Rally relies on
+             * this, shipping its dust render mode as
+             * gsSPSetOtherMode(..., 3, 29, 0x0F0A0233): the two low bits
+             * (alpha-compare dither) ride below the shifted field and only
+             * reach the RDP because the ucode does not mask the source
+             * word. Masking w1 here left the dust and tire-smoke sprites
+             * alpha-thresholded: solid grey card-board slabs instead of
+             * dissolved puffs. */
             if (cmd == F3D_SETOTHERMODE_H)
                 s_othermode_h = (s_othermode_h & ~mask)
-                              | ((unsigned int)w1 & mask)
+                              | (unsigned int)w1
                               | (0x2fu << 24);
             else
                 s_othermode_l = (s_othermode_l & ~mask)
-                              | ((unsigned int)w1 & mask);
+                              | (unsigned int)w1;
             s_zbuffered = (((s_othermode_l >> 4) & 1u) ||
                            ((s_othermode_l >> 5) & 1u)) ? 1 : 0;
             two[0] = (int32_t)(s_othermode_h | (0x2fu << 24));
