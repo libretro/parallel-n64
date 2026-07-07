@@ -125,7 +125,7 @@ static void SETVOL(struct hle_t* hle, uint32_t w1, uint32_t w2)
     }
 }
 
-static void ENVMIXER(struct hle_t* hle, uint32_t w1, uint32_t w2)
+static void envmixer(struct hle_t* hle, uint32_t w1, uint32_t w2, bool vmulf_premix)
 {
     uint8_t  flags   = (w1 >> 16);
     uint32_t address = (w2 & 0xffffff);
@@ -146,7 +146,20 @@ static void ENVMIXER(struct hle_t* hle, uint32_t w1, uint32_t w2)
             hle->alist_naudio.vol,
             hle->alist_naudio.target,
             hle->alist_naudio.rate,
-            address);
+            address,
+            vmulf_premix);
+}
+
+static void ENVMIXER(struct hle_t* hle, uint32_t w1, uint32_t w2)
+{
+    envmixer(hle, w1, w2, false);
+}
+
+/* The Conker revision of the microcode routes the ENVMIXER input samples
+ * through vmulf instead of the vxor phase inversion. */
+static void ENVMIXER_CBFD(struct hle_t* hle, uint32_t w1, uint32_t w2)
+{
+    envmixer(hle, w1, w2, true);
 }
 
 static void CLEARBUFF(struct hle_t* hle, uint32_t w1, uint32_t w2)
@@ -347,7 +360,7 @@ void alist_process_naudio_cbfd(struct hle_t* hle)
      * And the MP3 overlay is also different.
      */
     static const acmd_callback_t ABI[0x10] = {
-        OVERLOAD,       ADPCM,          CLEARBUFF,      ENVMIXER,
+        OVERLOAD,       ADPCM,          CLEARBUFF,      ENVMIXER_CBFD,
         LOADBUFF,       RESAMPLE,       SAVEBUFF,       MP3,
         MP3ADDY,        SETVOL,         DMEMMOVE,       LOADADPCM,
         MIXER,          INTERLEAVE,     NAUDIO_14,      SETLOOP

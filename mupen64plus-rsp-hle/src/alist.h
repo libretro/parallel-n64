@@ -91,7 +91,8 @@ void alist_envmix_lin(
         const int16_t *vol,
         const int16_t *target,
         const int32_t *rate,
-        uint32_t address);
+        uint32_t address,
+        bool vmulf_premix);
 
 void alist_envmix_nead(
         struct hle_t* hle,

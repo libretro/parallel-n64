@@ -680,7 +680,8 @@ void alist_envmix_lin(
         const int16_t *vol,
         const int16_t *target,
         const int32_t *rate,
-        uint32_t address)
+        uint32_t address,
+        bool vmulf_premix)
 {
     /* Exact model of the naudio ENVMIXER inner loop.
      *
@@ -690,8 +691,13 @@ void alist_envmix_lin(
      * where idx[] holds j/8 in unsigned 0.16 (the last lane being 0xffff,
      * one LSB short of 1.0), then adds the full 32-bit rate once per block
      * of eight samples and clamps only the high halves against the target.
-     * The input samples are routed through vmulf(src, +-0x7fff) before the
-     * accumulating mix; the sign comes from the LSB of the dry/wet gains.
+     * The input path depends on the ucode revision (vmulf_premix): the
+     * Conker variant routes the samples through vmulf(src, +-0x7fff)
+     * before the accumulating mix, with the sign selected by the LSB of
+     * the dry/wet gains, while the naudio_mp3 revision (Perfect Dark,
+     * Banjo-Tooie, Jet Force Gemini, Mickey's Speedway) feeds them in
+     * unchanged, with the same LSBs selecting a one's-complement (vxor)
+     * inversion instead.
      *
      * The saved state matches the microcode layout: four vector registers
      * (hi/lo lane pairs for both channels) followed by the parameter
@@ -751,14 +757,17 @@ void alist_envmix_lin(
     }
 
     {
-        /* The input scale differs on the first block of every call: the
-         * setup code computes it as vmulf(0x7fff, phase) (0x7ffe / -0x7fff)
-         * while the block loop regenerates it with vmudh as the exact
-         * phase value (0x7fff / -0x8000). */
+        /* vmulf_premix: the input scale differs on the first block of
+         * every call, because the setup code computes it as
+         * vmulf(0x7fff, phase) (0x7ffe / -0x7fff) while the block loop
+         * regenerates it with vmudh as the exact phase value
+         * (0x7fff / -0x8000). */
         int16_t dry_phase = (dry & 1) ? -0x8000 : 0x7fff;
         int16_t wet_phase = (wet & 1) ? -0x8000 : 0x7fff;
         int16_t dry_scale0 = alist_envmix_premix(0x7fff, dry_phase);
         int16_t wet_scale0 = alist_envmix_premix(0x7fff, wet_phase);
+        int16_t dry_mask = (dry & 1) ? -1 : 0;
+        int16_t wet_mask = (wet & 1) ? -1 : 0;
 
         for (m = 0; m < blocks; ++m) {
             int c;
@@ -793,8 +802,16 @@ void alist_envmix_lin(
 
             for (j = 0; j < 8; ++j) {
                 size_t k = m * 8 + j;
-                int16_t in_dry = alist_envmix_premix(in[k^S], (m == 0) ? dry_scale0 : dry_phase);
-                int16_t in_wet = alist_envmix_premix(in[k^S], (m == 0) ? wet_scale0 : wet_phase);
+                int16_t in_dry;
+                int16_t in_wet;
+
+                if (vmulf_premix) {
+                    in_dry = alist_envmix_premix(in[k^S], (m == 0) ? dry_scale0 : dry_phase);
+                    in_wet = alist_envmix_premix(in[k^S], (m == 0) ? wet_scale0 : wet_phase);
+                } else {
+                    in_dry = in[k^S] ^ dry_mask;
+                    in_wet = in[k^S] ^ wet_mask;
+                }
 
                 sample_mix(dl + (k^S), in_dry, clamp_s16((l_vol[j] * dry + 0x4000) >> 15));
                 sample_mix(dr + (k^S), in_dry, clamp_s16((r_vol[j] * dry + 0x4000) >> 15));
