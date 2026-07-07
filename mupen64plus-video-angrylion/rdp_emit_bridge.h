@@ -18,6 +18,12 @@ typedef struct BridgeViewport
     int32_t tri_idy_scale;   /*   F3DEX2 0x4000/8, F3DZEX2 0x1000/0x20 */
     int32_t tri_frac_mask;   /* v30[5] slope-fraction mask in the anchor walk */
     int32_t tri_vcr_bound;   /* v30[3] vcr crimp bound on the slope integers */
+    int rsp_screen_model;    /* 1: rsp_vtx_screen may supersede the exact
+                              * divide (F3D/F3DEX-family MAC chain).
+                              * 0: always use the exact divide (F3DDKR,
+                              * whose custom vertex chain is not the F3D
+                              * one and whose raw w range sits outside the
+                              * modelled domain). */
 } BridgeViewport;
 
 /* Clip-space vertex inputs to the bridge: exact s15.16 clip coords (cx,cy,cz,cw)

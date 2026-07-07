@@ -192,6 +192,7 @@ void gsp_init(GSPState *s)
     s->fog_o = 0;
     s->dkr_shade_alpha_zero = 0;
     s->viewport.persp_norm = 0xffffu;
+    s->viewport.rsp_screen_model = 1;
     s->viewport.tri_dx_scale  = s->tri_dx_scale;
     s->viewport.tri_idy_scale = s->tri_idy_scale;
     s->viewport.tri_frac_mask = s->tri_frac_mask;
@@ -531,8 +532,18 @@ void gsp_set_dkr_shade_alpha_zero(GSPState *s, int on)
     s->dkr_shade_alpha_zero = on ? 1 : 0;
 }
 
+void gsp_set_rsp_screen_model(GSPState *s, int on)
+{
+    s->viewport.rsp_screen_model = on ? 1 : 0;
+}
+
 void gsp_task_reset(GSPState *s)
 {
+    /* Each task starts under the F3D-family screen model; the F3DDKR
+     * walker opts out at its entry. Without the per-task restore a DKR
+     * task would leave the exact-divide mode behind for a later
+     * F3D/F3DEX2 task on the shared GSPState. */
+    s->viewport.rsp_screen_model = 1;
     /* The RSP task boot resets the matrix-stack pointer; display lists are
      * free to leave pushes unbalanced. Without this per-task reset the HLE
      * stack ratchets up to its cap over a few frames and every pushed

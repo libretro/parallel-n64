@@ -106,6 +106,7 @@ void bridge_compute_screen(const BridgeVertex *v, const BridgeViewport *vp,
      * making the downstream triangle write bit-identical to the LLE RSP. */
     e->rsp_ok = 0;
     e->rsp_invw = 0;
+    if (vp->rsp_screen_model)
     {
         int32_t sx, sy, sz, iw;
         if (rsp_vtx_screen(v->cx, v->cy, v->cz, v->cw,
@@ -244,8 +245,12 @@ int bridge_add_triangle(int32_t *cmd,
      * Afterwards a zero cross product culls as degenerate regardless of
      * mode. Both tests want the microcode's own screen positions, so they
      * run here only when all three vertices took the RSP-exact transform
-     * (the out-of-domain fallback keeps its emitters' own handling). */
-    if (a.rsp_ok && b.rsp_ok && c.rsp_ok)
+     * (the out-of-domain fallback keeps its emitters' own handling).
+     * With the F3D screen model disabled (rsp_screen_model == 0, the
+     * F3DDKR path) the exact-divide positions are the model of the
+     * microcode's own, so the cull runs on those -- otherwise no face
+     * cull would run at all and every backface leaks through. */
+    if ((a.rsp_ok && b.rsp_ok && c.rsp_ok) || !vp->rsp_screen_model)
     {
         static const unsigned int magic[4] =
         {

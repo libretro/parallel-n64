@@ -175,6 +175,7 @@ void gsp_set_lookat(GSPState *s, const unsigned char *rdram,
 /* G_MW_FOG: fog multiplier (w1 >> 16) and offset (w1 & 0xffff), both s16. */
 void gsp_set_fog(GSPState *s, int fm, int fo);
 void gsp_set_dkr_shade_alpha_zero(GSPState *s, int on);
+void gsp_set_rsp_screen_model(GSPState *s, int on);
 
 /* per-RSP-task reset: the microcode's DRAM matrix-stack pointer is
  * re-initialised at every task boot, so an unbalanced push/pop count within

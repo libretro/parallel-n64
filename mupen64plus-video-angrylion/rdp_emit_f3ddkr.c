@@ -197,6 +197,12 @@ void f3ddkr_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
      * of the F3D family so the boundary vertex lands just in front of the eye
      * with a small positive w. */
     gsp->clip_near_z = 1;
+    /* DKR's vertex chain is Rare's own, not the F3D/F3DEX MAC chain the
+     * bridge's rsp_vtx_screen models: the game never sends a perspNorm and
+     * its raw w values run far outside the modelled domain, so the F3D
+     * model displaced vertices by up to ~11 px (background batches worst).
+     * The exact divide tracks the cxd4 LLE stream to sub-quarter-pixel. */
+    gsp_set_rsp_screen_model(gsp, 0);
     f3ddkr_run_dl_impl(gsp, fifo, addr, 0, textured, z_buffered);
 }
 
