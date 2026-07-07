@@ -87,6 +87,16 @@ static void alist_envmix_mix(size_t n, int16_t** dst, const int16_t* gains, int1
         sample_mix(dst[i], src, gains[i]);
 }
 
+/* The naudio ENVMIXER routes the input samples through vmulf before the
+ * accumulating mix: src' = vmulf(src, +-0x7fff), with the sign selected by
+ * the LSB of the dry (resp. wet) gain. vmulf(x, 0x7fff) is not the
+ * identity: it is off by one for |x| > 0x4000, so modelling it is required
+ * for bit-exact output. */
+static int16_t alist_envmix_premix(int16_t src, int16_t phase)
+{
+    return clamp_s16((((int32_t)src * phase) * 2 + 0x8000) >> 16);
+}
+
 static int16_t ramp_step(struct ramp_t* ramp)
 {
     bool target_reached;
@@ -672,9 +682,31 @@ void alist_envmix_lin(
         const int32_t *rate,
         uint32_t address)
 {
-    size_t k;
-    struct ramp_t ramps[2];
+    /* Exact model of the naudio ENVMIXER inner loop.
+     *
+     * The microcode does not step the envelope once per sample. It keeps,
+     * per channel, eight 32-bit lane accumulators seeded with
+     *   lane[j] = (vol << 16) + rate_hi * idx[j] + ((rate_lo * idx[j]) >> 16)
+     * where idx[] holds j/8 in unsigned 0.16 (the last lane being 0xffff,
+     * one LSB short of 1.0), then adds the full 32-bit rate once per block
+     * of eight samples and clamps only the high halves against the target.
+     * The input samples are routed through vmulf(src, +-0x7fff) before the
+     * accumulating mix; the sign comes from the LSB of the dry/wet gains.
+     *
+     * The saved state matches the microcode layout: four vector registers
+     * (hi/lo lane pairs for both channels) followed by the parameter
+     * vector [target_l, rate_l_hi, rate_l_lo, target_r, rate_r_hi,
+     * rate_r_lo, dry, wet]. */
+    static const uint16_t ramp_idx[8] = {
+        0x2000, 0x4000, 0x6000, 0x8000, 0xa000, 0xc000, 0xe000, 0xffff
+    };
+
+    size_t m, j;
+    int32_t lane[2][8];
+    int16_t tgt[2];
+    int32_t rt[2];
     int16_t save_buffer[40];
+    size_t blocks = (count >> 1) / 8;
 
     const int16_t * const in = (int16_t*)(hle->alist_buffer + dmemi);
     int16_t* const dl = (int16_t*)(hle->alist_buffer + dmem_dl);
@@ -682,54 +714,110 @@ void alist_envmix_lin(
     int16_t* const wl = (int16_t*)(hle->alist_buffer + dmem_wl);
     int16_t* const wr = (int16_t*)(hle->alist_buffer + dmem_wr);
 
-    memcpy((uint8_t *)save_buffer, hle->dram + address, 80);
     if (init) {
-        ramps[0].step   = rate[0] / 8;
-        ramps[0].value  = (vol[0] << 16);
-        ramps[0].target = (target[0] << 16);
-        ramps[1].step   = rate[1] / 8;
-        ramps[1].value  = (vol[1] << 16);
-        ramps[1].target = (target[1] << 16);
+        int c;
+        tgt[0] = target[0];
+        tgt[1] = target[1];
+        rt[0]  = rate[0];
+        rt[1]  = rate[1];
+        for (c = 0; c < 2; ++c) {
+            int16_t  hi = (int16_t)((uint32_t)rt[c] >> 16);
+            uint16_t lo = (uint16_t)rt[c];
+            for (j = 0; j < 8; ++j) {
+                /* The microcode accumulates this in the 48-bit multiply
+                 * accumulator and extracts the result with vmadh/vmadn,
+                 * which saturate the pair to a signed 32-bit value. */
+                int64_t v = ((int64_t)vol[c] << 16)
+                    + (int64_t)hi * ramp_idx[j]
+                    + (int64_t)(((uint32_t)lo * ramp_idx[j]) >> 16);
+                if (v >  2147483647LL) v =  2147483647LL;
+                if (v < -2147483648LL) v = -2147483648LL;
+                lane[c][j] = (int32_t)v;
+            }
+        }
     }
     else {
-        wet             = *(int16_t *)(save_buffer +  0); /* 0-1 */
-        dry             = *(int16_t *)(save_buffer +  2); /* 2-3 */
-        ramps[0].target = *(int16_t *)(save_buffer +  4) << 16; /* 4-5 */
-        ramps[1].target = *(int16_t *)(save_buffer +  6) << 16; /* 6-7 */
-        ramps[0].step   = *(int32_t *)(save_buffer +  8); /* 8-9 (save_buffer is a 16bit pointer) */
-        ramps[1].step   = *(int32_t *)(save_buffer + 10); /* 10-11 */
-        ramps[0].value  = *(int32_t *)(save_buffer + 16); /* 16-17 */
-        ramps[1].value  = *(int32_t *)(save_buffer + 18); /* 16-17 */
+        memcpy((uint8_t *)save_buffer, hle->dram + address, 80);
+        for (j = 0; j < 8; ++j) {
+            lane[0][j] = ((int32_t)save_buffer[j]      << 16) | (uint16_t)save_buffer[j +  8];
+            lane[1][j] = ((int32_t)save_buffer[j + 16] << 16) | (uint16_t)save_buffer[j + 24];
+        }
+        tgt[0] = save_buffer[32];
+        rt[0]  = ((int32_t)save_buffer[33] << 16) | (uint16_t)save_buffer[34];
+        tgt[1] = save_buffer[35];
+        rt[1]  = ((int32_t)save_buffer[36] << 16) | (uint16_t)save_buffer[37];
+        dry    = save_buffer[38];
+        wet    = save_buffer[39];
     }
 
-    count >>= 1;
-    for(k = 0; k < count; ++k) {
-        int16_t  gains[4];
-        int16_t* buffers[4];
-        int16_t l_vol = ramp_step(&ramps[0]);
-        int16_t r_vol = ramp_step(&ramps[1]);
+    {
+        /* The input scale differs on the first block of every call: the
+         * setup code computes it as vmulf(0x7fff, phase) (0x7ffe / -0x7fff)
+         * while the block loop regenerates it with vmudh as the exact
+         * phase value (0x7fff / -0x8000). */
+        int16_t dry_phase = (dry & 1) ? -0x8000 : 0x7fff;
+        int16_t wet_phase = (wet & 1) ? -0x8000 : 0x7fff;
+        int16_t dry_scale0 = alist_envmix_premix(0x7fff, dry_phase);
+        int16_t wet_scale0 = alist_envmix_premix(0x7fff, wet_phase);
 
-        buffers[0] = dl + (k^S);
-        buffers[1] = dr + (k^S);
-        buffers[2] = wl + (k^S);
-        buffers[3] = wr + (k^S);
+        for (m = 0; m < blocks; ++m) {
+            int c;
+            int16_t l_vol[8], r_vol[8];
 
-        gains[0] = clamp_s16((l_vol * dry + 0x4000) >> 15);
-        gains[1] = clamp_s16((r_vol * dry + 0x4000) >> 15);
-        gains[2] = clamp_s16((l_vol * wet + 0x4000) >> 15);
-        gains[3] = clamp_s16((r_vol * wet + 0x4000) >> 15);
+            for (c = 0; c < 2; ++c) {
+                bool ascend = ((int16_t)((uint32_t)rt[c] >> 16) >= 0);
+                for (j = 0; j < 8; ++j) {
+                    int16_t hi;
+                    if (!init || m != 0) {
+                        /* vaddc/vadd pair: the low half wraps with carry
+                         * out, the high half is a saturating signed add. */
+                        uint32_t lo = ((uint32_t)lane[c][j] & 0xffff)
+                                    + ((uint32_t)rt[c] & 0xffff);
+                        int32_t  h  = (lane[c][j] >> 16)
+                                    + (int16_t)((uint32_t)rt[c] >> 16)
+                                    + (int32_t)(lo >> 16);
+                        if (h >  32767) h =  32767;
+                        if (h < -32768) h = -32768;
+                        lane[c][j] = (h << 16) | (lo & 0xffff);
+                    }
+                    hi = (int16_t)((uint32_t)lane[c][j] >> 16);
+                    if (ascend) {
+                        if (hi > tgt[c]) hi = tgt[c];
+                    } else {
+                        if (hi < tgt[c]) hi = tgt[c];
+                    }
+                    lane[c][j] = ((int32_t)hi << 16) | ((uint32_t)lane[c][j] & 0xffff);
+                    if (c == 0) l_vol[j] = hi; else r_vol[j] = hi;
+                }
+            }
 
-        alist_envmix_mix(4, buffers, gains, in[k^S]);
+            for (j = 0; j < 8; ++j) {
+                size_t k = m * 8 + j;
+                int16_t in_dry = alist_envmix_premix(in[k^S], (m == 0) ? dry_scale0 : dry_phase);
+                int16_t in_wet = alist_envmix_premix(in[k^S], (m == 0) ? wet_scale0 : wet_phase);
+
+                sample_mix(dl + (k^S), in_dry, clamp_s16((l_vol[j] * dry + 0x4000) >> 15));
+                sample_mix(dr + (k^S), in_dry, clamp_s16((r_vol[j] * dry + 0x4000) >> 15));
+                sample_mix(wl + (k^S), in_wet, clamp_s16((l_vol[j] * wet + 0x4000) >> 15));
+                sample_mix(wr + (k^S), in_wet, clamp_s16((r_vol[j] * wet + 0x4000) >> 15));
+            }
+        }
     }
 
-    *(int16_t *)(save_buffer +  0) = wet;            /* 0-1 */
-    *(int16_t *)(save_buffer +  2) = dry;            /* 2-3 */
-    *(int16_t *)(save_buffer +  4) = (int16_t)(ramps[0].target >> 16); /* 4-5 */
-    *(int16_t *)(save_buffer +  6) = (int16_t)(ramps[1].target >> 16); /* 6-7 */
-    *(int32_t *)(save_buffer +  8) = (int32_t)ramps[0].step;  /* 8-9 (save_buffer is a 16bit pointer) */
-    *(int32_t *)(save_buffer + 10) = (int32_t)ramps[1].step;  /* 10-11 */
-    *(int32_t *)(save_buffer + 16) = (int32_t)ramps[0].value; /* 16-17 */
-    *(int32_t *)(save_buffer + 18) = (int32_t)ramps[1].value; /* 18-19 */
+    for (j = 0; j < 8; ++j) {
+        save_buffer[j]      = (int16_t)((uint32_t)lane[0][j] >> 16);
+        save_buffer[j +  8] = (int16_t)((uint16_t)lane[0][j]);
+        save_buffer[j + 16] = (int16_t)((uint32_t)lane[1][j] >> 16);
+        save_buffer[j + 24] = (int16_t)((uint16_t)lane[1][j]);
+    }
+    save_buffer[32] = tgt[0];
+    save_buffer[33] = (int16_t)((uint32_t)rt[0] >> 16);
+    save_buffer[34] = (int16_t)((uint16_t)rt[0]);
+    save_buffer[35] = tgt[1];
+    save_buffer[36] = (int16_t)((uint32_t)rt[1] >> 16);
+    save_buffer[37] = (int16_t)((uint16_t)rt[1]);
+    save_buffer[38] = dry;
+    save_buffer[39] = wet;
     memcpy(hle->dram + address, (uint8_t *)save_buffer, 80);
 }
 
