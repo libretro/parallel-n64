@@ -62,6 +62,7 @@ typedef signed   __int32 dkr_int32_t;
  * resolve against a zero base and angrylion renders over low RDRAM (incl. the
  * 0x180 exception vectors -> CPU wedges in the exception handler). */
 #define DKR_MW_BILLBOARD 0x02
+#define DKR_MW_FOG       0x08
 #define DKR_MW_SEGMENT   0x06
 #define DKR_MW_MVPMATRIX 0x0A
 
@@ -293,8 +294,8 @@ static void f3ddkr_run_dl_impl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
              *   texture  =  (w0 >> 16) & 0x0f
              *   w1       -> array of 16-byte DKRTriangle entries:
              *     +0 u8 flag  +1 u8 v0  +2 u8 v1  +3 u8 v2
-             *     +4 s16 t0 +6 s16 s0  +8 s16 t1 +10 s16 s1
-             *     +12 s16 t2 +14 s16 s2
+             *     +4 s16 s0 +6 s16 t0  +8 s16 s1 +10 s16 t1
+             *     +12 s16 s2 +14 s16 t2
              * The S/T are per-vertex S10.5 texel coords carried on the
              * triangle (not the vertex), so patch them into the three cached
              * vertices before emitting. flag bit 0x40 selects cull mode but a
@@ -327,15 +328,26 @@ static void f3ddkr_run_dl_impl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
                         || v1 < 0 || v1 >= GSP_MAX_VERTICES
                         || v2 < 0 || v2 >= GSP_MAX_VERTICES)
                         continue;
+                    /* Per-vertex texture coordinates: S is the first s16 of
+                     * each pair (GLideN64 DKRTriangle {s0,t0,...}), not the
+                     * second, and DKR's microcode uses the raw S10.5 values
+                     * with no G_TEXTURE scale (its two G_TEXTURE commands
+                     * carry scale 0). gsp_set_vertex_st applies the
+                     * frontend's scale convention where the default 0x8000
+                     * halves the input, so feed the values doubled:
+                     * (2*st*0x8000)>>16 == st exactly. Verified against the
+                     * cxd4 LLE oracle: on edge-exact triangle pairs the S/T
+                     * coefficient planes now agree where the halved,
+                     * swapped read had every texture word wrong. */
                     gsp_set_vertex_st(gsp, v0,
-                        (int)(short)((r[(e + 6) ^ 3] << 8) | r[(e + 7) ^ 3]),
-                        (int)(short)((r[(e + 4) ^ 3] << 8) | r[(e + 5) ^ 3]));
+                        2 * (int)(short)((r[(e + 4) ^ 3] << 8) | r[(e + 5) ^ 3]),
+                        2 * (int)(short)((r[(e + 6) ^ 3] << 8) | r[(e + 7) ^ 3]));
                     gsp_set_vertex_st(gsp, v1,
-                        (int)(short)((r[(e + 10) ^ 3] << 8) | r[(e + 11) ^ 3]),
-                        (int)(short)((r[(e + 8) ^ 3] << 8) | r[(e + 9) ^ 3]));
+                        2 * (int)(short)((r[(e + 8) ^ 3] << 8) | r[(e + 9) ^ 3]),
+                        2 * (int)(short)((r[(e + 10) ^ 3] << 8) | r[(e + 11) ^ 3]));
                     gsp_set_vertex_st(gsp, v2,
-                        (int)(short)((r[(e + 14) ^ 3] << 8) | r[(e + 15) ^ 3]),
-                        (int)(short)((r[(e + 12) ^ 3] << 8) | r[(e + 13) ^ 3]));
+                        2 * (int)(short)((r[(e + 12) ^ 3] << 8) | r[(e + 13) ^ 3]),
+                        2 * (int)(short)((r[(e + 14) ^ 3] << 8) | r[(e + 15) ^ 3]));
                     /* DKR culls per triangle, not from the geometry mode
                      * (whose GBI 1 cull bits the game never sets): plain
                      * triangles are backface-culled by the microcode, and
@@ -397,6 +409,19 @@ static void f3ddkr_run_dl_impl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
                 s_mtx_slot = (int)((w1 >> 6) & 0x03u);
                 gsp_select_matrix_dkr(gsp, s_mtx_slot);
             }
+            else if (index == DKR_MW_FOG)
+            {
+                /* Stock F3D G_MW_FOG: DKR's dispatch keeps the F3D MoveWord
+                 * behaviour for the indices it does not redefine, and the
+                 * boot frame carries one (multiplier 0x6400 offset 0x9867).
+                 * Record the parameters; the cxd4 LLE stream shows non-zero
+                 * shade-alpha (fog) lanes on DKR triangles, so the vertex
+                 * fog consumer is a pending follow-up. The clip-ratio move
+                 * (index 0x04, gSPClipRatio) also appears with ratio 2 --
+                 * that matches the frontend default, so it needs no case. */
+                gsp_set_fog(gsp, (int)(short)(w1 >> 16),
+                                 (int)(short)(w1 & 0xffffu));
+            }
             else if (index == DKR_MW_SEGMENT)
             {
                 /* gSPSegment(seg,base): offset field = seg*4, so the segment
@@ -405,6 +430,20 @@ static void f3ddkr_run_dl_impl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
                 unsigned int seg = (w0 >> 10) & 0x0fu;
                 s_seg[seg] = w1 & 0x00ffffffu;
             }
+            break;
+        }
+
+        case DKR_G_MOVEMEM:
+        {
+            /* Stock F3D G_MOVEMEM; DKR uses it for the viewport (index
+             * 0x80). The boot frame switches between a 160/120-scale
+             * viewport and one with vscale.y = 160: with the command
+             * unhandled the frontend default rendered every batch under
+             * the second viewport with the wrong Y scale. */
+            unsigned int mvidx = (w0 >> 16) & 0xffu;
+            unsigned int ma    = seg_phys(w1);
+            if (mvidx == 0x80u && in_range(ma, 16u))
+                gsp_set_viewport(gsp, r, ma);
             break;
         }
 
