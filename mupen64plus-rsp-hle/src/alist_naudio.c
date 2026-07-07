@@ -309,10 +309,17 @@ void alist_process_naudio(struct hle_t* hle)
 
 void alist_process_naudio_bk(struct hle_t* hle)
 {
-    /* Same command ABI as alist_process_naudio (only the ucode CRC
-     * differs). Opcode 0x0e stays NAUDIO_02B0 (the SETVOL-rate handler),
-     * not a pole filter: Banjo-Kazooie's audio library emits A_POLEF
-     * there, but this ucode does not implement it (confirmed against LLE). */
+    /* Banjo-Kazooie's audio library emits A_POLEF at opcode 0x0e, but
+     * this ucode does not implement a pole filter: its dispatch table
+     * sends the command to 0x2b0, the middle of the SETVOL handler, past
+     * the instruction that derives $v0 from the command words. The code
+     * there stores $v0 and w2 as the right-channel rate high/low halves,
+     * so the effective rate is built from register residue: $v0 still
+     * holds the DRAM address of the preceding LOADADPCM (the library
+     * always pairs A_POLEF with one), unless the 0x140-byte command
+     * chunk was refilled in between, in which case it holds the alist
+     * read pointer. The custom walk below models that residue; the
+     * NAUDIO_02B0 table entry is bypassed for this ucode. */
     static const acmd_callback_t ABI[0x10] = {
         SPNOOP,         ADPCM,          CLEARBUFF,      ENVMIXER_RAW,
         LOADBUFF,       RESAMPLE,       SAVEBUFF,       NAUDIO_0000,
@@ -320,7 +327,33 @@ void alist_process_naudio_bk(struct hle_t* hle)
         MIXER,          INTERLEAVE,     NAUDIO_02B0,    SETLOOP
     };
 
-    alist_process(hle, ABI, 0x10);
+    {
+        uint32_t w1, w2;
+        unsigned int acmd;
+        long idx = 0;
+        uint32_t dptr = *dmem_u32(hle, TASK_DATA_PTR);
+        const uint32_t *alist = dram_u32(hle, dptr);
+        const uint32_t *const alist_end = alist + (*dmem_u32(hle, TASK_DATA_SIZE) >> 2);
+        uint32_t v0 = dptr;
+
+        while (alist_end - alist >= 2) {
+            if (idx != 0 && (idx % 40) == 0)
+                v0 = dptr + 8 * idx;
+
+            w1 = *(alist++);
+            w2 = *(alist++);
+            acmd = (w1 >> 24) & 0x7f;
+
+            if (acmd == 0x0e) {
+                hle->alist_naudio.rate[1] = (int32_t)((v0 << 16) | (w2 & 0xffff));
+            } else if (acmd < 0x10) {
+                (*ABI[acmd])(hle, w1, w2);
+                if (acmd == 0x0b)
+                    v0 = w2 & 0xffffff;
+            }
+            ++idx;
+        }
+    }
     rsp_break(hle, SP_STATUS_TASKDONE);
 }
 
