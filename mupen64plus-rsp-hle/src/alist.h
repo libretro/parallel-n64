@@ -81,6 +81,19 @@ void alist_envmix_ge(
         const int32_t *rate,
         uint32_t address);
 
+/* ENVMIXER input path per naudio ucode revision: the original revision
+ * (plain naudio, Banjo-Kazooie) feeds the samples to the accumulating mix
+ * unchanged; the naudio_mp3/naudio_dk revisions apply a one's-complement
+ * (vxor) inversion; the Conker revision routes them through
+ * vmulf(src, +-0x7fff). In the vxor and vmulf revisions the dry gain LSB
+ * drives the transform for both LEFT outputs and the wet gain LSB for
+ * both RIGHT outputs. */
+enum alist_envmix_input {
+    ALIST_ENVMIX_IN_RAW,
+    ALIST_ENVMIX_IN_VXOR,
+    ALIST_ENVMIX_IN_VMULF
+};
+
 void alist_envmix_lin(
         struct hle_t* hle,
         bool init,
@@ -92,7 +105,7 @@ void alist_envmix_lin(
         const int16_t *target,
         const int32_t *rate,
         uint32_t address,
-        bool vmulf_premix);
+        enum alist_envmix_input input_mode);
 
 void alist_envmix_nead(
         struct hle_t* hle,

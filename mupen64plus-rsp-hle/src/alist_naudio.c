@@ -125,7 +125,7 @@ static void SETVOL(struct hle_t* hle, uint32_t w1, uint32_t w2)
     }
 }
 
-static void envmixer(struct hle_t* hle, uint32_t w1, uint32_t w2, bool vmulf_premix)
+static void envmixer(struct hle_t* hle, uint32_t w1, uint32_t w2, enum alist_envmix_input input_mode)
 {
     uint8_t  flags   = (w1 >> 16);
     uint32_t address = (w2 & 0xffffff);
@@ -147,19 +147,26 @@ static void envmixer(struct hle_t* hle, uint32_t w1, uint32_t w2, bool vmulf_pre
             hle->alist_naudio.target,
             hle->alist_naudio.rate,
             address,
-            vmulf_premix);
+            input_mode);
 }
 
 static void ENVMIXER(struct hle_t* hle, uint32_t w1, uint32_t w2)
 {
-    envmixer(hle, w1, w2, false);
+    envmixer(hle, w1, w2, ALIST_ENVMIX_IN_VXOR);
+}
+
+/* The original revision of the microcode (plain naudio, Banjo-Kazooie)
+ * has no input phase feature at all. */
+static void ENVMIXER_RAW(struct hle_t* hle, uint32_t w1, uint32_t w2)
+{
+    envmixer(hle, w1, w2, ALIST_ENVMIX_IN_RAW);
 }
 
 /* The Conker revision of the microcode routes the ENVMIXER input samples
  * through vmulf instead of the vxor phase inversion. */
 static void ENVMIXER_CBFD(struct hle_t* hle, uint32_t w1, uint32_t w2)
 {
-    envmixer(hle, w1, w2, true);
+    envmixer(hle, w1, w2, ALIST_ENVMIX_IN_VMULF);
 }
 
 static void CLEARBUFF(struct hle_t* hle, uint32_t w1, uint32_t w2)
@@ -290,7 +297,7 @@ static void OVERLOAD(struct hle_t* hle, uint32_t w1, uint32_t w2)
 void alist_process_naudio(struct hle_t* hle)
 {
     static const acmd_callback_t ABI[0x10] = {
-        SPNOOP,         ADPCM,          CLEARBUFF,      ENVMIXER,
+        SPNOOP,         ADPCM,          CLEARBUFF,      ENVMIXER_RAW,
         LOADBUFF,       RESAMPLE,       SAVEBUFF,       NAUDIO_0000,
         NAUDIO_0000,    SETVOL,         DMEMMOVE,       LOADADPCM,
         MIXER,          INTERLEAVE,     NAUDIO_02B0,    SETLOOP
@@ -307,7 +314,7 @@ void alist_process_naudio_bk(struct hle_t* hle)
      * not a pole filter: Banjo-Kazooie's audio library emits A_POLEF
      * there, but this ucode does not implement it (confirmed against LLE). */
     static const acmd_callback_t ABI[0x10] = {
-        SPNOOP,         ADPCM,          CLEARBUFF,      ENVMIXER,
+        SPNOOP,         ADPCM,          CLEARBUFF,      ENVMIXER_RAW,
         LOADBUFF,       RESAMPLE,       SAVEBUFF,       NAUDIO_0000,
         NAUDIO_0000,    SETVOL,         DMEMMOVE,       LOADADPCM,
         MIXER,          INTERLEAVE,     NAUDIO_02B0,    SETLOOP

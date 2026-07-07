@@ -681,7 +681,7 @@ void alist_envmix_lin(
         const int16_t *target,
         const int32_t *rate,
         uint32_t address,
-        bool vmulf_premix)
+        enum alist_envmix_input input_mode)
 {
     /* Exact model of the naudio ENVMIXER inner loop.
      *
@@ -691,13 +691,18 @@ void alist_envmix_lin(
      * where idx[] holds j/8 in unsigned 0.16 (the last lane being 0xffff,
      * one LSB short of 1.0), then adds the full 32-bit rate once per block
      * of eight samples and clamps only the high halves against the target.
-     * The input path depends on the ucode revision (vmulf_premix): the
-     * Conker variant routes the samples through vmulf(src, +-0x7fff)
-     * before the accumulating mix, with the sign selected by the LSB of
-     * the dry/wet gains, while the naudio_mp3 revision (Perfect Dark,
-     * Banjo-Tooie, Jet Force Gemini, Mickey's Speedway) feeds them in
-     * unchanged, with the same LSBs selecting a one's-complement (vxor)
-     * inversion instead.
+     * The input path depends on the ucode revision (input_mode): the
+     * original revision (plain naudio, Banjo-Kazooie) feeds the samples
+     * to the mix unchanged and has no phase feature at all; the
+     * naudio_mp3/naudio_dk revisions (Perfect Dark, Banjo-Tooie, Jet
+     * Force Gemini, Mickey's Speedway, Donkey Kong 64) apply a
+     * one's-complement (vxor) inversion; the Conker revision routes the
+     * samples through vmulf(src, +-0x7fff). In both transforming
+     * revisions the microcode inverts the input once with the mask/scale
+     * derived from the DRY gain LSB, mixes the two LEFT outputs, then
+     * re-derives the input with the WET gain LSB mask/scale and mixes
+     * the two RIGHT outputs - so the selection is per stereo side, not
+     * per dry/wet send.
      *
      * The saved state matches the microcode layout: four vector registers
      * (hi/lo lane pairs for both channels) followed by the parameter
@@ -757,7 +762,7 @@ void alist_envmix_lin(
     }
 
     {
-        /* vmulf_premix: the input scale differs on the first block of
+        /* ALIST_ENVMIX_IN_VMULF: the input scale differs on the first block of
          * every call, because the setup code computes it as
          * vmulf(0x7fff, phase) (0x7ffe / -0x7fff) while the block loop
          * regenerates it with vmudh as the exact phase value
@@ -802,21 +807,28 @@ void alist_envmix_lin(
 
             for (j = 0; j < 8; ++j) {
                 size_t k = m * 8 + j;
-                int16_t in_dry;
-                int16_t in_wet;
+                int16_t in_left;
+                int16_t in_right;
 
-                if (vmulf_premix) {
-                    in_dry = alist_envmix_premix(in[k^S], (m == 0) ? dry_scale0 : dry_phase);
-                    in_wet = alist_envmix_premix(in[k^S], (m == 0) ? wet_scale0 : wet_phase);
-                } else {
-                    in_dry = in[k^S] ^ dry_mask;
-                    in_wet = in[k^S] ^ wet_mask;
+                switch (input_mode) {
+                case ALIST_ENVMIX_IN_VMULF:
+                    in_left  = alist_envmix_premix(in[k^S], (m == 0) ? dry_scale0 : dry_phase);
+                    in_right = alist_envmix_premix(in[k^S], (m == 0) ? wet_scale0 : wet_phase);
+                    break;
+                case ALIST_ENVMIX_IN_VXOR:
+                    in_left  = in[k^S] ^ dry_mask;
+                    in_right = in[k^S] ^ wet_mask;
+                    break;
+                default:
+                    in_left  = in[k^S];
+                    in_right = in[k^S];
+                    break;
                 }
 
-                sample_mix(dl + (k^S), in_dry, clamp_s16((l_vol[j] * dry + 0x4000) >> 15));
-                sample_mix(dr + (k^S), in_dry, clamp_s16((r_vol[j] * dry + 0x4000) >> 15));
-                sample_mix(wl + (k^S), in_wet, clamp_s16((l_vol[j] * wet + 0x4000) >> 15));
-                sample_mix(wr + (k^S), in_wet, clamp_s16((r_vol[j] * wet + 0x4000) >> 15));
+                sample_mix(dl + (k^S), in_left,  clamp_s16((l_vol[j] * dry + 0x4000) >> 15));
+                sample_mix(dr + (k^S), in_right, clamp_s16((r_vol[j] * dry + 0x4000) >> 15));
+                sample_mix(wl + (k^S), in_left,  clamp_s16((l_vol[j] * wet + 0x4000) >> 15));
+                sample_mix(wr + (k^S), in_right, clamp_s16((r_vol[j] * wet + 0x4000) >> 15));
             }
         }
     }
