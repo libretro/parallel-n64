@@ -407,7 +407,7 @@ static int in_range(unsigned int a, unsigned int bytes)
 static int s_variant_seta = 0;
 void f3d_set_variant_seta(int v) { s_variant_seta = v ? 1 : 0; }
 
-static unsigned int f3d_xlate_geom(unsigned int m)
+unsigned int f3d_xlate_geom(unsigned int m)
 {
     unsigned int o = m & ~(0x000200u | 0x001000u | 0x002000u);
     if (m & 0x000200u) o |= 0x200000u;

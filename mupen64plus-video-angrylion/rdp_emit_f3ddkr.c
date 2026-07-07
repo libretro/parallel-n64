@@ -30,6 +30,7 @@
  * correct without it -- billboard sprites are the first follow-up.
  */
 #include "rdp_emit_f3ddkr.h"
+#include "rdp_emit_f3d.h"
 
 #if defined(_MSC_VER) && (_MSC_VER < 1600)
 typedef signed   __int32 dkr_int32_t;
@@ -82,6 +83,7 @@ static int   s_billboard = 0;   /* G_MW_BILLBOARD state (decode only for now) */
 static unsigned int s_othermode_h = 0;
 static unsigned int s_othermode_l = 0;
 static int   s_vtx_top   = 0;   /* next free vertex slot for G_VTX_APPEND */
+static unsigned int s_geom = 0; /* raw GBI 1 geometry mode; translated on write */
 
 /* ---- helpers (mirror rdp_emit_f3d.c) ------------------------------------ */
 static unsigned int rd32(const unsigned char *r, unsigned int a)
@@ -120,6 +122,7 @@ void f3ddkr_seg_reset(void)
     s_mtx_slot  = 0;
     s_billboard = 0;
     s_vtx_top   = 0;
+    s_geom      = 0u;
     s_othermode_h = 0;
     s_othermode_l = 0;
 }
@@ -308,6 +311,7 @@ static void f3ddkr_run_dl_impl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
                 for (t = 0; t < num_tris; t++)
                 {
                     unsigned int e = ta + (unsigned int)t * 16u;
+                    unsigned int flag = r[(e + 0) ^ 3];
                     int v0 = (int)r[(e + 1) ^ 3];
                     int v1 = (int)r[(e + 2) ^ 3];
                     int v2 = (int)r[(e + 3) ^ 3];
@@ -332,10 +336,24 @@ static void f3ddkr_run_dl_impl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
                     gsp_set_vertex_st(gsp, v2,
                         (int)(short)((r[(e + 14) ^ 3] << 8) | r[(e + 15) ^ 3]),
                         (int)(short)((r[(e + 12) ^ 3] << 8) | r[(e + 13) ^ 3]));
+                    /* DKR culls per triangle, not from the geometry mode
+                     * (whose GBI 1 cull bits the game never sets): plain
+                     * triangles are backface-culled by the microcode, and
+                     * flag bit 0x40 (RENDER_BACKFACE in the DKR
+                     * decompilation) marks a triangle double-sided. Express
+                     * that through the frontend's F3DEX2-layout cull bits
+                     * around each emit. On this boot frame the model emits
+                     * 1428 triangles against the cxd4 LLE oracle's 1426;
+                     * unconditional emission gave 2122 and culling both
+                     * classes 827. */
+                    gsp_set_geometry_mode(gsp, (flag & 0x40u)
+                        ? f3d_xlate_geom(s_geom)
+                        : (f3d_xlate_geom(s_geom) | 0x400u));
                     nc = gsp_triangle(gsp, cmdw, v0, v1, v2,
                                       s_textured, s_zbuffered);
                     if (nc > 0) rdp_fifo_append(fifo, cmdw, nc);
                 }
+                gsp_set_geometry_mode(gsp, f3d_xlate_geom(s_geom));
             }
             s_textured = oldtex;
             s_vtx_top = 0;   /* DKR resets the vertex cursor after a polygon batch */
@@ -391,11 +409,18 @@ static void f3ddkr_run_dl_impl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
         }
 
         case DKR_G_SETGEOMETRYMODE:
-            gsp_set_geometry_mode(gsp, gsp_get_geometry_mode(gsp) | w1);
+            /* DKR keeps the GBI 1 geometry-mode bit layout; the shared
+             * frontend interprets the F3DEX2 layout, where GBI 1's
+             * G_SHADING_SMOOTH (0x200) lands on G_CULL_FRONT. Keep a raw
+             * shadow and translate on write, exactly like the F3D walker,
+             * or every smooth-shaded batch is front-culled. */
+            s_geom |= w1;
+            gsp_set_geometry_mode(gsp, f3d_xlate_geom(s_geom));
             break;
 
         case DKR_G_CLEARGEOMETRYMODE:
-            gsp_set_geometry_mode(gsp, gsp_get_geometry_mode(gsp) & ~w1);
+            s_geom &= ~w1;
+            gsp_set_geometry_mode(gsp, f3d_xlate_geom(s_geom));
             break;
 
         case DKR_G_SETOTHERMODE_H:

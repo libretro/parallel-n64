@@ -23,6 +23,11 @@ extern "C" {
 /* True if the task ucode at text (RDRAM byte address of the ucode text) is the
  * plain F3D / Fast3D microcode family rather than F3DEX2/S2DEX2/L3DEX2. The
  * HLE entry uses this to route the display list to f3d_run_dl. */
+/* Translate the GBI 1 geometry-mode bit layout (G_SHADING_SMOOTH 0x200,
+ * G_CULL_FRONT 0x1000, G_CULL_BACK 0x2000) into the F3DEX2 layout the
+ * shared frontend interprets. Shared with the F3DDKR walker, whose custom
+ * microcode keeps the GBI 1 positions. */
+unsigned int f3d_xlate_geom(unsigned int m);
 int  f3d_is_ucode(const unsigned char *rdram, unsigned int rdram_size,
                   unsigned int text);
 
