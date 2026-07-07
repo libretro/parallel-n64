@@ -488,6 +488,12 @@ static void f3ddkr_run_dl_impl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
                 s_othermode_l = (s_othermode_l & ~mask) | ((unsigned int)w1 & mask);
             s_zbuffered = (((s_othermode_l >> 4) & 1u) ||
                            ((s_othermode_l >> 5) & 1u)) ? 1 : 0;
+            /* The RSP zeroes shade alpha under the fogged world blend
+             * (cycle-1 P mux == fog colour, othermode_l bits 31:30 == 3)
+             * and passes vertex alpha through otherwise (the alpha-shaded
+             * actors). Track it for gsp_vertex_dkr. */
+            gsp_set_dkr_shade_alpha_zero(gsp,
+                (((s_othermode_l >> 30) & 3u) == 3u) ? 1 : 0);
             two[0] = (int32_t)(s_othermode_h | (0x2fu << 24));
             two[1] = (int32_t)s_othermode_l;
             rdp_fifo_append(fifo, two, 2);
@@ -566,6 +572,8 @@ static void f3ddkr_run_dl_impl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
                     {
                         s_othermode_h = (unsigned int)w0 & 0x00ffffffu;
                         s_othermode_l = (unsigned int)w1;
+                        gsp_set_dkr_shade_alpha_zero(gsp,
+                            (((s_othermode_l >> 30) & 3u) == 3u) ? 1 : 0);
                     }
                     rdp_fifo_append(fifo, two, 2);
                 }

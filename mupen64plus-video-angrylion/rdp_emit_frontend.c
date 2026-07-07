@@ -190,6 +190,7 @@ void gsp_init(GSPState *s)
     s->persp_norm = 0xffffu; /* default until gSPPerspNormalize sets it */
     s->fog_m = 0;
     s->fog_o = 0;
+    s->dkr_shade_alpha_zero = 0;
     s->viewport.persp_norm = 0xffffu;
     s->viewport.tri_dx_scale  = s->tri_dx_scale;
     s->viewport.tri_idy_scale = s->tri_idy_scale;
@@ -523,6 +524,11 @@ void gsp_set_fog(GSPState *s, int fm, int fo)
 {
     s->fog_m = fm;
     s->fog_o = fo;
+}
+
+void gsp_set_dkr_shade_alpha_zero(GSPState *s, int on)
+{
+    s->dkr_shade_alpha_zero = on ? 1 : 0;
 }
 
 void gsp_task_reset(GSPState *s)
@@ -956,13 +962,22 @@ void gsp_vertex_dkr(GSPState *s, const unsigned char *rdram, unsigned int addr,
         vt->r = (int32_t)read_u8_n64(rdram, base + 6) << 16;
         vt->g = (int32_t)read_u8_n64(rdram, base + 7) << 16;
         vt->b = (int32_t)read_u8_n64(rdram, base + 8) << 16;
-        /* DKR DMA vertices: the 4th colour byte is NOT routed to shade alpha by
-         * the RSP -- shade alpha stays 0 (verified against the cxd4 LLE path,
-         * which produces shade_color.a == 0 for every DKR DMA triangle).  The
-         * accurate angrylion blender reads blender_shade_alpha = shade.a; if we
-         * forward the raw byte (often 0xff) the 2-cycle blend crushes the
-         * combiner output toward black.  Force it to 0 to match the RSP. */
-        vt->a = 0;
+        /* DKR DMA vertices carry vertex alpha in the 4th colour byte. The
+         * DKR microcode routes it to shade alpha only when the active
+         * blender does not take the fog colour as its cycle-1 P input:
+         * under the fogged world rendermode (blender P mux == fog colour,
+         * othermode_l bits 31:30 == 3) the RSP emits shade alpha 0 for
+         * every triangle, and forwarding the raw byte (usually 0xff) would
+         * crush the 2-cycle fog blend toward black. Under the actor
+         * rendermode (P mux == combined colour) the vertex alpha passes
+         * through, which is what shades the Taj genie instead of leaving it
+         * a solid black silhouette. Verified against the cxd4 LLE oracle:
+         * with the gate, the fog-mode triangles carry shade alpha 0 and the
+         * actor-mode triangles carry the vertex alpha (0x4b/0xff/...), both
+         * matching the LLE stream. */
+        vt->a = s->dkr_shade_alpha_zero
+              ? 0
+              : ((int32_t)read_u8_n64(rdram, base + 9) << 16);
 
         vt->s = 0;
         vt->t = 0;
