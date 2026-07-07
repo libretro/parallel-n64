@@ -289,7 +289,7 @@ static void f3ddkr_run_dl_impl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
              *   count    = ((w0 >> 20) & 0x0f) + 1
              *   texture  =  (w0 >> 16) & 0x0f
              *   w1       -> array of 16-byte DKRTriangle entries:
-             *     +0 u8 v2  +1 u8 v1  +2 u8 v0  +3 u8 flag
+             *     +0 u8 flag  +1 u8 v0  +2 u8 v1  +3 u8 v2
              *     +4 s16 t0 +6 s16 s0  +8 s16 t1 +10 s16 s1
              *     +12 s16 t2 +14 s16 s2
              * The S/T are per-vertex S10.5 texel coords carried on the
@@ -308,9 +308,9 @@ static void f3ddkr_run_dl_impl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
                 for (t = 0; t < num_tris; t++)
                 {
                     unsigned int e = ta + (unsigned int)t * 16u;
-                    int v2 = (int)r[(e + 0) ^ 3];
-                    int v1 = (int)r[(e + 1) ^ 3];
-                    int v0 = (int)r[(e + 2) ^ 3];
+                    int v0 = (int)r[(e + 1) ^ 3];
+                    int v1 = (int)r[(e + 2) ^ 3];
+                    int v2 = (int)r[(e + 3) ^ 3];
                     int32_t cmdw[220];
                     int nc;
                     /* Reject triangles whose indices fall outside the vertex
