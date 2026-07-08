@@ -947,6 +947,43 @@ void f3dex2_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
                  * normalization scale the RSP applies to 1/w. */
                 gsp_set_persp_norm(gsp, w1 & 0xffffu);
             }
+            else if (index == 0x10 && s_variant_cbfd)
+            {
+                /* Conker G_MW_COORD_MOD: the vertex-position modifier the CBFD
+                 * point-light path uses. w0 bit 3 set is a no-op; bits 1..2
+                 * index the row; w0 & 0x30 selects which pair of rows the two
+                 * s16 halves of w1 write: 0x00 -> integer offset rows 0/1,
+                 * 0x10 -> 16.16 scale rows 4/5 and the combined rows 12/13
+                 * (offset << 16 + scale), 0x20 -> integer rows 8/9. */
+                if ((w0 & 8u) == 0u)
+                {
+                    int cmi = (int)((w0 >> 1) & 3u);
+                    unsigned int cpos = w0 & 0x30u;
+                    int32_t chi = (int32_t)(short)((w1 >> 16) & 0xffffu);
+                    int32_t clo = (int32_t)(short)(w1 & 0xffffu);
+                    if (cpos == 0x00u)
+                    {
+                        gsp->cbfd_cmod[0 + cmi] = chi;
+                        gsp->cbfd_cmod[1 + cmi] = clo;
+                    }
+                    else if (cpos == 0x10u)
+                    {
+                        gsp->cbfd_cmod[4 + cmi] = chi;
+                        gsp->cbfd_cmod[5 + cmi] = clo;
+                        gsp->cbfd_cmod[12 + cmi] =
+                            (gsp->cbfd_cmod[0 + cmi] << 16)
+                            + gsp->cbfd_cmod[4 + cmi];
+                        gsp->cbfd_cmod[13 + cmi] =
+                            (gsp->cbfd_cmod[1 + cmi] << 16)
+                            + gsp->cbfd_cmod[5 + cmi];
+                    }
+                    else if (cpos == 0x20u)
+                    {
+                        gsp->cbfd_cmod[8 + cmi] = chi;
+                        gsp->cbfd_cmod[9 + cmi] = clo;
+                    }
+                }
+            }
             break;
         }
 

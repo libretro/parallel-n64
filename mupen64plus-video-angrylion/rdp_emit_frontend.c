@@ -548,6 +548,11 @@ void gsp_task_reset(GSPState *s)
     s->pd_ci = 0;
     s->cbfd = 0;
     s->cbfd_nbase = 0;
+    {
+        int ci;
+        for (ci = 0; ci < 16; ci++)
+            s->cbfd_cmod[ci] = 0;
+    }
     s->pd_cbase = 0;
     /* Each task starts under the F3D-family screen model; the F3DDKR
      * walker opts out at its entry. Without the per-task restore a DKR
@@ -796,6 +801,46 @@ void gsp_vertex(GSPState *s, const unsigned char *rdram, unsigned int addr,
                                        * dot) >> 15);
                     litb += (int32_t)(((int64_t)(s->light_rgb[last][2] & 0xff)
                                        * dot) >> 15);
+                }
+                /* Lights below the dominant one are point lights: intensity =
+                 * min(1, ca / len), len = 2 * |vPos - lpos|^2 in the position
+                 * domain, vPos the vertex pushed through the G_MW_COORD_MOD
+                 * offset (rows 8..10) and 16.16 scale (rows 12..14). With
+                 * G_LIGHTING_POSITIONAL set the intensity is also gated by the
+                 * normal dot so a light behind a face does not light it. These
+                 * fill in the illumination the dim ambient plus one directional
+                 * light would otherwise leave far too dark. */
+                for (li = last - 1; li >= 0; li--)
+                {
+                    int64_t vx, vy, vz, len, inten;
+                    vx = ((int64_t)ox + s->cbfd_cmod[8]) * s->cbfd_cmod[12];
+                    vy = ((int64_t)oy + s->cbfd_cmod[9]) * s->cbfd_cmod[13];
+                    vz = ((int64_t)oz + s->cbfd_cmod[10]) * s->cbfd_cmod[14];
+                    vx = (vx >> 16) - s->cbfd_lpos[li][0];
+                    vy = (vy >> 16) - s->cbfd_lpos[li][1];
+                    vz = (vz >> 16) - s->cbfd_lpos[li][2];
+                    len = (2 * (vx * vx + vy * vy + vz * vz)) >> 16;
+                    if (len <= 0)
+                        inten = 0x7fff;
+                    else
+                    {
+                        inten = ((int64_t)s->cbfd_lca[li] << 11) / len;
+                        if (inten > 0x7fff) inten = 0x7fff;
+                    }
+                    if ((s->geometry_mode & 0x00400000u) && inten > 0)
+                    {
+                        int32_t nd = rsp_light_dirdot(nrm, s->light_dir[li]);
+                        inten = (inten * nd) >> 15;
+                    }
+                    if (inten > 0)
+                    {
+                        litr += (int32_t)(((int64_t)(s->light_rgb[li][0] & 0xff)
+                                           * inten) >> 15);
+                        litg += (int32_t)(((int64_t)(s->light_rgb[li][1] & 0xff)
+                                           * inten) >> 15);
+                        litb += (int32_t)(((int64_t)(s->light_rgb[li][2] & 0xff)
+                                           * inten) >> 15);
+                    }
                 }
                 if (litr > 255) litr = 255;
                 if (litg > 255) litg = 255;
@@ -1182,6 +1227,17 @@ void gsp_set_light(GSPState *s, const unsigned char *rdram,
                                              | read_u8_n64(rdram, addr + 11));
     s->light_pos[index][2] = (int32_t)(short)((read_u8_n64(rdram, addr + 12) << 8)
                                              | read_u8_n64(rdram, addr + 13));
+    /* CBFD point-light fields: an s16 position at bytes 32..36 (distinct from
+     * the s8 direction at 8..10 the dominant light dots against) and an
+     * attenuation numerator at byte 12 (the microcode's ca is byte / 16; kept
+     * raw here = ca * 16 and unscaled at the point-light fold). */
+    s->cbfd_lpos[index][0] = (int32_t)(short)((read_u8_n64(rdram, addr + 32) << 8)
+                                             | read_u8_n64(rdram, addr + 33));
+    s->cbfd_lpos[index][1] = (int32_t)(short)((read_u8_n64(rdram, addr + 34) << 8)
+                                             | read_u8_n64(rdram, addr + 35));
+    s->cbfd_lpos[index][2] = (int32_t)(short)((read_u8_n64(rdram, addr + 36) << 8)
+                                             | read_u8_n64(rdram, addr + 37));
+    s->cbfd_lca[index] = (int32_t)read_u8_n64(rdram, addr + 12);
     /* G_MOVEMEM does not touch lightsValid (see gsp_set_lookat). */
 }
 

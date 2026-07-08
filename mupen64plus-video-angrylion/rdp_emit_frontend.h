@@ -18,7 +18,9 @@ extern "C" {
 
 #define GSP_MAX_VERTICES 64   /* N64 vertex buffer holds up to 32/64 */
 #define GSP_MTX_STACK    16
-#define GSP_MAX_LIGHTS   10   /* up to 8 directional + ambient (+ slack) */
+#define GSP_MAX_LIGHTS   16   /* stock needs 8 directional + ambient; Conker's
+                               * CBFD build loads up to 11 lights plus the
+                               * ambient, so the array must hold at least 13 */
 
 /* one loaded+transformed vertex, kept in the frontend's cache (no float) */
 typedef struct GSPVertex
@@ -97,6 +99,9 @@ typedef struct GSPState
     unsigned int pd_cbase;    /* physical base of the vertex colour table */
     int cbfd;                 /* Conker CBFD vertex/lighting model */
     unsigned int cbfd_nbase;  /* physical base of the per-vertex normal table */
+    int32_t cbfd_lpos[GSP_MAX_LIGHTS][3]; /* CBFD point-light s16 positions */
+    int32_t cbfd_lca[GSP_MAX_LIGHTS];     /* CBFD point-light ca numerator (light byte = ca*16) */
+    int32_t cbfd_cmod[16];    /* G_MW_COORD_MOD offset/scale rows (12..15 in 16.16) */
     int dkr_shade_alpha_zero; /* DKR: RSP zeroes shade alpha under the fog blender P mux */
     unsigned int mtx_stack_ptr;
     unsigned int mtx_stack_base;
