@@ -41,6 +41,7 @@ int emit_shaded_z_triangle(int32_t *ew, const EmitVertex *va,
                            const EmitVertex *vb, const EmitVertex *vc,
                            int tile, int max_level);
 void emit_set_st_bias(int32_t bias_s, int32_t bias_t);
+void emit_set_st_wide_double(int on);
 void emit_get_st_bias(int32_t *bias_s, int32_t *bias_t);
 
 int emit_texshade_triangle(int32_t *ew,

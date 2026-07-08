@@ -338,22 +338,17 @@ static void f3ddkr_run_dl_impl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
                      * each pair (GLideN64 DKRTriangle {s0,t0,...}), not the
                      * second, and DKR's microcode uses the raw S10.5 values
                      * with no G_TEXTURE scale (its two G_TEXTURE commands
-                     * carry scale 0). gsp_set_vertex_st applies the
-                     * frontend's scale convention where the default 0x8000
-                     * halves the input, so feed the values doubled:
-                     * (2*st*0x8000)>>16 == st exactly. Verified against the
-                     * cxd4 LLE oracle: on edge-exact triangle pairs the S/T
-                     * coefficient planes now agree where the halved,
-                     * swapped read had every texture word wrong. */
+                     * carry scale 0). gsp_set_vertex_st stores the raw
+                     * values directly on the DKR path. */
                     gsp_set_vertex_st(gsp, v0,
-                        2 * (int)(short)((r[(e + 4) ^ 3] << 8) | r[(e + 5) ^ 3]),
-                        2 * (int)(short)((r[(e + 6) ^ 3] << 8) | r[(e + 7) ^ 3]));
+                        (int)(short)((r[(e + 4) ^ 3] << 8) | r[(e + 5) ^ 3]),
+                        (int)(short)((r[(e + 6) ^ 3] << 8) | r[(e + 7) ^ 3]));
                     gsp_set_vertex_st(gsp, v1,
-                        2 * (int)(short)((r[(e + 8) ^ 3] << 8) | r[(e + 9) ^ 3]),
-                        2 * (int)(short)((r[(e + 10) ^ 3] << 8) | r[(e + 11) ^ 3]));
+                        (int)(short)((r[(e + 8) ^ 3] << 8) | r[(e + 9) ^ 3]),
+                        (int)(short)((r[(e + 10) ^ 3] << 8) | r[(e + 11) ^ 3]));
                     gsp_set_vertex_st(gsp, v2,
-                        2 * (int)(short)((r[(e + 12) ^ 3] << 8) | r[(e + 13) ^ 3]),
-                        2 * (int)(short)((r[(e + 14) ^ 3] << 8) | r[(e + 15) ^ 3]));
+                        (int)(short)((r[(e + 12) ^ 3] << 8) | r[(e + 13) ^ 3]),
+                        (int)(short)((r[(e + 14) ^ 3] << 8) | r[(e + 15) ^ 3]));
                     /* DKR culls per triangle, not from the geometry mode
                      * (whose GBI 1 cull bits the game never sets): plain
                      * triangles are backface-culled by the microcode, and

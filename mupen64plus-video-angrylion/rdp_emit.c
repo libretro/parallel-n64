@@ -333,11 +333,21 @@ int emit_shaded_z_triangle(int32_t *ew, const EmitVertex *va,
  * 64-bit product domain, so the emitted coefficients carry the hardware's
  * absolute coordinate branch (clamp and mirror phases depend on it). */
 static int32_t st_bias_s, st_bias_t;
+static int st_wide_double;
 
 void emit_set_st_bias(int32_t bias_s, int32_t bias_t)
 {
     st_bias_s = bias_s;
     st_bias_t = bias_t;
+}
+
+/* F3DDKR carries raw S10.5 coordinates whose << 17 pipeline form wraps
+ * int32 (Ancient Lake's canyon walls span ~1141 texels in one triangle),
+ * so its vertices store the << 16 form and this flag doubles bias and
+ * coordinate inside the 64-bit plane product instead. */
+void emit_set_st_wide_double(int on)
+{
+    st_wide_double = on ? 1 : 0;
 }
 
 void emit_get_st_bias(int32_t *bias_s, int32_t *bias_t)
@@ -385,12 +395,15 @@ int emit_texshade_triangle(int32_t *ew,
      * recovers texel = (S>>16) / (W>>16). The stored vt->s is the raw S10.5
      * texel in s15.16 (raw << 16), so the product needs >> 32 total. Verified
      * against cxd4: S/W == texel_s10.5 / 65536 exactly. */
-    sv[0] = (int32_t)(((((int64_t)st_bias_s << 16) + vh->s) * vh->w) >> 32);
-    sv[1] = (int32_t)(((((int64_t)st_bias_s << 16) + vm->s) * vm->w) >> 32);
-    sv[2] = (int32_t)(((((int64_t)st_bias_s << 16) + vl->s) * vl->w) >> 32);
-    tv[0] = (int32_t)(((((int64_t)st_bias_t << 16) + vh->t) * vh->w) >> 32);
-    tv[1] = (int32_t)(((((int64_t)st_bias_t << 16) + vm->t) * vm->w) >> 32);
-    tv[2] = (int32_t)(((((int64_t)st_bias_t << 16) + vl->t) * vl->w) >> 32);
+    {
+        int sh2 = st_wide_double ? 1 : 0;
+        sv[0] = (int32_t)((((((int64_t)st_bias_s << 16) + vh->s) << sh2) * vh->w) >> 32);
+        sv[1] = (int32_t)((((((int64_t)st_bias_s << 16) + vm->s) << sh2) * vm->w) >> 32);
+        sv[2] = (int32_t)((((((int64_t)st_bias_s << 16) + vl->s) << sh2) * vl->w) >> 32);
+        tv[0] = (int32_t)((((((int64_t)st_bias_t << 16) + vh->t) << sh2) * vh->w) >> 32);
+        tv[1] = (int32_t)((((((int64_t)st_bias_t << 16) + vm->t) << sh2) * vm->w) >> 32);
+        tv[2] = (int32_t)((((((int64_t)st_bias_t << 16) + vl->t) << sh2) * vl->w) >> 32);
+    }
     wv[0] = vh->w; wv[1] = vm->w; wv[2] = vl->w;
 
     solve_plane(sv[0], sv[1], sv[2], X0, Y0, X1, Y1, X2, Y2, area, dxhdy,

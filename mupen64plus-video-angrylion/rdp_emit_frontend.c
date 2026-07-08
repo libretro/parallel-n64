@@ -903,6 +903,21 @@ void gsp_set_vertex_st(GSPState *s, int idx, int st_s, int st_t)
     if (idx < 0 || idx >= GSP_MAX_VERTICES)
         return;
     vt = &s->vtx[idx];
+    if (!s->viewport.rsp_screen_model)
+    {
+        /* F3DDKR: raw S10.5, no G_TEXTURE scale. Store the shorts exactly
+         * and the wide field at << 16 -- representable for the whole s16
+         * range, unlike the pipeline's << 17 form, which wraps int32 for
+         * |st| >= 16384 (Ancient Lake's canyon walls reach +-18545 and
+         * the wrapped values solved into garbage S/T planes -- the
+         * sawtooth texture banding). The emitter's DKR wide-double flag
+         * restores the << 17 magnitude inside its 64-bit plane product. */
+        vt->s  = (int32_t)st_s << 16;
+        vt->t  = (int32_t)st_t << 16;
+        vt->sv = (int16_t)st_s;
+        vt->tv = (int16_t)st_t;
+        return;
+    }
     vt->s  = (int32_t)(((int64_t)st_s * (int64_t)s->tex_scale_s) << 1);
     vt->t  = (int32_t)(((int64_t)st_t * (int64_t)s->tex_scale_t) << 1);
     vt->sv = (int16_t)(((int64_t)st_s * (int64_t)s->tex_scale_s) >> 16);
@@ -1400,8 +1415,13 @@ static void gsp_fold_st(GSPState *s, GSPVertex *v)
      * the guard-band clip so the clip lerp interpolates on the coherent
      * branch as the RSP's 16-bit lerp does. */
     {
-        int32_t sref = v[0].s >> 16;
-        int32_t tref = v[0].t >> 16;
+        int dkr = !s->viewport.rsp_screen_model;
+        /* On the F3DDKR path the wide fields are the << 16 form and the
+         * stored shorts are the exact raw values; fold from the shorts
+         * (>> 16 of the wide form is identical, but the shorts are the
+         * authoritative domain the clip lerp also uses). */
+        int32_t sref = dkr ? (int32_t)v[0].sv : (v[0].s >> 16);
+        int32_t tref = dkr ? (int32_t)v[0].tv : (v[0].t >> 16);
         int k2;
         int32_t sv[3], tv[3], mn, mx;
 
@@ -1409,8 +1429,10 @@ static void gsp_fold_st(GSPState *s, GSPVertex *v)
         tv[0] = tref;
         for (k2 = 1; k2 < 3; k2++)
         {
-            sv[k2] = sref + (((((v[k2].s >> 16) - sref) + 0x8000) & 0xffff) - 0x8000);
-            tv[k2] = tref + (((((v[k2].t >> 16) - tref) + 0x8000) & 0xffff) - 0x8000);
+            int32_t vs2 = dkr ? (int32_t)v[k2].sv : (v[k2].s >> 16);
+            int32_t vt2 = dkr ? (int32_t)v[k2].tv : (v[k2].t >> 16);
+            sv[k2] = sref + ((((vs2 - sref) + 0x8000) & 0xffff) - 0x8000);
+            tv[k2] = tref + ((((vt2 - tref) + 0x8000) & 0xffff) - 0x8000);
         }
         /* The folded branch can leave the representable S10.5 range (e.g.
          * folding -27658 onto +29976's branch gives +37878, whose s15.16
@@ -1466,6 +1488,7 @@ static void gsp_fold_st(GSPState *s, GSPVertex *v)
              * rebuild the absolute coordinate branch from it; the RSP
              * triangle write consumes the exact stored shorts instead. */
             emit_set_st_bias(fit ? sh_s : 0, fit ? sh_t : 0);
+            emit_set_st_wide_double(dkr);
             if (fit)
                 for (k2 = 0; k2 < 3; k2++)
                 {
