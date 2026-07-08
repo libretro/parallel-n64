@@ -50,6 +50,16 @@ void f3ddkr_seg_reset(void);
 void f3ddkr_set_rdram(unsigned char *rdram);
 void f3ddkr_set_rdram_size(unsigned int size);
 
+/* Seed the walker's running other-modes mirror from the microcode's default
+ * pair in its data segment (ud+0x118, self-validating on the 0xEF command
+ * tag -- the same location the stock F3D data segment carries it). The RSP
+ * initializes its mirror from this at task start and updates it ONLY through
+ * G_SETOTHERMODE_H/L partial writes; raw full 0xEF commands in the display
+ * list are opaque RDP pass-through and do not touch it. Call after
+ * f3ddkr_seg_reset() and before f3ddkr_run_dl(). */
+void f3ddkr_seed_othermode(GSPState *gsp, const unsigned char *rdram,
+                           unsigned int rdram_size, unsigned int ud);
+
 /* Walk an F3DDKR display list at RDRAM byte address `addr`, transforming
  * geometry through `gsp` and appending RDP commands to `fifo`. Recurses into
  * nested (G_DL / G_DMADL) display lists up to a bounded depth. */

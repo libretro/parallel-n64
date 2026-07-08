@@ -709,6 +709,7 @@ void rdp_emit_hle_process_dlist(void)
             f3ddkr_seg_reset();
             f3ddkr_set_rdram(rdram);
             f3ddkr_set_rdram_size(rdram_size);
+            f3ddkr_seed_othermode(&s_gsp, rdram, rdram_size, ud);
             f3ddkr_run_dl(&s_gsp, &s_fifo, dl_addr, 0, 0);
         }
         else if (f3d_is_ucode(rdram, rdram_size, ut) || fam != 0 || gbi1_oth)
