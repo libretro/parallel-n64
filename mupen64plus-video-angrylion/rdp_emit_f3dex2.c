@@ -98,6 +98,41 @@ static int probe_ucode_class(const unsigned char *r, unsigned int text)
     return UCODE_F3DEX2;
 }
 
+/* Conker's Bad Fur Day runs a custom F3DEX2 build, "F3DEXBG.NoN". It packs
+ * the bulk of its geometry into a block of G_TRI4 opcodes (0x10..0x1f), each
+ * drawing four triangles from twelve 5-bit vertex indices -- the stock
+ * F3DEX2 walker leaves that whole opcode range unhandled, so most of every
+ * scene fails to render. Detected by the SGI data-segment name string, the
+ * same way f3d_ucode_family classifies the GBI 1 builds. */
+static int s_variant_cbfd;
+
+static int cbfd_ucode_match(const unsigned char *rdram,
+                            unsigned int ud, unsigned int uds)
+{
+    static const char sig[] = "F3DEXBG";
+    unsigned int siglen = sizeof(sig) - 1u;
+    unsigned int hi, b;
+    if (rdram == 0 || ud == 0)
+        return 0;
+    if (uds == 0u || uds > 0x4000u)
+        uds = 0x1000u;
+    hi = ud + uds;
+    if (s_rdram_size && hi > s_rdram_size)
+        hi = s_rdram_size;
+    if (hi < ud + siglen)
+        return 0;
+    for (b = ud; b + siglen <= hi; b++)
+    {
+        unsigned int k;
+        for (k = 0; k < siglen; k++)
+            if (rdram[(b + k) ^ 3] != (unsigned char)sig[k])
+                break;
+        if (k == siglen)
+            return 1;
+    }
+    return 0;
+}
+
 /* RDP render state is global on the real RSP (one set of mode registers),
  * not per-display-list. Track it module-wide so a mode set in one DL is seen
  * by sibling DLs drawn afterward; reset per frame alongside the segments. */
@@ -192,6 +227,16 @@ void f3dex2_set_task_ucode(const unsigned char *rdram, unsigned int text)
 {
     s_ucode_class = probe_ucode_class(rdram, text);
     s2dex_set_version2(s_ucode_class == UCODE_S2DEX2);
+    s_variant_cbfd = 0;
+}
+
+/* Enable Conker's F3DEXBG.NoN G_TRI4 opcode block for this task, detected by
+ * the data-segment name string. Cleared by f3dex2_set_task_ucode above, so it
+ * must be called after it at task start. */
+void f3dex2_set_variant_cbfd(const unsigned char *rdram, unsigned int ud,
+                             unsigned int uds)
+{
+    s_variant_cbfd = cbfd_ucode_match(rdram, ud, uds) ? 1 : 0;
 }
 
 /* Adopt the caller's segment table for a mid-list microcode handoff: when a
@@ -709,6 +754,48 @@ void f3dex2_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
         case 0x0b: /* S2DEX2 G_OBJ_RENDERMODE */
             s2dex_set_obj_rendermode(w1);
             break;
+
+        case 0x10: case 0x11: case 0x12: case 0x13:
+        case 0x14: case 0x15: case 0x16: case 0x17:
+        case 0x18: case 0x19: case 0x1a: case 0x1b:
+        case 0x1c: case 0x1d: case 0x1e: case 0x1f:
+        {
+            /* Conker's F3DEXBG.NoN G_TRI4: opcodes 0x10..0x1f each draw four
+             * triangles from twelve 5-bit vertex indices. The third index of
+             * the first triangle is split across the two command words (three
+             * high bits in w0, two low bits in w1); the other eleven indices
+             * are packed 5 bits each. Only active on the CBFD build -- every
+             * other F3DEX2 title leaves 0x10..0x1f as unused no-ops. */
+            if (s_variant_cbfd)
+            {
+                int idx[4][3];
+                int t;
+                idx[0][0] = (int)((w0 >> 23) & 0x1f);
+                idx[0][1] = (int)((w0 >> 18) & 0x1f);
+                idx[0][2] = (int)((((w0 >> 15) & 0x07) << 2)
+                                  | ((w1 >> 30) & 0x03));
+                idx[1][0] = (int)((w0 >> 10) & 0x1f);
+                idx[1][1] = (int)((w0 >>  5) & 0x1f);
+                idx[1][2] = (int)((w0 >>  0) & 0x1f);
+                idx[2][0] = (int)((w1 >> 25) & 0x1f);
+                idx[2][1] = (int)((w1 >> 20) & 0x1f);
+                idx[2][2] = (int)((w1 >> 15) & 0x1f);
+                idx[3][0] = (int)((w1 >> 10) & 0x1f);
+                idx[3][1] = (int)((w1 >>  5) & 0x1f);
+                idx[3][2] = (int)((w1 >>  0) & 0x1f);
+                for (t = 0; t < 4; t++)
+                {
+                    int32_t cmdw[220];
+                    int nc;
+                    if (idx[t][0] == idx[t][1] && idx[t][0] == idx[t][2])
+                        continue;   /* degenerate padding slot */
+                    nc = gsp_triangle(gsp, cmdw, idx[t][0], idx[t][1],
+                                      idx[t][2], s_textured, s_zbuffered);
+                    if (nc > 0) rdp_fifo_append(fifo, cmdw, nc);
+                }
+            }
+            break;
+        }
 
         case F3DEX2_TRI1:
         {

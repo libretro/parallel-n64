@@ -836,6 +836,10 @@ void rdp_emit_hle_process_dlist(void)
             f3dex2_set_rdram(rdram);
             f3dex2_set_rdram_size(rdram_size);
             f3dex2_set_task_ucode(rdram, ut);
+            /* Conker's F3DEXBG.NoN build: detect by data-segment name and
+             * enable the CBFD G_TRI4 opcode block (0x10..0x1f). */
+            f3dex2_set_variant_cbfd(rdram, ud,
+                                    read_dmem_u32(dmem, 0xfdc));
             /* Standalone S2DEX (GBI 1) is not caught by the text version probe;
              * detect it by data-segment name and force the GBI 1 sprite class. */
             if (s2dex1_ucode_match(rdram, rdram_size, ud,
