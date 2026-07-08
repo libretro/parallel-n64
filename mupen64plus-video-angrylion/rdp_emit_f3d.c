@@ -709,7 +709,16 @@ void f3d_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
          * the health-bar backing vanished. GoldenEye's build keeps the near
          * clip, so gate this on the PD variant. */
         gsp->clip_near_z = (s_variant_d64 || s_variant_pd) ? 0 : 1;
-        gsp->clip_ratio = 1;
+        /* Perfect Dark uses the wider guard-band clip ratio (FRUSTRATIO_2),
+         * not the clip-to-screen ratio the plain F3D/F3DEX builds default to.
+         * With the narrow ratio the walker subdivided every door- and
+         * wall-edge triangle that reached just past the screen edge into a
+         * guard-band fan, and the extra seams rasterised as vertical texel
+         * slivers down otherwise-solid surfaces (visible on the retail
+         * cart's sliding doors). The real microcode passes those triangles
+         * to the rasterizer whole, so widen the band to match; GoldenEye
+         * keeps the narrow ratio. */
+        gsp->clip_ratio = s_variant_pd ? 2 : 1;
         if (s_variant_wo64)
         {
             /* Wipeout 64's data-segment plane table (data + 0x70):
