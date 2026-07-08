@@ -298,7 +298,18 @@ void n64video_process_list(void)
     // while there's data in the command buffer...
     while (dp_end_al - dp_current_al > 0) {
         uint32_t i, toload;
-        bool xbus_dma = (*dp_reg[DP_STATUS] & DP_STATUS_XBUS_DMA) != 0;
+        /* An active HLE command buffer is the authoritative source for the
+         * whole [start, end) window the HLE submit installed -- the DPC
+         * XBUS bit must not reroute its fetch into DMEM. The bit is set by
+         * LLE microcode (MTC0 from the RSP) and can arrive here through a
+         * savestate: the F3DDKR family feeds the RDP over XBUS, so a state
+         * saved under the cxd4 LLE RSP carries DPC_STATUS bit 0; restored
+         * under the HLE RSP, the first synthesized list submitted before
+         * the game's own DPC_STATUS write then decoded wrapped DMEM words
+         * as RDP commands (and left the streaming decoder mid-command),
+         * corrupting every frame after the load. */
+        bool xbus_dma = (*dp_reg[DP_STATUS] & DP_STATUS_XBUS_DMA) != 0
+                        && hle_cmd_buf == NULL;
         uint32_t* dmem = (uint32_t*)config.gfx.dmem;
         uint32_t* cmd_buf = rdp_cmd_buf[rdp_cmd_buf_pos];
 
