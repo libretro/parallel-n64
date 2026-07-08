@@ -596,6 +596,10 @@ static int s_variant_wr64 = 0;   /* 1 => Wave Race 64 (n<<9 vtx, x5 indices) */
 static int s_variant_f3dex = 0;  /* 1 => F3DEX GBI1 (GoldenEye/Perfect Dark): x2
                                   * vertex indices and 0xB1 = G_TRI2 (two tris) */
 void f3d_set_variant_f3dex(int v) { s_variant_f3dex = v ? 1 : 0; }
+/* Perfect Dark: the F3DEX GBI1 decode plus the colour-indexed 12-byte
+ * vertex record and the 0x07 G_VTXCOLORBASE command. */
+static int s_variant_pd = 0;
+void f3d_set_variant_pd(int v) { s_variant_pd = v ? 1 : 0; }
 void f3d_set_variant(int doom64)
 {
     s_variant_d64 = doom64 ? 1 : 0;
@@ -825,10 +829,20 @@ void f3d_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
                 n  = (int)((w0 >> 20) & 0x0f) + 1;
                 v0 = (int)((w0 >> 16) & 0x0f);
             }
-            if (n > 0 && in_range(va, (unsigned int)n * 16u))
+            if (n > 0 && in_range(va,
+                                  (unsigned int)n * (s_variant_pd ? 12u : 16u)))
                 gsp_vertex(gsp, r, va, n, v0);
             break;
         }
+
+        case 0x07:
+            /* Perfect Dark G_VTXCOLORBASE: the base of the separate vertex
+             * colour/normal table its 12-byte colour-indexed vertices point
+             * into (segmented or physical). Other builds never emit 0x07
+             * (stock GBI1 reserves it), so it is gated on the PD variant. */
+            if (s_variant_pd)
+                gsp_set_vertex_color_base(gsp, seg_rsp(w1) & 0x00ffffffu);
+            break;
 
         case F3D_TRI1:
         {

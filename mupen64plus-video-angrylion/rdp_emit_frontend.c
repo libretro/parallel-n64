@@ -521,6 +521,12 @@ static void gsp_light_dir_xfrm(GSPState *s)
     s->lights_valid = 1;
 }
 
+void gsp_set_vertex_color_base(GSPState *s, unsigned int base)
+{
+    s->pd_cbase = base;
+    s->pd_ci = 1;
+}
+
 void gsp_set_fog(GSPState *s, int fm, int fo)
 {
     s->fog_m = fm;
@@ -539,6 +545,8 @@ void gsp_set_rsp_screen_model(GSPState *s, int on)
 
 void gsp_task_reset(GSPState *s)
 {
+    s->pd_ci = 0;
+    s->pd_cbase = 0;
     /* Each task starts under the F3D-family screen model; the F3DDKR
      * walker opts out at its entry. Without the per-task restore a DKR
      * task would leave the exact-divide mode behind for a later
@@ -642,7 +650,23 @@ void gsp_vertex(GSPState *s, const unsigned char *rdram, unsigned int addr,
 
     for (i = 0; i < n; i++)
     {
-        unsigned int base = addr + (unsigned int)i * 16;
+        unsigned int base = addr + (unsigned int)i * (s->pd_ci ? 12u : 16u);
+        /* Perfect Dark's colour-indexed vertex is a 12-byte record whose
+         * position (x,y,z at +0/+2/+4) and texel (s,t at +8/+10) fields sit
+         * at the stock F3D offsets; the two bytes the stock format spends on
+         * the first half of the RGBA/normal instead hold a u16 colour index
+         * at +6. The actual colour/normal bytes live in a separate table
+         * set by the 0x07 G_VTXCOLORBASE command, indexed by (ci & 0xff);
+         * the entry layout matches the stock inline bytes (r,g,b,a, or
+         * nx,ny,nz,a under G_LIGHTING). Verified frame-exact against the
+         * cxd4 LLE RSP by booting the retail cart live (the interior scene
+         * matches at 98.2% within-tolerance pixels, the same slope/texel
+         * ULP residue class as the rest of the family; index +4 or a
+         * transposed x/y drop it below 15%). */
+        unsigned int cofs = s->pd_ci
+            ? (s->pd_cbase
+               + ((unsigned int)read_u16_be(rdram, base + 6) & 0xffu))
+            : (base + 12u);
         int idx = v0 + i;
         int32_t ox, oy, oz;
         int64_t cx, cy, cz, cw;
@@ -727,9 +751,9 @@ void gsp_vertex(GSPState *s, const unsigned char *rdram, unsigned int addr,
              * model matrices (squash/stretch animation) light correctly
              * because the rotation is applied to the directions, not the
              * normal. */
-            int nxb = (int)(signed char)read_u8_n64(rdram, base + 12);
-            int nyb = (int)(signed char)read_u8_n64(rdram, base + 13);
-            int nzb = (int)(signed char)read_u8_n64(rdram, base + 14);
+            int nxb = (int)(signed char)read_u8_n64(rdram, cofs + 0);
+            int nyb = (int)(signed char)read_u8_n64(rdram, cofs + 1);
+            int nzb = (int)(signed char)read_u8_n64(rdram, cofs + 2);
             int li;
             if (!s->lights_valid)
                 gsp_light_dir_xfrm(s);
@@ -746,7 +770,7 @@ void gsp_vertex(GSPState *s, const unsigned char *rdram, unsigned int addr,
                 vt->r = out[0] << 16;
                 vt->g = out[1] << 16;
                 vt->b = out[2] << 16;
-                vt->a = (int32_t)read_u8_n64(rdram, base + 15) << 16;
+                vt->a = (int32_t)read_u8_n64(rdram, cofs + 3) << 16;
             }
             else
             {
@@ -792,7 +816,7 @@ void gsp_vertex(GSPState *s, const unsigned char *rdram, unsigned int addr,
                 vt->r = ((lt[0] >> 7) & 0xff) << 16;
                 vt->g = ((lt[1] >> 7) & 0xff) << 16;
                 vt->b = ((lt[2] >> 7) & 0xff) << 16;
-                vt->a = (int32_t)read_u8_n64(rdram, base + 15) << 16;
+                vt->a = (int32_t)read_u8_n64(rdram, cofs + 3) << 16;
             }
 
             if ((s->geometry_mode & 0x00040000u) /* G_TEXTURE_GEN */
@@ -836,10 +860,10 @@ void gsp_vertex(GSPState *s, const unsigned char *rdram, unsigned int addr,
         }
         else
         {
-            vt->r = (int32_t)read_u8_n64(rdram, base + 12) << 16;
-            vt->g = (int32_t)read_u8_n64(rdram, base + 13) << 16;
-            vt->b = (int32_t)read_u8_n64(rdram, base + 14) << 16;
-            vt->a = (int32_t)read_u8_n64(rdram, base + 15) << 16;
+            vt->r = (int32_t)read_u8_n64(rdram, cofs + 0) << 16;
+            vt->g = (int32_t)read_u8_n64(rdram, cofs + 1) << 16;
+            vt->b = (int32_t)read_u8_n64(rdram, cofs + 2) << 16;
+            vt->a = (int32_t)read_u8_n64(rdram, cofs + 3) << 16;
         }
 
         vt->s = (int32_t)(((int64_t)st_s * (int64_t)s->tex_scale_s) << 1);

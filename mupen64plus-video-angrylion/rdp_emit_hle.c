@@ -772,7 +772,14 @@ void rdp_emit_hle_process_dlist(void)
                        | ((unsigned int)rdram[(ut + 2) ^ 3] << 8)
                        |  (unsigned int)rdram[(ut + 3) ^ 3])
                     : 0u;
-                f3d_set_variant_f3dex(t0 == 0x090005eau);
+                /* Perfect Dark: GoldenEye's F3DEX GBI1 decode (x10 G_TRI1
+                 * indices, 0xB1 G_TRIX) plus its own colour-indexed vertex
+                 * record and the 0x07 G_VTXCOLORBASE command. Its boot jump
+                 * word at text+0 is 0x090005ee where GoldenEye's build is
+                 * 0x090005ea. */
+                f3d_set_variant_f3dex(t0 == 0x090005eau
+                                      || t0 == 0x090005eeu);
+                f3d_set_variant_pd(t0 == 0x090005eeu);
                 /* Wipeout 64's F3DLX fork: raw-doubled saturated vertex
                  * 1/w and the seedless l3dex clip fold (build id = the
                  * boot jump word, same keying as the F3DEX probe). */

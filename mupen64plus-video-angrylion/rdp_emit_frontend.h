@@ -93,6 +93,8 @@ typedef struct GSPState
      * build) have no lighting or fog block: vertex alpha stays the display
      * list's raw byte even with G_FOG set in the geometry mode. */
     int fog_off;
+    int pd_ci;                /* Perfect Dark colour-indexed vertex format */
+    unsigned int pd_cbase;    /* physical base of the vertex colour table */
     int dkr_shade_alpha_zero; /* DKR: RSP zeroes shade alpha under the fog blender P mux */
     unsigned int mtx_stack_ptr;
     unsigned int mtx_stack_base;
@@ -173,6 +175,7 @@ void gsp_set_lookat(GSPState *s, const unsigned char *rdram,
                     unsigned int addr, int index);
 
 /* G_MW_FOG: fog multiplier (w1 >> 16) and offset (w1 & 0xffff), both s16. */
+void gsp_set_vertex_color_base(GSPState *s, unsigned int base);
 void gsp_set_fog(GSPState *s, int fm, int fo);
 void gsp_set_dkr_shade_alpha_zero(GSPState *s, int on);
 void gsp_set_rsp_screen_model(GSPState *s, int on);

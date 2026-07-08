@@ -54,6 +54,7 @@ void f3d_set_variant_wr64(int wr64);
 void f3d_set_variant_seta(int v);
 void f3d_set_variant_wo64(int wo64);
 void f3d_set_variant_f3dex(int v);
+void f3d_set_variant_pd(int v);
 
 /* Walk an F3D display list at RDRAM byte address `addr`, transforming geometry
  * through `gsp` and appending RDP commands to `fifo`. Recurses into nested
