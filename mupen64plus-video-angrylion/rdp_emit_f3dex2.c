@@ -50,6 +50,7 @@
 #define F3DEX2_MOVEMEM    0xDC
 #define G_MV_VIEWPORT     0x08
 #define G_MV_LIGHT        0x0a
+#define G_MV_NORMALES     0x0e
 
 /* RDRAM/DMEM 32-bit words are stored host-native in this core (the RSP's
  * u32() accessor reads them directly with no byteswap), so read native. */
@@ -721,6 +722,7 @@ void f3dex2_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
             int n  = (int)((w0 >> 12) & 0xff);
             int v0 = (int)((w0 >> 1) & 0x7f) - n;
             unsigned int va = seg_addr(w1);
+            gsp->cbfd = s_variant_cbfd;
             if (n > 0 && addr_in_range(va, (unsigned int)n * 16u))
                 gsp_vertex(gsp, r, va, n, v0);
             break;
@@ -888,8 +890,9 @@ void f3dex2_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
             }
             else if (index == G_MW_NUMLIGHT)
             {
-                /* number of directional lights = w1 / 24 */
-                gsp_set_num_lights(gsp, (int)(w1 / 24u));
+                /* CBFD packs the light count as n * 48, stock as n * 24. */
+                gsp_set_num_lights(gsp,
+                    (int)(w1 / (s_variant_cbfd ? 48u : 24u)));
             }
             else if (index == G_MW_LIGHTCOL)
             {
@@ -953,7 +956,29 @@ void f3dex2_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
              * (vscale/vtrans) from the segmented address in w1. Other MOVEMEM
              * targets (lights, matrices) are not needed for screen mapping. */
             int index = (int)(w0 & 0xff);
-            if (index == G_MV_VIEWPORT)
+            if (index == G_MV_NORMALES && s_variant_cbfd)
+            {
+                /* Conker CBFD: the base of the per-vertex normal table the
+                 * CBFD vertex loader reads (two s8 per vertex, slot * 2). */
+                gsp->cbfd_nbase = seg_addr(w1);
+            }
+            else if (index == G_MV_LIGHT && s_variant_cbfd)
+            {
+                /* CBFD G_MV_LIGHT uses 48-byte destination slots (stock uses
+                 * 24): n = (w0 bits 5..18) / 48; n < 2 is a LookAt entry,
+                 * n >= 2 a directional/ambient light slot n - 2. */
+                unsigned int coff = (w0 >> 5) & 0x3fffu;
+                int cn = (int)(coff / 48u);
+                unsigned int cla = seg_addr(w1);
+                if (addr_in_range(cla, 24u))
+                {
+                    if (cn >= 2)
+                        gsp_set_light(gsp, r, cla, cn - 2);
+                    else
+                        gsp_set_lookat(gsp, r, cla, cn);
+                }
+            }
+            else if (index == G_MV_VIEWPORT)
             {
                 unsigned int vp = seg_addr(w1);
                 if (addr_in_range(vp, 16u))     /* 8 s16: vscale + vtrans */

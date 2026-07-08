@@ -95,6 +95,8 @@ typedef struct GSPState
     int fog_off;
     int pd_ci;                /* Perfect Dark colour-indexed vertex format */
     unsigned int pd_cbase;    /* physical base of the vertex colour table */
+    int cbfd;                 /* Conker CBFD vertex/lighting model */
+    unsigned int cbfd_nbase;  /* physical base of the per-vertex normal table */
     int dkr_shade_alpha_zero; /* DKR: RSP zeroes shade alpha under the fog blender P mux */
     unsigned int mtx_stack_ptr;
     unsigned int mtx_stack_base;

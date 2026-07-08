@@ -546,6 +546,8 @@ void gsp_set_rsp_screen_model(GSPState *s, int on)
 void gsp_task_reset(GSPState *s)
 {
     s->pd_ci = 0;
+    s->cbfd = 0;
+    s->cbfd_nbase = 0;
     s->pd_cbase = 0;
     /* Each task starts under the F3D-family screen model; the F3DDKR
      * walker opts out at its entry. Without the per-task restore a DKR
@@ -751,10 +753,63 @@ void gsp_vertex(GSPState *s, const unsigned char *rdram, unsigned int addr,
              * model matrices (squash/stretch animation) light correctly
              * because the rotation is applied to the directions, not the
              * normal. */
-            int nxb = (int)(signed char)read_u8_n64(rdram, cofs + 0);
-            int nyb = (int)(signed char)read_u8_n64(rdram, cofs + 1);
-            int nzb = (int)(signed char)read_u8_n64(rdram, cofs + 2);
+            int nxb, nyb, nzb;
             int li;
+            if (s->cbfd)
+            {
+                /* Conker's CBFD lighting differs from the stock directional
+                 * model: the per-vertex normal is not inline. nx,ny come from
+                 * a separate table (set by G_MOVEMEM/G_MV_NORMALES, indexed by
+                 * the vertex slot * 2) and nz is the low byte of the vertex
+                 * flag halfword (bytes 6..7). The base colour is the vertex's
+                 * own colour bytes (12..15), which the light then MULTIPLIES
+                 * rather than replaces: lit = clamp(ambient + light.rgb *
+                 * max(0, n . L)), shade = colour * lit. The light array holds
+                 * the directional lights in slots 0..num_lights-1 with the
+                 * ambient at slot num_lights, matching the /48-slot G_MV_LIGHT
+                 * and n*48 G_MW_NUMLIGHT the CBFD build uses. The dominant
+                 * (last) directional light plus the ambient carry the scene's
+                 * tone; CBFD's earlier lights are distance-attenuated point
+                 * lights whose per-vertex falloff is left to later work. */
+                unsigned int na = s->cbfd_nbase + ((unsigned int)idx << 1);
+                int cr = (int)read_u8_n64(rdram, base + 12);
+                int cg = (int)read_u8_n64(rdram, base + 13);
+                int cb = (int)read_u8_n64(rdram, base + 14);
+                int amb = s->num_lights;
+                int last = s->num_lights - 1;
+                int32_t nrm[3], litr, litg, litb, dot;
+                nxb = (int)(signed char)read_u8_n64(rdram, na + 0);
+                nyb = (int)(signed char)read_u8_n64(rdram, na + 1);
+                nzb = (int)(signed char)read_u8_n64(rdram, base + 6);
+                if (!s->lights_valid)
+                    gsp_light_dir_xfrm(s);
+                nrm[0] = nxb; nrm[1] = nyb; nrm[2] = nzb;
+                litr = s->light_rgb[amb][0] & 0xff;
+                litg = s->light_rgb[amb][1] & 0xff;
+                litb = s->light_rgb[amb][2] & 0xff;
+                if (last >= 0)
+                {
+                    dot = rsp_light_dirdot(nrm, s->light_dir[last]);
+                    litr += (int32_t)(((int64_t)(s->light_rgb[last][0] & 0xff)
+                                       * dot) >> 15);
+                    litg += (int32_t)(((int64_t)(s->light_rgb[last][1] & 0xff)
+                                       * dot) >> 15);
+                    litb += (int32_t)(((int64_t)(s->light_rgb[last][2] & 0xff)
+                                       * dot) >> 15);
+                }
+                if (litr > 255) litr = 255;
+                if (litg > 255) litg = 255;
+                if (litb > 255) litb = 255;
+                vt->r = ((cr * litr) / 255) << 16;
+                vt->g = ((cg * litg) / 255) << 16;
+                vt->b = ((cb * litb) / 255) << 16;
+                vt->a = (int32_t)read_u8_n64(rdram, base + 15) << 16;
+            }
+            else
+            {
+            nxb = (int)(signed char)read_u8_n64(rdram, cofs + 0);
+            nyb = (int)(signed char)read_u8_n64(rdram, cofs + 1);
+            nzb = (int)(signed char)read_u8_n64(rdram, cofs + 2);
             if (!s->lights_valid)
                 gsp_light_dir_xfrm(s);
             if (!(s->geometry_mode & 0x00400000u))
@@ -817,6 +872,7 @@ void gsp_vertex(GSPState *s, const unsigned char *rdram, unsigned int addr,
                 vt->g = ((lt[1] >> 7) & 0xff) << 16;
                 vt->b = ((lt[2] >> 7) & 0xff) << 16;
                 vt->a = (int32_t)read_u8_n64(rdram, cofs + 3) << 16;
+            }
             }
 
             if ((s->geometry_mode & 0x00040000u) /* G_TEXTURE_GEN */
