@@ -757,13 +757,29 @@ static void f3ddkr_run_dl_impl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
                         s_timg_shifted = 0;
                     }
                     /* A raw full SET_OTHER_MODES (0xEF) in the display list
-                     * is opaque RDP pass-through to the RSP: its running H/L
-                     * mirror -- initialized from the data-segment default by
-                     * f3ddkr_seed_othermode() -- is updated only by the
+                     * does NOT reseed the running H/L merge mirror: that is
+                     * initialized from the data-segment default by
+                     * f3ddkr_seed_othermode() and updated only by the
                      * G_SETOTHERMODE_H/L partial writes. (Verified against
                      * the cxd4 LLE stream on Mickey's Speedway USA: a merged
                      * partial emitted right after a raw 0xEF still carries
-                     * the microcode-default low bits, not the 0xEF's.) */
+                     * the microcode-default low bits, not the 0xEF's.)
+                     *
+                     * The vertex path's rendermode-derived state is separate:
+                     * the shade-alpha gate and the z-buffered triangle class
+                     * DO track a raw 0xEF's L word. (Verified against the
+                     * cxd4 stream on Diddy Kong Racing's character select,
+                     * which sets its fogged-world rendermode with raw 0xEF
+                     * commands: gating shade alpha on the seed+partial mirror
+                     * alone doubled the shade mismatches, 749 vs 370 of 777
+                     * triangles, and rendered the 3D scene black.) */
+                    if (rdp_id == 0x2f)
+                    {
+                        s_zbuffered = ((((unsigned int)w1 >> 4) & 1u) ||
+                                       (((unsigned int)w1 >> 5) & 1u)) ? 1 : 0;
+                        gsp_set_dkr_shade_alpha_zero(gsp,
+                            ((((unsigned int)w1 >> 30) & 3u) == 3u) ? 1 : 0);
+                    }
                     rdp_fifo_append(fifo, two, 2);
                 }
             }
