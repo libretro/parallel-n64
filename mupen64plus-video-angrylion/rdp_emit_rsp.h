@@ -31,6 +31,8 @@ void rsp_light_vtx(const int32_t n[3], const int32_t amb[3],
 int32_t rsp_vtx_invw(int32_t w);
 int32_t rsp_vtx_fog(int32_t cz, int32_t cw, int32_t pn,
                     int32_t fog_m, int32_t fog_o);
+int32_t rsp_vtx_fog_dkr(int32_t cz, int32_t cw,
+                        int32_t fog_m, int32_t fog_o);
 int rsp_vtx_screen(int32_t cx, int32_t cy, int32_t cz, int32_t cw,
                    int32_t pn,
                    int32_t vsx, int32_t vsy, int32_t vsz,

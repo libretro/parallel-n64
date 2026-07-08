@@ -988,22 +988,34 @@ void gsp_vertex_dkr(GSPState *s, const unsigned char *rdram, unsigned int addr,
         vt->r = (int32_t)read_u8_n64(rdram, base + 6) << 16;
         vt->g = (int32_t)read_u8_n64(rdram, base + 7) << 16;
         vt->b = (int32_t)read_u8_n64(rdram, base + 8) << 16;
-        /* DKR DMA vertices carry vertex alpha in the 4th colour byte. The
-         * DKR microcode routes it to shade alpha only when the active
-         * blender does not take the fog colour as its cycle-1 P input:
-         * under the fogged world rendermode (blender P mux == fog colour,
-         * othermode_l bits 31:30 == 3) the RSP emits shade alpha 0 for
-         * every triangle, and forwarding the raw byte (usually 0xff) would
-         * crush the 2-cycle fog blend toward black. Under the actor
-         * rendermode (P mux == combined colour) the vertex alpha passes
-         * through, which is what shades the Taj genie instead of leaving it
-         * a solid black silhouette. Verified against the cxd4 LLE oracle:
-         * with the gate, the fog-mode triangles carry shade alpha 0 and the
-         * actor-mode triangles carry the vertex alpha (0x4b/0xff/...), both
-         * matching the LLE stream. */
-        vt->a = s->dkr_shade_alpha_zero
-              ? 0
-              : ((int32_t)read_u8_n64(rdram, base + 9) << 16);
+        /* Shade alpha. With G_FOG set in the geometry mode the microcode
+         * replaces it with the computed per-vertex fog factor from the
+         * G_MW_FOG coefficients, exactly like the stock F3D family -- Jet
+         * Force Gemini's in-game world runs G_FOG with live coefficients
+         * and the cxd4 LLE stream carries a full spread of fog alphas
+         * (90 distinct values on the Goldwood landing frame); forcing the
+         * fogged-rendermode zero there killed the distance haze and the
+         * whole scene rendered overbright. Diddy Kong Racing's frames are
+         * unaffected either way: its fog coefficients clamp the factor to
+         * zero at every visible depth, which is what the earlier
+         * "RSP zeroes shade alpha under the fogged world blend" finding
+         * was actually observing.
+         *
+         * Without G_FOG the DKR rule stands: the rendermode-gated zero
+         * (dkr_shade_alpha_zero, fed by both raw 0xEF and partial
+         * othermode writes) under the fogged world blend, the raw vertex
+         * alpha byte under the actor blend (the alpha-shaded Taj genie). */
+        if ((s->geometry_mode & 0x00010000u) && !s->fog_off)   /* G_FOG */
+        {
+            int32_t fa = 0;
+            if (vt->cw > 0)
+                fa = rsp_vtx_fog_dkr(vt->cz, vt->cw, s->fog_m, s->fog_o);
+            vt->a = fa << 16;
+        }
+        else
+            vt->a = s->dkr_shade_alpha_zero
+                  ? 0
+                  : ((int32_t)read_u8_n64(rdram, base + 9) << 16);
 
         vt->s = 0;
         vt->t = 0;

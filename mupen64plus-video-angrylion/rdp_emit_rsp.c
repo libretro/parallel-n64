@@ -1207,6 +1207,39 @@ int32_t rsp_vtx_fog(int32_t cz, int32_t cw, int32_t pn,
     return lane & 0xff;
 }
 
+/* DKR-family (F3DDKR / Jet Force Gemini / Mickey's Speedway) vertex fog.
+ * Rare's vertex chain has no perspNorm and computes the projection with an
+ * exact divide, so the fog input is the exact s15.16 ndc z = z/w rather than
+ * the F3D reciprocal-chain product; the final lane shaping (fog_o + 0x7f00 +
+ * ndc * fog_m, floored at 0x7f00, low byte) is the stock F3D one. Selected
+ * against the cxd4 LLE stream on Jet Force Gemini's Goldwood landing frame:
+ * the alpha population lands on the oracle's value clusters (0/100..126),
+ * where the F3D chain under the default perspNorm computed factors several
+ * times too small and the distance haze washed out. */
+int32_t rsp_vtx_fog_dkr(int32_t cz, int32_t cw,
+                        int32_t fog_m, int32_t fog_o)
+{
+    Rsp32 p2;
+    RspAcc acc;
+    int32_t lane, ndc;
+
+    if (cw <= 0)
+        return 0;
+    ndc = (int32_t)(((int64_t)cz << 16) / cw);
+    p2.i = (ndc >> 16) & 0xffff;
+    p2.f = ndc & 0xffff;
+
+    acc = p_udh(fog_o, 1);
+    acc += p_udh(1, 0x7f00);
+    acc += p_udn(p2.f, fog_m);
+    acc += p_udh(p2.i, fog_m);
+    lane = (int32_t)(int16_t)acc_clamp_mid(acc);
+
+    if (lane < 0x7f00)
+        lane = 0x7f00;
+    return lane & 0xff;
+}
+
 /* ---- triangle write ---------------------------------------------------- */
 
 /* VCR crimp of the slope integer lanes against the microcode's v30[3]:
