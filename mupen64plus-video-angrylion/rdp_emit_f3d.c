@@ -699,7 +699,16 @@ void f3d_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
          * Both keep FRUSTRATIO_1 (clip-to-screen) as the default clip ratio
          * rather than the guard-band ratio of the wider F3DEX family; an
          * explicit gSPClipRatio still overrides it. */
-        gsp->clip_near_z = s_variant_d64 ? 0 : 1;
+        /* Perfect Dark's microcode is a No-Near-clipping (".NoN") build --
+         * the "NoN" tag sits in its text image -- so, like Doom 64's Fast3D,
+         * it has no near-plane clip: geometry crossing z is passed to the
+         * rasterizer and the scissor trims it. Keeping the near clip on
+         * dropped Perfect Dark's 2D HUD/pause quads whole (they sit right at
+         * the ortho near plane, so every one tripped the near-Z reject that
+         * the real RSP does not run): the pause overlay's scanning panels and
+         * the health-bar backing vanished. GoldenEye's build keeps the near
+         * clip, so gate this on the PD variant. */
+        gsp->clip_near_z = (s_variant_d64 || s_variant_pd) ? 0 : 1;
         gsp->clip_ratio = 1;
         if (s_variant_wo64)
         {
