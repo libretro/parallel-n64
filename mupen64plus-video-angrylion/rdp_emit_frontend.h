@@ -99,6 +99,7 @@ typedef struct GSPState
     unsigned int pd_cbase;    /* physical base of the vertex colour table */
     int cbfd;                 /* Conker CBFD vertex/lighting model */
     unsigned int cbfd_nbase;  /* physical base of the per-vertex normal table */
+    int t3d_zbuffered;        /* T3DUX: depth-test state sniffed from othermode */
     int32_t cbfd_lpos[GSP_MAX_LIGHTS][3]; /* CBFD point-light s16 positions */
     int32_t cbfd_lca[GSP_MAX_LIGHTS];     /* CBFD point-light ca numerator (light byte = ca*16) */
     int32_t cbfd_cmod[16];    /* G_MW_COORD_MOD offset/scale rows (12..15 in 16.16) */
@@ -219,6 +220,10 @@ void gsp_vertex(GSPState *s, const unsigned char *rdram, unsigned int addr,
 /* DKR (F3DDKR) 10-byte pos+RGBA vertex load (see rdp_emit_frontend.c). */
 void gsp_vertex_dkr(GSPState *s, const unsigned char *rdram, unsigned int addr,
                     int n, int v0, int billboard);
+/* T3DUX (Turbo3D UX) vertex load: 8-byte y,x,flag,z positions from vaddr and
+ * a separate a,b,g,r colour array from caddr, n vertices into slots 0..n-1. */
+void gsp_vertex_t3dux(GSPState *s, const unsigned char *rdram,
+                      unsigned int vaddr, unsigned int caddr, int n);
 /* DKR: set a cached vertex's per-vertex S/T from a gSPPolygon entry. */
 void gsp_set_vertex_st(GSPState *s, int idx, int st_s, int st_t);
 

@@ -1019,12 +1019,88 @@ void gsp_vertex(GSPState *s, const unsigned char *rdram, unsigned int addr,
 
 #define GEOM_ZBUFFER    0x00000001u
 
+/* T3DUX (Turbo3D UX, Last Legion UX / Toukon Road) vertex load. The vertex
+ * is an eight-byte record laid out y,x,flag,z (s16 y at +0, s16 x at +2,
+ * u16 flag at +4, s16 z at +6 -- note the transposed y/x order), and the
+ * colour is a separate array of four-byte a,b,g,r records the caller passes
+ * the base of. Positions run through the same combined-matrix transform and
+ * screen snapshot as gsp_vertex; T3DUX clears G_LIGHTING for the object draw,
+ * so the colour is always the vertex-supplied a,b,g,r (never lit). Texel
+ * coordinates come from the triangle's separate texcoord indices, applied
+ * later by gsp_set_vertex_st, so they load as zero here. */
+void gsp_vertex_t3dux(GSPState *s, const unsigned char *rdram,
+                      unsigned int vaddr, unsigned int caddr, int n)
+{
+    int i;
+    if (!s->combined_valid)
+        gsp_combine_matrices(s);
+
+    for (i = 0; i < n; i++)
+    {
+        unsigned int vbase = vaddr + (unsigned int)i * 8u;
+        unsigned int cbase = caddr + (unsigned int)i * 4u;
+        int idx = i;
+        int32_t ox, oy, oz;
+        int64_t cx, cy, cz, cw;
+        GSPVertex *vt;
+        if (idx < 0 || idx >= GSP_MAX_VERTICES)
+            break;
+        vt = &s->vtx[idx];
+
+        oy = read_s16_be(rdram, vbase + 0); /* y first */
+        ox = read_s16_be(rdram, vbase + 2); /* then x */
+        oz = read_s16_be(rdram, vbase + 6); /* z after the u16 flag at +4 */
+
+        cx = (int64_t)ox * s->combined[0][0] + (int64_t)oy * s->combined[1][0]
+           + (int64_t)oz * s->combined[2][0] + (int64_t)s->combined[3][0];
+        cy = (int64_t)ox * s->combined[0][1] + (int64_t)oy * s->combined[1][1]
+           + (int64_t)oz * s->combined[2][1] + (int64_t)s->combined[3][1];
+        cz = (int64_t)ox * s->combined[0][2] + (int64_t)oy * s->combined[1][2]
+           + (int64_t)oz * s->combined[2][2] + (int64_t)s->combined[3][2];
+        cw = (int64_t)ox * s->combined[0][3] + (int64_t)oy * s->combined[1][3]
+           + (int64_t)oz * s->combined[2][3] + (int64_t)s->combined[3][3];
+
+        vt->cx = gsp_mvp_readback(cx, (int64_t)oz * (s->combined[2][0] >> 16));
+        vt->cy = gsp_mvp_readback(cy, (int64_t)oz * (s->combined[2][1] >> 16));
+        vt->cz = gsp_mvp_readback(cz, (int64_t)oz * (s->combined[2][2] >> 16));
+        vt->cw = gsp_mvp_readback(cw, (int64_t)oz * (s->combined[2][3] >> 16));
+
+        /* Colour record is a,b,g,r (alpha first). */
+        vt->a = (int32_t)read_u8_n64(rdram, cbase + 0) << 16;
+        vt->b = (int32_t)read_u8_n64(rdram, cbase + 1) << 16;
+        vt->g = (int32_t)read_u8_n64(rdram, cbase + 2) << 16;
+        vt->r = (int32_t)read_u8_n64(rdram, cbase + 3) << 16;
+
+        vt->s = 0;
+        vt->t = 0;
+        vt->sv = 0;
+        vt->tv = 0;
+        vt->flat2d = 0;
+
+        gsp_clip_vertex_flags(s, vt);
+        gsp_vertex_screen(s, vt);
+    }
+}
+
 /* DKR: patch a cached vertex's texel coordinate from a gSPPolygon entry. The
  * DKRTriangle carries per-vertex S10.5 S/T; apply the same tex-scale fold the
  * normal vertex load uses so the edgewalker sees consistent texel units. */
-void gsp_set_vertex_st(GSPState *s, int idx, int st_s, int st_t)
+/* Override a cached vertex's colour (T3DUX flat shading applies the same
+ * a,b,g,r to all three vertices of a face before the triangle is emitted). */
+void gsp_set_vertex_rgba(GSPState *s, int idx, int r, int g, int b, int a)
 {
     GSPVertex *vt;
+    if (idx < 0 || idx >= GSP_MAX_VERTICES)
+        return;
+    vt = &s->vtx[idx];
+    vt->r = (int32_t)(r & 0xff) << 16;
+    vt->g = (int32_t)(g & 0xff) << 16;
+    vt->b = (int32_t)(b & 0xff) << 16;
+    vt->a = (int32_t)(a & 0xff) << 16;
+}
+
+void gsp_set_vertex_st(GSPState *s, int idx, int st_s, int st_t)
+{    GSPVertex *vt;
     if (idx < 0 || idx >= GSP_MAX_VERTICES)
         return;
     vt = &s->vtx[idx];

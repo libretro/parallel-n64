@@ -19,6 +19,7 @@
 #include "rdp_emit_f3dex2.h"
 #include "rdp_emit_f3d.h"
 #include "rdp_emit_f3ddkr.h"
+#include "rdp_emit_t3dux.h"
 #include "rdp_emit_rsp.h"
 #include "rdp_emit_backend.h"
 
@@ -698,7 +699,21 @@ void rdp_emit_hle_process_dlist(void)
          * decode, not the GBI 1 x2 or the F3DBETA one. */
         seta = f3d_is_seta_ucode(rdram, rdram_size, ut);
         gbi1_oth = gbi1_oth || seta;
-        if (f3ddkr_is_ucode(rdram, rdram_size, ud,
+        if (t3dux_ucode_match(rdram, rdram_size, ud))
+        {
+            /* T3DUX (Turbo3D UX): Yasumoto's compact Turbo3D format (Last
+             * Legion UX, Toukon Road). Not a Fast3D/F3DEX grammar at all --
+             * the display list is a flat array of six-word objects, each with
+             * five segment pointers (global state, per-object state, vertices,
+             * triangles, colours). Route to the dedicated walker, checked
+             * first so its unique data segment is never mis-claimed. */
+            t3dux_set_rdram(rdram);
+            t3dux_set_rdram_size(rdram_size);
+            f3dex2_set_rdram(rdram);
+            f3dex2_set_rdram_size(rdram_size);
+            t3dux_run_dl(&s_gsp, &s_fifo, dl_addr);
+        }
+        else if (f3ddkr_is_ucode(rdram, rdram_size, ud,
                             read_dmem_u32(dmem, 0xfdc)))
         {
             /* F3DDKR (Diddy Kong Racing custom microcode): a GBI 1 derivative
