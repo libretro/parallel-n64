@@ -627,6 +627,17 @@ void rdp_emit_hle_process_dlist(void)
     /* forget any fullsync seen by a previous task before the parsers run */
     rdp_fifo_fullsync_reset();
 
+    /* Ucode-profile flags are per-task: clear the Turbo3D/Wipeout vertex
+     * store and triangle-writer behaviors here so a task that never sets
+     * them (an F3DEX2 list after a T3DUX one in a mixed-ucode title) does
+     * not inherit the previous task's profile. The T3DUX walker and the
+     * F3D wo64 detection re-assert what they need after this point. */
+    rsp_set_vtx_y_round(0);
+    rsp_set_vtx_x_round(0);
+    rsp_set_vtx_z_quant(0);
+    rsp_set_keep_degenerate(0);
+    rsp_set_affine_tex(0);
+
 
     if (!s_inited)
     {

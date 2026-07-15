@@ -779,6 +779,52 @@ void rsp_set_vtx_y_round(int on)
     s_vtx_y_round = on ? 1 : 0;
 }
 
+static int s_vtx_x_round = 0;
+
+/* T3DUX (Turbo3D UX) stores vertex screen X rounded to whole pixels as
+ * well: the cxd4 oracle's Last Legion UX streams carry not a single
+ * fractional x or y lane in any triangle -- the Turbo3D family trades
+ * sub-pixel precision for speed on both axes, where the F3DLX build
+ * rounds only Y. */
+void rsp_set_vtx_x_round(int on)
+{
+    s_vtx_x_round = on ? 1 : 0;
+}
+
+static int s_keep_degenerate = 0;
+
+/* T3DUX: whole-pixel vertex quantization collapses slivers to a zero cross
+ * product; the Turbo3D triangle writer runs its reciprocal on the zero
+ * (VRCP(0) saturates) and emits the triangle rather than rejecting it, so
+ * the F3DEX-style degenerate return is bypassed. */
+void rsp_set_keep_degenerate(int on)
+{
+    s_keep_degenerate = on ? 1 : 0;
+}
+
+static int s_affine_tex = 0;
+
+/* T3DUX (Turbo3D UX) textures affinely: the triangle write loads the raw
+ * texel shorts with a constant 0x7fff W lane and no per-vertex perspective
+ * normalizer -- every texture section in the oracle stream carries
+ * W = 0x7fff with all dW slopes zero. */
+void rsp_set_affine_tex(int on)
+{
+    s_affine_tex = on ? 1 : 0;
+}
+
+static int s_vtx_z_quant = 0;
+
+/* T3DUX also stores vertex screen Z at reduced precision: every z base in
+ * the oracle's triangle stream lands on a multiple of 0x0080 in the s15
+ * integer lane (0x6800, 0x6780, 0x6980, ...), and small triangles carry
+ * all-zero z slopes -- the per-vertex z is quantized to 0x80 steps before
+ * the plane setup, so nearly-coplanar vertices collapse to flat z. */
+void rsp_set_vtx_z_quant(int on)
+{
+    s_vtx_z_quant = on ? 1 : 0;
+}
+
 /* Wipeout 64's clip build: the l3dex two-rounding fold without the +3
  * accumulator seed (its overlay at text 0xf80 stages r' = r * (2 - r*d)
  * against the DMEM 0x60 constant row and never seeds the factor MAC). */
@@ -1138,6 +1184,13 @@ int rsp_vtx_screen(int32_t cx, int32_t cy, int32_t cz, int32_t cw,
          * granularity. */
         *sy102 = (*sy102 + 2) & ~3;
     }
+    if (s_vtx_x_round)
+    {
+        /* T3DUX rounds screen X to whole pixels as well (same half-up on
+         * the 10.2 value); no fractional x lane appears anywhere in the
+         * oracle's Turbo3D UX triangle streams. */
+        *sx102 = (*sx102 + 2) & ~3;
+    }
     /* vertices_store clamps the screen z's integer lane to >= 0 with vge
      * before storing VTX_SCR_Z; the fraction halfword is stored from the
      * unclamped register. Geometry behind z = 0 (no-z billboards) carries
@@ -1148,6 +1201,16 @@ int rsp_vtx_screen(int32_t cx, int32_t cy, int32_t cz, int32_t cw,
         if (zi < 0)
             zi = 0;
         *sz1616 = (int32_t)(((uint32_t)U16(zi) << 16) | (uint32_t)U16(scr_f[2]));
+        if (s_vtx_z_quant)
+        {
+            /* T3DUX: quantize the stored z to the nearest multiple of 4 in
+             * the integer lane (fraction dropped) -- the low-precision
+             * Turbo3D z store. The triangle write scales vertex z by 32
+             * into the coefficient word, where these steps surface as the
+             * 0x0080-aligned flat-z bases in the oracle stream. */
+            *sz1616 = (int32_t)(((uint32_t)*sz1616 + 0x00020000u)
+                                & 0xfffc0000u);
+        }
     }
     return 1;
 }
@@ -1755,7 +1818,7 @@ int rsp_tri_write(int32_t *ew,
     acc += p_udh(lh_y, hm_x);
     cross_i = (int32_t)((acc >> 32) & 0xffff);   /* vreadacc upper */
     cross_f = (int32_t)((acc >> 16) & 0xffff);   /* vreadacc middle */
-    if (cross_i == 0 && cross_f == 0)
+    if (cross_i == 0 && cross_f == 0 && !s_keep_degenerate)
         return 0;                                  /* degenerate */
 
     /* ---- reciprocals ---- */
@@ -1885,7 +1948,8 @@ int rsp_tri_write(int32_t *ew,
     }
 
     /* ---- texture S/T/W attributes ---- */
-    if (textured && vh->flat2d && vm->flat2d && vl->flat2d)
+    if (textured && (s_affine_tex
+                     || (vh->flat2d && vm->flat2d && vl->flat2d)))
     {
         /* Fighting Force 64's 2D overlay path: the microcode's simplified
          * triangle writer loads the stored texel shorts and the 0x7fff W

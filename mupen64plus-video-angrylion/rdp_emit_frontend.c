@@ -11,6 +11,7 @@
 #include "rdp_emit_frontend.h"
 #include "rdp_emit_rsp.h"
 #include <stdio.h>
+#include <stdlib.h>
 #include <math.h>
 #include "rdp_emit_recip.h"
 
@@ -1019,13 +1020,17 @@ void gsp_vertex(GSPState *s, const unsigned char *rdram, unsigned int addr,
 
 #define GEOM_ZBUFFER    0x00000001u
 
-/* T3DUX (Turbo3D UX, Last Legion UX / Toukon Road) vertex load. The vertex
- * is an eight-byte record laid out y,x,flag,z (s16 y at +0, s16 x at +2,
- * u16 flag at +4, s16 z at +6 -- note the transposed y/x order), and the
- * colour is a separate array of four-byte a,b,g,r records the caller passes
- * the base of. Positions run through the same combined-matrix transform and
- * screen snapshot as gsp_vertex; T3DUX clears G_LIGHTING for the object draw,
- * so the colour is always the vertex-supplied a,b,g,r (never lit). Texel
+/* T3DUX (Turbo3D UX, Last Legion UX / Toukon Road) vertex load. The
+ * reference declares the vertex as {s16 y; s16 x; u16 flag; s16 z} and the
+ * colour as {u8 a,b,g,r} -- but those declarations are raw overlays on the
+ * host's byteswapped RDRAM, so the RSP's logical big-endian layout is the
+ * in-word mirror: s16 x at +0, y at +2, z at +4, flag at +6, and colour
+ * bytes r,g,b,a at +0..+3. (Read at the declaration offsets with logical
+ * accessors, x/y came out transposed and z landed on the flag halfword --
+ * always zero -- which flattened every object and dropped the 3D geometry.)
+ * Positions run through the same combined-matrix transform and screen
+ * snapshot as gsp_vertex; T3DUX clears G_LIGHTING for the object draw, so
+ * the colour is always the vertex-supplied value (never lit). Texel
  * coordinates come from the triangle's separate texcoord indices, applied
  * later by gsp_set_vertex_st, so they load as zero here. */
 void gsp_vertex_t3dux(GSPState *s, const unsigned char *rdram,
@@ -1047,9 +1052,9 @@ void gsp_vertex_t3dux(GSPState *s, const unsigned char *rdram,
             break;
         vt = &s->vtx[idx];
 
-        oy = read_s16_be(rdram, vbase + 0); /* y first */
-        ox = read_s16_be(rdram, vbase + 2); /* then x */
-        oz = read_s16_be(rdram, vbase + 6); /* z after the u16 flag at +4 */
+        ox = read_s16_be(rdram, vbase + 0);
+        oy = read_s16_be(rdram, vbase + 2);
+        oz = read_s16_be(rdram, vbase + 4);
 
         cx = (int64_t)ox * s->combined[0][0] + (int64_t)oy * s->combined[1][0]
            + (int64_t)oz * s->combined[2][0] + (int64_t)s->combined[3][0];
@@ -1065,11 +1070,12 @@ void gsp_vertex_t3dux(GSPState *s, const unsigned char *rdram,
         vt->cz = gsp_mvp_readback(cz, (int64_t)oz * (s->combined[2][2] >> 16));
         vt->cw = gsp_mvp_readback(cw, (int64_t)oz * (s->combined[2][3] >> 16));
 
-        /* Colour record is a,b,g,r (alpha first). */
-        vt->a = (int32_t)read_u8_n64(rdram, cbase + 0) << 16;
-        vt->b = (int32_t)read_u8_n64(rdram, cbase + 1) << 16;
-        vt->g = (int32_t)read_u8_n64(rdram, cbase + 2) << 16;
-        vt->r = (int32_t)read_u8_n64(rdram, cbase + 3) << 16;
+        /* Logical colour bytes are r,g,b,a at +0..+3 (the reference's
+         * a,b,g,r declaration mirrored by the overlay swap). */
+        vt->r = (int32_t)read_u8_n64(rdram, cbase + 0) << 16;
+        vt->g = (int32_t)read_u8_n64(rdram, cbase + 1) << 16;
+        vt->b = (int32_t)read_u8_n64(rdram, cbase + 2) << 16;
+        vt->a = (int32_t)read_u8_n64(rdram, cbase + 3) << 16;
 
         vt->s = 0;
         vt->t = 0;

@@ -28,6 +28,7 @@
 #include <stdint.h>
 #include "rdp_emit_frontend.h"
 #include "rdp_emit_f3dex2.h"
+#include "rdp_emit_rsp.h"
 
 /* From rdp_emit_f3dex2.c: FIFO append and RSP-style segment resolution. */
 extern void rdp_fifo_append(RdpFifo *f, const int32_t *words, int count);
@@ -107,9 +108,16 @@ static unsigned int rd_u32_be(unsigned int addr)
 
 static int rd_u8(unsigned int addr)
 {
+    /* Raw (unswapped) byte access. The T3DUX struct layouts here follow the
+     * GLideN64 reference declarations, which are raw overlays on the host's
+     * byteswapped RDRAM -- their field order already encodes the in-word
+     * swap. Reading the same declaration offsets with a ^3-swapped access
+     * lands every u8 on the wrong lane (vtxCount picked up texmode, triCount
+     * picked up a zero padding byte, and every object's triangles were
+     * dropped), so byte fields at reference offsets must be read raw. */
     if (s_rdram == 0 || addr >= s_rdram_size)
         return 0;
-    return (int)s_rdram[addr ^ 3u];
+    return (int)s_rdram[addr];
 }
 
 /* Resolve a T3DUX segmented address through the walker's own segment table
@@ -203,6 +211,19 @@ static void t3dux_load_globstate(GSPState *gsp, RdpFifo *fifo,
 
     /* struct T3DUXGlobState: pad0/perspNorm (4), flag (4), othermode0 (4),
      * othermode1 (4), segBases[16] (64), viewport (16), rdpCmds (4). */
+    {
+        /* The perspective normalizer occupies the logical big-endian u16 at
+         * +0 (the reference declares {u16 pad0; u16 perspNorm} as a raw
+         * overlay, mirroring the halfwords). Last Legion UX runs everything
+         * at perspNorm 4 -- the same value its F3DLX lists send via
+         * gSPPerspNormalize -- and the reciprocal chain's precision depends
+         * on it, so skipping it left every T3DUX screen coordinate a few
+         * ULPs off the RSP's. */
+        unsigned int pn = ((unsigned int)rd_u8(addr + 3u) << 8)
+                          | (unsigned int)rd_u8(addr + 2u);
+        if (pn != 0u)
+            gsp_set_persp_norm(gsp, pn);
+    }
     oh = rd_u32_be(addr + 8u);
     ol = rd_u32_be(addr + 12u);
     t3dux_emit_othermode(gsp, fifo, oh, ol);
@@ -226,6 +247,7 @@ static void t3dux_load_object(GSPState *gsp, RdpFifo *fifo,
     unsigned int saddr = t3d_seg_addr(pstate);
     unsigned int oh, ol;
     int vtxCount, triCount, texmode, geommode, matrixFlag;
+    unsigned int renderState;
     unsigned int rdpcmds;
     unsigned int caddr;
     int t;
@@ -236,7 +258,7 @@ static void t3dux_load_object(GSPState *gsp, RdpFifo *fifo,
      * geommode (4); dmemVtxAttribsAddr,attribsCount,matrixFlag,triCount (4);
      * rdpCmds (4); othermode0 (4); othermode1 (4). */
     {
-        unsigned int rs = rd_u32_be(saddr + 0u);
+        renderState = rd_u32_be(saddr + 0u);
         vtxCount   = rd_u8(saddr + 5u);
         texmode    = rd_u8(saddr + 6u);
         geommode   = rd_u8(saddr + 7u);
@@ -245,7 +267,6 @@ static void t3dux_load_object(GSPState *gsp, RdpFifo *fifo,
         rdpcmds    = rd_u32_be(saddr + 12u);
         oh         = rd_u32_be(saddr + 16u);
         ol         = rd_u32_be(saddr + 20u);
-        (void)rs;
     }
 
     t3dux_emit_othermode(gsp, fifo, oh, ol);
@@ -263,9 +284,16 @@ static void t3dux_load_object(GSPState *gsp, RdpFifo *fifo,
         gsp_force_matrix_chunk(gsp, s_rdram, ma + 48u, 48u);
     }
 
-    /* T3DUX draws with smooth shading, shade, z-buffer and back-face cull,
-     * and clears lighting/fog: the vertex colours are used directly. */
-    gsp_set_geometry_mode(gsp, 0u);
+    /* T3DUX draws with smooth shading, shade, z-buffer and back-face cull
+     * on top of the object's render state, with lighting/fog cleared (the
+     * vertex colours are used directly). In this walker's geometry-mode bit
+     * assignment: G_ZBUFFER = 0x1 (selects the Z triangle variant), G_SHADE =
+     * 0x4 and G_SHADING_SMOOTH = 0x00200000 (select the shaded variant and
+     * per-vertex interpolation), and cull-back is bit 10 of the cull field at
+     * bits 9..10. */
+    gsp_set_geometry_mode(gsp, (unsigned int)renderState
+                          | 0x00000001u | 0x00000004u
+                          | 0x00200000u | 0x00000400u);
 
     if (pvtx != 0u)
     {
@@ -290,11 +318,35 @@ static void t3dux_load_object(GSPState *gsp, RdpFifo *fifo,
         int v2   = rd_u8(te + 1u);
         int v1   = rd_u8(te + 2u);
         int v0   = rd_u8(te + 3u);
+        int pal  = rd_u8(te + 4u);
         int v2t  = rd_u8(te + 5u);
         int v1t  = rd_u8(te + 6u);
         int v0t  = rd_u8(te + 7u);
         int32_t cmdw[64];
         int nc;
+
+        if (texturing && pal != 0)
+        {
+            /* The real microcode (per the cxd4 oracle stream) reissues the
+             * latched SETTILE before every textured triangle record whose
+             * palette byte is set, with the raw palette byte placed in w1
+             * bits 24..31 -- which the RDP ignores -- so the reissue is
+             * pixel-neutral but keeps the command stream in step. (The
+             * GLideN64 reference merges the byte at bits 20..23 instead;
+             * that would actively repoint the CI palette, which the LLE
+             * stream shows never happens: bits 20..23 stay those of the
+             * object's own SETTILE.) No change-gating: the pair is emitted
+             * per qualifying record, before index validation. */
+            int32_t two[2];
+            two[0] = (int32_t)(0x27u << 24);        /* G_RDPPIPESYNC */
+            two[1] = 0;
+            rdp_fifo_append(fifo, two, 2);
+            two[0] = (int32_t)((0x35u << 24)        /* G_SETTILE */
+                               | (s_settile_w0 & 0x00ffffffu));
+            two[1] = (int32_t)((s_settile_w1 & 0x00ffffffu)
+                               | ((unsigned int)pal << 24));
+            rdp_fifo_append(fifo, two, 2);
+        }
 
         if (v0 >= vtxCount || v1 >= vtxCount || v2 >= vtxCount)
             continue;
@@ -307,12 +359,15 @@ static void t3dux_load_object(GSPState *gsp, RdpFifo *fifo,
             unsigned int t0 = rd_u32_be(caddr + (unsigned int)v0t * 4u);
             unsigned int t1 = rd_u32_be(caddr + (unsigned int)v1t * 4u);
             unsigned int t2 = rd_u32_be(caddr + (unsigned int)v2t * 4u);
-            gsp_set_vertex_st(gsp, v0, (int)(short)(t0 >> 16),
-                                       (int)(short)(t0 & 0xffffu));
-            gsp_set_vertex_st(gsp, v1, (int)(short)(t1 >> 16),
-                                       (int)(short)(t1 & 0xffffu));
-            gsp_set_vertex_st(gsp, v2, (int)(short)(t2 >> 16),
-                                       (int)(short)(t2 & 0xffffu));
+            /* The triangle write's affine texture lanes carry the record
+             * texcoords doubled (the oracle's S/T bases and dS/dX slopes
+             * are exactly twice the raw s10.5 shorts). */
+            gsp_set_vertex_st(gsp, v0, (int)(short)(t0 >> 16) << 1,
+                                       (int)(short)(t0 & 0xffffu) << 1);
+            gsp_set_vertex_st(gsp, v1, (int)(short)(t1 >> 16) << 1,
+                                       (int)(short)(t1 & 0xffffu) << 1);
+            gsp_set_vertex_st(gsp, v2, (int)(short)(t2 >> 16) << 1,
+                                       (int)(short)(t2 & 0xffffu) << 1);
         }
 
         if (flatShading)
@@ -349,6 +404,17 @@ void t3dux_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int dl_addr)
     s_settile_w0 = 0u;
     s_settile_w1 = 0u;
     gsp->t3d_zbuffered = 0;
+
+    /* T3DUX stores vertex screen Y rounded half-up to whole pixels, the
+     * same 480-line-interlaced whole-line convention as the sibling F3DLX
+     * build (both Yasumoto ucodes; the cxd4 oracle's mech task emits not a
+     * single fractional Y edge). Without it, half-pixel Y fractions shift
+     * every edge against the LLE stream. */
+    rsp_set_vtx_y_round(1);
+    rsp_set_vtx_x_round(1);
+    rsp_set_vtx_z_quant(1);
+    rsp_set_keep_degenerate(1);
+    rsp_set_affine_tex(1);
 
     while (guard++ < 4096)
     {

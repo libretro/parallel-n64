@@ -514,12 +514,48 @@ void f3dex2_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
             }
             case 0xbc:                          /* G_MOVEWORD (GBI 1) */
             {
+                /* GBI1 packs the moveword index in the low byte of w0 and
+                 * the DMEM offset in bits 8..23 (GBI2 swaps these). This
+                 * case originally only resolved G_MW_SEGMENT for the S2DEX
+                 * 2D path; F3D/F3DEX 3D lists send the full set, and
+                 * dropping them left persp_norm at the 0xffff default --
+                 * Last Legion UX sends gSPPerspNormalize(4), and without it
+                 * every screen coordinate and z slope of the F3DLX terrain
+                 * was off by reciprocal-precision ULPs, so the T3DUX mech
+                 * legs z-failed against the mis-placed ground. */
                 int index = (int)(w0 & 0xffu);
+                unsigned int off = (w0 >> 8) & 0xffffu;
                 if (index == G_MW_SEGMENT)
                 {
-                    unsigned int seg = ((w0 >> 8) & 0xffffu) >> 2;
+                    unsigned int seg = off >> 2;
                     if (seg < 16u)
                         s_seg_table[seg] = w1;
+                }
+                else if (index == G_MW_PERSPNORM)
+                {
+                    gsp_set_persp_norm(gsp, w1 & 0xffffu);
+                }
+                else if (index == 0x04)
+                {
+                    /* G_MW_CLIP: same four-word ratio write as GBI2, with
+                     * the offset field relocated. */
+                    if (off == 0x04u || off == 0x0cu)
+                    {
+                        int rv = (int)(int16_t)(w1 & 0xffffu);
+                        if (rv > 0)
+                            gsp->clip_ratio = rv;
+                    }
+                }
+                else if (index == G_MW_FOG)
+                {
+                    gsp_set_fog(gsp, (int)(short)((w1 >> 16) & 0xffffu),
+                                     (int)(short)(w1 & 0xffffu));
+                }
+                else if (index == G_MW_NUMLIGHT)
+                {
+                    /* GBI1 encodes the count as 0x80000000 + (n + 1) * 32. */
+                    gsp_set_num_lights(gsp,
+                        (int)(((w1 - 0x80000000u) >> 5) - 1u));
                 }
                 break;
             }
