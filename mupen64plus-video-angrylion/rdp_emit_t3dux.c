@@ -325,26 +325,30 @@ static void t3dux_load_object(GSPState *gsp, RdpFifo *fifo,
         int32_t cmdw[64];
         int nc;
 
-        if (texturing && pal != 0)
+        if (pal != 0)
         {
             /* The real microcode (per the cxd4 oracle stream) reissues the
-             * latched SETTILE before every textured triangle record whose
-             * palette byte is set, with the raw palette byte placed in w1
-             * bits 24..31 -- which the RDP ignores -- so the reissue is
-             * pixel-neutral but keeps the command stream in step. (The
-             * GLideN64 reference merges the byte at bits 20..23 instead;
-             * that would actively repoint the CI palette, which the LLE
-             * stream shows never happens: bits 20..23 stay those of the
-             * object's own SETTILE.) No change-gating: the pair is emitted
-             * per qualifying record, before index validation. */
+             * latched SETTILE before every triangle record whose palette
+             * byte is set -- textured or not: 53 object-list SETTILEs plus
+             * 1185 pal!=0 records equals the oracle's 1238 exactly, and a
+             * texturing gate (the GLideN64 reference has one) leaves the
+             * untextured objects' 131 reissues out of the stream. The
+             * record's full palette byte is shifted into w1 bits 20..27
+             * over the latched word masked with 0xFF0FFFFF, per the T3DUX
+             * wiki: byte 0x81 gives ...0810..., i.e. palette 1 in the
+             * standard field with the byte's high nibble above it. The
+             * palette field is live -- the mech's parts select their CI
+             * palettes (red armour, grey struts) through these reissues,
+             * and with the field stuck at zero every part sampled the
+             * greyscale palette. */
             int32_t two[2];
             two[0] = (int32_t)(0x27u << 24);        /* G_RDPPIPESYNC */
             two[1] = 0;
             rdp_fifo_append(fifo, two, 2);
-            two[0] = (int32_t)((0x35u << 24)        /* G_SETTILE */
+            two[0] = (int32_t)((0xf5u << 24)        /* G_SETTILE, raw op */
                                | (s_settile_w0 & 0x00ffffffu));
-            two[1] = (int32_t)((s_settile_w1 & 0x00ffffffu)
-                               | ((unsigned int)pal << 24));
+            two[1] = (int32_t)((s_settile_w1 & 0xf00fffffu)
+                               | ((unsigned int)pal << 20));
             rdp_fifo_append(fifo, two, 2);
         }
 

@@ -16,7 +16,13 @@
 extern "C" {
 #endif
 
-#define GSP_MAX_VERTICES 64   /* N64 vertex buffer holds up to 32/64 */
+/* Sized for the DMA-style vertex loaders, not just the 32/64-slot
+ * F3DEX-family buffers: Turbo3D/T3DUX objects carry a u8 vertex count and
+ * u8 triangle-record indices, so a single object can legitimately load up
+ * to 255 vertices (Last Legion UX's mech uses 92-vertex objects; with a
+ * 64-slot buffer every triangle referencing slots 64+ -- among them the
+ * mech's feet -- was silently dropped at the index bound). */
+#define GSP_MAX_VERTICES 256
 #define GSP_MTX_STACK    16
 #define GSP_MAX_LIGHTS   16   /* stock needs 8 directional + ambient; Conker's
                                * CBFD build loads up to 11 lights plus the
