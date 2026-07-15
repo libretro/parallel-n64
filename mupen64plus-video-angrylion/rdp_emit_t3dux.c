@@ -416,6 +416,15 @@ void t3dux_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int dl_addr)
     rsp_set_keep_degenerate(1);
     rsp_set_affine_tex(1);
 
+    /* The microcode resets the texture scale to 1.0 for its object draws
+     * (the reference's gSP.texture.scales = 1.0f); with the pipeline's
+     * S0.16 G_TEXTURE scale, 0x8000 against the doubled record texcoords
+     * is the exact identity. Without this, a preceding F3DLX task's
+     * G_TEXTURE state leaked into the T3DUX objects in mixed-ucode frames
+     * and doubled every texel coordinate -- the mech's textures sampled
+     * far off-plate and rendered as black blocks. */
+    gsp_set_texture(gsp, 0x8000u, 0x8000u, 0, 0, 0, 0);
+
     while (guard++ < 4096)
     {
         unsigned int pgstate = rd_u32_be(addr + 0u);
