@@ -12,6 +12,7 @@
 
 #include <stdint.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include "rdp_emit_rsp.h"
 
 /* 11-bit divide result look-up table (VRCP family), from cxd4. */
@@ -1926,6 +1927,7 @@ int rsp_tri_write(int32_t *ew,
     /* ---- lft flag: bit 7 of the cross product's high half ---- */
     lft = (cross_i >> 7) & 1;
 
+
     /* ---- per-vertex attribute lanes ---- */
     {
         const RspTriVtx *vv[3];
@@ -2082,8 +2084,10 @@ int rsp_tri_write(int32_t *ew,
          * coefficients are pure integer -- and the shade and texture DaDy
          * lanes are zero outright, integer and fraction. Only the z block
          * carries a live dy gradient. */
-        for (k = 0; k < 6; k++)
+        for (k = 0; k < 8; k++)
         {
+            if (k == 6)
+                continue;   /* w lane: affine, already all-zero slopes */
             dAdY[k].i = 0;
             dAdY[k].f = 0;
             if (k < 4)
@@ -2093,6 +2097,11 @@ int rsp_tri_write(int32_t *ew,
                 dAdE[k].f = 0;
             }
         }
+        /* The z DaDy is not the plane gradient either: 110 of the oracle's
+         * 139 nonzero-slope triangles carry exactly zero, and the rest hold
+         * small cross-lane residue (magnitude < 2 where the plane gradient
+         * reaches +-25). Zero is the closest model; its render effect is
+         * confined to the dz tolerance term of the z compare. */
     }
 
     /* The texture block's fourth halfwords are the z lane as stored by the
