@@ -637,6 +637,7 @@ void rdp_emit_hle_process_dlist(void)
     rsp_set_vtx_z_quant(0);
     rsp_set_keep_degenerate(0);
     rsp_set_affine_tex(0);
+    rsp_set_attr_lowp(0);
 
 
     if (!s_inited)

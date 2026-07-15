@@ -16,6 +16,7 @@ void rsp_set_vtx_x_round(int on);
 void rsp_set_vtx_z_quant(int on);
 void rsp_set_keep_degenerate(int on);
 void rsp_set_affine_tex(int on);
+void rsp_set_attr_lowp(int on);
 void rsp_set_clip_lerp_wo64(int on);
 void rsp_set_clip_lerp_l3dex(int on);
 void rsp_clip_lerp(const int32_t on_pos[4], const int32_t off_pos[4],

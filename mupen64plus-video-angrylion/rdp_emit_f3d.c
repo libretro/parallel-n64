@@ -1189,6 +1189,27 @@ void f3d_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
                 gsp_set_fog(gsp, (int)(int16_t)(w1 >> 16),
                                  (int)(int16_t)(w1 & 0xffff));
                 break;
+            case F3D_MW_CLIP:
+            {
+                /* gSPClipRatio: four moveword writes update the scaled clip
+                 * planes; the positive-side words (offsets 0x04 and 0x0c)
+                 * carry the ratio. The ratio is runtime state, not a ucode
+                 * build property -- Last Legion UX runs the same F3DLX
+                 * build as Wipeout 64 but sends gSPClipRatio(FRUSTRATIO_2),
+                 * and with the variant's ratio-1 default its guard band
+                 * clipped terrain triangles the real microcode passes to
+                 * the rasterizer whole; the reshaped clip fans z-buffered
+                 * differently and the T3DUX mech partially z-failed against
+                 * the mis-clipped ground. */
+                unsigned int off = (w0 >> 8) & 0xffffu;
+                if (off == 0x04u || off == 0x0cu)
+                {
+                    int rv = (int)(int16_t)(w1 & 0xffffu);
+                    if (rv > 0)
+                        gsp->clip_ratio = rv;
+                }
+                break;
+            }
             case F3D_MW_PERSPNORM:
                 gsp_set_persp_norm(gsp, w1 & 0xffffu);
                 break;

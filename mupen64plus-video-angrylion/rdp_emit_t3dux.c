@@ -415,6 +415,7 @@ void t3dux_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int dl_addr)
     rsp_set_vtx_z_quant(1);
     rsp_set_keep_degenerate(1);
     rsp_set_affine_tex(1);
+    rsp_set_attr_lowp(1);
 
     /* The microcode resets the texture scale to 1.0 for its object draws
      * (the reference's gSP.texture.scales = 1.0f); with the pipeline's

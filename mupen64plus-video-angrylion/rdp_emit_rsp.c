@@ -11,6 +11,7 @@
  */
 
 #include <stdint.h>
+#include <stdlib.h>
 #include "rdp_emit_rsp.h"
 
 /* 11-bit divide result look-up table (VRCP family), from cxd4. */
@@ -800,6 +801,15 @@ static int s_keep_degenerate = 0;
 void rsp_set_keep_degenerate(int on)
 {
     s_keep_degenerate = on ? 1 : 0;
+}
+
+static int s_attr_lowp = 0;
+
+/* T3DUX (Turbo3D UX) low-precision attribute coefficients: shade lanes
+ * pure integer, shade and texture DaDy zero. */
+void rsp_set_attr_lowp(int on)
+{
+    s_attr_lowp = on ? 1 : 0;
 }
 
 static int s_affine_tex = 0;
@@ -2062,6 +2072,27 @@ int rsp_tri_write(int32_t *ew,
         base[k].f = acc_clamp_low(acc);
         acc += p_udh(dAdE[k].i, y_spx_i);
         base[k].i = acc_clamp_mid(acc);
+    }
+
+    if (s_attr_lowp)
+    {
+        /* T3DUX (Turbo3D UX) low-precision attribute profile, from the cxd4
+         * oracle's Last Legion UX streams: every shade fraction lane (base,
+         * DaDx, DaDe, DaDy) is zero in all emitted triangles -- the shade
+         * coefficients are pure integer -- and the shade and texture DaDy
+         * lanes are zero outright, integer and fraction. Only the z block
+         * carries a live dy gradient. */
+        for (k = 0; k < 6; k++)
+        {
+            dAdY[k].i = 0;
+            dAdY[k].f = 0;
+            if (k < 4)
+            {
+                base[k].f = 0;
+                dAdX[k].f = 0;
+                dAdE[k].f = 0;
+            }
+        }
     }
 
     /* The texture block's fourth halfwords are the z lane as stored by the
