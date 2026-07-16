@@ -20,6 +20,7 @@
 #include "rdp_emit_f3d.h"
 #include "rdp_emit_f3ddkr.h"
 #include "rdp_emit_t3dux.h"
+#include "rdp_emit_turbo3d.h"
 #include "rdp_emit_rsp.h"
 #include "rdp_emit_backend.h"
 
@@ -711,7 +712,23 @@ void rdp_emit_hle_process_dlist(void)
          * decode, not the GBI 1 x2 or the F3DBETA one. */
         seta = f3d_is_seta_ucode(rdram, rdram_size, ut);
         gbi1_oth = gbi1_oth || seta;
-        if (t3dux_ucode_match(rdram, rdram_size, ud))
+        if (turbo3d_ucode_match(rdram, rdram_size, ut))
+        {
+            /* Original SGI Turbo3D (Dark Rift): the "RSP SW Version: 2.0D"
+             * fast/low-quality microcode, identified by the CRC of its text
+             * segment. Its display list is a flat array of four-word objects
+             * (global-state, per-object-state, vertices, triangles) with
+             * standard N64 vertices and triangles -- not a Fast3D/F3DEX
+             * grammar. Route to the dedicated walker, checked first so its
+             * task is never mis-claimed by the F3D name/family probes (its
+             * data segment carries the same SGI version string). */
+            turbo3d_set_rdram(rdram);
+            turbo3d_set_rdram_size(rdram_size);
+            f3dex2_set_rdram(rdram);
+            f3dex2_set_rdram_size(rdram_size);
+            turbo3d_run_dl(&s_gsp, &s_fifo, dl_addr);
+        }
+        else if (t3dux_ucode_match(rdram, rdram_size, ud))
         {
             /* T3DUX (Turbo3D UX): Yasumoto's compact Turbo3D format (Last
              * Legion UX, Toukon Road). Not a Fast3D/F3DEX grammar at all --
