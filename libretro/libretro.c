@@ -225,6 +225,9 @@ float    screen_aspect_ratio        = 4.0 / 3.0;
 uint32_t screen_pitch               = 0;
 uint32_t screen_aspectmodehint;
 uint32_t send_allist_to_hle_rsp     = 0;
+/* Set from the ROM header for titles whose audio microcode use cannot be
+ * HLE'd faithfully; consulted by plugin_rsp_init (plugin.c). */
+uint32_t force_audio_tasks_to_lle_rsp = 0;
 
 unsigned int FAKE_SDL_TICKS         = 0;
 
@@ -669,6 +672,19 @@ static bool emu_step_load_data()
             log_cb(RETRO_LOG_ERROR, "mupen64plus; Failed to query ROM header information\n");
          goto load_fail;
       }
+
+      /* Dark Rift's sound driver is the plain audio ABI, but the game reads
+       * the microcode's per-voice DSP state saves back every frame -- the
+       * RESAMPLE command's 0x20-byte state block includes DMEM scratch the
+       * ENVMIXER leaves behind, and the CPU turns those live waveform
+       * samples into the fight scenes' palette lighting. rsp-hle's alist
+       * only models the documented part of that state, so the readback
+       * stays zero and every character renders unlit (and the attract
+       * sequence never leaves its darkened fight demo). Running just the
+       * audio (type 2) tasks on the LLE RSP restores the readback
+       * bit-exactly at negligible cost. */
+      if (!strcmp((const char*)ROM_HEADER.Name, "DARK RIFT"))
+         force_audio_tasks_to_lle_rsp = 1;
    }
    if (disk_data != NULL && disk_size != 0)
    {
