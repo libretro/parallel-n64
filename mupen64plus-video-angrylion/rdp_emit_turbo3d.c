@@ -259,7 +259,17 @@ static void turbo3d_load_globstate(GSPState *gsp, RdpFifo *fifo,
      * othermode1 (4), segBases[16] (64), viewport (16), rdpCmds (4).
      * perspNorm is the big-endian u16 at +2. */
     {
-        unsigned int pn = rd_u32_be(addr) & 0xffffu;
+        /* struct T3DGlobState begins {u16 pad0; u16 perspNorm}. In the
+         * captured little-endian-within-word RDRAM the perspNorm halfword is
+         * the high 16 bits of the first word (rd_u32_be gives the big-endian
+         * value; its high half is perspNorm, its low half pad0). Dark Rift
+         * runs this at 11 -- a small normalizer like the other Turbo-family
+         * ucodes (Last Legion 4, Super Smash Bros. 8). Reading the low half
+         * instead left perspNorm at the 0xFFFF default, which does not scale
+         * the large post-transform w down, so every transformed character
+         * vertex tripped the positive-W clip and its whole model was
+         * rejected -- only the untextured screen-space shadows survived. */
+        unsigned int pn = (rd_u32_be(addr) >> 16) & 0xffffu;
         if (pn != 0u)
             gsp_set_persp_norm(gsp, pn);
     }
@@ -329,10 +339,18 @@ static void turbo3d_load_object(GSPState *gsp, RdpFifo *fifo,
      * with depth off (Dark Rift's full-screen backgrounds), matching the
      * oracle's TRI_SHADE vs TRI_SHADE_Z choice. G_ZBUFFER = 0x1 selects the
      * Z triangle variant in gsp_triangle. */
+    /* renderState | SHADE | SHADING_SMOOTH | (Z from other-mode) | cull.
+     * The reference sets G_CULL_BACK, but the Turbo3D force matrix feeds this
+     * transform with the opposite screen-space winding to the F3DEX2 pipeline
+     * the bridge's cull convention was tuned against, so the equivalent cull
+     * here is G_CULL_FRONT (0x200): with G_CULL_BACK every transformed
+     * character model was culled and only the untextured screen-space shadows
+     * survived. Verified pixel-exact against the cxd4 oracle on the in-match
+     * fight scene. */
     gsp_set_geometry_mode(gsp, (renderState & ~(0x00010000u | 0x00020000u))
                           | (gsp->t3d_zbuffered ? 0x00000001u : 0u)
                           | 0x00000004u
-                          | 0x00200000u | 0x00000400u);
+                          | 0x00200000u | 0x00000200u);
 
     /* Texturing follows the active combiner (sniffed from the embedded
      * SETCOMBINE): the microcode emits the textured triangle variant only
@@ -409,6 +427,7 @@ static void turbo3d_load_object(GSPState *gsp, RdpFifo *fifo,
 
     if (pvtx != 0u)
         gsp_vertex(gsp, s_rdram, t3d_seg_addr(pvtx), vtxCount, vtxV0);
+
 
     if (ptri == 0u)
         return;
