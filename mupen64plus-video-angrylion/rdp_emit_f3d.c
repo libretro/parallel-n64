@@ -864,7 +864,7 @@ void f3d_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
 
         case F3D_TRI1:
         {
-            int32_t cw[220];
+            int32_t cw[GSP_TRI_CMD_WORDS];
             int a, b, c, nc;
             /* GoldenEye/Perfect Dark (Rare's F3DEX-derived GBI1) store the
              * G_TRI1 vertex index as slot*10 -- the value the microcode's
@@ -890,7 +890,7 @@ void f3d_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
 
         case F3D_TRI2:
         {
-            int32_t cw[220];
+            int32_t cw[GSP_TRI_CMD_WORDS];
             int nc;
             if (s_variant_f3dex)
             {
@@ -979,7 +979,7 @@ void f3d_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
                 int a = (int)((w1 >> 16) & 0xff) / s;
                 int b = (int)((w1 >>  8) & 0xff) / s;
                 int wd = (int)(w1 & 0xff);
-                int32_t cw[220];
+                int32_t cw[GSP_TRI_CMD_WORDS];
                 int nc = gsp_line(gsp, cw, a, b, wd);
                 if (nc > 0) rdp_fifo_append(fifo, cw, nc);
                 break;
@@ -992,7 +992,7 @@ void f3d_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
             int b = (int)((w1 >> 16) & 0xff) / s;
             int c = (int)((w1 >>  8) & 0xff) / s;
             int d = (int)((w1 >>  0) & 0xff) / s;
-            int32_t cw[220];
+            int32_t cw[GSP_TRI_CMD_WORDS];
             int nc;
             nc = gsp_triangle(gsp, cw, a, b, c, s_textured, s_zbuffered);
             if (nc > 0) rdp_fifo_append(fifo, cw, nc);

@@ -406,7 +406,7 @@ static void f3ddkr_run_dl_impl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
                     int v0 = (int)r[(e + 1) ^ 3];
                     int v1 = (int)r[(e + 2) ^ 3];
                     int v2 = (int)r[(e + 3) ^ 3];
-                    int32_t cmdw[220];
+                    int32_t cmdw[GSP_TRI_CMD_WORDS];
                     int nc;
                     /* Reject triangles whose indices fall outside the vertex
                      * buffer or past the highest vertex actually loaded this

@@ -344,7 +344,7 @@ static void t3dux_load_object(GSPState *gsp, RdpFifo *fifo,
         int v2t  = rd_u8(te + 5u);
         int v1t  = rd_u8(te + 6u);
         int v0t  = rd_u8(te + 7u);
-        int32_t cmdw[64];
+        int32_t cmdw[GSP_TRI_CMD_WORDS];
         int nc;
 
         if (pal != 0)

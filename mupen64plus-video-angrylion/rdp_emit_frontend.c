@@ -1407,7 +1407,6 @@ void gsp_set_light_color(GSPState *s, int index,
  * pipeline uses, since later conditions test them. Attribute lanes are
  * lerped in the stored domains: colors as byte << 7, texture coordinates
  * as the raw S10.5 shorts. */
-#define GSP_CLIP_MAX 16
 
 static const int16_t gsp_clip_ratio_rows[6][4] = {
     { 0, 0, 0,  1 },   /* near (NoN: w; z lane patched from clip_near_z) */

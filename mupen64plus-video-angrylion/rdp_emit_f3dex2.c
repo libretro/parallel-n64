@@ -823,7 +823,7 @@ void f3dex2_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
                 idx[3][2] = (int)((w1 >>  0) & 0x1f);
                 for (t = 0; t < 4; t++)
                 {
-                    int32_t cmdw[220];
+                    int32_t cmdw[GSP_TRI_CMD_WORDS];
                     int nc;
                     if (idx[t][0] == idx[t][1] && idx[t][0] == idx[t][2])
                         continue;   /* degenerate padding slot */
@@ -840,7 +840,7 @@ void f3dex2_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
             int a = (int)((w0 >> 17) & 0x7f);
             int b = (int)((w0 >> 9) & 0x7f);
             int c = (int)((w0 >> 1) & 0x7f);
-            int32_t cmdw[220];
+            int32_t cmdw[GSP_TRI_CMD_WORDS];
             int nc = gsp_triangle(gsp, cmdw, a, b, c, s_textured, s_zbuffered);
             if (nc > 0) rdp_fifo_append(fifo, cmdw, nc);
             break;
@@ -855,7 +855,7 @@ void f3dex2_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
             int a1 = (int)((w1 >> 17) & 0x7f);
             int b1 = (int)((w1 >> 9) & 0x7f);
             int c1 = (int)((w1 >> 1) & 0x7f);
-            int32_t cmdw[220];
+            int32_t cmdw[GSP_TRI_CMD_WORDS];
             int nc;
             /* The G_TRI2 handler stores the second triangle's indices and
              * jals tri_to_rdp before falling through to the G_TRI1 path

@@ -1409,7 +1409,7 @@ static void s2dex_draw_obj(GSPState *gsp, const unsigned char *r,
     unsigned int settile_w0, settile_w1, settsz_w1;
     unsigned int rtile;
     int32_t      cw[6];
-    int32_t      tribuf[220];
+    int32_t      tribuf[GSP_TRI_CMD_WORDS];
     int          nc;
 
     if (addr + 24u > rdram_bytes)

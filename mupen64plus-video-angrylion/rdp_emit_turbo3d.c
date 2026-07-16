@@ -457,7 +457,7 @@ static void turbo3d_load_object(GSPState *gsp, RdpFifo *fifo,
             int v2 = rd_u8(te + 1u);
             int v1 = rd_u8(te + 2u);
             int v0 = rd_u8(te + 3u);
-            int32_t cmdw[64];
+            int32_t cmdw[GSP_TRI_CMD_WORDS];
             int nc;
             if (v0 >= vtxCount || v1 >= vtxCount || v2 >= vtxCount)
                 continue;
@@ -488,7 +488,7 @@ static void turbo3d_load_object(GSPState *gsp, RdpFifo *fifo,
         int v2 = rd_u8(te + 1u);
         int v1 = rd_u8(te + 2u);
         int v0 = rd_u8(te + 3u);
-        int32_t cmdw[64];
+        int32_t cmdw[GSP_TRI_CMD_WORDS];
         int nc;
 
         if (v0 >= vtxCount || v1 >= vtxCount || v2 >= vtxCount)

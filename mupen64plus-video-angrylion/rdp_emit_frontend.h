@@ -255,6 +255,18 @@ void gsp_set_light_color(GSPState *s, int index,
 void gsp_modify_vertex(GSPState *s, int vtx, unsigned int where,
                        unsigned int w1);
 
+#define GSP_CLIP_MAX 16
+
+/* Clipping in gsp_triangle can grow one input triangle into a polygon of
+ * up to GSP_CLIP_MAX vertices, fan-triangulated into GSP_CLIP_MAX - 2
+ * output triangles of at most 44 words each (TRISTZ, 176 bytes). Every
+ * caller-supplied command buffer must hold the full worst case: the
+ * Turbo3D/T3DUX walkers sized theirs for a single output triangle and a
+ * clipped draw smashed their stack frame (silent corruption on Windows
+ * builds without a stack protector -- black screens and garbage state
+ * rather than a clean abort). */
+#define GSP_TRI_CMD_WORDS ((GSP_CLIP_MAX - 2) * 44)
+
 int gsp_triangle(GSPState *s, int32_t *cmd, int i0, int i1, int i2,
                  int textured, int z_buffered);
 /* Expand a G_LINE3D (gSPLine3D) between two stored vertices into a thin
