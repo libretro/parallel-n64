@@ -55,6 +55,22 @@ static void (*l_DebugCallback)(void *, int, const char *) = NULL;
 static void *l_DebugCallContext = NULL;
 static int l_PluginInit = 0;
 
+#ifdef HAVE_LLE
+/* LLE RSP fallback for tasks the HLE plugin does not recognize. The
+ * cxd4 interpreter is statically linked into the libretro core, so
+ * instead of dropping an unrecognized task on the floor -- silencing a
+ * custom sound driver or starving a game of data it expects the ucode
+ * to compute -- it can be executed accurately. The RSP_INFO handed to hleInitiateRSP is kept so cxd4 can
+ * be initiated lazily with the same register and memory pointers the
+ * first time a task needs forwarding. */
+extern void cxd4InitiateRSP(RSP_INFO Rsp_Info, unsigned int *CycleCount);
+extern unsigned int cxd4DoRspCycles(unsigned int Cycles);
+
+static RSP_INFO l_ForwardRspInfo;
+static int l_ForwardInfoValid = 0;
+static int l_ForwardLleReady = 0;
+#endif
+
 EXPORT m64p_error CALL hlePluginGetVersion(m64p_plugin_type *PluginType, int *PluginVersion, int *APIVersion, const char **PluginNamePtr, int *Capabilities)
 {
     /* set version info */
@@ -144,7 +160,30 @@ void HleShowCFB(void* UNUSED(user_defined))
 
 int HleForwardTask(void* user_defined)
 {
+#ifdef HAVE_LLE
+    /* Execute the task on the statically linked cxd4 LLE RSP. cxd4's
+     * InitiateRSP resets the SP program counter as a side effect, so the
+     * current value is preserved around the one-time initialisation (a
+     * task boot expects PC as the OS left it). Once initiated, running
+     * the interpreter to HALT performs the whole task, including its own
+     * SP status signalling and MI interrupt raising, so the regular HLE
+     * "unknown task" break must not run afterwards. */
+    if (!l_ForwardInfoValid)
+        return -1;
+
+    if (!l_ForwardLleReady) {
+        unsigned int saved_pc = *l_ForwardRspInfo.SP_PC_REG;
+        cxd4InitiateRSP(l_ForwardRspInfo, NULL);
+        *l_ForwardRspInfo.SP_PC_REG = saved_pc;
+        l_ForwardLleReady = 1;
+    }
+
+    cxd4DoRspCycles(0xFFFFFFFF);
+    return 0;
+#else
+    (void)user_defined;
     return -1;
+#endif
 }
 
 /* DLL-exported functions */
@@ -214,6 +253,12 @@ EXPORT void CALL hleInitiateRSP(RSP_INFO Rsp_Info, unsigned int* CycleCount)
     l_ProcessAlistList = Rsp_Info.ProcessAlistList;
     l_ProcessRdpList = Rsp_Info.ProcessRdpList;
     l_ShowCFB = Rsp_Info.ShowCFB;
+
+#ifdef HAVE_LLE
+    l_ForwardRspInfo = Rsp_Info;
+    l_ForwardInfoValid = 1;
+    l_ForwardLleReady = 0;
+#endif
 
     // Is the DoCommand really needed? It's upstream
     m64p_rom_header rom_header;
