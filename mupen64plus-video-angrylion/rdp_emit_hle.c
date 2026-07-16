@@ -635,6 +635,7 @@ void rdp_emit_hle_process_dlist(void)
      * F3D wo64 detection re-assert what they need after this point. */
     rsp_set_vtx_y_round(0);
     rsp_set_vtx_x_round(0);
+    rsp_set_vtx_invw_raw(0);
     rsp_set_vtx_z_quant(0);
     rsp_set_keep_degenerate(0);
     rsp_set_affine_tex(0);
@@ -659,6 +660,7 @@ void rdp_emit_hle_process_dlist(void)
     dl_addr = read_dmem_u32(dmem, TASK_DATA_PTR_DMEM) & 0x00ffffffu;
     if (dl_addr == 0 || dl_addr >= rdram_size)
         return;
+
 
     /* The OSTask names the RDRAM matrix stack (dram_stack at DMEM 0xfe0,
      * dram_stack_size at 0xfe4); the microcode pushes and pops through

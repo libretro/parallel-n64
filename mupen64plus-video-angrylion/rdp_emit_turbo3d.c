@@ -340,17 +340,27 @@ static void turbo3d_load_object(GSPState *gsp, RdpFifo *fifo,
      * oracle's TRI_SHADE vs TRI_SHADE_Z choice. G_ZBUFFER = 0x1 selects the
      * Z triangle variant in gsp_triangle. */
     /* renderState | SHADE | SHADING_SMOOTH | (Z from other-mode) | cull.
-     * The reference sets G_CULL_BACK, but the Turbo3D force matrix feeds this
-     * transform with the opposite screen-space winding to the F3DEX2 pipeline
-     * the bridge's cull convention was tuned against, so the equivalent cull
-     * here is G_CULL_FRONT (0x200): with G_CULL_BACK every transformed
-     * character model was culled and only the untextured screen-space shadows
-     * survived. Verified pixel-exact against the cxd4 oracle on the in-match
-     * fight scene. */
-    gsp_set_geometry_mode(gsp, (renderState & ~(0x00010000u | 0x00020000u))
+     * The object's renderState is an F3D geometry-mode word; the microcode
+     * honours its cull bits (F3D G_CULL_FRONT = 0x1000, G_CULL_BACK =
+     * 0x2000) per object. Dark Rift's character models carry G_CULL_BACK
+     * while the arena-backdrop bake at fight-scene init carries no cull
+     * bits at all -- forcing a cull here dropped most of that scene-init
+     * render, leaving the panorama (which the game then samples as a
+     * texture every frame) permanently dark. The Turbo3D force matrix
+     * feeds this transform with the opposite screen-space winding to the
+     * F3DEX2 pipeline the bridge's cull convention was tuned against, so
+     * F3D G_CULL_BACK maps to the bridge's G_CULL_FRONT (0x200) and F3D
+     * G_CULL_FRONT to the bridge's G_CULL_BACK (0x400). Verified
+     * pixel-exact against the cxd4 oracle on both the in-match fight
+     * scene (culled models) and the fight-scene-init backdrop bake
+     * (uncalled full-surround geometry). */
+    gsp_set_geometry_mode(gsp, (renderState & ~(0x00010000u | 0x00020000u
+                                                | 0x00001000u | 0x00002000u))
                           | (gsp->t3d_zbuffered ? 0x00000001u : 0u)
                           | 0x00000004u
-                          | 0x00200000u | 0x00000200u);
+                          | 0x00200000u
+                          | ((renderState & 0x00002000u) ? 0x00000200u : 0u)
+                          | ((renderState & 0x00001000u) ? 0x00000400u : 0u));
 
     /* Texturing follows the active combiner (sniffed from the embedded
      * SETCOMBINE): the microcode emits the textured triangle variant only
@@ -358,6 +368,18 @@ static void turbo3d_load_object(GSPState *gsp, RdpFifo *fifo,
      * so its SETCOMBINE updates the flag before the triangles are written. */
     turbo3d_process_rdp(gsp, fifo, rdpcmds);
     textured = s_t3d_textured;
+
+    /* Turbo3D vertex S/T are raw texel coordinates with no G_TEXTURE
+     * command anywhere in the format: the microcode consumes them at
+     * full scale. The shared vertex loader, however, bakes
+     * gsp->tex_scale_s/t (an F3D G_TEXTURE property) into the loaded
+     * texcoords, so whatever scale the interleaved "RSP SW 2.0D" F3D
+     * task last set leaks into the Turbo3D draw. During Dark Rift's
+     * fight-scene-init backdrop bake that leak was 0x8000, halving
+     * every texture coordinate of the arena panorama. Pin the scale to an
+     * exact 1.0 (0x10000 in the 0.16 multiply, i.e. the identity) for
+     * the transformed path. */
+    gsp_set_texture(gsp, 0x10000u, 0x10000u, 0, 0, gsp->tex_w, gsp->tex_h);
 
     if (flag & GT_FLAG_NO_XFM)
     {
@@ -463,6 +485,23 @@ void turbo3d_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int dl_addr)
         s_t3d_seg[s] = 0u;
     gsp->t3d_zbuffered = 0;
     s_t3d_textured = 0;
+    /* Turbo3D's vertex reciprocal is the raw doubled table value with no
+     * Newton-Raphson refinement (see rsp_vtx_screen), and the viewport
+     * result is snapped to whole pixels on both axes: gspTurbo3D text
+     * +0x5f4/+0x5fc rounds the packed x/y int lanes with vadd v31[2]=2
+     * then vand v31[6]=0xfffc before the VtxOut store. The snapping is
+     * the ucode's speed-over-precision trade (the well-known Turbo3D
+     * vertex wobble); without it the fight-scene-init backdrop bake
+     * drifted from the LLE oracle by quarter-pixels, which the bake's
+     * frame-feedback then compounded into a visibly darker arena. */
+    rsp_set_vtx_invw_raw(1);
+    rsp_set_vtx_y_round(1);
+    rsp_set_vtx_x_round(1);
+    rsp_set_vtx_z_quant(1);
+    rsp_set_keep_degenerate(1);
+    rsp_set_affine_tex(1);
+    rsp_set_attr_lowp(1);
+
 
     while (guard++ < 8192)
     {

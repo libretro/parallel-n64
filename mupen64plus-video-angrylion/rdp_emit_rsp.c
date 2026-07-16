@@ -771,6 +771,13 @@ void rsp_set_vtx_invw_2rd(int on)
     s_vtx_invw_2rd = on ? 1 : 0;
 }
 
+static int s_vtx_invw_raw = 0;
+
+void rsp_set_vtx_invw_raw(int on)
+{
+    s_vtx_invw_raw = on ? 1 : 0;
+}
+
 static int s_vtx_y_round = 0;
 
 /* Wipeout 64 stores vertex screen Y rounded to whole pixels (cxd4:
@@ -1120,7 +1127,22 @@ int rsp_vtx_screen(int32_t cx, int32_t cy, int32_t cz, int32_t cw,
 
     /* 1/w' with the Newton-Raphson step, exactly as rsp_vtx_invw */
     r = mk32(rsp_rcp32((int32_t)(((uint32_t)U16(pw.i) << 16) | (uint32_t)U16(pw.f))));
-    if (s_vtx_invw_2rd)
+    if (s_vtx_invw_raw)
+    {
+        /* Turbo3D's reciprocal (gspTurbo3D text +0x538..+0x574): the
+         * 32-bit vrcph/vrcpl table result is doubled through the
+         * vmudn/vmadh constant multiply and used as-is -- there is no
+         * Newton-Raphson feedback multiply at all (the microcode trades
+         * vertex precision for speed). The refined F3DEX form lands
+         * within one or two quarter-pixels of this, which is exactly
+         * the jitter Dark Rift's fight-scene-init backdrop bake showed
+         * against the LLE oracle. */
+        acc = p_udn(r.f, 2);
+        iw.f = acc_clamp_low(acc);
+        acc += p_udh(r.i, 2);
+        iw.i = acc_clamp_mid(acc);
+    }
+    else if (s_vtx_invw_2rd)
     {
         /* The Doom 64 line microcode's reciprocal routine (gspL3DEX text
          * 0xef8): the raw reciprocal is doubled first and the refinement
