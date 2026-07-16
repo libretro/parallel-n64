@@ -96,9 +96,17 @@ int t3dux_ucode_match(const unsigned char *rdram, unsigned int rdram_size,
     return 0;
 }
 
+/* True when [addr, addr+len) lies inside RDRAM. Written subtraction-style
+ * so a wrapped addr+len cannot slip past the check. */
+static int t3dux_range_ok(unsigned int addr, unsigned int len)
+{
+    return s_rdram != 0 && addr < s_rdram_size
+        && s_rdram_size - addr >= len;
+}
+
 static unsigned int rd_u32_be(unsigned int addr)
 {
-    if (s_rdram == 0 || addr + 4u > s_rdram_size)
+    if (!t3dux_range_ok(addr, 4u))
         return 0u;
     return ((unsigned int)s_rdram[(addr + 0u) ^ 3u] << 24)
          | ((unsigned int)s_rdram[(addr + 1u) ^ 3u] << 16)
@@ -233,7 +241,15 @@ static void t3dux_load_globstate(GSPState *gsp, RdpFifo *fifo,
                        & 0x00ffffffu;
 
     /* Viewport lives 80 bytes into the block. */
-    gsp_set_viewport(gsp, s_rdram, (addr + 80u) & 0x00ffffffu);
+    /* gsp_set_viewport reads RDRAM through the frontend's unbounded
+     * helpers and the segment-mapped address covers 16 MiB against at
+     * most 8 of RDRAM; skip the load when the record is out of range
+     * (same hardening as the Turbo3D walker). */
+    {
+        unsigned int vp = (addr + 80u) & 0x00ffffffu;
+        if (t3dux_range_ok(vp, 16u))
+            gsp_set_viewport(gsp, s_rdram, vp);
+    }
 
     rdpcmds = rd_u32_be(addr + 96u);
     t3dux_process_rdp(gsp, fifo, rdpcmds);
@@ -278,10 +294,13 @@ static void t3dux_load_object(GSPState *gsp, RdpFifo *fifo,
     if ((matrixFlag & 1) == 0)
     {
         unsigned int ma = saddr + 24u;
-        gsp_force_matrix_chunk(gsp, s_rdram, ma + 0u,  0u);
-        gsp_force_matrix_chunk(gsp, s_rdram, ma + 16u, 16u);
-        gsp_force_matrix_chunk(gsp, s_rdram, ma + 32u, 32u);
-        gsp_force_matrix_chunk(gsp, s_rdram, ma + 48u, 48u);
+        if (t3dux_range_ok(ma, 64u))
+        {
+            gsp_force_matrix_chunk(gsp, s_rdram, ma + 0u,  0u);
+            gsp_force_matrix_chunk(gsp, s_rdram, ma + 16u, 16u);
+            gsp_force_matrix_chunk(gsp, s_rdram, ma + 32u, 32u);
+            gsp_force_matrix_chunk(gsp, s_rdram, ma + 48u, 48u);
+        }
     }
 
     /* T3DUX draws with smooth shading, shade, z-buffer and back-face cull
@@ -299,6 +318,9 @@ static void t3dux_load_object(GSPState *gsp, RdpFifo *fifo,
     {
         unsigned int vaddr = t3d_seg_addr(pvtx);
         unsigned int col0  = t3d_seg_addr(pcol);
+        if (!t3dux_range_ok(vaddr, (unsigned int)vtxCount * 8u) ||
+            !t3dux_range_ok(col0, (unsigned int)vtxCount * 4u))
+            return;
         gsp_vertex_t3dux(gsp, s_rdram, vaddr, col0, vtxCount);
     }
 

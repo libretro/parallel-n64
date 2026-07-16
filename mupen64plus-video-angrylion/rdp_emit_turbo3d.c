@@ -101,9 +101,17 @@ int turbo3d_ucode_match(const unsigned char *rdram, unsigned int rdram_size,
     return crc == 0x2bdcfc8au;
 }
 
+/* True when [addr, addr+len) lies inside RDRAM. Written subtraction-style
+ * so a wrapped addr+len cannot slip past the check. */
+static int t3d_range_ok(unsigned int addr, unsigned int len)
+{
+    return s_rdram != 0 && addr < s_rdram_size
+        && s_rdram_size - addr >= len;
+}
+
 static unsigned int rd_u32_be(unsigned int addr)
 {
-    if (s_rdram == 0 || addr + 4u > s_rdram_size)
+    if (!t3d_range_ok(addr, 4u))
         return 0u;
     return ((unsigned int)s_rdram[(addr + 0u) ^ 3u] << 24)
          | ((unsigned int)s_rdram[(addr + 1u) ^ 3u] << 16)
@@ -132,7 +140,7 @@ static int rd_u8(unsigned int addr)
 static int rd_s16(unsigned int addr)
 {
     unsigned int v;
-    if (s_rdram == 0 || addr + 2u > s_rdram_size)
+    if (!t3d_range_ok(addr, 2u))
         return 0;
     v = (unsigned int)s_rdram[addr]
       | ((unsigned int)s_rdram[addr + 1u] << 8);
@@ -281,7 +289,18 @@ static void turbo3d_load_globstate(GSPState *gsp, RdpFifo *fifo,
         s_t3d_seg[s] = rd_u32_be(addr + 16u + (unsigned int)s * 4u)
                        & 0x00ffffffu;
 
-    gsp_set_viewport(gsp, s_rdram, (addr + 80u) & 0x00ffffffu);
+    /* gsp_set_viewport reads RDRAM through the frontend's unbounded
+     * helpers; the segment-mapped address covers 16 MiB while RDRAM is
+     * at most 8, so a garbage global-state pointer (a stale or partly
+     * written display list during a scene transition) walked straight
+     * off the buffer -- a Windows-reproducible SIGSEGV. Skip the load
+     * when the record is out of range; the previous viewport stays in
+     * effect, which is also what the microcode's DMA would leave. */
+    {
+        unsigned int vp = (addr + 80u) & 0x00ffffffu;
+        if (t3d_range_ok(vp, 16u))
+            gsp_set_viewport(gsp, s_rdram, vp);
+    }
 
     rdpcmds = rd_u32_be(addr + 96u);
     turbo3d_process_rdp(gsp, fifo, rdpcmds);
@@ -325,10 +344,13 @@ static void turbo3d_load_object(GSPState *gsp, RdpFifo *fifo,
     if (flag != GT_FLAG_NOMTX)
     {
         unsigned int ma = saddr + 24u;
-        gsp_force_matrix_chunk(gsp, s_rdram, ma + 0u,  0u);
-        gsp_force_matrix_chunk(gsp, s_rdram, ma + 16u, 16u);
-        gsp_force_matrix_chunk(gsp, s_rdram, ma + 32u, 32u);
-        gsp_force_matrix_chunk(gsp, s_rdram, ma + 48u, 48u);
+        if (t3d_range_ok(ma, 64u))
+        {
+            gsp_force_matrix_chunk(gsp, s_rdram, ma + 0u,  0u);
+            gsp_force_matrix_chunk(gsp, s_rdram, ma + 16u, 16u);
+            gsp_force_matrix_chunk(gsp, s_rdram, ma + 32u, 32u);
+            gsp_force_matrix_chunk(gsp, s_rdram, ma + 48u, 48u);
+        }
     }
 
     /* The reference clears lighting/fog and forces smooth shade, shade and
@@ -448,7 +470,13 @@ static void turbo3d_load_object(GSPState *gsp, RdpFifo *fifo,
     }
 
     if (pvtx != 0u)
-        gsp_vertex(gsp, s_rdram, t3d_seg_addr(pvtx), vtxCount, vtxV0);
+    {
+        unsigned int va = t3d_seg_addr(pvtx);
+        if (t3d_range_ok(va, (unsigned int)vtxCount * 16u))
+            gsp_vertex(gsp, s_rdram, va, vtxCount, vtxV0);
+        else
+            return;
+    }
 
 
     if (ptri == 0u)
