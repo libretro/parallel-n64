@@ -716,14 +716,35 @@ void gsp_vertex(GSPState *s, const unsigned char *rdram, unsigned int addr,
         cw = (int64_t)ox * s->combined[0][3] + (int64_t)oy * s->combined[1][3]
            + (int64_t)oz * s->combined[2][3] + (int64_t)s->combined[3][3];
 
-        vt->cx = gsp_mvp_readback(cx,
-                     (int64_t)oz * (s->combined[2][0] >> 16));
-        vt->cy = gsp_mvp_readback(cy,
-                     (int64_t)oz * (s->combined[2][1] >> 16));
-        vt->cz = gsp_mvp_readback(cz,
-                     (int64_t)oz * (s->combined[2][2] >> 16));
-        vt->cw = gsp_mvp_readback(cw,
-                     (int64_t)oz * (s->combined[2][3] >> 16));
+        /* The fraction half of the stored clip value is the final vmadn's
+         * register, whose clamp tests the accumulator BEFORE the last
+         * vmadh's integer term. Which term that is depends on the
+         * microcode's MAC order: F3DEX2 accumulates trans, x, y, z (final
+         * integer term = z), while Turbo3D accumulates x, y, z, trans
+         * (gspTurbo3D text +0x4dc..+0x4f8; final integer term = the
+         * translation row). The two agree unless an intermediate sum
+         * overflows the s15.16 window -- Dark Rift's fight-scene bone
+         * matrices (rotations with |elements| > 1) overflow routinely,
+         * and modelling the wrong order left every character several
+         * pixels and shade steps away from the LLE reference. */
+        if (s->mvp_trans_last)
+        {
+            vt->cx = gsp_mvp_readback(cx, (int64_t)(s->combined[3][0] >> 16));
+            vt->cy = gsp_mvp_readback(cy, (int64_t)(s->combined[3][1] >> 16));
+            vt->cz = gsp_mvp_readback(cz, (int64_t)(s->combined[3][2] >> 16));
+            vt->cw = gsp_mvp_readback(cw, (int64_t)(s->combined[3][3] >> 16));
+        }
+        else
+        {
+            vt->cx = gsp_mvp_readback(cx,
+                         (int64_t)oz * (s->combined[2][0] >> 16));
+            vt->cy = gsp_mvp_readback(cy,
+                         (int64_t)oz * (s->combined[2][1] >> 16));
+            vt->cz = gsp_mvp_readback(cz,
+                         (int64_t)oz * (s->combined[2][2] >> 16));
+            vt->cw = gsp_mvp_readback(cw,
+                         (int64_t)oz * (s->combined[2][3] >> 16));
+        }
 
         st_s = read_s16_be(rdram, base + 8);  /* s */
         st_t = read_s16_be(rdram, base + 10); /* t */

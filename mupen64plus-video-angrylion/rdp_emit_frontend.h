@@ -140,6 +140,10 @@ typedef struct GSPState
      * (F3DZEX2: compare s16 clip-w integer) for opcode 0x04. */
     int branch_z_mode;
     unsigned int   tex_scale_s, tex_scale_t; /* raw S0.16 from G_TEXTURE */
+    int            mvp_trans_last; /* vertex MAC order: 0 = F3DEX2's
+                                    * trans,x,y,z; 1 = Turbo3D's x,y,z,trans
+                                    * (changes which term the final vmadn's
+                                    * fraction clamp excludes) */
     unsigned int   persp_norm;               /* G_MW_PERSPNORM u16 (gSPPerspNormalize) */
     int            fog_m, fog_o;             /* G_MW_FOG multiplier/offset (s16 each) */
     int            tex_tile, tex_level, tex_w, tex_h;

@@ -361,28 +361,27 @@ static void turbo3d_load_object(GSPState *gsp, RdpFifo *fifo,
      * with depth off (Dark Rift's full-screen backgrounds), matching the
      * oracle's TRI_SHADE vs TRI_SHADE_Z choice. G_ZBUFFER = 0x1 selects the
      * Z triangle variant in gsp_triangle. */
-    /* renderState | SHADE | SHADING_SMOOTH | (Z from other-mode) | cull.
-     * The object's renderState is an F3D geometry-mode word; the microcode
-     * honours its cull bits (F3D G_CULL_FRONT = 0x1000, G_CULL_BACK =
-     * 0x2000) per object. Dark Rift's character models carry G_CULL_BACK
-     * while the arena-backdrop bake at fight-scene init carries no cull
-     * bits at all -- forcing a cull here dropped most of that scene-init
-     * render, leaving the panorama (which the game then samples as a
-     * texture every frame) permanently dark. The Turbo3D force matrix
-     * feeds this transform with the opposite screen-space winding to the
-     * F3DEX2 pipeline the bridge's cull convention was tuned against, so
-     * F3D G_CULL_BACK maps to the bridge's G_CULL_FRONT (0x200) and F3D
-     * G_CULL_FRONT to the bridge's G_CULL_BACK (0x400). Verified
-     * pixel-exact against the cxd4 oracle on both the in-match fight
-     * scene (culled models) and the fight-scene-init backdrop bake
-     * (uncalled full-surround geometry). */
-    gsp_set_geometry_mode(gsp, (renderState & ~(0x00010000u | 0x00020000u
-                                                | 0x00001000u | 0x00002000u))
-                          | (gsp->t3d_zbuffered ? 0x00000001u : 0u)
+    /* The object's renderState is NOT an F3D geometry-mode word: it is the
+     * microcode's own flag set. Disassembly of the gspTurbo3D triangle
+     * writer (text +0x0730..+0x0858) gives the exact cull rule: the cross
+     * product of the three stored (snapped) screen positions in tri-record
+     * order is taken at 32-bit width, a zero cross is always rejected as
+     * degenerate, and the triangle is otherwise culled only when
+     * renderState bit 0x2000 is set AND the cross is negative -- which in
+     * the bridge's convention (this walker reads the record's vertex bytes
+     * in reverse, flipping the cross sign) is exactly the G_CULL_BACK
+     * (0x400) magic word. No other renderState bit affects culling; in
+     * particular 0x1000 is not a cull bit, and bit 0x0200 selects the
+     * TEXTURED vertex-attribute path (+0x081c) -- passing it through to
+     * the geometry mode as if it were F3D G_CULL_FRONT stacked cull-both
+     * onto every textured object, silently dropping Dark Rift's entire
+     * character meshes and leaving only the untextured dark under-layer
+     * bones on screen. Build the geometry word purely from decoded bits
+     * instead of forwarding raw renderState. */
+    gsp_set_geometry_mode(gsp, (gsp->t3d_zbuffered ? 0x00000001u : 0u)
                           | 0x00000004u
                           | 0x00200000u
-                          | ((renderState & 0x00002000u) ? 0x00000200u : 0u)
-                          | ((renderState & 0x00001000u) ? 0x00000400u : 0u));
+                          | ((renderState & 0x00002000u) ? 0x00000400u : 0u));
 
     /* Texturing follows the active combiner (sniffed from the embedded
      * SETCOMBINE): the microcode emits the textured triangle variant only
@@ -466,6 +465,12 @@ static void turbo3d_load_object(GSPState *gsp, RdpFifo *fifo,
             if (nc > 0)
                 rdp_fifo_append(fifo, cmdw, nc);
         }
+        {
+            int32_t sw[2];
+            sw[0] = (int32_t)0x27000000;
+            sw[1] = 0;
+            rdp_fifo_append(fifo, sw, 2);
+        }
         return;
     }
 
@@ -499,6 +504,18 @@ static void turbo3d_load_object(GSPState *gsp, RdpFifo *fifo,
         if (nc > 0)
             rdp_fifo_append(fifo, cmdw, nc);
     }
+
+    /* The microcode ends every object with a pipe sync after its triangle
+     * batch, whether or not any triangle survived the cull (the sync sits
+     * in the object epilogue's straight-line code). The reference stream
+     * carries one per object; without it the walker ran the next object's
+     * state changes into the previous object's spans. */
+    {
+        int32_t sw[2];
+        sw[0] = (int32_t)0x27000000;
+        sw[1] = 0;
+        rdp_fifo_append(fifo, sw, 2);
+    }
 }
 
 /* Walk the Turbo3D object list. dl_addr is the physical task display-list
@@ -523,6 +540,7 @@ void turbo3d_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int dl_addr)
      * drifted from the LLE oracle by quarter-pixels, which the bake's
      * frame-feedback then compounded into a visibly darker arena. */
     rsp_set_vtx_invw_raw(1);
+    gsp->mvp_trans_last = 1;
     rsp_set_vtx_y_round(1);
     rsp_set_vtx_x_round(1);
     rsp_set_vtx_z_quant(1);

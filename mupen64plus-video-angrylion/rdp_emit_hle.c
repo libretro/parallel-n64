@@ -647,6 +647,7 @@ void rdp_emit_hle_process_dlist(void)
         gsp_init(&s_gsp);
         s_inited = 1;
     }
+    s_gsp.mvp_trans_last = 0;
     gsp_task_reset(&s_gsp);
 
     /* the FIFO lives in host memory; the top 256 KiB of RDRAM is used
