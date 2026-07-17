@@ -1095,6 +1095,112 @@ void rsp_clip_lerp(const int32_t on_pos[4], const int32_t off_pos[4],
  * x/y, the 16.16 screen z, and the VTX_INV_W value the triangle write
  * reads back. Returns 0 when the input is outside the transcribed domain
  * (w <= 0) and the caller must use its own projection. */
+/* Rogue Squadron's vertex screen chain (live IMEM 0x162c..0x1778 with the
+ * divide at 0x179c..0x17ec), modeled op for op:
+ *   pw   = mid/low(w * perspNorm)                    (vmudl/vmadm, vmadn +0)
+ *   r    = vrcph/vrcpl(pw), doubled through v30[2]==2 with the fraction
+ *          re-latched after the integer term         (vmudn/vmadh/vmadn)
+ *   t    = mac32(r, pw)
+ *   u    = 2.0 - t                                   (vsubc/vsub, 2.0 from
+ *                                                     the DMEM 0x50 row)
+ *   iw   = mac32(r, u)
+ *   iwc  = iw.i >= 0 ? iw.i : 0x7fff                 (vge/vmrg, v31[0])
+ *   ndc  = mac32(clip, {iwc, iw.f})                  (raw fraction!)
+ *   ndc2 = mid/low(ndc * perspNorm)
+ *   scr  = vtrans + mid/low(ndc2 * vscale)           (vmudh/vmadn/vmadh,
+ *          raw S13.2 viewport shorts, no negation)
+ *   x,y clamped >= -4090 and z >= 0 on the integer lane only (vge against
+ *   the DMEM 0x60 row through the 1q element pattern).
+ * The stored 1/w is the UNCLAMPED iw (DMEM vertex +32/+34). */
+int rsp_vtx_screen_rs(int32_t cx, int32_t cy, int32_t cz, int32_t cw,
+                      int32_t pn,
+                      const int32_t *vs, const int32_t *vt,
+                      int32_t *sx102, int32_t *sy102, int32_t *sz1616,
+                      int32_t *invw_out)
+{
+    Rsp32 pos[3];
+    Rsp32 pw, r, t, u, iw;
+    int32_t iwc_i;
+    int32_t scr_i[3], scr_f[3];
+    RspAcc acc;
+    int lane;
+
+    if (cw <= 0)
+        return 0;
+
+    pos[0] = mk32(cx);
+    pos[1] = mk32(cy);
+    pos[2] = mk32(cz);
+
+    /* perspNorm'd w */
+    {
+        Rsp32 w32 = mk32(cw);
+        acc = p_udl(w32.f, pn);
+        acc += p_udm(w32.i, pn);
+        pw.i = acc_clamp_mid(acc);
+        pw.f = acc_clamp_low(acc);
+    }
+
+    r = mk32(rsp_rcp32((int32_t)(((uint32_t)U16(pw.i) << 16)
+                                 | (uint32_t)U16(pw.f))));
+
+    /* double, fraction re-latched after the integer term */
+    acc = p_udn(r.f, 2);
+    acc += p_udh(r.i, 2);
+    r.i = acc_clamp_mid(acc);
+    r.f = acc_clamp_low(acc);
+
+    /* Newton residual against 2.0 */
+    t = mac32(r, pw, 0);
+    {
+        int32_t borrow = (U16(t.f) != 0) ? 1 : 0;
+        u.f = (int32_t)((0 - U16(t.f)) & 0xffff);
+        u.i = 2 - S16(t.i) - borrow;
+        if (u.i > 32767) u.i = 32767;
+        if (u.i < -32768) u.i = -32768;
+    }
+    iw = mac32(r, u, 0);
+
+    if (invw_out)
+        *invw_out = (int32_t)(((uint32_t)U16(iw.i) << 16)
+                              | (uint32_t)U16(iw.f));
+
+    iwc_i = (S16(iw.i) >= 0) ? iw.i : 0x7fff;
+
+    for (lane = 0; lane < 3; lane++)
+    {
+        Rsp32 ndc, ndc2, iwm;
+        iwm.i = iwc_i;
+        iwm.f = iw.f;
+        ndc = mac32(pos[lane], iwm, 0);
+
+        acc = p_udl(ndc.f, pn);
+        acc += p_udm(ndc.i, pn);
+        ndc2.i = acc_clamp_mid(acc);
+        ndc2.f = acc_clamp_low(acc);
+
+        acc = p_udh(vt[lane], 1);
+        acc += p_udn(ndc2.f, vs[lane]);
+        scr_f[lane] = acc_clamp_low(acc);
+        acc += p_udh(ndc2.i, vs[lane]);
+        scr_i[lane] = acc_clamp_mid(acc);
+    }
+
+    /* vge integer-lane clamps (DMEM 0x60 row, 1q pattern) */
+    if (S16(scr_i[0]) < -4090) scr_i[0] = (int32_t)(-4090 & 0xffff);
+    if (S16(scr_i[1]) < -4090) scr_i[1] = (int32_t)(-4090 & 0xffff);
+
+    *sx102 = (int32_t)S16(scr_i[0]);
+    *sy102 = (int32_t)S16(scr_i[1]);
+    {
+        int32_t zi = (int32_t)S16(scr_i[2]);
+        if (zi < 0)
+            zi = 0;
+        *sz1616 = (int32_t)(((uint32_t)U16(zi) << 16) | (uint32_t)U16(scr_f[2]));
+    }
+    return 1;
+}
+
 int rsp_vtx_screen(int32_t cx, int32_t cy, int32_t cz, int32_t cw,
                    int32_t pn,
                    int32_t vsx, int32_t vsy, int32_t vsz,

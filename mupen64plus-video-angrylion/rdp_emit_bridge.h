@@ -18,6 +18,13 @@ typedef struct BridgeViewport
     int32_t tri_idy_scale;   /*   F3DEX2 0x4000/8, F3DZEX2 0x1000/0x20 */
     int32_t tri_frac_mask;   /* v30[5] slope-fraction mask in the anchor walk */
     int32_t tri_vcr_bound;   /* v30[3] vcr crimp bound on the slope integers */
+    /* Rogue Squadron exact screen model: the microcode's own transform
+     * chain, applied to the raw DMEM viewport shorts (S13.2 pixels, no GBI
+     * doubled-scale convention, no y negation -- the game's matrices carry
+     * the orientation). rs_model gates it; rs_vs/rs_vt are vscale/vtrans
+     * lanes x,y,z as stored. */
+    int rs_model;
+    int32_t rs_vs[3], rs_vt[3];
     int rsp_screen_model;    /* 1: rsp_vtx_screen may supersede the exact
                               * divide (F3D/F3DEX-family MAC chain).
                               * 0: always use the exact divide (F3DDKR,

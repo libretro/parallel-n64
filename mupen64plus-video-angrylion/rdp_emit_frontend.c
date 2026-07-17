@@ -1146,6 +1146,17 @@ void gsp_set_vertex_st(GSPState *s, int idx, int st_s, int st_t)
         vt->tv = (int16_t)st_t;
         return;
     }
+    if (s->viewport.rs_model)
+    {
+        /* Rogue Squadron: the caller hands the already-scaled texel short
+         * (the mid slice of st * the opcode 3/0x82 s15.16 scale); store it
+         * as the RSP does and double into the wide field. */
+        vt->sv = (int16_t)st_s;
+        vt->tv = (int16_t)st_t;
+        vt->s  = (int32_t)((uint32_t)(int32_t)st_s << 17);
+        vt->t  = (int32_t)((uint32_t)(int32_t)st_t << 17);
+        return;
+    }
     vt->s  = (int32_t)(((int64_t)st_s * (int64_t)s->tex_scale_s) << 1);
     vt->t  = (int32_t)(((int64_t)st_t * (int64_t)s->tex_scale_t) << 1);
     vt->sv = (int16_t)(((int64_t)st_s * (int64_t)s->tex_scale_s) >> 16);
