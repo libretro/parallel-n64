@@ -346,7 +346,9 @@ static void rs_gfx_task(struct hle_t* hle)
     int resume;
     int r;
 
-    resume = l_rs_gfx_running;
+    /* a relaunch with OS_TASK_YIELDED set resumes a yielded walk */
+    resume = l_rs_gfx_running
+          || ((*dmem_u32(hle, TASK_FLAGS) & 1) != 0);
 
     if (!resume) {
         /* the microcode clears SIG1 and SIG2 at task start */
@@ -380,10 +382,14 @@ static void rs_gfx_task(struct hle_t* hle)
     *hle->dpc_status &= ~0x600u;    /* clear cmd/pipe busy */
 
     if (*hle->sp_status & SP_STATUS_SIG0) {
-        /* the CPU requested a yield: answer with the microcode's yield
-         * status (SET_SIG1, break) */
-        l_rs_gfx_running = 0;
-        rsp_break(hle, SP_STATUS_SIG1 | SP_STATUS_TASKDONE);
+        /* The CPU requested a yield. The microcode's yield overlay
+         * saves its state and breaks with SET_SIG1 only -- not SIG2,
+         * so the OS sees a yielded task, not a finished one -- and the
+         * relaunch arrives with OS_TASK_YIELDED set. Keep the walker's
+         * saved position so that relaunch resumes instead of
+         * re-walking (and re-drawing) the ring from the start. SIG0 is
+         * left for the CPU to clear, as on the real microcode. */
+        rsp_break(hle, SP_STATUS_SIG1);
         return;
     }
 
