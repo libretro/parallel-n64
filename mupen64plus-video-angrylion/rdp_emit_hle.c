@@ -17,6 +17,7 @@
 
 #include "rdp_emit_hle.h"
 #include "rdp_emit_f3dex2.h"
+#include "rdp_emit_zboss.h"
 #include "rdp_emit_f3d.h"
 #include "rdp_emit_f3ddkr.h"
 #include "rdp_emit_t3dux.h"
@@ -1086,5 +1087,57 @@ int angrylion_streaming_dlist(int resume)
     /* submit everything generated in this slice */
     fifo_flush_to_rdp(&s_fifo);
 
+    return r;
+}
+
+
+/* ------------------------------------------------------------------ */
+/* ZSortBOSS display-list service for rsp-hle (World Driver
+ * Championship, Stunt Racer 64). Same sliced transport as the Gauntlet
+ * streaming service: rsp-hle owns SP_STATUS and only resumes the walk
+ * once the wait condition returned by the previous slice is satisfied.
+ *
+ *   resume == 0  new task (full setup)
+ *   resume == 1  continue after the wait condition cleared
+ *
+ * returns ZBOSS_R_DONE / ZBOSS_R_WAIT_SIG3 / ZBOSS_R_WAIT_SIG0, or -1
+ * when the renderer cannot service the task (caller falls back). */
+int angrylion_zboss_dlist(int resume)
+{
+    unsigned char *rdram;
+    unsigned char *dmem;
+    unsigned int   rdram_size;
+    unsigned int   fifo_base;
+    int r;
+
+    if (s_backend == 0 || s_backend->get_rdram == 0
+        || s_backend->get_dmem == 0 || s_backend->get_rdram_size == 0)
+        return -1;
+
+    rdram      = s_backend->get_rdram();
+    dmem       = s_backend->get_dmem();
+    rdram_size = s_backend->get_rdram_size();
+    if (rdram == 0 || dmem == 0 || rdram_size == 0)
+        return -1;
+
+    fifo_base = rdram_size - HLE_FIFO_CAP;
+    rdp_fifo_init(&s_fifo, s_fifo_storage, fifo_base, HLE_FIFO_CAP);
+    s_fifo.flush = fifo_flush_to_rdp;
+
+    if (!resume)
+        rdp_fifo_fullsync_reset();
+
+    r = zboss_run(rdram, rdram_size, dmem, &s_fifo,
+                  resume ? ZBOSS_OP_RESUME : ZBOSS_OP_FRESH);
+
+    if (r == ZBOSS_R_DONE && rdp_fifo_fullsync_seen())
+    {
+        int32_t sync[2];
+        sync[0] = (int32_t)0x29000000u;
+        sync[1] = 0;
+        rdp_fifo_append(&s_fifo, sync, 2);
+    }
+
+    fifo_flush_to_rdp(&s_fifo);
     return r;
 }

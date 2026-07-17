@@ -639,6 +639,7 @@ RDP_EMIT_SOURCES_C := \
 				   $(VIDEODIR_ANGRYLION)/rdp_emit_t3dux.c \
 				   $(VIDEODIR_ANGRYLION)/rdp_emit_turbo3d.c \
             $(VIDEODIR_ANGRYLION)/rdp_emit_rs.c \
+            $(VIDEODIR_ANGRYLION)/rdp_emit_zboss.c \
 				   $(VIDEODIR_ANGRYLION)/rdp_emit_hle.c
 
 HAVE_RDP_EMIT := 0

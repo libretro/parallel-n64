@@ -61,6 +61,9 @@ static void dump_unknown_non_task(struct hle_t* hle, unsigned int uc_start);
 /* Global functions */
 /* streaming graphics task state (see streaming_gfx_task) */
 static int l_streaming_gfx_running;
+/* ZSortBOSS task state (see zboss_gfx_task) */
+static int l_zboss_wait;
+static int l_zboss_running;
 
 void hle_init(struct hle_t* hle,
     unsigned char* dram,
@@ -112,6 +115,7 @@ void hle_init(struct hle_t* hle,
     /* a streaming graphics task cannot span a plugin re-init (ROM
      * restart, savestate load): drop any suspended walk */
     l_streaming_gfx_running = 0;
+    l_zboss_running = 0;
 }
 
 void hle_execute(struct hle_t* hle)
@@ -259,6 +263,66 @@ static void forward_gfx_task_to_lle(struct hle_t* hle)
  * the direct call mirrors the existing cxd4 forward. If the walker
  * cannot service the task, fall back to the LLE forward. */
 int angrylion_streaming_dlist(int resume);
+int angrylion_zboss_dlist(int resume);
+
+/* ZSortBOSS (World Driver Championship, Stunt Racer 64): the task
+ * carries two display lists (main at DMEM 0xff0, sub at 0xff8) and the
+ * microcode is a command server with two host handshakes:
+ *   WAITSIGNAL  raise SIG3, suspend until the CPU clears it,
+ *   ENDMAINDL   suspend until the CPU raises SIG0, then clear SIG0 and
+ *               continue on the sub list; ENDSUBDL completes the task.
+ * The task raises SIG4 at launch and keeps it through completion
+ * (status 0xa43 observed at task end under the LLE interpreter).
+ *
+ * Between handshakes the walk runs to the next wait; while a wait is
+ * pending this function returns the task incomplete (no HALT, BROKE or
+ * TASKDONE) so the core re-dispatches after the CPU has run, checking
+ * the wait condition each slice. The walker itself never touches
+ * SP_STATUS. */
+static void zboss_gfx_task(struct hle_t* hle)
+{
+    int r;
+
+    if (!l_zboss_running) {
+        /* task launch: the microcode clears SIG1|SIG2 and raises SIG4 */
+        *hle->sp_status &= ~(SP_STATUS_SIG1 | SP_STATUS_TASKDONE);
+        *hle->sp_status |= SP_STATUS_SIG4;
+        l_zboss_wait = 0;
+        r = angrylion_zboss_dlist(0);
+    }
+    else if (l_zboss_wait == 1) {
+        /* WAITSIGNAL: the microcode proceeds once the CPU clears SIG3 */
+        if (*hle->sp_status & SP_STATUS_SIG3)
+            return;     /* still waiting: incomplete, core re-dispatches */
+        r = angrylion_zboss_dlist(1);
+    }
+    else {
+        /* ENDMAINDL: the microcode waits for SIG0, then clears it */
+        if (!(*hle->sp_status & SP_STATUS_SIG0))
+            return;
+        *hle->sp_status &= ~SP_STATUS_SIG0;
+        r = angrylion_zboss_dlist(1);
+    }
+
+    if (r < 0) {
+        l_zboss_running = 0;
+        forward_gfx_task_to_lle(hle);
+        return;
+    }
+    if (r == 0) {
+        l_zboss_running = 0;
+        rsp_break(hle, SP_STATUS_TASKDONE);
+        return;
+    }
+    l_zboss_running = 1;
+    if (r == 1) {
+        l_zboss_wait = 1;
+        *hle->sp_status |= SP_STATUS_SIG3;
+    }
+    else
+        l_zboss_wait = 2;
+    /* incomplete return: the core re-dispatches after the CPU runs */
+}
 
 static void streaming_gfx_task(struct hle_t* hle)
 {
@@ -457,7 +521,7 @@ static ucode_func_t try_normal_task_detection(struct hle_t* hle)
     case 0x28b9e:
         return &streaming_gfx_task;
     case 0x1f7bb:
-        return &forward_gfx_task_to_lle;
+        return &zboss_gfx_task;
     }
 
     /* Resident Evil 2 */
