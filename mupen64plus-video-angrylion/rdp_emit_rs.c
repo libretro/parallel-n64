@@ -314,6 +314,7 @@ void rs_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int dl_addr)
 
     gsp->clip_near_z = 1;
     gsp->clip_ratio = 2;
+    gsp->rs_clip_model = 1;
     gsp->mvp_trans_last = 1;
     gsp->viewport.rs_model = 0;
     /* Triangle-writer constants from the live IMEM (0x1928..0x19c8):

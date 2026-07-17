@@ -1540,6 +1540,51 @@ static void gsp_clip_subdivide(GSPState *st, GSPVertex *out,
     on_pos[2] = onv->cz;  on_pos[3] = onv->cw;
     off_pos[0] = offv->cx; off_pos[1] = offv->cy;
     off_pos[2] = offv->cz; off_pos[3] = offv->cw;
+    if (st->rs_clip_model)
+    {
+        /* Rogue Squadron's clip overlay (live IMEM 0x1ed0..0x1fb8): the
+         * intersection weights come from the transcribed divide chain in
+         * rsp_clip_weights_rs, the position is the 32-bit
+         * vmudl/vmadm+vmadl/vmadm blend of the clip-space pairs, and the
+         * colours and VTX_TC shorts are the vmudm mid-read blend of the
+         * luv << 7 byte lanes and raw stored shorts. The new record then
+         * runs the normal vertex transform (screen, inverse-w, fog z),
+         * exactly as the overlay's jal to the shared record transform. */
+        int32_t in4[4], out4[4], wc, wt;
+        int cch;
+        int32_t cb_on[4], cb_off[4];
+        in4[0] = onv->cx;  in4[1] = onv->cy;
+        in4[2] = onv->cz;  in4[3] = onv->cw;
+        out4[0] = offv->cx; out4[1] = offv->cy;
+        out4[2] = offv->cz; out4[3] = offv->cw;
+        rsp_clip_weights_rs(in4, out4, cr, &wc, &wt);
+        out->cx = rsp_clip_blend32_rs(onv->cx, offv->cx, wc, wt);
+        out->cy = rsp_clip_blend32_rs(onv->cy, offv->cy, wc, wt);
+        out->cz = rsp_clip_blend32_rs(onv->cz, offv->cz, wc, wt);
+        out->cw = rsp_clip_blend32_rs(onv->cw, offv->cw, wc, wt);
+        cb_on[0] = (int32_t)(((onv->r >> 16) & 0xff) << 7);
+        cb_on[1] = (int32_t)(((onv->g >> 16) & 0xff) << 7);
+        cb_on[2] = (int32_t)(((onv->b >> 16) & 0xff) << 7);
+        cb_on[3] = (int32_t)(((onv->a >> 16) & 0xff) << 7);
+        cb_off[0] = (int32_t)(((offv->r >> 16) & 0xff) << 7);
+        cb_off[1] = (int32_t)(((offv->g >> 16) & 0xff) << 7);
+        cb_off[2] = (int32_t)(((offv->b >> 16) & 0xff) << 7);
+        cb_off[3] = (int32_t)(((offv->a >> 16) & 0xff) << 7);
+        for (cch = 0; cch < 4; cch++)
+            cb_on[cch] = (rsp_clip_blend16_rs(cb_on[cch], cb_off[cch],
+                                              wc, wt) >> 7) & 0xff;
+        out->r = cb_on[0] << 16;
+        out->g = cb_on[1] << 16;
+        out->b = cb_on[2] << 16;
+        out->a = cb_on[3] << 16;
+        out->sv = (int16_t)rsp_clip_blend16_rs(onv->sv, offv->sv, wc, wt);
+        out->tv = (int16_t)rsp_clip_blend16_rs(onv->tv, offv->tv, wc, wt);
+        out->s = (int32_t)((uint32_t)(int32_t)out->sv << 17);
+        out->t = (int32_t)((uint32_t)(int32_t)out->tv << 17);
+        gsp_clip_vertex_flags(st, out);
+        gsp_vertex_screen(st, out);
+        return;
+    }
     on_attr[0] = (int16_t)(((onv->r >> 16) & 0xff) << 7);
     on_attr[1] = (int16_t)(((onv->g >> 16) & 0xff) << 7);
     on_attr[2] = (int16_t)(((onv->b >> 16) & 0xff) << 7);
@@ -1581,7 +1626,8 @@ static int clip_polygon_guard(GSPState *st, GSPVertex *poly, int n)
 {
     GSPVertex tmp[GSP_CLIP_MAX];
     int cond;
-    for (cond = 0; cond < 6 && n > 0; cond++)
+    int ncond = st->rs_clip_model ? 5 : 6;
+    for (cond = 0; cond < ncond && n > 0; cond++)
     {
         unsigned int mask = gsp_clip_cond_mask[cond];
         int16_t cr[4];

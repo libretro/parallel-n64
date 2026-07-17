@@ -132,6 +132,8 @@ typedef struct GSPState
      * last polygon vertex with ascending pairs (F3DEX2 2.05+/F3DZEX2),
      * 1 = fan from the first vertex with descending pairs (2.04H). */
     int clip_fan_first;
+    int rs_clip_model;      /* Rogue Squadron: use the clip overlay's own
+                               intersection arithmetic and 5-plane walk */
     int clip_reject;  /* F3DLX.Rej/F3DZEX.Rej: whole-tri reject, no clipper */
     int no_texgen;    /* F3DFLX.Rej: texgen drives reflection alpha, not S/T */
     int reflect_valid;            /* F3DFLX: reflection LUT captured this task */

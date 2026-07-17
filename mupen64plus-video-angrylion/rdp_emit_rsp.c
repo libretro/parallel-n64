@@ -1551,6 +1551,134 @@ static Rsp32 sub32(Rsp32 a, Rsp32 b)
     return o;
 }
 
+/* vaddc/vadd 32-bit pair add (fraction wraps with carry out, integer
+ * saturates). */
+static Rsp32 addv32(Rsp32 a, Rsp32 b)
+{
+    Rsp32 o;
+    int carry = ((U16(a.f) + U16(b.f)) > 0xffff);
+    o.f = (a.f + b.f) & 0xffff;
+    o.i = clamp_s16(S16(a.i) + S16(b.i) + carry) & 0xffff;
+    return o;
+}
+
+/* Rogue Squadron's clip intersection weights (clip overlay, live IMEM
+ * 0x1ed0..0x1f7c): given the IN and OUT vertices' 32-bit clip-space
+ * positions (x,y,z,w int/frac pairs, record +0..+15) and the plane's
+ * four small integer coefficients, produce the u16 lerp weight pair --
+ * wc for the IN vertex, wt for the OUT vertex, wc + wt == 0x10000.
+ *
+ * One continuous accumulator chain forms both per-lane products with
+ * two latch points: N[lane] = in * P and D[lane] = in * P - out * P;
+ * both fold to lane sums with the vaddc/vadd quarter/half adds. The
+ * divide is a range reduction: a coarse doubled reciprocal of D
+ * (negated when D >= 0, fraction saturated when the integer part is
+ * nonzero) normalizes D, the shared 0x179c routine forms the refined
+ * doubled reciprocal of that product with one Newton step against the
+ * DMEM 2.0 row, and t recombines N * refined * coarse over a small
+ * per-lane rounding seed (v30 * 4 low product). The weight complement
+ * is the VNXOR ones' complement plus one. */
+void rsp_clip_weights_rs(const int32_t in4[4], const int32_t out4[4],
+                         const int16_t P[4], int32_t *wc, int32_t *wt)
+{
+    RspAcc acc;
+    Rsp32 n32[4], d32[4], N, D, r0, xp, rr, prod, uu, t;
+    int lane, dneg;
+    for (lane = 0; lane < 4; lane++)
+    {
+        Rsp32 iv, ov;
+        iv = mk32(in4[lane]);
+        ov = mk32(out4[lane]);
+        acc = p_udn(iv.f, P[lane]);
+        acc += p_udh(iv.i, P[lane]);
+        n32[lane].i = acc_clamp_mid(acc);
+        n32[lane].f = acc_clamp_low(acc);
+        acc += p_udn(ov.f, -P[lane]);
+        acc += p_udh(ov.i, -P[lane]);
+        d32[lane].i = acc_clamp_mid(acc);
+        d32[lane].f = acc_clamp_low(acc);
+    }
+    N = addv32(addv32(n32[3], n32[2]), addv32(n32[1], n32[0]));
+    D = addv32(addv32(d32[3], d32[2]), addv32(d32[1], d32[0]));
+    dneg = (S16(D.i) < 0);
+    r0 = mk32(rsp_rcp32((int32_t)(((uint32_t)U16(D.i) << 16)
+                                  | (uint32_t)U16(D.f))));
+    acc = p_udn(r0.f, 2);
+    acc += p_udh(r0.i, 2);
+    r0.i = acc_clamp_mid(acc);
+    r0.f = acc_clamp_low(acc);
+    if (!dneg)
+    {
+        acc = p_udn(r0.f, -1);
+        acc += p_udh(r0.i, -1);
+        r0.i = acc_clamp_mid(acc);
+        r0.f = acc_clamp_low(acc);
+    }
+    if (S16(r0.i) != 0)
+        r0.f = 0xffff;
+    acc = p_udl(D.f, r0.f);
+    acc += p_udm(D.i, r0.f);
+    xp.i = acc_clamp_mid(acc);
+    xp.f = acc_clamp_low(acc);
+    /* shared 0x179c: refined doubled reciprocal of the normalized D */
+    rr = mk32(rsp_rcp32((int32_t)(((uint32_t)U16(xp.i) << 16)
+                                  | (uint32_t)U16(xp.f))));
+    acc = p_udn(rr.f, 2);
+    acc += p_udh(rr.i, 2);
+    rr.i = acc_clamp_mid(acc);
+    rr.f = acc_clamp_low(acc);
+    prod = mac32(rr, xp, 0);
+    {
+        Rsp32 two;
+        two.i = 2; two.f = 0;
+        uu = sub32(two, prod);
+    }
+    rr = mac32(rr, uu, 0);
+    /* t = N * refined, recombined by the coarse reciprocal's fraction
+     * over the rounding seed (lane 3's v30 entry is -1: 0xffff * 4 >> 16
+     * == 3). */
+    t = mac32(N, rr, 0);
+    acc = p_udl(0xffff, 4);
+    acc += p_udl(t.f, r0.f);
+    acc += p_udm(t.i, r0.f);
+    t.i = acc_clamp_mid(acc);
+    t.f = acc_clamp_low(acc);
+    if (S16(t.i) != 0)
+        t.f = 0xffff;
+    if (t.f == 0)
+        t.f = 1;
+    *wt = t.f & 0xffff;
+    *wc = (int32_t)((0x10000u - (unsigned int)(t.f & 0xffff)) & 0xffffu);
+}
+
+/* The clip lerp's 32-bit position blend (vmudl/vmadm + vmadl/vmadm with
+ * the vmadn low latch): mids(a * wc + b * wt). */
+int32_t rsp_clip_blend32_rs(int32_t a, int32_t b, int32_t wc, int32_t wt)
+{
+    RspAcc acc;
+    Rsp32 av, bv;
+    int32_t oi, of;
+    av = mk32(a);
+    bv = mk32(b);
+    acc = p_udl(av.f, wc);
+    acc += p_udm(av.i, wc);
+    acc += p_udl(bv.f, wt);
+    acc += p_udm(bv.i, wt);
+    oi = acc_clamp_mid(acc);
+    of = acc_clamp_low(acc);
+    return (int32_t)(((uint32_t)U16(oi) << 16) | (uint32_t)U16(of));
+}
+
+/* The colour/texture lerp (vmudm/vmadm mid reads on the luv << 7 byte
+ * lanes and the raw VTX_TC shorts). */
+int32_t rsp_clip_blend16_rs(int32_t a, int32_t b, int32_t wc, int32_t wt)
+{
+    RspAcc acc;
+    acc = p_udm(a, wc);
+    acc += p_udm(b, wt);
+    return acc_clamp_mid(acc);
+}
+
 /* Single-command line emitter: the L3DEX-family line microcodes draw each
  * gSPLine3D segment as one shade-triangle command in the YM==YL
  * parallelogram form -- two walked edges carrying the segment's own
