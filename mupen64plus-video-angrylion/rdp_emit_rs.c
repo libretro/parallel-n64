@@ -556,7 +556,14 @@ void rs_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int dl_addr)
         {
         case 0x00u:
         case 0x0au:                    /* microcode overlay load */
+            break;
+
         case 0xbdu:
+            /* 24-byte command (colour + coordinate payload); the cxd4
+             * fetch trace shows every bd advancing the cursor by 0x18.
+             * Consuming only 8 bytes made the walker decode the payload
+             * words as opcodes and wander off the display list. */
+            size = 24u;
             break;
 
         case 0x05u:                    /* vertex generator overlay */
