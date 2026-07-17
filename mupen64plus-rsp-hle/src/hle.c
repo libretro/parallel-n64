@@ -59,6 +59,9 @@ static void dump_unknown_non_task(struct hle_t* hle, unsigned int uc_start);
 #endif
 
 /* Global functions */
+/* streaming graphics task state (see streaming_gfx_task) */
+static int l_streaming_gfx_running;
+
 void hle_init(struct hle_t* hle,
     unsigned char* dram,
     unsigned char* dmem,
@@ -105,6 +108,10 @@ void hle_init(struct hle_t* hle,
     hle->dpc_pipebusy = dpc_pipebusy;
     hle->dpc_tmem     = dpc_tmem;
     hle->user_defined = user_defined;
+
+    /* a streaming graphics task cannot span a plugin re-init (ROM
+     * restart, savestate load): drop any suspended walk */
+    l_streaming_gfx_running = 0;
 }
 
 void hle_execute(struct hle_t* hle)
@@ -229,6 +236,73 @@ static void forward_gfx_task_to_lle(struct hle_t* hle)
 {
     if (HleForwardTask(hle->user_defined) != 0)
         send_dlist_to_gfx_plugin(hle);
+}
+
+/* Streaming graphics microcode (Gauntlet Legends): an F3DEX2 2.0xH
+ * derivative whose display list the CPU extends while the task runs.
+ * The list's live tail is a G_DL branch to its own address, patched
+ * forward by the CPU chunk by chunk; the microcode also honors the
+ * standard libultra yield protocol (CPU sets SIG0; the task saves its
+ * state and breaks with SIG1|SIG2, and a relaunch with OS_TASK_YIELDED
+ * set in the task flags resumes it).
+ *
+ * The angrylion HLE walker services the list in slices: it walks until
+ * the list completes or its live tail is reached, keeping its position
+ * and DL stack across calls. While the list is incomplete this task
+ * function returns without setting HALT, BROKE or TASKDONE -- the core
+ * then re-dispatches the task after letting the CPU run, exactly as it
+ * does when the LLE interpreter hands a long-running task back -- so
+ * the CPU keeps extending the list between slices. A pending SIG0 at a
+ * slice boundary is answered with the microcode's yield status.
+ *
+ * The renderer and this plugin are statically linked into one core;
+ * the direct call mirrors the existing cxd4 forward. If the walker
+ * cannot service the task, fall back to the LLE forward. */
+int angrylion_streaming_dlist(int resume);
+
+static void streaming_gfx_task(struct hle_t* hle)
+{
+    int resume;
+    int r;
+
+    resume = l_streaming_gfx_running
+          || ((*dmem_u32(hle, TASK_FLAGS) & 1) != 0);
+
+    if (!resume) {
+        /* the microcode clears SIG1 and SIG2 at task start */
+        *hle->sp_status &= ~(SP_STATUS_SIG1 | SP_STATUS_TASKDONE);
+    }
+
+    r = angrylion_streaming_dlist(resume);
+
+    if (r < 0) {
+        /* renderer can't service it (not initialised, bad task):
+         * run the task on the LLE fallback instead */
+        l_streaming_gfx_running = 0;
+        forward_gfx_task_to_lle(hle);
+        return;
+    }
+
+    if (r == 0) {
+        /* list complete */
+        l_streaming_gfx_running = 0;
+        rsp_break(hle, SP_STATUS_TASKDONE);
+        return;
+    }
+
+    /* suspended at the live tail */
+    l_streaming_gfx_running = 1;
+
+    if (*hle->sp_status & SP_STATUS_SIG0) {
+        /* the CPU requested a yield: answer with the microcode's yield
+         * status (SET_SIG1|SET_SIG2, break). The walker state stays
+         * saved; the relaunch arrives with OS_TASK_YIELDED set. */
+        rsp_break(hle, SP_STATUS_SIG1 | SP_STATUS_TASKDONE);
+        return;
+    }
+
+    /* plain incomplete return: leave HALT/BROKE/TASKDONE clear so the
+     * core re-dispatches the task after the CPU has run */
 }
 
 static void unknown_ucode(struct hle_t* hle)
@@ -381,6 +455,7 @@ static ucode_func_t try_normal_task_detection(struct hle_t* hle)
      * Gauntlet Legends' custom F3DEX2 derivative, and the BOSS Game
      * Studios microcode (World Driver Championship, Stunt Racer 64). */
     case 0x28b9e:
+        return &streaming_gfx_task;
     case 0x1f7bb:
         return &forward_gfx_task_to_lle;
     }

@@ -85,7 +85,9 @@ struct hle_t
 #define SP_STATUS_HALT             0x1
 #define SP_STATUS_BROKE            0x2
 #define SP_STATUS_INTR_ON_BREAK    0x40
-#define SP_STATUS_TASKDONE         0x200
+#define SP_STATUS_SIG0             0x80
+#define SP_STATUS_SIG1             0x100
+#define SP_STATUS_TASKDONE         0x200    /* signal 2 */
 
 void rsp_break(struct hle_t* hle, unsigned int setbits);
 

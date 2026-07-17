@@ -78,6 +78,14 @@ int  f3dex2_class_is_s2dex(void);
 void f3dex2_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
                    int textured, int z_buffered);
 
+/* Streaming (co-routine) walk for microcodes whose display list the CPU
+ * extends while the task runs (Gauntlet Legends). Walks until the list
+ * completes (returns 0) or until the list's live tail -- a G_DL branch to
+ * its own address -- is reached (returns 1: suspended; call again with
+ * resume=1 after the CPU has run). */
+int f3dex2_run_dl_streaming(GSPState *gsp, RdpFifo *fifo,
+                            unsigned int addr, int resume);
+
 #ifdef __cplusplus
 }
 #endif

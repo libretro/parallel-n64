@@ -358,6 +358,11 @@ void angrylionSetRenderingCallback(void (*callback)(int)) { }
 int angrylionInitiateGFX (GFX_INFO Gfx_Info)
 {
    n64video_config_init(&config);
+   /* install the HLE emit backend here as well as in ProcessDList:
+    * the streaming display-list service (angrylion_streaming_dlist) is
+    * entered directly from rsp-hle and needs the backend before the
+    * first ProcessDList call */
+   rdp_emit_set_backend(&al_hle_backend);
    return 1;
 }
  

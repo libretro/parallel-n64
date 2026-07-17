@@ -17,6 +17,10 @@ extern "C" {
  * geometry path, and rasterize the emitted RDP command FIFO. */
 void rdp_emit_hle_process_dlist(void);
 
+/* streaming display-list service for the Gauntlet Legends microcode;
+ * see rdp_emit_hle.c for the contract */
+int angrylion_streaming_dlist(int resume);
+
 #ifdef __cplusplus
 }
 #endif

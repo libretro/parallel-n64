@@ -157,9 +157,33 @@ static unsigned int s_othermode_l;
  * or mis-segmented list cannot read past RDRAM or recurse without limit (both
  * would hard-hang the core). s_rdram_size (declared above) is set per frame by
  * the activation; 0 means "unknown", reads then assume the default 8 MiB. */
-static int          s_dl_depth;
+
 
 #define DL_MAX_DEPTH 32
+
+/* Explicit display-list call stack (replaces the old C recursion for G_DL
+ * so a streaming task can be suspended at any nesting depth and resumed).
+ * Shared by every walk; top-level walks start with an empty stack. */
+static unsigned int s_dl_stack[DL_MAX_DEPTH];
+static int s_dl_sp;
+
+/* Streaming mode: some microcodes (Gauntlet Legends' F3DEX2 2.0xH
+ * derivative) run one persistent task per frame whose display list the CPU
+ * extends while the RSP walks it. The list's live tail is a G_DL branch to
+ * its own address: the RSP spins there, re-reading the command from RDRAM,
+ * until the CPU patches it to point at the next chunk (or the terminating
+ * G_ENDDL). In streaming mode the walker returns to the caller at that
+ * self-branch instead of spinning, so the host CPU can run and extend the
+ * list, and resumes from the same command on the next slice. */
+static int s_streaming;
+static int s_stream_resume;
+static int s_stream_active;
+static int s_stream_stalled;
+static unsigned int s_stream_pc;
+
+/* end the current display-list level: pop the caller, or stop the walk */
+#define DL_RETURN() \
+    do { if (s_dl_sp > 0) pc = s_dl_stack[--s_dl_sp]; else running = 0; } while (0)
 
 static void seg_reset(void)
 {
@@ -168,7 +192,7 @@ static void seg_reset(void)
         s_seg_table[i] = 0u;
     s_textured  = 0;
     s_zbuffered = 0;
-    s_dl_depth  = 0;
+
     /* command byte 0x2f in bits 29-24 so the high word is a valid
      * SET_OTHER_MODES when forwarded; mode bits start cleared (1-cycle).
      *
@@ -382,11 +406,12 @@ void f3dex2_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
     if (textured)   s_textured  = textured;
     if (z_buffered) s_zbuffered = z_buffered;
 
-    /* bound recursion: a malformed or mis-segmented G_DL chain could otherwise
-     * recurse until the C stack overflows and the core hard-hangs. */
-    if (s_dl_depth >= DL_MAX_DEPTH)
-        return;
-    s_dl_depth++;
+    /* Non-resuming walks start with an empty DL stack; a streaming resume
+     * keeps the stack saved when the walk was suspended. */
+    if (s_stream_resume)
+        s_stream_resume = 0;
+    else
+        s_dl_sp = 0;
 
     while (running && guard++ < 100000)
     {
@@ -443,8 +468,8 @@ void f3dex2_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
                     {
                         /* The inline F3DEX.NoN run hit G_ENDDL, not a swap-back:
                          * G_LOAD_UCODE does not branch, so this ends the host
-                         * display list too. */
-                        running = 0;
+                         * display list level too. */
+                        DL_RETURN();
                     }
                 }
                 continue;
@@ -454,16 +479,24 @@ void f3dex2_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
             case 0x00:                          /* G_SPNOOP */
                 break;
             case 0xb8:                          /* G_ENDDL */
-                running = 0;
+                DL_RETURN();
                 break;
             case 0x06:                          /* G_DL: nested display list */
             {
                 unsigned int da = seg_addr(w1);
-                if (addr_in_range(da, 8u))
-                    f3dex2_run_dl(gsp, fifo, da, 0, 0);
-                /* w0 bit0 = G_DL_NOPUSH (branch): end this list after */
+                /* w0 bit0 = G_DL_NOPUSH (branch) */
                 if (w0 & 0x00010000u)
-                    running = 0;
+                {
+                    if (addr_in_range(da, 8u))
+                        pc = da;
+                    else
+                        DL_RETURN();
+                }
+                else if (addr_in_range(da, 8u) && s_dl_sp < DL_MAX_DEPTH)
+                {
+                    s_dl_stack[s_dl_sp++] = pc;
+                    pc = da;
+                }
                 break;
             }
             case 0xc1:                          /* G_OBJ_LOADTXTR */
@@ -872,10 +905,33 @@ void f3dex2_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
         {
             int nopush = (int)((w0 >> 16) & 0xff) & DL_NOPUSH;
             unsigned int da = seg_addr(w1);
-            if (addr_in_range(da, 8u))      /* need at least one command word */
-                f3dex2_run_dl(gsp, fifo, da, s_textured, s_zbuffered);
             if (nopush)
-                running = 0; /* branch (no return) ends this list */
+            {
+                /* branch (no return): continue at the target */
+                if (s_streaming && da == pc - 8u)
+                {
+                    /* the streaming list's live tail: a branch to its own
+                     * address. Suspend here; the CPU will patch this
+                     * command, and the next slice re-reads it. */
+                    s_stream_pc = pc - 8u;
+                    s_stream_stalled = 1;
+                    running = 0;
+                }
+                else if (addr_in_range(da, 8u))
+                    pc = da;
+                else
+                    DL_RETURN();        /* invalid branch ended the list */
+            }
+            else if (addr_in_range(da, 8u))
+            {
+                if (s_dl_sp < DL_MAX_DEPTH)
+                {
+                    s_dl_stack[s_dl_sp++] = pc;
+                    pc = da;
+                }
+                /* at the depth bound the call is dropped, as the old
+                 * recursion guard did */
+            }
             break;
         }
 
@@ -1191,7 +1247,7 @@ void f3dex2_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
                 for (vi = v0; vi <= v1 && all; vi++)
                     all &= (unsigned int)gsp->vtx[vi].clip;
                 if (all)
-                    running = 0;
+                    DL_RETURN();
             }
             break;
         }
@@ -1219,7 +1275,7 @@ void f3dex2_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
         }
 
         case F3DEX2_ENDDL:
-            running = 0;
+            DL_RETURN();
             break;
 
         case F3DEX2_TEXRECT:
@@ -1436,5 +1492,28 @@ void f3dex2_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
         }
     }
 
-    s_dl_depth--;
+
+}
+
+int f3dex2_run_dl_streaming(GSPState *gsp, RdpFifo *fifo,
+                            unsigned int addr, int resume)
+{
+    s_streaming = 1;
+    s_stream_stalled = 0;
+    if (resume && s_stream_active)
+    {
+        /* continue the suspended walk: pc from the saved stall point,
+         * DL stack kept as saved */
+        s_stream_resume = 1;
+        f3dex2_run_dl(gsp, fifo, s_stream_pc, 0, 0);
+    }
+    else
+    {
+        s_stream_active = 1;
+        f3dex2_run_dl(gsp, fifo, addr, 0, 0);
+    }
+    s_streaming = 0;
+    if (!s_stream_stalled)
+        s_stream_active = 0;
+    return s_stream_stalled;
 }

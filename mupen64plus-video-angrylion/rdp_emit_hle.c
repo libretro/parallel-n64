@@ -975,3 +975,113 @@ void rdp_emit_hle_process_dlist(void)
     fifo_flush_to_rdp(&s_fifo);
 
 }
+
+
+/* ------------------------------------------------------------------ */
+/* Streaming (co-routine) display list service for rsp-hle.
+ *
+ * Gauntlet Legends' graphics microcode is an F3DEX2 2.0xH derivative
+ * that runs one persistent task per frame: the CPU keeps appending to
+ * the display list while the RSP walks it, and the list's live tail is
+ * a G_DL branch to its own address that the CPU patches forward chunk
+ * by chunk.  rsp-hle detects that microcode and drives this entry
+ * instead of the one-shot ProcessDList path:
+ *
+ *   resume == 0  new task: full per-task setup, then walk until the
+ *                list completes or its live tail is reached
+ *   resume == 1  continue a suspended walk after the host CPU ran
+ *
+ * returns  0  list complete (task done)
+ *          1  suspended at the live tail (task still running)
+ *         -1  not serviceable (caller should fall back to LLE)
+ *
+ * The rsp-hle plugin and this renderer are statically linked into one
+ * core, so the direct call mirrors the existing cxd4 forward. */
+int angrylion_streaming_dlist(int resume)
+{
+    unsigned char *rdram;
+    unsigned char *dmem;
+    unsigned int   rdram_size;
+    unsigned int   fifo_base;
+    int r;
+
+    if (s_backend == 0 || s_backend->get_rdram == 0
+        || s_backend->get_dmem == 0 || s_backend->get_rdram_size == 0)
+        return -1;
+
+    rdram      = s_backend->get_rdram();
+    dmem       = s_backend->get_dmem();
+    rdram_size = s_backend->get_rdram_size();
+    if (rdram == 0 || dmem == 0 || rdram_size == 0)
+        return -1;
+
+    /* the FIFO submit machinery is per-slice */
+    fifo_base = rdram_size - HLE_FIFO_CAP;
+    rdp_fifo_init(&s_fifo, s_fifo_storage, fifo_base, HLE_FIFO_CAP);
+    s_fifo.flush = fifo_flush_to_rdp;
+
+    if (!resume)
+    {
+        unsigned int dl_addr;
+        unsigned int ut, ud;
+
+        rdp_fifo_fullsync_reset();
+
+        rsp_set_vtx_y_round(0);
+        rsp_set_vtx_x_round(0);
+        rsp_set_vtx_invw_raw(0);
+        rsp_set_tri_attr_rs(0);
+        s_gsp.viewport.rs_model = 0;
+        rsp_set_vtx_z_quant(0);
+        rsp_set_keep_degenerate(0);
+        rsp_set_affine_tex(0);
+        rsp_set_attr_lowp(0);
+
+        if (!s_inited)
+        {
+            gsp_init(&s_gsp);
+            s_inited = 1;
+        }
+        s_gsp.mvp_trans_last = 0;
+        gsp_task_reset(&s_gsp);
+
+        dl_addr = read_dmem_u32(dmem, TASK_DATA_PTR_DMEM) & 0x00ffffffu;
+        if (dl_addr == 0 || dl_addr >= rdram_size)
+            return -1;
+
+        {
+            unsigned int ms = read_dmem_u32(dmem, 0xfe0u) & 0x00ffffffu;
+            unsigned int msz = read_dmem_u32(dmem, 0xfe4u);
+            if (ms >= rdram_size || msz > 0x1000u)
+                ms = 0;
+            gsp_set_matrix_stack(&s_gsp, rdram, ms, msz);
+        }
+
+        f3dex2_seg_reset();
+        ut = read_dmem_u32(dmem, 0xfd0) & 0x00ffffffu;
+        ud = read_dmem_u32(dmem, 0xfd8) & 0x00ffffffu;
+        gsp_params_at_task_start = 1;
+        gsp_detect_ucode_params(&s_gsp, rdram, rdram_size, ud, ut);
+        gsp_params_at_task_start = 0;
+        f3dex2_set_rdram(rdram);
+        f3dex2_set_rdram_size(rdram_size);
+        f3dex2_set_task_ucode(rdram, ut);
+
+        r = f3dex2_run_dl_streaming(&s_gsp, &s_fifo, dl_addr, 0);
+    }
+    else
+        r = f3dex2_run_dl_streaming(&s_gsp, &s_fifo, 0, 1);
+
+    if (r == 0 && rdp_fifo_fullsync_seen())
+    {
+        int32_t sync[2];
+        sync[0] = (int32_t)0x29000000u;
+        sync[1] = 0;
+        rdp_fifo_append(&s_fifo, sync, 2);
+    }
+
+    /* submit everything generated in this slice */
+    fifo_flush_to_rdp(&s_fifo);
+
+    return r;
+}
