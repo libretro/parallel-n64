@@ -104,6 +104,46 @@ static int s_rs_dbg_states;
 /* Raw Rogue Squadron geometry-mode word (opcodes 0xB6/0xB7). */
 static unsigned int s_rs_geom;
 
+/* The fog parameter row (DMEM 0x160): 32-bit multiplier and offset
+ * with the clamp constant at +8 (the init overlay presets it to 0xff).
+ * The row is written by opcode 3 parameter 0x88 -- the parameter block
+ * DMAs land at DMEM 0x120 + ((param - 0x80) << 3) -- and persists in
+ * DMEM across tasks, so it is seeded from the live DMEM image (a
+ * savestate restores it) and updated when the op arrives. */
+static int32_t s_rs_fog_mi, s_rs_fog_mf, s_rs_fog_oi, s_rs_fog_of;
+static int32_t s_rs_fog_k = 0xff;
+
+void rs_seed_fog_row(const unsigned char *dmem)
+{
+    if (dmem == 0)
+        return;
+    s_rs_fog_mi = (int32_t)((dmem[0x160u ^ 3u] << 8) | dmem[0x161u ^ 3u]);
+    s_rs_fog_mf = (int32_t)((dmem[0x162u ^ 3u] << 8) | dmem[0x163u ^ 3u]);
+    s_rs_fog_oi = (int32_t)((dmem[0x164u ^ 3u] << 8) | dmem[0x165u ^ 3u]);
+    s_rs_fog_of = (int32_t)((dmem[0x166u ^ 3u] << 8) | dmem[0x167u ^ 3u]);
+    s_rs_fog_k  = (int32_t)((dmem[0x168u ^ 3u] << 8) | dmem[0x169u ^ 3u]);
+    if (s_rs_fog_k == 0)
+        s_rs_fog_k = 0xff;
+}
+
+/* Patch the colour's alpha with the vertex's fog factor when fog is
+ * on -- the triangle handler (live IMEM 0x13e0) tests bit 0 of the
+ * geometry word's TOP halfword (lhu at DMEM 0x134, so word bit 16)
+ * and copies each aux vertex's record fog byte over the colour list
+ * alpha before the colours reach the vertex records. The fog byte itself is the
+ * transform tail's clamp of the perspective-divided z through the
+ * parameter row (rsp_fog_rs). */
+static unsigned int rs_fog_color(const GSPState *gsp, int slot, unsigned int c)
+{
+    int32_t f;
+    if (!(s_rs_geom & 0x00010000u))
+        return c;
+    f = rsp_fog_rs(gsp->vtx[slot].rs_ndc2z,
+                   s_rs_fog_mi, s_rs_fog_mf,
+                   s_rs_fog_oi, s_rs_fog_of, s_rs_fog_k);
+    return (c & 0xffffff00u) | ((unsigned int)f & 0xffu);
+}
+
 /* G_TEXTURE mirror: texture on/off gates the textured triangle variant. */
 static int s_rs_tex_on;
 
@@ -147,7 +187,7 @@ static int rs_zbuffered(void)
 static void rs_sync_geom(GSPState *gsp)
 {
     unsigned int m = 0x00200004u;      /* shade + smooth: always on */
-    if (s_rs_geom & 0x0001u)
+    if (s_rs_geom & 0x00010000u)
         m |= 0x00010000u;              /* G_FOG */
     if (!(s_rs_geom & 0x1000u))
         m |= 0x00000001u;              /* G_ZBUFFER (0x1000 disables z) */
@@ -187,7 +227,7 @@ static void rs_vertex(GSPState *gsp, unsigned int addr, int n)
 static void rs_poke_color(GSPState *gsp, int slot, unsigned int listoff)
 {
     unsigned int c = rs_read_u32(s_rs_colors + listoff);
-    gsp_modify_vertex(gsp, slot, 0x10u, c);
+    gsp_modify_vertex(gsp, slot, 0x10u, rs_fog_color(gsp, slot, c));
 }
 
 /* Rogue Squadron's winding cull (tri processor, IMEM 0x1868..0x18f0):
@@ -401,10 +441,10 @@ void rs_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int dl_addr)
                     unsigned int c3 = rs_read_u32(pc + 24u);
                     int32_t cmd[GSP_TRI_CMD_WORDS];
                     int nw;
-                    gsp_modify_vertex(gsp, 0, 0x10u, c0);
-                    gsp_modify_vertex(gsp, 1, 0x10u, c1);
-                    gsp_modify_vertex(gsp, 2, 0x10u, c2);
-                    gsp_modify_vertex(gsp, 3, 0x10u, c3);
+                    gsp_modify_vertex(gsp, 0, 0x10u, rs_fog_color(gsp, 0, c0));
+                    gsp_modify_vertex(gsp, 1, 0x10u, rs_fog_color(gsp, 1, c1));
+                    gsp_modify_vertex(gsp, 2, 0x10u, rs_fog_color(gsp, 2, c2));
+                    gsp_modify_vertex(gsp, 3, 0x10u, rs_fog_color(gsp, 3, c3));
                     /* Corner order of the two triangles (validated
                      * against the LLE stream: 808/940 header-exact vs
                      * 692 for the other diagonal). */
@@ -553,7 +593,8 @@ void rs_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int dl_addr)
                         for (zi = 0; zi < n; zi++)
                         {
                             int sl = xi * n + zi;
-                            gsp_modify_vertex(gsp, sl, 0x10u, col[zi][xi]);
+                            gsp_modify_vertex(gsp, sl, 0x10u,
+                                rs_fog_color(gsp, sl, col[zi][xi]));
                             gsp_set_vertex_st(gsp, sl,
                                 (int)(int16_t)((unsigned int)xi * stp),
                                 (int)(int16_t)((unsigned int)zi * stp));
@@ -631,7 +672,20 @@ void rs_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int dl_addr)
         case 0x03u:                    /* 16-byte state poke (movemem) */
         {
             unsigned int param = (w0 >> 16) & 0xffu;
-            if (param == 0x82u)
+            if (param == 0x88u)
+            {
+                /* Fog parameter row: 32-bit multiplier and offset
+                 * (DMA target DMEM 0x160). */
+                s_rs_fog_mi = (int32_t)((rs_read_u8(pc + 8u) << 8)
+                                        | rs_read_u8(pc + 9u));
+                s_rs_fog_mf = (int32_t)((rs_read_u8(pc + 10u) << 8)
+                                        | rs_read_u8(pc + 11u));
+                s_rs_fog_oi = (int32_t)((rs_read_u8(pc + 12u) << 8)
+                                        | rs_read_u8(pc + 13u));
+                s_rs_fog_of = (int32_t)((rs_read_u8(pc + 14u) << 8)
+                                        | rs_read_u8(pc + 15u));
+            }
+            else if (param == 0x82u)
             {
                 /* 16-byte poke of the texture-scale rows: +0..7 integer
                  * lanes, +8..15 fraction lanes; s in lane 0, t in lane 1. */

@@ -766,6 +766,7 @@ void rdp_emit_hle_process_dlist(void)
              * packed vertices and per-face colour lists; see rdp_emit_rs.c. */
             rs_set_rdram(rdram);
             rs_set_rdram_size(rdram_size);
+            rs_seed_fog_row(dmem);
             f3dex2_set_rdram(rdram);
             f3dex2_set_rdram_size(rdram_size);
             rs_run_dl(&s_gsp, &s_fifo, dl_addr);

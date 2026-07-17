@@ -12,6 +12,7 @@ int  rs_ucode_match(const unsigned char *rdram, unsigned int rdram_size,
 void rs_set_rdram(unsigned char *rdram);
 void rs_set_rdram_size(unsigned int size);
 void rs_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int dl_addr);
+void rs_seed_fog_row(const unsigned char *dmem);
 
 #ifdef __cplusplus
 }

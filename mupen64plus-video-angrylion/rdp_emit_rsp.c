@@ -1118,6 +1118,52 @@ void rsp_clip_lerp(const int32_t on_pos[4], const int32_t off_pos[4],
  *   x,y clamped >= -4090 and z >= 0 on the integer lane only (vge against
  *   the DMEM 0x60 row through the 1q element pattern).
  * The stored 1/w is the UNCLAMPED iw (DMEM vertex +32/+34). */
+/* Rogue Squadron per-vertex fog (transform tail, live IMEM 0x170c..
+ * 0x173c): the perspective-divided, perspNorm-scaled z (the ndc2
+ * vector's lane 2, probe-verified ~1.0 at the far plane) runs through
+ * the DMEM 0x160 parameter row as clamp_k(0, mids(k * (z * m + o)))
+ * and the clamped integer's low byte lands in the vertex record's fog
+ * slot. m and o are 32-bit (lanes 0..3, m ~ -o ~ 1166 in the menu
+ * task: a near/far ramp), k is the halfword in lane 4 (0xff). */
+/* The most recent rsp_vtx_screen_rs call's perspective-divided,
+ * perspNorm-scaled z (the ndc2 lane 2 the fog block consumes). */
+static int32_t s_rs_last_ndc2z;
+
+int32_t rsp_vtx_last_ndc2z(void)
+{
+    return s_rs_last_ndc2z;
+}
+
+int32_t rsp_fog_rs(int32_t sz1616,
+                   int32_t m_i, int32_t m_f,
+                   int32_t o_i, int32_t o_f, int32_t k)
+{
+    Rsp32 z, mm, t;
+    RspAcc acc;
+    z.i = (sz1616 >> 16) & 0xffff; z.f = sz1616 & 0xffff;
+    mm.i = m_i; mm.f = m_f;
+    t = mac32(z, mm, 0);
+    {
+        /* vaddc/vadd 32-bit add */
+        uint32_t lo = (uint32_t)U16(t.f) + (uint32_t)U16(o_f);
+        int32_t carry = (lo > 0xffffu) ? 1 : 0;
+        int32_t hi = S16(t.i) + S16(o_i) + carry;
+        t.f = (int32_t)(lo & 0xffffu);
+        if (hi > 32767) hi = 32767;
+        if (hi < -32768) hi = -32768;
+        t.i = hi;
+    }
+    acc = p_udn(t.f, k);
+    t.f = acc_clamp_low(acc);
+    acc += p_udh(t.i, k);
+    t.i = acc_clamp_mid(acc);
+    if (S16(t.i) < 0)
+        t.i = 0;
+    if (S16(t.i) > S16(k))
+        t.i = k;
+    return t.i & 0xff;
+}
+
 int rsp_vtx_screen_rs(int32_t cx, int32_t cy, int32_t cz, int32_t cw,
                       int32_t pn,
                       const int32_t *vs, const int32_t *vt,
@@ -1131,8 +1177,12 @@ int rsp_vtx_screen_rs(int32_t cx, int32_t cy, int32_t cz, int32_t cw,
     RspAcc acc;
     int lane;
 
-    if (cw <= 0)
-        return 0;
+    /* The real transform runs unconditionally -- behind-the-eye
+     * vertices still get a divide, an ndc2 (and thus a fog byte), and
+     * stored screen fields; only this model's callers treat the screen
+     * result as unusable. Bailing before the ndc2 computation left the
+     * fog input stale for w <= 0 vertices, which the triangle fog
+     * patch then read. */
 
     pos[0] = mk32(cx);
     pos[1] = mk32(cy);
@@ -1184,6 +1234,9 @@ int rsp_vtx_screen_rs(int32_t cx, int32_t cy, int32_t cz, int32_t cw,
         acc += p_udm(ndc.i, pn);
         ndc2.i = acc_clamp_mid(acc);
         ndc2.f = acc_clamp_low(acc);
+        if (lane == 2)
+            s_rs_last_ndc2z = (int32_t)(((uint32_t)U16(ndc2.i) << 16)
+                                        | (uint32_t)U16(ndc2.f));
 
         acc = p_udh(vt[lane], 1);
         acc += p_udn(ndc2.f, vs[lane]);
@@ -1204,7 +1257,7 @@ int rsp_vtx_screen_rs(int32_t cx, int32_t cy, int32_t cz, int32_t cw,
             zi = 0;
         *sz1616 = (int32_t)(((uint32_t)U16(zi) << 16) | (uint32_t)U16(scr_f[2]));
     }
-    return 1;
+    return (cw > 0) ? 1 : 0;
 }
 
 int rsp_vtx_screen(int32_t cx, int32_t cy, int32_t cz, int32_t cw,

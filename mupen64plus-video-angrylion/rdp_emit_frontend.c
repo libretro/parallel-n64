@@ -647,6 +647,7 @@ static void gsp_vertex_screen(GSPState *s, GSPVertex *vt)
     bridge_compute_screen(&bv, &s->viewport,
                           &vt->scr_x, &vt->scr_y, &vt->scr_z,
                           &vt->w_raw, &vt->rsp_ok, &vt->rsp_invw);
+    vt->rs_ndc2z = rsp_vtx_last_ndc2z();
 }
 
 void gsp_vertex(GSPState *s, const unsigned char *rdram, unsigned int addr,

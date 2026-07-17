@@ -40,6 +40,10 @@ int32_t rsp_vtx_fog(int32_t cz, int32_t cw, int32_t pn,
                     int32_t fog_m, int32_t fog_o);
 int32_t rsp_vtx_fog_dkr(int32_t cz, int32_t cw,
                         int32_t fog_m, int32_t fog_o);
+int32_t rsp_vtx_last_ndc2z(void);
+int32_t rsp_fog_rs(int32_t sz1616,
+                   int32_t m_i, int32_t m_f,
+                   int32_t o_i, int32_t o_f, int32_t k);
 int rsp_vtx_screen_rs(int32_t cx, int32_t cy, int32_t cz, int32_t cw,
                       int32_t pn,
                       const int32_t *vs, const int32_t *vt,
