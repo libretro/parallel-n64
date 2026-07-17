@@ -99,7 +99,6 @@ static unsigned int s_rs_om_l;
 static unsigned int s_rs_colors;
 
 /* debug: running count of state (non-triangle) commands emitted */
-static int s_rs_dbg_states;
 
 /* Raw Rogue Squadron geometry-mode word (opcodes 0xB6/0xB7). */
 static unsigned int s_rs_geom;
@@ -184,7 +183,6 @@ static void rs_emit_othermode(RdpFifo *fifo)
     two[0] = (int32_t)(s_rs_om_h | (0x2fu << 24));
     two[1] = (int32_t)s_rs_om_l;
     rdp_fifo_append(fifo, two, 2);
-    s_rs_dbg_states++;
 }
 
 static int rs_zbuffered(void)
@@ -378,7 +376,7 @@ static int rs_cull(const GSPState *gsp, int i0, int i1, int i2)
         cross = (int32_t)acc;
     if (cross == 0)
         return 1;
-    if ((getenv("RS_CPOS") ? cross > 0 : cross < 0) && (s_rs_geom & 0x2000u))
+    if (cross < 0 && (s_rs_geom & 0x2000u))
         return 1;
     return 0;
 }
@@ -406,7 +404,6 @@ void rs_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int dl_addr)
     s_rs_colors = 0u;
     s_rs_geom = 0u;
     s_rs_tex_on = 0;
-    s_rs_dbg_states = 0;
     s_rs_tsc_s = 0x10000;
     s_rs_tsc_t = 0x10000;
 
@@ -466,10 +463,6 @@ void rs_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int dl_addr)
         w1 = rs_read_u32(pc + 4u);
         op = w0 >> 24;
 
-        if (getenv("RS_ALLDBG"))
-            fprintf(stderr, "g=%d pc=%06x op=%02x w0=%08x w1=%08x\n",
-                    s_rs_dbg_states, pc, op, w0, w1);
-
         if (op >= 0xc0u)
         {
             /* Raw RDP passthrough. G_TEXRECT carries two extra words. */
@@ -494,7 +487,6 @@ void rs_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int dl_addr)
             if (op == 0xdfu || op == 0xe9u)
                 rdp_fifo_fullsync_note();
             rdp_fifo_append(fifo, words, nw);
-            s_rs_dbg_states += nw / 2;
             pc += size;
             continue;
         }
@@ -1212,11 +1204,6 @@ void rs_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int dl_addr)
                     rs_poke_st(gsp, i3, st3);
                 size += 16u;
             }
-            if (getenv("RS_GAPDBG"))
-                fprintf(stderr, "g=%d pc=%06x t=(%d,%d,%d,%d) cull=%d,%d\n",
-                        s_rs_dbg_states, pc, i0, i1, i2, i3,
-                        rs_cull(gsp, i0, i1, i2),
-                        quad ? rs_cull(gsp, i0, i2, i3) : -1);
             if (!rs_cull(gsp, i0, i1, i2))
             {
                 nw = gsp_triangle(gsp, cmd, i0, i1, i2,
