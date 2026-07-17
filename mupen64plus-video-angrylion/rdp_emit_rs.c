@@ -684,7 +684,11 @@ void rs_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int dl_addr)
 
         case 0x04u:                    /* packed vertex load, slot 0 */
         {
-            int n = (int)((w0 >> 10) & 0x3fu);
+            /* The count field is the loop counter, decremented by two per
+             * iteration (two vertices per pass through the transform), so
+             * an odd value still loads the following even vertex. The byte
+             * length (low 10 bits, minus one) carries the true count. */
+            int n = (int)((((w0 & 0x3ffu) + 1u) + 7u) >> 3);
             rs_vertex(gsp, w1 & 0xfffffful, n);
             break;
         }
