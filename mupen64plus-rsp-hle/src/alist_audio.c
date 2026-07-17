@@ -109,7 +109,7 @@ static void RESAMPLE(struct hle_t* hle, uint32_t w1, uint32_t w2)
     uint16_t pitch   = w1;
     uint32_t address = get_address(hle, w2);
 
-    alist_resample(
+    alist_resample_audio(
             hle,
             flags & A_INIT,
             flags & 0x2,

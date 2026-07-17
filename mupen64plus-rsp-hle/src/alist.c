@@ -53,6 +53,14 @@ static int16_t* sample(struct hle_t* hle, unsigned pos)
     return (int16_t*)hle->alist_buffer + ((pos ^ S) & 0xfff);
 }
 
+/* DMEM address of the state staging buffer shared by the plain audio
+ * (aspMain) microcode's stateful commands.  ADPCM bounces a partial
+ * vector through its head, RESAMPLE stages its 0x20 byte state block
+ * in bytes 0x00..0x1f, and ENVMIXER stages its 0x50 byte state image
+ * in bytes 0x00..0x4f, so each command's state save can carry residue
+ * of the previous occupant in the bytes it does not itself write. */
+enum { ALIST_AUDIO_STATE_SLAB = 0xf90 };
+
 static uint8_t* alist_u8(struct hle_t* hle, uint16_t dmem)
 {
     return (uint8_t*)(hle->alist_buffer + ((dmem ^ S8) & 0xfff));
@@ -516,6 +524,14 @@ void alist_envmix_exp(
     int x, y;
     short save_buffer[40];
 
+    /* The microcode DMAs the state image into the shared staging slab
+     * (skipped on init, which leaves the previous occupant's bytes in
+     * place); keep the slab mirror in sync so later commands see the
+     * same residue a real RSP would. */
+    if (!init)
+        memcpy(hle->alist_buffer + ALIST_AUDIO_STATE_SLAB,
+               hle->dram + address, sizeof(save_buffer));
+
     memcpy((uint8_t *)save_buffer, (hle->dram + address), sizeof(save_buffer));
     if (init) {
         ramps[0].value  = (vol[0] << 16);
@@ -589,6 +605,10 @@ void alist_envmix_exp(
     *(int32_t *)(save_buffer + 16) = (int32_t)ramps[0].value;    /* 12-13 */
     *(int32_t *)(save_buffer + 18) = (int32_t)ramps[1].value;    /* 14-15 */
     memcpy(hle->dram + address, (uint8_t *)save_buffer, sizeof(save_buffer));
+
+    /* The saved image is what the slab holds afterwards on hardware. */
+    memcpy(hle->alist_buffer + ALIST_AUDIO_STATE_SLAB,
+           (uint8_t *)save_buffer, sizeof(save_buffer));
 }
 
 void alist_envmix_ge(
@@ -1045,6 +1065,97 @@ void alist_resample(
     }
 
     alist_resample_save(hle, address, ipos, pitch_accu);
+}
+
+void alist_resample_audio(
+        struct hle_t* hle,
+        bool init,
+        bool flag2,
+        uint16_t dmemo,
+        uint16_t dmemi,
+        uint16_t count,
+        uint32_t pitch,     /* Q16.16 */
+        uint32_t address)
+{
+    /* The plain audio (aspMain) microcode's RESAMPLE, modelled after
+     * its disassembly.  It stages a 0x20 byte state block in the
+     * shared slab: bytes 0x00..0x07 hold the four-sample
+     * interpolation window at the final input position, 0x08..0x09
+     * the pitch accumulator, 0x0a..0x0b the distance from the final
+     * window back to the last 16-byte-aligned input address, and
+     * 0x10..0x1f the 16 input bytes at that aligned address.  Bytes
+     * 0x0c..0x0f are not written, so the save carries whatever the
+     * previous slab occupant (normally ENVMIXER's state image) left
+     * there -- Dark Rift reads the saved block back every frame and
+     * drives the fight scenes' palette lighting from it, so the whole
+     * block has to match the microcode byte for byte. */
+    uint8_t* const slab = hle->alist_buffer + ALIST_AUDIO_STATE_SLAB;
+    uint32_t pitch_accu;
+    uint16_t in = dmemi;
+    uint16_t ipos;
+    uint16_t opos = dmemo >> 1;
+    uint16_t residue;
+    uint16_t aligned;
+
+    count >>= 1;
+
+    if (init) {
+        /* The init path only clears the samples and the pitch
+         * accumulator; the rest of the slab keeps its residue. */
+        memset(slab, 0, 10);
+    }
+    else
+        memcpy(slab, hle->dram + address, 0x20);
+
+    if (flag2) {
+        /* Restore the 16 input bytes saved at the last aligned
+         * address to just before the input buffer, then back the
+         * input pointer up to the position inside them where the
+         * previous run's window ended. */
+        uint16_t back = (uint16_t)*alist_s16(hle, ALIST_AUDIO_STATE_SLAB + 0xa);
+        memcpy(hle->alist_buffer + ((dmemi - 16) & 0xfff), slab + 0x10, 16);
+        in -= back;
+    }
+
+    in -= 8;
+    memcpy(hle->alist_buffer + (in & 0xfff), slab, 8);
+    pitch_accu = (uint16_t)*alist_s16(hle, ALIST_AUDIO_STATE_SLAB + 0x8);
+    ipos = in >> 1;
+
+    while (count != 0) {
+        const int16_t* lut = RESAMPLE_LUT + ((pitch_accu & 0xfc00) >> 8);
+
+        /* Identical arithmetic to alist_resample: per-tap vmulf with
+         * a tree of saturating vadds. */
+        int32_t q0 = (int32_t)(((int64_t)2 * *sample(hle, ipos    ) * lut[0] + 0x8000) >> 16);
+        int32_t q1 = (int32_t)(((int64_t)2 * *sample(hle, ipos + 1) * lut[1] + 0x8000) >> 16);
+        int32_t q2 = (int32_t)(((int64_t)2 * *sample(hle, ipos + 2) * lut[2] + 0x8000) >> 16);
+        int32_t q3 = (int32_t)(((int64_t)2 * *sample(hle, ipos + 3) * lut[3] + 0x8000) >> 16);
+
+        q0 = clamp_s16(q0);
+        q1 = clamp_s16(q1);
+        q2 = clamp_s16(q2);
+        q3 = clamp_s16(q3);
+
+        *sample(hle, opos++) = clamp_s16(clamp_s16(q0 + q1) + clamp_s16(q2 + q3));
+
+        pitch_accu += pitch;
+        ipos += (pitch_accu >> 16);
+        pitch_accu &= 0xffff;
+        --count;
+    }
+
+    memcpy(slab, hle->alist_buffer + ((ipos << 1) & 0xfff), 8);
+    *alist_s16(hle, ALIST_AUDIO_STATE_SLAB + 0x8) = (int16_t)pitch_accu;
+
+    aligned = (ipos << 1) + 8;
+    residue = (aligned - dmemi) & 0xf;
+    aligned -= residue;
+    *alist_s16(hle, ALIST_AUDIO_STATE_SLAB + 0xa) =
+        (residue != 0) ? (int16_t)(16 - residue) : 0;
+    memcpy(slab + 0x10, hle->alist_buffer + (aligned & 0xfff), 16);
+
+    memcpy(hle->dram + address, slab, 0x20);
 }
 
 void alist_resample_zoh(

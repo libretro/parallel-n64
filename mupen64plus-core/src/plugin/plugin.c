@@ -121,7 +121,6 @@ RSP_INFO rsp_info;
 
 /* Set from the libretro "Audio Processing (HLE RSP)" core option. */
 extern uint32_t send_allist_to_hle_rsp;
-extern uint32_t force_audio_tasks_to_lle_rsp;
 
 
 
@@ -292,21 +291,6 @@ static m64p_error plugin_start_rsp(void)
     {
         rsp_audio = rsp;
     }
-
-#if HAVE_LLE
-    /* Titles flagged by the frontend read data back from the audio
-     * microcode's state saves that the HLE audio implementation cannot
-     * reproduce (Dark Rift's sound-reactive palette lighting reads the
-     * RESAMPLE state's DMEM-scratch tail). Route their audio (type 2)
-     * tasks to the cxd4 LLE RSP whenever they would otherwise run on the
-     * HLE plugin; gfx tasks keep the configured RSP. */
-    if (force_audio_tasks_to_lle_rsp &&
-        (current_rsp_type == RSP_PLUGIN_HLE || send_allist_to_hle_rsp))
-    {
-        rsp_cxd4.initiateRSP(rsp_info, NULL);
-        rsp_audio = rsp_cxd4;
-    }
-#endif
 
     return M64ERR_SUCCESS;
 }
