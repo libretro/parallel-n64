@@ -2473,7 +2473,38 @@ int rsp_tri_write(int32_t *ew,
     pre_z_dAdY  = dAdY[7];
 
     /* ---- z block scaling (x32 with the special base sequence) ---- */
-    if (z_buffered)
+    if (z_buffered && s_tri_attr_rs)
+    {
+        /* Rogue Squadron's z block (live IMEM 0x1d3c..0x1da0,
+         * probe-verified): the attribute pair and all three gradients
+         * are first scaled into the <<5 domain (vmudn/vmadh by
+         * v31[12] == 0x20), and the base subtract attrH - dAdE*y_spx
+         * is then REDONE in that domain -- the product keeps five more
+         * bits before its latch than the attribute-domain product, so
+         * the base's low bits differ from (attr-domain base) << 5. */
+        Rsp32 a5, t5;
+        int32_t yspx16 = (int32_t)((U16(vh->y) << 14) & 0xffff);
+        int gi5;
+        Rsp32 *gr5[3];
+        gr5[0] = &dAdE[7]; gr5[1] = &dAdX[7]; gr5[2] = &dAdY[7];
+        for (gi5 = 0; gi5 < 3; gi5++)
+        {
+            acc = p_udn(gr5[gi5]->f, 32);
+            gr5[gi5]->f = acc_clamp_low(acc);
+            acc += p_udh(gr5[gi5]->i, 32);
+            gr5[gi5]->i = acc_clamp_mid(acc);
+        }
+        acc = p_udn(at_f[0][7], 32);
+        a5.f = acc_clamp_low(acc);
+        acc += p_udh(at_i[0][7], 32);
+        a5.i = acc_clamp_mid(acc);
+        acc = p_udl(dAdE[7].f, yspx16);
+        acc += p_udm(dAdE[7].i, yspx16);
+        t5.i = acc_clamp_mid(acc);
+        t5.f = acc_clamp_low(acc);
+        base[7] = sub32(a5, t5);
+    }
+    else if (z_buffered)
     {
         int32_t v10;
         /* $v10 = dAdE_f * y_spx_f (fresh accumulator, low read) */
