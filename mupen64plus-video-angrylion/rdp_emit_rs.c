@@ -261,6 +261,14 @@ void rs_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int dl_addr)
     gsp->clip_ratio = 2;
     gsp->mvp_trans_last = 1;
     gsp->viewport.rs_model = 0;
+    /* Triangle-writer constants from the live IMEM (0x1928..0x19c8):
+     * edge dX scaled by v30[4] == 0x1000 with the y reciprocal scaled by
+     * v31[4] == 0x20, and the slope fraction masked to v31[1] == 0xfff8
+     * before the anchor back-walk. With these, 807 of 956 aligned menu
+     * triangles carry a byte-exact edge coefficient block. */
+    gsp->viewport.tri_dx_scale = 0x1000;
+    gsp->viewport.tri_idy_scale = 0x20;
+    gsp->viewport.tri_frac_mask = (int32_t)0xfff8;
     /* Rogue Squadron's reciprocal doubles the vrcph/vrcpl estimate and
      * refines it as r' = r * (2 - r * w) (2.0 staged in DMEM 0x50) --
      * algebraically the F3DEX2 r * (4 - 4rw) form, whose default model
