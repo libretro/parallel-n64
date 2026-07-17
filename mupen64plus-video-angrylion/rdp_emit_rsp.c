@@ -767,6 +767,20 @@ void rsp_set_clip_lerp_l3dex(int on)
 static int s_vtx_invw_2rd = 0;
 static int s_tri_attr_rs = 0;
 
+/* Rogue Squadron stale-lane residue (probe-anchored at the writer's
+ * IMEM 0x1ac0 merge point): the z-disabled texture path only llv's the
+ * S/T integer lanes, so the W lanes of the int registers and the L
+ * vertex's fraction register keep whatever the last z-ENABLED triangle
+ * computed there (transform residue before the first one). The H/M
+ * S/T fraction lanes are rewritten every triangle by the edge
+ * section's anchor back-walk (v10 = mids(clamped slope * y_spx),
+ * IMEM 0x19d4..0x19e4); the T lanes pair with dxldy (H) and dxhdy (M),
+ * while the S lanes multiply stale reciprocal registers and stay
+ * unmodelled. */
+static int32_t s_rs_stale_w_i[3] = { 0x7fff, 0x7fff, 0x7fff };
+static int32_t s_rs_stale_w_f[3];
+static int32_t s_rs_stale_l_sf, s_rs_stale_l_tf;
+
 void rsp_set_tri_attr_rs(int on)
 {
     s_tri_attr_rs = on ? 1 : 0;
@@ -1128,10 +1142,16 @@ void rsp_clip_lerp(const int32_t on_pos[4], const int32_t off_pos[4],
 /* The most recent rsp_vtx_screen_rs call's perspective-divided,
  * perspNorm-scaled z (the ndc2 lane 2 the fog block consumes). */
 static int32_t s_rs_last_ndc2z;
+static int32_t s_rs_last_pw;
 
 int32_t rsp_vtx_last_ndc2z(void)
 {
     return s_rs_last_ndc2z;
+}
+
+int32_t rsp_vtx_last_pw(void)
+{
+    return s_rs_last_pw;
 }
 
 int32_t rsp_fog_rs(int32_t sz1616,
@@ -1195,6 +1215,8 @@ int rsp_vtx_screen_rs(int32_t cx, int32_t cy, int32_t cz, int32_t cw,
         acc += p_udm(w32.i, pn);
         pw.i = acc_clamp_mid(acc);
         pw.f = acc_clamp_low(acc);
+        s_rs_last_pw = (int32_t)(((uint32_t)U16(pw.i) << 16)
+                                 | (uint32_t)U16(pw.f));
     }
 
     r = mk32(rsp_rcp32((int32_t)(((uint32_t)U16(pw.i) << 16)
@@ -2201,45 +2223,28 @@ int rsp_tri_write(int32_t *ew,
     else if (textured && s_tri_attr_rs && z_buffered)
     {
         /* Rogue Squadron's z-enabled perspective texture path (live
-         * IMEM 0x1a50..0x1abc, stream-verified on the attract menu):
-         * the three 32-bit inverse-w pairs (record +32/+34) fold to a
-         * 32-bit MAXIMUM whose reciprocal runs through the shared
-         * 0x179c divide (rcp32, doubled through the v30[2] constant
-         * with the fraction re-latched after the integer term, then
-         * refined r' = r * (2 - r * x)), halved through v31[13] ==
-         * 0x8000. Each vertex's normalizer is then the canonical
-         * 32-bit multiply norm_v = invw_v * rcp(max)/2 -- i.e.
-         * invw_v / (2 * max) -- and the stored VTX_TC shorts (plus an
-         * 0x7fff W seed placed by the vmov pair) are scaled by norm_v
-         * with the vmudm/vmadh/vmadn mid/low latches, per-vertex via
-         * quarter broadcasts. */
+         * IMEM 0x1a04..0x1abc, probe- and stream-verified): the fold
+         * at 0x1a04..0x1a2c takes the 32-bit MINIMUM of the three
+         * vertices' perspNorm'd w values -- the divide INPUTS, not
+         * recomputed reciprocals, so min(pw) == rcp(max invw) with no
+         * reciprocal rounding -- halved through v31[13] == 0x8000.
+         * Each vertex's normalizer is then the canonical 32-bit
+         * multiply norm_v = invw_v * min(pw)/2 and the stored VTX_TC
+         * shorts (plus an 0x7fff W seed placed by the vmov pair) are
+         * scaled by norm_v with the vmudm/vmadh/vmadn mid/low latches,
+         * per-vertex via quarter broadcasts. */
         int vi;
         const RspTriVtx *vv[3];
-        Rsp32 half, mx, rr, tt, uu;
-        int32_t maxi;
+        Rsp32 half, mn;
+        int32_t minw;
         vv[0] = vh; vv[1] = vm; vv[2] = vl;
-        maxi = vv[0]->invw;
-        if (vv[1]->invw > maxi) maxi = vv[1]->invw;
-        if (vv[2]->invw > maxi) maxi = vv[2]->invw;
-        mx.i = (int32_t)(((uint32_t)maxi >> 16) & 0xffffu);
-        mx.f = (int32_t)((uint32_t)maxi & 0xffffu);
-        rr = mk32(rsp_rcp32((int32_t)(((uint32_t)U16(mx.i) << 16)
-                                      | (uint32_t)U16(mx.f))));
-        acc = p_udn(rr.f, 2);
-        acc += p_udh(rr.i, 2);
-        rr.i = acc_clamp_mid(acc);
-        rr.f = acc_clamp_low(acc);
-        tt = mac32(rr, mx, 0);
-        {
-            int32_t borrow = (U16(tt.f) != 0) ? 1 : 0;
-            uu.f = (int32_t)((0 - U16(tt.f)) & 0xffff);
-            uu.i = 2 - S16(tt.i) - borrow;
-            if (uu.i > 32767) uu.i = 32767;
-            if (uu.i < -32768) uu.i = -32768;
-        }
-        rr = mac32(rr, uu, 0);
-        acc = p_udl(rr.f, 0x8000);
-        acc += p_udm(rr.i, 0x8000);
+        minw = vv[0]->pw;
+        if (vv[1]->pw < minw) minw = vv[1]->pw;
+        if (vv[2]->pw < minw) minw = vv[2]->pw;
+        mn.i = (int32_t)(((uint32_t)minw >> 16) & 0xffffu);
+        mn.f = (int32_t)((uint32_t)minw & 0xffffu);
+        acc = p_udl(mn.f, 0x8000);
+        acc += p_udm(mn.i, 0x8000);
         half.i = acc_clamp_mid(acc);
         half.f = acc_clamp_low(acc);
         for (vi = 0; vi < 3; vi++)
@@ -2258,7 +2263,11 @@ int rsp_tri_write(int32_t *ew,
                 at_i[vi][4 + k2] = acc_clamp_mid(acc);
                 at_f[vi][4 + k2] = acc_clamp_low(acc);
             }
+            s_rs_stale_w_i[vi] = at_i[vi][6];
+            s_rs_stale_w_f[vi] = at_f[vi][6];
         }
+        s_rs_stale_l_sf = at_f[2][4];
+        s_rs_stale_l_tf = at_f[2][5];
     }
     else if (textured && s_tri_attr_rs && !z_buffered)
     {
@@ -2270,13 +2279,24 @@ int rsp_tri_write(int32_t *ew,
          * the real ucode leaks into the fraction lanes is not modelled. */
         int vi;
         const RspTriVtx *vv[3];
+        int32_t yspx16 = (int32_t)((U16(vh->y) << 14) & 0xffff);
         vv[0] = vh; vv[1] = vm; vv[2] = vl;
         for (vi = 0; vi < 3; vi++)
         {
             at_i[vi][4] = vv[vi]->s; at_f[vi][4] = 0;
             at_i[vi][5] = vv[vi]->t; at_f[vi][5] = 0;
-            at_i[vi][6] = 0x7fff;    at_f[vi][6] = 0;
+            at_i[vi][6] = s_rs_stale_w_i[vi];
+            at_f[vi][6] = s_rs_stale_w_f[vi];
         }
+        /* per-triangle anchor products in the H/M T fraction lanes */
+        acc = p_udl(dxldy.f & frac_mask, yspx16);
+        acc += p_udm(dxldy.i, yspx16);
+        at_f[0][5] = acc_clamp_mid(acc);
+        acc = p_udl(dxhdy.f & frac_mask, yspx16);
+        acc += p_udm(dxhdy.i, yspx16);
+        at_f[1][5] = acc_clamp_mid(acc);
+        at_f[2][4] = s_rs_stale_l_sf;
+        at_f[2][5] = s_rs_stale_l_tf;
     }
     else if (textured)
     {

@@ -166,10 +166,17 @@ static void clip_to_emit(EmitVertex *e, const BridgeVertex *v,
         *w_raw = v->w_raw;
         e->rsp_ok = v->rsp_ok;
         e->rsp_invw = v->rsp_invw;
+        e->rs_pw = v->rs_pw;
     }
     else
+    {
         bridge_compute_screen(v, vp, &e->x, &e->y, &e->z, w_raw,
                               &e->rsp_ok, &e->rsp_invw);
+        /* the compute above just ran the Rogue Squadron vertex model
+         * when active; latch its perspNorm'd w for the texture
+         * normalizer fold */
+        e->rs_pw = rsp_vtx_last_pw();
+    }
     e->w = 0; /* set by the caller after triangle-wide normalisation */
     e->r = v->r; e->g = v->g; e->b = v->b; e->a = v->a;
     e->s = v->s; e->t = v->t;
@@ -228,6 +235,7 @@ static int try_rsp_tri_write(int32_t *cmd,
         r[i].s = tcs;
         r[i].t = tct;
         r[i].invw = ev[i]->rsp_invw;
+        r[i].pw = ev[i]->rs_pw;
         r[i].flat2d = bv[i]->flat2d;
     }
     return rsp_tri_write(cmd, &r[0], &r[1], &r[2],

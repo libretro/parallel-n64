@@ -53,6 +53,7 @@ typedef struct BridgeVertex
     int64_t w_raw;                  /* (pn << 41) / cw, 0 for w <= 0 */
     int     rsp_ok;
     int32_t rsp_invw;
+    int32_t rs_pw;
     int     flat2d;
 } BridgeVertex;
 

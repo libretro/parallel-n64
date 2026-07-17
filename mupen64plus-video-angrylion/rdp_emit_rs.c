@@ -431,6 +431,22 @@ void rs_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int dl_addr)
                     rs_stage_put8(dst + 15u, 0xffu);
                 }
                 gsp_vertex(gsp, s_rs_stage, 0u, 4, 0);
+                /* Corner texture coordinates: bytes +28..+31 of the
+                 * command carry the cell's texel range as two record-
+                 * domain shorts (low, high; 0000/07e0 on the attract
+                 * menu). S follows the X offset and T the Z offset --
+                 * confirmed by clip-generated vertices landing on the
+                 * corner2..corner3 anti-diagonal (s + t == high). */
+                {
+                    int32_t tclo = (int32_t)(int16_t)((rs_read_u8(pc + 28u) << 8)
+                                                     | rs_read_u8(pc + 29u));
+                    int32_t tchi = (int32_t)(int16_t)((rs_read_u8(pc + 30u) << 8)
+                                                     | rs_read_u8(pc + 31u));
+                    gsp_set_vertex_st(gsp, 0, tclo, tclo);
+                    gsp_set_vertex_st(gsp, 1, tchi, tclo);
+                    gsp_set_vertex_st(gsp, 2, tclo, tchi);
+                    gsp_set_vertex_st(gsp, 3, tchi, tchi);
+                }
                 /* The overlay draws the cell itself: two triangles over
                  * the four corners, with the per-corner colours inlined
                  * at +12..+27 of the command. */

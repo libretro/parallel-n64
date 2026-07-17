@@ -41,6 +41,7 @@ int32_t rsp_vtx_fog(int32_t cz, int32_t cw, int32_t pn,
 int32_t rsp_vtx_fog_dkr(int32_t cz, int32_t cw,
                         int32_t fog_m, int32_t fog_o);
 int32_t rsp_vtx_last_ndc2z(void);
+int32_t rsp_vtx_last_pw(void);
 int32_t rsp_fog_rs(int32_t sz1616,
                    int32_t m_i, int32_t m_f,
                    int32_t o_i, int32_t o_f, int32_t k);
@@ -63,6 +64,8 @@ typedef struct RspTriVtx
     int32_t  r, g, b, a;/* 8-bit colour values */
     int32_t  s, t;      /* texture coordinates as stored in VTX_TC_VEC */
     int32_t  invw;      /* VTX_INV_W 32-bit value (rsp_vtx_invw) */
+    int32_t  pw;        /* perspNorm'd w (the divide input; Rogue
+                           Squadron's texture normalizer folds these) */
     int      flat2d;    /* raw attribute path: skip the perspective
                            normalizer and colour rounding (Fighting
                            Force 64's 2D overlay microcode) */

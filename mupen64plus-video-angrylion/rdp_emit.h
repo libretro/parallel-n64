@@ -27,6 +27,7 @@ typedef struct EmitVertex
      * screen position is then exactly the microcode's, and rsp_invw is the
      * VTX_INV_W value its triangle write would read back. */
     int32_t rsp_invw;
+    int32_t rs_pw;
     int rsp_ok;
 } EmitVertex;
 
