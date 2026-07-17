@@ -925,11 +925,18 @@ void rs_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int dl_addr)
                         for (zi = 0; zi < n; zi++)
                         {
                             int sl = xi * n + zi;
+                            /* The record fog byte is preserved over the
+                             * copied colour alpha (overlay 0x10, lbu/sb
+                             * at rec+19 around the colour store), so
+                             * the terrain alpha is always the fog
+                             * factor regardless of the geometry word's
+                             * fog gate. */
                             gsp_modify_vertex(gsp, sl, 0x10u,
-                                rs_fog_color(gsp, sl, col[zi][xi]));
+                                rs_fog_color_always(gsp, sl, col[zi][xi]));
                             gsp_set_vertex_st(gsp, sl,
                                 (int)(int16_t)((unsigned int)xi * stp),
-                                (int)(int16_t)((unsigned int)zi * stp));
+                                (int)(int16_t)((unsigned int)(n - 1 - zi)
+                                               * stp));
                         }
                     /* Painter-sorted cell emission (overlays 0x1c and
                      * 0x20): every cell contributes two triangles,
