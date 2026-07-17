@@ -62,32 +62,29 @@ extern "C"
 		}
 		else if (rd == CP0_REGISTER_SP_SEMAPHORE)
 		{
-			/* The set-on-read / clear-on-write semantics of the SP
-			 * semaphore register are owned by mupen64plus-core
-			 * (read_rsp_regs/write_rsp_regs in rsp_core.c). The old
-			 * code here mutated cp0.cr[SP_SEMAPHORE] from the plugin
-			 * side as well, which raced the core's copy -- that is the
-			 * "broken with upstream mupen64plus-core" the FIXME warned
-			 * about. We must NOT touch the register value here.
+			/* Test-and-set on read, matching real hardware and the cxd4
+			 * interpreter (su.c: SP_CP0_MF, rd == 0x7). The core's
+			 * read_rsp_regs() only applies the set-on-read side effect to
+			 * CPU-bus reads of 0x04040018; the RSP's own MFC0 path shares
+			 * the same register word (cr[0x7] aliases SP_SEMAPHORE_REG,
+			 * see parallelRSPInitiateRSP) but bypasses the core entirely,
+			 * so we must apply it here or RSP-side lock acquisition never
+			 * marks the semaphore held. Leaving it out breaks the mutex:
+			 * the RSP reads 0 and "acquires", but the CPU then also reads 0
+			 * and acquires too.
 			 *
-			 * The only safe, useful part of the original intent is the
-			 * spin guard: a microcode busy-waiting on a semaphore the
-			 * CPU never releases would spin this read forever and hang
-			 * the emulation thread. Bound it like SP_STATUS and the DPC
-			 * busy registers above, but with a heavier increment since a
-			 * non-zero semaphore read is almost certainly a CPU wait, so
-			 * we want to bail out sooner. (The counter is reset at the
-			 * top of each DoRspCycles task, so this only fires on a
-			 * genuine stuck spin.) */
-			if (res)
-			{
-				RSP::MFC0_count[rt] += 8;
-				if (RSP::MFC0_count[rt] >= RSP::SP_STATUS_TIMEOUT)
-				{
-					*RSP::rsp.SP_STATUS_REG |= SP_STATUS_HALT;
-					return MODE_CHECK_FLAGS;
-				}
-			}
+			 * Then halt so the RSP yields to the CPU at the acquire point.
+			 * This is the fine-grained CPU<->RSP handshake that Gauntlet
+			 * Legends, World Driver Championship, Stunt Racer 64 and Top
+			 * Gear Rally depend on; without it the RSP runs its whole task
+			 * before the CPU ever gets a turn and the handshake deadlocks.
+			 * The outer run loop's "semaphore != 0" branch (parallel.cpp)
+			 * keeps the SP_STATUS timeout slow while the lock is held --
+			 * that branch is a no-op unless this half sets the register,
+			 * which is exactly the pairing cxd4's module.c uses. */
+			*rsp->cp0.cr[CP0_REGISTER_SP_SEMAPHORE] = 1;
+			*RSP::rsp.SP_STATUS_REG |= SP_STATUS_HALT;
+			return MODE_CHECK_FLAGS;
 		}
 #endif
 
