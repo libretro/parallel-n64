@@ -2198,6 +2198,68 @@ int rsp_tri_write(int32_t *ew,
             }
         }
     }
+    else if (textured && s_tri_attr_rs && z_buffered)
+    {
+        /* Rogue Squadron's z-enabled perspective texture path (live
+         * IMEM 0x1a50..0x1abc, stream-verified on the attract menu):
+         * the three 32-bit inverse-w pairs (record +32/+34) fold to a
+         * 32-bit MAXIMUM whose reciprocal runs through the shared
+         * 0x179c divide (rcp32, doubled through the v30[2] constant
+         * with the fraction re-latched after the integer term, then
+         * refined r' = r * (2 - r * x)), halved through v31[13] ==
+         * 0x8000. Each vertex's normalizer is then the canonical
+         * 32-bit multiply norm_v = invw_v * rcp(max)/2 -- i.e.
+         * invw_v / (2 * max) -- and the stored VTX_TC shorts (plus an
+         * 0x7fff W seed placed by the vmov pair) are scaled by norm_v
+         * with the vmudm/vmadh/vmadn mid/low latches, per-vertex via
+         * quarter broadcasts. */
+        int vi;
+        const RspTriVtx *vv[3];
+        Rsp32 half, mx, rr, tt, uu;
+        int32_t maxi;
+        vv[0] = vh; vv[1] = vm; vv[2] = vl;
+        maxi = vv[0]->invw;
+        if (vv[1]->invw > maxi) maxi = vv[1]->invw;
+        if (vv[2]->invw > maxi) maxi = vv[2]->invw;
+        mx.i = (int32_t)(((uint32_t)maxi >> 16) & 0xffffu);
+        mx.f = (int32_t)((uint32_t)maxi & 0xffffu);
+        rr = mk32(rsp_rcp32((int32_t)(((uint32_t)U16(mx.i) << 16)
+                                      | (uint32_t)U16(mx.f))));
+        acc = p_udn(rr.f, 2);
+        acc += p_udh(rr.i, 2);
+        rr.i = acc_clamp_mid(acc);
+        rr.f = acc_clamp_low(acc);
+        tt = mac32(rr, mx, 0);
+        {
+            int32_t borrow = (U16(tt.f) != 0) ? 1 : 0;
+            uu.f = (int32_t)((0 - U16(tt.f)) & 0xffff);
+            uu.i = 2 - S16(tt.i) - borrow;
+            if (uu.i > 32767) uu.i = 32767;
+            if (uu.i < -32768) uu.i = -32768;
+        }
+        rr = mac32(rr, uu, 0);
+        acc = p_udl(rr.f, 0x8000);
+        acc += p_udm(rr.i, 0x8000);
+        half.i = acc_clamp_mid(acc);
+        half.f = acc_clamp_low(acc);
+        for (vi = 0; vi < 3; vi++)
+        {
+            Rsp32 ivw, nrm;
+            int k2;
+            int32_t src[3];
+            ivw.i = (int32_t)(((uint32_t)vv[vi]->invw >> 16) & 0xffffu);
+            ivw.f = (int32_t)((uint32_t)vv[vi]->invw & 0xffffu);
+            nrm = mac32(ivw, half, 0);
+            src[0] = vv[vi]->s; src[1] = vv[vi]->t; src[2] = 0x7fff;
+            for (k2 = 0; k2 < 3; k2++)
+            {
+                acc = p_udm(src[k2], nrm.f);
+                acc += p_udh(src[k2], nrm.i);
+                at_i[vi][4 + k2] = acc_clamp_mid(acc);
+                at_f[vi][4 + k2] = acc_clamp_low(acc);
+            }
+        }
+    }
     else if (textured && s_tri_attr_rs && !z_buffered)
     {
         /* Rogue Squadron's z-disabled (affine) texture path: the writer
