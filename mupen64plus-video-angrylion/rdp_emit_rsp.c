@@ -765,6 +765,12 @@ void rsp_set_clip_lerp_l3dex(int on)
 }
 
 static int s_vtx_invw_2rd = 0;
+static int s_tri_attr_rs = 0;
+
+void rsp_set_tri_attr_rs(int on)
+{
+    s_tri_attr_rs = on ? 1 : 0;
+}
 
 void rsp_set_vtx_invw_2rd(int on)
 {
@@ -1978,6 +1984,32 @@ int rsp_tri_write(int32_t *ew,
         /* inv_dx = nr * inv_cross */
         inv_dx = mac32(nr, inv_cross, 0);
         inv_dx_64 = ((int64_t)r32(nr) * (int64_t)r32(inv_cross)) >> 16;
+        if (s_tri_attr_rs)
+        {
+            /* Rogue Squadron routes the cross through its shared divide
+             * (IMEM 0x179c, probe-verified ffff.ebb5 on the first drawn
+             * triangle): the reciprocal is doubled through the v30[2]
+             * constant with the fraction re-latched after the integer
+             * term, then refined r' = r * (2 - r * x). The attribute
+             * gradients multiply the numerators by THIS value. */
+            Rsp32 rr, tt, uu;
+            rr = mk32(rsp_rcp32(
+                (int32_t)(((uint32_t)U16(cross_i) << 16)
+                          | (uint32_t)U16(cross_f))));
+            acc = p_udn(rr.f, 2);
+            acc += p_udh(rr.i, 2);
+            rr.i = acc_clamp_mid(acc);
+            rr.f = acc_clamp_low(acc);
+            tt = mac32(rr, c, 0);
+            {
+                int32_t borrow = (U16(tt.f) != 0) ? 1 : 0;
+                uu.f = (int32_t)((0 - U16(tt.f)) & 0xffff);
+                uu.i = 2 - S16(tt.i) - borrow;
+                if (uu.i > 32767) uu.i = 32767;
+                if (uu.i < -32768) uu.i = -32768;
+            }
+            inv_dx = mac32(rr, uu, 0);
+        }
     }
     inv_dy_m_32 = rsp_rcp16(mh_y);
     inv_dy_l_32 = rsp_rcp16(lh_y);
@@ -2113,6 +2145,24 @@ int rsp_tri_write(int32_t *ew,
             }
         }
     }
+    else if (textured && s_tri_attr_rs && !z_buffered)
+    {
+        /* Rogue Squadron's z-disabled (affine) texture path: the writer
+         * loads the stored VTX_TC shorts -- which live in the DOUBLED
+         * domain -- with no per-vertex perspective normalizer (the wnorm
+         * block is branched around when geometry bit 0x1000 is set), and
+         * the W lane keeps the 0x7fff seed. The stale-register residue
+         * the real ucode leaks into the fraction lanes is not modelled. */
+        int vi;
+        const RspTriVtx *vv[3];
+        vv[0] = vh; vv[1] = vm; vv[2] = vl;
+        for (vi = 0; vi < 3; vi++)
+        {
+            at_i[vi][4] = vv[vi]->s; at_f[vi][4] = 0;
+            at_i[vi][5] = vv[vi]->t; at_f[vi][5] = 0;
+            at_i[vi][6] = 0x7fff;    at_f[vi][6] = 0;
+        }
+    }
     else if (textured)
     {
         int32_t iw[3];
@@ -2154,6 +2204,17 @@ int rsp_tri_write(int32_t *ew,
     }
 
     /* ---- attribute deltas and gradients ---- */
+    {
+    int32_t rs_yspx_vh = (int32_t)U16(vh->y);
+    int32_t rs_mh_y = mh_y, rs_hl_y = hl_y, rs_lh_x = lh_x, rs_hm_x = hm_x;
+    if (s_tri_attr_rs)
+    {
+        /* The writer multiplies the packed edge deltas by v30[5] == 4
+         * (vmudh, clamped mid) after the edge reciprocals but before the
+         * attribute numerators (live IMEM 0x1978). */
+        rs_mh_y = clamp_s16(mh_y * 4); rs_hl_y = clamp_s16(hl_y * 4);
+        rs_lh_x = clamp_s16(lh_x * 4); rs_hm_x = clamp_s16(hm_x * 4);
+    }
     for (k = 0; k < 8; k++)
     {
         Rsp32 a1, a2, a3;
@@ -2165,21 +2226,54 @@ int rsp_tri_write(int32_t *ew,
 
         /* dA_x = dMH.y * dA_H + dHL.y * dA_M  (vmudn/vmadh chains, raw
          * accumulator reads) */
-        acc = p_udn(dA_H[k].f, mh_y);
-        acc += p_udh(dA_H[k].i, mh_y);
-        acc += p_udn(dA_M[k].f, hl_y);
-        acc += p_udh(dA_M[k].i, hl_y);
+        acc = p_udn(dA_H[k].f, s_tri_attr_rs ? rs_mh_y : mh_y);
+        acc += p_udh(dA_H[k].i, s_tri_attr_rs ? rs_mh_y : mh_y);
+        acc += p_udn(dA_M[k].f, s_tri_attr_rs ? rs_hl_y : hl_y);
+        acc += p_udh(dA_M[k].i, s_tri_attr_rs ? rs_hl_y : hl_y);
         dA_x[k].i = (int32_t)((acc >> 32) & 0xffff);
         dA_x[k].f = (int32_t)((acc >> 16) & 0xffff);
 
         /* dA_y = dLH.x * dA_M + dHM.x * dA_H */
-        acc = p_udn(dA_M[k].f, lh_x);
-        acc += p_udh(dA_M[k].i, lh_x);
-        acc += p_udn(dA_H[k].f, hm_x);
-        acc += p_udh(dA_H[k].i, hm_x);
+        acc = p_udn(dA_M[k].f, s_tri_attr_rs ? rs_lh_x : lh_x);
+        acc += p_udh(dA_M[k].i, s_tri_attr_rs ? rs_lh_x : lh_x);
+        acc += p_udn(dA_H[k].f, s_tri_attr_rs ? rs_hm_x : hm_x);
+        acc += p_udh(dA_H[k].i, s_tri_attr_rs ? rs_hm_x : hm_x);
         dA_y[k].i = (int32_t)((acc >> 32) & 0xffff);
         dA_y[k].f = (int32_t)((acc >> 16) & 0xffff);
 
+        if (s_tri_attr_rs)
+        {
+            /* Rogue Squadron (live IMEM 0x1bc0..0x1ca0, probe-anchored):
+             * gradients = the clamped canonical multiply of the vsar'd
+             * numerators by the 0x179c-form reciprocal; dAdE on a fresh
+             * accumulator; the base is a 32-bit SUBTRACT of the mid
+             * slices of dAdE * the quarter-pixel fraction of the top
+             * vertex's y ((y_H & 3) << 14, the low half of y * v30[4]
+             * == 0x4000). */
+            Rsp32 t;
+            int32_t yspx16 = (int32_t)((U16(rs_yspx_vh) << 14) & 0xffff);
+            dAdX[k] = mac32(dA_x[k], inv_dx, 0);
+            dAdY[k] = mac32(dA_y[k], inv_dx, 0);
+            acc = p_udn(dAdY[k].f, 1);
+            acc += p_udh(dAdY[k].i, 1);
+            acc += p_udl(dAdX[k].f, dxhdy.f);
+            acc += p_udm(dAdX[k].i, dxhdy.f);
+            acc += p_udn(dAdX[k].f, dxhdy.i);
+            dAdE[k].f = acc_clamp_low(acc);
+            acc += p_udh(dAdX[k].i, dxhdy.i);
+            dAdE[k].i = acc_clamp_mid(acc);
+            acc = p_udl(dAdE[k].f, yspx16);
+            acc += p_udm(dAdE[k].i, yspx16);
+            t.i = acc_clamp_mid(acc);
+            t.f = acc_clamp_low(acc);
+            {
+                Rsp32 ah;
+                ah.i = at_i[0][k]; ah.f = at_f[0][k];
+                base[k] = sub32(ah, t);
+            }
+       }
+        else
+        {
         /* dAdX = dA_x * inv_dx */
         dAdX[k] = mac32_wide(dA_x[k], inv_dx_64, 0);
 
@@ -2202,6 +2296,9 @@ int rsp_tri_write(int32_t *ew,
         base[k].f = acc_clamp_low(acc);
         acc += p_udh(dAdE[k].i, y_spx_i);
         base[k].i = acc_clamp_mid(acc);
+        }
+    }
+
     }
 
     if (s_attr_lowp)

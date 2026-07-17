@@ -11,6 +11,7 @@ void rsp_light_dir_xfrm_one(const int32_t mv[4][4],
 int32_t rsp_clip_scale_w(int32_t w, int ratio);
 void rsp_set_clip_lerp_204h(int on);
 void rsp_set_vtx_invw_2rd(int on);
+void rsp_set_tri_attr_rs(int on);
 void rsp_set_vtx_invw_raw(int on);
 void rsp_set_vtx_y_round(int on);
 void rsp_set_vtx_x_round(int on);

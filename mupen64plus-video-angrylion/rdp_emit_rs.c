@@ -269,6 +269,7 @@ void rs_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int dl_addr)
     gsp->viewport.tri_dx_scale = 0x1000;
     gsp->viewport.tri_idy_scale = 0x20;
     gsp->viewport.tri_frac_mask = (int32_t)0xfff8;
+    rsp_set_tri_attr_rs(1);
     /* Rogue Squadron's reciprocal doubles the vrcph/vrcpl estimate and
      * refines it as r' = r * (2 - r * w) (2.0 staged in DMEM 0x50) --
      * algebraically the F3DEX2 r * (4 - 4rw) form, whose default model

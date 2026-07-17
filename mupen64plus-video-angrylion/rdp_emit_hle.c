@@ -677,6 +677,7 @@ void rdp_emit_hle_process_dlist(void)
     rsp_set_vtx_y_round(0);
     rsp_set_vtx_x_round(0);
     rsp_set_vtx_invw_raw(0);
+    rsp_set_tri_attr_rs(0);
     s_gsp.viewport.rs_model = 0;
     rsp_set_vtx_z_quant(0);
     rsp_set_keep_degenerate(0);
