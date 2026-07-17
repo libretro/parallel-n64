@@ -1093,6 +1093,10 @@ int zboss_run(unsigned char *rdram, unsigned int rdram_size,
             zb.wait_kind = ZB_WAIT_SIG3;
             return ZBOSS_R_WAIT_SIG3;
         case 0x14:                              /* LIGHTING */
+        case 0x16:                              /* LIGHTING alias: the
+            dispatch table at DMEM 0xbb0 is byte-indexed by the opcode
+            and maps 0x16 to the same IMEM 0x444 handler (verified
+            against the cxd4 oracle: identical texgen output) */
             zb_lighting(w0, w1);
             break;
         case 0x18:                              /* TRANSFORMLIGHTS */
