@@ -279,6 +279,23 @@ void musyx_v1_task(struct hle_t* hle)
 /**************************************************************************
  * MusyX v2 audio ucode
  **************************************************************************/
+/* Bit-exactness note (Battle for Naboo, task-replay verified): every v2
+ * task in a 1500-frame BfN run (1,477 tasks) replays bit-identically
+ * through the real microcode on cxd4 from the same pre-state -- full
+ * 8MB RDRAM post-state identity per task. The residual +-1 LSB bursts
+ * an LLE stream comparison shows (1920 of 565k sample pairs, left
+ * lanes, whole subframes) are NOT an HLE arithmetic divergence: the
+ * microcode's volume-splat prologue (vadd v_n, v0, v5[lane] at task
+ * text 0x1a0) assumes VCO == 0 at task entry, and Factor 5's streaming
+ * graphics microcode leaves VCO carry set on lanes 0-1 -- the first
+ * vadd folds that stale carry into the volume vector at DMEM 0x320 for
+ * the whole subframe. An LLE (or real hardware) run reproduces this
+ * cross-task register residue; a clean-context HLE computes the
+ * microcode's intended value. Verified by injecting the captured
+ * in-core VU state into a standalone cxd4 replay: with the stale
+ * cf_co lanes the oracle output matches the LLE stream exactly, with
+ * zeroed flags it matches this HLE exactly. Do not chase this as an
+ * HLE bug. */
 void musyx_v2_task(struct hle_t* hle)
 {
     uint32_t sfd_ptr   = *dmem_u32(hle, TASK_DATA_PTR);
