@@ -189,19 +189,28 @@ static void interleave_stage_v2(struct hle_t* hle, musyx_t *musyx,
 static int32_t dot4(const int16_t *x, const int16_t *y)
 {
     size_t i;
-    int32_t accu = 0;
+    int32_t t[4];
+    int32_t s01;
+    int32_t s23;
 
-    /* The MusyX resample FIR is a 4-tap multiply-accumulate. On the RSP this
-     * runs through the 48-bit vector accumulator (VMUDH/VMADH..VMADN) and is
-     * signed-saturated ONCE, on readout. Accumulate the products at full
-     * precision and shift once here; the caller applies the single clamp_s16.
-     * (Matches mix_fir4() in this same ucode and cxd4's VMADN/VMADH semantics.
-     * The previous per-tap >>15 + clamp_s16 lost precision and saturated
-     * intermediates the hardware accumulator would have carried.) */
+    /* The MusyX resample FIR, as the microcode actually computes it
+     * (disassembly of the Gauntlet Legends v1 task text, insns
+     * 0x5f8..0x670): one VMULF per tap, then a saturating VADD reduction
+     * tree (element 1q, then 2h). VMULF rounds each tap individually --
+     * acc = 2*x*y + 0x8000, result clamp_s16(acc >> 16), equivalent to
+     * clamp_s16((x*y + 0x4000) >> 15) -- and VADD saturates at every
+     * add. Neither a per-tap truncating shift nor a full-precision
+     * accumulate with one terminal shift reproduces this arithmetic;
+     * both leave a small DC-biased residue against the LLE reference
+     * on real game content. This form is bit-exact against cxd4 over
+     * the Gauntlet Legends attract sequence. */
     for (i = 0; i < 4; ++i)
-        accu += (int32_t)x[i] * (int32_t)y[i];
+        t[i] = clamp_s16(((int32_t)x[i] * (int32_t)y[i] + 0x4000) >> 15);
 
-    return accu >> 15;
+    s01 = clamp_s16(t[0] + t[1]);
+    s23 = clamp_s16(t[2] + t[3]);
+
+    return clamp_s16(s01 + s23);
 }
 
 /**************************************************************************
@@ -745,8 +754,11 @@ static void mix_voice_samples(struct hle_t* hle, musyx_t *musyx,
         v = clamp_s16(dot4(sample, lut));
 
         for (k = 0; k < 4; ++k) {
-            /* envmix */
-            int32_t accu = (v * (v4_env[k] >> 16)) >> 15;
+            /* envmix: VMULF by the envelope, so the product is rounded
+             * (+0x4000 before the shift), not truncated; the microcode
+             * then folds the destination into the same accumulator with
+             * VMADH and saturates once on readout. */
+            int32_t accu = (v * (v4_env[k] >> 16) + 0x4000) >> 15;
             v4[k] = clamp_s16(accu);
             *(v4_dst[k]) = clamp_s16(accu + *(v4_dst[k]));
 
