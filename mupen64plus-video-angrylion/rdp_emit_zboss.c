@@ -60,15 +60,6 @@ typedef struct ZbState
     unsigned int    othermode_h;
     unsigned int    othermode_l;
     unsigned int    rdpcmds[3];
-    float           mtx_model[4][4];
-    float           mtx_proj[4][4];
-    float           mtx_comb[4][4];
-    float           view_scale[2];
-    float           view_trans[2];
-    float           invw_factor;
-    int             fog_mult;
-    int             fog_off;
-    unsigned char   fogtable[256];
     short           audio_table[8][8];
     int             tri_tile;
     int             tri_level;
@@ -130,60 +121,50 @@ static int addr_ok(unsigned int a, unsigned int len)
     return a < s_rdram_size && a + len <= s_rdram_size;
 }
 
-/* ---- matrices (s15.16 in RDRAM, float mirrors, per the reference) ------ */
+/* ---- RSP accumulator semantics (transcribed; see rdp_emit_rsp.c) ------ */
 
-static void zb_load_matrix(float m[4][4], unsigned int addr)
+#define ZBU16(x) ((int32_t)((x) & 0xffff))
+#define ZBS16(x) ((int32_t)(int16_t)((x) & 0xffff))
+
+static int64_t zb_p_udl(int32_t a, int32_t b)
+{ return (int64_t)((((int64_t)ZBU16(a) * (int64_t)ZBU16(b)) >> 16)); }
+static int64_t zb_p_udm(int32_t a, int32_t b)
+{ return (int64_t)ZBS16(a) * (int64_t)ZBU16(b); }
+static int64_t zb_p_udn(int32_t a, int32_t b)
+{ return (int64_t)ZBU16(a) * (int64_t)ZBS16(b); }
+static int64_t zb_p_udh(int32_t a, int32_t b)
+{ return ((int64_t)ZBS16(a) * (int64_t)ZBS16(b)) << 16; }
+
+static int32_t zb_acc_mid(int64_t a)
 {
-    int i, j;
-    for (i = 0; i < 4; i++)
-        for (j = 0; j < 4; j++)
-        {
-            int hi = rd_s16(s_rdram, addr + (unsigned int)(i * 8 + j * 2));
-            int lo = ((int)s_rdram[(addr + 32u + (unsigned int)(i * 8 + j * 2)) ^ BO8] << 8)
-                   |  (int)s_rdram[(addr + 32u + (unsigned int)(i * 8 + j * 2) + 1u) ^ BO8];
-            m[i][j] = (float)hi + (float)lo * (1.0f / 65536.0f);
-        }
+    int64_t hi = a >> 16;
+    if (hi < -32768) return -32768;
+    if (hi >  32767) return  32767;
+    return (int32_t)(hi & 0xffff);
 }
 
-static void zb_store_matrix(const float m[4][4], unsigned int addr)
+static int32_t zb_acc_low(int64_t a)
 {
-    int i, j;
-    for (i = 0; i < 4; i++)
-        for (j = 0; j < 4; j++)
-        {
-            float el = m[i][j];
-            int hi, lo;
-            if (el > 32767.0f) el = 32767.0f;
-            if (el < -32768.0f) el = -32768.0f;
-            hi = (int)floor((double)el);
-            lo = (int)((el - (float)hi) * 65536.0f) & 0xffff;
-            wr_s16(s_rdram, addr + (unsigned int)(i * 8 + j * 2), hi);
-            s_rdram[(addr + 32u + (unsigned int)(i * 8 + j * 2)) ^ BO8]
-                = (unsigned char)((lo >> 8) & 0xff);
-            s_rdram[(addr + 32u + (unsigned int)(i * 8 + j * 2) + 1u) ^ BO8]
-                = (unsigned char)(lo & 0xff);
-        }
+    int64_t hi = a >> 16;
+    if (hi < -32768) return 0x0000;
+    if (hi >  32767) return 0xffff;
+    return (int32_t)(a & 0xffff);
 }
 
-static float *zb_mtx_slot(unsigned int dmem_off)
+/* matrix element accessors: N64 packed layout at a DMEM slot -- 32 bytes
+ * of s16 integer parts (row major) then 32 bytes of fraction parts */
+static int zb_mi(unsigned int base, int i, int j)
+{ return rd_s16(s_dmem, (base + (unsigned int)(i * 8 + j * 2)) & 0xfffu); }
+static int zb_mf(unsigned int base, int i, int j)
+{ return (int)(((unsigned int)s_dmem[(base + 32u + (unsigned int)(i * 8 + j * 2)) & 0xfffu ^ BO8] << 8)
+              | s_dmem[((base + 32u + (unsigned int)(i * 8 + j * 2) + 1u) & 0xfffu) ^ BO8]); }
+static void zb_mw(unsigned int base, int i, int j, int vi, int vf)
 {
-    switch (dmem_off)
-    {
-    case 0x830: return &zb.mtx_model[0][0];
-    case 0x870: return &zb.mtx_proj[0][0];
-    case 0x8b0: return &zb.mtx_comb[0][0];
-    }
-    return 0;
-}
-
-static void zb_mult_matrix(const float a[4][4], const float b[4][4],
-                           float d[4][4])
-{
-    int i, j;
-    for (i = 0; i < 4; i++)
-        for (j = 0; j < 4; j++)
-            d[i][j] = a[i][0] * b[0][j] + a[i][1] * b[1][j]
-                    + a[i][2] * b[2][j] + a[i][3] * b[3][j];
+    wr_s16(s_dmem, (base + (unsigned int)(i * 8 + j * 2)) & 0xfffu, vi);
+    s_dmem[((base + 32u + (unsigned int)(i * 8 + j * 2)) & 0xfffu) ^ BO8]
+        = (unsigned char)((vf >> 8) & 0xff);
+    s_dmem[((base + 32u + (unsigned int)(i * 8 + j * 2) + 1u) & 0xfffu) ^ BO8]
+        = (unsigned char)(vf & 0xff);
 }
 
 /* ---- RDP output -------------------------------------------------------- */
@@ -529,41 +510,17 @@ static void zb_obj(unsigned int w0, unsigned int w1)
 
 static void zb_movemem(unsigned int w0, unsigned int w1)
 {
+    /* The microcode's MOVEMEM is a DMA in either direction between a
+     * DMEM offset and RDRAM; matrix slots (0x830/0x870/0x8b0), the
+     * viewport (0x0), and the fog table (0x730, accessed biased at
+     * 0x7b0) are all plain DMEM regions to it. Keeping DMEM as the
+     * single source of truth also makes the game's DMEM->RDRAM
+     * readbacks byte-exact. */
     int flag = (int)((w0 >> 23) & 1u);
     unsigned int len = 1u + ((w0 >> 12) & 0x7ffu);
     unsigned int addr = seg_phys(w1);
     unsigned int off = w0 & 0xfffu;
     unsigned int i;
-
-    if (off == 0x830u && !flag) { zb_load_matrix(zb.mtx_model, addr); return; }
-    if (off == 0x870u && !flag) { zb_load_matrix(zb.mtx_proj, addr); return; }
-    if (off == 0x8b0u)
-    {
-        if (!flag) zb_load_matrix(zb.mtx_comb, addr);
-        else       zb_store_matrix(zb.mtx_comb, addr);
-        return;
-    }
-    if (off == 0x0u && !flag)
-    {
-        /* viewport: 8 s16 -- scale x/y (s13.2), z, fog mult; trans
-         * x/y (s13.2), z, fog offset */
-        int sx = rd_s16(s_rdram, addr);
-        int sy = rd_s16(s_rdram, addr + 2u);
-        int fm = rd_s16(s_rdram, addr + 6u);
-        int tx = rd_s16(s_rdram, addr + 8u);
-        int ty = rd_s16(s_rdram, addr + 10u);
-        int fo = rd_s16(s_rdram, addr + 14u);
-        zb.view_scale[0] = (float)sx * 0.25f * 4.0f;
-        zb.view_scale[1] = (float)sy * 0.25f * 4.0f;
-        zb.view_trans[0] = (float)tx * 0.25f * 4.0f;
-        zb.view_trans[1] = (float)ty * 0.25f * 4.0f;
-        zb.fog_mult = fm;
-        zb.fog_off  = fo;
-        /* fall through to the DMEM copy as the microcode also stages it */
-    }
-    if (off == 0x730u && len == 256u && addr_ok(addr, 256u))
-        for (i = 0; i < 256u; i++)
-            zb.fogtable[i] = s_rdram[(addr + i) ^ BO8];
 
     if (!addr_ok(addr, len) || off + len > 0x1000u)
         return;
@@ -577,89 +534,169 @@ static void zb_movemem(unsigned int w0, unsigned int w1)
 
 static void zb_mtxcat(unsigned int w0, unsigned int w1)
 {
-    float *sm = zb_mtx_slot((w1 >> 16) & 0xfffu);
-    float *tm = zb_mtx_slot(w0 & 0xfffu);
-    float *dm = zb_mtx_slot(w1 & 0xfffu);
-    float m[4][4];
-    if (sm == 0 || tm == 0 || dm == 0)
-        return;
-    zb_mult_matrix((const float (*)[4])sm, (const float (*)[4])tm, m);
-    memcpy(dm, m, sizeof(m));
+    /* 16.16 concatenation over the DMEM slots with the 48-bit
+     * accumulator and the VMADH/VMADN clamp reads (IMEM 0x258) */
+    unsigned int sb = (w1 >> 16) & 0xfffu;
+    unsigned int tb = w0 & 0xfffu;
+    unsigned int db = w1 & 0xfffu;
+    int oi[4][4], of4[4][4];
+    int i, j, k;
+    for (i = 0; i < 4; i++)
+        for (j = 0; j < 4; j++)
+        {
+            int64_t acc = 0;
+            for (k = 0; k < 4; k++)
+            {
+                acc += zb_p_udl(zb_mf(sb, i, k), zb_mf(tb, k, j));
+                acc += zb_p_udm(zb_mi(sb, i, k), zb_mf(tb, k, j));
+                acc += zb_p_udn(zb_mf(sb, i, k), zb_mi(tb, k, j));
+                acc += zb_p_udh(zb_mi(sb, i, k), zb_mi(tb, k, j));
+            }
+            oi[i][j] = zb_acc_mid(acc);
+            of4[i][j] = zb_acc_low(acc);
+        }
+    for (i = 0; i < 4; i++)
+        for (j = 0; j < 4; j++)
+            zb_mw(db, i, j, oi[i][j], of4[i][j]);
 }
 
 static void zb_transpose(unsigned int w1)
 {
-    float *mp = zb_mtx_slot(w1 & 0xfffu);
-    float m[4][4];
+    unsigned int b = w1 & 0xfffu;
+    int mi[3][3], mf[3][3];
     int i, j;
-    if (mp == 0)
-        return;
-    memcpy(m, mp, sizeof(m));
     for (i = 0; i < 3; i++)
         for (j = 0; j < 3; j++)
-            ((float (*)[4])mp)[j][i] = m[i][j];
+        {
+            mi[i][j] = zb_mi(b, i, j);
+            mf[i][j] = zb_mf(b, i, j);
+        }
+    for (i = 0; i < 3; i++)
+        for (j = 0; j < 3; j++)
+            zb_mw(b, j, i, mi[i][j], mf[i][j]);
 }
 
 static void zb_mult_mpmtx(unsigned int w0, unsigned int w1)
 {
+    /* Integer transcription of the microcode's point-transform service
+     * (IMEM 0x2fc): 16.16 matrix accumulate with the RSP's 48-bit
+     * accumulator and clamp reads, DIV-table reciprocal of
+     * w * invw_factor (only the low half of the DMEM 0x10 factor is
+     * used, per the [e9] broadcast), the VGE/VMRG overflow clamp that
+     * pins a negative reciprocal high half to 0x7fff before the screen
+     * multiply, the fog ramp fogO + (w_i * fogM >> 16) looked up in
+     * the DMEM fog table biased at 0x7b0, and the VCH/VCL clip codes.
+     * The viewport scale is pre-folded with 2*invw_factor (saturated
+     * s16 lane add), cancelling the factor in the reciprocal domain. */
+    unsigned int mb = w0 & 0xfffu;
     unsigned int num = 1u + ((w1 >> 24) & 0xffu);
     unsigned int src = (w1 >> 12) & 0xfffu;
     unsigned int dst = w1 & 0xfffu;
-    unsigned int i;
-    const float (*c)[4] = (const float (*)[4])zb.mtx_comb;
-    (void)w0;   /* always the combined matrix (0x8b0) */
+    int ivf  = (int)(rd32(s_dmem, 0x10u) & 0xffffu);
+    int ivf2;
+    int fogm = rd_s16(s_dmem, 6u);
+    int fogo = rd_s16(s_dmem, 14u);
+    int scale[2], trans[2], pre_i[2], pre_f[2];
+    int j;
+    unsigned int p;
 
-    for (i = 0; i < num; i++)
     {
-        int sx = rd_s16(s_dmem, src); src += 2u;
-        int sy = rd_s16(s_dmem, src); src += 2u;
-        int sz = rd_s16(s_dmem, src); src += 2u;
-        float x = (float)sx * c[0][0] + (float)sy * c[1][0]
-                + (float)sz * c[2][0] + c[3][0];
-        float y = (float)sx * c[0][1] + (float)sy * c[1][1]
-                + (float)sz * c[2][1] + c[3][1];
-        float z = (float)sx * c[0][2] + (float)sy * c[1][2]
-                + (float)sz * c[2][2] + c[3][2];
-        float w = (float)sx * c[0][3] + (float)sy * c[1][3]
-                + (float)sz * c[2][3] + c[3][3];
-        float invw, x_w, y_w;
-        int fog, ssx, ssy;
+        long t2 = (long)(short)ivf + (long)(short)ivf;   /* vadd lane sat */
+        if (t2 > 32767) t2 = 32767;
+        if (t2 < -32768) t2 = -32768;
+        ivf2 = (int)t2 & 0xffff;
+    }
+    for (j = 0; j < 2; j++)
+    {
+        int64_t acc;
+        scale[j] = rd_s16(s_dmem, (unsigned int)(j * 2));
+        trans[j] = rd_s16(s_dmem, 8u + (unsigned int)(j * 2));
+        acc = zb_p_udm(scale[j], ivf2);
+        pre_i[j] = zb_acc_mid(acc);
+        pre_f[j] = zb_acc_low(acc);
+    }
+
+    for (p = 0; p < num; p++)
+    {
+        int co[3];
+        int ri[4], rf[4];
+        int32_t v32[4];
+        int rcp, rcp_hi, rcp_lo, hi_c;
+        int div_i, div_f;
+        int32_t div32;
+        int scr[2];
+        int fog;
         unsigned int cc = 0;
+        int64_t acc;
 
-        invw = (w <= 0.0f) ? zb.invw_factor : (1.0f / w);
-        x_w = x * invw;
-        y_w = y * invw;
-        if (x_w >  zb.invw_factor) x_w =  zb.invw_factor;
-        if (x_w < -zb.invw_factor) x_w = -zb.invw_factor;
-        if (y_w >  zb.invw_factor) y_w =  zb.invw_factor;
-        if (y_w < -zb.invw_factor) y_w = -zb.invw_factor;
+        co[0] = rd_s16(s_dmem, src); src = (src + 2u) & 0xfffu;
+        co[1] = rd_s16(s_dmem, src); src = (src + 2u) & 0xfffu;
+        co[2] = rd_s16(s_dmem, src); src = (src + 2u) & 0xfffu;
 
-        ssx = (int)(zb.view_trans[0] + x_w * zb.view_scale[0]);
-        ssy = (int)(zb.view_trans[1] + y_w * zb.view_scale[1]);
+        for (j = 0; j < 4; j++)
+        {
+            acc  = zb_p_udn(zb_mf(mb, 3, j), 1) + zb_p_udh(zb_mi(mb, 3, j), 1);
+            acc += zb_p_udn(zb_mf(mb, 1, j), co[1])
+                 + zb_p_udh(zb_mi(mb, 1, j), co[1]);
+            acc += zb_p_udn(zb_mf(mb, 2, j), co[2])
+                 + zb_p_udh(zb_mi(mb, 2, j), co[2]);
+            acc += zb_p_udn(zb_mf(mb, 0, j), co[0])
+                 + zb_p_udh(zb_mi(mb, 0, j), co[0]);
+            ri[j] = zb_acc_mid(acc);
+            rf[j] = zb_acc_low(acc);
+            v32[j] = (int32_t)(((uint32_t)ZBU16(ri[j]) << 16)
+                               | (uint32_t)ZBU16(rf[j]));
+        }
 
-        fog = (int)(w * ((float)zb.fog_mult * (1.0f / 65536.0f))
-                    + (float)zb.fog_off);
-        if (fog > 127) fog = 127;
-        if (fog < -128) fog = -128;
+        /* DIV input: w * invw_factor low half (vmudl/vmadm) */
+        acc = zb_p_udl(rf[3], ivf) + zb_p_udm(ri[3], ivf);
+        div_i = zb_acc_mid(acc);
+        div_f = zb_acc_low(acc);
+        div32 = (int32_t)(((uint32_t)ZBU16(div_i) << 16)
+                          | (uint32_t)ZBU16(div_f));
+        rcp = (int)rsp_rcp32(div32);
+        rcp_hi = (rcp >> 16) & 0xffff;
+        rcp_lo = rcp & 0xffff;
+        hi_c = (ZBS16(rcp_hi) >= 0) ? rcp_hi : 0x7fff;
 
-        if (x >=  w) cc |= 0x10u;
-        if (y >=  w) cc |= 0x20u;
-        if (z >=  w) cc |= 0x40u;
-        if (x <= -w) cc |= 0x01u;
-        if (y <= -w) cc |= 0x02u;
-        if (z <= -w) cc |= 0x04u;
+        for (j = 0; j < 2; j++)
+        {
+            int ndc_i, ndc_f;
+            acc  = zb_p_udl(rf[j], rcp_lo) + zb_p_udm(ri[j], rcp_lo);
+            acc += zb_p_udn(rf[j], hi_c)   + zb_p_udh(ri[j], hi_c);
+            ndc_i = zb_acc_mid(acc);
+            ndc_f = zb_acc_low(acc);
+            acc  = zb_p_udh(trans[j], 1);
+            acc += zb_p_udl(pre_f[j], ndc_f) + zb_p_udm(pre_i[j], ndc_f);
+            acc += zb_p_udn(pre_f[j], ndc_i) + zb_p_udh(pre_i[j], ndc_i);
+            scr[j] = zb_acc_mid(acc);
+        }
+
+        acc = zb_p_udh(fogo, 1) + zb_p_udm(ri[3], fogm);
+        fog = zb_acc_mid(acc);
+        {
+            unsigned int fa = (0x7b0u + (unsigned int)fog) & 0xfffu;
+            fog = s_dmem[fa ^ BO8];
+        }
+
+        if (v32[0] >= v32[3])  cc |= 0x10u;
+        if (v32[1] >= v32[3])  cc |= 0x20u;
+        if (v32[2] >= v32[3])  cc |= 0x40u;
+        if (v32[0] <= -v32[3]) cc |= 0x01u;
+        if (v32[1] <= -v32[3]) cc |= 0x02u;
+        if (v32[2] <= -v32[3]) cc |= 0x04u;
 
         /* zSortVDest, 16 bytes: sy sx | invw | yi xi wi | fog cc */
-        wr_s16(s_dmem, dst, ssy);              dst += 2u;
-        wr_s16(s_dmem, dst, ssx);              dst += 2u;
-        wr32(s_dmem, dst,
-             (unsigned int)zb_calc_invw((int)(w * zb.invw_factor)));
-        dst += 4u;
-        wr_s16(s_dmem, dst, (int)(short)(int)y); dst += 2u;
-        wr_s16(s_dmem, dst, (int)(short)(int)x); dst += 2u;
-        wr_s16(s_dmem, dst, (int)(short)(int)w); dst += 2u;
-        s_dmem[dst ^ BO8] = zb.fogtable[(fog + 128) & 0xff]; dst += 1u;
-        s_dmem[dst ^ BO8] = (unsigned char)cc;               dst += 1u;
+        wr_s16(s_dmem, dst, scr[1]);           dst = (dst + 2u) & 0xfffu;
+        wr_s16(s_dmem, dst, scr[0]);           dst = (dst + 2u) & 0xfffu;
+        wr32(s_dmem, dst, (unsigned int)(((unsigned int)rcp_hi << 16)
+                                         | (unsigned int)rcp_lo));
+        dst = (dst + 4u) & 0xfffu;
+        wr_s16(s_dmem, dst, ri[1]);            dst = (dst + 2u) & 0xfffu;
+        wr_s16(s_dmem, dst, ri[0]);            dst = (dst + 2u) & 0xfffu;
+        wr_s16(s_dmem, dst, ri[3]);            dst = (dst + 2u) & 0xfffu;
+        s_dmem[dst ^ BO8] = (unsigned char)fog;          dst = (dst + 1u) & 0xfffu;
+        s_dmem[dst ^ BO8] = (unsigned char)cc;           dst = (dst + 1u) & 0xfffu;
     }
 }
 
@@ -833,7 +870,6 @@ int zboss_run(unsigned char *rdram, unsigned int rdram_size,
         if (!session_init)
         {
             memset(&zb, 0, sizeof(zb));
-            zb.invw_factor = 10.0f;
             session_init = 1;
         }
         zb.active = 1;
