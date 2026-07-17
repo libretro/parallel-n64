@@ -133,6 +133,21 @@ void rs_seed_fog_row(const unsigned char *dmem)
  * alpha before the colours reach the vertex records. The fog byte itself is the
  * transform tail's clamp of the perspective-divided z through the
  * parameter row (rsp_fog_rs). */
+/* The vertex transform's fog block (live IMEM 0x1704..0x173c) writes
+ * the fog byte into every record unconditionally; only the triangle
+ * handler's aux-colour patch is behind the geometry-word gate. The
+ * quad-cell path takes its alphas straight from the records, so its
+ * corner colours are fogged regardless of the gate. */
+static unsigned int rs_fog_color_always(const GSPState *gsp, int slot,
+                                        unsigned int c)
+{
+    int32_t f;
+    f = rsp_fog_rs(gsp->vtx[slot].rs_ndc2z,
+                   s_rs_fog_mi, s_rs_fog_mf,
+                   s_rs_fog_oi, s_rs_fog_of, s_rs_fog_k);
+    return (c & 0xffffff00u) | ((unsigned int)f & 0xffu);
+}
+
 static unsigned int rs_fog_color(const GSPState *gsp, int slot, unsigned int c)
 {
     int32_t f;
@@ -434,18 +449,20 @@ void rs_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int dl_addr)
                 /* Corner texture coordinates: bytes +28..+31 of the
                  * command carry the cell's texel range as two record-
                  * domain shorts (low, high; 0000/07e0 on the attract
-                 * menu). S follows the X offset and T the Z offset --
-                 * confirmed by clip-generated vertices landing on the
-                 * corner2..corner3 anti-diagonal (s + t == high). */
+                 * menu). S follows the X offset; T is INVERTED against
+                 * the Z offset (high at Z, low at Z+W) -- clip-
+                 * generated vertices land on the slot0..slot3 diagonal
+                 * with s + t == high, and the stream's T gradients
+                 * mirror the S-follows-Z assignment's sign. */
                 {
                     int32_t tclo = (int32_t)(int16_t)((rs_read_u8(pc + 28u) << 8)
                                                      | rs_read_u8(pc + 29u));
                     int32_t tchi = (int32_t)(int16_t)((rs_read_u8(pc + 30u) << 8)
                                                      | rs_read_u8(pc + 31u));
-                    gsp_set_vertex_st(gsp, 0, tclo, tclo);
-                    gsp_set_vertex_st(gsp, 1, tchi, tclo);
-                    gsp_set_vertex_st(gsp, 2, tclo, tchi);
-                    gsp_set_vertex_st(gsp, 3, tchi, tchi);
+                    gsp_set_vertex_st(gsp, 0, tclo, tchi);
+                    gsp_set_vertex_st(gsp, 1, tchi, tchi);
+                    gsp_set_vertex_st(gsp, 2, tclo, tclo);
+                    gsp_set_vertex_st(gsp, 3, tchi, tclo);
                 }
                 /* The overlay draws the cell itself: two triangles over
                  * the four corners, with the per-corner colours inlined
@@ -457,10 +474,10 @@ void rs_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int dl_addr)
                     unsigned int c3 = rs_read_u32(pc + 24u);
                     int32_t cmd[GSP_TRI_CMD_WORDS];
                     int nw;
-                    gsp_modify_vertex(gsp, 0, 0x10u, rs_fog_color(gsp, 0, c0));
-                    gsp_modify_vertex(gsp, 1, 0x10u, rs_fog_color(gsp, 1, c1));
-                    gsp_modify_vertex(gsp, 2, 0x10u, rs_fog_color(gsp, 2, c2));
-                    gsp_modify_vertex(gsp, 3, 0x10u, rs_fog_color(gsp, 3, c3));
+                    gsp_modify_vertex(gsp, 0, 0x10u, rs_fog_color_always(gsp, 0, c0));
+                    gsp_modify_vertex(gsp, 1, 0x10u, rs_fog_color_always(gsp, 1, c1));
+                    gsp_modify_vertex(gsp, 2, 0x10u, rs_fog_color_always(gsp, 2, c2));
+                    gsp_modify_vertex(gsp, 3, 0x10u, rs_fog_color_always(gsp, 3, c3));
                     /* Corner order of the two triangles (validated
                      * against the LLE stream: 808/940 header-exact vs
                      * 692 for the other diagonal). */
