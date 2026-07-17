@@ -42,6 +42,7 @@ int32_t rsp_vtx_fog_dkr(int32_t cz, int32_t cw,
                         int32_t fog_m, int32_t fog_o);
 int32_t rsp_vtx_last_ndc2z(void);
 int32_t rsp_vtx_last_pw(void);
+int32_t rsp_vtx_last_outcode(void);
 void rsp_clip_weights_rs(const int32_t in4[4], const int32_t out4[4],
                          const int16_t P[4], int32_t *wc, int32_t *wt);
 int32_t rsp_clip_blend32_rs(int32_t a, int32_t b, int32_t wc, int32_t wt);
@@ -80,6 +81,7 @@ typedef struct RspTriVtx
 int rsp_line_write(int32_t *cmd, const RspTriVtx *e0, const RspTriVtx *e1,
                    int width_q, int32_t dx_scale, int32_t idy_scale,
                    int32_t slope_mask, int32_t *xl_dmem, int zbuf);
+void rsp_tri_set_rs_sort(int on);
 int rsp_tri_write(int32_t *ew,
                   const RspTriVtx *v1c, const RspTriVtx *v2c,
                   const RspTriVtx *v3c,

@@ -48,6 +48,8 @@ typedef struct GSPVertex
     int32_t scr_x, scr_y, scr_z;
     int32_t rs_ndc2z;       /* Rogue Squadron: the fog block's z input */
     int32_t rs_pw;          /* Rogue Squadron: perspNorm'd w */
+    int32_t rs_outcode;     /* Rogue Squadron: the vch/vcl outcode halfword
+                               (record +36) */
     int64_t w_raw;
     int     rsp_ok;
     int32_t rsp_invw;

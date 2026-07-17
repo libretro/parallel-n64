@@ -1154,6 +1154,71 @@ int32_t rsp_vtx_last_pw(void)
     return s_rs_last_pw;
 }
 
+/* Rogue Squadron's vertex outcode (live IMEM 0x165c..0x16b4): two
+ * vch/vcl 32-bit compares of the post-matrix clip position lanes --
+ * against w (the screen planes) and against 2w from the DMEM 0x06
+ * guard scale -- packed as
+ *   bits 0..2  : le(x,y,z) vs 2w      bits 8..10 : ge(x,y,z) vs 2w
+ *   bits 4..6  : le(x,y,z) vs w       bits 12..14: ge(x,y,z) vs w
+ * The triangle writer trivially rejects on AND & 0x7070 and enters
+ * the clip overlay on OR & 0x4343. le/ge follow the vch sign rules
+ * lifted to 32 bits by the vcl fraction refinement: with opposite
+ * signs le = (v + b <= 0) and ge = (b < 0); with equal signs
+ * ge = (v - b >= 0) and le = (b < 0). */
+static int32_t s_rs_last_outcode;
+
+int32_t rsp_vtx_last_outcode(void)
+{
+    return s_rs_last_outcode;
+}
+
+static void rs_vch32(int64_t v, int64_t b, int *le, int *ge)
+{
+    if ((v ^ b) < 0)
+    {
+        *le = ((v + b) <= 0);
+        *ge = (b < 0);
+    }
+    else
+    {
+        *ge = ((v - b) >= 0);
+        *le = (b < 0);
+    }
+}
+
+static int32_t rs_outcode(int32_t cx, int32_t cy, int32_t cz, int32_t cw)
+{
+    int64_t p[3];
+    int64_t w1 = (int64_t)cw;
+    int64_t w2;
+    int32_t oc = 0;
+    int lane, le, ge;
+    /* the 2w pair is the mids of pos * 2, i.e. the exact doubled
+     * 32-bit value (the multiply by the DMEM 0x06 constant 2 is
+     * lossless in the mid/low latches until saturation) */
+    {
+        RspAcc acc2;
+        Rsp32 wv = mk32(cw), w2v;
+        acc2 = p_udn(wv.f, 2);
+        acc2 += p_udh(wv.i, 2);
+        w2v.i = acc_clamp_mid(acc2);
+        w2v.f = acc_clamp_low(acc2);
+        w2 = (int64_t)(int32_t)(((uint32_t)U16(w2v.i) << 16)
+                                | (uint32_t)U16(w2v.f));
+    }
+    p[0] = (int64_t)cx; p[1] = (int64_t)cy; p[2] = (int64_t)cz;
+    for (lane = 0; lane < 3; lane++)
+    {
+        rs_vch32(p[lane], w2, &le, &ge);
+        if (le) oc |= 1 << lane;
+        if (ge) oc |= 1 << (8 + lane);
+        rs_vch32(p[lane], w1, &le, &ge);
+        if (le) oc |= 1 << (4 + lane);
+        if (ge) oc |= 1 << (12 + lane);
+    }
+    return oc;
+}
+
 int32_t rsp_fog_rs(int32_t sz1616,
                    int32_t m_i, int32_t m_f,
                    int32_t o_i, int32_t o_f, int32_t k)
@@ -1218,6 +1283,7 @@ int rsp_vtx_screen_rs(int32_t cx, int32_t cy, int32_t cz, int32_t cw,
         s_rs_last_pw = (int32_t)(((uint32_t)U16(pw.i) << 16)
                                  | (uint32_t)U16(pw.f));
     }
+    s_rs_last_outcode = rs_outcode(cx, cy, cz, cw);
 
     r = mk32(rsp_rcp32((int32_t)(((uint32_t)U16(pw.i) << 16)
                                  | (uint32_t)U16(pw.f))));
@@ -2101,6 +2167,13 @@ int rsp_line_write(int32_t *cmd, const RspTriVtx *e0, const RspTriVtx *e1,
     return 24;
 }
 
+static int s_rs_lut_sort;
+
+void rsp_tri_set_rs_sort(int on)
+{
+    s_rs_lut_sort = on;
+}
+
 int rsp_tri_write(int32_t *ew,
                   const RspTriVtx *v1c, const RspTriVtx *v2c,
                   const RspTriVtx *v3c,
@@ -2130,7 +2203,29 @@ int rsp_tri_write(int32_t *ew,
     int32_t inv_dy_lm_32;
     int32_t mh_x, mh_y, lh_x, lh_y, hl_y, hm_x, lm_x, lm_y;
 
-    /* ---- sort by screen y (10.2), exact vlt/vge/vmrg tie rules ---- */
+    if (s_rs_lut_sort)
+    {
+        /* Rogue Squadron's writer sorts with three strict slt compares
+         * into the DMEM 0xaa/0xb1/0xb8 index tables (live IMEM
+         * 0x18a0..0x18d4): idx = ((y3<y1)<<2)|((y2<y1... precisely
+         * ((yC<yB)<<2)|((yB<yA)<<1)|(yA<yC) over the argument order
+         * (A,B,C), and ties keep the argument order (all-equal maps to
+         * the identity row). */
+        static const unsigned char lut_h[8] = { 0, 0, 1, 1, 2, 0, 2, 0 };
+        static const unsigned char lut_m[8] = { 1, 1, 2, 0, 0, 2, 1, 0 };
+        static const unsigned char lut_l[8] = { 2, 2, 0, 2, 1, 1, 0, 0 };
+        const RspTriVtx *va[3];
+        int idx;
+        va[0] = v1c; va[1] = v2c; va[2] = v3c;
+        idx  = (S16(v3c->y) < S16(v2c->y)) ? 4 : 0;
+        idx |= (S16(v2c->y) < S16(v1c->y)) ? 2 : 0;
+        idx |= (S16(v1c->y) < S16(v3c->y)) ? 1 : 0;
+        vh = va[lut_h[idx]];
+        vm = va[lut_m[idx]];
+        vl = va[lut_l[idx]];
+        tmpv = 0; (void)tmpv;
+    }
+    else
     {
         const RspTriVtx *lo12, *hi12, *v4;
         int32_t min12, max12, t6;

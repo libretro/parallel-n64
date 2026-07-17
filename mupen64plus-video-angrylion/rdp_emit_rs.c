@@ -211,11 +211,13 @@ static void rs_sync_geom(GSPState *gsp)
 
 /* Load n 8-byte packed vertices from addr into slots 0..n-1 through the
  * shared transform pipeline, via synthesized 16-byte Fast3D records. */
-static void rs_vertex(GSPState *gsp, unsigned int addr, int n)
+static void rs_vertex_at(GSPState *gsp, unsigned int addr, int slot, int n)
 {
     int i;
-    if (n > 32)
-        n = 32;
+    if (slot < 0 || slot > 31)
+        return;
+    if (slot + n > 32)
+        n = 32 - slot;
     for (i = 0; i < n; i++)
     {
         unsigned int src = addr + (unsigned int)i * 8u;
@@ -234,7 +236,12 @@ static void rs_vertex(GSPState *gsp, unsigned int addr, int n)
         rs_stage_put8(dst + 14u, 0xffu);
         rs_stage_put8(dst + 15u, 0xffu);
     }
-    gsp_vertex(gsp, s_rs_stage, 0u, n, 0);
+    gsp_vertex(gsp, s_rs_stage, 0u, n, slot);
+}
+
+static void rs_vertex(GSPState *gsp, unsigned int addr, int n)
+{
+    rs_vertex_at(gsp, addr, 0, n);
 }
 
 /* Per-face vertex attribute injection: colour words from the colour list
@@ -315,6 +322,8 @@ void rs_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int dl_addr)
     gsp->clip_near_z = 1;
     gsp->clip_ratio = 2;
     gsp->rs_clip_model = 1;
+    rsp_tri_set_rs_sort(1);
+    gsp->clip_fan_first = 3;
     gsp->mvp_trans_last = 1;
     gsp->viewport.rs_model = 0;
     /* Triangle-writer constants from the live IMEM (0x1928..0x19c8):
@@ -484,7 +493,7 @@ void rs_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int dl_addr)
                      * 692 for the other diagonal). */
                     if (!rs_cull(gsp, 2, 0, 3))
                     {
-                        nw = gsp_triangle(gsp, cmd, 2, 0, 3,
+                        nw = gsp_triangle(gsp, cmd, 0, 3, 2,
                                           s_rs_tex_on, rs_zbuffered());
                         if (nw > 0)
                             rdp_fifo_append(fifo, cmd, nw);
@@ -778,7 +787,7 @@ void rs_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int dl_addr)
              * an odd value still loads the following even vertex. The byte
              * length (low 10 bits, minus one) carries the true count. */
             int n = (int)((((w0 & 0x3ffu) + 1u) + 7u) >> 3);
-            rs_vertex(gsp, w1 & 0xfffffful, n);
+            rs_vertex_at(gsp, w1 & 0xfffffful, 0, n);
             break;
         }
 

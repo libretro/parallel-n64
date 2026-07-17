@@ -649,6 +649,7 @@ static void gsp_vertex_screen(GSPState *s, GSPVertex *vt)
                           &vt->w_raw, &vt->rsp_ok, &vt->rsp_invw);
     vt->rs_ndc2z = rsp_vtx_last_ndc2z();
     vt->rs_pw = rsp_vtx_last_pw();
+    vt->rs_outcode = rsp_vtx_last_outcode();
 }
 
 void gsp_vertex(GSPState *s, const unsigned char *rdram, unsigned int addr,
@@ -1629,6 +1630,9 @@ static int clip_polygon_guard(GSPState *st, GSPVertex *poly, int n)
     int ncond = st->rs_clip_model ? 5 : 6;
     for (cond = 0; cond < ncond && n > 0; cond++)
     {
+        static const unsigned int rs_cond_mask[5] = {
+            0x0040u, 0x4000u, 0x0200u, 0x0100u, 0x0002u
+        };
         unsigned int mask = gsp_clip_cond_mask[cond];
         int16_t cr[4];
         int i, m = 0;
@@ -1649,7 +1653,7 @@ static int clip_polygon_guard(GSPState *st, GSPVertex *poly, int n)
         }
         if (cond >= 2)  /* the +-x/+-y guard-band planes scale with the ratio */
             cr[3] = (int16_t)((cr[3] < 0) ? -st->clip_ratio : st->clip_ratio);
-        if (st->clip_fan_first == 2)
+        if (st->clip_fan_first >= 2)
         {
             /* Wipeout 64's clip driver (overlay i764-i7dc) walks the
              * pointer list linearly from vertex 0 -- vertex first, then
@@ -1661,8 +1665,12 @@ static int clip_polygon_guard(GSPState *st, GSPVertex *poly, int n)
             for (i = 0; i < n; i++)
             {
                 int inx = (i + 1 == n) ? 0 : (i + 1);
-                unsigned int f2 = (unsigned int)poly[i].clip & mask;
-                unsigned int fn = (unsigned int)poly[inx].clip & mask;
+                unsigned int f2 = st->rs_clip_model
+                    ? ((unsigned int)poly[i].rs_outcode & rs_cond_mask[cond])
+                    : ((unsigned int)poly[i].clip & mask);
+                unsigned int fn = st->rs_clip_model
+                    ? ((unsigned int)poly[inx].rs_outcode & rs_cond_mask[cond])
+                    : ((unsigned int)poly[inx].clip & mask);
                 if (!f2 && m < GSP_CLIP_MAX)
                     tmp[m++] = poly[i];
                 if ((f2 != fn) && m < GSP_CLIP_MAX)
@@ -1676,11 +1684,15 @@ static int clip_polygon_guard(GSPState *st, GSPVertex *poly, int n)
         }
         else
         {
-        f3 = (unsigned int)poly[n - 1].clip & mask;
+        f3 = st->rs_clip_model
+            ? ((unsigned int)poly[n - 1].rs_outcode & rs_cond_mask[cond])
+            : ((unsigned int)poly[n - 1].clip & mask);
         i3 = n - 1;
         for (i = 0; i < n; i++)
         {
-            unsigned int f2 = (unsigned int)poly[i].clip & mask;
+            unsigned int f2 = st->rs_clip_model
+                ? ((unsigned int)poly[i].rs_outcode & rs_cond_mask[cond])
+                : ((unsigned int)poly[i].clip & mask);
             if (f2 != f3)
             {
                 const GSPVertex *onv  = f2 ? &poly[i3] : &poly[i];
@@ -1990,10 +2002,13 @@ int gsp_triangle(GSPState *s, int32_t *cmd, int i0, int i1, int i2,
      * the behind-the-eye encodings the VCH compare produces for w <= 0),
      * the triangle is dropped before any clipping. The guard-band clipper
      * below only sees triangles that survive this. */
-    if (a->clip & b->clip & c->clip
+    if (s->rs_clip_model
+        ? (((unsigned int)a->rs_outcode & (unsigned int)b->rs_outcode
+            & (unsigned int)c->rs_outcode & 0x7070u) != 0u)
+        : (a->clip & b->clip & c->clip
         & (unsigned int)(s->clip_near_z
                          ? ((GSP_CLIP_REJECT & ~GSP_CLIP_NW) | GSP_CLIP_NZ)
-                         : GSP_CLIP_REJECT))
+                         : GSP_CLIP_REJECT)))
         return 0;
 
     /* The RSP enters the clipper when any vertex's stored outcode has any
@@ -2012,6 +2027,16 @@ int gsp_triangle(GSPState *s, int32_t *cmd, int i0, int i1, int i2,
         poly[0] = *c;
         poly[1] = *b;
         poly[2] = *a;
+    }
+    else if (s->clip_fan_first == 3)
+    {
+        /* Rogue Squadron's clip overlay seeds the list forward (live
+         * IMEM 0x1dc4: sh t3/t4/t5) and uses the same linear walk, but
+         * the fan passes its arguments forward: (list[0], list[k],
+         * list[k+1]) into the writer (1e10..1e44). */
+        poly[0] = *a;
+        poly[1] = *b;
+        poly[2] = *c;
     }
     else
     {
@@ -2037,8 +2062,11 @@ int gsp_triangle(GSPState *s, int32_t *cmd, int i0, int i1, int i2,
         if ((oa | ob | oc) & (GSP_CLIP_TRIGGER | (1u << 6)))
             return 0;
     }
-    else if ((oa | ob | oc) & (GSP_CLIP_TRIGGER
-                          | (s->clip_near_z ? (1u << 6) : 0u)))
+    else if (s->rs_clip_model
+             ? (((unsigned int)a->rs_outcode | (unsigned int)b->rs_outcode
+                 | (unsigned int)c->rs_outcode) & 0x4343u)
+             : ((oa | ob | oc) & (GSP_CLIP_TRIGGER
+                          | (s->clip_near_z ? (1u << 6) : 0u))))
     {
         /* Polygon clip against the guard band the way the RSP microcode
          * does: triangles that straddle w <= 0 cannot be passed through to
@@ -2078,6 +2106,12 @@ int gsp_triangle(GSPState *s, int32_t *cmd, int i0, int i1, int i2,
                 tv[1] = poly[i + 1];
                 tv[2] = poly[0];
             }
+            else if (s->clip_fan_first == 3)
+            {
+                tv[0] = poly[0];
+                tv[1] = poly[i + 1];
+                tv[2] = poly[i + 2];
+            }
             else if (s->clip_fan_first)
             {
                 tv[0] = poly[0];
@@ -2096,10 +2130,14 @@ int gsp_triangle(GSPState *s, int32_t *cmd, int i0, int i1, int i2,
              * cleared activeClipPlanes) still applies: a guard-band
              * polygon's fan can contain sub-triangles entirely past one
              * screen plane, and the microcode drops those. */
-            if (tv[0].clip & tv[1].clip & tv[2].clip
+            if (s->rs_clip_model
+                ? (((unsigned int)tv[0].rs_outcode
+                    & (unsigned int)tv[1].rs_outcode
+                    & (unsigned int)tv[2].rs_outcode & 0x7070u) != 0u)
+                : (tv[0].clip & tv[1].clip & tv[2].clip
                 & (unsigned int)(s->clip_near_z
                                  ? ((GSP_CLIP_REJECT & ~GSP_CLIP_NW) | GSP_CLIP_NZ)
-                                 : GSP_CLIP_REJECT))
+                                 : GSP_CLIP_REJECT)) != 0u)
                 continue;
             gsp_fold_st(s, tv);
             v0.cx = tv[0].cx; v0.cy = tv[0].cy; v0.cz = tv[0].cz; v0.cw = tv[0].cw;
