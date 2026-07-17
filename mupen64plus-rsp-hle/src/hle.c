@@ -26,6 +26,7 @@
 
 #ifdef ENABLE_TASK_DUMP
 #include <stdio.h>
+#include <stdlib.h>
 #endif
 
 #include "hle_external.h"
@@ -214,6 +215,22 @@ static void task_done(struct hle_t* hle)
     rsp_break(hle, SP_STATUS_TASKDONE);
 }
 
+/* Persistent (streaming) gfx microcodes: the task is a long-lived server
+ * the CPU talks to while it runs -- it yields (halts without BREAK) when
+ * it needs the CPU, is re-dispatched by the core, and consumes commands
+ * the CPU appends to a ring buffer live, with flow control through the
+ * SP_STATUS signal bits. A one-shot dlist walk with a forced TASKDONE
+ * ends the server after its first slice, so the game's render loop
+ * deadlocks. These tasks must run on the LLE fallback, which reproduces
+ * the full yield/signal protocol. If no fallback is linked, degrade to
+ * the plain dlist forward: it cannot animate these titles but keeps the
+ * task-done signalling flowing. */
+static void forward_gfx_task_to_lle(struct hle_t* hle)
+{
+    if (HleForwardTask(hle->user_defined) != 0)
+        send_dlist_to_gfx_plugin(hle);
+}
+
 static void unknown_ucode(struct hle_t* hle)
 {
     /* Forward task to RSP Fallback.
@@ -359,6 +376,13 @@ static ucode_func_t try_normal_task_detection(struct hle_t* hle)
     case 0x130de:
     case 0x278b0:
         return &jpeg_decode_OB;
+
+    /* Persistent streaming gfx microcodes (see forward_gfx_task_to_lle):
+     * Gauntlet Legends' custom F3DEX2 derivative, and the BOSS Game
+     * Studios microcode (World Driver Championship, Stunt Racer 64). */
+    case 0x28b9e:
+    case 0x1f7bb:
+        return &forward_gfx_task_to_lle;
     }
 
     /* Resident Evil 2 */
