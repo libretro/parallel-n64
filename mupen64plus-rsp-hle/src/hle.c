@@ -61,6 +61,8 @@ static void dump_unknown_non_task(struct hle_t* hle, unsigned int uc_start);
 /* Global functions */
 /* streaming graphics task state (see streaming_gfx_task) */
 static int l_streaming_gfx_running;
+/* Rogue Squadron streaming graphics task state (see rs_gfx_task) */
+static int l_rs_gfx_running;
 /* ZSortBOSS task state (see zboss_gfx_task) */
 static int l_zboss_wait;
 static int l_zboss_running;
@@ -116,6 +118,7 @@ void hle_init(struct hle_t* hle,
      * restart, savestate load): drop any suspended walk */
     l_streaming_gfx_running = 0;
     l_zboss_running = 0;
+    l_rs_gfx_running = 0;
 }
 
 void hle_execute(struct hle_t* hle)
@@ -263,6 +266,7 @@ static void forward_gfx_task_to_lle(struct hle_t* hle)
  * the direct call mirrors the existing cxd4 forward. If the walker
  * cannot service the task, fall back to the LLE forward. */
 int angrylion_streaming_dlist(int resume);
+int angrylion_rs_dlist(int resume);
 int angrylion_zboss_dlist(int resume);
 
 /* ZSortBOSS (World Driver Championship, Stunt Racer 64): the task
@@ -329,6 +333,62 @@ static void zboss_gfx_task(struct hle_t* hle)
     else
         l_zboss_wait = 2;
     /* incomplete return: the core re-dispatches after the CPU runs */
+}
+
+/* Rogue Squadron (Factor 5 custom microcode): one persistent graphics
+ * task per frame whose display-list page ring the CPU extends while the
+ * microcode walks it -- the terminating command is provisional until
+ * the CPU stops appending. The walker suspends at the live tail and
+ * the task is re-dispatched through the incomplete-return protocol
+ * until the end survives a slice. */
+static void rs_gfx_task(struct hle_t* hle)
+{
+    int resume;
+    int r;
+
+    resume = l_rs_gfx_running;
+
+    if (!resume) {
+        /* the microcode clears SIG1 and SIG2 at task start */
+        *hle->sp_status &= ~(SP_STATUS_SIG1 | SP_STATUS_TASKDONE);
+    }
+
+    r = angrylion_rs_dlist(resume);
+
+    if (r < 0) {
+        l_rs_gfx_running = 0;
+        forward_gfx_task_to_lle(hle);
+        return;
+    }
+
+    if (r == 0) {
+        /* list complete: the microcode's exit writes SET_SIG2 and
+         * breaks */
+        l_rs_gfx_running = 0;
+        rsp_break(hle, SP_STATUS_TASKDONE);
+        return;
+    }
+
+    /* suspended at the live tail */
+    l_rs_gfx_running = 1;
+
+    /* The microcode feeds the RDP through DPC_START/DPC_END from its
+     * own output buffer and the CPU paces its display-list appends on
+     * the RDP's consumption; the HLE renderer consumes synchronously,
+     * so report the pipe as drained and idle. */
+    *hle->dpc_current = *hle->dpc_end;
+    *hle->dpc_status &= ~0x600u;    /* clear cmd/pipe busy */
+
+    if (*hle->sp_status & SP_STATUS_SIG0) {
+        /* the CPU requested a yield: answer with the microcode's yield
+         * status (SET_SIG1, break) */
+        l_rs_gfx_running = 0;
+        rsp_break(hle, SP_STATUS_SIG1 | SP_STATUS_TASKDONE);
+        return;
+    }
+
+    /* plain incomplete return: leave HALT/BROKE/TASKDONE clear so the
+     * core re-dispatches the task after the CPU has run */
 }
 
 static void streaming_gfx_task(struct hle_t* hle)
@@ -527,6 +587,9 @@ static ucode_func_t try_normal_task_detection(struct hle_t* hle)
      * Studios microcode (World Driver Championship, Stunt Racer 64). */
     case 0x28b9e:
         return &streaming_gfx_task;
+    /* Star Wars: Rogue Squadron (Factor 5 custom graphics microcode) */
+    case 0x2095b:
+        return &rs_gfx_task;
     case 0x1f7bb:
         return &zboss_gfx_task;
     }

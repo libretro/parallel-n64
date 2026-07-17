@@ -112,6 +112,39 @@ static unsigned int s_rs_geom;
 static int32_t s_rs_fog_mi, s_rs_fog_mf, s_rs_fog_oi, s_rs_fog_of;
 static int32_t s_rs_fog_k = 0xff;
 
+/* Streaming state: Rogue Squadron launches one persistent graphics task
+ * whose display-list ring the CPU keeps appending to while the microcode
+ * walks it -- the terminating 0xb8 is provisional and overwritten by each
+ * append until the CPU stops writing. The streaming walker suspends at a
+ * depth-0 end command and resumes on the next dispatch slice; the task
+ * completes once the end survives a slice with the CPU running. */
+void rs_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int dl_addr);
+static int s_rs_streaming;
+static int s_rs_stream_active;
+static int s_rs_stream_stall;
+static unsigned int s_rs_stream_pc;
+static unsigned int s_rs_stream_page;
+static unsigned int s_rs_stream_stack[40];
+static int s_rs_stream_sp;
+static int s_rs_stream_result;
+
+/* Streaming entry: resume == 0 starts a fresh task walk, resume != 0
+ * continues a suspended one. Returns 1 while suspended at the live
+ * tail, 0 when the list completed. */
+int rs_run_dl_streaming(GSPState *gsp, RdpFifo *fifo,
+                        unsigned int dl_addr, int resume)
+{
+    s_rs_streaming = 1;
+    if (!resume)
+    {
+        s_rs_stream_active = 0;
+        s_rs_stream_stall = 0;
+    }
+    rs_run_dl(gsp, fifo, dl_addr);
+    s_rs_streaming = 0;
+    return s_rs_stream_result;
+}
+
 void rs_seed_fog_row(const unsigned char *dmem)
 {
     if (dmem == 0)
@@ -443,11 +476,42 @@ void rs_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int dl_addr)
     page = dl_addr & 0xfffffful;
     pc = page + 8u;
     pend = page + 0x108u;
+    s_rs_stream_result = 0;
+
+    if (s_rs_streaming && s_rs_stream_active)
+    {
+        /* resume a suspended streaming walk at the saved cursor */
+        int k;
+        pc = s_rs_stream_pc;
+        page = s_rs_stream_page;
+        pend = page + 0x108u;
+        sp = s_rs_stream_sp;
+        for (k = 0; k < sp * 2 && k < 40; k++)
+            stack[k] = s_rs_stream_stack[k];
+    }
 
     while (guard++ < 400000)
     {
         unsigned int w0, w1, op;
         unsigned int size = 8u;
+
+        if (s_rs_streaming && guard >= 400000)
+        {
+            /* slice budget exhausted mid-list (e.g. the ring cycled
+             * without reaching an end): suspend here and continue next
+             * slice rather than reporting a completed list */
+            s_rs_stream_pc = pc;
+            s_rs_stream_page = page;
+            s_rs_stream_sp = sp;
+            {
+                int k;
+                for (k = 0; k < sp * 2 && k < 40; k++)
+                    s_rs_stream_stack[k] = stack[k];
+            }
+            s_rs_stream_active = 1;
+            s_rs_stream_result = 1;
+            return;
+        }
 
         if (pc >= pend)
         {
@@ -470,19 +534,16 @@ void rs_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int dl_addr)
             int nw = 2;
             words[0] = (int32_t)w0;
             words[1] = (int32_t)w1;
-            if (op == 0xe4u)
+            if (op == 0xe4u || op == 0xe5u)
             {
+                /* TEXRECT/TEXRECT_FLIP: the microcode's copy handler
+                 * (IMEM 0x1110) forwards the command pair plus exactly
+                 * one payload pair -- a packed 16-byte record in the
+                 * display list, matching the 16-byte RDP wire format. */
                 words[2] = (int32_t)rs_read_u32(pc + 8u);
                 words[3] = (int32_t)rs_read_u32(pc + 12u);
                 nw = 4;
-                size = 24u;
-                /* the RSP splits texrect into cmd + two half words; the
-                 * live stream shows all 16 payload bytes forwarded */
-                words[2] = (int32_t)rs_read_u32(pc + 8u);
-                words[3] = (int32_t)rs_read_u32(pc + 12u);
-                words[4] = (int32_t)rs_read_u32(pc + 16u);
-                words[5] = (int32_t)rs_read_u32(pc + 20u);
-                nw = 6;
+                size = 16u;
             }
             if (op == 0xdfu || op == 0xe9u)
                 rdp_fifo_fullsync_note();
@@ -1294,6 +1355,28 @@ void rs_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int dl_addr)
                 pend = page + 0x108u;
                 continue;
             }
+            if (s_rs_streaming)
+            {
+                /* Depth-0 end: with the CPU still extending the ring
+                 * this command is a provisional terminator, so suspend
+                 * here and re-read it next slice. It becomes the real
+                 * end once it survives a slice unchanged. */
+                if (s_rs_stream_active
+                    && pc == s_rs_stream_pc
+                    && ++s_rs_stream_stall >= 64)
+                {
+                    s_rs_stream_active = 0;
+                    return;
+                }
+                if (!(s_rs_stream_active && pc == s_rs_stream_pc))
+                    s_rs_stream_stall = 0;
+                s_rs_stream_pc = pc;
+                s_rs_stream_page = page;
+                s_rs_stream_sp = 0;
+                s_rs_stream_active = 1;
+                s_rs_stream_result = 1;
+                return;
+            }
             return;
 
         case 0xb6u:                    /* clear geometry mode */
@@ -1307,6 +1390,28 @@ void rs_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int dl_addr)
             break;
 
         default:
+            if (s_rs_streaming && (op < 0x10u || (op >= 0x30u && op < 0xb4u)))
+            {
+                /* An opcode outside the microcode's dispatch range on a
+                 * streaming walk means the read raced the CPU's append
+                 * (a torn or half-written command): suspend here and
+                 * re-read it next slice instead of executing garbage. */
+                if (!(s_rs_stream_active && pc == s_rs_stream_pc))
+                    s_rs_stream_stall = 0;
+                else
+                    s_rs_stream_stall++;
+                s_rs_stream_pc = pc;
+                s_rs_stream_page = page;
+                s_rs_stream_sp = sp;
+                {
+                    int k;
+                    for (k = 0; k < sp * 2 && k < 40; k++)
+                        s_rs_stream_stack[k] = stack[k];
+                }
+                s_rs_stream_active = 1;
+                s_rs_stream_result = 1;
+                return;
+            }
             break;
         }
 
