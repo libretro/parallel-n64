@@ -1584,6 +1584,18 @@ static void gsp_clip_subdivide(GSPState *st, GSPVertex *out,
         out->t = (int32_t)((uint32_t)(int32_t)out->tv << 17);
         gsp_clip_vertex_flags(st, out);
         gsp_vertex_screen(st, out);
+        /* The overlay transforms the new record through the shared
+         * vertex path after the colour store (jal at 0x1fb4), and the
+         * transform writes the record's fog byte unconditionally, so
+         * the lerped alpha is overwritten by the fog factor of the new
+         * vertex's own z. */
+        {
+            int32_t f = rsp_fog_rs(out->rs_ndc2z,
+                                   st->rs_fog_mi, st->rs_fog_mf,
+                                   st->rs_fog_oi, st->rs_fog_of,
+                                   st->rs_fog_k);
+            out->a = (int32_t)((f & 0xff) << 16);
+        }
         return;
     }
     on_attr[0] = (int16_t)(((onv->r >> 16) & 0xff) << 7);

@@ -1737,6 +1737,26 @@ int32_t rsp_clip_blend32_rs(int32_t a, int32_t b, int32_t wc, int32_t wt)
 
 /* The colour/texture lerp (vmudm/vmadm mid reads on the luv << 7 byte
  * lanes and the raw VTX_TC shorts). */
+/* The terrain border geomorph blend (overlays 0x14/0x18, live IMEM
+ * 0x1f9c..0x1fb0): 32-bit positional lerp of the bracket pair by the
+ * (wa, wb) u16 weights (vmudm/vmadm with the vsar low read), then
+ * mids(lerp * f) + cur * (1 - f). */
+int32_t rsp_geomorph_blend_rs(int32_t a, int32_t b, int32_t cur,
+                              int32_t wa, int32_t wb,
+                              int32_t f, int32_t g)
+{
+    RspAcc acc;
+    int32_t i1, i0;
+    acc = p_udm(a, wa);
+    acc += p_udm(b, wb);
+    i1 = acc_clamp_mid(acc);
+    i0 = acc_clamp_low(acc);
+    acc = p_udl(i0, f);
+    acc += p_udm(i1, f);
+    acc += p_udm(cur, g);
+    return acc_clamp_mid(acc);
+}
+
 int32_t rsp_clip_blend16_rs(int32_t a, int32_t b, int32_t wc, int32_t wt)
 {
     RspAcc acc;

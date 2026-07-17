@@ -161,6 +161,11 @@ typedef struct GSPState
                                     * fraction clamp excludes) */
     unsigned int   persp_norm;               /* G_MW_PERSPNORM u16 (gSPPerspNormalize) */
     int            fog_m, fog_o;             /* G_MW_FOG multiplier/offset (s16 each) */
+    int32_t rs_fog_mi, rs_fog_mf;   /* Rogue Squadron fog parameter row
+                                       (the clip transform rewrites the
+                                       new record's alpha from it) */
+    int32_t rs_fog_oi, rs_fog_of;
+    int32_t rs_fog_k;
     int            tex_tile, tex_level, tex_w, tex_h;
     unsigned char  tile_mask_s[8], tile_mask_t[8];
 

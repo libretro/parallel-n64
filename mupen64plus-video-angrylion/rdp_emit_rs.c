@@ -323,6 +323,11 @@ void rs_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int dl_addr)
     gsp->clip_ratio = 2;
     gsp->rs_clip_model = 1;
     rsp_tri_set_rs_sort(1);
+    gsp->rs_fog_mi = s_rs_fog_mi;
+    gsp->rs_fog_mf = s_rs_fog_mf;
+    gsp->rs_fog_oi = s_rs_fog_oi;
+    gsp->rs_fog_of = s_rs_fog_of;
+    gsp->rs_fog_k  = s_rs_fog_k;
     gsp->clip_fan_first = 3;
     gsp->mvp_trans_last = 1;
     gsp->viewport.rs_model = 0;
@@ -600,6 +605,158 @@ void rs_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int dl_addr)
                         }
                         t9 = (t9 + t7) & 0xffffffffu;
                         a3o += (unsigned int)t1;
+                    }
+                }
+                /* Border geomorph passes (overlays 0x14 and 0x18): the
+                 * four patch borders are stitched toward the adjacent
+                 * patch's level of detail. Per border, a mode byte
+                 * (+4..+7) is compared against the patch's own level
+                 * (byte 3): when they differ, the border's odd entries
+                 * are first rebuilt as neighbour midpoints, then all
+                 * non-major entries are blended by the border's u16
+                 * morph factor (+22..+29) between the quarter-position
+                 * lerp of the bracketing major entries and the current
+                 * value -- mids(lerp * f) + cur * (1 - f), the exact
+                 * vmudm/vmadm + vmudl/vmadm/vmadm chain. When the
+                 * levels match, only the odd entries are smoothed
+                 * against the mean of their neighbours by the same
+                 * blend. Corners are never touched, and a zero factor
+                 * with matching levels leaves the border unchanged. */
+                if (n >= 2)
+                {
+                    int pass, side;
+                    for (pass = 0; pass < 2; pass++)
+                    for (side = 0; side < 2; side++)
+                    {
+                        /* pass 0 = the consecutive-entry borders
+                         * (overlay 0x14, mode bytes +6/+7, factors
+                         * +26/+28); pass 1 = the strided borders
+                         * (overlay 0x18, mode bytes +4/+5, factors
+                         * +22/+24). */
+                        unsigned int mb = rs_read_u8(pc
+                            + (pass ? 4u : 6u) + (unsigned int)side);
+                        unsigned int fo = pc + (pass ? 22u : 26u)
+                            + (unsigned int)side * 2u;
+                        int32_t f = (int32_t)((rs_read_u8(fo) << 8)
+                                              | rs_read_u8(fo + 1u));
+                        int fixed = side ? (n - 1) : 0;
+                        int j;
+                        int moda = (mb != b3);
+                        if (moda)
+                        {
+                            /* midpoint refine of the odd entries */
+                            for (j = 1; j < n - 1; j += 2)
+                            {
+                                int32_t ha, hb2, sum;
+                                unsigned int ca, cb, k, r = 0u;
+                                if (pass == 0)
+                                {
+                                    ha = hgt[j - 1][fixed];
+                                    hb2 = hgt[j + 1][fixed];
+                                    ca = col[j - 1][fixed];
+                                    cb = col[j + 1][fixed];
+                                }
+                                else
+                                {
+                                    ha = hgt[fixed][j - 1];
+                                    hb2 = hgt[fixed][j + 1];
+                                    ca = col[fixed][j - 1];
+                                    cb = col[fixed][j + 1];
+                                }
+                                sum = (ha + hb2) & 0xffff;
+                                sum = (int32_t)(((int32_t)(int16_t)sum
+                                                * 0x8000) >> 16) & 0xffff;
+                                for (k = 0u; k < 4u; k++)
+                                {
+                                    unsigned int x0 = (ca >> (k * 8u)) & 0xffu;
+                                    unsigned int x1 = (cb >> (k * 8u)) & 0xffu;
+                                    r |= (((x0 + x1) >> 1) & 0xffu) << (k * 8u);
+                                }
+                                if (pass == 0)
+                                {
+                                    hgt[j][fixed] = (int)sum;
+                                    col[j][fixed] = r;
+                                }
+                                else
+                                {
+                                    hgt[fixed][j] = (int)sum;
+                                    col[fixed][j] = r;
+                                }
+                            }
+                        }
+                        if (f != 0)
+                        {
+                            int32_t g = (int32_t)((0x10000u
+                                - (unsigned int)(f & 0xffff)) & 0xffffu);
+                            for (j = 1; j < n - 1; j++)
+                            {
+                                int q = j & 3;
+                                int ja, jb;
+                                int32_t wa, wb;
+                                int32_t ha, hb2, hc, hr;
+                                unsigned int ca, cb, cc, rr = 0u;
+                                unsigned int k;
+                                if (moda)
+                                {
+                                    if (q == 0)
+                                        continue;
+                                    ja = j & ~3;
+                                    jb = ja + 4;
+                                    if (jb > n - 1)
+                                        jb = n - 1;
+                                    wa = (int32_t)((0u
+                                        - ((unsigned int)q << 14)) & 0xffffu);
+                                    wb = (int32_t)(((unsigned int)q << 14)
+                                                   & 0xffffu);
+                                }
+                                else
+                                {
+                                    if (!(j & 1))
+                                        continue;
+                                    ja = j - 1;
+                                    jb = j + 1;
+                                    wa = 0x8000;
+                                    wb = 0x8000;
+                                }
+                                if (pass == 0)
+                                {
+                                    ha = hgt[ja][fixed]; hb2 = hgt[jb][fixed];
+                                    hc = hgt[j][fixed];
+                                    ca = col[ja][fixed]; cb = col[jb][fixed];
+                                    cc = col[j][fixed];
+                                }
+                                else
+                                {
+                                    ha = hgt[fixed][ja]; hb2 = hgt[fixed][jb];
+                                    hc = hgt[fixed][j];
+                                    ca = col[fixed][ja]; cb = col[fixed][jb];
+                                    cc = col[fixed][j];
+                                }
+                                hr = rsp_geomorph_blend_rs(
+                                    (int32_t)(int16_t)ha,
+                                    (int32_t)(int16_t)hb2,
+                                    (int32_t)(int16_t)hc, wa, wb, f, g);
+                                for (k = 0u; k < 4u; k++)
+                                {
+                                    int32_t x0 = (int32_t)((ca >> (k * 8u)) & 0xffu);
+                                    int32_t x1 = (int32_t)((cb >> (k * 8u)) & 0xffu);
+                                    int32_t x2 = (int32_t)((cc >> (k * 8u)) & 0xffu);
+                                    int32_t rv = rsp_geomorph_blend_rs(
+                                        x0, x1, x2, wa, wb, f, g);
+                                    rr |= ((unsigned int)rv & 0xffu) << (k * 8u);
+                                }
+                                if (pass == 0)
+                                {
+                                    hgt[j][fixed] = (int)(hr & 0xffff);
+                                    col[j][fixed] = rr;
+                                }
+                                else
+                                {
+                                    hgt[fixed][j] = (int)(hr & 0xffff);
+                                    col[fixed][j] = rr;
+                                }
+                            }
+                        }
                     }
                 }
                 /* vertex grid, column-major like the microcode */
