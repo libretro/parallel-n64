@@ -460,6 +460,79 @@ void rsp_light_dir_xfrm_one(const int32_t mv[4][4],
     }
 }
 
+/* The ZSortBOSS TRANSFORMLIGHTS normalize (IMEM 0x570): like the F3DEX2
+ * chain above but with the model matrix passed as the DMEM row-major
+ * int/frac u16 pairs, all four accumulator lanes emitted (the fourth
+ * matrix column transforms too and SPV stores it), the reciprocal
+ * square root scaled by 0x200 before the vector multiply, and a final
+ * 0x7fff scale ahead of the SPV >> 8 pack.  Validated lane-exact
+ * against a standalone cxd4 oracle across matrix/lookat corpora and a
+ * magnitude sweep. */
+void rsp_zsort_light_xfrm(const uint16_t mi[3][4], const uint16_t mf[3][4],
+                          const int32_t dir[3], unsigned char out[4])
+{
+    int32_t t_mid[4], t_hi[4];
+    int32_t sq_lo[4], sq_mid[4];
+    int32_t lo, si;
+    int32_t rsq, sc_hi, sc_lo;
+    int L;
+
+    for (L = 0; L < 4; L++)
+    {
+        RspAcc acc = 0;
+        int ax;
+        for (ax = 0; ax < 3; ax++)
+        {
+            int32_t d = (int32_t)(int16_t)((dir[ax] & 0xff) << 8);
+            acc += p_udn(mf[ax][L], d);
+            acc += p_udh(mi[ax][L], d);
+        }
+        acc = acc48(acc);
+        t_mid[L] = (int32_t)((acc >> 16) & 0xffff);
+        t_hi[L]  = (int32_t)((acc >> 32) & 0xffff);
+    }
+    for (L = 0; L < 4; L++)
+    {
+        RspAcc acc = p_udl(t_mid[L], t_mid[L]);
+        acc += p_udm(t_hi[L], t_mid[L]);
+        acc += p_udn(t_mid[L], t_hi[L]);
+        sq_lo[L] = acc_clamp_low(acc);
+        acc += p_udh(t_hi[L], t_hi[L]);
+        sq_mid[L] = acc_clamp_mid(acc);
+    }
+    {
+        int32_t sum = U16(sq_lo[0]) + U16(sq_lo[1]);
+        int32_t carry = (sum >> 16) & 1;
+        lo = sum & 0xffff;
+        si = clamp_s16(S16(sq_mid[0]) + S16(sq_mid[1]) + carry);
+        sum = U16(lo) + U16(sq_lo[2]);
+        carry = (sum >> 16) & 1;
+        lo = sum & 0xffff;
+        si = clamp_s16(si + S16(sq_mid[2]) + carry);
+    }
+    rsq = rsp_rsq32((int32_t)(((uint32_t)U16(si) << 16) | (uint32_t)U16(lo)));
+    {
+        RspAcc acc = p_udl(rsq & 0xffff, 0x200);
+        acc += p_udm((rsq >> 16) & 0xffff, 0x200);
+        sc_hi = acc_clamp_mid(acc);
+        sc_lo = acc_clamp_low(acc);
+    }
+    for (L = 0; L < 4; L++)
+    {
+        int32_t n_lo, n_mid;
+        RspAcc acc = p_udl(t_mid[L], sc_lo);
+        acc += p_udm(t_hi[L], sc_lo);
+        acc += p_udn(t_mid[L], sc_hi);
+        n_lo = acc_clamp_low(acc);
+        acc += p_udh(t_hi[L], sc_hi);
+        n_mid = acc_clamp_mid(acc);
+        acc = p_udn(n_lo, 0x7fff);
+        acc += p_udh(n_mid, 0x7fff);
+        n_mid = acc_clamp_mid(acc);
+        out[L] = (unsigned char)((n_mid >> 8) & 0xff);
+    }
+}
+
 /* One directional-light dot product: raw s8 vertex normal against the
  * transformed s8 light direction, both entering the lanes as byte << 8
  * (lpv), through the doubled vmulu/vmacu accumulator with the unsigned

@@ -700,106 +700,154 @@ static void zb_mult_mpmtx(unsigned int w0, unsigned int w1)
     }
 }
 
-/* transformed lookat vectors, s8 components; written by
- * TRANSFORMLIGHTS, consumed by LIGHTING's texgen. Semantic model of
- * the microcode's light-struct staging (IMEM 0x570/0x444): the real
- * handlers stage through the DMEM struct at the pointer in 0x948;
- * these are not lane-exact transcriptions (the attract paths of both
- * shipped titles run numLights == 0, lookat only). */
-static signed char zb_lookat[2][3];
+/* Light-struct handlers (IMEM 0x570 TRANSFORMLIGHTS, 0x444 LIGHTING):
+ * lane-exact transcriptions validated against a standalone cxd4 oracle
+ * running the captured microcode (corpus: 13 matrix/lookat cases, a
+ * 12-step magnitude sweep, and 10 randomised texgen runs, all
+ * bit-identical).  DMEM is the single source of truth: the transformed
+ * lookat vectors live in the light struct itself at each slot's
+ * raw-direction offset + 8, packed by SPV (bits 15..8 of the final
+ * lanes) and duplicated across two words. */
 
 static void zb_lighting(unsigned int w0, unsigned int w1)
 {
-    /* texgen: s/t = (dot(lookat, normal) + 0.5) * 1024 in the s8
-     * normal domain */
+    /* Texgen per record: s/t = ((sat16(sum 2*n*l) + 0x8000) & 0xffff)
+     * >> 6 against the two transformed lookat vectors.  The dot is a
+     * saturating s16 sum of per-component vmulf terms (each clamped);
+     * the scale is the handler's vaddc 0x8000 / vmudl 0x0400 pair.
+     * Colors: acc = ambient (luv u8<<7 domain), then for each of the
+     * (struct_w1 >> 12) + 1 slots acc += max(vmulf(slot color, dot), 0),
+     * finally scaled by the w0>>12 table and packed with suv; alpha
+     * bytes come from the same table (bytes 3/7 of each 8-byte lane
+     * group), advancing by the stride byte at DMEM 0x944. */
     unsigned int num = 1u + ((w1 >> 24) & 0xffu);
     unsigned int nsrs = w0 & 0xfffu;
+    unsigned int cdest = (w1 >> 12) & 0xfffu;
     unsigned int tdest = w1 & 0xfffu;
-    unsigned int i;
+    unsigned int lw1 = rd32(s_dmem, 0x948u);
+    unsigned int lbase = lw1 & 0xfffu;
+    unsigned int lcount = (lw1 >> 12) + 1u;
+    unsigned int atab = (w0 >> 12) & 0xfffu;
+    unsigned int stride = s_dmem[0x944u ^ BO8];
+    unsigned int i, li;
     int k;
+
+    if (lcount > 8u)
+        lcount = 8u;
+
     for (i = 0; i < num; i++)
     {
         int n[3];
-        long d0 = 0, d1 = 0;
+        int32_t cacc[3];
+        int32_t d[8];
         for (k = 0; k < 3; k++)
         {
             n[k] = rd_s8(s_dmem, nsrs);
             nsrs = (nsrs + 1u) & 0xfffu;
         }
+        /* ambient preload, u8<<7 domain */
         for (k = 0; k < 3; k++)
+            cacc[k] = (int32_t)s_dmem[((lbase + (unsigned int)k) & 0xfffu) ^ BO8] << 7;
+        for (li = 0; li < lcount; li++)
         {
-            d0 += (long)zb_lookat[0][k] * (long)n[k];
-            d1 += (long)zb_lookat[1][k] * (long)n[k];
+            unsigned int slot = (lbase + li * 24u) & 0xfffu;
+            int32_t acc = 0;
+            for (k = 0; k < 3; k++)
+            {
+                int lv = rd_s8(s_dmem, (slot + 24u + (unsigned int)k) & 0xfffu);
+                int32_t t = 2 * n[k] * lv;
+                if (t > 32767)  t = 32767;
+                if (t < -32768) t = -32768;
+                acc += t;
+                if (acc > 32767)  acc = 32767;
+                if (acc < -32768) acc = -32768;
+            }
+            d[li] = acc;
+            for (k = 0; k < 3; k++)
+            {
+                int32_t cs = (int32_t)s_dmem[((slot + 8u + (unsigned int)k) & 0xfffu) ^ BO8] << 7;
+                int32_t p = (int32_t)(((int64_t)cs * (int64_t)acc * 2 + 0x8000) >> 16);
+                if (p < 0)
+                    p = 0;
+                cacc[k] += p;
+                if (cacc[k] > 32767) cacc[k] = 32767;
+            }
         }
-        /* s8*s8 dot is q14; (x + 0.5) * 1024 with x in q15 */
-        wr_s16(s_dmem, tdest, (int)(((d0 << 1) + 16384) >> 5));
-        tdest = (tdest + 2u) & 0xfffu;
-        wr_s16(s_dmem, tdest, (int)(((d1 << 1) + 16384) >> 5));
-        tdest = (tdest + 2u) & 0xfffu;
+        /* texgen: the last two slots walked are the lookat pair */
+        if (lcount >= 2u)
+        {
+            wr_s16(s_dmem, tdest,
+                   (int)(((unsigned int)(d[lcount - 2u] + 0x8000) & 0xffffu) >> 6));
+            tdest = (tdest + 2u) & 0xfffu;
+            wr_s16(s_dmem, tdest,
+                   (int)(((unsigned int)(d[lcount - 1u] + 0x8000) & 0xffffu) >> 6));
+            tdest = (tdest + 2u) & 0xfffu;
+        }
+        /* color scale table + pack (suv: lane >> 7); the table is
+         * consumed four records per block (the two luv/ldv pairs),
+         * scale bytes at block + (i % 4) * 4, alpha at that + 3, and
+         * the block pointer advances by the DMEM 0x944 stride byte
+         * after every fourth record */
+        {
+            unsigned int arec = (atab + (i & 3u) * 4u) & 0xfffu;
+            for (k = 0; k < 3; k++)
+            {
+                int32_t sc = (int32_t)s_dmem[((arec + (unsigned int)k) & 0xfffu) ^ BO8] << 7;
+                int32_t p = (int32_t)(((int64_t)cacc[k] * (int64_t)sc * 2 + 0x8000) >> 16);
+                if (p < 0)      p = 0;
+                if (p > 32767)  p = 32767;
+                s_dmem[((cdest + (unsigned int)k) & 0xfffu) ^ BO8]
+                    = (unsigned char)((p >> 7) & 0xff);
+            }
+            s_dmem[((cdest + 3u) & 0xfffu) ^ BO8]
+                = s_dmem[((arec + 3u) & 0xfffu) ^ BO8];
+            cdest = (cdest + 4u) & 0xfffu;
+            if ((i & 3u) == 3u)
+                atab = (atab + stride) & 0xfffu;
+        }
     }
-}
-
-static long zb_isqrt(long v)
-{
-    long r = 0, b = 1l << 30;
-    while (b > v) b >>= 2;
-    while (b)
-    {
-        if (v >= r + b) { v -= r + b; r = (r >> 1) + b; }
-        else r >>= 1;
-        b >>= 2;
-    }
-    return r;
+    (void)li;
 }
 
 static void zb_transformlights(unsigned int w0, unsigned int w1)
 {
-    /* rotate the two lookat vectors by the model matrix and
-     * renormalise to the s8 domain. The shipped lists carry
-     * w1 == 0x1630: no positional lights, lookat pair at the struct's
-     * +16 offsets with a 24-byte stride. */
+    /* Rotate (w1 >> 12) + 1 light-struct direction vectors by the model
+     * matrix at w0 & 0xfff and renormalise (rsp_zsort_light_xfrm; exact
+     * IMEM 0x570 chain).  Each slot's SPV-packed result lands at its
+     * raw-direction offset + 8, with the first word duplicated in the
+     * following word, and the raw w1 is stored at DMEM 0x948 from the
+     * jal delay slot. */
     unsigned int mbase = w0 & 0xfffu;
+    unsigned int count = (w1 >> 12) + 1u;
     unsigned int addr = w1 & 0xfffu;
-    int numlights = 1 - (int)((w1 >> 12) & 0xfu);
-    int li, k, j;
+    unsigned int li;
+    int j, i;
 
-    if (numlights < 0) numlights = 0;
-    s_dmem[0x944u ^ BO8] = (unsigned char)numlights;
-    wr32(s_dmem, 0x948u, addr);
-    addr = (addr + (unsigned int)(numlights * 24)) & 0xfffu;
+    wr32(s_dmem, 0x948u, w1);
+    if (count > 8u)
+        count = 8u;
 
-    for (li = 0; li < 2; li++)
+    for (li = 0; li < count; li++)
     {
-        long v[3], len2 = 0, len, recip;
-        for (k = 0; k < 3; k++)
-        {
-            /* n' = M * n over the 16.16 model matrix, s8 input;
-             * keep 16.16*s8 >> 16 precision for the rotate */
-            int64_t acc = 0;
-            for (j = 0; j < 3; j++)
+        uint16_t mi[3][4], mf[3][4];
+        int32_t dir[3];
+        unsigned char outb[4];
+
+        for (i = 0; i < 3; i++)
+            for (j = 0; j < 4; j++)
             {
-                int nj = rd_s8(s_dmem, (addr + 16u + (unsigned int)j) & 0xfffu);
-                int32_t m = (int32_t)(((uint32_t)ZBU16(zb_mi(mbase, j, k)) << 16)
-                                      | (uint32_t)ZBU16(zb_mf(mbase, j, k)));
-                acc += (int64_t)m * (int64_t)nj;
+                mi[i][j] = ZBU16(zb_mi(mbase, i, j));
+                mf[i][j] = ZBU16(zb_mf(mbase, i, j));
             }
-            v[k] = (long)(acc >> 16);
-        }
-        for (k = 0; k < 3; k++)
-            len2 += v[k] * v[k];
-        len = zb_isqrt(len2);
-        if (len == 0)
-            len = 1;
-        for (k = 0; k < 3; k++)
+        for (i = 0; i < 3; i++)
+            dir[i] = rd_s8(s_dmem, (addr + 16u + (unsigned int)i) & 0xfffu);
+
+        rsp_zsort_light_xfrm(mi, mf, dir, outb);
+
+        for (j = 0; j < 4; j++)
         {
-            recip = (v[k] * 127l) / len;
-            if (recip > 127) recip = 127;
-            if (recip < -128) recip = -128;
-            zb_lookat[li][k] = (signed char)recip;
-            /* write the transformed vector back to the struct so the
-             * game's readbacks see the microcode's staging */
-            s_dmem[((addr + 16u + (unsigned int)k) & 0xfffu) ^ BO8]
-                = (unsigned char)(signed char)recip;
+            s_dmem[((addr + 24u + (unsigned int)j) & 0xfffu) ^ BO8] = outb[j];
+            s_dmem[((addr + 28u + (unsigned int)j) & 0xfffu) ^ BO8] = outb[j];
         }
         addr = (addr + 24u) & 0xfffu;
     }
