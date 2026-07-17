@@ -97,6 +97,46 @@ void gsp_detect_ucode_params(GSPState *st, const unsigned char *rdram,
                              unsigned int ud, unsigned int ut)
 {
     int ut_is_task_start = gsp_params_at_task_start;
+    unsigned int ud_task;
+    /* Star Wars Episode I Racer ships a LucasArts-customised F3DEX2 whose
+     * data segment banner still reads "RSP Gfx ucode F3DEX.NoN   fifo 2.08"
+     * (a GBI 1 name on a GBI 2 command set). The build drops the far-plane
+     * outcode: the game's projection places all world geometry a fraction
+     * beyond z == w, so the stock +z screen code trivially rejected every
+     * world triangle and only the HUD survived. Key on the exact oddity --
+     * an "F3DEX" stem NOT followed by '2' together with the GBI 2 "fifo"
+     * token, a pairing no stock build produces. */
+    st->clip_no_far = 0;
+    if (rdram != 0 && ud != 0)
+    {
+        static const char pre[] = "RSP Gfx ucode F3DEX";
+        unsigned int plen = sizeof(pre) - 1u;
+        unsigned int hi = ud + 0x1000u;
+        unsigned int b;
+        if (hi > rdram_size)
+            hi = rdram_size;
+        for (b = ud; b + plen + 24u <= hi; b++)
+        {
+            unsigned int k;
+            for (k = 0; k < plen; k++)
+                if (rdram[(b + k) ^ 3] != (unsigned char)pre[k])
+                    break;
+            if (k != plen)
+                continue;
+            if (rdram[(b + plen) ^ 3] != (unsigned char)'2')
+            {
+                unsigned int j, lim = b + plen + 24u;
+                for (j = b + plen; j + 4u <= lim; j++)
+                    if (rdram[(j + 0u) ^ 3] == 'f' && rdram[(j + 1u) ^ 3] == 'i' &&
+                        rdram[(j + 2u) ^ 3] == 'f' && rdram[(j + 3u) ^ 3] == 'o')
+                    {
+                        st->clip_no_far = 1;
+                        break;
+                    }
+            }
+            break;
+        }
+    }
     /* The data address at a mid-list G_LOAD_UCODE comes from the staged
      * G_RDPHALF_1 word, which display lists also use for branch targets;
      * validate that it really points at an F3DEX2-family data segment
@@ -107,9 +147,9 @@ void gsp_detect_ucode_params(GSPState *st, const unsigned char *rdram,
      * is the OSTask's own field; a pure S2DEX2 segment (no 3D constants,
      * so no v31 row -- Worms Armageddon's terrain tasks) must still get
      * its seed. Keep the unvalidated address for that read only. */
-    unsigned int ud_task = (ut_is_task_start
-                            && ud != 0
-                            && ud + 0xd0 <= rdram_size) ? ud : 0;
+    ud_task = (ut_is_task_start
+               && ud != 0
+               && ud + 0xd0 <= rdram_size) ? ud : 0;
     if (ud != 0 && ud + 0x1c0 <= rdram_size)
     {
         if (!(rdram[(ud + 0x1b0) ^ 3] == 0xffu

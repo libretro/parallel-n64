@@ -1057,6 +1057,26 @@ void f3dex2_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
                 if (addr_in_range(vp, 16u))     /* 8 s16: vscale + vtrans */
                     gsp_set_viewport(gsp, r, vp);
             }
+            else if (index == 0x0e)
+            {
+                /* G_MV_MATRIX: gSPForceMatrix's MOVEMEM half. The CPU has
+                 * already concatenated modelview and projection and hands the
+                 * microcode the finished combined matrix; the DMA lands the
+                 * 64-byte packed matrix straight in the mvp slot, bypassing
+                 * the on-RSP multiply. Star Wars Ep1 Racer forces a
+                 * CPU-computed MVP before every world batch -- recombining
+                 * the stacks instead put every batch behind a stale
+                 * modelview. The paired MW_FORCEMTX moveword only rewrites
+                 * the mvpValid flag, which loading the matrix here already
+                 * implies. */
+                unsigned int ma = seg_addr(w1);
+                if (addr_in_range(ma, 64u))
+                {
+                    unsigned int ch;
+                    for (ch = 0u; ch < 64u; ch += 16u)
+                        gsp_force_matrix_chunk(gsp, r, ma + ch, ch);
+                }
+            }
             else if (index == G_MV_LIGHT)
             {
                 /* G_MOVEMEM/G_MV_LIGHT loads one light. The destination slot is

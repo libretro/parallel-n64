@@ -140,6 +140,15 @@ typedef struct GSPState
      * (F3DZEX2: compare s16 clip-w integer) for opcode 0x04. */
     int branch_z_mode;
     unsigned int   tex_scale_s, tex_scale_t; /* raw S0.16 from G_TEXTURE */
+    int            clip_no_far;   /* Star Wars Ep1 Racer's custom F3DEX2
+                                    * build ("RSP Gfx ucode F3DEX.NoN fifo
+                                    * 2.08" -- GBI 2 commands behind a GBI 1
+                                    * banner) computes no far-plane (+z)
+                                    * outcode: its projection parks the whole
+                                    * scene fractionally beyond z == w and
+                                    * relies on the RDP's z clamp. Stock
+                                    * builds keep the far code (validated
+                                    * bit-exact against cxd4 flag words). */
     int            mvp_trans_last; /* vertex MAC order: 0 = F3DEX2's
                                     * trans,x,y,z; 1 = Turbo3D's x,y,z,trans
                                     * (changes which term the final vmadn's

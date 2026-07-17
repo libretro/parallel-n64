@@ -1512,6 +1512,8 @@ static void gsp_clip_vertex_flags(const GSPState *st, GSPVertex *vt)
         if (le) fl |= 1u << (20 + ax);
         if (ge) fl |= 1u << (28 + ax);
     }
+    if (st->clip_no_far)
+        fl &= ~((1u << 14) | (1u << 30));
     vt->clip = (int)fl;
 }
 
