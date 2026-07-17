@@ -269,6 +269,30 @@ static void zb_rdpcmd(unsigned int w1)
         addr += 8u;
         if (zb_dispatch_ucode_rdp(op, c0, c1))
             continue;
+        if (op >= 0xc8u && op <= 0xcfu)
+        {
+            /* raw RDP triangle built by the CPU: forward the full
+             * command (8..44 words). The LLE game path renders this
+             * way (CPU-computed coefficients in the chains); a
+             * two-word forward would misparse the coefficients as
+             * commands. */
+            static const unsigned char tri_words[8] =
+                { 8, 12, 24, 28, 24, 28, 40, 44 };
+            unsigned int clen = tri_words[op & 7u];
+            int32_t buf[44];
+            unsigned int q;
+            buf[0] = (int32_t)c0;
+            buf[1] = (int32_t)c1;
+            if (!addr_ok(addr, (clen - 2u) * 4u))
+                return;
+            for (q = 2; q < clen; q++)
+            {
+                buf[q] = (int32_t)rd32(s_rdram, addr);
+                addr += 4u;
+            }
+            rdp_fifo_append(s_fifo, buf, (int)clen);
+            continue;
+        }
         if (op == 0xe4u || op == 0xe5u)
         {
             /* rectangle pair + the s/t and dsdx/dtdy halves from the two
@@ -389,9 +413,84 @@ static void zb_draw_object(unsigned int addr, unsigned int type)
         v[i].flat2d = 0;
     }
 
-    zb_emit_tri(&v[0], &v[1], &v[2]);
-    if (vnum == 4u)
-        zb_emit_tri(&v[1], &v[3], &v[2]);   /* strip order */
+    /* The CPU hands the microcode unclipped screen-space objects whose
+     * far vertices run to the s13.2 extremes; the F3DEX2 edge writer's
+     * fixed point (y*0x4000 anchor products, slope reciprocals) assumes
+     * the microcode's own post-clip domain and saturates on such input,
+     * emitting commands with ym/yh pinned at 0x8001 whose slopes sweep
+     * thousands of on-screen pixels (observed 9.4k px per triangle,
+     * 2.7x total triangle fill). BOSS's own triangle setup tolerates
+     * the wide domain; ours must not see it. Clip the polygon to a
+     * guard band around the frame in screen space before emission --
+     * attributes interpolate linearly in screen space, which is the
+     * plane equation the RDP evaluates, so this is render-equivalent
+     * inside the scissor. TXQUAD vertices arrive in strip order; the
+     * polygon ring is 0,1,3,2 and the fan diagonal matches the strip's
+     * shared edge. */
+    {
+        static const int gmin = -(64 << 2);
+        static const int gmax_x = (704 << 2);
+        static const int gmax_y = (544 << 2);
+        RspTriVtx poly[10], tmp[10];
+        unsigned int pn, tn, k2;
+        int pass;
+        poly[0] = v[0];
+        poly[1] = v[1];
+        if (vnum == 4u)
+        {
+            poly[2] = v[3];
+            poly[3] = v[2];
+        }
+        else
+            poly[2] = v[2];
+        pn = vnum;
+        for (pass = 0; pass < 4 && pn >= 3u; pass++)
+        {
+            int lim  = (pass == 0 || pass == 2) ? gmin
+                     : (pass == 1) ? gmax_y : gmax_x;
+            int usey = (pass < 2);
+            tn = 0;
+            for (k2 = 0; k2 < pn; k2++)
+            {
+                const RspTriVtx *a = &poly[k2];
+                const RspTriVtx *b = &poly[(k2 + 1u) % pn];
+                int ca = usey ? a->y : a->x;
+                int cb = usey ? b->y : b->x;
+                int ina = (pass == 0 || pass == 2) ? (ca >= lim) : (ca <= lim);
+                int inb = (pass == 0 || pass == 2) ? (cb >= lim) : (cb <= lim);
+                if (ina)
+                    tmp[tn++] = *a;
+                if (ina != inb)
+                {
+                    RspTriVtx c;
+                    long num = (long)(lim - ca);
+                    long den = (long)(cb - ca);
+                    long t2 = den ? ((num << 16) / den) : 0;
+                    c.x = (int16_t)(a->x + (int)(((long)(b->x - a->x) * t2) >> 16));
+                    c.y = (int16_t)(a->y + (int)(((long)(b->y - a->y) * t2) >> 16));
+                    if (usey) c.y = (int16_t)lim; else c.x = (int16_t)lim;
+                    c.z = 0;
+                    c.r = a->r + (int32_t)(((long)(b->r - a->r) * t2) >> 16);
+                    c.g = a->g + (int32_t)(((long)(b->g - a->g) * t2) >> 16);
+                    c.b = a->b + (int32_t)(((long)(b->b - a->b) * t2) >> 16);
+                    c.a = a->a + (int32_t)(((long)(b->a - a->a) * t2) >> 16);
+                    c.s = a->s + (int32_t)(((long)(b->s - a->s) * t2) >> 16);
+                    c.t = a->t + (int32_t)(((long)(b->t - a->t) * t2) >> 16);
+                    c.invw = a->invw
+                           + (int32_t)(((long)(b->invw - a->invw) * t2) >> 16);
+                    c.pw = zb_calc_invw(c.invw);
+                    c.flat2d = 0;
+                    if (tn < 10u)
+                        tmp[tn++] = c;
+                }
+            }
+            for (k2 = 0; k2 < tn && k2 < 10u; k2++)
+                poly[k2] = tmp[k2];
+            pn = (tn <= 10u) ? tn : 10u;
+        }
+        for (k2 = 1; k2 + 1u < pn; k2++)
+            zb_emit_tri(&poly[0], &poly[k2], &poly[k2 + 1u]);
+    }
 }
 
 static unsigned int zb_load_object(unsigned int zheader)
