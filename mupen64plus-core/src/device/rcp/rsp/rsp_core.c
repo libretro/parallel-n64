@@ -405,6 +405,21 @@ void rsp_interrupt_event(void* opaque)
 {
     struct rsp_core* sp = (struct rsp_core*)opaque;
 
+    if (sp->rsp_task_locked)
+    {
+        /* An incomplete (streaming) task is still in flight. The real
+         * RSP keeps executing on its own; the HLE equivalent only runs
+         * when dispatched, and a CPU that has finished feeding the
+         * stream just sleeps on the task-done interrupt without ever
+         * writing SP_STATUS again -- so without a self-sustaining
+         * pump the task would never be serviced again and the system
+         * would deadlock. Re-dispatch it from here: each incomplete
+         * return schedules another SP_INT, so the task keeps getting
+         * time slices until it completes for real. */
+        do_SP_Task(sp);
+        return;
+    }
+
     if (!sp->rsp_task_locked)
     {
         sp->regs[SP_STATUS_REG] |=
