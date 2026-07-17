@@ -92,8 +92,21 @@ extern "C"
 			return cycles;
 		else if (*RSP::cpu.get_state().cp0.irq & 1)
 			RSP::rsp.CheckInterrupts();
-		else if (*RSP::rsp.SP_STATUS_REG & SP_STATUS_HALT)
-			return cycles;
+		/* Do NOT early-return here on SP_STATUS_HALT.  A task that stops
+		 * without executing BREAK (an F3DEX-style yield, or an internal
+		 * MFC0 timeout/semaphore guard in cp0.cpp) leaves SP_STATUS_HALT
+		 * set purely as a signal to exit the run loop above -- it is a
+		 * transient, not a real halt.  cxd4's module.c never returns on it;
+		 * it always falls through to clear the bit (see below), and this
+		 * wrapper is meant to mirror cxd4 ("From CXD4").  Returning early
+		 * leaves HALT set, which makes do_SP_Task() in the core skip the
+		 * "(HALT|BROKE)==0" branch that raises MI_INTR_SP.  With no SP
+		 * interrupt the game's CPU never learns the task yielded, so it
+		 * never resumes the RSP and the machine deadlocks after the first
+		 * yielding task.  This is exactly what stalled Gauntlet Legends,
+		 * World Driver Championship and Stunt Racer 64 under paraLLEl while
+		 * they booted fine under cxd4 (verified: identical framebuffers
+		 * once this bit is cleared). */
 		else if (*RSP::rsp.SP_SEMAPHORE_REG != 0) // Semaphore lock fixes.
 		{
 		}
