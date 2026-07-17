@@ -260,6 +260,89 @@ static void rs_poke_color(GSPState *gsp, int slot, unsigned int listoff)
  * register; the sign and zero tests run on that clamped 16-bit value.
  * A zero cross always rejects; a negative cross rejects when geometry
  * bit 0x2000 is set. Returns nonzero when the triangle must be dropped. */
+/* The terrain cell painter sort (overlay 0x1c, live IMEM 0x1f0c):
+ * doubly-linked insertion keyed on rsp_tri_key_rs, with the cursor
+ * persisting across insertions -- each insertion starts from the last
+ * inserted node and walks whichever direction the strict slt compare
+ * (optionally inverted by command byte 2 bit 0) sends it. Equal keys
+ * therefore keep insertion order. */
+static void rs_sort_insert(const int32_t *key, int *nxt, int *prv,
+                           int *head, int *cur, int idx, int t0)
+{
+    int32_t nk = key[idx];
+    int gp = *cur;
+    int a0, c;
+    if (*head < 0)
+    {
+        nxt[idx] = -1;
+        prv[idx] = -1;
+        *head = idx;
+        *cur = idx;
+        return;
+    }
+    if (key[gp] < nk)
+    {
+        /* walk toward the head (live 0x1f64) */
+        for (;;)
+        {
+            a0 = prv[gp];
+            if (a0 < 0)
+            {
+                nxt[idx] = gp;
+                prv[idx] = -1;
+                prv[gp] = idx;
+                *head = idx;
+                *cur = idx;
+                return;
+            }
+            c = (key[a0] < nk) ? 1 : 0;
+            c ^= t0;
+            gp = a0;
+            if (!c)
+                break;
+        }
+        /* insert after the stop node (live 0x1f80) */
+        a0 = nxt[gp];
+        prv[idx] = gp;
+        nxt[gp] = idx;
+        nxt[idx] = a0;
+        if (a0 >= 0)
+            prv[a0] = idx;
+        *cur = idx;
+    }
+    else
+    {
+        /* walk toward the tail (live 0x1f20) */
+        for (;;)
+        {
+            a0 = nxt[gp];
+            if (a0 < 0)
+            {
+                prv[idx] = gp;
+                nxt[gp] = idx;
+                nxt[idx] = -1;
+                *cur = idx;
+                return;
+            }
+            c = (key[a0] < nk) ? 1 : 0;
+            c ^= t0;
+            gp = a0;
+            if (c)
+                break;
+        }
+        /* insert before the stop node (live 0x1f3c) */
+        a0 = prv[gp];
+        nxt[idx] = gp;
+        prv[idx] = a0;
+        prv[gp] = idx;
+        if (a0 >= 0)
+            nxt[a0] = idx;
+        else
+            *head = idx;
+        *cur = idx;
+    }
+}
+
 static int rs_cull(const GSPState *gsp, int i0, int i1, int i2)
 {
     int32_t ax, ay, bx, by, cx, cy;
@@ -524,7 +607,7 @@ void rs_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int dl_addr)
                  *
                  * The decoder samples heights as s8 << 4 with a column
                  * stride of (byte3 << 1) bytes and a row stride of
-                 *(byte3 << byte1) bytes; colours are 4-byte entries on a
+                 * (byte1 << byte3) bytes; colours are 4-byte entries on a
                  * k0-scaled row walk, averaged between grid points when
                  * the sample lands on an upsampled (masked) position.
                  * The grid dimension is ((byte1 - 1) >> byte3) + 1.
@@ -549,7 +632,7 @@ void rs_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int dl_addr)
                 unsigned int stp = (rs_read_u8(pc + 30u) << 8) | rs_read_u8(pc + 31u);
                 int n = (b1 >= 1u) ? (int)(((b1 - 1u) >> b3) + 1u) : 1;
                 int t0 = (int)(b3 << 1);
-                int t1 = (int)(b3 << b1);
+                int t1 = (int)(b1 << b3);
                 unsigned int t6h = (b2 & 0xf0u) >> 4;
                 int hgt[8][8];
                 unsigned int col[8][8];
@@ -562,7 +645,7 @@ void rs_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int dl_addr)
                                                  : (0x100u << (unsigned int)(-t6s));
                     unsigned int k1m = (t6s > 0)
                         ? ((~(0xffffu << t6s)) & 0xffffu) : 0u;
-                    unsigned int k0 = (((t6h >> (b1 - 1u)) + 1u) << 2);
+                    unsigned int k0 = ((b1 - 1u) >> t6h) + 1u;
                     unsigned int t9 = 0u, a3o = 0u;
                     for (zi = 0; zi < n; zi++)
                     {
@@ -576,14 +659,16 @@ void rs_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int dl_addr)
                             if ((vsel | hsel) == 0u)
                             {
                                 col[zi][xi] = rs_read_u32(srcB + o0
-                                    + (vsel ? 4u : 0u) + (hsel ? k0 : 0u));
+                                    + (vsel ? 4u : 0u)
+                                    + (hsel ? (k0 << 2) : 0u));
                             }
                             else
                             {
                                 /* upsampled position: average of the two
                                  * bracketing grid entries */
                                 unsigned int o1 = o0
-                                    + 2u * ((vsel ? 4u : 0u) + (hsel ? k0 : 0u));
+                                    + 2u * ((vsel ? 4u : 0u)
+                                            + (hsel ? (k0 << 2) : 0u));
                                 unsigned int c0 = rs_read_u32(srcB + o0);
                                 unsigned int c1 = rs_read_u32(srcB + o1);
                                 unsigned int k, r = 0u;
@@ -651,17 +736,17 @@ void rs_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int dl_addr)
                                 unsigned int ca, cb, k, r = 0u;
                                 if (pass == 0)
                                 {
-                                    ha = hgt[j - 1][fixed];
-                                    hb2 = hgt[j + 1][fixed];
-                                    ca = col[j - 1][fixed];
-                                    cb = col[j + 1][fixed];
-                                }
-                                else
-                                {
                                     ha = hgt[fixed][j - 1];
                                     hb2 = hgt[fixed][j + 1];
                                     ca = col[fixed][j - 1];
                                     cb = col[fixed][j + 1];
+                                }
+                                else
+                                {
+                                    ha = hgt[j - 1][fixed];
+                                    hb2 = hgt[j + 1][fixed];
+                                    ca = col[j - 1][fixed];
+                                    cb = col[j + 1][fixed];
                                 }
                                 sum = (ha + hb2) & 0xffff;
                                 sum = (int32_t)(((int32_t)(int16_t)sum
@@ -674,13 +759,13 @@ void rs_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int dl_addr)
                                 }
                                 if (pass == 0)
                                 {
-                                    hgt[j][fixed] = (int)sum;
-                                    col[j][fixed] = r;
+                                    hgt[fixed][j] = (int)sum;
+                                    col[fixed][j] = r;
                                 }
                                 else
                                 {
-                                    hgt[fixed][j] = (int)sum;
-                                    col[fixed][j] = r;
+                                    hgt[j][fixed] = (int)sum;
+                                    col[j][fixed] = r;
                                 }
                             }
                         }
@@ -720,17 +805,17 @@ void rs_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int dl_addr)
                                 }
                                 if (pass == 0)
                                 {
-                                    ha = hgt[ja][fixed]; hb2 = hgt[jb][fixed];
-                                    hc = hgt[j][fixed];
-                                    ca = col[ja][fixed]; cb = col[jb][fixed];
-                                    cc = col[j][fixed];
-                                }
-                                else
-                                {
                                     ha = hgt[fixed][ja]; hb2 = hgt[fixed][jb];
                                     hc = hgt[fixed][j];
                                     ca = col[fixed][ja]; cb = col[fixed][jb];
                                     cc = col[fixed][j];
+                                }
+                                else
+                                {
+                                    ha = hgt[ja][fixed]; hb2 = hgt[jb][fixed];
+                                    hc = hgt[j][fixed];
+                                    ca = col[ja][fixed]; cb = col[jb][fixed];
+                                    cc = col[j][fixed];
                                 }
                                 hr = rsp_geomorph_blend_rs(
                                     (int32_t)(int16_t)ha,
@@ -747,15 +832,62 @@ void rs_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int dl_addr)
                                 }
                                 if (pass == 0)
                                 {
-                                    hgt[j][fixed] = (int)(hr & 0xffff);
-                                    col[j][fixed] = rr;
-                                }
-                                else
-                                {
                                     hgt[fixed][j] = (int)(hr & 0xffff);
                                     col[fixed][j] = rr;
                                 }
+                                else
+                                {
+                                    hgt[j][fixed] = (int)(hr & 0xffff);
+                                    col[j][fixed] = rr;
+                                }
                             }
+                        }
+                    }
+                }
+                /* Interior morph (overlay 0x10 first half, factor at
+                 * +20): every interior entry with an odd row or column
+                 * is blended toward the midpoint of its two coarse
+                 * neighbours -- vertical for odd rows, horizontal for
+                 * odd columns, diagonal for both -- by
+                 * mids(sum * (f >> 1) + cur * (0x10000 - f)),
+                 * in place in row-major order. */
+                {
+                    int32_t f20 = (int32_t)((rs_read_u8(pc + 20u) << 8)
+                                            | rs_read_u8(pc + 21u));
+                    if (f20 != 0 && n >= 3)
+                    {
+                        int32_t g2 = (int32_t)((0x10000u
+                            - (unsigned int)(f20 & 0xffff)) & 0xffffu);
+                        int32_t f2 = (int32_t)(((unsigned int)f20 & 0xffffu)
+                                               >> 1);
+                        int r2, c2;
+                        for (r2 = 1; r2 < n - 1; r2++)
+                        for (c2 = 1; c2 < n - 1; c2++)
+                        {
+                            int ro = r2 & 1, co = c2 & 1;
+                            int32_t ha, hb2, hres;
+                            unsigned int ca, cb, cc, rr2 = 0u;
+                            unsigned int k2;
+                            if (!(ro | co))
+                                continue;
+                            ha = (int32_t)(int16_t)hgt[r2 - ro][c2 - co];
+                            hb2 = (int32_t)(int16_t)hgt[r2 + ro][c2 + co];
+                            hres = rsp_interior_blend_rs(ha, hb2,
+                                (int32_t)(int16_t)hgt[r2][c2], f2, g2);
+                            hgt[r2][c2] = (int)(hres & 0xffff);
+                            ca = col[r2 - ro][c2 - co];
+                            cb = col[r2 + ro][c2 + co];
+                            cc = col[r2][c2];
+                            for (k2 = 0u; k2 < 4u; k2++)
+                            {
+                                int32_t x0 = (int32_t)((ca >> (k2 * 8u)) & 0xffu);
+                                int32_t x1 = (int32_t)((cb >> (k2 * 8u)) & 0xffu);
+                                int32_t x2 = (int32_t)((cc >> (k2 * 8u)) & 0xffu);
+                                int32_t rv = rsp_interior_blend_rs(
+                                    x0, x1, x2, f2, g2);
+                                rr2 |= ((unsigned int)rv & 0xffu) << (k2 * 8u);
+                            }
+                            col[r2][c2] = rr2;
                         }
                     }
                 }
@@ -799,32 +931,100 @@ void rs_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int dl_addr)
                                 (int)(int16_t)((unsigned int)xi * stp),
                                 (int)(int16_t)((unsigned int)zi * stp));
                         }
-                    /* quads between adjacent grid columns/rows */
+                    /* Painter-sorted cell emission (overlays 0x1c and
+                     * 0x20): every cell contributes two triangles,
+                     * (base, base+n, base+n+1) and (base, base+n+1,
+                     * base+1) over the column-major records, keyed by
+                     * the mids one-third sum of the corner records'
+                     * screen z high halfwords and placed into a
+                     * doubly-linked list by the cursor-persistent
+                     * insertion. Borders whose mode byte differs from
+                     * the patch level insert additional stitch
+                     * triangles over the microcode's hardcoded record
+                     * triples (rows through overlay 0x1c, then columns
+                     * through 0x20), and the list is drawn head to
+                     * tail. */
                     {
                         int32_t cmd[GSP_TRI_CMD_WORDS];
                         int nw;
+                        int ta[72], tb[72], tc[72];
+                        int32_t tkey[72];
+                        int lnxt[72], lprv[72];
+                        int lhead = -1, lcur = -1, cnt2 = 0;
+                        int tdir = (int)(b2 & 1u);
+                        int st, node;
+                        static const int stitch3[4][3] = {
+                            { 0, 6, 3 }, { 2, 5, 8 },
+                            { 0, 1, 2 }, { 6, 8, 7 }
+                        };
+                        static const int stitch5[4][2][3] = {
+                            { {  0, 10,  5 }, { 10, 20, 15 } },
+                            { {  4,  9, 14 }, { 14, 19, 24 } },
+                            { {  0,  1,  2 }, {  2,  3,  4 } },
+                            { { 20, 22, 21 }, { 22, 24, 23 } }
+                        };
+                        static const unsigned int stb[4] = { 6u, 7u, 4u, 5u };
                         for (xi = 0; xi < n - 1; xi++)
                             for (zi = 0; zi < n - 1; zi++)
                             {
-                                int q0 = xi * n + zi;
-                                int q1 = (xi + 1) * n + zi;
-                                int q2 = xi * n + zi + 1;
-                                int q3 = (xi + 1) * n + zi + 1;
-                                if (!rs_cull(gsp, q2, q0, q3))
-                                {
-                                    nw = gsp_triangle(gsp, cmd, q2, q0, q3,
-                                                      s_rs_tex_on, rs_zbuffered());
-                                    if (nw > 0)
-                                        rdp_fifo_append(fifo, cmd, nw);
-                                }
-                                if (!rs_cull(gsp, q0, q1, q3))
-                                {
-                                    nw = gsp_triangle(gsp, cmd, q0, q1, q3,
-                                                      s_rs_tex_on, rs_zbuffered());
-                                    if (nw > 0)
-                                        rdp_fifo_append(fifo, cmd, nw);
-                                }
+                                int base = xi * n + zi;
+                                int va = base, vb = base + n;
+                                int vc = base + n + 1, vd = base + 1;
+                                ta[cnt2] = va; tb[cnt2] = vb; tc[cnt2] = vc;
+                                tkey[cnt2] = rsp_tri_key_rs(
+                                    gsp->vtx[va].scr_z >> 16,
+                                    gsp->vtx[vb].scr_z >> 16,
+                                    gsp->vtx[vc].scr_z >> 16);
+                                rs_sort_insert(tkey, lnxt, lprv,
+                                               &lhead, &lcur, cnt2, tdir);
+                                cnt2++;
+                                ta[cnt2] = va; tb[cnt2] = vc; tc[cnt2] = vd;
+                                tkey[cnt2] = rsp_tri_key_rs(
+                                    gsp->vtx[va].scr_z >> 16,
+                                    gsp->vtx[vc].scr_z >> 16,
+                                    gsp->vtx[vd].scr_z >> 16);
+                                rs_sort_insert(tkey, lnxt, lprv,
+                                               &lhead, &lcur, cnt2, tdir);
+                                cnt2++;
                             }
+                        /* border stitch triangles, in overlay order:
+                         * mode bytes +6, +7 (0x1c), then +4, +5
+                         * (0x20) */
+                        for (st = 0; st < 4; st++)
+                        {
+                            unsigned int mb2 = rs_read_u8(pc + stb[st]);
+                            int nt, ss;
+                            if (mb2 == b3)
+                                continue;
+                            nt = (b3 != 0u) ? 1 : 2;
+                            for (ss = 0; ss < nt; ss++)
+                            {
+                                const int *tr = (b3 != 0u)
+                                    ? stitch3[st] : stitch5[st][ss];
+                                if (tr[0] >= n * n || tr[1] >= n * n
+                                    || tr[2] >= n * n)
+                                    continue;
+                                ta[cnt2] = tr[0]; tb[cnt2] = tr[1];
+                                tc[cnt2] = tr[2];
+                                tkey[cnt2] = rsp_tri_key_rs(
+                                    gsp->vtx[tr[0]].scr_z >> 16,
+                                    gsp->vtx[tr[1]].scr_z >> 16,
+                                    gsp->vtx[tr[2]].scr_z >> 16);
+                                rs_sort_insert(tkey, lnxt, lprv,
+                                               &lhead, &lcur, cnt2, tdir);
+                                cnt2++;
+                            }
+                        }
+                        for (node = lhead; node >= 0; node = lnxt[node])
+                        {
+                            if (rs_cull(gsp, ta[node], tb[node], tc[node]))
+                                continue;
+                            nw = gsp_triangle(gsp, cmd, ta[node], tb[node],
+                                              tc[node], s_rs_tex_on,
+                                              rs_zbuffered());
+                            if (nw > 0)
+                                rdp_fifo_append(fifo, cmd, nw);
+                        }
                     }
                 }
                 size = 40u;

@@ -1757,6 +1757,32 @@ int32_t rsp_geomorph_blend_rs(int32_t a, int32_t b, int32_t cur,
     return acc_clamp_mid(acc);
 }
 
+/* The terrain cell sort key (overlay 0x1c, live IMEM 0x1e00..0x1e08):
+ * mids of the three corner records' screen z halfwords each scaled by
+ * the one-third constant 0x5555 (DMEM 0x74) through one vmudm/vmadm
+ * accumulator chain. */
+int32_t rsp_tri_key_rs(int32_t z1, int32_t z2, int32_t z3)
+{
+    RspAcc acc;
+    acc = p_udm(z1, 0x5555);
+    acc += p_udm(z2, 0x5555);
+    acc += p_udm(z3, 0x5555);
+    return acc_clamp_mid(acc);
+}
+
+/* The terrain interior morph blend (overlay 0x10, live IMEM
+ * 0x1e78..0x1e80): vaddc of the two neighbours, then
+ * mids(sum * (f >> 1) + cur * (0x10000 - f)). */
+int32_t rsp_interior_blend_rs(int32_t a, int32_t b, int32_t cur,
+                              int32_t f2, int32_t g)
+{
+    RspAcc acc;
+    int32_t sum = (int32_t)(int16_t)((a + b) & 0xffff);
+    acc = p_udm(sum, f2);
+    acc += p_udm(cur, g);
+    return acc_clamp_mid(acc);
+}
+
 int32_t rsp_clip_blend16_rs(int32_t a, int32_t b, int32_t wc, int32_t wt)
 {
     RspAcc acc;

@@ -47,6 +47,9 @@ void rsp_clip_weights_rs(const int32_t in4[4], const int32_t out4[4],
                          const int16_t P[4], int32_t *wc, int32_t *wt);
 int32_t rsp_clip_blend32_rs(int32_t a, int32_t b, int32_t wc, int32_t wt);
 int32_t rsp_clip_blend16_rs(int32_t a, int32_t b, int32_t wc, int32_t wt);
+int32_t rsp_tri_key_rs(int32_t z1, int32_t z2, int32_t z3);
+int32_t rsp_interior_blend_rs(int32_t a, int32_t b, int32_t cur,
+                              int32_t f2, int32_t g);
 int32_t rsp_geomorph_blend_rs(int32_t a, int32_t b, int32_t cur,
                               int32_t wa, int32_t wb,
                               int32_t f, int32_t g);
