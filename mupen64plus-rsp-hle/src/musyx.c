@@ -916,13 +916,24 @@ static void mix_fir4(int16_t *y, const int16_t *x, int16_t hgain, const int16_t 
     unsigned int i;
     int32_t h[4];
 
-    h[0] = (hgain * hcoeffs[0]) >> 15;
-    h[1] = (hgain * hcoeffs[1]) >> 15;
-    h[2] = (hgain * hcoeffs[2]) >> 15;
-    h[3] = (hgain * hcoeffs[3]) >> 15;
+    /* The microcode derives the filter taps with a single VMULF
+     * (hcoeffs * hgain), so each tap is rounded and clamped, not
+     * truncated (v2 task text, insn 0xe54). */
+    h[0] = clamp_s16((hgain * hcoeffs[0] + 0x4000) >> 15);
+    h[1] = clamp_s16((hgain * hcoeffs[1] + 0x4000) >> 15);
+    h[2] = clamp_s16((hgain * hcoeffs[2] + 0x4000) >> 15);
+    h[3] = clamp_s16((hgain * hcoeffs[3] + 0x4000) >> 15);
 
     for (i = 0; i < SUBFRAME_SIZE; ++i) {
-        int32_t v = (h[0] * x[i] + h[1] * x[i + 1] + h[2] * x[i + 2] + h[3] * x[i + 3]) >> 15;
+        /* Same VMULF-per-tap + saturating VADD reduction tree as the
+         * resample FIR (v2 task text, insns 0xe88..0xefc), with the
+         * destination folded into the gather accumulator by VMADH and
+         * saturated once on readout. */
+        int32_t t0 = clamp_s16((h[0] * x[i]     + 0x4000) >> 15);
+        int32_t t1 = clamp_s16((h[1] * x[i + 1] + 0x4000) >> 15);
+        int32_t t2 = clamp_s16((h[2] * x[i + 2] + 0x4000) >> 15);
+        int32_t t3 = clamp_s16((h[3] * x[i + 3] + 0x4000) >> 15);
+        int32_t v = clamp_s16(t0 + t1) + clamp_s16(t2 + t3);
         y[i] = clamp_s16(y[i] + v);
     }
 }
