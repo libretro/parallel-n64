@@ -207,6 +207,7 @@ static void rs_sync_geom(GSPState *gsp)
     if (!(s_rs_geom & 0x1000u))
         m |= 0x00000001u;              /* G_ZBUFFER (0x1000 disables z) */
     gsp_set_geometry_mode(gsp, m);
+    gsp->rs_fan_cull = (s_rs_geom & 0x2000u) ? 2 : 0;
 }
 
 /* Load n 8-byte packed vertices from addr into slots 0..n-1 through the
@@ -354,6 +355,13 @@ static int rs_cull(const GSPState *gsp, int i0, int i1, int i2)
     const GSPVertex *c = &gsp->vtx[i2];
     if (!a->rsp_ok || !b->rsp_ok || !c->rsp_ok)
         return 0;                      /* behind-eye path: leave to clip */
+    if (((unsigned int)(a->rs_outcode | b->rs_outcode | c->rs_outcode)
+         & 0x4343u) != 0u)
+        return 0;                      /* clip trigger: the resident writer
+                                          jumps to the clip overlay before
+                                          its backface/degenerate test, and
+                                          the fan sub-triangles cull
+                                          individually */
     ax = a->scr_x >> 14; ay = a->scr_y >> 14;
     bx = b->scr_x >> 14; by = b->scr_y >> 14;
     cx = c->scr_x >> 14; cy = c->scr_y >> 14;

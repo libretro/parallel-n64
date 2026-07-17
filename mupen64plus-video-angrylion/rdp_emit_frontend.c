@@ -2142,15 +2142,37 @@ int gsp_triangle(GSPState *s, int32_t *cmd, int i0, int i1, int i2,
              * cleared activeClipPlanes) still applies: a guard-band
              * polygon's fan can contain sub-triangles entirely past one
              * screen plane, and the microcode drops those. */
-            if (s->rs_clip_model
-                ? (((unsigned int)tv[0].rs_outcode
-                    & (unsigned int)tv[1].rs_outcode
-                    & (unsigned int)tv[2].rs_outcode & 0x7070u) != 0u)
-                : (tv[0].clip & tv[1].clip & tv[2].clip
+            /* The Rogue Squadron clip overlay re-enters the resident
+             * triangle writer past its outcode trivial-reject, so fan
+             * sub-triangles are never AND-rejected -- intersection
+             * vertices lie exactly on their planes and carry the
+             * inclusive vch bits, which would otherwise reject whole
+             * sub-triangles along the clipped edge. */
+            if (!s->rs_clip_model
+                && (tv[0].clip & tv[1].clip & tv[2].clip
                 & (unsigned int)(s->clip_near_z
                                  ? ((GSP_CLIP_REJECT & ~GSP_CLIP_NW) | GSP_CLIP_NZ)
                                  : GSP_CLIP_REJECT)) != 0u)
                 continue;
+            if (s->rs_clip_model && s->rs_fan_cull)
+            {
+                /* The re-entered writer's winding cull, on the clipped
+                 * sub-triangle's own screen positions (the same
+                 * saturated cross as the pre-clip test). */
+                int32_t fax = tv[0].scr_x >> 14, fay = tv[0].scr_y >> 14;
+                int32_t fbx = tv[1].scr_x >> 14, fby = tv[1].scr_y >> 14;
+                int32_t fd1x, fd1y, fd2x, fd2y, fcx, fcy;
+                int64_t facc;
+                fcx = tv[2].scr_x >> 14; fcy = tv[2].scr_y >> 14;
+#define RS_FSAT(v) ((v) > 32767 ? 32767 : ((v) < -32768 ? -32768 : (v)))
+                fd1x = RS_FSAT(fbx - fax); fd1y = RS_FSAT(fby - fay);
+                fd2x = RS_FSAT(fcx - fax); fd2y = RS_FSAT(fcy - fay);
+#undef RS_FSAT
+                facc = (int64_t)fd2x * fd1y - (int64_t)fd1x * fd2y;
+                if (facc == 0
+                    || (s->rs_fan_cull == 2 ? facc < 0 : facc > 0))
+                    continue;
+            }
             gsp_fold_st(s, tv);
             v0.cx = tv[0].cx; v0.cy = tv[0].cy; v0.cz = tv[0].cz; v0.cw = tv[0].cw;
             v0.r = tv[0].r; v0.g = tv[0].g; v0.b = tv[0].b; v0.a = tv[0].a;
@@ -2186,7 +2208,9 @@ int gsp_triangle(GSPState *s, int32_t *cmd, int i0, int i1, int i2,
                                      textured, z_buffered,
                                      (s->geometry_mode & 0x00000004u) ? 1 : 0,
                                      (s->geometry_mode & 0x00200000u) ? 1 : 0,
-                                     (int)((s->geometry_mode >> 9) & 3u),
+                                     s->rs_clip_model
+                                         ? 0
+                                         : (int)((s->geometry_mode >> 9) & 3u),
                                      s->tex_tile, s->tex_level, s->tex_w, s->tex_h);
             if (nc > 0)
                 total += nc;

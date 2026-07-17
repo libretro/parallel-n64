@@ -166,6 +166,11 @@ typedef struct GSPState
                                        new record's alpha from it) */
     int32_t rs_fog_oi, rs_fog_of;
     int32_t rs_fog_k;
+    int rs_fan_cull;    /* Rogue Squadron: winding cull mode for the clip
+                           fan sub-triangles (the pre-clip winding cull in
+                           rs_cull is skipped for clip-triggered
+                           triangles, so the fan applies it per
+                           sub-triangle like the re-entered writer) */
     int            tex_tile, tex_level, tex_w, tex_h;
     unsigned char  tile_mask_s[8], tile_mask_t[8];
 
