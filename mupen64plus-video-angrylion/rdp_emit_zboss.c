@@ -700,24 +700,108 @@ static void zb_mult_mpmtx(unsigned int w0, unsigned int w1)
     }
 }
 
+/* transformed lookat vectors, s8 components; written by
+ * TRANSFORMLIGHTS, consumed by LIGHTING's texgen. Semantic model of
+ * the microcode's light-struct staging (IMEM 0x570/0x444): the real
+ * handlers stage through the DMEM struct at the pointer in 0x948;
+ * these are not lane-exact transcriptions (the attract paths of both
+ * shipped titles run numLights == 0, lookat only). */
+static signed char zb_lookat[2][3];
+
 static void zb_lighting(unsigned int w0, unsigned int w1)
 {
-    /* texgen only: writes lookat-projected s/t shorts back to DMEM.
-     * The reference keeps lookat at fixed DMEM slots via
-     * TRANSFORMLIGHTS; WDC ships no positional lights (numLights 0,
-     * lookat only). */
+    /* texgen: s/t = (dot(lookat, normal) + 0.5) * 1024 in the s8
+     * normal domain */
     unsigned int num = 1u + ((w1 >> 24) & 0xffu);
     unsigned int nsrs = w0 & 0xfffu;
     unsigned int tdest = w1 & 0xfffu;
     unsigned int i;
+    int k;
     for (i = 0; i < num; i++)
     {
-        (void)rd_s8(s_dmem, nsrs);
-        nsrs += 3u;
-        /* no lookat state is populated by WDC's lists in the reference
-         * (TransformLights asserts numLights == 0); emit centered texgen */
-        wr_s16(s_dmem, tdest, 0x200); tdest += 2u;
-        wr_s16(s_dmem, tdest, 0x200); tdest += 2u;
+        int n[3];
+        long d0 = 0, d1 = 0;
+        for (k = 0; k < 3; k++)
+        {
+            n[k] = rd_s8(s_dmem, nsrs);
+            nsrs = (nsrs + 1u) & 0xfffu;
+        }
+        for (k = 0; k < 3; k++)
+        {
+            d0 += (long)zb_lookat[0][k] * (long)n[k];
+            d1 += (long)zb_lookat[1][k] * (long)n[k];
+        }
+        /* s8*s8 dot is q14; (x + 0.5) * 1024 with x in q15 */
+        wr_s16(s_dmem, tdest, (int)(((d0 << 1) + 16384) >> 5));
+        tdest = (tdest + 2u) & 0xfffu;
+        wr_s16(s_dmem, tdest, (int)(((d1 << 1) + 16384) >> 5));
+        tdest = (tdest + 2u) & 0xfffu;
+    }
+}
+
+static long zb_isqrt(long v)
+{
+    long r = 0, b = 1l << 30;
+    while (b > v) b >>= 2;
+    while (b)
+    {
+        if (v >= r + b) { v -= r + b; r = (r >> 1) + b; }
+        else r >>= 1;
+        b >>= 2;
+    }
+    return r;
+}
+
+static void zb_transformlights(unsigned int w0, unsigned int w1)
+{
+    /* rotate the two lookat vectors by the model matrix and
+     * renormalise to the s8 domain. The shipped lists carry
+     * w1 == 0x1630: no positional lights, lookat pair at the struct's
+     * +16 offsets with a 24-byte stride. */
+    unsigned int mbase = w0 & 0xfffu;
+    unsigned int addr = w1 & 0xfffu;
+    int numlights = 1 - (int)((w1 >> 12) & 0xfu);
+    int li, k, j;
+
+    if (numlights < 0) numlights = 0;
+    s_dmem[0x944u ^ BO8] = (unsigned char)numlights;
+    wr32(s_dmem, 0x948u, addr);
+    addr = (addr + (unsigned int)(numlights * 24)) & 0xfffu;
+
+    for (li = 0; li < 2; li++)
+    {
+        long v[3], len2 = 0, len, recip;
+        for (k = 0; k < 3; k++)
+        {
+            /* n' = M * n over the 16.16 model matrix, s8 input;
+             * keep 16.16*s8 >> 16 precision for the rotate */
+            int64_t acc = 0;
+            for (j = 0; j < 3; j++)
+            {
+                int nj = rd_s8(s_dmem, (addr + 16u + (unsigned int)j) & 0xfffu);
+                int32_t m = (int32_t)(((uint32_t)ZBU16(zb_mi(mbase, j, k)) << 16)
+                                      | (uint32_t)ZBU16(zb_mf(mbase, j, k)));
+                acc += (int64_t)m * (int64_t)nj;
+            }
+            v[k] = (long)(acc >> 16);
+        }
+        for (k = 0; k < 3; k++)
+            len2 += v[k] * v[k];
+        len = zb_isqrt(len2);
+        if (len == 0)
+            len = 1;
+        for (k = 0; k < 3; k++)
+        {
+            recip = (v[k] * 127l) / len;
+            if (recip > 127) recip = 127;
+            if (recip < -128) recip = -128;
+            zb_lookat[li][k] = (signed char)recip;
+            /* write the transformed vector back to the struct so the
+             * game's readbacks see the microcode's staging */
+            s_dmem[((addr + 16u + (unsigned int)k) & 0xfffu) ^ BO8]
+                = (unsigned char)(signed char)recip;
+        }
+        addr = (addr + 24u) & 0xfffu;
     }
 }
 
@@ -879,6 +963,11 @@ int zboss_run(unsigned char *rdram, unsigned int rdram_size,
         zb.pc[0] = rd32(dmem, 0xff0u) & 0x00ffffffu;
         zb.pc[1] = rd32(dmem, 0xff8u) & 0x00ffffffu;
         zb.pci = 0;
+        /* interpreter progress flags the microcode keeps in DMEM:
+         * 0x940 sub-list state (1 after the SIG0 grant, -1 when the
+         * sub list finished first), 0x941 main-list-done (-1) */
+        dmem[0x940u ^ BO8] = 0;
+        dmem[0x941u ^ BO8] = 0;
     }
     else
     {
@@ -887,7 +976,11 @@ int zboss_run(unsigned char *rdram, unsigned int rdram_size,
         /* the wait condition was satisfied by the CPU (rsp-hle only
          * resumes once it is) */
         if (zb.wait_kind == ZB_WAIT_SIG0)
+        {
             zb.pci = 1;
+            s_dmem = dmem;
+            dmem[0x940u ^ BO8] = 1;     /* SIG0 granted: sub list live */
+        }
         zb.wait_kind = ZB_WAIT_NONE;
     }
 
@@ -913,6 +1006,7 @@ int zboss_run(unsigned char *rdram, unsigned int rdram_size,
                 return ZBOSS_R_DONE;
             }
             zb.maindl_done = 1;
+            s_dmem[0x941u ^ BO8] = 0xff;    /* main list done */
             zb.wait_kind = ZB_WAIT_SIG0;
             return ZBOSS_R_WAIT_SIG0;
         case 0x1a:                              /* ENDSUBDL */
@@ -922,6 +1016,7 @@ int zboss_run(unsigned char *rdram, unsigned int rdram_size,
                 return ZBOSS_R_DONE;
             }
             zb.subdl_done = 1;
+            s_dmem[0x940u ^ BO8] = 0xff;    /* sub list finished first */
             zb.pci = 0;
             break;
         case 0x04:                              /* MOVEMEM */
@@ -953,8 +1048,7 @@ int zboss_run(unsigned char *rdram, unsigned int rdram_size,
             zb_lighting(w0, w1);
             break;
         case 0x18:                              /* TRANSFORMLIGHTS */
-            /* WDC ships lookat-only light state (reference: numLights
-             * == 0); the texgen consumer is stubbed in zb_lighting */
+            zb_transformlights(w0, w1);
             break;
         case 0x1c:                              /* AUDIO2 */
             zb_audio2(w0, w1);

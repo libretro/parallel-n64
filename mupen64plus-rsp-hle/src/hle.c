@@ -316,8 +316,15 @@ static void zboss_gfx_task(struct hle_t* hle)
     }
     l_zboss_running = 1;
     if (r == 1) {
+        /* WAITSIGNAL (microcode IMEM 0xfbc): the status write is
+         * 0x12810 -- set SIG3, clear SIG1|SIG2, and raise the SP
+         * interrupt so the CPU services the handshake without
+         * polling */
         l_zboss_wait = 1;
+        *hle->sp_status &= ~SP_STATUS_SIG1;
         *hle->sp_status |= SP_STATUS_SIG3;
+        *hle->mi_intr |= MI_INTR_SP;
+        HleCheckInterrupts(hle->user_defined);
     }
     else
         l_zboss_wait = 2;
