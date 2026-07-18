@@ -958,6 +958,19 @@ void rsp_set_affine_tex(int on)
     s_affine_tex = on ? 1 : 0;
 }
 
+static int s_persp_skip = 0;
+
+/* Naboo's geometry-mode bit 12: `andi v0, r21, 0x1000` / `bne v0, zero,
+ * 0x474` at text 0x3fc jumps clear over the whole perspective block, so
+ * the writer stores the texel shorts as loaded AND -- because the three
+ * `vmov v9[2]/v9[6]/v22[2], v31[e8]` lane clears sit inside the skipped
+ * range -- leaves the W lane holding the previous triangle's register
+ * contents, slopes and all. */
+void rsp_set_persp_skip(int on)
+{
+    s_persp_skip = on ? 1 : 0;
+}
+
 static int s_vtx_z_quant = 0;
 
 /* T3DUX also stores vertex screen Z at reduced precision: every z base in
@@ -2571,7 +2584,7 @@ int rsp_tri_write(int32_t *ew,
     }
 
     /* ---- texture S/T/W attributes ---- */
-    if (textured && (s_affine_tex
+    if (textured && (s_affine_tex || s_persp_skip
                      || (vh->flat2d && vm->flat2d && vl->flat2d)))
     {
         /* Fighting Force 64's 2D overlay path: the microcode's simplified

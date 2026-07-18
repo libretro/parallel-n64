@@ -1405,6 +1405,11 @@ static int nb_emit_tri(RdpFifo *fifo, unsigned int ra, unsigned int rb,
     int tilebyte;
 
     nb_vtx(ra, &va); nb_vtx(rb, &vb); nb_vtx(rc, &vc);
+    /* text 0x3fc-0x400: `andi v0, r21, 0x1000` / `bne v0, zero, 0x474`
+     * jumps clear over the whole 1/w block (0x404-0x470), so with the
+     * geometry word's bit 12 set the writer stores the texel shorts as
+     * loaded, with no per-vertex perspective normalizer. */
+    rsp_set_persp_skip((nb.geom & 0x1000u) ? 1 : 0);
     {
         static int t = -1;
         if (t < 0) t = getenv("NB_EMIT_TRACE") != NULL;
