@@ -2172,7 +2172,7 @@ int naboo_run_dl(RdpFifo *fifo, unsigned int dl_addr, int resume)
         case 0x00:                              /* NOOP */
             nb_dl_step(8u);
             continue;
-        case 0xbe: {                            /* per-triangle S/T
+        case 0x15: {                            /* per-triangle S/T
              * (live IMEM 0xb08; the static task image has different
              * bytes here -- overlay 0x0f's mode-2 DMA covers
              * 0xaa0-0xf8e, so this handler only exists at runtime).
@@ -2307,26 +2307,17 @@ int naboo_run_dl(RdpFifo *fifo, unsigned int dl_addr, int resume)
             continue;
         case 0x0b:                              /* quad: two
              * triangles (A,B,C) and (A,C,D) (entry 1:b44) */
-        case 0xb4:                              /* the two dispatch
-             * tables overlap: the index is (w0 >> 23) & 0x1fe but the
-             * base is +0xb6 for class 0 and -0x9c for classes 1-3, so
-             * 0x0b and 0xb4 both resolve to table slot 0xcc and run
-             * the same handler. */
         case 0x16:                              /* single triangle
              * (A,B,C) (entry 1:b24) */
-        case 0xbf:                              /* 0x16 and 0xbf
-             * collide on slot 0xe2 the same way. */
             {
                 int tr = nb_tri(fifo, w0, w1,
-                                op == 0x0bu || op == 0xb4u);
+                                op == 0x0bu);
                 if (tr < 0) {
                     nb.active = 0;
                     return NABOO_R_FALLBACK;
                 }
             }
             continue;
-        case 0xb5:                              /* 0x0c and 0xb5
-             * collide on table slot 0xce. */
         case 0x0c:                              /* end-of-chunk marker:
              * the dispatch entry (1:068) is the chunk-refill routine
              * itself -- it reloads the ring window from the chain
@@ -2349,22 +2340,16 @@ int naboo_run_dl(RdpFifo *fifo, unsigned int dl_addr, int resume)
                 nb.dl = nb.chunk + nb.off;
             }
             continue;
-        case 0xb6:                              /* 0x0d and 0xb6
-             * collide on table slot 0xd0. */
         case 0x0d:                              /* GeometryMode &= w1
              * (text 0xa70) */
             nb.geom &= w1;
             nb_dl_step(8u);
             continue;
-        case 0xb7:                              /* 0x0e and 0xb7
-             * collide on table slot 0xd2. */
         case 0x0e:                              /* GeometryMode |= w1
              * (text 0xa68) */
             nb.geom |= w1;
             nb_dl_step(8u);
             continue;
-        case 0xb9:                              /* 0x10 and 0xb9
-             * collide on table slot 0xd6. */
         case 0x10:                              /* conditional state
              * insert (text 0x7d0): compare w0 bit 23 against the
              * struct word +0xc; on mismatch skip, else perform the
@@ -2380,9 +2365,6 @@ int naboo_run_dl(RdpFifo *fifo, unsigned int dl_addr, int resume)
                 continue;
             }
             /* fall through */
-        case 0xba:                              /* the two dispatch
-             * tables overlap: 0x11 and 0xba both resolve to table
-             * slot 0xd8 and run the same handler. */
         case 0x11:                              /* state-word bitfield
              * insert (text 0x7e0): word = 0x120 + ((w0>>16)&7);
              * clear a field of width (w0&31)+1 at shift (w0>>8)&31,
@@ -2423,8 +2405,6 @@ int naboo_run_dl(RdpFifo *fifo, unsigned int dl_addr, int resume)
             }
             nb_dl_step(8u);
             continue;
-        case 0xbb:                              /* 0x12 and 0xbb
-             * collide on table slot 0xda. */
         case 0x12:                              /* state toggle (text
              * 0xa80): store w0 at struct +0x38; flip geometry-mode
              * bit 1 when (geom ^ w0) & 2 */
@@ -2432,8 +2412,6 @@ int naboo_run_dl(RdpFifo *fifo, unsigned int dl_addr, int resume)
             nb.geom ^= (nb.geom ^ w0) & 2u;
             nb_dl_step(8u);
             continue;
-        case 0xbc:                              /* 0x13 and 0xbc
-             * collide on slot 0xdc the same way. */
         case 0x13:                              /* MoveWord (GBI 0xbc):
              * DMEM[w0 & 0xffc] = w1 (text 0xa78) */
             {
