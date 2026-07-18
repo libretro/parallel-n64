@@ -2172,6 +2172,33 @@ int naboo_run_dl(RdpFifo *fifo, unsigned int dl_addr, int resume)
         case 0x00:                              /* NOOP */
             nb_dl_step(8u);
             continue;
+        case 0xbc:                              /* poke (text 0xa78):
+             * two instructions -- `sw r20, 0(r19)` in the delay slot
+             * of the jump back to the fetch loop.  w0 is a DMEM
+             * address, w1 the word to store. */
+            nb_dmem_w32(w0 & 0xfffu, w1);
+            nb_dl_step(8u);
+            continue;
+        case 0xba: {                            /* masked MoveWord
+             * (text 0x7e0).  The two shifts build a contiguous field
+             * mask: `srav at, at, r19` takes 0x80000000 down by
+             * (w0 & 31), which smears (w0 & 31) + 1 set bits from the
+             * top, and `srlv at, at, v0` then slides that field down
+             * by ((w0 >> 8) & 31).  The field is cleared and w1 OR'd
+             * in.  Note both shift counts come from the SHIFT-AMOUNT
+             * operand, which is the rs field -- reading them the
+             * other way round produces a plausible-looking mask that
+             * is wrong on every command. */
+            unsigned int sel  = 0x120u + ((w0 >> 16) & 7u);
+            unsigned int at   = (unsigned int)((int)0x80000000
+                                               >> (int)(w0 & 31u));
+            unsigned int cur;
+            at >>= ((w0 >> 8) & 31u);
+            cur = nb_dmem_r32(sel);
+            nb_dmem_w32(sel, (cur & ~at) | w1);
+            nb_dl_step(8u);
+            continue;
+        }
         case 0x05:                              /* load+run overlay */
             if ((w1 & 0x3fu) == 0x09u) {
                 /* vertex morphing.  The command is 0x18 long: the
