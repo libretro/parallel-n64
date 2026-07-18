@@ -19,6 +19,8 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
+#include <stdio.h>
+#include <stdlib.h>
 #include "rsp_core.h"
 
 #include <string.h>
@@ -330,6 +332,17 @@ void do_SP_Task(struct rsp_core* sp)
 
     if (sp->mem[0xfc0/4] == 1)
     {
+        {
+            static unsigned g1;
+            const char *gc = getenv("HARNESS_GFX_CAP");
+            if (gc && g1 == (unsigned)strtoul(gc, NULL, 0)) {
+                const char *fn = getenv("HARNESS_GFX_CAP_FILE");
+                FILE *f = fopen(fn ? fn : "/tmp/gfx_rdram.bin", "wb");
+                if (f) { fwrite(sp->ri->rdram->dram, 1, 0x800000, f);
+                         fwrite(sp->mem, 1, 0x2000, f); fclose(f); }
+            }
+            g1++;
+        }
         unprotect_framebuffers(&sp->dp->fb);
 
         //gfx.processDList();

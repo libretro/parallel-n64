@@ -1071,6 +1071,48 @@ int angrylion_rs_dlist(int resume)
     return r;
 }
 
+#include "rdp_emit_naboo.h"
+
+int angrylion_naboo_dlist(int resume)
+{
+    unsigned char *rdram;
+    unsigned char *dmem;
+    unsigned int   rdram_size;
+    unsigned int   fifo_base;
+    unsigned int   dl_addr;
+    int r;
+
+    if (s_backend == 0 || s_backend->get_rdram == 0
+        || s_backend->get_dmem == 0 || s_backend->get_rdram_size == 0)
+        return -1;
+
+    rdram      = s_backend->get_rdram();
+    dmem       = s_backend->get_dmem();
+    rdram_size = s_backend->get_rdram_size();
+    if (rdram == 0 || dmem == 0 || rdram_size == 0)
+        return -1;
+
+    fifo_base = rdram_size - HLE_FIFO_CAP;
+    rdp_fifo_init(&s_fifo, s_fifo_storage, fifo_base, HLE_FIFO_CAP);
+    s_fifo.flush = fifo_flush_to_rdp;
+
+    dl_addr = read_dmem_u32(dmem, 0xff0u) & 0x00ffffffu;
+    if (dl_addr == 0 || dl_addr >= rdram_size)
+        return -1;
+
+    if (!resume)
+        rdp_fifo_fullsync_reset();
+
+    naboo_set_rdram(rdram);
+    naboo_set_rdram_size(rdram_size);
+    r = naboo_run_dl(&s_fifo, dl_addr, resume);
+
+    /* submit everything generated in this slice */
+    fifo_flush_to_rdp(&s_fifo);
+
+    return r;
+}
+
 int angrylion_streaming_dlist(int resume)
 {
     unsigned char *rdram;

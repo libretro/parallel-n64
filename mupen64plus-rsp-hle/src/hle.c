@@ -21,6 +21,8 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
+#include <stdio.h>
+#include <stdlib.h>
 #include <boolean.h>
 #include <stdint.h>
 
@@ -341,6 +343,48 @@ static void zboss_gfx_task(struct hle_t* hle)
  * the CPU stops appending. The walker suspends at the live tail and
  * the task is re-dispatched through the incomplete-return protocol
  * until the end survives a slice. */
+int angrylion_naboo_dlist(int resume);
+static int l_naboo_gfx_running;
+
+/* Naboo-era Factor 5 streaming server (Battle for Naboo, Indiana
+ * Jones): same libultra yield protocol as Rogue Squadron; the walker
+ * is incremental and returns negative on commands it does not yet
+ * implement, in which case the slice reruns on the LLE fallback. */
+static void naboo_gfx_task(struct hle_t* hle)
+{
+    int resume;
+    int r;
+
+    resume = l_naboo_gfx_running
+          || ((*dmem_u32(hle, TASK_FLAGS) & 1) != 0);
+
+    if (!resume)
+        *hle->sp_status &= ~(SP_STATUS_SIG1 | SP_STATUS_TASKDONE);
+
+    r = angrylion_naboo_dlist(resume);
+
+    if (r < 0) {
+        l_naboo_gfx_running = 0;
+        forward_gfx_task_to_lle(hle);
+        return;
+    }
+
+    if (r == 0) {
+        l_naboo_gfx_running = 0;
+        rsp_break(hle, SP_STATUS_TASKDONE);
+        return;
+    }
+
+    l_naboo_gfx_running = 1;
+    *hle->dpc_current = *hle->dpc_end;
+    *hle->dpc_status &= ~0x600u;
+
+    if (*hle->sp_status & SP_STATUS_SIG0) {
+        rsp_break(hle, SP_STATUS_SIG1);
+        return;
+    }
+}
+
 static void rs_gfx_task(struct hle_t* hle)
 {
     int resume;
@@ -562,6 +606,18 @@ static ucode_func_t try_normal_task_detection(struct hle_t* hle)
     unsigned int sum =
         sum_bytes((void*)dram_u32(hle, *dmem_u32(hle, TASK_UCODE)), min(*dmem_u32(hle, TASK_UCODE_SIZE), 0xf80) >> 1);
 
+    {
+        const char *tp = getenv("HLE_UCODE_DUMP");
+        if (tp) {
+            FILE *tf = fopen(tp, "wb");
+            if (tf) {
+                fwrite((void*)dram_u32(hle, *dmem_u32(hle, TASK_UCODE)), 1, 0x1000, tf);
+                fwrite((void*)dram_u32(hle, *dmem_u32(hle, TASK_UCODE_DATA)), 1, 0x800, tf);
+                fclose(tf);
+            }
+        }
+    }
+
     switch (sum) {
     /* StoreVe12: found in Zelda Ocarina of Time [misleading task->type == 4] */
     case 0x278:
@@ -598,6 +654,15 @@ static ucode_func_t try_normal_task_detection(struct hle_t* hle)
         return &rs_gfx_task;
     case 0x1f7bb:
         return &zboss_gfx_task;
+    /* Factor 5's later engine revisions (Battle for Naboo, Indiana
+     * Jones and the Infernal Machine): the same persistent streaming
+     * server family as Rogue Squadron. The naboo walker services what
+     * it implements and reruns anything else on the LLE fallback --
+     * never the one-shot dlist forward, whose forced TASKDONE kills
+     * the server after its first slice and deadlocks the game. */
+    case 0x25c16:       /* Battle for Naboo */
+    case 0x25c53:       /* Indiana Jones and the Infernal Machine */
+        return &naboo_gfx_task;
     }
 
     /* Resident Evil 2 */
