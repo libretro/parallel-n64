@@ -62,6 +62,9 @@ static struct {
     unsigned int dl;            /* command cursor (RDRAM) */
     unsigned int active;
     unsigned int sp;            /* DL call depth (slot 0x06 / 0x0f) */
+    unsigned int geom;          /* geometry-mode word (s5): slot 0x0e
+                                   ORs w1 in, slot 0x0d ANDs w1
+                                   (text 0xa68/0xa70) */
     unsigned int stack[NB_DL_STACK];
     /* modeled microcode DMEM state: MoveWord (slot 0x13) writes land
      * here; render commands consume them (state words at 0x120-0x13c,
@@ -141,6 +144,16 @@ int naboo_run_dl(RdpFifo *fifo, unsigned int dl_addr, int resume)
             }
             nb.active = 0;
             return NABOO_R_DONE;
+        case 0x0d:                              /* GeometryMode &= w1
+             * (text 0xa70) */
+            nb.geom &= w1;
+            nb.dl += 8;
+            continue;
+        case 0x0e:                              /* GeometryMode |= w1
+             * (text 0xa68) */
+            nb.geom |= w1;
+            nb.dl += 8;
+            continue;
         case 0x13:                              /* MoveWord (GBI 0xbc):
              * DMEM[w0 & 0xffc] = w1 (text 0xa78) */
             nb_dmem_w32(w0, w1);
