@@ -496,7 +496,14 @@ static void nb_vtx(unsigned int rec, RspTriVtx *v)
     v->t = nb_dmem_s16(rec + 0x16u);
     v->invw = (int32_t)((nb_dmem_s16(rec + 0x20u) << 16)
                         | (nb_dmem_s16(rec + 0x22u) & 0xffff));
-    v->pw = 0;
+    /* perspNorm'd w = the projection's divide input (clip w at record
+     * +6/+14 scaled by the persp halfword), which the shared writer's
+     * texture normalizer divides through */
+    {
+        int64_t w32 = ((int64_t)nb_dmem_s16(rec + 6u) << 16)
+                    | (nb_dmem_s16(rec + 0xeu) & 0xffff);
+        v->pw = (int32_t)((w32 * (nb_dmem_s16(0x14eu) & 0xffff)) >> 16);
+    }
     v->flat2d = 0;
 }
 
@@ -551,7 +558,7 @@ static int nb_emit_tri(RdpFifo *fifo, unsigned int ra, unsigned int rb,
                        (int)nb.geom & 1,
                        (int)(nb.geom >> 2) & 1, 1,
                        tilebyte & 7, (tilebyte >> 3) & 7,
-                       0x1000, 0x20, (int32_t)0xfff8, 0);
+                       0x1000, 0x20, (int32_t)0xfff8, 0x1cc);
     if (nw > 0)
         rdp_fifo_append(fifo, ew, nw);
     return 0;
