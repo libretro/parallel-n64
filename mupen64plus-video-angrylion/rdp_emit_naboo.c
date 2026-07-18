@@ -132,11 +132,34 @@ void naboo_set_emit(int on)
     nb_emit_on = off ? 0 : on;
 }
 
+static unsigned int nb_dmem_r32(unsigned int off);
+static void nb_dmem_w32(unsigned int off, unsigned int v);
+static void nb_dmem_w16(unsigned int off, unsigned int v);
+static void nb_dmem_w8(unsigned int off, unsigned int v);
+
 void naboo_seed_dmem(const unsigned char *dmem)
 {
     unsigned int i;
     for (i = 0; i < 0x1000u; i++)
         nb.dmem[i ^ 3u] = dmem[i ^ 3u];
+
+    /* Boot init (overlay at IMEM 0xd60, also the op 0x80 handler),
+     * skipped when the task flags carry the resume bit: reset the
+     * overlay id and DL depth bytes, install the default attribute
+     * routine, zero the live-tail scratch, seed the SET_OTHER_MODES
+     * state pair, and clear the geometry mode. */
+    if (!(nb_dmem_r32(0xfc4u) & 1u)) {
+        nb_dmem_w8(0x143u, 0u);
+        nb_dmem_w8(0x142u, 0u);
+        nb_dmem_w32(0x16cu, nb_dmem_r32(0xff8u));
+        nb_dmem_w32(0x5a0u, nb_dmem_r32(0xff0u));
+        nb_dmem_w16(0x152u, 0x17b4u);
+        nb_dmem_w32(0x120u, 0xef000000u);
+        nb_dmem_w32(0x124u, 0u);
+        nb_dmem_w32(0x5b0u, 0u);
+        nb_dmem_w32(0x5b4u, 0u);
+        nb.geom = 0;
+    }
 }
 
 static void nb_watch(unsigned int a, unsigned int n, unsigned int v);
@@ -620,6 +643,11 @@ int naboo_run_dl(RdpFifo *fifo, unsigned int dl_addr, int resume)
     for (;;) {
         unsigned int w0 = nb_read_u32(nb.dl);
         unsigned int w1 = nb_read_u32(nb.dl + 4);
+        {
+            static int t = -1;
+            if (t < 0) t = getenv("NB_CMD_TRACE") != NULL;
+            if (t) fprintf(stderr, "[NC] @%06x %08x %08x\n", nb.dl, w0, w1);
+        }
         unsigned int cls = w0 >> 30;
         unsigned int op  = (w0 >> 24) & 0xffu;
 
@@ -741,7 +769,7 @@ int naboo_run_dl(RdpFifo *fifo, unsigned int dl_addr, int resume)
              * insert (text 0x7d0): compare w0 bit 23 against the
              * struct word +0xc; on mismatch skip, else perform the
              * slot 0x11 insert */
-            if ((((w0 >> 23) & 1u) != (nb_dmem_r32(0x11cu) & 1u))) {
+            if (((w0 >> 23) & 1u) != nb_dmem_r32(0x11cu)) {
                 nb_dl_step(8u);
                 continue;
             }
@@ -766,13 +794,18 @@ int naboo_run_dl(RdpFifo *fifo, unsigned int dl_addr, int resume)
                 cur = (cur & ~msk) | w1;
                 nb_dmem_w32(0x120u + idx, cur);
             }
-            /* forward the refreshed SET_OTHER_MODES pair (text
-             * 0x80c-0x834; replace-at-tail folded into append: the
-             * rasterizer consumes the last-written state either way) */
+            /* forward the refreshed SET_OTHER_MODES pair, replacing
+             * the pair at the fifo tail when it is already an EF
+             * command (text 0x80c-0x834: consecutive mode inserts
+             * collapse into one RDP command) */
             if (nb_emit_on) {
                 int32_t words[2];
                 words[0] = (int32_t)nb_dmem_r32(0x120u);
                 words[1] = (int32_t)nb_dmem_r32(0x124u);
+                if (fifo->used >= 8u &&
+                    (*(const uint32_t *)(fifo->storage + fifo->used - 8u)
+                     >> 24) == 0xefu)
+                    fifo->used -= 8u;
                 rdp_fifo_append(fifo, words, 2);
             }
             nb_dl_step(8u);
