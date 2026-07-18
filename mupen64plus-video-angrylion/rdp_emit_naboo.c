@@ -135,8 +135,8 @@ static void nb_load(unsigned int dmem_off, unsigned int addr, unsigned int len)
     {
         static int t = -1;
         if (t < 0) t = getenv("NB_TRACE") != NULL;
-        if (t) fprintf(stderr, "[NBL] dmem=%03x dram=%06x len=%x\n",
-                       dmem_off & 0xfffu, addr & 0xffffffu, len);
+        if (t) fprintf(stderr, "[NBL] dmem=%03x dram=%06x len=%x dl=%06x\n",
+                       dmem_off & 0xfffu, addr & 0xffffffu, len, nb.dl);
     }
     for (i = 0; i < len; i++)
         nb.dmem[((dmem_off + i) & 0xfffu) ^ 3u] =
@@ -377,10 +377,22 @@ int naboo_run_dl(RdpFifo *fifo, unsigned int dl_addr, int resume)
             nb.dl = w1 & 0x00fffff8u;
             continue;
         case 0x0f:                              /* EndDL (GBI 0xb8):
-             * pop a pushed cursor, or finish at top level (text 0x778) */
+             * pop a pushed cursor, or finish at top level (text 0x778).
+             * At top level the server follows the live tail first: if
+             * the word at DMEM 0x58c is nonzero, the CPU has appended
+             * another list segment -- continue there and clear the
+             * link (text 0x79c-0x7cc). */
             if (nb.sp) {
                 nb.dl = nb.stack[--nb.sp];
                 continue;
+            }
+            {
+                unsigned int tail = nb_dmem_r32(0x58cu) & 0x00fffff8u;
+                if (tail != 0u) {
+                    nb_dmem_w32(0x58cu, 0u);
+                    nb.dl = tail;
+                    continue;
+                }
             }
             nb.active = 0;
             return NABOO_R_DONE;
@@ -420,7 +432,32 @@ int naboo_run_dl(RdpFifo *fifo, unsigned int dl_addr, int resume)
                 if (perm < 0)
                     perm = getenv("NB_PERMISSIVE") != NULL;
                 if (perm) {
-                    nb.dl += (op == 0x0bu) ? 16u : 8u;
+                    unsigned int step = 8u;
+                    if (op == 0x0bu) {
+                        /* triangle batching (text 0xb8c): countdown
+                         * byte at DMEM 0x58a, seeded from the first
+                         * tri's w0; while active, each tri decrements
+                         * it and consumes 16 bytes, or 32 when w0 bit
+                         * 9 is set.  INCOMPLETE: triangles also carry
+                         * inline per-vertex attribute payloads whose
+                         * length depends on the mode routine at DMEM
+                         * 0x152 (Rogue Squadron's inline S/T pattern),
+                         * so the permissive walk still desyncs on
+                         * attribute-bearing batches; exact stepping
+                         * lands with the emitter. */
+                        unsigned int cd = nb.dmem[0x58au ^ 3u];
+                        step = 16u;
+                        if (cd == 0u) {
+                            nb.dmem[0x58au ^ 3u] = (unsigned char)w0;
+                        } else {
+                            nb.dmem[0x58au ^ 3u] = (unsigned char)(cd - 1u);
+                            if (w0 & 0x200u)
+                                step = 32u;
+                        }
+                    } else if (op == 0x15u) {
+                        step = 16u;
+                    }
+                    nb.dl += step;
                     continue;
                 }
             }
