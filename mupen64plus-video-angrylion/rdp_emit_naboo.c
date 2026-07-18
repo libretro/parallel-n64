@@ -881,7 +881,7 @@ done:
 static void nb_ovl2a(unsigned int cmd, unsigned int out_st[4])
 {
     int mi[4][3], mf[4][3];
-    int bias[2], sc[2];
+    int bias[3], sc[2];
     int i, r, k;
 
     for (r = 0; r < 4; r++)
@@ -889,10 +889,10 @@ static void nb_ovl2a(unsigned int cmd, unsigned int out_st[4])
             mi[r][k] = nb_dmem_s16(0xe40u + (unsigned)r * 8u + (unsigned)k * 2u);
             mf[r][k] = nb_dmem_s16(0xe60u + (unsigned)r * 8u + (unsigned)k * 2u);
         }
-    for (k = 0; k < 2; k++) {
+    for (k = 0; k < 3; k++)
         bias[k] = nb_dmem_s16(0xf0u + (unsigned)k * 2u);
+    for (k = 0; k < 2; k++)
         sc[k]   = nb_dmem_s16(0xecu + (unsigned)k * 2u);
-    }
 
     for (i = 0; i < 4; i++) {
         unsigned int idx = nb_read_u32(cmd + 16u + (unsigned)i * 4u) & 0xffu;
@@ -903,67 +903,127 @@ static void nb_ovl2a(unsigned int cmd, unsigned int out_st[4])
         int32_t rsq, r_i, r_f;
         int st[2];
 
+        /* the ldv at overlay 0x050 loads EIGHT bytes at src+0 into
+         * elements 0-3, and the half-selectors e4/e5/e6 on the
+         * multiply chain therefore address elements 0/1/2 -- the
+         * normal is at src+0/+2/+4, not at the element 4-6 offsets
+         * the earlier end-state fit suggested. */
         for (k = 0; k < 3; k++)
-            n[k] = nb_dmem_s16(src + 8u + (unsigned)k * 2u);
+            n[k] = nb_dmem_s16(src + (unsigned)k * 2u);
 
         /* normal x matrix + row-4 translation (vmudn frac + vmadh int
          * accumulated; mid = int lane, low = frac lane) */
+        /* vmudn/vmadn take the FRACTION row UNSIGNED against the
+         * signed normal (cxd4 multiply.c: _mm_mulhi_epu16 on vs with
+         * the vt sign correction), while vmadh pairs the signed
+         * integer row one slice up; the row-4 translation rides the
+         * same pair against v30 element 1 (= 1). */
         for (k = 0; k < 3; k++) {
-            acc  = nb_p(mf[0][k], n[0]) + (nb_p(mi[0][k], n[0]) << 16);
-            acc += nb_p(mf[1][k], n[1]) + (nb_p(mi[1][k], n[1]) << 16);
-            acc += nb_p(mf[2][k], n[2]) + (nb_p(mi[2][k], n[2]) << 16);
-            acc += nb_p(mf[3][k], 1)    + (nb_p(mi[3][k], 1) << 16);
+            acc  = nb_p((int)((unsigned short)mf[0][k]), n[0])
+                 + (nb_p(mi[0][k], n[0]) << 16);
+            acc += nb_p((int)((unsigned short)mf[1][k]), n[1])
+                 + (nb_p(mi[1][k], n[1]) << 16);
+            acc += nb_p((int)((unsigned short)mf[2][k]), n[2])
+                 + (nb_p(mi[2][k], n[2]) << 16);
+            acc += nb_p((int)((unsigned short)mf[3][k]), 1)
+                 + (nb_p(mi[3][k], 1) << 16);
             ti[k] = nb_acc_mid(acc);
             tf[k] = (int)(acc & 0xffff);
         }
-        /* vsubc bias on the integer lanes 0-1 (u16 wrap) */
-        for (k = 0; k < 2; k++)
+        /* vsubc bias -- the ldv at overlay 0x02c loads FOUR halfwords
+         * into v12 and the vsubc in the jal's delay slot (0x078) is a
+         * plain per-lane subtract, so lane 2 is biased as well; the
+         * squared length below is taken AFTER this, which is why the
+         * two-lane reading pushed the magnitude (and hence the
+         * reciprocal square root's scale) badly off. */
+        for (k = 0; k < 3; k++)
             ti[k] = (int)(int16_t)((unsigned short)((unsigned)ti[k] - (unsigned)bias[k]));
 
         /* squared length: full 32x32 per lane, folded */
         {
-            int64_t sum_lo = 0, sum_mid = 0;
-            for (k = 0; k < 3; k++) {
-                acc  = nb_p(tf[k], tf[k]);                 /* vmudl */
-                acc += nb_p(ti[k], tf[k]) << 16;           /* vmadm */
-                acc += nb_p(tf[k], ti[k]) << 16;           /* vmadn */
-                acc += nb_p(ti[k], ti[k]) << 32;           /* vmadh */
-                /* fold with the vaddc/vadd pair semantics via a plain
-                 * 48-bit sum then split (the lanes stay in range for
-                 * unit-scale normals; exactness judged by the oracle) */
-                sum_lo  += (acc >> 16) & 0xffff;
-                sum_mid += (acc >> 32);
+            /* per-lane square: the vmudl/vmadm/vmadn/vmadh quartet at
+             * overlay 0x0ac-0x0b8 forms (x * x) >> 16 for the 32-bit
+             * lane value x = ti:tf, keeping the low half in v17 and
+             * the high half in v18.  The vaddc/vadd pairs then fold
+             * lanes 1 and 2 into lane 0 (element 3 = quarter, element
+             * 6 = half) as one 32-bit carry-propagating sum, lane 3
+             * having been cleared by the mtc2 pair. */
+            unsigned int lo[4]; int hi[4];
+            for (k = 0; k < 4; k++) {
+                if (k < 3) {
+                    int32_t x = (int32_t)(((uint32_t)ti[k] << 16)
+                                          | ((uint32_t)tf[k] & 0xffffu));
+                    /* VMUDL shifts the product down 16, so the
+                     * accumulator holds (x*x) >> 16; the vmadh at the
+                     * end of the quartet writes its destination
+                     * through the SIGNED MIDDLE CLAMP of acc[47:16],
+                     * which for these squared lengths pegs at 0x7fff
+                     * -- the reciprocal square root is genuinely
+                     * taken of the clamped value. */
+                    int64_t p = ((int64_t)x * x) >> 16;
+                    int64_t m = p >> 16;
+                    lo[k] = (unsigned int)(p & 0xffffu);
+                    hi[k] = (int)(m > 32767 ? 32767 :
+                                  (m < -32768 ? -32768 : m));
+                } else {
+                    lo[k] = 0u; hi[k] = 0;   /* mtc2 zero, v17/v18[6] */
+                }
             }
-            sum_mid += sum_lo >> 16;
-            sq_lo  = (int32_t)(sum_lo & 0xffff);
-            sq_mid = (int32_t)(sum_mid > 32767 ? 32767 :
-                               (sum_mid < -32768 ? -32768 : sum_mid));
+            /* vaddc (unsigned, carry out) + vadd (SIGNED SATURATING)
+             * pairs: element 3 folds lane 1 into lane 0, element 6
+             * folds lane 2 into lane 0.  The saturation is load-
+             * bearing -- these squared lengths routinely peg the high
+             * half at 0x7fff and the reciprocal square root is taken
+             * of the saturated value. */
+            {
+                unsigned int c;
+                int t2;
+                c = lo[0] + lo[1];
+                lo[0] = c & 0xffffu;
+                t2 = hi[0] + hi[1] + (int)(c >> 16);
+                hi[0] = t2 > 32767 ? 32767 : (t2 < -32768 ? -32768 : t2);
+                c = lo[2] + lo[3];
+                lo[2] = c & 0xffffu;
+                t2 = hi[2] + hi[3];
+                hi[2] = t2 > 32767 ? 32767 : (t2 < -32768 ? -32768 : t2);
+                c = lo[0] + lo[2];
+                lo[0] = c & 0xffffu;
+                t2 = hi[0] + hi[2] + (int)(c >> 16);
+                hi[0] = t2 > 32767 ? 32767 : (t2 < -32768 ? -32768 : t2);
+            }
+            sq_lo  = (int32_t)lo[0];
+            sq_mid = (int32_t)hi[0];
         }
         rsq = rsp_rsq32((int32_t)(((uint32_t)(sq_mid & 0xffff) << 16)
                                   | (uint32_t)(sq_lo & 0xffff)));
-        /* x the 0xab constant (vmudl/vmadm pair on the rsq int/frac) */
+        /* x the 0xab constant: vmudl SHIFTS ITS PRODUCT DOWN 16 and
+         * vmadm lands one slice up, so the pair forms
+         * (rsq * 0xab) >> 16 across acc_md:acc_lo. */
         {
-            int rsq_i = (rsq >> 16) & 0xffff, rsq_f = rsq & 0xffff;
-            acc  = nb_p(rsq_f, 0xab);
-            acc += nb_p(rsq_i, 0xab) << 16;
-            r_i = nb_acc_mid(acc);
-            r_f = (int32_t)(acc & 0xffff);
+            int64_t r32 = (((int64_t)rsq * 0xab) >> 16);
+            r_i = (int32_t)((r32 >> 16) & 0xffff);
+            r_f = (int32_t)(r32 & 0xffff);
         }
         /* normalized = transformed x scaled rsq (32x32) */
         for (k = 0; k < 2; k++) {
-            acc  = nb_p(tf[k], r_f);
-            acc += nb_p(ti[k], r_f) << 16;
-            acc += nb_p(tf[k], r_i) << 16;
-            acc += nb_p(ti[k], r_i) << 32;
-            /* vmudm scale x normalized: int-lane result */
-            {
-                int ni = nb_acc_mid(acc);
-                int nf = (int)((acc >> 16) & 0xffff);
-                int64_t a2 = nb_p(sc[k], nf) + (nb_p(sc[k], ni) << 16);
-                st[k] = nb_acc_mid(a2 << 0) ;
-                (void)nf;
-                st[k] = nb_acc_mid(a2);
-            }
+            /* normalized = (transformed * refined) >> 16, the same
+             * vmudl/vmadm/vmadn/vmadh quartet shape */
+            int32_t x = (int32_t)(((uint32_t)ti[k] << 16)
+                                  | ((uint32_t)tf[k] & 0xffffu));
+            int32_t r32 = (int32_t)(((uint32_t)r_i << 16)
+                                    | ((uint32_t)r_f & 0xffffu));
+            int64_t n32 = ((int64_t)x * r32) >> 16;
+            int nf = (int)(n32 & 0xffff);
+            int ni = (int)((n32 >> 16) & 0xffff);
+            /* scale: vmudm (>> 16) + vmadh one slice up, destination
+             * taken through the signed middle clamp */
+            /* vmudm lands its 32-bit product across acc_md:acc_lo and
+             * its DESTINATION is acc_md, so the fraction contributes
+             * (sc * nf) >> 16; vmadh then adds sc * ni into that same
+             * middle slice and its destination is the stored S/T. */
+            int64_t a2 = (((int64_t)sc[k] * (unsigned short)nf) >> 16)
+                       + (int64_t)sc[k] * (short)ni;
+            st[k] = (int)(a2 > 32767 ? 32767 : (a2 < -32768 ? -32768 : a2));
         }
         out_st[i] = ((unsigned int)(st[0] & 0xffff) << 16)
                   | ((unsigned int)st[1] & 0xffff);
