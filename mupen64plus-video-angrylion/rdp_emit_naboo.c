@@ -2199,6 +2199,42 @@ int naboo_run_dl(RdpFifo *fifo, unsigned int dl_addr, int resume)
             nb_dl_step(8u);
             continue;
         }
+        case 0xbe: {                            /* per-triangle S/T
+             * (live IMEM 0xb08; the static task image has different
+             * bytes here -- overlay 0x0f's mode-2 DMA covers
+             * 0xaa0-0xf8e, so this handler only exists at runtime).
+             *
+             * Four vertex records are resolved through the 0xd58
+             * pointer table that overlay 0x0f seeds, using indices
+             * read from RDRAM rather than from the command, and one
+             * packed S/T word is distributed across them: the full
+             * word to r15, its low halfword to r11, its high halfword
+             * to r12, and zero to r13. */
+            unsigned int a2  = 0x80000000u
+                             + (unsigned int)nb_dmem_s16(0xda2u)
+                             + (unsigned int)nb_dmem_s16(0xdb2u);
+            int bias = (int)(signed char)nb.dmem[0xda1u ^ 3u];
+            unsigned int idx[4], rec[4];
+            int k;
+            static const unsigned int ofs[4] = { 18u, 20u, 22u, 28u };
+            nb_dmem_w16(0xdb8u, w0 & 0xffffu);
+            /* These are RSP scalar loads, so despite the 0x80000000
+             * in the base they address DMEM with the index masked to
+             * 12 bits -- landing in the 0xc68-0xd57 block overlay
+             * 0x0f DMA'd in, not in RDRAM. */
+            for (k = 0; k < 4; k++) {
+                idx[k] = (unsigned int)
+                         (nb_dmem_s16((a2 + ofs[k]) & 0xfffu) + bias);
+                rec[k] = (unsigned int)nb_dmem_s16((0xd58u + idx[k])
+                                                   & 0xfffu) & 0xffffu;
+            }
+            nb_dmem_w32(rec[2] + 0x14u, 0u);
+            nb_dmem_w32(rec[3] + 0x14u, w1);
+            nb_dmem_w32(rec[0] + 0x14u, w1 & 0xffffu);
+            nb_dmem_w32(rec[1] + 0x14u, w1 & 0xffff0000u);
+            nb_dl_step(8u);
+            continue;
+        }
         case 0x05:                              /* load+run overlay */
             if ((w1 & 0x3fu) == 0x09u) {
                 /* vertex morphing.  The command is 0x18 long: the
