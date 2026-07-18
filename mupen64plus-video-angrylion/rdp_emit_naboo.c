@@ -135,6 +135,7 @@ void naboo_set_emit(int on)
 }
 
 static unsigned int nb_dmem_r32(unsigned int off);
+static void nb_ovl1b(unsigned int w1);
 static void nb_dmem_w32(unsigned int off, unsigned int v);
 static void nb_dmem_w16(unsigned int off, unsigned int v);
 static void nb_dmem_w8(unsigned int off, unsigned int v);
@@ -542,6 +543,12 @@ static void nb_op01(unsigned int w0, unsigned int w1)
                     nb_dmem_w32(0x480u + (unsigned)i2 * 4u, rgba);
                 }
             }
+            {
+                static int t = -1;
+                if (t < 0) t = getenv("NB_CP_TRACE") != NULL;
+                if (t) fprintf(stderr, "[CP] w0=%08x w1=%08x 58b=%02x neg=%d\n",
+                               w0, w1, nb.dmem[0x58bu ^ 3u], neg);
+            }
             if (neg || (nb.dmem[0x58bu ^ 3u] & 0x80u)) {
                 /* intensity scale into 0xd40; per-channel vmulf by the
                  * 8 bytes at 0x158, no overlay dispatch on this path
@@ -567,8 +574,15 @@ static void nb_op01(unsigned int w0, unsigned int w1)
                  * verified in isolation. */
                 static int skip = -1;
                 if (skip < 0) skip = getenv("NB_SKIP_COLOVL") != NULL;
-                if (!skip)
-                    nb.active = 2u;
+                if (!skip) {
+                    /* the selector is the subtype field's low bit
+                     * (text 0xc74: even -> overlay 0x1b, odd ->
+                     * overlay 0x21, still unimplemented) */
+                    if ((w0 >> 19) & 1u)
+                        nb.active = 2u;
+                    else
+                        nb_ovl1b(w1);
+                }
             }
         }
         break;
@@ -625,6 +639,233 @@ static void nb_vtx(unsigned int rec, RspTriVtx *v)
  * caller falls back), winding cull against the geometry-mode bit,
  * then the shared RSP-exact edge/attribute writer.  Returns -1 when
  * the clip overlay would run. */
+
+
+/* vmulf: signed Q15 multiply with rounding and mid clamp */
+static int nb_vmulf(int a, int b)
+{
+    int64_t acc = (int64_t)(int16_t)a * (int16_t)b * 2 + 0x8000;
+    int32_t r = (int32_t)(acc >> 16);
+    if (r > 32767) r = 32767;
+    if (r < -32768) r = -32768;
+    return r;
+}
+
+/* vmulf into the accumulator, then vmadh += v8<<16, result = clamped
+ * mid: the lighting overlays' contribution chain. */
+static int nb_mulf_addh(int a, int b, int addend)
+{
+    int64_t acc = (int64_t)(int16_t)a * (int16_t)b * 2 + 0x8000;
+    acc += (int64_t)(int16_t)addend << 16;
+    return nb_acc_mid(acc);
+}
+
+/* Overlay 0x1b (vertex lighting; even op-0x01 subtypes with w0 bit 0
+ * of the subtype field clear dispatch here from the color processor).
+ * r20w1 = the color command's w1: vertex count in the top byte.
+ * Lights are 0x18-byte records at DMEM 0xb00, counted by the byte at
+ * 0x58b: +0x13 type (0 flat, 1 directional with the per-vertex s8
+ * normal quads at 0x380 and the 0x5b0/0x5b4 alternate-direction
+ * select, else positional with the vertex index riding byte 3 of
+ * each normal quad), +0x10 color, +0/+8 direction or position pair,
+ * +0x14 the attenuation halfwords.  Contributions accumulate into
+ * the color array at 0xd40 scaled by the global bytes at 0x158; the
+ * alpha lane always carries the scaled vertex alpha. */
+static void nb_ovl1b(unsigned int w1)
+{
+    unsigned int end = ((((w1 >> 24) & 0x7fu) << 2) + 4u) & 0xff8u;
+    unsigned int nv = end >> 2;
+    unsigned int lights = nb.dmem[0x58bu ^ 3u];
+    unsigned int li, vi, k;
+
+    for (vi = 0; vi < end; vi++)
+        nb.dmem[(0xd40u + vi) ^ 3u] = 0u;
+    {
+        static int t = -1;
+        if (t < 0) t = getenv("NB_DOT_TRACE") != NULL;
+        if (t) fprintf(stderr, "[L1B] nv=%u lights=%u types=%02x %02x %02x\n",
+                       nv, lights,
+                       nb.dmem[(0xb13u) ^ 3u],
+                       nb.dmem[(0xb2bu) ^ 3u],
+                       nb.dmem[(0xb43u) ^ 3u]);
+    }
+    if (lights == 0u)
+        goto done;
+
+    for (li = 0; li < lights; li++) {
+        unsigned int lrec = 0xb00u + li * 0x18u;
+        unsigned int type = nb.dmem[(lrec + 0x13u) ^ 3u];
+        int lcol[4];
+        for (k = 0; k < 3u; k++)
+            lcol[k] = (int)nb.dmem[(lrec + 0x10u + k) ^ 3u] << 7;
+        lcol[3] = 0;
+
+        if (type == 0u) {
+            for (vi = 0; vi < nv; vi++)
+                for (k = 0; k < 4u; k++) {
+                    unsigned int off = vi * 4u + k;
+                    int c = (int)nb.dmem[(0x480u + off) ^ 3u] << 7;
+                    int g = (int)nb.dmem[(0x158u + (k + (vi & 1u) * 4u)) ^ 3u] << 7;
+                    int v5 = nb_vmulf(c, g);
+                    int a8 = (int)nb.dmem[(0xd40u + off) ^ 3u] << 7;
+                    int r = (k == 3u) ? v5 : nb_mulf_addh(v5, lcol[k], a8);
+                    nb.dmem[(0xd40u + off) ^ 3u] =
+                        (unsigned char)(((unsigned)(int16_t)r >> 7) & 0xffu);
+                }
+            continue;
+        }
+
+        if (type == 1u) {
+            /* directional: per vertex pair, dot(normal, dir) */
+            unsigned int selw0 = nb_dmem_r32(0x5b0u);
+            unsigned int selw1 = nb_dmem_r32(0x5b4u);
+            unsigned int have_sel = selw0 | selw1;
+            unsigned int sbits = selw0, scount = 16u;
+            for (vi = 0; vi < nv; vi += 2u) {
+                int16_t dir[8], nrm[8];
+                unsigned int vcc = 0u;
+                int dot[2];
+                unsigned int pair, lane;
+                if (have_sel) {
+                    vcc = ((sbits & 3u) << 3);
+                    sbits >>= 2;
+                    if (--scount == 0u) { sbits = selw1; scount = 16u; }
+                }
+                for (lane = 0; lane < 8u; lane++) {
+                    unsigned int base = ((vcc >> lane) & 1u) ? 8u : 0u;
+                    dir[lane] = (int16_t)nb_dmem_s16(lrec + base + (lane & 3u) * 2u);
+                }
+                for (lane = 0; lane < 8u; lane++) {
+                    int8_t nb8 = (int8_t)nb.dmem[(0x380u + vi * 4u + lane) ^ 3u];
+                    nrm[lane] = (int16_t)((int)nb8 << 8);
+                    if ((lane & 3u) == 3u)
+                        nrm[lane] = 0;      /* x v14 zeroes lane 3/7 */
+                }
+                for (pair = 0; pair < 2u; pair++) {
+                    int d = 0;
+                    for (k = 0; k < 3u; k++) {
+                        int m = nb_vmulf(dir[pair * 4u + k], nrm[pair * 4u + k]);
+                        d += m;             /* vadd folds, clamped */
+                        if (d > 32767) d = 32767;
+                        if (d < -32768) d = -32768;
+                    }
+                    if (d < 0) d = 0;       /* vge 0 */
+                    dot[pair] = d;
+                }
+                {
+                    static int t = -1;
+                    if (t < 0) t = getenv("NB_DOT_TRACE") != NULL;
+                    if (t) fprintf(stderr, "[DOT] %d %d\n", dot[0], dot[1]);
+                }
+                {
+                    int outl[8];
+                    for (lane = 0; lane < 8u; lane++) {
+                        unsigned int v = vi + (lane >> 2);
+                        unsigned int ch = lane & 3u;
+                        unsigned int off = v * 4u + ch;
+                        int c = (int)nb.dmem[(0x480u + off) ^ 3u] << 7;
+                        int g = (int)nb.dmem[(0x158u + (ch + (v & 1u) * 4u)) ^ 3u] << 7;
+                        int v5 = nb_vmulf(c, g);
+                        int contrib = nb_vmulf(lcol[ch],
+                                               (int)(unsigned)dot[lane >> 2]);
+                        int a8 = (int)nb.dmem[(0xd40u + off) ^ 3u] << 7;
+                        int r = (ch == 3u) ? v5 : nb_mulf_addh(v5, contrib, a8);
+                        outl[lane] = r;
+                        if (lane < 8u) {
+                            static int t3 = -1;
+                            static int cbuf[8];
+                            if (t3 < 0) t3 = getenv("NB_DOT_TRACE") != NULL;
+                            cbuf[lane] = contrib;
+                            if (t3 && lane == 7u)
+                                fprintf(stderr,
+                                    "[CT1] %d %d %d %d %d %d %d %d\n",
+                                    cbuf[0],cbuf[1],cbuf[2],cbuf[3],
+                                    cbuf[4],cbuf[5],cbuf[6],cbuf[7]);
+                        }
+                        if (v < nv)
+                            nb.dmem[(0xd40u + off) ^ 3u] =
+                                (unsigned char)(((unsigned)(int16_t)r >> 7) & 0xffu);
+                    }
+                    {
+                        static int t2 = -1;
+                        if (t2 < 0) t2 = getenv("NB_DOT_TRACE") != NULL;
+                        if (t2) fprintf(stderr,
+                            "[ST1] %d %d %d %d %d %d %d %d\n",
+                            outl[0],outl[1],outl[2],outl[3],
+                            outl[4],outl[5],outl[6],outl[7]);
+                    }
+                }
+            }
+            continue;
+        }
+
+        /* positional: index rides byte 3 of the normal quad */
+        {
+            int att_i = nb_dmem_s16(lrec + 0x14u);
+            int att_f = nb_dmem_s16(lrec + 0x16u) & 0xffff;
+            for (vi = 0; vi < nv; vi++) {
+                unsigned int idx = nb.dmem[(0x380u + vi * 4u + 3u) ^ 3u];
+                unsigned int src = 0x170u + idx;
+                int32_t sq_lo3 = 0; int64_t sq_mid3 = 0;
+                int64_t acc;
+                int attn;
+                for (k = 0; k < 3u; k++) {
+                    int p = nb_dmem_s16(src + k * 2u);
+                    int lp = nb_dmem_s16(lrec + k * 2u);
+                    int d = (int)(int16_t)(p - lp);          /* vsub clamps */
+                    if (d > 32767) d = 32767;
+                    if (d < -32768) d = -32768;
+                    /* d << 8 as vmudm mid/low */
+                    {
+                        int di = (int)(((int64_t)d * 0x100) >> 16);
+                        int df = (int)(((int64_t)d * 0x100) & 0xffff);
+                        /* full square 32x32 */
+                        acc  = nb_p(df, df);
+                        acc += nb_p(di, df) << 16;
+                        acc += nb_p(df, di) << 16;
+                        acc += nb_p(di, di) << 32;
+                        sq_lo3 += (int32_t)((acc >> 16) & 0xffff);
+                        sq_mid3 += acc >> 32;
+                    }
+                }
+                sq_mid3 += sq_lo3 >> 16;
+                {
+                    int lo = (int)(sq_lo3 & 0xffff);
+                    int hi = (int)(sq_mid3 > 32767 ? 32767 :
+                                   (sq_mid3 < -32768 ? -32768 : sq_mid3));
+                    /* x attenuation, 32x32; keep low iff hi == 0xffff */
+                    acc  = nb_p(lo, att_f);
+                    acc += nb_p(hi, att_f) << 16;
+                    acc += nb_p(lo, att_i) << 16;
+                    acc += nb_p(hi, att_i) << 32;
+                    {
+                        int rhi = nb_acc_mid(acc >> 16 << 16) ;
+                        int rlo;
+                        rhi = (int)((acc >> 32) & 0xffff);
+                        rlo = (int)((acc >> 16) & 0xffff);
+                        attn = (rhi == 0xffff) ? rlo : 0;
+                    }
+                }
+                for (k = 0; k < 4u; k++) {
+                    unsigned int off = vi * 4u + k;
+                    int c = (int)nb.dmem[(0x480u + off) ^ 3u] << 7;
+                    int g = (int)nb.dmem[(0x158u + (k + (vi & 1u) * 4u)) ^ 3u] << 7;
+                    int v5 = nb_vmulf(c, g);
+                    int contrib = nb_vmulf(lcol[k], (int)(unsigned)attn);
+                    int a8 = (int)nb.dmem[(0xd40u + off) ^ 3u] << 7;
+                    int r = (k == 3u) ? v5 : nb_mulf_addh(v5, contrib, a8);
+                    nb.dmem[(0xd40u + off) ^ 3u] =
+                        (unsigned char)(((unsigned)(int16_t)r >> 7) & 0xffu);
+                }
+            }
+        }
+    }
+done:
+    nb_dmem_w32(0x5b0u, 0u);
+    nb_dmem_w32(0x5b4u, 0u);
+}
+
+/* nb_vmulf fwd */
 
 /* Overlay 0x2a (environment-mapped texture coordinates, w0 bit 11):
  * for each of the four vertex-index bytes (command bytes +19/+23/+27/
@@ -1047,10 +1288,13 @@ int naboo_run_dl(RdpFifo *fifo, unsigned int dl_addr, int resume)
             continue;
         case 0x0f:                              /* EndDL (GBI 0xb8):
              * pop a pushed cursor, or finish at top level (text 0x778).
-             * At top level the server follows the live tail first: if
-             * the word at DMEM 0x58c is nonzero, the CPU has appended
-             * another list segment -- continue there and clear the
-             * link (text 0x79c-0x7cc). */
+             * On the pop path a zero w1 selects the plain resume and
+             * a nonzero one the splice-aware resume (text 0x790); the
+             * walker's resume covers both.  At top level the server
+             * follows the
+             * live tail first: if the word at DMEM 0x58c is nonzero,
+             * the CPU has appended another list segment -- continue
+             * there and clear the link (text 0x79c-0x7cc). */
             if (nb.sp) {
                 nb.sp--;
                 nb.chunk = nb.stack[nb.sp * 2u];
@@ -1061,6 +1305,16 @@ int naboo_run_dl(RdpFifo *fifo, unsigned int dl_addr, int resume)
                     nb.dl = nb.chunk + nb.off;
                     nb_dl_step(8u);
                 }
+                /* the zero-w1 pop resumes through the boot vector
+                 * (text 0x790 -> 0x010), where the server follows a
+                 * pending live tail and otherwise polls the CPU's
+                 * status signal, yielding when it is set.  The signal
+                 * is live state a static capture cannot carry, so the
+                 * walker continues unconditionally; against a
+                 * captured task this can run a few commands past the
+                 * microcode's yield point into the next task's work,
+                 * which the live baselines show to be a benign
+                 * boundary shift. */
                 continue;
             }
             {
