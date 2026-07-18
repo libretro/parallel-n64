@@ -193,6 +193,8 @@ static unsigned int rs_fog_color(const GSPState *gsp, int slot, unsigned int c)
 
 /* G_TEXTURE mirror: texture on/off gates the textured triangle variant. */
 static int s_rs_tex_on;
+static int s_rs_tile_w = 32;
+static int s_rs_tile_h = 32;
 
 /* Texture-coordinate scale from the opcode 0x03 parameter 0x82 state poke
  * (DMEM 0x140/0x148: an integer row and a fraction row, s and t in lanes 0
@@ -547,6 +549,13 @@ void rs_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int dl_addr)
             }
             if (op == 0xdfu || op == 0xe9u)
                 rdp_fifo_fullsync_note();
+            if (op == 0xf2u)
+            {
+                /* SETTILESIZE: remember the tile texel extent for the
+                 * billboard texrect S/T mapping. */
+                s_rs_tile_w = (int)(((w1 >> 12) & 0xfffu) / 4u) + 1;
+                s_rs_tile_h = (int)((w1 & 0xfffu) / 4u) + 1;
+            }
             rdp_fifo_append(fifo, words, nw);
             pc += size;
             continue;
@@ -558,13 +567,101 @@ void rs_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int dl_addr)
         case 0x0au:                    /* microcode overlay load */
             break;
 
-        case 0xbdu:
-            /* 24-byte command (colour + coordinate payload); the cxd4
-             * fetch trace shows every bd advancing the cursor by 0x18.
-             * Consuming only 8 bytes made the walker decode the payload
-             * words as opcodes and wander off the display list. */
+        case 0xbdu:                    /* star / glow billboard */
+        {
+            /* 24-byte command: [w0 flags] [w1 prim colour] [w2 fog colour]
+             * [w3 world half-size duplicated 16-bit] [w4 05000540] [w5 0].
+             * The live overlay handler (entry 0xdb0 under overlay 0x2c)
+             * projects the origin of the current combined matrix through
+             * the viewport and emits SET_PRIM_DEPTH, SET_PRIM_COLOR (w1
+             * verbatim), SET_FOG_COLOR (w2 verbatim, gated by a mode
+             * flag), then a TEXRECT (or TEXRECT_FLIP when w0 bit 0) of
+             * perspective-scaled half-size around the projected centre.
+             * Verified against the cxd4 RDP stream: the staged record's
+             * depth word >> 11 equals the SET_PRIM_DEPTH payload, and
+             * the rect centres equal the record centre exactly. */
+            unsigned int fogc = rs_read_u32(pc + 8u);
+            unsigned int hsz = rs_read_u32(pc + 12u) & 0xffffu;
+            int32_t sx, sy, sz, iwv;
             size = 24u;
+            if (!(gsp->viewport.rs_model && hsz != 0u
+                  && rsp_vtx_screen_rs(gsp->combined[3][0],
+                                       gsp->combined[3][1],
+                                       gsp->combined[3][2],
+                                       gsp->combined[3][3],
+                                       (int32_t)(gsp->viewport.persp_norm
+                                                 & 0xffffu),
+                                       gsp->viewport.rs_vs,
+                                       gsp->viewport.rs_vt,
+                                       &sx, &sy, &sz, &iwv)))
+                hsz = 0u;
+            if (hsz != 0u)
+            {
+                int32_t words[4];
+                int32_t hw, hh, xl, yl, xh, yh;
+                int32_t ss, tt, ds, dt, wq, hq;
+                unsigned int rop = 0xe4u | (w0 & 1u);
+
+                hw = (int32_t)(((int64_t)hsz * iwv * 129) >> 24);
+                hh = (int32_t)(((int64_t)hsz * iwv * 97) >> 24);
+                if (hw > 0x200 || hh > 0x200)
+                    hw = 0;
+                if (hw > 0 && hh > 0)
+                {
+                    xl = sx + hw; yl = sy + hh;
+                    xh = sx - hw; yh = sy - hh;
+                    if (xl > 0 && yl > 0 && xh < 0xa00 && yh < 0x800)
+                    {
+                        if (xh < 0) xh = 0;
+                        if (yh < 0) yh = 0;
+                        if (xl > 0xfff) xl = 0xfff;
+                        if (yl > 0xfff) yl = 0xfff;
+
+                        words[0] = (int32_t)0xee000000;
+                        words[1] = (int32_t)(((uint32_t)((sz >> 11) + 562)
+                                              & 0xffffu) << 16);
+                        rdp_fifo_append(fifo, words, 2);
+                        words[0] = (int32_t)0xfa000000;
+                        words[1] = (int32_t)w1;
+                        rdp_fifo_append(fifo, words, 2);
+                        words[0] = (int32_t)0xf8000000;
+                        words[1] = (int32_t)fogc;
+                        rdp_fifo_append(fifo, words, 2);
+
+                        /* S/T anchors at the half-texel corners, step
+                         * (texels << 12) / span, mirrored per w0 bits
+                         * 8/9 (the twinkle rotation nibble). */
+                        wq = xl - xh; hq = yl - yh;
+                        if (wq < 4) wq = 4;
+                        if (hq < 4) hq = 4;
+                        ds = (int32_t)((s_rs_tile_w << 12) / wq);
+                        dt = (int32_t)((s_rs_tile_h << 12) / hq);
+                        ss = -16; tt = -16;
+                        if ((w0 >> 8) & 1u)
+                        {
+                            ss = s_rs_tile_w * 32 - 16;
+                            ds = -ds;
+                        }
+                        if ((w0 >> 9) & 1u)
+                        {
+                            tt = s_rs_tile_h * 32 - 16;
+                            dt = -dt;
+                        }
+                        words[0] = (int32_t)((rop << 24)
+                                   | (((uint32_t)xl & 0xfffu) << 12)
+                                   | ((uint32_t)yl & 0xfffu));
+                        words[1] = (int32_t)((((uint32_t)xh & 0xfffu) << 12)
+                                   | ((uint32_t)yh & 0xfffu));
+                        words[2] = (int32_t)((((uint32_t)ss & 0xffffu) << 16)
+                                   | ((uint32_t)tt & 0xffffu));
+                        words[3] = (int32_t)((((uint32_t)ds & 0xffffu) << 16)
+                                   | ((uint32_t)dt & 0xffffu));
+                        rdp_fifo_append(fifo, words, 4);
+                    }
+                }
+            }
             break;
+        }
 
         case 0x05u:                    /* vertex generator overlay */
             if ((w0 >> 8) & 0x2u)
