@@ -69,6 +69,8 @@ static struct {
     unsigned int dl;            /* current command address (chunk+off) */
     unsigned int active;
     unsigned int sp;            /* DL call depth (slot 0x06 / 0x0f) */
+    unsigned int tri_phase;     /* quad resume: 1 = first triangle
+                                   already emitted before a splice */
     unsigned int geom;          /* geometry-mode word (s5): slot 0x0e
                                    ORs w1 in, slot 0x0d ANDs w1
                                    (text 0xa68/0xa70) */
@@ -512,22 +514,48 @@ static void nb_vtx(unsigned int rec, RspTriVtx *v)
  * caller falls back), winding cull against the geometry-mode bit,
  * then the shared RSP-exact edge/attribute writer.  Returns -1 when
  * the clip overlay would run. */
-static int nb_emit_tri(RdpFifo *fifo, unsigned int ra, unsigned int rb,
-                       unsigned int rc)
+/* Gate a triangle exactly as the emitter entry does BEFORE its jalr
+ * (text 0x1a8-0x2a4): trivial reject on the ANDed outcodes, clip
+ * trigger on the ORed outcodes, winding cull, degenerate skip.
+ * Returns 0 = draw, 1 = silently skipped, -1 = clip overlay. */
+static int nb_tri_gate(unsigned int ra, unsigned int rb, unsigned int rc)
 {
     unsigned int oa = nb_dmem_s16(ra + 0x24u) & 0xffffu;
     unsigned int ob = nb_dmem_s16(rb + 0x24u) & 0xffffu;
     unsigned int oc = nb_dmem_s16(rc + 0x24u) & 0xffffu;
+    int32_t ax, ay, bx, by, cx, cy;
+    int32_t d1x, d1y, d2x, d2y;
+    int64_t cross;
+
+    if (oa & ob & oc & 0x7070u)
+        return 1;                       /* trivial reject */
+    if ((oa | ob | oc) & 0x4343u)
+        return -1;                      /* clip overlay: fall back */
+
+    ax = (int16_t)nb_dmem_s16(ra + 0x18u); ay = (int16_t)nb_dmem_s16(ra + 0x1au);
+    bx = (int16_t)nb_dmem_s16(rb + 0x18u); by = (int16_t)nb_dmem_s16(rb + 0x1au);
+    cx = (int16_t)nb_dmem_s16(rc + 0x18u); cy = (int16_t)nb_dmem_s16(rc + 0x1au);
+    d1x = bx - ax; d1y = by - ay;
+    d2x = cx - ax; d2y = cy - ay;
+    if (d1x > 32767) d1x = 32767; if (d1x < -32768) d1x = -32768;
+    if (d1y > 32767) d1y = 32767; if (d1y < -32768) d1y = -32768;
+    if (d2x > 32767) d2x = 32767; if (d2x < -32768) d2x = -32768;
+    if (d2y > 32767) d2y = 32767; if (d2y < -32768) d2y = -32768;
+    cross = (int64_t)d2x * d1y - (int64_t)d1x * d2y;
+    if (cross == 0)
+        return 1;                       /* degenerate */
+    if (cross < 0 && (nb.geom & 0x2000u))
+        return 1;                       /* winding cull */
+    return 0;
+}
+
+static int nb_emit_tri(RdpFifo *fifo, unsigned int ra, unsigned int rb,
+                       unsigned int rc)
+{
     RspTriVtx va, vb, vc;
     int32_t ew[64];
     int nw;
-    int64_t cross;
     int tilebyte;
-
-    if (oa & ob & oc & 0x7070u)
-        return 0;                       /* trivial reject */
-    if ((oa | ob | oc) & 0x4343u)
-        return -1;                      /* clip overlay: fall back */
 
     nb_vtx(ra, &va); nb_vtx(rb, &vb); nb_vtx(rc, &vc);
     {
@@ -535,22 +563,6 @@ static int nb_emit_tri(RdpFifo *fifo, unsigned int ra, unsigned int rb,
         if (t < 0) t = getenv("NB_EMIT_TRACE") != NULL;
         if (t) fprintf(stderr, "[EV] a=(%d,%d) b=(%d,%d) c=(%d,%d)\n",
                        va.x, va.y, vb.x, vb.y, vc.x, vc.y);
-    }
-
-    /* winding cull (10.2 screen, saturated deltas, cross vs the
-     * geometry-mode cull bit -- Rogue Squadron convention) */
-    {
-        int32_t d1x = (vb.x - va.x), d1y = (vb.y - va.y);
-        int32_t d2x = (vc.x - va.x), d2y = (vc.y - va.y);
-        if (d1x > 32767) d1x = 32767; if (d1x < -32768) d1x = -32768;
-        if (d1y > 32767) d1y = 32767; if (d1y < -32768) d1y = -32768;
-        if (d2x > 32767) d2x = 32767; if (d2x < -32768) d2x = -32768;
-        if (d2y > 32767) d2y = 32767; if (d2y < -32768) d2y = -32768;
-        cross = (int64_t)d2x * d1y - (int64_t)d1x * d2y;
-        if (cross == 0)
-            return 0;
-        if (cross < 0 && (nb.geom & 0x2000u))
-            return 0;
     }
 
     tilebyte = (int)nb.dmem[0x14au ^ 3u];
@@ -578,16 +590,23 @@ static int nb_tri(RdpFifo *fifo, unsigned int w0, unsigned int w1, int quad)
     unsigned int va = (w1 >> 16) & 0xfff8u;
     unsigned int vb = w1 & 0xfff8u;
     unsigned int vc, vd, off_a, off_b, off_c, off_x;
-    unsigned int cd = nb.dmem[0x58au ^ 3u];
+    unsigned int cd;
     unsigned int len = 16u;
 
-    /* batching countdown (text 0xb8c) */
-    if (cd == 0u) {
-        nb.dmem[0x58au ^ 3u] = (unsigned char)w0;
-    } else {
-        nb.dmem[0x58au ^ 3u] = (unsigned char)(cd - 1u);
-        nb_dl_step((w0 & 0x200u) ? 32u : 16u);
-        return 0;                       /* skipped by the countdown */
+    /* batching countdown (text 0xb8c); on a post-splice reprocess
+     * (tri_phase nonzero) the countdown was already consumed.
+     * Phases: 0 fresh, 2 countdown consumed / first triangle pending,
+     * 1 first triangle emitted / second pending. */
+    if (nb.tri_phase == 0u) {
+        cd = nb.dmem[0x58au ^ 3u];
+        if (cd == 0u) {
+            nb.dmem[0x58au ^ 3u] = (unsigned char)w0;
+        } else {
+            nb.dmem[0x58au ^ 3u] = (unsigned char)(cd - 1u);
+            nb_dl_step((w0 & 0x200u) ? 32u : 16u);
+            return 0;                   /* skipped by the countdown */
+        }
+        nb.tri_phase = 2u;
     }
 
     if (w0 & 0x800u)
@@ -641,12 +660,67 @@ static int nb_tri(RdpFifo *fifo, unsigned int w0, unsigned int w1, int quad)
         if (quad)
             nb_dmem_w32(vd + 0x14u, nb_read_u32(nb.dl + 28u));
     }
-    /* emit: (A,B,C), then (A,C,D) on the quad op */
-    if (nb_emit_tri(fifo, va, vb, vc) < 0)
-        return -1;
-    if (quad && nb_emit_tri(fifo, va, vc, vd) < 0)
-        return -1;
-
+    /* emit: (A,B,C), then (A,C,D) on the quad op.  The emitter's
+     * jalr through DMEM 0x152 (the default 0x17b4 splice-check) runs
+     * PER TRIANGLE: a staged list in 0x58c is walked before that
+     * triangle, and the microcode resumes mid-quad (state at
+     * 0x590-0x594).  The walker models the resume with tri_phase:
+     * on reprocess after a splice, already-emitted triangles are not
+     * re-emitted (the pokes above are idempotent). */
+    if (nb.tri_phase == 2u) {
+        int g = nb_tri_gate(va, vb, vc);
+        if (g < 0)
+            return -1;
+        if (g == 0) {
+            unsigned int splice = nb_dmem_r32(0x58cu) & 0x00fffff8u;
+            {
+                static int t = -1;
+                if (t < 0) t = getenv("NB_SPL_TRACE") != NULL;
+                if (t) fprintf(stderr, "[SPL] 58c=%08x\n",
+                               nb_dmem_r32(0x58cu));
+            }
+            if (splice != 0u) {
+                if (nb.sp >= NB_DL_STACK)
+                    return -1;
+                nb_dmem_w32(0x58cu, 0u);
+                nb.stack[nb.sp * 2u] = nb.chunk;
+                nb.stack[nb.sp * 2u + 1u] = nb.off;
+                nb.sp++;
+                nb_dl_enter(splice);
+                return 1;               /* re-enter after the list */
+            }
+            if (nb_emit_tri(fifo, va, vb, vc) < 0)
+                return -1;
+        }
+        nb.tri_phase = 1u;
+    }
+    if (quad && nb.tri_phase == 1u) {
+        int g = nb_tri_gate(va, vc, vd);
+        if (g < 0)
+            return -1;
+        if (g == 0) {
+            unsigned int splice = nb_dmem_r32(0x58cu) & 0x00fffff8u;
+            {
+                static int t = -1;
+                if (t < 0) t = getenv("NB_SPL_TRACE") != NULL;
+                if (t) fprintf(stderr, "[SPL] 58c=%08x\n",
+                               nb_dmem_r32(0x58cu));
+            }
+            if (splice != 0u) {
+                if (nb.sp >= NB_DL_STACK)
+                    return -1;
+                nb_dmem_w32(0x58cu, 0u);
+                nb.stack[nb.sp * 2u] = nb.chunk;
+                nb.stack[nb.sp * 2u + 1u] = nb.off;
+                nb.sp++;
+                nb_dl_enter(splice);
+                return 1;
+            }
+            if (nb_emit_tri(fifo, va, vc, vd) < 0)
+                return -1;
+        }
+    }
+    nb.tri_phase = 0u;
     nb_dl_step(len);
     return 0;
 }
@@ -683,6 +757,12 @@ int naboo_run_dl(RdpFifo *fifo, unsigned int dl_addr, int resume)
                  * 'expanded' load blocks in the reference stream are
                  * these CPU-built lists, not generated commands. */
                 unsigned int splice = nb_dmem_r32(0x58cu) & 0x00fffff8u;
+                {
+                    static int t = -1;
+                    if (t < 0) t = getenv("NB_SPL_TRACE") != NULL;
+                    if (t) fprintf(stderr, "[SPL] 58c=%08x\n",
+                                   nb_dmem_r32(0x58cu));
+                }
                 if (splice != 0u) {
                     if (nb.sp >= NB_DL_STACK) {
                         nb.active = 0;
@@ -776,28 +856,12 @@ int naboo_run_dl(RdpFifo *fifo, unsigned int dl_addr, int resume)
              * triangles (A,B,C) and (A,C,D) (entry 1:b44) */
         case 0x16:                              /* single triangle
              * (A,B,C) (entry 1:b24) */
-            /* the triangle emitter's jalr through DMEM 0x152 lands on
-             * the same splice-check helper as G_TEXRECT when the
-             * default 0x17b4 routine is installed: a staged list in
-             * 0x58c is walked first, then the triangle reprocesses */
             {
-                unsigned int splice = nb_dmem_r32(0x58cu) & 0x00fffff8u;
-                if (splice != 0u) {
-                    if (nb.sp >= NB_DL_STACK) {
-                        nb.active = 0;
-                        return NABOO_R_FALLBACK;
-                    }
-                    nb_dmem_w32(0x58cu, 0u);
-                    nb.stack[nb.sp * 2u] = nb.chunk;
-                    nb.stack[nb.sp * 2u + 1u] = nb.off;
-                    nb.sp++;
-                    nb_dl_enter(splice);
-                    continue;
+                int tr = nb_tri(fifo, w0, w1, op == 0x0bu);
+                if (tr < 0) {
+                    nb.active = 0;
+                    return NABOO_R_FALLBACK;
                 }
-            }
-            if (nb_tri(fifo, w0, w1, op == 0x0bu) < 0) {
-                nb.active = 0;
-                return NABOO_R_FALLBACK;
             }
             continue;
         case 0x0c:                              /* NOP (entry 1:068 =
