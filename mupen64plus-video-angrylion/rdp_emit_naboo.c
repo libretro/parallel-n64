@@ -473,6 +473,147 @@ static void nb_xfrm(unsigned int count)
     }
 }
 
+/* Overlay 0x0f (entry 0xcf0, its own IMEM page): the descriptor/setup
+ * half of the 0x0f / 0x09 pair -- it configures the 0xda0 work area
+ * that the vertex-morphing overlay 0x09 then consumes.  Entirely
+ * scalar; a3 = r17 - 8, i.e. the payload is the command itself plus
+ * the bytes that follow it in the display list.
+ *
+ * Three paths, keyed on w1 bit 6 and the one-shot gate at DMEM 0x37e:
+ *   bit 6 set          -> mode 2 (0xf40): three state stores + an
+ *                         IMEM DMA of the second mode routine.
+ *   gate set, bit clear -> short path (0xec0): 8-byte command.
+ *   gate clear          -> first-time path: 0x38-byte payload, two
+ *                         DMAs, and the 0xd58 vertex-record pointer
+ *                         table.
+ */
+static void nb_dl_fetch(unsigned char *dst, unsigned int len)
+{
+    unsigned int chunk = nb.chunk, off = nb.off, i;
+    for (i = 0; i < len; i++) {
+        unsigned int a;
+        if (off >= 0x108u) {
+            chunk = nb_read_u32(chunk) & 0x00fffff8u;
+            off = 8u + (off - 0x108u);
+        }
+        a = (chunk + off) & 0x7fffffu;
+        dst[i] = (unsigned char)((s_rdram && a < s_rdram_size)
+                                 ? s_rdram[a ^ 3u] : 0u);
+        off++;
+    }
+}
+
+static int nb_pl_s16(const unsigned char *pl, unsigned int o)
+{
+    return (int)(short)(((unsigned int)pl[o] << 8) | pl[o + 1u]);
+}
+
+static unsigned int nb_pl_u32(const unsigned char *pl, unsigned int o)
+{
+    return ((unsigned int)pl[o] << 24) | ((unsigned int)pl[o + 1u] << 16)
+         | ((unsigned int)pl[o + 2u] << 8) | (unsigned int)pl[o + 3u];
+}
+
+static unsigned int nb_ovl0f(unsigned int w1)
+{
+    unsigned char pl[0x40];
+    unsigned int a2 = 0xda0u;
+    int j;
+
+    if (w1 & 0x40u) {
+        /* 0xf40: mode 2.  The trailing DMA lands in IMEM, which the
+         * walker does not model; the three state stores are the whole
+         * DMEM-visible effect. */
+        nb_dmem_w16(0x152u, 0x17b4u);
+        nb_dmem_w8(0x37eu, 0u);
+        nb_dmem_w8(0x143u, 0x3fu);
+        return 0u;
+    }
+
+    nb_dl_fetch(pl, sizeof pl);
+
+    if (nb.dmem[0x37eu ^ 3u] != 0u) {
+        /* 0xec0: already initialised -- 8-byte command. */
+        int r14, r15;
+        nb_dmem_w16(0xdb8u, 0u);
+        nb_dmem_w32(0x100u, 0u);
+        nb_dmem_w16(0xdbcu, (unsigned int)nb_pl_s16(pl, 2u) & 0xffffu);
+        r14 = (int)(signed char)pl[1];
+        r15 = (int)(signed char)pl[4];
+        nb_dmem_w32(a2 + 0x28u, (unsigned int)r14 << 24);
+        nb_dmem_w32(a2 + 0x20u, ((unsigned int)r14 << 24) | 0xffffu);
+        nb_dmem_w32(a2 + 0x24u, (unsigned int)(r14 + r14));
+        nb_dmem_w32(a2 + 0x2cu, (unsigned int)r15);
+        nb_dmem_w16(a2 + 0x36u, (unsigned int)(r15 + r15) & 0xffffu);
+        for (j = 0; j < 4; j++) {
+            unsigned int v = (unsigned int)nb_pl_s16(pl, 8u + (unsigned int)j * 2u)
+                             & 0xffffu;
+            nb_dmem_w16(a2 + 0x42u + (unsigned int)j * 0x10u, v);
+            nb_dmem_w16(a2 + 0x4au + (unsigned int)j * 0x10u, v);
+        }
+        {
+            unsigned int v = (unsigned int)nb_pl_s16(pl, 5u) & 0xffffu;
+            nb_dmem_w16(a2 + 0x86u, v);
+            nb_dmem_w16(a2 + 0x8eu, v);
+        }
+        return 8u;
+    }
+
+    /* first-time path (0xd08-0xebc), 0x38-byte payload */
+    {
+        int r9 = nb_pl_s16(pl, 8u), r10 = nb_pl_s16(pl, 10u);
+        nb_dmem_w16(a2 + 0x30u, (unsigned int)r9 & 0xffffu);
+        nb_dmem_w16(a2 + 0x38u, (unsigned int)r9 & 0xffffu);
+        nb_dmem_w16(a2 + 0x34u, (unsigned int)r10 & 0xffffu);
+        nb_dmem_w32(a2 + 0x3cu, ((unsigned int)r10 << 16) | 0x100u);
+        nb_dmem_w16(a2 + 0x32u, (unsigned int)nb_pl_s16(pl, 0x38u) & 0xffffu);
+        nb_dmem_w16(a2 + 0x3au, (unsigned int)nb_pl_s16(pl, 0x3au) & 0xffffu);
+        nb_dmem_w32(0x0f8u, nb_pl_u32(pl, 12u));
+        nb_dmem_w8(0x0fcu, pl[1]);
+        nb_dmem_w8(0x0fdu, pl[0x2bu]);
+        /* four halfword quads fanned across the 0x40..0x7f grid */
+        for (j = 0; j < 4; j++) {
+            unsigned int b = a2 + 0x40u + (unsigned int)j * 0x10u;
+            nb_dmem_w16(b + 0u, (unsigned int)nb_pl_s16(pl, 0x10u + (unsigned int)j * 2u) & 0xffffu);
+            nb_dmem_w16(b + 8u, (unsigned int)nb_pl_s16(pl, 0x10u + (unsigned int)j * 2u) & 0xffffu);
+            nb_dmem_w16(b + 4u, (unsigned int)nb_pl_s16(pl, 0x18u + (unsigned int)j * 2u) & 0xffffu);
+            nb_dmem_w16(b + 0xcu, (unsigned int)nb_pl_s16(pl, 0x18u + (unsigned int)j * 2u) & 0xffffu);
+            nb_dmem_w16(b + 6u, (unsigned int)nb_pl_s16(pl, 0x20u + (unsigned int)j * 2u) & 0xffffu);
+            nb_dmem_w16(b + 0xeu, (unsigned int)nb_pl_s16(pl, 0x20u + (unsigned int)j * 2u) & 0xffffu);
+        }
+        nb_dmem_w32(a2 + 0xa0u, nb_pl_u32(pl, 0x28u));
+        nb_dmem_w32(a2 + 0xa4u, nb_pl_u32(pl, 0x28u));
+        nb_dmem_w32(a2 + 0xa8u, nb_pl_u32(pl, 0x2cu));
+        nb_dmem_w32(a2 + 0xacu, nb_pl_u32(pl, 0x2cu));
+        nb_dmem_w16(a2 + 0x84u, (unsigned int)nb_pl_s16(pl, 0x3cu) & 0xffffu);
+        nb_dmem_w16(a2 + 0x8cu, (unsigned int)nb_pl_s16(pl, 0x3eu) & 0xffffu);
+        {
+            int v0 = nb_pl_s16(pl, 2u);
+            unsigned int v1 = ((unsigned int)(v0 + 0xff)) & 0xff00u;
+            nb_dmem_w16(a2 + 0x80u, (unsigned int)v0 & 0xffffu);
+            nb_dmem_w16(a2 + 0x88u, v1);
+            nb_dmem_w16(a2 + 0x82u, (unsigned int)nb_pl_s16(pl, 0x34u) & 0xffffu);
+            nb_dmem_w16(a2 + 0x8au, (unsigned int)(signed char)pl[0x2fu] & 0xffffu);
+        }
+        nb_dmem_w32(a2 + 0x90u, 0x7fff7fffu);
+        nb_dmem_w32(a2 + 0x98u, 0x7fff7fffu);
+        nb_dmem_w32(a2 + 0x94u, nb_pl_u32(pl, 0x30u));
+        nb_dmem_w32(a2 + 0x9cu, nb_pl_u32(pl, 0x30u));
+        /* DMA 0xf0 bytes from (w1 >> 8) into DMEM 0xc68 */
+        nb_load(0xc68u, w1 >> 8, 0xf0u);
+        nb_dmem_w8(0x37eu, 0xffu);
+        /* The second DMA (0xe64-0xe90) reads a descriptor at DMEM
+         * 0x7c and lands outside the data page: the oracle sandwich
+         * shows no DMEM delta from it on any captured call, so it
+         * targets IMEM and is not modeled here. */
+        nb_dmem_w16(0x152u, 0x1cc8u);
+        for (j = 0; j <= 0x1c; j++)
+            nb_dmem_w16(0xd58u + (unsigned int)j * 2u,
+                        0x600u + (unsigned int)j * 0x28u);
+        return 0x38u;
+    }
+}
+
 /* op 0x02 (text 0xd1c): open a segmented stream.  DMA the 8-byte
  * chain header at w1 into DMEM 0xfd8 (next-segment pointer), position
  * = w1 + 8, remaining = w0 & 0x1ff payload bytes. */
@@ -1612,6 +1753,18 @@ int naboo_run_dl(RdpFifo *fifo, unsigned int dl_addr, int resume)
         case 0x00:                              /* NOOP */
             nb_dl_step(8u);
             continue;
+        case 0x05:                              /* load+run overlay */
+            if ((w1 & 0x3fu) == 0x0fu) {
+                /* descriptor/setup for the vertex-morphing overlay
+                 * 0x09.  The dispatcher has already consumed the
+                 * 8-byte command (the overlay reads its payload from
+                 * r17 - 8), so the extra length it reports is on top
+                 * of that. */
+                nb_dl_step(8u + nb_ovl0f(w1));
+                continue;
+            }
+            nb.active = 0;
+            return NABOO_R_FALLBACK;
         case 0x07:                              /* DL jump (entry
              * 1:76c): enter the chunk-formatted list at w1 with no
              * stack push -- the current position is abandoned */
