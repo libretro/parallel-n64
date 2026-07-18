@@ -114,6 +114,18 @@ void naboo_task_reset(unsigned int dl)
  * cursor) persists in physical DMEM across task slices -- the data
  * segment is DMA'd once at server start and never again -- so the
  * live DMEM at (re)launch IS the authoritative state. */
+static int nb_emit_on;
+
+/* Per-build emission gate: the triangle/attribute conventions are
+ * verified bit-exact against the Battle for Naboo microcode build
+ * (sum 0x25c16); other builds of the family (Indiana Jones, sum
+ * 0x25c53) fall back at the first triangle until verified, keeping
+ * their output on the LLE reference. */
+void naboo_set_emit(int on)
+{
+    nb_emit_on = on;
+}
+
 void naboo_seed_dmem(const unsigned char *dmem)
 {
     unsigned int i;
@@ -440,8 +452,82 @@ static void nb_op01(unsigned int w0, unsigned int w1)
  * bit 16 is set, each face's fog bytes (record +0x13) propagate into
  * the color array's alpha (0xd40 + off + 3); then the color words are
  * poked into the records at +0x10 and the inline STs at +0x14. */
-static int nb_tri(unsigned int w0, unsigned int w1, int quad)
+/* Build an RspTriVtx from a vertex record in the DMEM shadow. */
+static void nb_vtx(unsigned int rec, RspTriVtx *v)
 {
+    v->x = (int16_t)nb_dmem_s16(rec + 0x18u);
+    v->y = (int16_t)nb_dmem_s16(rec + 0x1au);
+    v->z = (int32_t)((nb_dmem_s16(rec + 0x1cu) << 16)
+                     | (nb_dmem_s16(rec + 0x1eu) & 0xffff));
+    v->r = nb.dmem[((rec + 0x10u) & 0xfffu) ^ 3u];
+    v->g = nb.dmem[((rec + 0x11u) & 0xfffu) ^ 3u];
+    v->b = nb.dmem[((rec + 0x12u) & 0xfffu) ^ 3u];
+    v->a = nb.dmem[((rec + 0x13u) & 0xfffu) ^ 3u];
+    v->s = nb_dmem_s16(rec + 0x14u);
+    v->t = nb_dmem_s16(rec + 0x16u);
+    v->invw = (int32_t)((nb_dmem_s16(rec + 0x20u) << 16)
+                        | (nb_dmem_s16(rec + 0x22u) & 0xffff));
+    v->pw = 0;
+    v->flat2d = 0;
+}
+
+/* Emit one triangle from three records: trivial reject on the ANDed
+ * outcodes (0x7070), clip trigger on the ORed outcodes (0x4343 ->
+ * caller falls back), winding cull against the geometry-mode bit,
+ * then the shared RSP-exact edge/attribute writer.  Returns -1 when
+ * the clip overlay would run. */
+static int nb_emit_tri(RdpFifo *fifo, unsigned int ra, unsigned int rb,
+                       unsigned int rc)
+{
+    unsigned int oa = nb_dmem_s16(ra + 0x24u) & 0xffffu;
+    unsigned int ob = nb_dmem_s16(rb + 0x24u) & 0xffffu;
+    unsigned int oc = nb_dmem_s16(rc + 0x24u) & 0xffffu;
+    RspTriVtx va, vb, vc;
+    int32_t ew[64];
+    int nw;
+    int64_t cross;
+    int tilebyte;
+
+    if (oa & ob & oc & 0x7070u)
+        return 0;                       /* trivial reject */
+    if ((oa | ob | oc) & 0x4343u)
+        return -1;                      /* clip overlay: fall back */
+
+    nb_vtx(ra, &va); nb_vtx(rb, &vb); nb_vtx(rc, &vc);
+
+    /* winding cull (10.2 screen, saturated deltas, cross vs the
+     * geometry-mode cull bit -- Rogue Squadron convention) */
+    {
+        int32_t d1x = (vb.x - va.x), d1y = (vb.y - va.y);
+        int32_t d2x = (vc.x - va.x), d2y = (vc.y - va.y);
+        if (d1x > 32767) d1x = 32767; if (d1x < -32768) d1x = -32768;
+        if (d1y > 32767) d1y = 32767; if (d1y < -32768) d1y = -32768;
+        if (d2x > 32767) d2x = 32767; if (d2x < -32768) d2x = -32768;
+        if (d2y > 32767) d2y = 32767; if (d2y < -32768) d2y = -32768;
+        cross = (int64_t)d2x * d1y - (int64_t)d1x * d2y;
+        if (cross == 0)
+            return 0;
+        if (cross < 0 && (nb.geom & 0x2000u))
+            return 0;
+    }
+
+    tilebyte = (int)nb.dmem[0x14au ^ 3u];
+    nw = rsp_tri_write(ew, &va, &vb, &vc,
+                       (int)(nb.geom >> 1) & 1,
+                       (int)nb.geom & 1,
+                       (int)(nb.geom >> 2) & 1, 1,
+                       tilebyte & 7, (tilebyte >> 3) & 7,
+                       0x1000, 0x20, (int32_t)0xfff8, 0);
+    if (nw > 0)
+        rdp_fifo_append(fifo, ew, nw);
+    return 0;
+}
+
+static int nb_tri(RdpFifo *fifo, unsigned int w0, unsigned int w1, int quad)
+{
+    if (!nb_emit_on)
+        return -1;
+
     unsigned int va = (w1 >> 16) & 0xfff8u;
     unsigned int vb = w1 & 0xfff8u;
     unsigned int vc, vd, off_a, off_b, off_c, off_x;
@@ -508,6 +594,12 @@ static int nb_tri(unsigned int w0, unsigned int w1, int quad)
         if (quad)
             nb_dmem_w32(vd + 0x14u, nb_read_u32(nb.dl + 28u));
     }
+    /* emit: (A,B,C), then (A,C,D) on the quad op */
+    if (nb_emit_tri(fifo, va, vb, vc) < 0)
+        return -1;
+    if (quad && nb_emit_tri(fifo, va, vc, vd) < 0)
+        return -1;
+
     nb_dl_step(len);
     return 0;
 }
@@ -607,17 +699,27 @@ int naboo_run_dl(RdpFifo *fifo, unsigned int dl_addr, int resume)
             continue;
         case 0x0b:                              /* quad: two
              * triangles (A,B,C) and (A,C,D) (entry 1:b44) */
-            if (nb_tri(w0, w1, 1) < 0) {
+            if (nb_tri(fifo, w0, w1, 1) < 0) {
                 nb.active = 0;
                 return NABOO_R_FALLBACK;
             }
             continue;
         case 0x16:                              /* single triangle
              * (A,B,C) (entry 1:b24) */
-            if (nb_tri(w0, w1, 0) < 0) {
+            if (nb_tri(fifo, w0, w1, 0) < 0) {
                 nb.active = 0;
                 return NABOO_R_FALLBACK;
             }
+            continue;
+        case 0x0c:                              /* NOP (entry 1:068 =
+             * the fetch loop: consume and continue).  Gated with the
+             * emitter: on unverified builds, completing slices that
+             * previously fell back changes output ordering. */
+            if (!nb_emit_on) {
+                nb.active = 0;
+                return NABOO_R_FALLBACK;
+            }
+            nb_dl_step(8u);
             continue;
         case 0x0d:                              /* GeometryMode &= w1
              * (text 0xa70) */
@@ -657,6 +759,15 @@ int naboo_run_dl(RdpFifo *fifo, unsigned int dl_addr, int resume)
                 msk >>= (w0 >> 8) & 31u;
                 cur = (cur & ~msk) | w1;
                 nb_dmem_w32(0x120u + idx, cur);
+            }
+            /* forward the refreshed SET_OTHER_MODES pair (text
+             * 0x80c-0x834; replace-at-tail folded into append: the
+             * rasterizer consumes the last-written state either way) */
+            if (nb_emit_on) {
+                int32_t words[2];
+                words[0] = (int32_t)nb_dmem_r32(0x120u);
+                words[1] = (int32_t)nb_dmem_r32(0x124u);
+                rdp_fifo_append(fifo, words, 2);
             }
             nb_dl_step(8u);
             continue;

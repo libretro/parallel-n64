@@ -1073,7 +1073,7 @@ int angrylion_rs_dlist(int resume)
 
 #include "rdp_emit_naboo.h"
 
-int angrylion_naboo_dlist(int resume)
+int angrylion_naboo_dlist(int resume, int emit)
 {
     unsigned char *rdram;
     unsigned char *dmem;
@@ -1105,9 +1105,18 @@ int angrylion_naboo_dlist(int resume)
 
     naboo_set_rdram(rdram);
     naboo_set_rdram_size(rdram_size);
+    naboo_set_emit(emit);
     if (!resume)
         naboo_seed_dmem(dmem);
     r = naboo_run_dl(&s_fifo, dl_addr, resume);
+    {
+        static int done, fb, t = -1;
+        if (t < 0) t = getenv("NB_STATS") != NULL;
+        if (t) {
+            if (r == NABOO_R_FALLBACK) fb++; else done++;
+            fprintf(stderr, "[NBSTAT] done=%d fallback=%d\n", done, fb);
+        }
+    }
 
     /* On fallback the LLE rerun re-executes the whole list from its
      * head; anything this slice already appended would be emitted

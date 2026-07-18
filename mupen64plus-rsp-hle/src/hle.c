@@ -343,8 +343,9 @@ static void zboss_gfx_task(struct hle_t* hle)
  * the CPU stops appending. The walker suspends at the live tail and
  * the task is re-dispatched through the incomplete-return protocol
  * until the end survives a slice. */
-int angrylion_naboo_dlist(int resume);
+int angrylion_naboo_dlist(int resume, int emit);
 static int l_naboo_gfx_running;
+static int l_naboo_emit;
 
 /* Naboo-era Factor 5 streaming server (Battle for Naboo, Indiana
  * Jones): same libultra yield protocol as Rogue Squadron; the walker
@@ -361,7 +362,7 @@ static void naboo_gfx_task(struct hle_t* hle)
     if (!resume)
         *hle->sp_status &= ~(SP_STATUS_SIG1 | SP_STATUS_TASKDONE);
 
-    r = angrylion_naboo_dlist(resume);
+    r = angrylion_naboo_dlist(resume, l_naboo_emit);
 
     if (r < 0) {
         l_naboo_gfx_running = 0;
@@ -661,7 +662,10 @@ static ucode_func_t try_normal_task_detection(struct hle_t* hle)
      * never the one-shot dlist forward, whose forced TASKDONE kills
      * the server after its first slice and deadlocks the game. */
     case 0x25c16:       /* Battle for Naboo */
+        l_naboo_emit = 1;
+        return &naboo_gfx_task;
     case 0x25c53:       /* Indiana Jones and the Infernal Machine */
+        l_naboo_emit = 0;
         return &naboo_gfx_task;
     }
 
