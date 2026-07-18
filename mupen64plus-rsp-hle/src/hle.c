@@ -677,7 +677,7 @@ static ucode_func_t try_normal_task_detection(struct hle_t* hle)
         l_naboo_emit = 1;
         return &naboo_gfx_task;
     case 0x25c53:       /* Indiana Jones and the Infernal Machine */
-        l_naboo_emit = 0;
+        l_naboo_emit = 1;
         return &naboo_gfx_task;
     }
 

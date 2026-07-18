@@ -151,15 +151,23 @@ void naboo_seed_dmem(const unsigned char *dmem)
      * routine, zero the live-tail scratch, seed the SET_OTHER_MODES
      * state pair, and clear the geometry mode. */
     if (!(nb_dmem_r32(0xfc4u) & 1u)) {
-        nb_dmem_w8(0x143u, 0u);
-        nb_dmem_w8(0x142u, 0u);
+        nb_dmem_w32(0xfc4u, 0u);
+        nb_dmem_w32(0x5b0u, 0u);
+        nb_dmem_w32(0x5b4u, 0u);
         nb_dmem_w32(0x16cu, nb_dmem_r32(0xff8u));
         nb_dmem_w32(0x5a0u, nb_dmem_r32(0xff0u));
+        nb_dmem_w8(0x142u, 0u);
         nb_dmem_w16(0x152u, 0x17b4u);
         nb_dmem_w32(0x120u, 0xef000000u);
         nb_dmem_w32(0x124u, 0u);
-        nb_dmem_w32(0x5b0u, 0u);
-        nb_dmem_w32(0x5b4u, 0u);
+        nb.dmem[0x58au ^ 3u] = 0u;      /* batching countdown */
+        nb_dmem_w32(0x11cu, 0u);        /* conditional-insert state */
+        nb_dmem_w32(0x58cu, 0u);        /* splice link */
+        nb_dmem_w16(0x168u, 0xffu);
+        nb.dmem[0x37eu ^ 3u] = 0u;
+        nb_dmem_w32(0x110u, nb_dmem_r32(0xfe8u));
+        nb_dmem_w32(0x114u, nb_dmem_r32(0xfecu));
+        nb_dmem_w32(0x118u, nb_dmem_r32(0xfecu));
         nb.geom = 0;
     }
 }
@@ -797,6 +805,15 @@ int naboo_run_dl(RdpFifo *fifo, unsigned int dl_addr, int resume)
         case 0x00:                              /* NOOP */
             nb_dl_step(8u);
             continue;
+        case 0x07:                              /* DL jump (entry
+             * 1:76c): enter the chunk-formatted list at w1 with no
+             * stack push -- the current position is abandoned */
+            if (!nb_emit_on) {
+                nb.active = 0;
+                return NABOO_R_FALLBACK;
+            }
+            nb_dl_enter(w1 & 0x00fffff8u);
+            continue;
         case 0x06:                              /* DisplayList: call w1,
              * push the return cursor (text 0x754: stack at DMEM 0xfe0,
              * depth byte at struct+0x32) */
@@ -900,6 +917,12 @@ int naboo_run_dl(RdpFifo *fifo, unsigned int dl_addr, int resume)
              * insert (text 0x7d0): compare w0 bit 23 against the
              * struct word +0xc; on mismatch skip, else perform the
              * slot 0x11 insert */
+            {
+                static int t = -1;
+                if (t < 0) t = getenv("NB_MW_TRACE") != NULL;
+                if (t) fprintf(stderr, "[B9] @%06x bit=%u 11c=%08x\n",
+                               nb.dl, (w0 >> 23) & 1u, nb_dmem_r32(0x11cu));
+            }
             if (((w0 >> 23) & 1u) != nb_dmem_r32(0x11cu)) {
                 nb_dl_step(8u);
                 continue;
