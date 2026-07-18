@@ -59,22 +59,52 @@ static unsigned int nb_read_u32(unsigned int addr)
  * resumes); a fresh task launch resets it. */
 #define NB_DL_STACK 8
 static struct {
-    unsigned int dl;            /* command cursor (RDRAM) */
+    /* Display lists are chained 0x100-byte chunks, each prefixed by an
+     * 8-byte header whose first word points at the next chunk (zero =
+     * chain end).  The microcode reads them through the DMEM ring at
+     * 0x270 (fetch loop text 0x60-0x8c, 0x108-byte refills); the
+     * walker models the same chunked cursor over RDRAM directly. */
+    unsigned int chunk;         /* current chunk base (RDRAM) */
+    unsigned int off;           /* byte offset within chunk (8..0x108) */
+    unsigned int dl;            /* current command address (chunk+off) */
     unsigned int active;
     unsigned int sp;            /* DL call depth (slot 0x06 / 0x0f) */
     unsigned int geom;          /* geometry-mode word (s5): slot 0x0e
                                    ORs w1 in, slot 0x0d ANDs w1
                                    (text 0xa68/0xa70) */
-    unsigned int stack[NB_DL_STACK];
+    unsigned int stack[NB_DL_STACK * 2];
     /* modeled microcode DMEM state: MoveWord (slot 0x13) writes land
      * here; render commands consume them (state words at 0x120-0x13c,
      * viewport/live-tail words, ...) */
     unsigned char dmem[0x1000];
 } nb;
 
+static void nb_dl_enter(unsigned int addr)
+{
+    nb.chunk = addr & 0x00fffff8u;
+    nb.off = 8u;
+    nb.dl = nb.chunk + nb.off;
+}
+
+/* Advance the chunked cursor by len bytes, following the chain link in
+ * each chunk's header at the 0x108 boundary. */
+static void nb_dl_step(unsigned int len)
+{
+    nb.off += len;
+    while (nb.off >= 0x108u) {
+        unsigned int rem = nb.off - 0x108u;
+        unsigned int next = nb_read_u32(nb.chunk) & 0x00fffff8u;
+        nb.chunk = next;
+        nb.off = 8u + rem;
+        if (next == 0u)
+            break;
+    }
+    nb.dl = nb.chunk + nb.off;
+}
+
 void naboo_task_reset(unsigned int dl)
 {
-    nb.dl = dl;
+    nb_dl_enter(dl);
     nb.active = 1;
     nb.sp = 0;
 }
@@ -90,6 +120,8 @@ void naboo_seed_dmem(const unsigned char *dmem)
     for (i = 0; i < 0x1000u; i++)
         nb.dmem[i ^ 3u] = dmem[i ^ 3u];
 }
+
+static void nb_watch(unsigned int a, unsigned int n, unsigned int v);
 
 static unsigned int nb_dmem_r32(unsigned int off)
 {
@@ -110,6 +142,7 @@ static int nb_dmem_s16(unsigned int off)
 static void nb_dmem_w16(unsigned int off, unsigned int v)
 {
     unsigned int a = off & 0xffeu;
+    nb_watch(a, 2u, v);
     nb.dmem[a ^ 3u]        = (unsigned char)(v >> 8);
     nb.dmem[(a + 1u) ^ 3u] = (unsigned char)v;
 }
@@ -119,9 +152,18 @@ static void nb_dmem_w8(unsigned int off, unsigned int v)
     nb.dmem[(off & 0xfffu) ^ 3u] = (unsigned char)v;
 }
 
+static void nb_watch(unsigned int a, unsigned int n, unsigned int v)
+{
+    static int t = -1;
+    if (t < 0) t = getenv("NB_WATCH") != NULL;
+    if (t && a < 0x12cu && a + n > 0x128u)
+        fprintf(stderr, "[W!] %03x len %u = %08x dl=%06x\n", a, n, v, nb.dl);
+}
+
 static void nb_dmem_w32(unsigned int off, unsigned int v)
 {
     unsigned int a = off & 0xffcu;
+    nb_watch(a, 4u, v);
     nb.dmem[(a + 0u) ^ 3u] = (unsigned char)(v >> 24);
     nb.dmem[(a + 1u) ^ 3u] = (unsigned char)(v >> 16);
     nb.dmem[(a + 2u) ^ 3u] = (unsigned char)(v >> 8);
@@ -137,7 +179,9 @@ static void nb_load(unsigned int dmem_off, unsigned int addr, unsigned int len)
         if (t < 0) t = getenv("NB_TRACE") != NULL;
         if (t) fprintf(stderr, "[NBL] dmem=%03x dram=%06x len=%x dl=%06x\n",
                        dmem_off & 0xfffu, addr & 0xffffffu, len, nb.dl);
+
     }
+    nb_watch(dmem_off & 0xfffu, len, 0x10ad);
     for (i = 0; i < len; i++)
         nb.dmem[((dmem_off + i) & 0xfffu) ^ 3u] =
             (unsigned char)(s_rdram ? s_rdram[((addr + i) & 0x7fffffu) ^ 3u] : 0u);
@@ -169,17 +213,22 @@ static void nb_xfrm(unsigned int count)
     int i, j;
     unsigned int v;
 
-    /* translation from the state struct +0x18.  The struct base is
-     * r18 = DMEM 0x558: slot 0x12 stores at +0x38 = the live-tail
-     * word 0x590, and the EndDL depth byte at +0x32 = 0x58a, next to
-     * the intensity byte 0x58b. */
+    /* translation from the state struct +0x18 (r18 = DMEM 0x110,
+     * pinned by the op 0x80 init handler): DMEM 0x128, the MoveWord
+     * targets in every frame prologue. */
     for (j = 0; j < 4; j++)
-        tr[j] = nb_dmem_s16(0x570u + (unsigned int)j * 2u);
+        tr[j] = nb_dmem_s16(0x128u + (unsigned int)j * 2u);
     {
         static int t = -1;
         if (t < 0) t = getenv("NB_TRACE") != NULL;
-        if (t) fprintf(stderr, "[XFRM] n=%u tr=%04x %04x %04x %04x in0=%04x %04x %04x\n",
-                       count, tr[0]&0xffff, tr[1]&0xffff, tr[2]&0xffff, tr[3]&0xffff,
+        if (t) fprintf(stderr, "[XFRM] n=%u persp=%04x m30=%04x m31=%04x sc0=%04x of0=%04x tr=%04x %04x %04x %04x in0=%04x %04x %04x\n",
+                       count,
+                       (unsigned)nb_dmem_s16(0x14e)&0xffff,
+                       (unsigned)nb_dmem_s16(0x5d8)&0xffff,
+                       (unsigned)nb_dmem_s16(0x5da)&0xffff,
+                       (unsigned)nb_dmem_s16(0x130)&0xffff,
+                       (unsigned)nb_dmem_s16(0x138)&0xffff,
+                       tr[0]&0xffff, tr[1]&0xffff, tr[2]&0xffff, tr[3]&0xffff,
                        (unsigned)nb_dmem_s16(0x170)&0xffff,
                        (unsigned)nb_dmem_s16(0x172)&0xffff,
                        (unsigned)nb_dmem_s16(0x174)&0xffff);
@@ -273,6 +322,11 @@ static void nb_stream_open(unsigned int base)
 
 static void nb_op02(unsigned int w0, unsigned int w1)
 {
+    {
+        static int t = -1;
+        if (t < 0) t = getenv("NB_TRACE") != NULL;
+        if (t) fprintf(stderr, "[OP02] @%06x w0=%08x w1=%08x\n", nb.dl, w0, w1);
+    }
     nb_stream_open(w1 & 0x00ffffffu);
     nb_dmem_w32(0xfdcu, w0 & 0x1ffu);
 }
@@ -348,12 +402,12 @@ int naboo_run_dl(RdpFifo *fifo, unsigned int dl_addr, int resume)
             words[0] = (int32_t)w0;
             words[1] = (int32_t)w1;
             rdp_fifo_append(fifo, words, 2);
-            nb.dl += 8;
+            nb_dl_step(8u);
             if (op == 0xe4u) {
                 words[0] = (int32_t)nb_read_u32(nb.dl);
                 words[1] = (int32_t)nb_read_u32(nb.dl + 4);
                 rdp_fifo_append(fifo, words, 2);
-                nb.dl += 8;
+                nb_dl_step(8u);
             }
             continue;
         }
@@ -364,7 +418,7 @@ int naboo_run_dl(RdpFifo *fifo, unsigned int dl_addr, int resume)
 
         switch (op) {
         case 0x00:                              /* NOOP */
-            nb.dl += 8;
+            nb_dl_step(8u);
             continue;
         case 0x06:                              /* DisplayList: call w1,
              * push the return cursor (text 0x754: stack at DMEM 0xfe0,
@@ -373,8 +427,10 @@ int naboo_run_dl(RdpFifo *fifo, unsigned int dl_addr, int resume)
                 nb.active = 0;
                 return NABOO_R_FALLBACK;
             }
-            nb.stack[nb.sp++] = nb.dl + 8;
-            nb.dl = w1 & 0x00fffff8u;
+            nb.stack[nb.sp * 2u] = nb.chunk;
+            nb.stack[nb.sp * 2u + 1u] = nb.off + 8u;
+            nb.sp++;
+            nb_dl_enter(w1);
             continue;
         case 0x0f:                              /* EndDL (GBI 0xb8):
              * pop a pushed cursor, or finish at top level (text 0x778).
@@ -383,14 +439,22 @@ int naboo_run_dl(RdpFifo *fifo, unsigned int dl_addr, int resume)
              * another list segment -- continue there and clear the
              * link (text 0x79c-0x7cc). */
             if (nb.sp) {
-                nb.dl = nb.stack[--nb.sp];
+                nb.sp--;
+                nb.chunk = nb.stack[nb.sp * 2u];
+                nb.off = nb.stack[nb.sp * 2u + 1u];
+                nb.dl = nb.chunk + nb.off;
+                if (nb.off >= 0x108u) {
+                    nb.off -= 8u;
+                    nb.dl = nb.chunk + nb.off;
+                    nb_dl_step(8u);
+                }
                 continue;
             }
             {
                 unsigned int tail = nb_dmem_r32(0x58cu) & 0x00fffff8u;
                 if (tail != 0u) {
                     nb_dmem_w32(0x58cu, 0u);
-                    nb.dl = tail;
+                    nb_dl_enter(tail);
                     continue;
                 }
             }
@@ -399,28 +463,72 @@ int naboo_run_dl(RdpFifo *fifo, unsigned int dl_addr, int resume)
         case 0x02:                              /* open segmented
              * stream (text 0xd1c) */
             nb_op02(w0, w1);
-            nb.dl += 8;
+            nb_dl_step(8u);
             continue;
         case 0x01:                              /* segmented load +
              * subtype processor (state modeling; RDP output comes from
              * the triangle path, which still falls back) */
             nb_op01(w0, w1);
-            nb.dl += 8;
+            nb_dl_step(8u);
             continue;
         case 0x0d:                              /* GeometryMode &= w1
              * (text 0xa70) */
             nb.geom &= w1;
-            nb.dl += 8;
+            nb_dl_step(8u);
             continue;
         case 0x0e:                              /* GeometryMode |= w1
              * (text 0xa68) */
             nb.geom |= w1;
-            nb.dl += 8;
+            nb_dl_step(8u);
+            continue;
+        case 0x10:                              /* conditional state
+             * insert (text 0x7d0): compare w0 bit 23 against the
+             * struct word +0xc; on mismatch skip, else perform the
+             * slot 0x11 insert */
+            if ((((w0 >> 23) & 1u) != (nb_dmem_r32(0x11cu) & 1u))) {
+                nb_dl_step(8u);
+                continue;
+            }
+            /* fall through */
+        case 0x11:                              /* state-word bitfield
+             * insert (text 0x7e0): word = 0x120 + ((w0>>16)&7)*4;
+             * clear a field of width (w0&31)+1 at shift (w0>>8)&31,
+             * OR in w1 (pre-shifted by the CPU). Words 0/1 double as
+             * the RDP SET_OTHER_MODES pair (emitted on the real
+             * path); words 4-7 are the viewport block the transform
+             * reads. */
+            {
+                /* the idx field is a BYTE offset into the state block
+                 * (lw a1, 0x120(a0) with a0 = (w0>>16)&7): words at
+                 * 0x120 and 0x124 only -- the RDP SET_OTHER_MODES
+                 * pair. */
+                unsigned int idx = (w0 >> 16) & 4u;
+                unsigned int cur = nb_dmem_r32(0x120u + idx);
+                unsigned int msk =
+                    (unsigned int)((int32_t)0x80000000 >> (w0 & 31u));
+                msk >>= (w0 >> 8) & 31u;
+                cur = (cur & ~msk) | w1;
+                nb_dmem_w32(0x120u + idx, cur);
+            }
+            nb_dl_step(8u);
+            continue;
+        case 0x12:                              /* state toggle (text
+             * 0xa80): store w0 at struct +0x38; flip geometry-mode
+             * bit 1 when (geom ^ w0) & 2 */
+            nb_dmem_w32(0x148u, w0);
+            nb.geom ^= (nb.geom ^ w0) & 2u;
+            nb_dl_step(8u);
             continue;
         case 0x13:                              /* MoveWord (GBI 0xbc):
              * DMEM[w0 & 0xffc] = w1 (text 0xa78) */
+            {
+                static int t = -1;
+                if (t < 0) t = getenv("NB_MW_TRACE") != NULL;
+                if (t && (w0 & 0xfe0u) == 0x120u)
+                    fprintf(stderr, "[MW] %03x = %08x\n", w0 & 0xffcu, w1);
+            }
             nb_dmem_w32(w0, w1);
-            nb.dl += 8;
+            nb_dl_step(8u);
             continue;
         default:
             /* not yet implemented: rerun this slice on the LLE
@@ -433,7 +541,23 @@ int naboo_run_dl(RdpFifo *fifo, unsigned int dl_addr, int resume)
                     perm = getenv("NB_PERMISSIVE") != NULL;
                 if (perm) {
                     unsigned int step = 8u;
-                    if (op == 0x0bu) {
+                    if (op == 0x05u) {
+                        /* load+run overlay: never skippable (overlay
+                         * code has arbitrary effects, and the oracle
+                         * truncation technique patches list tails
+                         * into overlay-0x1e exits) -- stop here */
+                        nb.active = 0;
+                        return NABOO_R_FALLBACK;
+                    }
+                    if (op == 0x0bu || op == 0x16u) {
+                        /* empirical (goracle command trace, task 240,
+                         * 3826 dispatches): triangles and slot 0x16
+                         * are 32 bytes in this workload */
+                        step = 32u;
+                        nb_dl_step(step);
+                        continue;
+                    }
+                    if (0) {
                         /* triangle batching (text 0xb8c): countdown
                          * byte at DMEM 0x58a, seeded from the first
                          * tri's w0; while active, each tri decrements
@@ -457,7 +581,7 @@ int naboo_run_dl(RdpFifo *fifo, unsigned int dl_addr, int resume)
                     } else if (op == 0x15u) {
                         step = 16u;
                     }
-                    nb.dl += step;
+                    nb_dl_step(step);
                     continue;
                 }
             }
