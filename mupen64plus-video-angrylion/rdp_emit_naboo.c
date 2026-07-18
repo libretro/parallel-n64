@@ -2172,33 +2172,6 @@ int naboo_run_dl(RdpFifo *fifo, unsigned int dl_addr, int resume)
         case 0x00:                              /* NOOP */
             nb_dl_step(8u);
             continue;
-        case 0xbc:                              /* poke (text 0xa78):
-             * two instructions -- `sw r20, 0(r19)` in the delay slot
-             * of the jump back to the fetch loop.  w0 is a DMEM
-             * address, w1 the word to store. */
-            nb_dmem_w32(w0 & 0xfffu, w1);
-            nb_dl_step(8u);
-            continue;
-        case 0xba: {                            /* masked MoveWord
-             * (text 0x7e0).  The two shifts build a contiguous field
-             * mask: `srav at, at, r19` takes 0x80000000 down by
-             * (w0 & 31), which smears (w0 & 31) + 1 set bits from the
-             * top, and `srlv at, at, v0` then slides that field down
-             * by ((w0 >> 8) & 31).  The field is cleared and w1 OR'd
-             * in.  Note both shift counts come from the SHIFT-AMOUNT
-             * operand, which is the rs field -- reading them the
-             * other way round produces a plausible-looking mask that
-             * is wrong on every command. */
-            unsigned int sel  = 0x120u + ((w0 >> 16) & 7u);
-            unsigned int at   = (unsigned int)((int)0x80000000
-                                               >> (int)(w0 & 31u));
-            unsigned int cur;
-            at >>= ((w0 >> 8) & 31u);
-            cur = nb_dmem_r32(sel);
-            nb_dmem_w32(sel, (cur & ~at) | w1);
-            nb_dl_step(8u);
-            continue;
-        }
         case 0xbe: {                            /* per-triangle S/T
              * (live IMEM 0xb08; the static task image has different
              * bytes here -- overlay 0x0f's mode-2 DMA covers
@@ -2399,8 +2372,11 @@ int naboo_run_dl(RdpFifo *fifo, unsigned int dl_addr, int resume)
                 continue;
             }
             /* fall through */
+        case 0xba:                              /* the two dispatch
+             * tables overlap: 0x11 and 0xba both resolve to table
+             * slot 0xd8 and run the same handler. */
         case 0x11:                              /* state-word bitfield
-             * insert (text 0x7e0): word = 0x120 + ((w0>>16)&7)*4;
+             * insert (text 0x7e0): word = 0x120 + ((w0>>16)&7);
              * clear a field of width (w0&31)+1 at shift (w0>>8)&31,
              * OR in w1 (pre-shifted by the CPU). Words 0/1 double as
              * the RDP SET_OTHER_MODES pair (emitted on the real
@@ -2408,9 +2384,13 @@ int naboo_run_dl(RdpFifo *fifo, unsigned int dl_addr, int resume)
              * reads. */
             {
                 /* the idx field is a BYTE offset into the state block
-                 * (lw a1, 0x120(a0) with a0 = (w0>>16)&7): words at
-                 * 0x120 and 0x124 only -- the RDP SET_OTHER_MODES
-                 * pair. */
+                 * (`lw a1, 288(a0)` with a0 = (w0>>16)&7, unscaled).
+                 * Masking to 4 rather than 7 is deliberate: the load
+                 * is a word load, so only aligned offsets are
+                 * meaningful, and across a whole mission task the
+                 * field only ever takes the values 0 and 4 (301 and
+                 * 99 commands respectively) -- the RDP
+                 * SET_OTHER_MODES pair. */
                 unsigned int idx = (w0 >> 16) & 4u;
                 unsigned int cur = nb_dmem_r32(0x120u + idx);
                 unsigned int msk =
@@ -2442,6 +2422,8 @@ int naboo_run_dl(RdpFifo *fifo, unsigned int dl_addr, int resume)
             nb.geom ^= (nb.geom ^ w0) & 2u;
             nb_dl_step(8u);
             continue;
+        case 0xbc:                              /* 0x13 and 0xbc
+             * collide on slot 0xdc the same way. */
         case 0x13:                              /* MoveWord (GBI 0xbc):
              * DMEM[w0 & 0xffc] = w1 (text 0xa78) */
             {
