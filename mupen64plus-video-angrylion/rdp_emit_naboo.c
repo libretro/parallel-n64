@@ -255,6 +255,61 @@ static int nb_acc_mid(int64_t acc)
  * dual guard-band clip codes, reciprocal divide, viewport, into
  * 0x28-byte records at DMEM 0x600.  First pass; calibrated against the
  * cxd4 oracle (goracle) on captured task slices. */
+
+/* Exact vch/vcl pair for the transform's clip tests (text 0x8cc-0x8dc):
+ * 8 lanes, VS = position (int then frac pass), VT = per-vertex w
+ * broadcast half-wise (element 3h).  Faithful to the RSP select-op
+ * semantics including the carry/vce state vcl consumes from vch.
+ * Returns the VCC halfword after the vcl (le bits 0-7, ge 8-15). */
+static unsigned int nb_vch_vcl(const int16_t si[8], const int16_t sf[8],
+                               const int16_t ti[8], const int16_t tf[8])
+{
+    int16_t sn[8], vce[8], ne[8], le1[8], ge1[8];
+    unsigned int vcc = 0u;
+    int i;
+
+    /* vch on the integer lanes */
+    for (i = 0; i < 8; i++) {
+        int16_t vs = si[i], vt = ti[i], vc = vt;
+        int cch = (vt == -32768);
+        int s = ((vs ^ vt) < 0);
+        int16_t eq, le, ge, diff;
+        sn[i] = (int16_t)(s ? -1 : 0);
+        if (s) vc = (int16_t)~vc;
+        vce[i] = (int16_t)((vs == vc) && s);
+        if (s && !cch) vc = (int16_t)(vc + 1);
+        eq = (int16_t)(((vs == vc) && !cch) || vce[i]);
+        diff = (int16_t)(sn[i] | vs);
+        ge = (int16_t)(diff >= vt);
+        diff = (int16_t)(vc - vs);
+        le = (int16_t)(s ? (diff >= 0) : (vt < 0));
+        ne[i] = (int16_t)(eq ^ 1);
+        le1[i] = le; ge1[i] = ge;
+    }
+    /* vcl on the fraction lanes, consuming the vch flags */
+    for (i = 0; i < 8; i++) {
+        uint16_t vb = (uint16_t)sf[i], vc = (uint16_t)tf[i];
+        int s = sn[i] != 0;
+        int eq = (ne[i] == 0);
+        int16_t diff; int uz, lz, gen, len, le, ge;
+        if (s) vc = (uint16_t)(-(int16_t)vc);
+        diff = (int16_t)(vb - vc);
+        uz = (int)(((uint32_t)vb + (uint16_t)tf[i] - 65536u) >> 31);
+        lz = (diff == 0);
+        gen = lz | uz;
+        len = lz & uz;
+        gen = gen & (int)vce[i];
+        len = len & (int)(vce[i] ^ 1);
+        len = len | gen;
+        gen = (vb >= vc);
+        le = (eq && s)  ? len : (int)le1[i];
+        ge = (eq && !s) ? gen : (int)ge1[i];
+        if (le) vcc |= 1u << i;
+        if (ge) vcc |= 1u << (8 + i);
+    }
+    return vcc;
+}
+
 static void nb_xfrm(unsigned int count)
 {
     unsigned int src = 0x170u;
@@ -349,15 +404,57 @@ static void nb_xfrm(unsigned int count)
                     nb_dmem_w16(dst + 0x1eu, (unsigned int)(sacc & 0xffff));
             }
         }
-        /* clip codes (+0x24) and fog (+0x13): next calibration pass
-         * (this batch exercises neither; the tri emitter needs them).
-         * Store width follows the microcode's pair asymmetry: vertex A
-         * of each pair uses sh (+0x24 only, +0x26 preserved), vertex B
-         * uses sw (+0x24 and +0x26 cleared together). */
-        if (v & 1u)
-            nb_dmem_w32(dst + 0x24u, 0u);
-        else
-            nb_dmem_w16(dst + 0x24u, 0u);
+        /* clip codes (+0x24), text 0x8c0-0x924: two vch/vcl tests --
+         * the tight frustum (pos vs w) and the guard band (pos vs
+         * w scaled by the halfword at DMEM 0x006) -- packed per
+         * vertex as (tight & 0x707) << 4 | (guard & 0x707).  The
+         * microcode tests two records per iteration; here each record
+         * runs in lanes 0-3 with lanes 4-7 mirrored, which leaves the
+         * per-vertex extraction identical.  Store width follows the
+         * pair asymmetry: vertex A of each pair uses sh (+0x24 only),
+         * vertex B uses sw, its +0x26 receiving A's code. */
+        {
+            int16_t si[8], sf[8], ti[8], tf[8];
+            int g = nb_dmem_s16(0x006u) & 0xffff;
+            int64_t wg;
+            unsigned int t1, t2, oc;
+            static unsigned int oc_prev;
+            for (j = 0; j < 4; j++) {
+                si[j] = si[j + 4] = (int16_t)ci[j];
+                sf[j] = sf[j + 4] = (int16_t)cf[j];
+                ti[j] = ti[j + 4] = (int16_t)ci[3];
+                tf[j] = tf[j + 4] = (int16_t)cf[3];
+            }
+            t1 = nb_vch_vcl(si, sf, ti, tf);
+            /* guard-scaled w: vmudn frac x g + vmadh int x g */
+            wg = (int64_t)(uint16_t)cf[3] * g
+               + (((int64_t)(int16_t)ci[3] * g) << 16);
+            for (j = 0; j < 4; j++) {
+                int16_t wgi = (int16_t)((wg >> 16) & 0xffff);
+                int16_t wgf = (int16_t)(wg & 0xffff);
+                ti[j] = ti[j + 4] = wgi;
+                tf[j] = tf[j + 4] = wgf;
+            }
+            t2 = nb_vch_vcl(si, sf, ti, tf);
+            oc = ((t1 & 0x707u) << 4) | (t2 & 0x707u);
+            {
+                static int toc = -1;
+                if (toc < 0) toc = getenv("NB_OC_TRACE") != NULL;
+                if (toc) {
+                    if (v & 1u)
+                        fprintf(stderr, "[OC] sw r9=%03x v0=%08x\n",
+                                dst - 0x28u, (oc << 16) | oc_prev);
+                    else
+                        fprintf(stderr, "[OC] sh r9=%03x v0=%08x\n",
+                                dst, oc);
+                }
+            }
+            if (v & 1u)
+                nb_dmem_w32(dst + 0x24u, (oc << 16) | oc_prev);
+            else
+                nb_dmem_w16(dst + 0x24u, oc);
+            oc_prev = oc;
+        }
     }
 }
 
