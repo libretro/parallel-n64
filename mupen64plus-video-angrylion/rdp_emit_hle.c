@@ -1107,6 +1107,14 @@ int angrylion_naboo_dlist(int resume)
     naboo_set_rdram_size(rdram_size);
     r = naboo_run_dl(&s_fifo, dl_addr, resume);
 
+    /* On fallback the LLE rerun re-executes the whole list from its
+     * head; anything this slice already appended would be emitted
+     * twice. Discard instead of flushing. */
+    if (r < 0) {
+        s_fifo.used = 0;
+        return r;
+    }
+
     /* submit everything generated in this slice */
     fifo_flush_to_rdp(&s_fifo);
 

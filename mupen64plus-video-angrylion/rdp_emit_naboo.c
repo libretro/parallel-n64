@@ -57,15 +57,32 @@ static unsigned int nb_read_u32(unsigned int addr)
 
 /* Walk state persists across slices of one task (the server yields and
  * resumes); a fresh task launch resets it. */
+#define NB_DL_STACK 8
 static struct {
     unsigned int dl;            /* command cursor (RDRAM) */
     unsigned int active;
+    unsigned int sp;            /* DL call depth (slot 0x06 / 0x0f) */
+    unsigned int stack[NB_DL_STACK];
+    /* modeled microcode DMEM state: MoveWord (slot 0x13) writes land
+     * here; render commands consume them (state words at 0x120-0x13c,
+     * viewport/live-tail words, ...) */
+    unsigned char dmem[0x1000];
 } nb;
 
 void naboo_task_reset(unsigned int dl)
 {
     nb.dl = dl;
     nb.active = 1;
+    nb.sp = 0;
+}
+
+static void nb_dmem_w32(unsigned int off, unsigned int v)
+{
+    unsigned int a = off & 0xffcu;
+    nb.dmem[(a + 0u) ^ 3u] = (unsigned char)(v >> 24);
+    nb.dmem[(a + 1u) ^ 3u] = (unsigned char)(v >> 16);
+    nb.dmem[(a + 2u) ^ 3u] = (unsigned char)(v >> 8);
+    nb.dmem[(a + 3u) ^ 3u] = (unsigned char)v;
 }
 
 int naboo_run_dl(RdpFifo *fifo, unsigned int dl_addr, int resume)
@@ -106,15 +123,34 @@ int naboo_run_dl(RdpFifo *fifo, unsigned int dl_addr, int resume)
         case 0x00:                              /* NOOP */
             nb.dl += 8;
             continue;
-        case 0x0f:                              /* EndDL (GBI 0xb8) */
+        case 0x06:                              /* DisplayList: call w1,
+             * push the return cursor (text 0x754: stack at DMEM 0xfe0,
+             * depth byte at struct+0x32) */
+            if (nb.sp >= NB_DL_STACK) {
+                nb.active = 0;
+                return NABOO_R_FALLBACK;
+            }
+            nb.stack[nb.sp++] = nb.dl + 8;
+            nb.dl = w1 & 0x00fffff8u;
+            continue;
+        case 0x0f:                              /* EndDL (GBI 0xb8):
+             * pop a pushed cursor, or finish at top level (text 0x778) */
+            if (nb.sp) {
+                nb.dl = nb.stack[--nb.sp];
+                continue;
+            }
             nb.active = 0;
             return NABOO_R_DONE;
+        case 0x13:                              /* MoveWord (GBI 0xbc):
+             * DMEM[w0 & 0xffc] = w1 (text 0xa78) */
+            nb_dmem_w32(w0, w1);
+            nb.dl += 8;
+            continue;
         default:
             /* not yet implemented: rerun this slice on the LLE
              * fallback */
             nb.active = 0;
             return NABOO_R_FALLBACK;
         }
-        (void)w1;
     }
 }
