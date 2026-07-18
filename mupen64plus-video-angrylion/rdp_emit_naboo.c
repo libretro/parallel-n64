@@ -541,6 +541,11 @@ static int nb_emit_tri(RdpFifo *fifo, unsigned int ra, unsigned int rb,
     }
 
     tilebyte = (int)nb.dmem[0x14au ^ 3u];
+    /* the Naboo emitter shares Rogue Squadron's edge-anchor and
+     * attribute conventions; the shared writer's flags are global, so
+     * assert them per call (another walker may have run) */
+    rsp_set_tri_attr_rs(1);
+    rsp_tri_set_rs_sort(1);
     nw = rsp_tri_write(ew, &va, &vb, &vc,
                        (int)(nb.geom >> 1) & 1,
                        (int)nb.geom & 1,
@@ -655,11 +660,34 @@ int naboo_run_dl(RdpFifo *fifo, unsigned int dl_addr, int resume)
             /* RDP passthrough (text 0x98).  G_TEXRECT carries two
              * extra inline words. */
             int32_t words[2];
+            if (op == 0xe4u || op == 0xe5u) {
+                /* G_TEXRECT is the compositor's splice point (text
+                 * 0xb4, jal 0x7b4): when the CPU has staged a
+                 * texture-setup list in the DMEM word 0x58c, the
+                 * handler saves its position and walks that list
+                 * first -- its top-level EndDL returns here and the
+                 * texrect reprocesses with the link cleared.  The
+                 * 'expanded' load blocks in the reference stream are
+                 * these CPU-built lists, not generated commands. */
+                unsigned int splice = nb_dmem_r32(0x58cu) & 0x00fffff8u;
+                if (splice != 0u) {
+                    if (nb.sp >= NB_DL_STACK) {
+                        nb.active = 0;
+                        return NABOO_R_FALLBACK;
+                    }
+                    nb_dmem_w32(0x58cu, 0u);
+                    nb.stack[nb.sp * 2u] = nb.chunk;
+                    nb.stack[nb.sp * 2u + 1u] = nb.off;
+                    nb.sp++;
+                    nb_dl_enter(splice);
+                    continue;
+                }
+            }
             words[0] = (int32_t)w0;
             words[1] = (int32_t)w1;
             rdp_fifo_append(fifo, words, 2);
             nb_dl_step(8u);
-            if (op == 0xe4u) {
+            if (op == 0xe4u || op == 0xe5u) {
                 words[0] = (int32_t)nb_read_u32(nb.dl);
                 words[1] = (int32_t)nb_read_u32(nb.dl + 4);
                 rdp_fifo_append(fifo, words, 2);
@@ -733,14 +761,28 @@ int naboo_run_dl(RdpFifo *fifo, unsigned int dl_addr, int resume)
             continue;
         case 0x0b:                              /* quad: two
              * triangles (A,B,C) and (A,C,D) (entry 1:b44) */
-            if (nb_tri(fifo, w0, w1, 1) < 0) {
-                nb.active = 0;
-                return NABOO_R_FALLBACK;
-            }
-            continue;
         case 0x16:                              /* single triangle
              * (A,B,C) (entry 1:b24) */
-            if (nb_tri(fifo, w0, w1, 0) < 0) {
+            /* the triangle emitter's jalr through DMEM 0x152 lands on
+             * the same splice-check helper as G_TEXRECT when the
+             * default 0x17b4 routine is installed: a staged list in
+             * 0x58c is walked first, then the triangle reprocesses */
+            {
+                unsigned int splice = nb_dmem_r32(0x58cu) & 0x00fffff8u;
+                if (splice != 0u) {
+                    if (nb.sp >= NB_DL_STACK) {
+                        nb.active = 0;
+                        return NABOO_R_FALLBACK;
+                    }
+                    nb_dmem_w32(0x58cu, 0u);
+                    nb.stack[nb.sp * 2u] = nb.chunk;
+                    nb.stack[nb.sp * 2u + 1u] = nb.off;
+                    nb.sp++;
+                    nb_dl_enter(splice);
+                    continue;
+                }
+            }
+            if (nb_tri(fifo, w0, w1, op == 0x0bu) < 0) {
                 nb.active = 0;
                 return NABOO_R_FALLBACK;
             }
