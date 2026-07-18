@@ -123,7 +123,13 @@ static int nb_emit_on;
  * their output on the LLE reference. */
 void naboo_set_emit(int on)
 {
-    nb_emit_on = on;
+    /* NABOO_NO_EMIT forces the fallback path on verified builds too:
+     * the pixel-exactness instrument (same backend, same pacing --
+     * emit vs LLE-rerun differ only by who rendered). */
+    static int off = -1;
+    if (off < 0)
+        off = getenv("NABOO_NO_EMIT") != NULL;
+    nb_emit_on = off ? 0 : on;
 }
 
 void naboo_seed_dmem(const unsigned char *dmem)
