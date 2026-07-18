@@ -325,7 +325,7 @@ static unsigned int nb_vch_vcl(const int16_t si[8], const int16_t sf[8],
  * and the outcode halfword (+0x24, sh flavor -- +0x26 preserved).
  * Factored from the batch transform for the clip overlay's
  * interpolated vertices. */
-static void nb_project(unsigned int rec)
+static unsigned int nb_project(unsigned int rec)
 {
     int ci[4]; unsigned int cf[4];
     int j;
@@ -382,7 +382,7 @@ static void nb_project(unsigned int rec)
         }
         t2 = nb_vch_vcl(si, sf, ti, tf);
         oc = ((t1 & 0x707u) << 4) | (t2 & 0x707u);
-        nb_dmem_w16(rec + 0x24u, oc);
+        return oc;
     }
 }
 
@@ -446,73 +446,12 @@ static void nb_xfrm(unsigned int count)
             nb_dmem_w16(dst + (unsigned int)j * 2u, (unsigned int)ci[j] & 0xffffu);
             nb_dmem_w16(dst + 8u + (unsigned int)j * 2u, cf[j]);
         }
-        /* projection (text 0x8c0-0x9b8), oracle-exact: w' = w * persp
-         * >> 16; rcp'd through the divide ROM, doubled, one Newton
-         * step against 2; ratio = ((pos * rcp) >> 16 * persp) >> 16;
-         * screen = viewport offset + (ratio * scale) >> 16 with the
-         * s16 mid clamp. z keeps its fraction (record +0x1e). */
+        /* projection and clip codes: identical to the standalone
+         * record path, so share nb_project rather than carrying a
+         * second transcription of text 0x8c0-0x9b8. */
         {
-            int persp = nb_dmem_s16(0x14eu) & 0xffff;
-            int64_t p32[4], wp, r, wr, err, t, sacc;
-            int scl, ofs, scr;
-            for (j = 0; j < 4; j++)
-                p32[j] = ((int64_t)ci[j] << 16) | cf[j];
-            wp = (p32[3] * persp) >> 16;
-            r  = rsp_rcp32_dp((int32_t)wp);
-            r  = (int32_t)((uint32_t)r << 1);
-            wr = (wp * r) >> 16;
-            err = ((int64_t)2 << 16) - wr;
-            r  = (int32_t)((r * err) >> 16);
-            nb_dmem_w16(dst + 0x20u, ((unsigned int)r >> 16) & 0xffffu);
-            nb_dmem_w16(dst + 0x22u, (unsigned int)r & 0xffffu);
-            for (j = 0; j < 3; j++) {
-                t = (p32[j] * r) >> 16;
-                t = (t * persp) >> 16;
-                scl = nb_dmem_s16(0x130u + (unsigned int)j * 2u);
-                ofs = nb_dmem_s16(0x138u + (unsigned int)j * 2u);
-                sacc = ((int64_t)ofs << 16) + t * scl;
-                scr = (int)(sacc >> 16);
-                if (scr > 32767) scr = 32767;
-                if (scr < -32768) scr = -32768;
-                nb_dmem_w16(dst + 0x18u + (unsigned int)j * 2u,
-                            (unsigned int)scr & 0xffffu);
-                if (j == 2)
-                    nb_dmem_w16(dst + 0x1eu, (unsigned int)(sacc & 0xffff));
-            }
-        }
-        /* clip codes (+0x24), text 0x8c0-0x924: two vch/vcl tests --
-         * the tight frustum (pos vs w) and the guard band (pos vs
-         * w scaled by the halfword at DMEM 0x006) -- packed per
-         * vertex as (tight & 0x707) << 4 | (guard & 0x707).  The
-         * microcode tests two records per iteration; here each record
-         * runs in lanes 0-3 with lanes 4-7 mirrored, which leaves the
-         * per-vertex extraction identical.  Store width follows the
-         * pair asymmetry: vertex A of each pair uses sh (+0x24 only),
-         * vertex B uses sw, its +0x26 receiving A's code. */
-        {
-            int16_t si[8], sf[8], ti[8], tf[8];
-            int g = nb_dmem_s16(0x006u) & 0xffff;
-            int64_t wg;
-            unsigned int t1, t2, oc;
+            unsigned int oc = nb_project(dst);
             static unsigned int oc_prev;
-            for (j = 0; j < 4; j++) {
-                si[j] = si[j + 4] = (int16_t)ci[j];
-                sf[j] = sf[j + 4] = (int16_t)cf[j];
-                ti[j] = ti[j + 4] = (int16_t)ci[3];
-                tf[j] = tf[j + 4] = (int16_t)cf[3];
-            }
-            t1 = nb_vch_vcl(si, sf, ti, tf);
-            /* guard-scaled w: vmudn frac x g + vmadh int x g */
-            wg = (int64_t)(uint16_t)cf[3] * g
-               + (((int64_t)(int16_t)ci[3] * g) << 16);
-            for (j = 0; j < 4; j++) {
-                int16_t wgi = (int16_t)((wg >> 16) & 0xffff);
-                int16_t wgf = (int16_t)(wg & 0xffff);
-                ti[j] = ti[j + 4] = wgi;
-                tf[j] = tf[j + 4] = wgf;
-            }
-            t2 = nb_vch_vcl(si, sf, ti, tf);
-            oc = ((t1 & 0x707u) << 4) | (t2 & 0x707u);
             {
                 static int toc = -1;
                 if (toc < 0) toc = getenv("NB_OC_TRACE") != NULL;
@@ -1249,7 +1188,7 @@ static int nb_clip(RdpFifo *fifo, unsigned int ra, unsigned int rb,
                     nb_dmem_w16(stage + 0x14u + k * 2u,
                                 (unsigned int)r & 0xffffu);
                 }
-                nb_project(stage);
+                nb_dmem_w16(stage + 0x24u, nb_project(stage));
                 lists[cur ^ 1u][n_out++] = stage;
                 stage += 0x28u;
                 if (stage > 0x560u - 0x28u)
@@ -1384,10 +1323,14 @@ static int nb_tri_gate(unsigned int ra, unsigned int rb, unsigned int rc)
     cx = (int16_t)nb_dmem_s16(rc + 0x18u); cy = (int16_t)nb_dmem_s16(rc + 0x1au);
     d1x = bx - ax; d1y = by - ay;
     d2x = cx - ax; d2y = cy - ay;
-    if (d1x > 32767) d1x = 32767; if (d1x < -32768) d1x = -32768;
-    if (d1y > 32767) d1y = 32767; if (d1y < -32768) d1y = -32768;
-    if (d2x > 32767) d2x = 32767; if (d2x < -32768) d2x = -32768;
-    if (d2y > 32767) d2y = 32767; if (d2y < -32768) d2y = -32768;
+    if (d1x > 32767)  d1x = 32767;
+    if (d1x < -32768) d1x = -32768;
+    if (d1y > 32767)  d1y = 32767;
+    if (d1y < -32768) d1y = -32768;
+    if (d2x > 32767)  d2x = 32767;
+    if (d2x < -32768) d2x = -32768;
+    if (d2y > 32767)  d2y = 32767;
+    if (d2y < -32768) d2y = -32768;
     cross = (int64_t)d2x * d1y - (int64_t)d1x * d2y;
     if (cross == 0)
         return 1;                       /* degenerate */
