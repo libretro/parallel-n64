@@ -69,6 +69,8 @@ static struct {
     unsigned int dl;            /* current command address (chunk+off) */
     unsigned int active;
     unsigned int sp;            /* DL call depth (slot 0x06 / 0x0f) */
+    unsigned int clip_poly[10]; /* clip fan resume state */
+    unsigned int clip_n, clip_idx, clip_active;
     unsigned int tri_phase;     /* quad resume: 1 = first triangle
                                    already emitted before a splice */
     unsigned int geom;          /* geometry-mode word (s5): slot 0x0e
@@ -104,8 +106,10 @@ static void nb_dl_step(unsigned int len)
     nb.dl = nb.chunk + nb.off;
 }
 
+unsigned int nb_task_ordinal;
 void naboo_task_reset(unsigned int dl)
 {
+    nb_task_ordinal++;
     nb_dl_enter(dl);
     nb.active = 1;
     nb.sp = 0;
@@ -136,6 +140,9 @@ void naboo_set_emit(int on)
 
 static unsigned int nb_dmem_r32(unsigned int off);
 static void nb_ovl1b(unsigned int w1);
+struct rdp_fifo_s;
+static int nb_emit_tri(RdpFifo *fifo, unsigned int ra, unsigned int rb,
+                       unsigned int rc);
 static void nb_dmem_w32(unsigned int off, unsigned int v);
 static void nb_dmem_w16(unsigned int off, unsigned int v);
 static void nb_dmem_w8(unsigned int off, unsigned int v);
@@ -309,6 +316,74 @@ static unsigned int nb_vch_vcl(const int16_t si[8], const int16_t sf[8],
         if (ge) vcc |= 1u << (8 + i);
     }
     return vcc;
+}
+
+/* Project one vertex record and compute its clip codes (text
+ * 0x8c0-0x924): reads the clip-space position from the record
+ * (+0x00 int, +0x08 frac), writes the screen triple (+0x18, z
+ * fraction +0x1e), the doubled Newton-stepped reciprocal (+0x20),
+ * and the outcode halfword (+0x24, sh flavor -- +0x26 preserved).
+ * Factored from the batch transform for the clip overlay's
+ * interpolated vertices. */
+static void nb_project(unsigned int rec)
+{
+    int ci[4]; unsigned int cf[4];
+    int j;
+    for (j = 0; j < 4; j++) {
+        ci[j] = nb_dmem_s16(rec + (unsigned int)j * 2u);
+        cf[j] = (unsigned int)nb_dmem_s16(rec + 8u + (unsigned int)j * 2u) & 0xffffu;
+    }
+    {
+        int persp = nb_dmem_s16(0x14eu) & 0xffff;
+        int64_t p32[4], wp, r, wr, err, t, sacc;
+        int scl, ofs, scr;
+        for (j = 0; j < 4; j++)
+            p32[j] = ((int64_t)ci[j] << 16) | cf[j];
+        wp = (p32[3] * persp) >> 16;
+        r  = rsp_rcp32_dp((int32_t)wp);
+        r  = (int32_t)((uint32_t)r << 1);
+        wr = (wp * r) >> 16;
+        err = ((int64_t)2 << 16) - wr;
+        r  = (int32_t)((r * err) >> 16);
+        nb_dmem_w16(rec + 0x20u, ((unsigned int)r >> 16) & 0xffffu);
+        nb_dmem_w16(rec + 0x22u, (unsigned int)r & 0xffffu);
+        for (j = 0; j < 3; j++) {
+            t = (p32[j] * r) >> 16;
+            t = (t * persp) >> 16;
+            scl = nb_dmem_s16(0x130u + (unsigned int)j * 2u);
+            ofs = nb_dmem_s16(0x138u + (unsigned int)j * 2u);
+            sacc = ((int64_t)ofs << 16) + t * scl;
+            scr = (int)(sacc >> 16);
+            if (scr > 32767) scr = 32767;
+            if (scr < -32768) scr = -32768;
+            nb_dmem_w16(rec + 0x18u + (unsigned int)j * 2u,
+                        (unsigned int)scr & 0xffffu);
+            if (j == 2)
+                nb_dmem_w16(rec + 0x1eu, (unsigned int)(sacc & 0xffff));
+        }
+    }
+    {
+        int16_t si[8], sf[8], ti[8], tf[8];
+        int g = nb_dmem_s16(0x006u) & 0xffff;
+        int64_t wg;
+        unsigned int t1, t2, oc;
+        for (j = 0; j < 4; j++) {
+            si[j] = si[j + 4] = (int16_t)ci[j];
+            sf[j] = sf[j + 4] = (int16_t)cf[j];
+            ti[j] = ti[j + 4] = (int16_t)ci[3];
+            tf[j] = tf[j + 4] = (int16_t)cf[3];
+        }
+        t1 = nb_vch_vcl(si, sf, ti, tf);
+        wg = (int64_t)(uint16_t)cf[3] * g
+           + (((int64_t)(int16_t)ci[3] * g) << 16);
+        for (j = 0; j < 4; j++) {
+            ti[j] = ti[j + 4] = (int16_t)((wg >> 16) & 0xffff);
+            tf[j] = tf[j + 4] = (int16_t)(wg & 0xffff);
+        }
+        t2 = nb_vch_vcl(si, sf, ti, tf);
+        oc = ((t1 & 0x707u) << 4) | (t2 & 0x707u);
+        nb_dmem_w16(rec + 0x24u, oc);
+    }
 }
 
 static void nb_xfrm(unsigned int count)
@@ -1030,6 +1105,262 @@ static void nb_ovl2a(unsigned int cmd, unsigned int out_st[4])
     }
 }
 
+
+
+/* Naboo clip weight: t = (P.in) / (P.in - P.out) through the exact
+ * fixed-point path (overlay text 0xe70-0xf24 + the resident refined
+ * reciprocal at 0xa08): the coarse doubled reciprocal of D (negated
+ * when D >= 0, saturated to a u16 fraction when its integer part is
+ * nonzero), one Newton refinement of D x coarse against 2.0, and
+ * the recombine N x refined x coarse over the v30 x 4 seed.
+ * Returns the u16 weight applied to the INSIDE vertex (1 - t); the
+ * outside weight is its two's complement. */
+static unsigned int nb_clip_wt(const int32_t in4[4], const int32_t out4[4],
+                               const int16_t P[4])
+{
+    int64_t n48 = 0, d48 = 0;
+    int32_t n32, d32, coarse, norm, refined, wr;
+    int64_t acc, err, t32;
+    unsigned int cu16, w;
+    int k;
+
+    for (k = 0; k < 4; k++) {
+        n48 += (int64_t)P[k] * in4[k];
+        d48 += (int64_t)P[k] * out4[k];
+    }
+    d48 = n48 - d48;
+    n32 = (int32_t)n48;
+    d32 = (int32_t)d48;
+
+    coarse = (int32_t)((uint32_t)rsp_rcp32_dp(d32) << 1);
+    if (d32 < 0)
+        coarse = -coarse;               /* magnitude */
+    cu16 = (((unsigned)coarse >> 16) & 0xffffu) == 0u
+         ? ((unsigned)coarse & 0xffffu) : 0xffffu;
+
+    norm = (int32_t)(((int64_t)d32 * coarse) >> 16);
+    refined = (int32_t)((uint32_t)rsp_rcp32_dp(norm) << 1);
+    wr = (int32_t)(((int64_t)norm * refined) >> 16);
+    err = ((int64_t)2 << 16) - wr;
+    refined = (int32_t)(((int64_t)refined * err) >> 16);
+
+    /* w_out = 1 + ((N x refined >> 16) x coarse) >> 16, fit exact
+     * across the probe corpus */
+    t32 = ((int64_t)n32 * refined) >> 16;
+    acc = 1 + ((t32 * (int64_t)cu16) >> 16);
+    w = (unsigned int)(acc & 0xffffu);
+    if (w == 0u)
+        w = 1u;
+    return w;
+}
+
+/* Overlay 0x03: polygon clip (Sutherland-Hodgman against five
+ * frustum planes), the Rogue Squadron algorithm on Naboo
+ * addressing.  Ping-pong vertex-handle lists at DMEM 0x560/0x574
+ * (zero-terminated), plane masks at DMEM 0x58 + 2k, plane
+ * coefficients at DMEM (plane_sel << 2), interpolated vertices
+ * staged at 0x380 with the record stride, each reprojected and
+ * re-outcoded through the resident path; the surviving polygon
+ * fans from its first vertex through the emitter's post-gate
+ * entry.  Returns 0, or -1 to fall back. */
+static int nb_clip(RdpFifo *fifo, unsigned int ra, unsigned int rb,
+                   unsigned int rc)
+{
+    unsigned int lists[2][12];
+    unsigned int n_in, n_out, cur;
+    unsigned int stage = 0x380u;
+    unsigned int r25;
+    unsigned int i;
+
+    nb.dmem[0x58au ^ 3u] = 0u;          /* batching countdown reset */
+    nb_dmem_w16(0x588u, ra);            /* fan-centre handle */
+
+    lists[0][0] = ra; lists[0][1] = rb; lists[0][2] = rc;
+    n_in = 3u; cur = 0u;
+
+    /* six planes: the microcode's bgtz tests before the delay-slot
+     * decrement, so r25 walks a,8,6,4,2,0 (text 0xdbc) */
+    for (r25 = 0xau; (int)r25 >= 0; r25 -= 2u) {
+        unsigned int mask = (unsigned int)nb_dmem_s16(0x58u + r25) & 0xffffu;
+        int16_t P[4];
+        unsigned int k;
+        for (k = 0; k < 4u; k++)
+            P[k] = (int16_t)nb_dmem_s16((r25 << 2) + k * 2u);
+        n_out = 0u;
+        for (i = 0; i < n_in; i++) {
+            unsigned int va = lists[cur][i];
+            unsigned int vb = lists[cur][(i + 1u) % n_in];
+            unsigned int sa = (unsigned int)nb_dmem_s16(va + 0x24u) & mask;
+            unsigned int sb2 = (unsigned int)nb_dmem_s16(vb + 0x24u) & mask;
+            if (sa == 0u)
+                lists[cur ^ 1u][n_out++] = va;
+            if (sa != sb2) {
+                /* crossing: build the interpolated vertex */
+                unsigned int vin  = sa ? vb : va;
+                unsigned int vout = sa ? va : vb;
+                int32_t in4[4], out4[4], wc, wt;
+                for (k = 0; k < 4u; k++) {
+                    in4[k]  = (int32_t)((nb_dmem_s16(vin + k * 2u) << 16)
+                              | ((unsigned)nb_dmem_s16(vin + 8u + k * 2u) & 0xffffu));
+                    out4[k] = (int32_t)((nb_dmem_s16(vout + k * 2u) << 16)
+                              | ((unsigned)nb_dmem_s16(vout + 8u + k * 2u) & 0xffffu));
+                }
+                wt = (int32_t)nb_clip_wt(in4, out4, P);
+                wc = (int32_t)((0x10000u - (unsigned)wt) & 0xffffu);
+                {
+                    static int t = -1;
+                    if (t < 0) t = getenv("NB_CLIP_TRACE") != NULL;
+                    if (t) fprintf(stderr,
+                        "[CWT] in=%03x out=%03x wc=%d:%d wt=%d:%d\n",
+                        vin, vout,
+                        (int)(int16_t)(wc >> 16), (int)(int16_t)wc,
+                        (int)(int16_t)(wt >> 16), (int)(int16_t)wt);
+                }
+                for (k = 0; k < 4u; k++) {
+                    /* Q16 lerp: in x w + out x ~w (udl/adm/adl/adm) */
+                    int64_t pa = ((int64_t)(in4[k] & 0xffff) * wc) >> 16;
+                    int64_t p2;
+                    pa += (int64_t)(in4[k] >> 16) * wc;
+                    pa += ((int64_t)(out4[k] & 0xffff) * wt) >> 16;
+                    pa += (int64_t)(out4[k] >> 16) * wt;
+                    p2 = pa;            /* 32-bit position */
+                    nb_dmem_w16(stage + k * 2u, ((uint64_t)p2 >> 16) & 0xffffu);
+                    nb_dmem_w16(stage + 8u + k * 2u, (uint64_t)p2 & 0xffffu);
+                }
+                /* colors (bytes +0x10..13, u8 << 7 lanes) and the
+                 * S/T halfwords (+0x14/+0x16) lerp with the same
+                 * weight pair (text 0xf40-0xf60) */
+                for (k = 0; k < 4u; k++) {
+                    int a8 = (int)nb.dmem[((vin + 0x10u + k) & 0xfffu) ^ 3u] << 7;
+                    int b8 = (int)nb.dmem[((vout + 0x10u + k) & 0xfffu) ^ 3u] << 7;
+                    /* vmudm signed x u16-weight pair */
+                    int r = (int)((((int64_t)a8 * wc) + ((int64_t)b8 * wt)) >> 16);
+                    if (r > 32767) r = 32767;
+                    if (r < -32768) r = -32768;
+                    nb.dmem[((stage + 0x10u + k) & 0xfffu) ^ 3u] =
+                        (unsigned char)(((unsigned)(int16_t)r >> 7) & 0xffu);
+                }
+                for (k = 0; k < 2u; k++) {
+                    int a16 = nb_dmem_s16(vin + 0x14u + k * 2u);
+                    int b16 = nb_dmem_s16(vout + 0x14u + k * 2u);
+                    int r = (int)((((int64_t)a16 * wc) + ((int64_t)b16 * wt)) >> 16);
+                    if (r > 32767) r = 32767;
+                    if (r < -32768) r = -32768;
+                    nb_dmem_w16(stage + 0x14u + k * 2u,
+                                (unsigned int)r & 0xffffu);
+                }
+                nb_project(stage);
+                lists[cur ^ 1u][n_out++] = stage;
+                stage += 0x28u;
+                if (stage > 0x560u - 0x28u)
+                    return -1;          /* staging overrun */
+            }
+            if (n_out >= 10u)
+                return -1;
+        }
+        {
+            static int t = -1;
+            if (t < 0) t = getenv("NB_CLIP_TRACE") != NULL;
+            if (t) {
+                unsigned int q;
+                fprintf(stderr, "[CLP] plane r25=%x mask=%04x -> n=%u:",
+                        r25, mask, n_out);
+                for (q = 0; q < n_out; q++)
+                    fprintf(stderr, " %03x(%04x)",
+                            lists[cur ^ 1u][q],
+                            (unsigned)nb_dmem_s16(lists[cur ^ 1u][q] + 0x24u) & 0xffffu);
+                fprintf(stderr, "\n");
+            }
+        }
+        cur ^= 1u;
+        n_in = n_out;
+        if (n_in == 0u)
+            return 0;                   /* clipped away entirely */
+    }
+
+    /* persist the surviving polygon for the fan (the microcode's
+     * final ping-pong list is live DMEM state; write it back with
+     * the zero terminator) */
+    {
+        unsigned int base = (cur == 0u) ? 0x560u : 0x574u;
+        for (i = 0; i < n_in; i++) {
+            nb.clip_poly[i] = lists[cur][i];
+            nb_dmem_w16(base + i * 2u, lists[cur][i]);
+        }
+        nb_dmem_w16(base + n_in * 2u, 0u);
+    }
+    nb.clip_n = n_in;
+    nb.clip_idx = 1u;
+    nb.clip_active = 1u;
+    return 0;
+}
+
+/* Fan emission for a built clip polygon: (poly[0], poly[i],
+ * poly[i+1]) through the post-gate path -- the winding cull applies,
+ * the outcode gates do not, and the splice check runs per triangle
+ * exactly as it does for direct triangles (the jalr at text 0x2a8).
+ * Returns 0 done, 1 suspended on a splice, -1 fallback. */
+static int nb_clip_fan(RdpFifo *fifo)
+{
+    {
+        static int t = -1;
+        if (t < 0) t = getenv("NB_CLIP_TRACE") != NULL;
+        if (t) fprintf(stderr, "[CFAN] task=%u n=%u idx=%u active=%u\n",
+                       nb_task_ordinal, nb.clip_n, nb.clip_idx,
+                       nb.clip_active);
+    }
+    while (nb.clip_idx + 1u < nb.clip_n) {
+        unsigned int va = nb.clip_poly[0];
+        unsigned int vb = nb.clip_poly[nb.clip_idx];
+        unsigned int vc = nb.clip_poly[nb.clip_idx + 1u];
+        /* winding cull exactly as the emitter does it (text 0x230-
+         * 0x244): cross = (C-A)x(B-A)y - (B-A)x(C-A)y from the
+         * screen coordinates, culled when negative and geometry
+         * mode bit 13 is set (geom << 18 puts bit 13 in the sign,
+         * bltz exits through the jr r30 at 0x9e8).  Degenerate
+         * zero-cross triangles fall out of the emitter naturally. */
+        {
+            int32_t ax = (int16_t)nb_dmem_s16(va + 0x18u);
+            int32_t ay = (int16_t)nb_dmem_s16(va + 0x1au);
+            int32_t bx = (int16_t)nb_dmem_s16(vb + 0x18u);
+            int32_t by = (int16_t)nb_dmem_s16(vb + 0x1au);
+            int32_t cx = (int16_t)nb_dmem_s16(vc + 0x18u);
+            int32_t cy = (int16_t)nb_dmem_s16(vc + 0x1au);
+            int64_t cross = (int64_t)(cx - ax) * (by - ay)
+                          - (int64_t)(bx - ax) * (cy - ay);
+            if (cross < 0 && (nb.geom & 0x2000u)) {
+                nb.clip_idx++;
+                continue;
+            }
+        }
+        /* the staged-list check sits at text 0x2a8, which is PAST the
+         * winding-cull exit at 0x244 (bltz -> 0x9e8, jr r30): a culled
+         * triangle leaves the emitter before ever reaching it and so
+         * does NOT consume a pending splice.  Checking ahead of the
+         * cull made the walker swallow arms the microcode leaves
+         * standing, which is what pulled a later fan into a list the
+         * microcode never entered. */
+        {
+            unsigned int splice = nb_dmem_r32(0x58cu) & 0x00fffff8u;
+            if (splice != 0u) {
+                if (nb.sp >= NB_DL_STACK)
+                    return -1;
+                nb_dmem_w32(0x58cu, 0u);
+                nb.stack[nb.sp * 2u] = nb.chunk;
+                nb.stack[nb.sp * 2u + 1u] = nb.off;
+                nb.sp++;
+                nb_dl_enter(splice);
+                return 1;
+            }
+        }
+        if (nb_emit_tri(fifo, va, vb, vc) < 0)
+            return -1;
+        nb.clip_idx++;
+    }
+    nb.clip_active = 0u;
+    return 0;
+}
+
 /* Gate a triangle exactly as the emitter entry does BEFORE its jalr
  * (text 0x1a8-0x2a4): trivial reject on the ANDed outcodes, clip
  * trigger on the ORed outcodes, winding cull, degenerate skip.
@@ -1197,16 +1528,23 @@ static int nb_tri(RdpFifo *fifo, unsigned int w0, unsigned int w1, int quad)
      * re-emitted (the pokes above are idempotent). */
     if (nb.tri_phase == 2u) {
         int g = nb_tri_gate(va, vb, vc);
-        if (g < 0)
-            return -1;
+        if (g < 0) {
+            /* outcode 0x4343: the clip overlay */
+            if (!nb.clip_active) {
+                if (nb_clip(fifo, va, vb, vc) < 0)
+                    return -1;
+            }
+            if (nb.clip_active) {
+                int cr = nb_clip_fan(fifo);
+                if (cr < 0)
+                    return -1;
+                if (cr > 0)
+                    return 1;           /* splice: reprocess */
+            }
+            g = 1;                      /* handled; skip direct emit */
+        }
         if (g == 0) {
             unsigned int splice = nb_dmem_r32(0x58cu) & 0x00fffff8u;
-            {
-                static int t = -1;
-                if (t < 0) t = getenv("NB_SPL_TRACE") != NULL;
-                if (t) fprintf(stderr, "[SPL] 58c=%08x @%06x p2\n",
-                               nb_dmem_r32(0x58cu), nb.dl);
-            }
             if (splice != 0u) {
                 if (nb.sp >= NB_DL_STACK)
                     return -1;
@@ -1224,16 +1562,23 @@ static int nb_tri(RdpFifo *fifo, unsigned int w0, unsigned int w1, int quad)
     }
     if (quad && nb.tri_phase == 1u) {
         int g = nb_tri_gate(va, vc, vd);
-        if (g < 0)
-            return -1;
+        if (g < 0) {
+            /* outcode 0x4343: the clip overlay */
+            if (!nb.clip_active) {
+                if (nb_clip(fifo, va, vc, vd) < 0)
+                    return -1;
+            }
+            if (nb.clip_active) {
+                int cr = nb_clip_fan(fifo);
+                if (cr < 0)
+                    return -1;
+                if (cr > 0)
+                    return 1;           /* splice: reprocess */
+            }
+            g = 1;                      /* handled; skip direct emit */
+        }
         if (g == 0) {
             unsigned int splice = nb_dmem_r32(0x58cu) & 0x00fffff8u;
-            {
-                static int t = -1;
-                if (t < 0) t = getenv("NB_SPL_TRACE") != NULL;
-                if (t) fprintf(stderr, "[SPL] 58c=%08x @%06x p1\n",
-                               nb_dmem_r32(0x58cu), nb.dl);
-            }
             if (splice != 0u) {
                 if (nb.sp >= NB_DL_STACK)
                     return -1;
@@ -1285,12 +1630,6 @@ int naboo_run_dl(RdpFifo *fifo, unsigned int dl_addr, int resume)
                  * 'expanded' load blocks in the reference stream are
                  * these CPU-built lists, not generated commands. */
                 unsigned int splice = nb_dmem_r32(0x58cu) & 0x00fffff8u;
-                {
-                    static int t = -1;
-                    if (t < 0) t = getenv("NB_SPL_TRACE") != NULL;
-                    if (t) fprintf(stderr, "[SPL] 58c=%08x @%06x e4\n",
-                                   nb_dmem_r32(0x58cu), nb.dl);
-                }
                 if (splice != 0u) {
                     if (nb.sp >= NB_DL_STACK) {
                         nb.active = 0;
@@ -1574,4 +1913,16 @@ int naboo_run_dl(RdpFifo *fifo, unsigned int dl_addr, int resume)
             return NABOO_R_FALLBACK;
         }
     }
+}
+
+/* Unit-test hook for the clip overlay: seed DMEM via
+ * naboo_seed_dmem first, then call with the triangle handles.
+ * Emits into the given fifo. */
+int naboo_clip_unit(void *fifo, unsigned int ra, unsigned int rb,
+                    unsigned int rc)
+{
+    int r = nb_clip((RdpFifo *)fifo, ra, rb, rc);
+    if (r == 0 && nb.clip_active)
+        r = nb_clip_fan((RdpFifo *)fifo);
+    return r;
 }
