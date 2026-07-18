@@ -1105,6 +1105,8 @@ int angrylion_naboo_dlist(int resume)
 
     naboo_set_rdram(rdram);
     naboo_set_rdram_size(rdram_size);
+    if (!resume)
+        naboo_seed_dmem(dmem);
     r = naboo_run_dl(&s_fifo, dl_addr, resume);
 
     /* On fallback the LLE rerun re-executes the whole list from its

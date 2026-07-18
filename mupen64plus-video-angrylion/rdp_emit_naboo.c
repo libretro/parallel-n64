@@ -79,6 +79,46 @@ void naboo_task_reset(unsigned int dl)
     nb.sp = 0;
 }
 
+/* Seed the DMEM shadow from the live DMEM.  The streaming server's
+ * working state (data segment, matrices, live-tail words, stream
+ * cursor) persists in physical DMEM across task slices -- the data
+ * segment is DMA'd once at server start and never again -- so the
+ * live DMEM at (re)launch IS the authoritative state. */
+void naboo_seed_dmem(const unsigned char *dmem)
+{
+    unsigned int i;
+    for (i = 0; i < 0x1000u; i++)
+        nb.dmem[i ^ 3u] = dmem[i ^ 3u];
+}
+
+static unsigned int nb_dmem_r32(unsigned int off)
+{
+    unsigned int a = off & 0xffcu;
+    return ((unsigned int)nb.dmem[(a + 0u) ^ 3u] << 24)
+         | ((unsigned int)nb.dmem[(a + 1u) ^ 3u] << 16)
+         | ((unsigned int)nb.dmem[(a + 2u) ^ 3u] << 8)
+         |  (unsigned int)nb.dmem[(a + 3u) ^ 3u];
+}
+
+static int nb_dmem_s16(unsigned int off)
+{
+    unsigned int a = off & 0xffeu;
+    return (int)(short)(((unsigned int)nb.dmem[a ^ 3u] << 8)
+                       | (unsigned int)nb.dmem[(a + 1u) ^ 3u]);
+}
+
+static void nb_dmem_w16(unsigned int off, unsigned int v)
+{
+    unsigned int a = off & 0xffeu;
+    nb.dmem[a ^ 3u]        = (unsigned char)(v >> 8);
+    nb.dmem[(a + 1u) ^ 3u] = (unsigned char)v;
+}
+
+static void nb_dmem_w8(unsigned int off, unsigned int v)
+{
+    nb.dmem[(off & 0xfffu) ^ 3u] = (unsigned char)v;
+}
+
 static void nb_dmem_w32(unsigned int off, unsigned int v)
 {
     unsigned int a = off & 0xffcu;
@@ -86,6 +126,164 @@ static void nb_dmem_w32(unsigned int off, unsigned int v)
     nb.dmem[(a + 1u) ^ 3u] = (unsigned char)(v >> 16);
     nb.dmem[(a + 2u) ^ 3u] = (unsigned char)(v >> 8);
     nb.dmem[(a + 3u) ^ 3u] = (unsigned char)v;
+}
+
+/* DMA (len bytes) from RDRAM into the DMEM shadow */
+static void nb_load(unsigned int dmem_off, unsigned int addr, unsigned int len)
+{
+    unsigned int i;
+    {
+        static int t = -1;
+        if (t < 0) t = getenv("NB_TRACE") != NULL;
+        if (t) fprintf(stderr, "[NBL] dmem=%03x dram=%06x len=%x\n",
+                       dmem_off & 0xfffu, addr & 0xffffffu, len);
+    }
+    for (i = 0; i < len; i++)
+        nb.dmem[((dmem_off + i) & 0xfffu) ^ 3u] =
+            (unsigned char)(s_rdram ? s_rdram[((addr + i) & 0x7fffffu) ^ 3u] : 0u);
+}
+
+/* RSP 48-bit accumulator helpers (vmudn/vmadh chain, zboss style) */
+static int64_t nb_p(int a, int b) { return (int64_t)a * (int64_t)b; }
+static int nb_acc_mid(int64_t acc)
+{
+    /* vmadh result register: clamped s16 of acc bits 16..47 */
+    int64_t v = acc >> 16;
+    if (v > 32767) return 32767;
+    if (v < -32768) return -32768;
+    return (int)v;
+}
+
+/* Vertex transform (text 0x838-0x9ec): translate, 4x4 16.16 matrix,
+ * dual guard-band clip codes, reciprocal divide, viewport, into
+ * 0x28-byte records at DMEM 0x600.  First pass; calibrated against the
+ * cxd4 oracle (goracle) on captured task slices. */
+static void nb_xfrm(unsigned int count)
+{
+    unsigned int src = 0x170u;
+    unsigned int dst = 0x600u;
+    int tr[4];
+    int mi[4][4], mf[4][4];
+    int i, j;
+    unsigned int v;
+
+    /* translation from the state struct +0x18.  The struct base is
+     * r18 = DMEM 0x558: slot 0x12 stores at +0x38 = the live-tail
+     * word 0x590, and the EndDL depth byte at +0x32 = 0x58a, next to
+     * the intensity byte 0x58b. */
+    for (j = 0; j < 4; j++)
+        tr[j] = nb_dmem_s16(0x570u + (unsigned int)j * 2u);
+    {
+        static int t = -1;
+        if (t < 0) t = getenv("NB_TRACE") != NULL;
+        if (t) fprintf(stderr, "[XFRM] n=%u tr=%04x %04x %04x %04x in0=%04x %04x %04x\n",
+                       count, tr[0]&0xffff, tr[1]&0xffff, tr[2]&0xffff, tr[3]&0xffff,
+                       (unsigned)nb_dmem_s16(0x170)&0xffff,
+                       (unsigned)nb_dmem_s16(0x172)&0xffff,
+                       (unsigned)nb_dmem_s16(0x174)&0xffff);
+    }
+
+    /* matrix at 0x5c0: 4 int rows then 4 frac rows, 4 lanes each */
+    for (i = 0; i < 4; i++)
+        for (j = 0; j < 4; j++) {
+            mi[i][j] = nb_dmem_s16(0x5c0u + (unsigned int)(i * 8 + j * 2));
+            /* fraction rows are unsigned (vmudn operand) */
+            mf[i][j] = (int)(nb_dmem_s16(0x5e0u + (unsigned int)(i * 8 + j * 2)) & 0xffff);
+        }
+
+    for (v = 0; v < count; v++, src += 8u, dst += 0x28u) {
+        int in[3], p[3];
+        int ci[4]; unsigned int cf[4];
+        int64_t acc;
+        for (j = 0; j < 3; j++)
+            in[j] = nb_dmem_s16(src + (unsigned int)j * 2u);
+        /* vaddc pre-translate: unsigned per-lane add, no clamp */
+        for (j = 0; j < 3; j++)
+            p[j] = (int)(short)((unsigned short)((unsigned)in[j] + (unsigned)tr[j]));
+        for (j = 0; j < 4; j++) {
+            acc  = nb_p(mf[0][j], p[0]) + ((int64_t)nb_p(mi[0][j], p[0]) << 16);
+            acc += nb_p(mf[1][j], p[1]) + ((int64_t)nb_p(mi[1][j], p[1]) << 16);
+            acc += nb_p(mf[2][j], p[2]) + ((int64_t)nb_p(mi[2][j], p[2]) << 16);
+            acc += nb_p(mf[3][j], 1)    + ((int64_t)nb_p(mi[3][j], 1) << 16);
+            ci[j] = nb_acc_mid(acc);
+            cf[j] = (unsigned int)(acc & 0xffffu);
+        }
+        /* store clip-space position (record +0x00 int, +0x08 frac) */
+        for (j = 0; j < 4; j++) {
+            nb_dmem_w16(dst + (unsigned int)j * 2u, (unsigned int)ci[j] & 0xffffu);
+            nb_dmem_w16(dst + 8u + (unsigned int)j * 2u, cf[j]);
+        }
+        /* clip codes, divide, viewport: calibrated in later passes --
+         * zeroed for the first oracle diff of the position chain */
+        nb_dmem_w16(dst + 0x24u, 0u);
+    }
+}
+
+/* op 0x02 (text 0xd1c): open a segmented stream.  DMA the 8-byte
+ * chain header at w1 into DMEM 0xfd8 (next-segment pointer), position
+ * = w1 + 8, remaining = w0 & 0x1ff payload bytes. */
+static void nb_stream_open(unsigned int base)
+{
+    nb_load(0xfd8u, base, 8u);
+    nb_dmem_w32(0xfdcu, 0x100u);
+    nb_dmem_w32(0xfd4u, base + 8u);
+}
+
+static void nb_op02(unsigned int w0, unsigned int w1)
+{
+    nb_stream_open(w1 & 0x00ffffffu);
+    nb_dmem_w32(0xfdcu, w0 & 0x1ffu);
+}
+
+/* op 0x01: segmented data load + subtype dispatch (text 0xc94).
+ * Direct when w1's low 24 bits are nonzero; otherwise consume the
+ * open stream, chaining to the next segment (pre-fetched header at
+ * DMEM 0xfd8) when the payload remainder runs out mid-load. */
+static void nb_op01(unsigned int w0, unsigned int w1)
+{
+    unsigned int len  = (w0 & 0xffu) + 1u;
+    unsigned int off  = (w0 >> 8) & 0xfffu;
+    unsigned int sub  = (w0 >> 19) & 6u;
+    unsigned int addr = w1 & 0x00ffffffu;
+
+    if ((w0 & 0xffu) == 0u) {
+        /* count 0: no load, dispatch only (text 0xc98) */
+    } else if (addr != 0u) {
+        nb_load(off, addr, len);
+    } else {
+        unsigned int pos  = nb_dmem_r32(0xfd4u) & 0x00ffffffu;
+        unsigned int rem  = nb_dmem_r32(0xfdcu);
+        if (rem >= len) {
+            nb_load(off, pos, len);
+            nb_dmem_w32(0xfdcu, rem - len);
+            nb_dmem_w32(0xfd4u, pos + len);
+        } else {
+            /* split: drain this segment, chain, load the rest */
+            unsigned int next;
+            nb_load(off, pos, rem);
+            next = nb_dmem_r32(0xfd8u) & 0x00ffffffu;
+            nb_stream_open(next);
+            pos = nb_dmem_r32(0xfd4u) & 0x00ffffffu;
+            nb_load(off + rem, pos, len - rem);
+            nb_dmem_w32(0xfdcu, 0x100u - (len - rem));
+            nb_dmem_w32(0xfd4u, pos + (len - rem));
+        }
+    }
+
+    switch (sub) {
+    case 2:                                     /* vertex transform */
+        nb_xfrm((w1 >> 24) & 0x7fu);
+        break;
+    case 4:                                     /* color unpack: 565 ->
+         * RGBA words through the parallel arrays at 0x480 (text
+         * 0xbec-0xc30); modeled when the emitters consume it */
+        break;
+    case 6:                                     /* intensity byte */
+        nb_dmem_w8(0x58bu, w1 >> 24);
+        break;
+    default:                                    /* load-only */
+        break;
+    }
 }
 
 int naboo_run_dl(RdpFifo *fifo, unsigned int dl_addr, int resume)
@@ -144,6 +342,17 @@ int naboo_run_dl(RdpFifo *fifo, unsigned int dl_addr, int resume)
             }
             nb.active = 0;
             return NABOO_R_DONE;
+        case 0x02:                              /* open segmented
+             * stream (text 0xd1c) */
+            nb_op02(w0, w1);
+            nb.dl += 8;
+            continue;
+        case 0x01:                              /* segmented load +
+             * subtype processor (state modeling; RDP output comes from
+             * the triangle path, which still falls back) */
+            nb_op01(w0, w1);
+            nb.dl += 8;
+            continue;
         case 0x0d:                              /* GeometryMode &= w1
              * (text 0xa70) */
             nb.geom &= w1;
@@ -161,7 +370,18 @@ int naboo_run_dl(RdpFifo *fifo, unsigned int dl_addr, int resume)
             continue;
         default:
             /* not yet implemented: rerun this slice on the LLE
-             * fallback */
+             * fallback.  (Test harness: NB_PERMISSIVE skips unknown
+             * commands so the loader/transform path can be
+             * oracle-diffed in isolation; never set in production.) */
+            {
+                static int perm = -1;
+                if (perm < 0)
+                    perm = getenv("NB_PERMISSIVE") != NULL;
+                if (perm) {
+                    nb.dl += (op == 0x0bu) ? 16u : 8u;
+                    continue;
+                }
+            }
             nb.active = 0;
             return NABOO_R_FALLBACK;
         }
