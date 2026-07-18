@@ -614,6 +614,425 @@ static unsigned int nb_ovl0f(unsigned int w1)
     }
 }
 
+/* Overlay 0x09 (entry 0xcf0, shares 0x0f's IMEM page): vertex
+ * morphing.  Consumes the 0xda0 work area that overlay 0x0f sets up.
+ * WIP -- stage 1 only: command staging and the keyframe DMAs.
+ *
+ * 0xcf0-0xd08: 24 payload bytes (r17-8 .. r17+0x10) are staged to
+ * 0xda0, so the command is 0x18 long.
+ * 0xd10-0xd50: two DMA passes of 0x28 bytes each.  The source base is
+ * the staged word at 0xdb0 (second pass: 0xdb4); the two destinations
+ * are the DMEM halfwords at r19+0 and r19+8, and the second source is
+ * offset by the halfword at 0xdbc that overlay 0x0f latched.  The
+ * pass repeats at destination offset 0x78 when bit 15 of r19 is set
+ * (`sll a3, r19, 16` then `bltz`), with the delay slot clearing a3 so
+ * it runs at most twice.
+ */
+/* --- 8-lane RSP vector helpers for the morph overlay ---------------
+ * The morph code is the first Naboo overlay that needs a general
+ * accumulator across all eight lanes rather than a hand-unrolled
+ * chain, so model the accumulator explicitly: acc[l] is 48-bit, the
+ * mul ops seed it and the mac ops add into it, and each op's
+ * destination reads a different slice through its own clamp. */
+typedef struct { int64_t a[8]; } NbAcc;
+
+static void nb_vacc_clear(NbAcc *ac)
+{
+    int l;
+    for (l = 0; l < 8; l++)
+        ac->a[l] = 0;
+}
+
+/* element selector: RSP broadcast encodings 0/1 = identity, 2-3 = half,
+ * 4-7 = quarter, 8-15 = full broadcast of one lane */
+static int nb_ve(int e, int l)
+{
+    if (e < 2) return l;
+    if (e < 4) return (l & ~1) | (e & 1);
+    if (e < 8) return (l & ~3) | (e & 3);
+    return e & 7;
+}
+
+static int nb_clamp_s16(int64_t v)
+{
+    if (v > 32767) return 32767;
+    if (v < -32768) return -32768;
+    return (int)v;
+}
+
+/* vmudl/vmadl: unsigned x unsigned, product >> 16 */
+static void nb_vmudl(NbAcc *ac, const short *vs, const short *vt, int e,
+                     int acc_in, short *dst)
+{
+    int l;
+    for (l = 0; l < 8; l++) {
+        int64_t pr = (int64_t)(unsigned short)vs[l]
+                   * (int64_t)(unsigned short)vt[nb_ve(e, l)];
+        ac->a[l] = (acc_in ? ac->a[l] : 0) + (pr >> 16);
+        if (dst) dst[l] = (short)(ac->a[l] & 0xffff);
+    }
+}
+
+/* vmudm/vmadm: signed x unsigned */
+static void nb_vmudm(NbAcc *ac, const short *vs, const short *vt, int e,
+                     int acc_in, short *dst)
+{
+    int l;
+    for (l = 0; l < 8; l++) {
+        int64_t pr = (int64_t)vs[l]
+                   * (int64_t)(unsigned short)vt[nb_ve(e, l)];
+        ac->a[l] = (acc_in ? ac->a[l] : 0) + pr;
+        if (dst) dst[l] = (short)nb_clamp_s16(ac->a[l] >> 16);
+    }
+}
+
+/* vmudn/vmadn: unsigned x signed, destination is the low slice */
+static void nb_vmudn(NbAcc *ac, const short *vs, const short *vt, int e,
+                     int acc_in, short *dst)
+{
+    int l;
+    for (l = 0; l < 8; l++) {
+        int64_t pr = (int64_t)(unsigned short)vs[l]
+                   * (int64_t)vt[nb_ve(e, l)];
+        ac->a[l] = (acc_in ? ac->a[l] : 0) + pr;
+        if (dst) dst[l] = (short)(ac->a[l] & 0xffff);
+    }
+}
+
+/* vmudh/vmadh: signed x signed one slice up */
+static void nb_vmudh(NbAcc *ac, const short *vs, const short *vt, int e,
+                     int acc_in, short *dst)
+{
+    int l;
+    for (l = 0; l < 8; l++) {
+        int64_t pr = (int64_t)vs[l] * (int64_t)vt[nb_ve(e, l)];
+        ac->a[l] = (acc_in ? ac->a[l] : 0) + (pr << 16);
+        if (dst) dst[l] = (short)nb_clamp_s16(ac->a[l] >> 16);
+    }
+}
+
+/* vmulf/vmacf: signed fractional, x2 with a rounding bias */
+static void nb_vmulf8(NbAcc *ac, const short *vs, const short *vt, int e,
+                     int acc_in, short *dst)
+{
+    int l;
+    for (l = 0; l < 8; l++) {
+        /* vmulf seeds the accumulator with the rounding bias; vmacf
+         * only accumulates the doubled product. */
+        int64_t pr = (int64_t)vs[l] * (int64_t)vt[nb_ve(e, l)] * 2;
+        ac->a[l] = acc_in ? (ac->a[l] + pr) : (pr + 0x8000);
+        if (dst) dst[l] = (short)nb_clamp_s16(ac->a[l] >> 16);
+    }
+}
+
+/* packed vector loads/stores: lpv scales each byte up by 8, luv by 7,
+ * and suv is luv's inverse. */
+static void nb_lpv(short *dst, unsigned int off)
+{
+    int l;
+    for (l = 0; l < 8; l++)
+        dst[l] = (short)((int)(signed char)nb.dmem[((off + (unsigned int)l)
+                                                    & 0xfffu) ^ 3u] << 8);
+}
+
+static void nb_luv(short *dst, unsigned int off)
+{
+    int l;
+    for (l = 0; l < 8; l++)
+        dst[l] = (short)((int)nb.dmem[((off + (unsigned int)l)
+                                       & 0xfffu) ^ 3u] << 7);
+}
+
+static void nb_suv(const short *src, unsigned int off)
+{
+    int l;
+    for (l = 0; l < 8; l++)
+        nb.dmem[((off + (unsigned int)l) & 0xfffu) ^ 3u] =
+            (unsigned char)((src[l] >> 7) & 0xffu);
+}
+
+static void nb_vcopy(short *d, const short *s)
+{
+    int l;
+    for (l = 0; l < 8; l++)
+        d[l] = s[l];
+}
+
+/* The morph loop proper (text 0x0d54-0x0f40).  Runs once per group of
+ * four vertices, blending two keyframes into the 0x170/0x1c0 vertex
+ * input array and the two colour arrays, after which the walker's
+ * ordinary nb_xfrm path transforms the morphed vertices -- the tail's
+ * `j 0x840` is that same resident transform, so it is not repeated
+ * here.
+ *
+ * Note the inner block at 0x0e1c-0x0ec0 is SINGLE-PASS: r11 starts at
+ * r22, nothing in the body writes it, and the delay slot adds -32648,
+ * so the `bgez` always falls through.
+ */
+static void nb_ovl09_morph(unsigned int r8, unsigned int r9,
+                           unsigned int r19, unsigned int w1_r20)
+{
+    short vg[16][8];        /* v2..v11 grid + scratch */
+    short v1[8], v16[8], v17[8], v18[8], v19v[8], v20[8], v21[8];
+    short v22[8], v23[8], v24[8], v25[8], v27[8];
+    /* v28/v29 carry the previous invocation's lanes: the microcode
+     * reads them before writing them on the first iteration, and the
+     * RSP's vector file persists across overlay dispatches. */
+    static short v28[8], v29[8];
+    short vz[8];
+    unsigned int a2 = 0xda0u;
+    unsigned int r12, r13, r14, r15, r22, r23;
+    int pass;
+    NbAcc ac;
+    int l;
+
+    for (l = 0; l < 8; l++) { vz[l] = 0; v1[l] = 0; }
+    for (l = 0; l < 8; l++) { v27[l] = 0; v17[l] = 0; }
+
+    r12 = (unsigned int)nb_dmem_s16((r19 & 0xfffu) + 0x20u) & 0xffffu;
+    r13 = (unsigned int)nb_dmem_s16((r19 & 0xfffu) + 0x22u) & 0xffffu;
+    r14 = (unsigned int)nb_dmem_s16((r19 & 0xfffu) + 0x24u) & 0xffffu;
+    r15 = (unsigned int)nb_dmem_s16((r19 & 0xfffu) + 0x26u) & 0xffffu;
+
+    /* grid: lqv at +0x20 .. +0x90, luv at +0xa0/+0xa8 */
+    for (l = 0; l < 8; l++) {
+        int k;
+        for (k = 0; k < 8; k++)
+            vg[2 + l][k] = (short)nb_dmem_s16(a2 + 0x20u
+                                              + (unsigned int)l * 0x10u
+                                              + (unsigned int)k * 2u);
+    }
+    nb_luv(vg[10], a2 + 0xa0u);
+    nb_luv(vg[11], a2 + 0xa8u);
+
+    r22 = nb.dmem[0xdb0u ^ 3u];
+    r23 = nb.dmem[0xdb4u ^ 3u];
+
+    /* 0x0d94-0x0da0: the overlay patches its own staged command word
+     * with (r20 + v2[0]) and then lpv's the result back as the seed
+     * for the position accumulator v1.  The staged copy at 0xda0 is
+     * byte-identical to the r17 - 24 the microcode writes through. */
+    {
+        unsigned int w = (unsigned int)((int)w1_r20 + (int)vg[2][0]);
+        nb_dmem_w32(a2 + 0u, w);
+        nb_lpv(v1, a2 + 0u);
+    }
+
+    /* 0x0dac-0x0dd8: seed the running parameter v13:v12 and its step
+     * v15:v14 from the lpv'd v1 and the grid.  Vector v0 is zero here
+     * (`vsubc v0, v0, v0[e0]` at 0x0d64) -- the `mfc2 v0` above wrote
+     * the SCALAR v0, which the disassembler prints identically. */
+    {
+        short v27s[8];
+        nb_vacc_clear(&ac);
+        nb_vmudm(&ac, v1, vg[3], 15, 0, v27s);
+        /* `vsubc v14, v0, v3[e0]` then `vsub v15, v27, v0[e0]`: the
+         * vsub consumes the vsubc's per-lane BORROW, so v15 is one
+         * less wherever v3 was non-zero.  Dropping that borrow costs
+         * exactly one LSB per lane here and four after the x4 below,
+         * which is what put v15 uniformly high. */
+        for (l = 0; l < 8; l++) {
+            unsigned int sub = (unsigned int)(unsigned short)vg[3][nb_ve(0, l)];
+            int borrow = (sub > 0u) ? 1 : 0;
+            vg[14][l] = (short)(0u - sub);
+            vg[15][l] = (short)(v27s[l] - borrow);
+        }
+        nb_vacc_clear(&ac);
+        nb_vmudl(&ac, vg[14], vg[14], 0, 0, NULL);
+        nb_vmudm(&ac, vg[15], vg[14], 0, 1, NULL);
+        nb_vmudn(&ac, vg[14], vg[15], 0, 1, vg[12]);
+        nb_vmudh(&ac, vg[15], vg[15], 0, 1, vg[13]);
+        nb_vacc_clear(&ac);
+        nb_vmudn(&ac, vg[14], vg[2], 11, 0, vg[14]);
+        nb_vmudh(&ac, vg[15], vg[2], 11, 1, vg[15]);
+        for (l = 0; l < 8; l++)
+            vg[15][l] = (short)(vg[15][l] + vg[2][nb_ve(15, l)]);
+        /* the source lanes must be read from the PRE-op register: a
+         * vector op is not an in-place sequential update, and lane 2
+         * feeds lane 3 here. */
+        {
+            short p12[8], p13[8];
+            nb_vcopy(p12, vg[12]);
+            nb_vcopy(p13, vg[13]);
+            for (l = 0; l < 8; l++) {
+                unsigned int sum = (unsigned int)(unsigned short)p12[l]
+                                 + (unsigned int)(unsigned short)
+                                   p12[nb_ve(6, l)];
+                vg[12][l] = (short)(sum & 0xffffu);
+                vg[13][l] = (short)(p13[l] + p13[nb_ve(6, l)]
+                                    + (int)(sum >> 16));
+            }
+        }
+    }
+
+    for (;;) {
+        /* --- weight pairs (0x0ddc-0x0e14) --- */
+        for (l = 0; l < 8; l++) {
+            int lo = vg[4][l] - (int)(unsigned short)vg[12][nb_ve(4, l)];
+            int borrow = (lo < 0) ? 1 : 0;
+            v22[l] = (short)(lo & 0xffff);
+            v23[l] = (short)(vg[5][l] - vg[13][nb_ve(4, l)] - borrow);
+        }
+        nb_vacc_clear(&ac);
+        nb_vmudl(&ac, v22, vg[6], 0, 0, NULL);
+        nb_vmudm(&ac, v23, vg[6], 0, 1, NULL);
+        nb_vmudn(&ac, v22, vg[7], 0, 1, v22);
+        nb_vmudh(&ac, v23, vg[7], 0, 1, v23);
+        for (l = 0; l < 8; l++) {
+            int h = v23[l];
+            if (h < 0) h = 0;
+            if (h >= vg[9][l]) h = vg[9][l];
+            v23[l] = (short)h;
+            v22[l] = (short)(0x7fff - h);
+        }
+        nb_vacc_clear(&ac);
+        nb_vmudl(&ac, vg[12], vg[8], 10, 0, NULL);
+        nb_vmudm(&ac, vg[13], vg[8], 10, 1, NULL);
+        nb_vmudn(&ac, vg[12], vg[8], 14, 1, v24);
+        nb_vmudh(&ac, vg[13], vg[8], 14, 1, v25);
+        nb_vacc_clear(&ac);
+        nb_vmulf8(&ac, v25, v25, 0, 0, v25);
+        for (l = 0; l < 8; l++)
+            v24[l] = (short)(0x7fff - v25[l]);
+
+        /* --- fetch and splice (0x0e18-0x0e80) --- */
+        /* This runs TWICE.  `bgez r11` is evaluated on the OLD r11,
+         * so the first pass (r11 = r22, non-negative) always branches
+         * back, and the delay slot's `addi r11, r11, 0x8078` leaves
+         * r11 = r22 - 32648 for the second.  That looks like a wild
+         * pointer until you mask to the 12-bit DMEM space, where
+         * -32648 is exactly +0x78 -- the second keyframe set the
+         * stage-1 DMA landed.  Verified: r24 goes 0xad8 then 0xb50. */
+        for (pass = 0; pass < 2; pass++) {
+            unsigned int r11 = (pass == 0)
+                             ? r22 : (r22 - 32648u) & 0xfffu;
+            unsigned int a0 = r11 & 4u;
+            unsigned int s0 = r11 + a0, s1 = r11 - a0;
+            unsigned int r24 = r8 + r11, r25 = r9 + r11;
+            unsigned int r26 = r12 + s0, r27 = r13 + s1;
+            unsigned int r28 = r14 + s0, r29 = r15 + s1;
+            nb_lpv(v16, r24);
+            nb_lpv(v17, r25 - 4u);
+            nb_luv(v18, r26);
+            nb_luv(v19v, r27);
+            nb_luv(v20, r28 - 4u);
+            nb_luv(v21, r29 - 4u);
+            for (l = 4; l < 8; l++)
+                v16[l] = v17[l];
+            for (l = 0; l < 8; l++) {
+                v19v[l] = (short)(v19v[l] + v18[l]);
+                v21[l]  = (short)(v21[l]  + v20[l]);
+            }
+            for (l = 4; l < 8; l++)
+                v19v[l] = v21[l];
+
+            nb_vacc_clear(&ac);
+            nb_vmudl(&ac, v16, v22, 5, 0, NULL);
+            nb_vmudl(&ac, v19v, v23, 5, 1, v16);
+            nb_vacc_clear(&ac);
+            nb_vmudl(&ac, v16, v22, 6, 0, NULL);
+            nb_vmudl(&ac, vg[10], v23, 6, 1, NULL);
+            nb_vmudl(&ac, v16, v22, 7, 1, v27);
+            nb_vmudl(&ac, vg[11], v23, 7, 1, v17);
+            nb_vacc_clear(&ac);
+            nb_vmudl(&ac, v16, v24, 4, 0, NULL);
+            nb_vmudl(&ac, vg[8], v25, 4, 1, v27);
+            v1[1] = v27[nb_ve(11, 1)];
+            v1[5] = v27[nb_ve(15, 5)];
+            nb_vcopy(v28, v29);
+            v17[3] = v27[nb_ve(11, 3)];
+            v17[7] = v27[nb_ve(15, 7)];
+            nb_vcopy(v29, v17);
+        }
+
+        /* --- combine and store (0x0ec4-0x0f28) --- */
+        nb_vacc_clear(&ac);
+        nb_vmulf8(&ac, v28, v22, 4, 0, NULL);
+        nb_vmulf8(&ac, v29, v23, 4, 1, v27);
+        v1[1] = v27[nb_ve(11, 1)];
+        v1[5] = v27[nb_ve(15, 5)];
+        nb_vacc_clear(&ac);
+        nb_vmulf8(&ac, v23, v23, 0, 0, v23);
+        v28[3] = v23[nb_ve(8, 3)];
+        v28[7] = v23[nb_ve(12, 7)];
+        v27[3] = v23[nb_ve(8, 3)];
+        v27[7] = v23[nb_ve(12, 7)];
+        {
+            unsigned int r24 = r8 + r22, r25 = r9 + r22;
+            unsigned int o = r22 * 2u;
+            nb_suv(v28, r24 + 240u);
+            for (l = 0; l < 4; l++) v28[l] = v28[4 + l];
+            nb_suv(v28, r25 + 240u);
+            nb_suv(v27, r24 + 360u);
+            for (l = 0; l < 4; l++) v27[l] = v27[4 + l];
+            nb_suv(v27, r25 + 360u);
+            for (l = 0; l < 4; l++)
+                nb_dmem_w16(0x170u + o + (unsigned int)l * 2u,
+                            (unsigned int)v1[l] & 0xffffu);
+            for (l = 0; l < 4; l++)
+                nb_dmem_w16(0x1c0u + o + (unsigned int)l * 2u,
+                            (unsigned int)v1[4 + l] & 0xffffu);
+        }
+
+        for (l = 0; l < 8; l++)
+            v1[l] = (short)(v1[l] + vg[2][nb_ve(0, l)]);
+        /* the loop tail is the same 32-bit add: `vaddc v12, v12, v14`
+         * then `vadd v13, v13, v15` consuming its carry. */
+        for (l = 0; l < 8; l++) {
+            unsigned int sum = (unsigned int)(unsigned short)vg[12][l]
+                             + (unsigned int)(unsigned short)vg[14][l];
+            vg[12][l] = (short)(sum & 0xffffu);
+            vg[13][l] = (short)(vg[13][l] + vg[15][l] + (int)(sum >> 16));
+            vg[15][l] = (short)(vg[15][l] + vg[3][nb_ve(11, l)]);
+        }
+        /* `bne r22, r23, 0xddc` compares the OLD r22 and the delay
+         * slot's `addi r22, r22, 4` runs regardless, so the body also
+         * executes for r22 == r23 -- nine passes for r23 = 32, not
+         * eight.  Testing before the increment drops the last store. */
+        if (r22 == r23)
+            break;
+        r22 += 4u;
+        if (r22 > 0x400u)
+            break;              /* guard: malformed count */
+    }
+    (void)vz;
+}
+
+static void nb_ovl09_stage(unsigned int w0, unsigned int w1)
+{
+    unsigned char pl[0x18];
+    unsigned int r19 = w0;
+    unsigned int r8, r9, r10, r12, r11 = 0u;
+    int again;
+
+    (void)nb_pl_u32;
+    nb_dl_fetch(pl, sizeof pl);
+    {
+        unsigned int i;
+        for (i = 0; i < 0x18u; i++)
+            nb.dmem[((0xda0u + i) & 0xfffu) ^ 3u] = pl[i];
+    }
+
+    r8  = (unsigned int)nb_dmem_s16((r19 & 0xfffu) + 0u) & 0xffffu;
+    r9  = (unsigned int)nb_dmem_s16((r19 & 0xfffu) + 8u) & 0xffffu;
+    r12 = (unsigned int)nb_dmem_s16(0xdbcu) & 0xffffu;
+    r10 = ((unsigned int)nb_dmem_s16(0xdb0u) << 16)
+        | ((unsigned int)nb_dmem_s16(0xdb2u) & 0xffffu);
+    again = ((r19 >> 15) & 1u) ? 1 : 0;
+    for (;;) {
+        nb_load(r8 + r11, r10, 0x28u);
+        nb_load(r9 + r11, r10 + r12, 0x28u);
+        if (!again)
+            break;
+        again = 0;
+        r10 = ((unsigned int)nb_dmem_s16(0xdb4u) << 16)
+            | ((unsigned int)nb_dmem_s16(0xdb6u) & 0xffffu);
+        r11 = 0x78u;
+    }
+
+    nb_ovl09_morph(r8, r9, r19, w1);
+}
+
 /* op 0x02 (text 0xd1c): open a segmented stream.  DMA the 8-byte
  * chain header at w1 into DMEM 0xfd8 (next-segment pointer), position
  * = w1 + 8, remaining = w0 & 0x1ff payload bytes. */
@@ -1754,6 +2173,14 @@ int naboo_run_dl(RdpFifo *fifo, unsigned int dl_addr, int resume)
             nb_dl_step(8u);
             continue;
         case 0x05:                              /* load+run overlay */
+            if ((w1 & 0x3fu) == 0x09u) {
+                /* vertex morphing.  The command is 0x18 long: the
+                 * dispatcher consumes eight bytes and the overlay
+                 * stages sixteen more (`addi r17, r17, 0x10`). */
+                nb_ovl09_stage(w0, w1);
+                nb_dl_step(0x18u);
+                continue;
+            }
             if ((w1 & 0x3fu) == 0x0fu) {
                 /* descriptor/setup for the vertex-morphing overlay
                  * 0x09.  The dispatcher has already consumed the
