@@ -530,6 +530,12 @@ static int nb_emit_tri(RdpFifo *fifo, unsigned int ra, unsigned int rb,
         return -1;                      /* clip overlay: fall back */
 
     nb_vtx(ra, &va); nb_vtx(rb, &vb); nb_vtx(rc, &vc);
+    {
+        static int t = -1;
+        if (t < 0) t = getenv("NB_EMIT_TRACE") != NULL;
+        if (t) fprintf(stderr, "[EV] a=(%d,%d) b=(%d,%d) c=(%d,%d)\n",
+                       va.x, va.y, vb.x, vb.y, vc.x, vc.y);
+    }
 
     /* winding cull (10.2 screen, saturated deltas, cross vs the
      * geometry-mode cull bit -- Rogue Squadron convention) */
