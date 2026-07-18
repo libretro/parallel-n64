@@ -112,6 +112,15 @@ static unsigned int s_rs_geom;
 static int32_t s_rs_fog_mi, s_rs_fog_mf, s_rs_fog_oi, s_rs_fog_of;
 static int32_t s_rs_fog_k = 0xff;
 
+/* RDRAM base of the fog block published by Rogue Squadron's fog-setup task
+ * (see rs_set_fog_block / rdp_emit_rs.h). 0 when no setup task has run. */
+static unsigned int s_rs_fog_block;
+
+void rs_set_fog_block(unsigned int rdram_addr)
+{
+    s_rs_fog_block = rdram_addr & 0x00ffffffu;
+}
+
 /* Streaming state: Rogue Squadron launches one persistent graphics task
  * whose display-list ring the CPU keeps appending to while the microcode
  * walks it -- the terminating 0xb8 is provisional and overwritten by each
@@ -149,11 +158,36 @@ void rs_seed_fog_row(const unsigned char *dmem)
 {
     if (dmem == 0)
         return;
-    s_rs_fog_mi = (int32_t)((dmem[0x160u ^ 3u] << 8) | dmem[0x161u ^ 3u]);
-    s_rs_fog_mf = (int32_t)((dmem[0x162u ^ 3u] << 8) | dmem[0x163u ^ 3u]);
-    s_rs_fog_oi = (int32_t)((dmem[0x164u ^ 3u] << 8) | dmem[0x165u ^ 3u]);
-    s_rs_fog_of = (int32_t)((dmem[0x166u ^ 3u] << 8) | dmem[0x167u ^ 3u]);
-    s_rs_fog_k  = (int32_t)((dmem[0x168u ^ 3u] << 8) | dmem[0x169u ^ 3u]);
+    /* The fog coefficient row lives at DMEM 0x160, but the graphics task's own
+     * DMEM has it zero at seed time -- the microcode DMAs it in later. The row
+     * really comes from the RDRAM fog block published by the fog-setup task
+     * that runs immediately before this one (its ucode_data pointer, captured
+     * via rs_set_fog_block). Coefficients sit at fog_block + 0x160 as three
+     * big-endian 32-bit words (mi|mf, oi|of, k|--), read through rs_read_u32
+     * (the walker's RDRAM accessor, so the byte swizzle matches). Verified
+     * against the cxd4 LLE oracle: block 0x0a4e00 -> mi=0xf330 mf=0xd0fe
+     * oi=0x7cff of=0xc750 k=0x0d2f. Fall back to the DMEM row when no setup
+     * task has published a block. */
+    if (s_rs_fog_block != 0u && s_rs_fog_block + 0x16au <= s_rdram_size)
+    {
+        unsigned int c = s_rs_fog_block + 0x160u;
+        unsigned int w0 = rs_read_u32(c + 0u);
+        unsigned int w1 = rs_read_u32(c + 4u);
+        unsigned int w2 = rs_read_u32(c + 8u);
+        s_rs_fog_mi = (int32_t)((w0 >> 16) & 0xffffu);
+        s_rs_fog_mf = (int32_t)(w0 & 0xffffu);
+        s_rs_fog_oi = (int32_t)((w1 >> 16) & 0xffffu);
+        s_rs_fog_of = (int32_t)(w1 & 0xffffu);
+        s_rs_fog_k  = (int32_t)((w2 >> 16) & 0xffffu);
+    }
+    else
+    {
+        s_rs_fog_mi = (int32_t)((dmem[0x160u ^ 3u] << 8) | dmem[0x161u ^ 3u]);
+        s_rs_fog_mf = (int32_t)((dmem[0x162u ^ 3u] << 8) | dmem[0x163u ^ 3u]);
+        s_rs_fog_oi = (int32_t)((dmem[0x164u ^ 3u] << 8) | dmem[0x165u ^ 3u]);
+        s_rs_fog_of = (int32_t)((dmem[0x166u ^ 3u] << 8) | dmem[0x167u ^ 3u]);
+        s_rs_fog_k  = (int32_t)((dmem[0x168u ^ 3u] << 8) | dmem[0x169u ^ 3u]);
+    }
     if (s_rs_fog_k == 0)
         s_rs_fog_k = 0xff;
 }

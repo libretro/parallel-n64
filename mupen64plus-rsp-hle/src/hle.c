@@ -123,11 +123,23 @@ void hle_init(struct hle_t* hle,
     l_rs_gfx_running = 0;
 }
 
+void rs_set_fog_block(unsigned int rdram_addr);
+
 void hle_execute(struct hle_t* hle)
 {
     uint32_t uc_start = *dmem_u32(hle, TASK_UCODE);
     uint32_t uc_dstart = *dmem_u32(hle, TASK_UCODE_DATA);
     uint32_t uc_dsize = *dmem_u32(hle, TASK_UCODE_DATA_SIZE);
+
+    /* Rogue Squadron runs a fog/geometry setup overlay (ucode text word0
+     * 0x40065800) immediately before its graphics task. That overlay's
+     * ucode_data pointer is the RDRAM fog block the graphics task's terrain
+     * needs; publish it to the angrylion RS walker so rs_seed_fog_row can read
+     * the coefficients from fog_block + 0x160. Without this the graphics task
+     * seeds fog from its own (zeroed) DMEM row and every terrain vertex renders
+     * with alpha 0 -- the blown-out sand cells. */
+    if ((*dram_u32(hle, uc_start) & 0xffffffffu) == 0x40065800u)
+        rs_set_fog_block(uc_dstart);
 
     bool match = false;
     struct cached_ucodes_t * cached_ucodes = &hle->cached_ucodes;
