@@ -2349,11 +2349,15 @@ int naboo_run_dl(RdpFifo *fifo, unsigned int dl_addr, int resume)
                 nb.dl = nb.chunk + nb.off;
             }
             continue;
+        case 0xb6:                              /* 0x0d and 0xb6
+             * collide on table slot 0xd0. */
         case 0x0d:                              /* GeometryMode &= w1
              * (text 0xa70) */
             nb.geom &= w1;
             nb_dl_step(8u);
             continue;
+        case 0xb7:                              /* 0x0e and 0xb7
+             * collide on table slot 0xd2. */
         case 0x0e:                              /* GeometryMode |= w1
              * (text 0xa68) */
             nb.geom |= w1;
