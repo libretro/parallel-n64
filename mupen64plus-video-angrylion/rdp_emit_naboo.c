@@ -143,6 +143,8 @@ static void nb_load(unsigned int dmem_off, unsigned int addr, unsigned int len)
             (unsigned char)(s_rdram ? s_rdram[((addr + i) & 0x7fffffu) ^ 3u] : 0u);
 }
 
+#include "rdp_emit_rsp.h"
+
 /* RSP 48-bit accumulator helpers (vmudn/vmadh chain, zboss style) */
 static int64_t nb_p(int a, int b) { return (int64_t)a * (int64_t)b; }
 static int nb_acc_mid(int64_t acc)
@@ -213,9 +215,49 @@ static void nb_xfrm(unsigned int count)
             nb_dmem_w16(dst + (unsigned int)j * 2u, (unsigned int)ci[j] & 0xffffu);
             nb_dmem_w16(dst + 8u + (unsigned int)j * 2u, cf[j]);
         }
-        /* clip codes, divide, viewport: calibrated in later passes --
-         * zeroed for the first oracle diff of the position chain */
-        nb_dmem_w16(dst + 0x24u, 0u);
+        /* projection (text 0x8c0-0x9b8), oracle-exact: w' = w * persp
+         * >> 16; rcp'd through the divide ROM, doubled, one Newton
+         * step against 2; ratio = ((pos * rcp) >> 16 * persp) >> 16;
+         * screen = viewport offset + (ratio * scale) >> 16 with the
+         * s16 mid clamp. z keeps its fraction (record +0x1e). */
+        {
+            int persp = nb_dmem_s16(0x14eu) & 0xffff;
+            int64_t p32[4], wp, r, wr, err, t, sacc;
+            int scl, ofs, scr;
+            for (j = 0; j < 4; j++)
+                p32[j] = ((int64_t)ci[j] << 16) | cf[j];
+            wp = (p32[3] * persp) >> 16;
+            r  = rsp_rcp32_dp((int32_t)wp);
+            r  = (int32_t)((uint32_t)r << 1);
+            wr = (wp * r) >> 16;
+            err = ((int64_t)2 << 16) - wr;
+            r  = (int32_t)((r * err) >> 16);
+            nb_dmem_w16(dst + 0x20u, ((unsigned int)r >> 16) & 0xffffu);
+            nb_dmem_w16(dst + 0x22u, (unsigned int)r & 0xffffu);
+            for (j = 0; j < 3; j++) {
+                t = (p32[j] * r) >> 16;
+                t = (t * persp) >> 16;
+                scl = nb_dmem_s16(0x130u + (unsigned int)j * 2u);
+                ofs = nb_dmem_s16(0x138u + (unsigned int)j * 2u);
+                sacc = ((int64_t)ofs << 16) + t * scl;
+                scr = (int)(sacc >> 16);
+                if (scr > 32767) scr = 32767;
+                if (scr < -32768) scr = -32768;
+                nb_dmem_w16(dst + 0x18u + (unsigned int)j * 2u,
+                            (unsigned int)scr & 0xffffu);
+                if (j == 2)
+                    nb_dmem_w16(dst + 0x1eu, (unsigned int)(sacc & 0xffff));
+            }
+        }
+        /* clip codes (+0x24) and fog (+0x13): next calibration pass
+         * (this batch exercises neither; the tri emitter needs them).
+         * Store width follows the microcode's pair asymmetry: vertex A
+         * of each pair uses sh (+0x24 only, +0x26 preserved), vertex B
+         * uses sw (+0x24 and +0x26 cleared together). */
+        if (v & 1u)
+            nb_dmem_w32(dst + 0x24u, 0u);
+        else
+            nb_dmem_w16(dst + 0x24u, 0u);
     }
 }
 

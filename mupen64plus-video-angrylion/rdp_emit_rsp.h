@@ -4,6 +4,7 @@
 #include <stdint.h>
 
 int32_t rsp_rcp32(int32_t in32);
+int32_t rsp_rcp32_dp(int32_t in32);
 int32_t rsp_rcp16(int32_t in16);
 int32_t rsp_rsq32(int32_t in32);
 void rsp_light_dir_xfrm_one(const int32_t mv[4][4],

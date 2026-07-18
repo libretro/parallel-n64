@@ -194,6 +194,40 @@ int32_t rsp_rcp32(int32_t in32)
     return rsp_div_core(in32);
 }
 
+/* Double-precision reciprocal (VRCPH/VRCPL pair) with cxd4's negative
+ * handling: full two's-complement negate (only the exact -32768<<16
+ * corner pins to -0x10000). Used by the Naboo projection divide. */
+int32_t rsp_rcp32_dp(int32_t in32)
+{
+    int32_t data = in32;
+    int32_t addr;
+    int shift;
+    int32_t out;
+
+    if (data < 0)
+        data = (int32_t)(0u - (uint32_t)data);
+
+    shift = 0;
+    {
+        uint32_t ua = (uint32_t)data;
+        if (data != 0)
+        {
+            for (shift = 0; (ua & 0x80000000u) == 0u; ua <<= 1, shift++)
+                ;
+        }
+        addr = (int32_t)((ua >> 22) & 0x1ffu);
+    }
+    shift ^= 31;
+    out = (int32_t)((0x40000000u | ((uint32_t)div_rom[addr] << 14)) >> shift);
+    if (in32 == 0)
+        out = 0x7fffffff;
+    else if ((uint32_t)in32 == 0x80000000u || in32 == (int32_t)0xffff8000 * 65536)
+        out = (int32_t)0xffff0000u;
+    else if (in32 < 0)
+        out = (int32_t)~(uint32_t)out;
+    return out;
+}
+
 int32_t rsp_rcp16(int32_t in16)
 {
     return rsp_div_core((int32_t)(int16_t)in16);
