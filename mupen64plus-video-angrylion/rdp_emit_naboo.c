@@ -440,14 +440,13 @@ static void nb_op01(unsigned int w0, unsigned int w1)
  * bit 16 is set, each face's fog bytes (record +0x13) propagate into
  * the color array's alpha (0xd40 + off + 3); then the color words are
  * poked into the records at +0x10 and the inline STs at +0x14. */
-static int nb_tri(unsigned int w0, unsigned int w1)
+static int nb_tri(unsigned int w0, unsigned int w1, int quad)
 {
     unsigned int va = (w1 >> 16) & 0xfff8u;
     unsigned int vb = w1 & 0xfff8u;
-    unsigned int vc, off_a, off_b, off_c, off_x;
+    unsigned int vc, vd, off_a, off_b, off_c, off_x;
     unsigned int cd = nb.dmem[0x58au ^ 3u];
     unsigned int len = 16u;
-    unsigned int j;
 
     /* batching countdown (text 0xb8c) */
     if (cd == 0u) {
@@ -468,11 +467,16 @@ static int nb_tri(unsigned int w0, unsigned int w1)
     off_b = (nb_read_u32(nb.dl + 8u) >> 8) & 0xffu;
     off_c =  nb_read_u32(nb.dl + 8u) & 0xffu;
 
+    vd = nb_read_u32(nb.dl + 12u) & 0xfff8u;    /* halfword +14 */
+
     if (nb.geom & 0x10000u) {
-        /* fog-into-alpha propagation; the extra slot pairs with the
-         * caller's staged vertex (r15; 0 on the first tri of a
-         * command -- DMEM byte 0x13) */
-        nb.dmem[(0xd43u + off_x) ^ 3u] = nb.dmem[0x13u ^ 3u];
+        /* fog-into-alpha propagation (text 0xab8-0xad4); the extra
+         * slot pairs with the staged fourth vertex D on the quad op
+         * (slot 0x0b, entry 1:b44) and with DMEM byte 0x13 on the
+         * single-triangle op (slot 0x16, entry 1:b24, r15 = 0) */
+        nb.dmem[(0xd43u + off_x) ^ 3u] = quad
+            ? nb.dmem[((vd + 0x13u) & 0xfffu) ^ 3u]
+            : nb.dmem[0x13u ^ 3u];
         nb.dmem[(0xd43u + off_a) ^ 3u] = nb.dmem[((va + 0x13u) & 0xfffu) ^ 3u];
         nb.dmem[(0xd43u + off_b) ^ 3u] = nb.dmem[((vb + 0x13u) & 0xfffu) ^ 3u];
         nb.dmem[(0xd43u + off_c) ^ 3u] = nb.dmem[((vc + 0x13u) & 0xfffu) ^ 3u];
@@ -488,21 +492,21 @@ static int nb_tri(unsigned int w0, unsigned int w1)
     nb_dmem_w32(va + 0x10u, nb_dmem_r32(0xd40u + off_a));
     nb_dmem_w32(vb + 0x10u, nb_dmem_r32(0xd40u + off_b));
     nb_dmem_w32(vc + 0x10u, nb_dmem_r32(0xd40u + off_c));
+    /* every command is a quad: A/B/C poked by the parser, D by the
+     * handler tail (text 0xb5c-0xb60), which then emits triangles
+     * (A,B,C) and (A,C,D) */
+    if (quad)
+        nb_dmem_w32(vd + 0x10u, nb_dmem_r32(0xd40u + off_x));
 
     if (w0 & 0x200u) {
         len = 32u;
-        for (j = 0; j < 3; j++) {
-            unsigned int st = nb_read_u32(nb.dl + 16u + j * 8u
-                                          + ((j == 2u) ? 0u : 0u));
-            (void)st;
-        }
-        /* ST lanes: ldv pair covers words +16..+31; slv picks lanes
-         * 0/2/4 = words +16, +20?? -- lanes: v0[e0]=bytes0-3 of the
-         * 16, [e4]=bytes 8-11?? slv element = byte offset: e0->bytes
-         * 0-3, e4->4-7, e8->8-11. */
+        /* inline S/T: slv elements e0/e4/e8/e12 map words +16/+20/
+         * +24/+28 to A/B/C/D */
         nb_dmem_w32(va + 0x14u, nb_read_u32(nb.dl + 16u));
         nb_dmem_w32(vb + 0x14u, nb_read_u32(nb.dl + 20u));
         nb_dmem_w32(vc + 0x14u, nb_read_u32(nb.dl + 24u));
+        if (quad)
+            nb_dmem_w32(vd + 0x14u, nb_read_u32(nb.dl + 28u));
     }
     nb_dl_step(len);
     return 0;
@@ -601,8 +605,16 @@ int naboo_run_dl(RdpFifo *fifo, unsigned int dl_addr, int resume)
             }
             nb_dl_step(8u);
             continue;
-        case 0x0b:                              /* triangle */
-            if (nb_tri(w0, w1) < 0) {
+        case 0x0b:                              /* quad: two
+             * triangles (A,B,C) and (A,C,D) (entry 1:b44) */
+            if (nb_tri(w0, w1, 1) < 0) {
+                nb.active = 0;
+                return NABOO_R_FALLBACK;
+            }
+            continue;
+        case 0x16:                              /* single triangle
+             * (A,B,C) (entry 1:b24) */
+            if (nb_tri(w0, w1, 0) < 0) {
                 nb.active = 0;
                 return NABOO_R_FALLBACK;
             }
@@ -685,7 +697,7 @@ int naboo_run_dl(RdpFifo *fifo, unsigned int dl_addr, int resume)
                         nb.active = 0;
                         return NABOO_R_FALLBACK;
                     }
-                    if (op == 0x0bu || op == 0x16u) {
+                    if (op == 0x0bu) {
                         /* empirical (goracle command trace, task 240,
                          * 3826 dispatches): triangles and slot 0x16
                          * are 32 bytes in this workload */
