@@ -676,8 +676,8 @@ static int nb_tri(RdpFifo *fifo, unsigned int w0, unsigned int w1, int quad)
             {
                 static int t = -1;
                 if (t < 0) t = getenv("NB_SPL_TRACE") != NULL;
-                if (t) fprintf(stderr, "[SPL] 58c=%08x\n",
-                               nb_dmem_r32(0x58cu));
+                if (t) fprintf(stderr, "[SPL] 58c=%08x @%06x p2\n",
+                               nb_dmem_r32(0x58cu), nb.dl);
             }
             if (splice != 0u) {
                 if (nb.sp >= NB_DL_STACK)
@@ -703,8 +703,8 @@ static int nb_tri(RdpFifo *fifo, unsigned int w0, unsigned int w1, int quad)
             {
                 static int t = -1;
                 if (t < 0) t = getenv("NB_SPL_TRACE") != NULL;
-                if (t) fprintf(stderr, "[SPL] 58c=%08x\n",
-                               nb_dmem_r32(0x58cu));
+                if (t) fprintf(stderr, "[SPL] 58c=%08x @%06x p1\n",
+                               nb_dmem_r32(0x58cu), nb.dl);
             }
             if (splice != 0u) {
                 if (nb.sp >= NB_DL_STACK)
@@ -760,8 +760,8 @@ int naboo_run_dl(RdpFifo *fifo, unsigned int dl_addr, int resume)
                 {
                     static int t = -1;
                     if (t < 0) t = getenv("NB_SPL_TRACE") != NULL;
-                    if (t) fprintf(stderr, "[SPL] 58c=%08x\n",
-                                   nb_dmem_r32(0x58cu));
+                    if (t) fprintf(stderr, "[SPL] 58c=%08x @%06x e4\n",
+                                   nb_dmem_r32(0x58cu), nb.dl);
                 }
                 if (splice != 0u) {
                     if (nb.sp >= NB_DL_STACK) {
@@ -864,15 +864,27 @@ int naboo_run_dl(RdpFifo *fifo, unsigned int dl_addr, int resume)
                 }
             }
             continue;
-        case 0x0c:                              /* NOP (entry 1:068 =
-             * the fetch loop: consume and continue).  Gated with the
-             * emitter: on unverified builds, completing slices that
-             * previously fell back changes output ordering. */
+        case 0x0c:                              /* end-of-chunk marker:
+             * the dispatch entry (1:068) is the chunk-refill routine
+             * itself -- it reloads the ring window from the chain
+             * pointer and restarts the fetch at the new chunk's first
+             * command.  Bytes after this op in the current chunk are
+             * dead padding the microcode never walks.  Gated with the
+             * emitter on unverified builds. */
             if (!nb_emit_on) {
                 nb.active = 0;
                 return NABOO_R_FALLBACK;
             }
-            nb_dl_step(8u);
+            {
+                unsigned int next = nb_read_u32(nb.chunk) & 0x00fffff8u;
+                if (next == 0u) {
+                    nb.active = 0;
+                    return NABOO_R_FALLBACK;
+                }
+                nb.chunk = next;
+                nb.off = 8u;
+                nb.dl = nb.chunk + nb.off;
+            }
             continue;
         case 0x0d:                              /* GeometryMode &= w1
              * (text 0xa70) */
