@@ -2334,10 +2334,18 @@ int naboo_run_dl(RdpFifo *fifo, unsigned int dl_addr, int resume)
             continue;
         case 0x0b:                              /* quad: two
              * triangles (A,B,C) and (A,C,D) (entry 1:b44) */
+        case 0xb4:                              /* the two dispatch
+             * tables overlap: the index is (w0 >> 23) & 0x1fe but the
+             * base is +0xb6 for class 0 and -0x9c for classes 1-3, so
+             * 0x0b and 0xb4 both resolve to table slot 0xcc and run
+             * the same handler. */
         case 0x16:                              /* single triangle
              * (A,B,C) (entry 1:b24) */
+        case 0xbf:                              /* 0x16 and 0xbf
+             * collide on slot 0xe2 the same way. */
             {
-                int tr = nb_tri(fifo, w0, w1, op == 0x0bu);
+                int tr = nb_tri(fifo, w0, w1,
+                                op == 0x0bu || op == 0xb4u);
                 if (tr < 0) {
                     nb.active = 0;
                     return NABOO_R_FALLBACK;
