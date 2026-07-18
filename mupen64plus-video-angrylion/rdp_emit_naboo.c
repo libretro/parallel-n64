@@ -2325,6 +2325,8 @@ int naboo_run_dl(RdpFifo *fifo, unsigned int dl_addr, int resume)
                 }
             }
             continue;
+        case 0xb5:                              /* 0x0c and 0xb5
+             * collide on table slot 0xce. */
         case 0x0c:                              /* end-of-chunk marker:
              * the dispatch entry (1:068) is the chunk-refill routine
              * itself -- it reloads the ring window from the chain
@@ -2357,6 +2359,8 @@ int naboo_run_dl(RdpFifo *fifo, unsigned int dl_addr, int resume)
             nb.geom |= w1;
             nb_dl_step(8u);
             continue;
+        case 0xb9:                              /* 0x10 and 0xb9
+             * collide on table slot 0xd6. */
         case 0x10:                              /* conditional state
              * insert (text 0x7d0): compare w0 bit 23 against the
              * struct word +0xc; on mismatch skip, else perform the
@@ -2415,6 +2419,8 @@ int naboo_run_dl(RdpFifo *fifo, unsigned int dl_addr, int resume)
             }
             nb_dl_step(8u);
             continue;
+        case 0xbb:                              /* 0x12 and 0xbb
+             * collide on table slot 0xda. */
         case 0x12:                              /* state toggle (text
              * 0xa80): store w0 at struct +0x38; flip geometry-mode
              * bit 1 when (geom ^ w0) & 2 */
