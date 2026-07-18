@@ -370,9 +370,53 @@ static void nb_op01(unsigned int w0, unsigned int w1)
     case 2:                                     /* vertex transform */
         nb_xfrm((w1 >> 24) & 0x7fu);
         break;
-    case 4:                                     /* color unpack: 565 ->
-         * RGBA words through the parallel arrays at 0x480 (text
-         * 0xbec-0xc30); modeled when the emitters consume it */
+    case 4:                                     /* color processor
+         * (text 0xbd4-0xc70): in-place top-down expansion of the
+         * loaded RGB565 halfwords at 0x480+2n into RGBA words at
+         * 0x480+4n, then -- when the count byte's sign OR the
+         * intensity byte at 0x58b is negative -- a vmulf per-channel
+         * scale by the 8 intensity bytes at DMEM 0x158 into the
+         * array at 0xd40.  w0 bits 0/1 dispatch overlays 0x21/0x1b
+         * afterwards (unimplemented: caller falls back). */
+        {
+            int cnt7 = (int)((w1 >> 24) & 0x7fu);
+            int neg  = ((w1 >> 24) & 0x80u) != 0u;
+            int i2;
+            if ((w0 >> 23) & 1u) {
+                for (i2 = cnt7 - 1; i2 >= 0; i2--) {
+                    unsigned int c565 =
+                        ((unsigned int)nb.dmem[(0x480u + (unsigned)i2*2u) ^ 3u] << 8)
+                       | (unsigned int)nb.dmem[(0x481u + (unsigned)i2*2u) ^ 3u];
+                    unsigned int rgba = ((c565 & 0xf800u) << 16)
+                                      | ((c565 & 0x07e0u) << 13)
+                                      | ((c565 & 0x001fu) << 11)
+                                      | 0xffu;
+                    nb_dmem_w32(0x480u + (unsigned)i2 * 4u, rgba);
+                }
+            }
+            if (neg || (nb.dmem[0x58bu ^ 3u] & 0x80u)) {
+                /* intensity scale into 0xd40; per-channel vmulf by the
+                 * 8 bytes at 0x158, no overlay dispatch on this path
+                 * (text 0xc44-0xc70) */
+                for (i2 = 0; i2 < cnt7; i2++) {
+                    unsigned int j2;
+                    for (j2 = 0; j2 < 4u; j2++) {
+                        int a2 = (int)nb.dmem[(0x480u + (unsigned)i2*4u + j2) ^ 3u] << 7;
+                        int b2 = (int)nb.dmem[(0x158u + (j2 + ((unsigned)i2 & 1u) * 4u)) ^ 3u] << 7;
+                        int64_t acc = (int64_t)a2 * b2 * 2 + 0x8000;
+                        int r2 = (int)(acc >> 16);
+                        if (r2 > 32767) r2 = 32767;
+                        if (r2 < 0) r2 = 0;
+                        nb.dmem[(0xd40u + (unsigned)i2*4u + j2) ^ 3u] =
+                            (unsigned char)(r2 >> 7);
+                    }
+                }
+            } else if (w0 & 3u) {
+                /* non-scaled path dispatches overlays 0x21/0x1b on w0
+                 * bits 0/1 (text 0xc74-0xc84): fallback */
+                nb.active = 2u;
+            }
+        }
         break;
     case 6:                                     /* intensity byte */
         nb_dmem_w8(0x58bu, w1 >> 24);
@@ -380,6 +424,88 @@ static void nb_op01(unsigned int w0, unsigned int w1)
     default:                                    /* load-only */
         break;
     }
+}
+
+/* Triangle command (slot 0x0b, 16 or 32 bytes).  Layout:
+ *   w0: opcode | flags (bit 9 = inline ST present, bit 11 = overlay
+ *       0x2a extended path); low bits carry the record-base constant
+ *   w1: vertex record addresses A (hi16) and B (lo16)
+ *   +8..+11: face color-list byte offsets (byte +8 = the extra/fog
+ *       slot, +9/+10/+11 = per-vertex offsets into the scaled color
+ *       array at DMEM 0xd40)
+ *   +12: vertex record address C; +14: staged slot for sharing
+ *   +16..+31 (when w0 bit 9): packed S/T words, lanes 0/2/4 -> A/B/C
+ *
+ * Emission side effects modeled here (text 0xa94): when geometry-mode
+ * bit 16 is set, each face's fog bytes (record +0x13) propagate into
+ * the color array's alpha (0xd40 + off + 3); then the color words are
+ * poked into the records at +0x10 and the inline STs at +0x14. */
+static int nb_tri(unsigned int w0, unsigned int w1)
+{
+    unsigned int va = (w1 >> 16) & 0xfff8u;
+    unsigned int vb = w1 & 0xfff8u;
+    unsigned int vc, off_a, off_b, off_c, off_x;
+    unsigned int cd = nb.dmem[0x58au ^ 3u];
+    unsigned int len = 16u;
+    unsigned int j;
+
+    /* batching countdown (text 0xb8c) */
+    if (cd == 0u) {
+        nb.dmem[0x58au ^ 3u] = (unsigned char)w0;
+    } else {
+        nb.dmem[0x58au ^ 3u] = (unsigned char)(cd - 1u);
+        nb_dl_step((w0 & 0x200u) ? 32u : 16u);
+        return 0;                       /* skipped by the countdown */
+    }
+
+    if (w0 & 0x800u)
+        return -1;                      /* overlay 0x2a path: fallback */
+
+    vc    = nb_read_u32(nb.dl + 12u) >> 16;
+    vc   &= 0xfff8u;
+    off_x = (nb_read_u32(nb.dl + 8u) >> 24) & 0xffu;
+    off_a = (nb_read_u32(nb.dl + 8u) >> 16) & 0xffu;
+    off_b = (nb_read_u32(nb.dl + 8u) >> 8) & 0xffu;
+    off_c =  nb_read_u32(nb.dl + 8u) & 0xffu;
+
+    if (nb.geom & 0x10000u) {
+        /* fog-into-alpha propagation; the extra slot pairs with the
+         * caller's staged vertex (r15; 0 on the first tri of a
+         * command -- DMEM byte 0x13) */
+        nb.dmem[(0xd43u + off_x) ^ 3u] = nb.dmem[0x13u ^ 3u];
+        nb.dmem[(0xd43u + off_a) ^ 3u] = nb.dmem[((va + 0x13u) & 0xfffu) ^ 3u];
+        nb.dmem[(0xd43u + off_b) ^ 3u] = nb.dmem[((vb + 0x13u) & 0xfffu) ^ 3u];
+        nb.dmem[(0xd43u + off_c) ^ 3u] = nb.dmem[((vc + 0x13u) & 0xfffu) ^ 3u];
+    }
+
+    {
+        static int t = -1;
+        if (t < 0) t = getenv("NB_TRI_TRACE") != NULL;
+        if (t) fprintf(stderr, "[TRI] @%06x va=%03x vb=%03x vc=%03x off=%02x/%02x/%02x col_a=%08x\n",
+                       nb.dl, va, vb, vc, off_a, off_b, off_c,
+                       nb_dmem_r32(0xd40u + off_a));
+    }
+    nb_dmem_w32(va + 0x10u, nb_dmem_r32(0xd40u + off_a));
+    nb_dmem_w32(vb + 0x10u, nb_dmem_r32(0xd40u + off_b));
+    nb_dmem_w32(vc + 0x10u, nb_dmem_r32(0xd40u + off_c));
+
+    if (w0 & 0x200u) {
+        len = 32u;
+        for (j = 0; j < 3; j++) {
+            unsigned int st = nb_read_u32(nb.dl + 16u + j * 8u
+                                          + ((j == 2u) ? 0u : 0u));
+            (void)st;
+        }
+        /* ST lanes: ldv pair covers words +16..+31; slv picks lanes
+         * 0/2/4 = words +16, +20?? -- lanes: v0[e0]=bytes0-3 of the
+         * 16, [e4]=bytes 8-11?? slv element = byte offset: e0->bytes
+         * 0-3, e4->4-7, e8->8-11. */
+        nb_dmem_w32(va + 0x14u, nb_read_u32(nb.dl + 16u));
+        nb_dmem_w32(vb + 0x14u, nb_read_u32(nb.dl + 20u));
+        nb_dmem_w32(vc + 0x14u, nb_read_u32(nb.dl + 24u));
+    }
+    nb_dl_step(len);
+    return 0;
 }
 
 int naboo_run_dl(RdpFifo *fifo, unsigned int dl_addr, int resume)
@@ -469,7 +595,17 @@ int naboo_run_dl(RdpFifo *fifo, unsigned int dl_addr, int resume)
              * subtype processor (state modeling; RDP output comes from
              * the triangle path, which still falls back) */
             nb_op01(w0, w1);
+            if (nb.active == 2u) {
+                nb.active = 0;
+                return NABOO_R_FALLBACK;
+            }
             nb_dl_step(8u);
+            continue;
+        case 0x0b:                              /* triangle */
+            if (nb_tri(w0, w1) < 0) {
+                nb.active = 0;
+                return NABOO_R_FALLBACK;
+            }
             continue;
         case 0x0d:                              /* GeometryMode &= w1
              * (text 0xa70) */
