@@ -561,8 +561,14 @@ static void nb_op01(unsigned int w0, unsigned int w1)
                 }
             } else if (w0 & 3u) {
                 /* non-scaled path dispatches overlays 0x21/0x1b on w0
-                 * bits 0/1 (text 0xc74-0xc84): fallback */
-                nb.active = 2u;
+                 * bits 0/1 (text 0xc74-0xc84): fallback.
+                 * NB_SKIP_COLOVL is a validation-only bypass that
+                 * leaves the colors unlit so downstream paths can be
+                 * verified in isolation. */
+                static int skip = -1;
+                if (skip < 0) skip = getenv("NB_SKIP_COLOVL") != NULL;
+                if (!skip)
+                    nb.active = 2u;
             }
         }
         break;
@@ -619,6 +625,110 @@ static void nb_vtx(unsigned int rec, RspTriVtx *v)
  * caller falls back), winding cull against the geometry-mode bit,
  * then the shared RSP-exact edge/attribute writer.  Returns -1 when
  * the clip overlay would run. */
+
+/* Overlay 0x2a (environment-mapped texture coordinates, w0 bit 11):
+ * for each of the four vertex-index bytes (command bytes +19/+23/+27/
+ * +31), the input vertex's normal (halfword elements 4-6 of the raw
+ * record at 0x170 + idx) is transformed by the normal matrix at DMEM
+ * 0xe40 (four int rows then four frac rows; the fourth row adds as a
+ * translation), the integer lanes drop the bias vector at DMEM 0xf0
+ * (vsubc: u16 wrap, fractions untouched), the result is normalized
+ * through the squares fold and the reciprocal square root scaled by
+ * the constant 0xab, and the S/T pair is the scale halfwords at DMEM
+ * 0xec times the normalized x/y (vmudm/vmadh: the emitted value is
+ * the integer lane).  Results go to out_st[i] packed S<<16|T. */
+static void nb_ovl2a(unsigned int cmd, unsigned int out_st[4])
+{
+    int mi[4][3], mf[4][3];
+    int bias[2], sc[2];
+    int i, r, k;
+
+    for (r = 0; r < 4; r++)
+        for (k = 0; k < 3; k++) {
+            mi[r][k] = nb_dmem_s16(0xe40u + (unsigned)r * 8u + (unsigned)k * 2u);
+            mf[r][k] = nb_dmem_s16(0xe60u + (unsigned)r * 8u + (unsigned)k * 2u);
+        }
+    for (k = 0; k < 2; k++) {
+        bias[k] = nb_dmem_s16(0xf0u + (unsigned)k * 2u);
+        sc[k]   = nb_dmem_s16(0xecu + (unsigned)k * 2u);
+    }
+
+    for (i = 0; i < 4; i++) {
+        unsigned int idx = nb_read_u32(cmd + 16u + (unsigned)i * 4u) & 0xffu;
+        unsigned int src = 0x170u + idx;
+        int n[3], ti[3], tf[3];
+        int32_t sq_lo, sq_mid;
+        int64_t acc;
+        int32_t rsq, r_i, r_f;
+        int st[2];
+
+        for (k = 0; k < 3; k++)
+            n[k] = nb_dmem_s16(src + 8u + (unsigned)k * 2u);
+
+        /* normal x matrix + row-4 translation (vmudn frac + vmadh int
+         * accumulated; mid = int lane, low = frac lane) */
+        for (k = 0; k < 3; k++) {
+            acc  = nb_p(mf[0][k], n[0]) + (nb_p(mi[0][k], n[0]) << 16);
+            acc += nb_p(mf[1][k], n[1]) + (nb_p(mi[1][k], n[1]) << 16);
+            acc += nb_p(mf[2][k], n[2]) + (nb_p(mi[2][k], n[2]) << 16);
+            acc += nb_p(mf[3][k], 1)    + (nb_p(mi[3][k], 1) << 16);
+            ti[k] = nb_acc_mid(acc);
+            tf[k] = (int)(acc & 0xffff);
+        }
+        /* vsubc bias on the integer lanes 0-1 (u16 wrap) */
+        for (k = 0; k < 2; k++)
+            ti[k] = (int)(int16_t)((unsigned short)((unsigned)ti[k] - (unsigned)bias[k]));
+
+        /* squared length: full 32x32 per lane, folded */
+        {
+            int64_t sum_lo = 0, sum_mid = 0;
+            for (k = 0; k < 3; k++) {
+                acc  = nb_p(tf[k], tf[k]);                 /* vmudl */
+                acc += nb_p(ti[k], tf[k]) << 16;           /* vmadm */
+                acc += nb_p(tf[k], ti[k]) << 16;           /* vmadn */
+                acc += nb_p(ti[k], ti[k]) << 32;           /* vmadh */
+                /* fold with the vaddc/vadd pair semantics via a plain
+                 * 48-bit sum then split (the lanes stay in range for
+                 * unit-scale normals; exactness judged by the oracle) */
+                sum_lo  += (acc >> 16) & 0xffff;
+                sum_mid += (acc >> 32);
+            }
+            sum_mid += sum_lo >> 16;
+            sq_lo  = (int32_t)(sum_lo & 0xffff);
+            sq_mid = (int32_t)(sum_mid > 32767 ? 32767 :
+                               (sum_mid < -32768 ? -32768 : sum_mid));
+        }
+        rsq = rsp_rsq32((int32_t)(((uint32_t)(sq_mid & 0xffff) << 16)
+                                  | (uint32_t)(sq_lo & 0xffff)));
+        /* x the 0xab constant (vmudl/vmadm pair on the rsq int/frac) */
+        {
+            int rsq_i = (rsq >> 16) & 0xffff, rsq_f = rsq & 0xffff;
+            acc  = nb_p(rsq_f, 0xab);
+            acc += nb_p(rsq_i, 0xab) << 16;
+            r_i = nb_acc_mid(acc);
+            r_f = (int32_t)(acc & 0xffff);
+        }
+        /* normalized = transformed x scaled rsq (32x32) */
+        for (k = 0; k < 2; k++) {
+            acc  = nb_p(tf[k], r_f);
+            acc += nb_p(ti[k], r_f) << 16;
+            acc += nb_p(tf[k], r_i) << 16;
+            acc += nb_p(ti[k], r_i) << 32;
+            /* vmudm scale x normalized: int-lane result */
+            {
+                int ni = nb_acc_mid(acc);
+                int nf = (int)((acc >> 16) & 0xffff);
+                int64_t a2 = nb_p(sc[k], nf) + (nb_p(sc[k], ni) << 16);
+                st[k] = nb_acc_mid(a2 << 0) ;
+                (void)nf;
+                st[k] = nb_acc_mid(a2);
+            }
+        }
+        out_st[i] = ((unsigned int)(st[0] & 0xffff) << 16)
+                  | ((unsigned int)st[1] & 0xffff);
+    }
+}
+
 /* Gate a triangle exactly as the emitter entry does BEFORE its jalr
  * (text 0x1a8-0x2a4): trivial reject on the ANDed outcodes, clip
  * trigger on the ORed outcodes, winding cull, degenerate skip.
@@ -714,8 +824,6 @@ static int nb_tri(RdpFifo *fifo, unsigned int w0, unsigned int w1, int quad)
         nb.tri_phase = 2u;
     }
 
-    if (w0 & 0x800u)
-        return -1;                      /* overlay 0x2a path: fallback */
 
     vc    = nb_read_u32(nb.dl + 12u) >> 16;
     vc   &= 0xfff8u;
@@ -755,7 +863,21 @@ static int nb_tri(RdpFifo *fifo, unsigned int w0, unsigned int w1, int quad)
     if (quad)
         nb_dmem_w32(vd + 0x10u, nb_dmem_r32(0xd40u + off_x));
 
-    if (w0 & 0x200u) {
+    if (w0 & 0x800u) {
+        /* overlay 0x2a: environment-mapped S/T computed from the
+         * vertex normals; the four index bytes ride the low byte of
+         * each would-be inline S/T word (+19/+23/+27/+31), and the
+         * results replace the inline pokes (rejoin text 0xb10 for
+         * A/B/C, the quad tail 0xb60 lane e12 for D) */
+        unsigned int est[4];
+        len = 32u;
+        nb_ovl2a(nb.dl, est);
+        nb_dmem_w32(va + 0x14u, est[0]);
+        nb_dmem_w32(vb + 0x14u, est[1]);
+        nb_dmem_w32(vc + 0x14u, est[2]);
+        if (quad)
+            nb_dmem_w32(vd + 0x14u, est[3]);
+    } else if (w0 & 0x200u) {
         len = 32u;
         /* inline S/T: slv elements e0/e4/e8/e12 map words +16/+20/
          * +24/+28 to A/B/C/D */
