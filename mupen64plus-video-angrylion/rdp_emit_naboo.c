@@ -2290,6 +2290,47 @@ int naboo_run_dl(RdpFifo *fifo, unsigned int dl_addr, int resume)
             }
             nb.active = 0;
             return NABOO_R_DONE;
+        case 0x14: {                            /* display-list return
+             * with state restore (live IMEM 0xc24).  It pops the same
+             * stack the DisplayList call pushes -- depth byte at
+             * struct+0x32, cursor pair at 0xfe0/0xfe4 -- so the
+             * walker performs the pop it already models for EndDL and
+             * adds the state restore on top.
+             *
+             * `lb v0, 257(zero)` then `lqv v9[e0], -432(v0)` reads
+             * sixteen bytes at 0xe50 + v0 and stores them through the
+             * RDP output pointer, so a return can emit a command.  On
+             * the captured task the gate byte is 0x10 on 60 of 236
+             * dispatches, making the emit path live rather than
+             * theoretical: the source is then 0xe60, the mode word
+             * this same handler has just written. */
+            unsigned int mode, gate;
+            if (nb.sp == 0u) {
+                nb.active = 0;
+                return NABOO_R_FALLBACK;
+            }
+            nb.sp--;
+            nb.chunk = nb.stack[nb.sp * 2u];
+            nb.off   = nb.stack[nb.sp * 2u + 1u];
+            nb.dl    = nb.chunk + nb.off;
+            nb_dmem_w32(0x5a0u, nb.chunk);
+            mode = nb_dmem_r32(0x120u) & 0xffcfffffu;
+            nb_dmem_w32(0xe70u, mode);
+            nb_dmem_w32(0xe60u, mode | 0x00100000u);
+            gate = (unsigned int)(signed char)nb.dmem[0x101u ^ 3u];
+            if (gate != 0u) {
+                int32_t words[2];
+                unsigned int src = (0xe50u + gate) & 0xfffu;
+                words[0] = (int32_t)nb_dmem_r32(src);
+                words[1] = (int32_t)nb_dmem_r32(src + 4u);
+                rdp_fifo_append(fifo, words, 2);
+                words[0] = (int32_t)nb_dmem_r32(src + 8u);
+                words[1] = (int32_t)nb_dmem_r32(src + 12u);
+                rdp_fifo_append(fifo, words, 2);
+            }
+            nb_dmem_w32(0x58cu, 0u);
+            continue;
+        }
         case 0x02:                              /* open segmented
              * stream (text 0xd1c) */
             nb_op02(w0, w1);
