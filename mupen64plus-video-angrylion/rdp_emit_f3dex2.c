@@ -106,6 +106,7 @@ static int probe_ucode_class(const unsigned char *r, unsigned int text)
  * scene fails to render. Detected by the SGI data-segment name string, the
  * same way f3d_ucode_family classifies the GBI 1 builds. */
 static int s_variant_cbfd;
+static int s_variant_acclaim;
 
 static int cbfd_ucode_match(const unsigned char *rdram,
                             unsigned int ud, unsigned int uds)
@@ -253,6 +254,7 @@ void f3dex2_set_task_ucode(const unsigned char *rdram, unsigned int text)
     s_ucode_class = probe_ucode_class(rdram, text);
     s2dex_set_version2(s_ucode_class == UCODE_S2DEX2);
     s_variant_cbfd = 0;
+    s_variant_acclaim = 0;
 }
 
 /* Enable Conker's F3DEXBG.NoN G_TRI4 opcode block for this task, detected by
@@ -262,6 +264,39 @@ void f3dex2_set_variant_cbfd(const unsigned char *rdram, unsigned int ud,
                              unsigned int uds)
 {
     s_variant_cbfd = cbfd_ucode_match(rdram, ud, uds) ? 1 : 0;
+}
+
+/* Acclaim's four F3DEX2 titles (Turok 2 - Seeds of Evil, Turok 3, Armorines -
+ * Project S.W.A.R.M., South Park) ship the same custom-lighting microcode: it
+ * claims to be a stock "RSP Gfx ucode F3DEX.NoN fifo 2.05" build by its
+ * data-segment name, so the name string cannot tell it apart, but the code
+ * segment carries a custom L1-distance point-lighting routine no stock F3DEX2
+ * has. The code text is byte-identical across all four games; fingerprint it by
+ * a multiply-and-add checksum over the first 0x1000 bytes of the microcode text
+ * in RDRAM (the same image the RSP DMAs resident before running). */
+static int acclaim_ucode_match(const unsigned char *rdram, unsigned int text)
+{
+    unsigned int crc = 0u;
+    unsigned int a;
+    if (rdram == 0 || text == 0)
+        return 0;
+    if (s_rdram_size && text + 0x1000u > s_rdram_size)
+        return 0;
+    for (a = 0u; a < 0x1000u; a += 4u)
+        crc = crc * 33u + rd_u32_be(rdram, text + a);
+    return (crc == 0x4444ae70u) ? 1 : 0;
+}
+
+/* Enable Acclaim custom lighting for this task. Called after
+ * f3dex2_set_task_ucode at task start (which clears the flag). */
+void f3dex2_set_variant_acclaim(const unsigned char *rdram, unsigned int text)
+{
+    s_variant_acclaim = acclaim_ucode_match(rdram, text) ? 1 : 0;
+}
+
+int f3dex2_variant_acclaim(void)
+{
+    return s_variant_acclaim;
 }
 
 /* Adopt the caller's segment table for a mid-list microcode handoff: when a
@@ -792,6 +827,7 @@ void f3dex2_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
             int v0 = (int)((w0 >> 1) & 0x7f) - n;
             unsigned int va = seg_addr(w1);
             gsp->cbfd = s_variant_cbfd;
+            gsp->acclaim = s_variant_acclaim;
             if (n > 0 && addr_in_range(va, (unsigned int)n * 16u))
                 gsp_vertex(gsp, r, va, n, v0);
             break;
@@ -1085,7 +1121,46 @@ void f3dex2_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
              * (vscale/vtrans) from the segmented address in w1. Other MOVEMEM
              * targets (lights, matrices) are not needed for screen mapping. */
             int index = (int)(w0 & 0xff);
-            if (index == G_MV_NORMALES && s_variant_cbfd)
+            if (index == G_MV_LIGHT && s_variant_acclaim)
+            {
+                /* Acclaim custom lighting: eight 16-byte light structs load via
+                 * G_MV_LIGHT to DMEM 0x250 + n*16, encoded as movemem byte
+                 * offset 0x60 + n*16 (light 0 at 0x60). w1 points straight at
+                 * the struct in RDRAM. Layout:
+                 *   [0..5]   position x,y,z (s16, eye space)
+                 *   [6][7][8] R,G,B (byte; the RSP scales by <<7 internally)
+                 *   [9]      pad
+                 *   [10..11] A: L1-distance cutoff (s16). Bit 0x8000 set marks
+                 *            the light disabled (the ucode tests lh & 0x8000
+                 *            and skips the accumulate).
+                 *   [12..13] B: intensity scale (s16)
+                 *   [14..15] per-channel output clamp (s16, 0x7F80) */
+                unsigned int aoff = (w0 >> 5) & 0x7ffu;
+                unsigned int la = seg_addr(w1);
+                if (aoff >= 0x60u && aoff < 0x60u + 8u * 16u
+                    && addr_in_range(la, 16u))
+                {
+                    int an = (int)((aoff - 0x60u) / 16u);
+                    gsp->accl_pos[an][0] = (int)(short)
+                        ((r[(la + 0) ^ 3u] << 8) | r[(la + 1) ^ 3u]);
+                    gsp->accl_pos[an][1] = (int)(short)
+                        ((r[(la + 2) ^ 3u] << 8) | r[(la + 3) ^ 3u]);
+                    gsp->accl_pos[an][2] = (int)(short)
+                        ((r[(la + 4) ^ 3u] << 8) | r[(la + 5) ^ 3u]);
+                    gsp->accl_rgb[an][0] = (int)r[(la + 6) ^ 3u];
+                    gsp->accl_rgb[an][1] = (int)r[(la + 7) ^ 3u];
+                    gsp->accl_rgb[an][2] = (int)r[(la + 8) ^ 3u];
+                    gsp->accl_a[an] = (int)(short)
+                        ((r[(la + 10) ^ 3u] << 8) | r[(la + 11) ^ 3u]);
+                    gsp->accl_b[an] = (int)(short)
+                        ((r[(la + 12) ^ 3u] << 8) | r[(la + 13) ^ 3u]);
+                    gsp->accl_clampmax = (int)(short)
+                        ((r[(la + 14) ^ 3u] << 8) | r[(la + 15) ^ 3u]);
+                    if (an + 1 > gsp->acclaim_nlights)
+                        gsp->acclaim_nlights = an + 1;
+                }
+            }
+            else if (index == G_MV_NORMALES && s_variant_cbfd)
             {
                 /* Conker CBFD: the base of the per-vertex normal table the
                  * CBFD vertex loader reads (two s8 per vertex, slot * 2). */

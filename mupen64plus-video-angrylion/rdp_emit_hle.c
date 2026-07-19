@@ -947,6 +947,11 @@ void rdp_emit_hle_process_dlist(void)
              * enable the CBFD G_TRI4 opcode block (0x10..0x1f). */
             f3dex2_set_variant_cbfd(rdram, ud,
                                     read_dmem_u32(dmem, 0xfdc));
+            /* Acclaim's four F3DEX2 titles (Turok 2/3, Armorines, South Park)
+             * ship a custom-lighting microcode with a stock F3DEX.NoN name;
+             * detect it by the code-text checksum and enable the L1-distance
+             * point-lighting path. */
+            f3dex2_set_variant_acclaim(rdram, ut);
             /* Standalone S2DEX (GBI 1) is not caught by the text version probe;
              * detect it by data-segment name and force the GBI 1 sprite class. */
             if (s2dex1_ucode_match(rdram, rdram_size, ud,

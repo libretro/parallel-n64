@@ -113,6 +113,15 @@ typedef struct GSPState
     int32_t cbfd_lpos[GSP_MAX_LIGHTS][3]; /* CBFD point-light s16 positions */
     int32_t cbfd_lca[GSP_MAX_LIGHTS];     /* CBFD point-light ca numerator (light byte = ca*16) */
     int32_t cbfd_cmod[16];    /* G_MW_COORD_MOD offset/scale rows (12..15 in 16.16) */
+    int acclaim;              /* Acclaim F3DEX2 variant (Turok 2/3, Armorines,
+                                 South Park): custom L1-distance point lighting */
+    int acclaim_active;       /* the Acclaim lighting geometry-mode bit is set */
+    int acclaim_nlights;      /* number of Acclaim light structs loaded (<= 8) */
+    int32_t accl_pos[8][3];   /* light position (s16 eye-space) */
+    int32_t accl_rgb[8][3];   /* light colour (0..255) */
+    int32_t accl_a[8];        /* per-light distance threshold A (s16) */
+    int32_t accl_b[8];        /* per-light intensity scale B (s16) */
+    int32_t accl_clampmax;    /* per-channel output clamp (0x7F80) */
     int dkr_shade_alpha_zero; /* DKR: RSP zeroes shade alpha under the fog blender P mux */
     unsigned int mtx_stack_ptr;
     unsigned int mtx_stack_base;

@@ -554,6 +554,10 @@ void gsp_task_reset(GSPState *s)
         for (ci = 0; ci < 16; ci++)
             s->cbfd_cmod[ci] = 0;
     }
+    s->acclaim = 0;
+    s->acclaim_active = 0;
+    s->acclaim_nlights = 0;
+    s->accl_clampmax = 0;
     s->pd_cbase = 0;
     /* Each task starts under the F3D-family screen model; the F3DDKR
      * walker opts out at its entry. Without the per-task restore a DKR
@@ -650,6 +654,81 @@ static void gsp_vertex_screen(GSPState *s, GSPVertex *vt)
     vt->rs_ndc2z = rsp_vtx_last_ndc2z();
     vt->rs_pw = rsp_vtx_last_pw();
     vt->rs_outcode = rsp_vtx_last_outcode();
+}
+
+/* Acclaim custom lighting (Turok 2/3, Armorines, South Park). The four titles'
+ * shared microcode carries a non-standard point-light approximation: instead of
+ * the stock normal-dot-direction diffuse term, it floods vertices with light
+ * whose intensity falls off with the L1 (Manhattan) distance from each light to
+ * the vertex. Reverse-engineered from the RSP overlay (the Manhattan-sum vabs at
+ * IMEM 0x1698) and validated bit-exact against the cxd4 LLE oracle. For each of
+ * the loaded lights:
+ *   d      = light_pos - vertex_pos            (eye space, per-axis s16)
+ *   sum    = |d.x| + |d.y| + |d.z|             (Manhattan distance)
+ *   inten  = |min(sum - A, 0)| * B  (as u16)   (0 when sum > A: light ignored)
+ *   contribution per channel = ((colour<<7) * inten) >> 16
+ *   colour += contribution, clamped to clampmax
+ * The RSP keeps the working vertex colour as an s8.7 fixed-point value (the
+ * 8-bit vertex colour shifted left by 7); the final vertex colour is that value
+ * shifted back down by 7. G_LIGHTING is switched off while this runs, so the
+ * effect is purely additive on top of the vertex's own colour bytes. The light
+ * positions are eye-space, so the caller passes the vertex position after the
+ * combined-matrix transform (cx,cy,cz >> 16), not the raw object coordinates. */
+static void acclaim_light(GSPState *s, int32_t ex, int32_t ey, int32_t ez,
+                          int32_t *r8, int32_t *g8, int32_t *b8)
+{
+    int li;
+    int32_t clampmax = s->accl_clampmax;
+    /* start from the base vertex colour promoted to the s8.7 domain */
+    int32_t cr = (*r8 & 0xff) << 7;
+    int32_t cg = (*g8 & 0xff) << 7;
+    int32_t cb = (*b8 & 0xff) << 7;
+    if (clampmax <= 0)
+        clampmax = 0x7f80;
+    for (li = 0; li < s->acclaim_nlights; li++)
+    {
+        int32_t dx, dy, dz, sum, sma, inten, lr, lg, lb, contrib;
+        /* The ucode loads the A halfword and tests bit 0x8000; when set the
+         * light is disabled and the accumulate is skipped entirely. A is
+         * otherwise a small positive s16 cutoff, so the raw u16 top bit is the
+         * disable flag. */
+        if ((s->accl_a[li] & 0x8000) != 0)
+            continue;
+        dx = s->accl_pos[li][0] - ex;
+        dy = s->accl_pos[li][1] - ey;
+        dz = s->accl_pos[li][2] - ez;
+        if (dx < 0) dx = -dx;
+        if (dy < 0) dy = -dy;
+        if (dz < 0) dz = -dz;
+        sum = dx + dy + dz;
+        sma = sum - s->accl_a[li];
+        if (sma > 0)                    /* min(sum - A, 0): far light ignored */
+            sma = 0;
+        if (sma < 0)
+            sma = -sma;                 /* |sma| */
+        inten = (sma * s->accl_b[li]) & 0xffff;   /* u16 intensity */
+        if (inten == 0)
+            continue;
+        lr = (s->accl_rgb[li][0] & 0xff) << 7;
+        lg = (s->accl_rgb[li][1] & 0xff) << 7;
+        lb = (s->accl_rgb[li][2] & 0xff) << 7;
+        contrib = (int32_t)(((int64_t)lr * (int64_t)inten) >> 16);
+        cr += contrib;
+        if (cr > 32767) cr = 32767;
+        if (cr > clampmax) cr = clampmax;
+        contrib = (int32_t)(((int64_t)lg * (int64_t)inten) >> 16);
+        cg += contrib;
+        if (cg > 32767) cg = 32767;
+        if (cg > clampmax) cg = clampmax;
+        contrib = (int32_t)(((int64_t)lb * (int64_t)inten) >> 16);
+        cb += contrib;
+        if (cb > 32767) cb = 32767;
+        if (cb > clampmax) cb = clampmax;
+    }
+    /* back to 0..255 from the s8.7 accumulator */
+    *r8 = (cr >> 7) & 0xff;
+    *g8 = (cg >> 7) & 0xff;
+    *b8 = (cb >> 7) & 0xff;
 }
 
 void gsp_vertex(GSPState *s, const unsigned char *rdram, unsigned int addr,
@@ -983,6 +1062,26 @@ void gsp_vertex(GSPState *s, const unsigned char *rdram, unsigned int addr,
                 refl_a = (int32_t)s->reflect_lut[ri] << 16;
                 has_refl = 1;
             }
+        }
+        else if (s->acclaim && (s->geometry_mode & 0x00000080u)
+                 && s->acclaim_nlights > 0)
+        {
+            /* Acclaim custom lighting: G_LIGHTING is off, the geometry-mode
+             * bit 0x80 selects the custom L1-distance point-light flood. The
+             * light positions are eye-space (the RSP compares them against the
+             * vertex after the modelview*view transform), so use the combined
+             * transform's eye-space position (cx,cy,cz >> 16), which the RSP's
+             * lighting reads bit-for-bit. Start from the vertex's own colour
+             * bytes and add each light. */
+            int32_t r8 = (int32_t)read_u8_n64(rdram, cofs + 0);
+            int32_t g8 = (int32_t)read_u8_n64(rdram, cofs + 1);
+            int32_t b8 = (int32_t)read_u8_n64(rdram, cofs + 2);
+            acclaim_light(s, (int32_t)(cx >> 16), (int32_t)(cy >> 16),
+                          (int32_t)(cz >> 16), &r8, &g8, &b8);
+            vt->r = r8 << 16;
+            vt->g = g8 << 16;
+            vt->b = b8 << 16;
+            vt->a = (int32_t)read_u8_n64(rdram, cofs + 3) << 16;
         }
         else
         {

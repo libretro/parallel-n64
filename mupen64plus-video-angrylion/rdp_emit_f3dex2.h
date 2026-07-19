@@ -66,6 +66,8 @@ void f3dex2_set_rdram_size(unsigned int size);
 void f3dex2_set_rdram(unsigned char *rdram);
 void f3dex2_set_task_ucode(const unsigned char *rdram, unsigned int text);
 void f3dex2_set_variant_cbfd(const unsigned char *rdram, unsigned int ud, unsigned int uds);
+void f3dex2_set_variant_acclaim(const unsigned char *rdram, unsigned int text);
+int f3dex2_variant_acclaim(void);
 void f3dex2_force_class_s2dex1(void);
 void f3dex2_import_segments(const unsigned int *src);
 /* Data-segment name probe for the standalone S2DEX 1.xx (GBI 1) sprite/BG
