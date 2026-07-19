@@ -727,6 +727,17 @@ static void nb_vmulf8(NbAcc *ac, const short *vs, const short *vt, int e,
 
 /* packed vector loads/stores: lpv scales each byte up by 8, luv by 7,
  * and suv is luv's inverse. */
+static void nb_lpv_bytes(short *d, const unsigned char *first4,
+                         unsigned int rest)
+{
+    int k;
+    for (k = 0; k < 4; k++)
+        d[k] = (short)((unsigned short)first4[k] << 8);
+    for (k = 0; k < 4; k++)
+        d[k + 4] = (short)((unsigned short)nb.dmem[(rest + (unsigned)k) ^ 3u]
+                           << 8);
+}
+
 static void nb_lpv(short *dst, unsigned int off)
 {
     int l;
@@ -808,14 +819,25 @@ static void nb_ovl09_morph(unsigned int r8, unsigned int r9,
     r22 = nb.dmem[0xdb0u ^ 3u];
     r23 = nb.dmem[0xdb4u ^ 3u];
 
-    /* 0x0d94-0x0da0: the overlay patches its own staged command word
-     * with (r20 + v2[0]) and then lpv's the result back as the seed
-     * for the position accumulator v1.  The staged copy at 0xda0 is
-     * byte-identical to the r17 - 24 the microcode writes through. */
+    /* 0x0d94-0x0da0: the overlay patches a staged command word with
+     * (r20 + v2[0]) and lpv's the result back as the seed for the
+     * position accumulator v1.
+     *
+     * The patch lands at r17 - 24, which is in the display-list
+     * STAGING RING, not in this work area -- the two are different
+     * buffers in DMEM and only the walker had them aliased.  Writing
+     * the patched word over 0xda0 left it there for the next reader,
+     * and op 0xbe takes its record base from 0xda2, the high half of
+     * that same word: it resolved through the 0xd58 table with a base
+     * of 0x2209 instead of 0x8cb8 and landed on nonsense.  Keep the
+     * patched word in a scratch copy so the staged command survives
+     * intact. */
     {
         unsigned int w = (unsigned int)((int)w1_r20 + (int)vg[2][0]);
-        nb_dmem_w32(a2 + 0u, w);
-        nb_lpv(v1, a2 + 0u);
+        unsigned char pw[4];
+        pw[0] = (unsigned char)(w >> 24); pw[1] = (unsigned char)(w >> 16);
+        pw[2] = (unsigned char)(w >> 8);  pw[3] = (unsigned char)w;
+        nb_lpv_bytes(v1, pw, a2 + 4u);
     }
 
     /* 0x0dac-0x0dd8: seed the running parameter v13:v12 and its step
