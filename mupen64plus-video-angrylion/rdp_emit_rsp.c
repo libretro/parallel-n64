@@ -2548,8 +2548,18 @@ int rsp_tri_write(int32_t *ew,
         }
     }
 
-    /* ---- lft flag: bit 7 of the cross product's high half ---- */
-    lft = (cross_i >> 7) & 1;
+    /* ---- lft flag: sign of the cross product's high half ---- */
+    /* cross_i is the upper 16 bits (acc >> 32) of the signed-area cross
+     * product, so its bit 15 is the sign of the area and selects left- vs
+     * right-major edge walking. The earlier test read bit 7, which only
+     * coincides with the sign while |cross_i| < 128; a triangle whose
+     * screen coordinates run far off-viewport (e.g. a wall pressed flat
+     * against the camera, projecting to |x| in the thousands) produces a
+     * cross-product high word past 127 and mis-set the flip, walking the
+     * wrong span and dropping most of the surface. Verified against the
+     * cxd4 LLE oracle: bit 15 matches the emitted flip on every triangle
+     * of the head-on-wall frame (200/200) where bit 7 missed two. */
+    lft = (cross_i >> 15) & 1;
 
 
     /* ---- per-vertex attribute lanes ---- */
