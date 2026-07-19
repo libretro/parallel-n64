@@ -1366,41 +1366,58 @@ void f3dex2_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
         case F3DEX2_TEXRECTFLIP:
         {
             /* TEXTURE_RECTANGLE is a 4-word RDP command (angrylion reads 16
-             * bytes for ids 0x24/0x25), but F3DEX2 delivers it as three DL
-             * commands: the G_TEXRECT(FLIP) word pair carries the rectangle
-             * (xl/yl/xh/yh + tile) and the following two G_RDPHALF commands
-             * carry the texture coordinates -- RDPHALF_2 (0xE1) the s/t pair
-             * and RDPHALF_1 (0xF1) the dsdx/dtdy pair. The previous pass-through
-             * forwarded only the first 2 words, so angrylion consumed the next
-             * command (typically the following G_SETTIMG) as the texrect's tail,
-             * dropping that SET_TEXTURE_IMAGE and corrupting the rectangle's
-             * coordinates. Assemble the full 4-word command and skip the two
-             * RDPHALF words we consumed. */
-            unsigned int h0 = 0u, h1 = 0u;
-            unsigned int c0, c1;
-            int32_t tr[4];
-            c0 = rd_u32_be(r, pc);
-            c1 = rd_u32_be(r, pc + 4);
-            /* first RDPHALF */
-            if (((c0 >> 24) & 0xff) == F3DEX2_RDPHALF_2)
-                h0 = rd_u32_be(r, pc + 4);
-            else if (((c0 >> 24) & 0xff) == F3DEX2_RDPHALF_1)
-                h1 = rd_u32_be(r, pc + 4);
-            pc += 8;
-            /* second RDPHALF */
-            c0 = rd_u32_be(r, pc);
-            c1 = rd_u32_be(r, pc + 4);
-            if (((c0 >> 24) & 0xff) == F3DEX2_RDPHALF_2)
-                h0 = rd_u32_be(r, pc + 4);
-            else if (((c0 >> 24) & 0xff) == F3DEX2_RDPHALF_1)
-                h1 = rd_u32_be(r, pc + 4);
-            pc += 8;
-            (void)c1;
-            tr[0] = (int32_t)w0;    /* keep the raw 0xE4/0xE5 byte, as the RSP does */
-            tr[1] = (int32_t)w1;
-            tr[2] = (int32_t)h0;   /* s, t   (RDPHALF_2) */
-            tr[3] = (int32_t)h1;   /* dsdx, dtdy (RDPHALF_1) */
-            rdp_fifo_append(fifo, tr, 4);
+             * bytes for ids 0x24/0x25), but the F3DEX2 gSPTextureRectangle
+             * macro delivers it as three display-list commands: the
+             * G_TEXRECT(FLIP) word pair carries the rectangle (xl/yl/xh/yh +
+             * tile) and the following two G_RDPHALF commands carry the texture
+             * coordinates -- RDPHALF_2 (0xE1) the s/t pair and RDPHALF_1 (0xF1)
+             * the dsdx/dtdy pair. The microcode's texrect path only completes
+             * and issues the RDP rectangle once it has pulled those two
+             * RDPHALF words; the coordinates live nowhere else.
+             *
+             * A G_TEXRECT opcode NOT followed by the RDPHALF pair is therefore
+             * not a rectangle the RSP would ever emit -- the microcode consumes
+             * the opcode and moves on, and the words that follow are executed
+             * as their own commands (they surface in the RDP stream as no-ops
+             * when their high byte is 0x00). Some streams reach the 0xE4 opcode
+             * this way; emitting a rectangle for it invents geometry the RSP
+             * never draws (a texel-(0,0) block that shows up as a flat
+             * primitive-coloured square) and, worse, swallowing two words as
+             * the missing coordinate tail eats the following commands -- a
+             * G_MTX in the case that first surfaced this -- and desynchronises
+             * the rest of the frame.
+             *
+             * So peek the next command: only when it is an RDPHALF do we treat
+             * this as a real rectangle, pull both halves, and skip them. When
+             * it is not, emit nothing and fall through, leaving the following
+             * words for the normal walker -- matching the LLE RSP, which draws
+             * no rectangle here and lets those words run as commands. */
+            unsigned int nb = (rd_u32_be(r, pc) >> 24) & 0xff;
+            if (nb == F3DEX2_RDPHALF_1 || nb == F3DEX2_RDPHALF_2)
+            {
+                unsigned int h0 = 0u, h1 = 0u;
+                unsigned int c0;
+                int32_t tr[4];
+                /* first RDPHALF */
+                c0 = rd_u32_be(r, pc);
+                if (((c0 >> 24) & 0xff) == F3DEX2_RDPHALF_2)
+                    h0 = rd_u32_be(r, pc + 4);
+                else if (((c0 >> 24) & 0xff) == F3DEX2_RDPHALF_1)
+                    h1 = rd_u32_be(r, pc + 4);
+                pc += 8;
+                /* second RDPHALF */
+                c0 = rd_u32_be(r, pc);
+                if (((c0 >> 24) & 0xff) == F3DEX2_RDPHALF_2)
+                    h0 = rd_u32_be(r, pc + 4);
+                else if (((c0 >> 24) & 0xff) == F3DEX2_RDPHALF_1)
+                    h1 = rd_u32_be(r, pc + 4);
+                pc += 8;
+                tr[0] = (int32_t)w0; /* keep the raw 0xE4/0xE5 byte, as the RSP does */
+                tr[1] = (int32_t)w1;
+                tr[2] = (int32_t)h0; /* s, t   (RDPHALF_2) */
+                tr[3] = (int32_t)h1; /* dsdx, dtdy (RDPHALF_1) */
+                rdp_fifo_append(fifo, tr, 4);
+            }
             break;
         }
 
