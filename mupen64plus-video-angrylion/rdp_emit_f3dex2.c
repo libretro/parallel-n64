@@ -1121,7 +1121,8 @@ void f3dex2_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
              * (vscale/vtrans) from the segmented address in w1. Other MOVEMEM
              * targets (lights, matrices) are not needed for screen mapping. */
             int index = (int)(w0 & 0xff);
-            if (index == G_MV_LIGHT && s_variant_acclaim)
+            if (index == G_MV_LIGHT && s_variant_acclaim
+                && (((w0 >> 5) & 0x7ffu) >= 0x60u))
             {
                 /* Acclaim custom lighting: eight 16-byte light structs load via
                  * G_MV_LIGHT to DMEM 0x250 + n*16, encoded as movemem byte
@@ -1134,7 +1135,15 @@ void f3dex2_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
                  *            the light disabled (the ucode tests lh & 0x8000
                  *            and skips the accumulate).
                  *   [12..13] B: intensity scale (s16)
-                 *   [14..15] per-channel output clamp (s16, 0x7F80) */
+                 *   [14..15] per-channel output clamp (s16, 0x7F80)
+                 * The Acclaim microcode reuses G_MV_LIGHT for both these custom
+                 * L1 lights (DMEM offset 0x60+) AND the stock directional/
+                 * ambient lights (offsets 0x00..0x58, the same 24-byte slots
+                 * every F3DEX2 build uses). Only the 0x60+ range is the custom
+                 * table; the lower offsets must fall through to the stock light
+                 * loader below, or geometry drawn with plain G_LIGHTING (no
+                 * custom-flood geometry-mode bit) loses its lights and renders
+                 * flat white -- e.g. Turok 2 walls seen head-on. */
                 unsigned int aoff = (w0 >> 5) & 0x7ffu;
                 unsigned int la = seg_addr(w1);
                 if (aoff >= 0x60u && aoff < 0x60u + 8u * 16u
