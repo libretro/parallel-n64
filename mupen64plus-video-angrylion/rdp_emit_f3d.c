@@ -719,6 +719,16 @@ void f3d_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
          * to the rasterizer whole, so widen the band to match; GoldenEye
          * keeps the narrow ratio. */
         gsp->clip_ratio = s_variant_pd ? 2 : 1;
+        /* The Doom 64 lineage (Doom 64, Rayman 2, ...) keeps the 2.04H-era
+         * clip fan: pivot on the FIRST polygon vertex and walk the pairs
+         * downward from the end -- (0,n-2,n-1), (0,n-3,n-2), ..., (0,1,2).
+         * The default last-vertex fan tiles the same clipped polygon with a
+         * different triangle set, which is visible against the cxd4 LLE
+         * oracle wherever a clipped polygon has more than three vertices
+         * (Rayman 2's pause-menu nebula: 30/52 -> 38/52 oracle-exact
+         * triangles with the correct fan). */
+        if (s_variant_d64)
+            gsp->clip_fan_first = 1;
         if (s_variant_wo64)
         {
             /* Wipeout 64's data-segment plane table (data + 0x70):
