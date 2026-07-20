@@ -1496,6 +1496,8 @@ int rsp_vtx_screen(int32_t cx, int32_t cy, int32_t cz, int32_t cw,
         acc += p_udm(w32.i, pn);
         pw.i = acc_clamp_mid(acc);
         pw.f = acc_clamp_low(acc);
+        s_rs_last_pw = (int32_t)(((uint32_t)U16(pw.i) << 16)
+                                 | (uint32_t)U16(pw.f));
     }
 
     /* 1/w' with the Newton-Raphson step, exactly as rsp_vtx_invw */
@@ -2864,6 +2866,47 @@ int rsp_tri_write(int32_t *ew,
         at_f[2][4] = s_rs_stale_l_sf;
         at_f[2][5] = s_rs_stale_l_tf;
     }
+    else if (textured && s_d64_lut_sort)
+    {
+        /* The Doom 64 lineage perspective staging (ucode text
+         * 0xb38..0xbb8): the same fold as Rogue Squadron's z-enabled
+         * path -- the 32-bit minimum of the three perspNorm'd w divide
+         * inputs, halved through v30[5] == 0x8000, then per-vertex
+         * norm_v = invw_v * min(pw)/2 and the stored VTX_TC shorts
+         * (with the vmov-seeded 0x7fff W lane) scaled by norm_v through
+         * the vmudm/vmadh/vmadn mid/low latches. */
+        int vi;
+        const RspTriVtx *vv[3];
+        Rsp32 half, mn;
+        int32_t minw;
+        vv[0] = vh; vv[1] = vm; vv[2] = vl;
+        minw = vv[0]->pw;
+        if (vv[1]->pw < minw) minw = vv[1]->pw;
+        if (vv[2]->pw < minw) minw = vv[2]->pw;
+        mn.i = (int32_t)(((uint32_t)minw >> 16) & 0xffffu);
+        mn.f = (int32_t)((uint32_t)minw & 0xffffu);
+        acc = p_udl(mn.f, 0x8000);
+        acc += p_udm(mn.i, 0x8000);
+        half.i = acc_clamp_mid(acc);
+        half.f = acc_clamp_low(acc);
+        for (vi = 0; vi < 3; vi++)
+        {
+            Rsp32 ivw, nrm;
+            int k2;
+            int32_t src[3];
+            ivw.i = (int32_t)(((uint32_t)vv[vi]->invw >> 16) & 0xffffu);
+            ivw.f = (int32_t)((uint32_t)vv[vi]->invw & 0xffffu);
+            nrm = mac32(ivw, half, 0);
+            src[0] = vv[vi]->s; src[1] = vv[vi]->t; src[2] = 0x7fff;
+            for (k2 = 0; k2 < 3; k2++)
+            {
+                acc = p_udm(src[k2], nrm.f);
+                acc += p_udh(src[k2], nrm.i);
+                at_i[vi][4 + k2] = acc_clamp_mid(acc);
+                at_f[vi][4 + k2] = acc_clamp_low(acc);
+            }
+        }
+    }
     else if (textured)
     {
         int32_t iw[3];
@@ -3128,7 +3171,7 @@ int rsp_tri_write(int32_t *ew,
         nw = 8;
 
         /* ---- Doom 64 lineage shade chain (transcribed) ---- */
-        if (s_d64_lut_sort && shaded)
+        if (s_d64_lut_sort && (shaded || textured))
         {
             /* The resident writer's attribute section (ucode text
              * 0xc0c..0xd3c) with its inverse-cross divide (0xf80..0xfcc):
@@ -3176,7 +3219,7 @@ int rsp_tri_write(int32_t *ew,
             lh_y4 = clamp_s16(lh_y * 4) & 0xffff;
             mh_x4 = clamp_s16(mh_x * 4) & 0xffff;
             lh_x4 = clamp_s16(lh_x * 4) & 0xffff;
-            for (ch = 0; ch < 4; ch++)
+            for (ch = 0; ch < (textured ? 7 : 4); ch++)
             {
                 int32_t h_i = at_i[0][ch] & 0xffff, h_f = at_f[0][ch] & 0xffff;
                 int32_t m_i = at_i[1][ch] & 0xffff, m_f2 = at_f[1][ch] & 0xffff;
