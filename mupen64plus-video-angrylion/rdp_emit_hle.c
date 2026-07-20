@@ -772,6 +772,7 @@ void rdp_emit_hle_process_dlist(void)
             f3dex2_set_rdram_size(rdram_size);
             rs_run_dl(&s_gsp, &s_fifo, dl_addr);
             rsp_tri_set_rs_sort(0);
+            rsp_tri_set_d64_sort(0);
             s_gsp.rs_clip_model = 0;
             s_gsp.clip_fan_first = 0;
         }

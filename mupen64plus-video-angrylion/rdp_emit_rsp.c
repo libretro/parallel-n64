@@ -2334,10 +2334,16 @@ int rsp_line_write(int32_t *cmd, const RspTriVtx *e0, const RspTriVtx *e1,
 }
 
 static int s_rs_lut_sort;
+static int s_d64_lut_sort;
 
 void rsp_tri_set_rs_sort(int on)
 {
     s_rs_lut_sort = on;
+}
+
+void rsp_tri_set_d64_sort(int on)
+{
+    s_d64_lut_sort = on;
 }
 
 int rsp_tri_write(int32_t *ew,
@@ -2389,6 +2395,35 @@ int rsp_tri_write(int32_t *ew,
         vh = va[lut_h[idx]];
         vm = va[lut_m[idx]];
         vl = va[lut_l[idx]];
+        tmpv = 0; (void)tmpv;
+    }
+    else if (s_d64_lut_sort)
+    {
+        /* The Doom 64 lineage sort, transcribed from Rayman 2's resident
+         * triangle writer (ucode text 0x978..0x9ac; index tables in the
+         * data segment at +0x360/+0x367/+0x36e, handle stride 2 through
+         * the DMEM 0xbe0 slot table).  Same three-slt index as Rogue
+         * Squadron's writer -- idx = ((y3<y2)<<2)|((y2<y1)<<1)|(y1<y3)
+         * over the argument order -- but the role tables assign the
+         * highest-vertex handle from what RS keeps as its L table and
+         * vice versa, so ties (equal quarter-pixel y, everywhere in
+         * Rayman 2's menu meshes) resolve to a different H/M/L
+         * permutation than the F3DEX vmin/vmax network below.  Verified
+         * against the cxd4 LLE oracle on the pause-menu frame: exact
+         * triangle matches rise from 77/120 to 95/120 (background strip
+         * 27->41 of 56, nebula 38->42 of 52). */
+        static const unsigned char d64_h[8] = { 0, 0, 1, 1, 2, 0, 2, 0 };
+        static const unsigned char d64_m[8] = { 1, 1, 2, 0, 0, 2, 1, 0 };
+        static const unsigned char d64_l[8] = { 2, 2, 0, 2, 1, 1, 0, 1 };
+        const RspTriVtx *va[3];
+        int idx;
+        va[0] = v1c; va[1] = v2c; va[2] = v3c;
+        idx  = (S16(v3c->y) < S16(v2c->y)) ? 4 : 0;
+        idx |= (S16(v2c->y) < S16(v1c->y)) ? 2 : 0;
+        idx |= (S16(v1c->y) < S16(v3c->y)) ? 1 : 0;
+        vh = va[d64_h[idx]];
+        vm = va[d64_m[idx]];
+        vl = va[d64_l[idx]];
         tmpv = 0; (void)tmpv;
     }
     else

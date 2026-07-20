@@ -729,6 +729,7 @@ void f3d_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
          * triangles with the correct fan). */
         if (s_variant_d64)
             gsp->clip_fan_first = 1;
+        rsp_tri_set_d64_sort(s_variant_d64 ? 1 : 0);
         if (s_variant_wo64)
         {
             /* Wipeout 64's data-segment plane table (data + 0x70):
