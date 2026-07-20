@@ -2371,6 +2371,7 @@ int rsp_tri_write(int32_t *ew,
     RspAcc acc;
     Rsp32 pre_z_base, pre_z_dAdX, pre_z_dAdE, pre_z_dAdY;
     int lft, k;
+    int32_t d64_lh_crimp, d64_lh_f, d64_yfrac2;
     int nw;
     int32_t inv_dy_lm_32;
     int32_t mh_x, mh_y, lh_x, lh_y, hl_y, hm_x, lm_x, lm_y;
@@ -2584,6 +2585,7 @@ int rsp_tri_write(int32_t *ew,
     }
 
     /* ---- Doom 64 lineage edge chain (transcribed) ---- */
+    d64_lh_crimp = 0; d64_lh_f = 0; d64_yfrac2 = 0;
     if (s_d64_lut_sort)
     {
         /* The resident writer's edge section (ucode text 0x9cc..0xb2c),
@@ -2606,6 +2608,7 @@ int rsp_tri_write(int32_t *ew,
         int32_t d64_yfrac = (int32_t)((U16(vh->y) * 0x4000) & 0xffff);
         int32_t d64_hx_i, d64_hx_f;
         int pass2;
+        d64_yfrac2 = d64_yfrac;
         {
             int64_t xacc = (int64_t)S16(vh->x) * 0x4000;
             d64_hx_i = (int32_t)((xacc >> 16) & 0xffff);
@@ -2684,6 +2687,11 @@ int rsp_tri_write(int32_t *ew,
             m_f = sl_f & 0xfff8;
             slout->i = sl_crimp;
             slout->f = sl_f;
+            if (pass2 == 2)
+            {
+                d64_lh_crimp = sl_crimp;
+                d64_lh_f = sl_f;
+            }
             if (anchor)
             {
                 int32_t p_i, p_f, of, oi, bw;
@@ -3118,6 +3126,128 @@ int rsp_tri_write(int32_t *ew,
         ew[6] = (int32_t)(((uint32_t)U16(xm.i) << 16) | (uint32_t)U16(xm.f));
         ew[7] = (int32_t)(((uint32_t)U16(dxmdy.i) << 16) | (uint32_t)U16(dxmdy.f));
         nw = 8;
+
+        /* ---- Doom 64 lineage shade chain (transcribed) ---- */
+        if (s_d64_lut_sort && shaded)
+        {
+            /* The resident writer's attribute section (ucode text
+             * 0xc0c..0xd3c) with its inverse-cross divide (0xf80..0xfcc):
+             * colours ride as int:0x8000 pairs, the 32-bit attribute
+             * deltas go through the plane-equation MACs against the
+             * VMUDH-quadrupled vertex deltas, the numerators multiply a
+             * DOUBLED double-precision reciprocal of the cross that is
+             * then Newton-Raphson refined (t = 2 - x*R; R' = R*t, the
+             * DMEM 0x60 constant), dAdE = dAdY + dAdX * DxHDy using the
+             * VCR-crimped slope integer with the unmasked fraction, and
+             * the base colours walk back from the H vertex by dAdE *
+             * yfrac through a VSUBC/VSUB borrow pair.  Verified against
+             * the cxd4 LLE oracle with the offline instruction replay:
+             * byte-exact on words 8..19 for 82 of the 84 shade-carrying
+             * pause-menu triangles whose sorted trios the emitter shares
+             * with the microcode. */
+            int32_t ic_hi, ic_lo;
+            int32_t mh_y4, lh_y4, mh_x4, lh_x4;
+            int32_t x_hi = cross_i & 0xffff, x_lo = cross_f & 0xffff;
+            int64_t a64d;
+            int ch;
+            {
+                int32_t r32 = rsp_rcp32_dp((int32_t)(((uint32_t)x_hi << 16)
+                                                     | (uint32_t)x_lo));
+                int32_t t_hi, t_lo, xr_hi, xr_lo, fb;
+                a64d  = (int64_t)((uint32_t)U16(r32) * 2u);
+                a64d += ((int64_t)S16(r32 >> 16) * 2) << 16;
+                ic_hi = acc_clamp_mid(a64d); ic_lo = acc_clamp_low(a64d);
+                a64d  = (int64_t)(((uint32_t)U16(ic_lo) * (uint32_t)U16(x_lo)) >> 16);
+                a64d += (int64_t)S16(ic_hi) * (int64_t)U16(x_lo);
+                a64d += (int64_t)U16(ic_lo) * (int64_t)S16(x_hi);
+                a64d += ((int64_t)S16(ic_hi) * (int64_t)S16(x_hi)) << 16;
+                xr_hi = acc_clamp_mid(a64d); xr_lo = acc_clamp_low(a64d);
+                fb = (U16(xr_lo) != 0) ? 1 : 0;
+                t_lo = (int32_t)((0u - (uint32_t)U16(xr_lo)) & 0xffffu);
+                t_hi = 2 - S16(xr_hi) - fb;
+                t_hi = clamp_s16(t_hi) & 0xffff;
+                a64d  = (int64_t)(((uint32_t)U16(ic_lo) * (uint32_t)U16(t_lo)) >> 16);
+                a64d += (int64_t)S16(ic_hi) * (int64_t)U16(t_lo);
+                a64d += (int64_t)U16(ic_lo) * (int64_t)S16(t_hi);
+                a64d += ((int64_t)S16(ic_hi) * (int64_t)S16(t_hi)) << 16;
+                ic_hi = acc_clamp_mid(a64d); ic_lo = acc_clamp_low(a64d);
+            }
+            mh_y4 = clamp_s16(mh_y * 4) & 0xffff;
+            lh_y4 = clamp_s16(lh_y * 4) & 0xffff;
+            mh_x4 = clamp_s16(mh_x * 4) & 0xffff;
+            lh_x4 = clamp_s16(lh_x * 4) & 0xffff;
+            for (ch = 0; ch < 4; ch++)
+            {
+                int32_t h_i = at_i[0][ch] & 0xffff, h_f = at_f[0][ch] & 0xffff;
+                int32_t m_i = at_i[1][ch] & 0xffff, m_f2 = at_f[1][ch] & 0xffff;
+                int32_t l_i = at_i[2][ch] & 0xffff, l_f2 = at_f[2][ch] & 0xffff;
+                int32_t lh_i, lh_f, hm_i, hm_f, mh_i, mh_f, hl_i, hl_f;
+                int32_t nx_i, nx_f, ny_i, ny_f;
+                int32_t dx_i, dx_f, dy_i, dy_f, de_i, de_f, p_i, p_f;
+                int32_t fd, bw;
+                /* 32-bit vsubc/vsub attribute deltas */
+                fd = (int32_t)U16(l_f2) - (int32_t)U16(h_f);
+                bw = (fd < 0) ? 1 : 0;
+                lh_f = fd & 0xffff;
+                lh_i = clamp_s16(S16(l_i) - S16(h_i) - bw) & 0xffff;
+                fd = (int32_t)U16(h_f) - (int32_t)U16(m_f2);
+                bw = (fd < 0) ? 1 : 0;
+                hm_f = fd & 0xffff;
+                hm_i = clamp_s16(S16(h_i) - S16(m_i) - bw) & 0xffff;
+                fd = (int32_t)U16(m_f2) - (int32_t)U16(h_f);
+                bw = (fd < 0) ? 1 : 0;
+                mh_f = fd & 0xffff;
+                mh_i = clamp_s16(S16(m_i) - S16(h_i) - bw) & 0xffff;
+                fd = (int32_t)U16(h_f) - (int32_t)U16(l_f2);
+                bw = (fd < 0) ? 1 : 0;
+                hl_f = fd & 0xffff;
+                hl_i = clamp_s16(S16(h_i) - S16(l_i) - bw) & 0xffff;
+                /* x-gradient numerator (vmudn/vmadh pairs; vsar hi:mid) */
+                a64d  = (int64_t)U16(lh_f) * (int64_t)S16(mh_y4);
+                a64d += ((int64_t)S16(lh_i) * (int64_t)S16(mh_y4)) << 16;
+                a64d += (int64_t)U16(hm_f) * (int64_t)S16(lh_y4);
+                a64d += ((int64_t)S16(hm_i) * (int64_t)S16(lh_y4)) << 16;
+                nx_i = (int32_t)((a64d >> 32) & 0xffff);
+                nx_f = (int32_t)((a64d >> 16) & 0xffff);
+                /* y-gradient numerator */
+                a64d  = (int64_t)U16(mh_f) * (int64_t)S16(lh_x4);
+                a64d += ((int64_t)S16(mh_i) * (int64_t)S16(lh_x4)) << 16;
+                a64d += (int64_t)U16(hl_f) * (int64_t)S16(mh_x4);
+                a64d += ((int64_t)S16(hl_i) * (int64_t)S16(mh_x4)) << 16;
+                ny_i = (int32_t)((a64d >> 32) & 0xffff);
+                ny_f = (int32_t)((a64d >> 16) & 0xffff);
+                /* dAdX / dAdY = numerator * inverse cross (canonical) */
+                a64d  = (int64_t)(((uint32_t)U16(nx_f) * (uint32_t)U16(ic_lo)) >> 16);
+                a64d += (int64_t)S16(nx_i) * (int64_t)U16(ic_lo);
+                a64d += (int64_t)U16(nx_f) * (int64_t)S16(ic_hi);
+                a64d += ((int64_t)S16(nx_i) * (int64_t)S16(ic_hi)) << 16;
+                dx_i = acc_clamp_mid(a64d); dx_f = acc_clamp_low(a64d);
+                a64d  = (int64_t)(((uint32_t)U16(ny_f) * (uint32_t)U16(ic_lo)) >> 16);
+                a64d += (int64_t)S16(ny_i) * (int64_t)U16(ic_lo);
+                a64d += (int64_t)U16(ny_f) * (int64_t)S16(ic_hi);
+                a64d += ((int64_t)S16(ny_i) * (int64_t)S16(ic_hi)) << 16;
+                dy_i = acc_clamp_mid(a64d); dy_f = acc_clamp_low(a64d);
+                /* dAdE = dAdY + dAdX * DxHDy(crimped int : unmasked frac) */
+                a64d  = (int64_t)U16(dy_f);
+                a64d += ((int64_t)S16(dy_i)) << 16;
+                a64d += (int64_t)(((uint32_t)U16(dx_f) * (uint32_t)U16(d64_lh_f)) >> 16);
+                a64d += (int64_t)S16(dx_i) * (int64_t)U16(d64_lh_f);
+                a64d += (int64_t)U16(dx_f) * (int64_t)S16(d64_lh_crimp);
+                a64d += ((int64_t)S16(dx_i) * (int64_t)S16(d64_lh_crimp)) << 16;
+                de_i = acc_clamp_mid(a64d); de_f = acc_clamp_low(a64d);
+                /* base = H attr - dAdE * yfrac (vmudl/vmadm; vsubc/vsub) */
+                a64d  = (int64_t)(((uint32_t)U16(de_f) * (uint32_t)U16(d64_yfrac2)) >> 16);
+                a64d += (int64_t)S16(de_i) * (int64_t)U16(d64_yfrac2);
+                p_i = acc_clamp_mid(a64d); p_f = acc_clamp_low(a64d);
+                fd = (int32_t)U16(h_f) - (int32_t)U16(p_f);
+                bw = (fd < 0) ? 1 : 0;
+                base[ch].f = fd & 0xffff;
+                base[ch].i = clamp_s16(S16(h_i) - S16(p_i) - bw) & 0xffff;
+                dAdX[ch].i = dx_i; dAdX[ch].f = dx_f;
+                dAdY[ch].i = dy_i; dAdY[ch].f = dy_f;
+                dAdE[ch].i = de_i; dAdE[ch].f = de_f;
+            }
+        }
 
         /* shade block: emitted only when G_SHADE is set (the microcode
          * computes the attribute lanes unconditionally and gates the
