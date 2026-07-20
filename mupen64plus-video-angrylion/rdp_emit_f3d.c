@@ -1371,6 +1371,28 @@ void f3d_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
             break;
 
         case F3D_RDPHALF_CONT:
+            /* The Doom 64 lineage's 3D use of the same 0xB2 vertex-patch
+             * extension: Rayman 2's pause-menu nebula is a quad grid whose
+             * shared vertex slots are re-textured per cell with sub-op 0x14
+             * between gSP1Quadrangle calls (the scroll never re-runs the
+             * transform).  The patch stores the S10.5 texel shorts through
+             * the same G_TEXTURE scale multiply as the vertex path's TC
+             * transform (one vmudm mid read); the LLE oracle's implied
+             * per-vertex record S for the 0x0800 patches is exactly
+             * (0x800 * 0xFFFF) >> 16 == 2047. */
+            if (s_variant_d64 && ((w0 >> 16) & 0xff) == 0x14)
+            {
+                int slot = (int)(w0 & 0xffff) >> 1;
+                if (slot >= 0 && slot < GSP_MAX_VERTICES)
+                {
+                    GSPVertex *v = &gsp->vtx[slot];
+                    v->sv = (int16_t)((w1 >> 16) & 0xffffu);
+                    v->tv = (int16_t)(w1 & 0xffffu);
+                    v->s = (int32_t)v->sv << 1;
+                    v->t = (int32_t)v->tv << 1;
+                }
+                break;
+            }
             /* Fighting Force 64's 2D overlay extension (see
              * f3d_is_ff2d_ucode above). */
             if (s_variant_ff2d)
