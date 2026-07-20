@@ -2583,6 +2583,130 @@ int rsp_tri_write(int32_t *ew,
         }
     }
 
+    /* ---- Doom 64 lineage edge chain (transcribed) ---- */
+    if (s_d64_lut_sort)
+    {
+        /* The resident writer's edge section (ucode text 0x9cc..0xb2c),
+         * replayed with exact RSP accumulator semantics.  It differs from
+         * the F3DZEX2-shaped chain above at every stage: the deltas are
+         * VSUB-saturated, the reciprocal of the RAW quarter-pixel dy is
+         * scaled by v30[4]=0x20 (not 0x8), the dx is carried as
+         * delta<<14 (vmudm by v31[4]=0x4000), the 32x32 slope product is
+         * rescaled once more by 0x4000, the slope fraction is masked with
+         * v30[1]=0xFFF8 only for the XH/XM accumulation while the
+         * emitted fraction stays unmasked, the slope integer is VCR-
+         * crimped against v30[6]=0x1CC before both the store and the
+         * accumulation, and the anchors subtract slope*yfrac from
+         * pos.x<<14 through a VSUBC/VSUB borrow pair instead of adding a
+         * negated fraction.  Verified against the cxd4 LLE oracle with an
+         * offline replay of the instruction stream: byte-exact on all six
+         * edge words for 96 of the 115 pause-menu triangles whose sorted
+         * vertex trios the emitter shares with the microcode (the rest
+         * differ upstream in clip emission order, not in this chain). */
+        int32_t d64_yfrac = (int32_t)((U16(vh->y) * 0x4000) & 0xffff);
+        int32_t d64_hx_i, d64_hx_f;
+        int pass2;
+        {
+            int64_t xacc = (int64_t)S16(vh->x) * 0x4000;
+            d64_hx_i = (int32_t)((xacc >> 16) & 0xffff);
+            d64_hx_f = (int32_t)(xacc & 0xffff);
+        }
+        for (pass2 = 0; pass2 < 3; pass2++)
+        {
+            int32_t ddx, ddy;
+            Rsp32 *slout;
+            Rsp32 *anchor;
+            int32_t ds_i, ds_f, rs_i, rs_f, sl_i, sl_f, m_f, sl_crimp;
+            int32_t r32;
+            int64_t a64;
+            if (pass2 == 0)
+            {
+                ddx = S16(vl->x) - S16(vm->x);
+                ddy = S16(vl->y) - S16(vm->y);
+                slout = &dxldy; anchor = 0;
+            }
+            else if (pass2 == 1)
+            {
+                ddx = S16(vm->x) - S16(vh->x);
+                ddy = S16(vm->y) - S16(vh->y);
+                slout = &dxmdy; anchor = &xm;
+            }
+            else
+            {
+                ddx = S16(vl->x) - S16(vh->x);
+                ddy = S16(vl->y) - S16(vh->y);
+                slout = &dxhdy; anchor = &xh;
+            }
+            ddx = clamp_s16(ddx);
+            ddy = clamp_s16(ddy);
+            /* dscaled = delta * 0x4000 (vmudm mid / vmadn low) */
+            a64 = (int64_t)ddx * 0x4000;
+            ds_i = (int32_t)((a64 >> 16) & 0xffff);
+            ds_f = (int32_t)(a64 & 0xffff);
+            /* single-precision vrcp of the raw dy */
+            r32 = rsp_rcp16(ddy);
+            /* rscaled = rcp * 0x20 (vmudl / vmadm / vmadn) */
+            a64  = (int64_t)(((uint32_t)U16(r32) * 0x20u) >> 16);
+            a64 += (int64_t)S16(r32 >> 16) * 0x20;
+            rs_i = (int32_t)((a64 >> 16) & 0xffff);
+            rs_f = (int32_t)(a64 & 0xffff);
+            /* slope = 32x32 canonical product */
+            a64  = (int64_t)(((uint32_t)U16(rs_f) * (uint32_t)U16(ds_f)) >> 16);
+            a64 += (int64_t)S16(rs_i) * (int64_t)U16(ds_f);
+            a64 += (int64_t)U16(rs_f) * (int64_t)S16(ds_i);
+            a64 += ((int64_t)S16(rs_i) * (int64_t)S16(ds_i)) << 16;
+            {
+                int64_t hi = a64 >> 16;
+                sl_i = (hi < -32768) ? 0x8000 : (hi > 32767) ? 0x7fff
+                       : (int32_t)(hi & 0xffff);
+                sl_f = (hi < -32768) ? 0 : (hi > 32767) ? 0xffff
+                       : (int32_t)(a64 & 0xffff);
+            }
+            /* rescale by 0x4000 (vmudl / vmadm / vmadn) */
+            a64  = (int64_t)(((uint32_t)U16(sl_f) * 0x4000u) >> 16);
+            a64 += (int64_t)S16(sl_i) * 0x4000;
+            {
+                int64_t hi = a64 >> 16;
+                sl_i = (hi < -32768) ? 0x8000 : (hi > 32767) ? 0x7fff
+                       : (int32_t)(hi & 0xffff);
+                sl_f = (hi < -32768) ? 0 : (hi > 32767) ? 0xffff
+                       : (int32_t)(a64 & 0xffff);
+            }
+            /* vcr crimp of the integer against 0x1cc */
+            {
+                int32_t av = S16(sl_i), bv = 0x1cc;
+                if (av < 0)
+                    sl_crimp = (av + bv + 1 <= 0) ? ((~bv) & 0xffff)
+                                                  : (sl_i & 0xffff);
+                else
+                    sl_crimp = (av - bv >= 0) ? bv : (sl_i & 0xffff);
+            }
+            m_f = sl_f & 0xfff8;
+            slout->i = sl_crimp;
+            slout->f = sl_f;
+            if (anchor)
+            {
+                int32_t p_i, p_f, of, oi, bw;
+                a64  = (int64_t)(((uint32_t)U16(m_f)
+                                  * (uint32_t)U16(d64_yfrac)) >> 16);
+                a64 += (int64_t)S16(sl_crimp) * (int64_t)U16(d64_yfrac);
+                {
+                    int64_t hi = a64 >> 16;
+                    p_i = (hi < -32768) ? 0x8000 : (hi > 32767) ? 0x7fff
+                          : (int32_t)(hi & 0xffff);
+                    p_f = (hi < -32768) ? 0 : (hi > 32767) ? 0xffff
+                          : (int32_t)(a64 & 0xffff);
+                }
+                /* vsubc low / vsub high with the carry between them */
+                of = (int32_t)U16(d64_hx_f) - (int32_t)U16(p_f);
+                bw = (of < 0) ? 1 : 0;
+                anchor->f = of & 0xffff;
+                oi = S16(d64_hx_i) - S16(p_i) - bw;
+                anchor->i = clamp_s16(oi) & 0xffff;
+            }
+        }
+    }
+
     /* ---- lft flag: sign of the cross product's high half ---- */
     /* cross_i is the upper 16 bits (acc >> 32) of the signed-area cross
      * product, so its bit 15 is the sign of the area and selects left- vs
