@@ -996,16 +996,24 @@ int zboss_run(unsigned char *rdram, unsigned int rdram_size,
     if (op == ZBOSS_OP_FRESH)
     {
         /* Per-task reset covers the walk state only. Matrices, viewport,
-         * fog and audio tables, the other-mode shadow, the update mask
-         * and the RDP-command dedup pointers all persist across tasks,
-         * as the microcode's DMEM does (and as the reference's gstate,
-         * cleared once per session, does). */
+         * fog and audio tables, the other-mode shadow and the update
+         * mask persist across tasks, as the microcode's DMEM does (and
+         * as the reference's gstate, cleared once per session, does).
+         * The RDP-command dedup pointers are the exception: the
+         * microcode's cache lives at DMEM 0xef4, inside the range the
+         * task-data DMA overwrites on every launch (the OBJ handler at
+         * IMEM 0x894 compares the object's three list pointers against
+         * it), so the real cache starts cold each task and the first
+         * object's lists are always re-run. */
         static int session_init;
         if (!session_init)
         {
             memset(&zb, 0, sizeof(zb));
             session_init = 1;
         }
+        zb.rdpcmds[0] = 0;
+        zb.rdpcmds[1] = 0;
+        zb.rdpcmds[2] = 0;
         zb.active = 1;
         zb.wait_kind = ZB_WAIT_NONE;
         zb.maindl_done = 0;
