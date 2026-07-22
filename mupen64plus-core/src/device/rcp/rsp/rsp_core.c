@@ -399,11 +399,27 @@ void do_SP_Task(struct rsp_core* sp)
     sp->mi->r4300->cp0.interrupt_unsafe_state &= ~INTR_UNSAFE_RSP;
     if ((sp->regs[SP_STATUS_REG] & (SP_STATUS_HALT | SP_STATUS_BROKE)) == 0)
     {
+        /* Incomplete (streaming) task: schedule the self-sustaining pump
+         * event directly instead of riding MI_INTR_SP as its carrier.
+         * Consuming the register bit here swallowed any interrupt the
+         * task itself raised mid-flight: the BOSS Game Studios
+         * microcode's WAITSIGNAL handshake (World Driver Championship,
+         * Stunt Racer 64) raises SIG3 plus the SP interrupt and then
+         * suspends until the CPU clears the signal. With the bit
+         * cleared before the CPU's handler could read MI_INTR_REG the
+         * handler found no interrupt source, SIG3 was never cleared,
+         * every game thread ended up parked in osRecvMesg, and the race
+         * transition sat on a black screen -- under the HLE walker and
+         * the LLE fallback alike (the microcode's own status write
+         * lands in update_sp_status and was consumed the same way).
+         * A task-raised MI_INTR_SP now stays asserted for the CPU to
+         * service while the pump keeps re-dispatching the task. */
         sp->rsp_task_locked = 1;
         sp->mi->r4300->cp0.interrupt_unsafe_state |= INTR_UNSAFE_RSP;
-        sp->mi->regs[MI_INTR_REG] |= MI_INTR_SP;
+        cp0_update_count(sp->mi->r4300);
+        add_interrupt_event(&sp->mi->r4300->cp0, SP_INT, sp_delay_time);
     }
-    if (sp->mi->regs[MI_INTR_REG] & MI_INTR_SP)
+    else if (sp->mi->regs[MI_INTR_REG] & MI_INTR_SP)
     {
         cp0_update_count(sp->mi->r4300);
         add_interrupt_event(&sp->mi->r4300->cp0, SP_INT, sp_delay_time);
