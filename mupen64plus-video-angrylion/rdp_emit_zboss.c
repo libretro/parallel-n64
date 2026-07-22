@@ -300,12 +300,14 @@ static void zb_rdpcmd(unsigned int w1)
         {
             int32_t two[2];
             two[0] = (int32_t)c0;
-            /* image pointers may not be segmented here (physical GBI),
-             * but mask to the RDRAM window as the RSP does */
-            if (op == 0xffu || op == 0xfeu || op == 0xfdu)
-                two[1] = (int32_t)seg_phys(c1);
-            else
-                two[1] = (int32_t)c1;
+            /* the microcode's generic state forward (IMEM 0x7dc, reached
+             * for every op in this range through the RDP-op table at
+             * DMEM 0xa1e) stores both command words verbatim into the
+             * output staging -- image pointers included, KSEG0 bit and
+             * all. The rasterizer masks addresses to the RDRAM window
+             * itself, so resolving them here only made the emitted
+             * words diverge from the oracle stream. */
+            two[1] = (int32_t)c1;
             rdp_fifo_append(s_fifo, two, 2);
         }
     }
