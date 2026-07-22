@@ -28,7 +28,9 @@
 #include "api/m64p_common.h"
 #include "api/m64p_plugin.h"
 #include "api/m64p_types.h"
+#include "device/device.h"
 #include "device/memory/m64p_memory.h"
+#include "device/r4300/r4300_core.h"
 #include "device/rcp/ai/ai_controller.h"
 #include "device/rcp/mi/mi_controller.h"
 #include "device/rcp/rdp/rdp_core.h"
@@ -135,6 +137,24 @@ static int l_GfxAttached = 0;
 /* local functions */
 static void EmptyFunc(void)
 {
+}
+
+/* RSP plugins raise MI interrupts by setting the bit in MI_INTR_REG
+ * through their pointer into the register file and then calling
+ * CheckInterrupts to have the core propagate it. With an EmptyFunc
+ * here the write never reaches the CP0 cause logic: the BOSS Game
+ * Studios microcode's WAITSIGNAL handshake (World Driver Championship,
+ * Stunt Racer 64) raises SIG3 plus the SP interrupt from the HLE
+ * walker and then suspends until the CPU clears the signal -- with the
+ * interrupt undelivered the game's handler never runs and every thread
+ * ends up parked in osRecvMesg while the idle loop spins. Evaluate the
+ * MI interrupt lines against the mask exactly the way
+ * signal_rcp_interrupt does after its own register write. */
+static void rsp_plugin_check_interrupts(void)
+{
+    struct mi_controller* mi = &g_dev.mi;
+    r4300_check_interrupt(mi->r4300, CP0_CAUSE_IP2,
+                          mi->regs[MI_INTR_REG] & mi->regs[MI_INTR_MASK_REG]);
 }
 /* RSP */
 #define DEFINE_RSP(X) \
@@ -267,7 +287,7 @@ static m64p_error plugin_start_rsp(void)
     rsp_info.DPC_BUFBUSY_REG = &g_dev.dp.dpc_regs[DPC_BUFBUSY_REG];
     rsp_info.DPC_PIPEBUSY_REG = &g_dev.dp.dpc_regs[DPC_PIPEBUSY_REG];
     rsp_info.DPC_TMEM_REG = &g_dev.dp.dpc_regs[DPC_TMEM_REG];
-    rsp_info.CheckInterrupts = EmptyFunc;
+    rsp_info.CheckInterrupts = rsp_plugin_check_interrupts;
     rsp_info.ProcessDlistList = gfx.processDList;
     rsp_info.ProcessAlistList = NULL; /* no audio-plugin AList handler; audio type-2 tasks run on the HLE RSP (rsp_audio) */
     rsp_info.ProcessRdpList = gfx.processRDPList;
