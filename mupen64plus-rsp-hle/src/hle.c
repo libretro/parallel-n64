@@ -281,7 +281,7 @@ static void forward_gfx_task_to_lle(struct hle_t* hle)
  * cannot service the task, fall back to the LLE forward. */
 int angrylion_streaming_dlist(int resume);
 int angrylion_rs_dlist(int resume);
-int angrylion_zboss_dlist(int resume);
+int angrylion_zboss_dlist(int resume, unsigned int *sp_status);
 
 /* ZSortBOSS (World Driver Championship, Stunt Racer 64): the task
  * carries two display lists (main at DMEM 0xff0, sub at 0xff8) and the
@@ -292,34 +292,40 @@ int angrylion_zboss_dlist(int resume);
  * The task raises SIG4 at launch and keeps it through completion
  * (status 0xa43 observed at task end under the LLE interpreter).
  *
- * Between handshakes the walk runs to the next wait; while a wait is
- * pending this function returns the task incomplete (no HALT, BROKE or
- * TASKDONE) so the core re-dispatches after the CPU has run, checking
- * the wait condition each slice. The walker itself never touches
- * SP_STATUS. */
+ * The microcode also polls SIG0 once per object while the main list is
+ * still walking (IMEM 0x85c) and interleaves the sub list into the walk
+ * at the next sync object, so the walker takes the SP status pointer
+ * and consumes the grant itself; the ENDMAINDL wait below only covers
+ * the case where the main list finishes before the CPU grants.
+ *
+ * Between handshakes the walk runs in bounded slices; while a wait or
+ * a pacing yield is pending this function returns the task incomplete
+ * (no HALT, BROKE or TASKDONE) so the core re-dispatches after the CPU
+ * has run, checking the condition each slice. */
 static void zboss_gfx_task(struct hle_t* hle)
 {
     int r;
+
 
     if (!l_zboss_running) {
         /* task launch: the microcode clears SIG1|SIG2 and raises SIG4 */
         *hle->sp_status &= ~(SP_STATUS_SIG1 | SP_STATUS_TASKDONE);
         *hle->sp_status |= SP_STATUS_SIG4;
         l_zboss_wait = 0;
-        r = angrylion_zboss_dlist(0);
+        r = angrylion_zboss_dlist(0, hle->sp_status);
     }
     else if (l_zboss_wait == 1) {
         /* WAITSIGNAL: the microcode proceeds once the CPU clears SIG3 */
         if (*hle->sp_status & SP_STATUS_SIG3)
             return;     /* still waiting: incomplete, core re-dispatches */
-        r = angrylion_zboss_dlist(1);
+        r = angrylion_zboss_dlist(1, hle->sp_status);
     }
     else {
         /* ENDMAINDL: the microcode waits for SIG0, then clears it */
         if (!(*hle->sp_status & SP_STATUS_SIG0))
             return;
         *hle->sp_status &= ~SP_STATUS_SIG0;
-        r = angrylion_zboss_dlist(1);
+        r = angrylion_zboss_dlist(1, hle->sp_status);
     }
 
     if (r < 0) {

@@ -56,6 +56,11 @@ typedef struct ZbState
     int             pci;
     int             maindl_done;
     int             subdl_done;
+    int             sig0_taken;
+    int             in_obj;
+    unsigned int    obj_chain;
+    unsigned int    obj_chain2;
+    int             switch_req;
     unsigned int    updatemask[2];
     unsigned int    othermode_h;
     unsigned int    othermode_l;
@@ -69,6 +74,7 @@ static ZbState zb;
 
 static unsigned char *s_rdram;
 static unsigned int   s_rdram_size;
+static unsigned int  *s_sp_status;
 static unsigned char *s_dmem;
 static RdpFifo       *s_fifo;
 
@@ -483,6 +489,17 @@ static unsigned int zb_load_object(unsigned int zheader)
     unsigned int w1;
     if (!addr_ok(addr, 16u))
         return 0;
+    /* the microcode's OBJ handler polls SIG0 once per chain link
+     * (IMEM 0x85c): when the CPU has granted the sub list, take the
+     * signal and remember it; the switch itself happens at the next
+     * sync (type-0) object below, mirroring the checkpoint at
+     * IMEM 0x828/0x83c. */
+    if (!zb.sig0_taken && s_sp_status != 0 && (*s_sp_status & 0x80u))
+    {
+        *s_sp_status &= ~0x80u;
+        zb.sig0_taken = 1;
+        s_dmem[0x940u ^ BO8] = 1;
+    }
     if (type == ZH_NULL || type == ZH_TXTRI || type == ZH_TXQUAD)
     {
         w1 = rd32(s_rdram, addr + 4u);
@@ -493,19 +510,51 @@ static unsigned int zb_load_object(unsigned int zheader)
         if (w1 != zb.rdpcmds[2]) { zb_rdpcmd(w1); zb.rdpcmds[2] = w1; }
         if (type != ZH_NULL)
             zb_draw_object(addr + 16u, type);
+        else if (zb.sig0_taken && zb.pci == 0)
+            zb.switch_req = 1;
     }
     return seg_phys(rd32(s_rdram, addr));
 }
 
-static void zb_obj(unsigned int w0, unsigned int w1)
+/* Walk the two object chains of an OBJ command. The microcode
+ * interleaves the sub display list into this walk: SIG0 is polled per
+ * link and the switch to the sub interpreter happens at the next
+ * type-0 (sync) object, with the walk position checkpointed into DMEM
+ * 0xf00 and resumed by ENDSUBDL. The chain state lives in zb so the
+ * OBJ command can be re-entered after the sub list (the caller rewinds
+ * the list pc, and in_obj makes the re-execution continue the chain).
+ * Returns: 0 done, 1 switch to the sub list. */
+static int zb_obj(unsigned int w0, unsigned int w1)
 {
-    unsigned int zheader = seg_phys(w0);
     int guard = 0;
-    while (zheader && guard++ < 100000)
-        zheader = zb_load_object(zheader);
-    zheader = seg_phys(w1);
-    while (zheader && guard++ < 100000)
-        zheader = zb_load_object(zheader);
+    if (!zb.in_obj)
+    {
+        zb.obj_chain = seg_phys(w0);
+        zb.obj_chain2 = seg_phys(w1);
+        zb.in_obj = 1;
+    }
+    while (guard++ < 100000)
+    {
+        if (zb.obj_chain == 0)
+        {
+            if (zb.obj_chain2 == 0)
+            {
+                zb.in_obj = 0;
+                return 0;
+            }
+            zb.obj_chain = zb.obj_chain2;
+            zb.obj_chain2 = 0;
+            continue;
+        }
+        zb.obj_chain = zb_load_object(zb.obj_chain);
+        if (zb.switch_req)
+        {
+            zb.switch_req = 0;
+            return 1;
+        }
+    }
+    zb.in_obj = 0;
+    return 0;
 }
 
 /* ---- compute commands -------------------------------------------------- */
@@ -984,7 +1033,8 @@ static void zb_audio4(unsigned int w0, unsigned int w1)
 /* ---- interpreter ------------------------------------------------------- */
 
 int zboss_run(unsigned char *rdram, unsigned int rdram_size,
-              unsigned char *dmem, RdpFifo *fifo, int op)
+              unsigned char *dmem, RdpFifo *fifo, int op,
+              unsigned int *sp_status)
 {
     int guard = 0;
 
@@ -992,6 +1042,7 @@ int zboss_run(unsigned char *rdram, unsigned int rdram_size,
     s_rdram_size = rdram_size;
     s_dmem = dmem;
     s_fifo = fifo;
+    s_sp_status = sp_status;
 
     if (op == ZBOSS_OP_FRESH)
     {
@@ -1014,6 +1065,11 @@ int zboss_run(unsigned char *rdram, unsigned int rdram_size,
         zb.rdpcmds[0] = 0;
         zb.rdpcmds[1] = 0;
         zb.rdpcmds[2] = 0;
+        zb.sig0_taken = 0;
+        zb.in_obj = 0;
+        zb.obj_chain = 0;
+        zb.obj_chain2 = 0;
+        zb.switch_req = 0;
         zb.active = 1;
         zb.wait_kind = ZB_WAIT_NONE;
         zb.maindl_done = 0;
@@ -1063,6 +1119,13 @@ int zboss_run(unsigned char *rdram, unsigned int rdram_size,
                 zb.active = 0;
                 return ZBOSS_R_DONE;
             }
+            if (zb.sig0_taken)
+            {
+                /* the grant already arrived mid-walk: service the sub
+                 * list now (microcode: bgtz on DMEM 0x940 at 0x1bc) */
+                zb.pci = 1;
+                break;
+            }
             zb.maindl_done = 1;
             s_dmem[0x941u ^ BO8] = 0xff;    /* main list done */
             zb.wait_kind = ZB_WAIT_SIG0;
@@ -1074,8 +1137,10 @@ int zboss_run(unsigned char *rdram, unsigned int rdram_size,
                 return ZBOSS_R_DONE;
             }
             zb.subdl_done = 1;
+            zb.sig0_taken = 0;
             s_dmem[0x940u ^ BO8] = 0xff;    /* sub list finished first */
-            zb.pci = 0;
+            zb.pci = 0;                     /* resume the main walk at
+                                             * its OBJ checkpoint */
             break;
         case 0x04:                              /* MOVEMEM */
             zb_movemem(w0, w1);
@@ -1097,8 +1162,18 @@ int zboss_run(unsigned char *rdram, unsigned int rdram_size,
             zb_rdpcmd(w1);
             break;
         case 0x10:                              /* OBJ */
-            zb_obj(w0, w1);
+        {
+            if (zb_obj(w0, w1))
+            {
+                /* re-execute this OBJ command on the way back so the
+                 * chain walk continues from its checkpoint (in_obj),
+                 * the way the microcode resumes into the middle of the
+                 * OBJ handler through the DMEM 0xf00 continuation */
+                zb.pc[zb.pci] = pc;
+                zb.pci = 1;                 /* service the sub list */
+            }
             break;
+        }
         case 0x12:                              /* WAITSIGNAL */
             zb.wait_kind = ZB_WAIT_SIG3;
             return ZBOSS_R_WAIT_SIG3;

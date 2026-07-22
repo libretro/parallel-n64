@@ -1239,7 +1239,7 @@ int angrylion_streaming_dlist(int resume)
  *
  * returns ZBOSS_R_DONE / ZBOSS_R_WAIT_SIG3 / ZBOSS_R_WAIT_SIG0, or -1
  * when the renderer cannot service the task (caller falls back). */
-int angrylion_zboss_dlist(int resume)
+int angrylion_zboss_dlist(int resume, unsigned int *sp_status)
 {
     unsigned char *rdram;
     unsigned char *dmem;
@@ -1265,7 +1265,7 @@ int angrylion_zboss_dlist(int resume)
         rdp_fifo_fullsync_reset();
 
     r = zboss_run(rdram, rdram_size, dmem, &s_fifo,
-                  resume ? ZBOSS_OP_RESUME : ZBOSS_OP_FRESH);
+                  resume ? ZBOSS_OP_RESUME : ZBOSS_OP_FRESH, sp_status);
 
     if (r == ZBOSS_R_DONE && rdp_fifo_fullsync_seen())
     {
