@@ -449,23 +449,16 @@ static void zb_draw_object(unsigned int addr, unsigned int type)
         v[i].s = rd_s16(s_rdram, va + 8u);              /* S10.5 tc */
         v[i].t = rd_s16(s_rdram, va + 10u);
         invw_rec = (int)rd32(s_rdram, va + 12u);
-        /* the reference treats invw == rgba or invw < 0 as "no
-         * perspective" (w = 1) */
-        if (invw_rec == (int)rd32(s_rdram, va + 4u) || invw_rec < 0)
-        {
-            v[i].invw = 0x7fffffff;
-            v[i].pw   = 1;
-        }
-        else
-        {
-            /* invw_rec = 0x7fffffff / (w * invw_factor); the texture
-             * normalizer in rsp_tri_write only uses invw/pw relatively
-             * (norm_v = invw_v * min(pw)), so a consistent reciprocal
-             * pair in the record's own domain is sufficient */
-            w_rec = zb_calc_invw(invw_rec);
-            v[i].invw = invw_rec;
-            v[i].pw   = w_rec;
-        }
+        /* the record's word at +4 is the vertex color (the handler
+         * byte-loads it with luv at IMEM 0xa84) and the word at +12 is
+         * invw; the two are numerically equal in this title's records,
+         * which used to trip a "no perspective" heuristic here. The
+         * microcode has no such branch: every record runs the
+         * perspective staging (rsp_tri_write's zboss attribute path),
+         * negative invw included. */
+        w_rec = zb_calc_invw(invw_rec);
+        v[i].invw = invw_rec;
+        v[i].pw   = w_rec;
         v[i].flat2d = 0;
     }
 
@@ -1091,6 +1084,7 @@ int zboss_run(unsigned char *rdram, unsigned int rdram_size,
         zb.obj_chain = 0;
         zb.obj_chain2 = 0;
         zb.switch_req = 0;
+        rsp_tri_set_zboss_attr(1);
         zb.active = 1;
         zb.wait_kind = ZB_WAIT_NONE;
         zb.maindl_done = 0;

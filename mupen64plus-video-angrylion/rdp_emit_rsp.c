@@ -873,6 +873,7 @@ void rsp_set_clip_lerp_l3dex(int on)
 
 static int s_vtx_invw_2rd = 0;
 static int s_tri_attr_rs = 0;
+static int s_tri_attr_zboss = 0;
 
 /* Rogue Squadron stale-lane residue (probe-anchored at the writer's
  * IMEM 0x1ac0 merge point): the z-disabled texture path only llv's the
@@ -891,6 +892,11 @@ static int32_t s_rs_stale_l_sf, s_rs_stale_l_tf;
 void rsp_set_tri_attr_rs(int on)
 {
     s_tri_attr_rs = on ? 1 : 0;
+}
+
+void rsp_tri_set_zboss_attr(int on)
+{
+    s_tri_attr_zboss = on ? 1 : 0;
 }
 
 void rsp_set_vtx_invw_2rd(int on)
@@ -2905,6 +2911,53 @@ int rsp_tri_write(int32_t *ew,
                 at_i[vi][4 + k2] = acc_clamp_mid(acc);
                 at_f[vi][4 + k2] = acc_clamp_low(acc);
             }
+        }
+    }
+    else if (textured && s_tri_attr_zboss)
+    {
+        /* The ZSortBOSS texture staging (ucode IMEM 0xa14..0xa7c): the
+         * y-sort's 32-bit compare registers carry the running signed
+         * MAXIMUM of the three record invw values (lanes 6:7 through
+         * the vge/vsubc/vmrg ladder); the DIV-table reciprocal of that
+         * maximum (vrcph/vrcpl at 0xa38) scales each vertex's invw
+         * through the canonical 32x32 mid/low latches into
+         * wnorm_v = invw_v * rcp(max invw) -- the raw reciprocal, no
+         * halving fold -- and the record texel shorts plus the
+         * v31[e9] == 0x7fff W seed are premultiplied by wnorm_v with
+         * vmudm/vmadh per-vertex broadcasts. There is no
+         * no-perspective branch anywhere in the handler: every record
+         * runs this staging, negative invw included. */
+        int vi;
+        const RspTriVtx *vv[3];
+        Rsp32 rcp32, ivw, nrm;
+        int32_t mx;
+        vv[0] = vh; vv[1] = vm; vv[2] = vl;
+        mx = vv[0]->invw;
+        if (vv[1]->invw > mx) mx = vv[1]->invw;
+        if (vv[2]->invw > mx) mx = vv[2]->invw;
+        rcp32 = mk32(rsp_rcp32(mx));
+        for (vi = 0; vi < 3; vi++)
+        {
+            int k2;
+            int32_t src[3];
+            ivw.i = (int32_t)(((uint32_t)vv[vi]->invw >> 16) & 0xffffu);
+            ivw.f = (int32_t)((uint32_t)vv[vi]->invw & 0xffffu);
+            nrm = mac32(ivw, rcp32, 0);
+            src[0] = vv[vi]->s; src[1] = vv[vi]->t; src[2] = 0x7fff;
+            for (k2 = 0; k2 < 3; k2++)
+            {
+                acc = p_udm(src[k2], nrm.f);
+                acc += p_udh(src[k2], nrm.i);
+                at_i[vi][4 + k2] = acc_clamp_mid(acc);
+                at_f[vi][4 + k2] = acc_clamp_low(acc);
+            }
+            /* the record vectors are pre-filled with the v31[e9] seed
+             * in every lane the llv loads do not overwrite, so the
+             * fourth texture lane carries a second 0x7fff * wnorm --
+             * the oracle stream duplicates W there through the whole
+             * coefficient block */
+            at_i[vi][7] = at_i[vi][6];
+            at_f[vi][7] = at_f[vi][6];
         }
     }
     else if (textured)
