@@ -2492,6 +2492,18 @@ int rsp_tri_write(int32_t *ew,
         /* inv_dx = nr * inv_cross */
         inv_dx = mac32(nr, inv_cross, 0);
         inv_dx_64 = ((int64_t)r32(nr) * (int64_t)r32(inv_cross)) >> 16;
+        if (s_tri_attr_zboss)
+        {
+            /* ZSortBOSS (IMEM 0xad0..0xae0): the raw DIV-table
+             * reciprocal of the cross scaled by v31[e13] == 8 through
+             * the vmudn/vmadh low/mid latches -- no Newton
+             * refinement anywhere in the handler. */
+            acc = p_udn(inv_cross.f, 8);
+            inv_dx.f = acc_clamp_low(acc);
+            acc += p_udh(inv_cross.i, 8);
+            inv_dx.i = acc_clamp_mid(acc);
+            inv_dx_64 = (int64_t)r32(inv_dx);
+        }
         if (s_tri_attr_rs)
         {
             /* Rogue Squadron routes the cross through its shared divide
