@@ -362,7 +362,12 @@ static void zb_emit_tri(const RspTriVtx *a, const RspTriVtx *b,
     nw = rsp_tri_write(cmd, a, b, c,
                        1 /*textured*/, 0 /*z*/, 1 /*shaded*/, 1 /*smooth*/,
                        zb.tri_tile, zb.tri_level,
-                       0x4000, 0x0008, (int32_t)0xffffffff /*frac*/, 0x01cc);
+                       0x4000, 0x0008, (int32_t)0xffffffff /*frac*/,
+                       0x7fff /* no VCR slope clamp anywhere in the
+                               * triangle handler; the F3DEX2-derived
+                               * 0x1cc bound flattened the zero-height
+                               * L edges of the wide-domain quads into
+                               * the menu and race backdrops' wedge */);
     if (nw <= 0)
         return;
     /* the microcode assembles the command byte as the bare RDP opcode
