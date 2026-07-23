@@ -358,7 +358,73 @@ static void zb_emit_tri(const RspTriVtx *a, const RspTriVtx *b,
     yh = (int)(cmd[1] & 0x3fff);  if (yh & 0x2000) yh -= 0x4000;
     if (yh < ymin_v - 4 || yl > ymax_v + 4)
         return;
+    /* the microcode assembles the command byte as the bare RDP opcode
+     * (IMEM 0xb84-0xb94: tile/level halfword OR the LFT bit) without
+     * the 0xc0 prefix the F3DEX2-family writer applies */
+    cmd[0] &= (int32_t)0x3fffffffl;
     rdp_fifo_append(s_fifo, cmd, nw);
+}
+
+/* clip one triangle to the guard band and emit the surviving fan */
+static void zb_clip_emit(const RspTriVtx *a, const RspTriVtx *b,
+                         const RspTriVtx *c)
+{
+    static const int gmin = -(64 << 2);
+    static const int gmax_x = (704 << 2);
+    static const int gmax_y = (544 << 2);
+    RspTriVtx poly[10], tmp[10];
+    unsigned int pn, tn, k2;
+    int pass;
+    poly[0] = *a;
+    poly[1] = *b;
+    poly[2] = *c;
+    pn = 3;
+    for (pass = 0; pass < 4 && pn >= 3u; pass++)
+    {
+        int lim  = (pass == 0 || pass == 2) ? gmin
+                 : (pass == 1) ? gmax_y : gmax_x;
+        int usey = (pass < 2);
+        tn = 0;
+        for (k2 = 0; k2 < pn; k2++)
+        {
+            const RspTriVtx *p = &poly[k2];
+            const RspTriVtx *q = &poly[(k2 + 1u) % pn];
+            int ca = usey ? p->y : p->x;
+            int cb = usey ? q->y : q->x;
+            int ina = (pass == 0 || pass == 2) ? (ca >= lim) : (ca <= lim);
+            int inb = (pass == 0 || pass == 2) ? (cb >= lim) : (cb <= lim);
+            if (ina)
+                tmp[tn++] = *p;
+            if (ina != inb)
+            {
+                RspTriVtx w;
+                long num = (long)(lim - ca);
+                long den = (long)(cb - ca);
+                long t2 = den ? ((num << 16) / den) : 0;
+                w.x = (int16_t)(p->x + (int)(((long)(q->x - p->x) * t2) >> 16));
+                w.y = (int16_t)(p->y + (int)(((long)(q->y - p->y) * t2) >> 16));
+                if (usey) w.y = (int16_t)lim; else w.x = (int16_t)lim;
+                w.z = 0;
+                w.r = p->r + (int32_t)(((long)(q->r - p->r) * t2) >> 16);
+                w.g = p->g + (int32_t)(((long)(q->g - p->g) * t2) >> 16);
+                w.b = p->b + (int32_t)(((long)(q->b - p->b) * t2) >> 16);
+                w.a = p->a + (int32_t)(((long)(q->a - p->a) * t2) >> 16);
+                w.s = p->s + (int32_t)(((long)(q->s - p->s) * t2) >> 16);
+                w.t = p->t + (int32_t)(((long)(q->t - p->t) * t2) >> 16);
+                w.invw = p->invw
+                       + (int32_t)(((long)(q->invw - p->invw) * t2) >> 16);
+                w.pw = zb_calc_invw(w.invw);
+                w.flat2d = 0;
+                if (tn < 10u)
+                    tmp[tn++] = w;
+            }
+        }
+        for (k2 = 0; k2 < tn && k2 < 10u; k2++)
+            poly[k2] = tmp[k2];
+        pn = (tn <= 10u) ? tn : 10u;
+    }
+    for (k2 = 1; k2 + 1u < pn; k2++)
+        zb_emit_tri(&poly[0], &poly[k2], &poly[k2 + 1u]);
 }
 
 static void zb_draw_object(unsigned int addr, unsigned int type)
@@ -410,78 +476,26 @@ static void zb_draw_object(unsigned int addr, unsigned int type)
      * emitting commands with ym/yh pinned at 0x8001 whose slopes sweep
      * thousands of on-screen pixels (observed 9.4k px per triangle,
      * 2.7x total triangle fill). BOSS's own triangle setup tolerates
-     * the wide domain; ours must not see it. Clip the polygon to a
+     * the wide domain; ours must not see it. Clip each triangle to a
      * guard band around the frame in screen space before emission --
      * attributes interpolate linearly in screen space, which is the
      * plane equation the RDP evaluates, so this is render-equivalent
-     * inside the scissor. TXQUAD vertices arrive in strip order; the
-     * polygon ring is 0,1,3,2 and the fan diagonal matches the strip's
-     * shared edge. */
+     * inside the scissor.
+     *
+     * Triangulation follows the microcode exactly: the TXQUAD handler
+     * (IMEM 0x8e4) first runs the triangle setup on records 2,3,4 and
+     * then falls into the TXTRI path (IMEM 0x8f8) for records 1,2,3 --
+     * per-record-index triangles, not a strip-ring fan (the shadow
+     * walker showed every quad split along the other diagonal). */
+    if (vnum == 4u)
     {
-        static const int gmin = -(64 << 2);
-        static const int gmax_x = (704 << 2);
-        static const int gmax_y = (544 << 2);
-        RspTriVtx poly[10], tmp[10];
-        unsigned int pn, tn, k2;
-        int pass;
-        poly[0] = v[0];
-        poly[1] = v[1];
-        if (vnum == 4u)
-        {
-            poly[2] = v[3];
-            poly[3] = v[2];
-        }
-        else
-            poly[2] = v[2];
-        pn = vnum;
-        for (pass = 0; pass < 4 && pn >= 3u; pass++)
-        {
-            int lim  = (pass == 0 || pass == 2) ? gmin
-                     : (pass == 1) ? gmax_y : gmax_x;
-            int usey = (pass < 2);
-            tn = 0;
-            for (k2 = 0; k2 < pn; k2++)
-            {
-                const RspTriVtx *a = &poly[k2];
-                const RspTriVtx *b = &poly[(k2 + 1u) % pn];
-                int ca = usey ? a->y : a->x;
-                int cb = usey ? b->y : b->x;
-                int ina = (pass == 0 || pass == 2) ? (ca >= lim) : (ca <= lim);
-                int inb = (pass == 0 || pass == 2) ? (cb >= lim) : (cb <= lim);
-                if (ina)
-                    tmp[tn++] = *a;
-                if (ina != inb)
-                {
-                    RspTriVtx c;
-                    long num = (long)(lim - ca);
-                    long den = (long)(cb - ca);
-                    long t2 = den ? ((num << 16) / den) : 0;
-                    c.x = (int16_t)(a->x + (int)(((long)(b->x - a->x) * t2) >> 16));
-                    c.y = (int16_t)(a->y + (int)(((long)(b->y - a->y) * t2) >> 16));
-                    if (usey) c.y = (int16_t)lim; else c.x = (int16_t)lim;
-                    c.z = 0;
-                    c.r = a->r + (int32_t)(((long)(b->r - a->r) * t2) >> 16);
-                    c.g = a->g + (int32_t)(((long)(b->g - a->g) * t2) >> 16);
-                    c.b = a->b + (int32_t)(((long)(b->b - a->b) * t2) >> 16);
-                    c.a = a->a + (int32_t)(((long)(b->a - a->a) * t2) >> 16);
-                    c.s = a->s + (int32_t)(((long)(b->s - a->s) * t2) >> 16);
-                    c.t = a->t + (int32_t)(((long)(b->t - a->t) * t2) >> 16);
-                    c.invw = a->invw
-                           + (int32_t)(((long)(b->invw - a->invw) * t2) >> 16);
-                    c.pw = zb_calc_invw(c.invw);
-                    c.flat2d = 0;
-                    if (tn < 10u)
-                        tmp[tn++] = c;
-                }
-            }
-            for (k2 = 0; k2 < tn && k2 < 10u; k2++)
-                poly[k2] = tmp[k2];
-            pn = (tn <= 10u) ? tn : 10u;
-        }
-        for (k2 = 1; k2 + 1u < pn; k2++)
-            zb_emit_tri(&poly[0], &poly[k2], &poly[k2 + 1u]);
+        zb_clip_emit(&v[1], &v[2], &v[3]);
+        zb_clip_emit(&v[0], &v[1], &v[2]);
     }
+    else
+        zb_clip_emit(&v[0], &v[1], &v[2]);
 }
+
 
 static unsigned int zb_load_object(unsigned int zheader)
 {
