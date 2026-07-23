@@ -883,8 +883,14 @@ static void zb_audio2(unsigned int w0, unsigned int w1)
 {
     int len = (int)(w1 >> 24);
     unsigned int dst = rd32(s_dmem, 0x10u);
-    float f1 = (float)((w0 >> 16) & 0xffu) + (float)(w0 & 0xffffu) / 65536.0f;
-    float f2 = (float)((w1 >> 16) & 0xffu) + (float)(w1 & 0xffffu) / 65536.0f;
+    /* the resample step and base position are 8.16 fixed point; the
+     * microcode advances an exact integer accumulator per sample. A
+     * float rendition of the same stepping rounds differently at the
+     * fraction boundaries, and the drifted samples were audible as a
+     * detuned mix and, worse, fed the game's audio-driven sequencing
+     * different data every frame. Keep every intermediate integral. */
+    unsigned int step = (((w0 >> 16) & 0xffu) << 16) | (w0 & 0xffffu);
+    unsigned int base = (((w1 >> 16) & 0xffu) << 16) | (w1 & 0xffffu);
     int v11_0 = (int)(((unsigned int)s_dmem[0x904u ^ BO8] << 8)
                       | s_dmem[0x905u ^ BO8]);
     int v11_1 = (int)(((unsigned int)s_dmem[0x906u ^ BO8] << 8)
@@ -894,10 +900,9 @@ static void zb_audio2(unsigned int w0, unsigned int w1)
     {
         for (j = 0; j < 4; j++)
         {
-            float val = (float)i * f1 + (float)j * f1 + f2;
-            float ip;
-            float fp = (float)fabs((double)modff(val, &ip));
-            int index = ((int)ip) << 1;
+            unsigned int pos = (unsigned int)(i + j) * step + base;
+            int index = (int)(pos >> 16) << 1;
+            unsigned int frac = pos & 0xffffu;
             int v9  = rd_s16d(s_dmem, 0x30u + (unsigned int)index);
             int v10 = rd_s16d(s_dmem, 0x32u + (unsigned int)index);
             int v12 = (short)(v10 - v9);
@@ -905,7 +910,7 @@ static void zb_audio2(unsigned int w0, unsigned int w1)
             for (k = 0; k < 2; k++)
             {
                 int vk = (k == 0) ? v11_0 : v11_1;
-                long res1 = (long)v12 * (long)(unsigned short)(fp * 65536.0f);
+                long res1 = (long)v12 * (long)frac;
                 long res2 = (long)v9 << 16;
                 int res3 = (int)(short)((res2 + res1) >> 16);
                 res1 = (long)vk * (long)res3;
@@ -1041,6 +1046,27 @@ int zboss_run(unsigned char *rdram, unsigned int rdram_size,
         zb.active = 1;
         zb.wait_kind = ZB_WAIT_NONE;
         zb.maindl_done = 0;
+        /* the microcode's boot stub mirrors the task's ucode_data
+         * section into DMEM at identical offsets before dispatch
+         * (verified against the LLE: the resample index table at DMEM
+         * 0x920 is ucode_data+0x920 verbatim). The audio service reads
+         * its gain pair, envelope tables and state pointers out of
+         * this block; without the load those reads saw whatever the
+         * previous task left behind, the mix ran against zero gains
+         * and a stale state pointer, and the PCM the game heard
+         * diverged from the LLE's from the first music onward. */
+        {
+            unsigned int ud  = rd32(dmem, 0xfd8u) & 0x00ffffffu;
+            unsigned int udl = rd32(dmem, 0xfdcu);
+            if (udl > 0xfc0u)
+                udl = 0xfc0u;
+            if (ud != 0 && ud + udl <= rdram_size)
+            {
+                unsigned int i;
+                for (i = 0; i < udl; i++)
+                    dmem[i ^ BO8] = rdram[(ud + i) ^ BO8];
+            }
+        }
         zb.subdl_done = 0;
         zb.pc[0] = rd32(dmem, 0xff0u) & 0x00ffffffu;
         zb.pc[1] = rd32(dmem, 0xff8u) & 0x00ffffffu;

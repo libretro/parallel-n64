@@ -1299,6 +1299,13 @@ int angrylion_streaming_dlist(int resume)
  * the CPU handshakes (record contents are task-stable) and never
  * touches the real RDP. */
 static unsigned char s_shadow_storage[HLE_FIFO_CAP];
+static unsigned char s_shadow_dmem[0x1000];
+
+unsigned char *angrylion_zboss_shadow_dmem(void);
+unsigned char *angrylion_zboss_shadow_dmem(void)
+{
+    return s_shadow_dmem;
+}
 
 static void shadow_flush(RdpFifo *f)
 {
@@ -1333,15 +1340,14 @@ int angrylion_zboss_shadow(unsigned char *rdram, unsigned int rdram_size,
      * the audio service's wrapped scribbles); the live LLE task about
      * to run this same DMEM must not see any of it, so the shadow
      * walks a private copy */
-    static unsigned char shadow_dmem[0x1000];
     RdpFifo sf;
     int r;
-    memcpy(shadow_dmem, dmem, 0x1000);
+    memcpy(s_shadow_dmem, dmem, 0x1000);
     rdp_fifo_init(&sf, s_shadow_storage, rdram_size - HLE_FIFO_CAP,
                   HLE_FIFO_CAP);
     sf.flush = shadow_flush;
     zboss_set_shadow(1);
-    r = zboss_run(rdram, rdram_size, shadow_dmem, &sf, ZBOSS_OP_FRESH, 0);
+    r = zboss_run(rdram, rdram_size, s_shadow_dmem, &sf, ZBOSS_OP_FRESH, 0);
     zboss_set_shadow(0);
     fprintf(stderr, "SHADOW r=%d\n", r);
     shadow_flush(&sf);
