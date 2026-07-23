@@ -2526,7 +2526,7 @@ int rsp_tri_write(int32_t *ew,
              * reciprocal of the cross scaled by v31[e13] == 8 through
              * the vmudn/vmadh low/mid latches -- no Newton
              * refinement anywhere in the handler. */
-            Rsp32 rc = mk32(rsp_rcp32_dp(
+            Rsp32 rc = mk32(rsp_rcp32(
                 (int32_t)(((uint32_t)U16(cross_i) << 16)
                           | (uint32_t)U16(cross_f))));
             acc = p_udn(rc.f, 8);
@@ -2978,7 +2978,7 @@ int rsp_tri_write(int32_t *ew,
         mx = vv[0]->invw;
         if (vv[1]->invw > mx) mx = vv[1]->invw;
         if (vv[2]->invw > mx) mx = vv[2]->invw;
-        rcp32 = mk32(rsp_rcp32_dp(mx));
+        rcp32 = mk32(rsp_rcp32(mx));
         for (vi = 0; vi < 3; vi++)
         {
             int k2;
