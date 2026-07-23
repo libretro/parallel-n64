@@ -532,7 +532,9 @@ static void zb_movemem(unsigned int w0, unsigned int w1)
     if (!flag)
         for (i = 0; i < len; i++)
             s_dmem[(off + i) ^ BO8] = s_rdram[(addr + i) ^ BO8];
-    else
+    else if (!s_shadow)
+        /* the read-only shadow walk must not export into the live
+         * game's RDRAM (the MOVEMEM readback buffers) */
         for (i = 0; i < len; i++)
             s_rdram[(addr + i) ^ BO8] = s_dmem[(off + i) ^ BO8];
 }
@@ -866,7 +868,7 @@ static void zb_audio1(unsigned int w0, unsigned int w1)
     unsigned int val = rd32(s_dmem, w0 & 0xffcu);
     unsigned int i;
     wr32(s_dmem, 0u, val);
-    if (!addr_ok(addr, 8u))
+    if (!addr_ok(addr, 8u) || s_shadow)
         return;
     for (i = 0; i < 8u; i++)
         s_rdram[(addr + i) ^ BO8] = s_dmem[i ^ BO8];
