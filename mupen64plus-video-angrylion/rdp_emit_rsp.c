@@ -2498,9 +2498,12 @@ int rsp_tri_write(int32_t *ew,
              * reciprocal of the cross scaled by v31[e13] == 8 through
              * the vmudn/vmadh low/mid latches -- no Newton
              * refinement anywhere in the handler. */
-            acc = p_udn(inv_cross.f, 8);
+            Rsp32 rc = mk32(rsp_rcp32_dp(
+                (int32_t)(((uint32_t)U16(cross_i) << 16)
+                          | (uint32_t)U16(cross_f))));
+            acc = p_udn(rc.f, 8);
             inv_dx.f = acc_clamp_low(acc);
-            acc += p_udh(inv_cross.i, 8);
+            acc += p_udh(rc.i, 8);
             inv_dx.i = acc_clamp_mid(acc);
             inv_dx_64 = (int64_t)r32(inv_dx);
         }
@@ -2947,7 +2950,7 @@ int rsp_tri_write(int32_t *ew,
         mx = vv[0]->invw;
         if (vv[1]->invw > mx) mx = vv[1]->invw;
         if (vv[2]->invw > mx) mx = vv[2]->invw;
-        rcp32 = mk32(rsp_rcp32(mx));
+        rcp32 = mk32(rsp_rcp32_dp(mx));
         for (vi = 0; vi < 3; vi++)
         {
             int k2;
@@ -3015,6 +3018,21 @@ int rsp_tri_write(int32_t *ew,
     /* ---- attribute deltas and gradients ---- */
     {
     int32_t rs_yspx_vh = (int32_t)U16(vh->y);
+    Rsp32 zb_elh8;
+    zb_elh8.i = 0; zb_elh8.f = 0;
+    if (s_tri_attr_zboss)
+    {
+        /* ZSortBOSS keeps the per-edge Y reciprocals of the edge
+         * section live (v9:v10, scaled by v31[e13] == 8 at IMEM
+         * 0x984..0x98c) and derives dAdE by multiplying the H->L
+         * attribute delta with the major edge's lane directly
+         * (IMEM 0xb64..0xb80), not through dAdY + dAdX * dxhdy. */
+        Rsp32 r = mk32(rsp_rcp16(lh_y));
+        acc = p_udl(r.f, 8);
+        acc += p_udm(r.i, 8);
+        zb_elh8.i = acc_clamp_mid(acc);
+        zb_elh8.f = acc_clamp_low(acc);
+    }
     int32_t rs_mh_y = mh_y, rs_hl_y = hl_y, rs_lh_x = lh_x, rs_hm_x = hm_x;
     if (s_tri_attr_rs)
     {
@@ -3085,6 +3103,15 @@ int rsp_tri_write(int32_t *ew,
         {
         /* dAdX = dA_x * inv_dx */
         dAdX[k] = mac32_wide(dA_x[k], inv_dx_64, 0);
+        if (s_tri_attr_zboss)
+        {
+            /* the microcode's gradient multiplies are the latched
+             * 32x32 vmudl/vmadm/vmadn/vmadh chain on the 32-bit
+             * reciprocal (IMEM 0xb0c..0xb18 and 0xb44..0xb50), not a
+             * wide product */
+            dAdX[k] = mac32(dA_x[k], inv_dx, 0);
+            dAdY[k] = mac32(dA_y[k], inv_dx, 0);
+        }
 
         /* dAdY = dA_y * inv_dx ; then the accumulator CONTINUES:
          * dAdE = dAdY + dAdX * dxhdy */
@@ -3095,6 +3122,8 @@ int rsp_tri_write(int32_t *ew,
         dAdE[k].f = acc_clamp_low(acc);
         acc += p_udh(dAdX[k].i, dxhdy.i);
         dAdE[k].i = acc_clamp_mid(acc);
+        if (s_tri_attr_zboss)
+            dAdE[k] = mac32(dA_H[k], zb_elh8, 0);
 
         /* base = attr(H) + dAdE * y_spx */
         acc = p_udn(at_f[0][k], 1);
@@ -3105,6 +3134,30 @@ int rsp_tri_write(int32_t *ew,
         base[k].f = acc_clamp_low(acc);
         acc += p_udh(dAdE[k].i, y_spx_i);
         base[k].i = acc_clamp_mid(acc);
+        if (s_tri_attr_zboss)
+        {
+            /* the microcode anchors the attribute base by a borrow
+             * subtract, not an additive accumulator: the negated
+             * y<<14 fraction is re-negated per element (vsub at IMEM
+             * 0xb98), dAdE is scaled by that single halfword through
+             * the vmudl/vmadm mid latch (0xb9c..0xba4), and the H
+             * vertex attributes subtract the product with vsubc/vsub
+             * 32-bit borrow (0xba8..0xbac) */
+            Rsp32 p, ah;
+            /* the fraction reaches the multiply through a double
+             * negation: vsubc builds -(y<<14) in the edge section and
+             * the vsub at 0xb98 re-negates it with SIGNED CLAMPING,
+             * so a top vertex on the half-pixel (y & 3 == 2, fraction
+             * 0x8000) pins to 0x7fff */
+            int32_t yfrac = (int32_t)((U16(vh->y) << 14) & 0xffff);
+            yfrac = clamp_s16(0 - S16((0 - yfrac) & 0xffff)) & 0xffff;
+            acc = p_udl(dAdE[k].f, yfrac);
+            acc += p_udm(dAdE[k].i, yfrac);
+            p.i = acc_clamp_mid(acc);
+            p.f = acc_clamp_low(acc);
+            ah.i = at_i[0][k]; ah.f = at_f[0][k];
+            base[k] = sub32(ah, p);
+        }
         }
     }
 
