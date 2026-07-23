@@ -3129,17 +3129,23 @@ int rsp_tri_write(int32_t *ew,
        }
         else
         {
-        /* dAdX = dA_x * inv_dx */
-        dAdX[k] = mac32_wide(dA_x[k], inv_dx_64, 0);
         if (s_tri_attr_zboss)
         {
             /* the microcode's gradient multiplies are the latched
              * 32x32 vmudl/vmadm/vmadn/vmadh chain on the 32-bit
              * reciprocal (IMEM 0xb0c..0xb18 and 0xb44..0xb50), not a
-             * wide product */
+             * wide product -- the forms differ where the products
+             * saturate, which the zero-cross reciprocal makes routine
+             * -- and dAdE multiplies the H->L attribute delta by the
+             * major edge's Y reciprocal directly (IMEM 0xb64..0xb80) */
             dAdX[k] = mac32(dA_x[k], inv_dx, 0);
             dAdY[k] = mac32(dA_y[k], inv_dx, 0);
+            dAdE[k] = mac32(dA_H[k], zb_elh8, 0);
         }
+        else
+        {
+        /* dAdX = dA_x * inv_dx */
+        dAdX[k] = mac32_wide(dA_x[k], inv_dx_64, 0);
 
         /* dAdY = dA_y * inv_dx ; then the accumulator CONTINUES:
          * dAdE = dAdY + dAdX * dxhdy */
@@ -3150,8 +3156,7 @@ int rsp_tri_write(int32_t *ew,
         dAdE[k].f = acc_clamp_low(acc);
         acc += p_udh(dAdX[k].i, dxhdy.i);
         dAdE[k].i = acc_clamp_mid(acc);
-        if (s_tri_attr_zboss)
-            dAdE[k] = mac32(dA_H[k], zb_elh8, 0);
+        }
 
         /* base = attr(H) + dAdE * y_spx */
         acc = p_udn(at_f[0][k], 1);
