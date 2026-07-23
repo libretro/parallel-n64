@@ -1239,6 +1239,54 @@ int angrylion_streaming_dlist(int resume)
  *
  * returns ZBOSS_R_DONE / ZBOSS_R_WAIT_SIG3 / ZBOSS_R_WAIT_SIG0, or -1
  * when the renderer cannot service the task (caller falls back). */
+/* ---- zboss shadow: walk a task read-only during an LLE run, dumping
+ * the emitted command words to stderr for oracle comparison. Free-runs
+ * the CPU handshakes (record contents are task-stable) and never
+ * touches the real RDP. */
+static unsigned char s_shadow_storage[HLE_FIFO_CAP];
+
+static void shadow_flush(RdpFifo *f)
+{
+    unsigned int i, k;
+    const int lens[64] = {
+        2,2,2,2,2,2,2,2, 8,12,24,28,24,28,40,44,
+        2,2,2,2,2,2,2,2, 2,2,2,2,2,2,2,2,
+        2,2,2,2,4,4,2,2, 2,2,2,2,2,2,2,2,
+        2,2,2,2,2,2,2,2, 2,2,2,2,2,2,2,2 };
+    for (i = 0; i + 8u <= f->used; )
+    {
+        unsigned int w0, cmd, nw;
+        w0 = (unsigned int)*(const int32_t *)(f->storage + i);
+        cmd = (w0 >> 24) & 0x3fu;
+        nw = (unsigned int)lens[cmd];
+        if (i + nw * 4u > f->used)
+            nw = (f->used - i) / 4u;
+        fprintf(stderr, "S44 c=%02x", cmd);
+        for (k = 0; k < nw; k++)
+            fprintf(stderr, " %08x",
+                    (unsigned int)*(const int32_t *)(f->storage + i + k * 4u));
+        fprintf(stderr, "\n");
+        i += nw * 4u;
+    }
+    f->used = 0;
+}
+
+int angrylion_zboss_shadow(unsigned char *rdram, unsigned int rdram_size,
+                           unsigned char *dmem)
+{
+    RdpFifo sf;
+    int r;
+    rdp_fifo_init(&sf, s_shadow_storage, rdram_size - HLE_FIFO_CAP,
+                  HLE_FIFO_CAP);
+    sf.flush = shadow_flush;
+    zboss_set_shadow(1);
+    r = zboss_run(rdram, rdram_size, dmem, &sf, ZBOSS_OP_FRESH, 0);
+    zboss_set_shadow(0);
+    fprintf(stderr, "SHADOW r=%d\n", r);
+    shadow_flush(&sf);
+    return r;
+}
+
 int angrylion_zboss_dlist(int resume, unsigned int *sp_status)
 {
     unsigned char *rdram;

@@ -24,6 +24,8 @@ int angrylion_rs_dlist(int resume);
 
 /* sliced ZSortBOSS service (WDC / Stunt Racer); see rdp_emit_hle.c */
 int angrylion_zboss_dlist(int resume, unsigned int *sp_status);
+int angrylion_zboss_shadow(unsigned char *rdram, unsigned int rdram_size,
+                           unsigned char *dmem);
 
 #ifdef __cplusplus
 }

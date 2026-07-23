@@ -19,6 +19,8 @@
  * list (DMEM 0xff0 main / 0xff8 sub); ZBOSS_OP_RESUME continues after
  * the caller has satisfied the returned wait condition. Returns a
  * ZBOSS_R_* code, or -1 on error (caller falls back to LLE). */
+void zboss_set_shadow(int on);
+
 int zboss_run(unsigned char *rdram, unsigned int rdram_size,
               unsigned char *dmem, RdpFifo *fifo, int op,
               unsigned int *sp_status);

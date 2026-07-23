@@ -324,6 +324,8 @@ void write_rsp_regs2(void* opaque, uint32_t address, uint32_t value, uint32_t ma
     masked_write(&sp->regs2[reg], value, mask);
 }
 
+static int l_zb_shadow_armed = 1;
+
 void do_SP_Task(struct rsp_core* sp)
 {
     uint32_t save_pc = sp->regs2[SP_PC_REG] & ~0xfff;
@@ -344,6 +346,25 @@ void do_SP_Task(struct rsp_core* sp)
             g1++;
         }
         unprotect_framebuffers(&sp->dp->fb);
+
+        /* zboss shadow: on each fresh BOSS graphics task under the LLE,
+         * run the HLE walker read-only over the same state and dump its
+         * stream for oracle comparison (env ZB_SHADOW). Freshness =
+         * first gfx dispatch after the previous task broke. */
+        if (getenv("ZB_SHADOW") && l_zb_shadow_armed)
+        {
+            extern int angrylion_zboss_shadow(unsigned char *rdram,
+                                              unsigned int rdram_size,
+                                              unsigned char *dmem);
+            static unsigned fresh_n;
+            unsigned want = (unsigned)strtoul(getenv("ZB_SHADOW"), NULL, 0);
+            l_zb_shadow_armed = 0;
+            fresh_n++;
+            if (want == 0 || fresh_n == want)
+                angrylion_zboss_shadow((unsigned char*)sp->ri->rdram->dram,
+                                       0x800000u,
+                                       (unsigned char*)sp->mem);
+        }
 
         //gfx.processDList();
         sp->regs2[SP_PC_REG] &= 0xfff;
@@ -425,6 +446,8 @@ void do_SP_Task(struct rsp_core* sp)
         add_interrupt_event(&sp->mi->r4300->cp0, SP_INT, sp_delay_time);
         sp->mi->regs[MI_INTR_REG] &= ~MI_INTR_SP;
     }
+    if ((sp->regs[SP_STATUS_REG] & (SP_STATUS_HALT | SP_STATUS_BROKE)))
+        l_zb_shadow_armed = 1;
 
     sp->regs[SP_STATUS_REG] &=
         ~(SP_STATUS_TASKDONE | SP_STATUS_BROKE | SP_STATUS_HALT);

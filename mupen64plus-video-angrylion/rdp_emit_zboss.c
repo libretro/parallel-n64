@@ -75,6 +75,7 @@ static ZbState zb;
 static unsigned char *s_rdram;
 static unsigned int   s_rdram_size;
 static unsigned int  *s_sp_status;
+static int            s_shadow;      /* free-run handshakes, no CPU coupling */
 static unsigned char *s_dmem;
 static RdpFifo       *s_fifo;
 
@@ -494,7 +495,8 @@ static unsigned int zb_load_object(unsigned int zheader)
      * signal and remember it; the switch itself happens at the next
      * sync (type-0) object below, mirroring the checkpoint at
      * IMEM 0x828/0x83c. */
-    if (!zb.sig0_taken && s_sp_status != 0 && (*s_sp_status & 0x80u))
+    if (!s_shadow && !zb.sig0_taken && s_sp_status != 0
+        && (*s_sp_status & 0x80u))
     {
         *s_sp_status &= ~0x80u;
         zb.sig0_taken = 1;
@@ -1032,6 +1034,11 @@ static void zb_audio4(unsigned int w0, unsigned int w1)
 
 /* ---- interpreter ------------------------------------------------------- */
 
+void zboss_set_shadow(int on)
+{
+    s_shadow = on ? 1 : 0;
+}
+
 int zboss_run(unsigned char *rdram, unsigned int rdram_size,
               unsigned char *dmem, RdpFifo *fifo, int op,
               unsigned int *sp_status)
@@ -1119,7 +1126,7 @@ int zboss_run(unsigned char *rdram, unsigned int rdram_size,
                 zb.active = 0;
                 return ZBOSS_R_DONE;
             }
-            if (zb.sig0_taken)
+            if (zb.sig0_taken || s_shadow)
             {
                 /* the grant already arrived mid-walk: service the sub
                  * list now (microcode: bgtz on DMEM 0x940 at 0x1bc) */
@@ -1175,6 +1182,8 @@ int zboss_run(unsigned char *rdram, unsigned int rdram_size,
             break;
         }
         case 0x12:                              /* WAITSIGNAL */
+            if (s_shadow)
+                break;              /* free-run: records are task-stable */
             zb.wait_kind = ZB_WAIT_SIG3;
             return ZBOSS_R_WAIT_SIG3;
         case 0x14:                              /* LIGHTING */
