@@ -25,6 +25,7 @@
  *   gcc -std=c89 -pedantic -Wall -Wdeclaration-after-statement -Werror
  */
 
+#include <stdio.h>
 #include <string.h>
 #include <math.h>
 #include "rdp_emit_zboss.h"
@@ -102,6 +103,25 @@ static int rd_s16(const unsigned char *b, unsigned int a)
     int v = ((int)b[a ^ BO8] << 8) | (int)b[(a + 1) ^ BO8];
     if (v & 0x8000) v -= 0x10000;
     return v;
+}
+
+/* DMEM accessors with the hardware's 12-bit per-byte address wrap: the
+ * audio service reads its state pointer from DMEM 0x10, which in a
+ * graphics task holds the viewport's invw factor, and the RSP simply
+ * wraps the resulting wild offsets inside DMEM (the LLE runs the same
+ * command lists without complaint) */
+static int rd_s16d(const unsigned char *b, unsigned int a)
+{
+    int v = ((int)b[(a & 0xfffu) ^ BO8] << 8)
+          | (int)b[((a + 1u) & 0xfffu) ^ BO8];
+    if (v & 0x8000) v -= 0x10000;
+    return v;
+}
+
+static void wr_s16d(unsigned char *b, unsigned int a, int v)
+{
+    b[(a & 0xfffu) ^ BO8] = (unsigned char)((v >> 8) & 0xff);
+    b[((a + 1u) & 0xfffu) ^ BO8] = (unsigned char)(v & 0xff);
 }
 
 static void wr_s16(unsigned char *b, unsigned int a, int v)
@@ -871,10 +891,10 @@ static void zb_audio2(unsigned int w0, unsigned int w1)
             float ip;
             float fp = (float)fabs((double)modff(val, &ip));
             int index = ((int)ip) << 1;
-            int v9  = rd_s16(s_dmem, 0x30u + (unsigned int)index);
-            int v10 = rd_s16(s_dmem, 0x32u + (unsigned int)index);
+            int v9  = rd_s16d(s_dmem, 0x30u + (unsigned int)index);
+            int v10 = rd_s16d(s_dmem, 0x32u + (unsigned int)index);
             int v12 = (short)(v10 - v9);
-            int v13 = rd_s16(s_dmem, dst);
+            int v13 = rd_s16d(s_dmem, dst);
             for (k = 0; k < 2; k++)
             {
                 int vk = (k == 0) ? v11_0 : v11_1;
@@ -884,7 +904,7 @@ static void zb_audio2(unsigned int w0, unsigned int w1)
                 res1 = (long)vk * (long)res3;
                 res2 = (long)v13 << 16;
                 res3 = (int)(short)((res2 + res1) >> 16);
-                wr_s16(s_dmem, dst, res3);
+                wr_s16d(s_dmem, dst, res3);
                 dst += 2u;
             }
         }
@@ -954,11 +974,11 @@ static void zb_audio4(unsigned int w0, unsigned int w1)
                 res2 = (long)v1 * (long)zb.audio_table[index][i]
                      + (long)v2 * (long)zb.audio_table[index + 1][i];
                 out = (int)((res1 * 0x20l + res2 * 0x20l) >> 16);
-                wr_s16(s_dmem, dst + (unsigned int)((i ^ 1) << 1),
+                wr_s16d(s_dmem, dst + (unsigned int)((i ^ 1) << 1),
                        (int)(short)out);
             }
-            v1 = rd_s16(s_dmem, dst + (unsigned int)((0x6 ^ 0x1) << 1));
-            v2 = rd_s16(s_dmem, dst + (unsigned int)((0x7 ^ 0x1) << 1));
+            v1 = rd_s16d(s_dmem, dst + (unsigned int)((0x6 ^ 0x1) << 1));
+            v2 = rd_s16d(s_dmem, dst + (unsigned int)((0x7 ^ 0x1) << 1));
             dst += 16u;
         }
     }
