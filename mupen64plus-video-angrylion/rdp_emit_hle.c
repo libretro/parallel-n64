@@ -81,6 +81,52 @@ static void fifo_flush_to_rdp(RdpFifo *f)
 }
 
 
+/* The ZSortBOSS microcode streams its RDP commands through a ring in
+ * guest RDRAM at the OSTask's output_buff (the boot stub loads DMEM
+ * 0xfe8 into the write cursor and points DPC_START/END at it; the
+ * resident flush at IMEM 0x674 DMAs the DMEM 0xc20 staging block out,
+ * advances DPC_END, and wraps by resetting to the base against the
+ * DPC busy/current handshakes). The game's boot code observes that
+ * ring -- with the walker keeping commands in a host-side fifo the
+ * observation fails and the title boots into a degraded renderer. Write
+ * the emitted stream through the guest ring and hand angrylion the
+ * guest addresses, exactly as the microcode does. */
+static unsigned int s_zb_ring_base;
+static unsigned int s_zb_ring_end;
+static unsigned int s_zb_ring_pos;
+static int s_zb_ring_live;
+
+static void zb_ring_flush_to_rdp(RdpFifo *f)
+{
+    unsigned char *rdram;
+    unsigned int   i, need;
+    if (f->used == 0)
+        return;
+    if (!s_zb_ring_live)
+    {
+        fifo_flush_to_rdp(f);
+        return;
+    }
+    rdram = s_backend->get_rdram();
+    need = f->used;
+    if (s_zb_ring_pos + need > s_zb_ring_end)
+        s_zb_ring_pos = s_zb_ring_base;    /* the wrap resets to base */
+    if (s_zb_ring_pos + need > s_zb_ring_end)
+    {
+        /* a single batch larger than the ring cannot follow the
+         * microcode's protocol; fall back to the host fifo */
+        fifo_flush_to_rdp(f);
+        return;
+    }
+    for (i = 0; i < need; i++)
+        rdram[(s_zb_ring_pos + i) ^ 3u] =
+            ((const unsigned char *)f->storage)[i ^ 3u];
+    if (s_backend->submit)
+        s_backend->submit(0, s_zb_ring_pos, need);
+    s_zb_ring_pos += need;
+    f->used = 0;
+}
+
 static int gsp_params_at_task_start;
 
 /* F3DEX (v1) family classifier: 0 = not this family, 1 = F3D vertex family,
@@ -1314,10 +1360,33 @@ int angrylion_zboss_dlist(int resume, unsigned int *sp_status)
 
     fifo_base = rdram_size - HLE_FIFO_CAP;
     rdp_fifo_init(&s_fifo, s_fifo_storage, fifo_base, HLE_FIFO_CAP);
-    s_fifo.flush = fifo_flush_to_rdp;
+    s_fifo.flush = zb_ring_flush_to_rdp;
 
     if (!resume)
+    {
+        unsigned int rb, re;
         rdp_fifo_fullsync_reset();
+        rb = ((unsigned int)dmem[0xfe8 ^ 3u] << 24)
+           | ((unsigned int)dmem[0xfe9 ^ 3u] << 16)
+           | ((unsigned int)dmem[0xfea ^ 3u] << 8)
+           |  (unsigned int)dmem[0xfeb ^ 3u];
+        re = ((unsigned int)dmem[0xfec ^ 3u] << 24)
+           | ((unsigned int)dmem[0xfed ^ 3u] << 16)
+           | ((unsigned int)dmem[0xfee ^ 3u] << 8)
+           |  (unsigned int)dmem[0xfef ^ 3u];
+        rb &= 0x00ffffffu;
+        re &= 0x00ffffffu;
+        if (rb != 0 && re > rb && re <= rdram_size)
+        {
+            s_zb_ring_base = rb;
+            s_zb_ring_end  = re;
+            s_zb_ring_pos  = rb;   /* the boot stub reloads the cursor
+                                    * from the header every task */
+            s_zb_ring_live = 1;
+        }
+        else
+            s_zb_ring_live = 0;
+    }
 
     r = zboss_run(rdram, rdram_size, dmem, &s_fifo,
                   resume ? ZBOSS_OP_RESUME : ZBOSS_OP_FRESH, sp_status);
@@ -1330,6 +1399,6 @@ int angrylion_zboss_dlist(int resume, unsigned int *sp_status)
         rdp_fifo_append(&s_fifo, sync, 2);
     }
 
-    fifo_flush_to_rdp(&s_fifo);
+    zb_ring_flush_to_rdp(&s_fifo);
     return r;
 }

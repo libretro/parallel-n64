@@ -52,6 +52,13 @@ static void al_hle_submit(const unsigned char *storage,
     *dp[0] = base_byte_addr;                 /* DPC_START   */
     *dp[2] = base_byte_addr;                 /* DPC_CURRENT */
     *dp[1] = base_byte_addr + len_bytes;     /* DPC_END     */
+    if (storage == 0)
+    {
+        /* commands already written through guest RDRAM (the ZSortBOSS
+         * ring): fetch them the way the real DP does */
+        n64video_process_list();
+        return;
+    }
     n64video_set_hle_cmd_buffer((const unsigned int *)storage,
                                 base_byte_addr, len_bytes);
     n64video_process_list();
