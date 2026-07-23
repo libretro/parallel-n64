@@ -385,24 +385,31 @@ void do_SP_Task(struct rsp_core* sp)
             if (sp->dp->dpc_regs[DPC_STATUS_REG] & DPC_STATUS_FREEZE) {
                 sp->dp->do_on_unfreeze |= DELAY_DP_INT;
             } else {
-                /* Model the DP completion time from the work submitted:
-                 * BOSS Game Studios titles measure the interval to the
-                 * DP interrupt during boot (three samples against a
-                 * floor around 0x2000 count units) and leave the 3D
-                 * renderer unregistered when the RDP looks impossibly
-                 * fast, which a fixed forward delay does. The walker
-                 * counts the RDP command bytes it emitted for the
-                 * task; scale them into cycles on top of the base. */
-                extern unsigned int angrylion_zboss_task_bytes;
-                unsigned int dp_delay = 4000;
-                if (angrylion_zboss_task_bytes != 0)
-                {
-                    dp_delay += angrylion_zboss_task_bytes * 16u;
-                    if (dp_delay > 300000)
-                        dp_delay = 300000;
-                }
+                /* Defer the DP interrupt past the submitting task:
+                 * BOSS Game Studios titles measure the interval during
+                 * boot (three samples against a floor around 0x2000
+                 * count units) and leave the 3D renderer unregistered
+                 * when the RDP looks impossibly fast, which a same
+                 * cycle raise does.
+                 *
+                 * The interval stays fixed. Scaling it by the emitted
+                 * byte count -- which this modelled once -- reads well
+                 * but measures badly: the intro movie drives a
+                 * persistent streaming task whose per frame handshakes
+                 * the CPU paces, and stretching the completion of the
+                 * large submissions around it moved the microcode's
+                 * park and release off the CPU's cadence. Sampling the
+                 * task dispatches per field across the movie handover
+                 * (World Driver Championship, fields 256 to 260)
+                 * against the interpreter puts the scaled model at
+                 * 803/808/610 where the reference runs 802/805/740,
+                 * and the field the reference spends entirely in the
+                 * server's spin does not happen at all; the fixed
+                 * interval reproduces 802/805/740 and the game keeps
+                 * feeding the movie instead of dropping into the
+                 * garbage submission that followed. */
                 cp0_update_count(sp->mi->r4300);
-                add_interrupt_event(&sp->mi->r4300->cp0, DP_INT, dp_delay);
+                add_interrupt_event(&sp->mi->r4300->cp0, DP_INT, 4000);
             }
         }
         sp_delay_time = 1000;

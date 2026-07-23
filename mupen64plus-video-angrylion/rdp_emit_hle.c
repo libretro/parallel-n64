@@ -100,7 +100,6 @@ static int s_zb_ring_live;
  * core to model the DP completion time (the boot calibration measures
  * the interval to the DP interrupt; a fixed forward delay reads as an
  * impossibly fast RDP and fails the measurement) */
-unsigned int angrylion_zboss_task_bytes;
 
 static void zb_ring_flush_to_rdp(RdpFifo *f)
 {
@@ -110,13 +109,11 @@ static void zb_ring_flush_to_rdp(RdpFifo *f)
         return;
     if (!s_zb_ring_live)
     {
-        angrylion_zboss_task_bytes += f->used;
         fifo_flush_to_rdp(f);
         return;
     }
     rdram = s_backend->get_rdram();
     need = f->used;
-    angrylion_zboss_task_bytes += need;
     if (s_zb_ring_pos + need > s_zb_ring_end)
         s_zb_ring_pos = s_zb_ring_base;    /* the wrap resets to base */
     if (s_zb_ring_pos + need > s_zb_ring_end)
@@ -1380,7 +1377,6 @@ int angrylion_zboss_dlist(int resume, unsigned int *sp_status)
     {
         unsigned int rb, re;
         rdp_fifo_fullsync_reset();
-        angrylion_zboss_task_bytes = 0;
         rb = ((unsigned int)dmem[0xfe8 ^ 3u] << 24)
            | ((unsigned int)dmem[0xfe9 ^ 3u] << 16)
            | ((unsigned int)dmem[0xfea ^ 3u] << 8)
