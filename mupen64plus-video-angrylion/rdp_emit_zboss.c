@@ -339,92 +339,17 @@ static void zb_emit_tri(const RspTriVtx *a, const RspTriVtx *b,
 {
     int32_t cmd[GSP_ZB_TRI_WORDS];
     int nw;
-    int ymin_v, ymax_v, yl, yh;
-    long area2 = (long)(b->x - a->x) * (long)(c->y - a->y)
-               - (long)(b->y - a->y) * (long)(c->x - a->x);
-    if (area2 == 0)
-        return;
     nw = rsp_tri_write(cmd, a, b, c,
                        1 /*textured*/, 0 /*z*/, 1 /*shaded*/, 1 /*smooth*/,
                        zb.tri_tile, zb.tri_level,
                        0x4000, 0x0008, (int32_t)0xffffffff /*frac*/, 0x01cc);
     if (nw <= 0)
         return;
-    ymin_v = a->y; if (b->y < ymin_v) ymin_v = b->y;
-    if (c->y < ymin_v) ymin_v = c->y;
-    ymax_v = a->y; if (b->y > ymax_v) ymax_v = b->y;
-    if (c->y > ymax_v) ymax_v = c->y;
-    yl = (int)(cmd[0] & 0x3fff);  if (yl & 0x2000) yl -= 0x4000;
-    yh = (int)(cmd[1] & 0x3fff);  if (yh & 0x2000) yh -= 0x4000;
-    if (yh < ymin_v - 4 || yl > ymax_v + 4)
-        return;
     /* the microcode assembles the command byte as the bare RDP opcode
      * (IMEM 0xb84-0xb94: tile/level halfword OR the LFT bit) without
      * the 0xc0 prefix the F3DEX2-family writer applies */
     cmd[0] &= (int32_t)0x3fffffffl;
     rdp_fifo_append(s_fifo, cmd, nw);
-}
-
-/* clip one triangle to the guard band and emit the surviving fan */
-static void zb_clip_emit(const RspTriVtx *a, const RspTriVtx *b,
-                         const RspTriVtx *c)
-{
-    static const int gmin = -(64 << 2);
-    static const int gmax_x = (704 << 2);
-    static const int gmax_y = (544 << 2);
-    RspTriVtx poly[10], tmp[10];
-    unsigned int pn, tn, k2;
-    int pass;
-    poly[0] = *a;
-    poly[1] = *b;
-    poly[2] = *c;
-    pn = 3;
-    for (pass = 0; pass < 4 && pn >= 3u; pass++)
-    {
-        int lim  = (pass == 0 || pass == 2) ? gmin
-                 : (pass == 1) ? gmax_y : gmax_x;
-        int usey = (pass < 2);
-        tn = 0;
-        for (k2 = 0; k2 < pn; k2++)
-        {
-            const RspTriVtx *p = &poly[k2];
-            const RspTriVtx *q = &poly[(k2 + 1u) % pn];
-            int ca = usey ? p->y : p->x;
-            int cb = usey ? q->y : q->x;
-            int ina = (pass == 0 || pass == 2) ? (ca >= lim) : (ca <= lim);
-            int inb = (pass == 0 || pass == 2) ? (cb >= lim) : (cb <= lim);
-            if (ina)
-                tmp[tn++] = *p;
-            if (ina != inb)
-            {
-                RspTriVtx w;
-                long num = (long)(lim - ca);
-                long den = (long)(cb - ca);
-                long t2 = den ? ((num << 16) / den) : 0;
-                w.x = (int16_t)(p->x + (int)(((long)(q->x - p->x) * t2) >> 16));
-                w.y = (int16_t)(p->y + (int)(((long)(q->y - p->y) * t2) >> 16));
-                if (usey) w.y = (int16_t)lim; else w.x = (int16_t)lim;
-                w.z = 0;
-                w.r = p->r + (int32_t)(((long)(q->r - p->r) * t2) >> 16);
-                w.g = p->g + (int32_t)(((long)(q->g - p->g) * t2) >> 16);
-                w.b = p->b + (int32_t)(((long)(q->b - p->b) * t2) >> 16);
-                w.a = p->a + (int32_t)(((long)(q->a - p->a) * t2) >> 16);
-                w.s = p->s + (int32_t)(((long)(q->s - p->s) * t2) >> 16);
-                w.t = p->t + (int32_t)(((long)(q->t - p->t) * t2) >> 16);
-                w.invw = p->invw
-                       + (int32_t)(((long)(q->invw - p->invw) * t2) >> 16);
-                w.pw = zb_calc_invw(w.invw);
-                w.flat2d = 0;
-                if (tn < 10u)
-                    tmp[tn++] = w;
-            }
-        }
-        for (k2 = 0; k2 < tn && k2 < 10u; k2++)
-            poly[k2] = tmp[k2];
-        pn = (tn <= 10u) ? tn : 10u;
-    }
-    for (k2 = 1; k2 + 1u < pn; k2++)
-        zb_emit_tri(&poly[0], &poly[k2], &poly[k2 + 1u]);
 }
 
 static void zb_draw_object(unsigned int addr, unsigned int type)
@@ -482,11 +407,11 @@ static void zb_draw_object(unsigned int addr, unsigned int type)
      * walker showed every quad split along the other diagonal). */
     if (vnum == 4u)
     {
-        zb_clip_emit(&v[1], &v[2], &v[3]);
-        zb_clip_emit(&v[0], &v[1], &v[2]);
+        zb_emit_tri(&v[1], &v[2], &v[3]);
+        zb_emit_tri(&v[0], &v[1], &v[2]);
     }
     else
-        zb_clip_emit(&v[0], &v[1], &v[2]);
+        zb_emit_tri(&v[0], &v[1], &v[2]);
 }
 
 
@@ -1085,6 +1010,7 @@ int zboss_run(unsigned char *rdram, unsigned int rdram_size,
         zb.obj_chain2 = 0;
         zb.switch_req = 0;
         rsp_tri_set_zboss_attr(1);
+        rsp_set_keep_degenerate(1);
         zb.active = 1;
         zb.wait_kind = ZB_WAIT_NONE;
         zb.maindl_done = 0;

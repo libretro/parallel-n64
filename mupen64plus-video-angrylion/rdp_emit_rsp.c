@@ -2384,7 +2384,35 @@ int rsp_tri_write(int32_t *ew,
     int32_t inv_dy_lm_32;
     int32_t mh_x, mh_y, lh_x, lh_y, hl_y, hm_x, lm_x, lm_y;
 
-    if (s_rs_lut_sort)
+    if (s_tri_attr_zboss)
+    {
+        /* The ZSortBOSS y-sort network (IMEM 0x904..0x94c), a
+         * vlt/vge/vmrg ladder whose tie behavior is deterministic:
+         * every VCO the invw-maximum thread's vsubc sets is consumed
+         * and cleared by that thread's own vge before the next y
+         * compare runs, so per the VLT/VGE flag rules a vlt resolves
+         * an equal-y tie to VT and a vge resolves it to VS. Sorting
+         * with plain minima loses that: the 8 residual triangles in
+         * the race window all carried equal quarter-pixel y pairs and
+         * swapped their M/L (or H/M) roles, flipping LFT and the edge
+         * assignment. */
+        int32_t y1 = S16(v1c->y), y2 = S16(v2c->y), y3 = S16(v3c->y);
+        int vcc1 = (y1 >= y2);
+        int32_t min12 = vcc1 ? y2 : y1;
+        int32_t max12 = vcc1 ? y1 : y2;
+        const RspTriVtx *min12v = vcc1 ? v2c : v1c;    /* vmrg v6 */
+        const RspTriVtx *max12v = vcc1 ? v1c : v2c;    /* vmrg v5 */
+        int vcc2 = (min12 >= y3);
+        const RspTriVtx *midc = vcc2 ? min12v : v3c;   /* vmrg v7 */
+        int32_t t2 = (min12 >= y3) ? min12 : y3;       /* vge v10 */
+        int vcc3;
+        vh = vcc2 ? v3c : min12v;
+        vcc3 = (max12 >= t2);
+        vm = vcc3 ? midc : max12v;
+        vl = vcc3 ? max12v : midc;
+        tmpv = 0; (void)tmpv;
+    }
+    else if (s_rs_lut_sort)
     {
         /* Rogue Squadron's writer sorts with three strict slt compares
          * into the DMEM 0xaa/0xb1/0xb8 index tables (live IMEM
