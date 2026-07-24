@@ -669,9 +669,22 @@ static void zb_mult_mpmtx(unsigned int w0, unsigned int w1)
              * three: the reference's loaded matrix carries
              * 0x0000daf7 where the block in memory reads 0x001b5ee5,
              * and clipping against the wider value flags every vertex
-             * as outside on all six planes */
-            acc  = zb_p_udn(zb_mcf(mb, 3, j), 1)
-                 + zb_p_udh(zb_mci(mb, 3, j), 1);
+             * as outside on all six planes.
+             *
+             * the z translation is the mirror of that. The projection
+             * matrix carries a 1/32 scale in its z column, and the
+             * concatenation folds that scale through the whole column,
+             * the translation row included; but the transform adds the
+             * z translation at full scale, so it is lifted back up by
+             * five here. Without this the transformed z is a thirty-
+             * second of its true value, and vertices near the near
+             * plane clip on the wrong side. */
+            if (j == 2)
+                acc = ((int64_t)zb_p_udn(zb_mcf(mb, 3, j), 1)
+                     + (int64_t)zb_p_udh(zb_mci(mb, 3, j), 1)) << 5;
+            else
+                acc = zb_p_udn(zb_mcf(mb, 3, j), 1)
+                    + zb_p_udh(zb_mci(mb, 3, j), 1);
             acc += zb_p_udn(zb_mcf(mb, 1, j), co[1])
                  + zb_p_udh(zb_mci(mb, 1, j), co[1]);
             acc += zb_p_udn(zb_mcf(mb, 2, j), co[2])
