@@ -698,7 +698,18 @@ static void zb_mult_mpmtx(unsigned int w0, unsigned int w1)
         if (v32[1] <= -v32[3]) cc |= 0x02u;
         if (v32[2] <= -v32[3]) cc |= 0x04u;
 
-        /* zSortVDest, 16 bytes: sy sx | invw | yi xi wi | fog cc */
+        /* zSortVDest, 16 bytes: sy sx | invw | yi xi | cc fog | wi.
+         *
+         * The clip code and the fog byte sit at +0xc and +0xd, ahead
+         * of the w term, not after it: the reference stores them with
+         * `sb r13,0xc(r27)` and `sb r8,0xd(r27)` against a record
+         * stride of 0x10 (the following vertex uses 0x1c and 0x1d).
+         * Writing the w term into those two bytes is invisible while
+         * the walk runs -- the triangle setup uses the values it just
+         * computed, never this buffer -- but the microcode hands the
+         * whole block to the game with MOVEMEM, and World Driver
+         * Championship's intro reads the clip byte back to decide
+         * whether the next frame's work is ready. */
         wr_s16(s_dmem, dst, scr[1]);           dst = (dst + 2u) & 0xfffu;
         wr_s16(s_dmem, dst, scr[0]);           dst = (dst + 2u) & 0xfffu;
         wr32(s_dmem, dst, (unsigned int)(((unsigned int)rcp_hi << 16)
@@ -706,9 +717,9 @@ static void zb_mult_mpmtx(unsigned int w0, unsigned int w1)
         dst = (dst + 4u) & 0xfffu;
         wr_s16(s_dmem, dst, ri[1]);            dst = (dst + 2u) & 0xfffu;
         wr_s16(s_dmem, dst, ri[0]);            dst = (dst + 2u) & 0xfffu;
-        wr_s16(s_dmem, dst, ri[3]);            dst = (dst + 2u) & 0xfffu;
-        s_dmem[dst ^ BO8] = (unsigned char)fog;          dst = (dst + 1u) & 0xfffu;
         s_dmem[dst ^ BO8] = (unsigned char)cc;           dst = (dst + 1u) & 0xfffu;
+        s_dmem[dst ^ BO8] = (unsigned char)fog;          dst = (dst + 1u) & 0xfffu;
+        wr_s16(s_dmem, dst, ri[3]);            dst = (dst + 2u) & 0xfffu;
     }
 }
 
