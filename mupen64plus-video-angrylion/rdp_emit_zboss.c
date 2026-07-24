@@ -194,6 +194,24 @@ static void zb_mw(unsigned int base, int i, int j, int vi, int vf)
         = (unsigned char)(vf & 0xff);
 }
 
+/* matrix element as the transform consumes it: the fourth column is
+ * scaled down by 32 relative to how it sits in memory */
+static unsigned int zb_mcw(unsigned int base, int i, int j)
+{
+    unsigned int v = ((unsigned int)ZBU16(zb_mi(base, i, j)) << 16)
+                   |  (unsigned int)ZBU16(zb_mf(base, i, j));
+    if (j == 3)
+        v = (unsigned int)(((int32_t)v) >> 5);
+    return v;
+}
+
+static int zb_mci(unsigned int base, int i, int j)
+{ return (int)(short)(zb_mcw(base, i, j) >> 16); }
+
+static int zb_mcf(unsigned int base, int i, int j)
+{ return (int)(zb_mcw(base, i, j) & 0xffffu); }
+
+
 /* ---- RDP output -------------------------------------------------------- */
 
 static void zb_emit_othermode(void)
@@ -647,13 +665,19 @@ static void zb_mult_mpmtx(unsigned int w0, unsigned int w1)
 
         for (j = 0; j < 4; j++)
         {
-            acc  = zb_p_udn(zb_mf(mb, 3, j), 1) + zb_p_udh(zb_mi(mb, 3, j), 1);
-            acc += zb_p_udn(zb_mf(mb, 1, j), co[1])
-                 + zb_p_udh(zb_mi(mb, 1, j), co[1]);
-            acc += zb_p_udn(zb_mf(mb, 2, j), co[2])
-                 + zb_p_udh(zb_mi(mb, 2, j), co[2]);
-            acc += zb_p_udn(zb_mf(mb, 0, j), co[0])
-                 + zb_p_udh(zb_mi(mb, 0, j), co[0]);
+            /* the w column is held five bits down from the other
+             * three: the reference's loaded matrix carries
+             * 0x0000daf7 where the block in memory reads 0x001b5ee5,
+             * and clipping against the wider value flags every vertex
+             * as outside on all six planes */
+            acc  = zb_p_udn(zb_mcf(mb, 3, j), 1)
+                 + zb_p_udh(zb_mci(mb, 3, j), 1);
+            acc += zb_p_udn(zb_mcf(mb, 1, j), co[1])
+                 + zb_p_udh(zb_mci(mb, 1, j), co[1]);
+            acc += zb_p_udn(zb_mcf(mb, 2, j), co[2])
+                 + zb_p_udh(zb_mci(mb, 2, j), co[2]);
+            acc += zb_p_udn(zb_mcf(mb, 0, j), co[0])
+                 + zb_p_udh(zb_mci(mb, 0, j), co[0]);
             ri[j] = zb_acc_mid(acc);
             rf[j] = zb_acc_low(acc);
             v32[j] = (int32_t)(((uint32_t)ZBU16(ri[j]) << 16)
