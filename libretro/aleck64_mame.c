@@ -149,23 +149,24 @@ struct a64_game
     const char* name;
     int e90;
     int mahjong;
+    int dpad_disabled;
     int dips;
     struct a64_file files[2];
 };
 
 static const struct a64_game a64_games[] = {
-    { "11beat",   0, 0, DIPS_GENERIC,  { { "nus-zhaj.u3",     0x0 }, { NULL, 0 } } },
-    { "starsldr", 0, 0, DIPS_STARSLDR, { { "nus-zhbj-0.u3",   0x0 }, { NULL, 0 } } },
-    { "vivdolls", 0, 0, DIPS_VIVDOLLS, { { "nus-zsaj-0.u3",   0x0 }, { NULL, 0 } } },
-    { "mayjin3",  0, 0, DIPS_GENERIC,  { { "nus-zscj-0.u3",   0x0 }, { NULL, 0 } } },
-    { "doncdoon", 0, 0, DIPS_GENERIC,  { { "ua3003-all01.u3", 0x0 }, { "ua3003-alh01.u4", 0x1000000 } } },
-    { "kurufev",  0, 0, DIPS_GENERIC,  { { "ua3088-all01.u3", 0x0 }, { "ua3088-alh04.u4", 0x1000000 } } },
-    { "twrshaft", 0, 0, DIPS_GENERIC,  { { "ua3012-all02.u3", 0x0 }, { NULL, 0 } } },
-    { "hipai",    0, 1, DIPS_HIPAI,    { { "ua2011-all02.u3", 0x0 }, { "ua2011-alh02.u4", 0x1000000 } } },
-    { "hipai2",   0, 1, DIPS_HIPAI,    { { "ua3029-all01.u3", 0x0 }, { "ua3029-alh01.u4", 0x1000000 } } },
-    { "srmvs",    0, 1, DIPS_GENERIC,  { { "nus-zsej-1.u2",   0x0 }, { NULL, 0 } } },
-    { "srmvsa",   0, 1, DIPS_GENERIC,  { { "nus-zsej-0.u2",   0x0 }, { NULL, 0 } } },
-    { "mtetrisc", 1, 0, DIPS_GENERIC,  { { "nus-zcaj.u4",     0x0 }, { NULL, 0 } } },
+    { "11beat",   0, 0, 1, DIPS_GENERIC,  { { "nus-zhaj.u3",     0x0 }, { NULL, 0 } } },
+    { "starsldr", 0, 0, 0, DIPS_STARSLDR, { { "nus-zhbj-0.u3",   0x0 }, { NULL, 0 } } },
+    { "vivdolls", 0, 0, 0, DIPS_VIVDOLLS, { { "nus-zsaj-0.u3",   0x0 }, { NULL, 0 } } },
+    { "mayjin3",  0, 0, 0, DIPS_GENERIC,  { { "nus-zscj-0.u3",   0x0 }, { NULL, 0 } } },
+    { "doncdoon", 0, 0, 0, DIPS_GENERIC,  { { "ua3003-all01.u3", 0x0 }, { "ua3003-alh01.u4", 0x1000000 } } },
+    { "kurufev",  0, 0, 0, DIPS_GENERIC,  { { "ua3088-all01.u3", 0x0 }, { "ua3088-alh04.u4", 0x1000000 } } },
+    { "twrshaft", 0, 0, 0, DIPS_GENERIC,  { { "ua3012-all02.u3", 0x0 }, { NULL, 0 } } },
+    { "hipai",    0, 1, 0, DIPS_HIPAI,    { { "ua2011-all02.u3", 0x0 }, { "ua2011-alh02.u4", 0x1000000 } } },
+    { "hipai2",   0, 1, 0, DIPS_HIPAI,    { { "ua3029-all01.u3", 0x0 }, { "ua3029-alh01.u4", 0x1000000 } } },
+    { "srmvs",    0, 1, 0, DIPS_GENERIC,  { { "nus-zsej-1.u2",   0x0 }, { NULL, 0 } } },
+    { "srmvsa",   0, 1, 0, DIPS_GENERIC,  { { "nus-zsej-0.u2",   0x0 }, { NULL, 0 } } },
+    { "mtetrisc", 1, 0, 0, DIPS_GENERIC,  { { "nus-zcaj.u4",     0x0 }, { NULL, 0 } } },
 };
 
 static const struct a64_game* g_game = NULL;
@@ -183,6 +184,7 @@ int aleck64_load_zip(const uint8_t* data, size_t size, uint8_t** out, size_t* ou
     g_aleck64_enabled = 0;
     g_aleck64_e90 = 0;
     g_aleck64_mahjong = 0;
+    g_aleck64_dpad_disabled = 0;
     g_game = NULL;
 
     n = zip_list(data, size, entries, A64_MAX_ENTRIES);
@@ -222,6 +224,7 @@ int aleck64_load_zip(const uint8_t* data, size_t size, uint8_t** out, size_t* ou
         g_aleck64_enabled = 1;
         g_aleck64_e90 = game->e90;
         g_aleck64_mahjong = game->mahjong;
+        g_aleck64_dpad_disabled = game->dpad_disabled;
         g_game = game;
         aleck64_apply_dips();
         *out = rom;

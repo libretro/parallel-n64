@@ -21,6 +21,7 @@
 int g_aleck64_enabled;
 int g_aleck64_e90;
 int g_aleck64_mahjong;
+int g_aleck64_dpad_disabled;
 uint8_t g_aleck64_dipswitch[2];
 retro_environment_t environ_cb; /* NULL -> aleck64_apply_dips uses defaults */
 

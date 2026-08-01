@@ -28,6 +28,7 @@
 int g_aleck64_enabled = 0;
 int g_aleck64_e90 = 0;
 int g_aleck64_mahjong = 0;
+int g_aleck64_dpad_disabled = 0;
 uint8_t g_aleck64_dipswitch[2] = { 0xff, 0xff };
 
 extern retro_input_state_t input_cb;

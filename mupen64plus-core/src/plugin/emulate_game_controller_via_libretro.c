@@ -23,6 +23,7 @@
 #include "plugin/plugin.h"
 
 #include "api/m64p_plugin.h"
+#include "device/aleck64/aleck64.h"
 #include "device/controllers/game_controller.h"
 #include <libretro.h>
 #include <stdio.h>
@@ -391,6 +392,17 @@ void inputGetKeys_default( int Control, BUTTONS *Keys )
    Keys->L_DPAD       = !!((ret & (1 << RETRO_DEVICE_ID_JOYPAD_LEFT)));
    Keys->D_DPAD       = !!((ret & (1 << RETRO_DEVICE_ID_JOYPAD_DOWN)));
    Keys->U_DPAD       = !!((ret & (1 << RETRO_DEVICE_ID_JOYPAD_UP)));
+
+   /* Some Aleck64 games (Eleven Beat) probe the pad's d-pad to detect the
+    * cabinet joystick type and error out unless all four bits read held,
+    * like ares' dpadDisabled game config does. */
+   if (g_aleck64_dpad_disabled)
+   {
+      Keys->R_DPAD = 1;
+      Keys->L_DPAD = 1;
+      Keys->D_DPAD = 1;
+      Keys->U_DPAD = 1;
+   }
    Keys->START_BUTTON = !!((ret & (1 << RETRO_DEVICE_ID_JOYPAD_START)));
    Keys->Z_TRIG       = !!((ret & (1 << RETRO_DEVICE_ID_JOYPAD_L2)));
 
