@@ -1012,8 +1012,10 @@ void retro_get_system_info(struct retro_system_info *info)
    info->library_name = "ParaLLEl N64";
    info->library_version = "1.0" GIT_VERSION;
    info->valid_extensions = "n64|v64|z64|bin|u1|ndd|zip";
-   info->need_fullpath = false;
-   /* zips are parsed by the core itself (MAME Aleck64 sets or zipped roms) */
+   /* fullpath + block_extract: the frontend hands us the file untouched, so
+    * zips (MAME Aleck64 sets or zipped roms) are parsed by the core itself;
+    * retro_load_game reads the file when the frontend passes no data */
+   info->need_fullpath = true;
    info->block_extract = true;
 }
 
@@ -2515,32 +2517,58 @@ bool retro_load_game(const struct retro_game_info *game)
 
    g_aleck64_enabled = 0;
    {
+      const uint8_t* game_data = (const uint8_t*)game->data;
+      size_t game_size = game->size;
+      uint8_t* file_buf = NULL;
       uint8_t* zip_rom  = NULL;
       size_t zip_size = 0;
-      if (game->data != NULL && game->size >= 4 && memcmp(game->data, "PK\x03\x04", 4) == 0
-          && aleck64_load_zip(game->data, game->size, &zip_rom, &zip_size))
+
+      /* need_fullpath core: the frontend usually passes only the path */
+      if (game_data == NULL && game->path != NULL)
+      {
+         int64_t len = 0;
+         if (!filestream_read_file(game->path, (void**)&file_buf, &len) || len <= 0)
+         {
+            if (log_cb)
+               log_cb(RETRO_LOG_ERROR, "Failed to read content file: %s\n", game->path);
+            return false;
+         }
+         game_data = file_buf;
+         game_size = (size_t)len;
+      }
+
+      if (game_data == NULL)
+         return false;
+
+      if (game_data != NULL && game_size >= 4 && memcmp(game_data, "PK\x03\x04", 4) == 0
+          && aleck64_load_zip(game_data, game_size, &zip_rom, &zip_size))
       {
          cart_data = zip_rom;
          cart_size = (uint32_t)zip_size;
          if (g_aleck64_enabled)
          {
             /* ponytail: the dynarecs don't know code can live in Aleck64 SDRAM;
-             * force the pure interpreter until one of them learns about it */
-            r4300_emumode = 0;
+             * cap at the cached interpreter (its fetch and invalidation go
+             * through the patched aleck64-aware paths) until a dynarec learns
+             * about it */
+            if (r4300_emumode > 1)
+               r4300_emumode = 1;
          }
       }
-      else if (is_cartridge_rom(game->data))
+      else if (is_cartridge_rom(game_data))
       {
-         cart_data = malloc(game->size);
-         cart_size = game->size;
-         memcpy(cart_data, game->data, game->size);
+         cart_data = malloc(game_size);
+         cart_size = game_size;
+         memcpy(cart_data, game_data, game_size);
       }
       else
       {
-         disk_data = malloc(game->size);
-         disk_size = game->size;
-         memcpy(disk_data, game->data, game->size);
+         disk_data = malloc(game_size);
+         disk_size = game_size;
+         memcpy(disk_data, game_data, game_size);
       }
+
+      free(file_buf);
    }
 
    mupencorestop      = false;

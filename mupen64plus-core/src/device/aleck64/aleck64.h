@@ -62,6 +62,7 @@ struct aleck64
 extern int g_aleck64_enabled;
 extern int g_aleck64_e90;
 extern int g_aleck64_mahjong;
+extern int g_aleck64_dpad_disabled;
 /* Live dipswitch state, driven by the core options. */
 extern uint8_t g_aleck64_dipswitch[2];
 
