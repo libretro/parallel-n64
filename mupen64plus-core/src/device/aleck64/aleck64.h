@@ -22,7 +22,9 @@
 #include <stddef.h>
 #include <stdint.h>
 
-enum { ALECK64_SDRAM_SIZE = 0x400000 };
+/* MAME maps the full 8MB range as distinct RAM and mayjin3 TLB-maps all of
+ * it as one contiguous buffer; ares' 4MB+mirror corrupts that game. */
+enum { ALECK64_SDRAM_SIZE = 0x800000 };
 
 enum { MM_ALECK64_SDRAM = 0xc0000000 };
 enum { MM_ALECK64_IO    = 0xc0800000 };
