@@ -25,6 +25,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "aleck64/aleck64.h"
 #include "cart/cart.h"
 #include "cart/is_viewer.h"
 #include "controllers/game_controller.h"
@@ -112,6 +113,8 @@ struct device
     struct cart cart;
 
     struct dd_controller dd;
+
+    struct aleck64 aleck64;
 };
 
 /* Setup device "static" properties.  */

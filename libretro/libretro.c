@@ -1011,9 +1011,10 @@ void retro_get_system_info(struct retro_system_info *info)
 {
    info->library_name = "ParaLLEl N64";
    info->library_version = "1.0" GIT_VERSION;
-   info->valid_extensions = "n64|v64|z64|bin|u1|ndd";
+   info->valid_extensions = "n64|v64|z64|bin|u1|ndd|zip";
    info->need_fullpath = false;
-   info->block_extract = false;
+   /* zips are parsed by the core itself (MAME Aleck64 sets or zipped roms) */
+   info->block_extract = true;
 }
 
 /* Get the system type associated to a ROM country code. */
@@ -2509,17 +2510,34 @@ bool retro_load_game(const struct retro_game_info *game)
       }
    }
 
-   if (is_cartridge_rom(game->data))
+   g_aleck64_enabled = 0;
    {
-      cart_data = malloc(game->size);
-      cart_size = game->size;
-      memcpy(cart_data, game->data, game->size);
-   }
-   else
-   {
-      disk_data = malloc(game->size);
-      disk_size = game->size;
-      memcpy(disk_data, game->data, game->size);
+      uint8_t* zip_rom  = NULL;
+      size_t zip_size = 0;
+      if (game->data != NULL && game->size >= 4 && memcmp(game->data, "PK\x03\x04", 4) == 0
+          && aleck64_load_zip(game->data, game->size, &zip_rom, &zip_size))
+      {
+         cart_data = zip_rom;
+         cart_size = (uint32_t)zip_size;
+         if (g_aleck64_enabled)
+         {
+            /* ponytail: the dynarecs don't know code can live in Aleck64 SDRAM;
+             * force the pure interpreter until one of them learns about it */
+            r4300_emumode = 0;
+         }
+      }
+      else if (is_cartridge_rom(game->data))
+      {
+         cart_data = malloc(game->size);
+         cart_size = game->size;
+         memcpy(cart_data, game->data, game->size);
+      }
+      else
+      {
+         disk_data = malloc(game->size);
+         disk_size = game->size;
+         memcpy(disk_data, game->data, game->size);
+      }
    }
 
    mupencorestop      = false;
