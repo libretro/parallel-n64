@@ -33,6 +33,7 @@
 #include "api/m64p_types.h"
 #ifdef DBG
 #include "debugger/dbg_debugger.h"
+#include "device/aleck64/aleck64.h"
 #endif
 #include "main/main.h"
 
@@ -349,6 +350,11 @@ uint32_t *fast_mem_access(struct r4300_core* r4300, uint32_t address)
             return NULL;
     }
 
+    /* Aleck64 games run code from the arcade board SDRAM (phys 0xc0000000),
+     * which lies outside the masked 512MB N64 bus */
+    if (g_aleck64_enabled && (address - UINT32_C(0xc0000000)) < UINT32_C(0x800000))
+        return aleck64_fast_mem(address);
+
     address &= UINT32_C(0x1ffffffc);
 
     return mem_base_u32(r4300->mem->base, address);
@@ -367,7 +373,8 @@ int r4300_read_aligned_word(struct r4300_core* r4300, uint32_t address, uint32_t
         }
     }
 
-    address &= UINT32_C(0x1ffffffc);
+    if (!(g_aleck64_enabled && address >= UINT32_C(0xc0000000)))
+        address &= UINT32_C(0x1ffffffc);
 
     mem_read32(mem_get_handler(r4300->mem, address), address & ~UINT32_C(3), value);
 
@@ -393,7 +400,9 @@ int r4300_read_aligned_dword(struct r4300_core* r4300, uint32_t address, uint64_
         }
     }
 
-    address &= UINT32_C(0x1ffffffc);
+    if (!(g_aleck64_enabled && address >= UINT32_C(0xc0000000)))
+        address &= UINT32_C(0x1ffffffc);
+    address &= ~UINT32_C(3);
 
     const struct mem_handler* handler = mem_get_handler(r4300->mem, address);
     mem_read32(handler, address + 0, &w[0]);
@@ -423,7 +432,8 @@ int r4300_write_aligned_word(struct r4300_core* r4300, uint32_t address, uint32_
     invalidate_r4300_cached_code(r4300, address, 4);
     invalidate_r4300_cached_code(r4300, address ^ UINT32_C(0x20000000), 4);
 
-    address &= UINT32_C(0x1ffffffc);
+    if (!(g_aleck64_enabled && address >= UINT32_C(0xc0000000)))
+        address &= UINT32_C(0x1ffffffc);
 
     mem_write32(mem_get_handler(r4300->mem, address), address & ~UINT32_C(3), value, mask);
 
@@ -453,7 +463,9 @@ int r4300_write_aligned_dword(struct r4300_core* r4300, uint32_t address, uint64
     invalidate_r4300_cached_code(r4300, address, 8);
     invalidate_r4300_cached_code(r4300, address ^ UINT32_C(0x20000000), 8);
 
-    address &= UINT32_C(0x1ffffffc);
+    if (!(g_aleck64_enabled && address >= UINT32_C(0xc0000000)))
+        address &= UINT32_C(0x1ffffffc);
+    address &= ~UINT32_C(3);
 
     const struct mem_handler* handler = mem_get_handler(r4300->mem, address);
     mem_write32(handler, address + 0, value >> 32,      mask >> 32);

@@ -23,6 +23,7 @@
 extern unsigned int IgnoreTLBExceptions;
 
 #include "api/m64p_types.h"
+#include "device/aleck64/aleck64.h"
 #include "device/r4300/r4300_core.h"
 #include "device/rdram/rdram.h"
 
@@ -78,7 +79,8 @@ void tlb_map(struct tlb* tlb, size_t entry)
     {
         if (e->start_even < e->end_even &&
             !(e->start_even >= 0x80000000 && e->end_even < 0xC0000000) &&
-            e->phys_even < 0x20000000)
+            (e->phys_even < 0x20000000 ||
+             (g_aleck64_enabled && e->phys_even >= UINT32_C(0xc0000000))))
         {
             for (i=e->start_even;i<e->end_even;i+=0x1000)
                 tlb->LUT_r[i>>12] = UINT32_C(0x80000000) | (e->phys_even + (i - e->start_even) + 0xFFF);
@@ -92,7 +94,8 @@ void tlb_map(struct tlb* tlb, size_t entry)
     {
         if (e->start_odd < e->end_odd &&
             !(e->start_odd >= 0x80000000 && e->end_odd < 0xC0000000) &&
-            e->phys_odd < 0x20000000)
+            (e->phys_odd < 0x20000000 ||
+             (g_aleck64_enabled && e->phys_odd >= UINT32_C(0xc0000000))))
         {
             for (i=e->start_odd;i<e->end_odd;i+=0x1000)
                 tlb->LUT_r[i>>12] = UINT32_C(0x80000000) | (e->phys_odd + (i - e->start_odd) + 0xFFF);

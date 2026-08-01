@@ -267,8 +267,17 @@ void init_device(struct device* dev,
         { A(MM_DOM2_ADDR2, 0x1ffff), M64P_MEM_FLASHRAMSTAT, { &dev->cart, RW(cart_dom2) }, { NULL, 0x1ffff, 0} },
         { A(MM_IS_VIEWER, 0xfff), M64P_MEM_NOTHING, { &dev->is, RW(is_viewer) }, { NULL, 0xfff, 0 } },
         { A(MM_CART_ROM, rom_size-1), M64P_MEM_ROM, { &dev->cart.cart_rom, RW(cart_rom) }, { NULL, rom_size-1, RETRO_MEMDESC_CONST } },
-        { A(MM_PIF_MEM, 0xffff), M64P_MEM_PIF, { &dev->pif, RW(pif_mem) }, { NULL, 0xffff, 0 } }
+        { A(MM_PIF_MEM, 0xffff), M64P_MEM_PIF, { &dev->pif, RW(pif_mem) }, { NULL, 0xffff, 0 } },
+        /* Aleck64 arcade board: replaced below when an Aleck64 romset is loaded */
+        { A(MM_ALECK64_SDRAM, 0x7fffff), M64P_MEM_NOTHING, { NULL, RW(open_bus) }, { NULL, 0, 0 } },
+        { A(MM_ALECK64_IO, 0xffff), M64P_MEM_NOTHING, { NULL, RW(open_bus) }, { NULL, 0, 0 } }
     };
+
+    if (g_aleck64_enabled) {
+        mappings[ARRAY_SIZE(mappings)-2] = (struct mem_mapping){ A(MM_ALECK64_SDRAM, 0x7fffff), M64P_MEM_NOTHING, { &dev->aleck64, RW(aleck64_sdram) }, { NULL, 0, 0 } };
+        mappings[ARRAY_SIZE(mappings)-1] = (struct mem_mapping){ A(MM_ALECK64_IO, 0xffff), M64P_MEM_NOTHING, { &dev->aleck64, RW(aleck64_io) }, { NULL, 0, 0 } };
+        init_aleck64(&dev->aleck64);
+    }
 
     /* init and map DD if present */
     if (dd_rom_size > 0) {
@@ -353,6 +362,9 @@ void poweron_device(struct device* dev)
     poweron_pif(&dev->pif);
 
     poweron_cart(&dev->cart);
+
+    if (g_aleck64_enabled)
+        poweron_aleck64(&dev->aleck64);
 
     poweron_is_viewer(&dev->is);
 
