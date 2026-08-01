@@ -65,10 +65,227 @@ struct retro_core_option_v2_category option_cats_us[] = {
       "Glide64",
       "Configure Glide64 Options."
    },
+   {
+      "aleck64",
+      "Aleck64",
+      "Aleck64 arcade dipswitches (only used by Aleck64 MAME romsets)."
+   },
    { NULL, NULL, NULL },
 };
 
 struct retro_core_option_v2_definition option_defs_us[] = {
+    {
+        CORE_NAME "-aleck64-testmode",
+        "Aleck64: Test Mode",
+        "Test Mode",
+        "Boot the arcade board's test menu instead of the game.",
+        NULL,
+        "aleck64",
+        {
+            {"disabled", NULL},
+            {"enabled", NULL},
+            { NULL, NULL },
+        },
+        "disabled"
+    },
+    {
+        CORE_NAME "-aleck64-coinage",
+        "Aleck64: Coinage",
+        "Coinage",
+        "Coins needed per credit (Star Soldier, Vivid Dolls, Hi Pai Paradise 1/2).",
+        NULL,
+        "aleck64",
+        {
+            {"1 Coin 1 Credit", NULL},
+            {"1 Coin 2 Credits", NULL},
+            {"1 Coin 3 Credits", NULL},
+            {"1 Coin 4 Credits", NULL},
+            {"2 Coins 1 Credit", NULL},
+            {"3 Coins 1 Credit", NULL},
+            {"4 Coins 1 Credit", NULL},
+            {"5 Coins 1 Credit", NULL},
+            { NULL, NULL },
+        },
+        "1 Coin 1 Credit"
+    },
+    {
+        CORE_NAME "-aleck64-difficulty",
+        "Aleck64: Difficulty",
+        "Difficulty",
+        "Game difficulty (Star Soldier, Vivid Dolls, Hi Pai Paradise 1/2).",
+        NULL,
+        "aleck64",
+        {
+            {"Normal", NULL},
+            {"Easy", NULL},
+            {"Hard", NULL},
+            {"Hardest", NULL},
+            { NULL, NULL },
+        },
+        "Normal"
+    },
+    {
+        CORE_NAME "-aleck64-demosound",
+        "Aleck64: Demo Sounds",
+        "Demo Sounds",
+        "Play sound in attract mode (Star Soldier, Hi Pai Paradise 1/2).",
+        NULL,
+        "aleck64",
+        {
+            {"enabled", NULL},
+            {"disabled", NULL},
+            { NULL, NULL },
+        },
+        "enabled"
+    },
+    {
+        CORE_NAME "-aleck64-language",
+        "Aleck64: Language (Star Soldier)",
+        "Language (Star Soldier)",
+        "In-game language for Star Soldier: Vanishing Earth.",
+        NULL,
+        "aleck64",
+        {
+            {"English", NULL},
+            {"Japanese", NULL},
+            { NULL, NULL },
+        },
+        "English"
+    },
+    {
+        CORE_NAME "-aleck64-players",
+        "Aleck64: Players (Star Soldier)",
+        "Players (Star Soldier)",
+        "Number of players supported by the cabinet.",
+        NULL,
+        "aleck64",
+        {
+            {"3", NULL},
+            {"4", NULL},
+            {"2", NULL},
+            {"1", NULL},
+            { NULL, NULL },
+        },
+        "3"
+    },
+    {
+        CORE_NAME "-aleck64-joystick",
+        "Aleck64: Joystick Type (Star Soldier)",
+        "Joystick Type (Star Soldier)",
+        "Cabinet joystick type.",
+        NULL,
+        "aleck64",
+        {
+            {"2D", NULL},
+            {"3D", NULL},
+            { NULL, NULL },
+        },
+        "2D"
+    },
+    {
+        CORE_NAME "-aleck64-autolevel",
+        "Aleck64: Auto Level (Star Soldier)",
+        "Auto Level (Star Soldier)",
+        "Auto level speed.",
+        NULL,
+        "aleck64",
+        {
+            {"Normal", NULL},
+            {"Slow", NULL},
+            {"Fast1", NULL},
+            {"Fast2", NULL},
+            { NULL, NULL },
+        },
+        "Normal"
+    },
+    {
+        CORE_NAME "-aleck64-rapid",
+        "Aleck64: Rapid Fire (Star Soldier)",
+        "Rapid Fire (Star Soldier)",
+        "Enable rapid fire.",
+        NULL,
+        "aleck64",
+        {
+            {"disabled", NULL},
+            {"enabled", NULL},
+            { NULL, NULL },
+        },
+        "disabled"
+    },
+    {
+        CORE_NAME "-aleck64-extend",
+        "Aleck64: Extend (Star Soldier)",
+        "Extend (Star Soldier)",
+        "Score for an extra life.",
+        NULL,
+        "aleck64",
+        {
+            {"30,000,000", NULL},
+            {"50,000,000", NULL},
+            {"70,000,000", NULL},
+            {"None", NULL},
+            { NULL, NULL },
+        },
+        "30,000,000"
+    },
+    {
+        CORE_NAME "-aleck64-lives",
+        "Aleck64: Lives (Vivid Dolls)",
+        "Lives (Vivid Dolls)",
+        "Number of lives.",
+        NULL,
+        "aleck64",
+        {
+            {"4", NULL},
+            {"3", NULL},
+            {"2", NULL},
+            {"1", NULL},
+            { NULL, NULL },
+        },
+        "4"
+    },
+    {
+        CORE_NAME "-aleck64-freeplay",
+        "Aleck64: Free Play (Hi Pai Paradise)",
+        "Free Play (Hi Pai Paradise)",
+        "Play without credits.",
+        NULL,
+        "aleck64",
+        {
+            {"disabled", NULL},
+            {"enabled", NULL},
+            { NULL, NULL },
+        },
+        "disabled"
+    },
+    {
+        CORE_NAME "-aleck64-continue",
+        "Aleck64: Allow Continue (Hi Pai Paradise)",
+        "Allow Continue (Hi Pai Paradise)",
+        "Allow continuing after a loss.",
+        NULL,
+        "aleck64",
+        {
+            {"disabled", NULL},
+            {"enabled", NULL},
+            { NULL, NULL },
+        },
+        "disabled"
+    },
+    {
+        CORE_NAME "-aleck64-kuitan",
+        "Aleck64: Kuitan (Hi Pai Paradise)",
+        "Kuitan (Hi Pai Paradise)",
+        "Mahjong kuitan rule.",
+        NULL,
+        "aleck64",
+        {
+            {"disabled", NULL},
+            {"enabled", NULL},
+            { NULL, NULL },
+        },
+        "disabled"
+    },
     {
         CORE_NAME "-cpucore",
         "CPU Core",

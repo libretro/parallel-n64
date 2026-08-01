@@ -55,12 +55,14 @@ enum { MM_ALECK64_IO    = 0xc0800000 };
 struct aleck64
 {
     uint32_t* sdram;
-    uint8_t dipswitch[2];
+    uint8_t mahjong_row;
 };
 
 /* Set by the libretro frontend when a MAME Aleck64 romset is loaded. */
 extern int g_aleck64_enabled;
 extern int g_aleck64_e90;
+extern int g_aleck64_mahjong;
+/* Live dipswitch state, driven by the core options. */
 extern uint8_t g_aleck64_dipswitch[2];
 
 void init_aleck64(struct aleck64* a64);
@@ -76,5 +78,6 @@ void write_aleck64_io(void* opaque, uint32_t address, uint32_t value, uint32_t m
 
 /* implemented in libretro/aleck64_mame.c */
 int aleck64_load_zip(const uint8_t* data, size_t size, uint8_t** out, size_t* out_size);
+void aleck64_apply_dips(void);
 
 #endif

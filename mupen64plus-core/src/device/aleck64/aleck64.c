@@ -27,6 +27,7 @@
 
 int g_aleck64_enabled = 0;
 int g_aleck64_e90 = 0;
+int g_aleck64_mahjong = 0;
 uint8_t g_aleck64_dipswitch[2] = { 0xff, 0xff };
 
 extern retro_input_state_t input_cb;
@@ -49,8 +50,7 @@ uint32_t* aleck64_fast_mem(uint32_t address)
 void poweron_aleck64(struct aleck64* a64)
 {
     memset(a64->sdram, 0, ALECK64_SDRAM_SIZE);
-    a64->dipswitch[0] = g_aleck64_dipswitch[0];
-    a64->dipswitch[1] = g_aleck64_dipswitch[1];
+    a64->mahjong_row = 0;
 }
 
 void read_aleck64_sdram(void* opaque, uint32_t address, uint32_t* value)
@@ -95,6 +95,53 @@ static uint32_t poll_buttons(void)
     return b;
 }
 
+/* Mahjong control panel matrix, MAME-style keyboard mapping:
+ * A-N on keys a-n, kan=LCtrl, pon=LAlt, chi=Space, reach=LShift, ron=z */
+static int key(unsigned k)
+{
+    return input_cb(0, RETRO_DEVICE_KEYBOARD, 0, k) != 0;
+}
+
+static uint8_t mahjong_read(uint32_t row)
+{
+    uint8_t v = 0xff;
+
+    if (input_cb == NULL)
+        return v;
+
+    if (row & 0x01) {
+        if (key(RETROK_b)) v &= ~0x02;
+        if (key(RETROK_f)) v &= ~0x04;
+        if (key(RETROK_j)) v &= ~0x08;
+        if (key(RETROK_n)) v &= ~0x10;
+        if (key(RETROK_LSHIFT)) v &= ~0x20; /* reach */
+    }
+    if (row & 0x02) {
+        if (key(RETROK_1) ||
+            input_cb(0, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_START)) v &= ~0x01;
+        if (key(RETROK_a)) v &= ~0x02;
+        if (key(RETROK_e)) v &= ~0x04;
+        if (key(RETROK_i)) v &= ~0x08;
+        if (key(RETROK_m)) v &= ~0x10;
+        if (key(RETROK_LCTRL)) v &= ~0x20; /* kan */
+    }
+    if (row & 0x04) {
+        if (key(RETROK_c)) v &= ~0x02;
+        if (key(RETROK_g)) v &= ~0x04;
+        if (key(RETROK_k)) v &= ~0x08;
+        if (key(RETROK_SPACE)) v &= ~0x10; /* chi */
+        if (key(RETROK_z)) v &= ~0x20;     /* ron */
+    }
+    if (row & 0x08) {
+        if (key(RETROK_d)) v &= ~0x02;
+        if (key(RETROK_h)) v &= ~0x04;
+        if (key(RETROK_l)) v &= ~0x08;
+        if (key(RETROK_LALT)) v &= ~0x10;  /* pon */
+    }
+
+    return v;
+}
+
 static uint32_t read_port1(struct aleck64* a64, uint32_t b)
 {
     uint32_t v;
@@ -122,8 +169,8 @@ static uint32_t read_port1(struct aleck64* a64, uint32_t b)
         if (b & A64_P2_START) v &= ~(UINT32_C(1) << 15);
     }
 
-    v |= (uint32_t)a64->dipswitch[1] << 16;
-    v |= (uint32_t)a64->dipswitch[0] << 24;
+    v |= (uint32_t)g_aleck64_dipswitch[1] << 16;
+    v |= (uint32_t)g_aleck64_dipswitch[0] << 24;
     return v;
 }
 
@@ -157,7 +204,11 @@ void read_aleck64_io(void* opaque, uint32_t address, uint32_t* value)
     {
     case 0x0000: *value = read_port1(a64, poll_buttons()); break;
     case 0x0004: *value = read_port2(poll_buttons()); break;
-    case 0x0008: *value = 0xffffffff; break; /* expansion port (mahjong panel...), not connected */
+    case 0x0008: /* expansion port: mahjong panel matrix on the games wired with one */
+        *value = 0xffffffff;
+        if (g_aleck64_mahjong)
+            *value = 0xff00ffff | ((uint32_t)mahjong_read(a64->mahjong_row) << 16);
+        break;
     case 0x0100: *value = 0; break;
     default:     *value = 0xffffffff; break;
     }
@@ -165,5 +216,8 @@ void read_aleck64_io(void* opaque, uint32_t address, uint32_t* value)
 
 void write_aleck64_io(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
 {
-    /* expansion port writes (mahjong row select...), ignored */
+    struct aleck64* a64 = (struct aleck64*)opaque;
+
+    if ((address & 0xfffc) == 0x0008)
+        a64->mahjong_row = (value >> 8) & 0xff; /* expansion port: row select */
 }

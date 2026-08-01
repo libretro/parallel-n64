@@ -2438,6 +2438,9 @@ void update_variables(bool startup)
          RollbackRtcOnLoadState = 1;
       }
    }
+
+   /* Aleck64 dipswitches follow the core options live */
+   aleck64_apply_dips();
 }
 
 static void format_saved_memory(void)
@@ -2873,8 +2876,9 @@ size_t retro_serialize_size (void)
      * overran the frontend's buffer by 208 bytes and corrupted the heap (a
      * crash on Save State). The state is deterministic and the same size for
      * every ROM and CPU core (measured 16789580), so size it to the actual
-     * maximum plus a real 1KB margin. */
-    return 16789580 + 1024;
+     * maximum plus a real 1KB margin. Aleck64 romsets append their 4MB
+     * board SDRAM (v1.5 block). */
+    return 16789580 + 1024 + (g_aleck64_enabled ? (ALECK64_SDRAM_SIZE + 16) : 0);
 }
 
 bool retro_serialize(void *data, size_t size)
