@@ -60,7 +60,7 @@
 extern uint32_t RollbackRtcOnLoadState;
 
 static const char* savestate_magic = "M64+SAVE";
-static const int savestate_latest_version = 0x00010004;  /* 1.4 */
+static const int savestate_latest_version = 0x00010005;  /* 1.5 */
 
 #define GETARRAY(buff, type, count) \
     (to_little_endian_buffer(buff, sizeof(type),count), \
@@ -98,7 +98,7 @@ int savestates_load_m64p(const unsigned char *data, size_t size)
    version = (version << 8) | *curr++;
    version = (version << 8) | *curr++;
 
-   if(version != 0x00010000 && version != 0x00010001 && version != 0x00010002 && version != 0x00010003 && version != 0x00010004)
+   if(version != 0x00010000 && version != 0x00010001 && version != 0x00010002 && version != 0x00010003 && version != 0x00010004 && version != 0x00010005)
       return 0;
 
    /* Identity check.  New states carry the "M64H"-prefixed header
@@ -409,6 +409,14 @@ int savestates_load_m64p(const unsigned char *data, size_t size)
          g_dev.sp.fifo[k].memaddr  = GETDATA(curr, uint32_t);
          g_dev.sp.fifo[k].dramaddr = GETDATA(curr, uint32_t);
       }
+   }
+
+   /* Aleck64 arcade board state (since 1.5); see the matching save block.
+    * Pre-1.5 states of an Aleck64 game lack it: SDRAM keeps its current
+    * contents, which is no worse than the pre-1.5 behaviour. */
+   if (version >= 0x00010005 && g_aleck64_enabled) {
+      COPYARRAY(g_dev.aleck64.sdram, curr, uint32_t, ALECK64_SDRAM_SIZE/4);
+      g_dev.aleck64.mahjong_row = GETDATA(curr, uint8_t);
    }
 
 
@@ -735,7 +743,16 @@ int savestates_save_m64p(unsigned char *data, size_t size)
       }
    }
 
-   /* Deliver callback to indicate completion 
+   /* Aleck64 arcade board state (since 1.5). Only present when an Aleck64
+    * romset is loaded: a state is only ever reloaded with the same content,
+    * so presence at load time matches presence at save time. Dipswitches are
+    * core options, not state. */
+   if (g_aleck64_enabled) {
+      PUTARRAY(g_dev.aleck64.sdram, curr, uint32_t, ALECK64_SDRAM_SIZE/4);
+      PUTDATA(curr, uint8_t, g_dev.aleck64.mahjong_row);
+   }
+
+   /* Deliver callback to indicate completion
     * of state saving operation */
    StateChanged(M64CORE_STATE_SAVECOMPLETE, 1);
 
