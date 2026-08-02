@@ -78,9 +78,11 @@ void tlb_map(struct tlb* tlb, size_t entry)
     /* The LUT marks valid entries with bit31, which normal physicals
      * (< 0x20000000) never carry and the callers' 0x1ffffffc mask strips.
      * Aleck64 games TLB-map the arcade bus at real physicals >= 0x80000000
-     * (SDRAM aliases from 0x80000000 up), so there use bit0 as the valid
-     * marker instead and hand back true physical addresses; ari64 (which
-     * mirrors the bit31 convention) never runs Aleck64 content. */
+     * (the board SDRAM aliases from 0x80000000 up), which that convention
+     * cannot represent, so mark validity with bit0 there and hand back true
+     * physical addresses. Consumers mask the entry with 0xFFFFF000, so both
+     * markers vanish; the ari64 mirror splits on the same condition (see
+     * tlb_page_host_map). */
     uint32_t valid = g_aleck64_enabled ? UINT32_C(0x1) : UINT32_C(0x80000000);
 
     if (e->v_even)
