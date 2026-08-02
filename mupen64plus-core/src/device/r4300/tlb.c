@@ -120,8 +120,10 @@ uint32_t virtual_to_physical_address(struct r4300_core* r4300, uint32_t address,
     unsigned int addr = address >> 12;
 
     /* ari64 verification of its memory_map mirror; only valid when ari64 is the
-     * active dynarec. */
-    if (r4300_jit_backend == R4300_JIT_ARI64 && r4300->emumode == EMUMODE_DYNAREC)
+     * active dynarec, and only for rdram-backed pages (aleck64 pages use true
+     * physicals and sdram backing, see tlb_page_host_map). */
+    if (r4300_jit_backend == R4300_JIT_ARI64 && r4300->emumode == EMUMODE_DYNAREC
+        && !g_aleck64_enabled)
     {
 #ifdef NEW_DYNAREC
         intptr_t map = r4300->new_dynarec_hot_state.memory_map[addr];

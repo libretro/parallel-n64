@@ -2547,11 +2547,9 @@ bool retro_load_game(const struct retro_game_info *game)
          cart_size = (uint32_t)zip_size;
          if (g_aleck64_enabled)
          {
-            /* ponytail: the dynarecs don't know code can live in Aleck64 SDRAM;
-             * cap at the cached interpreter (its fetch and invalidation go
-             * through the patched aleck64-aware paths) until a dynarec learns
-             * about it */
-            if (r4300_emumode > 1)
+            /* ari64 knows the aleck64 SDRAM (tlb_page_host_map); the Hacktarux
+             * dynarec does not, cap it at the cached interpreter */
+            if (r4300_emumode > 1 && r4300_jit_backend != 0)
                r4300_emumode = 1;
          }
       }

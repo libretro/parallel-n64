@@ -48,6 +48,7 @@ static inline void jit_write_disable(void) { }
 #include "new_dynarec.h"
 #include "api/m64p_types.h"
 #include "api/callbacks.h"
+#include "device/aleck64/aleck64.h"
 #include "main/main.h"
 #include "main/rom.h"
 #include "device/memory/m64p_memory.h"
@@ -1915,6 +1916,21 @@ void* ERET_new(void)
     }
 }
 
+/* Host backing of a TLB'd guest page. Aleck64 games map the arcade bus at
+ * true physicals >= 0x80000000 (bit0-valid LUT scheme, see tlb_map): SDRAM
+ * pages get direct pointers, I/O pages take the C stub path (-1), which
+ * resolves through the aleck64-aware r4300 accessors. */
+static uintptr_t tlb_page_host_map(unsigned int page, uint32_t lut)
+{
+  uint32_t phys = lut & UINT32_C(0xFFFFF000);
+  if (g_aleck64_enabled && phys >= UINT32_C(0x80000000)) {
+    if (phys <= UINT32_C(0xc07fffff))
+      return ((uintptr_t)g_dev.aleck64.sdram + (phys & (ALECK64_SDRAM_SIZE-1)) - (page<<12)) >> 2;
+    return (uintptr_t)-1;
+  }
+  return ((uintptr_t)g_dev.rdram.dram + (uintptr_t)(phys - UINT32_C(0x80000000)) - (page<<12)) >> 2;
+}
+
 static void TLBWI_new(int pcaddr, int count)
 {
   unsigned int i;
@@ -1954,7 +1970,7 @@ static void TLBWI_new(int pcaddr, int count)
     if(i<0x80000||i>0xBFFFF)
     {
       if(r4300->cp0.tlb.LUT_r[i]) {
-        state->memory_map[i]=((uintptr_t)g_dev.rdram.dram+(uintptr_t)((r4300->cp0.tlb.LUT_r[i]&0xFFFFF000)-0x80000000)-(i<<12))>>2;
+        state->memory_map[i]=tlb_page_host_map(i, r4300->cp0.tlb.LUT_r[i]);
         // FIXME: should make sure the physical page is invalid too
         if(!r4300->cp0.tlb.LUT_w[i]||!r4300->cached_interp.invalid_code[i]) {
           state->memory_map[i]|=WRITE_PROTECT; // Write protect
@@ -1975,7 +1991,7 @@ static void TLBWI_new(int pcaddr, int count)
     if(i<0x80000||i>0xBFFFF)
     {
       if(r4300->cp0.tlb.LUT_r[i]) {
-        state->memory_map[i]=((uintptr_t)g_dev.rdram.dram+(uintptr_t)((r4300->cp0.tlb.LUT_r[i]&0xFFFFF000)-0x80000000)-(i<<12))>>2;
+        state->memory_map[i]=tlb_page_host_map(i, r4300->cp0.tlb.LUT_r[i]);
         // FIXME: should make sure the physical page is invalid too
         if(!r4300->cp0.tlb.LUT_w[i]||!r4300->cached_interp.invalid_code[i]) {
           state->memory_map[i]|=WRITE_PROTECT; // Write protect
@@ -2030,7 +2046,7 @@ static void TLBWR_new(int pcaddr, int count)
     if(i<0x80000||i>0xBFFFF)
     {
       if(r4300->cp0.tlb.LUT_r[i]) {
-        state->memory_map[i]=((uintptr_t)g_dev.rdram.dram+(uintptr_t)((r4300->cp0.tlb.LUT_r[i]&0xFFFFF000)-0x80000000)-(i<<12))>>2;
+        state->memory_map[i]=tlb_page_host_map(i, r4300->cp0.tlb.LUT_r[i]);
         // FIXME: should make sure the physical page is invalid too
         if(!r4300->cp0.tlb.LUT_w[i]||!r4300->cached_interp.invalid_code[i]) {
           state->memory_map[i]|=WRITE_PROTECT; // Write protect
@@ -2051,7 +2067,7 @@ static void TLBWR_new(int pcaddr, int count)
     if(i<0x80000||i>0xBFFFF)
     {
       if(r4300->cp0.tlb.LUT_r[i]) {
-        state->memory_map[i]=((uintptr_t)g_dev.rdram.dram+(uintptr_t)((r4300->cp0.tlb.LUT_r[i]&0xFFFFF000)-0x80000000)-(i<<12))>>2;
+        state->memory_map[i]=tlb_page_host_map(i, r4300->cp0.tlb.LUT_r[i]);
         // FIXME: should make sure the physical page is invalid too
         if(!r4300->cp0.tlb.LUT_w[i]||!r4300->cached_interp.invalid_code[i]) {
           state->memory_map[i]|=WRITE_PROTECT; // Write protect
@@ -2941,7 +2957,7 @@ static void invalidate_all_pages(void)
   // TLB
   for(page=0;page<0x100000;page++) {
     if(g_dev.r4300.cp0.tlb.LUT_r[page]) {
-      g_dev.r4300.new_dynarec_hot_state.memory_map[page]=((uintptr_t)g_dev.rdram.dram+(uintptr_t)((g_dev.r4300.cp0.tlb.LUT_r[page]&0xFFFFF000)-0x80000000)-(page<<12))>>2;
+      g_dev.r4300.new_dynarec_hot_state.memory_map[page]=tlb_page_host_map(page, g_dev.r4300.cp0.tlb.LUT_r[page]);
       if(!g_dev.r4300.cp0.tlb.LUT_w[page]||!g_dev.r4300.cached_interp.invalid_code[page])
         g_dev.r4300.new_dynarec_hot_state.memory_map[page]|=WRITE_PROTECT; // Write protect
     }
