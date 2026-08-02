@@ -75,6 +75,14 @@ void tlb_map(struct tlb* tlb, size_t entry)
     assert(entry < 32);
     e = &tlb->entries[entry];
 
+    /* The LUT marks valid entries with bit31, which normal physicals
+     * (< 0x20000000) never carry and the callers' 0x1ffffffc mask strips.
+     * Aleck64 games TLB-map the arcade bus at real physicals >= 0x80000000
+     * (SDRAM aliases from 0x80000000 up), so there use bit0 as the valid
+     * marker instead and hand back true physical addresses; ari64 (which
+     * mirrors the bit31 convention) never runs Aleck64 content. */
+    uint32_t valid = g_aleck64_enabled ? UINT32_C(0x1) : UINT32_C(0x80000000);
+
     if (e->v_even)
     {
         if (e->start_even < e->end_even &&
@@ -84,10 +92,10 @@ void tlb_map(struct tlb* tlb, size_t entry)
             (e->phys_even < 0x20000000 || g_aleck64_enabled))
         {
             for (i=e->start_even;i<e->end_even;i+=0x1000)
-                tlb->LUT_r[i>>12] = UINT32_C(0x80000000) | (e->phys_even + (i - e->start_even) + 0xFFF);
+                tlb->LUT_r[i>>12] = valid | (e->phys_even + (i - e->start_even) + 0xFFF);
             if (e->d_even)
                 for (i=e->start_even;i<e->end_even;i+=0x1000)
-                    tlb->LUT_w[i>>12] = UINT32_C(0x80000000) | (e->phys_even + (i - e->start_even) + 0xFFF);
+                    tlb->LUT_w[i>>12] = valid | (e->phys_even + (i - e->start_even) + 0xFFF);
         }
     }
 
@@ -98,10 +106,10 @@ void tlb_map(struct tlb* tlb, size_t entry)
             (e->phys_odd < 0x20000000 || g_aleck64_enabled))
         {
             for (i=e->start_odd;i<e->end_odd;i+=0x1000)
-                tlb->LUT_r[i>>12] = UINT32_C(0x80000000) | (e->phys_odd + (i - e->start_odd) + 0xFFF);
+                tlb->LUT_r[i>>12] = valid | (e->phys_odd + (i - e->start_odd) + 0xFFF);
             if (e->d_odd)
                 for (i=e->start_odd;i<e->end_odd;i+=0x1000)
-                    tlb->LUT_w[i>>12] = UINT32_C(0x80000000) | (e->phys_odd + (i - e->start_odd) + 0xFFF);
+                    tlb->LUT_w[i>>12] = valid | (e->phys_odd + (i - e->start_odd) + 0xFFF);
         }
     }
 }
