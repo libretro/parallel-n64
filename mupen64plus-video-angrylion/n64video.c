@@ -326,7 +326,12 @@ void n64video_process_list(void)
         }
 
         // copy more data from the N64 to the local command buffer
-        toload = MIN(dp_end_al - dp_current_al, rdp_cmd_len - 1);
+        /* Load only what is still missing from the command being decoded.
+         * When a list ends mid-command the decoder keeps rdp_cmd_pos across
+         * calls; asking for rdp_cmd_len-1 more words then overshoots
+         * rdp_cmd_len, so the completion test never matches, the command is
+         * never executed, and rdp_cmd_pos runs past the buffer slot. */
+        toload = MIN(dp_end_al - dp_current_al, rdp_cmd_len - rdp_cmd_pos);
 
         if (xbus_dma) {
             for (i = 0; i < toload; i++) {
