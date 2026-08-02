@@ -83,6 +83,7 @@ struct n64video_config
         bool exclusive;             // run in exclusive mode when in fullscreen if true
         bool vi_dedither;           // enable dedithering if true
         bool vi_blur;               // enable bilateral blur if true
+        bool bob_deinterlace;       // line-double the current field instead of weaving
     } vi;
     struct {
         enum dp_compat_profile compat;  // multithreading compatibility mode

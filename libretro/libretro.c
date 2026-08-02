@@ -1284,6 +1284,7 @@ extern void  angrylion_set_synchronous(unsigned value);
 extern void  angrylion_set_overscan(unsigned value);
 extern void  angrylion_set_vi_dedither(unsigned value);
 extern void  angrylion_set_vi_blur(unsigned value);
+extern void  angrylion_set_deinterlace(unsigned value);
 
 extern void angrylion_set_synclevel(unsigned value);
 extern void ChangeSize();
@@ -1665,6 +1666,12 @@ void update_variables(bool startup)
       angrylion_set_vi_dedither(1);
       angrylion_set_vi_blur(1);
    }
+
+   var.key = "parallel-n64-angrylion-deinterlace";
+   var.value = NULL;
+   angrylion_set_deinterlace(
+      environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value
+      && !strcmp(var.value, "bob"));
 
    var.key = "parallel-n64-angrylion-sync";
    var.value = NULL;

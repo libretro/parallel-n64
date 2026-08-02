@@ -1118,6 +1118,20 @@ struct retro_core_option_v2_definition option_defs_us[] = {
         "Filtered"
     },
     {
+        CORE_NAME "-angrylion-deinterlace",
+        "(Angrylion) Deinterlacing",
+        "Deinterlacing",
+        "How interlaced (480i) content is displayed. 'weave' merges both fields (sharp but combs on motion), 'bob' line-doubles the current field (no combing, slight shimmer). Affects 480i games like Kuru Kuru Fever or Hanabi de Doon and hi-res title screens.",
+        NULL,
+        "angrylion",
+        {
+            { "weave", NULL },
+            { "bob", NULL },
+            { NULL, NULL },
+        },
+        "weave"
+    },
+    {
         CORE_NAME "-angrylion-sync",
         "(Angrylion) Thread sync level",
         "Thread sync level",
