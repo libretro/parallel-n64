@@ -8866,9 +8866,11 @@ int new_recompile_block(int addr)
     source = (u_int *)((uintptr_t)g_dev.rdram.dram+start-0xa0000000);
     pagelimit = 0xa07fffff;
   }
-  else if ((int)addr >= 0xa4000000 && (int)addr < 0xa4001000) {
+  else if ((int)addr >= 0xa4000000 && (int)addr < 0xa4000000 + SP_MEM_SIZE) {
+    /* DMEM *and* IMEM: the PIF boot rom copies IPL1 to IMEM and jumps there,
+     * so stopping at 0xa4001000 made every LLE boot derail */
     source = (u_int *)((uintptr_t)g_dev.sp.mem+start-0xa4000000);
-    pagelimit = 0xa4001000;
+    pagelimit = 0xa4000000 + SP_MEM_SIZE;
   }
   else if ((int)addr >= 0x80000000 && (int)addr < 0x80800000) {
     source = (u_int *)((uintptr_t)g_dev.rdram.dram+start-(uintptr_t)0x80000000);
