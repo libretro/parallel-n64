@@ -171,6 +171,16 @@ static const struct a64_game a64_games[] = {
 
 static const struct a64_game* g_game = NULL;
 
+/* PIF boot rom from the romset (pifdata.bin), for the LLE boot */
+static uint8_t l_pifdata[2048];
+static int l_pifdata_present = 0;
+
+int aleck64_pifdata(const uint8_t** out)
+{
+    *out = l_pifdata;
+    return l_pifdata_present ? (int)sizeof(l_pifdata) : 0;
+}
+
 #define A64_MAX_ENTRIES 64
 
 /* Returns 1 and sets *out/*out_size (malloc'd) when the zip produced a rom
@@ -186,10 +196,19 @@ int aleck64_load_zip(const uint8_t* data, size_t size, uint8_t** out, size_t* ou
     g_aleck64_mahjong = 0;
     g_aleck64_dpad_disabled = 0;
     g_game = NULL;
+    l_pifdata_present = 0;
 
     n = zip_list(data, size, entries, A64_MAX_ENTRIES);
     if (n == 0)
         return 0;
+
+    for (i = 0; i < n; ++i) {
+        if (name_is(&entries[i], "pifdata.bin") && entries[i].usize == sizeof(l_pifdata)) {
+            if (zip_extract(data, size, &entries[i], l_pifdata) == 0)
+                l_pifdata_present = 1;
+            break;
+        }
+    }
 
     /* MAME Aleck64 set: identified by its program rom filename */
     for (g = 0; g < (int)(sizeof(a64_games)/sizeof(a64_games[0])); ++g) {

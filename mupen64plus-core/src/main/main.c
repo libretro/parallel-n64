@@ -1238,6 +1238,11 @@ m64p_error open_pif(const unsigned char* pifimage, unsigned int size)
     {
         DebugMessage(M64MSG_INFO, "Using PAL PIF ROM");
     }
+    else if (g_aleck64_enabled)
+    {
+        /* the Aleck64 PIF rom comes from the MAME romset (pifdata.bin) */
+        DebugMessage(M64MSG_INFO, "Using Aleck64 PIF ROM");
+    }
     else
     {
         DebugMessage(M64MSG_ERROR, "Invalid PIF ROM");
