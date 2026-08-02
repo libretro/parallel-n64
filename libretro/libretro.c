@@ -647,11 +647,6 @@ static bool emu_step_load_data()
          goto load_fail;
       }
 
-      /* Aleck64: booting through the real PIF rom (M64CMD_PIF_OPEN with the
-       * romset's pifdata.bin) does not work yet - the PIF boot handshake
-       * (ares' pif/hle.cpp state machine) is not implemented, so the boot rom
-       * waits forever on PIF RAM 0x3f and derails. Keep the HLE boot. */
-
 #if defined(HAVE_PARALLEL)
       /* The per-game override is only known once the ROM header has been
        * parsed, which happens after the initial update_variables(). */

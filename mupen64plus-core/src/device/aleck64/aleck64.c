@@ -37,7 +37,7 @@ static struct aleck64* l_a64;
 
 void init_aleck64(struct aleck64* a64)
 {
-    /* ponytail: never freed, reused across loads (same lifetime as cart_data) */
+    /* allocated once and reused across ROM loads, like the cart buffer */
     if (a64->sdram == NULL)
         a64->sdram = (uint32_t*)malloc(ALECK64_SDRAM_SIZE);
     l_a64 = a64;
@@ -143,7 +143,7 @@ static uint8_t mahjong_read(uint32_t row)
     return v;
 }
 
-static uint32_t read_port1(struct aleck64* a64, uint32_t b)
+static uint32_t read_port1(uint32_t b)
 {
     uint32_t v;
 
@@ -203,7 +203,7 @@ void read_aleck64_io(void* opaque, uint32_t address, uint32_t* value)
 
     switch (address & 0xfffc)
     {
-    case 0x0000: *value = read_port1(a64, poll_buttons()); break;
+    case 0x0000: *value = read_port1(poll_buttons()); break;
     case 0x0004: *value = read_port2(poll_buttons()); break;
     case 0x0008: /* expansion port: mahjong panel matrix on the games wired with one */
         *value = 0xffffffff;
