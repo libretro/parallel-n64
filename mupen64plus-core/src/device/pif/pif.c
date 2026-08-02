@@ -249,6 +249,18 @@ static void process_cic_challenge(struct pif* pif)
     char challenge[30], response[30];
     size_t i;
 
+
+    /* CIC-NUS-5101 (Aleck64) has no 6105-style algorithm: its challenge
+     * response is the bitwise NOT of the 30 nibbles (ares' DummyChallenge) */
+    if (pif->cic.version == CIC_5101)
+    {
+        for (i = 0; i < 15; ++i)
+            pif->ram[0x30+i] = ~pif->ram[0x30+i];
+        pif->ram[0x2e] = 0;
+        pif->ram[0x2f] = 0;
+        return;
+    }
+
     /* format the 'challenge' message into 30 nibbles for X-Scale's CIC code */
     for (i = 0; i < 15; ++i)
     {
@@ -316,6 +328,7 @@ void process_pif_ram(struct pif* pif)
     uint8_t flags = pif->ram[0x3f];
     uint8_t clrmask = 0x00;
     size_t k;
+
 
     if (flags == 0) {
 #ifdef DEBUG_PIF
