@@ -330,6 +330,7 @@ void process_pif_ram(struct pif* pif)
     size_t k;
 
 
+
     if (flags == 0) {
 #ifdef DEBUG_PIF
         DebugMessage(M64MSG_INFO, "PIF process pif ram status=0x00");
