@@ -647,17 +647,12 @@ static bool emu_step_load_data()
          goto load_fail;
       }
 
-      /* Aleck64: boot through the real PIF rom from the romset (LLE) */
-      if (g_aleck64_enabled)
-      {
-         const uint8_t* pifdata;
-         int pifsize = aleck64_pifdata(&pifdata);
-         if (pifsize > 0 && CoreDoCommand(M64CMD_PIF_OPEN, pifsize, (void*)pifdata) == M64ERR_SUCCESS)
-         {
-            if (log_cb)
-               log_cb(RETRO_LOG_INFO, "mupen64plus: Aleck64 LLE PIF boot\n");
-         }
-      }
+      /* Aleck64: booting through the real PIF rom (M64CMD_PIF_OPEN with the
+       * romset's pifdata.bin) does NOT work yet: the core lacks the CIC<->PIF
+       * bit-bang protocol this PIF rom drives, execution derails to the RDRAM
+       * mirror at 0x80800000 and the dynarec spams "bogus memory address".
+       * Keep the HLE boot (CIC-5101 seed is known) until the PIF/CIC LLE
+       * exists. */
 
 #if defined(HAVE_PARALLEL)
       /* The per-game override is only known once the ROM header has been
