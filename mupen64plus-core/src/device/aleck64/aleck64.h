@@ -82,5 +82,6 @@ void write_aleck64_io(void* opaque, uint32_t address, uint32_t value, uint32_t m
 /* implemented in libretro/aleck64_mame.c */
 int aleck64_load_zip(const uint8_t* data, size_t size, uint8_t** out, size_t* out_size);
 void aleck64_apply_dips(void);
+int aleck64_pifdata(const uint8_t** out);
 
 #endif

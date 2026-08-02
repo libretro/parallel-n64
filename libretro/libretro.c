@@ -647,6 +647,18 @@ static bool emu_step_load_data()
          goto load_fail;
       }
 
+      /* Aleck64: boot through the real PIF rom from the romset (LLE) */
+      if (g_aleck64_enabled)
+      {
+         const uint8_t* pifdata;
+         int pifsize = aleck64_pifdata(&pifdata);
+         if (pifsize > 0 && CoreDoCommand(M64CMD_PIF_OPEN, pifsize, (void*)pifdata) == M64ERR_SUCCESS)
+         {
+            if (log_cb)
+               log_cb(RETRO_LOG_INFO, "mupen64plus: Aleck64 LLE PIF boot\n");
+         }
+      }
+
 #if defined(HAVE_PARALLEL)
       /* The per-game override is only known once the ROM header has been
        * parsed, which happens after the initial update_variables(). */
