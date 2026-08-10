@@ -1416,6 +1416,21 @@ void update_variables(bool startup)
     * the other backend, so a mid-run flip would crash. The new selection takes
     * effect on the next core restart, matching upstream behaviour. */
 
+  if (startup)
+  {
+	  /* Expansion Pak. main.c derives rdram_size from ForceDisableExtraMem, but
+	   * nothing ever assigned it, so the option was inert and every game got the
+	   * full 8MB whatever the user picked -- titles that require the Pak booted
+	   * with it "off", and titles meant to be tested without it could not be.
+	   * Startup only, since rdram_size is fixed when the device is built. */
+	  struct retro_variable expvar;
+	  expvar.key = "parallel-n64-disable-expmem";
+	  expvar.value = NULL;
+	  ForceDisableExtraMem = 0;
+	  if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &expvar) && expvar.value)
+		  ForceDisableExtraMem = !strcmp(expvar.value, "disabled") ? 1 : 0;
+  }
+
 #if defined(HAVE_PARALLEL)
    var.key = "parallel-n64-parallel-rdp-synchronous";
    var.value = NULL;

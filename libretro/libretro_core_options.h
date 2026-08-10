@@ -664,7 +664,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
         CORE_NAME "-disable_expmem",
         "Enable Expansion Pak RAM",
         NULL,
-        "Enable Expansion Pak RAM",
+        "Give the console 8MB of RAM instead of 4MB, as the Expansion Pak does. Games that require the Pak (Donkey Kong 64, Majora's Mask) will not boot with this disabled. Applied when content starts.",
         NULL,
         NULL,
         {
