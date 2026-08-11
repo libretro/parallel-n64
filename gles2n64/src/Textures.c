@@ -18,6 +18,7 @@
 
 #include "../../Graphics/RDP/gDP_state.h"
 #include "../../Graphics/image_convert.h"
+#include "Hash.h"
 
 #define FORMAT_NONE     0
 #define FORMAT_I8       1

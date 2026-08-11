@@ -25,6 +25,7 @@
 #include "../../Graphics/RDP/gDP_state.h"
 #include "../../Graphics/RDP/RDP_state.h"
 #include "../../Graphics/RSP/gSP_state.h"
+#include "Hash.h"
 
 void gln64gDPSetOtherMode( uint32_t mode0, uint32_t mode1 )
 {

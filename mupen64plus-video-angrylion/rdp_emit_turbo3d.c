@@ -24,6 +24,7 @@
  */
 
 #include <stdint.h>
+#include <encodings/crc32.h>
 #include "rdp_emit_frontend.h"
 #include "rdp_emit_f3dex2.h"
 #include "rdp_emit_rsp.h"
@@ -56,48 +57,16 @@ void turbo3d_set_rdram_size(unsigned int size) { s_rdram_size = size; }
  * 2.0D" data-segment string is shared with F3D/F3DEX/L3D and cannot be used
  * on its own. The bytes are read raw (no in-word swap), the order GLideN64
  * hashes and the order this match was confirmed against the live task. */
-static unsigned int s_crc_table[256];
-static int s_crc_ready;
-
-static void turbo3d_crc_init(void)
-{
-    unsigned int i;
-    int j;
-    for (i = 0; i < 256u; ++i)
-    {
-        unsigned int ref = 0u, c, r, v;
-        unsigned int k;
-        for (k = 1u; k < 9u; ++k)
-            if (i & (1u << (k - 1u)))
-                ref |= 1u << (8u - k);
-        c = ref << 24;
-        for (j = 0; j < 8; ++j)
-            c = (c << 1) ^ ((c & 0x80000000u) ? 0x04C11DB7u : 0u);
-        v = 0u;
-        r = c;
-        for (k = 1u; k < 33u; ++k)
-        {
-            if (r & 1u)
-                v |= 1u << (32u - k);
-            r >>= 1;
-        }
-        s_crc_table[i] = v;
-    }
-    s_crc_ready = 1;
-}
-
 int turbo3d_ucode_match(const unsigned char *rdram, unsigned int rdram_size,
                         unsigned int text_seg)
 {
-    unsigned int crc = 0xffffffffu;
-    unsigned int i;
+    unsigned int crc;
     if (rdram == 0 || text_seg == 0 || text_seg + 4096u > rdram_size)
         return 0;
-    if (!s_crc_ready)
-        turbo3d_crc_init();
-    for (i = 0; i < 4096u; ++i)
-        crc = (crc >> 8) ^ s_crc_table[(crc & 0xffu) ^ rdram[text_seg + i]];
-    crc ^= 0xffffffffu;
+    /* encoding_crc32() is CRC-32/ISO-HDLC with zlib's conventions - seed
+     * complemented in, result complemented out - which is precisely the
+     * 0xffffffff init and final XOR the local table loop performed. */
+    crc = encoding_crc32(0, rdram + text_seg, 4096u);
     return crc == 0x2bdcfc8au;
 }
 

@@ -1,34 +1,29 @@
 #include <stdint.h>
 
-uint32_t Hash_CalculatePalette(void *buffer, uint32_t count)
-{
-   unsigned int i;
-   uint16_t *data = (uint16_t *) buffer;
-   uint32_t hash = 0xffffffff;
-   count /= 4;
-   for(i = 0; i < count; ++i) {
-      hash += data[i << 2];
-      hash += (hash << 10);
-      hash ^= (hash >> 6);
-   }
-   hash += (hash << 3);
-   hash ^= (hash >> 11);
-   hash += (hash << 15);
-   return hash;
-}
+#include <encodings/crc32.h>
 
-uint32_t Hash_Calculate(uint32_t hash, void *buffer, uint32_t count)
+#include "Hash.h"
+
+/* Texture and palette cache keying.
+ *
+ * This was a Jenkins one-at-a-time hash over uint32 words.  It is now
+ * CRC-32/ISO-HDLC from libretro-common, which is both faster (slicing-by-8
+ * against a shift-and-add chain with a serial dependency on every word) and
+ * endian-independent: the old form loaded uint32s, so it produced different
+ * keys on big-endian hosts for identical texture data.
+ *
+ * Nothing constrains the choice of function here.  These values are
+ * in-memory cache keys only - they are never written to a file and never
+ * compared against a stored constant, unlike GLideN64's
+ * CRC_Calculate_Strict, which identifies microcodes against a fixed table
+ * and therefore had to stay bit-exact.
+ *
+ * The count is still truncated to a multiple of 4.  The word loop it
+ * replaces covered exactly floor(count/4)*4 bytes, so hashing the full
+ * count would read up to three bytes the old code never touched - at an
+ * RDRAM or TMEM boundary that is a read past the end of the region the
+ * caller sized. */
+uint32_t Hash_Calculate(uint32_t hash, const void *buffer, uint32_t count)
 {
-   unsigned int i;
-   uint32_t *data = (uint32_t *) buffer;
-   count /= 4;
-   for(i = 0; i < count; ++i) {
-      hash += data[i];
-      hash += (hash << 10);
-      hash ^= (hash >> 6);
-   }
-   hash += (hash << 3);
-   hash ^= (hash >> 11);
-   hash += (hash << 15);
-   return hash;
+   return encoding_crc32(hash, (const uint8_t*)buffer, count & ~(uint32_t)3);
 }

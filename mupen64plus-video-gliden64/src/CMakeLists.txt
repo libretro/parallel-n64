@@ -257,14 +257,7 @@ if(VEC4_OPT)
   )
 endif(VEC4_OPT)
 
-if(CRC_ARMV8)
-  list(REMOVE_ITEM GLideN64_SOURCES
-	CRC32.cpp
-  )
-  list(APPEND GLideN64_SOURCES
-	CRC32_ARMV8.cpp
-  )
-elseif(CRC_OPT)
+if(CRC_OPT)
   list(REMOVE_ITEM GLideN64_SOURCES
         CRC32.cpp
   )
@@ -272,7 +265,7 @@ elseif(CRC_OPT)
         CRC_OPT.cpp
         xxHash/xxhash.c
   )
-endif(CRC_ARMV8)
+endif(CRC_OPT)
 
 if(NEON_OPT)
   add_definitions(
