@@ -25,6 +25,7 @@ uint8_t* g_dd_disk;
 
 #include <libretro.h>
 #include <streams/file_stream.h>
+#include <file/file_path.h>
 
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
 #include <glsm/glsmsym.h>
@@ -2545,16 +2546,68 @@ bool retro_load_game(const struct retro_game_info *game)
       uint8_t* zip_rom  = NULL;
       size_t zip_size = 0;
 
-      /* need_fullpath core: the frontend usually passes only the path */
+      /* need_fullpath core: the frontend usually passes only the path.
+       *
+       * Archives are handled without reading the archive into memory.  A zip
+       * only needs its end-of-central-directory tail, its central directory
+       * and the chosen entry's compressed bytes; those are read where they
+       * lie and inflated straight into the rom buffer.  Slurping first cost a
+       * second full-size allocation and a full read on top of the rom itself,
+       * most of it never looked at for a MAME set or a multi-rom archive. */
       if (game_data == NULL && game->path != NULL)
       {
          int64_t len = 0;
-         if (!filestream_read_file(game->path, (void**)&file_buf, &len) || len <= 0)
+         char*   arc_path = NULL;
+         const char* zip_entry = NULL;
+         const char* arc = game->path;
+
+         /* This core sets block_extract, so when the user picks a rom from
+          * inside an archive the frontend hands us "archive.zip#entry"
+          * rather than an extracted file.  Split it, remembering which entry
+          * was asked for - but only when the whole path is not itself a
+          * file, since '#' is legal in a filename and a real file by that
+          * name has to keep winning. */
+         if (!path_is_valid(game->path))
+         {
+            const char* hash = strrchr(game->path, '#');
+
+            if (hash && hash != game->path)
+            {
+               size_t arc_len = (size_t)(hash - game->path);
+
+               if ((arc_path = (char*)malloc(arc_len + 1)))
+               {
+                  memcpy(arc_path, game->path, arc_len);
+                  arc_path[arc_len] = '\0';
+                  arc       = arc_path;
+                  zip_entry = hash + 1;
+               }
+            }
+         }
+
+         if (aleck64_load_zip_path(arc, zip_entry, &zip_rom, &zip_size))
+         {
+            free(arc_path);
+            cart_data = zip_rom;
+            cart_size = (uint32_t)zip_size;
+            if (g_aleck64_enabled)
+            {
+               /* ari64 knows the aleck64 SDRAM (tlb_page_host_map); the
+                * Hacktarux dynarec does not, cap it at the cached interp */
+               if (r4300_emumode > 1 && r4300_jit_backend != 0)
+                  r4300_emumode = 1;
+            }
+            goto content_ready;
+         }
+
+         if (!filestream_read_file(arc, (void**)&file_buf, &len) || len <= 0)
          {
             if (log_cb)
                log_cb(RETRO_LOG_ERROR, "Failed to read content file: %s\n", game->path);
+            free(arc_path);
             return false;
          }
+         free(arc_path);
          game_data = file_buf;
          game_size = (size_t)len;
       }
@@ -2562,34 +2615,47 @@ bool retro_load_game(const struct retro_game_info *game)
       if (game_data == NULL)
          return false;
 
-      if (game_data != NULL && game_size >= 4 && memcmp(game_data, "PK\x03\x04", 4) == 0
+      if (game_size >= 4 && memcmp(game_data, "PK\x03\x04", 4) == 0
           && aleck64_load_zip(game_data, game_size, &zip_rom, &zip_size))
       {
          cart_data = zip_rom;
          cart_size = (uint32_t)zip_size;
          if (g_aleck64_enabled)
          {
-            /* ari64 knows the aleck64 SDRAM (tlb_page_host_map); the Hacktarux
-             * dynarec does not, cap it at the cached interpreter */
             if (r4300_emumode > 1 && r4300_jit_backend != 0)
                r4300_emumode = 1;
          }
       }
       else if (is_cartridge_rom(game_data))
       {
-         cart_data = malloc(game_size);
+         /* Take ownership of the buffer the read already produced rather than
+          * allocating a second one the size of the rom and copying across;
+          * both are released with free(). */
+         if (file_buf)
+         {
+            cart_data = file_buf;
+            file_buf  = NULL;
+         }
+         else if ((cart_data = malloc(game_size)))
+            memcpy(cart_data, game_data, game_size);
          cart_size = game_size;
-         memcpy(cart_data, game_data, game_size);
       }
       else
       {
-         disk_data = malloc(game_size);
+         if (file_buf)
+         {
+            disk_data = file_buf;
+            file_buf  = NULL;
+         }
+         else if ((disk_data = malloc(game_size)))
+            memcpy(disk_data, game_data, game_size);
          disk_size = game_size;
-         memcpy(disk_data, game_data, game_size);
       }
 
       free(file_buf);
    }
+
+content_ready:
 
    mupencorestop      = false;
    g_rsp_force_halt   = 0;

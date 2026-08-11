@@ -81,6 +81,21 @@ void write_aleck64_io(void* opaque, uint32_t address, uint32_t value, uint32_t m
 
 /* implemented in libretro/aleck64_mame.c */
 int aleck64_load_zip(const uint8_t* data, size_t size, uint8_t** out, size_t* out_size);
+
+/* As aleck64_load_zip, but when 'prefer' is non-NULL the plain-rom-in-a-zip
+ * path selects that entry by name rather than the first one with a known
+ * extension.  Frontends hand the core an "archive.zip#entry" path when the
+ * user picks a specific rom inside a multi-rom archive, and that choice has
+ * to be honoured. */
+int aleck64_load_zip_named(const uint8_t* data, size_t size, const char* prefer,
+                           uint8_t** out, size_t* out_size);
+
+/* As aleck64_load_zip_named, but reads the archive from disk: only the
+ * end-of-central-directory tail, the central directory and the chosen
+ * entry's compressed bytes are read, so peak memory is the rom image
+ * rather than the rom image plus the whole archive. */
+int aleck64_load_zip_path(const char* path, const char* prefer,
+                          uint8_t** out, size_t* out_size);
 void aleck64_apply_dips(void);
 
 #endif

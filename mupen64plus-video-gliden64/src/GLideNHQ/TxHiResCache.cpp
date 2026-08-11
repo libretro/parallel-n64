@@ -343,18 +343,37 @@ TxHiResCache::loadHiResTextures(const wchar_t * dir_path, boolean replace)
 	 * read in _rgb.* and _a.*
 	 */
 	if (pfname == strstr(fname, "_rgb.") || pfname == strstr(fname, "_a.")) {
+	  /* _rgb.* is loaded first so that the open doubles as the existence
+	   * check.  This used to osal_path_existsA() both _rgb.png and _rgb.bmp
+	   * purely to decide whether to bail, then open the same paths a few
+	   * lines later - a second full path resolution per entry, for an
+	   * answer the open already gives.  A texture pack is tens of thousands
+	   * of files and this runs for every _rgb and _a entry in it.
+	   *
+	   * Bailing here also skips the _a.* load when there is no usable
+	   * _rgb.*, which the old order paid for before discovering the pair
+	   * was unusable. */
 	  strcpy(pfname, "_rgb.png");
-	  if (!osal_path_existsA(fname)) {
+	  if ((fp = fopen(fname, "rb")) != nullptr) {
+		tex = _txImage->readPNG(fp, &width, &height, &format);
+		fclose(fp);
+	  }
+	  if (!tex) {
+		/* _rgb.bmp */
 		strcpy(pfname, "_rgb.bmp");
-		if (!osal_path_existsA(fname)) {
-#if !DEBUG
-		  INFO(80, wst("-----\n"));
-		  INFO(80, wst("path: %ls\n"), dir_path.string().c_str());
-		  INFO(80, wst("file: %ls\n"), it->path().leaf().c_str());
-#endif
-		  INFO(80, wst("Error: missing _rgb.*! _a.* must be paired with _rgb.*!\n"));
-		  continue;
+		if ((fp = fopen(fname, "rb")) != nullptr) {
+		  tex = _txImage->readBMP(fp, &width, &height, &format);
+		  fclose(fp);
 		}
+	  }
+	  if (!tex) {
+#if !DEBUG
+		INFO(80, wst("-----\n"));
+		INFO(80, wst("path: %ls\n"), dir_path.string().c_str());
+		INFO(80, wst("file: %ls\n"), it->path().leaf().c_str());
+#endif
+		INFO(80, wst("Error: missing _rgb.*! _a.* must be paired with _rgb.*!\n"));
+		continue;
 	  }
 	  /* _a.png */
 	  strcpy(pfname, "_a.png");
@@ -367,20 +386,6 @@ TxHiResCache::loadHiResTextures(const wchar_t * dir_path, boolean replace)
 		strcpy(pfname, "_a.bmp");
 		if ((fp = fopen(fname, "rb")) != nullptr) {
 		  tmptex = _txImage->readBMP(fp, &tmpwidth, &tmpheight, &tmpformat);
-		  fclose(fp);
-		}
-	  }
-	  /* _rgb.png */
-	  strcpy(pfname, "_rgb.png");
-	  if ((fp = fopen(fname, "rb")) != nullptr) {
-		tex = _txImage->readPNG(fp, &width, &height, &format);
-		fclose(fp);
-	  }
-	  if (!tex) {
-		/* _rgb.bmp */
-		strcpy(pfname, "_rgb.bmp");
-		if ((fp = fopen(fname, "rb")) != nullptr) {
-		  tex = _txImage->readBMP(fp, &width, &height, &format);
 		  fclose(fp);
 		}
 	  }

@@ -15,6 +15,7 @@
 #include <string.h>
 
 #include <encodings/deflate.h>
+#include <streams/file_stream.h>
 
 #include <libretro.h>
 
@@ -41,96 +42,226 @@ struct zip_entry
     uint32_t local_off;
 };
 
-/* iterate central directory; returns entry count, fills entries up to max */
-static int zip_list(const uint8_t* data, size_t size, struct zip_entry* entries, int max)
+/* ---- byte source ------------------------------------------------------
+ *
+ * A zip is read through this rather than from one whole-file buffer.  A zip
+ * only needs three regions to yield an entry: the end-of-central-directory
+ * record in the tail, the central directory, and the entry's own compressed
+ * bytes.  Slurping the archive to reach them costs a full read and a
+ * full-size allocation on top of the rom buffer itself, and for a MAME set
+ * or a multi-rom archive most of what it reads is never looked at.
+ *
+ * The memory backend keeps the old in-memory entry points working (the
+ * frontend sometimes hands the core the data directly, and the standalone
+ * test harness builds archives in memory); the file backend seeks. */
+struct zsrc
 {
-    size_t i, scan;
+    const uint8_t* mem;   /* non-NULL: memory backend */
+    RFILE*         fp;    /* non-NULL: file backend   */
+    int64_t        size;
+};
+
+/* Read n bytes at off into dst. Returns 0 on success. */
+static int zsrc_read(struct zsrc* z, int64_t off, void* dst, size_t n)
+{
+    if (off < 0 || n > (uint64_t)(z->size - off))
+        return -1;
+    if (z->mem) {
+        memcpy(dst, z->mem + off, n);
+        return 0;
+    }
+    if (filestream_seek(z->fp, off, RETRO_VFS_SEEK_POSITION_START) < 0)
+        return -1;
+    return (filestream_read(z->fp, dst, (int64_t)n) == (int64_t)n) ? 0 : -1;
+}
+
+/* Borrow a span without copying when possible: the memory backend can point
+ * straight at it, the file backend has to stage it in the caller's buffer. */
+static const uint8_t* zsrc_map(struct zsrc* z, int64_t off, size_t n,
+                               uint8_t* stage)
+{
+    if (off < 0 || n > (uint64_t)(z->size - off))
+        return NULL;
+    if (z->mem)
+        return z->mem + off;
+    return zsrc_read(z, off, stage, n) == 0 ? stage : NULL;
+}
+
+/* Locate the end-of-central-directory record and read the central directory.
+ * Returns entry count and, for the file backend, the buffer holding the
+ * directory (caller frees via *cd_owned); entry names point into it.
+ *
+ * The EOCD lives in the last 22 bytes plus up to a 64 KiB comment, so only
+ * that tail is examined - not the archive.  The backwards scan is over that
+ * tail only and stops at the first signature, which for a comment-less
+ * archive is the very first position tried. */
+static int zip_list_src(struct zsrc* z, struct zip_entry* entries, int max,
+                        uint8_t** cd_owned)
+{
+    uint8_t  tail[66*1024];
+    uint8_t* cd = NULL;
+    size_t   tail_len, i;
+    int64_t  tail_off;
     const uint8_t* eocd = NULL;
-    uint32_t cd_off;
+    uint32_t cd_off, cd_size;
     uint16_t count;
     int n = 0;
 
-    if (size < 22)
+    *cd_owned = NULL;
+
+    if (z->size < 22)
         return 0;
 
-    scan = (size > 22 + 0xffff) ? size - (22 + 0xffff) : 0;
-    for (i = size - 22; ; --i) {
-        if (data[i] == 0x50 && rd32(data + i) == 0x06054b50) { eocd = data + i; break; }
-        if (i == scan) break;
+    /* Two stages: an archive with no comment - which is nearly all of them -
+     * ends with the 22-byte record itself, so probe a small tail first and
+     * only pay for the full 64 KiB comment allowance when that misses.  A
+     * fixed 64 KiB probe made the single-entry case read more from disk than
+     * slurping the archive did. */
+    {
+        size_t probe = 4096;
+
+        for (;;) {
+            tail_len = (size_t)((z->size < (int64_t)probe) ? z->size : (int64_t)probe);
+            tail_off = z->size - (int64_t)tail_len;
+            if (zsrc_read(z, tail_off, tail, tail_len) != 0)
+                return 0;
+
+            for (i = tail_len - 22; ; --i) {
+                if (tail[i] == 0x50 && rd32(tail + i) == 0x06054b50) { eocd = tail + i; break; }
+                if (i == 0) break;
+            }
+
+            if (eocd != NULL || tail_len == (size_t)z->size || probe == sizeof(tail))
+                break;
+            probe = sizeof(tail);
+        }
     }
     if (eocd == NULL)
         return 0;
 
-    count  = rd16(eocd + 10);
-    cd_off = rd32(eocd + 16);
+    count   = rd16(eocd + 10);
+    cd_size = rd32(eocd + 12);
+    cd_off  = rd32(eocd + 16);
 
-    while (n < count && n < max && cd_off + 46 <= size) {
-        const uint8_t* e = data + cd_off;
-        if (rd32(e) != 0x02014b50)
-            break;
-        entries[n].method    = rd16(e + 10);
-        entries[n].csize     = rd32(e + 20);
-        entries[n].usize     = rd32(e + 24);
-        entries[n].name_len  = rd16(e + 28);
-        entries[n].local_off = rd32(e + 42);
-        entries[n].name      = (const char*)(e + 46);
-        if (cd_off + 46 + entries[n].name_len > size)
-            break;
-        cd_off += 46 + entries[n].name_len + rd16(e + 30) + rd16(e + 32);
-        ++n;
+    if (count == 0 || cd_size == 0 || (int64_t)cd_off + cd_size > z->size)
+        return 0;
+
+    if (z->mem) {
+        cd = (uint8_t*)(uintptr_t)(z->mem + cd_off);
+    } else {
+        if (!(cd = (uint8_t*)malloc(cd_size)))
+            return 0;
+        if (zsrc_read(z, cd_off, cd, cd_size) != 0) {
+            free(cd);
+            return 0;
+        }
+        *cd_owned = cd;
+    }
+
+    {
+        uint32_t p = 0;
+        while (n < count && n < max && p + 46 <= cd_size) {
+            const uint8_t* e = cd + p;
+            if (rd32(e) != 0x02014b50)
+                break;
+            entries[n].method    = rd16(e + 10);
+            entries[n].csize     = rd32(e + 20);
+            entries[n].usize     = rd32(e + 24);
+            entries[n].name_len  = rd16(e + 28);
+            entries[n].local_off = rd32(e + 42);
+            entries[n].name      = (const char*)(e + 46);
+            if (p + 46u + entries[n].name_len > cd_size)
+                break;
+            p += 46u + entries[n].name_len + rd16(e + 30) + rd16(e + 32);
+            ++n;
+        }
     }
     return n;
 }
 
-/* decompress entry into dst (usize bytes); returns 0 on success */
-static int zip_extract(const uint8_t* data, size_t size, const struct zip_entry* e, uint8_t* dst)
-{
-    const uint8_t* lh = data + e->local_off;
-    const uint8_t* src;
-    uint32_t data_off;
+/* Decompress an entry into dst (usize bytes); returns 0 on success.
+ *
+ * The compressed bytes are streamed through a fixed window straight into the
+ * destination, so the archive is never held in memory: peak cost is the rom
+ * buffer plus this window, rather than the rom buffer plus the whole file.
+ * The memory backend feeds rinflate the span directly, with no window and no
+ * copy at all. */
+#define ZIP_IN_WINDOW (64 * 1024)
 
-    if (e->local_off + 30 > size || rd32(lh) != 0x04034b50)
+static int zip_extract_src(struct zsrc* z, const struct zip_entry* e, uint8_t* dst)
+{
+    uint8_t  lh[30];
+    int64_t  data_off;
+
+    if ((int64_t)e->local_off + 30 > z->size)
         return -1;
-    data_off = e->local_off + 30 + rd16(lh + 26) + rd16(lh + 28);
-    if (data_off + e->csize > size)
+    if (zsrc_read(z, e->local_off, lh, sizeof(lh)) != 0 || rd32(lh) != 0x04034b50)
         return -1;
-    src = data + data_off;
+
+    data_off = (int64_t)e->local_off + 30 + rd16(lh + 26) + rd16(lh + 28);
+    if (data_off + e->csize > z->size)
+        return -1;
 
     if (e->method == 0) {
         if (e->csize != e->usize)
             return -1;
-        memcpy(dst, src, e->usize);
-        return 0;
+        return zsrc_read(z, data_off, dst, e->usize);
     }
 
     if (e->method == 8) {
         /* Zip stores a bare deflate stream with no wrapper, which is what
          * negative window bits select - the same thing -MAX_WBITS meant to
          * inflateInit2(). */
-        void  *stream = rinflate_new(-15);
-        size_t produced = 0;
-        int    ok = 0;
+        void*    stream = rinflate_new(-15);
+        uint8_t* window = NULL;
+        uint32_t left   = e->csize;
+        size_t   produced = 0;
+        int      ok = 0;
 
         if (!stream)
             return -1;
 
-        rinflate_set_in(stream, (const uint8_t*)src, e->csize);
-        rinflate_set_out(stream, (uint8_t*)dst, e->usize);
+        if (!z->mem && !(window = (uint8_t*)malloc(ZIP_IN_WINDOW))) {
+            rinflate_free(stream);
+            return -1;
+        }
+
+        rinflate_set_out(stream, dst, e->usize);
+
+        if (z->mem) {
+            rinflate_set_in(stream, z->mem + data_off, left);
+            left = 0;
+        }
 
         for (;;) {
             size_t rd = 0, wn = 0;
-            const int st = rinflate_process(stream, &rd, &wn);
+            int    st;
 
+            /* Refill only when the decoder has drained the window. */
+            if (window && left > 0 && produced < e->usize) {
+                size_t want = (left < ZIP_IN_WINDOW) ? left : ZIP_IN_WINDOW;
+                if (zsrc_read(z, data_off, window, want) != 0)
+                    break;
+                rinflate_set_in(stream, window, want);
+                data_off += (int64_t)want;
+                left     -= (uint32_t)want;
+            }
+
+            st = rinflate_process(stream, &rd, &wn);
             produced += wn;
 
             if (st == RDEFLATE_PROCESS_END) {
                 ok = 1;
                 break;
             }
-            if (st == RDEFLATE_PROCESS_ERROR || (rd == 0 && wn == 0))
+            if (st == RDEFLATE_PROCESS_ERROR)
+                break;
+            /* No progress and nothing left to feed: truncated stream. */
+            if (rd == 0 && wn == 0 && left == 0)
                 break;
         }
 
+        free(window);
         rinflate_free(stream);
         return (ok && produced == e->usize) ? 0 : -1;
     }
@@ -193,10 +324,13 @@ static const struct a64_game* g_game = NULL;
 /* Returns 1 and fills out and out_size (malloc'd) when the zip produced a rom
  * image; 0 otherwise. Sets the g_aleck64_* game flags when the zip matched a
  * MAME Aleck64 set. */
-int aleck64_load_zip(const uint8_t* data, size_t size, uint8_t** out, size_t* out_size)
+static int aleck64_load_zip_src(struct zsrc* z, const char* prefer,
+                                uint8_t** out, size_t* out_size)
 {
     struct zip_entry entries[A64_MAX_ENTRIES];
+    uint8_t* cd_owned = NULL;
     int n, i, g, f;
+    int ret = 0;
 
     g_aleck64_enabled = 0;
     g_aleck64_e90 = 0;
@@ -204,9 +338,9 @@ int aleck64_load_zip(const uint8_t* data, size_t size, uint8_t** out, size_t* ou
     g_aleck64_dpad_disabled = 0;
     g_game = NULL;
 
-    n = zip_list(data, size, entries, A64_MAX_ENTRIES);
+    n = zip_list_src(z, entries, A64_MAX_ENTRIES, &cd_owned);
     if (n == 0)
-        return 0;
+        goto done;
 
     /* MAME Aleck64 set: identified by its program rom filename */
     for (g = 0; g < (int)(sizeof(a64_games)/sizeof(a64_games[0])); ++g) {
@@ -229,11 +363,11 @@ int aleck64_load_zip(const uint8_t* data, size_t size, uint8_t** out, size_t* ou
 
         rom = (uint8_t*)malloc(total);
         if (rom == NULL)
-            return 0;
+            goto done;
         for (f = 0; f < 2 && game->files[f].name != NULL; ++f) {
-            if (zip_extract(data, size, found[f], rom + game->files[f].offset) != 0) {
+            if (zip_extract_src(z, found[f], rom + game->files[f].offset) != 0) {
                 free(rom);
-                return 0;
+                goto done;
             }
         }
 
@@ -246,10 +380,34 @@ int aleck64_load_zip(const uint8_t* data, size_t size, uint8_t** out, size_t* ou
         aleck64_apply_dips();
         *out = rom;
         *out_size = total;
-        return 1;
+        ret = 1;
+        goto done;
     }
 
     aleck64_apply_dips();
+
+    /* The frontend passed "archive.zip#entry": load exactly that entry, so a
+     * multi-rom archive gives the user the rom they picked rather than
+     * whichever one happens to come first. */
+    if (prefer != NULL && *prefer != '\0') {
+        for (i = 0; i < n; ++i) {
+            if (name_is(&entries[i], prefer) && entries[i].usize >= 0x1000) {
+                uint8_t* rom = (uint8_t*)malloc(entries[i].usize);
+                if (rom == NULL)
+                    goto done;
+                if (zip_extract_src(z, &entries[i], rom) != 0) {
+                    free(rom);
+                    goto done;
+                }
+                *out = rom;
+                *out_size = entries[i].usize;
+                ret = 1;
+                goto done;
+            }
+        }
+        /* Named entry absent or unusable: fall through to the scan below
+         * rather than failing the load outright. */
+    }
 
     /* plain rom inside a zip (the frontend no longer extracts for us) */
     for (i = 0; i < n; ++i) {
@@ -259,19 +417,22 @@ int aleck64_load_zip(const uint8_t* data, size_t size, uint8_t** out, size_t* ou
             if (name_ends_with(&entries[i], exts[e]) && entries[i].usize >= 0x1000) {
                 uint8_t* rom = (uint8_t*)malloc(entries[i].usize);
                 if (rom == NULL)
-                    return 0;
-                if (zip_extract(data, size, &entries[i], rom) != 0) {
+                    goto done;
+                if (zip_extract_src(z, &entries[i], rom) != 0) {
                     free(rom);
-                    return 0;
+                    goto done;
                 }
                 *out = rom;
                 *out_size = entries[i].usize;
-                return 1;
+                ret = 1;
+                goto done;
             }
         }
     }
 
-    return 0;
+done:
+    free(cd_owned);
+    return ret;
 }
 
 /* ---- dipswitches, driven by the core options ---- */
@@ -377,4 +538,40 @@ void aleck64_apply_dips(void)
 
     g_aleck64_dipswitch[0] = d0;
     g_aleck64_dipswitch[1] = d1;
+}
+
+int aleck64_load_zip_named(const uint8_t* data, size_t size, const char* prefer,
+                           uint8_t** out, size_t* out_size)
+{
+    struct zsrc z;
+    z.mem  = data;
+    z.fp   = NULL;
+    z.size = (int64_t)size;
+    return aleck64_load_zip_src(&z, prefer, out, out_size);
+}
+
+int aleck64_load_zip(const uint8_t* data, size_t size, uint8_t** out, size_t* out_size)
+{
+    return aleck64_load_zip_named(data, size, NULL, out, out_size);
+}
+
+/* Path-based load: the archive is read where it lies, so nothing larger than
+ * the rom itself is ever allocated. */
+int aleck64_load_zip_path(const char* path, const char* prefer,
+                          uint8_t** out, size_t* out_size)
+{
+    struct zsrc z;
+    int ret;
+
+    z.mem = NULL;
+    z.fp  = filestream_open(path, RETRO_VFS_FILE_ACCESS_READ,
+                            RETRO_VFS_FILE_ACCESS_HINT_NONE);
+    if (!z.fp)
+        return 0;
+
+    z.size = filestream_get_size(z.fp);
+    ret = (z.size > 0) ? aleck64_load_zip_src(&z, prefer, out, out_size) : 0;
+
+    filestream_close(z.fp);
+    return ret;
 }
