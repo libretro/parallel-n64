@@ -1055,7 +1055,37 @@ void retro_get_system_av_info(struct retro_system_av_info *info)
    info->geometry.max_width    = screen_width;
    info->geometry.max_height   = screen_height;
    info->geometry.aspect_ratio = screen_aspect_ratio;
-   info->timing.fps = (region == SYSTEM_PAL) ? 50.0 : (60.13);                /* TODO: Actual timing  */
+   /* Report the rate the VI is actually emulated at, not a constant.
+    *
+    * This was 60.13 for every NTSC title, with a "TODO: Actual timing" on
+    * it.  Nothing in the core runs at that rate: the frame period is
+    * vi->delay VI-clock counts, and for a standard NTSC V_SYNC of 0x20D
+    * that is 48681812 / 811125 = 60.0176 Hz.  Declaring 60.13 overstates it
+    * by 0.19%, which the frontend has to absorb somewhere - as a resampling
+    * ratio it holds against the real production rate, or as frame pacing
+    * that never quite lands.  PAL comes out at 50.0003 Hz against a
+    * declared 50.
+    *
+    * Before the game programs V_SYNC there is no period to read, so fall
+    * back to the rate a standard V_SYNC would give for the region rather
+    * than to the nominal integer - that is what the title will almost
+    * always settle on, and it keeps the value the frontend sees at load
+    * consistent with the one it sees a frame later. */
+   {
+      double fps = vi_actual_refresh_rate(&g_dev.vi);
+
+      if (fps <= 0.0)
+      {
+         const unsigned int clock = vi_clock_from_tv_standard(region);
+         const unsigned int rr    = vi_expected_refresh_rate_from_tv_standard(region);
+         const unsigned int vsync = (region == SYSTEM_PAL) ? 625u : 525u;
+         const unsigned int delay = vsync * ((clock / rr) / vsync);
+
+         fps = (delay != 0) ? (double)clock / (double)delay : (double)rr;
+      }
+
+      info->timing.fps = fps;
+   }
    info->timing.sample_rate = (double)get_audio_sample_rate_libretro();
 }
 

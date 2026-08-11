@@ -57,6 +57,29 @@ unsigned int vi_expected_refresh_rate_from_tv_standard(m64p_system_type tv_stand
     }
 }
 
+/* The refresh rate the VI is actually being emulated at, in Hz.
+ *
+ * The frame period is vi->delay counts of the VI clock, and delay is derived
+ * from the game's programmed V_SYNC:
+ *
+ *   count_per_scanline = (clock / expected_refresh_rate) / (V_SYNC + 1)
+ *   delay              = (V_SYNC + 1) * count_per_scanline
+ *
+ * The integer division in the first step truncates, so delay lands slightly
+ * under clock/expected_refresh_rate and the emulated rate lands slightly
+ * over the nominal 60 or 50 - for a standard NTSC V_SYNC of 0x20D that is
+ * 48681812 / 811125 = 60.0176 Hz, not 60.
+ *
+ * Returns 0 before the game has programmed V_SYNC, when there is no frame
+ * period to report yet. */
+double vi_actual_refresh_rate(const struct vi_controller* vi)
+{
+    if (vi == NULL || vi->delay == 0)
+        return 0.0;
+
+    return (double)vi->clock / (double)vi->delay;
+}
+
 void set_vi_vertical_interrupt(struct vi_controller* vi)
 {
     if (!get_event(&vi->mi->r4300->cp0.q, VI_INT) && (vi->regs[VI_V_INTR_REG] < vi->regs[VI_V_SYNC_REG]))
