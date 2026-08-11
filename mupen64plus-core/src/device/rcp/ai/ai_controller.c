@@ -64,7 +64,21 @@ static unsigned int get_dma_duration(struct ai_controller* ai)
 {
     unsigned int samples_per_sec = ai->vi->clock / (1 + ai->regs[AI_DACRATE_REG]);
     unsigned int bytes_per_sample = 4; /* XXX: assume 16bit stereo - should depends on bitrate instead */
-    unsigned int cpu_counts_per_sec = ai->vi->delay == 0 ? ai->vi->clock : ai->vi->delay * ai->vi->expected_refresh_rate; /* estimate cpu counts/sec using VI */
+    /* Counts per second is vi->clock, exactly.
+     *
+     * A field is vi->delay counts and the VI is emulated at clock/delay
+     * fields per second, so delay * actual_refresh == clock identically.
+     * This used delay * expected_refresh_rate instead, i.e. the nominal 60
+     * rather than the 60.0176 the VI actually runs at, which is 0.0294% low
+     * and made the DMA duration correspondingly short.
+     *
+     * That error lands directly on the audio rate: with counts/sec low by
+     * 0.0294% the AI accepts 22053.48 frames per second of emulated time
+     * while set_frequency has told the frontend 22047, and a frontend
+     * running blocking audio with no dynamic rate control has nothing to
+     * absorb the difference with.  Using the clock makes production match
+     * the declared rate exactly. */
+    unsigned int cpu_counts_per_sec = ai->vi->clock;
     uint64_t bytes_per_sec = (uint64_t)bytes_per_sample * samples_per_sec;
 
     if (bytes_per_sec == 0)
