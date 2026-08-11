@@ -65,8 +65,28 @@ static unsigned int get_dma_duration(struct ai_controller* ai)
     unsigned int samples_per_sec = ai->vi->clock / (1 + ai->regs[AI_DACRATE_REG]);
     unsigned int bytes_per_sample = 4; /* XXX: assume 16bit stereo - should depends on bitrate instead */
     unsigned int cpu_counts_per_sec = ai->vi->delay == 0 ? ai->vi->clock : ai->vi->delay * ai->vi->expected_refresh_rate; /* estimate cpu counts/sec using VI */
+    uint64_t bytes_per_sec = (uint64_t)bytes_per_sample * samples_per_sec;
 
-    return ai->regs[AI_LEN_REG] * (cpu_counts_per_sec / (bytes_per_sample * samples_per_sec));
+    if (bytes_per_sec == 0)
+        return 0;
+
+    /* Scale first, divide once.
+     *
+     * This used to divide before multiplying, so the per-byte count was
+     * truncated to an integer and then scaled by the whole transfer length,
+     * multiplying the rounding error by AI_LEN.  For an NTSC title at 22047 Hz
+     * the exact figure is 551.8608 counts per byte and the truncated one is
+     * 551, so every DMA was reported as completing 0.156% early regardless of
+     * its size - a 0x2000-byte transfer finished 7051 counts before it should
+     * have.  The AI interrupt that follows is what tells the game its buffer
+     * has drained, so a consistently early one makes the game refill early and
+     * produce marginally more audio per second of emulated time than the rate
+     * it asked for, which the frontend then has to absorb.
+     *
+     * The 64-bit intermediate cannot overflow: AI_LEN is an 18-bit field and
+     * cpu_counts_per_sec is under 2^26. */
+    return (unsigned int)(((uint64_t)ai->regs[AI_LEN_REG] * cpu_counts_per_sec)
+                          / bytes_per_sec);
 }
 
 
