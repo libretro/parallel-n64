@@ -165,7 +165,29 @@ TxCache::add(uint64 checksum, GHQTexInfo *info, int dataSize)
 			return 0;
 
 		if (_options & (GZ_TEXCACHE|GZ_HIRESTEXCACHE)) {
-			/* deflate it. compression level:1 (best speed) */
+			/* deflate it. compression level:1 (best speed)
+			 *
+			 * This runs on the gameplay path - TxFilter calls add() as
+			 * textures are filtered - so the level is chosen for time, not
+			 * size, which is what the original "best speed" comment meant.
+			 * Measured over 4 MiB RGBA8 payloads, mean of 3, against the
+			 * zlib compress2(level 1) this replaced:
+			 *
+			 *                    zlib l1        rdeflate l1     rdeflate l4
+			 *   upscaled art   76086 / 10.1ms  82669 / 7.9ms   75705 / 30.1ms
+			 *   noisy detail  3635149 /  147ms 3629668 / 122ms 3629638 / 134ms
+			 *   gradient/UI   1450155 / 67.7ms 1451446 / 69.1ms 1451446 / 173ms
+			 *
+			 * rdeflate at level 1 is the faster of the two on the first two
+			 * shapes and within noise on the third.  It gives up 8.6% on flat
+			 * upscaled content, which is the shape a texture cache sees most,
+			 * and level 4 buys that back and then beats zlib - but at 3.8x the
+			 * time on that shape and 2.5x on a gradient, which on this path is
+			 * a hitch while a texture is filtered.  Levels 1-3 are identical in
+			 * output here and 4-6 are identical to each other, so the only
+			 * decision is which side of that cliff to sit on; speed wins on a
+			 * runtime path.  Revisit only with a measurement taken while a real
+			 * texture pack is loading, not against synthetic payloads. */
 			uint32 destLen = _gzdestLen;
 			dest = (dest == _gzdest0) ? _gzdest1 : _gzdest0;
 			if (txDeflate(dest, &destLen, info->data, dataSize, 1) != 0) {

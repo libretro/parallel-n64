@@ -20,6 +20,30 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+/* glsym is deliberately held back from upstream libretro-common.
+ *
+ * Everything else under libretro-common/ here tracks RetroArch master, but
+ * glsym/ and include/glsym/ do not, and a wholesale resync will break the
+ * link.  Upstream has dropped the rglgen indirection for 37 OpenGL 1.1 core
+ * entry points - glBlendFunc, glClearColor, glDisable, glDrawArrays and the
+ * rest are no longer #defined to __rglgen_* - because RetroArch itself links
+ * against a GL library and can call them directly.
+ *
+ * A libretro core cannot.  It is a shared object loaded into a frontend that
+ * has already chosen a context - GLX, EGL, WGL, a software wrapper - and the
+ * whole point of resolving entry points through rglgen_resolve_symbols() and
+ * the frontend's get_proc_address is that one core binary works against any
+ * of them.  Linking a GL library into the core to satisfy those 37 symbols
+ * would bind it to one implementation at build time, and the library to name
+ * differs per platform (-lGL, -lGLESv2, opengl32, a framework), so it is not
+ * one flag but a per-target matrix that would have to be kept correct
+ * forever.
+ *
+ * This file is the coupling: it drives glsym and has no upstream counterpart,
+ * so glsym and glsm move together or not at all.  Syncing only glsym leaves
+ * roughly forty GL symbols undefined at link.  If glsm is ever reworked to
+ * resolve those entry points itself, glsym can rejoin the resync; until then
+ * the drift is intentional and this comment is the reason. */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
