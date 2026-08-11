@@ -38,6 +38,8 @@
 #define __STDC_FORMAT_MACROS
 #include <inttypes.h>
 
+#include <streams/file_stream.h>
+
 #include "osal/files.h"
 #include "osal/preproc.h"
 #include "rom.h"
@@ -47,51 +49,73 @@
      File utilities
  **********************/
 
+/* These go through libretro-common's filestream rather than stdio.
+ *
+ * Two reasons.  Paths: these are the save files - SRAM, EEPROM, FlashRAM,
+ * mempaks - and the 64DD disk image, and the frontend hands the core a UTF-8
+ * path for them.  Passing that to fopen() on Windows interprets it in the
+ * active code page, so a save under a directory with any non-ASCII character
+ * in it silently failed to open; filestream opens through fopen_utf8, which
+ * widens the path properly.  Sizes: ftell() returns long and its result was
+ * being kept in an int here, so a file past 2 GiB truncated, and a truncated
+ * negative value that was not exactly -1 passed the error check and was then
+ * cast to size_t, producing an enormous allocation.  filestream reports
+ * sizes as int64_t throughout.
+ *
+ * The rest of the core already loads content through filestream; this brings
+ * the save path in line with it. */
+
 file_status_t read_from_file(const char *filename, void *data, size_t size)
 {
-    FILE *f = fopen(filename, "rb");
+    RFILE *f = filestream_open(filename, RETRO_VFS_FILE_ACCESS_READ,
+                               RETRO_VFS_FILE_ACCESS_HINT_NONE);
     if (f == NULL)
     {
         return file_open_error;
     }
 
-    if (fread(data, 1, size, f) != size)
+    if (filestream_read(f, data, (int64_t)size) != (int64_t)size)
     {
-        fclose(f);
+        filestream_close(f);
         return file_read_error;
     }
 
-    fclose(f);
+    filestream_close(f);
     return file_ok;
 }
 
 file_status_t write_to_file(const char *filename, const void *data, size_t size)
 {
-    FILE *f = fopen(filename, "wb");
+    RFILE *f = filestream_open(filename, RETRO_VFS_FILE_ACCESS_WRITE,
+                               RETRO_VFS_FILE_ACCESS_HINT_NONE);
     if (f == NULL)
     {
         return file_open_error;
     }
 
-    if (fwrite(data, 1, size, f) != size)
+    if (filestream_write(f, data, (int64_t)size) != (int64_t)size)
     {
-        fclose(f);
+        filestream_close(f);
         return file_write_error;
     }
 
-    fclose(f);
+    filestream_close(f);
     return file_ok;
 }
 
 
 file_status_t write_chunk_to_file(const char *filename, const void *data, size_t size, size_t offset)
 {
-    FILE *f;
+    RFILE *f;
 
-    /* first try to open with rb+ to avoid wiping existing content,
+    /* first try to open for update to avoid wiping existing content,
      * otherwise create file */
-    if ((f = fopen(filename, "rb+")) == NULL) {
-        if ((f = fopen(filename, "wb")) == NULL) {
+    if ((f = filestream_open(filename,
+                             RETRO_VFS_FILE_ACCESS_READ_WRITE
+                             | RETRO_VFS_FILE_ACCESS_UPDATE_EXISTING,
+                             RETRO_VFS_FILE_ACCESS_HINT_NONE)) == NULL) {
+        if ((f = filestream_open(filename, RETRO_VFS_FILE_ACCESS_WRITE,
+                                 RETRO_VFS_FILE_ACCESS_HINT_NONE)) == NULL) {
             return file_open_error;
         }
     }
@@ -100,33 +124,32 @@ file_status_t write_chunk_to_file(const char *filename, const void *data, size_t
      * (and use sparse file if supported).
      * So we can use it to position next write operation at desired offset.
      */
-    if (fseek(f, offset, SEEK_SET)) {
-        fclose(f);
+    if (filestream_seek(f, (int64_t)offset, RETRO_VFS_SEEK_POSITION_START) < 0) {
+        filestream_close(f);
         return file_open_error;
     }
 
-    if (fwrite(data, 1, size, f) != size)
+    if (filestream_write(f, data, (int64_t)size) != (int64_t)size)
     {
-        fclose(f);
+        filestream_close(f);
         return file_write_error;
     }
 
-    fclose(f);
+    filestream_close(f);
     return file_ok;
 }
 
 
 file_status_t load_file(const char* filename, void** buffer, size_t* size)
 {
-    FILE* fd;
-    size_t l_size, bytes_read;
+    RFILE* fd;
+    int64_t l_size;
     void* l_buffer;
-    int err;
     file_status_t ret;
 
     /* open file */
-    ret = file_open_error;
-    fd = fopen(filename, "rb");
+    fd = filestream_open(filename, RETRO_VFS_FILE_ACCESS_READ,
+                         RETRO_VFS_FILE_ACCESS_HINT_NONE);
     if (fd == NULL)
     {
         return file_open_error;
@@ -134,27 +157,14 @@ file_status_t load_file(const char* filename, void** buffer, size_t* size)
 
     /* obtain file size */
     ret = file_size_error;
-    err = fseek(fd, 0, SEEK_END);
-    if (err != 0)
-    {
-        goto close_file;
-    }
-
-    err = ftell(fd);
-    if (err == -1)
-    {
-        goto close_file;
-    }
-    l_size = (size_t)err;
-
-    err = fseek(fd, 0, SEEK_SET);
-    if (err != 0)
+    l_size = filestream_get_size(fd);
+    if (l_size <= 0 || (uint64_t)l_size > (uint64_t)((size_t)-1))
     {
         goto close_file;
     }
 
     /* allocate buffer */
-    l_buffer = malloc(l_size);
+    l_buffer = malloc((size_t)l_size);
     if (l_buffer == NULL)
     {
         goto close_file;
@@ -162,8 +172,7 @@ file_status_t load_file(const char* filename, void** buffer, size_t* size)
 
     /* copy file content to buffer */
     ret = file_read_error;
-    bytes_read = fread(l_buffer, 1, l_size, fd);
-    if (bytes_read != l_size)
+    if (filestream_read(fd, l_buffer, l_size) != l_size)
     {
         free(l_buffer);
         goto close_file;
@@ -172,23 +181,23 @@ file_status_t load_file(const char* filename, void** buffer, size_t* size)
     /* commit buffer,size */
     ret = file_ok;
     *buffer = l_buffer;
-    *size = l_size;
+    *size = (size_t)l_size;
 
     /* close file */
 close_file:
-    fclose(fd);
+    filestream_close(fd);
     return ret;
 }
 
 file_status_t get_file_size(const char* filename, size_t* size)
 {
-    FILE* fd;
-    int err;
+    RFILE* fd;
+    int64_t l_size;
     file_status_t ret;
 
     /* open file */
-    ret = file_open_error;
-    fd = fopen(filename, "rb");
+    fd = filestream_open(filename, RETRO_VFS_FILE_ACCESS_READ,
+                         RETRO_VFS_FILE_ACCESS_HINT_NONE);
     if (fd == NULL)
     {
         return file_open_error;
@@ -196,30 +205,20 @@ file_status_t get_file_size(const char* filename, size_t* size)
 
     /* obtain file size */
     ret = file_size_error;
-    err = fseek(fd, 0, SEEK_END);
-    if (err != 0)
-    {
-        goto close_file;
-    }
-
-    err = ftell(fd);
-    if (err == -1)
+    l_size = filestream_get_size(fd);
+    if (l_size < 0 || (uint64_t)l_size > (uint64_t)((size_t)-1))
     {
         goto close_file;
     }
 
     ret = file_ok;
-    *size = (size_t)err;
+    *size = (size_t)l_size;
 
-    /* close file */
 close_file:
-    fclose(fd);
+    filestream_close(fd);
     return ret;
 }
 
-/**********************
-   Byte swap utilities
- **********************/
 void swap_buffer(void *buffer, size_t length, size_t count)
 {
     size_t i;
