@@ -36,20 +36,23 @@ static bool allocate_frames(struct scaler_ctx *ctx)
    ctx->scaled.stride     = ((ctx->out_width + 7) & ~7) * sizeof(uint64_t);
    ctx->scaled.width      = ctx->out_width;
    ctx->scaled.height     = ctx->in_height;
-   scaled_frame           = (uint64_t*)calloc(sizeof(uint64_t),
-            (ctx->scaled.stride * ctx->scaled.height) >> 3);
+   scaled_frame           = (uint64_t*)calloc(
+            (ctx->scaled.stride * ctx->scaled.height) >> 3,
+            sizeof(uint64_t));
 
    if (!scaled_frame)
       return false;
 
    ctx->scaled.frame      = scaled_frame;
 
-   if (ctx->in_fmt != SCALER_FMT_ARGB8888)
+   if (       ctx->in_fmt != SCALER_FMT_ARGB8888
+           && ctx->in_fmt != SCALER_FMT_XRGB2101010)
    {
       uint32_t *input_frame = NULL;
       ctx->input.stride     = ((ctx->in_width + 7) & ~7) * sizeof(uint32_t);
-      input_frame           = (uint32_t*)calloc(sizeof(uint32_t),
-               (ctx->input.stride * ctx->in_height) >> 2);
+      input_frame           = (uint32_t*)calloc(
+               (ctx->input.stride * ctx->in_height) >> 2,
+               sizeof(uint32_t));
 
       if (!input_frame)
          return false;
@@ -57,13 +60,15 @@ static bool allocate_frames(struct scaler_ctx *ctx)
       ctx->input.frame      = input_frame;
    }
 
-   if (ctx->out_fmt != SCALER_FMT_ARGB8888)
+   if (       ctx->out_fmt != SCALER_FMT_ARGB8888
+           && ctx->out_fmt != SCALER_FMT_XRGB2101010)
    {
       uint32_t *output_frame = NULL;
       ctx->output.stride     = ((ctx->out_width + 7) & ~7) * sizeof(uint32_t);
 
-      output_frame           = (uint32_t*)calloc(sizeof(uint32_t),
-               (ctx->output.stride * ctx->out_height) >> 2);
+      output_frame           = (uint32_t*)calloc(
+               (ctx->output.stride * ctx->out_height) >> 2,
+               sizeof(uint32_t));
 
       if (!output_frame)
          return false;
@@ -196,11 +201,38 @@ bool scaler_ctx_gen_filter(struct scaler_ctx *ctx)
                      break;
                }
                break;
+
+            case SCALER_FMT_XRGB2101010:
+               /* No cross-format direct conversion: every counterpart
+                * here is 8-bit, and the narrowing direction is the
+                * caller's decision to make, not this switch's.  The
+                * same-format case never reaches here (conv_copy is
+                * bound above). */
+               break;
          }
 
          if (!ctx->direct_pixconv)
             return false;
       }
+   }
+   else if (   ctx->in_fmt  == SCALER_FMT_XRGB2101010
+            || ctx->out_fmt == SCALER_FMT_XRGB2101010)
+   {
+      /* 10-bit is filtered natively rather than through the ARGB8888
+       * canonical form: the 8-bit chain saturates to 8 bits at the end,
+       * so routing 10-bit samples through it would discard exactly the
+       * precision the format exists to carry.  Only 10-bit to 10-bit is
+       * offered; mixing with the 8-bit formats would need a conversion
+       * whose direction silently decides what is lost, which is better
+       * left to the caller. */
+      if (ctx->in_fmt != ctx->out_fmt)
+         return false;
+
+      ctx->scaler_horiz = scaler_xrgb2101010_horiz;
+      ctx->scaler_vert  = scaler_xrgb2101010_vert;
+
+      if (!scaler_gen_filter(ctx))
+         return false;
    }
    else
    {
@@ -321,7 +353,27 @@ void scaler_ctx_scale(struct scaler_ctx *ctx,
    int input_stride        = ctx->in_stride;
    int output_stride       = ctx->out_stride;
 
-   if (ctx->in_fmt != SCALER_FMT_ARGB8888)
+   /* Source and destination are the same size: there is nothing to
+    * filter, only a possible pixel format conversion.
+    * scaler_ctx_gen_filter recognises this, binds direct_pixconv and
+    * returns without generating a filter or setting scaler_horiz /
+    * scaler_vert.  Honour that here: without it the generic path below
+    * finds both function pointers NULL, writes nothing at all, and the
+    * caller gets its output buffer back exactly as it was - which for a
+    * freshly malloc'd buffer means an image of uninitialised memory, or
+    * a fully transparent one where the allocation came from fresh
+    * zeroed pages. */
+   if (ctx->unscaled)
+   {
+      if (ctx->direct_pixconv)
+         ctx->direct_pixconv(output, input,
+               ctx->out_width, ctx->out_height,
+               ctx->out_stride, ctx->in_stride);
+      return;
+   }
+
+   if (       ctx->in_fmt != SCALER_FMT_ARGB8888
+           && ctx->in_fmt != SCALER_FMT_XRGB2101010)
    {
       ctx->in_pixconv(ctx->input.frame, input,
             ctx->in_width, ctx->in_height,
@@ -331,7 +383,8 @@ void scaler_ctx_scale(struct scaler_ctx *ctx,
       input_stride      = ctx->input.stride;
    }
 
-   if (ctx->out_fmt != SCALER_FMT_ARGB8888)
+   if (       ctx->out_fmt != SCALER_FMT_ARGB8888
+           && ctx->out_fmt != SCALER_FMT_XRGB2101010)
    {
       output_frame  = ctx->output.frame;
       output_stride = ctx->output.stride;
@@ -349,10 +402,11 @@ void scaler_ctx_scale(struct scaler_ctx *ctx,
       if (ctx->scaler_horiz)
          ctx->scaler_horiz(ctx, input_frame, input_stride);
       if (ctx->scaler_vert)
-         ctx->scaler_vert (ctx, output, output_stride);
+         ctx->scaler_vert (ctx, output_frame, output_stride);
    }
 
-   if (ctx->out_fmt != SCALER_FMT_ARGB8888)
+   if (       ctx->out_fmt != SCALER_FMT_ARGB8888
+           && ctx->out_fmt != SCALER_FMT_XRGB2101010)
       ctx->out_pixconv(output, ctx->output.frame,
             ctx->out_width, ctx->out_height,
             ctx->out_stride, ctx->output.stride);

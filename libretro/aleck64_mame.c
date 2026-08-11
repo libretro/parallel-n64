@@ -14,7 +14,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <zlib.h>
+#include <encodings/deflate.h>
 
 #include <libretro.h>
 
@@ -104,18 +104,35 @@ static int zip_extract(const uint8_t* data, size_t size, const struct zip_entry*
     }
 
     if (e->method == 8) {
-        z_stream s;
-        int ret;
-        memset(&s, 0, sizeof(s));
-        if (inflateInit2(&s, -MAX_WBITS) != Z_OK)
+        /* Zip stores a bare deflate stream with no wrapper, which is what
+         * negative window bits select - the same thing -MAX_WBITS meant to
+         * inflateInit2(). */
+        void  *stream = rinflate_new(-15);
+        size_t produced = 0;
+        int    ok = 0;
+
+        if (!stream)
             return -1;
-        s.next_in   = (Bytef*)src;
-        s.avail_in  = e->csize;
-        s.next_out  = dst;
-        s.avail_out = e->usize;
-        ret = inflate(&s, Z_FINISH);
-        inflateEnd(&s);
-        return (ret == Z_STREAM_END && s.total_out == e->usize) ? 0 : -1;
+
+        rinflate_set_in(stream, (const uint8_t*)src, e->csize);
+        rinflate_set_out(stream, (uint8_t*)dst, e->usize);
+
+        for (;;) {
+            size_t rd = 0, wn = 0;
+            const int st = rinflate_process(stream, &rd, &wn);
+
+            produced += wn;
+
+            if (st == RDEFLATE_PROCESS_END) {
+                ok = 1;
+                break;
+            }
+            if (st == RDEFLATE_PROCESS_ERROR || (rd == 0 && wn == 0))
+                break;
+        }
+
+        rinflate_free(stream);
+        return (ok && produced == e->usize) ? 0 : -1;
     }
 
     return -1;

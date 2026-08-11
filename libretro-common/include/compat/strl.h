@@ -1,4 +1,4 @@
-/* Copyright  (C) 2010-2018 The RetroArch team
+/* Copyright  (C) 2010-2020 The RetroArch team
  *
  * ---------------------------------------------------------------------------------------
  * The following license statement only applies to this file (strl.h).
@@ -23,6 +23,15 @@
 #ifndef __LIBRETRO_SDK_COMPAT_STRL_H
 #define __LIBRETRO_SDK_COMPAT_STRL_H
 
+/**
+ * @file strl.h
+ *
+ * Portable implementation of \c strlcpy(3) and \c strlcat(3).
+ * If these functions are available on the target platform,
+ * then the originals should be imported instead.
+ *
+ * @see https://linux.die.net/man/3/strlcpy
+ */
 #include <string.h>
 #include <stddef.h>
 
@@ -34,7 +43,7 @@
 
 RETRO_BEGIN_DECLS
 
-#ifdef __MACH__
+#if defined(__MACH__) && defined(__APPLE__)
 #ifndef HAVE_STRL
 #define HAVE_STRL
 #endif
@@ -47,14 +56,31 @@ RETRO_BEGIN_DECLS
 
 #define strlcat(dst, src, size) strlcat_retro__(dst, src, size)
 
-size_t strlcpy(char *dest, const char *source, size_t size);
-size_t strlcat(char *dest, const char *source, size_t size);
+/**
+ * @brief Portable implementation of \c strlcpy(3).
+ * @see https://linux.die.net/man/3/strlcpy
+ */
+size_t strlcpy(char *s, const char *source, size_t len);
+
+/**
+ * @brief Portable implementation of \c strlcat(3).
+ * @see https://linux.die.net/man/3/strlcpy
+ */
+size_t strlcat(char *s, const char *source, size_t len);
 
 #endif
 
+/**
+ * A version of \c strndup(3) that guarantees the result will be null-terminated.
+ *
+ * @param s The string to duplicate.
+ * @param n The maximum number of characters to copy from \c s.
+ * The result will allocate one more byte than this value.
+ * @return Pointer to the cloned string.
+ * Must be freed with \c free().
+ */
 char *strldup(const char *s, size_t n);
 
 RETRO_END_DECLS
 
 #endif
-

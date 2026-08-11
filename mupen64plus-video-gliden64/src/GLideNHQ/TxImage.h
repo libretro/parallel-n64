@@ -25,7 +25,6 @@
 #define __TXIMAGE_H__
 
 #include <stdio.h>
-#include <png.h>
 #include "TxInternal.h"
 
 #ifndef WIN32
@@ -58,13 +57,12 @@ typedef struct tagBITMAPINFOHEADER BITMAPINFOHEADER;
 class TxImage
 {
 private:
-  boolean getPNGInfo(FILE *fp, png_structp *png_ptr, png_infop *info_ptr);
   boolean getBMPInfo(FILE *fp, BITMAPFILEHEADER *bmp_fhdr, BITMAPINFOHEADER *bmp_ihdr);
 public:
   TxImage() {}
   ~TxImage() {}
   uint8* readPNG(FILE* fp, int* width, int* height, ColorFormat* format);
-  boolean writePNG(uint8* src, FILE* fp, int width, int height, int rowStride, ColorFormat format/*, uint8 *palette*/);
+  boolean writePNG(uint8* src, const char *path, int width, int height, int rowStride, ColorFormat format/*, uint8 *palette*/);
   uint8* readBMP(FILE* fp, int* width, int* height, ColorFormat* format);
 };
 

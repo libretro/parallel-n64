@@ -31,6 +31,7 @@
 #include <assert.h>
 
 #include <osal_files.h>
+#include <encodings/utf.h>
 #include "TxFilter.h"
 #include "TextureFilters.h"
 #include "TxDbg.h"
@@ -593,7 +594,6 @@ TxFilter::dmptx(uint8 *src, int width, int height, int rowStridePixel, ColorForm
 
 	if (!_dumpPath.empty() && !_ident.empty()) {
 		/* dump it to disk */
-		FILE *fp = nullptr;
 		tx_wstring tmpbuf;
 
 		/* create directories */
@@ -614,15 +614,18 @@ TxFilter::dmptx(uint8 *src, int width, int height, int rowStridePixel, ColorForm
 			tmpbuf.append(wbuf);
 		}
 
+		{
+			/* rpng opens the file itself through the VFS, so there is no
+			 * fopen/fclose pair here any more.  On Windows the path is
+			 * converted to UTF-8 rather than passed as UTF-16: the VFS
+			 * opens UTF-8 paths through fopen_utf8. */
+			char cbuf[MAX_PATH];
 #ifdef OS_WINDOWS
-		if ((fp = _wfopen(tmpbuf.c_str(), wst("wb"))) != nullptr) {
+			utf16_to_char_string((const uint16_t*)tmpbuf.c_str(), cbuf, MAX_PATH);
 #else
-		char cbuf[MAX_PATH];
-		wcstombs(cbuf, tmpbuf.c_str(), MAX_PATH);
-		if ((fp = fopen(cbuf, "wb")) != nullptr) {
+			wcstombs(cbuf, tmpbuf.c_str(), MAX_PATH);
 #endif
-			_txImage->writePNG(src, fp, width, height, (rowStridePixel << 2), graphics::internalcolorFormat::RGBA8);
-			fclose(fp);
+			_txImage->writePNG(src, cbuf, width, height, (rowStridePixel << 2), graphics::internalcolorFormat::RGBA8);
 			return 1;
 		}
 	}

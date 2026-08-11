@@ -45,7 +45,6 @@
 #include "libretro.h"
 #include "GlideExtensions.h"
 #include "MiClWr.h"
-#include "CRC.h"
 
 #include <clamping.h>
 #include <encodings/crc32.h>

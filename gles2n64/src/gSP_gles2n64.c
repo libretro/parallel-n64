@@ -14,7 +14,6 @@
 #include "gDP.h"
 #include "3DMath.h"
 #include "OpenGL.h"
-#include "CRC.h"
 #include <string.h>
 #include "convert.h"
 #include "S2DEX.h"

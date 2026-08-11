@@ -39,7 +39,6 @@
 #include "TxHiResCache.h"
 #include "TxDbg.h"
 #include <osal_files.h>
-#include <zlib.h>
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>

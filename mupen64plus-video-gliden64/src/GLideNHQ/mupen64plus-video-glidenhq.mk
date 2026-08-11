@@ -6,14 +6,12 @@ LOCAL_PATH := $(JNI_LOCAL_PATH)
 SRCDIR := ./$(BASE_DIR)/src/GLideNHQ
 LOCAL_SHARED_LIBRARIES := osal
 LOCAL_MODULE := glidenhq
-LOCAL_STATIC_LIBRARIES := png
 LOCAL_ARM_MODE := arm
 
 LOCAL_C_INCLUDES :=                     \
     $(LOCAL_PATH)/$(SRCDIR)             \
     $(LOCAL_PATH)/$(SRCDIR)/..          \
     $(LOCAL_PATH)/$(SRCDIR)/../osal     \
-    $(PNG_INCLUDES)                     \
     $(GL_INCLUDES)
 
 LOCAL_SRC_FILES :=                          \
@@ -26,6 +24,7 @@ LOCAL_SRC_FILES :=                          \
     $(SRCDIR)/TxDbg.cpp                     \
     $(SRCDIR)/TxFilter.cpp                  \
     $(SRCDIR)/TxFilterExport.cpp            \
+    $(SRCDIR)/TxGz.cpp                      \
     $(SRCDIR)/TxHiResCache.cpp              \
     $(SRCDIR)/TxImage.cpp                   \
     $(SRCDIR)/TxQuantize.cpp                \

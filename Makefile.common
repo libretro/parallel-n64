@@ -12,8 +12,6 @@ RSPDIR_PARALLEL    = $(ROOT_DIR)/mupen64plus-rsp-paraLLEl
 VIDEODIR_GLIDE     = $(ROOT_DIR)/glide2gl/src
 VIDEODIR_GLIDEN64  = $(ROOT_DIR)/mupen64plus-video-gliden64
 
-LIBPNG_DIR         = $(ROOT_DIR)/custom/dependencies/libpng
-ZLIB_DIR           = $(ROOT_DIR)/custom/dependencies/libzlib
 
 ifeq ($(HAVE_OPENGL),0)
 	HAVE_GLN64    =0
@@ -55,60 +53,6 @@ INCFLAGS += \
 	-I$(LIBRETRO_COMM_DIR)/include \
 	-I$(LIBRETRO_DIR)
 
-LIBPNG_INCFLAGS  = -I$(LIBPNG_DIR)
-ZLIB_INCFLAGS    = -I$(ZLIB_DIR)
-
-LIBPNG_SOURCES_C = \
-	$(LIBPNG_DIR)/png.c \
-	$(LIBPNG_DIR)/pngerror.c \
-	$(LIBPNG_DIR)/pngget.c \
-	$(LIBPNG_DIR)/pngmem.c \
-	$(LIBPNG_DIR)/pngpread.c \
-	$(LIBPNG_DIR)/pngread.c \
-	$(LIBPNG_DIR)/pngrio.c \
-	$(LIBPNG_DIR)/pngrtran.c \
-	$(LIBPNG_DIR)/pngrutil.c \
-	$(LIBPNG_DIR)/pngset.c \
-	$(LIBPNG_DIR)/pngtrans.c \
-	$(LIBPNG_DIR)/pngwio.c \
-	$(LIBPNG_DIR)/pngwrite.c \
-	$(LIBPNG_DIR)/pngwtran.c \
-	$(LIBPNG_DIR)/pngwutil.c
-
-ZLIB_SOURCES_C = \
-	$(ZLIB_DIR)/adler32.c \
-	$(ZLIB_DIR)/compress.c \
-	$(ZLIB_DIR)/crc32.c \
-	$(ZLIB_DIR)/deflate.c \
-	$(ZLIB_DIR)/gzclose.c \
-	$(ZLIB_DIR)/gzlib.c \
-	$(ZLIB_DIR)/gzread.c \
-	$(ZLIB_DIR)/gzwrite.c \
-	$(ZLIB_DIR)/infback.c \
-	$(ZLIB_DIR)/inffast.c \
-	$(ZLIB_DIR)/inflate.c \
-	$(ZLIB_DIR)/inftrees.c \
-	$(ZLIB_DIR)/trees.c \
-	$(ZLIB_DIR)/uncompr.c \
-	$(ZLIB_DIR)/zutil.c
-
-# libpng
-ifeq ($(SYSTEM_LIBPNG), 1)
-	CFLAGS += $(shell pkg-config --cflags libpng)
-	LDFLAGS += $(shell pkg-config --libs libpng)
-else
-	INCFLAGS += $(LIBPNG_INCFLAGS)
-	SOURCES_C += $(LIBPNG_SOURCES_C)
-endif
-
-# zlib
-ifeq ($(SYSTEM_ZLIB), 1)
-	CFLAGS += $(shell pkg-config --cflags zlib)
-	LDFLAGS += $(shell pkg-config --libs zlib)
-else
-	INCFLAGS += $(ZLIB_INCFLAGS)
-	SOURCES_C += $(ZLIB_SOURCES_C)
-endif
 
 SOURCES_C += $(RSPDIR)/src/alist.c \
     $(RSPDIR)/src/alist_audio.c \
@@ -362,6 +306,14 @@ SOURCES_C += $(LIBRETRO_DIR)/libretro.c \
 				 $(CORE_DIR)/src/plugin/emulate_game_controller_via_libretro.c \
 				 $(LIBRETRO_COMM_DIR)/memmap/memalign.c \
 				 $(LIBRETRO_COMM_DIR)/encodings/encoding_crc32.c \
+				 $(LIBRETRO_COMM_DIR)/encodings/encoding_deflate.c \
+				 $(LIBRETRO_COMM_DIR)/formats/png/rpng.c \
+				 $(LIBRETRO_COMM_DIR)/formats/png/rpng_encode.c \
+				 $(LIBRETRO_COMM_DIR)/streams/interface_stream.c \
+				 $(LIBRETRO_COMM_DIR)/streams/memory_stream.c \
+				 $(LIBRETRO_COMM_DIR)/streams/trans_stream.c \
+				 $(LIBRETRO_COMM_DIR)/streams/trans_stream_deflate.c \
+				 $(LIBRETRO_COMM_DIR)/streams/trans_stream_pipe.c \
 				 $(AUDIO_LIBRETRO_DIR)/audio_backend_libretro.c \
 
 ifeq ($(STATIC_LINKING),1)
@@ -385,17 +337,13 @@ SOURCES_C += $(LIBRETRO_COMM_DIR)/streams/file_stream.c \
 				 $(LIBRETRO_COMM_DIR)/hash/rhash.c \
 				 $(LIBRETRO_COMM_DIR)/lists/string_list.c \
 				 $(LIBRETRO_COMM_DIR)/string/stdstring.c \
-				 $(LIBRETRO_COMM_DIR)/file/file_path.c
+				 $(LIBRETRO_COMM_DIR)/file/file_path.c \
+				 $(LIBRETRO_COMM_DIR)/file/file_path_io.c \
+				 $(LIBRETRO_COMM_DIR)/time/rtime.c
 
 ifeq ($(HAVE_OPENGL),1)
 SOURCES_C += $(LIBRETRO_COMM_DIR)/gfx/gl_capabilities.c
 endif
-endif
-
-ifeq ($(WITH_CRC),brumme)
-   SOURCES_C += $(LIBRETRO_DIR)/brumme_crc.c
-else
-   SOURCES_C += $(LIBRETRO_DIR)/libretro_crc.c
 endif
 
 ifeq ($(HAVE_GLIDEN64),1)
@@ -519,6 +467,7 @@ SOURCES_CXX   += \
 	$(VIDEODIR_GLIDEN64)/src/GLideNHQ/TxDbg.cpp \
 	$(VIDEODIR_GLIDEN64)/src/GLideNHQ/TxFilter.cpp \
 	$(VIDEODIR_GLIDEN64)/src/GLideNHQ/TxFilterExport.cpp \
+	$(VIDEODIR_GLIDEN64)/src/GLideNHQ/TxGz.cpp \
 	$(VIDEODIR_GLIDEN64)/src/GLideNHQ/TxHiResCache.cpp \
 	$(VIDEODIR_GLIDEN64)/src/GLideNHQ/TxImage.cpp \
 	$(VIDEODIR_GLIDEN64)/src/GLideNHQ/TxQuantize.cpp \

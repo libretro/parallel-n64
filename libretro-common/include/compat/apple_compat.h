@@ -1,4 +1,4 @@
-/* Copyright  (C) 2010-2018 The RetroArch team
+/* Copyright  (C) 2010-2020 The RetroArch team
  *
  * ---------------------------------------------------------------------------------------
  * The following license statement only applies to this file (apple_compat.h).
@@ -25,6 +25,7 @@
 
 #ifdef __APPLE__
 #include <AvailabilityMacros.h>
+#include <CoreFoundation/CoreFoundation.h>
 #endif
 
 #ifdef __OBJC__

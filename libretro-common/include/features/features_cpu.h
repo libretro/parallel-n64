@@ -1,4 +1,4 @@
-/* Copyright  (C) 2010-2018 The RetroArch team
+/* Copyright  (C) 2010-2020 The RetroArch team
  *
  * ---------------------------------------------------------------------------------------
  * The following license statement only applies to this file (features_cpu.h).
@@ -32,41 +32,75 @@
 RETRO_BEGIN_DECLS
 
 /**
- * cpu_features_get_perf_counter:
+ * Gets the time in ticks since some unspecified epoch.
+ * The notion of a "tick" varies per platform.
  *
- * Gets performance counter.
+ * The epoch may change between devices or across reboots.
  *
- * Returns: performance counter.
- **/
+ * Suitable for use as a default implementation of \c retro_perf_callback::get_perf_counter,
+ * (or as a fallback by the core),
+ * although a frontend may provide its own implementation.
+ *
+ * @return The current time, in ticks.
+ * @see retro_perf_callback::get_perf_counter
+ */
 retro_perf_tick_t cpu_features_get_perf_counter(void);
 
 /**
- * cpu_features_get_time_usec:
+ * Gets the time in microseconds since some unspecified epoch.
  *
- * Gets time in microseconds, from an undefined epoch.
- * The epoch may change between computers or across reboots.
+ * The epoch may change between devices or across reboots.
  *
- * Returns: time in microseconds
- **/
+ * Suitable for use as a default implementation of \c retro_perf_callback::get_time_usec,
+ * (or as a fallback by the core),
+ * although a frontend may provide its own implementation.
+ *
+ * @return The current time, in microseconds.
+ * @see retro_perf_callback::get_time_usec
+ */
 retro_time_t cpu_features_get_time_usec(void);
 
 /**
- * cpu_features_get:
+ * Returns the available features (mostly SIMD extensions)
+ * supported by this CPU.
  *
- * Gets CPU features.
+ * Suitable for use as a default implementation of \c retro_perf_callback::get_time_usec,
+ * (or as a fallback by the core),
+ * although a frontend may provide its own implementation.
  *
- * Returns: bitmask of all CPU features available.
- **/
+ * @return Bitmask of all CPU features available.
+ * @see RETRO_SIMD
+ * @see retro_perf_callback::get_cpu_features
+ */
 uint64_t cpu_features_get(void);
 
+#if (defined(__x86_64__) || defined(__i386__) || defined(__i486__) || defined(__i686__) || (defined(_M_X64) && _MSC_VER > 1310) || (defined(_M_IX86) && _MSC_VER > 1310)) && !defined(__MACH__)
 /**
- * cpu_features_get_core_amount:
+ * Executes the x86 CPUID instruction for the requested leaf, writing the
+ * EAX, EBX, ECX and EDX result registers into flags[0], flags[1], flags[2]
+ * and flags[3] respectively. Available on x86/x86-64 targets only.
  *
- * Gets the amount of available CPU cores.
- *
- * Returns: amount of CPU cores available.
- **/
+ * @param func     The CPUID leaf (function number) to query.
+ * @param[out] flags Array of four 32-bit words receiving EAX/EBX/ECX/EDX.
+ */
+void x86_cpuid(uint32_t func, int32_t flags[4]);
+#endif
+
+/**
+ * @return The number of CPU cores available,
+ * or 1 if the number of cores could not be determined.
+ */
 unsigned cpu_features_get_core_amount(void);
+
+/**
+ * Returns the name of the CPU model.
+ *
+ * @param[out] name Pointer to a buffer to store the name.
+ * Will be \c NULL-terminated.
+ * If \c NULL, this value will not be modified.
+ * @param len The amount of space available in \c name.
+ */
+void cpu_features_get_model_name(char *name, int len);
 
 RETRO_END_DECLS
 

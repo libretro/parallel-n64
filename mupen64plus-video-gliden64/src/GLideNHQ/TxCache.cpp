@@ -28,9 +28,86 @@
 #include "TxCache.h"
 #include "TxDbg.h"
 #include <osal_files.h>
-#include <zlib.h>
+#include <encodings/deflate.h>
+#include "TxGz.h"
 #include <memory.h>
 #include <stdlib.h>
+
+/* Whole-buffer deflate/inflate over libretro-common's rdeflate/rinflate,
+ * standing in for zlib's compress2()/uncompress().  window_bits 15 selects
+ * the RFC 1950 zlib wrapper, which is the container compress2() produced,
+ * so texture caches written by earlier builds stay readable and caches
+ * written here stay readable by them.
+ *
+ * Both return 0 on success and -1 on failure, and write the produced length
+ * back through destLen, matching the zlib calls they replace. */
+static int txDeflate(uint8 *dest, uint32 *destLen,
+                     const uint8 *src, uint32 srcLen, int level)
+{
+	void *stream = rdeflate_new(level, 15);
+	size_t produced = 0;
+	int ret = -1;
+
+	if (!stream)
+		return -1;
+
+	rdeflate_set_in(stream, src, srcLen);
+	rdeflate_set_out(stream, dest, *destLen);
+	rdeflate_finish(stream);
+
+	for (;;) {
+		size_t rd = 0, wn = 0;
+		const int st = rdeflate_process(stream, &rd, &wn);
+
+		produced += wn;
+
+		if (st == RDEFLATE_PROCESS_END) {
+			ret = 0;
+			break;
+		}
+		/* No progress means the output buffer is full: the compressed form
+		 * would be larger than the destination, so the caller keeps the
+		 * texture uncompressed. */
+		if (st == RDEFLATE_PROCESS_ERROR || (rd == 0 && wn == 0))
+			break;
+	}
+
+	rdeflate_free(stream);
+	*destLen = (uint32)produced;
+	return ret;
+}
+
+static int txInflate(uint8 *dest, uint32 *destLen,
+                     const uint8 *src, uint32 srcLen)
+{
+	void *stream = rinflate_new(15);
+	size_t produced = 0;
+	int ret = -1;
+
+	if (!stream)
+		return -1;
+
+	rinflate_set_in(stream, src, srcLen);
+	rinflate_set_out(stream, dest, *destLen);
+
+	for (;;) {
+		size_t rd = 0, wn = 0;
+		const int st = rinflate_process(stream, &rd, &wn);
+
+		produced += wn;
+
+		if (st == RDEFLATE_PROCESS_END) {
+			ret = 0;
+			break;
+		}
+		if (st == RDEFLATE_PROCESS_ERROR || (rd == 0 && wn == 0))
+			break;
+	}
+
+	rinflate_free(stream);
+	*destLen = (uint32)produced;
+	return ret;
+}
 
 TxCache::~TxCache()
 {
@@ -88,14 +165,14 @@ TxCache::add(uint64 checksum, GHQTexInfo *info, int dataSize)
 			return 0;
 
 		if (_options & (GZ_TEXCACHE|GZ_HIRESTEXCACHE)) {
-			/* zlib compress it. compression level:1 (best speed) */
-			uLongf destLen = _gzdestLen;
+			/* deflate it. compression level:1 (best speed) */
+			uint32 destLen = _gzdestLen;
 			dest = (dest == _gzdest0) ? _gzdest1 : _gzdest0;
-			if (compress2(dest, &destLen, info->data, dataSize, 1) != Z_OK) {
+			if (txDeflate(dest, &destLen, info->data, dataSize, 1) != 0) {
 				dest = info->data;
-				DBG_INFO(80, wst("Error: zlib compression failed!\n"));
+				DBG_INFO(80, wst("Error: compression failed!\n"));
 			} else {
-				DBG_INFO(80, wst("zlib compressed: %.02fkb->%.02fkb\n"), (float)dataSize/1000, (float)destLen/1000);
+				DBG_INFO(80, wst("compressed: %.02fkb->%.02fkb\n"), (float)dataSize/1000, (float)destLen/1000);
 				dataSize = destLen;
 				format |= GL_TEXFMT_GZ;
 			}
@@ -195,17 +272,17 @@ TxCache::get(uint64 checksum, GHQTexInfo *info)
 			((*itMap).second)->it = --(_cachelist.end());
 		}
 
-		/* zlib decompress it */
+		/* decompress it */
 		if (info->format & GL_TEXFMT_GZ) {
-			uLongf destLen = _gzdestLen;
+			uint32 destLen = _gzdestLen;
 			uint8 *dest = (_gzdest0 == info->data) ? _gzdest1 : _gzdest0;
-			if (uncompress(dest, &destLen, info->data, ((*itMap).second)->size) != Z_OK) {
-				DBG_INFO(80, wst("Error: zlib decompression failed!\n"));
+			if (txInflate(dest, &destLen, info->data, ((*itMap).second)->size) != 0) {
+				DBG_INFO(80, wst("Error: decompression failed!\n"));
 				return 0;
 			}
 			info->data = dest;
 			info->format &= ~GL_TEXFMT_GZ;
-			DBG_INFO(80, wst("zlib decompressed: %.02fkb->%.02fkb\n"), (float)(((*itMap).second)->size)/1000, (float)destLen/1000);
+			DBG_INFO(80, wst("decompressed: %.02fkb->%.02fkb\n"), (float)(((*itMap).second)->size)/1000, (float)destLen/1000);
 		}
 
 		return 1;
@@ -225,7 +302,7 @@ TxCache::save(const wchar_t *path, const wchar_t *filename, int config)
 
 	osal_mkdirp(path);
 
-	/* Ugly hack to enable fopen/gzopen in Win9x */
+	/* Ugly hack to enable fopen/txgz_open in Win9x */
 #ifdef OS_WINDOWS
 	wchar_t curpath[MAX_PATH];
 	GETCWD(MAX_PATH, curpath);
@@ -239,11 +316,11 @@ TxCache::save(const wchar_t *path, const wchar_t *filename, int config)
 
 	wcstombs(cbuf, filename, MAX_PATH);
 
-	gzFile gzfp = gzopen(cbuf, "wb1");
+	TxGzFile *gzfp = txgz_open(cbuf, "wb1");
 	DBG_INFO(80, wst("gzfp:%x file:%ls\n"), gzfp, filename);
 	if (gzfp) {
 		/* write header to determine config match */
-		gzwrite(gzfp, &config, 4);
+		txgz_write(gzfp, &config, 4);
 
 		auto itMap = _cache.begin();
 		int total = 0;
@@ -261,7 +338,7 @@ TxCache::save(const wchar_t *path, const wchar_t *filename, int config)
 	  dest = _gzdest0;
 	  destLen = _gzdestLen;
 	  if (dest && destLen) {
-	  if (uncompress(dest, &destLen, (*itMap).second->info.data, (*itMap).second->size) != Z_OK) {
+	  if (txInflate(dest, &destLen, (*itMap).second->info.data, (*itMap).second->size) != 0) {
 	  dest = nullptr;
 	  destLen = 0;
 	  }
@@ -271,18 +348,18 @@ TxCache::save(const wchar_t *path, const wchar_t *filename, int config)
 
 			if (dest && destLen) {
 				/* texture checksum */
-				gzwrite(gzfp, &((*itMap).first), 8);
+				txgz_write(gzfp, &((*itMap).first), 8);
 
 				/* other texture info */
-				gzwrite(gzfp, &((*itMap).second->info.width), 4);
-				gzwrite(gzfp, &((*itMap).second->info.height), 4);
-				gzwrite(gzfp, &format, 4);
-				gzwrite(gzfp, &((*itMap).second->info.texture_format), 2);
-				gzwrite(gzfp, &((*itMap).second->info.pixel_type), 2);
-				gzwrite(gzfp, &((*itMap).second->info.is_hires_tex), 1);
+				txgz_write(gzfp, &((*itMap).second->info.width), 4);
+				txgz_write(gzfp, &((*itMap).second->info.height), 4);
+				txgz_write(gzfp, &format, 4);
+				txgz_write(gzfp, &((*itMap).second->info.texture_format), 2);
+				txgz_write(gzfp, &((*itMap).second->info.pixel_type), 2);
+				txgz_write(gzfp, &((*itMap).second->info.is_hires_tex), 1);
 
-				gzwrite(gzfp, &destLen, 4);
-				gzwrite(gzfp, dest, destLen);
+				txgz_write(gzfp, &destLen, 4);
+				txgz_write(gzfp, dest, destLen);
 			}
 
 			itMap++;
@@ -290,7 +367,7 @@ TxCache::save(const wchar_t *path, const wchar_t *filename, int config)
 			if (_callback)
 				(*_callback)(wst("Total textures saved to HDD: %d\n"), ++total);
 		}
-		gzclose(gzfp);
+		txgz_close(gzfp);
 	}
 
 	CHDIR(curpath);
@@ -317,7 +394,7 @@ TxCache::load(const wchar_t *path, const wchar_t *filename, int config, boolean 
 
 	wcstombs(cbuf, filename, MAX_PATH);
 
-	gzFile gzfp = gzopen(cbuf, "rb");
+	TxGzFile *gzfp = txgz_open(cbuf, "rb");
 	DBG_INFO(80, wst("gzfp:%x file:%ls\n"), gzfp, filename);
 	if (gzfp) {
 		/* yep, we have it. load it into memory cache. */
@@ -325,41 +402,41 @@ TxCache::load(const wchar_t *path, const wchar_t *filename, int config, boolean 
 		uint64 checksum;
 		int tmpconfig;
 		/* read header to determine config match */
-		gzread(gzfp, &tmpconfig, 4);
+		txgz_read(gzfp, &tmpconfig, 4);
 
 		if (tmpconfig == config || force) {
 			do {
 				GHQTexInfo tmpInfo;
 
-				gzread(gzfp, &checksum, 8);
+				txgz_read(gzfp, &checksum, 8);
 
-				gzread(gzfp, &tmpInfo.width, 4);
-				gzread(gzfp, &tmpInfo.height, 4);
-				gzread(gzfp, &tmpInfo.format, 4);
-				gzread(gzfp, &tmpInfo.texture_format, 2);
-				gzread(gzfp, &tmpInfo.pixel_type, 2);
-				gzread(gzfp, &tmpInfo.is_hires_tex, 1);
+				txgz_read(gzfp, &tmpInfo.width, 4);
+				txgz_read(gzfp, &tmpInfo.height, 4);
+				txgz_read(gzfp, &tmpInfo.format, 4);
+				txgz_read(gzfp, &tmpInfo.texture_format, 2);
+				txgz_read(gzfp, &tmpInfo.pixel_type, 2);
+				txgz_read(gzfp, &tmpInfo.is_hires_tex, 1);
 
-				gzread(gzfp, &dataSize, 4);
+				txgz_read(gzfp, &dataSize, 4);
 
 				tmpInfo.data = (uint8*)malloc(dataSize);
 				if (tmpInfo.data) {
-					gzread(gzfp, tmpInfo.data, dataSize);
+					txgz_read(gzfp, tmpInfo.data, dataSize);
 
 					/* add to memory cache */
 					add(checksum, &tmpInfo, (tmpInfo.format & GL_TEXFMT_GZ) ? dataSize : 0);
 
 					free(tmpInfo.data);
 				} else {
-					gzseek(gzfp, dataSize, SEEK_CUR);
+					txgz_skip(gzfp, dataSize);
 				}
 
 				/* skip in between to prevent the loop from being tied down to vsync */
-				if (_callback && (!(_cache.size() % 100) || gzeof(gzfp)))
+				if (_callback && (!(_cache.size() % 100) || txgz_eof(gzfp)))
 					(*_callback)(wst("[%d] total mem:%.02fmb - %ls\n"), _cache.size(), (float)_totalSize/1000000, filename);
 
-			} while (!gzeof(gzfp));
-			gzclose(gzfp);
+			} while (!txgz_eof(gzfp));
+			txgz_close(gzfp);
 		}
 	}
 

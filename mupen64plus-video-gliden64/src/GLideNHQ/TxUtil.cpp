@@ -24,7 +24,7 @@
 #include <thread>
 #include "TxUtil.h"
 #include "TxDbg.h"
-#include <zlib.h>
+#include <encodings/crc32.h>
 #include <assert.h>
 
 #if defined (OS_WINDOWS)
@@ -51,8 +51,9 @@ TxUtil::checksumTx(uint8 *src, int width, int height, ColorFormat format)
    */
 	/* return (dataSize ? Adler32(src, dataSize, 1) : 0); */
 
-	/* zlib crc32 */
-	return (dataSize ? crc32(crc32(0L, Z_NULL, 0), src, dataSize) : 0);
+	/* CRC-32/ISO-HDLC.  The zlib spelling this replaced nested an inner
+	 * crc32(0L, Z_NULL, 0) purely to obtain the initial value, which is 0. */
+	return (dataSize ? encoding_crc32(0, src, dataSize) : 0);
 }
 
 int

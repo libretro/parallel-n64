@@ -30,7 +30,6 @@
 # include "convert.h"
 #include "Common.h"
 
-#include "CRC.h"
 #include "Debug.h"
 
 #define uc_crc gln64uc_crc

@@ -1,4 +1,4 @@
-/* Copyright  (C) 2010-2018 The RetroArch team
+/* Copyright  (C) 2010-2020 The RetroArch team
  *
  * ---------------------------------------------------------------------------------------
  * The following license statement only applies to this file (string_list.h).
@@ -41,6 +41,7 @@ union string_list_elem_attr
 struct string_list_elem
 {
    char *data;
+   void *userdata;
    union string_list_elem_attr attr;
 };
 
@@ -58,7 +59,7 @@ struct string_list
  *
  * Searches for an element (@elem) inside the string list.
  *
- * Returns: true (1) if element could be found, otherwise false (0).
+ * @return 1-based index if element could be found, otherwise 0.
  */
 int string_list_find_elem(const struct string_list *list, const char *elem);
 
@@ -87,13 +88,20 @@ bool string_list_find_elem_prefix(const struct string_list *list,
  */
 struct string_list *string_split(const char *str, const char *delim);
 
+bool string_split_noalloc(struct string_list *list,
+      const char *str, const char *delim);
+
+bool string_list_deinitialize(struct string_list *list);
+
+bool string_list_initialize(struct string_list *list);
+
 /**
  * string_list_new:
  *
  * Creates a new string list. Has to be freed manually.
  *
- * Returns: new string list if successful, otherwise NULL.
- */
+ * @return New string list if successful, otherwise NULL.
+ **/
 struct string_list *string_list_new(void);
 
 /**
@@ -104,7 +112,11 @@ struct string_list *string_list_new(void);
  *
  * Appends a new element to the string list.
  *
- * Returns: true (1) if successful, otherwise false (0).
+ * Hidden non-leaf function cost:
+ * - Calls string_list_capacity()
+ * - Calls strdup
+ *
+ * @return true if successful, otherwise false.
  **/
 bool string_list_append(struct string_list *list, const char *elem,
       union string_list_elem_attr attr);
@@ -113,47 +125,72 @@ bool string_list_append(struct string_list *list, const char *elem,
  * string_list_append_n:
  * @list             : pointer to string list
  * @elem             : element to add to the string list
- * @length           : read at most this many bytes from elem
+ * @len              : length of @elem (caller already knows it)
  * @attr             : attributes of new element.
  *
- * Appends a new element to the string list.
+ * Appends a new element when the caller already has its length,
+ * avoiding a redundant strlen inside strdup.
  *
- * Returns: true (1) if successful, otherwise false (0).
+ * @return true if successful, otherwise false.
  **/
 bool string_list_append_n(struct string_list *list, const char *elem,
-      unsigned length, union string_list_elem_attr attr);
+      size_t len, union string_list_elem_attr attr);
 
 /**
  * string_list_free
  * @list             : pointer to string list object
  *
  * Frees a string list.
- */
+ **/
 void string_list_free(struct string_list *list);
 
 /**
  * string_list_join_concat:
- * @buffer           : buffer that @list will be joined to.
- * @size             : length of @buffer.
+ * @s                : buffer that @list will be joined to.
+ * @len              : length of @s.
  * @list             : pointer to string list.
  * @delim            : delimiter character for @list.
  *
  * A string list will be joined/concatenated as a
- * string to @buffer, delimited by @delim.
- */
-void string_list_join_concat(char *buffer, size_t size,
+ * string to @s, delimited by @delim.
+ *
+ * NOTE: @s must be NULL-terminated.
+ *
+ * Hidden non-leaf function cost:
+ * - Calls strlen()
+ * - Calls strlcpy x times in a loop
+ **/
+void string_list_join_concat(char *s, size_t len,
       const struct string_list *list, const char *sep);
 
 /**
- * string_list_set:
- * @list             : pointer to string list
- * @idx              : index of element in string list
- * @str              : value for the element.
+ * string_list_join_concat_special:
+ * @s                : buffer that @list will be joined to.
+ * @len              : length of @s.
+ * @list             : pointer to string list.
+ * @delim            : delimiter character for @list.
  *
- * Set value of element inside string list.
+ * Specialized version of string_list_join_concat
+ * without the bounds check.
+ *
+ * A string list will be joined/concatenated as a
+ * string to @s, delimited by @delim.
  **/
-void string_list_set(struct string_list *list, unsigned idx,
-      const char *str);
+void string_list_join_concat_special(char *s, size_t len,
+      const struct string_list *list, const char *delim);
+
+/**
+ * string_list_capacity:
+ * @list             : pointer to string list
+ * @cap              : new capacity for string list.
+ *
+ * Change maximum capacity of string list's size.
+ *
+ * @return true if successful, otherwise false.
+ **/
+bool string_list_capacity(struct string_list *list, size_t cap);
+
+struct string_list *string_list_clone(const struct string_list *src);
 
 RETRO_END_DECLS
 

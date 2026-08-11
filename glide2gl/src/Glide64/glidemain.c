@@ -42,7 +42,6 @@
 #include "3dmath.h"
 #include "Combine.h"
 #include "TexCache.h"
-#include "CRC.h"
 #include "Framebuffer_glide64.h"
 #include "Glide64_Ini.h"
 #include "GlideExtensions.h"
@@ -50,7 +49,6 @@
 
 #include "../../../Graphics/RDP/gDP_funcs_C.h"
 
-extern void CRC_BuildTable();
 extern retro_log_printf_t log_cb;
 extern uint32_t screen_aspectmodehint;
 
@@ -459,7 +457,6 @@ int glide64InitiateGFX (GFX_INFO Gfx_Info)
 
    math_init ();
    TexCacheInit ();
-   CRC_BuildTable();
    CountCombine();
    if (fb_depth_render_enabled)
       ZLUT_init();

@@ -12,6 +12,7 @@ set(GLideNHQ_SOURCES
   TxDbg.cpp
   TxFilter.cpp
   TxFilterExport.cpp
+  TxGz.cpp
   TxHiResCache.cpp
   TxImage.cpp
   TxQuantize.cpp
@@ -93,17 +94,11 @@ if( NOT GHQCHK )
       set_target_properties(GLideNHQd PROPERTIES LINK_SEARCH_END_STATIC 1)
 
       if(MINGW OR BCMHOST OR APPLE OR USE_SYSTEM_LIBS)
-        FIND_PACKAGE( ZLIB REQUIRED )
-        FIND_PACKAGE( PNG REQUIRED )
         target_link_libraries(GLideNHQd
-          ${PNG_LIBRARIES}
-          ${ZLIB_LIBRARIES}
           osald
         )
       else(MINGW OR BCMHOST OR APPLE OR USE_SYSTEM_LIBS)
         target_link_libraries(GLideNHQd PRIVATE
-          ${CMAKE_CURRENT_SOURCE_DIR}/lib/libpng.a
-          ${CMAKE_CURRENT_SOURCE_DIR}/lib/libz.a
           dl
           osald
         )
@@ -115,27 +110,17 @@ if( NOT GHQCHK )
 
 #      set_target_properties(GLideNHQ PROPERTIES LINK_SEARCH_START_STATIC 1)
 #      set_target_properties(GLideNHQ PROPERTIES LINK_SEARCH_END_STATIC 1)
-#      set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
-#      find_library(PNGLIB libpng.a)
 
       if(PANDORA)
         target_link_libraries(GLideNHQ PRIVATE
-          /mnt/utmp/codeblocks/usr/lib/libpng.a
-          /mnt/utmp/codeblocks/usr/lib/libz.a
           osal
         )
       elseif(BCMHOST OR MINGW OR APPLE OR USE_SYSTEM_LIBS)
-        FIND_PACKAGE( ZLIB REQUIRED )
-        FIND_PACKAGE( PNG REQUIRED )
         target_link_libraries(GLideNHQ
-          ${PNG_LIBRARIES}
-          ${ZLIB_LIBRARIES}
           osal
         )
       else(PANDORA)
         target_link_libraries(GLideNHQ PRIVATE
-          ${CMAKE_CURRENT_SOURCE_DIR}/lib/libpng.a
-          ${CMAKE_CURRENT_SOURCE_DIR}/lib/libz.a
           dl
           osal
         )
@@ -155,11 +140,11 @@ else( NOT GHQCHK )
       )
 
     if( CMAKE_BUILD_TYPE STREQUAL "Debug")
-    target_link_libraries(ghqchk png z )
+    target_link_libraries(ghqchk )
     endif( CMAKE_BUILD_TYPE STREQUAL "Debug")
 
     if( CMAKE_BUILD_TYPE STREQUAL "Release")
-    target_link_libraries(ghqchk png z )
+    target_link_libraries(ghqchk )
     endif( CMAKE_BUILD_TYPE STREQUAL "Release")
 endif( NOT GHQCHK )
 

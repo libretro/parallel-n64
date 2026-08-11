@@ -25,283 +25,166 @@
  * (0:disable, 1:enable, 2:3dfx) */
 #define POW2_TEXTURES 0
 
-/* check 8 bytes. use a larger value if needed. */
-#define PNG_CHK_BYTES 8
-
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
+
+#include <formats/image.h>
+#include <formats/rpng.h>
+#include <streams/file_stream.h>
 
 #include "TxImage.h"
 #include "TxReSample.h"
 #include "TxDbg.h"
 
-boolean
-TxImage::getPNGInfo(FILE *fp, png_structp *png_ptr, png_infop *info_ptr)
+/* Read the whole of an already-open stream into one allocation.
+ *
+ * rpng decodes from a resident buffer, so the file is pulled in with a
+ * single sized read instead of the incremental fread-per-chunk walk libpng
+ * drove through png_init_io.  Texture packs are tens of thousands of small
+ * PNGs and this is the hot path when one is first scanned. */
+static uint8 *txReadWholeFile(FILE *fp, size_t *len_out)
 {
-	unsigned char sig[PNG_CHK_BYTES];
+	long  size;
+	uint8 *buf;
+	size_t got;
 
-	/* check for valid file pointer */
-	if (!fp)
-		return 0;
+	*len_out = 0;
 
-	/* check if file is PNG */
-	if (fread(sig, 1, PNG_CHK_BYTES, fp) != PNG_CHK_BYTES)
-		return 0;
+	if (fseek(fp, 0, SEEK_END) != 0)
+		return nullptr;
+	if ((size = ftell(fp)) <= 0) {
+		return nullptr;
+	}
+	if (fseek(fp, 0, SEEK_SET) != 0)
+		return nullptr;
 
-	if (png_sig_cmp(sig, 0, PNG_CHK_BYTES) != 0)
-		return 0;
+	if (!(buf = (uint8*)malloc((size_t)size)))
+		return nullptr;
 
-	/* get PNG file info */
-	*png_ptr = png_create_read_struct(PNG_LIBPNG_VER_STRING, nullptr, nullptr, nullptr);
-	if (!*png_ptr)
-		return 0;
-
-	*info_ptr = png_create_info_struct(*png_ptr);
-	if (!*info_ptr) {
-		png_destroy_read_struct(png_ptr, nullptr, nullptr);
-		return 0;
+	got = fread(buf, 1, (size_t)size, fp);
+	if (got != (size_t)size) {
+		free(buf);
+		return nullptr;
 	}
 
-	if (setjmp(png_jmpbuf(*png_ptr))) {
-		DBG_INFO(80, wst("error reading png!\n"));
-		png_destroy_read_struct(png_ptr, info_ptr, nullptr);
-		return 0;
-	}
-
-	png_init_io(*png_ptr, fp);
-	png_set_sig_bytes(*png_ptr, PNG_CHK_BYTES);
-	png_read_info(*png_ptr, *info_ptr);
-
-	return 1;
+	*len_out = got;
+	return buf;
 }
 
+/* Decode a PNG into a 32-bit RGBA8888 surface.
+ *
+ * rpng handles internally everything the libpng transform stack was
+ * configured for here - 16-bit strip to 8, palette expansion, grey and
+ * grey+alpha promotion to RGB, tRNS to alpha, filler alpha for RGB, and
+ * Adam7 interlacing - and always yields 8-bit RGBA, so the per-colour-type
+ * branching is gone.
+ *
+ * supports_rgba selects R,G,B,A byte order, which is what this function has
+ * always returned (note the disabled png_set_bgr call in the original: "OpenGL
+ * does not need it") and what the texture upload path expects. */
 uint8*
 TxImage::readPNG(FILE* fp, int* width, int* height, ColorFormat *format)
 {
-	/* NOTE: returned image format is GR_TEXFMT_ARGB_8888 */
-
-	png_structp png_ptr;
-	png_infop info_ptr;
-	uint8 *image = nullptr;
-	int bit_depth, color_type, interlace_type, compression_type, filter_type,
-			row_bytes, o_width, o_height, num_pas;
+	uint8    *filebuf = nullptr;
+	size_t    filelen = 0;
+	rpng_t   *rpng    = nullptr;
+	uint32   *data    = nullptr;
+	unsigned  o_width = 0, o_height = 0;
+	int       ret     = 0;
 
 	/* initialize */
 	*width  = 0;
 	*height = 0;
 	*format = graphics::internalcolorFormat::NOCOLOR;
 
-	/* check if we have a valid png file */
 	if (!fp)
 		return nullptr;
 
-	if (!getPNGInfo(fp, &png_ptr, &info_ptr)) {
+	if (!(filebuf = txReadWholeFile(fp, &filelen))) {
+		INFO(80, wst("error reading png file!\n"));
+		return nullptr;
+	}
+
+	if (!(rpng = rpng_alloc())) {
+		free(filebuf);
+		return nullptr;
+	}
+
+	if (!rpng_set_buf_ptr(rpng, filebuf, filelen) || !rpng_start(rpng)) {
 		INFO(80, wst("error reading png file! png image is corrupt.\n"));
+		rpng_free(rpng);
+		free(filebuf);
 		return nullptr;
 	}
 
-	png_get_IHDR(png_ptr, info_ptr,
-				 (png_uint_32*)&o_width, (png_uint_32*)&o_height, &bit_depth, &color_type,
-				 &interlace_type, &compression_type, &filter_type);
+	while (rpng_iterate_image(rpng))
+		;
 
-	DBG_INFO(80, wst("png format %d x %d bitdepth:%d color:%x interlace:%x compression:%x filter:%x\n"),
-			 o_width, o_height, bit_depth, color_type,
-			 interlace_type, compression_type, filter_type);
+	do {
+		ret = rpng_process_image(rpng, (void**)&data, filelen, &o_width, &o_height, true);
+	} while (ret == IMAGE_PROCESS_NEXT);
 
-	/* transformations */
+	rpng_free(rpng);
+	free(filebuf);
 
-	/* Rice hi-res textures
-   * _all.png
-   * _rgb.png, _a.png
-   * _ciByRGBA.png
-   * _allciByRGBA.png
-   */
-
-	/* strip if color channel is larger than 8 bits */
-	if (bit_depth > 8) {
-		png_set_strip_16(png_ptr);
-		bit_depth = 8;
-	}
-
-#if 1
-	/* These are not really required per Rice format spec,
-   * but is done just in case someone uses them.
-   */
-	/* convert palette color to rgb color */
-	if (color_type == PNG_COLOR_TYPE_PALETTE) {
-		png_set_palette_to_rgb(png_ptr);
-		color_type = PNG_COLOR_TYPE_RGB;
-	}
-
-	/* expand 1,2,4 bit gray scale to 8 bit gray scale */
-	if (color_type == PNG_COLOR_TYPE_GRAY && bit_depth < 8)
-		png_set_expand_gray_1_2_4_to_8(png_ptr);
-
-	/* convert gray scale or gray scale + alpha to rgb color */
-	if (color_type == PNG_COLOR_TYPE_GRAY ||
-			color_type == PNG_COLOR_TYPE_GRAY_ALPHA) {
-		png_set_gray_to_rgb(png_ptr);
-		color_type = PNG_COLOR_TYPE_RGB;
-	}
-#endif
-
-	/* add alpha channel if any */
-	if (png_get_valid(png_ptr, info_ptr, PNG_INFO_tRNS)) {
-		png_set_tRNS_to_alpha(png_ptr);
-		color_type = PNG_COLOR_TYPE_RGB_ALPHA;
-	}
-
-	/* convert rgb to rgba */
-	if (color_type == PNG_COLOR_TYPE_RGB) {
-		png_set_filler(png_ptr, 0xff, PNG_FILLER_AFTER);
-		color_type = PNG_COLOR_TYPE_RGB_ALPHA;
-	}
-
-	/* punt invalid formats */
-	if (color_type != PNG_COLOR_TYPE_RGB_ALPHA) {
-		png_destroy_read_struct(&png_ptr, &info_ptr, nullptr);
-		DBG_INFO(80, wst("Error: not PNG_COLOR_TYPE_RGB_ALPHA format!\n"));
+	if (ret != IMAGE_PROCESS_END || !data) {
+		if (data)
+			free(data);
+		DBG_INFO(80, wst("Error: failed to load png image!\n"));
 		return nullptr;
 	}
 
-	/*png_color_8p sig_bit;
-  if (png_get_sBIT(png_ptr, info_ptr, &sig_bit))
-	png_set_shift(png_ptr, sig_bit);*/
+	DBG_INFO(80, wst("png format %d x %d\n"), o_width, o_height);
 
-	/* convert rgba to bgra */
-	//png_set_bgr(png_ptr); // OpenGL does not need it
-
-	/* turn on interlace handling to cope with the weirdness
-   * of texture authors using interlaced format */
-	num_pas = png_set_interlace_handling(png_ptr);
-
-	/* update info structure */
-	png_read_update_info(png_ptr, info_ptr);
-
-	/* we only get here if RGBA8888 */
-	row_bytes = static_cast<int>(png_get_rowbytes(png_ptr, info_ptr));
-
-	/* allocate memory to read in image */
-	image = (uint8*)malloc(row_bytes * o_height);
-
-	/* read in image */
-	if (image) {
-		int pas, i;
-		uint8* tmpimage;
-
-		for (pas = 0; pas < num_pas; pas++) { /* deal with interlacing */
-			tmpimage = image;
-
-			for (i = 0; i < o_height; i++) {
-				/* copy row */
-				png_read_rows(png_ptr, &tmpimage, nullptr, 1);
-				tmpimage += row_bytes;
-			}
-		}
-
-		/* read rest of the info structure */
-		png_read_end(png_ptr, info_ptr);
-
-		*width = (row_bytes >> 2);
-		*height = o_height;
-		*format = graphics::internalcolorFormat::RGBA8;
+	*width  = (int)o_width;
+	*height = (int)o_height;
+	*format = graphics::internalcolorFormat::RGBA8;
 
 #if POW2_TEXTURES
-		/* next power of 2 size conversions */
-		/* NOTE: I can do this in the above loop for faster operations, but some
-	 * texture packs require a workaround. see HACKALERT in nextPow2().
-	 */
-
-		TxReSample txReSample = new TxReSample; // XXX: temporary. move to a better place.
-
+	/* next power of 2 size conversions */
+	{
+		TxReSample *txReSample = new TxReSample;
 #if (POW2_TEXTURES == 2)
-		if (!txReSample->nextPow2(&image, width, height, 32, 1)) {
+		if (!txReSample->nextPow2((uint8**)&data, width, height, 32, 1)) {
 #else
-		if (!txReSample->nextPow2(&image, width, height, 32, 0)) {
+		if (!txReSample->nextPow2((uint8**)&data, width, height, 32, 0)) {
 #endif
-			if (image) {
-				free(image);
-				image = nullptr;
+			if (data) {
+				free(data);
+				data = nullptr;
 			}
 			*width = 0;
 			*height = 0;
 			*format = graphics::internalcolorFormat::NOCOLOR;
 		}
-
 		delete txReSample;
-
+	}
 #endif /* POW2_TEXTURES */
-	}
 
-	/* clean up */
-	png_destroy_read_struct(&png_ptr, &info_ptr, nullptr);
-
-#ifdef DEBUG
-	if (!image) {
-		DBG_INFO(80, wst("Error: failed to load png image!\n"));
-	}
-#endif
-
-	return image;
+	return (uint8*)data;
 }
 
+/* Encode a 32-bit RGBA8888 surface as a PNG.
+ *
+ * The source is RGBA in memory order, which is PNG's own colour-type-6
+ * channel order, so rpng_save_image_rgba() writes it with no swizzle at all.
+ * rpng_save_image_argb() would have required byte-swapping red and blue
+ * across a frame-sized scratch buffer first, only for the encoder to swap
+ * them back a line later.
+ *
+ * Takes a path rather than a FILE*: rpng opens the file itself through the
+ * VFS, so the caller no longer needs its own fopen/fclose pair. */
 boolean
-TxImage::writePNG(uint8* src, FILE* fp, int width, int height, int rowStride, ColorFormat format)
+TxImage::writePNG(uint8* src, const char *path, int width, int height, int rowStride, ColorFormat format)
 {
 	assert(format == graphics::internalcolorFormat::RGBA8);
-	png_structp png_ptr = nullptr;
-	png_infop info_ptr = nullptr;
-	png_color_8 sig_bit;
-	int bit_depth = 0, color_type = 0, row_bytes = 0;
-	int i = 0;
 
-	if (!src || !fp)
+	if (!src || !path)
 		return 0;
 
-	png_ptr = png_create_write_struct(PNG_LIBPNG_VER_STRING, nullptr, nullptr, nullptr);
-	if (png_ptr == nullptr)
-		return 0;
-
-	info_ptr = png_create_info_struct(png_ptr);
-	if (info_ptr == nullptr) {
-		png_destroy_write_struct(&png_ptr, nullptr);
-		return 0;
-	}
-
-	if (setjmp(png_jmpbuf(png_ptr))) {
-		png_destroy_write_struct(&png_ptr, &info_ptr);
-		return 0;
-	}
-
-	png_init_io(png_ptr, fp);
-
-	bit_depth = 8;
-	sig_bit.red   = 8;
-	sig_bit.green = 8;
-	sig_bit.blue  = 8;
-	sig_bit.alpha = 8;
-	color_type = PNG_COLOR_TYPE_RGB_ALPHA;
-
-	//row_bytes = (bit_depth * width) >> 1;
-	row_bytes = rowStride;
-	//png_set_bgr(png_ptr); // OpenGL does not need it
-	png_set_sBIT(png_ptr, info_ptr, &sig_bit);
-
-	png_set_IHDR(png_ptr, info_ptr, width, height,
-				 bit_depth, color_type, PNG_INTERLACE_NONE,
-				 PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
-
-	png_write_info(png_ptr, info_ptr);
-	for (i = 0; i < height; i++) {
-		png_write_row(png_ptr, (png_bytep)src);
-		src += row_bytes;
-	}
-	png_write_end(png_ptr, info_ptr);
-
-	png_destroy_write_struct(&png_ptr, &info_ptr);
-
-	return 1;
+	return rpng_save_image_rgba(path, src, (unsigned)width, (unsigned)height,
+	                            (unsigned)rowStride) ? 1 : 0;
 }
 
 boolean

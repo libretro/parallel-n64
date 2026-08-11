@@ -13,7 +13,6 @@
 #include "gDP.h"
 #include "gSP.h"
 #include "N64.h"
-#include "CRC.h"
 #include "convert.h"
 #include "FrameBuffer.h"
 
@@ -443,7 +442,6 @@ void TextureCache_Init(void)
    cache.cachedBytes = cache.dummy->textureBytes;
    TextureCache_ActivateDummy(0);
    TextureCache_ActivateDummy(1);
-   CRC_BuildTable();
 }
 
 bool TextureCache_Verify(void)

@@ -3,7 +3,10 @@
  *
  * Build & run from the repo root:
  *   cc -Imupen64plus-core/src -Ilibretro-common/include \
- *      -o /tmp/test_a64 tools/test_aleck64_zip.c libretro/aleck64_mame.c -lz \
+ *      -o /tmp/test_a64 tools/test_aleck64_zip.c libretro/aleck64_mame.c \
+ *      libretro-common/encodings/encoding_deflate.c \
+ *      libretro-common/encodings/encoding_crc32.c \
+ *      libretro-common/features/features_cpu.c \
  *      && /tmp/test_a64
  */
 #include <assert.h>
@@ -12,7 +15,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <zlib.h>
+#include <encodings/deflate.h>
 #include <libretro.h>
 
 #include "device/aleck64/aleck64.h"
@@ -41,16 +44,28 @@ static void zip_add(struct zipw* z, const char* name, const uint8_t* data, uint3
     uint8_t* payload = p + 30 + nlen;
 
     if (deflate_it) {
-        z_stream s;
-        memset(&s, 0, sizeof(s));
-        assert(deflateInit2(&s, Z_DEFAULT_COMPRESSION, Z_DEFLATED, -MAX_WBITS, 8, Z_DEFAULT_STRATEGY) == Z_OK);
-        s.next_in = (Bytef*)data;
-        s.avail_in = usize;
-        s.next_out = payload;
-        s.avail_out = usize + 0x1000;
-        assert(deflate(&s, Z_FINISH) == Z_STREAM_END);
-        csize = (uint32_t)s.total_out;
-        deflateEnd(&s);
+        /* Bare deflate stream, no wrapper - negative window bits, as zip
+         * requires and as the reader expects. */
+        void  *stream = rdeflate_new(6, -15);
+        size_t produced = 0;
+
+        assert(stream != NULL);
+        rdeflate_set_in(stream, data, usize);
+        rdeflate_set_out(stream, payload, usize + 0x1000);
+        rdeflate_finish(stream);
+
+        for (;;) {
+            size_t rd = 0, wn = 0;
+            const int st = rdeflate_process(stream, &rd, &wn);
+
+            produced += wn;
+            if (st == RDEFLATE_PROCESS_END)
+                break;
+            assert(st != RDEFLATE_PROCESS_ERROR && (rd != 0 || wn != 0));
+        }
+
+        rdeflate_free(stream);
+        csize = (uint32_t)produced;
         method = 8;
     }
     else {

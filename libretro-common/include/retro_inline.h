@@ -1,4 +1,4 @@
-/* Copyright  (C) 2010-2018 The RetroArch team
+/* Copyright  (C) 2010-2020 The RetroArch team
  *
  * ---------------------------------------------------------------------------------------
  * The following license statement only applies to this file (retro_inline.h).
@@ -25,6 +25,12 @@
 
 #ifndef INLINE
 
+/**
+ * Cross-platform inline specifier.
+ *
+ * Expands to something like \c __inline or \c inline,
+ * depending on the compiler.
+ */
 #if defined(_WIN32) || defined(__INTEL_COMPILER)
 #define INLINE __inline
 #elif defined(__STDC_VERSION__) && __STDC_VERSION__>=199901L

@@ -1,4 +1,4 @@
-/* Copyright  (C) 2010-2018 The RetroArch team
+/* Copyright  (C) 2010-2020 The RetroArch team
  *
  * ---------------------------------------------------------------------------------------
  * The following license statement only applies to this file (config_file_userdata.h).
@@ -42,6 +42,9 @@ int config_userdata_get_float(void *userdata, const char *key_str,
 
 int config_userdata_get_int(void *userdata, const char *key_str,
       int *value, int default_value);
+
+int config_userdata_get_hex(void *userdata, const char *key_str,
+      unsigned *value, unsigned default_value);
 
 int config_userdata_get_float_array(void *userdata, const char *key_str,
       float **values, unsigned *out_num_values,
