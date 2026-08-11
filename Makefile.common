@@ -334,7 +334,6 @@ endif
 ifeq ($(STATIC_LINKING),1)
 else
 SOURCES_C += $(LIBRETRO_COMM_DIR)/streams/file_stream.c \
-				 $(LIBRETRO_COMM_DIR)/hash/rhash.c \
 				 $(LIBRETRO_COMM_DIR)/lists/string_list.c \
 				 $(LIBRETRO_COMM_DIR)/string/stdstring.c \
 				 $(LIBRETRO_COMM_DIR)/file/file_path.c \
