@@ -293,30 +293,36 @@ void alist_copy_blocks(struct hle_t* hle, uint16_t dmemo, uint16_t dmemi, uint16
     } while(block_left > 0);
 }
 
+/* Reads count bytes from each source and writes twice that, so it is the
+ * command most able to run past the end of DMEM: it only takes an output
+ * buffer in the upper half with a count to match.  The pointers were walked
+ * unbounded, and alist_buffer is followed by alist_audio_t, so the tail of
+ * an over-long interleave landed on the in/out/count and the volume state.
+ * DMEM offsets wrap inside SP memory on hardware; wrap here too. */
+#define ALIST_W(off) (*(uint16_t*)(hle->alist_buffer + (((off)) & 0xffe)))
+
 void alist_interleave(struct hle_t* hle, uint16_t dmemo, uint16_t left, uint16_t right, uint16_t count)
 {
-    uint16_t       *dst  = (uint16_t*)(hle->alist_buffer + dmemo);
-    const uint16_t *srcL = (uint16_t*)(hle->alist_buffer + left);
-    const uint16_t *srcR = (uint16_t*)(hle->alist_buffer + right);
+    uint16_t o = dmemo, l = left, r = right;
 
     count >>= 2;
 
     while(count != 0) {
-        uint16_t l1 = *(srcL++);
-        uint16_t l2 = *(srcL++);
-        uint16_t r1 = *(srcR++);
-        uint16_t r2 = *(srcR++);
+        uint16_t l1 = ALIST_W(l); l += 2;
+        uint16_t l2 = ALIST_W(l); l += 2;
+        uint16_t r1 = ALIST_W(r); r += 2;
+        uint16_t r2 = ALIST_W(r); r += 2;
 
 #ifdef MSB_FIRST
-        *(dst++) = l1;
-        *(dst++) = r1;
-        *(dst++) = l2;
-        *(dst++) = r2;
+        ALIST_W(o) = l1; o += 2;
+        ALIST_W(o) = r1; o += 2;
+        ALIST_W(o) = l2; o += 2;
+        ALIST_W(o) = r2; o += 2;
 #else
-        *(dst++) = r2;
-        *(dst++) = l2;
-        *(dst++) = r1;
-        *(dst++) = l1;
+        ALIST_W(o) = r2; o += 2;
+        ALIST_W(o) = l2; o += 2;
+        ALIST_W(o) = r1; o += 2;
+        ALIST_W(o) = l1; o += 2;
 #endif
         --count;
     }
@@ -363,11 +369,16 @@ void alist_envmix_audio1(
         const int32_t *rate,
         uint32_t address)
 {
-    const int16_t* const in = (int16_t*)(hle->alist_buffer + dmemi);
-    int16_t* const dl = (int16_t*)(hle->alist_buffer + dmem_dl);
-    int16_t* const dr = (int16_t*)(hle->alist_buffer + dmem_dr);
-    int16_t* const wl = (int16_t*)(hle->alist_buffer + dmem_wl);
-    int16_t* const wr = (int16_t*)(hle->alist_buffer + dmem_wr);
+    /* Indexed through wrapping accessors rather than raw pointers: the four
+     * destinations each take count bytes from offsets that come out of the
+     * alist, and alist_buffer is followed by alist_audio_t, so an output
+     * buffer high enough in DMEM wrote its tail over the in/out/count and
+     * the volume state driving it.  DMEM wraps inside SP memory. */
+#define EM_IN(i)  (*(const int16_t*)(hle->alist_buffer + ((dmemi   + 2*(i)) & 0xffe)))
+#define EM_DL(i)  (*(int16_t*)      (hle->alist_buffer + ((dmem_dl + 2*(i)) & 0xffe)))
+#define EM_DR(i)  (*(int16_t*)      (hle->alist_buffer + ((dmem_dr + 2*(i)) & 0xffe)))
+#define EM_WL(i)  (*(int16_t*)      (hle->alist_buffer + ((dmem_wl + 2*(i)) & 0xffe)))
+#define EM_WR(i)  (*(int16_t*)      (hle->alist_buffer + ((dmem_wr + 2*(i)) & 0xffe)))
 
     int16_t  lhi[8], rhi[8];
     uint16_t llo[8], rlo[8];
@@ -446,16 +457,16 @@ void alist_envmix_audio1(
                 rgw[i] = clamp_s16((int32_t)(((int64_t)2*rhi[i]*params[7] + 0x8000) >> 16));
             }
             for (i = 0; i < 8 && count >= 2; ++i, ++ptr, count -= 2) {
-                int16_t x = in[ptr^S];
-                acc = (int64_t)2*dl[ptr^S]*32767 + 0x8000 + (int64_t)2*x*lgd[i];
-                dl[ptr^S] = audio1_acc_hi(acc);
-                acc = (int64_t)2*dr[ptr^S]*32767 + 0x8000 + (int64_t)2*x*rgd[i];
-                dr[ptr^S] = audio1_acc_hi(acc);
+                int16_t x = EM_IN(ptr^S);
+                acc = (int64_t)2*EM_DL(ptr^S)*32767 + 0x8000 + (int64_t)2*x*lgd[i];
+                EM_DL(ptr^S) = audio1_acc_hi(acc);
+                acc = (int64_t)2*EM_DR(ptr^S)*32767 + 0x8000 + (int64_t)2*x*rgd[i];
+                EM_DR(ptr^S) = audio1_acc_hi(acc);
                 if (aux) {
-                    acc = (int64_t)2*wl[ptr^S]*32767 + 0x8000 + (int64_t)2*x*lgw[i];
-                    wl[ptr^S] = audio1_acc_hi(acc);
-                    acc = (int64_t)2*wr[ptr^S]*32767 + 0x8000 + (int64_t)2*x*rgw[i];
-                    wr[ptr^S] = audio1_acc_hi(acc);
+                    acc = (int64_t)2*EM_WL(ptr^S)*32767 + 0x8000 + (int64_t)2*x*lgw[i];
+                    EM_WL(ptr^S) = audio1_acc_hi(acc);
+                    acc = (int64_t)2*EM_WR(ptr^S)*32767 + 0x8000 + (int64_t)2*x*rgw[i];
+                    EM_WR(ptr^S) = audio1_acc_hi(acc);
                 }
             }
         }
@@ -512,18 +523,18 @@ void alist_envmix_audio1(
         }
 
         for (i = 0; i < 8; ++i, ++ptr) {
-            int16_t x = in[ptr^S];
+            int16_t x = EM_IN(ptr^S);
             int64_t acc;
 
-            acc = (int64_t)2*dl[ptr^S]*32767 + 0x8000 + (int64_t)2*x*lgain_dry[i];
-            dl[ptr^S] = audio1_acc_hi(acc);
-            acc = (int64_t)2*dr[ptr^S]*32767 + 0x8000 + (int64_t)2*x*rgain_dry[i];
-            dr[ptr^S] = audio1_acc_hi(acc);
+            acc = (int64_t)2*EM_DL(ptr^S)*32767 + 0x8000 + (int64_t)2*x*lgain_dry[i];
+            EM_DL(ptr^S) = audio1_acc_hi(acc);
+            acc = (int64_t)2*EM_DR(ptr^S)*32767 + 0x8000 + (int64_t)2*x*rgain_dry[i];
+            EM_DR(ptr^S) = audio1_acc_hi(acc);
             if (aux) {
-                acc = (int64_t)2*wl[ptr^S]*32767 + 0x8000 + (int64_t)2*x*lgain_wet[i];
-                wl[ptr^S] = audio1_acc_hi(acc);
-                acc = (int64_t)2*wr[ptr^S]*32767 + 0x8000 + (int64_t)2*x*rgain_wet[i];
-                wr[ptr^S] = audio1_acc_hi(acc);
+                acc = (int64_t)2*EM_WL(ptr^S)*32767 + 0x8000 + (int64_t)2*x*lgain_wet[i];
+                EM_WL(ptr^S) = audio1_acc_hi(acc);
+                acc = (int64_t)2*EM_WR(ptr^S)*32767 + 0x8000 + (int64_t)2*x*rgain_wet[i];
+                EM_WR(ptr^S) = audio1_acc_hi(acc);
             }
         }
     }
@@ -536,6 +547,12 @@ void alist_envmix_audio1(
         *dram_u16(hle, address + 0x40 + i*2) = (uint16_t)params[i];
     }
 }
+#undef EM_IN
+#undef EM_DL
+#undef EM_DR
+#undef EM_WL
+#undef EM_WR
+
 
 void alist_envmix_exp(
         struct hle_t* hle,
