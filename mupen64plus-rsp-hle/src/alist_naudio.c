@@ -148,7 +148,10 @@ static void NAUDIO_14(struct hle_t* hle, uint32_t w1, uint32_t w2)
                             + (int32_t)gain * win[L];
                 for (j2 = 0; j2 < L; ++j2)
                     acc += (int32_t)scaledB[L-1-j2] * win[j2];
-                blk[L^S] = naudio_clamp_s16((int_fast32_t)(acc >> 14));
+                /* the 48-bit accumulator wraps: nine s16 products can
+                 * exceed 32 bits, and the recombination reads only
+                 * acc[47:16], i.e. the sum truncated to 32 bits */
+                blk[L^S] = naudio_clamp_s16((int32_t)acc >> 14);
             }
             prev = blk[7^S];
         }
