@@ -140,6 +140,18 @@ static void NAUDIO_14(struct hle_t* hle, uint32_t w1, uint32_t w2)
 
         prev = init ? 0 : (int16_t)*dram_u16(hle, address + 6);
 
+        /* The handler seeds its history vector from the state block
+         * (ldv into the upper half, or vxor on an init call) and spills
+         * that vector to the sixteen bytes below the buffer with the
+         * first block's sqv, before any output overwrites them.  On a
+         * resumed call the upper half is the four saved samples, so
+         * those eight bytes are observable state a real RSP leaves
+         * behind; the lower half is whatever the vector register held
+         * on entry and is not modelled here. */
+        for (j2 = 0; j2 < 4; ++j2)
+            *(int16_t*)(hle->alist_buffer + (((dmem - 8 + 2*j2) ^ S16) & 0xfff)) =
+                init ? 0 : (int16_t)*dram_u16(hle, address + 2*j2);
+
         for (b = 0; b < 0x170 / 0x10; ++b) {
             int16_t *blk = (int16_t*)(hle->alist_buffer + dmem + 0x10*b);
             for (L = 0; L < 8; ++L)
