@@ -233,6 +233,18 @@ static void LOADADPCM(struct hle_t* hle, uint32_t w1, uint32_t w2)
         if (entries > cap) entries = cap;   /* count is unbounded alist data */
         dram_load_u16(hle, (uint16_t*)hle->alist_naudio.table, address, entries);
     }
+
+    {
+        /* the DMA lands the raw book at DMEM 0x3f0 (0x400 on the
+         * shifted builds); the decoder indexes coefficients from
+         * there, so a predictor beyond the loaded book reads whatever
+         * the buffer holds - mirror the bytes so the shadow agrees */
+        uint16_t dmem = (uint16_t)(0x3f0 + naudio_shift);
+        unsigned k;
+        for (k = 0; k + 1 < count && dmem + k + 1 < 0x1000; k += 2)
+            *(int16_t*)(hle->alist_buffer + (((dmem + k) ^ S16) & 0xfff)) =
+                (int16_t)*dram_u16(hle, address + k);
+    }
 }
 
 static void DMEMMOVE(struct hle_t* hle, uint32_t w1, uint32_t w2)
@@ -258,17 +270,30 @@ static void ADPCM(struct hle_t* hle, uint32_t w1, uint32_t w2)
     uint16_t dmemi   = ((w2 >> 12) & 0xf) + (uint16_t)(NAUDIO_MAIN + naudio_shift);
     uint16_t dmemo   = (w2 & 0xfff) + (uint16_t)(NAUDIO_MAIN + naudio_shift);
 
-    alist_adpcm(
-            hle,
-            flags & A_INIT,
-            flags & A_LOOP,
-            false,          /* unsuported by this ucode */
-            dmemo,
-            dmemi,
-            (count + 0x1f) & ~0x1f,
-            hle->alist_naudio.table,
-            hle->alist_naudio.loop,
-            address);
+    {
+        /* coefficients come from the book image in DMEM at 0x3f0
+         * (0x400 shifted); a frame's predictor can reach past the
+         * loaded book into the sample buffers, and the decoder reads
+         * whatever is there */
+        int16_t table[16 * 16];
+        uint16_t base = (uint16_t)(0x3f0 + naudio_shift);
+        unsigned k;
+        for (k = 0; k < 16 * 16; ++k)
+            table[k] = *(int16_t*)(hle->alist_buffer +
+                                   (((base + 2*k) ^ S16) & 0xfff));
+
+        alist_adpcm(
+                hle,
+                flags & A_INIT,
+                flags & A_LOOP,
+                false,          /* unsupported by this ucode */
+                dmemo,
+                dmemi,
+                (count + 0x1f) & ~0x1f,
+                table,
+                hle->alist_naudio.loop,
+                address);
+    }
 }
 
 static void RESAMPLE(struct hle_t* hle, uint32_t w1, uint32_t w2)

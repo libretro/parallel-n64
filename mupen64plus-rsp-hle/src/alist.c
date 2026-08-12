@@ -2161,6 +2161,9 @@ void alist_overload(struct hle_t* hle, uint16_t dmem, int16_t count, int16_t gai
     int16_t accu;
     int16_t * sample = (int16_t*)(hle->alist_buffer + dmem);
 
+    /* count arrives in bytes */
+    count >>= 1;
+
     while (count != 0)
     {
         accu = clamp_s16(*sample * gain);
