@@ -70,6 +70,10 @@ static int nead_resample_old = 0;
 enum { NEAD_ENV_SF, NEAD_ENV_FZ, NEAD_ENV_OOT, NEAD_ENV_MK };
 static int nead_env_style = NEAD_ENV_OOT;
 
+/* DMEM address the codebook DMA lands at; the book lives in real DMEM
+ * (not just the HLE-side table), so the shadow must carry it too */
+static uint16_t nead_book = 0x330;
+
 static int16_t nead_clamp_s16(int_fast32_t x)
 {
     x = (x < INT16_MIN) ? INT16_MIN : x;
@@ -129,6 +133,18 @@ static void LOADADPCM(struct hle_t* hle, uint32_t w1, uint32_t w2)
         if (entries > cap) entries = cap;   /* count is unbounded alist data */
         dram_load_u16(hle, (uint16_t*)hle->alist_nead.table, address, entries);
     }
+    if (nead_book != 0) {
+        /* the DMA also lands the raw book in DMEM; mirror it so saves
+         * from that region ship the same bytes.  (Not for Mario Kart:
+         * its uniformly 0x450-biased address space puts the book below
+         * anything the shadow can express or a game can address.) */
+        unsigned k;
+        uint16_t n = (uint16_t)(w1 & 0xffff);
+        for (k = 0; k + 1 < n; k += 2)
+            *nead_s16(hle, (uint16_t)(nead_book + k)) =
+                (int16_t)*dram_u16(hle, (w2 & 0xffffff) + k);
+    }
+
 }
 
 static void SETLOOP(struct hle_t* hle, uint32_t UNUSED(w1), uint32_t w2)
@@ -541,6 +557,7 @@ void alist_process_nead_mk(struct hle_t* hle)
     };
 
     nead_slab = 0xfa0;
+    nead_book = 0;
     nead_env_style = NEAD_ENV_MK;
     nead_resample_old = 1;
     nead_slab_seed(hle);
@@ -562,6 +579,7 @@ void alist_process_nead_sf(struct hle_t* hle)
     };
 
     nead_slab = 0xf90;
+    nead_book = 0x3c0;
     nead_env_style = NEAD_ENV_SF;
     nead_resample_old = 0;
     nead_slab_seed(hle);
@@ -583,6 +601,7 @@ void alist_process_nead_sfj(struct hle_t* hle)
     };
 
     nead_slab = 0xf90;
+    nead_book = 0x3c0;
     nead_env_style = NEAD_ENV_SF;
     nead_resample_old = 0;
     nead_slab_seed(hle);
@@ -604,6 +623,7 @@ void alist_process_nead_fz(struct hle_t* hle)
     };
 
     nead_slab = 0xfc0;
+    nead_book = 0x340;
     nead_env_style = NEAD_ENV_FZ;
     nead_resample_old = 0;
     nead_slab_seed(hle);
@@ -625,6 +645,7 @@ void alist_process_nead_wrjb(struct hle_t* hle)
     };
 
     nead_slab = 0xf90;
+    nead_book = 0x3c0;
     nead_env_style = NEAD_ENV_SF;
     nead_resample_old = 0;
     nead_slab_seed(hle);
@@ -644,6 +665,7 @@ void alist_process_nead_ys(struct hle_t* hle)
     };
 
     nead_slab = 0xfc0;
+    nead_book = 0x340;
     nead_env_style = NEAD_ENV_SF;
     nead_resample_old = 0;
     nead_slab_seed(hle);
@@ -663,6 +685,7 @@ void alist_process_nead_1080(struct hle_t* hle)
     };
 
     nead_slab = 0xfc0;
+    nead_book = 0x340;
     nead_env_style = NEAD_ENV_OOT;
     nead_resample_old = 0;
     nead_slab_seed(hle);
@@ -682,6 +705,7 @@ void alist_process_nead_oot(struct hle_t* hle)
     };
 
     nead_slab = 0xfb0;
+    nead_book = 0x330;
     nead_env_style = NEAD_ENV_OOT;
     nead_resample_old = 0;
     nead_slab_seed(hle);
@@ -701,6 +725,7 @@ void alist_process_nead_mm(struct hle_t* hle)
     };
 
     nead_slab = 0xfb0;
+    nead_book = 0x330;
     nead_env_style = NEAD_ENV_OOT;
     nead_resample_old = 0;
     nead_slab_seed(hle);
@@ -720,6 +745,7 @@ void alist_process_nead_mmb(struct hle_t* hle)
     };
 
     nead_slab = 0xfb0;
+    nead_book = 0x330;
     nead_env_style = NEAD_ENV_OOT;
     nead_resample_old = 0;
     nead_slab_seed(hle);
@@ -739,6 +765,7 @@ void alist_process_nead_ac(struct hle_t* hle)
     };
 
     nead_slab = 0xfb0;
+    nead_book = 0x300;
     nead_env_style = NEAD_ENV_OOT;
     nead_resample_old = 0;
     nead_slab_seed(hle);
@@ -762,6 +789,7 @@ void alist_process_nead_mats(struct hle_t* hle)
     };
 
     nead_slab = 0xfb0;
+    nead_book = 0x330;
     nead_env_style = NEAD_ENV_OOT;
     nead_resample_old = 0;
     nead_slab_seed(hle);
