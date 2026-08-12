@@ -984,16 +984,20 @@ void alist_envmix_nead(
 
 void alist_mix(struct hle_t* hle, uint16_t dmemo, uint16_t dmemi, uint16_t count, int16_t gain)
 {
-    int16_t       *dst = (int16_t*)(hle->alist_buffer + dmemo);
-    const int16_t *src = (int16_t*)(hle->alist_buffer + dmemi);
+    /* Offsets, not pointers: MIXER's caller aligns the count up to 32, and
+     * both offsets come from the alist, so the walk can leave the buffer.
+     * DMEM wraps inside SP memory. */
+    uint16_t o = dmemo, i = dmemi;
 
     count >>= 1;
 
     while(count != 0) {
-        sample_mix(dst, *src, gain);
+        sample_mix((int16_t*)(hle->alist_buffer + (o & 0xffe)),
+                   *(const int16_t*)(hle->alist_buffer + (i & 0xffe)),
+                   gain);
 
-        ++dst;
-        ++src;
+        o += 2;
+        i += 2;
         --count;
     }
 }
@@ -1524,7 +1528,11 @@ void alist_polef(
         int16_t* table,
         uint32_t address)
 {
-    int16_t *dst = (int16_t*)(hle->alist_buffer + dmemo);
+    /* dmemo is an alist-supplied offset and the walk advances 16 bytes a
+     * block, so it can leave the buffer; index through a wrapping accessor
+     * as DMEM does. */
+    uint16_t dofs = dmemo;
+#define PF(i) (*(int16_t*)(hle->alist_buffer + ((dofs + 2*(i)) & 0xffe)))
 
     const int16_t* const h1 = table;
           int16_t* const h2 = table + 8;
@@ -1570,17 +1578,25 @@ void alist_polef(
             accu += (int64_t)h1[i] * l1 + (int64_t)h2_before[i] * l2;
             for(j = 0; j < i; ++j)
                 accu += (int64_t)h2[j] * frame[i - 1 - j];
-            dst[i^S] = clamp_s16((int32_t)(accu >> 14));
+            PF(i^S) = clamp_s16((int32_t)(accu >> 14));
         }
 
-        l1 = dst[6^S];
-        l2 = dst[7^S];
+        l1 = PF(6^S);
+        l2 = PF(7^S);
 
-        dst += 8;
+        dofs += 16;
         count -= 16;
     } while (count != 0);
 
-    dram_store_u32(hle, (uint32_t*)(dst - 4), address, 2);
+    {   /* the last four samples written, i.e. eight bytes back from the
+         * cursor, through the same wrap */
+        uint16_t back = (uint16_t)(dofs - 8);
+        uint32_t tail[2];
+        tail[0] = *(uint32_t*)(hle->alist_buffer + ((back    ) & 0xffc));
+        tail[1] = *(uint32_t*)(hle->alist_buffer + ((back + 4) & 0xffc));
+        dram_store_u32(hle, tail, address, 2);
+    }
+#undef PF
 }
 
 void alist_iirf(
