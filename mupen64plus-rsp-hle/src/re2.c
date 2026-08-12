@@ -22,7 +22,6 @@
 #include <assert.h>
 #include <stdint.h>
 #include <stdlib.h>
-#include <string.h>
 
 #include "hle_external.h"
 #include "hle_internal.h"
@@ -33,96 +32,66 @@
 /**************************************************************************
  * Resident evil 2 ucodes
  **************************************************************************/
-/* Transcribed from the resize microcode.
- *
- * The ucode upscales a 24-bit source image (bytes ordered B,G,R per
- * pixel, 320 pixels / 960 bytes per line) to an RGBA5551 frame, walking
- * a 16.16 fixed-point lattice.  Each output row DMAs 0x780 bytes -- the
- * two source lines the row interpolates between -- to DMEM 0, and the
- * packed output row is staged right behind that window at DMEM 0x780,
- * which matters: for the right-most source column the bottom-right tap
- * address (xint * 3 + 3 + 0x3c0) runs past the window into the staging
- * area, so the tap reads bytes of this row's own first packed pixels.
- * The window below reproduces that feedback.
- *
- * All four bilinear corner weights are built from Q15 x/y fractions
- * with a truncation after every stage, exactly like the ucode:
- * weight = ((frac_a * frac_b) >> 16) * 4 in Q16, and each tap is
- * (sample * weight) >> 16, truncated before the four taps are summed.
- *
- * The ucode also carries a serial error-diffusion pipeline (per-lane
- * accumulators rotated through DMEM, three-channel VABS/VLT flag
- * AND-merge selecting between the accumulator and a constant).  Its
- * comparison constant in the ucode data is zero, and VLT can only pass
- * for |diff| < 0 (never) or a VCO-flagged tie, with VCO provably clear
- * at that point, so the selected error term is the constant 4 on every
- * pixel: the quantizer reduces to min(sum + 4, 255) & 0xf8.  The 16-bit
- * accumulate carries (VADDC into VADD) can never fire at byte scale
- * either.  Both mechanisms are therefore left out of the transcription. */
 void resize_bilinear_task(struct hle_t* hle)
 {
-    uint32_t data_ptr = *dmem_u32(hle, TASK_UCODE_DATA);
+    int data_ptr = *dmem_u32(hle, TASK_UCODE_DATA);
 
-    uint32_t src_addr   = *dram_u32(hle, data_ptr)      & 0x7fffff;
-    uint32_t dst_addr   = *dram_u32(hle, data_ptr + 4)  & 0x7fffff;
-    uint32_t dst_width  = *dram_u32(hle, data_ptr + 8);
-    uint32_t dst_height = *dram_u32(hle, data_ptr + 12);
-    uint32_t x_step     = *dram_u32(hle, data_ptr + 16);
-    uint32_t y_step     = *dram_u32(hle, data_ptr + 20);
-    uint32_t dst_stride = *dram_u32(hle, data_ptr + 24);
-    uint32_t x0         = *dram_u32(hle, data_ptr + 32);
-    uint32_t y          = *dram_u32(hle, data_ptr + 36);
+    int src_addr = *dram_u32(hle, data_ptr);
+    int dst_addr = *dram_u32(hle, data_ptr + 4);
+    int dst_width = *dram_u32(hle, data_ptr + 8);
+    int dst_height = *dram_u32(hle, data_ptr + 12);
+    int x_ratio = *dram_u32(hle, data_ptr + 16);
+    int y_ratio = *dram_u32(hle, data_ptr + 20);
+    int src_offset = *dram_u32(hle, data_ptr + 36);
 
-    uint8_t win[0x1000];
-    uint32_t i, j, k;
+    int a, b, c ,d, index, y_index, xr, yr, blue, green, red, addr, i, j;
+    long long x, y, x_diff, y_diff, one_min_x_diff, one_min_y_diff;
+    unsigned short pixel;
 
-    memset(win, 0, sizeof(win));
+    src_addr += (src_offset >> 16) * (320 * 3);
+    x = y = 0;
 
-    for (i = 0; i < dst_height; ++i) {
-        uint32_t row_src = (src_addr + (y >> 16) * 960) & 0x7fffff;
-        uint32_t out = dst_addr;
-        uint32_t yf = (y & 0xffff) >> 1;
-        uint32_t ny = 0x7fff - yf;
-        uint32_t x = x0;
+    for(i = 0; i < dst_height; i++)
+    {
+        yr = (int)(y >> 16);
+        y_diff = y - (yr << 16);
+        one_min_y_diff = 65536 - y_diff;
+        y_index = yr * 320;
+        x = 0;
 
-        for (k = 0; k < 0x780; ++k)
-            win[k] = *dram_u8(hle, row_src + k);
+        for(j = 0; j < dst_width; j++)
+        {
+            xr = (int)(x >> 16);
+            x_diff = x - (xr << 16);
+            one_min_x_diff = 65536 - x_diff;
+            index = y_index + xr;
+            addr = src_addr + (index * 3);
 
-        for (j = 0; j < dst_width; ++j) {
-            uint32_t xi = (x >> 16) * 3;
-            uint32_t xf = (x & 0xffff) >> 1;
-            uint32_t nx = 0x7fff - xf;
-            uint32_t w_tl = ((nx * ny) >> 16) * 4;
-            uint32_t w_tr = ((xf * ny) >> 16) * 4;
-            uint32_t w_bl = ((nx * yf) >> 16) * 4;
-            uint32_t w_br = ((xf * yf) >> 16) * 4;
-            uint16_t pixel;
-            unsigned c;
-            uint32_t chan[3];
+            dram_load_u8(hle, (uint8_t*)&a, addr, 3);
+            dram_load_u8(hle, (uint8_t*)&b, (addr + 3), 3);
+            dram_load_u8(hle, (uint8_t*)&c, (addr + (320 * 3)), 3);
+            dram_load_u8(hle, (uint8_t*)&d, (addr + (320 * 3) + 3), 3);
 
-            for (c = 0; c < 3; ++c) {
-                uint32_t tl = win[(xi + c)                 & 0xfff];
-                uint32_t tr = win[(xi + 3 + c)             & 0xfff];
-                uint32_t bl = win[(xi + 0x3c0 + c)         & 0xfff];
-                uint32_t br = win[(xi + 0x3c0 + 3 + c)     & 0xfff];
-                uint32_t v = ((tl * w_tl) >> 16) + ((tr * w_tr) >> 16)
-                           + ((bl * w_bl) >> 16) + ((br * w_br) >> 16)
-                           + 4;
-                if (v > 255)
-                    v = 255;
-                chan[c] = v & 0xf8;
-            }
+            blue = (int)(((a&0xff)*one_min_x_diff*one_min_y_diff + (b&0xff)*x_diff*one_min_y_diff +
+                          (c&0xff)*y_diff*one_min_x_diff         + (d&0xff)*x_diff*y_diff) >> 32);
 
-            pixel = (uint16_t)((chan[2] << 8) | (chan[1] << 3) | (chan[0] >> 2) | 1);
-            win[0x780 + 2 * j]     = (uint8_t)(pixel >> 8);
-            win[0x780 + 2 * j + 1] = (uint8_t)pixel;
-            dram_store_u16(hle, &pixel, out, 1);
-            out += 2;
-            x += x_step;
+            green = (int)((((a>>8)&0xff)*one_min_x_diff*one_min_y_diff + ((b>>8)&0xff)*x_diff*one_min_y_diff +
+                           ((c>>8)&0xff)*y_diff*one_min_x_diff         + ((d>>8)&0xff)*x_diff*y_diff) >> 32);
+
+            red = (int)((((a>>16)&0xff)*one_min_x_diff*one_min_y_diff + ((b>>16)&0xff)*x_diff*one_min_y_diff +
+                         ((c>>16)&0xff)*y_diff*one_min_x_diff         + ((d>>16)&0xff)*x_diff*y_diff) >> 32);
+
+            blue = (blue >> 3) & 0x001f;
+            green = (green >> 3) & 0x001f;
+            red = (red >> 3) & 0x001f;
+            pixel = (red << 11) | (green << 6) | (blue << 1) | 1;
+
+            dram_store_u16(hle, &pixel, dst_addr, 1);
+            dst_addr += 2;
+
+            x += x_ratio;
         }
-
-        dst_addr = (dst_addr + dst_stride) & 0x7fffff;
-        y += y_step;
+        y += y_ratio;
     }
 
     rsp_break(hle, SP_STATUS_TASKDONE);
