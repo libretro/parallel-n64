@@ -209,7 +209,11 @@ static void LOADADPCM(struct hle_t* hle, uint32_t w1, uint32_t w2)
     uint16_t count   = w1;
     uint32_t address = (w2 & 0xffffff);
 
-    dram_load_u16(hle, (uint16_t*)hle->alist_naudio.table, address, count >> 1);
+    {  size_t entries = count >> 1;
+        const size_t cap = sizeof(hle->alist_naudio.table)/sizeof(hle->alist_naudio.table[0]);
+        if (entries > cap) entries = cap;   /* count is unbounded alist data */
+        dram_load_u16(hle, (uint16_t*)hle->alist_naudio.table, address, entries);
+    }
 }
 
 static void DMEMMOVE(struct hle_t* hle, uint32_t w1, uint32_t w2)

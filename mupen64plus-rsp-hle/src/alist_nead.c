@@ -56,7 +56,11 @@ static void LOADADPCM(struct hle_t* hle, uint32_t w1, uint32_t w2)
     uint16_t count   = w1;
     uint32_t address = (w2 & 0xffffff);
 
-    dram_load_u16(hle, (uint16_t*)hle->alist_nead.table, address, count >> 1);
+    {  size_t entries = count >> 1;
+        const size_t cap = sizeof(hle->alist_nead.table)/sizeof(hle->alist_nead.table[0]);
+        if (entries > cap) entries = cap;   /* count is unbounded alist data */
+        dram_load_u16(hle, (uint16_t*)hle->alist_nead.table, address, entries);
+    }
 }
 
 static void SETLOOP(struct hle_t* hle, uint32_t UNUSED(w1), uint32_t w2)

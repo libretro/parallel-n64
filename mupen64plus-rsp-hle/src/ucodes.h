@@ -74,8 +74,14 @@ struct alist_audio_t {
     /* ADPCM loop point address */
     uint32_t loop;
 
-    /* storage for ADPCM table and polef coefficients */
-    int16_t table[16 * 8];
+    /* storage for ADPCM table and polef coefficients.
+     *
+     * The frame header's predictor index is a nibble, so alist_adpcm can
+     * ask for entry 15 - codebook + (index << 4) - which needs 16 entries
+     * of 16.  Sized for 8, indices past 7 read off the end, and this is
+     * the last member of the struct, so they read the next microcode's
+     * state and decode it as filter coefficients. */
+    int16_t table[16 * 16];
 };
 
 void alist_process_audio   (struct hle_t* hle);
@@ -97,8 +103,14 @@ struct alist_naudio_t {
     /* ADPCM loop point address */
     uint32_t loop;
 
-    /* storage for ADPCM table and polef coefficients */
-    int16_t table[16 * 8];
+    /* storage for ADPCM table and polef coefficients.
+     *
+     * The frame header's predictor index is a nibble, so alist_adpcm can
+     * ask for entry 15 - codebook + (index << 4) - which needs 16 entries
+     * of 16.  Sized for 8, indices past 7 read off the end, and this is
+     * the last member of the struct, so they read the next microcode's
+     * state and decode it as filter coefficients. */
+    int16_t table[16 * 16];
 };
 
 void alist_process_naudio     (struct hle_t* hle);
@@ -122,8 +134,14 @@ struct alist_nead_t {
     /* ADPCM loop point address */
     uint32_t loop;
 
-    /* storage for ADPCM table and polef coefficients */
-    int16_t table[16 * 8];
+    /* storage for ADPCM table and polef coefficients.
+     *
+     * The frame header's predictor index is a nibble, so alist_adpcm can
+     * ask for entry 15 - codebook + (index << 4) - which needs 16 entries
+     * of 16.  Sized for 8, indices past 7 read off the end, and this is
+     * the last member of the struct, so they read the next microcode's
+     * state and decode it as filter coefficients. */
+    int16_t table[16 * 16];
 
     /* filter audio command state */
     uint16_t filter_count;

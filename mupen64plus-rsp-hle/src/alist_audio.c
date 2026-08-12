@@ -214,8 +214,16 @@ static void LOADADPCM(struct hle_t* hle, uint32_t w1, uint32_t w2)
 {
     uint16_t count   = w1;
     uint32_t address = get_address(hle, w2);
+    size_t   entries = align(count, 8) >> 1;
 
-    dram_load_u16(hle, (uint16_t*)hle->alist_audio.table, address, align(count, 8) >> 1);
+    /* count comes straight out of the alist and is a uint16_t, while the
+     * table it lands in holds 16*8 entries.  Anything past that ran into
+     * whatever follows it, and table is the last member of alist_audio_t,
+     * so the overrun landed in the next microcode's state block. */
+    if (entries > sizeof(hle->alist_audio.table)/sizeof(hle->alist_audio.table[0]))
+        entries = sizeof(hle->alist_audio.table)/sizeof(hle->alist_audio.table[0]);
+
+    dram_load_u16(hle, (uint16_t*)hle->alist_audio.table, address, entries);
 }
 
 static void INTERLEAVE(struct hle_t* hle, uint32_t UNUSED(w1), uint32_t w2)
