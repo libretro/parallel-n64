@@ -137,20 +137,29 @@ void adpcm_compute_residuals(int16_t* dst, const int16_t* src,
 
         accu += (int64_t)book1[i]*l1 + (int64_t)book2[i]*l2 + rdot(i, book2, src);
 
-        /* The microcode's vmudh/vmadh chain leaves the sum in the 48-bit
-         * accumulator at bit 16, so the pair of vsar reads that follow it
-         * recover ACC[47:16] - the sum truncated to 32 bits, not the whole
-         * of it.  The vmudn/vmadh rescale by 0x20 and the saturating
-         * writeback then give
+        /* cmd_ADPCM accumulates every product with vmudh/vmadh, i.e. at
+         * bit 16 of the 48-bit accumulator, so the sum itself wraps
+         * modulo 2^32.  The read-out recovers ACC[47:16] with a pair of
+         * vsar reads and rescales by v31[4] = 0x20 (loaded at handler
+         * entry from DMEM 0x00; the data section opens
+         * 0000 0001 0002 ffff 0020 0800 7fff 4000), which the saturating
+         * vmudn/vmadh write-back turns into
          *
          *     clamp_s16((int32_t)sum >> 11)
          *
-         * so the truncation is part of the result and has to be modelled.
-         * Reducing modulo 2^32 explicitly keeps that behaviour without
-         * relying on signed overflow, which is undefined - the previous
-         * int32_t accumulator had the truncation but no defined result to
-         * go with it, and the compiler was free to do something else with
-         * a sum that reached 2^33. */
+         * The truncation is therefore part of the result and has to be
+         * modelled; reducing modulo 2^32 explicitly keeps it without
+         * relying on signed overflow, which is undefined.
+         *
+         * Verified bit-exact against the microcode itself: cxd4 running
+         * the ROM aspMain build (dispatch signature 0x11181470 - Super
+         * Mario 64, Doom 64 and Killer Instinct Gold ship the same
+         * build) against this decoder over synthetic alists covering
+         * every scale, extreme codebooks, and the init/loop/continue
+         * flags - RDRAM byte-identical throughout, while the same
+         * vectors against a 64-bit accumulator without the narrowing
+         * diverge with sign-inverted rails (0x8000 for 0x7fff) exactly
+         * where the sum crosses 2^31. */
         narrowed = (int32_t)(uint32_t)((uint64_t)accu & 0xffffffffu);
 
         dst[i] = clamp_s16(narrowed >> 11);
