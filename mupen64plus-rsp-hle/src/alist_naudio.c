@@ -148,9 +148,12 @@ static void NAUDIO_14(struct hle_t* hle, uint32_t w1, uint32_t w2)
          * those eight bytes are observable state a real RSP leaves
          * behind; the lower half is whatever the vector register held
          * on entry and is not modelled here. */
-        for (j2 = 0; j2 < 4; ++j2)
+        for (j2 = 0; j2 < 4; ++j2) {
+            *(int16_t*)(hle->alist_buffer + (((dmem - 0x10 + 2*j2) ^ S16) & 0xfff)) =
+                init ? 0 : hle->alist_naudio.filter_spill[j2];
             *(int16_t*)(hle->alist_buffer + (((dmem - 8 + 2*j2) ^ S16) & 0xfff)) =
                 init ? 0 : (int16_t)*dram_u16(hle, address + 2*j2);
+        }
 
         for (b = 0; b < 0x170 / 0x10; ++b) {
             int16_t *blk = (int16_t*)(hle->alist_buffer + dmem + 0x10*b);
@@ -213,6 +216,15 @@ static void envmixer(struct hle_t* hle, uint32_t w1, uint32_t w2, enum alist_env
 
     hle->alist_naudio.vol[1] = w1;
 
+    /* the handler loads the ramp-index row at DMEM 0x90 into the
+     * register the filter command spills */
+    {
+        unsigned k;
+        for (k = 0; k < 4; ++k)
+            hle->alist_naudio.filter_spill[k] =
+                *(int16_t*)(hle->alist_buffer + (((0x90 + 2*k) ^ S16) & 0xfff));
+    }
+
     alist_envmix_lin(
             hle,
             flags & A_INIT,
@@ -263,6 +275,10 @@ static void MIXER(struct hle_t* hle, uint32_t w1, uint32_t w2)
     int16_t  gain  = w1;
     uint16_t dmemi = (w2 >> 16) + (uint16_t)(NAUDIO_MAIN + naudio_shift);
     uint16_t dmemo = w2 + (uint16_t)(NAUDIO_MAIN + naudio_shift);
+
+    /* the handler moves the gain into lane 0 of the register the
+     * filter command later spills */
+    hle->alist_naudio.filter_spill[0] = gain;
 
     alist_mix(hle, dmemo, dmemi, NAUDIO_COUNT, gain);
 }
@@ -368,6 +384,15 @@ static void RESAMPLE(struct hle_t* hle, uint32_t w1, uint32_t w2)
 
     /* the handler branches to the fresh-state path whenever the flag
      * field is non-zero, not just on bit 0 */
+    /* the handler loads the constant row at DMEM 0x60 into the same
+     * register, so a later filter command spills these four lanes */
+    {
+        unsigned k;
+        for (k = 0; k < 4; ++k)
+            hle->alist_naudio.filter_spill[k] =
+                *(int16_t*)(hle->alist_buffer + (((0x60 + 2*k) ^ S16) & 0xfff));
+    }
+
     alist_resample_naudio(
             hle,
             flags != 0,

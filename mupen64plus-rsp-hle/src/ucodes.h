@@ -91,6 +91,12 @@ void alist_process_audio_bc(struct hle_t* hle);
 
 /* audio list ucodes - naudio */
 struct alist_naudio_t {
+    /* shadow of the vector register the filter command spills below
+     * its buffer: the commands that leave it set are the resampler
+     * (constant row), the envmixer (ramp-index row) and the mixer
+     * (its gain in lane 0) */
+    int16_t  filter_spill[4];
+
     /* shadow of the DMEM scratch the state DMAs stage through: the
      * envmixer saves its five state rows there and the resampler's
      * 0x10-byte state transfer overlaps the first row, sosix bytes of
