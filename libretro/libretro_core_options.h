@@ -902,14 +902,15 @@ struct retro_core_option_v2_definition option_defs_us[] = {
 
     {
         CORE_NAME "-send_allist_to_hle_rsp",
-        "Audio Processing (HLE RSP)",
+        "Audio Processing",
         NULL,
-        "Run N64 audio on the fast high-level (HLE) RSP while graphics stay on the selected accurate RSP (cxd4/parallel). Audio lists are emulated at a higher level instead of cycle-by-cycle, which noticeably increases performance with little to no audible difference in most games. Recommended when using the angrylion or parallel-RDP graphics plugins for a speed boost. Disable if a game has audio glitches.",
+        "Which RSP runs the audio microcode, independently of the one running graphics. 'Same as RSP Plugin' follows the RSP Plugin setting. 'Fast (HLE)' emulates audio lists at a high level instead of cycle-by-cycle, which is faster but glitches in some games. 'Accurate (LLE)' keeps audio cycle-accurate even when graphics run on the HLE RSP, which is the pairing to use if you want HLE speed for graphics without HLE audio glitches.",
         NULL,
         NULL,
         {
-            { "enabled", "Fast (HLE)" },
-            { "disabled", "Accurate (selected RSP)" },
+            { "disabled", "Same as RSP Plugin" },
+            { "hle",      "Fast (HLE)" },
+            { "accurate", "Accurate (LLE)" },
             { NULL, NULL },
         },
         "disabled"

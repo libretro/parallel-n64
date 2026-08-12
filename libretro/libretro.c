@@ -225,7 +225,7 @@ uint32_t screen_height              = 480;
 float    screen_aspect_ratio        = 4.0 / 3.0;
 uint32_t screen_pitch               = 0;
 uint32_t screen_aspectmodehint;
-uint32_t send_allist_to_hle_rsp     = 0;
+enum audio_rsp_mode_t audio_rsp_mode = AUDIO_RSP_FOLLOW;
 /* Set from the ROM header for titles whose audio microcode use cannot be
  * HLE'd faithfully; consulted by plugin_rsp_init (plugin.c). */
 unsigned int FAKE_SDL_TICKS         = 0;
@@ -1568,13 +1568,17 @@ void update_variables(bool startup)
 
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
    {
-      if(!strcmp(var.value, "enabled"))
-         send_allist_to_hle_rsp = true;
+      /* "enabled"/"disabled" are the values this option had when it was a
+       * boolean; keep accepting them so existing configs keep their meaning. */
+      if (!strcmp(var.value, "hle") || !strcmp(var.value, "enabled"))
+         audio_rsp_mode = AUDIO_RSP_HLE;
+      else if (!strcmp(var.value, "accurate"))
+         audio_rsp_mode = AUDIO_RSP_ACCURATE;
       else
-         send_allist_to_hle_rsp = false;
+         audio_rsp_mode = AUDIO_RSP_FOLLOW;
    }
    else
-      send_allist_to_hle_rsp = false;
+      audio_rsp_mode = AUDIO_RSP_FOLLOW;
 
    var.key   = "parallel-n64-screensize";
    var.value = NULL;

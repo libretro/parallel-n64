@@ -61,6 +61,20 @@ uint32_t get_retro_screen_height();
 
 extern enum rdp_plugin_type current_rdp_type;
 extern enum rsp_plugin_type current_rsp_type;
+
+/* Which RSP processes audio (type 2) tasks.  Deliberately independent of the
+ * RSP that processes graphics: HLE graphics paired with accurate audio is a
+ * useful combination -- the HLE audio microcode is what glitches, while HLE
+ * graphics is what is fast -- and the boolean this replaces could not express
+ * it, because it only ever moved audio towards the HLE RSP. */
+enum audio_rsp_mode_t
+{
+    AUDIO_RSP_FOLLOW = 0,   /* same plugin as graphics */
+    AUDIO_RSP_HLE,          /* always the HLE RSP      */
+    AUDIO_RSP_ACCURATE      /* always an LLE RSP       */
+};
+
+extern enum audio_rsp_mode_t audio_rsp_mode;
 extern retro_environment_t environ_cb;
 extern bool libretro_swap_buffer;
 

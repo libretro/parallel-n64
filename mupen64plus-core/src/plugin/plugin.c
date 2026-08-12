@@ -114,15 +114,17 @@ gfx_plugin_functions gfx;
 GFX_INFO gfx_info;
 rsp_plugin_functions rsp;
 /* Plugin used to run audio (type 2) RSP tasks. Normally the same as the
- * active RSP, but when send_allist_to_hle_rsp is set and the active RSP is an
- * accurate LLE plugin (cxd4/parallel-rsp), audio lists are routed to the HLE
- * RSP instead -- the LLE RSP plugins do not process audio, so without this the
- * game would have no sound. */
+ * active RSP, but the Audio Processing option can pin it either way: audio on
+ * the HLE RSP while graphics stay accurate, or audio on an LLE RSP while
+ * graphics run high-level. */
 rsp_plugin_functions rsp_audio;
 RSP_INFO rsp_info;
 
-/* Set from the libretro "Audio Processing (HLE RSP)" core option. */
-extern uint32_t send_allist_to_hle_rsp;
+/* Which RSP runs audio (type 2) tasks, from the libretro "Audio Processing"
+ * core option.  Independent of the RSP that runs graphics: the two were tied
+ * together before, and only one of the two useful mixed combinations could be
+ * expressed. */
+extern enum audio_rsp_mode_t audio_rsp_mode;
 
 
 
@@ -302,14 +304,43 @@ static m64p_error plugin_start_rsp(void)
      * to the HLE RSP. It must be initialised with the same RSP_INFO so its
      * DMEM/RDRAM pointers are valid. When the active RSP already is HLE, or the
      * option is off, audio stays on the active RSP. */
-    if (send_allist_to_hle_rsp && current_rsp_type != RSP_PLUGIN_HLE)
+    switch (audio_rsp_mode)
     {
-        rsp_hle.initiateRSP(rsp_info, NULL);
+    case AUDIO_RSP_HLE:
+        /* Audio on the HLE RSP whatever runs graphics. */
+        if (current_rsp_type != RSP_PLUGIN_HLE)
+            rsp_hle.initiateRSP(rsp_info, NULL);
         rsp_audio = rsp_hle;
-    }
-    else
-    {
+        break;
+
+    case AUDIO_RSP_ACCURATE:
+        /* Audio on an LLE RSP whatever runs graphics.  When graphics are on
+         * the HLE RSP there is no LLE plugin started yet, so start one: this
+         * is the combination the old boolean could not express, and it is the
+         * one that matters, because the HLE audio microcode is what glitches
+         * while HLE graphics are what people actually want for speed. */
+        if (current_rsp_type == RSP_PLUGIN_HLE)
+        {
+#if defined(HAVE_PARALLEL_RSP)
+            rsp_parallelRSP.initiateRSP(rsp_info, NULL);
+            rsp_audio = rsp_parallelRSP;
+#elif defined(HAVE_LLE)
+            rsp_cxd4.initiateRSP(rsp_info, NULL);
+            rsp_audio = rsp_cxd4;
+#else
+            /* No LLE RSP in this build: the request cannot be honoured, and
+             * silently running audio on the HLE RSP is better than no audio. */
+            rsp_audio = rsp;
+#endif
+        }
+        else
+            rsp_audio = rsp;
+        break;
+
+    case AUDIO_RSP_FOLLOW:
+    default:
         rsp_audio = rsp;
+        break;
     }
 
     return M64ERR_SUCCESS;
