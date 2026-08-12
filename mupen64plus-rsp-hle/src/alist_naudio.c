@@ -51,6 +51,13 @@ enum {
 /* the mp3/cbfd builds place the whole buffer space 0x10 bytes higher */
 static uint16_t naudio_shift = 0;
 
+static int16_t naudio_clamp_s16(int_fast32_t x)
+{
+    x = (x < INT16_MIN) ? INT16_MIN : x;
+    x = (x > INT16_MAX) ? INT16_MAX : x;
+    return (int16_t)x;
+}
+
 static void naudio_seed(struct hle_t* hle)
 {
     uint32_t ucode_data = *dmem_u32(hle, TASK_UCODE_DATA);
@@ -91,36 +98,75 @@ static void NAUDIO_02B0(struct hle_t* hle, uint32_t UNUSED(w1), uint32_t w2)
 
 static void NAUDIO_14(struct hle_t* hle, uint32_t w1, uint32_t w2)
 {
-    uint8_t  flags       = (w1 >> 16);
-    uint16_t gain        = w1;
+    /* Transcribed from the Conker/JFG handler (IMEM 0x934).  The
+     * command's low halfword is the whole gain, and the init flag is
+     * bit 14 of it (the handler tests bit 16 of w1 << 2).  The
+     * coefficient table is the codebook image in DMEM at 0x400
+     * (shifted builds): the second eight coefficients are scaled in
+     * place by (gain << 2) on every call - evolving state - and feed
+     * the in-taps, while the batch-linking feedback tap uses the
+     * unscaled values it latched before the scaling.  With the first
+     * two coefficients zero the handler runs this filter; otherwise
+     * it takes the pole-filter path. */
+    int16_t  gain        = (int16_t)(uint16_t)w1;
+    bool     init        = (w1 >> 14) & 0x1;
     uint8_t  select_main = (w2 >> 24);
     uint32_t address     = (w2 & 0xffffff);
 
-    uint16_t dmem = (select_main == 0) ? (uint16_t)(NAUDIO_MAIN + naudio_shift) : (uint16_t)(NAUDIO_MAIN2 + naudio_shift);
+    uint16_t dmem = (select_main == 0)
+        ? (uint16_t)(NAUDIO_MAIN + naudio_shift)
+        : (uint16_t)(NAUDIO_MAIN2 + naudio_shift);
+    uint16_t tbl = (uint16_t)(0x3f0 + naudio_shift);
+    int16_t rawB[8], scaledB[8], t0, t1;
+    int16_t prev;
+    unsigned b, L, j2;
 
-    if (hle->alist_naudio.table[0] == 0 && hle->alist_naudio.table[1] == 0) {
-        alist_polef(
-                hle,
-                flags & A_INIT,
-                dmem,
-                dmem,
-                NAUDIO_COUNT,
-                gain,
-                hle->alist_naudio.table,
-                address);
+    t0 = *(int16_t*)(hle->alist_buffer + (((tbl + 0x00) ^ S16) & 0xfff));
+    t1 = *(int16_t*)(hle->alist_buffer + (((tbl + 0x02) ^ S16) & 0xfff));
+
+    if (t0 == 0 && t1 == 0) {
+        int16_t win[8];
+
+        for (j2 = 0; j2 < 8; ++j2)
+            rawB[j2] = *(int16_t*)(hle->alist_buffer +
+                                   (((tbl + 0x10 + 2*j2) ^ S16) & 0xfff));
+        for (j2 = 0; j2 < 8; ++j2) {
+            scaledB[j2] = (int16_t)(((int32_t)rawB[j2] *
+                                     (uint16_t)(w1 << 2)) >> 16);
+            *(int16_t*)(hle->alist_buffer +
+                        (((tbl + 0x10 + 2*j2) ^ S16) & 0xfff)) = scaledB[j2];
+        }
+
+        prev = init ? 0 : (int16_t)*dram_u16(hle, address + 6);
+
+        for (b = 0; b < 0x170 / 0x10; ++b) {
+            int16_t *blk = (int16_t*)(hle->alist_buffer + dmem + 0x10*b);
+            for (L = 0; L < 8; ++L)
+                win[L] = blk[L^S];
+            for (L = 0; L < 8; ++L) {
+                int64_t acc = (int32_t)rawB[L] * prev
+                            + (int32_t)gain * win[L];
+                for (j2 = 0; j2 < L; ++j2)
+                    acc += (int32_t)scaledB[L-1-j2] * win[j2];
+                blk[L^S] = naudio_clamp_s16((int_fast32_t)(acc >> 14));
+            }
+            prev = blk[7^S];
+        }
+
+        /* state: the last four output samples */
+        for (j2 = 0; j2 < 4; ++j2)
+            *dram_u16(hle, address + 2*j2) =
+                (uint16_t)*(int16_t*)(hle->alist_buffer +
+                    (((dmem + 0x170 - 8 + 2*j2) ^ S16) & 0xfff));
     }
     else
     {
-        alist_iirf(
-                hle,
-                flags & A_INIT,
-                dmem,
-                dmem,
-                NAUDIO_COUNT,
-                hle->alist_naudio.table,
-                address);
+        /* with either of the first two coefficients non-zero the
+         * handler bails before touching the buffers or scaling the
+         * table; the only side effect is one zero halfword written
+         * into the state block */
+        *dram_u16(hle, address + 4) = 0;
     }
-
 }
 
 static void SETVOL(struct hle_t* hle, uint32_t w1, uint32_t w2)
