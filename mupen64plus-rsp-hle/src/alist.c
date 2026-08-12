@@ -1808,8 +1808,14 @@ void alist_polef(
     }
 
     for(i = 0; i < 8; ++i) {
+        /* the microcode moves gain << 2 into a vector lane with mtc2,
+         * which keeps only the low 16 bits, and rescales h2 with vmudm
+         * against that as an unsigned multiplier: for gain >= 0x4000
+         * the multiplier wraps, and the write-back is the raw
+         * accumulator mid, truncated - not a widened product */
+        uint16_t mult = (uint16_t)(gain << 2);
         h2_before[i] = h2[i];
-        h2[i] = (((int32_t)h2[i] * gain) >> 14);
+        h2[i] = (int16_t)(((int64_t)h2[i] * mult) >> 16);
     }
 
     do
@@ -1829,11 +1835,19 @@ void alist_polef(
              * saturating and the output picks up broadband error
              * against the LLE RSP. */
             unsigned j;
-            int64_t accu = (int64_t)frame[i] * gain;
+            /* vmadh multiplies the input by the gain lane as a signed
+             * 16-bit value: gains at or above 0x8000 are negative */
+            int64_t accu = (int64_t)frame[i] * (int16_t)gain;
+            int32_t narrowed;
             accu += (int64_t)h1[i] * l1 + (int64_t)h2_before[i] * l2;
             for(j = 0; j < i; ++j)
                 accu += (int64_t)h2[j] * frame[i - 1 - j];
-            PF(i^S) = clamp_s16((int32_t)(accu >> 14));
+            /* the vmadh chain holds the sum at bit 16 of the 48-bit
+             * accumulator, so the vsar pair recovers it reduced modulo
+             * 2^32 before the saturating *4 read-out - the same
+             * reduction the ADPCM read-out was given */
+            narrowed = (int32_t)(uint32_t)((uint64_t)accu & 0xffffffffu);
+            PF(i^S) = clamp_s16(narrowed >> 14);
         }
 
         l1 = PF(6^S);
