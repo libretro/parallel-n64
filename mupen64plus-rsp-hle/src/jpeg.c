@@ -384,18 +384,22 @@ static uint16_t clamp_RGBA_component(int16_t x)
 
 static uint16_t GetRGBA(int16_t y, int16_t u, int16_t v)
 {
-    /* No FPU on the RSP: the YCbCr->RGB coefficients are held in S15.16 fixed
-     * point (value * 2^16) and the whole channel sum is formed at that scale
-     * before a single >>16, matching the old single (int16_t) truncation.
-     *   1.4025 -> 91914, 0.3443 -> 22561, 0.7144 -> 46827, 1.7729 -> 116192 */
-    const int32_t base = ((int32_t)y + 2048) << 16;
+    /* Transcribed from the microcode's vmudm/vadd color stage: each
+     * fractional term is a signed x unsigned mid product truncated to
+     * acc[31:16] on its own, the integer parts arrive as separate
+     * saturating adds, and the luma base picks up its +2048 the same
+     * way. The unsigned coefficient reads make the constants 26378,
+     * 22564, 46819, and 50659 - not the rounded S15.16 set. */
+    const int32_t base = clamp_s16((int32_t)y + 2048);
 
-    const uint16_t r = clamp_RGBA_component(
-        (int16_t)((base + 91914 * (int32_t)v) >> 16));
-    const uint16_t g = clamp_RGBA_component(
-        (int16_t)((base - 22561 * (int32_t)u - 46827 * (int32_t)v) >> 16));
-    const uint16_t b = clamp_RGBA_component(
-        (int16_t)((base + 116192 * (int32_t)u) >> 16));
+    const int32_t rt = clamp_s16((int32_t)(((int64_t)v * 26378) >> 16) + v);
+    const int32_t gt = clamp_s16((int32_t)(((int64_t)u * 22564) >> 16)
+                                + (int32_t)(((int64_t)v * 46819) >> 16));
+    const int32_t bt = clamp_s16((int32_t)(((int64_t)u * 50659) >> 16) + u);
+
+    const uint16_t r = clamp_RGBA_component((int16_t)clamp_s16(base + rt));
+    const uint16_t g = clamp_RGBA_component((int16_t)clamp_s16(base - gt));
+    const uint16_t b = clamp_RGBA_component((int16_t)clamp_s16(base + bt));
 
     return (r << 4) | (g >> 1) | (b >> 6) | 1;
 }
