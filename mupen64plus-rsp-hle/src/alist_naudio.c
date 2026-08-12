@@ -97,6 +97,14 @@ static void NAUDIO_02B0(struct hle_t* hle, uint32_t UNUSED(w1), uint32_t w2)
     hle->alist_naudio.rate[1] |= (w2 & 0xffff);
 }
 
+static int16_t naudio_vmulf(int16_t a, int16_t b)
+{
+    /* vmulf: the signed product doubled, rounded and saturated */
+    if (a == -32768 && b == -32768)
+        return 32767;
+    return naudio_clamp_s16((int32_t)(((int32_t)a * b * 2 + 0x8000) >> 16));
+}
+
 static void NAUDIO_14(struct hle_t* hle, uint32_t w1, uint32_t w2)
 {
     /* Transcribed from the Conker/JFG handler (IMEM 0x934).  The
@@ -180,11 +188,63 @@ static void NAUDIO_14(struct hle_t* hle, uint32_t w1, uint32_t w2)
     }
     else
     {
-        /* with either of the first two coefficients non-zero the
-         * handler bails before touching the buffers or scaling the
-         * table; the only side effect is one zero halfword written
-         * into the state block */
-        *dram_u16(hle, address + 4) = 0;
+        /* The pole path (IMEM 0x6cc).  With a codebook loaded at DMEM
+         * 0x400 the command runs a two-pole, three-zero filter over
+         * the buffer in place: the feed-forward taps are the first two
+         * codebook coefficients, applied to the current sample and to
+         * the two samples below it through misaligned window loads,
+         * and the recursive taps are the first two coefficients of the
+         * following row, each doubled by a vadd of the product with
+         * itself.  Every term is a vmulf, so each is rounded and
+         * saturated on its own before the accumulation, which itself
+         * saturates pairwise.
+         *
+         * The buffer is the one the command's own word selects, not
+         * the fixed MAIN pair the other path uses.  The state block
+         * holds the two input samples below the buffer followed by the
+         * last two outputs; an init call starts both histories at
+         * zero. */
+        uint16_t base = (uint16_t)((w1 + 0x500) & 0xfff);
+        int16_t  ff0, ff1, fb0, fb1;
+        int16_t  xm1, xm2, ym1, ym2;
+        unsigned k;
+
+        ff0 = *(int16_t*)(hle->alist_buffer + (((tbl + 0x00) ^ S16) & 0xfff));
+        ff1 = *(int16_t*)(hle->alist_buffer + (((tbl + 0x02) ^ S16) & 0xfff));
+        fb0 = *(int16_t*)(hle->alist_buffer + (((tbl + 0x10) ^ S16) & 0xfff));
+        fb1 = *(int16_t*)(hle->alist_buffer + (((tbl + 0x12) ^ S16) & 0xfff));
+
+        if (init) {
+            xm1 = xm2 = ym1 = ym2 = 0;
+        } else {
+            xm2 = (int16_t)*dram_u16(hle, address + 0);
+            xm1 = (int16_t)*dram_u16(hle, address + 2);
+            ym2 = (int16_t)*dram_u16(hle, address + 4);
+            ym1 = (int16_t)*dram_u16(hle, address + 6);
+        }
+
+        for (k = 0; k < NAUDIO_COUNT / 2; ++k) {
+            int16_t *px = (int16_t*)(hle->alist_buffer +
+                                     (((base + 2*k) ^ S16) & 0xfff));
+            int16_t  xs = *px;
+            int16_t  drive, out;
+
+            drive = naudio_clamp_s16(naudio_clamp_s16(
+                        naudio_vmulf(xs,  ff0) + naudio_vmulf(xm1, ff1)) +
+                        naudio_vmulf(xm2, ff0));
+            out   = naudio_clamp_s16(naudio_clamp_s16(
+                        drive + 2*naudio_vmulf(fb0, ym1)) +
+                        2*naudio_vmulf(fb1, ym2));
+
+            *px = out;
+            xm2 = xm1; xm1 = xs;
+            ym2 = ym1; ym1 = out;
+        }
+
+        *dram_u16(hle, address + 0) = (uint16_t)xm2;
+        *dram_u16(hle, address + 2) = (uint16_t)xm1;
+        *dram_u16(hle, address + 4) = (uint16_t)ym2;
+        *dram_u16(hle, address + 6) = (uint16_t)ym1;
     }
 }
 
