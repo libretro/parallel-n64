@@ -1171,8 +1171,11 @@ void alist_envmix_lin(
     save_buffer[39] = wet;
     {
         unsigned j2;
-        for (j2 = 0; j2 < 40; ++j2)
+        for (j2 = 0; j2 < 40; ++j2) {
             *dram_u16(hle, address + 2*j2) = (uint16_t)save_buffer[j2];
+            hle->alist_naudio.state_scratch[2*j2]     = (uint8_t)((uint16_t)save_buffer[j2] >> 8);
+            hle->alist_naudio.state_scratch[2*j2 + 1] = (uint8_t)save_buffer[j2];
+        }
     }
 }
 
@@ -1646,7 +1649,7 @@ void alist_resample_naudio(
     /* the state DMA moves 0x10 bytes both ways: the ten-byte
      * window+accumulator block plus six bytes of the argument latch,
      * which only these transfers touch */
-    static uint16_t latch_tail[3];
+    uint8_t* scratch = hle->alist_naudio.state_scratch;
     uint32_t pitch_accu;
     uint16_t ipos;
     uint16_t opos = dmemo >> 1;
@@ -1658,8 +1661,10 @@ void alist_resample_naudio(
         alist_resample_reset(hle, ipos, &pitch_accu);
     else {
         alist_resample_load(hle, address, ipos, &pitch_accu);
-        for (i = 0; i < 3; ++i)
-            latch_tail[i] = *dram_u16(hle, address + 0xa + 2*i);
+        /* the state DMA lands in the shared scratch: mirror all 0x10
+         * bytes so later transfers spill what a real RSP would */
+        for (i = 0; i < 0x10; ++i)
+            scratch[i] = hle->dram[(address + i) ^ S8];
     }
 
     count >>= 1;
@@ -1699,8 +1704,12 @@ void alist_resample_naudio(
     }
 
     alist_resample_save(hle, address, ipos, pitch_accu);
-    for (i = 0; i < 3; ++i)
-        *dram_u16(hle, address + 0xa + 2*i) = latch_tail[i];
+    /* the six bytes past the ten-byte state are the scratch residue */
+    for (i = 0; i < 6; ++i)
+        hle->dram[(address + 0xa + i) ^ S8] = scratch[0xa + i];
+    /* and the outgoing transfer restages the whole block */
+    for (i = 0; i < 0xa; ++i)
+        scratch[i] = hle->dram[(address + i) ^ S8];
 }
 
 void alist_resample_zoh(

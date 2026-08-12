@@ -91,6 +91,12 @@ void alist_process_audio_bc(struct hle_t* hle);
 
 /* audio list ucodes - naudio */
 struct alist_naudio_t {
+    /* shadow of the DMEM scratch the state DMAs stage through: the
+     * envmixer saves its five state rows there and the resampler's
+     * 0x10-byte state transfer overlaps the first row, sosix bytes of
+     * whatever a preceding command staged ride along in its DRAM
+     * block (big-endian halfword bytes, exactly as staged) */
+    uint8_t state_scratch[0x50];
     /* gains */
     int16_t dry;
     int16_t wet;
