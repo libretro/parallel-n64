@@ -78,20 +78,6 @@ static const unsigned int TRANSPOSE_TABLE[SUBBLOCK_SIZE] = {
 /* The RSP has no FPU; these are the same constants in S15.16 fixed point
  * (value * 2^16, rounded to nearest), so the transform below is integer-only. */
 #define IDCT_SHIFT 16
-static const int64_t IDCT_C3 =  77062; /*  1.175875602 * 2^16 */
-static const int64_t IDCT_C6 =  35468; /*  0.541196100 * 2^16 */
-static const int64_t IDCT_K[10] = {
-     50159,   /*  C2-C6        =  0.765366865 */
-   -121095,   /* -C2-C6        = -1.847759065 */
-    -25571,   /*  C5-C3        = -0.390180644 */
-   -128553,   /* -C5-C3        = -1.961570561 */
-     98391,   /*  C1+C3-C5-C7  =  1.501321110 */
-    134553,   /*  C1+C3-C5+C7  =  2.053119869 */
-    201373,   /*  C1+C3+C5-C7  =  3.072711027 */
-     19571,   /* -C1+C3+C5-C7  =  0.298631336 */
-    -58981,   /*  C7-C3        = -0.899976223 */
-   -167963    /* -C1-C3        = -2.562915448 */
-};
 
 static int16_t clamp_s12(int16_t x)
 {
@@ -151,6 +137,101 @@ static void EmitTilesMode2(struct hle_t* hle, const tile_line_emitter_t emit_lin
     }
 }
 
+/***************************************************************************
+ * Exact RSP IDCT: two passes of the microcode's vmulf/vmacf butterfly.
+ * The Q15 cosines and the structure are shared by the OB and PS decoders;
+ * only the final normalization lanes differ (OB divides by 64, PS by 4).
+ * The mirrored second-pass outputs share the 48-bit accumulator, so each
+ * pair picks up a single 0x8000 rounding term.
+ **************************************************************************/
+static const int16_t RSP_IDCT_C2[6] = {
+     0x18f9, -0x7d8a, 0x6a6e, -0x471d, 0x471d, 0x7d8a };
+static const int16_t RSP_IDCT_C3[5] = {
+     0x5a82, -0x5a82, 0x30fc, -0x7642, 0x7642 };
+
+static void RspIdctButterfly(const int16_t in[8][8], int16_t parts[8][8])
+{
+    int64_t acc[8];
+    int16_t t4[8], t5[8], t6[8], t7[8], t8[8], t9[8], t10[8], t11[8];
+    int16_t t4s[8], t5s[8];
+    int c;
+
+#define RSP_VMULF(dst, va, ca) \
+    do { for (c = 0; c < 8; ++c) { \
+        acc[c] = 2 * (int64_t)(va)[c] * (ca) + 0x8000; \
+        (dst)[c] = clamp_s16((int32_t)(acc[c] >> 16)); } } while (0)
+#define RSP_VMACF(dst, vb, cb) \
+    do { for (c = 0; c < 8; ++c) { \
+        acc[c] += 2 * (int64_t)(vb)[c] * (cb); \
+        (dst)[c] = clamp_s16((int32_t)(acc[c] >> 16)); } } while (0)
+
+    RSP_VMULF(t10, in[3], RSP_IDCT_C2[2]); RSP_VMACF(t10, in[5], RSP_IDCT_C2[4]);
+    RSP_VMULF(t11, in[7], RSP_IDCT_C2[0]); RSP_VMACF(t11, in[1], RSP_IDCT_C2[5]);
+    RSP_VMULF(t8,  in[1], RSP_IDCT_C2[0]); RSP_VMACF(t8,  in[7], RSP_IDCT_C2[1]);
+    RSP_VMULF(t9,  in[5], RSP_IDCT_C2[2]); RSP_VMACF(t9,  in[3], RSP_IDCT_C2[3]);
+    RSP_VMULF(t6,  in[0], RSP_IDCT_C3[0]); RSP_VMACF(t6,  in[4], RSP_IDCT_C3[1]);
+    for (c = 0; c < 8; ++c) {
+        t5s[c] = clamp_s16(t11[c] - t10[c]);
+        t4s[c] = clamp_s16(t8[c] - t9[c]);
+        parts[3][c] = clamp_s16(t8[c] + t9[c]);   /* v12 */
+        parts[1][c] = clamp_s16(t11[c] + t10[c]); /* v15 */
+    }
+    RSP_VMULF(t8, t5s, RSP_IDCT_C3[0]); RSP_VMACF(t8, t4s, RSP_IDCT_C3[1]);
+    for (c = 0; c < 8; ++c) parts[7][c] = t8[c];  /* v13 */
+    RSP_VMULF(t8, t5s, RSP_IDCT_C3[0]); RSP_VMACF(t8, t4s, RSP_IDCT_C3[0]);
+    for (c = 0; c < 8; ++c) parts[5][c] = t8[c];  /* v14 */
+    RSP_VMULF(t4, in[0], RSP_IDCT_C3[0]); RSP_VMACF(t4, in[4], RSP_IDCT_C3[0]);
+    RSP_VMULF(t5, in[6], RSP_IDCT_C3[2]); RSP_VMACF(t5, in[2], RSP_IDCT_C3[4]);
+    RSP_VMULF(t7, in[2], RSP_IDCT_C3[2]); RSP_VMACF(t7, in[6], RSP_IDCT_C3[3]);
+    for (c = 0; c < 8; ++c) {
+        parts[0][c] = clamp_s16(t4[c] + t5[c]);   /* v8  */
+        parts[2][c] = clamp_s16(t4[c] - t5[c]);   /* v11 */
+        parts[4][c] = clamp_s16(t6[c] + t7[c]);   /* v9  */
+        parts[6][c] = clamp_s16(t6[c] - t7[c]);   /* v10 */
+    }
+#undef RSP_VMACF
+#undef RSP_VMULF
+}
+
+static void RspIdctSubBlock(int16_t *block, int16_t hi_mult, int16_t lo_mult)
+{
+    int16_t in[8][8], parts[8][8], p1[8][8];
+    int r, c;
+
+    for (r = 0; r < 8; ++r)
+        for (c = 0; c < 8; ++c)
+            in[r][c] = block[r * 8 + c];
+    RspIdctButterfly((const int16_t (*)[8])in, parts);
+    for (c = 0; c < 8; ++c) {
+        p1[0][c] = clamp_s16(parts[0][c] + parts[1][c]);
+        p1[1][c] = clamp_s16(parts[4][c] + parts[5][c]);
+        p1[2][c] = clamp_s16(parts[6][c] + parts[7][c]);
+        p1[3][c] = clamp_s16(parts[2][c] + parts[3][c]);
+        p1[4][c] = clamp_s16(parts[2][c] - parts[3][c]);
+        p1[5][c] = clamp_s16(parts[6][c] - parts[7][c]);
+        p1[6][c] = clamp_s16(parts[4][c] - parts[5][c]);
+        p1[7][c] = clamp_s16(parts[0][c] - parts[1][c]);
+    }
+    for (r = 0; r < 8; ++r)
+        for (c = 0; c < 8; ++c)
+            in[r][c] = p1[c][r];
+    RspIdctButterfly((const int16_t (*)[8])in, parts);
+    for (c = 0; c < 8; ++c) {
+        int64_t a2;
+#define RSP_PAIR(hi_r, lo_r, ia, ib) \
+        a2 = 2 * (int64_t)parts[ia][c] * hi_mult + 0x8000 \
+           + 2 * (int64_t)parts[ib][c] * hi_mult; \
+        block[(hi_r) * 8 + c] = clamp_s16((int32_t)(a2 >> 16)); \
+        a2 += 2 * (int64_t)parts[ib][c] * lo_mult; \
+        block[(lo_r) * 8 + c] = clamp_s16((int32_t)(a2 >> 16));
+        RSP_PAIR(0, 7, 0, 1)
+        RSP_PAIR(3, 4, 2, 3)
+        RSP_PAIR(1, 6, 4, 5)
+        RSP_PAIR(2, 5, 6, 7)
+#undef RSP_PAIR
+    }
+}
+
 static void MultSubBlocks(int16_t *dst, const int16_t *src1, const int16_t *src2, unsigned int shift)
 {
     unsigned int i;
@@ -183,82 +264,6 @@ static void TransposeSubBlock(int16_t *dst, const int16_t *src)
     ReorderSubBlock(dst, src, TRANSPOSE_TABLE);
 }
 
-/***************************************************************************
- * Fast 2D IDCT using a separable formulation and normalization,
- * computed entirely in S15.16 fixed point (see IDCT_K/IDCT_C* above).
- **************************************************************************/
-static void InverseDCT1D(const int64_t *x, int64_t *dst, unsigned int stride)
-{
-    int64_t e[4];
-    int64_t f[4];
-    int64_t x26, x1357, x15, x37, x17, x35;
-
-    /* The IDCT_* constants are at scale 2^IDCT_SHIFT, so every product below is
-     * at scale 2^IDCT_SHIFT relative to x[]. The two purely additive terms
-     * f[0]/f[1] are shifted up by IDCT_SHIFT to match. The result therefore
-     * carries IDCT_SHIFT extra fractional bits compared with the input, which
-     * is what lets the row pass feed the column pass without losing precision. */
-    x15   = IDCT_K[2] * (x[1] + x[5]);
-    x37   = IDCT_K[3] * (x[3] + x[7]);
-    x17   = IDCT_K[8] * (x[1] + x[7]);
-    x35   = IDCT_K[9] * (x[3] + x[5]);
-    x1357 = IDCT_C3   * (x[1] + x[3] + x[5] + x[7]);
-    x26   = IDCT_C6   * (x[2] + x[6]);
-
-    f[0] = (x[0] + x[4]) << IDCT_SHIFT;
-    f[1] = (x[0] - x[4]) << IDCT_SHIFT;
-    f[2] = x26  + IDCT_K[0] * x[2];
-    f[3] = x26  + IDCT_K[1] * x[6];
-
-    e[0] = x1357 + x15 + IDCT_K[4] * x[1] + x17;
-    e[1] = x1357 + x37 + IDCT_K[6] * x[3] + x35;
-    e[2] = x1357 + x15 + IDCT_K[5] * x[5] + x35;
-    e[3] = x1357 + x37 + IDCT_K[7] * x[7] + x17;
-
-    *dst = f[0] + f[2] + e[0];
-    dst += stride;
-    *dst = f[1] + f[3] + e[1];
-    dst += stride;
-    *dst = f[1] - f[3] + e[2];
-    dst += stride;
-    *dst = f[0] - f[2] + e[3];
-    dst += stride;
-    *dst = f[0] - f[2] - e[3];
-    dst += stride;
-    *dst = f[1] - f[3] - e[2];
-    dst += stride;
-    *dst = f[1] + f[3] - e[1];
-    dst += stride;
-    *dst = f[0] + f[2] - e[0];
-}
-
-
-static void InverseDCTSubBlock(int16_t *dst, const int16_t *src)
-{
-    int64_t x[8];
-    int64_t block[SUBBLOCK_SIZE];
-    unsigned int i, j;
-
-    /* idct 1d on rows (+transposition); input scale 0 -> block scale 2^16 */
-    for (i = 0; i < 8; ++i) {
-        for (j = 0; j < 8; ++j)
-            x[j] = (int64_t)src[i * 8 + j];
-
-        InverseDCT1D(x, &block[i], 8);
-    }
-
-    /* idct 1d on columns (thanks to previous transposition); block scale 2^16
-     * -> x scale 2^32. Drop the 2*IDCT_SHIFT fractional bits (truncating toward
-     * zero, matching the old (int16_t) float cast), wrap to 16 bits, then the
-     * C4 = 1 normalization implies a division by 8. */
-    for (i = 0; i < 8; ++i) {
-        InverseDCT1D(&block[i * 8], x, 1);
-
-        for (j = 0; j < 8; ++j)
-            dst[i + j * 8] = (int16_t)(x[j] >> (2 * IDCT_SHIFT)) >> 3;
-    }
-}
-
 static void decode_macroblock_std(const subblock_transform_t transform_luma,
                                   const subblock_transform_t transform_chroma,
                                   int16_t *macroblock,
@@ -277,7 +282,8 @@ static void decode_macroblock_std(const subblock_transform_t transform_luma,
 
         MultSubBlocks(macroblock, macroblock, qtables[q], 4);
         ZigZagSubBlock(tmp_sb, macroblock);
-        InverseDCTSubBlock(macroblock, tmp_sb);
+        TransposeSubBlock(macroblock, tmp_sb);
+        RspIdctSubBlock(macroblock, 0x2000, -0x4000);
 
         if (isChromaSubBlock) {
             if (transform_chroma != NULL)
@@ -481,42 +487,6 @@ static void ScaleSubBlock(int16_t *dst, const int16_t *src, int16_t scale)
     }
 }
 
-static void decode_macroblock_ob(int16_t *macroblock, int32_t *y_dc, int32_t *u_dc, int32_t *v_dc, const int16_t *qtable)
-{
-    int sb;
-
-    for (sb = 0; sb < 6; ++sb) {
-        int16_t tmp_sb[SUBBLOCK_SIZE];
-
-        /* update DC */
-        int32_t dc = (int32_t)macroblock[0];
-        switch (sb) {
-        case 0:
-        case 1:
-        case 2:
-        case 3:
-            *y_dc += dc;
-            macroblock[0] = *y_dc & 0xffff;
-            break;
-        case 4:
-            *u_dc += dc;
-            macroblock[0] = *u_dc & 0xffff;
-            break;
-        case 5:
-            *v_dc += dc;
-            macroblock[0] = *v_dc & 0xffff;
-            break;
-        }
-
-        ZigZagSubBlock(tmp_sb, macroblock);
-        if (qtable != NULL)
-            MultSubBlocks(tmp_sb, tmp_sb, qtable, 0);
-        TransposeSubBlock(macroblock, tmp_sb);
-        InverseDCTSubBlock(macroblock, macroblock);
-
-        macroblock += SUBBLOCK_SIZE;
-    }
-}
 
 
 /***************************************************************************
@@ -582,8 +552,6 @@ void jpeg_decode_OB(struct hle_t* hle)
         for (sb = 0; sb < 6; ++sb) {
             const int16_t *src = macroblock + sb * SUBBLOCK_SIZE;
             int16_t coef[SUBBLOCK_SIZE];
-            int64_t acc[8];
-            int16_t p1[8][8], tr[8][8];
             int32_t dc = (int32_t)src[0];
 
             if (sb < 4)      { y_dc = (int16_t)(y_dc + dc); dc = y_dc; }
@@ -599,81 +567,8 @@ void jpeg_decode_OB(struct hle_t* hle)
             for (i = 0; i < SUBBLOCK_SIZE; ++i)
                 coef[i] = (int16_t)((uint32_t)clamp_s16(coef[i] * qtable[i]) << 4);
 
-#define OB_VMULF(dst, va, ca) \
-            do { for (c = 0; c < 8; ++c) { \
-                acc[c] = 2 * (int64_t)(va)[c] * (ca) + 0x8000; \
-                (dst)[c] = clamp_s16((int32_t)(acc[c] >> 16)); } } while (0)
-#define OB_VMACF(dst, vb, cb) \
-            do { for (c = 0; c < 8; ++c) { \
-                acc[c] += 2 * (int64_t)(vb)[c] * (cb); \
-                (dst)[c] = clamp_s16((int32_t)(acc[c] >> 16)); } } while (0)
-#define OB_BUTTERFLY(IN, ROW) \
-            do { \
-                OB_VMULF(t10, IN[3], ob_c2[2]); OB_VMACF(t10, IN[5], ob_c2[4]); \
-                OB_VMULF(t11, IN[7], ob_c2[0]); OB_VMACF(t11, IN[1], ob_c2[5]); \
-                OB_VMULF(t8,  IN[1], ob_c2[0]); OB_VMACF(t8,  IN[7], ob_c2[1]); \
-                OB_VMULF(t9,  IN[5], ob_c2[2]); OB_VMACF(t9,  IN[3], ob_c2[3]); \
-                OB_VMULF(t6,  IN[0], ob_c3[0]); OB_VMACF(t6,  IN[4], ob_c3[1]); \
-                for (c = 0; c < 8; ++c) { \
-                    t5s[c] = clamp_s16(t11[c] - t10[c]); \
-                    t4s[c] = clamp_s16(t8[c] - t9[c]); \
-                    t12[c] = clamp_s16(t8[c] + t9[c]); \
-                    t15[c] = clamp_s16(t11[c] + t10[c]); } \
-                OB_VMULF(t13, t5s, ob_c3[0]); OB_VMACF(t13, t4s, ob_c3[1]); \
-                OB_VMULF(t14, t5s, ob_c3[0]); OB_VMACF(t14, t4s, ob_c3[0]); \
-                OB_VMULF(t4,  IN[0], ob_c3[0]); OB_VMACF(t4,  IN[4], ob_c3[0]); \
-                OB_VMULF(t5,  IN[6], ob_c3[2]); OB_VMACF(t5,  IN[2], ob_c3[4]); \
-                OB_VMULF(t7,  IN[2], ob_c3[2]); OB_VMACF(t7,  IN[6], ob_c3[3]); \
-                for (c = 0; c < 8; ++c) { \
-                    t8[c]  = clamp_s16(t4[c] + t5[c]); \
-                    t11[c] = clamp_s16(t4[c] - t5[c]); \
-                    t9[c]  = clamp_s16(t6[c] + t7[c]); \
-                    t10[c] = clamp_s16(t6[c] - t7[c]); } \
-            } while (0)
-
-            {
-                int16_t t4[8], t5[8], t6[8], t7[8], t8[8], t9[8], t10[8], t11[8];
-                int16_t t12[8], t13[8], t14[8], t15[8], t4s[8], t5s[8];
-                int16_t in[8][8];
-
-                for (r = 0; r < 8; ++r)
-                    for (c = 0; c < 8; ++c)
-                        in[r][c] = coef[r * 8 + c];
-                OB_BUTTERFLY(in, r);
-                for (c = 0; c < 8; ++c) {
-                    p1[0][c] = clamp_s16(t8[c]  + t15[c]);
-                    p1[1][c] = clamp_s16(t9[c]  + t14[c]);
-                    p1[2][c] = clamp_s16(t10[c] + t13[c]);
-                    p1[3][c] = clamp_s16(t11[c] + t12[c]);
-                    p1[4][c] = clamp_s16(t11[c] - t12[c]);
-                    p1[5][c] = clamp_s16(t10[c] - t13[c]);
-                    p1[6][c] = clamp_s16(t9[c]  - t14[c]);
-                    p1[7][c] = clamp_s16(t8[c]  - t15[c]);
-                }
-                for (r = 0; r < 8; ++r)
-                    for (c = 0; c < 8; ++c)
-                        tr[r][c] = p1[c][r];
-                OB_BUTTERFLY(tr, r);
-                /* mirrored outputs share the accumulator, and with it
-                 * the single rounding term */
-                for (c = 0; c < 8; ++c) {
-                    int64_t a2;
-#define OB_PAIR(hi_r, lo_r, va, vb) \
-                    a2 = 2 * (int64_t)(va)[c] * 0x200 + 0x8000 \
-                       + 2 * (int64_t)(vb)[c] * 0x200; \
-                    pixels[sb][(hi_r) * 8 + c] = clamp_s16((int32_t)(a2 >> 16)); \
-                    a2 += 2 * (int64_t)(vb)[c] * -0x400; \
-                    pixels[sb][(lo_r) * 8 + c] = clamp_s16((int32_t)(a2 >> 16));
-                    OB_PAIR(0, 7, t8,  t15)
-                    OB_PAIR(3, 4, t11, t12)
-                    OB_PAIR(1, 6, t9,  t14)
-                    OB_PAIR(2, 5, t10, t13)
-#undef OB_PAIR
-                }
-            }
-#undef OB_BUTTERFLY
-#undef OB_VMACF
-#undef OB_VMULF
+            RspIdctSubBlock(coef, 0x200, -0x400);
+            memcpy(pixels[sb], coef, sizeof(coef));
         }
 
         /* emit sixteen U/Y/V/Y lines; chroma advances every other row */
