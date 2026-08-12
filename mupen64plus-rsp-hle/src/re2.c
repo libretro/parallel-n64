@@ -97,6 +97,13 @@ void resize_bilinear_task(struct hle_t* hle)
     rsp_break(hle, SP_STATUS_TASKDONE);
 }
 
+static int32_t sat16(int32_t x)
+{
+    if (x > 32767) return 32767;
+    if (x < -32768) return -32768;
+    return x;
+}
+
 static uint32_t YCbCr_to_RGBA(uint8_t Y, uint8_t Cb, uint8_t Cr)
 {
     /* The RSP has no FPU: the video ucode does this with truncating VMUDM and
@@ -105,15 +112,29 @@ static uint32_t YCbCr_to_RGBA(uint8_t Y, uint8_t Cb, uint8_t Cr)
      * the divide is >>16. The previous double form only approximated those
      * coefficients (e.g. 0.582199097 vs the exact 38155/65536) and disagreed
      * with the hardware in a handful of cases; this is the exact integer form. */
-    int r = (Y * 38155 + 45941 * (Cr - 128)) >> 16;
-    int g = (Y * 38155 - 23401 * (Cr - 128) - 11277 * (Cb - 128)) >> 16;
-    int b = (Y * 38155 + 58065 * (Cb - 128)) >> 16;
+    /* The microcode works in a <<7 domain: LUV/LHV load the samples as
+     * value<<7, each vmudm truncates its product to (x<<7)*coeff >> 16
+     * individually, the terms combine through saturating vadd/vsub,
+     * and the store takes bits 14:7 after a [0, 255<<7] clamp.  The
+     * per-term truncation loses up to one output LSB per term relative
+     * to summing full products, so it must be modeled exactly. */
+    int32_t y  = ((int32_t)(Y << 7) * 38155) >> 16;
+    int32_t cr = (int32_t)(uint32_t)((Cr - 128) << 7);
+    int32_t cb = (int32_t)(uint32_t)((Cb - 128) << 7);
+    int32_t cr_r = (int32_t)((int64_t)(int16_t)cr * 45941 >> 16);
+    int32_t cr_g = (int32_t)((int64_t)(int16_t)cr * 23401 >> 16);
+    int32_t cb_g = (int32_t)((int64_t)(int16_t)cb * 11277 >> 16);
+    int32_t cb_b = (int32_t)((int64_t)(int16_t)cb * 58065 >> 16);
+    int32_t r7 = sat16(y + cr_r);
+    int32_t g7 = sat16(sat16(y - cr_g) - cb_g);
+    int32_t b7 = sat16(y + cb_b);
 
-    r = SATURATE8(r);
-    g = SATURATE8(g);
-    b = SATURATE8(b);
+    r7 = (r7 < 0) ? 0 : (r7 > 0x7f80) ? 0x7f80 : r7;
+    g7 = (g7 < 0) ? 0 : (g7 > 0x7f80) ? 0x7f80 : g7;
+    b7 = (b7 < 0) ? 0 : (b7 > 0x7f80) ? 0x7f80 : b7;
 
-    return (r << 24) | (g << 16) | (b << 8) | 0;
+    return ((uint32_t)(r7 >> 7) << 24) | ((uint32_t)(g7 >> 7) << 16) |
+           ((uint32_t)(b7 >> 7) << 8) | 0;
 }
 
 void decode_video_frame_task(struct hle_t* hle)
@@ -135,6 +156,7 @@ void decode_video_frame_task(struct hle_t* hle)
 
     for (i = 0; i < nMovieHeight; i += 2)
     {
+        int pCrPair = pCr;
         pY_1st_row = pLuminance;
         pY_2nd_row = pLuminance + nMovieWidth;
         pDest_1st_row = pDestination;
@@ -146,13 +168,28 @@ void decode_video_frame_task(struct hle_t* hle)
             dram_load_u8(hle, (uint8_t*)&Cr, pCr++, 1);
 
             /*1st row*/
+            /* the chroma DMAs move a full width of bytes into the
+             * half-width buffers, and the Cr transfer spills its tail
+             * past DMEM 0x300 into the output staging; the first-row
+             * stores never touch every fourth staging byte, so those
+             * pixels ship the spilled chroma bytes */
             dram_load_u8(hle, (uint8_t*)&Y, pY_1st_row++, 1);
             pixel = YCbCr_to_RGBA(Y, Cb, Cr);
+            if (j*4 + 3 < nMovieWidth - 0x80) {
+                uint8_t spill;
+                dram_load_u8(hle, &spill, pCrPair + 0x80 + j*4 + 3, 1);
+                pixel |= spill;
+            }
             dram_store_u32(hle, &pixel, pDest_1st_row, 1);
             pDest_1st_row += 4;
 
             dram_load_u8(hle, (uint8_t*)&Y, pY_1st_row++, 1);
             pixel = YCbCr_to_RGBA(Y, Cb, Cr);
+            if (j*4 + 7 < nMovieWidth - 0x80) {
+                uint8_t spill;
+                dram_load_u8(hle, &spill, pCrPair + 0x80 + j*4 + 7, 1);
+                pixel |= spill;
+            }
             dram_store_u32(hle, &pixel, pDest_1st_row, 1);
             pDest_1st_row += 4;
 
