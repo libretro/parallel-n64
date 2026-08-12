@@ -37,6 +37,44 @@
 #endif
 
 /* audio commands definition */
+/* The nead microcodes treat $v31 as a scratch constant register that
+ * several handlers reload and one corrupts: ADDMIXER opens with
+ * "vaddc $v31, $v31, $v31" - the author's VCO-clear idiom - which sets
+ * the carry flags from v31's current content, doubles v31, and the
+ * first vadd batch of the add loop then consumes those carries.  With
+ * v31 freshly loaded by a preceding MIXER or ADPCM (the constant
+ * vector, lane 3 = 0xffff) the "clear" injects a +1 into sample 3 of
+ * the first eight samples; RESAMPLE leaves the all-ones vector (no
+ * carries), and back-to-back ADDMIXERs see the doubled image
+ * ([3,6,7], then onward as the doubling evolves).  v31 and the
+ * consumed carries are real machine state that persists across
+ * commands and tasks, so they are modelled here.  Verified against
+ * cxd4 running the Star Fox 64 build: handler disassembly at text
+ * +0xdf8 (vaddc), +0xaac / +0x24c (const reloads), +0x5b0 (resample
+ * reload from data+0x70), and carry-signature probes for every
+ * predecessor. */
+static uint16_t nead_v31[8];
+
+static int16_t nead_clamp_s16(int_fast32_t x)
+{
+    x = (x < INT16_MIN) ? INT16_MIN : x;
+    x = (x > INT16_MAX) ? INT16_MAX : x;
+    return (int16_t)x;
+}
+
+static int16_t* nead_s16(struct hle_t* hle, uint16_t dmem)
+{
+    return (int16_t*)(hle->alist_buffer + ((dmem ^ S16) & 0xfff));
+}
+
+static void nead_v31_load(struct hle_t* hle, uint16_t data_off)
+{
+    uint32_t ucode_data = *dmem_u32(hle, TASK_UCODE_DATA);
+    unsigned i;
+    for (i = 0; i < 8; ++i)
+        nead_v31[i] = *dram_u16(hle, ucode_data + data_off + 2*i);
+}
+
 static void UNKNOWN(struct hle_t* hle, uint32_t w1, uint32_t w2)
 {
     uint8_t acmd = (w1 >> 24);
@@ -80,6 +118,7 @@ static void ADPCM(struct hle_t* hle, uint32_t w1, uint32_t w2)
     uint8_t  flags   = (w1 >> 16);
     uint32_t address = (w2 & 0xffffff);
 
+    nead_v31_load(hle, 0x00);
     alist_adpcm(
             hle,
             flags & 0x1,
@@ -129,7 +168,10 @@ static void MIXER(struct hle_t* hle, uint32_t w1, uint32_t w2)
     uint16_t dmemi = (w2 >> 16);
     uint16_t dmemo = w2;
 
-    alist_mix_nead(hle, dmemo, dmemi, count, gain);
+    nead_v31_load(hle, 0x00);
+    /* the mix loop processes two 8-sample batches per iteration and
+     * only then tests the counter, so the extent rounds up to 0x20 */
+    alist_mix_nead(hle, dmemo, dmemi, (uint16_t)((count + 0x1f) & ~0x1f), gain);
 }
 
 
@@ -139,6 +181,7 @@ static void RESAMPLE(struct hle_t* hle, uint32_t w1, uint32_t w2)
     uint16_t pitch   = w1;
     uint32_t address = (w2 & 0xffffff);
 
+    nead_v31_load(hle, 0x70);
     alist_resample(
             hle,
             flags & 0x1,
@@ -297,8 +340,25 @@ static void ADDMIXER(struct hle_t* hle, uint32_t w1, uint32_t w2)
     uint16_t count = (w1 >> 12) & 0xff0;
     uint16_t dmemi = (w2 >> 16);
     uint16_t dmemo = w2;
+    uint8_t carry[8];
+    unsigned i;
 
-    alist_add(hle, dmemo, dmemi, count);
+    /* the entry vaddc: VCO = carry-out of v31 + v31, and v31 doubles */
+    for (i = 0; i < 8; ++i) {
+        carry[i] = (uint8_t)(((uint32_t)nead_v31[i] * 2) >> 16);
+        nead_v31[i] = (uint16_t)(nead_v31[i] << 1);
+    }
+
+    /* four 8-sample batches per iteration, counter tested after, so
+     * the extent rounds up to 0x40; the first vadd batch consumes the
+     * carries and clears them */
+    count = (uint16_t)((count + 0x3f) & ~0x3f);
+    for (i = 0; i < 8; ++i) {
+        int16_t* o = nead_s16(hle, (uint16_t)(dmemo + 2*i));
+        *o = nead_clamp_s16(*o + *nead_s16(hle, (uint16_t)(dmemi + 2*i)) + carry[i]);
+    }
+    alist_add(hle, (uint16_t)(dmemo + 16), (uint16_t)(dmemi + 16),
+              (uint16_t)(count - 16));
 }
 
 static void HILOGAIN(struct hle_t* hle, uint32_t w1, uint32_t w2)
