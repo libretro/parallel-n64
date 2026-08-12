@@ -340,20 +340,215 @@ void alist_interleave(struct hle_t* hle, uint16_t dmemo, uint16_t left, uint16_t
  * saturations included) and clamps the result to the target, and each
  * sample mixes as clamp((2*dst*0x7fff + 2*in*gain + 0x8000) >> 16) --
  * one vmulf/vmacf accumulator, not an integer add. */
-static int16_t audio1_acc_hi(int64_t acc)
+/* -------------------------------------------------------------------------
+ * Lane-exact model of the RSP vector unit, restricted to what aspMain's
+ * cmd_ENVMIXER executes.  Every op below is transcribed from the cxd4
+ * interpreter's scalar paths (CC0 public domain) and reduced to an int64
+ * 48-bit accumulator per lane, which is arithmetically identical to the
+ * L/M/H carry chains it uses.  alist_envmix_audio1 is then a straight
+ * program-order transcription of cmd_ENVMIXER (Super Mario 64 aspMain
+ * build, IMEM 0x1b38-0x1e24), delay slots included, verified bit-exact
+ * against cxd4 running the ROM microcode.
+ *
+ * The accumulator, VCO (ne/co) and VCC (comp/clip) flags are real RSP
+ * machine state: they persist across audio commands and across tasks
+ * until an instruction overwrites them, and cmd_ENVMIXER's vge/vcl
+ * consume the comp/clip bits its previous invocation left behind.  They
+ * are therefore file-static, not per-call.  vce would only be set by
+ * vch/vcr, which aspMain never executes, so it stays zero.
+ * ---------------------------------------------------------------------- */
+
+typedef int16_t ev_vr[8];
+
+static int64_t ev_acc[8];
+static uint8_t ev_ne[8], ev_co[8], ev_comp[8], ev_clip[8], ev_vce[8];
+
+static int64_t ev_s48(int64_t a)
 {
-    int64_t v = acc >> 16;
-    if (v > 32767) return 32767;
-    if (v < -32768) return -32768;
-    return (int16_t)v;
+    return (int64_t)((uint64_t)a << 16) >> 16;
 }
 
-static uint16_t audio1_acc_lo(int64_t acc)
+static int16_t ev_clamp_am(int64_t a) /* SIGNED_CLAMP_AM: acc[47:16] to s16 */
 {
-    int64_t hi = acc >> 31;
-    if (hi == 0 || hi == -1)
-        return (uint16_t)(acc & 0xffff);
-    return (acc < 0) ? 0u : 0xffffu;
+    int32_t m = (int32_t)(a >> 16);
+    return (m > 32767) ? 32767 : (m < -32768) ? -32768 : (int16_t)m;
+}
+
+static int16_t ev_clamp_al(int64_t a) /* SIGNED_CLAMP_AL: saturate ACC_L */
+{
+    int16_t clamped = ev_clamp_am(a);
+    int16_t raw_m   = (int16_t)((a >> 16) & 0xFFFF);
+    if (clamped != raw_m)
+        return (int16_t)(clamped ^ (int16_t)0x8000);
+    return (int16_t)(a & 0xFFFF);
+}
+
+/* vt operand: full vector when e < 0, else broadcast of lane e */
+#define EV_VT(vt, e, i) ((vt)[((e) < 0) ? (i) : (e)])
+
+static void ev_vmudl(ev_vr vd, const ev_vr vs, const ev_vr vt, int e)
+{
+    unsigned i;
+    for (i = 0; i < 8; ++i) {
+        ev_acc[i] = (uint32_t)((uint16_t)vs[i] * (uint16_t)EV_VT(vt, e, i)) >> 16;
+        vd[i] = (int16_t)(ev_acc[i] & 0xFFFF);
+    }
+}
+
+static void ev_vmudm(ev_vr vd, const ev_vr vs, const ev_vr vt, int e)
+{
+    unsigned i;
+    for (i = 0; i < 8; ++i) {
+        ev_acc[i] = (int64_t)vs[i] * (uint16_t)EV_VT(vt, e, i);
+        vd[i] = (int16_t)((ev_acc[i] >> 16) & 0xFFFF);
+    }
+}
+
+static void ev_vmadm(ev_vr vd, const ev_vr vs, const ev_vr vt, int e)
+{
+    unsigned i;
+    for (i = 0; i < 8; ++i) {
+        ev_acc[i] = ev_s48(ev_acc[i] + (int64_t)vs[i] * (uint16_t)EV_VT(vt, e, i));
+        vd[i] = ev_clamp_am(ev_acc[i]);
+    }
+}
+
+static void ev_vmadn(ev_vr vd, const ev_vr vs, const ev_vr vt, int e)
+{
+    unsigned i;
+    for (i = 0; i < 8; ++i) {
+        ev_acc[i] = ev_s48(ev_acc[i] + (int64_t)(uint16_t)vs[i] * EV_VT(vt, e, i));
+        vd[i] = ev_clamp_al(ev_acc[i]);
+    }
+}
+
+static void ev_vmadh(ev_vr vd, const ev_vr vs, const ev_vr vt, int e)
+{
+    unsigned i;
+    for (i = 0; i < 8; ++i) {
+        ev_acc[i] = ev_s48(ev_acc[i] + (((int64_t)vs[i] * EV_VT(vt, e, i)) << 16));
+        vd[i] = ev_clamp_am(ev_acc[i]);
+    }
+}
+
+static void ev_vmulf(ev_vr vd, const ev_vr vs, const ev_vr vt, int e)
+{
+    unsigned i;
+    for (i = 0; i < 8; ++i) {
+        ev_acc[i] = ev_s48(2 * (int64_t)vs[i] * EV_VT(vt, e, i) + 0x8000);
+        vd[i] = ev_clamp_am(ev_acc[i]);
+    }
+}
+
+static void ev_vmacf(ev_vr vd, const ev_vr vs, const ev_vr vt, int e)
+{
+    unsigned i;
+    for (i = 0; i < 8; ++i) {
+        ev_acc[i] = ev_s48(ev_acc[i] + 2 * (int64_t)vs[i] * EV_VT(vt, e, i));
+        vd[i] = ev_clamp_am(ev_acc[i]);
+    }
+}
+
+static void ev_vxor(ev_vr vd, const ev_vr vs, const ev_vr vt, int e)
+{
+    unsigned i;
+    for (i = 0; i < 8; ++i) {
+        vd[i] = vs[i] ^ EV_VT(vt, e, i);
+        ev_acc[i] = (ev_acc[i] & ~(int64_t)0xFFFF) | (uint16_t)vd[i];
+    }
+}
+
+static void ev_vsubc(ev_vr vd, const ev_vr vs, const ev_vr vt, int e)
+{
+    unsigned i;
+    for (i = 0; i < 8; ++i) {
+        int16_t t = EV_VT(vt, e, i);
+        ev_ne[i] = (vs[i] != t);
+        ev_co[i] = ((uint16_t)vs[i] < (uint16_t)t);
+        vd[i] = (int16_t)(vs[i] - t);
+        ev_acc[i] = (ev_acc[i] & ~(int64_t)0xFFFF) | (uint16_t)vd[i];
+    }
+}
+
+static void ev_vsub(ev_vr vd, const ev_vr vs, const ev_vr vt, int e)
+{
+    unsigned i;
+    for (i = 0; i < 8; ++i) {
+        int32_t d = (int32_t)vs[i] - EV_VT(vt, e, i) - ev_co[i];
+        ev_acc[i] = (ev_acc[i] & ~(int64_t)0xFFFF) | (uint16_t)(int16_t)d;
+        vd[i] = (d > 32767) ? 32767 : (d < -32768) ? -32768 : (int16_t)d;
+    }
+    memset(ev_ne, 0, sizeof(ev_ne));
+    memset(ev_co, 0, sizeof(ev_co));
+}
+
+static void ev_vge(ev_vr vd, const ev_vr vs, const ev_vr vt, int e)
+{
+    unsigned i;
+    for (i = 0; i < 8; ++i) {
+        int16_t t = EV_VT(vt, e, i);
+        uint8_t eq = (vs[i] == t) & !(ev_ne[i] & ev_co[i]);
+        uint8_t cond = (vs[i] > t) | eq;
+        vd[i] = cond ? vs[i] : t;
+        ev_acc[i] = (ev_acc[i] & ~(int64_t)0xFFFF) | (uint16_t)vd[i];
+        ev_comp[i] = cond;
+        ev_clip[i] = 0;
+        ev_ne[i] = ev_co[i] = 0;
+    }
+}
+
+static void ev_vcl(ev_vr vd, const ev_vr vs, const ev_vr vt, int e)
+{
+    /* transcribed from cxd4 do_cl */
+    unsigned i;
+    for (i = 0; i < 8; ++i) {
+        uint16_t vb = (uint16_t)vs[i];
+        uint16_t t16 = (uint16_t)EV_VT(vt, e, i);
+        uint16_t vc = t16;
+        uint8_t eq = ev_ne[i] ^ 1;
+        uint8_t sn = ev_co[i];
+        int16_t diff;
+        uint8_t uz, lz, gen, len, le, ge, cmp;
+
+        vc = (uint16_t)((vc ^ -(int16_t)sn) + sn); /* conditional negate */
+        diff = (int16_t)(vb - vc);
+        uz = (uint8_t)(((int32_t)vb + t16 - 65536) >> 31 & 1);
+        lz = (diff == 0);
+        gen = lz | uz;
+        len = lz & uz;
+        gen = gen & ev_vce[i];
+        len = (uint8_t)(len & (ev_vce[i] ^ 1));
+        len = len | gen;
+        gen = (vb >= vc);
+
+        cmp = eq & sn;
+        le = cmp ? len : ev_comp[i];
+
+        cmp = (uint8_t)(eq & (sn ^ 1));
+        ge = cmp ? gen : ev_clip[i];
+
+        cmp = sn ? le : ge;
+        vd[i] = cmp ? (int16_t)vc : vs[i];
+        ev_acc[i] = (ev_acc[i] & ~(int64_t)0xFFFF) | (uint16_t)vd[i];
+
+        ev_clip[i] = ge;
+        ev_comp[i] = le;
+        ev_ne[i] = ev_co[i] = ev_vce[i] = 0;
+    }
+}
+
+static void ev_lqv(struct hle_t* hle, ev_vr vr, uint16_t dmem)
+{
+    unsigned i;
+    for (i = 0; i < 8; ++i)
+        vr[i] = *alist_s16(hle, (uint16_t)((dmem + 2*i) & 0xffe));
+}
+
+static void ev_sqv(struct hle_t* hle, const ev_vr vr, uint16_t dmem)
+{
+    unsigned i;
+    for (i = 0; i < 8; ++i)
+        *alist_s16(hle, (uint16_t)((dmem + 2*i) & 0xffe)) = vr[i];
 }
 
 void alist_envmix_audio1(
@@ -369,184 +564,227 @@ void alist_envmix_audio1(
         const int32_t *rate,
         uint32_t address)
 {
-    /* Indexed through wrapping accessors rather than raw pointers: the four
-     * destinations each take count bytes from offsets that come out of the
-     * alist, and alist_buffer is followed by alist_audio_t, so an output
-     * buffer high enough in DMEM wrote its tail over the in/out/count and
-     * the volume state driving it.  DMEM wraps inside SP memory. */
-#define EM_IN(i)  (*(const int16_t*)(hle->alist_buffer + ((dmemi   + 2*(i)) & 0xffe)))
-#define EM_DL(i)  (*(int16_t*)      (hle->alist_buffer + ((dmem_dl + 2*(i)) & 0xffe)))
-#define EM_DR(i)  (*(int16_t*)      (hle->alist_buffer + ((dmem_dr + 2*(i)) & 0xffe)))
-#define EM_WL(i)  (*(int16_t*)      (hle->alist_buffer + ((dmem_wl + 2*(i)) & 0xffe)))
-#define EM_WR(i)  (*(int16_t*)      (hle->alist_buffer + ((dmem_wr + 2*(i)) & 0xffe)))
+    /* Program-order transcription of cmd_ENVMIXER, delay slots included.
+     * Registers named after the microcode's:
+     *   v20/v21 = left volume hi/lo,   v18/v19 = right volume hi/lo,
+     *   v24 = params, v30 = ramp fraction table, v31 = all ones, v0 = 0,
+     *   v17 = input, v29/v27 = dry-L / wet-L, v28/v26 = dry-R / wet-R. */
+    static const ev_vr v30_frac = {
+        0x2000, 0x4000, 0x6000, (int16_t)0x8000,
+        (int16_t)0xa000, (int16_t)0xc000, (int16_t)0xe000, (int16_t)0xffff
+    };
+    static const ev_vr v31_ones = { 1, 1, 1, 1, 1, 1, 1, 1 };
+    static const ev_vr v0_zero  = { 0, 0, 0, 0, 0, 0, 0, 0 };
+    ev_vr v20, v21, v18, v19, v24, v22, v23;
+    ev_vr v17, v29, v27, v28, v26, v16, v15;
+    ev_vr sev; /* 0x7fff scalar as a register lane, v10[6] */
+    int16_t rate_hi_l, rate_hi_r;
+    int32_t remaining;
+    uint16_t p_in = dmemi, p_dl = dmem_dl, p_dr = dmem_dr;
+    uint16_t p_wl = dmem_wl, p_wr = dmem_wr;
+    uint16_t wstep = aux ? 0x10 : 0;
+    unsigned i;
 
-    int16_t  lhi[8], rhi[8];
-    uint16_t llo[8], rlo[8];
-    int16_t  params[8];
-    unsigned i, ptr = 0;
+    sev[6] = 32767;
 
-    /* On init the microcode interpolates the eight volume lanes from
-     * the base volume toward vol * rate through the ramp-fraction table
-     * [0x2000..0xffff], which seeds the per-sample stagger the steady
-     * blocks then carry multiplicatively; the base volume's low half
-     * starts at zero. */
     if (init) {
-        static const uint16_t frac[8] = {
-            0x2000, 0x4000, 0x6000, 0x8000, 0xa000, 0xc000, 0xe000, 0xffff
-        };
-        int64_t acc;
-        int32_t dhi_l, dhi_r;
-        uint16_t dlo_l, dlo_r;
-
-        params[0] = target[0];
-        params[1] = (int16_t)(rate[0] >> 16);
-        params[2] = (int16_t)(rate[0] & 0xffff);
-        params[3] = target[1];
-        params[4] = (int16_t)(rate[1] >> 16);
-        params[5] = (int16_t)(rate[1] & 0xffff);
-        params[6] = dry;
-        params[7] = wet;
-
-        /* delta = vol * rate - (vol:stale_lo), as the vmudm/vmadh pair
-         * followed by the borrow subtract computes it */
-        acc  = (int64_t)vol[0] * (uint16_t)params[2];
-        acc += ((int64_t)vol[0] * params[1]) << 16;
-        dlo_l = (uint16_t)(acc & 0xffff);
-        dhi_l = audio1_acc_hi(acc);
-        {
-            dhi_l = dhi_l - vol[0];
-        }
-        acc  = (int64_t)vol[1] * (uint16_t)params[5];
-        acc += ((int64_t)vol[1] * params[4]) << 16;
-        dlo_r = (uint16_t)(acc & 0xffff);
-        dhi_r = audio1_acc_hi(acc);
-        {
-            dhi_r = dhi_r - vol[1];
-        }
-
-        for (i = 0; i < 8; ++i) {
-            acc  = ((int64_t)((uint32_t)frac[i] * dlo_l)) >> 16;
-            acc += (int64_t)frac[i] * (int16_t)dhi_l;
-            acc += ((int64_t)1 * vol[0]) << 16;
-            lhi[i] = audio1_acc_hi(acc);
-            llo[i] = audio1_acc_lo(acc);
-
-            acc  = ((int64_t)((uint32_t)frac[i] * dlo_r)) >> 16;
-            acc += (int64_t)frac[i] * (int16_t)dhi_r;
-            acc += ((int64_t)1 * vol[1]) << 16;
-            rhi[i] = audio1_acc_hi(acc);
-            rlo[i] = audio1_acc_lo(acc);
-        }
-
-        /* the first block's volumes clamp to the target before use */
-        for (i = 0; i < 8; ++i) {
-            lhi[i] = (params[1] > 0)
-                ? (lhi[i] > params[0] ? params[0] : lhi[i])
-                : (lhi[i] < params[0] ? params[0] : lhi[i]);
-            rhi[i] = (params[4] > 0)
-                ? (rhi[i] > params[3] ? params[3] : rhi[i])
-                : (rhi[i] < params[3] ? params[3] : rhi[i]);
-        }
-
-        {
-            int16_t lgd[8], lgw[8], rgd[8], rgw[8];
-            for (i = 0; i < 8; ++i) {
-                lgd[i] = clamp_s16((int32_t)(((int64_t)2*lhi[i]*params[6] + 0x8000) >> 16));
-                lgw[i] = clamp_s16((int32_t)(((int64_t)2*lhi[i]*params[7] + 0x8000) >> 16));
-                rgd[i] = clamp_s16((int32_t)(((int64_t)2*rhi[i]*params[6] + 0x8000) >> 16));
-                rgw[i] = clamp_s16((int32_t)(((int64_t)2*rhi[i]*params[7] + 0x8000) >> 16));
-            }
-            for (i = 0; i < 8 && count >= 2; ++i, ++ptr, count -= 2) {
-                int16_t x = EM_IN(ptr^S);
-                acc = (int64_t)2*EM_DL(ptr^S)*32767 + 0x8000 + (int64_t)2*x*lgd[i];
-                EM_DL(ptr^S) = audio1_acc_hi(acc);
-                acc = (int64_t)2*EM_DR(ptr^S)*32767 + 0x8000 + (int64_t)2*x*rgd[i];
-                EM_DR(ptr^S) = audio1_acc_hi(acc);
-                if (aux) {
-                    acc = (int64_t)2*EM_WL(ptr^S)*32767 + 0x8000 + (int64_t)2*x*lgw[i];
-                    EM_WL(ptr^S) = audio1_acc_hi(acc);
-                    acc = (int64_t)2*EM_WR(ptr^S)*32767 + 0x8000 + (int64_t)2*x*rgw[i];
-                    EM_WR(ptr^S) = audio1_acc_hi(acc);
-                }
-            }
-        }
+        /* lqv $v24, 0x10($24): params live in the audio struct as the
+         * SETVOL commands wrote them */
+        v24[0] = target[0];
+        v24[1] = (int16_t)(rate[0] >> 16);
+        v24[2] = (int16_t)(rate[0] & 0xffff);
+        v24[3] = target[1];
+        v24[4] = (int16_t)(rate[1] >> 16);
+        v24[5] = (int16_t)(rate[1] & 0xffff);
+        v24[6] = dry;
+        v24[7] = wet;
     } else {
+        /* state DMA lands in the DMEM slab, and the vectors load from it;
+         * the slab image matters because RESAMPLE's state save carries
+         * whatever the previous occupant left in bytes it does not write */
+        for (i = 0; i < 0x50; i += 2)
+            *alist_s16(hle, (uint16_t)(ALIST_AUDIO_STATE_SLAB + i)) =
+                (int16_t)*dram_u16(hle, address + i);
         for (i = 0; i < 8; ++i) {
-            lhi[i] = (int16_t)*dram_u16(hle, address + i*2);
-            llo[i] = *dram_u16(hle, address + 0x10 + i*2);
-            rhi[i] = (int16_t)*dram_u16(hle, address + 0x20 + i*2);
-            rlo[i] = *dram_u16(hle, address + 0x30 + i*2);
-        }
-        for (i = 0; i < 8; ++i)
-            params[i] = (int16_t)*dram_u16(hle, address + 0x40 + i*2);
-    }
-
-    for (; count >= 16; count -= 16) {
-        int16_t lgain_dry[8], lgain_wet[8], rgain_dry[8], rgain_wet[8];
-
-        /* per-lane 32-bit volume *= Q16.16 rate, RSP saturations included */
-        for (i = 0; i < 8; ++i) {
-            int64_t acc;
-            int16_t hi;
-
-            acc  = ((int64_t)((uint32_t)llo[i] * (uint16_t)params[2])) >> 16;
-            acc += (int64_t)lhi[i] * (uint16_t)params[2];
-            acc += (int64_t)llo[i] * params[1];
-            acc += ((int64_t)lhi[i] * params[1]) << 16;
-            hi = audio1_acc_hi(acc);
-            llo[i] = audio1_acc_lo(acc);
-            /* rate is Q16.16: a nonzero integer part means the volume
-             * is rising and the microcode clips it to the target from
-             * above (vcl); a pure fraction is a decay and the target is
-             * a floor (vge). The direction registers are literally the
-             * rate-hi lanes read back out of the parameter vector. */
-            lhi[i] = (params[1] > 0)
-                ? (hi > params[0] ? params[0] : hi)
-                : (hi < params[0] ? params[0] : hi);
-
-            acc  = ((int64_t)((uint32_t)rlo[i] * (uint16_t)params[5])) >> 16;
-            acc += (int64_t)rhi[i] * (uint16_t)params[5];
-            acc += (int64_t)rlo[i] * params[4];
-            acc += ((int64_t)rhi[i] * params[4]) << 16;
-            hi = audio1_acc_hi(acc);
-            rlo[i] = audio1_acc_lo(acc);
-            rhi[i] = (params[4] > 0)
-                ? (hi > params[3] ? params[3] : hi)
-                : (hi < params[3] ? params[3] : hi);
-        }
-
-        for (i = 0; i < 8; ++i) {
-            lgain_dry[i] = clamp_s16((int32_t)(((int64_t)2*lhi[i]*params[6] + 0x8000) >> 16));
-            lgain_wet[i] = clamp_s16((int32_t)(((int64_t)2*lhi[i]*params[7] + 0x8000) >> 16));
-            rgain_dry[i] = clamp_s16((int32_t)(((int64_t)2*rhi[i]*params[6] + 0x8000) >> 16));
-            rgain_wet[i] = clamp_s16((int32_t)(((int64_t)2*rhi[i]*params[7] + 0x8000) >> 16));
-        }
-
-        for (i = 0; i < 8; ++i, ++ptr) {
-            int16_t x = EM_IN(ptr^S);
-            int64_t acc;
-
-            acc = (int64_t)2*EM_DL(ptr^S)*32767 + 0x8000 + (int64_t)2*x*lgain_dry[i];
-            EM_DL(ptr^S) = audio1_acc_hi(acc);
-            acc = (int64_t)2*EM_DR(ptr^S)*32767 + 0x8000 + (int64_t)2*x*rgain_dry[i];
-            EM_DR(ptr^S) = audio1_acc_hi(acc);
-            if (aux) {
-                acc = (int64_t)2*EM_WL(ptr^S)*32767 + 0x8000 + (int64_t)2*x*lgain_wet[i];
-                EM_WL(ptr^S) = audio1_acc_hi(acc);
-                acc = (int64_t)2*EM_WR(ptr^S)*32767 + 0x8000 + (int64_t)2*x*rgain_wet[i];
-                EM_WR(ptr^S) = audio1_acc_hi(acc);
-            }
+            v20[i] = *alist_s16(hle, (uint16_t)(ALIST_AUDIO_STATE_SLAB + i*2));
+            v21[i] = *alist_s16(hle, (uint16_t)(ALIST_AUDIO_STATE_SLAB + 0x10 + i*2));
+            v18[i] = *alist_s16(hle, (uint16_t)(ALIST_AUDIO_STATE_SLAB + 0x20 + i*2));
+            v19[i] = *alist_s16(hle, (uint16_t)(ALIST_AUDIO_STATE_SLAB + 0x30 + i*2));
+            v24[i] = *alist_s16(hle, (uint16_t)(ALIST_AUDIO_STATE_SLAB + 0x40 + i*2));
         }
     }
 
-    for (i = 0; i < 8; ++i) {
-        *dram_u16(hle, address + i*2)        = (uint16_t)lhi[i];
-        *dram_u16(hle, address + 0x10 + i*2) = llo[i];
-        *dram_u16(hle, address + 0x20 + i*2) = (uint16_t)rhi[i];
-        *dram_u16(hle, address + 0x30 + i*2) = rlo[i];
-        *dram_u16(hle, address + 0x40 + i*2) = (uint16_t)params[i];
+    rate_hi_l = v24[1]; /* mfc2 $21, $v24[2] */
+    rate_hi_r = v24[4]; /* mfc2 $20, $v24[8] */
+
+    remaining = (int32_t)count; /* $14 */
+
+    if (init) {
+        /* ---- left seed (0x1bec..) ---- */
+        ev_lqv(hle, v17, p_in);
+        ev_lqv(hle, v29, p_dl);
+        if (aux)
+            ev_lqv(hle, v27, p_wl);
+        else
+            memset(v27, 0, sizeof(v27)); /* reads DMEM scratch; result discarded */
+        ev_vxor(v21, v21, v21, -1);
+        /* lsv $v20[14]: lane 7 only; other lanes keep prior register content,
+         * which the [7]-selects below never consume */
+        v20[7] = vol[0];
+        ev_vmudm(v23, v20, v24, 2);
+        ev_vmadh(v22, v20, v24, 1);
+        ev_vmadn(v23, v31_ones, v0_zero, 0);
+        ev_vsubc(v23, v23, v21, -1);
+        ev_vsub(v22, v22, v20, -1);
+        ev_vmudl(v23, v30_frac, v23, 7);
+        ev_vmadn(v23, v30_frac, v22, 7);
+        ev_vmadm(v22, v31_ones, v0_zero, 0);
+        ev_vmadm(v21, v31_ones, v21, 7);
+        ev_vmadh(v20, v31_ones, v20, 7);
+        ev_vmadn(v21, v31_ones, v0_zero, 0); /* bgtz delay slot: both paths */
+        if (rate_hi_l > 0)
+            ev_vcl(v20, v20, v24, 0);
+        else
+            ev_vge(v20, v20, v24, 0);
+        /* ---- first-block left mix (0x1c48..) ---- */
+        ev_vmulf(v16, v20, v24, 6);
+        ev_vmulf(v15, v20, v24, 7);
+        ev_vmulf(v29, v29, sev, 6);
+        ev_vmacf(v29, v17, v16, -1);
+        ev_vmulf(v27, v27, sev, 6);
+        ev_vmacf(v27, v17, v15, -1);
+        ev_sqv(hle, v29, p_dl);
+        if (aux)
+            ev_sqv(hle, v27, p_wl);
+        /* ---- right seed ---- */
+        ev_lqv(hle, v28, p_dr);
+        if (aux)
+            ev_lqv(hle, v26, p_wr);
+        else
+            memset(v26, 0, sizeof(v26));
+        ev_vxor(v19, v19, v19, -1);
+        v18[7] = vol[1]; /* lsv $v18[14] */
+        ev_vmudm(v23, v18, v24, 5);
+        ev_vmadh(v22, v18, v24, 4);
+        ev_vmadn(v23, v31_ones, v0_zero, 0);
+        ev_vsubc(v23, v23, v19, -1);
+        ev_vsub(v22, v22, v18, -1);
+        ev_vmudl(v23, v30_frac, v23, 7);
+        ev_vmadn(v23, v30_frac, v22, 7);
+        ev_vmadm(v22, v31_ones, v0_zero, 0);
+        ev_vmadm(v19, v31_ones, v19, 7);
+        ev_vmadh(v18, v31_ones, v18, 7);
+        ev_vmadn(v19, v31_ones, v0_zero, 0); /* bgtz delay slot */
+        if (rate_hi_r > 0)
+            ev_vcl(v18, v18, v24, 3);
+        else
+            ev_vge(v18, v18, v24, 3);
+        /* ---- first-block right mix (0x1cb8..) ---- */
+        ev_vmulf(v16, v18, v24, 6);
+        ev_vmulf(v15, v18, v24, 7);
+        ev_vmulf(v28, v28, sev, 6);
+        ev_vmacf(v28, v17, v16, -1);
+        ev_vmulf(v26, v26, sev, 6);
+        ev_vmacf(v26, v17, v15, -1);
+        ev_sqv(hle, v28, p_dr);
+        if (aux)
+            ev_sqv(hle, v26, p_wr);
+        remaining -= 0x10;
+        p_in += 0x10;
+        p_dl += 0x10;
+        p_dr += 0x10;
+        p_wl += wstep;
+        p_wr += wstep;
     }
+
+    /* ---- 0x1cf0: left advance (entered by both paths) ---- */
+    ev_vmudl(v23, v21, v24, 2);
+    ev_vmadm(v23, v20, v24, 2);
+    ev_vmadn(v23, v21, v24, 1);
+    ev_vmadh(v20, v20, v24, 1);
+    ev_vmadn(v21, v31_ones, v0_zero, 0);
+
+    /* ---- 0x1d04: block loop; the body always runs at least once ---- */
+    for (;;) {
+        ev_lqv(hle, v17, p_in); /* bgtz delay slot */
+        if (rate_hi_l > 0)
+            ev_vcl(v20, v20, v24, 0);
+        else
+            ev_vge(v20, v20, v24, 0);
+        /* right advance, interleaved with dry/wet-left loads */
+        ev_vmudl(v23, v19, v24, 5);
+        ev_vmadm(v23, v18, v24, 5);
+        ev_vmadn(v23, v19, v24, 4);
+        ev_lqv(hle, v29, p_dl);
+        ev_vmadh(v18, v18, v24, 4);
+        if (aux)
+            ev_lqv(hle, v27, p_wl);
+        else
+            memset(v27, 0, sizeof(v27));
+        ev_vmadn(v19, v31_ones, v0_zero, 0);
+        /* left gains; lhi/llo staged to the state slab every iteration */
+        ev_vmulf(v16, v20, v24, 6);
+        ev_vmulf(v15, v20, v24, 7);
+        /* left mix */
+        ev_vmulf(v29, v29, sev, 6);
+        ev_vmacf(v29, v17, v16, -1);
+        ev_lqv(hle, v28, p_dr);
+        ev_vmulf(v27, v27, sev, 6);
+        if (aux)
+            ev_lqv(hle, v26, p_wr);
+        else
+            memset(v26, 0, sizeof(v26));
+        ev_vmacf(v27, v17, v15, -1);
+        ev_sqv(hle, v29, p_dl); /* bgtz delay slot */
+        /* sqv $v20/$v21: lhi/llo staged into the DMEM slab every block */
+        ev_sqv(hle, v20, ALIST_AUDIO_STATE_SLAB);
+        ev_sqv(hle, v21, ALIST_AUDIO_STATE_SLAB + 0x10);
+        if (rate_hi_r > 0)
+            ev_vcl(v18, v18, v24, 3);
+        else
+            ev_vge(v18, v18, v24, 3);
+        /* next iteration's left advance, interleaved with wet-left store */
+        ev_vmudl(v23, v21, v24, 2);
+        if (aux)
+            ev_sqv(hle, v27, p_wl);
+        ev_vmadm(v23, v20, v24, 2);
+        ev_vmadn(v23, v21, v24, 1);
+        ev_vmadh(v20, v20, v24, 1);
+        ev_vmadn(v21, v31_ones, v0_zero, 0);
+        /* right gains and mix */
+        ev_vmulf(v16, v18, v24, 6);
+        remaining -= 0x10;
+        ev_vmulf(v15, v18, v24, 7);
+        p_dl += 0x10;
+        ev_vmulf(v28, v28, sev, 6);
+        p_wl += wstep;
+        ev_vmacf(v28, v17, v16, -1);
+        p_in += 0x10;
+        ev_vmulf(v26, v26, sev, 6);
+        ev_vmacf(v26, v17, v15, -1);
+        ev_sqv(hle, v28, p_dr);
+        p_dr += 0x10;
+        if (remaining <= 0) {
+            if (aux)
+                ev_sqv(hle, v26, p_wr); /* blez delay slot */
+            break;
+        }
+        if (aux)
+            ev_sqv(hle, v26, p_wr);
+        p_wr += wstep; /* j delay slot */
+    }
+
+    /* ---- 0x1dfc: rhi/rlo/params join lhi/llo in the slab, and the DMA
+     * writes the whole 0x50-byte slab image out.  rhi is this block's
+     * clamped value; rlo is this block's advanced low half. ---- */
+    ev_sqv(hle, v18, ALIST_AUDIO_STATE_SLAB + 0x20);
+    ev_sqv(hle, v19, ALIST_AUDIO_STATE_SLAB + 0x30);
+    ev_sqv(hle, v24, ALIST_AUDIO_STATE_SLAB + 0x40);
+    for (i = 0; i < 0x50; i += 2)
+        *dram_u16(hle, address + i) =
+            (uint16_t)*alist_s16(hle, (uint16_t)(ALIST_AUDIO_STATE_SLAB + i));
 }
+
 #undef EM_IN
 #undef EM_DL
 #undef EM_DR
