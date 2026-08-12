@@ -92,14 +92,17 @@ const int16_t RESAMPLE_LUT[64 * 4] = {
     (int16_t)0xffdf, (int16_t)0x0d46, (int16_t)0x66ad, (int16_t)0x0c39
 };
 
-int32_t rdot(size_t n, const int16_t *x, const int16_t *y)
+/* Returns int64_t: the caller folds this into an accumulator that the RSP
+ * keeps 48 bits wide, and up to seven full-scale products land here alone,
+ * which is already past what 32 bits hold. */
+int64_t rdot(size_t n, const int16_t *x, const int16_t *y)
 {
-    int32_t accu = 0;
+    int64_t accu = 0;
 
     y += n;
 
     while (n != 0) {
-        accu += *(x++) * *(--y);
+        accu += (int64_t)*(x++) * *(--y);
         --n;
     }
 
@@ -120,9 +123,21 @@ void adpcm_compute_residuals(int16_t* dst, const int16_t* src,
     assert(count <= 8);
 
     for(i = 0; i < count; ++i) {
-        int32_t accu = (int32_t)src[i] << 11;
-        accu += book1[i]*l1 + book2[i]*l2 + rdot(i, book2, src);
-        dst[i] = clamp_s16(accu >> 11);
+        /* The microcode sums the shifted residual, both recursive taps and
+         * the staircase dot product in the RSP's 48-bit accumulator and
+         * saturates once, at the >> 11 read-out.  Summing in 32 bits
+         * overflows: the dot product alone reaches seven full-scale s16
+         * products (2^32) and the whole expression reaches 2^33, so a loud
+         * frame wrapped instead of saturating and the decoded sample jumped
+         * to the wrong sign - a click, on any voice loud enough to reach it,
+         * in every title that plays ADPCM.  This is the same defect
+         * alist_polef was rewritten to fix; ADPCM kept it. */
+        int64_t accu = (int64_t)src[i] << 11;
+        accu += (int64_t)book1[i]*l1 + (int64_t)book2[i]*l2 + rdot(i, book2, src);
+        accu >>= 11;
+        dst[i] = (accu >  32767) ?  32767
+               : (accu < -32768) ? -32768
+               : (int16_t)accu;
    }
 }
 
