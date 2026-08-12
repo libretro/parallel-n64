@@ -43,6 +43,25 @@ enum {
 
 
 /* audio commands definition */
+/* The naudio buffer space (0x4f0..) sits inside the ucode's resident
+ * data section, so at task start the buffers hold ucode data, not
+ * zeros; anything a list saves before writing (and the mp3/cbfd
+ * builds' tail region does get shipped) carries those bytes.  Seed
+ * the shadow from the task's data section. */
+/* the mp3/cbfd builds place the whole buffer space 0x10 bytes higher */
+static uint16_t naudio_shift = 0;
+
+static void naudio_seed(struct hle_t* hle)
+{
+    uint32_t ucode_data = *dmem_u32(hle, TASK_UCODE_DATA);
+    uint32_t data_size  = *dmem_u32(hle, TASK_UCODE_DATA_SIZE);
+    unsigned k;
+    if (data_size > 0x800) data_size = 0x800;
+    for (k = 0; k + 1 < data_size; k += 2)
+        *(int16_t*)(hle->alist_buffer + ((k ^ S16) & 0xfff)) =
+            (int16_t)*dram_u16(hle, ucode_data + k);
+}
+
 static void UNKNOWN(struct hle_t* hle, uint32_t w1, uint32_t w2)
 {
     uint8_t acmd = (w1 >> 24);
@@ -77,7 +96,7 @@ static void NAUDIO_14(struct hle_t* hle, uint32_t w1, uint32_t w2)
     uint8_t  select_main = (w2 >> 24);
     uint32_t address     = (w2 & 0xffffff);
 
-    uint16_t dmem = (select_main == 0) ? NAUDIO_MAIN : NAUDIO_MAIN2;
+    uint16_t dmem = (select_main == 0) ? (uint16_t)(NAUDIO_MAIN + naudio_shift) : (uint16_t)(NAUDIO_MAIN2 + naudio_shift);
 
     if (hle->alist_naudio.table[0] == 0 && hle->alist_naudio.table[1] == 0) {
         alist_polef(
@@ -135,11 +154,11 @@ static void envmixer(struct hle_t* hle, uint32_t w1, uint32_t w2, enum alist_env
     alist_envmix_lin(
             hle,
             flags & A_INIT,
-            NAUDIO_DRY_LEFT,
-            NAUDIO_DRY_RIGHT,
-            NAUDIO_WET_LEFT,
-            NAUDIO_WET_RIGHT,
-            NAUDIO_MAIN,
+            (uint16_t)(NAUDIO_DRY_LEFT + naudio_shift),
+            (uint16_t)(NAUDIO_DRY_RIGHT + naudio_shift),
+            (uint16_t)(NAUDIO_WET_LEFT + naudio_shift),
+            (uint16_t)(NAUDIO_WET_RIGHT + naudio_shift),
+            (uint16_t)(NAUDIO_MAIN + naudio_shift),
             NAUDIO_COUNT,
             hle->alist_naudio.dry,
             hle->alist_naudio.wet,
@@ -171,7 +190,7 @@ static void ENVMIXER_CBFD(struct hle_t* hle, uint32_t w1, uint32_t w2)
 
 static void CLEARBUFF(struct hle_t* hle, uint32_t w1, uint32_t w2)
 {
-    uint16_t dmem  = w1 + NAUDIO_MAIN;
+    uint16_t dmem  = w1 + (uint16_t)(NAUDIO_MAIN + naudio_shift);
     uint16_t count = w2 & 0xfff;
 
     alist_clear(hle, dmem, count);
@@ -180,8 +199,8 @@ static void CLEARBUFF(struct hle_t* hle, uint32_t w1, uint32_t w2)
 static void MIXER(struct hle_t* hle, uint32_t w1, uint32_t w2)
 {
     int16_t  gain  = w1;
-    uint16_t dmemi = (w2 >> 16) + NAUDIO_MAIN;
-    uint16_t dmemo = w2 + NAUDIO_MAIN;
+    uint16_t dmemi = (w2 >> 16) + (uint16_t)(NAUDIO_MAIN + naudio_shift);
+    uint16_t dmemo = w2 + (uint16_t)(NAUDIO_MAIN + naudio_shift);
 
     alist_mix(hle, dmemo, dmemi, NAUDIO_COUNT, gain);
 }
@@ -189,7 +208,7 @@ static void MIXER(struct hle_t* hle, uint32_t w1, uint32_t w2)
 static void LOADBUFF(struct hle_t* hle, uint32_t w1, uint32_t w2)
 {
     uint16_t count   = (w1 >> 12) & 0xfff;
-    uint16_t dmem    = (w1 & 0xfff) + NAUDIO_MAIN;
+    uint16_t dmem    = (w1 & 0xfff) + (uint16_t)(NAUDIO_MAIN + naudio_shift);
     uint32_t address = (w2 & 0xffffff);
 
     alist_load(hle, dmem, address, count);
@@ -198,7 +217,7 @@ static void LOADBUFF(struct hle_t* hle, uint32_t w1, uint32_t w2)
 static void SAVEBUFF(struct hle_t* hle, uint32_t w1, uint32_t w2)
 {
     uint16_t count   = (w1 >> 12) & 0xfff;
-    uint16_t dmem    = (w1 & 0xfff) + NAUDIO_MAIN;
+    uint16_t dmem    = (w1 & 0xfff) + (uint16_t)(NAUDIO_MAIN + naudio_shift);
     uint32_t address = (w2 & 0xffffff);
 
     alist_save(hle, dmem, address, count);
@@ -218,11 +237,12 @@ static void LOADADPCM(struct hle_t* hle, uint32_t w1, uint32_t w2)
 
 static void DMEMMOVE(struct hle_t* hle, uint32_t w1, uint32_t w2)
 {
-    uint16_t dmemi = w1 + NAUDIO_MAIN;
-    uint16_t dmemo = (w2 >> 16) + NAUDIO_MAIN;
+    uint16_t dmemi = w1 + (uint16_t)(NAUDIO_MAIN + naudio_shift);
+    uint16_t dmemo = (w2 >> 16) + (uint16_t)(NAUDIO_MAIN + naudio_shift);
     uint16_t count = w2;
 
-    alist_move(hle, dmemo, dmemi, (count + 3) & ~3);
+    /* 0x10 bytes per iteration, counter tested after */
+    alist_move(hle, dmemo, dmemi, (count + 0xf) & ~0xf);
 }
 
 static void SETLOOP(struct hle_t* hle, uint32_t UNUSED(w1), uint32_t w2)
@@ -235,8 +255,8 @@ static void ADPCM(struct hle_t* hle, uint32_t w1, uint32_t w2)
     uint32_t address = (w1 & 0xffffff);
     uint8_t  flags   = (w2 >> 28);
     uint16_t count   = (w2 >> 16) & 0xfff;
-    uint16_t dmemi   = ((w2 >> 12) & 0xf) + NAUDIO_MAIN;
-    uint16_t dmemo   = (w2 & 0xfff) + NAUDIO_MAIN;
+    uint16_t dmemi   = ((w2 >> 12) & 0xf) + (uint16_t)(NAUDIO_MAIN + naudio_shift);
+    uint16_t dmemo   = (w2 & 0xfff) + (uint16_t)(NAUDIO_MAIN + naudio_shift);
 
     alist_adpcm(
             hle,
@@ -256,13 +276,14 @@ static void RESAMPLE(struct hle_t* hle, uint32_t w1, uint32_t w2)
     uint32_t address = (w1 & 0xffffff);
     uint8_t  flags   = (w2 >> 30);
     uint16_t pitch   = (w2 >> 14);
-    uint16_t dmemi   = ((w2 >> 2) & 0xfff) + NAUDIO_MAIN;
-    uint16_t dmemo   = (w2 & 0x3) ? NAUDIO_MAIN2 : NAUDIO_MAIN;
+    uint16_t dmemi   = ((w2 >> 2) & 0xfff) + (uint16_t)(NAUDIO_MAIN + naudio_shift);
+    uint16_t dmemo   = (w2 & 0x3) ? (uint16_t)(NAUDIO_MAIN2 + naudio_shift) : (uint16_t)(NAUDIO_MAIN + naudio_shift);
 
-    alist_resample(
+    /* the handler branches to the fresh-state path whenever the flag
+     * field is non-zero, not just on bit 0 */
+    alist_resample_naudio(
             hle,
-            flags & A_INIT,
-            false,          /* flag2 bit never set by this ABI (verified) */
+            flags != 0,
             dmemo,
             dmemi,
             NAUDIO_COUNT,
@@ -272,7 +293,7 @@ static void RESAMPLE(struct hle_t* hle, uint32_t w1, uint32_t w2)
 
 static void INTERLEAVE(struct hle_t* hle, uint32_t UNUSED(w1), uint32_t UNUSED(w2))
 {
-    alist_interleave(hle, NAUDIO_MAIN, NAUDIO_DRY_LEFT, NAUDIO_DRY_RIGHT, NAUDIO_COUNT);
+    alist_interleave(hle, (uint16_t)(NAUDIO_MAIN + naudio_shift), (uint16_t)(NAUDIO_DRY_LEFT + naudio_shift), (uint16_t)(NAUDIO_DRY_RIGHT + naudio_shift), NAUDIO_COUNT);
 }
 
 static void MP3ADDY(struct hle_t* UNUSED(hle), uint32_t UNUSED(w1), uint32_t UNUSED(w2))
@@ -290,7 +311,7 @@ static void MP3(struct hle_t* hle, uint32_t w1, uint32_t w2)
 static void OVERLOAD(struct hle_t* hle, uint32_t w1, uint32_t w2)
 {
     /* Overload distortion effect for Conker's Bad Fur Day */
-    uint16_t dmem = (w1 & 0xfff) + NAUDIO_MAIN;
+    uint16_t dmem = (w1 & 0xfff) + (uint16_t)(NAUDIO_MAIN + naudio_shift);
     int16_t gain = (int16_t)(uint16_t)w2;
     uint16_t attenuation = w2 >> 16;
 
@@ -300,6 +321,8 @@ static void OVERLOAD(struct hle_t* hle, uint32_t w1, uint32_t w2)
 /* global functions */
 void alist_process_naudio(struct hle_t* hle)
 {
+    naudio_shift = 0;
+    naudio_seed(hle);
     static const acmd_callback_t ABI[0x10] = {
         SPNOOP,         ADPCM,          CLEARBUFF,      ENVMIXER_RAW,
         LOADBUFF,       RESAMPLE,       SAVEBUFF,       NAUDIO_0000,
@@ -313,6 +336,8 @@ void alist_process_naudio(struct hle_t* hle)
 
 void alist_process_naudio_bk(struct hle_t* hle)
 {
+    naudio_shift = 0;
+    naudio_seed(hle);
     /* Banjo-Kazooie's audio library emits A_POLEF at opcode 0x0e, but
      * this ucode does not implement a pole filter: its dispatch table
      * sends the command to 0x2b0, the middle of the SETVOL handler, past
@@ -363,6 +388,8 @@ void alist_process_naudio_bk(struct hle_t* hle)
 
 void alist_process_naudio_dk(struct hle_t* hle)
 {
+    naudio_shift = 0;
+    naudio_seed(hle);
     /* Differs from alist_process_naudio only at opcodes 7 and 8, which
      * dispatch to MIXER here instead of the unknown-command handler. */
     static const acmd_callback_t ABI[0x10] = {
@@ -378,6 +405,8 @@ void alist_process_naudio_dk(struct hle_t* hle)
 
 void alist_process_naudio_mp3(struct hle_t* hle)
 {
+    naudio_shift = 0x10;
+    naudio_seed(hle);
     static const acmd_callback_t ABI[0x10] = {
         OVERLOAD,       ADPCM,          CLEARBUFF,      ENVMIXER,
         LOADBUFF,       RESAMPLE,       SAVEBUFF,       MP3,
@@ -391,6 +420,8 @@ void alist_process_naudio_mp3(struct hle_t* hle)
 
 void alist_process_naudio_cbfd(struct hle_t* hle)
 {
+    naudio_shift = 0x10;
+    naudio_seed(hle);
     /* What differs from alist_process_naudio_mp3?
      *
      * JoshW: It appears that despite being a newer game, CBFD appears to have a slightly older ucode version

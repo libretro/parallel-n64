@@ -166,6 +166,15 @@ void alist_resample_audio(
         uint32_t pitch,
         uint32_t address);
 
+void alist_resample_naudio(
+        struct hle_t* hle,
+        bool init,
+        uint16_t dmemo,
+        uint16_t dmemi,
+        uint16_t count,
+        uint32_t pitch,
+        uint32_t address);
+
 void alist_resample_zoh(
         struct hle_t* hle,
         uint16_t dmemo,

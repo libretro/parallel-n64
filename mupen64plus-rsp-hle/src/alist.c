@@ -1618,6 +1618,84 @@ resample:
             (uint16_t)*alist_s16(hle, (uint16_t)(slab + 2*i));
 }
 
+void alist_resample_naudio(
+        struct hle_t* hle,
+        bool init,
+        uint16_t dmemo,
+        uint16_t dmemi,
+        uint16_t count,
+        uint32_t pitch,     /* Q16.16 */
+        uint32_t address)
+{
+    /* The naudio resample is transposition-vectorized: each iteration
+     * gathers the four-tap windows for eight outputs, computes the
+     * per-tap vmulf products and the saturating pair-tree, and only
+     * then stores the eight samples.  With the output overlapping the
+     * input (which the fixed-buffer layout makes routine), the batch
+     * granularity is observable: every window read within a batch sees
+     * the buffer as it was before the batch's stores.  State is the
+     * ten-byte window+accumulator block; the four-sample window is
+     * restored to the eight bytes below the input buffer. */
+    /* the state DMA moves 0x10 bytes both ways: the ten-byte
+     * window+accumulator block plus six bytes of the argument latch,
+     * which only these transfers touch */
+    static uint16_t latch_tail[3];
+    uint32_t pitch_accu;
+    uint16_t ipos;
+    uint16_t opos = dmemo >> 1;
+    unsigned i, b;
+
+    ipos = (dmemi >> 1) - 4;
+
+    if (init)
+        alist_resample_reset(hle, ipos, &pitch_accu);
+    else {
+        alist_resample_load(hle, address, ipos, &pitch_accu);
+        for (i = 0; i < 3; ++i)
+            latch_tail[i] = *dram_u16(hle, address + 0xa + 2*i);
+    }
+
+    count >>= 1;
+
+    while (count != 0) {
+        int16_t win[8][4];
+        uint16_t p[8];
+        uint32_t accu_snap = pitch_accu;
+        uint16_t ipos_snap = ipos;
+        unsigned n = (count < 8) ? count : 8;
+
+        for (b = 0; b < n; ++b) {
+            p[b] = (uint16_t)((pitch_accu & 0xfc00) >> 8);
+            for (i = 0; i < 4; ++i)
+                win[b][i] = *sample(hle, (uint16_t)(ipos + i));
+            pitch_accu += pitch;
+            ipos += (pitch_accu >> 16);
+            pitch_accu &= 0xffff;
+        }
+        (void)accu_snap; (void)ipos_snap;
+
+        for (b = 0; b < n; ++b) {
+            const int16_t* lut = RESAMPLE_LUT + p[b];
+            int32_t q0 = (int32_t)(((int64_t)2 * win[b][0] * lut[0] + 0x8000) >> 16);
+            int32_t q1 = (int32_t)(((int64_t)2 * win[b][1] * lut[1] + 0x8000) >> 16);
+            int32_t q2 = (int32_t)(((int64_t)2 * win[b][2] * lut[2] + 0x8000) >> 16);
+            int32_t q3 = (int32_t)(((int64_t)2 * win[b][3] * lut[3] + 0x8000) >> 16);
+
+            q0 = clamp_s16(q0);
+            q1 = clamp_s16(q1);
+            q2 = clamp_s16(q2);
+            q3 = clamp_s16(q3);
+
+            *sample(hle, opos++) = clamp_s16(clamp_s16(q0 + q1) + clamp_s16(q2 + q3));
+        }
+        count -= n;
+    }
+
+    alist_resample_save(hle, address, ipos, pitch_accu);
+    for (i = 0; i < 3; ++i)
+        *dram_u16(hle, address + 0xa + 2*i) = latch_tail[i];
+}
+
 void alist_resample_zoh(
         struct hle_t* hle,
         uint16_t dmemo,
