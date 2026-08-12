@@ -28,6 +28,8 @@
 #include "arithmetics.h"
 #include "hle_external.h"
 #include "hle_internal.h"
+#include <string.h>
+
 #include "memory.h"
 
 #define SUBBLOCK_SIZE 64
@@ -522,9 +524,34 @@ static void decode_macroblock_ob(int16_t *macroblock, int32_t *y_dc, int32_t *u_
  **************************************************************************/
 void jpeg_decode_OB(struct hle_t* hle)
 {
-    int16_t qtable[SUBBLOCK_SIZE];
-    unsigned int mb;
+    /* Transcribed from the microcode (Ogre Battle boot scene, 300
+     * macroblocks, verified byte-exact against cxd4):
+     *
+     * - The quantization scale is applied to the table with a rounded
+     *   arithmetic shift, q' = (q + (1 << (s-1))) >> s for qscale -s;
+     *   a zero qscale selects a unit table (the coefficients still run
+     *   through the same pipeline).
+     * - Dequantization is vmudh/vmudn: the product clamps to 16 bits,
+     *   then the multiply by 16 keeps only the low 16 bits (wrapping).
+     * - The IDCT is two passes of a vmulf/vmacf butterfly with Q15
+     *   cosines and the 48-bit accumulator shared between the mirrored
+     *   outputs, so both pick up a single 0x8000 rounding term.
+     * - Emission packs U/Y/V/Y byte pairs (4:2:0, chroma rows halved),
+     *   and the write-back DMA moves 0x300 bytes per macroblock from
+     *   the staging base, carrying the 0x100 bytes of DMEM that follow
+     *   the payload - including the OSTask words - along with it. */
+    static const int16_t ob_c2[6] = {
+         0x18f9, -0x7d8a, 0x6a6e, -0x471d, 0x471d, 0x7d8a };
+    static const int16_t ob_c3[5] = {
+         0x5a82, -0x5a82, 0x30fc, -0x7642, 0x7642 };
+    static const uint8_t ob_zigzag[64] = {
+         0,  1,  8, 16,  9,  2,  3, 10, 17, 24, 32, 25, 18, 11,  4,  5,
+        12, 19, 26, 33, 40, 48, 41, 34, 27, 20, 13,  6,  7, 14, 21, 28,
+        35, 42, 49, 56, 57, 50, 43, 36, 29, 22, 15, 23, 30, 37, 44, 51,
+        58, 59, 52, 45, 38, 31, 39, 46, 53, 60, 61, 54, 47, 55, 62, 63 };
 
+    int16_t qtable[SUBBLOCK_SIZE];
+    unsigned int mb, i;
     int32_t y_dc = 0;
     int32_t u_dc = 0;
     int32_t v_dc = 0;
@@ -533,19 +560,153 @@ void jpeg_decode_OB(struct hle_t* hle)
     const unsigned int macroblock_count = *dmem_u32(hle, TASK_DATA_SIZE);
     const int          qscale           = *dmem_u32(hle, TASK_YIELD_DATA_SIZE);
 
-    if (qscale != 0) {
-        if (qscale > 0)
-            ScaleSubBlock(qtable, DEFAULT_QTABLE, qscale);
-        else
-            RShiftSubBlock(qtable, DEFAULT_QTABLE, -qscale);
+    if (qscale == 0) {
+        for (i = 0; i < SUBBLOCK_SIZE; ++i)
+            qtable[i] = 1;
+    } else if (qscale > 0) {
+        ScaleSubBlock(qtable, DEFAULT_QTABLE, qscale);
+    } else {
+        const int s = -qscale;
+        for (i = 0; i < SUBBLOCK_SIZE; ++i)
+            qtable[i] = (DEFAULT_QTABLE[i] + (1 << (s - 1))) >> s;
     }
 
     for (mb = 0; mb < macroblock_count; ++mb) {
         int16_t macroblock[6 * SUBBLOCK_SIZE];
+        int16_t pixels[6][SUBBLOCK_SIZE];
+        uint16_t line[16];
+        int sb, r, c;
 
         dram_load_u16(hle, (uint16_t *)macroblock, address, 6 * SUBBLOCK_SIZE);
-        decode_macroblock_ob(macroblock, &y_dc, &u_dc, &v_dc, (qscale != 0) ? qtable : NULL);
-        EmitTilesMode2(hle, EmitYUVTileLine, macroblock, address);
+
+        for (sb = 0; sb < 6; ++sb) {
+            const int16_t *src = macroblock + sb * SUBBLOCK_SIZE;
+            int16_t coef[SUBBLOCK_SIZE];
+            int64_t acc[8];
+            int16_t p1[8][8], tr[8][8];
+            int32_t dc = (int32_t)src[0];
+
+            if (sb < 4)      { y_dc = (int16_t)(y_dc + dc); dc = y_dc; }
+            else if (sb == 4){ u_dc = (int16_t)(u_dc + dc); dc = u_dc; }
+            else             { v_dc = (int16_t)(v_dc + dc); dc = v_dc; }
+
+            memset(coef, 0, sizeof(coef));
+            coef[0] = (int16_t)dc;
+            for (i = 1; i < SUBBLOCK_SIZE; ++i)
+                coef[ob_zigzag[i]] = src[i];
+
+            /* fused dequantization: clamp the product, wrap the <<4 */
+            for (i = 0; i < SUBBLOCK_SIZE; ++i)
+                coef[i] = (int16_t)((uint32_t)clamp_s16(coef[i] * qtable[i]) << 4);
+
+#define OB_VMULF(dst, va, ca) \
+            do { for (c = 0; c < 8; ++c) { \
+                acc[c] = 2 * (int64_t)(va)[c] * (ca) + 0x8000; \
+                (dst)[c] = clamp_s16((int32_t)(acc[c] >> 16)); } } while (0)
+#define OB_VMACF(dst, vb, cb) \
+            do { for (c = 0; c < 8; ++c) { \
+                acc[c] += 2 * (int64_t)(vb)[c] * (cb); \
+                (dst)[c] = clamp_s16((int32_t)(acc[c] >> 16)); } } while (0)
+#define OB_BUTTERFLY(IN, ROW) \
+            do { \
+                OB_VMULF(t10, IN[3], ob_c2[2]); OB_VMACF(t10, IN[5], ob_c2[4]); \
+                OB_VMULF(t11, IN[7], ob_c2[0]); OB_VMACF(t11, IN[1], ob_c2[5]); \
+                OB_VMULF(t8,  IN[1], ob_c2[0]); OB_VMACF(t8,  IN[7], ob_c2[1]); \
+                OB_VMULF(t9,  IN[5], ob_c2[2]); OB_VMACF(t9,  IN[3], ob_c2[3]); \
+                OB_VMULF(t6,  IN[0], ob_c3[0]); OB_VMACF(t6,  IN[4], ob_c3[1]); \
+                for (c = 0; c < 8; ++c) { \
+                    t5s[c] = clamp_s16(t11[c] - t10[c]); \
+                    t4s[c] = clamp_s16(t8[c] - t9[c]); \
+                    t12[c] = clamp_s16(t8[c] + t9[c]); \
+                    t15[c] = clamp_s16(t11[c] + t10[c]); } \
+                OB_VMULF(t13, t5s, ob_c3[0]); OB_VMACF(t13, t4s, ob_c3[1]); \
+                OB_VMULF(t14, t5s, ob_c3[0]); OB_VMACF(t14, t4s, ob_c3[0]); \
+                OB_VMULF(t4,  IN[0], ob_c3[0]); OB_VMACF(t4,  IN[4], ob_c3[0]); \
+                OB_VMULF(t5,  IN[6], ob_c3[2]); OB_VMACF(t5,  IN[2], ob_c3[4]); \
+                OB_VMULF(t7,  IN[2], ob_c3[2]); OB_VMACF(t7,  IN[6], ob_c3[3]); \
+                for (c = 0; c < 8; ++c) { \
+                    t8[c]  = clamp_s16(t4[c] + t5[c]); \
+                    t11[c] = clamp_s16(t4[c] - t5[c]); \
+                    t9[c]  = clamp_s16(t6[c] + t7[c]); \
+                    t10[c] = clamp_s16(t6[c] - t7[c]); } \
+            } while (0)
+
+            {
+                int16_t t4[8], t5[8], t6[8], t7[8], t8[8], t9[8], t10[8], t11[8];
+                int16_t t12[8], t13[8], t14[8], t15[8], t4s[8], t5s[8];
+                int16_t in[8][8];
+
+                for (r = 0; r < 8; ++r)
+                    for (c = 0; c < 8; ++c)
+                        in[r][c] = coef[r * 8 + c];
+                OB_BUTTERFLY(in, r);
+                for (c = 0; c < 8; ++c) {
+                    p1[0][c] = clamp_s16(t8[c]  + t15[c]);
+                    p1[1][c] = clamp_s16(t9[c]  + t14[c]);
+                    p1[2][c] = clamp_s16(t10[c] + t13[c]);
+                    p1[3][c] = clamp_s16(t11[c] + t12[c]);
+                    p1[4][c] = clamp_s16(t11[c] - t12[c]);
+                    p1[5][c] = clamp_s16(t10[c] - t13[c]);
+                    p1[6][c] = clamp_s16(t9[c]  - t14[c]);
+                    p1[7][c] = clamp_s16(t8[c]  - t15[c]);
+                }
+                for (r = 0; r < 8; ++r)
+                    for (c = 0; c < 8; ++c)
+                        tr[r][c] = p1[c][r];
+                OB_BUTTERFLY(tr, r);
+                /* mirrored outputs share the accumulator, and with it
+                 * the single rounding term */
+                for (c = 0; c < 8; ++c) {
+                    int64_t a2;
+#define OB_PAIR(hi_r, lo_r, va, vb) \
+                    a2 = 2 * (int64_t)(va)[c] * 0x200 + 0x8000 \
+                       + 2 * (int64_t)(vb)[c] * 0x200; \
+                    pixels[sb][(hi_r) * 8 + c] = clamp_s16((int32_t)(a2 >> 16)); \
+                    a2 += 2 * (int64_t)(vb)[c] * -0x400; \
+                    pixels[sb][(lo_r) * 8 + c] = clamp_s16((int32_t)(a2 >> 16));
+                    OB_PAIR(0, 7, t8,  t15)
+                    OB_PAIR(3, 4, t11, t12)
+                    OB_PAIR(1, 6, t9,  t14)
+                    OB_PAIR(2, 5, t10, t13)
+#undef OB_PAIR
+                }
+            }
+#undef OB_BUTTERFLY
+#undef OB_VMACF
+#undef OB_VMULF
+        }
+
+        /* emit sixteen U/Y/V/Y lines; chroma advances every other row */
+        for (r = 0; r < 16; ++r) {
+            const int ysb = (r < 8) ? 0 : 2;
+            const int16_t *urow = pixels[4] + (r >> 1) * 8;
+            const int16_t *vrow = pixels[5] + (r >> 1) * 8;
+            int j;
+            for (j = 0; j < 8; ++j) {
+                const int c0 = 2 * j;
+                const int c1 = 2 * j + 1;
+                int y0 = pixels[ysb + (c0 >= 8)][(r % 8) * 8 + (c0 % 8)];
+                int y1 = pixels[ysb + (c1 >= 8)][(r % 8) * 8 + (c1 % 8)];
+                int u  = urow[j];
+                int v  = vrow[j];
+                if (y0 < 0) y0 = 0; else if (y0 > 255) y0 = 255;
+                if (y1 < 0) y1 = 0; else if (y1 > 255) y1 = 255;
+                if (u < 0)  u = 0;  else if (u > 255)  u = 255;
+                if (v < 0)  v = 0;  else if (v > 255)  v = 255;
+                line[2 * j]     = (uint16_t)((u << 8) | y0);
+                line[2 * j + 1] = (uint16_t)((v << 8) | y1);
+            }
+            dram_store_u16(hle, line, address + r * 32, 16);
+        }
+
+        /* the write-back DMA carries the 0x100 bytes of DMEM after the
+         * staging payload - garbage to the game, but part of the
+         * transfer */
+        for (r = 0; r < 8; ++r) {
+            for (c = 0; c < 16; ++c)
+                line[c] = *dmem_u16(hle, 0xef0 + r * 32 + 2 * c);
+            dram_store_u16(hle, line, address + 0x200 + r * 32, 16);
+        }
 
         address += (2 * 6 * SUBBLOCK_SIZE);
     }
