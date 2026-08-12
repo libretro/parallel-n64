@@ -21,6 +21,7 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
+#include <string.h>
 #include <boolean.h>
 #include <stdint.h>
 
@@ -370,16 +371,44 @@ static void INTERLEAVE(struct hle_t* hle, uint32_t UNUSED(w1), uint32_t UNUSED(w
     alist_interleave(hle, (uint16_t)(NAUDIO_MAIN + naudio_shift), (uint16_t)(NAUDIO_DRY_LEFT + naudio_shift), (uint16_t)(NAUDIO_DRY_RIGHT + naudio_shift), NAUDIO_COUNT);
 }
 
-static void MP3ADDY(struct hle_t* UNUSED(hle), uint32_t UNUSED(w1), uint32_t UNUSED(w2))
+static void MP3ADDY(struct hle_t* hle, uint32_t UNUSED(w1), uint32_t w2)
 {
+    /* Transcribed from the Conker handler (IMEM 0x3fc): the command
+     * stores the MP3 synthesis-state DRAM address in DMEM 0xff4 and
+     * returns.  The MP3 command consumes it: on every call it first
+     * restores 0x440 bytes of windowing state from that address into
+     * DMEM 0x8a0 and writes the 0x140-byte overlap tail from DMEM
+     * 0x2c0 back to it, so per-stream state lives in DRAM rather than
+     * in the RSP. */
+    *dmem_u32(hle, 0xff4) = (w2 & 0xffffff);
 }
 
 static void MP3(struct hle_t* hle, uint32_t w1, uint32_t w2)
 {
     unsigned index = (w1 & 0x1e);
     uint32_t address = (w2 & 0xffffff);
+    uint32_t state = *dmem_u32(hle, 0xff4) & 0xffffff;
+    uint8_t old_bank[0x440];
+    unsigned k;
+
+    /* The microcode banks the MP3 synthesis state per stream through
+     * the DRAM address MP3ADDY stores in DMEM 0xff4 (the TASK_DATA_SIZE
+     * header slot, recycled once the size has been consumed; the
+     * library always pairs MP3ADDY with the MP3 commands that use it).
+     * On every call the handler DMAs the 0x440-byte bank from that
+     * address into the DMEM window region and writes the previous
+     * call's 0x140-byte overlap tail back out.  mp3.c keeps the same
+     * region at mp3_buffer 0x8a0 in host halfword order, so the copies
+     * swap bytes per halfword. */
+    for (k = 0; k < 0x440; ++k)
+        old_bank[k] = hle->dram[(state + k) ^ S8];
+    for (k = 0; k < 0x440; ++k)
+        hle->mp3_buffer[(0x8a0 + k) ^ 1] = old_bank[k];
 
     mp3_task(hle, index, address);
+
+    for (k = 0; k < 0x440; ++k)
+        hle->dram[(state + k) ^ S8] = hle->mp3_buffer[(0x8a0 + k) ^ 1];
 }
 
 static void OVERLOAD(struct hle_t* hle, uint32_t w1, uint32_t w2)
