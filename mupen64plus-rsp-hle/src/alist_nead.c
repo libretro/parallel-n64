@@ -55,6 +55,17 @@
  * predecessor. */
 static uint16_t nead_v31[8];
 
+/* DMEM address of the state-staging slab ($23 in the microcode);
+ * differs per build: 0xf90 (sf/sfj/wrjb), 0xfa0 (mk), 0xfb0
+ * (oot/mm/ac lineage), 0xfc0 (ys/1080/fz - overlapping the OSTask,
+ * whose fields the resample save then ships out as residue). */
+static uint16_t nead_slab = 0xfb0;
+
+/* the Mario Kart build carries the aspMain-layout resample (back
+ * distance and aligned-block state) rather than the later builds'
+ * residue-carrying one */
+static int nead_resample_old = 0;
+
 static int16_t nead_clamp_s16(int_fast32_t x)
 {
     x = (x < INT16_MIN) ? INT16_MIN : x;
@@ -66,6 +77,21 @@ static int16_t* nead_s16(struct hle_t* hle, uint16_t dmem)
 {
     return (int16_t*)(hle->alist_buffer + ((dmem ^ S16) & 0xfff));
 }
+
+/* The alist buffer shadows the sample area of DMEM; the slab sits in
+ * the task-header region, whose real content (OSTask fields for the
+ * 0xfc0 builds, zeros otherwise) the resample save ships out as
+ * residue.  Seed the shadow from real DMEM at task start; from then
+ * on only the resample state load/save updates it. */
+static void nead_slab_seed(struct hle_t* hle)
+{
+    unsigned k;
+    for (k = 0; k < 0x20; k += 2)
+        *nead_s16(hle, (uint16_t)(nead_slab + k)) =
+            (int16_t)((*dmem_u32(hle, (nead_slab + k) & ~3)
+                       >> (((nead_slab + k) & 2) ? 0 : 16)) & 0xffff);
+}
+
 
 static void nead_v31_load(struct hle_t* hle, uint16_t data_off)
 {
@@ -182,10 +208,23 @@ static void RESAMPLE(struct hle_t* hle, uint32_t w1, uint32_t w2)
     uint32_t address = (w2 & 0xffffff);
 
     nead_v31_load(hle, 0x70);
-    alist_resample(
+    if (nead_resample_old) {
+        alist_resample_audio(
+                hle,
+                nead_slab,
+                flags & 0x1,
+                flags & 0x2,
+                hle->alist_nead.out,
+                hle->alist_nead.in,
+                (hle->alist_nead.count + 0xf) & ~0xf,
+                pitch << 1,
+                address);
+        return;
+    }
+    alist_resample_nead(
             hle,
-            flags & 0x1,
-            false,          /* flag2 bit never set by this ABI (verified) */
+            nead_slab,
+            flags,
             hle->alist_nead.out,
             hle->alist_nead.in,
             (hle->alist_nead.count + 0xf) & ~0xf,
@@ -469,6 +508,9 @@ void alist_process_nead_mk(struct hle_t* hle)
         SPNOOP,         SPNOOP,         SPNOOP,         SPNOOP
     };
 
+    nead_slab = 0xfa0;
+    nead_resample_old = 1;
+    nead_slab_seed(hle);
     alist_process(hle, ABI, 0x20);
     rsp_break(hle, SP_STATUS_TASKDONE);
 }
@@ -486,6 +528,9 @@ void alist_process_nead_sf(struct hle_t* hle)
         SPNOOP,         SPNOOP,         SPNOOP,         SPNOOP
     };
 
+    nead_slab = 0xf90;
+    nead_resample_old = 0;
+    nead_slab_seed(hle);
     alist_process(hle, ABI, 0x20);
     rsp_break(hle, SP_STATUS_TASKDONE);
 }
@@ -503,6 +548,9 @@ void alist_process_nead_sfj(struct hle_t* hle)
         SPNOOP,         SPNOOP,         SPNOOP,         SPNOOP
     };
 
+    nead_slab = 0xf90;
+    nead_resample_old = 0;
+    nead_slab_seed(hle);
     alist_process(hle, ABI, 0x20);
     rsp_break(hle, SP_STATUS_TASKDONE);
 }
@@ -520,6 +568,9 @@ void alist_process_nead_fz(struct hle_t* hle)
         SPNOOP,         SPNOOP,         SPNOOP,         SPNOOP
     };
 
+    nead_slab = 0xfc0;
+    nead_resample_old = 0;
+    nead_slab_seed(hle);
     alist_process(hle, ABI, 0x20);
     rsp_break(hle, SP_STATUS_TASKDONE);
 }
@@ -537,6 +588,9 @@ void alist_process_nead_wrjb(struct hle_t* hle)
         SPNOOP,         SPNOOP,         SPNOOP,         SPNOOP
     };
 
+    nead_slab = 0xf90;
+    nead_resample_old = 0;
+    nead_slab_seed(hle);
     alist_process(hle, ABI, 0x20);
     rsp_break(hle, SP_STATUS_TASKDONE);
 }
@@ -552,6 +606,9 @@ void alist_process_nead_ys(struct hle_t* hle)
         LOADBUFF,       SAVEBUFF,       ENVSETUP2,      UNKNOWN
     };
 
+    nead_slab = 0xfc0;
+    nead_resample_old = 0;
+    nead_slab_seed(hle);
     alist_process(hle, ABI, 0x18);
     rsp_break(hle, SP_STATUS_TASKDONE);
 }
@@ -567,6 +624,9 @@ void alist_process_nead_1080(struct hle_t* hle)
         LOADBUFF,       SAVEBUFF,       ENVSETUP2,      UNKNOWN
     };
 
+    nead_slab = 0xfc0;
+    nead_resample_old = 0;
+    nead_slab_seed(hle);
     alist_process(hle, ABI, 0x18);
     rsp_break(hle, SP_STATUS_TASKDONE);
 }
@@ -582,6 +642,9 @@ void alist_process_nead_oot(struct hle_t* hle)
         LOADBUFF,       SAVEBUFF,       ENVSETUP2,      S8DEC
     };
 
+    nead_slab = 0xfb0;
+    nead_resample_old = 0;
+    nead_slab_seed(hle);
     alist_process(hle, ABI, 0x18);
     rsp_break(hle, SP_STATUS_TASKDONE);
 }
@@ -597,6 +660,9 @@ void alist_process_nead_mm(struct hle_t* hle)
         LOADBUFF,       SAVEBUFF,       ENVSETUP2,      S8DEC
     };
 
+    nead_slab = 0xfb0;
+    nead_resample_old = 0;
+    nead_slab_seed(hle);
     alist_process(hle, ABI, 0x18);
     rsp_break(hle, SP_STATUS_TASKDONE);
 }
@@ -612,6 +678,9 @@ void alist_process_nead_mmb(struct hle_t* hle)
         LOADBUFF,       SAVEBUFF,       ENVSETUP2,      UNKNOWN
     };
 
+    nead_slab = 0xfb0;
+    nead_resample_old = 0;
+    nead_slab_seed(hle);
     alist_process(hle, ABI, 0x18);
     rsp_break(hle, SP_STATUS_TASKDONE);
 }
@@ -627,6 +696,9 @@ void alist_process_nead_ac(struct hle_t* hle)
         LOADBUFF,       SAVEBUFF,       ENVSETUP2,      UNKNOWN
     };
 
+    nead_slab = 0xfb0;
+    nead_resample_old = 0;
+    nead_slab_seed(hle);
     alist_process(hle, ABI, 0x18);
     rsp_break(hle, SP_STATUS_TASKDONE);
 }
@@ -646,6 +718,9 @@ void alist_process_nead_mats(struct hle_t* hle)
         LOADBUFF,       SAVEBUFF,       ENVSETUP2,      S8DEC
     };
 
+    nead_slab = 0xfb0;
+    nead_resample_old = 0;
+    nead_slab_seed(hle);
     alist_process(hle, ABI, 0x18);
     rsp_break(hle, SP_STATUS_TASKDONE);
 }

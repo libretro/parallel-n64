@@ -1370,6 +1370,7 @@ void alist_resample(
 
 void alist_resample_audio(
         struct hle_t* hle,
+        uint16_t slab,
         bool init,
         bool flag2,
         uint16_t dmemo,
@@ -1404,14 +1405,14 @@ void alist_resample_audio(
         /* The init path only clears the samples and the pitch
          * accumulator; the rest of the slab keeps its residue. */
         for (i = 0; i < 5; ++i)
-            *alist_s16(hle, (uint16_t)(ALIST_AUDIO_STATE_SLAB + 2*i)) = 0;
+            *alist_s16(hle, (uint16_t)(slab + 2*i)) = 0;
     }
     else {
         /* the state DMA lands in the slab lane by lane; a byte memcpy
          * only agrees with it at addresses where the host byte-order
          * XOR cancels, which the final input position does not honour */
         for (i = 0; i < 0x10; ++i)
-            *alist_s16(hle, (uint16_t)(ALIST_AUDIO_STATE_SLAB + 2*i)) =
+            *alist_s16(hle, (uint16_t)(slab + 2*i)) =
                 (int16_t)*dram_u16(hle, address + 2*i);
     }
 
@@ -1420,18 +1421,18 @@ void alist_resample_audio(
          * address to just before the input buffer, then back the
          * input pointer up to the position inside them where the
          * previous run's window ended. */
-        uint16_t back = (uint16_t)*alist_s16(hle, ALIST_AUDIO_STATE_SLAB + 0xa);
+        uint16_t back = (uint16_t)*alist_s16(hle, slab + 0xa);
         for (i = 0; i < 8; ++i)
             *alist_s16(hle, (uint16_t)((dmemi - 16 + 2*i) & 0xffe)) =
-                *alist_s16(hle, (uint16_t)(ALIST_AUDIO_STATE_SLAB + 0x10 + 2*i));
+                *alist_s16(hle, (uint16_t)(slab + 0x10 + 2*i));
         in -= back;
     }
 
     in -= 8;
     for (i = 0; i < 4; ++i)
         *alist_s16(hle, (uint16_t)((in + 2*i) & 0xffe)) =
-            *alist_s16(hle, (uint16_t)(ALIST_AUDIO_STATE_SLAB + 2*i));
-    pitch_accu = (uint16_t)*alist_s16(hle, ALIST_AUDIO_STATE_SLAB + 0x8);
+            *alist_s16(hle, (uint16_t)(slab + 2*i));
+    pitch_accu = (uint16_t)*alist_s16(hle, slab + 0x8);
     ipos = in >> 1;
 
     while (count != 0) {
@@ -1458,22 +1459,119 @@ void alist_resample_audio(
     }
 
     for (i = 0; i < 4; ++i)
-        *alist_s16(hle, (uint16_t)(ALIST_AUDIO_STATE_SLAB + 2*i)) =
+        *alist_s16(hle, (uint16_t)(slab + 2*i)) =
             *sample(hle, (uint16_t)(ipos + i));
-    *alist_s16(hle, ALIST_AUDIO_STATE_SLAB + 0x8) = (int16_t)pitch_accu;
+    *alist_s16(hle, slab + 0x8) = (int16_t)pitch_accu;
 
     aligned = (ipos << 1) + 8;
     residue = (aligned - dmemi) & 0xf;
     aligned -= residue;
-    *alist_s16(hle, ALIST_AUDIO_STATE_SLAB + 0xa) =
+    *alist_s16(hle, slab + 0xa) =
         (residue != 0) ? (int16_t)(16 - residue) : 0;
     for (i = 0; i < 8; ++i)
-        *alist_s16(hle, (uint16_t)(ALIST_AUDIO_STATE_SLAB + 0x10 + 2*i)) =
+        *alist_s16(hle, (uint16_t)(slab + 0x10 + 2*i)) =
             *alist_s16(hle, (uint16_t)((aligned + 2*i) & 0xffe));
 
     for (i = 0; i < 0x10; ++i)
         *dram_u16(hle, address + 2*i) =
-            (uint16_t)*alist_s16(hle, (uint16_t)(ALIST_AUDIO_STATE_SLAB + 2*i));
+            (uint16_t)*alist_s16(hle, (uint16_t)(slab + 2*i));
+}
+
+
+void alist_resample_nead(
+        struct hle_t* hle,
+        uint16_t slab,
+        unsigned flags,
+        uint16_t dmemo,
+        uint16_t dmemi,
+        uint16_t count,
+        uint32_t pitch,     /* Q16.16 */
+        uint32_t address)
+{
+    /* The sequenced-audio (nead) microcodes carry the same resample as
+     * aspMain with the state slab at 0xfb0 and one extra restore mode:
+     * flag bit 2 restores the previous window as duplicated sample
+     * pairs eight bytes further back (the resample-with-doubling
+     * continuation).  The whole 0x20-byte slab image round-trips
+     * through RDRAM like the aspMain one, lane by lane. */
+    uint32_t pitch_accu;
+    uint16_t in = dmemi;
+    uint16_t ipos;
+    uint16_t opos = dmemo >> 1;
+    unsigned i;
+
+    count >>= 1;
+
+    if (flags & 0x1) {
+        for (i = 0; i < 5; ++i)
+            *alist_s16(hle, (uint16_t)(slab + 2*i)) = 0;
+    }
+    else {
+        for (i = 0; i < 0x10; ++i)
+            *alist_s16(hle, (uint16_t)(slab + 2*i)) =
+                (int16_t)*dram_u16(hle, address + 2*i);
+    }
+
+    if (flags & 0x2) {
+        in -= 4;
+        *alist_s16(hle, (uint16_t)(in & 0xffe)) =
+            *alist_s16(hle, slab);
+        *alist_s16(hle, (uint16_t)((in + 2) & 0xffe)) =
+            *alist_s16(hle, slab + 4);
+        ipos = in >> 1;
+        goto resample;
+    }
+    if (flags & 0x4) {
+        in -= 16;
+        for (i = 0; i < 4; ++i) {
+            *alist_s16(hle, (uint16_t)((in + 4*i) & 0xffe)) =
+                *alist_s16(hle, (uint16_t)(slab + 2*i));
+            *alist_s16(hle, (uint16_t)((in + 4*i + 2) & 0xffe)) =
+                *alist_s16(hle, (uint16_t)(slab + 2*i));
+        }
+    }
+    else {
+        in -= 8;
+        for (i = 0; i < 4; ++i)
+            *alist_s16(hle, (uint16_t)((in + 2*i) & 0xffe)) =
+                *alist_s16(hle, (uint16_t)(slab + 2*i));
+    }
+    ipos = in >> 1;
+
+resample:
+    pitch_accu = (uint16_t)*alist_s16(hle, slab + 0x8);
+
+    while (count != 0) {
+        const int16_t* lut = RESAMPLE_LUT + ((pitch_accu & 0xfc00) >> 8);
+        int32_t q0 = (int32_t)(((int64_t)2 * *sample(hle, ipos    ) * lut[0] + 0x8000) >> 16);
+        int32_t q1 = (int32_t)(((int64_t)2 * *sample(hle, ipos + 1) * lut[1] + 0x8000) >> 16);
+        int32_t q2 = (int32_t)(((int64_t)2 * *sample(hle, ipos + 2) * lut[2] + 0x8000) >> 16);
+        int32_t q3 = (int32_t)(((int64_t)2 * *sample(hle, ipos + 3) * lut[3] + 0x8000) >> 16);
+
+        q0 = clamp_s16(q0);
+        q1 = clamp_s16(q1);
+        q2 = clamp_s16(q2);
+        q3 = clamp_s16(q3);
+
+        *sample(hle, opos++) = clamp_s16(clamp_s16(q0 + q1) + clamp_s16(q2 + q3));
+
+        pitch_accu += pitch;
+        ipos += (pitch_accu >> 16);
+        pitch_accu &= 0xffff;
+        --count;
+    }
+
+    /* the save updates only the window and the pitch accumulator in
+     * the slab; the DMA still writes 0x20 bytes, so 0x0a..0x1f carry
+     * whatever the previous slab occupant left there */
+    for (i = 0; i < 4; ++i)
+        *alist_s16(hle, (uint16_t)(slab + 2*i)) =
+            *sample(hle, (uint16_t)(ipos + i));
+    *alist_s16(hle, slab + 0x8) = (int16_t)pitch_accu;
+
+    for (i = 0; i < 0x10; ++i)
+        *dram_u16(hle, address + 2*i) =
+            (uint16_t)*alist_s16(hle, (uint16_t)(slab + 2*i));
 }
 
 void alist_resample_zoh(

@@ -143,8 +143,19 @@ void alist_resample(
         uint16_t dmemo, uint16_t dmemi, uint16_t count,
         uint32_t pitch, uint32_t address);
 
+void alist_resample_nead(
+        struct hle_t* hle,
+        uint16_t slab,
+        unsigned flags,
+        uint16_t dmemo,
+        uint16_t dmemi,
+        uint16_t count,
+        uint32_t pitch,
+        uint32_t address);
+
 void alist_resample_audio(
         struct hle_t* hle,
+        uint16_t slab,
         bool init,
         bool flag2,
         uint16_t dmemo,

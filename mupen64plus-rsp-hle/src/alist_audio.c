@@ -111,6 +111,7 @@ static void RESAMPLE(struct hle_t* hle, uint32_t w1, uint32_t w2)
 
     alist_resample_audio(
             hle,
+            0xf90,
             flags & A_INIT,
             flags & 0x2,
             hle->alist_audio.out,
