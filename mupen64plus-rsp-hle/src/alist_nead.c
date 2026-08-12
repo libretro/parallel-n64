@@ -74,6 +74,10 @@ static int nead_env_style = NEAD_ENV_OOT;
  * (not just the HLE-side table), so the shadow must carry it too */
 static uint16_t nead_book = 0x330;
 
+/* whether FILTER averages the fresh coefficients with the saved table
+ * (Ocarina lineage) or uses them straight (Shindou/Yoshi/1080) */
+static int nead_filter_avg = 1;
+
 static int16_t nead_clamp_s16(int_fast32_t x)
 {
     x = (x < INT16_MIN) ? INT16_MIN : x;
@@ -262,7 +266,7 @@ static void RESAMPLE_ZOH(struct hle_t* hle, uint32_t w1, uint32_t w2)
             hle->alist_nead.out,
             hle->alist_nead.in,
             hle->alist_nead.count,
-            pitch << 1,
+            (uint32_t)pitch << 2,
             pitch_accu);
 }
 
@@ -450,8 +454,8 @@ static void ADDMIXER(struct hle_t* hle, uint32_t w1, uint32_t w2)
 
 static void HILOGAIN(struct hle_t* hle, uint32_t w1, uint32_t w2)
 {
-    int8_t   gain  = (w1 >> 16); /* Q4.4 signed */
-    uint16_t count = w1 & 0xfff;
+    uint8_t  gain  = (uint8_t)(w1 >> 16); /* unsigned 4.4 */
+    uint16_t count = w1 & 0xffff;
     uint16_t dmem  = (w2 >> 16);
 
     alist_multQ44(hle, dmem, count, gain);
@@ -476,7 +480,8 @@ static void FILTER(struct hle_t* hle, uint32_t w1, uint32_t w2)
          * from the 32-byte state at `address`. */
         alist_filter(hle, (flags & 0x1) != 0, dmem,
                      hle->alist_nead.filter_count, address,
-                     hle->alist_nead.filter_table);
+                     hle->alist_nead.filter_table,
+                     nead_filter_avg != 0);
     }
 }
 
@@ -646,6 +651,7 @@ void alist_process_nead_wrjb(struct hle_t* hle)
 
     nead_slab = 0xf90;
     nead_book = 0x3c0;
+    nead_filter_avg = 0;
     nead_env_style = NEAD_ENV_SF;
     nead_resample_old = 0;
     nead_slab_seed(hle);
@@ -666,6 +672,7 @@ void alist_process_nead_ys(struct hle_t* hle)
 
     nead_slab = 0xfc0;
     nead_book = 0x340;
+    nead_filter_avg = 0;
     nead_env_style = NEAD_ENV_SF;
     nead_resample_old = 0;
     nead_slab_seed(hle);
@@ -686,6 +693,7 @@ void alist_process_nead_1080(struct hle_t* hle)
 
     nead_slab = 0xfc0;
     nead_book = 0x340;
+    nead_filter_avg = 0;
     nead_env_style = NEAD_ENV_OOT;
     nead_resample_old = 0;
     nead_slab_seed(hle);
@@ -706,6 +714,7 @@ void alist_process_nead_oot(struct hle_t* hle)
 
     nead_slab = 0xfb0;
     nead_book = 0x330;
+    nead_filter_avg = 1;
     nead_env_style = NEAD_ENV_OOT;
     nead_resample_old = 0;
     nead_slab_seed(hle);
@@ -726,6 +735,7 @@ void alist_process_nead_mm(struct hle_t* hle)
 
     nead_slab = 0xfb0;
     nead_book = 0x330;
+    nead_filter_avg = 1;
     nead_env_style = NEAD_ENV_OOT;
     nead_resample_old = 0;
     nead_slab_seed(hle);
@@ -746,6 +756,7 @@ void alist_process_nead_mmb(struct hle_t* hle)
 
     nead_slab = 0xfb0;
     nead_book = 0x330;
+    nead_filter_avg = 1;
     nead_env_style = NEAD_ENV_OOT;
     nead_resample_old = 0;
     nead_slab_seed(hle);
@@ -766,6 +777,7 @@ void alist_process_nead_ac(struct hle_t* hle)
 
     nead_slab = 0xfb0;
     nead_book = 0x300;
+    nead_filter_avg = 1;
     nead_env_style = NEAD_ENV_OOT;
     nead_resample_old = 0;
     nead_slab_seed(hle);
@@ -790,6 +802,7 @@ void alist_process_nead_mats(struct hle_t* hle)
 
     nead_slab = 0xfb0;
     nead_book = 0x330;
+    nead_filter_avg = 1;
     nead_env_style = NEAD_ENV_OOT;
     nead_resample_old = 0;
     nead_slab_seed(hle);

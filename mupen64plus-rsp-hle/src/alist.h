@@ -123,7 +123,7 @@ void alist_envmix_nead(
         bool wet_bypass);
 
 void alist_mix(struct hle_t* hle, uint16_t dmemo, uint16_t dmemi, uint16_t count, int16_t gain);
-void alist_multQ44(struct hle_t* hle, uint16_t dmem, uint16_t count, int8_t gain);
+void alist_multQ44(struct hle_t* hle, uint16_t dmem, uint16_t count, uint8_t gain);
 void alist_add(struct hle_t* hle, uint16_t dmemo, uint16_t dmemi, uint16_t count);
 
 void alist_adpcm(
@@ -203,7 +203,8 @@ void alist_filter(
         uint16_t dmem,
         uint16_t count,
         uint32_t address,
-        const int16_t* table);
+        const int16_t* table,
+        bool average);
 
 void alist_polef(
         struct hle_t* hle,

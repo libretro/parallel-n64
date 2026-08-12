@@ -250,6 +250,8 @@ void alist_move(struct hle_t* hle, uint16_t dmemo, uint16_t dmemi, uint16_t coun
 
 void alist_copy_every_other_sample(struct hle_t* hle, uint16_t dmemo, uint16_t dmemi, uint16_t count)
 {
+    /* eight output samples per iteration, counter tested after */
+    count = (uint16_t)((count + 7) & ~7);
     while (count != 0) {
         *alist_s16(hle, dmemo) = *alist_s16(hle, dmemi);
         dmemo += 2;
@@ -1275,14 +1277,21 @@ void alist_mix(struct hle_t* hle, uint16_t dmemo, uint16_t dmemi, uint16_t count
     }
 }
 
-void alist_multQ44(struct hle_t* hle, uint16_t dmem, uint16_t count, int8_t gain)
+void alist_multQ44(struct hle_t* hle, uint16_t dmem, uint16_t count, uint8_t gain)
 {
+    /* The microcode splits the gain byte into unsigned nibbles: the
+     * integer part goes through vmadh, the fraction (low nibble <<12)
+     * through vmudm, i.e. out = clamp(x * gain / 16) with the gain
+     * unsigned 0..255 - not a signed Q4.4.  The loop processes 16
+     * samples per iteration and tests the counter after, so the extent
+     * rounds up to 0x20 bytes. */
     int16_t *dst = (int16_t*)(hle->alist_buffer + dmem);
 
+    count = (uint16_t)((count + 0x1f) & ~0x1f);
     count >>= 1;
 
     while(count != 0) {
-        *dst = clamp_s16(*dst * gain >> 4);
+        *dst = clamp_s16((int_fast32_t)*dst * gain >> 4);
 
         ++dst;
         --count;
@@ -1617,17 +1626,22 @@ void alist_resample_zoh(
         uint32_t pitch,
         uint32_t pitch_accu)
 {
-    uint16_t ipos = dmemi >> 1;
+    /* The microcode walks a byte-address 16.16 accumulator seeded
+     * (dmemi << 16) | accu, stepping by pitch (the command's w1 << 2)
+     * per output sample and even-masking each fetch address; the loop
+     * emits four samples per iteration and tests its byte counter
+     * after, so the extent rounds up to 8. */
+    uint32_t pos = ((uint32_t)dmemi << 16) | (pitch_accu & 0xffff);
     uint16_t opos = dmemo >> 1;
+
+    count = (uint16_t)((count + 7) & ~7);
     count >>= 1;
 
     while(count != 0) {
+        *sample(hle, opos++) =
+            *(int16_t*)(hle->alist_buffer + ((((pos >> 16) & 0xffe) ^ S16) & 0xfff));
 
-        *sample(hle, opos++) = *sample(hle, ipos);
-
-        pitch_accu += pitch;
-        ipos += (pitch_accu >> 16);
-        pitch_accu &= 0xffff;
+        pos += pitch;
         --count;
     }
 }
@@ -1849,7 +1863,8 @@ void alist_filter(
         uint16_t dmem,
         uint16_t count,
         uint32_t address,
-        const int16_t* table)
+        const int16_t* table,
+        bool average)
 {
     int16_t state_samples[8];
     int16_t state_table[8];
@@ -1870,7 +1885,9 @@ void alist_filter(
     }
 
     for (i = 0; i < 8; ++i)
-        t[i] = (int16_t)(((int32_t)table[i] + (int32_t)state_table[i] + 1) >> 1);
+        t[i] = average
+            ? (int16_t)(((int32_t)table[i] + (int32_t)state_table[i] + 1) >> 1)
+            : table[i];
 
     for (i = 0; i < 7; ++i)
         win[i] = state_samples[i + 1];
@@ -1903,7 +1920,8 @@ void alist_filter(
     } while (remaining > 0);
 
     dram_store_u16(hle, (uint16_t*)cur, address,        8);
-    dram_store_u16(hle, (uint16_t*)t,   address + 0x10, 8);
+    if (average)
+        dram_store_u16(hle, (uint16_t*)t,   address + 0x10, 8);
 }
 
 void alist_polef(
