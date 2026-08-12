@@ -180,10 +180,22 @@ void alist_clear(struct hle_t* hle, uint16_t dmem, uint16_t count)
     }
 }
 
+/* SP DMA alignment.
+ *
+ * The RSP's DMA engine transfers in 8-byte units and ignores the low three
+ * bits of both addresses: cxd4 computes its offsets as
+ *
+ *     offC = (... + SP_MEM_ADDR + i) & 0x00001FF8
+ *     offD = (... + SP_DRAM_ADDR + i) & 0x00FFFFF8
+ *
+ * i.e. ~7 on the DMEM side as well as the DRAM side.  This masked the DMEM
+ * address to ~3, so a transfer whose DMEM address was 4-byte but not 8-byte
+ * aligned landed four bytes - two samples - away from where the hardware
+ * puts it, in every direction and for every microcode. */
 void alist_load(struct hle_t* hle, uint16_t dmem, uint32_t address, uint16_t count)
 {
     /* enforce DMA alignment constraints */
-    dmem    &= ~3;
+    dmem    &= ~7;
     address &= ~7;
     count = align(count, 8);
     memcpy(hle->alist_buffer + dmem, hle->dram + address, count);
@@ -192,7 +204,7 @@ void alist_load(struct hle_t* hle, uint16_t dmem, uint32_t address, uint16_t cou
 void alist_save(struct hle_t* hle, uint16_t dmem, uint32_t address, uint16_t count)
 {
     /* enforce DMA alignment constraints */
-    dmem    &= ~3;
+    dmem    &= ~7;
     address &= ~7;
     count = align(count, 8);
     memcpy(hle->dram + address, hle->alist_buffer + dmem, count);
