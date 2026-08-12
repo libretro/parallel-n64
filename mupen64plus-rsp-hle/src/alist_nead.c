@@ -66,6 +66,10 @@ static uint16_t nead_slab = 0xfb0;
  * residue-carrying one */
 static int nead_resample_old = 0;
 
+/* per-build ENVMIXER dialect */
+enum { NEAD_ENV_SF, NEAD_ENV_FZ, NEAD_ENV_OOT, NEAD_ENV_MK };
+static int nead_env_style = NEAD_ENV_OOT;
+
 static int16_t nead_clamp_s16(int_fast32_t x)
 {
     x = (x < INT16_MIN) ? INT16_MIN : x;
@@ -268,6 +272,10 @@ static void ENVSETUP1_MK(struct hle_t* hle, uint32_t w1, uint32_t w2)
 
 static void ENVSETUP1(struct hle_t* hle, uint32_t w1, uint32_t w2)
 {
+    /* the handler clears the whole envelope vector before writing the
+     * wet lanes, so the dry envelopes are zero until ENVSETUP2 */
+    hle->alist_nead.env_values[0] = 0;
+    hle->alist_nead.env_values[1] = 0;
     hle->alist_nead.env_values[2] = (w1 >> 8) & 0xff00;
     hle->alist_nead.env_steps[2]  = w1;
     hle->alist_nead.env_steps[0]  = (w2 >> 16);
@@ -296,15 +304,18 @@ static void ENVMIXER_MK(struct hle_t* hle, uint32_t w1, uint32_t w2)
     xors[0] = 0 - (int16_t)((w1 & 0x2) >> 1);
     xors[1] = 0 - (int16_t)((w1 & 0x1)     );
 
+    /* this build biases every DMEM address (its own loads and saves
+     * included) by 0x450; the bias is uniform, so the unbiased shadow
+     * stays equivalent */
     alist_envmix_nead(
             hle,
-            false,  /* unsupported by this ucode */
+            false,  /* no swap flag in this build */
             dmem_dl, dmem_dr,
             dmem_wl, dmem_wr,
             dmemi, count,
             hle->alist_nead.env_values,
             hle->alist_nead.env_steps,
-            xors);
+            xors, 8, false);
 }
 
 static void ENVMIXER(struct hle_t* hle, uint32_t w1, uint32_t w2)
@@ -313,16 +324,37 @@ static void ENVMIXER(struct hle_t* hle, uint32_t w1, uint32_t w2)
 
     uint16_t dmemi = (w1 >> 12) & 0xff0;
     uint8_t  count = (w1 >>  8) & 0xff;
-    bool     swap_wet_LR = (w1 >> 4) & 0x1;
+    bool     swap_wet_LR;
+    bool     wet_bypass = false;
     uint16_t dmem_dl = (w2 >> 20) & 0xff0;
     uint16_t dmem_dr = (w2 >> 12) & 0xff0;
     uint16_t dmem_wl = (w2 >>  4) & 0xff0;
     uint16_t dmem_wr = (w2 <<  4) & 0xff0;
 
-    xors[2] = 0 - (int16_t)((w1 & 0x8) >> 1);
-    xors[3] = 0 - (int16_t)((w1 & 0x4) >> 1);
-    xors[0] = 0 - (int16_t)((w1 & 0x2) >> 1);
-    xors[1] = 0 - (int16_t)((w1 & 0x1)     );
+    if (nead_env_style == NEAD_ENV_FZ) {
+        /* the mask table loads survive in this build but the loop
+         * never applies them - bits 0 and 1 are inert */
+        xors[0] = 0;
+        xors[1] = 0;
+    }
+    else {
+        xors[0] = 0 - (int16_t)((w1 & 0x2) >> 1);
+        xors[1] = 0 - (int16_t)((w1 & 0x1)     );
+    }
+    if (nead_env_style == NEAD_ENV_OOT) {
+        /* four masks, swap on bit 4 */
+        xors[2] = 0 - (int16_t)((w1 & 0x8) >> 1);
+        xors[3] = 0 - (int16_t)((w1 & 0x4) >> 1);
+        swap_wet_LR = (w1 >> 4) & 0x1;
+    }
+    else {
+        /* two masks, swap on bit 2; F-Zero X additionally skips the
+         * wet writes when the second wet envelope lane is zero */
+        xors[2] = 0;
+        xors[3] = 0;
+        swap_wet_LR = (w1 >> 2) & 0x1;
+        wet_bypass = (nead_env_style == NEAD_ENV_FZ);
+    }
 
     alist_envmix_nead(
             hle,
@@ -332,7 +364,7 @@ static void ENVMIXER(struct hle_t* hle, uint32_t w1, uint32_t w2)
             dmemi, count,
             hle->alist_nead.env_values,
             hle->alist_nead.env_steps,
-            xors);
+            xors, 16, wet_bypass);
 }
 
 static void DUPLICATE(struct hle_t* hle, uint32_t w1, uint32_t w2)
@@ -509,6 +541,7 @@ void alist_process_nead_mk(struct hle_t* hle)
     };
 
     nead_slab = 0xfa0;
+    nead_env_style = NEAD_ENV_MK;
     nead_resample_old = 1;
     nead_slab_seed(hle);
     alist_process(hle, ABI, 0x20);
@@ -529,6 +562,7 @@ void alist_process_nead_sf(struct hle_t* hle)
     };
 
     nead_slab = 0xf90;
+    nead_env_style = NEAD_ENV_SF;
     nead_resample_old = 0;
     nead_slab_seed(hle);
     alist_process(hle, ABI, 0x20);
@@ -549,6 +583,7 @@ void alist_process_nead_sfj(struct hle_t* hle)
     };
 
     nead_slab = 0xf90;
+    nead_env_style = NEAD_ENV_SF;
     nead_resample_old = 0;
     nead_slab_seed(hle);
     alist_process(hle, ABI, 0x20);
@@ -569,6 +604,7 @@ void alist_process_nead_fz(struct hle_t* hle)
     };
 
     nead_slab = 0xfc0;
+    nead_env_style = NEAD_ENV_FZ;
     nead_resample_old = 0;
     nead_slab_seed(hle);
     alist_process(hle, ABI, 0x20);
@@ -589,6 +625,7 @@ void alist_process_nead_wrjb(struct hle_t* hle)
     };
 
     nead_slab = 0xf90;
+    nead_env_style = NEAD_ENV_SF;
     nead_resample_old = 0;
     nead_slab_seed(hle);
     alist_process(hle, ABI, 0x20);
@@ -607,6 +644,7 @@ void alist_process_nead_ys(struct hle_t* hle)
     };
 
     nead_slab = 0xfc0;
+    nead_env_style = NEAD_ENV_SF;
     nead_resample_old = 0;
     nead_slab_seed(hle);
     alist_process(hle, ABI, 0x18);
@@ -625,6 +663,7 @@ void alist_process_nead_1080(struct hle_t* hle)
     };
 
     nead_slab = 0xfc0;
+    nead_env_style = NEAD_ENV_OOT;
     nead_resample_old = 0;
     nead_slab_seed(hle);
     alist_process(hle, ABI, 0x18);
@@ -643,6 +682,7 @@ void alist_process_nead_oot(struct hle_t* hle)
     };
 
     nead_slab = 0xfb0;
+    nead_env_style = NEAD_ENV_OOT;
     nead_resample_old = 0;
     nead_slab_seed(hle);
     alist_process(hle, ABI, 0x18);
@@ -661,6 +701,7 @@ void alist_process_nead_mm(struct hle_t* hle)
     };
 
     nead_slab = 0xfb0;
+    nead_env_style = NEAD_ENV_OOT;
     nead_resample_old = 0;
     nead_slab_seed(hle);
     alist_process(hle, ABI, 0x18);
@@ -679,6 +720,7 @@ void alist_process_nead_mmb(struct hle_t* hle)
     };
 
     nead_slab = 0xfb0;
+    nead_env_style = NEAD_ENV_OOT;
     nead_resample_old = 0;
     nead_slab_seed(hle);
     alist_process(hle, ABI, 0x18);
@@ -697,6 +739,7 @@ void alist_process_nead_ac(struct hle_t* hle)
     };
 
     nead_slab = 0xfb0;
+    nead_env_style = NEAD_ENV_OOT;
     nead_resample_old = 0;
     nead_slab_seed(hle);
     alist_process(hle, ABI, 0x18);
@@ -719,6 +762,7 @@ void alist_process_nead_mats(struct hle_t* hle)
     };
 
     nead_slab = 0xfb0;
+    nead_env_style = NEAD_ENV_OOT;
     nead_resample_old = 0;
     nead_slab_seed(hle);
     alist_process(hle, ABI, 0x18);

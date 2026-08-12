@@ -118,7 +118,9 @@ void alist_envmix_nead(
         unsigned count,
         uint16_t *env_values,
         uint16_t *env_steps,
-        const int16_t *xors);
+        const int16_t *xors,
+        unsigned granule,
+        bool wet_bypass);
 
 void alist_mix(struct hle_t* hle, uint16_t dmemo, uint16_t dmemi, uint16_t count, int16_t gain);
 void alist_multQ44(struct hle_t* hle, uint16_t dmem, uint16_t count, int8_t gain);

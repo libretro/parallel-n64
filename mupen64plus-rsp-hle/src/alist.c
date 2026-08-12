@@ -1178,45 +1178,80 @@ void alist_envmix_nead(
         unsigned count,
         uint16_t *env_values,
         uint16_t *env_steps,
-        const int16_t *xors)
+        const int16_t *xors,
+        unsigned granule,
+        bool wet_bypass)
 {
+    /* Transcribed from the sequenced-audio microcodes.  The 16-sample
+     * builds keep envelope value pairs [v, v+step] per channel, use one
+     * pair lane per 8-sample half and advance both lanes by 2*step with
+     * a wrapping vaddc each iteration; the Mario Kart build works in
+     * 8-sample granules with a single lane per channel and a
+     * non-ramping wet envelope.  Dry products are xor-masked before the
+     * saturating buffer adds; the wet products are the masked dry
+     * products scaled by the wet envelope, xor-masked only on the
+     * builds that have wet masks.  F-Zero X skips all wet writes when
+     * the second wet lane is zero.  Every build tests its counter after
+     * the iteration, so the extent rounds up to the granule. */
     int16_t *in = (int16_t*)(hle->alist_buffer + dmemi);
     int16_t *dl = (int16_t*)(hle->alist_buffer + dmem_dl);
     int16_t *dr = (int16_t*)(hle->alist_buffer + dmem_dr);
     int16_t *wl = (int16_t*)(hle->alist_buffer + dmem_wl);
     int16_t *wr = (int16_t*)(hle->alist_buffer + dmem_wr);
+    uint16_t v[6];
+    unsigned i, half, halves;
 
-    /* make sure count is a multiple of 8 */
-    count = align(count, 8);
+    v[0] = env_values[0]; v[1] = (uint16_t)(env_values[0] + env_steps[0]);
+    v[2] = env_values[1]; v[3] = (uint16_t)(env_values[1] + env_steps[1]);
+    v[4] = env_values[2]; v[5] = (uint16_t)(env_values[2] + env_steps[2]);
+
+    halves = granule / 8;
+    count = (count + granule - 1) & ~(granule - 1);
 
     if (swap_wet_LR)
         swap(&wl, &wr);
 
-    while (count != 0) {
-        size_t i;
-        for(i = 0; i < 8; ++i) {
-            int16_t l  = (((int32_t)in[i^S] * (uint32_t)env_values[0]) >> 16) ^ xors[0];
-            int16_t r  = (((int32_t)in[i^S] * (uint32_t)env_values[1]) >> 16) ^ xors[1];
-            int16_t l2 = (((int32_t)l * (uint32_t)env_values[2]) >> 16) ^ xors[2];
-            int16_t r2 = (((int32_t)r * (uint32_t)env_values[2]) >> 16) ^ xors[3];
+    {
+        /* F-Zero X commits at entry: with the second wet lane zero it
+         * runs a dry-only loop */
+        bool skip_wet = wet_bypass && (v[5] == 0);
 
-            dl[i^S] = clamp_s16(dl[i^S] + l);
-            dr[i^S] = clamp_s16(dr[i^S] + r);
-            wl[i^S] = clamp_s16(wl[i^S] + l2);
-            wr[i^S] = clamp_s16(wr[i^S] + r2);
+    while (count != 0) {
+        for (half = 0; half < halves; ++half) {
+            unsigned lane = (halves == 2) ? half : 0;
+            for (i = 0; i < 8; ++i) {
+                int16_t s = in[i^S];
+                int16_t l = (int16_t)(((int32_t)s * v[0 + lane]) >> 16) ^ xors[0];
+                int16_t r = (int16_t)(((int32_t)s * v[2 + lane]) >> 16) ^ xors[1];
+                int16_t l2 = (int16_t)((((int32_t)l * v[4 + lane]) >> 16) ^ xors[2]);
+                int16_t r2 = (int16_t)((((int32_t)r * v[4 + lane]) >> 16) ^ xors[3]);
+
+                dl[i^S] = clamp_s16(dl[i^S] + l);
+                dr[i^S] = clamp_s16(dr[i^S] + r);
+                if (!skip_wet) {
+                    wl[i^S] = clamp_s16(wl[i^S] + l2);
+                    wr[i^S] = clamp_s16(wr[i^S] + r2);
+                }
+            }
+            dl += 8; dr += 8; wl += 8; wr += 8; in += 8;
         }
 
-        env_values[0] += env_steps[0];
-        env_values[1] += env_steps[1];
-        env_values[2] += env_steps[2];
-
-        dl += 8;
-        dr += 8;
-        wl += 8;
-        wr += 8;
-        in += 8;
-        count -= 8;
+        if (halves == 2) {
+            for (i = 0; i < 6; ++i)
+                v[i] = (uint16_t)(v[i] + 2 * env_steps[i >> 1]);
+        }
+        else {
+            v[0] = (uint16_t)(v[0] + env_steps[0]);
+            v[2] = (uint16_t)(v[2] + env_steps[1]);
+            v[4] = (uint16_t)(v[4] + env_steps[2]);
+        }
+        count -= granule;
     }
+    }
+
+    env_values[0] = v[0];
+    env_values[1] = v[2];
+    env_values[2] = v[4];
 }
 
 
