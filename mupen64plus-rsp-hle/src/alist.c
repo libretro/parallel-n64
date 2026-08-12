@@ -1067,7 +1067,10 @@ void alist_envmix_lin(
         }
     }
     else {
-        memcpy((uint8_t *)save_buffer, hle->dram + address, 80);
+        /* the ucode stores this state with sqv: BE halfwords in DRAM.
+         * Read it halfword-correct so resume matches the RSP layout. */
+        for (j = 0; j < 40; ++j)
+            save_buffer[j] = (int16_t)*dram_u16(hle, address + 2*j);
         for (j = 0; j < 8; ++j) {
             lane[0][j] = ((int32_t)save_buffer[j]      << 16) | (uint16_t)save_buffer[j +  8];
             lane[1][j] = ((int32_t)save_buffer[j + 16] << 16) | (uint16_t)save_buffer[j + 24];
@@ -1166,7 +1169,11 @@ void alist_envmix_lin(
     save_buffer[37] = (int16_t)((uint16_t)rt[1]);
     save_buffer[38] = dry;
     save_buffer[39] = wet;
-    memcpy(hle->dram + address, (uint8_t *)save_buffer, 80);
+    {
+        unsigned j2;
+        for (j2 = 0; j2 < 40; ++j2)
+            *dram_u16(hle, address + 2*j2) = (uint16_t)save_buffer[j2];
+    }
 }
 
 void alist_envmix_nead(
