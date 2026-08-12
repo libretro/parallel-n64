@@ -1390,23 +1390,30 @@ void alist_resample_audio(
      * there -- Dark Rift reads the saved block back every frame and
      * drives the fight scenes' palette lighting from it, so the whole
      * block has to match the microcode byte for byte. */
-    uint8_t* const slab = hle->alist_buffer + ALIST_AUDIO_STATE_SLAB;
     uint32_t pitch_accu;
     uint16_t in = dmemi;
     uint16_t ipos;
     uint16_t opos = dmemo >> 1;
     uint16_t residue;
     uint16_t aligned;
+    unsigned i;
 
     count >>= 1;
 
     if (init) {
         /* The init path only clears the samples and the pitch
          * accumulator; the rest of the slab keeps its residue. */
-        memset(slab, 0, 10);
+        for (i = 0; i < 5; ++i)
+            *alist_s16(hle, (uint16_t)(ALIST_AUDIO_STATE_SLAB + 2*i)) = 0;
     }
-    else
-        memcpy(slab, hle->dram + address, 0x20);
+    else {
+        /* the state DMA lands in the slab lane by lane; a byte memcpy
+         * only agrees with it at addresses where the host byte-order
+         * XOR cancels, which the final input position does not honour */
+        for (i = 0; i < 0x10; ++i)
+            *alist_s16(hle, (uint16_t)(ALIST_AUDIO_STATE_SLAB + 2*i)) =
+                (int16_t)*dram_u16(hle, address + 2*i);
+    }
 
     if (flag2) {
         /* Restore the 16 input bytes saved at the last aligned
@@ -1414,12 +1421,16 @@ void alist_resample_audio(
          * input pointer up to the position inside them where the
          * previous run's window ended. */
         uint16_t back = (uint16_t)*alist_s16(hle, ALIST_AUDIO_STATE_SLAB + 0xa);
-        memcpy(hle->alist_buffer + ((dmemi - 16) & 0xfff), slab + 0x10, 16);
+        for (i = 0; i < 8; ++i)
+            *alist_s16(hle, (uint16_t)((dmemi - 16 + 2*i) & 0xffe)) =
+                *alist_s16(hle, (uint16_t)(ALIST_AUDIO_STATE_SLAB + 0x10 + 2*i));
         in -= back;
     }
 
     in -= 8;
-    memcpy(hle->alist_buffer + (in & 0xfff), slab, 8);
+    for (i = 0; i < 4; ++i)
+        *alist_s16(hle, (uint16_t)((in + 2*i) & 0xffe)) =
+            *alist_s16(hle, (uint16_t)(ALIST_AUDIO_STATE_SLAB + 2*i));
     pitch_accu = (uint16_t)*alist_s16(hle, ALIST_AUDIO_STATE_SLAB + 0x8);
     ipos = in >> 1;
 
@@ -1446,7 +1457,9 @@ void alist_resample_audio(
         --count;
     }
 
-    memcpy(slab, hle->alist_buffer + ((ipos << 1) & 0xfff), 8);
+    for (i = 0; i < 4; ++i)
+        *alist_s16(hle, (uint16_t)(ALIST_AUDIO_STATE_SLAB + 2*i)) =
+            *sample(hle, (uint16_t)(ipos + i));
     *alist_s16(hle, ALIST_AUDIO_STATE_SLAB + 0x8) = (int16_t)pitch_accu;
 
     aligned = (ipos << 1) + 8;
@@ -1454,9 +1467,13 @@ void alist_resample_audio(
     aligned -= residue;
     *alist_s16(hle, ALIST_AUDIO_STATE_SLAB + 0xa) =
         (residue != 0) ? (int16_t)(16 - residue) : 0;
-    memcpy(slab + 0x10, hle->alist_buffer + (aligned & 0xfff), 16);
+    for (i = 0; i < 8; ++i)
+        *alist_s16(hle, (uint16_t)(ALIST_AUDIO_STATE_SLAB + 0x10 + 2*i)) =
+            *alist_s16(hle, (uint16_t)((aligned + 2*i) & 0xffe));
 
-    memcpy(hle->dram + address, slab, 0x20);
+    for (i = 0; i < 0x10; ++i)
+        *dram_u16(hle, address + 2*i) =
+            (uint16_t)*alist_s16(hle, (uint16_t)(ALIST_AUDIO_STATE_SLAB + 2*i));
 }
 
 void alist_resample_zoh(
