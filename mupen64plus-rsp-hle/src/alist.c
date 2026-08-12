@@ -192,22 +192,52 @@ void alist_clear(struct hle_t* hle, uint16_t dmem, uint16_t count)
  * address to ~3, so a transfer whose DMEM address was 4-byte but not 8-byte
  * aligned landed four bytes - two samples - away from where the hardware
  * puts it, in every direction and for every microcode. */
-void alist_load(struct hle_t* hle, uint16_t dmem, uint32_t address, uint16_t count)
+/* The DMA engine advances its DMEM pointer one 8-byte unit at a time and
+ * masks each one, so a transfer that runs off the end of the buffer wraps
+ * rather than continuing into whatever follows:
+ *
+ *     offC = (count*length + SP_MEM_ADDR + i) & 0x00001FF8
+ *
+ * A straight memcpy of the whole span has no such bound.  alist_buffer is
+ * 0x1000 bytes and struct hle_t places alist_audio - the in/out/count,
+ * volumes, targets and rates - immediately after it, so a transfer whose
+ * DMEM offset plus length passed 0x1000 wrote through the audio state of
+ * the very commands driving it.  LOADBUFF and SAVEBUFF take both operands
+ * from the alist (in/out via SETBUFF, count as w2's low half), and neither
+ * was bounded, so reaching it needed nothing more than a buffer near the
+ * top of DMEM.
+ *
+ * Masking per unit, the way the hardware does, both bounds the access and
+ * reproduces the wrap. */
+static void alist_dma(struct hle_t* hle, uint16_t dmem, uint32_t address,
+                      uint16_t count, int to_dram)
 {
+    uint32_t i;
+
     /* enforce DMA alignment constraints */
     dmem    &= ~7;
     address &= ~7;
     count = align(count, 8);
-    memcpy(hle->alist_buffer + dmem, hle->dram + address, count);
+
+    for (i = 0; i < count; i += 8) {
+        uint8_t* const sp  = hle->alist_buffer + ((dmem + i) & 0xff8);
+        uint8_t* const ram = hle->dram + address + i;
+
+        if (to_dram)
+            memcpy(ram, sp, 8);
+        else
+            memcpy(sp, ram, 8);
+    }
+}
+
+void alist_load(struct hle_t* hle, uint16_t dmem, uint32_t address, uint16_t count)
+{
+    alist_dma(hle, dmem, address, count, 0);
 }
 
 void alist_save(struct hle_t* hle, uint16_t dmem, uint32_t address, uint16_t count)
 {
-    /* enforce DMA alignment constraints */
-    dmem    &= ~7;
-    address &= ~7;
-    count = align(count, 8);
-    memcpy(hle->dram + address, hle->alist_buffer + dmem, count);
+    alist_dma(hle, dmem, address, count, 1);
 }
 
 void alist_move(struct hle_t* hle, uint16_t dmemo, uint16_t dmemi, uint16_t count)
