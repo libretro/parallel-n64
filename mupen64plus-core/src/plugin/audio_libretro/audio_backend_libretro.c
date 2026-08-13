@@ -83,24 +83,15 @@ static double   current_sample_rate_exact; /* the same rate, unrounded */
 /* Per-retro_run audio-delivery smoother state (see flush_audio_libretro). */
 #define SMOOTH_RATE_WINDOW  512u   /* cap on the running-mean window     */
 #define SMOOTH_SETPOINT_F   3u     /* carry setpoint, in fields (= rate)  */
-#define SMOOTH_HIWATER_F    4u     /* cap on the adaptive cushion, in fields */
-#define SMOOTH_DECAY_RUNS   4096u  /* runs between steps down of the mark  */
+#define SMOOTH_HIWATER_F    4u     /* hard-drain threshold, in fields     */
 
 static unsigned long smooth_pushed_this_run; /* frames pushed since last flush */
 static unsigned long smooth_rate_q16;        /* running mean of frames/run, Q16 */
 static unsigned long smooth_runs;            /* retro_run count (window ramp)   */
-static unsigned long smooth_hole;            /* current run of empty pushes     */
-static unsigned long smooth_worst_hole;      /* deepest empty run seen recently */
-static unsigned long smooth_decay;           /* runs since the mark stepped down */
-static unsigned long pushed_last_run;    /* frames the last run produced    */
 
 void init_audio_libretro(void)
 {
    audio_acc_frames = 0;
-   smooth_hole = 0;
-   smooth_worst_hole = 0;
-   smooth_decay = 0;
-   smooth_decay = 0;
    current_sample_rate = 0;
    smooth_pushed_this_run = 0;
    smooth_rate_q16 = 0;
@@ -110,10 +101,6 @@ void init_audio_libretro(void)
 void deinit_audio_libretro(void)
 {
    audio_acc_frames = 0;
-   smooth_hole = 0;
-   smooth_worst_hole = 0;
-   smooth_decay = 0;
-   smooth_decay = 0;
    current_sample_rate = 0;
    smooth_pushed_this_run = 0;
    smooth_rate_q16 = 0;
@@ -216,8 +203,6 @@ void flush_audio_libretro(void)
    long          emit;
    long          cap;
    size_t        held;
-   unsigned long setpoint;
-   unsigned long hiwater;
 
    /* Fold the run that just finished into the running-mean rate (Q16).
     * w ramps 1..SMOOTH_RATE_WINDOW so this is a true cumulative average
@@ -225,7 +210,6 @@ void flush_audio_libretro(void)
    w = ++smooth_runs;
    if (w > SMOOTH_RATE_WINDOW)
       w = SMOOTH_RATE_WINDOW;
-   pushed_last_run = smooth_pushed_this_run;
    num = (long)(smooth_pushed_this_run << 16) - (long)smooth_rate_q16;
    smooth_rate_q16 = (unsigned long)((long)smooth_rate_q16 + num / (long)w);
    smooth_pushed_this_run = 0;
@@ -233,40 +217,6 @@ void flush_audio_libretro(void)
    held = audio_acc_frames;
    if (held == 0)
       return;
-
-   /* Track how deep the production holes go.  A game whose mixer runs
-    * every retro_run never leaves one, and needs no cushion at all; one
-    * that runs on alternate fields leaves holes a single run deep and
-    * needs a field to cover each of them.  Sizing the cushion from what
-    * the game has actually done gives the steady producers their latency
-    * back without taking any margin away from the bursty ones. */
-   if (pushed_last_run == 0)
-   {
-      ++smooth_hole;
-      if (smooth_hole > smooth_worst_hole)
-         smooth_worst_hole = smooth_hole;
-   }
-   else
-      smooth_hole = 0;
-
-   /* Let the mark fade.  A scene change or a pause stops production for a
-    * few runs while the carry is still draining, which counts as a hole
-    * deeper than the game's steady cadence ever produces; without a decay
-    * that one transition would hold the cushion up for the rest of the
-    * session.  Stepping it down every few thousand runs recovers within a
-    * minute or so, and a game that really does leave holes re-establishes
-    * its mark within a couple of runs. */
-   if (++smooth_decay >= SMOOTH_DECAY_RUNS)
-   {
-      smooth_decay = 0;
-      if (smooth_worst_hole > 0)
-         --smooth_worst_hole;
-   }
-
-   setpoint = smooth_worst_hole + 1u;
-   if (setpoint > SMOOTH_SETPOINT_F)
-      setpoint = SMOOTH_SETPOINT_F;
-   hiwater = setpoint + 1u;
 
    rate = smooth_rate_q16 >> 16;
    if (rate == 0)
@@ -277,7 +227,7 @@ void flush_audio_libretro(void)
    }
 
    /* proportional pull of the carry toward the SETPOINT-field cushion */
-   err  = (long)held - (long)(setpoint * rate);
+   err  = (long)held - (long)(SMOOTH_SETPOINT_F * rate);
    emit = (long)rate + (err >> 3);
 
    /* normal bounds: never negative, never more than 1.5 fields per run */
@@ -289,8 +239,8 @@ void flush_audio_libretro(void)
 
    /* sustained production spike: hard-drain down to two fields so the
     * carry can never approach the accumulator capacity */
-   if (held > hiwater * rate)
-      emit = (long)held - (long)((setpoint > 1u ? setpoint - 1u : 1u) * rate);
+   if (held > SMOOTH_HIWATER_F * rate)
+      emit = (long)held - (long)(2u * rate);
 
    /* never emit more than is actually held */
    if (emit > (long)held)
