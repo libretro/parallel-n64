@@ -186,6 +186,10 @@ static void interleave_stage_v2(struct hle_t* hle, musyx_t *musyx,
                                 uint16_t mask_16, uint32_t ptr_18,
                                 uint32_t ptr_1c, uint32_t output_ptr);
 
+/* set for the revision whose envelope update emits the e50 pair in the
+ * opposite order to the other three destinations */
+static int musyx_env_e50_nocarry = 0;
+
 static int32_t dot4(const int16_t *x, const int16_t *y)
 {
     size_t i;
@@ -218,6 +222,33 @@ static int32_t dot4(const int16_t *x, const int16_t *y)
  **************************************************************************/
 void musyx_v1_task(struct hle_t* hle)
 {
+    /* Builds of this microcode differ in the order the envelope update
+     * emits the e50 pair.  Where the carry-setting add lands on the high
+     * half, that half never sees the carry out of its own low half and
+     * the gain decays by the step's high half per iteration instead of
+     * by the step.  Read the order out of the task's own text rather
+     * than keeping a list of the games that have it: the two adds are
+     * adjacent, and it is the second of the pair that says which. */
+    {
+        uint32_t text = *dmem_u32(hle, TASK_UCODE);
+        uint32_t k;
+
+        musyx_env_e50_nocarry = 0;
+        for (k = 0; k + 8 <= 0x1000; k += 4) {
+            uint32_t w0 = *dram_u32(hle, text + k);
+            uint32_t w1 = *dram_u32(hle, text + k + 4);
+            /* vadd vD,vD,v21[3] followed by vaddc vE,vE,v20[3] */
+            if ((w0 >> 26) == 0x12 && ((w0 >> 25) & 1)
+             && (w0 & 0x3f) == 0x10 && ((w0 >> 16) & 31) == 21
+             && ((w0 >> 21) & 15) == 11
+             && (w1 >> 26) == 0x12 && ((w1 >> 25) & 1)
+             && (w1 & 0x3f) == 0x14 && ((w1 >> 16) & 31) == 20
+             && ((w1 >> 21) & 15) == 11) {
+                musyx_env_e50_nocarry = 1;
+                break;
+            }
+        }
+    }
     uint32_t sfd_ptr   = *dmem_u32(hle, TASK_DATA_PTR);
     uint32_t sfd_count = *dmem_u32(hle, TASK_DATA_SIZE);
     uint32_t state_ptr;
@@ -298,6 +329,7 @@ void musyx_v1_task(struct hle_t* hle)
  * HLE bug. */
 void musyx_v2_task(struct hle_t* hle)
 {
+    musyx_env_e50_nocarry = 0;
     uint32_t sfd_ptr   = *dmem_u32(hle, TASK_DATA_PTR);
     uint32_t sfd_count = *dmem_u32(hle, TASK_DATA_SIZE);
     musyx_t musyx;
@@ -726,12 +758,20 @@ static void mix_voice_samples(struct hle_t* hle, musyx_t *musyx,
     uint32_t pitch_step = pitch_shift << 4;
 
     int32_t  v4_env[4];
+    int16_t  e50_hi[8], e50_step_hi;
     int32_t  v4_env_step[4];
     int16_t *v4_dst[4];
     int16_t  v4[4];
 
     dram_load_u32(hle, (uint32_t *)v4_env,      voice_ptr + VOICE_ENV_BEGIN, 4);
     dram_load_u32(hle, (uint32_t *)v4_env_step, voice_ptr + VOICE_ENV_STEP,  4);
+
+    {
+        unsigned j;
+        e50_step_hi = (int16_t)((v4_env_step[3] << 3) >> 16);
+        for (j = 0; j < 8; ++j)
+            e50_hi[j] = (int16_t)((v4_env[3] + (int32_t)j * v4_env_step[3]) >> 16);
+    }
 
     v4_dst[0] = musyx->left;
     v4_dst[1] = musyx->right;
@@ -775,13 +815,33 @@ static void mix_voice_samples(struct hle_t* hle, musyx_t *musyx,
              * (+0x4000 before the shift), not truncated; the microcode
              * then folds the destination into the same accumulator with
              * VMADH and saturates once on readout. */
-            int32_t accu = (v * (v4_env[k] >> 16) + 0x4000) >> 15;
+            int32_t accu = (k == 3 && musyx_env_e50_nocarry)
+                ? ((v * (int32_t)e50_hi[i & 7] + 0x4000) >> 15)
+                : ((v * (v4_env[k] >> 16) + 0x4000) >> 15);
             v4[k] = clamp_s16(accu);
             *(v4_dst[k]) = clamp_s16(accu + *(v4_dst[k]));
 
             /* update envelopes and dst pointers */
             ++(v4_dst[k]);
             v4_env[k] += v4_env_step[k];
+        }
+
+        /* The e50 envelope is a ramp across the eight lanes of a vector
+         * pair - lane j holds env + j*step, split into a high and a low
+         * half - and the mix loop consumes eight samples per iteration,
+         * taking each sample's gain from its own lane.  The step is
+         * scaled by eight so one add per iteration advances every lane.
+         * The pair is emitted in the opposite order to the other three
+         * destinations, so the high half is added with the
+         * carry-setting instruction and never sees the carry out of its
+         * own low half: the gain falls by the step's high half each
+         * iteration rather than by the step itself. */
+        if (musyx_env_e50_nocarry && (i & 7) == 7) {
+            unsigned j;
+            for (j = 0; j < 8; ++j) {
+                uint32_t t = (uint32_t)(uint16_t)e50_hi[j] + (uint16_t)e50_step_hi;
+                e50_hi[j] = (int16_t)t;
+            }
         }
     }
 
