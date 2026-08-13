@@ -999,6 +999,152 @@ void alist_envmix_ge(
             *dram_u16(hle, address + 2*h) = (uint16_t)save_buffer[h];
     }
 }
+void alist_envmix_ge_lanes(
+        struct hle_t* hle,
+        bool init,
+        bool aux,
+        uint16_t dmem_dl, uint16_t dmem_dr,
+        uint16_t dmem_wl, uint16_t dmem_wr,
+        uint16_t dmemi, uint16_t count,
+        int16_t dry, int16_t wet,
+        const int16_t *vol,
+        const int16_t *target,
+        const int32_t *rate,
+        uint32_t address)
+{
+    /* The GoldenEye/Blast Corps envmixer keeps its envelope the way the
+     * naudio one does: eight 32-bit lane accumulators per channel, held
+     * as separate high and low vectors, followed by the parameter
+     * vector.  The block is five vectors - forty halfwords - and the
+     * microcode moves it with lqv/sqv.
+     *
+     * On an init call the lanes are seeded from the staged parameters,
+     *   lane[j] = (vol << 16) + rate_hi * idx[j] + ((rate_lo * idx[j]) >> 16)
+     * with idx[] holding j/8 in unsigned 0.16 (the last lane one LSB
+     * short of 1.0).  The block loop then adds the whole 32-bit rate
+     * once per eight samples with a vaddc/vadd pair, so the low halves
+     * wrap with carry while the high halves saturate, and clamps only
+     * the high halves against the target - a ramp sitting at its target
+     * keeps stepping its low halves. */
+    static const uint16_t ramp_idx[8] = {
+        0x2000, 0x4000, 0x6000, 0x8000, 0xa000, 0xc000, 0xe000, 0xffff
+    };
+
+    size_t m, j;
+    int32_t lane[2][8];
+    int16_t tgt[2];
+    int32_t rt[2];
+    int16_t save_buffer[40];
+    size_t blocks = (count >> 1) / 8;
+    size_t n = (aux) ? 4 : 2;
+
+    const int16_t* const in = (int16_t*)(hle->alist_buffer + dmemi);
+    int16_t* const dl = (int16_t*)(hle->alist_buffer + dmem_dl);
+    int16_t* const dr = (int16_t*)(hle->alist_buffer + dmem_dr);
+    int16_t* const wl = (int16_t*)(hle->alist_buffer + dmem_wl);
+    int16_t* const wr = (int16_t*)(hle->alist_buffer + dmem_wr);
+
+    for (j = 0; j < 40; ++j)
+        save_buffer[j] = (int16_t)*dram_u16(hle, address + 2*j);
+
+    if (init) {
+        int c;
+        tgt[0] = target[0];
+        tgt[1] = target[1];
+        rt[0]  = rate[0];
+        rt[1]  = rate[1];
+        for (c = 0; c < 2; ++c) {
+            int16_t  hi = (int16_t)((uint32_t)rt[c] >> 16);
+            uint16_t lo = (uint16_t)rt[c];
+            for (j = 0; j < 8; ++j) {
+                int64_t v = ((int64_t)vol[c] << 16)
+                    + (int64_t)hi * ramp_idx[j]
+                    + (int64_t)(((uint32_t)lo * ramp_idx[j]) >> 16);
+                if (v >  2147483647LL) v =  2147483647LL;
+                if (v < -2147483648LL) v = -2147483648LL;
+                lane[c][j] = (int32_t)v;
+            }
+        }
+    }
+    else {
+        for (j = 0; j < 8; ++j) {
+            lane[0][j] = ((int32_t)save_buffer[j]      << 16) | (uint16_t)save_buffer[j +  8];
+            lane[1][j] = ((int32_t)save_buffer[j + 16] << 16) | (uint16_t)save_buffer[j + 24];
+        }
+        tgt[0] = save_buffer[32];
+        rt[0]  = ((int32_t)save_buffer[33] << 16) | (uint16_t)save_buffer[34];
+        tgt[1] = save_buffer[35];
+        rt[1]  = ((int32_t)save_buffer[36] << 16) | (uint16_t)save_buffer[37];
+        dry    = save_buffer[38];
+        wet    = save_buffer[39];
+    }
+
+    for (m = 0; m < blocks; ++m) {
+        int c;
+        int16_t l_vol[8], r_vol[8];
+
+        for (c = 0; c < 2; ++c) {
+            bool ascend = ((int16_t)((uint32_t)rt[c] >> 16) >= 0);
+            for (j = 0; j < 8; ++j) {
+                int16_t hi;
+                if (!init || m != 0) {
+                    uint32_t lo = ((uint32_t)lane[c][j] & 0xffff)
+                                + ((uint32_t)rt[c] & 0xffff);
+                    int32_t  h  = (lane[c][j] >> 16)
+                                + (int16_t)((uint32_t)rt[c] >> 16)
+                                + (int32_t)(lo >> 16);
+                    if (h >  32767) h =  32767;
+                    if (h < -32768) h = -32768;
+                    lane[c][j] = (h << 16) | (lo & 0xffff);
+                }
+                hi = (int16_t)((uint32_t)lane[c][j] >> 16);
+                if (ascend) {
+                    if (hi > tgt[c]) hi = tgt[c];
+                } else {
+                    if (hi < tgt[c]) hi = tgt[c];
+                }
+                lane[c][j] = ((int32_t)hi << 16) | ((uint32_t)lane[c][j] & 0xffff);
+                if (c == 0) l_vol[j] = hi; else r_vol[j] = hi;
+            }
+        }
+
+        for (j = 0; j < 8; ++j) {
+            size_t k = m * 8 + j;
+            int16_t  gains[4];
+            int16_t* buffers[4];
+
+            buffers[0] = dl + (k^S);
+            buffers[1] = dr + (k^S);
+            buffers[2] = wl + (k^S);
+            buffers[3] = wr + (k^S);
+
+            gains[0] = clamp_s16((l_vol[j] * dry + 0x4000) >> 15);
+            gains[1] = clamp_s16((r_vol[j] * dry + 0x4000) >> 15);
+            gains[2] = clamp_s16((l_vol[j] * wet + 0x4000) >> 15);
+            gains[3] = clamp_s16((r_vol[j] * wet + 0x4000) >> 15);
+
+            alist_envmix_mix(n, buffers, gains, in[k^S]);
+        }
+    }
+
+    for (j = 0; j < 8; ++j) {
+        save_buffer[j]      = (int16_t)((uint32_t)lane[0][j] >> 16);
+        save_buffer[j +  8] = (int16_t)((uint16_t)lane[0][j]);
+        save_buffer[j + 16] = (int16_t)((uint32_t)lane[1][j] >> 16);
+        save_buffer[j + 24] = (int16_t)((uint16_t)lane[1][j]);
+    }
+    save_buffer[32] = tgt[0];
+    save_buffer[33] = (int16_t)((uint32_t)rt[0] >> 16);
+    save_buffer[34] = (int16_t)((uint16_t)rt[0]);
+    save_buffer[35] = tgt[1];
+    save_buffer[36] = (int16_t)((uint32_t)rt[1] >> 16);
+    save_buffer[37] = (int16_t)((uint16_t)rt[1]);
+    save_buffer[38] = dry;
+    save_buffer[39] = wet;
+
+    for (j = 0; j < 40; ++j)
+        *dram_u16(hle, address + 2*j) = (uint16_t)save_buffer[j];
+}
 
 void alist_envmix_lin(
         struct hle_t* hle,

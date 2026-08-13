@@ -84,12 +84,16 @@ static void ENVMIXER(struct hle_t* hle, uint32_t w1, uint32_t w2)
             address);
 }
 
+/* the Blast Corps / Diddy Kong Racing revision keeps the envelope as
+ * lane accumulators; the GoldenEye one does not */
+static int envmix_ge_lanes = 0;
+
 static void ENVMIXER_GE(struct hle_t* hle, uint32_t w1, uint32_t w2)
 {
     uint8_t  flags   = (w1 >> 16);
     uint32_t address = get_address(hle, w2);
 
-    alist_envmix_ge(
+    (envmix_ge_lanes ? alist_envmix_ge_lanes : alist_envmix_ge)(
             hle,
             flags & A_INIT,
             flags & A_AUX,
@@ -314,6 +318,7 @@ void alist_process_audio_ge(struct hle_t* hle)
         MIXER,          INTERLEAVE,     POLEF,          SETLOOP
     };
 
+    envmix_ge_lanes = 0;
     clear_segments(hle);
     alist_process(hle, ABI, 0x10);
     rsp_break(hle, SP_STATUS_TASKDONE);
@@ -328,6 +333,7 @@ void alist_process_audio_bc(struct hle_t* hle)
         MIXER,          INTERLEAVE,     POLEF,          SETLOOP
     };
 
+    envmix_ge_lanes = 1;
     clear_segments(hle);
     alist_process(hle, ABI, 0x10);
     rsp_break(hle, SP_STATUS_TASKDONE);
