@@ -208,6 +208,32 @@ void poweron_ai(struct ai_controller* ai)
     ai->delayed_carry = 0;
 }
 
+/* Hand the backend everything the DAC has clocked out of the current
+ * transfer since the last time we looked.
+ *
+ * remaining is the play position derived from emulated time, so the
+ * amount handed over is a function of how far the machine has run, not
+ * of when anyone happened to ask.  That distinction is the whole point:
+ * reading it only when the game polls AI_LEN makes delivery follow the
+ * game's polling pattern, which is why titles that service their mixer
+ * on alternate fields hand over two fields and then none. */
+static unsigned int ai_hand_over_played(struct ai_controller* ai, uint32_t remaining)
+{
+    unsigned int diff;
+    unsigned int handed;
+    unsigned char* p;
+
+    if (remaining >= ai->last_read)
+        return 0;
+
+    diff   = ai->fifo[0].length - ai->last_read;
+    handed = ai->last_read - remaining;
+    p      = (unsigned char*)&ai->ri->rdram->dram[ai->fifo[0].address/4];
+    push_audio_samples_via_libretro(p + diff, handed);
+    ai->last_read = remaining;
+    return handed;
+}
+
 void read_ai_regs(void* opaque, uint32_t address, uint32_t* value)
 {
     struct ai_controller* ai = (struct ai_controller*)opaque;
@@ -216,13 +242,7 @@ void read_ai_regs(void* opaque, uint32_t address, uint32_t* value)
     if (reg == AI_LEN_REG)
     {
         *value = get_remaining_dma_length(ai);
-        if (*value < ai->last_read)
-        {
-            unsigned int diff = ai->fifo[0].length - ai->last_read;
-            unsigned char *p = (unsigned char*)&ai->ri->rdram->dram[ai->fifo[0].address/4];
-            push_audio_samples_via_libretro(p + diff, ai->last_read - *value);
-            ai->last_read = *value;
-        }
+        ai_hand_over_played(ai, *value);
     }
     else
     {
@@ -279,3 +299,34 @@ void ai_end_of_dma_event(void* opaque)
     raise_rcp_interrupt(ai->mi, MI_INTR_AI);
 }
 
+/* Called once per frame by the frontend.  Nothing here depends on the
+ * game having looked at AI_LEN: the play position comes from emulated
+ * time, so each frame hands over exactly what the DAC clocked out
+ * during it. */
+void ai_deliver_frame(struct ai_controller* ai)
+{
+    unsigned int divider = 1 + ai->regs[AI_DACRATE_REG];
+    unsigned int want;
+
+    if (ai->fifo[0].duration != 0
+            && ai_hand_over_played(ai, get_remaining_dma_length(ai)) != 0)
+        return;
+
+    /* Nothing was clocked out this frame: either the game has queued no
+     * transfer - across a load, or whenever it has nothing to play - or
+     * the one it queued has already finished and the next has not
+     * arrived.  The DAC does not stop for that; it keeps clocking, and
+     * what comes out is silence.  Hand the same amount of silence over
+     * rather than handing over nothing, so the stream stays continuous
+     * and the frontend has no gap to underrun on.
+     *
+     * A field is delay counts and the DAC takes (1 + DACRATE) counts a
+     * sample, so the two divide to give what a field is worth without
+     * needing the clock. */
+    if (ai->regs[AI_DACRATE_REG] == 0 || ai->vi->delay == 0)
+        return;
+
+    want = ai->vi->delay / divider;
+    if (want != 0)
+        push_audio_silence_via_libretro(want);
+}

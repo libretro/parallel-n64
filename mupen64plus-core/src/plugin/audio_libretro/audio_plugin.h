@@ -35,5 +35,6 @@ double   get_audio_sample_rate_libretro(void);
 void set_audio_format_via_libretro(unsigned int frequency,
       unsigned int clock, unsigned int divider);
 void push_audio_samples_via_libretro(const void *buffer, size_t size);
+void push_audio_silence_via_libretro(size_t frames);
 
 #endif

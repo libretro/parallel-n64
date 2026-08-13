@@ -79,6 +79,8 @@ void init_ai(struct ai_controller* ai,
 
 void poweron_ai(struct ai_controller* ai);
 
+void ai_deliver_frame(struct ai_controller* ai);
+
 void read_ai_regs(void* opaque, uint32_t address, uint32_t* value);
 void write_ai_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask);
 

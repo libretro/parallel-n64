@@ -212,6 +212,7 @@ void flush_audio_libretro(void)
       w = SMOOTH_RATE_WINDOW;
    num = (long)(smooth_pushed_this_run << 16) - (long)smooth_rate_q16;
    smooth_rate_q16 = (unsigned long)((long)smooth_rate_q16 + num / (long)w);
+
    smooth_pushed_this_run = 0;
 
    held = audio_acc_frames;
@@ -367,5 +368,31 @@ void push_audio_samples_via_libretro(const void *buffer, size_t size)
 
       if (audio_acc_frames == AUDIO_ACC_FRAMES && off < frames)
          emit_frames(audio_acc_frames);  /* emergency full drain */
+   }
+}
+
+/* Append n stereo frames of silence.  Used when the AI has no transfer
+ * in flight: the DAC keeps clocking through that, so the stream should
+ * carry silence rather than stop. */
+void push_audio_silence_via_libretro(size_t frames)
+{
+   while (frames != 0)
+   {
+      size_t chunk = frames;
+
+      if (chunk > AUDIO_ACC_FRAMES - audio_acc_frames)
+         chunk = AUDIO_ACC_FRAMES - audio_acc_frames;
+
+      if (chunk == 0)
+      {
+         emit_frames(audio_acc_frames);
+         continue;
+      }
+
+      memset(audio_acc + audio_acc_frames * 2, 0,
+             chunk * 2 * sizeof(int16_t));
+      audio_acc_frames       += chunk;
+      smooth_pushed_this_run += chunk;
+      frames                 -= chunk;
    }
 }

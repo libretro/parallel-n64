@@ -54,6 +54,7 @@ uint8_t* g_dd_disk;
 /* Cxd4 RSP */
 #include "../mupen64plus-rsp-cxd4/config.h"
 #include "plugin/audio_libretro/audio_plugin.h"
+#include "device/rcp/ai/ai_controller.h"
 #include "../mupen64plus-rsp-hle/src/resample_hq.h"
 #include "../Graphics/plugin.h"
 
@@ -3005,10 +3006,13 @@ void retro_run (void)
 
    emu_step_render();
 
-   /* Exactly one audio batch per retro_run iteration. The accumulator
-    * holds every sample the AI controller produced this frame; drain
-    * it now so the frontend receives the frame's audio in one call,
-    * paired with the frame's video. */
+   /* Hand over the audio the DAC clocked out during this frame, then
+    * emit it as a single batch.  Asking the AI here rather than waiting
+    * for the game to read AI_LEN is what makes the amount depend on how
+    * far the machine ran instead of on the game's polling pattern. */
+   ai_deliver_frame(&g_dev.ai);
+
+   /* Exactly one audio batch per retro_run iteration. */
    flush_audio_libretro();
 }
 
