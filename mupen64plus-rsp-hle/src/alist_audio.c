@@ -318,7 +318,7 @@ void alist_process_audio_ge(struct hle_t* hle)
         MIXER,          INTERLEAVE,     POLEF,          SETLOOP
     };
 
-    envmix_ge_lanes = 0;
+    envmix_ge_lanes = 1;
     clear_segments(hle);
     alist_process(hle, ABI, 0x10);
     rsp_break(hle, SP_STATUS_TASKDONE);
