@@ -1958,7 +1958,8 @@ void alist_filter(
         uint16_t count,
         uint32_t address,
         const int16_t* table,
-        bool average)
+        bool average,
+        uint16_t slab)
 {
     int16_t state_samples[8];
     int16_t state_table[8];
@@ -2016,6 +2017,21 @@ void alist_filter(
     dram_store_u16(hle, (uint16_t*)cur, address,        8);
     if (average)
         dram_store_u16(hle, (uint16_t*)t,   address + 0x10, 8);
+
+    /* The handler stages this 32-byte state block through the shared
+     * DMEM slab, so it stays there after the command returns.  The
+     * resampler's state transfer moves 0x20 bytes out of the same slab
+     * but owns only the first ten, so an init resample - which clears
+     * just those ten - spills the tail of whatever this command left.
+     * Mirror the block so the slab shadow carries it. */
+    if (slab != 0) {
+        unsigned k;
+        for (k = 0; k < 8; ++k)
+            *alist_s16(hle, (uint16_t)(slab + 2*k)) = cur[k];
+        for (k = 0; k < 8; ++k)
+            *alist_s16(hle, (uint16_t)(slab + 0x10 + 2*k)) =
+                average ? t[k] : state_table[k];
+    }
 }
 
 void alist_polef(

@@ -213,7 +213,8 @@ void alist_filter(
         uint16_t count,
         uint32_t address,
         const int16_t* table,
-        bool average);
+        bool average,
+        uint16_t slab);
 
 void alist_polef(
         struct hle_t* hle,

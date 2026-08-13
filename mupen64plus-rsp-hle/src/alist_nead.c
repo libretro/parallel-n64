@@ -481,7 +481,7 @@ static void FILTER(struct hle_t* hle, uint32_t w1, uint32_t w2)
         alist_filter(hle, (flags & 0x1) != 0, dmem,
                      hle->alist_nead.filter_count, address,
                      hle->alist_nead.filter_table,
-                     nead_filter_avg != 0);
+                     nead_filter_avg != 0, nead_slab);
     }
 }
 
