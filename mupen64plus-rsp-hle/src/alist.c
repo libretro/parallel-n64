@@ -935,7 +935,14 @@ void alist_envmix_ge(
     struct ramp_t ramps[2];
     short save_buffer[40];
 
-    memcpy((uint8_t *)save_buffer, (hle->dram + address), 80);
+    /* the microcode moves this block with lqv/sqv: big-endian halfwords
+     * in DRAM.  A byte copy on the emulated-memory container lands each
+     * value in the other half of its 32-bit word. */
+    {
+        unsigned h;
+        for (h = 0; h < 40; ++h)
+            save_buffer[h] = (short)*dram_u16(hle, address + 2*h);
+    }
     if (init) {
         ramps[0].value  = (vol[0] << 16);
         ramps[1].value  = (vol[1] << 16);
@@ -986,7 +993,11 @@ void alist_envmix_ge(
     /**(int32_t *)(save_buffer + 14);*/                 /* 14-15 */
     *(int32_t *)(save_buffer + 16) = (int32_t)ramps[0].value;    /* 12-13 */
     *(int32_t *)(save_buffer + 18) = (int32_t)ramps[1].value;    /* 14-15 */
-    memcpy(hle->dram + address, (uint8_t *)save_buffer, 80);
+    {
+        unsigned h;
+        for (h = 0; h < 40; ++h)
+            *dram_u16(hle, address + 2*h) = (uint16_t)save_buffer[h];
+    }
 }
 
 void alist_envmix_lin(
