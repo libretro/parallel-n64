@@ -30,6 +30,7 @@
 #include "hle_external.h"
 #include "hle_internal.h"
 #include "memory.h"
+#include "resample_hq.h"
 
 /* various constants */
 enum { SUBFRAME_SIZE = 192 };
@@ -808,7 +809,42 @@ static void mix_voice_samples(struct hle_t* hle, musyx_t *musyx,
             sample = sample_restart + dist;
 
         /* apply resample filter */
-        v = clamp_s16(dot4(sample, lut));
+        v = 0;
+        {
+            /* Opt-in wider kernel (see resample_hq.c).  The voice's sample
+             * pointer carries loop and restart semantics and the buffer is
+             * a fixed 0x200 window of the stream, so a wide window is only
+             * taken where it lies clear of both: within a window's width of
+             * the loop point it would splice in material from the far side
+             * of the loop, and past the buffer it would read whatever
+             * follows.  A boundary is crossed once per waveform period, so
+             * the microcode's own four taps cover a small fraction of the
+             * samples and the rest get the sinc. */
+            const int16_t* k = resample_hq_taps(pitch_step, pitch_accu);
+            int            done = 0;
+
+            if (k != NULL) {
+                const int   taps  = resample_hq_taps_count();
+                const int   lead  = taps / 2 - 1;
+                const int16_t* lo = sample - lead;
+                const int16_t* hi = sample + (taps - 1 - lead);
+
+                if (lo >= samples && hi < samples + SAMPLE_BUFFER_SIZE
+                        && hi < sample_end) {
+                    int64_t acc = 0;
+                    int     t;
+
+                    for (t = 0; t < taps; ++t)
+                        acc += (int64_t)lo[t] * k[t];
+
+                    v = clamp_s16((int32_t)((acc + 0x4000) >> 15));
+                    done = 1;
+                }
+            }
+
+            if (!done)
+                v = clamp_s16(dot4(sample, lut));
+        }
 
         for (k = 0; k < 4; ++k) {
             /* envmix: VMULF by the envelope, so the product is rounded
