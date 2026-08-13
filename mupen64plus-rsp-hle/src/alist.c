@@ -910,6 +910,9 @@ void alist_envmix_exp(
            (uint8_t *)save_buffer, sizeof(save_buffer));
 }
 
+/* the DMEM slab the aspMain state transfers stage through */
+enum { AUDIO_STATE_SLAB = 0xf90 };
+
 void alist_envmix_ge(
         struct hle_t* hle,
         bool init,
@@ -997,6 +1000,17 @@ void alist_envmix_ge(
         unsigned h;
         for (h = 0; h < 40; ++h)
             *dram_u16(hle, address + 2*h) = (uint16_t)save_buffer[h];
+    }
+    /* The handler stages this block through the shared DMEM slab and
+     * it stays there once the command returns.  The resampler moves
+     * 0x20 bytes out of the same slab while owning only part of it, so
+     * a following resample writes back whatever this left; mirror the
+     * block so the shadow carries it. */
+    {
+        unsigned h;
+        for (h = 0; h < 40; ++h)
+            *(int16_t*)(hle->alist_buffer +
+                        (((AUDIO_STATE_SLAB + 2*h) ^ S16) & 0xfff)) = save_buffer[h];
     }
 }
 void alist_envmix_ge_lanes(
@@ -1144,6 +1158,17 @@ void alist_envmix_ge_lanes(
 
     for (j = 0; j < 40; ++j)
         *dram_u16(hle, address + 2*j) = (uint16_t)save_buffer[j];
+    /* The handler stages this block through the shared DMEM slab and
+     * it stays there once the command returns.  The resampler moves
+     * 0x20 bytes out of the same slab while owning only part of it, so
+     * a following resample writes back whatever this left; mirror the
+     * block so the shadow carries it. */
+    {
+        unsigned h;
+        for (h = 0; h < 40; ++h)
+            *(int16_t*)(hle->alist_buffer +
+                        (((AUDIO_STATE_SLAB + 2*h) ^ S16) & 0xfff)) = save_buffer[h];
+    }
 }
 
 void alist_envmix_lin(
