@@ -182,16 +182,34 @@ void dd_dv_int_handler(void* opaque)
     int motorNotSpinning = (dd->regs[DD_ASIC_CMD_STATUS] & DD_STATUS_MTR_N_SPIN) != 0;
     int headRetracted = (dd->regs[DD_ASIC_CMD_STATUS] & DD_STATUS_HEAD_RTRCT) != 0;
 
+    /* A game that touches the drive every frame spins the motor back up
+     * every frame, and each spin-up runs the whole active -> standby ->
+     * sleep sequence again.  The transitions are worth seeing once; at
+     * two lines a frame they bury the rest of the log, so say so and
+     * stop. */
+    static unsigned int auto_transitions;
+    enum { AUTO_TRANSITION_LOG_LIMIT = 8 };
+
     if (!motorNotSpinning && headRetracted) {
         /* standby to sleep */
         dd_dv_sleep(dd);
-        DebugMessage(M64MSG_VERBOSE, "Disk drive motor put to sleep mode (auto)");
+        if (auto_transitions < AUTO_TRANSITION_LOG_LIMIT)
+            DebugMessage(M64MSG_VERBOSE, "Disk drive motor put to sleep mode (auto)");
+        ++auto_transitions;
     }
 
     if (!motorNotSpinning && !headRetracted) {
         /* active to standby, prep time to sleep */
         dd_dv_standby(dd);
-        DebugMessage(M64MSG_VERBOSE, "Disk drive motor put to standby mode (auto)");
+        if (auto_transitions < AUTO_TRANSITION_LOG_LIMIT)
+            DebugMessage(M64MSG_VERBOSE, "Disk drive motor put to standby mode (auto)");
+        ++auto_transitions;
+    }
+
+    if (auto_transitions == AUTO_TRANSITION_LOG_LIMIT) {
+        DebugMessage(M64MSG_VERBOSE,
+            "Disk drive motor mode changes are routine; suppressing further reports");
+        ++auto_transitions;
     }
 }
 
