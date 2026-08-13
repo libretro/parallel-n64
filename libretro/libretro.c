@@ -148,7 +148,7 @@ uint32_t IgnoreTLBExceptions = 0;
 extern void     init_audio_libretro(void);
 extern void     deinit_audio_libretro(void);
 extern void     flush_audio_libretro(void);
-extern unsigned get_audio_sample_rate_libretro(void);
+extern double   get_audio_sample_rate_libretro(void);
 
 struct retro_rumble_interface rumble;
 
@@ -1087,7 +1087,7 @@ void retro_get_system_av_info(struct retro_system_av_info *info)
 
       info->timing.fps = fps;
    }
-   info->timing.sample_rate = (double)get_audio_sample_rate_libretro();
+   info->timing.sample_rate = get_audio_sample_rate_libretro();
 }
 
 unsigned retro_get_region (void)

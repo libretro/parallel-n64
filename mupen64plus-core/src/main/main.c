@@ -65,6 +65,7 @@
 #include "device/pif/bootrom_hle.h"
 #include "eventloop.h"
 #include "main.h"
+#include "plugin/audio_libretro/audio_plugin.h"
 #include "callbacks.h"
 #include "plugin/plugin.h"
 #if defined(PROFILE)
@@ -754,7 +755,6 @@ m64p_error main_run(void)
     size_t dd_rom_size;
     static struct dd_disk dd_disk;
     m64p_error failure_rval;
-    static struct audio_out_backend_interface audio_out_backend_libretro;
 
     static int control_ids[GAME_CONTROLLERS_COUNT];
     static struct controller_input_compat cin_compats[GAME_CONTROLLERS_COUNT];
@@ -844,10 +844,16 @@ m64p_error main_run(void)
     }
 #endif
 
-    /* setup backends */
-    extern void set_audio_format_via_libretro(void* user_data, unsigned int frequency);
-    extern void push_audio_samples_via_libretro(void* user_data, const void* buffer, size_t size);
-    audio_out_backend_libretro = (struct audio_out_backend_interface){ set_audio_format_via_libretro, push_audio_samples_via_libretro };
+    /* setup backends
+     *
+     * audio_out_backend_libretro is defined by the libretro audio backend
+     * itself.  This used to shadow it with a file-static of the same name
+     * built from local extern declarations, which meant the backend's own
+     * adapter was never installed and the declarations here had to be kept
+     * in step with it by hand - they were not: set_frequency had grown a
+     * clock and a divider so the exact DAC rate could be passed through,
+     * and the copy here still described the two-argument form, so those
+     * two arguments never reached the backend. */
     
     /* Fill-in l_pak_type_idx and l_ipaks according to game compatibility */
     k = 0;

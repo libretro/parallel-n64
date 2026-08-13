@@ -78,6 +78,7 @@ extern retro_environment_t        environ_cb;
 static int16_t  audio_acc[AUDIO_ACC_FRAMES * 2];
 static size_t   audio_acc_frames;        /* stereo frames currently held */
 static unsigned current_sample_rate;     /* 0 until first set_audio_format */
+static double   current_sample_rate_exact; /* the same rate, unrounded */
 
 /* Per-retro_run audio-delivery smoother state (see flush_audio_libretro). */
 #define SMOOTH_RATE_WINDOW  512u   /* cap on the running-mean window     */
@@ -106,12 +107,14 @@ void deinit_audio_libretro(void)
    smooth_runs = 0;
 }
 
-unsigned get_audio_sample_rate_libretro(void)
+double get_audio_sample_rate_libretro(void)
 {
    /* 32040 Hz is by far the most common N64 game rate and a reasonable
     * fallback when retro_get_system_av_info is queried before the game
     * has had a chance to issue its first AI register write. */
-   return current_sample_rate ? current_sample_rate : 32040u;
+   if (current_sample_rate_exact != 0.0)
+      return current_sample_rate_exact;
+   return current_sample_rate ? (double)current_sample_rate : 32040.0;
 }
 
 /* Emit the first n stereo frames of the accumulator to the frontend in a
@@ -249,16 +252,33 @@ void flush_audio_libretro(void)
 /* bits is ignored: the AI controller always produces 16-bit stereo.
  * frequency is the N64 game's chosen sample rate; we forward it to the
  * frontend via RETRO_ENVIRONMENT_SET_SYSTEM_AV_INFO when it changes. */
+/* frequency is the rate rounded to whole Hz; clock and divider give the
+ * same rate exactly, as the DAC derives it.  The divider is zero when the
+ * game has not set DACRATE and the caller substituted a default. */
 void set_audio_format_via_libretro(void *user_data,
-      unsigned int frequency, unsigned int bits)
+      unsigned int frequency, unsigned int clock, unsigned int divider)
 {
-   (void)user_data;
-   (void)bits;
+   double exact;
 
-   if (frequency == 0 || frequency == current_sample_rate)
+   (void)user_data;
+
+   if (frequency == 0)
       return;
 
-   current_sample_rate = frequency;
+   /* The DAC divides the clock by an integer and the quotient is not a
+    * whole number of Hz: 48681812 / 2209 is 22037.94.  libretro takes the
+    * rate as a double, so hand it the quotient rather than the floor -
+    * declaring 22037 for a stream that arrives at 22037.94 leaves the
+    * frontend resampling at a permanently wrong ratio, and a frontend
+    * without dynamic rate control has nothing to absorb the drift with. */
+   exact = (divider != 0) ? ((double)clock / (double)divider)
+                          : (double)frequency;
+
+   if (frequency == current_sample_rate && exact == current_sample_rate_exact)
+      return;
+
+   current_sample_rate       = frequency;
+   current_sample_rate_exact = exact;
 
    /* the production-rate estimate is in absolute frames/run, which scales
     * with the sample rate; reset it so the smoother re-converges to the
@@ -272,7 +292,7 @@ void set_audio_format_via_libretro(void *user_data,
       struct retro_system_av_info info;
       extern void retro_get_system_av_info(struct retro_system_av_info *info);
       retro_get_system_av_info(&info);
-      info.timing.sample_rate = (double)frequency;
+      info.timing.sample_rate = exact;
       environ_cb(RETRO_ENVIRONMENT_SET_SYSTEM_AV_INFO, &info);
    }
 }
@@ -362,9 +382,10 @@ void push_audio_samples_via_libretro(void *user_data,
  * (libretro output is always the fixed format push_audio_samples emits). */
 #include "backends/api/audio_out_backend.h"
 
-static void libretro_aout_set_frequency(void* aout, unsigned int frequency)
+static void libretro_aout_set_frequency(void* aout, unsigned int frequency,
+      unsigned int clock, unsigned int divider)
 {
-   set_audio_format_via_libretro(aout, frequency, 16);
+   set_audio_format_via_libretro(aout, frequency, clock, divider);
 }
 
 static void libretro_aout_push_samples(void* aout, const void* samples, size_t size)

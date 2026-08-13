@@ -23,6 +23,7 @@
 
 #include <string.h>
 
+#include <stdio.h>
 #include "backends/api/audio_out_backend.h"
 #include "device/memory/m64p_memory.h"
 #include "device/r4300/r4300_core.h"
@@ -62,7 +63,6 @@ static uint32_t get_remaining_dma_length(struct ai_controller* ai)
 
 static unsigned int get_dma_duration(struct ai_controller* ai)
 {
-    unsigned int samples_per_sec = ai->vi->clock / (1 + ai->regs[AI_DACRATE_REG]);
     unsigned int bytes_per_sample = 4; /* XXX: assume 16bit stereo - should depends on bitrate instead */
     /* Counts per second is vi->clock, exactly.
      *
@@ -78,13 +78,12 @@ static unsigned int get_dma_duration(struct ai_controller* ai)
      * running blocking audio with no dynamic rate control has nothing to
      * absorb the difference with.  Using the clock makes production match
      * the declared rate exactly. */
-    unsigned int cpu_counts_per_sec = ai->vi->clock;
-    uint64_t bytes_per_sec = (uint64_t)bytes_per_sample * samples_per_sec;
+    unsigned int divider = 1 + ai->regs[AI_DACRATE_REG];
 
-    if (bytes_per_sec == 0)
+    if (divider == 0)
         return 0;
 
-    /* Scale first, divide once.
+    /* Scale first, divide once, and let the clock cancel.
      *
      * This used to divide before multiplying, so the per-byte count was
      * truncated to an integer and then scaled by the whole transfer length,
@@ -97,10 +96,19 @@ static unsigned int get_dma_duration(struct ai_controller* ai)
      * produce marginally more audio per second of emulated time than the rate
      * it asked for, which the frontend then has to absorb.
      *
+     * Scaling first left one truncation behind: the sample rate itself.  The
+     * DAC divides the clock by (1 + DACRATE) and the result is not a whole
+     * number of Hz - 48681812 / 2209 is 22037.94 - so rounding it down before
+     * dividing by it reported every transfer as slightly too long, by up to
+     * 0.0043%, in the opposite direction to the error above.  Writing the
+     * duration as counts = LEN * (1 + DACRATE) / bytes_per_sample removes it:
+     * the clock appears in both the counts-per-second and the samples-per-
+     * second and cancels exactly, so nothing is rounded but the final result.
+     *
      * The 64-bit intermediate cannot overflow: AI_LEN is an 18-bit field and
-     * cpu_counts_per_sec is under 2^26. */
-    return (unsigned int)(((uint64_t)ai->regs[AI_LEN_REG] * cpu_counts_per_sec)
-                          / bytes_per_sec);
+     * the divider is 14 bits. */
+    return (unsigned int)(((uint64_t)ai->regs[AI_LEN_REG] * divider)
+                          / bytes_per_sample);
 }
 
 
@@ -113,7 +121,9 @@ static void do_dma(struct ai_controller* ai, struct ai_dma* dma)
             ? 44100 /* default sample rate */
             : ai->vi->clock / (1 + ai->regs[AI_DACRATE_REG]);
 
-        ai->iaout->set_frequency(ai->aout, frequency);
+        ai->iaout->set_frequency(ai->aout, frequency, ai->vi->clock,
+                                 (ai->regs[AI_DACRATE_REG] == 0)
+                                     ? 0 : 1 + ai->regs[AI_DACRATE_REG]);
 
         ai->samples_format_changed = 0;
     }

@@ -27,8 +27,18 @@
 struct audio_out_backend_interface
 {
     /* Allow the backend to be notified of sample frequency.
+     *
+     * The AI derives its rate by dividing the video clock by the DACRATE
+     * register, and the quotient is very rarely a whole number: an NTSC
+     * title asking for 32040 Hz actually runs at 48681812/1519, which is
+     * 32048.592.  Pass the clock and the divider rather than the
+     * truncated quotient so the backend can hand the frontend the exact
+     * rate - libretro takes it as a double, and declaring 32048 for a
+     * stream that arrives at 32048.592 leaves the frontend resampling at
+     * a permanently wrong ratio.
      */
-    void (*set_frequency)(void* aout, unsigned int frequency);
+    void (*set_frequency)(void* aout, unsigned int frequency,
+                          unsigned int clock, unsigned int divider);
 
     /* Push samples to be played by the backend
      */

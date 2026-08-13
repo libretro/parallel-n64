@@ -27,7 +27,7 @@
 void     init_audio_libretro(void);
 void     deinit_audio_libretro(void);
 void     flush_audio_libretro(void);
-unsigned get_audio_sample_rate_libretro(void);
+double get_audio_sample_rate_libretro(void);
 
 #endif
 
