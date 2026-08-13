@@ -61,6 +61,13 @@ static uint16_t nead_v31[8];
  * whose fields the resample save then ships out as residue). */
 static uint16_t nead_slab = 0xfb0;
 
+/* Some revisions place the audio buffers above a fixed DMEM base and
+ * the alist's buffer operands are relative to it; the microcode adds
+ * the base when it uses them.  Scratch the microcode addresses
+ * directly - the command staging area, the codebook, the state slab -
+ * is not affected. */
+static uint16_t nead_dmem_base = 0;
+
 /* the Mario Kart build carries the aspMain-layout resample (back
  * distance and aligned-block state) rather than the later builds'
  * residue-carrying one */
@@ -158,8 +165,8 @@ static void SETLOOP(struct hle_t* hle, uint32_t UNUSED(w1), uint32_t w2)
 
 static void SETBUFF(struct hle_t* hle, uint32_t w1, uint32_t w2)
 {
-    hle->alist_nead.in    = w1;
-    hle->alist_nead.out   = (w2 >> 16);
+    hle->alist_nead.in    = w1 + nead_dmem_base;
+    hle->alist_nead.out   = (w2 >> 16) + nead_dmem_base;
     hle->alist_nead.count = w2;
 }
 
@@ -184,7 +191,7 @@ static void ADPCM(struct hle_t* hle, uint32_t w1, uint32_t w2)
 
 static void CLEARBUFF(struct hle_t* hle, uint32_t w1, uint32_t w2)
 {
-    uint16_t dmem  = w1;
+    uint16_t dmem  = w1 + nead_dmem_base;
     uint16_t count = w2 & 0xfff;
 
     if (count == 0)
@@ -196,7 +203,7 @@ static void CLEARBUFF(struct hle_t* hle, uint32_t w1, uint32_t w2)
 static void LOADBUFF(struct hle_t* hle, uint32_t w1, uint32_t w2)
 {
     uint16_t count   = (w1 >> 12) & 0xfff;
-    uint16_t dmem    = (w1 & 0xfff);
+    uint16_t dmem    = (w1 & 0xfff) + nead_dmem_base;
     uint32_t address = (w2 & 0xffffff);
 
     alist_load(hle, dmem, address, count);
@@ -205,7 +212,7 @@ static void LOADBUFF(struct hle_t* hle, uint32_t w1, uint32_t w2)
 static void SAVEBUFF(struct hle_t* hle, uint32_t w1, uint32_t w2)
 {
     uint16_t count   = (w1 >> 12) & 0xfff;
-    uint16_t dmem    = (w1 & 0xfff);
+    uint16_t dmem    = (w1 & 0xfff) + nead_dmem_base;
     uint32_t address = (w2 & 0xffffff);
 
     alist_save(hle, dmem, address, count);
@@ -215,8 +222,8 @@ static void MIXER(struct hle_t* hle, uint32_t w1, uint32_t w2)
 {
     uint16_t count = (w1 >> 12) & 0xff0;
     int16_t  gain  = w1;
-    uint16_t dmemi = (w2 >> 16);
-    uint16_t dmemo = w2;
+    uint16_t dmemi = (w2 >> 16) + nead_dmem_base;
+    uint16_t dmemo = (uint16_t)w2 + nead_dmem_base;
 
     nead_v31_load(hle, 0x00);
     /* the mix loop processes two 8-sample batches per iteration and
@@ -272,8 +279,8 @@ static void RESAMPLE_ZOH(struct hle_t* hle, uint32_t w1, uint32_t w2)
 
 static void DMEMMOVE(struct hle_t* hle, uint32_t w1, uint32_t w2)
 {
-    uint16_t dmemi = w1;
-    uint16_t dmemo = (w2 >> 16);
+    uint16_t dmemi = w1 + nead_dmem_base;
+    uint16_t dmemo = (w2 >> 16) + nead_dmem_base;
     uint16_t count = w2;
 
     if (count == 0)
@@ -312,21 +319,18 @@ static void ENVMIXER_MK(struct hle_t* hle, uint32_t w1, uint32_t w2)
 {
     int16_t xors[4];
 
-    uint16_t dmemi = (w1 >> 12) & 0xff0;
+    uint16_t dmemi = ((w1 >> 12) & 0xff0) + nead_dmem_base;
     uint8_t  count = (w1 >>  8) & 0xff;
-    uint16_t dmem_dl = (w2 >> 20) & 0xff0;
-    uint16_t dmem_dr = (w2 >> 12) & 0xff0;
-    uint16_t dmem_wl = (w2 >>  4) & 0xff0;
-    uint16_t dmem_wr = (w2 <<  4) & 0xff0;
+    uint16_t dmem_dl = ((w2 >> 20) & 0xff0) + nead_dmem_base;
+    uint16_t dmem_dr = ((w2 >> 12) & 0xff0) + nead_dmem_base;
+    uint16_t dmem_wl = ((w2 >>  4) & 0xff0) + nead_dmem_base;
+    uint16_t dmem_wr = ((w2 <<  4) & 0xff0) + nead_dmem_base;
 
     xors[2] = 0;    /* unsupported by this ucode */
     xors[3] = 0;    /* unsupported by this ucode */
     xors[0] = 0 - (int16_t)((w1 & 0x2) >> 1);
     xors[1] = 0 - (int16_t)((w1 & 0x1)     );
 
-    /* this build biases every DMEM address (its own loads and saves
-     * included) by 0x450; the bias is uniform, so the unbiased shadow
-     * stays equivalent */
     alist_envmix_nead(
             hle,
             false,  /* no swap flag in this build */
@@ -399,16 +403,16 @@ static void DUPLICATE(struct hle_t* hle, uint32_t w1, uint32_t w2)
 static void INTERL(struct hle_t* hle, uint32_t w1, uint32_t w2)
 {
     uint16_t count = w1;
-    uint16_t dmemi = (w2 >> 16);
-    uint16_t dmemo = w2;
+    uint16_t dmemi = (w2 >> 16) + nead_dmem_base;
+    uint16_t dmemo = (uint16_t)w2 + nead_dmem_base;
 
     alist_copy_every_other_sample(hle, dmemo, dmemi, count);
 }
 
 static void INTERLEAVE_MK(struct hle_t* hle, uint32_t UNUSED(w1), uint32_t w2)
 {
-    uint16_t left = (w2 >> 16);
-    uint16_t right = w2;
+    uint16_t left = (w2 >> 16) + nead_dmem_base;
+    uint16_t right = (uint16_t)w2 + nead_dmem_base;
 
     if (hle->alist_nead.count == 0)
         return;
@@ -520,8 +524,8 @@ static void SEGMENT(struct hle_t* UNUSED(hle), uint32_t UNUSED(w1), uint32_t UNU
 static void NEAD_16(struct hle_t* hle, uint32_t w1, uint32_t w2)
 {
     uint8_t  count      = (w1 >> 16);
-    uint16_t dmemi      = w1;
-    uint16_t dmemo      = (w2 >> 16);
+    uint16_t dmemi      = w1 + nead_dmem_base;
+    uint16_t dmemo      = (w2 >> 16) + nead_dmem_base;
     uint16_t block_size = w2;
 
     alist_copy_blocks(hle, dmemo, dmemi, block_size, count);
@@ -566,6 +570,7 @@ void alist_process_nead_mk(struct hle_t* hle)
     nead_env_style = NEAD_ENV_MK;
     nead_resample_old = 1;
     nead_slab_seed(hle);
+    nead_dmem_base = 0x450;
     alist_process(hle, ABI, 0x20);
     rsp_break(hle, SP_STATUS_TASKDONE);
 }
@@ -588,6 +593,7 @@ void alist_process_nead_sf(struct hle_t* hle)
     nead_env_style = NEAD_ENV_SF;
     nead_resample_old = 0;
     nead_slab_seed(hle);
+    nead_dmem_base = 0;
     alist_process(hle, ABI, 0x20);
     rsp_break(hle, SP_STATUS_TASKDONE);
 }
@@ -610,6 +616,7 @@ void alist_process_nead_sfj(struct hle_t* hle)
     nead_env_style = NEAD_ENV_SF;
     nead_resample_old = 0;
     nead_slab_seed(hle);
+    nead_dmem_base = 0;
     alist_process(hle, ABI, 0x20);
     rsp_break(hle, SP_STATUS_TASKDONE);
 }
@@ -632,6 +639,7 @@ void alist_process_nead_fz(struct hle_t* hle)
     nead_env_style = NEAD_ENV_FZ;
     nead_resample_old = 0;
     nead_slab_seed(hle);
+    nead_dmem_base = 0;
     alist_process(hle, ABI, 0x20);
     rsp_break(hle, SP_STATUS_TASKDONE);
 }
@@ -655,6 +663,7 @@ void alist_process_nead_wrjb(struct hle_t* hle)
     nead_env_style = NEAD_ENV_SF;
     nead_resample_old = 0;
     nead_slab_seed(hle);
+    nead_dmem_base = 0;
     alist_process(hle, ABI, 0x20);
     rsp_break(hle, SP_STATUS_TASKDONE);
 }
@@ -676,6 +685,8 @@ void alist_process_nead_ys(struct hle_t* hle)
     nead_env_style = NEAD_ENV_SF;
     nead_resample_old = 0;
     nead_slab_seed(hle);
+    nead_dmem_base = 0;
+    nead_dmem_base = 0;
     alist_process(hle, ABI, 0x18);
     rsp_break(hle, SP_STATUS_TASKDONE);
 }
@@ -697,6 +708,7 @@ void alist_process_nead_1080(struct hle_t* hle)
     nead_env_style = NEAD_ENV_OOT;
     nead_resample_old = 0;
     nead_slab_seed(hle);
+    nead_dmem_base = 0;
     alist_process(hle, ABI, 0x18);
     rsp_break(hle, SP_STATUS_TASKDONE);
 }
@@ -718,6 +730,7 @@ void alist_process_nead_oot(struct hle_t* hle)
     nead_env_style = NEAD_ENV_OOT;
     nead_resample_old = 0;
     nead_slab_seed(hle);
+    nead_dmem_base = 0;
     alist_process(hle, ABI, 0x18);
     rsp_break(hle, SP_STATUS_TASKDONE);
 }
@@ -739,6 +752,7 @@ void alist_process_nead_mm(struct hle_t* hle)
     nead_env_style = NEAD_ENV_OOT;
     nead_resample_old = 0;
     nead_slab_seed(hle);
+    nead_dmem_base = 0;
     alist_process(hle, ABI, 0x18);
     rsp_break(hle, SP_STATUS_TASKDONE);
 }
@@ -760,6 +774,7 @@ void alist_process_nead_mmb(struct hle_t* hle)
     nead_env_style = NEAD_ENV_OOT;
     nead_resample_old = 0;
     nead_slab_seed(hle);
+    nead_dmem_base = 0;
     alist_process(hle, ABI, 0x18);
     rsp_break(hle, SP_STATUS_TASKDONE);
 }
@@ -781,6 +796,7 @@ void alist_process_nead_ac(struct hle_t* hle)
     nead_env_style = NEAD_ENV_OOT;
     nead_resample_old = 0;
     nead_slab_seed(hle);
+    nead_dmem_base = 0;
     alist_process(hle, ABI, 0x18);
     rsp_break(hle, SP_STATUS_TASKDONE);
 }
@@ -806,6 +822,7 @@ void alist_process_nead_mats(struct hle_t* hle)
     nead_env_style = NEAD_ENV_OOT;
     nead_resample_old = 0;
     nead_slab_seed(hle);
+    nead_dmem_base = 0;
     alist_process(hle, ABI, 0x18);
     rsp_break(hle, SP_STATUS_TASKDONE);
 }
