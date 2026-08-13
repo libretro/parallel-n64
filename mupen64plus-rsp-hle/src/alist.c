@@ -1923,12 +1923,16 @@ void alist_resample_naudio(
     while (count != 0) {
         int16_t win[8][4];
         uint16_t p[8];
+        uint32_t accu[8];
+        uint16_t ipos_b[8];
         uint32_t accu_snap = pitch_accu;
         uint16_t ipos_snap = ipos;
         unsigned n = (count < 8) ? count : 8;
 
         for (b = 0; b < n; ++b) {
-            p[b] = (uint16_t)((pitch_accu & 0xfc00) >> 8);
+            p[b]      = (uint16_t)((pitch_accu & 0xfc00) >> 8);
+            accu[b]   = pitch_accu;
+            ipos_b[b] = ipos;
             for (i = 0; i < 4; ++i)
                 win[b][i] = *sample(hle, (uint16_t)(ipos + i));
             pitch_accu += pitch;
@@ -1939,7 +1943,18 @@ void alist_resample_naudio(
 
         for (b = 0; b < n; ++b) {
             const int16_t* lut = RESAMPLE_LUT + p[b];
-            int32_t q0 = (int32_t)(((int64_t)2 * win[b][0] * lut[0] + 0x8000) >> 16);
+            int16_t hq_out;
+            int32_t q0;
+
+            /* The batch gathers before it stores, so a wide window has to
+             * be read here too - reading it in this loop would see the
+             * stores this batch has already made. */
+            if (resample_hq_sample(hle, ipos_b[b], pitch, accu[b], &hq_out)) {
+                *sample(hle, opos++) = hq_out;
+                continue;
+            }
+
+            q0 = (int32_t)(((int64_t)2 * win[b][0] * lut[0] + 0x8000) >> 16);
             int32_t q1 = (int32_t)(((int64_t)2 * win[b][1] * lut[1] + 0x8000) >> 16);
             int32_t q2 = (int32_t)(((int64_t)2 * win[b][2] * lut[2] + 0x8000) >> 16);
             int32_t q3 = (int32_t)(((int64_t)2 * win[b][3] * lut[3] + 0x8000) >> 16);
@@ -1983,8 +1998,17 @@ void alist_resample_zoh(
     count >>= 1;
 
     while(count != 0) {
-        *sample(hle, opos++) =
-            *(int16_t*)(hle->alist_buffer + ((((pos >> 16) & 0xffe) ^ S16) & 0xfff));
+        int16_t hq_out;
+
+        /* pos is a 16.16 byte address, so pos >> 1 is the same fixed point
+         * in samples: the whole part indexes the sample and the low half
+         * is the phase between it and the next. */
+        if (resample_hq_sample(hle, (unsigned)(pos >> 17), pitch >> 1,
+                               (pos >> 1) & 0xffff, &hq_out))
+            *sample(hle, opos++) = hq_out;
+        else
+            *sample(hle, opos++) =
+                *(int16_t*)(hle->alist_buffer + ((((pos >> 16) & 0xffe) ^ S16) & 0xfff));
 
         pos += pitch;
         --count;
