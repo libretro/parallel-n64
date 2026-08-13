@@ -2622,6 +2622,14 @@ bool retro_load_game(const struct retro_game_info *game)
          if (aleck64_load_zip_path(arc, zip_entry, &zip_rom, &zip_size))
          {
             free(arc_path);
+            /* the entry can be a 64DD disk as easily as a cartridge; route
+             * it the same way a loose file is routed */
+            if (!is_cartridge_rom(zip_rom))
+            {
+               disk_data = zip_rom;
+               disk_size = (uint32_t)zip_size;
+               goto content_ready;
+            }
             cart_data = zip_rom;
             cart_size = (uint32_t)zip_size;
             if (g_aleck64_enabled)
@@ -2650,7 +2658,14 @@ bool retro_load_game(const struct retro_game_info *game)
          return false;
 
       if (game_size >= 4 && memcmp(game_data, "PK\x03\x04", 4) == 0
-          && aleck64_load_zip(game_data, game_size, &zip_rom, &zip_size))
+          && aleck64_load_zip(game_data, game_size, &zip_rom, &zip_size)
+          && !is_cartridge_rom(zip_rom))
+      {
+         disk_data = zip_rom;
+         disk_size = (uint32_t)zip_size;
+         zip_rom   = NULL;
+      }
+      else if (zip_rom != NULL)
       {
          cart_data = zip_rom;
          cart_size = (uint32_t)zip_size;
