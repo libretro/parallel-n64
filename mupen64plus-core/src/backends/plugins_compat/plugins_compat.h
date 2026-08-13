@@ -22,7 +22,6 @@
 #ifndef M64P_BACKENDS_PLUGINS_COMPAT_PLUGINS_COMPAT_H
 #define M64P_BACKENDS_PLUGINS_COMPAT_PLUGINS_COMPAT_H
 
-#include "backends/api/audio_out_backend.h"
 #include "backends/api/controller_input_backend.h"
 #include "backends/api/rumble_backend.h"
 #include "backends/api/joybus.h"

@@ -43,7 +43,6 @@
 #include "api/m64p_types.h"
 #include "api/m64p_vidext.h"
 #include "api/vidext.h"
-#include "backends/api/audio_out_backend.h"
 #include "backends/api/clock_backend.h"
 #include "backends/api/controller_input_backend.h"
 #include "backends/api/joybus.h"
@@ -844,16 +843,6 @@ m64p_error main_run(void)
     }
 #endif
 
-    /* setup backends
-     *
-     * audio_out_backend_libretro is defined by the libretro audio backend
-     * itself.  This used to shadow it with a file-static of the same name
-     * built from local extern declarations, which meant the backend's own
-     * adapter was never installed and the declarations here had to be kept
-     * in step with it by hand - they were not: set_frequency had grown a
-     * clock and a divider so the exact DAC rate could be passed through,
-     * and the copy here still described the two-argument form, so those
-     * two arguments never reached the backend. */
     
     /* Fill-in l_pak_type_idx and l_ipaks according to game compatibility */
     k = 0;
@@ -1083,7 +1072,7 @@ m64p_error main_run(void)
                 no_compiled_jump,
                 randomize_interrupt,
                 g_start_address,
-                &g_dev.ai, &audio_out_backend_libretro, ROM_SETTINGS.aidmamodifier,
+                ROM_SETTINGS.aidmamodifier,
                 si_dma_duration,
                 rdram_size,
                 joybus_devices, ijoybus_devices,

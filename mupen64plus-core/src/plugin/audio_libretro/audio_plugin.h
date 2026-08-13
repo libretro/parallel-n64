@@ -27,9 +27,13 @@
 void     init_audio_libretro(void);
 void     deinit_audio_libretro(void);
 void     flush_audio_libretro(void);
-double get_audio_sample_rate_libretro(void);
+double   get_audio_sample_rate_libretro(void);
+
+/* Called straight from the AI controller.  This fork has one audio
+ * backend and no second implementation for a vtable to choose between,
+ * so the calls go directly rather than through a one-entry interface. */
+void set_audio_format_via_libretro(unsigned int frequency,
+      unsigned int clock, unsigned int divider);
+void push_audio_samples_via_libretro(const void *buffer, size_t size);
 
 #endif
-
-struct audio_out_backend_interface;
-extern const struct audio_out_backend_interface audio_out_backend_libretro;

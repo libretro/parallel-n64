@@ -48,7 +48,6 @@
 #include "rcp/vi/vi_controller.h"
 #include "rdram/rdram.h"
 
-struct audio_out_backend_interface;
 struct clock_backend_interface;
 struct storage_backend_interface;
 struct joybus_device_interface;
@@ -129,7 +128,7 @@ void init_device(struct device* dev,
     int randomize_interrupt,
     uint32_t start_address,
     /* ai */
-    void* aout, const struct audio_out_backend_interface* iaout, unsigned int dma_modifier,
+    unsigned int dma_modifier,
     /* si */
     unsigned int si_dma_duration,
     /* rdram */

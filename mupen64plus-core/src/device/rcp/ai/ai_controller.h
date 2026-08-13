@@ -30,7 +30,6 @@
 struct mi_controller;
 struct ri_controller;
 struct vi_controller;
-struct audio_out_backend_interface;
 
 enum ai_registers
 {
@@ -65,8 +64,6 @@ struct ai_controller
     struct ri_controller* ri;
     struct vi_controller* vi;
 
-    void* aout;
-    const struct audio_out_backend_interface* iaout;
 };
 
 static osal_inline uint32_t ai_reg(uint32_t address)
@@ -78,8 +75,6 @@ void init_ai(struct ai_controller* ai,
              struct mi_controller* mi,
              struct ri_controller* ri,
              struct vi_controller* vi,
-             void* aout,
-             const struct audio_out_backend_interface* iaout,
              unsigned int dma_modifier);
 
 void poweron_ai(struct ai_controller* ai);

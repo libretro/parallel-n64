@@ -24,7 +24,7 @@
 #include <string.h>
 
 #include <stdio.h>
-#include "backends/api/audio_out_backend.h"
+#include "plugin/audio_libretro/audio_plugin.h"
 #include "device/memory/m64p_memory.h"
 #include "device/r4300/r4300_core.h"
 #include "device/rcp/mi/mi_controller.h"
@@ -121,9 +121,9 @@ static void do_dma(struct ai_controller* ai, struct ai_dma* dma)
             ? 44100 /* default sample rate */
             : ai->vi->clock / (1 + ai->regs[AI_DACRATE_REG]);
 
-        ai->iaout->set_frequency(ai->aout, frequency, ai->vi->clock,
-                                 (ai->regs[AI_DACRATE_REG] == 0)
-                                     ? 0 : 1 + ai->regs[AI_DACRATE_REG]);
+        set_audio_format_via_libretro(frequency, ai->vi->clock,
+                                      (ai->regs[AI_DACRATE_REG] == 0)
+                                          ? 0 : 1 + ai->regs[AI_DACRATE_REG]);
 
         ai->samples_format_changed = 0;
     }
@@ -191,15 +191,11 @@ void init_ai(struct ai_controller* ai,
              struct mi_controller* mi,
              struct ri_controller* ri,
              struct vi_controller* vi,
-             void* aout,
-             const struct audio_out_backend_interface* iaout,
              unsigned int dma_modifier)
 {
     ai->mi = mi;
     ai->ri = ri;
     ai->vi = vi;
-    ai->aout = aout;
-    ai->iaout = iaout;
     ai->dma_modifier = dma_modifier;
 }
 
@@ -224,7 +220,7 @@ void read_ai_regs(void* opaque, uint32_t address, uint32_t* value)
         {
             unsigned int diff = ai->fifo[0].length - ai->last_read;
             unsigned char *p = (unsigned char*)&ai->ri->rdram->dram[ai->fifo[0].address/4];
-            ai->iaout->push_samples(ai->aout, p + diff, ai->last_read - *value);
+            push_audio_samples_via_libretro(p + diff, ai->last_read - *value);
             ai->last_read = *value;
         }
     }
@@ -275,7 +271,7 @@ void ai_end_of_dma_event(void* opaque)
     {
         unsigned int diff = ai->fifo[0].length - ai->last_read;
         unsigned char *p = (unsigned char*)&ai->ri->rdram->dram[ai->fifo[0].address/4];
-        ai->iaout->push_samples(ai->aout, p + diff, ai->last_read);
+        push_audio_samples_via_libretro(p + diff, ai->last_read);
         ai->last_read = 0;
     }
 

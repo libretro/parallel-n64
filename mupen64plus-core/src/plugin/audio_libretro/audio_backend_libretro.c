@@ -255,12 +255,10 @@ void flush_audio_libretro(void)
 /* frequency is the rate rounded to whole Hz; clock and divider give the
  * same rate exactly, as the DAC derives it.  The divider is zero when the
  * game has not set DACRATE and the caller substituted a default. */
-void set_audio_format_via_libretro(void *user_data,
-      unsigned int frequency, unsigned int clock, unsigned int divider)
+void set_audio_format_via_libretro(unsigned int frequency,
+      unsigned int clock, unsigned int divider)
 {
    double exact;
-
-   (void)user_data;
 
    if (frequency == 0)
       return;
@@ -322,14 +320,11 @@ void set_audio_format_via_libretro(void *user_data,
  * call; the determinism contract degrades to "one batch per frame plus
  * one batch per AUDIO_ACC_FRAMES-sized chunk", still bounded and still
  * deterministic given identical inputs. */
-void push_audio_samples_via_libretro(void *user_data,
-      const void *buffer, size_t size)
+void push_audio_samples_via_libretro(const void *buffer, size_t size)
 {
    const uint8_t *src;
    size_t         frames;
    size_t         off;
-
-   (void)user_data;
 
    if (buffer == NULL || size < 4)
       return;
@@ -374,27 +369,3 @@ void push_audio_samples_via_libretro(void *user_data,
          emit_frames(audio_acc_frames);  /* emergency full drain */
    }
 }
-
-/* ---- next-style audio_out_backend_interface adapter ---------------------
- * next's init_ai() takes a (void* aout, const struct audio_out_backend_interface*)
- * pair. Wrap the existing libretro audio bridge in that interface so next's
- * ai_controller can drive it unchanged. set_frequency drops the 'bits' arg
- * (libretro output is always the fixed format push_audio_samples emits). */
-#include "backends/api/audio_out_backend.h"
-
-static void libretro_aout_set_frequency(void* aout, unsigned int frequency,
-      unsigned int clock, unsigned int divider)
-{
-   set_audio_format_via_libretro(aout, frequency, clock, divider);
-}
-
-static void libretro_aout_push_samples(void* aout, const void* samples, size_t size)
-{
-   push_audio_samples_via_libretro(aout, samples, size);
-}
-
-const struct audio_out_backend_interface audio_out_backend_libretro =
-{
-   libretro_aout_set_frequency,
-   libretro_aout_push_samples
-};
