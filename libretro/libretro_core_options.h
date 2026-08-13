@@ -916,6 +916,35 @@ struct retro_core_option_v2_definition option_defs_us[] = {
         "disabled"
     },
     {
+        CORE_NAME "-enhanced-hle-audio",
+        "Enhanced RSP HLE Audio",
+        NULL,
+        "Replace the audio microcode's four-tap voice interpolator with a windowed-sinc resampler. The microcode's kernel cannot band-limit a sample that is played back faster than it was recorded, so its image folds back into the audible range - the grain and grit on high-pitched sounds. This removes most of that and is slightly less muffled besides. Only affects the HLE RSP audio path. Deliberately not bit-accurate to the hardware, so leave it off if you want the exact output the console produced.",
+        NULL,
+        NULL,
+        {
+            { "disabled", NULL },
+            { "enabled",  NULL },
+            { NULL, NULL },
+        },
+        "disabled"
+    },
+    {
+        CORE_NAME "-enhanced-hle-audio-quality",
+        "Enhanced RSP HLE Audio Quality",
+        NULL,
+        "How many taps the enhanced resampler uses. More taps reject more of the folded-back image and cost a little more CPU and memory: 16 taps is already a large improvement over the microcode's four, 32 and 64 taps tighten the filter further. Has no effect unless Enhanced RSP HLE Audio is enabled.",
+        NULL,
+        NULL,
+        {
+            { "16", "16 taps" },
+            { "32", "32 taps" },
+            { "64", "64 taps" },
+            { NULL, NULL },
+        },
+        "32"
+    },
+    {
         CORE_NAME "-gfxplugin",
         "GFX Plugin",
         NULL,

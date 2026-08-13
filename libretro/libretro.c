@@ -54,6 +54,7 @@ uint8_t* g_dd_disk;
 /* Cxd4 RSP */
 #include "../mupen64plus-rsp-cxd4/config.h"
 #include "plugin/audio_libretro/audio_plugin.h"
+#include "../mupen64plus-rsp-hle/src/resample_hq.h"
 #include "../Graphics/plugin.h"
 
 #ifdef HAVE_THR_AL
@@ -1579,6 +1580,30 @@ void update_variables(bool startup)
    }
    else
       audio_rsp_mode = AUDIO_RSP_FOLLOW;
+
+   /* Enhanced HLE voice interpolation.  The quality value is the tap
+    * count; zero turns the enhancement off and restores the microcode's
+    * own four-tap kernel, which is the bit-accurate path. */
+   {
+      int enhanced_taps = 0;
+
+      var.key   = "parallel-n64-enhanced-hle-audio";
+      var.value = NULL;
+
+      if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value
+            && !strcmp(var.value, "enabled"))
+      {
+         enhanced_taps = 32;              /* matches the option default */
+
+         var.key   = "parallel-n64-enhanced-hle-audio-quality";
+         var.value = NULL;
+
+         if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+            enhanced_taps = atoi(var.value);
+      }
+
+      resample_hq_set_quality(enhanced_taps);
+   }
 
    var.key   = "parallel-n64-screensize";
    var.value = NULL;

@@ -27,6 +27,7 @@
 #include <string.h>
 
 #include "alist.h"
+#include "resample_hq.h"
 #include "arithmetics.h"
 #include "audio.h"
 #include "hle_external.h"
@@ -1550,6 +1551,39 @@ static void alist_resample_save(struct hle_t* hle, uint32_t address, uint16_t po
     *dram_u16(hle, address + 8) = pitch_accu;
 }
 
+/* Opt-in enhanced voice interpolation (see resample_hq.c).  Fills *out and
+ * returns non-zero when the enhancement is on; returns zero to leave the
+ * exact microcode path in place.  Same input stream, same accumulator and
+ * the same number of outputs, so nothing the command list computed has to
+ * change - only the interpolated value differs.  Not bit-exact against the
+ * interpreter by construction. */
+static int resample_hq_sample(struct hle_t* hle, unsigned ipos,
+                              uint32_t pitch, uint32_t pitch_accu,
+                              int16_t* out)
+{
+    const int16_t* k = resample_hq_taps(pitch, pitch_accu);
+    int64_t        acc = 0;
+    int            taps;
+    int            t;
+
+    if (k == NULL)
+        return 0;
+
+    taps = resample_hq_taps_count();
+
+    /* Centre the window where the microcode's four taps sit: tap
+     * (taps/2 - 1) lands on the sample lut[0] would weight.  64 taps of
+     * 16-bit input against Q15 coefficients reach 2^36, so the
+     * accumulator has to be 64-bit. */
+    for (t = 0; t < taps; ++t)
+        acc += (int64_t)*sample(hle, ipos + t - (taps / 2 - 1)) * k[t];
+
+    /* round half-up: keeps the error zero-mean instead of biasing every
+     * sample toward zero */
+    *out = clamp_s16((int32_t)((acc + 0x4000) >> 15));
+    return 1;
+}
+
 void alist_resample(
         struct hle_t* hle,
         bool init,
@@ -1585,6 +1619,17 @@ void alist_resample(
          * shifting once is up to a few LSBs off, which is audible as a
          * DC bias on near-silent material and breaks bit-exactness
          * against LLE. */
+        int16_t hq_out;
+
+        if (resample_hq_sample(hle, ipos, pitch, pitch_accu, &hq_out)) {
+            *sample(hle, opos++) = hq_out;
+            pitch_accu += pitch;
+            ipos       += (pitch_accu >> 16);
+            pitch_accu &= 0xffff;
+            --count;
+            continue;
+        }
+
         int32_t q0 = (int32_t)(((int64_t)2 * *sample(hle, ipos    ) * lut[0] + 0x8000) >> 16);
         int32_t q1 = (int32_t)(((int64_t)2 * *sample(hle, ipos + 1) * lut[1] + 0x8000) >> 16);
         int32_t q2 = (int32_t)(((int64_t)2 * *sample(hle, ipos + 2) * lut[2] + 0x8000) >> 16);
@@ -1678,6 +1723,17 @@ void alist_resample_audio(
 
         /* Identical arithmetic to alist_resample: per-tap vmulf with
          * a tree of saturating vadds. */
+        int16_t hq_out;
+
+        if (resample_hq_sample(hle, ipos, pitch, pitch_accu, &hq_out)) {
+            *sample(hle, opos++) = hq_out;
+            pitch_accu += pitch;
+            ipos       += (pitch_accu >> 16);
+            pitch_accu &= 0xffff;
+            --count;
+            continue;
+        }
+
         int32_t q0 = (int32_t)(((int64_t)2 * *sample(hle, ipos    ) * lut[0] + 0x8000) >> 16);
         int32_t q1 = (int32_t)(((int64_t)2 * *sample(hle, ipos + 1) * lut[1] + 0x8000) >> 16);
         int32_t q2 = (int32_t)(((int64_t)2 * *sample(hle, ipos + 2) * lut[2] + 0x8000) >> 16);
@@ -1781,6 +1837,17 @@ resample:
 
     while (count != 0) {
         const int16_t* lut = RESAMPLE_LUT + ((pitch_accu & 0xfc00) >> 8);
+        int16_t hq_out;
+
+        if (resample_hq_sample(hle, ipos, pitch, pitch_accu, &hq_out)) {
+            *sample(hle, opos++) = hq_out;
+            pitch_accu += pitch;
+            ipos       += (pitch_accu >> 16);
+            pitch_accu &= 0xffff;
+            --count;
+            continue;
+        }
+
         int32_t q0 = (int32_t)(((int64_t)2 * *sample(hle, ipos    ) * lut[0] + 0x8000) >> 16);
         int32_t q1 = (int32_t)(((int64_t)2 * *sample(hle, ipos + 1) * lut[1] + 0x8000) >> 16);
         int32_t q2 = (int32_t)(((int64_t)2 * *sample(hle, ipos + 2) * lut[2] + 0x8000) >> 16);
