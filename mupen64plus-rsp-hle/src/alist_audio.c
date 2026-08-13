@@ -211,6 +211,9 @@ static void DMEMMOVE(struct hle_t* hle, uint32_t w1, uint32_t w2)
     alist_move(hle, dmemo, dmemi, align(count, 16));
 }
 
+/* the DMEM address the ADPCM codebook DMA lands at */
+enum { ADPCM_BOOK_DMEM = 0x4c0 };
+
 static void LOADADPCM(struct hle_t* hle, uint32_t w1, uint32_t w2)
 {
     uint16_t count   = w1;
@@ -225,6 +228,18 @@ static void LOADADPCM(struct hle_t* hle, uint32_t w1, uint32_t w2)
         entries = sizeof(hle->alist_audio.table)/sizeof(hle->alist_audio.table[0]);
 
     dram_load_u16(hle, (uint16_t*)hle->alist_audio.table, address, entries);
+
+    /* The DMA lands the raw book in DMEM at a fixed address, so it is
+     * visible to anything that reads that region afterwards - the
+     * decoder indexes its coefficients from there, and a predictor
+     * beyond the loaded book reads whatever the buffer holds.  Mirror
+     * the bytes so the shadow agrees with what a real RSP has. */
+    {
+        unsigned k;
+        for (k = 0; k + 1 < count && ADPCM_BOOK_DMEM + k + 1 < 0x1000; k += 2)
+            *(int16_t*)(hle->alist_buffer + (((ADPCM_BOOK_DMEM + k) ^ S16) & 0xfff)) =
+                (int16_t)*dram_u16(hle, address + k);
+    }
 }
 
 static void INTERLEAVE(struct hle_t* hle, uint32_t UNUSED(w1), uint32_t w2)
