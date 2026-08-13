@@ -81,6 +81,10 @@ static int nead_env_style = NEAD_ENV_OOT;
  * (not just the HLE-side table), so the shadow must carry it too */
 static uint16_t nead_book = 0x330;
 
+/* DMEM address at which the handler keeps SETBUFF's operands, or zero
+ * where that staging has not been established */
+static uint16_t nead_setbuff_store = 0;
+
 /* whether FILTER averages the fresh coefficients with the saved table
  * (Ocarina lineage) or uses them straight (Shindou/Yoshi/1080) */
 static int nead_filter_avg = 1;
@@ -168,6 +172,14 @@ static void SETBUFF(struct hle_t* hle, uint32_t w1, uint32_t w2)
     hle->alist_nead.in    = w1 + nead_dmem_base;
     hle->alist_nead.out   = (w2 >> 16) + nead_dmem_base;
     hle->alist_nead.count = w2;
+
+    /* the handler keeps the three values in DMEM as well, biased the
+     * same way it uses them; a buffer walk that overruns reads them */
+    if (nead_setbuff_store != 0) {
+        *nead_s16(hle, (uint16_t)(nead_setbuff_store    )) = (int16_t)hle->alist_nead.in;
+        *nead_s16(hle, (uint16_t)(nead_setbuff_store + 2)) = (int16_t)hle->alist_nead.out;
+        *nead_s16(hle, (uint16_t)(nead_setbuff_store + 4)) = (int16_t)hle->alist_nead.count;
+    }
 }
 
 static void ADPCM(struct hle_t* hle, uint32_t w1, uint32_t w2)
@@ -286,7 +298,9 @@ static void DMEMMOVE(struct hle_t* hle, uint32_t w1, uint32_t w2)
     if (count == 0)
         return;
 
-    alist_move(hle, dmemo, dmemi, (count + 3) & ~3);
+    /* the move loop copies whole 16-byte rows, so the extent rounds up
+     * to 0x10 rather than to a word */
+    alist_move(hle, dmemo, dmemi, (count + 0xf) & ~0xf);
 }
 
 static void ENVSETUP1_MK(struct hle_t* hle, uint32_t w1, uint32_t w2)
@@ -566,11 +580,12 @@ void alist_process_nead_mk(struct hle_t* hle)
     };
 
     nead_slab = 0xfa0;
-    nead_book = 0;
+    nead_book = 0x3d0;
     nead_env_style = NEAD_ENV_MK;
     nead_resample_old = 1;
     nead_slab_seed(hle);
     nead_dmem_base = 0x450;
+    nead_setbuff_store = 0x330;
     alist_process(hle, ABI, 0x20);
     rsp_break(hle, SP_STATUS_TASKDONE);
 }
@@ -594,6 +609,7 @@ void alist_process_nead_sf(struct hle_t* hle)
     nead_resample_old = 0;
     nead_slab_seed(hle);
     nead_dmem_base = 0;
+    nead_setbuff_store = 0;
     alist_process(hle, ABI, 0x20);
     rsp_break(hle, SP_STATUS_TASKDONE);
 }
@@ -617,6 +633,7 @@ void alist_process_nead_sfj(struct hle_t* hle)
     nead_resample_old = 0;
     nead_slab_seed(hle);
     nead_dmem_base = 0;
+    nead_setbuff_store = 0;
     alist_process(hle, ABI, 0x20);
     rsp_break(hle, SP_STATUS_TASKDONE);
 }
@@ -640,6 +657,7 @@ void alist_process_nead_fz(struct hle_t* hle)
     nead_resample_old = 0;
     nead_slab_seed(hle);
     nead_dmem_base = 0;
+    nead_setbuff_store = 0;
     alist_process(hle, ABI, 0x20);
     rsp_break(hle, SP_STATUS_TASKDONE);
 }
@@ -664,6 +682,7 @@ void alist_process_nead_wrjb(struct hle_t* hle)
     nead_resample_old = 0;
     nead_slab_seed(hle);
     nead_dmem_base = 0;
+    nead_setbuff_store = 0;
     alist_process(hle, ABI, 0x20);
     rsp_break(hle, SP_STATUS_TASKDONE);
 }
@@ -687,6 +706,8 @@ void alist_process_nead_ys(struct hle_t* hle)
     nead_slab_seed(hle);
     nead_dmem_base = 0;
     nead_dmem_base = 0;
+    nead_setbuff_store = 0;
+    nead_setbuff_store = 0;
     alist_process(hle, ABI, 0x18);
     rsp_break(hle, SP_STATUS_TASKDONE);
 }
@@ -709,6 +730,7 @@ void alist_process_nead_1080(struct hle_t* hle)
     nead_resample_old = 0;
     nead_slab_seed(hle);
     nead_dmem_base = 0;
+    nead_setbuff_store = 0;
     alist_process(hle, ABI, 0x18);
     rsp_break(hle, SP_STATUS_TASKDONE);
 }
@@ -731,6 +753,7 @@ void alist_process_nead_oot(struct hle_t* hle)
     nead_resample_old = 0;
     nead_slab_seed(hle);
     nead_dmem_base = 0;
+    nead_setbuff_store = 0;
     alist_process(hle, ABI, 0x18);
     rsp_break(hle, SP_STATUS_TASKDONE);
 }
@@ -753,6 +776,7 @@ void alist_process_nead_mm(struct hle_t* hle)
     nead_resample_old = 0;
     nead_slab_seed(hle);
     nead_dmem_base = 0;
+    nead_setbuff_store = 0;
     alist_process(hle, ABI, 0x18);
     rsp_break(hle, SP_STATUS_TASKDONE);
 }
@@ -775,6 +799,7 @@ void alist_process_nead_mmb(struct hle_t* hle)
     nead_resample_old = 0;
     nead_slab_seed(hle);
     nead_dmem_base = 0;
+    nead_setbuff_store = 0;
     alist_process(hle, ABI, 0x18);
     rsp_break(hle, SP_STATUS_TASKDONE);
 }
@@ -797,6 +822,7 @@ void alist_process_nead_ac(struct hle_t* hle)
     nead_resample_old = 0;
     nead_slab_seed(hle);
     nead_dmem_base = 0;
+    nead_setbuff_store = 0;
     alist_process(hle, ABI, 0x18);
     rsp_break(hle, SP_STATUS_TASKDONE);
 }
@@ -823,6 +849,7 @@ void alist_process_nead_mats(struct hle_t* hle)
     nead_resample_old = 0;
     nead_slab_seed(hle);
     nead_dmem_base = 0;
+    nead_setbuff_store = 0;
     alist_process(hle, ABI, 0x18);
     rsp_break(hle, SP_STATUS_TASKDONE);
 }
