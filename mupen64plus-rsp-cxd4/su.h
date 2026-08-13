@@ -345,6 +345,10 @@ extern void LTV(unsigned vt, unsigned element, signed offset, unsigned base);
 extern void SWV(unsigned vt, unsigned element, signed offset, unsigned base);
 extern void STV(unsigned vt, unsigned element, signed offset, unsigned base);
 
+/* Set by the frontend when an in-flight task has to be abandoned, as it
+ * is when content is closed part way through one. */
+extern int g_rsp_force_halt;
+
 NOINLINE extern void run_task(void);
 
 #endif

@@ -2004,10 +2004,38 @@ static INLINE void COP2(u32 inst)
 NOINLINE void run_task(void)
 {
     register u32 PC;
+    unsigned int halt_poll = 0;
 
     PC = FIT_IMEM(GET_RCP_REG(SP_PC_REG));
     for (;;) {
         inst_word = *(pi32)(IMEM + FIT_IMEM(PC));
+
+        /* The interpreter runs a task to completion and leaves only on
+         * BREAK.  A task that is still in flight when the frontend closes
+         * the content never reaches one, and the extra emulation step the
+         * unload path drives then spins here for ever - the frontend sets
+         * g_rsp_force_halt for exactly this case, but nothing was reading
+         * it.  Poll it rarely enough not to cost anything in the common
+         * case, and leave through the normal exit so SP_PC is written
+         * back as usual. */
+        if ((++halt_poll & 0xffff) == 0 && g_rsp_force_halt)
+            goto RSP_halted_CPU_exit_point;
+#ifdef LLE_STEP_BUDGET
+        {
+            static unsigned long long lle_steps;
+            static unsigned int lle_ring[64];
+            static int lle_ri;
+            lle_ring[lle_ri++ & 63] = PC;
+            if (++lle_steps > 200000000ULL) {
+                int k;
+                fprintf(stderr, "LLE budget exceeded; recent PCs:");
+                for (k = 0; k < 64; ++k)
+                    fprintf(stderr, " %03x", lle_ring[(lle_ri + k) & 63] & 0xfff);
+                fprintf(stderr, "\n");
+                exit(3);
+            }
+        }
+#endif
 #ifdef EMULATE_STATIC_PC
         PC = (PC + 0x004);
 EX:
