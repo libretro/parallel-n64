@@ -52,6 +52,13 @@ enum {
 /* the mp3/cbfd builds place the whole buffer space 0x10 bytes higher */
 static uint16_t naudio_shift = 0;
 
+/* the two revisions that bank MP3 state through DRAM do it with
+ * different windows, so the wrapper needs to know which one is running:
+ * the Conker revision moves 0x440 bytes from DMEM 0x8a0, the
+ * mp3/Banjo-Tooie revision moves 0x800 bytes from DMEM 0x800 */
+static uint16_t naudio_mp3_bank_dmem = 0;
+static uint16_t naudio_mp3_bank_size = 0;
+
 static int16_t naudio_clamp_s16(int_fast32_t x)
 {
     x = (x < INT16_MIN) ? INT16_MIN : x;
@@ -497,6 +504,14 @@ static void MP3(struct hle_t* hle, uint32_t w1, uint32_t w2)
      * call's 0x140-byte overlap tail back out.  mp3.c keeps the same
      * region at mp3_buffer 0x8a0 in host halfword order, so the copies
      * swap bytes per halfword. */
+    /* only the Conker revision's window is transcribed and verified so
+     * far; the mp3 revision moves a different one and is left alone
+     * until it can be checked against the interpreter */
+    if (naudio_mp3_bank_size != 0x440 || naudio_mp3_bank_dmem != 0x8a0) {
+        mp3_task(hle, index, address);
+        return;
+    }
+
     for (k = 0; k < 0x440; ++k)
         old_bank[k] = hle->dram[(state + k) ^ S8];
     for (k = 0; k < 0x440; ++k)
@@ -522,6 +537,8 @@ static void OVERLOAD(struct hle_t* hle, uint32_t w1, uint32_t w2)
 void alist_process_naudio(struct hle_t* hle)
 {
     naudio_shift = 0;
+    naudio_mp3_bank_dmem = 0;
+    naudio_mp3_bank_size = 0;
     naudio_seed(hle);
     static const acmd_callback_t ABI[0x10] = {
         SPNOOP,         ADPCM,          CLEARBUFF,      ENVMIXER_RAW,
@@ -537,6 +554,8 @@ void alist_process_naudio(struct hle_t* hle)
 void alist_process_naudio_bk(struct hle_t* hle)
 {
     naudio_shift = 0;
+    naudio_mp3_bank_dmem = 0;
+    naudio_mp3_bank_size = 0;
     naudio_seed(hle);
     /* Banjo-Kazooie's audio library emits A_POLEF at opcode 0x0e, but
      * this ucode does not implement a pole filter: its dispatch table
@@ -589,6 +608,8 @@ void alist_process_naudio_bk(struct hle_t* hle)
 void alist_process_naudio_dk(struct hle_t* hle)
 {
     naudio_shift = 0;
+    naudio_mp3_bank_dmem = 0;
+    naudio_mp3_bank_size = 0;
     naudio_seed(hle);
     /* Differs from alist_process_naudio only at opcodes 7 and 8, which
      * dispatch to MIXER here instead of the unknown-command handler. */
@@ -606,6 +627,8 @@ void alist_process_naudio_dk(struct hle_t* hle)
 void alist_process_naudio_mp3(struct hle_t* hle)
 {
     naudio_shift = 0x10;
+    naudio_mp3_bank_dmem = 0x800;
+    naudio_mp3_bank_size = 0x800;
     naudio_seed(hle);
     static const acmd_callback_t ABI[0x10] = {
         OVERLOAD,       ADPCM,          CLEARBUFF,      ENVMIXER,
@@ -621,6 +644,8 @@ void alist_process_naudio_mp3(struct hle_t* hle)
 void alist_process_naudio_cbfd(struct hle_t* hle)
 {
     naudio_shift = 0x10;
+    naudio_mp3_bank_dmem = 0x8a0;
+    naudio_mp3_bank_size = 0x440;
     naudio_seed(hle);
     /* What differs from alist_process_naudio_mp3?
      *
