@@ -66,6 +66,9 @@ static int16_t naudio_clamp_s16(int_fast32_t x)
     return (int16_t)x;
 }
 
+/* the DMEM scratch the naudio state transfers stage through */
+enum { NAUDIO_STATE_SLAB = 0xfa0 };
+
 static void naudio_seed(struct hle_t* hle)
 {
     uint32_t ucode_data = *dmem_u32(hle, TASK_UCODE_DATA);
@@ -75,6 +78,15 @@ static void naudio_seed(struct hle_t* hle)
     for (k = 0; k + 1 < data_size; k += 2)
         *(int16_t*)(hle->alist_buffer + ((k ^ S16) & 0xfff)) =
             (int16_t)*dram_u16(hle, ucode_data + k);
+
+    /* The scratch the state transfers stage through is DMEM, not
+     * private state: it keeps whatever the previous task left there,
+     * and the first command to spill residue from it does so before
+     * anything in this task has staged.  Start it from DMEM. */
+    for (k = 0; k < sizeof(hle->alist_naudio.state_scratch); ++k)
+        hle->alist_naudio.state_scratch[k] =
+            (uint8_t)(*dmem_u16(hle, (NAUDIO_STATE_SLAB + (k & ~1)) & 0xfff)
+                      >> ((k & 1) ? 0 : 8));
 }
 
 static void UNKNOWN(struct hle_t* hle, uint32_t w1, uint32_t w2)
