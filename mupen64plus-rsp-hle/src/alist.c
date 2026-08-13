@@ -1061,24 +1061,6 @@ void alist_envmix_ge_lanes(
     for (j = 0; j < 40; ++j)
         save_buffer[j] = (int16_t)*dram_u16(hle, address + 2*j);
 
-    /* A resumed call whose stored parameters are all zero has nothing
-     * to ramp and nothing to mix: the handler leaves the block in the
-     * slab exactly as the load DMA put it there and writes that back,
-     * so the state round-trips unchanged rather than being rebuilt
-     * from lanes that decode to silence. */
-    if (!init) {
-        unsigned h;
-        int inert = 1;
-        for (h = 32; h < 40; ++h)
-            if (save_buffer[h] != 0) { inert = 0; break; }
-        if (inert) {
-            for (h = 0; h < 40; ++h)
-                *(int16_t*)(hle->alist_buffer +
-                            (((AUDIO_STATE_SLAB + 2*h) ^ S16) & 0xfff)) = save_buffer[h];
-            return;
-        }
-    }
-
     if (init) {
         int c;
         tgt[0] = target[0];
@@ -1116,7 +1098,9 @@ void alist_envmix_ge_lanes(
         int16_t l_vol[8], r_vol[8];
 
         for (c = 0; c < 2; ++c) {
-            bool ascend = ((int16_t)((uint32_t)rt[c] >> 16) >= 0);
+            /* the direction test is strict: a zero rate ramps down, so
+             * the lanes clamp against the target from above */
+            bool ascend = ((int16_t)((uint32_t)rt[c] >> 16) > 0);
             for (j = 0; j < 8; ++j) {
                 int16_t hi;
                 if (!init || m != 0) {
