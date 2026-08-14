@@ -2,11 +2,18 @@
  * (zip parsing, game table, dipswitch defaults, mahjong flag).
  *
  * Build & run from the repo root:
- *   cc -Imupen64plus-core/src -Ilibretro-common/include \
- *      -o /tmp/test_a64 tools/test_aleck64_zip.c libretro/aleck64_mame.c \
+ *   cc -Imupen64plus-core/src -Ilibretro-common/include -o /tmp/test_a64 \
+ *      tools/test_aleck64_zip.c libretro/aleck64_mame.c \
+ *      mupen64plus-core/src/device/aleck64/aleck64.c \
  *      libretro-common/encodings/encoding_deflate.c \
  *      libretro-common/encodings/encoding_crc32.c \
+ *      libretro-common/encodings/encoding_utf.c \
  *      libretro-common/features/features_cpu.c \
+ *      libretro-common/streams/file_stream.c \
+ *      libretro-common/vfs/vfs_implementation.c \
+ *      libretro-common/compat/compat_strl.c \
+ *      libretro-common/file/file_path.c libretro-common/file/file_path_io.c \
+ *      libretro-common/time/rtime.c \
  *      && /tmp/test_a64
  */
 #include <assert.h>
@@ -20,13 +27,10 @@
 
 #include "device/aleck64/aleck64.h"
 
-/* globals normally defined in aleck64.c / libretro.c (not linked here) */
-int g_aleck64_enabled;
-int g_aleck64_e90;
-int g_aleck64_mahjong;
-int g_aleck64_dpad_disabled;
-uint8_t g_aleck64_dipswitch[2];
-retro_environment_t environ_cb; /* NULL -> aleck64_apply_dips uses defaults */
+/* aleck64.c is linked in for the E90 overlay checks, so it brings the
+ * g_aleck64_* globals with it; only the frontend callbacks are stubbed. */
+retro_environment_t environ_cb;  /* NULL -> aleck64_apply_dips uses defaults */
+retro_input_state_t input_cb;    /* NULL -> the io ports read as idle */
 
 /* ---- minimal in-memory zip writer (enough for the loader under test) ---- */
 
@@ -121,6 +125,105 @@ static uint8_t* v64_file(uint32_t size)
     return d;
 }
 
+/* The E90 overlay decodes an RGB555 palette out of packed 32-bit words and
+ * stretches 8-pixel-wide blocks to whatever width the VI scaled the frame to.
+ * Both are easy to get subtly wrong, so pin them down on a known sprite. */
+#define FB_W 640u
+#define FB_H 240u
+#define SRC_W 320u
+
+static uint8_t* e90_setup(struct aleck64* a64, uint8_t* fb, uint32_t attr)
+{
+    memset(fb, 0, FB_W * FB_H * 4);
+    memset(a64, 0, sizeof(*a64));
+    init_aleck64(a64);
+    poweron_aleck64(a64);
+
+    g_aleck64_enabled = 1;
+    g_aleck64_e90 = 1;
+    a64->e90_enable = 1;
+
+    /* one sprite at source (16,16); pal index 0, so shade[0]=8 selects the
+     * high half of palette word 4 */
+    a64->e90_vram[0] = attr;
+    a64->e90_vram[1] = (UINT32_C(0x0020) << 16) | UINT32_C(0x0010);
+    a64->e90_pal[4] = UINT32_C(0x7c1f0000); /* r=31 g=0 b=31 in the high half */
+
+    /* empty-cell separator greys: with attr=0x20 the pal bits all come out 0,
+     * so the shade_empty indices 0x0d/0x0e/0x0f land in words 6 and 7 (index
+     * po sits in e90_pal[po>>1], high half when even).  0x0e and 0x0f get
+     * clearly different levels so "0x0f is brighter" is a real assertion. */
+    a64->e90_pal[6] = UINT32_C(0x00001084); /* 0x0d = grey 4 in the low half */
+    a64->e90_pal[7] = UINT32_C(0x21084210); /* 0x0e = grey 8, 0x0f = grey 16 */
+
+    aleck64_e90_overlay(fb, FB_W, FB_W, FB_H, SRC_W);
+    return fb;
+}
+
+static void e90_overlay_checks(void)
+{
+    static uint8_t fb[FB_W * FB_H * 4];
+    static struct aleck64 a64;
+    const unsigned scale = FB_W / SRC_W;
+    /* MAME's fixed +4/+7 sprite origin, then the horizontal stretch */
+    const unsigned x0 = (16 + 4) * scale;
+    const unsigned y0 = 16 + 7;
+    const uint8_t* px;
+    unsigned n;
+
+    e90_setup(&a64, fb, 0);
+
+    /* the block's first source column lands as 'scale' identical pixels... */
+    for (n = 0; n < scale; ++n) {
+        px = fb + (y0 * FB_W + x0 + n) * 4;
+        assert(px[0] == 0xff && px[1] == 0x00 && px[2] == 0xff && px[3] == 0xff);
+    }
+    /* ...and nothing spills to the left of it */
+    px = fb + (y0 * FB_W + x0 - 1) * 4;
+    assert(px[0] == 0 && px[1] == 0 && px[2] == 0 && px[3] == 0);
+    /* nor above it */
+    px = fb + ((y0 - 1) * FB_W + x0) * 4;
+    assert(px[3] == 0);
+
+    /* the 8x8 block covers 8*scale columns and 8 rows, with no gap between
+     * adjacent source columns (a rounding bug in the stretch shows up here) */
+    for (n = 0; n < 8 * scale; ++n) {
+        px = fb + ((y0 + 7) * FB_W + x0 + n) * 4;
+        assert(px[3] == 0xff);
+    }
+    px = fb + ((y0 + 8) * FB_W + x0) * 4;
+    assert(px[3] == 0);
+    px = fb + ((y0 + 7) * FB_W + x0 + 8 * scale) * 4;
+    assert(px[3] == 0);
+
+    /* attribute bit 5 marks an empty playfield cell: instead of a block it
+     * draws the soft-edged column separator (shade_empty in aleck64.c),
+     * identical on every row.  Edge columns paint, the middle stays
+     * transparent so the GL overlay path shows through. */
+    e90_setup(&a64, fb, 0x20);
+    px = fb + (y0 * FB_W + x0) * 4;              /* xi=0: index 0x0e */
+    assert(px[3] == 0xff);
+    for (n = 2; n <= 4; ++n) {                   /* xi=2..4: skipped */
+        px = fb + (y0 * FB_W + x0 + n * scale) * 4;
+        assert(px[3] == 0);
+    }
+    px = fb + (y0 * FB_W + x0 + 7 * scale) * 4;  /* xi=7: index 0x0f */
+    assert(px[3] == 0xff);
+    /* 0x0f is the lighter grey, so xi=7 must beat xi=0; the greys are equal
+     * across channels, comparing red is enough */
+    assert(px[2] > fb[(y0 * FB_W + x0) * 4 + 2]);
+
+    /* the chip-level enable does turn everything off */
+    memset(fb, 0, sizeof(fb));
+    a64.e90_enable = 0;
+    aleck64_e90_overlay(fb, FB_W, FB_W, FB_H, SRC_W);
+    px = fb + (y0 * FB_W + x0) * 4;
+    assert(px[3] == 0);
+
+    g_aleck64_enabled = 0;
+    g_aleck64_e90 = 0;
+}
+
 int main(void)
 {
     static struct zipw z;
@@ -195,6 +298,8 @@ int main(void)
     zip_finish(&z);
     assert(aleck64_load_zip(z.buf, z.len, &rom, &rom_size) == 0);
     assert(g_aleck64_enabled == 0);
+
+    e90_overlay_checks();
 
     printf("aleck64 zip loader: all checks passed\n");
     return 0;

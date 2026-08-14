@@ -271,15 +271,19 @@ void init_device(struct device* dev,
         /* Aleck64 arcade board: replaced below when an Aleck64 romset is loaded */
         { A(0x80000000, 0x3fffffff), M64P_MEM_NOTHING, { NULL, RW(open_bus) }, { NULL, 0, 0 } },
         { A(MM_ALECK64_SDRAM, 0x7fffff), M64P_MEM_NOTHING, { NULL, RW(open_bus) }, { NULL, 0, 0 } },
-        { A(MM_ALECK64_IO, 0xffff), M64P_MEM_NOTHING, { NULL, RW(open_bus) }, { NULL, 0, 0 } }
+        { A(MM_ALECK64_IO, 0xffff), M64P_MEM_NOTHING, { NULL, RW(open_bus) }, { NULL, 0, 0 } },
+        { A(MM_ALECK64_E90_VRAM, 0x3ffff), M64P_MEM_NOTHING, { NULL, RW(open_bus) }, { NULL, 0, 0 } }
     };
 
     if (g_aleck64_enabled) {
         /* the board SDRAM answers the whole 0x80000000-0xc07fffff physical
          * range (like ares' aleck64 bus decode), the I/O ports sit on top */
-        mappings[ARRAY_SIZE(mappings)-3] = (struct mem_mapping){ A(0x80000000, 0x3fffffff), M64P_MEM_NOTHING, { &dev->aleck64, RW(aleck64_sdram) }, { NULL, 0, 0 } };
-        mappings[ARRAY_SIZE(mappings)-2] = (struct mem_mapping){ A(MM_ALECK64_SDRAM, 0x7fffff), M64P_MEM_NOTHING, { &dev->aleck64, RW(aleck64_sdram) }, { NULL, 0, 0 } };
-        mappings[ARRAY_SIZE(mappings)-1] = (struct mem_mapping){ A(MM_ALECK64_IO, 0xffff), M64P_MEM_NOTHING, { &dev->aleck64, RW(aleck64_io) }, { NULL, 0, 0 } };
+        mappings[ARRAY_SIZE(mappings)-4] = (struct mem_mapping){ A(0x80000000, 0x3fffffff), M64P_MEM_NOTHING, { &dev->aleck64, RW(aleck64_sdram) }, { NULL, 0, 0 } };
+        mappings[ARRAY_SIZE(mappings)-3] = (struct mem_mapping){ A(MM_ALECK64_SDRAM, 0x7fffff), M64P_MEM_NOTHING, { &dev->aleck64, RW(aleck64_sdram) }, { NULL, 0, 0 } };
+        mappings[ARRAY_SIZE(mappings)-2] = (struct mem_mapping){ A(MM_ALECK64_IO, 0xffff), M64P_MEM_NOTHING, { &dev->aleck64, RW(aleck64_io) }, { NULL, 0, 0 } };
+        /* the E90 sprite chip only answers on the board that carries it */
+        if (g_aleck64_e90)
+            mappings[ARRAY_SIZE(mappings)-1] = (struct mem_mapping){ A(MM_ALECK64_E90_VRAM, 0x3ffff), M64P_MEM_NOTHING, { &dev->aleck64, RW(aleck64_e90) }, { NULL, 0, 0 } };
         init_aleck64(&dev->aleck64);
     }
 

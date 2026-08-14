@@ -29,6 +29,13 @@ enum { ALECK64_SDRAM_SIZE = 0x800000 };
 enum { MM_ALECK64_SDRAM = 0xc0000000 };
 enum { MM_ALECK64_IO    = 0xc0800000 };
 
+/* Seta E90 sprite overlay, only present on the E90 board (mtetrisc).
+ * The playfield blocks are drawn by this chip, not by the RDP. */
+enum { MM_ALECK64_E90_VRAM = 0xd0000000 };
+enum { MM_ALECK64_E90_PAL  = 0xd0010000 };
+enum { MM_ALECK64_E90_CTRL = 0xd0030000 };
+enum { ALECK64_E90_VRAM_SIZE = 0x1000, ALECK64_E90_PAL_SIZE = 0x1000 };
+
 /* Button bits, active high, packed by aleck64_poll_buttons().
  * Bits 0-15 follow the E92 port1 layout; 16-21 the E92 port2 layout. */
 #define A64_P1_UP      (UINT32_C(1) <<  0)
@@ -58,6 +65,10 @@ struct aleck64
 {
     uint32_t* sdram;
     uint8_t mahjong_row;
+    /* E90 overlay state; unused on E92 boards */
+    uint32_t e90_vram[ALECK64_E90_VRAM_SIZE / 4];
+    uint32_t e90_pal[ALECK64_E90_PAL_SIZE / 4];
+    uint32_t e90_enable;
 };
 
 /* Set by the libretro frontend when a MAME Aleck64 romset is loaded. */
@@ -78,6 +89,20 @@ void read_aleck64_sdram(void* opaque, uint32_t address, uint32_t* value);
 void write_aleck64_sdram(void* opaque, uint32_t address, uint32_t value, uint32_t mask);
 void read_aleck64_io(void* opaque, uint32_t address, uint32_t* value);
 void write_aleck64_io(void* opaque, uint32_t address, uint32_t value, uint32_t mask);
+void read_aleck64_e90(void* opaque, uint32_t address, uint32_t* value);
+void write_aleck64_e90(void* opaque, uint32_t address, uint32_t value, uint32_t mask);
+
+/* Composites the E90 sprites over a finished frame.  'pixels' points at the
+ * top-left of the active picture in BGRA8888 (angrylion's struct rgba) and
+ * 'pitch' is in pixels.  The chip places sprites in the game's own framebuffer
+ * pixels, so 'src_width' is that framebuffer's width and the overlay stretches
+ * horizontally to the 'width' the VI scaled it to; vertically the VI does not
+ * scale mtetrisc, so rows map 1:1.
+ * No-op unless an E90 romset is running and the chip is enabled.
+ * Returns the number of sprites drawn, so a caller that has to spend work
+ * presenting the result (the GL path) can skip an empty frame. */
+int aleck64_e90_overlay(void* pixels, unsigned pitch, unsigned width, unsigned height,
+                        unsigned src_width);
 
 /* implemented in libretro/aleck64_mame.c */
 int aleck64_load_zip(const uint8_t* data, size_t size, uint8_t** out, size_t* out_size);
