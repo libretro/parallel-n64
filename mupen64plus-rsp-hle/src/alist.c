@@ -2330,6 +2330,14 @@ void alist_polef(
 
     unsigned i;
     int16_t l1, l2;
+    /* Opt-in: the same two state samples carried at the accumulator's
+     * own precision instead of the 16 bits the output is narrowed to.
+     * hq_w[] holds the pre-clamp value of each of a block's eight
+     * outputs so the two the next block feeds back can be taken from
+     * there. */
+    const int hq   = resample_hq_enabled();
+    int64_t   hq_l1 = 0, hq_l2 = 0;
+    int64_t   hq_w[8];
     int16_t h2_before[8];
 
     count = align(count, 16);
@@ -2341,6 +2349,10 @@ void alist_polef(
     else {
         l1 = *dram_u16(hle, address + 4);
         l2 = *dram_u16(hle, address + 6);
+        /* only the narrowed state survives in DRAM, so a resumed filter
+         * starts from it and regains the extra bits as it runs */
+        hq_l1 = (int64_t)l1 << 14;
+        hq_l2 = (int64_t)l2 << 14;
     }
 
     for(i = 0; i < 8; ++i) {
@@ -2375,7 +2387,14 @@ void alist_polef(
              * 16-bit value: gains at or above 0x8000 are negative */
             int64_t accu = (int64_t)frame[i] * (int16_t)gain;
             int32_t narrowed;
-            accu += (int64_t)h1[i] * l1 + (int64_t)h2_before[i] * l2;
+            if (hq)
+            {
+                /* the carried state is already scaled by 1<<14, so the
+                 * products come back down by the same amount */
+                accu += ((int64_t)h1[i] * hq_l1 + (int64_t)h2_before[i] * hq_l2) >> 14;
+            }
+            else
+                accu += (int64_t)h1[i] * l1 + (int64_t)h2_before[i] * l2;
             for(j = 0; j < i; ++j)
                 accu += (int64_t)h2[j] * frame[i - 1 - j];
             /* the vmadh chain holds the sum at bit 16 of the 48-bit
@@ -2383,11 +2402,21 @@ void alist_polef(
              * 2^32 before the saturating *4 read-out - the same
              * reduction the ADPCM read-out was given */
             narrowed = (int32_t)(uint32_t)((uint64_t)accu & 0xffffffffu);
+            hq_w[i] = accu;
             PF(i^S) = clamp_s16(narrowed >> 14);
         }
 
         l1 = PF(6^S);
         l2 = PF(7^S);
+
+        /* Feeding the clamped output back is what the microcode does and
+         * what the hardware's registers hold, but it costs the recursion
+         * the bits below the output's LSB every block - and if a loud
+         * passage ever saturates, the state the filter carries forward is
+         * the saturated value rather than the one the filter computed.
+         * Carry the pre-clamp value instead. */
+        hq_l1 = hq_w[6];
+        hq_l2 = hq_w[7];
 
         dofs += 16;
         count -= 16;
