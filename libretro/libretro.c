@@ -95,6 +95,17 @@ static struct retro_hw_render_context_negotiation_interface_vulkan hw_context_ne
 static const struct retro_hw_render_interface_vulkan *vulkan;
 #endif
 
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
+/* aleck64_e90_gl.c: composites the E90 sprite overlay on the GPU */
+void aleck64_e90_gl_draw(unsigned out_width, unsigned out_height);
+void aleck64_e90_gl_context_reset(void);
+void aleck64_e90_gl_destroy(void);
+#else
+#define aleck64_e90_gl_draw(w, h) ((void)0)
+#define aleck64_e90_gl_context_reset() ((void)0)
+#define aleck64_e90_gl_destroy() ((void)0)
+#endif
+
 #define ISHEXDEC ((codeLine[cursor]>='0') && (codeLine[cursor]<='9')) || ((codeLine[cursor]>='a') && (codeLine[cursor]<='f')) || ((codeLine[cursor]>='A') && (codeLine[cursor]<='F'))
 
 /* Forward declarations.
@@ -819,6 +830,9 @@ static void present_frame(void)
 
          default:
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
+            /* the E90 sprite chip draws mtetrisc's playfield; the hardware
+             * renderers leave the frame on the GPU, so it is composited there */
+            aleck64_e90_gl_draw(screen_width, screen_height);
             video_cb(RETRO_HW_FRAME_BUFFER_VALID, screen_width, screen_height, 0);
 #elif defined(HAVE_THR_AL)
             video_cb((screen_pitch == 0) ? NULL : prescale, screen_width, screen_height, screen_pitch);
@@ -1173,11 +1187,13 @@ static void context_reset(void)
          break;
    }
 
+   aleck64_e90_gl_context_reset();
    reinit_gfx_plugin();
 }
 
 static void context_destroy(void)
 {
+   aleck64_e90_gl_destroy();
    deinit_gfx_plugin();
 }
 #endif
