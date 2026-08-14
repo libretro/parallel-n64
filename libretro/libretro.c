@@ -361,7 +361,9 @@ static void core_settings_autoselect_gfx_plugin(void)
       return;
 
 #if defined(HAVE_PARALLEL)
-   if (vulkan_inited)
+   /* The E90 sprite overlay is composited by the software and GL renderers
+    * only, so an E90 board would lose its playfield under parallel-RDP. */
+   if (vulkan_inited && !g_aleck64_e90)
    {
       gfx_plugin = GFX_PARALLEL;
       return;
