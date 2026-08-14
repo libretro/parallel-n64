@@ -494,6 +494,21 @@ static bool vi_process_full(void)
         vi_process_full_parallel(0);
     }
 
+    // bob deinterlacing: overwrite the stale sibling lines with the field
+    // just rendered instead of leaving the previous field woven in
+    if (ctrl.serrate && config.vi.bob_deinterlace) {
+        int32_t row = (v_start << 1) + lowerfield;
+        int32_t sibling_off = lowerfield ? -1 : 1;
+        int32_t n;
+        for (n = 0; n < vres; n++, row += 2) {
+            int32_t sib = row + sibling_off;
+            if (row < 0 || row >= PRESCALE_HEIGHT || sib < 0 || sib >= PRESCALE_HEIGHT)
+                continue;
+            memcpy(&prescale[sib * PRESCALE_WIDTH], &prescale[row * PRESCALE_WIDTH],
+                   PRESCALE_WIDTH * sizeof(prescale[0]));
+        }
+    }
+
     // finish and send buffer to screen
     struct frame_buffer fb;
     fb.pixels = prescale;
