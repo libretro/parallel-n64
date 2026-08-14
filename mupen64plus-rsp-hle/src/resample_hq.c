@@ -54,9 +54,24 @@
 #define HQ_PHASES  256
 #define HQ_BANDS   16
 
-static int16_t *hq_lut;         /* [band][phase][tap], Q15 */
-static int      hq_taps;        /* taps in the built bank, 0 when none */
+/* One bank per tap width, kept once built.  Two callers with different
+ * widths - the alist resamplers at the full setting and the musyx voice
+ * capped at 32 - would otherwise take turns rebuilding a single bank on
+ * every sample, which is thousands of sines each way and reads as a
+ * hang. */
+static int16_t *hq_bank[3];     /* [band][phase][tap], Q15; 16/32/64 taps */
 static int      hq_want;        /* taps the option asks for */
+static int      hq_last;        /* width of the bank last handed out */
+
+static int hq_slot(int taps)
+{
+    switch (taps) {
+    case RESAMPLE_HQ_16: return 0;
+    case RESAMPLE_HQ_32: return 1;
+    case RESAMPLE_HQ_64: return 2;
+    default:             return -1;
+    }
+}
 
 /* Band b has cutoff 1 / (1 + b/4): unity down to 1/4.75, which spans every
  * playback rate a voice realistically uses.  Quarter steps keep the band
@@ -77,26 +92,35 @@ static double hq_sinc(double x)
 
 static void hq_free(void)
 {
-    free(hq_lut);
-    hq_lut  = NULL;
-    hq_taps = 0;
+    int i;
+
+    for (i = 0; i < 3; ++i) {
+        free(hq_bank[i]);
+        hq_bank[i] = NULL;
+    }
+    hq_last = 0;
 }
 
 static int hq_build(int taps)
 {
     const size_t n = (size_t)HQ_BANDS * HQ_PHASES * (size_t)taps;
-    double *row;
+    const int    slot = hq_slot(taps);
+    int16_t     *lut;
+    double      *row;
     int b, p, t;
 
-    hq_free();
+    if (slot < 0)
+        return 0;
+    if (hq_bank[slot] != NULL)
+        return 1;              /* already built: never rebuild */
 
-    hq_lut = (int16_t*)malloc(n * sizeof(int16_t));
-    if (hq_lut == NULL)
+    lut = (int16_t*)malloc(n * sizeof(int16_t));
+    if (lut == NULL)
         return 0;
 
     row = (double*)malloc((size_t)taps * sizeof(double));
     if (row == NULL) {
-        hq_free();
+        free(lut);
         return 0;
     }
 
@@ -105,7 +129,7 @@ static int hq_build(int taps)
 
         for (p = 0; p < HQ_PHASES; ++p) {
             const double frac = (double)p / (double)HQ_PHASES;
-            int16_t *dst = hq_lut + (((size_t)b * HQ_PHASES + p) * (size_t)taps);
+            int16_t *dst = lut + (((size_t)b * HQ_PHASES + p) * (size_t)taps);
             double  sum  = 0.0;
             long    isum = 0;
             int     big  = 0;
@@ -149,7 +173,7 @@ static int hq_build(int taps)
     }
 
     free(row);
-    hq_taps = taps;
+    hq_bank[slot] = lut;
     return 1;
 }
 
@@ -158,11 +182,7 @@ void resample_hq_set_quality(int taps)
     if (taps != RESAMPLE_HQ_16 && taps != RESAMPLE_HQ_32 && taps != RESAMPLE_HQ_64)
         taps = RESAMPLE_HQ_OFF;
 
-    if (taps == hq_want)
-        return;
-
-    hq_want = taps;
-    hq_free();               /* rebuilt lazily on the next resample */
+    hq_want = taps;          /* banks are kept; nothing to tear down */
 }
 
 int resample_hq_enabled(void)
@@ -172,7 +192,7 @@ int resample_hq_enabled(void)
 
 int resample_hq_taps_count(void)
 {
-    return hq_taps;
+    return hq_last;
 }
 
 void resample_hq_release(void)
@@ -181,22 +201,21 @@ void resample_hq_release(void)
     hq_want = RESAMPLE_HQ_OFF;
 }
 
-const int16_t* resample_hq_taps(uint32_t pitch, uint32_t pitch_accu)
+/* Taps for an explicit width.  Shared by both entry points so neither can
+ * disagree with the other about which bank is current. */
+static const int16_t* hq_taps_for(int taps, uint32_t pitch, uint32_t pitch_accu)
 {
     unsigned band;
     unsigned phase;
+    int      slot = hq_slot(taps);
 
-    if (hq_want == RESAMPLE_HQ_OFF)
+    if (slot < 0)
         return NULL;
-
-    if (hq_taps != hq_want && !hq_build(hq_want)) {
+    if (hq_bank[slot] == NULL && !hq_build(taps)) {
         hq_want = RESAMPLE_HQ_OFF;    /* out of memory: fall back to exact */
         return NULL;
     }
 
-    /* Smallest b with 1 + b/4 >= ratio, i.e. ceil(4*(ratio-1)).  Rounding
-     * down would leave the cutoff above the rate and let the image
-     * straight back through. */
     if (pitch <= 0x10000u)
         band = 0;
     else {
@@ -205,9 +224,18 @@ const int16_t* resample_hq_taps(uint32_t pitch, uint32_t pitch_accu)
             band = HQ_BANDS - 1;
     }
 
-    phase = (pitch_accu >> 8) & (HQ_PHASES - 1);
+    phase   = (pitch_accu >> 8) & (HQ_PHASES - 1);
+    hq_last = taps;
 
-    return hq_lut + (((size_t)band * HQ_PHASES + phase) * (size_t)hq_taps);
+    return hq_bank[slot] + (((size_t)band * HQ_PHASES + phase) * (size_t)taps);
+}
+
+const int16_t* resample_hq_taps(uint32_t pitch, uint32_t pitch_accu)
+{
+    if (hq_want == RESAMPLE_HQ_OFF)
+        return NULL;
+
+    return hq_taps_for(hq_want, pitch, pitch_accu);
 }
 
 const int16_t* resample_hq_taps_capped(uint32_t pitch, uint32_t pitch_accu,
@@ -220,10 +248,5 @@ const int16_t* resample_hq_taps_capped(uint32_t pitch, uint32_t pitch_accu,
     if (want > max_taps)
         want = max_taps;
 
-    if (hq_taps != want && !hq_build(want)) {
-        hq_want = RESAMPLE_HQ_OFF;
-        return NULL;
-    }
-
-    return resample_hq_taps(pitch, pitch_accu);
+    return hq_taps_for(want, pitch, pitch_accu);
 }
