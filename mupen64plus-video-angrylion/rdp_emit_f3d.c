@@ -968,9 +968,21 @@ void f3d_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
                 }
                 else
                 {
-                    nc = gsp_triangle(gsp, cw, a0, b0, c0, s_textured, s_zbuffered);
-                    if (nc > 0) rdp_fifo_append(fifo, cw, nc);
+                    /* The pair goes out second-triangle-first.  The
+                     * microcode stores the second triangle's indices and
+                     * calls the triangle writer before falling into the
+                     * single-triangle path for the first, which is the
+                     * same order F3DEX2's G_TRI2 handler already follows;
+                     * this path had it the other way round, and only the
+                     * Fighting Force branch above happened to be right.
+                     *
+                     * Fed Quake's particle pass, every Y coordinate in
+                     * the frame moves from disagreeing with the
+                     * interpreter to agreeing with it, and Hexen's title
+                     * screen goes from 192 differing pixels to none. */
                     nc = gsp_triangle(gsp, cw, a1, b1, c1, s_textured, s_zbuffered);
+                    if (nc > 0) rdp_fifo_append(fifo, cw, nc);
+                    nc = gsp_triangle(gsp, cw, a0, b0, c0, s_textured, s_zbuffered);
                     if (nc > 0) rdp_fifo_append(fifo, cw, nc);
                 }
             }
