@@ -1571,12 +1571,15 @@ static int resample_hq_sample(struct hle_t* hle, unsigned ipos,
 
     taps = resample_hq_taps_count();
 
-    /* Centre the window where the microcode's four taps sit: tap
-     * (taps/2 - 1) lands on the sample lut[0] would weight.  64 taps of
+    /* Centre the window on the pair the microcode interpolates between.
+     * Its four taps weight x[0..3], but the result sits between x[1] and
+     * x[2]: fed a ramp the four-tap returns position 1 + phase.  Centring
+     * a sample earlier reconstructs from the wrong pair, which on
+     * material with energy near Nyquist rings audibly.  64 taps of
      * 16-bit input against Q15 coefficients reach 2^36, so the
      * accumulator has to be 64-bit. */
     for (t = 0; t < taps; ++t)
-        acc += (int64_t)*sample(hle, ipos + t - (taps / 2 - 1)) * k[t];
+        acc += (int64_t)*sample(hle, ipos + t - (taps / 2 - 2)) * k[t];
 
     /* round half-up: keeps the error zero-mean instead of biasing every
      * sample toward zero */

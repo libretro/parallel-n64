@@ -796,6 +796,11 @@ static void mix_voice_samples(struct hle_t* hle, musyx_t *musyx,
     for (i = 0; i < SUBFRAME_SIZE; ++i) {
         /* update sample and lut pointers and then pitch_accu */
         const int16_t *lut = (RESAMPLE_LUT + ((pitch_accu & 0xfc00) >> 8));
+        /* The microcode reads its phase here, before the accumulator
+         * advances for the next output; the wider kernel has to use the
+         * same one.  Taking it after the advance is a whole step out,
+         * which at half-rate playback is half a sample. */
+        const uint32_t phase_accu = pitch_accu;
         int dist;
         int16_t v;
 
@@ -820,12 +825,12 @@ static void mix_voice_samples(struct hle_t* hle, musyx_t *musyx,
              * follows.  A boundary is crossed once per waveform period, so
              * the microcode's own four taps cover a small fraction of the
              * samples and the rest get the sinc. */
-            const int16_t* k = resample_hq_taps(pitch_step, pitch_accu);
+            const int16_t* k = resample_hq_taps(pitch_step, phase_accu);
             int            done = 0;
 
             if (k != NULL) {
                 const int   taps  = resample_hq_taps_count();
-                const int   lead  = taps / 2 - 1;
+                const int   lead  = taps / 2 - 2;
                 const int16_t* lo = sample - lead;
                 const int16_t* hi = sample + (taps - 1 - lead);
 
