@@ -209,3 +209,21 @@ const int16_t* resample_hq_taps(uint32_t pitch, uint32_t pitch_accu)
 
     return hq_lut + (((size_t)band * HQ_PHASES + phase) * (size_t)hq_taps);
 }
+
+const int16_t* resample_hq_taps_capped(uint32_t pitch, uint32_t pitch_accu,
+                                       int max_taps)
+{
+    int want = hq_want;
+
+    if (want == RESAMPLE_HQ_OFF)
+        return NULL;
+    if (want > max_taps)
+        want = max_taps;
+
+    if (hq_taps != want && !hq_build(want)) {
+        hq_want = RESAMPLE_HQ_OFF;
+        return NULL;
+    }
+
+    return resample_hq_taps(pitch, pitch_accu);
+}

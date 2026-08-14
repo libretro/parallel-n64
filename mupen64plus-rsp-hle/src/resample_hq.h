@@ -22,6 +22,11 @@ int  resample_hq_enabled(void);
 /* Number of taps the current kernel uses. */
 int  resample_hq_taps_count(void);
 
+/* As resample_hq_taps, but never wider than max_taps.  For callers whose
+ * input window is too short to centre the full kernel in. */
+const int16_t* resample_hq_taps_capped(uint32_t pitch, uint32_t pitch_accu,
+                                       int max_taps);
+
 /* Taps for this pitch and phase, or NULL if the enhancement is off or the
  * tap bank could not be allocated. */
 const int16_t* resample_hq_taps(uint32_t pitch, uint32_t pitch_accu);

@@ -825,25 +825,59 @@ static void mix_voice_samples(struct hle_t* hle, musyx_t *musyx,
              * follows.  A boundary is crossed once per waveform period, so
              * the microcode's own four taps cover a small fraction of the
              * samples and the rest get the sinc. */
-            const int16_t* k = resample_hq_taps(pitch_step, phase_accu);
+            /* A wide window cannot be centred near the start of the
+             * decoded chunk, and the wider it is the more of each
+             * subframe that covers: at 64 taps better than a quarter of
+             * Indiana Jones' samples ended up on the microcode's kernel,
+             * so the output alternated between two filters with
+             * different responses.  Cap what this path asks for - a
+             * consistent 32-tap result beats a mixture. */
+            const int16_t* k = resample_hq_taps_capped(pitch_step, phase_accu, 32);
             int            done = 0;
 
             if (k != NULL) {
                 const int   taps  = resample_hq_taps_count();
                 const int   lead  = taps / 2 - 2;
                 const int16_t* lo = sample - lead;
-                const int16_t* hi = sample + (taps - 1 - lead);
 
-                if (lo >= samples && hi < samples + SAMPLE_BUFFER_SIZE
-                        && hi < sample_end) {
+                /* Taps that run past the end of the voice follow it round
+                 * to the restart point, which is where the stream really
+                 * does continue - the same jump the play position itself
+                 * makes a moment later.  Bailing out instead handed those
+                 * samples to the microcode's four taps, and the wider the
+                 * kernel the more of them there were: at 64 taps that was
+                 * a third of Indiana Jones' samples, so the output kept
+                 * switching between two filters with different responses.
+                 *
+                 * Reading backwards is not the same question.  The decoder puts
+                 * the voice's samples in the tail of the buffer - segbase is
+                 * SAMPLE_BUFFER_SIZE minus the count it decoded - so anything
+                 * below segbase belongs to whatever was there before, and the
+                 * play position starts only a few samples above it.  A window
+                 * reaching back past segbase would mix in unrelated audio, so
+                 * it falls back instead. */
+                if (lo >= samples + segbase) {
                     int64_t acc = 0;
                     int     t;
 
-                    for (t = 0; t < taps; ++t)
-                        acc += (int64_t)lo[t] * k[t];
+                    for (t = 0; t < taps; ++t) {
+                        const int16_t* p = lo + t;
 
-                    v = clamp_s16((int32_t)((acc + 0x4000) >> 15));
-                    done = 1;
+                        if (p >= sample_end) {
+                            p = sample_restart + (p - sample_end);
+                            if (p >= sample_end)      /* loop shorter than the window */
+                                break;
+                        }
+                        if (p < samples + segbase || p >= samples + SAMPLE_BUFFER_SIZE)
+                            break;
+
+                        acc += (int64_t)*p * k[t];
+                    }
+
+                    if (t == taps) {
+                        v = clamp_s16((int32_t)((acc + 0x4000) >> 15));
+                        done = 1;
+                    }
                 }
             }
 
