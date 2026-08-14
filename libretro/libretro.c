@@ -620,6 +620,36 @@ bool is_cartridge_rom(const uint8_t* data)
    return (data != NULL && *((uint32_t *)data) != 0x16D348E8 && *((uint32_t *)data) != 0x56EE6322);
 }
 
+
+/* Every 64DD disk used to be staged to one fixed filename, and the core
+ * derives the disk-save name from the staged name by appending
+ * ".disk_save".  It also prefers that save over the disk file itself, so
+ * once any 64DD title had been played its save stood in for whatever
+ * disk was loaded next: asking for Mario Artist Talent Studio got you
+ * the last disk you had played.  Give each disk its own staged name so
+ * its save is its own too. */
+static void dd_staged_name(char* out, size_t out_len, const char* dir,
+      char slash, const uint8_t* image, size_t image_size)
+{
+   /* FNV-1a over the head of the image plus its length: the system area
+    * that leads a disk differs between titles, and the length separates
+    * the dump formats. */
+   uint64_t h = 1469598103934665603ULL;
+   size_t   n = (image_size < 0x10000u) ? image_size : 0x10000u;
+   size_t   i;
+
+   for (i = 0; i < n; ++i)
+   {
+      h ^= image[i];
+      h *= 1099511628211ULL;
+   }
+   h ^= (uint64_t)image_size;
+   h *= 1099511628211ULL;
+
+   snprintf(out, out_len, "%s%cparallel_n64_dd_%016llx.ndd",
+            dir, slash, (unsigned long long)h);
+}
+
 static bool emu_step_load_data()
 {
    const char *dir;
@@ -697,7 +727,8 @@ static bool emu_step_load_data()
          char disk_tmp_path[512];
          RFILE* df;
 
-         snprintf(disk_tmp_path, sizeof(disk_tmp_path), "%s%cparallel_n64_dd_disk.ndd", dir, slash);
+         dd_staged_name(disk_tmp_path, sizeof(disk_tmp_path), dir, slash,
+                        disk_data, disk_size);
          df = filestream_open(disk_tmp_path, RETRO_VFS_FILE_ACCESS_WRITE, RETRO_VFS_FILE_ACCESS_HINT_NONE);
          if (df == NULL)
          {
