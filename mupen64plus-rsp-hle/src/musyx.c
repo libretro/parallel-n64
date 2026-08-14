@@ -1039,6 +1039,7 @@ static void mix_fir4(int16_t *y, const int16_t *x, int16_t hgain, const int16_t 
 {
     unsigned int i;
     int32_t h[4];
+    const int hq = resample_hq_enabled();
 
     /* The microcode derives the filter taps with a single VMULF
      * (hcoeffs * hgain), so each tap is rounded and clamped, not
@@ -1053,11 +1054,31 @@ static void mix_fir4(int16_t *y, const int16_t *x, int16_t hgain, const int16_t 
          * resample FIR (v2 task text, insns 0xe88..0xefc), with the
          * destination folded into the gather accumulator by VMADH and
          * saturated once on readout. */
-        int32_t t0 = clamp_s16((h[0] * x[i]     + 0x4000) >> 15);
-        int32_t t1 = clamp_s16((h[1] * x[i + 1] + 0x4000) >> 15);
-        int32_t t2 = clamp_s16((h[2] * x[i + 2] + 0x4000) >> 15);
-        int32_t t3 = clamp_s16((h[3] * x[i + 3] + 0x4000) >> 15);
-        int32_t v = clamp_s16(t0 + t1) + clamp_s16(t2 + t3);
+        int32_t t0, t1, t2, t3, v;
+
+        if (hq) {
+            /* Four taps rounded separately and summed through clamped
+             * pairs leave four roundings where the result only needs
+             * one: 0.58 LSB against 0.29 for a single accumulate, which
+             * is the floor for a 16-bit result.  Carrying the products
+             * full width and rounding on the way out is 6.0 dB closer
+             * to the exact filter, level for level.  The reverb this
+             * feeds is shared by both task versions, so it reaches the
+             * v1 titles that the gained sfx send does not. */
+            int64_t acc = (int64_t)h[0] * x[i]
+                        + (int64_t)h[1] * x[i + 1]
+                        + (int64_t)h[2] * x[i + 2]
+                        + (int64_t)h[3] * x[i + 3];
+
+            y[i] = clamp_s16(y[i] + (int32_t)((acc + 0x4000) >> 15));
+            continue;
+        }
+
+        t0 = clamp_s16((h[0] * x[i]     + 0x4000) >> 15);
+        t1 = clamp_s16((h[1] * x[i + 1] + 0x4000) >> 15);
+        t2 = clamp_s16((h[2] * x[i + 2] + 0x4000) >> 15);
+        t3 = clamp_s16((h[3] * x[i + 3] + 0x4000) >> 15);
+        v  = clamp_s16(t0 + t1) + clamp_s16(t2 + t3);
         y[i] = clamp_s16(y[i] + v);
     }
 }
