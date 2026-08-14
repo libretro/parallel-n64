@@ -18,6 +18,8 @@
 #include "../rdp_dump.h"
 #endif
 
+#include "device/aleck64/aleck64.h"
+
 enum vi_type
 {
     VI_TYPE_BLANK,      // no data, no sync
@@ -508,6 +510,12 @@ static bool vi_process_full(void)
                    PRESCALE_WIDTH * sizeof(prescale[0]));
         }
     }
+
+    // the E90 board draws mtetrisc's playfield with a sprite chip of its own,
+    // over the finished VI frame and in the active picture's coordinates
+    aleck64_e90_overlay(&prescale[((uint32_t)v_start << ctrl.serrate) * PRESCALE_WIDTH + h_start],
+                        PRESCALE_WIDTH, hres, vres << ctrl.serrate,
+                        (uint32_t)x_add * hres / 1024);
 
     // finish and send buffer to screen
     struct frame_buffer fb;

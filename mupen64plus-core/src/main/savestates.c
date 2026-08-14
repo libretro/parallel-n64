@@ -60,7 +60,7 @@
 extern uint32_t RollbackRtcOnLoadState;
 
 static const char* savestate_magic = "M64+SAVE";
-static const int savestate_latest_version = 0x00010005;  /* 1.5 */
+static const int savestate_latest_version = 0x00010006;  /* 1.6 */
 
 #define GETARRAY(buff, type, count) \
     (to_little_endian_buffer(buff, sizeof(type),count), \
@@ -98,7 +98,7 @@ int savestates_load_m64p(const unsigned char *data, size_t size)
    version = (version << 8) | *curr++;
    version = (version << 8) | *curr++;
 
-   if(version != 0x00010000 && version != 0x00010001 && version != 0x00010002 && version != 0x00010003 && version != 0x00010004 && version != 0x00010005)
+   if(version != 0x00010000 && version != 0x00010001 && version != 0x00010002 && version != 0x00010003 && version != 0x00010004 && version != 0x00010005 && version != 0x00010006)
       return 0;
 
    /* Identity check.  New states carry the "M64H"-prefixed header
@@ -417,6 +417,13 @@ int savestates_load_m64p(const unsigned char *data, size_t size)
    if (version >= 0x00010005 && g_aleck64_enabled) {
       COPYARRAY(g_dev.aleck64.sdram, curr, uint32_t, ALECK64_SDRAM_SIZE/4);
       g_dev.aleck64.mahjong_row = GETDATA(curr, uint8_t);
+   }
+
+   /* E90 sprite overlay state (since 1.6); only that board carries the chip */
+   if (version >= 0x00010006 && g_aleck64_e90) {
+      COPYARRAY(g_dev.aleck64.e90_vram, curr, uint32_t, ALECK64_E90_VRAM_SIZE/4);
+      COPYARRAY(g_dev.aleck64.e90_pal, curr, uint32_t, ALECK64_E90_PAL_SIZE/4);
+      g_dev.aleck64.e90_enable = GETDATA(curr, uint32_t);
    }
 
 
@@ -750,6 +757,13 @@ int savestates_save_m64p(unsigned char *data, size_t size)
    if (g_aleck64_enabled) {
       PUTARRAY(g_dev.aleck64.sdram, curr, uint32_t, ALECK64_SDRAM_SIZE/4);
       PUTDATA(curr, uint8_t, g_dev.aleck64.mahjong_row);
+   }
+
+   /* E90 sprite overlay state (since 1.6) */
+   if (g_aleck64_e90) {
+      PUTARRAY(g_dev.aleck64.e90_vram, curr, uint32_t, ALECK64_E90_VRAM_SIZE/4);
+      PUTARRAY(g_dev.aleck64.e90_pal, curr, uint32_t, ALECK64_E90_PAL_SIZE/4);
+      PUTDATA(curr, uint32_t, g_dev.aleck64.e90_enable);
    }
 
    /* Deliver callback to indicate completion
