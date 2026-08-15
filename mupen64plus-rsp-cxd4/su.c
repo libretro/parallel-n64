@@ -222,8 +222,48 @@ MT_CMD_START       ,MT_CMD_END         ,MT_READ_ONLY       ,MT_CMD_STATUS,
 MT_CMD_CLOCK       ,MT_READ_ONLY       ,MT_READ_ONLY       ,MT_READ_ONLY
 };
 
+/* DMA trace for the HLE replay oracle.
+ *
+ * Verifying an HLE audio task against this interpreter means comparing
+ * the two over the memory the task actually produced.  Comparing whole
+ * RDRAM does not work: a task that rewrites the same samples it already
+ * wrote - which any looping engine does, frame after frame - shows no
+ * difference from its input and reads as a pass while proving nothing.
+ * The regions the interpreter DMA'd out are the true extent of its
+ * output, so the trace records them and the verifier diffs those.
+ *
+ * Compiled out unless RSP_DMA_TRACE_ENABLE is defined:
+ *
+ *   make HAVE_RSP_DMA_TRACE=1
+ *   DMALOG=/tmp/dma.log <frontend>
+ */
+#ifdef RSP_DMA_TRACE_ENABLE
+#include <stdio.h>
+#include <stdlib.h>
+static void rsp_dma_trace(const char *dir)
+{
+    static FILE *lf;
+    const char *path = getenv("DMALOG");
+    if (path == NULL)
+        return;
+    if (lf == NULL)
+        lf = fopen(path, "a");
+    if (lf == NULL)
+        return;
+    fprintf(lf, "%s dmem=%03x dram=%06x len=%x count=%x\n", dir,
+            GET_RCP_REG(SP_MEM_ADDR_REG)  & 0xfff,
+            GET_RCP_REG(SP_DRAM_ADDR_REG) & 0xffffff,
+            (GET_RCP_REG(SP_RD_LEN_REG) & 0xfff) + 1,
+            ((GET_RCP_REG(SP_RD_LEN_REG) >> 12) & 0xff) + 1);
+}
+#define RSP_DMA_TRACE(dir) rsp_dma_trace(dir)
+#else
+#define RSP_DMA_TRACE(dir) ((void)0)
+#endif
+
 void SP_DMA_READ(void)
 {
+    RSP_DMA_TRACE("RD");
     unsigned int offC, offD; /* SP cache and dynamic DMA pointers */
     register unsigned int length;
     register unsigned int count;
@@ -262,6 +302,7 @@ void SP_DMA_READ(void)
 }
 void SP_DMA_WRITE(void)
 {
+    RSP_DMA_TRACE("WR");
     unsigned int offC, offD; /* SP cache and dynamic DMA pointers */
     register unsigned int length;
     register unsigned int count;
@@ -2000,6 +2041,8 @@ static INLINE void COP2(u32 inst)
         res_S();
     }
 }
+
+unsigned char lle_pc_bitmap[0x400];
 
 NOINLINE void run_task(void)
 {

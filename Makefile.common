@@ -70,6 +70,13 @@ SOURCES_C += $(RSPDIR)/src/alist.c \
 	$(RSPDIR)/src/hvqm.c \
     $(RSPDIR)/src/hle_plugin.c
 
+# DMA trace for the HLE replay oracle (mupen64plus-rsp-cxd4/su.c).  Off by
+# default; the trace compiles out entirely.
+ifeq ($(HAVE_RSP_DMA_TRACE), 1)
+	CFLAGS   += -DRSP_DMA_TRACE_ENABLE
+	CXXFLAGS += -DRSP_DMA_TRACE_ENABLE
+endif
+
 SOURCES_C += $(CXD4DIR)/rsp.c
 CFLAGS   += -DHAVE_LLE
 CXXFLAGS += -DHAVE_LLE
