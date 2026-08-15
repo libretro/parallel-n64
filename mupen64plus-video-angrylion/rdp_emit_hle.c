@@ -51,7 +51,17 @@ static int      s_inited = 0;
  * the game's own Fault_AddHungupAndCrash. The DPC registers are pointed
  * at a virtual address range whose command fetch is redirected here via
  * n64video_set_hle_cmd_buffer; guest memory is never written. */
-#define HLE_FIFO_CAP (256u * 1024u)
+/* One flush must stay inside the smallest command window any backend
+ * accepts.  parallel-rdp buffers a submission in a 32768-entry table and
+ * drops the whole thing when (cmd_ptr + length) exceeds it - not the tail,
+ * the entire submission, SYNC_FULL included, so the DP interrupt never
+ * fires and the game's graphics thread blocks forever.  256 KiB is exactly
+ * 32768 command words, one over its limit, so every full-cap flush was
+ * discarded: Ocarina of Time froze on the transitions heavy enough to fill
+ * the FIFO.  Angrylion has no such window and consumed them fine, which is
+ * what made this look like a parallel-only fault.  Half that keeps a flush
+ * comfortably inside the window with room for the partial-command tail. */
+#define HLE_FIFO_CAP (128u * 1024u)
 static unsigned char s_fifo_storage[HLE_FIFO_CAP];
 
 /* DMEM/RDRAM 32-bit words are host-native in this core (the RSP's u32()
