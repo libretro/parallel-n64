@@ -604,6 +604,12 @@ SOURCES_CXX += $(VIDEODIR_ANGRYLION)/parallel_al.cpp
 SOURCES_C   += $(VIDEODIR_ANGRYLION)/interface.c \
 				   $(VIDEODIR_ANGRYLION)/n64video.c
 HAVE_RDP_EMIT := 1
+# Audio task capture for the cxd4 replay oracle (mupen64plus-rsp-hle/src/
+# hle_audit_capture.h).  Off by default; the tool compiles out entirely.
+ifeq ($(HAVE_HLE_AUDIT), 1)
+	CFLAGS += -DHLE_AUDIT_CAPTURE
+endif
+
 ifeq ($(HAVE_RDP_DUMP), 1)
 	SOURCES_C += $(VIDEODIR_ANGRYLION)/rdp_dump.c
 	CFLAGS   += -DHAVE_RDP_DUMP

@@ -125,8 +125,12 @@ void hle_init(struct hle_t* hle,
 
 void rs_set_fog_block(unsigned int rdram_addr);
 
+#include "hle_audit_capture.h"
+
 void hle_execute(struct hle_t* hle)
 {
+    audit_capture_task(hle);
+
     uint32_t uc_start = *dmem_u32(hle, TASK_UCODE);
     uint32_t uc_dstart = *dmem_u32(hle, TASK_UCODE_DATA);
     uint32_t uc_dsize = *dmem_u32(hle, TASK_UCODE_DATA_SIZE);
