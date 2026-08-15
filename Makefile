@@ -1171,6 +1171,24 @@ mupen64plus-video-gliden64/src/%.o: mupen64plus-video-gliden64/src/%.c
 mupen64plus-video-gliden64/src/%.o: mupen64plus-video-gliden64/src/%.cpp
 	$(CXX) -I$(VIDEODIR_GLIDEN64)/src -I$(VIDEODIR_GLIDEN64)/src/osal $(CPPFLAGS) $(CXXFLAGS) -c $< $(OBJOUT)$@
 
+# Objects do not otherwise depend on the flags they were built with, so
+# toggling one of the diagnostic switches left every object stale and the
+# tool silently absent from the build - enabling HAVE_HLE_AUDIT and seeing
+# no captures appear, with nothing to say why.  Stamp the switch state and
+# have the objects depend on the stamp, so flipping one rebuilds what it
+# affects.
+BUILD_FLAG_STATE := HLE_AUDIT=$(HAVE_HLE_AUDIT) RSP_DMA_TRACE=$(HAVE_RSP_DMA_TRACE) RDP_DUMP=$(HAVE_RDP_DUMP)
+
+.build-flags: .FORCE
+	@if [ ! -f $@ ] || [ "`cat $@`" != "$(BUILD_FLAG_STATE)" ]; then \
+		echo "$(BUILD_FLAG_STATE)" > $@; \
+	fi
+
+.FORCE:
+.PHONY: .FORCE
+
+$(OBJECTS): .build-flags
+
 %.o: %.c
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< $(OBJOUT)$@
 
@@ -1178,7 +1196,7 @@ mupen64plus-video-gliden64/src/%.o: mupen64plus-video-gliden64/src/%.cpp
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -c $< $(OBJOUT)$@
 
 clean:
-	rm -f $(OBJECTS) $(TARGET) $(OBJECTS:.o=.d)
+	rm -f $(OBJECTS) $(TARGET) $(OBJECTS:.o=.d) .build-flags
 
 .PHONY: clean
 -include $(OBJECTS:.o=.d)
