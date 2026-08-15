@@ -416,6 +416,19 @@ unsigned int f3d_xlate_geom(unsigned int m)
     return o;
 }
 
+/* G_TEXTURE_PERSP (other-modes high bit 19) selects whether the microcode
+ * runs its per-vertex perspective normalizer over the texture attributes.
+ * With the bit clear the resident writer stores the texel shorts and a
+ * 0x7fff W lane straight out; the normalized path halves every attribute
+ * instead, and with no per-pixel divide to undo the halving the primitive
+ * samples the wrong texels.  rsp_tri_write has carried the affine path
+ * since Fighting Force 64 needed it, but nothing fed it the bit, so this
+ * walker could never reach it. */
+static void f3d_sync_persp_tex(void)
+{
+    rsp_set_affine_tex((s_othermode_h & 0x00080000u) ? 0 : 1);
+}
+
 void f3d_seg_reset(void)
 {
     int i;
@@ -875,6 +888,7 @@ void f3d_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
 
         case F3D_TRI1:
         {
+            f3d_sync_persp_tex();
             int32_t cw[GSP_TRI_CMD_WORDS];
             int a, b, c, nc;
             /* GoldenEye/Perfect Dark (Rare's F3DEX-derived GBI1) store the
@@ -901,6 +915,7 @@ void f3d_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
 
         case F3D_TRI2:
         {
+            f3d_sync_persp_tex();
             int32_t cw[GSP_TRI_CMD_WORDS];
             int nc;
             if (s_variant_f3dex)
@@ -991,6 +1006,7 @@ void f3d_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
 
         case F3D_LINE3D:
         {
+            f3d_sync_persp_tex();
             if (s_variant_line)
             {
                 /* gSPLine3D(v0,v1,flag): the two vertex indices live in w1
