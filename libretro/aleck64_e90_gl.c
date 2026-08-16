@@ -195,7 +195,16 @@ void aleck64_e90_gl_context_reset(void)
     e90_buf_w = 0;
     e90_buf_h = 0;
     e90_gl_failed = 0;
-    e90_hw_fbo = glsm_get_current_framebuffer();
+    e90_hw_fbo = 0;
+
+    /* Only a board that will actually draw an overlay may ask the frontend
+     * for its framebuffer.  glsm_get_current_framebuffer() forwards to the
+     * frontend's get_current_framebuffer callback, a per-frame "give me this
+     * frame's target" request; firing it here, outside any frame, for every
+     * game that happens to use a GL renderer is poking at the frontend's
+     * hardware-render bookkeeping for no reason at all. */
+    if (g_aleck64_enabled && g_aleck64_e90)
+        e90_hw_fbo = glsm_get_current_framebuffer();
 }
 
 /* out_width/out_height are the frame the core is about to hand the frontend:
