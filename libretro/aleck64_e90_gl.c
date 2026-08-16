@@ -28,6 +28,14 @@
 #include <glsym/glsym.h>
 #include <glsm/glsm.h>
 
+/* GLES2 has only the single framebuffer binding point. */
+#ifndef GL_DRAW_FRAMEBUFFER
+#define GL_DRAW_FRAMEBUFFER GL_FRAMEBUFFER
+#endif
+#ifndef GL_DRAW_FRAMEBUFFER_BINDING
+#define GL_DRAW_FRAMEBUFFER_BINDING GL_FRAMEBUFFER_BINDING
+#endif
+
 #include "device/device.h"
 #include "device/aleck64/aleck64.h"
 #include "main/main.h"
@@ -197,7 +205,10 @@ void aleck64_e90_gl_draw(unsigned out_width, unsigned out_height)
 {
     GLint prev_prog = 0, prev_tex = 0, prev_vbo = 0, prev_vao = 0, prev_unit = 0;
     GLint prev_fbo = 0, prev_vp[4] = {0, 0, 0, 0};
-    GLint prev_align = 4, prev_rowlen = 0;
+    GLint prev_align = 4;
+#ifndef HAVE_OPENGLES
+    GLint prev_rowlen = 0;
+#endif
     GLint prev_blend = 0, prev_depth = 0, prev_cull = 0, prev_scissor = 0;
     unsigned w, h, y;
 
@@ -234,7 +245,9 @@ void aleck64_e90_gl_draw(unsigned out_width, unsigned out_height)
     glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &prev_fbo);
     glGetIntegerv(GL_VIEWPORT, prev_vp);
     glGetIntegerv(GL_UNPACK_ALIGNMENT, &prev_align);
+#ifndef HAVE_OPENGLES
     glGetIntegerv(GL_UNPACK_ROW_LENGTH, &prev_rowlen);
+#endif
     glGetIntegerv(GL_CURRENT_PROGRAM, &prev_prog);
     glGetIntegerv(GL_ACTIVE_TEXTURE, &prev_unit);
     glGetIntegerv(GL_TEXTURE_BINDING_2D, &prev_tex);
@@ -312,7 +325,9 @@ restore:
     glActiveTexture((GLenum)prev_unit);
     glUseProgram((GLuint)prev_prog);
     glPixelStorei(GL_UNPACK_ALIGNMENT, prev_align);
+#ifndef HAVE_OPENGLES
     glPixelStorei(GL_UNPACK_ROW_LENGTH, prev_rowlen);
+#endif
     glViewport(prev_vp[0], prev_vp[1], prev_vp[2], prev_vp[3]);
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, (GLuint)prev_fbo);
 }
