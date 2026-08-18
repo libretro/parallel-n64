@@ -1,3 +1,6 @@
+#include <stdio.h>
+#include <stdlib.h>
+int angrylion_sync_full_seen;
 // bit constants for DP_STATUS
 #define DP_STATUS_XBUS_DMA      0x001   // DMEM DMA mode is set
 #define DP_STATUS_FREEZE        0x002   // Freeze has been set
@@ -603,6 +606,7 @@ uint32_t rdp_noise_field;
 
 void rdp_sync_full(uint32_t wid, const uint32_t* args)
 {
+    angrylion_sync_full_seen = 1;
     rdp_noise_field++;
 
     // signal DP interrupt

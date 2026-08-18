@@ -21,6 +21,8 @@
 
 #include "rdp_core.h"
 
+extern int angrylion_sync_full_seen;
+
 #include <string.h>
 
 #include "device/memory/m64p_memory.h"
@@ -115,9 +117,11 @@ void write_dpc_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mas
         break;
     case DPC_END_REG:
         unprotect_framebuffers(&dp->fb);
+        angrylion_sync_full_seen = 0;
         gfx.processRDPList();
         protect_framebuffers(&dp->fb);
-        signal_rcp_interrupt(dp->mi, MI_INTR_DP);
+        if (angrylion_sync_full_seen)
+            signal_rcp_interrupt(dp->mi, MI_INTR_DP);
         break;
     }
 }
