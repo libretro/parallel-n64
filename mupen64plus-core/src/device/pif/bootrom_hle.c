@@ -29,6 +29,7 @@
 #include "device/r4300/r4300_core.h"
 #include "device/rcp/ai/ai_controller.h"
 #include "device/rcp/pi/pi_controller.h"
+#include "device/rcp/ri/ri_controller.h"
 #include "device/rcp/rsp/rsp_core.h"
 #include "device/rcp/si/si_controller.h"
 #include "device/rcp/vi/vi_controller.h"
@@ -116,6 +117,11 @@ void pif_bootrom_hle_execute(struct r4300_core* r4300)
     r4300_write_aligned_word(r4300, R4300_KSEG1 + MM_PI_REGS + 4*PI_BSD_DOM1_RLS_REG, (bsd_dom1_config >> 20) & 0x03, ~UINT32_C(0));
 
     /* XXX: if XBus is used, wait until DPC_pipe_busy is cleared */
+
+    /* IPL2 brings the RDRAM up before handing over and leaves RI_SELECT
+     * set; skipping the boot rom means nothing ever did, so it reads back
+     * zero and an IPL3 that checks it runs its own init sequence instead. */
+    r4300_write_aligned_word(r4300, R4300_KSEG1 + MM_RI_REGS + 4*RI_SELECT_REG, 0x14, ~UINT32_C(0));
 
     /* copy IPL3 to dmem */
     memcpy((unsigned char*)mem_base_u32(r4300->mem->base, MM_RSP_MEM + 0x40),
