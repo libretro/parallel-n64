@@ -441,6 +441,24 @@ static osal_inline void jae_rj(unsigned char saut)
     put8(saut);
 }
 
+static osal_inline void jl_rj(unsigned char saut)
+{
+    put8(0x7C);
+    put8(saut);
+}
+
+static osal_inline void jge_rj(unsigned char saut)
+{
+    put8(0x7D);
+    put8(saut);
+}
+
+static osal_inline void jb_rj(unsigned char saut)
+{
+    put8(0x72);
+    put8(saut);
+}
+
 static osal_inline void jp_rj(unsigned char saut)
 {
     put8(0x7A);

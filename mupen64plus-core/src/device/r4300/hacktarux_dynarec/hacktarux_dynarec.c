@@ -4191,42 +4191,110 @@ void gen_SYSCALL(struct r4300_core* r4300)
 
 void gen_TGE(struct r4300_core* r4300)
 {
+    int rs = allocate_register_64(r4300, (unsigned long long *)r4300->recomp.dst->f.r.rs);
+    int rt = allocate_register_64(r4300, (unsigned long long *)r4300->recomp.dst->f.r.rt);
+
+    cmp_reg64_reg64(rs, rt);
+    jl_rj(0);
+    jump_start_rel8(r4300);
+
     gencallinterp(r4300, (unsigned long long)cached_interp_TGE, 0);
+
+    jump_end_rel8(r4300);
 }
 
 void gen_TGEU(struct r4300_core* r4300)
 {
+    int rs = allocate_register_64(r4300, (unsigned long long *)r4300->recomp.dst->f.r.rs);
+    int rt = allocate_register_64(r4300, (unsigned long long *)r4300->recomp.dst->f.r.rt);
+
+    cmp_reg64_reg64(rs, rt);
+    jb_rj(0);
+    jump_start_rel8(r4300);
+
     gencallinterp(r4300, (unsigned long long)cached_interp_TGEU, 0);
+
+    jump_end_rel8(r4300);
 }
 
 void gen_TGEI(struct r4300_core* r4300)
 {
+    int rs = allocate_register_64(r4300, (unsigned long long *)r4300->recomp.dst->f.i.rs);
+
+    cmp_reg64_imm32(rs, (unsigned int)(int)r4300->recomp.dst->f.i.immediate);
+    jl_rj(0);
+    jump_start_rel8(r4300);
+
     gencallinterp(r4300, (unsigned long long)cached_interp_TGEI, 0);
+
+    jump_end_rel8(r4300);
 }
 
 void gen_TGEIU(struct r4300_core* r4300)
 {
+    int rs = allocate_register_64(r4300, (unsigned long long *)r4300->recomp.dst->f.i.rs);
+
+    cmp_reg64_imm32(rs, (unsigned int)(int)r4300->recomp.dst->f.i.immediate);
+    jb_rj(0);
+    jump_start_rel8(r4300);
+
     gencallinterp(r4300, (unsigned long long)cached_interp_TGEIU, 0);
+
+    jump_end_rel8(r4300);
 }
 
 void gen_TLT(struct r4300_core* r4300)
 {
+    int rs = allocate_register_64(r4300, (unsigned long long *)r4300->recomp.dst->f.r.rs);
+    int rt = allocate_register_64(r4300, (unsigned long long *)r4300->recomp.dst->f.r.rt);
+
+    cmp_reg64_reg64(rs, rt);
+    jge_rj(0);
+    jump_start_rel8(r4300);
+
     gencallinterp(r4300, (unsigned long long)cached_interp_TLT, 0);
+
+    jump_end_rel8(r4300);
 }
 
 void gen_TLTU(struct r4300_core* r4300)
 {
+    int rs = allocate_register_64(r4300, (unsigned long long *)r4300->recomp.dst->f.r.rs);
+    int rt = allocate_register_64(r4300, (unsigned long long *)r4300->recomp.dst->f.r.rt);
+
+    cmp_reg64_reg64(rs, rt);
+    jae_rj(0);
+    jump_start_rel8(r4300);
+
     gencallinterp(r4300, (unsigned long long)cached_interp_TLTU, 0);
+
+    jump_end_rel8(r4300);
 }
 
 void gen_TLTI(struct r4300_core* r4300)
 {
+    int rs = allocate_register_64(r4300, (unsigned long long *)r4300->recomp.dst->f.i.rs);
+
+    cmp_reg64_imm32(rs, (unsigned int)(int)r4300->recomp.dst->f.i.immediate);
+    jge_rj(0);
+    jump_start_rel8(r4300);
+
     gencallinterp(r4300, (unsigned long long)cached_interp_TLTI, 0);
+
+    jump_end_rel8(r4300);
 }
 
 void gen_TLTIU(struct r4300_core* r4300)
 {
+    int rs = allocate_register_64(r4300, (unsigned long long *)r4300->recomp.dst->f.i.rs);
+
+    cmp_reg64_imm32(rs, (unsigned int)(int)r4300->recomp.dst->f.i.immediate);
+    jae_rj(0);
+    jump_start_rel8(r4300);
+
     gencallinterp(r4300, (unsigned long long)cached_interp_TLTIU, 0);
+
+    jump_end_rel8(r4300);
 }
 
 void gen_TEQ(struct r4300_core* r4300)
@@ -4234,22 +4302,56 @@ void gen_TEQ(struct r4300_core* r4300)
 #if defined(COUNT_INSTR)
     inc_m32rel(&instr_count[96]);
 #endif
+    int rs = allocate_register_64(r4300, (unsigned long long *)r4300->recomp.dst->f.r.rs);
+    int rt = allocate_register_64(r4300, (unsigned long long *)r4300->recomp.dst->f.r.rt);
+
+    cmp_reg64_reg64(rs, rt);
+    jne_rj(0);
+    jump_start_rel8(r4300);
+
     gencallinterp(r4300, (unsigned long long)cached_interp_TEQ, 0);
+
+    jump_end_rel8(r4300);
 }
 
 void gen_TEQI(struct r4300_core* r4300)
 {
+    int rs = allocate_register_64(r4300, (unsigned long long *)r4300->recomp.dst->f.i.rs);
+
+    cmp_reg64_imm32(rs, (unsigned int)(int)r4300->recomp.dst->f.i.immediate);
+    jne_rj(0);
+    jump_start_rel8(r4300);
+
     gencallinterp(r4300, (unsigned long long)cached_interp_TEQI, 0);
+
+    jump_end_rel8(r4300);
 }
 
 void gen_TNE(struct r4300_core* r4300)
 {
+    int rs = allocate_register_64(r4300, (unsigned long long *)r4300->recomp.dst->f.r.rs);
+    int rt = allocate_register_64(r4300, (unsigned long long *)r4300->recomp.dst->f.r.rt);
+
+    cmp_reg64_reg64(rs, rt);
+    je_rj(0);
+    jump_start_rel8(r4300);
+
     gencallinterp(r4300, (unsigned long long)cached_interp_TNE, 0);
+
+    jump_end_rel8(r4300);
 }
 
 void gen_TNEI(struct r4300_core* r4300)
 {
+    int rs = allocate_register_64(r4300, (unsigned long long *)r4300->recomp.dst->f.i.rs);
+
+    cmp_reg64_imm32(rs, (unsigned int)(int)r4300->recomp.dst->f.i.immediate);
+    je_rj(0);
+    jump_start_rel8(r4300);
+
     gencallinterp(r4300, (unsigned long long)cached_interp_TNEI, 0);
+
+    jump_end_rel8(r4300);
 }
 
 /* TLB instructions */
