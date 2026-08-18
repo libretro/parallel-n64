@@ -28,7 +28,31 @@ extern int angrylion_sync_full_seen;
 #include "device/memory/m64p_memory.h"
 #include "device/rcp/mi/mi_controller.h"
 #include "device/rcp/rsp/rsp_core.h"
+#include "device/r4300/r4300_core.h"
+#include "device/r4300/cp0.h"
 #include "plugin/plugin.h"
+
+
+/* The RDP clock counter free-runs on hardware and nothing here ever moved
+ * it, so it read back a constant zero.  Anything sampling it - libdragon
+ * prints it in its RSP crash dump, profilers difference it across a frame -
+ * saw the same nothing every time.
+ *
+ * Derive it from the cpu count, which is the only clock this core keeps.
+ * The RDP runs at 62.5MHz against the count register's 46.875MHz, so four
+ * of these to every three of those; the ratio matters less than the
+ * counter advancing at a plausible rate and never going backwards.  It is
+ * 24 bits wide and DPC_CLR_CLOCK_CTR restarts it, which is what the base
+ * is for. */
+static uint32_t dpc_clock_now(struct rdp_core* dp)
+{
+    const uint32_t* cp0_regs = r4300_cp0_regs(&dp->mi->r4300->cp0);
+
+    cp0_update_count(dp->mi->r4300);
+
+    return (uint32_t)((((uint64_t)(cp0_regs[CP0_COUNT_REG] - dp->clock_base)) * 4u) / 3u)
+         & UINT32_C(0x00ffffff);
+}
 
 static void update_dpc_status(struct rdp_core* dp, uint32_t w)
 {
@@ -46,6 +70,7 @@ static void update_dpc_status(struct rdp_core* dp, uint32_t w)
         if (dp->do_on_unfreeze & DELAY_UPDATESCREEN)
             gfx.updateScreen();
         dp->do_on_unfreeze = 0;
+    dp->clock_base = 0;
     }
     if (w & DPC_SET_FREEZE) dp->dpc_regs[DPC_STATUS_REG] |= DPC_STATUS_FREEZE;
 
@@ -54,7 +79,14 @@ static void update_dpc_status(struct rdp_core* dp, uint32_t w)
     if (w & DPC_SET_FLUSH) dp->dpc_regs[DPC_STATUS_REG] |= DPC_STATUS_FLUSH;
 
     /* clear clock counter */
-    if (w & DPC_CLR_CLOCK_CTR) dp->dpc_regs[DPC_CLOCK_REG] = 0;
+    if (w & DPC_CLR_CLOCK_CTR)
+    {
+        const uint32_t* cp0_regs = r4300_cp0_regs(&dp->mi->r4300->cp0);
+
+        cp0_update_count(dp->mi->r4300);
+        dp->clock_base = cp0_regs[CP0_COUNT_REG];
+        dp->dpc_regs[DPC_CLOCK_REG] = 0;
+    }
 }
 
 
@@ -87,6 +119,9 @@ void read_dpc_regs(void* opaque, uint32_t address, uint32_t* value)
 {
     struct rdp_core* dp = (struct rdp_core*)opaque;
     uint32_t reg = dpc_reg(address);
+
+    if (reg == DPC_CLOCK_REG)
+        dp->dpc_regs[DPC_CLOCK_REG] = dpc_clock_now(dp);
 
     *value = dp->dpc_regs[reg];
 }

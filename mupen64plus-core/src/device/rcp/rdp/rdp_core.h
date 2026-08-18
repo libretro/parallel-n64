@@ -87,6 +87,9 @@ struct rdp_core
     uint32_t dps_regs[DPS_REGS_COUNT];
     unsigned char do_on_unfreeze;
 
+    /* what the cpu count was when the clock counter was last cleared */
+    uint32_t clock_base;
+
     struct fb fb;
 
     struct rsp_core* sp;
