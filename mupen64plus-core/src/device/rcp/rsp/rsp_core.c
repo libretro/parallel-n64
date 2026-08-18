@@ -1,3 +1,4 @@
+int g_rsp_task_consumes_dp;
 #include <stdio.h>
 #include <stdlib.h>
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
@@ -369,6 +370,11 @@ void do_SP_Task(struct rsp_core* sp)
                                        (unsigned char*)sp->mem);
         }
 
+        /* Tell the graphics plugin's CheckInterrupts that the DP interrupt
+         * its rdp_sync_full raises will be picked up below, so it should
+         * leave the bit alone. */
+        g_rsp_task_consumes_dp = 1;
+
         //gfx.processDList();
         sp->regs2[SP_PC_REG] &= 0xfff;
 #if defined(PROFILE)
@@ -380,6 +386,8 @@ void do_SP_Task(struct rsp_core* sp)
 #endif
         sp->regs2[SP_PC_REG] |= save_pc;
         new_frame();
+
+        g_rsp_task_consumes_dp = 0;
 
         if (sp->mi->regs[MI_INTR_REG] & MI_INTR_DP)
         {
