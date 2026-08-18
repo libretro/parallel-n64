@@ -719,8 +719,9 @@ void InterpretOpcode(struct r4300_core* r4300)
 		else                NOP(r4300, 0);
 		break;
 	case 49: LWC1(r4300, op); break;
-	case 52: /* Major opcode 52: LLD (Not implemented) */
-		NI(r4300, op);
+	case 52: /* Major opcode 52: LLD */
+		if (RT_OF(op) != 0) LLD(r4300, op);
+		else                NOP(r4300, 0);
 		break;
 	case 53: LDC1(r4300, op); break;
 	case 55: /* Major opcode 55: LD */
@@ -732,8 +733,9 @@ void InterpretOpcode(struct r4300_core* r4300)
 		else                NOP(r4300, 0);
 		break;
 	case 57: SWC1(r4300, op); break;
-	case 60: /* Major opcode 60: SCD (Not implemented) */
-		NI(r4300, op);
+	case 60: /* Major opcode 60: SCD */
+		if (RT_OF(op) != 0) SCD(r4300, op);
+		else                NOP(r4300, 0);
 		break;
 	case 61: SDC1(r4300, op); break;
 	case 63: SD(r4300, op); break;
