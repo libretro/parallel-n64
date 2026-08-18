@@ -217,19 +217,43 @@ void poweron_ai(struct ai_controller* ai)
  * reading it only when the game polls AI_LEN makes delivery follow the
  * game's polling pattern, which is why titles that service their mixer
  * on alternate fields hand over two fields and then none. */
+/* Hand over a span of the transfer the game programmed, keeping the read
+ * inside RDRAM.  The address and length are whatever went into
+ * AI_DRAM_ADDR and AI_LEN, and nothing made them stay in range: a
+ * transfer near the top of memory, or a stale fifo entry mid-setup,
+ * walked off the end of the allocation and took the emulator down.  That
+ * is a crash on guest-supplied values, so clamp and hand over the part
+ * that exists. */
+static void ai_push_span(struct ai_controller* ai, unsigned int diff,
+                         unsigned int length)
+{
+    size_t   dram_size = ai->ri->rdram->dram_size;
+    uint32_t start     = ai->fifo[0].address & ~UINT32_C(7);
+
+    if (start >= dram_size || diff > dram_size - start)
+        return;
+
+    if (length > dram_size - start - diff)
+        length = (unsigned int)(dram_size - start - diff);
+
+    if (length < 4)
+        return;
+
+    push_audio_samples_via_libretro(
+        (unsigned char*)ai->ri->rdram->dram + start + diff, length);
+}
+
 static unsigned int ai_hand_over_played(struct ai_controller* ai, uint32_t remaining)
 {
     unsigned int diff;
     unsigned int handed;
-    unsigned char* p;
 
     if (remaining >= ai->last_read)
         return 0;
 
     diff   = ai->fifo[0].length - ai->last_read;
     handed = ai->last_read - remaining;
-    p      = (unsigned char*)&ai->ri->rdram->dram[ai->fifo[0].address/4];
-    push_audio_samples_via_libretro(p + diff, handed);
+    ai_push_span(ai, diff, handed);
     ai->last_read = remaining;
     return handed;
 }
@@ -290,8 +314,7 @@ void ai_end_of_dma_event(void* opaque)
     if (ai->last_read != 0)
     {
         unsigned int diff = ai->fifo[0].length - ai->last_read;
-        unsigned char *p = (unsigned char*)&ai->ri->rdram->dram[ai->fifo[0].address/4];
-        push_audio_samples_via_libretro(p + diff, ai->last_read);
+        ai_push_span(ai, diff, ai->last_read);
         ai->last_read = 0;
     }
 
