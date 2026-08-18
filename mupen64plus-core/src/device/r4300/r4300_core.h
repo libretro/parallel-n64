@@ -238,6 +238,34 @@ unsigned int get_r4300_emumode(struct r4300_core* r4300);
 /* Returns a pointer to a block of contiguous memory
  * Can access RDRAM, SP_DMEM, SP_IMEM and ROM, using TLB if necessary
  * Useful for getting fast access to a zone with executable code. */
+/* Fold a load/store's full 64-bit effective address down to the 32-bit
+ * one the memory map decodes.
+ *
+ * Almost everything a game computes is a sign-extended 32-bit address and
+ * the low half is all that matters.  XKPHYS is the exception: bits 63:62
+ * of 10 mean the low bits are a physical address outright, with 61:59
+ * giving the cache attribute.  64-bit-clean code reaches for it to touch
+ * hardware without a TLB entry - the open homebrew IPL3 and the games
+ * built on it read the cartridge through 0x9000000000000000 - and taking
+ * only the low 32 bits turns that into a KUSEG address that faults.
+ *
+ * Map it onto the equivalent 32-bit segment instead: attribute 3 is
+ * cached, so KSEG0, and everything else uncached, so KSEG1.  Both are
+ * already decoded straight to physical here. */
+static osal_inline uint32_t r4300_effective_address(uint64_t address)
+{
+    if ((address >> 62) == UINT64_C(2))
+    {
+        uint32_t physical = (uint32_t)address;
+
+        return (((address >> 59) & UINT64_C(7)) == UINT64_C(3))
+            ? (UINT32_C(0x80000000) | physical)
+            : (UINT32_C(0xa0000000) | physical);
+    }
+
+    return (uint32_t)address;
+}
+
 uint32_t *fast_mem_access(struct r4300_core* r4300, uint32_t address);
 
 int r4300_read_aligned_word(struct r4300_core* r4300, uint32_t address, uint32_t* value);

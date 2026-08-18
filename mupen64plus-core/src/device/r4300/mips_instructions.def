@@ -151,7 +151,7 @@ DECLARE_INSTRUCTION(BREAK)
 DECLARE_INSTRUCTION(LB)
 {
     DECLARE_R4300
-    const uint32_t lsaddr = (uint32_t) irs32 + (uint32_t) iimmediate;
+    const uint32_t lsaddr = r4300_effective_address((uint64_t) irs + (uint64_t) (int64_t) iimmediate);
     int64_t *lsrtp = &irt;
     ADD_TO_PC(1);
     uint32_t value;
@@ -165,7 +165,7 @@ DECLARE_INSTRUCTION(LB)
 DECLARE_INSTRUCTION(LBU)
 {
     DECLARE_R4300
-    const uint32_t lsaddr = (uint32_t) irs32 + (uint32_t) iimmediate;
+    const uint32_t lsaddr = r4300_effective_address((uint64_t) irs + (uint64_t) (int64_t) iimmediate);
     int64_t *lsrtp = &irt;
     ADD_TO_PC(1);
     uint32_t value;
@@ -179,7 +179,7 @@ DECLARE_INSTRUCTION(LBU)
 DECLARE_INSTRUCTION(LH)
 {
     DECLARE_R4300
-    const uint32_t lsaddr = (uint32_t) irs32 + (uint32_t) iimmediate;
+    const uint32_t lsaddr = r4300_effective_address((uint64_t) irs + (uint64_t) (int64_t) iimmediate);
     int64_t *lsrtp = &irt;
     ADD_TO_PC(1);
     uint32_t value;
@@ -193,7 +193,7 @@ DECLARE_INSTRUCTION(LH)
 DECLARE_INSTRUCTION(LHU)
 {
     DECLARE_R4300
-    const uint32_t lsaddr = (uint32_t) irs32 + (uint32_t) iimmediate;
+    const uint32_t lsaddr = r4300_effective_address((uint64_t) irs + (uint64_t) (int64_t) iimmediate);
     int64_t *lsrtp = &irt;
     ADD_TO_PC(1);
     uint32_t value;
@@ -207,7 +207,7 @@ DECLARE_INSTRUCTION(LHU)
 DECLARE_INSTRUCTION(LL)
 {
     DECLARE_R4300
-    const uint32_t lsaddr = (uint32_t) irs32 + (uint32_t) iimmediate;
+    const uint32_t lsaddr = r4300_effective_address((uint64_t) irs + (uint64_t) (int64_t) iimmediate);
     int64_t *lsrtp = &irt;
     ADD_TO_PC(1);
     uint32_t value;
@@ -221,7 +221,7 @@ DECLARE_INSTRUCTION(LL)
 DECLARE_INSTRUCTION(LW)
 {
     DECLARE_R4300
-    const uint32_t lsaddr = (uint32_t) irs32 + (uint32_t) iimmediate;
+    const uint32_t lsaddr = r4300_effective_address((uint64_t) irs + (uint64_t) (int64_t) iimmediate);
     int64_t *lsrtp = &irt;
     ADD_TO_PC(1);
     uint32_t value;
@@ -234,7 +234,7 @@ DECLARE_INSTRUCTION(LW)
 DECLARE_INSTRUCTION(LWU)
 {
     DECLARE_R4300
-    const uint32_t lsaddr = (uint32_t) irs32 + (uint32_t) iimmediate;
+    const uint32_t lsaddr = r4300_effective_address((uint64_t) irs + (uint64_t) (int64_t) iimmediate);
     int64_t *lsrtp = &irt;
     ADD_TO_PC(1);
 
@@ -248,7 +248,7 @@ DECLARE_INSTRUCTION(LWU)
 DECLARE_INSTRUCTION(LWL)
 {
     DECLARE_R4300
-    const uint32_t lsaddr = (uint32_t) irs32 + (uint32_t) iimmediate;
+    const uint32_t lsaddr = r4300_effective_address((uint64_t) irs + (uint64_t) (int64_t) iimmediate);
     int64_t *lsrtp = &irt;
     ADD_TO_PC(1);
 
@@ -265,7 +265,7 @@ DECLARE_INSTRUCTION(LWL)
 DECLARE_INSTRUCTION(LWR)
 {
     DECLARE_R4300
-    const uint32_t lsaddr = (uint32_t) irs32 + (uint32_t) iimmediate;
+    const uint32_t lsaddr = r4300_effective_address((uint64_t) irs + (uint64_t) (int64_t) iimmediate);
     int64_t *lsrtp = &irt;
     ADD_TO_PC(1);
 
@@ -284,7 +284,7 @@ DECLARE_INSTRUCTION(LWR)
 DECLARE_INSTRUCTION(LD)
 {
     DECLARE_R4300
-    const uint32_t lsaddr = (uint32_t) irs32 + (uint32_t) iimmediate;
+    const uint32_t lsaddr = r4300_effective_address((uint64_t) irs + (uint64_t) (int64_t) iimmediate);
     int64_t *lsrtp = &irt;
     ADD_TO_PC(1);
 
@@ -294,7 +294,7 @@ DECLARE_INSTRUCTION(LD)
 DECLARE_INSTRUCTION(LDL)
 {
     DECLARE_R4300
-    const uint32_t lsaddr = (uint32_t) irs32 + (uint32_t) iimmediate;
+    const uint32_t lsaddr = r4300_effective_address((uint64_t) irs + (uint64_t) (int64_t) iimmediate);
     int64_t *lsrtp = &irt;
     ADD_TO_PC(1);
 
@@ -311,7 +311,7 @@ DECLARE_INSTRUCTION(LDL)
 DECLARE_INSTRUCTION(LDR)
 {
     DECLARE_R4300
-    const uint32_t lsaddr = (uint32_t) irs32 + (uint32_t) iimmediate;
+    const uint32_t lsaddr = r4300_effective_address((uint64_t) irs + (uint64_t) (int64_t) iimmediate);
     int64_t *lsrtp = &irt;
     ADD_TO_PC(1);
 
@@ -332,7 +332,7 @@ DECLARE_INSTRUCTION(LDR)
 DECLARE_INSTRUCTION(SB)
 {
     DECLARE_R4300
-    const uint32_t lsaddr = (uint32_t) irs32 + (uint32_t) iimmediate;
+    const uint32_t lsaddr = r4300_effective_address((uint64_t) irs + (uint64_t) (int64_t) iimmediate);
     int64_t *lsrtp = &irt;
     ADD_TO_PC(1);
     unsigned int shift = bshift(lsaddr);
@@ -343,7 +343,7 @@ DECLARE_INSTRUCTION(SB)
 DECLARE_INSTRUCTION(SH)
 {
     DECLARE_R4300
-    const uint32_t lsaddr = (uint32_t) irs32 + (uint32_t) iimmediate;
+    const uint32_t lsaddr = r4300_effective_address((uint64_t) irs + (uint64_t) (int64_t) iimmediate);
     int64_t *lsrtp = &irt;
     ADD_TO_PC(1);
     unsigned int shift = hshift(lsaddr);
@@ -354,7 +354,7 @@ DECLARE_INSTRUCTION(SH)
 DECLARE_INSTRUCTION(SC)
 {
     DECLARE_R4300
-    const uint32_t lsaddr = (uint32_t) irs32 + (uint32_t) iimmediate;
+    const uint32_t lsaddr = r4300_effective_address((uint64_t) irs + (uint64_t) (int64_t) iimmediate);
     int64_t *lsrtp = &irt;
     ADD_TO_PC(1);
 
@@ -374,7 +374,7 @@ DECLARE_INSTRUCTION(SC)
 DECLARE_INSTRUCTION(SW)
 {
     DECLARE_R4300
-    const uint32_t lsaddr = (uint32_t) irs32 + (uint32_t) iimmediate;
+    const uint32_t lsaddr = r4300_effective_address((uint64_t) irs + (uint64_t) (int64_t) iimmediate);
     int64_t *lsrtp = &irt;
     ADD_TO_PC(1);
 
@@ -384,7 +384,7 @@ DECLARE_INSTRUCTION(SW)
 DECLARE_INSTRUCTION(SWL)
 {
     DECLARE_R4300
-    const uint32_t lsaddr = (uint32_t) irs32 + (uint32_t) iimmediate;
+    const uint32_t lsaddr = r4300_effective_address((uint64_t) irs + (uint64_t) (int64_t) iimmediate);
     int64_t *lsrtp = &irt;
     ADD_TO_PC(1);
 
@@ -401,7 +401,7 @@ DECLARE_INSTRUCTION(SWL)
 DECLARE_INSTRUCTION(SWR)
 {
     DECLARE_R4300
-    const uint32_t lsaddr = (uint32_t) irs32 + (uint32_t) iimmediate;
+    const uint32_t lsaddr = r4300_effective_address((uint64_t) irs + (uint64_t) (int64_t) iimmediate);
     int64_t *lsrtp = &irt;
     ADD_TO_PC(1);
 
@@ -416,7 +416,7 @@ DECLARE_INSTRUCTION(SWR)
 DECLARE_INSTRUCTION(SD)
 {
     DECLARE_R4300
-    const uint32_t lsaddr = (uint32_t) irs32 + (uint32_t) iimmediate;
+    const uint32_t lsaddr = r4300_effective_address((uint64_t) irs + (uint64_t) (int64_t) iimmediate);
     int64_t *lsrtp = &irt;
     ADD_TO_PC(1);
 
@@ -426,7 +426,7 @@ DECLARE_INSTRUCTION(SD)
 DECLARE_INSTRUCTION(SDL)
 {
     DECLARE_R4300
-    const uint32_t lsaddr = (uint32_t) irs32 + (uint32_t) iimmediate;
+    const uint32_t lsaddr = r4300_effective_address((uint64_t) irs + (uint64_t) (int64_t) iimmediate);
     int64_t *lsrtp = &irt;
     ADD_TO_PC(1);
 
@@ -443,7 +443,7 @@ DECLARE_INSTRUCTION(SDL)
 DECLARE_INSTRUCTION(SDR)
 {
     DECLARE_R4300
-    const uint32_t lsaddr = (uint32_t) irs32 + (uint32_t) iimmediate;
+    const uint32_t lsaddr = r4300_effective_address((uint64_t) irs + (uint64_t) (int64_t) iimmediate);
     int64_t *lsrtp = &irt;
     ADD_TO_PC(1);
 
