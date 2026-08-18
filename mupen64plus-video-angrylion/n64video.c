@@ -287,8 +287,22 @@ void n64video_process_list(void)
     if (dp_reg == NULL)
         return;
 
-    dp_current_al = (*dp_reg[DP_CURRENT] & ~7) >> 2;
-    dp_end_al = (*dp_reg[DP_END] & ~7) >> 2;
+    /* The command buffer pointers are 24 bits wide on the part; the top
+     * byte does not exist and nothing written there is kept.  Taking the
+     * whole 32 believed rubbish above bit 23, and the RSP plugin writes
+     * these through a raw pointer, so masking them where they are set is
+     * not enough - they have to be masked where they are used.
+     *
+     * Junk Runner 64 ends up with an end of 0x091a7ce0 against a start of
+     * 0x001a7cd8: one two-word command with 0x09 stranded over the top.
+     * That asked the RDP for 37,748,738 words.  It walked out of RDRAM,
+     * where the fetch reads back zero, and decoded that as commands for
+     * the rest of the frame - 95% of the eighteen million words it
+     * fetched were not commands, against 0.1% of the sixty-eight thousand
+     * Super Mario 64 fetches over the same run - which is what replaced
+     * the game's logo with a screen of torn scanlines. */
+    dp_current_al = (*dp_reg[DP_CURRENT] & 0x00fffff8) >> 2;
+    dp_end_al = (*dp_reg[DP_END] & 0x00fffff8) >> 2;
 
     // don't do anything if the RDP has crashed or the registers are not set up correctly
     if (rdp_pipeline_crashed || dp_end_al <= dp_current_al) {
