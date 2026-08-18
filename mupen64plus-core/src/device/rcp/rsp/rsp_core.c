@@ -1,3 +1,5 @@
+#include <stdio.h>
+#include <stdlib.h>
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *   Mupen64plus - rsp_core.c                                              *
  *   Mupen64Plus homepage: https://mupen64plus.org/                        *
@@ -467,8 +469,17 @@ void do_SP_Task(struct rsp_core* sp)
     else if (sp->mi->regs[MI_INTR_REG] & MI_INTR_SP)
     {
         cp0_update_count(sp->mi->r4300);
+        /* Leave MI_INTR_SP asserted for the CPU's handler to find.
+         * Consuming it here scheduled the event and then removed the
+         * only evidence of where it came from, so a handler that
+         * dispatches on MI_INTR_REG - as libdragon's does - saw an
+         * interrupt with no source and ignored it.  Its rspq syncpoints
+         * are signalled exactly this way, so every wait on one timed
+         * out.  The incomplete-task branch above already keeps the bit
+         * for the same reason; the completing branch has to as well.
+         * The CPU clears it by writing SP_STATUS with SP_CLR_INTR,
+         * which update_sp_status already handles. */
         add_interrupt_event(&sp->mi->r4300->cp0, SP_INT, sp_delay_time);
-        sp->mi->regs[MI_INTR_REG] &= ~MI_INTR_SP;
     }
     if ((sp->regs[SP_STATUS_REG] & (SP_STATUS_HALT | SP_STATUS_BROKE)))
     {
