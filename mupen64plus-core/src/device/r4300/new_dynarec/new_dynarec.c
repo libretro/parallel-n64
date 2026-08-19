@@ -9623,18 +9623,27 @@ int new_recompile_block(int addr)
           if(ba[j]==start+i*4+8) done=j=0;
         }
 
-        // Stop if we're compiling junk
-        if(type==UJUMP||type==CJUMP||type==SJUMP||type==RJUMP||type==FJUMP)
-        {
-          done=stop_after_jal=1;
-          itype[i]=NOP;
-          DebugMessage(M64MSG_VERBOSE, "Disabled speculative precompilation");
-        }
       }
       else {
         if(stop_after_jal) done=1;
         // Stop on BREAK
         if((source[i+1]&0xfc00003f)==0x0d) done=1;
+      }
+      /* A branch sitting in a delay slot is not valid MIPS, so whatever is
+       * here is junk being speculatively compiled.  The jump-and-link side
+       * used to leave it in place, and if the scan then stopped - the
+       * already-compiled check below is enough to do it - the block ended
+       * on a branch with no delay slot of its own, which register
+       * allocation does not merely reject but calls exit() over.  That
+       * takes the whole emulator down: libdragon trips it on a four
+       * instruction block at the base of RDRAM before the game has drawn
+       * anything.  Neutralise it on both paths, the way the non-linking
+       * one already did. */
+      if(type==UJUMP||type==CJUMP||type==SJUMP||type==RJUMP||type==FJUMP)
+      {
+        done=stop_after_jal=1;
+        itype[i]=NOP;
+        DebugMessage(M64MSG_VERBOSE, "Disabled speculative precompilation");
       }
       // Don't recompile stuff that's already compiled
       if(check_addr(start+i*4+4)) done=1;
