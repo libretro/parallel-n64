@@ -7907,8 +7907,6 @@ static void sjump_assemble(int i,struct regstat *i_regs)
   if(i>(ba[i]-start)>>2) invert=1;
   #endif
 
-  //if(opcode2[i]>=0x10) return; // FIXME (BxxZAL)
-  assert(opcode2[i]<0x10||rs1[i]==0); // FIXME (BxxZAL)
 
   if(ooo[i]) {
     s1l=get_reg(branch_regs[i].regmap,rs1[i]);
@@ -8002,7 +8000,7 @@ static void sjump_assemble(int i,struct regstat *i_regs)
       if(!only32)
       {
         assert(s1h>=0);
-        if(opcode2[i]==0) // BLTZ
+        if((opcode2[i]&1)==0) // BLTZ/BLTZAL
         {
           emit_test(s1h,s1h);
           if(invert){
@@ -8013,7 +8011,7 @@ static void sjump_assemble(int i,struct regstat *i_regs)
             emit_js(0);
           }
         }
-        if(opcode2[i]==1) // BGEZ
+        else // BGEZ/BGEZAL
         {
           emit_test(s1h,s1h);
           if(invert){
@@ -8028,7 +8026,7 @@ static void sjump_assemble(int i,struct regstat *i_regs)
       else
       {
         assert(s1l>=0);
-        if(opcode2[i]==0) // BLTZ
+        if((opcode2[i]&1)==0) // BLTZ/BLTZAL
         {
           emit_test(s1l,s1l);
           if(invert){
@@ -8039,7 +8037,7 @@ static void sjump_assemble(int i,struct regstat *i_regs)
             emit_js(0);
           }
         }
-        if(opcode2[i]==1) // BGEZ
+        else // BGEZ/BGEZAL
         {
           emit_test(s1l,s1l);
           if(invert){
@@ -8098,36 +8096,30 @@ static void sjump_assemble(int i,struct regstat *i_regs)
       if(!only32)
       {
         assert(s1h>=0);
-        if((opcode2[i]&0x1d)==0) // BLTZ/BLTZL
-        {
-          emit_test(s1h,s1h);
-          nottaken=(intptr_t)out;
-          emit_jns(1);
-        }
-        if((opcode2[i]&0x1d)==1) // BGEZ/BGEZL
-        {
-          emit_test(s1h,s1h);
-          nottaken=(intptr_t)out;
-          emit_js(1);
-        }
+        emit_test(s1h,s1h);
       } // if(!only32)
       else
       {
         assert(s1l>=0);
-        if((opcode2[i]&0x1d)==0) // BLTZ/BLTZL
-        {
-          emit_test(s1l,s1l);
-          nottaken=(intptr_t)out;
-          emit_jns(1);
-        }
-        if((opcode2[i]&0x1d)==1) // BGEZ/BGEZL
-        {
-          emit_test(s1l,s1l);
-          nottaken=(intptr_t)out;
-          emit_js(1);
-        }
+        emit_test(s1l,s1l);
       }
     } // if(!unconditional)
+    if(rt1[i]==31) {
+      int rt,return_address;
+      rt=get_reg(branch_regs[i].regmap,31);
+      if(rt>=0) {
+        // Save the PC even if the branch is not taken
+        return_address=start+i*4+8;
+        emit_movimm(return_address,rt); // PC into link register
+      }
+    }
+    if(!unconditional) {
+      nottaken=(intptr_t)out;
+      if((opcode2[i]&1)==0) // BLTZ/BLTZL/BLTZAL/BLTZALL
+        emit_jns(1);
+      else // BGEZ/BGEZL/BGEZAL/BGEZALL
+        emit_js(1);
+    }
     int adj;
     uint64_t ds_unneeded=branch_regs[i].u;
     uint64_t ds_unneeded_upper=branch_regs[i].uu;
@@ -10159,6 +10151,10 @@ int new_recompile_block(int addr)
             {
               alloc_reg64(&current,i,rs1[i]);
             }
+            if (rt1[i]==31) { // BLTZALL/BGEZALL
+              alloc_reg(&current,i,31);
+              dirty_reg(&current,31);
+            }
           }
           ds=1;
           //current.isconst=0;
@@ -10546,11 +10542,15 @@ int new_recompile_block(int addr)
             dirty_reg(&current,CCREG);
             memcpy(&branch_regs[i-1].regmap_entry,&branch_regs[i-1].regmap,sizeof(current.regmap));
           }
-          // FIXME: BLTZAL/BGEZAL
           if(opcode2[i-1]&0x10) { // BxxZAL
             alloc_reg(&branch_regs[i-1],i-1,31);
             dirty_reg(&branch_regs[i-1],31);
             branch_regs[i-1].is32|=1LL<<31;
+            if(opcode2[i-1]&2) { // BLTZALL/BGEZALL: not-taken path writes ra too
+              alloc_reg(&current,i-1,31);
+              dirty_reg(&current,31);
+              current.is32|=1LL<<31;
+            }
           }
           break;
         case FJUMP:
