@@ -903,8 +903,9 @@ static void emit_subs(int rs1,int rs2,int rt)
 
 static void emit_zeroreg(int rt)
 {
+  if(rt>=8) output_rex(0,rt>>3,0,rt>>3);
   output_byte(0x31);
-  output_modrm(3,rt,rt);
+  output_modrm(3,rt&7,rt&7);
   assem_debug("xor %%%s,%%%s",regname[rt],regname[rt]);
 }
 
@@ -1318,14 +1319,16 @@ static void emit_orimm(int rs,int imm,int rt)
     if(imm!=0) {
       assem_debug("or $%d,%%%s",imm,regname[rt]);
       if(imm<128&&imm>=-128) {
+        if(rt>=8) output_rex(0,0,0,1);
         output_byte(0x83);
-        output_modrm(3,rt,1);
+        output_modrm(3,rt&7,1);
         output_byte(imm);
       }
       else
       {
+        if(rt>=8) output_rex(0,0,0,1);
         output_byte(0x81);
-        output_modrm(3,rt,1);
+        output_modrm(3,rt&7,1);
         output_w32(imm);
       }
     }
@@ -1532,14 +1535,16 @@ static void emit_cmpimm(int rs,int imm)
 {
   assem_debug("cmp $%d,%%%s",imm,regname[rs]);
   if(imm<128&&imm>=-128) {
+    if(rs>=8) output_rex(0,0,0,1);
     output_byte(0x83);
-    output_modrm(3,rs,7);
+    output_modrm(3,rs&7,7);
     output_byte(imm);
   }
   else
   {
+    if(rs>=8) output_rex(0,0,0,1);
     output_byte(0x81);
-    output_modrm(3,rs,7);
+    output_modrm(3,rs&7,7);
     output_w32(imm);
   }
 }
