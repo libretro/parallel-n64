@@ -4,6 +4,7 @@
 #include <map>
 #include <unordered_map>
 #include <list>
+#include <vector>
 
 #include <stddef.h>
 
@@ -102,6 +103,9 @@ private:
 	u32 m_hits, m_misses;
 	s32 m_curUnpackAlignment;
 	bool m_toggleDumpTex;
+	/* Objects freed by eviction, waiting to be handed to the next texture:
+	 * deleting one costs ~160us on a tiled GPU, reusing it costs nothing. */
+	std::vector<graphics::ObjectHandle> m_freeTextures;
 #ifdef VC
 	const size_t m_maxCacheSize = 1500;
 #else

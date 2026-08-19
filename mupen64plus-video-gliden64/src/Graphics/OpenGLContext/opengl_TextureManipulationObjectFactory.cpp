@@ -104,6 +104,18 @@ namespace opengl {
 		{
 			if (_params.msaaLevel == 0) {
 				m_bind->bind(_params.textureUnitIndex, graphics::textureTarget::TEXTURE_2D, _params.handle);
+				if (_params.mutableStorage) {
+					glTexImage2D(GL_TEXTURE_2D,
+								 _params.mipMapLevel,
+								 GLuint(_params.internalFormat),
+								 _params.width,
+								 _params.height,
+								 0,
+								 GLenum(_params.format),
+								 GLenum(_params.dataType),
+								 _params.data);
+					return;
+				}
 				if (m_handle != _params.handle) {
 					m_handle = _params.handle;
 					glTexStorage2D(GL_TEXTURE_2D,
