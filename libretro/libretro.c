@@ -229,6 +229,9 @@ bool frame_dupe                     = false;
  * withhold the final video_cb on such frames; the renderers themselves run
  * unchanged so no display state desyncs and save/load stays correct. */
 int frame_hidden                    = 0;
+/* Pre-roll: the machine runs with no renderer and presents nothing, only far
+ * enough for the game to program AI_DACRATE.  See preroll_sample_rate(). */
+static bool     preroll_active      = false;
 
 uint32_t gfx_plugin_accuracy        = 2;
 static enum fork_rsp_plugin_type
@@ -866,6 +869,14 @@ void emu_step_render(void)
       return;
    }
 
+   /* Nor during the pre-roll: the frontend has no video pipeline yet. */
+   if (preroll_active)
+   {
+      frame_latched   = false;
+      frame_presented = false;
+      return;
+   }
+
    if (frame_latched)
    {
       frame_latched = false;
@@ -907,6 +918,11 @@ static void emu_step_initialize(void)
       case RSP_PARALLEL: current_rsp_type = RSP_PLUGIN_PARALLEL; break;
       default:           current_rsp_type = RSP_PLUGIN_HLE;      break;
    }
+   /* The pre-roll runs before any renderer context exists, so it attaches
+    * none; the real one is connected when the pre-roll is over. */
+   if (preroll_active)
+      current_rdp_type = RDP_PLUGIN_NONE;
+
    plugin_connect_all();
 
    if (log_cb)
@@ -918,6 +934,7 @@ static void emu_step_initialize(void)
 extern void gliden64RomOpen();
 extern void gliden64RomClosed();
 static void EmuThreadInit(void);
+static enum rdp_plugin_type rdp_type_for_gfx_plugin(void);
 void reinit_gfx_plugin(void)
 {
     if(first_context_reset)
@@ -927,6 +944,12 @@ void reinit_gfx_plugin(void)
          * GLideN64's RomOpen dereferences core state (RSP, memory) that
          * only exists after initialization. */
         EmuThreadInit();
+
+        /* The pre-roll ran the machine with no renderer attached; connect the
+         * real one here, where the normal path connected it -- its InitiateGFX
+         * belongs immediately before the RomOpen below. */
+        if (current_rdp_type == RDP_PLUGIN_NONE)
+            plugin_connect_gfx(rdp_type_for_gfx_plugin());
     }
 
     switch (gfx_plugin)
@@ -1032,6 +1055,85 @@ static void EmuThreadStep(void)
     stop_stepping = false;
     frame_break = 0;
     main_run();
+}
+
+static enum rdp_plugin_type rdp_type_for_gfx_plugin(void)
+{
+   switch (gfx_plugin)
+   {
+      case GFX_ANGRYLION: return RDP_PLUGIN_ANGRYLION;
+      case GFX_PARALLEL:  return RDP_PLUGIN_PARALLEL;
+      case GFX_GLIDEN64:  return RDP_PLUGIN_GLIDEN64;
+      case GFX_RICE:      return RDP_PLUGIN_RICE;
+      case GFX_GLN64:     return RDP_PLUGIN_GLN64;
+      case GFX_GLIDE64:   return RDP_PLUGIN_GLIDE64;
+      default:            return RDP_PLUGIN_GLIDEN64;
+   }
+}
+
+/* Run the machine, with no renderer and nothing presented, until the game has
+ * programmed its DAC rate -- so that retro_get_system_av_info() can report it.
+ *
+ * The rate is a divider the game writes into AI_DACRATE, unknowable before the
+ * ROM runs.  Reporting a guess and correcting it later through
+ * RETRO_ENVIRONMENT_SET_SYSTEM_AV_INFO is legitimate, but the frontend
+ * reinitialises its whole video pipeline on that call, and a CRT setup loses
+ * the mode switchres picked from the first frame: it falls back to the default
+ * KMS mode and never returns, leaving the picture at a fraction of its
+ * resolution.  The frontend sets video up from what retro_get_system_av_info()
+ * returns and calls it after retro_load_game(), so settling the rate here
+ * leaves nothing to announce.  The declared refresh rate stops being a guess
+ * for the same reason.
+ *
+ * The rate arrives with the game's first AI DMA, a handful of frames for most
+ * titles but not guaranteed, so bound the wait; a game that never programs one
+ * keeps the region default it would have had anyway. */
+static void preroll_sample_rate(void)
+{
+   extern int audio_sample_rate_settled_libretro(void);
+   extern m64p_error main_reset(int do_hard_reset);
+   /* ~2s of emulated time.  With no renderer attached the machine runs far
+    * faster than real time, so this costs milliseconds, not seconds. */
+   const unsigned max_frames = 120;
+   unsigned frames = 0;
+
+   preroll_active = true;
+
+   EmuThreadInit();
+
+   while (!audio_sample_rate_settled_libretro() && frames < max_frames && !g_real_stop)
+   {
+      EmuThreadStep();
+      ++frames;
+   }
+
+   /* Hand the renderer a machine it has seen from the first instruction: it
+    * missed every display list of the pre-roll, and a renderer that joins a
+    * boot half-way inherits an RDP state nothing will re-issue -- which shows
+    * as a screen of noise, or no picture at all.  The rate survives the reset:
+    * the game programs the same one again, and an unchanged rate is dropped
+    * before it reaches the frontend. */
+   main_reset(1);
+
+   preroll_active = false;
+
+   if (log_cb)
+      log_cb(RETRO_LOG_INFO, "Pre-roll: %u frames, sample rate %s.\n",
+             frames, audio_sample_rate_settled_libretro() ? "from the game"
+                                                          : "not programmed");
+
+   /* Swap in the renderer the user asked for.  A GL one is connected from
+    * context_reset() instead, where it was connected before: its InitiateGFX
+    * has to keep sitting right next to the RomOpen that follows it. */
+   if (gfx_plugin == GFX_ANGRYLION || gfx_plugin == GFX_PARALLEL)
+      plugin_connect_gfx(rdp_type_for_gfx_plugin());
+}
+
+/* Whether the pre-roll is running: the frontend's callbacks are not usable yet
+ * and there is nothing to announce a rate to. */
+int libretro_preroll_active(void)
+{
+   return preroll_active ? 1 : 0;
 }
 
 const char* retro_get_system_directory(void)
@@ -2796,6 +2898,8 @@ content_ready:
       return false;
 
    first_context_reset = true;
+
+   preroll_sample_rate();
 
    return true;
 }
