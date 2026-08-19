@@ -527,6 +527,9 @@ void TextureCache::destroy()
 
 	for (Textures::const_iterator cur = m_textures.cbegin(); cur != m_textures.cend(); ++cur)
 		gfxContext.deleteTexture(cur->name);
+	for (graphics::ObjectHandle name : m_freeTextures)
+		gfxContext.deleteTexture(name);
+	m_freeTextures.clear();
 	m_textures.clear();
 	m_lruTextureLocations.clear();
 
@@ -539,7 +542,7 @@ void TextureCache::_checkCacheSize()
 {
 	if (m_textures.size() >= m_maxCacheSize) {
 		CachedTexture& clsTex = m_textures.back();
-		gfxContext.deleteTexture(clsTex.name);
+		m_freeTextures.push_back(clsTex.name);
 		m_lruTextureLocations.erase(clsTex.crc);
 		m_textures.pop_back();
 	}
@@ -550,7 +553,14 @@ CachedTexture * TextureCache::_addTexture(u64 _crc)
 	if (m_curUnpackAlignment == 0)
 		m_curUnpackAlignment = gfxContext.getTextureUnpackAlignment();
 	_checkCacheSize();
-	m_textures.emplace_front(gfxContext.createTexture(textureTarget::TEXTURE_2D));
+	ObjectHandle name;
+	if (m_freeTextures.empty())
+		name = gfxContext.createTexture(textureTarget::TEXTURE_2D);
+	else {
+		name = m_freeTextures.back();
+		m_freeTextures.pop_back();
+	}
+	m_textures.emplace_front(name);
 	Textures::iterator new_iter = m_textures.begin();
 	new_iter->crc = _crc;
 	m_lruTextureLocations.insert(std::pair<u64, Textures::iterator>(_crc, new_iter));
@@ -772,6 +782,7 @@ bool TextureCache::_loadHiresBackground(CachedTexture *_pTexture, u64 & _ricecrc
 		params.internalFormat = InternalColorFormatParam(ghqTexInfo.format);
 		params.dataType = DatatypeParam(ghqTexInfo.pixel_type);
 		params.data = ghqTexInfo.data;
+		params.mutableStorage = true;
 		gfxContext.init2DTexture(params);
 
 		assert(!gfxContext.isError());
@@ -886,6 +897,7 @@ void TextureCache::_loadBackground(CachedTexture *pTexture)
 			params.internalFormat = InternalColorFormatParam(ghqTexInfo.format);
 			params.dataType = DatatypeParam(ghqTexInfo.pixel_type);
 			params.data = ghqTexInfo.data;
+			params.mutableStorage = true;
 			gfxContext.init2DTexture(params);
 			_updateCachedTexture(ghqTexInfo, pTexture, f32(ghqTexInfo.width) / f32(pTexture->realWidth));
 			bLoaded = true;
@@ -904,6 +916,7 @@ void TextureCache::_loadBackground(CachedTexture *pTexture)
 		params.internalFormat = gfxContext.convertInternalTextureFormat(u32(glInternalFormat));
 		params.dataType = glType;
 		params.data = pDest;
+		params.mutableStorage = true;
 		gfxContext.init2DTexture(params);
 	}
 	if (m_curUnpackAlignment > 1)
@@ -992,6 +1005,7 @@ bool TextureCache::_loadHiresTexture(u32 _tile, CachedTexture *_pTexture, u64 & 
 		params.dataType = DatatypeParam(ghqTexInfo.pixel_type);
 		params.data = ghqTexInfo.data;
 		params.textureUnitIndex = textureIndices::Tex[_tile];
+		params.mutableStorage = true;
 		gfxContext.init2DTexture(params);
 		assert(!gfxContext.isError());
 		_updateCachedTexture(ghqTexInfo, _pTexture, f32(ghqTexInfo.width) / f32(width));
@@ -1021,6 +1035,7 @@ void TextureCache::_loadDepthTexture(CachedTexture * _pTexture, u16* _pDest)
 	params.format = colorFormat::RED;
 	params.dataType = datatype::FLOAT;
 	params.data = pDestFloat.data();
+	params.mutableStorage = true;
 	gfxContext.init2DTexture(params);
 }
 
@@ -1250,6 +1265,7 @@ void TextureCache::_load(u32 _tile, CachedTexture *_pTexture)
 				params.format = ColorFormatParam(ghqTexInfo.texture_format);
 				params.dataType = DatatypeParam(ghqTexInfo.pixel_type);
 				params.data = ghqTexInfo.data;
+				params.mutableStorage = true;
 				gfxContext.init2DTexture(params);
 				_updateCachedTexture(ghqTexInfo, _pTexture, f32(ghqTexInfo.width) / f32(tmptex.realWidth));
 				bLoaded = true;
@@ -1272,6 +1288,7 @@ void TextureCache::_load(u32 _tile, CachedTexture *_pTexture)
 			params.format = colorFormat::RGBA;
 			params.dataType = glType;
 			params.data = pDest;
+			params.mutableStorage = true;
 			gfxContext.init2DTexture(params);
 		}
 		if (mipLevel == _pTexture->max_level)
@@ -1503,6 +1520,9 @@ void TextureCache::_clear()
 	for (auto cur = m_textures.cbegin(); cur != m_textures.cend(); ++cur) {
 		gfxContext.deleteTexture(cur->name);
 	}
+	for (graphics::ObjectHandle name : m_freeTextures)
+		gfxContext.deleteTexture(name);
+	m_freeTextures.clear();
 	m_textures.clear();
 	m_lruTextureLocations.clear();
 }
@@ -1599,7 +1619,7 @@ void TextureCache::update(u32 _t)
 			return;
 		}
 
-		gfxContext.deleteTexture(currentTex.name);
+		m_freeTextures.push_back(currentTex.name);
 		m_lruTextureLocations.erase(locations_iter);
 		m_textures.erase(iter);
 	}

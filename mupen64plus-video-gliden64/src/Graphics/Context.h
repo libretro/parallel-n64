@@ -99,6 +99,9 @@ namespace graphics {
 			InternalColorFormatParam internalFormat;
 			DatatypeParam dataType;
 			const void * data = nullptr;
+			/* The texture cache reuses the objects it evicts, so its storage
+			 * has to stay respecifiable: immutable storage cannot be. */
+			bool mutableStorage = false;
 		};
 
 		void init2DTexture(const InitTextureParams & _params);
