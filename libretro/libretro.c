@@ -48,6 +48,8 @@ uint8_t* g_dd_disk;
 #include "device/dd/disk.h"
 #include "device/rcp/pi/pi_controller.h"
 #include "device/pif/pif.h"
+#include "device/pif/cic.h"
+#include "main/rom.h"
 #include "libretro_memory.h"
 #include "libretro_core_options.h"
 
@@ -475,6 +477,19 @@ static void core_settings_autoselect_rsp_plugin(void)
 
    if (!strcmp((const char*)ROM_HEADER.Name, "CONKER BFD"))
       rsp_plugin = RSP_HLE;
+
+   /* HLE only recognizes the SGI-toolchain microcodes that shipped with
+    * retail bootcode.  A cartridge whose IPL3 checksum is not in the CIC
+    * table is homebrew (libdragon's open-source IPL3 lands here), and its
+    * microcode - rspq, tiny3d - is guaranteed foreign to the HLE walker:
+    * under "auto" such content reset-looped without ever configuring the
+    * VI.  Route unknown-IPL3 carts to the LLE core; the Vulkan branch
+    * below upgrades that to the parallel RSP when available. */
+   {
+      const uint8_t* cart = (const uint8_t*)mem_base_u32(g_mem_base, MM_CART_ROM);
+      if (cart && g_rom_size >= 0x1000 && !cic_ipl3_known(cart + 0x40))
+         rsp_plugin = RSP_CXD4;
+   }
 
    /* Auto mode only: with Vulkan up the best default is the parallel RSP.
     * This is the autoselect default; it does NOT override an explicit user

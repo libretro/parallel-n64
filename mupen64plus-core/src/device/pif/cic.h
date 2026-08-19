@@ -22,6 +22,8 @@
 #ifndef M64P_DEVICE_SI_CIC_H
 #define M64P_DEVICE_SI_CIC_H
 
+#include <stdint.h>
+
 enum cic_version
 {
     CIC_X101,
@@ -44,5 +46,7 @@ struct cic
 };
 
 void init_cic_using_ipl3(struct cic* cic, const void* ipl3);
+int cic_ipl3_crc_known(uint64_t crc);
+int cic_ipl3_known(const void* ipl3);
 
 #endif
