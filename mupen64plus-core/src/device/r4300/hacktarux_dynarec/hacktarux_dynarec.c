@@ -4212,14 +4212,18 @@ void gen_SYSCALL(struct r4300_core* r4300)
 #if defined(COUNT_INSTR)
     inc_m32rel(&instr_count[63]);
 #endif
-#ifdef INTERPRET_SYSCALL
-    gencallinterp(r4300, (unsigned long long)cached_interp_SYSCALL, 0);
-#else
-    free_registers_move_start(r4300);
-
-    mov_m32rel_imm32(&r4300_cp0_regs(&r4300->cp0)[CP0_CAUSE_REG], 8 << 2);
-    gencallinterp(r4300, (unsigned long long)dynarec_exception_general, 0);
-#endif
+    /* SYSCALL must go through the interpreter fallback with the jump flag
+     * set, like ERET.  The old native form emitted the CP0 Cause write
+     * between its own free_registers_move_start and the one inside
+     * gencallinterp; the second call runs simplify_access, which advances
+     * dst->local_addr past the Cause store.  Any jump entry into the
+     * instruction (an ERET returning to the syscall, block linking) then
+     * skips the Cause write and the exception reports whatever stale value
+     * Cause holds.  The jump flag also matters: with jump == 0 the block
+     * falls through after the exception and executes the instructions that
+     * follow the syscall before the pending jump to the vector is taken,
+     * clobbering the arguments the handler is about to read. */
+    gencallinterp(r4300, (unsigned long long)cached_interp_SYSCALL, 1);
 }
 
 /* Trap instructions */
