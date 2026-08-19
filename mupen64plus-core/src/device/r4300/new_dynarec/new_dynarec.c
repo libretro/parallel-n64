@@ -4925,6 +4925,60 @@ static void do_cop1stub(int n)
   emit_jmp((intptr_t)fp_exception);
 }
 
+/* Fold an XKPHYS base onto the 32-bit segment the memory map decodes.
+ *
+ * Bits 63:62 of 10 mean the low bits of the address are a physical address
+ * outright.  64-bit-clean code reaches for that to touch hardware without
+ * wanting a TLB entry - libdragon reads the cartridge through
+ * 0x9000000010001000 - and the compiled address arithmetic only ever takes
+ * the low half of the base register, so the access went to a KUSEG address
+ * that is not the cartridge.  The interpreter folds this in its effective
+ * address decode; the compiled paths have to do it themselves.
+ *
+ * The stubs are the one choke point every non-RDRAM access funnels
+ * through, and the natural place for the fold: the inline fast path only
+ * ever serves KSEG0 RDRAM, which no XKPHYS access can reach after
+ * truncation, and inside a stub nothing has been clobbered yet while
+ * HOST_TEMPREG sits outside register allocation entirely, so there is a
+ * scratch register that cannot alias the address register.  The fold is
+ * emitted only when the base register was 64-bit wide at this point; for
+ * the overwhelmingly common sign-extended 32-bit base it costs nothing.
+ * The address register itself is never modified, because when the offset
+ * is zero it aliases the guest base register's own low half. */
+static void emit_xkphys_fold(int i,const struct regstat *i_regs,int addr)
+{
+  signed char sh;
+  intptr_t no_fold1,no_fold2,done;
+  if(rs1[i]==0) {
+    emit_writeword(addr,(intptr_t)&g_dev.r4300.new_dynarec_hot_state.address);
+    return;
+  }
+  if((i_regs->was32>>rs1[i])&1) {
+    emit_writeword(addr,(intptr_t)&g_dev.r4300.new_dynarec_hot_state.address);
+    return;
+  }
+  sh=get_reg(i_regs->regmap,rs1[i]|64);
+  if(sh<0) {
+    emit_loadreg(rs1[i]|64,HOST_TEMPREG);
+    sh=HOST_TEMPREG;
+  }
+  emit_testimm(sh,0x80000000);
+  no_fold1=(intptr_t)out;
+  emit_jeq(0);
+  emit_testimm(sh,0x40000000);
+  no_fold2=(intptr_t)out;
+  emit_jne(0);
+  emit_mov(addr,HOST_TEMPREG);
+  emit_orimm(HOST_TEMPREG,0xA0000000,HOST_TEMPREG);
+  emit_writeword(HOST_TEMPREG,(intptr_t)&g_dev.r4300.new_dynarec_hot_state.address);
+  done=(intptr_t)out;
+  emit_jmp(0);
+  set_jump_target(no_fold1,(intptr_t)out);
+  set_jump_target(no_fold2,(intptr_t)out);
+  emit_writeword(addr,(intptr_t)&g_dev.r4300.new_dynarec_hot_state.address);
+  set_jump_target(done,(intptr_t)out);
+}
+
 static void do_readstub(int n)
 {
   assem_debug("do_readstub %x",start+stubs[n][3]*4);
@@ -4947,7 +5001,7 @@ static void do_readstub(int n)
   }
 
   assert(addr>=0);
-  emit_writeword(addr,(intptr_t)&g_dev.r4300.new_dynarec_hot_state.address);
+  emit_xkphys_fold(i,i_regs,addr);
 
   intptr_t ftable=0;
   if(type==LOADB_STUB||type==LOADBU_STUB)
@@ -5172,7 +5226,7 @@ static void do_writestub(int n)
   }
   assert(addr>=0);
   assert(rt>=0);
-  emit_writeword(addr,(intptr_t)&g_dev.r4300.new_dynarec_hot_state.address);
+  emit_xkphys_fold(i,i_regs,addr);
 
   intptr_t ftable=0;
   if(type==STOREB_STUB){
@@ -9399,6 +9453,9 @@ int new_recompile_block(int addr)
         rt1[i]=(source[i]>>16)&0x1f;
         rt2[i]=0;
         imm[i]=(short)source[i];
+        /* The effective address is the full 64-bit base: the XKPHYS tag
+         * lives in the upper half, which the stub fold reads. */
+        us1[i]=rs1[i];
         break;
       case STORE:
       case STORELR:
@@ -9407,7 +9464,8 @@ int new_recompile_block(int addr)
         rt1[i]=0;
         rt2[i]=0;
         imm[i]=(short)source[i];
-        if(op==0x2c||op==0x2d||op==0x3f) us1[i]=rs2[i]; // 64-bit SDL/SDR/SD
+        us1[i]=rs1[i]; // full 64-bit base (see LOAD)
+        if(op==0x2c||op==0x2d||op==0x3f) us2[i]=rs2[i]; // 64-bit SDL/SDR/SD
         break;
       case LOADLR:
         // LWL/LWR only load part of the register,
@@ -9417,7 +9475,8 @@ int new_recompile_block(int addr)
         rt1[i]=(source[i]>>16)&0x1f;
         rt2[i]=0;
         imm[i]=(short)source[i];
-        if(op==0x1a||op==0x1b) us1[i]=rs2[i]; // LDR/LDL
+        us1[i]=rs1[i]; // full 64-bit base (see LOAD)
+        if(op==0x1a||op==0x1b) us2[i]=rs2[i]; // LDR/LDL
         if(op==0x26) dep1[i]=rt1[i]; // LWR
         break;
       case IMM16:
@@ -9570,6 +9629,7 @@ int new_recompile_block(int addr)
         rt1[i]=0;
         rt2[i]=0;
         imm[i]=(short)source[i];
+        us1[i]=rs1[i]; // full 64-bit base (see LOAD)
         break;
       case FLOAT:
       case FCONV:
