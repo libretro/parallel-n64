@@ -1260,41 +1260,24 @@ void SPV(unsigned vt, unsigned element, signed offset, unsigned base)
 void SUV(unsigned vt, unsigned element, signed offset, unsigned base)
 {
     register u32 addr;
-    register unsigned int b;
+    unsigned int i;
     const unsigned int e = element;
 
-    if (e != 0x0) {
-        message("SUV\nIllegal element.");
-        return;
-    }
+    /* Hardware stores the eight bytes linearly from the unaligned address,
+     * wrapping within DMEM.  The lane index starts at the element specifier
+     * and wraps mod 8; lanes reached after the wrap take the plain high
+     * byte (shift 8) instead of the unsigned-clamp shift 7, which is how
+     * SUV and SPV mirror each other on the real chip.  This matches the
+     * hardware-verified implementation in mupen64plus-rsp-paraLLEl and
+     * removes the "Illegal element" bail-out that silently dropped every
+     * store with a nonzero element - libdragon's tiny3d issues millions of
+     * them per minute of gameplay, so each drop corrupted vertex color
+     * packing. */
     addr = (SR[base] + 8*offset) & 0x00000FFF;
-    b = addr & 07;
-    addr &= ~07;
-    switch (b) {
-    case 00:
-        DMEM[addr + BES(0x007)] = (u8)(VR[vt][07] >> 7);
-        DMEM[addr + BES(0x006)] = (u8)(VR[vt][06] >> 7);
-        DMEM[addr + BES(0x005)] = (u8)(VR[vt][05] >> 7);
-        DMEM[addr + BES(0x004)] = (u8)(VR[vt][04] >> 7);
-        DMEM[addr + BES(0x003)] = (u8)(VR[vt][03] >> 7);
-        DMEM[addr + BES(0x002)] = (u8)(VR[vt][02] >> 7);
-        DMEM[addr + BES(0x001)] = (u8)(VR[vt][01] >> 7);
-        DMEM[addr + BES(0x000)] = (u8)(VR[vt][00] >> 7);
-        break;
-    case 04: /* "Indiana Jones and the Infernal Machine" in-game */
-        DMEM[addr + BES(0x004)] = (u8)(VR[vt][00] >> 7);
-        DMEM[addr + BES(0x005)] = (u8)(VR[vt][01] >> 7);
-        DMEM[addr + BES(0x006)] = (u8)(VR[vt][02] >> 7);
-        DMEM[addr + BES(0x007)] = (u8)(VR[vt][03] >> 7);
-        addr += 0x008;
-        addr &= 0x00000FFF;
-        DMEM[addr + BES(0x000)] = (u8)(VR[vt][04] >> 7);
-        DMEM[addr + BES(0x001)] = (u8)(VR[vt][05] >> 7);
-        DMEM[addr + BES(0x002)] = (u8)(VR[vt][06] >> 7);
-        DMEM[addr + BES(0x003)] = (u8)(VR[vt][07] >> 7);
-        break;
-    default: /* Completely legal, just never seen it be done. */
-        message("SUV\nWeird addr.");
+    for (i = e; i < e + 8; i++) {
+        const unsigned int shift = ((i & 0xF) < 8) ? 7 : 8;
+        DMEM[BES(addr)] = (u8)((s16)VR[vt][i & 07] >> shift);
+        addr = (addr + 1) & 0x00000FFF;
     }
     return;
 }
