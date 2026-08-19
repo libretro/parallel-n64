@@ -67,7 +67,12 @@ std::vector<SpecialMicrocodeInfo> specialMicrocodes =
 	{ Turbo3D,		false,	true,	false,	0x2bdcfc8a }, // Dark Rift, Turbo3D
 	{ F3DSETA,		false,	true,	true,	0x2edee7be }, // RSP SW Version: 2.0D, 04-01-96
 	{ F3DGOLDEN,	true,	true,	false,	0x302bca09 }, // RSP SW Version: 2.0G, 09-30-96 GoldenEye
-	{ F3D,			false,	true,	false,	0x4AED6B3B }, // Vivid Dolls [ALECK64]
+	// Vivid Dolls [ALECK64]: its viewport carries a negative Y scale and the
+	// game's own transform already accounts for it; honouring the sign again
+	// (gSPProcessVertex) draws the whole screen upside down.  negativeY off is
+	// what makes gSPViewport normalise the sign away, as for the 0x55be9bad
+	// F3D entry below.
+	{ F3D,			false,	false,	false,	0x4AED6B3B }, // Vivid Dolls [ALECK64]
 	{ F3D,			true,	true,	true,	0x54c558ba }, // RSP SW Version: 2.0D, 04-01-96 Pilot Wings, Blast Corps
 	{ ZSortBOSS,	false,	false,	false,	0x553538cc }, // World Driver Championship
 	{ F3D,			false,	false,	true,	0x55be9bad }, // RSP SW Version: 2.0D, 04-01-96, Mischief Makers, Mortal Combat Trilogy, J.League Live
