@@ -1151,7 +1151,7 @@ unsigned retro_get_region (void)
  * is destroyed and recreated (e.g. RetroArch fullscreen toggle). RetroArch
  * does not call context_destroy() before recreating the context, so we
  * detect the second-and-subsequent context_reset() by checking
- * 'emu_initialized' and tear down + re-init the gliden64 graphics state
+ * 'first_context_reset' and tear down + re-init the gliden64 graphics state
  * around it. Forward-declared here rather than via a header to keep the
  * dependency in one place; the C linkage matches the gliden64 EXPORT.
  */
@@ -1179,7 +1179,12 @@ static void context_reset(void)
             }
          }
 #ifdef HAVE_GLIDEN64
-         if (gfx_plugin == GFX_GLIDEN64 && emu_initialized)
+         /* Only from the second context_reset on: on the first there is
+          * nothing to tear down.  'first_context_reset' says that directly,
+          * where 'emu_initialized' only says the machine has been set up --
+          * which is not the same thing the moment anything initialises it
+          * before a context exists. */
+         if (gfx_plugin == GFX_GLIDEN64 && !first_context_reset)
          {
             gliden64DestroyGfxContext();
             gliden64ReinitGfxContext();
