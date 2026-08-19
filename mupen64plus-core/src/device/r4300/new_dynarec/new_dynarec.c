@@ -175,6 +175,7 @@ void recomp_dbg_block(int addr);
 #define SYSCALL 22// SYSCALL
 #define OTHER 23  // Other
 #define SPAN 24   // Branch/delay slot spans 2 pages
+#define ATOMIC 27 // LL/LLD/SC/SCD
 #define NI 25     // Not implemented
 
 /* stubs */
@@ -2085,6 +2086,14 @@ static void TLBWR_new(int pcaddr, int count)
   UPDATE_COUNT_OUT
 }
 
+static void DMFC0_new(int copr, int count)
+{
+  UPDATE_COUNT_IN
+  state->fake_pc.f.r.nrd = copr;
+  cached_interp_DMFC0();
+  UPDATE_COUNT_OUT
+}
+
 static void MFC0_new(int copr, int count)
 {
   UPDATE_COUNT_IN
@@ -2117,6 +2126,61 @@ static unsigned int bshift(uint32_t address)
 static unsigned int hshift(uint32_t address)
 {
     return ((address & 2) ^ 2) << 3;
+}
+
+/* The load-linked / store-conditional pair.  libdragon builds its atomic
+ * exchange out of the doubleword forms, so a backend that leaves them
+ * unimplemented does not merely lose an optimisation - the exchange never
+ * completes.  These run through the same aligned accessors the other
+ * helpers use and share r4300->llbit with the interpreter. */
+static void LL_new(uint32_t address, int count)
+{
+  uint32_t value;
+  UPDATE_COUNT_IN
+  if (r4300_read_aligned_word(r4300, address, &value)) {
+    state->rt = (int64_t)(int32_t)value;
+    r4300->llbit = 1;
+  }
+  UPDATE_COUNT_OUT
+}
+
+static void LLD_new(uint32_t address, int count)
+{
+  uint64_t value;
+  UPDATE_COUNT_IN
+  if (r4300_read_aligned_dword(r4300, address, &value)) {
+    state->rt = (int64_t)value;
+    r4300->llbit = 1;
+  }
+  UPDATE_COUNT_OUT
+}
+
+static void SC_new(uint32_t address)
+{
+  struct r4300_core* r4300 = &g_dev.r4300;
+  struct new_dynarec_hot_state* state = &r4300->new_dynarec_hot_state;
+  int64_t result = 0;
+  if (r4300->llbit) {
+    if (r4300_write_aligned_word(r4300, address, (uint32_t)state->rt, ~UINT32_C(0))) {
+      r4300->llbit = 0;
+      result = 1;
+    }
+  }
+  state->rt = result;
+}
+
+static void SCD_new(uint32_t address)
+{
+  struct r4300_core* r4300 = &g_dev.r4300;
+  struct new_dynarec_hot_state* state = &r4300->new_dynarec_hot_state;
+  int64_t result = 0;
+  if (r4300->llbit) {
+    if (r4300_write_aligned_dword(r4300, address, (uint64_t)state->rt, ~UINT64_C(0))) {
+      r4300->llbit = 0;
+      result = 1;
+    }
+  }
+  state->rt = result;
 }
 
 static void read_byte_new(int pcaddr, int count)
@@ -3563,7 +3627,19 @@ static void cop0_alloc(struct regstat *current,int i)
       dirty_reg(current,rt1[i]);
     }
   }
-  else if(opcode2[i]==4) // MTC0
+  else if(opcode2[i]==1) // DMFC0
+  {
+    /* the doubleword form delivers all 64 bits, so the upper half is a
+     * real part of the result rather than a sign extension */
+    if(rt1[i]) {
+      clear_const(current,rt1[i]);
+      alloc_reg(current,i,rt1[i]);
+      alloc_reg64(current,i,rt1[i]);
+      current->is32&=~(1LL<<rt1[i]);
+      dirty_reg(current,rt1[i]);
+    }
+  }
+  else if(opcode2[i]==4||opcode2[i]==5) // MTC0, DMTC0
   {
     if(rs1[i]){
       clear_const(current,rs1[i]);
@@ -3644,6 +3720,28 @@ static void fcomp_alloc(struct regstat *current,int i)
   dirty_reg(current,FSREG); // Flag will be modified
   alloc_reg_temp(current,i,-1);
   minimum_free_regs[i]=1;
+}
+
+static void atomic_alloc(struct regstat *current,int i)
+{
+  int is_sc = (opcode[i]==0x38 || opcode[i]==0x3c);
+  int is_d  = (opcode[i]==0x34 || opcode[i]==0x3c);
+
+  alloc_cc(current,i);
+  dirty_reg(current,CCREG);
+
+  if(rs1[i]) alloc_reg(current,i,rs1[i]);
+
+  if(rt1[i]) {
+    clear_const(current,rt1[i]);
+    alloc_reg(current,i,rt1[i]);
+    if(is_d) alloc_reg64(current,i,rt1[i]);
+    /* SC/SCD leave a 0/1 flag behind, the loads leave the value */
+    if(is_sc || !is_d) current->is32|=1LL<<rt1[i];
+    else               current->is32&=~(1LL<<rt1[i]);
+    dirty_reg(current,rt1[i]);
+  }
+  current->isconst=0;
 }
 
 static void syscall_alloc(struct regstat *current,int i)
@@ -5286,7 +5384,46 @@ static void cop0_assemble(int i,struct regstat *i_regs)
       }
     }
   }
-  else if(opcode2[i]==4) // MTC0
+  else if(opcode2[i]==1) // DMFC0
+  {
+    /* Same shape as MFC0, but the result is the whole doubleword: take
+     * the upper half as well instead of leaving it sign extended.  The
+     * hot state's rt is an int64_t, so the halves sit either side of it
+     * in host order. */
+    if(rt1[i]) {
+      signed char t=get_reg(i_regs->regmap,rt1[i]);
+      signed char th=get_reg(i_regs->regmap,rt1[i]|64);
+      char copr=(source[i]>>11)&0x1f;
+      if(t>=0) {
+        reglist&=~(1<<t);
+        if(th>=0) reglist&=~(1<<th);
+
+        int cc=get_reg(i_regs->regmap,CCREG);
+        if(cc>=0) {
+          emit_storereg(CCREG,cc);
+        }
+
+        save_regs(reglist);
+
+#if NEW_DYNAREC == NEW_DYNAREC_X86
+        emit_pushimm(CLOCK_DIVIDER*ccadj[i]);
+        emit_pushimm(copr);
+        emit_call((intptr_t)DMFC0_new);
+        emit_addimm(ESP,8,ESP);
+#else
+        emit_movimm(copr,ARG1_REG);
+        emit_movimm(CLOCK_DIVIDER*ccadj[i],ARG2_REG);
+        emit_call((intptr_t)DMFC0_new);
+#endif
+
+        restore_regs(reglist);
+        emit_readword((uintptr_t)&g_dev.r4300.new_dynarec_hot_state.rt,t);
+        if(th>=0)
+          emit_readword(((uintptr_t)&g_dev.r4300.new_dynarec_hot_state.rt)+4,th);
+      }
+    }
+  }
+  else if(opcode2[i]==4||opcode2[i]==5) // MTC0, DMTC0
   {
     signed char s=get_reg(i_regs->regmap,rs1[i]);
     char copr=(source[i]>>11)&0x1f;
@@ -6975,6 +7112,57 @@ static void float_assemble(int i,struct regstat *i_regs)
   exit(1);
 }
 #endif
+
+static void atomic_assemble(int i,struct regstat *i_regs)
+{
+  u_int hr,reglist=0;
+  int is_sc = (opcode[i]==0x38 || opcode[i]==0x3c);
+  int is_d  = (opcode[i]==0x34 || opcode[i]==0x3c);
+  signed char s,t,th;
+  int cc;
+
+  for(hr=0;hr<HOST_REGS;hr++)
+    if(i_regs->regmap[hr]>=0) reglist|=1<<hr;
+
+  s=get_reg(i_regs->regmap,rs1[i]);
+  t=get_reg(i_regs->regmap,rt1[i]);
+  th=get_reg(i_regs->regmap,rt1[i]|64);
+  if(t<0) return;
+  reglist&=~(1<<t);
+  if(th>=0) reglist&=~(1<<th);
+
+  cc=get_reg(i_regs->regmap,CCREG);
+  if(cc>=0) emit_storereg(CCREG,cc);
+
+  /* the address first, so the temp is free again before the call */
+  if(s>=0) emit_addimm(s,imm[i],HOST_TEMPREG);
+  else     emit_movimm(imm[i],HOST_TEMPREG);
+
+  if(is_sc) {
+    /* stage the value the helper is to store; this backend keeps a
+     * doubleword as two host registers, so there is no single argument
+     * that could carry it */
+    emit_writeword(t,(uintptr_t)&g_dev.r4300.new_dynarec_hot_state.rt);
+    if(is_d)
+      emit_writeword(th>=0?th:t,((uintptr_t)&g_dev.r4300.new_dynarec_hot_state.rt)+4);
+  }
+
+  save_regs(reglist);
+  emit_mov(HOST_TEMPREG,ARG1_REG);
+
+  if(is_sc) {
+    emit_call((intptr_t)(is_d ? (void*)SCD_new : (void*)SC_new));
+  } else {
+    emit_movimm(CLOCK_DIVIDER*ccadj[i],ARG2_REG);
+    emit_call((intptr_t)(is_d ? (void*)LLD_new : (void*)LL_new));
+  }
+
+  restore_regs(reglist);
+
+  emit_readword((uintptr_t)&g_dev.r4300.new_dynarec_hot_state.rt,t);
+  if(th>=0)
+    emit_readword(((uintptr_t)&g_dev.r4300.new_dynarec_hot_state.rt)+4,th);
+}
 
 static void syscall_assemble(int i,struct regstat *i_regs)
 {
@@ -9029,7 +9217,9 @@ int new_recompile_block(int addr)
         switch(op2)
         {
           case 0x00: assem_strcpy(insn[i],"MFC0"); type=COP0; break;
+          case 0x01: assem_strcpy(insn[i],"DMFC0"); type=COP0; break;
           case 0x04: assem_strcpy(insn[i],"MTC0"); type=COP0; break;
+          case 0x05: assem_strcpy(insn[i],"DMTC0"); type=COP0; break;
           case 0x10: assem_strcpy(insn[i],"tlb"); type=NI;
           switch(source[i]&0x3f)
           {
@@ -9180,14 +9370,14 @@ int new_recompile_block(int addr)
       case 0x2D: assem_strcpy(insn[i],"SDR"); type=STORELR; break;
       case 0x2E: assem_strcpy(insn[i],"SWR"); type=STORELR; break;
       case 0x2F: assem_strcpy(insn[i],"CACHE"); type=NOP; break;
-      case 0x30: assem_strcpy(insn[i],"LL"); type=NI; break;
+      case 0x30: assem_strcpy(insn[i],"LL"); type=ATOMIC; break;
       case 0x31: assem_strcpy(insn[i],"LWC1"); type=C1LS; break;
-      case 0x34: assem_strcpy(insn[i],"LLD"); type=NI; break;
+      case 0x34: assem_strcpy(insn[i],"LLD"); type=ATOMIC; break;
       case 0x35: assem_strcpy(insn[i],"LDC1"); type=C1LS; break;
       case 0x37: assem_strcpy(insn[i],"LD"); type=LOAD; break;
-      case 0x38: assem_strcpy(insn[i],"SC"); type=NI; break;
+      case 0x38: assem_strcpy(insn[i],"SC"); type=ATOMIC; break;
       case 0x39: assem_strcpy(insn[i],"SWC1"); type=C1LS; break;
-      case 0x3C: assem_strcpy(insn[i],"SCD"); type=NI; break;
+      case 0x3C: assem_strcpy(insn[i],"SCD"); type=ATOMIC; break;
       case 0x3D: assem_strcpy(insn[i],"SDC1"); type=C1LS; break;
       case 0x3F: assem_strcpy(insn[i],"SD"); type=STORE; break;
       default: assem_strcpy(insn[i],"???"); type=NI; break;
@@ -9391,6 +9581,13 @@ int new_recompile_block(int addr)
         rs2[i]=CSREG;
         rt1[i]=FSREG;
         rt2[i]=0;
+        break;
+      case ATOMIC:
+        rs1[i]=(source[i]>>21)&0x1F;
+        rs2[i]=0;
+        rt1[i]=(source[i]>>16)&0x1F;
+        rt2[i]=0;
+        imm[i]=(short)source[i];
         break;
       case SYSCALL:
         rs1[i]=CCREG;
@@ -10044,6 +10241,9 @@ int new_recompile_block(int addr)
           break;
         case SYSCALL:
           syscall_alloc(&current,i);
+          break;
+        case ATOMIC:
+          atomic_alloc(&current,i);
           break;
         case SPAN:
           pagespan_alloc(&current,i);
@@ -11703,6 +11903,8 @@ int new_recompile_block(int addr)
           mov_assemble(i,&regs[i]);break;
         case SYSCALL:
           syscall_assemble(i,&regs[i]);break;
+        case ATOMIC:
+          atomic_assemble(i,&regs[i]);break;
         case UJUMP:
           ujump_assemble(i,&regs[i]);ds=1;break;
         case RJUMP:
