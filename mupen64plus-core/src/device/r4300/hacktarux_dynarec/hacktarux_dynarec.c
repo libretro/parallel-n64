@@ -4419,6 +4419,36 @@ void gen_MFC0(struct r4300_core* r4300)
     gencallinterp(r4300, (unsigned long long)cached_interp_MFC0, 0);
 }
 
+/* libdragon reads CP0 through the 64-bit moves - DMFC0 of BadVAddr in its
+ * exception path - and both of these were genni, which is not a stub: it
+ * prints "opcode not implemented" and stops the CPU.  Junk Runner 64 died
+ * on 0x40264000 at 80054d1c before it drew anything.  The interpreter has
+ * had them all along, which is why this only shows up under a dynarec.
+ * Forward to it the way the 32-bit pair does. */
+/* The 64-bit half of load-linked/store-conditional.  libdragon builds an
+ * atomic exchange out of them, so a dynarec that treats them as genni
+ * stops the CPU the first time the game touches one. */
+void gen_LLD(struct r4300_core* r4300)
+{
+    gencallinterp(r4300, (unsigned long long)cached_interp_LLD, 0);
+}
+
+void gen_SCD(struct r4300_core* r4300)
+{
+    gencallinterp(r4300, (unsigned long long)cached_interp_SCD, 0);
+}
+
+void gen_DMFC0(struct r4300_core* r4300)
+{
+    gencallinterp(r4300, (unsigned long long)cached_interp_DMFC0, 0);
+}
+
+void gen_DMTC0(struct r4300_core* r4300)
+{
+    /* the cached interpreter aliases DMTC0 onto MTC0 */
+    gencallinterp(r4300, (unsigned long long)cached_interp_MTC0, 0);
+}
+
 void gen_MTC0(struct r4300_core* r4300)
 {
 #if defined(COUNT_INSTR)

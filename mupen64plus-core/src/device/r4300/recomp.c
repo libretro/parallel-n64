@@ -256,12 +256,16 @@ void gen_LD(struct r4300_core* r4300);
 void gen_LH(struct r4300_core* r4300);
 void gen_LHU(struct r4300_core* r4300);
 void gen_LL(struct r4300_core* r4300);
+void gen_LLD(struct r4300_core* r4300);
+void gen_SCD(struct r4300_core* r4300);
 void gen_LUI(struct r4300_core* r4300);
 void gen_LWC1(struct r4300_core* r4300);
 void gen_LWL(struct r4300_core* r4300);
 void gen_LWR(struct r4300_core* r4300);
 void gen_LW(struct r4300_core* r4300);
 void gen_LWU(struct r4300_core* r4300);
+void gen_DMFC0(struct r4300_core* r4300);
+void gen_DMTC0(struct r4300_core* r4300);
 void gen_MFC0(struct r4300_core* r4300);
 void gen_MFC1(struct r4300_core* r4300);
 void gen_MFHI(struct r4300_core* r4300);
@@ -421,9 +425,7 @@ static void gen_CP1_CVT_S(struct r4300_core* r4300)
 #define gen_CFC2       genni
 #define gen_CTC0       genni
 #define gen_CTC2       genni
-#define gen_DMFC0      genni
 #define gen_DMFC2      genni
-#define gen_DMTC0      genni
 #define gen_DMTC2      genni
 #define gen_JR_IDLE    genni
 #define gen_JR_OUT     gen_JR
@@ -431,10 +433,8 @@ static void gen_CP1_CVT_S(struct r4300_core* r4300)
 #define gen_JALR_OUT   gen_JALR
 #define gen_LDC2       genni
 #define gen_LWC2       genni
-#define gen_LLD        genni
 #define gen_MFC2       genni
 #define gen_MTC2       genni
-#define gen_SCD        genni
 #define gen_SDC2       genni
 #define gen_SWC2       genni
 #define gen_DCFC1      genni
