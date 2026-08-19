@@ -212,6 +212,34 @@ static void gendelayslot(struct r4300_core* r4300)
     mov_m32rel_imm32((void*)(&r4300->delay_slot), 0);
 }
 
+/* Fold an XKPHYS base onto the 32-bit segment the memory map decodes.
+ *
+ * Bits 63:62 of 10 mean the low bits of the address are a physical address
+ * outright.  64-bit-clean code reaches for that to touch hardware without
+ * wanting a TLB entry - libdragon reads the cartridge through
+ * 0x9000000010001000 - and the compiled address arithmetic here only ever
+ * took the low half of the base register, so the access went to a KUSEG
+ * address that is not the cartridge.  The interpreter folds this in
+ * r4300_effective_address; the compiled paths have to do it themselves.
+ *
+ * The high half is read back from memory, which is sound because every
+ * caller has run free_registers_move_start first, so nothing is still
+ * living in a host register.  Emitted before the RDRAM range test, so the
+ * hand-counted jump distances further down are unaffected. */
+static void gen_xkphys_fold(struct r4300_core* r4300, int addr_reg, int scratch_reg)
+{
+    mov_xreg32_m32rel(scratch_reg,
+                      ((unsigned int*)r4300->recomp.dst->f.i.rs) + 1);
+    and_reg32_imm32(scratch_reg, 0xC0000000);
+    cmp_reg32_imm32(scratch_reg, 0x80000000);
+    jne_rj(0);
+    jump_start_rel8(r4300);
+
+    or_reg32_imm32(addr_reg, 0xA0000000);
+
+    jump_end_rel8(r4300);
+}
+
 static void ld_register_alloc(struct r4300_core* r4300, int *pGpr1, int *pGpr2, int *pBase1, int *pBase2)
 {
     int gpr1, gpr2, base1, base2 = 0;
@@ -226,6 +254,7 @@ static void ld_register_alloc(struct r4300_core* r4300, int *pGpr1, int *pGpr2, 
         gpr1 = allocate_register_32_w(r4300, (unsigned int*)r4300->recomp.dst->f.r.rt); // tell regcache we will modify RT register during this instruction
         gpr2 = lock_register(r4300, lru_register(r4300));                                    // free and lock least recently used register for usage here
         add_reg32_imm32(gpr1, (int)r4300->recomp.dst->f.i.immediate);
+        gen_xkphys_fold(r4300, gpr1, gpr2);
         mov_reg32_reg32(gpr2, gpr1);
     }
     else
@@ -234,6 +263,7 @@ static void ld_register_alloc(struct r4300_core* r4300, int *pGpr1, int *pGpr2, 
         gpr1 = allocate_register_32_w(r4300, (unsigned int*)r4300->recomp.dst->f.r.rt); // tell regcache we will modify RT register during this instruction
         free_register(r4300, gpr2);                                                     // write out gpr2 if dirty because I'm going to trash it right now
         add_reg32_imm32(gpr2, (int)r4300->recomp.dst->f.i.immediate);
+        gen_xkphys_fold(r4300, gpr2, gpr1);
         mov_reg32_reg32(gpr1, gpr2);
         lock_register(r4300, gpr2);                                       // lock the freed gpr2 it so it doesn't get returned in the lru query
     }
@@ -814,6 +844,7 @@ void gen_LD(struct r4300_core* r4300)
 
     mov_xreg32_m32rel(EAX, (unsigned int *)r4300->recomp.dst->f.i.rs);
     add_eax_imm32((int)r4300->recomp.dst->f.i.immediate);
+    gen_xkphys_fold(r4300, EAX, EBX);
     mov_reg32_reg32(EBX, EAX);
 
     /* is address in RDRAM ? */
@@ -894,6 +925,7 @@ void gen_SB(struct r4300_core* r4300)
     /* get address in both EAX and EBX */
     mov_xreg32_m32rel(EAX, (unsigned int *)r4300->recomp.dst->f.i.rs);
     add_eax_imm32((int)r4300->recomp.dst->f.i.immediate);
+    gen_xkphys_fold(r4300, EAX, EBX);
     mov_reg32_reg32(EBX, EAX);
 
     /* is address in RDRAM ? */
@@ -983,6 +1015,7 @@ void gen_SH(struct r4300_core* r4300)
     /* get address in both EAX and EBX */
     mov_xreg32_m32rel(EAX, (unsigned int *)r4300->recomp.dst->f.i.rs);
     add_eax_imm32((int)r4300->recomp.dst->f.i.immediate);
+    gen_xkphys_fold(r4300, EAX, EBX);
     mov_reg32_reg32(EBX, EAX);
 
     /* is address in RDRAM ? */
@@ -1077,6 +1110,7 @@ void gen_SW(struct r4300_core* r4300)
     mov_xreg32_m32rel(ECX, (unsigned int *)r4300->recomp.dst->f.i.rt);
     mov_xreg32_m32rel(EAX, (unsigned int *)r4300->recomp.dst->f.i.rs);
     add_eax_imm32((int)r4300->recomp.dst->f.i.immediate);
+    gen_xkphys_fold(r4300, EAX, EBX);
     mov_reg32_reg32(EBX, EAX);
 
     /* is address in RDRAM ? */
@@ -1169,6 +1203,7 @@ void gen_SD(struct r4300_core* r4300)
     mov_xreg32_m32rel(EDX, ((unsigned int *)r4300->recomp.dst->f.i.rt)+1);
     mov_xreg32_m32rel(EAX, (unsigned int *)r4300->recomp.dst->f.i.rs);
     add_eax_imm32((int)r4300->recomp.dst->f.i.immediate);
+    gen_xkphys_fold(r4300, EAX, EBX);
     mov_reg32_reg32(EBX, EAX);
 
     /* is address in RDRAM ? */

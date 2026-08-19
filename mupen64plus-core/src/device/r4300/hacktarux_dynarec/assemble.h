@@ -1006,6 +1006,13 @@ static osal_inline void and_reg32_imm32(int reg32, unsigned int imm32)
     put32(imm32);
 }
 
+static osal_inline void or_reg32_imm32(int reg32, unsigned int imm32)
+{
+    put8(0x81);
+    put8(0xC8 + reg32);
+    put32(imm32);
+}
+
 static osal_inline void and_reg64_imm32(int reg64, unsigned int imm32)
 {
     put8(0x48);
