@@ -9056,6 +9056,16 @@ int new_recompile_block(int addr)
     source = (u_int *)((uintptr_t)g_dev.rdram.dram+start-(uintptr_t)0x80000000);
     pagelimit = 0x80800000;
   }
+  else if (((u_int)addr - 0x90000000 < (u_int)g_dev.cart.cart_rom.rom_size ||
+            (u_int)addr - 0xb0000000 < (u_int)g_dev.cart.cart_rom.rom_size)) {
+    /* Execute-in-place from cartridge ROM.  libdragon's IPL3 runs loader
+     * stages straight out of the cart through both the cached and uncached
+     * windows before RDRAM is fully set up.  The ROM buffer uses the same
+     * host word order as RDRAM, so pass 1 can read it directly, and since
+     * the contents never change these blocks never need invalidation. */
+    source = (u_int *)((uintptr_t)g_dev.cart.cart_rom.rom+(start&0x0FFFFFFF));
+    pagelimit = (start&0xF0000000)+(u_int)g_dev.cart.cart_rom.rom_size;
+  }
   else if ((signed int)addr >= (signed int)0xC0000000) {
     //DebugMessage(M64MSG_VERBOSE, "addr=%x mm=%x",(u_int)addr,(g_dev.r4300.new_dynarec_hot_state.memory_map[start>>12]<<2));
     //if(g_dev.r4300.cp0.tlb.LUT_r[start>>12])
