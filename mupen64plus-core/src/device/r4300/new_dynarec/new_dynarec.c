@@ -5168,11 +5168,23 @@ static void inline_readstub(int type, int i, u_int addr_const, char addr, struct
 
   restore_regs(reglist);
 
-  if((signed int)addr_const>=(signed int)0xC0000000) {
-    // Theoretically we can have a pagefault here, if the TLB has never
-    // been enabled and the address is outside the range 80000000..BFFFFFFF
-    // Write out the registers so the pagefault can be handled.  This is
-    // a very rare case and likely represents a bug.
+  /* Take the exception the helper flagged, whatever the address was.
+   *
+   * This check used to be skipped for anything below 0xC0000000 on the
+   * assumption that only a TLB pagefault could raise here.  The helper
+   * also runs UPDATE_COUNT_OUT, which only rewinds cycle_count when no
+   * exception is pending: if one is pending and the check is skipped,
+   * the block keeps running with the cycle count already advanced, the
+   * exception is never delivered, and the next interrupt check raises
+   * the same event again - an unbreakable gen_interrupt/cc_interrupt
+   * spin.  do_readstub has always checked unconditionally; the inline
+   * form has to as well.
+   *
+   * Default builds only reach the inline form for constant addresses
+   * outside RDRAM, so the gap was mostly latent, but it made the whole
+   * INTERPRET_LOAD path - where every load comes through here - hang on
+   * the first exception. */
+  {
     emit_cmpmem_imm((intptr_t)&g_dev.r4300.new_dynarec_hot_state.pending_exception,0);
     intptr_t jaddr=(intptr_t)out;
     emit_jeq(0);
