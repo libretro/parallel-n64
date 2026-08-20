@@ -38,6 +38,28 @@
 /* global functions */
 void init_cp0(struct cp0* cp0, unsigned int count_per_op, unsigned int count_per_op_denom_pot, struct new_dynarec_hot_state* new_dynarec_hot_state, const struct interrupt_handler* interrupt_handlers)
 {
+    /* ari64 multiplies its emitted cycle adjustments by count_per_op alone -
+     * CLOCK_DIVIDER is that field verbatim - and has nowhere to apply the
+     * fractional denominator, which only cp0_update_count's PC-delta path
+     * knows about.  With a nonzero denominator every other core therefore
+     * advances COUNT at count_per_op/2^pot per instruction while ari64
+     * advances it at count_per_op, running the guest clock 2^pot times fast
+     * against a video interface and an RSP that are paced by it.
+     *
+     * Fold the denominator into the integer rate for this backend and clear
+     * it, so every consumer works from one rate.  Rounding up keeps the
+     * minimum at one count per instruction; a rate of zero would stop COUNT
+     * entirely and no interrupt would ever come due.  Nothing changes for
+     * the default configuration, where the denominator is zero. */
+    if (r4300_jit_backend == R4300_JIT_ARI64 && count_per_op_denom_pot != 0) {
+        count_per_op = (count_per_op + (1u << count_per_op_denom_pot) - 1)
+                     >> count_per_op_denom_pot;
+        if (count_per_op == 0) {
+            count_per_op = 1;
+        }
+        count_per_op_denom_pot = 0;
+    }
+
     cp0->count_per_op = count_per_op;
     cp0->count_per_op_denom_pot = count_per_op_denom_pot;
     /* Always store the ari64 hot-state pointer; accessors gate its use. */
