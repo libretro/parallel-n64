@@ -960,7 +960,7 @@ static u_int genjmp(intptr_t addr)
   if(offset<-134217728LL||offset>=134217728LL)
   {
     int n;
-    for(n=0;n<sizeof(jump_table_symbols)/4;n++)
+    for(n=0;n<(int)(sizeof(jump_table_symbols)/sizeof(jump_table_symbols[0]));n++)
     {
       if(addr==jump_table_symbols[n])
       {
