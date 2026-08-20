@@ -2065,7 +2065,7 @@ void rglClearBufferfv( 	GLenum buffer,
    log_cb(RETRO_LOG_INFO, "glClearBufferfv.\n");
 #endif
    bindFBO(GL_FRAMEBUFFER);
-#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES) && defined(HAVE_OPENGLES_3)
+#if defined(HAVE_OPENGL) || (defined(HAVE_OPENGLES) && defined(HAVE_OPENGLES3))
    glClearBufferfv(buffer, drawBuffer, value);
 #endif
 }
@@ -2091,7 +2091,7 @@ const GLubyte* rglGetStringi(GLenum name, GLuint index)
 #ifdef GLSM_DEBUG
    log_cb(RETRO_LOG_INFO, "glGetString.\n");
 #endif
-#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES) && defined(HAVE_OPENGLES_3)
+#if defined(HAVE_OPENGL) || (defined(HAVE_OPENGLES) && defined(HAVE_OPENGLES3))
    return glGetStringi(name, index);
 #else
    return NULL;
@@ -2106,7 +2106,7 @@ void rglClearBufferfi( 	GLenum buffer,
 #ifdef GLSM_DEBUG
    log_cb(RETRO_LOG_INFO, "glClearBufferfi.\n");
 #endif
-#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES) && defined(HAVE_OPENGLES_3)
+#if defined(HAVE_OPENGL) || (defined(HAVE_OPENGLES) && defined(HAVE_OPENGLES3))
    glClearBufferfi(buffer, drawBuffer, depth, stencil);
 #endif
 }
@@ -2126,7 +2126,7 @@ void rglRenderbufferStorageMultisample( 	GLenum target,
 #ifdef GLSM_DEBUG
    log_cb(RETRO_LOG_INFO, "glRenderbufferStorageMultisample.\n");
 #endif
-#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES) && defined(HAVE_OPENGLES_3)
+#if defined(HAVE_OPENGL) || (defined(HAVE_OPENGLES) && defined(HAVE_OPENGLES3))
    glRenderbufferStorageMultisample(target, samples, internalformat, width, height);
 #endif
 }
