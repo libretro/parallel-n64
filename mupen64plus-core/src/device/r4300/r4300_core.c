@@ -535,21 +535,28 @@ void generic_jump_to(struct r4300_core* r4300, uint32_t address)
         cached_interpreter_jump_to(r4300, address);
         break;
 
-#ifndef NO_ASM
     case EMUMODE_DYNAREC:
+        /* NO_ASM means "no Hacktarux x86 assembly dynarec". It must not compile
+         * out the ari64 path, which is plain C plus its own linkage: gating the
+         * whole case on it made every -DNO_ASM build (i.e. every ARM/aarch64
+         * board) fall through to default and do nothing here. exception_general
+         * then set EPC/Cause/EXL but never moved the PC to 0x80000180, so the
+         * guest's exception handler never ran, EXL stayed latched, and the game
+         * deadlocked in libultra's idle thread waiting for an interrupt that
+         * could no longer be delivered. Mirror the narrower guards already used
+         * in interrupt.c and cp0.c. */
+#ifdef NEW_DYNAREC
         if (r4300_jit_backend == R4300_JIT_ARI64)
         {
             r4300->new_dynarec_hot_state.pcaddr = address;
             r4300->new_dynarec_hot_state.pending_exception = 1;
+            break;
         }
-#ifdef HAVE_DYNAREC_HACKTARUX
-        else
-        {
-            dynarec_jump_to(r4300, address);
-        }
+#endif
+#if !defined(NO_ASM) && defined(HAVE_DYNAREC_HACKTARUX)
+        dynarec_jump_to(r4300, address);
 #endif
         break;
-#endif
 
     default:
         /* should not happen */
