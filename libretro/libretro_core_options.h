@@ -1670,7 +1670,6 @@ struct retro_core_option_v2_definition option_defs_us[] = {
         "True"
 #endif
     },
-#if !defined(VC) && !defined(HAVE_OPENGLES)
     {
         CORE_NAME "-gliden64-EnableN64DepthCompare",
         "N64 Depth Compare",
@@ -1685,6 +1684,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
         },
         "False"
     },
+#if !defined(VC) && !defined(HAVE_OPENGLES)
     {
         CORE_NAME "-gliden64-EnableShadersStorage",
         "Cache GPU Shaders",
