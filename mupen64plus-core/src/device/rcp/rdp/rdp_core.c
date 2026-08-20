@@ -21,6 +21,8 @@
 
 #include "rdp_core.h"
 
+extern int g_rsp_task_consumes_dp;
+
 extern int angrylion_sync_full_seen;
 
 #include <string.h>
@@ -153,7 +155,12 @@ void write_dpc_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mas
     case DPC_END_REG:
         unprotect_framebuffers(&dp->fb);
         angrylion_sync_full_seen = 0;
+        /* This path consumes the DP interrupt itself, below, from
+         * angrylion_sync_full_seen.  Say so, or the graphics plugin's
+         * CheckInterrupts defers the same raise a second time. */
+        g_rsp_task_consumes_dp = 1;
         gfx.processRDPList();
+        g_rsp_task_consumes_dp = 0;
         protect_framebuffers(&dp->fb);
         if (angrylion_sync_full_seen)
             signal_rcp_interrupt(dp->mi, MI_INTR_DP);
