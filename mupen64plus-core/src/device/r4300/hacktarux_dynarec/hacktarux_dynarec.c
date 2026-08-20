@@ -2398,7 +2398,7 @@ static void gentestl(struct r4300_core* r4300)
 
     jump_end_rel32(r4300);
 
-    gencp0_update_count(r4300, r4300->recomp.dst->addr-4);
+    gencp0_update_count(r4300, r4300->recomp.dst->addr + 4);
     mov_m32rel_imm32((void*)(&r4300->cp0.last_addr), r4300->recomp.dst->addr + 4);
     gencheck_interrupt(r4300, (unsigned long long) (r4300->recomp.dst + 1));
     jmp(r4300->recomp.dst->addr + 4);
@@ -2422,7 +2422,7 @@ static void gentestl_out(struct r4300_core* r4300)
 
     jump_end_rel32(r4300);
 
-    gencp0_update_count(r4300, r4300->recomp.dst->addr-4);
+    gencp0_update_count(r4300, r4300->recomp.dst->addr + 4);
     mov_m32rel_imm32((void*)(&r4300->cp0.last_addr), r4300->recomp.dst->addr + 4);
     gencheck_interrupt(r4300, (unsigned long long) (r4300->recomp.dst + 1));
     jmp(r4300->recomp.dst->addr + 4);
