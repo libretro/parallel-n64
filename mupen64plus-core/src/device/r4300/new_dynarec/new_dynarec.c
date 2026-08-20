@@ -4969,7 +4969,8 @@ static void emit_xkphys_fold(int i,const struct regstat *i_regs,int addr)
   no_fold2=(intptr_t)out;
   emit_jne(0);
   emit_mov(addr,HOST_TEMPREG);
-  emit_orimm(HOST_TEMPREG,0xA0000000,HOST_TEMPREG);
+  emit_orimm(HOST_TEMPREG,0x80000000,HOST_TEMPREG);
+  emit_orimm(HOST_TEMPREG,0x20000000,HOST_TEMPREG);
   emit_writeword(HOST_TEMPREG,(intptr_t)&g_dev.r4300.new_dynarec_hot_state.address);
   done=(intptr_t)out;
   emit_jmp(0);
