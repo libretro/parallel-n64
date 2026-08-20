@@ -1503,7 +1503,7 @@ void update_variables(bool startup)
 	   * with it "off", and titles meant to be tested without it could not be.
 	   * Startup only, since rdram_size is fixed when the device is built. */
 	  struct retro_variable expvar;
-	  expvar.key = "parallel-n64-disable-expmem";
+	  expvar.key = "parallel-n64-disable_expmem";
 	  expvar.value = NULL;
 	  ForceDisableExtraMem = 0;
 	  if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &expvar) && expvar.value)
