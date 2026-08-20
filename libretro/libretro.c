@@ -503,6 +503,31 @@ static void core_settings_autoselect_rsp_plugin(void)
     * below upgrades that to the parallel RSP when available. */
    {
       const uint8_t* cart = (const uint8_t*)mem_base_u32(g_mem_base, MM_CART_ROM);
+      if (cart && g_rom_size >= 0x1000)
+      {
+         /* Autoselect runs from emu_step_initialize(), which is before
+          * main_run() byte-swaps the cartridge into host word order, so
+          * mem_base still holds the file's own order here.  cic_ipl3_known
+          * reads native uint32, and on a little-endian host that yields
+          * transposed words summing to a value no retail CIC matches: every
+          * cartridge looked like homebrew and went to the LLE core.  Sum a
+          * corrected copy instead of the live buffer. */
+         uint32_t ipl3[0xfc0/4];
+         memcpy(ipl3, cart + 0x40, sizeof(ipl3));
+#if !defined(MSB_FIRST)
+         if (!g_RomWordsLittleEndian)
+         {
+            size_t i;
+            for (i = 0; i < sizeof(ipl3)/sizeof(ipl3[0]); ++i)
+               ipl3[i] = ((ipl3[i] & UINT32_C(0x000000ff)) << 24)
+                       | ((ipl3[i] & UINT32_C(0x0000ff00)) <<  8)
+                       | ((ipl3[i] & UINT32_C(0x00ff0000)) >>  8)
+                       | ((ipl3[i] & UINT32_C(0xff000000)) >> 24);
+         }
+#endif
+         if (!cic_ipl3_known(ipl3))
+            rsp_plugin = RSP_CXD4;
+      }
       if (cart && g_rom_size >= 0x1000 && !cic_ipl3_known(cart + 0x40))
          rsp_plugin = RSP_CXD4;
    }
