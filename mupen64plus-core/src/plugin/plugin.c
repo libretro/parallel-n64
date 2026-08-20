@@ -466,11 +466,17 @@ void plugin_connect_all()
       case RSP_PLUGIN_CXD4:
 #ifdef HAVE_LLE
          rsp = rsp_cxd4;
+#else
+         /* Not compiled in: fall back rather than leave every entry point
+          * pointing at nothing. */
+         rsp = rsp_hle;
 #endif // HAVE_LLE
          break;
       case RSP_PLUGIN_PARALLEL:
 #ifdef HAVE_PARALLEL_RSP
          rsp = rsp_parallelRSP;
+#else
+         rsp = rsp_hle;
 #endif // HAVE_PARALLEL_RSP
          break;
       case RSP_PLUGIN_NONE:
