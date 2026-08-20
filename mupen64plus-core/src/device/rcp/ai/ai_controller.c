@@ -22,6 +22,8 @@
 #include "ai_controller.h"
 
 #include <string.h>
+#include <stdlib.h>
+#include <stdio.h>
 
 #include <stdio.h>
 #include "plugin/audio_libretro/audio_plugin.h"
@@ -152,14 +154,14 @@ static void fifo_push(struct ai_controller* ai)
 
     if (ai->regs[AI_STATUS_REG] & AI_STATUS_BUSY)
     {
-        ai->fifo[1].address = ai->regs[AI_DRAM_ADDR_REG];
+        ai->fifo[1].address = ai->regs[AI_DRAM_ADDR_REG] & UINT32_C(0x00fffff8);
         ai->fifo[1].length = ai->regs[AI_LEN_REG] & ~UINT32_C(7);
         ai->fifo[1].duration = duration;
         ai->regs[AI_STATUS_REG] |= AI_STATUS_FULL;
     }
     else
     {
-        ai->fifo[0].address = ai->regs[AI_DRAM_ADDR_REG];
+        ai->fifo[0].address = ai->regs[AI_DRAM_ADDR_REG] & UINT32_C(0x00fffff8);
         ai->fifo[0].length = ai->regs[AI_LEN_REG] & ~UINT32_C(7);
         ai->fifo[0].duration = duration;
         ai->regs[AI_STATUS_REG] |= AI_STATUS_BUSY;
