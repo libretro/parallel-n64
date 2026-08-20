@@ -5604,7 +5604,10 @@ static void cop0_assemble(int i,struct regstat *i_regs)
     else if((source[i]&0x3f)==0x18) // ERET
     {
       assert(!is_delayslot);
-      int count=ccadj[i];
+      /* ERET has no delay slot, so it costs one instruction where a branch
+       * and its slot cost two.  Charging ccadj[i] paid for neither: the
+       * guest clock lost two cycles on every exception return. */
+      int count=ccadj[i]+1;
       if(i_regs->regmap[HOST_CCREG]!=CCREG) emit_loadreg(CCREG,HOST_CCREG);
       emit_addimm(HOST_CCREG,CLOCK_DIVIDER*count,HOST_CCREG);
       emit_jmp((intptr_t)jump_eret);
