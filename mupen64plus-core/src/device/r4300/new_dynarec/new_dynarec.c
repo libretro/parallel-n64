@@ -3980,6 +3980,43 @@ static void wb_dirtys(signed char i_regmap[],uint64_t i_is32,uint64_t i_dirty)
   }
 }
 
+/* Write back the guest registers a faulting instruction still holds in host
+ * registers, whether or not they are marked dirty.
+ *
+ * clean_registers() deliberately understates wasdirty: it clears the bit of any
+ * register that will be written again further down the block, on the grounds
+ * that the intermediate value would never be read back from the register file.
+ * That reasoning holds for every ordinary exit -- the final value is written
+ * back before the block ends -- but not when an exception is taken. There the
+ * guest's handler runs on the register file, and the block is re-entered from
+ * it afterwards, so a register living only in a host register comes back with
+ * the value it had when the block was entered.
+ *
+ * Measured on All-Star Baseball 2000: a TLB refill on the LW at 0x0015118c, on
+ * the first source word of a new page, silently lost r16 and r17 -- the source
+ * and destination pointers of the copy loop around it. Both rewound to their
+ * loop-entry values, 40 bytes back, and every texture row after that was
+ * written at the wrong offset. Only the iteration counter survived, because it
+ * happened to still be marked dirty at that instruction.
+ *
+ * An exception path runs once per exception, so writing back a few registers
+ * that were already in sync costs nothing measurable. */
+static void wb_exception_dirtys(struct regstat *i_regs)
+{
+  /* Only host registers the instruction has not reassigned: where the entry map
+   * and the current map disagree the host register has been taken over for the
+   * result or for address generation, and its contents are no longer the guest
+   * register the entry map names. Those are exactly the ones ari64 is free to
+   * reuse precisely because they are not dirty, so leave them alone. */
+  uint64_t mask=i_regs->wasdirty;
+  int hr;
+  for(hr=0;hr<HOST_REGS;hr++) {
+    if(i_regs->regmap_entry[hr]==i_regs->regmap[hr])
+      mask|=UINT64_C(1)<<hr;
+  }
+  wb_dirtys(i_regs->regmap_entry,i_regs->was32,mask);
+}
+
 // Write out dirty registers that we need to reload (pair with load_needed_regs)
 // This writes the registers not written by store_regs_bt
 static void wb_needed_dirtys(signed char i_regmap[],uint64_t i_is32,uint64_t i_dirty,int addr)
@@ -4950,7 +4987,7 @@ static void do_cop1stub(int n)
     load_all_consts(regs[i].regmap_entry,regs[i].was32,regs[i].wasdirty,regs[i].wasconst,i);
     //if(i_regs!=&regs[i]) DebugMessage(M64MSG_VERBOSE, "oops: regs[i]=%x i_regs=%x",(int)&regs[i],(int)i_regs);
   }
-  wb_dirtys(i_regs->regmap_entry,i_regs->was32,i_regs->wasdirty);
+  wb_exception_dirtys(i_regs);
 
   if(get_reg(i_regs->regmap,CCREG)<0) {
     emit_loadreg(CCREG,HOST_CCREG);
@@ -5104,7 +5141,7 @@ static void do_readstub(int n)
   emit_jeq(0);
 
   if(!ds) load_all_consts(regs[i].regmap_entry,regs[i].was32,regs[i].wasdirty,regs[i].wasconst,i);
-  wb_dirtys(i_regs->regmap_entry,i_regs->was32,i_regs->wasdirty);
+  wb_exception_dirtys(i_regs);
 
   emit_jmp((intptr_t)&do_interrupt);
   set_jump_target(jaddr,(intptr_t)out);
@@ -5227,7 +5264,7 @@ static void inline_readstub(int type, int i, u_int addr_const, char addr, struct
     emit_jeq(0);
 
     if(!ds) load_all_consts(regs[i].regmap_entry,regs[i].was32,regs[i].wasdirty,regs[i].wasconst,i);
-    wb_dirtys(i_regs->regmap_entry,i_regs->was32,i_regs->wasdirty);
+    wb_exception_dirtys(i_regs);
 
     emit_jmp((intptr_t)&do_interrupt);
     set_jump_target(jaddr,(intptr_t)out);
@@ -5340,7 +5377,7 @@ static void do_writestub(int n)
   emit_jeq(0);
 
   if(!ds) load_all_consts(regs[i].regmap_entry,regs[i].was32,regs[i].wasdirty,regs[i].wasconst,i);
-  wb_dirtys(i_regs->regmap_entry,i_regs->was32,i_regs->wasdirty);
+  wb_exception_dirtys(i_regs);
 
   emit_jmp((intptr_t)&do_interrupt);
   set_jump_target(jaddr,(intptr_t)out);
@@ -5436,7 +5473,7 @@ static void inline_writestub(int type, int i, u_int addr_const, char addr, struc
     emit_jeq(0);
 
     if(!ds) load_all_consts(regs[i].regmap_entry,regs[i].was32,regs[i].wasdirty,regs[i].wasconst,i);
-    wb_dirtys(i_regs->regmap_entry,i_regs->was32,i_regs->wasdirty);
+    wb_exception_dirtys(i_regs);
 
     emit_jmp((intptr_t)&do_interrupt);
     set_jump_target(jaddr,(intptr_t)out);
@@ -5564,7 +5601,7 @@ static void cop0_assemble(int i,struct regstat *i_regs)
       intptr_t jaddr=(intptr_t)out;
       emit_jeq(0);
       load_all_consts(regs[i].regmap_entry,regs[i].was32,regs[i].wasdirty,regs[i].wasconst,i);
-      wb_dirtys(i_regs->regmap_entry,i_regs->was32,i_regs->wasdirty);
+      wb_exception_dirtys(i_regs);
       emit_jmp((intptr_t)&do_interrupt);
       set_jump_target(jaddr,(intptr_t)out);
     }
