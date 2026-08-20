@@ -119,7 +119,7 @@ DECLARE_INSTRUCTION(RESERVED)
 
     DebugMessage(M64MSG_ERROR, "reserved opcode: %" PRIX32 ":%" PRIX32, PCADDR, *fast_mem_access(r4300, PCADDR));
 
-    cp0_regs[CP0_CAUSE_REG] = CP0_CAUSE_EXCCODE_RI;
+    cp0_regs[CP0_CAUSE_REG] = (cp0_regs[CP0_CAUSE_REG] & UINT32_C(0x0000ff00)) | CP0_CAUSE_EXCCODE_RI;
     exception_general(r4300);
 }
 
@@ -131,7 +131,7 @@ DECLARE_INSTRUCTION(RESERVED_COP2)
 
     if (check_cop2_unusable(r4300)) { return; }
 
-    cp0_regs[CP0_CAUSE_REG] = CP0_CAUSE_EXCCODE_RI | CP0_CAUSE_CE2;
+    cp0_regs[CP0_CAUSE_REG] = (cp0_regs[CP0_CAUSE_REG] & UINT32_C(0x0000ff00)) | CP0_CAUSE_EXCCODE_RI | CP0_CAUSE_CE2;
     exception_general(r4300);
 }
 
@@ -142,7 +142,7 @@ DECLARE_INSTRUCTION(BREAK)
     DECLARE_R4300
     uint32_t* cp0_regs = r4300_cp0_regs(&r4300->cp0);
 
-    cp0_regs[CP0_CAUSE_REG] = CP0_CAUSE_EXCCODE_BP;
+    cp0_regs[CP0_CAUSE_REG] = (cp0_regs[CP0_CAUSE_REG] & UINT32_C(0x0000ff00)) | CP0_CAUSE_EXCCODE_BP;
     exception_general(r4300);
 }
 
@@ -1058,7 +1058,7 @@ DECLARE_INSTRUCTION(SYSCALL)
     DECLARE_R4300
     uint32_t* cp0_regs = r4300_cp0_regs(&r4300->cp0);
 
-    cp0_regs[CP0_CAUSE_REG] = CP0_CAUSE_EXCCODE_SYS;
+    cp0_regs[CP0_CAUSE_REG] = (cp0_regs[CP0_CAUSE_REG] & UINT32_C(0x0000ff00)) | CP0_CAUSE_EXCCODE_SYS;
     exception_general(r4300);
 }
 
@@ -1071,7 +1071,7 @@ DECLARE_INSTRUCTION(name) \
     uint32_t* cp0_regs = r4300_cp0_regs(&r4300->cp0); \
     if (cond) \
     { \
-        cp0_regs[CP0_CAUSE_REG] = CP0_CAUSE_EXCCODE_TR; \
+        cp0_regs[CP0_CAUSE_REG] = (cp0_regs[CP0_CAUSE_REG] & UINT32_C(0x0000ff00)) | CP0_CAUSE_EXCCODE_TR; \
         exception_general(r4300); \
     } \
     else \
@@ -1558,7 +1558,7 @@ DECLARE_INSTRUCTION(DCFC1)
     /* Unimplemented Operation */
     (*r4300_cp1_fcr31(&r4300->cp1)) |= FCR31_CAUSE_UNIMPLOP_BIT;
 
-    cp0_regs[CP0_CAUSE_REG] = CP0_CAUSE_EXCCODE_FPE;
+    cp0_regs[CP0_CAUSE_REG] = (cp0_regs[CP0_CAUSE_REG] & UINT32_C(0x0000ff00)) | CP0_CAUSE_EXCCODE_FPE;
     exception_general(r4300);
 }
 
@@ -1604,7 +1604,7 @@ DECLARE_INSTRUCTION(DCTC1)
     /* Unimplemented Operation */
     (*r4300_cp1_fcr31(&r4300->cp1)) |= FCR31_CAUSE_UNIMPLOP_BIT;
 
-    cp0_regs[CP0_CAUSE_REG] = CP0_CAUSE_EXCCODE_FPE;
+    cp0_regs[CP0_CAUSE_REG] = (cp0_regs[CP0_CAUSE_REG] & UINT32_C(0x0000ff00)) | CP0_CAUSE_EXCCODE_FPE;
     exception_general(r4300);
 }
 

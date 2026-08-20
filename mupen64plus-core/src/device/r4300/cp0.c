@@ -21,6 +21,8 @@
 
 #include <stdint.h>
 #include <string.h>
+#include <stdlib.h>
+#include <stdio.h>
 
 #include "cp0.h"
 #include "r4300_core.h"
@@ -153,7 +155,12 @@ int check_cop1_unusable(struct r4300_core* r4300)
 
     if (!(cp0_regs[CP0_STATUS_REG] & CP0_STATUS_CU1))
     {
-        cp0_regs[CP0_CAUSE_REG] = CP0_CAUSE_EXCCODE_CPU | CP0_CAUSE_CE1;
+        /* Only ExcCode and CE belong to this exception.  IP holds the
+         * interrupt lines the RCP is asserting right now; assigning the
+         * register whole erased any that were pending, and with no device
+         * left to re-assert them the interrupt was simply lost. */
+        cp0_regs[CP0_CAUSE_REG] = (cp0_regs[CP0_CAUSE_REG] & UINT32_C(0x0000ff00))
+                                | CP0_CAUSE_EXCCODE_CPU | CP0_CAUSE_CE1;
         exception_general(r4300);
         return 1;
     }
@@ -166,7 +173,8 @@ int check_cop2_unusable(struct r4300_core* r4300)
 
     if (!(cp0_regs[CP0_STATUS_REG] & CP0_STATUS_CU2))
     {
-        cp0_regs[CP0_CAUSE_REG] = CP0_CAUSE_EXCCODE_CPU | CP0_CAUSE_CE2;
+        cp0_regs[CP0_CAUSE_REG] = (cp0_regs[CP0_CAUSE_REG] & UINT32_C(0x0000ff00))
+                                | CP0_CAUSE_EXCCODE_CPU | CP0_CAUSE_CE2;
         exception_general(r4300);
         return 1;
     }
@@ -253,9 +261,10 @@ void TLB_refill_exception(struct r4300_core* r4300, uint32_t address, int w)
         cp0_update_count(r4300);
     }
 
-    cp0_regs[CP0_CAUSE_REG] = (w == 1)
-        ? CP0_CAUSE_EXCCODE_TLBS
-        : CP0_CAUSE_EXCCODE_TLBL;
+    cp0_regs[CP0_CAUSE_REG] = (cp0_regs[CP0_CAUSE_REG] & UINT32_C(0x0000ff00))
+        | ((w == 1)
+            ? CP0_CAUSE_EXCCODE_TLBS
+            : CP0_CAUSE_EXCCODE_TLBL);
 
     cp0_regs[CP0_BADVADDR_REG] = address;
     cp0_regs[CP0_CONTEXT_REG] = (cp0_regs[CP0_CONTEXT_REG] & UINT32_C(0xFF80000F))
