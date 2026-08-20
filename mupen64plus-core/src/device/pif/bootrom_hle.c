@@ -26,6 +26,7 @@
 
 #include "api/m64p_types.h"
 #include "device/device.h"
+#include "device/pif/cic.h"
 #include "device/r4300/r4300_core.h"
 #include "device/rcp/ai/ai_controller.h"
 #include "device/rcp/pi/pi_controller.h"
@@ -33,6 +34,7 @@
 #include "device/rcp/rsp/rsp_core.h"
 #include "device/rcp/si/si_controller.h"
 #include "device/rcp/vi/vi_controller.h"
+#include "main/main.h"
 #include "main/rom.h"
 
 static unsigned int get_tv_type(void)
@@ -120,8 +122,23 @@ void pif_bootrom_hle_execute(struct r4300_core* r4300)
 
     /* IPL2 brings the RDRAM up before handing over and leaves RI_SELECT
      * set; skipping the boot rom means nothing ever did, so it reads back
-     * zero and an IPL3 that checks it runs its own init sequence instead. */
-    r4300_write_aligned_word(r4300, R4300_KSEG1 + MM_RI_REGS + 4*RI_SELECT_REG, 0x14, ~UINT32_C(0));
+     * zero and an IPL3 that checks it runs its own init sequence instead.
+     * libdragon's open IPL3 is the one that checks, and the sequence it then runs drives
+     * RDRAM registers this core does not model.
+     *
+     * Retail IPL3 does not check: it runs its sizing procedure unconditionally,
+     * and that procedure is what publishes osMemSize at 0x80000318 and hands
+     * the module count to rdram.c through s4.  Claiming the RDRAM is already up
+     * makes it skip all of that, leaving a machine that reports no memory - so
+     * only make the claim for the cartridges that need it. */
+    if (!cic_ipl3_known(mem_base_u32(r4300->mem->base, rom_base + 0x40)))
+    {
+        r4300_write_aligned_word(r4300, R4300_KSEG1 + MM_RI_REGS + 4*RI_SELECT_REG, 0x14, ~UINT32_C(0));
+
+        /* Nothing runs the sizing procedure now, so publish what it would
+         * have found. */
+        mem_base_u32(r4300->mem->base, MM_RDRAM_DRAM)[0x318/4] = (uint32_t)g_dev.rdram.dram_size;
+    }
 
     /* copy IPL3 to dmem */
     memcpy((unsigned char*)mem_base_u32(r4300->mem->base, MM_RSP_MEM + 0x40),
