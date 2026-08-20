@@ -2286,7 +2286,7 @@ void update_variables(bool startup)
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
    {
       if (!strcmp(var.value, "Compatible"))
-         EnableN64DepthCompare = 1; // dcCompatible
+         EnableN64DepthCompare = 2; // dcCompatible
       else if (!strcmp(var.value, "True"))
          EnableN64DepthCompare = 1; // dcFast
       else
