@@ -170,6 +170,17 @@ void read_rdram_regs(void* opaque, uint32_t address, uint32_t* value)
     uint32_t reg = rdram_reg(address);
     size_t module;
 
+    /* rdram_reg() maps the whole 1 KiB window onto an index, so anything
+     * past the ten registers a module actually has - 0x03f00200 among them,
+     * which is what libdragon samples for entropy - indexed off the end of
+     * the array and returned whatever host memory sat there.  That made the
+     * value depend on where the process happened to be mapped, so the guest
+     * saw a different value from one launch to the next. */
+    if (reg >= RDRAM_REGS_COUNT) {
+        *value = 0;
+        return;
+    }
+
     if (address & RDRAM_BCAST_ADDRESS_MASK) {
         DebugMessage(M64MSG_WARNING, "Reading from broadcast address is unsupported %08x", address);
         return;
@@ -195,6 +206,12 @@ void write_rdram_regs(void* opaque, uint32_t address, uint32_t value, uint32_t m
     uint32_t reg = rdram_reg(address);
     size_t module;
     size_t modules = get_modules_count(rdram);
+
+    /* Out of range for the same reason as the read side; writing would run
+     * off the end of the module's registers. */
+    if (reg >= RDRAM_REGS_COUNT) {
+        return;
+    }
 
     /* HACK: Detect when current Control calibration is about to start,
      * so we can set corrupted rdram_dram handler
