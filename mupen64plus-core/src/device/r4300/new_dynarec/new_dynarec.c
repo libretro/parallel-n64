@@ -3895,22 +3895,58 @@ static void wb_invalidate(signed char pre[],signed char entry[],uint64_t dirty,u
       }
     }
   }
-  // Move from one register to another (no writeback)
-  for(hr=0;hr<HOST_REGS;hr++) {
-    if(!IS_REG_EXCLUDED(hr)) {
-      if(pre[hr]!=entry[hr]) {
-        if(pre[hr]>=0&&(pre[hr]&63)<TEMPREG) {
-          int nr;
-          if((nr=get_reg(entry,pre[hr]))>=0) {
-            #ifdef NATIVE_64
-            if(pre[hr]>=INVCP) emit_mov64(hr,nr);
-            else
-            #endif
-            emit_mov(hr,nr);
+  // Move from one register to another (no writeback).
+  //
+  // These are a parallel move: every source is read from the state that
+  // held before any of them ran.  Emitting them in host-register order
+  // overwrote a destination that a later move still had to read - a
+  // 64-bit value whose halves were being relocated lost its upper word
+  // that way, and the store that followed wrote the lower word twice.
+  // Emit a move only once nothing else still needs its destination, and
+  // break a cycle through the scratch register.
+  {
+    int src[HOST_REGS], dst[HOST_REGS], wide[HOST_REGS], n=0, k, progress;
+    for(hr=0;hr<HOST_REGS;hr++) {
+      if(!IS_REG_EXCLUDED(hr)) {
+        if(pre[hr]!=entry[hr]) {
+          if(pre[hr]>=0&&(pre[hr]&63)<TEMPREG) {
+            int nr;
+            if((nr=get_reg(entry,pre[hr]))>=0) {
+              src[n]=hr; dst[n]=nr; wide[n]=(pre[hr]>=INVCP); n++;
+            }
           }
         }
       }
     }
+    do {
+      progress=0;
+      for(k=0;k<n;k++) {
+        int j,blocked=0;
+        if(src[k]<0) continue;
+        for(j=0;j<n;j++)
+          if(j!=k && src[j]==dst[k]) { blocked=1; break; }
+        if(!blocked) {
+          #ifdef NATIVE_64
+          if(wide[k]) emit_mov64(src[k],dst[k]);
+          else
+          #endif
+          emit_mov(src[k],dst[k]);
+          src[k]=-1; progress=1;
+        }
+      }
+      if(!progress) {
+        for(k=0;k<n;k++) {
+          if(src[k]<0) continue;
+          /* cycle: stage this one through the scratch register */
+          #ifdef NATIVE_64
+          if(wide[k]) { emit_mov64(src[k],HOST_TEMPREG); emit_mov64(HOST_TEMPREG,dst[k]); }
+          else
+          #endif
+          { emit_mov(src[k],HOST_TEMPREG); emit_mov(HOST_TEMPREG,dst[k]); }
+          src[k]=-1; progress=1; break;
+        }
+      }
+    } while(progress);
   }
 }
 
