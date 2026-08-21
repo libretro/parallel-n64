@@ -342,7 +342,7 @@ void r4300_check_interrupt(struct r4300_core* r4300, uint32_t cause_ip, int set_
     int* cp0_cycle_count = r4300_cp0_cycle_count(&r4300->cp0);
 
     if (set_cause) {
-        cp0_regs[CP0_CAUSE_REG] = (cp0_regs[CP0_CAUSE_REG] | cause_ip) & ~CP0_CAUSE_EXCCODE_MASK;
+        cp0_regs[CP0_CAUSE_REG] |= cause_ip;
     }
     else {
         cp0_regs[CP0_CAUSE_REG] &= ~cause_ip;
@@ -382,7 +382,12 @@ void r4300_check_interrupt(struct r4300_core* r4300, uint32_t cause_ip, int set_
 void raise_maskable_interrupt(struct r4300_core* r4300, uint32_t cause_ip)
 {
     uint32_t* cp0_regs = r4300_cp0_regs(&r4300->cp0);
-    cp0_regs[CP0_CAUSE_REG] = (cp0_regs[CP0_CAUSE_REG] | cause_ip) & ~CP0_CAUSE_EXCCODE_MASK;
+
+    /* Asserting a line sets IP.  ExcCode describes the last exception the
+     * CPU took and is written when one is taken - not when a device pulls
+     * its line.  Clearing it here rewrote the reason a handler already on
+     * its way to read Cause had been entered for. */
+    cp0_regs[CP0_CAUSE_REG] |= cause_ip;
 
     if (!(cp0_regs[CP0_STATUS_REG] & cp0_regs[CP0_CAUSE_REG] & UINT32_C(0xff00))) {
         return;
@@ -391,6 +396,10 @@ void raise_maskable_interrupt(struct r4300_core* r4300, uint32_t cause_ip)
     if ((cp0_regs[CP0_STATUS_REG] & (CP0_STATUS_IE | CP0_STATUS_EXL | CP0_STATUS_ERL)) != CP0_STATUS_IE) {
         return;
     }
+
+    /* The interrupt exception is being taken now: this is where ExcCode
+     * becomes Int. */
+    cp0_regs[CP0_CAUSE_REG] &= ~CP0_CAUSE_EXCCODE_MASK;
 
     exception_general(r4300);
 }
@@ -415,7 +424,12 @@ void compare_int_handler(void* opaque)
 
 void check_int_handler(void* opaque)
 {
-    exception_general((struct r4300_core*)opaque);
+    struct r4300_core* r4300 = (struct r4300_core*)opaque;
+
+    /* Taking the interrupt exception is what makes ExcCode Int. */
+    r4300_cp0_regs(&r4300->cp0)[CP0_CAUSE_REG] &= ~CP0_CAUSE_EXCCODE_MASK;
+
+    exception_general(r4300);
 }
 
 /* Special interrupt is a fake interrupt which porpose is
