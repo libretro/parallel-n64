@@ -376,17 +376,6 @@ void inputGetKeys_default( int Control, BUTTONS *Keys )
    int16_t analogY    = 0;
    Keys->Value        = 0;
 
-   /* The machine runs before the frontend's input is usable -- the pre-roll in
-    * retro_load_game() does exactly that, and a game that probes its
-    * controllers at boot reaches here.  The callback may not even be set yet,
-    * and calling it before the frontend has polled once is not safe.  Nothing
-    * is pressed. */
-   {
-      extern int libretro_preroll_active(void);
-      if (!input_cb || libretro_preroll_active())
-         return;
-   }
-
    if (libretro_supports_bitmasks)
       ret = input_cb(Control, RETRO_DEVICE_JOYPAD,
             0, RETRO_DEVICE_ID_JOYPAD_MASK);

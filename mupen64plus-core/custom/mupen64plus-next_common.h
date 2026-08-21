@@ -55,7 +55,6 @@ enum rsp_plugin_type
 };
 
 void plugin_connect_all();
-m64p_error plugin_connect_gfx(enum rdp_plugin_type type);
 
 uint32_t get_retro_screen_width();
 uint32_t get_retro_screen_height();

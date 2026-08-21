@@ -78,7 +78,6 @@ extern retro_environment_t        environ_cb;
 static int16_t  audio_acc[AUDIO_ACC_FRAMES * 2];
 static size_t   audio_acc_frames;        /* stereo frames currently held */
 static unsigned current_sample_rate;     /* 0 until first set_audio_format */
-static int      rate_is_from_game;       /* the game wrote AI_DACRATE itself */
 static double   current_sample_rate_exact; /* the same rate, unrounded */
 
 
@@ -86,24 +85,12 @@ void init_audio_libretro(void)
 {
    audio_acc_frames = 0;
    current_sample_rate = 0;
-   rate_is_from_game   = 0;
 }
 
 void deinit_audio_libretro(void)
 {
    audio_acc_frames = 0;
    current_sample_rate = 0;
-   rate_is_from_game   = 0;
-}
-
-/* Whether the rate came from the game rather than from a substituted default.
- * The AI controller passes divider == 0 until AI_DACRATE has been written, so
- * a nonzero current_sample_rate proves nothing: the first call carries the
- * 44100 Hz stand-in, and the game's own rate still follows.  The pre-roll in
- * retro_load_game() waits on this. */
-int audio_sample_rate_settled_libretro(void)
-{
-   return rate_is_from_game;
 }
 
 double get_audio_sample_rate_libretro(void)
@@ -129,13 +116,6 @@ static void emit_frames(size_t n)
 
    if (n == 0)
       return;
-   /* Same as the input callback: audio is produced before the frontend has
-    * anywhere to put it (see the pre-roll in retro_load_game()). */
-   {
-      extern int libretro_preroll_active(void);
-      if (!audio_batch_cb || libretro_preroll_active())
-         return;
-   }
    if (n > audio_acc_frames)
       n = audio_acc_frames;
 
@@ -207,18 +187,7 @@ void set_audio_format_via_libretro(unsigned int frequency,
 
    current_sample_rate       = frequency;
    current_sample_rate_exact = exact;
-   if (divider != 0)
-      rate_is_from_game = 1;
 
-
-   /* During the pre-roll there is nothing to announce to: the frontend has not
-    * set anything up yet and reads the rate from retro_get_system_av_info()
-    * once we return from retro_load_game(). */
-   {
-      extern int libretro_preroll_active(void);
-      if (libretro_preroll_active())
-         return;
-   }
 
    if (environ_cb)
    {

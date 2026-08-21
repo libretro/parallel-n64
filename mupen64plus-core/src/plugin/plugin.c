@@ -29,6 +29,7 @@
 #include "api/m64p_plugin.h"
 #include "api/m64p_types.h"
 #include "device/device.h"
+#include "device/r4300/interrupt.h"
 #include "device/memory/m64p_memory.h"
 #include "device/r4300/r4300_core.h"
 #include "device/rcp/ai/ai_controller.h"
@@ -41,7 +42,6 @@
 #include "main/version.h"
 #include "osal/dynamiclib.h"
 #include "plugin.h"
-#include "dummy_video.h"
 #include "mupen64plus-next_common.h"
 
 #include <stdio.h>
@@ -159,6 +159,38 @@ static void rsp_plugin_check_interrupts(void)
     r4300_check_interrupt(mi->r4300, CP0_CAUSE_IP2,
                           mi->regs[MI_INTR_REG] & mi->regs[MI_INTR_MASK_REG]);
 }
+/* Angrylion raises the DP interrupt from rdp_sync_full by setting the bit
+ * through its MI_INTR_REG pointer and calling CheckInterrupts.  Where the
+ * list came from an RSP task, the task-end path in rsp_core picks that bit
+ * up and re-delivers it deferred, so there is nothing to do here and the
+ * flag says so.
+ *
+ * Where it did not - libdragon's rspq is a persistent task that never ends
+ * that way, so the block never runs for it - nothing consumed the bit at
+ * all.  It stayed set until something unrelated evaluated the interrupt
+ * lines, which in practice was a guest MTC0 to Status inside its own VI
+ * handler, and the DP interrupt nested there.  libdragon keeps one global
+ * FP save slot rather than a stack, so the inner handler's exit freed the
+ * slot the outer one was using and its next FPU access died with nowhere
+ * to save.  Defer it here in that case, the same way the task-end path
+ * would have.  Delivering immediately is not an option: rdp_sync_full runs
+ * in the middle of list processing. */
+static void gfx_plugin_check_interrupts(void)
+{
+    extern int g_rsp_task_consumes_dp;
+    struct mi_controller* mi = &g_dev.mi;
+
+    if (g_rsp_task_consumes_dp)
+        return;
+
+    if (!(mi->regs[MI_INTR_REG] & MI_INTR_DP))
+        return;
+
+    mi->regs[MI_INTR_REG] &= ~MI_INTR_DP;
+    cp0_update_count(mi->r4300);
+    add_interrupt_event(&mi->r4300->cp0, DP_INT, 4000);
+}
+
 /* RSP */
 #define DEFINE_RSP(X) \
     EXPORT m64p_error CALL X##PluginGetVersion(m64p_plugin_type *, int *, int *, const char **, int *); \
@@ -233,7 +265,7 @@ m64p_error plugin_start_gfx(void)
     gfx_info.VI_V_BURST_REG = &(g_dev.vi.regs[VI_V_BURST_REG]);
     gfx_info.VI_X_SCALE_REG = &(g_dev.vi.regs[VI_X_SCALE_REG]);
     gfx_info.VI_Y_SCALE_REG = &(g_dev.vi.regs[VI_Y_SCALE_REG]);
-    gfx_info.CheckInterrupts = EmptyFunc;
+    gfx_info.CheckInterrupts = gfx_plugin_check_interrupts;
     
     gfx_info.version = 2; //Version 2 added SP_STATUS_REG and RDRAM_SIZE
     gfx_info.SP_STATUS_REG = &g_dev.sp.regs[SP_STATUS_REG];
@@ -378,43 +410,12 @@ m64p_error plugin_check(void)
     return M64ERR_SUCCESS;
 }
 
-/* No renderer at all.  The pre-roll that settles the audio rate before the
- * frontend sets up video runs on this: the RCP still works, its output goes
- * nowhere, and no GL context is needed. */
-static gfx_plugin_functions gfx_none = {
-    dummyvideo_PluginGetVersion,
-    dummyvideo_ChangeWindow,
-    dummyvideo_InitiateGFX,
-    dummyvideo_MoveScreen,
-    dummyvideo_ProcessDList,
-    dummyvideo_ProcessRDPList,
-    dummyvideo_RomClosed,
-    dummyvideo_RomOpen,
-    dummyvideo_ShowCFB,
-    dummyvideo_UpdateScreen,
-    dummyvideo_ViStatusChanged,
-    dummyvideo_ViWidthChanged,
-    dummyvideo_ReadScreen2,
-    dummyvideo_SetRenderingCallback,
-    dummyvideo_ResizeVideoOutput,
-    dummyvideo_FBRead,
-    dummyvideo_FBWrite,
-    dummyvideo_FBGetFrameBufferInfo
-};
-
 enum rdp_plugin_type current_rdp_type = RDP_PLUGIN_NONE;
 enum rsp_plugin_type current_rsp_type = RSP_PLUGIN_NONE;
 
 /* global functions */
-/* Attach one renderer, without touching the RSP or the rest.  Split out of
- * plugin_connect_all() so the renderer can be swapped in after the pre-roll,
- * once its context exists. */
-static m64p_error plugin_start_rsp(void);
-
-m64p_error plugin_connect_gfx(enum rdp_plugin_type type)
+void plugin_connect_all()
 {
-    current_rdp_type = type;
-
     switch (current_rdp_type)
     {
        case RDP_PLUGIN_ANGRYLION:
@@ -451,29 +452,11 @@ m64p_error plugin_connect_gfx(enum rdp_plugin_type type)
           break;
       case RDP_PLUGIN_NONE:
       default:
-         gfx = gfx_none;
          break;
     }
 
     l_GfxAttached = 1;
-
-    {
-        m64p_error ret = plugin_start_gfx();
-
-        /* The RSP caches the renderer's entry points (rsp_info.ProcessDlistList
-         * and friends) when it is initiated, so swapping the renderer after the
-         * fact means re-initiating it -- otherwise the RSP keeps handing every
-         * display list to the renderer that was attached first. */
-        if (l_RspAttached)
-            plugin_start_rsp();
-
-        return ret;
-    }
-}
-
-void plugin_connect_all()
-{
-    plugin_connect_gfx(current_rdp_type);
+    plugin_start_gfx();
 
     switch (current_rsp_type)
     {
