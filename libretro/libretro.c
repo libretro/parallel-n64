@@ -1516,7 +1516,11 @@ void update_variables(bool startup)
       struct retro_variable cpuvar;
       cpuvar.key = "parallel-n64-cpucore";
       cpuvar.value = NULL;
+#if !defined(NEW_DYNAREC) && defined(HAVE_DYNAREC_HACKTARUX)
+      r4300_jit_backend = 1; /* R4300_JIT_HACKTARUX: ari64 is not compiled in */
+#else
       r4300_jit_backend = 0; /* default: ari64 */
+#endif
       if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &cpuvar) && cpuvar.value)
       {
          if (!strcmp(cpuvar.value, "pure_interpreter"))   r4300_emumode = 0;
