@@ -195,7 +195,7 @@ static int grTexFormat2GLPackedFmt(GrTexInfo *info, int fmt, int * gltexfmt, int
       *glpixfmt = GL_LUMINANCE_ALPHA;
       *glpackfmt = GL_UNSIGNED_BYTE;
    }
-#ifndef HAVE_OPENGLES2
+#ifndef HAVE_OPENGLES
    else if (packed_pixels_support)
    {
       switch(fmt)
@@ -333,7 +333,7 @@ static int grTexFormat2GLPackedFmt(GrTexInfo *info, int fmt, int * gltexfmt, int
             *glpackfmt = GL_UNSIGNED_BYTE;
             break;
          case GR_TEXFMT_ARGB_8888:
-#ifdef HAVE_OPENGLES2
+#ifdef HAVE_OPENGLES
             if (bgra8888_support)
             {
                factor = 4;
