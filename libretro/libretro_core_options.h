@@ -1537,8 +1537,8 @@ struct retro_core_option_v2_definition option_defs_us[] = {
         CORE_NAME "-gliden64-EnableCopyColorFromRDRAM",
         "Color buffer from RDRAM",
         NULL,
-        "(GLideN64) Enable color buffer copy from RDRAM. Required for the few titles that draw to the colour buffer with the CPU and expect the GPU to re-upload it (Donkey Kong 64 anti-aliased shadows, some Indiana Jones effects). Default off for the performance cost.",
-        "Enable color buffer copy from RDRAM. Required for the few titles that draw to the colour buffer with the CPU and expect the GPU to re-upload it. Default off for the performance cost.",
+        "(GLideN64) Always copy the color buffer from RDRAM. GLideN64 already does this by itself whenever it detects that the CPU painted the frame the VI is about to show, so this setting only adds a second, unconditional trigger for the titles that detection misses (Donkey Kong 64 anti-aliased shadows, some Indiana Jones effects). Needs Framebuffer Emulation on. Default off for the performance cost.",
+        "Always copy the color buffer from RDRAM, for the titles GLideN64's own CPU-write detection misses. Needs Framebuffer Emulation on. Default off for the performance cost.",
         "gliden64",
         {
             {"False", NULL},
