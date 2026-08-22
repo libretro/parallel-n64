@@ -2282,12 +2282,17 @@ void update_variables(bool startup)
       EnableFXAA = atoi(var.value);
    }
 
+   /* Declared in libretro_core_options.h under the same guard. Querying it
+    * unconditionally makes the frontend log "Invalid value" on every launch of
+    * a GLES2 build, for an option the core never offered. */
+#ifndef HAVE_OPENGLES2
    var.key = CORE_NAME "-gliden64-MultiSampling";
    var.value = NULL;
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
    {
       MultiSampling = atoi(var.value);
    }
+#endif
 
    var.key = CORE_NAME "-gliden64-EnableLODEmulation";
    var.value = NULL;
