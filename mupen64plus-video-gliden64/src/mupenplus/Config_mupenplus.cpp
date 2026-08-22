@@ -103,6 +103,7 @@ void LoadCustomSettings(bool internal)
 					found = true;
 				else
 					found = false;
+				break;
 			}
 			case INI_PROPERTY:
 			{
