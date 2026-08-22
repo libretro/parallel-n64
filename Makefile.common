@@ -32,11 +32,13 @@ else
 endif
 
 # GLideN64 needs OpenGL 3.3 Core or OpenGL ES 3.x (UBOs, integer textures,
-# glcorearb.h, etc.) and does not work on GLES2-only targets. The Makefile's
-# GLES=1 switch maps to -DHAVE_OPENGLES2 with no GLES3 path, so force it off
-# there. Other GLES2-only configurations should also unset HAVE_GLIDEN64.
+# glcorearb.h, etc.) and does not work on GLES2-only targets. GLES=1 maps to
+# -DHAVE_OPENGLES2, so force it off there. GLES3=1 selects the GLES 3.x path
+# below and does satisfy GLideN64, so it is left enabled in that case.
 ifeq ($(GLES),1)
+ifneq ($(GLES3),1)
 	HAVE_GLIDEN64 = 0
+endif
 endif
 
 INCFLAGS += -I$(VIDEODIR_GLIDE)/Glitch64/inc
@@ -679,7 +681,12 @@ endif
 endif
 
 ifeq ($(HAVE_OPENGL),1)
-ifeq ($(GLES),1)
+ifeq ($(GLES3),1)
+	# GLES 3.x path. HAVE_OPENGLES3 makes glsm request a GLES3 context and
+	# enables the GLES3 wrappers in glsm.c; without it they compile to stubs.
+	GLFLAGS += -DHAVE_OPENGLES -DHAVE_OPENGLES3 -DDISABLE_3POINT
+	SOURCES_C += $(LIBRETRO_COMM_DIR)/glsym/glsym_es3.c
+else ifeq ($(GLES),1)
 	GLFLAGS += -DHAVE_OPENGLES -DHAVE_OPENGLES2 -DDISABLE_3POINT
 	SOURCES_C += $(LIBRETRO_COMM_DIR)/glsym/glsym_es2.c
 else
