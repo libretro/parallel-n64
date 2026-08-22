@@ -2496,12 +2496,14 @@ void update_variables(bool startup)
       EnableFragmentDepthWrite = !strcmp(var.value, "False") ? 0 : 1;
    }
 
-   var.key = CORE_NAME "-gliden64-gliden64-EnableShadersStorage";
+#if !defined(VC) && !defined(HAVE_OPENGLES)
+   var.key = CORE_NAME "-gliden64-EnableShadersStorage";
    var.value = NULL;
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
    {
       EnableShadersStorage = !strcmp(var.value, "False") ? 0 : 1;
    }
+#endif
 
    var.key = CORE_NAME "-gliden64-EnableTextureCache";
    var.value = NULL;
