@@ -1020,10 +1020,30 @@ void TextureCache::_loadDepthTexture(CachedTexture * _pTexture, u16* _pDest)
 	if (!config.generalEmulation.enableFragmentDepthWrite)
 		return;
 
+	/* Decode the N64 depth words to linear before uploading them.
+	 *
+	 * The words are in the hardware exponent/mantissa form: bits 15..13 are the
+	 * exponent, bits 12..2 the mantissa. Uploading them raw, divided by 65535,
+	 * left the map in that non-linear space while the shader writes a linear
+	 * gl_FragDepth for everything else, so the two only agreed at the extremes:
+	 * geometry was correctly hidden behind near objects and wrongly hidden
+	 * behind distant scenery in the same frame.
+	 *
+	 * Decoding here rather than converting the fragment depth through the ZLUT
+	 * costs one pass per map instead of one lookup per fragment, and removes an
+	 * integer texture fetch from the fragment path entirely. */
+	static const struct { u32 shift; u32 add; } zFormat[8] = {
+		{ 6, 0x00000 }, { 5, 0x20000 }, { 4, 0x30000 }, { 3, 0x38000 },
+		{ 2, 0x3c000 }, { 1, 0x3e000 }, { 0, 0x3f000 }, { 0, 0x3f800 }
+	};
 	u32 size = _pTexture->realWidth * _pTexture->realHeight;
 	std::vector<f32> pDestFloat(size);
-	for (u32 i = 0; i < size; ++i)
-		pDestFloat[i] = _pDest[i] / 65535.0f;
+	for (u32 i = 0; i < size; ++i) {
+		const u16 w = _pDest[i];
+		const u32 e = (w >> 13) & 7;
+		const u32 m = (w >> 2) & 0x7ff;
+		pDestFloat[i] = f32((m << zFormat[e].shift) + zFormat[e].add) / 262143.0f;
+	}
 
 	Context::InitTextureParams params;
 	params.handle = _pTexture->name;
