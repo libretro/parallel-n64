@@ -1693,7 +1693,11 @@ struct retro_core_option_v2_definition option_defs_us[] = {
             {"True", NULL},
             { NULL, NULL },
         },
-#ifdef HAVE_OPENGLES
+/* GLES2 only. GLSL ES 1.00 has no gl_FragDepth without GL_EXT_frag_depth, and
+ * GLideN64 declines to emit writeDepth() there at all, so the setting cannot
+ * work on GLES2. GLSL ES 3.00 makes gl_FragDepth core, and a GLES 3.x target is
+ * no less capable than the desktop one this already defaults to True for. */
+#ifdef HAVE_OPENGLES2
         "False"
 #else
         "True"
