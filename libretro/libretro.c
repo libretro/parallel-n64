@@ -525,8 +525,6 @@ static void core_settings_autoselect_rsp_plugin(void)
          if (!cic_ipl3_known(ipl3))
             rsp_plugin = RSP_CXD4;
       }
-      if (cart && g_rom_size >= 0x1000 && !cic_ipl3_known(cart + 0x40))
-         rsp_plugin = RSP_CXD4;
    }
 
    /* Auto mode only: with Vulkan up the best default is the parallel RSP.
