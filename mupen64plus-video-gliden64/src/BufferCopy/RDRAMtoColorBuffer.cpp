@@ -308,10 +308,53 @@ void RDRAMtoColorBuffer::copyFromRDRAM(u32 _address, bool _bCFB)
 	if (m_pCurBuffer->m_startAddress == _address && gDP.colorImage.changed != 0)
 		return;
 
+	/* Resident Evil 2: do not paint RDRAM over a buffer the RDP owns.
+	 *
+	 * The guard above is meant to stop exactly that, but it only fires when the
+	 * address matches the start of the buffer. In this game's interlaced
+	 * cutscenes the VI origin sits a line inside the page -- 0063e6f8 against a
+	 * buffer at 0063e000 -- so the addresses differ and the guard is bypassed.
+	 *
+	 * Measured, frame by frame: the RDP draws roughly one frame in nine, and this
+	 * copy runs on every one of them, after the drawing. It covers 416 rows while
+	 * RDRAM only holds 334, so the rows below that are whatever memory happens to
+	 * contain, painted over what was just drawn. The subtitles start at row 333.
+	 *
+	 * m_cfb is cleared by setBufferChanged as soon as the RDP draws into a
+	 * buffer, so !_bCFB && !m_cfb reads as: an RDRAM copy nobody asked for, into
+	 * a buffer the RDP is drawing. The film still reaches the screen through the
+	 * genuine CFB uploads, which keep their path. */
+	if ((config.generalEmulation.hacks & hack_RE2) != 0 && !_bCFB && !m_pCurBuffer->m_cfb)
+		return;
+
+	/* Resident Evil 2: never upload past the buffer's own height.
+	 *
+	 * When the address does not match the buffer start, the height taken here is
+	 * VI_GetMaxBufferHeight -- a global ceiling rather than anything about this
+	 * buffer. Read back from the GPU on the pre-rendered rooms, the band of noise
+	 * under the picture measures out to m_height, the tallest row the RDP ever
+	 * rasterised into this buffer, which outlives the scene that set it:
+	 *
+	 *   432-wide room: picture ends at texture row 436, noise runs 437..488,
+	 *                  488 / 1.4815 = 329 against the 295 rows shown;
+	 *   340-wide room: picture ends at 442, noise runs 471..790,
+	 *                  790 / 1.882  = 420 against the 235 rows shown.
+	 *
+	 * Both bands begin where the picture stops and end at m_height, and the twin
+	 * buffer (0076a000) is clean black over the same rows, so this is fresh paint
+	 * from the upload and not stale texture content. RDRAM holds the picture and
+	 * nothing after it. */
+	u32 maxHeight = VI_GetMaxBufferHeight(m_pCurBuffer->m_width);
+	if ((config.generalEmulation.hacks & hack_RE2) != 0) {
+		if (m_pCurBuffer->m_height > 0)
+			maxHeight = std::min(maxHeight, (u32)m_pCurBuffer->m_height);
+		maxHeight = std::min(maxHeight, (u32)VI.real_height);
+	}
+
 	const u32 height = cutHeight(m_pCurBuffer->m_startAddress,
 		m_pCurBuffer->m_startAddress == _address ?
 			VI.real_height :
-			VI_GetMaxBufferHeight(m_pCurBuffer->m_width), m_pCurBuffer->m_width << m_pCurBuffer->m_size >> 1);
+			maxHeight, m_pCurBuffer->m_width << m_pCurBuffer->m_size >> 1);
 	if (height == 0)
 		return;
 
@@ -323,8 +366,17 @@ void RDRAMtoColorBuffer::copyFromRDRAM(FrameBuffer * _pBuffer)
 	if (_pBuffer == nullptr)
 		return;
 	m_pCurBuffer = _pBuffer;
+	/* Resident Evil 2: same limit as the address form above.
+	 *
+	 * This overload takes VI_GetMaxBufferHeight bare -- 290 for a 320-wide buffer
+	 * and 580 above that. On the boot screens the noise ends at texture row 579
+	 * of 580, exactly that ceiling, so this call is the one that paints it there.
+	 * Bound it to what the VI actually shows. */
+	u32 uploadHeight = VI_GetMaxBufferHeight(m_pCurBuffer->m_width);
+	if ((config.generalEmulation.hacks & hack_RE2) != 0 && VI.real_height > 0)
+		uploadHeight = std::min(uploadHeight, (u32)VI.real_height);
 	const u32 height = cutHeight(m_pCurBuffer->m_startAddress,
-		VI_GetMaxBufferHeight(m_pCurBuffer->m_width), m_pCurBuffer->m_width << m_pCurBuffer->m_size >> 1);
+		uploadHeight, m_pCurBuffer->m_width << m_pCurBuffer->m_size >> 1);
 	_copyFromRDRAM(height, true);
 }
 
