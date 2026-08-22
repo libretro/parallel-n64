@@ -1563,6 +1563,21 @@ struct retro_core_option_v2_definition option_defs_us[] = {
         "Software"
     },
     {
+        CORE_NAME "-gliden64-GLideN64IniBehaviour",
+        "Per-game settings",
+        NULL,
+        "(GLideN64) When to apply GLideN64's built-in per-game settings. 'late' lets them override your choices below, 'early' lets your choices win, 'disabled' ignores them entirely.",
+        "When to apply GLideN64's built-in per-game settings. 'late' lets them override your choices below, 'early' lets your choices win, 'disabled' ignores them entirely.",
+        "gliden64",
+        {
+            {"late", NULL},
+            {"early", NULL},
+            {"disabled", NULL},
+            { NULL, NULL },
+        },
+        "late"
+    },
+    {
         CORE_NAME "-gliden64-BackgroundMode",
         "Background Mode",
         NULL,
