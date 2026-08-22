@@ -77,7 +77,7 @@ void LoadCustomSettings(bool internal)
 	bool found = false;
 	char buffer[256];
 	char* line;
-	FILE* fPtr;
+	FILE* fPtr = NULL;
 	std::transform(myString.begin(), myString.end(), myString.begin(), ::toupper);
 	if (internal) {
 		line = strtok(customini, "\n");
@@ -159,6 +159,9 @@ void LoadCustomSettings(bool internal)
 				break;
 		}
 	}
+
+	if (fPtr != NULL)
+		fclose(fPtr);
 }
 
 extern "C" void Config_LoadConfig()
