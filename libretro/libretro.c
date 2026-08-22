@@ -213,6 +213,8 @@ static uint8_t* cart_data           = NULL;
 static uint32_t cart_size           = 0;
 static uint8_t* disk_data           = NULL;
 static uint32_t disk_size           = 0;
+/* Set from the 64DD Hardware core option, read at content load. */
+static bool     dd_hardware         = false;
 
 static bool     emu_initialized     = false;
 static unsigned initial_boot        = true;
@@ -668,6 +670,14 @@ static void setup_variables(void)
 
 bool is_cartridge_rom(const uint8_t* data)
 {
+   /* With the 64DD Hardware option on, the frontend has declared this a disk
+    * system, so believe it rather than guessing from the dump. The test below
+    * only recognises the JP and US region markers of a D64 image: a development
+    * disk carries DD_REGION_DV, four zero bytes, and a MAME or SDK dump is
+    * identified by its size rather than by anything at offset zero. */
+   if (dd_hardware)
+      return false;
+
    return (data != NULL && *((uint32_t *)data) != 0x16D348E8 && *((uint32_t *)data) != 0x56EE6322);
 }
 
@@ -1558,6 +1568,18 @@ void update_variables(bool startup)
 	  ForceDisableExtraMem = 0;
 	  if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &expvar) && expvar.value)
 		  ForceDisableExtraMem = !strcmp(expvar.value, "disabled") ? 1 : 0;
+
+	  /* 64DD Hardware. Declared in libretro_core_options.h but read nowhere, so
+	   * it did nothing at all. It now decides how content is classified: with it
+	   * on, whatever is loaded goes to the disk drive rather than being guessed
+	   * at from its first four bytes. Startup only, before retro_load_game
+	   * classifies anything. */
+	  struct retro_variable ddvar;
+	  ddvar.key = "parallel-n64-64dd-hardware";
+	  ddvar.value = NULL;
+	  dd_hardware = false;
+	  if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &ddvar) && ddvar.value)
+		  dd_hardware = !strcmp(ddvar.value, "enabled");
   }
 
 #if defined(HAVE_PARALLEL)
