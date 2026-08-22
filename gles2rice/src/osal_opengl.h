@@ -30,7 +30,7 @@
 
 #include <glsm/glsmsym.h>
 
-#if defined(HAVE_OPENGLES2) // Desktop GL fix
+#if defined(HAVE_OPENGLES) // Desktop GL fix
 #define GLSL_VERSION "100"
 #else
 #define GLSL_VERSION "120"
@@ -47,7 +47,7 @@
 #define VS_FOG                              4
 
 // Constant substitutions
-#ifdef HAVE_OPENGLES2
+#ifdef HAVE_OPENGLES
 #define GL_CLAMP                            GL_CLAMP_TO_EDGE
 #define GL_MAX_TEXTURE_UNITS                GL_MAX_TEXTURE_IMAGE_UNITS
 
