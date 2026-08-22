@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <algorithm>
+#include <vector>
 
 #include "../Config.h"
 #include "../GLideN64.h"
@@ -78,9 +79,12 @@ void LoadCustomSettings(bool internal)
 	char buffer[256];
 	char* line;
 	FILE* fPtr = NULL;
+	/* Keep the copy alive for the whole scan: strtok holds a pointer into it. */
+	std::vector<char> iniCopy;
 	std::transform(myString.begin(), myString.end(), myString.begin(), ::toupper);
 	if (internal) {
-		line = strtok(customini, "\n");
+		iniCopy.assign(customini, customini + strlen(customini) + 1);
+		line = strtok(iniCopy.data(), "\n");
 	} else {
 		const char *pathname = ConfigGetSharedDataFilepath("GLideN64.custom.ini");
 		if (pathname == NULL || (fPtr = fopen(pathname, "rb")) == NULL)
