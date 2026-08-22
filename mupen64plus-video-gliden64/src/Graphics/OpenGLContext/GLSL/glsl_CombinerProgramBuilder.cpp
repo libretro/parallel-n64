@@ -1593,49 +1593,31 @@ public:
 					"}						\n"
 				;
 			} else {
-				if ((config.generalEmulation.hacks & hack_RE2) != 0) {
-					m_part =
-						"uniform lowp usampler2D uZlutImage;\n"
-						"highp float writeDepth()						        													\n"
-						"{																									\n"
-						;
-					if (_glinfo.isGLESX && _glinfo.noPerspective) {
-						m_part +=
-							"  if (uClampMode == 1 && (vZCoord > 1.0)) discard;	\n"
-							"  highp float FragDepth = clamp((vZCoord - uPolygonOffset) * uDepthScale.s + uDepthScale.t, 0.0, 1.0);	\n"
-							;
-					} else {
-						m_part +=
-							"  highp float FragDepth = clamp((gl_FragCoord.z * 2.0 - 1.0) * uDepthScale.s + uDepthScale.t, 0.0, 1.0);	\n"
-						;
-					}
-					m_part +=
-						"  highp int iZ = FragDepth > 0.999 ? 262143 : int(floor(FragDepth * 262143.0));				\n"
-						"  mediump int y0 = clamp(iZ/512, 0, 511);															\n"
-						"  mediump int x0 = iZ - 512*y0;																	\n"
-						"  highp uint iN64z = texelFetch(uZlutImage,ivec2(x0,y0), 0).r;											\n"
-						"  return clamp(float(iN64z)/65532.0, 0.0, 1.0);											\n"
-						"}																									\n"
+				/* No special case for RE2 here.
+				 *
+				 * Its branch converted the fragment depth into the N64 exponent/mantissa
+				 * form through the ZLUT, to match a depth map that was uploaded in that
+				 * form. TextureCache::_loadDepthTexture now decodes the map to linear as
+				 * it loads, so both sides are already in the same space and the conversion
+				 * is unnecessary. Dropping the branch also restores the uDepthSource /
+				 * uPrimDepth handling the game was missing. */
+				if (_glinfo.isGLESX && _glinfo.noPerspective) {
+					 m_part =
+						"highp float writeDepth()																	\n"
+						"{																							\n"
+						"  if (uClampMode == 1 && (vZCoord > 1.0)) discard;											\n"
+						"  if (uDepthSource != 0) return uPrimDepth;												\n"
+						"  return clamp((vZCoord - uPolygonOffset) * uDepthScale.s + uDepthScale.t, 0.0, 1.0);		\n"
+						"}																							\n"
 						;
 				} else {
-					if (_glinfo.isGLESX && _glinfo.noPerspective) {
-						 m_part =
-							"highp float writeDepth()																	\n"
-							"{																							\n"
-							"  if (uClampMode == 1 && (vZCoord > 1.0)) discard;											\n"
-							"  if (uDepthSource != 0) return uPrimDepth;												\n"
-							"  return clamp((vZCoord - uPolygonOffset) * uDepthScale.s + uDepthScale.t, 0.0, 1.0);		\n"
-							"}																							\n"
-							;
-					} else {
-						m_part =
-							"highp float writeDepth()						        									\n"
-							"{																							\n"
-							"  if (uDepthSource != 0) return uPrimDepth;												\n"
-							"  return clamp((gl_FragCoord.z * 2.0 - 1.0) * uDepthScale.s + uDepthScale.t, 0.0, 1.0);	\n"
-							"}																							\n"
-							;
-					}
+					m_part =
+						"highp float writeDepth()						        									\n"
+						"{																							\n"
+						"  if (uDepthSource != 0) return uPrimDepth;												\n"
+						"  return clamp((gl_FragCoord.z * 2.0 - 1.0) * uDepthScale.s + uDepthScale.t, 0.0, 1.0);	\n"
+						"}																							\n"
+						;
 				}
 			}
 		}
