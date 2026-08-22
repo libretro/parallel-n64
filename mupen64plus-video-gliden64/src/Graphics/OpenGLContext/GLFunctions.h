@@ -16,6 +16,15 @@
 #include <GL/glcorearb.h>
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
+#elif defined(HAVE_OPENGLES3)
+/* Desktop <GL/gl.h> must stay out: it declares glEnable and friends as real
+ * functions, and glsmsym.h has already turned those names into macros.
+ * glcorearb.h has PFNGL*PROC typedefs this file needs and declares
+ * nothing itself.  The GLES headers have to arrive here, before the
+ * glX -> g_glX macros below, or their prototypes expand into bogus
+ * declarations. */
+#include <glsym/rglgen_headers.h>
+#include <GL/glcorearb.h>
 #elif defined(OS_MAC_OS_X)
 #include <OpenGL/OpenGL.h>
 #include <stddef.h>
