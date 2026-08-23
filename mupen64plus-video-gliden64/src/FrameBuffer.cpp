@@ -1404,6 +1404,26 @@ void FrameBufferList::renderBuffer()
 	srcWidth = min(rdpRes.vi_width, (rdpRes.vi_hres * rdpRes.vi_x_add) >> 10);
 	srcHeight = rdpRes.vi_width * ((rdpRes.vi_vres*rdpRes.vi_y_add + rdpRes.vi_y_start) >> 10) / pBuffer->m_width;
 
+	/* Resident Evil 2: present the few rows the subtitle needs.
+	 *
+	 * Measured on buffers read back from the GPU during the intro, in the
+	 * 264x136 mode: srcHeight comes out at 136, the visible height, while the
+	 * second line of dialogue runs to N64 row 137.8 -- so the presentation cuts
+	 * through the glyphs even though the buffer holds them whole. Stale texture
+	 * content starts at 140.3, which caps how far this may go.
+	 *
+	 * Four rows therefore, matched to the fill in RDRAMtoColorBuffer so the two
+	 * limits agree. dstY1 is left alone: four rows on 136 is under 3%, far below
+	 * anything visible, and growing it would push past the frame.
+	 *
+	 * With no French dub the subtitles carry the story, which is why this is
+	 * worth a game-specific hack at all. */
+	if ((config.generalEmulation.hacks & hack_RE2) != 0) {
+		const s32 room = (s32)pBuffer->m_pTexture->realHeight;
+		if ((srcY0 + srcHeight + 4) * (s32)pBuffer->m_scale <= room)
+			srcHeight += 4;
+	}
+
 	const u32 stride = pBuffer->m_width << pBuffer->m_size >> 1;
 	FrameBuffer *pNextBuffer = findBuffer(rdpRes.vi_origin + stride * min(u32(srcHeight) - 1, pBuffer->m_height - 1) - 1);
 	if (pNextBuffer == pBuffer)
