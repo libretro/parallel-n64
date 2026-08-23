@@ -79,12 +79,15 @@ void LoadCustomSettings(bool internal)
 	char buffer[256];
 	char* line;
 	FILE* fPtr = NULL;
-	/* Keep the copy alive for the whole scan: strtok holds a pointer into it. */
+	char* iniEnd = NULL;
+	/* Keep the copy alive for the whole scan: ini_parse_line writes into it
+	 * and the parsed names and values point into it. */
 	std::vector<char> iniCopy;
 	std::transform(myString.begin(), myString.end(), myString.begin(), ::toupper);
 	if (internal) {
 		iniCopy.assign(customini, customini + strlen(customini) + 1);
-		line = strtok(iniCopy.data(), "\n");
+		line = iniCopy.data();
+		iniEnd = line + strlen(line);
 	} else {
 		const char *pathname = ConfigGetSharedDataFilepath("GLideN64.custom.ini");
 		if (pathname == NULL || (fPtr = fopen(pathname, "rb")) == NULL)
@@ -97,7 +100,8 @@ void LoadCustomSettings(bool internal)
 				break;
 			else
 				line = buffer;
-		}
+		} else if (line >= iniEnd)
+			break;
 		ini_line l = ini_parse_line(&line);
 		switch (l.type)
 		{
@@ -157,11 +161,6 @@ void LoadCustomSettings(bool internal)
 						config.generalEmulation.enableFragmentDepthWrite = atoi(l.value);
 				}
 			}
-		}
-		if (internal) {
-			line = strtok(NULL, "\n");
-			if (line == NULL)
-				break;
 		}
 	}
 
