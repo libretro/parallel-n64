@@ -74,7 +74,19 @@ extern int g_cp0_cycle_count;
 #define mupencorereg  (g_dev.r4300.regs)
 #define hi            (g_dev.r4300.hi)
 #define lo            (g_dev.r4300.lo)
+#ifdef NEW_DYNAREC
+/* ARM32 reaches this branch: it is neither _M_X64 nor aarch64, but it *does*
+ * build the ari64 dynarec, whose linkage reads the stop flag out of
+ * new_dynarec_hot_state (fp_stop in linkage_arm.S). Aliasing mupencorestop to
+ * the base-struct field there splits the flag in two: retro_return sets both
+ * (directly and through r4300_stop()), main_run clears only the hot-state one,
+ * and retro_return's "if (mupencorestop) return 0" early-out then sees a stop
+ * that is never cleared -- so from the second slice on it never arms another
+ * frame break, main_run never returns and retro_run blocks. */
+#define mupencorestop (g_dev.r4300.new_dynarec_hot_state.stop)
+#else
 #define mupencorestop (g_dev.r4300.stop)
+#endif
 #endif
 #else
 /* aarch64: the unified new_dynarec.c arm64 path uses the same
