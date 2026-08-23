@@ -80,7 +80,6 @@ fp_stop                = offsetof_struct_new_dynarec_hot_state_stop
 TEXT_SECTION
 
     .align   2
-    .outptr_offset  : .word out-(.outptr_pic+8)
     .savedcontextptr_offset  : .word g_dev + device_r4300_new_dynarec_hot_state_dynarec_local + fp_saved_context -(.savedcontextptr_pic+8)
 
 GLOBAL_FUNCTION(jump_vaddr_r0):
@@ -204,17 +203,12 @@ GLOBAL_FUNCTION(new_dyna_start):
     ldr    r12, .savedcontextptr_offset
 .savedcontextptr_pic:
     add    r12, pc, r12
-    ldr    r1, .outptr_offset
-.outptr_pic:
-    add    r1, pc, r1
-    mov    r0, #0xa4000000
     stmia  r12, {r4, r5, r6, r7, r8, r9, sl, fp, lr}
     sub    fp, r12, #fp_saved_context
-    ldr    r4, [r1]
-    add    r0, r0, #0x40
-    bl     new_recompile_block
+    ldr    r0, [fp, #fp_pcaddr]
+    bl     get_addr_ht
     ldr    r10, [fp, #fp_cycle_count]
-    mov    pc, r4
+    mov    pc, r0
 
 GLOBAL_FUNCTION(invalidate_addr_r0):
     stmia  fp, {r0, r1, r2, r3, r12, lr}
