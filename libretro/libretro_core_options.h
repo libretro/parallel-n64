@@ -1344,7 +1344,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
         CORE_NAME "-64dd-hardware",
         "64DD Hardware",
         NULL,
-        "64DD Hardware",
+        "Treat content without a recognised cartridge or disk header as a 64DD disk. Development disks and MAME/SDK dumps carry no header marker; regular cartridges and retail D64 images are identified by their header and unaffected by this setting.",
         NULL,
         NULL,
         {

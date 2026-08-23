@@ -670,15 +670,35 @@ static void setup_variables(void)
 
 bool is_cartridge_rom(const uint8_t* data)
 {
-   /* With the 64DD Hardware option on, the frontend has declared this a disk
-    * system, so believe it rather than guessing from the dump. The test below
-    * only recognises the JP and US region markers of a D64 image: a development
-    * disk carries DD_REGION_DV, four zero bytes, and a MAME or SDK dump is
-    * identified by its size rather than by anything at offset zero. */
-   if (dd_hardware)
+   uint32_t magic;
+
+   if (data == NULL)
       return false;
 
-   return (data != NULL && *((uint32_t *)data) != 0x16D348E8 && *((uint32_t *)data) != 0x56EE6322);
+   magic = *((uint32_t *)data);
+
+   /* A recognised D64 region marker (JP, US) is a disk regardless of any
+    * option. */
+   if (magic == 0x16D348E8 || magic == 0x56EE6322)
+      return false;
+
+   /* A recognised cartridge header (z64, v64 and n64 byte orders) is a
+    * cartridge regardless of any option: the 64DD Hardware option must never
+    * reroute positively identified content, or enabling it would send every
+    * cartridge game to the disk drive. */
+   if (magic == 0x40123780 || magic == 0x12408037 || magic == 0x80371240)
+      return true;
+
+   /* Neither marker matched. With the 64DD Hardware option on, unidentified
+    * content is a disk: a development disk carries DD_REGION_DV, four zero
+    * bytes, and a MAME or SDK dump is identified by its size rather than by
+    * anything at offset zero. When a disk is already mounted through the
+    * cartridge+disk subsystem, the slot being classified here is the
+    * cartridge by construction, so the cartridge default stands there. */
+   if (dd_hardware && disk_data == NULL)
+      return false;
+
+   return true;
 }
 
 
@@ -1557,24 +1577,25 @@ void update_variables(bool startup)
 
   if (startup)
   {
+	  struct retro_variable expvar;
+	  struct retro_variable ddvar;
+
 	  /* Expansion Pak. main.c derives rdram_size from ForceDisableExtraMem, but
 	   * nothing ever assigned it, so the option was inert and every game got the
 	   * full 8MB whatever the user picked -- titles that require the Pak booted
 	   * with it "off", and titles meant to be tested without it could not be.
 	   * Startup only, since rdram_size is fixed when the device is built. */
-	  struct retro_variable expvar;
 	  expvar.key = "parallel-n64-disable_expmem";
 	  expvar.value = NULL;
 	  ForceDisableExtraMem = 0;
 	  if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &expvar) && expvar.value)
 		  ForceDisableExtraMem = !strcmp(expvar.value, "disabled") ? 1 : 0;
 
-	  /* 64DD Hardware. Declared in libretro_core_options.h but read nowhere, so
-	   * it did nothing at all. It now decides how content is classified: with it
-	   * on, whatever is loaded goes to the disk drive rather than being guessed
-	   * at from its first four bytes. Startup only, before retro_load_game
+	  /* 64DD Hardware. Decides how content that carries neither a cartridge
+	   * header nor a D64 region marker is classified: with the option on, such
+	   * content goes to the disk drive. Positively identified content is
+	   * routed by its header either way. Startup only, before retro_load_game
 	   * classifies anything. */
-	  struct retro_variable ddvar;
 	  ddvar.key = "parallel-n64-64dd-hardware";
 	  ddvar.value = NULL;
 	  dd_hardware = false;
