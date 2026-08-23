@@ -344,16 +344,40 @@ void RDRAMtoColorBuffer::copyFromRDRAM(u32 _address, bool _bCFB)
 	 * buffer (0076a000) is clean black over the same rows, so this is fresh paint
 	 * from the upload and not stale texture content. RDRAM holds the picture and
 	 * nothing after it. */
+	/* Resident Evil 2: fill a little past the VI's visible height.
+	 *
+	 * Read back from the GPU, the cutscene buffer is painted to exactly
+	 * VI.real_height rows and not one more -- 136 in the 264x136 mode, which the
+	 * capture confirms at texture row 329 over a scale of 2.4242 -- and the
+	 * second line of dialogue is sliced through its glyphs at that boundary.
+	 *
+	 * Four rows, measured from the buffer captures rather than chosen: the text
+	 * ends at N64 row 137.8 against a visible height of 136, and stale texture
+	 * content begins at 140.3. Sixteen was the first attempt and stages four rows
+	 * of that stale content for nothing.
+	 *
+	 * Not VI_GetMaxBufferHeight: that adds 154 unwritten rows in this mode, which
+	 * is where the band of noise under the picture came from. Anything below the
+	 * picture is content nobody wrote this scene, so the margin has to stay
+	 * small. */
+	u32 fillHeight = VI.real_height;
+	if ((config.generalEmulation.hacks & hack_RE2) != 0)
+		fillHeight = std::min((u32)VI_GetMaxBufferHeight(m_pCurBuffer->m_width),
+		                      fillHeight + 4u);
+
 	u32 maxHeight = VI_GetMaxBufferHeight(m_pCurBuffer->m_width);
 	if ((config.generalEmulation.hacks & hack_RE2) != 0) {
 		if (m_pCurBuffer->m_height > 0)
 			maxHeight = std::min(maxHeight, (u32)m_pCurBuffer->m_height);
-		maxHeight = std::min(maxHeight, (u32)VI.real_height);
+		/* fillHeight, not VI.real_height: the confirmed subtitle fix lives in
+		 * those four rows, and the VI origin sits a line inside the page in the
+		 * cutscenes, so it may well be this branch that runs there. */
+		maxHeight = std::min(maxHeight, fillHeight);
 	}
 
 	const u32 height = cutHeight(m_pCurBuffer->m_startAddress,
 		m_pCurBuffer->m_startAddress == _address ?
-			VI.real_height :
+			fillHeight :
 			maxHeight, m_pCurBuffer->m_width << m_pCurBuffer->m_size >> 1);
 	if (height == 0)
 		return;
@@ -374,7 +398,7 @@ void RDRAMtoColorBuffer::copyFromRDRAM(FrameBuffer * _pBuffer)
 	 * Bound it to what the VI actually shows. */
 	u32 uploadHeight = VI_GetMaxBufferHeight(m_pCurBuffer->m_width);
 	if ((config.generalEmulation.hacks & hack_RE2) != 0 && VI.real_height > 0)
-		uploadHeight = std::min(uploadHeight, (u32)VI.real_height);
+		uploadHeight = std::min(uploadHeight, VI.real_height + 4u);
 	const u32 height = cutHeight(m_pCurBuffer->m_startAddress,
 		uploadHeight, m_pCurBuffer->m_width << m_pCurBuffer->m_size >> 1);
 	_copyFromRDRAM(height, true);
