@@ -14,7 +14,7 @@ int scProgramCount = 0;
 GLint _vertex_shader = 0;
 
 const char *_frag_header = "                                \n"
-#if !defined(HAVE_OPENGLES2) // Desktop GL fix
+#if !defined(HAVE_OPENGLES) /* Desktop GL fix */
 "#version 120                                               \n"
 "#define highp                                              \n"
 "#define lowp                                               \n"
@@ -42,7 +42,7 @@ const char *_frag_header = "                                \n"
 
 
 const char *_vert = "                                       \n"
-#if !defined(HAVE_OPENGLES2) // Desktop GL fix
+#if !defined(HAVE_OPENGLES) /* Desktop GL fix */
 "#version 120                                               \n"
 "#define highp                                              \n"
 "#define lowp                                               \n"
