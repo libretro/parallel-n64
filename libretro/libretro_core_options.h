@@ -1717,7 +1717,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
         },
         "False"
     },
-#if !defined(VC) && !defined(HAVE_OPENGLES)
+#if !defined(VC) && !defined(HAVE_OPENGLES2)
     {
         CORE_NAME "-gliden64-EnableShadersStorage",
         "Cache GPU Shaders",
