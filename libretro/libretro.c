@@ -131,6 +131,10 @@ uint32_t CountPerScanlineOverride = 0;
 retro_environment_t environ_cb                    = NULL;
 /* mupen64plus-next core globals consumed by the adopted main.c/rom.c */
 uint32_t CountPerOp = 0;
+/* ari64: alias GoldenEye's demand-paged segment onto the ROM (see
+ * tlb_speed_hacks). Read at startup; applied at dynarec init and on
+ * savestate load. */
+int goldeneye_tlb_hack = 1;
 uint32_t CountPerOpDenomPot = 0;
 uint32_t ForceDisableExtraMem = 0;
 uint32_t EnableThreadedRenderer = 0;
@@ -1601,6 +1605,14 @@ void update_variables(bool startup)
 	  dd_hardware = false;
 	  if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &ddvar) && ddvar.value)
 		  dd_hardware = !strcmp(ddvar.value, "enabled");
+
+	  /* Startup only: the value is consumed when the ari64 dynarec builds
+	   * its memory map, and a mid-game toggle would leave stale mappings. */
+	  ddvar.key = "parallel-n64-goldeneye-tlb-hack";
+	  ddvar.value = NULL;
+	  goldeneye_tlb_hack = 1;
+	  if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &ddvar) && ddvar.value)
+		  goldeneye_tlb_hack = !strcmp(ddvar.value, "enabled");
   }
 
 #if defined(HAVE_PARALLEL)

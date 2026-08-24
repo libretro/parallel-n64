@@ -1355,6 +1355,20 @@ struct retro_core_option_v2_definition option_defs_us[] = {
         "disabled"
     },
     {
+        CORE_NAME "-goldeneye-tlb-hack",
+        "GoldenEye TLB Mapping Hack (Restart)",
+        NULL,
+        "Map GoldenEye's demand-paged 0x7F000000 code segment directly onto the ROM, bypassing the game's own TLB pager (ari64 dynarec only). Historically required for GoldenEye to run at all; on desktop-class hosts the accurate path now measures just as fast. Disable for hardware-faithful TLB behaviour or for modified ROMs that relocate the game segment, which the mapping would corrupt.",
+        NULL,
+        NULL,
+        {
+            { "enabled", NULL },
+            { "disabled", NULL },
+            { NULL, NULL },
+        },
+        "enabled"
+    },
+    {
         CORE_NAME "-allow-unaligned-dma",
         "Unaligned DMA Behaviour",
         NULL,

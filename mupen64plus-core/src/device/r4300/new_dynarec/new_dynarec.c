@@ -2391,10 +2391,16 @@ static void SDR_new(int pcaddr, int count)
 #error Unsupported dynarec architecture
 #endif
 
+extern int goldeneye_tlb_hack;
+
 static void tlb_speed_hacks()
 {
-  // Goldeneye hack
-  if (strncmp((char *) ROM_HEADER.Name, "GOLDENEYE",9) == 0)
+  /* Goldeneye hack: alias the demand-paged 0x7F000000 game segment
+   * directly onto the ROM so the game's TLB pager never runs. Gated
+   * by a core option: the mapping is only byte-correct for retail
+   * layouts, and bypassing the pager diverges from hardware timing
+   * and TLB state. */
+  if (goldeneye_tlb_hack && strncmp((char *) ROM_HEADER.Name, "GOLDENEYE",9) == 0)
   {
     u_int addr;
     int n;
