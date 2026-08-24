@@ -2415,19 +2415,6 @@ static void tlb_speed_hacks()
         break;
     }
     uintptr_t rom_addr=(uintptr_t)g_dev.cart.cart_rom.rom;
-    #ifdef ROM_COPY
-    // Since memory_map is 32-bit, on 64-bit systems the rom needs to be
-    // in the lower 4G of memory to use this hack.  Copy it if necessary.
-    if((void *)g_dev.cart.cart_rom.rom>(void *)0xffffffff) {
-      munmap(ROM_COPY, 67108864);
-      if(mmap(ROM_COPY, 12582912,
-              PROT_READ | PROT_WRITE,
-              MAP_FIXED | MAP_PRIVATE | MAP_ANONYMOUS,
-              -1, 0) <= 0) {DebugMessage(M64MSG_ERROR, "mmap() failed");}
-      memcpy(ROM_COPY,g_dev.cart.cart_rom.rom,12582912);
-      rom_addr=(uintptr_t)ROM_COPY;
-    }
-    #endif
     if(addr) {
       for(n=0x7F000;n<0x80000;n++) {
         g_dev.r4300.new_dynarec_hot_state.memory_map[n]=(((uintptr_t)(rom_addr+addr-0x7F000000))>>2)|WRITE_PROTECT;
@@ -9156,9 +9143,6 @@ void new_dynarec_cleanup(void)
   #else
     mprotect(base_addr, 1<<TARGET_SIZE_2, PROT_READ | PROT_WRITE);
   #endif
-#endif
-#ifdef ROM_COPY
-  if (munmap (ROM_COPY, 67108864) < 0) {DebugMessage(M64MSG_ERROR, "munmap() failed");}
 #endif
 }
 
