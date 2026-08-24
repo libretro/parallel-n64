@@ -6504,8 +6504,8 @@ static void load_assemble(int i,struct regstat *i_regs)
     cache=get_reg(i_regs->regmap,MMREG);
     assert(map>=0);
     reglist&=~(1<<map);
-    map=do_tlb_r(addr,temp,map,cache,x,c,constmap[i][s]+offset);
-    do_tlb_r_branch(map,c,constmap[i][s]+offset,&jaddr);
+    map=do_tlb_r(addr,temp,map,cache,x,c,c?(constmap[i][s]+offset):0);
+    do_tlb_r_branch(map,c,c?(constmap[i][s]+offset):0,&jaddr);
   }
 
   if((!c||memtarget)&&!dummy) {
@@ -6681,8 +6681,8 @@ static void store_assemble(int i,struct regstat *i_regs)
     cache=get_reg(i_regs->regmap,MMREG);
     assert(map>=0);
     reglist&=~(1<<map);
-    map=do_tlb_w(addr,temp,map,cache,x,c,constmap[i][s]+offset);
-    do_tlb_w_branch(map,c,constmap[i][s]+offset,&jaddr);
+    map=do_tlb_w(addr,temp,map,cache,x,c,c?(constmap[i][s]+offset):0);
+    do_tlb_w_branch(map,c,c?(constmap[i][s]+offset):0,&jaddr);
   }
 
   if(!c||memtarget) {
@@ -6803,8 +6803,8 @@ static void storelr_assemble(int i,struct regstat *i_regs)
     int cache=get_reg(i_regs->regmap,MMREG);
     assert(map>=0);
     reglist&=~(1<<map);
-    map=do_tlb_w(addr,temp,map,cache,0,c,constmap[i][s]+offset);
-    do_tlb_w_branch(map,c,constmap[i][s]+offset,&jaddr);
+    map=do_tlb_w(addr,temp,map,cache,0,c,c?(constmap[i][s]+offset):0);
+    do_tlb_w_branch(map,c,c?(constmap[i][s]+offset):0,&jaddr);
   }
 
   if(!c||memtarget)
@@ -7122,12 +7122,12 @@ static void c1ls_assemble(int i,struct regstat *i_regs)
     assert(map>=0);
     reglist&=~(1<<map);
     if (opcode[i]==0x31||opcode[i]==0x35) { // LWC1/LDC1
-      map=do_tlb_r(addr,ar,map,cache,0,c,constmap[i][s]+offset);
-      do_tlb_r_branch(map,c,constmap[i][s]+offset,&jaddr2);
+      map=do_tlb_r(addr,ar,map,cache,0,c,c?(constmap[i][s]+offset):0);
+      do_tlb_r_branch(map,c,c?(constmap[i][s]+offset):0,&jaddr2);
     }
     else if (opcode[i]==0x39||opcode[i]==0x3D) { // SWC1/SDC1
-      map=do_tlb_w(addr,ar,map,cache,0,c,constmap[i][s]+offset);
-      do_tlb_w_branch(map,c,constmap[i][s]+offset,&jaddr2);
+      map=do_tlb_w(addr,ar,map,cache,0,c,c?(constmap[i][s]+offset):0);
+      do_tlb_w_branch(map,c,c?(constmap[i][s]+offset):0,&jaddr2);
     }
   }
 
