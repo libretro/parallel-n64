@@ -278,6 +278,7 @@ char customini[] =
 "frameBufferEmulation\\copyFromRDRAM=1\n"
 "frameBufferEmulation\\copyToRDRAM=0\n"
 "frameBufferEmulation\\copyDepthToRDRAM=0\n"
+"generalEmulation\\enableFragmentDepthWrite=1\n"
 "\n"
 "[ROCKMAN%20DASH]\n"
 "Good_Name=Rockman Dash - Hagane no Boukenshin (J)\n"
