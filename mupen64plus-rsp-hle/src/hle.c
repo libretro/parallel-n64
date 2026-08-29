@@ -472,8 +472,15 @@ static void streaming_gfx_task(struct hle_t* hle)
     resume = l_streaming_gfx_running
           || ((*dmem_u32(hle, TASK_FLAGS) & 1) != 0);
 
-    if (!resume) {
-        /* the microcode clears SIG1 and SIG2 at task start */
+    if (!l_streaming_gfx_running || (*dmem_u32(hle, TASK_FLAGS) & 1)) {
+        /* every real launch of the task runs the microcode's boot, which
+         * clears SIG1 and SIG2 -- the fresh start AND the relaunch of a
+         * yielded task. Only the plain re-dispatch of a suspended walk
+         * (l_streaming_gfx_running set, no launch in between) keeps the
+         * signals untouched. Without the clear on the yielded relaunch,
+         * SIG1 survives the yield, and once the resumed task completes,
+         * osSpTaskYielded reads the stale SIG1 and the game files the
+         * completion as another yield. */
         *hle->sp_status &= ~(SP_STATUS_SIG1 | SP_STATUS_TASKDONE);
     }
 
@@ -499,8 +506,11 @@ static void streaming_gfx_task(struct hle_t* hle)
 
     if (*hle->sp_status & SP_STATUS_SIG0) {
         /* the CPU requested a yield: answer with the microcode's yield
-         * status (SET_SIG1|SET_SIG2, break). The walker state stays
-         * saved; the relaunch arrives with OS_TASK_YIELDED set. */
+         * status (SET_SIG1|SET_SIG2, break). SIG0 stays set -- the
+         * game's osSpTaskYielded still needs to see the request, and
+         * the CPU clears it itself on the relaunch (osSpTaskLoad). The
+         * walker state stays saved; the relaunch arrives with
+         * OS_TASK_YIELDED set. */
         rsp_break(hle, SP_STATUS_SIG1 | SP_STATUS_TASKDONE);
         return;
     }
