@@ -143,9 +143,22 @@ void VI_UpdateScreen()
 		} else if (!FBInfo::fbInfo.isSupported() &&
 				 (config.generalEmulation.hacks & hack_RE2) == 0 &&
 				 !pBuffer->isValid(true)) {
-			gDP.changed |= CHANGED_CPU_FB_WRITE;
-			if (config.frameBufferEmulation.copyToRDRAM == 0 && (config.generalEmulation.hacks & hack_subscreen) == 0)
+			if (!pBuffer->m_cfb && !pBuffer->m_copiedToRdram &&
+				(config.generalEmulation.hacks & hack_subscreen) == 0) {
+				/* CPU writes landed under a buffer the RDP rendered. That
+				 * buffer's RDRAM was never synchronized, so it does not hold
+				 * the picture on screen -- handing the frame to the
+				 * CPU-framebuffer path would tear the buffer down and present
+				 * that stale memory. The console shows the last rendered
+				 * picture here, so keep presenting the texture, and refresh
+				 * the validity snapshot so the check settles once the writes
+				 * stop. */
 				pBuffer->copyRdram();
+			} else {
+				gDP.changed |= CHANGED_CPU_FB_WRITE;
+				if (config.frameBufferEmulation.copyToRDRAM == 0 && (config.generalEmulation.hacks & hack_subscreen) == 0)
+					pBuffer->copyRdram();
+			}
 		}
 
 		const bool bCFB = (gDP.changed&CHANGED_CPU_FB_WRITE) == CHANGED_CPU_FB_WRITE;
