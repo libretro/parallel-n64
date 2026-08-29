@@ -1549,7 +1549,21 @@ void FrameBufferList::renderBuffer()
 	if (m_pCurrent != nullptr) {
 		gfxContext.bindFramebuffer(bufferTarget::DRAW_FRAMEBUFFER, m_pCurrent->m_FBO);
 	}
-	if (config.frameBufferEmulation.forceDepthBufferClear != 0) {
+	/* Resident Evil 2 draws its characters with the depth test on and never
+	 * clears the depth buffer, so from the second frame on every character
+	 * fails GL_LESS against its own previous depth and only the 2D quads
+	 * reach the screen. Clear it between frames, as forceDepthBufferClear
+	 * does. The test is on the hack rather than on the config field because
+	 * the core reloads its options after ROM load and resets the
+	 * frameBufferEmulation fields, while generalEmulation.hacks survives.
+	 * Excluded whenever the depth map lives in what would be cleared: under
+	 * N64DepthCompare the N64 depth image textures back the background
+	 * occlusion, and under enableFragmentDepthWrite the map is written into
+	 * the GL depth attachment itself. */
+	if (config.frameBufferEmulation.forceDepthBufferClear != 0 ||
+	    ((config.generalEmulation.hacks & hack_RE2) != 0 &&
+	     config.frameBufferEmulation.N64DepthCompare == 0 &&
+	     config.generalEmulation.enableFragmentDepthWrite == 0)) {
 		drawer.clearDepthBuffer();
 	}
 
