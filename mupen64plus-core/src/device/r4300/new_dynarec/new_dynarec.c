@@ -1909,7 +1909,7 @@ void* ERET_new(void)
     {
         uint32_t is64 = 0;
         for(int i=0;i<32;i++)
-            is64 = (((int)(state->regs[i]>>32)^((int)state->regs[i]>>31))!=0)<<i;
+            is64 |= (((int)(state->regs[i]>>32)^((int)state->regs[i]>>31))!=0)<<i;
 
         is64 |= (((int)(state->hi>>32)^((int)state->hi>>31))!=0);
         is64 |= (((int)(state->lo>>32)^((int)state->lo>>31))!=0);
