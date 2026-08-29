@@ -477,16 +477,31 @@ void do_SP_Task(struct rsp_core* sp)
     else if (sp->mi->regs[MI_INTR_REG] & MI_INTR_SP)
     {
         cp0_update_count(sp->mi->r4300);
-        /* Leave MI_INTR_SP asserted for the CPU's handler to find.
-         * Consuming it here scheduled the event and then removed the
-         * only evidence of where it came from, so a handler that
-         * dispatches on MI_INTR_REG - as libdragon's does - saw an
-         * interrupt with no source and ignored it.  Its rspq syncpoints
-         * are signalled exactly this way, so every wait on one timed
-         * out.  The incomplete-task branch above already keeps the bit
-         * for the same reason; the completing branch has to as well.
-         * The CPU clears it by writing SP_STATUS with SP_CLR_INTR,
-         * which update_sp_status already handles. */
+        /* A completing task must deliver its break ONCE, at
+         * +sp_delay_time, with the status bits and the interrupt
+         * paired: the tail below clears TASKDONE|BROKE|HALT and the
+         * deferred event re-exposes them together with the raise.
+         * Consume the bit rsp_break set so the break does not ALSO
+         * deliver an early edge now: status-polling games acknowledge
+         * that early interrupt, find no status, and dismiss it, while
+         * schedulers that trust the interrupt count it twice --
+         * Gauntlet Legends' RSP scheduler pairs completion messages
+         * with in-flight tasks positionally, retired one task too many
+         * on the duplicate, popped an empty slot without a NULL check
+         * and parked its dispatcher in a blocking osSendMesg on a NULL
+         * queue: the scene-change deadlock. The same duplicate also
+         * deadlocked its cxd4 LLE fallback at the Midway logo, closing
+         * the GLideN64 path entirely, and produced Lego Racers' and
+         * Paperboy's random polygons (display lists reused mid-build).
+         * Mid-task raises are not affected: a persistent task
+         * (libdragon's rspq syncpoints, the BOSS WAITSIGNAL handshake)
+         * goes through the incomplete branch above, which keeps the
+         * bit asserted for the CPU to service. Clear the cause line
+         * too so the swallowed early edge cannot deliver as a
+         * source-less interrupt. */
+        sp->mi->regs[MI_INTR_REG] &= ~MI_INTR_SP;
+        r4300_check_interrupt(sp->mi->r4300, CP0_CAUSE_IP2,
+            sp->mi->regs[MI_INTR_REG] & sp->mi->regs[MI_INTR_MASK_REG]);
         add_interrupt_event(&sp->mi->r4300->cp0, SP_INT, sp_delay_time);
     }
     if ((sp->regs[SP_STATUS_REG] & (SP_STATUS_HALT | SP_STATUS_BROKE)))
