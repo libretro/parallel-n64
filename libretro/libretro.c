@@ -487,12 +487,11 @@ static void core_settings_autoselect_rsp_plugin(void)
 
    rsp_plugin = RSP_HLE;
 
-   if (
-          (!strcmp((const char*)ROM_HEADER.Name, "GAUNTLET LEGENDS"))
-      )
-   {
-      rsp_plugin = RSP_CXD4;
-   }
+   /* No hardcoded RSP routing for Gauntlet Legends: rsp-hle detects its
+    * streaming microcode and serves it (angrylion), or declares itself
+    * unable and the task falls back to the LLE plugin (GLideN64). The old
+    * RSP_CXD4 override predated the streaming support and forced the one
+    * path that cannot work under either renderer. */
 
    if (!strcmp((const char*)ROM_HEADER.Name, "CONKER BFD"))
       rsp_plugin = RSP_HLE;
