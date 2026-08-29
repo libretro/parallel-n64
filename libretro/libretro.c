@@ -2564,6 +2564,41 @@ void update_variables(bool startup)
       EnableCopyAuxToRDRAM = !strcmp(var.value, "False") ? 0 : 1;
    }
 
+   var.key = CORE_NAME "-gliden64-EnableOverscan";
+   var.value = NULL;
+   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+   {
+      EnableOverscan = !strcmp(var.value, "Enabled") ? 1 : 0;
+   }
+
+   var.key = CORE_NAME "-gliden64-OverscanTop";
+   var.value = NULL;
+   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+   {
+      OverscanTop = atoi(var.value);
+   }
+
+   var.key = CORE_NAME "-gliden64-OverscanLeft";
+   var.value = NULL;
+   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+   {
+      OverscanLeft = atoi(var.value);
+   }
+
+   var.key = CORE_NAME "-gliden64-OverscanRight";
+   var.value = NULL;
+   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+   {
+      OverscanRight = atoi(var.value);
+   }
+
+   var.key = CORE_NAME "-gliden64-OverscanBottom";
+   var.value = NULL;
+   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+   {
+      OverscanBottom = atoi(var.value);
+   }
+
    var.key = CORE_NAME "-gliden64-GLideN64IniBehaviour";
    var.value = NULL;
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)

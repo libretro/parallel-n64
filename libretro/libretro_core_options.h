@@ -1759,7 +1759,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
             {"Enabled", NULL},
             { NULL, NULL },
         },
-        "Enabled"
+        "Disabled"
     },
     {
         CORE_NAME "-gliden64-OverscanTop",
