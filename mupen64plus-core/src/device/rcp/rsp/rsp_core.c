@@ -493,15 +493,37 @@ void do_SP_Task(struct rsp_core* sp)
          * deadlocked its cxd4 LLE fallback at the Midway logo, closing
          * the GLideN64 path entirely, and produced Lego Racers' and
          * Paperboy's random polygons (display lists reused mid-build).
-         * Mid-task raises are not affected: a persistent task
-         * (libdragon's rspq syncpoints, the BOSS WAITSIGNAL handshake)
-         * goes through the incomplete branch above, which keeps the
-         * bit asserted for the CPU to service. Clear the cause line
-         * too so the swallowed early edge cannot deliver as a
-         * source-less interrupt. */
-        sp->mi->regs[MI_INTR_REG] &= ~MI_INTR_SP;
-        r4300_check_interrupt(sp->mi->r4300, CP0_CAUSE_IP2,
-            sp->mi->regs[MI_INTR_REG] & sp->mi->regs[MI_INTR_MASK_REG]);
+         * Only the break's own edge may be withdrawn, and only the
+         * deferred event can replay it: rsp_interrupt_event re-raises
+         * iff SP_STATUS_INTR_BREAK is set.  With INTR_BREAK clear the
+         * break raised nothing, so a pending bit here can only be a
+         * task-raised interrupt -- libdragon's rspq runs with
+         * INTR_BREAK off ("we don't need it"), raises syncpoints via
+         * SET_INTR mid-slice and then breaks idle in the same
+         * doRspCycles slice, landing exactly here.  Consuming that bit
+         * destroys the syncpoint (nothing replays it) and every
+         * rspq_syncpoint_wait times out; keep it asserted for the CPU,
+         * as the incomplete branch does.  With INTR_BREAK set, a
+         * task-raised edge in the same slice as the break coalesces
+         * into the single deferred delivery -- the CPU could not have
+         * run between them, so the two edges were never separable
+         * here.
+         *
+         * Withdrawing the edge must also withdraw its delivery
+         * machinery: the raise queued a CHECK_INT (count = now, queue
+         * front) whose handler takes the interrupt exception
+         * unconditionally.  Clearing the cause line alone leaves that
+         * node to fire as a source-less exception the moment the CPU
+         * resumes -- once per completing task.  Cancel it when nothing
+         * else is pending on the line; if another MI source is still
+         * pending, clear_rcp_interrupt has re-asserted IP2 and the
+         * node stays meaningful for that source. */
+        if (sp->regs[SP_STATUS_REG] & SP_STATUS_INTR_BREAK)
+        {
+            clear_rcp_interrupt(sp->mi, MI_INTR_SP);
+            if ((sp->mi->regs[MI_INTR_REG] & sp->mi->regs[MI_INTR_MASK_REG]) == 0)
+                remove_event(&sp->mi->r4300->cp0.q, CHECK_INT);
+        }
         add_interrupt_event(&sp->mi->r4300->cp0, SP_INT, sp_delay_time);
     }
     if ((sp->regs[SP_STATUS_REG] & (SP_STATUS_HALT | SP_STATUS_BROKE)))
