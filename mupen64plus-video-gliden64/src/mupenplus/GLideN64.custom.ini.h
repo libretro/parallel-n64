@@ -27,6 +27,7 @@ char customini[] =
 "frameBufferEmulation\\copyFromRDRAM=1\n"
 "frameBufferEmulation\\copyToRDRAM=0\n"
 "frameBufferEmulation\\copyDepthToRDRAM=0\n"
+"generalEmulation\\enableFragmentDepthWrite=1\n"
 "\n"
 "[BOMBERMAN64E]\n"
 "Good_Name=Bomberman 64 (E) [!]\n"

@@ -1420,7 +1420,7 @@ void FrameBufferList::renderBuffer()
 	 * worth a game-specific hack at all. */
 	if ((config.generalEmulation.hacks & hack_RE2) != 0) {
 		const s32 room = (s32)pBuffer->m_pTexture->realHeight;
-		if ((srcY0 + srcHeight + 4) * (s32)pBuffer->m_scale <= room)
+		if ((s32)ceilf(f32(srcY0 + srcHeight + 4) * pBuffer->m_scale) <= room)
 			srcHeight += 4;
 	}
 
