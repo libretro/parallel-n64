@@ -143,7 +143,8 @@ void VI_UpdateScreen()
 		} else if (!FBInfo::fbInfo.isSupported() &&
 				 (config.generalEmulation.hacks & hack_RE2) == 0 &&
 				 !pBuffer->isValid(true)) {
-			if (!pBuffer->m_cfb && !pBuffer->m_copiedToRdram &&
+			if (config.frameBufferEmulation.copyToRDRAM != 0 &&
+				!pBuffer->m_cfb && !pBuffer->m_copiedToRdram &&
 				(config.generalEmulation.hacks & hack_subscreen) == 0) {
 				/* CPU writes landed under a buffer the RDP rendered. That
 				 * buffer's RDRAM was never synchronized, so it does not hold
@@ -152,7 +153,16 @@ void VI_UpdateScreen()
 				 * that stale memory. The console shows the last rendered
 				 * picture here, so keep presenting the texture, and refresh
 				 * the validity snapshot so the check settles once the writes
-				 * stop. */
+				 * stop.
+				 *
+				 * Only when a color-copy mechanism exists (copyToRDRAM on):
+				 * m_copiedToRdram false then means the copy has not landed
+				 * YET.  With the copy disabled the flag is false for every
+				 * rendered buffer forever, and suppressing the takeover on
+				 * it would silence the CPU-framebuffer path -- which does
+				 * not need the color copy at all -- for any address that
+				 * ever hosted 3D, freezing genuine CPU-drawn screens on the
+				 * last rendered frame. */
 				pBuffer->copyRdram();
 			} else {
 				gDP.changed |= CHANGED_CPU_FB_WRITE;
