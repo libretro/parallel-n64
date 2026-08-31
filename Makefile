@@ -1199,7 +1199,7 @@ clean: clean-tools
 	rm -f $(OBJECTS) $(TARGET) $(OBJECTS:.o=.d) .build-flags
 
 clean-tools:
-	rm -f $(ANGRYLION_TOOLS)
+	rm -f $(ANGRYLION_TOOLS) lrhost$(EXE_EXT)
 
 # Angrylion benchmark and bit-exactness harnesses (tools/angrylion_*.c),
 # linked against the core's own angrylion objects: `make tools` after a
@@ -1214,7 +1214,16 @@ ANGRYLION_TOOLS := angrylion_bench$(EXE_EXT) angrylion_verify$(EXE_EXT) \
 angrylion_%$(EXE_EXT): tools/angrylion_%.c $(ANGRYLION_TOOL_OBJS)
 	$(CC) $(CPPFLAGS) $(CFLAGS) -I$(VIDEODIR_ANGRYLION) -w $< $(ANGRYLION_TOOL_OBJS) -o $@ -lpthread -lm
 
-tools: $(ANGRYLION_TOOLS)
+# Headless libretro host: loads the built core and a ROM, times retro_run.
+ifeq ($(EXE_EXT),.exe)
+LRHOST_LIBS :=
+else
+LRHOST_LIBS := -ldl
+endif
+lrhost$(EXE_EXT): tools/lrhost.c $(LIBRETRO_COMM_DIR)/features/features_cpu.o
+	$(CC) $(CPPFLAGS) $(CFLAGS) -w $< $(LIBRETRO_COMM_DIR)/features/features_cpu.o -o $@ $(LRHOST_LIBS) -lpthread -lm
+
+tools: $(ANGRYLION_TOOLS) lrhost$(EXE_EXT)
 
 .PHONY: clean clean-tools tools
 -include $(OBJECTS:.o=.d)
