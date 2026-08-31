@@ -229,7 +229,6 @@ static bool     reinit_screen       = false;
 static bool     first_context_reset = false;
 static bool     context_setup_first_init = false;
 
-bool frame_dupe                     = false;
 
 /* Set per retro_run from RETRO_ENVIRONMENT_GET_AUDIO_VIDEO_ENABLE: nonzero
  * means the frontend will discard this frame's video (a run-ahead "future"
@@ -941,8 +940,13 @@ void emu_step_render(void)
       frame_latched = false;
       present_frame();
    }
-   else if (!frame_presented && frame_dupe) /* Not duping violates the libretro API; skipping it is a speedhack. */
+   else if (!frame_presented)
+   {
+      /* one frame per retro_run is what the libretro API and every
+       * frontend pacing path (fast-forward, run-ahead, netplay) expect;
+       * nothing new was latched, so present the last frame again */
       video_cb(NULL, screen_width, screen_height, screen_pitch);
+   }
 
    frame_presented = false;
 }
@@ -2171,17 +2175,6 @@ void update_variables(bool startup)
          g_count_per_scanline = 1500;
       else if (!strcmp(var.value, "2200"))
          g_count_per_scanline = 2200;
-   }
-
-   var.key = "parallel-n64-framerate";
-   var.value = NULL;
-
-   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value && initial_boot)
-   {
-      if (!strcmp(var.value, "original"))
-         frame_dupe = false;
-      else if (!strcmp(var.value, "fullspeed"))
-         frame_dupe = true;
    }
 
    var.key = "parallel-n64-alt-map";

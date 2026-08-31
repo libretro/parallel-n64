@@ -320,7 +320,6 @@ int CI_SET = true;
 uint32_t swapped_addr = 0;
 int depth_buffer_fog;
 
-extern bool frame_dupe;
 
 void glide64ProcessDList(void)
 {
@@ -458,9 +457,9 @@ void glide64ProcessDList(void)
     rdp.scale_x = rdp.scale_x_bak;
     rdp.scale_y = rdp.scale_y_bak;
   }
-  if(settings.hacks & hack_OOT && !frame_dupe)
-    copyWhiteToRDRAM(); /* Subscreen delay fix */
-  else if (settings.frame_buffer & fb_ref)
+  /* the subscreen-delay white copy was the frame-skipping path's; with a
+   * frame presented every VI it never applies */
+  if (settings.frame_buffer & fb_ref)
     CopyFrameBuffer (GR_BUFFER_BACKBUFFER);
 
   if ((settings.hacks&hack_TGR2) && rdp.vi_org_reg != *gfx_info.VI_ORIGIN_REG && CI_SET)
