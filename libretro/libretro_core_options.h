@@ -75,6 +75,22 @@ struct retro_core_option_v2_category option_cats_us[] = {
 
 struct retro_core_option_v2_definition option_defs_us[] = {
     {
+        CORE_NAME "-upscaling",
+        "Upscaling factor (restart)",
+        NULL,
+        "Render at a multiple of the console's resolution. ParaLLEl-RDP honours every factor; Angrylion renders at up to 4x and treats 8x as 4x.",
+        NULL,
+        NULL,
+        {
+            { "1x", NULL },
+            { "2x", NULL },
+            { "4x", NULL },
+            { "8x", NULL },
+            { NULL, NULL },
+        },
+        "1x"
+    },
+    {
         CORE_NAME "-aleck64-testmode",
         "Aleck64: Test Mode",
         "Test Mode",
@@ -823,22 +839,6 @@ struct retro_core_option_v2_definition option_defs_us[] = {
             { NULL, NULL },
         },
         "enabled"
-    },
-    {
-        CORE_NAME "-parallel-rdp-upscaling",
-        "(ParaLLEl-RDP) Upscaling factor (restart)",
-        "Upscaling factor (restart)",
-        "Upscaling factor (restart)",
-        NULL,
-        "parallel",
-        {
-            { "1x", NULL },
-            { "2x", NULL },
-            { "4x", NULL },
-            { "8x", NULL },
-            { NULL, NULL },
-        },
-        "1x"
     },
     {
         CORE_NAME "-parallel-rdp-downscaling",

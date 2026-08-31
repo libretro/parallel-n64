@@ -1667,7 +1667,7 @@ void update_variables(bool startup)
    else
 	   parallel_set_dither_filter(true);
 
-   var.key = "parallel-n64-parallel-rdp-upscaling";
+   var.key = "parallel-n64-upscaling";
    var.value = NULL;
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
        parallel_set_upscaling(strtol(var.value, NULL, 0));
