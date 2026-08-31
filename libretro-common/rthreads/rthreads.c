@@ -33,6 +33,7 @@
 
 #include <boolean.h>
 #include <rthreads/rthreads.h>
+#include <retro_atomic.h>
 
 /* with RETRO_WIN32_USE_PTHREADS, pthreads can be used even on win32.
  * Maybe only supported in MSVC>=2005 */
@@ -163,30 +164,91 @@ struct slock
 };
 
 #ifdef USE_WIN32_THREADS
-/* One waiter of a condition variable. Each waiting thread blocks on an
- * event of its own, so a wake is delivered to exactly the thread it is
- * meant for: there is nothing to steal and nothing to lose, an event set
- * before the thread reaches its wait is simply still set when it gets
- * there. Nodes belong to the scond and are recycled through its spare
- * list, so a wait costs no allocation and no handle creation once the
- * scond has seen as many concurrent waiters before. */
+/* Win32 condition variable.
+ *
+ * The same shape as the one in ntdll: the scond is one word holding a
+ * lock-free list of waiter blocks that live on the waiting threads'
+ * stacks, each block with a flag word of its own. A wait pushes its
+ * block with a single compare-and-swap, releases the caller's lock,
+ * spins for a bounded time on its own flag word, and only then blocks
+ * in the kernel; a wake takes the block off the list and flips the flag,
+ * and issues a kernel wake only for a waiter that had committed to
+ * blocking, which is what makes a back-to-back wake cost no syscall at
+ * all. The spin is the hardware wait where there is one - mwaitx on AMD
+ * and umwait on Intel park the core on the flag word's cache line with
+ * a TSC deadline, so a sibling hyperthread is not disturbed - and a
+ * pause loop elsewhere; a single-processor machine does not spin.
+ *
+ * The kernel wait is chosen once per process from what ntdll exports:
+ * NtWaitForAlertByThreadId / NtAlertThreadByThreadId (Windows 8 and
+ * later), the keyed event pair (XP and later), and an auto-reset event
+ * per thread where neither exists (the Xbox targets). RTHREADS_SCOND in
+ * the environment picks one by name (alert, keyed, event) and
+ * RTHREADS_SCOND_SPIN a spin mode (none, pause, mwaitx, umwait) or a
+ * TSC bound as a number, for measurement.
+ *
+ * Bit 0 of the scond word is a lock that wakers and timed-out waiters
+ * take to edit the list; pushes never take it. Signal wakes the oldest
+ * waiter, broadcast takes the whole list with one compare-and-swap. */
+
+#define SCOND_HEAD_LOCK ((uintptr_t)1)
+#define SCOND_HEAD_MASK (~(uintptr_t)1)
+
+#define SCOND_W_WOKEN   1  /* a waker has taken this block */
+#define SCOND_W_ASLEEP  2  /* the waiter committed to the kernel wait */
+
 struct scond_waiter
 {
    struct scond_waiter *next;
-   HANDLE event;
+   HANDLE event;               /* event fallback only */
+   retro_atomic_int_t flags;
+   DWORD tid;
 };
+
+enum scond_sleep_kind
+{
+   SCOND_SLEEP_ALERT = 1,
+   SCOND_SLEEP_KEYED,
+   SCOND_SLEEP_EVENT
+};
+
+enum scond_spin_kind
+{
+   SCOND_SPIN_NONE = 0,
+   SCOND_SPIN_PAUSE,
+   SCOND_SPIN_MWAITX,
+   SCOND_SPIN_UMWAIT
+};
+
+typedef LONG (NTAPI *scond_nt_wait_alert_t)(void *hint, LARGE_INTEGER *timeout);
+typedef LONG (NTAPI *scond_nt_alert_tid_t)(HANDLE tid);
+typedef LONG (NTAPI *scond_nt_keyed_t)(HANDLE h, void *key, BOOLEAN alertable,
+      LARGE_INTEGER *timeout);
+typedef LONG (NTAPI *scond_nt_create_keyed_t)(HANDLE *h, ULONG access,
+      void *attr, ULONG flags);
+
+static struct
+{
+   scond_nt_wait_alert_t wait_alert;
+   scond_nt_alert_tid_t alert_tid;
+   scond_nt_keyed_t wait_keyed;
+   scond_nt_keyed_t release_keyed;
+   HANDLE keyed;
+   retro_atomic_int_t state;   /* 0 unresolved, 1 resolving, 2 ready */
+   int sleep;
+   int spin;
+   unsigned spin_cycles;       /* TSC bound for the hardware waits */
+   unsigned spin_iters;        /* iteration bound for the pause loop */
+   DWORD tls_event;
+} scond_g;
+
+static void scond_global_init(void);
 #endif
 
 struct scond
 {
 #ifdef USE_WIN32_THREADS
-   /* waiting threads in FIFO order, and the nodes not in use */
-   struct scond_waiter *head;
-   struct scond_waiter *tail;
-   struct scond_waiter *spare;
-   /* guards the three lists; SetEvent on a waiter is done under it so a
-    * node returned to the spare list never carries a stale signal */
-   CRITICAL_SECTION cs;
+   retro_atomic_ptr_t head;   /* struct scond_waiter * | SCOND_HEAD_LOCK */
 #else
    pthread_cond_t cond;
 #endif
@@ -459,10 +521,8 @@ scond_t *scond_new(void)
       return NULL;
 
 #ifdef USE_WIN32_THREADS
-   cond->head  = NULL;
-   cond->tail  = NULL;
-   cond->spare = NULL;
-   InitializeCriticalSection(&cond->cs);
+   scond_global_init();
+   retro_atomic_ptr_init(&cond->head, NULL);
 #else
    if (pthread_cond_init(&cond->cond, NULL) != 0)
    {
@@ -480,17 +540,7 @@ void scond_free(scond_t *cond)
       return;
 
 #ifdef USE_WIN32_THREADS
-   {
-      struct scond_waiter *w = cond->spare;
-      while (w)
-      {
-         struct scond_waiter *next = w->next;
-         CloseHandle(w->event);
-         free(w);
-         w = next;
-      }
-   }
-   DeleteCriticalSection(&cond->cs);
+   /* nothing is owned: the waiter blocks live on their threads' stacks */
 #else
    pthread_cond_destroy(&cond->cond);
 #endif
@@ -498,74 +548,460 @@ void scond_free(scond_t *cond)
 }
 
 #ifdef USE_WIN32_THREADS
-/* Block on the caller's own event until signalled or dwMilliseconds have
- * passed. The node is queued before the lock is released, so a signal
- * that follows the release finds it; the event holds the signal until
- * the thread arrives at the wait. Returns false only on timeout. */
+
+/* ---- processor probes ---------------------------------------------- */
+
+#if defined(_MSC_VER) && (defined(_M_IX86) || defined(_M_X64)) && _MSC_VER >= 1500
+#include <intrin.h>
+#define SCOND_HAVE_X86_INTRIN 1
+#if _MSC_VER >= 1912
+#include <immintrin.h>
+#define SCOND_HAVE_MWAITX 1
+#endif
+#if _MSC_VER >= 1924
+#define SCOND_HAVE_UMWAIT 1
+#endif
+#elif defined(__GNUC__) && defined(__x86_64__)
+#define SCOND_HAVE_X86_ASM 1
+#define SCOND_HAVE_MWAITX 1
+#define SCOND_HAVE_UMWAIT 1
+#endif
+
+#if defined(SCOND_HAVE_X86_INTRIN) || defined(SCOND_HAVE_X86_ASM)
+#define SCOND_HAVE_X86 1
+#endif
+
+#if defined(SCOND_HAVE_X86)
+static void scond_cpuid(unsigned leaf, unsigned sub, unsigned r[4])
+{
+#if defined(SCOND_HAVE_X86_INTRIN)
+   int v[4];
+   __cpuidex(v, (int)leaf, (int)sub);
+   r[0] = (unsigned)v[0]; r[1] = (unsigned)v[1];
+   r[2] = (unsigned)v[2]; r[3] = (unsigned)v[3];
+#else
+   __asm__ __volatile__("cpuid"
+         : "=a"(r[0]), "=b"(r[1]), "=c"(r[2]), "=d"(r[3])
+         : "a"(leaf), "c"(sub));
+#endif
+}
+
+static INLINE unsigned __int64 scond_tsc(void)
+{
+#if defined(SCOND_HAVE_X86_INTRIN)
+   return __rdtsc();
+#else
+   unsigned lo, hi;
+   __asm__ __volatile__("rdtsc" : "=a"(lo), "=d"(hi));
+   return ((unsigned __int64)hi << 32) | lo;
+#endif
+}
+
+static INLINE void scond_pause(void)
+{
+#if defined(SCOND_HAVE_X86_INTRIN)
+   _mm_pause();
+#else
+   __asm__ __volatile__("pause" ::: "memory");
+#endif
+}
+
+#if defined(SCOND_HAVE_MWAITX)
+/* AMD: park on the line holding *addr until it is written or ticks
+ * TSC cycles pass (ECX bit 1 enables the timer) */
+static INLINE void scond_monitorx(const void *addr)
+{
+#if defined(SCOND_HAVE_X86_INTRIN)
+   _mm_monitorx((void*)addr, 0, 0);
+#else
+   __asm__ __volatile__(".byte 0x0f, 0x01, 0xfa"      /* monitorx */
+         :: "a"(addr), "c"(0), "d"(0) : "memory");
+#endif
+}
+
+static INLINE void scond_mwaitx(unsigned ticks)
+{
+#if defined(SCOND_HAVE_X86_INTRIN)
+   _mm_mwaitx(0, 2, ticks);
+#else
+   __asm__ __volatile__(".byte 0x0f, 0x01, 0xfb"      /* mwaitx */
+         :: "a"(0), "b"(ticks), "c"(2) : "memory");
+#endif
+}
+#endif
+
+#if defined(SCOND_HAVE_UMWAIT)
+/* Intel WAITPKG: park on the line until written or the absolute TSC
+ * deadline; control 1 asks for the lighter C0.1 state */
+static INLINE void scond_umonitor(const void *addr)
+{
+#if defined(SCOND_HAVE_X86_INTRIN)
+   _umonitor((void*)addr);
+#else
+   __asm__ __volatile__(".byte 0xf3, 0x0f, 0xae, 0xf7" /* umonitor rdi */
+         :: "D"(addr) : "memory");
+#endif
+}
+
+static INLINE void scond_umwait(unsigned __int64 deadline)
+{
+#if defined(SCOND_HAVE_X86_INTRIN)
+   _umwait(1, deadline);
+#else
+   __asm__ __volatile__(".byte 0xf2, 0x0f, 0xae, 0xf1" /* umwait ecx */
+         :: "c"(1), "a"((unsigned)deadline), "d"((unsigned)(deadline >> 32))
+         : "memory", "cc");
+#endif
+}
+#endif
+#endif /* SCOND_HAVE_X86 */
+
+/* the spin polls the waiter's own flag word: a plain load on x86 (the
+ * word is written by one waker with a locked op), an acquire elsewhere */
+#if defined(SCOND_HAVE_X86)
+#define scond_flags_peek(w) (*(volatile LONG*)&(w)->flags)
+#else
+#define scond_flags_peek(w) retro_atomic_load_acquire_int(&(w)->flags)
+#endif
+
+/* ---- once-per-process setup ---------------------------------------- */
+
+#define SCOND_DEFAULT_SPIN_CYCLES 0x90b40u  /* the value ntdll ships */
+
+static void scond_global_resolve(void)
+{
+#if !defined(_XBOX)
+   SYSTEM_INFO si;
+#endif
+   const char *env;
+   unsigned cycles = SCOND_DEFAULT_SPIN_CYCLES;
+
+   scond_g.sleep = SCOND_SLEEP_EVENT;
+#if !defined(_XBOX)
+   {
+      HMODULE nt = GetModuleHandleA("ntdll.dll");
+      if (nt)
+      {
+         scond_nt_create_keyed_t create_keyed;
+         scond_g.wait_alert    = (scond_nt_wait_alert_t)(void (*)(void))
+            GetProcAddress(nt, "NtWaitForAlertByThreadId");
+         scond_g.alert_tid     = (scond_nt_alert_tid_t)(void (*)(void))
+            GetProcAddress(nt, "NtAlertThreadByThreadId");
+         scond_g.wait_keyed    = (scond_nt_keyed_t)(void (*)(void))
+            GetProcAddress(nt, "NtWaitForKeyedEvent");
+         scond_g.release_keyed = (scond_nt_keyed_t)(void (*)(void))
+            GetProcAddress(nt, "NtReleaseKeyedEvent");
+         create_keyed          = (scond_nt_create_keyed_t)(void (*)(void))
+            GetProcAddress(nt, "NtCreateKeyedEvent");
+         env = getenv("RTHREADS_SCOND");
+         if (scond_g.wait_alert && scond_g.alert_tid
+               && !(env && strcmp(env, "alert")))
+            scond_g.sleep = SCOND_SLEEP_ALERT;
+         else if (scond_g.wait_keyed && scond_g.release_keyed && create_keyed
+               && !(env && strcmp(env, "keyed"))
+               && create_keyed(&scond_g.keyed, 0x1f0003 /* EVENT_ALL_ACCESS */, NULL, 0) == 0)
+            scond_g.sleep = SCOND_SLEEP_KEYED;
+      }
+   }
+#endif
+   if (scond_g.sleep == SCOND_SLEEP_EVENT)
+      scond_g.tls_event = TlsAlloc();
+
+#if defined(_XBOX)
+   /* the 360 has six hardware threads, the original Xbox one core */
+#if defined(_M_PPC) || defined(_XENON)
+   scond_g.spin = SCOND_SPIN_PAUSE;
+#else
+   scond_g.spin = SCOND_SPIN_NONE;
+#endif
+#else
+#if defined(__WINRT__) || defined(WINAPI_FAMILY) && WINAPI_FAMILY == WINAPI_FAMILY_PHONE_APP
+   GetNativeSystemInfo(&si);
+#else
+   GetSystemInfo(&si);
+#endif
+   scond_g.spin = si.dwNumberOfProcessors > 1 ? SCOND_SPIN_PAUSE : SCOND_SPIN_NONE;
+#endif
+#if defined(SCOND_HAVE_X86)
+   if (scond_g.spin)
+   {
+      unsigned r[4];
+      scond_cpuid(0, 0, r);
+      if (r[0] >= 7)
+      {
+         scond_cpuid(7, 0, r);
+#if defined(SCOND_HAVE_UMWAIT)
+         if (r[2] & (1u << 5))
+            scond_g.spin = SCOND_SPIN_UMWAIT;
+#endif
+      }
+#if defined(SCOND_HAVE_MWAITX)
+      scond_cpuid(0x80000000u, 0, r);
+      if (r[0] >= 0x80000001u)
+      {
+         scond_cpuid(0x80000001u, 0, r);
+         if (r[2] & (1u << 29))
+            scond_g.spin = SCOND_SPIN_MWAITX;
+      }
+#endif
+   }
+#endif
+   env = getenv("RTHREADS_SCOND_SPIN");
+   if (env)
+   {
+      if (!strcmp(env, "none"))
+         scond_g.spin = SCOND_SPIN_NONE;
+      else if (!strcmp(env, "pause"))
+         scond_g.spin = SCOND_SPIN_PAUSE;
+#if defined(SCOND_HAVE_MWAITX)
+      else if (!strcmp(env, "mwaitx"))
+         scond_g.spin = SCOND_SPIN_MWAITX;
+#endif
+#if defined(SCOND_HAVE_UMWAIT)
+      else if (!strcmp(env, "umwait"))
+         scond_g.spin = SCOND_SPIN_UMWAIT;
+#endif
+      else if (env[0] >= '0' && env[0] <= '9')
+         cycles = (unsigned)strtoul(env, NULL, 0);
+   }
+   scond_g.spin_cycles = cycles;
+   /* a pause is on the order of a hundred cycles */
+   scond_g.spin_iters  = cycles / 128u;
+   if (!scond_g.spin_iters)
+      scond_g.spin_iters = 1;
+}
+
+static void scond_global_init(void)
+{
+   if (retro_atomic_load_acquire_int(&scond_g.state) == 2)
+      return;
+   if (retro_atomic_cas_int(&scond_g.state, 0, 1))
+   {
+      scond_global_resolve();
+      retro_atomic_store_release_int(&scond_g.state, 2);
+      return;
+   }
+   while (retro_atomic_load_acquire_int(&scond_g.state) != 2)
+      Sleep(0);
+}
+
+/* ---- kernel wait and wake ------------------------------------------ */
+
+#define SCOND_STATUS_TIMEOUT 0x102
+
+/* block until woken or the timeout (NULL = never) passes; false on timeout */
+static bool scond_sleep(struct scond_waiter *w, LARGE_INTEGER *timeout)
+{
+   switch (scond_g.sleep)
+   {
+      case SCOND_SLEEP_ALERT:
+         return scond_g.wait_alert(&w->flags, timeout) != SCOND_STATUS_TIMEOUT;
+      case SCOND_SLEEP_KEYED:
+         return scond_g.wait_keyed(scond_g.keyed, w, FALSE, timeout)
+            != SCOND_STATUS_TIMEOUT;
+      default:
+         {
+            DWORD ms = timeout
+               ? (DWORD)((-timeout->QuadPart + 9999) / 10000) : INFINITE;
+            return WaitForSingleObject(w->event, ms) != WAIT_TIMEOUT;
+         }
+   }
+}
+
+static void scond_wake_one(struct scond_waiter *w)
+{
+   /* copies taken first: the waiter may leave as soon as it sees WOKEN */
+   DWORD  tid   = w->tid;
+   HANDLE event = w->event;
+   int prev     = retro_atomic_fetch_or_int(&w->flags, SCOND_W_WOKEN);
+   if (!(prev & SCOND_W_ASLEEP))
+      return;   /* still spinning: it sees the flag, no syscall */
+   switch (scond_g.sleep)
+   {
+      case SCOND_SLEEP_ALERT:
+         scond_g.alert_tid((HANDLE)(uintptr_t)tid);
+         break;
+      case SCOND_SLEEP_KEYED:
+         scond_g.release_keyed(scond_g.keyed, w, FALSE, NULL);
+         break;
+      default:
+         SetEvent(event);
+         break;
+   }
+}
+
+/* ---- the list ------------------------------------------------------ */
+
+static INLINE uintptr_t scond_head(scond_t *cond)
+{
+   return (uintptr_t)retro_atomic_load_acquire_ptr(&cond->head);
+}
+
+static void scond_lock(scond_t *cond)
+{
+   for (;;)
+   {
+      uintptr_t old = scond_head(cond);
+      if (!(old & SCOND_HEAD_LOCK)
+            && retro_atomic_cas_ptr(&cond->head, (void*)old,
+               (void*)(old | SCOND_HEAD_LOCK)))
+         return;
+#if defined(SCOND_HAVE_X86)
+      scond_pause();
+#else
+      Sleep(0);
+#endif
+   }
+}
+
+static void scond_unlock(scond_t *cond)
+{
+   for (;;)
+   {
+      uintptr_t old = scond_head(cond);
+      if (retro_atomic_cas_ptr(&cond->head, (void*)old,
+               (void*)(old & SCOND_HEAD_MASK)))
+         return;
+   }
+}
+
+/* unlink w if it is still on the list; the lock must be held. A block
+ * that is not there any more has been taken by a waker. */
+static bool scond_unlink(scond_t *cond, struct scond_waiter *w)
+{
+   for (;;)
+   {
+      uintptr_t old = scond_head(cond);
+      struct scond_waiter *n = (struct scond_waiter*)(old & SCOND_HEAD_MASK);
+      if (n == w)
+      {
+         if (retro_atomic_cas_ptr(&cond->head, (void*)old,
+                  (void*)((uintptr_t)w->next | SCOND_HEAD_LOCK)))
+            return true;
+         continue;   /* a push landed in front of it: look again */
+      }
+      while (n && n->next != w)
+         n = n->next;
+      if (!n)
+         return false;
+      n->next = w->next;
+      return true;
+   }
+}
+
+/* Block on the caller's own flag word until signalled or dwMilliseconds
+ * have passed. Returns false only on timeout. */
 static bool scond_wait_win32(scond_t *cond, slock_t *lock, DWORD dwMilliseconds)
 {
-   struct scond_waiter *w;
+   struct scond_waiter w;
+   LARGE_INTEGER timeout;
+   uintptr_t old;
    bool woken = true;
 
-   EnterCriticalSection(&cond->cs);
-   if ((w = cond->spare))
-      cond->spare = w->next;
-   else
+   w.event = NULL;
+   w.tid   = GetCurrentThreadId();
+   retro_atomic_int_init(&w.flags, 0);
+   if (scond_g.sleep == SCOND_SLEEP_EVENT)
    {
-      if ((w = (struct scond_waiter *)malloc(sizeof(*w))))
+      w.event = (HANDLE)TlsGetValue(scond_g.tls_event);
+      if (!w.event)
       {
-         if (!(w->event = CreateEvent(NULL, FALSE, FALSE, NULL)))
-         {
-            free(w);
-            w = NULL;
-         }
-      }
-      if (!w)
-      {
-         /* nothing to wait on: report a spurious wake-up, which every
-          * caller handles by re-checking its predicate */
-         LeaveCriticalSection(&cond->cs);
-         return true;
+         /* one auto-reset event per thread, kept for the thread's life */
+         w.event = CreateEvent(NULL, FALSE, FALSE, NULL);
+         if (!w.event)
+            return true;   /* nothing to wait on: a spurious wake-up */
+         TlsSetValue(scond_g.tls_event, w.event);
       }
    }
-   w->next = NULL;
-   if (cond->tail)
-      cond->tail->next = w;
-   else
-      cond->head = w;
-   cond->tail = w;
-   LeaveCriticalSection(&cond->cs);
+
+   /* push, keeping the lock bit as it is */
+   do
+   {
+      old    = scond_head(cond);
+      w.next = (struct scond_waiter*)(old & SCOND_HEAD_MASK);
+   } while (!retro_atomic_cas_ptr(&cond->head, (void*)old,
+            (void*)((uintptr_t)&w | (old & SCOND_HEAD_LOCK))));
 
    LeaveCriticalSection(&lock->lock);
-   if (WaitForSingleObject(w->event, dwMilliseconds) == WAIT_TIMEOUT)
+
+   /* spin on the flag word before committing to the kernel */
+   switch (scond_g.spin)
    {
-      /* a signal may have taken the node and set the event between the
-       * timeout and this lock; then consume it, otherwise unlink */
-      EnterCriticalSection(&cond->cs);
-      {
-         struct scond_waiter **link = &cond->head;
-         struct scond_waiter *prev  = NULL;
-         while (*link && *link != w)
+#if defined(SCOND_HAVE_X86)
+#if defined(SCOND_HAVE_MWAITX)
+      case SCOND_SPIN_MWAITX:
          {
-            prev = *link;
-            link = &(*link)->next;
+            unsigned __int64 deadline = scond_tsc() + scond_g.spin_cycles;
+            for (;;)
+            {
+               unsigned __int64 now;
+               /* arm first, then check: a write between the check and
+                * the wait is then seen by the wait itself */
+               scond_monitorx(&w.flags);
+               if (scond_flags_peek(&w) & SCOND_W_WOKEN)
+                  goto done;
+               now = scond_tsc();
+               if (now >= deadline)
+                  break;
+               scond_mwaitx((unsigned)(deadline - now));
+            }
          }
-         if (*link)
+         break;
+#endif
+#if defined(SCOND_HAVE_UMWAIT)
+      case SCOND_SPIN_UMWAIT:
          {
-            *link = w->next;
-            if (cond->tail == w)
-               cond->tail = prev;
-            woken = false;
+            unsigned __int64 deadline = scond_tsc() + scond_g.spin_cycles;
+            for (;;)
+            {
+               scond_umonitor(&w.flags);
+               if (scond_flags_peek(&w) & SCOND_W_WOKEN)
+                  goto done;
+               if (scond_tsc() >= deadline)
+                  break;
+               scond_umwait(deadline);
+            }
          }
-         else
-            WaitForSingleObject(w->event, INFINITE);
-      }
+         break;
+#endif
+#endif
+      case SCOND_SPIN_PAUSE:
+         {
+            unsigned i;
+            for (i = 0; i < scond_g.spin_iters; i++)
+            {
+               if (scond_flags_peek(&w) & SCOND_W_WOKEN)
+                  goto done;
+#if defined(SCOND_HAVE_X86)
+               scond_pause();
+#else
+               YieldProcessor();
+#endif
+            }
+         }
+         break;
+      default:
+         break;
    }
-   else
-      EnterCriticalSection(&cond->cs);
-   w->next     = cond->spare;
-   cond->spare = w;
-   LeaveCriticalSection(&cond->cs);
+
+   /* commit: after this a waker that takes the block must wake us */
+   if (retro_atomic_fetch_or_int(&w.flags, SCOND_W_ASLEEP) & SCOND_W_WOKEN)
+      goto done;
+
+   if (dwMilliseconds != INFINITE)
+      timeout.QuadPart = -(LONGLONG)dwMilliseconds * 10000;
+   if (!scond_sleep(&w, dwMilliseconds != INFINITE ? &timeout : NULL))
+   {
+      /* timed out: unless a waker has already taken the block, in which
+       * case its wake is on the way and has to be consumed */
+      scond_lock(cond);
+      woken = !scond_unlink(cond, &w);
+      scond_unlock(cond);
+      if (woken)
+         scond_sleep(&w, NULL);
+   }
+
+done:
    EnterCriticalSection(&lock->lock);
    return woken;
 }
@@ -584,12 +1020,22 @@ int scond_broadcast(scond_t *cond)
 {
 #ifdef USE_WIN32_THREADS
    struct scond_waiter *w;
-   EnterCriticalSection(&cond->cs);
-   for (w = cond->head; w; w = w->next)
-      SetEvent(w->event);
-   cond->head = NULL;
-   cond->tail = NULL;
-   LeaveCriticalSection(&cond->cs);
+   uintptr_t old;
+   if (!(scond_head(cond) & SCOND_HEAD_MASK))
+      return 0;
+   scond_lock(cond);
+   /* take the whole list, dropping the lock in the same swap */
+   do
+   {
+      old = scond_head(cond);
+   } while (!retro_atomic_cas_ptr(&cond->head, (void*)old, NULL));
+   w = (struct scond_waiter*)(old & SCOND_HEAD_MASK);
+   while (w)
+   {
+      struct scond_waiter *next = w->next;
+      scond_wake_one(w);
+      w = next;
+   }
    return 0;
 #else
    return pthread_cond_broadcast(&cond->cond);
@@ -600,18 +1046,40 @@ void scond_signal(scond_t *cond)
 {
 #ifdef USE_WIN32_THREADS
    struct scond_waiter *w;
-   EnterCriticalSection(&cond->cs);
-   if ((w = cond->head))
+   if (!(scond_head(cond) & SCOND_HEAD_MASK))
+      return;
+   scond_lock(cond);
+   /* the oldest waiter is at the end: pushes go on the front */
+   for (;;)
    {
-      if (!(cond->head = w->next))
-         cond->tail = NULL;
-      SetEvent(w->event);
+      uintptr_t old = scond_head(cond);
+      w = (struct scond_waiter*)(old & SCOND_HEAD_MASK);
+      if (!w)
+         break;
+      if (!w->next)
+      {
+         if (retro_atomic_cas_ptr(&cond->head, (void*)old,
+                  (void*)SCOND_HEAD_LOCK))
+            break;
+         continue;   /* a push landed in front: look again */
+      }
+      {
+         struct scond_waiter *prev = w;
+         while (prev->next->next)
+            prev = prev->next;
+         w = prev->next;
+         prev->next = NULL;
+      }
+      break;
    }
-   LeaveCriticalSection(&cond->cs);
+   scond_unlock(cond);
+   if (w)
+      scond_wake_one(w);
 #else
    pthread_cond_signal(&cond->cond);
 #endif
 }
+
 
 bool scond_wait_timeout(scond_t *cond, slock_t *lock, int64_t timeout_us)
 {
