@@ -13,7 +13,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <time.h>
+#include <features/features_cpu.h>
 
 #define RDRAM_SIZE (8u << 20)
 #define FB_ADDR    0x100000u
@@ -112,7 +112,7 @@ int main(int argc, char **argv)
     int flip    = argc > 6 ? atoi(argv[6]) : 0;
     batch       = argc > 7 ? atoi(argv[7]) : 0;
     struct n64video_config cfg;
-    struct timespec t0, t1;
+    retro_time_t t0, t1;
     int f, i;
     double ms;
 
@@ -134,11 +134,11 @@ int main(int argc, char **argv)
     run_frame();
     printf("workers=%d pixels written: %u of %u\n", workers, count_written() / 2, FB_W * FB_H);
 
-    clock_gettime(CLOCK_MONOTONIC, &t0);
+    t0 = cpu_features_get_time_usec();
     for (f = 0; f < frames; f++)
         run_frame();
-    clock_gettime(CLOCK_MONOTONIC, &t1);
-    ms = ((t1.tv_sec - t0.tv_sec) * 1e3 + (t1.tv_nsec - t0.tv_nsec) / 1e6) / frames;
+    t1 = cpu_features_get_time_usec();
+    ms = (double)(t1 - t0) / 1e3 / frames;
     printf("workers=%d tri=%dx%d count=%d batches/frame=%d : %.3f ms/frame\n", workers, tri_w, tri_h, count, batch ? count / batch : 1, ms);
     n64video_close();
     return 0;
