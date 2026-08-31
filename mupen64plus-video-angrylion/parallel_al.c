@@ -29,6 +29,9 @@
 
 #define PARALLEL_LINE_PAD 64
 
+/* lane count the automatic setting stops at */
+#define PARALLEL_AUTO_MAX_WORKERS 8
+
 struct parallel_pool
 {
     void (*task)(uint32_t);
@@ -137,14 +140,23 @@ void parallel_alinit(uint32_t num)
     if (p->num_workers)
         parallel_close();
 
-    /* 0 selects the host core count, overridable from the environment */
+    /* 0 selects the automatic count: the host's physical cores, at most
+     * PARALLEL_AUTO_MAX_WORKERS of them. Every lane replays the whole
+     * command stream, so past that count the replicated per-lane work
+     * outweighs what the extra lanes take off the spans, and an SMT
+     * sibling is a worse lane than none; ANGRYLION_NUM_THREADS still
+     * overrides the choice outright. */
     if (num == 0)
     {
         const char *env = getenv("ANGRYLION_NUM_THREADS");
         if (env)
             num = (uint32_t)atoi(env);
         else
-            num = cpu_features_get_core_amount();
+        {
+            num = cpu_features_get_core_amount_physical();
+            if (num > PARALLEL_AUTO_MAX_WORKERS)
+                num = PARALLEL_AUTO_MAX_WORKERS;
+        }
     }
     if (num == 0)
         num = 1;

@@ -1167,7 +1167,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
         "(Angrylion) Multi-threading",
         "Multi-threading",
         "Multi-threading",
-        "'off' renders synchronously on the emulator thread: no worker pool, no command buffering, no thread synchronization. Numeric values use the threaded renderer with that many worker threads ('1' keeps the threaded pipeline with a single worker). 'all threads' matches the host core count.",
+        "'off' renders synchronously on the emulator thread: no worker pool, no command buffering, no thread synchronization. Numeric values use the threaded renderer with that many worker threads ('1' keeps the threaded pipeline with a single worker). 'all threads' uses the host's physical cores, at most 8: every worker replays the whole command stream, so beyond that the duplicated work outweighs the gain, and a second thread on the same core only adds contention.",
         "angrylion",
         {
             { "off", NULL },
