@@ -19,12 +19,10 @@
 
 #define SIGN16(x)   ((int16_t)(x))
 #define SIGN8(x)    ((int8_t)(x))
-
 #define SIGN(x, numb)	(((x) & ((1 << (numb)) - 1)) | -((x) & (1 << ((numb) - 1))))
 #define SIGNF(x, numb)	((x) | -((x) & (1 << ((numb) - 1))))
 
 #define TRELATIVE(x, y)     ((x) - ((y) << 3))
-
 #define PIXELS_TO_BYTES(pix, siz) (((pix) << (siz)) >> 1)
 
 // RGBA5551 to RGBA8888 helper
@@ -40,7 +38,6 @@
 
 // maximum number of commands to buffer for parallel processing
 #define CMD_BUFFER_SIZE 1024
-
 // maximum data size of a single command in bytes
 #define CMD_MAX_SIZE 176
 
@@ -49,7 +46,6 @@
 
 // extracts the command ID from a command buffer
 #define CMD_ID(cmd) ((*(cmd) >> 24) & 0x3f)
-
 // list of command IDs
 #define CMD_ID_NO_OP                           0x00
 #define CMD_ID_FILL_TRIANGLE                   0x08
@@ -87,7 +83,6 @@
 #define CMD_ID_SET_TEXTURE_IMAGE               0x3d
 #define CMD_ID_SET_MASK_IMAGE                  0x3e
 #define CMD_ID_SET_COLOR_IMAGE                 0x3f
-
 static struct n64video_config config;
 
 static struct
@@ -111,7 +106,6 @@ static STRICTINLINE uint32_t irand(uint32_t* state)
     *state = *state * 0x343fd + 0x269ec3;
     return ((*state >> 16) & 0x7fff);
 }
-
 #include "n64video/rdp.c"
 #include "n64video/vi.c"
 
@@ -128,7 +122,6 @@ static uint32_t rdp_cmd_len;
 // table of commands that require thread synchronization in
 // multithreaded mode
 static bool rdp_cmd_sync[64];
-
 
 static void cmd_run_buffered(uint32_t worker_id)
 {
@@ -148,6 +141,15 @@ static void cmd_flush(void)
     }
 }
 
+// Synchronized image commands are pure per-worker state changes. Once all
+// preceding raster work is complete, broadcasting them directly is cheaper
+// than launching a worker batch whose only job is to update a few fields.
+static void cmd_broadcast_state(uint32_t *cmd)
+{
+    uint32_t worker_id;
+    for (worker_id = 0; worker_id < parallel_num_workers(); worker_id++)
+        rdp_cmd(worker_id, cmd);
+}
 static void cmd_init(void)
 {
     rdp_cmd_pos = 0;
@@ -169,7 +171,6 @@ void rdp_init_worker(uint32_t worker_id)
 {
     rdp_init(worker_id, parallel_num_workers());
 }
-
 #ifdef HAVE_RDP_DUMP
 static bool rdp_dump_in_command_list;
 #endif
@@ -188,7 +189,6 @@ void n64video_init(struct n64video_config* _config)
         combiner_init_lut();
         tex_init_lut();
         z_init_lut();
-
         fb_init(0);
         combiner_init(0);
         tex_init(0);
@@ -196,7 +196,6 @@ void n64video_init(struct n64video_config* _config)
 
         static_init = true;
     }
-
 #ifdef HAVE_RDP_DUMP
     const char *rdp_dump_path = getenv("RDP_DUMP");
     if (rdp_dump_path)
@@ -207,7 +206,6 @@ void n64video_init(struct n64video_config* _config)
     }
     rdp_dump_in_command_list = false;
 #endif
-
     // enable sync switches depending on compatibility mode
     memset(rdp_cmd_sync, 0, sizeof(rdp_cmd_sync));
     switch (config.dp.compat) {
@@ -219,7 +217,6 @@ void n64video_init(struct n64video_config* _config)
         case DP_COMPAT_LOW:
             rdp_cmd_sync[CMD_ID_SYNC_FULL] = true;
     }
-
     // init internals
     rdram_init();
     vi_init();
@@ -238,14 +235,12 @@ void n64video_init(struct n64video_config* _config)
        // sync states from main worker
        for (i = 1; i < parallel_num_workers(); i++)
           memcpy(&state[i], &state[0], sizeof(struct rdp_state));
-
        // init workers
        parallel_run(rdp_init_worker);
     }
     else
         rdp_init(0, 1);
 }
-
 /* Host-side command overlay for the HLE graphics path. When set, command
  * words whose RDRAM word index falls inside [base_idx, base_idx + len)
  * are fetched from the host buffer instead of RDRAM. This lets the HLE
@@ -257,7 +252,6 @@ void n64video_init(struct n64video_config* _config)
 static const uint32_t* hle_cmd_buf;
 static uint32_t hle_cmd_base_idx;
 static uint32_t hle_cmd_len_words;
-
 void n64video_set_hle_cmd_buffer(const uint32_t* buf, uint32_t base_byte_addr, uint32_t len_bytes)
 {
     hle_cmd_buf = buf;
@@ -271,13 +265,11 @@ static uint32_t rdp_fetch_cmd_word(uint32_t idx)
         return hle_cmd_buf[idx - hle_cmd_base_idx];
     return rdram_read_idx32(idx);
 }
-
 void n64video_process_list(void)
 {
     uint32_t** dp_reg = config.gfx.dp_reg;
     uint32_t dp_current_al;
     uint32_t dp_end_al;
-
     /* On a ROM reload, initiateGFX's n64video_config_init() memsets config
      * (clearing gfx.dp_reg to NULL) before romOpen restores it. With the
      * libco-free per-frame model the CPU resumes mid-stream, so the RSP can
@@ -286,7 +278,6 @@ void n64video_process_list(void)
      * Nothing can be processed yet; bail rather than crash. */
     if (dp_reg == NULL)
         return;
-
     /* The command buffer pointers are 24 bits wide on the part; the top
      * byte does not exist and nothing written there is kept.  Taking the
      * whole 32 believed rubbish above bit 23, and the RSP plugin writes
@@ -303,12 +294,10 @@ void n64video_process_list(void)
      * the game's logo with a screen of torn scanlines. */
     dp_current_al = (*dp_reg[DP_CURRENT] & 0x00fffff8) >> 2;
     dp_end_al = (*dp_reg[DP_END] & 0x00fffff8) >> 2;
-
     // don't do anything if the RDP has crashed or the registers are not set up correctly
     if (rdp_pipeline_crashed || dp_end_al <= dp_current_al) {
         return;
     }
-
     // while there's data in the command buffer...
     while (dp_end_al - dp_current_al > 0) {
         uint32_t i, toload;
@@ -326,7 +315,6 @@ void n64video_process_list(void)
                         && hle_cmd_buf == NULL;
         uint32_t* dmem = (uint32_t*)config.gfx.dmem;
         uint32_t* cmd_buf = rdp_cmd_buf[rdp_cmd_buf_pos];
-
         // when reading the first int, extract the command ID and update the buffer length
         if (rdp_cmd_pos == 0) {
             if (xbus_dma) {
@@ -338,7 +326,6 @@ void n64video_process_list(void)
             rdp_cmd_id = CMD_ID(cmd_buf);
             rdp_cmd_len = rdp_commands[rdp_cmd_id].length >> 2;
         }
-
         // copy more data from the N64 to the local command buffer
         /* Load only what is still missing from the command being decoded.
          * When a list ends mid-command the decoder keeps rdp_cmd_pos across
@@ -346,7 +333,6 @@ void n64video_process_list(void)
          * rdp_cmd_len, so the completion test never matches, the command is
          * never executed, and rdp_cmd_pos runs past the buffer slot. */
         toload = MIN(dp_end_al - dp_current_al, rdp_cmd_len - rdp_cmd_pos);
-
         if (xbus_dma) {
             for (i = 0; i < toload; i++) {
                 cmd_buf[rdp_cmd_pos++] = dmem[dp_current_al++ & 0x3ff];
@@ -359,7 +345,6 @@ void n64video_process_list(void)
 
         // if there's enough data for the current command...
         if (rdp_cmd_pos == rdp_cmd_len) {
-
 #ifdef HAVE_RDP_DUMP
             if (!rdp_dump_in_command_list)
             {
@@ -367,7 +352,6 @@ void n64video_process_list(void)
                 rdp_dump_flush_hidden_dram(rdram_hidden, sizeof(rdram_hidden));
                 rdp_dump_in_command_list = true;
             }
-
             if (rdp_cmd_id == CMD_ID_SYNC_FULL)
             {
                 rdp_dump_signal_complete();
@@ -378,9 +362,13 @@ void n64video_process_list(void)
                 rdp_dump_emit_command(rdp_cmd_id, cmd_buf, rdp_cmd_len);
             }
 #endif
-
             // check if parallel processing is enabled
             if (config.parallel) {
+                bool sync_state_barrier = rdp_cmd_sync[rdp_cmd_id] &&
+                    (rdp_cmd_id == CMD_ID_SET_TEXTURE_IMAGE ||
+                     rdp_cmd_id == CMD_ID_SET_MASK_IMAGE ||
+                     rdp_cmd_id == CMD_ID_SET_COLOR_IMAGE);
+
                 // A mid-frame SET_COLOR_IMAGE that overlaps the previous
                 // color image (render-to-subimage, e.g. Ocarina of Time's
                 // pause-screen character box) makes draws before and after
@@ -443,7 +431,11 @@ void n64video_process_list(void)
                         // rewinds the position to 0, so move them to the
                         // slot that is about to be registered.
                         cmd_flush();
-                        memcpy(rdp_cmd_buf[0], cmd_buf, rdp_cmd_len * sizeof(uint32_t));
+                        // HIGH/MEDIUM image barriers are broadcast directly
+                        // below, so only the buffered LOW-compat path needs
+                        // the parsed command moved into the rewound slot.
+                        if (!sync_state_barrier)
+                            memcpy(rdp_cmd_buf[0], cmd_buf, rdp_cmd_len * sizeof(uint32_t));
                     }
                     k = (rdp_cmd_id == CMD_ID_SET_COLOR_IMAGE) ? 0 : 1;
                     prev_img_addr[k]   = naddr;
@@ -454,13 +446,19 @@ void n64video_process_list(void)
                 if (rdp_cmd_id == CMD_ID_SYNC_FULL) {
                     // first, run all pending commands
                     cmd_flush();
-
                     // parameters are unused, so NULL is fine
                     rdp_sync_full(0, NULL);
+                } else if (sync_state_barrier) {
+                    // HIGH/MEDIUM compatibility uses these image commands as
+                    // ordering points. Finish preceding drawing globally, then
+                    // update every logical RDP lane on the caller thread. This
+                    // preserves the barrier while avoiding a wake/wait cycle for
+                    // a tiny state-only worker batch.
+                    cmd_flush();
+                    cmd_broadcast_state(cmd_buf);
                 } else {
                     // increment buffer position
                     rdp_cmd_buf_pos++;
-
                     // flush buffer when it is full or when the current command requires a sync
                     if (rdp_cmd_buf_pos >= CMD_BUFFER_SIZE || rdp_cmd_sync[rdp_cmd_id]) {
                         cmd_flush();
@@ -470,7 +468,6 @@ void n64video_process_list(void)
                 // run command directly
                 rdp_cmd(0, cmd_buf);
             }
-
             // send Z-buffer address to VI for "depth" output mode
             if (rdp_cmd_id == CMD_ID_SET_MASK_IMAGE) {
                 vi_set_zbuffer_address(cmd_buf[1] & 0x0ffffff);
@@ -484,7 +481,6 @@ void n64video_process_list(void)
     // update DP registers to indicate that all bytes have been read
     *dp_reg[DP_START] = *dp_reg[DP_CURRENT] = *dp_reg[DP_END];
 }
-
 void n64video_close(void)
 {
 #ifdef HAVE_RDP_DUMP
