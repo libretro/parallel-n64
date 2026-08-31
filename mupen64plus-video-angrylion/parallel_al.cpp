@@ -1,151 +1,256 @@
 #include "parallel_al.h"
 
 #include <stdlib.h>
-
-#include <atomic>
 #include <algorithm>
+#include <atomic>
 #include <condition_variable>
 #include <cstdint>
-#include <functional>
+#include <memory>
 #include <mutex>
+#include <stdexcept>
 #include <thread>
 #include <vector>
-#include <stdexcept>
+
+#if defined(_MSC_VER) && (defined(_M_IX86) || defined(_M_X64))
+#include <intrin.h>
+#endif
+
+namespace
+{
+static inline void parallel_cpu_yield(void)
+{
+#if defined(_MSC_VER) && (defined(_M_IX86) || defined(_M_X64))
+    _mm_pause();
+#elif defined(__i386__) || defined(__x86_64__)
+    __asm__ __volatile__("pause");
+#elif defined(__aarch64__) || defined(__arm__)
+    __asm__ __volatile__("yield");
+#else
+    std::this_thread::yield();
+#endif
+}
+
+static uint32_t clamp_worker_count(uint32_t count)
+{
+    if (count == 0)
+        count = 1;
+    return std::min(count, PARALLEL_MAX_WORKERS);
+}
+
+static uint32_t default_lane_count(uint32_t thread_count)
+{
+    uint32_t extra;
+
+    if (thread_count <= 1)
+        return 1;
+    extra = (thread_count + 1) >> 1;
+    return std::min(thread_count + extra, PARALLEL_MAX_WORKERS);
+}
+
+struct WorkQueue
+{
+    std::atomic<uint64_t> cursor;
+    uint8_t padding[64];
+    WorkQueue() : cursor(0) {}
+};
+}
 
 class Parallel
 {
 public:
-    Parallel(std::uint32_t num_workers) :
-        m_num_workers(std::min(num_workers, PARALLEL_MAX_WORKERS))
+    typedef void (*Task)(uint32_t);
+
+    Parallel(uint32_t num_threads, uint32_t num_workers) :
+        m_accept_work(true),
+        m_task(NULL),
+        m_epoch(0),
+        m_remaining(0),
+        m_sleepers(0),
+        m_num_threads(clamp_worker_count(num_threads)),
+        m_num_workers(clamp_worker_count(num_workers))
     {
-        // mask for m_tasks_done when all workers have finished their task
-        // except for worker 0, which runs in the main thread
-        if (m_num_workers == 64)
-            m_all_tasks_done = (~(0LL)) & ~(1LL);
-        else
-            m_all_tasks_done = ((1LL << m_num_workers) - 1) & ~(1LL);
+        if (m_num_threads > m_num_workers)
+            m_num_threads = m_num_workers;
 
-        // give workers an empty task
-        m_task = [](std::uint32_t) {};
-        m_accept_work = true;
-        start_work();
-
-        // create worker threads
-        for (std::uint32_t worker_id = 1; worker_id < m_num_workers; worker_id++) {
-            m_workers.emplace_back(std::thread(&Parallel::do_work, this, worker_id));
-        }
-
-        // synchronize workers to prepare them for real tasks
-        wait();
+        for (uint32_t i = 1; i < m_num_threads; i++)
+            m_threads.emplace_back(&Parallel::worker_main, this, i);
     }
 
-    ~Parallel() {
-        // wait for all workers to finish their current work
-        wait();
-
-        // exit worker main loops
-        m_accept_work = false;
-        start_work();
-
-        // join worker threads to make sure they have finished
-        for (auto& thread : m_workers) {
-            thread.join();
+    ~Parallel()
+    {
+        wait_for_completion();
+        {
+            std::lock_guard<std::mutex> lock(m_work_mutex);
+            m_accept_work.store(false, std::memory_order_release);
+            m_epoch.fetch_add(1, std::memory_order_release);
         }
+        m_work_cv.notify_all();
 
-        // destroy all worker threads
-        m_workers.clear();
+        for (std::vector<std::thread>::iterator itr = m_threads.begin();
+             itr != m_threads.end(); ++itr)
+            itr->join();
     }
 
-    void run(std::function<void(std::uint32_t)>&& task) {
-        // don't allow more tasks if workers are stopping
-        if (!m_accept_work) {
+    void run(Task task)
+    {
+        if (!m_accept_work.load(std::memory_order_acquire))
             throw std::runtime_error("Workers are exiting and no longer accept work");
-        }
 
-        // single-worker mode has no one to synchronize with: worker 0 is
-        // the calling thread, so the whole signal/wait protocol reduces
-        // to a plain call
-        if (m_num_workers <= 1) {
+        if (m_num_workers == 1)
+        {
             task(0);
             return;
         }
+        uint64_t epoch;
+        {
+            std::lock_guard<std::mutex> lock(m_work_mutex);
+            epoch = m_epoch.load(std::memory_order_relaxed) + 1;
+            m_task = task;
+            m_remaining.store(m_num_workers, std::memory_order_relaxed);
+            for (uint32_t i = 0; i < m_num_threads; i++)
+                m_queues[i].cursor.store(epoch << 8, std::memory_order_relaxed);
+            m_epoch.store(epoch, std::memory_order_release);
+        }
 
-        // prepare task for workers and send signal so they start working
-        m_task = std::move(task);
-        start_work();
-
-        // run worker 0 directly on main thread
-        m_task(0);
-
-        // wait for all workers to finish
-        wait();
+        if (m_sleepers.load(std::memory_order_relaxed) != 0)
+            m_work_cv.notify_all();
+        drain(0, epoch);
+        wait_for_completion();
     }
 
-    std::uint32_t num_workers() {
+    uint32_t num_workers() const
+    {
         return m_num_workers;
     }
 
 private:
-    std::function<void(std::uint32_t)> m_task;
-    std::vector<std::thread> m_workers;
-    std::mutex m_signal_mutex;
-    std::condition_variable m_signal_work;
-    std::condition_variable m_signal_done;
-    std::atomic<uint64_t> m_tasks_done;
-    std::uint64_t m_all_tasks_done;
+    static const uint32_t kWorkerSpinCount = 2048;
+    static const uint32_t kCallerSpinCount = 4096;
+
     std::atomic<bool> m_accept_work;
-    const std::uint32_t m_num_workers;
+    Task m_task;
+    std::atomic<uint64_t> m_epoch;
+    std::atomic<uint32_t> m_remaining;
+    std::atomic<uint32_t> m_sleepers;
+    WorkQueue m_queues[PARALLEL_MAX_WORKERS];
+    std::vector<std::thread> m_threads;
+    std::mutex m_work_mutex;
+    std::condition_variable m_work_cv;
+    std::mutex m_done_mutex;
+    std::condition_variable m_done_cv;
+    uint32_t m_num_threads;
+    const uint32_t m_num_workers;
 
-    void start_work() {
-        std::unique_lock<std::mutex> ul(m_signal_mutex);
+    bool steal(uint32_t queue_id, uint64_t epoch, uint32_t *worker_id)
+    {
+        uint64_t cursor = m_queues[queue_id].cursor.load(std::memory_order_relaxed);
 
-        // clear task bits for all workers
-        m_tasks_done = 0;
+        for (;;)
+        {
+            uint32_t ticket;
+            uint32_t lane;
 
-        // wake up all workers
-        m_signal_work.notify_all();
-    }
+            if ((cursor >> 8) != epoch)
+                return false;
+            ticket = static_cast<uint32_t>(cursor & 0xffu);
+            lane = queue_id + ticket * m_num_threads;
+            if (lane >= m_num_workers)
+                return false;
 
-    void do_work(std::uint32_t worker_id) {
-        const std::uint64_t worker_mask = 1LL << worker_id;
-
-        while (m_accept_work) {
-            // do the work
-            m_task(worker_id);
-
-            // mark task as done; m_tasks_done is atomic, so the bit can
-            // be set without the mutex. Only the worker whose bit
-            // completes the set wakes the main thread - the others used
-            // to issue a redundant notify (and a futex wake) each.
-            if ((m_tasks_done.fetch_or(worker_mask) | worker_mask)
-                    == m_all_tasks_done) {
-                // the empty lock pairs with wait()'s predicate check so
-                // the notify cannot fall between the main thread's check
-                // and its sleep (the classic lost-wakeup window)
-                { std::unique_lock<std::mutex> ul(m_signal_mutex); }
-                m_signal_done.notify_one();
-            }
-
-            // if the next task already started (our bit was cleared),
-            // skip the sleep entirely; otherwise wait as before
-            if ((m_tasks_done.load() & worker_mask) != 0) {
-                std::unique_lock<std::mutex> ul(m_signal_mutex);
-                m_signal_work.wait(ul, [worker_mask, this] {
-                    return (m_tasks_done & worker_mask) == 0;
-                });
+            if (m_queues[queue_id].cursor.compare_exchange_weak(
+                    cursor, cursor + 1, std::memory_order_relaxed,
+                    std::memory_order_relaxed))
+            {
+                *worker_id = lane;
+                return true;
             }
         }
     }
 
-    void wait() {
-        // fast path: all workers already finished, no need to lock
-        if (m_tasks_done.load() == m_all_tasks_done)
-            return;
+    bool find_work(uint32_t physical_id, uint64_t epoch, uint32_t *worker_id)
+    {
+        if (steal(physical_id, epoch, worker_id))
+            return true;
 
-        // wait for all workers to set their task bits
-        std::unique_lock<std::mutex> ul(m_signal_mutex);
-        m_signal_done.wait(ul, [this] {
-            return m_tasks_done == m_all_tasks_done;
+        for (uint32_t n = 1; n < m_num_threads; n++)
+        {
+            uint32_t victim = physical_id + n;
+            if (victim >= m_num_threads)
+                victim -= m_num_threads;
+            if (steal(victim, epoch, worker_id))
+                return true;
+        }
+        return false;
+    }
+
+    void complete_one()
+    {
+        if (m_remaining.fetch_sub(1, std::memory_order_acq_rel) == 1)
+        {
+            {
+                std::lock_guard<std::mutex> lock(m_done_mutex);
+            }
+            m_done_cv.notify_one();
+        }
+    }
+
+    void drain(uint32_t physical_id, uint64_t epoch)
+    {
+        uint32_t worker_id;
+        while (find_work(physical_id, epoch, &worker_id))
+        {
+            m_task(worker_id);
+            complete_one();
+        }
+    }
+
+    uint64_t wait_for_next_epoch(uint64_t observed_epoch)
+    {
+        for (uint32_t i = 0; i < kWorkerSpinCount; i++)
+        {
+            uint64_t epoch = m_epoch.load(std::memory_order_acquire);
+            if (epoch != observed_epoch || !m_accept_work.load(std::memory_order_relaxed))
+                return epoch;
+            parallel_cpu_yield();
+        }
+
+        std::unique_lock<std::mutex> lock(m_work_mutex);
+        m_sleepers.fetch_add(1, std::memory_order_relaxed);
+        m_work_cv.wait(lock, [this, observed_epoch] {
+            return m_epoch.load(std::memory_order_acquire) != observed_epoch ||
+                   !m_accept_work.load(std::memory_order_relaxed);
+        });
+        m_sleepers.fetch_sub(1, std::memory_order_relaxed);
+        return m_epoch.load(std::memory_order_acquire);
+    }
+
+    void worker_main(uint32_t physical_id)
+    {
+        uint64_t observed_epoch = 0;
+
+        for (;;)
+        {
+            uint64_t epoch = wait_for_next_epoch(observed_epoch);
+            if (!m_accept_work.load(std::memory_order_acquire))
+                break;
+            observed_epoch = epoch;
+            drain(physical_id, epoch);
+        }
+    }
+
+    void wait_for_completion()
+    {
+        if (m_remaining.load(std::memory_order_acquire) == 0)
+            return;
+        for (uint32_t i = 0; i < kCallerSpinCount; i++)
+        {
+            if (m_remaining.load(std::memory_order_acquire) == 0)
+                return;
+            parallel_cpu_yield();
+        }
+        std::unique_lock<std::mutex> lock(m_done_mutex);
+        m_done_cv.wait(lock, [this] {
+            return m_remaining.load(std::memory_order_acquire) == 0;
         });
     }
 
@@ -153,26 +258,23 @@ private:
     Parallel(const Parallel&) = delete;
 };
 
-// C interface for the Parallel class
 static std::unique_ptr<Parallel> parallel;
-
-template<typename T, typename... Args>
-std::unique_ptr<T> make_unique(Args&&... args) {
-    return std::unique_ptr<T>(new T(std::forward<Args>(args)...));
-}
 
 void parallel_alinit(uint32_t num)
 {
-    // auto-select number of workers based on the number of cores
-    if (num == 0) {
-        const char *env = getenv("ANGRYLION_NUM_THREADS");
-        if (env)
-            num = atoi(env);
-        else
-            num = std::thread::hardware_concurrency();
-    }
+    uint32_t num_threads = num;
+    uint32_t num_workers;
+    uint32_t env_value;
 
-    parallel = make_unique<Parallel>(num);
+    if (num_threads == 0)
+        num_threads = std::thread::hardware_concurrency();
+    num_threads = clamp_worker_count(num_threads);
+    num_workers = default_lane_count(num_threads);
+    num_workers = clamp_worker_count(num_workers);
+    if (num_threads > num_workers)
+        num_threads = num_workers;
+
+    parallel.reset(new Parallel(num_threads, num_workers));
 }
 
 void parallel_run(void task(uint32_t))
