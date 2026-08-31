@@ -115,6 +115,99 @@ static uint32_t prev_img_addr[2];   /* [0]=color image, [1]=depth image */
 static uint32_t prev_img_extent[2];
 static bool prev_img_valid[2];
 
+/* HIGH sync level: a texture load has to wait for buffered drawing only
+ * when it reads memory that drawing writes. The parser shadows the state
+ * the addresses depend on and the RDRAM ranges the buffered draws can
+ * reach (colour and depth image, bounded by the scissor); a load whose
+ * source overlaps one of them is preceded by a flush, any other load is
+ * buffered like every other command. */
+static struct
+{
+    uint32_t fb_address, fb_width, fb_size;
+    uint32_t zb_address;
+    uint32_t ti_address, ti_width, ti_size;
+    uint32_t sc_rows;               /* scissor bottom, whole lines */
+    uint32_t pend_lo[2], pend_hi[2]; /* [0]=colour, [1]=depth */
+    bool pend_valid[2];
+} hz;
+static uint32_t flush_count;
+
+static void hz_pend_extend(int k, uint32_t lo, uint32_t hi)
+{
+    if (!hz.pend_valid[k] || lo < hz.pend_lo[k])
+        hz.pend_lo[k] = lo;
+    if (!hz.pend_valid[k] || hi > hz.pend_hi[k])
+        hz.pend_hi[k] = hi;
+    hz.pend_valid[k] = true;
+}
+
+static bool hz_pend_overlaps(uint32_t lo, uint32_t hi)
+{
+    int k;
+    for (k = 0; k < 2; k++)
+        if (hz.pend_valid[k] && lo < hz.pend_hi[k] && hi > hz.pend_lo[k])
+            return true;
+    return false;
+}
+
+/* returns true when the load must wait for the buffered drawing */
+static bool hz_track(uint32_t cmd_id, const uint32_t *cmd)
+{
+    uint32_t lo, hi;
+    switch (cmd_id)
+    {
+    case CMD_ID_SET_COLOR_IMAGE:
+        hz.fb_size    = (cmd[0] >> 19) & 0x3;
+        hz.fb_width   = (cmd[0] & 0x3ff) + 1;
+        hz.fb_address = cmd[1] & 0xffffff;
+        return false;
+    case CMD_ID_SET_MASK_IMAGE:
+        hz.zb_address = cmd[1] & 0xffffff;
+        return false;
+    case CMD_ID_SET_TEXTURE_IMAGE:
+        hz.ti_size    = (cmd[0] >> 19) & 0x3;
+        hz.ti_width   = (cmd[0] & 0x3ff) + 1;
+        hz.ti_address = cmd[1] & 0xffffff;
+        return false;
+    case CMD_ID_SET_SCISSOR:
+        hz.sc_rows = ((cmd[1] & 0xfff) >> 2) + 1;
+        return false;
+    case CMD_ID_FILL_TRIANGLE:
+    case CMD_ID_FILL_ZBUFFER_TRIANGLE:
+    case CMD_ID_TEXTURE_TRIANGLE:
+    case CMD_ID_TEXTURE_ZBUFFER_TRIANGLE:
+    case CMD_ID_SHADE_TRIANGLE:
+    case CMD_ID_SHADE_ZBUFFER_TRIANGLE:
+    case CMD_ID_SHADE_TEXTURE_TRIANGLE:
+    case CMD_ID_SHADE_TEXTURE_Z_BUFFER_TRIANGLE:
+    case CMD_ID_TEXTURE_RECTANGLE:
+    case CMD_ID_TEXTURE_RECTANGLE_FLIP:
+    case CMD_ID_FILL_RECTANGLE:
+        hz_pend_extend(0, hz.fb_address, hz.fb_address
+            + PIXELS_TO_BYTES(hz.fb_width * hz.sc_rows, hz.fb_size));
+        hz_pend_extend(1, hz.zb_address, hz.zb_address
+            + hz.fb_width * hz.sc_rows * 2);
+        return false;
+    case CMD_ID_LOAD_BLOCK:
+        /* whole-texel coordinates; sh runs linearly past the row */
+        lo = hz.ti_address + PIXELS_TO_BYTES(hz.ti_width * (cmd[0] & 0xfff)
+            + ((cmd[0] >> 12) & 0xfff), hz.ti_size);
+        hi = hz.ti_address + PIXELS_TO_BYTES(hz.ti_width * (cmd[0] & 0xfff)
+            + ((cmd[1] >> 12) & 0xfff) + 1, hz.ti_size) + 8;
+        return hz_pend_overlaps(lo, hi);
+    case CMD_ID_LOAD_TILE:
+    case CMD_ID_LOAD_TLUT:
+        /* 10.2 coordinates; the rows tl..th are read whole */
+        lo = hz.ti_address + PIXELS_TO_BYTES(hz.ti_width
+            * ((cmd[0] & 0xfff) >> 2), hz.ti_size);
+        hi = hz.ti_address + PIXELS_TO_BYTES(hz.ti_width
+            * (((cmd[1] & 0xfff) >> 2) + 1), hz.ti_size) + 8;
+        return hz_pend_overlaps(lo, hi);
+    default:
+        return false;
+    }
+}
+
 static uint32_t rdp_cmd_pos;
 static uint32_t rdp_cmd_id;
 static uint32_t rdp_cmd_len;
@@ -138,7 +231,14 @@ static void cmd_flush(void)
         parallel_run(cmd_run_buffered);
         // reset buffer by starting from the beginning
         rdp_cmd_buf_pos = 0;
+        hz.pend_valid[0] = hz.pend_valid[1] = false;
+        flush_count++;
     }
+}
+
+uint32_t n64video_flush_count(void)
+{
+    return flush_count;
 }
 
 // Synchronized image commands are pure per-worker state changes. Once all
@@ -210,7 +310,7 @@ void n64video_init(struct n64video_config* _config)
     memset(rdp_cmd_sync, 0, sizeof(rdp_cmd_sync));
     switch (config.dp.compat) {
         case DP_COMPAT_HIGH:
-            rdp_cmd_sync[CMD_ID_SET_TEXTURE_IMAGE] = true;
+            /* texture loads sync on demand, see hz_track() */
         case DP_COMPAT_MEDIUM:
             rdp_cmd_sync[CMD_ID_SET_MASK_IMAGE] = true;
             rdp_cmd_sync[CMD_ID_SET_COLOR_IMAGE] = true;
@@ -223,6 +323,8 @@ void n64video_init(struct n64video_config* _config)
     cmd_init();
 
     prev_img_valid[0] = prev_img_valid[1] = false;
+    memset(&hz, 0, sizeof(hz));
+    hz.sc_rows = 240;
     rdp_pipeline_crashed = 0;
     memset(&onetimewarnings, 0, sizeof(onetimewarnings));
 
@@ -365,9 +467,17 @@ void n64video_process_list(void)
             // check if parallel processing is enabled
             if (config.parallel) {
                 bool sync_state_barrier = rdp_cmd_sync[rdp_cmd_id] &&
-                    (rdp_cmd_id == CMD_ID_SET_TEXTURE_IMAGE ||
-                     rdp_cmd_id == CMD_ID_SET_MASK_IMAGE ||
+                    (rdp_cmd_id == CMD_ID_SET_MASK_IMAGE ||
                      rdp_cmd_id == CMD_ID_SET_COLOR_IMAGE);
+
+                if (config.dp.compat == DP_COMPAT_HIGH
+                        && hz_track(rdp_cmd_id, cmd_buf)) {
+                    /* the load reads what buffered drawing writes: run the
+                     * drawing first, then buffer the load into the rewound
+                     * slot as the render-to-subimage barrier below does */
+                    cmd_flush();
+                    memcpy(rdp_cmd_buf[0], cmd_buf, rdp_cmd_len * sizeof(uint32_t));
+                }
 
                 // A mid-frame SET_COLOR_IMAGE that overlaps the previous
                 // color image (render-to-subimage, e.g. Ocarina of Time's
