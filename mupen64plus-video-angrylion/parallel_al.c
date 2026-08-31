@@ -4,9 +4,10 @@
  * parallel_run() is a generation: the caller publishes the task, bumps
  * the generation counter, runs its own lane and waits for the other
  * workers to report in. Workers park on a condition variable between
- * generations after a short bounded spin, so the back-to-back batches
- * a frame produces are picked up without a futex round-trip while an
- * idle emulator costs nothing.
+ * generations and the caller parks on another while the workers finish,
+ * so a pool that is not rendering costs nothing: every thread the
+ * renderer is not using is a thread the emulator, the frontend or an SMT
+ * sibling gets back.
  *
  * The two counters the threads hammer live on their own cache lines:
  * workers poll the generation while the completion counter is being
@@ -26,25 +27,6 @@
 #include <rthreads/rthreads.h>
 #include <features/features_cpu.h>
 
-#if defined(_MSC_VER)
-#include <windows.h>
-#define PARALLEL_CPU_RELAX() YieldProcessor()
-#elif defined(__GNUC__) && (defined(__i386__) || defined(__x86_64__))
-#define PARALLEL_CPU_RELAX() __asm__ __volatile__("pause" ::: "memory")
-#elif defined(__GNUC__) && (defined(__aarch64__) || \
-      (defined(__ARM_ARCH) && __ARM_ARCH >= 7))
-#define PARALLEL_CPU_RELAX() __asm__ __volatile__("yield" ::: "memory")
-#else
-#define PARALLEL_CPU_RELAX() ((void)0)
-#endif
-
-/* Bounded spin before parking, in PARALLEL_CPU_RELAX() iterations. Sized
- * to cover the gap between the batches of one frame (a few microseconds
- * of command parsing on the caller) and no more: past the bound a thread
- * parks and the next generation pays one wake-up instead. */
-#define PARALLEL_WORKER_SPIN 512
-#define PARALLEL_CALLER_SPIN 1024
-
 #define PARALLEL_LINE_PAD 64
 
 struct parallel_pool
@@ -62,10 +44,6 @@ struct parallel_pool
     uint32_t sleepers;
     /* cleared under work_lock before the final generation bump */
     int accept_work;
-    /* spin before parking only while every worker can own a core; an
-     * oversubscribed pool parks at once, since a spinning thread would
-     * be holding the core the worker it waits for needs */
-    int spin;
     char pad0[PARALLEL_LINE_PAD];
     /* bumped once per parallel_run() and once at shutdown */
     retro_atomic_int_t generation;
@@ -82,15 +60,6 @@ static struct parallel_pool pool;
 static int parallel_await_generation(struct parallel_pool *p, int seen)
 {
     int gen;
-    unsigned i;
-
-    for (i = 0; p->spin && i < PARALLEL_WORKER_SPIN; i++)
-    {
-        gen = retro_atomic_load_acquire_int(&p->generation);
-        if (gen != seen)
-            return gen;
-        PARALLEL_CPU_RELAX();
-    }
 
     slock_lock(p->work_lock);
     p->sleepers++;
@@ -133,14 +102,8 @@ static void parallel_worker(void *data)
 
 static void parallel_wait_completion(struct parallel_pool *p)
 {
-    unsigned i;
-
-    for (i = 0; p->spin && i < PARALLEL_CALLER_SPIN; i++)
-    {
-        if (retro_atomic_load_acquire_int(&p->remaining) == 0)
-            return;
-        PARALLEL_CPU_RELAX();
-    }
+    if (retro_atomic_load_acquire_int(&p->remaining) == 0)
+        return;
 
     slock_lock(p->done_lock);
     while (retro_atomic_load_acquire_int(&p->remaining) != 0)
@@ -148,8 +111,9 @@ static void parallel_wait_completion(struct parallel_pool *p)
     slock_unlock(p->done_lock);
 }
 
-/* Publish the next generation. With nothing parked the broadcast is
- * skipped; spinning workers pick the bump up from the counter. */
+/* Publish the next generation. A worker still on its way to park re-checks
+ * the counter under the lock, so only registered sleepers need the
+ * broadcast. */
 static void parallel_bump_generation(struct parallel_pool *p)
 {
     int gen;
@@ -168,7 +132,6 @@ static void parallel_bump_generation(struct parallel_pool *p)
 void parallel_alinit(uint32_t num)
 {
     struct parallel_pool *p = &pool;
-    uint32_t cores = cpu_features_get_core_amount();
     uint32_t i;
 
     if (p->num_workers)
@@ -181,7 +144,7 @@ void parallel_alinit(uint32_t num)
         if (env)
             num = (uint32_t)atoi(env);
         else
-            num = cores;
+            num = cpu_features_get_core_amount();
     }
     if (num == 0)
         num = 1;
@@ -211,7 +174,6 @@ void parallel_alinit(uint32_t num)
         return;
     }
     p->accept_work = 1;
-    p->spin        = (num <= cores);
 
     /* worker_ids is what the threads read their id from, so it has to
      * be final before the first thread starts */
