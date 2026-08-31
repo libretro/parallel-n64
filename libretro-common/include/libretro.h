@@ -2994,6 +2994,20 @@ struct retro_vfs_dir_handle;
  */
 #define RETRO_VFS_FILE_ACCESS_HINT_FREQUENT_ACCESS   (1 << 0)
 
+/**
+ * Indicates that the file will be read once, from start to finish,
+ * and then closed.
+ *
+ * No mapping or caching is wanted: the caller already keeps the bytes
+ * it asked for, so anything the frontend holds on to beyond the call
+ * is dead weight.  A frontend that buffers its reads may wish to skip
+ * doing so for such a stream, since a whole-file read gains nothing
+ * from being split across a buffer and copied twice.
+ *
+ * Only meaningful together with \c RETRO_VFS_FILE_ACCESS_READ.
+ */
+#define RETRO_VFS_FILE_ACCESS_HINT_SEQUENTIAL_BULK   (1 << 1)
+
 /** @} */
 
 /** @defgroup RETRO_VFS_SEEK_POSITION File Seek Positions
@@ -4583,6 +4597,52 @@ struct retro_log_callback
  * A10 lack them, for instance.
  */
 #define RETRO_SIMD_CRC32    (1 << 25)
+
+/**
+ * Indicates CPU support for hardware SHA-512 acceleration.
+ *
+ * On AArch64 this is FEAT_SHA512, optional from Armv8.1 and A64-only.
+ * On x86 it is the SHA512 instruction group enumerated by
+ * CPUID.(EAX=07H,ECX=1):EAX[0], which is separate from the SHA-NI
+ * instructions covering SHA-1 and SHA-256.
+ */
+#define RETRO_SIMD_SHA512   (1 << 26)
+
+/**
+ * Indicates CPU support for hardware SHA-1 acceleration.
+ *
+ * On AArch64 this is FEAT_SHA1; on x86 it is part of SHA-NI, which
+ * covers SHA-1 and SHA-256 in one CPUID bit and therefore always
+ * reports alongside \c RETRO_SIMD_SHA256 there.
+ */
+#define RETRO_SIMD_SHA1     (1 << 27)
+
+/**
+ * Indicates CPU support for hardware SHA-256 acceleration.
+ *
+ * On AArch64 this is FEAT_SHA256; on x86 it is the other half of
+ * SHA-NI. Separate from \c RETRO_SIMD_SHA1 because AArch64 enumerates
+ * the two independently.
+ */
+#define RETRO_SIMD_SHA256   (1 << 28)
+
+/**
+ * Indicates CPU support for the FMA3 fused multiply-add instructions.
+ *
+ * CPUID.(EAX=01H):ECX[12]. They operate on YMM state, so this reports
+ * only where the operating system preserves it, as \c RETRO_SIMD_AVX
+ * does.
+ */
+#define RETRO_SIMD_FMA3     (1 << 29)
+
+/**
+ * Indicates CPU support for the FMA4 fused multiply-add instructions.
+ *
+ * CPUID.(EAX=80000001H):ECX[16], an AMD extension dropped from Zen, and
+ * a different encoding from \c RETRO_SIMD_FMA3 rather than a superset
+ * of it. Gated on the same operating system state.
+ */
+#define RETRO_SIMD_FMA4     (1 << 30)
 
 /** @} */
 
