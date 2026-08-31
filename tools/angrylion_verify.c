@@ -2,17 +2,8 @@
  * or 2-cycle textured (mode 1) triangles and hashes the colour and depth
  * buffers, for comparing two builds of the renderer at each lane count.
  *
- * Build against the angrylion objects of a configured tree, e.g.
- *
- *   F="-O2 -msse2 -Ilibretro-common/include -Imupen64plus-video-angrylion \
- *      -Imupen64plus-core/src -Imupen64plus-core/src/api -DHAVE_THR_AL \
- *      -D__LIBRETRO__ -DNDEBUG"
- *   gcc $F -c mupen64plus-video-angrylion/n64video.c -o n64video.o
- *   gcc $F -c mupen64plus-video-angrylion/parallel_al.c -o parallel_al.o
- *   gcc $F -c libretro-common/rthreads/rthreads.c -o rthreads.o
- *   gcc $F -c libretro-common/features/features_cpu.c -o features_cpu.o
- *   gcc $F -w tools/angrylion_verify.c n64video.o parallel_al.o rthreads.o \
- *       features_cpu.o -o angrylion_verify -lpthread -lm
+ * Built by `make tools` from the tree's own angrylion objects (the
+ * target is in the top-level Makefile).
  *
  * Usage: angrylion_verify WORKERS TRIANGLES SEEDS MODE
  */

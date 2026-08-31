@@ -1,17 +1,8 @@
 /* Angrylion rasterizer benchmark: renders a frame of shade rectangles
  * through n64video_process_list() and reports ms/frame.
  *
- * Build against the angrylion objects of a configured tree, e.g.
- *
- *   F="-O2 -msse2 -Ilibretro-common/include -Imupen64plus-video-angrylion \
- *      -Imupen64plus-core/src -Imupen64plus-core/src/api -DHAVE_THR_AL \
- *      -D__LIBRETRO__ -DNDEBUG"
- *   gcc $F -c mupen64plus-video-angrylion/n64video.c -o n64video.o
- *   gcc $F -c mupen64plus-video-angrylion/parallel_al.c -o parallel_al.o
- *   gcc $F -c libretro-common/rthreads/rthreads.c -o rthreads.o
- *   gcc $F -c libretro-common/features/features_cpu.c -o features_cpu.o
- *   gcc $F -w tools/angrylion_bench.c n64video.o parallel_al.o rthreads.o \
- *       features_cpu.o -o angrylion_bench -lpthread -lm
+ * Built by `make tools` from the tree's own angrylion objects (the
+ * target is in the top-level Makefile).
  *
  * Usage: angrylion_bench WORKERS FRAMES TRI_H TRI_W COUNT FLIP TRIS_PER_FLUSH
  * On a single core the wall time is the summed work of all lanes, which

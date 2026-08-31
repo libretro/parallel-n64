@@ -1197,8 +1197,23 @@ $(OBJECTS): .build-flags
 
 clean:
 	rm -f $(OBJECTS) $(TARGET) $(OBJECTS:.o=.d) .build-flags
+	rm -f $(ANGRYLION_TOOLS)
 
-.PHONY: clean
+# Angrylion benchmark and bit-exactness harnesses (tools/angrylion_*.c),
+# linked against the core's own angrylion objects: `make tools` after a
+# normal build, or on its own.
+ANGRYLION_TOOL_OBJS := $(VIDEODIR_ANGRYLION)/n64video.o \
+	$(VIDEODIR_ANGRYLION)/parallel_al.o \
+	$(LIBRETRO_COMM_DIR)/rthreads/rthreads.o \
+	$(LIBRETRO_COMM_DIR)/features/features_cpu.o
+ANGRYLION_TOOLS := angrylion_bench$(EXE_EXT) angrylion_verify$(EXE_EXT)
+
+angrylion_%$(EXE_EXT): tools/angrylion_%.c $(ANGRYLION_TOOL_OBJS)
+	$(CC) $(CPPFLAGS) $(CFLAGS) -I$(VIDEODIR_ANGRYLION) -w $< $(ANGRYLION_TOOL_OBJS) -o $@ -lpthread -lm
+
+tools: $(ANGRYLION_TOOLS)
+
+.PHONY: clean tools
 -include $(OBJECTS:.o=.d)
 endif
 
