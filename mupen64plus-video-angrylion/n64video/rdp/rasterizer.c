@@ -2156,12 +2156,18 @@ static void edgewalker_for_prims(uint32_t wid, int32_t* ewdata)
 
 
 
+#if !defined(AL_SIMD_SSE2) && !defined(AL_SIMD_NEON)
+    const int r0 = r, g0 = g, b0 = b, a0 = a, s0 = s, t0 = t, w0 = w, z0 = z;
+#endif
 #if defined(AL_SIMD_SSE2)
-    /* The 8 span attributes are accumulated (ADDVALUES) and consumed (ADJUST)
-     * only here, so they live in two vectors across the walk: no transpose,
-     * no scalar round-trip. Lane order matches struct span {r,g,b,a,s,t,w,z}. */
+    /* The 8 span attributes are sought per owned line (SEEK_ATTR) and
+     * consumed (ADJUST) only here, so they live in two vectors across the
+     * walk: no transpose, no scalar round-trip. Lane order matches struct
+     * span {r,g,b,a,s,t,w,z}. */
     __m128i ew_av0 = _mm_set_epi32(a, b, g, r);
     __m128i ew_av1 = _mm_set_epi32(z, w, t, s);
+    const __m128i ew_av0_base = ew_av0;
+    const __m128i ew_av1_base = ew_av1;
     const __m128i ew_dev0 = _mm_set_epi32(dade, dbde, dgde, drde);
     const __m128i ew_dev1 = _mm_set_epi32(dzde, dwde, dtde, dsde);
     const __m128i ew_diff0 = _mm_set_epi32(dadiff, dbdiff, dgdiff, drdiff);
@@ -2179,14 +2185,19 @@ static void edgewalker_for_prims(uint32_t wid, int32_t* ewdata)
         _mm_and_si128(_mm_sub_epi32(_mm_add_epi32(_mm_and_si128(ew_av1, ew_m1), \
             ew_diff1), ew_mul32(ew_xf, ew_dxh1)), ew_m3));                      \
 }
-#define ADDVALUES_PRIM()                                                        \
+/* attribute values at line n of the walk: start + n * per-line step, the
+ * exact 32-bit wrap of n additions */
+#define SEEK_ATTR_PRIM(n)                                                       \
 {                                                                               \
-    ew_av0 = _mm_add_epi32(ew_av0, ew_dev0);                                    \
-    ew_av1 = _mm_add_epi32(ew_av1, ew_dev1);                                    \
+    __m128i ew_n = _mm_set1_epi32((int)(n));                                    \
+    ew_av0 = _mm_add_epi32(ew_av0_base, ew_mul32(ew_n, ew_dev0));               \
+    ew_av1 = _mm_add_epi32(ew_av1_base, ew_mul32(ew_n, ew_dev1));               \
 }
 #elif defined(AL_SIMD_NEON)
     int32x4_t ew_av0 = { r, g, b, a };
     int32x4_t ew_av1 = { s, t, w, z };
+    const int32x4_t ew_av0_base = ew_av0;
+    const int32x4_t ew_av1_base = ew_av1;
     const int32x4_t ew_dev0 = { drde, dgde, dbde, dade };
     const int32x4_t ew_dev1 = { dsde, dtde, dwde, dzde };
     const int32x4_t ew_diff0 = { drdiff, dgdiff, dbdiff, dadiff };
@@ -2202,10 +2213,11 @@ static void edgewalker_for_prims(uint32_t wid, int32_t* ewdata)
     vst1q_s32(&state[wid].span[j].s, vandq_s32(vsubq_s32(vaddq_s32(             \
         vandq_s32(ew_av1, ew_m1), ew_diff1), vmulq_s32(ew_xf, ew_dxh1)), ew_m3)); \
 }
-#define ADDVALUES_PRIM()                                                        \
+#define SEEK_ATTR_PRIM(n)                                                       \
 {                                                                               \
-    ew_av0 = vaddq_s32(ew_av0, ew_dev0);                                        \
-    ew_av1 = vaddq_s32(ew_av1, ew_dev1);                                        \
+    int32x4_t ew_n = vdupq_n_s32((int)(n));                                     \
+    ew_av0 = vmlaq_s32(ew_av0_base, ew_dev0, ew_n);                             \
+    ew_av1 = vmlaq_s32(ew_av1_base, ew_dev1, ew_n);                             \
 }
 #else
 #define ADJUST_ATTR_PRIM()      \
@@ -2221,15 +2233,15 @@ static void edgewalker_for_prims(uint32_t wid, int32_t* ewdata)
 }
 
 
-#define ADDVALUES_PRIM() {  \
-            s += dsde;  \
-            t += dtde;  \
-            w += dwde; \
-            r += drde; \
-            g += dgde; \
-            b += dbde; \
-            a += dade; \
-            z += dzde; \
+#define SEEK_ATTR_PRIM(n) {  \
+            s = (int)((uint32_t)s0 + (uint32_t)(n) * (uint32_t)dsde);  \
+            t = (int)((uint32_t)t0 + (uint32_t)(n) * (uint32_t)dtde);  \
+            w = (int)((uint32_t)w0 + (uint32_t)(n) * (uint32_t)dwde);  \
+            r = (int)((uint32_t)r0 + (uint32_t)(n) * (uint32_t)drde);  \
+            g = (int)((uint32_t)g0 + (uint32_t)(n) * (uint32_t)dgde);  \
+            b = (int)((uint32_t)b0 + (uint32_t)(n) * (uint32_t)dbde);  \
+            a = (int)((uint32_t)a0 + (uint32_t)(n) * (uint32_t)dade);  \
+            z = (int)((uint32_t)z0 + (uint32_t)(n) * (uint32_t)dzde);  \
 }
 #endif
 
@@ -2276,9 +2288,49 @@ static void edgewalker_for_prims(uint32_t wid, int32_t* ewdata)
     xfrac = ((xright >> 8) & 0xff);
 
 
+    /* Each lane walks only the lines it owns (j % stride == offset), the
+     * others just get validline cleared. The edge and attribute DDAs are
+     * 32-bit additions per subline, so their state at any subline is the
+     * start plus a multiple of the step, exactly as the walk would have
+     * left it: EDGE_SEEK() lands on the first subline of an owned line
+     * and the four sublines then run as before. The minor edge switches
+     * from xm to xl at ym only when the walk reaches ym, which the seek
+     * mirrors by branching on ym lying at or below the sought subline. */
+    const int32_t xleft0 = xleft, xright0 = xright, xleft_inc0 = xleft_inc;
+    const int jcur = ycur >> 2, jfar = ylfar >> 2, jclose = yhclose >> 2;
+#define EDGE_SEEK(kk)                                                            \
+{                                                                                \
+    uint32_t nk = (uint32_t)((kk) - ycur);                                       \
+    xright = (int32_t)((uint32_t)xright0 + nk * (uint32_t)xright_inc);           \
+    if (ym >= ycur && (kk) >= ym)                                                \
+    {                                                                            \
+        xleft_inc = (dxldy >> 2) & ~1;                                           \
+        xleft = (int32_t)((uint32_t)(xl & ~1)                                    \
+              + (uint32_t)((kk) - ym) * (uint32_t)xleft_inc);                    \
+    }                                                                            \
+    else                                                                         \
+    {                                                                            \
+        xleft_inc = xleft_inc0;                                                  \
+        xleft = (int32_t)((uint32_t)xleft0 + nk * (uint32_t)xleft_inc0);         \
+    }                                                                            \
+    SEEK_ATTR_PRIM(j - jcur);                                                    \
+}
+#define LANE_OWNS_LINE(jj) \
+    (!state[wid].stride || (jj) % state[wid].stride == state[wid].offset)
+
     if (flip)
     {
-    for (k = ycur; k <= ylfar; k++)
+    for (j = jcur; j <= jfar; j++)
+    {
+        if (!LANE_OWNS_LINE(j))
+        {
+            if (j >= jclose)
+                state[wid].span[j].validline = 0;
+            continue;
+        }
+        k = j << 2;
+        EDGE_SEEK(k);
+    for (spix = 0; spix < 4; spix++, k++)
     {
         if (k == ym)
         {
@@ -2287,13 +2339,9 @@ static void edgewalker_for_prims(uint32_t wid, int32_t* ewdata)
             xleft_inc = (dxldy >> 2) & ~1;
         }
 
-        spix = k & 3;
-
         if (k >= yhclose)
         {
             invaly = k < yhlimit || k >= yllimit;
-
-            j = k >> 2;
 
             if (spix == 0)
             {
@@ -2356,28 +2404,32 @@ static void edgewalker_for_prims(uint32_t wid, int32_t* ewdata)
             {
                 state[wid].span[j].lx = maxxmx;
                 state[wid].span[j].rx = minxhx;
-                state[wid].span[j].validline  = !allinval && !allover && !allunder && (!state[wid].scfield || (state[wid].scfield && !(state[wid].sckeepodd ^ (j & 1)))) && (!state[wid].stride || j % state[wid].stride == state[wid].offset);
+                state[wid].span[j].validline  = !allinval && !allover && !allunder && (!state[wid].scfield || (state[wid].scfield && !(state[wid].sckeepodd ^ (j & 1))));
 
             }
 
 
         }
 
-        if (spix == 3)
-        {
-            ADDVALUES_PRIM();
-        }
-
-
-
         xleft += xleft_inc;
         xright += xright_inc;
 
     }
     }
+    }
     else
     {
-    for (k = ycur; k <= ylfar; k++)
+    for (j = jcur; j <= jfar; j++)
+    {
+        if (!LANE_OWNS_LINE(j))
+        {
+            if (j >= jclose)
+                state[wid].span[j].validline = 0;
+            continue;
+        }
+        k = j << 2;
+        EDGE_SEEK(k);
+    for (spix = 0; spix < 4; spix++, k++)
     {
         if (k == ym)
         {
@@ -2385,12 +2437,9 @@ static void edgewalker_for_prims(uint32_t wid, int32_t* ewdata)
             xleft_inc = (dxldy >> 2) & ~1;
         }
 
-        spix = k & 3;
-
         if (k >= yhclose)
         {
             invaly = k < yhlimit || k >= yllimit;
-            j = k >> 2;
 
             if (spix == 0)
             {
@@ -2443,14 +2492,9 @@ static void edgewalker_for_prims(uint32_t wid, int32_t* ewdata)
             {
                 state[wid].span[j].lx = minxmx;
                 state[wid].span[j].rx = maxxhx;
-                state[wid].span[j].validline  = !allinval && !allover && !allunder && (!state[wid].scfield || (state[wid].scfield && !(state[wid].sckeepodd ^ (j & 1)))) && (!state[wid].stride || j % state[wid].stride == state[wid].offset);
+                state[wid].span[j].validline  = !allinval && !allover && !allunder && (!state[wid].scfield || (state[wid].scfield && !(state[wid].sckeepodd ^ (j & 1))));
             }
 
-        }
-
-        if (spix == 3)
-        {
-            ADDVALUES_PRIM();
         }
 
         xleft += xleft_inc;
@@ -2458,6 +2502,9 @@ static void edgewalker_for_prims(uint32_t wid, int32_t* ewdata)
 
     }
     }
+    }
+#undef EDGE_SEEK
+#undef LANE_OWNS_LINE
 
 
 
