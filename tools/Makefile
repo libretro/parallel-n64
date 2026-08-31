@@ -14,11 +14,18 @@ lflags +=
 libs   += -lm
 bins   += pj64tosrm$(binext) m64pmigrate$(binext)
 
-.PHONY: all clean
+.PHONY: all clean tools
 
 all: $(bins)
 clean:
 	-rm -f $(bins)
+	-$(MAKE) -C .. clean-tools
+
+# angrylion_bench and angrylion_verify link against the core's angrylion
+# objects, so the top-level Makefile builds them; `make tools` here is the
+# same as `make tools` in the repository root.
+tools:
+	$(MAKE) -C .. tools
 
 pj64tosrm$(binext): pj64tosrm.c
 	$(CC) $(cflags) -o$@ $(lflags) $< $(libs)

@@ -1195,8 +1195,10 @@ $(OBJECTS): .build-flags
 %.o: %.cpp
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -c $< $(OBJOUT)$@
 
-clean:
+clean: clean-tools
 	rm -f $(OBJECTS) $(TARGET) $(OBJECTS:.o=.d) .build-flags
+
+clean-tools:
 	rm -f $(ANGRYLION_TOOLS)
 
 # Angrylion benchmark and bit-exactness harnesses (tools/angrylion_*.c),
@@ -1213,7 +1215,7 @@ angrylion_%$(EXE_EXT): tools/angrylion_%.c $(ANGRYLION_TOOL_OBJS)
 
 tools: $(ANGRYLION_TOOLS)
 
-.PHONY: clean tools
+.PHONY: clean clean-tools tools
 -include $(OBJECTS:.o=.d)
 endif
 
