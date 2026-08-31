@@ -1168,7 +1168,6 @@ struct retro_core_option_v2_definition option_defs_us[] = {
         "Asynchronous rendering",
         "Asynchronous rendering",
         "Draws on a thread of its own so the emulator thread never waits for the workers: the RDP interrupt follows when a list has actually been drawn, as on the console, and the frame is joined only where it is shown or saved. Needs multi-threading.",
-        NULL,
         "angrylion",
         {
             { "disabled", NULL },
