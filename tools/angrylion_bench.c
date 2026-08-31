@@ -4,7 +4,10 @@
  * Built by `make tools` from the tree's own angrylion objects (the
  * target is in the top-level Makefile).
  *
- * Usage: angrylion_bench WORKERS FRAMES TRI_H TRI_W COUNT FLIP TRIS_PER_FLUSH
+ * Usage: angrylion_bench WORKERS FRAMES TRI_H TRI_W COUNT FLIP TRIS_PER_TEXSWAP [TEX_FROM_FB]
+ *   TEX_FROM_FB 1 makes every texture swap load out of the framebuffer being
+ *   drawn, the case a sync is really needed for; 0 (default) loads static
+ *   texture memory.
  * On a single core the wall time is the summed work of all lanes, which
  * is what the per-lane replicated setup shows up in; on a real machine
  * it is the wall time the emulator sees.
@@ -60,7 +63,8 @@ static void emit_rect(int x0, int y0, int w, int h, int flip)
     emit(0); emit(0);      /* dy frac */
 }
 
-static int batch = 0; /* triangles per flush; 0 = one batch per frame */
+static int batch = 0;       /* triangles per texture swap; 0 = none */
+static int tex_from_fb = 0; /* texture swaps load out of the framebuffer */
 static void build_frame(int tri_w, int tri_h, int count, int flip)
 {
     int i, x = 0, y = 0;
@@ -76,8 +80,15 @@ static void build_frame(int tri_w, int tri_h, int count, int flip)
     for (i = 0; i < count; i++)
     {
         emit_rect(x, y, tri_w, tri_h, flip);
-        /* SET_TEXTURE_IMAGE is a sync point under HIGH compat */
-        if (batch && (i % batch) == batch - 1) { emit((0x3du << 24) | (2u << 19) | 31u); emit(0x300000u); }
+        /* texture swap: SET_TEXTURE_IMAGE + LOAD_BLOCK of a 32x32 texture,
+         * from static texture memory or out of the framebuffer being drawn
+         * (a load that has to wait for the drawing) */
+        if (batch && (i % batch) == batch - 1)
+        {
+            if (tex_from_fb) { emit((0x3du << 24) | (2u << 19) | (FB_W - 1)); emit(FB_ADDR); }
+            else             { emit((0x3du << 24) | (2u << 19) | 31u); emit(0x300000u); }
+            emit(0x33u << 24); emit((7u << 24) | (1023u << 12) | 256u);
+        }
         x += tri_w;
         if (x + tri_w > FB_W) { x = 0; y += tri_h; if (y + tri_h > FB_H) y = 0; }
     }
@@ -111,6 +122,7 @@ int main(int argc, char **argv)
     int count   = argc > 5 ? atoi(argv[5]) : 600;
     int flip    = argc > 6 ? atoi(argv[6]) : 0;
     batch       = argc > 7 ? atoi(argv[7]) : 0;
+    tex_from_fb = argc > 8 ? atoi(argv[8]) : 0;
     struct n64video_config cfg;
     retro_time_t t0, t1;
     int f, i;
@@ -139,7 +151,7 @@ int main(int argc, char **argv)
         run_frame();
     t1 = cpu_features_get_time_usec();
     ms = (double)(t1 - t0) / 1e3 / frames;
-    printf("workers=%d tri=%dx%d count=%d batches/frame=%d : %.3f ms/frame\n", workers, tri_w, tri_h, count, batch ? count / batch : 1, ms);
+    printf("workers=%d tri=%dx%d count=%d texswaps/frame=%d (%s) : %.3f ms/frame\n", workers, tri_w, tri_h, count, batch ? count / batch : 0, tex_from_fb ? "from framebuffer" : "static", ms);
     n64video_close();
     return 0;
 }
