@@ -184,6 +184,14 @@ static STRICTINLINE void z_correct(uint32_t wid, int offx, int offy, int* z, uin
     }
 }
 
+/* The span can include the pixel at the scissor's right edge, one past
+ * the row: its coverage is zero, so it is never written, but reading the
+ * framebuffer or the depth buffer there touches the first pixel of the
+ * next row - which belongs to another worker. Skip those accesses. */
+#define PIXEL_IN_ROW(wid, i) \
+    (curpixel - (int)state[wid].fb_width * (i) >= 0 \
+     && curpixel - (int)state[wid].fb_width * (i) < (int)state[wid].fb_width)
+
 static void render_spans_1cycle_complete(uint32_t wid, int start, int end, int tilenum, int flip)
 {
     int zb = state[wid].zb_address >> 1;
@@ -371,8 +379,9 @@ static void render_spans_1cycle_complete(uint32_t wid, int start, int end, int t
 
             combiner_1cycle(wid, adith, &curpixel_cvg);
 
-            state[wid].fbread1_ptr(wid, curpixel, &curpixel_memcvg);
-            if (z_compare(wid, zbcur, sz, dzpix, dzpixenc, &blend_en, &prewrap, &curpixel_cvg, curpixel_memcvg))
+            if (PIXEL_IN_ROW(wid, i))
+                state[wid].fbread1_ptr(wid, curpixel, &curpixel_memcvg);
+            if (PIXEL_IN_ROW(wid, i) && z_compare(wid, zbcur, sz, dzpix, dzpixenc, &blend_en, &prewrap, &curpixel_cvg, curpixel_memcvg))
             {
                 if (blender_1cycle(wid, &fir, &fig, &fib, cdith, blend_en, prewrap, curpixel_cvg, curpixel_cvbit))
                 {
@@ -550,8 +559,9 @@ static void render_spans_1cycle_notexel1(uint32_t wid, int start, int end, int t
 
             combiner_1cycle(wid, adith, &curpixel_cvg);
 
-            state[wid].fbread1_ptr(wid, curpixel, &curpixel_memcvg);
-            if (z_compare(wid, zbcur, sz, dzpix, dzpixenc, &blend_en, &prewrap, &curpixel_cvg, curpixel_memcvg))
+            if (PIXEL_IN_ROW(wid, i))
+                state[wid].fbread1_ptr(wid, curpixel, &curpixel_memcvg);
+            if (PIXEL_IN_ROW(wid, i) && z_compare(wid, zbcur, sz, dzpix, dzpixenc, &blend_en, &prewrap, &curpixel_cvg, curpixel_memcvg))
             {
                 if (blender_1cycle(wid, &fir, &fig, &fib, cdith, blend_en, prewrap, curpixel_cvg, curpixel_cvbit))
                 {
@@ -694,8 +704,9 @@ static void render_spans_1cycle_notex(uint32_t wid, int start, int end, int tile
 
             combiner_1cycle(wid, adith, &curpixel_cvg);
 
-            state[wid].fbread1_ptr(wid, curpixel, &curpixel_memcvg);
-            if (z_compare(wid, zbcur, sz, dzpix, dzpixenc, &blend_en, &prewrap, &curpixel_cvg, curpixel_memcvg))
+            if (PIXEL_IN_ROW(wid, i))
+                state[wid].fbread1_ptr(wid, curpixel, &curpixel_memcvg);
+            if (PIXEL_IN_ROW(wid, i) && z_compare(wid, zbcur, sz, dzpix, dzpixenc, &blend_en, &prewrap, &curpixel_cvg, curpixel_memcvg))
             {
                 if (blender_1cycle(wid, &fir, &fig, &fib, cdith, blend_en, prewrap, curpixel_cvg, curpixel_cvbit))
                 {
@@ -919,10 +930,11 @@ static void render_spans_2cycle_complete(uint32_t wid, int start, int end, int t
 
             combiner_2cycle_cycle1(wid, adith, &curpixel_cvg);
 
-            state[wid].fbread2_ptr(wid, curpixel, &curpixel_memcvg);
+            if (PIXEL_IN_ROW(wid, i))
+                state[wid].fbread2_ptr(wid, curpixel, &curpixel_memcvg);
 
 
-            wen = z_compare(wid, zbcur, sz, dzpix, dzpixenc, &blend_en, &prewrap, &curpixel_cvg, curpixel_memcvg);
+            wen = PIXEL_IN_ROW(wid, i) && z_compare(wid, zbcur, sz, dzpix, dzpixenc, &blend_en, &prewrap, &curpixel_cvg, curpixel_memcvg);
 
             if (wen)
                 wen &= blender_2cycle_cycle0(wid, curpixel_cvg, curpixel_cvbit);
@@ -1150,9 +1162,10 @@ static void render_spans_2cycle_notexelnext(uint32_t wid, int start, int end, in
 
             combiner_2cycle_cycle1(wid, adith, &curpixel_cvg);
 
-            state[wid].fbread2_ptr(wid, curpixel, &curpixel_memcvg);
+            if (PIXEL_IN_ROW(wid, i))
+                state[wid].fbread2_ptr(wid, curpixel, &curpixel_memcvg);
 
-            wen = z_compare(wid, zbcur, sz, dzpix, dzpixenc, &blend_en, &prewrap, &curpixel_cvg, curpixel_memcvg);
+            wen = PIXEL_IN_ROW(wid, i) && z_compare(wid, zbcur, sz, dzpix, dzpixenc, &blend_en, &prewrap, &curpixel_cvg, curpixel_memcvg);
 
             if (wen)
                 wen &= blender_2cycle_cycle0(wid, curpixel_cvg, curpixel_cvbit);
@@ -1369,9 +1382,10 @@ static void render_spans_2cycle_notexel1(uint32_t wid, int start, int end, int t
 
             combiner_2cycle_cycle1(wid, adith, &curpixel_cvg);
 
-            state[wid].fbread2_ptr(wid, curpixel, &curpixel_memcvg);
+            if (PIXEL_IN_ROW(wid, i))
+                state[wid].fbread2_ptr(wid, curpixel, &curpixel_memcvg);
 
-            wen = z_compare(wid, zbcur, sz, dzpix, dzpixenc, &blend_en, &prewrap, &curpixel_cvg, curpixel_memcvg);
+            wen = PIXEL_IN_ROW(wid, i) && z_compare(wid, zbcur, sz, dzpix, dzpixenc, &blend_en, &prewrap, &curpixel_cvg, curpixel_memcvg);
 
             if (wen)
                 wen &= blender_2cycle_cycle0(wid, curpixel_cvg, curpixel_cvbit);
@@ -1562,9 +1576,10 @@ static void render_spans_2cycle_notex(uint32_t wid, int start, int end, int tile
 
             combiner_2cycle_cycle1(wid, adith, &curpixel_cvg);
 
-            state[wid].fbread2_ptr(wid, curpixel, &curpixel_memcvg);
+            if (PIXEL_IN_ROW(wid, i))
+                state[wid].fbread2_ptr(wid, curpixel, &curpixel_memcvg);
 
-            wen = z_compare(wid, zbcur, sz, dzpix, dzpixenc, &blend_en, &prewrap, &curpixel_cvg, curpixel_memcvg);
+            wen = PIXEL_IN_ROW(wid, i) && z_compare(wid, zbcur, sz, dzpix, dzpixenc, &blend_en, &prewrap, &curpixel_cvg, curpixel_memcvg);
 
             if (wen)
                 wen &= blender_2cycle_cycle0(wid, curpixel_cvg, curpixel_cvbit);
