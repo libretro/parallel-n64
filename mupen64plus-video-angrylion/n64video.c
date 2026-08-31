@@ -171,6 +171,12 @@ static struct
     uint32_t sc_rows;               /* scissor bottom, whole lines */
     uint32_t pend_lo[2], pend_hi[2]; /* [0]=colour, [1]=depth */
     bool pend_valid[2];
+    /* RDRAM a buffered texture load reads, so drawing that would write
+     * it waits: workers replay the batch at their own pace, and one
+     * still reading a framebuffer as texture must not have another
+     * drawing into it */
+    uint32_t load_lo, load_hi;
+    bool load_valid;
 } hz;
 static uint32_t flush_count;
 
@@ -190,6 +196,20 @@ static bool hz_pend_overlaps(uint32_t lo, uint32_t hi)
         if (hz.pend_valid[k] && lo < hz.pend_hi[k] && hi > hz.pend_lo[k])
             return true;
     return false;
+}
+
+static void hz_load_extend(uint32_t lo, uint32_t hi)
+{
+    if (!hz.load_valid || lo < hz.load_lo)
+        hz.load_lo = lo;
+    if (!hz.load_valid || hi > hz.load_hi)
+        hz.load_hi = hi;
+    hz.load_valid = true;
+}
+
+static bool hz_load_overlaps(uint32_t lo, uint32_t hi)
+{
+    return hz.load_valid && lo < hz.load_hi && hi > hz.load_lo;
 }
 
 /* returns true when the load must wait for the buffered drawing */
@@ -225,17 +245,24 @@ static bool hz_track(uint32_t cmd_id, const uint32_t *cmd)
     case CMD_ID_TEXTURE_RECTANGLE:
     case CMD_ID_TEXTURE_RECTANGLE_FLIP:
     case CMD_ID_FILL_RECTANGLE:
-        hz_pend_extend(0, hz.fb_address, hz.fb_address
-            + PIXELS_TO_BYTES(hz.fb_width * hz.sc_rows, hz.fb_size));
-        hz_pend_extend(1, hz.zb_address, hz.zb_address
-            + hz.fb_width * hz.sc_rows * 2);
-        return false;
+        {
+            uint32_t clo = hz.fb_address;
+            uint32_t chi = hz.fb_address
+                + PIXELS_TO_BYTES(hz.fb_width * hz.sc_rows, hz.fb_size);
+            uint32_t zlo = hz.zb_address;
+            uint32_t zhi = hz.zb_address + hz.fb_width * hz.sc_rows * 2;
+            hz_pend_extend(0, clo, chi);
+            hz_pend_extend(1, zlo, zhi);
+            /* writing what a buffered load is reading */
+            return hz_load_overlaps(clo, chi) || hz_load_overlaps(zlo, zhi);
+        }
     case CMD_ID_LOAD_BLOCK:
         /* whole-texel coordinates; sh runs linearly past the row */
         lo = hz.ti_address + PIXELS_TO_BYTES(hz.ti_width * (cmd[0] & 0xfff)
             + ((cmd[0] >> 12) & 0xfff), hz.ti_size);
         hi = hz.ti_address + PIXELS_TO_BYTES(hz.ti_width * (cmd[0] & 0xfff)
             + ((cmd[1] >> 12) & 0xfff) + 1, hz.ti_size) + 8;
+        hz_load_extend(lo, hi);
         return hz_pend_overlaps(lo, hi);
     case CMD_ID_LOAD_TILE:
     case CMD_ID_LOAD_TLUT:
@@ -244,6 +271,7 @@ static bool hz_track(uint32_t cmd_id, const uint32_t *cmd)
             * ((cmd[0] & 0xfff) >> 2), hz.ti_size);
         hi = hz.ti_address + PIXELS_TO_BYTES(hz.ti_width
             * (((cmd[1] & 0xfff) >> 2) + 1), hz.ti_size) + 8;
+        hz_load_extend(lo, hi);
         return hz_pend_overlaps(lo, hi);
     default:
         return false;
@@ -401,6 +429,7 @@ static void cmd_flush(void)
             rdp_cmd_buf_pos = 0;
         }
         hz.pend_valid[0] = hz.pend_valid[1] = false;
+        hz.load_valid = false;
         flush_count++;
     }
 }
@@ -679,18 +708,37 @@ void n64video_process_list(void)
 #endif
             // check if parallel processing is enabled
             if (config.parallel) {
-                bool sync_state_barrier = rdp_cmd_sync[rdp_cmd_id] &&
-                    (rdp_cmd_id == CMD_ID_SET_MASK_IMAGE ||
-                     rdp_cmd_id == CMD_ID_SET_COLOR_IMAGE);
+                /* set below for an image switch that the workers cannot
+                 * be left to reach at their own pace */
+                bool sync_state_barrier = false;
 
                 if (config.dp.compat == DP_COMPAT_HIGH
                         && hz_track(rdp_cmd_id, cmd_buf)) {
-                    /* the load reads what buffered drawing writes: run the
-                     * drawing first, then buffer the load into the rewound
-                     * slot as the render-to-subimage barrier below does */
-                    cmd_flush();
-                    memcpy(rdp_cmd_batch->cmds[0], cmd_buf, rdp_cmd_len * sizeof(uint32_t));
-                    cmd_buf = rdp_cmd_batch->cmds[0];
+                    if (   rdp_cmd_id == CMD_ID_LOAD_BLOCK
+                        || rdp_cmd_id == CMD_ID_LOAD_TILE
+                        || rdp_cmd_id == CMD_ID_LOAD_TLUT) {
+                        /* A load of memory the batch draws to fills each
+                         * worker's own TMEM, so it is per-worker state
+                         * like the image commands: finish the drawing,
+                         * then run the load for every worker in place.
+                         * Buffered instead, it would leave one worker
+                         * reading the framebuffer while another has moved
+                         * on to drawing into it, and cost a second
+                         * dispatch to keep them apart. */
+                        sync_state_barrier = true;
+                    } else {
+                        /* the ranges this command contributes were
+                         * recorded against the batch being flushed;
+                         * record them again against the one it is
+                         * buffered into, or the next command to touch the
+                         * same memory sees nothing pending. The second
+                         * call reports no conflict: what it tested
+                         * against has just been drained. */
+                        cmd_flush();
+                        hz_track(rdp_cmd_id, cmd_buf);
+                        memcpy(rdp_cmd_batch->cmds[0], cmd_buf, rdp_cmd_len * sizeof(uint32_t));
+                        cmd_buf = rdp_cmd_batch->cmds[0];
+                    }
                 }
 
                 // A mid-frame SET_COLOR_IMAGE that overlaps the previous
@@ -750,14 +798,22 @@ void n64video_process_list(void)
                             hazard = true;
                     }
                     if (hazard) {
-                        // the words of this command were parsed into the
-                        // slot at the pre-flush buffer position; the flush
-                        // rewinds the position to 0, so move them to the
-                        // slot that is about to be registered.
+                        /* Only an overlapping switch needs the workers
+                         * brought together. Every worker replays the
+                         * batch in order, so a switch that overlaps
+                         * nothing is applied at the right point in each
+                         * worker's own stream and can simply be
+                         * buffered, whatever the sync level: the barrier
+                         * exists for the memory those draw groups share,
+                         * not for the state change itself. */
+                        sync_state_barrier = rdp_cmd_sync[rdp_cmd_id];
                         cmd_flush();
-                        // HIGH/MEDIUM image barriers are broadcast directly
-                        // below, so only the buffered LOW-compat path needs
-                        // the parsed command moved into the rewound slot.
+                        /* the words of this command were parsed into the
+                         * slot at the pre-flush buffer position; the
+                         * flush rewinds the position to 0, so move them
+                         * to the slot that is about to be registered.
+                         * A barrier is broadcast from cmd_buf below and
+                         * needs no slot. */
                         if (!sync_state_barrier) {
                             memcpy(rdp_cmd_batch->cmds[0], cmd_buf, rdp_cmd_len * sizeof(uint32_t));
                             cmd_buf = rdp_cmd_batch->cmds[0];
@@ -772,15 +828,18 @@ void n64video_process_list(void)
                 if (rdp_cmd_id == CMD_ID_SYNC_FULL) {
                     cmd_sync_full();
                 } else if (sync_state_barrier) {
-                    // HIGH/MEDIUM compatibility uses these image commands as
-                    // ordering points: finish the preceding drawing, then
-                    // apply the state change to every worker in place.
+                    /* finish the preceding drawing, then apply the state
+                     * change - an overlapping image switch, or a load of
+                     * memory that drawing touched - to every worker in
+                     * place */
                     cmd_state_barrier(cmd_buf);
                 } else {
                     // increment buffer position
                     rdp_cmd_buf_pos++;
-                    // flush buffer when it is full or when the current command requires a sync
-                    if (rdp_cmd_buf_pos >= CMD_BUFFER_SIZE || rdp_cmd_sync[rdp_cmd_id]) {
+                    /* flush when the batch is full; the image commands
+                     * are ordering points only where they overlap, which
+                     * is handled above */
+                    if (rdp_cmd_buf_pos >= CMD_BUFFER_SIZE) {
                         cmd_flush();
                     }
                 }
