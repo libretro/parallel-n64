@@ -871,4 +871,5 @@ void n64video_close(void)
     al_stop();
     vi_close();
     parallel_close();
+    rdram_close();
 }

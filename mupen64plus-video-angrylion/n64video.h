@@ -90,6 +90,7 @@ struct n64video_config
     } dp;
     bool parallel;                  // use multithreaded renderer if true
     bool async_render;              // render on a thread of its own, the DP interrupt following completion
+    uint32_t upscale;               // render at this multiple of the console's resolution (1, 2 or 4)
     bool dithering;                 // enable dithering
     uint32_t num_workers;           // number of rendering workers
 };
