@@ -210,8 +210,7 @@ int astick_snap_max_angle                 = 15;
 int astick_snap_min_displacement_percent  = 70;
 int astick_sensitivity                    = 100;
 int first_time                            = 1;
-static bool frame_latched                 = false; /* present at end of slice */
-static bool frame_presented               = false; /* a video_cb was issued this slice */
+static bool frame_latched                 = false; /* a renderer finished a frame this slice */
 
 static uint8_t* cart_data           = NULL;
 static uint32_t cart_size           = 0;
@@ -912,26 +911,26 @@ static void present_frame(void)
 #endif
             break;
    }
-   frame_presented = true;
 }
 
-/* End of the frame slice: presents the frame a plugin latched via
- * retro_return(true), or a duplicate when nothing was presented during
- * the slice.  Exactly one video frame reaches the frontend per
- * retro_run, except for the legacy direct-FBO plugins (see
- * retro_return), whose presents happen at their swap points. */
+/* End of the frame slice, and the only place a video frame leaves the
+ * core: exactly one video_cb per retro_run. Every renderer latches its
+ * finished frame through retro_return(true); this presents it, or
+ * presents the previous frame again (video_cb with NULL data) when the
+ * game did not finish one during this VI - a 30 fps title on its off
+ * VI, a frozen RDP, a blanked VI - so the frontend's pacing, fast-
+ * forward, run-ahead and netplay always get their pulse. */
 void emu_step_render(void)
 {
    /* Hidden run-ahead / rewind frame: the frontend has video disabled and
     * will throw this frame away, so issue no video_cb at all.  Presenting
     * here -- above all a RETRO_HW_FRAME_BUFFER_VALID parallel-RDP frame --
     * while the frontend's video path is torn down for run-ahead is what
-    * crashed single-instance run-ahead.  Skipping the dupe path too keeps
+    * crashed single-instance run-ahead.  Skipping the duplicate too keeps
     * us from feeding the frontend a stale buffer on the hidden frame. */
    if (frame_hidden)
    {
-      frame_latched   = false;
-      frame_presented = false;
+      frame_latched = false;
       return;
    }
 
@@ -940,15 +939,8 @@ void emu_step_render(void)
       frame_latched = false;
       present_frame();
    }
-   else if (!frame_presented)
-   {
-      /* one frame per retro_run is what the libretro API and every
-       * frontend pacing path (fast-forward, run-ahead, netplay) expect;
-       * nothing new was latched, so present the last frame again */
+   else
       video_cb(NULL, screen_width, screen_height, screen_pitch);
-   }
-
-   frame_presented = false;
 }
 
 static void emu_step_initialize(void)
@@ -3422,15 +3414,14 @@ int retro_stop_stepping(void)
     return stop_stepping;
 }
 
-/* retro_return(true): a plugin finished a frame.  This is a remnant of
- * the libco days, when the plugin's buffer swap was the point where the
- * emulator coroutine yielded back to retro_run.  With libco gone it
- * only latches the frame for presentation at the end of the current
- * slice; it neither presents nor ends the slice.
+/* retro_return(true): a renderer finished a frame.  It only latches the
+ * frame for presentation at the end of the current slice; it neither
+ * presents nor ends the slice, and a second latch in the same slice
+ * simply replaces the first, so the frame shown is the last one done.
  *
  * retro_return(false): the VI interrupt - the one and only frame
  * boundary.  Ends the slice; emu_step_render() then presents the
- * latched frame, or a duplicate if nothing was latched. */
+ * latched frame, or the previous one again if nothing was latched. */
 int retro_return(bool just_flipping)
 {
    if (mupencorestop)
