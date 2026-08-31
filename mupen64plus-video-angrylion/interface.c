@@ -312,6 +312,19 @@ void angrylion_set_synclevel(unsigned value)
    }
 }
 
+void angrylion_set_async(unsigned value)
+{
+   if (config.async_render != (value != 0))
+   {
+      config.async_render = (value != 0);
+      if (angrylion_init)
+      {
+         n64video_close();
+         n64video_init(&config);
+      }
+   }
+}
+
 unsigned angrylion_get_synclevel()
 {
     return config.dp.compat;
@@ -453,8 +466,15 @@ void angrylionUpdateScreen(void)
         return;
     counter = 0;
 #endif
+    /* the VI reads the framebuffer: everything queued has to be drawn */
+    n64video_drain();
     n64video_update_screen();
-    
+}
+
+void angrylion_drain(void)
+{
+    if (angrylion_init)
+        n64video_drain();
 }
 
 void angrylionShowCFB (void)

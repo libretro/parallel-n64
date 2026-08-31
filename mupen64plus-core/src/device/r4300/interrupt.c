@@ -46,6 +46,8 @@
 #include "main/main.h"
 #include "main/savestates.h"
 
+extern int angrylion_dp_int_ready(void);
+
 extern unsigned int r4300_jit_backend;
 
 
@@ -644,6 +646,14 @@ void gen_interrupt(struct r4300_core* r4300)
 
         case DP_INT:
             remove_interrupt_event(&r4300->cp0);
+            /* with the renderer on its own thread the SYNC_FULL this
+             * interrupt announces may not have been reached yet; keep
+             * the event alive until it has */
+            if (!angrylion_dp_int_ready())
+            {
+                add_interrupt_event(&r4300->cp0, DP_INT, 4000);
+                break;
+            }
             call_interrupt_handler(&r4300->cp0, 8);
             break;
 

@@ -1432,6 +1432,8 @@ extern void  angrylion_set_vi_blur(unsigned value);
 extern void  angrylion_set_deinterlace(unsigned value);
 
 extern void angrylion_set_synclevel(unsigned value);
+extern void angrylion_set_async(unsigned value);
+extern void angrylion_drain(void);
 extern void ChangeSize();
 
 static void gfx_set_filtering(void)
@@ -1895,6 +1897,14 @@ void update_variables(bool startup)
    }
    else
       angrylion_set_synclevel(0);
+
+   var.key = "parallel-n64-angrylion-async";
+   var.value = NULL;
+
+   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+      angrylion_set_async(!strcmp(var.value, "enabled"));
+   else
+      angrylion_set_async(0);
 
    var.key = "parallel-n64-angrylion-multithread";
    var.value = NULL;
@@ -3262,6 +3272,11 @@ bool retro_serialize(void *data, size_t size)
     if (initializing)
        return false;
 
+#ifdef HAVE_THR_AL
+    /* the state has to hold what the renderer has finished, not what it
+     * is still queued to draw */
+    angrylion_drain();
+#endif
     if (savestates_save_m64p(data, size))
         return true;
 
@@ -3273,6 +3288,9 @@ bool retro_unserialize(const void * data, size_t size)
     if (initializing)
        return false;
 
+#ifdef HAVE_THR_AL
+    angrylion_drain();
+#endif
     if (savestates_load_m64p(data, size))
     {
         /* The rumble motor is a latched on/off state driven by the game

@@ -24,6 +24,7 @@
 extern int g_rsp_task_consumes_dp;
 
 extern int angrylion_sync_full_seen;
+extern int angrylion_dp_int_ready(void);
 
 #include <string.h>
 
@@ -68,7 +69,17 @@ static void update_dpc_status(struct rdp_core* dp, uint32_t w)
         dp->dpc_regs[DPC_STATUS_REG] &= ~DPC_STATUS_FREEZE;
 
         if (dp->do_on_unfreeze & DELAY_DP_INT)
-            signal_rcp_interrupt(dp->mi, MI_INTR_DP);
+        {
+            /* an asynchronous renderer may still be drawing what the
+             * interrupt announces; the event re-arms until it is done */
+            if (angrylion_dp_int_ready())
+                signal_rcp_interrupt(dp->mi, MI_INTR_DP);
+            else
+            {
+                cp0_update_count(dp->mi->r4300);
+                add_interrupt_event(&dp->mi->r4300->cp0, DP_INT, 4000);
+            }
+        }
         if (dp->do_on_unfreeze & DELAY_UPDATESCREEN)
             gfx.updateScreen();
         dp->do_on_unfreeze = 0;
@@ -163,7 +174,15 @@ void write_dpc_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mas
         g_rsp_task_consumes_dp = 0;
         protect_framebuffers(&dp->fb);
         if (angrylion_sync_full_seen)
-            signal_rcp_interrupt(dp->mi, MI_INTR_DP);
+        {
+            if (angrylion_dp_int_ready())
+                signal_rcp_interrupt(dp->mi, MI_INTR_DP);
+            else
+            {
+                cp0_update_count(dp->mi->r4300);
+                add_interrupt_event(&dp->mi->r4300->cp0, DP_INT, 4000);
+            }
+        }
         break;
     }
 }

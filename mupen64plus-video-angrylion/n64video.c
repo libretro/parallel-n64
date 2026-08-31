@@ -109,8 +109,50 @@ static STRICTINLINE uint32_t irand(uint32_t* state)
 #include "n64video/rdp.c"
 #include "n64video/vi.c"
 
-static uint32_t rdp_cmd_buf[CMD_BUFFER_SIZE][CMD_MAX_INTS];
-static uint32_t rdp_cmd_buf_pos;
+#include <rthreads/rthreads.h>
+#include <retro_atomic.h>
+
+/* Buffered commands live in batches. The parser fills one batch at a
+ * time; a flush hands it to the workers. Synchronously that is a
+ * parallel_run() on the calling thread; asynchronously the batch goes
+ * into a ring that a render thread drains in order, together with the
+ * per-worker state broadcasts and the SYNC_FULL points that punctuate
+ * the stream, so the emulator thread never waits for the workers except
+ * where the framebuffer is consumed (VI, a savestate, shutdown) or when
+ * the ring is full. */
+#define AL_QUEUE_BATCHES 8
+
+enum al_batch_kind
+{
+    AL_BATCH_RENDER = 0,
+    AL_BATCH_STATE,
+    AL_BATCH_SYNC
+};
+
+struct al_batch
+{
+    uint32_t (*cmds)[CMD_MAX_INTS];   /* CMD_BUFFER_SIZE entries */
+    uint32_t count;
+    uint32_t kind;
+    uint32_t state_cmd[2];
+};
+
+static struct al_batch al_batches[AL_QUEUE_BATCHES];
+static struct al_batch *rdp_cmd_batch;      /* the batch the parser fills */
+static uint32_t rdp_cmd_buf_pos;            /* commands in it */
+static uint32_t (*rdp_cmd_run_buf)[CMD_MAX_INTS]; /* the batch being run */
+static uint32_t rdp_cmd_run_count;
+
+static bool al_async;
+static bool al_quit;
+static bool al_busy;
+static uint32_t al_wr, al_rd;               /* ring indices, under al_lock */
+static slock_t *al_lock;
+static scond_t *al_cond_work;
+static scond_t *al_cond_room;
+static sthread_t *al_thread;
+static retro_atomic_int_t al_syncs_done;    /* SYNC markers the render thread passed */
+static uint32_t al_syncs_queued;            /* SYNC markers the parser queued */
 static uint32_t prev_img_addr[2];   /* [0]=color image, [1]=depth image */
 static uint32_t prev_img_extent[2];
 static bool prev_img_valid[2];
@@ -219,21 +261,175 @@ static bool rdp_cmd_sync[64];
 static void cmd_run_buffered(uint32_t worker_id)
 {
     uint32_t pos;
-    for (pos = 0; pos < rdp_cmd_buf_pos; pos++)
-        rdp_cmd(worker_id, rdp_cmd_buf[pos]);
+    for (pos = 0; pos < rdp_cmd_run_count; pos++)
+        rdp_cmd(worker_id, rdp_cmd_run_buf[pos]);
+}
+
+static void cmd_broadcast_state(uint32_t *cmd);
+
+/* Hand the parser's batch to the ring and move the parser to the next
+ * free one, waiting while the workers are AL_QUEUE_BATCHES - 1 behind. */
+static void al_publish(uint32_t kind, const uint32_t *state_cmd)
+{
+    struct al_batch *b = rdp_cmd_batch;
+    b->kind  = kind;
+    b->count = rdp_cmd_buf_pos;
+    if (state_cmd) {
+        b->state_cmd[0] = state_cmd[0];
+        b->state_cmd[1] = state_cmd[1];
+    }
+    slock_lock(al_lock);
+    while (al_wr - al_rd >= AL_QUEUE_BATCHES - 1)
+        scond_wait(al_cond_room, al_lock);
+    al_wr++;
+    scond_signal(al_cond_work);
+    slock_unlock(al_lock);
+    rdp_cmd_batch   = &al_batches[al_wr % AL_QUEUE_BATCHES];
+    rdp_cmd_buf_pos = 0;
+}
+
+static void al_render_thread(void *arg)
+{
+    (void)arg;
+    for (;;) {
+        struct al_batch *b;
+        slock_lock(al_lock);
+        while (al_rd == al_wr && !al_quit)
+            scond_wait(al_cond_work, al_lock);
+        if (al_rd == al_wr) {
+            slock_unlock(al_lock);
+            break;
+        }
+        b = &al_batches[al_rd % AL_QUEUE_BATCHES];
+        al_busy = true;
+        slock_unlock(al_lock);
+
+        switch (b->kind) {
+        case AL_BATCH_RENDER:
+            rdp_cmd_run_buf   = b->cmds;
+            rdp_cmd_run_count = b->count;
+            parallel_run(cmd_run_buffered);
+            break;
+        case AL_BATCH_STATE:
+            cmd_broadcast_state(b->state_cmd);
+            break;
+        case AL_BATCH_SYNC:
+            /* the noise field advances where the workers see it, between
+             * the batches on either side of the SYNC_FULL */
+            rdp_noise_field++;
+            retro_atomic_fetch_add_int(&al_syncs_done, 1);
+            break;
+        }
+
+        slock_lock(al_lock);
+        al_rd++;
+        al_busy = false;
+        scond_broadcast(al_cond_room);
+        slock_unlock(al_lock);
+    }
+}
+
+/* Wait until every queued batch has been run. */
+void n64video_drain(void)
+{
+    if (!al_async)
+        return;
+    slock_lock(al_lock);
+    while (al_rd != al_wr || al_busy)
+        scond_wait(al_cond_room, al_lock);
+    slock_unlock(al_lock);
+}
+
+/* The DP interrupt for a SYNC_FULL may be raised once the render thread
+ * has passed every SYNC marker queued so far; synchronously that is
+ * always the case. */
+int angrylion_dp_int_ready(void)
+{
+    if (!al_async)
+        return 1;
+    return retro_atomic_load_acquire_int(&al_syncs_done) >= (int)al_syncs_queued;
+}
+
+static void al_start(void)
+{
+    al_wr = al_rd = 0;
+    al_quit = al_busy = false;
+    al_syncs_queued = 0;
+    retro_atomic_int_init(&al_syncs_done, 0);
+    al_lock      = slock_new();
+    al_cond_work = scond_new();
+    al_cond_room = scond_new();
+    if (al_lock && al_cond_work && al_cond_room)
+        al_thread = sthread_create(al_render_thread, NULL);
+    al_async = al_thread != NULL;
+}
+
+static void al_stop(void)
+{
+    if (al_thread) {
+        n64video_drain();
+        slock_lock(al_lock);
+        al_quit = true;
+        scond_signal(al_cond_work);
+        slock_unlock(al_lock);
+        sthread_join(al_thread);
+        al_thread = NULL;
+    }
+    if (al_cond_room)
+        scond_free(al_cond_room);
+    if (al_cond_work)
+        scond_free(al_cond_work);
+    if (al_lock)
+        slock_free(al_lock);
+    al_cond_room = al_cond_work = NULL;
+    al_lock = NULL;
+    al_async = false;
 }
 
 static void cmd_flush(void)
 {
     // only run if there's something buffered
     if (rdp_cmd_buf_pos) {
-        // let workers run all buffered commands in parallel
-        parallel_run(cmd_run_buffered);
-        // reset buffer by starting from the beginning
-        rdp_cmd_buf_pos = 0;
+        if (al_async)
+            al_publish(AL_BATCH_RENDER, NULL);
+        else {
+            // let workers run all buffered commands in parallel
+            rdp_cmd_run_buf   = rdp_cmd_batch->cmds;
+            rdp_cmd_run_count = rdp_cmd_buf_pos;
+            parallel_run(cmd_run_buffered);
+            // reset buffer by starting from the beginning
+            rdp_cmd_buf_pos = 0;
+        }
         hz.pend_valid[0] = hz.pend_valid[1] = false;
         flush_count++;
     }
+}
+
+/* Flush, then apply a per-worker state command to every worker in order
+ * with the batches around it. */
+static void cmd_state_barrier(uint32_t *cmd)
+{
+    cmd_flush();
+    if (al_async)
+        al_publish(AL_BATCH_STATE, cmd);
+    else
+        cmd_broadcast_state(cmd);
+}
+
+/* Flush, then mark the SYNC_FULL: the DP interrupt is requested now and
+ * the core holds it until angrylion_dp_int_ready() says the render
+ * thread has reached the marker. */
+static void cmd_sync_full(void)
+{
+    cmd_flush();
+    if (al_async) {
+        al_publish(AL_BATCH_SYNC, NULL);
+        al_syncs_queued++;
+        angrylion_sync_full_seen = 1;
+        *config.gfx.mi_intr_reg |= DP_INTERRUPT;
+        config.gfx.mi_intr_cb();
+    } else
+        rdp_sync_full(0, NULL);
 }
 
 uint32_t n64video_flush_count(void)
@@ -250,6 +446,19 @@ static void cmd_broadcast_state(uint32_t *cmd)
     for (worker_id = 0; worker_id < parallel_num_workers(); worker_id++)
         rdp_cmd(worker_id, cmd);
 }
+/* once per n64video_init: the batch storage and the parser's first batch */
+static void cmd_batches_init(void)
+{
+    uint32_t i;
+    for (i = 0; i < AL_QUEUE_BATCHES; i++)
+        if (!al_batches[i].cmds)
+            al_batches[i].cmds = (uint32_t (*)[CMD_MAX_INTS])
+                calloc(CMD_BUFFER_SIZE, sizeof(*al_batches[i].cmds));
+    rdp_cmd_batch   = &al_batches[0];
+    rdp_cmd_buf_pos = 0;
+}
+
+/* per command: the parse state of the next one */
 static void cmd_init(void)
 {
     rdp_cmd_pos = 0;
@@ -320,6 +529,7 @@ void n64video_init(struct n64video_config* _config)
     // init internals
     rdram_init();
     vi_init();
+    cmd_batches_init();
     cmd_init();
 
     prev_img_valid[0] = prev_img_valid[1] = false;
@@ -339,6 +549,9 @@ void n64video_init(struct n64video_config* _config)
           memcpy(&state[i], &state[0], sizeof(struct rdp_state));
        // init workers
        parallel_run(rdp_init_worker);
+
+       if (config.async_render && parallel_num_workers() > 1)
+           al_start();
     }
     else
         rdp_init(0, 1);
@@ -416,7 +629,7 @@ void n64video_process_list(void)
         bool xbus_dma = (*dp_reg[DP_STATUS] & DP_STATUS_XBUS_DMA) != 0
                         && hle_cmd_buf == NULL;
         uint32_t* dmem = (uint32_t*)config.gfx.dmem;
-        uint32_t* cmd_buf = rdp_cmd_buf[rdp_cmd_buf_pos];
+        uint32_t* cmd_buf = rdp_cmd_batch->cmds[rdp_cmd_buf_pos];
         // when reading the first int, extract the command ID and update the buffer length
         if (rdp_cmd_pos == 0) {
             if (xbus_dma) {
@@ -476,7 +689,8 @@ void n64video_process_list(void)
                      * drawing first, then buffer the load into the rewound
                      * slot as the render-to-subimage barrier below does */
                     cmd_flush();
-                    memcpy(rdp_cmd_buf[0], cmd_buf, rdp_cmd_len * sizeof(uint32_t));
+                    memcpy(rdp_cmd_batch->cmds[0], cmd_buf, rdp_cmd_len * sizeof(uint32_t));
+                    cmd_buf = rdp_cmd_batch->cmds[0];
                 }
 
                 // A mid-frame SET_COLOR_IMAGE that overlaps the previous
@@ -544,8 +758,10 @@ void n64video_process_list(void)
                         // HIGH/MEDIUM image barriers are broadcast directly
                         // below, so only the buffered LOW-compat path needs
                         // the parsed command moved into the rewound slot.
-                        if (!sync_state_barrier)
-                            memcpy(rdp_cmd_buf[0], cmd_buf, rdp_cmd_len * sizeof(uint32_t));
+                        if (!sync_state_barrier) {
+                            memcpy(rdp_cmd_batch->cmds[0], cmd_buf, rdp_cmd_len * sizeof(uint32_t));
+                            cmd_buf = rdp_cmd_batch->cmds[0];
+                        }
                     }
                     k = (rdp_cmd_id == CMD_ID_SET_COLOR_IMAGE) ? 0 : 1;
                     prev_img_addr[k]   = naddr;
@@ -554,18 +770,12 @@ void n64video_process_list(void)
                 }
                 // special case: sync_full always needs to be run in main thread
                 if (rdp_cmd_id == CMD_ID_SYNC_FULL) {
-                    // first, run all pending commands
-                    cmd_flush();
-                    // parameters are unused, so NULL is fine
-                    rdp_sync_full(0, NULL);
+                    cmd_sync_full();
                 } else if (sync_state_barrier) {
                     // HIGH/MEDIUM compatibility uses these image commands as
-                    // ordering points. Finish preceding drawing globally, then
-                    // update every logical RDP lane on the caller thread. This
-                    // preserves the barrier while avoiding a wake/wait cycle for
-                    // a tiny state-only worker batch.
-                    cmd_flush();
-                    cmd_broadcast_state(cmd_buf);
+                    // ordering points: finish the preceding drawing, then
+                    // apply the state change to every worker in place.
+                    cmd_state_barrier(cmd_buf);
                 } else {
                     // increment buffer position
                     rdp_cmd_buf_pos++;
@@ -599,6 +809,7 @@ void n64video_close(void)
     rdp_dump_end();
 #endif
 
+    al_stop();
     vi_close();
     parallel_close();
 }

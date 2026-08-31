@@ -89,6 +89,7 @@ struct n64video_config
         enum dp_compat_profile compat;  // multithreading compatibility mode
     } dp;
     bool parallel;                  // use multithreaded renderer if true
+    bool async_render;              // render on a thread of its own, the DP interrupt following completion
     bool dithering;                 // enable dithering
     uint32_t num_workers;           // number of rendering workers
 };
@@ -101,3 +102,7 @@ void n64video_set_hle_cmd_buffer(const uint32_t* buf, uint32_t base_byte_addr, u
 void n64video_close(void);
 /* number of parallel batches dispatched so far (tooling) */
 uint32_t n64video_flush_count(void);
+/* wait for the render thread to finish everything queued (no-op when rendering synchronously) */
+void n64video_drain(void);
+/* non-zero once the DP interrupt for the last SYNC_FULL may be raised */
+int angrylion_dp_int_ready(void);
