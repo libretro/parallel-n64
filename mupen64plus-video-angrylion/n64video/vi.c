@@ -763,6 +763,14 @@ static bool vi_process_upscaled(void)
         linecount   = hres;
         minhpass = 0;
         maxhpass = hres;
+        /* The supersampling has already anti-aliased the edges. The VI's
+         * coverage-driven blend, run again on this grid, would instead
+         * mix a fully-covered sample with a fully-covered neighbour of
+         * another surface wherever they meet - the moat bleeding into
+         * the sand along their shared edge. Treat every sample as fully
+         * covered: the resample for scaling still runs, the coverage AA
+         * does not. */
+        ctrl.aa_mode = VI_AA_RESAMP_ONLY;
         if (config.parallel)
             parallel_run(vi_process_full_parallel);
         else
