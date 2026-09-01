@@ -156,6 +156,14 @@ struct tile
     } f;
 };
 
+/* Upscaling renders the same geometry on a grid this many times finer in
+ * each axis, so the scanline and column spaces the spans and the coverage
+ * buffer are indexed by grow with it. */
+#define AL_SCALE_MAX 4
+
+static uint32_t al_scale = 1;
+static uint32_t al_scale_log2;
+
 struct span
 {
     int lx, rx;
@@ -198,7 +206,7 @@ struct rdp_state
     int pastblshifta;
     int pastblshiftb;
 
-    struct span span[1024];
+    struct span span[1024 * AL_SCALE_MAX];
 
     // span states
     int spans_ds;
@@ -334,7 +342,7 @@ struct rdp_state
     uint32_t ti_address;
 
     // coverage
-    uint8_t cvgbuf[1024];
+    uint8_t cvgbuf[1024 * AL_SCALE_MAX];
 
     // tmem
     uint8_t tmem[0x1000];

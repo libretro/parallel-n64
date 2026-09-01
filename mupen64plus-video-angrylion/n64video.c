@@ -366,6 +366,15 @@ void n64video_init(struct n64video_config* _config)
             rdp_cmd_sync[CMD_ID_SYNC_FULL] = true;
     }
     // init internals
+    al_scale = config.upscale ? config.upscale : 1;
+    if (al_scale > AL_SCALE_MAX)
+        al_scale = AL_SCALE_MAX;
+    /* powers of two only: 3x would not tile the sample grid */
+    if (al_scale != 1 && al_scale != 2 && al_scale != 4)
+        al_scale = 1;
+    al_scale_log2 = al_scale == 4 ? 2 : (al_scale == 2 ? 1 : 0);
+    config.upscale = al_scale;
+
     rdram_init();
     vi_init();
     rdp_cmd_buf_pos = 0;

@@ -102,3 +102,5 @@ void n64video_set_hle_cmd_buffer(const uint32_t* buf, uint32_t base_byte_addr, u
 void n64video_close(void);
 /* number of parallel batches dispatched so far (tooling) */
 uint32_t n64video_flush_count(void);
+/* base of the domain the colour and depth buffers live in (tooling) */
+void *n64video_pixel_domain(void);

@@ -373,7 +373,7 @@ static STRICTINLINE uint32_t z_compare(uint32_t wid, uint32_t zcurpixel, uint32_
 
 void rdp_set_mask_image(uint32_t wid, const uint32_t* args)
 {
-    state[wid].zb_address  = args[1] & 0x0ffffff;
+    state[wid].zb_address  = (args[1] & 0x0ffffff) * al_scale * al_scale;
 }
 
 void z_init_lut(void)

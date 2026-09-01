@@ -121,6 +121,11 @@ static void rdram_init(void)
     px_mask32 = RDRAM_MASK >> 2;
 }
 
+void *n64video_pixel_domain(void)
+{
+    return px16;
+}
+
 static STRICTINLINE bool px_valid_idx8(uint32_t in)
 {
     return in <= pxlim8;

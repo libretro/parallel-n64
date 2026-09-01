@@ -286,8 +286,11 @@ void rdp_set_color_image(uint32_t wid, const uint32_t* args)
 {
     state[wid].fb_format   = (args[0] >> 21) & 0x7;
     state[wid].fb_size     = (args[0] >> 19) & 0x3;
-    state[wid].fb_width    = (args[0] & 0x3ff) + 1;
-    state[wid].fb_address  = args[1] & 0x0ffffff;
+    /* the pixel domain holds al_scale * al_scale samples for every
+     * console pixel, so the row stride scales once and the base, which
+     * is a byte address, scales by the sample count */
+    state[wid].fb_width    = ((args[0] & 0x3ff) + 1) * al_scale;
+    state[wid].fb_address  = (args[1] & 0x0ffffff) * al_scale * al_scale;
 
 
     state[wid].fbread1_ptr = fbread_func[state[wid].fb_size];

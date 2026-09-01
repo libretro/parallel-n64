@@ -2000,6 +2000,24 @@ static void edgewalker_for_prims(uint32_t wid, int32_t* ewdata)
     xh = SIGN(ewdata[4], 28);
     xm = SIGN(ewdata[6], 28);
 
+    /* Upscaling renders on a grid al_scale times finer in each axis. The
+     * edges and the scanline space scale with it; the slopes do not,
+     * because both of their axes scale and dxdy is their ratio. The
+     * attribute derivatives are per scanline and per pixel, so they are
+     * quantised to the finer grid - the seek below then steps whole
+     * pixels with the full derivative and the subpixels between them
+     * with the quantised one, which is what keeps an upscaled render
+     * equal to the unscaled one wherever the two share a sample. */
+    if (al_scale > 1)
+    {
+        yl <<= al_scale_log2;
+        ym <<= al_scale_log2;
+        yh <<= al_scale_log2;
+        xl <<= al_scale_log2;
+        xm <<= al_scale_log2;
+        xh <<= al_scale_log2;
+    }
+
     dxldy = SIGN(ewdata[3], 30);
 
 
@@ -2050,6 +2068,29 @@ static void edgewalker_for_prims(uint32_t wid, int32_t* ewdata)
 
 
 
+
+    /* Quantise the derivatives to the finer grid before anything reads
+     * them: the span setup below latches the per-pixel steps, so scaling
+     * them afterwards would leave the shading stepping a whole console
+     * pixel's worth of gradient per subpixel. */
+    if (al_scale > 1)
+    {
+        /* the per-scanline derivatives are not divided here: the seek
+         * below snaps them, stepping whole console scanlines with the
+         * full derivative and the subpixel lines between them with the
+         * quantised one, so a line the two grids share carries the same
+         * value rather than an accumulation of rounding
+         */
+        drdy >>= al_scale_log2; dgdy >>= al_scale_log2;
+        dbdy >>= al_scale_log2; dady >>= al_scale_log2;
+        dsdy >>= al_scale_log2; dtdy >>= al_scale_log2;
+        dwdy >>= al_scale_log2; dzdy >>= al_scale_log2;
+        /* per pixel of the finer grid */
+        drdx >>= al_scale_log2; dgdx >>= al_scale_log2;
+        dbdx >>= al_scale_log2; dadx >>= al_scale_log2;
+        dsdx >>= al_scale_log2; dtdx >>= al_scale_log2;
+        dwdx >>= al_scale_log2; dzdx >>= al_scale_log2;
+    }
 
     state[wid].spans_ds = dsdx & ~0x1f;
     state[wid].spans_dt = dtdx & ~0x1f;
@@ -2113,14 +2154,17 @@ static void edgewalker_for_prims(uint32_t wid, int32_t* ewdata)
 
     if (do_offset)
     {
-        dsdeh = dsde & ~0x1ff;
-        dtdeh = dtde & ~0x1ff;
-        dwdeh = dwde & ~0x1ff;
-        drdeh = drde & ~0x1ff;
-        dgdeh = dgde & ~0x1ff;
-        dbdeh = dbde & ~0x1ff;
-        dadeh = dade & ~0x1ff;
-        dzdeh = dzde & ~0x1ff;
+        /* The per-scanline derivatives stay whole for the seek, which
+         * snaps them; here they are the size of one scanline of the finer
+         * grid, like the dy and dx terms they are combined with. */
+        dsdeh = (dsde >> al_scale_log2) & ~0x1ff;
+        dtdeh = (dtde >> al_scale_log2) & ~0x1ff;
+        dwdeh = (dwde >> al_scale_log2) & ~0x1ff;
+        drdeh = (drde >> al_scale_log2) & ~0x1ff;
+        dgdeh = (dgde >> al_scale_log2) & ~0x1ff;
+        dbdeh = (dbde >> al_scale_log2) & ~0x1ff;
+        dadeh = (dade >> al_scale_log2) & ~0x1ff;
+        dzdeh = (dzde >> al_scale_log2) & ~0x1ff;
 
         dsdyh = dsdy & ~0x1ff;
         dtdyh = dtdy & ~0x1ff;
@@ -2204,9 +2248,24 @@ static void edgewalker_for_prims(uint32_t wid, int32_t* ewdata)
  * exact 32-bit wrap of n additions */
 #define SEEK_ATTR_PRIM(n)                                                       \
 {                                                                               \
-    __m128i ew_n = _mm_set1_epi32((int)(n));                                    \
-    ew_av0 = _mm_add_epi32(ew_av0_base, ew_mul32(ew_n, ew_dev0));               \
-    ew_av1 = _mm_add_epi32(ew_av1_base, ew_mul32(ew_n, ew_dev1));               \
+    if (!al_scale_log2)                                                         \
+    {                                                                           \
+        __m128i ew_n = _mm_set1_epi32((int)(n));                                \
+        ew_av0 = _mm_add_epi32(ew_av0_base, ew_mul32(ew_n, ew_dev0));           \
+        ew_av1 = _mm_add_epi32(ew_av1_base, ew_mul32(ew_n, ew_dev1));           \
+    }                                                                           \
+    else                                                                        \
+    {                                                                           \
+        /* whole console scanlines with the full derivative, the finer  \
+         * lines between them with the quantised one */                         \
+        __m128i ew_sh = _mm_cvtsi32_si128((int)al_scale_log2);                  \
+        __m128i ew_nh = _mm_set1_epi32((int)(n) >> al_scale_log2);              \
+        __m128i ew_nl = _mm_set1_epi32((int)(n) & (int)(al_scale - 1));         \
+        ew_av0 = _mm_add_epi32(ew_av0_base, _mm_add_epi32(                      \
+            ew_mul32(ew_nh, ew_dev0), ew_mul32(ew_nl, _mm_sra_epi32(ew_dev0, ew_sh)))); \
+        ew_av1 = _mm_add_epi32(ew_av1_base, _mm_add_epi32(                      \
+            ew_mul32(ew_nh, ew_dev1), ew_mul32(ew_nl, _mm_sra_epi32(ew_dev1, ew_sh)))); \
+    }                                                                           \
 }
 #elif defined(AL_SIMD_NEON)
     int32x4_t ew_av0 = { r, g, b, a };
@@ -2230,9 +2289,22 @@ static void edgewalker_for_prims(uint32_t wid, int32_t* ewdata)
 }
 #define SEEK_ATTR_PRIM(n)                                                       \
 {                                                                               \
-    int32x4_t ew_n = vdupq_n_s32((int)(n));                                     \
-    ew_av0 = vmlaq_s32(ew_av0_base, ew_dev0, ew_n);                             \
-    ew_av1 = vmlaq_s32(ew_av1_base, ew_dev1, ew_n);                             \
+    if (!al_scale_log2)                                                         \
+    {                                                                           \
+        int32x4_t ew_n = vdupq_n_s32((int)(n));                                 \
+        ew_av0 = vmlaq_s32(ew_av0_base, ew_dev0, ew_n);                         \
+        ew_av1 = vmlaq_s32(ew_av1_base, ew_dev1, ew_n);                         \
+    }                                                                           \
+    else                                                                        \
+    {                                                                           \
+        int32x4_t ew_sh = vdupq_n_s32(-(int)al_scale_log2);                     \
+        int32x4_t ew_nh = vdupq_n_s32((int)(n) >> al_scale_log2);               \
+        int32x4_t ew_nl = vdupq_n_s32((int)(n) & (int)(al_scale - 1));          \
+        ew_av0 = vmlaq_s32(vmlaq_s32(ew_av0_base, ew_dev0, ew_nh),              \
+            vshlq_s32(ew_dev0, ew_sh), ew_nl);                                  \
+        ew_av1 = vmlaq_s32(vmlaq_s32(ew_av1_base, ew_dev1, ew_nh),              \
+            vshlq_s32(ew_dev1, ew_sh), ew_nl);                                  \
+    }                                                                           \
 }
 #else
 #define ADJUST_ATTR_PRIM()      \
@@ -2248,15 +2320,19 @@ static void edgewalker_for_prims(uint32_t wid, int32_t* ewdata)
 }
 
 
+#define AL_SNAP(v0, n, d) \
+    (int)((uint32_t)(v0) + (uint32_t)((n) >> al_scale_log2) * (uint32_t)(d) \
+        + (uint32_t)((n) & (int)(al_scale - 1)) * (uint32_t)((d) >> al_scale_log2))
+
 #define SEEK_ATTR_PRIM(n) {  \
-            s = (int)((uint32_t)s0 + (uint32_t)(n) * (uint32_t)dsde);  \
-            t = (int)((uint32_t)t0 + (uint32_t)(n) * (uint32_t)dtde);  \
-            w = (int)((uint32_t)w0 + (uint32_t)(n) * (uint32_t)dwde);  \
-            r = (int)((uint32_t)r0 + (uint32_t)(n) * (uint32_t)drde);  \
-            g = (int)((uint32_t)g0 + (uint32_t)(n) * (uint32_t)dgde);  \
-            b = (int)((uint32_t)b0 + (uint32_t)(n) * (uint32_t)dbde);  \
-            a = (int)((uint32_t)a0 + (uint32_t)(n) * (uint32_t)dade);  \
-            z = (int)((uint32_t)z0 + (uint32_t)(n) * (uint32_t)dzde);  \
+            s = AL_SNAP(s0, n, dsde);  \
+            t = AL_SNAP(t0, n, dtde);  \
+            w = AL_SNAP(w0, n, dwde);  \
+            r = AL_SNAP(r0, n, drde);  \
+            g = AL_SNAP(g0, n, dgde);  \
+            b = AL_SNAP(b0, n, dbde);  \
+            a = AL_SNAP(a0, n, dade);  \
+            z = AL_SNAP(z0, n, dzde);  \
 }
 #endif
 
@@ -2269,24 +2345,31 @@ static void edgewalker_for_prims(uint32_t wid, int32_t* ewdata)
     int length = 0;
     int32_t xrsc = 0, xlsc = 0, stickybit = 0;
     int32_t yllimit = 0, yhlimit = 0;
-    if (yl & 0x2000)
+    /* The scanline coordinates are read as a fixed-width field, so the
+     * field grows with the finer grid: what was the fourteenth bit of a
+     * console coordinate is the fourteenth plus log2 of the factor
+     * here. */
+    const int32_t y_top  = 0x2000 << al_scale_log2;
+    const int32_t y_next = 0x1000 << al_scale_log2;
+    const int32_t y_mask = y_next - 1;
+    if (yl & y_top)
         yllimit = 1;
-    else if (yl & 0x1000)
+    else if (yl & y_next)
         yllimit = 0;
     else
-        yllimit = (yl & 0xfff) < state[wid].clip.yl;
+        yllimit = (yl & y_mask) < state[wid].clip.yl;
     yllimit = yllimit ? yl : state[wid].clip.yl;
 
     int ylfar = yllimit | 3;
     if ((yl >> 2) > (ylfar >> 2))
         ylfar += 4;
-    else if ((yllimit >> 2) >= 0 && (yllimit >> 2) < 1023)
+    else if ((yllimit >> 2) >= 0 && (yllimit >> 2) < (int)(1024 * al_scale) - 1)
         state[wid].span[(yllimit >> 2) + 1].validline = 0;
 
 
-    if (yh & 0x2000)
+    if (yh & y_top)
         yhlimit = 0;
-    else if (yh & 0x1000)
+    else if (yh & y_next)
         yhlimit = 1;
     else
         yhlimit = (yh >= state[wid].clip.yh);
@@ -2296,6 +2379,9 @@ static void edgewalker_for_prims(uint32_t wid, int32_t* ewdata)
 
     int32_t clipxlshift = state[wid].clip.xl << 1;
     int32_t clipxhshift = state[wid].clip.xh << 1;
+    const int32_t x_top   = 0x2000 << al_scale_log2;
+    const int32_t x_mask  = x_top - 1;
+    const int32_t x_field = (0x4000 << al_scale_log2) - 2; /* bits 1..13+log2 */
     int allover = 1, allunder = 1, curover = 0, curunder = 0;
     int allinval = 1;
     int32_t curcross = 0;
@@ -2372,8 +2458,8 @@ static void edgewalker_for_prims(uint32_t wid, int32_t* ewdata)
 
             curunder = ((xright & 0x8000000) || (xrsc < clipxhshift && !(xright & 0x4000000)));
 
-            xrsc = curunder ? clipxhshift : (((xright >> 13) & 0x3ffe) | stickybit);
-            curover = ((xrsc & 0x2000) || (xrsc & 0x1fff) >= clipxlshift);
+            xrsc = curunder ? clipxhshift : (((xright >> 13) & x_field) | stickybit);
+            curover = ((xrsc & x_top) || (xrsc & x_mask) >= clipxlshift);
             xrsc = curover ? clipxlshift : xrsc;
             state[wid].span[j].majorx[spix] = xrsc & 0x1fff;
             allover &= curover;
@@ -2382,8 +2468,8 @@ static void edgewalker_for_prims(uint32_t wid, int32_t* ewdata)
             stickybit = ((xleft >> 1) & 0x1fff) > 0;
             xlsc = ((xleft >> 13) & 0x1ffe) | stickybit;
             curunder = ((xleft & 0x8000000) || (xlsc < clipxhshift && !(xleft & 0x4000000)));
-            xlsc = curunder ? clipxhshift : (((xleft >> 13) & 0x3ffe) | stickybit);
-            curover = ((xlsc & 0x2000) || (xlsc & 0x1fff) >= clipxlshift);
+            xlsc = curunder ? clipxhshift : (((xleft >> 13) & x_field) | stickybit);
+            curover = ((xlsc & x_top) || (xlsc & x_mask) >= clipxlshift);
             xlsc = curover ? clipxlshift : xlsc;
             state[wid].span[j].minorx[spix] = xlsc & 0x1fff;
             allover &= curover;
@@ -2467,8 +2553,8 @@ static void edgewalker_for_prims(uint32_t wid, int32_t* ewdata)
             stickybit = ((xright >> 1) & 0x1fff) > 0;
             xrsc = ((xright >> 13) & 0x1ffe) | stickybit;
             curunder = ((xright & 0x8000000) || (xrsc < clipxhshift && !(xright & 0x4000000)));
-            xrsc = curunder ? clipxhshift : (((xright >> 13) & 0x3ffe) | stickybit);
-            curover = ((xrsc & 0x2000) || (xrsc & 0x1fff) >= clipxlshift);
+            xrsc = curunder ? clipxhshift : (((xright >> 13) & x_field) | stickybit);
+            curover = ((xrsc & x_top) || (xrsc & x_mask) >= clipxlshift);
             xrsc = curover ? clipxlshift : xrsc;
             state[wid].span[j].majorx[spix] = xrsc & 0x1fff;
             allover &= curover;
@@ -2477,8 +2563,8 @@ static void edgewalker_for_prims(uint32_t wid, int32_t* ewdata)
             stickybit = ((xleft >> 1) & 0x1fff) > 0;
             xlsc = ((xleft >> 13) & 0x1ffe) | stickybit;
             curunder = ((xleft & 0x8000000) || (xlsc < clipxhshift && !(xleft & 0x4000000)));
-            xlsc = curunder ? clipxhshift : (((xleft >> 13) & 0x3ffe) | stickybit);
-            curover = ((xlsc & 0x2000) || (xlsc & 0x1fff) >= clipxlshift);
+            xlsc = curunder ? clipxhshift : (((xleft >> 13) & x_field) | stickybit);
+            curover = ((xlsc & x_top) || (xlsc & x_mask) >= clipxlshift);
             xlsc = curover ? clipxlshift : xlsc;
             state[wid].span[j].minorx[spix] = xlsc & 0x1fff;
             allover &= curover;
@@ -2788,10 +2874,10 @@ void rdp_set_prim_depth(uint32_t wid, const uint32_t* args)
 
 void rdp_set_scissor(uint32_t wid, const uint32_t* args)
 {
-    state[wid].clip.xh = (args[0] >> 12) & 0xfff;
-    state[wid].clip.yh = (args[0] >>  0) & 0xfff;
-    state[wid].clip.xl = (args[1] >> 12) & 0xfff;
-    state[wid].clip.yl = (args[1] >>  0) & 0xfff;
+    state[wid].clip.xh = ((args[0] >> 12) & 0xfff) * al_scale;
+    state[wid].clip.yh = ((args[0] >>  0) & 0xfff) * al_scale;
+    state[wid].clip.xl = ((args[1] >> 12) & 0xfff) * al_scale;
+    state[wid].clip.yl = ((args[1] >>  0) & 0xfff) * al_scale;
 
     state[wid].scfield = (args[1] >> 25) & 1;
     state[wid].sckeepodd = (args[1] >> 24) & 1;
