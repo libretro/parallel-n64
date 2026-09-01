@@ -157,22 +157,28 @@ static void px_resolve_rows(uint32_t wid)
             {
                 uint32_t base16 = (px_resolve_job.addr * samples) >> 1;
                 uint32_t idx16  = (px_resolve_job.addr >> 1) + y * px_resolve_job.width + x;
-                uint32_t r = 0, g = 0, b = 0, first = 0;
+                uint32_t r = 0, g = 0, b = 0, cvg = 0;
                 for (sy = 0; sy < f; sy++)
                     for (sx = 0; sx < f; sx++)
                     {
-                        uint32_t di = base16 + stride * (y * f + sy) + x * f + sx;
-                        uint16_t v = px16[(di & px_mask16) ^ WORD_ADDR_XOR];
-                        if (!sy && !sx) first = di;
+                        uint32_t di = (base16 + stride * (y * f + sy) + x * f + sx) & px_mask16;
+                        uint16_t v = px16[di ^ WORD_ADDR_XOR];
                         r += (v >> 11) & 31; g += (v >> 6) & 31; b += (v >> 1) & 31;
+                        /* three-bit coverage: the word's low bit above the
+                         * two hidden bits */
+                        cvg += ((v & 1) << 2) | (px_hidden[di] & 3);
                     }
                 r = (r + samples / 2) / samples; g = (g + samples / 2) / samples; b = (b + samples / 2) / samples;
+                /* the block's coverage is what the video interface's edge
+                 * filter keys on: the average, so a pixel whose colour is
+                 * already the supersampled blend of an edge is not blurred
+                 * a second time as a partly covered one */
+                cvg = (cvg + samples / 2) / samples;
                 idx16 &= RDRAM_MASK >> 1;
                 if (idx16 <= idxlim16)
                 {
-                    uint16_t v0 = px16[(first & px_mask16) ^ WORD_ADDR_XOR];
-                    rdram16[idx16 ^ WORD_ADDR_XOR] = (uint16_t)((r << 11) | (g << 6) | (b << 1) | (v0 & 1));
-                    rdram_hidden[idx16] = px_hidden[first & px_mask16];
+                    rdram16[idx16 ^ WORD_ADDR_XOR] = (uint16_t)((r << 11) | (g << 6) | (b << 1) | ((cvg >> 2) & 1));
+                    rdram_hidden[idx16] = (uint8_t)(cvg & 3);
                 }
             }
             else if (px_resolve_job.size == 3)

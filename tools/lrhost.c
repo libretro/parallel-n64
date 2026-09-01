@@ -17,7 +17,8 @@
  * LRHOST_DUMP_FROM..LRHOST_DUMP_TO (default 595..605) as raw rows in the
  * core's pixel format (16- or 32-bit)
  * so two configurations can be compared pixel for pixel;
- * LRHOST_VERBOSE=1 shows the core's log.
+ * LRHOST_VERBOSE=1 shows the core's log; LRHOST_STATE=file loads a
+ * savestate after the first frame.
  */
 #if defined(_WIN32)
 #include <windows.h>
@@ -166,6 +167,7 @@ int main(int argc, char **argv)
     bool (*r_load)(const struct retro_game_info*);
     void (*r_run)(void);
     void (*r_get_av)(struct retro_system_av_info*);
+    bool (*r_unserialize)(const void*, size_t);
     struct retro_game_info game;
     struct retro_system_av_info av;
     double *ft, sum = 0, sq = 0, t0, t1, t_first;
@@ -193,6 +195,7 @@ int main(int argc, char **argv)
     SYM(set_input_poll, "retro_set_input_poll"); SYM(set_input_state, "retro_set_input_state");
     SYM(r_init, "retro_init"); SYM(r_deinit, "retro_deinit"); SYM(r_load, "retro_load_game");
     SYM(r_run, "retro_run"); SYM(r_get_av, "retro_get_system_av_info");
+    SYM(r_unserialize, "retro_unserialize");
 
     set_env(env_cb); r_init();
     set_video(video_cb); set_audio(audio_sample_cb); set_audio_batch(audio_batch_cb);
@@ -205,6 +208,26 @@ int main(int argc, char **argv)
     game.path = argv[2]; game.meta = NULL;
     if (!r_load(&game)) { fprintf(stderr, "retro_load_game failed\n"); return 1; }
     r_get_av(&av);
+
+    /* LRHOST_STATE=file loads a savestate after the first frame, so a
+     * run can start inside a game rather than at its boot */
+    if (getenv("LRHOST_STATE"))
+    {
+        FILE *sf = fopen(getenv("LRHOST_STATE"), "rb");
+        if (sf)
+        {
+            long n; void *st;
+            fseek(sf, 0, SEEK_END); n = ftell(sf); fseek(sf, 0, SEEK_SET);
+            st = malloc(n);
+            if (fread(st, 1, n, sf) == (size_t)n)
+            {
+                r_run();
+                if (!r_unserialize(st, n)) fprintf(stderr, "savestate rejected\n");
+            }
+            free(st); fclose(sf);
+        }
+        else perror(getenv("LRHOST_STATE"));
+    }
 
     ft = calloc(nframes, sizeof *ft);
     t_first = now_ms();
