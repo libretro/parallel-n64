@@ -243,6 +243,8 @@ uint32_t screen_width               = 640;
 uint32_t screen_height              = 480;
 float    screen_aspect_ratio        = 4.0 / 3.0;
 uint32_t screen_pitch               = 0;
+/* the buffer angrylion last presented: its fixed one at 1x, its upscaled one otherwise */
+const void *screen_pixels           = NULL;
 uint32_t screen_aspectmodehint;
 enum audio_rsp_mode_t audio_rsp_mode = AUDIO_RSP_FOLLOW;
 /* Set from the ROM header for titles whose audio microcode use cannot be
@@ -885,7 +887,17 @@ static void present_frame(void)
    {
          case GFX_ANGRYLION:
 #ifdef HAVE_THR_AL
-            video_cb(prescale, screen_width, screen_height, screen_pitch);
+            {
+               static unsigned last_w, last_h;
+               if (screen_width != last_w || screen_height != last_h)
+               {
+                  /* the size of the presented frame changed: declare it,
+                   * as the upscaled output is larger than the console's */
+                  last_w = screen_width; last_h = screen_height;
+                  reinit_screen = true;
+               }
+            }
+            video_cb(screen_pixels ? screen_pixels : prescale, screen_width, screen_height, screen_pitch);
 #endif
             break;
 
@@ -905,7 +917,7 @@ static void present_frame(void)
             aleck64_e90_gl_draw(screen_width, screen_height);
             video_cb(RETRO_HW_FRAME_BUFFER_VALID, screen_width, screen_height, 0);
 #elif defined(HAVE_THR_AL)
-            video_cb((screen_pitch == 0) ? NULL : prescale, screen_width, screen_height, screen_pitch);
+            video_cb((screen_pitch == 0) ? NULL : (screen_pixels ? screen_pixels : prescale), screen_width, screen_height, screen_pitch);
 #else
             video_cb(NULL, screen_width, screen_height, screen_pitch);
 #endif

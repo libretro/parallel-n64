@@ -92,6 +92,10 @@ static uint32_t zb_address;
 
 // prescale buffer
 struct rgba prescale[PRESCALE_WIDTH * PRESCALE_HEIGHT];
+/* Output buffer for the upscaled path: hres_raw * vres_raw pixels of
+ * the finer grid, allocated only when the renderer is upscaling. */
+static struct rgba *prescale_up;
+static size_t prescale_up_pixels;
 static uint32_t prescale_ptr;
 static int32_t linecount;
 
@@ -627,6 +631,89 @@ static void vi_process_fast_parallel(uint32_t worker_id)
     }
 }
 
+/* Upscaled output: the framebuffer the VI points at, straight out of
+ * the pixel domain at the renderer's finer resolution, converted like
+ * the unfiltered path converts colour. The video interface's own
+ * filters - anti-aliasing, divot, gamma dither - work in console
+ * pixels and are not applied on this grid. The rows are split across
+ * the worker pool. */
+static void vi_process_upscaled_parallel(uint32_t worker_id)
+{
+    uint32_t f = al_scale, samples = f * f;
+    int32_t y, y_begin = 0, y_inc = 1;
+    int32_t width  = hres_raw;            /* scaled */
+    uint32_t stride = vi_width_low * f;   /* domain pixels per domain row */
+    const uint16_t *dom16 = (const uint16_t*)n64video_pixel_domain();
+    const uint32_t *dom32 = (const uint32_t*)dom16;
+    uint32_t base16 = (frame_buffer * samples) >> 1;
+    uint32_t base32 = (frame_buffer * samples) >> 2;
+
+    if (ctrl.serrate && v_current_line)
+        return;
+    if (config.parallel) {
+        y_begin = worker_id;
+        y_inc = parallel_num_workers();
+    }
+    for (y = y_begin; y < vres_raw; y += y_inc) {
+        struct rgba *pixel_row = &prescale_up[(size_t)y * width];
+        uint32_t line = stride * (uint32_t)y;
+        int32_t x;
+        if (ctrl.type == VI_TYPE_RGBA5551) {
+            for (x = 0; x < width; x++) {
+                uint16_t pix = dom16[((base16 + line + (uint32_t)x) & px_mask16) ^ WORD_ADDR_XOR];
+                pixel_row[x].r = RGBA16_R(pix);
+                pixel_row[x].g = RGBA16_G(pix);
+                pixel_row[x].b = RGBA16_B(pix);
+            }
+        } else {
+            for (x = 0; x < width; x++) {
+                uint32_t pix = dom32[(base32 + line + (uint32_t)x) & px_mask32];
+                pixel_row[x].r = RGBA32_R(pix);
+                pixel_row[x].g = RGBA32_G(pix);
+                pixel_row[x].b = RGBA32_B(pix);
+            }
+        }
+    }
+}
+
+static bool vi_process_upscaled(void)
+{
+    struct frame_buffer fb;
+    int32_t filtered_width, filtered_height;
+    size_t need;
+
+    hres_raw = (int32_t)x_add * hres / 1024 * (int32_t)al_scale;
+    vres_raw = (int32_t)y_add * vres / 1024 * (int32_t)al_scale;
+    if (hres_raw <= 0 || vres_raw <= 0 || !(ctrl.type & 2))
+        return false;
+
+    need = (size_t)hres_raw * vres_raw;
+    if (need > prescale_up_pixels) {
+        free(prescale_up);
+        prescale_up = (struct rgba*)malloc(need * sizeof(*prescale_up));
+        prescale_up_pixels = prescale_up ? need : 0;
+        if (!prescale_up)
+            return false;
+    }
+
+    if (config.parallel)
+        parallel_run(vi_process_upscaled_parallel);
+    else
+        vi_process_upscaled_parallel(0);
+
+    fb.pixels = prescale_up;
+    fb.width  = hres_raw;
+    fb.height = vres_raw;
+    fb.pitch  = hres_raw;
+    filtered_width  = maxhpass - minhpass;
+    filtered_height = (vres << 1) * V_SYNC_NTSC / v_sync;
+    fb.height_out = fb.width * filtered_height / filtered_width;
+    if (config.vi.widescreen)
+        fb.height_out = fb.height_out * 3 / 4;
+    vdac_write(&fb);
+    return fb.width > 0 && fb.height > 0;
+}
+
 static bool vi_process_fast(void)
 {
     // note: this is probably a very, very crude method to get the frame size,
@@ -745,10 +832,11 @@ void n64video_update_screen(void)
     uint32_t vi_control = *vi_reg_ptr[VI_STATUS];
     ctrl.type = vi_control & 3;
 
-    /* an upscaled render lives in the pixel domain: if this origin is in
-     * an image the renderer drew, resolve that image into RDRAM first,
-     * so everything below reads what it always has */
-    n64video_resolve_for_display(frame_buffer);
+    /* an upscaled render lives in the pixel domain. The normal mode
+     * shows it from there at its own resolution; the debug modes read
+     * RDRAM, so for them the drawn image is resolved first. */
+    if (config.vi.mode != VI_MODE_NORMAL)
+        n64video_resolve_for_display(frame_buffer);
     ctrl.gamma_dither_enable = (vi_control >> 2) & 1;
     ctrl.gamma_enable = (vi_control >> 3) & 1;
     ctrl.divot_enable = (vi_control >> 4) & config.vi.vi_blur;
@@ -840,7 +928,9 @@ void n64video_update_screen(void)
         vi_field_count++;
 
         // run filter update in parallel if enabled
-        if (config.vi.mode == VI_MODE_NORMAL) {
+        if (al_scale > 1 && config.vi.mode == VI_MODE_NORMAL) {
+            valid = vi_process_upscaled();
+        } else if (config.vi.mode == VI_MODE_NORMAL) {
             valid = vi_process_full();
         } else {
             valid = vi_process_fast();
@@ -853,5 +943,8 @@ void n64video_update_screen(void)
 
 static void vi_close(void)
 {
+    free(prescale_up);
+    prescale_up = NULL;
+    prescale_up_pixels = 0;
     vdac_close();
 }

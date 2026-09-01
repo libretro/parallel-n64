@@ -1892,6 +1892,24 @@ static void render_spans_copy(uint32_t wid, int start, int end, int tilenum, int
             else
                 copyqword = 0;
 
+            /* Copy mode moves a qword of consecutive texels to as many
+             * consecutive pixels. On the finer grid a texel spans
+             * al_scale pixels, so the qword is repacked with each texel
+             * repeated that many times; the step already advances s by
+             * the texels the qword covers at this scale. */
+            if (al_scale > 1 && copyqword)
+            {
+                uint64_t q = 0;
+                int k;
+                if (state[wid].fb_size == PIXEL_SIZE_16BIT)
+                    for (k = 0; k < 4; k++)
+                        q |= ((copyqword >> (48 - 16 * (k >> al_scale_log2))) & 0xffff) << (48 - 16 * k);
+                else
+                    for (k = 0; k < 8; k++)
+                        q |= ((copyqword >> (56 - 8 * (k >> al_scale_log2))) & 0xff) << (56 - 8 * k);
+                copyqword = q;
+            }
+
 
             if (!state[wid].other_modes.alpha_compare_en)
                 alphamask = 0xff;

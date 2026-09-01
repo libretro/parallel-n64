@@ -75,6 +75,7 @@ static const RdpEmitBackend al_hle_backend =
 
 extern unsigned int screen_width, screen_height;
 extern uint32_t screen_pitch;
+extern const void *screen_pixels;
 
 struct n64video_config config;
 
@@ -186,6 +187,7 @@ void vdac_write(struct frame_buffer* fb)
    screen_width = fb->width;
    screen_height = fb->height;
    screen_pitch = fb->pitch * 4;
+   screen_pixels = fb->pixels;
 }
 
 void vdac_sync(bool invalid)

@@ -46,7 +46,7 @@ static uint16_t* px16;
 static uint8_t* px8;
 static uint8_t* px_hidden;
 static uint32_t pxlim8, pxlim16, pxlim32;
-static uint32_t px_mask8, px_mask16, px_mask32;
+static uint32_t px_mask8, px_mask16, px_mask32;   /* also read by the VI */
 
 static uint16_t* px_alloc16;
 static uint8_t* px_alloc_hidden;
