@@ -13,9 +13,10 @@
  * Prints the per-retro_run mean, standard deviation, p50/p90/p99 and
  * worst frame - the variance a player feels - over the run with the
  * first tenth (the boot) left out, plus how many frames were presented
- * and duplicated. LRHOST_DUMPDIR=dir writes presented frames 595..605
- * as raw 16-bit rows so two configurations can be compared pixel for
- * pixel; LRHOST_VERBOSE=1 shows the core's log.
+ * and duplicated. LRHOST_DUMPDIR=dir writes the presented frames
+ * LRHOST_DUMP_FROM..LRHOST_DUMP_TO (default 595..605) as raw 16-bit rows
+ * so two configurations can be compared pixel for pixel;
+ * LRHOST_VERBOSE=1 shows the core's log.
  */
 #if defined(_WIN32)
 #include <windows.h>
@@ -44,6 +45,7 @@ static const char *opt(const char *key)
 }
 
 static long frames_presented, frames_duped;
+static long dump_from = 595, dump_to = 605;
 static enum retro_pixel_format pixfmt = RETRO_PIXEL_FORMAT_0RGB1555;
 static unsigned vid_w, vid_h;
 static uint32_t frame_crc;
@@ -53,7 +55,7 @@ static void video_cb(const void *data, unsigned w, unsigned h, size_t pitch)
     vid_w = w; vid_h = h;
     if (!data) { frames_duped++; return; }
     frames_presented++;
-    if (getenv("LRHOST_DUMPDIR") && frames_presented >= 655 && frames_presented <= 665)
+    if (getenv("LRHOST_DUMPDIR") && frames_presented >= dump_from && frames_presented <= dump_to)
     {
         char n[256]; FILE *f; unsigned y;
         snprintf(n, sizeof n, "%s/%04ld.raw", getenv("LRHOST_DUMPDIR"), frames_presented);
@@ -178,6 +180,8 @@ int main(int argc, char **argv)
         nopts++;
     }
     nframes = atoi(argv[3]);
+    if (getenv("LRHOST_DUMP_FROM")) dump_from = atol(getenv("LRHOST_DUMP_FROM"));
+    if (getenv("LRHOST_DUMP_TO"))   dump_to   = atol(getenv("LRHOST_DUMP_TO"));
     MKDIR("lrhost-system");
 
     h = lib_open(argv[1]);
