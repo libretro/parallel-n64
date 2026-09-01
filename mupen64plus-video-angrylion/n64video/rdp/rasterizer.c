@@ -2037,6 +2037,22 @@ static void edgewalker_for_prims(uint32_t wid, int32_t* ewdata)
         xl <<= al_scale_log2;
         xm <<= al_scale_log2;
         xh <<= al_scale_log2;
+        /* A fill or copy rectangle names its bottom row by its last
+         * console subline (yl |= 3) and its right column inclusively.
+         * Scaling that subline by the factor lands on the FIRST scaled
+         * subline of the row's last console subline, not the last of the
+         * row: the shift turns |3 into |12, leaving the final three
+         * scaled sublines of every rectangle's bottom row - and the last
+         * subpixels of its right column - unwritten. The game's depth
+         * clear is such a rectangle, so those sublines keep the previous
+         * frame's depth, and surfaces drawn there afterwards lose the
+         * depth test to it along a band one console row apart. Extend to
+         * the last scaled subline and subpixel here, after the shift. */
+        if (state[wid].other_modes.cycle_type == CYCLE_TYPE_FILL || state[wid].other_modes.cycle_type == CYCLE_TYPE_COPY)
+        {
+            yl |= (4 << al_scale_log2) - 1;
+            xl |= (1 << (16 + al_scale_log2)) - 1;
+        }
     }
 
     dxldy = SIGN(ewdata[3], 30);
