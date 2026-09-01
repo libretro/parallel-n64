@@ -4,7 +4,7 @@
  * Built by `make tools` from the tree's own angrylion objects (the
  * target is in the top-level Makefile).
  *
- * Usage: angrylion_bench WORKERS FRAMES TRI_H TRI_W COUNT FLIP TRIS_PER_TEXSWAP [TEX_FROM_FB] [ASYNC]
+ * Usage: angrylion_bench WORKERS FRAMES TRI_H TRI_W COUNT FLIP TRIS_PER_TEXSWAP [TEX_FROM_FB]
  *   TEX_FROM_FB 1 makes every texture swap load out of the framebuffer being
  *   drawn, the case a sync is really needed for; 0 (default) loads static
  *   texture memory.
@@ -65,8 +65,7 @@ static void emit_rect(int x0, int y0, int w, int h, int flip)
 
 static int batch = 0;       /* triangles per texture swap; 0 = none */
 static int tex_from_fb = 0; /* texture swaps load out of the framebuffer */
-static int async_render = 0;
-static retro_time_t inside_us; /* time the calling thread spent in n64video_process_list */
+
 static void build_frame(int tri_w, int tri_h, int count, int flip)
 {
     int i, x = 0, y = 0;
@@ -104,13 +103,7 @@ static void run_frame(void)
     regs[DP_START]   = CMD_ADDR;
     regs[DP_CURRENT] = CMD_ADDR;
     regs[DP_END]     = CMD_ADDR + ncmd * 4;
-    {
-        retro_time_t t = cpu_features_get_time_usec();
-        n64video_process_list();
-        inside_us += cpu_features_get_time_usec() - t;
-    }
-    /* the frame is consumed here, as the VI would */
-    n64video_drain();
+    n64video_process_list();
 }
 
 static unsigned count_written(void)
@@ -131,7 +124,6 @@ int main(int argc, char **argv)
     int flip    = argc > 6 ? atoi(argv[6]) : 0;
     batch       = argc > 7 ? atoi(argv[7]) : 0;
     tex_from_fb = argc > 8 ? atoi(argv[8]) : 0;
-    async_render = argc > 9 ? atoi(argv[9]) : 0;
     struct n64video_config cfg;
     retro_time_t t0, t1;
     int f, i;
@@ -148,7 +140,6 @@ int main(int argc, char **argv)
     cfg.gfx.mi_intr_reg = &mi_intr; cfg.gfx.mi_intr_cb = intr_cb;
     cfg.parallel = true; cfg.num_workers = (uint32_t)workers;
     cfg.dp.compat = DP_COMPAT_HIGH;
-    cfg.async_render = async_render != 0;
     n64video_init(&cfg);
 
     build_frame(tri_w, tri_h, count, flip);
@@ -156,13 +147,12 @@ int main(int argc, char **argv)
     run_frame();
     printf("workers=%d pixels written: %u of %u\n", workers, count_written() / 2, FB_W * FB_H);
 
-    inside_us = 0;
     t0 = cpu_features_get_time_usec();
     for (f = 0; f < frames; f++)
         run_frame();
     t1 = cpu_features_get_time_usec();
     ms = (double)(t1 - t0) / 1e3 / frames;
-    printf("workers=%d tri=%dx%d count=%d texswaps/frame=%d (%s)%s : %.3f ms/frame, %.3f ms of it on the calling thread in process_list\n", workers, tri_w, tri_h, count, batch ? count / batch : 0, tex_from_fb ? "from framebuffer" : "static", async_render ? " async" : "", ms, (double)inside_us / 1e3 / frames);
+    printf("workers=%d tri=%dx%d count=%d texswaps/frame=%d (%s) : %.3f ms/frame\n", workers, tri_w, tri_h, count, batch ? count / batch : 0, tex_from_fb ? "from framebuffer" : "static", ms);
     n64video_close();
     return 0;
 }

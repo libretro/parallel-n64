@@ -1163,20 +1163,6 @@ struct retro_core_option_v2_definition option_defs_us[] = {
         "Low"
     },
     {
-        CORE_NAME "-angrylion-async",
-        "(Angrylion) Asynchronous rendering",
-        "Asynchronous rendering",
-        "Asynchronous rendering",
-        "Draws on a thread of its own so the emulator thread never waits for the workers; the RDP interrupt follows when a list has actually been drawn, so when the game sees a frame finish depends on how fast this machine drew it. That makes emulation non-deterministic: the same input can produce different frames from one run to the next, so leave it disabled for netplay, run-ahead and anything that replays or compares runs. Needs multi-threading.",
-        "angrylion",
-        {
-            { "disabled", NULL },
-            { "enabled",  NULL },
-            { NULL, NULL },
-        },
-        "disabled"
-    },
-    {
         CORE_NAME "-angrylion-multithread",
         "(Angrylion) Multi-threading",
         "Multi-threading",

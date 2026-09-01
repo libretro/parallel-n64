@@ -5,10 +5,9 @@
  * Built by `make tools` from the tree's own angrylion objects (the
  * target is in the top-level Makefile).
  *
- * Usage: angrylion_verify WORKERS TRIANGLES SEEDS MODE [SYNC] [ASYNC] [REPS]
+ * Usage: angrylion_verify WORKERS TRIANGLES SEEDS MODE [SYNC] [REPS]
  *   MODE 0 shade+Z, 1 2-cycle textured, 2 render-to-texture rounds;
- *   SYNC 0 low, 1 medium, 2 high (default); ASYNC 1 renders on a thread of
- *   its own (default 0); REPS frames per seed (default 1)
+ *   SYNC 0 low, 1 medium, 2 high (default); REPS frames per seed (default 1)
  */
 #include "n64video.h"
 #include <stdio.h>
@@ -191,11 +190,10 @@ int main(int argc, char **argv)
     int count   = argc > 2 ? atoi(argv[2]) : 3000;
     int seeds   = argc > 3 ? atoi(argv[3]) : 4;
     int compat;
-    int async_render, reps, r;
+    int reps, r;
     texmode     = argc > 4 ? atoi(argv[4]) : 0;
     compat      = argc > 5 ? atoi(argv[5]) : 2;
-    async_render = argc > 6 ? atoi(argv[6]) : 0;
-    reps        = argc > 7 ? atoi(argv[7]) : 1;
+    reps        = argc > 6 ? atoi(argv[6]) : 1;
     struct n64video_config cfg;
     int i, sd;
 
@@ -208,7 +206,6 @@ int main(int argc, char **argv)
     cfg.gfx.vi_reg = vi_reg; cfg.gfx.dp_reg = dp_reg;
     cfg.gfx.mi_intr_reg = &mi_intr; cfg.gfx.mi_intr_cb = intr_cb;
     cfg.parallel = true; cfg.num_workers = (uint32_t)workers; cfg.dp.compat = (enum dp_compat_profile)compat;
-    cfg.async_render = async_render != 0;
     n64video_init(&cfg);
 
     for (sd = 0; sd < seeds; sd++)
@@ -227,9 +224,6 @@ int main(int argc, char **argv)
             build(count, sd);
         for (r = 0; r < reps; r++)
             run_frame();
-        n64video_drain();
-        if (async_render && !angrylion_dp_int_ready())
-            printf("FAIL: DP interrupt not ready after drain\n");
         for (i = 0; i < FB_W * FB_H * 2; i++) if (rdram[FB_ADDR + i]) written++;
         printf("workers=%2d seed=%d fb=%016llx fb2=%016llx zb=%016llx written=%u", workers, sd,
                (unsigned long long)fnv(rdram + FB_ADDR, FB_W * FB_H * 2),
