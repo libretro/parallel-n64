@@ -7,12 +7,12 @@ static void vi_fetch_filter16(struct rgba* res, uint32_t fboffset, uint32_t cur_
     uint32_t cur_cvg;
     if (ctrl.aa_mode <= VI_AA_RESAMP_EXTRA)
     {
-        PAIRREAD16(pix, hval, idx);
+        vi_read_pair16(&pix, &hval, idx);
         cur_cvg = ((pix & 1) << 2) | hval;
     }
     else
     {
-        RREADIDX16(pix, idx);
+        pix = vi_read_idx16(idx);
         cur_cvg = 7;
     }
     r = RGBA16_R(pix);
@@ -40,7 +40,7 @@ static void vi_fetch_filter32(struct rgba* res, uint32_t fboffset, uint32_t cur_
 {
     int r, g, b;
     uint32_t pix, addr = (fboffset >> 2) + cur_x;
-    RREADIDX32(pix, addr);
+    pix = vi_read_idx32(addr);
     uint32_t cur_cvg;
     if (ctrl.aa_mode <= VI_AA_RESAMP_EXTRA)
         cur_cvg = (pix >> 5) & 7;

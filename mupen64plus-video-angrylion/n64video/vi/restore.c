@@ -115,12 +115,12 @@ static STRICTINLINE void restore_filter16(int* r, int* g, int* b, uint32_t fboff
 #if defined(AL_VI_SSE2) || defined(AL_VI_NEON)
         uint16_t pix8[8];
         for (i = 0; i < 8; i++)
-            pix8[i] = rdram_read_idx16_fast(dirs[i]);
+            pix8[i] = vi_read_idx16_fast(dirs[i]);
         restore_filter16_simd(&rend, &gend, &bend, pix8);
 #else
         for (i = 0; i < 8; i++)
         {
-            pix = rdram_read_idx16_fast(dirs[i]);
+            pix = vi_read_idx16_fast(dirs[i]);
             tempr = (pix >> 11) & 0x1f;
             tempg = (pix >> 6) & 0x1f;
             tempb = (pix >> 1) & 0x1f;
@@ -134,7 +134,7 @@ static STRICTINLINE void restore_filter16(int* r, int* g, int* b, uint32_t fboff
     {
         for (i = 0; i < 8; i++)
         {
-            pix = rdram_read_idx16(dirs[i]);
+            pix = vi_read_idx16(dirs[i]);
             tempr = (pix >> 11) & 0x1f;
             tempg = (pix >> 6) & 0x1f;
             tempb = (pix >> 1) & 0x1f;
@@ -192,7 +192,7 @@ static STRICTINLINE void restore_filter32(int* r, int* g, int* b, uint32_t fboff
     {
         for (i = 0; i < 8; i++)
         {
-            pix = rdram_read_idx32_fast(dirs[i]);
+            pix = vi_read_idx32_fast(dirs[i]);
             tempr = (pix >> 27) & 0x1f;
             tempg = (pix >> 19) & 0x1f;
             tempb = (pix >> 11) & 0x1f;
@@ -205,7 +205,7 @@ static STRICTINLINE void restore_filter32(int* r, int* g, int* b, uint32_t fboff
     {
         for (i = 0; i < 8; i++)
         {
-            pix = rdram_read_idx32(dirs[i]);
+            pix = vi_read_idx32(dirs[i]);
             tempr = (pix >> 27) & 0x1f;
             tempg = (pix >> 19) & 0x1f;
             tempb = (pix >> 11) & 0x1f;

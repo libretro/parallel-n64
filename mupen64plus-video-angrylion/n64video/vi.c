@@ -54,6 +54,44 @@ struct vi_reg_ctrl
 
 typedef void(*vi_fetch_filter_func)(struct rgba*, uint32_t, uint32_t, struct vi_reg_ctrl, uint32_t, uint32_t);
 
+/* The image the video interface reads: RDRAM at 1x, the pixel domain
+ * when the renderer is upscaling. Set once per frame; the reads below
+ * are what rdram.c's are, through these pointers, so the 1x path pays
+ * nothing it did not already pay. */
+static const uint16_t *vi_src16;
+static const uint32_t *vi_src32;
+static const uint8_t  *vi_src_hidden;
+static uint32_t vi_mask16, vi_mask32, vi_lim16, vi_lim32;
+
+static STRICTINLINE uint16_t vi_read_idx16(uint32_t in)
+{
+    in &= vi_mask16;
+    return in <= vi_lim16 ? vi_src16[in ^ WORD_ADDR_XOR] : 0;
+}
+static STRICTINLINE uint16_t vi_read_idx16_fast(uint32_t in)
+{
+    return vi_src16[(in & vi_mask16) ^ WORD_ADDR_XOR];
+}
+static STRICTINLINE uint32_t vi_read_idx32(uint32_t in)
+{
+    in &= vi_mask32;
+    return in <= vi_lim32 ? vi_src32[in] : 0;
+}
+static STRICTINLINE uint32_t vi_read_idx32_fast(uint32_t in)
+{
+    return vi_src32[in & vi_mask32];
+}
+static STRICTINLINE void vi_read_pair16(uint16_t* rdst, uint8_t* hdst, uint32_t in)
+{
+    in &= vi_mask16;
+    if (in <= vi_lim16) {
+        *rdst = vi_src16[in ^ WORD_ADDR_XOR];
+        *hdst = vi_src_hidden[in];
+    } else {
+        *rdst = *hdst = 0;
+    }
+}
+
 #include "vi/vi_simd.h"
 #include "vi/gamma.c"
 #include "vi/lerp.c"
@@ -92,6 +130,9 @@ static uint32_t zb_address;
 
 // prescale buffer
 struct rgba prescale[PRESCALE_WIDTH * PRESCALE_HEIGHT];
+/* where the filter loop writes: the fixed buffer, or the upscaled one */
+static struct rgba *vi_out = prescale;
+
 /* Output buffer for the upscaled path: hres_raw * vres_raw pixels of
  * the finer grid, allocated only when the renderer is upscaling. */
 static struct rgba *prescale_up;
@@ -179,7 +220,7 @@ static void vi_process_full_parallel(uint32_t worker_id)
             divot_cache_marker = divot_cache_next_marker = cache_marker_init;
         }
 
-        struct rgba* pixel_row = &prescale[prescale_ptr + linecount * y];
+        struct rgba* pixel_row = &vi_out[prescale_ptr + linecount * y];
 
         yfrac = (curry >> 5) & 0x1f;
         pixels = vi_width_low * prevy;
@@ -586,7 +627,7 @@ static void vi_process_fast_parallel(uint32_t worker_id)
                 case VI_MODE_COLOR:
                     switch (ctrl.type) {
                         case VI_TYPE_RGBA5551: {
-                            uint16_t pix = rdram_read_idx16((frame_buffer >> 1) + line + x);
+                            uint16_t pix = vi_read_idx16((frame_buffer >> 1) + line + x);
                             pixel->r = RGBA16_R(pix);
                             pixel->g = RGBA16_G(pix);
                             pixel->b = RGBA16_B(pix);
@@ -594,7 +635,7 @@ static void vi_process_fast_parallel(uint32_t worker_id)
                         }
 
                         case VI_TYPE_RGBA8888: {
-                            uint32_t pix = rdram_read_idx32((frame_buffer >> 2) + line + x);
+                            uint32_t pix = vi_read_idx32((frame_buffer >> 2) + line + x);
                             pixel->r = RGBA32_R(pix);
                             pixel->g = RGBA32_G(pix);
                             pixel->b = RGBA32_B(pix);
@@ -610,7 +651,7 @@ static void vi_process_fast_parallel(uint32_t worker_id)
 
                 case VI_MODE_DEPTH: {
                     if (zb_address) {
-                        pixel->r = pixel->g = pixel->b = rdram_read_idx16((zb_address >> 1) + line + x) >> 8;
+                        pixel->r = pixel->g = pixel->b = vi_read_idx16((zb_address >> 1) + line + x) >> 8;
                     }
                     break;
                 }
@@ -619,7 +660,7 @@ static void vi_process_fast_parallel(uint32_t worker_id)
                     // TODO: incorrect for RGBA8888?
                     uint8_t hval;
                     uint16_t pix;
-                    rdram_read_pair16(&pix, &hval, (frame_buffer >> 1) + line + x);
+                    vi_read_pair16(&pix, &hval, (frame_buffer >> 1) + line + x);
                     pixel->r = pixel->g = pixel->b = (((pix & 1) << 2) | hval) << 5;
                     break;
                 }
@@ -681,13 +722,22 @@ static bool vi_process_upscaled(void)
     struct frame_buffer fb;
     int32_t filtered_width, filtered_height;
     size_t need;
+    uint32_t f = al_scale;
 
-    hres_raw = (int32_t)x_add * hres / 1024 * (int32_t)al_scale;
-    vres_raw = (int32_t)y_add * vres / 1024 * (int32_t)al_scale;
+    /* Output geometry: the console's, scaled. x_add and y_add are source
+     * samples per output pixel and stay as they are - the source has a
+     * factor more samples and the output a factor more pixels. */
+    hres_raw = (int32_t)x_add * hres / 1024 * (int32_t)f;
+    vres_raw = (int32_t)y_add * vres / 1024 * (int32_t)f;
     if (hres_raw <= 0 || vres_raw <= 0 || !(ctrl.type & 2))
         return false;
 
+    /* the filtered loop writes the VI's output width per row - hres,
+     * which the console's VI doubles for a 320-wide image - so the
+     * buffer is sized for the larger of the two shapes */
     need = (size_t)hres_raw * vres_raw;
+    if ((size_t)hres * f * (size_t)vres * f > need)
+        need = (size_t)hres * f * (size_t)vres * f;
     if (need > prescale_up_pixels) {
         free(prescale_up);
         prescale_up = (struct rgba*)malloc(need * sizeof(*prescale_up));
@@ -696,10 +746,39 @@ static bool vi_process_upscaled(void)
             return false;
     }
 
-    if (config.parallel)
-        parallel_run(vi_process_upscaled_parallel);
+    if (config.vi.mode == VI_MODE_NORMAL && (ctrl.aa_mode != VI_AA_REPLICATE || ctrl.divot_enable || ctrl.gamma_enable))
+    {
+        /* Filtered: the full loop - anti-aliasing, divot, gamma, lerp -
+         * with its geometry scaled: hres and vres in output pixels, the
+         * start offsets and the row stride in source samples, the
+         * framebuffer at its domain address. Output rows are dense. */
+        hres        = hres * (int32_t)f;
+        vres        = vres * (int32_t)f;
+        x_start    *= f;
+        y_start    *= f;
+        vi_width_low = vi_width_low * f;
+        frame_buffer = frame_buffer * f * f;
+        vi_out      = prescale_up;
+        prescale_ptr = 0;
+        linecount   = hres;
+        minhpass = 0;
+        maxhpass = hres;
+        if (config.parallel)
+            parallel_run(vi_process_full_parallel);
+        else
+            vi_process_full_parallel(0);
+        vi_out = prescale;
+        /* the filtered loop writes hres x vres output pixels */
+        hres_raw = hres;
+        vres_raw = vres;
+    }
     else
-        vi_process_upscaled_parallel(0);
+    {
+        if (config.parallel)
+            parallel_run(vi_process_upscaled_parallel);
+        else
+            vi_process_upscaled_parallel(0);
+    }
 
     fb.pixels = prescale_up;
     fb.width  = hres_raw;
@@ -783,6 +862,15 @@ void n64video_update_screen(void)
 
     // parse and check some common registers
     vi_reg_ptr = config.gfx.vi_reg;
+
+    /* the image to read from: RDRAM, or the pixel domain when upscaling */
+    if (al_scale > 1) {
+        vi_src16 = px16; vi_src32 = px32; vi_src_hidden = px_hidden;
+        vi_mask16 = px_mask16; vi_mask32 = px_mask32; vi_lim16 = pxlim16; vi_lim32 = pxlim32;
+    } else {
+        vi_src16 = rdram16; vi_src32 = rdram32; vi_src_hidden = rdram_hidden;
+        vi_mask16 = RDRAM_MASK >> 1; vi_mask32 = RDRAM_MASK >> 2; vi_lim16 = idxlim16; vi_lim32 = idxlim32;
+    }
 
     /* On a ROM reload the plugin is reconnected in two steps: initiateGFX runs
      * n64video_config_init() which memsets config (clearing gfx.vi_reg), and

@@ -323,7 +323,7 @@ static STRICTINLINE void video_filter32(int* endr, int* endg, int* endb, uint32_
 
     for (i = 0; i < 6; i++)
     {
-        pix = rdram_read_idx32(dirs[i]);
+        pix = vi_read_idx32(dirs[i]);
         pixcvg = (pix >> 5) & 7;
         if (pixcvg == 7)
         {
