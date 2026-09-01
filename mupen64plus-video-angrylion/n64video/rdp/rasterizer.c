@@ -543,6 +543,26 @@ static void render_spans_1cycle_notexel1(uint32_t wid, int start, int end, int t
             sigs.endspan = (j == length);
             sigs.preendspan = (j == (length - 1));
 
+            /* A pixel with no coverage cannot be written: the blender
+             * takes coverage - or its bit, both zero here - as its gate
+             * and returns without a colour, so the texture fetch, the
+             * combiner and the framebuffer read that precede it are all
+             * discarded. Skip them. The dither noise is still drawn,
+             * because at dither level zero it advances a per-worker
+             * generator later pixels consume, and the attributes and
+             * addresses still step. These renderers carry no texel or
+             * memory colour between pixels, so nothing else about the
+             * skipped pixel is observable. */
+            if (!state[wid].cvgbuf[x])
+            {
+                if (!state[wid].other_modes.f.getditherlevel)
+                    get_dither_noise(wid, x, i, &cdith, &adith);
+                s += dsinc; t += dtinc; w += dwinc;
+                r += drinc; g += dginc; b += dbinc; a += dainc; z += dzinc;
+                x += xinc; curpixel += xinc; zbcur += xinc;
+                continue;
+            }
+
             lookup_cvmask_derivatives(state[wid].cvgbuf[x], &offx, &offy, &curpixel_cvg, &curpixel_cvbit);
 
             state[wid].tcdiv_ptr(ss, st, sw, &sss, &sst);
@@ -693,6 +713,25 @@ static void render_spans_1cycle_notex(uint32_t wid, int start, int end, int tile
             sb = b >> 14;
             sa = a >> 14;
             sz = (z >> 10) & 0x3fffff;
+
+            /* A pixel with no coverage cannot be written: the blender
+             * takes coverage - or its bit, both zero here - as its gate
+             * and returns without a colour, so the texture fetch, the
+             * combiner and the framebuffer read that precede it are all
+             * discarded. Skip them. The dither noise is still drawn,
+             * because at dither level zero it advances a per-worker
+             * generator later pixels consume, and the attributes and
+             * addresses still step. These renderers carry no texel or
+             * memory colour between pixels, so nothing else about the
+             * skipped pixel is observable. */
+            if (!state[wid].cvgbuf[x])
+            {
+                if (!state[wid].other_modes.f.getditherlevel)
+                    get_dither_noise(wid, x, i, &cdith, &adith);
+                r += drinc; g += dginc; b += dbinc; a += dainc; z += dzinc;
+                x += xinc; curpixel += xinc; zbcur += xinc;
+                continue;
+            }
 
             lookup_cvmask_derivatives(state[wid].cvgbuf[x], &offx, &offy, &curpixel_cvg, &curpixel_cvbit);
 
