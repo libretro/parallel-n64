@@ -110,7 +110,7 @@ static STRICTINLINE void restore_filter16(int* r, int* g, int* b, uint32_t fboff
         leftdownpix + 1, maxpix, toleftpix, toleftpix + 2
     };
 
-    if (rdram_valid_idx16(maxpix) && rdram_valid_idx16(leftuppix))
+    if (vi_valid_idx16(maxpix) && vi_valid_idx16(leftuppix))
     {
 #if defined(AL_VI_SSE2) || defined(AL_VI_NEON)
         uint16_t pix8[8];
@@ -188,7 +188,7 @@ static STRICTINLINE void restore_filter32(int* r, int* g, int* b, uint32_t fboff
         leftdownpix + 1, maxpix, toleftpix, toleftpix + 2
     };
 
-    if (rdram_valid_idx32(maxpix) && rdram_valid_idx32(leftuppix))
+    if (vi_valid_idx32(maxpix) && vi_valid_idx32(leftuppix))
     {
         for (i = 0; i < 8; i++)
         {

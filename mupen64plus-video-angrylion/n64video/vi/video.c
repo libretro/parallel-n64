@@ -146,7 +146,7 @@ static STRICTINLINE void video_filter16(int* endr, int* endg, int* endb, uint32_
     uint16_t p0, p1, p2, p3, p4, p5;
     int q0, q1, q2, q3, q4, q5, numoffull;
 
-    if (idx < hres + 1 || hi < idx || !rdram_valid_idx16(hi))
+    if (idx < hres + 1 || hi < idx || !vi_valid_idx16(hi))
     {
         video_filter16_scalar(endr, endg, endb, fboffset, num, hres, centercvg, fetchbugstate);
         return;
