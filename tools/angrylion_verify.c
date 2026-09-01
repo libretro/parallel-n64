@@ -17,6 +17,7 @@
  */
 #include "n64video.h"
 #include <stdio.h>
+#include <math.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
@@ -123,6 +124,60 @@ static void emit_tex_setup(uint32_t addr, uint32_t width)
 {
     emit((0x3du << 24) | (2u << 19) | (width - 1)); emit(addr);
 }
+/* A triangle from three vertices in pixels: flat colour, coverage-AA
+ * blend against the framebuffer (blend_en on), as the ground polygons
+ * are drawn. */
+static void emit_flat_tri(double x0, double y0, double x1, double y1, double x2, double y2, uint32_t rr, uint32_t gg, uint32_t bb)
+{
+    double vx[3] = { x0, x1, x2 }, vy[3] = { y0, y1, y2 };
+    int i, j, flip;
+    double dxhdy, dxmdy, dxldy, xh, xm, xl;
+    int32_t yh, ym, yl;
+    for (i = 0; i < 3; i++) for (j = i + 1; j < 3; j++)
+        if (vy[j] < vy[i]) { double t = vx[i]; vx[i]=vx[j]; vx[j]=t; t=vy[i]; vy[i]=vy[j]; vy[j]=t; }
+    dxhdy = (vx[2]-vx[0]) / (vy[2]-vy[0]);
+    dxmdy = vy[1] > vy[0] ? (vx[1]-vx[0]) / (vy[1]-vy[0]) : 0;
+    dxldy = vy[2] > vy[1] ? (vx[2]-vx[1]) / (vy[2]-vy[1]) : 0;
+    yh = (int32_t)floor(vy[0]*4.0); ym = (int32_t)floor(vy[1]*4.0); yl = (int32_t)floor(vy[2]*4.0);
+    xh = vx[0] + dxhdy*((yh/4.0)-vy[0]);
+    xm = vx[0] + dxmdy*((yh/4.0)-vy[0]);
+    xl = vx[1] + dxldy*((ym/4.0)-vy[1]);
+    flip = (vx[1] > vx[0] + dxhdy*(vy[1]-vy[0])) ? 1 : 0;
+    emit((0x08u << 24) | ((uint32_t)flip << 23) | ((uint32_t)yl & 0x3fff));
+    emit((((uint32_t)ym & 0xffff) << 16) | ((uint32_t)yh & 0xffff));
+    emit((uint32_t)(int32_t)(xl*65536.0) & 0x0fffffff); emit((uint32_t)(int32_t)(dxldy*65536.0) & 0x3fffffff);
+    emit((uint32_t)(int32_t)(xh*65536.0) & 0x0fffffff); emit((uint32_t)(int32_t)(dxhdy*65536.0) & 0x3fffffff);
+    emit((uint32_t)(int32_t)(xm*65536.0) & 0x0fffffff); emit((uint32_t)(int32_t)(dxmdy*65536.0) & 0x3fffffff);
+    (void)rr; (void)gg; (void)bb;
+}
+
+/* The game's situation: a background polygon (the "moat", blue) drawn
+ * first over the whole image, then two triangles (the "sand", yellow)
+ * sharing a diagonal edge drawn over it, all with coverage-AA blend.
+ * The shared edge must not let the background show through. */
+static void build_seam(void)
+{
+    ncmd = 0;
+    emit((0x2du << 24) | 0u); emit(((uint32_t)(FB_W<<2) << 12) | (uint32_t)(FB_H<<2));
+    emit((0x3fu << 24) | (2u << 19) | (FB_W-1)); emit(FB_ADDR);
+    /* clear to black with a fill */
+    emit((0x2fu << 24) | (3u << 20)); emit(0);
+    emit((0x37u << 24)); emit(0);
+    emit((0x36u << 24) | ((uint32_t)((FB_W-1)<<2) << 12) | (uint32_t)((FB_H-1)<<2)); emit(0);
+    /* 1-cycle, blend colour over memory by coverage; dither off; AA on */
+    emit((0x2fu << 24) | (3u << 6) | (3u << 4) | (1u << 3)); emit((1u << 6) | (1u << 4));
+    /* blend: (pixel_color * pixel_alpha) + (mem_color * (1-alpha)) */
+    emit((0x3cu << 24) | (0u << 30) | (0u << 28) | (0u << 26) | (0u << 24)); emit(0);
+    /* moat: full-screen blue */
+    emit((0x37u << 24)); emit(0);   /* set prim/fill unused */
+    emit_flat_tri(0, 0, FB_W, 0, 0, FB_H, 0, 0, 31);
+    emit_flat_tri(FB_W, 0, FB_W, FB_H, 0, FB_H, 0, 0, 31);
+    /* sand: the shared-edge pair, yellow */
+    emit_flat_tri(20, 20, 300, 40, 40, 200, 31, 31, 0);
+    emit_flat_tri(300, 40, 300, 220, 40, 200, 31, 31, 0);
+    emit((0x29u << 24)); emit(0);
+}
+
 static void build_rtt(int count, int seed)
 {
     int i, round;
@@ -255,7 +310,9 @@ int main(int argc, char **argv)
             memset(dom + (size_t)FB2_ADDR * samples, 0,   (size_t)FB_W * FB_H * 2 * samples);
             memset(dom + (size_t)ZB_ADDR * samples, 0xff, (size_t)FB_W * FB_H * 2 * samples);
         }
-        if (texmode == 2)
+        if (texmode == 3)
+            build_seam();
+        else if (texmode == 2)
         {
             texmode = 1;
             build_rtt(count, sd);
@@ -290,6 +347,15 @@ int main(int argc, char **argv)
         {
             FILE *f = fopen(getenv("AL_DUMP"), "wb");
             if (f) { fwrite(rdram + FB_ADDR, 2, FB_W * FB_H, f); fclose(f); }
+        }
+        if (texmode == 3)
+        {
+            unsigned x, y, bg = 0;
+            const uint16_t *fbp = (const uint16_t*)(rdram + FB_ADDR);
+            for (y = 45; y < 195; y++)
+                for (x = 45; x < 295; x++)
+                    if ((fbp[y*FB_W+x] & 0x003e) >= 0x0030 && ((fbp[y*FB_W+x] >> 11) & 31) < 12) bg++;
+            printf("seam: %u background pixels inside the sand quad\n", bg);
         }
         printf("workers=%2d seed=%d fb=%016llx fb2=%016llx zb=%016llx written=%u", workers, sd,
                (unsigned long long)fnv(rdram + FB_ADDR, FB_W * FB_H * 2),
