@@ -1223,7 +1223,10 @@ endif
 lrhost$(EXE_EXT): tools/lrhost.c $(LIBRETRO_COMM_DIR)/features/features_cpu.o
 	$(CC) $(CPPFLAGS) $(CFLAGS) -w $< $(LIBRETRO_COMM_DIR)/features/features_cpu.o -o $@ $(LRHOST_LIBS) -lpthread -lm
 
-tools: $(ANGRYLION_TOOLS) lrhost$(EXE_EXT)
+angrylion_replay$(EXE_EXT): tools/angrylion_replay.c $(ANGRYLION_TOOL_OBJS)
+	$(CC) $(CPPFLAGS) $(CFLAGS) -I$(VIDEODIR_ANGRYLION) -w $< $(ANGRYLION_TOOL_OBJS) -o $@ -lpthread -lm
+
+tools: $(ANGRYLION_TOOLS) lrhost$(EXE_EXT) angrylion_replay$(EXE_EXT)
 
 .PHONY: clean clean-tools tools
 -include $(OBJECTS:.o=.d)

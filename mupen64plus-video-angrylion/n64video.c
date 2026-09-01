@@ -141,6 +141,59 @@ static struct
 } hz;
 static uint32_t flush_count;
 
+/* Frame capture for the seam bisect. AL_CAPTURE=file, AL_CAPTURE_FRAME=N:
+ * accumulate the command words of the first frame at or past VI N into a
+ * static buffer, and flush the buffer to the file when that frame ends.
+ * No file I/O in the parse hot path, no pointer kept across the frame. */
+static uint32_t al_cap_buf[1 << 20];   /* up to 1M command words */
+static uint32_t al_cap_words;
+static uint32_t al_cap_vireg[16];
+static long al_cap_frame, al_cap_target = -2, al_cap_locked = -1, al_cap_capvi = -1;
+long al_cap_vi;   /* bumped once per VI by update_screen */
+
+static void al_capture_cmd(const uint32_t *words, uint32_t n)
+{
+    uint32_t k;
+    if (!getenv("AL_CAPTURE")) return;
+    if (n == 0 || n > 64 || !words) return;
+    if (al_cap_target == -2) al_cap_target = getenv("AL_CAPTURE_FRAME") ? atol(getenv("AL_CAPTURE_FRAME")) : 0;
+    if (al_cap_locked >= 0) return;                 /* already have a frame */
+    if (al_cap_vi < al_cap_target) return;          /* not yet */
+    if (al_cap_words == 0)                           /* first command of it */
+        for (k = 0; k < VI_NUM_REG && k < 16; k++)
+            al_cap_vireg[k] = (config.gfx.vi_reg && config.gfx.vi_reg[k]) ? *config.gfx.vi_reg[k] : 0;
+    if (al_cap_words + n + 1 > (uint32_t)(sizeof(al_cap_buf) / sizeof(al_cap_buf[0])))
+        return;
+    for (k = 0; k < n; k++) al_cap_buf[al_cap_words++] = words[k];
+    /* mark the VI this frame belongs to so the flush fires at its end */
+    al_cap_capvi = al_cap_vi;
+}
+
+void al_capture_vi(void);
+static void al_capture_flush_if_ready(void)
+{
+    const char *env = getenv("AL_CAPTURE");
+    if (!env || al_cap_locked >= 0 || al_cap_words == 0) return;
+    if (al_cap_vi <= al_cap_capvi) return;          /* frame not finished */
+    {
+        FILE *f = fopen(env, "wb");
+        if (f)
+        {
+            uint32_t sz = config.gfx.rdram_size, z = 0;
+            uint32_t hsz = (uint32_t)sizeof(rdram_hidden);
+            fwrite("ALCAP5", 1, 6, f); fwrite(&sz, 4, 1, f); fwrite(&hsz, 4, 1, f); fwrite(al_cap_vireg, 4, 16, f);
+            if (config.gfx.rdram) fwrite(config.gfx.rdram, 1, sz, f);
+            fwrite(rdram_hidden, 1, hsz, f);
+            fwrite(al_cap_buf, 4, al_cap_words, f);
+            fwrite(&z, 4, 1, f);
+            fclose(f);
+        }
+        al_cap_locked = 1;
+    }
+    (void)al_cap_frame;
+}
+void al_capture_vi(void) { al_capture_flush_if_ready(); }
+
 /* Upscaling: the console images the buffered drawing has written to
  * since they were last resolved. Only these are ever resolved back into
  * RDRAM - never an address the video interface merely points at, which
@@ -586,6 +639,7 @@ void n64video_process_list(void)
 
         // if there's enough data for the current command...
         if (rdp_cmd_pos == rdp_cmd_len) {
+            al_capture_cmd(cmd_buf, rdp_cmd_len);
 #ifdef HAVE_RDP_DUMP
             if (!rdp_dump_in_command_list)
             {
