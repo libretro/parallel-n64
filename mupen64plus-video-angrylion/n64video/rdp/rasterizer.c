@@ -2149,8 +2149,15 @@ static void edgewalker_for_prims(uint32_t wid, int32_t* ewdata)
     state[wid].spans_dwdy = dwdy & ~0x7fff;
 
 
-    int dzdy_dz = (dzdy >> 16) & 0xffff;
-    int dzdx_dz = (dzdx >> 16) & 0xffff;
+    /* The depth tolerance dzpix is the console's, per console pixel: the
+     * derivatives here are the size of a pixel of the finer grid, so
+     * they are scaled back up for it. Left unscaled the tolerance
+     * shrinks with the grid, and coplanar surfaces that never fought at
+     * 1x fight along their shared edges. The interpolation keeps the
+     * finer per-pixel steps; only the tolerance is judged per console
+     * pixel. */
+    int dzdy_dz = ((dzdy << al_scale_log2) >> 16) & 0xffff;
+    int dzdx_dz = ((dzdx << al_scale_log2) >> 16) & 0xffff;
 
     state[wid].spans_dzpix = ((dzdy_dz & 0x8000) ? ((~dzdy_dz) & 0x7fff) : dzdy_dz) + ((dzdx_dz & 0x8000) ? ((~dzdx_dz) & 0x7fff) : dzdx_dz);
     state[wid].spans_dzpix = normalize_dzpix(state[wid].spans_dzpix & 0xffff) & 0xffff;
