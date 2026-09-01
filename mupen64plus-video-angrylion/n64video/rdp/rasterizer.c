@@ -1642,7 +1642,10 @@ static void render_spans_2cycle_notex(uint32_t wid, int start, int end, int tile
  * since fill has no read dependency. */
 static void render_fill_row_16(uint32_t wid, uint32_t fb_lo, int count)
 {
-    uint32_t mask = RDRAM_MASK >> 1;
+    /* the pixel domain's mask and limit: RDRAM's own at 1x, the wider
+     * ones of the upscaled buffer otherwise - the same domain the
+     * per-pixel fill writes through */
+    uint32_t mask = px_mask16;
     uint32_t fc32 = state[wid].fill_color;
     uint32_t vhi = (fc32 >> 16) & 0xffff;
     uint32_t vlo = fc32 & 0xffff;
@@ -1656,7 +1659,7 @@ static void render_fill_row_16(uint32_t wid, uint32_t fb_lo, int count)
     if (count <= 0)
         return;
     in_hi = (fb_lo + (uint32_t)(count - 1)) & mask;
-    if (in_hi < in_lo || in_hi > idxlim16)
+    if (in_hi < in_lo || in_hi > pxlim16)
     {
         int k;
         for (k = 0; k < count; k++)
@@ -1678,26 +1681,26 @@ static void render_fill_row_16(uint32_t wid, uint32_t fb_lo, int count)
         /* scalar pixels until 'in' is even (start of a physical 32-bit word) */
         while (n > 0 && (in & 1))
         {
-            rdram16[in ^ WORD_ADDR_XOR] = (uint16_t)vlo;
-            rdram_hidden[in] = hlo;
+            px16[in ^ WORD_ADDR_XOR] = (uint16_t)vlo;
+            px_hidden[in] = hlo;
             in++; n--;
         }
         /* 8-pixel (16-byte rdram16 + 8-byte hidden) vector body */
         while (n >= 8)
         {
 #if defined(AL_SIMD_SSE2)
-            _mm_storeu_si128((__m128i*)(rdram16 + in), vfc);
+            _mm_storeu_si128((__m128i*)(px16 + in), vfc);
 #else
-            vst1q_u16(rdram16 + in, vreinterpretq_u16_u32(vfc));
+            vst1q_u16(px16 + in, vreinterpretq_u16_u32(vfc));
 #endif
-            *(uint64_t*)(rdram_hidden + in) = hpat;
+            *(uint64_t*)(px_hidden + in) = hpat;
             in += 8; n -= 8;
         }
         /* scalar tail */
         while (n > 0)
         {
-            if (in & 1) { rdram16[in ^ WORD_ADDR_XOR] = (uint16_t)vlo; rdram_hidden[in] = hlo; }
-            else        { rdram16[in ^ WORD_ADDR_XOR] = (uint16_t)vhi; rdram_hidden[in] = hhi; }
+            if (in & 1) { px16[in ^ WORD_ADDR_XOR] = (uint16_t)vlo; px_hidden[in] = hlo; }
+            else        { px16[in ^ WORD_ADDR_XOR] = (uint16_t)vhi; px_hidden[in] = hhi; }
             in++; n--;
         }
     }
@@ -2382,6 +2385,8 @@ static void edgewalker_for_prims(uint32_t wid, int32_t* ewdata)
     const int32_t x_top   = 0x2000 << al_scale_log2;
     const int32_t x_mask  = x_top - 1;
     const int32_t x_field = (0x4000 << al_scale_log2) - 2; /* bits 1..13+log2 */
+    const int32_t x_pix   = (0x1000 << al_scale_log2) - 1;  /* span endpoint, in pixels */
+    const int32_t x_cross = (0x3fff << al_scale_log2) << 14; /* edge-cross compare field */
     int allover = 1, allunder = 1, curover = 0, curunder = 0;
     int allinval = 1;
     int32_t curcross = 0;
@@ -2447,7 +2452,7 @@ static void edgewalker_for_prims(uint32_t wid, int32_t* ewdata)
             if (spix == 0)
             {
                 maxxmx = 0;
-                minxhx = 0xfff;
+                minxhx = x_pix;
                 allover = allunder = 1;
                 allinval = 1;
             }
@@ -2461,7 +2466,7 @@ static void edgewalker_for_prims(uint32_t wid, int32_t* ewdata)
             xrsc = curunder ? clipxhshift : (((xright >> 13) & x_field) | stickybit);
             curover = ((xrsc & x_top) || (xrsc & x_mask) >= clipxlshift);
             xrsc = curover ? clipxlshift : xrsc;
-            state[wid].span[j].majorx[spix] = xrsc & 0x1fff;
+            state[wid].span[j].majorx[spix] = xrsc & x_mask;
             allover &= curover;
             allunder &= curunder;
 
@@ -2471,13 +2476,13 @@ static void edgewalker_for_prims(uint32_t wid, int32_t* ewdata)
             xlsc = curunder ? clipxhshift : (((xleft >> 13) & x_field) | stickybit);
             curover = ((xlsc & x_top) || (xlsc & x_mask) >= clipxlshift);
             xlsc = curover ? clipxlshift : xlsc;
-            state[wid].span[j].minorx[spix] = xlsc & 0x1fff;
+            state[wid].span[j].minorx[spix] = xlsc & x_mask;
             allover &= curover;
             allunder &= curunder;
 
 
 
-            curcross = ((xleft ^ (1 << 27)) & (0x3fff << 14)) < ((xright ^ (1 << 27)) & (0x3fff << 14));
+            curcross = ((xleft ^ (1 << 27)) & x_cross) < ((xright ^ (1 << 27)) & x_cross);
 
 
             invaly |= curcross;
@@ -2486,8 +2491,8 @@ static void edgewalker_for_prims(uint32_t wid, int32_t* ewdata)
 
             if (!invaly)
             {
-                maxxmx = (((xlsc >> 3) & 0xfff) > maxxmx) ? (xlsc >> 3) & 0xfff : maxxmx;
-                minxhx = (((xrsc >> 3) & 0xfff) < minxhx) ? (xrsc >> 3) & 0xfff : minxhx;
+                maxxmx = (((xlsc >> 3) & x_pix) > maxxmx) ? (xlsc >> 3) & x_pix : maxxmx;
+                minxhx = (((xrsc >> 3) & x_pix) < minxhx) ? (xrsc >> 3) & x_pix : minxhx;
             }
 
             if (spix == ldflag)
@@ -2545,7 +2550,7 @@ static void edgewalker_for_prims(uint32_t wid, int32_t* ewdata)
             if (spix == 0)
             {
                 maxxhx = 0;
-                minxmx = 0xfff;
+                minxmx = x_pix;
                 allover = allunder = 1;
                 allinval = 1;
             }
@@ -2556,7 +2561,7 @@ static void edgewalker_for_prims(uint32_t wid, int32_t* ewdata)
             xrsc = curunder ? clipxhshift : (((xright >> 13) & x_field) | stickybit);
             curover = ((xrsc & x_top) || (xrsc & x_mask) >= clipxlshift);
             xrsc = curover ? clipxlshift : xrsc;
-            state[wid].span[j].majorx[spix] = xrsc & 0x1fff;
+            state[wid].span[j].majorx[spix] = xrsc & x_mask;
             allover &= curover;
             allunder &= curunder;
 
@@ -2566,11 +2571,11 @@ static void edgewalker_for_prims(uint32_t wid, int32_t* ewdata)
             xlsc = curunder ? clipxhshift : (((xleft >> 13) & x_field) | stickybit);
             curover = ((xlsc & x_top) || (xlsc & x_mask) >= clipxlshift);
             xlsc = curover ? clipxlshift : xlsc;
-            state[wid].span[j].minorx[spix] = xlsc & 0x1fff;
+            state[wid].span[j].minorx[spix] = xlsc & x_mask;
             allover &= curover;
             allunder &= curunder;
 
-            curcross = ((xright ^ (1 << 27)) & (0x3fff << 14)) < ((xleft ^ (1 << 27)) & (0x3fff << 14));
+            curcross = ((xright ^ (1 << 27)) & x_cross) < ((xleft ^ (1 << 27)) & x_cross);
 
             invaly |= curcross;
             state[wid].span[j].invalyscan[spix] = invaly;
@@ -2578,8 +2583,8 @@ static void edgewalker_for_prims(uint32_t wid, int32_t* ewdata)
 
             if (!invaly)
             {
-                minxmx = (((xlsc >> 3) & 0xfff) < minxmx) ? (xlsc >> 3) & 0xfff : minxmx;
-                maxxhx = (((xrsc >> 3) & 0xfff) > maxxhx) ? (xrsc >> 3) & 0xfff : maxxhx;
+                minxmx = (((xlsc >> 3) & x_pix) < minxmx) ? (xlsc >> 3) & x_pix : minxmx;
+                maxxhx = (((xrsc >> 3) & x_pix) > maxxhx) ? (xrsc >> 3) & x_pix : maxxhx;
             }
 
             if (spix == ldflag)

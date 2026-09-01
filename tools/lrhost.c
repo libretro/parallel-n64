@@ -14,7 +14,8 @@
  * worst frame - the variance a player feels - over the run with the
  * first tenth (the boot) left out, plus how many frames were presented
  * and duplicated. LRHOST_DUMPDIR=dir writes the presented frames
- * LRHOST_DUMP_FROM..LRHOST_DUMP_TO (default 595..605) as raw 16-bit rows
+ * LRHOST_DUMP_FROM..LRHOST_DUMP_TO (default 595..605) as raw rows in the
+ * core's pixel format (16- or 32-bit)
  * so two configurations can be compared pixel for pixel;
  * LRHOST_VERBOSE=1 shows the core's log.
  */
@@ -60,7 +61,7 @@ static void video_cb(const void *data, unsigned w, unsigned h, size_t pitch)
         char n[256]; FILE *f; unsigned y;
         snprintf(n, sizeof n, "%s/%04ld.raw", getenv("LRHOST_DUMPDIR"), frames_presented);
         f = fopen(n, "wb");
-        if (f) { for (y = 0; y < h; y++) fwrite((const uint8_t*)data + y * pitch, 1, w * 2, f); fclose(f); }
+        if (f) { unsigned bpp = pixfmt == RETRO_PIXEL_FORMAT_XRGB8888 ? 4 : 2; for (y = 0; y < h; y++) fwrite((const uint8_t*)data + y * pitch, 1, w * bpp, f); fclose(f); }
     }
     if (frames_presented % 60 == 0) /* cheap signature: sample a few rows */
     {

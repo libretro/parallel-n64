@@ -141,6 +141,77 @@ static struct
 } hz;
 static uint32_t flush_count;
 
+/* Upscaling: the console images the buffered drawing has written to
+ * since they were last resolved. Only these are ever resolved back into
+ * RDRAM - never an address the video interface merely points at, which
+ * during boot can be anything. Console units: byte address, pixels per
+ * row, rows the scissor allowed, pixel size code. */
+#define AL_DIRTY_MAX 8
+static struct
+{
+    uint32_t addr, width, rows, size;
+} al_dirty[AL_DIRTY_MAX];
+static uint32_t al_dirty_n;
+static uint32_t al_batch_draws;   /* draw commands in the buffer being filled */
+
+static void al_mark_dirty(void)
+{
+    uint32_t f = al_scale, addr, width, rows, i;
+    if (f == 1 || state[0].fb_size < 2)
+        return;
+    addr  = state[0].fb_address / (f * f);
+    width = state[0].fb_width / f;
+    rows  = (state[0].clip.yl >> 2) / f + 1;
+    if (!width || !rows)
+        return;
+    for (i = 0; i < al_dirty_n; i++)
+        if (al_dirty[i].addr == addr && al_dirty[i].width == width && al_dirty[i].size == state[0].fb_size)
+        {
+            if (rows > al_dirty[i].rows) al_dirty[i].rows = rows;
+            return;
+        }
+    if (al_dirty_n == AL_DIRTY_MAX)
+    {
+        /* full: resolve the oldest to make room, it is drawn and done */
+        n64video_resolve(al_dirty[0].addr, al_dirty[0].width, al_dirty[0].rows, al_dirty[0].size);
+        memmove(&al_dirty[0], &al_dirty[1], (AL_DIRTY_MAX - 1) * sizeof(al_dirty[0]));
+        al_dirty_n--;
+    }
+    al_dirty[al_dirty_n].addr  = addr;
+    al_dirty[al_dirty_n].width = width;
+    al_dirty[al_dirty_n].rows  = rows;
+    al_dirty[al_dirty_n].size  = state[0].fb_size;
+    al_dirty_n++;
+}
+
+static void al_resolve_all(void)
+{
+    uint32_t i;
+    for (i = 0; i < al_dirty_n; i++)
+        n64video_resolve(al_dirty[i].addr, al_dirty[i].width, al_dirty[i].rows, al_dirty[i].size);
+    al_dirty_n = 0;
+}
+
+/* Resolve the drawn image a display origin lies within, if any. Called
+ * by the video interface before it reads. */
+void n64video_resolve_for_display(uint32_t origin)
+{
+    uint32_t i;
+    if (al_scale == 1)
+        return;
+    for (i = 0; i < al_dirty_n; i++)
+    {
+        uint32_t bytes = PIXELS_TO_BYTES(al_dirty[i].width * al_dirty[i].rows, al_dirty[i].size);
+        if (origin >= al_dirty[i].addr && origin < al_dirty[i].addr + bytes)
+        {
+            n64video_resolve(al_dirty[i].addr, al_dirty[i].width, al_dirty[i].rows, al_dirty[i].size);
+            memmove(&al_dirty[i], &al_dirty[i + 1], (al_dirty_n - i - 1) * sizeof(al_dirty[0]));
+            al_dirty_n--;
+            return;
+        }
+    }
+}
+
 static void hz_pend_extend(int k, uint32_t lo, uint32_t hi)
 {
     if (!hz.pend_valid[k] || lo < hz.pend_lo[k])
@@ -260,6 +331,11 @@ static void cmd_flush(void)
     if (rdp_cmd_buf_pos) {
         // let workers run all buffered commands in parallel
         parallel_run(cmd_run_buffered);
+        if (al_scale > 1 && al_batch_draws)
+        {
+            al_mark_dirty();
+            al_batch_draws = 0;
+        }
         // reset buffer by starting from the beginning
         rdp_cmd_buf_pos = 0;
         hz.pend_valid[0] = hz.pend_valid[1] = false;
@@ -295,6 +371,9 @@ static void cmd_state_barrier(uint32_t *cmd)
 static void cmd_sync_full(void)
 {
     cmd_flush();
+    /* the game may read what it just finished: resolve everything drawn */
+    if (al_scale > 1)
+        al_resolve_all();
     rdp_sync_full(0, NULL);
 }
 /* per command: the parse state of the next one */
@@ -383,6 +462,8 @@ void n64video_init(struct n64video_config* _config)
     prev_img_valid[0] = prev_img_valid[1] = false;
     memset(&hz, 0, sizeof(hz));
     hz.sc_rows = 240;
+    al_dirty_n = 0;
+    al_batch_draws = 0;
     rdp_pipeline_crashed = 0;
     memset(&onetimewarnings, 0, sizeof(onetimewarnings));
 
@@ -650,6 +731,10 @@ void n64video_process_list(void)
                      * place */
                     cmd_state_barrier(cmd_buf);
                 } else {
+                    if (rdp_cmd_id >= CMD_ID_FILL_TRIANGLE && rdp_cmd_id <= CMD_ID_SHADE_TEXTURE_Z_BUFFER_TRIANGLE
+                            || rdp_cmd_id == CMD_ID_TEXTURE_RECTANGLE || rdp_cmd_id == CMD_ID_TEXTURE_RECTANGLE_FLIP
+                            || rdp_cmd_id == CMD_ID_FILL_RECTANGLE)
+                        al_batch_draws++;
                     // increment buffer position
                     rdp_cmd_buf_pos++;
                     /* flush when the batch is full; the image commands
@@ -662,6 +747,12 @@ void n64video_process_list(void)
             } else {
                 // run command directly
                 rdp_cmd(0, cmd_buf);
+                if (al_scale > 1 && (rdp_cmd_id >= CMD_ID_FILL_TRIANGLE && rdp_cmd_id <= CMD_ID_SHADE_TEXTURE_Z_BUFFER_TRIANGLE
+                        || rdp_cmd_id == CMD_ID_TEXTURE_RECTANGLE || rdp_cmd_id == CMD_ID_TEXTURE_RECTANGLE_FLIP
+                        || rdp_cmd_id == CMD_ID_FILL_RECTANGLE))
+                    al_mark_dirty();
+                if (al_scale > 1 && rdp_cmd_id == CMD_ID_SYNC_FULL)
+                    al_resolve_all();
             }
             // send Z-buffer address to VI for "depth" output mode
             if (rdp_cmd_id == CMD_ID_SET_MASK_IMAGE) {

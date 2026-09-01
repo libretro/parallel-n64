@@ -744,6 +744,11 @@ void n64video_update_screen(void)
     // split up VI_CONTROL bits
     uint32_t vi_control = *vi_reg_ptr[VI_STATUS];
     ctrl.type = vi_control & 3;
+
+    /* an upscaled render lives in the pixel domain: if this origin is in
+     * an image the renderer drew, resolve that image into RDRAM first,
+     * so everything below reads what it always has */
+    n64video_resolve_for_display(frame_buffer);
     ctrl.gamma_dither_enable = (vi_control >> 2) & 1;
     ctrl.gamma_enable = (vi_control >> 3) & 1;
     ctrl.divot_enable = (vi_control >> 4) & config.vi.vi_blur;

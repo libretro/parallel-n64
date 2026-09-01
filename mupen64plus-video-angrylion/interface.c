@@ -312,6 +312,22 @@ void angrylion_set_synclevel(unsigned value)
    }
 }
 
+void angrylion_set_upscaling(unsigned value)
+{
+   /* factors above 4 are rendered at 4; the option promises as much */
+   if (value > 4) value = 4;
+   if (value != 1 && value != 2 && value != 4) value = 1;
+   if (config.upscale != value)
+   {
+      config.upscale = value;
+      if (angrylion_init)
+      {
+         n64video_close();
+         n64video_init(&config);
+      }
+   }
+}
+
 unsigned angrylion_get_synclevel()
 {
     return config.dp.compat;

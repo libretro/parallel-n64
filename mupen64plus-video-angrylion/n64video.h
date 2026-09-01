@@ -104,3 +104,7 @@ void n64video_close(void);
 uint32_t n64video_flush_count(void);
 /* base of the domain the colour and depth buffers live in (tooling) */
 void *n64video_pixel_domain(void);
+/* bring console pixels back from the pixel domain into RDRAM, averaged; a no-op at 1x */
+void n64video_resolve(uint32_t addr, uint32_t width, uint32_t rows, uint32_t size);
+/* resolve the drawn image a display origin lies within, if any; a no-op at 1x */
+void n64video_resolve_for_display(uint32_t origin);

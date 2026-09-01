@@ -1428,6 +1428,7 @@ extern void  angrylion_set_vi_blur(unsigned value);
 extern void  angrylion_set_deinterlace(unsigned value);
 
 extern void angrylion_set_synclevel(unsigned value);
+extern void angrylion_set_upscaling(unsigned value);
 extern void ChangeSize();
 
 static void gfx_set_filtering(void)
@@ -1874,6 +1875,18 @@ void update_variables(bool startup)
    angrylion_set_deinterlace(
       environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value
       && !strcmp(var.value, "bob"));
+
+#ifdef HAVE_THR_AL
+   /* the upscaling factor is shared with ParaLLEl-RDP, which reads it in
+    * its own block above when it is built; angrylion reads it here so
+    * the setting works in builds without it */
+   var.key = "parallel-n64-upscaling";
+   var.value = NULL;
+   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+      angrylion_set_upscaling(strtol(var.value, NULL, 0));
+   else
+      angrylion_set_upscaling(1);
+#endif
 
    var.key = "parallel-n64-angrylion-sync";
    var.value = NULL;
