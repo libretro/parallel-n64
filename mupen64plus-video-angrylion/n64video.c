@@ -207,6 +207,23 @@ static struct
 static uint32_t al_dirty_n;
 static uint32_t al_batch_draws;   /* draw commands in the buffer being filled */
 
+/* The geometry of every colour image the RDP has drawn into since init
+ * - base, width, rows, size - kept regardless of resolves, so the video
+ * interface can place a display origin relative to the image it lies
+ * in. The pixel domain's layout is defined by where the RDP drew. */
+#define AL_IMG_MAX 16
+static struct { uint32_t addr, width, size, rows; } al_img[AL_IMG_MAX];
+static uint32_t al_img_n;
+static void al_note_image(uint32_t addr, uint32_t width, uint32_t rows, uint32_t size)
+{
+    uint32_t i;
+    for (i = 0; i < al_img_n; i++)
+        if (al_img[i].addr == addr && al_img[i].width == width && al_img[i].size == size)
+        { if (rows > al_img[i].rows) al_img[i].rows = rows; return; }
+    if (al_img_n == AL_IMG_MAX) { memmove(&al_img[0], &al_img[1], (AL_IMG_MAX - 1) * sizeof(al_img[0])); al_img_n--; }
+    al_img[al_img_n].addr = addr; al_img[al_img_n].width = width; al_img[al_img_n].rows = rows; al_img[al_img_n].size = size; al_img_n++;
+}
+
 static void al_mark_dirty(void)
 {
     uint32_t f = al_scale, addr, width, rows, i;
@@ -217,6 +234,7 @@ static void al_mark_dirty(void)
     rows  = (state[0].clip.yl >> 2) / f + 1;
     if (!width || !rows)
         return;
+    al_note_image(addr, width, rows, state[0].fb_size);
     for (i = 0; i < al_dirty_n; i++)
         if (al_dirty[i].addr == addr && al_dirty[i].width == width && al_dirty[i].size == state[0].fb_size)
         {
@@ -243,6 +261,20 @@ static void al_resolve_all(void)
     for (i = 0; i < al_dirty_n; i++)
         n64video_resolve(al_dirty[i].addr, al_dirty[i].width, al_dirty[i].rows, al_dirty[i].size);
     al_dirty_n = 0;
+}
+
+/* The drawn image a console byte address lies within: its console base
+ * and width, for locating a display origin inside the pixel domain. */
+int n64video_drawn_image_for(uint32_t addr, uint32_t *base, uint32_t *width)
+{
+    uint32_t i;
+    for (i = 0; i < al_img_n; i++)
+    {
+        uint32_t bytes = PIXELS_TO_BYTES(al_img[i].width * al_img[i].rows, al_img[i].size);
+        if (addr >= al_img[i].addr && addr < al_img[i].addr + bytes)
+        { *base = al_img[i].addr; *width = al_img[i].width; return 1; }
+    }
+    return 0;
 }
 
 /* Resolve the drawn image a display origin lies within, if any. Called
@@ -517,6 +549,7 @@ void n64video_init(struct n64video_config* _config)
     hz.sc_rows = 240;
     al_dirty_n = 0;
     al_batch_draws = 0;
+    al_img_n = 0;
     rdp_pipeline_crashed = 0;
     memset(&onetimewarnings, 0, sizeof(onetimewarnings));
 

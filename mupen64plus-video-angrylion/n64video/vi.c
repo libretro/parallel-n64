@@ -63,6 +63,11 @@ static const uint32_t *vi_src32;
 static const uint8_t  *vi_src_hidden;
 static uint32_t vi_mask16, vi_mask32, vi_lim16, vi_lim32;
 
+/* bounds against the image the VI reads: RDRAM at 1x, the domain when
+ * upscaling. The filters gate their neighbour fetches on these. */
+static STRICTINLINE bool vi_valid_idx16(uint32_t in) { return (in & vi_mask16) <= vi_lim16; }
+static STRICTINLINE bool vi_valid_idx32(uint32_t in) { return (in & vi_mask32) <= vi_lim32; }
+
 static STRICTINLINE uint16_t vi_read_idx16(uint32_t in)
 {
     in &= vi_mask16;
@@ -135,6 +140,16 @@ static struct rgba *vi_out = prescale;
 
 /* Output buffer for the upscaled path: hres_raw * vres_raw pixels of
  * the finer grid, allocated only when the renderer is upscaling. */
+static uint32_t vi_domain_index(uint32_t addr, uint32_t f, uint32_t bpp)
+{
+    uint32_t base, w, rel, r, c;
+    if (!n64video_drawn_image_for(addr, &base, &w))
+        return (addr * f * f) / bpp;
+    rel = (addr - base) / bpp;
+    r = rel / w; c = rel % w;
+    return (base * f * f) / bpp + (r * f) * (w * f) + c * f;
+}
+
 static struct rgba *prescale_up;
 static size_t prescale_up_pixels;
 static uint32_t prescale_ptr;
@@ -686,8 +701,8 @@ static void vi_process_upscaled_parallel(uint32_t worker_id)
     uint32_t stride = vi_width_low * f;   /* domain pixels per domain row */
     const uint16_t *dom16 = (const uint16_t*)n64video_pixel_domain();
     const uint32_t *dom32 = (const uint32_t*)dom16;
-    uint32_t base16 = (frame_buffer * samples) >> 1;
-    uint32_t base32 = (frame_buffer * samples) >> 2;
+    uint32_t base16 = vi_domain_index(frame_buffer, f, 2);
+    uint32_t base32 = vi_domain_index(frame_buffer, f, 4);
 
     if (ctrl.serrate && v_current_line)
         return;
@@ -757,7 +772,7 @@ static bool vi_process_upscaled(void)
         x_start    *= f;
         y_start    *= f;
         vi_width_low = vi_width_low * f;
-        frame_buffer = frame_buffer * f * f;
+        frame_buffer = vi_domain_index(frame_buffer, f, (ctrl.type == VI_TYPE_RGBA8888) ? 4 : 2) * ((ctrl.type == VI_TYPE_RGBA8888) ? 4 : 2);
         vi_out      = prescale_up;
         prescale_ptr = 0;
         linecount   = hres;

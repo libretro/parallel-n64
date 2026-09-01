@@ -108,3 +108,5 @@ void *n64video_pixel_domain(void);
 void n64video_resolve(uint32_t addr, uint32_t width, uint32_t rows, uint32_t size);
 /* resolve the drawn image a display origin lies within, if any; a no-op at 1x */
 void n64video_resolve_for_display(uint32_t origin);
+/* the drawn image a console address lies in (base, width); 0 if none */
+int n64video_drawn_image_for(uint32_t addr, uint32_t *base, uint32_t *width);
