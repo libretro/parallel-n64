@@ -2383,7 +2383,16 @@ static void edgewalker_for_prims(uint32_t wid, int32_t* ewdata)
     int32_t maxxmx, minxmx, maxxhx, minxhx;
 
     int spix = 0;
-    int ycur =  yh & ~3;
+    /* The walk starts on the console row that contains yh, and the edges
+     * are stepped from that row's first subline. A console row is four
+     * sublines at 1x and 4 << al_scale_log2 on the finer grid, so the
+     * row mask widens with the grid: aligning to a scaled row instead
+     * starts the edge step short by up to three console sublines' worth,
+     * and an edge two triangles share is then walked from different
+     * origins by each - a gap the width of that missed step opens along
+     * it, with whatever was drawn before showing through. */
+    const int row_mask = (4 << al_scale_log2) - 1;
+    int ycur =  yh & ~row_mask;
     int ldflag = (sign_dxhdy ^ flip) ? 0 : 3;
     int invaly = 1;
     int length = 0;
@@ -2404,7 +2413,7 @@ static void edgewalker_for_prims(uint32_t wid, int32_t* ewdata)
         yllimit = (yl & y_mask) < state[wid].clip.yl;
     yllimit = yllimit ? yl : state[wid].clip.yl;
 
-    int ylfar = yllimit | 3;
+    int ylfar = yllimit | row_mask;
     if ((yl >> 2) > (ylfar >> 2))
         ylfar += 4;
     else if ((yllimit >> 2) >= 0 && (yllimit >> 2) < (int)(1024 * al_scale) - 1)
@@ -2419,7 +2428,7 @@ static void edgewalker_for_prims(uint32_t wid, int32_t* ewdata)
         yhlimit = (yh >= state[wid].clip.yh);
     yhlimit = yhlimit ? yh : state[wid].clip.yh;
 
-    int yhclose = yhlimit & ~3;
+    int yhclose = yhlimit & ~row_mask;
 
     int32_t clipxlshift = state[wid].clip.xl << 1;
     int32_t clipxhshift = state[wid].clip.xh << 1;
