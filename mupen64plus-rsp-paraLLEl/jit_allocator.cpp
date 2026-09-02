@@ -12,7 +12,7 @@
 #ifndef _WIN32
 #include <unistd.h>
 static int sPageSize = 0;
-static inline int PAGE_SIZE()
+static inline int page_size()
 {
 	if (__builtin_expect(0 == sPageSize, false))
 	{
@@ -22,7 +22,7 @@ static inline int PAGE_SIZE()
 	return sPageSize;
 }
 #else
-#define PAGE_SIZE() 4096
+#define page_size() 4096
 #endif
 
 namespace RSP
@@ -52,7 +52,7 @@ Allocator::~Allocator()
 
 static size_t align_page(size_t offset)
 {
-	return (offset + PAGE_SIZE() - 1) & ~size_t(PAGE_SIZE() - 1);
+	return (offset + page_size() - 1) & ~size_t(page_size() - 1);
 }
 
 static bool commit_read_write(void *ptr, size_t size)
