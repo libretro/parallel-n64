@@ -164,6 +164,71 @@ static int test_combiner_eq(void)
     return bad;
 }
 
+/* the blend equation's force_blend arm, three channels in three lanes:
+ *   (p1 * blend1a + p2 * mulb) >> 5, kept to eight bits.
+ * Both products fit in signed sixteen bits - the colour operands reach
+ * 255 and the blend factors 32 - so the widening multiply is exact with
+ * one upper half cleared, as it documents. */
+static size_t gen_blend_eq(uint8_t *buf)
+{
+    /* p1 at +0, blend1a at +16, p2 at +32, mulb at +48,
+     * 0xffff at +64, 0xff at +80, result to +96 */
+    uint8_t *p = buf;
+    AL_V_LOAD(&p, 6, A_RGBA, 64);
+    AL_V_LOAD(&p, 0, A_RGBA,  0);
+    AL_V_LOAD(&p, 1, A_RGBA, 16);
+    AL_V_AND(&p, 1, 1, 6);
+    AL_V_MADD16(&p, 0, 0, 1);       /* p1 * blend1a */
+    AL_V_LOAD(&p, 2, A_RGBA, 32);
+    AL_V_LOAD(&p, 3, A_RGBA, 48);
+    AL_V_AND(&p, 3, 3, 6);
+    AL_V_MADD16(&p, 2, 2, 3);       /* p2 * mulb    */
+    AL_V_ADD32(&p, 0, 0, 2);
+    AL_V_SRA32(&p, 0, 0, 5);
+    AL_V_LOAD(&p, 4, A_RGBA, 80);
+    AL_V_AND(&p, 0, 0, 4);          /* & 0xff       */
+    AL_V_STORE(&p, 0, A_RGBA, 96);
+    AL_V_RET(&p);
+    return (size_t)(p - buf);
+}
+
+static int test_blend_eq(void)
+{
+    uint8_t *code = mmap(NULL, 4096, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    size_t len;
+    int t, k, bad = 0, cases = 0;
+    if (code == MAP_FAILED) return 1;
+    len = gen_blend_eq(code);
+    if (mprotect(code, 4096, PROT_READ | PROT_EXEC) != 0) return 1;
+    for (t = 0; t < 4096; t++)
+    {
+        int32_t m[28], p1[4], b1[4], p2[4], mb[4];
+        for (k = 0; k < 4; k++)
+        {
+            p1[k] = (int32_t)((t * 2654435761u + (uint32_t)k * 7919u) >> 24) & 0xff;
+            b1[k] = (int32_t)((t * 69069u + (uint32_t)k * 104729u) >> 27) & 0x1f;
+            p2[k] = (int32_t)((t * 22695477u + (uint32_t)k * 1299721u) >> 24) & 0xff;
+            mb[k] = ((int32_t)((t * 1103515245u + (uint32_t)k * 12345u) >> 27) & 0x1f) + 1;
+            m[k] = p1[k]; m[4 + k] = b1[k]; m[8 + k] = p2[k]; m[12 + k] = mb[k];
+            m[16 + k] = 0x0000ffff; m[20 + k] = 0xff; m[24 + k] = 0;
+        }
+        ((void (*)(int32_t*))code)(m);
+        for (k = 0; k < 4; k++)
+        {
+            int32_t want = ((p1[k] * b1[k] + p2[k] * mb[k]) >> 5) & 0xff;
+            cases++;
+            if (m[24 + k] != want)
+            {
+                if (bad++ < 5)
+                    printf("  blend MISMATCH t=%d ch=%d: got %d want %d\n", t, k, m[24 + k], want);
+            }
+        }
+    }
+    printf("blend equation generated in %zu bytes; %d of %d results differ from the C\n",
+           len, bad, cases);
+    return bad;
+}
+
 int main(void)
 {
     uint8_t *code;
@@ -212,5 +277,6 @@ int main(void)
     printf("rgba_correct generated in %zu bytes; %d of %d channel results differ from the C\n",
            len, bad, cases);
     bad += test_combiner_eq();
+    bad += test_blend_eq();
     return bad != 0;
 }
