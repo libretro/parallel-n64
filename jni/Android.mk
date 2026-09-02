@@ -29,7 +29,10 @@ else ifeq ($(TARGET_ARCH_ABI),x86)
   # This core uses vulkan which is api 24+, so dynarec cannot be used
   WITH_DYNAREC := bogus
 else ifeq ($(TARGET_ARCH_ABI),x86_64)
-  WITH_DYNAREC := x86_64
+  # Both x86_64 dynarecs put their entry points (new_dyna_start, dyna_start) in
+  # nasm sources, and ndk-build has no assembler for those - the core links
+  # against symbols that were never built. Interpreters only here as well.
+  WITH_DYNAREC := bogus
 endif
 
 include $(ROOT_DIR)/Makefile.common

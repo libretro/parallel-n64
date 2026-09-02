@@ -41,6 +41,10 @@ include:
     file: '/osx-arm64.yml'
 
   ################################## CELLULAR ################################
+  # Android
+  - project: 'libretro-infrastructure/ci-templates'
+    file: '/android-jni.yml'
+
   # iOS
   - project: 'libretro-infrastructure/ci-templates'
     file: '/ios-arm64.yml'
@@ -140,6 +144,30 @@ libretro-build-osx-arm64:
     WITH_DYNAREC: aarch64
 
 ################################### CELLULAR #################################
+# Android ARMv7a
+android-armeabi-v7a:
+  extends:
+    - .libretro-android-jni-armeabi-v7a
+    - .core-defs
+
+# Android ARMv8a
+android-arm64-v8a:
+  extends:
+    - .libretro-android-jni-arm64-v8a
+    - .core-defs
+
+# Android 64-bit x86
+android-x86_64:
+  extends:
+    - .libretro-android-jni-x86_64
+    - .core-defs
+
+# Android 32-bit x86
+android-x86:
+  extends:
+    - .libretro-android-jni-x86
+    - .core-defs
+
 # # iOS
 # libretro-build-ios-arm64:
 #   extends:
