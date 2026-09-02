@@ -97,6 +97,73 @@ static size_t gen_rgba_correct(uint8_t *buf)
     return (size_t)(p - buf);
 }
 
+/* the combiner equation, three colour channels in three lanes:
+ *   ((a - b) * c) + (d << 8) + 0x80, kept to seventeen bits.
+ * a, b and d arrive already sign-extended through the nine-bit table
+ * (a gather, so it stays scalar); c arrives sign-extended in place. */
+static size_t gen_combiner_eq(uint8_t *buf)
+{
+    /* one argument, one buffer: a at +0, b at +16, c at +32, d at +48,
+     * the constant 0x80 at +64, the mask at +80, the result to +96 */
+    uint8_t *p = buf;
+    AL_V_LOAD(&p, 0, A_RGBA,  0);
+    AL_V_LOAD(&p, 1, A_RGBA, 16);
+    AL_V_LOAD(&p, 2, A_RGBA, 32);
+    AL_V_LOAD(&p, 3, A_RGBA, 48);
+    AL_V_SUB32(&p, 0, 0, 1);        /* a - b       */
+    AL_V_LOAD(&p, 6, A_RGBA, 112);  /* 0x0000ffff  */
+    AL_V_AND(&p, 2, 2, 6);          /* clear c's upper half: see AL_V_MADD16 */
+    AL_V_MADD16(&p, 0, 0, 2);       /* * c         */
+    AL_V_SLL32(&p, 3, 3, 8);        /* d << 8      */
+    AL_V_ADD32(&p, 0, 0, 3);
+    AL_V_LOAD(&p, 4, A_RGBA, 64);
+    AL_V_ADD32(&p, 0, 0, 4);        /* + 0x80      */
+    AL_V_LOAD(&p, 5, A_RGBA, 80);
+    AL_V_AND(&p, 0, 0, 5);          /* & 0x1ffff   */
+    AL_V_STORE(&p, 0, A_RGBA, 96);
+    AL_V_RET(&p);
+    return (size_t)(p - buf);
+}
+
+static int test_combiner_eq(void)
+{
+    uint8_t *code = mmap(NULL, 4096, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    size_t len;
+    int t, k, bad = 0, cases = 0;
+    if (code == MAP_FAILED) return 1;
+    len = gen_combiner_eq(code);
+    if (mprotect(code, 4096, PROT_READ | PROT_EXEC) != 0) return 1;
+    for (t = 0; t < 4096; t++)
+    {
+        int32_t m[32];
+        for (k = 0; k < 4; k++)
+        {
+            m[k]      = ((int32_t)(t * 2654435761u + (uint32_t)k * 7919u)    >> 23) % 256; /* a */
+            m[4 + k]  = ((int32_t)(t * 69069u      + (uint32_t)k * 104729u)  >> 23) % 256; /* b */
+            m[8 + k]  = ((int32_t)(t * 22695477u   + (uint32_t)k * 1299721u) >> 23) % 256; /* c */
+            m[12 + k] = ((int32_t)(t * 1103515245u + (uint32_t)k * 12345u)   >> 23) % 256; /* d */
+            m[16 + k] = 0x80;
+            m[20 + k] = 0x1ffff;
+            m[24 + k] = 0;
+            m[28 + k] = 0x0000ffff;
+        }
+        ((void (*)(int32_t*))code)(m);
+        for (k = 0; k < 4; k++)
+        {
+            int32_t want = (((m[k] - m[4 + k]) * m[8 + k]) + (m[12 + k] << 8) + 0x80) & 0x1ffff;
+            cases++;
+            if (m[24 + k] != want)
+            {
+                if (bad++ < 5)
+                    printf("  combiner MISMATCH t=%d ch=%d: got %d want %d\n", t, k, m[24 + k], want);
+            }
+        }
+    }
+    printf("combiner equation generated in %zu bytes; %d of %d results differ from the C\n",
+           len, bad, cases);
+    return bad;
+}
+
 int main(void)
 {
     uint8_t *code;
@@ -144,5 +211,6 @@ int main(void)
 
     printf("rgba_correct generated in %zu bytes; %d of %d channel results differ from the C\n",
            len, bad, cases);
+    bad += test_combiner_eq();
     return bad != 0;
 }

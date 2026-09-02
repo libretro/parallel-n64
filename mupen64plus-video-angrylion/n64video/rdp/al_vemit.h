@@ -136,6 +136,19 @@
 #define AL_V_MULLO16(p, d, a, b) do { \
     ALV_MOV(p, (d), (a)); ALV_X_RR(p, 0xd5, (d), (b)); } while (0)
 
+/* d = a * b as signed 16x16 -> 32 per lane, the odd halves of both
+ * operands being zero. The combiner's (a-b)*c needs eighteen bits of
+ * product, which the 16-bit multiply truncates, so this is the form
+ * that keeps it exact.
+ *
+ * The instruction sums the products of both halves of each lane, so the
+ * caller must clear the upper half of one operand or the sign words of
+ * two negative operands contribute a stray plus one. Both of the
+ * combiner's operands fit in signed sixteen bits, so clearing the upper
+ * half of one of them leaves the product exact. */
+#define AL_V_MADD16(p, d, a, b) do { \
+    ALV_MOV(p, (d), (a)); ALV_X_RR(p, 0xf5, (d), (b)); } while (0)
+
 /* d = saturating pack of a,b from 32-bit to 16-bit signed lanes */
 #define AL_V_PACKSS32(p, d, a, b) do { \
     ALV_MOV(p, (d), (a)); ALV_X_RR(p, 0x6b, (d), (b)); } while (0)
@@ -206,6 +219,9 @@
 
 
 #define AL_V_MULLO16(p, d, a, b)  ALV_A_3(p, 0x4e609c00u, (d), (a), (b)) /* mul Vd.8H,Vn.8H,Vm.8H */
+/* NEON multiplies 32-bit lanes directly, so the widening the x86 side
+ * needs is not required here: one instruction, same result. */
+#define AL_V_MADD16(p, d, a, b)   ALV_A_3(p, 0x4ea09c00u, (d), (a), (b)) /* mul Vd.4S,Vn.4S,Vm.4S */
 #define AL_V_PACKSS32(p, d, a, b) do { \
     ALV_A_W(p, 0x0e614800u | (((a) & 31) << 5) | ((d) & 31)); /* sqxtn  Vd.4H, Vn.4S */ \
     ALV_A_W(p, 0x4e614800u | (((b) & 31) << 5) | ((d) & 31)); /* sqxtn2 Vd.8H, Vm.4S */ } while (0)
