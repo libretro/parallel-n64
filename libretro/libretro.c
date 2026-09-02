@@ -64,8 +64,16 @@ uint8_t* g_dd_disk;
 #include "../mupen64plus-video-angrylion/vdac.h"
 #endif
 
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
 #include <glsm/glsmsym.h>
-#if !defined(HAVE_OPENGL) && !defined(HAVE_OPENGLES)
+#else
+/* Targets built without a GL renderer - iOS, for one - still need a glsm_ctl
+ * for the callers below. glsmsym.h cannot be included for it: its prototypes
+ * are desktop-GL typed (GLclampd, GLdouble), and glsm.h only supplies those
+ * typedefs when one of the HAVE_OPENGLES* defines is set, while the headers
+ * rglgen pulls in on iOS are ES ones that do not carry them. glsm.h alone is
+ * enough here - the stub needs the enum and nothing else. */
+#include <glsm/glsm.h>
 bool glsm_ctl(enum glsm_state_ctl state, void *data) { return false; }
 #endif
 

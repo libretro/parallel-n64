@@ -168,21 +168,21 @@ android-x86:
     - .libretro-android-jni-x86
     - .core-defs
 
-# # iOS
-# libretro-build-ios-arm64:
-#   extends:
-#     - .libretro-ios-arm64-make-default
-#     - .core-defs
-#   variables:
-#     HAVE_THR_AL: 1
+# iOS
+libretro-build-ios-arm64:
+  extends:
+    - .libretro-ios-arm64-make-default
+    - .core-defs
+  variables:
+    HAVE_THR_AL: 1
 
-# # iOS (armv7) [iOS 9 and up]
-# libretro-build-ios9:
-#   extends:
-#     - .libretro-ios9-make-default
-#     - .core-defs
-#   variables:
-#     HAVE_THR_AL: 1
+# iOS (armv7) [iOS 9 and up]
+libretro-build-ios9:
+  extends:
+    - .libretro-ios9-make-default
+    - .core-defs
+  variables:
+    HAVE_THR_AL: 1
 
 #################################### MISC ##################################
 # webOS 32-bit
