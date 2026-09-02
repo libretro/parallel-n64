@@ -343,6 +343,7 @@ struct rdp_state
 
     // coverage
     uint8_t cvgbuf[1024 * AL_SCALE_MAX];
+    uint32_t combine_raw0, combine_raw1;   /* SET_COMBINE words, for the pipeline key */
 
     // tmem
     uint8_t tmem[0x1000];
@@ -472,6 +473,43 @@ static const struct
 
 static void deduce_derivatives(uint32_t wid);
 
+#include "rdp/al_select.h"
+
+/* census of the distinct per-pixel pipelines the content uses */
+#define AL_KEYMAX 512
+static uint64_t al_keys[AL_KEYMAX];
+static long al_keyhit[AL_KEYMAX];
+static uint32_t al_keyn;
+static long al_keyprims;
+static int al_key_census;   /* set from AL_KEY_CENSUS at init */
+
+static uint64_t al_selector_of(uint32_t wid);
+
+static void al_key_note(uint32_t wid)
+{
+    uint64_t k = al_selector_of(wid);
+    uint32_t i;
+    al_keyprims++;
+    for (i = 0; i < al_keyn; i++)
+        if (al_keys[i] == k) { al_keyhit[i]++; return; }
+    if (al_keyn < AL_KEYMAX) { al_keys[al_keyn] = k; al_keyhit[al_keyn] = 1; al_keyn++; }
+}
+
+static void al_key_report(void)
+{
+    long h[AL_KEYMAX], tot = 0, cum = 0;
+    uint32_t i, j;
+    if (!al_keyprims) return;
+    for (i = 0; i < al_keyn; i++) { h[i] = al_keyhit[i]; tot += h[i]; }
+    for (i = 0; i < al_keyn; i++)
+        for (j = i + 1; j < al_keyn; j++)
+            if (h[j] > h[i]) { long t = h[i]; h[i] = h[j]; h[j] = t; }
+    fprintf(stderr, "[keys] %u pipelines over %ld primitives:", al_keyn, al_keyprims);
+    for (i = 0; i < al_keyn && i < 5; i++) { cum += h[i];
+        fprintf(stderr, " %.1f%%", 100.0 * h[i] / tot); }
+    fprintf(stderr, "  (top5 cumulative %.1f%%)\n", 100.0 * cum / tot);
+}
+
 #include "rdp/rdram.c"
 #include "rdp/dither.c"
 #include "rdp/blender.c"
@@ -483,6 +521,42 @@ static void deduce_derivatives(uint32_t wid);
 #include "rdp/tcoord.c"
 #include "rdp/tex.c"
 #include "rdp/rasterizer.c"
+
+static uint64_t al_selector_of(uint32_t wid)
+{
+    uint64_t k = 0;
+    uint32_t ch;
+    AL_SEL_PUT(k, AL_SEL_CYCLE_TYPE,    state[wid].other_modes.cycle_type,       2);
+    AL_SEL_PUT(k, AL_SEL_EN_TLUT,       state[wid].other_modes.en_tlut,          1);
+    AL_SEL_PUT(k, AL_SEL_TLUT_TYPE,     state[wid].other_modes.tlut_type,        1);
+    AL_SEL_PUT(k, AL_SEL_SAMPLE_TYPE,   state[wid].other_modes.sample_type,      1);
+    AL_SEL_PUT(k, AL_SEL_MID_TEXEL,     state[wid].other_modes.mid_texel,        1);
+    AL_SEL_PUT(k, AL_SEL_BI_LERP0,      state[wid].other_modes.bi_lerp0,         1);
+    AL_SEL_PUT(k, AL_SEL_BI_LERP1,      state[wid].other_modes.bi_lerp1,         1);
+    AL_SEL_PUT(k, AL_SEL_CONVERT_ONE,   state[wid].other_modes.convert_one,      1);
+    AL_SEL_PUT(k, AL_SEL_KEY_EN,        state[wid].other_modes.key_en,           1);
+    AL_SEL_PUT(k, AL_SEL_RGB_DITHER,    state[wid].other_modes.rgb_dither_sel,   2);
+    AL_SEL_PUT(k, AL_SEL_ALPHA_DITHER,  state[wid].other_modes.alpha_dither_sel, 2);
+    AL_SEL_PUT(k, AL_SEL_FORCE_BLEND,   state[wid].other_modes.force_blend,      1);
+    AL_SEL_PUT(k, AL_SEL_ALPHA_CVG_SEL, state[wid].other_modes.alpha_cvg_select, 1);
+    AL_SEL_PUT(k, AL_SEL_CVG_TIMES_A,   state[wid].other_modes.cvg_times_alpha,  1);
+    AL_SEL_PUT(k, AL_SEL_Z_MODE,        state[wid].other_modes.z_mode,           2);
+    AL_SEL_PUT(k, AL_SEL_CVG_DEST,      state[wid].other_modes.cvg_dest,         2);
+    AL_SEL_PUT(k, AL_SEL_COLOR_ON_CVG,  state[wid].other_modes.color_on_cvg,     1);
+    AL_SEL_PUT(k, AL_SEL_IMAGE_READ,    state[wid].other_modes.image_read_en,    1);
+    AL_SEL_PUT(k, AL_SEL_Z_UPDATE,      state[wid].other_modes.z_update_en,      1);
+    AL_SEL_PUT(k, AL_SEL_Z_COMPARE,     state[wid].other_modes.z_compare_en,     1);
+    AL_SEL_PUT(k, AL_SEL_ANTIALIAS,     state[wid].other_modes.antialias_en,     1);
+    AL_SEL_PUT(k, AL_SEL_Z_SOURCE,      state[wid].other_modes.z_source_sel,     1);
+    AL_SEL_PUT(k, AL_SEL_DITHER_ALPHA,  state[wid].other_modes.dither_alpha_en,  1);
+    AL_SEL_PUT(k, AL_SEL_ALPHA_COMPARE, state[wid].other_modes.alpha_compare_en, 1);
+    AL_SEL_PUT(k, AL_SEL_FB_SIZE,       state[wid].fb_size,                      2);
+    AL_SEL_PUT(k, AL_SEL_FB_FORMAT,     state[wid].fb_format,                    3);
+    ch = state[wid].combine_raw0 * 2654435761u ^ state[wid].combine_raw1;
+    ch ^= ch >> 15;
+    AL_SEL_PUT(k, AL_SEL_COMBINE_HASH, ch, 30);
+    return k;
+}
 
 static void deduce_derivatives(uint32_t wid)
 {

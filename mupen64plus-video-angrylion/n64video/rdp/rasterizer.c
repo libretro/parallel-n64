@@ -411,6 +411,7 @@ static void render_spans_1cycle_complete(uint32_t wid, int start, int end, int t
 
 static void render_spans_1cycle_notexel1(uint32_t wid, int start, int end, int tilenum, int flip)
 {
+    if (al_key_census) al_key_note(wid);
     int zb = state[wid].zb_address >> 1;
     int zbcur;
     uint8_t offx, offy;

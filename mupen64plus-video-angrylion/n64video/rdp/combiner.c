@@ -519,6 +519,8 @@ void rdp_set_env_color(uint32_t wid, const uint32_t* args)
 
 void rdp_set_combine(uint32_t wid, const uint32_t* args)
 {
+    state[wid].combine_raw0 = args[0];
+    state[wid].combine_raw1 = args[1];
     state[wid].combine.sub_a_rgb0  = (args[0] >> 20) & 0xf;
     state[wid].combine.mul_rgb0    = (args[0] >> 15) & 0x1f;
     state[wid].combine.sub_a_a0    = (args[0] >> 12) & 0x7;

@@ -530,6 +530,7 @@ void n64video_init(struct n64video_config* _config)
             rdp_cmd_sync[CMD_ID_SYNC_FULL] = true;
     }
     // init internals
+    al_key_census = getenv("AL_KEY_CENSUS") != NULL;
     al_scale = config.upscale ? config.upscale : 1;
     if (al_scale > AL_SCALE_MAX)
         al_scale = AL_SCALE_MAX;
@@ -862,6 +863,7 @@ void n64video_close(void)
     rdp_dump_end();
 #endif
 
+    al_key_report();
     vi_close();
     parallel_close();
     rdram_close();
