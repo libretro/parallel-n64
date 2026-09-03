@@ -34,8 +34,21 @@
 #include <errno.h>
 #include <pthread.h>
 #include <libkern/OSCacheControl.h>
-static inline void jit_write_enable(void)  { pthread_jit_write_protect_np(0); }
-static inline void jit_write_disable(void) { pthread_jit_write_protect_np(1); }
+/* MAP_JIT W^X is a per-thread mode with no query API, so track it here.
+   cache_flush() has to leave the mode exactly as it found it: it runs
+   both inside a compile session (writable) and from invalidate_all_pages()
+   on save-state load (executable). */
+static int jit_writable = 0;
+static inline void jit_write_enable(void)
+{
+   pthread_jit_write_protect_np(0);
+   jit_writable = 1;
+}
+static inline void jit_write_disable(void)
+{
+   jit_writable = 0;
+   pthread_jit_write_protect_np(1);
+}
 #else
 static inline void jit_write_enable(void)  { }
 static inline void jit_write_disable(void) { }

@@ -264,15 +264,19 @@ static uintptr_t jump_table_symbols[] = {
 static void cache_flush(char* start, char* end)
 {
 #if defined(__APPLE__) && defined(__aarch64__)
-    // Apple-documented MAP_JIT pattern: switch to executable, then invalidate icache.
+    /* Apple-documented MAP_JIT pattern: switch to executable, then
+       invalidate the icache. Restore the caller's W^X mode afterwards
+       rather than unconditionally re-enabling writes: when called outside
+       a compile session (invalidate_all_pages on save-state load) the
+       thread must be left in executable mode, or the next entry into the
+       JIT region faults. */
+    int was_writable = jit_writable;
     jit_write_disable();
     sys_icache_invalidate(start, end - start);
-    jit_write_enable();
+    if (was_writable)
+        jit_write_enable();
 #elif defined(__APPLE__)
     __builtin___clear_cache(start, end);
-#elif defined(__APPLE__)
-    sys_dcache_flush(start, end - start);
-    sys_icache_invalidate(start, end - start);
 #elif !defined(WIN32)
     // Don't rely on GCC's __clear_cache implementation, as it caches
     // icache/dcache cache line sizes, that can vary between cores on
