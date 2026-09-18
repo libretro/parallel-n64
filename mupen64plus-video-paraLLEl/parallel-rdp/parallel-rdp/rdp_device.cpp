@@ -356,11 +356,26 @@ static void decode_z_setup_from_header(AttributeSetup &attr, const uint32_t *wor
 	attr.dzdy = words[1];
 }
 
+// The shade block behaves the same way. A triangle without one still feeds the shade registers
+// to the combiner, and the loader latches the header doubleword into all eight slots of the block.
+// Hardware verified, snapper64 "RDP Undefined Shade 1C", 64 of 64 hardware snapshots.
+static void decode_rgba_setup_from_header(AttributeSetup &attr, const uint32_t *words)
+{
+	uint32_t block[16];
+	for (unsigned i = 0; i < 16; i += 2)
+	{
+		block[i] = words[0];
+		block[i + 1] = words[1];
+	}
+	decode_rgba_setup(attr, block);
+}
+
 void CommandProcessor::op_fill_triangle(const uint32_t *words)
 {
 	TriangleSetup setup = {};
 	AttributeSetup attr = {};
 	decode_triangle_setup(setup, words);
+	decode_rgba_setup_from_header(attr, words);
 	decode_z_setup_from_header(attr, words);
 	renderer.draw_shaded_primitive(setup, attr);
 }
@@ -401,6 +416,7 @@ void CommandProcessor::op_fill_z_buffer_triangle(const uint32_t *words)
 	TriangleSetup setup = {};
 	AttributeSetup attr = {};
 	decode_triangle_setup(setup, words);
+	decode_rgba_setup_from_header(attr, words);
 	decode_z_setup(attr, words + 8);
 	renderer.draw_shaded_primitive(setup, attr);
 }
@@ -410,6 +426,7 @@ void CommandProcessor::op_texture_triangle(const uint32_t *words)
 	TriangleSetup setup = {};
 	AttributeSetup attr = {};
 	decode_triangle_setup(setup, words);
+	decode_rgba_setup_from_header(attr, words);
 	decode_tex_setup(attr, words + 8);
 	decode_z_setup_from_header(attr, words);
 	renderer.draw_shaded_primitive(setup, attr);
@@ -420,6 +437,7 @@ void CommandProcessor::op_texture_z_buffer_triangle(const uint32_t *words)
 	TriangleSetup setup = {};
 	AttributeSetup attr = {};
 	decode_triangle_setup(setup, words);
+	decode_rgba_setup_from_header(attr, words);
 	decode_tex_setup(attr, words + 8);
 	decode_z_setup(attr, words + 24);
 	renderer.draw_shaded_primitive(setup, attr);
