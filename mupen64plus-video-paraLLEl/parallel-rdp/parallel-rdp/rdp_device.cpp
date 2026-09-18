@@ -343,11 +343,26 @@ static void decode_z_setup(AttributeSetup &attr, const uint32_t *words)
 	attr.dzdy = words[3];
 }
 
+// A triangle without a Z block still runs the Z pipe if the other modes enable it.
+// Hardware neither zeroes the Z coefficients nor keeps the previous primitive's,
+// it latches the triangle's own header doubleword into both Z block slots.
+// Hardware verified, diagnostic cartridge case 9:21
+// (carmiker/n64docs RDP_TESTCART_HARDWARE.txt, section 3.2).
+static void decode_z_setup_from_header(AttributeSetup &attr, const uint32_t *words)
+{
+	attr.z = words[0];
+	attr.dzdx = words[1];
+	attr.dzde = words[0];
+	attr.dzdy = words[1];
+}
+
 void CommandProcessor::op_fill_triangle(const uint32_t *words)
 {
 	TriangleSetup setup = {};
+	AttributeSetup attr = {};
 	decode_triangle_setup(setup, words);
-	renderer.draw_flat_primitive(setup);
+	decode_z_setup_from_header(attr, words);
+	renderer.draw_shaded_primitive(setup, attr);
 }
 
 void CommandProcessor::op_shade_triangle(const uint32_t *words)
@@ -356,6 +371,7 @@ void CommandProcessor::op_shade_triangle(const uint32_t *words)
 	AttributeSetup attr = {};
 	decode_triangle_setup(setup, words);
 	decode_rgba_setup(attr, words + 8);
+	decode_z_setup_from_header(attr, words);
 	renderer.draw_shaded_primitive(setup, attr);
 }
 
@@ -395,6 +411,7 @@ void CommandProcessor::op_texture_triangle(const uint32_t *words)
 	AttributeSetup attr = {};
 	decode_triangle_setup(setup, words);
 	decode_tex_setup(attr, words + 8);
+	decode_z_setup_from_header(attr, words);
 	renderer.draw_shaded_primitive(setup, attr);
 }
 
@@ -415,6 +432,7 @@ void CommandProcessor::op_shade_texture_triangle(const uint32_t *words)
 	decode_triangle_setup(setup, words);
 	decode_rgba_setup(attr, words + 8);
 	decode_tex_setup(attr, words + 24);
+	decode_z_setup_from_header(attr, words);
 	renderer.draw_shaded_primitive(setup, attr);
 }
 
