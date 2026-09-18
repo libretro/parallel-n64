@@ -2741,11 +2741,28 @@ static void rasterizer_init(uint32_t wid)
     state[wid].clip.yh = 0x2000;
 }
 
+/* A triangle without a z block still runs the z pipe whenever the
+ * othermode word enables it. The coefficient loader does not zero the z
+ * registers for such a triangle, nor keep the previous primitive's: it
+ * latches the triangle's own header doubleword into both z-block slots,
+ * so z = dzde = the first command word and dzdx = dzdy = the second.
+ * Hardware verified, diagnostic cartridge case 9:21 (carmiker/n64docs,
+ * RDP_TESTCART_HARDWARE.txt section 3.2). Rectangles are not covered
+ * by that capture and keep a zero z block. */
+#define TRI_LATCH_HEADER_Z(ew) \
+{ \
+    (ew)[40] = (ew)[0]; \
+    (ew)[41] = (ew)[1]; \
+    (ew)[42] = (ew)[0]; \
+    (ew)[43] = (ew)[1]; \
+}
+
 void rdp_tri_noshade(uint32_t wid, const uint32_t* args)
 {
     int32_t ewdata[CMD_MAX_INTS];
     memcpy(&ewdata[0], args, 8 * sizeof(int32_t));
-    memset(&ewdata[8], 0, 36 * sizeof(int32_t));
+    memset(&ewdata[8], 0, 32 * sizeof(int32_t));
+    TRI_LATCH_HEADER_Z(ewdata);
     edgewalker_for_prims(wid, ewdata);
 }
 
@@ -2764,7 +2781,7 @@ void rdp_tri_tex(uint32_t wid, const uint32_t* args)
     memcpy(&ewdata[0], args, 8 * sizeof(int32_t));
     memset(&ewdata[8], 0, 16 * sizeof(int32_t));
     memcpy(&ewdata[24], args + 8, 16 * sizeof(int32_t));
-    memset(&ewdata[40], 0, 4 * sizeof(int32_t));
+    TRI_LATCH_HEADER_Z(ewdata);
     edgewalker_for_prims(wid, ewdata);
 }
 
@@ -2790,7 +2807,8 @@ void rdp_tri_shade(uint32_t wid, const uint32_t* args)
 {
     int32_t ewdata[CMD_MAX_INTS];
     memcpy(&ewdata[0], args, 24 * sizeof(int32_t));
-    memset(&ewdata[24], 0, 20 * sizeof(int32_t));
+    memset(&ewdata[24], 0, 16 * sizeof(int32_t));
+    TRI_LATCH_HEADER_Z(ewdata);
     edgewalker_for_prims(wid, ewdata);
 }
 
@@ -2807,7 +2825,7 @@ void rdp_tri_texshade(uint32_t wid, const uint32_t* args)
 {
     int32_t ewdata[CMD_MAX_INTS];
     memcpy(&ewdata[0], args, 40 * sizeof(int32_t));
-    memset(&ewdata[40], 0, 4 * sizeof(int32_t));
+    TRI_LATCH_HEADER_Z(ewdata);
     edgewalker_for_prims(wid, ewdata);
 }
 
