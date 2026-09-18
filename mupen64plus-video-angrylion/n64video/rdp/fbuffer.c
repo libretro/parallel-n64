@@ -134,7 +134,7 @@ static void fbread_8(uint32_t wid, uint32_t curpixel, uint32_t* curpixel_memcvg)
 {
     uint8_t mem;
     uint32_t addr = state[wid].fb_address + curpixel;
-    RREADADDR8(mem, addr);
+    FBREADADDR8(mem, addr);
     state[wid].memory_color.r = state[wid].memory_color.g = state[wid].memory_color.b = mem;
     *curpixel_memcvg = 7;
     state[wid].memory_color.a = 0xe0;
@@ -144,7 +144,7 @@ static void fbread2_8(uint32_t wid, uint32_t curpixel, uint32_t* curpixel_memcvg
 {
     uint8_t mem;
     uint32_t addr = state[wid].fb_address + curpixel;
-    RREADADDR8(mem, addr);
+    FBREADADDR8(mem, addr);
     state[wid].pre_memory_color.r = state[wid].pre_memory_color.g = state[wid].pre_memory_color.b = mem;
     state[wid].pre_memory_color.a = 0xe0;
     *curpixel_memcvg = 7;
@@ -181,7 +181,7 @@ static void fbread_16(uint32_t wid, uint32_t curpixel, uint32_t* curpixel_memcvg
     }
     else
     {
-        RREADIDX16(fword, addr);
+        FBREADIDX16(fword, addr);
 
         if (state[wid].fb_format == FORMAT_RGBA)
         {
@@ -227,7 +227,7 @@ static void fbread2_16(uint32_t wid, uint32_t curpixel, uint32_t* curpixel_memcv
     }
     else
     {
-        RREADIDX16(fword, addr);
+        FBREADIDX16(fword, addr);
 
         if (state[wid].fb_format == FORMAT_RGBA)
         {
@@ -247,7 +247,7 @@ static void fbread2_16(uint32_t wid, uint32_t curpixel, uint32_t* curpixel_memcv
 static void fbread_32(uint32_t wid, uint32_t curpixel, uint32_t* curpixel_memcvg)
 {
     uint32_t mem, addr = (state[wid].fb_address >> 2) + curpixel;
-    RREADIDX32(mem, addr);
+    FBREADIDX32(mem, addr);
     state[wid].memory_color.r = RGBA32_R(mem);
     state[wid].memory_color.g = RGBA32_G(mem);
     state[wid].memory_color.b = RGBA32_B(mem);
@@ -266,7 +266,7 @@ static void fbread_32(uint32_t wid, uint32_t curpixel, uint32_t* curpixel_memcvg
 static INLINE void fbread2_32(uint32_t wid, uint32_t curpixel, uint32_t* curpixel_memcvg)
 {
     uint32_t mem, addr = (state[wid].fb_address >> 2) + curpixel;
-    RREADIDX32(mem, addr);
+    FBREADIDX32(mem, addr);
     state[wid].pre_memory_color.r = RGBA32_R(mem);
     state[wid].pre_memory_color.g = RGBA32_G(mem);
     state[wid].pre_memory_color.b = RGBA32_B(mem);

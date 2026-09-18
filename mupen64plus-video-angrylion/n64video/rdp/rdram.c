@@ -9,6 +9,10 @@
 #define RREADIDX16(rdst, in) {(rdst) = rdram_read_idx16((in));}
 #define RREADIDX32(rdst, in) {(rdst) = rdram_read_idx32((in));}
 
+#define FBREADADDR8(rdst, in) {(rdst) = px_read_idx8((in));}
+#define FBREADIDX16(rdst, in) {(rdst) = px_read_idx16((in));}
+#define FBREADIDX32(rdst, in) {(rdst) = px_read_idx32((in));}
+
 #define RWRITEADDR8(in, val) rdram_write_idx8((in), (val))
 #define RWRITEIDX16(in, val) rdram_write_idx16((in), (val))
 #define RWRITEIDX32(in, val) rdram_write_idx32((in), (val))
@@ -315,6 +319,30 @@ static STRICTINLINE void rdram_read_pair16(uint16_t* rdst, uint8_t* hdst, uint32
     } else {
         *rdst = *hdst = 0;
     }
+}
+
+/* Framebuffer reads. The colour image lives in the pixel domain - the
+ * framebuffer writes above go there - so the memory colour has to be
+ * read back from it as well. At 1x the domain is RDRAM itself and these
+ * are the plain RDRAM reads; at a resolution scale the framebuffer
+ * address is a domain address, and reading RDRAM with it returns some
+ * unrelated part of memory, or zero past its end. */
+static STRICTINLINE uint8_t px_read_idx8(uint32_t in)
+{
+    in &= px_mask8;
+    return px_valid_idx8(in) ? px8[in ^ BYTE_ADDR_XOR] : 0;
+}
+
+static STRICTINLINE uint16_t px_read_idx16(uint32_t in)
+{
+    in &= px_mask16;
+    return px_valid_idx16(in) ? px16[in ^ WORD_ADDR_XOR] : 0;
+}
+
+static STRICTINLINE uint32_t px_read_idx32(uint32_t in)
+{
+    in &= px_mask32;
+    return px_valid_idx32(in) ? px32[in] : 0;
 }
 
 static STRICTINLINE void rdram_write_pair8(uint32_t in, uint8_t rval, uint8_t hval)
