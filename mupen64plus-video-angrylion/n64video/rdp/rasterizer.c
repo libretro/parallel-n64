@@ -2766,11 +2766,29 @@ static void rasterizer_init(uint32_t wid)
     (ew)[43] = (ew)[1]; \
 }
 
+/* The shade block behaves the same way as the z block: a triangle
+ * without one still feeds the shade registers to the combiner, and the
+ * coefficient loader latches the triangle's own header doubleword into
+ * every one of the block's eight slots - integer and fraction parts of
+ * the colour, its x derivative, its edge derivative and its y
+ * derivative alike. Hardware verified: snapper64 "RDP Undefined Shade
+ * 1C", 64 of 64 hardware snapshots bit-exact. */
+#define TRI_LATCH_HEADER_SHADE(ew) \
+{ \
+    int latch_k; \
+    for (latch_k = 8; latch_k < 24; latch_k += 2) \
+    { \
+        (ew)[latch_k]     = (ew)[0]; \
+        (ew)[latch_k + 1] = (ew)[1]; \
+    } \
+}
+
 void rdp_tri_noshade(uint32_t wid, const uint32_t* args)
 {
     int32_t ewdata[CMD_MAX_INTS];
     memcpy(&ewdata[0], args, 8 * sizeof(int32_t));
-    memset(&ewdata[8], 0, 32 * sizeof(int32_t));
+    memset(&ewdata[24], 0, 16 * sizeof(int32_t));
+    TRI_LATCH_HEADER_SHADE(ewdata);
     TRI_LATCH_HEADER_Z(ewdata);
     edgewalker_for_prims(wid, ewdata);
 }
@@ -2779,7 +2797,8 @@ void rdp_tri_noshade_z(uint32_t wid, const uint32_t* args)
 {
     int32_t ewdata[CMD_MAX_INTS];
     memcpy(&ewdata[0], args, 8 * sizeof(int32_t));
-    memset(&ewdata[8], 0, 32 * sizeof(int32_t));
+    memset(&ewdata[24], 0, 16 * sizeof(int32_t));
+    TRI_LATCH_HEADER_SHADE(ewdata);
     memcpy(&ewdata[40], args + 8, 4 * sizeof(int32_t));
     edgewalker_for_prims(wid, ewdata);
 }
@@ -2788,7 +2807,7 @@ void rdp_tri_tex(uint32_t wid, const uint32_t* args)
 {
     int32_t ewdata[CMD_MAX_INTS];
     memcpy(&ewdata[0], args, 8 * sizeof(int32_t));
-    memset(&ewdata[8], 0, 16 * sizeof(int32_t));
+    TRI_LATCH_HEADER_SHADE(ewdata);
     memcpy(&ewdata[24], args + 8, 16 * sizeof(int32_t));
     TRI_LATCH_HEADER_Z(ewdata);
     edgewalker_for_prims(wid, ewdata);
@@ -2798,7 +2817,7 @@ void rdp_tri_tex_z(uint32_t wid, const uint32_t* args)
 {
     int32_t ewdata[CMD_MAX_INTS];
     memcpy(&ewdata[0], args, 8 * sizeof(int32_t));
-    memset(&ewdata[8], 0, 16 * sizeof(int32_t));
+    TRI_LATCH_HEADER_SHADE(ewdata);
     memcpy(&ewdata[24], args + 8, 16 * sizeof(int32_t));
     memcpy(&ewdata[40], args + 24, 4 * sizeof(int32_t));
 
