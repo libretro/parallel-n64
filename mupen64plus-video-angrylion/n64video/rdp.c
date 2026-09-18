@@ -133,6 +133,7 @@ struct spansigs
     int midspan;
     int longspan;
     int onelessthanmid;
+    int allvalid;
 };
 
 struct tile

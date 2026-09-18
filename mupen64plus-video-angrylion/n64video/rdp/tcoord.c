@@ -596,6 +596,21 @@ static STRICTINLINE void tclod_2cycle_notexel1(uint32_t wid, int32_t* sss, int32
     }
 }
 
+/* In 1-cycle mode the LOD unit measures the pipelined pair along the
+ * span: the next pixel and the one after it. At the second-to-last
+ * walked pixel there is no pixel after the next, and the hardware
+ * measures the centred pair (P-1, P+1) instead - but only on a span
+ * whose four sublines are all valid. A partial span keeps the interior
+ * form to its end, and the scanline below plays no part in the choice.
+ * This was previously gated on the next scanline being valid, which put
+ * the interior form on a triangle's last scanline and the centred pair
+ * on its partial first one. Hardware verified, diagnostic cartridge
+ * cases 11:23 and 11:46 (carmiker/n64docs RDP_TESTCART_HARDWARE.txt,
+ * section 1.4). The span length gate is kept: those scenes do not
+ * speak to spans of seven pixels and fewer. */
+#define LOD_CENTRED_TERMINUS(sigs) \
+    ((sigs)->preendspan && (sigs)->longspan && (sigs)->allvalid)
+
 static STRICTINLINE void tclod_1cycle_current(uint32_t wid, int32_t* sss, int32_t* sst, int32_t nexts, int32_t nextt, int32_t s, int32_t t, int32_t w, int32_t dsinc, int32_t dtinc, int32_t dwinc, int32_t scanline, int32_t prim_tile, int32_t* t1, struct spansigs* sigs)
 {
 
@@ -623,7 +638,7 @@ static STRICTINLINE void tclod_1cycle_current(uint32_t wid, int32_t* sss, int32_
         {
             if (!sigs->endspan || !sigs->longspan)
             {
-                if (!(sigs->preendspan && sigs->longspan) && !(sigs->endspan && sigs->midspan))
+                if (!LOD_CENTRED_TERMINUS(sigs) && !(sigs->endspan && sigs->midspan))
                 {
                     farsw = (w + (dwinc << 1)) >> 16;
                     fars = (s + (dsinc << 1)) >> 16;
@@ -645,9 +660,18 @@ static STRICTINLINE void tclod_1cycle_current(uint32_t wid, int32_t* sss, int32_
         }
         else
         {
-            farsw = (w + (dwinc << 1)) >> 16;
-            fars = (s + (dsinc << 1)) >> 16;
-            fart = (t + (dtinc << 1)) >> 16;
+            if (!LOD_CENTRED_TERMINUS(sigs))
+            {
+                farsw = (w + (dwinc << 1)) >> 16;
+                fars = (s + (dsinc << 1)) >> 16;
+                fart = (t + (dtinc << 1)) >> 16;
+            }
+            else
+            {
+                farsw = (w - dwinc) >> 16;
+                fars = (s - dsinc) >> 16;
+                fart = (t - dtinc) >> 16;
+            }
         }
 
         state[wid].tcdiv_ptr(fars, fart, farsw, &fars, &fart);
@@ -700,7 +724,7 @@ static STRICTINLINE void tclod_1cycle_current_simple(uint32_t wid, int32_t* sss,
                 nexts = (s + dsinc) >> 16;
                 nextt = (t + dtinc) >> 16;
 
-                if (!(sigs->preendspan && sigs->longspan) && !(sigs->endspan && sigs->midspan))
+                if (!LOD_CENTRED_TERMINUS(sigs) && !(sigs->endspan && sigs->midspan))
                 {
                     farsw = (w + (dwinc << 1)) >> 16;
                     fars = (s + (dsinc << 1)) >> 16;
@@ -728,9 +752,18 @@ static STRICTINLINE void tclod_1cycle_current_simple(uint32_t wid, int32_t* sss,
             nextsw = (w + dwinc) >> 16;
             nexts = (s + dsinc) >> 16;
             nextt = (t + dtinc) >> 16;
-            farsw = (w + (dwinc << 1)) >> 16;
-            fars = (s + (dsinc << 1)) >> 16;
-            fart = (t + (dtinc << 1)) >> 16;
+            if (!LOD_CENTRED_TERMINUS(sigs))
+            {
+                farsw = (w + (dwinc << 1)) >> 16;
+                fars = (s + (dsinc << 1)) >> 16;
+                fart = (t + (dtinc << 1)) >> 16;
+            }
+            else
+            {
+                farsw = (w - dwinc) >> 16;
+                fars = (s - dsinc) >> 16;
+                fart = (t - dtinc) >> 16;
+            }
         }
 
         state[wid].tcdiv_ptr(nexts, nextt, nextsw, &nexts, &nextt);
@@ -780,7 +813,7 @@ static STRICTINLINE void tclod_1cycle_next(uint32_t wid, int32_t* sss, int32_t* 
                     nexts = (s + dsinc) >> 16;
                     nextt = (t + dtinc) >> 16;
 
-                    if (!(sigs->preendspan && sigs->longspan) && !(sigs->endspan && sigs->midspan))
+                    if (!LOD_CENTRED_TERMINUS(sigs) && !(sigs->endspan && sigs->midspan))
                     {
                         farsw = (w + (dwinc << 1)) >> 16;
                         fars = (s + (dsinc << 1)) >> 16;
@@ -860,9 +893,18 @@ static STRICTINLINE void tclod_1cycle_next(uint32_t wid, int32_t* sss, int32_t* 
             nextsw = (w + dwinc) >> 16;
             nexts = (s + dsinc) >> 16;
             nextt = (t + dtinc) >> 16;
-            farsw = (w + (dwinc << 1)) >> 16;
-            fars = (s + (dsinc << 1)) >> 16;
-            fart = (t + (dtinc << 1)) >> 16;
+            if (!LOD_CENTRED_TERMINUS(sigs))
+            {
+                farsw = (w + (dwinc << 1)) >> 16;
+                fars = (s + (dsinc << 1)) >> 16;
+                fart = (t + (dtinc << 1)) >> 16;
+            }
+            else
+            {
+                farsw = (w - dwinc) >> 16;
+                fars = (s - dsinc) >> 16;
+                fart = (t - dtinc) >> 16;
+            }
         }
 
         state[wid].tcdiv_ptr(nexts, nextt, nextsw, &nexts, &nextt);

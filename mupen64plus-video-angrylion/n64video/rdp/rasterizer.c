@@ -316,6 +316,8 @@ static void render_spans_1cycle_complete(uint32_t wid, int start, int end, int t
         lodlength = length + scdiff;
 
         sigs.longspan = (lodlength > 7);
+        sigs.allvalid = !(state[wid].span[i].invalyscan[0] | state[wid].span[i].invalyscan[1]
+                        | state[wid].span[i].invalyscan[2] | state[wid].span[i].invalyscan[3]);
         sigs.midspan = (lodlength == 7);
         sigs.onelessthanmid = (lodlength == 6);
 
@@ -526,6 +528,8 @@ static void render_spans_1cycle_notexel1(uint32_t wid, int start, int end, int t
         lodlength = length + scdiff;
 
         sigs.longspan = (lodlength > 7);
+        sigs.allvalid = !(state[wid].span[i].invalyscan[0] | state[wid].span[i].invalyscan[1]
+                        | state[wid].span[i].invalyscan[2] | state[wid].span[i].invalyscan[3]);
         sigs.midspan = (lodlength == 7);
 
         for (j = 0; j <= length; j++)
