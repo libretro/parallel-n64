@@ -889,6 +889,32 @@ static STRICTINLINE void tclod_1cycle_next(uint32_t wid, int32_t* sss, int32_t* 
     }
 }
 
+/* The copy pipe has no texture coordinate clamp stage. Only the divide's
+ * own saturation reaches the coordinate: the w <= 0 carry and a positive
+ * overflow give +0x7fff, a negative overflow gives -0x8000. A quotient
+ * that fits the divider's 17 bits but not 16 is not clamped the way
+ * tclod_tcclamp() does for the 1-cycle and 2-cycle pipes, it simply
+ * keeps its low 16 bits. Hardware verified, diagnostic cartridge case
+ * 9:17 (carmiker/n64docs RDP_TESTCART_HARDWARE.txt, section 2.3b). */
+static STRICTINLINE void tclod_tcsaturate_copy(int32_t* sss, int32_t* sst)
+{
+    int32_t temps = *sss, tempt = *sst;
+
+    if (temps & 0x40000)
+        *sss = 0x7fff;
+    else if (temps & 0x20000)
+        *sss = 0x8000;
+    else
+        *sss = temps & 0xffff;
+
+    if (tempt & 0x40000)
+        *sst = 0x7fff;
+    else if (tempt & 0x20000)
+        *sst = 0x8000;
+    else
+        *sst = tempt & 0xffff;
+}
+
 static STRICTINLINE void tclod_copy(uint32_t wid, int32_t* sss, int32_t* sst, int32_t s, int32_t t, int32_t w, int32_t dsinc, int32_t dtinc, int32_t dwinc, int32_t prim_tile, int32_t* t1)
 {
 
@@ -900,7 +926,7 @@ static STRICTINLINE void tclod_copy(uint32_t wid, int32_t* sss, int32_t* sst, in
     int32_t lod = 0;
     uint32_t l_tile = 0, magnify = 0, distant = 0;
 
-    tclod_tcclamp(sss, sst);
+    tclod_tcsaturate_copy(sss, sst);
 
     if (state[wid].other_modes.tex_lod_en)
     {
