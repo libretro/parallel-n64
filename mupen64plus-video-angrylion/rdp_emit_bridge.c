@@ -360,6 +360,13 @@ int bridge_add_triangle(int32_t *cmd,
 
     id = (textured && z_buffered) ? 0x0f
        : (textured ? 0x0e : (z_buffered ? 0x0d : 0x0c));
-    cmd[0] = (int32_t)(((uint32_t)cmd[0] & 0x00ffffffu) | ((uint32_t)id << 24));
+    /* The microcodes form the opcode byte as 0xC8 | flags, so the two bits
+     * above the six-bit command id are set on the bus. The RDP ignores
+     * them when decoding, but a triangle without a z block latches its
+     * header word into the z coefficients, so the byte has to be the one
+     * the microcode would have written for the emitted triangle to carry
+     * the same z as the LLE path. */
+    cmd[0] = (int32_t)(((uint32_t)cmd[0] & 0x00ffffffu)
+           | ((uint32_t)(0xc0u | (unsigned int)id) << 24));
     return n;
 }
