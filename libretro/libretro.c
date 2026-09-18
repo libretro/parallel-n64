@@ -1181,14 +1181,24 @@ static m64p_system_type rom_country_code_to_system_type(char country_code)
     }
 }
 
+/* The largest frame size declared to the frontend so far. */
+static unsigned declared_max_width;
+static unsigned declared_max_height;
+
 void retro_get_system_av_info(struct retro_system_av_info *info)
 {
    m64p_system_type region = rom_country_code_to_system_type(ROM_HEADER.Country_code);
 
    info->geometry.base_width   = screen_width;
    info->geometry.base_height  = screen_height;
-   info->geometry.max_width    = screen_width;
-   info->geometry.max_height   = screen_height;
+   /* The maximum only ever grows: a frame may not exceed it, and the
+    * frontend sizes its buffers from it. */
+   if (screen_width > declared_max_width)
+      declared_max_width       = screen_width;
+   if (screen_height > declared_max_height)
+      declared_max_height      = screen_height;
+   info->geometry.max_width    = declared_max_width;
+   info->geometry.max_height   = declared_max_height;
    info->geometry.aspect_ratio = screen_aspect_ratio;
    /* Report the rate the VI is actually emulated at, not a constant.
     *
@@ -3144,6 +3154,14 @@ void retro_run (void)
    {
       bool ret;
       struct retro_system_av_info info;
+      /* SET_GEOMETRY cannot raise max_width/max_height, and a frame larger
+       * than the declared maximum is outside the libretro contract: the
+       * frontend sizes its frame buffers from the maximum, so an upscaled
+       * angrylion frame (2560 wide at 4x against a declared 640x480) comes
+       * out stretched and cut off. When the frame has outgrown what was
+       * declared, renegotiate with SET_SYSTEM_AV_INFO instead. */
+      bool outgrown = screen_width  > declared_max_width
+                   || screen_height > declared_max_height;
       retro_get_system_av_info(&info);
       switch (screen_aspectmodehint)
       {
@@ -3154,7 +3172,10 @@ void retro_run (void)
             info.geometry.aspect_ratio = 16.0 / 9.0;
             break;
       }
-      ret = environ_cb(RETRO_ENVIRONMENT_SET_GEOMETRY, &info.geometry);
+      if (outgrown)
+         ret = environ_cb(RETRO_ENVIRONMENT_SET_SYSTEM_AV_INFO, &info);
+      else
+         ret = environ_cb(RETRO_ENVIRONMENT_SET_GEOMETRY, &info.geometry);
       reinit_screen = false;
    }
 
