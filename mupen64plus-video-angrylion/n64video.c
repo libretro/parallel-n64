@@ -593,6 +593,263 @@ static uint32_t rdp_fetch_cmd_word(uint32_t idx)
         return hle_cmd_buf[idx - hle_cmd_base_idx];
     return rdram_read_idx32(idx);
 }
+/* ---------------------------------------------------------------------
+ * Register writes behind a rectangle with no sync in between.
+ *
+ * The command processor runs ahead of the pixel pipeline. Once a
+ * rectangle's edge walk is done it moves on to the next command while
+ * the rectangle's last spans are still being drawn, so a colour register
+ * written without a pipe sync lands part-way through the rectangle
+ * before it. The model and its constants are the ones established in
+ * cen64 (gitlab.com/jgemu/cen64, src/rdp/rdp_core.c, Rupert Carmichael)
+ * against snapper64's hardware surfaces; lengths are in GCLK.
+ *
+ * 1-cycle and 2-cycle, SetEnvColor. Over the command box - W columns and
+ * H rows counted inclusively, so the last column and the last row are
+ * the dead ones the walker ends on - and with cyc cycles per pixel:
+ *
+ *   L = max(cyc*W + cyc - 1, 4)     clocks per span
+ *   D = min(3*L - 2, 25) + OFF      command-processor lead
+ *
+ *   live pixel (r, c) is emitted at clock  r*L + cyc*c
+ *   the k'th following command executes at (H-1)*L - D + k
+ *
+ * and a write takes effect at the first live pixel emitted at or after
+ * its clock; one landing in the dead end-of-line slot moves to the start
+ * of the next row. 3*L - 2 is a three-deep span buffer, 25 the fixed
+ * pixel-pipeline latency. OFF is 1 when 2-cycle mode reads the
+ * environment colour in its second combiner cycle and not its first.
+ *
+ * FILL, SetFillColor. The fill colour is latched once per span, so a
+ * write recolours whole trailing rows: ns_fill_rows() below.
+ *
+ * Only what the hardware data covers is modelled: fill rectangles. The
+ * rectangle is cut along the landing points into sub-rectangles, each
+ * drawn with the colour the register held for it.
+ *
+ * Hardware verified against snapper64's "RDP Rect No-Sync-Env 1C",
+ * "RDP Rect No-Sync-Env 2C" and "RDP Rect No-Sync-Fill" groups.
+ * ------------------------------------------------------------------- */
+#define NS_MAX_EVENTS 8
+#define NS_FILL_MAX_LEAD 44
+#define NS_QUEUE_WORDS 1024
+static uint32_t ns_queue[NS_QUEUE_WORDS];
+static uint32_t ns_q_pos, ns_q_len;
+/* dispatcher-side copies of the state the split needs; the workers' own
+ * state lags behind the dispatcher while commands sit in the buffer */
+static uint32_t ns_cycle_type;
+static uint32_t ns_sc_xh, ns_sc_yh, ns_sc_xl = 0xfff, ns_sc_yl = 0xfff;
+static uint32_t ns_env, ns_fill, ns_fb_size;
+static uint32_t ns_combine[2];
+
+static void ns_emit(uint32_t w0, uint32_t w1)
+{
+    if (ns_q_len + 2 > NS_QUEUE_WORDS) return;
+    ns_queue[ns_q_len++] = w0;
+    ns_queue[ns_q_len++] = w1;
+}
+
+static void ns_emit_rect(uint32_t xh, uint32_t yh, uint32_t xl, uint32_t yl)
+{
+    ns_emit(((uint32_t)CMD_ID_FILL_RECTANGLE << 24) | ((xl & 0xfff) << 12) | (yl & 0xfff),
+            ((xh & 0xfff) << 12) | (yh & 0xfff));
+}
+
+/* Does the given combiner cycle read the environment colour? It is mux
+ * value 5 in every input field, and the RGB multiply field also selects
+ * the environment alpha at 12. */
+static bool ns_env_in_cycle(int cycle)
+{
+    uint32_t w0 = ns_combine[0], w1 = ns_combine[1];
+    if (cycle == 0)
+        return ((w0 >> 20) & 0xf) == 5 || ((w1 >> 28) & 0xf) == 5
+            || ((w0 >> 15) & 0x1f) == 5 || ((w0 >> 15) & 0x1f) == 12
+            || ((w1 >> 15) & 0x7) == 5 || ((w0 >> 12) & 0x7) == 5
+            || ((w1 >> 12) & 0x7) == 5 || ((w0 >> 9) & 0x7) == 5
+            || ((w1 >> 9) & 0x7) == 5;
+    return ((w0 >> 5) & 0xf) == 5 || ((w1 >> 24) & 0xf) == 5
+        || (w0 & 0x1f) == 5 || (w0 & 0x1f) == 12
+        || ((w1 >> 6) & 0x7) == 5 || ((w1 >> 21) & 0x7) == 5
+        || ((w1 >> 3) & 0x7) == 5 || ((w1 >> 18) & 0x7) == 5
+        || (w1 & 0x7) == 5;
+}
+
+/* the live rows and columns of a rectangle after the scissor */
+struct ns_box { uint32_t xh, yh, xl, yl; int32_t xa, xb, r0, r1; };
+
+/* Emit the live pixels from (ra, ca) up to but not including (rb, cb), in
+ * walk order, as up to three rectangles. cols is the live column count. */
+static void ns_emit_range(const struct ns_box *bx, int32_t cols, int32_t rows,
+                          int32_t ra, int32_t ca, int32_t rb, int32_t cb)
+{
+#define NS_Y0(rr) ((rr) == 0 ? bx->yh : (uint32_t)((bx->r0 + (rr)) << 2))
+#define NS_Y1(rr) ((rr) == rows - 1 ? bx->yl : (uint32_t)((bx->r0 + (rr) + 1) << 2))
+#define NS_X0(cc) ((cc) == 0 ? bx->xh : (uint32_t)((bx->xa + (cc)) << 2))
+#define NS_X1(cc) ((cc) == cols ? bx->xl : (uint32_t)((bx->xa + (cc)) << 2))
+    if (ra > rb || (ra == rb && ca >= cb))
+        return;
+    if (ra == rb)
+    {
+        ns_emit_rect(NS_X0(ca), NS_Y0(ra), NS_X1(cb), NS_Y1(ra));
+        return;
+    }
+    if (ca > 0)
+    {
+        ns_emit_rect(NS_X0(ca), NS_Y0(ra), NS_X1(cols), NS_Y1(ra));
+        ra++;
+    }
+    if (rb > ra)
+        ns_emit_rect(NS_X0(0), NS_Y0(ra), NS_X1(cols), NS_Y1(rb - 1));
+    if (cb > 0 && rb < rows)
+        ns_emit_rect(NS_X0(0), NS_Y0(rb), NS_X1(cb), NS_Y1(rb));
+#undef NS_Y0
+#undef NS_Y1
+#undef NS_X0
+#undef NS_X1
+}
+
+static bool ns_box_of(const uint32_t *cmd, bool fill, struct ns_box *bx)
+{
+    uint32_t cxh, cxl, cyh, cyl;
+    bx->xl = (cmd[0] >> 12) & 0xfff; bx->yl = cmd[0] & 0xfff;
+    bx->xh = (cmd[1] >> 12) & 0xfff; bx->yh = cmd[1] & 0xfff;
+    cxh = bx->xh > ns_sc_xh ? bx->xh : ns_sc_xh; cxl = bx->xl < ns_sc_xl ? bx->xl : ns_sc_xl;
+    cyh = bx->yh > ns_sc_yh ? bx->yh : ns_sc_yh;
+    /* FILL and COPY rectangles name their bottom row inclusively */
+    cyl = fill ? (bx->yl | 3) : bx->yl; if (cyl > ns_sc_yl) cyl = ns_sc_yl;
+    if (cxl < cxh || cyl <= cyh)
+        return false;
+    bx->xa = (int32_t)(cxh >> 2); bx->xb = (int32_t)(cxl >> 2);
+    bx->r0 = (int32_t)(cyh >> 2); bx->r1 = (int32_t)((cyl - 1) >> 2);
+    return true;
+}
+
+/* 1-cycle / 2-cycle: colors[0] is the environment colour the rectangle was
+ * issued under, colors[1..k] what the SetEnvColor commands behind it load. */
+static bool ns_split_env(const uint32_t *cmd, const uint32_t *colors, uint32_t k)
+{
+    struct ns_box bx;
+    int32_t cyc = (ns_cycle_type == 1) ? 2 : 1;
+    int32_t W, H, cols, rows, L, D, off, j;
+    int32_t pr = 0, pc = 0;       /* start of the piece being built */
+    uint32_t cur = 0;             /* colour index of that piece */
+
+    if (!ns_box_of(cmd, false, &bx))
+        return false;
+    W = bx.xb - bx.xa + 1;        /* the box, dead column included */
+    cols = W - 1;
+    rows = bx.r1 - bx.r0 + 1;     /* live rows */
+    H = rows + 1;
+    if (cols < 1 || rows < 1)
+        return false;
+    /* the walker's last column only stays dead when xl is whole */
+    if (bx.xl & 3) { cols = W; }
+
+    L = cyc * W + cyc - 1; if (L < 4) L = 4;
+    off = (cyc == 2 && !ns_env_in_cycle(0) && ns_env_in_cycle(1)) ? 1 : 0;
+    D = 3 * L - 2; if (D > 25) D = 25; D += off;
+
+    ns_q_pos = ns_q_len = 0;
+    for (j = 0; j < (int32_t)k; j++)
+    {
+        int32_t t = (H - 1) * L - D + j, r, rem, c;
+        if (t < 0) t = 0;
+        r = t / L; rem = t - r * L; c = (rem + cyc - 1) / cyc;
+        if (c > W - 2) { r++; c = 0; }
+        if (r > H - 2)
+            break;                /* this write and all later ones miss */
+        ns_emit(((uint32_t)CMD_ID_SET_ENV_COLOR << 24), colors[cur]);
+        ns_emit_range(&bx, cols, rows, pr, pc, r, c);
+        pr = r; pc = c; cur = (uint32_t)j + 1;
+    }
+    ns_emit(((uint32_t)CMD_ID_SET_ENV_COLOR << 24), colors[cur]);
+    ns_emit_range(&bx, cols, rows, pr, pc, rows, 0);
+    /* leave the register holding the last colour loaded */
+    ns_emit(((uint32_t)CMD_ID_SET_ENV_COLOR << 24), colors[k]);
+    return true;
+}
+
+/* Rows of a FILL rectangle, counted from the last, that take a fill colour
+ * written k GCLK after the command processor resumed. With bpp the colour
+ * image's bits per pixel:
+ *
+ *   W   = 64-bit words the row covers, phi = 1 when the row starts later
+ *         in its word than it ends, Wc = W - phi
+ *   B   = 64-byte blocks of the colour image the row touches
+ *   P   = max(9, Wc + 1)                 interior period
+ *   B == 1:  lead = 35 + W + phi,   gap = max(9, 2*W + 6)
+ *   B == 2:  lead = 34 + phi,       gap = W + 5
+ *   B >= 3:  lead = 51 - 8*B + phi, gap = Wc + 1, the lead one lower when
+ *            the row is flush with its blocks at both ends
+ *
+ * The row j back from the last latches at lead for j = 0 and at
+ * lead - gap - (j-1)*P behind it; the first row of the primitive enters
+ * an empty pipeline and latches P - 1 earlier still (one more when the
+ * gap is at its floor). A single-row rectangle is its own case: a lead of
+ * 21 whatever its width, and unreachable from five blocks up. */
+static int32_t ns_fill_rows(int32_t fbsize, int32_t x0, int32_t x1, int32_t h, int32_t k)
+{
+    static const int32_t bpp_of[4] = { 4, 8, 16, 32 };
+    int32_t bpp, ppw, b0, b1, w, phi, wc, blk, per, lead, gap, e, j, n;
+
+    if (h <= 0 || x1 < x0 || k < 0 || (uint32_t)fbsize > 3u)
+        return 0;
+    bpp = bpp_of[fbsize]; ppw = 64 / bpp;
+    b0 = (x0 * bpp) >> 3;
+    b1 = (((x1 + 1) * bpp) >> 3) - 1;
+    w = (b1 >> 3) - (b0 >> 3) + 1;
+    phi = ((x0 % ppw) > (x1 % ppw)) ? 1 : 0;
+    wc = w - phi;
+    blk = (b1 >> 6) - (b0 >> 6) + 1;
+
+    if (h == 1)
+        return (blk <= 4 && k <= 21) ? 1 : 0;
+
+    per = (wc + 1 > 9) ? (wc + 1) : 9;
+    if (blk == 1)      { lead = 35 + w + phi; gap = (2 * w + 6 > 9) ? (2 * w + 6) : 9; }
+    else if (blk == 2) { lead = 34 + phi;     gap = w + 5; }
+    else
+    {
+        lead = 51 - 8 * blk + phi; gap = wc + 1;
+        if ((b0 & 63) == 0 && ((b1 + 1) & 63) == 0)
+            lead--;
+    }
+    e = per - 1;
+    if (2 * w + 6 < 9)
+        e--;
+    n = 0;
+    for (j = 0; j < h; j++)
+    {
+        int32_t lam = (j == 0) ? lead : lead - gap - (j - 1) * per;
+        if (j == h - 1)
+            lam -= e;
+        if (lam >= k)
+            n++;
+    }
+    return n;
+}
+
+/* FILL: rows[i] is the first row that takes fills[i + 1]; fills[0] is the
+ * colour the rectangle was issued under. */
+static bool ns_split_fill(const uint32_t *cmd, const struct ns_box *bx,
+                          const int32_t *first_row, const uint32_t *fills, uint32_t k)
+{
+    int32_t rows = bx->r1 - bx->r0 + 1, cols = bx->xb - bx->xa + 1, pr = 0;
+    uint32_t j, cur = 0;
+    (void)cmd;
+    ns_q_pos = ns_q_len = 0;
+    for (j = 0; j < k; j++)
+    {
+        ns_emit(((uint32_t)CMD_ID_SET_FILL_COLOR << 24), fills[cur]);
+        ns_emit_range(bx, cols, rows, pr, 0, first_row[j], 0);
+        if (first_row[j] > pr) pr = first_row[j];
+        cur = j + 1;
+    }
+    ns_emit(((uint32_t)CMD_ID_SET_FILL_COLOR << 24), fills[cur]);
+    ns_emit_range(bx, cols, rows, pr, 0, rows, 0);
+    return true;
+}
+
 void n64video_process_list(void)
 {
     uint32_t** dp_reg = config.gfx.dp_reg;
@@ -627,8 +884,9 @@ void n64video_process_list(void)
         return;
     }
     // while there's data in the command buffer...
-    while (dp_end_al - dp_current_al > 0) {
+    while (ns_q_pos < ns_q_len || dp_end_al - dp_current_al > 0) {
         uint32_t i, toload;
+        bool ns_synthetic = ns_q_pos < ns_q_len;
         /* An active HLE command buffer is the authoritative source for the
          * whole [start, end) window the HLE submit installed -- the DPC
          * XBUS bit must not reroute its fetch into DMEM. The bit is set by
@@ -645,7 +903,9 @@ void n64video_process_list(void)
         uint32_t* cmd_buf = rdp_cmd_buf[rdp_cmd_buf_pos];
         // when reading the first int, extract the command ID and update the buffer length
         if (rdp_cmd_pos == 0) {
-            if (xbus_dma) {
+            if (ns_synthetic) {
+                cmd_buf[rdp_cmd_pos++] = ns_queue[ns_q_pos++];
+            } else if (xbus_dma) {
                 cmd_buf[rdp_cmd_pos++] = dmem[dp_current_al++ & 0x3ff];
             } else {
                 cmd_buf[rdp_cmd_pos++] = rdp_fetch_cmd_word(dp_current_al++);
@@ -660,8 +920,14 @@ void n64video_process_list(void)
          * calls; asking for rdp_cmd_len-1 more words then overshoots
          * rdp_cmd_len, so the completion test never matches, the command is
          * never executed, and rdp_cmd_pos runs past the buffer slot. */
-        toload = MIN(dp_end_al - dp_current_al, rdp_cmd_len - rdp_cmd_pos);
-        if (xbus_dma) {
+        toload = MIN(ns_synthetic ? ns_q_len - ns_q_pos : dp_end_al - dp_current_al,
+                     rdp_cmd_len - rdp_cmd_pos);
+        if (ns_synthetic) {
+            /* synthesized commands are queued whole */
+            for (i = 0; i < toload; i++) {
+                cmd_buf[rdp_cmd_pos++] = ns_queue[ns_q_pos++];
+            }
+        } else if (xbus_dma) {
             for (i = 0; i < toload; i++) {
                 cmd_buf[rdp_cmd_pos++] = dmem[dp_current_al++ & 0x3ff];
             }
@@ -673,6 +939,70 @@ void n64video_process_list(void)
 
         // if there's enough data for the current command...
         if (rdp_cmd_pos == rdp_cmd_len) {
+            /* dispatcher-side state for the no-sync rectangle split */
+            if (rdp_cmd_id == CMD_ID_SET_OTHER_MODES)
+                ns_cycle_type = (cmd_buf[0] >> 20) & 3;
+            else if (rdp_cmd_id == CMD_ID_SET_SCISSOR) {
+                ns_sc_xh = (cmd_buf[0] >> 12) & 0xfff; ns_sc_yh = cmd_buf[0] & 0xfff;
+                ns_sc_xl = (cmd_buf[1] >> 12) & 0xfff; ns_sc_yl = cmd_buf[1] & 0xfff;
+            } else if (rdp_cmd_id == CMD_ID_SET_ENV_COLOR)
+                ns_env = cmd_buf[1];
+            else if (rdp_cmd_id == CMD_ID_SET_FILL_COLOR)
+                ns_fill = cmd_buf[1];
+            else if (rdp_cmd_id == CMD_ID_SET_COLOR_IMAGE)
+                ns_fb_size = (cmd_buf[0] >> 19) & 3;
+            else if (rdp_cmd_id == CMD_ID_SET_COMBINE) {
+                ns_combine[0] = cmd_buf[0]; ns_combine[1] = cmd_buf[1];
+            } else if (rdp_cmd_id == CMD_ID_FILL_RECTANGLE && !ns_synthetic && ns_cycle_type != 2) {
+#define NS_PEEK(a) (xbus_dma ? dmem[(a) & 0x3ff] : rdp_fetch_cmd_word(a))
+                uint32_t colors[NS_MAX_EVENTS + 1], k = 0, at = dp_current_al;
+                bool split = false;
+                if (ns_cycle_type < 2) {
+                    /* SetEnvColor commands directly behind the rectangle:
+                     * any other command closes the window */
+                    colors[0] = ns_env;
+                    while (k < NS_MAX_EVENTS && dp_end_al - at >= 2
+                           && ((NS_PEEK(at) >> 24) & 0x3f) == CMD_ID_SET_ENV_COLOR) {
+                        colors[++k] = NS_PEEK(at + 1);
+                        at += 2;
+                    }
+                    split = k && ns_split_env(cmd_buf, colors, k);
+                } else {
+                    /* FILL: a no-op costs a clock and keeps the window open;
+                     * anything else closes it */
+                    struct ns_box bx;
+                    int32_t first_row[NS_MAX_EVENTS], clock = 0;
+                    if (ns_box_of(cmd_buf, true, &bx)) {
+                        int32_t h = bx.r1 - bx.r0 + 1;
+                        colors[0] = ns_fill;
+                        while (k < NS_MAX_EVENTS && dp_end_al - at >= 2 && clock <= NS_FILL_MAX_LEAD) {
+                            uint32_t id = (NS_PEEK(at) >> 24) & 0x3f;
+                            if (id == CMD_ID_NO_OP) { clock++; at += 2; continue; }
+                            if (id != CMD_ID_SET_FILL_COLOR)
+                                break;
+                            {
+                                int32_t n = ns_fill_rows((int32_t)ns_fb_size, bx.xa, bx.xb, h, clock);
+                                clock++;
+                                if (n <= 0)
+                                    break;   /* missed; nothing later can land */
+                                first_row[k] = h - n < 0 ? 0 : h - n;
+                                colors[++k] = NS_PEEK(at + 1);
+                                at += 2;
+                            }
+                        }
+                        /* trailing no-ops that were skipped but led nowhere
+                         * are harmless to drop: they do nothing */
+                        split = k && ns_split_fill(cmd_buf, &bx, first_row, colors, k);
+                    }
+                }
+#undef NS_PEEK
+                if (split) {
+                    /* the pieces replace the rectangle and the colour loads */
+                    dp_current_al = at;
+                    cmd_buf[0] = 0; cmd_buf[1] = 0;
+                    rdp_cmd_id = CMD_ID_NO_OP;
+                }
+            }
             al_capture_cmd(cmd_buf, rdp_cmd_len);
 #ifdef HAVE_RDP_DUMP
             if (!rdp_dump_in_command_list)
