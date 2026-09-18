@@ -2475,6 +2475,11 @@ static void edgewalker_for_prims(uint32_t wid, int32_t* ewdata)
     const int32_t x_top   = 0x2000 << al_scale_log2;
     const int32_t x_mask  = x_top - 1;
     const int32_t x_field = (0x4000 << al_scale_log2) - 2; /* bits 1..13+log2 */
+    /* the narrower field the scissor-under compare reads: bits 1..12 at
+     * 1x. Left unscaled it wraps once an edge passes 1024 pixels of the
+     * finer grid, and an edge right of that then compares as left of a
+     * non-zero scissor XH and is pulled onto it. */
+    const int32_t x_under = (0x2000 << al_scale_log2) - 2;
     const int32_t x_pix   = (0x1000 << al_scale_log2) - 1;  /* span endpoint, in pixels */
     const int32_t x_cross = (0x3fff << al_scale_log2) << 14; /* edge-cross compare field */
     /* the coordinate's sign and overflow bits: 27 and 26 at 1x */
@@ -2551,7 +2556,7 @@ static void edgewalker_for_prims(uint32_t wid, int32_t* ewdata)
             }
 
             stickybit = ((xright >> 1) & 0x1fff) > 0;
-            xrsc = ((xright >> 13) & 0x1ffe) | stickybit;
+            xrsc = ((xright >> 13) & x_under) | stickybit;
 
 
             curunder = ((xright & x_sign) || (xrsc < clipxhshift && !(xright & x_over)));
@@ -2564,7 +2569,7 @@ static void edgewalker_for_prims(uint32_t wid, int32_t* ewdata)
             allunder &= curunder;
 
             stickybit = ((xleft >> 1) & 0x1fff) > 0;
-            xlsc = ((xleft >> 13) & 0x1ffe) | stickybit;
+            xlsc = ((xleft >> 13) & x_under) | stickybit;
             curunder = ((xleft & x_sign) || (xlsc < clipxhshift && !(xleft & x_over)));
             xlsc = curunder ? clipxhshift : (((xleft >> 13) & x_field) | stickybit);
             curover = ((xlsc & x_top) || (xlsc & x_mask) >= clipxlshift);
@@ -2649,7 +2654,7 @@ static void edgewalker_for_prims(uint32_t wid, int32_t* ewdata)
             }
 
             stickybit = ((xright >> 1) & 0x1fff) > 0;
-            xrsc = ((xright >> 13) & 0x1ffe) | stickybit;
+            xrsc = ((xright >> 13) & x_under) | stickybit;
             curunder = ((xright & x_sign) || (xrsc < clipxhshift && !(xright & x_over)));
             xrsc = curunder ? clipxhshift : (((xright >> 13) & x_field) | stickybit);
             curover = ((xrsc & x_top) || (xrsc & x_mask) >= clipxlshift);
@@ -2659,7 +2664,7 @@ static void edgewalker_for_prims(uint32_t wid, int32_t* ewdata)
             allunder &= curunder;
 
             stickybit = ((xleft >> 1) & 0x1fff) > 0;
-            xlsc = ((xleft >> 13) & 0x1ffe) | stickybit;
+            xlsc = ((xleft >> 13) & x_under) | stickybit;
             curunder = ((xleft & x_sign) || (xlsc < clipxhshift && !(xleft & x_over)));
             xlsc = curunder ? clipxhshift : (((xleft >> 13) & x_field) | stickybit);
             curover = ((xlsc & x_top) || (xlsc & x_mask) >= clipxlshift);
