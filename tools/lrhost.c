@@ -17,6 +17,9 @@
  * LRHOST_DUMP_FROM..LRHOST_DUMP_TO (default 595..605) as raw rows in the
  * core's pixel format (16- or 32-bit)
  * so two configurations can be compared pixel for pixel;
+ * (with NNNN.raw.size holding "width height"). LRHOST_INPUT="from-to:id,..."
+ * holds RetroPad buttons over ranges of frames; LRHOST_SWFB=1 lends the core
+ * a software framebuffer and reports how many frames came back in it.
  * LRHOST_VERBOSE=1 shows the core's log; LRHOST_STATE=file loads a
  * savestate after the first frame.
  */
@@ -52,17 +55,34 @@ static enum retro_pixel_format pixfmt = RETRO_PIXEL_FORMAT_0RGB1555;
 static unsigned vid_w, vid_h;
 static uint32_t frame_crc;
 
+/* LRHOST_SWFB=1: answer RETRO_ENVIRONMENT_GET_CURRENT_SOFTWARE_FRAMEBUFFER
+ * the awkward way a real frontend may - a pitch wider than the frame, and a
+ * buffer poisoned before every loan so a pixel the core leaves unwritten
+ * shows up in the dump. */
+static uint32_t *swfb; static size_t swfb_cap;
+static unsigned long swfb_lent, swfb_frames, swfb_hits;
+
 static void video_cb(const void *data, unsigned w, unsigned h, size_t pitch)
 {
+    if (data) { swfb_frames++; if (swfb && data == (const void*)swfb) swfb_hits++; }
     vid_w = w; vid_h = h;
     if (!data) { frames_duped++; return; }
     frames_presented++;
     if (getenv("LRHOST_DUMPDIR") && frames_presented >= dump_from && frames_presented <= dump_to)
     {
-        char n[256]; FILE *f; unsigned y;
+        char n[256], sp[300]; FILE *f; unsigned y;
+        unsigned bpp = pixfmt == RETRO_PIXEL_FORMAT_XRGB8888 ? 4 : 2;
         snprintf(n, sizeof n, "%s/%04ld.raw", getenv("LRHOST_DUMPDIR"), frames_presented);
         f = fopen(n, "wb");
-        if (f) { unsigned bpp = pixfmt == RETRO_PIXEL_FORMAT_XRGB8888 ? 4 : 2; for (y = 0; y < h; y++) fwrite((const uint8_t*)data + y * pitch, 1, w * bpp, f); fclose(f); }
+        if (f)
+        {
+            for (y = 0; y < h; y++) fwrite((const uint8_t*)data + y * pitch, 1, w * bpp, f);
+            fclose(f);
+        }
+        /* the frame's size beside it: upscaled and cropped frames differ */
+        snprintf(sp, sizeof sp, "%s.size", n);
+        f = fopen(sp, "w");
+        if (f) { fprintf(f, "%u %u\n", w, h); fclose(f); }
     }
     if (frames_presented % 60 == 0) /* cheap signature: sample a few rows */
     {
@@ -74,7 +94,28 @@ static void video_cb(const void *data, unsigned w, unsigned h, size_t pitch)
 static void audio_sample_cb(int16_t l, int16_t r) { (void)l; (void)r; }
 static size_t audio_batch_cb(const int16_t *d, size_t n) { (void)d; return n; }
 static void input_poll_cb(void) {}
-static int16_t input_state_cb(unsigned port, unsigned dev, unsigned idx, unsigned id) { (void)port; (void)dev; (void)idx; (void)id; return 0; }
+/* LRHOST_INPUT="from-to:id,from-to:id,...": hold RetroPad button <id> on
+ * port 0 over a range of retro_run calls, so a test can drive a menu. */
+static long run_frame;
+static int16_t input_state_cb(unsigned port, unsigned dev, unsigned idx, unsigned id)
+{
+    const char *e = getenv("LRHOST_INPUT");
+    if (port != 0 || dev != RETRO_DEVICE_JOYPAD || !e) return 0;
+    if (id == RETRO_DEVICE_ID_JOYPAD_MASK)
+    {
+        int16_t m = 0; unsigned b;
+        for (b = 0; b < 16; b++) if (input_state_cb(port, dev, idx, b)) m |= (int16_t)(1 << b);
+        return m;
+    }
+    while (*e)
+    {
+        long a, b; unsigned i; int n = 0;
+        if (sscanf(e, "%ld-%ld:%u%n", &a, &b, &i, &n) != 3) break;
+        if (run_frame >= a && run_frame <= b && i == id) return 1;
+        e += n; if (*e == ',') e++;
+    }
+    return 0;
+}
 static void log_cb(enum retro_log_level lvl, const char *fmt, ...)
 {
     if (lvl < RETRO_LOG_WARN && !getenv("LRHOST_VERBOSE")) return;
@@ -101,6 +142,21 @@ static bool env_cb(unsigned cmd, void *data)
     case RETRO_ENVIRONMENT_GET_SAVE_DIRECTORY:
     case RETRO_ENVIRONMENT_GET_CORE_ASSETS_DIRECTORY:
         *(const char**)data = "lrhost-system"; return true;
+    case RETRO_ENVIRONMENT_GET_CURRENT_SOFTWARE_FRAMEBUFFER:
+    {
+        struct retro_framebuffer *fb = (struct retro_framebuffer*)data;
+        size_t stride, need, k;
+        if (!getenv("LRHOST_SWFB")) return false;
+        stride = ((size_t)fb->width + 63 + 16) & ~(size_t)63;
+        need = stride * fb->height;
+        if (need > swfb_cap) { free(swfb); swfb = (uint32_t*)malloc(need * 4); swfb_cap = swfb ? need : 0; }
+        if (!swfb) return false;
+        for (k = 0; k < need; k++) swfb[k] = 0xAB00CDEFu;
+        fb->data = swfb; fb->pitch = stride * 4; fb->format = RETRO_PIXEL_FORMAT_XRGB8888;
+        fb->memory_flags = RETRO_MEMORY_TYPE_CACHED;
+        swfb_lent++;
+        return true;
+    }
     case RETRO_ENVIRONMENT_GET_CAN_DUPE:
         *(bool*)data = true; return true;
     case RETRO_ENVIRONMENT_GET_AUDIO_VIDEO_ENABLE:
@@ -233,13 +289,15 @@ int main(int argc, char **argv)
     t_first = now_ms();
     for (i = 0; i < nframes; i++)
     {
-        t0 = now_ms(); r_run(); t1 = now_ms();
+        run_frame = i; t0 = now_ms(); r_run(); t1 = now_ms();
         ft[i] = t1 - t0;
     }
     for (i = nframes / 10; i < nframes; i++) { sum += ft[i]; sq += ft[i] * ft[i]; }   /* skip the boot */
     {
         int n = nframes - nframes / 10; double mean = sum / n, sd = sqrt(sq / n - mean * mean);
         double *s = malloc(n * sizeof *s); memcpy(s, ft + nframes / 10, n * sizeof *s); qsort(s, n, sizeof *s, cmp_d);
+        if (getenv("LRHOST_SWFB"))
+            printf("swfb: lent %lu, frames %lu, presented from the lent buffer %lu\n", swfb_lent, swfb_frames, swfb_hits);
         printf("%s: %dx%d %.2ffps | %d frames in %.1fs | per retro_run: mean %.3f ms sd %.3f | p50 %.3f p90 %.3f p99 %.3f max %.3f ms | presented %ld duped %ld | sig %08x\n",
                strrchr(argv[2], '/') ? strrchr(argv[2], '/') + 1 : argv[2], av.geometry.base_width, av.geometry.base_height, av.timing.fps,
                nframes, (now_ms() - t_first) / 1e3, mean, sd, s[n / 2], s[n * 9 / 10], s[n * 99 / 100], s[n - 1],
