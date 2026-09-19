@@ -99,6 +99,7 @@ void n64video_config_init(struct n64video_config* config);
 void n64video_init(struct n64video_config* config);
 uint8_t* n64video_hidden_store(size_t* size);
 void n64video_dps_arm(void);
+void n64video_set_native_lod(bool enable);
 int n64video_dps_take(uint32_t words[32]);
 void n64video_update_screen(void);
 void n64video_process_list(void);

@@ -614,6 +614,13 @@ int n64video_dps_take(uint32_t words[32])
     return dps_take(config.parallel ? parallel_num_workers() : 1, words);
 }
 
+/* "Use native texture LOD when upscaling": takes effect on the next
+ * primitive, no restart needed. */
+void n64video_set_native_lod(bool enable)
+{
+    al_lod_native = enable ? 1 : 0;
+}
+
 uint8_t* n64video_hidden_store(size_t* size)
 {
     if (size)

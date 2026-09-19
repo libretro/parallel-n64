@@ -1459,6 +1459,7 @@ extern void  angrylion_set_deinterlace(unsigned value);
 
 extern void angrylion_set_synclevel(unsigned value);
 extern void angrylion_set_upscaling(unsigned value);
+extern void angrylion_set_native_texture_lod(unsigned value);
 extern void ChangeSize();
 
 static void gfx_set_filtering(void)
@@ -1916,6 +1917,13 @@ void update_variables(bool startup)
       angrylion_set_upscaling(strtol(var.value, NULL, 0));
    else
       angrylion_set_upscaling(1);
+
+   /* shared with ParaLLEl-RDP in the same way */
+   var.key = "parallel-n64-parallel-rdp-native-texture-lod";
+   var.value = NULL;
+   angrylion_set_native_texture_lod(
+      environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value
+      && !strcmp(var.value, "enabled"));
 #endif
 
    var.key = "parallel-n64-angrylion-sync";

@@ -326,6 +326,11 @@ void angrylion_set_synclevel(unsigned value)
    }
 }
 
+void angrylion_set_native_texture_lod(unsigned value)
+{
+   n64video_set_native_lod(value != 0);
+}
+
 void angrylion_set_upscaling(unsigned value)
 {
    /* factors above 4 are rendered at 4; the option promises as much */

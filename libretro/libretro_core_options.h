@@ -91,6 +91,22 @@ struct retro_core_option_v2_definition option_defs_us[] = {
         "1x"
     },
     {
+        /* The key keeps its ParaLLEl-RDP name so existing configurations
+         * carry over; both upscaling renderers honour it. */
+        CORE_NAME "-parallel-rdp-native-texture-lod",
+        "Use native texture LOD when upscaling",
+        NULL,
+        "Pick texture mip levels as the console would, from a console pixel's footprint rather than an upscaled pixel's. Without it an upscaled render selects sharper levels, and games that use the level as a switch show the wrong image (the painting at the end of the castle corridor in Super Mario 64). Honoured by ParaLLEl-RDP and Angrylion.",
+        NULL,
+        NULL,
+        {
+            { "enabled", NULL },
+            { "disabled", NULL },
+            { NULL, NULL },
+        },
+        "disabled"
+    },
+    {
         CORE_NAME "-aleck64-testmode",
         "Aleck64: Test Mode",
         "Test Mode",
@@ -855,20 +871,6 @@ struct retro_core_option_v2_definition option_defs_us[] = {
             { NULL, NULL },
         },
         "disable"
-    },
-    {
-        CORE_NAME "-parallel-rdp-native-texture-lod",
-        "(ParaLLEl-RDP) Use native texture LOD when upscaling",
-        "Use native texture LOD when upscaling",
-        "Use native texture LOD when upscaling",
-        NULL,
-        "parallel",
-        {
-            { "enabled", NULL },
-            { "disabled", NULL },
-            { NULL, NULL },
-        },
-        "disabled"
     },
     {
         CORE_NAME "-parallel-rdp-native-tex-rect",

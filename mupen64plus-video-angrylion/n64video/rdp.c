@@ -528,6 +528,9 @@ static const struct
 
 static void deduce_derivatives(uint32_t wid);
 
+/* set by n64video_set_native_lod(): see AL_LOD_MUL in rdp/tcoord.c */
+static int al_lod_native;
+
 #include "rdp/al_select.h"
 
 /* census of the distinct per-pixel pipelines the content uses */

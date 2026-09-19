@@ -231,6 +231,14 @@ static STRICTINLINE void tcshift_copy(uint32_t wid, int32_t* S, int32_t* T, uint
 }
 
 
+/* With a resolution scale the per-pixel derivatives are those of the finer
+ * grid, so the LOD unit would see a footprint al_scale times smaller than
+ * the console's and pick a sharper mip level - or, where a game uses the
+ * level as a switch (the painting at the end of Super Mario 64's castle
+ * corridor), a different image. With "native texture LOD" on, the LOD
+ * sample points are taken a console pixel apart instead. */
+#define AL_LOD_MUL (al_lod_native ? (int32_t)al_scale : 1)
+
 static STRICTINLINE void tclod_4x17_to_15(int32_t scurr, int32_t snext, int32_t tcurr, int32_t tnext, int32_t previous, int32_t* lod)
 {
 
@@ -391,6 +399,10 @@ static STRICTINLINE void lodfrac_lodtile_signals(uint32_t wid, int lodclamp, int
 
 static STRICTINLINE void tclod_2cycle(uint32_t wid, int32_t* sss, int32_t* sst, int32_t s, int32_t t, int32_t w, int32_t dsinc, int32_t dtinc, int32_t dwinc, int32_t prim_tile, int32_t* t1, int32_t* t2, int32_t* lf)
 {
+    /* native texture LOD when upscaling: measure the footprint over a
+     * console pixel, not over one of the finer grid */
+    dsinc *= AL_LOD_MUL; dtinc *= AL_LOD_MUL; dwinc *= AL_LOD_MUL;
+
 
 
 
@@ -415,9 +427,9 @@ static STRICTINLINE void tclod_2cycle(uint32_t wid, int32_t* sss, int32_t* sst, 
         nextsw = (w + dwinc) >> 16;
         nexts = (s + dsinc) >> 16;
         nextt = (t + dtinc) >> 16;
-        nextys = (s + state[wid].spans_dsdy) >> 16;
-        nextyt = (t + state[wid].spans_dtdy) >> 16;
-        nextysw = (w + state[wid].spans_dwdy) >> 16;
+        nextys = (s + (state[wid].spans_dsdy * AL_LOD_MUL)) >> 16;
+        nextyt = (t + (state[wid].spans_dtdy * AL_LOD_MUL)) >> 16;
+        nextysw = (w + (state[wid].spans_dwdy * AL_LOD_MUL)) >> 16;
 
         state[wid].tcdiv_ptr(nexts, nextt, nextsw, &nexts, &nextt);
         state[wid].tcdiv_ptr(nextys, nextyt, nextysw, &nextys, &nextyt);
@@ -468,6 +480,10 @@ static STRICTINLINE void tclod_2cycle(uint32_t wid, int32_t* sss, int32_t* sst, 
 
 static STRICTINLINE void tclod_2cycle_next(uint32_t wid, int32_t* sss, int32_t* sst, int32_t* sss2, int32_t* sst2, int32_t s, int32_t t, int32_t w, int32_t dsinc, int32_t dtinc, int32_t dwinc, int32_t prim_tile, int32_t* t1, int32_t* t2, int32_t* lf, int scanline)
 {
+    /* native texture LOD when upscaling: measure the footprint over a
+     * console pixel, not over one of the finer grid */
+    dsinc *= AL_LOD_MUL; dtinc *= AL_LOD_MUL; dwinc *= AL_LOD_MUL;
+
     int nextys, nextyt, nextysw;
     int nexts, nextt, nextsw;
     int lodclamp = 0;
@@ -486,9 +502,9 @@ static STRICTINLINE void tclod_2cycle_next(uint32_t wid, int32_t* sss, int32_t* 
     {
         int nextscan = scanline + 1;
 
-        nextys = (state[wid].span[nextscan].s + state[wid].spans_dsdy) >> 16;
-        nextyt = (state[wid].span[nextscan].t + state[wid].spans_dtdy) >> 16;
-        nextysw = (state[wid].span[nextscan].w + state[wid].spans_dwdy) >> 16;
+        nextys = (state[wid].span[nextscan].s + (state[wid].spans_dsdy * AL_LOD_MUL)) >> 16;
+        nextyt = (state[wid].span[nextscan].t + (state[wid].spans_dtdy * AL_LOD_MUL)) >> 16;
+        nextysw = (state[wid].span[nextscan].w + (state[wid].spans_dwdy * AL_LOD_MUL)) >> 16;
 
         state[wid].tcdiv_ptr(nextys, nextyt, nextysw, &nextys, &nextyt);
 
@@ -551,6 +567,10 @@ static STRICTINLINE void tclod_2cycle_next(uint32_t wid, int32_t* sss, int32_t* 
 
 static STRICTINLINE void tclod_2cycle_notexel1(uint32_t wid, int32_t* sss, int32_t* sst, int32_t s, int32_t t, int32_t w, int32_t dsinc, int32_t dtinc, int32_t dwinc, int32_t prim_tile, int32_t* t1)
 {
+    /* native texture LOD when upscaling: measure the footprint over a
+     * console pixel, not over one of the finer grid */
+    dsinc *= AL_LOD_MUL; dtinc *= AL_LOD_MUL; dwinc *= AL_LOD_MUL;
+
     int nextys, nextyt, nextysw, nexts, nextt, nextsw;
     int lodclamp = 0;
     int32_t lod = 0;
@@ -566,9 +586,9 @@ static STRICTINLINE void tclod_2cycle_notexel1(uint32_t wid, int32_t* sss, int32
         nextsw = (w + dwinc) >> 16;
         nexts = (s + dsinc) >> 16;
         nextt = (t + dtinc) >> 16;
-        nextys = (s + state[wid].spans_dsdy) >> 16;
-        nextyt = (t + state[wid].spans_dtdy) >> 16;
-        nextysw = (w + state[wid].spans_dwdy) >> 16;
+        nextys = (s + (state[wid].spans_dsdy * AL_LOD_MUL)) >> 16;
+        nextyt = (t + (state[wid].spans_dtdy * AL_LOD_MUL)) >> 16;
+        nextysw = (w + (state[wid].spans_dwdy * AL_LOD_MUL)) >> 16;
 
         state[wid].tcdiv_ptr(nexts, nextt, nextsw, &nexts, &nextt);
         state[wid].tcdiv_ptr(nextys, nextyt, nextysw, &nextys, &nextyt);
@@ -613,6 +633,10 @@ static STRICTINLINE void tclod_2cycle_notexel1(uint32_t wid, int32_t* sss, int32
 
 static STRICTINLINE void tclod_1cycle_current(uint32_t wid, int32_t* sss, int32_t* sst, int32_t nexts, int32_t nextt, int32_t s, int32_t t, int32_t w, int32_t dsinc, int32_t dtinc, int32_t dwinc, int32_t scanline, int32_t prim_tile, int32_t* t1, struct spansigs* sigs)
 {
+    /* native texture LOD when upscaling: measure the footprint over a
+     * console pixel, not over one of the finer grid */
+    dsinc *= AL_LOD_MUL; dtinc *= AL_LOD_MUL; dwinc *= AL_LOD_MUL;
+
 
 
 
@@ -705,6 +729,10 @@ static STRICTINLINE void tclod_1cycle_current(uint32_t wid, int32_t* sss, int32_
 
 static STRICTINLINE void tclod_1cycle_current_simple(uint32_t wid, int32_t* sss, int32_t* sst, int32_t s, int32_t t, int32_t w, int32_t dsinc, int32_t dtinc, int32_t dwinc, int32_t scanline, int32_t prim_tile, int32_t* t1, struct spansigs* sigs)
 {
+    /* native texture LOD when upscaling: measure the footprint over a
+     * console pixel, not over one of the finer grid */
+    dsinc *= AL_LOD_MUL; dtinc *= AL_LOD_MUL; dwinc *= AL_LOD_MUL;
+
     int fars, fart, farsw, nexts, nextt, nextsw;
     int lodclamp = 0;
     int32_t lod = 0;
@@ -790,6 +818,10 @@ static STRICTINLINE void tclod_1cycle_current_simple(uint32_t wid, int32_t* sss,
 
 static STRICTINLINE void tclod_1cycle_next(uint32_t wid, int32_t* sss, int32_t* sst, int32_t s, int32_t t, int32_t w, int32_t dsinc, int32_t dtinc, int32_t dwinc, int32_t scanline, int32_t prim_tile, int32_t* t1, struct spansigs* sigs, int32_t* prelodfrac)
 {
+    /* native texture LOD when upscaling: measure the footprint over a
+     * console pixel, not over one of the finer grid */
+    dsinc *= AL_LOD_MUL; dtinc *= AL_LOD_MUL; dwinc *= AL_LOD_MUL;
+
     int nexts, nextt, nextsw, fars, fart, farsw;
     int lodclamp = 0;
     int32_t lod = 0;
