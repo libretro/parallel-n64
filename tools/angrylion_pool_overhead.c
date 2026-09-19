@@ -19,6 +19,8 @@ void msg_warning(const char *e, ...) { (void)e; }
 void msg_debug(const char *e, ...) { (void)e; }
 void vdac_init(struct n64video_config *c) { (void)c; }
 void vdac_write(void *fb, int w, int h, int p, int o) { (void)fb; (void)w; (void)h; (void)p; (void)o; }
+/* no host buffer to lend: the VI renders into its own */
+void *vdac_acquire(unsigned width, unsigned height, unsigned *pitch, int need_read) { (void)width; (void)height; (void)pitch; (void)need_read; return 0; }
 void vdac_sync(int i) { (void)i; }
 void vdac_close(void) {}
 int aleck64_e90_overlay(void *a, int b, int c, int d) { (void)a; (void)b; (void)c; (void)d; return 0; }
