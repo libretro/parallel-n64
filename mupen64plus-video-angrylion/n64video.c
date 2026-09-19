@@ -593,6 +593,16 @@ static uint32_t rdp_fetch_cmd_word(uint32_t idx)
         return hle_cmd_buf[idx - hle_cmd_base_idx];
     return rdram_read_idx32(idx);
 }
+/* The hidden-bit array, two bits per 16-bit word with the first byte's
+ * bit on top, for a host that wants the CPU to see the ninth bits the
+ * RDP writes. */
+uint8_t* n64video_hidden_store(size_t* size)
+{
+    if (size)
+        *size = sizeof(rdram_hidden);
+    return rdram_hidden;
+}
+
 /* ---------------------------------------------------------------------
  * Register writes behind a rectangle with no sync in between.
  *

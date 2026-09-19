@@ -79,6 +79,15 @@ extern const void *screen_pixels;
 
 struct n64video_config config;
 
+/* let the CPU side read the ninth bits the RDP writes (EBUS test mode) */
+extern void rdram_set_hidden_store(uint8_t* store, size_t size);
+static void angrylion_share_hidden(void)
+{
+   size_t size = 0;
+   uint8_t* store = n64video_hidden_store(&size);
+   rdram_set_hidden_store(store, size);
+}
+
 void plugin_init(void)
 {
 }
@@ -207,7 +216,7 @@ void angrylion_set_vi(unsigned value)
       if (angrylion_init)
       {
           n64video_close();
-          n64video_init(&config);
+          n64video_init(&config); angrylion_share_hidden();
       }
    }
 }
@@ -221,7 +230,7 @@ void angrylion_set_threads(unsigned value)
      if (angrylion_init)
      {
          n64video_close();
-         n64video_init(&config);
+         n64video_init(&config); angrylion_share_hidden();
      }
     }
     
@@ -241,7 +250,7 @@ void angrylion_set_synchronous(unsigned value)
       if (angrylion_init)
       {
          n64video_close();
-         n64video_init(&config);
+         n64video_init(&config); angrylion_share_hidden();
       }
    }
 }
@@ -254,7 +263,7 @@ void angrylion_set_overscan(unsigned value)
       if (angrylion_init)
       {
          n64video_close();
-         n64video_init(&config);
+         n64video_init(&config); angrylion_share_hidden();
       }
    }
     
@@ -268,7 +277,7 @@ void angrylion_set_vi_dedither(unsigned value)
       if (angrylion_init)
       {
          n64video_close();
-         n64video_init(&config);
+         n64video_init(&config); angrylion_share_hidden();
       }
    }
     
@@ -282,7 +291,7 @@ void angrylion_set_vi_blur(unsigned value)
       if (angrylion_init)
       {
          n64video_close();
-         n64video_init(&config);
+         n64video_init(&config); angrylion_share_hidden();
       }
    }
     
@@ -296,7 +305,7 @@ void angrylion_set_deinterlace(unsigned value)
       if (angrylion_init)
       {
          n64video_close();
-         n64video_init(&config);
+         n64video_init(&config); angrylion_share_hidden();
       }
    }
 }
@@ -309,7 +318,7 @@ void angrylion_set_synclevel(unsigned value)
       if (angrylion_init)
       {
          n64video_close();
-         n64video_init(&config);
+         n64video_init(&config); angrylion_share_hidden();
       }
    }
 }
@@ -325,7 +334,7 @@ void angrylion_set_upscaling(unsigned value)
       if (angrylion_init)
       {
          n64video_close();
-         n64video_init(&config);
+         n64video_init(&config); angrylion_share_hidden();
       }
    }
 }
@@ -359,7 +368,7 @@ void angrylion_set_filtering(unsigned filter_type)
       if (angrylion_init)
       {
          n64video_close();
-         n64video_init(&config);
+         n64video_init(&config); angrylion_share_hidden();
       }
    }
 }
@@ -458,7 +467,7 @@ int angrylionRomOpen(void)
   config.gfx.vi_reg      = plugin_get_vi_registers();
   config.gfx.dp_reg      = plugin_get_dp_registers();
 
-   n64video_init(&config);
+   n64video_init(&config); angrylion_share_hidden();
    angrylion_init        = true;
    return 1;
 }
