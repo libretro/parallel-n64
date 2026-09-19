@@ -354,6 +354,26 @@ void read_rdram_dram(void* opaque, uint32_t address, uint32_t* value)
     }
 }
 
+/* Store bytes [from, to) of a repeated 32-bit pattern whose first byte sits
+ * at pattern_base, ninth bits included. The repeat ends on a byte, not on a
+ * word: libdragon's memset hands the hardware whatever is left of a buffer,
+ * and a repeat rounded up to whole words would run past its end. */
+static void rdram_repeat_bytes(struct rdram* rdram, uint32_t pattern_base,
+                               uint32_t from, uint32_t to, uint32_t value)
+{
+    uint32_t a;
+    if (to > rdram->dram_size)
+        to = (uint32_t)rdram->dram_size;
+    for (a = from; a < to; a++)
+    {
+        uint32_t sh  = (3 - ((a - pattern_base) & 3)) * 8;
+        uint32_t wsh = (3 - (a & 3)) * 8;
+        uint32_t* w  = &rdram->dram[a >> 2];
+        *w = (*w & ~(UINT32_C(0xff) << wsh)) | (((value >> sh) & 0xff) << wsh);
+        rdram_hidden_set(a, value & 1);
+    }
+}
+
 void write_rdram_dram(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
 {
     struct rdram* rdram = (struct rdram*)opaque;
@@ -363,6 +383,35 @@ void write_rdram_dram(void* opaque, uint32_t address, uint32_t value, uint32_t m
     {
         uint32_t* init_mode = &rdram->r4300->mi->regs[MI_INIT_MODE_REG];
         uint32_t base = address & ~UINT32_C(3), b;
+
+        if ((*init_mode & 0x80) && mask == ~UINT32_C(0) && rdram_mi_modes_honoured(rdram))
+        {
+            /* init mode: this store is the repeat, init_length + 1 bytes of
+             * it and no more - the plain four-byte store does not happen */
+            uint32_t len = (*init_mode & 0x7f) + 1;
+            rdram_hidden_ensure(rdram);
+            rdram_repeat_bytes(rdram, base, base, base + len, value);
+            *init_mode &= ~UINT32_C(0x80);
+            g_mi_repeat_base = base;
+            g_mi_repeat_len = len;
+            g_mi_repeat_pending = 1;
+            return;
+        }
+
+        if (g_mi_repeat_pending && mask == ~UINT32_C(0)
+            && base == g_mi_repeat_base + 4)
+        {
+            /* the low half of the 64-bit store that started the repeat: it
+             * belongs to the same repeat, so it takes the odd words of the
+             * pattern up to the repeat's last byte and nothing past it */
+            uint32_t end = g_mi_repeat_base + g_mi_repeat_len, a;
+            g_mi_repeat_pending = 0;
+            rdram_hidden_ensure(rdram);
+            for (a = base; a < end; a += 8)
+                rdram_repeat_bytes(rdram, a, a, (a + 4 < end) ? a + 4 : end, value);
+            return;
+        }
+        g_mi_repeat_pending = 0;
 
         masked_write(&rdram->dram[addr], value, mask);
 
@@ -376,38 +425,6 @@ void write_rdram_dram(void* opaque, uint32_t address, uint32_t value, uint32_t m
             for (b = 0; b < 4; b++)
                 if ((mask >> ((3 - b) * 8)) & 0xff)
                     rdram_hidden_set(base + b, lsb);
-        }
-
-        if (g_mi_repeat_pending && mask == ~UINT32_C(0)
-            && base == g_mi_repeat_base + 4)
-        {
-            /* low half of the 64-bit store that started the repeat */
-            uint32_t a;
-            for (a = base; a < g_mi_repeat_base + g_mi_repeat_len && a < rdram->dram_size; a += 8)
-            {
-                rdram->dram[a >> 2] = value;
-                for (b = 0; b < 4; b++)
-                    rdram_hidden_set(a + b, value & 1);
-            }
-        }
-        g_mi_repeat_pending = 0;
-
-        if ((*init_mode & 0x80) && mask == ~UINT32_C(0) && rdram_mi_modes_honoured(rdram))
-        {
-            uint32_t len = (*init_mode & 0x7f) + 1, a;
-            for (a = base; a < base + len && a < rdram->dram_size; a++)
-            {
-                /* the stored word repeats along the bytes that follow */
-                uint32_t sh = (3 - ((a - base) & 3)) * 8;
-                uint32_t* w = &rdram->dram[a >> 2];
-                uint32_t wsh = (3 - (a & 3)) * 8;
-                *w = (*w & ~(UINT32_C(0xff) << wsh)) | (((value >> sh) & 0xff) << wsh);
-                rdram_hidden_set(a, value & 1);
-            }
-            *init_mode &= ~UINT32_C(0x80);
-            g_mi_repeat_base = base;
-            g_mi_repeat_len = len;
-            g_mi_repeat_pending = 1;
         }
     }
 }
