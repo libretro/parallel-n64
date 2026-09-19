@@ -125,6 +125,23 @@ struct other_modes
     } f;
 };
 
+/* One span's FILL-mode triangle write plan (see rdp/fill_tri.c): 64-bit
+ * word runs relative to the framebuffer row, with byte enables whose bit 7
+ * is the word's first byte. m_fill_plan == 0 means no plan. */
+struct fill_tri_plan
+{
+    uint8_t m_fill_plan;
+    uint8_t m_fill_open;
+    uint8_t m_fill_close;
+    uint8_t m_fill_pm;
+    uint8_t m_fill_t2close;
+    int16_t m_fill_b1lo;
+    int16_t m_fill_b1hi;
+    int16_t m_fill_pw;
+    int16_t m_fill_t2lo;
+    int16_t m_fill_t2hi;
+};
+
 struct spansigs
 {
     int endspan;
@@ -174,6 +191,7 @@ struct span
     int32_t majorx[4];
     int32_t minorx[4];
     int32_t invalyscan[4];
+    struct fill_tri_plan fplan;
 };
 
 struct combiner_inputs
@@ -327,6 +345,9 @@ struct rdp_state
     int fb_width;
     uint32_t fb_address;
     uint32_t fill_color;
+    /* FILL-mode triangle in progress: 0 none, 1 write law only, 2 plans
+     * attached to the spans as well (rdp/fill_tri.c) */
+    int fill_tri;
 
     // rasterizer
     struct rectangle clip;
@@ -521,6 +542,7 @@ static void al_key_report(void)
 #include "rdp/tmem.c"
 #include "rdp/tcoord.c"
 #include "rdp/tex.c"
+#include "rdp/fill_tri.c"
 #include "rdp/rasterizer.c"
 
 static uint64_t al_selector_of(uint32_t wid)

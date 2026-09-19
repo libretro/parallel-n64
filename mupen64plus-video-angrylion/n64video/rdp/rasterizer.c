@@ -1799,6 +1799,23 @@ static void render_spans_fill(uint32_t wid, int start, int end, int flip)
 
 
 
+            /* A FILL triangle is not written as a plain run of pixels: see
+             * rdp/fill_tri.c. Rows the sequential model planned are written
+             * from their plan; other spans walking right to left take the
+             * complemented-trim write law. */
+            if (state[wid].fill_tri == 2 && state[wid].span[i].fplan.m_fill_plan)
+            {
+                fill_tri_run_plan(wid, i, &state[wid].span[i].fplan);
+                continue;
+            }
+            if (state[wid].fill_tri && !flip && length >= 0
+                && (state[wid].fb_size == PIXEL_SIZE_16BIT || state[wid].fb_size == PIXEL_SIZE_32BIT))
+            {
+                fill_tri_write_span(wid, i, xstart, xendsc,
+                                    state[wid].fb_size == PIXEL_SIZE_32BIT ? 4u : 2u);
+                continue;
+            }
+
 #if defined(AL_SIMD_SSE2) || defined(AL_SIMD_NEON)
             if (state[wid].fb_size == PIXEL_SIZE_16BIT && length >= 0)
             {
@@ -2230,6 +2247,23 @@ static void edgewalker_for_prims(uint32_t wid, int32_t* ewdata)
 
 
     xright = xh & ~0x1;
+
+    /* FILL triangles: run the sequential write model over the whole
+     * primitive before this lane walks its own lines. A rectangle is a
+     * FILL_RECTANGLE or TEXTURE_RECTANGLE command here, which the header
+     * word still carries. */
+    state[wid].fill_tri = 0;
+    if (state[wid].other_modes.cycle_type == CYCLE_TYPE_FILL && al_scale == 1)
+    {
+        uint32_t ew_id = ((uint32_t)ewdata[0] >> 24) & 0x3f;
+        if (ew_id >= 0x08 && ew_id <= 0x0f)
+        {
+            state[wid].fill_tri = 1;
+            if (state[wid].fb_size == PIXEL_SIZE_32BIT
+                && fill_tri_prepass(wid, flip, yh, ym, yl, xh, xm, xl, dxhdy, dxmdy, dxldy))
+                state[wid].fill_tri = 2;
+        }
+    }
     xleft = xm & ~0x1;
 
     int k = 0;
