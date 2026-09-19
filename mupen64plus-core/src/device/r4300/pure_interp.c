@@ -790,3 +790,77 @@ void run_pure_interpreter(struct r4300_core* r4300)
    if (!frame_break)
       l_pi_started = 0;
 }
+
+
+/* Run the instructions that follow a store to MI_MODE through the
+ * interpreter, on behalf of a recompiler, until the init or EBUS test mode
+ * it set is gone: those modes act on the next RDRAM access, and only the
+ * interpreter makes that access through a handler. Stops early, leaving
+ * the mode to behave as it always has under the recompiler, at anything
+ * that is not straight-line code. Returns the address to resume at. */
+int g_mi_window_active;
+
+static int mi_window_is_branch(uint32_t op)
+{
+    uint32_t major = op >> 26;
+    /* REGIMM, J/JAL, the branches and their likely forms, COP0 (ERET),
+     * COP1 (may be unusable, BC1x) */
+    if (major == 1 || (major >= 2 && major <= 7) || (major >= 16 && major <= 23))
+        return 1;
+    if (major == 0)
+    {
+        /* JR, JALR, SYSCALL, BREAK and the traps */
+        uint32_t fn = op & 0x3f;
+        return fn == 8 || fn == 9 || fn == 12 || fn == 13 || (fn >= 48 && fn <= 54);
+    }
+    return 0;
+}
+
+/* does this instruction have a delay slot? */
+static int mi_window_has_delay_slot(uint32_t op)
+{
+    uint32_t major = op >> 26;
+    if (major == 1 || (major >= 2 && major <= 7) || (major >= 20 && major <= 23))
+        return 1;
+    if ((major == 17 || major == 18) && ((op >> 21) & 0x1f) == 8)
+        return 1;                                   /* BCzF/BCzT */
+    if (major == 0 && ((op & 0x3f) == 8 || (op & 0x3f) == 9))
+        return 1;                                   /* JR, JALR */
+    return 0;
+}
+
+uint32_t pure_interp_run_mi_window(struct r4300_core* r4300, uint32_t pc)
+{
+    const int ari64 = (r4300->emumode == EMUMODE_DYNAREC && r4300_jit_backend == R4300_JIT_ARI64);
+    struct precomp_instr** pcs = r4300_pc_struct(r4300);
+    struct precomp_instr* saved = *pcs;
+    uint32_t* opa;
+    int n;
+
+    /* pc follows the store to MI_MODE. If that store sat in a delay slot,
+     * what follows it in memory is not what runs next: leave it alone. */
+    opa = fast_mem_access(r4300, pc - 8);
+    if (opa == NULL || mi_window_has_delay_slot(*opa))
+        return pc;
+
+    g_mi_window_active = 1;
+    /* the interpreter walks interp_PC; the cached interpreter and the
+     * Hacktarux recompiler keep their PC as a pointer into a block */
+    if (!ari64)
+        *pcs = &r4300->interp_PC;
+    for (n = 0; n < 32 && (r4300->mi->regs[MI_INIT_MODE_REG] & 0x180); n++)
+    {
+        opa = fast_mem_access(r4300, pc);
+        if (opa == NULL || mi_window_is_branch(*opa))
+            break;
+        r4300->interp_PC.addr = pc;
+        if (ari64)
+            *r4300_pc(r4300) = pc;
+        InterpretOpcode(r4300);
+        pc = r4300->interp_PC.addr;
+    }
+    if (!ari64)
+        *pcs = saved;
+    g_mi_window_active = 0;
+    return pc;
+}

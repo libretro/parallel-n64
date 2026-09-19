@@ -72,6 +72,7 @@ static inline void jit_write_disable(void) { }
 #include "device/r4300/tlb.h"
 #include "device/r4300/fpu.h"
 #include "device/rcp/mi/mi_controller.h"
+#include "device/r4300/pure_interp.h"
 #include "device/rcp/rsp/rsp_core.h"
 
 #if !defined(WIN32)
@@ -2265,12 +2266,29 @@ static void write_hword_new(int pcaddr, int count)
   UPDATE_COUNT_OUT
 }
 
+/* MI_MODE's init (repeat) and EBUS test modes act on the very next RDRAM
+ * access, and compiled code reaches RDRAM inline, where no handler sees
+ * it. When a store to MI_MODE leaves either mode set, take the exception
+ * exit - which writes the guest registers back - and let get_addr_ht run
+ * the following instructions through the interpreter until the mode is
+ * gone (pure_interp_run_mi_window), then resume compiled code from
+ * there. A store in a delay slot is left alone: the modes then behave as
+ * they always have under the recompiler. */
+static int mi_window_pending;
+
 static void write_word_new(int pcaddr, int count)
 {
   UPDATE_COUNT_IN
   state->pcaddr = pcaddr&~1;
   r4300->delay_slot = pcaddr & 1;
   r4300_write_aligned_word(r4300, state->address, state->wword, UINT32_C(0xffffffff));
+  if ((state->address & UINT32_C(0x1fffffff)) == UINT32_C(0x04300000)
+      && (r4300->mi->regs[MI_INIT_MODE_REG] & 0x180) && !r4300->delay_slot
+      && !state->pending_exception)
+  {
+    mi_window_pending = 1;
+    state->pending_exception = 1;
+  }
   UPDATE_COUNT_OUT
 }
 
@@ -2805,6 +2823,12 @@ void *get_addr(u_int vaddr)
 // Look up address in hash table first
 void *get_addr_ht(u_int vaddr)
 {
+  if(mi_window_pending)
+  {
+    mi_window_pending=0;
+    vaddr=pure_interp_run_mi_window(&g_dev.r4300,vaddr);
+    g_dev.r4300.new_dynarec_hot_state.pcaddr=vaddr;
+  }
   struct ll_entry **ht_bin=hash_table[((vaddr>>16)^vaddr)&0xFFFF];
   if(ht_bin[0]&&ht_bin[0]->vaddr==vaddr) return (void *)(((intptr_t)ht_bin[0]->addr-(intptr_t)base_addr)+(intptr_t)base_addr_rx);
   if(ht_bin[1]&&ht_bin[1]->vaddr==vaddr) return (void *)(((intptr_t)ht_bin[1]->addr-(intptr_t)base_addr)+(intptr_t)base_addr_rx);

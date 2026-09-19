@@ -28,6 +28,7 @@
 #include "device/r4300/r4300_core.h"
 #include "device/rcp/ri/ri_controller.h"
 #include "device/rcp/mi/mi_controller.h"
+#include "device/r4300/pure_interp.h"
 #include <stdlib.h>
 
 #include <string.h>
@@ -274,13 +275,12 @@ void write_rdram_regs(void* opaque, uint32_t address, uint32_t value, uint32_t m
  * Without one the core keeps its own.
  *
  * Both modes act on "the next RDRAM access", and a recompiler inlines its
- * RDRAM accesses - KSEG1 as well as KSEG0 - so they never arrive here.
- * Under one, the access the mode was meant for goes straight to memory
- * and the next access that does come through a handler is an unrelated
- * one; repeating that over 128 bytes would corrupt memory. The modes are
- * therefore honoured only under the interpreters, where every access is
- * a handler call; under a recompiler MI_MODE keeps its bits and RDRAM
- * behaves as it did before.
+ * RDRAM accesses, so they never arrive here on their own: the access the
+ * mode was meant for would go straight to memory, and the next one that
+ * does come through a handler would be unrelated - repeating that over
+ * 128 bytes would corrupt memory. Under a recompiler the modes are
+ * therefore honoured only inside the window the recompiler hands to the
+ * interpreter after a store to MI_MODE (pure_interp_run_mi_window).
  * ------------------------------------------------------------------- */
 static uint8_t* g_rdram_hidden;
 static size_t   g_rdram_hidden_size;
@@ -298,7 +298,9 @@ void rdram_set_hidden_store(uint8_t* store, size_t size)
 
 static int rdram_mi_modes_honoured(const struct rdram* rdram)
 {
-    return rdram->r4300->emumode != EMUMODE_DYNAREC;
+    /* ...or while a recompiler has handed the window after a store to
+     * MI_MODE to the interpreter (pure_interp_run_mi_window) */
+    return rdram->r4300->emumode != EMUMODE_DYNAREC || g_mi_window_active;
 }
 
 static void rdram_hidden_ensure(const struct rdram* rdram)

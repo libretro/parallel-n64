@@ -20,6 +20,8 @@
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 #include "recomp.h"
+#include "device/r4300/pure_interp.h"
+#include "device/rcp/mi/mi_controller.h"
 
 #include <stdint.h>
 #include <stdlib.h>
@@ -977,11 +979,30 @@ int dynarec_write_aligned_word(void)
 {
     struct r4300_core* r4300 = &g_dev.r4300;
 
-    return r4300_write_aligned_word(
+    int ret = r4300_write_aligned_word(
         r4300,
         r4300->recomp.address,
         r4300->recomp.wword,
         r4300->recomp.wmask);
+
+#if !defined(NO_ASM) && defined(HAVE_DYNAREC_HACKTARUX)
+    /* MI_MODE's init (repeat) and EBUS test modes act on the very next
+     * RDRAM access, which compiled code makes inline where no handler sees
+     * it. When this store left either mode set, run what follows through
+     * the interpreter until the mode is gone, then re-enter compiled code
+     * there. The generated code set the PC to the next instruction and
+     * flushed the register cache before calling here. */
+    if (r4300->emumode == EMUMODE_DYNAREC && !(r4300->emumode == EMUMODE_DYNAREC && r4300_jit_backend == R4300_JIT_ARI64)
+        && (r4300->recomp.address & UINT32_C(0x1fffffff)) == UINT32_C(0x04300000)
+        && (r4300->mi->regs[MI_INIT_MODE_REG] & 0x180))
+    {
+        uint32_t pc = (*r4300_pc_struct(r4300))->addr;
+        uint32_t npc = pure_interp_run_mi_window(r4300, pc);
+        if (npc != pc)
+            dynarec_jump_to(r4300, npc);
+    }
+#endif
+    return ret;
 }
 
 /* Parameterless version of read_aligned_dword to ease usage in dynarec. */

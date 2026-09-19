@@ -22,8 +22,13 @@
 #ifndef M64P_DEVICE_R4300_PURE_INTERP_H
 #define M64P_DEVICE_R4300_PURE_INTERP_H
 
+#include <stdint.h>
+
 struct r4300_core;
 
 void run_pure_interpreter(struct r4300_core* r4300);
+
+uint32_t pure_interp_run_mi_window(struct r4300_core* r4300, uint32_t pc);
+extern int g_mi_window_active;
 
 #endif /* M64P_DEVICE_R4300_PURE_INTERP_H */
