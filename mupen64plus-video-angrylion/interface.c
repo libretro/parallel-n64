@@ -81,11 +81,14 @@ struct n64video_config config;
 
 /* let the CPU side read the ninth bits the RDP writes (EBUS test mode) */
 extern void rdram_set_hidden_store(uint8_t* store, size_t size);
+extern void rdp_set_dps_hooks(void (*arm)(void), int (*take)(uint32_t words[32]));
 static void angrylion_share_hidden(void)
 {
    size_t size = 0;
    uint8_t* store = n64video_hidden_store(&size);
    rdram_set_hidden_store(store, size);
+   /* and the span buffer a draw leaves behind (DPS test mode) */
+   rdp_set_dps_hooks(n64video_dps_arm, n64video_dps_take);
 }
 
 void plugin_init(void)

@@ -596,6 +596,24 @@ static uint32_t rdp_fetch_cmd_word(uint32_t idx)
 /* The hidden-bit array, two bits per 16-bit word with the first byte's
  * bit on top, for a host that wants the CPU to see the ninth bits the
  * RDP writes. */
+/* Span-buffer test access (rdp/dps.c). n64video_dps_arm() is called on
+ * any DPS register write; n64video_dps_take() merges the last scheduled
+ * draw into the host's first 32 span-buffer words and returns whether
+ * there was one. */
+void n64video_dps_arm(void)
+{
+    al_dps_armed = 1;
+}
+
+int n64video_dps_take(uint32_t words[32])
+{
+    if (!al_dps_armed)
+        return 0;
+    if (config.parallel)
+        cmd_flush();
+    return dps_take(config.parallel ? parallel_num_workers() : 1, words);
+}
+
 uint8_t* n64video_hidden_store(size_t* size)
 {
     if (size)

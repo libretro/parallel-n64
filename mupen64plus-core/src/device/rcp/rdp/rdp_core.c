@@ -179,6 +179,25 @@ void write_dpc_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mas
 #define DPS_SPAN_WORDS 128
 static uint32_t dps_span_buf[DPS_SPAN_WORDS];
 
+/* A renderer that models what a draw leaves in the span buffer registers
+ * two hooks: arm() on any DPS register write, and take(), which lays the
+ * last draw over the first 32 stored words and reports whether there was
+ * one; the draw clears the rest of the buffer. */
+static void (*dps_hook_arm)(void);
+static int  (*dps_hook_take)(uint32_t words[32]);
+
+void rdp_set_dps_hooks(void (*arm)(void), int (*take)(uint32_t words[32]))
+{
+    dps_hook_arm = arm;
+    dps_hook_take = take;
+}
+
+static void dps_materialize(void)
+{
+    if (dps_hook_take && dps_hook_take(dps_span_buf))
+        memset(dps_span_buf + 32, 0, (DPS_SPAN_WORDS - 32) * sizeof(dps_span_buf[0]));
+}
+
 static uint32_t dps_span_mask(uint32_t idx)
 {
     switch (idx & 3)
@@ -197,6 +216,7 @@ void read_dps_regs(void* opaque, uint32_t address, uint32_t* value)
     if (reg == DPS_BUFTEST_DATA_REG)
     {
         uint32_t idx = dp->dps_regs[DPS_BUFTEST_ADDR_REG] & (DPS_SPAN_WORDS - 1);
+        dps_materialize();
         *value = (dp->dps_regs[DPS_TEST_MODE_REG] & 1)
                ? (dps_span_buf[idx] & dps_span_mask(idx)) : 0;
         return;
@@ -212,11 +232,16 @@ void write_dps_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mas
 
     masked_write(&dp->dps_regs[reg], value, mask);
 
+    if (dps_hook_arm)
+        dps_hook_arm();
+
     if (reg == DPS_BUFTEST_ADDR_REG)
         dp->dps_regs[reg] &= DPS_SPAN_WORDS - 1;
     else if (reg == DPS_BUFTEST_DATA_REG && (dp->dps_regs[DPS_TEST_MODE_REG] & 1))
     {
         uint32_t idx = dp->dps_regs[DPS_BUFTEST_ADDR_REG] & (DPS_SPAN_WORDS - 1);
+        /* a manual store lands on top of any drawn image */
+        dps_materialize();
         dps_span_buf[idx] = dp->dps_regs[reg] & dps_span_mask(idx);
     }
 }

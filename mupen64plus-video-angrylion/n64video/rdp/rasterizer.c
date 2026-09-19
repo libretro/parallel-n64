@@ -380,6 +380,8 @@ static void render_spans_1cycle_complete(uint32_t wid, int start, int end, int t
                 get_dither_noise(wid, x, i, &cdith, &adith);
 
             combiner_1cycle(wid, adith, &curpixel_cvg);
+            if (state[wid].dps.cap_on && state[wid].span[i].dps_cap)
+                dps_capture(wid, &state[wid].span[i], x, curpixel_cvg);
 
             if (PIXEL_IN_ROW(wid, i))
                 state[wid].fbread1_ptr(wid, curpixel, &curpixel_memcvg);
@@ -558,7 +560,11 @@ static void render_spans_1cycle_notexel1(uint32_t wid, int start, int end, int t
              * addresses still step. These renderers carry no texel or
              * memory colour between pixels, so nothing else about the
              * skipped pixel is observable. */
-            if (!state[wid].cvgbuf[x])
+            /* ...except through the span buffer, which stages a pixel's
+             * word whatever its coverage: a span the test-mode model is
+             * capturing runs every pixel in full. */
+            if (!state[wid].cvgbuf[x]
+                && !(state[wid].dps.cap_on && state[wid].span[i].dps_cap))
             {
                 if (!state[wid].other_modes.f.getditherlevel)
                     get_dither_noise(wid, x, i, &cdith, &adith);
@@ -583,6 +589,8 @@ static void render_spans_1cycle_notexel1(uint32_t wid, int start, int end, int t
                 get_dither_noise(wid, x, i, &cdith, &adith);
 
             combiner_1cycle(wid, adith, &curpixel_cvg);
+            if (state[wid].dps.cap_on && state[wid].span[i].dps_cap)
+                dps_capture(wid, &state[wid].span[i], x, curpixel_cvg);
 
             if (PIXEL_IN_ROW(wid, i))
                 state[wid].fbread1_ptr(wid, curpixel, &curpixel_memcvg);
@@ -729,7 +737,11 @@ static void render_spans_1cycle_notex(uint32_t wid, int start, int end, int tile
              * addresses still step. These renderers carry no texel or
              * memory colour between pixels, so nothing else about the
              * skipped pixel is observable. */
-            if (!state[wid].cvgbuf[x])
+            /* ...except through the span buffer, which stages a pixel's
+             * word whatever its coverage: a span the test-mode model is
+             * capturing runs every pixel in full. */
+            if (!state[wid].cvgbuf[x]
+                && !(state[wid].dps.cap_on && state[wid].span[i].dps_cap))
             {
                 if (!state[wid].other_modes.f.getditherlevel)
                     get_dither_noise(wid, x, i, &cdith, &adith);
@@ -747,6 +759,8 @@ static void render_spans_1cycle_notex(uint32_t wid, int start, int end, int tile
                 get_dither_noise(wid, x, i, &cdith, &adith);
 
             combiner_1cycle(wid, adith, &curpixel_cvg);
+            if (state[wid].dps.cap_on && state[wid].span[i].dps_cap)
+                dps_capture(wid, &state[wid].span[i], x, curpixel_cvg);
 
             if (PIXEL_IN_ROW(wid, i))
                 state[wid].fbread1_ptr(wid, curpixel, &curpixel_memcvg);
@@ -2247,6 +2261,18 @@ static void edgewalker_for_prims(uint32_t wid, int32_t* ewdata)
 
 
     xright = xh & ~0x1;
+
+    /* Span-buffer test model: once a DPS register has been written, a
+     * 1-cycle triangle schedules the window the CPU can read back. */
+    state[wid].dps.cap_on = 0;
+    if (al_dps_armed && al_scale == 1
+        && state[wid].other_modes.cycle_type == CYCLE_TYPE_1
+        && (state[wid].fb_size == PIXEL_SIZE_32BIT || state[wid].fb_size == PIXEL_SIZE_16BIT))
+    {
+        uint32_t dps_id = ((uint32_t)ewdata[0] >> 24) & 0x3f;
+        if (dps_id >= 0x08 && dps_id <= 0x0f)
+            dps_prepass(wid, flip, yh, ym, yl, xh, xm, xl, dxhdy, dxmdy, dxldy);
+    }
 
     /* FILL triangles: run the sequential write model over the whole
      * primitive before this lane walks its own lines. A rectangle is a

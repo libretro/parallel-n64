@@ -120,6 +120,7 @@ void write_dpc_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mas
 
 void read_dps_regs(void* opaque, uint32_t address, uint32_t* value);
 void write_dps_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask);
+void rdp_set_dps_hooks(void (*arm)(void), int (*take)(uint32_t words[32]));
 
 void rdp_interrupt_event(void* opaque);
 

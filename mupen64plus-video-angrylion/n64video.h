@@ -98,6 +98,8 @@ struct n64video_config
 void n64video_config_init(struct n64video_config* config);
 void n64video_init(struct n64video_config* config);
 uint8_t* n64video_hidden_store(size_t* size);
+void n64video_dps_arm(void);
+int n64video_dps_take(uint32_t words[32]);
 void n64video_update_screen(void);
 void n64video_process_list(void);
 void n64video_set_hle_cmd_buffer(const uint32_t* buf, uint32_t base_byte_addr, uint32_t len_bytes);

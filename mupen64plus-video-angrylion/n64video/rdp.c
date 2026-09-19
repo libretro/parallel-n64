@@ -142,6 +142,22 @@ struct fill_tri_plan
     int16_t m_fill_t2hi;
 };
 
+/* DPS Test-Mode span-buffer stream model, one per worker (rdp/dps.c) */
+#define RDP_DPS_WIN  40u
+#define RDP_DPS_ROWS 1024u
+struct dps_model
+{
+    uint32_t valid, total, base, pend_pos1, pend_alive;
+    int cap_on;                     /* the primitive in progress is scheduled */
+    uint8_t  sched[RDP_DPS_WIN];    /* 0 none, 1 pixel, 2 residual */
+    uint32_t val[RDP_DPS_WIN];
+    uint8_t  val_set[RDP_DPS_WIN];
+    uint32_t seed_val[4];
+    uint8_t  seed_set[4];
+    uint32_t nrows;
+    int16_t  row_x0[RDP_DPS_ROWS], row_x1[RDP_DPS_ROWS], row_span[RDP_DPS_ROWS];
+};
+
 struct spansigs
 {
     int endspan;
@@ -192,6 +208,13 @@ struct span
     int32_t minorx[4];
     int32_t invalyscan[4];
     struct fill_tri_plan fplan;
+    /* span-buffer test model (rdp/dps.c): which of this span's pixels to
+     * capture, and where in the scheduled window they land */
+    uint8_t dps_cap, dps_seed_n;
+    int16_t dps_cap_x0, dps_cap_x1;
+    int32_t dps_voff;
+    int16_t dps_seed_x[4];
+    uint8_t dps_seed_k[4];
 };
 
 struct combiner_inputs
@@ -348,6 +371,7 @@ struct rdp_state
     /* FILL-mode triangle in progress: 0 none, 1 write law only, 2 plans
      * attached to the spans as well (rdp/fill_tri.c) */
     int fill_tri;
+    struct dps_model dps;
 
     // rasterizer
     struct rectangle clip;
@@ -543,6 +567,7 @@ static void al_key_report(void)
 #include "rdp/tcoord.c"
 #include "rdp/tex.c"
 #include "rdp/fill_tri.c"
+#include "rdp/dps.c"
 #include "rdp/rasterizer.c"
 
 static uint64_t al_selector_of(uint32_t wid)
