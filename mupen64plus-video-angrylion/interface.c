@@ -202,6 +202,18 @@ void vdac_write(struct frame_buffer* fb)
    screen_pixels = fb->pixels;
 }
 
+extern void *angrylion_acquire_sw_framebuffer(unsigned width, unsigned height,
+      unsigned *pitch, bool need_read);
+
+struct rgba* vdac_acquire(uint32_t width, uint32_t height, uint32_t* pitch, bool need_read)
+{
+   unsigned p = 0;
+   void *data = angrylion_acquire_sw_framebuffer(width, height, &p, need_read);
+   if (data)
+      *pitch = p;
+   return (struct rgba*)data;
+}
+
 void vdac_sync(bool invalid)
 {
    /* Latch only valid frames; invalid syncs render nothing new. */

@@ -152,6 +152,14 @@ static uint32_t vi_domain_index(uint32_t addr, uint32_t f, uint32_t bpp)
 
 static struct rgba *prescale_up;
 static size_t prescale_up_pixels;
+/* where the upscaled frame is written, and its row stride in pixels: the
+ * buffer above, or one of the host's (vdac_acquire) so that presenting the
+ * frame copies nothing */
+static struct rgba *vi_up_out;
+static size_t vi_up_stride;
+/* the same for the 1x filtered path */
+static struct rgba *vi_direct;
+static uint32_t vi_direct_h;
 static uint32_t prescale_ptr;
 static int32_t linecount;
 
@@ -456,6 +464,46 @@ static bool vi_process_full(void)
     linecount = PRESCALE_WIDTH << ctrl.serrate;
     prescale_ptr = v_start * linecount + h_start + (lowerfield ? PRESCALE_WIDTH : 0);
 
+    /* Render straight into the host's buffer when it lends one, so that
+     * presenting the frame copies nothing. The fixed buffer is persistent -
+     * its borders are cleared once and an interlaced field leaves the other
+     * field's lines in place - and the host's is not, so this is for a
+     * progressive, uncropped frame whose picture lies wholly inside the
+     * presented area; its borders are cleared here every frame. The loop
+     * lerps and gamma-corrects its rows in place, so the memory has to be
+     * readable. */
+    vi_direct = NULL;
+    vi_out = prescale;
+    vi_direct_h = (uint32_t)((ispal ? V_RES_PAL : V_RES_NTSC) >> 1);
+    if (!isblank && validh && !ctrl.serrate && !config.vi.hide_overscan
+        && v_start >= 0 && vres > 0 && (uint32_t)(v_start + vres) <= vi_direct_h
+        && h_start >= 0 && hres > 0 && h_start + hres <= PRESCALE_WIDTH)
+    {
+        uint32_t host_pitch = 0;
+        vi_direct = vdac_acquire(PRESCALE_WIDTH, vi_direct_h, &host_pitch, true);
+        if (vi_direct)
+        {
+            int32_t lo = h_start + (minhpass > 0 ? minhpass : 0);
+            int32_t hi = h_start + (maxhpass < hres ? maxhpass : hres);
+            uint32_t r;
+            if (lo > hi) lo = hi;
+            for (r = 0; r < vi_direct_h; r++)
+            {
+                struct rgba *row = &vi_direct[(size_t)r * host_pitch];
+                if ((int32_t)r < v_start || (int32_t)r >= v_start + vres)
+                    memset(row, 0, PRESCALE_WIDTH * sizeof(*row));
+                else
+                {
+                    memset(row, 0, (size_t)lo * sizeof(*row));
+                    memset(row + hi, 0, (size_t)(PRESCALE_WIDTH - hi) * sizeof(*row));
+                }
+            }
+            vi_out = vi_direct;
+            linecount = (int32_t)host_pitch;
+            prescale_ptr = v_start * linecount + h_start;
+        }
+    }
+
     int32_t i;
     if (isblank) {
         // blank signal, clear entire screen buffer
@@ -573,14 +621,21 @@ static bool vi_process_full(void)
 
     // the E90 board draws mtetrisc's playfield with a sprite chip of its own,
     // over the finished VI frame and in the active picture's coordinates
-    aleck64_e90_overlay(&prescale[((uint32_t)v_start << ctrl.serrate) * PRESCALE_WIDTH + h_start],
-                        PRESCALE_WIDTH, hres, vres << ctrl.serrate,
+    aleck64_e90_overlay(vi_direct ? &vi_direct[(size_t)v_start * linecount + h_start]
+                                  : &prescale[((uint32_t)v_start << ctrl.serrate) * PRESCALE_WIDTH + h_start],
+                        vi_direct ? linecount : PRESCALE_WIDTH, hres, vres << ctrl.serrate,
                         (uint32_t)x_add * hres / 1024);
 
     // finish and send buffer to screen
     struct frame_buffer fb;
     fb.pixels = prescale;
     fb.pitch = PRESCALE_WIDTH;
+    if (vi_direct)
+    {
+        fb.pixels = vi_direct;
+        fb.pitch = (uint32_t)linecount;
+        vi_out = prescale;
+    }
 
     if (config.vi.hide_overscan) {
         // crop away overscan area from prescale
@@ -711,7 +766,7 @@ static void vi_process_upscaled_parallel(uint32_t worker_id)
         y_inc = parallel_num_workers();
     }
     for (y = y_begin; y < vres_raw; y += y_inc) {
-        struct rgba *pixel_row = &prescale_up[(size_t)y * width];
+        struct rgba *pixel_row = &vi_up_out[(size_t)y * vi_up_stride];
         uint32_t line = stride * (uint32_t)y;
         int32_t x;
         if (ctrl.type == VI_TYPE_RGBA5551) {
@@ -736,6 +791,8 @@ static bool vi_process_upscaled(void)
 {
     struct frame_buffer fb;
     int32_t filtered_width, filtered_height;
+    int32_t up_w, up_h;
+    bool up_filtered;
     size_t need;
     uint32_t f = al_scale;
 
@@ -761,7 +818,29 @@ static bool vi_process_upscaled(void)
             return false;
     }
 
-    if (config.vi.mode == VI_MODE_NORMAL && (ctrl.aa_mode != VI_AA_REPLICATE || ctrl.divot_enable || ctrl.gamma_enable))
+    up_filtered = config.vi.mode == VI_MODE_NORMAL
+        && (ctrl.aa_mode != VI_AA_REPLICATE || ctrl.divot_enable || ctrl.gamma_enable);
+    up_w = up_filtered ? hres * (int32_t)f : hres_raw;
+    up_h = up_filtered ? vres * (int32_t)f : vres_raw;
+    /* Render straight into the host's buffer when it lends one. Both loops
+     * write every pixel of the frame, so nothing of an earlier frame is
+     * needed - except in interlaced modes, where a field leaves the other
+     * field's lines as they were. The filtered loop lerps and gamma-corrects
+     * its rows in place, so it needs memory it can read back. */
+    vi_up_out = NULL;
+    if (!ctrl.serrate)
+    {
+        uint32_t host_pitch = 0;
+        vi_up_out = vdac_acquire((uint32_t)up_w, (uint32_t)up_h, &host_pitch, up_filtered);
+        vi_up_stride = host_pitch;
+    }
+    if (!vi_up_out)
+    {
+        vi_up_out = prescale_up;
+        vi_up_stride = (size_t)up_w;
+    }
+
+    if (up_filtered)
     {
         /* Filtered: the full loop - anti-aliasing, divot, gamma, lerp -
          * with its geometry scaled: hres and vres in output pixels, the
@@ -773,9 +852,9 @@ static bool vi_process_upscaled(void)
         y_start    *= f;
         vi_width_low = vi_width_low * f;
         frame_buffer = vi_domain_index(frame_buffer, f, (ctrl.type == VI_TYPE_RGBA8888) ? 4 : 2) * ((ctrl.type == VI_TYPE_RGBA8888) ? 4 : 2);
-        vi_out      = prescale_up;
+        vi_out      = vi_up_out;
         prescale_ptr = 0;
-        linecount   = hres;
+        linecount   = (int32_t)vi_up_stride;
         minhpass = 0;
         maxhpass = hres;
         /* The supersampling has already anti-aliased the edges. The VI's
@@ -803,10 +882,10 @@ static bool vi_process_upscaled(void)
             vi_process_upscaled_parallel(0);
     }
 
-    fb.pixels = prescale_up;
+    fb.pixels = vi_up_out;
     fb.width  = hres_raw;
     fb.height = vres_raw;
-    fb.pitch  = hres_raw;
+    fb.pitch  = (uint32_t)vi_up_stride;
     filtered_width  = maxhpass - minhpass;
     filtered_height = (vres << 1) * V_SYNC_NTSC / v_sync;
     fb.height_out = fb.width * filtered_height / filtered_width;

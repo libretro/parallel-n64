@@ -889,6 +889,44 @@ load_fail:
 extern struct rgba prescale[PRESCALE_WIDTH * PRESCALE_HEIGHT];
 #endif
 
+/* The size of the angrylion frame last declared to the frontend. */
+static unsigned al_declared_w, al_declared_h;
+
+/* RETRO_ENVIRONMENT_GET_CURRENT_SOFTWARE_FRAMEBUFFER for angrylion: a
+ * buffer of the frontend's own that the VI can render the frame into, so
+ * that video_cb hands back the frontend's pointer and nothing is copied.
+ * Returns NULL - and the VI renders into its own buffer as before - when
+ * the frontend has no such buffer, when this is a hidden run-ahead frame,
+ * when the size is one the frontend has not been told about yet, or when
+ * the caller has to read its own output back (need_read) and the memory
+ * is not cached. pitch is in pixels. */
+void *angrylion_acquire_sw_framebuffer(unsigned width, unsigned height,
+      unsigned *pitch, bool need_read)
+{
+   struct retro_framebuffer fb;
+
+   if (frame_hidden || !width || !height
+         || width != al_declared_w || height != al_declared_h)
+      return NULL;
+
+   memset(&fb, 0, sizeof(fb));
+   fb.width        = width;
+   fb.height       = height;
+   fb.access_flags = RETRO_MEMORY_ACCESS_WRITE
+                   | (need_read ? RETRO_MEMORY_ACCESS_READ : 0);
+
+   if (!environ_cb(RETRO_ENVIRONMENT_GET_CURRENT_SOFTWARE_FRAMEBUFFER, &fb)
+         || !fb.data
+         || fb.format != RETRO_PIXEL_FORMAT_XRGB8888
+         || (fb.pitch % 4) != 0 || fb.pitch < width * 4)
+      return NULL;
+   if (need_read && !(fb.memory_flags & RETRO_MEMORY_TYPE_CACHED))
+      return NULL;
+
+   *pitch = (unsigned)(fb.pitch / 4);
+   return fb.data;
+}
+
 static void present_frame(void)
 {
    switch (gfx_plugin)
@@ -896,12 +934,11 @@ static void present_frame(void)
          case GFX_ANGRYLION:
 #ifdef HAVE_THR_AL
             {
-               static unsigned last_w, last_h;
-               if (screen_width != last_w || screen_height != last_h)
+               if (screen_width != al_declared_w || screen_height != al_declared_h)
                {
                   /* the size of the presented frame changed: declare it,
                    * as the upscaled output is larger than the console's */
-                  last_w = screen_width; last_h = screen_height;
+                  al_declared_w = screen_width; al_declared_h = screen_height;
                   reinit_screen = true;
                }
             }

@@ -25,5 +25,9 @@ struct frame_buffer
 void vdac_init(struct n64video_config* config);
 void vdac_read(struct frame_buffer* fb, bool alpha);
 void vdac_write(struct frame_buffer* fb);
+/* A buffer of the host's to render a width x height frame into, or NULL to
+ * use one's own. pitch is in pixels. need_read: the caller reads its own
+ * output back while producing it. Present it with vdac_write() as usual. */
+struct rgba* vdac_acquire(uint32_t width, uint32_t height, uint32_t* pitch, bool need_read);
 void vdac_sync(bool invaid);
 void vdac_close(void);
