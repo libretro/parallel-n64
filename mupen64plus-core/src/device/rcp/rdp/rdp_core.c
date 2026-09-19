@@ -169,10 +169,38 @@ void write_dpc_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mas
 }
 
 
+/* The span buffer, as DPS_BUFTEST_ADDR / DPS_BUFTEST_DATA expose it once
+ * DPS_TEST_MODE has bit 0 set. A buffer row is 72 bits - two 32-bit colour
+ * columns and a coverage byte - and takes four word addresses, so the
+ * third word of each four keeps its low byte and the fourth reads zero.
+ * The address register is seven bits: writes past 128 words wrap and only
+ * the last 128 survive. With test access off the data register reads zero
+ * and ignores writes. (n64brew RDP/Interface; constants as in cen64.) */
+#define DPS_SPAN_WORDS 128
+static uint32_t dps_span_buf[DPS_SPAN_WORDS];
+
+static uint32_t dps_span_mask(uint32_t idx)
+{
+    switch (idx & 3)
+    {
+        case 0: case 1: return UINT32_C(0xffffffff);
+        case 2:         return UINT32_C(0x000000ff);
+        default:        return 0;
+    }
+}
+
 void read_dps_regs(void* opaque, uint32_t address, uint32_t* value)
 {
     struct rdp_core* dp = (struct rdp_core*)opaque;
     uint32_t reg = dps_reg(address);
+
+    if (reg == DPS_BUFTEST_DATA_REG)
+    {
+        uint32_t idx = dp->dps_regs[DPS_BUFTEST_ADDR_REG] & (DPS_SPAN_WORDS - 1);
+        *value = (dp->dps_regs[DPS_TEST_MODE_REG] & 1)
+               ? (dps_span_buf[idx] & dps_span_mask(idx)) : 0;
+        return;
+    }
 
     *value = dp->dps_regs[reg];
 }
@@ -183,6 +211,14 @@ void write_dps_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mas
     uint32_t reg = dps_reg(address);
 
     masked_write(&dp->dps_regs[reg], value, mask);
+
+    if (reg == DPS_BUFTEST_ADDR_REG)
+        dp->dps_regs[reg] &= DPS_SPAN_WORDS - 1;
+    else if (reg == DPS_BUFTEST_DATA_REG && (dp->dps_regs[DPS_TEST_MODE_REG] & 1))
+    {
+        uint32_t idx = dp->dps_regs[DPS_BUFTEST_ADDR_REG] & (DPS_SPAN_WORDS - 1);
+        dps_span_buf[idx] = dp->dps_regs[reg] & dps_span_mask(idx);
+    }
 }
 
 void rdp_interrupt_event(void* opaque)
