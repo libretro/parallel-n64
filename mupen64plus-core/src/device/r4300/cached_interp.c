@@ -291,8 +291,6 @@ void cached_interp_NOTCOMPILED2(void)
 #define cached_interp_LDC2        cached_interp_RESERVED_COP2
 #define cached_interp_DCTC2       cached_interp_RESERVED_COP2
 #define cached_interp_LWC2        cached_interp_RESERVED_COP2
-#define cached_interp_LLD         cached_interp_NI
-#define cached_interp_SCD         cached_interp_NI
 #define cached_interp_SDC2        cached_interp_RESERVED_COP2
 #define cached_interp_SWC2        cached_interp_RESERVED_COP2
 #define cached_interp_JR_IDLE     cached_interp_NI
