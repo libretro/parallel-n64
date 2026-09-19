@@ -231,7 +231,14 @@ static void al_mark_dirty(void)
         return;
     addr  = state[0].fb_address / (f * f);
     width = state[0].fb_width / f;
-    rows  = (state[0].clip.yl >> 2) / f + 1;
+    /* The rows the scissor lets the RDP reach: its YL is exclusive, so a
+     * bound on a row boundary (480.0 for a 480-row image) reaches rows
+     * 0..479 and only a fractional one reaches the row it lies in. One row
+     * too many here makes the resolve write a row past the end of the
+     * colour image: libdragon puts its framebuffers back to back with the
+     * heap behind them, and Junk Runner 64 took a reserved-instruction
+     * exception moments after its first upscaled frame. */
+    rows  = (state[0].clip.yl / f + 3) >> 2;
     if (!width || !rows)
         return;
     al_note_image(addr, width, rows, state[0].fb_size);
