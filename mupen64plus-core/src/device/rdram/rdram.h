@@ -74,6 +74,10 @@ void init_rdram(struct rdram* rdram,
 
 void poweron_rdram(struct rdram* rdram);
 
+/* Share a renderer's hidden-bit array with the CPU side: two bits per
+ * 16-bit word, the first byte's bit on top. NULL gives the core its own. */
+void rdram_set_hidden_store(uint8_t* store, size_t size);
+
 void read_rdram_regs(void* opaque, uint32_t address, uint32_t* value);
 void write_rdram_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask);
 
