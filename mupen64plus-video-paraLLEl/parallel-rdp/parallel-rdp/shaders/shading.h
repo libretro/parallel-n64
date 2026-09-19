@@ -205,7 +205,47 @@ bool shade_pixel(int x, int y, uint primitive_index, out ShadedData shaded)
 	int min_lod = derived.min_lod;
 
 	i16 lod_frac;
-	if (uses_lod)
+	if (uses_lod && !multi_cycle)
+	{
+		// In 1-cycle mode the LOD unit does not see the current pixel and takes no scanline-down sample.
+		// It measures the pipelined pair along the span, the next pixel and the one after it.
+		// At the second-to-last walked pixel of a span whose four sublines are all valid there is no
+		// pixel after the next, and the centred pair (P - 1, P + 1) is measured instead.
+		// Partial spans keep the interior form to their end.
+		// Hardware verified, diagnostic cartridge cases 11:23 and 11:46
+		// (carmiker/n64docs RDP_TESTCART_HARDWARE.txt, section 1.4).
+		// The long span gate mirrors Angrylion, those scenes do not speak to short spans.
+		int lod_step = tex_interpolation_direction;
+		int span_last_x = flip ? span_setup.end_x : span_setup.start_x;
+		// span_setup marks an invalid subline with xleft = 0xffff, xright = 0.
+		bool all_sublines_valid = !any(equal(ivec4(span_setup.xleft), ivec4(0xffff)));
+		bool long_span = span_setup.lodlength >= 8;
+		bool pre_end = (x + interpolation_direction * (abs(lod_step))) == span_last_x;
+		bool centred = pre_end && long_span && all_sublines_valid;
+
+		ivec3 lod_dstw = (attr.dstzw_dx.xyw & ~0x1f) >> SCALING_LOG2;
+		ivec3 lod_stw = span_setup.stzw.xyw + lod_dstw * dx;
+		ivec3 lod_stw_next = lod_stw + lod_dstw * lod_step;
+		ivec3 lod_stw_far = lod_stw + lod_dstw * (centred ? -lod_step : 2 * lod_step);
+
+		ivec2 st_next, st_far;
+		bool lod_overflow = false;
+		if (perspective)
+		{
+			st_next = perspective_divide(lod_stw_next >> 16, lod_overflow);
+			st_far = perspective_divide(lod_stw_far >> 16, lod_overflow);
+		}
+		else
+		{
+			st_next = no_perspective_divide(lod_stw_next >> 16);
+			st_far = no_perspective_divide(lod_stw_far >> 16);
+		}
+
+		// Only the delta along the span is measured.
+		compute_lod_2cycle(tile0, tile1, lod_frac, max_level, min_lod, st_next, st_far, st_next, lod_overflow,
+		                   tex_lod_en, sharpen_lod_en, detail_lod_en);
+	}
+	else if (uses_lod)
 	{
 		compute_lod_2cycle(tile0, tile1, lod_frac, max_level, min_lod, st, st_dx, st_dy, perspective_overflow,
 		                   tex_lod_en, sharpen_lod_en, detail_lod_en);
