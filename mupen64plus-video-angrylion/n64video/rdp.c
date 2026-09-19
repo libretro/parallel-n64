@@ -73,6 +73,7 @@ struct rectangle
 
 struct other_modes
 {
+    int atomic_prim;
     int cycle_type;
     int persp_tex_en;
     int detail_tex_en;
@@ -372,6 +373,14 @@ struct rdp_state
      * attached to the spans as well (rdp/fill_tri.c) */
     int fill_tri;
     struct dps_model dps;
+    /* stale-read hazard of back-to-back identical rectangles (rdp_fill_rect) */
+    struct
+    {
+        uint32_t w0, w1;        /* last eligible rectangle's command words */
+        uint32_t idx[32];       /* its footprint, 16-bit RDRAM indices */
+        uint16_t pre[32];       /* and the memory image from before it */
+        uint8_t n, valid;
+    } rect_stale;
 
     // rasterizer
     struct rectangle clip;
@@ -746,7 +755,9 @@ void rdp_sync_full(uint32_t wid, const uint32_t* args)
 
 void rdp_set_other_modes(uint32_t wid, const uint32_t* args)
 {
+    state[wid].other_modes.atomic_prim         = (args[0] >> 23) & 1;
     state[wid].other_modes.cycle_type          = (args[0] >> 20) & 3;
+    state[wid].rect_stale.valid = 0;
     state[wid].other_modes.persp_tex_en        = (args[0] >> 19) & 1;
     state[wid].other_modes.detail_tex_en       = (args[0] >> 18) & 1;
     state[wid].other_modes.sharpen_tex_en      = (args[0] >> 17) & 1;

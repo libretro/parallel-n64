@@ -2278,6 +2278,8 @@ static void edgewalker_for_prims(uint32_t wid, int32_t* ewdata)
      * primitive before this lane walks its own lines. A rectangle is a
      * FILL_RECTANGLE or TEXTURE_RECTANGLE command here, which the header
      * word still carries. */
+    if ((((uint32_t)ewdata[0] >> 24) & 0x3f) != 0x36)
+        state[wid].rect_stale.valid = 0;
     state[wid].fill_tri = 0;
     if (state[wid].other_modes.cycle_type == CYCLE_TYPE_FILL && al_scale == 1)
     {
@@ -3041,12 +3043,84 @@ void rdp_tex_rect_flip(uint32_t wid, const uint32_t* args)
     edgewalker_for_prims(wid, ewdata);
 }
 
+/* Span-buffer stale-read hazard, back-to-back identical rectangles.
+ *
+ * Without atomic_prim the command processor runs ahead of the pixel
+ * pipeline by the lead D of the no-sync model (n64video.c), and a span
+ * costs L clocks. When D exceeds L, a rectangle's framebuffer reads
+ * precede its predecessor's commit of the same pixels and return the
+ * memory image from before the predecessor, so repeated blends of one
+ * pixel advance only every other primitive. atomic_prim stalls the
+ * processor per primitive and restores sequential reads.
+ *
+ * Model and scope are cen64's (rdp_fill_rect_stale_read), adjudicated
+ * there against the diagnostic cartridge's cases 12:15 and 12:16:
+ * identical single-live-row 1-/2-cycle rectangles issued back to back
+ * with image_read_en on a 16-bit colour image. The successor is drawn
+ * over the predecessor's pre-image, and the predecessor's output becomes
+ * the pre-image of the rectangle after that. Only the lane that owns the
+ * row touches memory. Returns whether this rectangle is a stale reader. */
+static int fill_rect_stale_pre(uint32_t wid, const uint32_t* args, uint16_t *cur)
+{
+    const uint32_t xl = (args[0] >> 12) & 0xfff, yl = args[0] & 0xfff;
+    const uint32_t xh = (args[1] >> 12) & 0xfff, yh = args[1] & 0xfff;
+    const uint32_t W = (xl >> 2) - (xh >> 2), H = (yl >> 2) - (yh >> 2);
+    const int cyc = state[wid].other_modes.cycle_type;
+    const uint32_t cycn = (cyc == CYCLE_TYPE_2) ? 2 : 1;
+    uint32_t L = cycn * W + cycn - 1, D, i;
+    const uint32_t y0 = yh >> 2;
+    int eligible, owner;
+
+    if (L < 4) L = 4;
+    D = (3 * L - 2 < 25) ? 3 * L - 2 : 25;
+    eligible = (cyc == CYCLE_TYPE_1 || cyc == CYCLE_TYPE_2)
+        && state[wid].other_modes.image_read_en && !state[wid].other_modes.atomic_prim
+        && xl >= xh && yl >= yh && H == 1 && W >= 1 && W <= 32 && D > L
+        && state[wid].fb_size == PIXEL_SIZE_16BIT && al_scale == 1;
+    if (!eligible)
+    {
+        state[wid].rect_stale.valid = 0;
+        return 0;
+    }
+    owner = !state[wid].stride || y0 % state[wid].stride == state[wid].offset;
+
+    if (state[wid].rect_stale.valid && state[wid].rect_stale.n
+        && state[wid].rect_stale.w0 == args[0] && state[wid].rect_stale.w1 == args[1])
+    {
+        if (owner)
+            for (i = 0; i < state[wid].rect_stale.n; i++)
+            {
+                uint16_t v;
+                RREADIDX16(v, state[wid].rect_stale.idx[i]);
+                cur[i] = v;
+                RWRITEIDX16(state[wid].rect_stale.idx[i], state[wid].rect_stale.pre[i]);
+            }
+        return 1;
+    }
+
+    state[wid].rect_stale.n = (uint8_t)W;
+    for (i = 0; i < W; i++)
+    {
+        uint16_t v = 0;
+        state[wid].rect_stale.idx[i] = (state[wid].fb_address >> 1) + y0 * state[wid].fb_width + (xh >> 2) + i;
+        if (owner)
+            RREADIDX16(v, state[wid].rect_stale.idx[i]);
+        state[wid].rect_stale.pre[i] = v;
+    }
+    state[wid].rect_stale.w0 = args[0];
+    state[wid].rect_stale.w1 = args[1];
+    state[wid].rect_stale.valid = 1;
+    return 0;
+}
+
 void rdp_fill_rect(uint32_t wid, const uint32_t* args)
 {
     uint32_t xl = (args[0] >> 12) & 0xfff;
     uint32_t yl = (args[0] >>  0) & 0xfff;
     uint32_t xh = (args[1] >> 12) & 0xfff;
     uint32_t yh = (args[1] >>  0) & 0xfff;
+    uint16_t stale_cur[32] = {0};
+    int stale = fill_rect_stale_pre(wid, args, stale_cur);
 
     if (state[wid].other_modes.cycle_type == CYCLE_TYPE_FILL || state[wid].other_modes.cycle_type == CYCLE_TYPE_COPY)
         yl |= 3;
@@ -3066,6 +3140,15 @@ void rdp_fill_rect(uint32_t wid, const uint32_t* args)
     memset(&ewdata[8], 0, 36 * sizeof(int32_t));
 
     edgewalker_for_prims(wid, ewdata);
+
+    /* chain: the next stale reader sees this rectangle's pre-image, which
+     * is the predecessor's output saved above */
+    if (stale)
+    {
+        uint32_t k;
+        for (k = 0; k < state[wid].rect_stale.n; k++)
+            state[wid].rect_stale.pre[k] = stale_cur[k];
+    }
 }
 
 void rdp_set_prim_depth(uint32_t wid, const uint32_t* args)
