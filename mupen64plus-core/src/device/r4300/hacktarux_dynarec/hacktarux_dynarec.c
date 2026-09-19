@@ -62,6 +62,14 @@ static const unsigned int precomp_instr_size = sizeof(struct precomp_instr);
 
 /* Dynarec control functions */
 
+/* Which stores write RDRAM inline. A load may use either mirror (the
+ * 0xDF800000 mask folds KSEG1 onto KSEG0), but a store through KSEG1 goes
+ * to the handler: it is the only place a CPU write can set the ninth bit
+ * of the bytes it writes (device/rdram/rdram.c), and uncached stores to
+ * RDRAM are rare enough in games for the call not to matter. The Ari64
+ * recompiler already routes them this way. */
+#define RDRAM_STORE_DIRECT_MASK 0xFF800000
+
 void dyna_jump(void)
 {
     struct r4300_core* r4300 = &g_dev.r4300;
@@ -929,7 +937,7 @@ void gen_SB(struct r4300_core* r4300)
     mov_reg32_reg32(EBX, EAX);
 
     /* is address in RDRAM ? */
-    and_reg32_imm32(EAX, 0xDF800000);
+    and_reg32_imm32(EAX, RDRAM_STORE_DIRECT_MASK);
     cmp_reg32_imm32(EAX, 0x80000000);
 
     /* when fast_memory is true, we know that there is
@@ -1019,7 +1027,7 @@ void gen_SH(struct r4300_core* r4300)
     mov_reg32_reg32(EBX, EAX);
 
     /* is address in RDRAM ? */
-    and_reg32_imm32(EAX, 0xDF800000);
+    and_reg32_imm32(EAX, RDRAM_STORE_DIRECT_MASK);
     cmp_reg32_imm32(EAX, 0x80000000);
 
     /* when fast_memory is true, we know that there is
@@ -1114,7 +1122,7 @@ void gen_SW(struct r4300_core* r4300)
     mov_reg32_reg32(EBX, EAX);
 
     /* is address in RDRAM ? */
-    and_reg32_imm32(EAX, 0xDF800000);
+    and_reg32_imm32(EAX, RDRAM_STORE_DIRECT_MASK);
     cmp_reg32_imm32(EAX, 0x80000000);
 
     /* when fast_memory is true, we know that there is
@@ -1207,7 +1215,7 @@ void gen_SD(struct r4300_core* r4300)
     mov_reg32_reg32(EBX, EAX);
 
     /* is address in RDRAM ? */
-    and_reg32_imm32(EAX, 0xDF800000);
+    and_reg32_imm32(EAX, RDRAM_STORE_DIRECT_MASK);
     cmp_reg32_imm32(EAX, 0x80000000);
 
     /* when fast_memory is true, we know that there is
@@ -4733,7 +4741,7 @@ void gen_SWC1(struct r4300_core* r4300)
     mov_reg32_reg32(EBX, EAX);
 
     /* is address in RDRAM ? */
-    and_reg32_imm32(EAX, 0xDF800000);
+    and_reg32_imm32(EAX, RDRAM_STORE_DIRECT_MASK);
     cmp_reg32_imm32(EAX, 0x80000000);
 
     /* when fast_memory is true, we know that there is
@@ -4810,7 +4818,7 @@ void gen_SDC1(struct r4300_core* r4300)
     mov_reg32_reg32(EBX, EAX);
 
     /* is address in RDRAM ? */
-    and_reg32_imm32(EAX, 0xDF800000);
+    and_reg32_imm32(EAX, RDRAM_STORE_DIRECT_MASK);
     cmp_reg32_imm32(EAX, 0x80000000);
 
     /* when fast_memory is true, we know that there is
