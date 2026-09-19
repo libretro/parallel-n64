@@ -216,10 +216,28 @@ static struct { uint32_t addr, width, size, rows; } al_img[AL_IMG_MAX];
 static uint32_t al_img_n;
 static void al_note_image(uint32_t addr, uint32_t width, uint32_t rows, uint32_t size)
 {
-    uint32_t i;
+    uint32_t i, lo = addr, hi = addr + PIXELS_TO_BYTES(width * rows, size);
     for (i = 0; i < al_img_n; i++)
         if (al_img[i].addr == addr && al_img[i].width == width && al_img[i].size == size)
         { if (rows > al_img[i].rows) al_img[i].rows = rows; return; }
+    /* A new image over memory an older one covered: the older one is gone -
+     * the game has reused its memory - and must stop answering for those
+     * addresses. Junk Runner 64 shows libdragon's 640x480 logo and then
+     * renders into three 320x240 buffers inside the same memory; one of
+     * them was still looked up as row N, column M of the 640-wide image,
+     * and every third frame came out shifted sideways by half a screen. */
+    for (i = 0; i < al_img_n; )
+    {
+        uint32_t olo = al_img[i].addr;
+        uint32_t ohi = olo + PIXELS_TO_BYTES(al_img[i].width * al_img[i].rows, al_img[i].size);
+        if (olo < hi && lo < ohi)
+        {
+            memmove(&al_img[i], &al_img[i + 1], (al_img_n - i - 1) * sizeof(al_img[0]));
+            al_img_n--;
+        }
+        else
+            i++;
+    }
     if (al_img_n == AL_IMG_MAX) { memmove(&al_img[0], &al_img[1], (AL_IMG_MAX - 1) * sizeof(al_img[0])); al_img_n--; }
     al_img[al_img_n].addr = addr; al_img[al_img_n].width = width; al_img[al_img_n].rows = rows; al_img[al_img_n].size = size; al_img_n++;
 }
