@@ -55,6 +55,13 @@ void f3d_set_variant_seta(int v);
 void f3d_set_variant_wo64(int wo64);
 void f3d_set_variant_f3dex(int v);
 void f3d_set_variant_pd(int v);
+/* The near clip plane row of the Fast3D data segment (data + 0x98, the
+ * sixth row of the plane table at data + 0x70): {0,0,1,1} clips at
+ * z + w = 0, {0,0,0,1} only at w = 0 (a NoN build). Read once per task
+ * from the OSTask's ucode_data; an unrecognised row leaves the walker's
+ * per-variant default in force. */
+void f3d_set_near_plane_from_data(const unsigned char *rdram,
+                                  unsigned int rdram_size, unsigned int ud);
 
 /* Walk an F3D display list at RDRAM byte address `addr`, transforming geometry
  * through `gsp` and appending RDP commands to `fifo`. Recurses into nested

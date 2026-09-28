@@ -1199,7 +1199,7 @@ clean: clean-tools
 	rm -f $(OBJECTS) $(TARGET) $(OBJECTS:.o=.d) .build-flags
 
 clean-tools:
-	rm -f $(ANGRYLION_TOOLS) lrhost$(EXE_EXT) angrylion_replay$(EXE_EXT) angrylion_vemit_test$(EXE_EXT) angrylion_gen_test$(EXE_EXT) angrylion_clip_test$(EXE_EXT)
+	rm -f $(ANGRYLION_TOOLS) lrhost$(EXE_EXT) angrylion_replay$(EXE_EXT) $(ANGRYLION_CHECKS)
 
 # Angrylion benchmark and bit-exactness harnesses (tools/angrylion_*.c),
 # linked against the core's own angrylion objects: `make tools` after a
@@ -1241,9 +1241,28 @@ ANGRYLION_EMIT_OBJS := $(VIDEODIR_ANGRYLION)/rdp_emit_frontend.o \
 angrylion_clip_test$(EXE_EXT): tools/angrylion_clip_test.c $(ANGRYLION_EMIT_OBJS)
 	$(CC) $(CPPFLAGS) $(CFLAGS) -I$(VIDEODIR_ANGRYLION) -w $< $(ANGRYLION_EMIT_OBJS) -o $@ -lm
 
-tools: $(ANGRYLION_TOOLS) lrhost$(EXE_EXT) angrylion_replay$(EXE_EXT) angrylion_vemit_test$(EXE_EXT) angrylion_gen_test$(EXE_EXT) angrylion_clip_test$(EXE_EXT)
+# Fast3D walker: the near clip plane comes from the microcode data segment.
+# The walkers reference the HLE activation glue for mid-list microcode
+# swaps; the test satisfies those entry points itself, so the glue and the
+# rasterizer stay out of the link.
+ANGRYLION_WALKER_OBJS := $(filter-out $(VIDEODIR_ANGRYLION)/rdp_emit_hle.o, \
+	$(patsubst %.c,%.o,$(wildcard $(VIDEODIR_ANGRYLION)/rdp_emit*.c))) \
+	$(LIBRETRO_COMM_DIR)/encodings/encoding_crc32.o \
+	$(LIBRETRO_COMM_DIR)/features/features_cpu.o
+angrylion_f3d_near_test$(EXE_EXT): tools/angrylion_f3d_near_test.c $(ANGRYLION_WALKER_OBJS)
+	$(CC) $(CPPFLAGS) $(CFLAGS) -I$(VIDEODIR_ANGRYLION) -w $< $(ANGRYLION_WALKER_OBJS) -o $@ -lm
 
-.PHONY: clean clean-tools tools
+ANGRYLION_CHECKS := angrylion_vemit_test$(EXE_EXT) angrylion_gen_test$(EXE_EXT) \
+	angrylion_clip_test$(EXE_EXT) angrylion_f3d_near_test$(EXE_EXT)
+
+tools: $(ANGRYLION_TOOLS) lrhost$(EXE_EXT) angrylion_replay$(EXE_EXT) $(ANGRYLION_CHECKS)
+
+# Run the angrylion self-tests: the vector emitter, the generated pipeline
+# stage, and the HLE geometry frontend's regression lanes.
+check-angrylion: $(ANGRYLION_CHECKS)
+	@set -e; for t in $(ANGRYLION_CHECKS); do echo "== $$t"; ./$$t; done
+
+.PHONY: clean clean-tools tools check-angrylion
 -include $(OBJECTS:.o=.d)
 endif
 

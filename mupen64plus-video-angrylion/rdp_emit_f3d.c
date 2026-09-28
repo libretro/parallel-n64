@@ -613,6 +613,24 @@ void f3d_set_variant_f3dex(int v) { s_variant_f3dex = v ? 1 : 0; }
  * vertex record and the 0x07 G_VTXCOLORBASE command. */
 static int s_variant_pd = 0;
 void f3d_set_variant_pd(int v) { s_variant_pd = v ? 1 : 0; }
+/* -1 = no valid row found, else the z coefficient of the near plane row */
+static int s_near_plane_z = -1;
+void f3d_set_near_plane_from_data(const unsigned char *rdram,
+                                  unsigned int rdram_size, unsigned int ud)
+{
+    unsigned int limit = rdram_size ? rdram_size : (8u * 1024u * 1024u);
+    s_near_plane_z = -1;
+    if (rdram == 0 || ud == 0 || ud + 0xa0u > limit)
+        return;
+    {
+        int nx = (int)(int16_t)((rdram[(ud + 0x98u) ^ 3] << 8) | rdram[(ud + 0x99u) ^ 3]);
+        int ny = (int)(int16_t)((rdram[(ud + 0x9au) ^ 3] << 8) | rdram[(ud + 0x9bu) ^ 3]);
+        int nz = (int)(int16_t)((rdram[(ud + 0x9cu) ^ 3] << 8) | rdram[(ud + 0x9du) ^ 3]);
+        int nw = (int)(int16_t)((rdram[(ud + 0x9eu) ^ 3] << 8) | rdram[(ud + 0x9fu) ^ 3]);
+        if (nx == 0 && ny == 0 && nw == 1 && (nz == 0 || nz == 1))
+            s_near_plane_z = nz;
+    }
+}
 void f3d_set_variant(int doom64)
 {
     s_variant_d64 = doom64 ? 1 : 0;
@@ -719,9 +737,12 @@ void f3d_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
          * dropped Perfect Dark's 2D HUD/pause quads whole (they sit right at
          * the ortho near plane, so every one tripped the near-Z reject that
          * the real RSP does not run): the pause overlay's scanning panels and
-         * the health-bar backing vanished. GoldenEye's build keeps the near
-         * clip, so gate this on the PD variant. */
-        gsp->clip_near_z = (s_variant_d64 || s_variant_pd) ? 0 : 1;
+         * the health-bar backing vanished. The plain Fast3D builds and the
+         * F3DEX GBI1 forks say which they are in their data segment's near
+         * plane row (f3d_set_near_plane_from_data): GoldenEye's 2.0G ships
+         * {0,0,0,1}, a NoN row, where SM64's 2.0D ships {0,0,1,1}. */
+        gsp->clip_near_z = (s_variant_d64 || s_variant_pd) ? 0
+                         : (s_near_plane_z >= 0 ? s_near_plane_z : 1);
         /* Perfect Dark uses the wider guard-band clip ratio (FRUSTRATIO_2),
          * not the clip-to-screen ratio the plain F3D/F3DEX builds default to.
          * With the narrow ratio the walker subdivided every door- and
@@ -888,9 +909,9 @@ void f3d_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
 
         case F3D_TRI1:
         {
-            f3d_sync_persp_tex();
             int32_t cw[GSP_TRI_CMD_WORDS];
             int a, b, c, nc;
+            f3d_sync_persp_tex();
             /* GoldenEye/Perfect Dark (Rare's F3DEX-derived GBI1) store the
              * G_TRI1 vertex index as slot*10 -- the value the microcode's
              * 0x2d0 index->offset table emits -- so the slot is byte/10.
@@ -915,9 +936,9 @@ void f3d_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
 
         case F3D_TRI2:
         {
-            f3d_sync_persp_tex();
             int32_t cw[GSP_TRI_CMD_WORDS];
             int nc;
+            f3d_sync_persp_tex();
             if (s_variant_f3dex)
             {
                 /* GoldenEye/Perfect Dark reuse 0xB1 as Rare's G_TRI4: four
