@@ -1199,7 +1199,7 @@ clean: clean-tools
 	rm -f $(OBJECTS) $(TARGET) $(OBJECTS:.o=.d) .build-flags
 
 clean-tools:
-	rm -f $(ANGRYLION_TOOLS) lrhost$(EXE_EXT) angrylion_vemit_test$(EXE_EXT) angrylion_gen_test$(EXE_EXT)
+	rm -f $(ANGRYLION_TOOLS) lrhost$(EXE_EXT) angrylion_replay$(EXE_EXT) angrylion_vemit_test$(EXE_EXT) angrylion_gen_test$(EXE_EXT) angrylion_clip_test$(EXE_EXT)
 
 # Angrylion benchmark and bit-exactness harnesses (tools/angrylion_*.c),
 # linked against the core's own angrylion objects: `make tools` after a
@@ -1232,7 +1232,16 @@ angrylion_vemit_test$(EXE_EXT): tools/angrylion_vemit_test.c
 angrylion_gen_test$(EXE_EXT): tools/angrylion_gen_test.c
 	$(CC) $(CPPFLAGS) $(CFLAGS) -I$(VIDEODIR_ANGRYLION)/n64video -w $< -o $@
 
-tools: $(ANGRYLION_TOOLS) lrhost$(EXE_EXT) angrylion_replay$(EXE_EXT) angrylion_vemit_test$(EXE_EXT) angrylion_gen_test$(EXE_EXT)
+# HLE geometry frontend: the clipper's output must not depend on its
+# scratch vertices' previous contents.
+ANGRYLION_EMIT_OBJS := $(VIDEODIR_ANGRYLION)/rdp_emit_frontend.o \
+	$(VIDEODIR_ANGRYLION)/rdp_emit_bridge.o \
+	$(VIDEODIR_ANGRYLION)/rdp_emit_rsp.o \
+	$(VIDEODIR_ANGRYLION)/rdp_emit.o
+angrylion_clip_test$(EXE_EXT): tools/angrylion_clip_test.c $(ANGRYLION_EMIT_OBJS)
+	$(CC) $(CPPFLAGS) $(CFLAGS) -I$(VIDEODIR_ANGRYLION) -w $< $(ANGRYLION_EMIT_OBJS) -o $@ -lm
+
+tools: $(ANGRYLION_TOOLS) lrhost$(EXE_EXT) angrylion_replay$(EXE_EXT) angrylion_vemit_test$(EXE_EXT) angrylion_gen_test$(EXE_EXT) angrylion_clip_test$(EXE_EXT)
 
 .PHONY: clean clean-tools tools
 -include $(OBJECTS:.o=.d)

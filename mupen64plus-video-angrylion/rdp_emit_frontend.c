@@ -1138,6 +1138,10 @@ void gsp_vertex(GSPState *s, const unsigned char *rdram, unsigned int addr,
          * would otherwise rasterize. */
         gsp_clip_vertex_flags(s, vt);
         gsp_vertex_screen(s, vt);
+        /* A transformed vertex is drawn by the full triangle writer; only
+         * the Fighting Force 64 2D overlay injects the raw-attribute kind,
+         * and a G_VTX into its slot ends that. */
+        vt->flat2d = 0;
     }
 }
 
@@ -1362,6 +1366,7 @@ void gsp_vertex_dkr(GSPState *s, const unsigned char *rdram, unsigned int addr,
         vt->t = 0;
         vt->sv = 0;
         vt->tv = 0;
+        vt->flat2d = 0;
 
         gsp_clip_vertex_flags(s, vt);
         gsp_vertex_screen(s, vt);
@@ -1640,6 +1645,11 @@ static void gsp_clip_subdivide(GSPState *st, GSPVertex *out,
     on_pos[2] = onv->cz;  on_pos[3] = onv->cw;
     off_pos[0] = offv->cx; off_pos[1] = offv->cy;
     off_pos[2] = offv->cz; off_pos[3] = offv->cw;
+    /* The intersection vertex is built in the clipper's scratch list, so
+     * every field the triangle writer reads is written here. The
+     * raw-attribute (2D overlay) kind survives only along an edge whose
+     * both ends are that kind. */
+    out->flat2d = (onv->flat2d && offv->flat2d) ? 1 : 0;
     if (st->rs_clip_model)
     {
         /* Rogue Squadron's clip overlay (live IMEM 0x1ed0..0x1fb8): the
@@ -2095,7 +2105,6 @@ int gsp_triangle(GSPState *s, int32_t *cmd, int i0, int i1, int i2,
     int np;
     const GSPVertex *a, *b, *c;
     unsigned int oa, ob, oc;
-    int k;
 
     if (i0 < 0 || i0 >= GSP_MAX_VERTICES ||
         i1 < 0 || i1 >= GSP_MAX_VERTICES ||
