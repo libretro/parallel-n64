@@ -116,9 +116,11 @@ test-angrylion-linux-x64:
   variables:
     WITH_DYNAREC: x86_64
     HAVE_THR_AL: 1
+    HAVE_PARALLEL: 1
+    HAVE_PARALLEL_RSP: 1
   script:
-    - make -j$(nproc) WITH_DYNAREC=$WITH_DYNAREC HAVE_THR_AL=$HAVE_THR_AL
-    - make check-angrylion
+    - make -j$(nproc) platform=unix WITH_DYNAREC=$WITH_DYNAREC HAVE_THR_AL=$HAVE_THR_AL HAVE_PARALLEL=$HAVE_PARALLEL HAVE_PARALLEL_RSP=$HAVE_PARALLEL_RSP
+    - make platform=unix check-angrylion
 
 # Linux 64-bit (ARM64)
 libretro-build-linux-aarch64:

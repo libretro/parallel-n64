@@ -127,6 +127,9 @@ ifneq (,$(findstring unix,$(platform)))
    # pre-2.17 glibc and some cross toolchains; harmless on modern glibc
    # where it is in libc (the linker drops the unused -lrt).
    LDFLAGS += -lrt
+   # dlopen (GLideN64's GraphicBuffer loader) lives in libdl before glibc
+   # 2.34; the link is --no-undefined, so it has to be named.
+   LDFLAGS += -ldl
 
 
 
