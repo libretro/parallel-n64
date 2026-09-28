@@ -2,7 +2,11 @@
  * factor. The capture is self-contained: RDRAM, hidden RDRAM, VI regs,
  * and the exact RDP command stream of one real game frame.
  *
- *   angrylion_replay capture.alcap SCALE [dump.bin]
+ *   angrylion_replay capture.alcap SCALE [dump.bin [ORIGIN]]
+ *
+ * The dump is the 320x240 16-bit image at ORIGIN (hex byte address; the
+ * capture's VI origin when omitted -- the buffer on display when the frame
+ * began, which is usually not the one it draws into).
  */
 #include "n64video.h"
 #include <stdio.h>
@@ -36,7 +40,7 @@ int main(int argc, char **argv)
     uint32_t *cmds = NULL; size_t cap = 0, len = 0;
     struct n64video_config cfg;
 
-    if (argc < 3) { fprintf(stderr,"usage: %s capture.alcap SCALE [dump.bin]\n",argv[0]); return 2; }
+    if (argc < 3) { fprintf(stderr,"usage: %s capture.alcap SCALE [dump.bin [ORIGIN]]\n",argv[0]); return 2; }
     scale = (uint32_t)atoi(argv[2]);
     f = fopen(argv[1],"rb"); if(!f){perror(argv[1]);return 1;}
     if (fread(magic,1,6,f)!=6 || memcmp(magic,"ALCAP5",6)){fprintf(stderr,"bad capture\n");return 1;}
@@ -56,20 +60,21 @@ int main(int argc, char **argv)
     { uint32_t scratch=0x780000; if(len*4 > 0x800000-scratch){fprintf(stderr,"cmd list too big\n");return 1;}
       memcpy(rdram+scratch, cmds, len*4);
       for(i=0;i<16;i++){dp_reg[i]=&dp_reg_s[i];vi_reg[i]=&vi_reg_s[i];}
-      dp_reg_s[0]=scratch; dp_reg_s[1]=scratch; dp_reg_s[2]=scratch+len*4; dp_reg_s[3]=0; }
+      dp_reg_s[DP_START]=scratch; dp_reg_s[DP_END]=scratch+len*4; dp_reg_s[DP_CURRENT]=scratch; dp_reg_s[DP_STATUS]=0; }
 
     memset(&cfg,0,sizeof(cfg));
     cfg.gfx.rdram=rdram; cfg.gfx.rdram_size=sz; cfg.gfx.dmem=rdram;
     cfg.gfx.dp_reg=dp_reg; cfg.gfx.vi_reg=vi_reg;
     cfg.gfx.mi_intr_reg=&mi_intr; cfg.gfx.mi_intr_cb=dummy_intr;
-    cfg.parallel=true; cfg.num_workers=4; cfg.dp.compat=DP_COMPAT_HIGH; cfg.upscale=scale;
+    /* synchronous: the dump below reads the image as soon as the list returns */
+    cfg.parallel=false; cfg.num_workers=1; cfg.dp.compat=DP_COMPAT_HIGH; cfg.upscale=scale;
 
     n64video_init(&cfg);
     n64video_process_list();
 
     if (argc>3){
         FILE *d=fopen(argv[3],"wb");
-        if(d){ uint32_t origin=vi_reg_s[1]&0xffffff, vw=vi_reg_s[2]&0xfff; if(!vw)vw=320;
+        if(d){ uint32_t origin=argc>4?(uint32_t)strtoul(argv[4],0,16)&0xffffff:(vi_reg_s[1]&0xffffff), vw=vi_reg_s[2]&0xfff; if(!vw)vw=320;
                if(scale>1) n64video_resolve_for_display(origin);
                fwrite(rdram+origin,2,vw*240,d);
                fprintf(stderr,"dumped origin=%06x width=%u\n",origin,vw);

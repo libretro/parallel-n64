@@ -983,6 +983,9 @@ void n64video_update_screen(void)
     if (vi_reg_ptr == NULL)
         return;
 
+    al_cap_vi++;
+    al_capture_vi();
+
 #ifdef HAVE_RDP_DUMP
     rdp_dump_flush_dram(config.gfx.rdram, config.gfx.rdram_size);
     rdp_dump_flush_hidden_dram(rdram_hidden, sizeof(rdram_hidden));

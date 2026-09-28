@@ -106,6 +106,10 @@ static STRICTINLINE uint32_t irand(uint32_t* state)
     *state = *state * 0x343fd + 0x269ec3;
     return ((*state >> 16) & 0x7fff);
 }
+/* frame capture (below): the video interface counts VIs and flushes a
+ * finished frame's capture */
+extern long al_cap_vi;
+void al_capture_vi(void);
 #include "n64video/rdp.c"
 #include "n64video/vi.c"
 
