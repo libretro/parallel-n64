@@ -3337,8 +3337,11 @@ size_t retro_serialize_size (void)
      * crash on Save State). The state is deterministic and the same size for
      * every ROM and CPU core (measured 16789580), so size it to the actual
      * maximum plus a real 1KB margin. Aleck64 romsets append their 4MB
-     * board SDRAM (v1.5 block). */
-    return 16789580 + 1024 + (g_aleck64_enabled ? (ALECK64_SDRAM_SIZE + 16) : 0);
+     * board SDRAM (v1.5 block), and E90 boards their sprite VRAM, palette
+     * and enable word (v1.6 block). */
+    return 16789580 + 1024
+         + (g_aleck64_enabled ? (ALECK64_SDRAM_SIZE + 16) : 0)
+         + (g_aleck64_e90 ? (ALECK64_E90_VRAM_SIZE + ALECK64_E90_PAL_SIZE + 4) : 0);
 }
 
 bool retro_serialize(void *data, size_t size)
