@@ -28,6 +28,12 @@
 #include <glsym/glsym.h>
 #include <glsm/glsm.h>
 
+/* Vertex array objects: desktop GL and GLES 3.x.  Without one the quad has
+ * to be specified in the renderer's own vertex state (see the draw). */
+#if !defined(HAVE_OPENGLES) || defined(HAVE_OPENGLES3)
+#define E90_HAVE_VAO 1
+#endif
+
 /* GLES2 has only the single framebuffer binding point. */
 #ifndef GL_DRAW_FRAMEBUFFER
 #define GL_DRAW_FRAMEBUFFER GL_FRAMEBUFFER
@@ -136,8 +142,9 @@ static int e90_gl_init(void)
     glBindBuffer(GL_ARRAY_BUFFER, e90_vbo);
     glBufferData(GL_ARRAY_BUFFER, sizeof(quad), quad, GL_STATIC_DRAW);
 
-#ifndef HAVE_OPENGLES
-    /* a core profile refuses to draw without one */
+#ifdef E90_HAVE_VAO
+    /* a core profile refuses to draw without one, and on GLES 3.x it keeps the
+     * quad out of the renderer's vertex state */
     glGenVertexArrays(1, &e90_vao);
     glBindVertexArray(e90_vao);
     glEnableVertexAttribArray(0);
@@ -219,6 +226,13 @@ void aleck64_e90_gl_draw(unsigned out_width, unsigned out_height)
     GLint prev_rowlen = 0;
 #endif
     GLint prev_blend = 0, prev_depth = 0, prev_cull = 0, prev_scissor = 0;
+#ifndef E90_HAVE_VAO
+    /* attribute 0 as the renderer left it: GLideN64's unbuffered drawer caches
+     * which attributes it enabled and never re-enables one it believes on */
+    GLint prev_a0_on = 0, prev_a0_size = 4, prev_a0_type = GL_FLOAT;
+    GLint prev_a0_norm = 0, prev_a0_stride = 0, prev_a0_vbo = 0;
+    GLvoid* prev_a0_ptr = NULL;
+#endif
     unsigned w, h, y;
 
     if (!g_aleck64_enabled || !g_aleck64_e90 || e90_gl_failed)
@@ -261,8 +275,16 @@ void aleck64_e90_gl_draw(unsigned out_width, unsigned out_height)
     glGetIntegerv(GL_ACTIVE_TEXTURE, &prev_unit);
     glGetIntegerv(GL_TEXTURE_BINDING_2D, &prev_tex);
     glGetIntegerv(GL_ARRAY_BUFFER_BINDING, &prev_vbo);
-#ifndef HAVE_OPENGLES
+#ifdef E90_HAVE_VAO
     glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &prev_vao);
+#else
+    glGetVertexAttribiv(0, GL_VERTEX_ATTRIB_ARRAY_ENABLED, &prev_a0_on);
+    glGetVertexAttribiv(0, GL_VERTEX_ATTRIB_ARRAY_SIZE, &prev_a0_size);
+    glGetVertexAttribiv(0, GL_VERTEX_ATTRIB_ARRAY_TYPE, &prev_a0_type);
+    glGetVertexAttribiv(0, GL_VERTEX_ATTRIB_ARRAY_NORMALIZED, &prev_a0_norm);
+    glGetVertexAttribiv(0, GL_VERTEX_ATTRIB_ARRAY_STRIDE, &prev_a0_stride);
+    glGetVertexAttribiv(0, GL_VERTEX_ATTRIB_ARRAY_BUFFER_BINDING, &prev_a0_vbo);
+    glGetVertexAttribPointerv(0, GL_VERTEX_ATTRIB_ARRAY_POINTER, &prev_a0_ptr);
 #endif
     /* glIsEnabled is not among the GL symbols this build links; the
      * equivalent glGetIntegerv query is. */
@@ -310,7 +332,7 @@ void aleck64_e90_gl_draw(unsigned out_width, unsigned out_height)
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-#ifndef HAVE_OPENGLES
+#ifdef E90_HAVE_VAO
     glBindVertexArray(e90_vao);
 #else
     glBindBuffer(GL_ARRAY_BUFFER, e90_vbo);
@@ -320,10 +342,16 @@ void aleck64_e90_gl_draw(unsigned out_width, unsigned out_height)
     glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 
 restore:
-#ifndef HAVE_OPENGLES
+#ifdef E90_HAVE_VAO
     glBindVertexArray((GLuint)prev_vao);
 #else
-    glDisableVertexAttribArray(0);
+    glBindBuffer(GL_ARRAY_BUFFER, (GLuint)prev_a0_vbo);
+    glVertexAttribPointer(0, prev_a0_size, (GLenum)prev_a0_type,
+                          (GLboolean)prev_a0_norm, prev_a0_stride, prev_a0_ptr);
+    if (prev_a0_on)
+        glEnableVertexAttribArray(0);
+    else
+        glDisableVertexAttribArray(0);
 #endif
     if (!prev_blend)   glDisable(GL_BLEND);
     if (prev_depth)    glEnable(GL_DEPTH_TEST);

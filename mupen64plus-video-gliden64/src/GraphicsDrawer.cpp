@@ -435,13 +435,13 @@ void _legacySetBlendMode()
 		gfxContext.enable(enable::BLEND, true);
 		gfxContext.setBlending(sfactor, dfactor);
 	} else if (gDP.otherMode.colorOnCvg != 0) {
-		// CLR_ON_CVG - just use second mux of blender
+		// Without FORCE_BL the blender passes its first mux through, as in _setBlendMode.
 		bool useMemColor = false;
 		if (gDP.otherMode.cycleType == G_CYC_1CYCLE) {
-			if (gDP.otherMode.c1_m2a == 1)
+			if (gDP.otherMode.c1_m1a == 1)
 				useMemColor = true;
 		} else if (gDP.otherMode.cycleType == G_CYC_2CYCLE) {
-			if (gDP.otherMode.c2_m2a == 1)
+			if (gDP.otherMode.c2_m1a == 1)
 				useMemColor = true;
 		}
 		if (useMemColor) {
