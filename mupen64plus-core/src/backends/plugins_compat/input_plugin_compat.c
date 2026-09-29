@@ -120,10 +120,26 @@ static m64p_error input_plugin_get_input(void* opaque, uint32_t* input_)
     return M64ERR_SUCCESS;
 }
 
+static m64p_error input_plugin_get_gcn_input(void* opaque, uint8_t analog_mode, uint8_t* rx8)
+{
+    struct controller_input_compat* cin_compat = (struct controller_input_compat*)opaque;
+    BUTTONS_GCN keys;
+
+    if (!Controls[cin_compat->control_id].Present) {
+        return M64ERR_SYSTEM_FAIL;
+    }
+
+    inputGetKeysGCN(cin_compat->control_id, analog_mode, &keys);
+    memcpy(rx8, &keys, 8);
+
+    return M64ERR_SUCCESS;
+}
+
 const struct controller_input_backend_interface
     g_icontroller_input_backend_plugin_compat =
 {
-    input_plugin_get_input
+    input_plugin_get_input,
+    input_plugin_get_gcn_input
 };
 
 

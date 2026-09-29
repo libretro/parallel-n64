@@ -80,6 +80,7 @@ extern gfx_plugin_functions gfx;
  * indirection is replaced with direct calls. */
 extern void inputControllerCommand(int Control, unsigned char *Command);
 extern void inputGetKeys(int Control, BUTTONS *Keys);
+extern void inputGetKeysGCN(int Control, int analogMode, BUTTONS_GCN *Keys);
 extern void inputInitiateControllers(CONTROL_INFO ControlInfo);
 extern void inputReadController(int Control, unsigned char *Command);
 extern int  inputRomOpen(void);

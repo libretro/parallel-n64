@@ -27,6 +27,7 @@
 #include "device/controllers/game_controller.h"
 #include <libretro.h>
 #include <stdio.h>
+#include <limits.h>
 #include <stdlib.h>
 #include <string.h>
 /* snprintf not available in MSVC 2010 and earlier */
@@ -460,52 +461,62 @@ static void apply_mouse_button(BUTTONS* Keys, int btn_mapping)
    }
 }
 
+/* Deadzone, snap and radial scale of a raw [-0x8000, 0x8000) stick into
+ * [-maximum, maximum] (80 for the N64 stick; the GameCube modes use 100
+ * and 95).  Re-scales to negate the deadzone and applies sensitivity as a
+ * single rational radial scale:
+ *   out = (x,y) * (radius - dz) * maximum * sens
+ *              / (radius * (ASTICK_MAX - dz) * 100)
+ * ROUND(v) == floor(v + 0.5) == floor_div(2*num + den, 2*den).
+ * outY is returned already negated (N64 up is positive). */
+static void analog_scale(int32_t x, int32_t y, int maximum, int32_t* outX, int32_t* outY)
+{
+   uint32_t radius;
+   int32_t  sx = x, sy = y;
+
+   // Integer stick radius (replaces the polar sqrt/atan2 round-trip)
+   radius = analog_isqrt64( (uint64_t)((int64_t)x * x)
+                          + (uint64_t)((int64_t)y * y) );
+
+   analog_snap_angle(&sx, &sy, radius);
+
+   if ((int)radius > astick_deadzone)
+   {
+      int denom_dz = ASTICK_MAX - astick_deadzone;
+      int64_t num_scale, den, nx, ny;
+      if (denom_dz < 1)
+         denom_dz = 1;
+
+      num_scale = (int64_t)((int)radius - astick_deadzone) * maximum * astick_sensitivity;
+      den       = (int64_t)radius * denom_dz * 100;
+
+      nx = (int64_t)sx * num_scale;
+      ny = (int64_t)sy * num_scale;
+
+      *outX = +analog_floor_div(2 * nx + den, 2 * den);
+      *outY = -analog_floor_div(2 * ny + den, 2 * den);
+   }
+   else
+   {
+      *outX = 0;
+      *outY = 0;
+   }
+}
+
 /* Shared tail of every control profile: N64 stick, mouse-to-stick mode,
  * d-pad, Start, and the SELECT-driven profile toggle. */
 static void inputGetKeys_reuse(int16_t analogX, int16_t analogY, int Control, BUTTONS* Keys)
 {
-   uint32_t radius;
-   int32_t  sx, sy;
+   int32_t sx, sy;
    //  Keys->Value |= input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_XX)    ? 0x4000 : 0; // Mempak switch
    //  Keys->Value |= input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_XX)    ? 0x8000 : 0; // Rumblepak switch
 
    analogX = input_cb(Control, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_LEFT, RETRO_DEVICE_ID_ANALOG_X);
    analogY = input_cb(Control, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_LEFT, RETRO_DEVICE_ID_ANALOG_Y);
 
-   // Integer stick radius (replaces the polar sqrt/atan2 round-trip)
-   radius = analog_isqrt64( (uint64_t)((int64_t)analogX * analogX)
-                          + (uint64_t)((int64_t)analogY * analogY) );
-
-   sx = analogX;
-   sy = analogY;
-   analog_snap_angle(&sx, &sy, radius);
-
-   if ((int)radius > astick_deadzone)
-   {
-      // Re-scale to negate deadzone and map to the N64 -80..80 range,
-      // applying sensitivity, as a single rational radial scale:
-      //   out = (x,y) * (radius - dz) * 80 * sens
-      //              / (radius * (ASTICK_MAX - dz) * 100)
-      // ROUND(v) == floor(v + 0.5) == floor_div(2*num + den, 2*den).
-      int denom_dz = ASTICK_MAX - astick_deadzone;
-      int64_t num_scale, den, nx, ny;
-      if (denom_dz < 1)
-         denom_dz = 1;
-
-      num_scale = (int64_t)((int)radius - astick_deadzone) * 80 * astick_sensitivity;
-      den       = (int64_t)radius * denom_dz * 100;
-
-      nx = (int64_t)sx * num_scale;
-      ny = (int64_t)sy * num_scale;
-
-      Keys->X_AXIS = +analog_floor_div(2 * nx + den, 2 * den);
-      Keys->Y_AXIS = -analog_floor_div(2 * ny + den, 2 * den);
-   }
-   else
-   {
-      Keys->X_AXIS = 0;
-      Keys->Y_AXIS = 0;
-   }
+   analog_scale(analogX, analogY, 80, &sx, &sy);
+   Keys->X_AXIS = sx;
+   Keys->Y_AXIS = sy;
 
    /* Mouse-to-analog-stick mode (player 1 only): the mouse drives the
     * stick whenever the real stick is neutral. Deltas are scaled by
@@ -918,6 +929,131 @@ static void inputGetKeys_default( int Control, BUTTONS *Keys )
    inputGetKeys_reuse(analogX, analogY, Control, Keys);
 }
 
+/* GameCube controller through a joybus adapter: answers the 0x40 short
+ * poll. Assumes the independent-C-button layout: RetroPad face/shoulder
+ * buttons drive the GameCube C-stick when pressed analog, L/R triggers
+ * come from SELECT/R2 pressed analog, and the analog sticks are scaled
+ * into the GameCube's 0..255 (centre 128) ranges. */
+#define GCN_MAX_ANALOG 100
+#define GCN_MAX_CSTICK 95
+
+static int32_t clamp16(int32_t input) {
+   if (input > SHRT_MAX) {
+      input = SHRT_MAX;
+   }
+   if (input < SHRT_MIN) {
+      input = SHRT_MIN;
+   }
+   return input;
+}
+
+void inputGetKeysGCN(int Control, int analogMode, BUTTONS_GCN *Keys)
+{
+   bool hold_cstick = false;
+   int32_t analogX = 0;
+   int32_t analogY = 0;
+   int32_t cstickX, cstickY;
+   int32_t scaledX, scaledY;
+   int32_t trigL, trigR;
+   memset(Keys, 0, sizeof(*Keys));
+
+   // Assumes alternate_mapping is set
+   
+   analogX =
+      input_cb(Control, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_BUTTON, RETRO_DEVICE_ID_JOYPAD_R) - 
+      input_cb(Control, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_BUTTON, RETRO_DEVICE_ID_JOYPAD_L);
+
+   analogY =
+      input_cb(Control, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_BUTTON, RETRO_DEVICE_ID_JOYPAD_A) -
+      input_cb(Control, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_BUTTON, RETRO_DEVICE_ID_JOYPAD_X);
+      
+   if( analogX == 0 && analogY == 0 ) {
+      // Check for keyboard input
+      
+      analogX = 0x7FFF * (
+         input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_R) - 
+         input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_L)
+      );
+      
+      analogY = 0x7FFF * (
+         input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_A) -
+         input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_X)
+      );
+   }
+      
+   analog_scale(clamp16(analogX), clamp16(analogY), GCN_MAX_CSTICK, &cstickX, &cstickY);
+
+   cstickX += 128;
+   cstickY += 128;
+
+   Keys->A_BUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_B);
+   Keys->B_BUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_Y);
+   Keys->X_BUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_L3);
+   Keys->Y_BUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_R3);
+   Keys->Z_TRIG = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_L2);
+
+   trigL = input_cb(Control, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_BUTTON, RETRO_DEVICE_ID_JOYPAD_SELECT) / (SHRT_MAX / UCHAR_MAX);
+   if (trigL == 0) {
+      trigL = 255 * input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_SELECT);
+   }
+   trigR = input_cb(Control, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_BUTTON, RETRO_DEVICE_ID_JOYPAD_R2) / (SHRT_MAX / UCHAR_MAX);
+   if (trigR == 0) {
+      trigR = 255 * input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_R2);
+   }
+
+   switch (analogMode) {
+      case 0:
+         Keys->MODE0.C_X = cstickX;
+         Keys->MODE0.C_Y = cstickY; 
+         Keys->MODE0.L_TRIG = trigL >> 4;
+         Keys->MODE0.R_TRIG = trigR >> 4;
+         break;
+      case 1:
+         Keys->MODE1.C_X = cstickX  >> 4;
+         Keys->MODE1.C_Y = cstickY  >> 4; 
+         Keys->MODE1.L_TRIG = trigL;
+         Keys->MODE1.R_TRIG = trigR;
+         break;
+      case 2:
+         Keys->MODE2.C_X = cstickX >> 4;
+         Keys->MODE2.C_Y = cstickY >> 4; 
+         Keys->MODE2.L_TRIG = trigL >> 4;
+         Keys->MODE2.R_TRIG = trigR >> 4;
+         break;
+      case 3:
+         Keys->MODE3.C_X = cstickX;
+         Keys->MODE3.C_Y = cstickY; 
+         Keys->MODE3.L_TRIG = trigL;
+         Keys->MODE3.R_TRIG = trigR;
+         break;
+      case 4:
+         Keys->MODE4.C_X = cstickX;
+         Keys->MODE4.C_Y = cstickY; 
+         break;
+      default:
+         // error
+         break;
+   }
+
+   
+   Keys->L_BUTTON = (trigL > 225) ? 1 : 0;
+   Keys->R_BUTTON = (trigR > 225) ? 1 : 0;
+
+   analogX = input_cb(Control, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_LEFT, RETRO_DEVICE_ID_ANALOG_X);
+   analogY = input_cb(Control, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_LEFT, RETRO_DEVICE_ID_ANALOG_Y);
+
+   analog_scale(analogX, analogY, GCN_MAX_ANALOG, &scaledX, &scaledY);
+   Keys->X_AXIS = scaledX + 128;
+   Keys->Y_AXIS = scaledY + 128;
+
+   Keys->R_DPAD = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_RIGHT);
+   Keys->L_DPAD = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_LEFT);
+   Keys->D_DPAD = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_DOWN);
+   Keys->U_DPAD = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_UP);
+
+   Keys->START_BUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_START);
+}
+
 void inputInitiateCallback(const char *headername)
 {
    struct retro_message msg;
@@ -1068,6 +1204,8 @@ EXPORT void CALL inputInitiateControllers(CONTROL_INFO ControlInfo)
           controller[i].control->Plugin = PLUGIN_RAW;
        else if (pad_pak_types[i] == PLUGIN_TRANSFER_PAK)
           controller[i].control->Plugin = PLUGIN_TRANSFER_PAK;
+       else if (pad_pak_types[i] == PLUGIN_BIO_PAK)
+          controller[i].control->Plugin = PLUGIN_BIO_PAK;
        else
           controller[i].control->Plugin = PLUGIN_NONE;
     }

@@ -61,6 +61,13 @@ struct controller_input_backend_interface
      * Returns M64ERR_SUCCESS on success
      */
     m64p_error (*get_input)(void* cin, uint32_t* input);
+
+    /* Get emulated GameCube controller input for a JCMD_GCN_SHORTPOLL:
+     * fills the 8-byte reply payload (a BUTTONS_GCN) for the given analog
+     * mode. May be NULL when the backend has no GameCube support.
+     * Returns M64ERR_SUCCESS on success
+     */
+    m64p_error (*get_gcn_input)(void* cin, uint8_t analog_mode, uint8_t* rx8);
 };
 
 #endif

@@ -57,6 +57,15 @@
 #include "device/dd/disk.h"
 #include "device/controllers/vru_controller.h"
 #include "device/controllers/paks/biopak.h"
+
+/* Controller presence values as written into Controls[i].Present by the
+ * libretro input plugin (mirrors libretro/libretro.c). */
+#ifndef CONT_NONE
+#define CONT_NONE     0
+#define CONT_JOYPAD   1
+#define CONT_MOUSE    2
+#define CONT_GCN      4
+#endif
 #include "device/controllers/paks/mempak.h"
 #include "device/controllers/paks/rumblepak.h"
 #include "device/controllers/paks/transferpak.h"
@@ -852,7 +861,9 @@ m64p_error main_run(void)
     /* Fill-in l_pak_type_idx and l_ipaks according to game compatibility */
     k = 0;
     if (ROM_SETTINGS.biopak) {
-        l_ipaks[k++] = &g_ibiopak;
+        l_pak_type_idx[PLUGIN_BIO_PAK] = k;
+        l_ipaks[k] = &g_ibiopak;
+        ++k;
     }
     if (ROM_SETTINGS.mempak) {
         l_pak_type_idx[PLUGIN_MEMPAK] = k;
@@ -951,12 +962,15 @@ m64p_error main_run(void)
         }
         /* otherwise let the core do the processing */
         else {
-            /* select appropriate controller
-             * FIXME: assume for now that only standard controller is compatible
-             * Use the rom db to know if other peripherals are compatibles (VRU, mouse, train, ...)
-             */
-            const struct game_controller_flavor* cont_flavor =
-                &g_standard_controller_flavor;
+            /* select the controller flavor from the device the frontend
+             * plugged into this port (Controls[i].Present, set by the input
+             * plugin from retro_set_controller_port_device) */
+            const struct game_controller_flavor* cont_flavor;
+            switch (Controls[i].Present) {
+            case CONT_MOUSE: cont_flavor = &g_mouse_controller_flavor; break;
+            case CONT_GCN:   cont_flavor = &g_gcn_controller_flavor;   break;
+            default:         cont_flavor = &g_standard_controller_flavor; break;
+            }
 
             joybus_devices[i] = &g_dev.controllers[i];
             ijoybus_devices[i] = &g_ijoybus_device_controller;

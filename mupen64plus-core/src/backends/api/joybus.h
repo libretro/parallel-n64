@@ -40,6 +40,7 @@ enum joybus_commands
     JCMD_VRU_READ_STATUS = 0x0B,
     JCMD_VRU_WRITE_CONFIG = 0x0C,
     JCMD_VRU_WRITE_INIT = 0x0D,
+    JCMD_GCN_SHORTPOLL = 0x40,   /* GameCube controller short poll (3 tx / 8 rx) */
     JCMD_RESET = 0xff,
 };
 
@@ -49,6 +50,7 @@ enum joybus_device_types
     JDT_JOY_ABS_COUNTERS = 0x0001,  /* joystick with absolute coordinates */
     JDT_JOY_REL_COUNTERS = 0x0002,  /* joystick with relative coordinates (= mouse) */
     JDT_JOY_PORT         = 0x0004,  /* has port for external paks */
+    JDT_GCN              = 0x0009,  /* GameCube controller (via adapter) */
     JDT_VRU              = 0x0100,  /* VRU */
     JDT_AF_RTC           = 0x1000,  /* RTC */
     JDT_EEPROM_4K        = 0x8000,  /* 4k EEPROM */

@@ -155,6 +155,21 @@ const struct game_controller_flavor g_mouse_controller_flavor =
     mouse_controller_reset
 };
 
+/* GameCube controller (through a joybus adapter, as libdragon supports).
+ * No pak port; buttons come back through the 0x40 short poll rather than
+ * JCMD_CONTROLLER_READ. */
+static void gcn_controller_reset(struct game_controller* cont)
+{
+    cont->status = 0x00;
+}
+
+const struct game_controller_flavor g_gcn_controller_flavor =
+{
+    "GameCube controller",
+    JDT_GCN,
+    gcn_controller_reset
+};
+
 void init_game_controller(struct game_controller* cont,
     const struct game_controller_flavor* flavor,
     void* cin, const struct controller_input_backend_interface* icin,
@@ -222,6 +237,16 @@ static void process_controller_command(void* jbd,
     case JCMD_PAK_WRITE: {
         JOYBUS_CHECK_COMMAND_FORMAT(35, 1)
         pak_write_block(cont, &tx_buf[1], &tx_buf[3], &rx_buf[0]);
+    } break;
+
+    case JCMD_GCN_SHORTPOLL: {
+        JOYBUS_CHECK_COMMAND_FORMAT(3, 8)
+        /* tx: 40 <analog mode> <rumble>; only a GameCube flavor answers */
+        if (cont->flavor != &g_gcn_controller_flavor
+         || cont->icin->get_gcn_input == NULL
+         || cont->icin->get_gcn_input(cont->cin, tx_buf[1], rx_buf) != M64ERR_SUCCESS) {
+            *rx |= 0x80;
+        }
     } break;
 
     default:
