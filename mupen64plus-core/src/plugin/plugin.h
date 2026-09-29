@@ -79,7 +79,7 @@ extern gfx_plugin_functions gfx;
  * compile-time-constant table (dummy_input) that never changed, so the
  * indirection is replaced with direct calls. */
 extern void inputControllerCommand(int Control, unsigned char *Command);
-extern void inputGetKeys_default(int Control, BUTTONS *Keys);
+extern void inputGetKeys(int Control, BUTTONS *Keys);
 extern void inputInitiateControllers(CONTROL_INFO ControlInfo);
 extern void inputReadController(int Control, unsigned char *Command);
 extern int  inputRomOpen(void);

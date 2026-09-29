@@ -61,7 +61,7 @@ static m64p_error input_plugin_get_input(void* opaque, uint32_t* input_)
     int pak_change_requested = 0;
 
     /* first poll controller */
-    inputGetKeys_default(cin_compat->control_id, &keys);
+    inputGetKeys(cin_compat->control_id, &keys);
 
     /* return an error if controller is not plugged */
     if (!Controls[cin_compat->control_id].Present) {
