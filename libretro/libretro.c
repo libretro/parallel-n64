@@ -2915,13 +2915,6 @@ bool retro_load_game(const struct retro_game_info *game)
             }
             cart_data = zip_rom;
             cart_size = (uint32_t)zip_size;
-            if (g_aleck64_enabled)
-            {
-               /* ari64 knows the aleck64 SDRAM (tlb_page_host_map); the
-                * Hacktarux dynarec does not, cap it at the cached interp */
-               if (r4300_emumode > 1 && r4300_jit_backend != 0)
-                  r4300_emumode = 1;
-            }
             goto content_ready;
          }
 
@@ -2952,11 +2945,6 @@ bool retro_load_game(const struct retro_game_info *game)
       {
          cart_data = zip_rom;
          cart_size = (uint32_t)zip_size;
-         if (g_aleck64_enabled)
-         {
-            if (r4300_emumode > 1 && r4300_jit_backend != 0)
-               r4300_emumode = 1;
-         }
       }
       else if (is_cartridge_rom(game_data))
       {
@@ -2988,6 +2976,16 @@ bool retro_load_game(const struct retro_game_info *game)
    }
 
 content_ready:
+
+   /* A MAME set is recognised by its chip names while it is unpacked; a
+    * single-file dump, zipped or not, only by its header. */
+   if (aleck64_identify_rom(cart_data, cart_size))
+   {
+      /* ari64 knows the aleck64 SDRAM (tlb_page_host_map); the Hacktarux
+       * dynarec does not, cap it at the cached interp */
+      if (r4300_emumode > 1 && r4300_jit_backend != 0)
+         r4300_emumode = 1;
+   }
 
    mupencorestop      = false;
    g_rsp_force_halt   = 0;
