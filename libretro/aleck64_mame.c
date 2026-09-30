@@ -295,6 +295,9 @@ enum a64_dips { DIPS_GENERIC, DIPS_STARSLDR, DIPS_VIVDOLLS, DIPS_HIPAI };
 struct a64_game
 {
     const char* name;
+    /* CRC1/CRC2 of the assembled program rom's N64 header: what identifies a
+     * single-file dump (No-Intro), which carries none of MAME's chip names */
+    uint32_t crc1, crc2;
     int e90;
     int mahjong;
     int dpad_disabled;
@@ -303,21 +306,31 @@ struct a64_game
 };
 
 static const struct a64_game a64_games[] = {
-    { "11beat",   0, 0, 1, DIPS_GENERIC,  { { "nus-zhaj.u3",     0x0 }, { NULL, 0 } } },
-    { "starsldr", 0, 0, 0, DIPS_STARSLDR, { { "nus-zhbj-0.u3",   0x0 }, { NULL, 0 } } },
-    { "vivdolls", 0, 0, 0, DIPS_VIVDOLLS, { { "nus-zsaj-0.u3",   0x0 }, { NULL, 0 } } },
-    { "mayjin3",  0, 0, 0, DIPS_GENERIC,  { { "nus-zscj-0.u3",   0x0 }, { NULL, 0 } } },
-    { "doncdoon", 0, 0, 0, DIPS_GENERIC,  { { "ua3003-all01.u3", 0x0 }, { "ua3003-alh01.u4", 0x1000000 } } },
-    { "kurufev",  0, 0, 0, DIPS_GENERIC,  { { "ua3088-all01.u3", 0x0 }, { "ua3088-alh04.u4", 0x1000000 } } },
-    { "twrshaft", 0, 0, 0, DIPS_GENERIC,  { { "ua3012-all02.u3", 0x0 }, { NULL, 0 } } },
-    { "hipai",    0, 1, 0, DIPS_HIPAI,    { { "ua2011-all02.u3", 0x0 }, { "ua2011-alh02.u4", 0x1000000 } } },
-    { "hipai2",   0, 1, 0, DIPS_HIPAI,    { { "ua3029-all01.u3", 0x0 }, { "ua3029-alh01.u4", 0x1000000 } } },
-    { "srmvs",    0, 1, 0, DIPS_GENERIC,  { { "nus-zsej-1.u2",   0x0 }, { NULL, 0 } } },
-    { "srmvsa",   0, 1, 0, DIPS_GENERIC,  { { "nus-zsej-0.u2",   0x0 }, { NULL, 0 } } },
-    { "mtetrisc", 1, 0, 0, DIPS_GENERIC,  { { "nus-zcaj.u4",     0x0 }, { NULL, 0 } } },
+    { "11beat",   0xC8141D35, 0x4F631668, 0, 0, 1, DIPS_GENERIC,  { { "nus-zhaj.u3",     0x0 }, { NULL, 0 } } },
+    { "starsldr", 0x4FEE467A, 0x86EA116C, 0, 0, 0, DIPS_STARSLDR, { { "nus-zhbj-0.u3",   0x0 }, { NULL, 0 } } },
+    { "vivdolls", 0xBD188617, 0x80A547E4, 0, 0, 0, DIPS_VIVDOLLS, { { "nus-zsaj-0.u3",   0x0 }, { NULL, 0 } } },
+    { "mayjin3",  0x4D6C646B, 0xB98AEEB5, 0, 0, 0, DIPS_GENERIC,  { { "nus-zscj-0.u3",   0x0 }, { NULL, 0 } } },
+    { "doncdoon", 0xDA2FCCDF, 0xAB7AA3A6, 0, 0, 0, DIPS_GENERIC,  { { "ua3003-all01.u3", 0x0 }, { "ua3003-alh01.u4", 0x1000000 } } },
+    { "kurufev",  0xA719E33C, 0x2AF6D3D9, 0, 0, 0, DIPS_GENERIC,  { { "ua3088-all01.u3", 0x0 }, { "ua3088-alh04.u4", 0x1000000 } } },
+    { "twrshaft", 0xBC535CCD, 0x62DE9215, 0, 0, 0, DIPS_GENERIC,  { { "ua3012-all02.u3", 0x0 }, { NULL, 0 } } },
+    { "hipai",    0xB921FCDF, 0xF7DF8D9B, 0, 1, 0, DIPS_HIPAI,    { { "ua2011-all02.u3", 0x0 }, { "ua2011-alh02.u4", 0x1000000 } } },
+    { "hipai2",   0x2FA70CA1, 0xD4EE5A59, 0, 1, 0, DIPS_HIPAI,    { { "ua3029-all01.u3", 0x0 }, { "ua3029-alh01.u4", 0x1000000 } } },
+    { "srmvs",    0xE49F338C, 0x94DE50FF, 0, 1, 0, DIPS_GENERIC,  { { "nus-zsej-1.u2",   0x0 }, { NULL, 0 } } },
+    { "srmvsa",   0x0BA69E6C, 0x2F3E6D8D, 0, 1, 0, DIPS_GENERIC,  { { "nus-zsej-0.u2",   0x0 }, { NULL, 0 } } },
+    { "mtetrisc", 0xE6FCB468, 0xCFAC7528, 1, 0, 0, DIPS_GENERIC,  { { "nus-zcaj.u4",     0x0 }, { NULL, 0 } } },
 };
 
 static const struct a64_game* g_game = NULL;
+
+static void aleck64_select(const struct a64_game* game)
+{
+    g_aleck64_enabled = 1;
+    g_aleck64_e90 = game->e90;
+    g_aleck64_mahjong = game->mahjong;
+    g_aleck64_dpad_disabled = game->dpad_disabled;
+    g_game = game;
+    aleck64_apply_dips();
+}
 
 #define A64_MAX_ENTRIES 64
 
@@ -372,12 +385,7 @@ static int aleck64_load_zip_src(struct zsrc* z, const char* prefer,
         }
 
         /* data is in MAME's byte-swapped (v64) order; rom.c normalizes it */
-        g_aleck64_enabled = 1;
-        g_aleck64_e90 = game->e90;
-        g_aleck64_mahjong = game->mahjong;
-        g_aleck64_dpad_disabled = game->dpad_disabled;
-        g_game = game;
-        aleck64_apply_dips();
+        aleck64_select(game);
         *out = rom;
         *out_size = total;
         ret = 1;
@@ -538,6 +546,42 @@ void aleck64_apply_dips(void)
 
     g_aleck64_dipswitch[0] = d0;
     g_aleck64_dipswitch[1] = d1;
+}
+
+/* Big-endian 32-bit word at a header offset, whatever order the image is in:
+ * z64 is stored big-endian, v64 byte-swapped in 16-bit units, n64 as
+ * little-endian 32-bit words. */
+static int rom_header_word(const uint8_t* rom, size_t off, uint32_t* out)
+{
+    const uint8_t* p = rom + off;
+
+    switch ((rom[0] << 24) | (rom[1] << 16) | (rom[2] << 8) | rom[3])
+    {
+    case 0x80371240: *out = (uint32_t)p[0] << 24 | (uint32_t)p[1] << 16 | (uint32_t)p[2] << 8 | p[3]; return 1;
+    case 0x37804012: *out = (uint32_t)p[1] << 24 | (uint32_t)p[0] << 16 | (uint32_t)p[3] << 8 | p[2]; return 1;
+    case 0x40123780: *out = (uint32_t)p[3] << 24 | (uint32_t)p[2] << 16 | (uint32_t)p[1] << 8 | p[0]; return 1;
+    default:         return 0;
+    }
+}
+
+int aleck64_identify_rom(const uint8_t* rom, size_t size)
+{
+    uint32_t crc1, crc2;
+    size_t g;
+
+    if (g_aleck64_enabled)
+        return 1;
+    if (rom == NULL || size < 0x40
+        || !rom_header_word(rom, 0x10, &crc1) || !rom_header_word(rom, 0x14, &crc2))
+        return 0;
+
+    for (g = 0; g < sizeof(a64_games)/sizeof(a64_games[0]); ++g) {
+        if (a64_games[g].crc1 == crc1 && a64_games[g].crc2 == crc2) {
+            aleck64_select(&a64_games[g]);
+            return 1;
+        }
+    }
+    return 0;
 }
 
 int aleck64_load_zip_named(const uint8_t* data, size_t size, const char* prefer,

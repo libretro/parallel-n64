@@ -299,6 +299,48 @@ int main(void)
     assert(aleck64_load_zip(z.buf, z.len, &rom, &rom_size) == 0);
     assert(g_aleck64_enabled == 0);
 
+    /* 7: a single-file dump (No-Intro) carries no chip names, so the zip
+     * loader hands it back as a plain rom and the header CRCs identify it,
+     * in whichever byte order the file is stored */
+    {
+        /* Magical Tetris Challenge: an E90 board */
+        static const uint8_t z64_head[24] = {
+            0x80, 0x37, 0x12, 0x40, 0, 0, 0, 0x0f, 0x80, 0x10, 0x04, 0x00, 0, 0, 0x14, 0x49,
+            0xe6, 0xfc, 0xb4, 0x68, 0xcf, 0xac, 0x75, 0x28 };
+        uint8_t img[0x40];
+        int order, k;
+
+        memset(&z, 0, sizeof(z));
+        f = calloc(1, 0x2000);
+        memcpy(f, z64_head, sizeof(z64_head));
+        zip_add(&z, "Magical Tetris Challenge (Japan).z64", f, 0x2000, 1);
+        zip_finish(&z); free(f);
+        assert(aleck64_load_zip(z.buf, z.len, &rom, &rom_size) == 1);
+        assert(g_aleck64_enabled == 0);
+        assert(aleck64_identify_rom(rom, rom_size) == 1);
+        assert(g_aleck64_enabled == 1 && g_aleck64_e90 == 1 && g_aleck64_mahjong == 0);
+        free(rom);
+
+        for (order = 0; order < 3; ++order) {
+            memset(img, 0, sizeof(img));
+            for (k = 0; k < (int)sizeof(z64_head); ++k) {
+                int at = order == 0 ? k : order == 1 ? (k ^ 1) : (k ^ 3); /* z64, v64, n64 */
+                img[at] = z64_head[k];
+            }
+            g_aleck64_enabled = 0;
+            assert(aleck64_identify_rom(img, sizeof(img)) == 1);
+            assert(g_aleck64_enabled == 1 && g_aleck64_e90 == 1);
+        }
+
+        /* any other cartridge stays a cartridge */
+        memcpy(img, z64_head, sizeof(z64_head));
+        img[0x10] ^= 0xff;
+        g_aleck64_enabled = 0;
+        assert(aleck64_identify_rom(img, sizeof(img)) == 0);
+        assert(g_aleck64_enabled == 0);
+        assert(aleck64_identify_rom(NULL, 0) == 0);
+    }
+
     e90_overlay_checks();
 
     printf("aleck64 zip loader: all checks passed\n");

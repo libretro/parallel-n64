@@ -122,5 +122,9 @@ int aleck64_load_zip_named(const uint8_t* data, size_t size, const char* prefer,
 int aleck64_load_zip_path(const char* path, const char* prefer,
                           uint8_t** out, size_t* out_size);
 void aleck64_apply_dips(void);
+/* Recognises an Aleck64 program rom by its header CRCs and switches the board
+ * on, for dumps that arrive as one plain rom rather than a MAME set.  Returns
+ * 1 when the rom is an Aleck64 game (or one was already selected). */
+int aleck64_identify_rom(const uint8_t* rom, size_t size);
 
 #endif
