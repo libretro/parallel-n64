@@ -555,7 +555,7 @@ static int rom_header_word(const uint8_t* rom, size_t off, uint32_t* out)
 {
     const uint8_t* p = rom + off;
 
-    switch ((rom[0] << 24) | (rom[1] << 16) | (rom[2] << 8) | rom[3])
+    switch ((uint32_t)rom[0] << 24 | (uint32_t)rom[1] << 16 | (uint32_t)rom[2] << 8 | rom[3])
     {
     case 0x80371240: *out = (uint32_t)p[0] << 24 | (uint32_t)p[1] << 16 | (uint32_t)p[2] << 8 | p[3]; return 1;
     case 0x37804012: *out = (uint32_t)p[1] << 24 | (uint32_t)p[0] << 16 | (uint32_t)p[3] << 8 | p[2]; return 1;
@@ -571,6 +571,15 @@ int aleck64_identify_rom(const uint8_t* rom, size_t size)
 
     if (g_aleck64_enabled)
         return 1;
+
+    /* The zip loader clears the board state before it looks; a plain rom
+     * never passes through it, so clear it here too or a game loaded after
+     * an E90 title keeps its overlay and savestate block. */
+    g_aleck64_e90 = 0;
+    g_aleck64_mahjong = 0;
+    g_aleck64_dpad_disabled = 0;
+    g_game = NULL;
+
     if (rom == NULL || size < 0x40
         || !rom_header_word(rom, 0x10, &crc1) || !rom_header_word(rom, 0x14, &crc2))
         return 0;
