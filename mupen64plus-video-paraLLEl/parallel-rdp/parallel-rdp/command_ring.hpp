@@ -23,9 +23,10 @@
 #pragma once
 
 #include <thread>
-#include <mutex>
-#include <condition_variable>
 #include <vector>
+#include <stdint.h>
+#include <retro_atomic.h>
+#include <rthreads/retro_eventcount.h>
 
 #ifdef PARALLEL_RDP_SHADER_DIR
 #include "global_managers.hpp"
@@ -37,7 +38,9 @@ class CommandProcessor;
 class CommandRing
 {
 public:
-	void init(
+	// Returns false if the ring cannot run; the caller then processes
+	// commands on its own thread.
+	bool init(
 #ifdef PARALLEL_RDP_SHADER_DIR
 			Granite::Global::GlobalManagersHandle global_handles,
 #endif
@@ -50,13 +53,18 @@ public:
 private:
 	CommandProcessor *processor = nullptr;
 	std::thread thr;
-	std::mutex lock;
-	std::condition_variable cond;
 
+	// Single producer (the emulation thread), single consumer (thr).
+	// The counters are free-running and compared by difference, so they
+	// may wrap. No lock: each side owns its own counter and publishes it
+	// with a release store; the eventcounts only park and wake.
 	std::vector<uint32_t> ring;
-	uint64_t write_count = 0;
-	uint64_t read_count = 0;
-	uint64_t completed_count = 0;
+	retro_atomic_size_t write_count{0};     // written by the producer
+	retro_atomic_size_t read_count{0};      // written by the consumer
+	retro_atomic_size_t completed_count{0}; // written by the consumer
+	retro_eventcount_t work_ec{};        // consumer parks: ring empty
+	retro_eventcount_t done_ec{};        // producer parks: ring full / drain
+	bool ec_live = false;
 
 	void thread_loop();
 	void teardown_thread();

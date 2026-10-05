@@ -28,7 +28,12 @@
 
 namespace RDP
 {
-void CommandRing::init(
+static size_t ring_load(retro_atomic_size_t *v)
+{
+	return retro_atomic_load_acquire_size(v);
+}
+
+bool CommandRing::init(
 #ifdef PARALLEL_RDP_SHADER_DIR
 		Granite::Global::GlobalManagersHandle global_handles_,
 #endif
@@ -38,12 +43,26 @@ void CommandRing::init(
 	teardown_thread();
 	processor = processor_;
 	ring.resize(count);
-	write_count = 0;
-	read_count = 0;
+	retro_atomic_size_init(&write_count, 0);
+	retro_atomic_size_init(&read_count, 0);
+	retro_atomic_size_init(&completed_count, 0);
+	if (!ec_live)
+	{
+		// Only fails on backends that need a condvar and cannot
+		// allocate one.
+		if (!retro_eventcount_init(&work_ec) || !retro_eventcount_init(&done_ec))
+		{
+			retro_eventcount_free(&work_ec);
+			retro_eventcount_free(&done_ec);
+			return false;
+		}
+		ec_live = true;
+	}
 #ifdef PARALLEL_RDP_SHADER_DIR
 	global_handles = std::move(global_handles_);
 #endif
 	thr = std::thread(&CommandRing::thread_loop, this);
+	return true;
 }
 
 void CommandRing::teardown_thread()
@@ -58,29 +77,58 @@ void CommandRing::teardown_thread()
 CommandRing::~CommandRing()
 {
 	teardown_thread();
+	if (ec_live)
+	{
+		retro_eventcount_free(&work_ec);
+		retro_eventcount_free(&done_ec);
+	}
 }
 
 void CommandRing::drain()
 {
-	std::unique_lock<std::mutex> holder{lock};
-	cond.wait(holder, [this]() {
-		return write_count == completed_count;
-	});
+	size_t w = retro_atomic_load_relaxed_size(&write_count);
+	for (;;)
+	{
+		int key;
+		if (ring_load(&completed_count) == w)
+			return;
+		key = retro_eventcount_prepare_wait(&done_ec);
+		if (ring_load(&completed_count) == w)
+		{
+			retro_eventcount_cancel_wait(&done_ec);
+			return;
+		}
+		retro_eventcount_commit_wait(&done_ec, key);
+	}
 }
 
 void CommandRing::enqueue_command(unsigned num_words, const uint32_t *words)
 {
-	std::unique_lock<std::mutex> holder{lock};
-	cond.wait(holder, [this, num_words]() {
-		return write_count + num_words + 1 <= read_count + ring.size();
-	});
+	size_t size = ring.size();
+	size_t mask = size - 1;
+	size_t w = retro_atomic_load_relaxed_size(&write_count);
 
-	size_t mask = ring.size() - 1;
-	ring[write_count++ & mask] = num_words;
+	// Wait for room for the header word plus the payload.
+	for (;;)
+	{
+		int key;
+		if ((w - ring_load(&read_count)) + num_words + 1 <= size)
+			break;
+		key = retro_eventcount_prepare_wait(&done_ec);
+		if ((w - ring_load(&read_count)) + num_words + 1 <= size)
+		{
+			retro_eventcount_cancel_wait(&done_ec);
+			break;
+		}
+		retro_eventcount_commit_wait(&done_ec, key);
+	}
+
+	ring[w++ & mask] = num_words;
 	for (unsigned i = 0; i < num_words; i++)
-		ring[write_count++ & mask] = words[i];
+		ring[w++ & mask] = words[i];
 
-	cond.notify_one();
+	retro_atomic_store_release_size(&write_count, w);
+	retro_eventcount_notify(&work_ec);
 }
 
 void CommandRing::thread_loop()
@@ -97,27 +145,42 @@ void CommandRing::thread_loop()
 	std::vector<uint32_t> tmp_buffer;
 	tmp_buffer.reserve(64);
 	size_t mask = ring.size() - 1;
+	size_t r = 0;
 
 	for (;;)
 	{
 		bool is_idle = false;
+		bool have_work = ring_load(&write_count) != r;
+
+		if (!have_work)
 		{
-			std::unique_lock<std::mutex> holder{lock};
-			if (cond.wait_for(holder, std::chrono::microseconds(500), [this]() { return write_count > read_count; }))
-			{
-				uint32_t num_words = ring[read_count++ & mask];
-				tmp_buffer.resize(num_words);
-				for (uint32_t i = 0; i < num_words; i++)
-					tmp_buffer[i] = ring[read_count++ & mask];
-			}
+			int key = retro_eventcount_prepare_wait(&work_ec);
+			have_work = ring_load(&write_count) != r;
+			if (have_work)
+				retro_eventcount_cancel_wait(&work_ec);
 			else
 			{
 				// If we don't receive commands at a steady pace,
 				// notify rendering thread that we should probably kick some work.
-				tmp_buffer.resize(1);
-				tmp_buffer[0] = uint32_t(Op::MetaIdle) << 24;
-				is_idle = true;
+				retro_eventcount_commit_wait_timeout(&work_ec, key, 500);
+				have_work = ring_load(&write_count) != r;
 			}
+		}
+
+		if (have_work)
+		{
+			uint32_t num_words = ring[r++ & mask];
+			tmp_buffer.resize(num_words);
+			for (uint32_t i = 0; i < num_words; i++)
+				tmp_buffer[i] = ring[r++ & mask];
+			// The words are copied out: hand the space back right away.
+			retro_atomic_store_release_size(&read_count, r);
+		}
+		else
+		{
+			tmp_buffer.resize(1);
+			tmp_buffer[0] = uint32_t(Op::MetaIdle) << 24;
+			is_idle = true;
 		}
 
 		if (tmp_buffer.empty())
@@ -126,9 +189,8 @@ void CommandRing::thread_loop()
 		processor->enqueue_command_direct(tmp_buffer.size(), tmp_buffer.data());
 		if (!is_idle)
 		{
-			std::lock_guard<std::mutex> holder{lock};
-			completed_count = read_count;
-			cond.notify_one();
+			retro_atomic_store_release_size(&completed_count, r);
+			retro_eventcount_notify(&done_ec);
 		}
 	}
 }

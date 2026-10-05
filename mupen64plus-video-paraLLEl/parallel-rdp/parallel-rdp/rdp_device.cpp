@@ -150,11 +150,12 @@ CommandProcessor::CommandProcessor(Vulkan::Device &device_, void *rdram_ptr,
 
 	if (!single_threaded_processing)
 	{
-		ring.init(
+		if (!ring.init(
 #ifdef PARALLEL_RDP_SHADER_DIR
 				Granite::Global::create_thread_context(),
 #endif
-				this, 4 * 1024);
+				this, 4 * 1024))
+			single_threaded_processing = true;
 	}
 
 	if (const char *env = getenv("PARALLEL_RDP_BENCH"))
