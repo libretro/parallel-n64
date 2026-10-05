@@ -3370,7 +3370,11 @@ int rsp_tri_write(int32_t *ew,
             lh_y4 = clamp_s16(lh_y * 4) & 0xffff;
             mh_x4 = clamp_s16(mh_x * 4) & 0xffff;
             lh_x4 = clamp_s16(lh_x * 4) & 0xffff;
-            for (ch = 0; ch < (textured ? 7 : 4); ch++)
+            /* All eight lanes ride the one chain: the z lane (7) too, which
+             * the F3DEX2-shaped path above had already scaled into the <<5
+             * domain with its $v10 base term -- this writer scales z below,
+             * after the texture block's pad half has taken the raw lane. */
+            for (ch = 0; ch < 8; ch++)
             {
                 int32_t h_i = at_i[0][ch] & 0xffff, h_f = at_f[0][ch] & 0xffff;
                 int32_t m_i = at_i[1][ch] & 0xffff, m_f2 = at_f[1][ch] & 0xffff;
@@ -3440,6 +3444,44 @@ int rsp_tri_write(int32_t *ew,
                 dAdX[ch].i = dx_i; dAdX[ch].f = dx_f;
                 dAdY[ch].i = dy_i; dAdY[ch].f = dy_f;
                 dAdE[ch].i = de_i; dAdE[ch].f = de_f;
+            }
+            /* the texture block's W-partner half carries the unscaled z
+             * lane (stored at ucode text 0xd40.. before the scaling) */
+            pre_z_base = base[7];
+            pre_z_dAdX = dAdX[7];
+            pre_z_dAdE = dAdE[7];
+            pre_z_dAdY = dAdY[7];
+            if (z_buffered)
+            {
+                /* z block (text 0xe3c..0xea4): the H attribute and the
+                 * three gradients each vmudn frac*v30[4] ; vmadh int*v30[4]
+                 * ; vmadn low (v30[4] == 0x20), then the base is redone in
+                 * that domain: H5 - dAdE5 * yfrac through vmudl/vmadm/vmadn
+                 * and the vsubc/vsub borrow pair. */
+                Rsp32 h5, *zr[3];
+                int zi;
+                int64_t a64z;
+                zr[0] = &dAdE[7]; zr[1] = &dAdX[7]; zr[2] = &dAdY[7];
+                for (zi = 0; zi < 3; zi++)
+                {
+                    acc = p_udn(zr[zi]->f, 32);
+                    acc += p_udh(zr[zi]->i, 32);
+                    zr[zi]->i = acc_clamp_mid(acc);
+                    zr[zi]->f = acc_clamp_low(acc);
+                }
+                acc = p_udn(at_f[0][7] & 0xffff, 32);
+                acc += p_udh(at_i[0][7] & 0xffff, 32);
+                h5.i = acc_clamp_mid(acc);
+                h5.f = acc_clamp_low(acc);
+                a64z  = (int64_t)(((uint32_t)U16(dAdE[7].f) * (uint32_t)U16(d64_yfrac2)) >> 16);
+                a64z += (int64_t)S16(dAdE[7].i) * (int64_t)U16(d64_yfrac2);
+                {
+                    int32_t p_i = acc_clamp_mid(a64z), p_f = acc_clamp_low(a64z);
+                    int32_t fd = (int32_t)U16(h5.f) - (int32_t)U16(p_f);
+                    int bw = (fd < 0) ? 1 : 0;
+                    base[7].f = fd & 0xffff;
+                    base[7].i = clamp_s16(S16(h5.i) - S16(p_i) - bw) & 0xffff;
+                }
             }
         }
 
