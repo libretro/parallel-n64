@@ -22,7 +22,7 @@
 
 #pragma once
 
-#include <thread>
+#include <rthreads/rthreads.h>
 #include <vector>
 #include <stdint.h>
 #include <retro_atomic.h>
@@ -52,7 +52,7 @@ public:
 
 private:
 	CommandProcessor *processor = nullptr;
-	std::thread thr;
+	sthread_t *thr = nullptr;
 
 	// Single producer (the emulation thread), single consumer (thr).
 	// The counters are free-running and compared by difference, so they
@@ -67,6 +67,7 @@ private:
 	bool ec_live = false;
 
 	void thread_loop();
+	static void thread_entry(void *self);
 	void teardown_thread();
 #ifdef PARALLEL_RDP_SHADER_DIR
 	Granite::Global::GlobalManagersHandle global_handles;

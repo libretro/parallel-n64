@@ -53,6 +53,7 @@
 #include <atomic>
 #include <mutex>
 #include <condition_variable>
+#include <rthreads/retro_eventcount.h>
 #endif
 
 #ifdef GRANITE_VULKAN_FOSSILIZE
@@ -252,11 +253,6 @@ public:
 	void end_frame_context();
 
 	// RenderDoc integration API for app-guided captures.
-	static bool init_renderdoc_capture();
-	// Calls next_frame_context() and begins a renderdoc capture.
-	void begin_renderdoc_capture();
-	// Calls next_frame_context() and ends the renderdoc capture.
-	void end_renderdoc_capture();
 
 	// Set names for objects for debuggers and profilers.
 	void set_name(const Buffer &buffer, const char *name);
@@ -518,6 +514,11 @@ private:
 
 	// Make sure this is deleted last.
 	HandlePool handle_pool;
+
+	// Threads that find another thread already waiting on a FenceHolder
+	// park here until it is done (see FenceHolder::wait).
+	retro_eventcount_t fence_wait_ec{};
+	bool fence_wait_ec_live = false;
 
 	// Calibrated timestamps.
 	void init_calibrated_timestamps();

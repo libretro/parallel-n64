@@ -23,12 +23,9 @@
 #pragma once
 
 #include <string>
-#include <thread>
-#include <condition_variable>
-#include <mutex>
-#include <memory>
-#include <queue>
-#include "object_pool.hpp"
+#include <stdio.h>
+#include <stdint.h>
+#include "rdp_worker.h"
 
 namespace Util
 {
@@ -42,7 +39,9 @@ public:
 	static TimelineTraceFile *get_per_thread();
 	static void set_per_thread(TimelineTraceFile *file);
 
-	struct Event
+	// The link is first so the I/O thread can take an event straight off
+	// the worker queue.
+	struct Event : mpsc_stack_node_t
 	{
 		char desc[256];
 		char tid[32];
@@ -59,12 +58,12 @@ public:
 	void submit_event(Event *e);
 
 private:
-	void looper(std::string path);
-	std::thread thr;
-	std::mutex lock;
-	std::condition_variable cond;
-
-	ThreadSafeObjectPool<Event> event_pool;
-	std::queue<Event *> queued_events;
+	// Events are written out by one I/O thread (rdp_worker.c): any thread
+	// submits, no lock. Each event is its own allocation, freed by the
+	// I/O thread once written.
+	static void write_event(void *self, mpsc_stack_node_t *item);
+	rdp_worker_t *worker = nullptr;
+	FILE *file = nullptr;
+	uint64_t base_ts = 0;
 };
 }

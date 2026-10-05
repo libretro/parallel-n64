@@ -23,7 +23,6 @@
 #include "rdp_device.hpp"
 #include <stdint.h>
 #include "rdp_common.hpp"
-#include <chrono>
 
 #ifdef __SSE2__
 #include <emmintrin.h>

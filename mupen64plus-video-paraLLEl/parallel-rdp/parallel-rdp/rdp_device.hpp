@@ -23,7 +23,6 @@
 #pragma once
 
 #include <memory>
-#include <thread>
 #include <queue>
 #include "device.hpp"
 #include "video_interface.hpp"

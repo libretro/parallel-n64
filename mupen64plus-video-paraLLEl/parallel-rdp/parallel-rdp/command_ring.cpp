@@ -20,7 +20,6 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <chrono>
 #include "command_ring.hpp"
 #include "rdp_device.hpp"
 #include "thread_id.hpp"
@@ -61,16 +60,22 @@ bool CommandRing::init(
 #ifdef PARALLEL_RDP_SHADER_DIR
 	global_handles = std::move(global_handles_);
 #endif
-	thr = std::thread(&CommandRing::thread_loop, this);
-	return true;
+	thr = sthread_create(thread_entry, this);
+	return thr != nullptr;
+}
+
+void CommandRing::thread_entry(void *self)
+{
+	static_cast<CommandRing *>(self)->thread_loop();
 }
 
 void CommandRing::teardown_thread()
 {
-	if (thr.joinable())
+	if (thr)
 	{
 		enqueue_command(0, nullptr);
-		thr.join();
+		sthread_join(thr);
+		thr = nullptr;
 	}
 }
 

@@ -99,6 +99,7 @@ Device::Device()
 #ifdef GRANITE_VULKAN_MT
 	cookie.store(0);
 #endif
+	fence_wait_ec_live = retro_eventcount_init(&fence_wait_ec);
 }
 
 Semaphore Device::request_semaphore(VkSemaphoreTypeKHR type, VkSemaphore vk_semaphore, bool transfer_ownership)
@@ -2020,6 +2021,15 @@ bool Device::swapchain_touched() const
 Device::~Device()
 {
 	wait_idle();
+	struct FenceEcFree
+	{
+		Device *d;
+		~FenceEcFree()
+		{
+			if (d->fence_wait_ec_live)
+				retro_eventcount_free(&d->fence_wait_ec);
+		}
+	} fence_ec_free{this};
 
 	managers.timestamps.log_simple();
 
@@ -5069,22 +5079,6 @@ const VolkDeviceTable &Device::get_device_table() const
 {
 	return *table;
 }
-
-#ifndef GRANITE_RENDERDOC_CAPTURE
-bool Device::init_renderdoc_capture()
-{
-	LOGE("RenderDoc API capture is not enabled in this build.\n");
-	return false;
-}
-
-void Device::begin_renderdoc_capture()
-{
-}
-
-void Device::end_renderdoc_capture()
-{
-}
-#endif
 
 bool Device::supports_subgroup_size_log2(bool subgroup_full_group, uint8_t subgroup_minimum_size_log2,
                                          uint8_t subgroup_maximum_size_log2) const

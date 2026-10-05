@@ -59,7 +59,7 @@ void TimelineTraceFile::Event::set_tid(const char *tid_)
 
 TimelineTraceFile::Event *TimelineTraceFile::begin_event(const char *desc, uint32_t pid)
 {
-	auto *e = event_pool.allocate();
+	auto *e = allocate_event();
 	e->pid = pid;
 	e->set_tid(trace_tid);
 	e->set_desc(desc);
@@ -69,7 +69,8 @@ TimelineTraceFile::Event *TimelineTraceFile::begin_event(const char *desc, uint3
 
 TimelineTraceFile::Event *TimelineTraceFile::allocate_event()
 {
-	auto *e = event_pool.allocate();
+	auto *e = new Event;
+	e->next = nullptr;
 	e->desc[0] = '\0';
 	e->tid[0] = '\0';
 	e->pid = 0;
@@ -80,9 +81,10 @@ TimelineTraceFile::Event *TimelineTraceFile::allocate_event()
 
 void TimelineTraceFile::submit_event(Event *e)
 {
-	std::lock_guard<std::mutex> holder{lock};
-	queued_events.push(e);
-	cond.notify_one();
+	if (worker)
+		rdp_worker_push(worker, e);
+	else
+		delete e;
 }
 
 void TimelineTraceFile::end_event(Event *e)
@@ -91,62 +93,50 @@ void TimelineTraceFile::end_event(Event *e)
 	submit_event(e);
 }
 
-TimelineTraceFile::TimelineTraceFile(const std::string &path)
+void TimelineTraceFile::write_event(void *self_, mpsc_stack_node_t *item)
 {
-	thr = std::thread(&TimelineTraceFile::looper, this, path);
-}
+	auto *self = static_cast<TimelineTraceFile *>(self_);
+	auto *e = static_cast<Event *>(item);
 
-void TimelineTraceFile::looper(std::string path)
-{
-	set_current_thread_name("json-trace-io");
+	auto start_us = int64_t(e->start_ns - self->base_ts) * 1e-3;
+	auto end_us = int64_t(e->end_ns - self->base_ts) * 1e-3;
 
-	FILE *file = fopen(path.c_str(), "w");
-	if (!file)
-		LOGE("Failed to open file: %s.\n", path.c_str());
-
-	if (file)
-		fputs("[\n", file);
-
-	uint64_t base_ts = get_current_time_nsecs();
-
-	for (;;)
+	if (self->file && start_us <= end_us)
 	{
-		Event *e;
-		{
-			std::unique_lock<std::mutex> holder{lock};
-			cond.wait(holder, [this]() {
-				return !queued_events.empty();
-			});
-			e = queued_events.front();
-			queued_events.pop();
-		}
-
-		if (!e)
-			break;
-
-		auto start_us = int64_t(e->start_ns - base_ts) * 1e-3;
-		auto end_us = int64_t(e->end_ns - base_ts) * 1e-3;
-
-		if (file && start_us <= end_us)
-		{
-			fprintf(file, "{ \"name\": \"%s\", \"ph\": \"B\", \"tid\": \"%s\", \"pid\": \"%u\", \"ts\": %f },\n",
-			        e->desc, e->tid, e->pid, start_us);
-			fprintf(file, "{ \"name\": \"%s\", \"ph\": \"E\", \"tid\": \"%s\", \"pid\": \"%u\", \"ts\": %f },\n",
-			        e->desc, e->tid, e->pid, end_us);
-		}
-
-		event_pool.free(e);
+		fprintf(self->file, "{ \"name\": \"%s\", \"ph\": \"B\", \"tid\": \"%s\", \"pid\": \"%u\", \"ts\": %f },\n",
+		        e->desc, e->tid, e->pid, start_us);
+		fprintf(self->file, "{ \"name\": \"%s\", \"ph\": \"E\", \"tid\": \"%s\", \"pid\": \"%u\", \"ts\": %f },\n",
+		        e->desc, e->tid, e->pid, end_us);
 	}
 
-	// Intentionally truncate the JSON so that we can emit "," after the last element.
-	if (file)
-		fclose(file);
+	delete e;
+}
+
+static void name_io_thread(void *)
+{
+	set_current_thread_name("json-trace-io");
+}
+
+TimelineTraceFile::TimelineTraceFile(const std::string &path)
+{
+	file = fopen(path.c_str(), "w");
+	if (!file)
+		LOGE("Failed to open file: %s.\n", path.c_str());
+	else
+		fputs("[\n", file);
+
+	base_ts = get_current_time_nsecs();
+	worker = rdp_worker_new(name_io_thread, write_event, this);
 }
 
 TimelineTraceFile::~TimelineTraceFile()
 {
-	submit_event(nullptr);
-	if (thr.joinable())
-		thr.join();
+	// Writes out everything still queued, then joins the I/O thread.
+	rdp_worker_free(worker);
+	worker = nullptr;
+
+	// Intentionally truncate the JSON so that we can emit "," after the last element.
+	if (file)
+		fclose(file);
 }
 }

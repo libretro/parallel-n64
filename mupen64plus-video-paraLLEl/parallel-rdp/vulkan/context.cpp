@@ -23,7 +23,6 @@
 #include "context.hpp"
 #include "small_vector.hpp"
 #include <vector>
-#include <mutex>
 #include <algorithm>
 #include <string.h>
 
@@ -73,7 +72,6 @@ bool Context::init_instance_and_device(const char **instance_ext, uint32_t insta
 	return true;
 }
 
-static std::mutex loader_init_lock;
 static bool loader_init_once;
 static PFN_vkGetInstanceProcAddr instance_proc_addr;
 
@@ -84,7 +82,8 @@ PFN_vkGetInstanceProcAddr Context::get_instance_proc_addr()
 
 bool Context::init_loader(PFN_vkGetInstanceProcAddr addr)
 {
-	std::lock_guard<std::mutex> holder(loader_init_lock);
+	// Called from the frontend thread only (context negotiation), so the
+	// one-time init needs no lock.
 	if (loader_init_once && !addr)
 		return true;
 
