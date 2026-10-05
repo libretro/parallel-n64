@@ -187,8 +187,12 @@ private:
 
 	void _drawOSD(const char *_pText, float _x, float & _y);
 
-	typedef std::list<std::string> OSDMessages;
-	void _removeOSDMessage(OSDMessages::iterator _iter, Milliseconds _interval);
+	struct OSDMessage
+	{
+		std::string text;
+		std::chrono::steady_clock::time_point expires;
+	};
+	typedef std::list<OSDMessage> OSDMessages;
 
 	DrawingState m_drawingState;
 	TexturedRectParams m_texrectParams;

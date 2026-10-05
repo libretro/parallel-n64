@@ -1,6 +1,5 @@
 #include <algorithm>
 #include <string>
-#include <thread>
 #include <assert.h>
 #include <cmath>
 #include "Platform.h"
@@ -39,8 +38,6 @@ GraphicsDrawer::GraphicsDrawer()
 
 GraphicsDrawer::~GraphicsDrawer()
 {
-	while (!m_osdMessages.empty())
-		std::this_thread::sleep_for(Milliseconds(1));
 }
 
 void GraphicsDrawer::addTriangle(int _v0, int _v1, int _v2)
@@ -1518,22 +1515,22 @@ void GraphicsDrawer::drawOSD()
 		}
 	}
 
-	for (const std::string & m : m_osdMessages) {
-		_drawOSD(m.c_str(), x, y);
+	if (!m_osdMessages.empty()) {
+		// Expire messages here, on the drawing thread, instead of from a
+		// detached thread per message erasing from the list unlocked.
+		const auto now = std::chrono::steady_clock::now();
+		m_osdMessages.remove_if([now](const OSDMessage & _m) { return now >= _m.expires; });
+		for (const OSDMessage & m : m_osdMessages)
+			_drawOSD(m.text.c_str(), x, y);
 	}
 }
 
 void GraphicsDrawer::showMessage(std::string _message, Milliseconds _interval)
 {
-	m_osdMessages.emplace_back(_message);
-	std::thread t(&GraphicsDrawer::_removeOSDMessage, this, std::prev(m_osdMessages.end()), _interval);
-	t.detach();
-}
-
-void GraphicsDrawer::_removeOSDMessage(OSDMessages::iterator _iter, Milliseconds _interval)
-{
-	std::this_thread::sleep_for(_interval);
-	m_osdMessages.erase(_iter);
+	OSDMessage msg;
+	msg.text = std::move(_message);
+	msg.expires = std::chrono::steady_clock::now() + _interval;
+	m_osdMessages.push_back(std::move(msg));
 }
 
 void GraphicsDrawer::clearDepthBuffer()
