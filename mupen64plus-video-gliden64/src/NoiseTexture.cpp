@@ -9,7 +9,6 @@
 #include "Textures.h"
 #include "NoiseTexture.h"
 #include "DisplayWindow.h"
-#include "DisplayLoadProgress.h"
 
 using namespace graphics;
 
@@ -40,8 +39,6 @@ u32 Rand(u32)
 
 void NoiseTexture::_fillTextureData()
 {
-	displayLoadProgress(L"INIT NOISE TEXTURES. PLEASE WAIT...");
-
 	// One thread and a local xorshift64* generator, eight bytes per step.
 	// The old fill split the textures across one thread per CPU, but
 	// every thread called the C library's random generator, whose shared
@@ -65,7 +62,6 @@ void NoiseTexture::_fillTextureData()
 		}
 	}
 
-	displayLoadProgress(L"");
 }
 
 

@@ -45,7 +45,6 @@ void DisplayWindow::reinitGfxContext()
 
 void DisplayWindow::swapBuffers()
 {
-	m_drawer.drawOSD();
 	_swapBuffers();
 	if (!RSP.LLE) {
 		if ((config.generalEmulation.hacks & hack_doNotResetOtherModeL) == 0)

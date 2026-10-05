@@ -10,7 +10,6 @@
 #include "DepthBuffer.h"
 #include "FrameBufferInfo.h"
 #include "Config.h"
-#include "Performance.h"
 #include "Debugger.h"
 #include "DebugDump.h"
 #include "Keys.h"
@@ -114,7 +113,6 @@ void VI_UpdateScreen()
 	if (ConfigOpen)
 		return;
 
-	perf.increaseVICount();
 	DisplayWindow & wnd = dwnd();
 	if (wnd.changeWindow())
 		return;
@@ -132,7 +130,6 @@ void VI_UpdateScreen()
 		VI_UpdateSize();
 		bVIUpdated = true;
 		wnd.updateScale();
-		perf.increaseFramesCount();
 	}
 
 	if (config.frameBufferEmulation.enable) {

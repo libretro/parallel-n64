@@ -28,7 +28,6 @@ MY_LOCAL_SRC_FILES :=                                                           
     $(SRCDIR)/Debugger.cpp                                                         \
     $(SRCDIR)/DepthBuffer.cpp                                                      \
     $(SRCDIR)/DisplayWindow.cpp                                                    \
-    $(SRCDIR)/DisplayLoadProgress.cpp                                              \
     $(SRCDIR)/FrameBuffer.cpp                                                      \
     $(SRCDIR)/FrameBufferInfo.cpp                                                  \
     $(SRCDIR)/GBI.cpp                                                              \
@@ -42,13 +41,11 @@ MY_LOCAL_SRC_FILES :=                                                           
     $(SRCDIR)/N64.cpp                                                              \
     $(SRCDIR)/NoiseTexture.cpp                                                     \
     $(SRCDIR)/PaletteTexture.cpp                                                   \
-    $(SRCDIR)/Performance.cpp                                                      \
     $(SRCDIR)/PostProcessor.cpp                                                    \
     $(SRCDIR)/RDP.cpp                                                              \
     $(SRCDIR)/RSP.cpp                                                              \
     $(SRCDIR)/SoftwareRender.cpp                                                   \
     $(SRCDIR)/TexrectDrawer.cpp                                                    \
-    $(SRCDIR)/TextDrawer.cpp                                                       \
     $(SRCDIR)/TextureFilterHandler.cpp                                             \
     $(SRCDIR)/Textures.cpp                                                         \
     $(SRCDIR)/VI.cpp                                                               \

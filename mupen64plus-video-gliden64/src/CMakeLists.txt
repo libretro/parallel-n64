@@ -25,7 +25,6 @@ set(GLideN64_SOURCES
   Debugger.cpp
   DepthBuffer.cpp
   DisplayWindow.cpp
-  DisplayLoadProgress.cpp
   FrameBuffer.cpp
   FrameBufferInfo.cpp
   GBI.cpp
@@ -38,14 +37,12 @@ set(GLideN64_SOURCES
   N64.cpp
   NoiseTexture.cpp
   PaletteTexture.cpp
-  Performance.cpp
   PostProcessor.cpp
   RDP.cpp
   RSP.cpp
   RSP_LoadMatrix.cpp
   SoftwareRender.cpp
   TexrectDrawer.cpp
-  TextDrawer.cpp
   TextureFilterHandler.cpp
   Textures.cpp
   VI.cpp

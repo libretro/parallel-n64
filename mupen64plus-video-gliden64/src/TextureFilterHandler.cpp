@@ -10,7 +10,6 @@
 #include "FrameBuffer.h"
 #include "TextureFilterHandler.h"
 #include "DisplayWindow.h"
-#include "DisplayLoadProgress.h"
 #include "wst.h"
 
 static
@@ -113,7 +112,7 @@ void TextureFilterHandler::init()
 		pTexDumpPath, // path to folder with dumped textures
 		pTexPackPath, // path to texture packs folder
 		wRomName, // name of ROM. must be no longer than 256 characters
-		displayLoadProgress);
+		nullptr); // no progress display: the frontend owns the screen
 
 }
 

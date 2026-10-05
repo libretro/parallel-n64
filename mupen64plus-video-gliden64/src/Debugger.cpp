@@ -10,7 +10,6 @@
 #include "Combiner.h"
 #include "FrameBuffer.h"
 #include "DisplayWindow.h"
-#include "TextDrawer.h"
 #include "DebugDump.h"
 #include "Debugger.h"
 
@@ -657,7 +656,7 @@ void setTextColor(u32 _c)
 {
 	float color[4] = { _SHIFTR(_c, 24, 8) / 255.0f, _SHIFTR(_c, 16, 8) / 255.0f,
 		_SHIFTR(_c, 8, 8) / 255.0f, _SHIFTR(_c, 0, 8) / 255.0f };
-	g_textDrawer.setTextColor(color);
+	(void)color; /* GLideN64's text drawer is gone: the panel has no text */
 }
 
 #define COL_CATEGORY()	setTextColor(0xD288F4FF)
@@ -666,7 +665,7 @@ void setTextColor(u32 _c)
 #define COL_TEXT()		setTextColor(0xFFFFFFFF)
 #define COL_SEL(x)		setTextColor((x)?0x00FF00FF:0x800000FF)
 
-#define DRAW_TEXT() g_textDrawer.drawText(buf, ulx, uly)
+#define DRAW_TEXT() ((void)buf, (void)ulx, (void)uly)
 
 #define OUTPUT1(fmt,other) sprintf(buf, fmt, other); ulx = _ulx; DRAW_TEXT(); uly -= _yShift
 
@@ -677,10 +676,10 @@ void setTextColor(u32 _c)
 #define OUTPUT_COLOR(fmt, r, g, b, a) sprintf(buf, fmt, r, g, b, a); ulx = _ulx; DRAW_TEXT(); uly -= _yShift
 
 #define OUTPUT_(txt,cc) strncpy(buf, txt, sizeof(buf)); ulx = _ulx; COL_SEL(cc); DRAW_TEXT();\
-	g_textDrawer.getTextSize(txt, tW, tH); ulx += tW
+	tW = tH = 0.0f; ulx += tW
 
 #define _OUTPUT1(txt,cc) strncpy(buf, txt, sizeof(buf)); COL_SEL(cc); DRAW_TEXT();\
-	g_textDrawer.getTextSize(txt, tW, tH); ulx += tW
+	tW = tH = 0.0f; ulx += tW
 
 #define LINE_FEED() uly -= _yShift
 
@@ -1212,7 +1211,7 @@ void Debugger::_drawDebugInfo(FrameBuffer * _pBuffer)
 	const s32 areaWidth = winWidth * 3 / 8;
 
 	float tW, tH;
-	g_textDrawer.getTextSize("W_0'", tW, tH);
+	tW = tH = 0.0f;
 	const f32 yShift = tH * 1.6f;
 
 	const f32 scaleX = 1.0f / winWidth;
@@ -1272,7 +1271,6 @@ void Debugger::_drawDebugInfo(FrameBuffer * _pBuffer)
 
 	m_triangles.clear();
 	m_triSel = m_triangles.end();
-	g_textDrawer.setTextColor(config.font.colorf);
 	m_bCapture = false;
 }
 

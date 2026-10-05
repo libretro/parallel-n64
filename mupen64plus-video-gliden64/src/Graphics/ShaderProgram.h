@@ -25,10 +25,4 @@ namespace graphics {
 		virtual void setTextureSize(u32 _width, u32 _height) = 0;
 		virtual void setEnableAlphaTest(int _enable) = 0;
 	};
-
-	class TextDrawerShaderProgram : public ShaderProgram
-	{
-	public:
-		virtual void setTextColor(float * _color) = 0;
-	};
 }

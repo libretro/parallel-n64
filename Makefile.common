@@ -379,7 +379,6 @@ SOURCES_CXX   += \
     $(VIDEODIR_GLIDEN64)/src/DepthBuffer.cpp                                                      \
     $(VIDEODIR_GLIDEN64)/src/DisplayWindow.cpp                                                    \
     $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/mupen64plus/mupen64plus_DisplayWindow.cpp     \
-    $(VIDEODIR_GLIDEN64)/src/DisplayLoadProgress.cpp                                              \
     $(VIDEODIR_GLIDEN64)/src/FrameBuffer.cpp                                                      \
     $(VIDEODIR_GLIDEN64)/src/FrameBufferInfo.cpp                                                  \
     $(VIDEODIR_GLIDEN64)/src/GBI.cpp                                                              \
@@ -387,9 +386,7 @@ SOURCES_CXX   += \
     $(VIDEODIR_GLIDEN64)/src/GLideN64.cpp                                                         \
     $(VIDEODIR_GLIDEN64)/src/gSP.cpp                                                              \
     $(VIDEODIR_GLIDEN64)/src/N64.cpp                                                              \
-    $(VIDEODIR_GLIDEN64)/src/TextDrawer.cpp                                                       \
     $(VIDEODIR_GLIDEN64)/src/PaletteTexture.cpp                                                   \
-    $(VIDEODIR_GLIDEN64)/src/Performance.cpp                                                      \
     $(VIDEODIR_GLIDEN64)/src/PostProcessor.cpp                                                    \
     $(VIDEODIR_GLIDEN64)/src/RDP.cpp                                                              \
     $(VIDEODIR_GLIDEN64)/src/RSP.cpp                                                              \

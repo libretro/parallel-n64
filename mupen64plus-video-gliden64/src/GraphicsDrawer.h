@@ -115,12 +115,6 @@ public:
 
 	void blitOrCopyTexturedRect(const BlitOrCopyRectParams & _params);
 
-	void drawText(const char *_pText, float x, float y);
-
-	void drawOSD();
-
-	void showMessage(std::string _message, Milliseconds _interval);
-
 	void clearDepthBuffer();
 
 	void clearColorBuffer(float * _pColor);
@@ -185,15 +179,6 @@ private:
 	bool _canDraw() const;
 	void _drawThickLine(u32 _v0, u32 _v1, float _width, u32 _flag);
 
-	void _drawOSD(const char *_pText, float _x, float & _y);
-
-	struct OSDMessage
-	{
-		std::string text;
-		std::chrono::steady_clock::time_point expires;
-	};
-	typedef std::list<OSDMessage> OSDMessages;
-
 	DrawingState m_drawingState;
 	TexturedRectParams m_texrectParams;
 
@@ -214,5 +199,4 @@ private:
 	bool m_bFlatColors;
 	bool m_bBGMode;
 	TexrectDrawer m_texrectDrawer;
-	OSDMessages m_osdMessages;
 };

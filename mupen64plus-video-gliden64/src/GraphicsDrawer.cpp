@@ -7,13 +7,11 @@
 #include "DisplayWindow.h"
 #include "SoftwareRender.h"
 #include "GraphicsDrawer.h"
-#include "Performance.h"
 #include "TextureFilterHandler.h"
 #include "PostProcessor.h"
 #include "NoiseTexture.h"
 #include "ZlutTexture.h"
 #include "PaletteTexture.h"
-#include "TextDrawer.h"
 #include "FrameBuffer.h"
 #include "DepthBuffer.h"
 #include "FrameBufferInfo.h"
@@ -1409,130 +1407,6 @@ void GraphicsDrawer::correctTexturedRectParams(TexturedRectParams & _params)
 	m_texrectParams = _params;
 }
 
-void GraphicsDrawer::drawText(const char *_pText, float x, float y)
-{
-	m_drawingState = DrawingState::Non;
-	g_textDrawer.drawText(_pText, x, y);
-}
-
-void GraphicsDrawer::_drawOSD(const char *_pText, float _x, float & _y)
-{
-	float tW, tH;
-	g_textDrawer.getTextSize(_pText, tW, tH);
-
-	const bool top = (config.posTop & config.onScreenDisplay.pos) != 0;
-	const bool right = (config.onScreenDisplay.pos == Config::posTopRight) || (config.onScreenDisplay.pos == Config::posBottomRight);
-	const bool center = (config.onScreenDisplay.pos == Config::posTopCenter) || (config.onScreenDisplay.pos == Config::posBottomCenter);
-
-	if (center)
-		_x = -tW * 0.5f;
-	else if (right)
-		_x -= tW;
-
-	if (top)
-		_y -= tH;
-
-	drawText(_pText, _x, _y);
-
-	if (top)
-		_y -= tH * 0.5f;
-	else
-		_y += tH * 1.5f;
-}
-
-void GraphicsDrawer::drawOSD()
-{
-	if ((config.onScreenDisplay.fps |
-		config.onScreenDisplay.vis |
-		config.onScreenDisplay.percent |
-		config.onScreenDisplay.internalResolution |
-		config.onScreenDisplay.renderingResolution
-		) == 0 &&
-		m_osdMessages.empty())
-		return;
-
-	gfxContext.bindFramebuffer(bufferTarget::DRAW_FRAMEBUFFER, ObjectHandle::defaultFramebuffer);
-
-	DisplayWindow & wnd = DisplayWindow::get();
-	const s32 X = (wnd.getScreenWidth() - wnd.getWidth()) / 2;
-	const s32 Y = wnd.getHeightOffset();
-	const s32 W = wnd.getWidth();
-	const s32 H = wnd.getHeight();
-
-	gfxContext.setViewport(X, Y, W, H);
-	gfxContext.setScissor(X, Y, W, H);
-
-	gSP.changed |= CHANGED_VIEWPORT;
-	gDP.changed |= CHANGED_SCISSOR;
-
-
-	const bool bottom = (config.posBottom & config.onScreenDisplay.pos) != 0;
-	const bool left = (config.onScreenDisplay.pos == Config::posTopLeft) || (config.onScreenDisplay.pos == Config::posBottomLeft);
-
-	const float hp = left ? -1.0f : 1.0f;
-	const float vp = bottom ? -1.0f : 1.0f;
-
-	float hShift, vShift;
-	g_textDrawer.getTextSize("0", hShift, vShift);
-	hShift *= 0.5f;
-	vShift *= 0.5f;
-	const float x = hp - hShift * hp;
-	float y = vp - vShift * vp;
-	char buf[40];
-
-	if (config.onScreenDisplay.fps) {
-		sprintf(buf, "%d FPS", int(perf.getFps()));
-		_drawOSD(buf, x, y);
-	}
-
-	if (config.onScreenDisplay.vis) {
-		sprintf(buf, "%d VI/S", int(perf.getVIs()));
-		_drawOSD(buf, x, y);
-	}
-
-	if (config.onScreenDisplay.percent) {
-		sprintf(buf, "%d %%", int(perf.getPercent()));
-		_drawOSD(buf, x, y);
-	}
-
-	if (config.onScreenDisplay.renderingResolution) {
-		FrameBuffer * pBuffer = frameBufferList().getCurrent();
-		if (pBuffer != nullptr && VI.width != 0) {
-			const float aspect = float(VI.height) / float(VI.width);
-			const u32 height = u32(pBuffer->m_pTexture->width * aspect);
-			sprintf(buf, "Rendering Resolution %ux%u", pBuffer->m_pTexture->width, height);
-			_drawOSD(buf, x, y);
-		}
-	}
-
-	if (config.onScreenDisplay.internalResolution) {
-		FrameBuffer * pBuffer = frameBufferList().getCurrent();
-		if (pBuffer != nullptr && VI.width != 0) {
-			const float aspect = float(VI.height) / float(VI.width);
-			const u32 height = u32(pBuffer->m_width * aspect);
-			sprintf(buf, "Internal Resolution %ux%u", pBuffer->m_width, height);
-			_drawOSD(buf, x, y);
-		}
-	}
-
-	if (!m_osdMessages.empty()) {
-		// Expire messages here, on the drawing thread, instead of from a
-		// detached thread per message erasing from the list unlocked.
-		const auto now = std::chrono::steady_clock::now();
-		m_osdMessages.remove_if([now](const OSDMessage & _m) { return now >= _m.expires; });
-		for (const OSDMessage & m : m_osdMessages)
-			_drawOSD(m.text.c_str(), x, y);
-	}
-}
-
-void GraphicsDrawer::showMessage(std::string _message, Milliseconds _interval)
-{
-	OSDMessage msg;
-	msg.text = std::move(_message);
-	msg.expires = std::chrono::steady_clock::now() + _interval;
-	m_osdMessages.push_back(std::move(msg));
-}
-
 void GraphicsDrawer::clearDepthBuffer()
 {
 	if (!_canDraw())
@@ -1766,7 +1640,6 @@ void GraphicsDrawer::_initData()
 	_setSpecialTexrect();
 
 	textureCache().init();
-	g_textDrawer.init();
 	DepthBuffer_Init();
 	FrameBuffer_Init();
 	Combiner_Init();
@@ -1775,7 +1648,6 @@ void GraphicsDrawer::_initData()
 	g_zlutTexture.init();
 	g_noiseTexture.init();
 	g_paletteTexture.init();
-	perf.reset();
 	FBInfo::fbInfo.reset();
 	m_texrectDrawer.init();
 	m_drawingState = DrawingState::Non;
@@ -1804,6 +1676,5 @@ void GraphicsDrawer::_destroyData()
 	Combiner_Destroy();
 	FrameBuffer_Destroy();
 	DepthBuffer_Destroy();
-	g_textDrawer.destroy();
 	textureCache().destroy();
 }

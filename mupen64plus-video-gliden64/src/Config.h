@@ -192,39 +192,10 @@ struct Config
 		wchar_t txDumpPath[PLUGIN_PATH_SIZE]; // Path to store texture dumps
 	} textureFilter;
 
-	struct
-	{
-		std::string name;
-		u32 size;
-		u8 color[4];
-		float colorf[4];
-	} font;
-
 	struct {
 		u32 force;
 		f32 level;
 	} gammaCorrection;
-
-	enum CountersPosition {
-		posTopLeft = 1,
-		posTopCenter = 2,
-		posTopRight = 4,
-		posTop = posTopLeft | posTopCenter | posTopRight,
-		posBottomLeft = 8,
-		posBottomCenter = 16,
-		posBottomRight = 32,
-		posBottom = posBottomLeft | posBottomCenter | posBottomRight
-	};
-
-	struct {
-		u32 vis;
-		u32 fps;
-		u32 percent;
-		u32 internalResolution;
-		u32 renderingResolution;
-		u32 statistics;
-		u32 pos;
-	} onScreenDisplay;
 
 	struct {
 		u32 dumpMode;

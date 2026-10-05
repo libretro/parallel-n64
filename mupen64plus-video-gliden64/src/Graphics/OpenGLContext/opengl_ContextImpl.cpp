@@ -458,11 +458,6 @@ graphics::ShaderProgram * ContextImpl::createFXAAShader()
 	return m_specialShadersFactory->createFXAAShader();
 }
 
-graphics::TextDrawerShaderProgram * ContextImpl::createTextDrawerShader()
-{
-	return m_specialShadersFactory->createTextDrawerShader();
-}
-
 void ContextImpl::resetShaderProgram()
 {
 	m_cachedFunctions->getCachedUseProgram()->useProgram(graphics::ObjectHandle::null);

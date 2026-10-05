@@ -400,26 +400,6 @@ namespace glsl {
 	};
 
 
-	/*---------------TextDrawerShaderPart-------------*/
-
-	class TextDraw : public ShaderPart
-	{
-	public:
-		TextDraw(const opengl::GLInfo & _glinfo)
-		{
-			m_part =
-				"IN mediump vec2 vTexCoord0;	\n"
-				"uniform sampler2D uTex0;			\n"
-				"uniform lowp vec4 uColor;		\n"
-				"OUT lowp vec4 fragColor;			\n"
-				"															\n"
-				"void main()																														\n"
-				"{																																			\n"
-				"  fragColor = pow(texture2D(uTex0, vTexCoord0).r, 1.0 / 1.8) * uColor;	\n"
-			;
-		}
-	};
-
 	/*---------------SpecialShader-------------*/
 
 	template<class VertexBody, class FragmentBody, class Base = graphics::ShaderProgram>
@@ -682,38 +662,6 @@ namespace glsl {
 		}
 	};
 
-	/*---------------TexrectDrawerShader-------------*/
-
-	typedef SpecialShader<VertexShaderTexturedRect, TextDraw, graphics::TextDrawerShaderProgram> TextDrawerShaderBase;
-
-	class TextDrawerShader : public TextDrawerShaderBase
-	{
-	public:
-		TextDrawerShader(const opengl::GLInfo & _glinfo,
-			opengl::CachedUseProgram * _useProgram,
-			const ShaderPart * _vertexHeader,
-			const ShaderPart * _fragmentHeader,
-			const ShaderPart * _fragmentEnd)
-			: TextDrawerShaderBase(_glinfo, _useProgram, _vertexHeader, _fragmentHeader, _fragmentEnd)
-		{
-			m_useProgram->useProgram(m_program);
-			const int texLoc = glGetUniformLocation(GLuint(m_program), "uTex0");
-			glUniform1i(texLoc, 0);
-			m_colorLoc = glGetUniformLocation(GLuint(m_program), "uColor");
-			glUniform4fv(m_colorLoc, 1, config.font.colorf);
-			m_useProgram->useProgram(graphics::ObjectHandle::null);
-		}
-
-		void setTextColor(float * _color) override {
-			m_useProgram->useProgram(m_program);
-			glUniform4fv(m_colorLoc, 1, _color);
-			m_useProgram->useProgram(graphics::ObjectHandle::null);
-		}
-
-	private:
-		int m_colorLoc;
-	};
-
 	/*---------------SpecialShadersFactory-------------*/
 
 	SpecialShadersFactory::SpecialShadersFactory(const opengl::GLInfo & _glinfo,
@@ -760,11 +708,6 @@ namespace glsl {
 	graphics::ShaderProgram * SpecialShadersFactory::createFXAAShader() const
 	{
 		return new FXAAShader(m_glinfo, m_useProgram, m_vertexHeader, m_fragmentHeader, m_fragmentEnd);
-	}
-
-	graphics::TextDrawerShaderProgram * SpecialShadersFactory::createTextDrawerShader() const
-	{
-		return new TextDrawerShader(m_glinfo, m_useProgram, m_vertexHeader, m_fragmentHeader, m_fragmentEnd);
 	}
 
 }

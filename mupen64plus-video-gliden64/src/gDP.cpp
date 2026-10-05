@@ -19,7 +19,6 @@
 #include "VI.h"
 #include "Config.h"
 #include "Combiner.h"
-#include "Performance.h"
 #include "DisplayWindow.h"
 #include <Graphics/Context.h>
 

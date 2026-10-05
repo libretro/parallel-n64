@@ -1267,6 +1267,11 @@ check-angrylion: $(ANGRYLION_CHECKS)
 
 .PHONY: clean clean-tools tools check-angrylion
 -include $(OBJECTS:.o=.d)
+
+# A header named by an existing .d file but since deleted is not an error:
+# the objects that included it just rebuild.
+%.h %.hpp:
+	@:
 endif
 
 print-%:

@@ -1,8 +1,6 @@
 #include <assert.h>
 #include <memory.h>
 #include <algorithm>
-#include <thread>         // std::this_thread::sleep_for
-#include <chrono>         // std::chrono::seconds
 #include "Platform.h"
 #include "Textures.h"
 #include "GBI.h"
@@ -17,7 +15,6 @@
 #include "Keys.h"
 #include "GLideNHQ/Ext_TxFilter.h"
 #include "TextureFilterHandler.h"
-#include "DisplayLoadProgress.h"
 #include "Graphics/Context.h"
 #include "Graphics/Parameters.h"
 #include "DisplayWindow.h"
@@ -1559,15 +1556,8 @@ void TextureCache::update(u32 _t)
 		/* Turn on texture dump */
 		else if (isKeyPressed(G64_VK_D, 0x0001)) {
 			m_toggleDumpTex = !m_toggleDumpTex;
-			if (m_toggleDumpTex) {
-				displayLoadProgress(L"Texture dump - ON\n");
+			if (m_toggleDumpTex)
 				_clear();
-				std::this_thread::sleep_for(std::chrono::seconds(1));
-			}
-			else {
-				displayLoadProgress(L"Texture dump - OFF\n");
-				std::this_thread::sleep_for(std::chrono::seconds(1));
-			}
 		}
 	}
 

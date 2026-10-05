@@ -121,31 +121,8 @@ void Config::resetToDefaults()
 	api().GetUserCachePath(textureFilter.txDumpPath);
 	gln_wcscat(textureFilter.txDumpPath, wst("/texture_dump"));
 
-#ifdef OS_WINDOWS
-	font.name.assign("arial.ttf");
-#elif defined (OS_ANDROID)
-	font.name.assign("DroidSans.ttf");
-#elif defined (PANDORA)
-	font.name.assign("LiberationMono-Regular.ttf");
-#else
-	font.name = "FreeSans.ttf";
-#endif
-	font.size = 18;
-	font.color[0] = 0xB5;
-	font.color[1] = 0xE6;
-	font.color[2] = 0x1D;
-	font.color[3] = 0xFF;
-	for (int i = 0; i < 4; ++i)
-		font.colorf[i] = font.color[i] / 255.0f;
-
 	gammaCorrection.force = 0;
 	gammaCorrection.level = 2.0f;
-
-	onScreenDisplay.vis = 0;
-	onScreenDisplay.fps = 0;
-	onScreenDisplay.percent = 0;
-	onScreenDisplay.statistics = 0;
-	onScreenDisplay.pos = posBottomLeft;
 
 	debug.dumpMode = 0;
 }
