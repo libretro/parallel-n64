@@ -21,6 +21,7 @@
  */
 
 #include "rdp_device.hpp"
+#include <stdint.h>
 #include "rdp_common.hpp"
 #include <chrono>
 
@@ -41,16 +42,28 @@ using namespace Vulkan;
 
 namespace RDP
 {
+namespace
+{
+struct CoherencyNode : mpsc_stack_node_t
+{
+	CoherencyOperation op;
+};
+
+struct TimelineWait
+{
+	CommandProcessor *self;
+	size_t index;
+};
+}
+
 CommandProcessor::CommandProcessor(Vulkan::Device &device_, void *rdram_ptr,
                                    size_t rdram_offset_, size_t rdram_size_, size_t hidden_rdram_size,
                                    CommandProcessorFlags flags_)
-	: device(device_), rdram_offset(rdram_offset_), rdram_size(rdram_size_), flags(flags_), renderer(*this),
-#ifdef PARALLEL_RDP_SHADER_DIR
-	  timeline_worker(Granite::Global::create_thread_context(), FenceExecutor{&device, &thread_timeline_value})
-#else
-	  timeline_worker(FenceExecutor{&device, &thread_timeline_value})
-#endif
+	: device(device_), rdram_offset(rdram_offset_), rdram_size(rdram_size_), flags(flags_), renderer(*this)
 {
+	// NULL only if the allocation failed; init_renderer reports that.
+	timeline_worker.worker = rdp_worker_new(nullptr, timeline_work, this);
+
 	BufferCreateInfo info = {};
 	info.size = rdram_size;
 	info.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
@@ -176,7 +189,7 @@ void CommandProcessor::begin_frame_context()
 
 void CommandProcessor::init_renderer()
 {
-	if (!rdram)
+	if (!rdram || !timeline_worker.worker)
 	{
 		is_supported = false;
 		return;
@@ -966,7 +979,7 @@ void CommandProcessor::enqueue_command_direct(unsigned, const uint32_t *words)
 		uint64_t val = words[1] | (uint64_t(words[2]) << 32);
 		CoherencyOperation signal_op;
 		signal_op.timeline_value = val;
-		timeline_worker.push(std::move(signal_op));
+		enqueue_coherency_operation(std::move(signal_op));
 		break;
 	}
 
@@ -1106,9 +1119,8 @@ void CommandProcessor::wait_for_timeline(uint64_t index)
 	Vulkan::QueryPoolHandle start_ts, end_ts;
 	if (measure_stall_time)
 		start_ts = device.write_calibrated_timestamp();
-	timeline_worker.wait([this, index]() -> bool {
-		return thread_timeline_value >= index;
-	});
+	TimelineWait ctx = { this, size_t(index) };
+	rdp_worker_wait(timeline_worker.worker, timeline_reached, &ctx);
 	if (measure_stall_time)
 	{
 		end_ts = device.write_calibrated_timestamp();
@@ -1218,15 +1230,22 @@ void CommandProcessor::scanout_sync(std::vector<RGBA> &colors, unsigned &width, 
 	device.unmap_host_buffer(*scanout.buffer, Vulkan::MEMORY_ACCESS_READ_BIT);
 }
 
-void CommandProcessor::FenceExecutor::notify_work_locked(const CoherencyOperation &work)
+void CommandProcessor::timeline_work(void *user, mpsc_stack_node_t *item)
 {
-	if (work.timeline_value)
-		*value = work.timeline_value;
+	auto *self = static_cast<CommandProcessor *>(user);
+	auto *node = static_cast<CoherencyNode *>(item);
+	self->perform_coherency(node->op);
+	if (node->op.timeline_value)
+		retro_atomic_store_release_size(&self->thread_timeline_value, size_t(node->op.timeline_value));
+	delete node;
 }
 
-bool CommandProcessor::FenceExecutor::is_sentinel(const CoherencyOperation &work) const
+bool CommandProcessor::timeline_reached(void *ctx)
 {
-	return !work.fence && !work.timeline_value;
+	auto *wait = static_cast<TimelineWait *>(ctx);
+	size_t done = retro_atomic_load_acquire_size(&wait->self->thread_timeline_value);
+	// done >= index, modulo wrap
+	return size_t(done - wait->index) <= (SIZE_MAX >> 1);
 }
 
 static void masked_memcpy(uint8_t * __restrict dst,
@@ -1265,7 +1284,7 @@ static void masked_memcpy(uint8_t * __restrict dst,
 #endif
 }
 
-void CommandProcessor::FenceExecutor::perform_work(CoherencyOperation &work)
+void CommandProcessor::perform_coherency(CoherencyOperation &work)
 {
 	if (work.fence)
 		work.fence->wait();
@@ -1277,8 +1296,8 @@ void CommandProcessor::FenceExecutor::perform_work(CoherencyOperation &work)
 	{
 		for (auto &copy : work.copies)
 		{
-			auto *mapped_data = static_cast<uint8_t *>(device->map_host_buffer(*work.src, MEMORY_ACCESS_READ_BIT, copy.src_offset, copy.size));
-			auto *mapped_mask = static_cast<uint8_t *>(device->map_host_buffer(*work.src, MEMORY_ACCESS_READ_BIT, copy.mask_offset, copy.size));
+			auto *mapped_data = static_cast<uint8_t *>(device.map_host_buffer(*work.src, MEMORY_ACCESS_READ_BIT, copy.src_offset, copy.size));
+			auto *mapped_mask = static_cast<uint8_t *>(device.map_host_buffer(*work.src, MEMORY_ACCESS_READ_BIT, copy.mask_offset, copy.size));
 			masked_memcpy(work.dst + copy.dst_offset, mapped_data, mapped_mask, copy.size);
 			for (unsigned i = 0; i < copy.counters; i++)
 			{
@@ -1296,6 +1315,8 @@ void CommandProcessor::FenceExecutor::perform_work(CoherencyOperation &work)
 
 void CommandProcessor::enqueue_coherency_operation(CoherencyOperation &&op)
 {
-	timeline_worker.push(std::move(op));
+	auto *node = new CoherencyNode;
+	node->op = std::move(op);
+	rdp_worker_push(timeline_worker.worker, node);
 }
 }

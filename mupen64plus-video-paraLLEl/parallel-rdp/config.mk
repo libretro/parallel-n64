@@ -35,7 +35,8 @@ PARALLEL_RDP_SOURCES_CXX := \
         $(PARALLEL_RDP_IMPLEMENTATION)/util/thread_name.cpp
 
 PARALLEL_RDP_SOURCES_C := \
-        $(PARALLEL_RDP_IMPLEMENTATION)/volk/volk.c
+        $(PARALLEL_RDP_IMPLEMENTATION)/volk/volk.c \
+        $(PARALLEL_RDP_IMPLEMENTATION)/parallel-rdp/rdp_worker.c
 
 PARALLEL_RDP_INCLUDE_DIRS := \
         -I$(PARALLEL_RDP_IMPLEMENTATION)/parallel-rdp \

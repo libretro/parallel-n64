@@ -25,7 +25,7 @@
 #include "rdp_data_structures.hpp"
 #include "device.hpp"
 #include "rdp_common.hpp"
-#include "worker_thread.hpp"
+#include "rdp_worker.h"
 #include <unordered_set>
 
 namespace RDP
@@ -394,15 +394,14 @@ private:
 		unsigned max_height = Limits::MaxHeight;
 	} caps;
 
-	struct PipelineExecutor
+	// Background compute pipeline compiles (rdp_worker.c).
+	struct PipelineWorker
 	{
-		Vulkan::Device *device;
-		bool is_sentinel(const Vulkan::DeferredPipelineCompile &compile) const;
-		void perform_work(const Vulkan::DeferredPipelineCompile &compile) const;
-		void notify_work_locked(const Vulkan::DeferredPipelineCompile &compile) const;
+		rdp_worker_t *worker = nullptr;
+		~PipelineWorker() { rdp_worker_free(worker); }
 	};
-
-	std::unique_ptr<WorkerThread<Vulkan::DeferredPipelineCompile, PipelineExecutor>> pipeline_worker;
+	std::unique_ptr<PipelineWorker> pipeline_worker;
+	static void pipeline_work(void *user, mpsc_stack_node_t *item);
 
 	void resolve_coherency_host_to_gpu(Vulkan::CommandBuffer &cmd);
 	void resolve_coherency_gpu_to_host(CoherencyOperation &op, Vulkan::CommandBuffer &cmd);

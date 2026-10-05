@@ -30,7 +30,8 @@
 #include "rdp_renderer.hpp"
 #include "rdp_common.hpp"
 #include "command_ring.hpp"
-#include "worker_thread.hpp"
+#include "rdp_worker.h"
+#include <retro_atomic.h>
 #include "rdp_dump_write.hpp"
 
 #ifndef GRANITE_VULKAN_MT
@@ -250,22 +251,21 @@ private:
 	} texture_image = {};
 
 	uint64_t timeline_value = 0;
-	uint64_t thread_timeline_value = 0;
+	// Last timeline value the timeline worker has passed. Free-running
+	// size_t, compared by difference, so it may wrap on 32-bit hosts.
+	retro_atomic_size_t thread_timeline_value{0};
 
-	struct FenceExecutor
+	// The timeline worker (rdp_worker.c): waits on fences, copies GPU
+	// writes back to RDRAM and publishes timeline values. Owned so that
+	// it is freed here, at the same point the member was destroyed.
+	struct TimelineWorker
 	{
-		explicit inline FenceExecutor(Vulkan::Device *device_, uint64_t *ptr)
-			: device(device_), value(ptr)
-		{
-		}
-
-		Vulkan::Device *device;
-		uint64_t *value;
-		bool is_sentinel(const CoherencyOperation &work) const;
-		void perform_work(CoherencyOperation &work);
-		void notify_work_locked(const CoherencyOperation &work);
-	};
-	WorkerThread<CoherencyOperation, FenceExecutor> timeline_worker;
+		rdp_worker_t *worker = nullptr;
+		~TimelineWorker() { rdp_worker_free(worker); }
+	} timeline_worker;
+	static void timeline_work(void *user, mpsc_stack_node_t *item);
+	static bool timeline_reached(void *ctx);
+	void perform_coherency(CoherencyOperation &work);
 
 	uint8_t *host_rdram = nullptr;
 	bool measure_stall_time = false;

@@ -36,6 +36,14 @@
 
 namespace RDP
 {
+namespace
+{
+struct PipelineNode : mpsc_stack_node_t
+{
+	Vulkan::DeferredPipelineCompile compile;
+};
+}
+
 Renderer::Renderer(CommandProcessor &processor_)
 	: processor(processor_)
 {
@@ -64,12 +72,10 @@ bool Renderer::init_renderer(const RendererOptions &options)
 	caps.max_tiles_y = options.upscaling_factor * ImplementationConstants::MaxTilesY;
 	caps.max_num_tile_instances = options.upscaling_factor * options.upscaling_factor * Limits::MaxTileInstances;
 
-#ifdef PARALLEL_RDP_SHADER_DIR
-	pipeline_worker.reset(new WorkerThread<Vulkan::DeferredPipelineCompile, PipelineExecutor>(
-			Granite::Global::create_thread_context(), { device }));
-#else
-	pipeline_worker.reset(new WorkerThread<Vulkan::DeferredPipelineCompile, PipelineExecutor>({ device }));
-#endif
+	pipeline_worker.reset(new PipelineWorker);
+	pipeline_worker->worker = rdp_worker_new(nullptr, pipeline_work, device);
+	if (!pipeline_worker->worker)
+		return false;
 
 #ifdef PARALLEL_RDP_SHADER_DIR
 	if (!GRANITE_FILESYSTEM()->get_backend("rdp"))
@@ -1799,7 +1805,9 @@ void Renderer::submit_rasterization(Vulkan::CommandBuffer &cmd, Vulkan::Buffer &
 			if (pending_async_pipelines.count(compile.hash) == 0)
 			{
 				pending_async_pipelines.insert(compile.hash);
-				pipeline_worker->push(std::move(compile));
+				auto *node = new PipelineNode;
+				node->compile = std::move(compile);
+				rdp_worker_push(pipeline_worker->worker, node);
 			}
 			cmd.set_specialization_constant_mask(7);
 			cmd.set_specialization_constant(2, scale_log2_bit);
@@ -3558,21 +3566,15 @@ bool Renderer::supports_subgroup_size_control(uint32_t minimum_size, uint32_t ma
 	return true;
 }
 
-void Renderer::PipelineExecutor::perform_work(const Vulkan::DeferredPipelineCompile &compile) const
+void Renderer::pipeline_work(void *user, mpsc_stack_node_t *item)
 {
+	auto *device = static_cast<Vulkan::Device *>(user);
+	auto *node = static_cast<PipelineNode *>(item);
 	auto start_ts = device->write_calibrated_timestamp();
-	Vulkan::CommandBuffer::build_compute_pipeline(device, compile, Vulkan::CommandBuffer::CompileMode::AsyncThread);
+	Vulkan::CommandBuffer::build_compute_pipeline(device, node->compile, Vulkan::CommandBuffer::CompileMode::AsyncThread);
 	auto end_ts = device->write_calibrated_timestamp();
 	device->register_time_interval("RDP Pipeline", std::move(start_ts), std::move(end_ts),
-	                               "pipeline-compilation", std::to_string(compile.hash));
-}
-
-bool Renderer::PipelineExecutor::is_sentinel(const Vulkan::DeferredPipelineCompile &compile) const
-{
-	return compile.hash == 0;
-}
-
-void Renderer::PipelineExecutor::notify_work_locked(const Vulkan::DeferredPipelineCompile &) const
-{
+	                               "pipeline-compilation", std::to_string(node->compile.hash));
+	delete node;
 }
 }
