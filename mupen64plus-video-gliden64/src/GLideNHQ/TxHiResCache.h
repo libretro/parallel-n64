@@ -42,7 +42,6 @@ private:
   int _maxheight;
   int _maxbpp;
   boolean _cacheDumped;
-  boolean _abortLoad;
   TxImage *_txImage;
   TxQuantize *_txQuantize;
   TxReSample *_txReSample;

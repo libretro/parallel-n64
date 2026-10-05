@@ -67,7 +67,6 @@ TxHiResCache::TxHiResCache(int maxwidth,
   _maxwidth  = maxwidth;
   _maxheight = maxheight;
   _maxbpp    = maxbpp;
-  _abortLoad = 0;
   _cacheDumped = 0;
 
   if (texPackPath)
@@ -93,7 +92,7 @@ TxHiResCache::TxHiResCache(int maxwidth,
 
 void TxHiResCache::dump()
 {
-	if ((_options & DUMP_HIRESTEXCACHE) && !_cacheDumped && !_abortLoad && !empty()) {
+	if ((_options & DUMP_HIRESTEXCACHE) && !_cacheDumped && !empty()) {
 	  /* dump cache to disk */
 	  _cacheDumped = TxCache::save(_cachePath.c_str(), _getFileName().c_str(), _getConfig());
 	}
@@ -192,13 +191,6 @@ TxHiResCache::loadHiResTextures(const wchar_t * dir_path, boolean replace)
   tx_wstring texturefilename;
 
   do {
-
-	if (KBHIT(0x1B)) {
-	  _abortLoad = 1;
-	  if (_callback) (*_callback)(wst("Aborted loading hiresolution texture!\n"));
-	  INFO(80, wst("Error: aborted loading hiresolution texture!\n"));
-	}
-	if (_abortLoad) break;
 
 	foundfilename = osal_search_dir_read_next(dir);
 	// The array is empty,  break the current operation
