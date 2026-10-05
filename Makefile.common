@@ -614,6 +614,7 @@ CXXFLAGS    += -DHAVE_THR_AL
 ### Angrylion's renderer ###
 SOURCES_C   += $(VIDEODIR_ANGRYLION)/parallel_al.c \
 				   $(LIBRETRO_COMM_DIR)/rthreads/rthreads.c \
+				   $(LIBRETRO_COMM_DIR)/rthreads/retro_eventcount.c \
 				   $(VIDEODIR_ANGRYLION)/interface.c \
 				   $(VIDEODIR_ANGRYLION)/n64video.c
 HAVE_RDP_EMIT := 1

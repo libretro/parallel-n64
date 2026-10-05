@@ -3,19 +3,20 @@
  * One thread per worker, worker 0 being the calling thread. Every
  * parallel_run() is a generation: the caller publishes the task, bumps
  * the generation counter, runs its own lane and waits for the other
- * workers to report in. Workers park on a condition variable between
+ * workers to report in. Workers park on one eventcount between
  * generations and the caller parks on another while the workers finish,
  * so a pool that is not rendering costs nothing: every thread the
  * renderer is not using is a thread the emulator, the frontend or an SMT
  * sibling gets back.
  *
+ * No lock anywhere. The generation and the completion counter are the
+ * predicates; the eventcounts only park and wake. A notify with nobody
+ * parked is one atomic RMW and one load, so the hot path (workers still
+ * awake from the last generation) never takes a lock or a syscall.
+ *
  * The two counters the threads hammer live on their own cache lines:
  * workers poll the generation while the completion counter is being
- * decremented, and neither should invalidate the other. The generation
- * bump is done under the work lock, which is what makes the "broadcast
- * only if someone is parked" test safe: a worker registers as a sleeper
- * and re-checks the generation under the same lock, so the caller either
- * sees the sleeper or the sleeper sees the bump.
+ * decremented, and neither should invalidate the other.
  */
 
 #include "parallel_al.h"
@@ -25,6 +26,7 @@
 
 #include <retro_atomic.h>
 #include <rthreads/rthreads.h>
+#include <rthreads/retro_eventcount.h>
 #include <features/features_cpu.h>
 
 #define PARALLEL_LINE_PAD 64
@@ -35,17 +37,17 @@
 struct parallel_pool
 {
     void (*task)(uint32_t);
-    slock_t *work_lock;
-    scond_t *work_cond;
-    slock_t *done_lock;
-    scond_t *done_cond;
+    /* workers park here between generations */
+    retro_eventcount_t work_ec;
+    /* the caller parks here until the workers finish */
+    retro_eventcount_t done_ec;
+    int ec_live;
     sthread_t *threads[PARALLEL_MAX_WORKERS];
     uint32_t worker_ids[PARALLEL_MAX_WORKERS];
     /* number of workers, worker 0 included; 0 while no pool is live */
     uint32_t num_workers;
-    /* workers parked on work_cond, kept under work_lock */
-    uint32_t sleepers;
-    /* cleared under work_lock before the final generation bump */
+    /* cleared before the final generation bump; the release store of
+     * the generation publishes it to the workers */
     int accept_work;
     char pad0[PARALLEL_LINE_PAD];
     /* bumped once per parallel_run() and once at shutdown */
@@ -63,19 +65,22 @@ static struct parallel_pool pool;
 static int parallel_await_generation(struct parallel_pool *p, int seen)
 {
     int gen;
+    int key;
 
-    slock_lock(p->work_lock);
-    p->sleepers++;
     for (;;)
     {
         gen = retro_atomic_load_acquire_int(&p->generation);
         if (gen != seen)
-            break;
-        scond_wait(p->work_cond, p->work_lock);
+            return gen;
+        key = retro_eventcount_prepare_wait(&p->work_ec);
+        gen = retro_atomic_load_acquire_int(&p->generation);
+        if (gen != seen)
+        {
+            retro_eventcount_cancel_wait(&p->work_ec);
+            return gen;
+        }
+        retro_eventcount_commit_wait(&p->work_ec, key);
     }
-    p->sleepers--;
-    slock_unlock(p->work_lock);
-    return gen;
 }
 
 static void parallel_worker(void *data)
@@ -92,44 +97,38 @@ static void parallel_worker(void *data)
 
         p->task(worker_id);
 
-        /* The empty lock/unlock pairs with the caller's check-then-wait
-         * under done_lock, so a signal cannot slip between the two. */
+        /* the last worker out wakes the caller */
         if (retro_atomic_fetch_sub_int(&p->remaining, 1) == 1)
-        {
-            slock_lock(p->done_lock);
-            slock_unlock(p->done_lock);
-            scond_signal(p->done_cond);
-        }
+            retro_eventcount_notify(&p->done_ec);
     }
 }
 
 static void parallel_wait_completion(struct parallel_pool *p)
 {
-    if (retro_atomic_load_acquire_int(&p->remaining) == 0)
-        return;
+    int key;
 
-    slock_lock(p->done_lock);
-    while (retro_atomic_load_acquire_int(&p->remaining) != 0)
-        scond_wait(p->done_cond, p->done_lock);
-    slock_unlock(p->done_lock);
+    for (;;)
+    {
+        if (retro_atomic_load_acquire_int(&p->remaining) == 0)
+            return;
+        key = retro_eventcount_prepare_wait(&p->done_ec);
+        if (retro_atomic_load_acquire_int(&p->remaining) == 0)
+        {
+            retro_eventcount_cancel_wait(&p->done_ec);
+            return;
+        }
+        retro_eventcount_commit_wait(&p->done_ec, key);
+    }
 }
 
-/* Publish the next generation. A worker still on its way to park re-checks
- * the counter under the lock, so only registered sleepers need the
- * broadcast. */
+/* Publish the next generation. Only the caller writes the generation, so
+ * a plain load and a release store are enough; the notify costs nothing
+ * extra while every worker is still awake. */
 static void parallel_bump_generation(struct parallel_pool *p)
 {
-    int gen;
-    uint32_t sleepers;
-
-    slock_lock(p->work_lock);
-    gen = retro_atomic_load_acquire_int(&p->generation);
+    int gen = retro_atomic_load_acquire_int(&p->generation);
     retro_atomic_store_release_int(&p->generation, gen + 1);
-    sleepers = p->sleepers;
-    slock_unlock(p->work_lock);
-
-    if (sleepers)
-        scond_broadcast(p->work_cond);
+    retro_eventcount_notify(&p->work_ec);
 }
 
 void parallel_alinit(uint32_t num)
@@ -175,11 +174,9 @@ void parallel_alinit(uint32_t num)
     if (num == 1)
         return;
 
-    p->work_lock = slock_new();
-    p->work_cond = scond_new();
-    p->done_lock = slock_new();
-    p->done_cond = scond_new();
-    if (!p->work_lock || !p->work_cond || !p->done_lock || !p->done_cond)
+    p->ec_live = 1;
+    if (  !retro_eventcount_init(&p->work_ec)
+       || !retro_eventcount_init(&p->done_ec))
     {
         parallel_close();
         p->num_workers = 1;
@@ -235,23 +232,19 @@ void parallel_close(void)
 
     if (p->num_workers > 1)
     {
-        slock_lock(p->work_lock);
         p->accept_work = 0;
-        slock_unlock(p->work_lock);
         parallel_bump_generation(p);
 
         for (i = 1; i < p->num_workers; i++)
             sthread_join(p->threads[i]);
     }
 
-    if (p->work_cond)
-        scond_free(p->work_cond);
-    if (p->work_lock)
-        slock_free(p->work_lock);
-    if (p->done_cond)
-        scond_free(p->done_cond);
-    if (p->done_lock)
-        slock_free(p->done_lock);
+    /* free is safe on a zeroed object and on one init failed for */
+    if (p->ec_live)
+    {
+        retro_eventcount_free(&p->work_ec);
+        retro_eventcount_free(&p->done_ec);
+    }
 
     memset(p, 0, sizeof(*p));
 }
