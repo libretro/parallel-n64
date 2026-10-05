@@ -320,6 +320,7 @@ SOURCES_C += $(LIBRETRO_DIR)/libretro.c \
 				 $(LIBRETRO_COMM_DIR)/encodings/encoding_deflate.c \
 				 $(LIBRETRO_COMM_DIR)/formats/png/rpng.c \
 				 $(LIBRETRO_COMM_DIR)/formats/png/rpng_encode.c \
+				 $(LIBRETRO_COMM_DIR)/file/rpng_file.c \
 				 $(LIBRETRO_COMM_DIR)/streams/interface_stream.c \
 				 $(LIBRETRO_COMM_DIR)/streams/memory_stream.c \
 				 $(LIBRETRO_COMM_DIR)/streams/trans_stream.c \
@@ -347,6 +348,7 @@ else
 SOURCES_C += $(LIBRETRO_COMM_DIR)/streams/file_stream.c \
 				 $(LIBRETRO_COMM_DIR)/lists/string_list.c \
 				 $(LIBRETRO_COMM_DIR)/string/stdstring.c \
+				 $(LIBRETRO_COMM_DIR)/string/rstrtod.c \
 				 $(LIBRETRO_COMM_DIR)/file/file_path.c \
 				 $(LIBRETRO_COMM_DIR)/file/file_path_io.c \
 				 $(LIBRETRO_COMM_DIR)/time/rtime.c
