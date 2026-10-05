@@ -424,8 +424,21 @@ unsigned int f3d_xlate_geom(unsigned int m)
  * samples the wrong texels.  rsp_tri_write has carried the affine path
  * since Fighting Force 64 needed it, but nothing fed it the bit, so this
  * walker could never reach it. */
+static int s_variant_d64;
 static void f3d_sync_persp_tex(void)
 {
+    /* The F3DEX v1 writer never consults the other modes: its staging
+     * (text 0xae0..0xbc8 of 1.23, keyed on the geometry mode's texture
+     * bit alone) halves every textured vertex's S, T and 0x7fff W through
+     * invw * min(pw)/2, perspective-corrected or not.  Mace: The Dark
+     * Age's title menu draws its glyphs with G_TEXTURE_PERSP clear and
+     * the LLE RSP still emits W 0x3fff and the halved texels; the affine
+     * store doubled them and turned the menu entries into blocks. */
+    if (s_variant_d64)
+    {
+        rsp_set_affine_tex(0);
+        return;
+    }
     rsp_set_affine_tex((s_othermode_h & 0x00080000u) ? 0 : 1);
 }
 
@@ -603,7 +616,7 @@ void f3d_set_variant_ff2d(int ff2d) { s_variant_ff2d = ff2d ? 1 : 0; }
 
 /* 0 = plain Fast3D (Super Mario 64); 1 = Doom 64's variant. Set once per task
  * before the top-level walk; the recursive F3D_DL descent inherits it. */
-static int s_variant_d64 = 0;
+static int s_variant_d64;
 static int s_variant_line = 0;   /* 1 => Doom 64 automap line ucode (gspL3DEX) */
 static int s_variant_wr64 = 0;   /* 1 => Wave Race 64 (n<<9 vtx, x5 indices) */
 static int s_variant_f3dex = 0;  /* 1 => F3DEX GBI1 (GoldenEye/Perfect Dark): x2
