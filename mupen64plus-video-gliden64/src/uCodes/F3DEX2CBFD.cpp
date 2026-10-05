@@ -1,5 +1,4 @@
 #include "GLideN64.h"
-#include "DebugDump.h"
 #include "F3D.h"
 #include "F3DEX.h"
 #include "F3DEX2.h"
@@ -22,7 +21,6 @@ void F3DEX2CBFD_Vtx( u32 w0, u32 w1 )
 static
 void F3DEX2CBFD_CoordMod(u32 _w0, u32 _w1)
 {
-	DebugMsg(DEBUG_NORMAL, "gSPCoordMod( %u, %u );\n", _w0, _w1);
 	if ((_w0 & 8) != 0)
 		return;
 	u32 idx = _SHIFTR(_w0, 1, 2);
@@ -89,7 +87,6 @@ void F3DEX2CBFD_MoveMem( u32 w0, u32 w1 )
 			break;
 		case G_MV_NORMALES:
 			gSP.cbfd.vertexNormalBase = RSP_SegmentToPhysical(w1);
-			DebugMsg(DEBUG_NORMAL, "gSPSetVertexNormaleBase( 0x%08X );\n", w1);
 			break;
 	}
 }

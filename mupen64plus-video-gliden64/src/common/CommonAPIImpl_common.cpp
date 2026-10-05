@@ -292,18 +292,3 @@ void PluginAPI::FBGetFrameBufferInfo(void * _pinfo)
 	FBInfo::fbInfo.GetInfo(_pinfo);
 }
 
-#ifndef MUPENPLUSAPI
-void PluginAPI::FBWList(FrameBufferModifyEntry * _plist, unsigned int _size)
-{
-	FBInfo::fbInfo.WriteList(reinterpret_cast<FBInfo::FrameBufferModifyEntry*>(_plist), _size);
-}
-
-void PluginAPI::ReadScreen(void **_dest, long *_width, long *_height)
-{
-#ifdef RSPTHREAD
-	_callAPICommand(ReadScreenCommand(_dest, _width, _height));
-#else
-	dwnd().readScreen(_dest, _width, _height);
-#endif
-}
-#endif

@@ -1,5 +1,4 @@
 #include "GLideN64.h"
-#include "DebugDump.h"
 #include "F3D.h"
 #include "F3DDKR.h"
 #include "N64.h"
@@ -12,7 +11,6 @@
 void F3DDKR_DMA_Mtx( u32 w0, u32 w1 )
 {
 	if (_SHIFTR( w0, 0, 16 ) != 64) {
-		DebugMsg(DEBUG_NORMAL | DEBUG_ERROR, "G_MTX: address = 0x%08X    length = %i    params = 0x%02X\n", w1, _SHIFTR(w0, 0, 16), _SHIFTR(w0, 16, 8));
 		return;
 	}
 

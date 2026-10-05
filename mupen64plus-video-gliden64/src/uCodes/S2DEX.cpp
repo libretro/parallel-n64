@@ -10,7 +10,6 @@
 #include "RDP.h"
 #include "Config.h"
 #include "Log.h"
-#include "DebugDump.h"
 #include "DepthBuffer.h"
 #include "FrameBuffer.h"
 
@@ -677,21 +676,18 @@ void gSPObjLoadTxtr(u32 tx)
 				gDPSetTile(G_IM_FMT_RGBA, G_IM_SIZ_16b, 0, objTxtr->block.tmem,
 						   G_TX_LOADTILE, 0, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMIRROR | G_TX_WRAP, 0, 0, 0, 0);
 				gDPLoadBlock( G_TX_LOADTILE, 0, 0, objTxtr->block.tsize << 2, objTxtr->block.tline );
-				DebugMsg(DEBUG_NORMAL, "gSPObjLoadTxtr: load block\n");
 				break;
 			case G_OBJLT_TXTRTILE:
 				gDPSetTextureImage(G_IM_FMT_RGBA, G_IM_SIZ_16b, objTxtr->tile.twidth + 1, objTxtr->tile.image);
 				gDPSetTile(G_IM_FMT_RGBA, G_IM_SIZ_16b, (objTxtr->tile.twidth + 1) >> 2, objTxtr->tile.tmem,
 						   G_TX_LOADTILE, 0, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMIRROR | G_TX_WRAP, 0, 0, 0, 0);
 				gDPLoadTile( G_TX_LOADTILE, 0, 0, objTxtr->tile.twidth << 2, objTxtr->tile.theight );
-				DebugMsg(DEBUG_NORMAL, "gSPObjLoadTxtr: load tile\n");
 				break;
 			case G_OBJLT_TLUT:
 				gDPSetTextureImage(G_IM_FMT_RGBA, G_IM_SIZ_16b, 1, objTxtr->tlut.image);
 				gDPSetTile(G_IM_FMT_RGBA, G_IM_SIZ_4b, 0, objTxtr->tlut.phead,
 						   G_TX_LOADTILE, 0, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMIRROR | G_TX_WRAP, 0, 0, 0, 0);
 				gDPLoadTLUT( G_TX_LOADTILE, 0, 0, objTxtr->tlut.pnum << 2, 0 );
-				DebugMsg(DEBUG_NORMAL, "gSPObjLoadTxtr: load tlut\n");
 				break;
 		}
 		gSP.status[objTxtr->block.sid >> 2] =
@@ -708,7 +704,6 @@ void gSPObjRectangle(u32 _sp)
 
 	ObjCoordinates objCoords(objSprite, false);
 	gSPDrawObjRect(objCoords);
-	DebugMsg(DEBUG_NORMAL, "gSPObjRectangle\n");
 }
 
 static
@@ -723,7 +718,6 @@ void gSPObjRectangleR(u32 _sp)
 		_drawYUVImageToFrameBuffer(objCoords);
 	gSPDrawObjRect(objCoords);
 
-	DebugMsg(DEBUG_NORMAL, "gSPObjRectangleR\n");
 }
 
 static
@@ -810,14 +804,12 @@ void gSPObjSprite(u32 _sp)
 
 	drawer.drawScreenSpaceTriangle(4);
 
-	DebugMsg(DEBUG_NORMAL, "gSPObjSprite\n");
 }
 
 static
 void gSPObjMatrix(u32 mtx)
 {
 	objMtx = *reinterpret_cast<const uObjMtx *>(RDRAM + RSP_SegmentToPhysical(mtx));
-	DebugMsg(DEBUG_NORMAL, "gSPObjMatrix\n");
 }
 
 static
@@ -828,7 +820,6 @@ void gSPObjSubMatrix(u32 mtx)
 	objMtx.Y = pObjSubMtx->Y;
 	objMtx.BaseScaleX = pObjSubMtx->BaseScaleX;
 	objMtx.BaseScaleY = pObjSubMtx->BaseScaleY;
-	DebugMsg(DEBUG_NORMAL, "gSPObjSubMatrix\n");
 }
 
 static
@@ -972,7 +963,6 @@ void BgRect1CycOnePiece(u32 _bg, bool _fbImage)
 	ObjCoordinates objCoords(pObjScaleBg);
 	gSPDrawObjRect(objCoords);
 
-	DebugMsg(DEBUG_NORMAL, "BgRect1CycOnePiece\n");
 }
 
 static
@@ -994,7 +984,6 @@ void BgRectCopyOnePiece(u32 _bg, bool _fbImage)
 	ObjCoordinates objCoords(pObjBg);
 	gSPDrawObjRect(objCoords);
 
-	DebugMsg(DEBUG_NORMAL, "BgRectCopyOnePiece\n");
 }
 
 //#define runCommand(w0, w1) GBI.cmd[_SHIFTR(w0, 24, 8)](w0, w1)
@@ -1624,7 +1613,6 @@ void S2DEX_Select_DL(u32 w0, u32 w1)
 void S2DEX_Obj_RenderMode(u32 w0, u32 w1)
 {
 	gSP.objRendermode = w1;
-	DebugMsg(DEBUG_NORMAL, "gSPObjRendermode(0x%08x)\n", gSP.objRendermode);
 }
 
 void S2DEX_Obj_Rectangle(u32 w0, u32 w1)

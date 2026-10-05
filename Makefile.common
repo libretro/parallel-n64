@@ -374,7 +374,6 @@ SOURCES_CXX   += \
     $(VIDEODIR_GLIDEN64)/src/Config.cpp                                                           \
     $(VIDEODIR_GLIDEN64)/src/convert.cpp                                                          \
     $(VIDEODIR_GLIDEN64)/src/CRC_OPT.cpp                                                          \
-    $(VIDEODIR_GLIDEN64)/src/DebugDump.cpp                                                        \
     $(VIDEODIR_GLIDEN64)/src/DepthBuffer.cpp                                                      \
     $(VIDEODIR_GLIDEN64)/src/DisplayWindow.cpp                                                    \
     $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/mupen64plus/mupen64plus_DisplayWindow.cpp     \

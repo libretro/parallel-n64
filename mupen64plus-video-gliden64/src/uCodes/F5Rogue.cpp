@@ -8,7 +8,6 @@
 #include <algorithm>
 #include <cmath>
 #include "GLideN64.h"
-#include "DebugDump.h"
 #include "F3D.h"
 #include "F3DEX.h"
 #include "F5Rogue.h"
@@ -156,8 +155,6 @@ void F3DSWRS_MoveMem(u32 _w0, u32)
 	case F3DSWRS_MV_TEXSCALE:
 		gSP.textureCoordScale[0] = *(u32*)&RDRAM[RSP.PC[RSP.PCi] + 16];
 		gSP.textureCoordScale[1] = *(u32*)&RDRAM[RSP.PC[RSP.PCi] + 12];
-		DebugMsg(DEBUG_NORMAL, "F3DSWRS_MoveMem Texscale(0x%08x, 0x%08x)\n",
-				 gSP.textureCoordScale[0], gSP.textureCoordScale[1]);
 		break;
 	}
 	RSP.PC[RSP.PCi] += 16;
@@ -165,7 +162,6 @@ void F3DSWRS_MoveMem(u32 _w0, u32)
 
 void F3DSWRS_Vtx(u32 _w0, u32 _w1)
 {
-	DebugMsg(DEBUG_NORMAL, "F3DSWRS_Vtx (0x%08x, 0x%08x)\n", _w0, _w1);
 
 	const u32 address = RSP_SegmentToPhysical(_w1);
 	const u32 n = _SHIFTR(_w0, 10, 6);
@@ -974,7 +970,6 @@ void TriGen02()
 
 void F3DSWRS_TriGen(u32 _w0, u32 _w1)
 {
-	DebugMsg(DEBUG_NORMAL, "F3DSWRS_TriGen (0x%08x, 0x%08x)\n", _w0, _w1);
 
 	const u32 nextCmd = RSP.nextCmd;
 	RSP.nextCmd = G_TRI1;
@@ -1009,28 +1004,24 @@ void F3DSWRS_TriGen(u32 _w0, u32 _w1)
 
 void F3DSWRS_JumpSWDL(u32, u32)
 {
-	DebugMsg(DEBUG_NORMAL, "F3DSWRS_JumpSWDL\n");
 	RSP.PC[RSP.PCi] = RSP.F5DL[RSP.PCi];
 	_updateF5DL();
 }
 
 void F3DSWRS_DList(u32, u32 _w1)
 {
-	DebugMsg(DEBUG_NORMAL, "F3DSWRS_DList (0x%08x)\n", _w1);
 	gSPDisplayList(_w1);
 	_updateF5DL();
 }
 
 void F3DSWRS_BranchDList(u32, u32 _w1)
 {
-	DebugMsg(DEBUG_NORMAL, "F3DSWRS_BranchDList (0x%08x)\n", _w1);
 	gSPBranchList(_w1);
 	_updateF5DL();
 }
 
 void F3DSWRS_EndDisplayList(u32, u32)
 {
-	DebugMsg(DEBUG_NORMAL, "F3DSWRS_EndDisplayList\n");
 	gSPEndDisplayList();
 //	_updateSWDL();
 }
@@ -1070,7 +1061,6 @@ void _addVertices(const u32 _vert[3], GraphicsDrawer & _drawer)
 void F3DSWRS_Tri(u32 _w0, u32 _w1)
 {
 	const bool bTri2 = RSP.cmd == F3DSWRS_TRI2;
-	DebugMsg(DEBUG_NORMAL, "F3DSWRS_Tri%d (0x%08x, 0x%08x)\n", bTri2 ? 2 : 1, _w0, _w1);
 	const u32 v1 = (_SHIFTR(_w1, 13, 11) & 0x7F8) / 40;
 	const u32 v2 = (_SHIFTR( _w1,  5, 11 ) & 0x7F8) / 40;
 	const u32 v3 = ((_w1 <<  3) & 0x7F8) / 40;
@@ -1108,7 +1098,6 @@ void F3DSWRS_Tri(u32 _w0, u32 _w1)
 
 void F3DSWRS_MoveWord(u32 _w0, u32 _w1)
 {
-	DebugMsg(DEBUG_NORMAL, "F3DSWRS_MoveWord (0x%08x, 0x%08x)\n", _w0, _w1);
 	switch (_SHIFTR(_w0, 0, 8)){
 	case G_MW_CLIP:
 		gSPClipRatio( _w1 );
@@ -1132,7 +1121,6 @@ void F3DSWRS_MoveWord(u32 _w0, u32 _w1)
 
 void F3DSWRS_TexrectGen(u32 _w0, u32 _w1)
 {
-	DebugMsg(DEBUG_NORMAL, "F3DSWRS_TexrectGen (0x%08x, 0x%08x)\n", _w0, _w1);
 
 	const u32 vtxIdx = ((_w0 >> 5) & 0x07F8) / 40;
 
@@ -1246,7 +1234,6 @@ void F3DSWRS_TexrectGen(u32 _w0, u32 _w1)
 
 void F3DSWRS_SetOtherMode_H_EX(u32 _w0, u32 _w1)
 {
-	DebugMsg(DEBUG_NORMAL, "F3DSWRS_SetOtherMode_H_EX (0x%08x, 0x%08x)\n", _w0, _w1);
 	RSP.PC[RSP.PCi] += 8;
 	gDP.otherMode.h &= *(u32*)&RDRAM[RSP.PC[RSP.PCi]];
 	gDP.otherMode.h |= _w1;
@@ -1254,7 +1241,6 @@ void F3DSWRS_SetOtherMode_H_EX(u32 _w0, u32 _w1)
 
 void F3DSWRS_SetOtherMode_L_EX(u32 _w0, u32 _w1)
 {
-	DebugMsg(DEBUG_NORMAL, "F3DSWRS_SetOtherMode_L_EX (0x%08x, 0x%08x)\n", _w0, _w1);
 	RSP.PC[RSP.PCi] += 8;
 	gDP.otherMode.l &= *(u32*)&RDRAM[RSP.PC[RSP.PCi]];
 	gDP.otherMode.l |= _w1;

@@ -1,6 +1,5 @@
 #include <assert.h>
 #include "GLideN64.h"
-#include "DebugDump.h"
 #include "F3D.h"
 #include "F3DGOLDEN.h"
 #include "N64.h"

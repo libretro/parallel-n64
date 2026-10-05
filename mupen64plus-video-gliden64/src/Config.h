@@ -197,10 +197,6 @@ struct Config
 		f32 level;
 	} gammaCorrection;
 
-	struct {
-		u32 dumpMode;
-	} debug;
-
 	void resetToDefaults();
 	void validate();
 };
@@ -234,10 +230,6 @@ struct Config
 extern Config gliden64Config;
 
 extern "C" void Config_LoadConfig();
-#ifndef MUPENPLUSAPI
-void Config_DoConfig(/*HWND hParent*/);
-#endif
-
 bool isHWLightingAllowed();
 
 #endif // CONFIG_H

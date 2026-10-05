@@ -74,13 +74,6 @@ EXPORT void CALL gliden64FBGetFrameBufferInfo(void *pinfo)
 	api().FBGetFrameBufferInfo(pinfo);
 }
 
-#ifndef MUPENPLUSAPI
-EXPORT void CALL gliden64FBWList(FrameBufferModifyEntry *plist, unsigned int size)
-{
-	api().FBWList(plist, size);
-}
-#endif
-
 EXPORT void CALL gliden64DestroyGfxContext(void)
 {
 	dwnd().destroyGfxContext();

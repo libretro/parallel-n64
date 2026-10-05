@@ -6,7 +6,6 @@
 #include "F3DFLX2.h"
 #include "RSP.h"
 #include "gSP.h"
-#include "DebugDump.h"
 
 inline
 void F3DFLX2_LoadAlphaLight(u32 _a)
@@ -26,7 +25,6 @@ void F3DFLX2_LoadAlphaLight(u32 _a)
 
 	Normalize(gSP.lookat.xyz[0]);
 	gSP.changed |= CHANGED_LOOKAT;
-	DebugMsg(DEBUG_NORMAL, "F3DFLX2_LoadAlphaLight( 0x%08X );\n", _a);
 }
 
 static

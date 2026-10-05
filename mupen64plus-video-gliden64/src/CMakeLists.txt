@@ -21,7 +21,6 @@ set(GLideN64_SOURCES
   Config.cpp
   convert.cpp
   CRC32.cpp
-  DebugDump.cpp
   DepthBuffer.cpp
   DisplayWindow.cpp
   FrameBuffer.cpp
@@ -150,14 +149,7 @@ else(MUPENPLUSAPI)
     message(FATAL_ERROR "UNIX build requires MUPENPLUSAPI!")
   endif(UNIX)
   set(GLideN64_SOURCES_WIN
-	ZilmarPluginAPI.cpp
-	windows/Config_windows.cpp
-	windows/CommonAPIImpl_windows.cpp
-	windows/GLideN64_windows.cpp
-	windows/MemoryStatus_windows.cpp
 	common/GLFunctions.cpp
-	windows/ZilmarAPIImpl_windows.cpp
-	Graphics/OpenGLContext/windows/windows_DisplayWindow.cpp
   )
   set(GLideN64_DLL_NAME GLideN64)
 endif(MUPENPLUSAPI)

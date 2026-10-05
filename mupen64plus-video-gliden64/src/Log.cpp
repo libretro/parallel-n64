@@ -46,7 +46,7 @@ void LOG(u16 type, const char * format, ...) {
 }
 
 #if defined(OS_WINDOWS) && !defined(MINGW)
-#include "windows/GLideN64_windows.h"
+#include <windows.h>
 void debugPrint(const char * format, ...) {
 	char text[256];
 	wchar_t wtext[256];

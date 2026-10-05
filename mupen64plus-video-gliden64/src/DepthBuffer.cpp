@@ -9,7 +9,6 @@
 #include "DepthBuffer.h"
 #include "VI.h"
 #include "Config.h"
-#include "DebugDump.h"
 #include <Graphics/Context.h>
 #include <Graphics/Parameters.h>
 #include "DisplayWindow.h"

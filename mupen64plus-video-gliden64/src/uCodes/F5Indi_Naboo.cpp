@@ -20,7 +20,6 @@
 #include "FrameBuffer.h"
 #include "DisplayWindow.h"
 
-#include "DebugDump.h"
 #include "Log.h"
 
 #define F5INDI_MOVEMEM			0x01
@@ -519,7 +518,6 @@ const SWVertex * F5INDI_AdjustVtx(u32 _w0, u32 _w1, std::vector<SWVertex> & _vre
 static
 void F5INDI_MoveMem(u32 _w0, u32 _w1)
 {
-	DebugMsg(DEBUG_NORMAL, "F5INDI_01Cmd (0x%08x, 0x%08x)\n", _w0, _w1);
 
 	if (_SHIFTR(_w1, 0, 24) != 0)
 		F5INDI_DMA_Direct(_w0, _w1);
@@ -586,7 +584,6 @@ void F5INDI_MoveMem(u32 _w0, u32 _w1)
 static
 void F5INDI_SetDListAddr(u32 _w0, u32 _w1)
 {
-	DebugMsg(DEBUG_NORMAL, "F5INDI_SetDListAddr (0x%08x, 0x%08x)\n", _w0, _w1);
 	const u32 count = _w0 & 0x1FF;
 	const u32 * pSrc = CAST_RDRAM(const u32*, _SHIFTR(_w1, 0, 24));
 	u32 * pDst = CAST_DMEM(u32*, 0xFD4);
@@ -598,7 +595,6 @@ void F5INDI_SetDListAddr(u32 _w0, u32 _w1)
 static
 void F5INDI_DList(u32 _w0, u32 _w1)
 {
-	DebugMsg(DEBUG_NORMAL, "F5INDI_DList (0x%08x)\n", _w1);
 	gSPDisplayList(_w1);
 	_updateF5DL();
 }
@@ -606,7 +602,6 @@ void F5INDI_DList(u32 _w0, u32 _w1)
 static
 void F5INDI_BranchDList(u32 _w0, u32 _w1)
 {
-	DebugMsg(DEBUG_NORMAL, "F5INDI_BranchDList (0x%08x)\n", _w1);
 	gSPBranchList(_w1);
 	_updateF5DL();
 }
@@ -659,7 +654,6 @@ void F5INDI_DoSubDList()
 	if (dlistAddr == 0)
 		return;
 
-	DebugMsg(DEBUG_LOW, "Start Sub DList\n");
 
 	RSP.PCi++;
 	RSP.F5DL[RSP.PCi] = _SHIFTR(*CAST_RDRAM(const u32*, dlistAddr), 0, 24);
@@ -671,7 +665,6 @@ void F5INDI_DoSubDList()
 
 		RSP.cmd = _SHIFTR(RSP.w0, 24, 8);
 
-		DebugMsg(DEBUG_LOW, "0x%08lX: CMD=0x%02X W0=0x%08X W1=0x%08X\n", RSP.PC[RSP.PCi], RSP.cmd, RSP.w0, RSP.w1);
 
 		if (RSP.w0 == 0xB8000000 && RSP.w1 == 0xFFFFFFFF)
 			break;
@@ -692,7 +685,6 @@ void F5INDI_DoSubDList()
 
 	RSP.PCi--;
 	*CAST_DMEM(u32*, 0x58C) = 0U;
-	DebugMsg(DEBUG_LOW, "End Sub DList\n");
 }
 
 static
@@ -725,7 +717,6 @@ bool F5INDI_AddVertices(const u32 _vert[3], GraphicsDrawer & _drawer)
 void F5INDI_Tri(u32 _w0, u32 _w1)
 {
 	const bool bTri2 = RSP.cmd == F5INDI_TRI2;
-	DebugMsg(DEBUG_NORMAL, "F5INDI_Tri%d (0x%08x, 0x%08x)\n", bTri2 ? 2 : 1, _w0, _w1);
 
 	const u32* params = CAST_RDRAM(const u32*, RSP.PC[RSP.PCi]);
 	const u32 w3 = params[3];
@@ -1171,15 +1162,12 @@ void F5INDI_TexrectGen()
 
 			gDP.primDepth.z = v.z / v.w * gSP.viewport.vscale[2] + gSP.viewport.vtrans[2];
 			gDP.primDepth.deltaZ = 0.0f;
-			DebugMsg(DEBUG_NORMAL, "SetPrimDepth( %f, %f );\n", gDP.primDepth.z, gDP.primDepth.deltaZ);
 
 			const u32 primColor = *CAST_DMEM(const u32*, 0x380 + _SHIFTR(vertex[i].flag, 0, 8));
 			gDP.primColor.r = _FIXED2FLOATCOLOR(((_SHIFTR(primColor, 24, 8) * _SHIFTR(colorScale, 24, 8)) >> 8), 8);
 			gDP.primColor.g = _FIXED2FLOATCOLOR(((_SHIFTR(primColor, 16, 8) * _SHIFTR(colorScale, 16, 8)) >> 8), 8);
 			gDP.primColor.b = _FIXED2FLOATCOLOR(((_SHIFTR(primColor,  8, 8) * _SHIFTR(colorScale,  8, 8)) >> 8), 8);
 			gDP.primColor.a = _FIXED2FLOATCOLOR(((_SHIFTR(primColor,  0, 8) * _SHIFTR(colorScale,  0, 8)) >> 8), 8);
-			DebugMsg(DEBUG_NORMAL, "SetPrimColor( %f, %f, %f, %f )\n",
-			         gDP.primColor.r, gDP.primColor.g, gDP.primColor.b, gDP.primColor.a);
 
 #ifdef F5INDI_PARTICLE_OPT
 			F5INDI_AddParticle(ulx, uly, lrx, lry, S, T, dsdx, dtdy);
@@ -1295,8 +1283,6 @@ void F5Naboo_TexrectGen()
 	gDP.primColor.g = _FIXED2FLOATCOLOR(_SHIFTR(primColor, 16, 8), 8);
 	gDP.primColor.b = _FIXED2FLOATCOLOR(_SHIFTR(primColor,  8, 8), 8);
 	gDP.primColor.a = _FIXED2FLOATCOLOR(_SHIFTR(primColor,  0, 8), 8);
-	DebugMsg(DEBUG_NORMAL, "SetPrimColor( %f, %f, %f, %f )\n",
-	         gDP.primColor.r, gDP.primColor.g, gDP.primColor.b, gDP.primColor.a);
 
 	if ((gSP.geometryMode & G_FOG) != 0) {
 		const u32 fogColor = (params[7] & 0xFFFFFF00) | u32(v.a*255.0f);
@@ -1886,7 +1872,6 @@ void F5Naboo_GenVertices0C()
 		const u32 offset = _param >> 5;
 		const u32 vtxSrcAddr = _dmemSrcAddr + offset;
 		const u32 vtxDstAddr = _SHIFTR(*CAST_DMEM(const u32*, dmemSrcAddr + _dstOffset), 16, 16) + offset * 5;
-		DebugMsg(DEBUG_NORMAL, "GenVetices srcAddr = 0x%04x, dstAddr = 0x%04x, n = %i\n", vtxSrcAddr, vtxDstAddr, numVtx);
 		if (!needAdjustVertices) {
 			gSPSWVertex(CAST_DMEM(const SWVertex*, vtxSrcAddr), (vtxDstAddr - 0x600) / 40, numVtx);
 			return;
@@ -2125,7 +2110,6 @@ void F5Naboo_GenVertices09()
 		const u32 offset = _param >> 5;
 		const u32 vtxSrcAddr = _dmemSrcAddr + offset;
 		const u32 vtxDstAddr = _SHIFTR(*CAST_DMEM(const u32*, dmemSrcAddr + _dstOffset), 16, 16) + offset * 5;
-		DebugMsg(DEBUG_NORMAL, "GenVetices srcAddr = 0x%04x, dstAddr = 0x%04x, n = %i\n", vtxSrcAddr, vtxDstAddr, numVtx);
 		if (!needAdjustVertices) {
 			gSPSWVertex(CAST_DMEM(const SWVertex*, vtxSrcAddr), (vtxDstAddr - 0x600) / 40, numVtx);
 			return;
@@ -2167,7 +2151,6 @@ static
 void F5INDI_GeometryGen(u32 _w0, u32 _w1)
 {
 	const u32 mode = _SHIFTR(_w1, 0, 8);
-	DebugMsg(DEBUG_NORMAL, "F5INDI_GeometryGen (0x%08x, 0x%08x): mode=0x%02x\n", _w0, _w1, mode);
 	switch (mode) {
 	case 0x09: // Naboo
 		F5Naboo_GenVertices09();
@@ -2211,7 +2194,6 @@ void F5INDI_GeometryGen(u32 _w0, u32 _w1)
 static
 void F5INDI_Texrect(u32 _w0, u32 _w1)
 {
-	DebugMsg(DEBUG_NORMAL, "F5INDI_Texrect (0x%08x, 0x%08x)\n", _w0, _w1);
 	F5INDI_DoSubDList();
 	RDP_TexRect(_w0, _w1);
 }
@@ -2219,7 +2201,6 @@ void F5INDI_Texrect(u32 _w0, u32 _w1)
 static
 void F5INDI_JumpDL(u32 _w0, u32 _w1)
 {
-	DebugMsg(DEBUG_NORMAL, "F5INDI_JumpDL\n");
 	RSP.PC[RSP.PCi] = RSP.F5DL[RSP.PCi];
 	_updateF5DL();
 }
@@ -2227,14 +2208,12 @@ void F5INDI_JumpDL(u32 _w0, u32 _w1)
 static
 void F5INDI_EndDisplayList(u32 _w0, u32 _w1)
 {
-	DebugMsg(DEBUG_NORMAL, "F5INDI_EndDisplayList\n");
 	gSPEndDisplayList();
 }
 
 static
 void F5INDI_MoveWord(u32 _w0, u32 _w1)
 {
-	DebugMsg(DEBUG_NORMAL, "F5INDI_MoveWord (0x%08x, 0x%08x)\n", _w0, _w1);
 	const u32 destAddr = _SHIFTR(_w0, 0, 12);
 	*CAST_DMEM(u32*, destAddr) = _w1;
 
