@@ -2368,19 +2368,8 @@ void Renderer::maintain_queues()
 	}
 }
 
-void Renderer::lock_command_processing()
-{
-	idle_lock.lock();
-}
-
-void Renderer::unlock_command_processing()
-{
-	idle_lock.unlock();
-}
-
 void Renderer::maintain_queues_idle()
 {
-	std::lock_guard<std::mutex> holder{idle_lock};
 	if (pending_primitives >= ImplementationConstants::MinimumPrimitivesForIdleFlush ||
 	    pending_render_passes >= ImplementationConstants::MinimumRenderPassesForIdleFlush)
 	{

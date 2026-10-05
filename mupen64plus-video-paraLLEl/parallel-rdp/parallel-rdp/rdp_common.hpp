@@ -42,6 +42,7 @@ enum class Op
 	MetaFlush = 2,
 	MetaIdle = 3,
 	MetaSetQuirks = 4,
+	MetaScanoutPrepare = 5,
 
 	FillTriangle = 0x08,
 	FillZBufferTriangle = 0x09,

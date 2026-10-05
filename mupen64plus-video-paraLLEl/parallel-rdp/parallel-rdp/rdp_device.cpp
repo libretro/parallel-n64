@@ -923,6 +923,16 @@ void CommandProcessor::enqueue_command_inner(unsigned num_words, const uint32_t 
 
 void CommandProcessor::enqueue_command(unsigned num_words, const uint32_t *words)
 {
+	// Opcodes 1-7 are invalid RDP commands, no-ops on hardware (angrylion
+	// ignores them too), but here they are the processor's own meta ops.
+	// Drop them so game data can never signal a timeline, set quirks or
+	// trigger a scanout resolve.
+	{
+		uint32_t cmd_id = (words[0] >> 24) & 63;
+		if (cmd_id >= 1 && cmd_id <= 7)
+			return;
+	}
+
 	if (dump_writer && !dump_in_command_list)
 	{
 		wait_for_timeline(signal_timeline());
@@ -998,6 +1008,16 @@ void CommandProcessor::enqueue_command_direct(unsigned, const uint32_t *words)
 	case Op::MetaSetQuirks:
 	{
 		quirks.u.words[0] = words[1];
+		break;
+	}
+
+	case Op::MetaScanoutPrepare:
+	{
+		// Runs where every other command runs, so it can never overlap
+		// the idle flush.
+		renderer.flush_and_signal();
+		if (words[3])
+			renderer.resolve_coherency_external(words[1], words[2]);
 		break;
 	}
 
@@ -1141,18 +1161,22 @@ Vulkan::ImageHandle CommandProcessor::scanout(const ScanoutOptions &opts, VkImag
 		dump_writer->end_frame();
 	}
 
-	// Block idle callbacks triggering while we're doing this.
-	renderer.lock_command_processing();
+	// Flush, and resolve the scanout range on non-coherent hosts, on the
+	// command thread. The VI registers are read here, on the thread that
+	// writes them; the range travels in the command.
 	{
-		renderer.flush_and_signal();
+		unsigned offset = 0, length = 0;
 		if (!is_host_coherent)
-		{
-			unsigned offset, length;
 			vi.scanout_memory_range(offset, length);
-			renderer.resolve_coherency_external(offset, length);
-		}
+		const uint32_t words[4] = {
+			uint32_t(Op::MetaScanoutPrepare) << 24,
+			offset,
+			length,
+			uint32_t(!is_host_coherent),
+		};
+		enqueue_command_inner(4, words);
+		drain_command_ring();
 	}
-	renderer.unlock_command_processing();
 
 	auto scanout = vi.scanout(target_layout, opts, renderer.get_scaling_factor());
 	return scanout;
