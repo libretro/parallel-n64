@@ -72,7 +72,6 @@ private:
 		, m_hits(0)
 		, m_misses(0)
 		, m_curUnpackAlignment(4)
-		, m_toggleDumpTex(false)
 	{
 		current[0] = nullptr;
 		current[1] = nullptr;
@@ -102,7 +101,6 @@ private:
 	CachedTexture * m_pMSDummy;
 	u32 m_hits, m_misses;
 	s32 m_curUnpackAlignment;
-	bool m_toggleDumpTex;
 	/* Objects freed by eviction, waiting to be handed to the next texture:
 	 * deleting one costs ~160us on a tiled GPU, reusing it costs nothing. */
 	std::vector<graphics::ObjectHandle> m_freeTextures;

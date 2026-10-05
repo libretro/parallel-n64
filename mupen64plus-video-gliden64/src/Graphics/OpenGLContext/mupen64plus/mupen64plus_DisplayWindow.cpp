@@ -10,7 +10,6 @@
 #include <gSP.h>
 #include <Log.h>
 #include <FrameBuffer.h>
-#include <GLideNUI/GLideNUI.h>
 #include <DisplayWindow.h>
 
 #include <libretro_private.h>
@@ -39,9 +38,6 @@ private:
 	void _changeWindow() override;
 	void _readScreen(void **_pDest, long *_pWidth, long *_pHeight) override;
 	void _readScreen2(void * _dest, int * _width, int * _height, int _front) override;
-#ifdef M64P_GLIDENUI
-	bool _supportsWithRateFunctions = true;
-#endif // M64P_GLIDENUI
 	graphics::ObjectHandle _getDefaultFramebuffer() override;
 };
 

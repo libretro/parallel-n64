@@ -25,7 +25,6 @@ MY_LOCAL_SRC_FILES :=                                                           
     $(SRCDIR)/Config.cpp                                                           \
     $(SRCDIR)/convert.cpp                                                          \
     $(SRCDIR)/DebugDump.cpp                                                        \
-    $(SRCDIR)/Debugger.cpp                                                         \
     $(SRCDIR)/DepthBuffer.cpp                                                      \
     $(SRCDIR)/DisplayWindow.cpp                                                    \
     $(SRCDIR)/FrameBuffer.cpp                                                      \
@@ -35,7 +34,6 @@ MY_LOCAL_SRC_FILES :=                                                           
     $(SRCDIR)/GLideN64.cpp                                                         \
     $(SRCDIR)/GraphicsDrawer.cpp                                                   \
     $(SRCDIR)/gSP.cpp                                                              \
-    $(SRCDIR)/Keys.cpp                                                             \
     $(SRCDIR)/Log_android.cpp                                                      \
     $(SRCDIR)/MupenPlusPluginAPI.cpp                                               \
     $(SRCDIR)/N64.cpp                                                              \

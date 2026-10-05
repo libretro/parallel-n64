@@ -12,7 +12,6 @@
 #include "convert.h"
 #include "FrameBuffer.h"
 #include "Config.h"
-#include "Keys.h"
 #include "GLideNHQ/Ext_TxFilter.h"
 #include "TextureFilterHandler.h"
 #include "Graphics/Context.h"
@@ -860,8 +859,7 @@ void TextureCache::_loadBackground(CachedTexture *pTexture)
 		return;
 	}
 
-	if (m_toggleDumpTex &&
-		config.textureFilter.txHiresEnable != 0 &&
+	if (config.textureFilter.txHiresEnable != 0 &&
 		config.textureFilter.txDump != 0) {
 		txfilter_dmptx((u8*)pDest, pTexture->realWidth, pTexture->realHeight,
 			pTexture->realWidth, (u16)u32(glInternalFormat),
@@ -1233,8 +1231,7 @@ void TextureCache::_load(u32 _tile, CachedTexture *_pTexture)
 			return;
 		}
 
-		if (m_toggleDumpTex &&
-				config.textureFilter.txHiresEnable != 0 &&
+		if (config.textureFilter.txHiresEnable != 0 &&
 				config.textureFilter.txDump != 0) {
 			txfilter_dmptx((u8*)pDest, tmptex.realWidth, tmptex.realHeight,
 					tmptex.realWidth, (u16)u32(glInternalFormat),
@@ -1546,21 +1543,6 @@ void TextureCache::_clear()
 
 void TextureCache::update(u32 _t)
 {
-	if (config.textureFilter.txHiresEnable != 0 && config.textureFilter.txDump != 0) {
-		/* Force reload hi-res textures. Useful for texture artists */
-		if (isKeyPressed(G64_VK_R, 0x0001)) {
-			if (txfilter_reloadhirestex()) {
-				_clear();
-			}
-		}
-		/* Turn on texture dump */
-		else if (isKeyPressed(G64_VK_D, 0x0001)) {
-			m_toggleDumpTex = !m_toggleDumpTex;
-			if (m_toggleDumpTex)
-				_clear();
-		}
-	}
-
 	const gDPTile * pTile = gSP.textureTile[_t];
 	switch (pTile->textureMode) {
 	case TEXTUREMODE_BGIMAGE:

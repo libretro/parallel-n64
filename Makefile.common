@@ -375,7 +375,6 @@ SOURCES_CXX   += \
     $(VIDEODIR_GLIDEN64)/src/convert.cpp                                                          \
     $(VIDEODIR_GLIDEN64)/src/CRC_OPT.cpp                                                          \
     $(VIDEODIR_GLIDEN64)/src/DebugDump.cpp                                                        \
-    $(VIDEODIR_GLIDEN64)/src/Debugger.cpp                                                         \
     $(VIDEODIR_GLIDEN64)/src/DepthBuffer.cpp                                                      \
     $(VIDEODIR_GLIDEN64)/src/DisplayWindow.cpp                                                    \
     $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/mupen64plus/mupen64plus_DisplayWindow.cpp     \
@@ -398,7 +397,6 @@ SOURCES_CXX   += \
     $(VIDEODIR_GLIDEN64)/src/ZlutTexture.cpp                                                      \
     $(VIDEODIR_GLIDEN64)/src/common/CommonAPIImpl_common.cpp                                      \
     $(VIDEODIR_GLIDEN64)/src/NoiseTexture.cpp                                                     \
-    $(VIDEODIR_GLIDEN64)/src/Keys.cpp                                                             \
     $(VIDEODIR_GLIDEN64)/src/Log.cpp                                                              \
     $(VIDEODIR_GLIDEN64)/src/DepthBufferRender/ClipPolygon.cpp                                    \
     $(VIDEODIR_GLIDEN64)/src/DepthBufferRender/DepthBufferRender.cpp                              \

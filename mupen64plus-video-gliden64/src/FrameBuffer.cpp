@@ -13,7 +13,6 @@
 #include "Combiner.h"
 #include "Types.h"
 #include "Config.h"
-#include "Debugger.h"
 #include "DebugDump.h"
 #include "PostProcessor.h"
 #include "FrameBufferInfo.h"
@@ -1327,11 +1326,6 @@ void FrameBufferList::OverscanBuffer::draw(u32 _fullHeight, bool _PAL)
 extern "C" uint32_t RemoveFBBlackBars;
 void FrameBufferList::renderBuffer()
 {
-	if (g_debugger.isDebugMode()) {
-		g_debugger.draw();
-		return;
-	}
-
 	if (config.frameBufferEmulation.enable == 0) {
 		_renderScreenSizeBuffer();
 		return;

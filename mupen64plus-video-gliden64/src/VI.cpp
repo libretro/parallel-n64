@@ -10,9 +10,7 @@
 #include "DepthBuffer.h"
 #include "FrameBufferInfo.h"
 #include "Config.h"
-#include "Debugger.h"
 #include "DebugDump.h"
-#include "Keys.h"
 #include "DisplayWindow.h"
 #include <Graphics/Context.h>
 
@@ -119,12 +117,6 @@ void VI_UpdateScreen()
 	if (wnd.resizeWindow())
 		return;
 	wnd.saveScreenshot();
-	g_debugger.checkDebugState();
-
-	if (isKeyPressed(G64_VK_G, 0x0001)) {
-		SwitchDump(config.debug.dumpMode);
-	}
-
 	bool bVIUpdated = false;
 	if (*REG.VI_ORIGIN != VI.lastOrigin) {
 		VI_UpdateSize();

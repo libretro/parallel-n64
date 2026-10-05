@@ -22,7 +22,6 @@ set(GLideN64_SOURCES
   convert.cpp
   CRC32.cpp
   DebugDump.cpp
-  Debugger.cpp
   DepthBuffer.cpp
   DisplayWindow.cpp
   FrameBuffer.cpp
@@ -32,7 +31,6 @@ set(GLideN64_SOURCES
   GLideN64.cpp
   GraphicsDrawer.cpp
   gSP.cpp
-  Keys.cpp
   Log.cpp
   N64.cpp
   NoiseTexture.cpp

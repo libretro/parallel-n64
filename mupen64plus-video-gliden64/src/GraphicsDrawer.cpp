@@ -16,7 +16,6 @@
 #include "DepthBuffer.h"
 #include "FrameBufferInfo.h"
 #include "Config.h"
-#include "Debugger.h"
 #include "RSP.h"
 #include "RDP.h"
 #include "VI.h"
@@ -751,7 +750,6 @@ void GraphicsDrawer::drawTriangles()
 	triParams.elements = triangles.elements.data();
 	triParams.combiner = currentCombiner();
 	gfxContext.drawTriangles(triParams);
-	g_debugger.addTriangles(triParams);
 
 	if (config.frameBufferEmulation.enable != 0) {
 		const f32 maxY = renderTriangles(triangles.vertices.data(), triangles.elements.data(), triangles.num);
@@ -792,7 +790,6 @@ void GraphicsDrawer::drawScreenSpaceTriangle(u32 _numVtx, graphics::DrawModePara
 	triParams.vertices = m_dmaVertices.data();
 	triParams.combiner = currentCombiner();
 	gfxContext.drawTriangles(triParams);
-	g_debugger.addTriangles(triParams);
 	m_dmaVerticesNum = 0;
 
 	frameBufferList().setBufferChanged(maxY);
@@ -813,7 +810,6 @@ void GraphicsDrawer::drawDMATriangles(u32 _numVtx)
 	triParams.vertices = m_dmaVertices.data();
 	triParams.combiner = currentCombiner();
 	gfxContext.drawTriangles(triParams);
-	g_debugger.addTriangles(triParams);
 	m_dmaVerticesNum = 0;
 
 	if (config.frameBufferEmulation.enable != 0) {
@@ -990,7 +986,6 @@ void GraphicsDrawer::drawRect(int _ulx, int _uly, int _lrx, int _lry)
 	rectParams.vertices = m_rect;
 	rectParams.combiner = currentCombiner();
 	gfxContext.drawRects(rectParams);
-	g_debugger.addRects(rectParams);
 	gSP.changed |= CHANGED_GEOMETRYMODE | CHANGED_VIEWPORT;
 }
 
@@ -1368,17 +1363,6 @@ void GraphicsDrawer::drawTexturedRect(const TexturedRectParams & _params)
 	rectParams.vertices = m_rect;
 	rectParams.combiner = currentCombiner();
 	gfxContext.drawRects(rectParams);
-	if (g_debugger.isCaptureMode()) {
-		m_rect[0].x = _params.ulx;
-		m_rect[0].y = _params.uly;
-		m_rect[1].x = _params.lrx;
-		m_rect[1].y = _params.uly;
-		m_rect[2].x = _params.ulx;
-		m_rect[2].y = _params.lry;
-		m_rect[3].x = _params.lrx;
-		m_rect[3].y = _params.lry;
-		g_debugger.addRects(rectParams);
-	}
 
 	gSP.changed |= CHANGED_GEOMETRYMODE | CHANGED_VIEWPORT;
 }

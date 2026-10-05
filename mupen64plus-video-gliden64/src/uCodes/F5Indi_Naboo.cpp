@@ -19,7 +19,6 @@
 #include "Combiner.h"
 #include "FrameBuffer.h"
 #include "DisplayWindow.h"
-#include "Debugger.h"
 
 #include "DebugDump.h"
 #include "Log.h"
