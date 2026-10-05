@@ -21,8 +21,9 @@
  * the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-#include <thread>
 #include "TxUtil.h"
+#include "txpool.h"
+#include <features/features_cpu.h>
 #include "TxDbg.h"
 #include <encodings/crc32.h>
 #include <assert.h>
@@ -489,10 +490,36 @@ findmax0:
 
 uint32 TxUtil::getNumberofProcessors()
 {
-	uint32 numcore = std::thread::hardware_concurrency();
+	/* Physical cores, not logical: an SMT sibling is a poor lane next to
+	 * the emulator and the frontend, and these filters are not the main
+	 * work on the machine. */
+	uint32 numcore = cpu_features_get_core_amount_physical();
+	if (numcore < 1) numcore = 1;
 	if (numcore > MAX_NUMCORE) numcore = MAX_NUMCORE;
 	DBG_INFO(80, wst("Number of processors : %d\n"), numcore);
 	return numcore;
+}
+
+static txpool_t *s_pool = nullptr;
+static unsigned s_poolRefs = 0;
+
+txpool_t *TxUtil::pool()
+{
+	return s_pool;
+}
+
+void TxUtil::poolAcquire()
+{
+	if (s_poolRefs++ == 0)
+		s_pool = txpool_new(getNumberofProcessors());
+}
+
+void TxUtil::poolRelease()
+{
+	if (s_poolRefs > 0 && --s_poolRefs == 0) {
+		txpool_free(s_pool);
+		s_pool = nullptr;
+	}
 }
 
 /*

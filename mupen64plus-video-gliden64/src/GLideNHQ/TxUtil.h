@@ -51,6 +51,13 @@ public:
 	static uint32 checksum(uint8 *src, int width, int height, int size, int rowStride);
 	static uint64 checksum64(uint8 *src, int width, int height, int size, int rowStride, uint8 *palette);
 	static uint32 getNumberofProcessors();
+
+	/* The worker pool the filters and quantizers split textures across
+	 * (txpool.c). TxFilter holds it for its lifetime; acquire and release
+	 * are called on the drawing thread only. */
+	static struct txpool *pool();
+	static void poolAcquire();
+	static void poolRelease();
 };
 
 class TxMemBuf

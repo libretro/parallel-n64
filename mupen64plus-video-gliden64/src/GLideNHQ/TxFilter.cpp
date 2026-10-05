@@ -25,8 +25,6 @@
 #pragma warning(disable: 4786)
 #endif
 
-#include <functional>
-#include <thread>
 #include <stdlib.h>
 #include <assert.h>
 
@@ -36,6 +34,31 @@
 #include "TextureFilters.h"
 #include "TxDbg.h"
 #include "bldno.h"
+#include "txpool.h"
+
+/* One block of rows per lane; the last lane takes the remainder. */
+struct FilterJob
+{
+	uint8 *src;
+	uint8 *dst;
+	uint32 srcwidth;
+	uint32 srcheight;
+	uint32 blkheight;
+	uint32 numcore;
+	uint32 filter;
+	uint32 srcStride;
+	uint32 destStride;
+};
+
+static void filter_lane(void *ctx, unsigned lane)
+{
+	const FilterJob *job = static_cast<const FilterJob *>(ctx);
+	const uint32 height = (lane == job->numcore - 1)
+		? job->srcheight - job->blkheight * lane
+		: job->blkheight;
+	filter_8888((uint32*)(job->src + lane * job->srcStride), job->srcwidth, height,
+				(uint32*)(job->dst + lane * job->destStride), job->filter, lane);
+}
 
 void TxFilter::clear()
 {
@@ -56,6 +79,7 @@ void TxFilter::clear()
 TxFilter::~TxFilter()
 {
 	clear();
+	TxUtil::poolRelease();
 }
 
 TxFilter::TxFilter(int maxwidth,
@@ -75,6 +99,7 @@ TxFilter::TxFilter(int maxwidth,
 	, _txHiResCache(nullptr)
 	, _txImage(nullptr)
 {
+	TxUtil::poolAcquire();
 	/* HACKALERT: the emulator misbehaves and sometimes forgets to shutdown */
 	if ((ident && wcscmp(ident, wst("DEFAULT")) != 0 && _ident.compare(ident) == 0) &&
 			_maxwidth  == maxwidth  &&
@@ -311,33 +336,17 @@ TxFilter::filter(uint8 *src, int srcwidth, int srcheight, ColorFormat srcformat,
 					numcore--;
 				}
 				if (blkrow > 0 && numcore > 1) {
-					std::thread *thrd[MAX_NUMCORE];
-					unsigned int i;
-					int blkheight = blkrow << 2;
-					unsigned int srcStride = (srcwidth * blkheight) << 2;
-					unsigned int destStride = srcStride * scale * scale;
-					for (i = 0; i < numcore - 1; i++) {
-						thrd[i] = new std::thread(std::bind(filter_8888,
-																(uint32*)_texture,
-																srcwidth,
-																blkheight,
-																(uint32*)_tmptex,
-																filter,
-																i));
-						_texture += srcStride;
-						_tmptex  += destStride;
-					}
-					thrd[i] = new std::thread(std::bind(filter_8888,
-															(uint32*)_texture,
-															srcwidth,
-															srcheight - blkheight * i,
-															(uint32*)_tmptex,
-															filter,
-															i));
-					for (i = 0; i < numcore; i++) {
-						thrd[i]->join();
-						delete thrd[i];
-					}
+					FilterJob job;
+					job.src        = _texture;
+					job.dst        = _tmptex;
+					job.srcwidth   = srcwidth;
+					job.srcheight  = srcheight;
+					job.blkheight  = blkrow << 2;
+					job.numcore    = numcore;
+					job.filter     = filter;
+					job.srcStride  = (srcwidth * job.blkheight) << 2;
+					job.destStride = job.srcStride * scale * scale;
+					txpool_run(TxUtil::pool(), filter_lane, &job, numcore);
 				} else {
 					filter_8888((uint32*)_texture, srcwidth, srcheight, (uint32*)_tmptex, filter, 0);
 				}

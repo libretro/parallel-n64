@@ -488,6 +488,9 @@ SOURCES_CXX   += \
 	$(VIDEODIR_GLIDEN64)/src/GLideNHQ/TxUtil.cpp \
 	$(VIDEODIR_GLIDEN64)/src/RSP_LoadMatrix.cpp
 
+# GLideNHQ's persistent filter/quantize pool (C89)
+SOURCES_C += $(VIDEODIR_GLIDEN64)/src/GLideNHQ/txpool.c
+
 ifneq (,$(findstring win,$(platform)))
 	SOURCES_C += $(VIDEODIR_GLIDEN64)/src/osal/osal_files_win32.c
 else
@@ -641,9 +644,10 @@ ifeq ($(HAVE_PARALLEL),1)
 	HAVE_RDP_EMIT := 1
 endif
 
-# rthreads and its eventcount: angrylion's worker pool and parallel-rdp's
-# command ring both park on retro_eventcount
-ifneq ($(filter 1,$(HAVE_THR_AL) $(HAVE_PARALLEL)),)
+# rthreads and its eventcount: angrylion's worker pool, parallel-rdp's
+# command ring and workers, and GLideNHQ's filter pool all park on
+# retro_eventcount
+ifneq ($(filter 1,$(HAVE_THR_AL) $(HAVE_PARALLEL) $(HAVE_GLIDEN64)),)
 SOURCES_C   += $(LIBRETRO_COMM_DIR)/rthreads/rthreads.c \
                $(LIBRETRO_COMM_DIR)/rthreads/retro_eventcount.c
 endif

@@ -27,11 +27,11 @@
 
 /* NOTE: The codes are not optimized. They can be made faster. */
 
-#include <functional>
-#include <thread>
 #include <assert.h>
 
 #include "TxQuantize.h"
+#include "TxUtil.h"
+#include "txpool.h"
 
 static const unsigned char One2Eight[2] =
 {
@@ -819,6 +819,34 @@ TxQuantize::ARGB8888_I8_Slow(uint32* src, uint32* dst, int width, int height)
 	}
 }
 
+typedef void (TxQuantize::*quantizerFunc)(uint32* src, uint32* dest, int width, int height);
+
+/* One block of rows per lane; the last lane takes the remainder. */
+struct QuantizeJob
+{
+	TxQuantize *self;
+	quantizerFunc fn;
+	uint8 *src;
+	uint8 *dest;
+	int width;
+	int height;
+	int blkheight;
+	unsigned numcore;
+	unsigned srcStride;
+	unsigned destStride;
+};
+
+static void quantize_lane(void *ctx, unsigned lane)
+{
+	const QuantizeJob *job = static_cast<const QuantizeJob *>(ctx);
+	const int height = (lane == job->numcore - 1)
+		? job->height - job->blkheight * (int)lane
+		: job->blkheight;
+	(job->self->*job->fn)((uint32*)(job->src + lane * job->srcStride),
+						  (uint32*)(job->dest + lane * job->destStride),
+						  job->width, height);
+}
+
 void
 TxQuantize::P8_16BPP(uint32* src, uint32* dest, int width, int height, uint32* palette)
 {
@@ -834,7 +862,6 @@ TxQuantize::P8_16BPP(uint32* src, uint32* dest, int width, int height, uint32* p
 boolean
 TxQuantize::quantize(uint8* src, uint8* dest, int width, int height, ColorFormat srcformat, ColorFormat destformat, boolean fastQuantizer)
 {
-	typedef void (TxQuantize::*quantizerFunc)(uint32* src, uint32* dest, int width, int height);
 	assert(srcformat != graphics::colorFormat::RGBA);
 	assert(destformat != graphics::colorFormat::RGBA);
 	quantizerFunc quantizer;
@@ -860,31 +887,18 @@ TxQuantize::quantize(uint8* src, uint8* dest, int width, int height, ColorFormat
 			numcore--;
 		}
 		if (blkrow > 0 && numcore > 1) {
-			std::thread *thrd[MAX_NUMCORE];
-			unsigned int i;
-			int blkheight = blkrow << 2;
-			unsigned int srcStride = (width * blkheight) << (2 - bpp_shift);
-			unsigned int destStride = srcStride << bpp_shift;
-			for (i = 0; i < numcore - 1; i++) {
-				thrd[i] = new std::thread(std::bind(quantizer,
-														this,
-														(uint32*)src,
-														(uint32*)dest,
-														width,
-														blkheight));
-				src  += srcStride;
-				dest += destStride;
-			}
-			thrd[i] = new std::thread(std::bind(quantizer,
-													this,
-													(uint32*)src,
-													(uint32*)dest,
-													width,
-													height - blkheight * i));
-			for (i = 0; i < numcore; i++) {
-				thrd[i]->join();
-				delete thrd[i];
-			}
+			QuantizeJob job;
+			job.self       = this;
+			job.fn         = quantizer;
+			job.src        = src;
+			job.dest       = dest;
+			job.width      = width;
+			job.height     = height;
+			job.blkheight  = blkrow << 2;
+			job.numcore    = numcore;
+			job.srcStride  = (width * job.blkheight) << (2 - bpp_shift);
+			job.destStride = job.srcStride << bpp_shift;
+			txpool_run(TxUtil::pool(), quantize_lane, &job, numcore);
 		} else {
 			(*this.*quantizer)((uint32*)src, (uint32*)dest, width, height);
 		}
@@ -909,31 +923,18 @@ TxQuantize::quantize(uint8* src, uint8* dest, int width, int height, ColorFormat
 			numcore--;
 		}
 		if (blkrow > 0 && numcore > 1) {
-			std::thread *thrd[MAX_NUMCORE];
-			unsigned int i;
-			int blkheight = blkrow << 2;
-			unsigned int srcStride = (width * blkheight) << 2;
-			unsigned int destStride = srcStride >> bpp_shift;
-			for (i = 0; i < numcore - 1; i++) {
-				thrd[i] = new std::thread(std::bind(quantizer,
-														this,
-														(uint32*)src,
-														(uint32*)dest,
-														width,
-														blkheight));
-				src  += srcStride;
-				dest += destStride;
-			}
-			thrd[i] = new std::thread(std::bind(quantizer,
-													this,
-													(uint32*)src,
-													(uint32*)dest,
-													width,
-													height - blkheight * i));
-			for (i = 0; i < numcore; i++) {
-				thrd[i]->join();
-				delete thrd[i];
-			}
+			QuantizeJob job;
+			job.self       = this;
+			job.fn         = quantizer;
+			job.src        = src;
+			job.dest       = dest;
+			job.width      = width;
+			job.height     = height;
+			job.blkheight  = blkrow << 2;
+			job.numcore    = numcore;
+			job.srcStride  = (width * job.blkheight) << 2;
+			job.destStride = job.srcStride >> bpp_shift;
+			txpool_run(TxUtil::pool(), quantize_lane, &job, numcore);
 		} else {
 			(*this.*quantizer)((uint32*)src, (uint32*)dest, width, height);
 		}
