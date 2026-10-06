@@ -25,6 +25,11 @@ ROMS = {
     "rottri32": "RDP/32BPP/Triangle/Rotate/FillTriangle/LeftMajorTriangle320x240/RotateLeftMajorTriangle32BPP320X240.N64",
     "rightmajor16": "RDP/16BPP/Triangle/Plot/FillTriangle/RightMajorTriangle320x240/RightMajorTriangle16BPP320X240.N64",
     "plotline32": "RDP/32BPP/Line/Plot/FillLine/PlotFillLine32BPP320X240.N64",
+    # Drawn once at boot: black until parallel-RDP was started before the
+    # guest's first frame.
+    "shade32": "RDP/32BPP/Triangle/ShadeTriangle320x240/Cycle1ShadeTriangle32BPP320X240.N64",
+    "zbuf16": "RDP/16BPP/Triangle/FillZBufferTriangle320x240/Cycle1FillZBufferTriangle16BPP320X240.N64",
+    "tlut16": "RDP/16BPP/Rectangle/TextureRectangle/TLUT/CopyTextureRectangleTLUTRGBA8B320x240/CopyTextureRectangle16BPPTLUTRGBA8B320X240.N64",
 }
 FRAMES = 120
 DUMP = (30, 60, 90, 120)

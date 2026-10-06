@@ -1000,6 +1000,32 @@ void emu_step_render(void)
       video_cb(NULL, screen_width, screen_height, screen_pitch);
 }
 
+#ifdef HAVE_PARALLEL
+static bool parallel_initialized = false;
+
+/* Brings parallel-RDP up once per Vulkan context. It has to be running
+ * before the guest executes a single instruction: an RDP list submitted
+ * while it is down is dropped, and a program that draws once at boot
+ * (krom's RDP tests, homebrew) would then show nothing but black. */
+static void init_parallel_plugin(void)
+{
+   if (parallel_initialized)
+      return;
+   if (!environ_cb(RETRO_ENVIRONMENT_GET_HW_RENDER_INTERFACE, &vulkan) || !vulkan)
+   {
+      if (log_cb)
+         log_cb(RETRO_LOG_ERROR, "Failed to obtain Vulkan interface.\n");
+   }
+   else if (!parallel_init(vulkan))
+   {
+      if (log_cb)
+         log_cb(RETRO_LOG_ERROR, "parallel-RDP init failed (device unsupported); nothing will be rendered.\n");
+   }
+   else
+      parallel_initialized = true;
+}
+#endif
+
 static void emu_step_initialize(void)
 {
    if (emu_initialized)
@@ -1031,6 +1057,13 @@ static void emu_step_initialize(void)
       default:           current_rsp_type = RSP_PLUGIN_HLE;      break;
    }
    plugin_connect_all();
+
+#ifdef HAVE_PARALLEL
+   /* plugin_connect_all handed the plugin its RDRAM and register
+    * pointers; start parallel-RDP before EXECUTE runs the first frame. */
+   if (gfx_plugin == GFX_PARALLEL)
+      init_parallel_plugin();
+#endif
 
    if (log_cb)
       log_cb(RETRO_LOG_INFO, "EmuThread: M64CMD_EXECUTE.\n");
@@ -1090,16 +1123,7 @@ void reinit_gfx_plugin(void)
           break;
        case GFX_PARALLEL:
 #ifdef HAVE_PARALLEL
-          if (!environ_cb(RETRO_ENVIRONMENT_GET_HW_RENDER_INTERFACE, &vulkan) || !vulkan)
-          {
-             if (log_cb)
-                log_cb(RETRO_LOG_ERROR, "Failed to obtain Vulkan interface.\n");
-          }
-          else if (!parallel_init(vulkan))
-          {
-             if (log_cb)
-                log_cb(RETRO_LOG_ERROR, "parallel-RDP init failed (device unsupported); nothing will be rendered.\n");
-          }
+          init_parallel_plugin();
 #endif
           break;
     }
@@ -1112,6 +1136,7 @@ void deinit_gfx_plugin(void)
        case GFX_PARALLEL:
 #if defined(HAVE_PARALLEL)
           parallel_deinit();
+          parallel_initialized = false;
 #endif
           break;
        case GFX_ANGRYLION:
