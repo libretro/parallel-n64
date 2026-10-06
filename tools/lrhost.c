@@ -38,6 +38,9 @@
 #include <math.h>
 #include <stdarg.h>
 #include <libretro.h>
+#ifdef LRHOST_VULKAN
+#include "lrhost_vulkan.h"
+#endif
 #include <features/features_cpu.h>
 
 static struct { char key[64]; char val[64]; } opts[64];
@@ -64,6 +67,16 @@ static unsigned long swfb_lent, swfb_frames, swfb_hits;
 
 static void video_cb(const void *data, unsigned w, unsigned h, size_t pitch)
 {
+#ifdef LRHOST_VULKAN
+    /* a HW frame: read the image back and treat it like a 32-bit frame */
+    if (data == RETRO_HW_FRAME_BUFFER_VALID)
+    {
+        data = vk_read_frame(w, h);
+        pitch = (size_t)w * 4;
+        pixfmt = RETRO_PIXEL_FORMAT_XRGB8888;
+        if (!data) { frames_duped++; return; }
+    }
+#endif
     if (data) { swfb_frames++; if (swfb && data == (const void*)swfb) swfb_hits++; }
     vid_w = w; vid_h = h;
     if (!data) { frames_duped++; return; }
@@ -161,10 +174,34 @@ static bool env_cb(unsigned cmd, void *data)
         *(bool*)data = true; return true;
     case RETRO_ENVIRONMENT_GET_AUDIO_VIDEO_ENABLE:
         *(int*)data = 3; return true;
+#ifdef LRHOST_VULKAN
+    case RETRO_ENVIRONMENT_SET_HW_RENDER:
+    {
+        struct retro_hw_render_callback *cb = (struct retro_hw_render_callback*)data;
+        if (cb->context_type != RETRO_HW_CONTEXT_VULKAN) return false;
+        vk_hw = *cb;
+        return true;
+    }
+    case RETRO_ENVIRONMENT_SET_HW_RENDER_CONTEXT_NEGOTIATION_INTERFACE:
+    {
+        const struct retro_hw_render_context_negotiation_interface *n =
+            (const struct retro_hw_render_context_negotiation_interface*)data;
+        if (n->interface_type != RETRO_HW_RENDER_CONTEXT_NEGOTIATION_INTERFACE_VULKAN) return false;
+        vk_neg = (const struct retro_hw_render_context_negotiation_interface_vulkan*)data;
+        return true;
+    }
+    case RETRO_ENVIRONMENT_GET_HW_RENDER_INTERFACE:
+        if (!vk_ready) return false;
+        *(const struct retro_hw_render_interface**)data = (const struct retro_hw_render_interface*)&vk_iface;
+        return true;
+    case RETRO_ENVIRONMENT_GET_PREFERRED_HW_RENDER:
+        *(unsigned*)data = RETRO_HW_CONTEXT_VULKAN; return true;
+#else
     case RETRO_ENVIRONMENT_SET_HW_RENDER:
         return false;   /* software renderers only */
     case RETRO_ENVIRONMENT_GET_PREFERRED_HW_RENDER:
         *(unsigned*)data = RETRO_HW_CONTEXT_NONE; return true;
+#endif
     case RETRO_ENVIRONMENT_SET_CORE_OPTIONS_V2:
     case RETRO_ENVIRONMENT_SET_CORE_OPTIONS_V2_INTL:
     case RETRO_ENVIRONMENT_SET_CORE_OPTIONS:
@@ -263,6 +300,13 @@ int main(int argc, char **argv)
     game.data = malloc(game.size); if (fread((void*)game.data, 1, game.size, f) != game.size) return 1; fclose(f);
     game.path = argv[2]; game.meta = NULL;
     if (!r_load(&game)) { fprintf(stderr, "retro_load_game failed\n"); return 1; }
+#ifdef LRHOST_VULKAN
+    if (vk_hw.context_type == RETRO_HW_CONTEXT_VULKAN)
+    {
+        if (!vk_init()) return 1;
+        if (vk_hw.context_reset) vk_hw.context_reset();
+    }
+#endif
     r_get_av(&av);
 
     /* LRHOST_STATE=file loads a savestate after the first frame, so a
@@ -303,6 +347,9 @@ int main(int argc, char **argv)
                nframes, (now_ms() - t_first) / 1e3, mean, sd, s[n / 2], s[n * 9 / 10], s[n * 99 / 100], s[n - 1],
                frames_presented, frames_duped, frame_crc);
     }
+#ifdef LRHOST_VULKAN
+    vk_shutdown();
+#endif
     r_deinit();
     return 0;
 }

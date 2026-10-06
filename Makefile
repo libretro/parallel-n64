@@ -1202,7 +1202,7 @@ clean: clean-tools
 	rm -f $(OBJECTS) $(TARGET) $(OBJECTS:.o=.d) .build-flags
 
 clean-tools:
-	rm -f $(ANGRYLION_TOOLS) lrhost$(EXE_EXT) angrylion_replay$(EXE_EXT) $(ANGRYLION_CHECKS)
+	rm -f $(ANGRYLION_TOOLS) lrhost$(EXE_EXT) lrhost_vk$(EXE_EXT) angrylion_replay$(EXE_EXT) $(ANGRYLION_CHECKS)
 
 # Angrylion benchmark and bit-exactness harnesses (tools/angrylion_*.c),
 # linked against the core's own angrylion objects: `make tools` after a
@@ -1225,6 +1225,11 @@ LRHOST_LIBS := -ldl
 endif
 lrhost$(EXE_EXT): tools/lrhost.c $(LIBRETRO_COMM_DIR)/features/features_cpu.o
 	$(CC) $(CPPFLAGS) $(CFLAGS) -w $< $(LIBRETRO_COMM_DIR)/features/features_cpu.o -o $@ $(LRHOST_LIBS) -lpthread -lm
+
+# The same host with a Vulkan HW context (headless; lavapipe works), for
+# running parallel-rdp: make lrhost_vk
+lrhost_vk$(EXE_EXT): tools/lrhost.c tools/lrhost_vulkan.h $(LIBRETRO_COMM_DIR)/features/features_cpu.o
+	$(CC) $(CPPFLAGS) $(CFLAGS) -DLRHOST_VULKAN -I$(VIDEODIR_PARALLEL)/parallel-rdp/vulkan-headers/include -w $< $(LIBRETRO_COMM_DIR)/features/features_cpu.o -o $@ $(LRHOST_LIBS) -lpthread -lm
 
 angrylion_replay$(EXE_EXT): tools/angrylion_replay.c $(ANGRYLION_TOOL_OBJS)
 	$(CC) $(CPPFLAGS) $(CFLAGS) -I$(VIDEODIR_ANGRYLION) -w $< $(ANGRYLION_TOOL_OBJS) -o $@ -lpthread -lm
