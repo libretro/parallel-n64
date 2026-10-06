@@ -25,7 +25,7 @@
 #include "hash.hpp"
 #include "intrusive_list.hpp"
 #include "object_pool.hpp"
-#include "read_write_lock.hpp"
+#include <retro_atomic.h>
 #include <assert.h>
 #include <vector>
 
@@ -442,165 +442,63 @@ private:
 template <typename T>
 using IntrusiveHashMapWrapper = IntrusiveHashMap<IntrusivePODWrapper<T>>;
 
-template <typename T>
-class ThreadSafeIntrusiveHashMap
-{
-public:
-	T *find(Hash hash) const
-	{
-		lock.lock_read();
-		T *t = hashmap.find(hash);
-		lock.unlock_read();
-
-		// We can race with the intrusive list internal pointers,
-		// but that's an internal detail which should never be touched outside the hashmap.
-		return t;
-	}
-
-	template <typename P>
-	bool find_and_consume_pod(Hash hash, P &p) const
-	{
-		lock.lock_read();
-		bool ret = hashmap.find_and_consume_pod(hash, p);
-		lock.unlock_read();
-		return ret;
-	}
-
-	void clear()
-	{
-		lock.lock_write();
-		hashmap.clear();
-		lock.unlock_write();
-	}
-
-	// Assumption is that readers will not be erased while in use by any other thread.
-	void erase(T *value)
-	{
-		lock.lock_write();
-		hashmap.erase(value);
-		lock.unlock_write();
-	}
-
-	void erase(Hash hash)
-	{
-		lock.lock_write();
-		hashmap.erase(hash);
-		lock.unlock_write();
-	}
-
-	template <typename... P>
-	T *allocate(P&&... p)
-	{
-		lock.lock_write();
-		T *t = hashmap.allocate(std::forward<P>(p)...);
-		lock.unlock_write();
-		return t;
-	}
-
-	void free(T *value)
-	{
-		lock.lock_write();
-		hashmap.free(value);
-		lock.unlock_write();
-	}
-
-	T *insert_replace(Hash hash, T *value)
-	{
-		lock.lock_write();
-		value = hashmap.insert_replace(hash, value);
-		lock.unlock_write();
-		return value;
-	}
-
-	T *insert_yield(Hash hash, T *value)
-	{
-		lock.lock_write();
-		value = hashmap.insert_yield(hash, value);
-		lock.unlock_write();
-		return value;
-	}
-
-	// This one is very sketchy, since callers need to make sure there are no readers of this hash.
-	template <typename... P>
-	T *emplace_replace(Hash hash, P&&... p)
-	{
-		lock.lock_write();
-		T *t = hashmap.emplace_replace(hash, std::forward<P>(p)...);
-		lock.unlock_write();
-		return t;
-	}
-
-	template <typename... P>
-	T *emplace_yield(Hash hash, P&&... p)
-	{
-		lock.lock_write();
-		T *t = hashmap.emplace_yield(hash, std::forward<P>(p)...);
-		lock.unlock_write();
-		return t;
-	}
-
-	// Not supposed to be called in racy conditions,
-	// we could have a global read lock and unlock while iterating if necessary.
-	typename IntrusiveList<T>::Iterator begin()
-	{
-		return hashmap.begin();
-	}
-
-	typename IntrusiveList<T>::Iterator end()
-	{
-		return hashmap.end();
-	}
-
-	IntrusiveHashMap<T> &get_thread_unsafe()
-	{
-		return hashmap;
-	}
-
-	const IntrusiveHashMap<T> &get_thread_unsafe() const
-	{
-		return hashmap;
-	}
-
-private:
-	IntrusiveHashMap<T> hashmap;
-	mutable RWSpinLock lock;
-};
-
-// A special purpose hashmap which is split into a read-only, immutable portion and a plain thread-safe one.
+// A special purpose hashmap which is split into a read-only, immutable portion and a thread-safe one.
 // User can move read-write thread-safe portion to read-only portion when user knows it's safe to do so.
+//
+// The thread-safe portion takes no lock. It is insert-only between
+// move_to_read_only()/clear() calls: a fixed array of buckets, each a
+// singly linked chain whose head is a retro_atomic pointer. A lookup walks
+// the chain with acquire loads and never blocks. An insert scans the
+// chain for the hash, then publishes a new link at the head with one CAS;
+// if the CAS loses, only the links added since the scan are checked
+// again, and if one of them has the same hash the newcomer yields (it is
+// freed and the existing value returned), exactly as insert_yield did
+// under the lock.
 template <typename T>
 class ThreadSafeIntrusiveHashMapReadCached
 {
+	struct Link;
+
 public:
+	ThreadSafeIntrusiveHashMapReadCached()
+	{
+		for (auto &b : buckets)
+			retro_atomic_ptr_init(&b, nullptr);
+	}
+
 	~ThreadSafeIntrusiveHashMapReadCached()
 	{
 		clear();
 	}
+
+	ThreadSafeIntrusiveHashMapReadCached(const ThreadSafeIntrusiveHashMapReadCached &) = delete;
+	void operator=(const ThreadSafeIntrusiveHashMapReadCached &) = delete;
 
 	T *find(Hash hash) const
 	{
 		T *t = read_only.find(hash);
 		if (t)
 			return t;
-
-		lock.lock_read();
-		t = read_write.find(hash);
-		lock.unlock_read();
-		return t;
+		return find_rw(hash);
 	}
 
+	// Not thread-safe: only when the caller knows nobody else is using the map.
 	void move_to_read_only()
 	{
-		auto &list = read_write.inner_list();
-		auto itr = list.begin();
-		while (itr != list.end())
+		for (auto &b : buckets)
 		{
-			auto *to_move = itr.get();
-			read_write.erase(to_move);
-			T *to_delete = read_only.insert_yield(to_move);
-			if (to_delete)
-				object_pool.free(to_delete);
-			itr = list.begin();
+			Link *l = static_cast<Link *>(retro_atomic_load_acquire_ptr(&b));
+			retro_atomic_ptr_init(&b, nullptr);
+			while (l)
+			{
+				Link *next = static_cast<Link *>(retro_atomic_load_relaxed_ptr(&l->next));
+				T *to_move = l->value;
+				T *to_delete = read_only.insert_yield(to_move);
+				if (to_delete)
+					object_pool.free(to_delete);
+				delete l;
+				l = next;
+			}
 		}
 	}
 
@@ -609,48 +507,82 @@ public:
 	{
 		if (read_only.find_and_consume_pod(hash, p))
 			return true;
-
-		lock.lock_read();
-		bool ret = read_write.find_and_consume_pod(hash, p);
-		lock.unlock_read();
-		return ret;
+		T *t = find_rw(hash);
+		if (!t)
+			return false;
+		p = t->get();
+		return true;
 	}
 
+	// Not thread-safe: teardown only.
 	void clear()
 	{
-		lock.lock_write();
-		clear_list(read_only.inner_list());
-		clear_list(read_write.inner_list());
+		auto &list = read_only.inner_list();
+		auto itr = list.begin();
+		while (itr != list.end())
+		{
+			auto *to_free = itr.get();
+			itr = list.erase(itr);
+			object_pool.free(to_free);
+		}
 		read_only.clear();
-		read_write.clear();
-		lock.unlock_write();
+
+		for (auto &b : buckets)
+		{
+			Link *l = static_cast<Link *>(retro_atomic_load_acquire_ptr(&b));
+			retro_atomic_ptr_init(&b, nullptr);
+			while (l)
+			{
+				Link *next = static_cast<Link *>(retro_atomic_load_relaxed_ptr(&l->next));
+				object_pool.free(l->value);
+				delete l;
+				l = next;
+			}
+		}
 	}
 
 	template <typename... P>
 	T *allocate(P&&... p)
 	{
-		lock.lock_write();
-		T *t = object_pool.allocate(std::forward<P>(p)...);
-		lock.unlock_write();
-		return t;
+		return object_pool.allocate(std::forward<P>(p)...);
 	}
 
 	void free(T *ptr)
 	{
-		lock.lock_write();
 		object_pool.free(ptr);
-		lock.unlock_write();
 	}
 
 	T *insert_yield(Hash hash, T *value)
 	{
 		static_cast<IntrusiveHashMapEnabled<T> *>(value)->set_hash(hash);
-		lock.lock_write();
-		T *to_delete = read_write.insert_yield(value);
-		if (to_delete)
-			object_pool.free(to_delete);
-		lock.unlock_write();
-		return value;
+
+		Link *link = new Link;
+		link->hash = hash;
+		link->value = value;
+
+		retro_atomic_ptr_t &bucket = buckets[hash & (NUM_BUCKETS - 1)];
+		Link *head = static_cast<Link *>(retro_atomic_load_acquire_ptr(&bucket));
+		Link *scanned_to = nullptr;
+
+		for (;;)
+		{
+			// Only links newer than the last scan can hold a duplicate.
+			for (Link *l = head; l != scanned_to; l = static_cast<Link *>(retro_atomic_load_acquire_ptr(&l->next)))
+			{
+				if (l->hash == hash)
+				{
+					delete link;
+					object_pool.free(value);
+					return l->value;
+				}
+			}
+			scanned_to = head;
+
+			retro_atomic_store_relaxed_ptr(&link->next, head);
+			if (retro_atomic_cas_ptr(&bucket, head, link))
+				return value;
+			head = static_cast<Link *>(retro_atomic_load_acquire_ptr(&bucket));
+		}
 	}
 
 	template <typename... P>
@@ -665,26 +597,90 @@ public:
 		return read_only;
 	}
 
-	IntrusiveHashMapHolder<T> &get_read_write()
+	// Iterates the thread-safe portion. Safe against concurrent inserts:
+	// it sees every value published before it reaches that bucket.
+	class ReadWriteRange
 	{
-		return read_write;
+	public:
+		class Iterator
+		{
+		public:
+			Iterator(const ThreadSafeIntrusiveHashMapReadCached *map_, unsigned bucket_)
+				: map(map_), bucket(bucket_), link(nullptr)
+			{
+				advance_bucket();
+			}
+
+			T &operator*() const { return *link->value; }
+			T *operator->() const { return link->value; }
+			bool operator!=(const Iterator &other) const { return link != other.link || bucket != other.bucket; }
+			bool operator==(const Iterator &other) const { return !(*this != other); }
+
+			Iterator &operator++()
+			{
+				link = static_cast<Link *>(retro_atomic_load_acquire_ptr(&link->next));
+				if (!link)
+				{
+					bucket++;
+					advance_bucket();
+				}
+				return *this;
+			}
+
+		private:
+			const ThreadSafeIntrusiveHashMapReadCached *map;
+			unsigned bucket;
+			Link *link;
+
+			void advance_bucket()
+			{
+				while (bucket < NUM_BUCKETS)
+				{
+					link = static_cast<Link *>(retro_atomic_load_acquire_ptr(
+							const_cast<retro_atomic_ptr_t *>(&map->buckets[bucket])));
+					if (link)
+						return;
+					bucket++;
+				}
+				link = nullptr;
+			}
+		};
+
+		explicit ReadWriteRange(const ThreadSafeIntrusiveHashMapReadCached *map_) : map(map_) {}
+		Iterator begin() const { return Iterator(map, 0); }
+		Iterator end() const { return Iterator(map, NUM_BUCKETS); }
+
+	private:
+		const ThreadSafeIntrusiveHashMapReadCached *map;
+	};
+
+	ReadWriteRange get_read_write()
+	{
+		return ReadWriteRange(this);
 	}
 
 private:
-	IntrusiveHashMapHolder<T> read_only;
-	IntrusiveHashMapHolder<T> read_write;
-	ObjectPool<T> object_pool;
-	mutable RWSpinLock lock;
+	enum { NUM_BUCKETS = 256 };
 
-	void clear_list(IntrusiveList<T> &list)
+	struct Link
 	{
-		auto itr = list.begin();
-		while (itr != list.end())
-		{
-			auto *to_free = itr.get();
-			itr = list.erase(itr);
-			object_pool.free(to_free);
-		}
+		retro_atomic_ptr_t next;
+		Hash hash;
+		T *value;
+	};
+
+	IntrusiveHashMapHolder<T> read_only;
+	retro_atomic_ptr_t buckets[NUM_BUCKETS];
+	ThreadSafeObjectPool<T> object_pool;
+
+	T *find_rw(Hash hash) const
+	{
+		Link *l = static_cast<Link *>(retro_atomic_load_acquire_ptr(
+				const_cast<retro_atomic_ptr_t *>(&buckets[hash & (NUM_BUCKETS - 1)])));
+		for (; l; l = static_cast<Link *>(retro_atomic_load_acquire_ptr(&l->next)))
+			if (l->hash == hash)
+				return l->value;
+		return nullptr;
 	}
 };
 }

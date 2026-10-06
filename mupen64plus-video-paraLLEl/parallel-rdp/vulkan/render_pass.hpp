@@ -30,6 +30,9 @@
 #include "object_pool.hpp"
 #include "temporary_hashmap.hpp"
 #include "vulkan_headers.hpp"
+#ifdef GRANITE_VULKAN_MT
+#include <mutex> // the allocator locks; next to go
+#endif
 
 namespace Vulkan
 {
