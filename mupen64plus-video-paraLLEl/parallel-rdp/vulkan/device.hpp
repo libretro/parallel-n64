@@ -54,6 +54,8 @@
 #include <mutex>
 #include <condition_variable>
 #include <rthreads/retro_eventcount.h>
+#include <queues/mpsc_stack.h>
+#include <retro_atomic.h>
 #endif
 
 #ifdef GRANITE_VULKAN_FOSSILIZE
@@ -88,6 +90,21 @@ struct InitialImageBuffer
 	Util::SmallVector<VkBufferImageCopy, 32> blits;
 };
 
+// One object handed to the Device to release once the GPU is done with
+// the frame it was last used in (see Device::defer_release).
+struct DeferredRelease : mpsc_stack_node_t
+{
+	enum class Kind
+	{
+		Framebuffer, Sampler, Pipeline, ImageView, BufferView, Image, Buffer,
+		DescriptorPool, Semaphore, RecycleSemaphore, Event, Fence, Memory, KeepAliveImage
+	};
+	Kind kind;
+	uint64_t handle = 0; // any non-dispatchable Vulkan handle
+	DeviceAllocation alloc = {};
+	ImageHandle image;
+};
+
 struct HandlePool
 {
 	VulkanObjectPool<Buffer> buffers;
@@ -103,6 +120,7 @@ struct HandlePool
 	VulkanObjectPool<CommandBuffer> command_buffers;
 	VulkanObjectPool<BindlessDescriptorPool> bindless_descriptor_pool;
 	VulkanObjectPool<DeviceAllocationOwner> allocations;
+	VulkanObjectPool<DeferredRelease> deferred;
 };
 
 class DebugChannelInterface
@@ -514,6 +532,22 @@ private:
 
 	// Make sure this is deleted last.
 	HandlePool handle_pool;
+
+	// Objects released from any thread without the device lock: each frame
+	// context drains its stack in PerFrame::begin(), after waiting for
+	// that frame's GPU work. A fixed array, so recreating the frame
+	// contexts never moves what a releasing thread is pushing onto.
+	struct PerFrame;
+	enum { MAX_DEFERRED_FRAMES = 16 };
+	mpsc_stack_t deferred_releases[MAX_DEFERRED_FRAMES];
+	// The frame index releases go to: published only once a frame has
+	// begun, so nothing released for the new frame is drained by its own
+	// begin().
+	retro_atomic_int_t deferred_frame_index{0};
+	template <typename T>
+	void defer_release(DeferredRelease::Kind kind, T handle);
+	void defer_release_node(DeferredRelease *node);
+	void drain_deferred_releases(PerFrame &frame);
 
 	// Threads that find another thread already waiting on a FenceHolder
 	// park here until it is done (see FenceHolder::wait).

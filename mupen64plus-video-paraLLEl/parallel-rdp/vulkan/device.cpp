@@ -100,6 +100,8 @@ Device::Device()
 	cookie.store(0);
 #endif
 	fence_wait_ec_live = retro_eventcount_init(&fence_wait_ec);
+	for (auto &stack : deferred_releases)
+		mpsc_stack_init(&stack);
 }
 
 Semaphore Device::request_semaphore(VkSemaphoreTypeKHR type, VkSemaphore vk_semaphore, bool transfer_ownership)
@@ -2086,11 +2088,16 @@ void Device::init_frame_contexts(unsigned count)
 	transient_allocator.clear();
 	per_frame.clear();
 
+	if (count > MAX_DEFERRED_FRAMES)
+		count = MAX_DEFERRED_FRAMES;
 	for (unsigned i = 0; i < count; i++)
 	{
 		auto frame = std::unique_ptr<PerFrame>(new PerFrame(this, i));
 		per_frame.emplace_back(std::move(frame));
 	}
+	if (frame_context_index >= per_frame.size())
+		frame_context_index = 0;
+	retro_atomic_store_release_int(&deferred_frame_index, int(frame_context_index));
 }
 
 void Device::init_external_swapchain(const std::vector<ImageHandle> &swapchain_images)
@@ -2191,10 +2198,58 @@ Device::PerFrame::PerFrame(Device *device_, unsigned frame_index_)
 	}
 }
 
+template <typename T>
+void Device::defer_release(DeferredRelease::Kind kind, T handle)
+{
+	auto *node = handle_pool.deferred.allocate();
+	node->kind = kind;
+	node->handle = (uint64_t)handle;
+	defer_release_node(node);
+}
+
+void Device::defer_release_node(DeferredRelease *node)
+{
+	unsigned index = unsigned(retro_atomic_load_acquire_int(&deferred_frame_index));
+	mpsc_stack_push(&deferred_releases[index % MAX_DEFERRED_FRAMES], node);
+}
+
+// Moves everything released to this frame into its lists, which begin()
+// then processes. Called after the frame's GPU work has been waited for.
+void Device::drain_deferred_releases(PerFrame &f)
+{
+	auto *node = static_cast<DeferredRelease *>(
+			mpsc_stack_drain(&deferred_releases[f.frame_index % MAX_DEFERRED_FRAMES]));
+	while (node)
+	{
+		auto *next = static_cast<DeferredRelease *>(node->next);
+		switch (node->kind)
+		{
+		case DeferredRelease::Kind::Framebuffer: f.destroyed_framebuffers.push_back((VkFramebuffer)node->handle); break;
+		case DeferredRelease::Kind::Sampler: f.destroyed_samplers.push_back((VkSampler)node->handle); break;
+		case DeferredRelease::Kind::Pipeline: f.destroyed_pipelines.push_back((VkPipeline)node->handle); break;
+		case DeferredRelease::Kind::ImageView: f.destroyed_image_views.push_back((VkImageView)node->handle); break;
+		case DeferredRelease::Kind::BufferView: f.destroyed_buffer_views.push_back((VkBufferView)node->handle); break;
+		case DeferredRelease::Kind::Image: f.destroyed_images.push_back((VkImage)node->handle); break;
+		case DeferredRelease::Kind::Buffer: f.destroyed_buffers.push_back((VkBuffer)node->handle); break;
+		case DeferredRelease::Kind::DescriptorPool: f.destroyed_descriptor_pools.push_back((VkDescriptorPool)node->handle); break;
+		case DeferredRelease::Kind::Semaphore: f.destroyed_semaphores.push_back((VkSemaphore)node->handle); break;
+		case DeferredRelease::Kind::RecycleSemaphore: f.recycled_semaphores.push_back((VkSemaphore)node->handle); break;
+		case DeferredRelease::Kind::Event: f.recycled_events.push_back((VkEvent)node->handle); break;
+		case DeferredRelease::Kind::Fence: f.recycle_fences.push_back((VkFence)node->handle); break;
+		case DeferredRelease::Kind::Memory: f.allocations.push_back(node->alloc); break;
+		case DeferredRelease::Kind::KeepAliveImage: f.keep_alive_images.push_back(std::move(node->image)); break;
+		}
+		handle_pool.deferred.free(node);
+		node = next;
+	}
+}
+
 void Device::keep_handle_alive(ImageHandle handle)
 {
-	LOCK();
-	frame().keep_alive_images.push_back(std::move(handle));
+	auto *node = handle_pool.deferred.allocate();
+	node->kind = DeferredRelease::Kind::KeepAliveImage;
+	node->image = std::move(handle);
+	defer_release_node(node);
 }
 
 void Device::free_memory_nolock(const DeviceAllocation &alloc)
@@ -2214,80 +2269,73 @@ static inline bool exists(const T &container, const U &value)
 
 void Device::destroy_pipeline(VkPipeline pipeline)
 {
-	LOCK();
-	destroy_pipeline_nolock(pipeline);
+	defer_release(DeferredRelease::Kind::Pipeline, pipeline);
 }
 
 void Device::reset_fence(VkFence fence, bool observed_wait)
 {
-	LOCK();
-	reset_fence_nolock(fence, observed_wait);
+	// Reset and recycled when this frame comes round again, whether or
+	// not someone already waited on it.
+	(void)observed_wait;
+	defer_release(DeferredRelease::Kind::Fence, fence);
 }
 
 void Device::destroy_buffer(VkBuffer buffer)
 {
-	LOCK();
-	destroy_buffer_nolock(buffer);
+	defer_release(DeferredRelease::Kind::Buffer, buffer);
 }
 
 void Device::destroy_descriptor_pool(VkDescriptorPool desc_pool)
 {
-	LOCK();
-	destroy_descriptor_pool_nolock(desc_pool);
+	defer_release(DeferredRelease::Kind::DescriptorPool, desc_pool);
 }
 
 void Device::destroy_buffer_view(VkBufferView view)
 {
-	LOCK();
-	destroy_buffer_view_nolock(view);
+	defer_release(DeferredRelease::Kind::BufferView, view);
 }
 
 void Device::destroy_event(VkEvent event)
 {
-	LOCK();
-	destroy_event_nolock(event);
+	defer_release(DeferredRelease::Kind::Event, event);
 }
 
 void Device::destroy_framebuffer(VkFramebuffer framebuffer)
 {
-	LOCK();
-	destroy_framebuffer_nolock(framebuffer);
+	defer_release(DeferredRelease::Kind::Framebuffer, framebuffer);
 }
 
 void Device::destroy_image(VkImage image)
 {
-	LOCK();
-	destroy_image_nolock(image);
+	defer_release(DeferredRelease::Kind::Image, image);
 }
 
 void Device::destroy_semaphore(VkSemaphore semaphore)
 {
-	LOCK();
-	destroy_semaphore_nolock(semaphore);
+	defer_release(DeferredRelease::Kind::Semaphore, semaphore);
 }
 
 void Device::recycle_semaphore(VkSemaphore semaphore)
 {
-	LOCK();
-	recycle_semaphore_nolock(semaphore);
+	defer_release(DeferredRelease::Kind::RecycleSemaphore, semaphore);
 }
 
 void Device::free_memory(const DeviceAllocation &alloc)
 {
-	LOCK();
-	free_memory_nolock(alloc);
+	auto *node = handle_pool.deferred.allocate();
+	node->kind = DeferredRelease::Kind::Memory;
+	node->alloc = alloc;
+	defer_release_node(node);
 }
 
 void Device::destroy_sampler(VkSampler sampler)
 {
-	LOCK();
-	destroy_sampler_nolock(sampler);
+	defer_release(DeferredRelease::Kind::Sampler, sampler);
 }
 
 void Device::destroy_image_view(VkImageView view)
 {
-	LOCK();
-	destroy_image_view_nolock(view);
+	defer_release(DeferredRelease::Kind::ImageView, view);
 }
 
 void Device::destroy_pipeline_nolock(VkPipeline pipeline)
@@ -2500,6 +2548,7 @@ void Device::next_frame_context()
 		frame_context_index = 0;
 
 	frame().begin();
+	retro_atomic_store_release_int(&deferred_frame_index, int(frame_context_index));
 	recalibrate_timestamps();
 	frame_context_begin_ts = write_calibrated_timestamp_nolock();
 }
@@ -2747,6 +2796,9 @@ void Device::PerFrame::begin()
 		table.vkWaitForFences(vkdevice, wait_fences.size(), wait_fences.data(), VK_TRUE, UINT64_MAX);
 		wait_fences.clear();
 	}
+
+	// This frame's GPU work is done: take what other threads released to it.
+	device.drain_deferred_releases(*this);
 
 	// If we're using timeline semaphores, these paths should never be hit.
 	if (!recycle_fences.empty())
