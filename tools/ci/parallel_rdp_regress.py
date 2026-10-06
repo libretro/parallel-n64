@@ -42,8 +42,13 @@ def fetch(romdir, name):
     path = os.path.join(romdir, name + ".n64")
     if not os.path.exists(path):
         os.makedirs(romdir, exist_ok=True)
-        with urllib.request.urlopen(KROM + ROMS[name], timeout=60) as r, open(path + ".part", "wb") as f:
-            f.write(r.read())
+        try:
+            with urllib.request.urlopen(KROM + ROMS[name], timeout=60) as r, open(path + ".part", "wb") as f:
+                f.write(r.read())
+        except Exception as e:
+            # Some images ship a Python without a CA store; curl uses the system one.
+            print("urllib fetch failed (%s), trying curl" % e)
+            subprocess.run(["curl", "-fsSL", "--retry", "3", "-o", path + ".part", KROM + ROMS[name]], check=True)
         os.replace(path + ".part", path)
     return path
 
