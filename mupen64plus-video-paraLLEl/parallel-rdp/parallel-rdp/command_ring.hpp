@@ -47,6 +47,8 @@ public:
 			CommandProcessor *processor, unsigned count);
 	~CommandRing();
 	void drain();
+	// Stops and joins the command thread; safe to call more than once.
+	void teardown_thread();
 
 	void enqueue_command(unsigned num_words, const uint32_t *words);
 
@@ -68,7 +70,6 @@ private:
 
 	void thread_loop();
 	static void thread_entry(void *self);
-	void teardown_thread();
 #ifdef PARALLEL_RDP_SHADER_DIR
 	Granite::Global::GlobalManagersHandle global_handles;
 #endif

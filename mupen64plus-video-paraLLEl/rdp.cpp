@@ -361,6 +361,30 @@ static void complete_frame_error()
 	device->flush_frame();
 }
 
+// A cleared 1x1 image for when there is nothing to scan out.
+static void make_blank_image(void *out)
+{
+	auto &image = *static_cast<Vulkan::ImageHandle *>(out);
+	auto info = Vulkan::ImageCreateInfo::immutable_2d_image(1, 1, VK_FORMAT_R8G8B8A8_UNORM);
+	info.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
+		VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+	info.misc = IMAGE_MISC_MUTABLE_SRGB_BIT;
+	info.initial_layout = VK_IMAGE_LAYOUT_UNDEFINED;
+	image = device->create_image(info);
+
+	auto cmd = device->request_command_buffer();
+	cmd->image_barrier(*image,
+			VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+			VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, 0,
+			VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_TRANSFER_WRITE_BIT);
+	cmd->clear_image(*image, {});
+	cmd->image_barrier(*image,
+			VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+			VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_TRANSFER_WRITE_BIT,
+			VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_ACCESS_SHADER_READ_BIT);
+	device->submit(cmd);
+}
+
 void complete_frame()
 {
 	if (!device_supported)
@@ -406,24 +430,9 @@ void complete_frame()
 
 	if (!image)
 	{
-		auto info = Vulkan::ImageCreateInfo::immutable_2d_image(1, 1, VK_FORMAT_R8G8B8A8_UNORM);
-		info.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
-			VK_IMAGE_USAGE_TRANSFER_DST_BIT;
-		info.misc = IMAGE_MISC_MUTABLE_SRGB_BIT;
-		info.initial_layout = VK_IMAGE_LAYOUT_UNDEFINED;
-		image = device->create_image(info);
-
-		auto cmd = device->request_command_buffer();
-		cmd->image_barrier(*image,
-				VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-				VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, 0,
-				VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_TRANSFER_WRITE_BIT);
-		cmd->clear_image(*image, {});
-		cmd->image_barrier(*image,
-				VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-				VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_TRANSFER_WRITE_BIT,
-				VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_ACCESS_SHADER_READ_BIT);
-		device->submit(cmd);
+		// Recorded and submitted on the command thread, which drives the
+		// Vulkan device.
+		frontend->run_on_command_thread(make_blank_image, &image);
 	}
 
 	assert(index < retro_images.size());

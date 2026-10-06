@@ -177,13 +177,20 @@ CommandProcessor::CommandProcessor(Vulkan::Device &device_, void *rdram_ptr,
 CommandProcessor::~CommandProcessor()
 {
 	idle();
+	// Join the command thread before any member goes: an idle tick can
+	// still flush and queue work to the timeline worker, which is
+	// destroyed before the ring would otherwise be.
+	ring.teardown_thread();
 }
 
 void CommandProcessor::begin_frame_context()
 {
+	// The frame switch runs on the command thread, which drives the
+	// Vulkan device; waiting for it keeps the caller paced as before.
 	flush();
+	const uint32_t words[1] = { uint32_t(Op::MetaNextFrameContext) << 24 };
+	enqueue_command_inner(1, words);
 	drain_command_ring();
-	device.next_frame_context();
 }
 
 void CommandProcessor::init_renderer()
@@ -1012,11 +1019,27 @@ void CommandProcessor::enqueue_command_direct(unsigned, const uint32_t *words)
 
 	case Op::MetaScanoutPrepare:
 	{
-		// Runs where every other command runs, so it can never overlap
-		// the idle flush.
+		// The whole scanout runs where every other command runs: it can
+		// never overlap the idle flush, and the Vulkan device is only
+		// driven from this thread. The options and VI registers were
+		// written by the caller before it queued this command.
 		renderer.flush_and_signal();
 		if (words[3])
 			renderer.resolve_coherency_external(words[1], words[2]);
+		scanout_result = vi.scanout(scanout_layout, scanout_opts, renderer.get_scaling_factor());
+		break;
+	}
+
+	case Op::MetaNextFrameContext:
+		device.next_frame_context();
+		break;
+
+	case Op::MetaCall:
+	{
+		// fn and ctx, each split into two 32-bit words
+		uintptr_t fn = uintptr_t((uint64_t(words[2]) << 32) | words[1]);
+		uintptr_t ctx = uintptr_t((uint64_t(words[4]) << 32) | words[3]);
+		reinterpret_cast<void (*)(void *)>(fn)(reinterpret_cast<void *>(ctx));
 		break;
 	}
 
@@ -1173,12 +1196,26 @@ Vulkan::ImageHandle CommandProcessor::scanout(const ScanoutOptions &opts, VkImag
 			length,
 			uint32_t(!is_host_coherent),
 		};
+		scanout_opts = opts;
+		scanout_layout = target_layout;
 		enqueue_command_inner(4, words);
 		drain_command_ring();
 	}
 
-	auto scanout = vi.scanout(target_layout, opts, renderer.get_scaling_factor());
-	return scanout;
+	return std::move(scanout_result);
+}
+
+void CommandProcessor::run_on_command_thread(void (*fn)(void *), void *ctx)
+{
+	uint64_t f = uint64_t(reinterpret_cast<uintptr_t>(fn));
+	uint64_t c = uint64_t(reinterpret_cast<uintptr_t>(ctx));
+	const uint32_t words[5] = {
+		uint32_t(Op::MetaCall) << 24,
+		uint32_t(f), uint32_t(f >> 32),
+		uint32_t(c), uint32_t(c >> 32),
+	};
+	enqueue_command_inner(5, words);
+	drain_command_ring();
 }
 
 Vulkan::ImageHandle CommandProcessor::scanout(const ScanoutOptions &opts)

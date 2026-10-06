@@ -51,8 +51,6 @@
 
 #ifdef GRANITE_VULKAN_MT
 #include <atomic>
-#include <mutex>
-#include <condition_variable>
 #include <rthreads/retro_eventcount.h>
 #include <queues/mpsc_stack.h>
 #include <retro_atomic.h>
@@ -105,6 +103,14 @@ struct DeferredRelease : mpsc_stack_node_t
 	ImageHandle image;
 };
 
+// A timeline-trace interval registered from a thread other than the
+// owner; recorded by the owner when the frame it was sent to begins.
+struct DeferredInterval : mpsc_stack_node_t
+{
+	std::string tid, tag, extra;
+	QueryPoolHandle start_ts, end_ts;
+};
+
 struct HandlePool
 {
 	VulkanObjectPool<Buffer> buffers;
@@ -121,6 +127,7 @@ struct HandlePool
 	VulkanObjectPool<BindlessDescriptorPool> bindless_descriptor_pool;
 	VulkanObjectPool<DeviceAllocationOwner> allocations;
 	VulkanObjectPool<DeferredRelease> deferred;
+	VulkanObjectPool<DeferredInterval> deferred_intervals;
 };
 
 class DebugChannelInterface
@@ -540,6 +547,7 @@ private:
 	struct PerFrame;
 	enum { MAX_DEFERRED_FRAMES = 16 };
 	mpsc_stack_t deferred_releases[MAX_DEFERRED_FRAMES];
+	mpsc_stack_t deferred_intervals[MAX_DEFERRED_FRAMES];
 	// The frame index releases go to: published only once a frame has
 	// begun, so nothing released for the new frame is drained by its own
 	// begin().
@@ -579,11 +587,8 @@ private:
 
 	struct
 	{
-#ifdef GRANITE_VULKAN_MT
-		std::mutex memory_lock;
-		std::mutex lock;
-		std::condition_variable cond;
-#endif
+		// Command buffers handed out this frame and not yet submitted;
+		// owner thread only (see device.cpp).
 		unsigned counter = 0;
 	} lock;
 

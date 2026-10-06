@@ -29,11 +29,9 @@
 
 using namespace Util;
 
-#ifdef GRANITE_VULKAN_MT
-#define LOCK() std::lock_guard<std::mutex> holder__{lock}
-#else
+// Framebuffers and transient attachments are requested by the Device's
+// owner thread only (see device.cpp), so the allocators need no lock.
 #define LOCK() ((void)0)
-#endif
 
 namespace Vulkan
 {

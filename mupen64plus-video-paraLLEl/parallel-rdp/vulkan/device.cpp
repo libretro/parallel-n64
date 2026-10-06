@@ -28,6 +28,7 @@
 #include "timer.hpp"
 #include <algorithm>
 #include <string.h>
+#include <limits>
 #include <stdlib.h>
 
 #ifdef _WIN32
@@ -45,13 +46,18 @@ static unsigned get_thread_index()
 {
 	return Util::get_current_thread_index();
 }
-#define LOCK() std::lock_guard<std::mutex> holder__{lock.lock}
-#define LOCK_MEMORY() std::lock_guard<std::mutex> holder__{lock.memory_lock}
-#define DRAIN_FRAME_LOCK() \
-	std::unique_lock<std::mutex> holder__{lock.lock}; \
-	lock.cond.wait(holder__, [&]() { \
-		return lock.counter == 0; \
-	})
+// No lock. The Device's frame, submission, command pool, buffer pool and
+// memory allocator state has a single owner at any time: the thread that
+// processes RDP commands (parallel-rdp's command thread, or the emulation
+// thread with single-threaded processing). Setup happens on the calling
+// thread before the command thread starts, teardown after it is joined;
+// in between, everything that needs that state is routed to the command
+// thread (scanout, frame switches, run_on_command_thread). Other threads
+// only release objects (lock-free per-frame stacks), wait on fences
+// (lock-free claim) and use the lock-free pools and caches.
+#define LOCK() ((void)0)
+#define LOCK_MEMORY() ((void)0)
+#define DRAIN_FRAME_LOCK() VK_ASSERT(lock.counter == 0)
 #else
 #define LOCK() ((void)0)
 #define LOCK_MEMORY() ((void)0)
@@ -101,6 +107,8 @@ Device::Device()
 #endif
 	fence_wait_ec_live = retro_eventcount_init(&fence_wait_ec);
 	for (auto &stack : deferred_releases)
+		mpsc_stack_init(&stack);
+	for (auto &stack : deferred_intervals)
 		mpsc_stack_init(&stack);
 }
 
@@ -2242,6 +2250,16 @@ void Device::drain_deferred_releases(PerFrame &f)
 		handle_pool.deferred.free(node);
 		node = next;
 	}
+	auto *iv = static_cast<DeferredInterval *>(
+			mpsc_stack_drain(&deferred_intervals[f.frame_index % MAX_DEFERRED_FRAMES]));
+	while (iv)
+	{
+		auto *next = static_cast<DeferredInterval *>(iv->next);
+		register_time_interval_nolock(std::move(iv->tid), std::move(iv->start_ts), std::move(iv->end_ts),
+		                              std::move(iv->tag), std::move(iv->extra));
+		handle_pool.deferred_intervals.free(iv);
+		iv = next;
+	}
 }
 
 void Device::keep_handle_alive(ImageHandle handle)
@@ -2566,7 +2584,8 @@ QueryPoolHandle Device::write_timestamp_nolock(VkCommandBuffer cmd, VkPipelineSt
 
 QueryPoolHandle Device::write_calibrated_timestamp()
 {
-	LOCK();
+	// Touches only the (lock-free) handle pool, and is a no-op unless a
+	// timeline trace is being written.
 	return write_calibrated_timestamp_nolock();
 }
 
@@ -2710,8 +2729,20 @@ void Device::recalibrate_timestamps()
 
 void Device::register_time_interval(std::string tid, QueryPoolHandle start_ts, QueryPoolHandle end_ts, std::string tag, std::string extra)
 {
-	LOCK();
-	register_time_interval_nolock(std::move(tid), std::move(start_ts), std::move(end_ts), std::move(tag), std::move(extra));
+	// Without a timeline trace the timestamps are empty and there is
+	// nothing to record.
+	if (!start_ts || !end_ts)
+		return;
+	// May come from any thread (profiling); handed to the owner like a
+	// release, recorded when its frame begins.
+	auto *node = handle_pool.deferred_intervals.allocate();
+	node->tid = std::move(tid);
+	node->tag = std::move(tag);
+	node->extra = std::move(extra);
+	node->start_ts = std::move(start_ts);
+	node->end_ts = std::move(end_ts);
+	unsigned index = unsigned(retro_atomic_load_acquire_int(&deferred_frame_index));
+	mpsc_stack_push(&deferred_intervals[index % MAX_DEFERRED_FRAMES], node);
 }
 
 void Device::register_time_interval_nolock(std::string tid, QueryPoolHandle start_ts, QueryPoolHandle end_ts,
@@ -2737,9 +2768,6 @@ void Device::decrement_frame_counter_nolock()
 {
 	VK_ASSERT(lock.counter > 0);
 	lock.counter--;
-#ifdef GRANITE_VULKAN_MT
-	lock.cond.notify_all();
-#endif
 }
 
 void Device::PerFrame::trim_command_pools()
@@ -2859,9 +2887,6 @@ void Device::PerFrame::begin()
 
 	if (!allocations.empty())
 	{
-#ifdef GRANITE_VULKAN_MT
-		std::lock_guard<std::mutex> holder{device.lock.memory_lock};
-#endif
 		for (auto &alloc : allocations)
 			alloc.free_immediate(managers.memory);
 	}

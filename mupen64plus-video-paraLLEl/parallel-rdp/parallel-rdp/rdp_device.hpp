@@ -135,6 +135,12 @@ public:
 	void idle();
 	void begin_frame_context();
 
+	// Runs fn(ctx) on the thread that processes commands (the caller's own
+	// thread with single-threaded processing) and returns once it has run.
+	// For Vulkan work that has to happen where the renderer drives the
+	// device. Must not be called from inside the command thread.
+	void run_on_command_thread(void (*fn)(void *), void *ctx);
+
 	// Queues up state and drawing commands.
 	void enqueue_command(unsigned num_words, const uint32_t *words);
 	void enqueue_command_direct(unsigned num_words, const uint32_t *words);
@@ -215,6 +221,11 @@ private:
 	// Tear-down order is important here.
 	Renderer renderer;
 	VideoInterface vi;
+	// Scanout request/result, handed across with the MetaScanoutPrepare
+	// command (written before it is queued / read after the drain).
+	ScanoutOptions scanout_opts;
+	VkImageLayout scanout_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	Vulkan::ImageHandle scanout_result;
 	CommandRing ring;
 
 	void clear_hidden_rdram();

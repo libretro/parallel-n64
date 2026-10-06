@@ -43,6 +43,8 @@ enum class Op
 	MetaIdle = 3,
 	MetaSetQuirks = 4,
 	MetaScanoutPrepare = 5,
+	MetaNextFrameContext = 6,
+	MetaCall = 7,
 
 	FillTriangle = 0x08,
 	FillZBufferTriangle = 0x09,
