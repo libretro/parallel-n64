@@ -141,7 +141,7 @@ test-parallel-rdp-linux-x64:
   # (Mesa 21) and its Python has no CA store. A current Ubuntu has both.
   image: ubuntu:24.04
   script:
-    - apt-get update -qq && apt-get install -y -qq build-essential nasm git ca-certificates curl python3 mesa-vulkan-drivers libvulkan1
+    - apt-get update -qq && apt-get install -y -qq build-essential nasm git ca-certificates curl python3 mesa-vulkan-drivers libvulkan1 libgl-dev
     - make -j$(nproc) platform=unix WITH_DYNAREC=$WITH_DYNAREC HAVE_THR_AL=$HAVE_THR_AL HAVE_PARALLEL=$HAVE_PARALLEL HAVE_PARALLEL_RSP=$HAVE_PARALLEL_RSP
     - make platform=unix HAVE_PARALLEL=$HAVE_PARALLEL lrhost_vk
     - python3 tools/ci/parallel_rdp_regress.py --core ./parallel_n64_libretro.so --host ./lrhost_vk --out parallel-rdp-artifacts
