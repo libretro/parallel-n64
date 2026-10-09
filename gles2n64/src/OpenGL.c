@@ -86,10 +86,10 @@ static void _initStates(void)
 
 void OGL_UpdateScale(void)
 {
-   if (VI.width == 0 || VI.height == 0)
+   if (gln64VI.width == 0 || gln64VI.height == 0)
       return;
-   OGL.scaleX = OGL_GetScreenWidth()  / (float)VI.width;
-   OGL.scaleY = OGL_GetScreenHeight() / (float)VI.height;
+   OGL.scaleX = OGL_GetScreenWidth()  / (float)gln64VI.width;
+   OGL.scaleY = OGL_GetScreenHeight() / (float)gln64VI.height;
 }
 
 uint32_t OGL_GetScreenWidth(void)
@@ -145,7 +145,7 @@ static void _updateCullFace(void)
 /* TODO/FIXME - not complete yet */
 static void _updateViewport(void)
 {
-   const uint32_t VI_height = VI.height;
+   const uint32_t VI_height = gln64VI.height;
    const float scaleX = OGL_GetScaleX();
    const float scaleY = OGL_GetScaleY();
    float Xf = gSP.viewport.vscale[0] < 0 ? (gSP.viewport.x + gSP.viewport.vscale[0] * 2.0f) : gSP.viewport.x;
@@ -180,18 +180,18 @@ static void _updateScissor(struct FrameBuffer *_pBuffer)
       scaleX       = OGL_GetScaleX();
       scaleY       = OGL_GetScaleY();
       heightOffset = OGL_GetHeightOffset();
-      screenHeight = VI.height;
+      screenHeight = gln64VI.height;
    }
    else
    {
       scaleX       = _pBuffer->m_scaleX;
       scaleY       = _pBuffer->m_scaleY;
       heightOffset = 0;
-      screenHeight = (_pBuffer->m_height == 0) ? VI.height : _pBuffer->m_height;
+      screenHeight = (_pBuffer->m_height == 0) ? gln64VI.height : _pBuffer->m_height;
    }
 
 #if 0
-	if (ogl.isAdjustScreen() && gSP.viewport.width < gDP.colorImage.width && gDP.colorImage.width > VI.width * 98 / 100)
+	if (ogl.isAdjustScreen() && gSP.viewport.width < gDP.colorImage.width && gDP.colorImage.width > gln64VI.width * 98 / 100)
 		_adjustScissorX(SX0, SX1, ogl.getAdjustScale());
 #endif
 
@@ -556,8 +556,8 @@ void OGL_DrawLLETriangle(uint32_t _numVtx)
 	else
 		glViewport(0, 0, pCurrentBuffer->m_width * pCurrentBuffer->m_scaleX, pCurrentBuffer->m_height * pCurrentBuffer->m_scaleY);
 
-	scaleX = pCurrentBuffer != NULL ? 1.0f / pCurrentBuffer->m_width : VI.rwidth;
-	scaleY = pCurrentBuffer != NULL ? 1.0f / pCurrentBuffer->m_height : VI.rheight;
+	scaleX = pCurrentBuffer != NULL ? 1.0f / pCurrentBuffer->m_width : gln64VI.rwidth;
+	scaleY = pCurrentBuffer != NULL ? 1.0f / pCurrentBuffer->m_height : gln64VI.rheight;
 
 	for (i = 0; i < _numVtx; ++i)
    {
@@ -714,8 +714,8 @@ void OGL_DrawRect( int ulx, int uly, int lrx, int lry, float *color)
 
    glDisable(GL_CULL_FACE);
 
-   scaleX = pCurrentBuffer != NULL ? 1.0f / pCurrentBuffer->m_width  : VI.rwidth;
-   scaleY = pCurrentBuffer != NULL ? 1.0f / pCurrentBuffer->m_height : VI.rheight;
+   scaleX = pCurrentBuffer != NULL ? 1.0f / pCurrentBuffer->m_width  : gln64VI.rwidth;
+   scaleY = pCurrentBuffer != NULL ? 1.0f / pCurrentBuffer->m_height : gln64VI.rheight;
 	Z      = (gDP.otherMode.depthSource == G_ZS_PRIM) ? gDP.primDepth.z : gSP.viewport.nearz;
 	W      = 1.0f;
 
@@ -740,7 +740,7 @@ void OGL_DrawRect( int ulx, int uly, int lrx, int lry, float *color)
    OGL.rect[3].w = W;
 
 #if 0
-	if (ogl.isAdjustScreen() && (gDP.colorImage.width > VI.width * 98 / 100) && (_lrx - _ulx < VI.width * 9 / 10)) {
+	if (ogl.isAdjustScreen() && (gDP.colorImage.width > gln64VI.width * 98 / 100) && (_lrx - _ulx < gln64VI.width * 9 / 10)) {
 		const float scale = ogl.getAdjustScale();
 		for (uint32_t i = 0; i < 4; ++i)
 			m_rect[i].x *= scale;
@@ -939,8 +939,8 @@ void OGL_DrawTexturedRect(const struct TexturedRectParams *_params)
 
    glDisable(GL_CULL_FACE);
 
-   scaleX = pCurrentBuffer != NULL ? 1.0f / pCurrentBuffer->m_width  : VI.rwidth;
-   scaleY = pCurrentBuffer != NULL ? 1.0f / pCurrentBuffer->m_height : VI.rheight;
+   scaleX = pCurrentBuffer != NULL ? 1.0f / pCurrentBuffer->m_width  : gln64VI.rwidth;
+   scaleY = pCurrentBuffer != NULL ? 1.0f / pCurrentBuffer->m_height : gln64VI.rheight;
 	Z = (gDP.otherMode.depthSource == G_ZS_PRIM) ? gDP.primDepth.z : gSP.viewport.nearz;
 	W = 1.0f;
 
@@ -1062,7 +1062,7 @@ void OGL_DrawTexturedRect(const struct TexturedRectParams *_params)
    }
 
 #ifdef NEW
-	if (ogl.isAdjustScreen() && (gDP.colorImage.width > VI.width * 98 / 100) && (_params.lrx - _params.ulx < VI.width * 9 / 10))
+	if (ogl.isAdjustScreen() && (gDP.colorImage.width > gln64VI.width * 98 / 100) && (_params.lrx - _params.ulx < gln64VI.width * 9 / 10))
    {
 		const float scale = ogl.getAdjustScale();
 		for (uint32_t i = 0; i < 4; ++i)

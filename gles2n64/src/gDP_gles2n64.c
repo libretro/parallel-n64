@@ -141,8 +141,8 @@ void gln64gDPSetColorImage( uint32_t format, uint32_t size, uint32_t width, uint
    {
 		uint32_t height = 1;
 
-		if (width == VI.width)
-			height = VI.height;
+		if (width == gln64VI.width)
+			height = gln64VI.height;
 #if 0
 		else if (!__RSP.bLLE && width == gDP.scissor.lrx && width == gSP.viewport.width)
 #else
@@ -150,7 +150,7 @@ void gln64gDPSetColorImage( uint32_t format, uint32_t size, uint32_t width, uint
 #endif
       {
 			height = MAX(gDP.scissor.lry, gSP.viewport.height);
-			height = MIN(height, VI.height);
+			height = MIN(height, gln64VI.height);
 		} else if (width == gDP.scissor.lrx)
 			height = gDP.scissor.lry;
 		else if (width <= 64)

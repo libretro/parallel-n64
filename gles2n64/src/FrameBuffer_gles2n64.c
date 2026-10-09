@@ -148,7 +148,7 @@ void FrameBuffer_SaveBuffer( uint32_t address, uint16_t format, uint16_t size, u
 {
    struct FrameBuffer *current = frameBuffer.top;
 
-   if (width != VI.width && height == 0)
+   if (width != gln64VI.width && height == 0)
       return;
 
    (void)format;

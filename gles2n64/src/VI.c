@@ -14,12 +14,12 @@
 
 #include "../../Graphics/RDP/gDP_state.h"
 
-VIInfo VI;
+VIInfo gln64VI;
 
 void VI_UpdateSize(void)
 {
    struct FrameBuffer *pBuffer, *pDepthBuffer;
-	const bool interlacedPrev = VI.interlaced;
+	const bool interlacedPrev = gln64VI.interlaced;
    float xScale  = _FIXED2FLOAT( _SHIFTR( *gfx_info.VI_X_SCALE_REG, 0, 12 ), 10 );
 	uint32_t vScale  = _SHIFTR(*gfx_info.VI_Y_SCALE_REG, 0, 12);
 
@@ -29,61 +29,61 @@ void VI_UpdateSize(void)
    // These are in half-lines, so shift an extra bit
    uint32_t vEnd = _SHIFTR( *gfx_info.VI_V_START_REG, 0, 10 );
    uint32_t vStart = _SHIFTR( *gfx_info.VI_V_START_REG, 16, 10 );
-	if (VI.width > 0)
-		VI.widthPrev = VI.width;
+	if (gln64VI.width > 0)
+		gln64VI.widthPrev = gln64VI.width;
 
-	VI.real_height = vEnd > vStart ? (((vEnd - vStart) >> 1) * vScale) >> 10 : 0;
-   VI.width = *gfx_info.VI_WIDTH_REG;
-	VI.interlaced = (*gfx_info.VI_STATUS_REG & 0x40) != 0;
-	if (VI.interlaced)
+	gln64VI.real_height = vEnd > vStart ? (((vEnd - vStart) >> 1) * vScale) >> 10 : 0;
+   gln64VI.width = *gfx_info.VI_WIDTH_REG;
+	gln64VI.interlaced = (*gfx_info.VI_STATUS_REG & 0x40) != 0;
+	if (gln64VI.interlaced)
    {
 		float fullWidth = 640.0f * xScale;
 		if (*gfx_info.VI_WIDTH_REG > fullWidth)
       {
 			const uint32_t scale = (uint32_t)floorf(*gfx_info.VI_WIDTH_REG / fullWidth + 0.5f);
-			VI.width /= scale;
-			VI.real_height *= scale;
+			gln64VI.width /= scale;
+			gln64VI.real_height *= scale;
 		}
-		if (VI.real_height % 2 == 1)
-			--VI.real_height;
+		if (gln64VI.real_height % 2 == 1)
+			--gln64VI.real_height;
 	}
 
-	VI.PAL = (*gfx_info.VI_V_SYNC_REG & 0x3ff) > 550;
-	if (VI.PAL && (vEnd - vStart) > 478)
+	gln64VI.PAL = (*gfx_info.VI_V_SYNC_REG & 0x3ff) > 550;
+	if (gln64VI.PAL && (vEnd - vStart) > 478)
    {
-		VI.height = (uint32_t)(VI.real_height*1.0041841f);
-		if (VI.height > 576)
-			VI.height = VI.real_height = 576;
+		gln64VI.height = (uint32_t)(gln64VI.real_height*1.0041841f);
+		if (gln64VI.height > 576)
+			gln64VI.height = gln64VI.real_height = 576;
 	}
 	else
    {
-		VI.height = (uint32_t)(VI.real_height*1.0126582f);
-		if (VI.height > 480)
-			VI.height = VI.real_height = 480;
+		gln64VI.height = (uint32_t)(gln64VI.real_height*1.0126582f);
+		if (gln64VI.height > 480)
+			gln64VI.height = gln64VI.real_height = 480;
 	}
-	if (VI.height % 2 == 1)
-		--VI.height;
+	if (gln64VI.height % 2 == 1)
+		--gln64VI.height;
 
-   pBuffer = FrameBuffer_FindBuffer(VI.lastOrigin);
+   pBuffer = FrameBuffer_FindBuffer(gln64VI.lastOrigin);
    pDepthBuffer = (pBuffer != NULL) ? NULL /* pBuffer->DepthBuffer */: NULL;
 
 	if (config.frameBufferEmulation.enable &&
-		((interlacedPrev != VI.interlaced) ||
-		(VI.width > 0 && VI.width != VI.widthPrev) ||
-		(!VI.interlaced && pDepthBuffer != NULL && pDepthBuffer->m_width != VI.width) ||
-		(pBuffer != NULL && pBuffer->m_height != VI.height))
+		((interlacedPrev != gln64VI.interlaced) ||
+		(gln64VI.width > 0 && gln64VI.width != gln64VI.widthPrev) ||
+		(!gln64VI.interlaced && pDepthBuffer != NULL && pDepthBuffer->m_width != gln64VI.width) ||
+		(pBuffer != NULL && pBuffer->m_height != gln64VI.height))
 	)
    {
-      FrameBuffer_RemoveBuffer(VI.widthPrev);
-		FrameBuffer_RemoveBuffer(VI.width);
+      FrameBuffer_RemoveBuffer(gln64VI.widthPrev);
+		FrameBuffer_RemoveBuffer(gln64VI.width);
 #ifdef NEW
 		depthBufferList().destroy();
 		depthBufferList().init();
 #endif
 	}
 
-	VI.rwidth = VI.width != 0 ? 1.0f / VI.width : 0.0f;
-	VI.rheight = VI.height != 0 ? 1.0f / VI.height : 0.0f;
+	gln64VI.rwidth = gln64VI.width != 0 ? 1.0f / gln64VI.width : 0.0f;
+	gln64VI.rheight = gln64VI.height != 0 ? 1.0f / gln64VI.height : 0.0f;
 }
 
 void VI_UpdateScreen(void)
@@ -91,7 +91,7 @@ void VI_UpdateScreen(void)
 	static uint32_t uNumCurFrameIsShown = 0;
    bool bVIUpdated = false;
 
-   if (*gfx_info.VI_ORIGIN_REG != VI.lastOrigin)
+   if (*gfx_info.VI_ORIGIN_REG != gln64VI.lastOrigin)
    {
       VI_UpdateSize();
       bVIUpdated = true;
@@ -101,14 +101,14 @@ void VI_UpdateScreen(void)
 	if (config.frameBufferEmulation.enable)
    {
 		const bool bCFB = config.frameBufferEmulation.detectCFB != 0 && (gSP.changed&CHANGED_CPU_FB_WRITE) == CHANGED_CPU_FB_WRITE;
-		const bool bNeedUpdate = gDP.colorImage.changed != 0 || (bCFB ? true : (*gfx_info.VI_ORIGIN_REG != VI.lastOrigin));
+		const bool bNeedUpdate = gDP.colorImage.changed != 0 || (bCFB ? true : (*gfx_info.VI_ORIGIN_REG != gln64VI.lastOrigin));
 
 		if (bNeedUpdate)
       {
 			if ((gSP.changed&CHANGED_CPU_FB_WRITE) == CHANGED_CPU_FB_WRITE)
          {
 				struct FrameBuffer * pBuffer = FrameBuffer_FindBuffer(*gfx_info.VI_ORIGIN_REG);
-				if (pBuffer == NULL || pBuffer->m_width != VI.width)
+				if (pBuffer == NULL || pBuffer->m_width != gln64VI.width)
             {
                uint32_t size;
 
@@ -120,8 +120,8 @@ void VI_UpdateScreen(void)
 					}
 					size = *gfx_info.VI_STATUS_REG & 3;
 
-					if (VI.height > 0 && size > G_IM_SIZ_8b  && VI.width > 0)
-						FrameBuffer_SaveBuffer(*gfx_info.VI_ORIGIN_REG, G_IM_FMT_RGBA, size, VI.width, VI.height, true);
+					if (gln64VI.height > 0 && size > G_IM_SIZ_8b  && gln64VI.width > 0)
+						FrameBuffer_SaveBuffer(*gfx_info.VI_ORIGIN_REG, G_IM_FMT_RGBA, size, gln64VI.width, gln64VI.height, true);
 				}
 			}
 			if ((((*gfx_info.VI_STATUS_REG) & 3) > 0) && ((config.frameBufferEmulation.copyFromRDRAM && gDP.colorImage.changed) || bCFB))
@@ -148,7 +148,7 @@ void VI_UpdateScreen(void)
          /* TODO/FIXME - implement */
 			frameBufferList().clearBuffersChanged();
 #endif
-			VI.lastOrigin = *gfx_info.VI_ORIGIN_REG;
+			gln64VI.lastOrigin = *gfx_info.VI_ORIGIN_REG;
 #ifdef DEBUG
 			while (Debug.paused && !Debug.step);
 			Debug.step = false;
@@ -165,7 +165,7 @@ void VI_UpdateScreen(void)
       {
          OGL_SwapBuffers();
          gSP.changed &= ~CHANGED_COLORBUFFER;
-         VI.lastOrigin = *gfx_info.VI_ORIGIN_REG;
+         gln64VI.lastOrigin = *gfx_info.VI_ORIGIN_REG;
       }
    }
 }

@@ -44,13 +44,44 @@ ifneq ($(GIT_VERSION)," unknown")
   COREFLAGS += -DGIT_VERSION=\"$(GIT_VERSION)\"
 endif
 
+# GLideN64 resolves its headers from its own src/ and src/osal/ trees, and
+# its names (Combiner.h, Config.h, N64.h) collide with the other video
+# plugins, so it builds as its own module with those directories first on
+# the include path - the same flags the Makefile's GLideN64 pattern rules
+# use. The NDK ships no GL/glcorearb.h, so the copy in src/inc is used.
+GLIDEN64_SRC       := $(ROOT_DIR)/mupen64plus-video-gliden64/src
+GLIDEN64_SOURCES   := $(filter $(GLIDEN64_SRC)/%,$(SOURCES_CXX) $(SOURCES_C))
+GLIDEN64_INCFLAGS  := -I$(GLIDEN64_SRC) -I$(GLIDEN64_SRC)/osal -I$(GLIDEN64_SRC)/inc
+
+ifneq ($(GLIDEN64_SOURCES),)
+include $(CLEAR_VARS)
+LOCAL_MODULE       := gliden64
+LOCAL_SRC_FILES    := $(GLIDEN64_SOURCES)
+LOCAL_CFLAGS       := $(GLIDEN64_INCFLAGS) $(COREFLAGS) $(CFLAGS)
+LOCAL_CXXFLAGS     := -std=c++11 $(GLIDEN64_INCFLAGS) $(COREFLAGS) $(CXXFLAGS)
+LOCAL_CPP_FEATURES := exceptions
+LOCAL_ARM_NEON     := true
+LOCAL_ARM_MODE     := arm
+include $(BUILD_STATIC_LIBRARY)
+endif
+
 include $(CLEAR_VARS)
 LOCAL_MODULE       := retro
-LOCAL_SRC_FILES    := $(SOURCES_CXX) $(SOURCES_C) $(SOURCES_ASM)
-LOCAL_CFLAGS       := $(COREFLAGS) $(CFLAGS)
+LOCAL_SRC_FILES    := $(filter-out $(GLIDEN64_SOURCES),$(SOURCES_CXX) $(SOURCES_C)) $(SOURCES_ASM)
+ifneq ($(GLIDEN64_SOURCES),)
+LOCAL_WHOLE_STATIC_LIBRARIES := gliden64
+endif
+# -fcommon as in the Makefile: the C plugins' tentative definitions of the
+# state GLideN64 also defines (gDP, gSP, GBI, the G_* opcodes, RDRAM, TMEM)
+# merge with GLideN64's at link, and only one plugin is ever active.
+LOCAL_CFLAGS       := -fcommon $(COREFLAGS) $(CFLAGS)
 LOCAL_CXXFLAGS     := -std=c++11 $(COREFLAGS) $(CXXFLAGS)
 LOCAL_LDFLAGS      := -Wl,-version-script=$(LIBRETRO_DIR)/link.T
+ifeq ($(GLES3),1)
+LOCAL_LDLIBS       := -lGLESv3 -llog
+else
 LOCAL_LDLIBS       := -lGLESv2 -llog
+endif
 LOCAL_CPP_FEATURES := exceptions
 LOCAL_ARM_NEON     := true
 LOCAL_ARM_MODE     := arm

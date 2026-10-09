@@ -26,7 +26,7 @@ typedef struct
 
 } VIInfo;
 
-extern VIInfo VI;
+extern VIInfo gln64VI;
 
 void VI_UpdateSize(void);
 void VI_UpdateScreen(void);
