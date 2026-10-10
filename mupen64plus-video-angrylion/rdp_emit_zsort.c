@@ -244,10 +244,12 @@ static int zs_object(ZSortState *z, unsigned header, unsigned *cache,
          * guard. A null transition would read an RDP list at address zero. */
         if (stride == 8 && !p && cache[i])
             return 0;
-        if (p && p != cache[i])
+        if (p != cache[i])
         {
-            if (!zs_rdplist(z, p))
+            if (p && !zs_rdplist(z, p))
                 return 0;
+            /* A null state/textured pointer still invalidates this slot:
+             * another slot may change state before this list is reused. */
             cache[i] = p;
         }
     }
