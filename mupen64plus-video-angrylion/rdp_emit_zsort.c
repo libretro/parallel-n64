@@ -482,6 +482,13 @@ static int zs_walk(ZSortState *z, unsigned start)
             if (!zs_rdplist(z, w1))
                 return 0;
         }
+        else if (op == 0xe2 || op == 0xe3)
+        {
+            /* ZSortp uses the GBI 1 shift/length encoding for these
+             * main-list state commands, just like its embedded lists. */
+            if (!zs_rdp(z, op, w0, w1))
+                return 0;
+        }
         else if (op == 0xdc)
         {
             if (!zs_movemem(z, w0, w1))
