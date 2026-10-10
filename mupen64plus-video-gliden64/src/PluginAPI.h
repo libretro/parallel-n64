@@ -7,8 +7,7 @@
 #include "m64p_plugin.h"
 
 #ifdef RSPTHREAD
-#include <thread>
-#include <condition_variable>
+#include "RSPCommandThread.h"
 #endif
 
 class APICommand;
@@ -17,11 +16,7 @@ class PluginAPI
 {
 public:
 #ifdef RSPTHREAD
-	~PluginAPI()
-	{
-		delete m_pRspThread;
-		m_pRspThread = NULL;
-	}
+	~PluginAPI() { RomClosed(); }
 #endif
 
 	// Common
@@ -68,10 +63,6 @@ public:
 private:
 	PluginAPI()
 		: m_bRomOpen(false)
-#ifdef RSPTHREAD
-		, m_pRspThread(NULL)
-		, m_pCommand(nullptr)
-#endif
 	{}
 	PluginAPI(const PluginAPI &) = delete;
 
@@ -79,13 +70,8 @@ private:
 
 	bool m_bRomOpen;
 #ifdef RSPTHREAD
-	void _callAPICommand(APICommand & _command);
-	std::mutex m_rspThreadMtx;
-	std::mutex m_pluginThreadMtx;
-	std::condition_variable_any m_rspThreadCv;
-	std::condition_variable_any m_pluginThreadCv;
-	std::thread * m_pRspThread;
-	APICommand * m_pCommand;
+	void _callAPICommand(APICommand && _command);
+	RSPCommandThread m_rspThread;
 #endif
 };
 

@@ -28,41 +28,21 @@ PluginAPI & PluginAPI::get()
 }
 
 #ifdef RSPTHREAD
-class APICommand {
+class RomOpenCommand : public APICommand {
 public:
-	virtual bool run() = 0;
+	bool run() {
+		RSP_Init();
+		GBI.init();
+		Config_LoadConfig();
+		dwnd().start();
+		assert(!gfxContext.isError());
+		return true;
+	}
 };
 
-void RSP_ThreadProc(std::mutex * _pRspThreadMtx, std::mutex * _pPluginThreadMtx, std::condition_variable_any * _pRspThreadCv, std::condition_variable_any * _pPluginThreadCv, APICommand ** _pCommand)
+void PluginAPI::_callAPICommand(APICommand && _command)
 {
-	_pRspThreadMtx->lock();
-	RSP_Init();
-	GBI.init();
-	Config_LoadConfig();
-	dwnd().start();
-	assert(!gfxContext.isError());
-
-	while (true) {
-		_pPluginThreadMtx->lock();
-		_pPluginThreadCv->notify_one();
-		_pPluginThreadMtx->unlock();
-		_pRspThreadCv->wait(*_pRspThreadMtx);
-		if (*_pCommand != nullptr && !(*_pCommand)->run())
-			return;
-		assert(!gfxContext.isError());
-	}
-}
-
-void PluginAPI::_callAPICommand(APICommand & _command)
-{
-	m_pCommand = &_command;
-	m_pluginThreadMtx.lock();
-	m_rspThreadMtx.lock();
-	m_rspThreadCv.notify_one();
-	m_rspThreadMtx.unlock();
-	m_pluginThreadCv.wait(m_pluginThreadMtx);
-	m_pluginThreadMtx.unlock();
-	m_pCommand = nullptr;
+	m_rspThread.call(_command);
 }
 
 class ProcessDListCommand : public APICommand {
@@ -123,32 +103,13 @@ private:
 
 class RomClosedCommand : public APICommand {
 public:
-	RomClosedCommand(std::mutex * _pRspThreadMtx,
-		std::mutex * _pPluginThreadMtx,
-		std::condition_variable_any * _pRspThreadCv,
-		std::condition_variable_any * _pPluginThreadCv)
-		: m_pRspThreadMtx(_pRspThreadMtx)
-		, m_pPluginThreadMtx(_pPluginThreadMtx)
-		, m_pRspThreadCv(_pRspThreadCv)
-		, m_pPluginThreadCv(_pPluginThreadCv) {
-	}
-
 	bool run() {
 		TFH.dumpcache();
 		dwnd().stop();
 		GBI.destroy();
-		m_pRspThreadMtx->unlock();
-		m_pPluginThreadMtx->lock();
-		m_pPluginThreadCv->notify_one();
-		m_pPluginThreadMtx->unlock();
 		return false;
 	}
 
-private:
-	std::mutex * m_pRspThreadMtx;
-	std::mutex * m_pPluginThreadMtx;
-	std::condition_variable_any * m_pRspThreadCv;
-	std::condition_variable_any * m_pPluginThreadCv;
 };
 #endif
 
@@ -181,14 +142,8 @@ void PluginAPI::RomClosed()
 
 	LOG(LOG_APIFUNC, "RomClosed");
 #ifdef RSPTHREAD
-	_callAPICommand(RomClosedCommand(
-					&m_rspThreadMtx,
-					&m_pluginThreadMtx,
-					&m_rspThreadCv,
-					&m_pluginThreadCv)
-	);
-	delete m_pRspThread;
-	m_pRspThread = nullptr;
+	_callAPICommand(RomClosedCommand());
+	m_rspThread.join();
 #else
 	TFH.dumpcache();
 	dwnd().stop();
@@ -198,13 +153,14 @@ void PluginAPI::RomClosed()
 
 void PluginAPI::RomOpen()
 {
+	if (m_bRomOpen)
+		return;
+
 	LOG(LOG_APIFUNC, "RomOpen");
 #ifdef RSPTHREAD
-	m_pluginThreadMtx.lock();
-	m_pRspThread = new std::thread(RSP_ThreadProc, &m_rspThreadMtx, &m_pluginThreadMtx, &m_rspThreadCv, &m_pluginThreadCv, &m_pCommand);
-	m_pRspThread->detach();
-	m_pluginThreadCv.wait(m_pluginThreadMtx);
-	m_pluginThreadMtx.unlock();
+	// Resource failure or a target without lock-free atomics runs inline.
+	m_rspThread.start();
+	_callAPICommand(RomOpenCommand());
 #else
 	RSP_Init();
 	GBI.init();

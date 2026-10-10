@@ -15,11 +15,7 @@ m64p_error PluginAPI::PluginStartup(m64p_dynlib_handle _CoreLibHandle)
 
 m64p_error PluginAPI::PluginShutdown()
 {
-#ifdef RSPTHREAD
-	_callAPICommand(acRomClosed);
-	delete m_pRspThread;
-	m_pRspThread = nullptr;
-#endif
+	RomClosed();
 	return M64ERR_SUCCESS;
 }
 
