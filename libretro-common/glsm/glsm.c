@@ -3235,16 +3235,24 @@ static void glsm_state_bind(void)
 #ifndef HAVE_OPENGLES2
    if (gl_state.bindvertex.array != 0) {
       glBindVertexArray(gl_state.bindvertex.array);
-      gl_state.array_buffer = 0;
    } else
 #endif
    {
+#ifndef HAVE_OPENGLES2
+      /* Select glsm's VAO (zero for GLES/compatibility contexts) rather
+       * than the frontend's. Each pointer captures ARRAY_BUFFER below. */
+      if (glBindVertexArray)
+         glBindVertexArray(gl_state.vao);
+#endif
       for (i = 0; i < MAX_ATTRIB; i++)
       {
          if (gl_state.vertex_attrib_pointer.enabled[i])
             glEnableVertexAttribArray(i);
+         else
+            glDisableVertexAttribArray(i);
 
          if (gl_state.attrib_pointer.used[i]) {
+            glBindBuffer(GL_ARRAY_BUFFER, gl_state.attrib_pointer.buffer[i]);
             glVertexAttribPointer(
                i,
                gl_state.attrib_pointer.size[i],
@@ -3255,7 +3263,10 @@ static void glsm_state_bind(void)
          }
       }
     }
-    
+   /* Restore actual bindings without changing the cached desired bindings. */
+   glBindBuffer(GL_ARRAY_BUFFER, gl_state.array_buffer);
+   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, gl_state.index_buffer);
+
    glPixelStorei(GL_UNPACK_ALIGNMENT, gl_state.pixelstore.unpack);
    glPixelStorei(GL_PACK_ALIGNMENT, gl_state.pixelstore.pack);
 
@@ -3461,24 +3472,10 @@ static void glsm_state_unbind(void)
       glActiveTexture(GL_TEXTURE0);
    }
 
-   /* The core feeds geometry through client arrays and may leave a vertex
-    * buffer bound; the frontend assumes none is bound when it issues its own
-    * client-array draws. Unbind it. On a core profile the VAO glsm binds
-    * isolates this, but the compatibility path has no VAO, so do it explicitly.
-    * The element array buffer leaks the same way and breaks the frontend's
-    * indexed draws, so unbind it too. */
-   if (gl_state.array_buffer != 0)
-      glBindBuffer(GL_ARRAY_BUFFER, 0);
-   if (gl_state.index_buffer != 0)
-      glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-
-   /* Restore the default pixel-store alignment the frontend expects. */
-   glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
-   glPixelStorei(GL_PACK_ALIGNMENT, 4);
-
-
+   /* Detach the core VAO before resetting element-buffer state: the
+    * element binding is part of the VAO and must survive presentation. */
 #ifndef HAVE_OPENGLES2
-   if (gl_state.bindvertex.array != 0)
+   if (gl_state.bindvertex.array != 0 || gl_state.vao != 0)
       glBindVertexArray(0);
    else
 #endif
@@ -3488,7 +3485,17 @@ static void glsm_state_unbind(void)
          if (gl_state.vertex_attrib_pointer.enabled[i])
             glDisableVertexAttribArray(i);
       }
-    }
+   }
+
+   glBindBuffer(GL_ARRAY_BUFFER, 0);
+   /* A core-profile context has no element binding without a VAO. The
+    * frontend selects its own VAO, so there is nothing to reset there. */
+   if (hw_render.context_type != RETRO_HW_CONTEXT_OPENGL_CORE)
+      glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+
+   /* Restore the default pixel-store alignment the frontend expects. */
+   glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+   glPixelStorei(GL_PACK_ALIGNMENT, 4);
 
    glBindFramebuffer(RARCH_GL_FRAMEBUFFER, 0);
 }
