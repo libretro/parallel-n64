@@ -19,6 +19,7 @@
 #include "rdp_emit_hle.h"
 #include "rdp_emit_f3dex2.h"
 #include "rdp_emit_zboss.h"
+#include "rdp_emit_zsort.h"
 #include "rdp_emit_f3d.h"
 #include "rdp_emit_f3ddkr.h"
 #include "rdp_emit_t3dux.h"
@@ -837,6 +838,10 @@ void rdp_emit_hle_process_dlist(void)
             rsp_tri_set_d64_sort(0);
             s_gsp.rs_clip_model = 0;
             s_gsp.clip_fan_first = 0;
+        }
+        else if (zsort_ucode_match(rdram, rdram_size, ud, read_dmem_u32(dmem, 0xfdc)))
+        {
+            zsort_run_dl(&s_gsp, &s_fifo, rdram, rdram_size, dmem, dl_addr);
         }
         else if (turbo3d_ucode_match(rdram, rdram_size, ut))
         {
