@@ -238,6 +238,19 @@ const int16_t* resample_hq_taps(uint32_t pitch, uint32_t pitch_accu)
     return hq_taps_for(hq_want, pitch, pitch_accu);
 }
 
+const int16_t* resample_hq_taps_fixed(int taps, uint32_t pitch,
+                                      uint32_t pitch_accu)
+{
+    const int      want = hq_want;
+    const int16_t *k    = hq_taps_for(taps, pitch, pitch_accu);
+
+    /* hq_taps_for turns the option off when a bank cannot be allocated, which
+     * is right for the voice path but not ours to do on its behalf: our caller
+     * has its own fallback and the user's HLE setting stays theirs. */
+    hq_want = want;
+    return k;
+}
+
 const int16_t* resample_hq_taps_capped(uint32_t pitch, uint32_t pitch_accu,
                                        int max_taps)
 {
