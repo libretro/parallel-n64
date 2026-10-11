@@ -11,6 +11,16 @@
 #endif
 #include GLSM_SOURCE
 
+#ifdef GLSM_FRAME_BOUNDARY_SOURCE
+#include "../Graphics/plugin.h"
+static int g_real_stop;
+enum gfx_plugin_type gfx_plugin = GFX_GLIDEN64;
+#include GLSM_FRAME_BOUNDARY_SOURCE
+#else
+#define glsm_enter() glsm_state_bind()
+#define glsm_exit() glsm_state_unbind()
+#endif
+
 retro_log_printf_t log_cb;
 static GLuint target;
 static uintptr_t framebuffer(void) { return target; }
@@ -43,6 +53,14 @@ static void check_pixel(void)
    glReadPixels(8, 8, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, pixel);
    assert(pixel[0] == 0 && pixel[1] == 255 && pixel[2] == 0);
    assert(glGetError() == GL_NO_ERROR);
+}
+
+static void check_viewport(void)
+{
+   GLint viewport[4];
+   glGetIntegerv(GL_VIEWPORT, viewport);
+   assert(viewport[0] == 0 && viewport[1] == 0);
+   assert(viewport[2] == 16 && viewport[3] == 16);
 }
 
 int main(void)
@@ -91,6 +109,8 @@ int main(void)
    glLinkProgram(program);
    rglUseProgram(program);
    rglViewport(0, 0, 16, 16);
+   rglScissor(0, 0, 16, 16);
+   rglEnable(SGL_SCISSOR_TEST);
 
    glGenVertexArrays(1, &frontend_vao);
    glGenBuffers(1, &frontend_vbo);
@@ -98,13 +118,20 @@ int main(void)
    rglEnableVertexAttribArray(0);
    for (frame = 0; frame < 10; ++frame)
    {
-      glsm_state_unbind();
+      glsm_exit();
       glBindVertexArray(frontend_vao);
       glBindBuffer(GL_ARRAY_BUFFER, frontend_vbo);
       glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
       glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, 0);
       glEnableVertexAttribArray(1);
-      glsm_state_bind();
+      /* Non-threaded video leaves its compositing viewport and scissor
+       * in the core's context. Only the rightmost column remains visible
+       * without a restore, matching the Quest report. */
+      glViewport(15, 0, 16, 16);
+      glScissor(15, 0, 1, 16);
+      glUseProgram(0);
+      glsm_enter();
+      check_viewport();
       check_binding(GL_VERTEX_ARRAY_BINDING, 0);
       check_binding(GL_ARRAY_BUFFER_BINDING, 0);
       glGetVertexAttribiv(0, GL_VERTEX_ATTRIB_ARRAY_BUFFER_BINDING, &captured);
@@ -130,18 +157,48 @@ int main(void)
    rglBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
    for (frame = 0; frame < 10; ++frame)
    {
-      glsm_state_unbind();
+      glsm_exit();
       glBindVertexArray(core_vao);
       check_binding(GL_ELEMENT_ARRAY_BUFFER_BINDING, core_ebo);
       glBindVertexArray(frontend_vao);
       glBindBuffer(GL_ARRAY_BUFFER, frontend_vbo);
-      glsm_state_bind();
+      /* Non-threaded video leaves its compositing viewport and scissor
+       * in the core's context. Only the rightmost column remains visible
+       * without a restore, matching the Quest report. */
+      glViewport(15, 0, 16, 16);
+      glScissor(15, 0, 1, 16);
+      glUseProgram(0);
+      glsm_enter();
+      check_viewport();
       check_binding(GL_VERTEX_ARRAY_BINDING, core_vao);
       check_binding(GL_ARRAY_BUFFER_BINDING, core_vbo);
       check_binding(GL_ELEMENT_ARRAY_BUFFER_BINDING, core_ebo);
       glClear(GL_COLOR_BUFFER_BIT);
       rglDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_SHORT, 0);
       check_pixel();
+   }
+   /* GLideN64 returns to its offscreen draw buffer after scanout. That
+    * selection must survive the frame boundary even without a new bind. */
+   {
+      GLuint offscreen;
+      glGenFramebuffers(1, &offscreen);
+      rglBindFramebuffer(GL_DRAW_FRAMEBUFFER, offscreen);
+      rglBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
+      glsm_exit();
+      glsm_enter();
+      check_binding(GL_FRAMEBUFFER_BINDING, offscreen);
+      check_binding(GL_READ_FRAMEBUFFER_BINDING, target);
+      rglBindFramebuffer(GL_FRAMEBUFFER, 0);
+      glsm_exit();
+      /* Swap the frontend FBO without another rglBindFramebuffer(0). */
+      glGenFramebuffers(1, &target);
+      glBindFramebuffer(GL_FRAMEBUFFER, target);
+      glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+                            GL_TEXTURE_2D, texture, 0);
+      glsm_enter();
+      check_binding(GL_FRAMEBUFFER_BINDING, target);
+      check_binding(GL_READ_FRAMEBUFFER_BINDING, target);
+      assert(glGetError() == GL_NO_ERROR);
    }
    puts("GLES3 client arrays and VAO buffers survive frontend presentation");
    eglMakeCurrent(display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);

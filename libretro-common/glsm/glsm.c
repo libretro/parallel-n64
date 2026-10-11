@@ -3217,6 +3217,7 @@ static void glsm_state_setup(void)
 static void glsm_state_bind(void)
 {
    unsigned i;
+   const GLuint previous_default_framebuffer = default_framebuffer;
    /* The frontend can hand back a different target framebuffer between frames
     * (RetroArch's "gl"/gl2 driver recreates or rotates its render target on
     * resize, shader-pass changes, and similar). default_framebuffer is captured
@@ -3270,16 +3271,15 @@ static void glsm_state_bind(void)
    glPixelStorei(GL_UNPACK_ALIGNMENT, gl_state.pixelstore.unpack);
    glPixelStorei(GL_PACK_ALIGNMENT, gl_state.pixelstore.pack);
 
-   if (false) {
-      gl_state.framebuf[0].location = gl_state.framebuf[0].desired_location = 0;
-      gl_state.framebuf[1].location = gl_state.framebuf[1].desired_location = 0;
-   } else {
-      glBindFramebuffer(GL_FRAMEBUFFER, default_framebuffer);
-      gl_state.framebuf[0].location = default_framebuffer;
-      gl_state.framebuf[1].location = default_framebuffer;
-      gl_state.framebuf[0].desired_location = default_framebuffer;
-      gl_state.framebuf[1].desired_location = default_framebuffer;
-   }
+   /* Preserve offscreen targets selected by GLideN64's framebuffer cache.
+    * Only bindings that named the frontend target follow a rotated FBO. */
+   for (i = 0; i < 2; ++i)
+      if (gl_state.framebuf[i].desired_location == previous_default_framebuffer)
+         gl_state.framebuf[i].desired_location = default_framebuffer;
+
+   glBindFramebuffer(GL_FRAMEBUFFER, default_framebuffer);
+   gl_state.framebuf[0].location = default_framebuffer;
+   gl_state.framebuf[1].location = default_framebuffer;
 
    /* The first time the hardware-render framebuffer is bound, clear it once in
     * full. RetroArch's gl driver allocates the FBO at the next power of two of
@@ -3405,6 +3405,12 @@ static void glsm_state_bind(void)
       }
       glActiveTexture(GL_TEXTURE0 + active_texture);
    }
+
+   /* The draw/read bindings can differ after framebuffer presentation. */
+   bindFBO(GL_FRAMEBUFFER);
+#ifndef HAVE_OPENGLES2
+   bindFBO(GL_READ_FRAMEBUFFER);
+#endif
 }
 
 static void glsm_state_unbind(void)
