@@ -722,9 +722,10 @@ enum retro_mod
  */
 
 /**
- * This bit indicates that the associated environment call is experimental,
- * and may be changed or removed in the future.
- * Frontends should mask out this bit before handling the environment call.
+ * This bit used to indicate that the associated environment call is experimental,
+ * and may be changed or removed in the future, but this has since changed.
+ * Frontends should NOT mask out this bit before handling the environment call,
+ * as some callbacks need it to distinguish themselves from others.
  */
 #define RETRO_ENVIRONMENT_EXPERIMENTAL 0x10000
 
@@ -1682,6 +1683,22 @@ enum retro_mod
  * @see RETRO_ENVIRONMENT_SET_HW_RENDER
  */
 #define RETRO_ENVIRONMENT_SET_HW_RENDER_CONTEXT_NEGOTIATION_INTERFACE (43 | RETRO_ENVIRONMENT_EXPERIMENTAL)
+
+/**
+ * Notifies the frontend of any quirks associated with serialization.
+ *
+ * Should be set in either \c retro_init or \c retro_load_game, but not both.
+ * @param[in, out] data <tt>uint64_t *</tt>.
+ * Pointer to the core's serialization quirks.
+ * The frontend will set the flags of the quirks it supports
+ * and clear the flags of those it doesn't.
+ * Behavior is undefined if \c NULL.
+ * @return \c true if this environment call is supported.
+ * @see retro_serialize
+ * @see retro_unserialize
+ * @see RETRO_SERIALIZATION_QUIRK
+ */
+#define RETRO_ENVIRONMENT_SET_SERIALIZATION_QUIRKS 44
 
 /**
  * The frontend will try to use a "shared" context when setting up a hardware context.
@@ -2718,158 +2735,103 @@ enum retro_mod
 #define RETRO_ENVIRONMENT_GET_MEMORY_STATUS (86 | RETRO_ENVIRONMENT_EXPERIMENTAL)
 
 /**
- * Notifies the frontend of any quirks associated with serialization.
+ * Legacy compatibility shim to RETRO_ENVIRONMENT_SET_SERIALIZATION_QUIRKS.
+ * Cores should avoid using this, as it is not as well-supported.
  *
- * Should be set in either \c retro_init or \c retro_load_game, but not both.
- * @param[in, out] data <tt>uint64_t *</tt>.
- * Pointer to the core's serialization quirks.
- * The frontend will set the flags of the quirks it supports
- * and clear the flags of those it doesn't.
- * Behavior is undefined if \c NULL.
- * @return \c true if this environment call is supported.
- * @see retro_serialize
- * @see retro_unserialize
  * @see RETRO_SERIALIZATION_QUIRK
  */
-#define RETRO_ENVIRONMENT_SET_SERIALIZATION_QUIRKS 87
+#define RETRO_ENVIRONMENT_SET_SERIALIZATION_QUIRKS_2 87
 
 /**
- * Queries whether the active video driver can present a 10-bit-per-channel
- * (30-bit) source surface end to end, i.e. whether a frame submitted as
- * #RETRO_PIXEL_FORMAT_XRGB2101010 reaches the display without the frontend
- * narrowing it to 8 bits per channel.
- *
- * Unlike SET_PIXEL_FORMAT, which accepts XRGB2101010 unconditionally and
- * transparently down-converts when the driver cannot present 10-bit, this
- * lets a core discover the real capability so it can avoid pointless work:
- * a core that has both a 10-bit and an 8-bit output path should prefer the
- * 8-bit path when this returns \c false, since emitting 10-bit only to have
- * the frontend narrow it wastes effort and, for content that starts at 8
- * bits, is a no-op round trip; going straight to 8 bits also rounds rather
- * than truncates.
- *
- * The result may change across a driver reinit (e.g. the user switches
- * video driver or toggles HDR), so a core that cares should query it when
- * (re)choosing its pixel format rather than caching it indefinitely.
- *
- * @param[out] data <tt>bool *</tt>.
- * Set to \c true if a 10-bit source surface is presented natively, \c false
- * if XRGB2101010 frames are down-converted to 8-bit.
- * @return \c true if the environment call is recognised (the value at
- * \c data is then valid), \c false if it is unsupported (an older frontend);
- * a core must treat "unsupported" as "no guarantee of native 10-bit".
+ * Queries the frontend's HDR presentation contract.
+ * Call from the emulation thread, as with video format negotiation.
+ * data points to struct retro_hdr_metadata. The caller zeroes it and sets
+ * version = 1 and size = sizeof(struct retro_hdr_metadata) before calling.
+ * Unknown versions and undersized buffers return false without modification.
+ * Larger buffers are accepted; bytes beyond the version-1 layout are untouched.
+ * Re-query after presentation or settings changes. This replaces experimental
+ * commands 88-92; those numbers must not be reused.
  */
-#define RETRO_ENVIRONMENT_GET_SCREEN_10BPC_CAPABLE (88 | RETRO_ENVIRONMENT_EXPERIMENTAL)
+#define RETRO_ENVIRONMENT_GET_HDR_METADATA (101 | RETRO_ENVIRONMENT_EXPERIMENTAL)
 
 /**
- * Queries the luminance, in nits, that the frontend treats as SDR paper
- * white when presenting HDR content.
- *
- * Only meaningful together with #RETRO_PIXEL_FORMAT_HDR10_2101010: a core
- * encoding absolute luminance itself has to know where the user expects
- * ordinary, non-glowing image content to sit, otherwise the whole frame is
- * either dim or searing.  The value corresponds to the frontend's HDR paper
- * white setting; typical values are 100-400.
- *
- * The user can change it at any time, so a core should re-query it when it
- * rebuilds its colour tables rather than caching it forever.
- *
- * @param[out] data <tt>float *</tt>.
- * Set to the paper white luminance in nits.
- * @return \c true if the call is recognised and the value is valid, \c false
- * on a frontend that does not implement it; callers should then assume a
- * sensible default (200 nits).
+ * Queries presentation state and optional display capabilities together.
+ * data points to struct retro_display_metadata, with version = 1 and size set
+ * by the caller as above. The frontend fills the nested HDR header itself.
+ * Unknown geometry/capabilities are zero. No raw EDID or display identity is
+ * exposed. The HDR block describes presentation, not panel capability.
  */
-#define RETRO_ENVIRONMENT_GET_HDR_PAPER_WHITE_NITS (89 | RETRO_ENVIRONMENT_EXPERIMENTAL)
+#define RETRO_ENVIRONMENT_GET_DISPLAY_METADATA (102 | RETRO_ENVIRONMENT_EXPERIMENTAL)
 
-/**
- * Queries the colour-gamut treatment the frontend applies to SDR content
- * when presenting HDR.
- *
- * Only meaningful together with #RETRO_PIXEL_FORMAT_HDR10_2101010.  A core
- * emitting that format performs its own Rec.709 -> Rec.2020 rotation, and
- * has to make the same choice the frontend makes for SDR content, or a
- * scene will change saturation when the user switches the core between an
- * SDR format and HDR10.  The values match the frontend's "Colour Boost"
- * setting:
- *
- *   0 Accurate -- proper Rec.709 -> Rec.2020 conversion, no boost
- *   1 Expanded -- Rec.709 -> a slightly wider space
- *   2 Wide     -- Rec.709 -> DCI-P3
- *   3 Super    -- no rotation at all; values stay Rec.709 and the boost
- *                 comes from the display interpreting them as Rec.2020
- *
- * A core should re-query this when it rebuilds its colour tables, since the
- * user can change it at any time.
- *
- * @param[out] data <tt>unsigned *</tt>.
- * Set to one of the values above.
- * @return \c true if the call is recognised, \c false on a frontend that
- * does not implement it; callers should then assume 0 (Accurate).
- */
-#define RETRO_ENVIRONMENT_GET_HDR_EXPAND_GAMUT (90 | RETRO_ENVIRONMENT_EXPERIMENTAL)
+/* Native core-input formats, independent of output mode or display bit depth. */
+#define RETRO_HDR_SOURCE_FORMAT_HDR10_2101010 (1u << 0)
+/* RETRO_PIXEL_FORMAT_SCRGB_RGBA16F core input.
+ * Do not advertise solely because an FP16 output framebuffer exists. */
+#define RETRO_HDR_SOURCE_FORMAT_SCRGB_RGBA16F (1u << 1)
 
-/**
- * Queries which HDR output mode the frontend is presenting with.
- *
- * Only meaningful together with #RETRO_PIXEL_FORMAT_HDR10_2101010.  Both
- * output modes accept the same PQ Rec.2020 frame, but they do not treat its
- * primaries identically: an HDR10 swapchain presents the samples as-is,
- * while an scRGB swapchain converts them and applies a Rec.2020 -> Rec.709
- * rotation on the way.  A core that encodes its own gamut -- which it must,
- * to honour #RETRO_ENVIRONMENT_GET_HDR_EXPAND_GAMUT -- therefore has to know
- * which of the two it is feeding, or its colour choice is undone by that
- * rotation on one of them.
- *
- * Values:
- *   0  HDR output is off
- *   1  HDR10 (PQ, Rec.2020 swapchain); samples are presented unchanged
- *   2  scRGB (linear FP16, Rec.709); the frontend applies Rec.2020 ->
- *      Rec.709 to the decoded samples
- *
- * The user can switch this at any time, so a core should re-query it when it
- * rebuilds its colour tables rather than caching it indefinitely.
- *
- * @param[out] data <tt>unsigned *</tt>.
- * Set to one of the values above.
- * @return \c true if the call is recognised, \c false on a frontend that
- * does not implement it; callers should then assume 1 (HDR10), which is the
- * mode that needs no compensation.
- */
-#define RETRO_ENVIRONMENT_GET_HDR_OUTPUT_MODE (91 | RETRO_ENVIRONMENT_EXPERIMENTAL)
+struct retro_hdr_metadata
+{
+   unsigned version;
+   unsigned size;
+   /* 0 = SDR or no active output, 1 = PQ Rec.2020, 2 = linear Rec.709. */
+   unsigned output_mode;
+   /* RETRO_HDR_SOURCE_FORMAT_* mask; zero means none known.
+    * Before video init this reports configured capability; SET_PIXEL_FORMAT
+    * must still accept the requested format. Ignore unknown bits. */
+   uint32_t source_formats;
+   float paper_white_nits;
+   /* Effective frontend target, including a display-peak override. */
+   float max_nits;
+   float min_nits;
+   /* SDR expansion: 0 accurate, 1 expanded, 2 P3, 3 unrotated. */
+   unsigned expand_gamut;
+   /* Content light levels, zero when unknown; never inferred from peak. */
+   float max_cll;
+   float max_fall;
+   /* H.273 codes; zero when unspecified. Linear transfer is 8, PQ is 16. */
+   unsigned color_primaries;
+   unsigned transfer_function;
+   /* For accepted HDR10_2101010 input: no creative curve, paper-white scale
+    * or SDR gamut expansion. PQ-to-linear/gamut conversion remains required
+    * for scRGB. Does not override a shader preset's existing contract. */
+   bool passthrough;
+   /* 0 = full-spectrum rational; other operators are not implemented. */
+   unsigned tonemap_operator;
+   uint32_t reserved[8];
+};
 
-/**
- * Queries the peak luminance the frontend is presenting to, in cd/m2 (nits).
- *
- * Only meaningful together with #RETRO_PIXEL_FORMAT_HDR10_2101010.  A core
- * emitting HDR10 encodes absolute luminance itself, so it decides where its
- * brightest content lands.  #RETRO_ENVIRONMENT_GET_HDR_PAPER_WHITE_NITS says
- * where ordinary content sits; this says how much room there is above it.  The
- * gap between the two is the entire headroom a core has for highlights, and
- * without it a core has to guess - a guess that is too dark on a bright display
- * and clips on a dim one.
- *
- * This is what the *display* can do, not what the content wants, so it is a
- * ceiling to roll off toward rather than a level to target.  A core should not
- * assume anything it emits below this value is reproduced exactly; displays
- * tone map internally, and many report a peak they can only hold over a small
- * window.
- *
- * May be lower than paper white if the user has configured it so.  A core
- * should treat that as zero headroom and clamp to paper white rather than
- * producing a negative range.
- *
- * The user can change this at any time, so a core should re-query it rather
- * than caching it indefinitely.
- *
- * @param[out] data <tt>float *</tt>.
- * Set to the peak luminance in nits.
- * @return \c true if the call is recognised, \c false on a frontend that does
- * not implement it; callers should then fall back to a sensible default.
- * 1000 nits is a reasonable assumption, being both the HDR10 reference peak
- * and roughly what mid-range HDR displays achieve.
- */
-#define RETRO_ENVIRONMENT_GET_HDR_MAX_NITS (92 | RETRO_ENVIRONMENT_EXPERIMENTAL)
+struct retro_display_geometry
+{
+   unsigned native_width;
+   unsigned native_height;
+   unsigned width_mm;
+   unsigned height_mm;
+   unsigned refresh_min_mHz;
+   unsigned refresh_max_mHz;
+};
+
+struct retro_display_color_caps
+{
+   float peak_nits;
+   float min_nits;
+   float max_frame_avg_nits;
+   /* CIE xy / 10000: Rx,Ry,Gx,Gy,Bx,By,Wx,Wy. All zero = unknown. */
+   uint16_t primaries_xy[8];
+   /* Bit 0 SDR, bit 1 PQ, bit 2 HLG. Zero = unknown. */
+   unsigned supported_eotf_mask;
+   unsigned edid_gamma_x100;
+   /* 0 unknown, 1 user, 2 EDID/CTA, 3 platform API. */
+   unsigned capability_source;
+};
+
+struct retro_display_metadata
+{
+   unsigned version;
+   unsigned size;
+   struct retro_display_geometry geo;
+   struct retro_hdr_metadata hdr;
+   struct retro_display_color_caps caps;
+};
 
 /**
  * Negotiates multi-channel audio output.
@@ -2917,6 +2879,551 @@ enum retro_mod
  * @see RETRO_AUDIO_SPEAKER_FRONT_LEFT
  */
 #define RETRO_ENVIRONMENT_GET_AUDIO_SAMPLE_BATCH_MULTI (94 | RETRO_ENVIRONMENT_EXPERIMENTAL)
+
+enum retro_vr_reference_space {
+   RETRO_VR_REFERENCE_SPACE_LOCAL = 0,  /* seated: origin = head at session start/recenter */
+   RETRO_VR_REFERENCE_SPACE_STAGE = 1,  /* standing: origin = floor */
+   RETRO_VR_REFERENCE_SPACE_DUMMY = INT_MAX
+};
+
+/**
+ * Describes how the frame the core passes to \c retro_video_refresh_t
+ * divides into views: the screens of a multi-screen system and the eyes
+ * of a stereo image.
+ *
+ * The core keeps drawing every view into its one frame, packed however it
+ * likes, and this call says where each view is. A frontend that presents
+ * views lays them out, shades and composes them itself. Any other frontend
+ * shows the packed frame as it is, so the core needs no second code path.
+ *
+ * Rules:
+ *  - Call from \c retro_load_game() or \c retro_run(). The map applies from
+ *    the next \c retro_video_refresh_t call and the frontend copies it.
+ *    Cores should send it every \c retro_run(): an unchanged map costs a
+ *    comparison, and resending covers state loads and run-ahead.
+ *  - Rectangles are pixels in the frame of each refresh call (for a
+ *    hardware frame, the \c width and \c height passed to the refresh
+ *    call), measured from the top-left of the image as displayed. A GL core
+ *    rendering bottom-up still measures \c y from the top. Width and height
+ *    are non-zero. Rectangles may overlap. A frame that some rectangle does
+ *    not fit inside is shown as the packed frame; the map applies again to
+ *    the next frame they all fit.
+ *  - \c num_views is 1 to \c RETRO_VIDEO_VIEWS_MAX, or 0 to clear the map,
+ *    in which case \c views may be NULL.
+ *    Screens number from 0 with no gaps; screen 0 is the primary. Each
+ *    screen has one \c RETRO_VIDEO_VIEW_EYE_NONE view, or one
+ *    \c RETRO_VIDEO_VIEW_EYE_LEFT and one \c RETRO_VIDEO_VIEW_EYE_RIGHT view
+ *    of equal width and height.
+ *  - \c aspect_ratio is the view's display aspect ratio. At or below zero
+ *    means \c width / \c height. Above zero it must be from 0.01 to 100,
+ *    or the map is invalid.
+ *  - \c retro_game_geometry keeps describing the whole packed frame.
+ *    \c RETRO_ENVIRONMENT_SET_ROTATION rotates each view on its own.
+ *  - Touch and light gun coordinates stay in packed-frame terms. A touch
+ *    on any copy of a screen is reported inside that screen's
+ *    \c RETRO_VIDEO_VIEW_EYE_NONE or \c RETRO_VIDEO_VIEW_EYE_LEFT view, at
+ *    the same fraction of its width and height as the touch is across the
+ *    screen as displayed. Rotation is not undone: x follows the display's
+ *    horizontal axis, as it does for a frame without views, so a core that
+ *    sets a rotation turns the point itself.
+ *  - The frontend clears the map when content unloads.
+ *
+ * @param[in] data <tt>const struct retro_video_views *</tt>.
+ * @return \c true if the map was accepted. \c false for an invalid map,
+ * which leaves the previous map in effect, or from a frontend that does
+ * not know this call. Either way the core keeps sending the packed frame.
+ * @see retro_video_views
+ * @see RETRO_ENVIRONMENT_GET_VIDEO_VIEWS_STATUS
+ */
+#define RETRO_ENVIRONMENT_SET_VIDEO_VIEWS (95 | RETRO_ENVIRONMENT_EXPERIMENTAL)
+
+/**
+ * Asks whether the frontend presents views, and whether it shows both eyes.
+ *
+ * The answer can change at any time (the user's stereo mode, HDR output,
+ * the video driver), so a core asks every \c retro_run(), before it draws.
+ *  - With \c RETRO_VIDEO_VIEWS_STATUS_PRESENTS, the core may pack its frame
+ *    for views and send the map with \c RETRO_ENVIRONMENT_SET_VIDEO_VIEWS
+ *    before the \c retro_video_refresh_t call of the frame it describes.
+ *  - Without it, a core with layouts of its own uses them, and clears any
+ *    map it sent by sending one with \c num_views 0.
+ *  - With \c RETRO_VIDEO_VIEWS_STATUS_STEREO, a core with stereo content
+ *    sends left/right pairs. A screen with no 3D content may still be one
+ *    \c RETRO_VIDEO_VIEW_EYE_NONE view, which appears the same in both eyes.
+ *  - Without it, the core sends one \c RETRO_VIDEO_VIEW_EYE_NONE view per
+ *    screen and can skip rendering the second eye. A left/right pair sent
+ *    anyway is shown as its left eye where views are presented, and within
+ *    the packed frame elsewhere.
+ *
+ * @param[out] data <tt>unsigned *</tt>. Set to a combination of the
+ * \c RETRO_VIDEO_VIEWS_STATUS_ flags.
+ * @return \c true if the call is recognised. A frontend that does not know
+ * it returns \c false, which means no flags.
+ * @see RETRO_ENVIRONMENT_SET_VIDEO_VIEWS
+ */
+#define RETRO_ENVIRONMENT_GET_VIDEO_VIEWS_STATUS (96 | RETRO_ENVIRONMENT_EXPERIMENTAL)
+
+/* Flags of RETRO_ENVIRONMENT_GET_VIDEO_VIEWS_STATUS. PRESENTS: the frontend
+ * would lay out a valid map sent now, whether or not one is set. STEREO:
+ * both eyes are shown; only set together with PRESENTS. */
+#define RETRO_VIDEO_VIEWS_STATUS_PRESENTS (1 << 0)
+#define RETRO_VIDEO_VIEWS_STATUS_STEREO   (1 << 1)
+/** A headset session is running and head tracking is available:
+ * RETRO_ENVIRONMENT_GET_VR_FRAME_STATE and GET_VR_HEAD_POSE answer, and a
+ * map with RETRO_VIDEO_VIEWS_FLAG_TRACKED becomes the head-tracked view.
+ * Only set together with PRESENTS and STEREO. A core learns about a
+ * headset from this bit only: SET_VIDEO_VIEWS returning true means the
+ * map was accepted, headset or not. */
+#define RETRO_VIDEO_VIEWS_STATUS_HMD      (1 << 2)
+
+/* The eye a view shows; see RETRO_ENVIRONMENT_SET_VIDEO_VIEWS. */
+#define RETRO_VIDEO_VIEW_EYE_NONE  0
+#define RETRO_VIDEO_VIEW_EYE_LEFT  1
+#define RETRO_VIDEO_VIEW_EYE_RIGHT 2
+
+/* The most views one map may hold. */
+#define RETRO_VIDEO_VIEWS_MAX      8
+/** The map's one LEFT and one RIGHT view were drawn from this frame's
+ * RETRO_ENVIRONMENT_GET_VR_FRAME_STATE eye poses and fields of view.
+ * While RETRO_VIDEO_VIEWS_STATUS_HMD is set, the frontend shows those two
+ * as the headset's head-tracked view and every other view as a screen.
+ * Without HMD the flag changes nothing. While HMD is set, a map with the
+ * flag and any views must hold exactly one LEFT and one RIGHT view, or it
+ * is refused; an empty map clears the views whatever its flags. */
+#define RETRO_VIDEO_VIEWS_FLAG_TRACKED (1 << 0)
+
+/**
+ * One view of the frame.
+ * @see RETRO_ENVIRONMENT_SET_VIDEO_VIEWS
+ */
+struct retro_video_view
+{
+   /** The view's rectangle in the frame, from the top-left as displayed. */
+   unsigned x;
+   unsigned y;
+   unsigned width;
+   unsigned height;
+   /** Screen number, from 0. */
+   unsigned screen;
+   /** One of the \c RETRO_VIDEO_VIEW_EYE_ values. */
+   unsigned eye;
+   /** Display aspect ratio; at or below zero means \c width / \c height. */
+   float aspect_ratio;
+};
+
+/**
+ * The argument of \c RETRO_ENVIRONMENT_SET_VIDEO_VIEWS.
+ */
+struct retro_video_views
+{
+   const struct retro_video_view *views;
+   unsigned num_views;
+
+   /** RETRO_VIDEO_VIEWS_FLAG_ values. */
+   unsigned flags;
+
+   /**
+    * The space a TRACKED map's poses are in: LOCAL (seated) or STAGE
+    * (standing, LOCAL where the runtime has none).
+    */
+   enum retro_vr_reference_space reference_space;
+
+   /**
+    * Output, while RETRO_VIDEO_VIEWS_STATUS_HMD is set: the recommended
+    * size of one eye's render target; 0 otherwise.
+    * The frontend does not change the core's geometry for it: a core
+    * that draws at this size reports its new frame size with
+    * RETRO_ENVIRONMENT_SET_SYSTEM_AV_INFO.
+    */
+   unsigned recommended_view_width;
+   unsigned recommended_view_height;
+};
+
+/* RETRO_VR_FRAME_RECENTERED: the user or the runtime recentered, the
+ * runtime moved STAGE, or a new headset session started, as after a
+ * video driver restart. LOCAL poses then have a new origin; STAGE poses
+ * keep the room's through a recenter. A core that was paused hears of it
+ * at its next frame. A core keeping a reference pose takes it again. */
+#define RETRO_VR_FRAME_RECENTERED     (1u << 0)
+#define RETRO_VR_FRAME_TARGET_RESIZED (1u << 1)  /* eye size changed: call SET_VIDEO_VIEWS again */
+
+/**
+ * Retrieves the per-eye state plus per-frame event flags
+ * (RETRO_VR_FRAME_RECENTERED / RETRO_VR_FRAME_TARGET_RESIZED) for the
+ * current retro_run() call.
+ *
+ * The frontend samples both eye states once per frame, immediately before
+ * retro_run(), and returns that same sample for the duration of that
+ * retro_run() call.
+ *
+ * The position and orientation in each eye state are the eye-to-tracking
+ * transforms used for that frame. The FOV values are the same values the
+ * frontend must use when submitting the compositor layer for the
+ * corresponding frame.
+ *
+ * @param[out] data <tt>struct retro_vr_frame_state *</tt>.
+ * @return false if no VR session exists or no valid sample is available.
+ */
+#define RETRO_ENVIRONMENT_GET_VR_FRAME_STATE (97 | RETRO_ENVIRONMENT_EXPERIMENTAL)
+
+
+/**
+ * Identifies which eye a \ref retro_vr_eye_state describes, and the index
+ * of that eye within the two-element array passed to
+ * RETRO_ENVIRONMENT_GET_VR_FRAME_STATE.
+ */
+enum retro_vr_eye
+{
+   RETRO_VR_EYE_LEFT  = 0,
+   RETRO_VR_EYE_RIGHT = 1,
+
+   /** @private Defined to ensure <tt>sizeof(retro_vr_eye) == sizeof(int)</tt>. Do not use. */
+   RETRO_VR_EYE_DUMMY = INT_MAX
+};
+
+/**
+ * One eye's head-tracked pose and asymmetric field of view for the current
+ * frame, in the frontend's tracking space (meters, right-handed, Y up).
+ *
+ * position and orientation describe the eye-to-tracking-space transform,
+ * not its inverse.
+ *
+ * The quaternion is stored in (x, y, z, w) order. This is intentionally
+ * different from APIs such as GLM where glm::quat is constructed as
+ * (w, x, y, z).
+ *
+ * @see RETRO_ENVIRONMENT_GET_VR_FRAME_STATE
+ */
+struct retro_vr_eye_state
+{
+   /**
+    * Eye position in tracking space, in meters.
+    */
+   float position[3];
+
+   /**
+    * Eye orientation in tracking space, as a quaternion (x, y, z, w).
+    *
+    * This is the orientation of the eye relative to tracking space, not
+    * the inverse/view orientation.
+    */
+   float orientation[4];
+
+   /**
+    * Tangent of the positive half-angle from the eye's forward axis to
+    * each frustum edge, in the order:
+    *
+    *   [0] left
+    *   [1] right
+    *   [2] up
+    *   [3] down
+    *
+    * All four values are positive magnitudes. They describe the distance
+    * of each frustum edge from the forward axis in tangent space; they are
+    * not signed OpenXR angles.
+    *
+    * The four values are independent because HMD eye frustums are normally
+    * asymmetric.
+    *
+    * For example, if the left and right tangent values are l and r, and
+    * the up and down tangent values are u and d, the projection frustum
+    * spans:
+    *
+    *   left   = -l
+    *   right  =  r
+    *   bottom = -d
+    *   top    =  u
+    *
+    * A frontend converting from APIs that represent the corresponding
+    * angles as signed values must use their magnitudes.
+    */
+   float fov_tan[4];
+};
+
+struct retro_vr_frame_state {
+   struct retro_vr_eye_state eyes[2];
+   uint32_t flags;
+};
+
+/**
+ * Retrieves the current head-tracked pose.
+ *
+ * The frontend samples the HMD once per frame, immediately before
+ * retro_run(), and returns the same sample for the duration of that
+ * retro_run() call.
+ */
+#define RETRO_ENVIRONMENT_GET_VR_HEAD_POSE (98 | RETRO_ENVIRONMENT_EXPERIMENTAL)
+
+/* Frontend H.264 decoding to CPU-readable 8-bit YUV 4:2:0 planes.
+ * Versions 1, 2 and 3 are supported. Initialize the version before querying.
+ * Version 1 writes only the original prefix through close. Calls for each decoder
+ * are serialized by the core; close all decoders before context teardown.
+ * Unsupported frontends return false. Input is one Annex-B access unit.
+ * Planes remain valid until decode, drain or close. */
+#define RETRO_ENVIRONMENT_GET_VIDEO_DECODE_INTERFACE (99 | RETRO_ENVIRONMENT_EXPERIMENTAL)
+#define RETRO_VIDEO_DECODE_INTERFACE_VERSION 3
+#define RETRO_VIDEO_DECODE_DEFER_PLANES (1u << 0)
+
+struct retro_video_decode_frame
+{
+   const uint8_t *planes[3];
+   unsigned strides[3];
+   unsigned width, height;
+   bool hardware;
+};
+
+enum retro_video_decode_gpu_api
+{
+   RETRO_VIDEO_DECODE_GPU_VULKAN = 1,
+   RETRO_VIDEO_DECODE_GPU_D3D11 = 2
+};
+
+/* Version 3 GPU output. Vulkan uses same-device VkImage/views and timeline
+ * semaphores; D3D11 uses shared NT handles. Wait on wait_value before GPU
+ * reads, preserve layout, and signal done_value after the final GPU read.
+ * An unused lease is returned with abandon. Close/context destruction
+ * requires all leases to have completed; handles must never be cached
+ * beyond their lease. Chroma views are R8/R8G8 (8-bit 4:2:0).
+ * The copy is independent of subsequent decode/drain output. */
+struct retro_video_decode_gpu_frame
+{
+   uint64_t image, plane_views[2];
+   uint64_t wait, wait_value, done, done_value;
+   void (*abandon)(void *owner, uint64_t done, uint64_t done_value);
+   void *owner;
+   unsigned width, height, layout, yuv, pixfmt, array_slice, crop_x, crop_y;
+   unsigned api;
+};
+
+struct retro_video_decode_interface
+{
+   unsigned interface_version;
+   void *(*open)(void);
+   /* 1: frame ready; 0: consumed, delayed output; -1: failure. */
+   int (*decode)(void *decoder, const uint8_t *data, size_t size,
+         struct retro_video_decode_frame *frame);
+   /* 1: frame ready; 0: no more frames; -1: failure. */
+   int (*drain)(void *decoder, struct retro_video_decode_frame *frame);
+   void (*close)(void *decoder);
+   /* Version 2: flags=0 preserves eager CPU planes. DEFER_PLANES returns
+    * width/height/hardware with null planes; get_frame materializes them.
+    * Output expires on the next decode/drain/close. No GPU handle is leased.
+    * 2: hardware busy; retry decode_ex with the same live input pointer
+    * and size, or retry drain_ex later. Do not consume another access unit.
+    * Unsupported flag bits fail without consuming input. */
+   int (*decode_ex)(void *decoder, const uint8_t *data, size_t size,
+         struct retro_video_decode_frame *frame, unsigned flags);
+   int (*drain_ex)(void *decoder, struct retro_video_decode_frame *frame,
+         unsigned flags);
+   /* 1: CPU planes ready; -1: no current output or readback failure.
+    * Repeated calls reuse the same CPU copy. */
+   int (*get_frame)(void *decoder, struct retro_video_decode_frame *frame);
+   /* Version 3: export the current deferred output once. 1 leased,
+    * 2 busy (retry later), -1 unavailable/error. CPU get_frame remains
+    * valid until decode/drain. Failed calls acquire no lease. */
+   int (*get_gpu_frame)(void *decoder, struct retro_video_decode_gpu_frame *frame);
+};
+
+
+
+#define RETRO_VR_HEAD_POSE_POSITION_VALID    (1u << 0)
+#define RETRO_VR_HEAD_POSE_ORIENTATION_VALID (1u << 1)
+#define RETRO_VR_HEAD_POSE_VELOCITY_VALID    (1u << 2)
+
+/**
+ * Head pose and motion in the frontend's tracking space (meters,
+ * seconds, right-handed, Y up).
+ *
+ * position and orientation describe the head-to-tracking-space transform,
+ * not its inverse. The orientation quaternion rotates vectors from head
+ * space into tracking space.
+ *
+ * linear_velocity is the velocity of the head-space origin, expressed in
+ * tracking-space coordinates. angular_velocity is the head's angular
+ * velocity, expressed in tracking-space coordinates. Velocity fields are
+ * valid only when RETRO_VR_HEAD_POSE_VELOCITY_VALID is set.
+ */
+struct retro_vr_head_pose
+{
+   /** Head position in tracking space, in meters. */
+   float position[3];
+
+   /** Head orientation in tracking space, quaternion (x, y, z, w). */
+   float orientation[4];
+
+   /** Linear velocity in meters/second. */
+   float linear_velocity[3];
+
+   /** Angular velocity in radians/second. */
+   float angular_velocity[3];
+
+   /* orientation/position are valid */
+   uint32_t flags;
+};
+
+/**
+ * Retrieves where the user's hands are: each motion controller's poses
+ * and each hand's joints.
+ *
+ * A core reads a pose, a joint or a field only when its flag says so.
+ *
+ * The three poses are:
+ *  - grip: /input/grip/pose, at the palm's
+ *    centre when the hand closes on the controller. -Z runs through the
+ *    tube the closed fingers make, from the little finger toward the
+ *    thumb; +X is normal to the flat palm, away from it on the left
+ *    hand and into it on the right.
+ *  - aim: /input/aim/pose, the pointing ray, -Z forward from the
+ *    controller's tip: where a laser or a shot starts.
+ *  - palm: the palm's centre at its surface, -Z the way
+ *    a straightened index finger points, +X as for grip: where a hand
+ *    model goes.
+ *
+ * A runtime that drives a controller profile from a bare tracked hand
+ * reports that hand as active, with grip and aim taken from the hand.
+ * The poses and joints are those the frontend sampled for this run,
+ * before retro_run(); call it from retro_run().
+ *
+ * @param[out] data <tt>struct retro_vr_controller_poses *</tt>.
+ * @return false if no VR session exists or no valid sample is available,
+ * and from a frontend that does not know the call. true with neither
+ * hand RETRO_VR_HAND_ACTIVE: a session that sees no hands.
+ * @see retro_vr_controller_poses
+ */
+#define RETRO_ENVIRONMENT_GET_VR_CONTROLLER_POSES (100 | RETRO_ENVIRONMENT_EXPERIMENTAL)
+
+/** Which hand a \ref retro_vr_hand_state describes, and its index in
+ * \ref retro_vr_controller_poses::hands. */
+enum retro_vr_hand
+{
+   RETRO_VR_HAND_LEFT  = 0,
+   RETRO_VR_HAND_RIGHT = 1,
+   RETRO_VR_HAND_COUNT = 2,
+
+   /** @private Defined to ensure <tt>sizeof(retro_vr_hand) == sizeof(int)</tt>. Do not use. */
+   RETRO_VR_HAND_DUMMY = INT_MAX
+};
+
+/* Flags of retro_vr_pose: OpenXR's XrSpaceLocationFlags and
+ * XrSpaceVelocityFlags. VALID: the value may be used. TRACKED: it is
+ * measured now rather than estimated, as a controller out of the
+ * headset's cameras' view keeps an estimated position for a while. */
+#define RETRO_VR_POSE_ORIENTATION_VALID      (1u << 0)
+#define RETRO_VR_POSE_POSITION_VALID         (1u << 1)
+#define RETRO_VR_POSE_ORIENTATION_TRACKED    (1u << 2)
+#define RETRO_VR_POSE_POSITION_TRACKED       (1u << 3)
+#define RETRO_VR_POSE_LINEAR_VELOCITY_VALID  (1u << 4)
+#define RETRO_VR_POSE_ANGULAR_VELOCITY_VALID (1u << 5)
+
+/**
+ * A pose and its motion in the tracking space.
+ *
+ * position and orientation are the pose-to-tracking-space transform.
+ * linear_velocity is the origin's velocity in meters per second;
+ * angular_velocity the rotation axis scaled by radians per second.
+ * Both are in tracking-space coordinates.
+ */
+struct retro_vr_pose
+{
+   float position[3];
+   float orientation[4];
+   float linear_velocity[3];
+   float angular_velocity[3];
+   /** RETRO_VR_POSE_ flags; 0 when nothing is known. */
+   uint32_t flags;
+};
+
+/**
+ * A hand's joints, in XR_EXT_hand_tracking's XrHandJointEXT order.
+ * Each joint's -Z points along its bone toward the fingertip, +Y out of
+ * the back of the hand. The palm joint is at the centre of the middle
+ * finger's metacarpal; the wrist joint at the wrist.
+ *
+ * The set is XR_EXT_hand_tracking's default one and is fixed: a larger
+ * joint set comes through a call of its own.
+ */
+enum retro_vr_hand_joint
+{
+   RETRO_VR_HAND_JOINT_PALM = 0,
+   RETRO_VR_HAND_JOINT_WRIST,
+   RETRO_VR_HAND_JOINT_THUMB_METACARPAL,
+   RETRO_VR_HAND_JOINT_THUMB_PROXIMAL,
+   RETRO_VR_HAND_JOINT_THUMB_DISTAL,
+   RETRO_VR_HAND_JOINT_THUMB_TIP,
+   RETRO_VR_HAND_JOINT_INDEX_METACARPAL,
+   RETRO_VR_HAND_JOINT_INDEX_PROXIMAL,
+   RETRO_VR_HAND_JOINT_INDEX_INTERMEDIATE,
+   RETRO_VR_HAND_JOINT_INDEX_DISTAL,
+   RETRO_VR_HAND_JOINT_INDEX_TIP,
+   RETRO_VR_HAND_JOINT_MIDDLE_METACARPAL,
+   RETRO_VR_HAND_JOINT_MIDDLE_PROXIMAL,
+   RETRO_VR_HAND_JOINT_MIDDLE_INTERMEDIATE,
+   RETRO_VR_HAND_JOINT_MIDDLE_DISTAL,
+   RETRO_VR_HAND_JOINT_MIDDLE_TIP,
+   RETRO_VR_HAND_JOINT_RING_METACARPAL,
+   RETRO_VR_HAND_JOINT_RING_PROXIMAL,
+   RETRO_VR_HAND_JOINT_RING_INTERMEDIATE,
+   RETRO_VR_HAND_JOINT_RING_DISTAL,
+   RETRO_VR_HAND_JOINT_RING_TIP,
+   RETRO_VR_HAND_JOINT_LITTLE_METACARPAL,
+   RETRO_VR_HAND_JOINT_LITTLE_PROXIMAL,
+   RETRO_VR_HAND_JOINT_LITTLE_INTERMEDIATE,
+   RETRO_VR_HAND_JOINT_LITTLE_DISTAL,
+   RETRO_VR_HAND_JOINT_LITTLE_TIP,
+   RETRO_VR_HAND_JOINT_COUNT,
+
+   /** @private Defined to ensure <tt>sizeof(retro_vr_hand_joint) == sizeof(int)</tt>. Do not use. */
+   RETRO_VR_HAND_JOINT_DUMMY = INT_MAX
+};
+
+/** One joint: its pose, and the distance from it to the skin in meters
+ * (0 when unknown). */
+struct retro_vr_hand_joint_state
+{
+   struct retro_vr_pose pose;
+   float radius;
+};
+
+/* Flags of retro_vr_hand_state. */
+/** Something is in the hand: a controller or a tracked hand. Without
+ * it the rest of the hand's state is cleared. */
+#define RETRO_VR_HAND_ACTIVE            (1u << 0)
+/** The joints are filled: the frontend tracks this hand's joints now. */
+#define RETRO_VR_HAND_JOINTS            (1u << 1)
+/** The joints are seen by the headset, the hand bare. */
+#define RETRO_VR_HAND_JOINTS_OPTICAL    (1u << 2)
+/** The joints are estimated from a held controller's grip and touch
+ * sensors. With neither JOINTS_ source bit, the source is unknown. */
+#define RETRO_VR_HAND_JOINTS_CONTROLLER (1u << 3)
+
+/** One hand. */
+struct retro_vr_hand_state
+{
+   /** The OpenXR interaction profile path the hand is used through,
+    * such as "/interaction_profiles/oculus/touch_controller"; NULL when
+    * none is known. The string is the frontend's, valid until the next
+    * RETRO_ENVIRONMENT_GET_VR_CONTROLLER_POSES call or until
+    * retro_run() returns, whichever comes first. */
+   const char *interaction_profile;
+
+   /** RETRO_VR_HAND_ flags. */
+   uint32_t flags;
+
+   struct retro_vr_pose grip;
+   struct retro_vr_pose aim;
+   struct retro_vr_pose palm;
+
+   /** Valid while RETRO_VR_HAND_JOINTS is set, each joint by its own
+    * pose flags. */
+   struct retro_vr_hand_joint_state joints[RETRO_VR_HAND_JOINT_COUNT];
+};
+
+/** The argument of RETRO_ENVIRONMENT_GET_VR_CONTROLLER_POSES. */
+struct retro_vr_controller_poses
+{
+   /** Indexed by enum retro_vr_hand. */
+   struct retro_vr_hand_state hands[RETRO_VR_HAND_COUNT];
+};
 
 /* Speaker positions, as bits of a layout mask; a frame's channels are
  * interleaved in ascending bit order. The bits are those of the
@@ -3773,7 +4280,10 @@ enum retro_hw_render_interface_type
     */
    RETRO_HW_RENDER_INTERFACE_VULKAN     = 0,
 
-   /** Indicates a \c retro_hw_render_interface for Direct3D 9. */
+   /**
+    * Indicates a \c retro_hw_render_interface for Direct3D 9.
+    * @see retro_hw_render_interface_d3d9
+    */
    RETRO_HW_RENDER_INTERFACE_D3D9       = 1,
 
    /** Indicates a \c retro_hw_render_interface for Direct3D 10. */
@@ -5342,10 +5852,61 @@ enum retro_camera_buffer
    RETRO_CAMERA_BUFFER_RAW_FRAMEBUFFER,
 
    /**
+    * Indicates that camera frames should be delivered to the core as
+    * the planar 4:2:0 YCbCr the capture device produces, in place.
+    *
+    * No conversion happens between the device and the core: the planes
+    * are the capture buffer itself. A core that can sample or convert
+    * YCbCr should prefer this over \c RETRO_CAMERA_BUFFER_RAW_FRAMEBUFFER,
+    * which costs the frontend a conversion pass per frame.
+    *
+    * @see retro_camera_frame_planar_t
+    */
+   RETRO_CAMERA_BUFFER_PLANAR,
+
+   /**
     * @private Defined to ensure <tt>sizeof(enum retro_camera_buffer) == sizeof(int)</tt>.
     * Do not use.
     */
    RETRO_CAMERA_BUFFER_DUMMY = INT_MAX
+};
+
+/** The luma plane is full range (0..255) rather than limited (16..235). */
+#define RETRO_CAMERA_PLANAR_FULL_RANGE (1 << 0)
+/** BT.709 matrix rather than BT.601. */
+#define RETRO_CAMERA_PLANAR_BT709      (1 << 1)
+
+/**
+ * One 8-bit 4:2:0 YCbCr frame, as planes.
+ *
+ * Covers NV12, NV21 and I420 without a format tag: the chroma planes
+ * are addressed by their own base pointers and a common sample step,
+ * so NV12 is <tt>planes[2] == planes[1] + 1</tt> with \c chroma_step 2,
+ * NV21 the other way round, and I420 two separate planes with
+ * \c chroma_step 1. Row pairs share a chroma row.
+ *
+ * @see RETRO_CAMERA_BUFFER_PLANAR
+ */
+struct retro_camera_planar_frame
+{
+   /** Y, Cb, Cr. Owned by the frontend, read-only, valid for the duration of the callback. */
+   const uint8_t *planes[3];
+
+   /** Row strides of the three planes, in bytes. */
+   size_t strides[3];
+
+   /** Distance between horizontally adjacent chroma samples of one plane, in bytes: 1 or 2. */
+   size_t chroma_step;
+
+   /** Frame size in luma pixels. */
+   unsigned width;
+   unsigned height;
+
+   /** Degrees the frame must be rotated clockwise to be upright: 0, 90, 180 or 270. */
+   unsigned rotation;
+
+   /** \c RETRO_CAMERA_PLANAR_* bits. */
+   unsigned flags;
 };
 
 /**
@@ -5427,6 +5988,17 @@ typedef void (RETRO_CALLCONV *retro_camera_frame_opengl_texture_t)(unsigned text
       unsigned texture_target, const float *affine);
 
 /**
+ * Called by the frontend to report a new camera frame,
+ * delivered as the capture device's own planar YCbCr buffer.
+ *
+ * @param frame The frame. Its planes may be invalidated when this function returns,
+ * so the core should make its own copy if necessary.
+ * @see RETRO_CAMERA_BUFFER_PLANAR
+ */
+typedef void (RETRO_CALLCONV *retro_camera_frame_planar_t)(
+      const struct retro_camera_planar_frame *frame);
+
+/**
  * An interface that the core can use to access a device's camera.
  *
  * @see RETRO_ENVIRONMENT_GET_CAMERA_INTERFACE
@@ -5501,6 +6073,15 @@ struct retro_camera_callback
     * May be \c NULL, in which case this function is skipped.
     */
    retro_camera_lifetime_status_t deinitialized;
+
+   /**
+    * @copydoc retro_camera_frame_planar_t
+    * @note Read by the frontend only when \c caps has the
+    * \c RETRO_CAMERA_BUFFER_PLANAR bit, so a core built against an
+    * older header, whose struct ends above, is never read past.
+    * If \c NULL, this function will not be called.
+    */
+   retro_camera_frame_planar_t frame_planar;
 };
 
 /** @} */
@@ -6399,18 +6980,41 @@ enum retro_pixel_format
     * A frontend that accepts this format MUST pass the samples through to an
     * HDR10 (PQ / Rec.2020) swapchain without re-encoding them: no inverse
     * tonemap, no Rec.709->Rec.2020 rotation, no paper-white scaling, since
-    * the core has already applied all of it.  A frontend that cannot present
-    * HDR10 natively must reject the format from SET_PIXEL_FORMAT rather than
+    * the core has already applied all of it.  For scRGB output the frontend must instead decode PQ, rotate Rec.2020
+    * to linear Rec.709 and scale to the platform reference white, without
+    * a second creative curve. A frontend without either path must reject the format from SET_PIXEL_FORMAT rather than
     * silently down-converting -- PQ samples interpreted as SDR look badly
     * wrong, so the usual transparent narrowing is not safe here.  Cores
     * should therefore keep an SDR path and fall back when this is refused.
     *
-    * Cores should query #RETRO_ENVIRONMENT_GET_HDR_PAPER_WHITE_NITS to learn
+    * Cores should query #RETRO_ENVIRONMENT_GET_HDR_METADATA to learn
     * the luminance the user considers "SDR white" and map their normal
     * output to it; content authored above that value is what produces the
     * HDR effect.
     */
    RETRO_PIXEL_FORMAT_HDR10_2101010 = 4,
+
+   /**
+    * FP16 linear scRGB with Rec.709/sRGB primaries and D65 white.
+    *
+    * Each pixel is four IEEE 754 binary16 samples in memory order R, G, B, A,
+    * with each 16-bit sample in native byte order. Alpha is ignored; cores
+    * should set it to 1.0. Each pixel occupies 8 bytes; pitch is in bytes.
+    * RGB samples must be finite. Negative values and values above 1.0 are
+    * valid and must not be clamped during upload or intermediate storage.
+    *
+    * RGB 1.0 represents 80 cd/m^2, independent of frontend paper white and
+    * platform output units. There is no gamma/PQ transfer to decode. Cores
+    * can use GET_HDR_METADATA paper_white_nits / 80.0 for their SDR white.
+    *
+    * An accepting frontend must preserve linear HDR values, converting
+    * primaries, transfer and reference-white units on the GPU as required
+    * by its output. Do not apply SDR expansion or a second paper-white
+    * scale. Unsupported paths must reject SET_PIXEL_FORMAT; cores must
+    * check its result and retain an SDR fallback. The corresponding
+    * source_formats bit is RETRO_HDR_SOURCE_FORMAT_SCRGB_RGBA16F.
+    */
+   RETRO_PIXEL_FORMAT_SCRGB_RGBA16F = 5,
 
    /** 
     * @private Defined to ensure that <tt>sizeof(retro_pixel_format) == sizeof(int)</tt>.
