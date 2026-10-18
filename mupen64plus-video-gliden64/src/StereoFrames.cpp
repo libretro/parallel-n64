@@ -98,10 +98,13 @@ void StereoFrames::captureLeftEye(FrameBuffer * _pBuffer)
 	params.mask = blitMask::COLOR_BUFFER;
 	params.filter = textureParameters::FILTER_NEAREST;
 
-	if (gfxContext.blitFramebuffers(params))
+	if (gfxContext.blitFramebuffers(params)) {
 		m_captured.insert(_pBuffer->m_startAddress);
-	else
+		m_capturedThisTask.insert(_pBuffer->m_startAddress);
+	} else {
 		m_captured.erase(_pBuffer->m_startAddress);
+		m_capturedThisTask.erase(_pBuffer->m_startAddress);
+	}
 
 	gfxContext.bindFramebuffer(bufferTarget::DRAW_FRAMEBUFFER, ObjectHandle::defaultFramebuffer);
 }
@@ -114,8 +117,19 @@ FrameBuffer * StereoFrames::leftEye(const FrameBuffer * _pBuffer) const
 	return iter != m_leftEyes.end() ? iter->second.get() : nullptr;
 }
 
+void StereoFrames::forget(const FrameBuffer * _pBuffer)
+{
+	if (_pBuffer == nullptr)
+		return;
+	m_captured.erase(_pBuffer->m_startAddress);
+	m_capturedThisTask.erase(_pBuffer->m_startAddress);
+}
+
 void StereoFrames::destroy()
 {
 	m_captured.clear();
+	m_capturedThisTask.clear();
+	m_enteredThisPass.clear();
 	m_leftEyes.clear();
+	m_capturing = false;
 }

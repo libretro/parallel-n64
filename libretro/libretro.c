@@ -1703,10 +1703,16 @@ static void vr_read_pose(void)
          const float z = rw * o[2] - ry * o[0];
          const float w = rw * o[3] - ry * o[1];
          /* Maps the eye's directions to the reference; GLideN64 wants the transpose */
-         const float r[3][3] = {
-            {1 - 2 * (y * y + z * z), 2 * (x * y - z * w), 2 * (x * z + y * w)},
-            {2 * (x * y + z * w), 1 - 2 * (x * x + z * z), 2 * (y * z - x * w)},
-            {2 * (x * z - y * w), 2 * (y * z + x * w), 1 - 2 * (x * x + y * y)}};
+         float r[3][3];
+         r[0][0] = 1 - 2 * (y * y + z * z);
+         r[0][1] = 2 * (x * y - z * w);
+         r[0][2] = 2 * (x * z + y * w);
+         r[1][0] = 2 * (x * y + z * w);
+         r[1][1] = 1 - 2 * (x * x + z * z);
+         r[1][2] = 2 * (y * z - x * w);
+         r[2][0] = 2 * (x * z - y * w);
+         r[2][1] = 2 * (y * z + x * w);
+         r[2][2] = 1 - 2 * (x * x + y * y);
          for (row = 0; row < 3; ++row)
             for (column = 0; column < 3; ++column)
                vr_pose_rotation[eye][row * 3 + column] = r[column][row];
@@ -1773,11 +1779,12 @@ static void vr_set_views(void)
    vr_views_sent = environ_cb(RETRO_ENVIRONMENT_SET_VIDEO_VIEWS, &map);
 }
 
-/* The mode for this content: only with GLideN64, on GLES3. Restart required. */
+/* The mode for this content: only with GLideN64, and not on GLES2, which
+ * cannot blit the left eye aside. Restart required. */
 static void vr_read_mode(void)
 {
    VRMode = VR_MODE_OFF;
-#ifdef HAVE_GLIDEN64
+#ifndef HAVE_OPENGLES2
    if (gfx_plugin == GFX_GLIDEN64)
    {
       struct retro_variable var = { CORE_NAME "-vr-mode", NULL };
@@ -1789,13 +1796,12 @@ static void vr_read_mode(void)
             VRMode = VR_MODE_IMMERSIVE;
       }
    }
-#endif // HAVE_GLIDEN64
+#endif
 }
 
 /* The depth settings, live; and the frame, both eyes side by side */
 static void vr_update_variables(bool startup)
 {
-#ifdef HAVE_GLIDEN64
    struct retro_variable var;
 
    var.key = CORE_NAME "-vr-separation";
@@ -1825,7 +1831,6 @@ static void vr_update_variables(bool startup)
 
    if (!startup && gfx_plugin == GFX_GLIDEN64)
       gln64_vr_update_config();
-#endif // HAVE_GLIDEN64
 
    vr_eye_width = screen_width;
    if (VRMode != VR_MODE_OFF)
@@ -1849,7 +1854,7 @@ void libretro_vr_immersive_present(int pose)
 {
    vr_presented_pose = pose;
 }
-#endif // HAVE_GLIDEN64
+#endif /* HAVE_GLIDEN64 */
 
 void update_variables(bool startup)
 {

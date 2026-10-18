@@ -17,7 +17,8 @@
 #include "TextureFilterHandler.h"
 #include "DisplayWindow.h"
 #include "StereoFrames.h"
-#include "Log.h"
+#include "StereoJournal.h"
+#include "gSP.h"
 
 using namespace std;
 
@@ -105,6 +106,24 @@ void RSP_CheckDLCounter()
 	}
 }
 
+/* Stereoscopic 3D: the task's DMEM, RSP and RDP state, and the RDRAM the left
+ * pass changed in place, for the right pass to start from */
+static u8 l_stereoDmem[0x1000];
+static gSPInfo l_stereoGSP;
+static gDPInfo l_stereoGDP;
+static stereo_journal_t l_stereoJournal;
+
+void RSP_StereoJournal(u32 _address, u32 _size)
+{
+	stereo_journal_record(&l_stereoJournal, RDRAM, RDRAMSize, _address, _size);
+}
+
+void RSP_StereoDestroy()
+{
+	stereo_journal_free(&l_stereoJournal);
+	RSP.stereoPass = RSP_STEREO_MONO;
+}
+
 static
 void _runDisplayList()
 {
@@ -181,41 +200,67 @@ void RSP_ProcessDList()
 		return;
 	}
 
-	// Stereoscopic 3D once per eye.
-	const u32 passes = config.stereo.mode == Config::stereoBothEyes ? 2U : 1U;
-	u8 initialDmem[0x1000];
-	u8 firstPassDmem[0x1000];
-	bool haveFirstPassDmem = false;
-	if (passes == 2)
-		memcpy(initialDmem, DMEM, sizeof(initialDmem));
-	if (config.stereo.mode != Config::stereoOff)
-		gSPStereoBeginFrame();
-	for (u32 pass = 0; pass < passes; ++pass) {
-		if (pass == 1)
-			memcpy(DMEM, initialDmem, sizeof(initialDmem));
-		gSPSetStereoEye(passes == 1
-			? config.stereo.mode
-			: (pass == 0 ? Config::stereoLeftEye : Config::stereoRightEye));
-		StereoFrames::get().setCapturing(passes == 2 && pass == 0);
+	if (config.stereo.mode == Config::stereoOff) {
 		_runDisplayList();
-		StereoFrames::get().setCapturing(false);
-		if (passes == 2 && pass == 0) {
-			memcpy(firstPassDmem, DMEM, sizeof(firstPassDmem));
-			haveFirstPassDmem = true;
+	} else {
+		StereoFrames & frames = StereoFrames::get();
+		FrameBuffer * pCurrent;
+		gSPStereoBeginTask();
+		if (config.stereo.mode != Config::stereoBothEyes || RSP.infloop) {
+			/* One eye; or a task going on after waiting on the CPU, which goes on
+			 * with the eye it was started with and is shown flat */
+			gSPSetStereoEye(config.stereo.mode == Config::stereoBothEyes
+				? Config::stereoLeftEye : config.stereo.mode);
+			_runDisplayList();
+			if (config.stereo.mode == Config::stereoBothEyes)
+				frames.forget(frameBufferList().getCurrent());
+		} else {
+			const FrameBuffer * pStart = frameBufferList().getCurrent();
+			const u32 startAddress = pStart != nullptr ? pStart->m_startAddress : 0U;
+			memcpy(l_stereoDmem, DMEM, sizeof(l_stereoDmem));
+			l_stereoGSP = gSP;
+			l_stereoGDP = gDP;
+			stereo_journal_clear(&l_stereoJournal);
+			frames.beginTask();
+			RSP.stereoPass = RSP_STEREO_LEFT;
+			gSPSetStereoEye(Config::stereoLeftEye);
+			frames.setCapturing(true);
+			_runDisplayList();
+			frames.setCapturing(false);
+			RSP.stereoPass = RSP_STEREO_MONO;
+			if (RSP.infloop && REG.SP_STATUS != nullptr) {
+				/* Waits on the CPU: what is left of the task is drawn once */
+				frames.forget(frameBufferList().getCurrent());
+			} else {
+				/* The right eye draws into the same buffer, so put the left one aside first */
+				frames.captureLeftEye(frameBufferList().getCurrent());
+				stereo_journal_restore(&l_stereoJournal, RDRAM);
+				memcpy(DMEM, l_stereoDmem, sizeof(l_stereoDmem));
+				gSP = l_stereoGSP;
+				gDP = l_stereoGDP;
+				gSP.changed |= CHANGED_VIEWPORT | CHANGED_MATRIX | CHANGED_TEXTURE | CHANGED_GEOMETRYMODE |
+					CHANGED_FOGPOSITION | CHANGED_LIGHT | CHANGED_LOOKAT | CHANGED_TEXTURESCALE | CHANGED_HW_LIGHT;
+				gDP.changed |= CHANGED_RENDERMODE | CHANGED_CYCLETYPE | CHANGED_SCISSOR | CHANGED_TMEM |
+					CHANGED_TILE | CHANGED_REJECT_BOX | CHANGED_COMBINE | CHANGED_ALPHACOMPARE |
+					CHANGED_FOGCOLOR | CHANGED_BLENDCOLOR | CHANGED_FB_TEXTURE;
+				if (pStart != nullptr) {
+					FrameBuffer * pBuffer = frameBufferList().findBuffer(startAddress);
+					if (pBuffer != nullptr) {
+						frameBufferList().setCurrent(pBuffer);
+						frameBufferList().setCurrentDrawBuffer();
+					}
+				}
+				RSP.stereoPass = RSP_STEREO_RIGHT;
+				gSPSetStereoEye(Config::stereoRightEye);
+				_runDisplayList();
+				RSP.stereoPass = RSP_STEREO_MONO;
+			}
 		}
-		if (RSP.infloop && REG.SP_STATUS != nullptr)
-			break;
-		// The right eye draws into the same buffer, so put the left one aside first
-		if (passes == 2 && pass == 0) {
-			FrameBuffer * current = frameBufferList().getCurrent();
-			StereoFrames::get().captureLeftEye(current);
-		}
+		pCurrent = frameBufferList().getCurrent();
+		if (pCurrent != nullptr)
+			gSPImmersiveFrameDrawn(pCurrent->m_startAddress);
+		gSPSetStereoEye(config.stereo.mode);
 	}
-	if (haveFirstPassDmem)
-		memcpy(DMEM, firstPassDmem, sizeof(firstPassDmem));
-	if (FrameBuffer * drawn = frameBufferList().getCurrent())
-		gSPImmersiveFrameDrawn(drawn->m_startAddress);
-	gSPSetStereoEye(config.stereo.mode);
 
 	if (RSP.infloop && REG.SP_STATUS) {
 		*REG.SP_STATUS &= ~(SP_STATUS_TASKDONE | SP_STATUS_HALT | SP_STATUS_BROKE);
@@ -318,6 +363,8 @@ void RSP_Init()
 	RSP.uc_start = RSP.uc_dstart = 0;
 	RSP.LLE = false;
 	RSP.infloop = false;
+	RSP.stereoPass = RSP_STEREO_MONO;
+	gSPStereoReset();
 
 	/* HEADER points at the ROM header and is only populated once the core has
 	 * called initiateGFX (CommonAPIImpl::_initiateGFX: HEADER = _gfxInfo.HEADER).

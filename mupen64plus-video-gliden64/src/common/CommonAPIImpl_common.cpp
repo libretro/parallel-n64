@@ -107,6 +107,7 @@ public:
 		TFH.dumpcache();
 		dwnd().stop();
 		GBI.destroy();
+		RSP_StereoDestroy();
 		return false;
 	}
 
@@ -148,6 +149,7 @@ void PluginAPI::RomClosed()
 	TFH.dumpcache();
 	dwnd().stop();
 	GBI.destroy();
+	RSP_StereoDestroy();
 #endif
 }
 

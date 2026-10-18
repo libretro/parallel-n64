@@ -1039,6 +1039,8 @@ void FrameBufferList::_renderScreenSizeBuffer()
 
 	gfxContext.bindFramebuffer(bufferTarget::READ_FRAMEBUFFER, ObjectHandle::defaultFramebuffer);
 
+	if (config.stereo.mode != Config::stereoOff)
+		gSPStereoEndFrame();
 	wnd.swapBuffers();
 	gfxContext.bindFramebuffer(bufferTarget::DRAW_FRAMEBUFFER, pBuffer->m_FBO);
 	if (config.frameBufferEmulation.forceDepthBufferClear != 0) {
@@ -1588,6 +1590,8 @@ void FrameBufferList::renderBuffer()
 	gfxContext.bindFramebuffer(bufferTarget::READ_FRAMEBUFFER, ObjectHandle::defaultFramebuffer);
 	m_overscan.draw(vFullHeight, rdpRes.vi_ispal);
 
+	if (config.stereo.mode != Config::stereoOff)
+		gSPStereoEndFrame();
 	// Immersive mode: tell the headset which head pose this picture was drawn for
 	gSPImmersivePresent(pBuffer->m_startAddress);
 	wnd.swapBuffers();

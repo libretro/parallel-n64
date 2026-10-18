@@ -863,6 +863,13 @@ void gDPTextureRectangle(f32 ulx, f32 uly, f32 lrx, f32 lry, s32 tile, s16 s, s1
 
 void gDPFullSync()
 {
+	if (RSP.stereoPass == RSP_STEREO_LEFT) {
+		/* The right pass hands the task over to the CPU */
+		dwnd().getDrawer().flush();
+		frameBufferList().updateCurrentBufferEndAddress();
+		return;
+	}
+
 	if (config.frameBufferEmulation.copyAuxToRDRAM != 0) {
 		frameBufferList().copyAux();
 		frameBufferList().removeAux();

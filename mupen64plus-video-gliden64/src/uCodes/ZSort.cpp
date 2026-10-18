@@ -454,8 +454,6 @@ void ZSort_MoveMem( u32 _w0, u32 _w1 )
 
 	case GZM_MPMTX:  // combined matrix
 		RSP_LoadMatrix(gSP.matrix.combined, addr);
-		// The game computed this one itself, so it needs the stereo shear here
-		gSPApplyStereo(gSP.matrix.combined);
 		gSP.changed &= ~CHANGED_MATRIX;
 	break;
 

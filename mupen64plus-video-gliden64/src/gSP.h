@@ -200,7 +200,9 @@ void gSPSetVertexColorBase( u32 base );
 void gSPCombineMatrices(u32 _mode);
 
 /** Stereo rendering. */
-void gSPStereoBeginFrame();
+void gSPStereoBeginTask();
+void gSPStereoEndFrame();
+void gSPStereoReset();
 void gSPSetStereoEye(u32 _eye);
 void gSPApplyStereo(f32 matrix[4][4]);
 

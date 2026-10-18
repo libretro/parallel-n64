@@ -122,8 +122,6 @@ void Config::resetToDefaults()
 
 	stereo.mode = stereoOff;
 	stereo.separation = 0.03f;
-	stereo.convergence = 0.0f;
-	stereo.fovScale = 1.0f;
 	stereo.depthBoost = 0.0f;
 	stereo.immersive = 0;
 	stereo.immersiveDistance = 0.0f;

@@ -60,13 +60,13 @@ struct retro_core_option_v2_category option_cats_us[] = {
       "GLideN64",
       "Configure GLideN64 Options."
    },
-#ifdef HAVE_GLIDEN64
+#if defined(HAVE_GLIDEN64) && !defined(HAVE_OPENGLES2)
    {
       "vr",
       "VR",
       "Configure stereoscopic 3D and VR headset options (GLideN64)."
    },
-#endif // HAVE_GLIDEN64
+#endif
    {
       "glide64",
       "Glide64",
@@ -2097,7 +2097,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
         },
         "enabled"
     },
-#ifdef HAVE_GLIDEN64
+#if defined(HAVE_GLIDEN64) && !defined(HAVE_OPENGLES2)
     {
         CORE_NAME "-vr-mode",
         "VR Mode",
@@ -2240,7 +2240,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
         },
         "0"
     },
-#endif // HAVE_GLIDEN64
+#endif
     {
         CORE_NAME "-OverrideSaveType",
         "Save type for unknown ROMs",

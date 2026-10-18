@@ -807,6 +807,12 @@
     <ClCompile Include="..\..\..\mupen64plus-video-gliden64\src\PostProcessor.cpp">
       <Filter>Source Files\mupen64plus-video-gliden64</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\mupen64plus-video-gliden64\src\StereoFrames.cpp">
+      <Filter>Source Files\mupen64plus-video-gliden64</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\mupen64plus-video-gliden64\src\StereoJournal.c">
+      <Filter>Source Files\mupen64plus-video-gliden64</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\..\mupen64plus-video-gliden64\src\RDP.cpp">
       <Filter>Source Files\mupen64plus-video-gliden64</Filter>
     </ClCompile>
@@ -1074,6 +1080,12 @@
       <Filter>Source Files\mupen64plus-video-gliden64</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\mupen64plus-video-gliden64\src\PostProcessor.h">
+      <Filter>Source Files\mupen64plus-video-gliden64</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\mupen64plus-video-gliden64\src\StereoFrames.h">
+      <Filter>Source Files\mupen64plus-video-gliden64</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\mupen64plus-video-gliden64\src\StereoJournal.h">
       <Filter>Source Files\mupen64plus-video-gliden64</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\mupen64plus-video-gliden64\src\RDP.h">

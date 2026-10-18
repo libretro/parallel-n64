@@ -958,10 +958,13 @@ void F5INDI_GenParticlesVertices()
 		count++;
 	}
 
+	RSP_StereoWillWrite(_SHIFTR(params[2], 0, 24), 256);
 	memcpy(RDRAM + _SHIFTR(params[2], 0, 24), DMEM + 0x170, 256);
 
 	if ((M & 0x04) == 0) {
+		RSP_StereoWillWrite(_SHIFTR(params[3], 0, 24), 4);
 		*CAST_RDRAM(u32*, _SHIFTR(params[3], 0, 24)) = L & (~Q);
+		RSP_StereoWillWrite(_SHIFTR(params[1], 8, 24), count * 8);
 		memcpy(RDRAM + _SHIFTR(params[1], 8, 24), DMEM + 0xB00, count * 8);
 	}
 }
