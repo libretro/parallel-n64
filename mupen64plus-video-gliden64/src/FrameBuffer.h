@@ -141,7 +141,8 @@ private:
 
 		void setInputBuffer(const FrameBuffer *  _pBuffer);
 		void activate();
-		void draw(u32 _fullHeight, bool _PAL);
+		/** Draws into the window at _x, of _windowWidth, clearing it first when _clear */
+		void draw(u32 _fullHeight, bool _PAL, s32 _x, u32 _windowWidth, bool _clear);
 
 		s32 getHOffset() const;
 		s32 getVOffset() const;

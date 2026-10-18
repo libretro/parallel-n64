@@ -2102,8 +2102,8 @@ struct retro_core_option_v2_definition option_defs_us[] = {
         CORE_NAME "-vr-mode",
         "VR Mode",
         NULL,
-        "(GLideN64) 'Stereoscopic' renders each eye separately for real depth. 'Immersive' needs a VR headset: the game fills the view and turning your head turns the game's camera; scenes that can't fill the view fall back to the screen. Both double the rendering work and need a frontend that supports video views. Resolution applies per eye. Restart required.",
-        "'Stereoscopic' renders each eye separately for real depth. 'Immersive' needs a VR headset: the game fills the view and turning your head turns the game's camera; scenes that can't fill the view fall back to the screen. Both double the rendering work and need a frontend that supports video views. Resolution applies per eye. Restart required.",
+        "(GLideN64) 'Stereoscopic' renders each eye separately for real depth. 'Immersive' needs a VR headset: the game fills the view and turning your head turns the game's camera; scenes that can't fill the view fall back to the screen. Both double the rendering work, turn on frame buffer emulation and need a frontend that supports video views. Resolution and aspect ratio apply per eye. Restart required.",
+        "'Stereoscopic' renders each eye separately for real depth. 'Immersive' needs a VR headset: the game fills the view and turning your head turns the game's camera; scenes that can't fill the view fall back to the screen. Both double the rendering work, turn on frame buffer emulation and need a frontend that supports video views. Resolution and aspect ratio apply per eye. Restart required.",
         "vr",
         {
             {"off", "Off"},

@@ -1,59 +1,36 @@
 #ifndef STEREO_FRAMES_H
 #define STEREO_FRAMES_H
 
-#include <map>
-#include <memory>
-#include <set>
 #include "Types.h"
 
 struct FrameBuffer;
 
-class StereoFrames
-{
-public:
-	static StereoFrames & get();
+/* The left eye copies of the N64 color images a task drew for both eyes.
+ * The right eye is the buffer itself. */
 
-	/** Keeps a copy of the buffer. */
-	void captureLeftEye(FrameBuffer * _pBuffer);
+/* True during the left eye pass */
+extern bool g_stereoFramesCapturing;
 
-	/** A task drawn for both eyes starts: no left eye of it is kept yet. */
-	void beginTask() { m_capturedThisTask.clear(); }
+/* A task drawn for both eyes starts: no left eye of it is kept yet */
+void StereoFrames_beginTask();
 
-	/** True during the left eye pass. */
-	void setCapturing(bool _capturing) { m_capturing = _capturing; m_enteredThisPass.clear(); }
+void StereoFrames_setCapturing(bool _capturing);
 
-	/** A buffer drawn into again without its left eye kept by this task loses the old one. */
-	void noteEntered(u32 _address)
-	{
-		if (m_capturing)
-			m_enteredThisPass.insert(_address);
-		else if (!m_captured.empty() && m_capturedThisTask.count(_address) == 0)
-			m_captured.erase(_address);
-	}
-	bool wasEntered(u32 _address) const { return m_enteredThisPass.count(_address) != 0; }
+/* A buffer drawn into again without its left eye kept by this task loses the old one */
+void StereoFrames_noteEntered(u32 _address);
 
-	/** Drops the kept copy, so the buffer is shown flat. */
-	void forget(const FrameBuffer * _pBuffer);
+/* Entered during this left eye pass */
+bool StereoFrames_wasEntered(u32 _address);
 
-	bool isCapturing() const { return m_capturing; }
+/* Keeps a copy of the buffer as its left eye */
+void StereoFrames_captureLeftEye(FrameBuffer * _pBuffer);
 
-	/** The kept copy belonging to this N64 frame buffer, or null if it was never captured. */
-	FrameBuffer * leftEye(const FrameBuffer * _pBuffer) const;
+/* The kept copy belonging to this N64 frame buffer, or NULL */
+FrameBuffer * StereoFrames_leftEye(const FrameBuffer * _pBuffer);
 
-	void destroy();
+/* Drops the kept copy, so the buffer is shown flat */
+void StereoFrames_forget(const FrameBuffer * _pBuffer);
 
-private:
-	StereoFrames() = default;
-	StereoFrames(const StereoFrames &) = delete;
+void StereoFrames_destroy();
 
-	std::unique_ptr<FrameBuffer> _createBuffer(const FrameBuffer * _pMainBuffer);
-	std::map<u32, std::unique_ptr<FrameBuffer>> m_leftEyes;
-	// Addresses whose copy is valid.
-	std::set<u32> m_captured;
-	// Addresses whose copy this task's left pass made.
-	std::set<u32> m_capturedThisTask;
-	std::set<u32> m_enteredThisPass;
-	bool m_capturing = false;
-};
-
-#endif // STEREO_FRAMES_H
+#endif /* STEREO_FRAMES_H */

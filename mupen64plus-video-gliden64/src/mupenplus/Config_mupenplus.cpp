@@ -268,13 +268,17 @@ extern "C" void Config_LoadConfig()
 		LoadCustomSettings(false);
 	}
 
-	// VR: both eyes side by side, each stretched over its half of the window
+	// VR: both eyes side by side, each presented into its half of the window from the frame
+	// buffer it was drawn into
 	config.stereo.mode = VRMode != 0 ? Config::stereoBothEyes : Config::stereoOff;
 	config.stereo.immersive = VRMode == 2 ? 1 : 0;
 	gln64_vr_update_config();
 	if (VRMode != 0)
+		config.frameBufferEmulation.enable = 1;
+	// A head tracked picture covers exactly the field of view it was drawn for: no aspect
+	// correction, no overscan crop
+	if (VRMode == 2) {
 		config.frameBufferEmulation.aspect = Config::aStretch;
-	// A head tracked picture covers exactly the field of view it was drawn for: no overscan crop
-	if (VRMode == 2)
 		config.frameBufferEmulation.enableOverscan = 0;
+	}
 }

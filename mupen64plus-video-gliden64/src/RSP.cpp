@@ -203,7 +203,6 @@ void RSP_ProcessDList()
 	if (config.stereo.mode == Config::stereoOff) {
 		_runDisplayList();
 	} else {
-		StereoFrames & frames = StereoFrames::get();
 		FrameBuffer * pCurrent;
 		gSPStereoBeginTask();
 		if (config.stereo.mode != Config::stereoBothEyes || RSP.infloop) {
@@ -213,7 +212,7 @@ void RSP_ProcessDList()
 				? Config::stereoLeftEye : config.stereo.mode);
 			_runDisplayList();
 			if (config.stereo.mode == Config::stereoBothEyes)
-				frames.forget(frameBufferList().getCurrent());
+				StereoFrames_forget(frameBufferList().getCurrent());
 		} else {
 			const FrameBuffer * pStart = frameBufferList().getCurrent();
 			const u32 startAddress = pStart != nullptr ? pStart->m_startAddress : 0U;
@@ -221,19 +220,19 @@ void RSP_ProcessDList()
 			l_stereoGSP = gSP;
 			l_stereoGDP = gDP;
 			stereo_journal_clear(&l_stereoJournal);
-			frames.beginTask();
+			StereoFrames_beginTask();
 			RSP.stereoPass = RSP_STEREO_LEFT;
 			gSPSetStereoEye(Config::stereoLeftEye);
-			frames.setCapturing(true);
+			StereoFrames_setCapturing(true);
 			_runDisplayList();
-			frames.setCapturing(false);
+			StereoFrames_setCapturing(false);
 			RSP.stereoPass = RSP_STEREO_MONO;
 			if (RSP.infloop && REG.SP_STATUS != nullptr) {
 				/* Waits on the CPU: what is left of the task is drawn once */
-				frames.forget(frameBufferList().getCurrent());
+				StereoFrames_forget(frameBufferList().getCurrent());
 			} else {
 				/* The right eye draws into the same buffer, so put the left one aside first */
-				frames.captureLeftEye(frameBufferList().getCurrent());
+				StereoFrames_captureLeftEye(frameBufferList().getCurrent());
 				stereo_journal_restore(&l_stereoJournal, RDRAM);
 				memcpy(DMEM, l_stereoDmem, sizeof(l_stereoDmem));
 				gSP = l_stereoGSP;
