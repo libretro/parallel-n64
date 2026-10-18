@@ -6,6 +6,7 @@
 #include <Textures.h>
 #include <Config.h>
 #include <N64.h>
+#include <RSP.h>
 #include <VI.h>
 
 #include <Graphics/Context.h>
@@ -232,6 +233,7 @@ void RDRAMtoColorBuffer::_copyFromRDRAM(u32 _height, bool _fullAlpha)
 			u32 totalBytes = (width * height) << m_pCurBuffer->m_size >> 1;
 			if (address + totalBytes > RDRAMSize + 1)
 				totalBytes = RDRAMSize + 1 - address;
+			RSP_StereoWillWrite(address, totalBytes);
 			memset(RDRAM + address, 0, totalBytes);
 		}
 	}

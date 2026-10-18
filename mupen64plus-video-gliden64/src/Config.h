@@ -197,6 +197,24 @@ struct Config
 		f32 level;
 	} gammaCorrection;
 
+	// Stereoscopic 3D
+	enum StereoMode {
+		stereoOff = 0,
+		stereoLeftEye = 1,
+		stereoRightEye = 2,
+		stereoBothEyes = 3
+	};
+
+	struct {
+		u32 mode;         // StereoMode
+		f32 separation;   // eye offset in clip units, 0 is mono
+		f32 depthBoost;   // 0 is physical depth, 1 spreads far geometry the most
+		u32 immersive;    // 1 follows the headset: head rotation turns the camera, headset field of view
+		f32 immersiveDistance;  // immersive camera moved back, in units of the nearest scene depth
+		f32 immersiveWorldScale;  // immersive angular size of the scene, 1 keeps the game's own
+		f32 immersiveHudScale;    // immersive angular size of HUD and overlays, 1 spans the old screen
+	} stereo;
+
 	void resetToDefaults();
 	void validate();
 };

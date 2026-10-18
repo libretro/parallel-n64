@@ -367,6 +367,8 @@ CXXFLAGS += -DHAVE_GLIDEN64 -DMUPENPLUSAPI -D__LIBRETRO__
 # translation unit is required - the 0.6.5 xxhash.c was deleted on the
 # library bump and is no longer present in the tree.
 
+SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/StereoJournal.c
+
 SOURCES_CXX   += \
 	$(VIDEODIR_GLIDEN64)/src/Combiner.cpp                                                         \
     $(VIDEODIR_GLIDEN64)/src/CombinerKey.cpp                                                      \
@@ -386,6 +388,7 @@ SOURCES_CXX   += \
     $(VIDEODIR_GLIDEN64)/src/N64.cpp                                                              \
     $(VIDEODIR_GLIDEN64)/src/PaletteTexture.cpp                                                   \
     $(VIDEODIR_GLIDEN64)/src/PostProcessor.cpp                                                    \
+    $(VIDEODIR_GLIDEN64)/src/StereoFrames.cpp                                                     \
     $(VIDEODIR_GLIDEN64)/src/RDP.cpp                                                              \
     $(VIDEODIR_GLIDEN64)/src/RSP.cpp                                                              \
     $(VIDEODIR_GLIDEN64)/src/SoftwareRender.cpp                                                   \

@@ -3,6 +3,8 @@
 #include <algorithm>
 #include <vector>
 #include "FrameBuffer.h"
+#include "StereoFrames.h"
+#include "gSP.h"
 #include "DepthBuffer.h"
 #include "N64.h"
 #include "RSP.h"
@@ -558,6 +560,7 @@ void FrameBufferList::init()
 void FrameBufferList::destroy() {
 	gfxContext.bindFramebuffer(bufferTarget::FRAMEBUFFER, ObjectHandle::defaultFramebuffer);
 	m_list.clear();
+	StereoFrames::get().destroy();
 	m_pCurrent = nullptr;
 	m_pCopy = nullptr;
 	m_overscan.destroy();
@@ -686,6 +689,14 @@ void FrameBufferList::saveBuffer(u32 _address, u16 _format, u16 _size, u16 _widt
 		if (m_list.empty())
 			_createScreenSizeBuffer();
 		return;
+	}
+
+	// stereoscopic 3D
+	if (m_pCurrent != nullptr && !m_pCurrent->m_isDepthBuffer && StereoFrames::get().isCapturing() &&
+		StereoFrames::get().wasEntered(m_pCurrent->m_startAddress)) {
+		StereoFrames::get().captureLeftEye(m_pCurrent);
+		// The copy binds the screen; leave the state as the walk had it
+		gfxContext.bindFramebuffer(bufferTarget::DRAW_FRAMEBUFFER, m_pCurrent->m_FBO);
 	}
 
 	if (m_pCurrent != nullptr &&
@@ -823,6 +834,13 @@ void FrameBufferList::saveBuffer(u32 _address, u16 _format, u16 _size, u16 _widt
 	}
 
 	m_pCurrent->m_isDepthBuffer = _address == gDP.depthImageAddress;
+	// Immersive mode
+	if (gSPImmersiveClearsShownBuffers() && !m_pCurrent->m_isDepthBuffer && !m_pCurrent->isAuxiliary() &&
+		m_pCurrent->m_swapCount != wnd.getBuffersSwapCount()) {
+		gfxContext.bindFramebuffer(bufferTarget::FRAMEBUFFER, m_pCurrent->m_FBO);
+		gfxContext.clearColorBuffer(0.0f, 0.0f, 0.0f, 0.0f);
+	}
+	StereoFrames::get().noteEntered(m_pCurrent->m_startAddress);
 	m_pCurrent->m_isPauseScreen = m_pCurrent->m_isOBScreen = false;
 	m_pCurrent->m_copied = false;
 	m_pCurrent->m_swapCount = wnd.getBuffersSwapCount();
@@ -1021,6 +1039,8 @@ void FrameBufferList::_renderScreenSizeBuffer()
 
 	gfxContext.bindFramebuffer(bufferTarget::READ_FRAMEBUFFER, ObjectHandle::defaultFramebuffer);
 
+	if (config.stereo.mode != Config::stereoOff)
+		gSPStereoEndFrame();
 	wnd.swapBuffers();
 	gfxContext.bindFramebuffer(bufferTarget::DRAW_FRAMEBUFFER, pBuffer->m_FBO);
 	if (config.frameBufferEmulation.forceDepthBufferClear != 0) {
@@ -1465,6 +1485,13 @@ void FrameBufferList::renderBuffer()
 						vOffset + (s32)(dstY0*dstScaleY),
 						hOffset + dstX1,
 						vOffset + (s32)(dstY1*dstScaleY) };
+	if (config.stereo.immersive != 0 && !gSPImmersiveIsFlat() && pNextBuffer == nullptr) {
+		// Immersive mode: the picture must fill exactly the field of view
+		dstCoord[0] = 0;
+		dstCoord[1] = 0;
+		dstCoord[2] = static_cast<s32>(m_overscan.getBufferWidth());
+		dstCoord[3] = static_cast<s32>(m_overscan.getBufferHeight());
+	}
 
 	TextureParam filter = textureParameters::FILTER_LINEAR;
 	ObjectHandle readBuffer;
@@ -1500,7 +1527,33 @@ void FrameBufferList::renderBuffer()
 	blitParams.readBuffer = readBuffer;
 	blitParams.invertY = config.frameBufferEmulation.enableOverscan == 0;
 
-	drawer.copyTexturedRect(blitParams);
+	// Stereoscopic 3D: pair each displayed N64 color image with the copy captured
+	auto drawStereoBuffer = [&drawer](const GraphicsDrawer::BlitOrCopyRectParams & _params,
+		const FrameBuffer * _pSourceBuffer) {
+		if (config.stereo.mode != Config::stereoBothEyes) {
+			drawer.copyTexturedRect(_params);
+			return;
+		}
+
+		const s32 halfWidth = (_params.dstX1 - _params.dstX0) / 2;
+		GraphicsDrawer::BlitOrCopyRectParams leftParams = _params;
+		FrameBuffer * pLeftEye = StereoFrames::get().leftEye(_pSourceBuffer);
+
+		if (pLeftEye != nullptr) {
+			leftParams.tex[0] = pLeftEye->m_pTexture;
+			leftParams.srcWidth = pLeftEye->m_pTexture->width;
+			leftParams.srcHeight = pLeftEye->m_pTexture->height;
+			leftParams.readBuffer = pLeftEye->m_FBO;
+		}
+		leftParams.dstX1 = _params.dstX0 + halfWidth;
+		drawer.copyTexturedRect(leftParams);
+
+		GraphicsDrawer::BlitOrCopyRectParams rightParams = _params;
+		rightParams.dstX0 = _params.dstX0 + halfWidth;
+		drawer.copyTexturedRect(rightParams);
+	};
+
+	drawStereoBuffer(blitParams, pBuffer);
 
 	if (pNextBuffer != nullptr) {
 		pNextBuffer->m_isMainBuffer = true;
@@ -1531,12 +1584,16 @@ void FrameBufferList::renderBuffer()
 		blitParams.tex[0] = pBufferTexture;
 		blitParams.readBuffer = readBuffer;
 
-		drawer.copyTexturedRect(blitParams);
+		drawStereoBuffer(blitParams, pNextBuffer);
 	}
 
 	gfxContext.bindFramebuffer(bufferTarget::READ_FRAMEBUFFER, ObjectHandle::defaultFramebuffer);
 	m_overscan.draw(vFullHeight, rdpRes.vi_ispal);
 
+	if (config.stereo.mode != Config::stereoOff)
+		gSPStereoEndFrame();
+	// Immersive mode: tell the headset which head pose this picture was drawn for
+	gSPImmersivePresent(pBuffer->m_startAddress);
 	wnd.swapBuffers();
 	if (m_pCurrent != nullptr) {
 		gfxContext.bindFramebuffer(bufferTarget::DRAW_FRAMEBUFFER, m_pCurrent->m_FBO);
