@@ -59,6 +59,14 @@ extern "C" uint32_t OverscanLeft;
 extern "C" uint32_t OverscanRight;
 extern "C" uint32_t OverscanBottom;
 
+// VR
+extern "C" uint32_t VRMode;  // 0 off, 1 stereoscopic, 2 immersive
+extern "C" float VRSeparation;
+extern "C" float VRDepthBoost;
+extern "C" float VRImmersiveDistance;
+extern "C" float VRImmersiveWorldScale;
+extern "C" float VRImmersiveHudScale;
+
 std::string replaceChars(std::string myString)
 {
 	for (size_t pos = myString.find(' '); pos != std::string::npos; pos = myString.find(' ', pos))
@@ -168,6 +176,16 @@ void LoadCustomSettings(bool internal)
 		fclose(fPtr);
 }
 
+// The VR depth settings that may change while a game runs
+extern "C" void gln64_vr_update_config()
+{
+	config.stereo.separation = VRSeparation;
+	config.stereo.depthBoost = VRDepthBoost;
+	config.stereo.immersiveDistance = VRImmersiveDistance;
+	config.stereo.immersiveWorldScale = VRImmersiveWorldScale;
+	config.stereo.immersiveHudScale = VRImmersiveHudScale;
+}
+
 extern "C" void Config_LoadConfig()
 {
 	u32 hacks = config.generalEmulation.hacks;
@@ -249,4 +267,14 @@ extern "C" void Config_LoadConfig()
 		LoadCustomSettings(true);
 		LoadCustomSettings(false);
 	}
+
+	// VR: both eyes side by side, each stretched over its half of the window
+	config.stereo.mode = VRMode != 0 ? Config::stereoBothEyes : Config::stereoOff;
+	config.stereo.immersive = VRMode == 2 ? 1 : 0;
+	gln64_vr_update_config();
+	if (VRMode != 0)
+		config.frameBufferEmulation.aspect = Config::aStretch;
+	// A head tracked picture covers exactly the field of view it was drawn for: no overscan crop
+	if (VRMode == 2)
+		config.frameBufferEmulation.enableOverscan = 0;
 }

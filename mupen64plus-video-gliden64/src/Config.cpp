@@ -120,6 +120,16 @@ void Config::resetToDefaults()
 	gammaCorrection.force = 0;
 	gammaCorrection.level = 2.0f;
 
+	stereo.mode = stereoOff;
+	stereo.separation = 0.03f;
+	stereo.convergence = 0.0f;
+	stereo.fovScale = 1.0f;
+	stereo.depthBoost = 0.0f;
+	stereo.immersive = 0;
+	stereo.immersiveDistance = 0.0f;
+	stereo.immersiveWorldScale = 1.0f;
+	stereo.immersiveHudScale = 1.0f;
+
 }
 
 bool isHWLightingAllowed()

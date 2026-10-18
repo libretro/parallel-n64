@@ -812,6 +812,8 @@ void F5INDI_GenVertices(u32 _w0, u32 _w1)
 	f32 combined[4][4];
 	memcpy(combined, gSP.matrix.combined, sizeof(combined));
 	memcpy(gSP.matrix.combined, getIndiData().mtx_vtx_gen, sizeof(gSP.matrix.combined));
+	// This microcode brings its own combined matrix, so the stereo shear has to be applied here
+	gSPApplyStereo(gSP.matrix.combined);
 
 	const SWVertex * vertex = CAST_DMEM(const SWVertex*, 0x170);
 	bool verticesToProcess[32];
@@ -1172,7 +1174,10 @@ void F5INDI_TexrectGen()
 #ifdef F5INDI_PARTICLE_OPT
 			F5INDI_AddParticle(ulx, uly, lrx, lry, S, T, dsdx, dtdy);
 #else
+			// A glow or a spark in the world, not a HUD element
+			gSPImmersiveWorldSprite(true);
 			gDPTextureRectangle(ulx, uly, lrx, lry, 0, S, T, dsdx, dtdy, false);
+			gSPImmersiveWorldSprite(false);
 #endif
 		}
 		vtxAddr += 0x100;
@@ -1292,7 +1297,9 @@ void F5Naboo_TexrectGen()
 		                _SHIFTR(fogColor, 0, 8));	// a
 	}
 
+	gSPImmersiveWorldSprite(true);
 	gDPTextureRectangle(ulx, uly, lrx, lry, gSP.texture.tile, (s16)S, (s16)T, dsdx, dtdy, flip);
+	gSPImmersiveWorldSprite(false);
 }
 
 static

@@ -22,6 +22,7 @@
 uint8_t* g_dd_disk;
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 
 #include <libretro.h>
 #include <streams/file_stream.h>
@@ -254,6 +255,29 @@ uint32_t screen_pitch               = 0;
 /* the buffer angrylion last presented: its fixed one at 1x, its upscaled one otherwise */
 const void *screen_pixels           = NULL;
 uint32_t screen_aspectmodehint;
+
+#ifdef HAVE_GLIDEN64
+/* VR (GLideN64): both eyes are drawn side by side, each eye_width wide */
+enum { VR_MODE_OFF = 0, VR_MODE_STEREOSCOPIC, VR_MODE_IMMERSIVE };
+uint32_t VRMode                     = VR_MODE_OFF;
+float    VRSeparation               = 0.03f;
+float    VRDepthBoost               = 0.0f;
+float    VRImmersiveDistance        = 0.0f;
+float    VRImmersiveWorldScale      = 1.0f;
+float    VRImmersiveHudScale        = 1.0f;
+static uint32_t vr_eye_width        = 0;
+static unsigned vr_views_status     = 0;
+static bool     vr_views_sent       = false;
+static bool     vr_pose_valid       = false;
+static int      vr_pose_id          = 0;
+static float    vr_pose_rotation[2][9];
+static float    vr_pose_tangents[2][4];
+static bool     vr_reference_set    = false;
+static float    vr_reference_yaw    = 0.0f;
+static int      vr_presented_pose   = 0;
+static bool vr_present_as_dupe(void);
+static void vr_set_views(void);
+#endif
 enum audio_rsp_mode_t audio_rsp_mode = AUDIO_RSP_FOLLOW;
 /* Set from the ROM header for titles whose audio microcode use cannot be
  * HLE'd faithfully; consulted by plugin_rsp_init (plugin.c). */
@@ -959,6 +983,17 @@ static void present_frame(void)
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
             /* the E90 sprite chip draws mtetrisc's playfield; the hardware
              * renderers leave the frame on the GPU, so it is composited there */
+#ifdef HAVE_GLIDEN64
+            if (gfx_plugin == GFX_GLIDEN64 && VRMode != VR_MODE_OFF)
+            {
+               if (vr_present_as_dupe())
+               {
+                  video_cb(NULL, screen_width, screen_height, 0);
+                  break;
+               }
+               vr_set_views();
+            }
+#endif
             aleck64_e90_gl_draw(screen_width, screen_height);
             video_cb(RETRO_HW_FRAME_BUFFER_VALID, screen_width, screen_height, 0);
 #elif defined(HAVE_THR_AL)
@@ -1262,6 +1297,10 @@ void retro_get_system_av_info(struct retro_system_av_info *info)
    info->geometry.max_width    = declared_max_width;
    info->geometry.max_height   = declared_max_height;
    info->geometry.aspect_ratio = screen_aspect_ratio;
+#ifdef HAVE_GLIDEN64
+   if (VRMode != VR_MODE_OFF)
+      info->geometry.aspect_ratio *= 2.0f; /* both eyes side by side */
+#endif
    /* Report the rate the VI is actually emulated at, not a constant.
     *
     * This was 60.13 for every NTSC title, with a "TODO: Actual timing" on
@@ -1620,6 +1659,197 @@ static int parse_mouse_button(const char* value)
    }
    return 0; /* "None" or unrecognized */
 }
+
+#ifdef HAVE_GLIDEN64
+extern void gln64_vr_update_config(void);
+
+/* Yaw of an orientation's forward direction (-Z), around +Y */
+static float vr_forward_yaw(const float q[4])
+{
+   const float fx = -2.0f * (q[0] * q[2] + q[1] * q[3]);
+   const float fz = -(1.0f - 2.0f * (q[0] * q[0] + q[1] * q[1]));
+   return atan2f(-fx, -fz);
+}
+
+/* Reads the eye poses for immersive mode. The frontend shows its next frame
+ * with the poses read last, so they are read only when GLideN64 starts a
+ * picture with them. */
+static void vr_read_pose(void)
+{
+   struct retro_vr_frame_state frame;
+   bool valid = false;
+
+   if (VRMode == VR_MODE_IMMERSIVE && (vr_views_status & RETRO_VIDEO_VIEWS_STATUS_HMD) &&
+         environ_cb(RETRO_ENVIRONMENT_GET_VR_FRAME_STATE, &frame))
+   {
+      int eye;
+      if (frame.flags & RETRO_VR_FRAME_RECENTERED)
+         vr_reference_set = false;
+      if (!vr_reference_set)
+      {
+         vr_reference_yaw = vr_forward_yaw(frame.eyes[RETRO_VR_EYE_LEFT].orientation);
+         vr_reference_set = true;
+      }
+
+      for (eye = 0; eye < 2; ++eye)
+      {
+         const float *o   = frame.eyes[eye].orientation;
+         const float half = -0.5f * vr_reference_yaw;
+         const float ry   = sinf(half), rw = cosf(half);
+         int row, column;
+         /* The eye's orientation relative to the reference: yaw(-reference) * eye */
+         const float x = rw * o[0] + ry * o[2];
+         const float y = rw * o[1] + ry * o[3];
+         const float z = rw * o[2] - ry * o[0];
+         const float w = rw * o[3] - ry * o[1];
+         /* Maps the eye's directions to the reference; GLideN64 wants the transpose */
+         const float r[3][3] = {
+            {1 - 2 * (y * y + z * z), 2 * (x * y - z * w), 2 * (x * z + y * w)},
+            {2 * (x * y + z * w), 1 - 2 * (x * x + z * z), 2 * (y * z - x * w)},
+            {2 * (x * z - y * w), 2 * (y * z + x * w), 1 - 2 * (x * x + y * y)}};
+         for (row = 0; row < 3; ++row)
+            for (column = 0; column < 3; ++column)
+               vr_pose_rotation[eye][row * 3 + column] = r[column][row];
+         memcpy(vr_pose_tangents[eye], frame.eyes[eye].fov_tan, sizeof(vr_pose_tangents[eye]));
+      }
+      if (++vr_pose_id <= 0)
+         vr_pose_id = 1;
+      valid = true;
+   }
+   vr_pose_valid = valid;
+}
+
+static void vr_begin_frame(void)
+{
+   unsigned status = 0;
+   if (!environ_cb(RETRO_ENVIRONMENT_GET_VIDEO_VIEWS_STATUS, &status))
+      status = 0;
+   vr_views_status = status;
+}
+
+/* A picture drawn for older poses than those read last, such as the front
+ * buffer still shown while the next is drawn, goes out as a dupe: the
+ * frontend keeps the last frame with the poses it was shown with. */
+static bool vr_present_as_dupe(void)
+{
+   return VRMode == VR_MODE_IMMERSIVE
+      && (vr_views_status & RETRO_VIDEO_VIEWS_STATUS_HMD)
+      && vr_presented_pose > 0 && vr_presented_pose != vr_pose_id;
+}
+
+/* The side by side frame as a left/right pair, head tracked when the picture
+ * was drawn for this frame's eye poses. Menus and cut scenes go on a screen. */
+static void vr_set_views(void)
+{
+   struct retro_video_view views[2];
+   struct retro_video_views map;
+   const bool tracked = VRMode == VR_MODE_IMMERSIVE &&
+      (vr_views_status & RETRO_VIDEO_VIEWS_STATUS_HMD) && vr_presented_pose > 0;
+
+   memset(&map, 0, sizeof(map));
+   map.reference_space = RETRO_VR_REFERENCE_SPACE_LOCAL;
+
+   if (!(vr_views_status & RETRO_VIDEO_VIEWS_STATUS_PRESENTS))
+   {
+      /* No views: the packed side by side frame is shown as it is */
+      if (vr_views_sent)
+         environ_cb(RETRO_ENVIRONMENT_SET_VIDEO_VIEWS, &map);
+      vr_views_sent = false;
+      return;
+   }
+
+   memset(views, 0, sizeof(views));
+   views[0].x      = 0;
+   views[0].eye    = RETRO_VIDEO_VIEW_EYE_LEFT;
+   views[1].x      = vr_eye_width;
+   views[1].eye    = RETRO_VIDEO_VIEW_EYE_RIGHT;
+   views[0].width  = views[1].width  = vr_eye_width;
+   views[0].height = views[1].height = screen_height;
+   views[0].aspect_ratio = views[1].aspect_ratio = tracked ? 0.0f : screen_aspect_ratio;
+
+   map.views     = views;
+   map.num_views = 2;
+   map.flags     = tracked ? RETRO_VIDEO_VIEWS_FLAG_TRACKED : 0;
+   vr_views_sent = environ_cb(RETRO_ENVIRONMENT_SET_VIDEO_VIEWS, &map);
+}
+
+/* The mode for this content: only with GLideN64, on GLES3. Restart required. */
+static void vr_read_mode(void)
+{
+   VRMode = VR_MODE_OFF;
+#ifdef HAVE_GLIDEN64
+   if (gfx_plugin == GFX_GLIDEN64)
+   {
+      struct retro_variable var = { CORE_NAME "-vr-mode", NULL };
+      if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+      {
+         if (!strcmp(var.value, "stereoscopic"))
+            VRMode = VR_MODE_STEREOSCOPIC;
+         else if (!strcmp(var.value, "immersive"))
+            VRMode = VR_MODE_IMMERSIVE;
+      }
+   }
+#endif // HAVE_GLIDEN64
+}
+
+/* The depth settings, live; and the frame, both eyes side by side */
+static void vr_update_variables(bool startup)
+{
+#ifdef HAVE_GLIDEN64
+   struct retro_variable var;
+
+   var.key = CORE_NAME "-vr-separation";
+   var.value = NULL;
+   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+      VRSeparation = atoi(var.value) / 1000.0f;
+
+   var.key = CORE_NAME "-vr-depth-boost";
+   var.value = NULL;
+   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+      VRDepthBoost = atoi(var.value) / 100.0f;
+
+   var.key = CORE_NAME "-vr-immersive-world-scale";
+   var.value = NULL;
+   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+      VRImmersiveWorldScale = atoi(var.value) / 100.0f;
+
+   var.key = CORE_NAME "-vr-immersive-hud-scale";
+   var.value = NULL;
+   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+      VRImmersiveHudScale = atoi(var.value) / 100.0f;
+
+   var.key = CORE_NAME "-vr-immersive-distance";
+   var.value = NULL;
+   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+      VRImmersiveDistance = atoi(var.value) / 100.0f;
+
+   if (!startup && gfx_plugin == GFX_GLIDEN64)
+      gln64_vr_update_config();
+#endif // HAVE_GLIDEN64
+
+   vr_eye_width = screen_width;
+   if (VRMode != VR_MODE_OFF)
+      screen_width *= 2;
+}
+
+/* Called by GLideN64 when it starts a picture in immersive mode */
+int libretro_vr_immersive_pose(float rotation[2][9], float tangents[2][4])
+{
+   vr_read_pose();
+   if (!vr_pose_valid)
+      return 0;
+   memcpy(rotation, vr_pose_rotation, sizeof(vr_pose_rotation));
+   memcpy(tangents, vr_pose_tangents, sizeof(vr_pose_tangents));
+   return vr_pose_id;
+}
+
+/* Called by GLideN64 before each swap: the poses the picture was drawn for,
+ * negative when drawn for a screen, 0 when not drawn for a head pose */
+void libretro_vr_immersive_present(int pose)
+{
+   vr_presented_pose = pose;
+}
+#endif // HAVE_GLIDEN64
 
 void update_variables(bool startup)
 {
@@ -2808,6 +3038,10 @@ void update_variables(bool startup)
 
    /* Aleck64 dipswitches follow the core options live */
    aleck64_apply_dips();
+
+#ifdef HAVE_GLIDEN64
+   vr_update_variables(startup);
+#endif
 }
 
 static void format_saved_memory(void)
@@ -2833,6 +3067,9 @@ bool retro_load_game(const struct retro_game_info *game)
 {
    format_saved_memory();
 
+#ifdef HAVE_GLIDEN64
+   VRMode = VR_MODE_OFF;
+#endif
    update_variables(true);
    initial_boot = false;
 
@@ -2879,6 +3116,13 @@ bool retro_load_game(const struct retro_game_info *game)
             break;
       }
    }
+
+#ifdef HAVE_GLIDEN64
+   /* The renderer is settled now: VR needs GLideN64 */
+   vr_read_mode();
+   if (VRMode != VR_MODE_OFF)
+      screen_width = vr_eye_width * 2;
+#endif
 
    g_aleck64_enabled = 0;
    {
@@ -3068,6 +3312,14 @@ void retro_unload_game(void)
     CoreDoCommand(M64CMD_ROM_CLOSE, 0, NULL);
     emu_initialized = false;
     context_setup_first_init = false;
+
+#ifdef HAVE_GLIDEN64
+    /* The frontend clears the views map when content unloads */
+    vr_views_sent     = false;
+    vr_reference_set  = false;
+    vr_presented_pose = 0;
+    vr_pose_valid     = false;
+#endif
 }
 
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
@@ -3236,6 +3488,10 @@ void retro_run (void)
             info.geometry.aspect_ratio = 16.0 / 9.0;
             break;
       }
+#ifdef HAVE_GLIDEN64
+      if (VRMode != VR_MODE_OFF)
+         info.geometry.aspect_ratio *= 2.0f;
+#endif
       if (outgrown)
          ret = environ_cb(RETRO_ENVIRONMENT_SET_SYSTEM_AV_INFO, &info);
       else
@@ -3262,6 +3518,11 @@ void retro_run (void)
          case GFX_ANGRYLION:
             break;
       }
+
+#ifdef HAVE_GLIDEN64
+      if (VRMode != VR_MODE_OFF && !frame_hidden)
+         vr_begin_frame();
+#endif
 
       if (first_time)
       {

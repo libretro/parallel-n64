@@ -16,6 +16,8 @@
 #include "Config.h"
 #include "TextureFilterHandler.h"
 #include "DisplayWindow.h"
+#include "StereoFrames.h"
+#include "Log.h"
 
 using namespace std;
 
@@ -103,14 +105,9 @@ void RSP_CheckDLCounter()
 	}
 }
 
-void RSP_ProcessDList()
+static
+void _runDisplayList()
 {
-	if (ConfigOpen || dwnd().isResizeWindow()) {
-		*REG.MI_INTR |= MI_INTR_DP;
-		CheckInterrupts();
-		return;
-	}
-
 	if (RSP.infloop) {
 		RSP.infloop = false;
 		RSP.halt = false;
@@ -174,6 +171,51 @@ void RSP_ProcessDList()
 		_ProcessDList();
 		break;
 	}
+}
+
+void RSP_ProcessDList()
+{
+	if (ConfigOpen || dwnd().isResizeWindow()) {
+		*REG.MI_INTR |= MI_INTR_DP;
+		CheckInterrupts();
+		return;
+	}
+
+	// Stereoscopic 3D once per eye.
+	const u32 passes = config.stereo.mode == Config::stereoBothEyes ? 2U : 1U;
+	u8 initialDmem[0x1000];
+	u8 firstPassDmem[0x1000];
+	bool haveFirstPassDmem = false;
+	if (passes == 2)
+		memcpy(initialDmem, DMEM, sizeof(initialDmem));
+	if (config.stereo.mode != Config::stereoOff)
+		gSPStereoBeginFrame();
+	for (u32 pass = 0; pass < passes; ++pass) {
+		if (pass == 1)
+			memcpy(DMEM, initialDmem, sizeof(initialDmem));
+		gSPSetStereoEye(passes == 1
+			? config.stereo.mode
+			: (pass == 0 ? Config::stereoLeftEye : Config::stereoRightEye));
+		StereoFrames::get().setCapturing(passes == 2 && pass == 0);
+		_runDisplayList();
+		StereoFrames::get().setCapturing(false);
+		if (passes == 2 && pass == 0) {
+			memcpy(firstPassDmem, DMEM, sizeof(firstPassDmem));
+			haveFirstPassDmem = true;
+		}
+		if (RSP.infloop && REG.SP_STATUS != nullptr)
+			break;
+		// The right eye draws into the same buffer, so put the left one aside first
+		if (passes == 2 && pass == 0) {
+			FrameBuffer * current = frameBufferList().getCurrent();
+			StereoFrames::get().captureLeftEye(current);
+		}
+	}
+	if (haveFirstPassDmem)
+		memcpy(DMEM, firstPassDmem, sizeof(firstPassDmem));
+	if (FrameBuffer * drawn = frameBufferList().getCurrent())
+		gSPImmersiveFrameDrawn(drawn->m_startAddress);
+	gSPSetStereoEye(config.stereo.mode);
 
 	if (RSP.infloop && REG.SP_STATUS) {
 		*REG.SP_STATUS &= ~(SP_STATUS_TASKDONE | SP_STATUS_HALT | SP_STATUS_BROKE);
