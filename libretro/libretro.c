@@ -277,6 +277,24 @@ static float    vr_reference_yaw    = 0.0f;
 static int      vr_presented_pose   = 0;
 static bool vr_present_as_dupe(void);
 static void vr_set_views(void);
+/* VR laser aim: the chosen hand's ray, cast onto a plane in front of the
+ * head, drives the thumbstick */
+static int   vr_aim_hand  = -1;    /* -1 off, else enum retro_vr_hand */
+static bool  vr_aim_valid = false;
+static float vr_aim_x     = 0.0f;  /* -1..1, +x right */
+static float vr_aim_y     = 0.0f;  /* -1..1, +y up    */
+#define VR_AIM_DISTANCE 2.0f                  /* meters to the virtual screen */
+#define VR_AIM_RANGE    (30.0f * 0.01745329252f) /* radians for full deflection */
+static bool  vr_aim_invert_y = false;
+static bool     vr_aim_buttons_mode = false;
+static int      vr_aim_port         = 0;   /* 0 = N64 pad 1, 1 = pad 2 */
+static float    vr_aim_threshold    = 0.5f;
+static unsigned vr_aim_dirs         = 0;   /* bit0 up, bit1 down, bit2 left, bit3 right */
+#define VR_AIM_DIR_UP    1u
+#define VR_AIM_DIR_DOWN  2u
+#define VR_AIM_DIR_LEFT  4u
+#define VR_AIM_DIR_RIGHT 8u
+#define VR_AIM_RELEASE_FRACTION 0.8f
 #endif
 enum audio_rsp_mode_t audio_rsp_mode = AUDIO_RSP_FOLLOW;
 /* Set from the ROM header for titles whose audio microcode use cannot be
@@ -293,6 +311,11 @@ int mouse_right_btn;
 int mouse_middle_btn;
 int mouse_wheel_up_btn;
 int mouse_wheel_down_btn;
+
+int vr_aim_btn_up;
+int vr_aim_btn_down;
+int vr_aim_btn_left;
+int vr_aim_btn_right;
 
 static bool initializing            = true;
 
@@ -1661,7 +1684,8 @@ static int parse_mouse_button(const char* value)
 {
    static const char* const names[] = {
       "Z", "A", "B", "L", "R", "Start",
-      "C-Up", "C-Down", "C-Left", "C-Right"
+      "C-Up", "C-Down", "C-Left", "C-Right",
+      "D-Pad Up", "D-Pad Down", "D-Pad Left", "D-Pad Right"
    };
    int i;
    for (i = 0; i < (int)(sizeof(names) / sizeof(names[0])); i++)
@@ -1841,6 +1865,68 @@ static void vr_update_variables(bool startup)
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
       VRImmersiveDistance = atoi(var.value) / 100.0f;
 
+   var.key = CORE_NAME "-vr-aim-controller";
+   var.value = NULL;
+   vr_aim_hand = -1;
+   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+   {
+      if (!strcmp(var.value, "left"))
+         vr_aim_hand = RETRO_VR_HAND_LEFT;
+      else if (!strcmp(var.value, "right"))
+         vr_aim_hand = RETRO_VR_HAND_RIGHT;
+   }
+
+   var.key = CORE_NAME "-vr-aim-invert-y";
+   var.value = NULL;
+   vr_aim_invert_y = false;
+   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+      vr_aim_invert_y = !strcmp(var.value, "on");
+
+   var.key = CORE_NAME "-vr-aim-output";
+   var.value = NULL;
+   vr_aim_buttons_mode = false;
+   vr_aim_port = 0;
+   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+   {
+      vr_aim_buttons_mode = !strncmp(var.value, "buttons", 7);
+      vr_aim_port         = strstr(var.value, "-p2") ? 1 : 0;
+   }
+
+   var.key = CORE_NAME "-vr-aim-button-threshold";
+   var.value = NULL;
+   vr_aim_threshold = 0.5f;
+   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+   {
+      int pct = atoi(var.value);
+      if (pct < 5)  pct = 5;
+      if (pct > 95) pct = 95;
+      vr_aim_threshold = pct / 100.0f;
+   }
+
+   var.key = CORE_NAME "-vr-aim-button-up";
+   var.value = NULL;
+   vr_aim_btn_up = 0;
+   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+      vr_aim_btn_up = parse_mouse_button(var.value);
+
+   var.key = CORE_NAME "-vr-aim-button-down";
+   var.value = NULL;
+   vr_aim_btn_down = 0;
+   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+      vr_aim_btn_down = parse_mouse_button(var.value);
+
+   var.key = CORE_NAME "-vr-aim-button-left";
+   var.value = NULL;
+   vr_aim_btn_left = 0;
+   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+      vr_aim_btn_left = parse_mouse_button(var.value);
+
+   var.key = CORE_NAME "-vr-aim-button-right";
+   var.value = NULL;
+   vr_aim_btn_right = 0;
+   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+      vr_aim_btn_right = parse_mouse_button(var.value);
+
    if (!startup && gfx_plugin == GFX_GLIDEN64)
       gln64_vr_update_config();
 
@@ -1866,6 +1952,100 @@ void libretro_vr_immersive_present(int pose)
 {
    vr_presented_pose = pose;
 }
+
+static bool vr_aim_dir(bool was, float v, float on)
+{
+   return v > (was ? on * VR_AIM_RELEASE_FRACTION : on);
+}
+
+/* The hand's ray is cast onto a plane VR_AIM_DISTANCE in front of the head
+ * and the dot's angles */
+static void vr_aim_update(void)
+{
+   static struct retro_vr_controller_poses poses;
+   struct retro_vr_head_pose head;
+   const struct retro_vr_hand_state *hand;
+   const float *q, *p;
+   float dx, dy, dz, t, x, y;
+   const unsigned prev_dirs = vr_aim_dirs;
+
+   /* Any early return below leaves both cleared, which releases every
+    * button when tracking is lost. */
+   vr_aim_valid = false;
+   vr_aim_dirs  = 0;
+
+   if (vr_aim_hand < 0 ||
+       !environ_cb(RETRO_ENVIRONMENT_GET_VR_CONTROLLER_POSES, &poses))
+      return;
+
+   hand = &poses.hands[vr_aim_hand];
+   if (!(hand->flags & RETRO_VR_HAND_ACTIVE) ||
+       !(hand->aim.flags & RETRO_VR_POSE_ORIENTATION_VALID) ||
+       !(hand->aim.flags & RETRO_VR_POSE_POSITION_VALID))
+      return;
+
+   if (!environ_cb(RETRO_ENVIRONMENT_GET_VR_HEAD_POSE, &head) ||
+       !(head.flags & RETRO_VR_HEAD_POSE_POSITION_VALID))
+      return;
+
+   /* ray direction: -Z rotated by the aim orientation (x, y, z, w) */
+   q  = hand->aim.orientation;
+   p  = hand->aim.position;
+   dx = -2.0f * (q[0] * q[2] + q[1] * q[3]);
+   dy = -2.0f * (q[1] * q[2] - q[0] * q[3]);
+   dz = -(1.0f - 2.0f * (q[0] * q[0] + q[1] * q[1]));
+
+   if (dz > -0.05f)   /* pointing sideways or backwards */
+      return;
+
+   /* the plane is z = head.z - distance */
+   t = (head.position[2] - VR_AIM_DISTANCE - p[2]) / dz;
+   if (t <= 0.0f)
+      return;
+
+   x = atan2f(p[0] + t * dx - head.position[0], VR_AIM_DISTANCE) / VR_AIM_RANGE;
+   y = atan2f(p[1] + t * dy - head.position[1], VR_AIM_DISTANCE) / VR_AIM_RANGE;
+
+   if (vr_aim_invert_y)
+      y = -y;
+
+   vr_aim_x = (x >  1.0f) ?  1.0f : (x < -1.0f) ? -1.0f : x;
+   vr_aim_y = (y >  1.0f) ?  1.0f : (y < -1.0f) ? -1.0f : y;
+   vr_aim_valid = true;
+
+   if (vr_aim_buttons_mode)
+   {
+      if (vr_aim_dir((prev_dirs & VR_AIM_DIR_UP)    != 0,  vr_aim_y, vr_aim_threshold))
+         vr_aim_dirs |= VR_AIM_DIR_UP;
+      if (vr_aim_dir((prev_dirs & VR_AIM_DIR_DOWN)  != 0, -vr_aim_y, vr_aim_threshold))
+         vr_aim_dirs |= VR_AIM_DIR_DOWN;
+      if (vr_aim_dir((prev_dirs & VR_AIM_DIR_LEFT)  != 0, -vr_aim_x, vr_aim_threshold))
+         vr_aim_dirs |= VR_AIM_DIR_LEFT;
+      if (vr_aim_dir((prev_dirs & VR_AIM_DIR_RIGHT) != 0,  vr_aim_x, vr_aim_threshold))
+         vr_aim_dirs |= VR_AIM_DIR_RIGHT;
+   }
+}
+
+/* For the input plugin: true when a laser aim sample exists this frame and
+ * the pointer is set to drive the stick of this port */
+bool libretro_vr_aim_stick(int port, float *x, float *y)
+{
+   if (!vr_aim_valid || vr_aim_buttons_mode || port != vr_aim_port)
+      return false;
+   *x = vr_aim_x;
+   *y = vr_aim_y;
+   return true;
+}
+
+/* For the input plugin: held directions (VR_AIM_DIR_*) for this port,
+ * 0 unless the pointer is in Four Buttons mode on that port */
+unsigned libretro_vr_aim_dirs(int port)
+{
+   return (vr_aim_buttons_mode && port == vr_aim_port) ? vr_aim_dirs : 0;
+}
+#else
+bool libretro_vr_aim_stick(int port, float *x, float *y) { return false; }
+unsigned libretro_vr_aim_dirs(int port) { return 0; }
 #endif /* HAVE_GLIDEN64 */
 
 void update_variables(bool startup)
@@ -3345,6 +3525,7 @@ void retro_unload_game(void)
     vr_reference_set  = false;
     vr_presented_pose = 0;
     vr_pose_valid     = false;
+    vr_aim_valid      = false;
 #endif
 }
 
@@ -3560,6 +3741,10 @@ void retro_run (void)
          EmuThreadInit();
       }
       
+#ifdef HAVE_GLIDEN64
+      vr_aim_update();
+#endif
+
       EmuThreadStep();
 
       switch (gfx_plugin)
