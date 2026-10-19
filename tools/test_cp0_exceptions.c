@@ -6,7 +6,10 @@
  *  - a queued interrupt check takes the exception only if an enabled
  *    interrupt is still pending when it fires;
  *  - ERET returns through ErrorEPC and clears ERL when ERL is set, and
- *    through EPC clearing EXL otherwise.
+ *    through EPC clearing EXL otherwise;
+ *  - LL/LLD record the physical address of the linked word in LLAddr, for
+ *    unmapped and TLB-mapped addresses, and set the link bit;
+ *  - poweron reports processor revision 2.2 and an all-ones LLAddr.
  *
  * Built by `make check-core` (top-level Makefile). Exit status 0 on pass.
  */
@@ -28,6 +31,7 @@
 
 unsigned int r4300_emumode = EMUMODE_PURE_INTERPRETER;
 unsigned int r4300_jit_backend = 0;
+int g_aleck64_enabled = 0;
 int g_gs_vi_counter = 0;
 
 static uint32_t s_pc;
@@ -162,6 +166,32 @@ static void test_return(void)
           "ERET with ERL: ERL cleared, back to ErrorEPC, EXL kept");
 }
 
+static void test_load_linked(void)
+{
+    reset_cpu(0, 0x80001000u, 0);
+    s_r4300.llbit = 0;
+    cp0_load_linked(&s_r4300, 0x80003c08u);
+    CHECK(regs()[CP0_LLADDR_REG] == 0x3c0u && s_r4300.llbit == 1,
+          "LL in KSEG0: LLAddr is the physical address >> 4, link set");
+
+    cp0_load_linked(&s_r4300, 0xa0123458u);
+    CHECK(regs()[CP0_LLADDR_REG] == 0x12345u, "LL in KSEG1: LLAddr is the physical address >> 4");
+
+    /* virtual page 0x00400000 mapped to physical 0x00205000 */
+    s_r4300.cp0.tlb.LUT_r[0x00400000u >> 12] = 0x80000000u | (0x00205000u + 0xfffu);
+    cp0_load_linked(&s_r4300, 0x00400ab0u);
+    CHECK(regs()[CP0_LLADDR_REG] == (0x00205ab0u >> 4),
+          "LL through the TLB: LLAddr is the translated address >> 4");
+    s_r4300.cp0.tlb.LUT_r[0x00400000u >> 12] = 0;
+}
+
+static void test_poweron(void)
+{
+    poweron_cp0(&s_r4300.cp0);
+    CHECK(regs()[CP0_PREVID_REG] == 0xb22u, "poweron: PRId is VR4300 revision 2.2");
+    CHECK(regs()[CP0_LLADDR_REG] == 0xffffffffu, "poweron: LLAddr is all ones");
+}
+
 int main(void)
 {
     s_r4300.cp0.count_per_op = 2;
@@ -169,6 +199,8 @@ int main(void)
     test_entry();
     test_check_interrupt();
     test_return();
+    test_load_linked();
+    test_poweron();
 
     if (s_failures) {
         printf("test_cp0_exceptions: %d failure(s)\n", s_failures);

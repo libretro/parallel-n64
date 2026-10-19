@@ -25,6 +25,7 @@
 #include <stdio.h>
 
 #include "cp0.h"
+#include "device/aleck64/aleck64.h"
 #include "r4300_core.h"
 #include "new_dynarec/new_dynarec.h"
 #include "recomp.h"
@@ -84,13 +85,14 @@ void poweron_cp0(struct cp0* cp0)
     cp0_regs[CP0_RANDOM_REG] = UINT32_C(31);
     cp0_regs[CP0_STATUS_REG]= UINT32_C(0x34000000);
     cp0_regs[CP0_CONFIG_REG]= UINT32_C(0x6e463);
-    cp0_regs[CP0_PREVID_REG] = UINT32_C(0xb10);
+    cp0_regs[CP0_PREVID_REG] = UINT32_C(0xb22);
     cp0_regs[CP0_COUNT_REG] = UINT32_C(0x5000);
     cp0_regs[CP0_CAUSE_REG] = UINT32_C(0x5c);
     cp0_regs[CP0_CONTEXT_REG] = UINT32_C(0x7ffff0);
     cp0_regs[CP0_EPC_REG] = UINT32_C(0xffffffff);
     cp0_regs[CP0_BADVADDR_REG] = UINT32_C(0xffffffff);
     cp0_regs[CP0_ERROREPC_REG] = UINT32_C(0xffffffff);
+    cp0_regs[CP0_LLADDR_REG] = UINT32_C(0xffffffff);
 
     /* XXX: clarify what is done on poweron, in soft_reset and in execute... */
     cp0->interrupt_unsafe_state = 0;
@@ -385,4 +387,23 @@ uint32_t cp0_return_from_exception(struct r4300_core* r4300)
 
     cp0_regs[CP0_STATUS_REG] &= ~CP0_STATUS_EXL;
     return cp0_regs[CP0_EPC_REG];
+}
+
+void cp0_load_linked(struct r4300_core* r4300, uint32_t address)
+{
+    uint32_t physical;
+
+    if ((address & UINT32_C(0xc0000000)) == UINT32_C(0x80000000)) {
+        physical = address & UINT32_C(0x1fffffff);
+    }
+    else {
+        physical = (r4300->cp0.tlb.LUT_r[address >> 12] & UINT32_C(0xfffff000))
+                 | (address & UINT32_C(0xfff));
+        /* outside Aleck64 the LUT marks valid entries with bit 31 */
+        if (!g_aleck64_enabled)
+            physical &= UINT32_C(0x1fffffff);
+    }
+
+    r4300_cp0_regs(&r4300->cp0)[CP0_LLADDR_REG] = physical >> 4;
+    r4300->llbit = 1;
 }

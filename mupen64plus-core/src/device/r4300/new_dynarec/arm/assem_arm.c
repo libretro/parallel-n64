@@ -3299,14 +3299,10 @@ static void fcomp_assemble(int i,struct regstat *i_regs)
     return;
   }
 
-  if((source[i]&0x3e)==0x38) {
-    // sf/ngle - these should throw exceptions for NaNs
-    emit_andimm(fs,~0x800000,fs);
-    return;
-  }
-
+  // The signalling compares (sf..ngt) raise Invalid Operation on any NaN;
+  // only the C implementations model that.
   #if (defined(__VFP_FP__) && !defined(__SOFTFP__))
-  if(opcode2[i]==0x10) {
+  if(opcode2[i]==0x10&&!(source[i]&8)) {
     emit_readword((u_int)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_simple[(source[i]>>11)&0x1f],temp);
     emit_readword((u_int)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_simple[(source[i]>>16)&0x1f],HOST_TEMPREG);
     emit_orimm(fs,0x800000,fs);
@@ -3321,15 +3317,9 @@ static void fcomp_assemble(int i,struct regstat *i_regs)
     if((source[i]&0x3f)==0x35) {emit_biccs_imm(fs,0x800000,fs);emit_orrvs_imm(fs,0x800000,fs);} // c_ult_s
     if((source[i]&0x3f)==0x36) emit_bichi_imm(fs,0x800000,fs); // c_ole_s
     if((source[i]&0x3f)==0x37) {emit_bichi_imm(fs,0x800000,fs);emit_orrvs_imm(fs,0x800000,fs);} // c_ule_s
-    if((source[i]&0x3f)==0x3a) emit_bicne_imm(fs,0x800000,fs); // c_seq_s
-    if((source[i]&0x3f)==0x3b) emit_bicne_imm(fs,0x800000,fs); // c_ngl_s
-    if((source[i]&0x3f)==0x3c) emit_biccs_imm(fs,0x800000,fs); // c_lt_s
-    if((source[i]&0x3f)==0x3d) emit_biccs_imm(fs,0x800000,fs); // c_nge_s
-    if((source[i]&0x3f)==0x3e) emit_bichi_imm(fs,0x800000,fs); // c_le_s
-    if((source[i]&0x3f)==0x3f) emit_bichi_imm(fs,0x800000,fs); // c_ngt_s
     return;
   }
-  if(opcode2[i]==0x11) {
+  if(opcode2[i]==0x11&&!(source[i]&8)) {
     emit_readword((u_int)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_double[(source[i]>>11)&0x1f],temp);
     emit_readword((u_int)&g_dev.r4300.new_dynarec_hot_state.cp1_regs_double[(source[i]>>16)&0x1f],HOST_TEMPREG);
     emit_orimm(fs,0x800000,fs);
@@ -3344,12 +3334,6 @@ static void fcomp_assemble(int i,struct regstat *i_regs)
     if((source[i]&0x3f)==0x35) {emit_biccs_imm(fs,0x800000,fs);emit_orrvs_imm(fs,0x800000,fs);} // c_ult_d
     if((source[i]&0x3f)==0x36) emit_bichi_imm(fs,0x800000,fs); // c_ole_d
     if((source[i]&0x3f)==0x37) {emit_bichi_imm(fs,0x800000,fs);emit_orrvs_imm(fs,0x800000,fs);} // c_ule_d
-    if((source[i]&0x3f)==0x3a) emit_bicne_imm(fs,0x800000,fs); // c_seq_d
-    if((source[i]&0x3f)==0x3b) emit_bicne_imm(fs,0x800000,fs); // c_ngl_d
-    if((source[i]&0x3f)==0x3c) emit_biccs_imm(fs,0x800000,fs); // c_lt_d
-    if((source[i]&0x3f)==0x3d) emit_biccs_imm(fs,0x800000,fs); // c_nge_d
-    if((source[i]&0x3f)==0x3e) emit_bichi_imm(fs,0x800000,fs); // c_le_d
-    if((source[i]&0x3f)==0x3f) emit_bichi_imm(fs,0x800000,fs); // c_ngt_d
     return;
   }
   #endif

@@ -240,5 +240,10 @@ void exception_general(struct r4300_core* r4300);
  * resumes at. */
 uint32_t cp0_return_from_exception(struct r4300_core* r4300);
 
+/* LL/LLD: set the link bit and record the physical address of the linked
+ * word in LLAddr (bits 35:4).  Called once the load has succeeded, so a
+ * mapped address has a TLB entry. */
+void cp0_load_linked(struct r4300_core* r4300, uint32_t address);
+
 #endif /* M64P_DEVICE_R4300_CP0_H */
 

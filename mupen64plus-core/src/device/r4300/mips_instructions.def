@@ -214,7 +214,7 @@ DECLARE_INSTRUCTION(LL)
 
     if (r4300_read_aligned_word(r4300, lsaddr, &value)) {
         *lsrtp = SE32(value);
-        r4300->llbit = 1;
+        cp0_load_linked(r4300, lsaddr);
     }
 }
 
@@ -361,7 +361,7 @@ DECLARE_INSTRUCTION(LLD)
 
     if (r4300_read_aligned_dword(r4300, lsaddr, &value)) {
         *lsrtp = (int64_t)value;
-        r4300->llbit = 1;
+        cp0_load_linked(r4300, lsaddr);
     }
 }
 

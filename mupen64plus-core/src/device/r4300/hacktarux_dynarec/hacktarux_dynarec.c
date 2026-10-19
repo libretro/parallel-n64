@@ -5820,6 +5820,7 @@ void gen_CP1_C_EQ_S(struct r4300_core* r4300)
     fld_preg64_dword(RAX);
     fucomip_fpreg(1);
     ffree_fpreg(0);
+    jp_rj(15); // unordered: clear
     jne_rj(13);
     or_m32rel_imm32((unsigned int*)&(*r4300_cp1_fcr31(&r4300->cp1)), 0x800000); // 11
     jmp_imm_short(11); // 2
@@ -5842,6 +5843,7 @@ void gen_CP1_C_EQ_D(struct r4300_core* r4300)
     fld_preg64_qword(RAX);
     fucomip_fpreg(1);
     ffree_fpreg(0);
+    jp_rj(15); // unordered: clear
     jne_rj(13); // 2
     or_m32rel_imm32((unsigned int*)&(*r4300_cp1_fcr31(&r4300->cp1)), 0x800000); // 11
     jmp_imm_short(11); // 2
@@ -5864,7 +5866,7 @@ void gen_CP1_C_UEQ_S(struct r4300_core* r4300)
     fld_preg64_dword(RAX);
     fucomip_fpreg(1);
     ffree_fpreg(0);
-    jp_rj(15);
+    jp_rj(2); // unordered: set
     jne_rj(13);
     or_m32rel_imm32((unsigned int*)&(*r4300_cp1_fcr31(&r4300->cp1)), 0x800000); // 11
     jmp_imm_short(11); // 2
@@ -5887,7 +5889,7 @@ void gen_CP1_C_UEQ_D(struct r4300_core* r4300)
     fld_preg64_qword(RAX);
     fucomip_fpreg(1);
     ffree_fpreg(0);
-    jp_rj(15);
+    jp_rj(2); // unordered: set
     jne_rj(13);
     or_m32rel_imm32((unsigned int*)&(*r4300_cp1_fcr31(&r4300->cp1)), 0x800000); // 11
     jmp_imm_short(11); // 2
@@ -5910,6 +5912,7 @@ void gen_CP1_C_OLT_S(struct r4300_core* r4300)
     fld_preg64_dword(RAX);
     fucomip_fpreg(1);
     ffree_fpreg(0);
+    jp_rj(15); // unordered: clear
     jae_rj(13);
     or_m32rel_imm32((unsigned int*)&(*r4300_cp1_fcr31(&r4300->cp1)), 0x800000); // 11
     jmp_imm_short(11); // 2
@@ -5932,6 +5935,7 @@ void gen_CP1_C_OLT_D(struct r4300_core* r4300)
     fld_preg64_qword(RAX);
     fucomip_fpreg(1);
     ffree_fpreg(0);
+    jp_rj(15); // unordered: clear
     jae_rj(13); // 2
     or_m32rel_imm32((unsigned int*)&(*r4300_cp1_fcr31(&r4300->cp1)), 0x800000); // 11
     jmp_imm_short(11); // 2
@@ -5954,7 +5958,7 @@ void gen_CP1_C_ULT_S(struct r4300_core* r4300)
     fld_preg64_dword(RAX);
     fucomip_fpreg(1);
     ffree_fpreg(0);
-    jp_rj(15);
+    jp_rj(2); // unordered: set
     jae_rj(13);
     or_m32rel_imm32((unsigned int*)&(*r4300_cp1_fcr31(&r4300->cp1)), 0x800000); // 11
     jmp_imm_short(11); // 2
@@ -5977,7 +5981,7 @@ void gen_CP1_C_ULT_D(struct r4300_core* r4300)
     fld_preg64_qword(RAX);
     fucomip_fpreg(1);
     ffree_fpreg(0);
-    jp_rj(15);
+    jp_rj(2); // unordered: set
     jae_rj(13); // 2
     or_m32rel_imm32((unsigned int*)&(*r4300_cp1_fcr31(&r4300->cp1)), 0x800000); // 11
     jmp_imm_short(11); // 2
@@ -6000,6 +6004,7 @@ void gen_CP1_C_OLE_S(struct r4300_core* r4300)
     fld_preg64_dword(RAX);
     fucomip_fpreg(1);
     ffree_fpreg(0);
+    jp_rj(15); // unordered: clear
     ja_rj(13);
     or_m32rel_imm32((unsigned int*)&(*r4300_cp1_fcr31(&r4300->cp1)), 0x800000); // 11
     jmp_imm_short(11); // 2
@@ -6022,6 +6027,7 @@ void gen_CP1_C_OLE_D(struct r4300_core* r4300)
     fld_preg64_qword(RAX);
     fucomip_fpreg(1);
     ffree_fpreg(0);
+    jp_rj(15); // unordered: clear
     ja_rj(13); // 2
     or_m32rel_imm32((unsigned int*)&(*r4300_cp1_fcr31(&r4300->cp1)), 0x800000); // 11
     jmp_imm_short(11); // 2
@@ -6044,7 +6050,7 @@ void gen_CP1_C_ULE_S(struct r4300_core* r4300)
     fld_preg64_dword(RAX);
     fucomip_fpreg(1);
     ffree_fpreg(0);
-    jp_rj(15);
+    jp_rj(2); // unordered: set
     ja_rj(13);
     or_m32rel_imm32((unsigned int*)&(*r4300_cp1_fcr31(&r4300->cp1)), 0x800000); // 11
     jmp_imm_short(11); // 2
@@ -6067,7 +6073,7 @@ void gen_CP1_C_ULE_D(struct r4300_core* r4300)
     fld_preg64_qword(RAX);
     fucomip_fpreg(1);
     ffree_fpreg(0);
-    jp_rj(15);
+    jp_rj(2); // unordered: set
     ja_rj(13); // 2
     or_m32rel_imm32((unsigned int*)&(*r4300_cp1_fcr31(&r4300->cp1)), 0x800000); // 11
     jmp_imm_short(11); // 2
@@ -6080,18 +6086,8 @@ void gen_CP1_C_SF_S(struct r4300_core* r4300)
 #if defined(COUNT_INSTR)
     inc_m32rel(&instr_count[118]);
 #endif
-#ifdef INTERPRET_CP1_C_SF_S
+    /* NaN operands raise Invalid Operation, which the interpreter models */
     gencallinterp(r4300, (unsigned long long)cached_interp_C_SF_S, 0);
-#else
-    gencheck_cop1_unusable(r4300);
-    mov_xreg64_m64rel(RAX, (unsigned long long *)(&(r4300_cp1_regs_simple(&r4300->cp1))[r4300->recomp.dst->f.cf.ft]));
-    fld_preg64_dword(RAX);
-    mov_xreg64_m64rel(RAX, (unsigned long long *)(&(r4300_cp1_regs_simple(&r4300->cp1))[r4300->recomp.dst->f.cf.fs]));
-    fld_preg64_dword(RAX);
-    fcomip_fpreg(1);
-    ffree_fpreg(0);
-    and_m32rel_imm32((unsigned int*)&(*r4300_cp1_fcr31(&r4300->cp1)), ~0x800000);
-#endif
 }
 
 void gen_CP1_C_SF_D(struct r4300_core* r4300)
@@ -6099,18 +6095,8 @@ void gen_CP1_C_SF_D(struct r4300_core* r4300)
 #if defined(COUNT_INSTR)
     inc_m32rel(&instr_count[118]);
 #endif
-#ifdef INTERPRET_CP1_C_SF_D
+    /* NaN operands raise Invalid Operation, which the interpreter models */
     gencallinterp(r4300, (unsigned long long)cached_interp_C_SF_D, 0);
-#else
-    gencheck_cop1_unusable(r4300);
-    mov_xreg64_m64rel(RAX, (unsigned long long *)(&(r4300_cp1_regs_double(&r4300->cp1))[r4300->recomp.dst->f.cf.ft]));
-    fld_preg64_qword(RAX);
-    mov_xreg64_m64rel(RAX, (unsigned long long *)(&(r4300_cp1_regs_double(&r4300->cp1))[r4300->recomp.dst->f.cf.fs]));
-    fld_preg64_qword(RAX);
-    fcomip_fpreg(1);
-    ffree_fpreg(0);
-    and_m32rel_imm32((unsigned int*)&(*r4300_cp1_fcr31(&r4300->cp1)), ~0x800000);
-#endif
 }
 
 void gen_CP1_C_NGLE_S(struct r4300_core* r4300)
@@ -6118,21 +6104,8 @@ void gen_CP1_C_NGLE_S(struct r4300_core* r4300)
 #if defined(COUNT_INSTR)
     inc_m32rel(&instr_count[118]);
 #endif
-#ifdef INTERPRET_CP1_C_NGLE_S
+    /* NaN operands raise Invalid Operation, which the interpreter models */
     gencallinterp(r4300, (unsigned long long)cached_interp_C_NGLE_S, 0);
-#else
-    gencheck_cop1_unusable(r4300);
-    mov_xreg64_m64rel(RAX, (unsigned long long *)(&(r4300_cp1_regs_simple(&r4300->cp1))[r4300->recomp.dst->f.cf.ft]));
-    fld_preg64_dword(RAX);
-    mov_xreg64_m64rel(RAX, (unsigned long long *)(&(r4300_cp1_regs_simple(&r4300->cp1))[r4300->recomp.dst->f.cf.fs]));
-    fld_preg64_dword(RAX);
-    fcomip_fpreg(1);
-    ffree_fpreg(0);
-    jp_rj(13);
-    and_m32rel_imm32((unsigned int*)&(*r4300_cp1_fcr31(&r4300->cp1)), ~0x800000); // 11
-    jmp_imm_short(11); // 2
-    or_m32rel_imm32((unsigned int*)&(*r4300_cp1_fcr31(&r4300->cp1)), 0x800000); // 11
-#endif
 }
 
 void gen_CP1_C_NGLE_D(struct r4300_core* r4300)
@@ -6140,21 +6113,8 @@ void gen_CP1_C_NGLE_D(struct r4300_core* r4300)
 #if defined(COUNT_INSTR)
     inc_m32rel(&instr_count[118]);
 #endif
-#ifdef INTERPRET_CP1_C_NGLE_D
+    /* NaN operands raise Invalid Operation, which the interpreter models */
     gencallinterp(r4300, (unsigned long long)cached_interp_C_NGLE_D, 0);
-#else
-    gencheck_cop1_unusable(r4300);
-    mov_xreg64_m64rel(RAX, (unsigned long long *)(&(r4300_cp1_regs_double(&r4300->cp1))[r4300->recomp.dst->f.cf.ft]));
-    fld_preg64_qword(RAX);
-    mov_xreg64_m64rel(RAX, (unsigned long long *)(&(r4300_cp1_regs_double(&r4300->cp1))[r4300->recomp.dst->f.cf.fs]));
-    fld_preg64_qword(RAX);
-    fcomip_fpreg(1);
-    ffree_fpreg(0);
-    jp_rj(13);
-    and_m32rel_imm32((unsigned int*)&(*r4300_cp1_fcr31(&r4300->cp1)), ~0x800000); // 11
-    jmp_imm_short(11); // 2
-    or_m32rel_imm32((unsigned int*)&(*r4300_cp1_fcr31(&r4300->cp1)), 0x800000); // 11
-#endif
 }
 
 void gen_CP1_C_SEQ_S(struct r4300_core* r4300)
@@ -6162,21 +6122,8 @@ void gen_CP1_C_SEQ_S(struct r4300_core* r4300)
 #if defined(COUNT_INSTR)
     inc_m32rel(&instr_count[118]);
 #endif
-#ifdef INTERPRET_CP1_C_SEQ_S
+    /* NaN operands raise Invalid Operation, which the interpreter models */
     gencallinterp(r4300, (unsigned long long)cached_interp_C_SEQ_S, 0);
-#else
-    gencheck_cop1_unusable(r4300);
-    mov_xreg64_m64rel(RAX, (unsigned long long *)(&(r4300_cp1_regs_simple(&r4300->cp1))[r4300->recomp.dst->f.cf.ft]));
-    fld_preg64_dword(RAX);
-    mov_xreg64_m64rel(RAX, (unsigned long long *)(&(r4300_cp1_regs_simple(&r4300->cp1))[r4300->recomp.dst->f.cf.fs]));
-    fld_preg64_dword(RAX);
-    fcomip_fpreg(1);
-    ffree_fpreg(0);
-    jne_rj(13);
-    or_m32rel_imm32((unsigned int*)&(*r4300_cp1_fcr31(&r4300->cp1)), 0x800000); // 11
-    jmp_imm_short(11); // 2
-    and_m32rel_imm32((unsigned int*)&(*r4300_cp1_fcr31(&r4300->cp1)), ~0x800000); // 11
-#endif
 }
 
 void gen_CP1_C_SEQ_D(struct r4300_core* r4300)
@@ -6184,21 +6131,8 @@ void gen_CP1_C_SEQ_D(struct r4300_core* r4300)
 #if defined(COUNT_INSTR)
     inc_m32rel(&instr_count[118]);
 #endif
-#ifdef INTERPRET_CP1_C_SEQ_D
+    /* NaN operands raise Invalid Operation, which the interpreter models */
     gencallinterp(r4300, (unsigned long long)cached_interp_C_SEQ_D, 0);
-#else
-    gencheck_cop1_unusable(r4300);
-    mov_xreg64_m64rel(RAX, (unsigned long long *)(&(r4300_cp1_regs_double(&r4300->cp1))[r4300->recomp.dst->f.cf.ft]));
-    fld_preg64_qword(RAX);
-    mov_xreg64_m64rel(RAX, (unsigned long long *)(&(r4300_cp1_regs_double(&r4300->cp1))[r4300->recomp.dst->f.cf.fs]));
-    fld_preg64_qword(RAX);
-    fcomip_fpreg(1);
-    ffree_fpreg(0);
-    jne_rj(13); // 2
-    or_m32rel_imm32((unsigned int*)&(*r4300_cp1_fcr31(&r4300->cp1)), 0x800000); // 11
-    jmp_imm_short(11); // 2
-    and_m32rel_imm32((unsigned int*)&(*r4300_cp1_fcr31(&r4300->cp1)), ~0x800000); // 11
-#endif
 }
 
 void gen_CP1_C_NGL_S(struct r4300_core* r4300)
@@ -6206,22 +6140,8 @@ void gen_CP1_C_NGL_S(struct r4300_core* r4300)
 #if defined(COUNT_INSTR)
     inc_m32rel(&instr_count[118]);
 #endif
-#ifdef INTERPRET_CP1_C_NGL_S
+    /* NaN operands raise Invalid Operation, which the interpreter models */
     gencallinterp(r4300, (unsigned long long)cached_interp_C_NGL_S, 0);
-#else
-    gencheck_cop1_unusable(r4300);
-    mov_xreg64_m64rel(RAX, (unsigned long long *)(&(r4300_cp1_regs_simple(&r4300->cp1))[r4300->recomp.dst->f.cf.ft]));
-    fld_preg64_dword(RAX);
-    mov_xreg64_m64rel(RAX, (unsigned long long *)(&(r4300_cp1_regs_simple(&r4300->cp1))[r4300->recomp.dst->f.cf.fs]));
-    fld_preg64_dword(RAX);
-    fcomip_fpreg(1);
-    ffree_fpreg(0);
-    jp_rj(15);
-    jne_rj(13);
-    or_m32rel_imm32((unsigned int*)&(*r4300_cp1_fcr31(&r4300->cp1)), 0x800000); // 11
-    jmp_imm_short(11); // 2
-    and_m32rel_imm32((unsigned int*)&(*r4300_cp1_fcr31(&r4300->cp1)), ~0x800000); // 11
-#endif
 }
 
 void gen_CP1_C_NGL_D(struct r4300_core* r4300)
@@ -6229,22 +6149,8 @@ void gen_CP1_C_NGL_D(struct r4300_core* r4300)
 #if defined(COUNT_INSTR)
     inc_m32rel(&instr_count[118]);
 #endif
-#ifdef INTERPRET_CP1_C_NGL_D
+    /* NaN operands raise Invalid Operation, which the interpreter models */
     gencallinterp(r4300, (unsigned long long)cached_interp_C_NGL_D, 0);
-#else
-    gencheck_cop1_unusable(r4300);
-    mov_xreg64_m64rel(RAX, (unsigned long long *)(&(r4300_cp1_regs_double(&r4300->cp1))[r4300->recomp.dst->f.cf.ft]));
-    fld_preg64_qword(RAX);
-    mov_xreg64_m64rel(RAX, (unsigned long long *)(&(r4300_cp1_regs_double(&r4300->cp1))[r4300->recomp.dst->f.cf.fs]));
-    fld_preg64_qword(RAX);
-    fcomip_fpreg(1);
-    ffree_fpreg(0);
-    jp_rj(15);
-    jne_rj(13);
-    or_m32rel_imm32((unsigned int*)&(*r4300_cp1_fcr31(&r4300->cp1)), 0x800000); // 11
-    jmp_imm_short(11); // 2
-    and_m32rel_imm32((unsigned int*)&(*r4300_cp1_fcr31(&r4300->cp1)), ~0x800000); // 11
-#endif
 }
 
 void gen_CP1_C_LT_S(struct r4300_core* r4300)
@@ -6252,21 +6158,8 @@ void gen_CP1_C_LT_S(struct r4300_core* r4300)
 #if defined(COUNT_INSTR)
     inc_m32rel(&instr_count[118]);
 #endif
-#ifdef INTERPRET_CP1_C_LT_S
+    /* NaN operands raise Invalid Operation, which the interpreter models */
     gencallinterp(r4300, (unsigned long long)cached_interp_C_LT_S, 0);
-#else
-    gencheck_cop1_unusable(r4300);
-    mov_xreg64_m64rel(RAX, (unsigned long long *)(&(r4300_cp1_regs_simple(&r4300->cp1))[r4300->recomp.dst->f.cf.ft]));
-    fld_preg64_dword(RAX);
-    mov_xreg64_m64rel(RAX, (unsigned long long *)(&(r4300_cp1_regs_simple(&r4300->cp1))[r4300->recomp.dst->f.cf.fs]));
-    fld_preg64_dword(RAX);
-    fcomip_fpreg(1);
-    ffree_fpreg(0);
-    jae_rj(13);
-    or_m32rel_imm32((unsigned int*)&(*r4300_cp1_fcr31(&r4300->cp1)), 0x800000); // 11
-    jmp_imm_short(11); // 2
-    and_m32rel_imm32((unsigned int*)&(*r4300_cp1_fcr31(&r4300->cp1)), ~0x800000); // 11
-#endif
 }
 
 void gen_CP1_C_LT_D(struct r4300_core* r4300)
@@ -6274,21 +6167,8 @@ void gen_CP1_C_LT_D(struct r4300_core* r4300)
 #if defined(COUNT_INSTR)
     inc_m32rel(&instr_count[118]);
 #endif
-#ifdef INTERPRET_CP1_C_LT_D
+    /* NaN operands raise Invalid Operation, which the interpreter models */
     gencallinterp(r4300, (unsigned long long)cached_interp_C_LT_D, 0);
-#else
-    gencheck_cop1_unusable(r4300);
-    mov_xreg64_m64rel(RAX, (unsigned long long *)(&(r4300_cp1_regs_double(&r4300->cp1))[r4300->recomp.dst->f.cf.ft]));
-    fld_preg64_qword(RAX);
-    mov_xreg64_m64rel(RAX, (unsigned long long *)(&(r4300_cp1_regs_double(&r4300->cp1))[r4300->recomp.dst->f.cf.fs]));
-    fld_preg64_qword(RAX);
-    fcomip_fpreg(1);
-    ffree_fpreg(0);
-    jae_rj(13); // 2
-    or_m32rel_imm32((unsigned int*)&(*r4300_cp1_fcr31(&r4300->cp1)), 0x800000); // 11
-    jmp_imm_short(11); // 2
-    and_m32rel_imm32((unsigned int*)&(*r4300_cp1_fcr31(&r4300->cp1)), ~0x800000); // 11
-#endif
 }
 
 void gen_CP1_C_NGE_S(struct r4300_core* r4300)
@@ -6296,22 +6176,8 @@ void gen_CP1_C_NGE_S(struct r4300_core* r4300)
 #if defined(COUNT_INSTR)
     inc_m32rel(&instr_count[118]);
 #endif
-#ifdef INTERPRET_CP1_C_NGE_S
+    /* NaN operands raise Invalid Operation, which the interpreter models */
     gencallinterp(r4300, (unsigned long long)cached_interp_C_NGE_S, 0);
-#else
-    gencheck_cop1_unusable(r4300);
-    mov_xreg64_m64rel(RAX, (unsigned long long *)(&(r4300_cp1_regs_simple(&r4300->cp1))[r4300->recomp.dst->f.cf.ft]));
-    fld_preg64_dword(RAX);
-    mov_xreg64_m64rel(RAX, (unsigned long long *)(&(r4300_cp1_regs_simple(&r4300->cp1))[r4300->recomp.dst->f.cf.fs]));
-    fld_preg64_dword(RAX);
-    fcomip_fpreg(1);
-    ffree_fpreg(0);
-    jp_rj(15);
-    jae_rj(13);
-    or_m32rel_imm32((unsigned int*)&(*r4300_cp1_fcr31(&r4300->cp1)), 0x800000); // 11
-    jmp_imm_short(11); // 2
-    and_m32rel_imm32((unsigned int*)&(*r4300_cp1_fcr31(&r4300->cp1)), ~0x800000); // 11
-#endif
 }
 
 void gen_CP1_C_NGE_D(struct r4300_core* r4300)
@@ -6319,22 +6185,8 @@ void gen_CP1_C_NGE_D(struct r4300_core* r4300)
 #if defined(COUNT_INSTR)
     inc_m32rel(&instr_count[118]);
 #endif
-#ifdef INTERPRET_CP1_C_NGE_D
+    /* NaN operands raise Invalid Operation, which the interpreter models */
     gencallinterp(r4300, (unsigned long long)cached_interp_C_NGE_D, 0);
-#else
-    gencheck_cop1_unusable(r4300);
-    mov_xreg64_m64rel(RAX, (unsigned long long *)(&(r4300_cp1_regs_double(&r4300->cp1))[r4300->recomp.dst->f.cf.ft]));
-    fld_preg64_qword(RAX);
-    mov_xreg64_m64rel(RAX, (unsigned long long *)(&(r4300_cp1_regs_double(&r4300->cp1))[r4300->recomp.dst->f.cf.fs]));
-    fld_preg64_qword(RAX);
-    fcomip_fpreg(1);
-    ffree_fpreg(0);
-    jp_rj(15);
-    jae_rj(13); // 2
-    or_m32rel_imm32((unsigned int*)&(*r4300_cp1_fcr31(&r4300->cp1)), 0x800000); // 11
-    jmp_imm_short(11); // 2
-    and_m32rel_imm32((unsigned int*)&(*r4300_cp1_fcr31(&r4300->cp1)), ~0x800000); // 11
-#endif
 }
 
 void gen_CP1_C_LE_S(struct r4300_core* r4300)
@@ -6342,21 +6194,8 @@ void gen_CP1_C_LE_S(struct r4300_core* r4300)
 #if defined(COUNT_INSTR)
     inc_m32rel(&instr_count[118]);
 #endif
-#ifdef INTERPRET_CP1_C_LE_S
+    /* NaN operands raise Invalid Operation, which the interpreter models */
     gencallinterp(r4300, (unsigned long long)cached_interp_C_LE_S, 0);
-#else
-    gencheck_cop1_unusable(r4300);
-    mov_xreg64_m64rel(RAX, (unsigned long long *)(&(r4300_cp1_regs_simple(&r4300->cp1))[r4300->recomp.dst->f.cf.ft]));
-    fld_preg64_dword(RAX);
-    mov_xreg64_m64rel(RAX, (unsigned long long *)(&(r4300_cp1_regs_simple(&r4300->cp1))[r4300->recomp.dst->f.cf.fs]));
-    fld_preg64_dword(RAX);
-    fcomip_fpreg(1);
-    ffree_fpreg(0);
-    ja_rj(13);
-    or_m32rel_imm32((unsigned int*)&(*r4300_cp1_fcr31(&r4300->cp1)), 0x800000); // 11
-    jmp_imm_short(11); // 2
-    and_m32rel_imm32((unsigned int*)&(*r4300_cp1_fcr31(&r4300->cp1)), ~0x800000); // 11
-#endif
 }
 
 void gen_CP1_C_LE_D(struct r4300_core* r4300)
@@ -6364,21 +6203,8 @@ void gen_CP1_C_LE_D(struct r4300_core* r4300)
 #if defined(COUNT_INSTR)
     inc_m32rel(&instr_count[118]);
 #endif
-#ifdef INTERPRET_CP1_C_LE_D
+    /* NaN operands raise Invalid Operation, which the interpreter models */
     gencallinterp(r4300, (unsigned long long)cached_interp_C_LE_D, 0);
-#else
-    gencheck_cop1_unusable(r4300);
-    mov_xreg64_m64rel(RAX, (unsigned long long *)(&(r4300_cp1_regs_double(&r4300->cp1))[r4300->recomp.dst->f.cf.ft]));
-    fld_preg64_qword(RAX);
-    mov_xreg64_m64rel(RAX, (unsigned long long *)(&(r4300_cp1_regs_double(&r4300->cp1))[r4300->recomp.dst->f.cf.fs]));
-    fld_preg64_qword(RAX);
-    fcomip_fpreg(1);
-    ffree_fpreg(0);
-    ja_rj(13); // 2
-    or_m32rel_imm32((unsigned int*)&(*r4300_cp1_fcr31(&r4300->cp1)), 0x800000); // 11
-    jmp_imm_short(11); // 2
-    and_m32rel_imm32((unsigned int*)&(*r4300_cp1_fcr31(&r4300->cp1)), ~0x800000); // 11
-#endif
 }
 
 void gen_CP1_C_NGT_S(struct r4300_core* r4300)
@@ -6386,22 +6212,8 @@ void gen_CP1_C_NGT_S(struct r4300_core* r4300)
 #if defined(COUNT_INSTR)
     inc_m32rel(&instr_count[118]);
 #endif
-#ifdef INTERPRET_CP1_C_NGT_S
+    /* NaN operands raise Invalid Operation, which the interpreter models */
     gencallinterp(r4300, (unsigned long long)cached_interp_C_NGT_S, 0);
-#else
-    gencheck_cop1_unusable(r4300);
-    mov_xreg64_m64rel(RAX, (unsigned long long *)(&(r4300_cp1_regs_simple(&r4300->cp1))[r4300->recomp.dst->f.cf.ft]));
-    fld_preg64_dword(RAX);
-    mov_xreg64_m64rel(RAX, (unsigned long long *)(&(r4300_cp1_regs_simple(&r4300->cp1))[r4300->recomp.dst->f.cf.fs]));
-    fld_preg64_dword(RAX);
-    fcomip_fpreg(1);
-    ffree_fpreg(0);
-    jp_rj(15);
-    ja_rj(13);
-    or_m32rel_imm32((unsigned int*)&(*r4300_cp1_fcr31(&r4300->cp1)), 0x800000); // 11
-    jmp_imm_short(11); // 2
-    and_m32rel_imm32((unsigned int*)&(*r4300_cp1_fcr31(&r4300->cp1)), ~0x800000); // 11
-#endif
 }
 
 void gen_CP1_C_NGT_D(struct r4300_core* r4300)
@@ -6409,20 +6221,6 @@ void gen_CP1_C_NGT_D(struct r4300_core* r4300)
 #if defined(COUNT_INSTR)
     inc_m32rel(&instr_count[118]);
 #endif
-#ifdef INTERPRET_CP1_C_NGT_D
+    /* NaN operands raise Invalid Operation, which the interpreter models */
     gencallinterp(r4300, (unsigned long long)cached_interp_C_NGT_D, 0);
-#else
-    gencheck_cop1_unusable(r4300);
-    mov_xreg64_m64rel(RAX, (unsigned long long *)(&(r4300_cp1_regs_double(&r4300->cp1))[r4300->recomp.dst->f.cf.ft]));
-    fld_preg64_qword(RAX);
-    mov_xreg64_m64rel(RAX, (unsigned long long *)(&(r4300_cp1_regs_double(&r4300->cp1))[r4300->recomp.dst->f.cf.fs]));
-    fld_preg64_qword(RAX);
-    fcomip_fpreg(1);
-    ffree_fpreg(0);
-    jp_rj(15);
-    ja_rj(13); // 2
-    or_m32rel_imm32((unsigned int*)&(*r4300_cp1_fcr31(&r4300->cp1)), 0x800000); // 11
-    jmp_imm_short(11); // 2
-    and_m32rel_imm32((unsigned int*)&(*r4300_cp1_fcr31(&r4300->cp1)), ~0x800000); // 11
-#endif
 }

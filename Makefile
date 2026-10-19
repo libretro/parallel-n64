@@ -1327,6 +1327,12 @@ test_cp0_exceptions$(EXE_EXT): tools/test_cp0_exceptions.c $(TEST_CP0_SRCS)
 		-I$(CORE_DIR)/custom -I$(LIBRETRO_COMM_DIR)/include -I$(ROOT_DIR)/libretro \
 		$^ -o $@ $(CHECK_LDFLAGS) $(CHECK_SANITIZE)
 
+# -Ofast as the core itself is built, so the compares are checked under the
+# same floating-point assumptions
+test_fpu_compare$(EXE_EXT): tools/test_fpu_compare.c
+	$(CC) $(CHECK_CFLAGS) -Ofast $(CHECK_SANITIZE) -I$(CORE_DIR)/src \
+		$^ -o $@ $(CHECK_LDFLAGS) $(CHECK_SANITIZE) -lm
+
 TEST_PI_SRCS := $(CORE_DEVICE_DIR)/rcp/pi/pi_controller.c $(CORE_DEVICE_DIR)/rcp/mi/mi_controller.c
 test_pi_status$(EXE_EXT): tools/test_pi_status.c $(TEST_PI_SRCS)
 	$(CC) $(CHECK_CFLAGS) $(CHECK_SANITIZE) -I$(CORE_DIR)/src -I$(CORE_DIR)/src/api \
@@ -1346,8 +1352,8 @@ angrylion_zboss_audio_test$(EXE_EXT): tools/angrylion_zboss_audio_test.c \
 		$< $(ZBOSS_TEST_OBJS) -o $@ $(CHECK_LDFLAGS) $(CHECK_SANITIZE) -lm
 
 CORE_CHECKS := test_rcp_bounds$(EXE_EXT) test_memory_map$(EXE_EXT) test_fb_write$(EXE_EXT) \
-	test_cp0_exceptions$(EXE_EXT) test_pi_status$(EXE_EXT) test_musyx_bounds$(EXE_EXT) \
-	angrylion_zboss_audio_test$(EXE_EXT)
+	test_cp0_exceptions$(EXE_EXT) test_fpu_compare$(EXE_EXT) test_pi_status$(EXE_EXT) \
+	test_musyx_bounds$(EXE_EXT) angrylion_zboss_audio_test$(EXE_EXT)
 
 ifeq ($(HAVE_PARALLEL_RSP), 1)
 PRSP_TEST_OBJS := $(filter $(RSPDIR_PARALLEL)/%,$(OBJECTS))

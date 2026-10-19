@@ -2144,7 +2144,7 @@ static void LL_new(uint32_t address, int count)
   UPDATE_COUNT_IN
   if (r4300_read_aligned_word(r4300, address, &value)) {
     state->rt = (int64_t)(int32_t)value;
-    r4300->llbit = 1;
+    cp0_load_linked(r4300, address);
   }
   UPDATE_COUNT_OUT
 }
@@ -2155,7 +2155,7 @@ static void LLD_new(uint32_t address, int count)
   UPDATE_COUNT_IN
   if (r4300_read_aligned_dword(r4300, address, &value)) {
     state->rt = (int64_t)value;
-    r4300->llbit = 1;
+    cp0_load_linked(r4300, address);
   }
   UPDATE_COUNT_OUT
 }
@@ -9753,10 +9753,13 @@ int new_recompile_block(int addr)
         break;
       case ATOMIC:
         rs1[i]=(source[i]>>21)&0x1F;
-        rs2[i]=0;
+        /* SC/SCD store rt before overwriting it with the success flag */
+        rs2[i]=(op==0x38||op==0x3c)?(source[i]>>16)&0x1F:0;
         rt1[i]=(source[i]>>16)&0x1F;
         rt2[i]=0;
         imm[i]=(short)source[i];
+        us1[i]=rs1[i]; // full 64-bit base (see LOAD)
+        if(op==0x3c) us2[i]=rs2[i]; // SCD stores all 64 bits
         break;
       case SYSCALL:
         rs1[i]=CCREG;
