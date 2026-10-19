@@ -468,12 +468,28 @@ Func CPU::get_jit_block(uint32_t pc)
 	return block;
 }
 
-int CPU::enter(uint32_t pc)
+/* On Win64 the generated entry frame saves and restores xmm6-xmm15 as
+ * doubles, which zeroes their upper halves.  Declaring them clobbered here
+ * makes this frame save and restore them in full for its callers. */
+#if defined(__GNUC__) && defined(__x86_64__) && (defined(_WIN32) || defined(__CYGWIN__))
+#define RSP_JIT_ENTER_NOINLINE __attribute__((noinline))
+#define RSP_JIT_ENTER_CLOBBER_XMM() \
+	__asm__ __volatile__("" ::: "xmm6", "xmm7", "xmm8", "xmm9", "xmm10", \
+	                     "xmm11", "xmm12", "xmm13", "xmm14", "xmm15")
+#else
+#define RSP_JIT_ENTER_NOINLINE
+#define RSP_JIT_ENTER_CLOBBER_XMM() ((void)0)
+#endif
+
+RSP_JIT_ENTER_NOINLINE int CPU::enter(uint32_t pc)
 {
+	int ret;
+
 	// Top level enter.
 	state.pc = pc;
 	static_assert(offsetof(CPU, state) == 0, "CPU state must lie on first byte.");
-	int ret = thunks.enter_frame(this);
+	ret = thunks.enter_frame(this);
+	RSP_JIT_ENTER_CLOBBER_XMM();
 	return ret;
 }
 

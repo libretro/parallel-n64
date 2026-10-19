@@ -96,7 +96,7 @@ extern "C"
 #endif
 
 		for (unsigned i = e; i < e + 4; i++)
-			WRITE_MEM_U8(rsp->dmem, addr++, byteFromHalfWords(rsp->cp2.regs[rt].e, i & 0xf));
+			WRITE_MEM_U8(rsp->dmem, addr++ & 0xfff, byteFromHalfWords(rsp->cp2.regs[rt].e, i & 0xf));
 	}
 
 	// Load 64-bit
@@ -216,7 +216,7 @@ extern "C"
 		{
 			const unsigned b = e + (i << 1);
 			const uint8_t byte = byteFromHalfWords(reg, b & 0xf) << 1 | byteFromHalfWords(reg, b + 1 & 0xf) >> 7;
-			WRITE_MEM_U8(rsp->dmem, addr + (index + i * 2 & 0xf), byte);
+			WRITE_MEM_U8(rsp->dmem, (addr + (index + i * 2 & 0xf)) & 0xfff, byte);
 		}
 	}
 
@@ -241,10 +241,10 @@ extern "C"
 	}
 
 #define RSP_SFV_CASE(a,b,c,d) \
-	WRITE_MEM_U8(rsp->dmem, addr + base, int16_t(reg[a]) >> 7); \
-	WRITE_MEM_U8(rsp->dmem, addr + 4 + base, int16_t(reg[b]) >> 7); \
-	WRITE_MEM_U8(rsp->dmem, addr + (8 + base & 0xf), int16_t(reg[c]) >> 7); \
-	WRITE_MEM_U8(rsp->dmem, addr + (12 + base & 0xf), int16_t(reg[d]) >> 7);
+	WRITE_MEM_U8(rsp->dmem, (addr + base) & 0xfff, int16_t(reg[a]) >> 7); \
+	WRITE_MEM_U8(rsp->dmem, (addr + 4 + base) & 0xfff, int16_t(reg[b]) >> 7); \
+	WRITE_MEM_U8(rsp->dmem, (addr + (8 + base & 0xf)) & 0xfff, int16_t(reg[c]) >> 7); \
+	WRITE_MEM_U8(rsp->dmem, (addr + (12 + base & 0xf)) & 0xfff, int16_t(reg[d]) >> 7);
 
 	void RSP_SFV(RSP::CPUState *rsp, unsigned rt, unsigned e, int offset, unsigned base)
 	{
@@ -279,10 +279,10 @@ extern "C"
 			RSP_SFV_CASE(5,6,7,4)
 			break;
 		default:
-			WRITE_MEM_U8(rsp->dmem, addr + base, 0);
-			WRITE_MEM_U8(rsp->dmem, addr + 4 + base, 0);
-			WRITE_MEM_U8(rsp->dmem, addr + (8 + base & 0xf), 0);
-			WRITE_MEM_U8(rsp->dmem, addr + (12 + base & 0xf), 0);
+			WRITE_MEM_U8(rsp->dmem, (addr + base) & 0xfff, 0);
+			WRITE_MEM_U8(rsp->dmem, (addr + 4 + base) & 0xfff, 0);
+			WRITE_MEM_U8(rsp->dmem, (addr + (8 + base & 0xf)) & 0xfff, 0);
+			WRITE_MEM_U8(rsp->dmem, (addr + (12 + base & 0xf)) & 0xfff, 0);
 			break;
 		}
 	}
@@ -307,7 +307,7 @@ extern "C"
 		addr &= ~7;
 
 		for (unsigned i = e; i < e + 16; i++)
-			WRITE_MEM_U8(rsp->dmem, addr + (base++ & 0xf), byteFromHalfWords(rsp->cp2.regs[rt].e, i & 0xf));
+			WRITE_MEM_U8(rsp->dmem, (addr + (base++ & 0xf)) & 0xfff, byteFromHalfWords(rsp->cp2.regs[rt].e, i & 0xf));
 	}
 
 	void RSP_LQV(RSP::CPUState *rsp, unsigned rt, unsigned e, int offset, unsigned base)
@@ -386,8 +386,8 @@ extern "C"
 
 		for (unsigned i = rt; i < rt + 8; i++ )
 		{
-			WRITE_MEM_U8(rsp->dmem, addr + (base++ & 0xf), byteFromHalfWords(rsp->cp2.regs[i].e, element++ & 0xf));
-			WRITE_MEM_U8(rsp->dmem, addr + (base++ & 0xf), byteFromHalfWords(rsp->cp2.regs[i].e, element++ & 0xf));
+			WRITE_MEM_U8(rsp->dmem, (addr + (base++ & 0xf)) & 0xfff, byteFromHalfWords(rsp->cp2.regs[i].e, element++ & 0xf));
+			WRITE_MEM_U8(rsp->dmem, (addr + (base++ & 0xf)) & 0xfff, byteFromHalfWords(rsp->cp2.regs[i].e, element++ & 0xf));
 		}
 	}
 }

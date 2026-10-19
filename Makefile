@@ -1203,7 +1203,7 @@ clean: clean-tools
 
 clean-tools:
 	rm -f $(ANGRYLION_TOOLS) lrhost$(EXE_EXT) lrhost_vk$(EXE_EXT) angrylion_replay$(EXE_EXT) $(ANGRYLION_CHECKS) \
-		$(CORE_CHECKS)
+		$(CORE_CHECKS) tools/test_prsp_dmem_wrap.o
 
 # Angrylion benchmark and bit-exactness harnesses (tools/angrylion_*.c),
 # linked against the core's own angrylion objects: `make tools` after a
@@ -1271,9 +1271,10 @@ tools: $(ANGRYLION_TOOLS) lrhost$(EXE_EXT) angrylion_replay$(EXE_EXT) $(ANGRYLIO
 check-angrylion: $(ANGRYLION_CHECKS)
 	@set -e; for t in $(ANGRYLION_CHECKS); do echo "== $$t"; ./$$t; done
 
-# Core self-tests: MMIO register and DMA bounds, the MusyX voice loaders
-# and the BOSS audio arithmetic.  Each unit under test is compiled into its
-# test; sanitizers are used where the toolchain has them.
+# Core self-tests: MMIO register and DMA bounds, the MusyX voice loaders,
+# the BOSS audio arithmetic and, in a HAVE_PARALLEL_RSP=1 build, the
+# paraLLEl-RSP DMEM wrap.  Each unit under test is compiled into its test;
+# sanitizers are used where the toolchain has them.
 ifeq ($(EXE_EXT),.exe)
 CHECK_SANITIZE ?=
 else
@@ -1314,6 +1315,14 @@ angrylion_zboss_audio_test$(EXE_EXT): tools/angrylion_zboss_audio_test.c \
 
 CORE_CHECKS := test_rcp_bounds$(EXE_EXT) test_musyx_bounds$(EXE_EXT) \
 	angrylion_zboss_audio_test$(EXE_EXT)
+
+ifeq ($(HAVE_PARALLEL_RSP), 1)
+PRSP_TEST_OBJS := $(filter $(RSPDIR_PARALLEL)/%,$(OBJECTS))
+test_prsp_dmem_wrap$(EXE_EXT): tools/test_prsp_dmem_wrap.c $(PRSP_TEST_OBJS)
+	$(CC) $(CHECK_CFLAGS) $(CHECK_SANITIZE) -I$(CORE_DIR)/src -c $< -o tools/test_prsp_dmem_wrap.o
+	$(CXX) tools/test_prsp_dmem_wrap.o $(PRSP_TEST_OBJS) -o $@ $(CHECK_SANITIZE) -lpthread -lm
+CORE_CHECKS += test_prsp_dmem_wrap$(EXE_EXT)
+endif
 
 check-core: $(CORE_CHECKS)
 	@set -e; for t in $(CORE_CHECKS); do echo "== $$t"; ./$$t; done
