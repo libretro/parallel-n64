@@ -205,6 +205,11 @@ bool Renderer::init_caps()
 			LOGW("Current proprietary Intel Windows driver is tested to perform much better without 8/16-bit integer support.\n");
 			allow_small_types = false;
 		}
+		else if (features.driver_properties.driverID == VK_DRIVER_ID_QUALCOMM_PROPRIETARY_KHR)
+		{
+			LOGW("Current proprietary Qcom driver is known to be buggy with 8/16-bit integer arithmetic, disabling support for time being.\n");
+			allow_small_types = false;
+		}
 
 		// Intel ANV *must* use small integer arithmetic, or it doesn't pass test suite.
 	}
@@ -1135,7 +1140,7 @@ static bool combiner_uses_lod_frac(const StaticRasterizationState &state)
 void Renderer::deduce_noise_state()
 {
 	auto &state = stream.static_raster_state;
-	state.flags &= ~RASTERIZATION_NEED_NOISE_BIT;
+	state.flags &= ~(RASTERIZATION_NEED_NOISE_BIT | RASTERIZATION_NEED_NOISE_DUAL_BIT);
 
 	// Figure out if we need to seed noise variable for this primitive.
 	if ((state.dither & 3) == 2 || ((state.dither >> 2) & 3) == 2)
@@ -1148,12 +1153,17 @@ void Renderer::deduce_noise_state()
 		return;
 
 	if ((state.flags & RASTERIZATION_MULTI_CYCLE_BIT) != 0)
-	{
 		if (state.combiner[0].rgb.muladd == RGBMulAdd::Noise)
 			state.flags |= RASTERIZATION_NEED_NOISE_BIT;
-	}
-	else if (state.combiner[1].rgb.muladd == RGBMulAdd::Noise)
+
+	if (state.combiner[1].rgb.muladd == RGBMulAdd::Noise)
 		state.flags |= RASTERIZATION_NEED_NOISE_BIT;
+
+	// If both cycles use noise, they need to observe different values.
+	if ((state.flags & RASTERIZATION_MULTI_CYCLE_BIT) != 0 &&
+	    state.combiner[0].rgb.muladd == RGBMulAdd::Noise &&
+	    state.combiner[1].rgb.muladd == RGBMulAdd::Noise)
+		state.flags |= RASTERIZATION_NEED_NOISE_DUAL_BIT;
 
 	if ((state.flags & (RASTERIZATION_ALPHA_TEST_BIT | RASTERIZATION_ALPHA_TEST_DITHER_BIT)) ==
 	    (RASTERIZATION_ALPHA_TEST_BIT | RASTERIZATION_ALPHA_TEST_DITHER_BIT))
@@ -1304,6 +1314,7 @@ StaticRasterizationState Renderer::normalize_static_state(StaticRasterizationSta
 		              RASTERIZATION_USE_STATIC_TEXTURE_SIZE_FORMAT_BIT |
 		              RASTERIZATION_TEX_LOD_ENABLE_BIT |
 		              RASTERIZATION_DETAIL_LOD_ENABLE_BIT |
+		              RASTERIZATION_PERSPECTIVE_CORRECT_BIT |
 		              RASTERIZATION_ALPHA_TEST_BIT);
 
 		auto fmt = state.texture_fmt;
