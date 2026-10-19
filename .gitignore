@@ -15,6 +15,7 @@
 **/*.bin
 **/*.sfo
 **/*.vpk
+obj/
 mupen64plus-rsp-paraLLEl/win32/mman/sys/mman.o
 mupen64plus-rsp-paraLLEl/win32/mman/sys/mman.c
 mupen64plus-rsp-paraLLEl/win32/mman/sys/mman.h
