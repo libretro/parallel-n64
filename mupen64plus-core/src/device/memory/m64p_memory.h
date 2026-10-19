@@ -41,18 +41,12 @@ struct mem_handler
     write32fn write32;
 };
 
-struct retroarch_mem_mapping {
-    void* ptr;
-    size_t len;
-    uint64_t flags;
-};
 struct mem_mapping
 {
     uint32_t begin;
     uint32_t end;       /* inclusive */
     int type;
     struct mem_handler handler;
-    struct retroarch_mem_mapping retroarch_mapping;
 };
 
 struct memory

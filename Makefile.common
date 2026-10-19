@@ -100,6 +100,7 @@ SOURCES_C += \
 	$(CORE_DIR)/src/main/eventloop.c \
 	$(CORE_DIR)/src/main/main.c \
 	$(CORE_DIR)/src/device/device.c \
+	$(CORE_DIR)/src/device/device_memory_map.c \
 	$(CORE_DIR)/src/device/aleck64/aleck64.c \
 	$(CORE_DIR)/src/main/rom.c \
 	$(CORE_DIR)/subprojects/md5/md5.c \

@@ -1271,10 +1271,11 @@ tools: $(ANGRYLION_TOOLS) lrhost$(EXE_EXT) angrylion_replay$(EXE_EXT) $(ANGRYLIO
 check-angrylion: $(ANGRYLION_CHECKS)
 	@set -e; for t in $(ANGRYLION_CHECKS); do echo "== $$t"; ./$$t; done
 
-# Core self-tests: MMIO register and DMA bounds, the MusyX voice loaders,
-# the BOSS audio arithmetic and, in a HAVE_PARALLEL_RSP=1 build, the
-# paraLLEl-RSP DMEM wrap.  Each unit under test is compiled into its test;
-# sanitizers are used where the toolchain has them.
+# Core self-tests: MMIO register and DMA bounds, the frontend memory map,
+# the MusyX voice loaders, the BOSS audio arithmetic and, in a
+# HAVE_PARALLEL_RSP=1 build, the paraLLEl-RSP DMEM wrap.  Each unit under
+# test is compiled into its test; sanitizers are used where the toolchain
+# has them.
 ifeq ($(EXE_EXT),.exe)
 CHECK_SANITIZE ?=
 else
@@ -1300,6 +1301,11 @@ test_rcp_bounds$(EXE_EXT): tools/test_rcp_bounds.c $(TEST_RCP_BOUNDS_SRCS)
 		-I$(CORE_DIR)/custom -I$(LIBRETRO_COMM_DIR)/include -I$(ROOT_DIR)/libretro \
 		$^ -o $@ $(CHECK_LDFLAGS) $(CHECK_SANITIZE)
 
+test_memory_map$(EXE_EXT): tools/test_memory_map.c $(CORE_DEVICE_DIR)/device_memory_map.c
+	$(CC) $(CHECK_CFLAGS) $(CHECK_SANITIZE) -I$(CORE_DIR)/src -I$(CORE_DIR)/src/api \
+		-I$(CORE_DIR)/custom -I$(LIBRETRO_COMM_DIR)/include -I$(ROOT_DIR)/libretro \
+		$^ -o $@ $(CHECK_LDFLAGS) $(CHECK_SANITIZE)
+
 TEST_MUSYX_SRCS := $(RSPDIR)/src/hle_memory.c $(RSPDIR)/src/audio.c \
 	$(RSPDIR)/src/resample_hq.c
 test_musyx_bounds$(EXE_EXT): tools/test_musyx_bounds.c $(RSPDIR)/src/musyx.c $(TEST_MUSYX_SRCS)
@@ -1313,7 +1319,7 @@ angrylion_zboss_audio_test$(EXE_EXT): tools/angrylion_zboss_audio_test.c \
 	$(CC) $(CHECK_CFLAGS) $(CHECK_SANITIZE) -I$(VIDEODIR_ANGRYLION) -I$(LIBRETRO_COMM_DIR)/include \
 		$< $(ZBOSS_TEST_OBJS) -o $@ $(CHECK_LDFLAGS) $(CHECK_SANITIZE) -lm
 
-CORE_CHECKS := test_rcp_bounds$(EXE_EXT) test_musyx_bounds$(EXE_EXT) \
+CORE_CHECKS := test_rcp_bounds$(EXE_EXT) test_memory_map$(EXE_EXT) test_musyx_bounds$(EXE_EXT) \
 	angrylion_zboss_audio_test$(EXE_EXT)
 
 ifeq ($(HAVE_PARALLEL_RSP), 1)
