@@ -5,7 +5,8 @@
  *    loaded 128 from DMEM after the table, wrapping onto the ucode data
  *    segment past the end of DMEM;
  *  - frame counts, PCM16 lengths and DMA segment sizes larger than the
- *    0x200-sample window are held to it.
+ *    0x200-sample window are held to it;
+ *  - the base volume decay is exact for any accumulated volume.
  *
  * Built by `make check-core` (top-level Makefile). Exit status 0 on pass.
  */
@@ -162,6 +163,24 @@ static void test_oversized_voices(void)
           "PCM16: oversized lengths and segments stay in the window");
 }
 
+static void test_base_volume(void)
+{
+    int32_t base_vol[4];
+    int32_t expected[4];
+    unsigned k;
+
+    base_vol[0] = 0x40000000;
+    base_vol[1] = -0x40000000;
+    base_vol[2] = 0x7fff0000;
+    base_vol[3] = 0x00012345;
+    for (k = 0; k < 4; k++)
+        expected[k] = (int32_t)(((int64_t)base_vol[k] * 0xf850) >> 16);
+
+    update_base_vol(&s_hle, base_vol, 0, VOICE, 0, VOICE);
+    CHECK(memcmp(base_vol, expected, sizeof(expected)) == 0,
+          "base volume: the decay is the exact 0xf850/0x10000 product");
+}
+
 int main(void)
 {
     s_hle.dram = (unsigned char*)calloc(1, DRAM_BYTES);
@@ -169,6 +188,7 @@ int main(void)
 
     test_adpcm_top_book();
     test_oversized_voices();
+    test_base_volume();
 
     free(s_hle.dram);
     if (s_failures) {

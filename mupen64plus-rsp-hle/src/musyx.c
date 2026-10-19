@@ -460,7 +460,8 @@ static void update_base_vol(struct hle_t* hle, int32_t *base_vol,
                 continue;
 
             for (k = 0; k < 4; ++k)
-                base_vol[k] += (int16_t)*dram_u16(hle, last_sample_ptr + k * 2);
+                base_vol[k] = (int32_t)((uint32_t)base_vol[k]
+                            + (uint32_t)(int32_t)(int16_t)*dram_u16(hle, last_sample_ptr + k * 2));
         }
     }
 
@@ -472,13 +473,14 @@ static void update_base_vol(struct hle_t* hle, int32_t *base_vol,
                 continue;
 
             for(k = 0; k < 4; ++k)
-                base_vol[k] += (int16_t)*dram_u16(hle, ptr_24 + k * 2);
+                base_vol[k] = (int32_t)((uint32_t)base_vol[k]
+                            + (uint32_t)(int32_t)(int16_t)*dram_u16(hle, ptr_24 + k * 2));
         }
     }
 
     /* apply 3% decay */
     for (k = 0; k < 4; ++k)
-        base_vol[k] = (base_vol[k] * 0x0000f850) >> 16;
+        base_vol[k] = (int32_t)(((int64_t)base_vol[k] * 0x0000f850) >> 16);
 
     HleVerboseMessage(hle->user_defined,
                       "AFTER: base_vol = %08x %08x %08x %08x",
