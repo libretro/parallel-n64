@@ -7,7 +7,8 @@
  *    inside RDRAM, and a first block shorter than the DRAM misalignment
  *    transfers nothing;
  *  - the 32 KiB SRAM mirrors through its domain;
- *  - 64DD buffer DMAs stop at the end of the buffer they name.
+ *  - 64DD buffer DMAs stop at the end of the buffer they name;
+ *  - a debug message longer than the formatting buffer is truncated.
  *
  * Built by `make check-core` (top-level Makefile). Exit status 0 on pass.
  */
@@ -48,10 +49,6 @@ rsp_plugin_functions rsp_audio;
 uint32_t CountPerScanlineOverride = 0;
 int angrylion_sync_full_seen = 0;
 
-void DebugMessage(int level, const char *message, ...)
-{
-    (void)level; (void)message;
-}
 void add_interrupt_event(struct cp0* cp0, int type, unsigned int delay)
 {
     (void)cp0; (void)type; (void)delay;
@@ -431,8 +428,31 @@ static void test_dd_buffers(void)
           "DD: a data-sector DMA stops at the end of the buffer");
 }
 
+/* ---- debug messages ---------------------------------------------------- */
+
+static size_t s_message_length;
+
+static void record_message(void* context, int level, const char* message)
+{
+    (void)context; (void)level;
+    s_message_length = strlen(message);
+}
+
+static void test_debug_message(void)
+{
+    static char long_name[1024];
+
+    memset(long_name, 'x', sizeof(long_name) - 1);
+    SetDebugCallback(record_message, NULL);
+    DebugMessage(M64MSG_INFO, "loading %s", long_name);
+    SetDebugCallback(NULL, NULL);
+    CHECK(s_message_length > 0 && s_message_length < 256,
+          "DebugMessage: a long message is truncated to the buffer");
+}
+
 int main(void)
 {
+    test_debug_message();
     test_register_blocks();
     test_pi_dma();
     test_sram();

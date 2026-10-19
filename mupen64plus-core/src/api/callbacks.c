@@ -60,7 +60,8 @@ void DebugMessage(int level, const char *message, ...)
       return;
 
   va_start(args, message);
-  vsprintf(msgbuf, message, args);
+  vsnprintf(msgbuf, sizeof(msgbuf), message, args);
+  msgbuf[sizeof(msgbuf) - 1] = '\0';
 
   (*pDebugFunc)(DebugContext, level, msgbuf);
 
