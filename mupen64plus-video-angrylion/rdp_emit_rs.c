@@ -581,8 +581,17 @@ void rs_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int dl_addr)
                 nw = 4;
                 size = 16u;
             }
-            if (op == 0xdfu || op == 0xe9u)
+            if (op == 0xdfu)
                 rdp_fifo_fullsync_note();
+            if (op == 0xe9u)
+            {
+                /* SYNC_FULL: the task's single terminating full sync is
+                 * appended once the list completes, as for the other
+                 * walkers, so the list's own is noted and not forwarded. */
+                rdp_fifo_fullsync_note();
+                pc += size;
+                continue;
+            }
             if (op == 0xf2u)
             {
                 /* SETTILESIZE: remember the tile texel extent for the

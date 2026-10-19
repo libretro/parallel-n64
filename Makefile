@@ -1257,7 +1257,8 @@ angrylion_clip_test$(EXE_EXT): tools/angrylion_clip_test.c $(ANGRYLION_EMIT_OBJS
 ANGRYLION_WALKER_OBJS := $(filter-out $(VIDEODIR_ANGRYLION)/rdp_emit_hle.o, \
 	$(patsubst %.c,%.o,$(wildcard $(VIDEODIR_ANGRYLION)/rdp_emit*.c))) \
 	$(LIBRETRO_COMM_DIR)/encodings/encoding_crc32.o \
-	$(LIBRETRO_COMM_DIR)/features/features_cpu.o
+	$(LIBRETRO_COMM_DIR)/features/features_cpu.o \
+	$(LIBRETRO_COMM_DIR)/time/rtime.o
 angrylion_f3d_near_test$(EXE_EXT): tools/angrylion_f3d_near_test.c $(ANGRYLION_WALKER_OBJS)
 	$(CC) $(CPPFLAGS) $(CFLAGS) -I$(VIDEODIR_ANGRYLION) -w $< $(ANGRYLION_WALKER_OBJS) -o $@ -lm
 
@@ -1265,9 +1266,13 @@ angrylion_f3d_near_test$(EXE_EXT): tools/angrylion_f3d_near_test.c $(ANGRYLION_W
 angrylion_divide_test$(EXE_EXT): tools/angrylion_divide_test.c $(CXD4DIR)/rsp.o $(ANGRYLION_EMIT_OBJS)
 	$(CC) $(CPPFLAGS) $(CFLAGS) -I$(VIDEODIR_ANGRYLION) -w $< $(CXD4DIR)/rsp.o $(ANGRYLION_EMIT_OBJS) -o $@ -lm
 
+# Rogue Squadron walker: the list's own SYNC_FULL is not forwarded.
+angrylion_rs_fullsync_test$(EXE_EXT): tools/angrylion_rs_fullsync_test.c $(ANGRYLION_WALKER_OBJS)
+	$(CC) $(CPPFLAGS) $(CFLAGS) -I$(VIDEODIR_ANGRYLION) -w $< $(ANGRYLION_WALKER_OBJS) -o $@ -lm
+
 ANGRYLION_CHECKS := angrylion_vemit_test$(EXE_EXT) angrylion_gen_test$(EXE_EXT) \
 	angrylion_clip_test$(EXE_EXT) angrylion_f3d_near_test$(EXE_EXT) \
-	angrylion_divide_test$(EXE_EXT)
+	angrylion_divide_test$(EXE_EXT) angrylion_rs_fullsync_test$(EXE_EXT)
 
 tools: $(ANGRYLION_TOOLS) lrhost$(EXE_EXT) angrylion_replay$(EXE_EXT) $(ANGRYLION_CHECKS)
 
@@ -1328,8 +1333,7 @@ test_musyx_bounds$(EXE_EXT): tools/test_musyx_bounds.c $(RSPDIR)/src/musyx.c $(T
 	$(CC) $(CHECK_CFLAGS) $(CHECK_SANITIZE) -I$(RSPDIR)/src -I$(LIBRETRO_COMM_DIR)/include \
 		$< $(TEST_MUSYX_SRCS) -o $@ $(CHECK_LDFLAGS) $(CHECK_SANITIZE) -lm
 
-ZBOSS_TEST_OBJS := $(filter-out $(VIDEODIR_ANGRYLION)/rdp_emit_zboss.o,$(ANGRYLION_WALKER_OBJS)) \
-	$(LIBRETRO_COMM_DIR)/time/rtime.o
+ZBOSS_TEST_OBJS := $(filter-out $(VIDEODIR_ANGRYLION)/rdp_emit_zboss.o,$(ANGRYLION_WALKER_OBJS))
 angrylion_zboss_audio_test$(EXE_EXT): tools/angrylion_zboss_audio_test.c \
 		$(VIDEODIR_ANGRYLION)/rdp_emit_zboss.c $(ZBOSS_TEST_OBJS)
 	$(CC) $(CHECK_CFLAGS) $(CHECK_SANITIZE) -I$(VIDEODIR_ANGRYLION) -I$(LIBRETRO_COMM_DIR)/include \
