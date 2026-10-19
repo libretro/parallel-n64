@@ -127,56 +127,57 @@ void read_rdram_fb(void* opaque, uint32_t address, uint32_t* value)
 void write_rdram_fb(void* opaque, uint32_t address, uint32_t value, uint32_t mask)
 {
     struct fb* fb = (struct fb*)opaque;
-    write_rdram_dram(fb->rdram, address, value, mask);
-
-    uint32_t addr = address & ~0x3;
+    uint32_t addr = address & ~UINT32_C(3);
     size_t size = 4;
 
+    write_rdram_dram(fb->rdram, address, value, mask);
+
+    /* The mask selects bytes of the big-endian word, so 0x000000ff is the
+     * byte at word offset 3 on any host.  A split doubleword store can
+     * carry an empty half. */
     switch(mask)
     {
+    case 0x00000000:
+        return;
+
     case 0x000000ff:
-        addr += (3 ^ S8);
+        addr += 3;
         size = 1;
         break;
 
     case 0x0000ff00:
-        addr += (2 ^ S8);
+        addr += 2;
         size = 1;
         break;
 
     case 0x00ff0000:
-        addr += (1 ^ S8);
+        addr += 1;
         size = 1;
         break;
 
     case 0xff000000:
-        addr += (0 ^ S8);
         size = 1;
         break;
 
     case 0x0000ffff:
-        addr += (2 ^ S16);
+        addr += 2;
         size = 2;
         break;
 
     case 0xffff0000:
-        addr += (0 ^ S16);
         size = 2;
         break;
 
     case 0xffffff00:
-        addr += (0 ^ Sh16);
         size = 3;
         break;
 
     case 0x00ffffff:
-        addr += (1 ^ Sh16);
+        addr += 1;
         size = 3;
         break;
 
     case 0xffffffff:
-        addr += 0;
-        size = 4;
         break;
 
     default:
