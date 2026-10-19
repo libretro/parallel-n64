@@ -127,6 +127,9 @@ typedef struct {
 
     /* */
     int16_t subframe_740_last4[4];
+
+    /* DMEM address the ucode loads a voice's ADPCM books to */
+    uint16_t adpcm_table_dmem;
 } musyx_t;
 
 typedef void (*mix_sfx_with_main_subframes_t)(musyx_t *musyx, const int16_t *subframe,
@@ -145,13 +148,14 @@ static void init_subframes_v2(musyx_t *musyx);
 static uint32_t voice_stage(struct hle_t* hle, musyx_t *musyx,
                             uint32_t voice_ptr, uint32_t last_sample_ptr);
 
-static void dma_cat8(struct hle_t* hle, uint8_t *dst, uint32_t catsrc_ptr);
-static void dma_cat16(struct hle_t* hle, uint16_t *dst, uint32_t catsrc_ptr);
+static void dma_cat8(struct hle_t* hle, uint8_t *dst, size_t capacity, uint32_t catsrc_ptr);
+static void dma_cat16(struct hle_t* hle, uint16_t *dst, size_t capacity, uint32_t catsrc_ptr);
 
 static void load_samples_PCM16(struct hle_t* hle, uint32_t voice_ptr, int16_t *samples,
                                unsigned *segbase, unsigned *offset);
 static void load_samples_ADPCM(struct hle_t* hle, uint32_t voice_ptr, int16_t *samples,
-                               unsigned *segbase, unsigned *offset);
+                               unsigned *segbase, unsigned *offset,
+                               uint16_t table_dmem);
 
 static void adpcm_decode_frames(struct hle_t* hle,
                                 int16_t *dst, const uint8_t *src,
@@ -260,6 +264,8 @@ void musyx_v1_task(struct hle_t* hle)
                       sfd_ptr,
                       sfd_count);
 
+    musyx.adpcm_table_dmem = 0xee0;
+
     state_ptr = *dram_u32(hle, sfd_ptr + SFD_STATE_PTR);
 
     /* load initial state */
@@ -339,6 +345,8 @@ void musyx_v2_task(struct hle_t* hle)
                       "musyx_v2_task: *data=%x, #SF=%d",
                       sfd_ptr,
                       sfd_count);
+
+    musyx.adpcm_table_dmem = 0xf00;
 
     for (;;) {
         /* parse SFD structure */
@@ -545,7 +553,8 @@ static uint32_t voice_stage(struct hle_t* hle, musyx_t *musyx,
             if (*dram_u8(hle, voice_ptr + VOICE_ADPCM_FRAMES) == 0)
                 load_samples_PCM16(hle, voice_ptr, samples, &segbase, &offset);
             else
-                load_samples_ADPCM(hle, voice_ptr, samples, &segbase, &offset);
+                load_samples_ADPCM(hle, voice_ptr, samples, &segbase, &offset,
+                                   musyx->adpcm_table_dmem);
 
             /* mix them with each internal subframes */
             mix_voice_samples(hle, musyx, voice_ptr, samples, segbase, offset,
@@ -565,7 +574,9 @@ static uint32_t voice_stage(struct hle_t* hle, musyx_t *musyx,
     return output_ptr;
 }
 
-static void dma_cat8(struct hle_t* hle, uint8_t *dst, uint32_t catsrc_ptr)
+/* capacity bounds what lands in dst; the ucode's buffers are fixed in
+ * DMEM, so a larger request only ever refills the same window. */
+static void dma_cat8(struct hle_t* hle, uint8_t *dst, size_t capacity, uint32_t catsrc_ptr)
 {
     uint32_t ptr1  = *dram_u32(hle, catsrc_ptr + CATSRC_PTR1);
     uint32_t ptr2  = *dram_u32(hle, catsrc_ptr + CATSRC_PTR2);
@@ -574,6 +585,11 @@ static void dma_cat8(struct hle_t* hle, uint8_t *dst, uint32_t catsrc_ptr)
 
     size_t count1 = size1;
     size_t count2 = size2;
+
+    if (count1 > capacity)
+        count1 = capacity;
+    if (count2 > capacity - count1)
+        count2 = capacity - count1;
 
     HleVerboseMessage(hle->user_defined,
                       "dma_cat: %08x %08x %04x %04x",
@@ -590,7 +606,7 @@ static void dma_cat8(struct hle_t* hle, uint8_t *dst, uint32_t catsrc_ptr)
     dram_load_u8(hle, dst + count1, ptr2, count2);
 }
 
-static void dma_cat16(struct hle_t* hle, uint16_t *dst, uint32_t catsrc_ptr)
+static void dma_cat16(struct hle_t* hle, uint16_t *dst, size_t capacity, uint32_t catsrc_ptr)
 {
     uint32_t ptr1  = *dram_u32(hle, catsrc_ptr + CATSRC_PTR1);
     uint32_t ptr2  = *dram_u32(hle, catsrc_ptr + CATSRC_PTR2);
@@ -599,6 +615,11 @@ static void dma_cat16(struct hle_t* hle, uint16_t *dst, uint32_t catsrc_ptr)
 
     size_t count1 = size1 >> 1;
     size_t count2 = size2 >> 1;
+
+    if (count1 > capacity)
+        count1 = capacity;
+    if (count2 > capacity - count1)
+        count2 = capacity - count1;
 
     HleVerboseMessage(hle->user_defined,
                       "dma_cat: %08x %08x %04x %04x",
@@ -627,22 +648,48 @@ static void load_samples_PCM16(struct hle_t* hle, uint32_t voice_ptr, int16_t *s
 
     HleVerboseMessage(hle->user_defined, "Format: PCM16");
 
+    if (count > SAMPLE_BUFFER_SIZE)
+        count = SAMPLE_BUFFER_SIZE;
+
     *segbase = SAMPLE_BUFFER_SIZE - count;
     *offset  = u8_3e;
 
-    dma_cat16(hle, (uint16_t *)samples + *segbase, voice_ptr + VOICE_CATSRC_0);
+    dma_cat16(hle, (uint16_t *)samples + *segbase, count, voice_ptr + VOICE_CATSRC_0);
 
     if (u16_42 != 0)
-        dma_cat16(hle, (uint16_t *)samples, voice_ptr + VOICE_CATSRC_1);
+        dma_cat16(hle, (uint16_t *)samples, SAMPLE_BUFFER_SIZE, voice_ptr + VOICE_CATSRC_1);
+}
+
+/* The entries past the loaded books are whatever follows them in DMEM.
+ * Past the end of DMEM the address wraps onto the ucode's data segment,
+ * which the ucode keeps resident from DMEM 0. */
+static void load_adpcm_table_tail(struct hle_t* hle, int16_t *table,
+                                  uint16_t table_dmem)
+{
+    uint32_t ucode_data = *dmem_u32(hle, TASK_UCODE_DATA);
+    unsigned k;
+
+    for (k = 128; k < 256; ++k) {
+        unsigned address = (unsigned)table_dmem + k * 2;
+
+        table[k] = (int16_t)((address < 0x1000)
+            ? *dmem_u16(hle, (uint16_t)address)
+            : *dram_u16(hle, ucode_data + (address & 0xfff)));
+    }
 }
 
 static void load_samples_ADPCM(struct hle_t* hle, uint32_t voice_ptr, int16_t *samples,
-                               unsigned *segbase, unsigned *offset)
+                               unsigned *segbase, unsigned *offset,
+                               uint16_t table_dmem)
 {
     /* decompressed samples cannot exceed 0x400 bytes;
-     * ADPCM has a compression ratio of 5/16 */
-    uint8_t buffer[SAMPLE_BUFFER_SIZE * 2 * 5 / 16];
-    int16_t adpcm_table[128];
+     * ADPCM has a compression ratio of 5/16.  The decoder's frame walk
+     * may look past the encoded bytes, so the window is twice that and
+     * starts out clear. */
+    uint8_t buffer[SAMPLE_BUFFER_SIZE * 2 * 5 / 16 * 2];
+    /* A frame header selects its book with the full high nibble, so the
+     * ucode reads up to 256 entries from where it loaded 128 of them. */
+    int16_t adpcm_table[256];
 
     uint8_t u8_3c = *dram_u8(hle, voice_ptr + VOICE_ADPCM_FRAMES    );
     uint8_t u8_3d = *dram_u8(hle, voice_ptr + VOICE_ADPCM_FRAMES + 1);
@@ -655,17 +702,25 @@ static void load_samples_ADPCM(struct hle_t* hle, uint32_t voice_ptr, int16_t *s
 
     HleVerboseMessage(hle->user_defined, "Loading ADPCM table: %08x", adpcm_table_ptr);
     dram_load_u16(hle, (uint16_t *)adpcm_table, adpcm_table_ptr, 128);
+    load_adpcm_table_tail(hle, adpcm_table, table_dmem);
+
+    /* 32 samples per frame into the 0x200-sample window */
+    if (u8_3c > SAMPLE_BUFFER_SIZE / 32)
+        u8_3c = SAMPLE_BUFFER_SIZE / 32;
+    if (u8_3d > SAMPLE_BUFFER_SIZE / 32)
+        u8_3d = SAMPLE_BUFFER_SIZE / 32;
 
     count = u8_3c << 5;
 
     *segbase = SAMPLE_BUFFER_SIZE - count;
     *offset  = u8_3e & 0x1f;
 
-    dma_cat8(hle, buffer, voice_ptr + VOICE_CATSRC_0);
+    memset(buffer, 0, sizeof(buffer));
+    dma_cat8(hle, buffer, sizeof(buffer) / 2, voice_ptr + VOICE_CATSRC_0);
     adpcm_decode_frames(hle, samples + *segbase, buffer, adpcm_table, u8_3c, u8_3e);
 
     if (u8_3d != 0) {
-        dma_cat8(hle, buffer, voice_ptr + VOICE_CATSRC_1);
+        dma_cat8(hle, buffer, sizeof(buffer) / 2, voice_ptr + VOICE_CATSRC_1);
         adpcm_decode_frames(hle, samples, buffer, adpcm_table, u8_3d, u8_3f);
     }
 }

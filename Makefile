@@ -1271,8 +1271,9 @@ tools: $(ANGRYLION_TOOLS) lrhost$(EXE_EXT) angrylion_replay$(EXE_EXT) $(ANGRYLIO
 check-angrylion: $(ANGRYLION_CHECKS)
 	@set -e; for t in $(ANGRYLION_CHECKS); do echo "== $$t"; ./$$t; done
 
-# Core self-tests: MMIO register and DMA bounds.  Each unit under test is
-# compiled into its test; sanitizers are used where the toolchain has them.
+# Core self-tests: MMIO register and DMA bounds, and the MusyX voice
+# loaders.  Each unit under test is compiled into its test; sanitizers are
+# used where the toolchain has them.
 ifeq ($(EXE_EXT),.exe)
 CHECK_SANITIZE ?=
 else
@@ -1298,7 +1299,13 @@ test_rcp_bounds$(EXE_EXT): tools/test_rcp_bounds.c $(TEST_RCP_BOUNDS_SRCS)
 		-I$(CORE_DIR)/custom -I$(LIBRETRO_COMM_DIR)/include -I$(ROOT_DIR)/libretro \
 		$^ -o $@ $(CHECK_LDFLAGS) $(CHECK_SANITIZE)
 
-CORE_CHECKS := test_rcp_bounds$(EXE_EXT)
+TEST_MUSYX_SRCS := $(RSPDIR)/src/hle_memory.c $(RSPDIR)/src/audio.c \
+	$(RSPDIR)/src/resample_hq.c
+test_musyx_bounds$(EXE_EXT): tools/test_musyx_bounds.c $(RSPDIR)/src/musyx.c $(TEST_MUSYX_SRCS)
+	$(CC) $(CHECK_CFLAGS) $(CHECK_SANITIZE) -I$(RSPDIR)/src -I$(LIBRETRO_COMM_DIR)/include \
+		$< $(TEST_MUSYX_SRCS) -o $@ $(CHECK_LDFLAGS) $(CHECK_SANITIZE) -lm
+
+CORE_CHECKS := test_rcp_bounds$(EXE_EXT) test_musyx_bounds$(EXE_EXT)
 
 check-core: $(CORE_CHECKS)
 	@set -e; for t in $(CORE_CHECKS); do echo "== $$t"; ./$$t; done

@@ -132,7 +132,7 @@ void adpcm_compute_residuals(int16_t* dst, const int16_t* src,
          * to the wrong sign - a click, on any voice loud enough to reach it,
          * in every title that plays ADPCM.  This is the same defect
          * alist_polef was rewritten to fix; ADPCM kept it. */
-        int64_t accu = (int64_t)src[i] << 11;
+        int64_t accu = (int64_t)src[i] * 2048;
         int32_t narrowed;
 
         accu += (int64_t)book1[i]*l1 + (int64_t)book2[i]*l2 + rdot(i, book2, src);
