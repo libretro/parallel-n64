@@ -427,10 +427,9 @@ void check_int_handler(void* opaque)
 {
     struct r4300_core* r4300 = (struct r4300_core*)opaque;
 
-    /* Taking the interrupt exception is what makes ExcCode Int. */
-    r4300_cp0_regs(&r4300->cp0)[CP0_CAUSE_REG] &= ~CP0_CAUSE_EXCCODE_MASK;
-
-    exception_general(r4300);
+    /* The check was queued when an interrupt became pending; take it only
+     * if it still is, and still enabled, now that the event fires. */
+    raise_maskable_interrupt(r4300, 0);
 }
 
 /* Special interrupt is a fake interrupt which porpose is

@@ -342,24 +342,47 @@ void exception_general(struct r4300_core* r4300)
     uint32_t* cp0_regs = r4300_cp0_regs(&r4300->cp0);
 
     cp0_update_count(r4300);
+
+    /* An exception taken inside a handler (EXL already set) keeps the
+     * handler's EPC and BD, so its own ERET still returns where the first
+     * exception was taken. */
+    if (!(cp0_regs[CP0_STATUS_REG] & CP0_STATUS_EXL))
+    {
+        cp0_regs[CP0_EPC_REG] = *r4300_pc(r4300);
+
+        if (r4300->delay_slot == 1 || r4300->delay_slot == 3)
+        {
+            cp0_regs[CP0_CAUSE_REG] |= CP0_CAUSE_BD;
+            cp0_regs[CP0_EPC_REG] -= 4;
+        }
+        else
+        {
+            cp0_regs[CP0_CAUSE_REG] &= ~CP0_CAUSE_BD;
+        }
+    }
     cp0_regs[CP0_STATUS_REG] |= CP0_STATUS_EXL;
 
-    cp0_regs[CP0_EPC_REG] = *r4300_pc(r4300);
-
-    if (r4300->delay_slot == 1 || r4300->delay_slot == 3)
-    {
-        cp0_regs[CP0_CAUSE_REG] |= CP0_CAUSE_BD;
-        cp0_regs[CP0_EPC_REG] -= 4;
-    }
-    else
-    {
-        cp0_regs[CP0_CAUSE_REG] &= ~CP0_CAUSE_BD;
-    }
-
-    generic_jump_to(r4300, UINT32_C(0x80000180));
+    /* BEV selects the bootstrap vectors in the PIF ROM */
+    generic_jump_to(r4300, (cp0_regs[CP0_STATUS_REG] & CP0_STATUS_BEV)
+        ? UINT32_C(0xbfc00380) : UINT32_C(0x80000180));
 
     r4300->cp0.last_addr = *r4300_pc(r4300);
 
     exception_epilog(r4300);
 }
 
+uint32_t cp0_return_from_exception(struct r4300_core* r4300)
+{
+    uint32_t* cp0_regs = r4300_cp0_regs(&r4300->cp0);
+
+    /* An error exception (reset, NMI) returns through ErrorEPC and clears
+     * ERL; any other exception returns through EPC and clears EXL. */
+    if (cp0_regs[CP0_STATUS_REG] & CP0_STATUS_ERL)
+    {
+        cp0_regs[CP0_STATUS_REG] &= ~CP0_STATUS_ERL;
+        return cp0_regs[CP0_ERROREPC_REG];
+    }
+
+    cp0_regs[CP0_STATUS_REG] &= ~CP0_STATUS_EXL;
+    return cp0_regs[CP0_EPC_REG];
+}

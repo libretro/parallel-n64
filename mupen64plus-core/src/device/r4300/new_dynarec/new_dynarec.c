@@ -1897,16 +1897,7 @@ void* ERET_new(void)
     struct new_dynarec_hot_state* state = &r4300->new_dynarec_hot_state;
 
     cp0_update_count(r4300);
-    if (state->cp0_regs[CP0_STATUS_REG] & CP0_STATUS_ERL)
-    {
-        DebugMessage(M64MSG_ERROR, "error in ERET");
-        state->stop = 1;
-    }
-    else
-    {
-        state->cp0_regs[CP0_STATUS_REG] &= ~CP0_STATUS_EXL;
-        state->pcaddr = state->cp0_regs[CP0_EPC_REG];
-    }
+    state->pcaddr = cp0_return_from_exception(r4300);
     r4300->llbit = 0;
     r4300->delay_slot = 0;
     r4300_check_interrupt(r4300, CP0_CAUSE_IP2, r4300->mi->regs[MI_INTR_REG] & r4300->mi->regs[MI_INTR_MASK_REG]); // ???

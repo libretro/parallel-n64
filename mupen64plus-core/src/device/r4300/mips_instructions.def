@@ -1027,20 +1027,10 @@ DECLARE_INSTRUCTION(CACHE)
 DECLARE_INSTRUCTION(ERET)
 {
     DECLARE_R4300
-    uint32_t* cp0_regs = r4300_cp0_regs(&r4300->cp0);
     int* cp0_cycle_count = r4300_cp0_cycle_count(&r4300->cp0);
 
     cp0_update_count(r4300);
-    if (cp0_regs[CP0_STATUS_REG] & CP0_STATUS_ERL)
-    {
-        DebugMessage(M64MSG_ERROR, "error in ERET");
-        *r4300_stop(r4300)=1;
-    }
-    else
-    {
-        cp0_regs[CP0_STATUS_REG] &= ~CP0_STATUS_EXL;
-        generic_jump_to(r4300, cp0_regs[CP0_EPC_REG]);
-    }
+    generic_jump_to(r4300, cp0_return_from_exception(r4300));
     r4300->llbit = 0;
     r4300_check_interrupt(r4300, CP0_CAUSE_IP2, r4300->mi->regs[MI_INTR_REG] & r4300->mi->regs[MI_INTR_MASK_REG]); // ???
     r4300->cp0.last_addr = PCADDR;
