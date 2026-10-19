@@ -265,6 +265,11 @@ void read_rsp_regs(void* opaque, uint32_t address, uint32_t* value)
     struct rsp_core* sp = (struct rsp_core*)opaque;
     uint32_t reg = rsp_reg(address);
 
+    if (reg >= SP_REGS_COUNT) {
+        *value = 0;
+        return;
+    }
+
     *value = sp->regs[reg];
 
     if (reg == SP_SEMAPHORE_REG)
@@ -277,6 +282,9 @@ void write_rsp_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mas
 {
     struct rsp_core* sp = (struct rsp_core*)opaque;
     uint32_t reg = rsp_reg(address);
+
+    if (reg >= SP_REGS_COUNT)
+        return;
 
     switch(reg)
     {
@@ -309,6 +317,11 @@ void read_rsp_regs2(void* opaque, uint32_t address, uint32_t* value)
     struct rsp_core* sp = (struct rsp_core*)opaque;
     uint32_t reg = rsp_reg2(address);
 
+    if (reg >= SP_REGS2_COUNT) {
+        *value = 0;
+        return;
+    }
+
     *value = sp->regs2[reg];
 
     if (reg == SP_PC_REG)
@@ -320,6 +333,9 @@ void write_rsp_regs2(void* opaque, uint32_t address, uint32_t value, uint32_t ma
 {
     struct rsp_core* sp = (struct rsp_core*)opaque;
     uint32_t reg = rsp_reg2(address);
+
+    if (reg >= SP_REGS2_COUNT)
+        return;
 
     if (reg == SP_PC_REG)
         mask &= 0xffc;

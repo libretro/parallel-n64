@@ -265,6 +265,11 @@ void read_ai_regs(void* opaque, uint32_t address, uint32_t* value)
     struct ai_controller* ai = (struct ai_controller*)opaque;
     uint32_t reg = ai_reg(address);
 
+    if (reg >= AI_REGS_COUNT) {
+        *value = 0;
+        return;
+    }
+
     if (reg == AI_LEN_REG)
     {
         *value = get_remaining_dma_length(ai);
@@ -280,6 +285,9 @@ void write_ai_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask
 {
     struct ai_controller* ai = (struct ai_controller*)opaque;
     uint32_t reg = ai_reg(address);
+
+    if (reg >= AI_REGS_COUNT)
+        return;
 
     switch (reg)
     {

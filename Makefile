@@ -1202,7 +1202,8 @@ clean: clean-tools
 	rm -f $(OBJECTS) $(TARGET) $(OBJECTS:.o=.d) .build-flags
 
 clean-tools:
-	rm -f $(ANGRYLION_TOOLS) lrhost$(EXE_EXT) lrhost_vk$(EXE_EXT) angrylion_replay$(EXE_EXT) $(ANGRYLION_CHECKS)
+	rm -f $(ANGRYLION_TOOLS) lrhost$(EXE_EXT) lrhost_vk$(EXE_EXT) angrylion_replay$(EXE_EXT) $(ANGRYLION_CHECKS) \
+		$(CORE_CHECKS)
 
 # Angrylion benchmark and bit-exactness harnesses (tools/angrylion_*.c),
 # linked against the core's own angrylion objects: `make tools` after a
@@ -1270,7 +1271,38 @@ tools: $(ANGRYLION_TOOLS) lrhost$(EXE_EXT) angrylion_replay$(EXE_EXT) $(ANGRYLIO
 check-angrylion: $(ANGRYLION_CHECKS)
 	@set -e; for t in $(ANGRYLION_CHECKS); do echo "== $$t"; ./$$t; done
 
-.PHONY: clean clean-tools tools check-angrylion
+# Core self-tests: MMIO register and DMA bounds.  Each unit under test is
+# compiled into its test; sanitizers are used where the toolchain has them.
+ifeq ($(EXE_EXT),.exe)
+CHECK_SANITIZE ?=
+else
+CHECK_SANITIZE ?= -fsanitize=address,undefined -fno-sanitize-recover=all
+endif
+CHECK_CFLAGS  := -O1 -g -w -ffunction-sections -fdata-sections
+CHECK_LDFLAGS := -Wl,--gc-sections
+
+CORE_DEVICE_DIR := $(CORE_DIR)/src/device
+TEST_RCP_BOUNDS_SRCS := $(CORE_DEVICE_DIR)/rcp/ai/ai_controller.c \
+	$(CORE_DEVICE_DIR)/rcp/mi/mi_controller.c \
+	$(CORE_DEVICE_DIR)/rcp/pi/pi_controller.c \
+	$(CORE_DEVICE_DIR)/rcp/rdp/rdp_core.c \
+	$(CORE_DEVICE_DIR)/rcp/ri/ri_controller.c \
+	$(CORE_DEVICE_DIR)/rcp/rsp/rsp_core.c \
+	$(CORE_DEVICE_DIR)/rcp/si/si_controller.c \
+	$(CORE_DEVICE_DIR)/rcp/vi/vi_controller.c \
+	$(CORE_DEVICE_DIR)/cart/sram.c \
+	$(CORE_DEVICE_DIR)/dd/dd_controller.c
+test_rcp_bounds$(EXE_EXT): tools/test_rcp_bounds.c $(TEST_RCP_BOUNDS_SRCS)
+	$(CC) $(CHECK_CFLAGS) $(CHECK_SANITIZE) -I$(CORE_DIR)/src -I$(CORE_DIR)/src/api \
+		-I$(CORE_DIR)/custom -I$(LIBRETRO_COMM_DIR)/include -I$(ROOT_DIR)/libretro \
+		$^ -o $@ $(CHECK_LDFLAGS) $(CHECK_SANITIZE)
+
+CORE_CHECKS := test_rcp_bounds$(EXE_EXT)
+
+check-core: $(CORE_CHECKS)
+	@set -e; for t in $(CORE_CHECKS); do echo "== $$t"; ./$$t; done
+
+.PHONY: clean clean-tools tools check-angrylion check-core
 -include $(OBJECTS:.o=.d)
 
 # A header named by an existing .d file but since deleted is not an error:

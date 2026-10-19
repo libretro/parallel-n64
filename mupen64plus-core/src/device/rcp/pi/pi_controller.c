@@ -48,18 +48,39 @@ int validate_pi_request(struct pi_controller* pi)
     return 1;
 }
 
+/* Bytes of a PI DMA that fall inside RDRAM.  Addresses past the end of
+ * RDRAM are not backed by memory, so that part of the transfer moves no
+ * data. */
+static uint32_t pi_dram_span(const struct pi_controller* pi,
+                             uint32_t dram_addr, uint32_t length)
+{
+    size_t dram_size = pi->ri->rdram->dram_size;
+
+    if (dram_addr >= dram_size)
+        return 0;
+    if (length > dram_size - dram_addr)
+        return (uint32_t)(dram_size - dram_addr);
+    return length;
+}
+
 static void dma_pi_read(struct pi_controller* pi)
 {
+    uint32_t cart_addr;
+    uint32_t dram_addr;
+    uint32_t length;
+    uint32_t span;
+    unsigned int cycles;
+    const uint8_t* dram;
+    const struct pi_dma_handler* handler = NULL;
+    void* opaque = NULL;
+
     if (!validate_pi_request(pi))
         return;
 
-    uint32_t cart_addr = pi->regs[PI_CART_ADDR_REG] & ~UINT32_C(1);
-    uint32_t dram_addr = pi->regs[PI_DRAM_ADDR_REG] & 0xfffffe;
-    uint32_t length = (pi->regs[PI_RD_LEN_REG] & UINT32_C(0x00ffffff)) + 1;
-    const uint8_t* dram = (uint8_t*)pi->ri->rdram->dram;
-
-    const struct pi_dma_handler* handler = NULL;
-    void* opaque = NULL;
+    cart_addr = pi->regs[PI_CART_ADDR_REG] & ~UINT32_C(1);
+    dram_addr = pi->regs[PI_DRAM_ADDR_REG] & 0xfffffe;
+    length    = (pi->regs[PI_RD_LEN_REG] & UINT32_C(0x00ffffff)) + 1;
+    dram      = (const uint8_t*)pi->ri->rdram->dram;
 
     pi->get_pi_dma_handler(pi->cart, pi->dd, cart_addr, &opaque, &handler);
 
@@ -73,7 +94,9 @@ static void dma_pi_read(struct pi_controller* pi)
     /* PI seems to treat the first 128 bytes differently, see https://n64brew.dev/wiki/Peripheral_Interface#Unaligned_DMA_transfer */
     if (length >= 0x7f && (length & 1))
         length += 1;
-    unsigned int cycles = handler->dma_read(opaque, dram, dram_addr, cart_addr, length);
+
+    span   = pi_dram_span(pi, dram_addr, length);
+    cycles = handler->dma_read(opaque, dram, dram_addr, cart_addr, span);
 
     /* Mark DMA as busy */
     pi->regs[PI_STATUS_REG] |= PI_STATUS_DMA_BUSY;
@@ -88,16 +111,22 @@ static void dma_pi_read(struct pi_controller* pi)
 
 static void dma_pi_write(struct pi_controller* pi)
 {
+    uint32_t cart_addr;
+    uint32_t dram_addr;
+    uint32_t length;
+    uint32_t span;
+    unsigned int cycles;
+    uint8_t* dram;
+    const struct pi_dma_handler* handler = NULL;
+    void* opaque = NULL;
+
     if (!validate_pi_request(pi))
         return;
 
-    uint32_t cart_addr = pi->regs[PI_CART_ADDR_REG] & ~UINT32_C(1);
-    uint32_t dram_addr = pi->regs[PI_DRAM_ADDR_REG] & 0xfffffe;
-    uint32_t length = (pi->regs[PI_WR_LEN_REG] & UINT32_C(0x00ffffff)) + 1;
-    uint8_t* dram = (uint8_t*)pi->ri->rdram->dram;
-
-    const struct pi_dma_handler* handler = NULL;
-    void* opaque = NULL;
+    cart_addr = pi->regs[PI_CART_ADDR_REG] & ~UINT32_C(1);
+    dram_addr = pi->regs[PI_DRAM_ADDR_REG] & 0xfffffe;
+    length    = (pi->regs[PI_WR_LEN_REG] & UINT32_C(0x00ffffff)) + 1;
+    dram      = (uint8_t*)pi->ri->rdram->dram;
 
     pi->get_pi_dma_handler(pi->cart, pi->dd, cart_addr, &opaque, &handler);
 
@@ -106,14 +135,20 @@ static void dma_pi_write(struct pi_controller* pi)
         return;
     }
 
-    /* PI seems to treat the first 128 bytes differently, see https://n64brew.dev/wiki/Peripheral_Interface#Unaligned_DMA_transfer */
+    /* PI seems to treat the first 128 bytes differently, see https://n64brew.dev/wiki/Peripheral_Interface#Unaligned_DMA_transfer
+     * A first block shorter than the DRAM misalignment transfers nothing. */
     if (length >= 0x7f && (length & 1))
         length += 1;
     if (length <= 0x80)
-        length -= dram_addr & 0x7;
-    unsigned int cycles = handler->dma_write(opaque, dram, dram_addr, cart_addr, length);
+    {
+        uint32_t misalign = dram_addr & 0x7;
+        length = (length > misalign) ? length - misalign : 0;
+    }
 
-    post_framebuffer_write(&pi->dp->fb, dram_addr, length);
+    span   = pi_dram_span(pi, dram_addr, length);
+    cycles = handler->dma_write(opaque, dram, dram_addr, cart_addr, span);
+
+    post_framebuffer_write(&pi->dp->fb, dram_addr, span);
 
     /* Mark DMA as busy */
     pi->regs[PI_STATUS_REG] |= PI_STATUS_DMA_BUSY;
@@ -125,7 +160,6 @@ static void dma_pi_write(struct pi_controller* pi)
     cp0_update_count(pi->mi->r4300);
     add_interrupt_event(&pi->mi->r4300->cp0, PI_INT, cycles);
 }
-
 
 void init_pi(struct pi_controller* pi,
              pi_dma_handler_getter get_pi_dma_handler,
@@ -153,6 +187,11 @@ void read_pi_regs(void* opaque, uint32_t address, uint32_t* value)
     struct pi_controller* pi = (struct pi_controller*)opaque;
     uint32_t reg = pi_reg(address);
 
+    if (reg >= PI_REGS_COUNT) {
+        *value = 0;
+        return;
+    }
+
     *value = pi->regs[reg];
 
     if (reg == PI_WR_LEN_REG || reg == PI_RD_LEN_REG)
@@ -167,6 +206,9 @@ void write_pi_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask
 {
     struct pi_controller* pi = (struct pi_controller*)opaque;
     uint32_t reg = pi_reg(address);
+
+    if (reg >= PI_REGS_COUNT)
+        return;
 
     switch (reg)
     {

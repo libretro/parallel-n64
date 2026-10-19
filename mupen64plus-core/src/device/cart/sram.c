@@ -28,7 +28,9 @@
 #include "backends/api/storage_backend.h"
 #include "device/memory/m64p_memory.h"
 
-#define SRAM_ADDR_MASK UINT32_C(0x0000ffff)
+/* The 256 Kbit SRAM decodes 15 address lines, so its 32 KiB mirror
+ * through the rest of the domain. */
+#define SRAM_ADDR_MASK ((uint32_t)SRAM_SIZE - 1)
 
 void format_sram(uint8_t* mem)
 {
@@ -51,10 +53,13 @@ unsigned int sram_dma_read(void* opaque, const uint8_t* dram, uint32_t dram_addr
     cart_addr &= SRAM_ADDR_MASK;
 
     for (i = 0; i < length; ++i) {
-        mem[(cart_addr+i)^S8] = dram[(dram_addr+i)^S8];
+        mem[((cart_addr+i) & SRAM_ADDR_MASK)^S8] = dram[(dram_addr+i)^S8];
     }
 
-    sram->istorage->save(sram->storage, cart_addr, length);
+    if (length > SRAM_SIZE - cart_addr)
+        sram->istorage->save(sram->storage, 0, SRAM_SIZE);
+    else
+        sram->istorage->save(sram->storage, cart_addr, length);
 
     return /* length / 8 */0x1000;
 }
@@ -68,7 +73,7 @@ unsigned int sram_dma_write(void* opaque, uint8_t* dram, uint32_t dram_addr, uin
     cart_addr &= SRAM_ADDR_MASK;
 
     for (i = 0; i < length; ++i) {
-        dram[(dram_addr+i)^S8] = mem[(cart_addr+i)^S8];
+        dram[(dram_addr+i)^S8] = mem[((cart_addr+i) & SRAM_ADDR_MASK)^S8];
     }
 
     return /* length / 8 */0x1000;

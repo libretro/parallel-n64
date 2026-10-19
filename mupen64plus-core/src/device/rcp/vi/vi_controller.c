@@ -117,6 +117,11 @@ void read_vi_regs(void* opaque, uint32_t address, uint32_t* value)
     uint32_t reg = vi_reg(address);
     const uint32_t* cp0_regs = r4300_cp0_regs(&vi->mi->r4300->cp0);
 
+    if (reg >= VI_REGS_COUNT) {
+        *value = 0;
+        return;
+    }
+
     if (reg == VI_CURRENT_REG)
     {
         uint32_t* next_vi = get_event(&vi->mi->r4300->cp0.q, VI_INT);
@@ -140,6 +145,9 @@ void write_vi_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask
 {
     struct vi_controller* vi = (struct vi_controller*)opaque;
     uint32_t reg = vi_reg(address);
+
+    if (reg >= VI_REGS_COUNT)
+        return;
 
     switch(reg)
     {

@@ -122,6 +122,11 @@ void read_dpc_regs(void* opaque, uint32_t address, uint32_t* value)
     struct rdp_core* dp = (struct rdp_core*)opaque;
     uint32_t reg = dpc_reg(address);
 
+    if (reg >= DPC_REGS_COUNT) {
+        *value = 0;
+        return;
+    }
+
     if (reg == DPC_CLOCK_REG)
         dp->dpc_regs[DPC_CLOCK_REG] = dpc_clock_now(dp);
 
@@ -132,6 +137,9 @@ void write_dpc_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mas
 {
     struct rdp_core* dp = (struct rdp_core*)opaque;
     uint32_t reg = dpc_reg(address);
+
+    if (reg >= DPC_REGS_COUNT)
+        return;
 
     switch(reg)
     {
@@ -213,6 +221,11 @@ void read_dps_regs(void* opaque, uint32_t address, uint32_t* value)
     struct rdp_core* dp = (struct rdp_core*)opaque;
     uint32_t reg = dps_reg(address);
 
+    if (reg >= DPS_REGS_COUNT) {
+        *value = 0;
+        return;
+    }
+
     if (reg == DPS_BUFTEST_DATA_REG)
     {
         uint32_t idx = dp->dps_regs[DPS_BUFTEST_ADDR_REG] & (DPS_SPAN_WORDS - 1);
@@ -229,6 +242,9 @@ void write_dps_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mas
 {
     struct rdp_core* dp = (struct rdp_core*)opaque;
     uint32_t reg = dps_reg(address);
+
+    if (reg >= DPS_REGS_COUNT)
+        return;
 
     masked_write(&dp->dps_regs[reg], value, mask);
 

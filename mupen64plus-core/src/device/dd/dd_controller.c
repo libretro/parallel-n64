@@ -438,6 +438,11 @@ void read_dd_regs(void* opaque, uint32_t address, uint32_t* value)
 
     uint32_t reg = dd_reg(address);
 
+    if (reg >= DD_ASIC_REGS_COUNT) {
+        *value = 0;
+        return;
+    }
+
     /* disk presence test */
     if (reg == DD_ASIC_CMD_STATUS) {
         if (dd->idisk != NULL) {
@@ -476,6 +481,9 @@ void write_dd_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask
     }
 
     uint32_t reg = dd_reg(address);
+
+    if (reg >= DD_ASIC_REGS_COUNT)
+        return;
 
     assert(mask == ~UINT32_C(0));
 
@@ -838,7 +846,8 @@ unsigned int dd_dom_dma_read(void* opaque, const uint8_t* dram, uint32_t dram_ad
         return (length * 63) / 25;
     }
 
-    for (i = 0; i < length; ++i) {
+    /* The data sector buffer ends where the registers start. */
+    for (i = 0; i < length && i < sizeof(dd->ds_buf); ++i) {
         mem[(cart_addr + i) ^ S8] = dram[(dram_addr + i) ^ S8];
     }
 
@@ -851,6 +860,7 @@ unsigned int dd_dom_dma_write(void* opaque, uint8_t* dram, uint32_t dram_addr, u
     struct dd_controller* dd = (struct dd_controller*)opaque;
     unsigned int cycles;
     const uint8_t* mem;
+    size_t mem_size;
     size_t i;
 
     //DebugMessage(M64MSG_VERBOSE, "DD DMA write dram=%08x  cart=%08x length=%08x",
@@ -861,11 +871,13 @@ unsigned int dd_dom_dma_write(void* opaque, uint8_t* dram, uint32_t dram_addr, u
             /* C2 sector buffer */
             cart_addr = (cart_addr - MM_DD_C2S_BUFFER);
             mem = (const uint8_t*)&dd->c2s_buf;
+            mem_size = sizeof(dd->c2s_buf);
         }
         else if (cart_addr == MM_DD_DS_BUFFER) {
             /* Data sector buffer */
             cart_addr = (cart_addr - MM_DD_DS_BUFFER);
             mem = (const uint8_t*)&dd->ds_buf;
+            mem_size = sizeof(dd->ds_buf);
         }
         else {
             DebugMessage(M64MSG_ERROR, "Unknown DD dma write dram=%08x  cart=%08x length=%08x",
@@ -882,13 +894,16 @@ unsigned int dd_dom_dma_write(void* opaque, uint8_t* dram, uint32_t dram_addr, u
         /* DD ROM */
         cart_addr = (cart_addr - MM_DD_ROM);
         mem = (const uint8_t*)dd->rom;
+        mem_size = dd->rom_size;
 
         /* Recommended Count Per Op = 1, this seems to break very easily */
         cycles = (length * 63) / 25;
     }
 
+    /* Bytes past the end of the source read as zero. */
     for (i = 0; i < length; ++i) {
-        dram[(dram_addr + i) ^ S8] = mem[(cart_addr + i) ^ S8];
+        dram[(dram_addr + i) ^ S8] = (cart_addr + i < mem_size)
+            ? mem[(cart_addr + i) ^ S8] : 0;
     }
 
     invalidate_r4300_cached_code(dd->r4300, R4300_KSEG0 + dram_addr, length);

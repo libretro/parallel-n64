@@ -83,6 +83,11 @@ void read_mi_regs(void* opaque, uint32_t address, uint32_t* value)
     struct mi_controller* mi = (struct mi_controller*)opaque;
     uint32_t reg = mi_reg(address);
 
+    if (reg >= MI_REGS_COUNT) {
+        *value = 0;
+        return;
+    }
+
     *value = mi->regs[reg];
 }
 
@@ -92,6 +97,9 @@ void write_mi_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask
     uint32_t reg = mi_reg(address);
 
     int* cp0_cycle_count = r4300_cp0_cycle_count(&mi->r4300->cp0);
+
+    if (reg >= MI_REGS_COUNT)
+        return;
 
     switch(reg)
     {
