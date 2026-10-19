@@ -236,6 +236,11 @@ static u_int jump_table_symbols[] = {
   (int)SWR_new,
   (int)SDL_new,
   (int)SDR_new,
+  (int)DMFC0_new,
+  (int)LL_new,
+  (int)LLD_new,
+  (int)SC_new,
+  (int)SCD_new,
   (int)breakpoint
 };
 
@@ -1324,18 +1329,10 @@ static void emit_andimm(int rs,int imm,int rt)
     output_w32(0xe6ff0070|rd_rn_rm(rt,0,rs));
     #endif
   }else{
+    /* any other mask, e.g. 0xFFFF0000 from the LDL/LDR/LWL/LWR merges */
     assert(rs!=HOST_TEMPREG);
-    assert(imm>0&&imm<65535);
-    #ifdef ARMv5_ONLY
-    assem_debug("mov r14,#%d",imm&0xFF00);
-    output_w32(0xe3a00000|rd_rn_imm_shift(HOST_TEMPREG,0,imm>>8,8));
-    assem_debug("add r14,r14,#%d",imm&0xFF);
-    output_w32(0xe2800000|rd_rn_imm_shift(HOST_TEMPREG,HOST_TEMPREG,imm&0xff,0));
-    #else
-    emit_movw(imm,HOST_TEMPREG);
-    #endif
-    assem_debug("and %s,%s,r14",regname[rt],regname[rs]);
-    output_w32(0xe0000000|rd_rn_rm(rt,rs,HOST_TEMPREG));
+    emit_movimm((u_int)imm,HOST_TEMPREG);
+    emit_and(rs,HOST_TEMPREG,rt);
   }
 }
 
@@ -3018,17 +3015,32 @@ static void loadlr_assemble_arm(int i,struct regstat *i_regs)
 
         if(shift) {
           emit_readdword_indexed_tlb(0,temp2,map,temp2h,temp2);
-          if (opcode[i]==0x1B) {
-            emit_shrdimm(temp2h,temp2,shift,temp2h);
-            emit_shrimm(temp2,shift,temp2);
-          } else {
-            emit_shldimm(temp2h,temp2,shift,temp2h);
-            emit_shlimm(temp2,shift,temp2);
+          /* temp2h:temp2 is the aligned doubleword; shift it into place
+           * and merge the bytes it covers. A shift of 32 or more moves
+           * one word into the other half and leaves the far half alone. */
+          if (opcode[i]==0x1B) { // LDR
+            if(shift<32) {
+              emit_shrdimm(temp2,temp2h,shift,temp2);
+              emit_shrimm(temp2h,shift,temp2h);
+              emit_andimm(th,~(mask>>32),th);
+              emit_or(temp2h,th,th);
+            }
+            else if(shift>32)
+              emit_shrimm(temp2h,shift-32,temp2h);
+            emit_andimm(tl,~mask,tl);
+            emit_or(shift<32?temp2:temp2h,tl,tl);
+          } else { // LDL
+            if(shift<32) {
+              emit_shldimm(temp2h,temp2,shift,temp2h);
+              emit_shlimm(temp2,shift,temp2);
+              emit_andimm(tl,~mask,tl);
+              emit_or(temp2,tl,tl);
+            }
+            else if(shift>32)
+              emit_shlimm(temp2,shift-32,temp2);
+            emit_andimm(th,~(mask>>32),th);
+            emit_or(shift<32?temp2h:temp2,th,th);
           }
-          emit_andimm(tl,~mask,tl);
-          emit_andimm(th,~mask>>32,th);
-          emit_or(temp2,tl,tl);
-          emit_or(temp2h,th,th);
         }
         else
           emit_readdword_indexed_tlb(0,temp2,map,th,tl);

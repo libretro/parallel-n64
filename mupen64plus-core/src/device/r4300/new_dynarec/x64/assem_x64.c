@@ -3479,17 +3479,32 @@ static void loadlr_assemble_x64(int i,struct regstat *i_regs)
 
         if(shift) {
           emit_readdword_indexed_tlb(0,temp2,map,temp2h,temp2);
-          if (opcode[i]==0x1B) {
-            emit_shrdimm(temp2h,temp2,shift,temp2h);
-            emit_shrimm(temp2,shift,temp2);
-          } else {
-            emit_shldimm(temp2h,temp2,shift,temp2h);
-            emit_shlimm(temp2,shift,temp2);
+          /* temp2h:temp2 is the aligned doubleword; shift it into place
+           * and merge the bytes it covers. A shift of 32 or more moves
+           * one word into the other half and leaves the far half alone. */
+          if (opcode[i]==0x1B) { // LDR
+            if(shift<32) {
+              emit_shrdimm(temp2,temp2h,shift,temp2);
+              emit_shrimm(temp2h,shift,temp2h);
+              emit_andimm(th,~(mask>>32),th);
+              emit_or(temp2h,th,th);
+            }
+            else if(shift>32)
+              emit_shrimm(temp2h,shift-32,temp2h);
+            emit_andimm(tl,~mask,tl);
+            emit_or(shift<32?temp2:temp2h,tl,tl);
+          } else { // LDL
+            if(shift<32) {
+              emit_shldimm(temp2h,temp2,shift,temp2h);
+              emit_shlimm(temp2,shift,temp2);
+              emit_andimm(tl,~mask,tl);
+              emit_or(temp2,tl,tl);
+            }
+            else if(shift>32)
+              emit_shlimm(temp2,shift-32,temp2);
+            emit_andimm(th,~(mask>>32),th);
+            emit_or(shift<32?temp2h:temp2,th,th);
           }
-          emit_andimm(tl,~mask,tl);
-          emit_andimm(th,~mask>>32,th);
-          emit_or(temp2,tl,tl);
-          emit_or(temp2h,th,th);
         }
         else
           emit_readdword_indexed_tlb(0,temp2,map,th,tl);

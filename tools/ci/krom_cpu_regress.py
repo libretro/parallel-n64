@@ -24,11 +24,13 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 EXPECT = os.path.join(HERE, "krom_cpu_expected.json")
 KROM = "https://raw.githubusercontent.com/PeterLemon/N64/7085543e4a19d8c539fc9e0a4d2869e788b4ed4b/"
 FPU = "CPUTest/CP1/C/FPUCompare/FPUCompare-c.%s.s.N64"
-ROMS = {"ll_lld_sc_scd": "CPUTest/CPU/LOADSTORE/LL_LLD_SC_SCD/LL_LLD_SC_SCD.N64"}
+ROMS = {"ld_ldl_ldr": "CPUTest/CPU/LOADSTORE/LD/CPULD.N64",
+        "ll_lld_sc_scd": "CPUTest/CPU/LOADSTORE/LL_LLD_SC_SCD/LL_LLD_SC_SCD.N64"}
 for _c in ("f", "un", "eq", "ueq", "olt", "ult", "ole", "ule",
            "sf", "ngle", "seq", "ngl", "lt", "nge", "le", "ngt"):
     ROMS["fpu_c_%s_s" % _c] = FPU % _c
 FRAME = 90
+WINDOW = 4
 CPU_CORES = ["pure_interpreter", "cached_interpreter",
              "dynamic_recompiler", "dynamic_recompiler_ari64"]
 OPTIONS = ["parallel-n64-gfxplugin=angrylion", "parallel-n64-rspplugin=hle"]
@@ -55,22 +57,32 @@ def run(args, name, rom, core):
     for f in os.listdir(out):
         os.remove(os.path.join(out, f))
     env = dict(os.environ, LRHOST_DUMPDIR=out, LRHOST_DUMP_FROM=str(FRAME),
-               LRHOST_DUMP_TO=str(FRAME))
-    p = subprocess.run([args.host, args.core, rom, str(FRAME + 1)] + OPTIONS +
+               LRHOST_DUMP_TO=str(FRAME + WINDOW - 1))
+    p = subprocess.run([args.host, args.core, rom, str(FRAME + WINDOW)] + OPTIONS +
                        ["parallel-n64-cpucore=" + core], env=env,
                        stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=600)
     with open(os.path.join(out, "log.txt"), "w") as f:
         f.write(p.stdout.decode("utf-8", "replace"))
     if p.returncode != 0:
         return None, "exit %d" % p.returncode
-    raw = os.path.join(out, "%04d.raw" % FRAME)
-    if not os.path.exists(raw):
-        return None, "frame %d was not presented" % FRAME
-    with open(raw, "rb") as f:
-        data = f.read()
-    with open(raw + ".size") as f:
-        size = f.read().split()
-    return "%sx%s:%s" % (size[0], size[1], hashlib.sha256(data).hexdigest()[:32]), None
+    # An interlaced screen alternates its two fields, and which one a given
+    # frame starts on follows the CPU core's cycle timing; the fields seen
+    # over a few frames are what the screen shows, in whatever phase.
+    seen = set()
+    for n in range(FRAME, FRAME + WINDOW):
+        raw = os.path.join(out, "%04d.raw" % n)
+        if not os.path.exists(raw):
+            return None, "frame %d was not presented" % n
+        with open(raw, "rb") as f:
+            data = f.read()
+        with open(raw + ".size") as f:
+            w, h = [int(v) for v in f.read().split()[:2]]
+        pitch = len(data) // h
+        for first in ((0, 1) if h >= 480 else (0,)):
+            step = 2 if h >= 480 else 1
+            seen.add(b"".join(data[y * pitch:(y + 1) * pitch] for y in range(first, h, step)))
+    digest = hashlib.sha256(b"".join(sorted(seen))).hexdigest()[:32]
+    return "%dx%d:%d:%s" % (w, h, len(seen), digest), None
 
 
 def main():
