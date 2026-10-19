@@ -473,11 +473,25 @@ void complete_frame()
 }
 }
 
-bool parallel_create_device(struct retro_vulkan_context *frontend_context, VkInstance instance, VkPhysicalDevice gpu,
-                            VkSurfaceKHR surface, PFN_vkGetInstanceProcAddr get_instance_proc_addr,
-                            const char **required_device_extensions, unsigned num_required_device_extensions,
-                            const char **required_device_layers, unsigned num_required_device_layers,
-                            const VkPhysicalDeviceFeatures *required_features)
+namespace RDP
+{
+// vkCreateDevice through the frontend (negotiation v2), which adds the
+// extensions and features it wants, e.g. for its low-latency modes.
+struct FrontendDeviceFactory : Vulkan::DeviceFactory
+{
+	retro_vulkan_create_device_wrapper_t wrapper;
+	void *opaque;
+
+	VkDevice create_device(VkPhysicalDevice gpu, const VkDeviceCreateInfo *info) override
+	{
+		return wrapper(gpu, opaque, info);
+	}
+};
+
+static bool create_device(struct retro_vulkan_context *frontend_context, VkInstance instance, VkPhysicalDevice gpu,
+                          VkSurfaceKHR surface, PFN_vkGetInstanceProcAddr get_instance_proc_addr,
+                          const char **required_device_extensions, unsigned num_required_device_extensions,
+                          const VkPhysicalDeviceFeatures *required_features, Vulkan::DeviceFactory *factory)
 {
 	if (!Vulkan::Context::init_loader(get_instance_proc_addr))
 		return false;
@@ -493,10 +507,13 @@ bool parallel_create_device(struct retro_vulkan_context *frontend_context, VkIns
 	}
 
 	::RDP::context->set_system_handles(handles);
+	::RDP::context->set_device_factory(factory);
 
-	if (!::RDP::context->init_device_from_instance(
-				instance, gpu, surface, required_device_extensions, num_required_device_extensions,
-				required_features, Vulkan::CONTEXT_CREATION_DISABLE_BINDLESS_BIT))
+	bool ok = ::RDP::context->init_device_from_instance(
+			instance, gpu, surface, required_device_extensions, num_required_device_extensions,
+			required_features, Vulkan::CONTEXT_CREATION_DISABLE_BINDLESS_BIT);
+	::RDP::context->set_device_factory(nullptr);
+	if (!ok)
 	{
 		::RDP::context.reset();
 		return false;
@@ -512,6 +529,30 @@ bool parallel_create_device(struct retro_vulkan_context *frontend_context, VkIns
 	// Frontend owns the device.
 	::RDP::context->release_device();
 	return true;
+}
+}
+
+bool parallel_create_device(struct retro_vulkan_context *frontend_context, VkInstance instance, VkPhysicalDevice gpu,
+                            VkSurfaceKHR surface, PFN_vkGetInstanceProcAddr get_instance_proc_addr,
+                            const char **required_device_extensions, unsigned num_required_device_extensions,
+                            const char **required_device_layers, unsigned num_required_device_layers,
+                            const VkPhysicalDeviceFeatures *required_features)
+{
+	return ::RDP::create_device(frontend_context, instance, gpu, surface, get_instance_proc_addr,
+	                            required_device_extensions, num_required_device_extensions,
+	                            required_features, nullptr);
+}
+
+bool parallel_create_device2(struct retro_vulkan_context *frontend_context, VkInstance instance, VkPhysicalDevice gpu,
+                             VkSurfaceKHR surface, PFN_vkGetInstanceProcAddr get_instance_proc_addr,
+                             retro_vulkan_create_device_wrapper_t create_device_wrapper, void *opaque)
+{
+	static const VkPhysicalDeviceFeatures no_features = {};
+	::RDP::FrontendDeviceFactory factory;
+	factory.wrapper = create_device_wrapper;
+	factory.opaque = opaque;
+	return ::RDP::create_device(frontend_context, instance, gpu, surface, get_instance_proc_addr,
+	                            nullptr, 0, &no_features, &factory);
 }
 
 static const VkApplicationInfo parallel_app_info = {

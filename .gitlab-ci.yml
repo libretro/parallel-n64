@@ -125,7 +125,8 @@ test-angrylion-linux-x64:
 # Linux 64-bit: parallel-rdp on Mesa's software Vulkan driver (lavapipe),
 # no GPU. tools/lrhost_vk runs krom's RDP tests through the core and every
 # dumped frame is compared with tools/ci/parallel_rdp_expected.json, with
-# threaded and single-threaded command processing.
+# threaded and single-threaded command processing, and for Vulkan
+# negotiation v2 (through the frontend's device wrapper) and v1.
 test-parallel-rdp-linux-x64:
   extends:
     - .core-defs

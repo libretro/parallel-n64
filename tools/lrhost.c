@@ -20,7 +20,8 @@
  * (with NNNN.raw.size holding "width height"). LRHOST_INPUT="from-to:id,..."
  * holds RetroPad buttons over ranges of frames; LRHOST_SWFB=1 lends the core
  * a software framebuffer and reports how many frames came back in it.
- * LRHOST_VERBOSE=1 shows the core's log; LRHOST_STATE=file loads a
+ * LRHOST_VK_NEGOTIATION=1 makes lrhost_vk a frontend that predates
+ * Vulkan negotiation v2. LRHOST_VERBOSE=1 shows the core's log; LRHOST_STATE=file loads a
  * savestate after the first frame.
  */
 #if defined(_WIN32)
@@ -187,7 +188,17 @@ static bool env_cb(unsigned cmd, void *data)
         const struct retro_hw_render_context_negotiation_interface *n =
             (const struct retro_hw_render_context_negotiation_interface*)data;
         if (n->interface_type != RETRO_HW_RENDER_CONTEXT_NEGOTIATION_INTERFACE_VULKAN) return false;
+        /* a frontend that predates v2 drops any other version */
+        if (vk_offer < 2 && n->interface_version != 1) { fprintf(stderr, "lrhost_vk: interface version %u from the core\n", n->interface_version); return true; }
         vk_neg = (const struct retro_hw_render_context_negotiation_interface_vulkan*)data;
+        return true;
+    }
+    case RETRO_ENVIRONMENT_GET_HW_RENDER_CONTEXT_NEGOTIATION_INTERFACE_SUPPORT:
+    {
+        struct retro_hw_render_context_negotiation_interface *n =
+            (struct retro_hw_render_context_negotiation_interface*)data;
+        if (vk_offer < 2) return false;   /* unknown to such a frontend */
+        n->interface_version = n->interface_type == RETRO_HW_RENDER_CONTEXT_NEGOTIATION_INTERFACE_VULKAN ? 2 : 0;
         return true;
     }
     case RETRO_ENVIRONMENT_GET_HW_RENDER_INTERFACE:
@@ -278,6 +289,9 @@ int main(int argc, char **argv)
     nframes = atoi(argv[3]);
     if (getenv("LRHOST_DUMP_FROM")) dump_from = atol(getenv("LRHOST_DUMP_FROM"));
     if (getenv("LRHOST_DUMP_TO"))   dump_to   = atol(getenv("LRHOST_DUMP_TO"));
+#ifdef LRHOST_VULKAN
+    if (getenv("LRHOST_VK_NEGOTIATION")) vk_offer = (unsigned)atoi(getenv("LRHOST_VK_NEGOTIATION"));
+#endif
     MKDIR("lrhost-system");
 
     h = lib_open(argv[1]);

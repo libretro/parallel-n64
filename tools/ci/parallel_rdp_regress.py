@@ -12,8 +12,10 @@ regression, or an intended fix whose expectations are refreshed with
   parallel_rdp_regress.py --core parallel_n64_libretro.so --host ./lrhost_vk \\
                           [--roms dir] [--out artifacts] [--update]
 
-Threaded and single-threaded command processing are both run and must
-produce the same frames.
+Threaded and single-threaded command processing are both run, as is a
+frontend without Vulkan negotiation v2 (the core's v1 device), and all
+must produce the same frames; with v2 the core must create its device
+through the frontend's wrapper.
 """
 import argparse, hashlib, json, os, subprocess, sys, urllib.request
 
@@ -35,7 +37,9 @@ FRAMES = 120
 DUMP = (30, 60, 90, 120)
 OPTIONS = ["parallel-n64-gfxplugin=parallel", "parallel-n64-rspplugin=hle",
            "parallel-n64-cpucore=cached_interpreter"]
-MODES = {"threaded": {}, "single-threaded": {"PARALLEL_RDP_SINGLE_THREADED_COMMAND": "1"}}
+MODES = {"threaded": {}, "single-threaded": {"PARALLEL_RDP_SINGLE_THREADED_COMMAND": "1"},
+         # a frontend without Vulkan negotiation v2 gets the v1 device
+         "negotiation-v1": {"LRHOST_VK_NEGOTIATION": "1"}}
 
 
 def fetch(romdir, name):
@@ -105,8 +109,9 @@ def main():
                 failures.append("%s (%s): %s" % (name, mode, err))
                 continue
             per_mode[mode] = hashes
-        if len(per_mode) == len(MODES) and per_mode["threaded"] != per_mode["single-threaded"]:
-            failures.append("%s: threaded and single-threaded command processing differ" % name)
+        for mode in per_mode:
+            if "threaded" in per_mode and per_mode[mode] != per_mode["threaded"]:
+                failures.append("%s: %s and threaded differ" % (name, mode))
         if "threaded" in per_mode:
             results[name] = per_mode["threaded"]
             want = expected.get(name)

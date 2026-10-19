@@ -1405,6 +1405,7 @@ static void context_destroy(void)
 static bool retro_init_vulkan(void)
 {
 #if defined(HAVE_PARALLEL)
+   struct retro_hw_render_context_negotiation_interface support;
    hw_render.context_type    = RETRO_HW_CONTEXT_VULKAN;
    hw_render.version_major   = VK_MAKE_VERSION(1, 0, 12);
    hw_render.context_reset   = context_reset;
@@ -1417,11 +1418,21 @@ static bool retro_init_vulkan(void)
       return false;
    }
 
+   /* v2 where the frontend has it: the device is then made through the
+    * frontend, which can add what it needs (e.g. for low-latency modes).
+    * A frontend that predates v2 rejects a v2 interface outright. */
+   support.interface_type    = RETRO_HW_RENDER_CONTEXT_NEGOTIATION_INTERFACE_VULKAN;
+   support.interface_version = 0;
+   if (!environ_cb(RETRO_ENVIRONMENT_GET_HW_RENDER_CONTEXT_NEGOTIATION_INTERFACE_SUPPORT, &support))
+      support.interface_version = 0;
+
    hw_context_negotiation.interface_type = RETRO_HW_RENDER_CONTEXT_NEGOTIATION_INTERFACE_VULKAN;
-   hw_context_negotiation.interface_version = RETRO_HW_RENDER_CONTEXT_NEGOTIATION_INTERFACE_VULKAN_VERSION;
+   hw_context_negotiation.interface_version = support.interface_version >= 2 ? 2 : 1;
    hw_context_negotiation.get_application_info = parallel_get_application_info;
    hw_context_negotiation.create_device = parallel_create_device;
    hw_context_negotiation.destroy_device = NULL;
+   hw_context_negotiation.create_instance = NULL;
+   hw_context_negotiation.create_device2 = support.interface_version >= 2 ? parallel_create_device2 : NULL;
    if (!environ_cb(RETRO_ENVIRONMENT_SET_HW_RENDER_CONTEXT_NEGOTIATION_INTERFACE, &hw_context_negotiation))
    {
       if (log_cb)

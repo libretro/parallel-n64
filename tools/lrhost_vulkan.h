@@ -1,6 +1,7 @@
 /* Vulkan HW render support for lrhost, built when LRHOST_VULKAN is
  * defined (lrhost_vk). Headless: it negotiates a device with the core
- * (RETRO_HW_RENDER_CONTEXT_NEGOTIATION_INTERFACE_VULKAN v1), serves
+ * (RETRO_HW_RENDER_CONTEXT_NEGOTIATION_INTERFACE_VULKAN v2 as RetroArch
+ * does, or v1 as an older frontend does with LRHOST_VK_NEGOTIATION=1), serves
  * retro_hw_render_interface_vulkan, and on every presented frame copies
  * the image the core handed to set_image() back to the host, so a frame
  * can be signed and dumped exactly as for a software core. Any Vulkan
@@ -25,6 +26,11 @@ static PFN_vkGetInstanceProcAddr vk_gipa;
 static pthread_mutex_t vk_queue_lock = PTHREAD_MUTEX_INITIALIZER;
 static int vk_ready;
 static VkPhysicalDeviceFeatures vk_features;
+/* what the frontend offers (2, or 1 for one that predates v2), and how
+ * often the core went through create_device2's wrapper */
+static unsigned vk_offer = 2;
+static unsigned vk_wrapper_calls;
+static VkPhysicalDevice vk_wrapper_gpu;
 
 /* the image of the last set_image() */
 static struct retro_vulkan_image vk_img;
@@ -54,6 +60,34 @@ VKF(vkResetFences); VKF(vkCreateBuffer); VKF(vkGetBufferMemoryRequirements); VKF
 VKF(vkBindBufferMemory); VKF(vkMapMemory); VKF(vkQueueWaitIdle); VKF(vkDeviceWaitIdle);
 VKF(vkDestroyBuffer); VKF(vkFreeMemory); VKF(vkDestroyFence); VKF(vkDestroyCommandPool);
 VKF(vkDestroyDevice); VKF(vkDestroyInstance);
+VKF(vkCreateDevice); VKF(vkEnumerateDeviceExtensionProperties);
+
+/* create_device2's wrapper: adds an extension of the frontend's own, as
+ * RetroArch adds its low-latency ones, and creates the device. */
+static VkDevice vk_create_device_wrapper(VkPhysicalDevice gpu, void *opaque, const VkDeviceCreateInfo *info)
+{
+    VkDeviceCreateInfo local = *info;
+    const char *exts[256]; VkExtensionProperties props[512];
+    uint32_t i, n = 512, count = info->enabledExtensionCount;
+    VkDevice device = VK_NULL_HANDLE;
+    (void)opaque;
+    vk_wrapper_calls++;
+    vk_wrapper_gpu = gpu;
+    if (count > 255) return VK_NULL_HANDLE;
+    if (count) memcpy(exts, info->ppEnabledExtensionNames, count * sizeof *exts);
+    if (p_vkEnumerateDeviceExtensionProperties(gpu, NULL, &n, props) >= 0)
+        for (i = 0; i < n; i++)
+            if (!strcmp(props[i].extensionName, "VK_KHR_present_id"))
+            {
+                uint32_t j;
+                for (j = 0; j < count && strcmp(exts[j], "VK_KHR_present_id"); j++) ;
+                if (j == count) exts[count++] = "VK_KHR_present_id";
+            }
+    local.enabledExtensionCount = count;
+    local.ppEnabledExtensionNames = exts;
+    if (p_vkCreateDevice(gpu, &local, NULL, &device) != VK_SUCCESS) return VK_NULL_HANDLE;
+    return device;
+}
 
 static void vk_set_image(void *h, const struct retro_vulkan_image *image, uint32_t n, const VkSemaphore *sems, uint32_t qf)
 {
@@ -106,12 +140,22 @@ static int vk_init(void)
 
 #define IFN(name) *(void**)&p_##name = (void*)vk_gipa(vk_inst, #name)
     IFN(vkEnumeratePhysicalDevices); IFN(vkGetDeviceProcAddr); IFN(vkGetPhysicalDeviceMemoryProperties);
-    IFN(vkDestroyInstance);
+    IFN(vkDestroyInstance); IFN(vkCreateDevice); IFN(vkEnumerateDeviceExtensionProperties);
     if (p_vkEnumeratePhysicalDevices(vk_inst, &ngpu, gpus) < 0 || !ngpu) { fprintf(stderr, "lrhost_vk: no GPU\n"); return 0; }
 
     /* no extensions or features of our own; cores may dereference the
      * features pointer, as RetroArch always passes one */
-    if (!vk_neg || !vk_neg->create_device ||
+    if (vk_offer >= 2)
+    {
+        /* RetroArch: create_device2 when the core has it */
+        if (!vk_neg || vk_neg->interface_version < 2 || !vk_neg->create_device2)
+        { fprintf(stderr, "lrhost_vk: the core did not offer create_device2\n"); return 0; }
+        if (!vk_neg->create_device2(&vk_ctx, vk_inst, gpus[0], VK_NULL_HANDLE, vk_gipa, vk_create_device_wrapper, NULL))
+        { fprintf(stderr, "lrhost_vk: the core did not create a device\n"); return 0; }
+        if (vk_wrapper_calls != 1 || vk_wrapper_gpu != gpus[0] || vk_ctx.gpu != gpus[0])
+        { fprintf(stderr, "lrhost_vk: the core did not create its device through the frontend (%u)\n", vk_wrapper_calls); return 0; }
+    }
+    else if (!vk_neg || !vk_neg->create_device ||
         !vk_neg->create_device(&vk_ctx, vk_inst, gpus[0], VK_NULL_HANDLE, vk_gipa, NULL, 0, NULL, 0, &vk_features))
     { fprintf(stderr, "lrhost_vk: the core did not create a device\n"); return 0; }
 

@@ -138,6 +138,14 @@ struct QueueInfo
 	uint32_t timestamp_valid_bits = 0;
 };
 
+// Creates the device in place of vkCreateDevice, e.g. through a
+// libretro frontend that adds what it needs to the create info.
+struct DeviceFactory
+{
+	virtual ~DeviceFactory() = default;
+	virtual VkDevice create_device(VkPhysicalDevice gpu, const VkDeviceCreateInfo *info) = 0;
+};
+
 class Context
 	: public Util::IntrusivePtrEnabled<Context, std::default_delete<Context>, HandleCounter>
 #ifdef GRANITE_VULKAN_FOSSILIZE
@@ -149,6 +157,12 @@ public:
 	// API_VERSION must be at least 1.1.
 	// By default, a Vulkan 1.1 instance is created.
 	void set_application_info(const VkApplicationInfo *app_info);
+
+	// Call before init_device_from_instance(). Must outlive device creation.
+	void set_device_factory(DeviceFactory *factory)
+	{
+		device_factory = factory;
+	}
 
 	bool init_instance_and_device(const char **instance_ext, uint32_t instance_ext_count, const char **device_ext, uint32_t device_ext_count,
 	                              ContextCreationFlags flags = 0);
@@ -264,6 +278,7 @@ private:
 	VkPhysicalDeviceProperties gpu_props = {};
 	VkPhysicalDeviceMemoryProperties mem_props = {};
 	const VkApplicationInfo *user_application_info = nullptr;
+	DeviceFactory *device_factory = nullptr;
 
 	QueueInfo queue_info;
 	unsigned num_thread_indices = 1;

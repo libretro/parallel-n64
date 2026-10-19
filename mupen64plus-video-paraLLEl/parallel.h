@@ -47,6 +47,10 @@ bool parallel_create_device(struct retro_vulkan_context *context,
       const char **required_device_layers,
       unsigned num_required_device_layers,
       const VkPhysicalDeviceFeatures *required_features);
+bool parallel_create_device2(struct retro_vulkan_context *context,
+                             VkInstance instance, VkPhysicalDevice gpu,
+                             VkSurfaceKHR surface, PFN_vkGetInstanceProcAddr get_instance_proc_addr,
+                             retro_vulkan_create_device_wrapper_t create_device_wrapper, void *opaque);
 
 #ifdef __cplusplus
 }
