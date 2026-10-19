@@ -28,6 +28,7 @@
 #include <libretro.h>
 #include <stdio.h>
 #include <limits.h>
+#include <math.h>
 #include <stdlib.h>
 #include <string.h>
 /* snprintf not available in MSVC 2010 and earlier */
@@ -56,6 +57,9 @@ extern int mouse_right_btn;
 extern int mouse_middle_btn;
 extern int mouse_wheel_up_btn;
 extern int mouse_wheel_down_btn;
+extern bool libretro_vr_aim_stick(int port, float *x, float *y);
+extern int vr_aim_btn_up, vr_aim_btn_down, vr_aim_btn_left, vr_aim_btn_right;
+extern unsigned libretro_vr_aim_dirs(int port);
 static bool libretro_supports_bitmasks = false;
 
 extern m64p_rom_header ROM_HEADER;
@@ -457,6 +461,10 @@ static void apply_mouse_button(BUTTONS* Keys, int btn_mapping)
       case 8:  Keys->D_CBUTTON    = 1; break;
       case 9:  Keys->L_CBUTTON    = 1; break;
       case 10: Keys->R_CBUTTON    = 1; break;
+      case 11: Keys->U_DPAD       = 1; break;
+      case 12: Keys->D_DPAD       = 1; break;
+      case 13: Keys->L_DPAD       = 1; break;
+      case 14: Keys->R_DPAD       = 1; break;
       default: break;
    }
 }
@@ -518,6 +526,24 @@ static void inputGetKeys_reuse(int16_t analogX, int16_t analogY, int Control, BU
    Keys->X_AXIS = sx;
    Keys->Y_AXIS = sy;
 
+   /* VR laser - the controller's pointer drives the stick */
+   if (Keys->X_AXIS == 0 && Keys->Y_AXIS == 0)
+   {
+      float ax, ay, len2;
+      if (libretro_vr_aim_stick(Control, &ax, &ay))
+      {
+         len2 = ax * ax + ay * ay;
+         if (len2 > 1.0f)
+         {
+            float inv = 1.0f / sqrtf(len2);
+            ax *= inv;
+            ay *= inv;
+         }
+         Keys->X_AXIS = (int)(ax * 80.0f);
+         Keys->Y_AXIS = (int)(ay * 80.0f);
+      }
+   }
+
    /* Mouse-to-analog-stick mode (player 1 only): the mouse drives the
     * stick whenever the real stick is neutral. Deltas are scaled by
     * sensitivity percent (negative inverts the axis; the Y default is
@@ -564,6 +590,17 @@ static void inputGetKeys_reuse(int16_t analogX, int16_t analogY, int Control, BU
    }
 
    Keys->START_BUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_START);
+
+   /* VR laser pointer in Four Buttons mode, on the pad chosen by the VR Laser
+    * Pointer Output option. Applied after the d-pad and Start are read so it
+    * can drive them. */
+   {
+      unsigned dirs = libretro_vr_aim_dirs(Control);
+      if (dirs & 1u) apply_mouse_button(Keys, vr_aim_btn_up);
+      if (dirs & 2u) apply_mouse_button(Keys, vr_aim_btn_down);
+      if (dirs & 4u) apply_mouse_button(Keys, vr_aim_btn_left);
+      if (dirs & 8u) apply_mouse_button(Keys, vr_aim_btn_right);
+   }
 
    /* SELECT toggles between the default and the per-game alternate
     * control profile (only meaningful when a game has one). In the

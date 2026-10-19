@@ -34,6 +34,14 @@ extern "C"
 {
 #endif
 
+#define VR_AIM_BUTTON_VALUES \
+   {"None", "Disabled"}, \
+   {"A", "A Button"}, {"B", "B Button"}, {"Z", "Z Trigger"}, \
+   {"L", "L Trigger"}, {"R", "R Trigger"}, {"Start", "Start"}, \
+   {"C-Up", NULL}, {"C-Down", NULL}, {"C-Left", NULL}, {"C-Right", NULL}, \
+   {"D-Pad Up", NULL}, {"D-Pad Down", NULL}, {"D-Pad Left", NULL}, {"D-Pad Right", NULL}, \
+   { NULL, NULL }
+
 #define HAVE_NO_LANGEXTRA
 struct retro_core_option_v2_category option_cats_us[] = {
    {
@@ -2239,6 +2247,105 @@ struct retro_core_option_v2_definition option_defs_us[] = {
             { NULL, NULL },
         },
         "0"
+    },
+    {
+        CORE_NAME "-vr-aim-controller",
+        "VR Laser Pointer Aim",
+        NULL,
+        "(GLideN64) Aim with a VR motion controller like a laser pointer. This drives the N64 analog stick. Needs a headset session.",
+        "Aim with a VR motion controller like a laser pointer. This drives the N64 analog stick. Needs a headset session.",
+        "vr",
+        {
+            {"off", "Off"},
+            {"left", "Left Controller"},
+            {"right", "Right Controller"},
+            { NULL, NULL },
+        },
+        "off"
+    },
+    {
+        CORE_NAME "-vr-aim-output",
+        "VR Laser Pointer Output",
+        NULL,
+        "(GLideN64) The laser pointer drives the analog stick, or four configurable buttons. Only used while VR Laser Pointer Aim is set to a controller.",
+        "The laser pointer drives the analog stick, or four configurable buttons. Only used while VR Laser Pointer Aim is set to a controller.",
+        "vr",
+        {
+            {"stick", "Analog Stick (Pad 1)"},
+            {"buttons", "Four Buttons (Pad 1)"},
+            {"stick-p2", "Analog Stick (Pad 2)"},
+            {"buttons-p2", "Four Buttons (Pad 2)"},
+            { NULL, NULL },
+        },
+        "stick"
+    },
+    {
+        CORE_NAME "-vr-aim-invert-y",
+        "VR Laser Pointer Invert Y (Thumbstick mode only)",
+        NULL,
+        "(GLideN64) Invert the vertical axis of laser pointer aim. Only used while VR Laser Pointer Aim is set to a controller.",
+        "Invert the vertical axis of laser pointer aim. Only used while VR Laser Pointer Aim is set to a controller.",
+        "vr",
+        {
+            {"off", "Off"},
+            {"on", "On"},
+            { NULL, NULL },
+        },
+        "off"
+    },
+    {
+        CORE_NAME "-vr-aim-button-threshold",
+        "VR Laser Pointer Button Threshold (Four Buttons mode only)",
+        NULL,
+        "(GLideN64) Four Buttons output only. How far from the centre the pointer must be to press a direction, in percent of its range. Releases a little closer to the centre than it presses.",
+        "Four Buttons output only. How far from the centre the pointer must be to press a direction, in percent of its range.",
+        "vr",
+        {
+            {"20", "20%"}, {"30", "30%"}, {"40", "40%"}, {"50", "50%"},
+            {"60", "60%"}, {"70", "70%"}, {"80", "80%"}, {"90", "90%"},
+            { NULL, NULL },
+        },
+        "50"
+    },
+    {
+        CORE_NAME "-vr-aim-button-up",
+        "VR Laser Pointer Up Button",
+        NULL,
+        "(GLideN64) Four Buttons output only. Button pressed while the pointer is above the threshold.",
+        "Four Buttons output only. Button pressed while the pointer is above the threshold.",
+        "vr",
+        { VR_AIM_BUTTON_VALUES },
+        "C-Up"
+    },
+    {
+        CORE_NAME "-vr-aim-button-down",
+        "VR Laser Pointer Down Button",
+        NULL,
+        "(GLideN64) Four Buttons output only. Button pressed while the pointer is below the threshold.",
+        "Four Buttons output only. Button pressed while the pointer is below the threshold.",
+        "vr",
+        { VR_AIM_BUTTON_VALUES },
+        "C-Down"
+    },
+    {
+        CORE_NAME "-vr-aim-button-left",
+        "VR Laser Pointer Left Button",
+        NULL,
+        "(GLideN64) Four Buttons output only. Button pressed while the pointer is left of the threshold.",
+        "Four Buttons output only. Button pressed while the pointer is left of the threshold.",
+        "vr",
+        { VR_AIM_BUTTON_VALUES },
+        "C-Left"
+    },
+    {
+        CORE_NAME "-vr-aim-button-right",
+        "VR Laser Pointer Right Button",
+        NULL,
+        "(GLideN64) Four Buttons output only. Button pressed while the pointer is right of the threshold.",
+        "Four Buttons output only. Button pressed while the pointer is right of the threshold.",
+        "vr",
+        { VR_AIM_BUTTON_VALUES },
+        "C-Right"
     },
 #endif
     {
