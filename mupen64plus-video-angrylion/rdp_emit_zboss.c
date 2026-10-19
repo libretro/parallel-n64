@@ -958,11 +958,11 @@ static void zb_audio2(unsigned int w0, unsigned int w1)
             for (k = 0; k < 2; k++)
             {
                 int vk = (k == 0) ? v11_0 : v11_1;
-                long res1 = (long)v12 * (long)frac;
-                long res2 = (long)v9 << 16;
+                int64_t res1 = (int64_t)v12 * (int64_t)frac;
+                int64_t res2 = (int64_t)v9 * 65536;
                 int res3 = (int)(short)((res2 + res1) >> 16);
-                res1 = (long)vk * (long)res3;
-                res2 = (long)v13 << 16;
+                res1 = (int64_t)vk * (int64_t)res3;
+                res2 = (int64_t)v13 * 65536;
                 res3 = (int)(short)((res2 + res1) >> 16);
                 wr_s16d(s_dmem, dst, res3);
                 dst += 2u;
@@ -1009,7 +1009,7 @@ static void zb_audio4(unsigned int w0, unsigned int w1)
         index = (int)((r9 & 0xfu) << 1);
         if (index > 6)
             return;
-        c1 = 1 << ((r9 >> 4) & 0x1fu);
+        c1 = (int)(int32_t)(1u << ((r9 >> 4) & 0x1fu));
         for (l2 = 0; l2 < 2; l2++)
         {
             int a = rd_s8(s_rdram, src); src += 1u;
@@ -1017,23 +1017,24 @@ static void zb_audio4(unsigned int w0, unsigned int w1)
             int c = rd_s8(s_rdram, src); src += 1u;
             int d = rd_s8(s_rdram, src); src += 1u;
             int coeff[8];
-            coeff[0] = a >> 4;  coeff[1] = (int)((a << 28) >> 28);
-            coeff[2] = b >> 4;  coeff[3] = (int)((b << 28) >> 28);
-            coeff[4] = c >> 4;  coeff[5] = (int)((c << 28) >> 28);
-            coeff[6] = d >> 4;  coeff[7] = (int)((d << 28) >> 28);
+            /* high nibble arithmetic-shifted, low nibble sign-extended */
+            coeff[0] = a >> 4;  coeff[1] = ((a & 0xf) ^ 8) - 8;
+            coeff[2] = b >> 4;  coeff[3] = ((b & 0xf) ^ 8) - 8;
+            coeff[4] = c >> 4;  coeff[5] = ((c & 0xf) ^ 8) - 8;
+            coeff[6] = d >> 4;  coeff[7] = ((d & 0xf) ^ 8) - 8;
             for (i = 0; i < 8; i++)
             {
-                long res1 = 0;
-                long res2;
+                int64_t res1 = 0;
+                int64_t res2;
                 int out;
                 for (j = 0, k = i; j < i; j++, k--)
-                    res1 += (long)zb.audio_table[index + 1][k - 1]
-                          * (long)coeff[j];
-                res1 += (long)coeff[i] * 0x0800l;
-                res1 *= (long)c1;
-                res2 = (long)v1 * (long)zb.audio_table[index][i]
-                     + (long)v2 * (long)zb.audio_table[index + 1][i];
-                out = (int)((res1 * 0x20l + res2 * 0x20l) >> 16);
+                    res1 += (int64_t)zb.audio_table[index + 1][k - 1]
+                          * (int64_t)coeff[j];
+                res1 += (int64_t)coeff[i] * 0x0800;
+                res1 *= (int64_t)c1;
+                res2 = (int64_t)v1 * (int64_t)zb.audio_table[index][i]
+                     + (int64_t)v2 * (int64_t)zb.audio_table[index + 1][i];
+                out = (int)((res1 * 0x20 + res2 * 0x20) >> 16);
                 wr_s16d(s_dmem, dst + (unsigned int)((i ^ 1) << 1),
                        (int)(short)out);
             }

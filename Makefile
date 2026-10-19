@@ -1271,9 +1271,9 @@ tools: $(ANGRYLION_TOOLS) lrhost$(EXE_EXT) angrylion_replay$(EXE_EXT) $(ANGRYLIO
 check-angrylion: $(ANGRYLION_CHECKS)
 	@set -e; for t in $(ANGRYLION_CHECKS); do echo "== $$t"; ./$$t; done
 
-# Core self-tests: MMIO register and DMA bounds, and the MusyX voice
-# loaders.  Each unit under test is compiled into its test; sanitizers are
-# used where the toolchain has them.
+# Core self-tests: MMIO register and DMA bounds, the MusyX voice loaders
+# and the BOSS audio arithmetic.  Each unit under test is compiled into its
+# test; sanitizers are used where the toolchain has them.
 ifeq ($(EXE_EXT),.exe)
 CHECK_SANITIZE ?=
 else
@@ -1305,7 +1305,15 @@ test_musyx_bounds$(EXE_EXT): tools/test_musyx_bounds.c $(RSPDIR)/src/musyx.c $(T
 	$(CC) $(CHECK_CFLAGS) $(CHECK_SANITIZE) -I$(RSPDIR)/src -I$(LIBRETRO_COMM_DIR)/include \
 		$< $(TEST_MUSYX_SRCS) -o $@ $(CHECK_LDFLAGS) $(CHECK_SANITIZE) -lm
 
-CORE_CHECKS := test_rcp_bounds$(EXE_EXT) test_musyx_bounds$(EXE_EXT)
+ZBOSS_TEST_OBJS := $(filter-out $(VIDEODIR_ANGRYLION)/rdp_emit_zboss.o,$(ANGRYLION_WALKER_OBJS)) \
+	$(LIBRETRO_COMM_DIR)/time/rtime.o
+angrylion_zboss_audio_test$(EXE_EXT): tools/angrylion_zboss_audio_test.c \
+		$(VIDEODIR_ANGRYLION)/rdp_emit_zboss.c $(ZBOSS_TEST_OBJS)
+	$(CC) $(CHECK_CFLAGS) $(CHECK_SANITIZE) -I$(VIDEODIR_ANGRYLION) -I$(LIBRETRO_COMM_DIR)/include \
+		$< $(ZBOSS_TEST_OBJS) -o $@ $(CHECK_LDFLAGS) $(CHECK_SANITIZE) -lm
+
+CORE_CHECKS := test_rcp_bounds$(EXE_EXT) test_musyx_bounds$(EXE_EXT) \
+	angrylion_zboss_audio_test$(EXE_EXT)
 
 check-core: $(CORE_CHECKS)
 	@set -e; for t in $(CORE_CHECKS); do echo "== $$t"; ./$$t; done
