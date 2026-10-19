@@ -30,6 +30,7 @@
 #include "device/device.h"
 #include "device/dd/dd_controller.h"
 #include "device/memory/m64p_memory.h"
+#include "device/r4300/interrupt.h"
 #include "device/r4300/r4300_core.h"
 #include "device/rcp/mi/mi_controller.h"
 #include "device/rcp/rdp/rdp_core.h"
@@ -236,18 +237,29 @@ void write_pi_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask
             clear_rcp_interrupt(pi->mi, MI_INTR_PI);
         }
         if (value & mask & PI_STATUS_RESET)
+        {
+            /* the reset abandons a transfer in flight: it never completes */
             pi->regs[PI_STATUS_REG] = 0;
+            remove_event(&pi->mi->r4300->cp0.q, PI_INT);
+        }
         return;
 
+    /* latency and pulse width are 8 bits, page size 4, release 2 */
     case PI_BSD_DOM1_LAT_REG:
     case PI_BSD_DOM1_PWD_REG:
-    case PI_BSD_DOM1_PGS_REG:
-    case PI_BSD_DOM1_RLS_REG:
     case PI_BSD_DOM2_LAT_REG:
     case PI_BSD_DOM2_PWD_REG:
-    case PI_BSD_DOM2_PGS_REG:
-    case PI_BSD_DOM2_RLS_REG:
         masked_write(&pi->regs[reg], value & 0xff, mask);
+        return;
+
+    case PI_BSD_DOM1_PGS_REG:
+    case PI_BSD_DOM2_PGS_REG:
+        masked_write(&pi->regs[reg], value & 0x0f, mask);
+        return;
+
+    case PI_BSD_DOM1_RLS_REG:
+    case PI_BSD_DOM2_RLS_REG:
+        masked_write(&pi->regs[reg], value & 0x03, mask);
         return;
     }
 
@@ -257,6 +269,15 @@ void write_pi_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask
 void pi_end_of_dma_event(void* opaque)
 {
     struct pi_controller* pi = (struct pi_controller*)opaque;
+
+    /* Only a DMA interrupts on completion; a CPU write to the bus just
+     * stops being busy. */
+    if (!(pi->regs[PI_STATUS_REG] & PI_STATUS_DMA_BUSY))
+    {
+        pi->regs[PI_STATUS_REG] &= ~PI_STATUS_IO_BUSY;
+        return;
+    }
+
     pi->regs[PI_STATUS_REG] &= ~(PI_STATUS_DMA_BUSY | PI_STATUS_IO_BUSY);
     pi->regs[PI_STATUS_REG] |= PI_STATUS_INTERRUPT;
 
