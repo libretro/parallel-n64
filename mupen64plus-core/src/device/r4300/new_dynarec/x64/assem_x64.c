@@ -4145,24 +4145,53 @@ static void multdiv_assemble_x64(int i,struct regstat *i_regs)
       {
         signed char d1=get_reg(i_regs->regmap,rs1[i]);
         signed char d2=get_reg(i_regs->regmap,rs2[i]);
+        intptr_t jzero,jdone;
         assert(d1>=0);
         assert(d2>=0);
         emit_mov(d1,EAX);
 
         if(opcode2[i]==0x1A) //DIV
         {
+          intptr_t jminus,jdone2;
           emit_cdq();
           emit_test(d2,d2);
-          emit_jeq((intptr_t)out+8);
+          jzero=(intptr_t)out;
+          emit_jeq(0);
+          /* x/-1 is a negation; idiv would fault on INT32_MIN/-1 */
+          emit_cmpimm(d2,-1);
+          jminus=(intptr_t)out;
+          emit_jeq(0);
           emit_idiv(d2);
+          jdone=(intptr_t)out;
+          emit_jmp(0);
+          set_jump_target(jminus,(intptr_t)out);
+          emit_neg(EAX,EAX);
+          emit_zeroreg(EDX);
+          jdone2=(intptr_t)out;
+          emit_jmp(0);
+          /* x/0: LO = x<0 ? 1 : -1, HI = x */
+          set_jump_target(jzero,(intptr_t)out);
+          emit_mov(EAX,EDX);
+          emit_sarimm(EAX,31,EAX);
+          emit_shlimm(EAX,1,EAX);
+          emit_not(EAX,EAX);
+          set_jump_target(jdone2,(intptr_t)out);
         }
-        else if(opcode2[i]==0x1B) //DIVU
+        else //DIVU
         {
           emit_zeroreg(EDX);
           emit_test(d2,d2);
-          emit_jeq((intptr_t)out+8);
+          jzero=(intptr_t)out;
+          emit_jeq(0);
           emit_div(d2);
+          jdone=(intptr_t)out;
+          emit_jmp(0);
+          /* x/0: LO = -1, HI = x */
+          set_jump_target(jzero,(intptr_t)out);
+          emit_mov(EAX,EDX);
+          emit_movimm(-1,EAX);
         }
+        set_jump_target(jdone,(intptr_t)out);
       }
       else
 #endif

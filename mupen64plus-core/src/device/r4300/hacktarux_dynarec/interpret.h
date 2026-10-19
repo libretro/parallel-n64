@@ -96,8 +96,6 @@
 //#define INTERPRET_DSRAV
 //#define INTERPRET_MULT
 //#define INTERPRET_MULTU
-//#define INTERPRET_DIV
-//#define INTERPRET_DIVU
 //#define INTERPRET_DMULTU
 //#define INTERPRET_ADD
 //#define INTERPRET_ADDU

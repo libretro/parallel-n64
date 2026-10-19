@@ -4301,6 +4301,7 @@ static void multdiv_assemble_arm64(int i,struct regstat *i_regs)
 #ifndef INTERPRET_DIV
       if((opcode2[i]==0x1A) || (opcode2[i]==0x1B))
       {
+        intptr_t jzero,jdone;
         signed char numerator=get_reg(i_regs->regmap,rs1[i]);
         signed char denominator=get_reg(i_regs->regmap,rs2[i]);
         assert(numerator>=0);
@@ -4310,7 +4311,7 @@ static void multdiv_assemble_arm64(int i,struct regstat *i_regs)
         assert(quotient>=0);
         assert(remainder>=0);
         emit_test(denominator,denominator);
-        intptr_t jaddr=(intptr_t)out;
+        jzero=(intptr_t)out;
         emit_jeq(0); // Division by zero
 
         if(opcode2[i]==0x1A) //DIV
@@ -4319,7 +4320,21 @@ static void multdiv_assemble_arm64(int i,struct regstat *i_regs)
           emit_udiv(numerator,denominator,quotient);
 
         emit_msub(quotient,denominator,numerator,remainder);
-        set_jump_target(jaddr,(intptr_t)out);
+        jdone=(intptr_t)out;
+        emit_jmp(0);
+
+        /* x/0: HI = x, LO = -1 for DIVU and x<0 ? 1 : -1 for DIV */
+        set_jump_target(jzero,(intptr_t)out);
+        if(opcode2[i]==0x1A) {
+          emit_sarimm(numerator,31,HOST_TEMPREG);
+          emit_mov(numerator,remainder);
+          emit_shlimm(HOST_TEMPREG,1,HOST_TEMPREG);
+          emit_not(HOST_TEMPREG,quotient);
+        } else {
+          emit_mov(numerator,remainder);
+          emit_movimm(-1,quotient);
+        }
+        set_jump_target(jdone,(intptr_t)out);
       }
       else
 #endif

@@ -976,7 +976,7 @@ static void emit_add(int rs1,int rs2,int rt)
 static void emit_addne(int rs1,int rs2,int rt)
 {
   assem_debug("addne %s,%s,%s",regname[rt],regname[rs1],regname[rs2]);
-  output_w32(0x12800000|rd_rn_rm(rt,rs1,rs2));
+  output_w32(0x10800000|rd_rn_rm(rt,rs1,rs2));
 }
 
 static void emit_adcsarimm(int rs1,int rs2,int rt,int imm)
@@ -3664,6 +3664,7 @@ static void multdiv_assemble_arm(int i,struct regstat *i_regs)
 #ifndef INTERPRET_DIV
       if((opcode2[i]==0x1A) || (opcode2[i]==0x1B))
       {
+        int jzero,jdone;
         signed char d1=get_reg(i_regs->regmap,rs1[i]); // dividend
         signed char d2=get_reg(i_regs->regmap,rs2[i]); // divisor
         assert(d1>=0);
@@ -3673,12 +3674,14 @@ static void multdiv_assemble_arm(int i,struct regstat *i_regs)
         assert(quotient>=0);
         assert(remainder>=0);
 
+        emit_test(d2,d2);
+        jzero=(int)out;
+        emit_jeq(0); // Division by zero
+
         if(opcode2[i]==0x1A) //DIV
         {
           if(arm_cpu_features.IDIVa)
           {
-            emit_test(d2,d2);
-            emit_jeq((int)out+16); // Division by zero
             emit_sdiv(d1,d2,quotient);
             emit_mul(quotient,d2,remainder);
             emit_sub(d1,remainder,remainder);
@@ -3688,7 +3691,6 @@ static void multdiv_assemble_arm(int i,struct regstat *i_regs)
             emit_movs(d1,remainder);
             emit_negmi(remainder,remainder);
             emit_movs(d2,HOST_TEMPREG);
-            emit_jeq((int)out+52); // Division by zero
             emit_negmi(HOST_TEMPREG,HOST_TEMPREG);
             emit_clz(HOST_TEMPREG,quotient);
             emit_shl(HOST_TEMPREG,quotient,HOST_TEMPREG);
@@ -3704,21 +3706,25 @@ static void multdiv_assemble_arm(int i,struct regstat *i_regs)
             emit_test(d1,d1);
             emit_negmi(remainder,remainder);
           }
+          jdone=(int)out;
+          emit_jmp(0);
+          /* x/0: LO = x<0 ? 1 : -1, HI = x */
+          set_jump_target(jzero,(int)out);
+          emit_sarimm(d1,31,HOST_TEMPREG);
+          emit_mov(d1,remainder);
+          emit_shlimm(HOST_TEMPREG,1,HOST_TEMPREG);
+          emit_not(HOST_TEMPREG,quotient);
         }
-        else if(opcode2[i]==0x1B) //DIVU
+        else //DIVU
         {
-          emit_test(d2,d2);
-
           if(arm_cpu_features.IDIVa)
           {
-            emit_jeq((int)out+16); // Division by zero
             emit_udiv(d1,d2,quotient);
             emit_mul(quotient,d2,remainder);
             emit_sub(d1,remainder,remainder);
           }
           else
           {
-            emit_jeq((int)out+44); // Division by zero
             emit_clz(d2,HOST_TEMPREG);
             emit_movimm(1<<31,quotient);
             emit_shl(d2,HOST_TEMPREG,d2);
@@ -3730,7 +3736,14 @@ static void multdiv_assemble_arm(int i,struct regstat *i_regs)
             emit_shrcc_imm(d2,1,d2);
             emit_jcc((int)out-16); // -4
           }
+          jdone=(int)out;
+          emit_jmp(0);
+          /* x/0: LO = -1, HI = x */
+          set_jump_target(jzero,(int)out);
+          emit_mov(d1,remainder);
+          emit_movimm(-1,quotient);
         }
+        set_jump_target(jdone,(int)out);
       }
       else
 #endif

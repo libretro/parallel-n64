@@ -24,7 +24,10 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 EXPECT = os.path.join(HERE, "krom_cpu_expected.json")
 KROM = "https://raw.githubusercontent.com/PeterLemon/N64/7085543e4a19d8c539fc9e0a4d2869e788b4ed4b/"
 FPU = "CPUTest/CP1/C/FPUCompare/FPUCompare-c.%s.s.N64"
-ROMS = {"ld_ldl_ldr": "CPUTest/CPU/LOADSTORE/LD/CPULD.N64",
+ROMS = {"div": "CPUTest/CPU/DIV/CPUDIV.N64",
+        "divu": "CPUTest/CPU/DIVU/CPUDIVU.N64",
+        "dmult": "CPUTest/CPU/DMULT/CPUDMULT.N64",
+        "ld_ldl_ldr": "CPUTest/CPU/LOADSTORE/LD/CPULD.N64",
         "ll_lld_sc_scd": "CPUTest/CPU/LOADSTORE/LL_LLD_SC_SCD/LL_LLD_SC_SCD.N64"}
 for _c in ("f", "un", "eq", "ueq", "olt", "ult", "ole", "ule",
            "sf", "ngle", "seq", "ngl", "lt", "nge", "le", "ngt"):

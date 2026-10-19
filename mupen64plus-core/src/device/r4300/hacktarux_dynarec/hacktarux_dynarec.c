@@ -2218,20 +2218,8 @@ void gen_DIV(struct r4300_core* r4300)
 #if defined(COUNT_INSTR)
     inc_m32rel(&instr_count[73]);
 #endif
-#ifdef INTERPRET_DIV
+    /* the zero divisor and INT32_MIN / -1 cases need the interpreter's results */
     gencallinterp(r4300, (unsigned long long)cached_interp_DIV, 0);
-#else
-    int rs, rt;
-    allocate_register_32_manually_w(r4300, EAX, (unsigned int *)r4300_mult_lo(r4300));
-    allocate_register_32_manually_w(r4300, EDX, (unsigned int *)r4300_mult_hi(r4300));
-    rs = allocate_register_32(r4300, (unsigned int*)r4300->recomp.dst->f.r.rs);
-    rt = allocate_register_32(r4300, (unsigned int*)r4300->recomp.dst->f.r.rt);
-    cmp_reg32_imm32(rt, 0);
-    je_rj((rs == EAX ? 0 : 2) + 1 + 2);
-    mov_reg32_reg32(EAX, rs); // 0 or 2
-    cdq(); // 1
-    idiv_reg32(rt); // 2
-#endif
 }
 
 void gen_DIVU(struct r4300_core* r4300)
@@ -2239,20 +2227,8 @@ void gen_DIVU(struct r4300_core* r4300)
 #if defined(COUNT_INSTR)
     inc_m32rel(&instr_count[74]);
 #endif
-#ifdef INTERPRET_DIVU
+    /* the zero divisor and INT32_MIN / -1 cases need the interpreter's results */
     gencallinterp(r4300, (unsigned long long)cached_interp_DIVU, 0);
-#else
-    int rs, rt;
-    allocate_register_32_manually_w(r4300, EAX, (unsigned int *)r4300_mult_lo(r4300));
-    allocate_register_32_manually_w(r4300, EDX, (unsigned int *)r4300_mult_hi(r4300));
-    rs = allocate_register_32(r4300, (unsigned int*)r4300->recomp.dst->f.r.rs);
-    rt = allocate_register_32(r4300, (unsigned int*)r4300->recomp.dst->f.r.rt);
-    cmp_reg32_imm32(rt, 0);
-    je_rj((rs == EAX ? 0 : 2) + 2 + 2);
-    mov_reg32_reg32(EAX, rs); // 0 or 2
-    xor_reg32_reg32(EDX, EDX); // 2
-    div_reg32(rt); // 2
-#endif
 }
 
 void gen_DDIV(struct r4300_core* r4300)

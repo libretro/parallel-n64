@@ -1,4 +1,7 @@
 {
+ "div": "640x480:2:d61fa0f885f531139fc37d2bb2acedb0",
+ "divu": "640x480:2:4728623bc60564d69413fc64f5ab904b",
+ "dmult": "640x480:2:154ba63208063452bb9c2f6a996195f6",
  "fpu_c_eq_s": "640x240:1:a4e44b725fe8a15d1a8ead10a8d4a5dd",
  "fpu_c_f_s": "640x240:1:9ebf02559dd96d4ddd8b3326ba26c9ff",
  "fpu_c_le_s": "640x240:1:77b25ea954135278f7f9d7121ed94788",
