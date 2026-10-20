@@ -189,6 +189,7 @@ static void main_check_inputs(void)
         if (poll_cb)
         {
             // Input Polling will be forced to early if Threaded GLideN64
+            inputPollMouse();
             poll_cb();
         }
     }

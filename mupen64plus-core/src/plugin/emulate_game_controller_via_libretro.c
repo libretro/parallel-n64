@@ -533,6 +533,37 @@ static void analog_scale(int32_t x, int32_t y, int maximum, int32_t* outX, int32
 
 /* Shared tail of every control profile: N64 stick, mouse-to-stick mode,
  * d-pad, Start, and the SELECT-driven profile toggle. */
+/* Mouse motion accumulated across frontend polls. Every poll resets the
+ * frontend's mouse delta, but the core polls once per VI while most games
+ * read the controller only once per game frame, so a delta read only at
+ * the controller read covers just the current VI and the motion of the
+ * VIs in between is lost. Each poll period's delta is therefore taken
+ * exactly once: at the first controller read in that period, so the read
+ * sees the freshest motion (with late polling that read is what polls),
+ * or else by inputPollMouse just before the next poll. A read turns the
+ * sum into a stick position and latches it, so further reads before the
+ * following poll see the same position. */
+static int mouse_acc_x, mouse_acc_y;
+static int mouse_stick_x, mouse_stick_y;
+static bool mouse_sampled;
+static bool mouse_pending;
+
+static void mouse_sample(void)
+{
+   mouse_acc_x  += input_cb(0, RETRO_DEVICE_MOUSE, 0, RETRO_DEVICE_ID_MOUSE_X);
+   mouse_acc_y  += input_cb(0, RETRO_DEVICE_MOUSE, 0, RETRO_DEVICE_ID_MOUSE_Y);
+   mouse_sampled = true;
+   mouse_pending = true;
+}
+
+/* Called right before every frontend poll. */
+void inputPollMouse(void)
+{
+   if (mouse_mode && !mouse_sampled)
+      mouse_sample();
+   mouse_sampled = false;
+}
+
 static void inputGetKeys_reuse(int16_t analogX, int16_t analogY, int Control, BUTTONS* Keys)
 {
    int32_t sx, sy;
@@ -547,17 +578,32 @@ static void inputGetKeys_reuse(int16_t analogX, int16_t analogY, int Control, BU
    Keys->Y_AXIS = sy;
 
    /* Mouse-to-analog-stick mode (player 1 only): the mouse drives the
-    * stick whenever the real stick is neutral. Deltas are scaled by
+    * stick whenever the real stick is neutral. The deltas accumulated
+    * since the previous read (see inputPollMouse) are scaled by
     * sensitivity percent (negative inverts the axis; the Y default is
     * negative because positive mouse Y is downward) and clamped to the
     * N64 cardinal range, with the optional small-movement boost (see
-    * mouse_axis). */
+    * mouse_axis). Motion made while the real stick is deflected is
+    * dropped rather than replayed later. */
+   if (mouse_mode && Control == 0)
+   {
+      if (!mouse_sampled)
+         mouse_sample();
+
+      if (mouse_pending)
+      {
+         mouse_stick_x = mouse_axis(mouse_acc_x, mouse_sensitivity_x);
+         mouse_stick_y = mouse_axis(mouse_acc_y, mouse_sensitivity_y);
+         mouse_acc_x   = 0;
+         mouse_acc_y   = 0;
+         mouse_pending = false;
+      }
+   }
+
    if (mouse_mode && Control == 0 && Keys->X_AXIS == 0 && Keys->Y_AXIS == 0)
    {
-      Keys->X_AXIS = mouse_axis(input_cb(Control, RETRO_DEVICE_MOUSE, 0,
-            RETRO_DEVICE_ID_MOUSE_X), mouse_sensitivity_x);
-      Keys->Y_AXIS = mouse_axis(input_cb(Control, RETRO_DEVICE_MOUSE, 0,
-            RETRO_DEVICE_ID_MOUSE_Y), mouse_sensitivity_y);
+      Keys->X_AXIS = mouse_stick_x;
+      Keys->Y_AXIS = mouse_stick_y;
 
       if (input_cb(Control, RETRO_DEVICE_MOUSE, 0, RETRO_DEVICE_ID_MOUSE_LEFT))
          apply_mouse_button(Keys, mouse_left_btn);
