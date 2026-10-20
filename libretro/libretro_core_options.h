@@ -463,6 +463,20 @@ struct retro_core_option_v2_definition option_defs_us[] = {
         "-100"
     },
     {
+        CORE_NAME "-mouse-boost",
+        "Mouse Small Movement Boost",
+        NULL,
+        "Amplifies small mouse movements to make fine aiming practical. Higher = more boost.",
+        NULL,
+        "input",
+        {
+            {"0", "Off"}, {"1", NULL}, {"2", NULL}, {"3", NULL}, {"4", NULL},
+            {"5", NULL}, {"6", NULL}, {"7", NULL}, {"8", NULL}, {"9", NULL}, {"10", NULL},
+            { NULL, NULL },
+        },
+        "0"
+    },
+    {
         CORE_NAME "-mouse-left",
         "Mouse Left Click",
         NULL,

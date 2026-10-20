@@ -287,6 +287,7 @@ bool alternate_mapping;
 bool mouse_mode;
 int mouse_sensitivity_x;
 int mouse_sensitivity_y;
+int mouse_boost;  /* 0-10, used as k/10 for boost blend */
 int mouse_left_btn;
 int mouse_right_btn;
 int mouse_middle_btn;
@@ -2459,6 +2460,15 @@ void update_variables(bool startup)
    {
       int val = atoi(var.value);
       mouse_sensitivity_y = (val < -500) ? -500 : (val > 500) ? 500 : val;
+   }
+
+   var.key = "parallel-n64-mouse-boost";
+   var.value = NULL;
+
+   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+   {
+      int val = atoi(var.value);
+      mouse_boost = (val < 0) ? 0 : (val > 10) ? 10 : val;
    }
 
    var.key = "parallel-n64-mouse-left";

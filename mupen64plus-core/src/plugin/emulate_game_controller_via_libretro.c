@@ -51,6 +51,7 @@ extern bool alternate_mapping;
 extern bool mouse_mode;
 extern int mouse_sensitivity_x;
 extern int mouse_sensitivity_y;
+extern int mouse_boost;
 extern int mouse_left_btn;
 extern int mouse_right_btn;
 extern int mouse_middle_btn;
@@ -461,6 +462,33 @@ static void apply_mouse_button(BUTTONS* Keys, int btn_mapping)
    }
 }
 
+/* One mouse axis onto the N64 stick: delta * sensitivity / 50, truncated
+ * toward zero and clamped to the cardinal range. With mouse_boost = b > 0
+ * the magnitude v is blended toward sqrt(80 * v), which leaves 0 and 80
+ * fixed but lifts small movements:
+ *   out = ((10 - b) * v + b * sqrt(80 * v)) / 10
+ * Evaluated in 16.16 fixed point with the integer square root, so it stays
+ * deterministic for netplay; with b = 0 it is exactly the plain
+ * truncating scale. */
+static int mouse_axis(int delta, int sensitivity)
+{
+   int64_t  prod = (int64_t)delta * sensitivity;
+   uint64_t m    = (uint64_t)(prod < 0 ? -prod : prod);
+   uint64_t out  = (m << 16) / 50;
+   int      mag;
+
+   if (mouse_boost > 0)
+   {
+      /* sqrt(80 * m / 50) in 16.16: isqrt(8 * m / 5 * 2^32) */
+      uint64_t root = analog_isqrt64((m * 8 << 32) / 5);
+      out = ((10 - mouse_boost) * out + mouse_boost * root) / 10;
+   }
+
+   out >>= 16;
+   mag   = (out > 80) ? 80 : (int)out;
+   return (prod < 0) ? -mag : mag;
+}
+
 /* Deadzone, snap and radial scale of a raw [-0x8000, 0x8000) stick into
  * [-maximum, maximum] (80 for the N64 stick; the GameCube modes use 100
  * and 95).  Re-scales to negate the deadzone and applies sensitivity as a
@@ -522,18 +550,14 @@ static void inputGetKeys_reuse(int16_t analogX, int16_t analogY, int Control, BU
     * stick whenever the real stick is neutral. Deltas are scaled by
     * sensitivity percent (negative inverts the axis; the Y default is
     * negative because positive mouse Y is downward) and clamped to the
-    * N64 cardinal range. Integer arithmetic only: delta * sensitivity
-    * stays well inside 32 bits and truncates toward zero exactly like
-    * the float expression it replaces. */
+    * N64 cardinal range, with the optional small-movement boost (see
+    * mouse_axis). */
    if (mouse_mode && Control == 0 && Keys->X_AXIS == 0 && Keys->Y_AXIS == 0)
    {
-      int stickX = (int)input_cb(Control, RETRO_DEVICE_MOUSE, 0,
-            RETRO_DEVICE_ID_MOUSE_X) * mouse_sensitivity_x / 50;
-      int stickY = (int)input_cb(Control, RETRO_DEVICE_MOUSE, 0,
-            RETRO_DEVICE_ID_MOUSE_Y) * mouse_sensitivity_y / 50;
-
-      Keys->X_AXIS = (stickX > 80) ? 80 : (stickX < -80) ? -80 : stickX;
-      Keys->Y_AXIS = (stickY > 80) ? 80 : (stickY < -80) ? -80 : stickY;
+      Keys->X_AXIS = mouse_axis(input_cb(Control, RETRO_DEVICE_MOUSE, 0,
+            RETRO_DEVICE_ID_MOUSE_X), mouse_sensitivity_x);
+      Keys->Y_AXIS = mouse_axis(input_cb(Control, RETRO_DEVICE_MOUSE, 0,
+            RETRO_DEVICE_ID_MOUSE_Y), mouse_sensitivity_y);
 
       if (input_cb(Control, RETRO_DEVICE_MOUSE, 0, RETRO_DEVICE_ID_MOUSE_LEFT))
          apply_mouse_button(Keys, mouse_left_btn);
