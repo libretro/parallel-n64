@@ -377,6 +377,7 @@ public:
 		LocateUniform(uAlphaCompareMode);
 		LocateUniform(uAlphaDitherMode);
 		LocateUniform(uColorDitherMode);
+		LocateUniform(uNoiseOffset);
 	}
 
 	void update(bool _force) override
@@ -394,14 +395,17 @@ public:
 
 		bool updateNoiseTex = m_usesNoise;
 		updateNoiseTex |= (gDP.otherMode.cycleType < G_CYC_COPY) && (gDP.otherMode.colorDither == G_CD_NOISE || gDP.otherMode.alphaDither == G_AD_NOISE || gDP.otherMode.alphaCompare == G_AC_DITHER);
-		if (updateNoiseTex)
+		if (updateNoiseTex) {
 			g_noiseTexture.update();
+			uNoiseOffset.set(float(g_noiseTexture.getOffsetX()), float(g_noiseTexture.getOffsetY()), _force);
+		}
 	}
 
 private:
 	iUniform uAlphaCompareMode;
 	iUniform uAlphaDitherMode;
 	iUniform uColorDitherMode;
+	fv2Uniform uNoiseOffset;
 	bool m_usesNoise;
 };
 

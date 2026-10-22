@@ -1528,19 +1528,21 @@ public:
 			if (_glinfo.isGLES2) {
 				m_part =
 					"uniform sampler2D uTexNoise;							\n"
+					"uniform mediump vec2 uNoiseOffset;						\n"
 					"lowp float snoise()									\n"
 					"{														\n"
 					"  mediump vec2 texSize = vec2(640.0, 580.0);			\n"
-					"  mediump vec2 coord = gl_FragCoord.xy/uScreenScale/texSize;	\n"
+					"  mediump vec2 coord = fract((gl_FragCoord.xy/uScreenScale + uNoiseOffset)/texSize);	\n"
 					"  return texture2D(uTexNoise, coord).r;				\n"
 					"}														\n"
 				;
 			} else {
 				m_part =
 					"uniform sampler2D uTexNoise;		\n"
+					"uniform mediump vec2 uNoiseOffset;					\n"
 					"lowp float snoise()									\n"
 					"{														\n"
-					"  ivec2 coord = ivec2(gl_FragCoord.xy/uScreenScale);	\n"
+					"  ivec2 coord = (ivec2(gl_FragCoord.xy/uScreenScale) + ivec2(uNoiseOffset)) % ivec2(640, 580);	\n"
 					"  return texelFetch(uTexNoise, coord, 0).r;			\n"
 					"}														\n"
 					;
