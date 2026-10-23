@@ -70,6 +70,9 @@ struct RendererOptions
 	unsigned upscaling_factor = 1;
 	bool super_sampled_readback = false;
 	bool super_sampled_readback_dither = false;
+	// The device has no storageBuffer8BitAccess: use the NO_STORAGE_8BIT
+	// shader variants, whose hidden RDRAM is 16 bits per entry.
+	bool no_storage_8bit = false;
 };
 
 enum class ValidationError
@@ -380,6 +383,7 @@ private:
 		bool force_sync = false;
 		bool ubershader = false;
 		bool supports_small_integer_arithmetic = false;
+		bool no_storage_8bit = false;
 		bool subgroup_tile_binning = false;
 		bool subgroup_depth_blend = false;
 		bool super_sample_readback = false;

@@ -129,7 +129,16 @@ CommandProcessor::CommandProcessor(Vulkan::Device &device_, void *rdram_ptr,
 	if (!rdram)
 		LOGE("Failed to allocate RDRAM.\n");
 
-	info.size = hidden_rdram_size;
+	// Without 8-bit SSBO access the shaders keep hidden RDRAM as one 16-bit
+	// element per entry, so neighbouring pixels never share a word.
+	no_storage_8bit = !device.get_device_features().storage_8bit_features.storageBuffer8BitAccess;
+	if (const char *env = getenv("PARALLEL_RDP_NO_STORAGE_8BIT"))
+	{
+		no_storage_8bit = strtol(env, nullptr, 0) > 0;
+		LOGI("Overriding no 8-bit storage = %d.\n", int(no_storage_8bit));
+	}
+
+	info.size = hidden_rdram_size * (no_storage_8bit ? 2 : 1);
 	// Should be CachedHost, but seeing some insane bug on incoherent Arm systems for time being,
 	// so just forcing coherent memory here for now. Not sure what is going on.
 	info.domain = (flags & COMMAND_PROCESSOR_FLAG_HOST_VISIBLE_HIDDEN_RDRAM_BIT) != 0 ?
@@ -221,6 +230,7 @@ void CommandProcessor::init_renderer()
 	opts.upscaling_factor = factor;
 	opts.super_sampled_readback = (flags & COMMAND_PROCESSOR_FLAG_SUPER_SAMPLED_READ_BACK_BIT) != 0;
 	opts.super_sampled_readback_dither = (flags & COMMAND_PROCESSOR_FLAG_SUPER_SAMPLED_DITHER_BIT) != 0;
+	opts.no_storage_8bit = no_storage_8bit;
 
 	is_supported = renderer.init_renderer(opts);
 
@@ -242,6 +252,24 @@ void CommandProcessor::init_renderer()
 #endif
 }
 
+// Dumps keep one byte per hidden RDRAM entry in either layout.
+void CommandProcessor::flush_hidden_dram_to_dump()
+{
+	const void *hidden = begin_read_hidden_rdram();
+	size_t size = hidden_rdram->get_create_info().size;
+
+	if (no_storage_8bit)
+	{
+		const uint16_t *wide = static_cast<const uint16_t *>(hidden);
+		std::vector<uint8_t> narrow(size / 2);
+		for (size_t i = 0; i < narrow.size(); i++)
+			narrow[i] = uint8_t(wide[i]);
+		dump_writer->flush_hidden_dram(narrow.data(), uint32_t(narrow.size()));
+	}
+	else
+		dump_writer->flush_hidden_dram(hidden, uint32_t(size));
+}
+
 bool CommandProcessor::device_is_supported() const
 {
 	return is_supported;
@@ -254,7 +282,7 @@ void CommandProcessor::set_validation_interface(ValidationInterface *iface)
 
 void CommandProcessor::clear_hidden_rdram()
 {
-	clear_buffer(*hidden_rdram, 0x03030303);
+	clear_buffer(*hidden_rdram, no_storage_8bit ? 0x00030003u : 0x03030303u);
 }
 
 void CommandProcessor::clear_tmem()
@@ -943,7 +971,7 @@ void CommandProcessor::enqueue_command(unsigned num_words, const uint32_t *words
 	{
 		wait_for_timeline(signal_timeline());
 		dump_writer->flush_dram(begin_read_rdram(), rdram_size);
-		dump_writer->flush_hidden_dram(begin_read_hidden_rdram(), hidden_rdram->get_create_info().size);
+		flush_hidden_dram_to_dump();
 		dump_in_command_list = true;
 	}
 
@@ -1179,7 +1207,7 @@ Vulkan::ImageHandle CommandProcessor::scanout(const ScanoutOptions &opts, VkImag
 	{
 		wait_for_timeline(signal_timeline());
 		dump_writer->flush_dram(begin_read_rdram(), rdram_size);
-		dump_writer->flush_hidden_dram(begin_read_hidden_rdram(), hidden_rdram->get_create_info().size);
+		flush_hidden_dram_to_dump();
 		dump_writer->end_frame();
 	}
 

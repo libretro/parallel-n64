@@ -38,10 +38,12 @@ layout(push_constant) uniform Registers
     uint num_pixels, fb_addr, fb_depth_addr;
 } registers;
 
+#if !NO_STORAGE_8BIT
 layout(set = 0, binding = 0) readonly buffer RDRAMSingleSampled8
 {
     uint8_t elems[];
 } vram8;
+#endif
 
 layout(set = 0, binding = 0) readonly buffer RDRAMSingleSampled16
 {
@@ -55,13 +57,15 @@ layout(set = 0, binding = 0) readonly buffer RDRAMSingleSampled32
 
 layout(set = 0, binding = 1) readonly buffer RDRAMHiddenSingleSampled
 {
-    uint8_t elems[];
+    mem_hidden elems[];
 } hidden_vram;
 
+#if !NO_STORAGE_8BIT
 layout(set = 0, binding = 2) buffer RDRAMUpscalingReference8
 {
     uint8_t elems[];
 } vram_reference8;
+#endif
 
 layout(set = 0, binding = 2) buffer RDRAMUpscalingReference16
 {
@@ -73,10 +77,12 @@ layout(set = 0, binding = 2) buffer RDRAMUpscalingReference32
     uint elems[];
 } vram_reference32;
 
+#if !NO_STORAGE_8BIT
 layout(set = 0, binding = 3) buffer RDRAMUpscaling8
 {
     uint8_t elems[];
 } vram_upscaled8;
+#endif
 
 layout(set = 0, binding = 3) buffer RDRAMUpscaling16
 {
@@ -90,15 +96,20 @@ layout(set = 0, binding = 3) buffer RDRAMUpscaling32
 
 layout(set = 0, binding = 4) buffer RDRAMHiddenUpscaling
 {
-    uint8_t elems[];
+    mem_hidden elems[];
 } hidden_vram_upscaled;
 
 void update_rdram_8(uint index)
 {
     index &= RDRAM_MASK_8;
 
+#if NO_STORAGE_8BIT
+    uint real_word = load_u8_from_u32(vram32.elems, index);
+    uint reference_word = load_u8_from_u32(vram_reference32.elems, index);
+#else
     uint real_word = uint(vram8.elems[index]);
     uint reference_word = uint(vram_reference8.elems[index]);
+#endif
 
     if (real_word != reference_word)
     {
@@ -106,11 +117,19 @@ void update_rdram_8(uint index)
         uint real_hidden_word = uint(hidden_vram.elems[mirrored_index >> 1u]);
         for (int i = 0; i < NUM_SAMPLES; i++)
         {
+#if NO_STORAGE_8BIT
+            store_u8_to_u32(vram_upscaled32.elems, index + i * RDRAM_SIZE, real_word);
+#else
             vram_upscaled8.elems[index + i * RDRAM_SIZE] = uint8_t(real_word);
+#endif
             if ((mirrored_index & 1u) != 0u)
-                hidden_vram_upscaled.elems[(mirrored_index >> 1u) + i * (RDRAM_SIZE >> 1)] = uint8_t(real_hidden_word);
+                hidden_vram_upscaled.elems[(mirrored_index >> 1u) + i * (RDRAM_SIZE >> 1)] = mem_hidden(real_hidden_word);
         }
+#if NO_STORAGE_8BIT
+        store_u8_to_u32(vram_reference32.elems, index, real_word);
+#else
         vram_reference8.elems[index] = uint8_t(real_word);
+#endif
     }
 }
 
@@ -128,7 +147,7 @@ void update_rdram_16(uint index)
         for (int i = 0; i < NUM_SAMPLES; i++)
         {
             vram_upscaled16.elems[index + i * (RDRAM_SIZE >> 1)] = uint16_t(real_word);
-            hidden_vram_upscaled.elems[mirrored_index + i * (RDRAM_SIZE >> 1)] = uint8_t(real_hidden_word);
+            hidden_vram_upscaled.elems[mirrored_index + i * (RDRAM_SIZE >> 1)] = mem_hidden(real_hidden_word);
         }
         vram_reference16.elems[index] = uint16_t(real_word);
     }
@@ -149,8 +168,8 @@ void update_rdram_32(uint index)
         for (int i = 0; i < NUM_SAMPLES; i++)
         {
             vram_upscaled32.elems[index + i * (RDRAM_SIZE >> 2)] = real_word;
-            hidden_vram_upscaled.elems[2u * index + i * (RDRAM_SIZE >> 1)] = uint8_t(real_hidden_word0);
-            hidden_vram_upscaled.elems[2u * index + 1u + i * (RDRAM_SIZE >> 1)] = uint8_t(real_hidden_word1);
+            hidden_vram_upscaled.elems[2u * index + i * (RDRAM_SIZE >> 1)] = mem_hidden(real_hidden_word0);
+            hidden_vram_upscaled.elems[2u * index + 1u + i * (RDRAM_SIZE >> 1)] = mem_hidden(real_hidden_word1);
         }
         vram_reference32.elems[index] = real_word;
     }

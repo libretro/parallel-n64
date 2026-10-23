@@ -127,8 +127,10 @@ test-angrylion-linux-x64:
 # Linux 64-bit: parallel-rdp on Mesa's software Vulkan driver (lavapipe),
 # no GPU. tools/lrhost_vk runs krom's RDP tests through the core and every
 # dumped frame is compared with tools/ci/parallel_rdp_expected.json, with
-# threaded and single-threaded command processing, and for Vulkan
-# negotiation v2 (through the frontend's device wrapper) and v1.
+# threaded and single-threaded command processing, for Vulkan negotiation
+# v2 (through the frontend's device wrapper) and v1, with the shader
+# variants for devices without 8-bit SSBO storage, and at 2x. The shader
+# bank check needs no GPU: those variants must not use 8-bit storage.
 test-parallel-rdp-linux-x64:
   extends:
     - .core-defs
@@ -144,9 +146,10 @@ test-parallel-rdp-linux-x64:
   # (Mesa 21) and its Python has no CA store. A current Ubuntu has both.
   image: ubuntu:24.04
   script:
-    - apt-get update -qq && apt-get install -y -qq build-essential nasm git ca-certificates curl python3 mesa-vulkan-drivers libvulkan1 libgl-dev
+    - apt-get update -qq && apt-get install -y -qq build-essential nasm git ca-certificates curl python3 mesa-vulkan-drivers libvulkan1 libgl-dev spirv-tools
     - make -j$(nproc) platform=unix WITH_DYNAREC=$WITH_DYNAREC HAVE_THR_AL=$HAVE_THR_AL HAVE_PARALLEL=$HAVE_PARALLEL HAVE_PARALLEL_RSP=$HAVE_PARALLEL_RSP
     - make platform=unix HAVE_PARALLEL=$HAVE_PARALLEL lrhost_vk
+    - python3 tools/rdp_no_storage_8bit_bank.py --check
     - python3 tools/ci/parallel_rdp_regress.py --core ./parallel_n64_libretro.so --host ./lrhost_vk --out parallel-rdp-artifacts
   artifacts:
     when: on_failure

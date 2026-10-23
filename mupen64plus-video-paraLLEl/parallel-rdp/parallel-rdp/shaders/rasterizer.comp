@@ -73,10 +73,12 @@ layout(set = 0, binding = 7, std430) readonly buffer TMEM16
     TMEMInstance16Mem instances[];
 } tmem16;
 
+#if !NO_STORAGE_8BIT
 layout(set = 0, binding = 7, std430) readonly buffer TMEM8
 {
     TMEMInstance8Mem instances[];
 } tmem8;
+#endif
 
 layout(set = 0, binding = 8, std430) readonly buffer TileInfoBuffer
 {
@@ -125,10 +127,12 @@ const int TEX_FMT = (DITHER_TEX_SIZE_TEX_FMT >> 16) & 0xff;
 #include "noise.h"
 #include "shading.h"
 
+#if !NO_STORAGE_8BIT
 layout(set = 0, binding = 9, std430) writeonly buffer ColorBuffer
 {
     mem_u8x4 elems[];
 } color;
+#endif
 
 layout(set = 0, binding = 9, std430) writeonly buffer ColorBufferRaw
 {
@@ -140,6 +144,14 @@ layout(set = 0, binding = 10, std430) writeonly buffer DepthBuffer
     int elems[];
 } depth;
 
+#if NO_STORAGE_8BIT
+// Coverage in the low byte and shade alpha in the high byte of one 16-bit
+// element: the same 2 bytes per pixel as the two 8-bit buffers, one store.
+layout(set = 0, binding = 12, std430) writeonly buffer CoverageShadeAlpha
+{
+    mem_u16 elems[];
+} coverage_shade_alpha;
+#else
 layout(set = 0, binding = 11, std430) writeonly buffer ShadeAlpha
 {
     mem_u8 elems[];
@@ -149,6 +161,7 @@ layout(set = 0, binding = 12, std430) writeonly buffer Coverage
 {
     mem_i8 elems[];
 } coverage;
+#endif
 
 layout(set = 1, binding = 0, std430) readonly buffer TileWorkList
 {
@@ -165,6 +178,9 @@ void main()
 
     ShadedData shaded;
     i8 coverage_value;
+#if NO_STORAGE_8BIT
+    uint packed_shade_alpha = 0u;
+#endif
     uint index = tile_instance * (gl_WorkGroupSize.x * gl_WorkGroupSize.y) + gl_LocalInvocationIndex;
 
     if (shade_pixel(x, y, primitive_index, shaded))
@@ -173,9 +189,15 @@ void main()
 
         if (coverage_value <= I8_C(8))
         {
+#if NO_STORAGE_8BIT
+            uvec4 c = uvec4(shaded.combined) & 0xffu;
+            raw_color.elems[index] = c.x | (c.y << 8u) | (c.z << 16u) | (c.w << 24u);
+            packed_shade_alpha = uint(shaded.shade_alpha) & 0xffu;
+#else
             // Workaround curious bug with glslang, need to cast manually to uvec4 first.
             color.elems[index] = mem_u8x4(uvec4(shaded.combined));
             shade_alpha.elems[index] = mem_u8(shaded.shade_alpha);
+#endif
             depth.elems[index] = shaded.z_dith;
         }
         else if ((coverage_value & COVERAGE_COPY_BIT) != 0)
@@ -187,5 +209,9 @@ void main()
     else
         coverage_value = I8_C(-1);
 
+#if NO_STORAGE_8BIT
+    coverage_shade_alpha.elems[index] = mem_u16((packed_shade_alpha << 8u) | (uint(coverage_value) & 0xffu));
+#else
     coverage.elems[index] = mem_i8(coverage_value);
+#endif
 }

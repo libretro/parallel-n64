@@ -29,10 +29,17 @@ StaticRasterizationState load_static_rasterization_state(uint index)
 	return static_raster_state.elems[index];
 #else
 	return StaticRasterizationState(
+#if NO_STORAGE_8BIT
+			unpack_mem_u8x4(static_raster_state.elems[index].combiner_inputs_rgb0_packed),
+			unpack_mem_u8x4(static_raster_state.elems[index].combiner_inputs_alpha0_packed),
+			unpack_mem_u8x4(static_raster_state.elems[index].combiner_inputs_rgb1_packed),
+			unpack_mem_u8x4(static_raster_state.elems[index].combiner_inputs_alpha1_packed),
+#else
 			u8x4(static_raster_state.elems[index].combiner_inputs_rgb0),
 			u8x4(static_raster_state.elems[index].combiner_inputs_alpha0),
 			u8x4(static_raster_state.elems[index].combiner_inputs_rgb1),
 			u8x4(static_raster_state.elems[index].combiner_inputs_alpha1),
+#endif
 			static_raster_state.elems[index].flags,
 			static_raster_state.elems[index].dither,
 			0, 0);

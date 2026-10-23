@@ -29,11 +29,19 @@ DepthBlendState load_depth_blend_state(uint index)
 	return depth_blend_state.elems[index];
 #else
 	return DepthBlendState(
+#if NO_STORAGE_8BIT
+			unpack_mem_u8x4(depth_blend_state.elems[index].blend_modes0_packed),
+			unpack_mem_u8x4(depth_blend_state.elems[index].blend_modes1_packed),
+			depth_blend_state.elems[index].flags,
+			unpack_mem_u8(depth_blend_state.elems[index].coverage_mode_z_mode, 0),
+			unpack_mem_u8(depth_blend_state.elems[index].coverage_mode_z_mode, 1),
+#else
 			u8x4(depth_blend_state.elems[index].blend_modes0),
 			u8x4(depth_blend_state.elems[index].blend_modes1),
 			depth_blend_state.elems[index].flags,
 			u8(depth_blend_state.elems[index].coverage_mode),
 			u8(depth_blend_state.elems[index].z_mode),
+#endif
 			u8(0), u8(0));
 #endif
 }

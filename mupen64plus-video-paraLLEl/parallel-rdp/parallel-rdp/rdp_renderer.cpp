@@ -66,6 +66,9 @@ bool Renderer::init_renderer(const RendererOptions &options)
 	if (options.upscaling_factor == 1 && options.super_sampled_readback)
 		return false;
 
+	// Buffers are sized for it below, before init_caps.
+	caps.no_storage_8bit = options.no_storage_8bit;
+
 	caps.max_width = options.upscaling_factor * Limits::MaxWidth;
 	caps.max_height = options.upscaling_factor * Limits::MaxHeight;
 	caps.max_tiles_x = options.upscaling_factor * ImplementationConstants::MaxTilesX;
@@ -175,7 +178,13 @@ bool Renderer::init_caps()
 		return false;
 	}
 
-	if (!features.storage_8bit_features.storageBuffer8BitAccess)
+	if (caps.no_storage_8bit)
+	{
+		LOGI("VK_KHR_8bit_storage for SSBOs is not used, falling back to 16/32-bit storage.\n");
+		allow_small_types = false;
+		forces_small_types = true;
+	}
+	else if (!features.storage_8bit_features.storageBuffer8BitAccess)
 	{
 		LOGE("VK_KHR_8bit_storage for SSBOs is not supported! This is a minimum requirement for paraLLEl-RDP.\n");
 		return false;
@@ -260,6 +269,8 @@ int Renderer::resolve_shader_define(const char *name, const char *define) const
 		return int(caps.ubershader);
 	else if (strcmp(define, "SMALL_TYPES") == 0)
 		return int(caps.supports_small_integer_arithmetic);
+	else if (strcmp(define, "NO_STORAGE_8BIT") == 0)
+		return int(caps.no_storage_8bit);
 	else if (strcmp(define, "SUBGROUP") == 0)
 	{
 		if (strcmp(name, "tile_binning_combined") == 0)
@@ -325,8 +336,12 @@ void Renderer::init_buffers(const RendererOptions &options)
 		            caps.max_num_tile_instances *
 		            ImplementationConstants::TileWidth *
 		            ImplementationConstants::TileHeight;
-		per_tile_shaded_coverage = device->create_buffer(info);
 		per_tile_shaded_shaded_alpha = device->create_buffer(info);
+		// Without 8-bit storage, coverage and shade alpha share one 16-bit
+		// element in the coverage buffer (rasterizer.comp).
+		if (caps.no_storage_8bit)
+			info.size *= sizeof(uint16_t);
+		per_tile_shaded_coverage = device->create_buffer(info);
 		device->set_name(*per_tile_shaded_coverage, "per-tile-shaded-coverage");
 		device->set_name(*per_tile_shaded_shaded_alpha, "per-tile-shaded-shaded-alpha");
 	}
@@ -594,7 +609,7 @@ bool Renderer::init_internal_upscaling_factor(const RendererOptions &options)
 
 	{
 		auto cmd = device->request_command_buffer();
-		cmd->fill_buffer(*upscaling_multisampled_hidden_rdram, 0x03030303);
+		cmd->fill_buffer(*upscaling_multisampled_hidden_rdram, caps.no_storage_8bit ? 0x00030003u : 0x03030303u);
 		cmd->barrier(VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_TRANSFER_WRITE_BIT,
 		             VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
 		             VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT);

@@ -35,14 +35,16 @@ layout(set = 0, binding = 0, std430) buffer VRAM16
 	mem_u16 data[];
 } vram16;
 
+#if !NO_STORAGE_8BIT
 layout(set = 0, binding = 0, std430) buffer VRAM8
 {
 	mem_u8 data[];
 } vram8;
+#endif
 
 layout(set = 0, binding = 1, std430) buffer HiddenVRAM
 {
-	mem_u8 data[];
+	mem_hidden data[];
 } hidden_vram;
 
 layout(set = 0, binding = 2, std430) readonly buffer TMEM16
@@ -50,10 +52,12 @@ layout(set = 0, binding = 2, std430) readonly buffer TMEM16
 	TMEMInstance16Mem instances[];
 } tmem16;
 
+#if !NO_STORAGE_8BIT
 layout(set = 0, binding = 2, std430) readonly buffer TMEM8
 {
 	TMEMInstance8Mem instances[];
 } tmem8;
+#endif
 
 layout(set = 1, binding = 0, std430) readonly buffer TriangleSetupBuffer
 {

@@ -14,7 +14,8 @@
  * worst frame - the variance a player feels - over the run with the
  * first tenth (the boot) left out, plus how many frames were presented
  * and duplicated. LRHOST_DUMPDIR=dir writes the presented frames
- * LRHOST_DUMP_FROM..LRHOST_DUMP_TO (default 595..605) as raw rows in the
+ * LRHOST_DUMP_FROM..LRHOST_DUMP_TO (default 595..605), every
+ * LRHOST_DUMP_EVERY-th of them (default 1), as raw rows in the
  * core's pixel format (16- or 32-bit)
  * so two configurations can be compared pixel for pixel;
  * (with NNNN.raw.size holding "width height"). LRHOST_INPUT="from-to:id,..."
@@ -54,7 +55,7 @@ static const char *opt(const char *key)
 }
 
 static long frames_presented, frames_duped;
-static long dump_from = 595, dump_to = 605;
+static long dump_from = 595, dump_to = 605, dump_every = 1;
 static enum retro_pixel_format pixfmt = RETRO_PIXEL_FORMAT_0RGB1555;
 static unsigned vid_w, vid_h;
 static uint32_t frame_crc;
@@ -82,7 +83,8 @@ static void video_cb(const void *data, unsigned w, unsigned h, size_t pitch)
     vid_w = w; vid_h = h;
     if (!data) { frames_duped++; return; }
     frames_presented++;
-    if (getenv("LRHOST_DUMPDIR") && frames_presented >= dump_from && frames_presented <= dump_to)
+    if (getenv("LRHOST_DUMPDIR") && frames_presented >= dump_from && frames_presented <= dump_to
+        && (frames_presented - dump_from) % dump_every == 0)
     {
         char n[256], sp[300]; FILE *f; unsigned y;
         unsigned bpp = pixfmt == RETRO_PIXEL_FORMAT_XRGB8888 ? 4 : 2;
@@ -289,6 +291,8 @@ int main(int argc, char **argv)
     nframes = atoi(argv[3]);
     if (getenv("LRHOST_DUMP_FROM")) dump_from = atol(getenv("LRHOST_DUMP_FROM"));
     if (getenv("LRHOST_DUMP_TO"))   dump_to   = atol(getenv("LRHOST_DUMP_TO"));
+    if (getenv("LRHOST_DUMP_EVERY")) dump_every = atol(getenv("LRHOST_DUMP_EVERY"));
+    if (dump_every < 1) dump_every = 1;
 #ifdef LRHOST_VULKAN
     if (getenv("LRHOST_VK_NEGOTIATION")) vk_offer = (unsigned)atoi(getenv("LRHOST_VK_NEGOTIATION"));
 #endif

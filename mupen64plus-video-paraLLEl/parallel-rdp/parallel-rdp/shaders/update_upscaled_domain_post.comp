@@ -39,10 +39,12 @@ layout(push_constant) uniform Registers
     uint num_pixels, fb_addr, fb_depth_addr;
 } registers;
 
+#if !NO_STORAGE_8BIT
 layout(set = 0, binding = 0) readonly buffer RDRAMSingleSampled8
 {
     uint8_t elems[];
 } vram8;
+#endif
 
 layout(set = 0, binding = 0) readonly buffer RDRAMSingleSampled16
 {
@@ -54,10 +56,12 @@ layout(set = 0, binding = 0) readonly buffer RDRAMSingleSampled32
     uint elems[];
 } vram32;
 
+#if !NO_STORAGE_8BIT
 layout(set = 0, binding = 2) buffer RDRAMUpscalingReference8
 {
     uint8_t elems[];
 } vram_reference8;
+#endif
 
 layout(set = 0, binding = 2) buffer RDRAMUpscalingReference16
 {
@@ -72,8 +76,14 @@ layout(set = 0, binding = 2) buffer RDRAMUpscalingReference32
 void copy_rdram_8(uint index)
 {
     index &= RDRAM_MASK_8;
+#if NO_STORAGE_8BIT
+    uint real_word = load_u8_from_u32(vram32.elems, index);
+    if (real_word != load_u8_from_u32(vram_reference32.elems, index))
+        store_u8_to_u32(vram_reference32.elems, index, real_word);
+#else
     uint real_word = uint(vram8.elems[index]);
     vram_reference8.elems[index] = uint8_t(real_word);
+#endif
 }
 
 void copy_rdram_16(uint index)

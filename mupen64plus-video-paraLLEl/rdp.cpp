@@ -277,7 +277,7 @@ bool init()
 
 	if (!frontend->device_is_supported())
 	{
-		log_cb(RETRO_LOG_ERROR, "This device probably does not support 8/16-bit storage. Make sure you're using up-to-date drivers!\n");
+		log_cb(RETRO_LOG_ERROR, "This device probably does not support 16-bit storage. Make sure you're using up-to-date drivers!\n");
 		frontend.reset();
 		return false;
 	}

@@ -259,7 +259,7 @@ void main()
 
         if ((binned_mask & (1u << bit)) != 0u)
         {
-            uint variant_index = uint(state_indices.elems[primitive_index].static_depth_tmem.x);
+            uint variant_index = uint(instance_static_depth_tmem(primitive_index).x);
             uint work_offset = allocate_work_offset(variant_index);
             tile_raster_work.elems[work_offset + uint(TILE_INSTANCE_STRIDE) * variant_index] =
                 uvec4(tile.x, tile.y, instance_offset, primitive_index);

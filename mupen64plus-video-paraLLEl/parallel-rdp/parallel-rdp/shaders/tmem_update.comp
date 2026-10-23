@@ -24,10 +24,12 @@
 #include "small_types.h"
 layout(local_size_x_id = 0) in;
 
+#if !NO_STORAGE_8BIT
 layout(set = 0, binding = 0, std430) readonly buffer VRAM8Buffer
 {
     mem_u8 data[];
 } vram8;
+#endif
 
 layout(set = 0, binding = 0, std430) readonly buffer VRAM16Buffer
 {
@@ -38,6 +40,13 @@ layout(set = 0, binding = 0, std430) readonly buffer VRAM32Buffer
 {
     uint data[];
 } vram32;
+
+#if NO_STORAGE_8BIT
+// RDRAM bytes out of the 32-bit view (byte_index is the swizzled index).
+#define vram_load_u8(byte_index) ((vram32.data[uint(byte_index) >> 2u] >> ((uint(byte_index) & 3u) * 8u)) & 0xffu)
+#else
+#define vram_load_u8(byte_index) vram8.data[byte_index]
+#endif
 
 layout(set = 0, binding = 1, std430) buffer TMEM16Buffer
 {
@@ -285,10 +294,19 @@ void update_tmem_32(UploadInfo info, int tmem16_index, bool upper_tmem, bool yuv
     }
     else
     {
+#if NO_STORAGE_8BIT
+        // Each 32-bit word holds a big-endian RDRAM word, so an unaligned one
+        // is two loads and a funnel shift.
+        uint shift = uint(rdram_addr & 3) * 8u;
+        uint lo = vram32.data[rdram_addr >> 2];
+        uint hi = vram32.data[(rdram_addr >> 2) + 1];
+        word = (lo << shift) | (hi >> (32u - shift));
+#else
         word = (uint(vram8.data[rdram_addr ^ 3]) << 24) |
                (uint(vram8.data[(rdram_addr + 1) ^ 3]) << 16) |
                (uint(vram8.data[(rdram_addr + 2) ^ 3]) << 8) |
                 uint(vram8.data[(rdram_addr + 3) ^ 3]);
+#endif
     }
 
     if (yuv)
@@ -452,7 +470,7 @@ void update_tmem_16(UploadInfo info, int tmem16_index)
     if ((rdram_addr & 1) == 0)
         word = uint(vram16.data[(rdram_addr >> 1) ^ 1]);
     else
-        word = (uint(vram8.data[rdram_addr ^ 3]) << 8) | uint(vram8.data[(rdram_addr + 1) ^ 3]);
+        word = (uint(vram_load_u8(rdram_addr ^ 3)) << 8) | uint(vram_load_u8((rdram_addr + 1) ^ 3));
 
     current_tmem_value = word;
     tmem_dirty = true;
@@ -537,7 +555,7 @@ void update_tmem_lut(UploadInfo info, int tmem16_index)
     if ((rdram_addr & 1) == 0)
         word = uint(vram16.data[(rdram_addr >> 1) ^ 1]);
     else
-        word = (uint(vram8.data[rdram_addr ^ 3]) << 8) | uint(vram8.data[(rdram_addr + 1) ^ 3]);
+        word = (uint(vram_load_u8(rdram_addr ^ 3)) << 8) | uint(vram_load_u8((rdram_addr + 1) ^ 3));
 
     current_tmem_value = word;
     tmem_dirty = true;

@@ -23,6 +23,14 @@
 #ifndef TEXTURE_H_
 #define TEXTURE_H_
 
+// One byte of a TMEM instance. Without 8-bit storage it is read out of the
+// 16-bit alias of the same memory.
+#if NO_STORAGE_8BIT
+#define tmem_u8(instance, idx) ((uint(tmem16.instances[instance].elems[uint(idx) >> 1u]) >> ((uint(idx) & 1u) * 8u)) & 0xffu)
+#else
+#define tmem_u8(instance, idx) tmem8.instances[instance].elems[idx]
+#endif
+
 #include "data_structures.h"
 
 const int TEXTURE_FORMAT_RGBA = 0;
@@ -99,7 +107,7 @@ i16x4 sample_texel_rgba4(TileInfo tile, uint tmem_instance, uvec2 st)
 	index ^= (st.y & 1) << 2;
 	index ^= 3;
 
-	uint word = uint(tmem8.instances[tmem_instance].elems[index]);
+	uint word = uint(tmem_u8(tmem_instance, index));
 	word = (word >> shift) & 0xf;
 	word |= word << 4;
 	return i16x4(word);
@@ -117,7 +125,7 @@ i16x4 sample_texel_ia4(TileInfo tile, uint tmem_instance, uvec2 st)
 	index ^= (st.y & 1) << 2;
 	index ^= 3;
 
-	uint word = uint(tmem8.instances[tmem_instance].elems[index]);
+	uint word = uint(tmem_u8(tmem_instance, index));
 	word = (word >> shift) & 0xf;
 
 	uint intensity = word & 0xe;
@@ -137,7 +145,7 @@ i16x4 sample_texel_ci4(TileInfo tile, uint tmem_instance, uvec2 st, uint pal)
 	index ^= (st.y & 1) << 2;
 	index ^= 3;
 
-	uint word = uint(tmem8.instances[tmem_instance].elems[index]);
+	uint word = uint(tmem_u8(tmem_instance, index));
 	word = (word >> shift) & 0xf;
 	word |= pal << 4;
 	return i16x4(word);
@@ -155,7 +163,7 @@ i16x4 sample_texel_ci4_tlut(TileInfo tile, uint tmem_instance, uvec2 st, uint pa
 	index ^= (st.y & 1) << 2;
 	index ^= 3;
 
-	uint word = uint(tmem8.instances[tmem_instance].elems[index]);
+	uint word = uint(tmem_u8(tmem_instance, index));
 	word = (word >> shift) & 0xf;
 	word |= pal << 4;
 
@@ -176,7 +184,7 @@ i16x4 sample_texel_ci8_tlut(TileInfo tile, uint tmem_instance, uvec2 st, uint lu
 	index ^= (st.y & 1) << 2;
 	index ^= 3;
 
-	uint word = uint(tmem8.instances[tmem_instance].elems[index]);
+	uint word = uint(tmem_u8(tmem_instance, index));
 	uint lut_entry = (word << 2) + lut_offset;
 	lut_entry ^= addr_xor;
 
@@ -225,7 +233,7 @@ i16x4 sample_texel_rgba8(TileInfo tile, uint tmem_instance, uvec2 st)
 	index ^= (st.y & 1) << 2;
 	index ^= 3;
 
-	uint word = uint(tmem8.instances[tmem_instance].elems[index]);
+	uint word = uint(tmem_u8(tmem_instance, index));
 	return i16x4(word);
 }
 
@@ -239,7 +247,7 @@ i16x4 sample_texel_ia8(TileInfo tile, uint tmem_instance, uvec2 st)
 	index ^= (st.y & 1) << 2;
 	index ^= 3;
 
-	uint word = uint(tmem8.instances[tmem_instance].elems[index]);
+	uint word = uint(tmem_u8(tmem_instance, index));
 	uint intensity = word >> 4;
 	uint alpha = word & 0xf;
 	alpha |= alpha << 4;
@@ -264,7 +272,7 @@ i16x4 sample_texel_yuv16(TileInfo tile, uint tmem_instance, uvec2 st, uint chrom
 	index_chroma ^= (st.y & 1) << 1;
 	index_chroma ^= 1;
 
-	u8 luma = u8(tmem8.instances[tmem_instance].elems[index_luma | 0x800]);
+	u8 luma = u8(tmem_u8(tmem_instance, index_luma | 0x800));
 	u16 chroma = u16(tmem16.instances[tmem_instance].elems[index_chroma]);
 	u8 u = u8((chroma >> U16_C(8)) & U16_C(0xff));
 	u8 v = u8((chroma >> U16_C(0)) & U16_C(0xff));

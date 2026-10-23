@@ -41,40 +41,62 @@ layout(push_constant) uniform Registers
     uint num_pixels, fb_addr, fb_depth_addr, width, height;
 } registers;
 
+#if !NO_STORAGE_8BIT
 layout(set = 0, binding = 0) writeonly buffer RDRAMSingleSampled8
 {
     uint8_t elems[];
 } vram8;
+#endif
 
 layout(set = 0, binding = 0) writeonly buffer RDRAMSingleSampled16
 {
     uint16_t elems[];
 } vram16;
 
+#if NO_STORAGE_8BIT
+// Readable: 8bpp pixels are stored with atomics.
+layout(set = 0, binding = 0) buffer RDRAMSingleSampled32
+{
+    uint elems[];
+} vram32;
+#else
 layout(set = 0, binding = 0) writeonly buffer RDRAMSingleSampled32
 {
     uint elems[];
 } vram32;
+#endif
 
+#if !NO_STORAGE_8BIT
 layout(set = 0, binding = 2) writeonly buffer RDRAMUpscalingReference8
 {
     uint8_t elems[];
 } vram_reference8;
+#endif
 
 layout(set = 0, binding = 2) writeonly buffer RDRAMUpscalingReference16
 {
     uint16_t elems[];
 } vram_reference16;
 
+#if NO_STORAGE_8BIT
+// Readable: 8bpp pixels are stored with atomics.
+layout(set = 0, binding = 2) buffer RDRAMUpscalingReference32
+{
+    uint elems[];
+} vram_reference32;
+#else
 layout(set = 0, binding = 2) writeonly buffer RDRAMUpscalingReference32
 {
     uint elems[];
 } vram_reference32;
+#endif
 
+#if !NO_STORAGE_8BIT
 layout(set = 0, binding = 3) readonly buffer RDRAMUpscaling8
 {
     uint8_t elems[];
 } vram_upscaled8;
+#endif
 
 layout(set = 0, binding = 3) readonly buffer RDRAMUpscaling16
 {
@@ -88,7 +110,7 @@ layout(set = 0, binding = 3) readonly buffer RDRAMUpscaling32
 
 layout(set = 0, binding = 4) readonly buffer RDRAMHiddenUpscaling
 {
-    uint8_t elems[];
+    mem_hidden elems[];
 } hidden_vram_upscaled;
 
 void copy_rdram_8(uint index)
@@ -96,13 +118,22 @@ void copy_rdram_8(uint index)
     uint r = 0u;
     for (int i = 0; i < NUM_SAMPLES; i++)
     {
+#if NO_STORAGE_8BIT
+        uint real_word = load_u8_from_u32(vram_upscaled32.elems, index);
+#else
         uint real_word = uint(vram_upscaled8.elems[index]);
+#endif
         r += real_word;
     }
 
     r = (r + (NUM_SAMPLES >> 1)) / NUM_SAMPLES;
+#if NO_STORAGE_8BIT
+    store_u8_to_u32(vram_reference32.elems, index, r);
+    store_u8_to_u32(vram32.elems, index, r);
+#else
     vram_reference8.elems[index] = uint8_t(r);
     vram8.elems[index] = uint8_t(r);
+#endif
 }
 
 uvec4 decode_rgba5551(uint word)
@@ -237,11 +268,15 @@ void main()
             switch (FB_SIZE_LOG2)
             {
                 case 0:
+#if NO_STORAGE_8BIT
+                    atomicOr(vram32.elems[(color_index + RDRAM_SIZE) >> 2u], 0xffu << (((color_index + RDRAM_SIZE) & 3u) * 8u));
+#else
                     vram8.elems[color_index + RDRAM_SIZE] = mem_u8(0xff);
+#endif
                     break;
 
                 case 1:
-                    vram16.elems[color_index + (RDRAM_SIZE >> 1)] = mem_u16(0xffff);
+                    vram16.elems[color_index + (RDRAM_SIZE >> 1)] = mem_u16_ones(color_index);
                     break;
 
                 case 2:
@@ -271,7 +306,7 @@ void main()
             // also coherent.
             memoryBarrierBuffer();
             if (depth_write_mask)
-                vram16.elems[depth_index + (RDRAM_SIZE >> 1u)] = mem_u16(0xffff);
+                vram16.elems[depth_index + (RDRAM_SIZE >> 1u)] = mem_u16_ones(depth_index);
         }
     }
 }

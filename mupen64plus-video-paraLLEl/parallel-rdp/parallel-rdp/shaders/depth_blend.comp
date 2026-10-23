@@ -36,10 +36,12 @@ layout(local_size_x_id = 3, local_size_y_id = 4) in;
 #include "data_structures_buffers.h"
 #include "memory_interfacing.h"
 
+#if !NO_STORAGE_8BIT
 layout(set = 0, binding = 3, std430) readonly buffer ColorBuffer
 {
     mem_u8x4 elems[];
 } color;
+#endif
 
 layout(set = 0, binding = 3, std430) readonly buffer ColorRawBuffer
 {
@@ -51,6 +53,13 @@ layout(set = 0, binding = 4, std430) readonly buffer DepthBuffer
     int elems[];
 } depth;
 
+#if NO_STORAGE_8BIT
+// See rasterizer.comp: coverage low byte, shade alpha high byte.
+layout(set = 0, binding = 6, std430) readonly buffer CoverageShadeAlpha
+{
+    mem_u16 elems[];
+} coverage_shade_alpha;
+#else
 layout(set = 0, binding = 5, std430) readonly buffer ShadeAlpha
 {
     mem_u8 elems[];
@@ -60,6 +69,7 @@ layout(set = 0, binding = 6, std430) readonly buffer Coverage
 {
     mem_i8 elems[];
 } coverage;
+#endif
 
 layout(std430, set = 0, binding = 7) readonly buffer TileInstanceOffset
 {
@@ -115,7 +125,12 @@ void main()
             uint primitive_index = uint(i + 32 * mask_index);
 
             uint index = tile_instance * (gl_WorkGroupSize.x * gl_WorkGroupSize.y) + gl_LocalInvocationIndex;
+#if NO_STORAGE_8BIT
+            uint coverage_word = uint(coverage_shade_alpha.elems[index]);
+            int coverage = bitfieldExtract(int(coverage_word), 0, 8);
+#else
             int coverage = int(coverage.elems[index]);
+#endif
 
             if (coverage >= 0)
             {
@@ -131,9 +146,15 @@ void main()
                 else
                 {
                     ShadedData shaded;
+#if NO_STORAGE_8BIT
+                    shaded.combined = unpack_mem_u8x4(raw_color.elems[index]);
+                    shaded.z_dith = depth.elems[index];
+                    shaded.shade_alpha = u8(coverage_word >> 8u);
+#else
                     shaded.combined = u8x4(color.elems[index]);
                     shaded.z_dith = depth.elems[index];
                     shaded.shade_alpha = u8(shade_alpha.elems[index]);
+#endif
                     shaded.coverage_count = u8(coverage);
                     depth_blend(x, y, primitive_index, shaded);
                 }

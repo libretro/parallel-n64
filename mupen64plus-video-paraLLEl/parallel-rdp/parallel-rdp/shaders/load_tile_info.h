@@ -35,6 +35,16 @@ TileInfo load_tile_info(uint index)
 			tile_infos.elems[index].thi,
 			tile_infos.elems[index].offset,
 			tile_infos.elems[index].stride,
+#if NO_STORAGE_8BIT
+			unpack_mem_u8(tile_infos.elems[index].fmt_size_palette_mask_s, 0),
+			unpack_mem_u8(tile_infos.elems[index].fmt_size_palette_mask_s, 1),
+			unpack_mem_u8(tile_infos.elems[index].fmt_size_palette_mask_s, 2),
+			unpack_mem_u8(tile_infos.elems[index].fmt_size_palette_mask_s, 3),
+			unpack_mem_u8(tile_infos.elems[index].shift_s_mask_t_shift_t_flags, 0),
+			unpack_mem_u8(tile_infos.elems[index].shift_s_mask_t_shift_t_flags, 1),
+			unpack_mem_u8(tile_infos.elems[index].shift_s_mask_t_shift_t_flags, 2),
+			unpack_mem_u8(tile_infos.elems[index].shift_s_mask_t_shift_t_flags, 3));
+#else
 			u8(tile_infos.elems[index].fmt),
 			u8(tile_infos.elems[index].size),
 			u8(tile_infos.elems[index].palette),
@@ -43,6 +53,7 @@ TileInfo load_tile_info(uint index)
 			u8(tile_infos.elems[index].mask_t),
 			u8(tile_infos.elems[index].shift_t),
 			u8(tile_infos.elems[index].flags));
+#endif
 #endif
 }
 

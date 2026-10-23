@@ -38,7 +38,7 @@ layout(set = 0, binding = 1, std430) readonly buffer RDRAM32
 
 layout(set = 0, binding = 2, std430) readonly buffer HiddenRDRAM
 {
-	mem_u8 elems[];
+	mem_hidden elems[];
 } hidden_vram;
 
 layout(push_constant, std430) uniform Registers

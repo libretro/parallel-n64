@@ -38,8 +38,13 @@ TriangleSetup load_triangle_setup(uint index)
 			triangle_setup.elems[index].dxmdy,
 			triangle_setup.elems[index].dxldy,
 			i16(triangle_setup.elems[index].yl),
+#if NO_STORAGE_8BIT
+			unpack_mem_u8(triangle_setup.elems[index].flags_tile, 0),
+			unpack_mem_u8(triangle_setup.elems[index].flags_tile, 1));
+#else
 			u8(triangle_setup.elems[index].flags),
 			u8(triangle_setup.elems[index].tile));
+#endif
 #endif
 }
 

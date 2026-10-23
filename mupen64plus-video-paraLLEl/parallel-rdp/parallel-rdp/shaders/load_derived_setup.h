@@ -28,6 +28,25 @@ DerivedSetup load_derived_setup(uint index)
 #if SMALL_TYPES
 	return derived_setup.elems[index];
 #else
+#if NO_STORAGE_8BIT
+	uint dz_compressed_min_lod = uint(derived_setup.elems[index].dz_compressed_min_lod);
+	return DerivedSetup(
+			unpack_mem_u8x4(derived_setup.elems[index].constant_muladd0_packed),
+			unpack_mem_u8x4(derived_setup.elems[index].constant_mulsub0_packed),
+			unpack_mem_u8x4(derived_setup.elems[index].constant_mul0_packed),
+			unpack_mem_u8x4(derived_setup.elems[index].constant_add0_packed),
+			unpack_mem_u8x4(derived_setup.elems[index].constant_muladd1_packed),
+			unpack_mem_u8x4(derived_setup.elems[index].constant_mulsub1_packed),
+			unpack_mem_u8x4(derived_setup.elems[index].constant_mul1_packed),
+			unpack_mem_u8x4(derived_setup.elems[index].constant_add1_packed),
+			unpack_mem_u8x4(derived_setup.elems[index].fog_color_packed),
+			unpack_mem_u8x4(derived_setup.elems[index].blend_color_packed),
+			uint(derived_setup.elems[index].fill_color),
+			u16(derived_setup.elems[index].dz),
+			unpack_mem_u8(dz_compressed_min_lod, 0),
+			unpack_mem_u8(dz_compressed_min_lod, 1),
+			i16x4(derived_setup.elems[index].factors));
+#else
 	return DerivedSetup(
 			u8x4(derived_setup.elems[index].constant_muladd0),
 			u8x4(derived_setup.elems[index].constant_mulsub0),
@@ -44,6 +63,7 @@ DerivedSetup load_derived_setup(uint index)
 			u8(derived_setup.elems[index].dz_compressed),
 			u8(derived_setup.elems[index].min_lod),
 			i16x4(derived_setup.elems[index].factors));
+#endif
 #endif
 }
 

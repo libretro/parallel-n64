@@ -41,7 +41,7 @@ bool shade_pixel(int x, int y, uint primitive_index, out ShadedData shaded)
 	if ((y < (SCALING_FACTOR * span_offsets.ylo)) || (y > (span_offsets.yhi * SCALING_FACTOR + (SCALING_FACTOR - 1))))
 		return false;
 
-	uint setup_flags = uint(triangle_setup.elems[primitive_index].flags);
+	uint setup_flags = uint(triangle_setup_flags(primitive_index));
 	if (SCALING_FACTOR > 1)
 	{
 		if ((setup_flags & TRIANGLE_SETUP_DISABLE_UPSCALING_BIT) != 0u)
@@ -55,10 +55,10 @@ bool shade_pixel(int x, int y, uint primitive_index, out ShadedData shaded)
 	if (span_setup.valid_line == U16_C(0))
 		return false;
 
-	uint setup_tile = uint(triangle_setup.elems[primitive_index].tile);
+	uint setup_tile = uint(triangle_setup_tile(primitive_index));
 	AttributeSetup attr = load_attribute_setup(primitive_index);
 
-	uvec4 states = uvec4(state_indices.elems[primitive_index].static_depth_tmem);
+	uvec4 states = uvec4(instance_static_depth_tmem(primitive_index));
 	uint static_state_index = states.x;
 	uint tmem_instance_index = states.z;
 
@@ -140,7 +140,7 @@ bool shade_pixel(int x, int y, uint primitive_index, out ShadedData shaded)
 		interpolate_st_copy(span_setup, attr.dstzw_dx, x, perspective, flip, st, s_offset);
 
 		uint tile0 = uint(setup_tile) & 7u;
-		uint tile_info_index0 = uint(state_indices.elems[primitive_index].tile_infos[tile0]);
+		uint tile_info_index0 = uint(instance_tile_info(primitive_index, tile0));
 		TileInfo tile_info0 = load_tile_info(tile_info_index0);
 #ifdef RASTERIZER_SPEC_CONSTANT
 		if ((STATIC_STATE_FLAGS & RASTERIZATION_USE_STATIC_TEXTURE_SIZE_FORMAT_BIT) != 0)
@@ -255,7 +255,7 @@ bool shade_pixel(int x, int y, uint primitive_index, out ShadedData shaded)
 
 	if (uses_texel0)
 	{
-		uint tile_info_index0 = uint(state_indices.elems[primitive_index].tile_infos[tile0]);
+		uint tile_info_index0 = uint(instance_tile_info(primitive_index, tile0));
 		TileInfo tile_info0 = load_tile_info(tile_info_index0);
 #ifdef RASTERIZER_SPEC_CONSTANT
 		if ((STATIC_STATE_FLAGS & RASTERIZATION_USE_STATIC_TEXTURE_SIZE_FORMAT_BIT) != 0)
@@ -301,7 +301,7 @@ bool shade_pixel(int x, int y, uint primitive_index, out ShadedData shaded)
 		}
 		else
 		{
-			uint tile_info_index1 = uint(state_indices.elems[primitive_index].tile_infos[tile1]);
+			uint tile_info_index1 = uint(instance_tile_info(primitive_index, tile1));
 			TileInfo tile_info1 = load_tile_info(tile_info_index1);
 #ifdef RASTERIZER_SPEC_CONSTANT
 			if ((STATIC_STATE_FLAGS & RASTERIZATION_USE_STATIC_TEXTURE_SIZE_FORMAT_BIT) != 0)
