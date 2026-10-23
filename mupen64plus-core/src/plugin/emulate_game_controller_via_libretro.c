@@ -531,8 +531,6 @@ static void analog_scale(int32_t x, int32_t y, int maximum, int32_t* outX, int32
    }
 }
 
-/* Shared tail of every control profile: N64 stick, mouse-to-stick mode,
- * d-pad, Start, and the SELECT-driven profile toggle. */
 /* Mouse motion accumulated across frontend polls. Every poll resets the
  * frontend's mouse delta, but the core polls once per VI while most games
  * read the controller only once per game frame, so a delta read only at
@@ -542,18 +540,62 @@ static void analog_scale(int32_t x, int32_t y, int maximum, int32_t* outX, int32
  * sees the freshest motion (with late polling that read is what polls),
  * or else by inputPollMouse just before the next poll. A read turns the
  * sum into a stick position and latches it, so further reads before the
- * following poll see the same position. */
+ * following poll see the same position. This feeds the game, so it is
+ * part of the savestate (inputMouseStateSave). */
 static int mouse_acc_x, mouse_acc_y;
 static int mouse_stick_x, mouse_stick_y;
 static bool mouse_sampled;
 static bool mouse_pending;
 
+/* Past this the stick is at full deflection for any sensitivity, so the
+ * sum saturates instead of overflowing while a game is not reading. */
+#define MOUSE_ACC_LIMIT 32767
+
+static int mouse_acc_add(int acc, int delta)
+{
+   acc += delta;
+   if (acc > MOUSE_ACC_LIMIT)
+      return MOUSE_ACC_LIMIT;
+   if (acc < -MOUSE_ACC_LIMIT)
+      return -MOUSE_ACC_LIMIT;
+   return acc;
+}
+
 static void mouse_sample(void)
 {
-   mouse_acc_x  += input_cb(0, RETRO_DEVICE_MOUSE, 0, RETRO_DEVICE_ID_MOUSE_X);
-   mouse_acc_y  += input_cb(0, RETRO_DEVICE_MOUSE, 0, RETRO_DEVICE_ID_MOUSE_Y);
+   mouse_acc_x   = mouse_acc_add(mouse_acc_x,
+         input_cb(0, RETRO_DEVICE_MOUSE, 0, RETRO_DEVICE_ID_MOUSE_X));
+   mouse_acc_y   = mouse_acc_add(mouse_acc_y,
+         input_cb(0, RETRO_DEVICE_MOUSE, 0, RETRO_DEVICE_ID_MOUSE_Y));
    mouse_sampled = true;
    mouse_pending = true;
+}
+
+void inputMouseStateSave(int32_t *s)
+{
+   s[0] = mouse_acc_x;
+   s[1] = mouse_acc_y;
+   s[2] = mouse_stick_x;
+   s[3] = mouse_stick_y;
+   s[4] = (mouse_sampled ? 1 : 0) | (mouse_pending ? 2 : 0);
+}
+
+/* NULL resets to power-on state (states older than 1.7). */
+void inputMouseStateLoad(const int32_t *s)
+{
+   if (!s)
+   {
+      mouse_acc_x   = mouse_acc_y   = 0;
+      mouse_stick_x = mouse_stick_y = 0;
+      mouse_sampled = mouse_pending = false;
+      return;
+   }
+   mouse_acc_x   = mouse_acc_add(s[0], 0);
+   mouse_acc_y   = mouse_acc_add(s[1], 0);
+   mouse_stick_x = (s[2] > 80) ? 80 : (s[2] < -80) ? -80 : s[2];
+   mouse_stick_y = (s[3] > 80) ? 80 : (s[3] < -80) ? -80 : s[3];
+   mouse_sampled = (s[4] & 1) != 0;
+   mouse_pending = (s[4] & 2) != 0;
 }
 
 /* Called right before every frontend poll. */
@@ -564,6 +606,8 @@ void inputPollMouse(void)
    mouse_sampled = false;
 }
 
+/* Shared tail of every control profile: N64 stick, mouse-to-stick mode,
+ * d-pad, Start, and the SELECT-driven profile toggle. */
 static void inputGetKeys_reuse(int16_t analogX, int16_t analogY, int Control, BUTTONS* Keys)
 {
    int32_t sx, sy;

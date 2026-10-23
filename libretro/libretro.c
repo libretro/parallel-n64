@@ -3644,8 +3644,9 @@ size_t retro_serialize_size (void)
      * every ROM and CPU core (measured 16789580), so size it to the actual
      * maximum plus a real 1KB margin. Aleck64 romsets append their 4MB
      * board SDRAM (v1.5 block), and E90 boards their sprite VRAM, palette
-     * and enable word (v1.6 block). */
-    return 16789580 + 1024
+     * and enable word (v1.6 block). The v1.7 block is the mouse-to-stick
+     * accumulator. */
+    return 16789580 + 4 * INPUT_MOUSE_STATE_WORDS + 1024
          + (g_aleck64_enabled ? (ALECK64_SDRAM_SIZE + 16) : 0)
          + (g_aleck64_e90 ? (ALECK64_E90_VRAM_SIZE + ALECK64_E90_PAL_SIZE + 4) : 0);
 }

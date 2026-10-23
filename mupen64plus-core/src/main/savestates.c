@@ -60,7 +60,7 @@
 extern uint32_t RollbackRtcOnLoadState;
 
 static const char* savestate_magic = "M64+SAVE";
-static const int savestate_latest_version = 0x00010006;  /* 1.6 */
+static const int savestate_latest_version = 0x00010007;  /* 1.7 */
 
 #define GETARRAY(buff, type, count) \
     (to_little_endian_buffer(buff, sizeof(type),count), \
@@ -98,7 +98,7 @@ int savestates_load_m64p(const unsigned char *data, size_t size)
    version = (version << 8) | *curr++;
    version = (version << 8) | *curr++;
 
-   if(version != 0x00010000 && version != 0x00010001 && version != 0x00010002 && version != 0x00010003 && version != 0x00010004 && version != 0x00010005 && version != 0x00010006)
+   if(version != 0x00010000 && version != 0x00010001 && version != 0x00010002 && version != 0x00010003 && version != 0x00010004 && version != 0x00010005 && version != 0x00010006 && version != 0x00010007)
       return 0;
 
    /* Identity check.  New states carry the "M64H"-prefixed header
@@ -426,6 +426,14 @@ int savestates_load_m64p(const unsigned char *data, size_t size)
       g_dev.aleck64.e90_enable = GETDATA(curr, uint32_t);
    }
 
+   /* Mouse-to-stick accumulator (since 1.7); older states start it clear */
+   if (version >= 0x00010007) {
+      int32_t ms[INPUT_MOUSE_STATE_WORDS];
+      COPYARRAY(ms, curr, int32_t, INPUT_MOUSE_STATE_WORDS);
+      inputMouseStateLoad(ms);
+   }
+   else
+      inputMouseStateLoad(NULL);
 
    /* deliver callback to indicate 
     * completion of state loading operation */
@@ -764,6 +772,14 @@ int savestates_save_m64p(unsigned char *data, size_t size)
       PUTARRAY(g_dev.aleck64.e90_vram, curr, uint32_t, ALECK64_E90_VRAM_SIZE/4);
       PUTARRAY(g_dev.aleck64.e90_pal, curr, uint32_t, ALECK64_E90_PAL_SIZE/4);
       PUTDATA(curr, uint32_t, g_dev.aleck64.e90_enable);
+   }
+
+   /* Mouse-to-stick accumulator (since 1.7): it decides what the game
+    * reads, so rollback and run-ahead must restore it */
+   {
+      int32_t ms[INPUT_MOUSE_STATE_WORDS];
+      inputMouseStateSave(ms);
+      PUTARRAY(ms, curr, int32_t, INPUT_MOUSE_STATE_WORDS);
    }
 
    /* Deliver callback to indicate completion

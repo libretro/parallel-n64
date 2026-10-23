@@ -466,7 +466,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
         CORE_NAME "-mouse-boost",
         "Mouse Small Movement Boost",
         NULL,
-        "Amplifies small mouse movements to make fine aiming practical. Higher = more boost.",
+        "Amplifies small mouse movements to make fine aiming practical. Higher = more boost; at 10 the stick follows the square root of the motion.",
         NULL,
         "input",
         {

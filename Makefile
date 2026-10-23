@@ -1351,9 +1351,18 @@ angrylion_zboss_audio_test$(EXE_EXT): tools/angrylion_zboss_audio_test.c \
 	$(CC) $(CHECK_CFLAGS) $(CHECK_SANITIZE) -I$(VIDEODIR_ANGRYLION) -I$(LIBRETRO_COMM_DIR)/include \
 		$< $(ZBOSS_TEST_OBJS) -o $@ $(CHECK_LDFLAGS) $(CHECK_SANITIZE) -lm
 
+# The controller backend is #included by the test, which defines the
+# frontend globals it reads.
+test_mouse_accum$(EXE_EXT): tools/test_mouse_accum.c \
+		$(CORE_DIR)/src/plugin/emulate_game_controller_via_libretro.c
+	$(CC) $(CHECK_CFLAGS) $(CHECK_SANITIZE) -I$(CORE_DIR)/src -I$(CORE_DIR)/src/api \
+		-I$(CORE_DIR)/custom -I$(LIBRETRO_COMM_DIR)/include -I$(ROOT_DIR)/libretro \
+		$< -o $@ $(CHECK_LDFLAGS) $(CHECK_SANITIZE)
+
 CORE_CHECKS := test_rcp_bounds$(EXE_EXT) test_memory_map$(EXE_EXT) test_fb_write$(EXE_EXT) \
 	test_cp0_exceptions$(EXE_EXT) test_fpu_compare$(EXE_EXT) test_pi_status$(EXE_EXT) \
-	test_musyx_bounds$(EXE_EXT) angrylion_zboss_audio_test$(EXE_EXT)
+	test_musyx_bounds$(EXE_EXT) angrylion_zboss_audio_test$(EXE_EXT) \
+	test_mouse_accum$(EXE_EXT)
 
 ifeq ($(HAVE_PARALLEL_RSP), 1)
 PRSP_TEST_OBJS := $(filter $(RSPDIR_PARALLEL)/%,$(OBJECTS))
