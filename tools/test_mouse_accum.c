@@ -33,6 +33,20 @@ int mouse_left_btn, mouse_right_btn, mouse_middle_btn;
 int mouse_wheel_up_btn, mouse_wheel_down_btn;
 m64p_rom_header ROM_HEADER;
 int g_aleck64_dpad_disabled;
+int vr_aim_btn_up, vr_aim_btn_down, vr_aim_btn_left, vr_aim_btn_right;
+
+/* VR laser aim hooks (libretro.c): off unless a test sets an aim */
+static bool  s_aim_on;
+static float s_aim_x, s_aim_y;
+bool libretro_vr_aim_stick(int port, float *x, float *y)
+{
+   if (!s_aim_on || port != 0)
+      return false;
+   *x = s_aim_x;
+   *y = s_aim_y;
+   return true;
+}
+unsigned libretro_vr_aim_dirs(int port) { (void)port; return 0; }
 
 static int s_failures;
 static int s_dx, s_dy;
@@ -170,6 +184,25 @@ static void test_boost_monotonic(void)
    mouse_boost = 0;
 }
 
+/* A VR laser aim drives the stick ahead of the mouse, which still
+ * consumes its motion so none of it is replayed later. */
+static void test_vr_aim_precedence(void)
+{
+   BUTTONS k;
+   reset_state();
+   s_aim_on = true;
+   s_aim_x  = 0.5f;
+   s_aim_y  = -0.25f;
+   vi(20, 0);
+   s_dx = 20;
+   k = read_pad();
+   CHECK(k.X_AXIS == 40 && k.Y_AXIS == -20, "the VR aim drives the stick");
+   s_aim_on = false;
+   vi(0, 0);
+   k = read_pad();
+   CHECK(k.X_AXIS == 0, "mouse motion made under the VR aim is not replayed");
+}
+
 int main(void)
 {
    static CONTROL ctl;
@@ -182,6 +215,7 @@ int main(void)
    test_saturates();
    test_plain_scale();
    test_boost_monotonic();
+   test_vr_aim_precedence();
 
    if (s_failures)
    {
