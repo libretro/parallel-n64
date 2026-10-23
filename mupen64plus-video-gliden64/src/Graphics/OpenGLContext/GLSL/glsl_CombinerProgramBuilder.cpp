@@ -7,6 +7,10 @@
 #include "glsl_CombinerProgramImpl.h"
 #include "glsl_CombinerProgramBuilder.h"
 #include "glsl_CombinerProgramUniformFactory.h"
+#include <NoiseTexture.h>
+
+#define NOISE_STR_(x) #x
+#define NOISE_STR(x) NOISE_STR_(x)
 
 using namespace glsl;
 
@@ -1528,19 +1532,23 @@ public:
 			if (_glinfo.isGLES2) {
 				m_part =
 					"uniform sampler2D uTexNoise;							\n"
+					"uniform mediump vec2 uNoiseOffset;						\n"
 					"lowp float snoise()									\n"
 					"{														\n"
-					"  mediump vec2 texSize = vec2(640.0, 580.0);			\n"
-					"  mediump vec2 coord = gl_FragCoord.xy/uScreenScale/texSize;	\n"
-					"  return texture2D(uTexNoise, coord).r;				\n"
+					"  mediump vec2 texSize = vec2(" NOISE_STR(NOISE_TEX_WIDTH) ".0, " NOISE_STR(NOISE_TEX_HEIGHT) ".0);\n"
+					/* Subtract and wrap: keeps |p| < 640 so fp16 mediump stays exact. */
+					"  mediump vec2 p = gl_FragCoord.xy/uScreenScale - uNoiseOffset;\n"
+					"  p += texSize * vec2(lessThan(p, vec2(0.0)));\n"
+					"  return texture2D(uTexNoise, fract(p/texSize)).r;\n"
 					"}														\n"
 				;
 			} else {
 				m_part =
 					"uniform sampler2D uTexNoise;		\n"
+					"uniform mediump vec2 uNoiseOffset;					\n"
 					"lowp float snoise()									\n"
 					"{														\n"
-					"  ivec2 coord = ivec2(gl_FragCoord.xy/uScreenScale);	\n"
+					"  ivec2 coord = (ivec2(gl_FragCoord.xy/uScreenScale) + ivec2(uNoiseOffset)) % ivec2(" NOISE_STR(NOISE_TEX_WIDTH) ", " NOISE_STR(NOISE_TEX_HEIGHT) ");\n"
 					"  return texelFetch(uTexNoise, coord, 0).r;			\n"
 					"}														\n"
 					;

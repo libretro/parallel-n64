@@ -1,13 +1,11 @@
 #pragma once
-#include <array>
 #include <vector>
-#include <memory>
 #include "Types.h"
 
-#define NOISE_TEX_NUM 30
+#define NOISE_TEX_WIDTH 640
+#define NOISE_TEX_HEIGHT 580
 
 struct CachedTexture;
-typedef std::array<std::vector<u8>, NOISE_TEX_NUM> NoiseTexturesData;
 
 class NoiseTexture
 {
@@ -17,14 +15,16 @@ public:
 	void init();
 	void destroy();
 	void update();
+	u32 getOffsetX() const { return m_offsetX; }
+	u32 getOffsetY() const { return m_offsetY; }
 
 private:
 	void _fillTextureData();
 
-	CachedTexture * m_pTexture[NOISE_TEX_NUM];
+	CachedTexture * m_pTexture;
 	u32 m_DList;
-	u32 m_currTex, m_prevTex;
-	NoiseTexturesData m_texData;
+	u32 m_offsetX, m_offsetY;
+	std::vector<u8> m_texData;
 };
 
 extern NoiseTexture g_noiseTexture;
