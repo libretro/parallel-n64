@@ -188,6 +188,7 @@ static void main_check_inputs(void)
          * so it can still be unset when the machine runs. */
         if (poll_cb)
         {
+            inputPollMouse();
             // Input Polling will be forced to early if Threaded GLideN64
             poll_cb();
         }

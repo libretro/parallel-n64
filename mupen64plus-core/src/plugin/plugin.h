@@ -80,6 +80,10 @@ extern gfx_plugin_functions gfx;
  * indirection is replaced with direct calls. */
 extern void inputControllerCommand(int Control, unsigned char *Command);
 extern void inputGetKeys(int Control, BUTTONS *Keys);
+extern void inputPollMouse(void);
+#define INPUT_MOUSE_STATE_WORDS 5
+extern void inputMouseStateSave(int32_t *s);
+extern void inputMouseStateLoad(const int32_t *s);
 extern void inputGetKeysGCN(int Control, int analogMode, BUTTONS_GCN *Keys);
 extern void inputInitiateControllers(CONTROL_INFO ControlInfo);
 extern void inputReadController(int Control, unsigned char *Command);

@@ -287,6 +287,7 @@ bool alternate_mapping;
 bool mouse_mode;
 int mouse_sensitivity_x;
 int mouse_sensitivity_y;
+int mouse_boost;  /* 0-10, used as k/10 for boost blend */
 int mouse_left_btn;
 int mouse_right_btn;
 int mouse_middle_btn;
@@ -2461,6 +2462,15 @@ void update_variables(bool startup)
       mouse_sensitivity_y = (val < -500) ? -500 : (val > 500) ? 500 : val;
    }
 
+   var.key = "parallel-n64-mouse-boost";
+   var.value = NULL;
+
+   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+   {
+      int val = atoi(var.value);
+      mouse_boost = (val < 0) ? 0 : (val > 10) ? 10 : val;
+   }
+
    var.key = "parallel-n64-mouse-left";
    var.value = NULL;
 
@@ -3634,8 +3644,9 @@ size_t retro_serialize_size (void)
      * every ROM and CPU core (measured 16789580), so size it to the actual
      * maximum plus a real 1KB margin. Aleck64 romsets append their 4MB
      * board SDRAM (v1.5 block), and E90 boards their sprite VRAM, palette
-     * and enable word (v1.6 block). */
-    return 16789580 + 1024
+     * and enable word (v1.6 block). The v1.7 block is the mouse-to-stick
+     * accumulator. */
+    return 16789580 + 4 * INPUT_MOUSE_STATE_WORDS + 1024
          + (g_aleck64_enabled ? (ALECK64_SDRAM_SIZE + 16) : 0)
          + (g_aleck64_e90 ? (ALECK64_E90_VRAM_SIZE + ALECK64_E90_PAL_SIZE + 4) : 0);
 }
