@@ -293,6 +293,13 @@ void f3dex2_set_othermode_init(unsigned int h, unsigned int l)
                    ((s_othermode_l >> 5) & 1u)) ? 1 : 0;
 }
 
+/* the G_SETOTHERMODE_H word the walker last forwarded (cycle type at
+ * bits 20..21) */
+unsigned int f3dex2_othermode_high(void)
+{
+    return s_othermode_h;
+}
+
 void f3dex2_seg_reset(void)
 {
     s2dex_reset();
@@ -568,6 +575,24 @@ void f3dex2_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
              * the sprite/object commands live at the high opcodes 0xb0-0xc4 and
              * 0xe4 (gs2dex.h !F3DEX_GBI_2 build). Nested display lists (G_DL,
              * 0x06) MUST be followed -- the object draws live inside them. */
+            /* G_RDPHALF_0 (0xe4, the G_TEXRECT opcode) followed by
+             * G_SELECT_DL: SID, the low address half and the flag, then
+             * the high address half, the push bit and the mask. */
+            if (cmd == 0xe4 && addr_in_range(pc, 8u)
+                && (rd_u32_be(r, pc) >> 24) == 0xb0u)
+            {
+                unsigned int select = rd_u32_be(r, pc);
+                unsigned int mask = rd_u32_be(r, pc + 4u);
+                unsigned int target = ((select & 0xffffu) << 16) | (w0 & 0xffffu);
+                pc += 8u;
+                if (s2dex_select_dl((w0 >> 16) & 0xffu, w1, mask))
+                {
+                    if (!(select & 0x00010000u) && s_dl_sp < DL_MAX_DEPTH)
+                        s_dl_stack[s_dl_sp++] = pc;
+                    pc = seg_addr(target);
+                }
+                continue;
+            }
             if (cmd == 0xaf)   /* G_LOAD_UCODE (GBI1): mid-list ucode swap */
             {
                 unsigned int t = seg_addr(w1);
@@ -722,8 +747,10 @@ void f3dex2_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
                 s2dex_obj_loadtxtr(r, s_rdram_size, seg_addr(w1), fifo, seg_addr);
                 s2dex_obj_rectangle_r(gsp, r, s_rdram_size, seg_addr(w1) + 24u, fifo);
                 break;
-            case 0xb0:                          /* G_SELECT_DL (not modelled) */
-            case 0xb2:                          /* G_OBJ_RECTANGLE_R (rotated; TODO) */
+            case 0xb2:                          /* G_OBJ_RECTANGLE_R */
+                s2dex_obj_rectangle_r(gsp, r, s_rdram_size, seg_addr(w1), fifo);
+                break;
+            case 0xb0:                          /* G_SELECT_DL: with HALF_0 above */
             case 0xbb:                          /* G_TEXTURE (sprite tile sets scale) */
             case 0xb3:                          /* G_RDPHALF_2 (texrect tail) */
             case 0xb4:                          /* G_RDPHALF_1 (texrect tail) */

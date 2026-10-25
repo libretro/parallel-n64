@@ -3,6 +3,17 @@
 
 #include <stdint.h>
 
+/* S2DEX 1.x object writers; see rdp_emit_rsp.c */
+int rsp_s2dex_rect_axis(int obj, int scale, int extent, int base_scale,
+                        int trans, const int16_t c[6], int flip,
+                        int clip_min, int clip_max, int frac_scale,
+                        int truncate, int out[4]);
+void rsp_s2dex_sprite_corners(int16_t out[4][4], const int obj[6],
+                              const int32_t matrix[6], unsigned int mode,
+                              unsigned int flags);
+void rsp_s2dex_sprite_triangle(int32_t packet[24], const int16_t h[4],
+                               const int16_t m[4], const int16_t l[4],
+                               unsigned int tile);
 int32_t rsp_rcp32(int32_t in32);
 int32_t rsp_rcp32_dp(int32_t in32);
 int32_t rsp_rcp16(int32_t in16);

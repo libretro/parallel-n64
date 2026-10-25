@@ -21,6 +21,8 @@
 #include "rdp_emit_s2dex.h"
 #include "rdp_emit_recip.h"
 #include "rdp_emit_frontend.h"
+#include "rdp_emit_rsp.h"
+#include "rdp_emit_f3dex2.h"
 
 /* S2DEX sprite quad uses four scratch vertex slots at the top of the RSP
  * vertex buffer so it never clobbers geometry a surrounding display list
@@ -126,12 +128,53 @@ static unsigned int s_obj_rtile = 0;    /* S2DEX2 render tile 0 <-> 2 */
 
 static int s_s2dex2 = 0;
 
+/* G_SELECT_DL: branch or call when the status word (DMEM 0x8c + sid)
+ * under mask differs from flag, and record flag in it. Returns 1 when the
+ * list is selected. */
+int s2dex_select_dl(unsigned int sid, unsigned int flag, unsigned int mask)
+{
+    unsigned int *status;
+    if (sid >= 16u || (sid & 3u) != 0u)
+        return 0;
+    status = &s_obj_status[sid >> 2];
+    if ((*status & mask) == flag)
+        return 0;
+    *status = (*status & ~mask) | (flag & mask);
+    return 1;
+}
+
 void s2dex_set_version2(int on)
 {
     s_s2dex2 = on ? 1 : 0;
 }
 
 static int s_obj_tile7_used;
+
+/* S2DEX 1.x tile history, DMEM 0xd2/0xd3 (the data segment ships 0x80,
+ * 0x02). 0xd2 holds 0x81 after a texture load and the render tile after
+ * a draw: a load right after a load fences with TILESYNC, a load after a
+ * draw with LOADSYNC before the load command. 0xd3 holds the render tile,
+ * which each drawn object flips between 0 and 2, fencing with TILESYNC
+ * when it lands on the tile 0xd2 names. The microcode saves its state to
+ * the data segment it reloads, so the history carries across tasks and
+ * across a swap to F3DEX and back (Yoshi's Story, against cxd4). */
+static unsigned char s_s1_hist[2] = { 0x80, 0x02 };
+
+/* the next S2DEX 1.x render tile, with its TILESYNC when needed */
+static unsigned int s2dex1_next_tile(RdpFifo *fifo)
+{
+    unsigned int tile = (unsigned int)s_s1_hist[1] ^ 2u;
+    s_s1_hist[1] = (unsigned char)tile;
+    if (tile == s_s1_hist[0])
+    {
+        int32_t sync[2];
+        sync[0] = (int32_t)0x28000000u;
+        sync[1] = 0;
+        rdp_fifo_append(fifo, sync, 2);
+    }
+    s_s1_hist[0] = (unsigned char)tile;
+    return tile;
+}
 
 void s2dex_reset(void)
 {
@@ -175,6 +218,23 @@ void s2dex_reset(void)
  * words mirror the S2DEX2 RSP output verbatim, including the junk upper
  * bits the microcode leaves in the tile words (0x27000000), so the
  * stream compares byte-exact against the LLE. */
+/* The six words of a TLUT or tile load: the S2DEX 1.x build fences a
+ * load that follows a draw with LOADSYNC ahead of the load command. */
+static void s2dex1_load_append(RdpFifo *fifo, int32_t *cw, int drawn_since)
+{
+    if (!s_s2dex2 && drawn_since)
+    {
+        int32_t sync[2];
+        sync[0] = (int32_t)0x26000000u;
+        sync[1] = 0;
+        rdp_fifo_append(fifo, cw, 4);
+        rdp_fifo_append(fifo, sync, 2);
+        rdp_fifo_append(fifo, cw + 4, 2);
+    }
+    else
+        rdp_fifo_append(fifo, cw, 6);
+}
+
 int s2dex_obj_loadtxtr(const unsigned char *rdram, unsigned int rdram_bytes,
                        unsigned int ta, RdpFifo *fifo,
                        unsigned int (*segfn)(unsigned int))
@@ -214,14 +274,21 @@ int s2dex_obj_loadtxtr(const unsigned char *rdram, unsigned int rdram_bytes,
         return 1;                       /* already resident */
     s_obj_status[sid] = (s_obj_status[sid] & ~mask) | flag;
 
-    if (s_obj_tile7_used && !(s_s2dex2 && type == 0x00001033u))
+    if (s_s2dex2 ? (s_obj_tile7_used && type != 0x00001033u)
+                 : (s_s1_hist[0] == 0x81u))
     {
         cw[0] = (int32_t)0x28000000u;   /* tilesync against the last load */
         cw[1] = 0;
         rdp_fifo_append(fifo, cw, 2);
     }
     s_obj_tile7_used = 1;
-    drawn_since = s_obj_drawn;
+    if (s_s2dex2)
+        drawn_since = s_obj_drawn;
+    else
+    {
+        drawn_since = (signed char)s_s1_hist[0] >= 0;
+        s_s1_hist[0] = 0x81u;
+    }
     s_obj_drawn = 0;
 
     image = segfn(image);
@@ -236,34 +303,25 @@ int s2dex_obj_loadtxtr(const unsigned char *rdram, unsigned int rdram_bytes,
         cw[3] = (int32_t)0x27000000u;
         cw[4] = (int32_t)0x30000000u;
         cw[5] = (int32_t)(0x27000000u | ((tsize & 0x3ffu) << 14));
-        rdp_fifo_append(fifo, cw, 6);
+        if (!s_s2dex2)
+            cw[5] |= (int32_t)(tline & 0xfffu);
+        s2dex1_load_append(fifo, cw, drawn_since);
     }
     else if (type == 0x00001033u)       /* G_OBJLT_TXTRBLOCK */
     {
-        /* SETTIMG width-1 = tsize>>2 (the block's TMEM word span scaled
-         * back to the 16-bit load pitch); without it the LOADBLOCK dxt
-         * walks the wrong DRAM lines and nothing reaches TMEM. tsize is the
-         * 64-bit-TMEM-word count-1 (GS_TB_TSIZE = GS_PIX2TMEM(pix,siz)-1);
-         * the LOADBLOCK lrs is in 16-bit texels, and each TMEM word holds
-         * four of them, so the block span is tsize<<2 (cxd4-verified: 399
-         * words -> lrs 1596, filling the full tile rather than a quarter). */
-        /* S2DEX2 stores the raw TMEM word count in the SETTIMG width
-         * (Worms Armageddon, cxd4-matched: tsize 11 -> 0x3d10000b); the
-         * S2DEX1 build scales it back to the 16-bit load pitch
-         * (Yoshi's Story, cxd4-matched as below). The LOADBLOCK span and
-         * dxt are unchanged between the builds. */
-        cw[0] = (int32_t)(0x3d100000u
-                          | ((s_s2dex2 ? tsize : (tsize >> 2)) & 0xfffu));
+        /* Both builds copy the raw TMEM word count (tsize, the 64-bit
+         * word count - 1) into the SETTIMG width (Worms Armageddon:
+         * tsize 11 -> 0x3d10000b; Yoshi's Story: tsize 0xff ->
+         * 0x3d1000ff, cxd4); the LOADBLOCK converts it to four 16-bit
+         * texels per word, so its span is tsize << 2. A draw since the
+         * last load fences the LOADBLOCK with LOADSYNC. */
+        cw[0] = (int32_t)(0x3d100000u | (tsize & 0xfffu));
         cw[1] = (int32_t)image;
         cw[2] = (int32_t)(0x35100000u | (tmem & 0x1ffu));
         cw[3] = (int32_t)0x27000000u;
         rdp_fifo_append(fifo, cw, 4);
-        if (s_s2dex2 && drawn_since)
+        if (drawn_since)
         {
-            /* S2DEX2 issues a LOADSYNC between the load tile setup and
-             * the LOADBLOCK when a rectangle consumed the previous load
-             * (the first load of a task goes unsynced); the S2DEX1 build
-             * fences with the leading TILESYNC above instead. */
             cw[0] = (int32_t)0x26000000u;
             cw[1] = 0;
             rdp_fifo_append(fifo, cw, 2);
@@ -289,13 +347,15 @@ int s2dex_obj_loadtxtr(const unsigned char *rdram, unsigned int rdram_bytes,
          * SETTILE 0x35100600, LOAD_TILE 0x2702c053. */
         cw[0] = (int32_t)(0x3d100000u | (tsize & 0xfffu));
         cw[1] = (int32_t)image;
-        cw[2] = (int32_t)(0x35100000u | ((((tsize >> 2) + 1u) & 0x1ffu) << 9)
+        cw[2] = (int32_t)(0x35100000u
+                          | (s_s2dex2 ? ((((tsize >> 2) + 1u) & 0x1ffu) << 9)
+                                      : ((((tsize + 1u) & ~3u) << 7) & 0x3fe00u))
                           | (tmem & 0x1ffu));
         cw[3] = (int32_t)0x27000000u;
         cw[4] = (int32_t)0x34000000u;
         cw[5] = (int32_t)(0x27000000u | (((tsize << 2) & 0xfffu) << 12)
                           | (tline & 0xfffu));
-        rdp_fifo_append(fifo, cw, 6);
+        s2dex1_load_append(fifo, cw, drawn_since);
     }
     return 1;
 }
@@ -1393,6 +1453,106 @@ static void s2dex_obj_coords(int use_matrix, int objX, int objY,
         *bsy_o = (0u - *bsy_o) & 0xffffu;
 }
 
+/* S2DEX 1.x RECTANGLE_R: the resident writer's own X/Y lane arithmetic
+ * (rsp_s2dex_rect_axis) through the object matrix BaseScale and
+ * translation, with the render-mode corrections, the screen clip and the
+ * flipped texel walk, on the alternating render tile. */
+static void s2dex1_rect_r(int objX, int objY, unsigned int scaleW,
+                          unsigned int scaleH, unsigned int imageW,
+                          unsigned int imageH, unsigned int stride,
+                          unsigned int address, unsigned int fmt,
+                          unsigned int siz, unsigned int palette,
+                          unsigned int flags, RdpFifo *fifo)
+{
+    static const unsigned int a01[8] = {
+        0, 0x00100020u, 0x00200040u, 0x00300060u,
+        0x0000fff4u, 0x00100014u, 0x00200034u, 0x00300054u };
+    static const unsigned int a23[4] = {
+        0x0001fffeu, 0xfffefffeu, 0x00010000u, 0 };
+    int16_t correction[6];
+    unsigned int row = a01[(s_obj_rendermode >> 4) & 7u];
+    unsigned int rtile, end, tile_size;
+    int x[4], y[4];
+    int copy = (f3dex2_othermode_high() & 0x300000u) == 0x200000u;
+    int32_t packet[8];
+    correction[0] = (int16_t)(row >> 16);
+    correction[1] = (int16_t)row;
+    correction[2] = (int16_t)(a23[(s_obj_rendermode >> 3) & 3u] >> 16);
+    correction[3] = (s_obj_rendermode & 8u) ? -1 : -4;
+    correction[4] = (s_obj_rendermode & 8u) ? -16 : 0;
+    correction[5] = (s_obj_rendermode & 8u) ? 3 : 0;
+    if (!rsp_s2dex_rect_axis(objX, (int)scaleW, (int)imageW, s_objmtx_bsx,
+                             s_objmtx_x, correction, flags & 1u,
+                             (int)s_scis_ulx, (int)s_scis_lrx, 0, 1, x)
+        || !rsp_s2dex_rect_axis(objY, (int)scaleH, (int)imageH, s_objmtx_bsy,
+                                s_objmtx_y, correction, flags & 16u,
+                                (int)s_scis_uly, (int)s_scis_lry, 0x200, 1, y))
+        return;
+    rtile = s2dex1_next_tile(fifo);
+    end = ((unsigned int)x[1] << 12) | ((unsigned int)y[1] & 0xfffu);
+    if (copy)
+        end -= 0x4004u;
+    tile_size = (((imageW & 0x7ff8u) << 9) | (imageH >> 3)) - 0x4004u;
+    packet[0] = (int32_t)(0x35000000u | (((fmt << 21) | (siz << 19)
+                          | (stride << 9) | address) & 0xffffffu));
+    packet[1] = (int32_t)((rtile << 24) | (palette << 20) | 0x80200u);
+    packet[2] = (int32_t)0x32000000u;
+    packet[3] = (int32_t)((rtile << 24) | (tile_size & 0xffffffu));
+    packet[4] = (int32_t)(0x24000000u | (end & 0xffffffu));
+    packet[5] = (int32_t)((rtile << 24) | (((unsigned int)x[0] & 0xfffu) << 12)
+                          | ((unsigned int)y[0] & 0xfffu));
+    packet[6] = (int32_t)(((uint32_t)(uint16_t)x[2] << 16) | (uint16_t)y[2]);
+    packet[7] = (int32_t)(((uint32_t)(uint16_t)(x[3] * (copy ? 4 : 1)) << 16)
+                          | (uint16_t)y[3]);
+    rdp_fifo_append(fifo, packet, 8);
+}
+
+/* S2DEX 1.x gSPObjSprite: the sprite overlay maps the four corners
+ * through the object matrix and draws two of its own unshaded texture
+ * triangles on the alternating render tile. */
+static void s2dex1_sprite(int objX, int objY, unsigned int scaleW,
+                          unsigned int scaleH, unsigned int imageW,
+                          unsigned int imageH, unsigned int stride,
+                          unsigned int address, unsigned int fmt,
+                          unsigned int siz, unsigned int palette,
+                          unsigned int flags, RdpFifo *fifo)
+{
+    int obj[6];
+    int32_t matrix[6];
+    int16_t corners[4][4];
+    int32_t packet[54];
+    unsigned int tile, limit;
+    int k, inside[4];
+    obj[0] = objX; obj[1] = (int)scaleW; obj[2] = (int)imageW;
+    obj[3] = objY; obj[4] = (int)scaleH; obj[5] = (int)imageH;
+    matrix[0] = s_objmtx_a; matrix[1] = s_objmtx_b;
+    matrix[2] = s_objmtx_c; matrix[3] = s_objmtx_d;
+    matrix[4] = s_objmtx_x; matrix[5] = s_objmtx_y;
+    limit = (((imageW & 0x7ff8u) << 9) | (imageH >> 3)) - 0x4004u;
+    rsp_s2dex_sprite_corners(corners, obj, matrix, s_obj_rendermode, flags);
+    inside[0] = inside[1] = inside[2] = inside[3] = 0;
+    for (k = 0; k < 4; k++)
+    {
+        inside[0] |= corners[k][2] >= (int)s_scis_ulx;
+        inside[1] |= corners[k][2] < (int)s_scis_lrx;
+        inside[2] |= corners[k][3] >= (int)s_scis_uly;
+        inside[3] |= corners[k][3] < (int)s_scis_lry;
+    }
+    if (!inside[0] || !inside[1] || !inside[2] || !inside[3])
+        return;
+    tile = s2dex1_next_tile(fifo);
+    packet[0] = (int32_t)(0x35000000u | (((fmt << 21) | (siz << 19)
+                          | (stride << 9) | address) & 0xffffffu));
+    packet[1] = (int32_t)((tile << 24) | (palette << 20) | 0x80200u);
+    packet[2] = (int32_t)0x32000000u;
+    packet[3] = (int32_t)((tile << 24) | (limit & 0xffffffu));
+    packet[4] = (int32_t)0x27000000u;
+    packet[5] = 0;
+    rsp_s2dex_sprite_triangle(packet + 6, corners[2], corners[0], corners[1], tile);
+    rsp_s2dex_sprite_triangle(packet + 30, corners[0], corners[1], corners[3], tile);
+    rdp_fifo_append(fifo, packet, 54);
+}
+
 /* draw a uObjSprite at addr as a TEXTURE_RECTANGLE. use_matrix applies the
  * object matrix translation/scale (gSPObjSprite); gSPObjRectangle passes 0. */
 static void s2dex_draw_obj(GSPState *gsp, const unsigned char *r,
@@ -1427,6 +1587,24 @@ static void s2dex_draw_obj(GSPState *gsp, const unsigned char *r,
     imageSiz    = r[(addr + 0x15) ^ 3];
     imagePal    = r[(addr + 0x16) ^ 3];
     imageFlags  = r[(addr + 0x17) ^ 3];
+
+    if (!s_s2dex2)
+    {
+        if (!as_rect)
+        {
+            s2dex1_sprite(objX, objY, scaleW, scaleH, imageW, imageH,
+                          imageStride, imageAdrs, imageFmt, imageSiz,
+                          imagePal, imageFlags, fifo);
+            return;
+        }
+        if (use_matrix)
+        {
+            s2dex1_rect_r(objX, objY, scaleW, scaleH, imageW, imageH,
+                          imageStride, imageAdrs, imageFmt, imageSiz,
+                          imagePal, imageFlags, fifo);
+            return;
+        }
+    }
 
     if (scaleW == 0u) scaleW = 1u;
     if (scaleH == 0u) scaleH = 1u;
@@ -1526,6 +1704,8 @@ static void s2dex_draw_obj(GSPState *gsp, const unsigned char *r,
         rtile = s_obj_rtile;
         s_obj_rtile ^= 2u;
     }
+    else if (as_rect)
+        rtile = s2dex1_next_tile(fifo);
     settile_w1 = (rtile << 24)
                | ((imagePal & 0xfu) << 20) | (2u << 18) | (2u << 8);
     /* SET_TILE_SIZE w1: render tile, lrs/lrt (10.2). */

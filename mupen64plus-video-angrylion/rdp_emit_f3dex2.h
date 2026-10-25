@@ -65,6 +65,7 @@ void f3dex2_set_othermode_init(unsigned int h, unsigned int l);
 void f3dex2_set_rdram_size(unsigned int size);
 void f3dex2_set_rdram(unsigned char *rdram);
 void f3dex2_set_task_ucode(const unsigned char *rdram, unsigned int text);
+unsigned int f3dex2_othermode_high(void);
 void f3dex2_set_variant_cbfd(const unsigned char *rdram, unsigned int ud, unsigned int uds);
 void f3dex2_set_variant_acclaim(const unsigned char *rdram, unsigned int text);
 int f3dex2_variant_acclaim(void);

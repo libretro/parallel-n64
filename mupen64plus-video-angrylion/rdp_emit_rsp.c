@@ -338,6 +338,281 @@ static Rsp32 mac32(Rsp32 a, Rsp32 b, RspAcc *acc_out)
     return o;
 }
 
+/* ---- S2DEX 1.x object writers ------------------------------------------ */
+
+/* One X or Y lane group of the S2DEX RECTANGLE_R writer: the object
+ * position through the BaseScale reciprocal and matrix translation, the
+ * extent through the step reciprocal, the screen clip and the texture
+ * start walked across a clipped edge. out = {start, end, tex, step}.
+ * Returns 0 when the span is empty. truncate drops the fraction carry
+ * into the end point (the S2DEX 1.x build). */
+int rsp_s2dex_rect_axis(int obj, int scale, int extent, int base_scale,
+                        int trans, const int16_t c[6], int flip,
+                        int clip_min, int clip_max, int frac_scale,
+                        int truncate, int out[4])
+{
+    Rsp32 base_rcp = mk32(rsp_rcp16(base_scale)), pos, eff, span, rcp, delta;
+    RspAcc acc;
+    int start, finish, step, tex, coord_frac, sum, lo, hi, frac;
+    acc = p_udn(1, base_rcp.i) + p_udn(base_rcp.f, 1);
+    base_rcp.f = acc_clamp_low(acc);
+    acc += p_udh(base_rcp.i, 1);
+    base_rcp.i = acc_clamp_mid(acc);
+    acc = p_udm(obj, 0x0800);
+    pos.i = acc_clamp_mid(acc);
+    pos.f = acc_clamp_low(acc);
+    pos = mac32(pos, base_rcp, &acc);
+    coord_frac = pos.f;
+    acc = (acc & ~(RspAcc)0xffff)
+        | U16(clamp_s16(S16(trans) + c[2]) & U16(c[3]));
+    acc += p_udn(pos.i, 1);
+    start = S16(acc_clamp_low(acc));
+    acc = p_udm(base_scale, 0x40);
+    eff.i = acc_clamp_mid(acc);
+    eff.f = acc_clamp_low(acc);
+    acc = p_udn(eff.f, scale) + p_udh(eff.i, scale);
+    step = S16(acc_clamp_mid(acc));
+    rcp = mk32(rsp_rcp16(step));
+    sum = U16(rcp.f) + U16(rcp.i);
+    rcp.f = U16(sum);
+    rcp.i = U16(clamp_s16(S16(rcp.i) + (sum >> 16)));
+    acc = p_udn(clamp_s16(S16(extent) - c[1]), 0x100);
+    delta.i = acc_clamp_mid(acc);
+    delta.f = acc_clamp_low(acc);
+    span = mac32(delta, rcp, &acc);
+    sum = U16(coord_frac) + U16(span.f);
+    finish = clamp_s16(start + S16(span.i) + (truncate ? 0 : (sum >> 16)));
+    if (finish > clip_max)
+        finish = clip_max;
+    tex = c[0];
+    if (flip)
+    {
+        acc = (acc & ~(RspAcc)0xffff)
+            | U16(clamp_s16(c[0] + clamp_s16(S16(extent) - c[1])));
+        tex = S16(acc_clamp_low(acc + p_udn(1, -1)));
+        step = S16(0 - step);
+    }
+    tex = clamp_s16(tex + c[4]);
+    lo = clamp_s16(start - clip_min);
+    if (start >= clip_min)
+        lo = 0;
+    else
+        start = clip_min;
+    if (start >= finish)
+        return 0;
+    acc = p_udh(lo, step);
+    lo = (int)((uint64_t)acc >> 16) & 0xffff;
+    hi = (int)((uint64_t)acc >> 32) & 0xffff;
+    acc = p_udl(lo, -512) + p_udm(hi, -512) + p_udn(lo, -1);
+    acc += p_udn(1, tex);
+    tex = S16(acc_clamp_low(acc));
+    frac = U16(start) & U16(c[5]);
+    /* the Y lanes scale the fraction by 0x200, the X lanes by zero */
+    frac = clamp_s16(frac * frac_scale);
+    acc = p_udm(step, frac);
+    tex = clamp_s16(tex - S16(acc_clamp_mid(acc)));
+    out[0] = start;
+    out[1] = finish;
+    out[2] = tex;
+    out[3] = step;
+    return 1;
+}
+
+/* The S2DEX 1.x sprite overlay's four corners: S, T, screen X, screen Y
+ * per corner, through the object matrix, each pair sorted by Y. obj =
+ * {objX, scaleW, imageW, objY, scaleH, imageH}; matrix = {A, B, C, D, X,
+ * Y}. */
+void rsp_s2dex_sprite_corners(int16_t out[4][4], const int obj[6],
+                              const int32_t matrix[6], unsigned int mode,
+                              unsigned int flags)
+{
+    static const uint32_t corrections[8] = {
+        0, 0x00100020, 0x00200040, 0x00300060,
+        0x0000fff4, 0x00100014, 0x00200034, 0x00300054 };
+    static const unsigned char order[4][8] = {
+        {1,0,0,1,0,1,0,1}, {0,1,1,0,0,1,0,1},
+        {0,1,1,0,1,0,1,0}, {1,0,0,1,1,0,1,0} };
+    int xy[2][4], st[2][4], extent, span, origin, mask, axis, k, swap, j;
+    unsigned int select = (((uint32_t)matrix[2] >> 31) ^ ((uint32_t)matrix[3] >> 31))
+                        | (((uint32_t)matrix[3] >> 31) << 1);
+    uint32_t correction = corrections[(mode >> 4) & 7];
+    Rsp32 r, scaled;
+    RspAcc a;
+    for (axis = 0; axis < 2; axis++)
+    {
+        r = mk32(rsp_rcp16(obj[axis * 3 + 1]));
+        k = U16(r.f) + U16(r.i);
+        r.f = U16(k);
+        r.i = clamp_s16(S16(r.i) + (k >> 16));
+        extent = clamp_s16(S16(obj[axis * 3 + 2]) - S16(correction));
+        a = p_udl(extent, r.f) + p_udm(extent, r.i);
+        scaled.i = acc_clamp_mid(a);
+        scaled.f = acc_clamp_low(a);
+        a = p_udm(scaled.i, 0x100) + p_udl(scaled.f, 0x100);
+        span = acc_clamp_low(a);
+        origin = clamp_s16(S16(correction >> 16) + ((mode & 8) ? -16 : 0));
+        for (k = 0; k < 4; k++)
+        {
+            mask = order[select][axis * 4 + k];
+            xy[axis][k] = S16(acc_clamp_mid(p_udh(1, obj[axis * 3]) + p_udh(mask, span)));
+            mask ^= !!(flags & (axis ? 16 : 1));
+            st[axis][k] = S16(acc_clamp_mid(p_udh(1, origin) + p_udh(mask, extent)));
+        }
+    }
+    for (k = 0; k < 4; k++)
+    {
+        out[k][0] = (int16_t)st[0][k];
+        out[k][1] = (int16_t)st[1][k];
+        for (axis = 0; axis < 2; axis++)
+        {
+            int trans = clamp_s16(S16(matrix[4 + axis]) + ((mode & 8) ? 0 : 1))
+                      & ((mode & 8) ? 0xffff : 0xfffc);
+            int32_t x = matrix[axis * 2], y = matrix[axis * 2 + 1];
+            a = p_udh(1, trans) + p_udm(xy[0][k], x) + p_udh(xy[0][k], (int32_t)((uint32_t)x >> 16));
+            a += p_udm(xy[1][k], y) + p_udh(xy[1][k], (int32_t)((uint32_t)y >> 16));
+            out[k][axis + 2] = (int16_t)acc_clamp_mid(a);
+        }
+    }
+    /* the overlay sorts the two corner pairs by Y, carrying S/T along */
+    for (k = 0; k < 4; k += 2)
+    {
+        swap = out[k][3] >= out[k + 1][3];
+        if (swap)
+            for (j = 0; j < 4; j++)
+            {
+                int16_t v = out[k][j];
+                out[k][j] = out[k + 1][j];
+                out[k + 1][j] = v;
+            }
+    }
+}
+
+/* The sprite overlay's own affine, unshaded triangle writer (a 24-word
+ * TEXTURE_TRIANGLE): S, T, a constant W and screen Y as its attributes,
+ * with its own edge and gradient arithmetic. */
+void rsp_s2dex_sprite_triangle(int32_t packet[24], const int16_t h[4],
+                               const int16_t m[4], const int16_t l[4],
+                               unsigned int tile)
+{
+    int32_t hv[7], mv[7], lv[7], lh[7], mh[7], hm[7], lm[7];
+    Rsp32 edge_rcp[3], edge[3], dx[7], dy[7], de[7], base[7];
+    Rsp32 cross, inv, numer, temp, q;
+    RspAcc a, area;
+    int k, j, norm, sum, frac, offset, sign;
+    for (k = 0; k < 7; k++)
+    {
+        hv[k] = k < 3 ? h[2] : k == 3 ? h[0] : k == 4 ? h[1] : k == 5 ? 0x7fff : h[3];
+        mv[k] = k < 3 ? m[2] : k == 3 ? m[0] : k == 4 ? m[1] : k == 5 ? 0x7fff : m[3];
+        lv[k] = k < 3 ? l[2] : k == 3 ? l[0] : k == 4 ? l[1] : k == 5 ? 0x7fff : l[3];
+        lh[k] = clamp_s16(lv[k] - hv[k]);
+        mh[k] = clamp_s16(mv[k] - hv[k]);
+        hm[k] = clamp_s16(hv[k] - mv[k]);
+        lm[k] = clamp_s16(lv[k] - mv[k]);
+    }
+    area = p_udh(lh[2], mh[6]) + p_udh(hm[2], lh[6]);
+    sign = (int)(((uint64_t)area >> 47) & 1);
+    {
+        int64_t top = (int64_t)area >> 32;
+        norm = (top > -8 && top < 8) ? 0x8000 : 0x100;
+    }
+    cross.i = (int32_t)(((uint64_t)area >> 32) & 0xffff);
+    cross.f = (int32_t)(((uint64_t)area >> 16) & 0xffff);
+    a = p_udl(cross.f, norm) + p_udm(cross.i, norm);
+    cross.i = acc_clamp_mid(a);
+    cross.f = acc_clamp_low(a);
+    inv = mk32(rsp_rcp32(r32(cross)));
+    for (j = 0; j < 3; j++)
+    {
+        int delta = j == 0 ? lh[6] : j == 1 ? mh[6] : lm[6];
+        int dxv = j == 0 ? lh[2] : j == 1 ? mh[2] : lm[2];
+        edge_rcp[j] = mk32(rsp_rcp16(delta));
+        sum = U16(edge_rcp[j].f) + U16(edge_rcp[j].i);
+        edge_rcp[j].f = U16(sum);
+        edge_rcp[j].i = clamp_s16(S16(edge_rcp[j].i) + (sum >> 16));
+        a = p_udn(edge_rcp[j].f, 2);
+        temp.f = acc_clamp_low(a);
+        a += p_udh(edge_rcp[j].i, 2);
+        temp.i = acc_clamp_mid(a);
+        edge_rcp[j] = temp;
+        a = p_udl(temp.f, delta) + p_udm(temp.i, delta);
+        temp.i = acc_clamp_mid(a);
+        temp.f = acc_clamp_low(a);
+        sum = 0 - U16(temp.f);
+        temp.f = U16(sum);
+        temp.i = clamp_s16(2 - S16(temp.i) - (sum < 0));
+        edge_rcp[j] = mac32(edge_rcp[j], temp, 0);
+        a = p_udn(edge_rcp[j].f, dxv);
+        a += p_udh(edge_rcp[j].i, dxv);
+        edge[j].i = (int32_t)(((uint64_t)a >> 32) & 0xffff);
+        edge[j].f = (int32_t)(((uint64_t)a >> 16) & 0xffff);
+    }
+    offset = -(hv[6] & 3);
+    for (k = 0; k < 7; k++)
+    {
+        a = p_udh(lh[k], mh[6]) + p_udh(hm[k], lh[6]);
+        numer.i = (int32_t)(((uint64_t)a >> 32) & 0xffff);
+        numer.f = (int32_t)(((uint64_t)a >> 16) & 0xffff);
+        dx[k] = mac32(numer, inv, 0);
+        a = p_udh(mh[k], lh[2]) + p_udh(lh[k], hm[2]);
+        numer.i = (int32_t)(((uint64_t)a >> 32) & 0xffff);
+        numer.f = (int32_t)(((uint64_t)a >> 16) & 0xffff);
+        dy[k] = mac32(numer, inv, 0);
+        a = p_udl(dx[k].f, norm) + p_udm(dx[k].i, norm);
+        dx[k].i = acc_clamp_mid(a);
+        dx[k].f = acc_clamp_low(a);
+        a = p_udn(dx[k].f, 8);
+        dx[k].f = acc_clamp_low(a);
+        a += p_udh(dx[k].i, 8);
+        dx[k].i = acc_clamp_mid(a);
+        a = p_udl(dy[k].f, norm) + p_udm(dy[k].i, norm);
+        dy[k].i = acc_clamp_mid(a);
+        dy[k].f = acc_clamp_low(a);
+        a = p_udn(dy[k].f, 8);
+        dy[k].f = acc_clamp_low(a);
+        a += p_udh(dy[k].i, 8);
+        dy[k].i = acc_clamp_mid(a);
+        mac32(dx[k], edge[0], &a);
+        a += p_udn(dy[k].f, 1);
+        de[k].f = acc_clamp_low(a);
+        a += p_udh(dy[k].i, 1);
+        de[k].i = acc_clamp_mid(a);
+        temp = mk32((int32_t)((uint32_t)offset * 0x4000u));
+        a = p_udh(hv[k], 1) + p_udl(de[k].f, temp.f) + p_udm(de[k].i, temp.f);
+        a += p_udn(de[k].f, temp.i);
+        base[k].f = acc_clamp_low(a);
+        a += p_udh(de[k].i, temp.i);
+        base[k].i = acc_clamp_mid(a);
+    }
+    /* TEXTURE_TRIANGLE: command 0x0a, left-major flag, tile in bits 16..18 */
+    packet[0] = (int32_t)(((0x0a00u | ((unsigned int)sign << 7) | (tile & 7u)) << 16)
+                          | (uint16_t)lv[6]);
+    packet[1] = (int32_t)(((uint32_t)(uint16_t)mv[6] << 16) | (uint16_t)hv[6]);
+    packet[2] = (int32_t)((uint32_t)mv[2] << 14);
+    packet[3] = r32(edge[2]);
+    q.i = 0;
+    q.f = 0x4000;
+    temp = mac32(edge[0], q, 0);
+    a = p_udn(0x4000, hv[2]) + p_udn(temp.f, offset) + p_udh(temp.i, offset);
+    packet[4] = (int32_t)(((uint32_t)U16(acc_clamp_mid(a)) << 16) | U16(acc_clamp_low(a)));
+    packet[5] = r32(edge[0]);
+    temp = mac32(edge[1], q, 0);
+    a = p_udn(0x4000, hv[2]) + p_udn(temp.f, offset) + p_udh(temp.i, offset);
+    sum = U16(acc_clamp_low(a)) + (S16(edge[0].i) < 0 ? 0 : 1);
+    frac = U16(sum);
+    packet[6] = (int32_t)(((uint32_t)U16(clamp_s16(S16(acc_clamp_mid(a)) + (sum >> 16))) << 16) | (uint32_t)frac);
+    packet[7] = r32(edge[1]);
+    for (j = 0; j < 4; j++)
+    {
+        Rsp32 *v = j == 0 ? base : j == 1 ? dx : j == 2 ? de : dy;
+        int at = 8 + (j / 2) * 8 + (j % 2) * 2;
+        for (k = 0; k < 2; k++)
+        {
+            packet[at + k] = (int32_t)(((uint32_t)U16(v[3 + k * 2].i) << 16) | U16(v[4 + k * 2].i));
+            packet[at + 4 + k] = (int32_t)(((uint32_t)U16(v[3 + k * 2].f) << 16) | U16(v[4 + k * 2].f));
+        }
+    }
+}
+
 /* ---- vertex 1/w ------------------------------------------------------- */
 
 /* The vertex-processing reciprocal: raw vrcp32, then the microcode's
