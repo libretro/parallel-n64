@@ -24,7 +24,9 @@
  * LRHOST_AUDIODUMP=file writes the audio as raw s16 stereo frames.
  * LRHOST_VK_NEGOTIATION=1 makes lrhost_vk a frontend that predates
  * Vulkan negotiation v2. LRHOST_VERBOSE=1 shows the core's log; LRHOST_STATE=file loads a
- * savestate after the first frame.
+ * savestate after the first frame, and LRHOST_SAVE=file with LRHOST_SAVE_AT=n saves one
+ * after frame n. LRHOST_HASHLOG=file logs a hash of every presented frame with its frame
+ * number, for lining up two runs; LRHOST_RAMDUMP=file writes the system RAM at the end.
  */
 #if defined(_WIN32)
 #include <windows.h>
@@ -56,6 +58,7 @@ static const char *opt(const char *key)
 }
 
 static long frames_presented, frames_duped;
+static long run_frame;
 static long dump_from = 595, dump_to = 605, dump_every = 1;
 static enum retro_pixel_format pixfmt = RETRO_PIXEL_FORMAT_0RGB1555;
 static unsigned vid_w, vid_h;
@@ -84,6 +87,23 @@ static void video_cb(const void *data, unsigned w, unsigned h, size_t pitch)
     vid_w = w; vid_h = h;
     if (!data) { frames_duped++; return; }
     frames_presented++;
+    if (getenv("LRHOST_HASHLOG"))
+    {
+        /* one line per presented frame: its number and an FNV-1a hash of
+         * the visible pixels, for aligning two runs frame by frame */
+        static FILE *hl;
+        unsigned bpp = pixfmt == RETRO_PIXEL_FORMAT_XRGB8888 ? 4 : 2;
+        uint64_t hh = 1469598103934665603ULL;
+        unsigned y, x;
+        if (!hl) hl = fopen(getenv("LRHOST_HASHLOG"), "w");
+        for (y = 0; y < h; y++)
+            for (x = 0; x < w * bpp; x++)
+            {
+                hh ^= ((const uint8_t*)data)[y * pitch + x];
+                hh *= 1099511628211ULL;
+            }
+        if (hl) { fprintf(hl, "%ld %ld %ux%u %016llx\n", frames_presented, run_frame, w, h, (unsigned long long)hh); fflush(hl); }
+    }
     if (getenv("LRHOST_DUMPDIR") && frames_presented >= dump_from && frames_presented <= dump_to
         && (frames_presented - dump_from) % dump_every == 0)
     {
@@ -125,7 +145,6 @@ static size_t audio_batch_cb(const int16_t *d, size_t n)
 static void input_poll_cb(void) {}
 /* LRHOST_INPUT="from-to:id,from-to:id,...": hold RetroPad button <id> on
  * port 0 over a range of retro_run calls, so a test can drive a menu. */
-static long run_frame;
 static int16_t input_state_cb(unsigned port, unsigned dev, unsigned idx, unsigned id)
 {
     const char *e = getenv("LRHOST_INPUT");
@@ -287,6 +306,10 @@ int main(int argc, char **argv)
     void (*r_run)(void);
     void (*r_get_av)(struct retro_system_av_info*);
     bool (*r_unserialize)(const void*, size_t);
+    size_t (*r_serialize_size)(void);
+    void *(*r_get_memory_data)(unsigned);
+    size_t (*r_get_memory_size)(unsigned);
+    bool (*r_serialize)(void*, size_t);
     struct retro_game_info game;
     struct retro_system_av_info av;
     double *ft, sum = 0, sq = 0, t0, t1, t_first;
@@ -321,6 +344,10 @@ int main(int argc, char **argv)
     SYM(r_init, "retro_init"); SYM(r_deinit, "retro_deinit"); SYM(r_load, "retro_load_game");
     SYM(r_run, "retro_run"); SYM(r_get_av, "retro_get_system_av_info");
     SYM(r_unserialize, "retro_unserialize");
+    SYM(r_serialize_size, "retro_serialize_size");
+    SYM(r_get_memory_data, "retro_get_memory_data");
+    SYM(r_get_memory_size, "retro_get_memory_size");
+    SYM(r_serialize, "retro_serialize");
 
     set_env(env_cb); r_init();
     set_video(video_cb); set_audio(audio_sample_cb); set_audio_batch(audio_batch_cb);
@@ -366,7 +393,30 @@ int main(int argc, char **argv)
     for (i = 0; i < nframes; i++)
     {
         run_frame = i; t0 = now_ms(); r_run(); t1 = now_ms();
+        /* LRHOST_SAVE=file with LRHOST_SAVE_AT=n saves a state after run n */
+        if (getenv("LRHOST_SAVE") && getenv("LRHOST_SAVE_AT") && i == atol(getenv("LRHOST_SAVE_AT")))
+        {
+            size_t sn = r_serialize_size(); void *sb = malloc(sn); FILE *sf;
+            if (sb && r_serialize(sb, sn) && (sf = fopen(getenv("LRHOST_SAVE"), "wb")) != NULL)
+            {
+                fwrite(sb, 1, sn, sf);
+                fclose(sf);
+            }
+            free(sb);
+        }
         ft[i] = t1 - t0;
+    }
+    /* LRHOST_RAMDUMP=file writes the core's system RAM after the last frame */
+    if (getenv("LRHOST_RAMDUMP"))
+    {
+        void *ram = r_get_memory_data(RETRO_MEMORY_SYSTEM_RAM);
+        size_t ram_size = r_get_memory_size(RETRO_MEMORY_SYSTEM_RAM);
+        FILE *rf = fopen(getenv("LRHOST_RAMDUMP"), "wb");
+        if (rf)
+        {
+            if (ram) fwrite(ram, 1, ram_size, rf);
+            fclose(rf);
+        }
     }
     for (i = nframes / 10; i < nframes; i++) { sum += ft[i]; sq += ft[i] * ft[i]; }   /* skip the boot */
     {
