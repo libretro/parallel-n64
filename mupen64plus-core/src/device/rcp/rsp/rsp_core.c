@@ -49,17 +49,22 @@ static void do_sp_dma(struct rsp_core* sp, const struct sp_dma* dma)
 
     unsigned int length = ((l & 0xfff) | 7) + 1;
     unsigned int count = ((l >> 12) & 0xff) + 1;
-    unsigned int skip = ((l >> 20) & 0xfff);
+    unsigned int skip = ((l >> 20) & 0xff8);
 
+    /* the transfer stays inside the 4 KiB bank bit 12 picks; the skip
+     * falls between rows, not after the last one */
+    unsigned int bank = dma->memaddr & 0x1000;
     unsigned int memaddr = dma->memaddr & 0xff8;
     unsigned int dramaddr = dma->dramaddr & 0xfffff8;
 
-    unsigned char *spmem = (unsigned char*)sp->mem + (dma->memaddr & 0x1000);
+    unsigned char *spmem = (unsigned char*)sp->mem + bank;
     unsigned char *dram = (unsigned char*)sp->ri->rdram->dram;
 
     if (dma->dir == SP_DMA_READ)
     {
         for(j=0; j<count; j++) {
+            if (j != 0)
+                dramaddr += skip;
             for(i=0; i<length; i++) {
                 dram[(dramaddr^S8) & 0x7fffff] = spmem[(memaddr^S8) & 0xfff];
                 memaddr++;
@@ -67,16 +72,13 @@ static void do_sp_dma(struct rsp_core* sp, const struct sp_dma* dma)
             }
             if (dramaddr <= 0x800000)
                 post_framebuffer_write(&sp->dp->fb, dramaddr - length, length);
-            dramaddr+=skip;
         }
-
-        sp->regs[SP_MEM_ADDR_REG] = memaddr & 0xfff;
-        sp->regs[SP_DRAM_ADDR_REG] = dramaddr & 0xffffff;
-        sp->regs[SP_RD_LEN_REG] = 0xff8;
     }
     else
     {
         for(j=0; j<count; j++) {
+            if (j != 0)
+                dramaddr += skip;
             if (dramaddr < 0x800000)
                 pre_framebuffer_read(&sp->dp->fb, dramaddr);
 
@@ -85,13 +87,15 @@ static void do_sp_dma(struct rsp_core* sp, const struct sp_dma* dma)
                 memaddr++;
                 dramaddr++;
             }
-            dramaddr+=skip;
         }
-
-        sp->regs[SP_MEM_ADDR_REG] = memaddr & 0xfff;
-        sp->regs[SP_DRAM_ADDR_REG] = dramaddr & 0xffffff;
-        sp->regs[SP_RD_LEN_REG] = 0xff8;
     }
+
+    /* both length registers read back the finished transfer: the skip,
+     * a zero count and a 0xff8 length */
+    sp->regs[SP_MEM_ADDR_REG] = bank | (memaddr & 0xff8);
+    sp->regs[SP_DRAM_ADDR_REG] = dramaddr & 0xfffff8;
+    sp->regs[SP_RD_LEN_REG] = (l & 0xff800000) | 0xff8;
+    sp->regs[SP_WR_LEN_REG] = (l & 0xff800000) | 0xff8;
 
     /* schedule end of dma event */
     cp0_update_count(sp->mi->r4300);
@@ -299,6 +303,12 @@ void write_rsp_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mas
 
     switch(reg)
     {
+    case SP_MEM_ADDR_REG:
+        sp->regs[SP_MEM_ADDR_REG] &= 0x1ff8;
+        break;
+    case SP_DRAM_ADDR_REG:
+        sp->regs[SP_DRAM_ADDR_REG] &= 0xfffff8;
+        break;
     case SP_RD_LEN_REG:
         fifo_push(sp, SP_DMA_WRITE);
         break;

@@ -135,56 +135,60 @@ extern "C"
 	}
 
 #ifdef PARALLEL_INTEGRATION
+	/* A transfer stays inside the 4 KiB bank bit 12 of the memory address
+	 * picks, wrapping there; the skip falls between rows, not after the
+	 * last one. Both length registers then read back the skip, a zero count
+	 * and a 0xff8 length. */
+	static void rsp_dma_finish(RSP::CPUState *rsp, uint32_t length_reg, uint32_t bank, uint32_t mem,
+	                           uint32_t dram)
+	{
+		*rsp->cp0.cr[CP0_REGISTER_DMA_CACHE] = bank | (mem & 0xff8);
+		*rsp->cp0.cr[CP0_REGISTER_DMA_DRAM] = dram & 0xfffff8;
+		*rsp->cp0.cr[CP0_REGISTER_DMA_READ_LENGTH] = (length_reg & 0xff800000u) | 0xff8;
+		*rsp->cp0.cr[CP0_REGISTER_DMA_WRITE_LENGTH] = (length_reg & 0xff800000u) | 0xff8;
+	}
+
 	static int rsp_dma_read(RSP::CPUState *rsp)
 	{
 		uint32_t length_reg = *rsp->cp0.cr[CP0_REGISTER_DMA_READ_LENGTH];
 		uint32_t length = ((length_reg & 0xFFF) | 7) + 1;
 		uint32_t skip = (length_reg >> 20) & 0xFF8;
 		unsigned count = ((length_reg >> 12) & 0xFF) + 1;
-
-		// Check length.
-		if (((*rsp->cp0.cr[CP0_REGISTER_DMA_CACHE] & 0xFFF) + length) > 0x1000)
-			length = 0x1000 - (*rsp->cp0.cr[CP0_REGISTER_DMA_CACHE] & 0xFFF);
-
-		unsigned i = 0;
-		uint32_t source = *rsp->cp0.cr[CP0_REGISTER_DMA_DRAM];
-		uint32_t dest = *rsp->cp0.cr[CP0_REGISTER_DMA_CACHE];
+		uint32_t bank = *rsp->cp0.cr[CP0_REGISTER_DMA_CACHE] & 0x1000;
+		uint32_t mem = *rsp->cp0.cr[CP0_REGISTER_DMA_CACHE] & 0xff8;
+		uint32_t dram = *rsp->cp0.cr[CP0_REGISTER_DMA_DRAM] & 0xfffff8;
+		unsigned i, j;
 
 #ifdef INTENSE_DEBUG
-		fprintf(stderr, "DMA READ: (0x%x <- 0x%x) len %u, count %u, skip %u\n", dest & 0x1ffc, source & 0x7ffffc,
-		        length, count + 1, skip);
+		fprintf(stderr, "DMA READ: (0x%x <- 0x%x) len %u, count %u, skip %u\n", bank | mem, dram,
+		        length, count, skip);
 #endif
 
-		do
+		for (i = 0; i < count; i++)
 		{
-			unsigned j = 0;
-			do
+			if (i != 0)
+				dram += skip;
+			for (j = 0; j < length; j += 4)
 			{
-				uint32_t source_addr = (source + j) & 0x7FFFFC;
-				uint32_t dest_addr = (dest + j) & 0x1FFC;
-				uint32_t word = rsp->rdram[source_addr >> 2];
+				uint32_t word = rsp->rdram[(dram & 0x7FFFFC) >> 2];
+				uint32_t off = mem & 0xffc;
 
-				if (dest_addr & 0x1000)
+				if (bank)
 				{
-					// Invalidate IMEM.
-					unsigned block = (dest_addr & 0xfff) / CODE_BLOCK_SIZE;
+					/* invalidate IMEM */
+					unsigned block = off / CODE_BLOCK_SIZE;
 					rsp->dirty_blocks |= (0x3 << block) >> 1;
-					//rsp->dirty_blocks = ~0u;
-					rsp->imem[(dest_addr & 0xfff) >> 2] = word;
+					rsp->imem[off >> 2] = word;
 				}
 				else
-					rsp->dmem[dest_addr >> 2] = word;
+					rsp->dmem[off >> 2] = word;
 
-				j += 4;
-			} while (j < length);
+				mem = (mem + 4) & 0xfff;
+				dram += 4;
+			}
+		}
 
-			source += length + skip;
-			dest += length;
-		} while (++i < count);
-
-		*rsp->cp0.cr[CP0_REGISTER_DMA_DRAM] = source;
-		*rsp->cp0.cr[CP0_REGISTER_DMA_CACHE] = dest;
-		*rsp->cp0.cr[CP0_REGISTER_DMA_READ_LENGTH] = 0xff8;
+		rsp_dma_finish(rsp, length_reg, bank, mem, dram);
 
 #ifdef INTENSE_DEBUG
 		log_rsp_mem_parallel();
@@ -198,46 +202,35 @@ extern "C"
 		uint32_t length = ((length_reg & 0xFFF) | 7) + 1;
 		uint32_t skip = (length_reg >> 20) & 0xFF8;
 		unsigned count = ((length_reg >> 12) & 0xFF) + 1;
-
-		// Check length.
-		if (((*rsp->cp0.cr[CP0_REGISTER_DMA_CACHE] & 0xFFF) + length) > 0x1000)
-			length = 0x1000 - (*rsp->cp0.cr[CP0_REGISTER_DMA_CACHE] & 0xFFF);
-
-		uint32_t dest = *rsp->cp0.cr[CP0_REGISTER_DMA_DRAM];
-		uint32_t source = *rsp->cp0.cr[CP0_REGISTER_DMA_CACHE];
+		uint32_t bank = *rsp->cp0.cr[CP0_REGISTER_DMA_CACHE] & 0x1000;
+		uint32_t mem = *rsp->cp0.cr[CP0_REGISTER_DMA_CACHE] & 0xff8;
+		uint32_t dram = *rsp->cp0.cr[CP0_REGISTER_DMA_DRAM] & 0xfffff8;
+		unsigned i, j;
 
 #ifdef INTENSE_DEBUG
-		fprintf(stderr, "DMA WRITE: (0x%x <- 0x%x) len %u, count %u, skip %u\n", dest & 0x7ffffc, source & 0x1ffc,
-		        length, count + 1, skip);
+		fprintf(stderr, "DMA WRITE: (0x%x <- 0x%x) len %u, count %u, skip %u\n", dram, bank | mem,
+		        length, count, skip);
 #endif
 
-		unsigned i = 0;
-		do
+		for (i = 0; i < count; i++)
 		{
-			unsigned j = 0;
-
-			do
+			if (i != 0)
+				dram += skip;
+			for (j = 0; j < length; j += 4)
 			{
-				uint32_t source_addr = (source + j) & 0x1FFC;
-				uint32_t dest_addr = (dest + j) & 0x7FFFFC;
+				uint32_t off = mem & 0xffc;
+				rsp->rdram[(dram & 0x7FFFFC) >> 2] = bank ? rsp->imem[off >> 2] : rsp->dmem[off >> 2];
+				mem = (mem + 4) & 0xfff;
+				dram += 4;
+			}
+		}
 
-				rsp->rdram[dest_addr >> 2] =
-				    (source_addr & 0x1000) ? rsp->imem[(source_addr & 0xfff) >> 2] : rsp->dmem[source_addr >> 2];
-
-				j += 4;
-			} while (j < length);
-
-			source += length;
-			dest += length + skip;
-		} while (++i < count);
-
-		*rsp->cp0.cr[CP0_REGISTER_DMA_CACHE] = source;
-		*rsp->cp0.cr[CP0_REGISTER_DMA_DRAM] = dest;
-		*rsp->cp0.cr[CP0_REGISTER_DMA_WRITE_LENGTH] = 0xff8;
+		rsp_dma_finish(rsp, length_reg, bank, mem, dram);
 #ifdef INTENSE_DEBUG
 		log_rsp_mem_parallel();
 #endif
 	}
+
 #endif
 
 	int RSP_MTC0(RSP::CPUState *rsp, unsigned rd, unsigned rt)
@@ -311,6 +304,9 @@ extern "C"
 			*rsp->cp0.cr[CP0_REGISTER_CMD_CLOCK] &= !(val & 0x200) * -1;
 			break;
 
+		/* DMA_FULL and DMA_BUSY are read-only */
+		case CP0_REGISTER_DMA_FULL:
+		case CP0_REGISTER_DMA_BUSY:
 		case CP0_REGISTER_CMD_CURRENT:
 		case CP0_REGISTER_CMD_BUSY:
 		case CP0_REGISTER_CMD_PIPE_BUSY:

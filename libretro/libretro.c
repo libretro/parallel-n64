@@ -2819,6 +2819,11 @@ void update_variables(bool startup)
       AllowUnalignedDMA = !strcmp(var.value, "False") ? 0 : 1;
    }
 
+   var.key = CORE_NAME "-dma-timing";
+   var.value = NULL;
+   if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+      g_dma_bus_timing = !strcmp(var.value, "registers") ? 1 : 0;
+
    var.key = CORE_NAME "-allow-large-roms";
    var.value = NULL;
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)

@@ -84,6 +84,12 @@ void init_si(struct si_controller* si,
 
 void poweron_si(struct si_controller* si);
 
+/* SiDmaDuration when the ROM database names none */
+enum { SI_DMA_DURATION_DEFAULT = 0x900 };
+
+/* count cycles an SI DMA takes; read is the PIF -> RDRAM direction */
+unsigned int si_dma_duration(const struct si_controller* si, int read);
+
 void read_si_regs(void* opaque, uint32_t address, uint32_t* value);
 void write_si_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask);
 

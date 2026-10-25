@@ -44,6 +44,7 @@
 #include "osal/preproc.h"
 #include "rom.h"
 #include "util.h"
+#include "device/rcp/si/si_controller.h"
 
 #define CHUNKSIZE 1024*128 /* Read files 128KB at a time. */
 
@@ -52,7 +53,7 @@ enum { DEFAULT_COUNT_PER_OP = 2 };
 /* by default, extra mem is enabled */
 enum { DEFAULT_DISABLE_EXTRA_MEM = 0 };
 /* Default SI DMA duration */
-enum { DEFAULT_SI_DMA_DURATION = 0x900 };
+enum { DEFAULT_SI_DMA_DURATION = SI_DMA_DURATION_DEFAULT };
 /* Default AI DMA modifier */
 enum { DEFAULT_AI_DMA_MODIFIER = 100 };
 

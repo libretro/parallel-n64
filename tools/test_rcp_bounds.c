@@ -9,7 +9,10 @@
  *  - the 32 KiB SRAM mirrors through its domain;
  *  - 64DD buffer DMAs stop at the end of the buffer they name;
  *  - a debug message longer than the formatting buffer is truncated;
- *  - an SI DMA touches only the RDRAM that is installed;
+ *  - an SI DMA touches only the RDRAM that is installed, and with bus
+ *    timing on lasts as long as its joybus command list;
+ *  - an SP DMA wraps inside its 4 KiB bank, skips only between rows and
+ *    leaves the address and length registers where the hardware does;
  *  - an IS-Viewer transfer length past its buffer is ignored;
  *  - DPC_CLOCK counts on across an unfreeze, the 32-bit count wrap and a
  *    savestate round trip.
@@ -497,7 +500,80 @@ static void test_si_dma(void)
     CHECK(pif.ram[0] == 0x3c && pif.ram[8] == 0 && pif.ram[PIF_RAM_SIZE - 1u] == 0,
           "SI: a PIF write DMA reads zero past the end of RDRAM");
 
+    /* durations: fixed by default, from the command list with bus timing */
+    si.dma_duration = SI_DMA_DURATION_DEFAULT;
+    g_dma_bus_timing = 0;
+    CHECK(si_dma_duration(&si, 1) == SI_DMA_DURATION_DEFAULT, "SI: fixed duration by default");
+    g_dma_bus_timing = 1;
+    CHECK(si_dma_duration(&si, 0) == (4065u * 3u + 3u) / 4u, "SI: bus-timed write");
+    memset(pif.ram, 0, PIF_RAM_SIZE);
+    pif.ram[0] = 0xfe;
+    CHECK(si_dma_duration(&si, 1) == ((13600u + 1420u) * 3u + 3u) / 4u,
+          "SI: bus-timed read of an empty command list");
+    pif.ram[0] = 0x01; pif.ram[1] = 0x04; pif.ram[2] = 0x01; pif.ram[7] = 0xfe;
+    CHECK(si_dma_duration(&si, 1) == ((13600u + 18000u + 1420u) * 3u + 3u) / 4u,
+          "SI: bus-timed read of one controller poll");
+    si.dma_duration = 0x1234;
+    CHECK(si_dma_duration(&si, 1) == 0x1234, "SI: a database duration wins");
+    g_dma_bus_timing = 0;
+
     free(bytes);
+}
+
+static void test_sp_dma(void)
+{
+    static struct rdram rdram;
+    static struct ri_controller ri;
+    static struct rdp_core dp;
+    static struct rsp_core sp;
+    static uint32_t sp_mem[0x2000 / 4];
+    unsigned char* mem = (unsigned char*)sp_mem;
+    unsigned char* dram;
+    unsigned i;
+    int ok = 1;
+
+    dram = (unsigned char*)calloc(1, 0x800000u);
+    for (i = 0; i < 0x200u; i++)
+        dram[i ^ S8] = (unsigned char)i;
+    rdram.dram = (uint32_t*)dram;
+    rdram.dram_size = 0x800000u;
+    ri.rdram = &rdram;
+    s_mi.r4300 = &s_r4300;
+    memset(&sp, 0, sizeof(sp));
+    memset(sp_mem, 0xee, sizeof(sp_mem));
+    sp.mem = sp_mem;
+    sp.ri = &ri;
+    sp.dp = &dp;
+    sp.mi = &s_mi;
+
+    /* RDRAM -> IMEM, two 16-byte rows at the top of IMEM, skip 0x18 with
+     * junk in its low bits */
+    write_rsp_regs(&sp, MM_RSP_REGS + 4u * SP_MEM_ADDR_REG, 0x1ff8u, ~0u);
+    write_rsp_regs(&sp, MM_RSP_REGS + 4u * SP_DRAM_ADDR_REG, 0x100u, ~0u);
+    write_rsp_regs(&sp, MM_RSP_REGS + 4u * SP_RD_LEN_REG,
+                   (0x01bu << 20) | (1u << 12) | 0x00fu, ~0u);
+
+    for (i = 0; i < 8; i++)
+        if (mem[(0x1ff8u + i) ^ S8] != (unsigned char)(0x100u + i)
+         || mem[(0x1000u + i) ^ S8] != (unsigned char)(0x108u + i)
+         || mem[(0x1008u + i) ^ S8] != (unsigned char)(0x128u + i)
+         || mem[(0x1010u + i) ^ S8] != (unsigned char)(0x130u + i))
+            ok = 0;
+    for (i = 0; i < 0x1000u; i++)
+        if (mem[i] != 0xee)
+            ok = 0;
+    CHECK(ok, "SP DMA: rows wrap inside the IMEM bank, skip between rows");
+    CHECK(sp.regs[SP_MEM_ADDR_REG] == 0x1018u, "SP DMA: memory address keeps its bank");
+    CHECK(sp.regs[SP_DRAM_ADDR_REG] == 0x138u, "SP DMA: no skip after the last row");
+    CHECK(sp.regs[SP_RD_LEN_REG] == 0x01800ff8u && sp.regs[SP_WR_LEN_REG] == 0x01800ff8u,
+          "SP DMA: both length registers read back skip and 0xff8");
+
+    write_rsp_regs(&sp, MM_RSP_REGS + 4u * SP_MEM_ADDR_REG, 0xffffffffu, ~0u);
+    write_rsp_regs(&sp, MM_RSP_REGS + 4u * SP_DRAM_ADDR_REG, 0xffffffffu, ~0u);
+    CHECK(sp.regs[SP_MEM_ADDR_REG] == 0x1ff8u && sp.regs[SP_DRAM_ADDR_REG] == 0xfffff8u,
+          "SP DMA: address registers hold aligned values");
+
+    free(dram);
 }
 
 static void test_is_viewer(void)
@@ -580,6 +656,7 @@ int main(void)
     test_dd_buffers();
     test_dpc_clock();
     test_si_dma();
+    test_sp_dma();
     test_is_viewer();
 
     if (s_failures) {

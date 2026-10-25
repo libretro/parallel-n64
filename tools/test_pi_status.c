@@ -4,7 +4,9 @@
  *  - a CPU write to the bus (IO busy only) completes without one;
  *  - PI_STATUS reset abandons the transfer in flight, so its completion
  *    event is withdrawn;
- *  - the domain timing registers keep only their implemented bits.
+ *  - the domain timing registers keep only their implemented bits;
+ *  - with bus timing on, a DMA takes the duration its domain's latency,
+ *    pulse width, release and page size registers give.
  *
  * Built by `make check-core` (top-level Makefile). Exit status 0 on pass.
  */
@@ -129,6 +131,29 @@ int main(void)
     write_pi(PI_STATUS_REG, PI_STATUS_CLR_INTR);
     CHECK(s_pi.regs[PI_STATUS_REG] == PI_STATUS_DMA_BUSY && s_pi_removed == 0,
           "clearing the PI interrupt keeps the transfer");
+
+    /* bus-register DMA duration: 4 KiB from an aligned cart address with the
+     * retail cartridge timings (latency 0x40, pulse 0x12, page 2^9, release
+     * 3) crosses 8 pages and flushes 26 buffers:
+     * (15 + 64) * 8 + (18 + 3 + 2) * 2048 + 26 * 28 = 48464 RCP clocks */
+    {
+        uint32_t regs[PI_REGS_COUNT];
+        memset(regs, 0, sizeof(regs));
+        regs[PI_BSD_DOM1_LAT_REG] = 0x40;
+        regs[PI_BSD_DOM1_PWD_REG] = 0x12;
+        regs[PI_BSD_DOM1_PGS_REG] = 0x07;
+        regs[PI_BSD_DOM1_RLS_REG] = 0x03;
+        CHECK(pi_dma_duration(regs, 0x10000000u, 0x1000u) == (48464u * 3u + 3u) / 4u,
+              "bus timing: a 4 KiB cartridge DMA from the domain registers");
+        CHECK(pi_dma_duration(regs, 0x10000000u, 0x80u) == (((15u + 64u) + 23u * 64u + 28u) * 3u + 3u) / 4u,
+              "bus timing: one whole 128-byte buffer");
+        regs[PI_BSD_DOM2_LAT_REG] = 0x05;
+        regs[PI_BSD_DOM2_PWD_REG] = 0x0c;
+        regs[PI_BSD_DOM2_PGS_REG] = 0x0d;
+        regs[PI_BSD_DOM2_RLS_REG] = 0x02;
+        CHECK(pi_dma_duration(regs, 0x08000000u, 0x10u) == (((15u + 5u) + 16u * 8u + 16u) * 3u + 3u) / 4u,
+              "bus timing: SRAM in domain 2 uses the domain 2 registers");
+    }
 
     /* domain registers */
     reset();

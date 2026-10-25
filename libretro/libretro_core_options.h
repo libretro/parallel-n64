@@ -1331,6 +1331,20 @@ struct retro_core_option_v2_definition option_defs_us[] = {
         "True"
     },
     {
+        CORE_NAME "-dma-timing",
+        "PI/SI DMA Timing",
+        NULL,
+        "'Bus Registers' times cartridge and controller DMAs from the PI domain timing registers and the joybus command list, as the hardware does. 'Fixed' keeps the per-device durations.",
+        NULL,
+        NULL,
+        {
+            {"fixed", "Fixed"},
+            {"registers", "Bus Registers"},
+            { NULL, NULL }
+        },
+        "fixed"
+    },
+    {
         CORE_NAME "-allow-large-roms",
         "Allow Large Roms",
         NULL,

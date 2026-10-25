@@ -70,6 +70,15 @@ struct pi_dma_handler
     unsigned int (*dma_write)(void* opaque, uint8_t* dram, uint32_t dram_addr, uint32_t cart_addr, uint32_t length);
 };
 
+/* 1: PI and SI DMAs take their duration from the bus timing registers and
+ * the joybus command list; 0 (default): the fixed per-handler durations */
+extern int g_dma_bus_timing;
+
+/* PI DMA duration in count cycles from the domain's latency, pulse width,
+ * release and page size registers, counting page crossings and 128-byte
+ * buffer flushes */
+unsigned int pi_dma_duration(const uint32_t* regs, uint32_t cart_addr, uint32_t length);
+
 typedef void (*pi_dma_handler_getter)(struct cart* cart, struct dd_controller* dd, uint32_t address, void** opaque, const struct pi_dma_handler** handler);
 
 struct pi_controller

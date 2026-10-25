@@ -8,6 +8,10 @@
  * overwrite it; the test checks IMEM is untouched and that the wrapped
  * bytes reached the bottom of DMEM.
  *
+ * A DMA case loads two rows from RDRAM into the top of DMEM: the rows wrap
+ * inside the DMEM bank, the skip falls only between rows, and the address
+ * and length registers read back where the hardware leaves them.
+ *
  * On Win64 the case also checks that the JIT entry leaves the full
  * 128 bits of the callee-saved xmm6-xmm15 as it found them.
  *
@@ -153,6 +157,59 @@ static void run_case(const char* name, unsigned op, unsigned e, unsigned addr,
     CHECK(wrapped == expect_wrapped, what);
 }
 
+static uint32_t mtc0(unsigned rt, unsigned rd)
+{
+    return (0x10u << 26) | (4u << 21) | (rt << 16) | (rd << 11);
+}
+
+static void run_dma_case(void)
+{
+    uint32_t words[4] = { 0x100u, 0x108u, 0x128u, 0x130u };
+    unsigned char imem_before[0x1000];
+    uint32_t w;
+    unsigned i;
+    int ok = 1;
+
+    memset(s_sp_mem, 0x5a, 0x1000);
+    memset(s_sp_mem + 0x1000, 0, 0x1000);
+    for (i = 0; i < sizeof(s_rdram); i += 4)
+    {
+        w = 0xd0000000u | i;
+        memcpy(s_rdram + i, &w, 4);
+    }
+
+    /* ori r1,r0,0xff8; mtc0 r1,c0; ori r2,r0,0x100; mtc0 r2,c1;
+     * lui r3,0x01b0; ori r3,r3,0x100f; mtc0 r3,c2; break */
+    put_word(s_sp_mem + 0x1000, 0x00, (0x0du << 26) | (1u << 16) | 0x0ff8u);
+    put_word(s_sp_mem + 0x1000, 0x04, mtc0(1, 0));
+    put_word(s_sp_mem + 0x1000, 0x08, (0x0du << 26) | (2u << 16) | 0x0100u);
+    put_word(s_sp_mem + 0x1000, 0x0c, mtc0(2, 1));
+    put_word(s_sp_mem + 0x1000, 0x10, (0x0fu << 26) | (3u << 16) | 0x01b0u);
+    put_word(s_sp_mem + 0x1000, 0x14, (0x0du << 26) | (3u << 21) | (3u << 16) | 0x100fu);
+    put_word(s_sp_mem + 0x1000, 0x18, mtc0(3, 2));
+    put_word(s_sp_mem + 0x1000, 0x1c, 0x0000000du);
+    memcpy(imem_before, s_sp_mem + 0x1000, sizeof(imem_before));
+
+    CHECK(run_task() & SP_STATUS_BROKE, "DMA: the task runs to its break");
+    CHECK(memcmp(imem_before, s_sp_mem + 0x1000, sizeof(imem_before)) == 0,
+          "DMA: a DMEM transfer leaves IMEM alone");
+
+    for (i = 0; i < 4; i++)
+    {
+        static const unsigned dst[4] = { 0xff8u, 0x000u, 0x008u, 0x010u };
+        uint32_t a, b;
+        memcpy(&a, s_sp_mem + dst[i], 4);
+        memcpy(&b, s_sp_mem + dst[i] + 4, 4);
+        if (a != (0xd0000000u | words[i]) || b != (0xd0000000u | (words[i] + 4u)))
+            ok = 0;
+    }
+    CHECK(ok, "DMA: rows wrap inside DMEM with the skip only between them");
+    CHECK(s_regs[1] == 0x018u, "DMA: memory address after the transfer");
+    CHECK(s_regs[2] == 0x138u, "DMA: no skip after the last row");
+    CHECK(s_regs[3] == 0x01800ff8u && s_regs[4] == 0x01800ff8u,
+          "DMA: both length registers read back skip and 0xff8");
+}
+
 int main(void)
 {
     init_plugin();
@@ -163,6 +220,7 @@ int main(void)
     run_case("SHV", 0x08, 0, 0xff8u, 16, 4);
     run_case("SFV", 0x09, 0, 0xff8u, 16, 2);
     run_case("STV", 0x0b, 0, 0xff8u, 16, 8);
+    run_dma_case();
 
     if (s_failures) {
         printf("test_prsp_dmem_wrap: %d failure(s)\n", s_failures);

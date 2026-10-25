@@ -64,6 +64,49 @@ static uint32_t pi_dram_span(const struct pi_controller* pi,
     return length;
 }
 
+int g_dma_bus_timing = 0;
+
+unsigned int pi_dma_duration(const uint32_t* regs, uint32_t cart_addr, uint32_t length)
+{
+    unsigned int domain = cart_addr >> 24;
+    unsigned int base = (domain == 5 || (domain >= 8 && domain <= 15))
+        ? PI_BSD_DOM2_LAT_REG : PI_BSD_DOM1_LAT_REG;
+    uint64_t page_size = UINT64_C(1) << ((regs[base + 2] & 15) + 2);
+    uint64_t first = cart_addr & ~UINT32_C(1);
+    uint64_t bytes = (length + 1u) & ~1u;
+    uint64_t last, pages, buffers = 0, partial = 0, clocks;
+
+    if (bytes == 0)
+        return 0;
+    last  = first + bytes - 2;
+    pages = last / page_size - first / page_size + 1;
+
+    if (pages == 1) {
+        if (bytes == 128)
+            buffers = 1;
+        else
+            partial = bytes;
+    }
+    else {
+        if (!(first & (page_size - 1)))
+            ++buffers;
+        else
+            partial += page_size - (first & (page_size - 1));
+        if (!((last + 2) & (page_size - 1)))
+            ++buffers;
+        else
+            partial += (last & (page_size - 1)) + 2;
+        if (pages > 2)
+            buffers += (pages - 2) * page_size / 128;
+    }
+
+    /* RCP clocks, then count cycles at three to every four */
+    clocks = (15 + (regs[base] & 255)) * pages
+           + ((regs[base + 1] & 255) + (regs[base + 3] & 3) + 2) * bytes / 2
+           + buffers * 28 + partial;
+    return (unsigned int)((clocks * 3 + 3) / 4);
+}
+
 static void dma_pi_read(struct pi_controller* pi)
 {
     uint32_t cart_addr;
@@ -98,6 +141,8 @@ static void dma_pi_read(struct pi_controller* pi)
 
     span   = pi_dram_span(pi, dram_addr, length);
     cycles = handler->dma_read(opaque, dram, dram_addr, cart_addr, span);
+    if (g_dma_bus_timing)
+        cycles = pi_dma_duration(pi->regs, cart_addr, length);
 
     /* Mark DMA as busy */
     pi->regs[PI_STATUS_REG] |= PI_STATUS_DMA_BUSY;
@@ -148,6 +193,8 @@ static void dma_pi_write(struct pi_controller* pi)
 
     span   = pi_dram_span(pi, dram_addr, length);
     cycles = handler->dma_write(opaque, dram, dram_addr, cart_addr, span);
+    if (g_dma_bus_timing)
+        cycles = pi_dma_duration(pi->regs, cart_addr, length);
 
     post_framebuffer_write(&pi->dp->fb, dram_addr, span);
 
