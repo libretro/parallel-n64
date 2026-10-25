@@ -2280,7 +2280,7 @@ static void write_word_new(int pcaddr, int count)
   state->pcaddr = pcaddr&~1;
   r4300->delay_slot = pcaddr & 1;
   r4300_write_aligned_word(r4300, state->address, state->wword, UINT32_C(0xffffffff));
-  if ((state->address & UINT32_C(0x1fffffff)) == UINT32_C(0x04300000)
+  if (pure_interp_mi_window_wanted(state->address, state->wword, UINT32_C(0xffffffff))
       && (r4300->mi->regs[MI_INIT_MODE_REG] & 0x180) && !r4300->delay_slot
       && !state->pending_exception)
   {

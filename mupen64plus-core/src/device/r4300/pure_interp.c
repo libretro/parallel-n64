@@ -823,6 +823,19 @@ static int mi_window_has_delay_slot(uint32_t op)
     return 0;
 }
 
+/* Whether a store wants that window: it must be a store to MI_MODE that
+ * sets the init or EBUS test mode itself. A mode a recompiler left set
+ * earlier - its window ended early and the access the mode waited for
+ * happened in compiled code - is stale, and a later MI_MODE write that
+ * only clears the DP interrupt must not hand it the next store. Conker's
+ * Bad Fur Day writes MI_MODE that way every frame, with the IPL3's init
+ * mode still set, and lost all but one byte of a store to it. */
+int pure_interp_mi_window_wanted(uint32_t address, uint32_t value, uint32_t mask)
+{
+    return (address & UINT32_C(0x1fffffff)) == UINT32_C(0x04300000)
+        && (value & mask & UINT32_C(0x500)) != 0;
+}
+
 uint32_t pure_interp_run_mi_window(struct r4300_core* r4300, uint32_t pc)
 {
     const int ari64 = (r4300->emumode == EMUMODE_DYNAREC && r4300_jit_backend == R4300_JIT_ARI64);

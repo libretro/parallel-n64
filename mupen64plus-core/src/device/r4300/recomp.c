@@ -988,12 +988,13 @@ int dynarec_write_aligned_word(void)
 #if !defined(NO_ASM) && defined(HAVE_DYNAREC_HACKTARUX)
     /* MI_MODE's init (repeat) and EBUS test modes act on the very next
      * RDRAM access, which compiled code makes inline where no handler sees
-     * it. When this store left either mode set, run what follows through
+     * it. When this store set either mode, run what follows through
      * the interpreter until the mode is gone, then re-enter compiled code
      * there. The generated code set the PC to the next instruction and
      * flushed the register cache before calling here. */
     if (r4300->emumode == EMUMODE_DYNAREC && !(r4300->emumode == EMUMODE_DYNAREC && r4300_jit_backend == R4300_JIT_ARI64)
-        && (r4300->recomp.address & UINT32_C(0x1fffffff)) == UINT32_C(0x04300000)
+        && pure_interp_mi_window_wanted(r4300->recomp.address,
+                                        r4300->recomp.wword, r4300->recomp.wmask)
         && (r4300->mi->regs[MI_INIT_MODE_REG] & 0x180))
     {
         uint32_t pc = (*r4300_pc_struct(r4300))->addr;

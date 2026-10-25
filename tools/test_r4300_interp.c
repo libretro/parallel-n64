@@ -8,7 +8,9 @@
  *    clears the link bit, a misaligned LW $zero still faults, and r0 reads
  *    back zero;
  *  - CTC1 keeps only the implemented FCR31 bits and traps when a cause is
- *    enabled; CFC1 of an unimplemented control register reads zero.
+ *    enabled; CFC1 of an unimplemented control register reads zero;
+ *  - a recompiler's MI_MODE window opens only for the store that sets a
+ *    mode, not for a stale one.
  *
  * Runs single instructions through the pure interpreter (InterpretOpcode).
  * Built by `make check-core` (top-level Makefile). Exit status 0 on pass.
@@ -257,6 +259,27 @@ static void test_fcr31(void)
     CHECK(s_r4300.regs[3] == 0, "CFC1: an unimplemented register reads zero");
 }
 
+/* A recompiler hands the stores after an MI_MODE write to the interpreter
+ * only when that write set the init or EBUS test mode. A write that just
+ * clears the DP interrupt, with a mode left over from earlier, does not
+ * open the window: Conker's Bad Fur Day does that every frame, and the
+ * stale init mode cut its next store down to one byte. */
+static void test_mi_window(void)
+{
+    CHECK(pure_interp_mi_window_wanted(0xa4300000u, 0x100u, ~0u),
+          "MI window: setting init mode opens it");
+    CHECK(pure_interp_mi_window_wanted(0xa4300000u, 0x40fu, ~0u),
+          "MI window: setting EBUS test mode opens it");
+    CHECK(!pure_interp_mi_window_wanted(0xa4300000u, 0x800u, ~0u),
+          "MI window: clearing the DP interrupt does not");
+    CHECK(!pure_interp_mi_window_wanted(0xa4300000u, 0x0080u, ~0u),
+          "MI window: clearing init mode does not");
+    CHECK(!pure_interp_mi_window_wanted(0xa4300004u, 0x100u, ~0u),
+          "MI window: another MI register does not");
+    CHECK(!pure_interp_mi_window_wanted(0xa4300000u, 0x100u, 0xffu),
+          "MI window: a masked-out set bit does not");
+}
+
 int main(void)
 {
     s_r4300.cp0.tlb.LUT_r[0] = 0;
@@ -268,6 +291,7 @@ int main(void)
     test_alignment();
     test_r0();
     test_fcr31();
+    test_mi_window();
 
     if (s_failures) {
         printf("test_r4300_interp: %d failure(s)\n", s_failures);
