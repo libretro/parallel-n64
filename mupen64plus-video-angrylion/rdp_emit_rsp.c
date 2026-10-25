@@ -1373,6 +1373,23 @@ void rsp_set_vtx_invw_2rd(int on)
 
 static int s_vtx_invw_raw = 0;
 
+/* Fast3D vertex write (GoldenEye, Perfect Dark, Mario Kart 64): the
+ * shared reciprocal routine doubles the raw table result (re-latching the
+ * fraction after the integer term) and refines it as r * (2 - r * w')
+ * against the DMEM 0x60 row of 2s; the position takes the reciprocal with
+ * its integer clamped to 0x7fff when negative (vge/vmrg against v30[0]);
+ * and the stored screen integers are clamped by the vge/vlt pair against
+ * the data row at 0x28: x and y to [lo, hi], z to [0, 0x7fff]. */
+static int s_vtx_f3d = 0;
+static int32_t s_vtx_f3d_lo = -4090, s_vtx_f3d_hi = 4090;
+
+void rsp_set_vtx_f3d(int on, int32_t clamp_lo, int32_t clamp_hi)
+{
+    s_vtx_f3d = on ? 1 : 0;
+    s_vtx_f3d_lo = clamp_lo;
+    s_vtx_f3d_hi = clamp_hi;
+}
+
 void rsp_set_vtx_invw_raw(int on)
 {
     s_vtx_invw_raw = on ? 1 : 0;
@@ -1962,7 +1979,9 @@ int rsp_vtx_screen(int32_t cx, int32_t cy, int32_t cz, int32_t cw,
     RspAcc acc;
     int lane;
 
-    if (cw <= 0)
+    /* the Fast3D vertex write runs for every vertex, behind the eye
+     * included, and its triangle path reads whatever it stored */
+    if (cw <= 0 && !s_vtx_f3d)
         return 0;
 
     pos[0] = mk32(cx);
@@ -1982,7 +2001,24 @@ int rsp_vtx_screen(int32_t cx, int32_t cy, int32_t cz, int32_t cw,
 
     /* 1/w' with the Newton-Raphson step, exactly as rsp_vtx_invw */
     r = mk32(rsp_rcp32((int32_t)(((uint32_t)U16(pw.i) << 16) | (uint32_t)U16(pw.f))));
-    if (s_vtx_invw_raw)
+    if (s_vtx_f3d)
+    {
+        acc = p_udn(r.f, 2);
+        acc += p_udh(r.i, 2);
+        r.i = acc_clamp_mid(acc);
+        r.f = acc_clamp_low(acc);
+        t = mac32(r, pw, 0);
+        {
+            int32_t borrow = (U16(t.f) != 0) ? 1 : 0;
+            u.f = (int32_t)((0 - U16(t.f)) & 0xffff);
+            u.i = 2 - S16(t.i) - borrow;
+            if (u.i > 32767) u.i = 32767;
+            if (u.i < -32768) u.i = -32768;
+            u.i &= 0xffff;
+        }
+        iw = mac32(r, u, 0);
+    }
+    else if (s_vtx_invw_raw)
     {
         /* Turbo3D's reciprocal (gspTurbo3D text +0x538..+0x574): the
          * 32-bit vrcph/vrcpl table result is doubled through the
@@ -2041,12 +2077,15 @@ int rsp_vtx_screen(int32_t cx, int32_t cy, int32_t cz, int32_t cw,
         Rsp32 p1, p2;
         int32_t vs = (lane == 0) ? vsx : (lane == 1) ? -vsy : vsz;
         int32_t vt = (lane == 0) ? vtx_ : (lane == 1) ? vty : vtz;
+        int32_t iwi = iw.i;
 
+        if (s_vtx_f3d && S16(iwi) < 0)
+            iwi = 0x7fff;
         acc = p_udl(pos[lane].f, iw.f);
         acc += p_udm(pos[lane].i, iw.f);
-        acc += p_udn(pos[lane].f, iw.i);
+        acc += p_udn(pos[lane].f, iwi);
         p1.f = acc_clamp_low(acc);
-        acc += p_udh(pos[lane].i, iw.i);
+        acc += p_udh(pos[lane].i, iwi);
         p1.i = acc_clamp_mid(acc);
 
         acc = p_udl(p1.f, pn);
@@ -2059,6 +2098,18 @@ int rsp_vtx_screen(int32_t cx, int32_t cy, int32_t cz, int32_t cw,
         scr_f[lane] = acc_clamp_low(acc);
         acc += p_udh(p2.i, vs);
         scr_i[lane] = acc_clamp_mid(acc);
+        if (s_vtx_f3d)
+        {
+            /* the fraction is re-latched after the integer term */
+            scr_f[lane] = acc_clamp_low(acc);
+            if (lane < 2)
+            {
+                if (S16(scr_i[lane]) < s_vtx_f3d_lo)
+                    scr_i[lane] = s_vtx_f3d_lo & 0xffff;
+                if (S16(scr_i[lane]) > s_vtx_f3d_hi)
+                    scr_i[lane] = s_vtx_f3d_hi & 0xffff;
+            }
+        }
     }
 
     *sx102 = (int32_t)(int16_t)scr_i[0];

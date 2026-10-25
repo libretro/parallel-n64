@@ -13,9 +13,11 @@
 
 #include "rdp_emit.h"
 #include <stdio.h>
+#include <string.h>
 #include "rdp_emit_bridge.h"
 #include "rdp_emit_recip.h"
 #include "rdp_emit_rsp.h"
+#include "rdp_emit_f3dtri.h"
 
 void bridge_compute_screen(const BridgeVertex *v, const BridgeViewport *vp,
                            int32_t *out_x, int32_t *out_y, int32_t *out_z,
@@ -196,7 +198,8 @@ static int try_rsp_tri_write(int32_t *cmd,
                              int smooth,
                              int tile, int level,
                              int32_t dx_scale, int32_t idy_scale,
-                             int32_t frac_mask, int32_t vcr_bound)
+                             int32_t frac_mask, int32_t vcr_bound,
+                             const BridgeViewport *vp, int cull_mode)
 {
     RspTriVtx r[3];
     const EmitVertex *ev[3];
@@ -236,7 +239,32 @@ static int try_rsp_tri_write(int32_t *cmd,
         r[i].t = tct;
         r[i].invw = ev[i]->rsp_invw;
         r[i].pw = ev[i]->rs_pw;
+        r[i].cx = bv[i]->cx;
+        r[i].cy = bv[i]->cy;
+        r[i].cz = bv[i]->cz;
+        r[i].cw = bv[i]->cw;
+        r[i].f3d_flags = 0;
         r[i].flat2d = bv[i]->flat2d;
+    }
+    if (vp->f3d_tri_rev != F3D_TRI_NONE)
+    {
+        /* Fast3D (the revision A builds; revision B runs its whole
+         * triangle command from the frontend): rebuild the microcode's
+         * geometry-mode word (F3D bit layout) from the resolved flags */
+        F3dTriState st;
+        memset(&st, 0, sizeof(st));
+        st.rev = vp->f3d_tri_rev;
+        st.geometry_mode = (z_buffered ? 0x1u : 0u) | (textured ? 0x2u : 0u)
+                         | (shaded ? 0x4u : 0u) | (smooth ? 0x200u : 0u)
+                         | ((unsigned int)(cull_mode & 3) << 12);
+        st.persp_norm = vp->persp_norm;
+        st.tile = tile;
+        st.level = level;
+        st.zclamp = vp->f3d_zclamp;
+        st.flat_select = vp->f3d_flat_select;
+        st.flat_vtx = vp->f3d_flat_vtx;
+        st.tex_scale_a = vp->f3d_tex_scale_a;
+        return rsp_tri_write_f3d(cmd, &r[0], &r[1], &r[2], &st);
     }
     return rsp_tri_write(cmd, &r[0], &r[1], &r[2],
                          textured, z_buffered, shaded, smooth, tile, level,
@@ -322,7 +350,8 @@ int bridge_add_triangle(int32_t *cmd,
                           vp->tri_dx_scale ? vp->tri_dx_scale : 0x4000,
                           vp->tri_idy_scale ? vp->tri_idy_scale : 0x0008,
                           vp->tri_frac_mask ? vp->tri_frac_mask : (int32_t)0xffff,
-                          vp->tri_vcr_bound ? vp->tri_vcr_bound : 0x1cc);
+                          vp->tri_vcr_bound ? vp->tri_vcr_bound : 0x1cc,
+                          vp, cull_mode);
     if (n >= 0)
         return n;
 

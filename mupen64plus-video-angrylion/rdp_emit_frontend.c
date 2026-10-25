@@ -14,6 +14,8 @@
 #include <stdlib.h>
 #include <math.h>
 #include "rdp_emit_recip.h"
+#include "rdp_emit_f3dtri.h"
+#include <string.h>
 
 /* Star Wars Episode I Racer's LucasArts F3DEX2 computes no far-plane (+z)
  * outcode and relies on the RDP z clamp; its banner reads "F3DEX.NoN fifo
@@ -822,6 +824,36 @@ static void acclaim_light(GSPState *s, int32_t ex, int32_t ey, int32_t ez,
     *b8 = (cb >> 7) & 0xff;
 }
 
+/* Fast3D revision B (GoldenEye, Perfect Dark): the vertex write
+ * transforms vertices in pairs and packs each pair's clip flags into one
+ * word, so the second vertex's record halfword also carries the first
+ * vertex's w sign; compute the microcode's halfwords pair by pair from the
+ * load's first vertex. */
+static void gsp_f3d_pair_flags(GSPState *s, int v0, int n)
+{
+    int i;
+    for (i = 0; i < n; i += 2)
+    {
+        int ia = v0 + i, ib = v0 + i + 1;
+        int32_t pa[4], pb[4];
+        int32_t fa, fb;
+        GSPVertex *a, *b;
+        if (ia < 0 || ia >= GSP_MAX_VERTICES)
+            continue;
+        a = &s->vtx[ia];
+        b = (i + 1 < n && ib < GSP_MAX_VERTICES) ? &s->vtx[ib] : 0;
+        pa[0] = a->cx; pa[1] = a->cy; pa[2] = a->cz; pa[3] = a->cw;
+        if (b)
+        {
+            pb[0] = b->cx; pb[1] = b->cy; pb[2] = b->cz; pb[3] = b->cw;
+        }
+        f3d_vtx_flags_rare(pa, b ? pb : 0, s->clip_ratio, &fa, &fb);
+        a->f3d_flags = fa;
+        if (b)
+            b->f3d_flags = fb;
+    }
+}
+
 void gsp_vertex(GSPState *s, const unsigned char *rdram, unsigned int addr,
                 int n, int v0)
 {
@@ -1242,6 +1274,8 @@ void gsp_vertex(GSPState *s, const unsigned char *rdram, unsigned int addr,
          * and a G_VTX into its slot ends that. */
         vt->flat2d = 0;
     }
+    if (s->viewport.f3d_tri_rev == F3D_TRI_REV_B)
+        gsp_f3d_pair_flags(s, v0, n);
 }
 
 #define GEOM_ZBUFFER    0x00000001u
@@ -2239,6 +2273,69 @@ int gsp_line(GSPState *s, int32_t *cmd, int i0, int i1, int width_q)
         return n + 2;
     }
 }
+
+/* A stored vertex as the revision B microcode's DMEM record holds it. */
+static void gsp_rare_vtx(const GSPVertex *g, RspTriVtx *r)
+{
+    memset(r, 0, sizeof(*r));
+    r->x = (int16_t)(g->scr_x >> 14);
+    r->y = (int16_t)(g->scr_y >> 14);
+    r->z = g->scr_z;
+    r->r = (g->r >> 16) & 0xff;
+    r->g = (g->g >> 16) & 0xff;
+    r->b = (g->b >> 16) & 0xff;
+    r->a = (g->a >> 16) & 0xff;
+    r->s = g->sv;
+    r->t = g->tv;
+    r->invw = g->rsp_invw;
+    r->cx = g->cx;
+    r->cy = g->cy;
+    r->cz = g->cz;
+    r->cw = g->cw;
+    r->f3d_flags = g->f3d_flags;
+}
+
+/* GoldenEye / Perfect Dark: the whole triangle command -- trivial reject,
+ * clipper, fan and triangle write -- as the microcode runs it. */
+static int gsp_triangle_rare(GSPState *s, int32_t *cmd, const GSPVertex *a,
+                             const GSPVertex *b, const GSPVertex *c,
+                             int textured, int z_buffered)
+{
+    const BridgeViewport *vp = &s->viewport;
+    RspTriVtx r[3];
+    F3dTriState st;
+    unsigned int gm = s->geometry_mode;
+    gsp_rare_vtx(a, &r[0]);
+    gsp_rare_vtx(b, &r[1]);
+    gsp_rare_vtx(c, &r[2]);
+    memset(&st, 0, sizeof(st));
+    st.rev = F3D_TRI_REV_B;
+    st.geometry_mode = (z_buffered ? 0x1u : 0u) | (textured ? 0x2u : 0u)
+                     | ((gm & 0x4u) ? 0x4u : 0u)
+                     | ((gm & 0x00200000u) ? 0x200u : 0u)
+                     | (((gm >> 9) & 3u) << 12)
+                     | (gm & 0x00010000u);
+    st.persp_norm = vp->persp_norm;
+    st.tile = s->tex_tile;
+    st.level = s->tex_level;
+    st.zclamp = vp->f3d_zclamp;
+    st.flat_select = vp->f3d_flat_select;
+    st.flat_vtx = vp->f3d_flat_vtx;
+    st.tex_scale_a = vp->f3d_tex_scale_a;
+    st.vs[0] = (int16_t)(vp->vscale_x >> 14);
+    st.vs[1] = (int16_t)(vp->vscale_y >> 14);
+    st.vs[2] = (int16_t)(vp->vscale_z >> 16);
+    st.vt[0] = (int16_t)(vp->vtrans_x >> 14);
+    st.vt[1] = (int16_t)(vp->vtrans_y >> 14);
+    st.vt[2] = (int16_t)(vp->vtrans_z >> 16);
+    st.fog_m = s->fog_m;
+    st.fog_o = s->fog_o;
+    st.guard = s->clip_ratio;
+    st.clamp_lo = vp->f3d_clamp_lo;
+    st.clamp_hi = vp->f3d_clamp_hi;
+    return rsp_tri_rare(cmd, GSP_TRI_CMD_WORDS, &r[0], &r[1], &r[2], &st);
+}
+
 int gsp_triangle(GSPState *s, int32_t *cmd, int i0, int i1, int i2,
                  int textured, int z_buffered)
 {
@@ -2256,6 +2353,9 @@ int gsp_triangle(GSPState *s, int32_t *cmd, int i0, int i1, int i2,
 
     /* Z bit comes from the G_ZBUFFER geometry-mode bit, not the othermode. */
     z_buffered = (s->geometry_mode & GEOM_ZBUFFER) ? 1 : 0;
+
+    if (s->viewport.f3d_tri_rev == F3D_TRI_REV_B)
+        return gsp_triangle_rare(s, cmd, a, b, c, textured, z_buffered);
 
     /* Trivial reject: the RSP tests the AND of the three vertices' stored
      * VCH clip outcodes against CLIP_ALL_SCRN -- if every vertex lies

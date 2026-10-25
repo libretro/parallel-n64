@@ -26,6 +26,7 @@
 #include "rdp_emit_turbo3d.h"
 #include "rdp_emit_rs.h"
 #include "rdp_emit_rsp.h"
+#include "rdp_emit_f3dtri.h"
 #include "rdp_emit_backend.h"
 
 /* The active rasterizer backend (angrylion or parallel-rdp).  Installed via
@@ -150,6 +151,30 @@ static int gsp_params_at_task_start;
  * can route and configure the L3DEX line ucode the same way as the dispatcher. */
 static int f3d_ucode_family(const unsigned char *rdram, unsigned int rdram_size,
                             unsigned int ud, unsigned int uds);
+
+/* Does the text image hold the big-endian word sequence seq[0..n)? */
+static int text_has_words(const unsigned char *rdram, unsigned int ut,
+                          unsigned int len, const uint32_t *seq, int n)
+{
+    unsigned int k;
+    int j;
+    for (k = 0; k + 4u * (unsigned int)n <= len; k += 4)
+    {
+        for (j = 0; j < n; j++)
+        {
+            unsigned int a = ut + k + 4u * (unsigned int)j;
+            uint32_t w = ((uint32_t)rdram[(a + 0) ^ 3] << 24)
+                       | ((uint32_t)rdram[(a + 1) ^ 3] << 16)
+                       | ((uint32_t)rdram[(a + 2) ^ 3] << 8)
+                       |  (uint32_t)rdram[(a + 3) ^ 3];
+            if (w != seq[j])
+                break;
+        }
+        if (j == n)
+            return 1;
+    }
+    return 0;
+}
 
 /* Re-evaluate every microcode-build-specific parameter from a (data, text)
  * segment pair: the triangle-setup scale constants, the clip profile, the
@@ -320,6 +345,83 @@ void gsp_detect_ucode_params(GSPState *st, const unsigned char *rdram,
             || f3d_ucode_family(rdram, rdram_size, ud, 0u) != 0)
             found = 1;
         rsp_set_clip_lerp_204h(!found);
+    }
+
+    /* Fast3D triangle-setup probe (rdp_emit_f3dtri.c). Every Fast3D
+     * build scales the edge deltas by 0x4000 (vmudm v9,v4,v31[4]; vmadn
+     * v10,v31,v31[0]) and forms the slopes with single-precision
+     * reciprocals of the edge heights (vrcp v8[1],v4[1]; vrcph
+     * v7[1],v31[0]); the F3DEX family does neither. Revision B (GoldenEye,
+     * Perfect Dark) reads the first cross-product term out with vsar
+     * v18,v18,v18[1] (4b32949d), revision A (Mario Kart 64) accumulates
+     * both terms first, vmadh v16,v12,v9[1] (4b29640f). Builds that take
+     * a flat colour from the flagged command vertex load it with luv
+     * v25,0x10(a0). */
+    {
+        static const uint32_t sig_edge[2] = { 0x4b9f2245u, 0x4b1ffa8eu };
+        static const uint32_t sig_rcp[2] = { 0x4b244a30u, 0x4b1f49f2u };
+        static const uint32_t sig_rev_b[1] = { 0x4b32949du };
+        static const uint32_t sig_rev_a[1] = { 0x4b29640fu };
+        /* lbu v1/v0/at, 0x360/0x367/0x36e(a3): the table-driven sort */
+        static const uint32_t sig_sort_a[3] =
+            { 0x90e30360u, 0x90e20367u, 0x90e1036eu };
+        static const uint32_t sig_flat[1] = { 0xc8993802u };
+        int rev = F3D_TRI_NONE;
+        int flat = 0;
+        if (ut != 0 && ut + 0x1000 <= rdram_size
+            && text_has_words(rdram, ut, 0x1000, sig_edge, 2)
+            && text_has_words(rdram, ut, 0x1000, sig_rcp, 1)
+            && text_has_words(rdram, ut, 0x1000, sig_rcp + 1, 1))
+        {
+            if (text_has_words(rdram, ut, 0x1000, sig_rev_b, 1))
+                rev = F3D_TRI_REV_B;
+            else if (text_has_words(rdram, ut, 0x1000, sig_rev_a, 1)
+                     && text_has_words(rdram, ut, 0x1000, sig_sort_a, 3)
+                     && ud_task != 0 && ud_task + 0x380 <= rdram_size)
+            {
+                /* the modelled sort network: its three permutation rows
+                 * and parity row at data + 0x360 */
+                static const unsigned char sort_a[29] =
+                {
+                    4, 4, 0, 4, 2, 2, 0, 2, 2, 4, 0, 0, 4, 2, 0,
+                    0, 2, 2, 4, 0, 4, 0, 0, 0, 1, 0, 1, 1, 0
+                };
+                unsigned int k;
+                for (k = 0; k < 29; k++)
+                    if (rdram[(ud_task + 0x360 + k) ^ 3] != sort_a[k])
+                        break;
+                if (k == 29)
+                    rev = F3D_TRI_REV_A;
+            }
+            flat = text_has_words(rdram, ut, 0x1000, sig_flat, 1);
+        }
+        st->viewport.f3d_tri_rev = rev;
+        st->viewport.f3d_flat_select = flat;
+        st->viewport.f3d_flat_vtx = 0;
+        st->viewport.f3d_zclamp = 0;
+        /* revision A's texture normalizer scale: v30 lane 3 of the
+         * constant row at data + 0x40 */
+        st->viewport.f3d_tex_scale_a = 0x40;
+        if (rev == F3D_TRI_REV_A && ud_task != 0 && ud_task + 0x48 <= rdram_size)
+            st->viewport.f3d_tex_scale_a =
+                (int)((rdram[(ud_task + 0x46) ^ 3] << 8)
+                      | rdram[(ud_task + 0x47) ^ 3]);
+        /* the same builds share the vertex write's reciprocal routine and
+         * clamp the stored screen x/y against the data row at 0x28
+         * (upper bound lane 0, lower bound lane 1) */
+        {
+            int32_t hi = 4090, lo = -4090;
+            if (rev != F3D_TRI_NONE && ud_task != 0 && ud_task + 0x2c <= rdram_size)
+            {
+                hi = (int16_t)((rdram[(ud_task + 0x28) ^ 3] << 8)
+                               | rdram[(ud_task + 0x29) ^ 3]);
+                lo = (int16_t)((rdram[(ud_task + 0x2a) ^ 3] << 8)
+                               | rdram[(ud_task + 0x2b) ^ 3]);
+            }
+            rsp_set_vtx_f3d(rev != F3D_TRI_NONE, lo, hi);
+            st->viewport.f3d_clamp_lo = lo;
+            st->viewport.f3d_clamp_hi = hi;
+        }
     }
 
     /* Rejection-microcode probe: F3DLX.Rej / F3DZEX.Rej carry ".Rej" in

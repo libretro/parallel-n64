@@ -40,6 +40,8 @@ typedef struct GSPVertex
                                are these doubled (with int32 wrap for large
                                coordinates), which the emit path expects. */
     int     clip;           /* clip flags (outcode) */
+    int     f3d_flags;      /* Fast3D revision B record clip flags (the
+                               microcode's own halfword, pair-dependent) */
     /* Store-time screen snapshot (see BridgeVertex): the microcode
      * computes screen coordinates and 1/w at G_VTX time under the
      * then-active viewport/perspNorm and the triangle write reloads

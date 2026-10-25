@@ -17,6 +17,7 @@
  */
 
 #include "rdp_emit_f3d.h"
+#include "rdp_emit_f3dtri.h"
 #include "rdp_emit_f3dex2.h"
 #include "rdp_emit_bridge.h"
 #include "rdp_emit_frontend.h"
@@ -1040,7 +1041,14 @@ void f3d_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
                 b = (int)((w1 >>  8) & 0xff) / s;
                 c = (int)((w1 >>  0) & 0xff) / s;
             }
+            /* GoldenEye's handler takes the flat-shade colour from the
+             * command vertex the flag byte names (Mario Kart 64's, and
+             * every other build's, from the first) */
+            gsp->viewport.f3d_flat_vtx =
+                gsp->viewport.f3d_tri_rev == F3D_TRI_REV_B
+                    ? (int)((w1 >> 24) & 0xffu) % 3 : 0;
             nc = gsp_triangle(gsp, cw, a, b, c, s_textured, s_zbuffered);
+            gsp->viewport.f3d_flat_vtx = 0;
             if (nc > 0) rdp_fifo_append(fifo, cw, nc);
             break;
         }
@@ -1252,6 +1260,10 @@ void f3d_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
                 ts = gsp->tex_scale_t;
             }
             gsp_set_texture(gsp, ss, ts, tile, level, gsp->tex_w, gsp->tex_h);
+            /* the Fast3D revision B triangle write clamps its depth
+             * coefficients against this command's parameter byte (the
+             * microcode keeps w0 whole at its state block) */
+            gsp->viewport.f3d_zclamp = (int)((w0 >> 16) & 0xffu);
             break;
         }
 

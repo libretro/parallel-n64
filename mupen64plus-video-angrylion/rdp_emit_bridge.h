@@ -31,6 +31,17 @@ typedef struct BridgeViewport
                               * whose custom vertex chain is not the F3D
                               * one and whose raw w range sits outside the
                               * modelled domain). */
+    /* Fast3D triangle setup (rdp_emit_f3dtri.c): F3D_TRI_* revision, 0
+     * for the F3DEX-family writer; G_TEXTURE's parameter byte (the
+     * revision B depth clamp); whether the build takes the flat colour
+     * from the command's flagged vertex, and which one; the revision A
+     * texture normalizer scale. */
+    int f3d_tri_rev;
+    int f3d_zclamp;
+    int f3d_flat_select;
+    int f3d_flat_vtx;
+    int f3d_tex_scale_a;
+    int f3d_clamp_lo, f3d_clamp_hi; /* data + 0x28 screen clamp */
 } BridgeViewport;
 
 /* Clip-space vertex inputs to the bridge: exact s15.16 clip coords (cx,cy,cz,cw)
