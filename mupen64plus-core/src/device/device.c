@@ -27,6 +27,8 @@
 #include <mupen64plus-next_common.h>
 
 #include "memory/m64p_memory.h"
+#include "dd/dd_ipl_hle.h"
+#include "pif/cic.h"
 #include "pif/pif.h"
 #include "r4300/r4300_core.h"
 #include "rcp/ai/ai_controller.h"
@@ -231,10 +233,13 @@ void init_device(struct device* dev,
 
     /*
      * use CART unless DD is plugged and the plugged CART is not a combo media (cart+disk),
-     * or rom_size is 0 meaning there's no CART loaded
+     * or rom_size is 0 meaning there's no CART loaded. The built-in IPL
+     * boots disks only: with a cartridge loaded, the cartridge boots, as it
+     * did before there was a built-in IPL.
      */
     uint8_t media = *((uint8_t*)mem_base_u32(base, MM_CART_ROM) + (0x3b ^ S8));
-    uint32_t rom_base = (rom_size == 0 || (dd_rom_size > 0 && media != 'C'))
+    uint32_t rom_base = (rom_size == 0
+                      || (dd_rom_size > 0 && media != 'C' && !dd_ipl_hle_enabled()))
         ? MM_DD_ROM
         : MM_CART_ROM;
 
@@ -244,6 +249,8 @@ void init_device(struct device* dev,
         (uint8_t*)mem_base_u32(base, rom_base) + 0x40,
         &dev->r4300,
         &dev->si);
+    if (rom_base == MM_DD_ROM && dd_ipl_hle_enabled())
+        init_cic_dd_ipl_hle(&dev->pif.cic);
 
     init_cart(&dev->cart,
             af_rtc_clock, iaf_rtc_clock,

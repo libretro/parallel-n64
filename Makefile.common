@@ -140,6 +140,9 @@ SOURCES_C += \
 	$(CORE_DIR)/src/device/r4300/tlb.c \
 	$(CORE_DIR)/src/device/dd/dd_controller.c \
 	$(CORE_DIR)/src/device/dd/disk.c \
+	$(CORE_DIR)/src/device/dd/dd_ipl_hle.c \
+	$(CORE_DIR)/src/device/dd/dd_ipl_hle_font.c \
+	$(CORE_DIR)/src/device/dd/dd_ipl_hle_font_data.c \
 	$(CORE_DIR)/src/device/rcp/ri/ri_controller.c \
 	$(CORE_DIR)/src/device/rdram/rdram.c \
 	$(CORE_DIR)/src/device/rcp/si/si_controller.c \

@@ -26,6 +26,7 @@
 
 #include "api/m64p_types.h"
 #include "device/device.h"
+#include "device/dd/dd_ipl_hle.h"
 #include "device/pif/cic.h"
 #include "device/r4300/r4300_core.h"
 #include "device/rcp/ai/ai_controller.h"
@@ -139,6 +140,12 @@ void pif_bootrom_hle_execute(struct r4300_core* r4300)
          * have found. */
         mem_base_u32(r4300->mem->base, MM_RDRAM_DRAM)[0x318/4] = (uint32_t)g_dev.rdram.dram_size;
     }
+
+    /* No IPL ROM: the cleanroom IPL loads the disk's boot code and leaves
+     * the machine as the retail IPL hands it over. */
+    if (rom_type == 1 && dd_ipl_hle_enabled()
+     && dd_ipl_hle_boot(r4300, &g_dev.dd, tv_type, reset_type))
+        return;
 
     /* copy IPL3 to dmem */
     memcpy((unsigned char*)mem_base_u32(r4300->mem->base, MM_RSP_MEM + 0x40),

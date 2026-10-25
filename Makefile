@@ -1202,7 +1202,7 @@ clean: clean-tools
 	rm -f $(OBJECTS) $(TARGET) $(OBJECTS:.o=.d) .build-flags
 
 clean-tools:
-	rm -f $(ANGRYLION_TOOLS) lrhost$(EXE_EXT) lrhost_vk$(EXE_EXT) angrylion_replay$(EXE_EXT) $(ANGRYLION_CHECKS) \
+	rm -f $(ANGRYLION_TOOLS) lrhost$(EXE_EXT) lrhost_vk$(EXE_EXT) angrylion_replay$(EXE_EXT) $(ANGRYLION_CHECKS) dd_ipl_hle_test$(EXE_EXT) \
 		$(CORE_CHECKS) tools/test_prsp_dmem_wrap.o
 
 # Angrylion benchmark and bit-exactness harnesses (tools/angrylion_*.c),
@@ -1311,6 +1311,24 @@ tools: $(ANGRYLION_TOOLS) lrhost$(EXE_EXT) angrylion_replay$(EXE_EXT) $(ANGRYLIO
 # stage, and the HLE geometry frontend's regression lanes.
 check-angrylion: $(ANGRYLION_CHECKS)
 	@set -e; for t in $(ANGRYLION_CHECKS); do echo "== $$t"; ./$$t; done
+
+# Built-in 64DD IPL: boot test disks through the core with no IPL ROM and
+# check the state their boot code finds against the retail IPL's (for a
+# 43-block and an 8-block boot). Needs the core built first.
+dd_ipl_hle_test$(EXE_EXT): tools/dd_ipl_hle_test.c tools/dd_ipl_hle_expected.h
+	$(CC) $(CHECK_CFLAGS) -Itools $< -o $@
+
+DD_IPL_CHECK_DIR := dd_ipl_check.tmp
+check-dd-ipl: $(TARGET) lrhost$(EXE_EXT) dd_ipl_hle_test$(EXE_EXT)
+	@set -e; rm -rf $(DD_IPL_CHECK_DIR); mkdir -p $(DD_IPL_CHECK_DIR)/lrhost-system; \
+	for n in 43 8; do \
+		echo "== $$n-block boot"; \
+		./dd_ipl_hle_test$(EXE_EXT) disk $(DD_IPL_CHECK_DIR)/disk_$$n.ndd $$n; \
+		( cd $(DD_IPL_CHECK_DIR) && LRHOST_RAMDUMP=ram_$$n.bin ../lrhost$(EXE_EXT) ../$(TARGET) disk_$$n.ndd 4 \
+			parallel-n64-gfxplugin=angrylion parallel-n64-rspplugin=hle \
+			parallel-n64-cpucore=pure_interpreter > /dev/null ); \
+		./dd_ipl_hle_test$(EXE_EXT) check $(DD_IPL_CHECK_DIR)/ram_$$n.bin $$n; \
+	done; rm -rf $(DD_IPL_CHECK_DIR)
 
 # Core self-tests: MMIO register and DMA bounds, the frontend memory map,
 # framebuffer write notifications, COP0 exceptions, PI status, the MusyX

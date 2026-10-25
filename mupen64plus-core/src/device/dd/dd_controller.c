@@ -32,6 +32,7 @@
 #include "backends/api/clock_backend.h"
 #include "backends/api/storage_backend.h"
 #include "device/dd/disk.h"
+#include "device/dd/dd_ipl_hle.h"
 #include "device/device.h"
 #include "device/memory/m64p_memory.h"
 #include "device/r4300/r4300_core.h"
@@ -893,6 +894,7 @@ unsigned int dd_dom_dma_write(void* opaque, uint8_t* dram, uint32_t dram_addr, u
     else {
         /* DD ROM */
         cart_addr = (cart_addr - MM_DD_ROM);
+        dd_ipl_hle_rom_fetch(cart_addr);
         mem = (const uint8_t*)dd->rom;
         mem_size = dd->rom_size;
 

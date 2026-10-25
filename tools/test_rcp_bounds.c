@@ -145,6 +145,7 @@ void init_fb(struct fb* fb, struct memory* mem, struct rdram* rdram,
     (void)fb; (void)mem; (void)rdram; (void)r4300;
 }
 void poweron_fb(struct fb* fb) { (void)fb; }
+void dd_ipl_hle_rom_fetch(uint32_t rom_off) { (void)rom_off; }
 uint8_t* get_sector_base(const struct dd_disk* disk, unsigned int head,
                          unsigned int track, unsigned int block, unsigned int sector)
 {

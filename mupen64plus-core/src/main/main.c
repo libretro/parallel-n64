@@ -55,6 +55,7 @@
 #include "cheat.h"
 #include "device/device.h"
 #include "device/dd/disk.h"
+#include "device/dd/dd_ipl_hle.h"
 #include "device/controllers/vru_controller.h"
 #include "device/controllers/paks/biopak.h"
 
@@ -383,7 +384,7 @@ static void load_dd_rom(uint8_t* rom, size_t* rom_size, uint8_t* disk_region)
     memset(&dd_rom, 0, sizeof(dd_rom));
 
     if (open_rom_file_storage(&dd_rom, dd_ipl_rom_filename) != file_ok) {
-        DebugMessage(M64MSG_ERROR, "Failed to load DD IPL ROM: %s. Disabling 64DD", dd_ipl_rom_filename);
+        DebugMessage(M64MSG_WARNING, "Failed to load DD IPL ROM: %s", dd_ipl_rom_filename);
         goto no_dd;
     }
 
@@ -392,7 +393,7 @@ static void load_dd_rom(uint8_t* rom, size_t* rom_size, uint8_t* disk_region)
     /* load and swap DD IPL ROM; it has to fit its memory block */
     *rom_size = g_ifile_storage_ro.size(&dd_rom);
     if (*rom_size < 4 || *rom_size > DD_ROM_MAX_SIZE) {
-        DebugMessage(M64MSG_ERROR, "Invalid DD IPL ROM size: %u. Disabling 64DD", (unsigned)*rom_size);
+        DebugMessage(M64MSG_ERROR, "Invalid DD IPL ROM size: %u", (unsigned)*rom_size);
         close_file_storage(&dd_rom);
         goto no_dd;
     }
@@ -422,19 +423,23 @@ static void load_dd_rom(uint8_t* rom, size_t* rom_size, uint8_t* disk_region)
         break;
 
     default: /* unknown */
-        DebugMessage(M64MSG_ERROR, "Invalid DD IPL ROM: Disabling 64DD.");
-        *rom_size = 0;
-        break;
+        DebugMessage(M64MSG_ERROR, "Invalid DD IPL ROM: %s", dd_ipl_rom_filename);
+        goto no_dd;
     }
 
     free(pathname);
+    dd_ipl_hle_set_enabled(0);
     return;
 
 no_dd:
     /* the name is the frontend's staged path or this function's buffer,
      * never ours to free on its own */
     free(pathname);
-    *rom_size = 0;
+
+    /* No usable IPL ROM: boot the disk through the cleanroom IPL. */
+    DebugMessage(M64MSG_INFO, "DD IPL ROM not available: using the built-in IPL");
+    *rom_size = dd_ipl_hle_build_rom((uint32_t*)rom, *disk_region);
+    dd_ipl_hle_set_enabled(1);
 }
 
 extern char* retro_dd_path_img;
@@ -948,6 +953,7 @@ m64p_error main_run(void)
     else
     {
         dd_rom_size = 0;
+        dd_ipl_hle_set_enabled(0);
     }
 
     /* ensure the 64DD rom & disk are loaded,

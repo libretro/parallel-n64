@@ -108,8 +108,9 @@ libretro-build-linux-x64:
 # the desktop build and links the tree's own objects: the vector emitter and
 # generated pipeline stage checks, the HLE geometry frontend's regression
 # lanes (clip scratch stability, the Fast3D near clip plane read from the
-# microcode data segment), and the core's bounds, exception, input and
-# MusyX checks (make check-core).
+# microcode data segment), the core's bounds, exception, input and
+# MusyX checks (make check-core), and a 64DD disk booted through the core
+# with no IPL ROM (make check-dd-ipl).
 test-angrylion-linux-x64:
   extends:
     - .core-defs
@@ -123,6 +124,7 @@ test-angrylion-linux-x64:
     - make -j$(nproc) platform=unix WITH_DYNAREC=$WITH_DYNAREC HAVE_THR_AL=$HAVE_THR_AL HAVE_PARALLEL=$HAVE_PARALLEL HAVE_PARALLEL_RSP=$HAVE_PARALLEL_RSP
     - make platform=unix check-angrylion
     - make platform=unix check-core
+    - make platform=unix check-dd-ipl
 
 # Linux 64-bit: parallel-rdp on Mesa's software Vulkan driver (lavapipe),
 # no GPU. tools/lrhost_vk runs krom's RDP tests through the core and every

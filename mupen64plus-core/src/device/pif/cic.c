@@ -90,7 +90,9 @@ void init_cic_using_ipl3(struct cic* cic, const void* ipl3)
     for (i = 0; i < 0xfc0/4; i++)
         crc += ((uint32_t*)ipl3)[i];
 
-    if (cic_ipl3_crc_known(crc) < 0)
+    /* an all-zero IPL3 is no boot code at all (the built-in 64DD IPL),
+     * whose caller picks the CIC itself */
+    if (crc != 0 && cic_ipl3_crc_known(crc) < 0)
         DebugMessage(M64MSG_WARNING, "Unknown CIC type (%016" PRIX64 ")! using CIC 6102.", crc);
 
     switch(crc)
@@ -117,3 +119,12 @@ void init_cic_using_ipl3(struct cic* cic, const void* ipl3)
     DebugMessage(M64MSG_INFO, "Using CIC type %s", cic->name);
 }
 
+
+/* The 64DD's own CIC, for a drive booting without an IPL ROM image. */
+void init_cic_dd_ipl_hle(struct cic* cic)
+{
+    cic->name = "8303";
+    cic->version = CIC_8303;
+    cic->seed = 0xdd;
+    DebugMessage(M64MSG_INFO, "Using CIC type %s", cic->name);
+}

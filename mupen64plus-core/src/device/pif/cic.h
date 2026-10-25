@@ -46,6 +46,7 @@ struct cic
 };
 
 void init_cic_using_ipl3(struct cic* cic, const void* ipl3);
+void init_cic_dd_ipl_hle(struct cic* cic);
 int cic_ipl3_crc_known(uint64_t crc);
 int cic_ipl3_known(const void* ipl3);
 

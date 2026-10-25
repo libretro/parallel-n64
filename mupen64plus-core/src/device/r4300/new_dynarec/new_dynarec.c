@@ -9159,8 +9159,10 @@ void new_dynarec_init(void)
   arch_init();
   /* Seed pcaddr to the boot vector so new_dyna_start resumes here on the
    * first slice; thereafter it holds the live PC, making new_dyna_start
-   * re-enterable for the fork's per-frame (frame_break) execution model. */
-  g_dev.r4300.new_dynarec_hot_state.pcaddr = 0xa4000040;
+   * re-enterable for the fork's per-frame (frame_break) execution model.
+   * The vector is the core's start address: 0xa4000040 unless the boot
+   * HLE handed over somewhere else (the built-in 64DD IPL). */
+  g_dev.r4300.new_dynarec_hot_state.pcaddr = g_dev.r4300.start_address;
 }
 
 void new_dynarec_cleanup(void)
