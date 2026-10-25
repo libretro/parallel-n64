@@ -163,45 +163,7 @@ void gsp_detect_ucode_params(GSPState *st, const unsigned char *rdram,
 {
     int ut_is_task_start = gsp_params_at_task_start;
     unsigned int ud_task;
-    /* Star Wars Episode I Racer ships a LucasArts-customised F3DEX2 whose
-     * data segment banner still reads "RSP Gfx ucode F3DEX.NoN   fifo 2.08"
-     * (a GBI 1 name on a GBI 2 command set). The build drops the far-plane
-     * outcode: the game's projection places all world geometry a fraction
-     * beyond z == w, so the stock +z screen code trivially rejected every
-     * world triangle and only the HUD survived. Key on the exact oddity --
-     * an "F3DEX" stem NOT followed by '2' together with the GBI 2 "fifo"
-     * token, a pairing no stock build produces. */
-    st->clip_no_far = 0;
-    if (rdram != 0 && ud != 0)
-    {
-        static const char pre[] = "RSP Gfx ucode F3DEX";
-        unsigned int plen = sizeof(pre) - 1u;
-        unsigned int hi = ud + 0x1000u;
-        unsigned int b;
-        if (hi > rdram_size)
-            hi = rdram_size;
-        for (b = ud; b + plen + 24u <= hi; b++)
-        {
-            unsigned int k;
-            for (k = 0; k < plen; k++)
-                if (rdram[(b + k) ^ 3] != (unsigned char)pre[k])
-                    break;
-            if (k != plen)
-                continue;
-            if (rdram[(b + plen) ^ 3] != (unsigned char)'2')
-            {
-                unsigned int j, lim = b + plen + 24u;
-                for (j = b + plen; j + 4u <= lim; j++)
-                    if (rdram[(j + 0u) ^ 3] == 'f' && rdram[(j + 1u) ^ 3] == 'i' &&
-                        rdram[(j + 2u) ^ 3] == 'f' && rdram[(j + 3u) ^ 3] == 'o')
-                    {
-                        st->clip_no_far = 1;
-                        break;
-                    }
-            }
-            break;
-        }
-    }
+    st->clip_no_far = gsp_ucode_drops_far(rdram, rdram_size, ud, ut);
     /* The data address at a mid-list G_LOAD_UCODE comes from the staged
      * G_RDPHALF_1 word, which display lists also use for branch targets;
      * validate that it really points at an F3DEX2-family data segment

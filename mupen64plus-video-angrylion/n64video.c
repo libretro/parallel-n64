@@ -149,7 +149,9 @@ static uint32_t flush_count;
  * accumulate the command words of the first frame at or past VI N into a
  * static buffer, and flush the buffer to the file when that frame ends.
  * No file I/O in the parse hot path, no pointer kept across the frame. */
-static uint32_t al_cap_buf[1 << 20];   /* up to 1M command words */
+#define AL_CAP_WORDS (1u << 20)   /* up to 1M command words */
+static const char *al_cap_path;    /* AL_CAPTURE, read once at init */
+static uint32_t *al_cap_buf;       /* allocated only while capturing */
 static uint32_t al_cap_words;
 static uint32_t al_cap_vireg[16];
 static long al_cap_frame, al_cap_target = -2, al_cap_locked = -1, al_cap_capvi = -1;
@@ -158,7 +160,7 @@ long al_cap_vi;   /* bumped once per VI by update_screen */
 static void al_capture_cmd(const uint32_t *words, uint32_t n)
 {
     uint32_t k;
-    if (!getenv("AL_CAPTURE")) return;
+    if (!al_cap_buf) return;
     if (n == 0 || n > 64 || !words) return;
     if (al_cap_target == -2) al_cap_target = getenv("AL_CAPTURE_FRAME") ? atol(getenv("AL_CAPTURE_FRAME")) : 0;
     if (al_cap_locked >= 0) return;                 /* already have a frame */
@@ -166,7 +168,7 @@ static void al_capture_cmd(const uint32_t *words, uint32_t n)
     if (al_cap_words == 0)                           /* first command of it */
         for (k = 0; k < VI_NUM_REG && k < 16; k++)
             al_cap_vireg[k] = (config.gfx.vi_reg && config.gfx.vi_reg[k]) ? *config.gfx.vi_reg[k] : 0;
-    if (al_cap_words + n + 1 > (uint32_t)(sizeof(al_cap_buf) / sizeof(al_cap_buf[0])))
+    if (al_cap_words + n + 1 > AL_CAP_WORDS)
         return;
     for (k = 0; k < n; k++) al_cap_buf[al_cap_words++] = words[k];
     /* mark the VI this frame belongs to so the flush fires at its end */
@@ -176,8 +178,8 @@ static void al_capture_cmd(const uint32_t *words, uint32_t n)
 void al_capture_vi(void);
 static void al_capture_flush_if_ready(void)
 {
-    const char *env = getenv("AL_CAPTURE");
-    if (!env || al_cap_locked >= 0 || al_cap_words == 0) return;
+    const char *env = al_cap_path;
+    if (!al_cap_buf || al_cap_locked >= 0 || al_cap_words == 0) return;
     if (al_cap_vi <= al_cap_capvi) return;          /* frame not finished */
     {
         FILE *f = fopen(env, "wb");
@@ -197,6 +199,24 @@ static void al_capture_flush_if_ready(void)
     (void)al_cap_frame;
 }
 void al_capture_vi(void) { al_capture_flush_if_ready(); }
+
+static void al_capture_init(void)
+{
+    al_cap_path = getenv("AL_CAPTURE");
+    if (al_cap_path && !al_cap_buf)
+        al_cap_buf = (uint32_t*)malloc(AL_CAP_WORDS * sizeof(*al_cap_buf));
+}
+
+static void al_capture_close(void)
+{
+    free(al_cap_buf);
+    al_cap_buf    = NULL;
+    al_cap_path   = NULL;
+    al_cap_words  = 0;
+    al_cap_locked = -1;
+    al_cap_capvi  = -1;
+    al_cap_target = -2;
+}
 
 /* Upscaling: the console images the buffered drawing has written to
  * since they were last resolved. Only these are ever resolved back into
@@ -520,6 +540,8 @@ void n64video_init(struct n64video_config* _config)
 {
     if (_config)
         config = *_config;
+
+    al_capture_init();
 
     // initialize static lookup tables and RDP state, once is enough
     static bool static_init;
@@ -1258,6 +1280,7 @@ void n64video_close(void)
 #endif
 
     al_key_report();
+    al_capture_close();
     vi_close();
     parallel_close();
     rdram_close();

@@ -15,6 +15,88 @@
 #include <math.h>
 #include "rdp_emit_recip.h"
 
+/* Star Wars Episode I Racer's LucasArts F3DEX2 computes no far-plane (+z)
+ * outcode and relies on the RDP z clamp; its banner reads "F3DEX.NoN fifo
+ * 2.08" (no '2' after the stem).  Stock F3DEX2 builds carry the same banner
+ * shape, so the name only nominates a build: one whose resident triangle
+ * entry ANDs all three outcodes with a mask holding +z (0x7070/0x70b0), or
+ * the fingerprinted 2.05 build, rejects on the far plane after all. */
+static int gsp_banner_suggests_no_far(const unsigned char *rdram,
+                                      unsigned int rdram_size,
+                                      unsigned int ud)
+{
+    static const char pre[] = "RSP Gfx ucode F3DEX";
+    unsigned int plen = sizeof(pre) - 1u;
+    unsigned int hi = ud + 0x1000u;
+    unsigned int b;
+    if (hi > rdram_size)
+        hi = rdram_size;
+    for (b = ud; b + plen + 24u <= hi; b++)
+    {
+        unsigned int k, j, lim;
+        for (k = 0; k < plen; k++)
+            if (rdram[(b + k) ^ 3] != (unsigned char)pre[k])
+                break;
+        if (k != plen)
+            continue;
+        if (rdram[(b + plen) ^ 3] == (unsigned char)'2')
+            return 0;
+        lim = b + plen + 24u;
+        for (j = b + plen; j + 4u <= lim; j++)
+            if (rdram[(j + 0u) ^ 3] == 'f' && rdram[(j + 1u) ^ 3] == 'i' &&
+                rdram[(j + 2u) ^ 3] == 'f' && rdram[(j + 3u) ^ 3] == 'o')
+                return 1;
+        return 0;
+    }
+    return 0;
+}
+
+static uint32_t gsp_text_word(const unsigned char *rdram, unsigned int at)
+{
+    return ((uint32_t)rdram[(at + 0u) ^ 3] << 24)
+         | ((uint32_t)rdram[(at + 1u) ^ 3] << 16)
+         | ((uint32_t)rdram[(at + 2u) ^ 3] <<  8)
+         |  (uint32_t)rdram[(at + 3u) ^ 3];
+}
+
+static int gsp_text_rejects_far(const unsigned char *rdram,
+                                unsigned int rdram_size, unsigned int ut)
+{
+    unsigned int i, at;
+    uint32_t hash = UINT32_C(2166136261);
+    if (ut == 0 || ut > rdram_size || 0xf80u > rdram_size - ut)
+        return 0;
+    /* lw a1/a2/a3,0x24(at/v0/v1); andi t3,a1,mask; and t3,a2,t3; and t3,a3,t3 */
+    for (at = 0; at + 44u <= 0xf80u; at += 4u)
+    {
+        uint32_t m = gsp_text_word(rdram, ut + at + 24u);
+        if (gsp_text_word(rdram, ut + at)       == UINT32_C(0x8c250024)
+         && gsp_text_word(rdram, ut + at + 8u)  == UINT32_C(0x8c460024)
+         && gsp_text_word(rdram, ut + at + 16u) == UINT32_C(0x8c670024)
+         && (m == UINT32_C(0x30ab7070) || m == UINT32_C(0x30ab70b0))
+         && gsp_text_word(rdram, ut + at + 32u) == UINT32_C(0x00cb5824)
+         && gsp_text_word(rdram, ut + at + 40u) == UINT32_C(0x00eb5824))
+            return 1;
+    }
+    /* F3DEX fifo 2.05 (Knife Edge) tests & 0x7070 at IMEM 0x818 in a
+     * different sequence; FNV-1a over the canonical resident bytes */
+    if (gsp_text_word(rdram, ut + 4u) != UINT32_C(0xc81f201b))
+        return 0;
+    for (i = 0; i < 0xf80u; i++)
+        hash = (hash ^ rdram[(ut + i) ^ 3u]) * UINT32_C(16777619);
+    return hash == UINT32_C(0x8ee883e2);
+}
+
+int gsp_ucode_drops_far(const unsigned char *rdram, unsigned int rdram_size,
+                        unsigned int ud, unsigned int ut)
+{
+    if (rdram == 0 || ud == 0 || ud >= rdram_size)
+        return 0;
+    if (!gsp_banner_suggests_no_far(rdram, rdram_size, ud))
+        return 0;
+    return !gsp_text_rejects_far(rdram, rdram_size, ut);
+}
+
 /* read a signed 16-bit big-endian halfword from RDRAM (N64 byte order) */
 /* RDRAM is stored as host-native 32-bit words in this core, so a sub-word
  * read must undo the in-word byte order: on a little-endian host the N64
