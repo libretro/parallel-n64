@@ -906,8 +906,7 @@ unsigned int dd_dom_dma_write(void* opaque, uint8_t* dram, uint32_t dram_addr, u
             ? mem[(cart_addr + i) ^ S8] : 0;
     }
 
-    invalidate_r4300_cached_code(dd->r4300, R4300_KSEG0 + dram_addr, length);
-    invalidate_r4300_cached_code(dd->r4300, R4300_KSEG1 + dram_addr, length);
+    /* the PI controller invalidates the recompiled code it overwrote */
 
     return cycles;
 }

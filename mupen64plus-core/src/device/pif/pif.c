@@ -313,7 +313,18 @@ void write_pif_mem(void* opaque, uint32_t address, uint32_t value, uint32_t mask
         return;
     }
 
+    /* an SI DMA in flight owns PIF RAM: the CPU write is lost, and the
+     * transfer keeps its direction */
+    if ((pif->si->regs[SI_STATUS_REG] & (SI_STATUS_DMA_BUSY | SI_STATUS_IO_BUSY))
+            == SI_STATUS_DMA_BUSY)
+        return;
+
     masked_write((uint32_t*)(&pif->base[addr]), fromhl(value), fromhl(mask));
+
+    /* the words of one command written back to back share a single
+     * pending PIF processing event */
+    if (pif->si->regs[SI_STATUS_REG] & SI_STATUS_IO_BUSY)
+        return;
 
     pif->si->dma_dir = SI_DMA_WRITE;
 

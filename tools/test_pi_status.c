@@ -49,6 +49,10 @@ void remove_event(struct interrupt_queue* q, int type)
         s_pi_removed++;
 }
 void cp0_update_count(struct r4300_core* r4300) { (void)r4300; }
+void invalidate_r4300_cached_code(struct r4300_core* r4300, uint32_t address, size_t size)
+{
+    (void)r4300; (void)address; (void)size;
+}
 void gen_interrupt(struct r4300_core* r4300) { (void)r4300; }
 int* r4300_cp0_cycle_count(struct cp0* cp0) { (void)cp0; return &s_cycle_count; }
 void r4300_check_interrupt(struct r4300_core* r4300, uint32_t cause_ip, int set_cause)

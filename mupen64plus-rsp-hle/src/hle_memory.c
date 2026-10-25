@@ -72,3 +72,81 @@ void store_u32(unsigned char* buffer, unsigned address, const uint32_t* src, siz
     memcpy(u32(buffer, address), src, count * sizeof(uint32_t));
 }
 
+
+void load_u8_wrap(uint8_t* dst, const unsigned char* buffer, unsigned address, size_t count, unsigned mask)
+{
+    if ((size_t)address + count <= (size_t)mask + 1) {
+        load_u8(dst, buffer, address, count);
+        return;
+    }
+    while (count != 0) {
+        *(dst++) = *u8(buffer, address & mask);
+        address += 1;
+        --count;
+    }
+}
+
+void load_u16_wrap(uint16_t* dst, const unsigned char* buffer, unsigned address, size_t count, unsigned mask)
+{
+    if ((size_t)address + count * 2 <= (size_t)mask + 1) {
+        load_u16(dst, buffer, address, count);
+        return;
+    }
+    while (count != 0) {
+        *(dst++) = *u16(buffer, address & mask);
+        address += 2;
+        --count;
+    }
+}
+
+void load_u32_wrap(uint32_t* dst, const unsigned char* buffer, unsigned address, size_t count, unsigned mask)
+{
+    if ((size_t)address + count * 4 <= (size_t)mask + 1) {
+        load_u32(dst, buffer, address, count);
+        return;
+    }
+    while (count != 0) {
+        *(dst++) = *u32(buffer, address & mask);
+        address += 4;
+        --count;
+    }
+}
+
+void store_u8_wrap(unsigned char* buffer, unsigned address, const uint8_t* src, size_t count, unsigned mask)
+{
+    if ((size_t)address + count <= (size_t)mask + 1) {
+        store_u8(buffer, address, src, count);
+        return;
+    }
+    while (count != 0) {
+        *u8(buffer, address & mask) = *(src++);
+        address += 1;
+        --count;
+    }
+}
+
+void store_u16_wrap(unsigned char* buffer, unsigned address, const uint16_t* src, size_t count, unsigned mask)
+{
+    if ((size_t)address + count * 2 <= (size_t)mask + 1) {
+        store_u16(buffer, address, src, count);
+        return;
+    }
+    while (count != 0) {
+        *u16(buffer, address & mask) = *(src++);
+        address += 2;
+        --count;
+    }
+}
+
+void store_u32_wrap(unsigned char* buffer, unsigned address, const uint32_t* src, size_t count, unsigned mask)
+{
+    if ((size_t)address + count * 4 <= (size_t)mask + 1) {
+        store_u32(buffer, address, src, count);
+        return;
+    }
+    while (count != 0) {
+        *u32(buffer, address & mask) = *(src++);
+        address += 4;
+        --count;
+    }
+}

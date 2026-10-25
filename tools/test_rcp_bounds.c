@@ -82,9 +82,18 @@ static uint32_t s_cp0_regs[CP0_REGS_COUNT];
 static int s_cycle_count;
 uint32_t* r4300_cp0_regs(struct cp0* cp0) { (void)cp0; return s_cp0_regs; }
 int* r4300_cp0_cycle_count(struct cp0* cp0) { (void)cp0; return &s_cycle_count; }
+/* the ranges handed to the recompiler, for the DMA checks */
+static uint32_t s_inval_addr[8];
+static size_t s_inval_size[8];
+static unsigned s_inval_count;
 void invalidate_r4300_cached_code(struct r4300_core* r4300, uint32_t address, size_t size)
 {
-    (void)r4300; (void)address; (void)size;
+    (void)r4300;
+    if (s_inval_count < 8) {
+        s_inval_addr[s_inval_count] = address;
+        s_inval_size[s_inval_count] = size;
+    }
+    s_inval_count++;
 }
 void new_frame(void) { }
 void protect_framebuffers(struct fb* fb) { (void)fb; }
@@ -329,7 +338,15 @@ static void test_pi_dma(void)
     pi.ri = &ri;
     pi.dp = &dp;
 
+    s_inval_count = 0;
     CHECK(pi_dma(&pi, 1, 0x1000u, 0xffu) == 0x100u, "PI: in-range write DMA keeps its length");
+    CHECK(s_inval_count == 2
+          && s_inval_addr[0] == 0x80001000u && s_inval_size[0] == 0x100u
+          && s_inval_addr[1] == 0xa0001000u && s_inval_size[1] == 0x100u,
+          "PI: a write DMA from any source invalidates the recompiled code it overwrote");
+    s_inval_count = 0;
+    CHECK(pi_dma(&pi, 0, 0x1000u, 0xffu) == 0x100u && s_inval_count == 0,
+          "PI: a read DMA leaves recompiled code alone");
     CHECK(pi_dma(&pi, 1, 0x1006u, 0x00u) == 0u,
           "PI: a first block shorter than the DRAM misalignment transfers nothing");
     CHECK(pi_dma(&pi, 1, 0x1006u, 0x07u) == 2u, "PI: misalignment trims the first block");
@@ -576,6 +593,55 @@ static void test_sp_dma(void)
     free(dram);
 }
 
+/* ---- RSP task dispatch ------------------------------------------------- */
+
+#if !defined(_WIN32)
+/* The debug switches the dispatcher looks up; counted rather than read, so
+ * the check sees whether every task queries the environment again. */
+static unsigned s_getenv_calls;
+char* getenv(const char* name)
+{
+    if (strncmp(name, "HARNESS_GFX_CAP", 15) == 0 || strncmp(name, "ZB_SHADOW", 9) == 0)
+        s_getenv_calls++;
+    return NULL;
+}
+#endif
+
+static unsigned int rsp_task_cycles(unsigned int cycles) { return cycles; }
+
+static void test_rsp_task_env(void)
+{
+    static struct rdram rdram;
+    static struct ri_controller ri;
+    static struct rdp_core dp;
+    static struct rsp_core sp;
+    static uint32_t sp_mem[0x2000 / 4];
+    unsigned i;
+
+    rdram.dram = (uint32_t*)calloc(1, 0x800000u);
+    rdram.dram_size = 0x800000u;
+    ri.rdram = &rdram;
+    s_mi.r4300 = &s_r4300;
+    memset(&sp, 0, sizeof(sp));
+    sp.mem = sp_mem;
+    sp.ri = &ri;
+    sp.dp = &dp;
+    sp.mi = &s_mi;
+    rsp.doRspCycles = rsp_task_cycles;
+    rsp_audio.doRspCycles = rsp_task_cycles;
+
+    for (i = 0; i < 8; i++) {
+        sp_mem[0xfc0 / 4] = (i & 1) ? 2 : 1;   /* graphics, audio, ... */
+        sp.regs[SP_STATUS_REG] = SP_STATUS_HALT;
+        do_SP_Task(&sp);
+    }
+#if !defined(_WIN32)
+    CHECK(s_getenv_calls <= 4,
+          "RSP: the debug switches are read once, not on every task");
+#endif
+    free(rdram.dram);
+}
+
 static void test_is_viewer(void)
 {
     static struct is_viewer isv;
@@ -657,6 +723,7 @@ int main(void)
     test_dpc_clock();
     test_si_dma();
     test_sp_dma();
+    test_rsp_task_env();
     test_is_viewer();
 
     if (s_failures) {

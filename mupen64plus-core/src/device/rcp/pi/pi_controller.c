@@ -198,6 +198,13 @@ static void dma_pi_write(struct pi_controller* pi)
 
     post_framebuffer_write(&pi->dp->fb, dram_addr, span);
 
+    /* whatever the source (ROM, SRAM, FlashRAM, 64DD), the bytes written
+     * may replace code the recompiler has already translated */
+    if (span != 0) {
+        invalidate_r4300_cached_code(pi->mi->r4300, R4300_KSEG0 + dram_addr, span);
+        invalidate_r4300_cached_code(pi->mi->r4300, R4300_KSEG1 + dram_addr, span);
+    }
+
     /* Mark DMA as busy */
     pi->regs[PI_STATUS_REG] |= PI_STATUS_DMA_BUSY;
     /* Update PI_DRAM_ADDR_REG and PI_CART_ADDR_REG */

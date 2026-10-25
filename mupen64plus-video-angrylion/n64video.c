@@ -346,8 +346,27 @@ void n64video_resolve_for_display(uint32_t origin)
     }
 }
 
+/* The RDP addresses RDRAM through a 24-bit pointer, so a load or image
+ * that runs past 16 MiB wraps to the bottom. Fold each range into that
+ * domain: one already past the top moves down, and one straddling it
+ * covers the whole domain, which is conservative but rare. Compared raw,
+ * a load wrapping onto the framebuffer would not be seen to overlap it. */
+#define HZ_DOMAIN 0x1000000u
+static void hz_normalize_range(uint32_t *lo, uint32_t *hi)
+{
+    uint32_t bytes = *hi - *lo;
+    *lo &= HZ_DOMAIN - 1u;
+    if (bytes > HZ_DOMAIN - *lo) {
+        *lo = 0;
+        *hi = HZ_DOMAIN;
+    } else {
+        *hi = *lo + bytes;
+    }
+}
+
 static void hz_pend_extend(int k, uint32_t lo, uint32_t hi)
 {
+    hz_normalize_range(&lo, &hi);
     if (!hz.pend_valid[k] || lo < hz.pend_lo[k])
         hz.pend_lo[k] = lo;
     if (!hz.pend_valid[k] || hi > hz.pend_hi[k])
@@ -358,6 +377,7 @@ static void hz_pend_extend(int k, uint32_t lo, uint32_t hi)
 static bool hz_pend_overlaps(uint32_t lo, uint32_t hi)
 {
     int k;
+    hz_normalize_range(&lo, &hi);
     for (k = 0; k < 2; k++)
         if (hz.pend_valid[k] && lo < hz.pend_hi[k] && hi > hz.pend_lo[k])
             return true;
@@ -366,6 +386,7 @@ static bool hz_pend_overlaps(uint32_t lo, uint32_t hi)
 
 static void hz_load_extend(uint32_t lo, uint32_t hi)
 {
+    hz_normalize_range(&lo, &hi);
     if (!hz.load_valid || lo < hz.load_lo)
         hz.load_lo = lo;
     if (!hz.load_valid || hi > hz.load_hi)
@@ -375,6 +396,7 @@ static void hz_load_extend(uint32_t lo, uint32_t hi)
 
 static bool hz_load_overlaps(uint32_t lo, uint32_t hi)
 {
+    hz_normalize_range(&lo, &hi);
     return hz.load_valid && lo < hz.load_hi && hi > hz.load_lo;
 }
 

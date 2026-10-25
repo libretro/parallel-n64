@@ -88,6 +88,19 @@ void store_u8 (unsigned char* buffer, unsigned address, const uint8_t*  src, siz
 void store_u16(unsigned char* buffer, unsigned address, const uint16_t* src, size_t count);
 void store_u32(unsigned char* buffer, unsigned address, const uint32_t* src, size_t count);
 
+/* the same, wrapping the address inside a power-of-two sized memory (mask
+ * is its size minus one), so a guest address or count never runs past it */
+void load_u8_wrap (uint8_t*  dst, const unsigned char* buffer, unsigned address, size_t count, unsigned mask);
+void load_u16_wrap(uint16_t* dst, const unsigned char* buffer, unsigned address, size_t count, unsigned mask);
+void load_u32_wrap(uint32_t* dst, const unsigned char* buffer, unsigned address, size_t count, unsigned mask);
+void store_u8_wrap (unsigned char* buffer, unsigned address, const uint8_t*  src, size_t count, unsigned mask);
+void store_u16_wrap(unsigned char* buffer, unsigned address, const uint16_t* src, size_t count, unsigned mask);
+void store_u32_wrap(unsigned char* buffer, unsigned address, const uint32_t* src, size_t count, unsigned mask);
+
+/* RDRAM is 8 MiB; DMA addresses past it wrap rather than reach whatever
+ * follows the RDRAM block */
+#define HLE_DRAM_MASK 0x7fffffu
+
 
 /* convenient functions for DMEM access */
 static inline uint8_t* dmem_u8(struct hle_t* hle, uint16_t address)
@@ -107,78 +120,78 @@ static inline uint32_t* dmem_u32(struct hle_t* hle, uint16_t address)
 
 static inline void dmem_load_u8(struct hle_t* hle, uint8_t* dst, uint16_t address, size_t count)
 {
-    load_u8(dst, hle->dmem, address & 0xfff, count);
+    load_u8_wrap(dst, hle->dmem, address & 0xfff, count, 0xfff);
 }
 
 static inline void dmem_load_u16(struct hle_t* hle, uint16_t* dst, uint16_t address, size_t count)
 {
-    load_u16(dst, hle->dmem, address & 0xfff, count);
+    load_u16_wrap(dst, hle->dmem, address & 0xfff, count, 0xfff);
 }
 
 static inline void dmem_load_u32(struct hle_t* hle, uint32_t* dst, uint16_t address, size_t count)
 {
-    load_u32(dst, hle->dmem, address & 0xfff, count);
+    load_u32_wrap(dst, hle->dmem, address & 0xfff, count, 0xfff);
 }
 
 static inline void dmem_store_u8(struct hle_t* hle, const uint8_t* src, uint16_t address, size_t count)
 {
-    store_u8(hle->dmem, address & 0xfff, src, count);
+    store_u8_wrap(hle->dmem, address & 0xfff, src, count, 0xfff);
 }
 
 static inline void dmem_store_u16(struct hle_t* hle, const uint16_t* src, uint16_t address, size_t count)
 {
-    store_u16(hle->dmem, address & 0xfff, src, count);
+    store_u16_wrap(hle->dmem, address & 0xfff, src, count, 0xfff);
 }
 
 static inline void dmem_store_u32(struct hle_t* hle, const uint32_t* src, uint16_t address, size_t count)
 {
-    store_u32(hle->dmem, address & 0xfff, src, count);
+    store_u32_wrap(hle->dmem, address & 0xfff, src, count, 0xfff);
 }
 
 /* convenient functions DRAM access */
 static inline uint8_t* dram_u8(struct hle_t* hle, uint32_t address)
 {
-    return u8(hle->dram, address & 0xffffff);
+    return u8(hle->dram, address & HLE_DRAM_MASK);
 }
 
 static inline uint16_t* dram_u16(struct hle_t* hle, uint32_t address)
 {
-    return u16(hle->dram, address & 0xffffff);
+    return u16(hle->dram, address & HLE_DRAM_MASK);
 }
 
 static inline uint32_t* dram_u32(struct hle_t* hle, uint32_t address)
 {
-    return u32(hle->dram, address & 0xffffff);
+    return u32(hle->dram, address & HLE_DRAM_MASK);
 }
 
 static inline void dram_load_u8(struct hle_t* hle, uint8_t* dst, uint32_t address, size_t count)
 {
-    load_u8(dst, hle->dram, address & 0xffffff, count);
+    load_u8_wrap(dst, hle->dram, address & HLE_DRAM_MASK, count, HLE_DRAM_MASK);
 }
 
 static inline void dram_load_u16(struct hle_t* hle, uint16_t* dst, uint32_t address, size_t count)
 {
-    load_u16(dst, hle->dram, address & 0xffffff, count);
+    load_u16_wrap(dst, hle->dram, address & HLE_DRAM_MASK, count, HLE_DRAM_MASK);
 }
 
 static inline void dram_load_u32(struct hle_t* hle, uint32_t* dst, uint32_t address, size_t count)
 {
-    load_u32(dst, hle->dram, address & 0xffffff, count);
+    load_u32_wrap(dst, hle->dram, address & HLE_DRAM_MASK, count, HLE_DRAM_MASK);
 }
 
 static inline void dram_store_u8(struct hle_t* hle, const uint8_t* src, uint32_t address, size_t count)
 {
-    store_u8(hle->dram, address & 0xffffff, src, count);
+    store_u8_wrap(hle->dram, address & HLE_DRAM_MASK, src, count, HLE_DRAM_MASK);
 }
 
 static inline void dram_store_u16(struct hle_t* hle, const uint16_t* src, uint32_t address, size_t count)
 {
-    store_u16(hle->dram, address & 0xffffff, src, count);
+    store_u16_wrap(hle->dram, address & HLE_DRAM_MASK, src, count, HLE_DRAM_MASK);
 }
 
 static inline void dram_store_u32(struct hle_t* hle, const uint32_t* src, uint32_t address, size_t count)
 {
-    store_u32(hle->dram, address & 0xffffff, src, count);
+    store_u32_wrap(hle->dram, address & HLE_DRAM_MASK, src, count, HLE_DRAM_MASK);
 }
 
 #endif

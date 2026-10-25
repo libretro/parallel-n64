@@ -1211,7 +1211,9 @@ clean-tools:
 ANGRYLION_TOOL_OBJS := $(VIDEODIR_ANGRYLION)/n64video.o \
 	$(VIDEODIR_ANGRYLION)/parallel_al.o \
 	$(LIBRETRO_COMM_DIR)/rthreads/rthreads.o \
-	$(LIBRETRO_COMM_DIR)/features/features_cpu.o
+	$(LIBRETRO_COMM_DIR)/rthreads/retro_eventcount.o \
+	$(LIBRETRO_COMM_DIR)/features/features_cpu.o \
+	$(LIBRETRO_COMM_DIR)/time/rtime.o
 ANGRYLION_TOOLS := angrylion_bench$(EXE_EXT) angrylion_verify$(EXE_EXT) \
 	angrylion_pool_overhead$(EXE_EXT)
 
@@ -1279,7 +1281,8 @@ angrylion_rs_fullsync_test$(EXE_EXT): tools/angrylion_rs_fullsync_test.c $(ANGRY
 ANGRYLION_CHECKS := angrylion_vemit_test$(EXE_EXT) angrylion_gen_test$(EXE_EXT) \
 	angrylion_clip_test$(EXE_EXT) angrylion_f3d_near_test$(EXE_EXT) \
 	angrylion_divide_test$(EXE_EXT) angrylion_rs_fullsync_test$(EXE_EXT) \
-	angrylion_far_reject_test$(EXE_EXT) angrylion_f3d_gbi1_test$(EXE_EXT)
+	angrylion_far_reject_test$(EXE_EXT) angrylion_f3d_gbi1_test$(EXE_EXT) \
+	angrylion_hazard_wrap_test$(EXE_EXT)
 
 tools: $(ANGRYLION_TOOLS) lrhost$(EXE_EXT) angrylion_replay$(EXE_EXT) $(ANGRYLION_CHECKS)
 
@@ -1369,6 +1372,15 @@ test_hle_dispatch$(EXE_EXT): tools/test_hle_dispatch.c $(RSPDIR)/src/hle.c $(RSP
 	$(CC) $(CHECK_CFLAGS) $(CHECK_SANITIZE) -I$(RSPDIR)/src -I$(LIBRETRO_COMM_DIR)/include \
 		$< $(RSPDIR)/src/hle_memory.c -o $@ $(CHECK_LDFLAGS) $(CHECK_SANITIZE) -lm
 
+test_pif_write$(EXE_EXT): tools/test_pif_write.c $(CORE_DEVICE_DIR)/pif/pif.c
+	$(CC) $(CHECK_CFLAGS) $(CHECK_SANITIZE) -I$(CORE_DIR)/src -I$(CORE_DIR)/src/api \
+		-I$(CORE_DIR)/custom -I$(LIBRETRO_COMM_DIR)/include -I$(ROOT_DIR)/libretro \
+		$< -o $@ $(CHECK_LDFLAGS) $(CHECK_SANITIZE)
+
+test_hle_dram_wrap$(EXE_EXT): tools/test_hle_dram_wrap.c $(RSPDIR)/src/hle_memory.c
+	$(CC) $(CHECK_CFLAGS) $(CHECK_SANITIZE) -I$(RSPDIR)/src -I$(LIBRETRO_COMM_DIR)/include \
+		$^ -o $@ $(CHECK_LDFLAGS) $(CHECK_SANITIZE)
+
 test_alist_ops$(EXE_EXT): tools/test_alist_ops.c $(RSPDIR)/src/alist.c $(RSPDIR)/src/alist_nead.c $(TEST_MUSYX_SRCS)
 	$(CC) $(CHECK_CFLAGS) $(CHECK_SANITIZE) -I$(RSPDIR)/src -I$(LIBRETRO_COMM_DIR)/include \
 		$< $(TEST_MUSYX_SRCS) -o $@ $(CHECK_LDFLAGS) $(CHECK_SANITIZE) -lm
@@ -1390,7 +1402,7 @@ test_mouse_accum$(EXE_EXT): tools/test_mouse_accum.c \
 CORE_CHECKS := test_rcp_bounds$(EXE_EXT) test_memory_map$(EXE_EXT) test_fb_write$(EXE_EXT) \
 	test_cp0_exceptions$(EXE_EXT) test_r4300_interp$(EXE_EXT) test_fpu_compare$(EXE_EXT) test_pi_status$(EXE_EXT) \
 	test_musyx_bounds$(EXE_EXT) test_musyx_aux$(EXE_EXT) test_alist_ops$(EXE_EXT) test_hle_dispatch$(EXE_EXT) angrylion_zboss_audio_test$(EXE_EXT) \
-	test_mouse_accum$(EXE_EXT)
+	test_mouse_accum$(EXE_EXT) test_hle_dram_wrap$(EXE_EXT) test_pif_write$(EXE_EXT)
 
 ifeq ($(HAVE_PARALLEL_RSP), 1)
 PRSP_TEST_OBJS := $(filter $(RSPDIR_PARALLEL)/%,$(OBJECTS))
