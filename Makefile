@@ -1341,6 +1341,14 @@ test_fpu_compare$(EXE_EXT): tools/test_fpu_compare.c
 	$(CC) $(CHECK_CFLAGS) -Ofast $(CHECK_SANITIZE) -I$(CORE_DIR)/src \
 		$^ -o $@ $(CHECK_LDFLAGS) $(CHECK_SANITIZE) -lm
 
+TEST_R4300_INTERP_SRCS := $(CORE_DEVICE_DIR)/r4300/cp0.c $(CORE_DEVICE_DIR)/r4300/interrupt.c \
+	$(CORE_DEVICE_DIR)/r4300/cp1.c
+test_r4300_interp$(EXE_EXT): tools/test_r4300_interp.c $(CORE_DEVICE_DIR)/r4300/pure_interp.c \
+		$(CORE_DEVICE_DIR)/r4300/mips_instructions.def $(TEST_R4300_INTERP_SRCS)
+	$(CC) $(CHECK_CFLAGS) $(CHECK_SANITIZE) -I$(CORE_DIR)/src -I$(CORE_DIR)/src/api \
+		-I$(CORE_DIR)/custom -I$(CORE_DIR)/subprojects/xxhash -I$(LIBRETRO_COMM_DIR)/include -I$(ROOT_DIR)/libretro \
+		$< $(TEST_R4300_INTERP_SRCS) -o $@ $(CHECK_LDFLAGS) $(CHECK_SANITIZE) -lm
+
 TEST_PI_SRCS := $(CORE_DEVICE_DIR)/rcp/pi/pi_controller.c $(CORE_DEVICE_DIR)/rcp/mi/mi_controller.c
 test_pi_status$(EXE_EXT): tools/test_pi_status.c $(TEST_PI_SRCS)
 	$(CC) $(CHECK_CFLAGS) $(CHECK_SANITIZE) -I$(CORE_DIR)/src -I$(CORE_DIR)/src/api \
@@ -1380,7 +1388,7 @@ test_mouse_accum$(EXE_EXT): tools/test_mouse_accum.c \
 		$< -o $@ $(CHECK_LDFLAGS) $(CHECK_SANITIZE)
 
 CORE_CHECKS := test_rcp_bounds$(EXE_EXT) test_memory_map$(EXE_EXT) test_fb_write$(EXE_EXT) \
-	test_cp0_exceptions$(EXE_EXT) test_fpu_compare$(EXE_EXT) test_pi_status$(EXE_EXT) \
+	test_cp0_exceptions$(EXE_EXT) test_r4300_interp$(EXE_EXT) test_fpu_compare$(EXE_EXT) test_pi_status$(EXE_EXT) \
 	test_musyx_bounds$(EXE_EXT) test_musyx_aux$(EXE_EXT) test_alist_ops$(EXE_EXT) test_hle_dispatch$(EXE_EXT) angrylion_zboss_audio_test$(EXE_EXT) \
 	test_mouse_accum$(EXE_EXT)
 

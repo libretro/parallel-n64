@@ -88,6 +88,33 @@
 #define BITS_ABOVE_MASK64(x) (~(BITS_BELOW_MASK64((x))))
 
 
+/* Address error (AdEL/AdES): the access is not made, BadVAddr holds the
+ * address and the exception is taken at the faulting instruction. */
+static int r4300_address_error(struct r4300_core* r4300, uint32_t address, int store)
+{
+    uint32_t* cp0_regs = r4300_cp0_regs(&r4300->cp0);
+
+    cp0_regs[CP0_BADVADDR_REG] = address;
+    cp0_regs[CP0_CAUSE_REG] = (cp0_regs[CP0_CAUSE_REG] & UINT32_C(0x0000ff00))
+        | (store ? CP0_CAUSE_EXCCODE_ADES : CP0_CAUSE_EXCCODE_ADEL);
+    exception_general(r4300);
+    return 1;
+}
+
+/* Integer overflow (Ov) from ADD/ADDI/SUB/DADD/DADDI/DSUB: the destination
+ * is left untouched. */
+static void r4300_overflow(struct r4300_core* r4300)
+{
+    uint32_t* cp0_regs = r4300_cp0_regs(&r4300->cp0);
+
+    cp0_regs[CP0_CAUSE_REG] = (cp0_regs[CP0_CAUSE_REG] & UINT32_C(0x0000ff00))
+        | CP0_CAUSE_EXCCODE_OV;
+    exception_general(r4300);
+}
+
+#define ADDRESS_ERROR_IF_MISALIGNED(addr, mask, store) \
+    if (((addr) & (mask)) != 0 && r4300_address_error(r4300, (addr), (store))) { return; }
+
 static unsigned int bshift(uint32_t address)
 {
     return ((address & 3) ^ 3) << 3;
@@ -181,6 +208,7 @@ DECLARE_INSTRUCTION(LH)
     DECLARE_R4300
     const uint32_t lsaddr = r4300_effective_address((uint64_t) irs + (uint64_t) (int64_t) iimmediate);
     int64_t *lsrtp = &irt;
+    ADDRESS_ERROR_IF_MISALIGNED(lsaddr, 1, 0)
     ADD_TO_PC(1);
     uint32_t value;
     unsigned int shift = hshift(lsaddr);
@@ -195,6 +223,7 @@ DECLARE_INSTRUCTION(LHU)
     DECLARE_R4300
     const uint32_t lsaddr = r4300_effective_address((uint64_t) irs + (uint64_t) (int64_t) iimmediate);
     int64_t *lsrtp = &irt;
+    ADDRESS_ERROR_IF_MISALIGNED(lsaddr, 1, 0)
     ADD_TO_PC(1);
     uint32_t value;
     unsigned int shift = hshift(lsaddr);
@@ -209,6 +238,7 @@ DECLARE_INSTRUCTION(LL)
     DECLARE_R4300
     const uint32_t lsaddr = r4300_effective_address((uint64_t) irs + (uint64_t) (int64_t) iimmediate);
     int64_t *lsrtp = &irt;
+    ADDRESS_ERROR_IF_MISALIGNED(lsaddr, 3, 0)
     ADD_TO_PC(1);
     uint32_t value;
 
@@ -223,6 +253,7 @@ DECLARE_INSTRUCTION(LW)
     DECLARE_R4300
     const uint32_t lsaddr = r4300_effective_address((uint64_t) irs + (uint64_t) (int64_t) iimmediate);
     int64_t *lsrtp = &irt;
+    ADDRESS_ERROR_IF_MISALIGNED(lsaddr, 3, 0)
     ADD_TO_PC(1);
     uint32_t value;
 
@@ -236,6 +267,7 @@ DECLARE_INSTRUCTION(LWU)
     DECLARE_R4300
     const uint32_t lsaddr = r4300_effective_address((uint64_t) irs + (uint64_t) (int64_t) iimmediate);
     int64_t *lsrtp = &irt;
+    ADDRESS_ERROR_IF_MISALIGNED(lsaddr, 3, 0)
     ADD_TO_PC(1);
 
     uint32_t value;
@@ -286,6 +318,7 @@ DECLARE_INSTRUCTION(LD)
     DECLARE_R4300
     const uint32_t lsaddr = r4300_effective_address((uint64_t) irs + (uint64_t) (int64_t) iimmediate);
     int64_t *lsrtp = &irt;
+    ADDRESS_ERROR_IF_MISALIGNED(lsaddr, 7, 0)
     ADD_TO_PC(1);
 
     r4300_read_aligned_dword(r4300, lsaddr, (uint64_t*)lsrtp);
@@ -345,6 +378,7 @@ DECLARE_INSTRUCTION(SH)
     DECLARE_R4300
     const uint32_t lsaddr = r4300_effective_address((uint64_t) irs + (uint64_t) (int64_t) iimmediate);
     int64_t *lsrtp = &irt;
+    ADDRESS_ERROR_IF_MISALIGNED(lsaddr, 1, 1)
     ADD_TO_PC(1);
     unsigned int shift = hshift(lsaddr);
 
@@ -356,6 +390,7 @@ DECLARE_INSTRUCTION(LLD)
     DECLARE_R4300
     const uint32_t lsaddr = r4300_effective_address((uint64_t) irs + (uint64_t) (int64_t) iimmediate);
     int64_t *lsrtp = &irt;
+    ADDRESS_ERROR_IF_MISALIGNED(lsaddr, 7, 0)
     ADD_TO_PC(1);
     uint64_t value;
 
@@ -370,6 +405,7 @@ DECLARE_INSTRUCTION(SCD)
     DECLARE_R4300
     const uint32_t lsaddr = r4300_effective_address((uint64_t) irs + (uint64_t) (int64_t) iimmediate);
     int64_t *lsrtp = &irt;
+    ADDRESS_ERROR_IF_MISALIGNED(lsaddr, 7, 1)
     ADD_TO_PC(1);
 
     if (r4300->llbit)
@@ -390,6 +426,7 @@ DECLARE_INSTRUCTION(SC)
     DECLARE_R4300
     const uint32_t lsaddr = r4300_effective_address((uint64_t) irs + (uint64_t) (int64_t) iimmediate);
     int64_t *lsrtp = &irt;
+    ADDRESS_ERROR_IF_MISALIGNED(lsaddr, 3, 1)
     ADD_TO_PC(1);
 
     if (r4300->llbit)
@@ -410,6 +447,7 @@ DECLARE_INSTRUCTION(SW)
     DECLARE_R4300
     const uint32_t lsaddr = r4300_effective_address((uint64_t) irs + (uint64_t) (int64_t) iimmediate);
     int64_t *lsrtp = &irt;
+    ADDRESS_ERROR_IF_MISALIGNED(lsaddr, 3, 1)
     ADD_TO_PC(1);
 
     r4300_write_aligned_word(r4300, lsaddr, (uint32_t)*lsrtp, ~UINT32_C(0));
@@ -452,6 +490,7 @@ DECLARE_INSTRUCTION(SD)
     DECLARE_R4300
     const uint32_t lsaddr = r4300_effective_address((uint64_t) irs + (uint64_t) (int64_t) iimmediate);
     int64_t *lsrtp = &irt;
+    ADDRESS_ERROR_IF_MISALIGNED(lsaddr, 7, 1)
     ADD_TO_PC(1);
 
     r4300_write_aligned_dword(r4300, lsaddr, (uint64_t)*lsrtp, ~UINT64_C(0));
@@ -494,7 +533,9 @@ DECLARE_INSTRUCTION(SDR)
 DECLARE_INSTRUCTION(ADD)
 {
     DECLARE_R4300
-    rrd = SE32((uint32_t) rrs32 + (uint32_t) rrt32);
+    uint32_t a = (uint32_t) rrs32, b = (uint32_t) rrt32, sum = a + b;
+    if (~(a ^ b) & (a ^ sum) & UINT32_C(0x80000000)) { r4300_overflow(r4300); return; }
+    rrd = SE32(sum);
     ADD_TO_PC(1);
 }
 
@@ -508,7 +549,9 @@ DECLARE_INSTRUCTION(ADDU)
 DECLARE_INSTRUCTION(ADDI)
 {
     DECLARE_R4300
-    irt = SE32((uint32_t) irs32 + (uint32_t) iimmediate);
+    uint32_t a = (uint32_t) irs32, b = (uint32_t) (int32_t) iimmediate, sum = a + b;
+    if (~(a ^ b) & (a ^ sum) & UINT32_C(0x80000000)) { r4300_overflow(r4300); return; }
+    irt = SE32(sum);
     ADD_TO_PC(1);
 }
 
@@ -522,7 +565,9 @@ DECLARE_INSTRUCTION(ADDIU)
 DECLARE_INSTRUCTION(DADD)
 {
     DECLARE_R4300
-    rrd = (uint64_t) rrs + (uint64_t) rrt;
+    uint64_t a = (uint64_t) rrs, b = (uint64_t) rrt, sum = a + b;
+    if (~(a ^ b) & (a ^ sum) & UINT64_C(0x8000000000000000)) { r4300_overflow(r4300); return; }
+    rrd = sum;
     ADD_TO_PC(1);
 }
 
@@ -536,7 +581,9 @@ DECLARE_INSTRUCTION(DADDU)
 DECLARE_INSTRUCTION(DADDI)
 {
     DECLARE_R4300
-    irt = (uint64_t) irs + (uint64_t) iimmediate;
+    uint64_t a = (uint64_t) irs, b = (uint64_t) (int64_t) iimmediate, sum = a + b;
+    if (~(a ^ b) & (a ^ sum) & UINT64_C(0x8000000000000000)) { r4300_overflow(r4300); return; }
+    irt = sum;
     ADD_TO_PC(1);
 }
 
@@ -550,7 +597,9 @@ DECLARE_INSTRUCTION(DADDIU)
 DECLARE_INSTRUCTION(SUB)
 {
     DECLARE_R4300
-    rrd = SE32((uint32_t) rrs32 - (uint32_t) rrt32);
+    uint32_t a = (uint32_t) rrs32, b = (uint32_t) rrt32, diff = a - b;
+    if ((a ^ b) & (a ^ diff) & UINT32_C(0x80000000)) { r4300_overflow(r4300); return; }
+    rrd = SE32(diff);
     ADD_TO_PC(1);
 }
 
@@ -564,7 +613,9 @@ DECLARE_INSTRUCTION(SUBU)
 DECLARE_INSTRUCTION(DSUB)
 {
     DECLARE_R4300
-    rrd = (uint64_t) rrs - (uint64_t) rrt;
+    uint64_t a = (uint64_t) rrs, b = (uint64_t) rrt, diff = a - b;
+    if ((a ^ b) & (a ^ diff) & UINT64_C(0x8000000000000000)) { r4300_overflow(r4300); return; }
+    rrd = diff;
     ADD_TO_PC(1);
 }
 
@@ -1468,6 +1519,7 @@ DECLARE_INSTRUCTION(LWC1)
     const unsigned char lslfft = lfft;
     const uint32_t lslfaddr = (uint32_t) r4300_regs(r4300)[lfbase] + lfoffset;
     if (check_cop1_unusable(r4300)) { return; }
+    ADDRESS_ERROR_IF_MISALIGNED(lslfaddr, 3, 0)
     ADD_TO_PC(1);
 
     r4300_read_aligned_word(r4300, lslfaddr, (uint32_t*)r4300_cp1_regs_simple(&r4300->cp1)[lslfft]);
@@ -1479,6 +1531,7 @@ DECLARE_INSTRUCTION(LDC1)
     const unsigned char lslfft = lfft;
     const uint32_t lslfaddr = (uint32_t) r4300_regs(r4300)[lfbase] + lfoffset;
     if (check_cop1_unusable(r4300)) { return; }
+    ADDRESS_ERROR_IF_MISALIGNED(lslfaddr, 7, 0)
     ADD_TO_PC(1);
 
     r4300_read_aligned_dword(r4300, lslfaddr, (uint64_t*)r4300_cp1_regs_double(&r4300->cp1)[lslfft]);
@@ -1490,6 +1543,7 @@ DECLARE_INSTRUCTION(SWC1)
     const unsigned char lslfft = lfft;
     const uint32_t lslfaddr = (uint32_t) r4300_regs(r4300)[lfbase] + lfoffset;
     if (check_cop1_unusable(r4300)) { return; }
+    ADDRESS_ERROR_IF_MISALIGNED(lslfaddr, 3, 1)
     ADD_TO_PC(1);
 
     r4300_write_aligned_word(r4300, lslfaddr, *((uint32_t*)(r4300_cp1_regs_simple(&r4300->cp1))[lslfft]), ~UINT32_C(0));
@@ -1501,6 +1555,7 @@ DECLARE_INSTRUCTION(SDC1)
     const unsigned char lslfft = lfft;
     const uint32_t lslfaddr = (uint32_t) r4300_regs(r4300)[lfbase] + lfoffset;
     if (check_cop1_unusable(r4300)) { return; }
+    ADDRESS_ERROR_IF_MISALIGNED(lslfaddr, 7, 1)
     ADD_TO_PC(1);
 
     r4300_write_aligned_dword(r4300, lslfaddr, *((uint64_t*)(r4300_cp1_regs_double(&r4300->cp1))[lslfft]), ~UINT64_C(0));
@@ -1527,13 +1582,11 @@ DECLARE_INSTRUCTION(CFC1)
     DECLARE_R4300
     if (check_cop1_unusable(r4300)) { return; }
     if (rfs==31)
-    {
         rrt = SE32((*r4300_cp1_fcr31(&r4300->cp1)));
-    }
-    if (rfs==0)
-    {
+    else if (rfs==0)
         rrt = SE32((*r4300_cp1_fcr0(&r4300->cp1)));
-    }
+    else
+        rrt = 0;
     ADD_TO_PC(1);
 }
 
@@ -1575,11 +1628,21 @@ DECLARE_INSTRUCTION(CTC1)
     if (check_cop1_unusable(r4300)) { return; }
     if (rfs==31)
     {
-        (*r4300_cp1_fcr31(&r4300->cp1)) = rrt32;
+        /* FS, C, cause, enables, flags and rounding mode; the rest reads 0 */
+        uint32_t fcr31 = (uint32_t)rrt32 & UINT32_C(0x0183ffff);
+        (*r4300_cp1_fcr31(&r4300->cp1)) = fcr31;
         update_x86_rounding_mode(&r4300->cp1);
+        /* a cause with its enable set, or unimplemented, traps at once */
+        if ((fcr31 & UINT32_C(0x00020000))
+         || ((fcr31 >> 12) & (fcr31 >> 7) & UINT32_C(0x1f)))
+        {
+            uint32_t* cp0_regs = r4300_cp0_regs(&r4300->cp0);
+            cp0_regs[CP0_CAUSE_REG] = (cp0_regs[CP0_CAUSE_REG] & UINT32_C(0x0000ff00))
+                | CP0_CAUSE_EXCCODE_FPE;
+            exception_general(r4300);
+            return;
+        }
     }
-    //if (((*r4300_cp1_fcr31(&r4300->cp1)) >> 7) & 0x1F) printf("FPU Exception enabled : %x\n",
-    //                 (int)(((*r4300_cp1_fcr31(&r4300->cp1)) >> 7) & 0x1F));
     ADD_TO_PC(1);
 }
 

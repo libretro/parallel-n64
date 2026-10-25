@@ -364,6 +364,10 @@ enum r4300_opcode r4300_decode(struct precomp_instr* inst, struct r4300_core* r4
     /* assume instr->addr is already setup */
     uint8_t dummy;
     enum r4300_opcode opcode = idec->opcode;
+    /* the interpreter re-zeroes r0 before every instruction, so it runs
+     * r0-target instructions for their side effects; recompilers keep the
+     * NOPs */
+    const int r0_side_effects = (r4300->emumode == EMUMODE_INTERPRETER);
 
     switch(idec->opcode)
     {
@@ -467,8 +471,13 @@ enum r4300_opcode r4300_decode(struct precomp_instr* inst, struct r4300_core* r4
         inst->f.r.rd = IDEC_U53(r4300, iw, idec->u53[0], &inst->f.r.nrd);
         idec_u53(iw, idec->u53[3], &inst->f.r.sa);
 
-        /* optimization: nopify instruction when r0 is the destination register (rd) */
-        if (inst->f.r.nrd == 0) { opcode = R4300_OP_NOP; }
+        /* optimization: nopify instruction when r0 is the destination register (rd),
+         * except for the interpreter's trapping adds and subtracts */
+        if (inst->f.r.nrd == 0
+         && !(r0_side_effects
+              && (opcode == R4300_OP_ADD || opcode == R4300_OP_SUB
+               || opcode == R4300_OP_DADD || opcode == R4300_OP_DSUB)))
+        { opcode = R4300_OP_NOP; }
         break;
 
     case R4300_OP_ADDI:
@@ -499,8 +508,16 @@ enum r4300_opcode r4300_decode(struct precomp_instr* inst, struct r4300_core* r4
         inst->f.i.rt = IDEC_U53(r4300, iw, idec->u53[1], &dummy);
         inst->f.i.immediate  = (int16_t)iw;
 
-        /* optimization: nopify instruction when r0 is the destination register (rt) */
-        if (dummy == 0) { opcode = R4300_OP_NOP; }
+        /* optimization: nopify instruction when r0 is the destination register (rt);
+         * the interpreter still runs loads, SC and trapping adds for their
+         * side effects */
+        if (dummy == 0
+         && !(r0_side_effects
+              && opcode != R4300_OP_ADDIU && opcode != R4300_OP_ANDI
+              && opcode != R4300_OP_DADDIU && opcode != R4300_OP_LUI
+              && opcode != R4300_OP_ORI && opcode != R4300_OP_SLTI
+              && opcode != R4300_OP_SLTIU && opcode != R4300_OP_XORI))
+        { opcode = R4300_OP_NOP; }
         break;
 
     case R4300_OP_LDC1:
@@ -528,8 +545,9 @@ enum r4300_opcode r4300_decode(struct precomp_instr* inst, struct r4300_core* r4
         inst->f.r.rd = IDEC_U53(r4300, iw, idec->u53[0], &inst->f.r.nrd);
         idec_u53(iw, idec->u53[3], &inst->f.r.sa);
 
-        /* optimization: nopify instruction when r0 is the destination register (rt) */
-        if (dummy == 0) { opcode = R4300_OP_NOP; }
+        /* optimization: nopify instruction when r0 is the destination register (rt);
+         * the interpreter still runs them for their coprocessor checks */
+        if (dummy == 0 && !r0_side_effects) { opcode = R4300_OP_NOP; }
         break;
 
 #define CP1_S_D(op) \
@@ -995,6 +1013,7 @@ void run_cached_interpreter(struct r4300_core* r4300)
 #ifdef DBG
         if (g_DebuggerActive) update_debugger((*r4300_pc_struct(r4300))->addr);
 #endif
+        r4300_regs(r4300)[0] = 0;
         (*r4300_pc_struct(r4300))->ops();
     }
 }

@@ -190,6 +190,10 @@ void InterpretOpcode(struct r4300_core* r4300)
 		return;
 	uint32_t op = *op_address;
 
+	/* r0 reads as zero: instructions that target it still run for their
+	 * side effects (loads, SC, traps) and their result is dropped here */
+	r4300_regs(r4300)[0] = 0;
+
 	switch ((op >> 26) & 0x3F) {
 	case 0: /* SPECIAL prefix */
 		switch (op & 0x3F) {
@@ -260,16 +264,14 @@ void InterpretOpcode(struct r4300_core* r4300)
 		case 30: DDIV(r4300, op); break;
 		case 31: DDIVU(r4300, op); break;
 		case 32: /* SPECIAL opcode 32: ADD */
-			if (RD_OF(op) != 0) ADD(r4300, op);
-			else                NOP(r4300, 0);
+			ADD(r4300, op);
 			break;
 		case 33: /* SPECIAL opcode 33: ADDU */
 			if (RD_OF(op) != 0) ADDU(r4300, op);
 			else                NOP(r4300, 0);
 			break;
 		case 34: /* SPECIAL opcode 34: SUB */
-			if (RD_OF(op) != 0) SUB(r4300, op);
-			else                NOP(r4300, 0);
+			SUB(r4300, op);
 			break;
 		case 35: /* SPECIAL opcode 35: SUBU */
 			if (RD_OF(op) != 0) SUBU(r4300, op);
@@ -300,16 +302,14 @@ void InterpretOpcode(struct r4300_core* r4300)
 			else                NOP(r4300, 0);
 			break;
 		case 44: /* SPECIAL opcode 44: DADD */
-			if (RD_OF(op) != 0) DADD(r4300, op);
-			else                NOP(r4300, 0);
+			DADD(r4300, op);
 			break;
 		case 45: /* SPECIAL opcode 45: DADDU */
 			if (RD_OF(op) != 0) DADDU(r4300, op);
 			else                NOP(r4300, 0);
 			break;
 		case 46: /* SPECIAL opcode 46: DSUB */
-			if (RD_OF(op) != 0) DSUB(r4300, op);
-			else                NOP(r4300, 0);
+			DSUB(r4300, op);
 			break;
 		case 47: /* SPECIAL opcode 47: DSUBU */
 			if (RD_OF(op) != 0) DSUBU(r4300, op);
@@ -422,8 +422,7 @@ void InterpretOpcode(struct r4300_core* r4300)
 		else                                             BGTZ(r4300, op);
 		break;
 	case 8: /* Major opcode 8: ADDI */
-		if (RT_OF(op) != 0) ADDI(r4300, op);
-		else                NOP(r4300, 0);
+		ADDI(r4300, op);
 		break;
 	case 9: /* Major opcode 9: ADDIU */
 		if (RT_OF(op) != 0) ADDIU(r4300, op);
@@ -456,12 +455,10 @@ void InterpretOpcode(struct r4300_core* r4300)
 	case 16: /* Coprocessor 0 prefix */
 		switch ((op >> 21) & 0x1F) {
 		case 0: /* Coprocessor 0 opcode 0: MFC0  */
-			if (RT_OF(op) != 0) MFC0(r4300, op);
-			else                NOP(r4300, 0);
+			MFC0(r4300, op);
 			break;
 		case 1: /* Coprocessor 0 opcode 1: DMFC0 */
-			if (RT_OF(op) != 0) DMFC0(r4300, op);
-			else                NOP(r4300, 0);
+			DMFC0(r4300, op);
 			break;
 		case 4: /* Coprocessor 0 opcode 4: MTC0  */
 		case 5: /* Coprocessor 0 opcode 5: DMTC0 */
@@ -489,20 +486,16 @@ void InterpretOpcode(struct r4300_core* r4300)
 	case 17: /* Coprocessor 1 prefix */
 		switch ((op >> 21) & 0x1F) {
 		case 0: /* Coprocessor 1 opcode 0: MFC1 */
-			if (RT_OF(op) != 0) MFC1(r4300, op);
-			else                NOP(r4300, 0);
+			MFC1(r4300, op);
 			break;
 		case 1: /* Coprocessor 1 opcode 1: DMFC1 */
-			if (RT_OF(op) != 0) DMFC1(r4300, op);
-			else                NOP(r4300, 0);
+			DMFC1(r4300, op);
 			break;
 		case 2: /* Coprocessor 1 opcode 2: CFC1 */
-			if (RT_OF(op) != 0) CFC1(r4300, op);
-			else                NOP(r4300, 0);
+			CFC1(r4300, op);
 			break;
 		case 3: /* Coprocessor 1 opcode 2: DCFC1  */
-			if (RT_OF(op) != 0) DCFC1(r4300, op);
-			else                NOP(r4300, 0);
+			DCFC1(r4300, op);
 			break;
 		case 4: MTC1(r4300, op); break;
 		case 5: DMTC1(r4300, op); break;
@@ -643,16 +636,13 @@ void InterpretOpcode(struct r4300_core* r4300)
 	case 18: /* Coprocessor 2 prefix */
 		switch ((op >> 21) & 0x1F) {
 		case 0: /* Coprocessor 2 opcode 0: MFC2 */
-			if (RT_OF(op) != 0) MFC2(r4300, op);
-			else                NOP(r4300, 0);
+			MFC2(r4300, op);
 			break;
 		case 1: /* Coprocessor 2 opcode 1: DMFC2 */
-			if (RT_OF(op) != 0) DMFC2(r4300, op);
-			else                NOP(r4300, 0);
+			DMFC2(r4300, op);
 			break;
 		case 2: /* Coprocessor 2 opcode 2: CFC2 */
-			if (RT_OF(op) != 0) CFC2(r4300, op);
-			else                NOP(r4300, 0);
+			CFC2(r4300, op);
 			break;
 		case 4: MTC2(r4300, op); break;
 		case 5: DMTC2(r4300, op); break;
@@ -679,52 +669,41 @@ void InterpretOpcode(struct r4300_core* r4300)
 		else                                             BGTZL(r4300, op);
 		break;
 	case 24: /* Major opcode 24: DADDI */
-		if (RT_OF(op) != 0) DADDI(r4300, op);
-		else                NOP(r4300, 0);
+		DADDI(r4300, op);
 		break;
 	case 25: /* Major opcode 25: DADDIU */
 		if (RT_OF(op) != 0) DADDIU(r4300, op);
 		else                NOP(r4300, 0);
 		break;
 	case 26: /* Major opcode 26: LDL */
-		if (RT_OF(op) != 0) LDL(r4300, op);
-		else                NOP(r4300, 0);
+		LDL(r4300, op);
 		break;
 	case 27: /* Major opcode 27: LDR */
-		if (RT_OF(op) != 0) LDR(r4300, op);
-		else                NOP(r4300, 0);
+		LDR(r4300, op);
 		break;
 	case 32: /* Major opcode 32: LB */
-		if (RT_OF(op) != 0) LB(r4300, op);
-		else                NOP(r4300, 0);
+		LB(r4300, op);
 		break;
 	case 33: /* Major opcode 33: LH */
-		if (RT_OF(op) != 0) LH(r4300, op);
-		else                NOP(r4300, 0);
+		LH(r4300, op);
 		break;
 	case 34: /* Major opcode 34: LWL */
-		if (RT_OF(op) != 0) LWL(r4300, op);
-		else                NOP(r4300, 0);
+		LWL(r4300, op);
 		break;
 	case 35: /* Major opcode 35: LW */
-		if (RT_OF(op) != 0) LW(r4300, op);
-		else                NOP(r4300, 0);
+		LW(r4300, op);
 		break;
 	case 36: /* Major opcode 36: LBU */
-		if (RT_OF(op) != 0) LBU(r4300, op);
-		else                NOP(r4300, 0);
+		LBU(r4300, op);
 		break;
 	case 37: /* Major opcode 37: LHU */
-		if (RT_OF(op) != 0) LHU(r4300, op);
-		else                NOP(r4300, 0);
+		LHU(r4300, op);
 		break;
 	case 38: /* Major opcode 38: LWR */
-		if (RT_OF(op) != 0) LWR(r4300, op);
-		else                NOP(r4300, 0);
+		LWR(r4300, op);
 		break;
 	case 39: /* Major opcode 39: LWU */
-		if (RT_OF(op) != 0) LWU(r4300, op);
-		else                NOP(r4300, 0);
+		LWU(r4300, op);
 		break;
 	case 40: SB(r4300, op); break;
 	case 41: SH(r4300, op); break;
@@ -735,27 +714,22 @@ void InterpretOpcode(struct r4300_core* r4300)
 	case 46: SWR(r4300, op); break;
 	case 47: CACHE(r4300, op); break;
 	case 48: /* Major opcode 48: LL */
-		if (RT_OF(op) != 0) LL(r4300, op);
-		else                NOP(r4300, 0);
+		LL(r4300, op);
 		break;
 	case 49: LWC1(r4300, op); break;
 	case 52: /* Major opcode 52: LLD */
-		if (RT_OF(op) != 0) LLD(r4300, op);
-		else                NOP(r4300, 0);
+		LLD(r4300, op);
 		break;
 	case 53: LDC1(r4300, op); break;
 	case 55: /* Major opcode 55: LD */
-		if (RT_OF(op) != 0) LD(r4300, op);
-		else                NOP(r4300, 0);
+		LD(r4300, op);
 		break;
 	case 56: /* Major opcode 56: SC */
-		if (RT_OF(op) != 0) SC(r4300, op);
-		else                NOP(r4300, 0);
+		SC(r4300, op);
 		break;
 	case 57: SWC1(r4300, op); break;
 	case 60: /* Major opcode 60: SCD */
-		if (RT_OF(op) != 0) SCD(r4300, op);
-		else                NOP(r4300, 0);
+		SCD(r4300, op);
 		break;
 	case 61: SDC1(r4300, op); break;
 	case 63: SD(r4300, op); break;
