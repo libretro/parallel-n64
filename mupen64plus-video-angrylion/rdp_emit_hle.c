@@ -924,6 +924,9 @@ void rdp_emit_hle_process_dlist(void)
                  * 1/w and the seedless l3dex clip fold (build id = the
                  * boot jump word, same keying as the F3DEX probe). */
                 f3d_set_variant_wo64(t0 == 0x090005d8u);
+                /* Rare's GBI 1 clip overlay (GoldenEye 007, Perfect
+                 * Dark), by its code */
+                f3d_set_clip_rare(f3d_ucode_rare_clip(rdram, rdram_size, ut));
                 /* Star Wars: Shadows of the Empire runs an early "RSP SW
                  * Version: 2.0D, 04-01-96" graphics build (text+0 boot word
                  * 0x090005f8). It carries the SM64 version word at text+4

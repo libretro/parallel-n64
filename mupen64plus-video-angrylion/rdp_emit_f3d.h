@@ -43,6 +43,9 @@ int f3d_is_bhline_ucode(const unsigned char *rdram, unsigned int rdram_size,
 void f3d_set_variant_bhline(int bh);
 
 void f3d_set_variant(int doom64);
+int f3d_ucode_rare_clip(const unsigned char *rdram, unsigned int rdram_size,
+                        unsigned int ut);
+void f3d_set_clip_rare(int mode);
 void f3d_set_line_variant(int line);
 int  f3d_is_ff2d_ucode(const unsigned char *rdram, unsigned int rdram_size,
                        unsigned int text);

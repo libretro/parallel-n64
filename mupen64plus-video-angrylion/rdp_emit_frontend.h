@@ -107,12 +107,13 @@ typedef struct GSPState
     int fog_off;
     int pd_ci;                /* Perfect Dark colour-indexed vertex format */
     unsigned int pd_cbase;    /* physical base of the vertex colour table */
-    int cbfd;                 /* Conker CBFD vertex/lighting model */
+    int cbfd;                 /* Conker CBFD lighting: 1 F3DEXBG, 2 its normal-indexed build */
     unsigned int cbfd_nbase;  /* physical base of the per-vertex normal table */
     int t3d_zbuffered;        /* T3DUX: depth-test state sniffed from othermode */
-    int32_t cbfd_lpos[GSP_MAX_LIGHTS][3]; /* CBFD point-light s16 positions */
+    int32_t cbfd_lpos[GSP_MAX_LIGHTS][4]; /* CBFD point-light s16 positions, W in [3] */
     int32_t cbfd_lca[GSP_MAX_LIGHTS];     /* CBFD point-light ca numerator (light byte = ca*16) */
     int32_t cbfd_cmod[16];    /* G_MW_COORD_MOD offset/scale rows (12..15 in 16.16) */
+    const unsigned char *cbfd_dmem; /* F3DEXBG DMEM image for the pair copies, or 0 */
     int acclaim;              /* Acclaim F3DEX2 variant (Turok 2/3, Armorines,
                                  South Park): custom L1-distance point lighting */
     int acclaim_active;       /* the Acclaim lighting geometry-mode bit is set */

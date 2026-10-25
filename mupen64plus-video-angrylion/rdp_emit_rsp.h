@@ -25,6 +25,7 @@ void rsp_set_persp_skip(int on);
 void rsp_set_attr_lowp(int on);
 void rsp_set_clip_lerp_wo64(int on);
 void rsp_set_clip_lerp_l3dex(int on);
+void rsp_set_clip_lerp_gbi1(void);
 void rsp_clip_lerp(const int32_t on_pos[4], const int32_t off_pos[4],
                    const int16_t cr[4],
                    const int16_t on_attr[8], const int16_t off_attr[8],
@@ -32,6 +33,17 @@ void rsp_clip_lerp(const int32_t on_pos[4], const int32_t off_pos[4],
 void rsp_texgen(const int32_t n[3], const int32_t l0[3], const int32_t l1[3],
                 int linear, int32_t *s_out, int32_t *t_out);
 int32_t rsp_light_dirdot(const int32_t n[3], const int32_t d[3]);
+/* Conker's F3DEXBG vertex lighting; see rdp_emit_rsp.c */
+void rsp_cbfd_light(const int32_t clip[4], const int32_t coord[16],
+                    const int32_t (*positions)[4], const int32_t (*rgb)[3],
+                    const int32_t *attenuation, int num,
+                    const int32_t source[3], int32_t out[3]);
+void rsp_cbfd_light_normal(const int32_t clip[4], const int32_t coord[16],
+                           const int32_t (*positions)[4], const int32_t (*rgb)[3],
+                           const int32_t *attenuation, int num,
+                           const int32_t source[3], const int32_t normal[3],
+                           const int32_t (*directions)[3], int positional,
+                           int32_t out[3]);
 void rsp_light_fold1(int32_t lt[3], const int32_t rgb[3], int32_t d);
 int32_t rsp_light_point_factor(const int32_t mv[4][4], const int32_t n[3],
                                const int32_t vtx[3], const int32_t pos[3],

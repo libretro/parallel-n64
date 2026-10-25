@@ -1270,6 +1270,12 @@ angrylion_f3d_gbi1_test$(EXE_EXT): tools/angrylion_f3d_gbi1_test.c $(ANGRYLION_W
 angrylion_texrecip_test$(EXE_EXT): tools/angrylion_texrecip_test.c $(ANGRYLION_WALKER_OBJS)
 	$(CC) $(CPPFLAGS) $(CFLAGS) -I$(VIDEODIR_ANGRYLION) -w $< $(ANGRYLION_WALKER_OBJS) -o $@ -lm
 
+angrylion_cbfd_light_test$(EXE_EXT): tools/angrylion_cbfd_light_test.c $(ANGRYLION_WALKER_OBJS)
+	$(CC) $(CPPFLAGS) $(CFLAGS) -I$(VIDEODIR_ANGRYLION) -w $< $(ANGRYLION_WALKER_OBJS) -o $@ -lm
+
+angrylion_rare_clip_test$(EXE_EXT): tools/angrylion_rare_clip_test.c $(ANGRYLION_WALKER_OBJS)
+	$(CC) $(CPPFLAGS) $(CFLAGS) -I$(VIDEODIR_ANGRYLION) -w $< $(ANGRYLION_WALKER_OBJS) -o $@ -lm
+
 angrylion_far_reject_test$(EXE_EXT): tools/angrylion_far_reject_test.c $(ANGRYLION_WALKER_OBJS)
 	$(CC) $(CPPFLAGS) $(CFLAGS) -I$(VIDEODIR_ANGRYLION) -w $< $(ANGRYLION_WALKER_OBJS) -o $@ -lm
 
@@ -1285,7 +1291,8 @@ ANGRYLION_CHECKS := angrylion_vemit_test$(EXE_EXT) angrylion_gen_test$(EXE_EXT) 
 	angrylion_clip_test$(EXE_EXT) angrylion_f3d_near_test$(EXE_EXT) \
 	angrylion_divide_test$(EXE_EXT) angrylion_rs_fullsync_test$(EXE_EXT) \
 	angrylion_far_reject_test$(EXE_EXT) angrylion_f3d_gbi1_test$(EXE_EXT) \
-	angrylion_hazard_wrap_test$(EXE_EXT) angrylion_texrecip_test$(EXE_EXT)
+	angrylion_hazard_wrap_test$(EXE_EXT) angrylion_texrecip_test$(EXE_EXT) \
+	angrylion_cbfd_light_test$(EXE_EXT) angrylion_rare_clip_test$(EXE_EXT)
 
 tools: $(ANGRYLION_TOOLS) lrhost$(EXE_EXT) angrylion_replay$(EXE_EXT) $(ANGRYLION_CHECKS)
 

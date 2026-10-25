@@ -144,6 +144,31 @@ static int probe_texture_reciprocal(const unsigned char *r, unsigned int text)
  * scene fails to render. Detected by the SGI data-segment name string, the
  * same way f3d_ucode_family classifies the GBI 1 builds. */
 static int s_variant_cbfd;
+/* The text address of the running microcode, for the probes that need
+ * both segments. */
+static unsigned int s_task_text;
+
+/* F3DEXBG keeps two copies of its coordinate modifier and light records
+ * in DMEM, one per vertex of the pair the loader transforms together,
+ * and G_MOVEWORD / G_MOVEMEM write them through tables in the data
+ * segment; a game can give the two copies different values. This is the
+ * part of DMEM those writes and the vertex lighting use, in RDRAM byte
+ * order, seeded from the data segment as the microcode loads. */
+static unsigned char s_cbfd_dmem[0x1000];
+
+static void cbfd_dmem_load(const unsigned char *r, unsigned int data,
+                           unsigned int size)
+{
+    unsigned int i;
+    if (r == 0 || data == 0 || data > s_rdram_size)
+        return;
+    if (size == 0u || size > 0x1000u)
+        size = 0x1000u;
+    if (size > s_rdram_size - data)
+        size = s_rdram_size - data;
+    for (i = 0; i < size; i++)
+        s_cbfd_dmem[i ^ 3u] = r[(data + i) ^ 3u];
+}
 static int s_variant_acclaim;
 
 static int cbfd_ucode_match(const unsigned char *rdram,
@@ -289,6 +314,7 @@ static unsigned char *s_rdram_base = 0;
  * task must not leak in). */
 void f3dex2_set_task_ucode(const unsigned char *rdram, unsigned int text)
 {
+    s_task_text = text;
     s_ucode_class = probe_ucode_class(rdram, text);
     s2dex_set_version2(s_ucode_class == UCODE_S2DEX2);
     rsp_tri_set_texrecip(probe_texture_reciprocal(rdram, text));
@@ -299,10 +325,36 @@ void f3dex2_set_task_ucode(const unsigned char *rdram, unsigned int text)
 /* Enable Conker's F3DEXBG.NoN G_TRI4 opcode block for this task, detected by
  * the data-segment name string. Cleared by f3dex2_set_task_ucode above, so it
  * must be called after it at task start. */
+/* Conker's second F3DEXBG build lights from per-vertex normals: its data
+ * segment names a resident routine (offset at data + 0x6a8, tag at
+ * + 0x6ac) whose code fetches the normal table. Both builds carry the
+ * same name string, and a list can switch between them with
+ * G_LOAD_UCODE. */
+static int cbfd_normal_ucode_match(const unsigned char *r, unsigned int text,
+                                   unsigned int data)
+{
+    unsigned int offset;
+    if (r == 0 || text == 0 || data == 0 || data > s_rdram_size
+        || 0x6b0u > s_rdram_size - data
+        || rd_u32_be(r, data + 0x6acu) != 0x038712d8u)
+        return 0;
+    offset = rd_u32_be(r, data + 0x6a8u);
+    if (text > s_rdram_size || offset > s_rdram_size - text
+        || 0x11cu > s_rdram_size - text - offset)
+        return 0;
+    return rd_u32_be(r, text + offset) == 0x900b023cu
+        && rd_u32_be(r, text + offset + 0x100u) == 0xe808201bu
+        && rd_u32_be(r, text + offset + 0x10cu) == 0x81c20007u
+        && rd_u32_be(r, text + offset + 0x118u) == 0x848a0512u;
+}
+
 void f3dex2_set_variant_cbfd(const unsigned char *rdram, unsigned int ud,
                              unsigned int uds)
 {
-    s_variant_cbfd = cbfd_ucode_match(rdram, ud, uds) ? 1 : 0;
+    s_variant_cbfd = cbfd_normal_ucode_match(rdram, s_task_text, ud) ? 2
+                   : cbfd_ucode_match(rdram, ud, uds) ? 1 : 0;
+    if (s_variant_cbfd)
+        cbfd_dmem_load(rdram, ud, uds);
 }
 
 /* Acclaim's four F3DEX2 titles (Turok 2 - Seeds of Evil, Turok 3, Armorines -
@@ -867,6 +919,7 @@ void f3dex2_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
             unsigned int va = seg_addr(w1);
             gsp->cbfd = s_variant_cbfd;
             gsp->acclaim = s_variant_acclaim;
+            gsp->cbfd_dmem = s_variant_cbfd ? s_cbfd_dmem : 0;
             if (n > 0 && addr_in_range(va, (unsigned int)n * 16u))
                 gsp_vertex(gsp, r, va, n, v0);
             break;
@@ -1017,6 +1070,22 @@ void f3dex2_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
              * MOVEWORD indices (numlight, fog, clip, ...) don't affect address
              * resolution here, so ignore them. */
             int index = (int)((w0 >> 16) & 0xff);
+            if (s_variant_cbfd && index <= 0x10 && !(index & 1))
+            {
+                /* the resident handler stores the word at a DMEM base
+                 * from the table at 0x560 plus the command's offset */
+                unsigned int t = 0x560u + (unsigned int)index;
+                unsigned int dst = ((((unsigned int)s_cbfd_dmem[t ^ 3u] << 8)
+                                     | s_cbfd_dmem[(t + 1u) ^ 3u])
+                                    + (w0 & 0xffffu)) & 0xfffu;
+                if (!(dst & 3u))
+                {
+                    s_cbfd_dmem[(dst + 0) ^ 3u] = (unsigned char)(w1 >> 24);
+                    s_cbfd_dmem[(dst + 1) ^ 3u] = (unsigned char)(w1 >> 16);
+                    s_cbfd_dmem[(dst + 2) ^ 3u] = (unsigned char)(w1 >> 8);
+                    s_cbfd_dmem[(dst + 3) ^ 3u] = (unsigned char)w1;
+                }
+            }
             if (index == G_MW_SEGMENT)
             {
                 unsigned int seg = (w0 >> 2) & 0x0fu;
@@ -1222,12 +1291,21 @@ void f3dex2_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
                 unsigned int coff = (w0 >> 5) & 0x3fffu;
                 int cn = (int)(coff / 48u);
                 unsigned int cla = seg_addr(w1);
-                if (addr_in_range(cla, 24u))
+                unsigned int bytes = (((w0 >> 19) & 31u) + 1u) * 8u;
+                unsigned int dst = 0x260u + coff;
+                /* the records land in DMEM from 0x260, and the light
+                 * state is read back from there, so a short transfer
+                 * keeps the rest of a record */
+                if (dst <= 0x1000u && bytes <= 0x1000u - dst
+                    && addr_in_range(cla, bytes))
                 {
-                    if (cn >= 2)
-                        gsp_set_light(gsp, r, cla, cn - 2);
-                    else
-                        gsp_set_lookat(gsp, r, cla, cn);
+                    unsigned int b;
+                    for (b = 0; b < bytes; b++)
+                        s_cbfd_dmem[(dst + b) ^ 3u] = r[(cla + b) ^ 3u];
+                    if (cn >= 2 && dst + 48u <= 0x1000u)
+                        gsp_set_light(gsp, s_cbfd_dmem, dst, cn - 2);
+                    else if (cn < 2)
+                        gsp_set_lookat(gsp, s_cbfd_dmem, dst, cn);
                 }
             }
             else if (index == G_MV_VIEWPORT)
@@ -1333,8 +1411,12 @@ void f3dex2_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
              * staged the data address. The RSP swaps the running
              * microcode; the walker swaps its opcode interpretation. */
             unsigned int text = seg_addr(w1);
+            s_task_text = text;
             s_ucode_class = probe_ucode_class(r, text);
             rsp_tri_set_texrecip(probe_texture_reciprocal(r, text));
+            /* Conker swaps between its two F3DEXBG builds this way */
+            if (s_variant_cbfd)
+                f3dex2_set_variant_cbfd(r, seg_addr(s_half1), (w0 & 0xffffu) + 1u);
             /* The microcode reload re-DMAs the data segment, restoring
              * the S2DEX scissor/status defaults. The data address was
              * staged by the preceding G_RDPHALF_1; re-detect the clip

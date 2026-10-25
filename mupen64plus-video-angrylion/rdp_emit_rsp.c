@@ -609,6 +609,130 @@ int32_t rsp_light_dirdot(const int32_t n[3], const int32_t d[3])
     return rsp_light_dot(n, d);
 }
 
+/* ---- Conker's Bad Fur Day (F3DEXBG) lighting -------------------------- */
+
+/* vaddc/vadd 32-bit pair add: the fraction wraps with a carry out, the
+ * integer saturates. */
+static Rsp32 addv32(Rsp32 a, Rsp32 b)
+{
+    Rsp32 o;
+    int carry = ((U16(a.f) + U16(b.f)) > 0xffff);
+    o.f = (a.f + b.f) & 0xffff;
+    o.i = clamp_s16(S16(a.i) + S16(b.i) + carry) & 0xffff;
+    return o;
+}
+
+/* F3DEXBG's point-light overlay. The vertex's clip-space position goes
+ * through the G_MW_COORD_MOD offset (rows 8..11) and 16.16 scale (rows
+ * 0..3 integer, 4..7 fraction); each light below the top one contributes
+ * min(rgb, rgb * ca / |p - light|^2) over a four-lane distance, W
+ * included, with the DIV-table reciprocal; the sum, starting from the
+ * ambient in the top slot, then modulates the vertex's own colour
+ * (VMULF, SUV). The normal-indexed build also dots the light below the
+ * ambient against the vertex normal and, with G_LIGHTING_POSITIONAL,
+ * folds the point lights in pairs gated by their own dots. */
+static void cbfd_light(const int32_t clip[4], const int32_t coord[16],
+                       const int32_t (*positions)[4], const int32_t (*rgb)[3],
+                       const int32_t *attenuation, int num,
+                       const int32_t source[3], const int32_t *normal,
+                       const int32_t (*directions)[3], int positional,
+                       int32_t out[3])
+{
+    int32_t position[4], colour[3];
+    int32_t previous[3];
+    int k, light;
+
+    previous[0] = previous[1] = previous[2] = 0;
+    for (k = 0; k < 4; k++)
+    {
+        Rsp32 p = mk32(clip[k]), scale;
+        p.i = clamp_s16(S16(p.i) + S16(coord[8 + k]));
+        scale.i = coord[k];
+        scale.f = coord[4 + k];
+        position[k] = S16(mac32(p, scale, 0).i);
+    }
+    for (k = 0; k < 3; k++)
+        colour[k] = (rgb[num][k] & 255) << 7;
+    if (normal && num > 0)
+    {
+        RspAcc dot_acc = 0x8000;
+        int32_t dot;
+        for (k = 0; k < 3; k++)
+            dot_acc += (RspAcc)S16((normal[k] & 255) << 8)
+                     * S16((directions[num - 1][k] & 255) << 8) * 2;
+        /* this light feeds VMACF without the point loop's 0x7fff mask, so
+         * an unsigned overflow of 0xffff is a signed -1 */
+        dot = S16(acc_read_unsigned(dot_acc));
+        for (k = 0; k < 3; k++)
+            colour[k] = S16(acc_clamp_mid((RspAcc)colour[k] * 0x7fff * 2 + 0x8000
+                    + (RspAcc)((rgb[num - 1][k] & 255) << 7) * dot * 2));
+    }
+    for (light = num - 2; light >= 0; --light)
+    {
+        Rsp32 square[4], distance, reciprocal, ca, factor;
+        for (k = 0; k < 4; k++)
+        {
+            int32_t d = clamp_s16(position[k] - S16(positions[light][k]));
+            square[k] = mk32((int32_t)(uint32_t)(d * d));
+        }
+        distance = addv32(addv32(square[0], square[1]),
+                          addv32(square[2], square[3]));
+        reciprocal = mk32(rsp_rcp32((int32_t)(((uint32_t)U16(distance.i) << 16)
+                                              | (uint32_t)U16(distance.f))));
+        ca = mk32((attenuation[light] & 255) << 12);
+        factor = mac32(reciprocal, ca, 0);
+        for (k = 0; k < 3; k++)
+        {
+            int32_t limit = (rgb[light][k] & 255) << 7;
+            RspAcc acc = p_udm(limit, factor.f) + p_udh(limit, factor.i);
+            int32_t contribution = S16(acc_clamp_mid(acc));
+            if (contribution > limit)
+                contribution = limit;
+            if (normal && positional)
+            {
+                if (light & 1)
+                    previous[k] = contribution;
+                else
+                {
+                    int32_t dot1 = rsp_light_dot(normal, directions[light + 1]);
+                    int32_t dot2 = rsp_light_dot(normal, directions[light]);
+                    RspAcc fold = (RspAcc)S16(colour[k]) * 0x7fff * 2 + 0x8000;
+                    fold += (RspAcc)previous[k] * dot1 * 2
+                          + (RspAcc)contribution * dot2 * 2;
+                    colour[k] = S16(acc_clamp_mid(fold));
+                }
+            }
+            else
+                colour[k] = clamp_s16(colour[k] + contribution);
+        }
+    }
+    for (k = 0; k < 3; k++)
+    {
+        RspAcc acc = (RspAcc)S16(colour[k]) * ((source[k] & 255) << 7) * 2 + 0x8000;
+        out[k] = (U16(acc_clamp_mid(acc)) >> 7) & 255;
+    }
+}
+
+void rsp_cbfd_light(const int32_t clip[4], const int32_t coord[16],
+                    const int32_t (*positions)[4], const int32_t (*rgb)[3],
+                    const int32_t *attenuation, int num,
+                    const int32_t source[3], int32_t out[3])
+{
+    cbfd_light(clip, coord, positions, rgb, attenuation, num, source,
+               0, 0, 0, out);
+}
+
+void rsp_cbfd_light_normal(const int32_t clip[4], const int32_t coord[16],
+                           const int32_t (*positions)[4], const int32_t (*rgb)[3],
+                           const int32_t *attenuation, int num,
+                           const int32_t source[3], const int32_t normal[3],
+                           const int32_t (*directions)[3], int positional,
+                           int32_t out[3])
+{
+    cbfd_light(clip, coord, positions, rgb, attenuation, num, source,
+               normal, directions, positional, out);
+}
+
 /* One positional-loop color fold: vmulf(color, 0x7FFF) decays the running
  * <<7-domain color and vmacf adds one light's contribution. */
 void rsp_light_fold1(int32_t lt[3], const int32_t rgb[3], int32_t d)
@@ -842,6 +966,17 @@ void rsp_set_clip_lerp_l3dex(int on)
 {
     s_clip_lerp_l3dex = on ? 1 : 0;
     s_clip_lerp_seed3 = on ? 1 : 0;
+}
+
+/* Rare's GBI 1 clip build (GoldenEye 007, Perfect Dark): the l3dex
+ * refinement, with the +3 seed on the final factor multiply only and the
+ * doubled second reciprocal re-latched after its high term, and a factor
+ * clamp of VEQ(high, 0) then VNE(low, 0) rather than signed range
+ * compares. */
+void rsp_set_clip_lerp_gbi1(void)
+{
+    s_clip_lerp_l3dex = 1;
+    s_clip_lerp_seed3 = 2;
 }
 
 static int s_vtx_invw_2rd = 0;
@@ -1084,7 +1219,7 @@ void rsp_clip_lerp(const int32_t on_pos[4], const int32_t off_pos[4],
      * F3DEX2 chain does not have. It is what keeps a generated vertex
      * on the inside of the plane it was clipped against, which in turn
      * decides the stored quarter-pixel at a screen edge. */
-    acc = s_clip_lerp_seed3 ? 3 : 0;
+    acc = (s_clip_lerp_seed3 == 1) ? 3 : 0;
     acc += p_udl(v10[3], rcp_lo) + p_udm(v11[3], rcp_lo);
     v11[3] = acc_clamp_mid(acc);
     v10[3] = acc_clamp_low(acc);
@@ -1110,6 +1245,8 @@ void rsp_clip_lerp(const int32_t on_pos[4], const int32_t off_pos[4],
         r2_lo = acc_clamp_low(acc);
         acc += p_udh(r2_hi, 2);
         r2_hi = acc_clamp_mid(acc);
+        if (s_clip_lerp_seed3 == 2)
+            r2_lo = acc_clamp_low(acc);
         acc = p_udl(r2_lo, v10[3]) + p_udm(r2_hi, v10[3]);
         acc += p_udn(r2_lo, v11[3]);
         x_lo = acc_clamp_low(acc);
@@ -1178,6 +1315,11 @@ void rsp_clip_lerp(const int32_t on_pos[4], const int32_t off_pos[4],
         ne  = (ff != 1);
         vcc = (fi > 0) | ((fi == 0) & !(ne & cob));
         fade = vcc ? ff : 1;
+        if (s_clip_lerp_seed3 == 2)
+        {
+            ff = (fi == 0) ? U16(v10[3]) : 0xffff;
+            fade = ff ? ff : 1;
+        }
     }
     acc = p_udn(fade, -1);
     onfade = acc_clamp_low(acc);            /* 0x10000 - fade, low half */
@@ -1715,17 +1857,6 @@ static Rsp32 sub32(Rsp32 a, Rsp32 b)
     int borrow = (U16(a.f) < U16(b.f));
     o.f = (a.f - b.f) & 0xffff;
     o.i = clamp_s16(S16(a.i) - S16(b.i) - borrow) & 0xffff;
-    return o;
-}
-
-/* vaddc/vadd 32-bit pair add (fraction wraps with carry out, integer
- * saturates). */
-static Rsp32 addv32(Rsp32 a, Rsp32 b)
-{
-    Rsp32 o;
-    int carry = ((U16(a.f) + U16(b.f)) > 0xffff);
-    o.f = (a.f + b.f) & 0xffff;
-    o.i = clamp_s16(S16(a.i) + S16(b.i) + carry) & 0xffff;
     return o;
 }
 

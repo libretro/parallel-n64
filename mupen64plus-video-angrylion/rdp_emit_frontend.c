@@ -631,6 +631,7 @@ void gsp_task_reset(GSPState *s)
     s->pd_ci = 0;
     s->cbfd = 0;
     s->cbfd_nbase = 0;
+    s->cbfd_dmem = 0;
     {
         int ci;
         for (ci = 0; ci < 16; ci++)
@@ -948,92 +949,94 @@ void gsp_vertex(GSPState *s, const unsigned char *rdram, unsigned int addr,
             int li;
             if (s->cbfd)
             {
-                /* Conker's CBFD lighting differs from the stock directional
-                 * model: the per-vertex normal is not inline. nx,ny come from
-                 * a separate table (set by G_MOVEMEM/G_MV_NORMALES, indexed by
-                 * the vertex slot * 2) and nz is the low byte of the vertex
-                 * flag halfword (bytes 6..7). The base colour is the vertex's
-                 * own colour bytes (12..15), which the light then MULTIPLIES
-                 * rather than replaces: lit = clamp(ambient + light.rgb *
-                 * max(0, n . L)), shade = colour * lit. The light array holds
-                 * the directional lights in slots 0..num_lights-1 with the
-                 * ambient at slot num_lights, matching the /48-slot G_MV_LIGHT
-                 * and n*48 G_MW_NUMLIGHT the CBFD build uses. The dominant
-                 * (last) directional light plus the ambient carry the scene's
-                 * tone; CBFD's earlier lights are distance-attenuated point
-                 * lights whose per-vertex falloff is left to later work. */
-                unsigned int na = s->cbfd_nbase + ((unsigned int)idx << 1);
-                int cr = (int)read_u8_n64(rdram, base + 12);
-                int cg = (int)read_u8_n64(rdram, base + 13);
-                int cb = (int)read_u8_n64(rdram, base + 14);
-                int amb = s->num_lights;
-                int last = s->num_lights - 1;
-                int32_t nrm[3], litr, litg, litb, dot;
-                nxb = (int)(signed char)read_u8_n64(rdram, na + 0);
-                nyb = (int)(signed char)read_u8_n64(rdram, na + 1);
-                nzb = (int)(signed char)read_u8_n64(rdram, base + 6);
-                if (!s->lights_valid)
+                /* F3DEXBG replaces the stock directional/normal path with a
+                 * point-light model over four-dimensional clip-space
+                 * positions (W included), modulating the vertex's own
+                 * colour bytes (12..14); see rsp_cbfd_light. The
+                 * normal-indexed build (cbfd == 2) takes nx,ny from the
+                 * G_MV_NORMALES table, indexed by the vertex slot, and nz
+                 * from byte 7. Bit 7 of byte 6 restores the original colour
+                 * after lighting. Texture generation takes its normal from
+                 * the same place. */
+                int32_t clip[4], positions[GSP_MAX_LIGHTS][4];
+                int32_t source[3], lit[3], rgb[GSP_MAX_LIGHTS][3];
+                int32_t ca[GSP_MAX_LIGHTS], coord[16];
+                int k;
+                for (k = 0; k < 16; k++)
+                    coord[k] = s->cbfd_cmod[k];
+                source[0] = (int32_t)read_u8_n64(rdram, base + 12);
+                source[1] = (int32_t)read_u8_n64(rdram, base + 13);
+                source[2] = (int32_t)read_u8_n64(rdram, base + 14);
+                /* G_TEXTURE_GEN reads the colour bytes as the normal */
+                nxb = (int)(signed char)source[0];
+                nyb = (int)(signed char)source[1];
+                nzb = (int)(signed char)source[2];
+                if ((s->geometry_mode & 0x00040000u) && !s->lights_valid)
                     gsp_light_dir_xfrm(s);
-                nrm[0] = nxb; nrm[1] = nyb; nrm[2] = nzb;
-                litr = s->light_rgb[amb][0] & 0xff;
-                litg = s->light_rgb[amb][1] & 0xff;
-                litb = s->light_rgb[amb][2] & 0xff;
-                if (last >= 0)
+                clip[0] = vt->cx; clip[1] = vt->cy;
+                clip[2] = vt->cz; clip[3] = vt->cw;
+                for (li = 0; li < GSP_MAX_LIGHTS; li++)
                 {
-                    dot = rsp_light_dirdot(nrm, s->light_dir[last]);
-                    litr += (int32_t)(((int64_t)(s->light_rgb[last][0] & 0xff)
-                                       * dot) >> 15);
-                    litg += (int32_t)(((int64_t)(s->light_rgb[last][1] & 0xff)
-                                       * dot) >> 15);
-                    litb += (int32_t)(((int64_t)(s->light_rgb[last][2] & 0xff)
-                                       * dot) >> 15);
+                    for (k = 0; k < 3; k++)
+                    {
+                        positions[li][k] = s->cbfd_lpos[li][k];
+                        rgb[li][k] = s->light_rgb[li][k];
+                    }
+                    positions[li][3] = s->cbfd_lpos[li][3];
+                    ca[li] = s->cbfd_lca[li];
                 }
-                /* Lights below the dominant one are point lights: intensity =
-                 * min(1, ca / len), len = 2 * |vPos - lpos|^2 in the position
-                 * domain, vPos the vertex pushed through the G_MW_COORD_MOD
-                 * offset (rows 8..10) and 16.16 scale (rows 12..14). With
-                 * G_LIGHTING_POSITIONAL set the intensity is also gated by the
-                 * normal dot so a light behind a face does not light it. These
-                 * fill in the illumination the dim ambient plus one directional
-                 * light would otherwise leave far too dark. */
-                for (li = last - 1; li >= 0; li--)
+                if (s->cbfd_dmem)
                 {
-                    int64_t vx, vy, vz, len, inten;
-                    vx = ((int64_t)ox + s->cbfd_cmod[8]) * s->cbfd_cmod[12];
-                    vy = ((int64_t)oy + s->cbfd_cmod[9]) * s->cbfd_cmod[13];
-                    vz = ((int64_t)oz + s->cbfd_cmod[10]) * s->cbfd_cmod[14];
-                    vx = (vx >> 16) - s->cbfd_lpos[li][0];
-                    vy = (vy >> 16) - s->cbfd_lpos[li][1];
-                    vz = (vz >> 16) - s->cbfd_lpos[li][2];
-                    len = (2 * (vx * vx + vy * vy + vz * vz)) >> 16;
-                    if (len <= 0)
-                        inten = 0x7fff;
-                    else
+                    /* The loader transforms vertices in pairs, the first in
+                     * lanes 4..7, and each half reads its own copy of the
+                     * coordinate modifier rows (0x1d0 integer scale, 0x1e0
+                     * fraction, 0x1f0 offset) and of each light record
+                     * (colour at +0/+4, position at +32/+40). */
+                    const unsigned char *dm = s->cbfd_dmem;
+                    unsigned int half = (i & 1) ? 0u : 4u;
+                    for (k = 0; k < 4; k++)
                     {
-                        inten = ((int64_t)s->cbfd_lca[li] << 11) / len;
-                        if (inten > 0x7fff) inten = 0x7fff;
+                        coord[k]     = read_s16_be(dm, 0x1d0u + 2u * (half + (unsigned int)k));
+                        coord[4 + k] = read_s16_be(dm, 0x1e0u + 2u * (half + (unsigned int)k));
+                        coord[8 + k] = read_s16_be(dm, 0x1f0u + 2u * (half + (unsigned int)k));
                     }
-                    if ((s->geometry_mode & 0x00400000u) && inten > 0)
+                    for (li = 0; li < GSP_MAX_LIGHTS; li++)
                     {
-                        int32_t nd = rsp_light_dirdot(nrm, s->light_dir[li]);
-                        inten = (inten * nd) >> 15;
-                    }
-                    if (inten > 0)
-                    {
-                        litr += (int32_t)(((int64_t)(s->light_rgb[li][0] & 0xff)
-                                           * inten) >> 15);
-                        litg += (int32_t)(((int64_t)(s->light_rgb[li][1] & 0xff)
-                                           * inten) >> 15);
-                        litb += (int32_t)(((int64_t)(s->light_rgb[li][2] & 0xff)
-                                           * inten) >> 15);
+                        unsigned int a = 0x2c0u + (unsigned int)li * 48u;
+                        for (k = 0; k < 4; k++)
+                            positions[li][k] = read_s16_be(dm, a + 32u + 2u * (half + (unsigned int)k));
+                        for (k = 0; k < 3; k++)
+                            rgb[li][k] = read_u8_n64(dm, a + half + (unsigned int)k);
+                        ca[li] = read_u8_n64(dm, a + 12u);
                     }
                 }
-                if (litr > 255) litr = 255;
-                if (litg > 255) litg = 255;
-                if (litb > 255) litb = 255;
-                vt->r = ((cr * litr) / 255) << 16;
-                vt->g = ((cg * litg) / 255) << 16;
-                vt->b = ((cb * litb) / 255) << 16;
+                if (s->cbfd == 2)
+                {
+                    int32_t normal[3];
+                    unsigned int na = s->cbfd_nbase + ((unsigned int)idx << 1);
+                    nxb = (int)(signed char)read_u8_n64(rdram, na);
+                    nyb = (int)(signed char)read_u8_n64(rdram, na + 1);
+                    nzb = (int)(signed char)read_u8_n64(rdram, base + 7);
+                    normal[0] = nxb; normal[1] = nyb; normal[2] = nzb;
+                    if (!s->lights_valid)
+                        gsp_light_dir_xfrm(s);
+                    rsp_cbfd_light_normal(clip, coord,
+                        (const int32_t (*)[4])positions,
+                        (const int32_t (*)[3])rgb, ca, s->num_lights, source,
+                        normal, (const int32_t (*)[3])s->light_dir,
+                        (s->geometry_mode & 0x00400000u) != 0, lit);
+                }
+                else
+                    rsp_cbfd_light(clip, coord,
+                        (const int32_t (*)[4])positions,
+                        (const int32_t (*)[3])rgb, ca, s->num_lights,
+                        source, lit);
+                if (read_u8_n64(rdram, base + 6) & 0x80u)
+                    for (k = 0; k < 3; k++)
+                        lit[k] = source[k];
+                vt->r = lit[0] << 16;
+                vt->g = lit[1] << 16;
+                vt->b = lit[2] << 16;
                 vt->a = (int32_t)read_u8_n64(rdram, base + 15) << 16;
             }
             else
@@ -1540,6 +1543,8 @@ void gsp_set_light(GSPState *s, const unsigned char *rdram,
                                              | read_u8_n64(rdram, addr + 35));
     s->cbfd_lpos[index][2] = (int32_t)(short)((read_u8_n64(rdram, addr + 36) << 8)
                                              | read_u8_n64(rdram, addr + 37));
+    s->cbfd_lpos[index][3] = (int32_t)(short)((read_u8_n64(rdram, addr + 38) << 8)
+                                             | read_u8_n64(rdram, addr + 39));
     s->cbfd_lca[index] = (int32_t)read_u8_n64(rdram, addr + 12);
     /* G_MOVEMEM does not touch lightsValid (see gsp_set_lookat). */
 }
@@ -1856,7 +1861,47 @@ static int clip_polygon_guard(GSPState *st, GSPVertex *poly, int n)
         }
         if (cond >= 2)  /* the +-x/+-y guard-band planes scale with the ratio */
             cr[3] = (int16_t)((cr[3] < 0) ? -st->clip_ratio : st->clip_ratio);
-        if (st->clip_fan_first >= 2)
+        if (st->clip_fan_first == 4)
+        {
+            /* Rare's GBI 1 clip overlay (GoldenEye 007, Perfect Dark)
+             * seeks the first vertex outside the plane, then starts its
+             * rebuilt list at the crossing back into the inside run; a
+             * plane that clips nothing leaves the list as it was. The
+             * rotation decides the fan pivot and the packet order. */
+            int outside = -1, start, prev;
+            for (i = 0; i < n; i++)
+                if ((unsigned int)poly[i].clip & mask)
+                {
+                    outside = i;
+                    break;
+                }
+            if (outside < 0)
+                continue;
+            start = (outside + 1) % n;
+            while (start != outside && ((unsigned int)poly[start].clip & mask))
+                start = (start + 1) % n;
+            if (start == outside)
+                return 0;
+            prev = (start + n - 1) % n;
+            gsp_clip_subdivide(st, &tmp[m++], &poly[start], &poly[prev], cr);
+            i = start;
+            do
+            {
+                int next = (i + 1) % n;
+                if (m >= GSP_CLIP_MAX)
+                    return 0;
+                tmp[m++] = poly[i];
+                if ((unsigned int)poly[next].clip & mask)
+                {
+                    if (m >= GSP_CLIP_MAX)
+                        return 0;
+                    gsp_clip_subdivide(st, &tmp[m++], &poly[i], &poly[next], cr);
+                    break;
+                }
+                i = next;
+            } while (i != start);
+        }
+        else if (st->clip_fan_first >= 2)
         {
             /* Wipeout 64's clip driver (overlay i764-i7dc) walks the
              * pointer list linearly from vertex 0 -- vertex first, then
@@ -2220,7 +2265,7 @@ int gsp_triangle(GSPState *s, int32_t *cmd, int i0, int i1, int i2,
     ob = (unsigned int)b->clip;
     oc = (unsigned int)c->clip;
 
-    if (s->clip_fan_first == 2)
+    if (s->clip_fan_first == 2 || s->clip_fan_first == 4)
     {
         /* Wipeout 64's clip driver (overlay IMEM 0x748, i764: sh
          * r3/r2/r1) seeds its working list with the triangle vertices
@@ -2298,9 +2343,9 @@ int gsp_triangle(GSPState *s, int32_t *cmd, int i0, int i1, int i2,
              * (0,n-2,n-1), (0,n-3,n-2), ..., (0,1,2). The triangle sets
              * differ (different pivot), so this is visible wherever a
              * clipped polygon has more than three vertices. */
-            if (s->clip_fan_first == 2)
+            if (s->clip_fan_first == 2 || s->clip_fan_first == 4)
             {
-                /* Wipeout 64 (i934-i95c): pivot on the FIRST list vertex,
+                /* Wipeout 64 (i934-i95c), and Rare's overlay alike: pivot on the FIRST list vertex,
                  * walk ascending consecutive pairs, and the resident tri
                  * write takes the args reversed (list[i+2], list[i+1],
                  * pivot). */

@@ -674,6 +674,51 @@ int f3d_ucode_half1_perspnorm(const unsigned char *rdram, unsigned int rdram_siz
     return (rd32(rdram, ut + off) & 0xfc000000u) == 0x08000000u
         && rd32(rdram, ut + off + 4u) == 0xa7b80002u;
 }
+/* Rare's GBI 1 build (GoldenEye 007, Perfect Dark) clips in an overlay
+ * that seeds its list with the triangle reversed (four halfword stores of
+ * the vertex pointers, then the list base and length set up), rotates
+ * each plane's output to start where the polygon re-enters, and fans
+ * ascending pairs back into the writer reversed. Its clip divide is the
+ * GBI 1 refinement, identified by its opening and closing vector ops.
+ * Returns 1 for the fan, 2 for the fan and that divide. */
+int f3d_ucode_rare_clip(const unsigned char *rdram, unsigned int rdram_size,
+                        unsigned int ut)
+{
+    unsigned int at, k;
+    if (rdram == 0 || ut == 0 || ut > rdram_size || 0x1800u > rdram_size - ut)
+        return 0;
+    for (at = 0; at + 28u <= 0x1800u; at += 4u)
+    {
+        unsigned int base = rd32(rdram, ut + at) & 0xffffu;
+        if (base > 0xfc0u || (base & 7u)
+            || rd32(rdram, ut + at)       != (0xa4030000u | base)
+            || rd32(rdram, ut + at + 4u)  != (0xa4020000u | (base + 2u))
+            || rd32(rdram, ut + at + 8u)  != (0xa4010000u | (base + 4u))
+            || rd32(rdram, ut + at + 12u) != (0xa4000000u | (base + 6u))
+            || rd32(rdram, ut + at + 16u) != 0x34070db8u
+            || rd32(rdram, ut + at + 20u) != (0x341e0000u | base)
+            || rd32(rdram, ut + at + 24u) != 0x3406000cu)
+            continue;
+        for (k = 0; k + 32u <= 0x1800u; k += 4u)
+            if (rd32(rdram, ut + k)       == 0x4b7d5ef2u
+                && rd32(rdram, ut + k + 4u)  == 0x4b7c5eb1u
+                && rd32(rdram, ut + k + 20u) == 0x4b5fd686u
+                && rd32(rdram, ut + k + 24u) == 0x4b5fdecfu
+                && rd32(rdram, ut + k + 28u) == 0x4b1ffe8eu)
+                return 2;
+        return 1;
+    }
+    return 0;
+}
+
+static int s_clip_rare = 0;
+void f3d_set_clip_rare(int mode)
+{
+    s_clip_rare = mode;
+    if (mode == 2)
+        rsp_set_clip_lerp_gbi1();
+}
+
 void f3d_set_variant_wr64(int wr64) { s_variant_wr64 = wr64 ? 1 : 0; }
 static int s_variant_wo64 = 0;
 void f3d_set_variant_wo64(int wo64)
@@ -799,6 +844,8 @@ void f3d_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
          * triangles with the correct fan). */
         if (s_variant_d64)
             gsp->clip_fan_first = 1;
+        if (s_clip_rare)
+            gsp->clip_fan_first = 4;
         rsp_tri_set_d64_sort(s_variant_d64 ? 1 : 0);
         if (s_variant_wo64)
         {
