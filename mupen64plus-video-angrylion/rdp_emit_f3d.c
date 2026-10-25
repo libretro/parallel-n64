@@ -651,6 +651,29 @@ void f3d_set_variant(int doom64)
     rsp_set_clip_lerp_l3dex(s_variant_d64);
 }
 void f3d_set_line_variant(int line) { s_variant_line = line ? 1 : 0; }
+/* the build's G_RDPHALF_1 (0xB4) handler stores perspNorm */
+static int s_half1_perspnorm = 0;
+void f3d_set_half1_perspnorm(int on) { s_half1_perspnorm = on ? 1 : 0; }
+int f3d_ucode_half1_perspnorm(const unsigned char *rdram, unsigned int rdram_size,
+                              unsigned int ud, unsigned int ut)
+{
+    unsigned int handler, off;
+    if (rdram == 0 || ud == 0 || ut == 0 || ud > rdram_size || 0xe0u > rdram_size - ud
+        || ut > rdram_size || 8u > rdram_size - ut || rd32(rdram, ut + 4u) != 0x201d0110u)
+        return 0;
+    /* the data segment lands at DMEM 0, so its dispatch table entry for
+     * 0xB4 sits at data + 0xdc and names the handler's IMEM address; the
+     * text lands at IMEM 0x080 */
+    handler = rd32(rdram, ud + 0xdcu) & 0xffffu;
+    if (handler < 0x1080u || handler > 0x1ff8u)
+        return 0;
+    off = handler - 0x1080u;
+    if (off > rdram_size - ut || 8u > rdram_size - ut - off)
+        return 0;
+    /* j dispatch; sh t8,2(sp) */
+    return (rd32(rdram, ut + off) & 0xfc000000u) == 0x08000000u
+        && rd32(rdram, ut + off + 4u) == 0xa7b80002u;
+}
 void f3d_set_variant_wr64(int wr64) { s_variant_wr64 = wr64 ? 1 : 0; }
 static int s_variant_wo64 = 0;
 void f3d_set_variant_wo64(int wo64)
@@ -1284,7 +1307,9 @@ void f3d_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
                 break;
             }
             case F3D_MW_PERSPNORM:
-                gsp_set_persp_norm(gsp, w1 & 0xffffu);
+                /* not perspNorm in a build whose 0xB4 handler stores it */
+                if (!s_half1_perspnorm)
+                    gsp_set_persp_norm(gsp, w1 & 0xffffu);
                 break;
             case F3D_MW_POINTS:
             {
@@ -1358,8 +1383,14 @@ void f3d_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
              * carry matrix and other state commands the microcode never
              * executes. */
             {
-                int v0 = (int)(((w0 >> 16) & 0xffu) / 2u);
-                int vn = (int)((w1 & 0xffu) / 2u);
+                /* F3DEX GBI 1 passes the indices doubled; Fast3D and the
+                 * builds keeping its old 0xB4 ABI (F3DEX 0.95) pass vstart
+                 * times the 40-byte vertex size and (vend + 1) * 40 */
+                int f3dex_form = s_variant_d64 && !s_half1_perspnorm;
+                int v0 = f3dex_form ? (int)((w0 & 0xffffu) / 2u)
+                                    : (int)((w0 & 0xffffu) / 40u);
+                int vn = f3dex_form ? (int)((w1 & 0xffffu) / 2u)
+                                    : (int)(w1 / 40u) - 1;
                 if (gsp_culldl_test(gsp, v0, vn))
                     running = 0;
             }
@@ -1589,7 +1620,10 @@ void f3d_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
              * generated vertices (bottom-edge clips land at 240.0 instead
              * of the microcode's 239.75). Blast Corps' Fast3D line build
              * keeps the old-F3D bare-RDPHALF_1 perspNorm convention. */
-            if (!s_variant_d64)
+            /* Early F3DEX (Mario Kart 64's 0.95) keeps that store despite
+             * the newer encoding; ignoring it leaves perspNorm at 0xffff
+             * and coplanar track decals fail the depth test. */
+            if (!s_variant_d64 || s_half1_perspnorm)
                 gsp_set_persp_norm(gsp, w1 & 0xffffu);
             break;
 

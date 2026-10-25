@@ -32,6 +32,9 @@ int  f3d_is_ucode(const unsigned char *rdram, unsigned int rdram_size,
                   unsigned int text);
 
 void f3d_seg_reset(void);
+void f3d_set_half1_perspnorm(int on);
+int f3d_ucode_half1_perspnorm(const unsigned char *rdram, unsigned int rdram_size,
+                              unsigned int ud, unsigned int ut);
 void f3d_set_rdram(unsigned char *rdram);
 void f3d_set_rdram_size(unsigned int size);
 void f3d_set_othermode_init(unsigned int h, unsigned int l);

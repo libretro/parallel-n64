@@ -918,6 +918,7 @@ void rdp_emit_hle_process_dlist(void)
                                       || t0 == 0x090005eeu);
                 f3d_set_variant_pd(t0 == 0x090005eeu);
                 f3d_set_near_plane_from_data(rdram, rdram_size, ud);
+                f3d_set_half1_perspnorm(f3d_ucode_half1_perspnorm(rdram, rdram_size, ud, ut));
                 /* Wipeout 64's F3DLX fork: raw-doubled saturated vertex
                  * 1/w and the seedless l3dex clip fold (build id = the
                  * boot jump word, same keying as the F3DEX probe). */
