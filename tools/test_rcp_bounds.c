@@ -8,7 +8,11 @@
  *    transfers nothing;
  *  - the 32 KiB SRAM mirrors through its domain;
  *  - 64DD buffer DMAs stop at the end of the buffer they name;
- *  - a debug message longer than the formatting buffer is truncated.
+ *  - a debug message longer than the formatting buffer is truncated;
+ *  - an SI DMA touches only the RDRAM that is installed;
+ *  - an IS-Viewer transfer length past its buffer is ignored;
+ *  - DPC_CLOCK counts on across an unfreeze, the 32-bit count wrap and a
+ *    savestate round trip.
  *
  * Built by `make check-core` (top-level Makefile). Exit status 0 on pass.
  */
@@ -19,6 +23,7 @@
 
 #include "api/callbacks.h"
 #include "backends/api/storage_backend.h"
+#include "device/cart/is_viewer.h"
 #include "device/cart/sram.h"
 #include "device/dd/dd_controller.h"
 #include "device/dd/disk.h"
@@ -450,6 +455,122 @@ static void test_debug_message(void)
           "DebugMessage: a long message is truncated to the buffer");
 }
 
+static void test_si_dma(void)
+{
+    static struct rdram rdram;
+    static struct ri_controller ri;
+    static struct pif pif;
+    static struct si_controller si;
+    static uint8_t pif_ram[PIF_RAM_SIZE];
+    unsigned char* bytes;
+    unsigned int i;
+    int clean = 1;
+
+    bytes = (unsigned char*)calloc(1, DRAM_SIZE + 0x100u);
+    memset(bytes + DRAM_SIZE, GUARD_BYTE, 0x100u);
+    rdram.dram = (uint32_t*)bytes;
+    rdram.dram_size = DRAM_SIZE;
+    ri.rdram = &rdram;
+    s_mi.r4300 = &s_r4300;
+    memset(&si, 0, sizeof(si));
+    si.mi = &s_mi;
+    si.pif = &pif;
+    si.ri = &ri;
+    pif.ram = pif_ram;
+
+    /* PIF -> RDRAM straddling the end of RDRAM */
+    memset(pif.ram, 0x3c, PIF_RAM_SIZE);
+    si.regs[SI_DRAM_ADDR_REG] = DRAM_SIZE - 8u;
+    write_si_regs(&si, MM_SI_REGS + SI_PIF_ADDR_RD64B_REG * 4u, 0x1fc007c0u, ~0u);
+    si_end_of_dma_event(&si);
+    for (i = 0; i < 0x100u; i++)
+        if (bytes[DRAM_SIZE + i] != GUARD_BYTE)
+            clean = 0;
+    CHECK(clean && bytes[DRAM_SIZE - 1u] == 0x3c,
+          "SI: a PIF read DMA stops at the end of RDRAM");
+
+    /* RDRAM -> PIF from the same place reads zeros past the end */
+    memset(pif.ram, 0x77, PIF_RAM_SIZE);
+    write_si_regs(&si, MM_SI_REGS + SI_STATUS_REG * 4u, 0, ~0u);
+    si.regs[SI_STATUS_REG] = 0;
+    write_si_regs(&si, MM_SI_REGS + SI_PIF_ADDR_WR64B_REG * 4u, 0x1fc007c0u, ~0u);
+    CHECK(pif.ram[0] == 0x3c && pif.ram[8] == 0 && pif.ram[PIF_RAM_SIZE - 1u] == 0,
+          "SI: a PIF write DMA reads zero past the end of RDRAM");
+
+    free(bytes);
+}
+
+static void test_is_viewer(void)
+{
+    static struct is_viewer isv;
+
+    poweron_is_viewer(&isv);
+    write_is_viewer(&isv, 0x14u, 0xffffffffu, ~0u);
+    CHECK(isv.buffer_pos == 0, "IS64: a wrapping transfer length is ignored");
+    write_is_viewer(&isv, 0x14u, IS_BUFFER_SIZE, ~0u);
+    CHECK(isv.buffer_pos == 0, "IS64: a length past the text area is ignored");
+
+    memcpy(&isv.data[0x20], "ok", 2);
+    write_is_viewer(&isv, 0x14u, 2u, ~0u);
+    CHECK(isv.buffer_pos == 2 && memcmp(isv.output_buffer, "ok", 2) == 0,
+          "IS64: an in-range transfer is buffered");
+}
+
+static uint32_t dpc_clock_read(struct rdp_core* dp)
+{
+    uint32_t value = 0;
+    read_dpc_regs(dp, MM_DPC_REGS + 4u * DPC_CLOCK_REG, &value);
+    return value;
+}
+
+static uint32_t dpc_clock_expect(uint64_t counts)
+{
+    return (uint32_t)((counts * 4u) / 3u) & UINT32_C(0x00ffffff);
+}
+
+static void test_dpc_clock(void)
+{
+    static struct rdp_core dp;
+    static struct rdp_core restored;
+    uint32_t saved;
+
+    memset(&dp, 0, sizeof(dp));
+    dp.mi = &s_mi;
+    s_mi.r4300 = &s_r4300;
+
+    s_cp0_regs[CP0_COUNT_REG] = 1000u;
+    write_dpc_regs(&dp, MM_DPC_REGS + 4u * DPC_STATUS_REG, DPC_CLR_CLOCK_CTR, ~0u);
+    CHECK(dpc_clock_read(&dp) == 0u, "DPC: clearing the clock counter zeroes it");
+
+    s_cp0_regs[CP0_COUNT_REG] = 1300u;
+    CHECK(dpc_clock_read(&dp) == 400u, "DPC: clock advances four per three counts");
+
+    write_dpc_regs(&dp, MM_DPC_REGS + 4u * DPC_STATUS_REG, DPC_CLR_FREEZE, ~0u);
+    CHECK(dpc_clock_read(&dp) == 400u, "DPC: an unfreeze leaves the clock alone");
+
+    /* 2^32 + 3 counts after the clear, read once on the way */
+    s_cp0_regs[CP0_COUNT_REG] = 0u;
+    write_dpc_regs(&dp, MM_DPC_REGS + 4u * DPC_STATUS_REG, DPC_CLR_CLOCK_CTR, ~0u);
+    s_cp0_regs[CP0_COUNT_REG] = 0x80000000u;
+    (void)dpc_clock_read(&dp);
+    s_cp0_regs[CP0_COUNT_REG] = 3u;
+    CHECK(dpc_clock_read(&dp) == dpc_clock_expect(UINT64_C(0x100000003)),
+          "DPC: clock stays continuous across the count wrap");
+
+    s_cp0_regs[CP0_COUNT_REG] = 5000u;
+    rdp_sync_dpc_clock(&dp);
+    saved = dp.dpc_regs[DPC_CLOCK_REG];
+
+    memset(&restored, 0, sizeof(restored));
+    restored.mi = &s_mi;
+    restored.dpc_regs[DPC_CLOCK_REG] = saved;
+    rdp_restore_dpc_clock(&restored);
+    CHECK(dpc_clock_read(&restored) == saved, "DPC: a loaded state resumes the saved clock");
+    s_cp0_regs[CP0_COUNT_REG] = 5003u;
+    CHECK(dpc_clock_read(&restored) == ((saved + 4u) & UINT32_C(0x00ffffff)),
+          "DPC: the restored clock keeps counting");
+}
+
 int main(void)
 {
     test_debug_message();
@@ -457,6 +578,9 @@ int main(void)
     test_pi_dma();
     test_sram();
     test_dd_buffers();
+    test_dpc_clock();
+    test_si_dma();
+    test_is_viewer();
 
     if (s_failures) {
         printf("test_rcp_bounds: %d failure(s)\n", s_failures);

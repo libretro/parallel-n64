@@ -55,8 +55,14 @@ void write_is_viewer(void* opaque, uint32_t address, uint32_t value, uint32_t ma
     {
         if (word > 0)
         {
-            /* make sure we don't overflow the buffer */
-            if (is_viewer->buffer_pos + word > IS_BUFFER_SIZE)
+            /* the text sits at data + 0x20; drop a length past it, and
+             * test the room left without a sum that can wrap */
+            if (word > IS_BUFFER_SIZE - 0x20)
+            {
+                DebugMessage(M64MSG_WARNING, "IS64: ignored a %u-byte transfer", (unsigned)word);
+                return;
+            }
+            if (word > IS_BUFFER_SIZE - is_viewer->buffer_pos)
             {
                 /* reset buffer */
                 memset(is_viewer->output_buffer, 0, IS_BUFFER_SIZE);

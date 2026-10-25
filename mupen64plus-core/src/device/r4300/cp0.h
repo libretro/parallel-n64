@@ -245,5 +245,9 @@ uint32_t cp0_return_from_exception(struct r4300_core* r4300);
  * mapped address has a TLB entry. */
 void cp0_load_linked(struct r4300_core* r4300, uint32_t address);
 
+/* Random from the count: an index in [Wired, 31], or 31 once Wired is
+ * past the last entry (Wired takes six bits, the TLB has 32 entries). */
+uint32_t cp0_random_index(const uint32_t* cp0_regs, unsigned int count_per_op);
+
 #endif /* M64P_DEVICE_R4300_CP0_H */
 

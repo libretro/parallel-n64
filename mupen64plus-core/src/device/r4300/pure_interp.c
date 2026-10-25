@@ -30,6 +30,8 @@
 #include "api/callbacks.h"
 #include "api/debugger.h"
 #include "api/m64p_types.h"
+#include "device/aleck64/aleck64.h"
+#include "device/memory/m64p_memory.h"
 #include "device/r4300/r4300_core.h"
 #include "osal/preproc.h"
 
@@ -104,12 +106,30 @@ static void InterpretOpcode(struct r4300_core* r4300);
 #define FT_OF(op)      (((op) >> 16) & 0x1F)
 #define JUMP_OF(op)    ((op) & UINT32_C(0x3FFFFFF))
 
+/* Whether the word at a delay slot address is a NOP, peeked without
+ * fetching it: an unmapped page reads as "not idle" rather than raising
+ * a TLB refill against the branch and handing back a NULL word. */
+static int idle_delay_slot_is_nop(struct r4300_core* r4300, uint32_t address)
+{
+    if ((address & UINT32_C(0xc0000000)) != UINT32_C(0x80000000))
+    {
+        uint32_t lut = r4300->cp0.tlb.LUT_r[address >> 12];
+        if (lut == 0)
+            return 0;
+        address = (lut & UINT32_C(0xfffff000)) | (address & UINT32_C(0xfff));
+        if (g_aleck64_enabled && address >= UINT32_C(0x80000000)
+            && address <= UINT32_C(0xc07fffff))
+            return *aleck64_fast_mem(address) == 0;
+    }
+    return *mem_base_u32(r4300->mem->base, address & UINT32_C(0x1ffffffc)) == 0;
+}
+
 /* Determines whether a relative jump in a 16-bit immediate goes back to the
  * same instruction without doing any work in its delay slot. The jump is
  * relative to the instruction in the delay slot, so 1 instruction backwards
  * (-1) goes back to the jump. */
 #define IS_RELATIVE_IDLE_LOOP(r4300, op, addr) \
-	(IMM16S_OF(op) == -1 && *fast_mem_access((r4300), (addr) + 4) == 0)
+	(IMM16S_OF(op) == -1 && idle_delay_slot_is_nop((r4300), (addr) + 4))
 
 /* Determines whether an absolute jump in a 26-bit immediate goes back to the
  * same instruction without doing any work in its delay slot. The jump is
@@ -118,7 +138,7 @@ static void InterpretOpcode(struct r4300_core* r4300);
 #define IS_ABSOLUTE_IDLE_LOOP(r4300, op, addr) \
 	(JUMP_OF(op) == ((addr) & UINT32_C(0x0FFFFFFF)) >> 2 \
 	 && ((addr) & UINT32_C(0x0FFFFFFF)) != UINT32_C(0x0FFFFFFC) \
-	 && *fast_mem_access((r4300), (addr) + 4) == 0)
+	 && idle_delay_slot_is_nop((r4300), (addr) + 4))
 
 /* These macros parse opcode fields. */
 #define rrt r4300_regs(r4300)[RT_OF(op)]

@@ -183,6 +183,17 @@ int check_cop2_unusable(struct r4300_core* r4300)
     return 0;
 }
 
+uint32_t cp0_random_index(const uint32_t* cp0_regs, unsigned int count_per_op)
+{
+    uint32_t wired = cp0_regs[CP0_WIRED_REG];
+
+    if (wired >= 32)
+        return 31;
+    if (count_per_op == 0)
+        count_per_op = 1;
+    return (cp0_regs[CP0_COUNT_REG] / count_per_op) % (32 - wired) + wired;
+}
+
 void cp0_update_count(struct r4300_core* r4300)
 {
     struct cp0* cp0 = &r4300->cp0;

@@ -53,21 +53,26 @@ static int validate_dma(struct si_controller* si, uint32_t reg)
 static void copy_pif_rdram(struct si_controller* si)
 {
     size_t i;
-    /* DRAM address must be word-aligned */
-    uint32_t dram_addr = si->regs[SI_DRAM_ADDR_REG] & ~UINT32_C(3);
+    /* 64-bit aligned, inside the 24-bit RDRAM window */
+    uint32_t dram_addr = si->regs[SI_DRAM_ADDR_REG] & UINT32_C(0xfffff8);
 
     uint32_t* pif_ram = (uint32_t*)si->pif->ram;
-    uint32_t* dram = (uint32_t*)(&si->ri->rdram->dram[rdram_dram_address(dram_addr)]);
+    struct rdram* rdram = si->ri->rdram;
 
-    if (si->dma_dir == SI_DMA_WRITE) {
-        for(i = 0; i < (PIF_RAM_SIZE / 4); ++i) {
-            pif_ram[i] = fromhl(dram[i]);
-        }
+    /* words past the installed RDRAM read as zero and drop writes */
+    for (i = 0; i < (PIF_RAM_SIZE / 4); ++i) {
+        uint32_t addr = (dram_addr + (uint32_t)i * 4) & UINT32_C(0xffffff);
+
+        if (si->dma_dir == SI_DMA_WRITE)
+            pif_ram[i] = (addr < rdram->dram_size)
+                       ? fromhl(rdram->dram[rdram_dram_address(addr)]) : 0;
+        else if (si->dma_dir == SI_DMA_READ && addr < rdram->dram_size)
+            rdram->dram[rdram_dram_address(addr)] = tohl(pif_ram[i]);
     }
-    else if (si->dma_dir == SI_DMA_READ) {
-        for(i = 0; i < (PIF_RAM_SIZE / 4); ++i) {
-            dram[i] = tohl(pif_ram[i]);
-        }
+
+    if (si->dma_dir == SI_DMA_READ) {
+        invalidate_r4300_cached_code(si->mi->r4300, R4300_KSEG0 + dram_addr, PIF_RAM_SIZE);
+        invalidate_r4300_cached_code(si->mi->r4300, R4300_KSEG1 + dram_addr, PIF_RAM_SIZE);
     }
 }
 

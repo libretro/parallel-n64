@@ -1943,6 +1943,13 @@ static void TLBWI_new(int pcaddr, int count)
   UPDATE_COUNT_IN
   state->pcaddr = pcaddr;
 
+  /* Index takes six bits; past the 32 entries there is nothing to write */
+  if ((state->cp0_regs[CP0_INDEX_REG] & 0x3F) >= 32)
+  {
+    UPDATE_COUNT_OUT
+    return;
+  }
+
   /* Remove old entries */
   unsigned int old_start_even=r4300->cp0.tlb.entries[state->cp0_regs[CP0_INDEX_REG]&0x3F].start_even;
   unsigned int old_end_even=r4300->cp0.tlb.entries[state->cp0_regs[CP0_INDEX_REG]&0x3F].end_even;
@@ -2021,7 +2028,7 @@ static void TLBWR_new(int pcaddr, int count)
   UPDATE_COUNT_IN
   state->pcaddr = pcaddr;
   cp0_update_count(r4300);
-  state->cp0_regs[CP0_RANDOM_REG] = (state->cp0_regs[CP0_COUNT_REG]/r4300->cp0.count_per_op % (32 - state->cp0_regs[CP0_WIRED_REG])) + state->cp0_regs[CP0_WIRED_REG];
+  state->cp0_regs[CP0_RANDOM_REG] = cp0_random_index(state->cp0_regs, r4300->cp0.count_per_op);
   /* Remove old entries */
   unsigned int old_start_even=r4300->cp0.tlb.entries[state->cp0_regs[CP0_RANDOM_REG]&0x3F].start_even;
   unsigned int old_end_even=r4300->cp0.tlb.entries[state->cp0_regs[CP0_RANDOM_REG]&0x3F].end_even;

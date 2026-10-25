@@ -87,8 +87,9 @@ struct rdp_core
     uint32_t dps_regs[DPS_REGS_COUNT];
     unsigned char do_on_unfreeze;
 
-    /* what the cpu count was when the clock counter was last cleared */
+    /* cpu count the clock counter was last folded at, and its value then */
     uint32_t clock_base;
+    uint32_t clock_offset;
 
     struct fb fb;
 
@@ -114,6 +115,11 @@ void init_rdp(struct rdp_core* dp,
               struct r4300_core* r4300);
 
 void poweron_rdp(struct rdp_core* dp);
+
+/* store the live DPC_CLOCK into dpc_regs before saving, and rebase the
+ * counter on the restored register after a state load */
+void rdp_sync_dpc_clock(struct rdp_core* dp);
+void rdp_restore_dpc_clock(struct rdp_core* dp);
 
 void read_dpc_regs(void* opaque, uint32_t address, uint32_t* value);
 void write_dpc_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask);

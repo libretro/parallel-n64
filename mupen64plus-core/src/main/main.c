@@ -367,8 +367,13 @@ static void load_dd_rom(uint8_t* rom, size_t* rom_size, uint8_t* disk_region)
 
     DebugMessage(M64MSG_INFO, "DD IPL ROM: %s", dd_ipl_rom_filename);
 
-    /* load and swap DD IPL ROM */
+    /* load and swap DD IPL ROM; it has to fit its memory block */
     *rom_size = g_ifile_storage_ro.size(&dd_rom);
+    if (*rom_size < 4 || *rom_size > DD_ROM_MAX_SIZE) {
+        DebugMessage(M64MSG_ERROR, "Invalid DD IPL ROM size: %u. Disabling 64DD", (unsigned)*rom_size);
+        close_file_storage(&dd_rom);
+        goto no_dd;
+    }
     memcpy(rom, g_ifile_storage_ro.data(&dd_rom), *rom_size);
     close_file_storage(&dd_rom);
 
@@ -397,13 +402,16 @@ static void load_dd_rom(uint8_t* rom, size_t* rom_size, uint8_t* disk_region)
     default: /* unknown */
         DebugMessage(M64MSG_ERROR, "Invalid DD IPL ROM: Disabling 64DD.");
         *rom_size = 0;
-        return;
+        break;
     }
 
+    free(pathname);
     return;
 
 no_dd:
-    free(dd_ipl_rom_filename);
+    /* the name is the frontend's staged path or this function's buffer,
+     * never ours to free on its own */
+    free(pathname);
     *rom_size = 0;
 }
 

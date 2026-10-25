@@ -1304,6 +1304,7 @@ TEST_RCP_BOUNDS_SRCS := $(CORE_DEVICE_DIR)/rcp/ai/ai_controller.c \
 	$(CORE_DEVICE_DIR)/rcp/si/si_controller.c \
 	$(CORE_DEVICE_DIR)/rcp/vi/vi_controller.c \
 	$(CORE_DEVICE_DIR)/cart/sram.c \
+	$(CORE_DEVICE_DIR)/cart/is_viewer.c \
 	$(CORE_DEVICE_DIR)/dd/dd_controller.c \
 	$(CORE_DIR)/src/api/callbacks.c
 test_rcp_bounds$(EXE_EXT): tools/test_rcp_bounds.c $(TEST_RCP_BOUNDS_SRCS)

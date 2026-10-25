@@ -435,6 +435,8 @@ int savestates_load_m64p(const unsigned char *data, size_t size)
    else
       inputMouseStateLoad(NULL);
 
+   rdp_restore_dpc_clock(&g_dev.dp);
+
    /* deliver callback to indicate 
     * completion of state loading operation */
    StateChanged(M64CORE_STATE_LOADCOMPLETE, 1);
@@ -606,6 +608,7 @@ int savestates_save_m64p(unsigned char *data, size_t size)
    PUTDATA(curr, uint8_t, (g_dev.dp.dpc_regs[DPC_STATUS_REG] & 0x400) != 0);
    /* was always-zero padding; see the matching read above */
    PUTDATA(curr, uint8_t, g_dev.dp.do_on_unfreeze);
+   rdp_sync_dpc_clock(&g_dev.dp);
    PUTDATA(curr, uint32_t, g_dev.dp.dpc_regs[DPC_CLOCK_REG]);
    PUTDATA(curr, uint32_t, g_dev.dp.dpc_regs[DPC_BUFBUSY_REG]);
    PUTDATA(curr, uint32_t, g_dev.dp.dpc_regs[DPC_PIPEBUSY_REG]);

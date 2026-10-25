@@ -248,8 +248,19 @@ void remove_event(struct interrupt_queue* q, int type)
 
     if (e->data.type == type)
     {
+        /* every queue lives in a cp0: re-aim the next interrupt at the
+         * new head, or the dropped event's count fires the next one early */
+        struct cp0* cp0 = (struct cp0*)((char*)q - offsetof(struct cp0, q));
+        const uint32_t* cp0_regs = r4300_cp0_regs(cp0);
+
         q->first = e->next;
         free_node(&q->pool, e);
+
+        if (q->first != NULL)
+        {
+            *r4300_cp0_next_interrupt(cp0) = q->first->data.count;
+            *r4300_cp0_cycle_count(cp0)    = cp0_regs[CP0_COUNT_REG] - q->first->data.count;
+        }
     }
     else
     {
@@ -354,6 +365,13 @@ void r4300_check_interrupt(struct r4300_core* r4300, uint32_t cause_ip, int set_
     }
     if (cp0_regs[CP0_STATUS_REG] & cp0_regs[CP0_CAUSE_REG] & UINT32_C(0xFF00))
     {
+        /* one pending check delivers every asserted line; stacking more
+         * (Status, MI mask and ERET writes all land here) drains the
+         * 16-node pool and leaves stray nodes behind a cancelled edge */
+        if (r4300->cp0.q.first != NULL
+         && r4300->cp0.q.first->data.type == CHECK_INT)
+            return;
+
         event = alloc_node(&r4300->cp0.q.pool);
 
         if (event == NULL)

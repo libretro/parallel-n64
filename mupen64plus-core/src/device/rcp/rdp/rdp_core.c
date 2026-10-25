@@ -49,11 +49,32 @@ extern int angrylion_sync_full_seen;
 static uint32_t dpc_clock_now(struct rdp_core* dp)
 {
     const uint32_t* cp0_regs = r4300_cp0_regs(&dp->mi->r4300->cp0);
+    uint32_t elapsed, whole;
 
     cp0_update_count(dp->mi->r4300);
 
-    return (uint32_t)((((uint64_t)(cp0_regs[CP0_COUNT_REG] - dp->clock_base)) * 4u) / 3u)
+    /* fold whole 3-count steps into the offset so the base never falls
+     * more than three counts behind and the count wrap cannot skew it */
+    elapsed         = cp0_regs[CP0_COUNT_REG] - dp->clock_base;
+    whole           = elapsed / 3u;
+    dp->clock_base += whole * 3u;
+    dp->clock_offset += whole * 4u;
+
+    return (dp->clock_offset + ((elapsed - whole * 3u) * 4u) / 3u)
          & UINT32_C(0x00ffffff);
+}
+
+void rdp_sync_dpc_clock(struct rdp_core* dp)
+{
+    dp->dpc_regs[DPC_CLOCK_REG] = dpc_clock_now(dp);
+}
+
+void rdp_restore_dpc_clock(struct rdp_core* dp)
+{
+    const uint32_t* cp0_regs = r4300_cp0_regs(&dp->mi->r4300->cp0);
+
+    dp->clock_base   = cp0_regs[CP0_COUNT_REG];
+    dp->clock_offset = dp->dpc_regs[DPC_CLOCK_REG] & UINT32_C(0x00ffffff);
 }
 
 static void update_dpc_status(struct rdp_core* dp, uint32_t w)
@@ -72,7 +93,6 @@ static void update_dpc_status(struct rdp_core* dp, uint32_t w)
         if (dp->do_on_unfreeze & DELAY_UPDATESCREEN)
             gfx.updateScreen();
         dp->do_on_unfreeze = 0;
-    dp->clock_base = 0;
     }
     if (w & DPC_SET_FREEZE) dp->dpc_regs[DPC_STATUS_REG] |= DPC_STATUS_FREEZE;
 
@@ -86,7 +106,8 @@ static void update_dpc_status(struct rdp_core* dp, uint32_t w)
         const uint32_t* cp0_regs = r4300_cp0_regs(&dp->mi->r4300->cp0);
 
         cp0_update_count(dp->mi->r4300);
-        dp->clock_base = cp0_regs[CP0_COUNT_REG];
+        dp->clock_base   = cp0_regs[CP0_COUNT_REG];
+        dp->clock_offset = 0;
         dp->dpc_regs[DPC_CLOCK_REG] = 0;
     }
 }

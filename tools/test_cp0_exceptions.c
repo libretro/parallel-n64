@@ -9,7 +9,10 @@
  *    through EPC clearing EXL otherwise;
  *  - LL/LLD record the physical address of the linked word in LLAddr, for
  *    unmapped and TLB-mapped addresses, and set the link bit;
- *  - poweron reports processor revision 2.2 and an all-ones LLAddr.
+ *  - poweron reports processor revision 2.2 and an all-ones LLAddr;
+ *  - repeated interrupt checks queue one CHECK_INT node, not one each;
+ *  - Random stays inside the TLB for every Wired value;
+ *  - removing the queue's front event re-aims the next interrupt.
  *
  * Built by `make check-core` (top-level Makefile). Exit status 0 on pass.
  */
@@ -115,6 +118,68 @@ static void test_entry(void)
     CHECK(s_jumped_to == 0xbfc00380u, "BEV: bootstrap general vector");
 }
 
+static void test_check_int_dedupe(void)
+{
+    struct node* e;
+    int i, n = 0;
+
+    init_interrupt(&s_r4300.cp0);
+    reset_cpu(CP0_STATUS_IE | CP0_CAUSE_IP2, 0x80002000u, 0);
+    for (i = 0; i < 2 * INTERRUPT_NODES_POOL_CAPACITY; i++)
+        r4300_check_interrupt(&s_r4300, CP0_CAUSE_IP2, 1);
+    for (e = s_r4300.cp0.q.first; e != NULL; e = e->next)
+        if (e->data.type == CHECK_INT)
+            n++;
+    CHECK(n == 1, "interrupt check: repeated raises queue a single CHECK_INT");
+    CHECK(s_r4300.cp0.q.first != NULL && s_r4300.cp0.q.first->data.type == CHECK_INT,
+          "interrupt check: the CHECK_INT sits at the queue front");
+}
+
+static void test_random_index(void)
+{
+    uint32_t wired, count;
+    int bad = 0;
+
+    reset_cpu(0, 0x80001000u, 0);
+    for (wired = 0; wired < 64; wired++)
+        for (count = 0; count < 4096; count += 7)
+        {
+            uint32_t r;
+            regs()[CP0_WIRED_REG] = wired;
+            regs()[CP0_COUNT_REG] = count;
+            r = cp0_random_index(regs(), 2);
+            if (r > 31 || (wired < 32 && r < wired))
+                bad++;
+        }
+    CHECK(bad == 0, "Random: in [Wired, 31], 31 once Wired passes the TLB");
+
+    regs()[CP0_WIRED_REG] = 0;
+    regs()[CP0_COUNT_REG] = 100;
+    CHECK(cp0_random_index(regs(), 2) == (100u / 2u) % 32u,
+          "Random: derived from the count as before for Wired 0");
+}
+
+static void test_remove_front_event(void)
+{
+    reset_cpu(0, 0x80001000u, 0);
+    regs()[CP0_COUNT_REG] = 1000u;
+    init_interrupt(&s_r4300.cp0);
+    add_interrupt_event_count(&s_r4300.cp0, PI_INT, 1100u);
+    add_interrupt_event_count(&s_r4300.cp0, VI_INT, 1500u);
+    CHECK(*r4300_cp0_next_interrupt(&s_r4300.cp0) == 1100u,
+          "queue: next interrupt is the front event");
+
+    remove_event(&s_r4300.cp0.q, PI_INT);
+    CHECK(*r4300_cp0_next_interrupt(&s_r4300.cp0) == 1500u
+          && *r4300_cp0_cycle_count(&s_r4300.cp0) == (int)(1000u - 1500u),
+          "queue: removing the front event re-aims the next interrupt");
+
+    add_interrupt_event_count(&s_r4300.cp0, SI_INT, 2000u);
+    remove_event(&s_r4300.cp0.q, SI_INT);
+    CHECK(*r4300_cp0_next_interrupt(&s_r4300.cp0) == 1500u,
+          "queue: removing a later event leaves the next interrupt alone");
+}
+
 static void test_check_interrupt(void)
 {
     /* pending, enabled (IM2 sits at the same bit as IP2) */
@@ -198,6 +263,9 @@ int main(void)
 
     test_entry();
     test_check_interrupt();
+    test_check_int_dedupe();
+    test_random_index();
+    test_remove_front_event();
     test_return();
     test_load_linked();
     test_poweron();

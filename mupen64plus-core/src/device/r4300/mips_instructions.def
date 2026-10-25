@@ -1131,6 +1131,10 @@ static void TLBWrite(struct r4300_core* r4300, unsigned int idx)
     uint32_t* cp0_regs = r4300_cp0_regs(&r4300->cp0);
     uint32_t pc_addr = *r4300_pc(r4300);
 
+    /* Index takes six bits; past the 32 entries there is nothing to write */
+    if (idx >= 32)
+        return;
+
     if (pc_addr >= r4300->cp0.tlb.entries[idx].start_even && pc_addr < r4300->cp0.tlb.entries[idx].end_even && r4300->cp0.tlb.entries[idx].v_even)
         return;
     if (pc_addr >= r4300->cp0.tlb.entries[idx].start_odd && pc_addr < r4300->cp0.tlb.entries[idx].end_odd && r4300->cp0.tlb.entries[idx].v_odd)
@@ -1244,8 +1248,7 @@ DECLARE_INSTRUCTION(TLBWR)
     DECLARE_R4300
     uint32_t* cp0_regs = r4300_cp0_regs(&r4300->cp0);
     cp0_update_count(r4300);
-    cp0_regs[CP0_RANDOM_REG] = (cp0_regs[CP0_COUNT_REG]/r4300->cp0.count_per_op % (32 - cp0_regs[CP0_WIRED_REG]))
-        + cp0_regs[CP0_WIRED_REG];
+    cp0_regs[CP0_RANDOM_REG] = cp0_random_index(cp0_regs, r4300->cp0.count_per_op);
     TLBWrite(r4300, cp0_regs[CP0_RANDOM_REG]);
     ADD_TO_PC(1);
 }
@@ -1271,8 +1274,7 @@ DECLARE_INSTRUCTION(MFC0)
     {
     case CP0_RANDOM_REG:
         cp0_update_count(r4300);
-        cp0_regs[CP0_RANDOM_REG] = (cp0_regs[CP0_COUNT_REG]/r4300->cp0.count_per_op % (32 - cp0_regs[CP0_WIRED_REG]))
-            + cp0_regs[CP0_WIRED_REG];
+        cp0_regs[CP0_RANDOM_REG] = cp0_random_index(cp0_regs, r4300->cp0.count_per_op);
         rrt = SE32(cp0_regs[rfs]);
         break;
     case CP0_COUNT_REG:
@@ -1306,8 +1308,7 @@ DECLARE_INSTRUCTION(DMFC0)
     {
     case CP0_RANDOM_REG:
         cp0_update_count(r4300);
-        cp0_regs[CP0_RANDOM_REG] = (cp0_regs[CP0_COUNT_REG]/r4300->cp0.count_per_op % (32 - cp0_regs[CP0_WIRED_REG]))
-            + cp0_regs[CP0_WIRED_REG];
+        cp0_regs[CP0_RANDOM_REG] = cp0_random_index(cp0_regs, r4300->cp0.count_per_op);
         rrt = cp0_regs[rfs];
         break;
     case CP0_COUNT_REG:
