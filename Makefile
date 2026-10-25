@@ -1279,6 +1279,10 @@ angrylion_rare_clip_test$(EXE_EXT): tools/angrylion_rare_clip_test.c $(ANGRYLION
 angrylion_far_reject_test$(EXE_EXT): tools/angrylion_far_reject_test.c $(ANGRYLION_WALKER_OBJS)
 	$(CC) $(CPPFLAGS) $(CFLAGS) -I$(VIDEODIR_ANGRYLION) -w $< $(ANGRYLION_WALKER_OBJS) -o $@ -lm
 
+# Legacy (GoldenEye / Perfect Dark) lighting: detection and rounding.
+angrylion_legacy_light_test$(EXE_EXT): tools/angrylion_legacy_light_test.c $(ANGRYLION_WALKER_OBJS)
+	$(CC) $(CPPFLAGS) $(CFLAGS) -I$(VIDEODIR_ANGRYLION) -w $< $(ANGRYLION_WALKER_OBJS) -o $@ -lm
+
 # Emitter divide unit against the cxd4 interpreter's VRCP/VRSQ pairs.
 angrylion_divide_test$(EXE_EXT): tools/angrylion_divide_test.c $(CXD4DIR)/rsp.o $(ANGRYLION_EMIT_OBJS)
 	$(CC) $(CPPFLAGS) $(CFLAGS) -I$(VIDEODIR_ANGRYLION) -w $< $(CXD4DIR)/rsp.o $(ANGRYLION_EMIT_OBJS) -o $@ -lm
@@ -1293,7 +1297,8 @@ ANGRYLION_CHECKS := angrylion_vemit_test$(EXE_EXT) angrylion_gen_test$(EXE_EXT) 
 	angrylion_far_reject_test$(EXE_EXT) angrylion_f3d_gbi1_test$(EXE_EXT) \
 	angrylion_hazard_wrap_test$(EXE_EXT) angrylion_texrecip_test$(EXE_EXT) \
 	angrylion_cbfd_light_test$(EXE_EXT) angrylion_rare_clip_test$(EXE_EXT) \
-	angrylion_dpc_regs_test$(EXE_EXT) angrylion_noise_frame_test$(EXE_EXT)
+	angrylion_dpc_regs_test$(EXE_EXT) angrylion_noise_frame_test$(EXE_EXT) \
+	angrylion_legacy_light_test$(EXE_EXT)
 
 tools: $(ANGRYLION_TOOLS) lrhost$(EXE_EXT) angrylion_replay$(EXE_EXT) $(ANGRYLION_CHECKS)
 

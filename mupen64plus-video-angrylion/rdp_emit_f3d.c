@@ -711,6 +711,34 @@ int f3d_ucode_rare_clip(const unsigned char *rdram, unsigned int rdram_size,
     return 0;
 }
 
+/* The early GBI 1 lighting (GoldenEye 007, Perfect Dark), by its code:
+ * 1 for the per-light rounded colour loop (its opening four vector ops),
+ * 2 when the direction normalizer is the truncating, x64-scaled one too. */
+int f3d_ucode_legacy_lighting(const unsigned char *rdram, unsigned int rdram_size,
+                              unsigned int ut)
+{
+    unsigned int at;
+    int mode = 0;
+    if (rdram == 0 || ut == 0 || ut > rdram_size || 0x1800u > rdram_size - ut)
+        return 0;
+    for (at = 0; at + 16u <= 0x1800u; at += 4u)
+        if (rd32(rdram, ut + at) == 0x4a052180u
+            && rd32(rdram, ut + at + 4u) == 0x4a6630d0u
+            && rd32(rdram, ut + at + 8u) == 0x4ac61990u
+            && rd32(rdram, ut + at + 12u) == 0x4a8639c0u)
+        {
+            mode = 1;
+            break;
+        }
+    for (at = 0; at + 16u <= 0x1800u; at += 4u)
+        if (rd32(rdram, ut + at) == 0x4b9f2940u
+            && rd32(rdram, ut + at + 4u) == 0x4a856186u
+            && rd32(rdram, ut + at + 8u) == 0x4aa5698eu
+            && rd32(rdram, ut + at + 12u) == 0x4ac5718eu)
+            return 2;
+    return mode;
+}
+
 static int s_clip_rare = 0;
 void f3d_set_clip_rare(int mode)
 {

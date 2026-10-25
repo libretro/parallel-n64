@@ -404,8 +404,13 @@ static int32_t acc_read_unsigned(RspAcc a)
  * normalizes, the result is scaled by 0x100, and the s8 the microcode
  * stores with spv is the top byte of the integer lane. mv is the s15.16
  * modelview matrix; dir/out are s8 triples. */
-void rsp_light_dir_xfrm_one(const int32_t mv[4][4],
-                            const int32_t dir[3], int32_t out[3])
+/* legacy: the early GBI 1 build (GoldenEye 007, Perfect Dark). Its rotate
+ * multiplies the direction as s8 * 128, folds the fraction products
+ * through a doubling VMUDM and saturates the integer sum; it scales the
+ * reciprocal square root by 64 and packs the normalized lane from a
+ * clamped low half instead of the x 0x100 round. */
+static void light_dir_xfrm3(const int32_t mv[4][4], const int32_t dir[3],
+                            int32_t out[3], int legacy)
 {
     int32_t t_mid[3], t_hi[3];
     int32_t sq_lo[3], sq_mid[3];
@@ -417,6 +422,20 @@ void rsp_light_dir_xfrm_one(const int32_t mv[4][4],
     {
         RspAcc acc = 0;
         int ax;
+        if (legacy)
+        {
+            RspAcc integer = 0;
+            for (ax = 0; ax < 3; ax++)
+            {
+                int32_t dl = (int32_t)(int8_t)dir[ax] * 128;
+                acc += p_udn(mv[L][ax] & 0xffff, dl);
+                integer += 2 * (RspAcc)S16(mv[L][ax] >> 16) * dl;
+            }
+            acc = p_udm(acc_clamp_mid(acc), 2) + integer;
+            t_mid[L] = acc_clamp_low(acc);
+            t_hi[L] = acc_read_signed(acc);
+            continue;
+        }
         for (ax = 0; ax < 3; ax++)
         {
             int32_t d = (int32_t)(int16_t)((dir[ax] & 0xff) << 8);
@@ -450,6 +469,12 @@ void rsp_light_dir_xfrm_one(const int32_t mv[4][4],
         si = clamp_s16(si + S16(sq_mid[2]) + carry);
     }
     r = mk32(rsp_rsq32((int32_t)(((uint32_t)U16(si) << 16) | (uint32_t)U16(lo))));
+    if (legacy)
+    {
+        RspAcc a = p_udl(r.f, 64) + p_udm(r.i, 64);
+        r.i = acc_clamp_mid(a);
+        r.f = acc_clamp_low(a);
+    }
     for (L = 0; L < 3; L++)
     {
         int32_t n_lo, n_mid;
@@ -459,12 +484,36 @@ void rsp_light_dir_xfrm_one(const int32_t mv[4][4],
         n_lo = acc_clamp_low(acc);
         acc += p_udh(t_hi[L], r.i);
         n_mid = acc_clamp_mid(acc);
-        /* x 0x100 (vmudn / vmadh), then spv stores the int lane's top byte */
-        acc = p_udn(n_lo, 0x100);
-        acc += p_udh(n_mid, 0x100);
-        n_mid = acc_clamp_mid(acc);
+        if (legacy)
+        {
+            int32_t value = S16(n_lo);
+            if (value < -8191)
+                value = -8191;
+            if (value > 8191)
+                value = 8191;
+            n_mid = acc_clamp_low(p_udn(value, 4));
+        }
+        else
+        {
+            /* x 0x100 (vmudn / vmadh), then spv stores the int lane's top byte */
+            acc = p_udn(n_lo, 0x100);
+            acc += p_udh(n_mid, 0x100);
+            n_mid = acc_clamp_mid(acc);
+        }
         out[L] = (int32_t)(signed char)((n_mid >> 8) & 0xff);
     }
+}
+
+void rsp_light_dir_xfrm_one(const int32_t mv[4][4],
+                            const int32_t dir[3], int32_t out[3])
+{
+    light_dir_xfrm3(mv, dir, out, 0);
+}
+
+void rsp_light_dir_xfrm_legacy(const int32_t mv[4][4],
+                               const int32_t dir[3], int32_t out[3])
+{
+    light_dir_xfrm3(mv, dir, out, 1);
 }
 
 /* The ZSortBOSS TRANSFORMLIGHTS normalize (IMEM 0x570): like the F3DEX2
@@ -597,6 +646,41 @@ void rsp_light_vtx(const int32_t n[3], const int32_t amb[3],
     }
     for (c = 0; c < 3; c++)
         out[c] = (lt[c] >> 7) & 0xff;
+}
+
+/* The early GBI 1 lighting loop: each axis product is rounded before the
+ * two saturating VADDs of the dot, and each light's colour contribution is
+ * rounded and clamped at zero on its own, one light at a time from the
+ * top. */
+void rsp_light_vtx_legacy(const int32_t n[3], const int32_t amb[3],
+                          const int32_t (*rgb)[3], const int32_t (*dirs)[3],
+                          int num, int32_t out[3])
+{
+    int i, c;
+    int32_t colour[3];
+    for (c = 0; c < 3; c++)
+        colour[c] = (amb[c] & 255) << 7;
+    for (i = num - 1; i >= 0; i--)
+    {
+        int axis;
+        int32_t dot = 0;
+        for (axis = 0; axis < 3; axis++)
+        {
+            RspAcc acc = 2 * (RspAcc)(int16_t)((n[axis] & 255) << 8)
+                       * (int16_t)((dirs[i][axis] & 255) << 8) + 0x8000;
+            dot = clamp_s16(dot + S16(acc_read_signed(acc)));
+        }
+        for (c = 0; c < 3; c++)
+        {
+            RspAcc acc = 2 * (RspAcc)((rgb[i][c] & 255) << 7) * dot + 0x8000;
+            int32_t contribution = S16(acc_read_signed(acc));
+            if (contribution < 0)
+                contribution = 0;
+            colour[c] = clamp_s16(colour[c] + contribution);
+        }
+    }
+    for (c = 0; c < 3; c++)
+        out[c] = (colour[c] >> 7) & 255;
 }
 
 /* ---- positional lighting (light_point) -------------------------------- */

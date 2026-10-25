@@ -710,6 +710,7 @@ void rdp_emit_hle_process_dlist(void)
     rsp_set_affine_tex(0);
     rsp_set_attr_lowp(0);
     rsp_tri_set_texrecip(0);
+    gsp_set_legacy_lighting(0);
 
 
     if (!s_inited)
@@ -927,6 +928,7 @@ void rdp_emit_hle_process_dlist(void)
                 /* Rare's GBI 1 clip overlay (GoldenEye 007, Perfect
                  * Dark), by its code */
                 f3d_set_clip_rare(f3d_ucode_rare_clip(rdram, rdram_size, ut));
+                gsp_set_legacy_lighting(f3d_ucode_legacy_lighting(rdram, rdram_size, ut));
                 /* Star Wars: Shadows of the Empire runs an early "RSP SW
                  * Version: 2.0D, 04-01-96" graphics build (text+0 boot word
                  * 0x090005f8). It carries the SM64 version word at text+4

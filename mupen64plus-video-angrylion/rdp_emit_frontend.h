@@ -216,6 +216,7 @@ typedef struct GSPState
 } GSPState;
 
 /* lifecycle */
+void gsp_set_legacy_lighting(int mode);
 void gsp_init(GSPState *s);
 void gsp_detect_ucode_params(GSPState *st, const unsigned char *rdram,
                              unsigned int rdram_size,

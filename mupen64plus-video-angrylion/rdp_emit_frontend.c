@@ -591,6 +591,11 @@ void gsp_set_lookat(GSPState *s, const unsigned char *rdram,
  * normal, so authored normal magnitudes scale the contribution exactly as
  * on the RSP, while light vector magnitudes are normalized away. The pass
  * runs at most once per matrix/light change (lightsValid). */
+/* 1: the early GBI 1 vertex lighting loop; 2: also its direction
+ * normalizer. Per task, from the microcode text. */
+static int s_legacy_lighting;
+void gsp_set_legacy_lighting(int mode) { s_legacy_lighting = mode; }
+
 static void gsp_light_dir_xfrm(GSPState *s)
 {
     int32_t (*M)[4] = s->modelview[s->modelview_top];
@@ -599,7 +604,10 @@ static void gsp_light_dir_xfrm(GSPState *s)
     {
         const int32_t *raw = (k < 0) ? s->lookat_raw[k + 2] : s->light_raw[k];
         int32_t *out       = (k < 0) ? s->lookat[k + 2]     : s->light_dir[k];
-        rsp_light_dir_xfrm_one((const int32_t (*)[4])M, raw, out);
+        if (s_legacy_lighting == 2)
+            rsp_light_dir_xfrm_legacy((const int32_t (*)[4])M, raw, out);
+        else
+            rsp_light_dir_xfrm_one((const int32_t (*)[4])M, raw, out);
     }
     s->lights_valid = 1;
 }
@@ -1052,10 +1060,16 @@ void gsp_vertex(GSPState *s, const unsigned char *rdram, unsigned int addr,
                  * the microcode's lights_dircoloraccum2 loop, bit-exact. */
                 int32_t nrm[3], out[3];
                 nrm[0] = nxb; nrm[1] = nyb; nrm[2] = nzb;
-                rsp_light_vtx(nrm, s->light_rgb[s->num_lights],
-                              (const int32_t (*)[3])s->light_rgb,
-                              (const int32_t (*)[3])s->light_dir,
-                              s->num_lights, out);
+                if (s_legacy_lighting)
+                    rsp_light_vtx_legacy(nrm, s->light_rgb[s->num_lights],
+                                         (const int32_t (*)[3])s->light_rgb,
+                                         (const int32_t (*)[3])s->light_dir,
+                                         s->num_lights, out);
+                else
+                    rsp_light_vtx(nrm, s->light_rgb[s->num_lights],
+                                  (const int32_t (*)[3])s->light_rgb,
+                                  (const int32_t (*)[3])s->light_dir,
+                                  s->num_lights, out);
                 vt->r = out[0] << 16;
                 vt->g = out[1] << 16;
                 vt->b = out[2] << 16;
