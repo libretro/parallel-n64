@@ -669,6 +669,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
             { "memory", NULL },
             { "rumble", NULL },
             { "biosensor", NULL },
+            { "transfer", NULL },
             { NULL, NULL },
         },
         "none"
@@ -685,6 +686,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
             { "memory", NULL },
             { "rumble", NULL },
             { "biosensor", NULL },
+            { "transfer", NULL },
             { NULL, NULL },
         },
         "none"
@@ -701,6 +703,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
             { "memory", NULL },
             { "rumble", NULL },
             { "biosensor", NULL },
+            { "transfer", NULL },
             { NULL, NULL },
         },
         "none"
@@ -717,6 +720,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
             { "memory", NULL },
             { "rumble", NULL },
             { "biosensor", NULL },
+            { "transfer", NULL },
             { NULL, NULL },
         },
         "none"

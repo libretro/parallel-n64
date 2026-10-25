@@ -148,9 +148,31 @@ struct xoshiro256pp_state l_mpk_idgen;
 * static functions
 */
 
+/* <save dir>/<GB ROM name>.port<N>.sav, owned by the caller (the file
+ * storage frees it); NULL without a ROM name */
 static char *get_gb_ram_path(const char* gbrom, unsigned int control_id)
 {
-    return "";
+    const char* dir = NULL;
+    const char* dot;
+    size_t base_len, len;
+    char* path;
+
+    if (gbrom == NULL || gbrom[0] == '\0')
+        return NULL;
+    if (!environ_cb(RETRO_ENVIRONMENT_GET_SAVE_DIRECTORY, &dir) || dir == NULL)
+        dir = "";
+    dot = strrchr(gbrom, '.');
+    base_len = dot ? (size_t)(dot - gbrom) : strlen(gbrom);
+    len = strlen(dir) + 1 + base_len + sizeof(".port4.sav");
+    path = (char*)malloc(len);
+    if (path == NULL)
+        return NULL;
+    if (dir[0] != '\0')
+        snprintf(path, len, "%s%s%.*s.port%u.sav", dir, PATH_DEFAULT_SLASH(),
+                 (int)base_len, gbrom, control_id);
+    else
+        snprintf(path, len, "%.*s.port%u.sav", (int)base_len, gbrom, control_id);
+    return path;
 }
 
 const char *get_dd_disk_save_path(const char* diskname, int save_format)
@@ -676,6 +698,8 @@ static void init_gb_ram(void* opaque, size_t ram_size, void** storage, const str
     if (ram_filename == NULL || strlen(ram_filename) == 0) {
         free(ram_filename);
         ram_filename = get_gb_ram_path(namefrompath(data->rom_fstorage.filename), data->control_id+1);
+        if (ram_filename == NULL)
+            ram_filename = strdup("");
     }
 
     /* Open RAM file

@@ -27,6 +27,7 @@ uint8_t* g_dd_disk;
 #include <libretro.h>
 #include <streams/file_stream.h>
 #include <file/file_path.h>
+#include <retro_miscellaneous.h>
 
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
 #include <glsm/glsmsym.h>
@@ -180,6 +181,7 @@ extern double   get_audio_sample_rate_libretro(void);
 struct retro_rumble_interface rumble;
 
 #define SUBSYSTEM_CART_DISK 0x0101
+#define SUBSYSTEM_TRANSFER_PAK 0x0102
 
 static const struct retro_subsystem_rom_info n64_cart_disk[] = {
    { "Cartridge", "n64|z64|v64|bin", false, false, false, NULL, 0 },
@@ -187,10 +189,64 @@ static const struct retro_subsystem_rom_info n64_cart_disk[] = {
    { NULL }
 };
 
-static const struct retro_subsystem_info subsystems[] = {
-   { "Cartridge and Disk", "n64_cart_disk", n64_cart_disk, 2, SUBSYSTEM_CART_DISK},
+/* the Game Boy cart in every port set to the Transfer Pak */
+static const struct retro_subsystem_rom_info n64_transfer_pak[] = {
+   { "Game Boy Save", "sav|srm",         true,  false, false, NULL, 0 },
+   { "Game Boy ROM",  "gb|gbc",          true,  false, true,  NULL, 0 },
+   { "Cartridge",     "n64|z64|v64|bin", false, false, true,  NULL, 0 },
    { NULL }
 };
+
+static const struct retro_subsystem_info subsystems[] = {
+   { "Cartridge and Disk", "n64_cart_disk", n64_cart_disk, 2, SUBSYSTEM_CART_DISK},
+   { "Transfer Pak", "n64_transfer_pak", n64_transfer_pak, 3, SUBSYSTEM_TRANSFER_PAK},
+   { NULL }
+};
+
+static bool transfer_pak_from_subsystem;
+
+static void set_transfer_pak_path(char** dst, const char* path)
+{
+   free(*dst);
+   *dst = (path && path[0]) ? strdup(path) : NULL;
+}
+
+/* without the subsystem, a <content>.gb / .gbc next to the cartridge is the
+ * Game Boy cart and a <content>.sav its save */
+static void find_transfer_pak_sidecars(const char* content)
+{
+   static const char* const rom_exts[] = { ".gb", ".gbc", ".GB", ".GBC" };
+   char path[PATH_MAX_LENGTH];
+   const char* ext;
+   size_t base, i;
+
+   set_transfer_pak_path(&retro_transferpak_rom_path, NULL);
+   set_transfer_pak_path(&retro_transferpak_ram_path, NULL);
+   if (!content || !content[0])
+      return;
+
+   ext = path_get_extension(content);
+   base = strlen(content) - ((ext && ext[0]) ? strlen(ext) + 1 : 0);
+   if (base + 5 >= sizeof(path))
+      return;
+   memcpy(path, content, base);
+
+   for (i = 0; i < sizeof(rom_exts) / sizeof(rom_exts[0]); i++)
+   {
+      strcpy(path + base, rom_exts[i]);
+      if (path_is_valid(path))
+      {
+         set_transfer_pak_path(&retro_transferpak_rom_path, path);
+         break;
+      }
+   }
+   if (!retro_transferpak_rom_path)
+      return;
+
+   strcpy(path + base, ".sav");
+   if (path_is_valid(path))
+      set_transfer_pak_path(&retro_transferpak_ram_path, path);
+}
 
 save_memory_data saved_memory;
 
@@ -1567,6 +1623,9 @@ void retro_deinit(void)
    mupen_main_stop();
    mupen_main_exit();
 
+   set_transfer_pak_path(&retro_transferpak_rom_path, NULL);
+   set_transfer_pak_path(&retro_transferpak_ram_path, NULL);
+
    deinit_audio_libretro();
 
    if (perf_cb.perf_log)
@@ -2742,6 +2801,8 @@ void update_variables(bool startup)
             p1_pak = PLUGIN_MEMPAK;
          else if (!strcmp(pk1var.value, "biosensor"))
             p1_pak = PLUGIN_BIO_PAK;
+         else if (!strcmp(pk1var.value, "transfer"))
+            p1_pak = PLUGIN_TRANSFER_PAK;
 
          /* If controller struct is not initialised yet, set pad_pak_types instead
           * which will be looked at when initialising the controllers. */
@@ -2764,6 +2825,8 @@ void update_variables(bool startup)
             p2_pak = PLUGIN_MEMPAK;
          else if (!strcmp(pk2var.value, "biosensor"))
             p2_pak = PLUGIN_BIO_PAK;
+         else if (!strcmp(pk2var.value, "transfer"))
+            p2_pak = PLUGIN_TRANSFER_PAK;
 
          if (controller[1].control)
             controller[1].control->Plugin = p2_pak;
@@ -2784,6 +2847,8 @@ void update_variables(bool startup)
             p3_pak = PLUGIN_MEMPAK;
          else if (!strcmp(pk3var.value, "biosensor"))
             p3_pak = PLUGIN_BIO_PAK;
+         else if (!strcmp(pk3var.value, "transfer"))
+            p3_pak = PLUGIN_TRANSFER_PAK;
 
          if (controller[2].control)
             controller[2].control->Plugin = p3_pak;
@@ -2804,6 +2869,8 @@ void update_variables(bool startup)
             p4_pak = PLUGIN_MEMPAK;
          else if (!strcmp(pk4var.value, "biosensor"))
             p4_pak = PLUGIN_BIO_PAK;
+         else if (!strcmp(pk4var.value, "transfer"))
+            p4_pak = PLUGIN_TRANSFER_PAK;
 
          if (controller[3].control)
             controller[3].control->Plugin = p4_pak;
@@ -3278,6 +3345,9 @@ bool retro_load_game(const struct retro_game_info *game)
 {
    format_saved_memory();
 
+   if (!transfer_pak_from_subsystem)
+      find_transfer_pak_sidecars(game ? game->path : NULL);
+
 #ifdef HAVE_GLIDEN64
    VRMode = VR_MODE_OFF;
 #endif
@@ -3483,6 +3553,19 @@ content_ready:
 
 bool retro_load_game_special(unsigned game_type, const struct retro_game_info *info, size_t num_info)
 {
+   if (game_type == SUBSYSTEM_TRANSFER_PAK)
+   {
+      bool ok;
+      if (num_info < 3 || !info[1].path || !info[2].data)
+         return false;
+      set_transfer_pak_path(&retro_transferpak_ram_path, info[0].path);
+      set_transfer_pak_path(&retro_transferpak_rom_path, info[1].path);
+      transfer_pak_from_subsystem = true;
+      ok = retro_load_game(&info[2]);
+      transfer_pak_from_subsystem = false;
+      return ok;
+   }
+
    if (game_type == SUBSYSTEM_CART_DISK)
    {
       if (!info[1].data || info[1].size == 0)
