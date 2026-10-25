@@ -144,7 +144,7 @@ void process_commands()
 
 		if (cmd_ptr - cmd_cur - cmd_length < 0)
 		{
-			*GET_GFX_INFO(DPC_START_REG) = *GET_GFX_INFO(DPC_CURRENT_REG) = *GET_GFX_INFO(DPC_END_REG);
+			*GET_GFX_INFO(DPC_CURRENT_REG) = *GET_GFX_INFO(DPC_END_REG);
 			return;
 		}
 
@@ -165,7 +165,7 @@ void process_commands()
 
 	cmd_ptr = 0;
 	cmd_cur = 0;
-	*GET_GFX_INFO(DPC_START_REG) = *GET_GFX_INFO(DPC_CURRENT_REG) = *GET_GFX_INFO(DPC_END_REG);
+	*GET_GFX_INFO(DPC_CURRENT_REG) = *GET_GFX_INFO(DPC_END_REG);
 }
 
 static QueryPoolHandle refresh_begin_ts;

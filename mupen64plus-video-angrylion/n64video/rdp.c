@@ -748,8 +748,20 @@ uint32_t rdp_noise_field;
 
 void rdp_sync_full(uint32_t wid, const uint32_t* args)
 {
+    uint32_t k;
+
     angrylion_sync_full_seen = 1;
     rdp_noise_field++;
+
+    /* The per-primitive noise counter restarts every frame, so noise
+     * depends only on (frame, primitive index within the frame,
+     * scanline). Before, the counter ran for the whole session, so any
+     * difference in how many primitives earlier frames drew (an HLE
+     * list versus the LLE microcode, or a skipped frame) moved the
+     * noise of every later frame. SYNC_FULL runs on the main thread
+     * after cmd_flush(), so no worker is reading the counters here. */
+    for (k = 0; k < PARALLEL_MAX_WORKERS; k++)
+        state[k].noise_seq = 0;
 
     // signal DP interrupt
     *config.gfx.mi_intr_reg |= DP_INTERRUPT;

@@ -1290,8 +1290,9 @@ void n64video_process_list(void)
         }
     }
 
-    // update DP registers to indicate that all bytes have been read
-    *dp_reg[DP_START] = *dp_reg[DP_CURRENT] = *dp_reg[DP_END];
+    /* every byte has been read: CURRENT reaches END. START keeps the
+     * address the CPU wrote, as it reads back on the RDP. */
+    *dp_reg[DP_CURRENT] = *dp_reg[DP_END];
 }
 void n64video_close(void)
 {
