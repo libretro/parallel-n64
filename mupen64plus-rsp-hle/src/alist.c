@@ -173,7 +173,7 @@ void alist_set_address(struct hle_t* hle, uint32_t so, uint32_t *segments, size_
     segments[segment] = offset;
 }
 
-void alist_clear(struct hle_t* hle, uint16_t dmem, uint16_t count)
+void alist_clear(struct hle_t* hle, uint16_t dmem, uint32_t count)
 {
     while(count != 0) {
         *alist_u8(hle, dmem++) = 0;
@@ -379,10 +379,12 @@ static int16_t ev_clamp_am(int64_t a) /* SIGNED_CLAMP_AM: acc[47:16] to s16 */
 
 static int16_t ev_clamp_al(int64_t a) /* SIGNED_CLAMP_AL: saturate ACC_L */
 {
-    int16_t clamped = ev_clamp_am(a);
-    int16_t raw_m   = (int16_t)((a >> 16) & 0xFFFF);
-    if (clamped != raw_m)
-        return (int16_t)(clamped ^ (int16_t)0x8000);
+    /* the whole of ACC[47:16] decides, not just its low half */
+    int64_t upper = a >> 16;
+    if (upper > 32767)
+        return (int16_t)0xFFFF;
+    if (upper < -32768)
+        return 0;
     return (int16_t)(a & 0xFFFF);
 }
 

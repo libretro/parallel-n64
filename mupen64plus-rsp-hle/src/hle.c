@@ -129,6 +129,13 @@ void rs_set_fog_block(unsigned int rdram_addr);
 
 void hle_execute(struct hle_t* hle)
 {
+    /* a program run without an OSTask (the CIC x105 boot code) leaves the
+     * DMEM header stale: neither key the ucode cache on it nor cache it */
+    if (!is_task(hle)) {
+        non_task_detection(hle)(hle);
+        return;
+    }
+
     audit_capture_task(hle);
 
     uint32_t uc_start = *dmem_u32(hle, TASK_UCODE);
@@ -381,7 +388,9 @@ static void naboo_gfx_task(struct hle_t* hle)
     resume = l_naboo_gfx_running
           || ((*dmem_u32(hle, TASK_FLAGS) & 1) != 0);
 
-    if (!resume)
+    /* every real launch (fresh or yielded relaunch) runs the boot that
+     * clears SIG1/SIG2; see streaming_gfx_task */
+    if (!l_naboo_gfx_running || (*dmem_u32(hle, TASK_FLAGS) & 1))
         *hle->sp_status &= ~(SP_STATUS_SIG1 | SP_STATUS_TASKDONE);
 
     r = angrylion_naboo_dlist(resume, l_naboo_emit);
@@ -417,8 +426,10 @@ static void rs_gfx_task(struct hle_t* hle)
     resume = l_rs_gfx_running
           || ((*dmem_u32(hle, TASK_FLAGS) & 1) != 0);
 
-    if (!resume) {
-        /* the microcode clears SIG1 and SIG2 at task start */
+    if (!l_rs_gfx_running || (*dmem_u32(hle, TASK_FLAGS) & 1)) {
+        /* every real launch (fresh or yielded relaunch) runs the boot
+         * that clears SIG1 and SIG2; a stale SIG1 makes osSpTaskYielded
+         * file the completion as another yield */
         *hle->sp_status &= ~(SP_STATUS_SIG1 | SP_STATUS_TASKDONE);
     }
 

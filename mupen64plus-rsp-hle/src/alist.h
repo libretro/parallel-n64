@@ -33,7 +33,7 @@ typedef void (*acmd_callback_t)(struct hle_t* hle, uint32_t w1, uint32_t w2);
 void alist_process(struct hle_t* hle, const acmd_callback_t abi[], unsigned int abi_size);
 uint32_t alist_get_address(struct hle_t* hle, uint32_t so, const uint32_t *segments, size_t n);
 void alist_set_address(struct hle_t* hle, uint32_t so, uint32_t *segments, size_t n);
-void alist_clear(struct hle_t* hle, uint16_t dmem, uint16_t count);
+void alist_clear(struct hle_t* hle, uint16_t dmem, uint32_t count);
 void alist_load(struct hle_t* hle, uint16_t dmem, uint32_t address, uint16_t count);
 void alist_save(struct hle_t* hle, uint16_t dmem, uint32_t address, uint16_t count);
 void alist_move(struct hle_t* hle, uint16_t dmemo, uint16_t dmemi, uint16_t count);

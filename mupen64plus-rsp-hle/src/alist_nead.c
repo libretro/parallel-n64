@@ -204,12 +204,14 @@ static void ADPCM(struct hle_t* hle, uint32_t w1, uint32_t w2)
 static void CLEARBUFF(struct hle_t* hle, uint32_t w1, uint32_t w2)
 {
     uint16_t dmem  = w1 + nead_dmem_base;
-    uint16_t count = w2 & 0xfff;
+    uint32_t count = w2 & 0xffff;
 
     if (count == 0)
         return;
 
-    alist_clear(hle, dmem, count);
+    /* the microcode stores two doublewords before its loop test, so a
+     * partial last block still clears sixteen bytes */
+    alist_clear(hle, dmem, (count + 15u) & ~15u);
 }
 
 static void LOADBUFF(struct hle_t* hle, uint32_t w1, uint32_t w2)
