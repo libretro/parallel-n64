@@ -1353,6 +1353,10 @@ test_musyx_bounds$(EXE_EXT): tools/test_musyx_bounds.c $(RSPDIR)/src/musyx.c $(T
 	$(CC) $(CHECK_CFLAGS) $(CHECK_SANITIZE) -I$(RSPDIR)/src -I$(LIBRETRO_COMM_DIR)/include \
 		$< $(TEST_MUSYX_SRCS) -o $@ $(CHECK_LDFLAGS) $(CHECK_SANITIZE) -lm
 
+test_musyx_aux$(EXE_EXT): tools/test_musyx_aux.c $(RSPDIR)/src/musyx.c $(TEST_MUSYX_SRCS)
+	$(CC) $(CHECK_CFLAGS) $(CHECK_SANITIZE) -I$(RSPDIR)/src -I$(LIBRETRO_COMM_DIR)/include \
+		$< $(TEST_MUSYX_SRCS) -o $@ $(CHECK_LDFLAGS) $(CHECK_SANITIZE) -lm
+
 test_hle_dispatch$(EXE_EXT): tools/test_hle_dispatch.c $(RSPDIR)/src/hle.c $(RSPDIR)/src/hle_memory.c
 	$(CC) $(CHECK_CFLAGS) $(CHECK_SANITIZE) -I$(RSPDIR)/src -I$(LIBRETRO_COMM_DIR)/include \
 		$< $(RSPDIR)/src/hle_memory.c -o $@ $(CHECK_LDFLAGS) $(CHECK_SANITIZE) -lm
@@ -1377,7 +1381,7 @@ test_mouse_accum$(EXE_EXT): tools/test_mouse_accum.c \
 
 CORE_CHECKS := test_rcp_bounds$(EXE_EXT) test_memory_map$(EXE_EXT) test_fb_write$(EXE_EXT) \
 	test_cp0_exceptions$(EXE_EXT) test_fpu_compare$(EXE_EXT) test_pi_status$(EXE_EXT) \
-	test_musyx_bounds$(EXE_EXT) test_alist_ops$(EXE_EXT) test_hle_dispatch$(EXE_EXT) angrylion_zboss_audio_test$(EXE_EXT) \
+	test_musyx_bounds$(EXE_EXT) test_musyx_aux$(EXE_EXT) test_alist_ops$(EXE_EXT) test_hle_dispatch$(EXE_EXT) angrylion_zboss_audio_test$(EXE_EXT) \
 	test_mouse_accum$(EXE_EXT)
 
 ifeq ($(HAVE_PARALLEL_RSP), 1)

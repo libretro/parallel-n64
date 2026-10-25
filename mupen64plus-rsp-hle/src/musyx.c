@@ -130,6 +130,10 @@ typedef struct {
 
     /* DMEM address the ucode loads a voice's ADPCM books to */
     uint16_t adpcm_table_dmem;
+
+    /* VCO lanes the last auxiliary filter fold leaves set; the next VSUB
+     * in the task consumes them as a borrow */
+    uint16_t auxiliary_carry;
 } musyx_t;
 
 typedef void (*mix_sfx_with_main_subframes_t)(musyx_t *musyx, const int16_t *subframe,
@@ -190,6 +194,10 @@ static void interleave_stage_v1(struct hle_t* hle, musyx_t *musyx,
 static void interleave_stage_v2(struct hle_t* hle, musyx_t *musyx,
                                 uint16_t mask_16, uint32_t ptr_18,
                                 uint32_t ptr_1c, uint32_t output_ptr);
+
+static void auxiliary_stage_v2(struct hle_t* hle, musyx_t *musyx,
+                               uint32_t descriptors, unsigned mask,
+                               uint32_t state);
 
 /* set for the revision whose envelope update emits the e50 pair in the
  * opposite order to the other three destinations */
@@ -377,12 +385,9 @@ void musyx_v2_task(struct hle_t* hle)
         update_base_vol(hle, musyx.base_vol, voice_mask, last_sample_ptr, mask_15, ptr_24);
         init_subframes_v2(&musyx);
 
-        if (ptr_10) {
-            /* TODO */
-            HleWarnMessage(hle->user_defined,
-                           "ptr_10=%08x mask_14=%02x ptr_24=%08x",
-                           ptr_10, mask_14, ptr_24);
-        }
+        musyx.auxiliary_carry = 0;
+        if (ptr_10)
+            auxiliary_stage_v2(hle, &musyx, ptr_10 & ~7u, mask_14, ptr_24 & ~7u);
 
         /* active voices get mixed into L,R,cc0,e50 subframes (optional) */
         output_ptr = voice_stage(hle, &musyx, voice_ptr, last_sample_ptr);
@@ -390,6 +395,8 @@ void musyx_v2_task(struct hle_t* hle)
         /* apply delay-based effects (optional) */
         sfx_stage(hle, mix_sfx_with_main_subframes_v2,
                   &musyx, sfx_ptr, sfx_index);
+        if (sfx_ptr)
+            musyx.auxiliary_carry = 0;
 
         dram_store_u16(hle, (uint16_t*)musyx.left,  output_ptr                  , SUBFRAME_SIZE);
         dram_store_u16(hle, (uint16_t*)musyx.right, output_ptr + 2*SUBFRAME_SIZE, SUBFRAME_SIZE);
@@ -821,6 +828,9 @@ static void mix_voice_samples(struct hle_t* hle, musyx_t *musyx,
     int16_t *v4_dst[4];
     int16_t  v4[4];
 
+    /* the first voice's VADD clears the auxiliary carry */
+    musyx->auxiliary_carry = 0;
+
     dram_load_u32(hle, (uint32_t *)v4_env,      voice_ptr + VOICE_ENV_BEGIN, 4);
     dram_load_u32(hle, (uint32_t *)v4_env_step, voice_ptr + VOICE_ENV_STEP,  4);
 
@@ -1207,6 +1217,139 @@ static void interleave_stage_v1(struct hle_t* hle, musyx_t *musyx, uint32_t outp
     }
 }
 
+/* MusyX v2 auxiliary sources (Indiana Jones, Battle for Naboo): up to four
+ * planar three-channel streams, each through a four-tap filter and four
+ * unsigned Q0.16 gains into L, R, cc0 and e50.
+ *
+ * Descriptor (24 bytes per slot at ptr_10): gains at +0, filter taps at
+ * +8, the planar source at +16. State at ptr_24 (128 bytes): the last two
+ * mixed bytes of each destination per slot at +0, then four history
+ * samples per slot and channel at +32.
+ *
+ * Each tap is a VMULF (rounded, clamped) and the taps fold with VADDC,
+ * wrapping at sixteen bits; all-zero taps pass the source through. The mix
+ * is VMUDM/VMADM: the destination is weighted by 0xffff, not 0x10000, and
+ * nothing is rounded. */
+static void auxiliary_stage_v2(struct hle_t* hle, musyx_t *musyx,
+                               uint32_t descriptors, unsigned mask,
+                               uint32_t state)
+{
+    uint8_t saved[128];
+    unsigned slot, channel, sample, tap;
+
+    dram_load_u8(hle, saved, state, sizeof(saved));
+
+    for (slot = 0; slot < 4; ++slot) {
+        int16_t source[3][SUBFRAME_SIZE + 4];
+        int16_t filtered[3][SUBFRAME_SIZE];
+        int16_t coefficients[4];
+        uint16_t gains[4];
+        uint8_t last[4][2];
+        uint32_t descriptor, address;
+        int16_t* destinations[3];
+        int filtering = 0;
+
+        if (!(mask & (1u << slot)))
+            continue;
+
+        memset(last, 0, sizeof(last));
+        descriptor = descriptors + slot * 24;
+        address = *dram_u32(hle, descriptor + 16) & ~7u;
+
+        for (tap = 0; tap < 4; ++tap) {
+            gains[tap] = *dram_u16(hle, descriptor + tap * 2);
+            coefficients[tap] = (int16_t)*dram_u16(hle, descriptor + 8 + tap * 2);
+            filtering |= coefficients[tap];
+        }
+
+        for (channel = 0; channel < 3; ++channel) {
+            unsigned history = 32 + slot * 24 + channel * 8;
+
+            for (tap = 0; tap < 4; ++tap)
+                source[channel][tap] = (int16_t)((saved[history + tap * 2] << 8)
+                                               | saved[history + tap * 2 + 1]);
+            dram_load_u16(hle, (uint16_t*)(source[channel] + 4),
+                          address + channel * SUBFRAME_SIZE * 2, SUBFRAME_SIZE);
+
+            for (sample = 0; sample < SUBFRAME_SIZE; ++sample) {
+                if (filtering) {
+                    uint32_t sum = 0;
+                    for (tap = 0; tap < 4; ++tap) {
+                        int32_t product = ((int32_t)source[channel][sample + tap + 1]
+                                           * coefficients[tap] * 2 + 0x8000) >> 16;
+                        sum += (uint16_t)clamp_s16(product);
+                    }
+                    filtered[channel][sample] = (int16_t)sum;
+                }
+                else
+                    filtered[channel][sample] = source[channel][sample + 4];
+            }
+
+            /* the next subframe's history: the filter cursor starts three
+             * samples before the planar input */
+            for (tap = 0; tap < 4; ++tap) {
+                uint16_t value = (uint16_t)source[channel][SUBFRAME_SIZE - 3 + tap];
+                saved[history + tap * 2]     = (uint8_t)(value >> 8);
+                saved[history + tap * 2 + 1] = (uint8_t)value;
+            }
+        }
+
+        /* the fold of the last filtered vector: VADDC pairs, then the
+         * pair sums, whose carries stay in VCO */
+        if (filtering) {
+            uint16_t product[8], pair[8];
+            unsigned lane;
+
+            musyx->auxiliary_carry = 0;
+            for (lane = 0; lane < 8; ++lane) {
+                int32_t p = ((int32_t)source[2][SUBFRAME_SIZE - 4 + lane]
+                             * coefficients[lane & 3] * 2 + 0x8000) >> 16;
+                product[lane] = (uint16_t)clamp_s16(p);
+            }
+            for (lane = 0; lane < 8; ++lane)
+                pair[lane] = (uint16_t)(product[lane] + product[(lane & ~1u) | 1u]);
+            for (lane = 0; lane < 8; ++lane)
+                if ((uint32_t)pair[lane] + pair[(lane & ~3u) | 2u] > 65535u)
+                    musyx->auxiliary_carry |= (uint16_t)(1u << lane);
+        }
+
+        destinations[0] = musyx->left;
+        destinations[1] = musyx->right;
+        destinations[2] = musyx->cc0;
+
+        for (sample = 0; sample < SUBFRAME_SIZE; ++sample) {
+            int64_t e50 = 0;
+
+            for (channel = 0; channel < 3; ++channel) {
+                int64_t acc = (int64_t)filtered[channel][sample] * gains[channel];
+
+                if (sample == SUBFRAME_SIZE - 5)
+                    last[channel][0] = (uint8_t)clamp_s16((int32_t)(acc >> 16));
+                if (sample == SUBFRAME_SIZE - 4)
+                    last[channel][1] = (uint8_t)((uint16_t)clamp_s16((int32_t)(acc >> 16)) >> 8);
+                acc += (int64_t)destinations[channel][sample] * 65535;
+                destinations[channel][sample] = clamp_s16((int32_t)(acc >> 16));
+                e50 += (int64_t)filtered[channel][sample] * gains[3];
+            }
+
+            if (sample == SUBFRAME_SIZE - 5)
+                last[3][0] = (uint8_t)clamp_s16((int32_t)(e50 >> 16));
+            if (sample == SUBFRAME_SIZE - 4)
+                last[3][1] = (uint8_t)((uint16_t)clamp_s16((int32_t)(e50 >> 16)) >> 8);
+            e50 += (int64_t)musyx->e50[sample] * 65535;
+            musyx->e50[sample] = clamp_s16((int32_t)(e50 >> 16));
+        }
+
+        /* SSV of element 7 straddles the bytes of lanes 3 and 4 */
+        for (channel = 0; channel < 4; ++channel) {
+            saved[slot * 8 + channel * 2]     = last[channel][0];
+            saved[slot * 8 + channel * 2 + 1] = last[channel][1];
+        }
+    }
+
+    dram_store_u8(hle, saved, state, sizeof(saved));
+}
+
 static void interleave_stage_v2(struct hle_t* hle, musyx_t *musyx,
                                 uint16_t mask_16, uint32_t ptr_18,
                                 uint32_t ptr_1c, uint32_t output_ptr)
@@ -1223,11 +1366,13 @@ static void interleave_stage_v2(struct hle_t* hle, musyx_t *musyx,
     /* compute L_total, R_total and update subframe @ptr_1c */
     memset(subframe, 0, SUBFRAME_SIZE*sizeof(subframe[0]));
 
+    /* VSUB takes the auxiliary carry as a borrow on its first vector */
     for(i = 0; i < SUBFRAME_SIZE; ++i) {
         int16_t v = *dram_u16(hle, ptr_1c + i*2);
         musyx->left[i] = v;
-        musyx->right[i] = clamp_s16(-v);
+        musyx->right[i] = clamp_s16(-v - (i < 8 ? (int)((musyx->auxiliary_carry >> i) & 1u) : 0));
     }
+    musyx->auxiliary_carry = 0;
 
     for (k = 0, mask = 1; k < 8; ++k, mask <<= 1, ptr_18 += 8) {
         int16_t hgain;

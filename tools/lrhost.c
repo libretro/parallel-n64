@@ -21,6 +21,7 @@
  * (with NNNN.raw.size holding "width height"). LRHOST_INPUT="from-to:id,..."
  * holds RetroPad buttons over ranges of frames; LRHOST_SWFB=1 lends the core
  * a software framebuffer and reports how many frames came back in it.
+ * LRHOST_AUDIODUMP=file writes the audio as raw s16 stereo frames.
  * LRHOST_VK_NEGOTIATION=1 makes lrhost_vk a frontend that predates
  * Vulkan negotiation v2. LRHOST_VERBOSE=1 shows the core's log; LRHOST_STATE=file loads a
  * savestate after the first frame.
@@ -107,8 +108,20 @@ static void video_cb(const void *data, unsigned w, unsigned h, size_t pitch)
         frame_crc = c;
     }
 }
-static void audio_sample_cb(int16_t l, int16_t r) { (void)l; (void)r; }
-static size_t audio_batch_cb(const int16_t *d, size_t n) { (void)d; return n; }
+/* LRHOST_AUDIODUMP=file appends the core's audio, raw s16 stereo frames */
+static FILE *audio_dump;
+static void audio_sample_cb(int16_t l, int16_t r)
+{
+    int16_t f[2];
+    if (!audio_dump) return;
+    f[0] = l; f[1] = r;
+    fwrite(f, sizeof(f), 1, audio_dump);
+}
+static size_t audio_batch_cb(const int16_t *d, size_t n)
+{
+    if (audio_dump) fwrite(d, 4, n, audio_dump);
+    return n;
+}
 static void input_poll_cb(void) {}
 /* LRHOST_INPUT="from-to:id,from-to:id,...": hold RetroPad button <id> on
  * port 0 over a range of retro_run calls, so a test can drive a menu. */
@@ -289,6 +302,7 @@ int main(int argc, char **argv)
         nopts++;
     }
     nframes = atoi(argv[3]);
+    if (getenv("LRHOST_AUDIODUMP")) audio_dump = fopen(getenv("LRHOST_AUDIODUMP"), "wb");
     if (getenv("LRHOST_DUMP_FROM")) dump_from = atol(getenv("LRHOST_DUMP_FROM"));
     if (getenv("LRHOST_DUMP_TO"))   dump_to   = atol(getenv("LRHOST_DUMP_TO"));
     if (getenv("LRHOST_DUMP_EVERY")) dump_every = atol(getenv("LRHOST_DUMP_EVERY"));
