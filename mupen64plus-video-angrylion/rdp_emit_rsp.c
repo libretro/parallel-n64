@@ -2322,6 +2322,18 @@ void rsp_tri_set_rs_sort(int on)
     s_rs_lut_sort = on;
 }
 
+static int s_texrecip;
+
+void rsp_tri_set_texrecip(int on)
+{
+    s_texrecip = on;
+}
+
+int rsp_tri_texrecip(void)
+{
+    return s_texrecip;
+}
+
 void rsp_tri_set_d64_sort(int on)
 {
     s_d64_lut_sort = on;
@@ -2986,6 +2998,15 @@ int rsp_tri_write(int32_t *ew,
         if (iw[2] > max_iw) max_iw = iw[2];
         for (vi = 0; vi < 3; vi++)
         {
+            if (s_texrecip)
+            {
+                /* The FIFO 2.05 normalizer (IMEM 0xa20..0xa48): VRCPH/
+                 * VRCPL of the largest 1/w, then VMUDM/VMADL/VMADN/VMADH
+                 * per vertex, carrying the DIV-table rounding into the
+                 * texture gradients. */
+                wnorm[vi] = mac32(mk32(iw[vi]), mk32(rsp_rcp32(max_iw)), 0);
+                continue;
+            }
             /* Shared per-vertex perspective normalizer.  The LLE RSP emits
              * floor(0x8000 * iw / max) here (equivalently the W lane becomes
              * floor(0x7fff * iw / (2*max))); the raw reciprocal-multiply path
@@ -3117,12 +3138,22 @@ int rsp_tri_write(int32_t *ew,
         }
         else
         {
-        /* dAdX = dA_x * inv_dx */
-        dAdX[k] = mac32_wide(dA_x[k], inv_dx_64, 0);
-
-        /* dAdY = dA_y * inv_dx ; then the accumulator CONTINUES:
-         * dAdE = dAdY + dAdX * dxhdy */
-        dAdY[k] = mac32_wide(dA_y[k], inv_dx_64, &acc);
+        /* dAdX = dA_x * inv_dx ; dAdY = dA_y * inv_dx, then the
+         * accumulator CONTINUES: dAdE = dAdY + dAdX * dxhdy. The
+         * reciprocal-normalizer builds latch the low fraction before the
+         * final VMADH, with its saturation (2.05 IMEM 0xb30..0xb60); a
+         * wide product clamped once at the end differs on small
+         * triangles and saturating gradients. */
+        if (s_texrecip)
+        {
+            dAdX[k] = mac32(dA_x[k], inv_dx, 0);
+            dAdY[k] = mac32(dA_y[k], inv_dx, &acc);
+        }
+        else
+        {
+            dAdX[k] = mac32_wide(dA_x[k], inv_dx_64, 0);
+            dAdY[k] = mac32_wide(dA_y[k], inv_dx_64, &acc);
+        }
         acc += p_udl(dAdX[k].f, dxhdy.f);
         acc += p_udm(dAdX[k].i, dxhdy.f);
         acc += p_udn(dAdX[k].f, dxhdy.i);

@@ -256,7 +256,7 @@ void fill_video_double_buffer_task(struct hle_t* hle)
     assert((*dram_u32(hle, data_ptr + 0x28) >> 16) == 0x8000);
 
     int i, j;
-    int r, g, b;
+    int r, g, b, a;
     uint32_t pixel, pixel1, pixel2;
 
     for(i = 0; i < height; i++)
@@ -269,8 +269,11 @@ void fill_video_double_buffer_task(struct hle_t* hle)
         r = (((pixel1 >> 24) & 0xff) + ((pixel2 >> 24) & 0xff)) >> 1;
         g = (((pixel1 >> 16) & 0xff) + ((pixel2 >> 16) & 0xff)) >> 1;
         b = (((pixel1 >> 8) & 0xff) + ((pixel2 >> 8) & 0xff)) >> 1;
-      
-        pixel = (r << 24) | (g << 16) | (b << 8) | 0;
+        /* the microcode loads and averages all eight bytes of each pixel
+         * pair (LUV/SUV), so alpha is blended like the colour channels */
+        a = ((pixel1 & 0xff) + (pixel2 & 0xff)) >> 1;
+
+        pixel = ((uint32_t)r << 24) | ((uint32_t)g << 16) | ((uint32_t)b << 8) | (uint32_t)a;
       
         dram_store_u32(hle, &pixel, pDest+j, 1);
       }

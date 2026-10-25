@@ -13,6 +13,7 @@
 #include "rdp_emit_f3dex2.h"
 #include "rdp_emit_s2dex.h"
 #include "rdp_emit_f3d.h"
+#include "rdp_emit_rsp.h"
 
 /* F3DEX2 command bytes (high byte of w0) */
 #define F3DEX2_VTX        0x01
@@ -88,15 +89,52 @@ static int s_ucode_class;
 
 static int probe_ucode_class(const unsigned char *r, unsigned int text)
 {
-    unsigned int w1;
+    unsigned int w1, at;
     if (text == 0 || text + 8 > s_rdram_size)
         return UCODE_F3DEX2;
     w1 = rd_u32_be(r, text + 4);
     if (w1 == 0xc81f201bu)
-        return UCODE_L3DEX2;
+    {
+        /* That first load (a relocated constant row) is shared with the
+         * F3DEX 2.05 and XBUS 2.06..2.08 triangle builds; only the line
+         * writer has the paired vertex Y loads and register clears. */
+        for (at = 0; at + 16u <= 0xf80u && text + at + 16u <= s_rdram_size; at += 4u)
+            if (rd_u32_be(r, text + at)       == 0x8447001au &&
+                rd_u32_be(r, text + at + 4u)  == 0x4bff00adu &&
+                rd_u32_be(r, text + at + 8u)  == 0x8468001au &&
+                rd_u32_be(r, text + at + 12u) == 0x4bff00edu)
+                return UCODE_L3DEX2;
+        return UCODE_F3DEX2;
+    }
     if (w1 == 0xc81f2018u)
         return UCODE_S2DEX2;
     return UCODE_F3DEX2;
+}
+
+/* F3DEX2 builds whose triangle setup scales the texture coordinates by the
+ * reciprocal of the largest vertex 1/w through the DIV table (VRCPH/VRCPL
+ * then a VMUDM/VMADL/VMADN/VMADH chain per vertex) and latches the 32-bit
+ * gradient products half by half, instead of the exact quotient the other
+ * builds compute: the FIFO 2.05 builds of Beetle Adventure Racing, Donkey
+ * Kong 64 and Knife Edge among them. Identified by the complete
+ * eleven-instruction normalizer, operand registers included. */
+static int probe_texture_reciprocal(const unsigned char *r, unsigned int text)
+{
+    unsigned int offset, i, hash;
+    if (r == 0 || text == 0 || text > s_rdram_size || 0xf80u > s_rdram_size - text)
+        return 0;
+    for (offset = 0; offset + 44u <= 0xf80u; offset += 4u)
+    {
+        if (rd_u32_be(r, text + offset) != 0x4b1b4772u ||
+            rd_u32_be(r, text + offset + 4u) != 0x4b3b42b1u)
+            continue;
+        hash = 2166136261u;
+        for (i = 0; i < 44u; ++i)
+            hash = (hash ^ r[(text + offset + i) ^ 3u]) * 16777619u;
+        if (hash == 0x71592df1u)
+            return 1;
+    }
+    return 0;
 }
 
 /* Conker's Bad Fur Day runs a custom F3DEX2 build, "F3DEXBG.NoN". It packs
@@ -253,6 +291,7 @@ void f3dex2_set_task_ucode(const unsigned char *rdram, unsigned int text)
 {
     s_ucode_class = probe_ucode_class(rdram, text);
     s2dex_set_version2(s_ucode_class == UCODE_S2DEX2);
+    rsp_tri_set_texrecip(probe_texture_reciprocal(rdram, text));
     s_variant_cbfd = 0;
     s_variant_acclaim = 0;
 }
@@ -1295,6 +1334,7 @@ void f3dex2_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
              * microcode; the walker swaps its opcode interpretation. */
             unsigned int text = seg_addr(w1);
             s_ucode_class = probe_ucode_class(r, text);
+            rsp_tri_set_texrecip(probe_texture_reciprocal(r, text));
             /* The microcode reload re-DMAs the data segment, restoring
              * the S2DEX scissor/status defaults. The data address was
              * staged by the preceding G_RDPHALF_1; re-detect the clip

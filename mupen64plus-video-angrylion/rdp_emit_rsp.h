@@ -94,6 +94,10 @@ int rsp_line_write(int32_t *cmd, const RspTriVtx *e0, const RspTriVtx *e1,
 void rsp_tri_set_rs_sort(int on);
 void rsp_tri_set_zboss_attr(int on);
 void rsp_tri_set_d64_sort(int on);
+/* textured triangles take the DIV-table texture normalizer and latched
+ * gradient products of the F3DEX2 builds that use them */
+void rsp_tri_set_texrecip(int on);
+int rsp_tri_texrecip(void);
 int rsp_tri_write(int32_t *ew,
                   const RspTriVtx *v1c, const RspTriVtx *v2c,
                   const RspTriVtx *v3c,
