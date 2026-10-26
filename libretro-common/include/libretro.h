@@ -304,6 +304,33 @@ extern "C" {
  */
 #define RETRO_DEVICE_POINTER      6
 
+/**
+ * A controller's touchpad, such as the DualShock 4's or the DualSense's.
+ *
+ * It is not the screen: \c RETRO_DEVICE_POINTER is, and a core can read
+ * both at once - a handheld's front touchscreen through the pointer and
+ * its rear touchpad through this, for example.
+ *
+ * Read per port, with the pointer's IDs:
+ * \c RETRO_DEVICE_ID_POINTER_X and \c RETRO_DEVICE_ID_POINTER_Y give a
+ * finger's place, -0x7fff to 0x7fff across the touchpad's surface;
+ * \c RETRO_DEVICE_ID_POINTER_PRESSED whether that finger is on it; and
+ * \c RETRO_DEVICE_ID_POINTER_COUNT how many fingers are.
+ *
+ * The index is the touchpad times 16 plus the finger: 0 is the first
+ * finger on the port's first touchpad, 1 the second, and 16 the first
+ * finger on a second touchpad. As with the pointer, fingers are counted
+ * among those on the surface: index 0 is the first one down.
+ *
+ * A port whose controller has no touchpad answers 0 to every query.
+ * The frontend sets <tt>(1 << RETRO_DEVICE_TOUCHPAD)</tt> in
+ * \c RETRO_ENVIRONMENT_GET_INPUT_DEVICE_CAPABILITIES where it can read
+ * controllers' touchpads at all.
+ *
+ * @see RETRO_DEVICE_POINTER
+ */
+#define RETRO_DEVICE_TOUCHPAD     7
+
 /** @} */
 
 /** @defgroup RETRO_DEVICE_ID_JOYPAD RetroPad Input
@@ -3423,6 +3450,167 @@ struct retro_vr_controller_poses
 {
    /** Indexed by enum retro_vr_hand. */
    struct retro_vr_hand_state hands[RETRO_VR_HAND_COUNT];
+};
+
+/**
+ * const struct retro_hw_render_upscaler_interface ** --
+ * The frontend's temporal upscaler, for a hardware-rendered core: how the
+ * core learns that an upscaler (NVIDIA DLSS Super Resolution; the same
+ * contract serves FSR and XeSS) is taking its frames and what render size
+ * it wants, and how it hands over the depth, motion vectors and jitter
+ * the upscaler needs beside the color image it already presents.
+ *
+ * Call it first in retro_load_game, beside SET_HW_RENDER: there it
+ * returns false and tells the frontend to make the context for the
+ * upscaler, which loads its libraries and adds what they need to the
+ * context; a frontend does neither for a core that has not asked. Then
+ * call after the hardware context is reset (context_reset), once; the
+ * interface is valid until context_destroy. Returns false when the
+ * frontend has no upscaler for this context type or video driver; the
+ * core then renders as it always has. A core that never calls this is
+ * unaffected: the frontend shows its frames as they are.
+ *
+ * @see retro_hw_render_upscaler_interface
+ */
+#define RETRO_ENVIRONMENT_GET_HW_RENDER_UPSCALER_INTERFACE (103 | RETRO_ENVIRONMENT_EXPERIMENTAL)
+
+#define RETRO_HW_RENDER_UPSCALER_INTERFACE_VERSION 1
+
+/**
+ * An image of the hardware context's API, named the way the color image
+ * is in the context's own render interface:
+ * - Vulkan: image is the VkImage, view a VkImageView over it (one mip,
+ *   one layer), format the VkFormat, state the VkImageLayout the image is
+ *   in when the frontend reads it (VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+ *   or VK_IMAGE_LAYOUT_GENERAL); created with VK_IMAGE_USAGE_SAMPLED_BIT.
+ * - Direct3D 12: image is the ID3D12Resource *, view 0, format the
+ *   DXGI_FORMAT, state the D3D12_RESOURCE_STATES it is in.
+ * image 0 is no image.
+ */
+struct retro_hw_upscaler_image
+{
+   uint64_t image;
+   uint64_t view;
+   unsigned format;
+   unsigned state;
+   unsigned width;
+   unsigned height;
+};
+
+/* Flags of retro_hw_upscaler_inputs. */
+/** The motion vectors include this frame's jitter; the upscaler takes it
+ * back out with jitter_x/y. Without it they are the unjittered motion. */
+#define RETRO_HW_UPSCALER_MV_JITTERED     (1 << 0)
+/** Depth runs 1 at the near plane to 0 at the far plane. */
+#define RETRO_HW_UPSCALER_DEPTH_INVERTED  (1 << 1)
+/** The color image is linear light, unbounded (scRGB, a float format),
+ * not display-encoded SDR. */
+#define RETRO_HW_UPSCALER_HDR             (1 << 2)
+/** Nothing of the previous frames applies to this one (a cut, a reset,
+ * a state load): the upscaler starts its history over. */
+#define RETRO_HW_UPSCALER_RESET           (1 << 3)
+/** The motion vectors are at the output size rather than the render
+ * size. */
+#define RETRO_HW_UPSCALER_MV_OUTPUT_RES   (1 << 4)
+
+/**
+ * What a frame brings beside its color image. Pixel coordinates have
+ * (0,0) at the top left and +y down, in texels of the render size (the
+ * color image's), for motion vectors and jitter alike.
+ */
+struct retro_hw_upscaler_inputs
+{
+   /** RETRO_HW_UPSCALER_* bits. */
+   unsigned flags;
+   /** Two-channel float (RG16F or RG32F): for every pixel, how far the
+    * surface seen there moved from the previous frame to this one, in
+    * pixels, after mv_scale. Required. */
+   struct retro_hw_upscaler_image motion_vectors;
+   /** Depth: any one-channel or depth(-stencil) format. Required. */
+   struct retro_hw_upscaler_image depth;
+   /** Optional: a 1x1 single float of the frame's exposure; none makes
+    * the upscaler measure it. */
+   struct retro_hw_upscaler_image exposure;
+   /** Optional: a one-channel mask, 1 where the color is translucent or
+    * has no depth or motion of its own (particles, overlays). */
+   struct retro_hw_upscaler_image transparency_mask;
+   /** The sub-pixel offset the projection was shifted by this frame, in
+    * render pixels, each in [-0.5, 0.5]; a Halton (2,3) sequence works
+    * well. (0,0) when the frame was not jittered. */
+   float jitter_x;
+   float jitter_y;
+   /** Multiplied into the motion vectors as stored; 1 when they are in
+    * pixels already. 0 reads as 1. Negative flips an axis. */
+   float mv_scale_x;
+   float mv_scale_y;
+   /** Exposure applied to the color before it was stored, and a scale
+    * on the exposure used. 0 reads as 1. */
+   float pre_exposure;
+   float exposure_scale;
+   /** This frame's duration in milliseconds, 0 when unknown. */
+   float frame_time_ms;
+};
+
+/**
+ * What the upscaler wants, read before rendering a frame.
+ */
+struct retro_hw_upscaler_request
+{
+   /** The size the upscaler produces: the content's size on screen. */
+   unsigned output_width;
+   unsigned output_height;
+   /** The size it wants to be fed, the best for its mode: render and hand
+    * over frames of this size. A frame of another size within the range
+    * below is taken and scaled from what it is; outside it, shown without
+    * upscaling. */
+   unsigned render_width;
+   unsigned render_height;
+   unsigned min_render_width;
+   unsigned min_render_height;
+   unsigned max_render_width;
+   unsigned max_render_height;
+   /** Reserved, 0. */
+   unsigned flags;
+   /** The texture LOD bias the core should render with so textures keep
+    * their detail at the output size: log2(render / output) - 1. */
+   float mip_bias;
+};
+
+/**
+ * @see RETRO_ENVIRONMENT_GET_HW_RENDER_UPSCALER_INTERFACE
+ */
+struct retro_hw_render_upscaler_interface
+{
+   /** RETRO_HW_RENDER_UPSCALER_INTERFACE_VERSION. */
+   unsigned interface_version;
+
+   /** Opaque, passed to every function here. */
+   void *handle;
+
+   /**
+    * Whether an upscaler will take the next frame, and what it wants:
+    * true with @request filled, or false with it untouched when none is
+    * active, in which case the core renders as it always has. Read it
+    * every frame before rendering; the answer changes when the user turns
+    * the upscaler on or off, resizes the window or picks another mode.
+    * While it answers true the core renders at render_width x
+    * render_height with sub-pixel jitter and without temporal or
+    * post-process anti-aliasing of its own, which would fight the
+    * upscaler's.
+    */
+   bool (*get_request)(void *handle, struct retro_hw_upscaler_request *request);
+
+   /**
+    * This frame's depth, motion vectors and jitter, called before the
+    * color image is handed over (set_image, set_texture) and
+    * retro_video_refresh_t is called. @inputs must stay valid until
+    * retro_video_refresh_t returns; its images for as long as the color
+    * image of the same frame, under the same sync index rules, and they
+    * are complete when it is: the semaphores or fence that cover the
+    * color image cover them. A frame without a call, or with NULL, has
+    * no inputs and is shown without upscaling.
+    */
+   void (*set_inputs)(void *handle, const struct retro_hw_upscaler_inputs *inputs);
 };
 
 /* Speaker positions, as bits of a layout mask; a frame's channels are
