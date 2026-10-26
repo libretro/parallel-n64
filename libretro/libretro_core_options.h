@@ -906,6 +906,34 @@ struct retro_core_option_v2_definition option_defs_us[] = {
         "disable"
     },
     {
+        CORE_NAME "-parallel-rdp-super-sampled-read-back",
+        "(ParaLLEl-RDP) Super-sampled read-back",
+        "Super-sampled read-back",
+        "When upscaling, average the upscaled samples when a frame is read back into game memory instead of taking one sample per pixel. Can smooth framebuffer effects; changes what the game reads back. Takes effect on restart.",
+        NULL,
+        "parallel",
+        {
+            { "disabled", NULL },
+            { "enabled", NULL },
+            { NULL, NULL },
+        },
+        "disabled"
+    },
+    {
+        CORE_NAME "-parallel-rdp-super-sampled-read-back-dither",
+        "(ParaLLEl-RDP) Super-sampled read-back dither",
+        "Super-sampled read-back dither",
+        "Dither the averaged read-back down to the game's colour depth. Only applies with super-sampled read-back. Takes effect on restart.",
+        NULL,
+        "parallel",
+        {
+            { "enabled", NULL },
+            { "disabled", NULL },
+            { NULL, NULL },
+        },
+        "enabled"
+    },
+    {
         CORE_NAME "-parallel-rdp-native-tex-rect",
         "(ParaLLEl-RDP) Use native resolution for TEX_RECT",
         "Use native resolution for TEX_RECT",

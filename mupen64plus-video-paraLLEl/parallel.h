@@ -28,6 +28,8 @@ void parallel_set_upscaling(unsigned factor);
 void parallel_set_downscaling_steps(unsigned steps);
 void parallel_set_native_texture_lod(bool enable);
 void parallel_set_native_tex_rect(bool enable);
+void parallel_set_super_sampled_read_back(bool enable);
+void parallel_set_super_sampled_dither(bool enable);
 
 unsigned parallel_get_upscaling();
 

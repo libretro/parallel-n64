@@ -532,6 +532,24 @@ static void cmd_sync_full(void)
         al_resolve_all();
     rdp_sync_full(0, NULL);
 }
+/* The noise phase reaches guest framebuffer bytes (dither, alpha
+ * compare noise), so a savestate keeps it: the per-frame field and the
+ * primitive counter within the frame.  Every worker walks every
+ * primitive, so their counters agree. */
+void n64video_noise_save(uint32_t* out)
+{
+    out[0] = rdp_noise_field;
+    out[1] = state[0].noise_seq;
+}
+
+void n64video_noise_load(const uint32_t* in)
+{
+    uint32_t k;
+    rdp_noise_field = in[0];
+    for (k = 0; k < PARALLEL_MAX_WORKERS; k++)
+        state[k].noise_seq = in[1];
+}
+
 /* per command: the parse state of the next one */
 static void cmd_init(void)
 {

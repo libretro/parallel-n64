@@ -138,6 +138,13 @@ bool Renderer::init_caps()
 {
 	auto &features = device->get_device_features();
 
+	// The split rasterizer / depth-blend path misrenders textured primitives
+	// on the proprietary Intel Windows driver, unoptimized shaders included.
+	// Keep shading and blending in one pass there. PARALLEL_RDP_UBERSHADER
+	// below still overrides it for comparisons.
+	if (features.driver_properties.driverID == VK_DRIVER_ID_INTEL_PROPRIETARY_WINDOWS_KHR)
+		caps.ubershader = true;
+
 	if (const char *timestamp = getenv("PARALLEL_RDP_BENCH"))
 	{
 		caps.timestamp = strtol(timestamp, nullptr, 0);

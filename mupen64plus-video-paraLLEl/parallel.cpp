@@ -222,6 +222,16 @@ void parallel_set_native_tex_rect(bool enable)
 	RDP::native_tex_rect = enable;
 }
 
+void parallel_set_super_sampled_read_back(bool enable)
+{
+	RDP::super_sampled_read_back = enable;
+}
+
+void parallel_set_super_sampled_dither(bool enable)
+{
+	RDP::super_sampled_dither = enable;
+}
+
 void parallel_set_overscan_crop(unsigned pixels)
 {
 	RDP::overscan = pixels;

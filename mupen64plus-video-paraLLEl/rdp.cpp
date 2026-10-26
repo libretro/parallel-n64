@@ -53,6 +53,8 @@ unsigned upscaling = 1;
 unsigned downscaling_steps = 0;
 bool native_texture_lod = false;
 bool native_tex_rect = true;
+bool super_sampled_read_back = false;
+bool super_sampled_dither = false;
 bool synchronous = true, divot_filter = true, gamma_dither = true;
 bool vi_aa = true, vi_scale = true, dither_filter = true;
 bool interlacing = true;
@@ -270,6 +272,21 @@ bool init()
 
 		default:
 			break;
+	}
+
+	/* Upscaled frames read back into RDRAM are normally point-sampled
+	 * down to native resolution; these average the samples instead (and
+	 * dither the result), which some framebuffer effects benefit from.
+	 * They change guest-visible RDRAM, so both default to off. */
+	if (upscaling > 1)
+	{
+		if (super_sampled_read_back)
+		{
+			flags |= COMMAND_PROCESSOR_FLAG_SUPER_SAMPLED_READ_BACK_BIT;
+			log_cb(RETRO_LOG_INFO, "Using super-sampled read-back!\n");
+			if (super_sampled_dither)
+				flags |= COMMAND_PROCESSOR_FLAG_SUPER_SAMPLED_DITHER_BIT;
+		}
 	}
 
 	frontend.reset(new CommandProcessor(*device, reinterpret_cast<void *>(aligned_rdram),

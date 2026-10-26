@@ -12,6 +12,11 @@
  * the second frame of each and compares the pixels. With the counter
  * restarting at every SYNC_FULL the two rectangles match.
  *
+ * It also checks that the noise phase a savestate carries
+ * (n64video_noise_save/load) puts the noise back where it was: a
+ * rectangle drawn after a restore matches the one drawn without the
+ * interruption.
+ *
  * Built by `make check-angrylion` (top-level Makefile). Exit status 0 on pass.
  */
 #include "n64video.h"
@@ -28,6 +33,8 @@
 #define FB_BYTES   (FB_WIDTH * FB_HEIGHT * 2u)
 
 extern uint32_t rdp_noise_field;
+void n64video_noise_save(uint32_t* out);
+void n64video_noise_load(const uint32_t* in);
 
 static uint8_t *rdram;
 static uint8_t dmem[4096];
@@ -91,6 +98,68 @@ static void run_session(unsigned history_prims, uint8_t *out)
     memcpy(out, rdram + FB_ADDR, FB_WIDTH * 8u * 2u);
 }
 
+static void run_list(void)
+{
+    regs[DP_STATUS] = 0;
+    regs[DP_START] = regs[DP_CURRENT] = CMD_ADDR;
+    regs[DP_END] = CMD_ADDR + ncmd * 4u;
+    n64video_process_list();
+    ncmd = 0;
+}
+
+static void setup_noise(void)
+{
+    emit(0x3f100000u | (FB_WIDTH - 1), FB_ADDR);
+    emit(0x2d000000u, ((FB_WIDTH << 2) << 12) | (FB_HEIGHT << 2));
+    emit(0x2f0000f0u, 0);
+    emit(0x3c000000u | (7u << 20) | (3u << 15) | (7u << 12) | (7u << 9)
+         | (7u << 5) | 3u,
+         (8u << 28) | (8u << 24) | (7u << 21) | (7u << 18) | (7u << 15)
+         | (7u << 12) | (7u << 9) | (7u << 6) | (7u << 3) | 7u);
+    emit(0x3a000000u, 0xffffffffu);
+}
+
+static int test_noise_savestate(void)
+{
+    static uint8_t want[FB_WIDTH * 8u * 2u];
+    uint32_t saved[2];
+    uint8_t* lower = rdram + FB_ADDR + FB_WIDTH * 8u * 2u;
+
+    /* a frame, then the state is saved between frames as the frontend
+     * does (SYNC_FULL also flushes the workers) */
+    ncmd = 0;
+    rdp_noise_field = 5;
+    setup_noise();
+    tex_rect(0, 0, FB_WIDTH, 8u);
+    emit(0x29000000u, 0);
+    run_list();
+    n64video_noise_save(saved);
+
+    memset(lower, 0, sizeof(want));
+    tex_rect(0, 8u, FB_WIDTH, 16u);
+    emit(0x29000000u, 0);
+    run_list();
+    memcpy(want, lower, sizeof(want));
+
+    /* move the phase on by a few frames */
+    tex_rect(0, 0, 8u, 8u);
+    emit(0x29000000u, 0);
+    tex_rect(8u, 0, 16u, 8u);
+    emit(0x29000000u, 0);
+    run_list();
+
+    n64video_noise_load(saved);
+    memset(lower, 0, sizeof(want));
+    tex_rect(0, 8u, FB_WIDTH, 16u);
+    emit(0x29000000u, 0);
+    run_list();
+    if (memcmp(want, lower, sizeof(want)) != 0) {
+        printf("FAIL: noise after a savestate restore differs\n");
+        return 1;
+    }
+    return 0;
+}
+
 int main(void)
 {
     struct n64video_config cfg;
@@ -131,6 +200,7 @@ int main(void)
                diff, (unsigned)(sizeof(a) / 2));
         failures++;
     }
+    failures += test_noise_savestate();
     n64video_close();
     free(rdram);
     if (failures)

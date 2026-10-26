@@ -60,7 +60,12 @@
 extern uint32_t RollbackRtcOnLoadState;
 
 static const char* savestate_magic = "M64+SAVE";
-static const int savestate_latest_version = 0x00010007;  /* 1.7 */
+static const int savestate_latest_version = 0x00010008;  /* 1.8 */
+
+#ifdef HAVE_THR_AL
+void n64video_noise_save(uint32_t* out);
+void n64video_noise_load(const uint32_t* in);
+#endif
 
 #define GETARRAY(buff, type, count) \
     (to_little_endian_buffer(buff, sizeof(type),count), \
@@ -98,7 +103,7 @@ int savestates_load_m64p(const unsigned char *data, size_t size)
    version = (version << 8) | *curr++;
    version = (version << 8) | *curr++;
 
-   if(version != 0x00010000 && version != 0x00010001 && version != 0x00010002 && version != 0x00010003 && version != 0x00010004 && version != 0x00010005 && version != 0x00010006 && version != 0x00010007)
+   if(version != 0x00010000 && version != 0x00010001 && version != 0x00010002 && version != 0x00010003 && version != 0x00010004 && version != 0x00010005 && version != 0x00010006 && version != 0x00010007 && version != 0x00010008)
       return 0;
 
    /* Identity check.  New states carry the "M64H"-prefixed header
@@ -434,6 +439,22 @@ int savestates_load_m64p(const unsigned char *data, size_t size)
    }
    else
       inputMouseStateLoad(NULL);
+
+   /* Flash RAM command state and the angrylion noise phase (since 1.8).
+    * Before, a state saved between a flash page load and its program
+    * command lost the page buffer and erase offset, and the noise phase
+    * restarted, so dithered frames after a load differed from the ones
+    * the uninterrupted run drew. */
+   if (version >= 0x00010008) {
+      uint32_t noise[2];
+      COPYARRAY(g_dev.cart.flashram.page_buf, curr, uint8_t, 128);
+      COPYARRAY(g_dev.cart.flashram.silicon_id, curr, uint32_t, 2);
+      g_dev.cart.flashram.erase_page = GETDATA(curr, uint16_t);
+      COPYARRAY(noise, curr, uint32_t, 2);
+#ifdef HAVE_THR_AL
+      n64video_noise_load(noise);
+#endif
+   }
 
    rdp_restore_dpc_clock(&g_dev.dp);
 
@@ -783,6 +804,18 @@ int savestates_save_m64p(unsigned char *data, size_t size)
       int32_t ms[INPUT_MOUSE_STATE_WORDS];
       inputMouseStateSave(ms);
       PUTARRAY(ms, curr, int32_t, INPUT_MOUSE_STATE_WORDS);
+   }
+
+   /* Flash RAM command state and the angrylion noise phase (since 1.8) */
+   {
+      uint32_t noise[2] = { 0, 0 };
+#ifdef HAVE_THR_AL
+      n64video_noise_save(noise);
+#endif
+      PUTARRAY(g_dev.cart.flashram.page_buf, curr, uint8_t, 128);
+      PUTARRAY(g_dev.cart.flashram.silicon_id, curr, uint32_t, 2);
+      PUTDATA(curr, uint16_t, g_dev.cart.flashram.erase_page);
+      PUTARRAY(noise, curr, uint32_t, 2);
    }
 
    /* Deliver callback to indicate completion
