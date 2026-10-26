@@ -683,7 +683,7 @@ static void upscaler_build(rdp_upscaler_t *u, const upscaler_record_t *rec,
       const rdp_upscaler_framebuffer_t *fb, unsigned scale, bool still,
       rdp_upscaler_geometry_t *out)
 {
-   unsigned i, j, pass;
+   unsigned i, j;
    unsigned num_vertices = 0;
    unsigned num_draws    = 0;
    uint32_t offset       = (fb->origin - rec->addr) >> rec->size_log2;
@@ -697,82 +697,67 @@ static void upscaler_build(rdp_upscaler_t *u, const upscaler_record_t *rec,
                rec->num_prims, sizeof(*u->draws)))
       return;
 
-   /* The translucent primitives that test depth last, writing their
-    * depth: none hides what is drawn after it. Without the test, the
-    * order is what decides, and stays. */
-   for (pass = 0; pass < 2; pass++)
+   for (i = 0; i < rec->num_prims; i++)
    {
-      for (i = 0; i < rec->num_prims; i++)
+      const upscaler_prim_t *p = &rec->prims[i];
+      rdp_upscaler_vertex_t *v = &u->vertices[num_vertices];
+      unsigned count           = 3;
+      unsigned flags           = p->flags
+         & (RDP_UPSCALER_DEPTH_TEST | RDP_UPSCALER_DEPTH_WRITE | RDP_UPSCALER_TRANSLUCENT);
+
+      if (p->flags & RDP_UPSCALER_RECT)
       {
-         const upscaler_prim_t *p = &rec->prims[i];
-         rdp_upscaler_vertex_t *v = &u->vertices[num_vertices];
-         unsigned count           = 3;
-         unsigned flags           = p->flags
-            & (RDP_UPSCALER_DEPTH_TEST | RDP_UPSCALER_DEPTH_WRITE | RDP_UPSCALER_TRANSLUCENT);
-         bool late = (p->flags & (RDP_UPSCALER_TRANSLUCENT | RDP_UPSCALER_DEPTH_TEST))
-            == (RDP_UPSCALER_TRANSLUCENT | RDP_UPSCALER_DEPTH_TEST);
-
-         if (late != (pass == 1))
-            continue;
-         /* (its depth, in the upscaler's image only: the upscaler sees
-          * it leave a pixel, and lets the history there go) */
-         if (late)
-            flags |= RDP_UPSCALER_DEPTH_WRITE;
-
-         if (p->flags & RDP_UPSCALER_RECT)
+         static const unsigned char corners[6][2] = {
+            { 0, 0 }, { 1, 0 }, { 0, 1 }, { 1, 0 }, { 1, 1 }, { 0, 1 } };
+         for (j = 0; j < 6; j++)
          {
-            static const unsigned char corners[6][2] = {
-               { 0, 0 }, { 1, 0 }, { 0, 1 }, { 1, 0 }, { 1, 1 }, { 0, 1 } };
-            for (j = 0; j < 6; j++)
-            {
-               v[j].x        = (p->x[corners[j][0]] - ox) * s + out->jitter_x;
-               v[j].y        = (p->y[corners[j][1]] - oy) * s + out->jitter_y;
-               v[j].z        = 0.0f;
-               v[j].motion_x = 0.0f;
-               v[j].motion_y = 0.0f;
-            }
-            count = 6;
-            flags = 0;
+            v[j].x        = (p->x[corners[j][0]] - ox) * s + out->jitter_x;
+            v[j].y        = (p->y[corners[j][1]] - oy) * s + out->jitter_y;
+            v[j].z        = 0.0f;
+            v[j].motion_x = 0.0f;
+            v[j].motion_y = 0.0f;
          }
-         else
-         {
-            /* the outline as a fan from its first point */
-            static const unsigned char fan[12] = {
-               0, 1, 2, 0, 2, 3, 0, 3, 4, 0, 4, 5 };
-            float affine[6] = { 1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f };
-            unsigned perm[3];
-            const upscaler_prim_t *q = still ? NULL : upscaler_match(u, p, perm);
-            bool moved = q && upscaler_affine(p, q, perm, affine);
-            for (j = 0; j < 12; j++)
-            {
-               unsigned k    = fan[j];
-               float x       = p->x[k] + p->grow_x[k] / s;
-               float y       = p->y[k] + p->grow_y[k] / s;
-               v[j].x        = (x - ox) * s + out->jitter_x;
-               v[j].y        = (y - oy) * s + out->jitter_y;
-               v[j].z        = p->z[k];
-               v[j].motion_x = 0.0f;
-               v[j].motion_y = 0.0f;
-               if (moved)
-               {
-                  v[j].motion_x = (affine[0] * x + affine[1] * y + affine[2] - x) * s;
-                  v[j].motion_y = (affine[3] * x + affine[4] * y + affine[5] - y) * s;
-               }
-            }
-            count = 12;
-         }
-
-         if (num_draws && u->draws[num_draws - 1].flags == flags)
-            u->draws[num_draws - 1].count += count;
-         else
-         {
-            u->draws[num_draws].first = num_vertices;
-            u->draws[num_draws].count = count;
-            u->draws[num_draws].flags = flags;
-            num_draws++;
-         }
-         num_vertices += count;
+         count = 6;
+         flags = 0;
       }
+      else
+      {
+         /* the outline as a fan from its first point */
+         static const unsigned char fan[12] = {
+            0, 1, 2, 0, 2, 3, 0, 3, 4, 0, 4, 5 };
+         float affine[6] = { 1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f };
+         unsigned perm[3];
+         const upscaler_prim_t *q = still ? NULL : upscaler_match(u, p, perm);
+         bool moved = q && upscaler_affine(p, q, perm, affine);
+         for (j = 0; j < 12; j++)
+         {
+            unsigned k    = fan[j];
+            float x       = p->x[k] + p->grow_x[k] / s;
+            float y       = p->y[k] + p->grow_y[k] / s;
+            v[j].x        = (x - ox) * s + out->jitter_x;
+            v[j].y        = (y - oy) * s + out->jitter_y;
+            v[j].z        = p->z[k];
+            v[j].motion_x = 0.0f;
+            v[j].motion_y = 0.0f;
+            if (moved)
+            {
+               v[j].motion_x = (affine[0] * x + affine[1] * y + affine[2] - x) * s;
+               v[j].motion_y = (affine[3] * x + affine[4] * y + affine[5] - y) * s;
+            }
+         }
+         count = 12;
+      }
+
+      if (num_draws && u->draws[num_draws - 1].flags == flags)
+         u->draws[num_draws - 1].count += count;
+      else
+      {
+         u->draws[num_draws].first = num_vertices;
+         u->draws[num_draws].count = count;
+         u->draws[num_draws].flags = flags;
+         num_draws++;
+      }
+      num_vertices += count;
    }
 
    out->vertices     = u->vertices;
