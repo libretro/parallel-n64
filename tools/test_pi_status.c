@@ -3,7 +3,8 @@
  *  - a DMA raises the PI interrupt when it completes;
  *  - a CPU write to the bus (IO busy only) completes without one;
  *  - PI_STATUS reset abandons the transfer in flight, so its completion
- *    event is withdrawn;
+ *    event is withdrawn; it clears the busy and error bits only, leaving
+ *    a pending interrupt and an unrelated bus write's event alone;
  *  - the domain timing registers keep only their implemented bits;
  *  - with bus timing on, a DMA takes the duration its domain's latency,
  *    pulse width, release and page size registers give.
@@ -128,6 +129,20 @@ int main(void)
     write_pi(PI_STATUS_REG, PI_STATUS_RESET);
     CHECK(s_pi.regs[PI_STATUS_REG] == 0 && s_pi_removed == 1,
           "PI reset abandons the DMA in flight");
+
+    /* reset leaves the interrupt pending */
+    reset();
+    s_pi.regs[PI_STATUS_REG] = PI_STATUS_DMA_BUSY | PI_STATUS_ERROR | PI_STATUS_INTERRUPT;
+    write_pi(PI_STATUS_REG, PI_STATUS_RESET);
+    CHECK(s_pi.regs[PI_STATUS_REG] == PI_STATUS_INTERRUPT && s_pi_removed == 1,
+          "PI reset clears busy and error, not the interrupt");
+
+    /* with no DMA in flight there is no completion to withdraw */
+    reset();
+    s_pi.regs[PI_STATUS_REG] = PI_STATUS_IO_BUSY;
+    write_pi(PI_STATUS_REG, PI_STATUS_RESET);
+    CHECK(s_pi.regs[PI_STATUS_REG] == PI_STATUS_IO_BUSY && s_pi_removed == 0,
+          "PI reset leaves a bus write's completion alone");
 
     /* clearing the interrupt alone leaves a transfer running */
     reset();

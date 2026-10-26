@@ -259,19 +259,25 @@ void cached_interp_NOTCOMPILED2(void)
     cached_interp_NOTCOMPILED();
 }
 
+/* COP0 has no control registers or condition line: CFC0, CTC0 and the BC0
+ * branches take the reserved-instruction exception, as in the pure
+ * interpreter, instead of stopping the emulator. */
+#define cached_interp_BC0F        cached_interp_RESERVED
+#define cached_interp_BC0F_IDLE   cached_interp_RESERVED
+#define cached_interp_BC0F_OUT    cached_interp_RESERVED
+#define cached_interp_BC0FL       cached_interp_RESERVED
+#define cached_interp_BC0FL_IDLE  cached_interp_RESERVED
+#define cached_interp_BC0FL_OUT   cached_interp_RESERVED
+#define cached_interp_BC0T        cached_interp_RESERVED
+#define cached_interp_BC0T_IDLE   cached_interp_RESERVED
+#define cached_interp_BC0T_OUT    cached_interp_RESERVED
+#define cached_interp_BC0TL       cached_interp_RESERVED
+#define cached_interp_BC0TL_IDLE  cached_interp_RESERVED
+#define cached_interp_BC0TL_OUT   cached_interp_RESERVED
+#define cached_interp_CFC0        cached_interp_RESERVED
+#define cached_interp_CTC0        cached_interp_RESERVED
+
 /* TODO: implement them properly */
-#define cached_interp_BC0F        cached_interp_NI
-#define cached_interp_BC0F_IDLE   cached_interp_NI
-#define cached_interp_BC0F_OUT    cached_interp_NI
-#define cached_interp_BC0FL       cached_interp_NI
-#define cached_interp_BC0FL_IDLE  cached_interp_NI
-#define cached_interp_BC0FL_OUT   cached_interp_NI
-#define cached_interp_BC0T        cached_interp_NI
-#define cached_interp_BC0T_IDLE   cached_interp_NI
-#define cached_interp_BC0T_OUT    cached_interp_NI
-#define cached_interp_BC0TL       cached_interp_NI
-#define cached_interp_BC0TL_IDLE  cached_interp_NI
-#define cached_interp_BC0TL_OUT   cached_interp_NI
 #define cached_interp_BC2F        cached_interp_NI
 #define cached_interp_BC2F_IDLE   cached_interp_NI
 #define cached_interp_BC2F_OUT    cached_interp_NI
@@ -284,8 +290,6 @@ void cached_interp_NOTCOMPILED2(void)
 #define cached_interp_BC2TL       cached_interp_NI
 #define cached_interp_BC2TL_IDLE  cached_interp_NI
 #define cached_interp_BC2TL_OUT   cached_interp_NI
-#define cached_interp_CFC0        cached_interp_NI
-#define cached_interp_CTC0        cached_interp_NI
 #define cached_interp_DMTC0       cached_interp_MTC0
 #define cached_interp_DCFC2       cached_interp_RESERVED_COP2
 #define cached_interp_LDC2        cached_interp_RESERVED_COP2

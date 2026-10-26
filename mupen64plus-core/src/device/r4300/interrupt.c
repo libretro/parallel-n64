@@ -418,7 +418,7 @@ void raise_maskable_interrupt(struct r4300_core* r4300, uint32_t cause_ip)
 
     /* The interrupt exception is being taken now: this is where ExcCode
      * becomes Int. */
-    cp0_regs[CP0_CAUSE_REG] &= ~CP0_CAUSE_EXCCODE_MASK;
+    cp0_regs[CP0_CAUSE_REG] &= ~UINT32_C(0x3000007c);
 
     exception_general(r4300);
 }

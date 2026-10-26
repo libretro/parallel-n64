@@ -125,7 +125,7 @@ void read_vi_regs(void* opaque, uint32_t address, uint32_t* value)
     if (reg == VI_CURRENT_REG)
     {
         uint32_t* next_vi = get_event(&vi->mi->r4300->cp0.q, VI_INT);
-        if (next_vi != NULL) {
+        if (next_vi != NULL && vi->count_per_scanline != 0) {
             cp0_update_count(vi->mi->r4300);
             vi->regs[VI_CURRENT_REG] = (vi->delay - (*next_vi - cp0_regs[CP0_COUNT_REG])) / vi->count_per_scanline;
 
@@ -172,9 +172,13 @@ void write_vi_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask
         return;
 
     case VI_V_SYNC_REG:
-        if ((vi->regs[VI_V_SYNC_REG] & mask) != (value & mask))
+        /* V_SYNC is a 10-bit register.  Keeping the upper bits let a
+         * stray all-ones write make the line count wrap to zero and divide
+         * by it below. */
+        if ((vi->regs[VI_V_SYNC_REG] & mask) != (value & mask & UINT32_C(0x3ff)))
         {
             masked_write(&vi->regs[VI_V_SYNC_REG], value, mask);
+            vi->regs[VI_V_SYNC_REG] &= UINT32_C(0x3ff);
             if(!CountPerScanlineOverride) {
                 vi->count_per_scanline = (vi->clock / vi->expected_refresh_rate) / (vi->regs[VI_V_SYNC_REG] + 1);
             } else {

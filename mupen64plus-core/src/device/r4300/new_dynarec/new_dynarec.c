@@ -3154,7 +3154,8 @@ void* cop1_unusable(void)
     struct new_dynarec_hot_state* state = &r4300->new_dynarec_hot_state;
     r4300->delay_slot = state->pcaddr & 1;
     state->pcaddr &= ~1;
-    state->cp0_regs[CP0_CAUSE_REG] = CP0_CAUSE_EXCCODE_CPU | CP0_CAUSE_CE1;
+    state->cp0_regs[CP0_CAUSE_REG] = (state->cp0_regs[CP0_CAUSE_REG] & ~UINT32_C(0x3000007c))
+                                   | CP0_CAUSE_EXCCODE_CPU | CP0_CAUSE_CE1;
     exception_general(r4300);
     return get_addr_ht(state->pcaddr);
 }
@@ -5607,23 +5608,23 @@ static void cop0_assemble(int i,struct regstat *i_regs)
     save_regs(reglist);
 
     // Always update the count even if it's only necessary when (copr==CP0_COUNT_REG||copr==CP0_COMPARE_REG||copr==CP0_STATUS_REG)
-    // Always update the pcaddr even if it's only necessary when (copr==CP0_COUNT_REG||copr==CP0_STATUS_REG)
+    // Always update the pcaddr even if it's only necessary when (copr==CP0_COUNT_REG||copr==CP0_STATUS_REG||copr==CP0_CAUSE_REG)
 #if NEW_DYNAREC == NEW_DYNAREC_X86
     emit_pushimm(start+i*4);
-    emit_pushimm(CLOCK_DIVIDER*(ccadj[i]+(copr==CP0_STATUS_REG)));
+    emit_pushimm(CLOCK_DIVIDER*(ccadj[i]+(copr==CP0_STATUS_REG||copr==CP0_CAUSE_REG)));
     emit_pushimm(copr);
     emit_call((intptr_t)MTC0_new);
     emit_addimm(ESP,12,ESP);
 #else
     emit_movimm(copr,ARG1_REG);
-    emit_movimm(CLOCK_DIVIDER*(ccadj[i]+(copr==CP0_STATUS_REG)),ARG2_REG);
+    emit_movimm(CLOCK_DIVIDER*(ccadj[i]+(copr==CP0_STATUS_REG||copr==CP0_CAUSE_REG)),ARG2_REG);
     emit_movimm(start+i*4,ARG3_REG);
     emit_call((intptr_t)MTC0_new);
 #endif
 
     restore_regs(reglist);
 
-    if(copr==CP0_COUNT_REG||copr==CP0_STATUS_REG) {
+    if(copr==CP0_COUNT_REG||copr==CP0_STATUS_REG||copr==CP0_CAUSE_REG) {
       assert(!is_delayslot);
       emit_cmpmem_imm((intptr_t)&g_dev.r4300.new_dynarec_hot_state.pending_exception,0);
       intptr_t jaddr=(intptr_t)out;
@@ -5634,7 +5635,7 @@ static void cop0_assemble(int i,struct regstat *i_regs)
       set_jump_target(jaddr,(intptr_t)out);
     }
 
-    if(copr==CP0_COUNT_REG||copr==CP0_COMPARE_REG||copr==CP0_STATUS_REG){
+    if(copr==CP0_COUNT_REG||copr==CP0_COMPARE_REG||copr==CP0_STATUS_REG||copr==CP0_CAUSE_REG){
       if(cc>=0) {
         emit_loadreg(CCREG,cc);
       }

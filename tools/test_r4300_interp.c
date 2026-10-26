@@ -10,7 +10,14 @@
  *  - CTC1 keeps only the implemented FCR31 bits and traps when a cause is
  *    enabled; CFC1 of an unimplemented control register reads zero;
  *  - a recompiler's MI_MODE window opens only for the store that sets a
- *    mode, not for a stale one.
+ *    mode, not for a stale one;
+ *  - an exception taken inside a handler keeps Cause.BD;
+ *  - MTC0 Config writes only K0, CU, BE and EP; MTC0 Index keeps six bits
+ *    without stopping the emulator; MTC0 Cause raising an enabled
+ *    software interrupt takes it; DMFC0 sign-extends BadVAddr and
+ *    ErrorEPC;
+ *  - a reserved COP1 encoding is coprocessor-unusable with CU1 clear and
+ *    an unimplemented-operation FPE with it set.
  *
  * Runs single instructions through the pure interpreter (InterpretOpcode).
  * Built by `make check-core` (top-level Makefile). Exit status 0 on pass.
@@ -40,6 +47,7 @@ int g_gs_vi_counter = 0;
 int frame_break = 0;
 
 static struct r4300_core s_r4300;
+static struct mi_controller s_mi;
 static uint32_t s_ram[0x4000 / 4];   /* KSEG0 0x80000000.. */
 static uint32_t s_jumped_to;
 static int s_jumps;
@@ -280,6 +288,87 @@ static void test_mi_window(void)
           "MI window: a masked-out set bit does not");
 }
 
+static uint32_t cop0_op(unsigned rs, unsigned rt, unsigned rd)
+{
+    return (0x10u << 26) | (rs << 21) | (rt << 16) | (rd << 11);
+}
+
+static void test_cause_bd(void)
+{
+    reset();
+    cp0()[CP0_STATUS_REG] |= CP0_STATUS_EXL;
+    cp0()[CP0_CAUSE_REG] = CP0_CAUSE_BD | CP0_CAUSE_EXCCODE_SYS;
+    cp0()[CP0_EPC_REG] = 0x80000400u;
+    s_r4300.regs[1] = (int32_t)0x80002002;
+    step(i_type(0x23, 1, 3, 0));                 /* LW r3,0(r1) */
+    CHECK((cp0()[CP0_CAUSE_REG] & CP0_CAUSE_BD) && exccode() == CP0_CAUSE_EXCCODE_ADEL
+          && cp0()[CP0_EPC_REG] == 0x80000400u,
+          "exception inside a handler: Cause.BD and EPC are kept");
+}
+
+static void test_cop0_moves(void)
+{
+    reset();
+    cp0()[CP0_CONFIG_REG] = 0x6e463u;
+    s_r4300.regs[1] = (int32_t)0x8002;
+    step(cop0_op(4, 1, CP0_CONFIG_REG));         /* MTC0 r1,Config */
+    CHECK(cp0()[CP0_CONFIG_REG] == 0x6e462u, "MTC0 Config: K0 can be cleared");
+    reset();
+    cp0()[CP0_CONFIG_REG] = 0x6e463u;
+    s_r4300.regs[1] = -1;
+    step(cop0_op(4, 1, CP0_CONFIG_REG));
+    CHECK(cp0()[CP0_CONFIG_REG] == 0x0f06e46fu, "MTC0 Config: only K0, CU, BE and EP are written");
+
+    reset();
+    s_r4300.stop = 0;
+    s_r4300.regs[1] = 0x3f;
+    step(cop0_op(4, 1, CP0_INDEX_REG));          /* MTC0 r1,Index */
+    CHECK(cp0()[CP0_INDEX_REG] == 0x3fu && s_r4300.stop == 0,
+          "MTC0 Index: an index past the TLB is kept, the emulator runs on");
+
+    reset();
+    cp0()[CP0_BADVADDR_REG] = 0x80001234u;
+    cp0()[CP0_ERROREPC_REG] = 0xbfc00400u;
+    step(cop0_op(1, 3, CP0_BADVADDR_REG));       /* DMFC0 r3,BadVAddr */
+    CHECK(s_r4300.regs[3] == (int64_t)(int32_t)0x80001234u, "DMFC0 BadVAddr: sign-extended");
+    s_r4300.interp_PC.addr = PC0;
+    step(cop0_op(1, 3, CP0_ERROREPC_REG));       /* DMFC0 r3,ErrorEPC */
+    CHECK(s_r4300.regs[3] == (int64_t)(int32_t)0xbfc00400u, "DMFC0 ErrorEPC: sign-extended");
+
+    /* a software interrupt raised through Cause with Status enabling it */
+    reset();
+    s_r4300.mi = &s_mi;
+    s_r4300.cp0.interrupt_handlers[2].callback = check_int_handler;
+    s_r4300.cp0.interrupt_handlers[2].opaque = &s_r4300;
+    init_interrupt(&s_r4300.cp0);
+    cp0()[CP0_COUNT_REG] = 0x100;
+    s_r4300.cp0.last_addr = PC0;
+    cp0()[CP0_STATUS_REG] |= CP0_STATUS_IE | CP0_CAUSE_IP0;
+    s_r4300.regs[1] = (int32_t)CP0_CAUSE_IP0;
+    step(cop0_op(4, 1, CP0_CAUSE_REG));          /* MTC0 r1,Cause */
+    CHECK((cp0()[CP0_CAUSE_REG] & CP0_CAUSE_IP0) && s_jumps == 1
+          && s_jumped_to == UINT32_C(0x80000180) && exccode() == 0
+          && cp0()[CP0_EPC_REG] == PC0 + 4,
+          "MTC0 Cause: an enabled software interrupt is taken after the write");
+}
+
+static void test_reserved_cop1(void)
+{
+    const uint32_t op = (0x11u << 26) | (0x10u << 21) | 0x10;   /* S-format funct 16 */
+
+    reset();
+    *r4300_cp1_fcr31(&s_r4300.cp1) = UINT32_C(0x0001f000);
+    step(op);
+    CHECK(took(CP0_CAUSE_EXCCODE_FPE) && *r4300_cp1_fcr31(&s_r4300.cp1) == UINT32_C(0x00020000),
+          "reserved COP1: unimplemented-operation FPE with CU1 set");
+
+    reset();
+    cp0()[CP0_STATUS_REG] &= ~CP0_STATUS_CU1;
+    step(op);
+    CHECK(took(CP0_CAUSE_EXCCODE_CPU) && (cp0()[CP0_CAUSE_REG] & CP0_CAUSE_CE1),
+          "reserved COP1: coprocessor unusable with CU1 clear");
+}
+
 int main(void)
 {
     s_r4300.cp0.tlb.LUT_r[0] = 0;
@@ -292,6 +381,9 @@ int main(void)
     test_r0();
     test_fcr31();
     test_mi_window();
+    test_cause_bd();
+    test_cop0_moves();
+    test_reserved_cop1();
 
     if (s_failures) {
         printf("test_r4300_interp: %d failure(s)\n", s_failures);

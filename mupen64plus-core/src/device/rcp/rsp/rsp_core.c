@@ -41,6 +41,23 @@ int g_rsp_task_consumes_dp;
 #include "plugin/plugin.h"
 #include "api/callbacks.h"
 
+/* An RSP DMA into RDRAM can overwrite code the CPU recompiler has already
+ * translated, as a PI DMA can.  A row that runs off the end of RDRAM wraps
+ * to its start. */
+static void sp_dma_invalidate(struct rsp_core* sp, uint32_t start, uint32_t length)
+{
+    uint32_t first = 0x800000 - start;
+
+    if (first > length)
+        first = length;
+    invalidate_r4300_cached_code(sp->mi->r4300, R4300_KSEG0 + start, first);
+    invalidate_r4300_cached_code(sp->mi->r4300, R4300_KSEG1 + start, first);
+    if (length > first) {
+        invalidate_r4300_cached_code(sp->mi->r4300, R4300_KSEG0, length - first);
+        invalidate_r4300_cached_code(sp->mi->r4300, R4300_KSEG1, length - first);
+    }
+}
+
 static void do_sp_dma(struct rsp_core* sp, const struct sp_dma* dma)
 {
     unsigned int i,j;
@@ -72,6 +89,7 @@ static void do_sp_dma(struct rsp_core* sp, const struct sp_dma* dma)
             }
             if (dramaddr <= 0x800000)
                 post_framebuffer_write(&sp->dp->fb, dramaddr - length, length);
+            sp_dma_invalidate(sp, (dramaddr - length) & 0x7fffff, length);
         }
     }
     else
@@ -212,7 +230,10 @@ static void update_sp_status(struct rsp_core* sp, uint32_t w)
     if ((w & 0x1800000) == 0x800000) sp->regs[SP_STATUS_REG] &= ~SP_STATUS_SIG7;
     if ((w & 0x1800000) == 0x1000000) sp->regs[SP_STATUS_REG] |= SP_STATUS_SIG7;
 
-    if (sp->rsp_task_locked && (get_event(&sp->mi->r4300->cp0.q, SP_INT))) return;
+    /* A task that has run still owns the SP until its SP_INT event
+     * delivers the completion (and re-exposes HALT/BROKE).  A CLR_HALT or
+     * CLR_BROKE landing before that must not run the same task again. */
+    if (get_event(&sp->mi->r4300->cp0.q, SP_INT)) return;
     if (!((w & 0x3) == 1) && !(w & 0x4) && !sp->rsp_task_locked)
         return;
 

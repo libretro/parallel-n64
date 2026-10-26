@@ -2,6 +2,8 @@
  *
  *  - an exception taken with EXL clear records EPC and BD; one taken from
  *    inside a handler (EXL set) leaves them for the handler's own ERET;
+ *  - a TLB miss taken inside a handler goes to the general vector and
+ *    leaves EPC and BD alone;
  *  - Status.BEV selects the bootstrap vector;
  *  - a queued interrupt check takes the exception only if an enabled
  *    interrupt is still pending when it fires;
@@ -116,6 +118,23 @@ static void test_entry(void)
     reset_cpu(CP0_STATUS_BEV, 0x80001000u, 0);
     exception_general(&s_r4300);
     CHECK(s_jumped_to == 0xbfc00380u, "BEV: bootstrap general vector");
+
+    /* TLB miss in a delay slot of the handler itself */
+    reset_cpu(CP0_STATUS_EXL, 0x80000204u, 1);
+    regs()[CP0_EPC_REG] = 0x80001000u;
+    TLB_refill_exception(&s_r4300, 0x00400000u, 0);
+    CHECK(regs()[CP0_EPC_REG] == 0x80001000u && !(regs()[CP0_CAUSE_REG] & CP0_CAUSE_BD)
+          && s_jumped_to == 0x80000180u
+          && (regs()[CP0_CAUSE_REG] & CP0_CAUSE_EXCCODE_MASK) == CP0_CAUSE_EXCCODE_TLBL,
+          "TLB miss inside a handler: EPC and BD kept, general vector");
+
+    /* the same miss outside a handler still records the branch (the
+     * interpreter's PC is one instruction past the access by now) */
+    reset_cpu(0, 0x80001008u, 1);
+    TLB_refill_exception(&s_r4300, 0x00400000u, 0);
+    CHECK(regs()[CP0_EPC_REG] == 0x80001000u && (regs()[CP0_CAUSE_REG] & CP0_CAUSE_BD)
+          && (regs()[CP0_STATUS_REG] & CP0_STATUS_EXL),
+          "TLB miss outside a handler: EPC on the branch, BD set");
 }
 
 static void test_check_int_dedupe(void)

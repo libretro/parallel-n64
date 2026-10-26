@@ -15,7 +15,13 @@
  *    leaves the address and length registers where the hardware does;
  *  - an IS-Viewer transfer length past its buffer is ignored;
  *  - DPC_CLOCK counts on across an unfreeze, the 32-bit count wrap and a
- *    savestate round trip.
+ *    savestate round trip;
+ *  - an SP DMA into RDRAM invalidates the recompiled code it overwrites,
+ *    wrapping at the end of RDRAM;
+ *  - a CLR_BROKE/CLR_HALT write while a finished task's SP_INT is still
+ *    pending does not run the task again;
+ *  - VI_V_SYNC keeps ten bits;
+ *  - an AI_LEN write with both FIFO slots taken is dropped.
  *
  * Built by `make check-core` (top-level Makefile). Exit status 0 on pass.
  */
@@ -68,10 +74,11 @@ unsigned int add_random_interrupt_time(struct r4300_core* r4300)
 }
 void cp0_update_count(struct r4300_core* r4300) { (void)r4300; }
 void gen_interrupt(struct r4300_core* r4300) { (void)r4300; }
+static unsigned int s_sp_int_pending;
 unsigned int* get_event(const struct interrupt_queue* q, int type)
 {
-    (void)q; (void)type;
-    return NULL;
+    (void)q;
+    return (type == SP_INT && s_sp_int_pending) ? &s_sp_int_pending : NULL;
 }
 void remove_event(struct interrupt_queue* q, int type) { (void)q; (void)type; }
 void r4300_check_interrupt(struct r4300_core* r4300, uint32_t cause_ip, int set_cause)
@@ -714,6 +721,82 @@ static void test_dpc_clock(void)
           "DPC: the restored clock keeps counting");
 }
 
+static unsigned s_rsp_tasks;
+static unsigned int rsp_count_task(unsigned int cycles) { s_rsp_tasks++; return cycles; }
+
+static void test_device_writes(void)
+{
+    static struct rdram rdram;
+    static struct ri_controller ri;
+    static struct rdp_core dp;
+    static struct rsp_core sp;
+    static struct vi_controller vi;
+    static struct ai_controller ai;
+    static uint32_t sp_mem[0x2000 / 4];
+
+    rdram.dram = (uint32_t*)calloc(1, 0x800000u);
+    rdram.dram_size = 0x800000u;
+    ri.rdram = &rdram;
+    s_mi.r4300 = &s_r4300;
+    memset(&sp, 0, sizeof(sp));
+    sp.mem = sp_mem;
+    sp.ri = &ri;
+    sp.dp = &dp;
+    sp.mi = &s_mi;
+
+    /* DMEM -> RDRAM, one 16-byte row from 8 bytes below the top of RDRAM */
+    s_inval_count = 0;
+    write_rsp_regs(&sp, MM_RSP_REGS + 4u * SP_MEM_ADDR_REG, 0x000u, ~0u);
+    write_rsp_regs(&sp, MM_RSP_REGS + 4u * SP_DRAM_ADDR_REG, 0x7ffff8u, ~0u);
+    write_rsp_regs(&sp, MM_RSP_REGS + 4u * SP_WR_LEN_REG, 0x00fu, ~0u);
+    CHECK(s_inval_count == 4
+       && s_inval_addr[0] == 0x807ffff8u && s_inval_size[0] == 8
+       && s_inval_addr[1] == 0xa07ffff8u && s_inval_size[1] == 8
+       && s_inval_addr[2] == 0x80000000u && s_inval_size[2] == 8
+       && s_inval_addr[3] == 0xa0000000u && s_inval_size[3] == 8,
+          "SP DMA: a write to RDRAM invalidates the code it overwrites, wrapping");
+
+    /* a finished task waits for its SP_INT before it can run again */
+    rsp.doRspCycles = rsp_count_task;
+    rsp_audio.doRspCycles = rsp_count_task;
+    sp_mem[0xfc0 / 4] = 2;
+    sp.regs[SP_STATUS_REG] = 0;
+    sp.rsp_task_locked = 0;
+    s_sp_int_pending = 1;
+    s_rsp_tasks = 0;
+    write_rsp_regs(&sp, MM_RSP_REGS + 4u * SP_STATUS_REG, 0x4u, ~0u);   /* CLR_BROKE */
+    write_rsp_regs(&sp, MM_RSP_REGS + 4u * SP_STATUS_REG, 0x1u, ~0u);   /* CLR_HALT */
+    CHECK(s_rsp_tasks == 0, "SP_STATUS: no replay while the task's SP_INT is pending");
+    s_sp_int_pending = 0;
+    write_rsp_regs(&sp, MM_RSP_REGS + 4u * SP_STATUS_REG, 0x1u, ~0u);
+    CHECK(s_rsp_tasks == 1, "SP_STATUS: CLR_HALT runs the task once SP_INT has fired");
+
+    /* VI_V_SYNC */
+    memset(&vi, 0, sizeof(vi));
+    vi.mi = &s_mi;
+    vi.clock = 48681812;
+    vi.expected_refresh_rate = 60;
+    write_vi_regs(&vi, MM_VI_REGS + 4u * VI_V_SYNC_REG, 0xfffff20du, ~0u);
+    CHECK(vi.regs[VI_V_SYNC_REG] == 0x20du && vi.count_per_scanline != 0,
+          "VI: V_SYNC keeps ten bits");
+
+    /* AI_LEN with the FIFO full */
+    memset(&ai, 0, sizeof(ai));
+    ai.mi = &s_mi;
+    ai.ri = &ri;
+    ai.vi = &vi;
+    ai.dma_modifier = 100;
+    ai.regs[AI_STATUS_REG] = UINT32_C(0xc0000000);       /* busy, full */
+    ai.regs[AI_DRAM_ADDR_REG] = 0x2000;
+    ai.fifo[1].address = 0x1000;
+    ai.fifo[1].length = 0x100;
+    write_ai_regs(&ai, MM_AI_REGS + 4u * AI_LEN_REG, 0x200u, ~0u);
+    CHECK(ai.fifo[1].address == 0x1000 && ai.fifo[1].length == 0x100,
+          "AI: AI_LEN with both FIFO slots taken is dropped");
+
+    free(rdram.dram);
+}
+
 int main(void)
 {
     test_debug_message();
@@ -726,6 +809,7 @@ int main(void)
     test_sp_dma();
     test_rsp_task_env();
     test_is_viewer();
+    test_device_writes();
 
     if (s_failures) {
         printf("test_rcp_bounds: %d failure(s)\n", s_failures);

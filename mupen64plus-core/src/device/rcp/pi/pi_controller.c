@@ -292,9 +292,12 @@ void write_pi_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask
         }
         if (value & mask & PI_STATUS_RESET)
         {
-            /* the reset abandons a transfer in flight: it never completes */
-            pi->regs[PI_STATUS_REG] = 0;
-            remove_event(&pi->mi->r4300->cp0.q, PI_INT);
+            /* the reset abandons a transfer in flight: it never completes.
+             * It clears the busy and error bits only; a pending PI
+             * interrupt stays pending (and visible) until CLR_INTR. */
+            if (pi->regs[PI_STATUS_REG] & PI_STATUS_DMA_BUSY)
+                remove_event(&pi->mi->r4300->cp0.q, PI_INT);
+            pi->regs[PI_STATUS_REG] &= ~(PI_STATUS_DMA_BUSY | PI_STATUS_ERROR);
         }
         return;
 

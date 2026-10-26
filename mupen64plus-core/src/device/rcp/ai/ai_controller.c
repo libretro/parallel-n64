@@ -292,6 +292,10 @@ void write_ai_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask
     switch (reg)
     {
     case AI_LEN_REG:
+        /* with both FIFO slots taken the write is dropped; queueing it
+         * anyway replaced the buffer already waiting in the second slot */
+        if (ai->regs[AI_STATUS_REG] & AI_STATUS_FULL)
+            return;
         masked_write(&ai->regs[AI_LEN_REG], value, mask);
         if (ai->regs[AI_LEN_REG] != 0) {
             fifo_push(ai);

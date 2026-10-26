@@ -161,7 +161,7 @@ int check_cop1_unusable(struct r4300_core* r4300)
          * interrupt lines the RCP is asserting right now; assigning the
          * register whole erased any that were pending, and with no device
          * left to re-assert them the interrupt was simply lost. */
-        cp0_regs[CP0_CAUSE_REG] = (cp0_regs[CP0_CAUSE_REG] & UINT32_C(0x0000ff00))
+        cp0_regs[CP0_CAUSE_REG] = (cp0_regs[CP0_CAUSE_REG] & ~UINT32_C(0x3000007c))
                                 | CP0_CAUSE_EXCCODE_CPU | CP0_CAUSE_CE1;
         exception_general(r4300);
         return 1;
@@ -175,7 +175,7 @@ int check_cop2_unusable(struct r4300_core* r4300)
 
     if (!(cp0_regs[CP0_STATUS_REG] & CP0_STATUS_CU2))
     {
-        cp0_regs[CP0_CAUSE_REG] = (cp0_regs[CP0_CAUSE_REG] & UINT32_C(0x0000ff00))
+        cp0_regs[CP0_CAUSE_REG] = (cp0_regs[CP0_CAUSE_REG] & ~UINT32_C(0x3000007c))
                                 | CP0_CAUSE_EXCCODE_CPU | CP0_CAUSE_CE2;
         exception_general(r4300);
         return 1;
@@ -268,13 +268,13 @@ static void exception_epilog(struct r4300_core* r4300)
 void TLB_refill_exception(struct r4300_core* r4300, uint32_t address, int w)
 {
     uint32_t* cp0_regs = r4300_cp0_regs(&r4300->cp0);
-    int usual_handler = 0, i;
+    int usual_handler = 0, i, exl;
 
     if (r4300->emumode != EMUMODE_DYNAREC && w != 2) {
         cp0_update_count(r4300);
     }
 
-    cp0_regs[CP0_CAUSE_REG] = (cp0_regs[CP0_CAUSE_REG] & UINT32_C(0x0000ff00))
+    cp0_regs[CP0_CAUSE_REG] = (cp0_regs[CP0_CAUSE_REG] & ~UINT32_C(0x3000007c))
         | ((w == 1)
             ? CP0_CAUSE_EXCCODE_TLBS
             : CP0_CAUSE_EXCCODE_TLBL);
@@ -284,17 +284,13 @@ void TLB_refill_exception(struct r4300_core* r4300, uint32_t address, int w)
         | ((address >> 9) & UINT32_C(0x007FFFF0));
     cp0_regs[CP0_ENTRYHI_REG] = address & UINT32_C(0xFFFFE000);
 
-    if (cp0_regs[CP0_STATUS_REG] & CP0_STATUS_EXL)
+    /* A miss taken inside a handler (EXL already set) goes to the general
+     * vector and leaves EPC and BD alone, so the handler's own ERET still
+     * returns where the first exception was taken. */
+    exl = (cp0_regs[CP0_STATUS_REG] & CP0_STATUS_EXL) != 0;
+    if (exl)
     {
         generic_jump_to(r4300, UINT32_C(0x80000180));
-
-
-        if (r4300->delay_slot == 1 || r4300->delay_slot == 3) {
-            cp0_regs[CP0_CAUSE_REG] |= CP0_CAUSE_BD;
-        }
-        else {
-            cp0_regs[CP0_CAUSE_REG] &= ~CP0_CAUSE_BD;
-        }
     }
     else
     {
@@ -332,17 +328,20 @@ void TLB_refill_exception(struct r4300_core* r4300, uint32_t address, int w)
                 : UINT32_C(0x80000000));
     }
 
-    if (r4300->delay_slot == 1 || r4300->delay_slot == 3)
+    if (!exl)
     {
-        cp0_regs[CP0_CAUSE_REG] |= CP0_CAUSE_BD;
-        cp0_regs[CP0_EPC_REG] -= 4;
-    }
-    else
-    {
-        cp0_regs[CP0_CAUSE_REG] &= ~CP0_CAUSE_BD;
-    }
-    if (w != 2) {
-        cp0_regs[CP0_EPC_REG] -= 4;
+        if (r4300->delay_slot == 1 || r4300->delay_slot == 3)
+        {
+            cp0_regs[CP0_CAUSE_REG] |= CP0_CAUSE_BD;
+            cp0_regs[CP0_EPC_REG] -= 4;
+        }
+        else
+        {
+            cp0_regs[CP0_CAUSE_REG] &= ~CP0_CAUSE_BD;
+        }
+        if (w != 2) {
+            cp0_regs[CP0_EPC_REG] -= 4;
+        }
     }
 
     r4300->cp0.last_addr = *r4300_pc(r4300);

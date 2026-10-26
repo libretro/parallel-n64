@@ -95,7 +95,7 @@ static int r4300_address_error(struct r4300_core* r4300, uint32_t address, int s
     uint32_t* cp0_regs = r4300_cp0_regs(&r4300->cp0);
 
     cp0_regs[CP0_BADVADDR_REG] = address;
-    cp0_regs[CP0_CAUSE_REG] = (cp0_regs[CP0_CAUSE_REG] & UINT32_C(0x0000ff00))
+    cp0_regs[CP0_CAUSE_REG] = (cp0_regs[CP0_CAUSE_REG] & ~UINT32_C(0x3000007c))
         | (store ? CP0_CAUSE_EXCCODE_ADES : CP0_CAUSE_EXCCODE_ADEL);
     exception_general(r4300);
     return 1;
@@ -107,7 +107,7 @@ static void r4300_overflow(struct r4300_core* r4300)
 {
     uint32_t* cp0_regs = r4300_cp0_regs(&r4300->cp0);
 
-    cp0_regs[CP0_CAUSE_REG] = (cp0_regs[CP0_CAUSE_REG] & UINT32_C(0x0000ff00))
+    cp0_regs[CP0_CAUSE_REG] = (cp0_regs[CP0_CAUSE_REG] & ~UINT32_C(0x3000007c))
         | CP0_CAUSE_EXCCODE_OV;
     exception_general(r4300);
 }
@@ -143,10 +143,27 @@ DECLARE_INSTRUCTION(RESERVED)
     DECLARE_R4300
 
     uint32_t* cp0_regs = r4300_cp0_regs(&r4300->cp0);
+    const uint32_t* opp = fast_mem_access(r4300, PCADDR);
+    uint32_t opcode = (opp != NULL) ? *opp : 0;
 
-    DebugMessage(M64MSG_ERROR, "reserved opcode: %" PRIX32 ":%" PRIX32, PCADDR, *fast_mem_access(r4300, PCADDR));
+    DebugMessage(M64MSG_ERROR, "reserved opcode: %" PRIX32 ":%" PRIX32, PCADDR, opcode);
 
-    cp0_regs[CP0_CAUSE_REG] = (cp0_regs[CP0_CAUSE_REG] & UINT32_C(0x0000ff00)) | CP0_CAUSE_EXCCODE_RI;
+    /* An encoding under COP1 that the FPU does not implement is handed to
+     * the FPU, not rejected by the integer unit: with CU1 clear it is a
+     * coprocessor-unusable exception, otherwise a floating-point exception
+     * with the unimplemented-operation cause, as on the VR4300. */
+    if ((opcode >> 26) == 0x11)
+    {
+        uint32_t* fcr31 = r4300_cp1_fcr31(&r4300->cp1);
+        if (check_cop1_unusable(r4300)) { return; }
+        (*fcr31) = ((*fcr31) & ~(FCR31_CAUSE_BITS | FCR31_CAUSE_UNIMPLOP_BIT))
+                 | FCR31_CAUSE_UNIMPLOP_BIT;
+        cp0_regs[CP0_CAUSE_REG] = (cp0_regs[CP0_CAUSE_REG] & ~UINT32_C(0x3000007c)) | CP0_CAUSE_EXCCODE_FPE;
+        exception_general(r4300);
+        return;
+    }
+
+    cp0_regs[CP0_CAUSE_REG] = (cp0_regs[CP0_CAUSE_REG] & ~UINT32_C(0x3000007c)) | CP0_CAUSE_EXCCODE_RI;
     exception_general(r4300);
 }
 
@@ -158,7 +175,7 @@ DECLARE_INSTRUCTION(RESERVED_COP2)
 
     if (check_cop2_unusable(r4300)) { return; }
 
-    cp0_regs[CP0_CAUSE_REG] = (cp0_regs[CP0_CAUSE_REG] & UINT32_C(0x0000ff00)) | CP0_CAUSE_EXCCODE_RI | CP0_CAUSE_CE2;
+    cp0_regs[CP0_CAUSE_REG] = (cp0_regs[CP0_CAUSE_REG] & ~UINT32_C(0x3000007c)) | CP0_CAUSE_EXCCODE_RI | CP0_CAUSE_CE2;
     exception_general(r4300);
 }
 
@@ -169,7 +186,7 @@ DECLARE_INSTRUCTION(BREAK)
     DECLARE_R4300
     uint32_t* cp0_regs = r4300_cp0_regs(&r4300->cp0);
 
-    cp0_regs[CP0_CAUSE_REG] = (cp0_regs[CP0_CAUSE_REG] & UINT32_C(0x0000ff00)) | CP0_CAUSE_EXCCODE_BP;
+    cp0_regs[CP0_CAUSE_REG] = (cp0_regs[CP0_CAUSE_REG] & ~UINT32_C(0x3000007c)) | CP0_CAUSE_EXCCODE_BP;
     exception_general(r4300);
 }
 
@@ -1099,7 +1116,7 @@ DECLARE_INSTRUCTION(SYSCALL)
     DECLARE_R4300
     uint32_t* cp0_regs = r4300_cp0_regs(&r4300->cp0);
 
-    cp0_regs[CP0_CAUSE_REG] = (cp0_regs[CP0_CAUSE_REG] & UINT32_C(0x0000ff00)) | CP0_CAUSE_EXCCODE_SYS;
+    cp0_regs[CP0_CAUSE_REG] = (cp0_regs[CP0_CAUSE_REG] & ~UINT32_C(0x3000007c)) | CP0_CAUSE_EXCCODE_SYS;
     exception_general(r4300);
 }
 
@@ -1112,7 +1129,7 @@ DECLARE_INSTRUCTION(name) \
     uint32_t* cp0_regs = r4300_cp0_regs(&r4300->cp0); \
     if (cond) \
     { \
-        cp0_regs[CP0_CAUSE_REG] = (cp0_regs[CP0_CAUSE_REG] & UINT32_C(0x0000ff00)) | CP0_CAUSE_EXCCODE_TR; \
+        cp0_regs[CP0_CAUSE_REG] = (cp0_regs[CP0_CAUSE_REG] & ~UINT32_C(0x3000007c)) | CP0_CAUSE_EXCCODE_TR; \
         exception_general(r4300); \
     } \
     else \
@@ -1366,7 +1383,11 @@ DECLARE_INSTRUCTION(DMFC0)
         cp0_update_count(r4300);
         rrt = cp0_regs[rfs];
         break;
+    /* the address registers are 64 bits wide and hold the sign-extended
+     * 32-bit address the exception was taken at or for */
+    case CP0_BADVADDR_REG:
     case CP0_EPC_REG:
+    case CP0_ERROREPC_REG:
         rrt = SE32(cp0_regs[rfs]);
         break;
     case CP0_UNUSED_7:
@@ -1398,12 +1419,10 @@ DECLARE_INSTRUCTION(MTC0)
     switch(rfs)
     {
     case CP0_INDEX_REG:
+        /* Index holds P and a six-bit field; TLBWI/TLBR use its low five
+         * bits.  An out-of-range value is a guest bug, not a reason to stop
+         * the emulator. */
         cp0_regs[CP0_INDEX_REG] = rrt32 & UINT32_C(0x8000003F);
-        if ((cp0_regs[CP0_INDEX_REG] & UINT32_C(0x3F)) > UINT32_C(31))
-        {
-            DebugMessage(M64MSG_ERROR, "MTC0 instruction writing Index register with TLB index > 31");
-            *r4300_stop(r4300)=1;
-        }
         break;
     case CP0_RANDOM_REG:
         break;
@@ -1468,16 +1487,26 @@ DECLARE_INSTRUCTION(MTC0)
     case CP0_CAUSE_REG:
         cp0_regs[CP0_CAUSE_REG] &= ~(CP0_CAUSE_IP0 | CP0_CAUSE_IP1);
         cp0_regs[CP0_CAUSE_REG] |= rrt32 & (CP0_CAUSE_IP0 | CP0_CAUSE_IP1);
-        break;
+        /* Setting a software interrupt line that Status already enables
+         * interrupts the CPU after this instruction, as a Status write
+         * that unmasks a pending line does. */
+        ADD_TO_PC(1);
+        cp0_update_count(r4300);
+        r4300_check_interrupt(r4300, CP0_CAUSE_IP2, r4300->mi->regs[MI_INTR_REG] & r4300->mi->regs[MI_INTR_MASK_REG]);
+        r4300->cp0.interrupt_unsafe_state |= INTR_UNSAFE_R4300;
+        if (*cp0_cycle_count >= 0) { gen_interrupt(r4300); }
+        r4300->cp0.interrupt_unsafe_state &= ~INTR_UNSAFE_R4300;
+        return;
     case CP0_EPC_REG:
         cp0_regs[CP0_EPC_REG] = rrt32;
         break;
     case CP0_PREVID_REG:
         break;
     case CP0_CONFIG_REG:
-        cp0_regs[CP0_CONFIG_REG] = (rrt32 & UINT32_C(0x0000000F)) 
-                | (cp0_regs[CP0_CONFIG_REG] & UINT32_C(0x00008000))
-                | (cp0_regs[CP0_CONFIG_REG] & UINT32_C(0x7FFFFFFF));
+        /* K0, CU, BE and EP are writable; the rest is fixed.  Or-ing the
+         * old value back in left K0 unable to clear once set. */
+        cp0_regs[CP0_CONFIG_REG] = (cp0_regs[CP0_CONFIG_REG] & ~UINT32_C(0x0F00800F))
+                | (rrt32 & UINT32_C(0x0F00800F));
         break;
     case CP0_LLADDR_REG:
         cp0_regs[CP0_LLADDR_REG] = rrt32;
@@ -1602,7 +1631,7 @@ DECLARE_INSTRUCTION(DCFC1)
     /* Unimplemented Operation */
     (*r4300_cp1_fcr31(&r4300->cp1)) |= FCR31_CAUSE_UNIMPLOP_BIT;
 
-    cp0_regs[CP0_CAUSE_REG] = (cp0_regs[CP0_CAUSE_REG] & UINT32_C(0x0000ff00)) | CP0_CAUSE_EXCCODE_FPE;
+    cp0_regs[CP0_CAUSE_REG] = (cp0_regs[CP0_CAUSE_REG] & ~UINT32_C(0x3000007c)) | CP0_CAUSE_EXCCODE_FPE;
     exception_general(r4300);
 }
 
@@ -1637,7 +1666,7 @@ DECLARE_INSTRUCTION(CTC1)
          || ((fcr31 >> 12) & (fcr31 >> 7) & UINT32_C(0x1f)))
         {
             uint32_t* cp0_regs = r4300_cp0_regs(&r4300->cp0);
-            cp0_regs[CP0_CAUSE_REG] = (cp0_regs[CP0_CAUSE_REG] & UINT32_C(0x0000ff00))
+            cp0_regs[CP0_CAUSE_REG] = (cp0_regs[CP0_CAUSE_REG] & ~UINT32_C(0x3000007c))
                 | CP0_CAUSE_EXCCODE_FPE;
             exception_general(r4300);
             return;
@@ -1658,7 +1687,7 @@ DECLARE_INSTRUCTION(DCTC1)
     /* Unimplemented Operation */
     (*r4300_cp1_fcr31(&r4300->cp1)) |= FCR31_CAUSE_UNIMPLOP_BIT;
 
-    cp0_regs[CP0_CAUSE_REG] = (cp0_regs[CP0_CAUSE_REG] & UINT32_C(0x0000ff00)) | CP0_CAUSE_EXCCODE_FPE;
+    cp0_regs[CP0_CAUSE_REG] = (cp0_regs[CP0_CAUSE_REG] & ~UINT32_C(0x3000007c)) | CP0_CAUSE_EXCCODE_FPE;
     exception_general(r4300);
 }
 
