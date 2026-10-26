@@ -14,6 +14,12 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include "rdp_emit_rsp.h"
+/* RSP_NO_SSE2 selects the scalar attribute loop (the tests build both) */
+#if !defined(RSP_NO_SSE2) && (defined(__SSE2__) || defined(_M_X64) \
+    || defined(_M_AMD64) || (defined(_M_IX86_FP) && _M_IX86_FP >= 2))
+#include <emmintrin.h>
+#define RSP_SSE2 1
+#endif
 
 /* 11-bit divide result look-up table (VRCP family), from cxd4. */
 static const uint16_t div_rom[1024] = {
@@ -2917,6 +2923,201 @@ void rsp_tri_set_d64_sort(int on)
     s_d64_lut_sort = on;
 }
 
+#ifdef RSP_SSE2
+/* ---- the triangle writer's attribute lanes, eight at a time ----------- */
+
+/* The eight r g b a s t w z lanes run the microcode's vector chains; held
+ * as 16-bit slices (h:m:l) of the 48-bit accumulator. These chains never
+ * leave the 47-bit range, so the slices agree with the scalar int64
+ * accumulator everywhere they are read. */
+typedef struct { __m128i h, m, l; } RxAcc;
+
+#define RX_K8000 _mm_set1_epi16((short)0x8000)
+
+/* -1 where sum = a + b carried out of 16 bits */
+static __m128i rx_carry(__m128i sum, __m128i b)
+{
+    return _mm_cmplt_epi16(_mm_xor_si128(sum, RX_K8000), _mm_xor_si128(b, RX_K8000));
+}
+
+/* eight int32 lanes holding 16-bit values into one int16 vector */
+static __m128i rx_pack16(const int32_t *p)
+{
+    __m128i a = _mm_loadu_si128((const __m128i *)(const void *)p);
+    __m128i b = _mm_loadu_si128((const __m128i *)(const void *)(p + 4));
+    a = _mm_srai_epi32(_mm_slli_epi32(a, 16), 16);
+    b = _mm_srai_epi32(_mm_slli_epi32(b, 16), 16);
+    return _mm_packs_epi32(a, b);
+}
+
+/* acc += (hi:lo), a 32-bit product sign-extended */
+static void rx_add32(RxAcc *a, __m128i hi, __m128i lo)
+{
+    __m128i l2 = _mm_add_epi16(a->l, lo);
+    __m128i c1 = rx_carry(l2, lo);
+    __m128i m1 = _mm_add_epi16(a->m, hi);
+    __m128i ca = rx_carry(m1, hi);
+    __m128i m2 = _mm_sub_epi16(m1, c1);
+    __m128i cb = _mm_and_si128(c1, _mm_cmpeq_epi16(m2, _mm_setzero_si128()));
+    a->h = _mm_sub_epi16(_mm_sub_epi16(_mm_add_epi16(a->h, _mm_srai_epi16(hi, 15)), ca), cb);
+    a->m = m2;
+    a->l = l2;
+}
+
+/* acc += (hi:lo) << 16 */
+static void rx_add32_16(RxAcc *a, __m128i hi, __m128i lo)
+{
+    __m128i m2 = _mm_add_epi16(a->m, lo);
+    a->h = _mm_sub_epi16(_mm_add_epi16(a->h, hi), rx_carry(m2, lo));
+    a->m = m2;
+}
+
+/* the products: unsigned s x signed t, signed x signed, signed s x
+ * unsigned t, unsigned x unsigned (high half only) */
+static void rx_mul_us(__m128i s, __m128i t, __m128i *hi, __m128i *lo)
+{
+    *lo = _mm_mullo_epi16(s, t);
+    *hi = _mm_add_epi16(_mm_mulhi_epi16(s, t), _mm_and_si128(t, _mm_srai_epi16(s, 15)));
+}
+
+static void rx_mul_ss(__m128i s, __m128i t, __m128i *hi, __m128i *lo)
+{
+    *lo = _mm_mullo_epi16(s, t);
+    *hi = _mm_mulhi_epi16(s, t);
+}
+
+static void rx_mul_su(__m128i s, __m128i t, __m128i *hi, __m128i *lo)
+{
+    rx_mul_us(t, s, hi, lo);
+}
+
+/* signed clamp of bits 47..16, and the low slice with the 0/0xffff
+ * clamp */
+static __m128i rx_clamp_mid(const RxAcc *a)
+{
+    return _mm_packs_epi32(_mm_unpacklo_epi16(a->m, a->h), _mm_unpackhi_epi16(a->m, a->h));
+}
+
+static __m128i rx_clamp_low(const RxAcc *a)
+{
+    __m128i t = rx_clamp_mid(a);
+    __m128i c = _mm_cmpeq_epi16(t, a->m);
+    return _mm_or_si128(_mm_and_si128(c, a->l),
+                        _mm_andnot_si128(c, _mm_xor_si128(t, RX_K8000)));
+}
+
+/* sub32 on eight lanes: the fraction borrows, the integer clamps */
+static void rx_sub32(__m128i ai, __m128i af, __m128i bi, __m128i bf,
+                     __m128i *oi, __m128i *of)
+{
+    __m128i borrow = _mm_cmplt_epi16(_mm_xor_si128(af, RX_K8000), _mm_xor_si128(bf, RX_K8000));
+    __m128i z = _mm_setzero_si128();
+    __m128i as = _mm_srai_epi16(ai, 15), bs = _mm_srai_epi16(bi, 15);
+    __m128i bw = _mm_srai_epi16(borrow, 15);
+    __m128i lo = _mm_sub_epi32(_mm_sub_epi32(_mm_unpacklo_epi16(ai, as), _mm_unpacklo_epi16(bi, bs)),
+                               _mm_sub_epi32(z, _mm_unpacklo_epi16(bw, bw)));
+    __m128i hi = _mm_sub_epi32(_mm_sub_epi32(_mm_unpackhi_epi16(ai, as), _mm_unpackhi_epi16(bi, bs)),
+                               _mm_sub_epi32(z, _mm_unpackhi_epi16(bw, bw)));
+    *of = _mm_sub_epi16(af, bf);
+    *oi = _mm_packs_epi32(lo, hi);
+}
+
+static void rx_store32(Rsp32 o[8], __m128i i, __m128i f)
+{
+    uint16_t ti[8], tf[8];
+    int k;
+    _mm_storeu_si128((__m128i *)(void *)ti, i);
+    _mm_storeu_si128((__m128i *)(void *)tf, f);
+    for (k = 0; k < 8; k++)
+    {
+        o[k].i = ti[k];
+        o[k].f = tf[k];
+    }
+}
+
+static __m128i rx_load_i(const Rsp32 v[8])
+{
+    int32_t t[8];
+    int k;
+    for (k = 0; k < 8; k++)
+        t[k] = v[k].i;
+    return rx_pack16(t);
+}
+
+static __m128i rx_load_f(const Rsp32 v[8])
+{
+    int32_t t[8];
+    int k;
+    for (k = 0; k < 8; k++)
+        t[k] = v[k].f;
+    return rx_pack16(t);
+}
+
+/* the H->L and H->M attribute deltas and the two cross numerators:
+ * dA_x = dMH.y * dA_H + dHL.y * dA_M and dA_y = dLH.x * dA_M + dHM.x *
+ * dA_H (vmudn/vmadh, the accumulator's raw 47..16 window) */
+static void rx_attr_deltas(const int32_t at_i[3][8], const int32_t at_f[3][8],
+                           int32_t mh_y, int32_t hl_y, int32_t lh_x, int32_t hm_x,
+                           Rsp32 dA_H[8], Rsp32 dA_M[8], Rsp32 dA_x[8], Rsp32 dA_y[8])
+{
+    __m128i a1i = rx_pack16(at_i[0]), a1f = rx_pack16(at_f[0]);
+    __m128i a2i = rx_pack16(at_i[1]), a2f = rx_pack16(at_f[1]);
+    __m128i a3i = rx_pack16(at_i[2]), a3f = rx_pack16(at_f[2]);
+    __m128i hi_, hf, mi, mf, ph, pl;
+    __m128i ky_mh = _mm_set1_epi16((short)mh_y), ky_hl = _mm_set1_epi16((short)hl_y);
+    __m128i kx_lh = _mm_set1_epi16((short)lh_x), kx_hm = _mm_set1_epi16((short)hm_x);
+    RxAcc a;
+    rx_sub32(a3i, a3f, a1i, a1f, &hi_, &hf);
+    rx_sub32(a2i, a2f, a1i, a1f, &mi, &mf);
+    rx_store32(dA_H, hi_, hf);
+    rx_store32(dA_M, mi, mf);
+
+    rx_mul_us(hf, ky_mh, &ph, &pl);
+    a.l = pl; a.m = ph; a.h = _mm_srai_epi16(ph, 15);
+    rx_mul_ss(hi_, ky_mh, &ph, &pl);
+    rx_add32_16(&a, ph, pl);
+    rx_mul_us(mf, ky_hl, &ph, &pl);
+    rx_add32(&a, ph, pl);
+    rx_mul_ss(mi, ky_hl, &ph, &pl);
+    rx_add32_16(&a, ph, pl);
+    rx_store32(dA_x, a.h, a.m);
+
+    rx_mul_us(mf, kx_lh, &ph, &pl);
+    a.l = pl; a.m = ph; a.h = _mm_srai_epi16(ph, 15);
+    rx_mul_ss(mi, kx_lh, &ph, &pl);
+    rx_add32_16(&a, ph, pl);
+    rx_mul_us(hf, kx_hm, &ph, &pl);
+    rx_add32(&a, ph, pl);
+    rx_mul_ss(hi_, kx_hm, &ph, &pl);
+    rx_add32_16(&a, ph, pl);
+    rx_store32(dA_y, a.h, a.m);
+}
+
+/* base = attr(H) + dAdE * y_spx (vmudn/vmadh of H, then vmadl/vmadm/
+ * vmadn with the clamped low read, vmadh with the clamped mid read) */
+static void rx_attr_base(const int32_t at_i0[8], const int32_t at_f0[8],
+                         const Rsp32 dAdE[8], int32_t y_spx_f, int32_t y_spx_i,
+                         Rsp32 base[8])
+{
+    __m128i ei = rx_load_i(dAdE), ef = rx_load_f(dAdE);
+    __m128i yf = _mm_set1_epi16((short)y_spx_f), yi = _mm_set1_epi16((short)y_spx_i);
+    __m128i ph, pl, bf;
+    RxAcc a;
+    a.m = rx_pack16(at_i0);
+    a.l = rx_pack16(at_f0);
+    a.h = _mm_srai_epi16(a.m, 15);
+    rx_add32(&a, _mm_setzero_si128(), _mm_mulhi_epu16(ef, yf));
+    rx_mul_su(ei, yf, &ph, &pl);
+    rx_add32(&a, ph, pl);
+    rx_mul_us(ef, yi, &ph, &pl);
+    rx_add32(&a, ph, pl);
+    bf = rx_clamp_low(&a);
+    rx_mul_ss(ei, yi, &ph, &pl);
+    rx_add32_16(&a, ph, pl);
+    rx_store32(base, rx_clamp_mid(&a), bf);
+}
+#endif
+
 int rsp_tri_write(int32_t *ew,
                   const RspTriVtx *v1c, const RspTriVtx *v2c,
                   const RspTriVtx *v3c,
@@ -3644,6 +3845,36 @@ int rsp_tri_write(int32_t *ew,
         rs_mh_y = clamp_s16(mh_y * 4); rs_hl_y = clamp_s16(hl_y * 4);
         rs_lh_x = clamp_s16(lh_x * 4); rs_hm_x = clamp_s16(hm_x * 4);
     }
+#ifdef RSP_SSE2
+    if (!s_tri_attr_rs && !s_tri_attr_zboss)
+    {
+        /* the stock chain: deltas, numerators and bases eight lanes at a
+         * time, the gradient multiplies on the wide reciprocal per lane */
+        rx_attr_deltas((const int32_t (*)[8])at_i, (const int32_t (*)[8])at_f,
+                       mh_y, hl_y, lh_x, hm_x, dA_H, dA_M, dA_x, dA_y);
+        for (k = 0; k < 8; k++)
+        {
+            if (s_texrecip)
+            {
+                dAdX[k] = mac32(dA_x[k], inv_dx, 0);
+                dAdY[k] = mac32(dA_y[k], inv_dx, &acc);
+            }
+            else
+            {
+                dAdX[k] = mac32_wide(dA_x[k], inv_dx_64, 0);
+                dAdY[k] = mac32_wide(dA_y[k], inv_dx_64, &acc);
+            }
+            acc += p_udl(dAdX[k].f, dxhdy.f);
+            acc += p_udm(dAdX[k].i, dxhdy.f);
+            acc += p_udn(dAdX[k].f, dxhdy.i);
+            dAdE[k].f = acc_clamp_low(acc);
+            acc += p_udh(dAdX[k].i, dxhdy.i);
+            dAdE[k].i = acc_clamp_mid(acc);
+        }
+        rx_attr_base(at_i[0], at_f[0], dAdE, y_spx_f, y_spx_i, base);
+    }
+    else
+#endif
     for (k = 0; k < 8; k++)
     {
         Rsp32 a1, a2, a3;
