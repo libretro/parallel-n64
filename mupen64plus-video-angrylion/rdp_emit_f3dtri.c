@@ -26,7 +26,9 @@
  *   F3D_TRI_REV_A: Mario Kart 64: table-driven sort, cull and degenerate
  *                  tests on the saturated cross, anchor fraction from the
  *                  top vertex vector, texture normalizer scale from the
- *                  data row (triangle write only).
+ *                  data row; the same clipper and fan, with the near
+ *                  plane on z + w, z in the screen-plane outcodes and no
+ *                  w-sign bits in the vertex flags.
  * GoldenEye and Mario Kart 64 take the flat-shade colour from a chosen
  * command vertex; Perfect Dark's build always interpolates.
  *
@@ -51,6 +53,7 @@ typedef struct F3dVu
     uint8_t vce[8];
     int32_t divin, divout;
     int     dph;
+    int     rev;                /* F3D_TRI_* build */
     uint8_t dmem[0x1000];
 } F3dVu;
 
@@ -622,6 +625,7 @@ static void vu_setup(F3dVu *u, const F3dTriState *st)
     };
     int i;
     memset(u, 0, sizeof(*u));
+    u->rev = st->rev;
     for (i = 0; i < 8; i++)
     {
         dm_w16(u, D_V31 + 2 * i, (uint16_t)k_v31[i]);
@@ -637,6 +641,9 @@ static void vu_setup(F3dVu *u, const F3dTriState *st)
     dm_w16(u, D_PLANES + 0x0e, (uint16_t)st->guard);
     dm_w16(u, D_PLANES + 0x16, (uint16_t)-st->guard);
     dm_w16(u, D_PLANES + 0x1e, (uint16_t)-st->guard);
+    /* the near plane: w (revision B) or z + w */
+    if (st->rev == F3D_TRI_REV_A)
+        dm_w16(u, D_PLANES + 0x2c, 1);
     dm_w16(u, D_CLAMP + 0, (uint16_t)st->clamp_hi);
     dm_w16(u, D_CLAMP + 2, (uint16_t)st->clamp_lo);
     dm_w16(u, D_CLAMP + 4, 0x7fff);
@@ -657,6 +664,10 @@ static void vu_setup(F3dVu *u, const F3dTriState *st)
     lqv(31, D_V31);
     lqv(30, D_V30);
 }
+
+/* set when tri_core culls the triangle on its face; see
+ * rsp_tri_f3d_face_culled */
+static int s_face_culled;
 
 /* The triangle write proper, on the vertex records at at, v0, v1 (in
  * command order) with the flat-shade vertex at a0; the coefficient block
@@ -712,7 +723,10 @@ static int tri_core(F3dVu *u, uint32_t at, uint32_t v0, uint32_t v1,
         t7 = s1 & t7;
         dm_w16(u, t0 + 4, v1);
         if ((int32_t)t7 < 0)
+        {
+            s_face_culled = 1;
             return 0;
+        }
         a3 = (uint32_t)((int32_t)t3 < (int32_t)t2);
         t4 = (uint32_t)((int32_t)t2 < (int32_t)t1);
         a3 = a3 * 2 + t4;
@@ -741,7 +755,10 @@ static int tri_core(F3dVu *u, uint32_t at, uint32_t v0, uint32_t v1,
         vmov(u, 29, 3, 29, E0);
         vmov(u, 28, 3, 28, E0);
         if ((int32_t)t6 >= 0)
+        {
+            s_face_culled = 1;
             return 0;
+        }
         ssv(15, 2, s7 + 2);
         vmov(u, 4, 2, 10, E0);
         ssv(14, 2, s7 + 4);
@@ -817,7 +834,10 @@ static int tri_core(F3dVu *u, uint32_t at, uint32_t v0, uint32_t v1,
     vmov(u, 4, 4, 9, E0);
     vmov(u, 4, 5, 9, E1);
     if ((int32_t)s0 > 0)
+    {
+        s_face_culled = 1;
         return 0;
+    }
     a3 = (uint32_t)mfc2(u, 27, 0);
     a2 = 0x80;
     recip_lanes37(u);
@@ -1188,7 +1208,7 @@ int rsp_tri_write_f3d(int32_t *ew, const RspTriVtx *v1c,
                     D_VTX + 0x28 * (unsigned int)(st->flat_vtx % 3), st, ew);
 }
 
-/* ---- revision B vertex flags, clipper and fan ------------------------- */
+/* ---- vertex flags, clipper and fan ------------------------------------ */
 
 static void vu_flag_clear(F3dVu *u, int i)
 {
@@ -1258,23 +1278,31 @@ static uint32_t vcc_word(const F3dVu *u)
 
 /* The vertex write's outcode block: lanes 0..3 and 4..7 of v29:v28 hold
  * the two clip positions. Returns the 32-bit flags word whose low half
- * is the first vertex's record halfword and high half the second's. */
+ * is the first vertex's record halfword and high half the second's.
+ * Revision B leaves z out of the screen-plane bits and packs both w
+ * signs into the second vertex's halfword; revision A keeps z and packs
+ * no signs. */
 static uint32_t vtx_outcodes(F3dVu *u)
 {
-    uint32_t t0, t5, t6;
+    uint32_t t0, t5, t6 = 0;
+    const int rev_b = (u->rev == F3D_TRI_REV_B);
     lsv(21, 0, D_GUARD);
     vmudn(20, 28, 21, E0);
-    t5 = ((uint32_t)mfc2(u, 29, 3) & 0x8000u) >> 13;
+    if (rev_b)
+        t5 = ((uint32_t)mfc2(u, 29, 3) & 0x8000u) >> 13;
     vmadh(21, 29, 21, E0);
-    t6 = ((uint32_t)mfc2(u, 29, 7) & 0x8000u) >> 9;
+    if (rev_b)
+    {
+        t6 = ((uint32_t)mfc2(u, 29, 7) & 0x8000u) >> 9;
+        t6 |= t5;
+    }
     vch(u, 3, 29, 29, H3);
-    t6 |= t5;
     vcl(u, 3, 28, 28, H3);
     t5 = vcc_word(u);
     vch(u, 3, 29, 21, H3);
     vcl(u, 3, 28, 20, H3);
-    t0 = t5 & 0x703;
-    t5 = (t5 & 0x7030) | t6;
+    t0 = t5 & (rev_b ? 0x703u : 0x707u);
+    t5 = (t5 & (rev_b ? 0x7030u : 0x7070u)) | t6;
     t0 <<= 4;
     t5 <<= 16;
     t5 |= t0;
@@ -1294,14 +1322,15 @@ static void load_pos(F3dVu *u, int lane0, const int32_t p[4])
     }
 }
 
-void f3d_vtx_flags_rare(const int32_t a[4], const int32_t *b, int guard,
-                        int32_t *fa, int32_t *fb)
+void f3d_vtx_flags(int rev, const int32_t a[4], const int32_t *b, int guard,
+                   int32_t *fa, int32_t *fb)
 {
     static F3dVu vu;
     F3dVu *u = &vu;
     static const int32_t zero[4] = { 0, 0, 0, 0 };
     uint32_t w;
     memset(u, 0, sizeof(*u));
+    u->rev = rev;
     dm_w16(u, D_GUARD, (uint16_t)guard);
     load_pos(u, 0, a);
     load_pos(u, 4, b ? b : zero);
@@ -1451,9 +1480,19 @@ static void clip_intersect(F3dVu *u, uint32_t t2, uint32_t s4, uint32_t a2,
     vtx_finish(u, a3, dm_lw(u, a3));
 }
 
-int rsp_tri_rare(int32_t *ew, int max_words, const RspTriVtx *v1c,
-                 const RspTriVtx *v2c, const RspTriVtx *v3c,
-                 const F3dTriState *st)
+/* whether the last rsp_tri_f3d call was culled on its face by the direct
+ * write (not by the trivial reject, a zero area or inside the clipper's
+ * fan): Mario Kart 64's quad handler skips its second half then */
+static int s_last_face_cull;
+
+int rsp_tri_f3d_face_culled(void)
+{
+    return s_last_face_cull;
+}
+
+int rsp_tri_f3d(int32_t *ew, int max_words, const RspTriVtx *v1c,
+                const RspTriVtx *v2c, const RspTriVtx *v3c,
+                const F3dTriState *st)
 {
     /* plane masks by the plane counter before its decrement (0x0c..0x02):
      * near (w), far (z - w), y - w, x - w, y + w, x + w */
@@ -1472,13 +1511,21 @@ int rsp_tri_rare(int32_t *ew, int max_words, const RspTriVtx *v1c,
     put_vtx(u, v1, v3c);
     a0 = D_VTX + 0x28 * (unsigned int)(st->flat_vtx % 3);
 
+    s_last_face_cull = 0;
     f1 = (uint32_t)v1c->f3d_flags;
     f2 = (uint32_t)v2c->f3d_flags;
     f3 = (uint32_t)v3c->f3d_flags;
-    if ((f1 & f2 & f3 & 0x7030u) != 0)
+    if ((f1 & f2 & f3 & (st->rev == F3D_TRI_REV_B ? 0x7030u : 0x7070u)) != 0)
         return 0;
     if (((f1 | f2 | f3) & 0x4343u) == 0)
-        return max_words >= 44 ? tri_core(u, at, v0, v1, a0, st, ew) : 0;
+    {
+        if (max_words < 44)
+            return 0;
+        s_face_culled = 0;
+        words = tri_core(u, at, v0, v1, a0, st, ew);
+        s_last_face_cull = s_face_culled;
+        return words;
+    }
 
     /* clip: the polygon list starts in reverse command order */
     dm_w16(u, D_LIST + 0, v1);

@@ -23,7 +23,7 @@ typedef struct F3dTriState
     int      flat_select;   /* build takes flat colour from flat_vtx */
     int      flat_vtx;      /* 0..2: command-order vertex */
     int      tex_scale_a;   /* revision A texture normalizer scale */
-    /* clipper and vertex write (revision B) */
+    /* clipper and vertex write */
     int16_t  vs[4], vt[4];  /* viewport scale/translate as stored */
     int      fog_m, fog_o;  /* G_MW_FOG multiplier and offset */
     int      guard;         /* gSPClipRatio: side-plane w lanes and the
@@ -39,17 +39,22 @@ int rsp_tri_write_f3d(int32_t *ew, const RspTriVtx *v1c,
                       const RspTriVtx *v2c, const RspTriVtx *v3c,
                       const F3dTriState *st);
 
-/* Revision B triangle command: the microcode's trivial reject on the
+/* The whole triangle command: the microcode's trivial reject on the
  * vertex clip flags, its guard-band clipper and fan, or the plain write.
  * Writes at most max_words; returns the word count. */
-int rsp_tri_rare(int32_t *ew, int max_words, const RspTriVtx *v1c,
-                 const RspTriVtx *v2c, const RspTriVtx *v3c,
-                 const F3dTriState *st);
+int rsp_tri_f3d(int32_t *ew, int max_words, const RspTriVtx *v1c,
+                const RspTriVtx *v2c, const RspTriVtx *v3c,
+                const F3dTriState *st);
 
-/* Revision B vertex clip flags for a pair of vertices transformed
- * together (pos = x, y, z, w clip-space s15.16); b is the pair's second
- * vertex or 0 for an unpaired last vertex. */
-void f3d_vtx_flags_rare(const int32_t a[4], const int32_t *b, int guard,
-                        int32_t *fa, int32_t *fb);
+/* 1 when the last rsp_tri_f3d call was culled on its face by the
+ * unclipped write; the trivial reject, a zero area and the clipper's fan
+ * leave it 0. */
+int rsp_tri_f3d_face_culled(void);
+
+/* Vertex clip flags for a pair of vertices transformed together (pos =
+ * x, y, z, w clip-space s15.16); b is the pair's second vertex or 0 for
+ * an unpaired last vertex. */
+void f3d_vtx_flags(int rev, const int32_t a[4], const int32_t *b, int guard,
+                   int32_t *fa, int32_t *fb);
 
 #endif

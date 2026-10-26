@@ -1173,6 +1173,44 @@ void f3d_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
             int d = (int)((w1 >>  0) & 0xff) / s;
             int32_t cw[GSP_TRI_CMD_WORDS];
             int nc;
+            if (gsp->viewport.f3d_tri_rev == F3D_TRI_REV_A
+                && a < GSP_MAX_VERTICES && b < GSP_MAX_VERTICES
+                && c < GSP_MAX_VERTICES && d < GSP_MAX_VERTICES)
+            {
+                /* Mario Kart 64's handler (text 0x244) cuts the quad along
+                 * the diagonal with the smaller screen-y span: b-d when
+                 * |y(b) - y(d)| <= |y(c) - y(a)|, drawing (b, c, d) then
+                 * (d, a, b); a-c otherwise, drawing (b, c, a) then
+                 * (d, a, c). The flat colour comes from b. The vertex
+                 * order decides the setup's tie-breaks between vertices of
+                 * equal y, so any other order changes the edge words. */
+                int32_t dy0 = (gsp->vtx[b].scr_y >> 14) - (gsp->vtx[d].scr_y >> 14);
+                int32_t dy1 = (gsp->vtx[c].scr_y >> 14) - (gsp->vtx[a].scr_y >> 14);
+                int t1 = d, t2 = b, fv = 2;
+                if (dy0 < 0) dy0 = -dy0;
+                if (dy1 < 0) dy1 = -dy1;
+                if (dy0 > dy1)
+                {
+                    t1 = a;
+                    t2 = c;
+                    fv = 0;
+                }
+                gsp->viewport.f3d_flat_vtx = 0;
+                nc = gsp_triangle(gsp, cw, b, c, t1, s_textured, s_zbuffered);
+                if (nc > 0) rdp_fifo_append(fifo, cw, nc);
+                /* a first half culled on its face leaves ra zero (writer
+                 * exit 0xfa0) and the handler returns without the second;
+                 * a trivial reject, a zero area or a clip keeps it */
+                if (nc == 0 && rsp_tri_f3d_face_culled())
+                    break;
+                /* b is not a vertex of the second half on the a-c cut;
+                 * every Mario Kart 64 quad is smooth shaded */
+                gsp->viewport.f3d_flat_vtx = fv;
+                nc = gsp_triangle(gsp, cw, d, a, t2, s_textured, s_zbuffered);
+                gsp->viewport.f3d_flat_vtx = 0;
+                if (nc > 0) rdp_fifo_append(fifo, cw, nc);
+                break;
+            }
             nc = gsp_triangle(gsp, cw, a, b, c, s_textured, s_zbuffered);
             if (nc > 0) rdp_fifo_append(fifo, cw, nc);
             nc = gsp_triangle(gsp, cw, a, c, d, s_textured, s_zbuffered);

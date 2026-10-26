@@ -422,6 +422,10 @@ void gsp_detect_ucode_params(GSPState *st, const unsigned char *rdram,
             st->viewport.f3d_clamp_lo = lo;
             st->viewport.f3d_clamp_hi = hi;
         }
+        /* the task's DMEM load restores the build's default lights;
+         * Mario Kart 64 never loads its own */
+        if (rev == F3D_TRI_REV_A && ut_is_task_start)
+            gsp_f3d_task_lights(st, rdram, rdram_size, ud_task);
     }
 
     /* Rejection-microcode probe: F3DLX.Rej / F3DZEX.Rej carry ".Rej" in

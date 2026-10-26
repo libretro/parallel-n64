@@ -847,7 +847,7 @@ static void gsp_f3d_pair_flags(GSPState *s, int v0, int n)
         {
             pb[0] = b->cx; pb[1] = b->cy; pb[2] = b->cz; pb[3] = b->cw;
         }
-        f3d_vtx_flags_rare(pa, b ? pb : 0, s->clip_ratio, &fa, &fb);
+        f3d_vtx_flags(s->viewport.f3d_tri_rev, pa, b ? pb : 0, s->clip_ratio, &fa, &fb);
         a->f3d_flags = fa;
         if (b)
             b->f3d_flags = fb;
@@ -1274,7 +1274,7 @@ void gsp_vertex(GSPState *s, const unsigned char *rdram, unsigned int addr,
          * and a G_VTX into its slot ends that. */
         vt->flat2d = 0;
     }
-    if (s->viewport.f3d_tri_rev == F3D_TRI_REV_B)
+    if (s->viewport.f3d_tri_rev != F3D_TRI_NONE)
         gsp_f3d_pair_flags(s, v0, n);
 }
 
@@ -1546,6 +1546,31 @@ void gsp_set_num_lights(GSPState *s, int n)
     s->num_lights = n;
     /* The RSP zeroes lightsValid whenever numLightsx18 is written. */
     s->lights_valid = 0;
+}
+
+/* The task's DMEM load restores the build's default lights: the
+ * light-count word at data + 0x12c (0x20 per light past the first, top
+ * bit = directions not yet transformed) and the lights from data + 0x1f0,
+ * 0x20 apart, the ambient one last. Mario Kart 64 never loads its own
+ * lights, so its lit vertices take these (ambient red, the directional
+ * light black). */
+void gsp_f3d_task_lights(GSPState *s, const unsigned char *rdram,
+                         unsigned int rdram_size, unsigned int ud)
+{
+    uint32_t w;
+    int n, li;
+    if (rdram == 0 || ud == 0 || ud + 0x300u > rdram_size)
+        return;
+    w = ((uint32_t)read_u8_n64(rdram, ud + 0x12c) << 24)
+      | ((uint32_t)read_u8_n64(rdram, ud + 0x12d) << 16)
+      | ((uint32_t)read_u8_n64(rdram, ud + 0x12e) << 8)
+      |  (uint32_t)read_u8_n64(rdram, ud + 0x12f);
+    n = (int)(((w & 0x7fffffffu) >> 5) - 1u);
+    if (n < 0 || n >= GSP_MAX_LIGHTS)
+        return;
+    gsp_set_num_lights(s, n);
+    for (li = 0; li <= n; li++)
+        gsp_set_light(s, rdram, ud + 0x1f0u + 0x20u * (unsigned int)li, li);
 }
 
 void gsp_set_light(GSPState *s, const unsigned char *rdram,
@@ -2274,8 +2299,8 @@ int gsp_line(GSPState *s, int32_t *cmd, int i0, int i1, int width_q)
     }
 }
 
-/* A stored vertex as the revision B microcode's DMEM record holds it. */
-static void gsp_rare_vtx(const GSPVertex *g, RspTriVtx *r)
+/* A stored vertex as the Fast3D microcode's DMEM record holds it. */
+static void gsp_f3d_vtx(const GSPVertex *g, RspTriVtx *r)
 {
     memset(r, 0, sizeof(*r));
     r->x = (int16_t)(g->scr_x >> 14);
@@ -2295,21 +2320,22 @@ static void gsp_rare_vtx(const GSPVertex *g, RspTriVtx *r)
     r->f3d_flags = g->f3d_flags;
 }
 
-/* GoldenEye / Perfect Dark: the whole triangle command -- trivial reject,
- * clipper, fan and triangle write -- as the microcode runs it. */
-static int gsp_triangle_rare(GSPState *s, int32_t *cmd, const GSPVertex *a,
-                             const GSPVertex *b, const GSPVertex *c,
-                             int textured, int z_buffered)
+/* Fast3D (GoldenEye, Perfect Dark, Mario Kart 64): the whole triangle
+ * command -- trivial reject, clipper, fan and triangle write -- as the
+ * microcode runs it. */
+static int gsp_triangle_f3d(GSPState *s, int32_t *cmd, const GSPVertex *a,
+                            const GSPVertex *b, const GSPVertex *c,
+                            int textured, int z_buffered)
 {
     const BridgeViewport *vp = &s->viewport;
     RspTriVtx r[3];
     F3dTriState st;
     unsigned int gm = s->geometry_mode;
-    gsp_rare_vtx(a, &r[0]);
-    gsp_rare_vtx(b, &r[1]);
-    gsp_rare_vtx(c, &r[2]);
+    gsp_f3d_vtx(a, &r[0]);
+    gsp_f3d_vtx(b, &r[1]);
+    gsp_f3d_vtx(c, &r[2]);
     memset(&st, 0, sizeof(st));
-    st.rev = F3D_TRI_REV_B;
+    st.rev = vp->f3d_tri_rev;
     st.geometry_mode = (z_buffered ? 0x1u : 0u) | (textured ? 0x2u : 0u)
                      | ((gm & 0x4u) ? 0x4u : 0u)
                      | ((gm & 0x00200000u) ? 0x200u : 0u)
@@ -2333,7 +2359,7 @@ static int gsp_triangle_rare(GSPState *s, int32_t *cmd, const GSPVertex *a,
     st.guard = s->clip_ratio;
     st.clamp_lo = vp->f3d_clamp_lo;
     st.clamp_hi = vp->f3d_clamp_hi;
-    return rsp_tri_rare(cmd, GSP_TRI_CMD_WORDS, &r[0], &r[1], &r[2], &st);
+    return rsp_tri_f3d(cmd, GSP_TRI_CMD_WORDS, &r[0], &r[1], &r[2], &st);
 }
 
 int gsp_triangle(GSPState *s, int32_t *cmd, int i0, int i1, int i2,
@@ -2354,8 +2380,8 @@ int gsp_triangle(GSPState *s, int32_t *cmd, int i0, int i1, int i2,
     /* Z bit comes from the G_ZBUFFER geometry-mode bit, not the othermode. */
     z_buffered = (s->geometry_mode & GEOM_ZBUFFER) ? 1 : 0;
 
-    if (s->viewport.f3d_tri_rev == F3D_TRI_REV_B)
-        return gsp_triangle_rare(s, cmd, a, b, c, textured, z_buffered);
+    if (s->viewport.f3d_tri_rev != F3D_TRI_NONE)
+        return gsp_triangle_f3d(s, cmd, a, b, c, textured, z_buffered);
 
     /* Trivial reject: the RSP tests the AND of the three vertices' stored
      * VCH clip outcodes against CLIP_ALL_SCRN -- if every vertex lies

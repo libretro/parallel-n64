@@ -295,6 +295,10 @@ unsigned int gsp_get_geometry_mode(const GSPState *s);
 void gsp_set_num_lights(GSPState *s, int n);
 void gsp_set_light(GSPState *s, const unsigned char *rdram,
                    unsigned int addr, int index);
+/* Fast3D (Mario Kart 64): the default lights of the data segment at ud,
+ * as the task's DMEM load restores them. */
+void gsp_f3d_task_lights(GSPState *s, const unsigned char *rdram,
+                         unsigned int rdram_size, unsigned int ud);
 void gsp_set_light_color(GSPState *s, int index,
                          int32_t rr, int32_t gg, int32_t bb);
 void gsp_modify_vertex(GSPState *s, int vtx, unsigned int where,

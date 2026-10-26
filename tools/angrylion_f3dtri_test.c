@@ -5,8 +5,12 @@
  * Mario Kart 64 (revision A). Checks:
  *   - the revision B and revision A triangle writes, culls included and
  *     with Mario Kart 64's flat-shade vertex choice;
- *   - the revision B clipper: trivial reject, the six-plane clip with its
- *     generated vertices, and the fan, word for word;
+ *   - the revision B (Perfect Dark) and revision A (Mario Kart 64)
+ *     clippers: trivial reject, the six-plane clip with its generated
+ *     vertices, and the fan, word for word -- revision A clips its near
+ *     plane on z + w and keeps no w-sign outcodes;
+ *   - which culls end a Mario Kart 64 quad early: the write's face cull
+ *     does, a trivial reject, a zero area and a clip do not;
  *   - the Fast3D vertex write model (rsp_vtx_screen): screen x, y, z and
  *     1/w of the clipper's input vertices from their clip positions;
  *   - the frontend route: the same clip cases through gsp_triangle.
@@ -137,10 +141,18 @@ static int test_writer(const char *what, const F3dWriterCase *c, int n)
     return fails;
 }
 
-static void clip_state(F3dTriState *st, const F3dClipCase *c)
+typedef struct ClipSet
+{
+    const char *name;
+    const F3dClipCase *c;
+    int n, rev, guard;
+} ClipSet;
+
+static void clip_state(F3dTriState *st, const F3dClipCase *c, const ClipSet *set)
 {
     int k;
-    mkstate(st, c->sp, F3D_TRI_REV_B);
+    mkstate(st, c->sp, set->rev);
+    st->guard = set->guard;
     for (k = 0; k < 4; k++)
     {
         st->vs[k] = (int16_t)s16(c->vp + 2 * k);
@@ -150,12 +162,12 @@ static void clip_state(F3dTriState *st, const F3dClipCase *c)
     st->fog_o = s16(c->vp + 0x12);
 }
 
-static int test_clip(void)
+static int test_clip(const ClipSet *set)
 {
     int i, fails = 0;
-    for (i = 0; i < N(k_pd_clip); i++)
+    for (i = 0; i < set->n; i++)
     {
-        const F3dClipCase *c = &k_pd_clip[i];
+        const F3dClipCase *c = &set->c[i];
         RspTriVtx v[3];
         F3dTriState st;
         int32_t ew[512];
@@ -163,21 +175,27 @@ static int test_clip(void)
         mkv(&v[0], c->rec);
         mkv(&v[1], c->rec + 0x28);
         mkv(&v[2], c->rec + 0x50);
-        clip_state(&st, c);
-        w = rsp_tri_rare(ew, 512, &v[0], &v[1], &v[2], &st);
-        fails += check_words("clip", i, ew, w, c->words, c->nwords);
+        clip_state(&st, c, set);
+        w = rsp_tri_f3d(ew, 512, &v[0], &v[1], &v[2], &st);
+        fails += check_words(set->name, i, ew, w, c->words, c->nwords);
+        if (rsp_tri_f3d_face_culled())
+        {
+            printf("FAIL %s %d: clipped triangle reported as face culled\n",
+                   set->name, i);
+            fails++;
+        }
     }
-    printf("revision B clipper: %d/%d\n", N(k_pd_clip) - fails, N(k_pd_clip));
+    printf("%s clipper: %d/%d\n", set->name, set->n - fails, set->n);
     return fails;
 }
 
-static int test_vertex(void)
+static int test_vertex(const ClipSet *set)
 {
     int i, k, n = 0, fails = 0;
     rsp_set_vtx_f3d(1, -4090, 4090);
-    for (i = 0; i < N(k_pd_clip); i++)
+    for (i = 0; i < set->n; i++)
     {
-        const F3dClipCase *c = &k_pd_clip[i];
+        const F3dClipCase *c = &set->c[i];
         for (k = 0; k < 3; k++)
         {
             RspTriVtx v;
@@ -190,36 +208,37 @@ static int test_vertex(void)
             n++;
             if (sx != v.x || sy != v.y || sz != v.z || iw != v.invw)
             {
-                printf("FAIL vertex %d.%d: %d %d %08x %08x, expected %d %d %08x %08x\n",
-                       i, k, (int)sx, (int)sy, (unsigned)sz, (unsigned)iw,
+                printf("FAIL %s vertex %d.%d: %d %d %08x %08x, expected %d %d %08x %08x\n",
+                       set->name, i, k, (int)sx, (int)sy, (unsigned)sz, (unsigned)iw,
                        v.x, v.y, (unsigned)v.z, (unsigned)v.invw);
                 fails++;
             }
         }
     }
     rsp_set_vtx_f3d(0, -4090, 4090);
-    printf("vertex write: %d/%d\n", n - fails, n);
+    printf("%s vertex write: %d/%d\n", set->name, n - fails, n);
     return fails;
 }
 
 /* the clip cases through the frontend: GSPState vertices and modes */
-static int test_frontend(void)
+static int test_frontend(const ClipSet *set)
 {
     static GSPState s;
     int i, k, fails = 0;
-    for (i = 0; i < N(k_pd_clip); i++)
+    for (i = 0; i < set->n; i++)
     {
-        const F3dClipCase *c = &k_pd_clip[i];
+        const F3dClipCase *c = &set->c[i];
         F3dTriState st;
         int32_t cmd[GSP_TRI_CMD_WORDS];
         uint32_t gm;
         int n;
         gsp_init(&s);
-        clip_state(&st, c);
+        clip_state(&st, c, set);
         gm = st.geometry_mode;
-        s.viewport.f3d_tri_rev = F3D_TRI_REV_B;
+        s.viewport.f3d_tri_rev = set->rev;
         s.viewport.f3d_clamp_lo = -4090;
         s.viewport.f3d_clamp_hi = 4090;
+        s.viewport.f3d_tex_scale_a = 0x40;
         s.viewport.persp_norm = st.persp_norm;
         s.viewport.f3d_zclamp = st.zclamp;
         s.viewport.vscale_x = (int32_t)st.vs[0] << 14;
@@ -228,7 +247,7 @@ static int test_frontend(void)
         s.viewport.vtrans_x = (int32_t)st.vt[0] << 14;
         s.viewport.vtrans_y = (int32_t)st.vt[1] << 14;
         s.viewport.vtrans_z = (int32_t)st.vt[2] << 16;
-        s.clip_ratio = 2;
+        s.clip_ratio = set->guard;
         s.fog_m = st.fog_m;
         s.fog_o = st.fog_o;
         s.tex_tile = st.tile;
@@ -253,20 +272,94 @@ static int test_frontend(void)
             g->f3d_flags = v.f3d_flags;
         }
         n = gsp_triangle(&s, cmd, 0, 1, 2, (gm & 2u) ? 1 : 0, (gm & 1u) ? 1 : 0);
-        fails += check_words("frontend", i, cmd, n, c->words, c->nwords);
+        fails += check_words(set->name, i, cmd, n, c->words, c->nwords);
     }
-    printf("frontend route: %d/%d\n", N(k_pd_clip) - fails, N(k_pd_clip));
+    printf("%s frontend route: %d/%d\n", set->name, set->n - fails, set->n);
+    return fails;
+}
+
+/* rsp_tri_f3d_face_culled over the revision A writer cases: a case the
+ * microcode drew is never a face cull; the culled ones are, unless the
+ * cull bits cannot reject it (then it was a zero area). The same
+ * triangle with the opposite cull bit set must draw or face cull. */
+static int test_face_cull(void)
+{
+    int i, fails = 0, faces = 0, zeros = 0;
+    for (i = 0; i < N(k_mk_writer); i++)
+    {
+        const F3dWriterCase *c = &k_mk_writer[i];
+        RspTriVtx v[3];
+        F3dTriState st;
+        int32_t ew[512];
+        int w, face, flip, wf;
+        mkv(&v[0], c->rec);
+        mkv(&v[1], c->rec + 0x28);
+        mkv(&v[2], c->rec + 0x50);
+        mkstate(&st, c->sp, c->rev);
+        st.flat_select = c->flat_select;
+        st.flat_vtx = c->flat_vtx;
+        /* the writer cases are unclipped: keep the flags out of the way */
+        v[0].f3d_flags = v[1].f3d_flags = v[2].f3d_flags = 0;
+        w = rsp_tri_f3d(ew, 512, &v[0], &v[1], &v[2], &st);
+        face = rsp_tri_f3d_face_culled();
+        fails += check_words("face cull words", i, ew, w, c->words, c->nwords);
+        if (w != 0 && face)
+        {
+            printf("FAIL face cull %d: drawn triangle flagged\n", i);
+            fails++;
+            continue;
+        }
+        if (w != 0)
+            continue;
+        /* swap the cull side: a face-culled triangle now draws, a zero
+         * area stays culled and unflagged */
+        flip = (int)(st.geometry_mode & 0x3000u);
+        st.geometry_mode &= ~0x3000u;
+        st.geometry_mode |= (flip == 0x1000) ? 0x2000u : (flip == 0x2000 ? 0x1000u : 0u);
+        wf = rsp_tri_f3d(ew, 512, &v[0], &v[1], &v[2], &st);
+        if (face)
+        {
+            faces++;
+            if (wf == 0)
+            {
+                printf("FAIL face cull %d: still culled with the other side\n", i);
+                fails++;
+            }
+        }
+        else
+        {
+            zeros++;
+            if (wf != 0 || rsp_tri_f3d_face_culled())
+            {
+                printf("FAIL face cull %d: zero area drew or flagged\n", i);
+                fails++;
+            }
+        }
+    }
+    printf("revision A face culls: %d face, %d zero area, %d failures\n",
+           faces, zeros, fails);
+    if (faces == 0 || zeros == 0)
+    {
+        printf("FAIL face cull: the vectors need both kinds\n");
+        fails++;
+    }
     return fails;
 }
 
 int main(void)
 {
+    static const ClipSet pd = { "revision B", k_pd_clip, N(k_pd_clip), F3D_TRI_REV_B, 2 };
+    static const ClipSet mk = { "revision A", k_mk_clip, N(k_mk_clip), F3D_TRI_REV_A, 1 };
     int fails = 0;
     fails += test_writer("revision B write", k_pd_writer, N(k_pd_writer));
     fails += test_writer("revision A write", k_mk_writer, N(k_mk_writer));
-    fails += test_clip();
-    fails += test_vertex();
-    fails += test_frontend();
+    fails += test_clip(&pd);
+    fails += test_clip(&mk);
+    fails += test_vertex(&pd);
+    fails += test_vertex(&mk);
+    fails += test_frontend(&pd);
+    fails += test_frontend(&mk);
+    fails += test_face_cull();
     if (fails)
     {
         printf("FAILED (%d)\n", fails);
