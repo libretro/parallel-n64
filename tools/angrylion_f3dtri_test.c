@@ -12,8 +12,11 @@
  *   - which culls end a Mario Kart 64 quad early: the write's face cull
  *     does, a trivial reject, a zero area and a clip do not;
  *   - the Fast3D vertex write model (rsp_vtx_screen): screen x, y, z and
- *     1/w of the clipper's input vertices from their clip positions;
+ *     1/w of the clipper's input vertices from their clip positions, and
+ *     (revision A) their clip flags;
  *   - the frontend route: the same clip cases through gsp_triangle.
+ * The Makefile builds this twice, the second time with F3D_NO_SSE2 so the
+ * portable vector-unit lane loops are checked alongside the SSE2 ones.
  * Before this model GoldenEye and Perfect Dark drew through the F3DEX
  * writer, the stock vertex reciprocal and the generic guard-band clipper,
  * none of which reproduce these words. */
@@ -206,6 +209,21 @@ static int test_vertex(const ClipSet *set)
                            s16(c->vp + 8), s16(c->vp + 10), s16(c->vp + 12),
                            &sx, &sy, &sz, &iw);
             n++;
+            if (set->rev == F3D_TRI_REV_A)
+            {
+                /* revision A packs no w signs, so a vertex paired with
+                 * itself gives its own record flags in either half */
+                int32_t p[4], fa, fb;
+                p[0] = v.cx; p[1] = v.cy; p[2] = v.cz; p[3] = v.cw;
+                f3d_vtx_flags(F3D_TRI_REV_A, p, p, set->guard, &fa, &fb);
+                if (fa != v.f3d_flags || fb != v.f3d_flags)
+                {
+                    printf("FAIL %s flags %d.%d: %04x %04x, expected %04x\n",
+                           set->name, i, k, (unsigned)fa, (unsigned)fb,
+                           (unsigned)v.f3d_flags);
+                    fails++;
+                }
+            }
             if (sx != v.x || sy != v.y || sz != v.z || iw != v.invw)
             {
                 printf("FAIL %s vertex %d.%d: %d %d %08x %08x, expected %d %d %08x %08x\n",

@@ -1039,6 +1039,14 @@ void n64video_process_list(void)
             for (i = 0; i < toload; i++) {
                 cmd_buf[rdp_cmd_pos++] = dmem[dp_current_al++ & 0x3ff];
             }
+        } else if (hle_cmd_buf != NULL
+                   && dp_current_al - hle_cmd_base_idx < hle_cmd_len_words
+                   && hle_cmd_len_words - (dp_current_al - hle_cmd_base_idx) >= toload) {
+            /* an HLE list: the words straight out of the emitter's FIFO */
+            memcpy(&cmd_buf[rdp_cmd_pos], hle_cmd_buf + (dp_current_al - hle_cmd_base_idx),
+                   toload * sizeof(uint32_t));
+            rdp_cmd_pos += toload;
+            dp_current_al += toload;
         } else {
             for (i = 0; i < toload; i++) {
                 cmd_buf[rdp_cmd_pos++] = rdp_fetch_cmd_word(dp_current_al++);

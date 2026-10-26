@@ -1021,8 +1021,7 @@ void f3d_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
 
         case F3D_TRI1:
         {
-            int32_t cw[GSP_TRI_CMD_WORDS];
-            int a, b, c, nc;
+            int a, b, c;
             f3d_sync_persp_tex();
             /* GoldenEye/Perfect Dark (Rare's F3DEX-derived GBI1) store the
              * G_TRI1 vertex index as slot*10 -- the value the microcode's
@@ -1047,16 +1046,13 @@ void f3d_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
             gsp->viewport.f3d_flat_vtx =
                 gsp->viewport.f3d_tri_rev == F3D_TRI_REV_B
                     ? (int)((w1 >> 24) & 0xffu) % 3 : 0;
-            nc = gsp_triangle(gsp, cw, a, b, c, s_textured, s_zbuffered);
+            gsp_triangle_fifo(gsp, fifo, a, b, c, s_textured, s_zbuffered);
             gsp->viewport.f3d_flat_vtx = 0;
-            if (nc > 0) rdp_fifo_append(fifo, cw, nc);
             break;
         }
 
         case F3D_TRI2:
         {
-            int32_t cw[GSP_TRI_CMD_WORDS];
-            int nc;
             f3d_sync_persp_tex();
             if (s_variant_f3dex)
             {
@@ -1086,9 +1082,8 @@ void f3d_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
                 {
                     if (tri[i][0] == tri[i][1] && tri[i][0] == tri[i][2])
                         continue;
-                    nc = gsp_triangle(gsp, cw, tri[i][0], tri[i][1], tri[i][2],
-                                      s_textured, s_zbuffered);
-                    if (nc > 0) rdp_fifo_append(fifo, cw, nc);
+                    gsp_triangle_fifo(gsp, fifo, tri[i][0], tri[i][1],
+                                      tri[i][2], s_textured, s_zbuffered);
                 }
             }
             else if (s_variant_d64)
@@ -1116,10 +1111,8 @@ void f3d_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
                      * order and flip the second triangle's winding; drawn
                      * with the walker's order the diagonal double-blends
                      * into a dim streak across the glyphs. */
-                    nc = gsp_triangle(gsp, cw, c1, b1, a1, s_textured, s_zbuffered);
-                    if (nc > 0) rdp_fifo_append(fifo, cw, nc);
-                    nc = gsp_triangle(gsp, cw, a0, b0, c0, s_textured, s_zbuffered);
-                    if (nc > 0) rdp_fifo_append(fifo, cw, nc);
+                    gsp_triangle_fifo(gsp, fifo, c1, b1, a1, s_textured, s_zbuffered);
+                    gsp_triangle_fifo(gsp, fifo, a0, b0, c0, s_textured, s_zbuffered);
                 }
                 else
                 {
@@ -1135,10 +1128,8 @@ void f3d_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
                      * the frame moves from disagreeing with the
                      * interpreter to agreeing with it, and Hexen's title
                      * screen goes from 192 differing pixels to none. */
-                    nc = gsp_triangle(gsp, cw, a1, b1, c1, s_textured, s_zbuffered);
-                    if (nc > 0) rdp_fifo_append(fifo, cw, nc);
-                    nc = gsp_triangle(gsp, cw, a0, b0, c0, s_textured, s_zbuffered);
-                    if (nc > 0) rdp_fifo_append(fifo, cw, nc);
+                    gsp_triangle_fifo(gsp, fifo, a1, b1, c1, s_textured, s_zbuffered);
+                    gsp_triangle_fifo(gsp, fifo, a0, b0, c0, s_textured, s_zbuffered);
                 }
             }
             break;
@@ -1171,7 +1162,6 @@ void f3d_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
             int b = (int)((w1 >> 16) & 0xff) / s;
             int c = (int)((w1 >>  8) & 0xff) / s;
             int d = (int)((w1 >>  0) & 0xff) / s;
-            int32_t cw[GSP_TRI_CMD_WORDS];
             int nc;
             if (gsp->viewport.f3d_tri_rev == F3D_TRI_REV_A
                 && a < GSP_MAX_VERTICES && b < GSP_MAX_VERTICES
@@ -1196,8 +1186,7 @@ void f3d_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
                     fv = 0;
                 }
                 gsp->viewport.f3d_flat_vtx = 0;
-                nc = gsp_triangle(gsp, cw, b, c, t1, s_textured, s_zbuffered);
-                if (nc > 0) rdp_fifo_append(fifo, cw, nc);
+                nc = gsp_triangle_fifo(gsp, fifo, b, c, t1, s_textured, s_zbuffered);
                 /* a first half culled on its face leaves ra zero (writer
                  * exit 0xfa0) and the handler returns without the second;
                  * a trivial reject, a zero area or a clip keeps it */
@@ -1206,15 +1195,12 @@ void f3d_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
                 /* b is not a vertex of the second half on the a-c cut;
                  * every Mario Kart 64 quad is smooth shaded */
                 gsp->viewport.f3d_flat_vtx = fv;
-                nc = gsp_triangle(gsp, cw, d, a, t2, s_textured, s_zbuffered);
+                gsp_triangle_fifo(gsp, fifo, d, a, t2, s_textured, s_zbuffered);
                 gsp->viewport.f3d_flat_vtx = 0;
-                if (nc > 0) rdp_fifo_append(fifo, cw, nc);
                 break;
             }
-            nc = gsp_triangle(gsp, cw, a, b, c, s_textured, s_zbuffered);
-            if (nc > 0) rdp_fifo_append(fifo, cw, nc);
-            nc = gsp_triangle(gsp, cw, a, c, d, s_textured, s_zbuffered);
-            if (nc > 0) rdp_fifo_append(fifo, cw, nc);
+            gsp_triangle_fifo(gsp, fifo, a, b, c, s_textured, s_zbuffered);
+            gsp_triangle_fifo(gsp, fifo, a, c, d, s_textured, s_zbuffered);
             }
             break;
         }

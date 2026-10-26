@@ -38,6 +38,13 @@ void rdp_fifo_init(RdpFifo *f, unsigned char *storage,
                    unsigned int base, unsigned int cap);
 void rdp_fifo_append(RdpFifo *f, const int32_t *words, int count);
 
+/* gsp_triangle written straight into the FIFO tail when a whole worst-case
+ * command fits there (no copy); otherwise built aside and appended, so the
+ * FIFO drains at exactly the points rdp_fifo_append would. Returns the
+ * word count. */
+int gsp_triangle_fifo(GSPState *s, RdpFifo *f, int i0, int i1, int i2,
+                      int textured, int z_buffered);
+
 /* Tracks whether the display list being parsed contained a G_RDPFULLSYNC
  * (RDP command 0x29). The parsers drop the command itself (the HLE
  * activation appends the frame terminator), but the activation must know

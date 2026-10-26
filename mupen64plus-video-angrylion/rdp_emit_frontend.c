@@ -857,6 +857,12 @@ static void gsp_f3d_pair_flags(GSPState *s, int v0, int n)
 void gsp_vertex(GSPState *s, const unsigned char *rdram, unsigned int addr,
                 int n, int v0)
 {
+    /* Conker's lighting inputs (coordinate modifier rows, light positions,
+     * colours and attenuation) stay fixed over one load, so they are
+     * gathered once per vertex half rather than per vertex */
+    int32_t cb_coord[2][16], cb_pos[2][GSP_MAX_LIGHTS][4];
+    int32_t cb_rgb[2][GSP_MAX_LIGHTS][3], cb_ca[2][GSP_MAX_LIGHTS];
+    int cb_ready = 0;
     int i;
     if (!s->combined_valid)
         gsp_combine_matrices(s);
@@ -998,12 +1004,63 @@ void gsp_vertex(GSPState *s, const unsigned char *rdram, unsigned int addr,
                  * from byte 7. Bit 7 of byte 6 restores the original colour
                  * after lighting. Texture generation takes its normal from
                  * the same place. */
-                int32_t clip[4], positions[GSP_MAX_LIGHTS][4];
-                int32_t source[3], lit[3], rgb[GSP_MAX_LIGHTS][3];
-                int32_t ca[GSP_MAX_LIGHTS], coord[16];
-                int k;
-                for (k = 0; k < 16; k++)
-                    coord[k] = s->cbfd_cmod[k];
+                int32_t clip[4], source[3], lit[3];
+                const int32_t (*positions)[4];
+                const int32_t (*rgb)[3];
+                const int32_t *ca, *coord;
+                int k, hs;
+                if (!cb_ready)
+                {
+                    /* hs 0: the odd vertex of a pair (lanes 0..3), 1: the
+                     * even one (lanes 4..7) */
+                    for (hs = 0; hs < 2; hs++)
+                    {
+                        for (k = 0; k < 16; k++)
+                            cb_coord[hs][k] = s->cbfd_cmod[k];
+                        for (li = 0; li < GSP_MAX_LIGHTS; li++)
+                        {
+                            for (k = 0; k < 3; k++)
+                            {
+                                cb_pos[hs][li][k] = s->cbfd_lpos[li][k];
+                                cb_rgb[hs][li][k] = s->light_rgb[li][k];
+                            }
+                            cb_pos[hs][li][3] = s->cbfd_lpos[li][3];
+                            cb_ca[hs][li] = s->cbfd_lca[li];
+                        }
+                        if (s->cbfd_dmem)
+                        {
+                            /* The loader transforms vertices in pairs, the
+                             * first in lanes 4..7, and each half reads its
+                             * own copy of the coordinate modifier rows
+                             * (0x1d0 integer scale, 0x1e0 fraction, 0x1f0
+                             * offset) and of each light record (colour at
+                             * +0/+4, position at +32/+40). */
+                            const unsigned char *dm = s->cbfd_dmem;
+                            unsigned int half = hs ? 4u : 0u;
+                            for (k = 0; k < 4; k++)
+                            {
+                                cb_coord[hs][k]     = read_s16_be(dm, 0x1d0u + 2u * (half + (unsigned int)k));
+                                cb_coord[hs][4 + k] = read_s16_be(dm, 0x1e0u + 2u * (half + (unsigned int)k));
+                                cb_coord[hs][8 + k] = read_s16_be(dm, 0x1f0u + 2u * (half + (unsigned int)k));
+                            }
+                            for (li = 0; li < GSP_MAX_LIGHTS; li++)
+                            {
+                                unsigned int a = 0x2c0u + (unsigned int)li * 48u;
+                                for (k = 0; k < 4; k++)
+                                    cb_pos[hs][li][k] = read_s16_be(dm, a + 32u + 2u * (half + (unsigned int)k));
+                                for (k = 0; k < 3; k++)
+                                    cb_rgb[hs][li][k] = read_u8_n64(dm, a + half + (unsigned int)k);
+                                cb_ca[hs][li] = read_u8_n64(dm, a + 12u);
+                            }
+                        }
+                    }
+                    cb_ready = 1;
+                }
+                hs = (s->cbfd_dmem && !(i & 1)) ? 1 : 0;
+                coord = cb_coord[hs];
+                positions = (const int32_t (*)[4])cb_pos[hs];
+                rgb = (const int32_t (*)[3])cb_rgb[hs];
+                ca = cb_ca[hs];
                 source[0] = (int32_t)read_u8_n64(rdram, base + 12);
                 source[1] = (int32_t)read_u8_n64(rdram, base + 13);
                 source[2] = (int32_t)read_u8_n64(rdram, base + 14);
@@ -1015,41 +1072,6 @@ void gsp_vertex(GSPState *s, const unsigned char *rdram, unsigned int addr,
                     gsp_light_dir_xfrm(s);
                 clip[0] = vt->cx; clip[1] = vt->cy;
                 clip[2] = vt->cz; clip[3] = vt->cw;
-                for (li = 0; li < GSP_MAX_LIGHTS; li++)
-                {
-                    for (k = 0; k < 3; k++)
-                    {
-                        positions[li][k] = s->cbfd_lpos[li][k];
-                        rgb[li][k] = s->light_rgb[li][k];
-                    }
-                    positions[li][3] = s->cbfd_lpos[li][3];
-                    ca[li] = s->cbfd_lca[li];
-                }
-                if (s->cbfd_dmem)
-                {
-                    /* The loader transforms vertices in pairs, the first in
-                     * lanes 4..7, and each half reads its own copy of the
-                     * coordinate modifier rows (0x1d0 integer scale, 0x1e0
-                     * fraction, 0x1f0 offset) and of each light record
-                     * (colour at +0/+4, position at +32/+40). */
-                    const unsigned char *dm = s->cbfd_dmem;
-                    unsigned int half = (i & 1) ? 0u : 4u;
-                    for (k = 0; k < 4; k++)
-                    {
-                        coord[k]     = read_s16_be(dm, 0x1d0u + 2u * (half + (unsigned int)k));
-                        coord[4 + k] = read_s16_be(dm, 0x1e0u + 2u * (half + (unsigned int)k));
-                        coord[8 + k] = read_s16_be(dm, 0x1f0u + 2u * (half + (unsigned int)k));
-                    }
-                    for (li = 0; li < GSP_MAX_LIGHTS; li++)
-                    {
-                        unsigned int a = 0x2c0u + (unsigned int)li * 48u;
-                        for (k = 0; k < 4; k++)
-                            positions[li][k] = read_s16_be(dm, a + 32u + 2u * (half + (unsigned int)k));
-                        for (k = 0; k < 3; k++)
-                            rgb[li][k] = read_u8_n64(dm, a + half + (unsigned int)k);
-                        ca[li] = read_u8_n64(dm, a + 12u);
-                    }
-                }
                 if (s->cbfd == 2)
                 {
                     int32_t normal[3];
@@ -1060,17 +1082,14 @@ void gsp_vertex(GSPState *s, const unsigned char *rdram, unsigned int addr,
                     normal[0] = nxb; normal[1] = nyb; normal[2] = nzb;
                     if (!s->lights_valid)
                         gsp_light_dir_xfrm(s);
-                    rsp_cbfd_light_normal(clip, coord,
-                        (const int32_t (*)[4])positions,
-                        (const int32_t (*)[3])rgb, ca, s->num_lights, source,
+                    rsp_cbfd_light_normal(clip, coord, positions,
+                        rgb, ca, s->num_lights, source,
                         normal, (const int32_t (*)[3])s->light_dir,
                         (s->geometry_mode & 0x00400000u) != 0, lit);
                 }
                 else
-                    rsp_cbfd_light(clip, coord,
-                        (const int32_t (*)[4])positions,
-                        (const int32_t (*)[3])rgb, ca, s->num_lights,
-                        source, lit);
+                    rsp_cbfd_light(clip, coord, positions, rgb, ca,
+                        s->num_lights, source, lit);
                 if (read_u8_n64(rdram, base + 6) & 0x80u)
                     for (k = 0; k < 3; k++)
                         lit[k] = source[k];
@@ -2366,7 +2385,7 @@ int gsp_triangle(GSPState *s, int32_t *cmd, int i0, int i1, int i2,
                  int textured, int z_buffered)
 {
     GSPVertex poly[GSP_CLIP_MAX];
-    int np;
+    int np, clipped = 0;
     const GSPVertex *a, *b, *c;
     unsigned int oa, ob, oc;
 
@@ -2405,33 +2424,6 @@ int gsp_triangle(GSPState *s, int32_t *cmd, int i0, int i1, int i2,
     ob = (unsigned int)b->clip;
     oc = (unsigned int)c->clip;
 
-    if (s->clip_fan_first == 2 || s->clip_fan_first == 4)
-    {
-        /* Wipeout 64's clip driver (overlay IMEM 0x748, i764: sh
-         * r3/r2/r1) seeds its working list with the triangle vertices
-         * reversed, so the rebuilt polygon -- and the fan cut from it --
-         * walk the opposite way around. */
-        poly[0] = *c;
-        poly[1] = *b;
-        poly[2] = *a;
-    }
-    else if (s->clip_fan_first == 3)
-    {
-        /* Rogue Squadron's clip overlay seeds the list forward (live
-         * IMEM 0x1dc4: sh t3/t4/t5) and uses the same linear walk, but
-         * the fan passes its arguments forward: (list[0], list[k],
-         * list[k+1]) into the writer (1e10..1e44). */
-        poly[0] = *a;
-        poly[1] = *b;
-        poly[2] = *c;
-    }
-    else
-    {
-        poly[0] = *a;
-        poly[1] = *b;
-        poly[2] = *c;
-    }
-
     np = 3;
 #define GSP_CLIP_TRIGGER ((1u << 20) | (1u << 21) | (1u << 28) | (1u << 29) \
                         | (1u << 14) | (1u << 7))
@@ -2461,6 +2453,33 @@ int gsp_triangle(GSPState *s, int32_t *cmd, int i0, int i1, int i2,
          * not the planes of its visible portion, so scissoring is not
          * equivalent), and steep overhang past the guard band loses
          * coefficient precision. */
+        if (s->clip_fan_first == 2 || s->clip_fan_first == 4)
+        {
+            /* Wipeout 64's clip driver (overlay IMEM 0x748, i764: sh
+             * r3/r2/r1) seeds its working list with the triangle vertices
+             * reversed, so the rebuilt polygon -- and the fan cut from it --
+             * walk the opposite way around. */
+            poly[0] = *c;
+            poly[1] = *b;
+            poly[2] = *a;
+        }
+        else if (s->clip_fan_first == 3)
+        {
+            /* Rogue Squadron's clip overlay seeds the list forward (live
+             * IMEM 0x1dc4: sh t3/t4/t5) and uses the same linear walk, but
+             * the fan passes its arguments forward: (list[0], list[k],
+             * list[k+1]) into the writer (1e10..1e44). */
+            poly[0] = *a;
+            poly[1] = *b;
+            poly[2] = *c;
+        }
+        else
+        {
+            poly[0] = *a;
+            poly[1] = *b;
+            poly[2] = *c;
+        }
+        clipped = 1;
         np = clip_polygon_guard(s, poly, np);
         if (np < 3)
             return 0;
@@ -2483,7 +2502,15 @@ int gsp_triangle(GSPState *s, int32_t *cmd, int i0, int i1, int i2,
              * (0,n-2,n-1), (0,n-3,n-2), ..., (0,1,2). The triangle sets
              * differ (different pivot), so this is visible wherever a
              * clipped polygon has more than three vertices. */
-            if (s->clip_fan_first == 2 || s->clip_fan_first == 4)
+            if (!clipped)
+            {
+                /* an unclipped triangle is (a, b, c) under every fan
+                 * style; poly was never filled */
+                tv[0] = *a;
+                tv[1] = *b;
+                tv[2] = *c;
+            }
+            else if (s->clip_fan_first == 2 || s->clip_fan_first == 4)
             {
                 /* Wipeout 64 (i934-i95c), and Rare's overlay alike: pivot on the FIRST list vertex,
                  * walk ascending consecutive pairs, and the resident tri

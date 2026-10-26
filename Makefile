@@ -1302,6 +1302,10 @@ angrylion_rs_fullsync_test$(EXE_EXT): tools/angrylion_rs_fullsync_test.c $(ANGRY
 angrylion_f3dtri_test$(EXE_EXT): tools/angrylion_f3dtri_test.c tools/angrylion_f3dtri_expected.h $(ANGRYLION_WALKER_OBJS)
 	$(CC) $(CPPFLAGS) $(CFLAGS) -I$(VIDEODIR_ANGRYLION) -Itools -w $< $(ANGRYLION_WALKER_OBJS) -o $@ -lm
 
+# The same vectors through the portable vector-unit lane loops.
+angrylion_f3dtri_c_test$(EXE_EXT): tools/angrylion_f3dtri_test.c tools/angrylion_f3dtri_expected.h $(VIDEODIR_ANGRYLION)/rdp_emit_f3dtri.c $(ANGRYLION_WALKER_OBJS)
+	$(CC) $(CPPFLAGS) $(CFLAGS) -DF3D_NO_SSE2 -I$(VIDEODIR_ANGRYLION) -Itools -w $< $(VIDEODIR_ANGRYLION)/rdp_emit_f3dtri.c $(filter-out $(VIDEODIR_ANGRYLION)/rdp_emit_f3dtri.o,$(ANGRYLION_WALKER_OBJS)) -o $@ -lm
+
 ANGRYLION_CHECKS := angrylion_vemit_test$(EXE_EXT) angrylion_gen_test$(EXE_EXT) \
 	angrylion_clip_test$(EXE_EXT) angrylion_f3d_near_test$(EXE_EXT) \
 	angrylion_divide_test$(EXE_EXT) angrylion_rs_fullsync_test$(EXE_EXT) \
@@ -1310,7 +1314,7 @@ ANGRYLION_CHECKS := angrylion_vemit_test$(EXE_EXT) angrylion_gen_test$(EXE_EXT) 
 	angrylion_cbfd_light_test$(EXE_EXT) angrylion_rare_clip_test$(EXE_EXT) \
 	angrylion_dpc_regs_test$(EXE_EXT) angrylion_noise_frame_test$(EXE_EXT) \
 	angrylion_legacy_light_test$(EXE_EXT) angrylion_s2dex1_test$(EXE_EXT) \
-	angrylion_f3dtri_test$(EXE_EXT)
+	angrylion_f3dtri_test$(EXE_EXT) angrylion_f3dtri_c_test$(EXE_EXT)
 
 tools: $(ANGRYLION_TOOLS) lrhost$(EXE_EXT) angrylion_replay$(EXE_EXT) $(ANGRYLION_CHECKS)
 

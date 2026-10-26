@@ -489,6 +489,29 @@ void rdp_fifo_append(RdpFifo *f, const int32_t *words, int count)
     f->used += (unsigned int)count * 4u;
 }
 
+int gsp_triangle_fifo(GSPState *s, RdpFifo *f, int i0, int i1, int i2,
+                      int textured, int z_buffered)
+{
+    int nc;
+    if (f->used + (unsigned int)GSP_TRI_CMD_WORDS * 4u <= f->cap)
+    {
+        /* the FIFO stores native-order words: the triangle writers' own
+         * format */
+        nc = gsp_triangle(s, (int32_t *)(void *)(f->storage + f->used),
+                          i0, i1, i2, textured, z_buffered);
+        if (nc > 0)
+            f->used += (unsigned int)nc * 4u;
+    }
+    else
+    {
+        int32_t cmd[GSP_TRI_CMD_WORDS];
+        nc = gsp_triangle(s, cmd, i0, i1, i2, textured, z_buffered);
+        if (nc > 0)
+            rdp_fifo_append(f, cmd, nc);
+    }
+    return nc;
+}
+
 /* Resolve an N64 segmented/virtual address to a physical RDRAM byte address:
  * physical = seg_table[(addr >> 24) & 0xf] + (addr & 0xffffff). For KSEG0
  * pointers (top byte 0x80/0xA0) the segment index is 0 (table base 0), so the
@@ -1011,13 +1034,10 @@ void f3dex2_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
                 idx[3][2] = (int)((w1 >>  0) & 0x1f);
                 for (t = 0; t < 4; t++)
                 {
-                    int32_t cmdw[GSP_TRI_CMD_WORDS];
-                    int nc;
                     if (idx[t][0] == idx[t][1] && idx[t][0] == idx[t][2])
                         continue;   /* degenerate padding slot */
-                    nc = gsp_triangle(gsp, cmdw, idx[t][0], idx[t][1],
+                    gsp_triangle_fifo(gsp, fifo, idx[t][0], idx[t][1],
                                       idx[t][2], s_textured, s_zbuffered);
-                    if (nc > 0) rdp_fifo_append(fifo, cmdw, nc);
                 }
             }
             break;
@@ -1028,9 +1048,7 @@ void f3dex2_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
             int a = (int)((w0 >> 17) & 0x7f);
             int b = (int)((w0 >> 9) & 0x7f);
             int c = (int)((w0 >> 1) & 0x7f);
-            int32_t cmdw[GSP_TRI_CMD_WORDS];
-            int nc = gsp_triangle(gsp, cmdw, a, b, c, s_textured, s_zbuffered);
-            if (nc > 0) rdp_fifo_append(fifo, cmdw, nc);
+            gsp_triangle_fifo(gsp, fifo, a, b, c, s_textured, s_zbuffered);
             break;
         }
 
@@ -1043,16 +1061,12 @@ void f3dex2_run_dl(GSPState *gsp, RdpFifo *fifo, unsigned int addr,
             int a1 = (int)((w1 >> 17) & 0x7f);
             int b1 = (int)((w1 >> 9) & 0x7f);
             int c1 = (int)((w1 >> 1) & 0x7f);
-            int32_t cmdw[GSP_TRI_CMD_WORDS];
-            int nc;
             /* The G_TRI2 handler stores the second triangle's indices and
              * jals tri_to_rdp before falling through to the G_TRI1 path
              * for the first triangle: the microcode emits the SECOND
              * triangle of the pair first. */
-            nc = gsp_triangle(gsp, cmdw, a1, b1, c1, s_textured, s_zbuffered);
-            if (nc > 0) rdp_fifo_append(fifo, cmdw, nc);
-            nc = gsp_triangle(gsp, cmdw, a0, b0, c0, s_textured, s_zbuffered);
-            if (nc > 0) rdp_fifo_append(fifo, cmdw, nc);
+            gsp_triangle_fifo(gsp, fifo, a1, b1, c1, s_textured, s_zbuffered);
+            gsp_triangle_fifo(gsp, fifo, a0, b0, c0, s_textured, s_zbuffered);
             break;
         }
 
