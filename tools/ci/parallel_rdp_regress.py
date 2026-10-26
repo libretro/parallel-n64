@@ -18,8 +18,18 @@ shader variants for devices without 8-bit SSBO storage, and all must
 produce the same frames; with v2 the core must create its device through
 the frontend's wrapper. Each ROM is also rendered at 2x, with and without
 8-bit storage, which must agree and match "<rom>@2x".
+
+The ROMs in UPSCALER_ROMS also run for a frontend temporal upscaler
+(lrhost_vk's LRHOST_UPSCALER): the frames, their motion vectors and depth
+must match "<rom>@upscaler" threaded and single-threaded alike and
+whatever the options it overrides say, and pass tools/ci/upscaler_check.py,
+which checks the jitter and, for the ROMs that move, that the motion
+vectors take every changed pixel back to where the frame before had it.
+The RDP's coverage antialiasing is off for it (alphacov).
 """
 import argparse, concurrent.futures, hashlib, json, os, subprocess, sys, urllib.request
+
+import upscaler_check
 
 KROM = "https://raw.githubusercontent.com/PeterLemon/N64/7085543e4a19d8c539fc9e0a4d2869e788b4ed4b/"
 ROMS = {
@@ -55,6 +65,21 @@ MODES = {"threaded": {}, "single-threaded": {"PARALLEL_RDP_SINGLE_THREADED_COMMA
 # match the "<rom>@2x" expectations.
 UPSCALED_OPTIONS = ["parallel-n64-upscaling=2x"]
 UPSCALED_MODES = {"2x": {}, "2x-no-8bit-storage": {"PARALLEL_RDP_NO_STORAGE_8BIT": "1"}}
+# For a temporal upscaler asking for 640x480: a 320x240 framebuffer at 2x.
+# Consecutive frames, for the motion vector check; True for the ROMs
+# that move every frame.
+UPSCALER_ROMS = {"rottri32": True, "cube16": True, "zbuf16": False, "alphacov": False}
+UPSCALER_FRAMES = (30, 36)
+# The options the upscaler overrides change nothing: super-sampled
+# read-back (SSAA), downsampling, the VI filters and the factor.
+UPSCALER_MODES = {"upscaler": ({}, ()),
+                  "upscaler-single-threaded": ({"PARALLEL_RDP_SINGLE_THREADED_COMMAND": "1"}, ()),
+                  "upscaler-overridden": ({}, ("parallel-n64-upscaling=4x",
+                                               "parallel-n64-parallel-rdp-super-sampled-read-back=enabled",
+                                               "parallel-n64-parallel-rdp-downscaling=1/2",
+                                               "parallel-n64-parallel-rdp-vi-aa=enabled",
+                                               "parallel-n64-parallel-rdp-divot-filter=enabled",
+                                               "parallel-n64-parallel-rdp-dither-filter=enabled"))}
 
 
 def fetch(romdir, name):
@@ -100,6 +125,61 @@ def run(args, name, rom, mode, env_extra, options=()):
     return hashes, None
 
 
+def coverage_aa_off(out, n):
+    """alphacov draws its cases twice, the lower half with antialiasing on
+    (226 lines below the upper): for the upscaler, which antialiases from
+    the jittered frames itself, the halves must come out the same."""
+    with open(os.path.join(out, "%04d.raw.size" % n)) as f:
+        w, h = map(int, f.read().split())
+    with open(os.path.join(out, "%04d.raw" % n), "rb") as f:
+        px = f.read()
+    scale = w // 640
+    row = w * 4
+    half = 220 * scale
+    return px[0:half * row] == px[226 * scale * row:(226 * scale + half) * row]
+
+
+def run_upscaler(args, name, rom, mode, env_extra, options, moving):
+    out = os.path.join(args.out, name, mode)
+    os.makedirs(out, exist_ok=True)
+    for f in os.listdir(out):
+        os.remove(os.path.join(out, f))
+    log_path = os.path.join(out, "upscaler.txt")
+    first, last = UPSCALER_FRAMES
+    env = dict(os.environ, LRHOST_DUMPDIR=out, LRHOST_DUMP_FROM=str(first), LRHOST_DUMP_TO=str(last),
+               LRHOST_DUMP_EVERY="1", LRHOST_UPSCALER="640,480", LRHOST_UPSCALER_LOG=log_path, **env_extra)
+    p = subprocess.run([args.host, args.core, rom, str(last + 1)] + OPTIONS + list(options), env=env,
+                       stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=600)
+    log = p.stdout.decode("utf-8", "replace")
+    with open(os.path.join(out, "log.txt"), "w") as f:
+        f.write(log)
+    if p.returncode != 0:
+        return None, "exit %d" % p.returncode
+    if "asked for in retro_load_game 1," not in log:
+        return None, "the core did not ask for the upscaler in retro_load_game"
+    check = subprocess.run([sys.executable, upscaler_check.__file__, out, log_path, str(first), str(last)]
+                           + (["--moving"] if moving else []), stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    with open(os.path.join(out, "check.txt"), "wb") as f:
+        f.write(check.stdout)
+    if check.returncode != 0:
+        return None, "upscaler_check.py: " + check.stdout.decode("utf-8", "replace").strip().splitlines()[-1]
+    if name == "alphacov" and not coverage_aa_off(out, first):
+        return None, "coverage antialiasing is on"
+    hashes = {}
+    for n in range(first, last + 1):
+        h = hashlib.sha256()
+        for part in ("raw", "mv.raw", "depth.raw"):
+            path = os.path.join(out, "%04d.%s" % (n, part))
+            if not os.path.exists(path):
+                return None, "frame %d has no %s" % (n, part)
+            with open(path, "rb") as f:
+                h.update(f.read())
+        with open(os.path.join(out, "%04d.raw.size" % n)) as f:
+            size = f.read().split()
+        hashes[str(n)] = "%sx%s:%s" % (size[0], size[1], h.hexdigest()[:32])
+    return hashes, None
+
+
 def compare(name, group, ref, key, args, expected, results, failures):
     """Every mode of a group must render what ref does, and ref must match
     the expectations under key."""
@@ -127,6 +207,15 @@ def check_rom(args, name, expected):
                 continue
             group[mode] = hashes
         compare(name, group, ref, key, args, expected, results, failures)
+    if name in UPSCALER_ROMS:
+        group = {}
+        for mode, (env_extra, options) in UPSCALER_MODES.items():
+            hashes, err = run_upscaler(args, name, rom, mode, env_extra, options, UPSCALER_ROMS[name])
+            if err:
+                failures.append("%s (%s): %s" % (name, mode, err))
+                continue
+            group[mode] = hashes
+        compare(name, group, "upscaler", name + "@upscaler", args, expected, results, failures)
     return results, failures
 
 

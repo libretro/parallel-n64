@@ -32,6 +32,8 @@
 #include "rdp_worker.h"
 #include <retro_atomic.h>
 #include "rdp_dump_write.hpp"
+#include "upscaler_pass.hpp"
+#include "temporal_upscaler.h"
 
 #ifndef GRANITE_VULKAN_MT
 #error "Granite Vulkan backend must be built with multithreading support."
@@ -52,7 +54,10 @@ enum CommandProcessorFlagBits
 	COMMAND_PROCESSOR_FLAG_UPSCALING_4X_BIT = 1 << 3,
 	COMMAND_PROCESSOR_FLAG_UPSCALING_8X_BIT = 1 << 4,
 	COMMAND_PROCESSOR_FLAG_SUPER_SAMPLED_READ_BACK_BIT = 1 << 5,
-	COMMAND_PROCESSOR_FLAG_SUPER_SAMPLED_DITHER_BIT = 1 << 6
+	COMMAND_PROCESSOR_FLAG_SUPER_SAMPLED_DITHER_BIT = 1 << 6,
+	// Frames go to a temporal upscaler (ScanoutOptions::upscaler) from the
+	// start: coverage antialiasing is off from the first primitive.
+	COMMAND_PROCESSOR_FLAG_TEMPORAL_UPSCALER_BIT = 1 << 7
 };
 using CommandProcessorFlags = uint32_t;
 
@@ -160,6 +165,9 @@ public:
 	void set_vi_register(VIRegister reg, uint32_t value);
 
 	Vulkan::ImageHandle scanout(const ScanoutOptions &opts = {});
+	/* After a scanout with ScanoutOptions::upscaler: that frame's motion
+	 * vectors, depth and jitter. No images when it had none. */
+	void get_upscaler_frame(UpscalerFrame &frame);
 	void scanout_sync(std::vector<RGBA> &colors, unsigned &width, unsigned &height, const ScanoutOptions &opts = {});
 	void scanout_async_buffer(VIScanoutBuffer &buffer, const ScanoutOptions &opts = {});
 
@@ -226,6 +234,7 @@ private:
 	ScanoutOptions scanout_opts;
 	VkImageLayout scanout_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 	Vulkan::ImageHandle scanout_result;
+	UpscalerFrame upscaler_frame = {};
 	CommandRing ring;
 
 	void clear_hidden_rdram();
@@ -294,6 +303,18 @@ private:
 	void decode_triangle_setup(TriangleSetup &setup, const uint32_t *words) const;
 
 	Quirks quirks;
+
+	/* The temporal upscaler's view of the state triangles are drawn under */
+	rdp_upscaler_t *upscaler = nullptr;
+	uint32_t other_modes_words[2] = {};
+	uint32_t combine_words[2] = {};
+	uint32_t tile_words[8][2] = {};
+	uint32_t load_addr = 0;
+	int32_t prim_z = 0;
+	bool prim_depth = false;
+	bool coverage_aa_off = false;
+	void upscaler_triangle(unsigned op, TriangleSetup &setup, AttributeSetup &attr);
+	void upscaler_scanout();
 
 	std::unique_ptr<RDPDumpWriter> dump_writer;
 	bool dump_in_command_list = false;

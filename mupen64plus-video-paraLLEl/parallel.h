@@ -35,6 +35,10 @@ unsigned parallel_get_upscaling();
 
 void parallel_set_overscan_crop(unsigned pixels);
 
+void parallel_set_upscaler_interface(const struct retro_hw_render_upscaler_interface *iface);
+bool parallel_upscaler_active(void);
+void parallel_upscaler_reset(void);
+
 void parallel_profile_video_refresh_begin(void);
 void parallel_profile_video_refresh_end(void);
 

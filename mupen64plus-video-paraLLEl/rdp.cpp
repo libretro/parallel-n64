@@ -4,6 +4,8 @@
 #include "parallel.h"
 #include "z64.h"
 #include <assert.h>
+#include <math.h>
+#include <string.h>
 
 using namespace Vulkan;
 using namespace std;
@@ -47,6 +49,33 @@ static bool device_supported = false;
 
 static vector<retro_vulkan_image> retro_images;
 static vector<ImageHandle> retro_image_handles;
+
+/* RDRAM as the command processor imports it */
+static uintptr_t rdram_base;
+static uintptr_t rdram_offset;
+/* The upscaling factor the command processor renders at */
+static unsigned processor_factor = 1;
+
+/* The frontend's temporal upscaler (RETRO_ENVIRONMENT_GET_HW_RENDER_UPSCALER_INTERFACE) */
+static const struct retro_hw_render_upscaler_interface *upscaler_iface;
+static struct retro_hw_upscaler_request upscaler_request;
+static struct retro_hw_upscaler_inputs upscaler_inputs;
+/* Per sync index: motion vectors, then depth */
+static vector<ImageHandle> upscaler_handles;
+static bool upscaler_on;
+static bool upscaler_reset_pending = true;
+/* The size of the framebuffer last shown, in native pixels */
+static unsigned upscaler_native_width = 320;
+static unsigned upscaler_native_height = 240;
+
+/* The last of each state command, to give a command processor made anew
+ * the state the RDP had: set_tile and set_tile_size per tile */
+static uint32_t state_words[64][2];
+static bool state_valid[64];
+static uint32_t tile_state_words[2][8][2];
+static bool tile_state_valid[2][8];
+
+static void upscaler_poll();
 unsigned width, height;
 unsigned overscan;
 unsigned upscaling = 1;
@@ -153,6 +182,21 @@ void process_commands()
 		if (command >= 8 && frontend)
 			frontend->enqueue_command(cmd_length * 2, &cmd_data[2 * cmd_cur]);
 
+		if (command == 0x35 || command == 0x32)
+		{
+			unsigned set = command == 0x35 ? 0 : 1;
+			unsigned tile = (cmd_data[2 * cmd_cur + 1] >> 24) & 7;
+			tile_state_words[set][tile][0] = cmd_data[2 * cmd_cur];
+			tile_state_words[set][tile][1] = cmd_data[2 * cmd_cur + 1];
+			tile_state_valid[set][tile] = true;
+		}
+		else if (command >= 0x2a && command != 0x30 && command != 0x33 && command != 0x34 && command != 0x36)
+		{
+			state_words[command][0] = cmd_data[2 * cmd_cur];
+			state_words[command][1] = cmd_data[2 * cmd_cur + 1];
+			state_valid[command] = true;
+		}
+
 		if (RDP::Op(command) == RDP::Op::SyncFull)
 		{
 			// For synchronous RDP:
@@ -204,12 +248,219 @@ void begin_frame()
 		retro_image_handles.resize(num_frames);
 	}
 
+	if (upscaler_handles.size() != 2 * num_frames)
+		upscaler_handles.resize(2 * num_frames);
+
 	vulkan->wait_sync_index(vulkan->handle);
 	if (!begin_ts)
 		begin_ts = device->write_calibrated_timestamp();
 
+	upscaler_poll();
+
 	//frontend->wait_for_timeline(pending_timeline_value);
 	//pending_timeline_value = timeline_value;
+}
+
+static bool create_processor(unsigned factor)
+{
+	CommandProcessorFlags flags = 0;
+	RDP::Quirks quirks;
+
+	switch (factor)
+	{
+		case 2:
+			flags |= COMMAND_PROCESSOR_FLAG_UPSCALING_2X_BIT;
+			break;
+		case 4:
+			flags |= COMMAND_PROCESSOR_FLAG_UPSCALING_4X_BIT;
+			break;
+		case 8:
+			flags |= COMMAND_PROCESSOR_FLAG_UPSCALING_8X_BIT;
+			break;
+		default:
+			factor = 1;
+			break;
+	}
+	if (factor > 1)
+		log_cb(RETRO_LOG_INFO, "Using %ux upscaling!\n", factor);
+
+	/* Upscaled frames read back into RDRAM are normally point-sampled
+	 * down to native resolution; these average the samples instead (and
+	 * dither the result), which some framebuffer effects benefit from.
+	 * They change guest-visible RDRAM, so both default to off. The
+	 * temporal upscaler takes the frame as drawn, without them. */
+	if (factor > 1 && super_sampled_read_back && !upscaler_on)
+	{
+		flags |= COMMAND_PROCESSOR_FLAG_SUPER_SAMPLED_READ_BACK_BIT;
+		log_cb(RETRO_LOG_INFO, "Using super-sampled read-back!\n");
+		if (super_sampled_dither)
+			flags |= COMMAND_PROCESSOR_FLAG_SUPER_SAMPLED_DITHER_BIT;
+	}
+
+	if (upscaler_on)
+		flags |= COMMAND_PROCESSOR_FLAG_TEMPORAL_UPSCALER_BIT;
+
+	/* (the old one goes first: both at once may not fit) */
+	frontend.reset();
+	frontend.reset(new CommandProcessor(*device, reinterpret_cast<void *>(rdram_base),
+				rdram_offset, 8 * 1024 * 1024, 4 * 1024 * 1024, flags));
+
+	if (!frontend->device_is_supported())
+	{
+		log_cb(RETRO_LOG_ERROR, "This device probably does not support 16-bit storage. Make sure you're using up-to-date drivers!\n");
+		frontend.reset();
+		return false;
+	}
+
+	quirks.set_native_texture_lod(native_texture_lod);
+	quirks.set_native_resolution_tex_rect(native_tex_rect);
+	frontend->set_quirks(quirks);
+	processor_factor = factor;
+	return true;
+}
+
+/* A command processor made while the game runs starts from the state the
+ * last one had; what TMEM held is lost */
+static void replay_state()
+{
+	static const unsigned char order[] = {
+		0x3f, 0x3e, 0x3d, 0x2f, 0x3c, 0x2d, 0x2c, 0x2a, 0x2b,
+		0x37, 0x38, 0x39, 0x3a, 0x3b, 0x2e
+	};
+	unsigned i, set, tile;
+
+	for (i = 0; i < sizeof(order); i++)
+		if (state_valid[order[i]])
+			frontend->enqueue_command(2, state_words[order[i]]);
+	for (set = 0; set < 2; set++)
+		for (tile = 0; tile < 8; tile++)
+			if (tile_state_valid[set][tile])
+				frontend->enqueue_command(2, tile_state_words[set][tile]);
+}
+
+static bool upscaler_fits(const struct retro_hw_upscaler_request *req, unsigned factor)
+{
+	unsigned w = upscaler_native_width * factor;
+	unsigned h = upscaler_native_height * factor;
+	return w >= req->min_render_width && w <= req->max_render_width
+		&& h >= req->min_render_height && h <= req->max_render_height;
+}
+
+/* The upscaling factor whose frames fit the request best: within its
+ * range, closest to the size it wants (the larger on a tie); 0 when none
+ * fits */
+static unsigned upscaler_pick_factor(const struct retro_hw_upscaler_request *req)
+{
+	unsigned best = 0;
+	unsigned best_distance = 0;
+	unsigned factor;
+
+	for (factor = 1; factor <= 8; factor *= 2)
+	{
+		unsigned w = upscaler_native_width * factor;
+		unsigned distance;
+		if (!upscaler_fits(req, factor))
+			continue;
+		distance = w > req->render_width ? w - req->render_width : req->render_width - w;
+		if (!best || distance <= best_distance)
+		{
+			best = factor;
+			best_distance = distance;
+		}
+	}
+	return best;
+}
+
+/* Once a frame, before it runs: whether it is drawn for the upscaler and
+ * at which factor. The factor stays while its frames still fit. */
+static void upscaler_poll()
+{
+	unsigned factor = upscaling;
+	bool on = false;
+	bool remake;
+
+	if (upscaler_iface && upscaler_iface->get_request(upscaler_iface->handle, &upscaler_request))
+	{
+		unsigned pick;
+		if (upscaler_on && upscaler_fits(&upscaler_request, processor_factor))
+			pick = processor_factor;
+		else
+			pick = upscaler_pick_factor(&upscaler_request);
+		if (pick)
+		{
+			factor = pick;
+			on = true;
+		}
+	}
+
+	/* (super-sampled read-back is off while the upscaler is on) */
+	remake = factor != processor_factor
+		|| (on != upscaler_on && super_sampled_read_back && factor > 1);
+	if (on != upscaler_on)
+		upscaler_reset_pending = true;
+	upscaler_on = on;
+
+	if (remake)
+	{
+		if (frontend)
+			frontend->idle();
+		if (create_processor(factor))
+			replay_state();
+		else if (!create_processor(1))
+			device_supported = false;
+		upscaler_reset_pending = true;
+	}
+}
+
+void set_upscaler_interface(const struct retro_hw_render_upscaler_interface *iface)
+{
+	upscaler_iface = iface;
+	upscaler_reset_pending = true;
+	/* before the first frame: what it draws at boot is drawn for it */
+	if (device_supported)
+		upscaler_poll();
+}
+
+bool upscaler_active()
+{
+	return upscaler_on;
+}
+
+void upscaler_reset()
+{
+	upscaler_reset_pending = true;
+}
+
+/* Halton (2, 3) over the frames the ratio of the sizes wants: at least
+ * 8, at most 64 */
+static unsigned upscaler_jitter_phase()
+{
+	float ratio;
+	unsigned phase;
+	if (!upscaler_native_width || !processor_factor)
+		return 8;
+	ratio = float(upscaler_request.output_width) / float(upscaler_native_width * processor_factor);
+	phase = unsigned(ceilf(8.0f * ratio * ratio));
+	return phase < 8 ? 8 : phase > 64 ? 64 : phase;
+}
+
+static uint64_t vk_handle(const void *handle, size_t size)
+{
+	uint64_t value = 0;
+	memcpy(&value, handle, size < sizeof(value) ? size : sizeof(value));
+	return value;
+}
+
+static void upscaler_image(struct retro_hw_upscaler_image &out, const Vulkan::Image &image)
+{
+	VkImage vk_image = image.get_image();
+	VkImageView vk_view = image.get_view().get_view();
+	out.image = vk_handle(&vk_image, sizeof(vk_image));
+	out.view = vk_handle(&vk_view, sizeof(vk_view));
+	out.format = unsigned(image.get_format());
+	out.state = unsigned(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+	out.width = image.get_width();
+	out.height = image.get_height();
 }
 
 bool init()
@@ -231,6 +482,7 @@ bool init()
 
 	retro_images.resize(num_frames);
 	retro_image_handles.resize(num_frames);
+	upscaler_handles.resize(2 * num_frames);
 
 	device.reset(new Device);
 	device->set_context(*context);
@@ -252,57 +504,14 @@ bool init()
 	else
 		log_cb(RETRO_LOG_WARN, "VK_EXT_external_memory_host is not supported by this device. Application might run slower because of this.\n");
 
-	CommandProcessorFlags flags = 0;
-	switch (upscaling)
-	{
-		case 2:
-			flags |= COMMAND_PROCESSOR_FLAG_UPSCALING_2X_BIT;
-			log_cb(RETRO_LOG_INFO, "Using 2x upscaling!\n");
-			break;
-
-		case 4:
-			flags |= COMMAND_PROCESSOR_FLAG_UPSCALING_4X_BIT;
-			log_cb(RETRO_LOG_INFO, "Using 4x upscaling!\n");
-			break;
-
-		case 8:
-			flags |= COMMAND_PROCESSOR_FLAG_UPSCALING_8X_BIT;
-			log_cb(RETRO_LOG_INFO, "Using 8x upscaling!\n");
-			break;
-
-		default:
-			break;
-	}
-
-	/* Upscaled frames read back into RDRAM are normally point-sampled
-	 * down to native resolution; these average the samples instead (and
-	 * dither the result), which some framebuffer effects benefit from.
-	 * They change guest-visible RDRAM, so both default to off. */
-	if (upscaling > 1)
-	{
-		if (super_sampled_read_back)
-		{
-			flags |= COMMAND_PROCESSOR_FLAG_SUPER_SAMPLED_READ_BACK_BIT;
-			log_cb(RETRO_LOG_INFO, "Using super-sampled read-back!\n");
-			if (super_sampled_dither)
-				flags |= COMMAND_PROCESSOR_FLAG_SUPER_SAMPLED_DITHER_BIT;
-		}
-	}
-
-	frontend.reset(new CommandProcessor(*device, reinterpret_cast<void *>(aligned_rdram),
-				offset, 8 * 1024 * 1024, 4 * 1024 * 1024, flags));
-
-	if (!frontend->device_is_supported())
-	{
-		log_cb(RETRO_LOG_ERROR, "This device probably does not support 16-bit storage. Make sure you're using up-to-date drivers!\n");
-		frontend.reset();
+	rdram_base = aligned_rdram;
+	rdram_offset = offset;
+	memset(state_valid, 0, sizeof(state_valid));
+	memset(tile_state_valid, 0, sizeof(tile_state_valid));
+	upscaler_on = false;
+	upscaler_reset_pending = true;
+	if (!create_processor(upscaling))
 		return false;
-	}
-
-	RDP::Quirks quirks;
-	quirks.set_native_texture_lod(native_texture_lod);
-	quirks.set_native_resolution_tex_rect(native_tex_rect);
-	frontend->set_quirks(quirks);
 
 	timeline_value = 0;
 	pending_timeline_value = 0;
@@ -319,6 +528,9 @@ void deinit()
 	end_ts.reset();
 	retro_image_handles.clear();
 	retro_images.clear();
+	upscaler_handles.clear();
+	upscaler_iface = nullptr;
+	upscaler_on = false;
 	frontend.reset();
 	device.reset();
 	context.reset();
@@ -442,8 +654,16 @@ void complete_frame()
 	opts.upscale_deinterlacing = !interlacing;
 	opts.downscale_steps = downscaling_steps;
 	opts.crop_overscan_pixels = overscan;
+	opts.upscaler.enable = upscaler_on;
+	opts.upscaler.jitter_phase = upscaler_jitter_phase();
+	opts.upscaler.reset = upscaler_reset_pending;
+	upscaler_reset_pending = false;
 	auto image = frontend->scanout(opts);
 	unsigned index = vulkan->get_sync_index(vulkan->handle);
+	UpscalerFrame upscaler_frame = {};
+
+	if (upscaler_on)
+		frontend->get_upscaler_frame(upscaler_frame);
 
 	if (!image)
 	{
@@ -470,6 +690,31 @@ void complete_frame()
 	retro_images[index].create_info.components.g = VK_COMPONENT_SWIZZLE_G;
 	retro_images[index].create_info.components.b = VK_COMPONENT_SWIZZLE_B;
 	retro_images[index].create_info.components.a = VK_COMPONENT_SWIZZLE_A;
+
+	if (upscaler_on && upscaler_frame.motion_vectors && upscaler_frame.depth)
+	{
+		/* (the frame's images live as long as its color) */
+		upscaler_native_width = image->get_width() / processor_factor;
+		upscaler_native_height = image->get_height() / processor_factor;
+		memset(&upscaler_inputs, 0, sizeof(upscaler_inputs));
+		upscaler_inputs.flags = upscaler_frame.reset ? RETRO_HW_UPSCALER_RESET : 0;
+		upscaler_image(upscaler_inputs.motion_vectors, *upscaler_frame.motion_vectors);
+		upscaler_image(upscaler_inputs.depth, *upscaler_frame.depth);
+		upscaler_inputs.jitter_x = upscaler_frame.jitter_x;
+		upscaler_inputs.jitter_y = upscaler_frame.jitter_y;
+		upscaler_inputs.mv_scale_x = 1.0f;
+		upscaler_inputs.mv_scale_y = 1.0f;
+		upscaler_inputs.pre_exposure = 1.0f;
+		upscaler_inputs.exposure_scale = 1.0f;
+		upscaler_handles[2 * index] = upscaler_frame.motion_vectors;
+		upscaler_handles[2 * index + 1] = upscaler_frame.depth;
+		upscaler_iface->set_inputs(upscaler_iface->handle, &upscaler_inputs);
+	}
+	else if (upscaler_iface)
+	{
+		upscaler_handles[2 * index].reset();
+		upscaler_handles[2 * index + 1].reset();
+	}
 
 	vulkan->set_image(vulkan->handle, &retro_images[index], 0, nullptr, VK_QUEUE_FAMILY_IGNORED);
 	width = image->get_width();

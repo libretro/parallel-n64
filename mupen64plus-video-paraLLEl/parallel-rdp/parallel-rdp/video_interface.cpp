@@ -24,6 +24,7 @@
 #include "rdp_renderer.hpp"
 #include "luts.hpp"
 #include "bitops.hpp"
+#include "upscaler_pass.hpp"
 #include <cmath>
 
 #ifndef PARALLEL_RDP_SHADER_DIR
@@ -1216,8 +1217,116 @@ void VideoInterface::end_vi_register_per_scanline()
 	per_line_state.ended = true;
 }
 
+Vulkan::ImageHandle VideoInterface::upscaler_scanout(Vulkan::CommandBuffer &cmd, unsigned scaling_factor,
+                                                     rdp_upscaler_framebuffer_t &fb, bool &repeat)
+{
+	Registers regs;
+	Vulkan::ImageCreateInfo info;
+	Vulkan::ImageHandle image;
+	unsigned size_log2;
+	int width, height;
+	struct Push
+	{
+		int32_t fb_offset;
+		int32_t fb_width;
+		int32_t res_x, res_y;
+	} push;
+
+	regs = decode_vi_registers(nullptr);
+	clear_per_scanline_state();
+	memset(&fb, 0, sizeof(fb));
+	repeat = false;
+	frame_count++;
+
+	if (regs.vi_offset == 0 || (regs.status & VI_CONTROL_TYPE_RGBA5551_BIT) == 0)
+	{
+		prev_upscaler_image.reset();
+		return {};
+	}
+
+	size_log2 = (regs.status & VI_CONTROL_TYPE_MASK) == VI_CONTROL_TYPE_RGBA8888_BIT ? 2 : 1;
+	width = std::min(regs.max_x, regs.vi_width);
+	height = regs.max_y;
+
+	if (regs.h_res <= 0 || regs.h_start >= VI_SCANOUT_WIDTH || regs.v_res <= 0 || width <= 0 || height <= 0)
+	{
+		/* As persist_frame_on_invalid_input: games strobe the invalid
+		 * state between valid frames. */
+		if (prev_upscaler_image && frame_count - last_valid_frame_count < 4)
+		{
+			fb = prev_upscaler_fb;
+			repeat = true;
+			return prev_upscaler_image;
+		}
+		prev_upscaler_image.reset();
+		return {};
+	}
+	last_valid_frame_count = frame_count;
+
+	if (scaling_factor > 1)
+	{
+		unsigned offset, length;
+		scanout_memory_range(offset, length);
+		renderer->submit_update_upscaled_domain_external(cmd, offset, length, size_log2);
+		cmd.barrier(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_WRITE_BIT,
+		            VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_READ_BIT);
+	}
+
+	info = Vulkan::ImageCreateInfo::render_target(width * scaling_factor, height * scaling_factor,
+	                                              VK_FORMAT_R8G8B8A8_UNORM);
+	info.usage = VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+	info.initial_layout = VK_IMAGE_LAYOUT_UNDEFINED;
+	image = device->create_image(info);
+	if (!image)
+		return {};
+	image->set_layout(Vulkan::Layout::General);
+
+	cmd.image_barrier(*image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL,
+	                  VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, 0,
+	                  VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_WRITE_BIT);
+
+	cmd.set_program(upscaler_color_program(*device));
+	cmd.set_storage_texture(0, 0, image->get_view());
+	if (scaling_factor > 1)
+		cmd.set_storage_buffer(0, 1, *renderer->get_upscaled_rdram_buffer());
+	else
+		cmd.set_storage_buffer(0, 1, *rdram, rdram_offset, rdram_size);
+	cmd.set_buffer_view(0, 2, *gamma_lut_view);
+
+	push.fb_offset = regs.vi_offset >> size_log2;
+	push.fb_width = regs.vi_width;
+	push.res_x = int32_t(info.width);
+	push.res_y = int32_t(info.height);
+
+	cmd.set_specialization_constant_mask(0xf);
+	cmd.set_specialization_constant(0, uint32_t(rdram_size));
+	cmd.set_specialization_constant(1, uint32_t(size_log2 == 2));
+	cmd.set_specialization_constant(2, trailing_zeroes(scaling_factor));
+	cmd.set_specialization_constant(3, uint32_t((regs.status & VI_CONTROL_GAMMA_ENABLE_BIT) != 0));
+	cmd.push_constants(&push, 0, sizeof(push));
+	cmd.dispatch((info.width + 7) / 8, (info.height + 7) / 8, 1);
+	cmd.set_specialization_constant_mask(0);
+
+	cmd.image_barrier(*image, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+	                  VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_WRITE_BIT,
+	                  VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+	                  VK_ACCESS_SHADER_READ_BIT);
+	image->set_layout(Vulkan::Layout::Optimal);
+
+	fb.origin = uint32_t(regs.vi_offset) & ~((1u << size_log2) - 1u);
+	fb.stride = uint32_t(regs.vi_width);
+	fb.size_log2 = size_log2;
+	fb.width = unsigned(width);
+	fb.height = unsigned(height);
+	prev_upscaler_image = image;
+	prev_upscaler_fb = fb;
+	return image;
+}
+
 Vulkan::ImageHandle VideoInterface::scanout(VkImageLayout target_layout, const ScanoutOptions &options, unsigned scaling_factor_)
 {
+	prev_upscaler_image.reset();
+
 	unsigned downscale_steps = std::min(8u, options.downscale_steps);
 	int scaling_factor = int(scaling_factor_);
 	Vulkan::ImageHandle scanout;

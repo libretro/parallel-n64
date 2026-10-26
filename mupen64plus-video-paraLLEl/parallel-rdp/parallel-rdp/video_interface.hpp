@@ -25,6 +25,7 @@
 #include <stdint.h>
 #include "device.hpp"
 #include "rdp_common.hpp"
+#include "temporal_upscaler.h"
 
 namespace RDP
 {
@@ -78,6 +79,17 @@ struct ScanoutOptions
 	// presist_frame_on_invalid_input must be false when using exports.
 	VkExternalMemoryHandleTypeFlagBits export_handle_type = {};
 	bool export_scanout = false;
+
+	/* For a temporal upscaler: the scanout is the framebuffer as drawn, at
+	 * the upscaling factor, without the VI's filters, scaling or crop; the
+	 * frame's motion vectors, depth and jitter come with it
+	 * (CommandProcessor::get_upscaler_frame). */
+	struct
+	{
+		bool enable = false;
+		unsigned jitter_phase = 8;
+		bool reset = false;
+	} upscaler;
 };
 
 struct VIScanoutBuffer
@@ -105,6 +117,12 @@ public:
 	Vulkan::ImageHandle scanout(VkImageLayout target_layout, const ScanoutOptions &options = {}, unsigned scale_factor = 1);
 	void scanout_memory_range(unsigned &offset, unsigned &length) const;
 	void set_shader_bank(const ShaderBank *bank);
+
+	/* ScanoutOptions::upscaler's scanout, recorded into @cmd, ending in
+	 * SHADER_READ_ONLY_OPTIMAL; empty when the VI shows nothing. @repeat:
+	 * the frame before, shown again. */
+	Vulkan::ImageHandle upscaler_scanout(Vulkan::CommandBuffer &cmd, unsigned scale_factor,
+	                                     rdp_upscaler_framebuffer_t &fb, bool &repeat);
 
 	enum PerScanlineRegisterBits
 	{
@@ -161,6 +179,8 @@ private:
 	Vulkan::ImageHandle prev_scanout_image;
 	VkImageLayout prev_image_layout = VK_IMAGE_LAYOUT_UNDEFINED;
 	bool prev_image_is_external = false;
+	Vulkan::ImageHandle prev_upscaler_image;
+	rdp_upscaler_framebuffer_t prev_upscaler_fb = {};
 
 	size_t rdram_offset = 0;
 	size_t rdram_size = 0;

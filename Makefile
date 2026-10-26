@@ -1466,11 +1466,16 @@ test_mouse_accum$(EXE_EXT): tools/test_mouse_accum.c \
 		-I$(CORE_DIR)/custom -I$(LIBRETRO_COMM_DIR)/include -I$(ROOT_DIR)/libretro \
 		$< -o $@ $(CHECK_LDFLAGS) $(CHECK_SANITIZE)
 
+test_temporal_upscaler$(EXE_EXT): tools/test_temporal_upscaler.c \
+		$(VIDEODIR_PARALLEL)/parallel-rdp/parallel-rdp/temporal_upscaler.c
+	$(CC) $(CHECK_CFLAGS) $(CHECK_SANITIZE) -I$(VIDEODIR_PARALLEL)/parallel-rdp/parallel-rdp \
+		-I$(LIBRETRO_COMM_DIR)/include $^ -o $@ $(CHECK_LDFLAGS) $(CHECK_SANITIZE) -lm
+
 CORE_CHECKS := test_rcp_bounds$(EXE_EXT) test_memory_map$(EXE_EXT) test_fb_write$(EXE_EXT) \
 	test_cp0_exceptions$(EXE_EXT) test_r4300_interp$(EXE_EXT) test_fpu_compare$(EXE_EXT) test_pi_status$(EXE_EXT) \
 	test_musyx_bounds$(EXE_EXT) test_musyx_aux$(EXE_EXT) test_alist_ops$(EXE_EXT) test_alist_abi1$(EXE_EXT) test_hle_dispatch$(EXE_EXT) angrylion_zboss_audio_test$(EXE_EXT) \
 	test_mouse_accum$(EXE_EXT) test_hle_dram_wrap$(EXE_EXT) test_pif_write$(EXE_EXT) \
-	test_re2_fill$(EXE_EXT)
+	test_re2_fill$(EXE_EXT) test_temporal_upscaler$(EXE_EXT)
 
 ifeq ($(HAVE_PARALLEL_RSP), 1)
 PRSP_TEST_OBJS := $(filter $(RSPDIR_PARALLEL)/%,$(OBJECTS))

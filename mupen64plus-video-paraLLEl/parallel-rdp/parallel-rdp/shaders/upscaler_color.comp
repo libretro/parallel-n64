@@ -1,0 +1,67 @@
+#version 450
+/* The framebuffer the VI scans out, as drawn, for a temporal upscaler:
+ * the upscaled RDRAM read pixel for pixel into an RGBA8 image of the
+ * render size, with the VI's gamma when the game turns it on and none of
+ * its filters or scaling. Reads RDRAM as 32-bit words, so it needs no
+ * 16-bit or 8-bit storage. */
+layout(local_size_x = 8, local_size_y = 8) in;
+
+layout(set = 0, binding = 0, rgba8) uniform writeonly image2D uColor;
+layout(set = 0, binding = 1, std430) readonly buffer RDRAM32
+{
+	uint elems[];
+} vram32;
+layout(set = 0, binding = 2) uniform usamplerBuffer uGammaTable;
+
+layout(push_constant, std430) uniform Registers
+{
+	/* the scanout's first pixel, in pixels of its size */
+	int fb_offset;
+	int fb_width;
+	ivec2 resolution;
+} registers;
+
+layout(constant_id = 0) const int RDRAM_SIZE = 0;
+/* 0 RGBA5551, 1 RGBA8888 */
+layout(constant_id = 1) const int FMT_32 = 0;
+layout(constant_id = 2) const int SCALING_LOG2 = 0;
+layout(constant_id = 3) const bool GAMMA = false;
+const int SCALING_FACTOR = 1 << SCALING_LOG2;
+
+void main()
+{
+	ivec2 coord = ivec2(gl_GlobalInvocationID.xy);
+	if (any(greaterThanEqual(coord, registers.resolution)))
+		return;
+
+	ivec2 slice2d = coord & (SCALING_FACTOR - 1);
+	ivec2 native = coord >> SCALING_LOG2;
+	int slice = slice2d.y * SCALING_FACTOR + slice2d.x;
+	int linear_coord = native.y * registers.fb_width + native.x + registers.fb_offset;
+	uvec3 color;
+
+	if (FMT_32 != 0)
+	{
+		linear_coord &= (RDRAM_SIZE >> 2) - 1;
+		linear_coord += slice * (RDRAM_SIZE >> 2);
+		uint word = vram32.elems[linear_coord];
+		color = (uvec3(word) >> uvec3(24, 16, 8)) & 0xffu;
+	}
+	else
+	{
+		linear_coord &= (RDRAM_SIZE >> 1) - 1;
+		linear_coord += slice * (RDRAM_SIZE >> 1);
+		/* (the halves of a word are swapped, as the 16-bit view has them) */
+		int index = linear_coord ^ 1;
+		uint word = vram32.elems[index >> 1];
+		word = (index & 1) != 0 ? (word >> 16u) : (word & 0xffffu);
+		color = uvec3((word >> 8u) & 0xf8u, (word >> 3u) & 0xf8u, (word << 2u) & 0xf8u);
+	}
+
+	if (GAMMA)
+		color = uvec3(texelFetch(uGammaTable, int(color.r)).r,
+		              texelFetch(uGammaTable, int(color.g)).r,
+		              texelFetch(uGammaTable, int(color.b)).r);
+
+	imageStore(uColor, coord, vec4(vec3(color) / 255.0, 1.0));
+}

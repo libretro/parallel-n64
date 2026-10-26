@@ -62,6 +62,8 @@ CommandProcessor::CommandProcessor(Vulkan::Device &device_, void *rdram_ptr,
 {
 	// NULL only if the allocation failed; init_renderer reports that.
 	timeline_worker.worker = rdp_worker_new(nullptr, timeline_work, this);
+	upscaler = rdp_upscaler_new();
+	coverage_aa_off = (flags & COMMAND_PROCESSOR_FLAG_TEMPORAL_UPSCALER_BIT) != 0;
 
 	BufferCreateInfo info = {};
 	info.size = rdram_size;
@@ -190,6 +192,7 @@ CommandProcessor::~CommandProcessor()
 	// still flush and queue work to the timeline worker, which is
 	// destroyed before the ring would otherwise be.
 	ring.teardown_thread();
+	rdp_upscaler_free(upscaler);
 }
 
 void CommandProcessor::begin_frame_context()
@@ -425,6 +428,7 @@ void CommandProcessor::op_fill_triangle(const uint32_t *words)
 	decode_triangle_setup(setup, words);
 	decode_rgba_setup_from_header(attr, words);
 	decode_z_setup_from_header(attr, words);
+	upscaler_triangle((words[0] >> 24) & 63, setup, attr);
 	renderer.draw_shaded_primitive(setup, attr);
 }
 
@@ -435,6 +439,7 @@ void CommandProcessor::op_shade_triangle(const uint32_t *words)
 	decode_triangle_setup(setup, words);
 	decode_rgba_setup(attr, words + 8);
 	decode_z_setup_from_header(attr, words);
+	upscaler_triangle((words[0] >> 24) & 63, setup, attr);
 	renderer.draw_shaded_primitive(setup, attr);
 }
 
@@ -445,6 +450,7 @@ void CommandProcessor::op_shade_z_buffer_triangle(const uint32_t *words)
 	decode_triangle_setup(setup, words);
 	decode_rgba_setup(attr, words + 8);
 	decode_z_setup(attr, words + 24);
+	upscaler_triangle((words[0] >> 24) & 63, setup, attr);
 	renderer.draw_shaded_primitive(setup, attr);
 }
 
@@ -456,6 +462,7 @@ void CommandProcessor::op_shade_texture_z_buffer_triangle(const uint32_t *words)
 	decode_rgba_setup(attr, words + 8);
 	decode_tex_setup(attr, words + 24);
 	decode_z_setup(attr, words + 40);
+	upscaler_triangle((words[0] >> 24) & 63, setup, attr);
 	renderer.draw_shaded_primitive(setup, attr);
 }
 
@@ -466,6 +473,7 @@ void CommandProcessor::op_fill_z_buffer_triangle(const uint32_t *words)
 	decode_triangle_setup(setup, words);
 	decode_rgba_setup_from_header(attr, words);
 	decode_z_setup(attr, words + 8);
+	upscaler_triangle((words[0] >> 24) & 63, setup, attr);
 	renderer.draw_shaded_primitive(setup, attr);
 }
 
@@ -477,6 +485,7 @@ void CommandProcessor::op_texture_triangle(const uint32_t *words)
 	decode_rgba_setup_from_header(attr, words);
 	decode_tex_setup(attr, words + 8);
 	decode_z_setup_from_header(attr, words);
+	upscaler_triangle((words[0] >> 24) & 63, setup, attr);
 	renderer.draw_shaded_primitive(setup, attr);
 }
 
@@ -488,6 +497,7 @@ void CommandProcessor::op_texture_z_buffer_triangle(const uint32_t *words)
 	decode_rgba_setup_from_header(attr, words);
 	decode_tex_setup(attr, words + 8);
 	decode_z_setup(attr, words + 24);
+	upscaler_triangle((words[0] >> 24) & 63, setup, attr);
 	renderer.draw_shaded_primitive(setup, attr);
 }
 
@@ -499,6 +509,7 @@ void CommandProcessor::op_shade_texture_triangle(const uint32_t *words)
 	decode_rgba_setup(attr, words + 8);
 	decode_tex_setup(attr, words + 24);
 	decode_z_setup_from_header(attr, words);
+	upscaler_triangle((words[0] >> 24) & 63, setup, attr);
 	renderer.draw_shaded_primitive(setup, attr);
 }
 
@@ -533,6 +544,7 @@ void CommandProcessor::op_set_color_image(const uint32_t *words)
 		return;
 	}
 
+	rdp_upscaler_set_color_image(upscaler, addr, width, size == 3 ? 2 : size == 2 ? 1 : -1);
 	renderer.set_color_framebuffer(addr, width, fbfmt);
 }
 
@@ -575,8 +587,12 @@ void CommandProcessor::op_set_other_modes(const uint32_t *words)
 	STATE_MASK(depth_blend.flags, bool(words[1] & (1 << 6)), DEPTH_BLEND_IMAGE_READ_ENABLE_BIT);
 	STATE_MASK(depth_blend.flags, bool(words[1] & (1 << 5)), DEPTH_BLEND_DEPTH_UPDATE_BIT);
 	STATE_MASK(depth_blend.flags, bool(words[1] & (1 << 4)), DEPTH_BLEND_DEPTH_TEST_BIT);
-	STATE_MASK(static_state.flags, bool(words[1] & (1 << 3)), RASTERIZATION_AA_BIT);
-	STATE_MASK(depth_blend.flags, bool(words[1] & (1 << 3)), DEPTH_BLEND_AA_BIT);
+	/* The coverage antialiasing (edges blended by coverage in the blender,
+	 * then reconstructed by the VI) is off while a temporal upscaler takes
+	 * the frames: it gets every edge as the pixel centres have it and
+	 * antialiases from the jittered frames itself. */
+	STATE_MASK(static_state.flags, bool(words[1] & (1 << 3)) && !coverage_aa_off, RASTERIZATION_AA_BIT);
+	STATE_MASK(depth_blend.flags, bool(words[1] & (1 << 3)) && !coverage_aa_off, DEPTH_BLEND_AA_BIT);
 
 	STATE_MASK(static_state.flags, bool(words[1] & (1 << 1)), RASTERIZATION_ALPHA_TEST_DITHER_BIT);
 	STATE_MASK(static_state.flags, bool(words[1] & (1 << 0)), RASTERIZATION_ALPHA_TEST_BIT);
@@ -621,6 +637,9 @@ void CommandProcessor::op_set_other_modes(const uint32_t *words)
 	renderer.set_static_rasterization_state(static_state);
 	renderer.set_depth_blend_state(depth_blend);
 	renderer.set_enable_primitive_depth(bool(words[1] & (1 << 2)));
+	other_modes_words[0] = words[0];
+	other_modes_words[1] = words[1];
+	prim_depth = (words[1] & (1 << 2)) != 0;
 }
 
 void CommandProcessor::op_set_texture_image(const uint32_t *words)
@@ -672,6 +691,8 @@ void CommandProcessor::op_set_tile(const uint32_t *words)
 	else if (info.mask_t == 0)
 		info.flags |= TILE_INFO_CLAMP_T_BIT;
 
+	tile_words[tile][0] = words[0];
+	tile_words[tile][1] = words[1];
 	renderer.set_tile(tile, info);
 }
 
@@ -691,6 +712,7 @@ void CommandProcessor::op_load_tile(const uint32_t *words)
 	info.thi = (words[1] >> 0) & 0xfff;
 	info.mode = UploadMode::Tile;
 
+	load_addr = texture_image.addr;
 	renderer.load_tile(tile, info);
 }
 
@@ -710,6 +732,7 @@ void CommandProcessor::op_load_tlut(const uint32_t *words)
 	info.thi = (words[1] >> 0) & 0xfff;
 	info.mode = UploadMode::TLUT;
 
+	load_addr = texture_image.addr;
 	renderer.load_tile(tile, info);
 }
 
@@ -729,6 +752,7 @@ void CommandProcessor::op_load_block(const uint32_t *words)
 	info.thi = (words[1] >> 0) & 0xfff;
 	info.mode = UploadMode::Block;
 
+	load_addr = texture_image.addr;
 	renderer.load_tile(tile, info);
 }
 
@@ -763,6 +787,8 @@ void CommandProcessor::op_set_combine(const uint32_t *words)
 	static_state.combiner[1].alpha.mulsub = static_cast<AlphaAddSub>((words[1] >> 3) & 0x7);
 	static_state.combiner[1].alpha.mul = static_cast<AlphaMul>((words[1] >> 18) & 0x7);
 	static_state.combiner[1].alpha.add = static_cast<AlphaAddSub>((words[1] >> 0) & 0x7);
+	combine_words[0] = words[0];
+	combine_words[1] = words[1];
 
 	renderer.set_static_rasterization_state(static_state);
 }
@@ -813,6 +839,7 @@ void CommandProcessor::op_fill_rectangle(const uint32_t *words)
 	setup.yh = yh;
 	setup.flags = TRIANGLE_SETUP_FLIP_BIT | TRIANGLE_SETUP_DISABLE_UPSCALING_BIT;
 
+	rdp_upscaler_rectangle(upscaler, xh, yh, xl, yl);
 	renderer.draw_flat_primitive(setup);
 }
 
@@ -857,6 +884,7 @@ void CommandProcessor::op_texture_rectangle(const uint32_t *words)
 	if ((static_state.flags & RASTERIZATION_COPY_BIT) != 0)
 		setup.flags |= TRIANGLE_SETUP_SKIP_XFRAC_BIT;
 
+	rdp_upscaler_rectangle(upscaler, xh, yh, xl, yl);
 	renderer.draw_shaded_primitive(setup, attr);
 }
 
@@ -901,12 +929,14 @@ void CommandProcessor::op_texture_rectangle_flip(const uint32_t *words)
 	if ((static_state.flags & RASTERIZATION_COPY_BIT) != 0)
 		setup.flags |= TRIANGLE_SETUP_SKIP_XFRAC_BIT;
 
+	rdp_upscaler_rectangle(upscaler, xh, yh, xl, yl);
 	renderer.draw_shaded_primitive(setup, attr);
 }
 
 void CommandProcessor::op_set_prim_depth(const uint32_t *words)
 {
 	renderer.set_primitive_depth((words[1] >> 16) & 0xffff, words[1] & 0xffff);
+	prim_z = int32_t(((words[1] >> 16) & 0x7fff) << 16);
 }
 
 void CommandProcessor::op_set_convert(const uint32_t *words)
@@ -1054,7 +1084,23 @@ void CommandProcessor::enqueue_command_direct(unsigned, const uint32_t *words)
 		renderer.flush_and_signal();
 		if (words[3])
 			renderer.resolve_coherency_external(words[1], words[2]);
-		scanout_result = vi.scanout(scanout_layout, scanout_opts, renderer.get_scaling_factor());
+		if (scanout_opts.upscaler.enable && upscaler)
+			upscaler_scanout();
+		else
+		{
+			if (upscaler)
+				rdp_upscaler_configure(upscaler, false, 1, false);
+			upscaler_frame = UpscalerFrame();
+			scanout_result = vi.scanout(scanout_layout, scanout_opts, renderer.get_scaling_factor());
+		}
+		if (upscaler && rdp_upscaler_is_active(upscaler) != coverage_aa_off)
+		{
+			uint32_t modes[2];
+			coverage_aa_off = rdp_upscaler_is_active(upscaler);
+			modes[0] = other_modes_words[0];
+			modes[1] = other_modes_words[1];
+			op_set_other_modes(modes);
+		}
 		break;
 	}
 
@@ -1231,6 +1277,110 @@ Vulkan::ImageHandle CommandProcessor::scanout(const ScanoutOptions &opts, VkImag
 	}
 
 	return std::move(scanout_result);
+}
+
+void CommandProcessor::get_upscaler_frame(UpscalerFrame &frame)
+{
+	/* (kept: a repeated frame hands it over again) */
+	frame = upscaler_frame;
+}
+
+void CommandProcessor::upscaler_triangle(unsigned op, TriangleSetup &setup, AttributeSetup &attr)
+{
+	rdp_upscaler_triangle_t tri;
+	uint64_t signature;
+	unsigned flags = 0;
+	unsigned tile;
+
+	if (!upscaler || !rdp_upscaler_is_active(upscaler))
+		return;
+
+	tri.xh = setup.xh;
+	tri.xm = setup.xm;
+	tri.xl = setup.xl;
+	tri.dxhdy = setup.dxhdy;
+	tri.dxmdy = setup.dxmdy;
+	tri.dxldy = setup.dxldy;
+	tri.yh = setup.yh;
+	tri.ym = setup.ym;
+	tri.yl = setup.yl;
+	tri.attr[0] = attr.r;
+	tri.attr[1] = attr.g;
+	tri.attr[2] = attr.b;
+	tri.attr[3] = attr.a;
+	tri.attr[4] = attr.s;
+	tri.attr[5] = attr.t;
+	tri.attr[6] = attr.w;
+	tri.attr[7] = attr.z;
+	tri.attr_de[0] = attr.drde;
+	tri.attr_de[1] = attr.dgde;
+	tri.attr_de[2] = attr.dbde;
+	tri.attr_de[3] = attr.dade;
+	tri.attr_de[4] = attr.dsde;
+	tri.attr_de[5] = attr.dtde;
+	tri.attr_de[6] = attr.dwde;
+	tri.attr_de[7] = attr.dzde;
+	tri.dzdx = attr.dzdx;
+
+	/* Fill and copy cycles leave the depth buffer alone */
+	if ((static_state.flags & (RASTERIZATION_FILL_BIT | RASTERIZATION_COPY_BIT)) == 0)
+	{
+		if (depth_blend.flags & DEPTH_BLEND_DEPTH_TEST_BIT)
+			flags |= RDP_UPSCALER_DEPTH_TEST;
+		if (depth_blend.flags & DEPTH_BLEND_DEPTH_UPDATE_BIT)
+			flags |= RDP_UPSCALER_DEPTH_WRITE;
+	}
+	if (prim_depth)
+		flags |= RDP_UPSCALER_DEPTH_CONSTANT;
+
+	tile = setup.tile & 7;
+	signature = rdp_upscaler_hash_init();
+	signature = rdp_upscaler_hash(signature, op);
+	signature = rdp_upscaler_hash(signature, other_modes_words[0]);
+	signature = rdp_upscaler_hash(signature, other_modes_words[1]);
+	signature = rdp_upscaler_hash(signature, combine_words[0]);
+	signature = rdp_upscaler_hash(signature, combine_words[1]);
+	signature = rdp_upscaler_hash(signature, tile_words[tile][0]);
+	signature = rdp_upscaler_hash(signature, tile_words[tile][1]);
+	signature = rdp_upscaler_hash(signature, load_addr);
+
+	rdp_upscaler_triangle(upscaler, &tri, signature, flags, prim_z, renderer.get_scaling_factor());
+
+	setup.xh = tri.xh;
+	setup.xm = tri.xm;
+	setup.xl = tri.xl;
+	attr.r = tri.attr[0];
+	attr.g = tri.attr[1];
+	attr.b = tri.attr[2];
+	attr.a = tri.attr[3];
+	attr.s = tri.attr[4];
+	attr.t = tri.attr[5];
+	attr.w = tri.attr[6];
+	attr.z = tri.attr[7];
+}
+
+void CommandProcessor::upscaler_scanout()
+{
+	Vulkan::CommandBufferHandle cmd;
+	rdp_upscaler_framebuffer_t fb;
+	rdp_upscaler_geometry_t geometry;
+	unsigned scale = renderer.get_scaling_factor();
+	bool repeat = false;
+
+	rdp_upscaler_configure(upscaler, true, scanout_opts.upscaler.jitter_phase, scanout_opts.upscaler.reset);
+
+	cmd = device.request_command_buffer();
+	scanout_result = vi.upscaler_scanout(*cmd, scale, fb, repeat);
+	if (!scanout_result)
+		upscaler_frame = UpscalerFrame();
+	else if (repeat)
+		upscaler_frame.reset = false;
+	else
+	{
+		rdp_upscaler_resolve(upscaler, &fb, scale, &geometry);
+		upscaler_motion_pass(device, *cmd, geometry, fb.width * scale, fb.height * scale, upscaler_frame);
+	}
+	device.submit(cmd);
 }
 
 void CommandProcessor::run_on_command_thread(void (*fn)(void *), void *ctx)

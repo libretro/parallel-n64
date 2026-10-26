@@ -27,6 +27,7 @@
  * savestate after the first frame, and LRHOST_SAVE=file with LRHOST_SAVE_AT=n saves one
  * after frame n. LRHOST_HASHLOG=file logs a hash of every presented frame with its frame
  * number, for lining up two runs; LRHOST_RAMDUMP=file writes the system RAM at the end.
+ * LRHOST_UPSCALER (lrhost_vk) offers a temporal upscaler; see lrhost_vulkan.h.
  */
 #if defined(_WIN32)
 #include <windows.h>
@@ -81,6 +82,43 @@ static void video_cb(const void *data, unsigned w, unsigned h, size_t pitch)
         pitch = (size_t)w * 4;
         pixfmt = RETRO_PIXEL_FORMAT_XRGB8888;
         if (!data) { frames_duped++; return; }
+        if (vk_up_on)
+        {
+            static FILE *ul;
+            long n = frames_presented + 1;
+            if (!ul && getenv("LRHOST_UPSCALER_LOG")) ul = fopen(getenv("LRHOST_UPSCALER_LOG"), "w");
+            if (ul)
+            {
+                if (vk_up_have_inputs)
+                    fprintf(ul, "%ld %ux%u jitter %.6f %.6f flags %u mv %ux%u fmt %u depth %ux%u fmt %u\n", n, w, h,
+                            vk_up_inputs.jitter_x, vk_up_inputs.jitter_y, vk_up_inputs.flags,
+                            vk_up_inputs.motion_vectors.width, vk_up_inputs.motion_vectors.height, vk_up_inputs.motion_vectors.format,
+                            vk_up_inputs.depth.width, vk_up_inputs.depth.height, vk_up_inputs.depth.format);
+                else
+                    fprintf(ul, "%ld %ux%u none\n", n, w, h);
+                fflush(ul);
+            }
+            if (vk_up_have_inputs)
+            {
+                vk_up_frames++;
+                if (getenv("LRHOST_DUMPDIR") && n >= dump_from && n <= dump_to && (n - dump_from) % dump_every == 0)
+                {
+                    const struct retro_hw_upscaler_image *imgs[2];
+                    const char *names[2] = { "mv", "depth" };
+                    unsigned k;
+                    imgs[0] = &vk_up_inputs.motion_vectors; imgs[1] = &vk_up_inputs.depth;
+                    for (k = 0; k < 2; k++)
+                    {
+                        char fn[300]; size_t sz; FILE *df;
+                        void *px = vk_read_upscaler_image(imgs[k], &sz);
+                        snprintf(fn, sizeof fn, "%s/%04ld.%s.raw", getenv("LRHOST_DUMPDIR"), n, names[k]);
+                        if (px && (df = fopen(fn, "wb")) != NULL) { fwrite(px, 1, sz, df); fclose(df); }
+                        free(px);
+                    }
+                }
+            }
+            vk_up_have_inputs = 0;
+        }
     }
 #endif
     if (data) { swfb_frames++; if (swfb && data == (const void*)swfb) swfb_hits++; }
@@ -241,6 +279,11 @@ static bool env_cb(unsigned cmd, void *data)
         return true;
     case RETRO_ENVIRONMENT_GET_PREFERRED_HW_RENDER:
         *(unsigned*)data = RETRO_HW_CONTEXT_VULKAN; return true;
+    case RETRO_ENVIRONMENT_GET_HW_RENDER_UPSCALER_INTERFACE:
+        if (!vk_up_on) return false;
+        if (!vk_ready) { vk_up_announced++; return false; }
+        *(const struct retro_hw_render_upscaler_interface**)data = &vk_up_iface;
+        return true;
 #else
     case RETRO_ENVIRONMENT_SET_HW_RENDER:
         return false;   /* software renderers only */
@@ -332,6 +375,7 @@ int main(int argc, char **argv)
     if (dump_every < 1) dump_every = 1;
 #ifdef LRHOST_VULKAN
     if (getenv("LRHOST_VK_NEGOTIATION")) vk_offer = (unsigned)atoi(getenv("LRHOST_VK_NEGOTIATION"));
+    vk_up_init();
 #endif
     MKDIR("lrhost-system");
 
@@ -430,6 +474,8 @@ int main(int argc, char **argv)
                frames_presented, frames_duped, frame_crc);
     }
 #ifdef LRHOST_VULKAN
+    if (vk_up_on)
+        printf("upscaler: asked for in retro_load_game %d, frames with inputs %ld\n", vk_up_announced, vk_up_frames);
     vk_shutdown();
 #endif
     r_deinit();

@@ -1137,7 +1137,50 @@ static void init_parallel_plugin(void)
          log_cb(RETRO_LOG_ERROR, "parallel-RDP init failed (device unsupported); nothing will be rendered.\n");
    }
    else
+   {
+      const struct retro_hw_render_upscaler_interface *upscaler = NULL;
+      if (     !environ_cb(RETRO_ENVIRONMENT_GET_HW_RENDER_UPSCALER_INTERFACE, &upscaler)
+            || !upscaler
+            || upscaler->interface_version != RETRO_HW_RENDER_UPSCALER_INTERFACE_VERSION)
+         upscaler = NULL;
+      parallel_set_upscaler_interface(upscaler);
       parallel_initialized = true;
+   }
+}
+
+/* The options the temporal upscaler overrides while it draws: the
+ * factor follows the size it asks for, and it takes the framebuffer
+ * without the VI's filters, scaling or crop */
+static bool upscaler_options_hidden = false;
+
+static void update_upscaler_options(void)
+{
+   static const char *const keys[] = {
+      CORE_NAME "-upscaling",
+      CORE_NAME "-parallel-rdp-overscan",
+      CORE_NAME "-parallel-rdp-divot-filter",
+      CORE_NAME "-parallel-rdp-gamma-dither",
+      CORE_NAME "-parallel-rdp-vi-aa",
+      CORE_NAME "-parallel-rdp-vi-bilinear",
+      CORE_NAME "-parallel-rdp-dither-filter",
+      CORE_NAME "-parallel-rdp-downscaling",
+      CORE_NAME "-parallel-rdp-super-sampled-read-back",
+      CORE_NAME "-parallel-rdp-super-sampled-read-back-dither",
+      NULL
+   };
+   struct retro_core_option_display display;
+   unsigned i;
+   bool hide = parallel_initialized && parallel_upscaler_active();
+
+   if (hide == upscaler_options_hidden)
+      return;
+   upscaler_options_hidden = hide;
+   display.visible         = !hide;
+   for (i = 0; keys[i]; i++)
+   {
+      display.key = keys[i];
+      environ_cb(RETRO_ENVIRONMENT_SET_CORE_OPTIONS_DISPLAY, &display);
+   }
 }
 #endif
 
@@ -3377,6 +3420,15 @@ bool retro_load_game(const struct retro_game_info *game)
       if (gfx_plugin == GFX_PARALLEL)
       {
          vulkan_inited = retro_init_vulkan();
+#if defined(HAVE_PARALLEL)
+         /* tells the frontend to ready its temporal upscaler for the
+          * context; the interface comes after context_reset */
+         if (vulkan_inited)
+         {
+            const struct retro_hw_render_upscaler_interface *upscaler = NULL;
+            environ_cb(RETRO_ENVIRONMENT_GET_HW_RENDER_UPSCALER_INTERFACE, &upscaler);
+         }
+#endif
       }
       else
       {
@@ -3822,6 +3874,7 @@ void retro_run (void)
          case GFX_PARALLEL:
 #if defined(HAVE_PARALLEL)
             parallel_begin_frame();
+            update_upscaler_options();
 #endif
             break;
          case GFX_ANGRYLION:
@@ -3886,6 +3939,10 @@ void retro_reset (void)
      * (power cycle) instead re-ran poweron_device() from inside
      * gen_interrupt(), tearing down live device state mid-transaction. */
     CoreDoCommand(M64CMD_RESET, 0, (void*)0);
+#if defined(HAVE_PARALLEL)
+    if (parallel_initialized)
+        parallel_upscaler_reset();
+#endif
 }
 
 void *retro_get_memory_data(unsigned type)
@@ -3957,6 +4014,10 @@ bool retro_unserialize(const void * data, size_t size)
 
     if (savestates_load_m64p(data, size))
     {
+#if defined(HAVE_PARALLEL)
+        if (parallel_initialized)
+            parallel_upscaler_reset();
+#endif
         /* The rumble motor is a latched on/off state driven by the game
          * writing to PAK_IO_RUMBLE; it is transient PIF/controller state and
          * is not part of the savestate. Loading a state while the motor is

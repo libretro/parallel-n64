@@ -277,6 +277,93 @@ static const uint32_t *vk_read_frame(unsigned w, unsigned h)
     return vk_frame;
 }
 
+/* LRHOST_UPSCALER="rw,rh[,minw,minh,maxw,maxh[,outw,outh]]": a temporal
+ * upscaler asking for rw x rh frames (by default within rw/4..rw*2 and
+ * an output twice the size). The core must ask for it in retro_load_game
+ * (counted) and get it after context_reset; each frame's inputs are
+ * logged to LRHOST_UPSCALER_LOG, and dumped frames get their motion
+ * vectors and depth beside them (NNNN.mv.raw, NNNN.depth.raw). */
+static struct retro_hw_render_upscaler_interface vk_up_iface;
+static struct retro_hw_upscaler_request vk_up_req;
+static struct retro_hw_upscaler_inputs vk_up_inputs;
+static int vk_up_on, vk_up_announced, vk_up_have_inputs;
+static long vk_up_frames;
+
+static bool vk_up_get_request(void *h, struct retro_hw_upscaler_request *r)
+{
+    (void)h; *r = vk_up_req; return true;
+}
+static void vk_up_set_inputs(void *h, const struct retro_hw_upscaler_inputs *in)
+{
+    (void)h;
+    vk_up_have_inputs = in != NULL;
+    if (in) vk_up_inputs = *in;
+}
+static void vk_up_init(void)
+{
+    unsigned v[8] = { 0 }; int n;
+    const char *e = getenv("LRHOST_UPSCALER");
+    if (!e) return;
+    n = sscanf(e, "%u,%u,%u,%u,%u,%u,%u,%u", &v[0], &v[1], &v[2], &v[3], &v[4], &v[5], &v[6], &v[7]);
+    if (n < 2) return;
+    if (n < 6) { v[2] = v[0] / 4; v[3] = v[1] / 4; v[4] = v[0] * 2; v[5] = v[1] * 2; }
+    if (n < 8) { v[6] = v[0] * 2; v[7] = v[1] * 2; }
+    vk_up_req.render_width = v[0]; vk_up_req.render_height = v[1];
+    vk_up_req.min_render_width = v[2]; vk_up_req.min_render_height = v[3];
+    vk_up_req.max_render_width = v[4]; vk_up_req.max_render_height = v[5];
+    vk_up_req.output_width = v[6]; vk_up_req.output_height = v[7];
+    vk_up_iface.interface_version = RETRO_HW_RENDER_UPSCALER_INTERFACE_VERSION;
+    vk_up_iface.handle = &vk_up_iface;
+    vk_up_iface.get_request = vk_up_get_request;
+    vk_up_iface.set_inputs = vk_up_set_inputs;
+    vk_up_on = 1;
+}
+
+/* Copies one of the upscaler's images to the host, after the frame */
+static void *vk_read_upscaler_image(const struct retro_hw_upscaler_image *img, size_t *size)
+{
+    VkCommandBufferBeginInfo bi = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
+    VkImageMemoryBarrier b = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER };
+    VkBufferImageCopy region; VkSubmitInfo si = { VK_STRUCTURE_TYPE_SUBMIT_INFO };
+    VkImageAspectFlags aspect = VK_IMAGE_ASPECT_COLOR_BIT;
+    unsigned bpp = 4; void *out;
+    if (img->format == VK_FORMAT_D32_SFLOAT) aspect = VK_IMAGE_ASPECT_DEPTH_BIT;
+    else if (img->format == VK_FORMAT_D16_UNORM) { aspect = VK_IMAGE_ASPECT_DEPTH_BIT; bpp = 2; }
+    else if (img->format == VK_FORMAT_R32G32_SFLOAT) bpp = 8;
+    *size = (size_t)img->width * img->height * bpp;
+    if (!img->image || !vk_ensure_readback(*size)) return NULL;
+
+    p_vkResetCommandBuffer(vk_cmd, 0);
+    bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+    p_vkBeginCommandBuffer(vk_cmd, &bi);
+    b.srcAccessMask = VK_ACCESS_MEMORY_WRITE_BIT; b.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+    b.oldLayout = (VkImageLayout)img->state; b.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+    b.srcQueueFamilyIndex = b.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    b.image = (VkImage)(uintptr_t)img->image;
+    b.subresourceRange.aspectMask = aspect; b.subresourceRange.levelCount = 1; b.subresourceRange.layerCount = 1;
+    p_vkCmdPipelineBarrier(vk_cmd, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, NULL, 0, NULL, 1, &b);
+    memset(&region, 0, sizeof region);
+    region.imageSubresource.aspectMask = aspect;
+    region.imageSubresource.layerCount = 1;
+    region.imageExtent.width = img->width; region.imageExtent.height = img->height; region.imageExtent.depth = 1;
+    p_vkCmdCopyImageToBuffer(vk_cmd, b.image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, vk_rb, 1, &region);
+    b.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT; b.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
+    b.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL; b.newLayout = (VkImageLayout)img->state;
+    p_vkCmdPipelineBarrier(vk_cmd, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0, 0, NULL, 0, NULL, 1, &b);
+    p_vkEndCommandBuffer(vk_cmd);
+    si.commandBufferCount = 1; si.pCommandBuffers = &vk_cmd;
+
+    pthread_mutex_lock(&vk_queue_lock);
+    p_vkResetFences(vk_ctx.device, 1, &vk_fence);
+    p_vkQueueSubmit(vk_ctx.queue, 1, &si, vk_fence);
+    pthread_mutex_unlock(&vk_queue_lock);
+    p_vkWaitForFences(vk_ctx.device, 1, &vk_fence, VK_TRUE, UINT64_MAX);
+
+    out = malloc(*size);
+    if (out) memcpy(out, vk_rb_map, *size);
+    return out;
+}
+
 static void vk_shutdown(void)
 {
     if (!vk_ready) return;

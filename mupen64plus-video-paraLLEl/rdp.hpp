@@ -37,6 +37,13 @@ extern bool super_sampled_read_back, super_sampled_dither;
 void complete_frame();
 void deinit();
 
+/* The frontend's temporal upscaler, NULL without one */
+void set_upscaler_interface(const struct retro_hw_render_upscaler_interface *iface);
+/* Frames are drawn for the upscaler */
+bool upscaler_active();
+/* The next frame does not follow the last one */
+void upscaler_reset();
+
 void profile_refresh_begin();
 void profile_refresh_end();
 }

@@ -109,7 +109,8 @@ libretro-build-linux-x64:
 # generated pipeline stage checks, the HLE geometry frontend's regression
 # lanes (clip scratch stability, the Fast3D near clip plane read from the
 # microcode data segment), the core's bounds, exception, input and
-# MusyX checks (make check-core), and a 64DD disk booted through the core
+# MusyX checks and parallel-RDP's temporal upscaler geometry (make
+# check-core), and a 64DD disk booted through the core
 # with no IPL ROM (make check-dd-ipl).
 test-angrylion-linux-x64:
   extends:
@@ -131,8 +132,10 @@ test-angrylion-linux-x64:
 # dumped frame is compared with tools/ci/parallel_rdp_expected.json, with
 # threaded and single-threaded command processing, for Vulkan negotiation
 # v2 (through the frontend's device wrapper) and v1, with the shader
-# variants for devices without 8-bit SSBO storage, and at 2x. The shader
-# bank check needs no GPU: those variants must not use 8-bit storage.
+# variants for devices without 8-bit SSBO storage, at 2x, and for a
+# frontend temporal upscaler (jitter, motion vectors, depth). The shader
+# bank check needs no GPU: those variants must not use 8-bit storage; nor
+# does the upscaler shaders' check: the SPIR-V committed must be current.
 test-parallel-rdp-linux-x64:
   extends:
     - .core-defs
@@ -152,6 +155,7 @@ test-parallel-rdp-linux-x64:
     - make -j$(nproc) platform=unix WITH_DYNAREC=$WITH_DYNAREC HAVE_THR_AL=$HAVE_THR_AL HAVE_PARALLEL=$HAVE_PARALLEL HAVE_PARALLEL_RSP=$HAVE_PARALLEL_RSP
     - make platform=unix HAVE_PARALLEL=$HAVE_PARALLEL lrhost_vk
     - python3 tools/rdp_no_storage_8bit_bank.py --check
+    - python3 tools/gen_upscaler_shaders.py --check
     - python3 tools/ci/parallel_rdp_regress.py --core ./parallel_n64_libretro.so --host ./lrhost_vk --out parallel-rdp-artifacts
   artifacts:
     when: on_failure
