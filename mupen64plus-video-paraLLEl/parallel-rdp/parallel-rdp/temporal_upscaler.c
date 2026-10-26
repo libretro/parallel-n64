@@ -489,11 +489,23 @@ void rdp_upscaler_triangle(rdp_upscaler_t *u, rdp_upscaler_triangle_t *tri,
       p->cx[2] = (float)UPSCALER_H(cy);
       p->cy[2] = (float)cy;
 
-      /* The RDP fills a row's pixels from the leftmost to the rightmost
-       * an edge reaches over its sub-scanlines, the pixels it only grazes
+      /* With coverage antialiasing (and in fill and copy cycles) the
+       * RDP fills a row's pixels from the leftmost to the rightmost an
+       * edge reaches over its sub-scanlines, the pixels it only grazes
        * included, and a row any sub-scanline of which is inside: each
        * edge moves out by half a pixel plus half its slope, the top and
-       * bottom out by half a row */
+       * bottom out by half a row. Without, it fills the pixels whose top
+       * left corner is inside, where the pass samples their centres:
+       * the outline moves by half a pixel right and down. */
+      if (!(flags & RDP_UPSCALER_ANY_COVERAGE))
+      {
+         for (i = 0; i < UPSCALER_OUTLINE; i++)
+         {
+            p->grow_x[i] = 0.5f;
+            p->grow_y[i] = 0.5f;
+         }
+      }
+      else
       {
          double mid   = (yh + yl) / 2.0;
          double other = mid < ym ? UPSCALER_M(mid) : UPSCALER_L(mid);

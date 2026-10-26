@@ -113,7 +113,7 @@ def main():
                 continue
             w, h = cur["size"]
             c, mv, _ = load(a.dumpdir, n, w, h, cur["mv_fmt"], cur["depth_fmt"])
-            cp, _, _ = load(a.dumpdir, n - 1, w, h, prev["mv_fmt"], prev["depth_fmt"])
+            cp, mvp, _ = load(a.dumpdir, n - 1, w, h, prev["mv_fmt"], prev["depth_fmt"])
             jn, jp = cur["jitter"], prev["jitter"]
             # the pixels that changed: each must find its color where the
             # motion vectors say it was (to the pixel: the RDP fills every
@@ -123,6 +123,11 @@ def main():
             covered = 0
             for i in range(w * h):
                 if c[i] == cp[i]:
+                    continue
+                # a still surface a moving one uncovered was nowhere
+                # the frame before
+                if mv[2 * i] == 0.0 and mv[2 * i + 1] == 0.0 and \
+                        abs(mvp[2 * i]) + abs(mvp[2 * i + 1]) > 0.5:
                     continue
                 y, x = divmod(i, w)
                 q = {}

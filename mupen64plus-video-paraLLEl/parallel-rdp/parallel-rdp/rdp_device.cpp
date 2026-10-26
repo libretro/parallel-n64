@@ -1339,6 +1339,8 @@ void CommandProcessor::upscaler_triangle(unsigned op, TriangleSetup &setup, Attr
 	}
 	if (prim_depth)
 		flags |= RDP_UPSCALER_DEPTH_CONSTANT;
+	if (static_state.flags & (RASTERIZATION_AA_BIT | RASTERIZATION_FILL_BIT | RASTERIZATION_COPY_BIT))
+		flags |= RDP_UPSCALER_ANY_COVERAGE;
 
 	tile = setup.tile & 7;
 	signature = rdp_upscaler_hash_init();

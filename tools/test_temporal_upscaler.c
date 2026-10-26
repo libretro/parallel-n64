@@ -338,7 +338,7 @@ static void test_depth_and_draws(void)
    CHECK(g.num_draws == 3 && g.draws[2].flags == RDP_UPSCALER_DEPTH_TEST && g.draws[2].count == 24,
          "a decal tests depth only");
 
-   CHECK(motion_at(&g, 100.0 * SCALE + g.jitter_x, 50.0 * SCALE + g.jitter_y + 0.5, &mx, &my, &z)
+   CHECK(motion_at(&g, 100.0 * SCALE + g.jitter_x + 0.5, 50.0 * SCALE + g.jitter_y + 1.0, &mx, &my, &z)
          && near(z, 0.25, 0.01), "the depth is the z plane's");
    CHECK(motion_at(&g, 100.0 * SCALE + g.jitter_x, 100.0 * SCALE + g.jitter_y, &mx, &my, &z)
          && near(z, 0.25 + 50.0 * 0x100000 / 2147483648.0, 0.01), "the depth follows the z plane down");
@@ -378,6 +378,44 @@ static void test_translucent(void)
          && g.draws[1].count == g.draws[0].count * 2,
          "the translucent ones are marked so, both in the one run");
    rdp_upscaler_free(u);
+}
+
+/* The pass covers the pixels the RDP fills: with coverage antialiasing
+ * every pixel an edge touches, without only those whose top left corner
+ * is inside (sampled at their centres, half a pixel on) */
+static void test_sample_rule(void)
+{
+   unsigned pass;
+   for (pass = 0; pass < 2; pass++)
+   {
+      rdp_upscaler_t *u = rdp_upscaler_new();
+      rdp_upscaler_geometry_t g;
+      rdp_upscaler_triangle_t t;
+      double mx, my, z, e;
+      unsigned flags = RDP_UPSCALER_DEPTH_TEST | RDP_UPSCALER_DEPTH_WRITE
+         | (pass ? RDP_UPSCALER_ANY_COVERAGE : 0);
+
+      rdp_upscaler_configure(u, true, 8, false);
+      scanout(u, FB, &g);
+      rdp_upscaler_set_color_image(u, FB, STRIDE, 1);
+      /* its major edge upright at x = 100, on the left */
+      make_triangle(&t, 100, 50, 180, 100, 100, 150);
+      rdp_upscaler_triangle(u, &t, sig(1), flags, 0, SCALE);
+      scanout(u, FB, &g);
+      e = 100.0 * SCALE + g.jitter_x;
+
+      if (pass)
+         CHECK(motion_at(&g, e - 0.4, 100.0 * SCALE + g.jitter_y, &mx, &my, &z),
+               "with coverage antialiasing, the pixel the edge grazes is covered");
+      else
+      {
+         CHECK(!motion_at(&g, e + 0.4, 100.0 * SCALE + g.jitter_y + 0.5, &mx, &my, &z),
+               "without, a pixel whose corner is left of the edge is not covered");
+         CHECK(motion_at(&g, e + 0.6, 100.0 * SCALE + g.jitter_y + 0.5, &mx, &my, &z),
+               "without, a pixel whose corner is right of the edge is covered");
+      }
+      rdp_upscaler_free(u);
+   }
 }
 
 static void test_history(void)
@@ -430,6 +468,7 @@ int main(void)
    test_motion();
    test_cut_short();
    test_depth_and_draws();
+   test_sample_rule();
    test_translucent();
    test_history();
    if (s_failures)

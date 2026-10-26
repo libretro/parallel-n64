@@ -64,6 +64,10 @@ typedef struct rdp_upscaler_triangle
 /* Blended over what is behind it, writing no depth (particles, glows):
  * the upscaler takes this frame's color there over its history */
 #define RDP_UPSCALER_TRANSLUCENT    (1 << 4)
+/* Drawn on every pixel an edge touches (coverage antialiasing, fill and
+ * copy cycles); without it, on the pixels whose top left corner is
+ * inside */
+#define RDP_UPSCALER_ANY_COVERAGE   (1 << 5)
 
 /* The framebuffer the VI showed */
 typedef struct rdp_upscaler_framebuffer
