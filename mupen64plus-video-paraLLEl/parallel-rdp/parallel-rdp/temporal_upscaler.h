@@ -62,7 +62,9 @@ typedef struct rdp_upscaler_triangle
 /* Every pixel's depth is the primitive depth */
 #define RDP_UPSCALER_DEPTH_CONSTANT (1 << 3)
 /* Blended over what is behind it, writing no depth (particles, glows):
- * the upscaler takes this frame's color there over its history */
+ * the upscaler takes this frame's color there over its history. One
+ * that tests depth is drawn last in the motion vector pass, writing its
+ * depth there. */
 #define RDP_UPSCALER_TRANSLUCENT    (1 << 4)
 
 /* The framebuffer the VI showed */
