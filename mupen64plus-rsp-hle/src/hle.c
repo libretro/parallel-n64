@@ -234,6 +234,22 @@ static void send_alist_to_audio_plugin(struct hle_t* hle)
 
 static void send_dlist_to_gfx_plugin(struct hle_t* hle)
 {
+    uint32_t text = *dmem_u32(hle, TASK_UCODE) & 0x7fffffu;
+
+    /* A yielded task relaunched by osSpTaskStart starts from its boot code
+     * like a fresh one, which clears SIG1 (the yielded flag); left set,
+     * osSpTaskYielded reads the completion as another yield. */
+    if (*dmem_u32(hle, TASK_FLAGS) & 1)
+        *hle->sp_status &= ~SP_STATUS_SIG1;
+    /* ZSortp's resident initialisation writes 0x42800 to SP_STATUS:
+     * clear SIG1 and SIG2, set SIG4.  SIG2 comes back with the task-done
+     * bits set below. */
+    if (text <= 0x800000u - 0x1cu
+     && *dram_u32(hle, text + 0x10u) == 0x3c0b0004u
+     && *dram_u32(hle, text + 0x14u) == 0x356b2800u
+     && *dram_u32(hle, text + 0x18u) == 0x408b2000u)
+        *hle->sp_status = (*hle->sp_status & ~SP_STATUS_SIG1) | SP_STATUS_SIG4;
+
     /* Since GFX_INFO version 2, these bits are set before calling the ProcessDlistList function.
      * And the GFX plugin is responsible to unset them if needed.
      * For GFX_INFO version < 2, the GFX plugin didn't have access to sp_status so

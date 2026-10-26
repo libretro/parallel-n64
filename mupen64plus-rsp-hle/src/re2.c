@@ -245,19 +245,28 @@ void decode_video_frame_task(struct hle_t* hle)
 
 void fill_video_double_buffer_task(struct hle_t* hle)
 {
-    int data_ptr = *dmem_u32(hle, TASK_UCODE_DATA);
-
-    int pSrc = *dram_u32(hle, data_ptr);
-    int pDest = *dram_u32(hle, data_ptr + 0x4);
-    int width = *dram_u32(hle, data_ptr + 0x8) >> 1;
-    int height = *dram_u32(hle, data_ptr + 0x10) << 1;
-    int stride = *dram_u32(hle, data_ptr + 0x1c) >> 1;
-
-    assert((*dram_u32(hle, data_ptr + 0x28) >> 16) == 0x8000);
-
+    int data_ptr, pSrc, pDest, width, height, stride;
     int i, j;
     int r, g, b, a;
     uint32_t pixel, pixel1, pixel2;
+
+    /* The microcode's boot entry checks SIG0 first: a fill that the CPU
+     * pre-empted is completed there without touching any pixels. */
+    if (*hle->sp_status & SP_STATUS_SIG0) {
+        *hle->sp_status &= ~SP_STATUS_SIG0;
+        rsp_break(hle, SP_STATUS_SIG1 | SP_STATUS_TASKDONE);
+        return;
+    }
+
+    data_ptr = *dmem_u32(hle, TASK_UCODE_DATA);
+
+    pSrc = *dram_u32(hle, data_ptr);
+    pDest = *dram_u32(hle, data_ptr + 0x4);
+    width = *dram_u32(hle, data_ptr + 0x8) >> 1;
+    height = *dram_u32(hle, data_ptr + 0x10) << 1;
+    stride = *dram_u32(hle, data_ptr + 0x1c) >> 1;
+
+    assert((*dram_u32(hle, data_ptr + 0x28) >> 16) == 0x8000);
 
     for(i = 0; i < height; i++)
     {
@@ -281,5 +290,8 @@ void fill_video_double_buffer_task(struct hle_t* hle)
       pDest += stride;
     }
 
-    rsp_break(hle, SP_STATUS_TASKDONE);
+    /* It finishes with an SP_STATUS write of 0x5200: clear SIG0, set
+     * SIG1 and SIG2 (task done).  The game's frame loop waits on SIG1. */
+    *hle->sp_status &= ~SP_STATUS_SIG0;
+    rsp_break(hle, SP_STATUS_SIG1 | SP_STATUS_TASKDONE);
 }

@@ -530,7 +530,29 @@ static void UNKCMD3(struct hle_t* hle, uint32_t w1, uint32_t w2)
     uint16_t dmemi = (w2 >> 16);
     uint16_t dmemo = w2;
 
+    /* the handler reloads the v31 constant row before its multiplies */
+    nead_v31_load(hle, 0x00);
     alist_unkcmd3(hle, dmemo, dmemi, count);
+}
+/* the pipelined and the plain signed 8-bit decoders of the builds whose
+ * S8DEC alist_s8dec does not model */
+static void S8DEC_P(struct hle_t* hle, uint32_t w1, uint32_t w2)
+{
+    alist_nead_s8(hle, w1, w2, hle->alist_nead.in, hle->alist_nead.out,
+                  hle->alist_nead.count, hle->alist_nead.loop, 1);
+}
+static void S8DEC_SFJ(struct hle_t* hle, uint32_t w1, uint32_t w2)
+{
+    alist_nead_s8(hle, w1, w2, hle->alist_nead.in, hle->alist_nead.out,
+                  hle->alist_nead.count, hle->alist_nead.loop, 0);
+}
+static void MULTIPLY(struct hle_t* hle, uint32_t w1, uint32_t w2)
+{
+    alist_nead_multiply(hle, w1, w2);
+}
+static void INDEXED(struct hle_t* hle, uint32_t w1, uint32_t w2)
+{
+    alist_nead_indexed(hle, w1, w2);
 }
 
 static void SEGMENT(struct hle_t* UNUSED(hle), uint32_t UNUSED(w1), uint32_t UNUSED(w2))
@@ -601,7 +623,7 @@ void alist_process_nead_sf(struct hle_t* hle)
         MIXER,          INTERLEAVE_MK,  POLEF,          SETLOOP,
         NEAD_16,        INTERL,         ENVSETUP1,      ENVMIXER,
         LOADBUFF,       SAVEBUFF,       ENVSETUP2,      SPNOOP,
-        HILOGAIN,       UNKNOWN,        DUPLICATE,      SPNOOP,
+        HILOGAIN,       MULTIPLY,       DUPLICATE,      SPNOOP,
         SPNOOP,         SPNOOP,         SPNOOP,         SPNOOP
     };
 
@@ -624,8 +646,8 @@ void alist_process_nead_sfj(struct hle_t* hle)
         SETBUFF,        SPNOOP,         DMEMMOVE,       LOADADPCM,
         MIXER,          INTERLEAVE_MK,  POLEF,          SETLOOP,
         NEAD_16,        INTERL,         ENVSETUP1,      ENVMIXER,
-        LOADBUFF,       SAVEBUFF,       ENVSETUP2,      UNKNOWN,
-        HILOGAIN,       UNKNOWN,        DUPLICATE,      SPNOOP,
+        LOADBUFF,       SAVEBUFF,       ENVSETUP2,      S8DEC_SFJ,
+        HILOGAIN,       MULTIPLY,       DUPLICATE,      SPNOOP,
         SPNOOP,         SPNOOP,         SPNOOP,         SPNOOP
     };
 
@@ -648,8 +670,8 @@ void alist_process_nead_fz(struct hle_t* hle)
         SETBUFF,        SPNOOP,         DMEMMOVE,       LOADADPCM,
         MIXER,          INTERLEAVE,     SPNOOP,         SETLOOP,
         NEAD_16,        INTERL,         ENVSETUP1,      ENVMIXER,
-        LOADBUFF,       SAVEBUFF,       ENVSETUP2,      UNKNOWN,
-        SPNOOP,         UNKNOWN,        DUPLICATE,      SPNOOP,
+        LOADBUFF,       SAVEBUFF,       ENVSETUP2,      S8DEC_P,
+        SPNOOP,         SPNOOP,         DUPLICATE,      SPNOOP,
         SPNOOP,         SPNOOP,         SPNOOP,         SPNOOP
     };
 
@@ -667,13 +689,13 @@ void alist_process_nead_fz(struct hle_t* hle)
 void alist_process_nead_wrjb(struct hle_t* hle)
 {
     static const acmd_callback_t ABI[0x20] = {
-        SPNOOP,         ADPCM,          CLEARBUFF,      UNKNOWN,
+        SPNOOP,         ADPCM,          CLEARBUFF,      UNKCMD3,
         ADDMIXER,       RESAMPLE,       RESAMPLE_ZOH,   SPNOOP,
         SETBUFF,        SPNOOP,         DMEMMOVE,       LOADADPCM,
         MIXER,          INTERLEAVE,     SPNOOP,         SETLOOP,
         NEAD_16,        INTERL,         ENVSETUP1,      ENVMIXER,
-        LOADBUFF,       SAVEBUFF,       ENVSETUP2,      UNKNOWN,
-        HILOGAIN,       UNKNOWN,        DUPLICATE,      FILTER,
+        LOADBUFF,       SAVEBUFF,       ENVSETUP2,      S8DEC_SFJ,
+        HILOGAIN,       MULTIPLY,       DUPLICATE,      FILTER,
         SPNOOP,         SPNOOP,         SPNOOP,         SPNOOP
     };
 
@@ -692,12 +714,12 @@ void alist_process_nead_wrjb(struct hle_t* hle)
 void alist_process_nead_ys(struct hle_t* hle)
 {
     static const acmd_callback_t ABI[0x18] = {
-        UNKNOWN,        ADPCM,          CLEARBUFF,      UNKNOWN,
+        UNKNOWN,        ADPCM,          CLEARBUFF,      UNKCMD3,
         ADDMIXER,       RESAMPLE,       RESAMPLE_ZOH,   FILTER,
         SETBUFF,        DUPLICATE,      DMEMMOVE,       LOADADPCM,
         MIXER,          INTERLEAVE,     HILOGAIN,       SETLOOP,
         NEAD_16,        INTERL,         ENVSETUP1,      ENVMIXER,
-        LOADBUFF,       SAVEBUFF,       ENVSETUP2,      UNKNOWN
+        LOADBUFF,       SAVEBUFF,       ENVSETUP2,      S8DEC_P
     };
 
     nead_slab = 0xfc0;
@@ -717,12 +739,12 @@ void alist_process_nead_ys(struct hle_t* hle)
 void alist_process_nead_1080(struct hle_t* hle)
 {
     static const acmd_callback_t ABI[0x18] = {
-        UNKNOWN,        ADPCM,          CLEARBUFF,      UNKNOWN,
+        UNKNOWN,        ADPCM,          CLEARBUFF,      UNKCMD3,
         ADDMIXER,       RESAMPLE,       RESAMPLE_ZOH,   FILTER,
         SETBUFF,        DUPLICATE,      DMEMMOVE,       LOADADPCM,
         MIXER,          INTERLEAVE,     HILOGAIN,       SETLOOP,
         NEAD_16,        INTERL,         ENVSETUP1,      ENVMIXER,
-        LOADBUFF,       SAVEBUFF,       ENVSETUP2,      UNKNOWN
+        LOADBUFF,       SAVEBUFF,       ENVSETUP2,      S8DEC_P
     };
 
     nead_slab = 0xfc0;
@@ -763,7 +785,7 @@ void alist_process_nead_oot(struct hle_t* hle)
 void alist_process_nead_mm(struct hle_t* hle)
 {
     static const acmd_callback_t ABI[0x18] = {
-        UNKNOWN,        ADPCM,          CLEARBUFF,      SPNOOP,
+        MULTIPLY,       ADPCM,          CLEARBUFF,      SPNOOP,
         ADDMIXER,       RESAMPLE,       RESAMPLE_ZOH,   FILTER,
         SETBUFF,        DUPLICATE,      DMEMMOVE,       LOADADPCM,
         MIXER,          INTERLEAVE,     HILOGAIN,       SETLOOP,
@@ -791,7 +813,7 @@ void alist_process_nead_mmb(struct hle_t* hle)
         SETBUFF,        DUPLICATE,      DMEMMOVE,       LOADADPCM,
         MIXER,          INTERLEAVE,     HILOGAIN,       SETLOOP,
         NEAD_16,        INTERL,         ENVSETUP1,      ENVMIXER,
-        LOADBUFF,       SAVEBUFF,       ENVSETUP2,      UNKNOWN
+        LOADBUFF,       SAVEBUFF,       ENVSETUP2,      S8DEC_P
     };
 
     nead_slab = 0xfb0;
@@ -809,12 +831,12 @@ void alist_process_nead_mmb(struct hle_t* hle)
 void alist_process_nead_ac(struct hle_t* hle)
 {
     static const acmd_callback_t ABI[0x18] = {
-        UNKNOWN,        ADPCM,          CLEARBUFF,      SPNOOP,
+        INDEXED,        ADPCM,          CLEARBUFF,      SPNOOP,
         ADDMIXER,       RESAMPLE,       RESAMPLE_ZOH,   FILTER,
         SETBUFF,        DUPLICATE,      DMEMMOVE,       LOADADPCM,
         MIXER,          INTERLEAVE,     HILOGAIN,       SETLOOP,
         NEAD_16,        INTERL,         ENVSETUP1,      ENVMIXER,
-        LOADBUFF,       SAVEBUFF,       ENVSETUP2,      UNKNOWN
+        LOADBUFF,       SAVEBUFF,       ENVSETUP2,      S8DEC_P
     };
 
     nead_slab = 0xfb0;
@@ -833,10 +855,11 @@ void alist_process_nead_mats(struct hle_t* hle)
 {
     /* Mario Artist: Talent Studio (64DD), ucode signature 0x1f701238.
      * The command jump table (ucode_data + 0x10, indexed by cmd = w1 >> 24)
-     * was extracted from the running ucode and matches the nead_oot command
-     * layout for all 0x18 entries. */
+     * follows the nead_oot layout except opcode 0x00, the MULTIPLY that
+     * Majora's Mask also carries, and opcode 0x03, which points straight
+     * back to the command loop. */
     static const acmd_callback_t ABI[0x18] = {
-        UNKNOWN,        ADPCM,          CLEARBUFF,      UNKCMD3,
+        MULTIPLY,       ADPCM,          CLEARBUFF,      SPNOOP,
         ADDMIXER,       RESAMPLE,       RESAMPLE_ZOH,   FILTER,
         SETBUFF,        DUPLICATE,      DMEMMOVE,       LOADADPCM,
         MIXER,          INTERLEAVE,     HILOGAIN,       SETLOOP,

@@ -5,7 +5,10 @@
  *    task, and it is not cached;
  *  - a yielded relaunch of the Rogue Squadron and Naboo graphics tasks
  *    clears SIG1 like a fresh launch, so osSpTaskYielded does not read
- *    the completion as another yield.
+ *    the completion as another yield;
+ *  - so does a yielded relaunch of a display list handed to the graphics
+ *    plugin, and ZSortp's resident initialisation clears SIG1 and sets
+ *    SIG4 as its SP_STATUS write does.
  *
  * Built by `make check-core` (top-level Makefile). Exit status 0 on pass.
  */
@@ -137,10 +140,39 @@ static void test_yield_relaunch(void)
           "Naboo: a yielded relaunch clears SIG1");
 }
 
+static void test_dlist_signals(void)
+{
+    setup();
+    *dmem_u32(&s_hle, TASK_UCODE) = 0x2000;
+    *s_hle.sp_status = SP_STATUS_SIG1;
+    *dmem_u32(&s_hle, TASK_FLAGS) = 0;
+    send_dlist_to_gfx_plugin(&s_hle);
+    CHECK(*s_hle.sp_status & SP_STATUS_SIG1, "dlist: a fresh launch leaves SIG1 alone");
+
+    setup();
+    *dmem_u32(&s_hle, TASK_UCODE) = 0x2000;
+    *s_hle.sp_status = SP_STATUS_SIG1;
+    *dmem_u32(&s_hle, TASK_FLAGS) = 1;      /* OS_TASK_YIELDED relaunch */
+    send_dlist_to_gfx_plugin(&s_hle);
+    CHECK(!(*s_hle.sp_status & SP_STATUS_SIG1), "dlist: a yielded relaunch clears SIG1");
+
+    setup();
+    *dmem_u32(&s_hle, TASK_UCODE) = 0x2000;
+    *(uint32_t*)(s_dram + 0x2010) = 0x3c0b0004u;   /* lui   t3, 0x0004   */
+    *(uint32_t*)(s_dram + 0x2014) = 0x356b2800u;   /* ori   t3, 0x2800   */
+    *(uint32_t*)(s_dram + 0x2018) = 0x408b2000u;   /* mtc0  t3, SP_STATUS */
+    *s_hle.sp_status = SP_STATUS_SIG1;
+    *dmem_u32(&s_hle, TASK_FLAGS) = 0;
+    send_dlist_to_gfx_plugin(&s_hle);
+    CHECK(!(*s_hle.sp_status & SP_STATUS_SIG1) && (*s_hle.sp_status & SP_STATUS_SIG4),
+          "dlist: ZSortp's resident init clears SIG1 and sets SIG4");
+}
+
 int main(void)
 {
     test_non_task();
     test_yield_relaunch();
+    test_dlist_signals();
 
     if (s_failures) {
         printf("test_hle_dispatch: %d failure(s)\n", s_failures);

@@ -1474,6 +1474,140 @@ void alist_mix(struct hle_t* hle, uint16_t dmemo, uint16_t dmemi, uint16_t count
     }
 }
 
+
+/* ABI1 (aspMain) block forms of MIXER / DMEMMOVE / INTERLEAVE.  The
+ * microcode works on whole 16-byte vectors with explicit LQV lookahead,
+ * so when the source and destination ranges overlap, every load it has
+ * already issued sees the old bytes even though a sample-at-a-time walk
+ * would have read back its own output.  Delay lines and in-place echo
+ * mixes depend on that order. */
+static void mix8(int16_t* r, const int16_t* d, const int16_t* s, int16_t gain)
+{
+    unsigned i;
+    for (i = 0; i < 8; ++i) {
+        r[i] = d[i];
+        sample_mix(&r[i], s[i], gain);
+    }
+}
+
+static void load8(struct hle_t* hle, int16_t* v, uint16_t dmem)
+{
+    unsigned i;
+    for (i = 0; i < 8; ++i)
+        v[i] = *alist_s16(hle, (uint16_t)(dmem + 2*i));
+}
+
+static void store8(struct hle_t* hle, uint16_t dmem, const int16_t* v)
+{
+    unsigned i;
+    for (i = 0; i < 8; ++i)
+        *alist_s16(hle, (uint16_t)(dmem + 2*i)) = v[i];
+}
+
+void alist_move_audio(struct hle_t* hle, uint16_t dmemo, uint16_t dmemi, uint16_t count)
+{
+    unsigned remaining = count;
+
+    while (remaining != 0) {
+        uint8_t block[16];
+        unsigned i, n = remaining < 16 ? remaining : 16;
+        for (i = 0; i < n; ++i)
+            block[i] = *alist_u8(hle, (uint16_t)(dmemi + i));
+        for (i = 0; i < n; ++i)
+            *alist_u8(hle, (uint16_t)(dmemo + i)) = block[i];
+        dmemi = (uint16_t)(dmemi + n);
+        dmemo = (uint16_t)(dmemo + n);
+        remaining -= n;
+    }
+}
+
+void alist_interleave_audio(struct hle_t* hle, uint16_t dmemo, uint16_t left, uint16_t right, uint16_t count)
+{
+    unsigned remaining = count;
+
+    if ((left | right) & 15) {
+        alist_interleave(hle, dmemo, left, right, count);
+        return;
+    }
+
+    while (remaining >= 2) {
+        int16_t l[8], r[8];
+        unsigned i, n = remaining < 16 ? remaining / 2 : 8;
+        for (i = 0; i < n; ++i) {
+            l[i] = *alist_s16(hle, (uint16_t)(left + 2*i));
+            r[i] = *alist_s16(hle, (uint16_t)(right + 2*i));
+        }
+        for (i = 0; i < n; ++i) {
+            *alist_s16(hle, (uint16_t)(dmemo + 4*i)) = l[i];
+            *alist_s16(hle, (uint16_t)(dmemo + 4*i + 2)) = r[i];
+        }
+        left = (uint16_t)(left + 2*n);
+        right = (uint16_t)(right + 2*n);
+        dmemo = (uint16_t)(dmemo + 4*n);
+        remaining -= 2*n;
+    }
+}
+
+/* Two vectors in flight: both destination and source pairs are loaded,
+ * the first result is stored before the next source pair is loaded, and
+ * the next destination pair is loaded only after both stores. */
+void alist_mix_audio(struct hle_t* hle, uint16_t dmemo, uint16_t dmemi, uint16_t count, int16_t gain)
+{
+    int16_t d0[8], d1[8], s0[8], s1[8], r0[8], r1[8];
+    int remaining = count;
+
+    if ((dmemo | dmemi) & 15) {
+        alist_mix(hle, dmemo, dmemi, count, gain);
+        return;
+    }
+    if (remaining == 0)
+        return;
+
+    load8(hle, d0, dmemo);
+    load8(hle, d1, (uint16_t)(dmemo + 16));
+    load8(hle, s0, dmemi);
+    load8(hle, s1, (uint16_t)(dmemi + 16));
+    do {
+        mix8(r0, d0, s0, gain);
+        mix8(r1, d1, s1, gain);
+        remaining -= 32;
+        dmemi = (uint16_t)(dmemi + 32);
+        store8(hle, dmemo, r0);
+        load8(hle, s0, dmemi);
+        load8(hle, s1, (uint16_t)(dmemi + 16));
+        store8(hle, (uint16_t)(dmemo + 16), r1);
+        dmemo = (uint16_t)(dmemo + 32);
+        load8(hle, d0, dmemo);
+        load8(hle, d1, (uint16_t)(dmemo + 16));
+    } while (remaining > 0);
+}
+
+/* Blast Corps / Diddy Kong Racing unroll the mixer with four vectors of
+ * lookahead: each SQV is followed by the LQVs of the vector four ahead,
+ * so an overlapping delay mix sees a different set of old samples than
+ * the standard two-vector loop above. */
+void alist_mix_audio_bc(struct hle_t* hle, uint16_t dmemo, uint16_t dmemi, uint16_t count, int16_t gain)
+{
+    int16_t dst[4][8], src[4][8], result[8];
+    unsigned block, blocks = (count + 15u) / 16u;
+
+    if ((dmemo | dmemi) & 15) {
+        alist_mix(hle, dmemo, dmemi, count, gain);
+        return;
+    }
+
+    for (block = 0; block < 4; ++block) {
+        load8(hle, dst[block], (uint16_t)(dmemo + 16*block));
+        load8(hle, src[block], (uint16_t)(dmemi + 16*block));
+    }
+    for (block = 0; block < blocks; ++block) {
+        unsigned slot = block & 3;
+        mix8(result, dst[slot], src[slot], gain);
+        store8(hle, (uint16_t)(dmemo + 16*block), result);
+        load8(hle, src[slot], (uint16_t)(dmemi + 16*(block + 4)));
+        load8(hle, dst[slot], (uint16_t)(dmemo + 16*(block + 4)));
+    }
+}
 void alist_multQ44(struct hle_t* hle, uint16_t dmem, uint16_t count, uint8_t gain)
 {
     /* The microcode splits the gain byte into unsigned nibbles: the
@@ -1687,6 +1821,11 @@ void alist_resample_audio(
     uint16_t aligned;
     unsigned i;
 
+    /* The microcode tests its remaining count after the first SQV, so a
+     * zero count still produces one 16-byte block. */
+    if (count == 0)
+        count = 16;
+
     count >>= 1;
 
     if (init) {
@@ -1724,37 +1863,43 @@ void alist_resample_audio(
     ipos = in >> 1;
 
     while (count != 0) {
-        const int16_t* lut = RESAMPLE_LUT + ((pitch_accu & 0xfc00) >> 8);
+        /* The microcode computes all taps of an eight-lane block before
+         * the SQV that stores it, so an in-place slow-pitch resample must
+         * not let a stored lane feed a later lane of the same block. */
+        int16_t block[8];
+        unsigned lane, batch = count < 8 ? count : 8;
 
-        /* Identical arithmetic to alist_resample: per-tap vmulf with
-         * a tree of saturating vadds. */
-        int16_t hq_out;
+        for (lane = 0; lane < batch; ++lane) {
+            const int16_t* lut = RESAMPLE_LUT + ((pitch_accu & 0xfc00) >> 8);
+            int16_t hq_out;
+            int32_t q0, q1, q2, q3;
 
-        if (resample_hq_sample(hle, ipos, pitch, pitch_accu, &hq_out)) {
-            *sample(hle, opos++) = hq_out;
+            if (resample_hq_sample(hle, ipos, pitch, pitch_accu, &hq_out)) {
+                block[lane] = hq_out;
+            }
+            else {
+                /* Identical arithmetic to alist_resample: per-tap vmulf
+                 * with a tree of saturating vadds. */
+                q0 = (int32_t)(((int64_t)2 * *sample(hle, ipos    ) * lut[0] + 0x8000) >> 16);
+                q1 = (int32_t)(((int64_t)2 * *sample(hle, ipos + 1) * lut[1] + 0x8000) >> 16);
+                q2 = (int32_t)(((int64_t)2 * *sample(hle, ipos + 2) * lut[2] + 0x8000) >> 16);
+                q3 = (int32_t)(((int64_t)2 * *sample(hle, ipos + 3) * lut[3] + 0x8000) >> 16);
+
+                q0 = clamp_s16(q0);
+                q1 = clamp_s16(q1);
+                q2 = clamp_s16(q2);
+                q3 = clamp_s16(q3);
+
+                block[lane] = clamp_s16(clamp_s16(q0 + q1) + clamp_s16(q2 + q3));
+            }
+
             pitch_accu += pitch;
-            ipos       += (pitch_accu >> 16);
+            ipos += (pitch_accu >> 16);
             pitch_accu &= 0xffff;
             --count;
-            continue;
         }
-
-        int32_t q0 = (int32_t)(((int64_t)2 * *sample(hle, ipos    ) * lut[0] + 0x8000) >> 16);
-        int32_t q1 = (int32_t)(((int64_t)2 * *sample(hle, ipos + 1) * lut[1] + 0x8000) >> 16);
-        int32_t q2 = (int32_t)(((int64_t)2 * *sample(hle, ipos + 2) * lut[2] + 0x8000) >> 16);
-        int32_t q3 = (int32_t)(((int64_t)2 * *sample(hle, ipos + 3) * lut[3] + 0x8000) >> 16);
-
-        q0 = clamp_s16(q0);
-        q1 = clamp_s16(q1);
-        q2 = clamp_s16(q2);
-        q3 = clamp_s16(q3);
-
-        *sample(hle, opos++) = clamp_s16(clamp_s16(q0 + q1) + clamp_s16(q2 + q3));
-
-        pitch_accu += pitch;
-        ipos += (pitch_accu >> 16);
-        pitch_accu &= 0xffff;
-        --count;
+        for (lane = 0; lane < batch; ++lane)
+            *sample(hle, opos++) = block[lane];
     }
 
     for (i = 0; i < 4; ++i)
@@ -2559,4 +2704,206 @@ void alist_unkcmd3(struct hle_t* hle, uint16_t dmemo, uint16_t dmemi, uint16_t c
         dmemo += 0x20;
         n -= 0x20;
     } while (n > 0);
+}
+
+/* ---- NEAD commands recovered from the cartridge microcode ------------- */
+
+static uint8_t nead_get8(struct hle_t* hle, uint32_t at)
+{
+    return *alist_u8(hle, (uint16_t)(at & 0xfff));
+}
+
+static void nead_put8(struct hle_t* hle, uint32_t at, uint8_t value)
+{
+    *alist_u8(hle, (uint16_t)(at & 0xfff)) = value;
+}
+
+static int16_t nead_get16(struct hle_t* hle, uint32_t at)
+{
+    return (int16_t)(((uint16_t)nead_get8(hle, at) << 8) | nead_get8(hle, at + 1));
+}
+
+static void nead_put16(struct hle_t* hle, uint32_t at, uint16_t value)
+{
+    nead_put8(hle, at, (uint8_t)(value >> 8));
+    nead_put8(hle, at + 1, (uint8_t)value);
+}
+
+/* Star Fox 64 opcode 0x19, Majora's Mask and Pokemon Stadium 2 opcode
+ * 0x00: the 32 coefficients are latched once, then every 64-byte block
+ * takes four vectors of signed products, each saturated (vmudh). All
+ * four input vectors are read before any result is stored. */
+void alist_nead_multiply(struct hle_t* hle, uint32_t w1, uint32_t w2)
+{
+    uint32_t at = w2 >> 16;
+    uint32_t table = (w2 & 0xffff) + ((w1 >> 16) & 0xff);
+    int32_t count = (int32_t)(w1 & 0xffff);
+    int16_t coef[32], smp[32];
+    unsigned i;
+
+    for (i = 0; i < 32; ++i)
+        coef[i] = nead_get16(hle, table + 2 * i);
+    do
+    {
+        for (i = 0; i < 32; ++i)
+            smp[i] = nead_get16(hle, at + 2 * i);
+        for (i = 0; i < 32; ++i)
+        {
+            int32_t p = (int32_t)smp[i] * coef[i];
+            nead_put16(hle, at + 2 * i,
+                       (uint16_t)(p > 32767 ? 32767 : p < -32768 ? -32768 : p));
+        }
+        at += 64;
+        count -= 64;
+    } while (count > 0);
+}
+
+/* Animal Forest's index reduction subtracts while the value stays
+ * strictly positive, so an exact multiple keeps the divisor. */
+static uint32_t nead_indexed_address(struct hle_t* hle, uint32_t *indices,
+                                     uint32_t base, uint32_t period)
+{
+    uint32_t value = (uint16_t)nead_get16(hle, *indices) & 0x7fff;
+    unsigned bit;
+    *indices += 2;
+    for (bit = 0; bit < 8; ++bit)
+    {
+        if (period && value)
+            value = ((value - 1) % period) + 1;
+        period >>= 1;
+    }
+    return base + value * 2;
+}
+
+/* Animal Forest opcode 0x00: adds indexed sample pairs in place with
+ * 16-bit wrap, then exchanges paired 8-byte windows. The index list
+ * shares the sample buffer, so each pair resolves against the buffer as
+ * it stands. */
+void alist_nead_indexed(struct hle_t* hle, uint32_t w1, uint32_t w2)
+{
+    uint32_t base = w2 & 0xffff, indices = base;
+    uint32_t period = (w1 >> 16) & 0xff, count = w1 & 0xffff;
+    uint32_t swaps = w2 >> 16;
+
+    while (count--)
+    {
+        uint32_t first = nead_indexed_address(hle, &indices, base, period << 7);
+        uint32_t second = nead_indexed_address(hle, &indices, base, period << 7);
+        uint16_t sum = (uint16_t)((uint16_t)nead_get16(hle, first)
+                                  + (uint16_t)nead_get16(hle, second));
+        nead_put16(hle, first, sum);
+        nead_put16(hle, second, sum);
+    }
+    period -= 8;
+    while (swaps--)
+    {
+        uint32_t first = nead_indexed_address(hle, &indices, base, period << 7);
+        uint32_t second = nead_indexed_address(hle, &indices, base, period << 7);
+        uint8_t a[8], b[8];
+        unsigned i;
+        for (i = 0; i < 8; ++i)
+        {
+            a[i] = nead_get8(hle, first + i);
+            b[i] = nead_get8(hle, second + i);
+        }
+        for (i = 0; i < 8; ++i)
+            nead_put8(hle, second + i, a[i]);
+        for (i = 0; i < 8; ++i)
+            nead_put8(hle, first + i, b[i]);
+    }
+}
+
+/* n source bytes as signed 8-bit samples in the high byte of each lane */
+static void nead_s8_load(struct hle_t* hle, uint32_t at, uint8_t *lanes, unsigned n)
+{
+    unsigned i;
+    for (i = 0; i < n; ++i)
+    {
+        lanes[2 * i] = nead_get8(hle, at + i);
+        lanes[2 * i + 1] = 0;
+    }
+}
+
+/* SQV: an unaligned store fills only the rest of its 16-byte row */
+static void nead_s8_store(struct hle_t* hle, uint32_t at, const uint8_t *row)
+{
+    unsigned i, bytes = 16 - (at & 15);
+    for (i = 0; i < bytes; ++i)
+        nead_put8(hle, at + i, row[i]);
+}
+
+static void nead_s8_dma(struct hle_t* hle, uint32_t dmem, uint32_t address, int write)
+{
+    uint32_t da = dmem & 0xff8, ra = address & 0xfffff8;
+    unsigned i;
+    for (i = 0; i < 32; ++i)
+    {
+        uint8_t *d = alist_u8(hle, (uint16_t)((da + i) & 0xfff));
+        uint8_t *r = dram_u8(hle, ra + i);
+        if (write)
+            *r = *d;
+        else
+            *d = *r;
+    }
+}
+
+/* The NEAD signed 8-bit decoder of the builds alist_s8dec does not
+ * cover: the 32-byte state row is cleared, loaded unless w1 bit 16 says
+ * the stream starts fresh (from the loop address when bit 17 is set),
+ * the samples are expanded behind it and the last row is saved. The
+ * pipelined builds prefetch the next sixteen source bytes before each
+ * store, which shows when input and output overlap. */
+void alist_nead_s8(struct hle_t* hle, uint32_t w1, uint32_t w2,
+                   uint16_t input_dmem, uint16_t output_dmem, uint16_t count,
+                   uint32_t loop, int pipelined)
+{
+    uint32_t input = input_dmem, output = output_dmem;
+    uint32_t address = w2 & 0xffffff;
+    int32_t remaining = count;
+    uint8_t cur[32], next[32];
+
+    memset(cur, 0, sizeof(cur));
+    nead_s8_store(hle, output, cur);
+    nead_s8_store(hle, output + 16, cur + 16);
+    if (!(w1 & 0x10000))
+        nead_s8_dma(hle, output, (w1 & 0x20000) ? loop : address, 0);
+    output += 32;
+    if (remaining && !pipelined)
+    {
+        do
+        {
+            nead_s8_load(hle, input, cur, 16);
+            nead_s8_store(hle, output, cur);
+            nead_s8_store(hle, output + 16, cur + 16);
+            input += 16;
+            output += 32;
+            remaining -= 32;
+        } while (remaining > 0);
+    }
+    else if (remaining)
+    {
+        nead_s8_load(hle, input, cur, 16);
+        input += 16;
+        for (;;)
+        {
+            remaining -= 32;
+            nead_s8_load(hle, input, next, 8);
+            nead_s8_store(hle, output, cur);
+            nead_s8_load(hle, input + 8, next + 16, 8);
+            nead_s8_store(hle, output + 16, cur + 16);
+            output += 32;
+            if (remaining <= 0)
+                break;
+            remaining -= 32;
+            nead_s8_load(hle, input + 16, cur, 8);
+            nead_s8_store(hle, output, next);
+            nead_s8_load(hle, input + 24, cur + 16, 8);
+            nead_s8_store(hle, output + 16, next + 16);
+            output += 32;
+            input += 32;
+            if (remaining <= 0)
+                break;
+        }
+    }
+    nead_s8_dma(hle, output - 32, address, 1);
 }

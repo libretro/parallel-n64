@@ -5,6 +5,11 @@
  * alpha byte is averaged like red, green and blue; the HLE version used
  * to write it as zero.
  *
+ * It signals the way the microcode does: the final SP_STATUS write
+ * clears SIG0 and sets SIG1 with task done, and a task started with SIG0
+ * already set (a fill the CPU pre-empted) completes without touching
+ * pixels.
+ *
  * Built by `make check-core` (top-level Makefile). Exit status 0 on pass.
  */
 #include "../mupen64plus-rsp-hle/src/re2.c"
@@ -19,9 +24,14 @@ void HleWarnMessage(void* user_defined, const char *message, ...)
 {
     (void)user_defined; (void)message;
 }
+static unsigned int s_break_bits;
+static int s_breaks;
+
 void rsp_break(struct hle_t* hle, unsigned int setbits)
 {
-    (void)hle; (void)setbits;
+    *hle->sp_status |= setbits;
+    s_break_bits = setbits;
+    s_breaks++;
 }
 
 static int s_failures;
@@ -32,12 +42,14 @@ static int s_failures;
 int main(void)
 {
     static struct hle_t hle;
+    static unsigned int sp_status;
     unsigned i;
 
     hle.dram = (unsigned char*)calloc(1, 0x800000u);
     hle.dmem = (unsigned char*)calloc(1, 0x1000u);
     if (hle.dram == NULL || hle.dmem == NULL)
         return 2;
+    hle.sp_status = &sp_status;
 
     *dmem_u32(&hle, TASK_UCODE_DATA) = 0x1000;
     *dram_u32(&hle, 0x1000) = 0x2000;        /* source frame */
@@ -54,6 +66,7 @@ int main(void)
         *dram_u32(&hle, 0x3040 + i * 4) = 0x01000001u;
     }
 
+    sp_status = 0;
     fill_video_double_buffer_task(&hle);
 
     CHECK(*dram_u32(&hle, 0x3000) == 0x20406080u && *dram_u32(&hle, 0x3004) == 0x20406080u,
@@ -61,6 +74,19 @@ int main(void)
     CHECK(*dram_u32(&hle, 0x3040) == 0x80000080u && *dram_u32(&hle, 0x3044) == 0x80000080u,
           "RE2 fill: the second row averages colour and alpha");
     CHECK(*dram_u32(&hle, 0x3008) == 0, "RE2 fill: stops at the row width");
+    CHECK(s_breaks == 1 && s_break_bits == (SP_STATUS_SIG1 | SP_STATUS_TASKDONE),
+          "RE2 fill: completion sets SIG1 with task done");
+
+    /* pre-empted: SIG0 already set when the task starts */
+    *dram_u32(&hle, 0x3000) = 0x12345678u;
+    sp_status = SP_STATUS_SIG0;
+    s_breaks = 0;
+    fill_video_double_buffer_task(&hle);
+    CHECK(*dram_u32(&hle, 0x3000) == 0x12345678u,
+          "RE2 fill: a pre-empted task leaves the frame alone");
+    CHECK(s_breaks == 1 && !(sp_status & SP_STATUS_SIG0)
+       && (sp_status & SP_STATUS_SIG1) && (sp_status & SP_STATUS_TASKDONE),
+          "RE2 fill: a pre-empted task clears SIG0 and sets SIG1");
 
     free(hle.dram);
     free(hle.dmem);

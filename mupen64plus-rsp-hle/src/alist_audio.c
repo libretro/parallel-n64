@@ -33,6 +33,40 @@
 
 enum { DMEM_BASE = 0x5c0 };
 
+/* One ABI1 microcode build replaces the MIXER arithmetic and stores with a
+ * loop that only loads.  Recognise that executable body in the task's
+ * ucode text rather than the game that ships it. */
+static int mixer_load_only;
+
+static int has_load_only_mixer(struct hle_t* hle)
+{
+    static const uint32_t body[17] = {
+        0xc81f2000u, 0x97120004u, 0x1240000eu, 0x00000000u,
+        0x3333ffffu, 0x227305c0u, 0x0019a402u, 0x229405c0u,
+        0x3351ffffu, 0x4891f000u, 0xca7b2000u, 0xca9d2000u,
+        0xca7a2001u, 0xca9c2001u, 0x2252ffe0u, 0x1e40fffeu,
+        0xca7a2001u
+    };
+    uint32_t text = *dmem_u32(hle, TASK_UCODE) & 0xfffff8u;
+    uint32_t offset;
+    unsigned k;
+
+    if (text > 0x800000u - 0xf80u)
+        return 0;
+    for (offset = 0; offset + 76u <= 0xf80u; offset += 4u) {
+        if (*dram_u32(hle, text + offset) != body[0])
+            continue;
+        for (k = 1; k < 17; ++k)
+            if (*dram_u32(hle, text + offset + 4*k) != body[k])
+                break;
+        if (k == 17
+         && (*dram_u32(hle, text + offset + 68) & 0xfc000000u) == 0x08000000u
+         && *dram_u32(hle, text + offset + 72) == 0)
+            return 1;
+    }
+    return 0;
+}
+
 /* helper functions */
 static uint32_t get_address(struct hle_t* hle, uint32_t so)
 {
@@ -212,7 +246,7 @@ static void DMEMMOVE(struct hle_t* hle, uint32_t w1, uint32_t w2)
     if (count == 0)
         return;
 
-    alist_move(hle, dmemo, dmemi, align(count, 16));
+    alist_move_audio(hle, dmemo, dmemi, align(count, 16));
 }
 
 /* the DMEM address the ADPCM codebook DMA lands at */
@@ -254,7 +288,7 @@ static void INTERLEAVE(struct hle_t* hle, uint32_t UNUSED(w1), uint32_t w2)
     if (hle->alist_audio.count == 0)
         return;
 
-    alist_interleave(hle, hle->alist_audio.out, left, right, align(hle->alist_audio.count, 16));
+    alist_interleave_audio(hle, hle->alist_audio.out, left, right, align(hle->alist_audio.count, 16));
 }
 
 static void MIXER(struct hle_t* hle, uint32_t w1, uint32_t w2)
@@ -263,10 +297,22 @@ static void MIXER(struct hle_t* hle, uint32_t w1, uint32_t w2)
     uint16_t dmemi = (w2 >> 16) + DMEM_BASE;
     uint16_t dmemo = w2 + DMEM_BASE;
 
+    if (hle->alist_audio.count == 0 || mixer_load_only)
+        return;
+
+    alist_mix_audio(hle, dmemo, dmemi, align(hle->alist_audio.count, 32), gain);
+}
+
+static void MIXER_BC(struct hle_t* hle, uint32_t w1, uint32_t w2)
+{
+    int16_t  gain  = w1;
+    uint16_t dmemi = (w2 >> 16) + DMEM_BASE;
+    uint16_t dmemo = w2 + DMEM_BASE;
+
     if (hle->alist_audio.count == 0)
         return;
 
-    alist_mix(hle, dmemo, dmemi, align(hle->alist_audio.count, 32), gain);
+    alist_mix_audio_bc(hle, dmemo, dmemi, align(hle->alist_audio.count, 32), gain);
 }
 
 static void SEGMENT(struct hle_t* hle, uint32_t UNUSED(w1), uint32_t w2)
@@ -305,6 +351,7 @@ void alist_process_audio(struct hle_t* hle)
     };
 
     clear_segments(hle);
+    mixer_load_only = has_load_only_mixer(hle);
     alist_process(hle, ABI, 0x10);
     rsp_break(hle, SP_STATUS_TASKDONE);
 }
@@ -320,6 +367,7 @@ void alist_process_audio_ge(struct hle_t* hle)
 
     envmix_ge_lanes = 1;
     clear_segments(hle);
+    mixer_load_only = has_load_only_mixer(hle);
     alist_process(hle, ABI, 0x10);
     rsp_break(hle, SP_STATUS_TASKDONE);
 }
@@ -330,11 +378,12 @@ void alist_process_audio_bc(struct hle_t* hle)
         SPNOOP,         ADPCM ,         CLEARBUFF,      ENVMIXER_GE,
         LOADBUFF,       RESAMPLE,       SAVEBUFF,       SEGMENT,
         SETBUFF,        SETVOL,         DMEMMOVE,       LOADADPCM,
-        MIXER,          INTERLEAVE,     POLEF,          SETLOOP
+        MIXER_BC,       INTERLEAVE,     POLEF,          SETLOOP
     };
 
     envmix_ge_lanes = 1;
     clear_segments(hle);
+    mixer_load_only = has_load_only_mixer(hle);
     alist_process(hle, ABI, 0x10);
     rsp_break(hle, SP_STATUS_TASKDONE);
 }
