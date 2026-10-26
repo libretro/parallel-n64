@@ -50,7 +50,8 @@ static Vulkan::Program *upscaler_motion_program(Vulkan::Device &device)
 	Vulkan::ResourceLayout frag;
 	vert.input_mask = 3;
 	vert.push_constant_size = 8;
-	frag.output_mask = 1;
+	frag.output_mask = 3;
+	frag.push_constant_size = 12;
 	return device.request_program(UpscalerShaders::upscaler_motion_vert,
 	                              sizeof(UpscalerShaders::upscaler_motion_vert),
 	                              UpscalerShaders::upscaler_motion_frag,
@@ -85,14 +86,23 @@ void upscaler_motion_pass(Vulkan::Device &device, Vulkan::CommandBuffer &cmd,
 	info.initial_layout = VK_IMAGE_LAYOUT_UNDEFINED;
 	frame.depth = device.create_image(info);
 
-	if (!frame.motion_vectors || !frame.depth)
+	info = Vulkan::ImageCreateInfo::render_target(width, height, VK_FORMAT_R8_UNORM);
+	info.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+	info.initial_layout = VK_IMAGE_LAYOUT_UNDEFINED;
+	frame.translucent = device.create_image(info);
+
+	if (!frame.motion_vectors || !frame.depth || !frame.translucent)
 	{
 		frame.motion_vectors.reset();
 		frame.depth.reset();
+		frame.translucent.reset();
 		return;
 	}
 
 	cmd.image_barrier(*frame.motion_vectors, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+	                  VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, 0,
+	                  VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT);
+	cmd.image_barrier(*frame.translucent, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
 	                  VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, 0,
 	                  VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT);
 	cmd.image_barrier(*frame.depth, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
@@ -101,12 +111,14 @@ void upscaler_motion_pass(Vulkan::Device &device, Vulkan::CommandBuffer &cmd,
 	                  VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT);
 
 	rp.color_attachments[0] = &frame.motion_vectors->get_view();
+	rp.color_attachments[1] = &frame.translucent->get_view();
 	rp.depth_stencil = &frame.depth->get_view();
-	rp.num_color_attachments = 1;
-	rp.clear_attachments = 1;
-	rp.store_attachments = 1;
+	rp.num_color_attachments = 2;
+	rp.clear_attachments = 3;
+	rp.store_attachments = 3;
 	rp.op_flags = Vulkan::RENDER_PASS_OP_CLEAR_DEPTH_STENCIL_BIT | Vulkan::RENDER_PASS_OP_STORE_DEPTH_STENCIL_BIT;
 	memset(&rp.clear_color[0], 0, sizeof(rp.clear_color[0]));
+	memset(&rp.clear_color[1], 0, sizeof(rp.clear_color[1]));
 	rp.clear_depth_stencil.depth = 1.0f;
 	rp.clear_depth_stencil.stencil = 0;
 	cmd.begin_render_pass(rp);
@@ -132,8 +144,10 @@ void upscaler_motion_pass(Vulkan::Device &device, Vulkan::CommandBuffer &cmd,
 		for (i = 0; i < geometry.num_draws; i++)
 		{
 			const rdp_upscaler_draw_t *draw = &geometry.draws[i];
+			float translucent = (draw->flags & RDP_UPSCALER_TRANSLUCENT) ? 1.0f : 0.0f;
 			cmd.set_depth_test((draw->flags & RDP_UPSCALER_DEPTH_TEST) != 0,
 			                   (draw->flags & RDP_UPSCALER_DEPTH_WRITE) != 0);
+			cmd.push_constants(&translucent, 8, sizeof(translucent));
 			cmd.draw(draw->count, 1, draw->first, 0);
 		}
 	}
@@ -141,6 +155,11 @@ void upscaler_motion_pass(Vulkan::Device &device, Vulkan::CommandBuffer &cmd,
 	cmd.end_render_pass();
 
 	cmd.image_barrier(*frame.motion_vectors, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+	                  VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+	                  VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+	                  VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+	                  VK_ACCESS_SHADER_READ_BIT);
+	cmd.image_barrier(*frame.translucent, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
 	                  VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
 	                  VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
 	                  VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,

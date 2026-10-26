@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """Checks what parallel-rdp hands a temporal upscaler, from a dump of
 tools/lrhost_vk with LRHOST_UPSCALER (frames NNNN.raw, NNNN.mv.raw,
-NNNN.depth.raw and the LRHOST_UPSCALER_LOG beside them).
+NNNN.depth.raw, NNNN.mask.raw and the LRHOST_UPSCALER_LOG beside them).
 
   upscaler_check.py DUMPDIR LOG FIRST LAST [--moving]
 
-Every frame must come with inputs of the color's size, its jitter must
+Every frame must come with inputs of the color's size (the transparency
+mask one byte a pixel), its jitter must
 follow the Halton (2, 3) sequence, and with --moving the motion vectors
 must take each pixel that changed from the frame before to where that
 frame had its color (to the pixel), where standing still would not.
@@ -36,7 +37,9 @@ def read_log(path):
             frames[int(p[0])] = {"size": (w, h), "jitter": (float(p[3]), float(p[4])), "flags": int(p[6]),
                                  "mv": tuple(map(int, p[8].split("x"))), "mv_fmt": int(p[10]),
                                  "depth": tuple(map(int, p[12].split("x"))),
-                                 "depth_fmt": int(p[14])}
+                                 "depth_fmt": int(p[14]),
+                                 "mask": tuple(map(int, p[16].split("x"))) if len(p) > 18 else None,
+                                 "mask_fmt": int(p[18]) if len(p) > 18 else None}
     return frames
 
 
@@ -73,6 +76,10 @@ def main():
             continue
         if fr["mv"] != fr["size"] or fr["depth"] != fr["size"]:
             failures.append("frame %d: inputs %s/%s for a %s frame" % (n, fr["mv"], fr["depth"], fr["size"]))
+        # VK_FORMAT_R8_UNORM
+        if fr["mask"] != fr["size"] or fr["mask_fmt"] != 9:
+            failures.append("frame %d: transparency mask %s format %s for a %s frame"
+                            % (n, fr["mask"], fr["mask_fmt"], fr["size"]))
 
     # the jittered frames: consecutive Halton points, from wherever it started
     jittered = [n for n in range(a.first, a.last + 1) if frames.get(n) and frames[n]["jitter"] != (0.0, 0.0)]

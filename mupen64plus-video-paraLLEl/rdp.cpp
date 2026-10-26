@@ -60,7 +60,7 @@ static unsigned processor_factor = 1;
 static const struct retro_hw_render_upscaler_interface *upscaler_iface;
 static struct retro_hw_upscaler_request upscaler_request;
 static struct retro_hw_upscaler_inputs upscaler_inputs;
-/* Per sync index: motion vectors, then depth */
+/* Per sync index: motion vectors, depth, then the translucency mask */
 static vector<ImageHandle> upscaler_handles;
 static bool upscaler_on;
 static bool upscaler_reset_pending = true;
@@ -248,8 +248,8 @@ void begin_frame()
 		retro_image_handles.resize(num_frames);
 	}
 
-	if (upscaler_handles.size() != 2 * num_frames)
-		upscaler_handles.resize(2 * num_frames);
+	if (upscaler_handles.size() != 3 * num_frames)
+		upscaler_handles.resize(3 * num_frames);
 
 	vulkan->wait_sync_index(vulkan->handle);
 	if (!begin_ts)
@@ -514,7 +514,7 @@ bool init()
 
 	retro_images.resize(num_frames);
 	retro_image_handles.resize(num_frames);
-	upscaler_handles.resize(2 * num_frames);
+	upscaler_handles.resize(3 * num_frames);
 
 	device.reset(new Device);
 	device->set_context(*context);
@@ -723,7 +723,7 @@ void complete_frame()
 	retro_images[index].create_info.components.b = VK_COMPONENT_SWIZZLE_B;
 	retro_images[index].create_info.components.a = VK_COMPONENT_SWIZZLE_A;
 
-	if (upscaler_on && upscaler_frame.motion_vectors && upscaler_frame.depth)
+	if (upscaler_on && upscaler_frame.motion_vectors && upscaler_frame.depth && upscaler_frame.translucent)
 	{
 		/* (the frame's images live as long as its color) */
 		upscaler_native_width = image->get_width() / processor_factor;
@@ -732,20 +732,23 @@ void complete_frame()
 		upscaler_inputs.flags = upscaler_frame.reset ? RETRO_HW_UPSCALER_RESET : 0;
 		upscaler_image(upscaler_inputs.motion_vectors, *upscaler_frame.motion_vectors);
 		upscaler_image(upscaler_inputs.depth, *upscaler_frame.depth);
+		upscaler_image(upscaler_inputs.transparency_mask, *upscaler_frame.translucent);
 		upscaler_inputs.jitter_x = upscaler_frame.jitter_x;
 		upscaler_inputs.jitter_y = upscaler_frame.jitter_y;
 		upscaler_inputs.mv_scale_x = 1.0f;
 		upscaler_inputs.mv_scale_y = 1.0f;
 		upscaler_inputs.pre_exposure = 1.0f;
 		upscaler_inputs.exposure_scale = 1.0f;
-		upscaler_handles[2 * index] = upscaler_frame.motion_vectors;
-		upscaler_handles[2 * index + 1] = upscaler_frame.depth;
+		upscaler_handles[3 * index] = upscaler_frame.motion_vectors;
+		upscaler_handles[3 * index + 1] = upscaler_frame.depth;
+		upscaler_handles[3 * index + 2] = upscaler_frame.translucent;
 		upscaler_iface->set_inputs(upscaler_iface->handle, &upscaler_inputs);
 	}
 	else if (upscaler_iface)
 	{
-		upscaler_handles[2 * index].reset();
-		upscaler_handles[2 * index + 1].reset();
+		upscaler_handles[3 * index].reset();
+		upscaler_handles[3 * index + 1].reset();
+		upscaler_handles[3 * index + 2].reset();
 	}
 
 	vulkan->set_image(vulkan->handle, &retro_images[index], 0, nullptr, VK_QUEUE_FAMILY_IGNORED);

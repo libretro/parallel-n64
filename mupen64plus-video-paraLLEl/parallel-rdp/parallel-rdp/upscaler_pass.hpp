@@ -35,6 +35,9 @@ struct UpscalerFrame
 	Vulkan::ImageHandle motion_vectors;
 	/* D32_SFLOAT (D16_UNORM without it), 0 near */
 	Vulkan::ImageHandle depth;
+	/* R8_UNORM, 1 where a translucent primitive (RDP_UPSCALER_TRANSLUCENT)
+	 * is the last drawn */
+	Vulkan::ImageHandle translucent;
 	float jitter_x;
 	float jitter_y;
 	bool reset;

@@ -330,6 +330,7 @@ static void *vk_read_upscaler_image(const struct retro_hw_upscaler_image *img, s
     if (img->format == VK_FORMAT_D32_SFLOAT) aspect = VK_IMAGE_ASPECT_DEPTH_BIT;
     else if (img->format == VK_FORMAT_D16_UNORM) { aspect = VK_IMAGE_ASPECT_DEPTH_BIT; bpp = 2; }
     else if (img->format == VK_FORMAT_R32G32_SFLOAT) bpp = 8;
+    else if (img->format == VK_FORMAT_R8_UNORM) bpp = 1;
     *size = (size_t)img->width * img->height * bpp;
     if (!img->image || !vk_ensure_readback(*size)) return NULL;
 

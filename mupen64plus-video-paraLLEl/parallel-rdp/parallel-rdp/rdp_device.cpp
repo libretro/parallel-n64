@@ -1333,6 +1333,9 @@ void CommandProcessor::upscaler_triangle(unsigned op, TriangleSetup &setup, Attr
 			flags |= RDP_UPSCALER_DEPTH_TEST;
 		if (depth_blend.flags & DEPTH_BLEND_DEPTH_UPDATE_BIT)
 			flags |= RDP_UPSCALER_DEPTH_WRITE;
+		/* (a decal moves with the surface it lies on) */
+		else if ((depth_blend.flags & DEPTH_BLEND_FORCE_BLEND_BIT) && depth_blend.z_mode != ZMode::Decal)
+			flags |= RDP_UPSCALER_TRANSLUCENT;
 	}
 	if (prim_depth)
 		flags |= RDP_UPSCALER_DEPTH_CONSTANT;

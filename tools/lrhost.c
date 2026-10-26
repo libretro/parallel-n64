@@ -90,10 +90,12 @@ static void video_cb(const void *data, unsigned w, unsigned h, size_t pitch)
             if (ul)
             {
                 if (vk_up_have_inputs)
-                    fprintf(ul, "%ld %ux%u jitter %.6f %.6f flags %u mv %ux%u fmt %u depth %ux%u fmt %u\n", n, w, h,
+                    fprintf(ul, "%ld %ux%u jitter %.6f %.6f flags %u mv %ux%u fmt %u depth %ux%u fmt %u mask %ux%u fmt %u\n", n, w, h,
                             vk_up_inputs.jitter_x, vk_up_inputs.jitter_y, vk_up_inputs.flags,
                             vk_up_inputs.motion_vectors.width, vk_up_inputs.motion_vectors.height, vk_up_inputs.motion_vectors.format,
-                            vk_up_inputs.depth.width, vk_up_inputs.depth.height, vk_up_inputs.depth.format);
+                            vk_up_inputs.depth.width, vk_up_inputs.depth.height, vk_up_inputs.depth.format,
+                            vk_up_inputs.transparency_mask.width, vk_up_inputs.transparency_mask.height,
+                            vk_up_inputs.transparency_mask.format);
                 else
                     fprintf(ul, "%ld %ux%u none\n", n, w, h);
                 fflush(ul);
@@ -103,11 +105,12 @@ static void video_cb(const void *data, unsigned w, unsigned h, size_t pitch)
                 vk_up_frames++;
                 if (getenv("LRHOST_DUMPDIR") && n >= dump_from && n <= dump_to && (n - dump_from) % dump_every == 0)
                 {
-                    const struct retro_hw_upscaler_image *imgs[2];
-                    const char *names[2] = { "mv", "depth" };
+                    const struct retro_hw_upscaler_image *imgs[3];
+                    const char *names[3] = { "mv", "depth", "mask" };
                     unsigned k;
                     imgs[0] = &vk_up_inputs.motion_vectors; imgs[1] = &vk_up_inputs.depth;
-                    for (k = 0; k < 2; k++)
+                    imgs[2] = &vk_up_inputs.transparency_mask;
+                    for (k = 0; k < 3; k++)
                     {
                         char fn[300]; size_t sz; FILE *df;
                         void *px = vk_read_upscaler_image(imgs[k], &sz);

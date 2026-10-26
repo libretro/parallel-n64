@@ -703,7 +703,7 @@ static void upscaler_build(rdp_upscaler_t *u, const upscaler_record_t *rec,
       rdp_upscaler_vertex_t *v = &u->vertices[num_vertices];
       unsigned count           = 3;
       unsigned flags           = p->flags
-         & (RDP_UPSCALER_DEPTH_TEST | RDP_UPSCALER_DEPTH_WRITE);
+         & (RDP_UPSCALER_DEPTH_TEST | RDP_UPSCALER_DEPTH_WRITE | RDP_UPSCALER_TRANSLUCENT);
 
       if (p->flags & RDP_UPSCALER_RECT)
       {

@@ -347,6 +347,39 @@ static void test_depth_and_draws(void)
    rdp_upscaler_free(u);
 }
 
+/* A triangle blended over what is behind it without writing depth runs
+ * apart, marked translucent, alike ones together */
+static void test_translucent(void)
+{
+   rdp_upscaler_t *u = rdp_upscaler_new();
+   rdp_upscaler_geometry_t g;
+   rdp_upscaler_triangle_t t;
+   const unsigned zbuf  = RDP_UPSCALER_DEPTH_TEST | RDP_UPSCALER_DEPTH_WRITE;
+   const unsigned glow  = RDP_UPSCALER_DEPTH_TEST | RDP_UPSCALER_TRANSLUCENT;
+
+   rdp_upscaler_configure(u, true, 8, false);
+   scanout(u, FB, &g);
+   rdp_upscaler_set_color_image(u, FB, STRIDE, 1);
+
+   make_triangle(&t, 100, 50, 60, 100, 150, 150);
+   rdp_upscaler_triangle(u, &t, sig(1), zbuf, 0, SCALE);
+   make_triangle(&t, 200, 50, 160, 100, 250, 150);
+   rdp_upscaler_triangle(u, &t, sig(2), glow, 0, SCALE);
+   make_triangle(&t, 210, 60, 170, 110, 260, 160);
+   rdp_upscaler_triangle(u, &t, sig(2), glow, 0, SCALE);
+   make_triangle(&t, 100, 150, 60, 200, 150, 230);
+   rdp_upscaler_triangle(u, &t, sig(3), zbuf, 0, SCALE);
+   scanout(u, FB, &g);
+
+   CHECK(g.num_draws == 3, "the translucent triangles run apart, together");
+   CHECK(g.num_draws == 3 && g.draws[0].flags == zbuf && g.draws[2].flags == zbuf,
+         "the z-buffered triangles are not translucent");
+   CHECK(g.num_draws == 3 && g.draws[1].flags == glow
+         && g.draws[1].count == g.draws[0].count * 2,
+         "the translucent ones are marked so, both in the one run");
+   rdp_upscaler_free(u);
+}
+
 static void test_history(void)
 {
    rdp_upscaler_t *u = rdp_upscaler_new();
@@ -397,6 +430,7 @@ int main(void)
    test_motion();
    test_cut_short();
    test_depth_and_draws();
+   test_translucent();
    test_history();
    if (s_failures)
    {

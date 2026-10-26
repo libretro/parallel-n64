@@ -26,7 +26,9 @@ whatever the options it overrides say, and pass tools/ci/upscaler_check.py,
 which checks the jitter and, for the ROMs that move, that the motion
 vectors take every changed pixel back to where the frame before had it.
 The RDP's coverage antialiasing is off for it, except where a draw cuts
-out its texels through the coverage (alphacov).
+out its texels through the coverage (alphacov), and the transparency mask
+marks the triangles blended without depth (rottri32xlu, rottri32 with
+FORCE_BLEND) and nothing else.
 """
 import argparse, concurrent.futures, hashlib, json, os, subprocess, sys, urllib.request
 
@@ -69,7 +71,13 @@ UPSCALED_MODES = {"2x": {}, "2x-no-8bit-storage": {"PARALLEL_RDP_NO_STORAGE_8BIT
 # For a temporal upscaler asking for 640x480: a 320x240 framebuffer at 2x.
 # Consecutive frames, for the motion vector check; True for the ROMs
 # that move every frame.
-UPSCALER_ROMS = {"rottri32": True, "cube16": True, "zbuf16": False, "alphacov": False}
+UPSCALER_ROMS = {"rottri32": True, "cube16": True, "zbuf16": False, "alphacov": False, "rottri32xlu": True}
+# Those that blend a triangle without depth (FORCE_BLEND, no Z update):
+# the transparency mask marks it; the others have none
+UPSCALER_TRANSLUCENT = ("rottri32xlu",)
+# A krom test with one Set Other Modes command changed, run for the
+# upscaler only: rottri32's moving triangle with FORCE_BLEND
+DERIVED = {"rottri32xlu": ("rottri32", "2f00283080000000", "2f00283080004000")}
 UPSCALER_FRAMES = (30, 36)
 # The options the upscaler overrides change nothing: super-sampled
 # read-back (SSAA), downsampling, the VI filters and the factor.
@@ -83,8 +91,40 @@ UPSCALER_MODES = {"upscaler": ({}, ()),
                                                "parallel-n64-parallel-rdp-dither-filter=enabled"))}
 
 
+def boot_crc(rom):
+    """The two words of the header the boot code (CIC 6102) checks the
+    first megabyte against"""
+    m = 0xffffffff
+    rom = rom + bytes(max(0, 0x101000 - len(rom)))
+    t1 = t2 = t3 = t4 = t5 = t6 = 0xF8CA4DDC
+    for i in range(0x1000, 0x101000, 4):
+        d = int.from_bytes(rom[i:i + 4], "big")
+        k = (t6 + d) & m
+        if k < t6:
+            t4 = (t4 + 1) & m
+        t6 = k
+        t3 ^= d
+        s = d & 31
+        r = ((d << s) | (d >> (32 - s))) & m if s else d
+        t5 = (t5 + r) & m
+        t2 = t2 ^ r if t2 > d else t2 ^ t6 ^ d
+        t1 = (t1 + (t5 ^ d)) & m
+    return ((t6 ^ t4 ^ t3) & m).to_bytes(4, "big") + ((t5 ^ t2 ^ t1) & m).to_bytes(4, "big")
+
+
 def fetch(romdir, name):
     path = os.path.join(romdir, name + ".n64")
+    if name in DERIVED and not os.path.exists(path):
+        base, old, new = DERIVED[name]
+        with open(fetch(romdir, base), "rb") as f:
+            data = f.read()
+        if data.count(bytes.fromhex(old)) != 1 or data[0x10:0x18] != boot_crc(data):
+            raise RuntimeError("%s: %s is not in %s once, or its CRC is not CIC 6102's" % (name, old, base))
+        data = data.replace(bytes.fromhex(old), bytes.fromhex(new))
+        data = data[:0x10] + boot_crc(data) + data[0x18:]
+        with open(path + ".part", "wb") as f:
+            f.write(data)
+        os.replace(path + ".part", path)
     if not os.path.exists(path):
         os.makedirs(romdir, exist_ok=True)
         try:
@@ -184,10 +224,18 @@ def run_upscaler(args, name, rom, mode, env_extra, options, moving):
         errors = coverage_aa_off(out, first)
         if errors:
             return None, "coverage antialiasing: " + ", ".join(errors)
+    for n in range(first, last + 1):
+        path = os.path.join(out, "%04d.mask.raw" % n)
+        if not os.path.exists(path):
+            return None, "frame %d has no transparency mask" % n
+        with open(path, "rb") as f:
+            marked = sum(1 for b in f.read() if b)
+        if (marked != 0) != (name in UPSCALER_TRANSLUCENT):
+            return None, "frame %d: the transparency mask marks %d pixels" % (n, marked)
     hashes = {}
     for n in range(first, last + 1):
         h = hashlib.sha256()
-        for part in ("raw", "mv.raw", "depth.raw"):
+        for part in ("raw", "mv.raw", "depth.raw", "mask.raw"):
             path = os.path.join(out, "%04d.%s" % (n, part))
             if not os.path.exists(path):
                 return None, "frame %d has no %s" % (n, part)
@@ -234,8 +282,9 @@ def compare(name, group, ref, key, args, expected, results, failures):
 def check_rom(args, name, expected):
     rom = fetch(args.roms, name)
     results, failures = {}, []
-    for modes, options, ref, key in ((MODES, (), "threaded", name),
-                                     (UPSCALED_MODES, UPSCALED_OPTIONS, "2x", name + "@2x")):
+    for modes, options, ref, key in (() if name in DERIVED else
+                                     ((MODES, (), "threaded", name),
+                                      (UPSCALED_MODES, UPSCALED_OPTIONS, "2x", name + "@2x"))):
         group = {}
         for mode, env_extra in modes.items():
             hashes, err = run(args, name, rom, mode, env_extra, options)
@@ -279,7 +328,10 @@ def main():
 
     results, failures = {}, []
     with concurrent.futures.ThreadPoolExecutor(max_workers=max(1, args.jobs)) as pool:
-        jobs = [(name, pool.submit(check_rom, args, name, expected)) for name in ROMS]
+        # (the derived ROMs after the ones they come from, fetched by then)
+        for name in ROMS:
+            fetch(args.roms, name)
+        jobs = [(name, pool.submit(check_rom, args, name, expected)) for name in list(ROMS) + list(DERIVED)]
         for name, job in jobs:
             rom_results, rom_failures = job.result()
             results.update(rom_results)

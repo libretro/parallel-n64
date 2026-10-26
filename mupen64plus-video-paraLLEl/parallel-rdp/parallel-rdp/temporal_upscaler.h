@@ -61,6 +61,9 @@ typedef struct rdp_upscaler_triangle
 #define RDP_UPSCALER_RECT           (1 << 2)
 /* Every pixel's depth is the primitive depth */
 #define RDP_UPSCALER_DEPTH_CONSTANT (1 << 3)
+/* Blended over what is behind it, writing no depth (particles, glows):
+ * the upscaler takes this frame's color there over its history */
+#define RDP_UPSCALER_TRANSLUCENT    (1 << 4)
 
 /* The framebuffer the VI showed */
 typedef struct rdp_upscaler_framebuffer
@@ -80,7 +83,8 @@ typedef struct rdp_upscaler_vertex
    float motion_x, motion_y;
 } rdp_upscaler_vertex_t;
 
-/* A run of triangles under one depth state (RDP_UPSCALER_DEPTH_*) */
+/* A run of triangles under one depth state (RDP_UPSCALER_DEPTH_*) and
+ * translucency (RDP_UPSCALER_TRANSLUCENT) */
 typedef struct rdp_upscaler_draw
 {
    unsigned first;
