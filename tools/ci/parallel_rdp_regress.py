@@ -25,7 +25,8 @@ must match "<rom>@upscaler" threaded and single-threaded alike and
 whatever the options it overrides say, and pass tools/ci/upscaler_check.py,
 which checks the jitter and, for the ROMs that move, that the motion
 vectors take every changed pixel back to where the frame before had it.
-The RDP's coverage antialiasing is off for it (alphacov).
+The RDP's coverage antialiasing is off for it, except where a draw cuts
+out its texels through the coverage (alphacov).
 """
 import argparse, concurrent.futures, hashlib, json, os, subprocess, sys, urllib.request
 
@@ -127,16 +128,29 @@ def run(args, name, rom, mode, env_extra, options=()):
 
 def coverage_aa_off(out, n):
     """alphacov draws its cases twice, the lower half with antialiasing on
-    (226 lines below the upper): for the upscaler, which antialiases from
-    the jittered frames itself, the halves must come out the same."""
+    (226 lines below the upper), in columns 38 pixels wide from x = 10 and
+    x = 320. For the upscaler, which antialiases from the jittered frames
+    itself, the columns without CVG_TIMES_ALPHA (0, 2, 4, 6) must come
+    out the same in both halves; those with it (1, 3, 5, 7), which cut
+    out their texels through the coverage, keep it, so the lower half
+    cuts out the texels the upper one draws."""
     with open(os.path.join(out, "%04d.raw.size" % n)) as f:
         w, h = map(int, f.read().split())
     with open(os.path.join(out, "%04d.raw" % n), "rb") as f:
         px = f.read()
     scale = w // 640
-    row = w * 4
-    half = 220 * scale
-    return px[0:half * row] == px[226 * scale * row:(226 * scale + half) * row]
+
+    def column(left, k, top):
+        x0, x1 = (left + 38 * k) * scale * 4, (left + 38 * k + 38) * scale * 4
+        return b"".join(px[y * w * 4 + x0:y * w * 4 + x1] for y in range(top * scale, (top + 220) * scale))
+
+    errors = []
+    for left in (10, 320):
+        for k in range(8):
+            same = column(left, k, 0) == column(left, k, 226)
+            if same != (k % 2 == 0):
+                errors.append("x=%d column %d %s" % (left, k, "cut-outs drawn opaque" if same else "edges antialiased"))
+    return errors
 
 
 def run_upscaler(args, name, rom, mode, env_extra, options, moving):
@@ -166,8 +180,10 @@ def run_upscaler(args, name, rom, mode, env_extra, options, moving):
         f.write(check.stdout)
     if check.returncode != 0:
         return None, "upscaler_check.py: " + check.stdout.decode("utf-8", "replace").strip().splitlines()[-1]
-    if name == "alphacov" and not coverage_aa_off(out, first):
-        return None, "coverage antialiasing is on"
+    if name == "alphacov":
+        errors = coverage_aa_off(out, first)
+        if errors:
+            return None, "coverage antialiasing: " + ", ".join(errors)
     hashes = {}
     for n in range(first, last + 1):
         h = hashlib.sha256()

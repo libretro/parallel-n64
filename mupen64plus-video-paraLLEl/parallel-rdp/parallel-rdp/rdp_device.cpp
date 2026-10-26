@@ -590,9 +590,13 @@ void CommandProcessor::op_set_other_modes(const uint32_t *words)
 	/* The coverage antialiasing (edges blended by coverage in the blender,
 	 * then reconstructed by the VI) is off while a temporal upscaler takes
 	 * the frames: it gets every edge as the pixel centres have it and
-	 * antialiases from the jittered frames itself. */
-	STATE_MASK(static_state.flags, bool(words[1] & (1 << 3)) && !coverage_aa_off, RASTERIZATION_AA_BIT);
-	STATE_MASK(depth_blend.flags, bool(words[1] & (1 << 3)) && !coverage_aa_off, DEPTH_BLEND_AA_BIT);
+	 * antialiases from the jittered frames itself. Draws that cut out
+	 * their texels through the coverage (coverage times alpha) keep it,
+	 * as without it their cut-outs are drawn opaque. */
+	bool aa_en = bool(words[1] & (1 << 3)) &&
+	             (!coverage_aa_off || (words[1] & (1 << 12)) != 0);
+	STATE_MASK(static_state.flags, aa_en, RASTERIZATION_AA_BIT);
+	STATE_MASK(depth_blend.flags, aa_en, DEPTH_BLEND_AA_BIT);
 
 	STATE_MASK(static_state.flags, bool(words[1] & (1 << 1)), RASTERIZATION_ALPHA_TEST_DITHER_BIT);
 	STATE_MASK(static_state.flags, bool(words[1] & (1 << 0)), RASTERIZATION_ALPHA_TEST_BIT);
