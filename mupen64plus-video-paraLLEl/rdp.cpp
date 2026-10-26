@@ -373,15 +373,45 @@ static unsigned upscaler_pick_factor(const struct retro_hw_upscaler_request *req
 
 /* Once a frame, before it runs: whether it is drawn for the upscaler and
  * at which factor. The factor stays while its frames still fit. */
+/* Says what the upscaler asked for and what came of it, when that
+ * changes: the frontend can only tell that frames came without inputs */
+static void upscaler_log(bool requested, bool on, unsigned factor)
+{
+	static unsigned said = ~0u;
+	unsigned now = unsigned(requested) | (unsigned(on) << 1) | (factor << 2);
+	const struct retro_hw_upscaler_request *r = &upscaler_request;
+
+	if (now == said)
+		return;
+	said = now;
+	if (!requested)
+		log_cb(RETRO_LOG_INFO, "Temporal upscaler: no request, rendering as usual.\n");
+	else if (!on)
+		log_cb(RETRO_LOG_WARN, "Temporal upscaler: asks for %ux%u (%ux%u to %ux%u) for %ux%u; "
+				"no factor of %ux%u fits, rendering as usual.\n",
+				r->render_width, r->render_height, r->min_render_width, r->min_render_height,
+				r->max_render_width, r->max_render_height, r->output_width, r->output_height,
+				upscaler_native_width, upscaler_native_height);
+	else
+		log_cb(RETRO_LOG_INFO, "Temporal upscaler: drawing at %ux, %ux%u, for %ux%u "
+				"(asks for %ux%u, %ux%u to %ux%u).\n",
+				factor, upscaler_native_width * factor, upscaler_native_height * factor,
+				r->output_width, r->output_height, r->render_width, r->render_height,
+				r->min_render_width, r->min_render_height,
+				r->max_render_width, r->max_render_height);
+}
+
 static void upscaler_poll()
 {
 	unsigned factor = upscaling;
 	bool on = false;
+	bool requested = false;
 	bool remake;
 
 	if (upscaler_iface && upscaler_iface->get_request(upscaler_iface->handle, &upscaler_request))
 	{
 		unsigned pick;
+		requested = true;
 		if (upscaler_on && upscaler_fits(&upscaler_request, processor_factor))
 			pick = processor_factor;
 		else
@@ -410,6 +440,8 @@ static void upscaler_poll()
 			device_supported = false;
 		upscaler_reset_pending = true;
 	}
+	if (upscaler_iface)
+		upscaler_log(requested, on, processor_factor);
 }
 
 void set_upscaler_interface(const struct retro_hw_render_upscaler_interface *iface)

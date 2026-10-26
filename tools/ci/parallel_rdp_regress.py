@@ -147,7 +147,8 @@ def run_upscaler(args, name, rom, mode, env_extra, options, moving):
     log_path = os.path.join(out, "upscaler.txt")
     first, last = UPSCALER_FRAMES
     env = dict(os.environ, LRHOST_DUMPDIR=out, LRHOST_DUMP_FROM=str(first), LRHOST_DUMP_TO=str(last),
-               LRHOST_DUMP_EVERY="1", LRHOST_UPSCALER="640,480", LRHOST_UPSCALER_LOG=log_path, **env_extra)
+               LRHOST_DUMP_EVERY="1", LRHOST_UPSCALER="640,480", LRHOST_UPSCALER_LOG=log_path,
+               LRHOST_VERBOSE="1", **env_extra)
     p = subprocess.run([args.host, args.core, rom, str(last + 1)] + OPTIONS + list(options), env=env,
                        stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=600)
     log = p.stdout.decode("utf-8", "replace")
@@ -157,6 +158,8 @@ def run_upscaler(args, name, rom, mode, env_extra, options, moving):
         return None, "exit %d" % p.returncode
     if "asked for in retro_load_game 1," not in log:
         return None, "the core did not ask for the upscaler in retro_load_game"
+    if "Temporal upscaler: drawing at 2x" not in log:
+        return None, "the core did not say it draws for the upscaler"
     check = subprocess.run([sys.executable, upscaler_check.__file__, out, log_path, str(first), str(last)]
                            + (["--moving"] if moving else []), stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     with open(os.path.join(out, "check.txt"), "wb") as f:
@@ -178,6 +181,24 @@ def run_upscaler(args, name, rom, mode, env_extra, options, moving):
             size = f.read().split()
         hashes[str(n)] = "%sx%s:%s" % (size[0], size[1], h.hexdigest()[:32])
     return hashes, None
+
+
+def run_unfit(args, name, rom):
+    """A request no factor of the framebuffer fits: the core says so
+    and renders as usual, handing over nothing."""
+    env = dict(os.environ, LRHOST_UPSCALER="1000,700,900,650,1100,750", LRHOST_VERBOSE="1")
+    p = subprocess.run([args.host, args.core, rom, "5"] + OPTIONS, env=env,
+                       stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=600)
+    log = p.stdout.decode("utf-8", "replace")
+    out = os.path.join(args.out, name, "upscaler-unfit")
+    os.makedirs(out, exist_ok=True)
+    with open(os.path.join(out, "log.txt"), "w") as f:
+        f.write(log)
+    if p.returncode != 0:
+        return "exit %d" % p.returncode
+    if "no factor of 320x240 fits" not in log or "frames with inputs 0" not in log:
+        return "a request no factor fits was not said, or got inputs"
+    return None
 
 
 def compare(name, group, ref, key, args, expected, results, failures):
@@ -216,6 +237,10 @@ def check_rom(args, name, expected):
                 continue
             group[mode] = hashes
         compare(name, group, "upscaler", name + "@upscaler", args, expected, results, failures)
+        if UPSCALER_ROMS[name]:
+            err = run_unfit(args, name, rom)
+            if err:
+                failures.append("%s (upscaler-unfit): %s" % (name, err))
     return results, failures
 
 
