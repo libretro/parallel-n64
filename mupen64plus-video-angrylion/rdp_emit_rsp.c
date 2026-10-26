@@ -149,6 +149,22 @@ static const uint16_t div_rom[1024] = {
 
 /* ---- VRCP family ----------------------------------------------------- */
 
+/* leading zeros of a nonzero word: the divide unit's normalization shift */
+static int rsp_clz32(uint32_t x)
+{
+#if defined(__GNUC__) || defined(__clang__)
+    return __builtin_clz(x);
+#else
+    int n = 0;
+    if (!(x & 0xffff0000u)) { n += 16; x <<= 16; }
+    if (!(x & 0xff000000u)) { n += 8;  x <<= 8; }
+    if (!(x & 0xf0000000u)) { n += 4;  x <<= 4; }
+    if (!(x & 0xc0000000u)) { n += 2;  x <<= 2; }
+    if (!(x & 0x80000000u)) { n += 1; }
+    return n;
+#endif
+}
+
 /* Core of the RSP divide unit: the input is the sign-extended DivIn (the
  * full 32-bit value for the double-precision vrcph/vrcpl pair, or the
  * sign-extended 16-bit element for single-precision vrcp). Returns the
@@ -163,7 +179,7 @@ static int32_t rsp_div_core(int32_t in32)
     if (data < 0)
         data = (data >= -32768) ? -data : ~data;
 
-    /* Normalize in unsigned arithmetic: the loop shifts the operand's
+    /* Normalize in unsigned arithmetic: the shift moves the operand's
      * leading one up into bit 31, and doing that on a signed int is a
      * signed overflow the optimizer may assume away -- at -O2 the value-
      * range assumption perturbed the reciprocal, and with it every
@@ -173,8 +189,8 @@ static int32_t rsp_div_core(int32_t in32)
         uint32_t ua = (uint32_t)data;
         if (data != 0)
         {
-            for (shift = 0; (ua & 0x80000000u) == 0u; ua <<= 1, shift++)
-                ;
+            shift = rsp_clz32(ua);
+            ua <<= shift;
         }
         addr = (int32_t)((ua >> 22) & 0x1ffu);
     }
@@ -219,7 +235,7 @@ int32_t rsp_rsq32(int32_t in32)
     if (data < 0)
         data = (data >= -32768) ? -data : ~data;
 
-    /* Normalize in unsigned arithmetic: the loop shifts the operand's
+    /* Normalize in unsigned arithmetic: the shift moves the operand's
      * leading one up into bit 31, and doing that on a signed int is a
      * signed overflow the optimizer may assume away -- at -O2 the value-
      * range assumption perturbed the reciprocal, and with it every
@@ -229,8 +245,8 @@ int32_t rsp_rsq32(int32_t in32)
         uint32_t ua = (uint32_t)data;
         if (data != 0)
         {
-            for (shift = 0; (ua & 0x80000000u) == 0u; ua <<= 1, shift++)
-                ;
+            shift = rsp_clz32(ua);
+            ua <<= shift;
         }
         addr = (int32_t)((ua >> 22) & 0x1ffu);
     }
@@ -689,7 +705,7 @@ static void light_dir_xfrm3(const int32_t mv[4][4], const int32_t dir[3],
 {
     int32_t t_mid[3], t_hi[3];
     int32_t sq_lo[3], sq_mid[3];
-    int32_t lo, ci, si;
+    int32_t lo, si;
     Rsp32 r;
     int L;
 
@@ -1965,6 +1981,13 @@ int rsp_vtx_screen_rs(int32_t cx, int32_t cy, int32_t cz, int32_t cw,
     return (cw > 0) ? 1 : 0;
 }
 
+/* The stock chain's z lane (z x 1/w' x perspNorm) of the last vertex
+ * rsp_vtx_screen placed: the fog factor runs the same chain on the same
+ * vertex. */
+static int s_fogz_ok;
+static int32_t s_fogz_cz, s_fogz_cw, s_fogz_pn;
+static Rsp32 s_fogz_p2;
+
 int rsp_vtx_screen(int32_t cx, int32_t cy, int32_t cz, int32_t cw,
                    int32_t pn,
                    int32_t vsx, int32_t vsy, int32_t vsz,
@@ -2092,6 +2115,14 @@ int rsp_vtx_screen(int32_t cx, int32_t cy, int32_t cz, int32_t cw,
         acc += p_udm(p1.i, pn);
         p2.i = acc_clamp_mid(acc);
         p2.f = acc_clamp_low(acc);
+        if (lane == 2)
+        {
+            s_fogz_ok = !s_vtx_f3d && !s_vtx_invw_raw && !s_vtx_invw_2rd;
+            s_fogz_cz = cz;
+            s_fogz_cw = cw;
+            s_fogz_pn = pn;
+            s_fogz_p2 = p2;
+        }
 
         acc = p_udh(vt, 1);
         acc += p_udn(p2.f, vs);
@@ -2169,6 +2200,11 @@ int32_t rsp_vtx_fog(int32_t cz, int32_t cw, int32_t pn,
     if (cw <= 0)
         return 0;
 
+    if (s_fogz_ok && s_fogz_cz == cz && s_fogz_cw == cw && s_fogz_pn == pn)
+    {
+        p2 = s_fogz_p2;
+        goto shape;
+    }
     {
         Rsp32 w32 = mk32(cw);
         acc = p_udl(w32.f, pn);
@@ -2198,6 +2234,7 @@ int32_t rsp_vtx_fog(int32_t cz, int32_t cw, int32_t pn,
     p2.i = acc_clamp_mid(acc);
     p2.f = acc_clamp_low(acc);
 
+shape:
     acc = p_udh(fog_o, 1);
     acc += p_udh(1, 0x7f00);
     acc += p_udn(p2.f, fog_m);
@@ -3553,10 +3590,12 @@ int rsp_tri_write(int32_t *ew,
              * floor(0x7fff * iw / (2*max))); the raw reciprocal-multiply path
              * biases this high by ~11 ulp, drifting the perspective gradient.
              * Form the quotient directly to match the LLE-emitted value. */
-            int64_t pq = (int64_t)iw[vi] << 15;
-            pq = (max_iw != 0) ? (pq / (int64_t)max_iw) : 0;
-            wnorm[vi].f = (int32_t)(pq & 0xffff);
-            wnorm[vi].i = (int32_t)((pq >> 16) & 0xffff);
+            {
+                int64_t pq = (int64_t)iw[vi] << 15;
+                pq = (max_iw != 0) ? (pq / (int64_t)max_iw) : 0;
+                wnorm[vi].f = (int32_t)(pq & 0xffff);
+                wnorm[vi].i = (int32_t)((pq >> 16) & 0xffff);
+            }
         }
         {
             const RspTriVtx *vv[3];
@@ -3581,6 +3620,7 @@ int rsp_tri_write(int32_t *ew,
     /* ---- attribute deltas and gradients ---- */
     {
     int32_t rs_yspx_vh = (int32_t)U16(vh->y);
+    int32_t rs_mh_y = mh_y, rs_hl_y = hl_y, rs_lh_x = lh_x, rs_hm_x = hm_x;
     Rsp32 zb_elh8;
     zb_elh8.i = 0; zb_elh8.f = 0;
     if (s_tri_attr_zboss)
@@ -3596,7 +3636,6 @@ int rsp_tri_write(int32_t *ew,
         zb_elh8.i = acc_clamp_mid(acc);
         zb_elh8.f = acc_clamp_low(acc);
     }
-    int32_t rs_mh_y = mh_y, rs_hl_y = hl_y, rs_lh_x = lh_x, rs_hm_x = hm_x;
     if (s_tri_attr_rs)
     {
         /* The writer multiplies the packed edge deltas by v30[5] == 4

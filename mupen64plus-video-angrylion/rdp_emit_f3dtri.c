@@ -49,6 +49,16 @@
 #include "rdp_emit_rsp.h"
 #include "rdp_emit_f3dtri.h"
 
+/* the vector ops inline into the setup, so each element select and
+ * operation folds to its own short sequence */
+#if defined(__GNUC__) || defined(__clang__)
+#define VU_OP static __inline__ __attribute__((always_inline))
+#elif defined(_MSC_VER)
+#define VU_OP static __forceinline
+#else
+#define VU_OP static
+#endif
+
 /* ---- lane-level vector unit ------------------------------------------ */
 
 typedef struct F3dVu
@@ -89,7 +99,7 @@ static const uint8_t k_sel[16][8] =
 
 #ifndef F3D_SSE2
 /* the vt operand with its element select applied */
-static void vu_tsel(const F3dVu *u, int16_t t[8], int vt, int e)
+VU_OP void vu_tsel(const F3dVu *u, int16_t t[8], int vt, int e)
 {
     const int16_t *tv = u->v[vt];
     const uint8_t *sl = k_sel[e & 15];
@@ -115,7 +125,7 @@ static int16_t acc_h(const F3dVu *u, int i) { return u->acch[i]; }
 #define VLD(p)     _mm_loadu_si128((const __m128i *)(const void *)(p))
 #define VST(p, x)  _mm_storeu_si128((__m128i *)(void *)(p), (x))
 
-static __m128i vx_sel(const F3dVu *u, int vt, int e)
+VU_OP __m128i vx_sel(const F3dVu *u, int vt, int e)
 {
     __m128i v = VLD(u->v[vt]), x;
     switch (e & 15)
@@ -139,20 +149,20 @@ static __m128i vx_sel(const F3dVu *u, int vt, int e)
 }
 
 /* -1 where a + b carried out of 16 bits (sum = a + b) */
-static __m128i vx_carry(__m128i sum, __m128i b)
+VU_OP __m128i vx_carry(__m128i sum, __m128i b)
 {
     const __m128i k = _mm_set1_epi16((short)0x8000);
     return _mm_cmplt_epi16(_mm_xor_si128(sum, k), _mm_xor_si128(b, k));
 }
 
 /* signed clamp of bits 47..16 */
-static __m128i vx_clamp_am(__m128i h, __m128i m)
+VU_OP __m128i vx_clamp_am(__m128i h, __m128i m)
 {
     return _mm_packs_epi32(_mm_unpacklo_epi16(m, h), _mm_unpackhi_epi16(m, h));
 }
 
 /* the low slice, or 0x0000/0xffff where bits 47..16 clamp */
-static __m128i vx_clamp_al(__m128i h, __m128i m, __m128i l)
+VU_OP __m128i vx_clamp_al(__m128i h, __m128i m, __m128i l)
 {
     __m128i t = vx_clamp_am(h, m);
     __m128i c = _mm_cmpeq_epi16(t, m);
@@ -171,7 +181,7 @@ static __m128i vx_clamp_al(__m128i h, __m128i m, __m128i l)
 #define VX_PROD_US(s, t, hi, lo) VX_PROD_SU(t, s, hi, lo)
 
 /* accumulator += (hi:lo), sign-extended from 32 bits */
-static void vx_acc_add32(F3dVu *u, __m128i hi, __m128i lo)
+VU_OP void vx_acc_add32(F3dVu *u, __m128i hi, __m128i lo)
 {
     __m128i l = VLD(u->accl), m = VLD(u->accm), h = VLD(u->acch);
     __m128i l2 = _mm_add_epi16(l, lo);
@@ -188,14 +198,14 @@ static void vx_acc_add32(F3dVu *u, __m128i hi, __m128i lo)
     VST(u->acch, h);
 }
 
-static void vx_acc_set32(F3dVu *u, __m128i hi, __m128i lo)
+VU_OP void vx_acc_set32(F3dVu *u, __m128i hi, __m128i lo)
 {
     VST(u->accl, lo);
     VST(u->accm, hi);
     VST(u->acch, _mm_srai_epi16(hi, 15));
 }
 
-static void vmudl_(F3dVu *u, int vd, int vs, int vt, int e)
+VU_OP void vmudl_(F3dVu *u, int vd, int vs, int vt, int e)
 {
     __m128i p = _mm_mulhi_epu16(VLD(u->v[vs]), vx_sel(u, vt, e));
     __m128i z = _mm_setzero_si128();
@@ -205,7 +215,7 @@ static void vmudl_(F3dVu *u, int vd, int vs, int vt, int e)
     VST(u->v[vd], p);
 }
 
-static void vmudm_(F3dVu *u, int vd, int vs, int vt, int e)
+VU_OP void vmudm_(F3dVu *u, int vd, int vs, int vt, int e)
 {
     __m128i s = VLD(u->v[vs]), t = vx_sel(u, vt, e), hi, lo;
     VX_PROD_SU(s, t, hi, lo);
@@ -213,7 +223,7 @@ static void vmudm_(F3dVu *u, int vd, int vs, int vt, int e)
     VST(u->v[vd], hi);
 }
 
-static void vmudn_(F3dVu *u, int vd, int vs, int vt, int e)
+VU_OP void vmudn_(F3dVu *u, int vd, int vs, int vt, int e)
 {
     __m128i s = VLD(u->v[vs]), t = vx_sel(u, vt, e), hi, lo;
     VX_PROD_US(s, t, hi, lo);
@@ -221,7 +231,7 @@ static void vmudn_(F3dVu *u, int vd, int vs, int vt, int e)
     VST(u->v[vd], lo);
 }
 
-static void vmudh_(F3dVu *u, int vd, int vs, int vt, int e)
+VU_OP void vmudh_(F3dVu *u, int vd, int vs, int vt, int e)
 {
     __m128i s = VLD(u->v[vs]), t = vx_sel(u, vt, e), hi, lo;
     VX_PROD_SS(s, t, hi, lo);
@@ -231,14 +241,14 @@ static void vmudh_(F3dVu *u, int vd, int vs, int vt, int e)
     VST(u->v[vd], vx_clamp_am(hi, lo));
 }
 
-static void vmadl_(F3dVu *u, int vd, int vs, int vt, int e)
+VU_OP void vmadl_(F3dVu *u, int vd, int vs, int vt, int e)
 {
     __m128i p = _mm_mulhi_epu16(VLD(u->v[vs]), vx_sel(u, vt, e));
     vx_acc_add32(u, _mm_setzero_si128(), p);
     VST(u->v[vd], vx_clamp_al(VLD(u->acch), VLD(u->accm), VLD(u->accl)));
 }
 
-static void vmadm_(F3dVu *u, int vd, int vs, int vt, int e)
+VU_OP void vmadm_(F3dVu *u, int vd, int vs, int vt, int e)
 {
     __m128i s = VLD(u->v[vs]), t = vx_sel(u, vt, e), hi, lo;
     VX_PROD_SU(s, t, hi, lo);
@@ -246,7 +256,7 @@ static void vmadm_(F3dVu *u, int vd, int vs, int vt, int e)
     VST(u->v[vd], vx_clamp_am(VLD(u->acch), VLD(u->accm)));
 }
 
-static void vmadn_(F3dVu *u, int vd, int vs, int vt, int e)
+VU_OP void vmadn_(F3dVu *u, int vd, int vs, int vt, int e)
 {
     __m128i s = VLD(u->v[vs]), t = vx_sel(u, vt, e), hi, lo;
     VX_PROD_US(s, t, hi, lo);
@@ -254,7 +264,7 @@ static void vmadn_(F3dVu *u, int vd, int vs, int vt, int e)
     VST(u->v[vd], vx_clamp_al(VLD(u->acch), VLD(u->accm), VLD(u->accl)));
 }
 
-static void vmadh_(F3dVu *u, int vd, int vs, int vt, int e)
+VU_OP void vmadh_(F3dVu *u, int vd, int vs, int vt, int e)
 {
     __m128i s = VLD(u->v[vs]), t = vx_sel(u, vt, e), hi, lo;
     __m128i m = VLD(u->accm), h = VLD(u->acch), m2;
@@ -267,7 +277,7 @@ static void vmadh_(F3dVu *u, int vd, int vs, int vt, int e)
 }
 #else
 /* signed clamp of the accumulator's bits 47..16 */
-static void vu_clamp_am(const F3dVu *u, int16_t r[8])
+VU_OP void vu_clamp_am(const F3dVu *u, int16_t r[8])
 {
     int i;
     for (i = 0; i < 8; i++)
@@ -279,7 +289,7 @@ static void vu_clamp_am(const F3dVu *u, int16_t r[8])
 }
 
 /* the low slice, or 0x0000/0xffff where bits 47..16 clamp */
-static void vu_clamp_al(const F3dVu *u, int16_t r[8])
+VU_OP void vu_clamp_al(const F3dVu *u, int16_t r[8])
 {
     int16_t t[8];
     int i;
@@ -289,7 +299,7 @@ static void vu_clamp_al(const F3dVu *u, int16_t r[8])
 }
 
 /* accumulator = p (a 32-bit product), sign-extended */
-static void vu_acc_set32(F3dVu *u, const int32_t p[8])
+VU_OP void vu_acc_set32(F3dVu *u, const int32_t p[8])
 {
     int i;
     for (i = 0; i < 8; i++)
@@ -301,7 +311,7 @@ static void vu_acc_set32(F3dVu *u, const int32_t p[8])
 }
 
 /* accumulator += p, p sign-extended from 32 bits */
-static void vu_acc_add32(F3dVu *u, const int32_t p[8])
+VU_OP void vu_acc_add32(F3dVu *u, const int32_t p[8])
 {
     int i;
     for (i = 0; i < 8; i++)
@@ -315,7 +325,7 @@ static void vu_acc_add32(F3dVu *u, const int32_t p[8])
     }
 }
 
-static void vmudl_(F3dVu *u, int vd, int vs, int vt, int e)
+VU_OP void vmudl_(F3dVu *u, int vd, int vs, int vt, int e)
 {
     int16_t t[8], r[8];
     const int16_t *s = u->v[vs];
@@ -331,7 +341,7 @@ static void vmudl_(F3dVu *u, int vd, int vs, int vt, int e)
     memcpy(u->v[vd], r, sizeof(r));
 }
 
-static void vmudm_(F3dVu *u, int vd, int vs, int vt, int e)
+VU_OP void vmudm_(F3dVu *u, int vd, int vs, int vt, int e)
 {
     int16_t t[8];
     int32_t p[8];
@@ -344,7 +354,7 @@ static void vmudm_(F3dVu *u, int vd, int vs, int vt, int e)
     memcpy(u->v[vd], u->accm, sizeof(u->accm));
 }
 
-static void vmudn_(F3dVu *u, int vd, int vs, int vt, int e)
+VU_OP void vmudn_(F3dVu *u, int vd, int vs, int vt, int e)
 {
     int16_t t[8];
     int32_t p[8];
@@ -357,7 +367,7 @@ static void vmudn_(F3dVu *u, int vd, int vs, int vt, int e)
     memcpy(u->v[vd], u->accl, sizeof(u->accl));
 }
 
-static void vmudh_(F3dVu *u, int vd, int vs, int vt, int e)
+VU_OP void vmudh_(F3dVu *u, int vd, int vs, int vt, int e)
 {
     int16_t t[8], r[8];
     const int16_t *s = u->v[vs];
@@ -374,7 +384,7 @@ static void vmudh_(F3dVu *u, int vd, int vs, int vt, int e)
     memcpy(u->v[vd], r, sizeof(r));
 }
 
-static void vmadl_(F3dVu *u, int vd, int vs, int vt, int e)
+VU_OP void vmadl_(F3dVu *u, int vd, int vs, int vt, int e)
 {
     int16_t t[8], r[8];
     int32_t p[8];
@@ -388,7 +398,7 @@ static void vmadl_(F3dVu *u, int vd, int vs, int vt, int e)
     memcpy(u->v[vd], r, sizeof(r));
 }
 
-static void vmadm_(F3dVu *u, int vd, int vs, int vt, int e)
+VU_OP void vmadm_(F3dVu *u, int vd, int vs, int vt, int e)
 {
     int16_t t[8], r[8];
     int32_t p[8];
@@ -402,7 +412,7 @@ static void vmadm_(F3dVu *u, int vd, int vs, int vt, int e)
     memcpy(u->v[vd], r, sizeof(r));
 }
 
-static void vmadn_(F3dVu *u, int vd, int vs, int vt, int e)
+VU_OP void vmadn_(F3dVu *u, int vd, int vs, int vt, int e)
 {
     int16_t t[8], r[8];
     int32_t p[8];
@@ -416,7 +426,7 @@ static void vmadn_(F3dVu *u, int vd, int vs, int vt, int e)
     memcpy(u->v[vd], r, sizeof(r));
 }
 
-static void vmadh_(F3dVu *u, int vd, int vs, int vt, int e)
+VU_OP void vmadh_(F3dVu *u, int vd, int vs, int vt, int e)
 {
     int16_t t[8], r[8];
     const int16_t *s = u->v[vs];
@@ -450,7 +460,7 @@ static void vmadh_(F3dVu *u, int vd, int vs, int vt, int e)
 
 /* vadd/vsub: exact 32-bit sum (carry in), saturated; the low slice takes
  * it raw; flags cleared */
-static void vx_addsub(F3dVu *u, int sub, int vd, int vs, int vt, int e)
+VU_OP void vx_addsub(F3dVu *u, int sub, int vd, int vs, int vt, int e)
 {
     __m128i s = VLD(u->v[vs]), t = vx_sel(u, vt, e), c = VLD(u->co);
     __m128i z = _mm_setzero_si128();
@@ -477,18 +487,18 @@ static void vx_addsub(F3dVu *u, int sub, int vd, int vs, int vt, int e)
     VST(u->ne, z);
 }
 
-static void vadd_(F3dVu *u, int vd, int vs, int vt, int e)
+VU_OP void vadd_(F3dVu *u, int vd, int vs, int vt, int e)
 {
     vx_addsub(u, 0, vd, vs, vt, e);
 }
 
-static void vsub_(F3dVu *u, int vd, int vs, int vt, int e)
+VU_OP void vsub_(F3dVu *u, int vd, int vs, int vt, int e)
 {
     vx_addsub(u, 1, vd, vs, vt, e);
 }
 
 /* vaddc: unsigned sum, carry out */
-static void vaddc_(F3dVu *u, int vd, int vs, int vt, int e)
+VU_OP void vaddc_(F3dVu *u, int vd, int vs, int vt, int e)
 {
     __m128i s = VLD(u->v[vs]), t = vx_sel(u, vt, e);
     __m128i x = _mm_add_epi16(s, t);
@@ -499,7 +509,7 @@ static void vaddc_(F3dVu *u, int vd, int vs, int vt, int e)
 }
 
 /* vsubc: unsigned difference, borrow and not-equal out */
-static void vsubc_(F3dVu *u, int vd, int vs, int vt, int e)
+VU_OP void vsubc_(F3dVu *u, int vd, int vs, int vt, int e)
 {
     const __m128i k = _mm_set1_epi16((short)0x8000);
     __m128i s = VLD(u->v[vs]), t = vx_sel(u, vt, e);
@@ -526,7 +536,7 @@ static void vsubc_(F3dVu *u, int vd, int vs, int vt, int e)
     memcpy(u->v[vd], r, sizeof(r));
 
 /* vadd: carry in, saturated result, flags cleared */
-static void vadd_(F3dVu *u, int vd, int vs, int vt, int e)
+VU_OP void vadd_(F3dVu *u, int vd, int vs, int vt, int e)
 {
     VU_ADD_BEGIN
         int32_t x = (int32_t)s[i] + t[i] + u->co[i];
@@ -537,7 +547,7 @@ static void vadd_(F3dVu *u, int vd, int vs, int vt, int e)
 }
 
 /* vsub: borrow in */
-static void vsub_(F3dVu *u, int vd, int vs, int vt, int e)
+VU_OP void vsub_(F3dVu *u, int vd, int vs, int vt, int e)
 {
     VU_ADD_BEGIN
         int32_t x = (int32_t)s[i] - t[i] - u->co[i];
@@ -548,7 +558,7 @@ static void vsub_(F3dVu *u, int vd, int vs, int vt, int e)
 }
 
 /* vaddc: unsigned sum, carry out */
-static void vaddc_(F3dVu *u, int vd, int vs, int vt, int e)
+VU_OP void vaddc_(F3dVu *u, int vd, int vs, int vt, int e)
 {
     VU_ADD_BEGIN
         int32_t x = (int32_t)(uint16_t)s[i] + (uint16_t)t[i];
@@ -559,7 +569,7 @@ static void vaddc_(F3dVu *u, int vd, int vs, int vt, int e)
 }
 
 /* vsubc: unsigned difference, borrow and not-equal out */
-static void vsubc_(F3dVu *u, int vd, int vs, int vt, int e)
+VU_OP void vsubc_(F3dVu *u, int vd, int vs, int vt, int e)
 {
     VU_ADD_BEGIN
         int32_t x = (int32_t)(uint16_t)s[i] - (uint16_t)t[i];
@@ -576,13 +586,13 @@ static void vsubc_(F3dVu *u, int vd, int vs, int vt, int e)
 #define vaddc(d, s, t, e) vaddc_(u, d, s, t, e)
 #define vsubc(d, s, t, e) vsubc_(u, d, s, t, e)
 
-static void set_accl(F3dVu *u, int i, int16_t x)
+VU_OP void set_accl(F3dVu *u, int i, int16_t x)
 {
     u->accl[i] = x;
 }
 
 /* vabs as used here: the sign source equals the value source */
-static void vabs(F3dVu *u, int vd, int vs, int vt, int e)
+VU_OP void vabs(F3dVu *u, int vd, int vs, int vt, int e)
 {
     int16_t r[8];
     int i;
@@ -606,7 +616,7 @@ static void vabs(F3dVu *u, int vd, int vs, int vt, int e)
 /* -x as a 0/-1 mask from a 0/1 flag vector */
 #define VMASK(p)   _mm_sub_epi16(_mm_setzero_si128(), VLD(p))
 
-static void vu_cmp(F3dVu *u, int ge, int vd, int vs, int vt, int e)
+VU_OP void vu_cmp(F3dVu *u, int ge, int vd, int vs, int vt, int e)
 {
     __m128i s = VLD(u->v[vs]), t = vx_sel(u, vt, e);
     __m128i eq = _mm_cmpeq_epi16(s, t);
@@ -625,7 +635,7 @@ static void vu_cmp(F3dVu *u, int ge, int vd, int vs, int vt, int e)
     VST(u->v[vd], r);
 }
 #else
-static void vu_cmp(F3dVu *u, int ge, int vd, int vs, int vt, int e)
+VU_OP void vu_cmp(F3dVu *u, int ge, int vd, int vs, int vt, int e)
 {
     int16_t r[8];
     int i;
@@ -654,7 +664,7 @@ static void vu_cmp(F3dVu *u, int ge, int vd, int vs, int vt, int e)
 #define vge(d, s, t, e) vu_cmp(u, 1, d, s, t, e)
 
 #ifdef F3D_SSE2
-static void vmrg(F3dVu *u, int vd, int vs, int vt, int e)
+VU_OP void vmrg(F3dVu *u, int vd, int vs, int vt, int e)
 {
     __m128i c = VMASK(u->comp);
     __m128i r = _mm_or_si128(_mm_and_si128(c, VLD(u->v[vs])),
@@ -663,7 +673,7 @@ static void vmrg(F3dVu *u, int vd, int vs, int vt, int e)
     VST(u->v[vd], r);
 }
 #else
-static void vmrg(F3dVu *u, int vd, int vs, int vt, int e)
+VU_OP void vmrg(F3dVu *u, int vd, int vs, int vt, int e)
 {
     int16_t r[8];
     int i;
@@ -678,7 +688,7 @@ static void vmrg(F3dVu *u, int vd, int vs, int vt, int e)
 #endif
 
 #ifdef F3D_SSE2
-static void vu_logic(F3dVu *u, int op, int vd, int vs, int vt, int e)
+VU_OP void vu_logic(F3dVu *u, int op, int vd, int vs, int vt, int e)
 {
     __m128i s = VLD(u->v[vs]), t = vx_sel(u, vt, e);
     __m128i r = op == 0 ? _mm_and_si128(s, t) : op == 1 ? _mm_or_si128(s, t)
@@ -687,7 +697,7 @@ static void vu_logic(F3dVu *u, int op, int vd, int vs, int vt, int e)
     VST(u->v[vd], r);
 }
 #else
-static void vu_logic(F3dVu *u, int op, int vd, int vs, int vt, int e)
+VU_OP void vu_logic(F3dVu *u, int op, int vd, int vs, int vt, int e)
 {
     int16_t r[8];
     int i;
@@ -707,7 +717,7 @@ static void vu_logic(F3dVu *u, int op, int vd, int vs, int vt, int e)
 #define vxor(d, s, t, e) vu_logic(u, 2, d, s, t, e)
 
 /* vcr: one's-complement clip against +-|t| */
-static void vcr(F3dVu *u, int vd, int vs, int vt, int e)
+VU_OP void vcr(F3dVu *u, int vd, int vs, int vt, int e)
 {
     int16_t r[8];
     int i;
@@ -731,7 +741,7 @@ static void vcr(F3dVu *u, int vd, int vs, int vt, int e)
 }
 
 #ifdef F3D_SSE2
-static void vch(F3dVu *u, int vd, int vs, int vt, int e)
+VU_OP void vch(F3dVu *u, int vd, int vs, int vt, int e)
 {
     const __m128i one = _mm_set1_epi16(1), z = _mm_setzero_si128();
     __m128i s = VLD(u->v[vs]), t = vx_sel(u, vt, e);
@@ -757,7 +767,7 @@ static void vch(F3dVu *u, int vd, int vs, int vt, int e)
     VST(u->v[vd], r);
 }
 #else
-static void vch(F3dVu *u, int vd, int vs, int vt, int e)
+VU_OP void vch(F3dVu *u, int vd, int vs, int vt, int e)
 {
     int16_t r[8];
     int i;
@@ -790,7 +800,7 @@ static void vch(F3dVu *u, int vd, int vs, int vt, int e)
 #endif
 
 #ifdef F3D_SSE2
-static void vcl(F3dVu *u, int vd, int vs, int vt, int e)
+VU_OP void vcl(F3dVu *u, int vd, int vs, int vt, int e)
 {
     const __m128i k = _mm_set1_epi16((short)0x8000), z = _mm_setzero_si128();
     __m128i vb = VLD(u->v[vs]), tt = vx_sel(u, vt, e);
@@ -819,7 +829,7 @@ static void vcl(F3dVu *u, int vd, int vs, int vt, int e)
     VST(u->v[vd], r);
 }
 #else
-static void vcl(F3dVu *u, int vd, int vs, int vt, int e)
+VU_OP void vcl(F3dVu *u, int vd, int vs, int vt, int e)
 {
     int16_t r[8];
     int i;
@@ -854,7 +864,7 @@ static void vcl(F3dVu *u, int vd, int vs, int vt, int e)
 #endif
 
 /* vsar: e 8/9/10 read the accumulator high/middle/low slice */
-static void vsar(F3dVu *u, int vd, int e)
+VU_OP void vsar(F3dVu *u, int vd, int e)
 {
     int i;
     for (i = 0; i < 8; i++)
@@ -863,12 +873,12 @@ static void vsar(F3dVu *u, int vd, int e)
 }
 
 #ifdef F3D_SSE2
-static void vu_acc_vt(F3dVu *u, int vt, int e)
+VU_OP void vu_acc_vt(F3dVu *u, int vt, int e)
 {
     VST(u->accl, vx_sel(u, vt, e));
 }
 #else
-static void vu_acc_vt(F3dVu *u, int vt, int e)
+VU_OP void vu_acc_vt(F3dVu *u, int vt, int e)
 {
     int i;
     for (i = 0; i < 8; i++)
@@ -878,7 +888,7 @@ static void vu_acc_vt(F3dVu *u, int vt, int e)
 #endif
 
 /* single-lane moves and the divide unit: dest lane dl, source lane e & 7 */
-static void vmov(F3dVu *u, int vd, int dl, int vt, int e)
+VU_OP void vmov(F3dVu *u, int vd, int dl, int vt, int e)
 {
     int16_t x = u->v[vt][e & 7];
     vu_acc_vt(u, vt, e);
@@ -917,7 +927,7 @@ static void vrcpl(F3dVu *u, int vd, int dl, int vt, int e)
 
 /* ---- loads and stores (byte-indexed vector elements) ----------------- */
 
-static void vbyte_set(F3dVu *u, int vt, int b, uint8_t x)
+VU_OP void vbyte_set(F3dVu *u, int vt, int b, uint8_t x)
 {
     int16_t *l = &u->v[vt][(b >> 1) & 7];
     if (b & 1)
@@ -926,13 +936,13 @@ static void vbyte_set(F3dVu *u, int vt, int b, uint8_t x)
         *l = (int16_t)((*l & 0x00ff) | (x << 8));
 }
 
-static uint8_t vbyte_get(const F3dVu *u, int vt, int b)
+VU_OP uint8_t vbyte_get(const F3dVu *u, int vt, int b)
 {
     uint16_t l = (uint16_t)u->v[vt][(b >> 1) & 7];
     return (uint8_t)((b & 1) ? l : (l >> 8));
 }
 
-static void vload(F3dVu *u, int vt, int e, unsigned int addr, int n)
+VU_OP void vload(F3dVu *u, int vt, int e, unsigned int addr, int n)
 {
     int k;
     if (((e | n) & 1) == 0)
@@ -948,7 +958,7 @@ static void vload(F3dVu *u, int vt, int e, unsigned int addr, int n)
         vbyte_set(u, vt, (e + k) & 15, u->dmem[(addr + k) & 0xfff]);
 }
 
-static void vstore(F3dVu *u, int vt, int e, unsigned int addr, int n)
+VU_OP void vstore(F3dVu *u, int vt, int e, unsigned int addr, int n)
 {
     int k;
     DM_DIRTY(u, addr);
@@ -976,24 +986,24 @@ static void vstore(F3dVu *u, int vt, int e, unsigned int addr, int n)
 #define sdv(t, e, a) vstore(u, t, e, a, 8)
 
 /* luv from an 8-byte aligned address: each byte to bits 14..7 */
-static void luv(F3dVu *u, int vt, unsigned int addr)
+VU_OP void luv(F3dVu *u, int vt, unsigned int addr)
 {
     int i;
     for (i = 0; i < 8; i++)
         u->v[vt][i] = (int16_t)(u->dmem[(addr + i) & 0xfff] << 7);
 }
 
-static int32_t mfc2(const F3dVu *u, int vt, int lane)
+VU_OP int32_t mfc2(const F3dVu *u, int vt, int lane)
 {
     return (int32_t)u->v[vt][lane];
 }
 
-static void mtc2(F3dVu *u, int vt, int lane, int32_t x)
+VU_OP void mtc2(F3dVu *u, int vt, int lane, int32_t x)
 {
     u->v[vt][lane] = (int16_t)(x & 0xffff);
 }
 
-static void dm_w16(F3dVu *u, unsigned int a, uint32_t x)
+VU_OP void dm_w16(F3dVu *u, unsigned int a, uint32_t x)
 {
     DM_DIRTY(u, a);
     DM_DIRTY(u, a + 1u);
@@ -1001,18 +1011,18 @@ static void dm_w16(F3dVu *u, unsigned int a, uint32_t x)
     u->dmem[(a + 1) & 0xfff] = (uint8_t)x;
 }
 
-static void dm_w32(F3dVu *u, unsigned int a, uint32_t x)
+VU_OP void dm_w32(F3dVu *u, unsigned int a, uint32_t x)
 {
     dm_w16(u, a, x >> 16);
     dm_w16(u, a + 2, x & 0xffff);
 }
 
-static int32_t dm_lh(const F3dVu *u, unsigned int a)
+VU_OP int32_t dm_lh(const F3dVu *u, unsigned int a)
 {
     return (int16_t)((u->dmem[a & 0xfff] << 8) | u->dmem[(a + 1) & 0xfff]);
 }
 
-static uint32_t dm_lw(const F3dVu *u, unsigned int a)
+VU_OP uint32_t dm_lw(const F3dVu *u, unsigned int a)
 {
     return ((uint32_t)(uint16_t)dm_lh(u, a) << 16) | (uint16_t)dm_lh(u, a + 2);
 }
@@ -1738,14 +1748,14 @@ int rsp_tri_write_f3d(int32_t *ew, const RspTriVtx *v1c,
 
 /* ---- vertex flags, clipper and fan ------------------------------------ */
 
-static void vu_flag_clear(F3dVu *u, int i)
+VU_OP void vu_flag_clear(F3dVu *u, int i)
 {
     u->co[i] = 0;
     u->ne[i] = 0;
     u->clip[i] = 0;
 }
 
-static void veq(F3dVu *u, int vd, int vs, int vt, int e)
+VU_OP void veq(F3dVu *u, int vd, int vs, int vt, int e)
 {
     int16_t r[8];
     int i;
@@ -1760,7 +1770,7 @@ static void veq(F3dVu *u, int vd, int vs, int vt, int e)
     memcpy(u->v[vd], r, sizeof(r));
 }
 
-static void vne(F3dVu *u, int vd, int vs, int vt, int e)
+VU_OP void vne(F3dVu *u, int vd, int vs, int vt, int e)
 {
     int16_t r[8];
     int i;
@@ -1775,7 +1785,7 @@ static void vne(F3dVu *u, int vd, int vs, int vt, int e)
     memcpy(u->v[vd], r, sizeof(r));
 }
 
-static void vnxor(F3dVu *u, int vd, int vs, int vt, int e)
+VU_OP void vnxor(F3dVu *u, int vd, int vs, int vt, int e)
 {
     int16_t r[8];
     int i;
@@ -1788,7 +1798,7 @@ static void vnxor(F3dVu *u, int vd, int vs, int vt, int e)
 }
 
 /* suv to an 8-byte aligned address: bits 14..7 of each lane */
-static void suv(F3dVu *u, int vt, unsigned int addr)
+VU_OP void suv(F3dVu *u, int vt, unsigned int addr)
 {
     int i;
     for (i = 0; i < 8; i++)
@@ -1798,7 +1808,7 @@ static void suv(F3dVu *u, int vt, unsigned int addr)
     }
 }
 
-static uint32_t vcc_word(const F3dVu *u)
+VU_OP uint32_t vcc_word(const F3dVu *u)
 {
     uint32_t w = 0;
     int i;
@@ -1843,7 +1853,7 @@ static uint32_t vtx_outcodes(F3dVu *u)
     return t0 | t6 | t5;
 }
 
-static void load_pos(F3dVu *u, int lane0, const int32_t p[4])
+VU_OP void load_pos(F3dVu *u, int lane0, const int32_t p[4])
 {
     int i;
     for (i = 0; i < 4; i++)

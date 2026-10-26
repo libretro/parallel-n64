@@ -1246,6 +1246,17 @@ void gsp_vertex(GSPState *s, const unsigned char *rdram, unsigned int addr,
         vt->sv = (int16_t)(((int64_t)st_s * (int64_t)s->tex_scale_s) >> 16);
         vt->tv = (int16_t)(((int64_t)st_t * (int64_t)s->tex_scale_t) >> 16);
 
+        /* Store the RSP's per-vertex clip outcode (the VCH sign-aware
+         * screen-plane compare, bits N/P per x, y, z axis -- the SCRN half
+         * of VTX_CLIP). G_CULLDL and the triangle trivial reject test the
+         * AND of these flags, and unlike a plain w > 0 frustum test the
+         * VCH rule also flags vertices behind the eye, which is what lets
+         * the RSP reject the near geometry slivers a guard-band clipper
+         * would otherwise rasterize. */
+        gsp_clip_vertex_flags(s, vt);
+        gsp_vertex_screen(s, vt);
+        /* (the fog factor after the screen transform, whose reciprocal
+         * chain it can share) */
         if ((s->geometry_mode & 0x00010000u) && !s->fog_off)   /* G_FOG */
         {
             /* With fog enabled the RSP replaces the shade alpha with the fog
@@ -1279,15 +1290,6 @@ void gsp_vertex(GSPState *s, const unsigned char *rdram, unsigned int addr,
         if (has_refl)
             vt->a = refl_a;
 
-        /* Store the RSP's per-vertex clip outcode (the VCH sign-aware
-         * screen-plane compare, bits N/P per x, y, z axis -- the SCRN half
-         * of VTX_CLIP). G_CULLDL and the triangle trivial reject test the
-         * AND of these flags, and unlike a plain w > 0 frustum test the
-         * VCH rule also flags vertices behind the eye, which is what lets
-         * the RSP reject the near geometry slivers a guard-band clipper
-         * would otherwise rasterize. */
-        gsp_clip_vertex_flags(s, vt);
-        gsp_vertex_screen(s, vt);
         /* A transformed vertex is drawn by the full triangle writer; only
          * the Fighting Force 64 2D overlay injects the raw-attribute kind,
          * and a G_VTX into its slot ends that. */
@@ -2062,7 +2064,7 @@ static int clip_polygon_guard(GSPState *st, GSPVertex *poly, int n)
  * coherent wrap branch, and emit the bias. Runs per emitted triangle,
  * after clipping, like the rasterizer-facing coordinate handling: the
  * RSP's clip lerp itself operates on the raw stored S10.5 values. */
-static void gsp_fold_st(GSPState *s, GSPVertex *v)
+static void gsp_fold_st(GSPState *s, BridgeVertex *v)
 {
     /* Fold the S10.5 texture coordinates of b and c onto a's wrap branch.
      * The 16-bit S10.5 texel coordinates are only meaningful modulo 65536:
@@ -2491,9 +2493,9 @@ int gsp_triangle(GSPState *s, int32_t *cmd, int i0, int i1, int i2,
         int i;
         for (i = 0; i + 2 < np; i++)
         {
-            BridgeVertex v0, v1, v2;
-            GSPVertex tv[3];
-            int nc;
+            BridgeVertex bv[3];
+            const GSPVertex *tv[3];
+            int nc, k;
             /* Two fan styles, selected per microcode (see the fan probe
              * in rdp_emit_hle.c): F3DEX2 2.05+/F3DZEX2 draws (0,1,n-1),
              * (1,2,n-1), (2,3,n-1) -- consecutive ascending pairs fanned
@@ -2506,9 +2508,9 @@ int gsp_triangle(GSPState *s, int32_t *cmd, int i0, int i1, int i2,
             {
                 /* an unclipped triangle is (a, b, c) under every fan
                  * style; poly was never filled */
-                tv[0] = *a;
-                tv[1] = *b;
-                tv[2] = *c;
+                tv[0] = a;
+                tv[1] = b;
+                tv[2] = c;
             }
             else if (s->clip_fan_first == 2 || s->clip_fan_first == 4)
             {
@@ -2516,27 +2518,27 @@ int gsp_triangle(GSPState *s, int32_t *cmd, int i0, int i1, int i2,
                  * walk ascending consecutive pairs, and the resident tri
                  * write takes the args reversed (list[i+2], list[i+1],
                  * pivot). */
-                tv[0] = poly[i + 2];
-                tv[1] = poly[i + 1];
-                tv[2] = poly[0];
+                tv[0] = &poly[i + 2];
+                tv[1] = &poly[i + 1];
+                tv[2] = &poly[0];
             }
             else if (s->clip_fan_first == 3)
             {
-                tv[0] = poly[0];
-                tv[1] = poly[i + 1];
-                tv[2] = poly[i + 2];
+                tv[0] = &poly[0];
+                tv[1] = &poly[i + 1];
+                tv[2] = &poly[i + 2];
             }
             else if (s->clip_fan_first)
             {
-                tv[0] = poly[0];
-                tv[1] = poly[np - 2 - i];
-                tv[2] = poly[np - 1 - i];
+                tv[0] = &poly[0];
+                tv[1] = &poly[np - 2 - i];
+                tv[2] = &poly[np - 1 - i];
             }
             else
             {
-                tv[0] = poly[i];
-                tv[1] = poly[i + 1];
-                tv[2] = poly[np - 1];
+                tv[0] = &poly[i];
+                tv[1] = &poly[i + 1];
+                tv[2] = &poly[np - 1];
             }
             /* The fan loop routes each sub-triangle through the full
              * triangle write, whose AND trivial-reject against the screen
@@ -2551,7 +2553,7 @@ int gsp_triangle(GSPState *s, int32_t *cmd, int i0, int i1, int i2,
              * inclusive vch bits, which would otherwise reject whole
              * sub-triangles along the clipped edge. */
             if (!s->rs_clip_model
-                && (tv[0].clip & tv[1].clip & tv[2].clip
+                && (tv[0]->clip & tv[1]->clip & tv[2]->clip
                 & (unsigned int)(s->clip_near_z
                                  ? ((GSP_CLIP_REJECT & ~GSP_CLIP_NW) | GSP_CLIP_NZ)
                                  : GSP_CLIP_REJECT)) != 0u)
@@ -2561,11 +2563,11 @@ int gsp_triangle(GSPState *s, int32_t *cmd, int i0, int i1, int i2,
                 /* The re-entered writer's winding cull, on the clipped
                  * sub-triangle's own screen positions (the same
                  * saturated cross as the pre-clip test). */
-                int32_t fax = tv[0].scr_x >> 14, fay = tv[0].scr_y >> 14;
-                int32_t fbx = tv[1].scr_x >> 14, fby = tv[1].scr_y >> 14;
+                int32_t fax = tv[0]->scr_x >> 14, fay = tv[0]->scr_y >> 14;
+                int32_t fbx = tv[1]->scr_x >> 14, fby = tv[1]->scr_y >> 14;
                 int32_t fd1x, fd1y, fd2x, fd2y, fcx, fcy;
                 int64_t facc;
-                fcx = tv[2].scr_x >> 14; fcy = tv[2].scr_y >> 14;
+                fcx = tv[2]->scr_x >> 14; fcy = tv[2]->scr_y >> 14;
 #define RS_FSAT(v) ((v) > 32767 ? 32767 : ((v) < -32768 ? -32768 : (v)))
                 fd1x = RS_FSAT(fbx - fax); fd1y = RS_FSAT(fby - fay);
                 fd2x = RS_FSAT(fcx - fax); fd2y = RS_FSAT(fcy - fay);
@@ -2575,38 +2577,24 @@ int gsp_triangle(GSPState *s, int32_t *cmd, int i0, int i1, int i2,
                     || (s->rs_fan_cull == 2 ? facc < 0 : facc > 0))
                     continue;
             }
-            gsp_fold_st(s, tv);
-            v0.cx = tv[0].cx; v0.cy = tv[0].cy; v0.cz = tv[0].cz; v0.cw = tv[0].cw;
-            v0.r = tv[0].r; v0.g = tv[0].g; v0.b = tv[0].b; v0.a = tv[0].a;
-            v0.s = tv[0].s; v0.t = tv[0].t;
-            v0.sv = tv[0].sv; v0.tv = tv[0].tv;
-            v0.scr_valid = 1;
-            v0.scr_x = tv[0].scr_x; v0.scr_y = tv[0].scr_y;
-            v0.scr_z = tv[0].scr_z; v0.w_raw = tv[0].w_raw;
-            v0.rsp_ok = tv[0].rsp_ok; v0.rsp_invw = tv[0].rsp_invw;
-            v0.rs_pw = tv[0].rs_pw;
-            v0.flat2d = tv[0].flat2d;
-            v1.cx = tv[1].cx; v1.cy = tv[1].cy; v1.cz = tv[1].cz; v1.cw = tv[1].cw;
-            v1.r = tv[1].r; v1.g = tv[1].g; v1.b = tv[1].b; v1.a = tv[1].a;
-            v1.s = tv[1].s; v1.t = tv[1].t;
-            v1.sv = tv[1].sv; v1.tv = tv[1].tv;
-            v1.scr_valid = 1;
-            v1.scr_x = tv[1].scr_x; v1.scr_y = tv[1].scr_y;
-            v1.scr_z = tv[1].scr_z; v1.w_raw = tv[1].w_raw;
-            v1.rsp_ok = tv[1].rsp_ok; v1.rsp_invw = tv[1].rsp_invw;
-            v1.rs_pw = tv[1].rs_pw;
-            v1.flat2d = tv[1].flat2d;
-            v2.cx = tv[2].cx; v2.cy = tv[2].cy; v2.cz = tv[2].cz; v2.cw = tv[2].cw;
-            v2.r = tv[2].r; v2.g = tv[2].g; v2.b = tv[2].b; v2.a = tv[2].a;
-            v2.s = tv[2].s; v2.t = tv[2].t;
-            v2.sv = tv[2].sv; v2.tv = tv[2].tv;
-            v2.scr_valid = 1;
-            v2.scr_x = tv[2].scr_x; v2.scr_y = tv[2].scr_y;
-            v2.scr_z = tv[2].scr_z; v2.w_raw = tv[2].w_raw;
-            v2.rsp_ok = tv[2].rsp_ok; v2.rsp_invw = tv[2].rsp_invw;
-            v2.rs_pw = tv[2].rs_pw;
-            v2.flat2d = tv[2].flat2d;
-            nc = bridge_add_triangle(cmd + total, &v0, &v1, &v2, &s->viewport,
+            for (k = 0; k < 3; k++)
+            {
+                const GSPVertex *g = tv[k];
+                BridgeVertex *w = &bv[k];
+                w->cx = g->cx; w->cy = g->cy; w->cz = g->cz; w->cw = g->cw;
+                w->r = g->r; w->g = g->g; w->b = g->b; w->a = g->a;
+                w->s = g->s; w->t = g->t;
+                w->sv = g->sv; w->tv = g->tv;
+                w->scr_valid = 1;
+                w->scr_x = g->scr_x; w->scr_y = g->scr_y;
+                w->scr_z = g->scr_z; w->w_raw = g->w_raw;
+                w->rsp_ok = g->rsp_ok; w->rsp_invw = g->rsp_invw;
+                w->rs_pw = g->rs_pw;
+                w->flat2d = g->flat2d;
+            }
+            gsp_fold_st(s, bv);
+            nc = bridge_add_triangle(cmd + total, &bv[0], &bv[1], &bv[2],
+                                     &s->viewport,
                                      textured, z_buffered,
                                      (s->geometry_mode & 0x00000004u) ? 1 : 0,
                                      (s->geometry_mode & 0x00200000u) ? 1 : 0,
