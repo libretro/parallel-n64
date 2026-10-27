@@ -118,10 +118,11 @@ public:
 	void scanout_memory_range(unsigned &offset, unsigned &length) const;
 	void set_shader_bank(const ShaderBank *bank);
 
-	/* ScanoutOptions::upscaler's scanout, recorded into @cmd, ending in
+	/* ScanoutOptions::upscaler's scanout, submitted on the RDP's queue
+	 * and waited for by the next graphics submission, ending in
 	 * SHADER_READ_ONLY_OPTIMAL; empty when the VI shows nothing. @repeat:
 	 * the frame before, shown again. */
-	Vulkan::ImageHandle upscaler_scanout(Vulkan::CommandBuffer &cmd, unsigned scale_factor,
+	Vulkan::ImageHandle upscaler_scanout(unsigned scale_factor,
 	                                     rdp_upscaler_framebuffer_t &fb, bool &repeat);
 
 	enum PerScanlineRegisterBits

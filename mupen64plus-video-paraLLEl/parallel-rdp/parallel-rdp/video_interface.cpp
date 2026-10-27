@@ -1217,7 +1217,7 @@ void VideoInterface::end_vi_register_per_scanline()
 	per_line_state.ended = true;
 }
 
-Vulkan::ImageHandle VideoInterface::upscaler_scanout(Vulkan::CommandBuffer &cmd, unsigned scaling_factor,
+Vulkan::ImageHandle VideoInterface::upscaler_scanout(unsigned scaling_factor,
                                                      rdp_upscaler_framebuffer_t &fb, bool &repeat)
 {
 	Registers regs;
@@ -1263,55 +1263,73 @@ Vulkan::ImageHandle VideoInterface::upscaler_scanout(Vulkan::CommandBuffer &cmd,
 	}
 	last_valid_frame_count = frame_count;
 
+	/* The frame is read where the RDP draws it, on the async compute
+	 * queue behind the drawing, and handed to the graphics queue by a
+	 * semaphore, as vram_fetch_stage: a graphics command buffer does
+	 * not see the RDP's queue */
+	auto async_cmd = device->request_command_buffer(Vulkan::CommandBuffer::Type::AsyncCompute);
+
 	if (scaling_factor > 1)
 	{
 		unsigned offset, length;
 		scanout_memory_range(offset, length);
-		renderer->submit_update_upscaled_domain_external(cmd, offset, length, size_log2);
-		cmd.barrier(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_WRITE_BIT,
-		            VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_READ_BIT);
+		renderer->submit_update_upscaled_domain_external(*async_cmd, offset, length, size_log2);
+		async_cmd->barrier(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_WRITE_BIT,
+		                   VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_READ_BIT);
 	}
 
 	info = Vulkan::ImageCreateInfo::render_target(width * scaling_factor, height * scaling_factor,
 	                                              VK_FORMAT_R8G8B8A8_UNORM);
 	info.usage = VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
 	info.initial_layout = VK_IMAGE_LAYOUT_UNDEFINED;
+	info.misc = Vulkan::IMAGE_MISC_CONCURRENT_QUEUE_GRAPHICS_BIT |
+	            Vulkan::IMAGE_MISC_CONCURRENT_QUEUE_ASYNC_COMPUTE_BIT;
 	image = device->create_image(info);
 	if (!image)
+	{
+		device->submit(async_cmd);
 		return {};
+	}
 	image->set_layout(Vulkan::Layout::General);
 
-	cmd.image_barrier(*image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL,
-	                  VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, 0,
-	                  VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_WRITE_BIT);
+	async_cmd->image_barrier(*image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL,
+	                         VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, 0,
+	                         VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_WRITE_BIT);
 
-	cmd.set_program(upscaler_color_program(*device));
-	cmd.set_storage_texture(0, 0, image->get_view());
+	async_cmd->set_program(upscaler_color_program(*device));
+	async_cmd->set_storage_texture(0, 0, image->get_view());
 	if (scaling_factor > 1)
-		cmd.set_storage_buffer(0, 1, *renderer->get_upscaled_rdram_buffer());
+		async_cmd->set_storage_buffer(0, 1, *renderer->get_upscaled_rdram_buffer());
 	else
-		cmd.set_storage_buffer(0, 1, *rdram, rdram_offset, rdram_size);
-	cmd.set_buffer_view(0, 2, *gamma_lut_view);
+		async_cmd->set_storage_buffer(0, 1, *rdram, rdram_offset, rdram_size);
+	async_cmd->set_buffer_view(0, 2, *gamma_lut_view);
 
 	push.fb_offset = regs.vi_offset >> size_log2;
 	push.fb_width = regs.vi_width;
 	push.res_x = int32_t(info.width);
 	push.res_y = int32_t(info.height);
 
-	cmd.set_specialization_constant_mask(0xf);
-	cmd.set_specialization_constant(0, uint32_t(rdram_size));
-	cmd.set_specialization_constant(1, uint32_t(size_log2 == 2));
-	cmd.set_specialization_constant(2, trailing_zeroes(scaling_factor));
-	cmd.set_specialization_constant(3, uint32_t((regs.status & VI_CONTROL_GAMMA_ENABLE_BIT) != 0));
-	cmd.push_constants(&push, 0, sizeof(push));
-	cmd.dispatch((info.width + 7) / 8, (info.height + 7) / 8, 1);
-	cmd.set_specialization_constant_mask(0);
+	async_cmd->set_specialization_constant_mask(0xf);
+	async_cmd->set_specialization_constant(0, uint32_t(rdram_size));
+	async_cmd->set_specialization_constant(1, uint32_t(size_log2 == 2));
+	async_cmd->set_specialization_constant(2, trailing_zeroes(scaling_factor));
+	async_cmd->set_specialization_constant(3, uint32_t((regs.status & VI_CONTROL_GAMMA_ENABLE_BIT) != 0));
+	async_cmd->push_constants(&push, 0, sizeof(push));
+	async_cmd->dispatch((info.width + 7) / 8, (info.height + 7) / 8, 1);
+	async_cmd->set_specialization_constant_mask(0);
 
-	cmd.image_barrier(*image, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-	                  VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_WRITE_BIT,
-	                  VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-	                  VK_ACCESS_SHADER_READ_BIT);
+	async_cmd->image_barrier(*image, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+	                         VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_WRITE_BIT,
+	                         VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0);
 	image->set_layout(Vulkan::Layout::Optimal);
+
+	{
+		Vulkan::Semaphore sem;
+		device->submit(async_cmd, nullptr, 1, &sem);
+		device->add_wait_semaphore(Vulkan::CommandBuffer::Type::Generic, std::move(sem),
+		                           VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+		                           true);
+	}
 
 	fb.origin = uint32_t(regs.vi_offset) & ~((1u << size_log2) - 1u);
 	fb.stride = uint32_t(regs.vi_width);

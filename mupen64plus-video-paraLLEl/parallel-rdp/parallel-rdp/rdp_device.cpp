@@ -1392,7 +1392,7 @@ void CommandProcessor::upscaler_scanout()
 	rdp_upscaler_configure(upscaler, true, scanout_opts.upscaler.jitter_phase, scanout_opts.upscaler.reset);
 
 	cmd = device.request_command_buffer();
-	scanout_result = vi.upscaler_scanout(*cmd, scale, fb, repeat);
+	scanout_result = vi.upscaler_scanout(scale, fb, repeat);
 	if (!scanout_result)
 		upscaler_frame = UpscalerFrame();
 	else if (repeat)
