@@ -243,6 +243,44 @@ static uint64_t upscaler_exact_key(const upscaler_prim_t *p)
    return h;
 }
 
+static bool upscaler_fits(const rdp_upscaler_range_t *range,
+      unsigned w, unsigned h, unsigned factor)
+{
+   w *= factor;
+   h *= factor;
+   return w >= range->min_width && w <= range->max_width
+      && h >= range->min_height && h <= range->max_height;
+}
+
+unsigned rdp_upscaler_factor(const rdp_upscaler_range_t *range,
+      unsigned w, unsigned h, unsigned current,
+      unsigned current_w, unsigned current_h)
+{
+   unsigned best = 0;
+   unsigned best_distance = 0;
+   unsigned factor;
+
+   if (current && !upscaler_fits(range, w, h, current))
+      current = 0;
+   if (current && w == current_w && h == current_h)
+      return current;
+   for (factor = 1; factor <= 8; factor *= 2)
+   {
+      unsigned width = w * factor;
+      unsigned distance;
+      if (!upscaler_fits(range, w, h, factor))
+         continue;
+      distance = width > range->want_width ? width - range->want_width
+                                           : range->want_width - width;
+      if (!best || distance <= best_distance)
+      {
+         best          = factor;
+         best_distance = distance;
+      }
+   }
+   return best > current ? best : current;
+}
+
 uint64_t rdp_upscaler_hash_init(void)
 {
    return U64(0xcbf29ce4, 0x84222325);

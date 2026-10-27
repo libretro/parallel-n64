@@ -636,8 +636,45 @@ static void test_history(void)
    rdp_upscaler_free(u);
 }
 
+/* The factor for a frame: nearest the wanted width within the range, kept
+ * while it fits, unless a frame of another size has a larger one nearer
+ * (a menu drawn wide must not leave the game at the factor the menu
+ * needed); a smaller one, though nearer, is not taken over a factor
+ * that still fits, and nor is a processor remade for it */
+static void test_factor(void)
+{
+   rdp_upscaler_range_t r;
+   r.want_width = 2880;
+   r.min_width  = 960;
+   r.min_height = 720;
+   r.max_width  = 2880;
+   r.max_height = 2160;
+   CHECK(rdp_upscaler_factor(&r, 320, 240, 0, 0, 0) == 8, "320x240: 8x, nearest 2880 wide");
+   CHECK(rdp_upscaler_factor(&r, 440, 325, 0, 0, 0) == 4, "440x325: 8x is too wide, 4x");
+   CHECK(rdp_upscaler_factor(&r, 440, 325, 4, 440, 325) == 4, "the same frames keep their factor");
+   CHECK(rdp_upscaler_factor(&r, 320, 237, 4, 440, 325) == 8, "frames of another size take the larger factor nearer");
+   CHECK(rdp_upscaler_factor(&r, 320, 237, 8, 320, 237) == 8, "and keep it");
+   CHECK(rdp_upscaler_factor(&r, 440, 325, 8, 320, 237) == 4, "the wide menu again: 8x no longer fits, 4x");
+   CHECK(rdp_upscaler_factor(&r, 100, 75, 0, 0, 0) == 0, "nothing fits: 0");
+   CHECK(rdp_upscaler_factor(&r, 100, 75, 8, 320, 240) == 0, "a kept factor that no longer fits is not kept");
+   r.want_width = 1600;
+   CHECK(rdp_upscaler_factor(&r, 320, 240, 0, 0, 0) == 4, "the nearer of 1280 and 2560 to 1600");
+   r.want_width = 1920;
+   CHECK(rdp_upscaler_factor(&r, 320, 240, 0, 0, 0) == 8, "the larger on a tie");
+   r.want_width = 640;
+   r.min_width  = 160;
+   r.min_height = 120;
+   r.max_width  = 1280;
+   r.max_height = 960;
+   CHECK(rdp_upscaler_factor(&r, 320, 240, 0, 0, 0) == 2, "320x240 for 640 wide: 2x is 640 exactly");
+   CHECK(rdp_upscaler_factor(&r, 640, 474, 2, 320, 240) == 2,
+         "frames twice the size: 1x would be nearer, 2x still fits and stands");
+   CHECK(rdp_upscaler_factor(&r, 640, 474, 2, 640, 474) == 2, "and stands");
+}
+
 int main(void)
 {
+   test_factor();
    test_inactive_and_offscreen();
    test_jitter();
    test_motion();

@@ -64,9 +64,12 @@ static struct retro_hw_upscaler_inputs upscaler_inputs;
 static vector<ImageHandle> upscaler_handles;
 static bool upscaler_on;
 static bool upscaler_reset_pending = true;
-/* The size of the framebuffer last shown, in native pixels */
+/* The size of the framebuffer last shown, in native pixels, and the
+ * size the factor was chosen for */
 static unsigned upscaler_native_width = 320;
 static unsigned upscaler_native_height = 240;
+static unsigned upscaler_picked_width;
+static unsigned upscaler_picked_height;
 
 /* The last of each state command, to give a command processor made anew
  * the state the RDP had: set_tile and set_tile_size per tile */
@@ -338,37 +341,25 @@ static void replay_state()
 				frontend->enqueue_command(2, tile_state_words[set][tile]);
 }
 
-static bool upscaler_fits(const struct retro_hw_upscaler_request *req, unsigned factor)
-{
-	unsigned w = upscaler_native_width * factor;
-	unsigned h = upscaler_native_height * factor;
-	return w >= req->min_render_width && w <= req->max_render_width
-		&& h >= req->min_render_height && h <= req->max_render_height;
-}
-
-/* The upscaling factor whose frames fit the request best: within its
- * range, closest to the size it wants (the larger on a tie); 0 when none
- * fits */
+/* The factor for the frames shown, rdp_upscaler_factor(): the one
+ * chosen stands while the frames stay the size it was chosen for */
 static unsigned upscaler_pick_factor(const struct retro_hw_upscaler_request *req)
 {
-	unsigned best = 0;
-	unsigned best_distance = 0;
-	unsigned factor;
-
-	for (factor = 1; factor <= 8; factor *= 2)
+	rdp_upscaler_range_t range;
+	unsigned pick;
+	range.want_width = req->render_width;
+	range.min_width = req->min_render_width;
+	range.min_height = req->min_render_height;
+	range.max_width = req->max_render_width;
+	range.max_height = req->max_render_height;
+	pick = rdp_upscaler_factor(&range, upscaler_native_width, upscaler_native_height,
+			upscaler_on ? processor_factor : 0, upscaler_picked_width, upscaler_picked_height);
+	if (pick)
 	{
-		unsigned w = upscaler_native_width * factor;
-		unsigned distance;
-		if (!upscaler_fits(req, factor))
-			continue;
-		distance = w > req->render_width ? w - req->render_width : req->render_width - w;
-		if (!best || distance <= best_distance)
-		{
-			best = factor;
-			best_distance = distance;
-		}
+		upscaler_picked_width = upscaler_native_width;
+		upscaler_picked_height = upscaler_native_height;
 	}
-	return best;
+	return pick;
 }
 
 /* Once a frame, before it runs: whether it is drawn for the upscaler and
@@ -410,12 +401,8 @@ static void upscaler_poll()
 
 	if (upscaler_iface && upscaler_iface->get_request(upscaler_iface->handle, &upscaler_request))
 	{
-		unsigned pick;
+		unsigned pick = upscaler_pick_factor(&upscaler_request);
 		requested = true;
-		if (upscaler_on && upscaler_fits(&upscaler_request, processor_factor))
-			pick = processor_factor;
-		else
-			pick = upscaler_pick_factor(&upscaler_request);
 		if (pick)
 		{
 			factor = pick;

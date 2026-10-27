@@ -154,6 +154,25 @@ void rdp_upscaler_resolve(rdp_upscaler_t *u,
       const rdp_upscaler_framebuffer_t *fb, unsigned scale,
       rdp_upscaler_geometry_t *out);
 
+/* What the frontend's upscaler asks of a frame, in render pixels: the
+ * width it wants, and the sizes it takes */
+typedef struct rdp_upscaler_range
+{
+   unsigned want_width;
+   unsigned min_width, min_height;
+   unsigned max_width, max_height;
+} rdp_upscaler_range_t;
+
+/* The factor (1, 2, 4, 8) to draw frames of @w x @h native pixels at for
+ * @range: the one of those fitting whose width is nearest the wanted
+ * one, the larger on a tie; 0 when none fits. @current, chosen for
+ * frames of @current_w x @current_h, stands while it fits, unless frames
+ * of another size have a larger factor nearer the wanted width: a game
+ * entered from a wide menu is not left at the factor the menu needed */
+unsigned rdp_upscaler_factor(const rdp_upscaler_range_t *range,
+      unsigned w, unsigned h, unsigned current,
+      unsigned current_w, unsigned current_h);
+
 /* Folds @word into the signature @h; start from rdp_upscaler_hash_init() */
 uint64_t rdp_upscaler_hash_init(void);
 uint64_t rdp_upscaler_hash(uint64_t h, uint32_t word);
