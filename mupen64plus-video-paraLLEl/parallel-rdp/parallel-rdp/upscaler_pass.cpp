@@ -48,10 +48,10 @@ static Vulkan::Program *upscaler_motion_program(Vulkan::Device &device)
 {
 	Vulkan::ResourceLayout vert;
 	Vulkan::ResourceLayout frag;
-	vert.input_mask = 3;
+	vert.input_mask = 0xff;
 	vert.push_constant_size = 8;
 	frag.output_mask = 3;
-	frag.push_constant_size = 12;
+	frag.push_constant_size = 28;
 	return device.request_program(UpscalerShaders::upscaler_motion_vert,
 	                              sizeof(UpscalerShaders::upscaler_motion_vert),
 	                              UpscalerShaders::upscaler_motion_frag,
@@ -127,6 +127,7 @@ void upscaler_motion_pass(Vulkan::Device &device, Vulkan::CommandBuffer &cmd,
 	{
 		void *vertices;
 		float inv_resolution[2];
+		float planes[3];
 
 		vertices = cmd.allocate_vertex_data(0, geometry.num_vertices * sizeof(rdp_upscaler_vertex_t),
 		                                    sizeof(rdp_upscaler_vertex_t));
@@ -137,9 +138,16 @@ void upscaler_motion_pass(Vulkan::Device &device, Vulkan::CommandBuffer &cmd,
 		cmd.set_program(upscaler_motion_program(device));
 		cmd.set_vertex_attrib(0, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(rdp_upscaler_vertex_t, x));
 		cmd.set_vertex_attrib(1, 0, VK_FORMAT_R32G32_SFLOAT, offsetof(rdp_upscaler_vertex_t, motion_x));
+		for (i = 0; i < 6; i++)
+			cmd.set_vertex_attrib(2 + i, 0, VK_FORMAT_R32G32B32_SFLOAT,
+			                      offsetof(rdp_upscaler_vertex_t, plane) + i * 3 * sizeof(float));
 		inv_resolution[0] = 1.0f / float(width);
 		inv_resolution[1] = 1.0f / float(height);
 		cmd.push_constants(inv_resolution, 0, sizeof(inv_resolution));
+		planes[0] = geometry.jitter_x + float(width) * 0.5f;
+		planes[1] = geometry.jitter_y + float(height) * 0.5f;
+		planes[2] = geometry.farthest;
+		cmd.push_constants(planes, 16, sizeof(planes));
 
 		for (i = 0; i < geometry.num_draws; i++)
 		{

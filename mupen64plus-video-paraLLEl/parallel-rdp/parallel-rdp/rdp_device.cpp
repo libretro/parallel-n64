@@ -1324,7 +1324,14 @@ void CommandProcessor::upscaler_triangle(unsigned op, TriangleSetup &setup, Attr
 	tri.attr_de[5] = attr.dtde;
 	tri.attr_de[6] = attr.dwde;
 	tri.attr_de[7] = attr.dzde;
-	tri.dzdx = attr.dzdx;
+	tri.attr_dx[0] = attr.drdx;
+	tri.attr_dx[1] = attr.dgdx;
+	tri.attr_dx[2] = attr.dbdx;
+	tri.attr_dx[3] = attr.dadx;
+	tri.attr_dx[4] = attr.dsdx;
+	tri.attr_dx[5] = attr.dtdx;
+	tri.attr_dx[6] = attr.dwdx;
+	tri.attr_dx[7] = attr.dzdx;
 
 	/* Fill and copy cycles leave the depth buffer alone */
 	if ((static_state.flags & (RASTERIZATION_FILL_BIT | RASTERIZATION_COPY_BIT)) == 0)
@@ -1341,6 +1348,12 @@ void CommandProcessor::upscaler_triangle(unsigned op, TriangleSetup &setup, Attr
 		flags |= RDP_UPSCALER_DEPTH_CONSTANT;
 	if (static_state.flags & (RASTERIZATION_AA_BIT | RASTERIZATION_FILL_BIT | RASTERIZATION_COPY_BIT))
 		flags |= RDP_UPSCALER_ANY_COVERAGE;
+	if (op & 2)
+		flags |= RDP_UPSCALER_TEXTURED;
+	if (op & 4)
+		flags |= RDP_UPSCALER_SHADED;
+	if (static_state.flags & RASTERIZATION_PERSPECTIVE_CORRECT_BIT)
+		flags |= RDP_UPSCALER_PERSPECTIVE;
 
 	tile = setup.tile & 7;
 	signature = rdp_upscaler_hash_init();

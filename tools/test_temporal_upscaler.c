@@ -333,6 +333,16 @@ static void test_depth_and_draws(void)
    CHECK(g.num_draws == 3, "the depth state splits the draws, alike ones run together");
    CHECK(g.num_draws == 3 && g.draws[0].flags == 0 && g.draws[0].count == 6,
          "a rectangle is two triangles without depth");
+   {
+      /* (with nothing in its planes: they are not left as the vertex
+       * memory was) */
+      static const float none[18];
+      unsigned i;
+      int clean = 1;
+      for (i = 0; i < 6; i++)
+         clean &= !memcmp(g.vertices[i].plane, none, sizeof(none));
+      CHECK(clean, "a rectangle's planes say nothing");
+   }
    CHECK(g.num_draws == 3 && g.draws[1].flags == (RDP_UPSCALER_DEPTH_TEST | RDP_UPSCALER_DEPTH_WRITE),
          "a z-buffered triangle tests and writes depth");
    CHECK(g.num_draws == 3 && g.draws[2].flags == RDP_UPSCALER_DEPTH_TEST && g.draws[2].count == 24,
@@ -418,6 +428,171 @@ static void test_sample_rule(void)
    }
 }
 
+/* What the motion pass's fragment shader makes of a vertex's planes at
+ * render pixel (x, y): where the pixel was, from it; 0 when the planes
+ * say nothing */
+static int plane_motion_at(const rdp_upscaler_vertex_t *v, double x, double y,
+      double *mx, double *my)
+{
+   const float *a0 = v->plane, *a1 = v->plane + 3, *aw = v->plane + 6;
+   const float *d0 = v->plane + 9, *d1 = v->plane + 12, *dw = v->plane + 15;
+   double px = x - 160.0 * SCALE, py = y - 120.0 * SCALE;
+   double w, u, vv, l0x, l0y, l1x, l1y, r0, r1, det;
+   if (!aw[0] && !aw[1] && !aw[2])
+      return 0;
+   w   = aw[0] * px + aw[1] * py + aw[2];
+   u   = (a0[0] * px + a0[1] * py + a0[2]) / w;
+   vv  = (a1[0] * px + a1[1] * py + a1[2]) / w;
+   l0x = a0[0] + d0[0] - u * (aw[0] + dw[0]);
+   l0y = a0[1] + d0[1] - u * (aw[1] + dw[1]);
+   l1x = a1[0] + d1[0] - vv * (aw[0] + dw[0]);
+   l1y = a1[1] + d1[1] - vv * (aw[1] + dw[1]);
+   r0  = (d0[0] - u * dw[0]) * px + (d0[1] - u * dw[1]) * py + (d0[2] - u * dw[2]);
+   r1  = (d1[0] - vv * dw[0]) * px + (d1[1] - vv * dw[1]) * py + (d1[2] - vv * dw[2]);
+   det = l0x * l1y - l0y * l1x;
+   *mx = (r1 * l0y - r0 * l1y) / det;
+   *my = (r0 * l1x - r1 * l0x) / det;
+   return 1;
+}
+
+/* The vertex of @g drawn over render pixel (x, y) */
+static const rdp_upscaler_vertex_t *vertex_at(const rdp_upscaler_geometry_t *g,
+      double x, double y)
+{
+   unsigned i;
+   const rdp_upscaler_vertex_t *found = NULL;
+   for (i = 0; i + 2 < g->num_vertices; i += 3)
+   {
+      const rdp_upscaler_vertex_t *a = &g->vertices[i];
+      const rdp_upscaler_vertex_t *b = &g->vertices[i + 1];
+      const rdp_upscaler_vertex_t *c = &g->vertices[i + 2];
+      double det = (b->x - a->x) * (c->y - a->y) - (c->x - a->x) * (b->y - a->y);
+      double l1, l2;
+      if (fabs(det) < 1e-9)
+         continue;
+      l1 = ((x - a->x) * (c->y - a->y) - (c->x - a->x) * (y - a->y)) / det;
+      l2 = ((b->x - a->x) * (y - a->y) - (x - a->x) * (b->y - a->y)) / det;
+      if (l1 < -1e-6 || l2 < -1e-6 || 1.0 - l1 - l2 < -1e-6)
+         continue;
+      found = a;
+   }
+   return found;
+}
+
+/* The attributes s, t, w (and r, g with @shade) as planes over the
+ * screen, anchored where the triangle's major edge starts: s = s0 + sx x
+ * + sy y, the texels of a surface the screen shows moved by (dx, dy) */
+static void set_planes(rdp_upscaler_triangle_t *t, double dx, double dy, int shade)
+{
+   static const double c[5][3] = {
+      { 2000.0, 50.0, 20.0 }, { 3000.0, -10.0, 60.0 }, { 8000.0, 1.0, 2.0 },
+      { 1500.0, 30.0, 5.0 }, { 2500.0, -5.0, 40.0 } };
+   /* where the attributes are anchored: x at the top of the major edge */
+   double line = floor(t->yh / 4.0);
+   double x0   = (t->xh + (line * 4.0 - (t->yh & ~3)) * t->dxhdy) / 32768.0;
+   double kh   = t->dxhdy * 4.0 / 32768.0;
+   unsigned i;
+   for (i = 0; i < 5; i++)
+   {
+      unsigned a = i < 3 ? 4 + i : i - 3;
+      double s0  = c[i][0] + c[i][1] * (x0 - dx) + c[i][2] * (line - dy);
+      if (!shade && i >= 3)
+         break;
+      t->attr[a]    = (int32_t)floor(s0 * 65536.0 + 0.5);
+      t->attr_dx[a] = (int32_t)floor(c[i][1] * 65536.0 + 0.5);
+      /* (per line down the major edge, which slants by kh a line) */
+      t->attr_de[a] = (int32_t)floor((c[i][2] + c[i][1] * kh) * 65536.0 + 0.5);
+   }
+}
+
+/* A triangle cut off far beyond the screen: its corner there jumps
+ * about as the RSP clips it, while what is on screen stands still or
+ * moves as its texture (or its shade) says, pixel by pixel */
+static void test_planes(void)
+{
+   static const double a[6] = { 100, 20, -500, 300, 300, 200 };
+   static const double b[6] = { 100, 20, -470, 300, 300, 200 };
+   static const double on[6] = { 100, 20, 40, 200, 300, 200 };
+   static const double on2[6] = { 104, 20, 44, 200, 304, 200 };
+   const unsigned tex = RDP_UPSCALER_TEXTURED | RDP_UPSCALER_PERSPECTIVE;
+   rdp_upscaler_t *u = rdp_upscaler_new();
+   rdp_upscaler_geometry_t g;
+   rdp_upscaler_triangle_t t;
+   const rdp_upscaler_vertex_t *v;
+   double mx, my, px, py;
+   int k;
+
+   rdp_upscaler_configure(u, true, 8, false);
+   scanout(u, FB, &g);
+
+   for (k = 0; k < 6; k++)
+   {
+      /* 0: the texture stood still; 1: it moved by (3, -2); 2: the
+       * shade did, untextured; 3: the texture tells nothing (t does
+       * not vary, and without perspective neither does t / w), the
+       * corners do; 4: the texture moved under a triangle drawn again
+       * exactly where it was; 5: all three corners on screen, the
+       * triangle moved by (4, 0) and its texture by (3, -2): the
+       * corners tell */
+      unsigned flags = k == 2 ? RDP_UPSCALER_SHADED : k == 3 ? RDP_UPSCALER_TEXTURED : tex;
+      double dx = k == 1 || k == 2 || k >= 4 ? 3.0 : 0.0, dy = dx ? -2.0 : 0.0;
+      const double *first = k == 5 ? on : a;
+      const double *second = k == 4 ? a : k == 5 ? on2 : b;
+      make_triangle(&t, first[0], first[1], first[2], first[3], first[4], first[5]);
+      set_planes(&t, 0.0, 0.0, k == 2);
+      if (k == 3)
+         t.attr_dx[5] = t.attr_de[5] = 0;
+      rdp_upscaler_set_color_image(u, FB, STRIDE, 1);
+      rdp_upscaler_triangle(u, &t, sig(11 + k), flags, 0, SCALE);
+      scanout(u, FB, &g);
+      make_triangle(&t, second[0], second[1], second[2], second[3], second[4], second[5]);
+      set_planes(&t, dx, dy, k == 2);
+      if (k == 3)
+         t.attr_dx[5] = t.attr_de[5] = 0;
+      rdp_upscaler_set_color_image(u, FB, STRIDE, 1);
+      rdp_upscaler_triangle(u, &t, sig(11 + k), flags, 0, SCALE);
+      scanout(u, FB, &g);
+
+      px = 120.0 * SCALE + g.jitter_x;
+      py = 150.0 * SCALE + g.jitter_y;
+      v  = vertex_at(&g, px, py);
+      CHECK(v != NULL, "the triangle covers the pixel");
+      if (!v)
+         continue;
+      switch (k)
+      {
+         case 0:
+            CHECK(!plane_motion_at(v, px, py, &mx, &my) && v->motion_x == 0.0f && v->motion_y == 0.0f,
+                  "a clipped triangle whose texture stood still stands still, however its far corner jumped");
+            break;
+         case 1:
+         case 2:
+            CHECK(plane_motion_at(v, px, py, &mx, &my)
+                  && near(mx, -dx * SCALE, 0.05) && near(my, -dy * SCALE, 0.05),
+                  k == 1 ? "the pixel points back to where its texel was"
+                         : "the pixel points back to where its shade was");
+            CHECK(plane_motion_at(v, px + 50.0, py - 30.0, &mx, &my)
+                  && near(mx, -dx * SCALE, 0.05) && near(my, -dy * SCALE, 0.05),
+                  "so does every other pixel of the triangle");
+            break;
+         case 3:
+            CHECK(!plane_motion_at(v, px, py, &mx, &my) && (v->motion_x != 0.0f || v->motion_y != 0.0f),
+                  "with nothing in the attributes to go by, the corners tell");
+            break;
+         case 4:
+            CHECK(!plane_motion_at(v, px, py, &mx, &my) && v->motion_x == 0.0f && v->motion_y == 0.0f,
+                  "drawn again where it was, it stands still whatever its attributes did");
+            break;
+         case 5:
+            CHECK(!plane_motion_at(v, px, py, &mx, &my)
+                  && near(v->motion_x, -4.0 * SCALE, 0.05) && near(v->motion_y, 0.0, 0.05),
+                  "with its corners on screen, they tell, whatever its texture did");
+            break;
+      }
+   }
+   rdp_upscaler_free(u);
+}
+
 static void test_history(void)
 {
    rdp_upscaler_t *u = rdp_upscaler_new();
@@ -469,6 +644,7 @@ int main(void)
    test_cut_short();
    test_depth_and_draws();
    test_sample_rule();
+   test_planes();
    test_translucent();
    test_history();
    if (s_failures)

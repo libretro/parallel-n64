@@ -55,6 +55,8 @@ typedef struct upscaler_prim
    /* in render pixels: how far the outline is grown to cover what the RDP
     * does, every pixel an edge touches */
    float grow_x[UPSCALER_OUTLINE], grow_y[UPSCALER_OUTLINE];
+   /* r g b a s t w over native pixels: c + cx x + cy y */
+   double plane[7][3];
 } upscaler_prim_t;
 
 /* Open addressing; a value of 0 is an empty slot */
@@ -100,6 +102,8 @@ struct rdp_upscaler
    unsigned num_prev;
    unsigned cap_prev;
    upscaler_table_t prev_table;
+   /* (signature, corners) -> its triangle */
+   upscaler_table_t prev_exact;
 
    rdp_upscaler_vertex_t *vertices;
    unsigned cap_vertices;
@@ -220,6 +224,25 @@ static uint64_t upscaler_prim_key(uint64_t signature, uint32_t ordinal)
    return signature ^ ((uint64_t)ordinal * U64(0xff51afd7, 0xed558ccd));
 }
 
+static uint64_t upscaler_corner_word(float v)
+{
+   uint32_t w;
+   memcpy(&w, &v, sizeof(w));
+   return w;
+}
+
+static uint64_t upscaler_exact_key(const upscaler_prim_t *p)
+{
+   unsigned i;
+   uint64_t h = p->signature;
+   for (i = 0; i < 3; i++)
+   {
+      h = (h ^ upscaler_corner_word(p->cx[i])) * U64(0x00000100, 0x000001b3);
+      h = (h ^ upscaler_corner_word(p->cy[i])) * U64(0x00000100, 0x000001b3);
+   }
+   return h;
+}
+
 uint64_t rdp_upscaler_hash_init(void)
 {
    return U64(0xcbf29ce4, 0x84222325);
@@ -278,6 +301,7 @@ void rdp_upscaler_free(rdp_upscaler_t *u)
    }
    free(u->prev);
    upscaler_table_free(&u->prev_table);
+   upscaler_table_free(&u->prev_exact);
    free(u->vertices);
    free(u->draws);
    free(u);
@@ -293,6 +317,7 @@ static void upscaler_forget(rdp_upscaler_t *u)
    }
    u->num_prev      = 0;
    upscaler_table_clear(&u->prev_table);
+   upscaler_table_clear(&u->prev_exact);
    u->shown_serial  = 0;
    u->jitter_index  = 0;
    u->drawing       = NULL;
@@ -536,8 +561,19 @@ void rdp_upscaler_triangle(rdp_upscaler_t *u, rdp_upscaler_triangle_t *tri,
          if (!(flags & RDP_UPSCALER_DEPTH_CONSTANT))
             z = (double)tri->attr[7]
                + (double)tri->attr_de[7] * (y[i] - line)
-               + (double)tri->dzdx * (x[i] - edge);
+               + (double)tri->attr_dx[7] * (x[i] - edge);
          p->z[i]  = upscaler_depth(z);
+      }
+
+      /* The attributes step down the major edge, then across the line */
+      for (i = 0; i < 7; i++)
+      {
+         double a  = (double)tri->attr[i];
+         double dx = (double)tri->attr_dx[i];
+         double dy = (double)tri->attr_de[i] - dx * dxh * 4.0 / 32768.0;
+         p->plane[i][1] = dx;
+         p->plane[i][2] = dy;
+         p->plane[i][0] = a - dx * xh / 32768.0 - dy * line;
       }
 #undef UPSCALER_H
 #undef UPSCALER_M
@@ -614,6 +650,23 @@ static const upscaler_prim_t *upscaler_match(const rdp_upscaler_t *u,
    const upscaler_prim_t *best = NULL;
    float best_cost             = 0.0f;
    const float far2            = UPSCALER_FARTHEST * UPSCALER_FARTHEST;
+   uint32_t exact              = upscaler_table_find(&u->prev_exact, upscaler_exact_key(p));
+
+   /* Where the same triangle was drawn the frame before, it stood still,
+    * however many drawn under its signature came and went before it */
+   if (exact)
+   {
+      const upscaler_prim_t *q = &u->prev[exact - 1];
+      if (     q->signature == p->signature
+            && !memcmp(q->cx, p->cx, sizeof(p->cx))
+            && !memcmp(q->cy, p->cy, sizeof(p->cy)))
+      {
+         perm[0] = 0;
+         perm[1] = 1;
+         perm[2] = 2;
+         return q;
+      }
+   }
 
    for (k = -UPSCALER_ORDINAL_WINDOW; k <= UPSCALER_ORDINAL_WINDOW; k++)
    {
@@ -691,6 +744,198 @@ static bool upscaler_affine(const upscaler_prim_t *p, const upscaler_prim_t *q,
    return true;
 }
 
+/* The attributes whose planes tell where a pixel of @p was in @q: two
+ * that vary independently over the primitive at (rx, ry), over w with
+ * perspective (its texels), or the shade. The planes are indexes into
+ * upscaler_prim_t.plane, the third 7 for a w of 1. */
+static bool upscaler_pick_planes(const upscaler_prim_t *p,
+      const upscaler_prim_t *q, double rx, double ry, unsigned *pick)
+{
+   /* (not alpha: a fade is not a move) */
+   static const unsigned char tries[5][3] = {
+      { 4, 5, 6 }, { 4, 5, 7 }, { 0, 1, 7 }, { 0, 2, 7 }, { 1, 2, 7 } };
+   static const double one[3] = { 1.0, 0.0, 0.0 };
+   unsigned t, k;
+   for (t = 0; t < 5; t++)
+   {
+      if (t < 2 && (!(p->flags & RDP_UPSCALER_TEXTURED)
+               || !(p->flags & RDP_UPSCALER_PERSPECTIVE) != (t == 1)))
+         continue;
+      if (t >= 2 && !(p->flags & RDP_UPSCALER_SHADED))
+         break;
+      for (k = 0; k < 2; k++)
+      {
+         const upscaler_prim_t *r = k ? q : p;
+         const double *a = r->plane[tries[t][0]];
+         const double *b = r->plane[tries[t][1]];
+         const double *w = tries[t][2] == 7 ? one : r->plane[6];
+         double wv  = w[0] + w[1] * rx + w[2] * ry;
+         double av  = a[0] + a[1] * rx + a[2] * ry;
+         double bv  = b[0] + b[1] * rx + b[2] * ry;
+         double ux, uy, vx, vy, det, nu, nv;
+         if (wv <= 0.0)
+            break;
+         /* the gradients of a / w and b / w */
+         ux  = (a[1] * wv - av * w[1]) / (wv * wv);
+         uy  = (a[2] * wv - av * w[2]) / (wv * wv);
+         vx  = (b[1] * wv - bv * w[1]) / (wv * wv);
+         vy  = (b[2] * wv - bv * w[2]) / (wv * wv);
+         det = ux * vy - uy * vx;
+         nu  = ux * ux + uy * uy;
+         nv  = vx * vx + vy * vy;
+         /* A unit of the attribute, the planes' precision, must be
+          * under a hundredth of a pixel along either, and the two
+          * must cross at an angle */
+         if (     nu * wv * wv < 1e4 || nv * wv * wv < 1e4
+               || det * det < 0.0025 * nu * nv)
+            break;
+      }
+      if (k == 2)
+      {
+         pick[0] = tries[t][0];
+         pick[1] = tries[t][1];
+         pick[2] = tries[t][2];
+         return true;
+      }
+   }
+   return false;
+}
+
+/* Where @p is looked at: the middle of its triangle's part on screen */
+static void upscaler_reference(const upscaler_prim_t *p,
+      double ox, double oy, double w, double h, double *rx, double *ry)
+{
+   /* the triangle cut to the screen, an edge at a time */
+   double poly[2][9][2];
+   unsigned n = 3, i, k, side = 0;
+   double cx = 0.0, cy = 0.0;
+   for (i = 0; i < 3; i++)
+   {
+      poly[0][i][0] = p->cx[i];
+      poly[0][i][1] = p->cy[i];
+   }
+   for (k = 0; k < 4 && n; k++)
+   {
+      unsigned axis = k >> 1;
+      double bound  = (k & 1) ? (axis ? oy + h : ox + w) : (axis ? oy : ox);
+      double sign   = (k & 1) ? -1.0 : 1.0;
+      unsigned m    = 0;
+      for (i = 0; i < n; i++)
+      {
+         const double *a = poly[side][i];
+         const double *b = poly[side][(i + 1) % n];
+         double da = sign * (a[axis] - bound);
+         double db = sign * (b[axis] - bound);
+         if (da >= 0.0)
+         {
+            poly[side ^ 1][m][0] = a[0];
+            poly[side ^ 1][m][1] = a[1];
+            m++;
+         }
+         if ((da >= 0.0) != (db >= 0.0))
+         {
+            double t = da / (da - db);
+            poly[side ^ 1][m][0] = a[0] + (b[0] - a[0]) * t;
+            poly[side ^ 1][m][1] = a[1] + (b[1] - a[1]) * t;
+            m++;
+         }
+      }
+      n     = m;
+      side ^= 1;
+   }
+   if (!n)
+   {
+      /* (none of it on screen: its middle, kept on screen) */
+      for (i = 0; i < 3; i++)
+      {
+         cx += p->cx[i] / 3.0;
+         cy += p->cy[i] / 3.0;
+      }
+      if (cx < ox) cx = ox;
+      if (cy < oy) cy = oy;
+      if (cx > ox + w) cx = ox + w;
+      if (cy > oy + h) cy = oy + h;
+   }
+   else
+      for (i = 0; i < n; i++)
+      {
+         cx += poly[side][i][0] / n;
+         cy += poly[side][i][1] / n;
+      }
+   *rx = cx;
+   *ry = cy;
+}
+
+/* Where the pixel of @p at (x, y) was in @q by the planes @pick, in
+ * native pixels from it: what the pass's shader works out */
+static bool upscaler_plane_motion(const upscaler_prim_t *p,
+      const upscaler_prim_t *q, const unsigned *pick, double x, double y,
+      double *d)
+{
+   static const double one[3] = { 1.0, 0.0, 0.0 };
+   const double *a[3], *b[3];
+   double w, u, v, l0x, l0y, l1x, l1y, r0, r1, det;
+   unsigned i;
+   for (i = 0; i < 3; i++)
+   {
+      a[i] = pick[i] == 7 ? one : p->plane[pick[i]];
+      b[i] = pick[i] == 7 ? one : q->plane[pick[i]];
+   }
+   w = a[2][0] + a[2][1] * x + a[2][2] * y;
+   if (w == 0.0)
+      return false;
+   u   = (a[0][0] + a[0][1] * x + a[0][2] * y) / w;
+   v   = (a[1][0] + a[1][1] * x + a[1][2] * y) / w;
+   l0x = b[0][1] - u * b[2][1];
+   l0y = b[0][2] - u * b[2][2];
+   l1x = b[1][1] - v * b[2][1];
+   l1y = b[1][2] - v * b[2][2];
+   r0  = (b[0][0] - u * b[2][0]) + l0x * x + l0y * y;
+   r1  = (b[1][0] - v * b[2][0]) + l1x * x + l1y * y;
+   det = l0x * l1y - l0y * l1x;
+   if (det == 0.0)
+      return false;
+   d[0] = (r1 * l0y - r0 * l1y) / det;
+   d[1] = (r0 * l1x - r1 * l0x) / det;
+   return fabs(d[0]) <= UPSCALER_FARTHEST && fabs(d[1]) <= UPSCALER_FARTHEST;
+}
+
+/* The planes @pick of @p, and how far @q's differ from them, over the
+ * pass's pixels from their centre; all scaled alike, to be of order one */
+static void upscaler_planes_out(const upscaler_prim_t *p,
+      const upscaler_prim_t *q, const unsigned *pick,
+      double ax, double ay, double s, float *out)
+{
+   static const double one[3] = { 1.0, 0.0, 0.0 };
+   unsigned i, k;
+   double m = 0.0;
+   double v[2][3][3];
+   for (k = 0; k < 2; k++)
+      for (i = 0; i < 3; i++)
+      {
+         const double *c = pick[i] == 7 ? one : (k ? q : p)->plane[pick[i]];
+         v[k][i][0] = c[0] + c[1] * ax + c[2] * ay;
+         v[k][i][1] = c[1] / s;
+         v[k][i][2] = c[2] / s;
+      }
+   for (i = 0; i < 3; i++)
+      for (k = 0; k < 3; k++)
+      {
+         if (fabs(v[0][i][k]) > m) m = fabs(v[0][i][k]);
+         v[1][i][k] -= v[0][i][k];
+      }
+   if (m == 0.0)
+      m = 1.0;
+   for (k = 0; k < 2; k++)
+      for (i = 0; i < 3; i++)
+      {
+         /* (as the shader dots them with (x, y, 1)) */
+         out[k * 9 + i * 3 + 0] = (float)(v[k][i][1] / m);
+         out[k * 9 + i * 3 + 1] = (float)(v[k][i][2] / m);
+         out[k * 9 + i * 3 + 2] = (float)(v[k][i][0] / m);
+      }
+}
+
 static void upscaler_build(rdp_upscaler_t *u, const upscaler_record_t *rec,
       const rdp_upscaler_framebuffer_t *fb, unsigned scale, bool still,
       rdp_upscaler_geometry_t *out)
@@ -728,6 +973,7 @@ static void upscaler_build(rdp_upscaler_t *u, const upscaler_record_t *rec,
             v[j].z        = 0.0f;
             v[j].motion_x = 0.0f;
             v[j].motion_y = 0.0f;
+            memset(v[j].plane, 0, sizeof(v[j].plane));
          }
          count = 6;
          flags = 0;
@@ -740,7 +986,54 @@ static void upscaler_build(rdp_upscaler_t *u, const upscaler_record_t *rec,
          float affine[6] = { 1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f };
          unsigned perm[3];
          const upscaler_prim_t *q = still ? NULL : upscaler_match(u, p, perm);
-         bool moved = q && upscaler_affine(p, q, perm, affine);
+         /* (drawn again where it was, it stood still, whatever its
+          * attributes did: the RSP's rounding of them drifts) */
+         bool moved = q && (memcmp(q->cx, p->cx, sizeof(p->cx)) || memcmp(q->cy, p->cy, sizeof(p->cy)))
+            && upscaler_affine(p, q, perm, affine);
+         unsigned pick[3];
+         bool planes = false;
+         float pl[18];
+         double rx = 0.0, ry = 0.0;
+         if (moved)
+         {
+            double d[2];
+            upscaler_reference(p, ox, oy, fb->width, fb->height, &rx, &ry);
+            /* With a corner off screen, where the RSP cut the triangle
+             * and may have cut it elsewhere, the attributes say better
+             * where its pixels were; on screen, the corners are the
+             * vertices, which a change of texture or lighting does not
+             * move */
+            for (j = 0; j < 3; j++)
+               if (     p->cx[j] < ox || p->cx[j] > ox + fb->width
+                     || p->cy[j] < oy || p->cy[j] > oy + fb->height)
+                  break;
+            if (j < 3)
+            {
+               planes = upscaler_pick_planes(p, q, rx, ry, pick);
+               if (planes)
+                  planes = upscaler_plane_motion(p, q, pick, rx, ry, d);
+               else
+               {
+                  d[0] = affine[0] * rx + affine[1] * ry + affine[2] - rx;
+                  d[1] = affine[3] * rx + affine[4] * ry + affine[5] - ry;
+               }
+               /* (under a quarter of a pixel, the RSP's rounding as
+                * much as a move: it stands still) */
+               if (fabs(d[0]) < 0.25 && fabs(d[1]) < 0.25)
+               {
+                  moved  = false;
+                  planes = false;
+               }
+            }
+         }
+         if (planes)
+         {
+            double ax = ox + fb->width / 2.0;
+            double ay = oy + fb->height / 2.0;
+            upscaler_planes_out(p, q, pick, ax, ay, s, pl);
+         }
+         else
+            memset(pl, 0, sizeof(pl));
          for (j = 0; j < 12; j++)
          {
             unsigned k    = fan[j];
@@ -751,6 +1044,7 @@ static void upscaler_build(rdp_upscaler_t *u, const upscaler_record_t *rec,
             v[j].z        = p->z[k];
             v[j].motion_x = 0.0f;
             v[j].motion_y = 0.0f;
+            memcpy(v[j].plane, pl, sizeof(pl));
             if (moved)
             {
                v[j].motion_x = (affine[0] * x + affine[1] * y + affine[2] - x) * s;
@@ -772,6 +1066,7 @@ static void upscaler_build(rdp_upscaler_t *u, const upscaler_record_t *rec,
       num_vertices += count;
    }
 
+   out->farthest     = UPSCALER_FARTHEST * s;
    out->vertices     = u->vertices;
    out->draws        = u->draws;
    out->num_vertices = num_vertices;
@@ -783,6 +1078,7 @@ static void upscaler_keep(rdp_upscaler_t *u, const upscaler_record_t *rec)
    unsigned i;
    u->num_prev = 0;
    upscaler_table_clear(&u->prev_table);
+   upscaler_table_clear(&u->prev_exact);
    if (!upscaler_grow((void**)&u->prev, &u->cap_prev,
             rec->num_prims, sizeof(*u->prev)))
       return;
@@ -797,6 +1093,10 @@ static void upscaler_keep(rdp_upscaler_t *u, const upscaler_record_t *rec)
                upscaler_prim_key(u->prev[i].signature, u->prev[i].ordinal))))
          break;
       *slot = i + 1;
+      if (!(slot = upscaler_table_get(&u->prev_exact, upscaler_exact_key(&u->prev[i]))))
+         break;
+      if (!*slot)
+         *slot = i + 1;
    }
    u->num_prev = rec->num_prims;
 }

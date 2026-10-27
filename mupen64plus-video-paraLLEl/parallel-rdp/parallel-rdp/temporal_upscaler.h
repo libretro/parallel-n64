@@ -30,8 +30,11 @@
  * into a framebuffer the VI shows is kept, unjittered, and matched with
  * the triangle of the frame shown before that was drawn under the same
  * state with the same ordinal among those; the motion vector pass draws
- * the difference. A triangle without a match, or one that went further
- * than anything moves in a frame, stands still, as do rectangles.
+ * the difference: where its corners went, or, for a triangle the RSP
+ * cut at the edge of the screen, whose corners are not its vertices,
+ * where its texture (or shade) says each pixel was. A triangle without
+ * a match, or one that went further than anything moves in a frame,
+ * stands still, as do rectangles.
  *
  * Runs on the thread that processes RDP commands. */
 
@@ -45,7 +48,7 @@ typedef struct rdp_upscaler rdp_upscaler_t;
 
 /* A triangle as triangle setup decodes it: x 16.15 (32768 a pixel),
  * x slopes per quarter line, y in quarter lines; attributes at the
- * major edge and their change per line down it, z among them. */
+ * major edge, their change per line down it and per pixel across. */
 typedef struct rdp_upscaler_triangle
 {
    int32_t xh, xm, xl;
@@ -53,7 +56,7 @@ typedef struct rdp_upscaler_triangle
    int32_t yh, ym, yl;
    int32_t attr[8];    /* r g b a s t w z */
    int32_t attr_de[8];
-   int32_t dzdx;
+   int32_t attr_dx[8];
 } rdp_upscaler_triangle_t;
 
 #define RDP_UPSCALER_DEPTH_TEST     (1 << 0)
@@ -68,6 +71,11 @@ typedef struct rdp_upscaler_triangle
  * copy cycles); without it, on the pixels whose top left corner is
  * inside */
 #define RDP_UPSCALER_ANY_COVERAGE   (1 << 5)
+/* Textured: s and t, over w with perspective, address its texels */
+#define RDP_UPSCALER_TEXTURED       (1 << 6)
+#define RDP_UPSCALER_PERSPECTIVE    (1 << 7)
+/* Shaded: its colour varies over it */
+#define RDP_UPSCALER_SHADED         (1 << 8)
 
 /* The framebuffer the VI showed */
 typedef struct rdp_upscaler_framebuffer
@@ -84,7 +92,14 @@ typedef struct rdp_upscaler_framebuffer
 typedef struct rdp_upscaler_vertex
 {
    float x, y, z;
+   /* how far it moved, in render pixels, from where it is to where it
+    * was, where the planes do not say */
    float motion_x, motion_y;
+   /* Two attributes and w of its primitive as planes (cx, cy, c) over
+    * the pass's pixels from their centre, then how far the planes of
+    * the primitive it was differ: a pixel was where those give its
+    * attributes over w. All zero when its primitive has none to go by. */
+   float plane[18];
 } rdp_upscaler_vertex_t;
 
 /* A run of triangles under one depth state (RDP_UPSCALER_DEPTH_*) and
@@ -101,6 +116,8 @@ typedef struct rdp_upscaler_geometry
 {
    const rdp_upscaler_vertex_t *vertices;
    const rdp_upscaler_draw_t *draws;
+   /* farther than this, in render pixels, nothing is the same thing */
+   float farthest;
    unsigned num_vertices;
    unsigned num_draws;
    /* Render pixels the frame's triangles were moved by, x right, y down */
