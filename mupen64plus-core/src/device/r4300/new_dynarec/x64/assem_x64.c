@@ -76,46 +76,51 @@ static void set_jump_target(uintptr_t addr,uintptr_t target)
     
   if(*ptr==0x0f)
   {
-    assert(ptr[1]>=0x80&&ptr[1]<=0x8f); // conditional jmp
-    u_int *ptr2=(u_int *)(ptr+2);
-    *ptr2=(intptr_t)target-(intptr_t)ptr2-4;
+    assert(ptr[1]>=0x80&&ptr[1]<=0x8f); /* conditional jmp */
+    CODE_PUT32(ptr+2,(intptr_t)target-(intptr_t)(ptr+2)-4);
   }
   else if(*ptr==0xe8||*ptr==0xe9) {
-    u_int *ptr2=(u_int *)(ptr+1);
-    *ptr2=(intptr_t)target-(intptr_t)ptr2-4;
+    CODE_PUT32(ptr+1,(intptr_t)target-(intptr_t)(ptr+1)-4);
   }
   else
   {
-    //mini_ht
+    /* mini_ht */
     assert(*(ptr+1)==0xbf); /* mov immediate to r15 (store address) */
-    uintptr_t *ptr2=(uintptr_t *)(ptr+2);
-    *ptr2=target;
+    CODE_PUT64(ptr+2,target);
   }
 }
 
 static void *add_pointer(void *src, void* addr)
 {
-  int *ptr=(int*)src;
-  int *ptr2=(int*)((uintptr_t)ptr+(uintptr_t)*ptr+4);
-  u_char *ptr3=(u_char*)ptr2;
-  assert((*(ptr3+1)&0xFF)==0x8d); //lea
-  u_int offset=(uintptr_t)addr-(uintptr_t)ptr-4;
-  *ptr=offset;
+  u_char *ptr=(u_char*)src;
+  int32_t rel;
+  u_char *ptr2;
+  CODE_GET32(rel,ptr);
+  ptr2=ptr+rel+4;
+  assert(ptr2[1]==0x8d); /* lea */
+  CODE_PUT32(ptr,(uintptr_t)addr-(uintptr_t)ptr-4);
   return (void*)ptr2;
 }
 
 static void *kill_pointer(void *stub)
 {
-  intptr_t ptr=(intptr_t)stub+3;
-  uintptr_t i_ptr=(intptr_t)ptr+*((int *)ptr)+4; // rip relative
-  *((int *)i_ptr)=(intptr_t)stub-(intptr_t)i_ptr-4;
+  u_char *ptr=(u_char*)stub+3;
+  int32_t rel;
+  u_char *i_ptr;
+  CODE_GET32(rel,ptr);
+  i_ptr=ptr+rel+4; /* rip relative */
+  CODE_PUT32(i_ptr,(intptr_t)stub-(intptr_t)i_ptr-4);
   return (void *)i_ptr;
 }
 static intptr_t get_pointer(void *stub)
 {
-  intptr_t ptr=(intptr_t)stub+3;
-  uintptr_t i_ptr=(intptr_t)ptr+*((int *)ptr)+4; // rip relative
-  return *((int *)i_ptr)+(intptr_t)i_ptr+4;
+  u_char *ptr=(u_char*)stub+3;
+  int32_t rel;
+  u_char *i_ptr;
+  CODE_GET32(rel,ptr);
+  i_ptr=ptr+rel+4; /* rip relative */
+  CODE_GET32(rel,i_ptr);
+  return rel+(intptr_t)i_ptr+4;
 }
 
 /* Register allocation */
@@ -747,12 +752,12 @@ static void output_rex(u_char w,u_char r,u_char x,u_char b)
 }
 static void output_w32(u_int word)
 {
-  *((u_int *)out)=word;
+  CODE_PUT32(out,word);
   out+=4;
 }
 static void output_w64(uint64_t dword)
 {
-  *((uint64_t *)out)=dword;
+  CODE_PUT64(out,dword);
   out+=8;
 }
 

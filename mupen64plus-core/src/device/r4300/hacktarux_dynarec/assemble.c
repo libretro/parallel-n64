@@ -125,12 +125,12 @@ void passe2(struct r4300_core* r4300, struct precomp_instr *dest, int start, int
         /* write either a 32-bit IP-relative offset or a 64-bit absolute address */
         if (r4300->recomp.jumps_table[i].absolute64)
         {
-            *((unsigned long long *) (block->code + jmp_offset_loc)) = (unsigned long long) addr_dest;
+            CODE_PUT64(block->code + jmp_offset_loc, (uintptr_t) addr_dest);
         }
         else
         {
             long jump_rel_offset = (long) (addr_dest - (block->code + jmp_offset_loc + 4));
-            *((int *) (block->code + jmp_offset_loc)) = (int) jump_rel_offset;
+            CODE_PUT32(block->code + jmp_offset_loc, (int) jump_rel_offset);
             if (jump_rel_offset >= 0x7fffffffLL || jump_rel_offset < -0x80000000LL)
             {
                 DebugMessage(M64MSG_ERROR, "assembler pass2 error: offset too big for relative jump from %p to %p",
@@ -154,7 +154,7 @@ void passe2(struct r4300_core* r4300, struct precomp_instr *dest, int start, int
                     r4300->recomp.riprel_table[i].global_dst, rel_offset_ptr);
             OSAL_BREAKPOINT_INTERRUPT;
         }
-        *((int *) rel_offset_ptr) = (int) rip_rel_offset;
+        CODE_PUT32(rel_offset_ptr, (int) rip_rel_offset);
     }
 
 }

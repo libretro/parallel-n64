@@ -591,12 +591,12 @@ static void build_wrapper(struct r4300_core* r4300, struct precomp_instr *instr,
 
     *pCode++ = 0x48;
     *pCode++ = 0xA1;
-    *((unsigned long long *) pCode) = (unsigned long long) (&block->code);
+    CODE_PUT64(pCode, (uintptr_t) (&block->code));
     pCode += 8;
 
     *pCode++ = 0x48;
     *pCode++ = 0x05;
-    *((unsigned int *) pCode) = (unsigned int) instr->local_addr;
+    CODE_PUT32(pCode, (unsigned int) instr->local_addr);
     pCode += 4;
 
     *pCode++ = 0x48;
@@ -606,7 +606,7 @@ static void build_wrapper(struct r4300_core* r4300, struct precomp_instr *instr,
 
     *pCode++ = 0x48;
     *pCode++ = 0xB8;
-    *((unsigned long long *) pCode) = (unsigned long long) &r4300_regs(r4300)[0];
+    CODE_PUT64(pCode, (uintptr_t) &r4300_regs(r4300)[0]);
     pCode += 8;
 
     for (i=7; i>=0; i--)
@@ -618,7 +618,7 @@ static void build_wrapper(struct r4300_core* r4300, struct precomp_instr *instr,
             *pCode++ = 0x8B;
             *pCode++ = 0x80 | (i << 3);
             riprel = (long long) ((unsigned char *) instr->reg_cache_infos.needed_registers[i] - (unsigned char *) &r4300_regs(r4300)[0]);
-            *((int *) pCode) = (int) riprel;
+            CODE_PUT32(pCode, (int) riprel);
             pCode += 4;
             if (riprel >= 0x7fffffffLL || riprel < -0x80000000LL)
             {

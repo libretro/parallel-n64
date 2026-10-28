@@ -118,6 +118,13 @@ void recomp_dbg_cleanup(void);
 void recomp_dbg_block(int addr);
 #endif
 
+/* x86 instructions are byte-packed, so the displacements and immediates
+   read or patched in generated code sit at any alignment: go through
+   memcpy, which compiles to a plain mov on the hosts that allow it. */
+#define CODE_GET32(dst, p) memcpy(&(dst), (const void*)(p), 4)
+#define CODE_PUT32(p, v) do { uint32_t code_put32_ = (uint32_t)(v); memcpy((void*)(p), &code_put32_, 4); } while (0)
+#define CODE_PUT64(p, v) do { uint64_t code_put64_ = (uint64_t)(v); memcpy((void*)(p), &code_put64_, 8); } while (0)
+
 #if NEW_DYNAREC == NEW_DYNAREC_X86
 #include "x86/assem_x86.h"
 #elif  NEW_DYNAREC == NEW_DYNAREC_X64

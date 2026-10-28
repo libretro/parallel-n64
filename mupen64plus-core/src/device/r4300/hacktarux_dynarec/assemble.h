@@ -25,6 +25,7 @@
 
 #include <stdint.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/types.h>
 
 #include "api/m64p_types.h"
@@ -32,6 +33,12 @@
 #include "main/main.h"
 #include "osal/preproc.h"
 #include "device/r4300/recomp.h"
+
+/* x86 instructions are byte-packed, so immediates and displacements in
+   generated code sit at any alignment: store them through memcpy, which
+   compiles to a plain mov here. */
+#define CODE_PUT32(p, v) do { uint32_t code_put32_ = (uint32_t)(v); memcpy((void*)(p), &code_put32_, 4); } while (0)
+#define CODE_PUT64(p, v) do { uint64_t code_put64_ = (uint64_t)(v); memcpy((void*)(p), &code_put64_, 8); } while (0)
 
 #define RAX 0
 #define RCX 1
@@ -99,7 +106,7 @@ static osal_inline void put32(unsigned int dword)
         *r4300->recomp.inst_pointer = realloc_exec(*r4300->recomp.inst_pointer, r4300->recomp.max_code_length, r4300->recomp.max_code_length+8192);
         r4300->recomp.max_code_length += 8192;
     }
-    *((unsigned int *) (*r4300->recomp.inst_pointer + r4300->recomp.code_length)) = dword;
+    CODE_PUT32(*r4300->recomp.inst_pointer + r4300->recomp.code_length, dword);
     r4300->recomp.code_length += 4;
 }
 
@@ -112,7 +119,7 @@ static osal_inline void put64(unsigned long long qword)
         *r4300->recomp.inst_pointer = realloc_exec(*r4300->recomp.inst_pointer, r4300->recomp.max_code_length, r4300->recomp.max_code_length+8192);
         r4300->recomp.max_code_length += 8192;
     }
-    *((unsigned long long *) (*r4300->recomp.inst_pointer + r4300->recomp.code_length)) = qword;
+    CODE_PUT64(*r4300->recomp.inst_pointer + r4300->recomp.code_length, qword);
     r4300->recomp.code_length += 8;
 }
 
