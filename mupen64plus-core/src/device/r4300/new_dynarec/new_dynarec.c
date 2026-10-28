@@ -10922,10 +10922,6 @@ int new_recompile_block(int addr)
           }
         }
       }
-      // Don't need stuff which is overwritten
-      //FIXME
-      if(regs[i].regmap[hr]!=regmap_pre[i][hr]) nr&=~(1LL<<hr);
-      if(regs[i].regmap[hr]<0) nr&=~(1LL<<hr);
       // Merge in delay slot
       for(hr=0;hr<HOST_REGS;hr++)
       {
