@@ -1471,11 +1471,24 @@ test_temporal_upscaler$(EXE_EXT): tools/test_temporal_upscaler.c \
 	$(CC) $(CHECK_CFLAGS) $(CHECK_SANITIZE) -I$(VIDEODIR_PARALLEL)/parallel-rdp/parallel-rdp \
 		-I$(LIBRETRO_COMM_DIR)/include $^ -o $@ $(CHECK_LDFLAGS) $(CHECK_SANITIZE) -lm
 
+# The list module and the libretro-common file and CRC code it reads
+# and writes the list with.
+PIPELINE_RECORDS_TEST_SRC := $(VIDEODIR_PARALLEL)/parallel-rdp/vulkan/pipeline_record_list.c \
+	$(LIBRETRO_COMM_DIR)/streams/file_stream.c $(LIBRETRO_COMM_DIR)/vfs/vfs_implementation.c \
+	$(LIBRETRO_COMM_DIR)/encodings/encoding_crc32.c $(LIBRETRO_COMM_DIR)/string/stdstring.c \
+	$(LIBRETRO_COMM_DIR)/compat/compat_strl.c $(LIBRETRO_COMM_DIR)/file/file_path.c \
+	$(LIBRETRO_COMM_DIR)/file/file_path_io.c $(LIBRETRO_COMM_DIR)/time/rtime.c \
+	$(LIBRETRO_COMM_DIR)/encodings/encoding_utf.c $(LIBRETRO_COMM_DIR)/compat/fopen_utf8.c \
+	$(LIBRETRO_COMM_DIR)/features/features_cpu.c
+test_pipeline_records$(EXE_EXT): tools/test_pipeline_records.c $(PIPELINE_RECORDS_TEST_SRC)
+	$(CC) $(CHECK_CFLAGS) $(CHECK_SANITIZE) -I$(VIDEODIR_PARALLEL)/parallel-rdp/vulkan \
+		-I$(LIBRETRO_COMM_DIR)/include $^ -o $@ $(CHECK_LDFLAGS) $(CHECK_SANITIZE)
+
 CORE_CHECKS := test_rcp_bounds$(EXE_EXT) test_memory_map$(EXE_EXT) test_fb_write$(EXE_EXT) \
 	test_cp0_exceptions$(EXE_EXT) test_r4300_interp$(EXE_EXT) test_fpu_compare$(EXE_EXT) test_pi_status$(EXE_EXT) \
 	test_musyx_bounds$(EXE_EXT) test_musyx_aux$(EXE_EXT) test_alist_ops$(EXE_EXT) test_alist_abi1$(EXE_EXT) test_hle_dispatch$(EXE_EXT) angrylion_zboss_audio_test$(EXE_EXT) \
 	test_mouse_accum$(EXE_EXT) test_hle_dram_wrap$(EXE_EXT) test_pif_write$(EXE_EXT) \
-	test_re2_fill$(EXE_EXT) test_temporal_upscaler$(EXE_EXT)
+	test_re2_fill$(EXE_EXT) test_temporal_upscaler$(EXE_EXT) test_pipeline_records$(EXE_EXT)
 
 ifeq ($(HAVE_PARALLEL_RSP), 1)
 PRSP_TEST_OBJS := $(filter $(RSPDIR_PARALLEL)/%,$(OBJECTS))
