@@ -140,8 +140,10 @@ bool rdp_upscaler_is_active(const rdp_upscaler_t *u);
 void rdp_upscaler_set_color_image(rdp_upscaler_t *u, uint32_t addr,
       uint32_t stride, int size_log2);
 
-/* Before the triangle is drawn: keeps it and jitters @tri in place.
- * @signature tells triangles drawn alike apart from others
+/* Before the triangle is drawn: keeps it and jitters @tri in place. A
+ * triangle drawn into another image laid out like the framebuffer (a
+ * z-buffer written as a color image) is jittered with the frame and not
+ * kept. @signature tells triangles drawn alike apart from others
  * (rdp_upscaler_hash); @prim_z is in the attributes' z units. */
 void rdp_upscaler_triangle(rdp_upscaler_t *u, rdp_upscaler_triangle_t *tri,
       uint64_t signature, unsigned flags, int32_t prim_z, unsigned scale);

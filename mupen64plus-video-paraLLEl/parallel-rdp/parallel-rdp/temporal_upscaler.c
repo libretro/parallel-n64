@@ -508,6 +508,59 @@ static double upscaler_cross(double x0, double y0, double dx0,
    return y;
 }
 
+/* Moves @tri by the jitter, in render pixels: moving it down by dy
+ * moves each edge along its slope; the attributes, anchored at the
+ * major edge, follow it */
+static void upscaler_jitter_triangle(rdp_upscaler_triangle_t *tri,
+      float jitter_x, float jitter_y, unsigned scale)
+{
+   unsigned i;
+   double dx, dy;
+   if (jitter_x == 0.0f && jitter_y == 0.0f)
+      return;
+   dx      = (double)jitter_x / (double)scale;
+   dy      = (double)jitter_y / (double)scale;
+   tri->xh = upscaler_offset(tri->xh, dx * 32768.0 - 4.0 * dy * (double)tri->dxhdy);
+   tri->xm = upscaler_offset(tri->xm, dx * 32768.0 - 4.0 * dy * (double)tri->dxmdy);
+   tri->xl = upscaler_offset(tri->xl, dx * 32768.0 - 4.0 * dy * (double)tri->dxldy);
+   for (i = 0; i < 8; i++)
+      tri->attr[i] = upscaler_offset(tri->attr[i], -dy * (double)tri->attr_de[i]);
+}
+
+/* The jitter of the frame being drawn: of the record in progress, else
+ * the one the next record takes */
+static void upscaler_frame_jitter(const rdp_upscaler_t *u,
+      float *jitter_x, float *jitter_y)
+{
+   unsigned i, j;
+   const upscaler_record_t *rec = NULL;
+   for (i = 0; i < UPSCALER_RECORDS; i++)
+   {
+      const upscaler_record_t *r = &u->records[i];
+      if (r->used && !r->shown && (!rec || r->serial > rec->serial))
+         rec = r;
+   }
+   if (rec)
+   {
+      *jitter_x = rec->jitter_x;
+      *jitter_y = rec->jitter_y;
+      return;
+   }
+   j         = u->jitter_index % u->jitter_phase;
+   *jitter_x = upscaler_halton(j, 2) - 0.5f;
+   *jitter_y = upscaler_halton(j, 3) - 0.5f;
+}
+
+/* Whether the color image is laid out like the framebuffer the VI shows:
+ * an image drawn in its screen space (a z-buffer written as a color
+ * image to mask a shadow, a scene drawn aside and copied) */
+static bool upscaler_screen_image(const rdp_upscaler_t *u)
+{
+   return u->num_origins != 0
+      && u->origins[0].stride == u->color_stride
+      && u->origins[0].size_log2 == (unsigned)u->color_size_log2;
+}
+
 void rdp_upscaler_triangle(rdp_upscaler_t *u, rdp_upscaler_triangle_t *tri,
       uint64_t signature, unsigned flags, int32_t prim_z, unsigned scale)
 {
@@ -516,7 +569,17 @@ void rdp_upscaler_triangle(rdp_upscaler_t *u, rdp_upscaler_triangle_t *tri,
    upscaler_record_t *rec = upscaler_record_for_draw(u);
 
    if (!rec)
+   {
+      /* Drawn with the frame's jitter, as the frame's draws meet it
+       * through the depth test or a copy; not kept, as it is not shown */
+      if (u && u->active && u->color_size_log2 >= 1 && upscaler_screen_image(u))
+      {
+         float jitter_x, jitter_y;
+         upscaler_frame_jitter(u, &jitter_x, &jitter_y);
+         upscaler_jitter_triangle(tri, jitter_x, jitter_y, scale);
+      }
       return;
+   }
 
    if ((p = upscaler_add_prim(rec, signature, flags & ~RDP_UPSCALER_RECT)))
    {
@@ -618,18 +681,7 @@ void rdp_upscaler_triangle(rdp_upscaler_t *u, rdp_upscaler_triangle_t *tri,
 #undef UPSCALER_L
    }
 
-   if (rec->jitter_x != 0.0f || rec->jitter_y != 0.0f)
-   {
-      /* Moving the triangle down by dy moves each edge along its slope;
-       * the attributes, anchored at the major edge, follow it */
-      double dx = (double)rec->jitter_x / (double)scale;
-      double dy = (double)rec->jitter_y / (double)scale;
-      tri->xh = upscaler_offset(tri->xh, dx * 32768.0 - 4.0 * dy * (double)tri->dxhdy);
-      tri->xm = upscaler_offset(tri->xm, dx * 32768.0 - 4.0 * dy * (double)tri->dxmdy);
-      tri->xl = upscaler_offset(tri->xl, dx * 32768.0 - 4.0 * dy * (double)tri->dxldy);
-      for (i = 0; i < 8; i++)
-         tri->attr[i] = upscaler_offset(tri->attr[i], -dy * (double)tri->attr_de[i]);
-   }
+   upscaler_jitter_triangle(tri, rec->jitter_x, rec->jitter_y, scale);
 }
 
 void rdp_upscaler_rectangle(rdp_upscaler_t *u, uint32_t xh, uint32_t yh,

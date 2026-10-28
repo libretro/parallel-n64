@@ -5,7 +5,9 @@
  * decodes them, rectangles and scanouts, and checks what it does to the
  * triangles (the jitter) and the motion vector pass it builds from them:
  *
- * - only framebuffers the VI shows are jittered and kept;
+ * - only framebuffers the VI shows are jittered and kept, and an image
+ *   laid out like one (a z-buffer written as a color image) is jittered
+ *   with the frame;
  * - the jitter moves the edges and the attributes anchored on them;
  * - a triangle that moved gets the motion back to where it was, whichever
  *   order its vertices come in and when the command cut it short;
@@ -136,6 +138,57 @@ static void test_inactive_and_offscreen(void)
    scanout(u, FB, &g);
    CHECK(!g.reset, "the next frame follows");
    CHECK(g.num_vertices == 12, "the triangle is drawn as its outline's fan");
+   rdp_upscaler_free(u);
+}
+
+/* An image laid out like the framebuffer (a z-buffer the game writes as
+ * a color image to mask its shadows, as Pilotwings 64 does) is drawn in
+ * the frame's screen space: its triangles move by the frame's jitter,
+ * before the frame's first triangle and after, so that the frame's
+ * triangles meet them through the depth test where they were drawn. */
+static void test_screen_image(void)
+{
+   rdp_upscaler_t *u = rdp_upscaler_new();
+   rdp_upscaler_triangle_t t, before, frame, side;
+   rdp_upscaler_geometry_t g;
+
+   rdp_upscaler_configure(u, true, 8, false);
+   scanout(u, FB, &g);
+   make_triangle(&t, 100, 50, 60, 100, 150, 150);
+   before = t;
+
+   /* a side image drawn before the frame's first triangle */
+   rdp_upscaler_set_color_image(u, OFFSCR, STRIDE, 1);
+   rdp_upscaler_triangle(u, &t, sig(1), 0, 0, SCALE);
+   CHECK(memcmp(&t, &before, sizeof(t)) != 0, "a side image laid out like the frame is jittered");
+   frame = before;
+   rdp_upscaler_set_color_image(u, FB, STRIDE, 1);
+   rdp_upscaler_triangle(u, &frame, sig(1), 0, 0, SCALE);
+   CHECK(!memcmp(&t, &frame, sizeof(t)), "the side image moves by the jitter the frame then takes");
+
+   /* and during the frame */
+   side = before;
+   rdp_upscaler_set_color_image(u, OFFSCR, STRIDE, 1);
+   rdp_upscaler_triangle(u, &side, sig(1), 0, 0, SCALE);
+   CHECK(!memcmp(&side, &frame, sizeof(side)), "the side image moves by the frame's jitter");
+   scanout(u, FB, &g);
+   CHECK(g.num_vertices == 12, "the side image's triangles are not kept");
+
+   /* the next frame's jitter differs, and the side image follows it */
+   t = before;
+   rdp_upscaler_set_color_image(u, OFFSCR, STRIDE, 1);
+   rdp_upscaler_triangle(u, &t, sig(1), 0, 0, SCALE);
+   CHECK(memcmp(&t, &frame, sizeof(t)) != 0, "the side image moves on with the frames");
+   frame = before;
+   rdp_upscaler_set_color_image(u, FB, STRIDE, 1);
+   rdp_upscaler_triangle(u, &frame, sig(1), 0, 0, SCALE);
+   CHECK(!memcmp(&t, &frame, sizeof(t)), "the side image moves by the next frame's jitter");
+
+   /* a texture, laid out otherwise, is not */
+   t = before;
+   rdp_upscaler_set_color_image(u, OFFSCR, 64, 1);
+   rdp_upscaler_triangle(u, &t, sig(1), 0, 0, SCALE);
+   CHECK(!memcmp(&t, &before, sizeof(t)), "a texture rendered to is not jittered");
    rdp_upscaler_free(u);
 }
 
@@ -676,6 +729,7 @@ int main(void)
 {
    test_factor();
    test_inactive_and_offscreen();
+   test_screen_image();
    test_jitter();
    test_motion();
    test_cut_short();
