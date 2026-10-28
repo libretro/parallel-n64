@@ -30,6 +30,7 @@
 #include "object_pool.hpp"
 #include "temporary_hashmap.hpp"
 #include "vulkan_headers.hpp"
+#include "pipeline_record.h"
 
 namespace Vulkan
 {
@@ -113,6 +114,13 @@ public:
 		return render_pass;
 	}
 
+	/* What the pass is made from, without its images (zero, and not
+	 * recordable, for one made from a VkRenderPassCreateInfo). */
+	const pipeline_record_pass_t &get_signature() const
+	{
+		return signature;
+	}
+
 	uint32_t get_sample_count(unsigned subpass) const
 	{
 		VK_ASSERT(subpass < subpasses_info.size());
@@ -166,6 +174,7 @@ private:
 	VkFormat color_attachments[VULKAN_NUM_ATTACHMENTS] = {};
 	VkFormat depth_stencil = VK_FORMAT_UNDEFINED;
 	std::vector<SubpassInfo> subpasses_info;
+	pipeline_record_pass_t signature;
 
 	void setup_subpasses(const VkRenderPassCreateInfo &create_info);
 };

@@ -83,6 +83,7 @@ RenderPass::RenderPass(Hash hash, Device *device_, const VkRenderPassCreateInfo 
 	: IntrusiveHashMapEnabled<RenderPass>(hash)
 	, device(device_)
 {
+	memset(&signature, 0, sizeof(signature));
 	auto &table = device->get_device_table();
 	unsigned num_color_attachments = 0;
 	if (create_info.attachmentCount > 0)
@@ -114,10 +115,58 @@ RenderPass::RenderPass(Hash hash, Device *device_, const VkRenderPassCreateInfo 
 #endif
 }
 
+/* What @info makes, without its images: the pass's signature. */
+static void fill_render_pass_signature(pipeline_record_pass_t &sig, const RenderPassInfo &info)
+{
+	unsigned i, j;
+
+	memset(&sig, 0, sizeof(sig));
+	sig.recordable    = info.num_layers <= 1 && info.num_subpasses <= PIPELINE_RECORD_SUBPASSES;
+	sig.num_color     = info.num_color_attachments;
+	sig.op_flags      = info.op_flags;
+	sig.num_subpasses = info.subpasses ? info.num_subpasses : 0;
+	sig.depth_format  = VK_FORMAT_UNDEFINED;
+	for (i = 0; i < info.num_color_attachments; i++)
+	{
+		const Image &image = info.color_attachments[i]->get_image();
+		sig.formats[i] = info.color_attachments[i]->get_format();
+		sig.samples[i] = image.get_create_info().samples;
+		if (image.get_create_info().domain == ImageDomain::Transient)
+			sig.lazy |= 1u << i;
+		if (image.get_swapchain_layout() != VK_IMAGE_LAYOUT_UNDEFINED)
+			sig.recordable = 0;
+	}
+	if (info.depth_stencil)
+	{
+		const Image &image = info.depth_stencil->get_image();
+		sig.depth_format = info.depth_stencil->get_format();
+		sig.samples[VULKAN_NUM_ATTACHMENTS] = image.get_create_info().samples;
+		if (image.get_create_info().domain == ImageDomain::Transient)
+			sig.lazy |= 1u << info.num_color_attachments;
+	}
+	if (!sig.recordable)
+		return;
+	for (i = 0; i < sig.num_subpasses; i++)
+	{
+		const RenderPassInfo::Subpass &sub = info.subpasses[i];
+		sig.subpasses[i].num_color   = sub.num_color_attachments;
+		sig.subpasses[i].num_input   = sub.num_input_attachments;
+		sig.subpasses[i].num_resolve = sub.num_resolve_attachments;
+		sig.subpasses[i].depth_mode  = uint32_t(sub.depth_stencil_mode);
+		for (j = 0; j < sub.num_color_attachments; j++)
+			sig.subpasses[i].color[j] = sub.color_attachments[j];
+		for (j = 0; j < sub.num_input_attachments; j++)
+			sig.subpasses[i].input[j] = sub.input_attachments[j];
+		for (j = 0; j < sub.num_resolve_attachments; j++)
+			sig.subpasses[i].resolve[j] = sub.resolve_attachments[j];
+	}
+}
+
 RenderPass::RenderPass(Hash hash, Device *device_, const RenderPassInfo &info)
 	: IntrusiveHashMapEnabled<RenderPass>(hash)
 	, device(device_)
 {
+	fill_render_pass_signature(signature, info);
 	std::fill(std::begin(color_attachments), std::end(color_attachments), VK_FORMAT_UNDEFINED);
 
 	VK_ASSERT(info.num_color_attachments || info.depth_stencil);

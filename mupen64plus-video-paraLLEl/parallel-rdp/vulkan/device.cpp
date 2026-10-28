@@ -110,6 +110,8 @@ Device::Device()
 		mpsc_stack_init(&stack);
 	for (auto &stack : deferred_intervals)
 		mpsc_stack_init(&stack);
+	pipeline_records = static_cast<pipeline_record_t *>(
+			calloc(PIPELINE_RECORDS, sizeof(pipeline_record_t)));
 }
 
 Semaphore Device::request_semaphore(VkSemaphoreTypeKHR type, VkSemaphore vk_semaphore, bool transfer_ownership)
@@ -749,6 +751,212 @@ bool Device::get_pipeline_cache_data(uint8_t *data, size_t size)
 	memcpy(hash_data, &blob_hash, sizeof(blob_hash));
 
 	return true;
+}
+
+static_assert(PIPELINE_RECORD_ATTACHMENTS == VULKAN_NUM_ATTACHMENTS, "record attachments");
+static_assert(PIPELINE_RECORD_SPEC_CONSTANTS == VULKAN_NUM_TOTAL_SPEC_CONSTANTS, "record spec constants");
+static_assert(PIPELINE_RECORD_VERTEX_ATTRIBS == VULKAN_NUM_VERTEX_ATTRIBS, "record vertex attributes");
+static_assert(PIPELINE_RECORD_VERTEX_BUFFERS == VULKAN_NUM_VERTEX_BUFFERS, "record vertex buffers");
+
+void Device::record_pipeline(const DeferredPipelineCompile &compile, uint32_t kind)
+{
+	pipeline_record_t *r;
+	const Shader *shader;
+	unsigned i;
+	int slot;
+
+	/* A pass that cannot be made again is not one to build ahead for. */
+	if (kind == PIPELINE_RECORD_GRAPHICS && !compile.compatible_render_pass->get_signature().recordable)
+		return;
+	slot = retro_atomic_fetch_add_int(&pipeline_records_claimed, 1);
+	if (!pipeline_records || slot < 0 || slot >= int(PIPELINE_RECORDS))
+		return;
+	r = &pipeline_records[slot];
+	r->kind          = kind;
+	r->pipeline_hash = compile.hash;
+	r->program_hash  = compile.program->get_hash();
+	if (kind == PIPELINE_RECORD_COMPUTE)
+	{
+		shader = compile.program->get_shader(ShaderStage::Compute);
+		r->shader_hashes[0] = shader ? shader->get_hash() : 0;
+	}
+	else
+	{
+		shader = compile.program->get_shader(ShaderStage::Vertex);
+		r->shader_hashes[0] = shader ? shader->get_hash() : 0;
+		shader = compile.program->get_shader(ShaderStage::Fragment);
+		r->shader_hashes[1] = shader ? shader->get_hash() : 0;
+	}
+	for (i = 0; i < 4; i++)
+		r->static_words[i] = compile.static_state.words[i];
+	for (i = 0; i < VULKAN_NUM_TOTAL_SPEC_CONSTANTS; i++)
+		r->spec_constants[i] = compile.potential_static_state.spec_constants[i];
+	r->spec_masks        = compile.potential_static_state.spec_constant_mask |
+	                       (uint32_t(compile.potential_static_state.internal_spec_constant_mask) << 8);
+	r->subgroup_size_tag = compile.subgroup_size_tag;
+	if (kind == PIPELINE_RECORD_GRAPHICS)
+	{
+		r->render_pass_hash = compile.compatible_render_pass->get_hash();
+		r->subpass_index    = compile.subpass_index;
+		memcpy(r->blend_constants, compile.potential_static_state.blend_constants,
+		       sizeof(r->blend_constants));
+		for (i = 0; i < VULKAN_NUM_VERTEX_ATTRIBS; i++)
+		{
+			r->attribs[i][0] = compile.attribs[i].binding;
+			r->attribs[i][1] = uint32_t(compile.attribs[i].format);
+			r->attribs[i][2] = compile.attribs[i].offset;
+		}
+		for (i = 0; i < VULKAN_NUM_VERTEX_BUFFERS; i++)
+		{
+			r->strides[i]     = uint32_t(compile.strides[i]);
+			r->input_rates[i] = uint32_t(compile.input_rates[i]);
+		}
+		r->pass = compile.compatible_render_pass->get_signature();
+	}
+	retro_atomic_fetch_add_int(&pipeline_records_written, 1);
+}
+
+size_t Device::get_pipeline_records(const pipeline_record_t **records) const
+{
+	int n = retro_atomic_load_acquire_int(&pipeline_records_written);
+	*records = pipeline_records;
+	if (!pipeline_records || n <= 0)
+		return 0;
+	return n < int(PIPELINE_RECORDS) ? size_t(n) : size_t(PIPELINE_RECORDS);
+}
+
+/* A 1x1 attachment of @format: what a listed pass is made from again. */
+static ImageHandle render_pass_stand_in(Device &device, uint32_t format, uint32_t samples, bool lazy)
+{
+	ImageCreateInfo info = lazy
+		? ImageCreateInfo::transient_render_target(1, 1, VkFormat(format))
+		: ImageCreateInfo::render_target(1, 1, VkFormat(format));
+	info.samples        = VkSampleCountFlagBits(samples ? samples : 1);
+	info.initial_layout = VK_IMAGE_LAYOUT_UNDEFINED;
+	return device.create_image(info, nullptr);
+}
+
+const RenderPass *Device::recreate_render_pass(const pipeline_record_pass_t &sig)
+{
+	ImageHandle images[VULKAN_NUM_ATTACHMENTS + 1];
+	RenderPassInfo::Subpass subpasses[PIPELINE_RECORD_SUBPASSES];
+	RenderPassInfo info;
+	unsigned i, j;
+	const unsigned num_attachments = sig.num_color + (sig.depth_format != VK_FORMAT_UNDEFINED ? 1u : 0u);
+
+	/* (the list's checks make these hold; a pass is not made from less) */
+	if (!sig.recordable || sig.num_color > VULKAN_NUM_ATTACHMENTS || !num_attachments
+	    || sig.num_subpasses > PIPELINE_RECORD_SUBPASSES)
+		return nullptr;
+	for (i = 0; i < sig.num_subpasses; i++)
+	{
+		const pipeline_record_subpass_t &s = sig.subpasses[i];
+		if (s.num_color > VULKAN_NUM_ATTACHMENTS || s.num_input > VULKAN_NUM_ATTACHMENTS
+		    || s.num_resolve > VULKAN_NUM_ATTACHMENTS
+		    || s.depth_mode > uint32_t(RenderPassInfo::DepthStencil::ReadWrite))
+			return nullptr;
+		subpasses[i].num_color_attachments   = s.num_color;
+		subpasses[i].num_input_attachments   = s.num_input;
+		subpasses[i].num_resolve_attachments = s.num_resolve;
+		subpasses[i].depth_stencil_mode      = RenderPassInfo::DepthStencil(s.depth_mode);
+		for (j = 0; j < s.num_color; j++)
+			if ((subpasses[i].color_attachments[j] = s.color[j]) >= num_attachments)
+				return nullptr;
+		for (j = 0; j < s.num_input; j++)
+			if ((subpasses[i].input_attachments[j] = s.input[j]) >= num_attachments)
+				return nullptr;
+		for (j = 0; j < s.num_resolve; j++)
+			if ((subpasses[i].resolve_attachments[j] = s.resolve[j]) >= num_attachments)
+				return nullptr;
+	}
+
+	for (i = 0; i < sig.num_color; i++)
+	{
+		images[i] = render_pass_stand_in(*this, sig.formats[i], sig.samples[i], (sig.lazy >> i) & 1);
+		if (!images[i])
+			return nullptr;
+		info.color_attachments[i] = &images[i]->get_view();
+	}
+	if (sig.depth_format != VK_FORMAT_UNDEFINED)
+	{
+		images[VULKAN_NUM_ATTACHMENTS] = render_pass_stand_in(*this, sig.depth_format,
+		                                                      sig.samples[VULKAN_NUM_ATTACHMENTS],
+		                                                      (sig.lazy >> sig.num_color) & 1);
+		if (!images[VULKAN_NUM_ATTACHMENTS])
+			return nullptr;
+		info.depth_stencil = &images[VULKAN_NUM_ATTACHMENTS]->get_view();
+	}
+	info.num_color_attachments = sig.num_color;
+	info.op_flags              = sig.op_flags;
+	info.num_subpasses         = sig.num_subpasses;
+	info.subpasses             = sig.num_subpasses ? subpasses : nullptr;
+	/* The stand-ins go once this returns; the pass holds none of them. */
+	return &request_render_pass(info, true);
+}
+
+bool Device::resolve_pipeline_record(const pipeline_record_t &record, DeferredPipelineCompile &compile)
+{
+	unsigned i;
+	Program *program = programs.find(record.program_hash);
+	const RenderPass *pass = nullptr;
+	const bool graphics = record.kind == PIPELINE_RECORD_GRAPHICS;
+
+	/* A program is made on first use; one this device has not made yet is
+	 * made from the shaders it was made from, when those are here. */
+	if (!program && !graphics)
+		program = request_program(shaders.find(record.shader_hashes[0]));
+	else if (!program)
+		program = request_program(shaders.find(record.shader_hashes[0]),
+		                          shaders.find(record.shader_hashes[1]));
+	if (!program || program->get_hash() != record.program_hash || !program->get_pipeline_layout()
+	    || (program->get_shader(ShaderStage::Compute) != nullptr) == graphics)
+		return false;
+	if (graphics)
+	{
+		pass = render_passes.find(record.render_pass_hash);
+		if (!pass)
+			pass = recreate_render_pass(record.pass);
+		if (!pass || pass->get_hash() != record.render_pass_hash
+		    || record.subpass_index >= pass->get_num_subpasses())
+			return false;
+	}
+
+	memset(&compile, 0, sizeof(compile));
+	compile.program = program;
+	for (i = 0; i < 4; i++)
+		compile.static_state.words[i] = record.static_words[i];
+	for (i = 0; i < VULKAN_NUM_TOTAL_SPEC_CONSTANTS; i++)
+		compile.potential_static_state.spec_constants[i] = record.spec_constants[i];
+	compile.potential_static_state.spec_constant_mask          = uint8_t(record.spec_masks & 0xff);
+	compile.potential_static_state.internal_spec_constant_mask = uint8_t((record.spec_masks >> 8) & 0xff);
+	compile.subgroup_size_tag = record.subgroup_size_tag;
+	compile.cache             = pipeline_cache;
+	if (!graphics)
+	{
+		CommandBuffer::update_hash_compute_pipeline(compile);
+		return compile.hash == record.pipeline_hash;
+	}
+
+	compile.compatible_render_pass = pass;
+	compile.subpass_index          = record.subpass_index;
+	memcpy(compile.potential_static_state.blend_constants, record.blend_constants,
+	       sizeof(compile.potential_static_state.blend_constants));
+	for (i = 0; i < VULKAN_NUM_VERTEX_ATTRIBS; i++)
+	{
+		compile.attribs[i].binding = record.attribs[i][0];
+		compile.attribs[i].format  = VkFormat(record.attribs[i][1]);
+		compile.attribs[i].offset  = record.attribs[i][2];
+	}
+	for (i = 0; i < VULKAN_NUM_VERTEX_BUFFERS; i++)
+	{
+		compile.strides[i]     = record.strides[i];
+		compile.input_rates[i] = VkVertexInputRate(record.input_rates[i]);
+	}
+	{
+		uint32_t active_vbos;
+		CommandBuffer::update_hash_graphics_pipeline(compile, active_vbos);
+	}
+	return compile.hash == record.pipeline_hash;
 }
 
 void Device::flush_pipeline_cache()
@@ -2060,6 +2268,9 @@ Device::~Device()
 #ifdef GRANITE_VULKAN_FOSSILIZE
 	flush_pipeline_state();
 #endif
+
+	free(pipeline_records);
+	pipeline_records = nullptr;
 
 	framebuffer_allocator.clear();
 	transient_allocator.clear();

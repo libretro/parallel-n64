@@ -272,6 +272,21 @@ public:
 	bool get_pipeline_cache_data(uint8_t *data, size_t size);
 	bool init_pipeline_cache(const uint8_t *data, size_t size);
 
+	/* The pipelines this device built, as records the next device can
+	 * build again ahead of their first use. Recorded by the thread that
+	 * built each one, without a lock; read once no thread builds any more. */
+	enum { PIPELINE_RECORDS = 4096 };
+	void record_pipeline(const DeferredPipelineCompile &compile, uint32_t kind);
+	size_t get_pipeline_records(const pipeline_record_t **records) const;
+	/* The compatible render pass a signature describes, made again from
+	 * 1x1 stand-ins when there is none yet. */
+	const RenderPass *recreate_render_pass(const pipeline_record_pass_t &signature);
+	/* The pipeline a record describes, made ready to build: its program
+	 * (made from the device's shaders when there is none yet) and render
+	 * pass, its state; false when what it was made from is not there, or
+	 * hashes to another pipeline. The device's owner thread, as above. */
+	bool resolve_pipeline_record(const pipeline_record_t &record, DeferredPipelineCompile &compile);
+
 	// Frame-pushing interface.
 	void next_frame_context();
 	void wait_idle();
@@ -742,6 +757,9 @@ private:
 	FramebufferAllocator framebuffer_allocator;
 	TransientAttachmentAllocator transient_allocator;
 	VkPipelineCache pipeline_cache = VK_NULL_HANDLE;
+	pipeline_record_t *pipeline_records = nullptr;
+	retro_atomic_int_t pipeline_records_claimed{0};
+	retro_atomic_int_t pipeline_records_written{0};
 
 	void init_pipeline_cache();
 	void flush_pipeline_cache();
