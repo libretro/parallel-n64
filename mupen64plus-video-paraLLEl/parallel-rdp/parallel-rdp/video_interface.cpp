@@ -226,6 +226,8 @@ VideoInterface::Registers VideoInterface::decode_vi_registers(HorizontalInfoLine
 	int h_end_hi = 0;
 
 	reg.max_x = 0;
+	reg.min_x = INT32_MAX;
+	reg.max_x_clamp = 0;
 	bool degenerate_y = reg.v_res <= 0;
 
 	// Clear out degenerate lines.
@@ -275,6 +277,8 @@ VideoInterface::Registers VideoInterface::decode_vi_registers(HorizontalInfoLine
 		int h_res = h_end - h_start;
 		int max_x = (x_start + h_res * x_add) >> 10;
 		reg.max_x = std::max(reg.max_x, max_x);
+		reg.min_x = std::min(reg.min_x, (x_start + (h_start_clamp - h_start) * x_add) >> 10);
+		reg.max_x_clamp = std::max(reg.max_x_clamp, (x_start + (h_end_clamp - h_start) * x_add + 1023) >> 10);
 		h_start_lo = std::min(h_start_lo, h_start);
 		h_end_hi = std::max(h_end_hi, h_end);
 		h_start_clamp_lo = std::min(h_start_clamp_lo, h_start_clamp);
@@ -1230,6 +1234,7 @@ Vulkan::ImageHandle VideoInterface::upscaler_scanout(unsigned scaling_factor,
 		int32_t fb_offset;
 		int32_t fb_width;
 		int32_t res_x, res_y;
+		int32_t shown_x0, shown_x1;
 	} push;
 
 	regs = decode_vi_registers(nullptr);
@@ -1308,6 +1313,10 @@ Vulkan::ImageHandle VideoInterface::upscaler_scanout(unsigned scaling_factor,
 	push.fb_width = regs.vi_width;
 	push.res_x = int32_t(info.width);
 	push.res_y = int32_t(info.height);
+	/* black beside what the scanout shows (the guard band it blanks at
+	 * the sides), as the screen has it */
+	push.shown_x0 = std::max(regs.min_x, 0) * int32_t(scaling_factor);
+	push.shown_x1 = std::min(regs.max_x_clamp, width) * int32_t(scaling_factor);
 
 	async_cmd->set_specialization_constant_mask(0xf);
 	async_cmd->set_specialization_constant(0, uint32_t(rdram_size));

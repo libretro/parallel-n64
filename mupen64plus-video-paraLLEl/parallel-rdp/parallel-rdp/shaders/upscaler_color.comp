@@ -19,6 +19,8 @@ layout(push_constant, std430) uniform Registers
 	int fb_offset;
 	int fb_width;
 	ivec2 resolution;
+	/* the columns the scanout shows; black beside them */
+	ivec2 shown;
 } registers;
 
 layout(constant_id = 0) const int RDRAM_SIZE = 0;
@@ -33,6 +35,11 @@ void main()
 	ivec2 coord = ivec2(gl_GlobalInvocationID.xy);
 	if (any(greaterThanEqual(coord, registers.resolution)))
 		return;
+	if (coord.x < registers.shown.x || coord.x >= registers.shown.y)
+	{
+		imageStore(uColor, coord, vec4(0.0, 0.0, 0.0, 1.0));
+		return;
+	}
 
 	ivec2 slice2d = coord & (SCALING_FACTOR - 1);
 	ivec2 native = coord >> SCALING_LOG2;

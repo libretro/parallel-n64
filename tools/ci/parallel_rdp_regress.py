@@ -25,11 +25,13 @@ must match "<rom>@upscaler" threaded and single-threaded alike and
 whatever the options it overrides say, and pass tools/ci/upscaler_check.py,
 which checks the jitter and, for the ROMs that move, that the motion
 vectors take every changed pixel back to where the frame before had it.
-The RDP's coverage antialiasing stays on for it: rottri32aa's edges blend
-with the background (without it the triangles of a face leave seam pixels
-between them), alphacov's cut-outs through the coverage stay cut out, and
-the transparency mask marks the triangles blended without depth
-(rottri32xlu, rottri32 with FORCE_BLEND) and nothing else.
+The frame is black where the VI blanks its guard band at the sides (cube16
+and rottri32 fill the framebuffer to its edges). The RDP's coverage
+antialiasing stays on: rottri32aa's edges blend with the background
+(without it the triangles of a face leave seam pixels between them),
+alphacov's cut-outs through the coverage stay cut out, and the
+transparency mask marks the triangles blended without depth (rottri32xlu,
+rottri32 with FORCE_BLEND) and nothing else.
 """
 import argparse, concurrent.futures, hashlib, json, os, subprocess, sys, urllib.request
 
@@ -202,6 +204,25 @@ def coverage_aa(out, n):
     return errors
 
 
+def guard_band_black(out, n):
+    """The VI blanks 8 output pixels at the left of its scanout and 7 at
+    the right: with the ROMs' 640 pixels over a 320 pixel framebuffer, the
+    frame's first 4 and last 3.5 framebuffer pixels are black, and the ones
+    beside them, which the ROM filled, are not."""
+    with open(os.path.join(out, "%04d.raw.size" % n)) as f:
+        w, h = map(int, f.read().split())
+    with open(os.path.join(out, "%04d.raw" % n), "rb") as f:
+        px = f.read()
+    scale = w // 320
+
+    def black(x):
+        return all(px[(y * w + x) * 4 + c] == 0 for y in range(0, h, 7) for c in range(3))
+
+    left, right = 4 * scale, w - 3 * scale
+    return all(black(x) for x in range(0, left)) and not black(left) \
+        and all(black(x) for x in range(right, w)) and not black(right - 1)
+
+
 def edges_blended(out, n):
     """rottri32aa's antialiased triangle is drawn over a background without
     coverage: its edge pixels blend the two colours, so the frame has
@@ -244,6 +265,8 @@ def run_upscaler(args, name, rom, mode, env_extra, options, moving):
             return None, "coverage antialiasing: " + ", ".join(errors)
     if name == "rottri32aa" and not edges_blended(out, first):
         return None, "coverage antialiasing: the triangle's edges are not blended"
+    if name in ("cube16", "rottri32") and not guard_band_black(out, first):
+        return None, "the frame is not black where the VI blanks its guard band"
     for n in range(first, last + 1):
         path = os.path.join(out, "%04d.mask.raw" % n)
         if not os.path.exists(path):

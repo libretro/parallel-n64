@@ -223,6 +223,9 @@ private:
 
 		// For AA stages.
 		int max_x, max_y;
+		// The framebuffer pixels a line shows: from min_x, right of the
+		// guard band the scanout blanks, to the one at the right.
+		int min_x, max_x_clamp;
 	};
 
 	Registers decode_vi_registers(HorizontalInfoLines *lines) const;

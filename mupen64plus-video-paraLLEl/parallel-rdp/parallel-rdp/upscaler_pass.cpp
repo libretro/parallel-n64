@@ -38,7 +38,7 @@ Vulkan::Program *upscaler_color_program(Vulkan::Device &device)
 	layout.sets[0].array_size[0] = 1;
 	layout.sets[0].array_size[1] = 1;
 	layout.sets[0].array_size[2] = 1;
-	layout.push_constant_size = 16;
+	layout.push_constant_size = 24;
 	layout.spec_constant_mask = 0xf;
 	return device.request_program(UpscalerShaders::upscaler_color_comp,
 	                              sizeof(UpscalerShaders::upscaler_color_comp), &layout);
