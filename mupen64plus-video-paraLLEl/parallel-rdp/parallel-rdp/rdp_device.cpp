@@ -63,7 +63,6 @@ CommandProcessor::CommandProcessor(Vulkan::Device &device_, void *rdram_ptr,
 	// NULL only if the allocation failed; init_renderer reports that.
 	timeline_worker.worker = rdp_worker_new(nullptr, timeline_work, this);
 	upscaler = rdp_upscaler_new();
-	coverage_aa_off = (flags & COMMAND_PROCESSOR_FLAG_TEMPORAL_UPSCALER_BIT) != 0;
 
 	BufferCreateInfo info = {};
 	info.size = rdram_size;
@@ -587,16 +586,8 @@ void CommandProcessor::op_set_other_modes(const uint32_t *words)
 	STATE_MASK(depth_blend.flags, bool(words[1] & (1 << 6)), DEPTH_BLEND_IMAGE_READ_ENABLE_BIT);
 	STATE_MASK(depth_blend.flags, bool(words[1] & (1 << 5)), DEPTH_BLEND_DEPTH_UPDATE_BIT);
 	STATE_MASK(depth_blend.flags, bool(words[1] & (1 << 4)), DEPTH_BLEND_DEPTH_TEST_BIT);
-	/* The coverage antialiasing (edges blended by coverage in the blender,
-	 * then reconstructed by the VI) is off while a temporal upscaler takes
-	 * the frames: it gets every edge as the pixel centres have it and
-	 * antialiases from the jittered frames itself. Draws that cut out
-	 * their texels through the coverage (coverage times alpha) keep it,
-	 * as without it their cut-outs are drawn opaque. */
-	bool aa_en = bool(words[1] & (1 << 3)) &&
-	             (!coverage_aa_off || (words[1] & (1 << 12)) != 0);
-	STATE_MASK(static_state.flags, aa_en, RASTERIZATION_AA_BIT);
-	STATE_MASK(depth_blend.flags, aa_en, DEPTH_BLEND_AA_BIT);
+	STATE_MASK(static_state.flags, bool(words[1] & (1 << 3)), RASTERIZATION_AA_BIT);
+	STATE_MASK(depth_blend.flags, bool(words[1] & (1 << 3)), DEPTH_BLEND_AA_BIT);
 
 	STATE_MASK(static_state.flags, bool(words[1] & (1 << 1)), RASTERIZATION_ALPHA_TEST_DITHER_BIT);
 	STATE_MASK(static_state.flags, bool(words[1] & (1 << 0)), RASTERIZATION_ALPHA_TEST_BIT);
@@ -1096,14 +1087,6 @@ void CommandProcessor::enqueue_command_direct(unsigned, const uint32_t *words)
 				rdp_upscaler_configure(upscaler, false, 1, false);
 			upscaler_frame = UpscalerFrame();
 			scanout_result = vi.scanout(scanout_layout, scanout_opts, renderer.get_scaling_factor());
-		}
-		if (upscaler && rdp_upscaler_is_active(upscaler) != coverage_aa_off)
-		{
-			uint32_t modes[2];
-			coverage_aa_off = rdp_upscaler_is_active(upscaler);
-			modes[0] = other_modes_words[0];
-			modes[1] = other_modes_words[1];
-			op_set_other_modes(modes);
 		}
 		break;
 	}

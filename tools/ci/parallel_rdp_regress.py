@@ -25,10 +25,11 @@ must match "<rom>@upscaler" threaded and single-threaded alike and
 whatever the options it overrides say, and pass tools/ci/upscaler_check.py,
 which checks the jitter and, for the ROMs that move, that the motion
 vectors take every changed pixel back to where the frame before had it.
-The RDP's coverage antialiasing is off for it, except where a draw cuts
-out its texels through the coverage (alphacov), and the transparency mask
-marks the triangles blended without depth (rottri32xlu, rottri32 with
-FORCE_BLEND) and nothing else.
+The RDP's coverage antialiasing stays on for it: rottri32aa's edges blend
+with the background (without it the triangles of a face leave seam pixels
+between them), alphacov's cut-outs through the coverage stay cut out, and
+the transparency mask marks the triangles blended without depth
+(rottri32xlu, rottri32 with FORCE_BLEND) and nothing else.
 """
 import argparse, concurrent.futures, hashlib, json, os, subprocess, sys, urllib.request
 
@@ -70,14 +71,20 @@ UPSCALED_OPTIONS = ["parallel-n64-upscaling=2x"]
 UPSCALED_MODES = {"2x": {}, "2x-no-8bit-storage": {"PARALLEL_RDP_NO_STORAGE_8BIT": "1"}}
 # For a temporal upscaler asking for 640x480: a 320x240 framebuffer at 2x.
 # Consecutive frames, for the motion vector check; True for the ROMs
-# that move every frame.
-UPSCALER_ROMS = {"rottri32": True, "cube16": True, "zbuf16": False, "alphacov": False, "rottri32xlu": True}
+# that move every frame (not rottri32aa: its blended edge pixels have no
+# colour to find in the frame before).
+UPSCALER_ROMS = {"rottri32": True, "cube16": True, "zbuf16": False, "alphacov": False, "rottri32xlu": True,
+                 "rottri32aa": False}
 # Those that blend a triangle without depth (FORCE_BLEND, no Z update):
 # the transparency mask marks it; the others have none
 UPSCALER_TRANSLUCENT = ("rottri32xlu",)
-# A krom test with one Set Other Modes command changed, run for the
-# upscaler only: rottri32's moving triangle with FORCE_BLEND
-DERIVED = {"rottri32xlu": ("rottri32", "2f00283080000000", "2f00283080004000")}
+# A krom test with commands changed, run for the upscaler only:
+# rottri32's moving triangle with FORCE_BLEND, and with AA_EN blending the
+# blend colour over the memory colour by its coverage (IM_RD,
+# ALPHA_CVG_SEL) on a background filled without coverage
+DERIVED = {"rottri32xlu": ("rottri32", (("2f00283080000000", "2f00283080004000"),)),
+           "rottri32aa": ("rottri32", (("2f00283080000000", "2f00283080402048"),
+                                       ("37000000ffff00ff", "37000000ffff0000")))}
 UPSCALER_FRAMES = (30, 36)
 # The options the upscaler overrides change nothing: super-sampled
 # read-back (SSAA), downsampling, the VI filters and the factor.
@@ -115,12 +122,15 @@ def boot_crc(rom):
 def fetch(romdir, name):
     path = os.path.join(romdir, name + ".n64")
     if name in DERIVED and not os.path.exists(path):
-        base, old, new = DERIVED[name]
+        base, changes = DERIVED[name]
         with open(fetch(romdir, base), "rb") as f:
             data = f.read()
-        if data.count(bytes.fromhex(old)) != 1 or data[0x10:0x18] != boot_crc(data):
-            raise RuntimeError("%s: %s is not in %s once, or its CRC is not CIC 6102's" % (name, old, base))
-        data = data.replace(bytes.fromhex(old), bytes.fromhex(new))
+        if data[0x10:0x18] != boot_crc(data):
+            raise RuntimeError("%s: %s's CRC is not CIC 6102's" % (name, base))
+        for old, new in changes:
+            if data.count(bytes.fromhex(old)) != 1:
+                raise RuntimeError("%s: %s is not in %s once" % (name, old, base))
+            data = data.replace(bytes.fromhex(old), bytes.fromhex(new))
         data = data[:0x10] + boot_crc(data) + data[0x18:]
         with open(path + ".part", "wb") as f:
             f.write(data)
@@ -166,14 +176,13 @@ def run(args, name, rom, mode, env_extra, options=()):
     return hashes, None
 
 
-def coverage_aa_off(out, n):
+def coverage_aa(out, n):
     """alphacov draws its cases twice, the lower half with antialiasing on
     (226 lines below the upper), in columns 38 pixels wide from x = 10 and
-    x = 320. For the upscaler, which antialiases from the jittered frames
-    itself, the columns without CVG_TIMES_ALPHA (0, 2, 4, 6) must come
-    out the same in both halves; those with it (1, 3, 5, 7), which cut
-    out their texels through the coverage, keep it, so the lower half
-    cuts out the texels the upper one draws."""
+    x = 320. For the upscaler as without it, the columns without
+    CVG_TIMES_ALPHA (0, 2, 4, 6) come out the same in both halves (their
+    edges lie on pixels), and those with it (1, 3, 5, 7) cut out their
+    texels through the coverage in the lower half only."""
     with open(os.path.join(out, "%04d.raw.size" % n)) as f:
         w, h = map(int, f.read().split())
     with open(os.path.join(out, "%04d.raw" % n), "rb") as f:
@@ -191,6 +200,15 @@ def coverage_aa_off(out, n):
             if same != (k % 2 == 0):
                 errors.append("x=%d column %d %s" % (left, k, "cut-outs drawn opaque" if same else "edges antialiased"))
     return errors
+
+
+def edges_blended(out, n):
+    """rottri32aa's antialiased triangle is drawn over a background without
+    coverage: its edge pixels blend the two colours, so the frame has
+    more than the two."""
+    with open(os.path.join(out, "%04d.raw" % n), "rb") as f:
+        px = f.read()
+    return len(set(px[i:i + 4] for i in range(0, len(px), 4))) > 2
 
 
 def run_upscaler(args, name, rom, mode, env_extra, options, moving):
@@ -221,9 +239,11 @@ def run_upscaler(args, name, rom, mode, env_extra, options, moving):
     if check.returncode != 0:
         return None, "upscaler_check.py: " + check.stdout.decode("utf-8", "replace").strip().splitlines()[-1]
     if name == "alphacov":
-        errors = coverage_aa_off(out, first)
+        errors = coverage_aa(out, first)
         if errors:
             return None, "coverage antialiasing: " + ", ".join(errors)
+    if name == "rottri32aa" and not edges_blended(out, first):
+        return None, "coverage antialiasing: the triangle's edges are not blended"
     for n in range(first, last + 1):
         path = os.path.join(out, "%04d.mask.raw" % n)
         if not os.path.exists(path):

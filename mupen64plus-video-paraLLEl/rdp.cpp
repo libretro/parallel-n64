@@ -422,9 +422,6 @@ static bool create_processor(unsigned factor)
 			flags |= COMMAND_PROCESSOR_FLAG_SUPER_SAMPLED_DITHER_BIT;
 	}
 
-	if (upscaler_on)
-		flags |= COMMAND_PROCESSOR_FLAG_TEMPORAL_UPSCALER_BIT;
-
 	/* (the old one goes first: both at once may not fit) */
 	frontend.reset();
 	frontend.reset(new CommandProcessor(*device, reinterpret_cast<void *>(rdram_base),
