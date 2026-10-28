@@ -1404,7 +1404,7 @@ test_fpu_compare$(EXE_EXT): tools/test_fpu_compare.c
 		$^ -o $@ $(CHECK_LDFLAGS) $(CHECK_SANITIZE) -lm
 
 TEST_R4300_INTERP_SRCS := $(CORE_DEVICE_DIR)/r4300/cp0.c $(CORE_DEVICE_DIR)/r4300/interrupt.c \
-	$(CORE_DEVICE_DIR)/r4300/cp1.c
+	$(CORE_DEVICE_DIR)/r4300/cp1.c $(CORE_DEVICE_DIR)/r4300/idec.c
 test_r4300_interp$(EXE_EXT): tools/test_r4300_interp.c $(CORE_DEVICE_DIR)/r4300/pure_interp.c \
 		$(CORE_DEVICE_DIR)/r4300/mips_instructions.def $(TEST_R4300_INTERP_SRCS)
 	$(CC) $(CHECK_CFLAGS) $(CHECK_SANITIZE) -I$(CORE_DIR)/src -I$(CORE_DIR)/src/api \

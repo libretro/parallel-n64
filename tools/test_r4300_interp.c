@@ -17,7 +17,9 @@
  *    software interrupt takes it; DMFC0 sign-extends BadVAddr and
  *    ErrorEPC;
  *  - a reserved COP1 encoding is coprocessor-unusable with CU1 clear and
- *    an unimplemented-operation FPE with it set.
+ *    an unimplemented-operation FPE with it set;
+ *  - a COP0 TLB-group function code other than TLBR/TLBWI/TLBWR/TLBP/ERET
+ *    does nothing, in the interpreter and in the shared decode table.
  *
  * Runs single instructions through the pure interpreter (InterpretOpcode).
  * Built by `make check-core` (top-level Makefile). Exit status 0 on pass.
@@ -30,6 +32,7 @@
 #include "device/device.h"
 #include "device/r4300/cp0.h"
 #include "device/r4300/cp1.h"
+#include "device/r4300/idec.h"
 #include "device/r4300/interrupt.h"
 #include "device/r4300/r4300_core.h"
 #include "device/r4300/tlb.h"
@@ -369,6 +372,29 @@ static void test_reserved_cop1(void)
           "reserved COP1: coprocessor unusable with CU1 clear");
 }
 
+static void test_tlb_undefined(void)
+{
+    unsigned funct;
+
+    for (funct = 0; funct < 64; ++funct)
+    {
+        const uint32_t op = (0x10u << 26) | (0x10u << 21) | funct;
+        char what[64];
+
+        if (funct == 1 || funct == 2 || funct == 6 || funct == 8 || funct == 24)
+            continue;
+
+        sprintf(what, "COP0 TLB function %u: interpreter does nothing", funct);
+        reset();
+        step(op);
+        CHECK(s_jumps == 0 && s_r4300.interp_PC.addr == PC0 + 4
+              && exccode() == 0 && cp0()[CP0_EPC_REG] == 0, what);
+
+        sprintf(what, "COP0 TLB function %u: decodes as NOP", funct);
+        CHECK(r4300_get_idec(op)->opcode == R4300_OP_NOP, what);
+    }
+}
+
 int main(void)
 {
     s_r4300.cp0.tlb.LUT_r[0] = 0;
@@ -384,6 +410,7 @@ int main(void)
     test_cause_bd();
     test_cop0_moves();
     test_reserved_cop1();
+    test_tlb_undefined();
 
     if (s_failures) {
         printf("test_r4300_interp: %d failure(s)\n", s_failures);

@@ -372,22 +372,22 @@ static const struct r4300_idec r4300_op_table[] = {
 /* TLB opcodes table
  * 176-239
  */
-    RESERVED,    TLBR,        TLBWI,       RESERVED,
-    RESERVED,    RESERVED,    TLBWR,       RESERVED,
-    TLBP,        RESERVED,    RESERVED,    RESERVED,
-    RESERVED,    RESERVED,    RESERVED,    RESERVED,
-    RESERVED,    RESERVED,    RESERVED,    RESERVED,
-    RESERVED,    RESERVED,    RESERVED,    RESERVED,
-    ERET,        RESERVED,    RESERVED,    RESERVED,
-    RESERVED,    RESERVED,    RESERVED,    RESERVED,
-    RESERVED,    RESERVED,    RESERVED,    RESERVED,
-    RESERVED,    RESERVED,    RESERVED,    RESERVED,
-    RESERVED,    RESERVED,    RESERVED,    RESERVED,
-    RESERVED,    RESERVED,    RESERVED,    RESERVED,
-    RESERVED,    RESERVED,    RESERVED,    RESERVED,
-    RESERVED,    RESERVED,    RESERVED,    RESERVED,
-    RESERVED,    RESERVED,    RESERVED,    RESERVED,
-    RESERVED,    RESERVED,    RESERVED,    RESERVED,
+    NOP,         TLBR,        TLBWI,       NOP,
+    NOP,         NOP,         TLBWR,       NOP,
+    TLBP,        NOP,         NOP,         NOP,
+    NOP,         NOP,         NOP,         NOP,
+    NOP,         NOP,         NOP,         NOP,
+    NOP,         NOP,         NOP,         NOP,
+    ERET,        NOP,         NOP,         NOP,
+    NOP,         NOP,         NOP,         NOP,
+    NOP,         NOP,         NOP,         NOP,
+    NOP,         NOP,         NOP,         NOP,
+    NOP,         NOP,         NOP,         NOP,
+    NOP,         NOP,         NOP,         NOP,
+    NOP,         NOP,         NOP,         NOP,
+    NOP,         NOP,         NOP,         NOP,
+    NOP,         NOP,         NOP,         NOP,
+    NOP,         NOP,         NOP,         NOP,
 /* COP1 opcodes table
  * 240-247
  */
