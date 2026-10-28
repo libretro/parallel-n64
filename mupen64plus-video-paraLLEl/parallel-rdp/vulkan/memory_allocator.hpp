@@ -119,6 +119,11 @@ public:
 		return host_base != nullptr;
 	}
 
+	inline uint32_t get_memory_type() const
+	{
+		return memory_type;
+	}
+
 	static DeviceAllocation make_imported_allocation(VkDeviceMemory memory, VkDeviceSize size, uint32_t memory_type);
 
 	ExternalHandle export_handle(Device &device);

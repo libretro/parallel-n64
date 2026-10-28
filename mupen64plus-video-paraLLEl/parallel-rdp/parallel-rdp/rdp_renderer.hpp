@@ -189,7 +189,11 @@ private:
 		unsigned num_pages = 0;
 		unsigned staging_readback_pages = 0;
 		unsigned staging_readback_index = 0; // Ringbuffer the readbacks.
+		// RDRAM is mapped, cached and coherent: an upload reads the GPU's
+		// copy first and leaves alone what is the same.
+		bool compare_before_upload = false;
 	} incoherent;
+	void upload_pages_compared(unsigned index, unsigned count);
 
 	size_t rdram_offset = 0;
 	size_t rdram_size = 0;
