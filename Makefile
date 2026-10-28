@@ -1203,7 +1203,7 @@ clean: clean-tools
 
 clean-tools:
 	rm -f $(ANGRYLION_TOOLS) lrhost$(EXE_EXT) lrhost_vk$(EXE_EXT) angrylion_replay$(EXE_EXT) $(ANGRYLION_CHECKS) dd_ipl_hle_test$(EXE_EXT) \
-		$(CORE_CHECKS) tools/test_prsp_dmem_wrap.o tools/test_command_ring_rthreads.o tools/test_command_ring_ec.o
+		$(CORE_CHECKS) dynarec_long_block_test$(EXE_EXT) tools/test_prsp_dmem_wrap.o tools/test_command_ring_rthreads.o tools/test_command_ring_ec.o
 
 # Angrylion benchmark and bit-exactness harnesses (tools/angrylion_*.c),
 # linked against the core's own angrylion objects: `make tools` after a
@@ -1349,6 +1349,25 @@ check-dd-ipl: $(TARGET) lrhost$(EXE_EXT) dd_ipl_hle_test$(EXE_EXT)
 			parallel-n64-cpucore=pure_interpreter > /dev/null ); \
 		./dd_ipl_hle_test$(EXE_EXT) check $(DD_IPL_CHECK_DIR)/ram_$$n.bin $$n; \
 	done; rm -rf $(DD_IPL_CHECK_DIR)
+
+# A straight-line block longer than ari64's instruction buffer, booted
+# through the core with each CPU core. Build with SANITIZER=address,undefined
+# to also catch reads past the decoder's per-instruction arrays.
+DYNAREC_BLOCK_CHECK_DIR := dynarec_block_check.tmp
+
+dynarec_long_block_test$(EXE_EXT): tools/dynarec_long_block_test.c
+	$(CC) -O1 -g $< -o $@
+
+check-dynarec-block: $(TARGET) lrhost$(EXE_EXT) dynarec_long_block_test$(EXE_EXT)
+	@set -e; rm -rf $(DYNAREC_BLOCK_CHECK_DIR); mkdir -p $(DYNAREC_BLOCK_CHECK_DIR)/lrhost-system; \
+	./dynarec_long_block_test$(EXE_EXT) rom $(DYNAREC_BLOCK_CHECK_DIR)/long_block.z64; \
+	for core in pure_interpreter cached_interpreter dynamic_recompiler dynamic_recompiler_ari64; do \
+		echo "== $$core"; \
+		( cd $(DYNAREC_BLOCK_CHECK_DIR) && LRHOST_RAMDUMP=ram_$$core.bin ../lrhost$(EXE_EXT) ../$(TARGET) long_block.z64 4 \
+			parallel-n64-gfxplugin=angrylion parallel-n64-rspplugin=hle \
+			parallel-n64-cpucore=$$core > /dev/null ); \
+		./dynarec_long_block_test$(EXE_EXT) check $(DYNAREC_BLOCK_CHECK_DIR)/ram_$$core.bin; \
+	done; rm -rf $(DYNAREC_BLOCK_CHECK_DIR)
 
 # Core self-tests: MMIO register and DMA bounds, the frontend memory map,
 # framebuffer write notifications, COP0 exceptions, PI status, the MusyX
@@ -1530,7 +1549,7 @@ endif
 check-core: $(CORE_CHECKS)
 	@set -e; for t in $(CORE_CHECKS); do echo "== $$t"; ./$$t; done
 
-.PHONY: clean clean-tools tools check-angrylion check-core
+.PHONY: clean clean-tools tools check-angrylion check-core check-dynarec-block
 -include $(OBJECTS:.o=.d)
 
 # A header named by an existing .d file but since deleted is not an error:
