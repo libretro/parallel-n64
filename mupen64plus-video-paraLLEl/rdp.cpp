@@ -110,6 +110,54 @@ void set_hle_cmd_buffer(const uint8_t *buf, uint32_t base_byte_addr, uint32_t le
 	hle_cmd_len = len_bytes;
 }
 
+/* Runs the whole commands at the start of @words, @count 64-bit words,
+ * and returns how many words they took: a command cut short at the end
+ * is left for when the rest of it comes. */
+static int run_commands(const uint32_t *words, int count)
+{
+	int cur = 0;
+	while (cur < count)
+	{
+		const uint32_t *w = words + 2 * cur;
+		uint32_t w1 = w[0];
+		uint32_t command = (w1 >> 24) & 63;
+		int cmd_length = cmd_len_lut[command];
+
+		if (count - cur < cmd_length)
+			break;
+
+		if (command >= 8 && frontend)
+			frontend->enqueue_command(cmd_length * 2, w);
+
+		if (command == 0x35 || command == 0x32)
+		{
+			unsigned set = command == 0x35 ? 0 : 1;
+			unsigned tile = (w[1] >> 24) & 7;
+			tile_state_words[set][tile][0] = w[0];
+			tile_state_words[set][tile][1] = w[1];
+			tile_state_valid[set][tile] = true;
+		}
+		else if (command >= 0x2a && command != 0x30 && command != 0x33 && command != 0x34 && command != 0x36)
+		{
+			state_words[command][0] = w[0];
+			state_words[command][1] = w[1];
+			state_valid[command] = true;
+		}
+
+		if (RDP::Op(command) == RDP::Op::SyncFull)
+		{
+			// For synchronous RDP:
+			if (synchronous && frontend)
+				frontend->wait_for_timeline(frontend->signal_timeline());
+			*gfx_info.MI_INTR_REG |= DP_INTERRUPT;
+			gfx_info.CheckInterrupts();
+		}
+
+		cur += cmd_length;
+	}
+	return cur;
+}
+
 void process_commands()
 {
 	if (!device_supported)
@@ -127,7 +175,43 @@ void process_commands()
 		return;
 
 	uint32_t offset = DP_CURRENT;
-	if (*GET_GFX_INFO(DPC_STATUS_REG) & DP_STATUS_XBUS_DMA)
+	const bool xbus = (*GET_GFX_INFO(DPC_STATUS_REG) & DP_STATUS_XBUS_DMA) != 0;
+	if (!xbus && (DP_END > 0x7ffffff || DP_CURRENT > 0x7ffffff))
+		return;
+
+	/* Source the command words from the HLE host buffer when a
+	 * synthesized FIFO is active, else from guest RDRAM. */
+	const bool from_hle = !xbus && hle_cmd_buf != nullptr
+	                      && DP_CURRENT >= hle_cmd_base
+	                      && (DP_CURRENT - hle_cmd_base) < hle_cmd_len;
+
+	/* A list in one piece of memory, with nothing left over from the last
+	 * one, is run where it is; only a command it cuts short is kept. */
+	if (!xbus && cmd_ptr == 0)
+	{
+		const uint8_t *direct = nullptr;
+		if (from_hle)
+		{
+			if ((DP_CURRENT - hle_cmd_base) + uint32_t(length) * 8u <= hle_cmd_len)
+				direct = hle_cmd_buf + (DP_CURRENT - hle_cmd_base);
+		}
+		else if (DP_CURRENT + uint32_t(length) * 8u <= 0x1000000u)
+			direct = DRAM + DP_CURRENT;
+
+		if (direct)
+		{
+			const uint32_t *words = reinterpret_cast<const uint32_t *>(direct);
+			int done = run_commands(words, length);
+			if (done < length)
+				memcpy(cmd_data, words + 2 * done, size_t(length - done) * 8);
+			cmd_ptr = length - done;
+			cmd_cur = 0;
+			*GET_GFX_INFO(DPC_CURRENT_REG) = *GET_GFX_INFO(DPC_END_REG);
+			return;
+		}
+	}
+
+	if (xbus)
 	{
 		do
 		{
@@ -140,85 +224,34 @@ void process_commands()
 	}
 	else
 	{
-		if (DP_END > 0x7ffffff || DP_CURRENT > 0x7ffffff)
+		do
 		{
-			return;
-		}
-		else
-		{
-			/* Source the command words from the HLE host buffer when a
-			 * synthesized FIFO is active, else from guest RDRAM.  Chosen
-			 * once here, not per word: a base-pointer swap, no hot-path cost. */
-			bool from_hle = (hle_cmd_buf != nullptr
-			                 && DP_CURRENT >= hle_cmd_base
-			                 && (DP_CURRENT - hle_cmd_base) < hle_cmd_len);
-			do
+			const uint8_t *p;
+			if (from_hle)
 			{
-				const uint8_t *p;
-				if (from_hle)
-				{
-					uint32_t rel = offset - hle_cmd_base;
-					if (rel + 8 > hle_cmd_len)
-						break;
-					p = hle_cmd_buf + rel;
-				}
-				else
-				{
-					offset &= 0xFFFFF8;
-					p = DRAM + offset;
-				}
-				cmd_data[2 * cmd_ptr + 0] = *reinterpret_cast<const uint32_t *>(p);
-				cmd_data[2 * cmd_ptr + 1] = *reinterpret_cast<const uint32_t *>(p + 4);
-				offset += sizeof(uint64_t);
-				cmd_ptr++;
-			} while (--length > 0);
-		}
+				uint32_t rel = offset - hle_cmd_base;
+				if (rel + 8 > hle_cmd_len)
+					break;
+				p = hle_cmd_buf + rel;
+			}
+			else
+			{
+				offset &= 0xFFFFF8;
+				p = DRAM + offset;
+			}
+			cmd_data[2 * cmd_ptr + 0] = *reinterpret_cast<const uint32_t *>(p);
+			cmd_data[2 * cmd_ptr + 1] = *reinterpret_cast<const uint32_t *>(p + 4);
+			offset += sizeof(uint64_t);
+			cmd_ptr++;
+		} while (--length > 0);
 	}
 
-	while (cmd_cur - cmd_ptr < 0)
+	cmd_cur += run_commands(&cmd_data[2 * cmd_cur], cmd_ptr - cmd_cur);
+	if (cmd_cur == cmd_ptr)
 	{
-		uint32_t w1 = cmd_data[2 * cmd_cur];
-		uint32_t command = (w1 >> 24) & 63;
-		int cmd_length = cmd_len_lut[command];
-
-		if (cmd_ptr - cmd_cur - cmd_length < 0)
-		{
-			*GET_GFX_INFO(DPC_CURRENT_REG) = *GET_GFX_INFO(DPC_END_REG);
-			return;
-		}
-
-		if (command >= 8 && frontend)
-			frontend->enqueue_command(cmd_length * 2, &cmd_data[2 * cmd_cur]);
-
-		if (command == 0x35 || command == 0x32)
-		{
-			unsigned set = command == 0x35 ? 0 : 1;
-			unsigned tile = (cmd_data[2 * cmd_cur + 1] >> 24) & 7;
-			tile_state_words[set][tile][0] = cmd_data[2 * cmd_cur];
-			tile_state_words[set][tile][1] = cmd_data[2 * cmd_cur + 1];
-			tile_state_valid[set][tile] = true;
-		}
-		else if (command >= 0x2a && command != 0x30 && command != 0x33 && command != 0x34 && command != 0x36)
-		{
-			state_words[command][0] = cmd_data[2 * cmd_cur];
-			state_words[command][1] = cmd_data[2 * cmd_cur + 1];
-			state_valid[command] = true;
-		}
-
-		if (RDP::Op(command) == RDP::Op::SyncFull)
-		{
-			// For synchronous RDP:
-			if (synchronous && frontend)
-				frontend->wait_for_timeline(frontend->signal_timeline());
-			*gfx_info.MI_INTR_REG |= DP_INTERRUPT;
-			gfx_info.CheckInterrupts();
-		}
-
-		cmd_cur += cmd_length;
+		cmd_ptr = 0;
+		cmd_cur = 0;
 	}
-
-	cmd_ptr = 0;
-	cmd_cur = 0;
 	*GET_GFX_INFO(DPC_CURRENT_REG) = *GET_GFX_INFO(DPC_END_REG);
 }
 
