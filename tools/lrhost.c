@@ -27,7 +27,9 @@
  * savestate after the first frame, and LRHOST_SAVE=file with LRHOST_SAVE_AT=n saves one
  * after frame n. LRHOST_HASHLOG=file logs a hash of every presented frame with its frame
  * number, for lining up two runs; LRHOST_RAMDUMP=file writes the system RAM at the end.
- * LRHOST_UPSCALER (lrhost_vk) offers a temporal upscaler; see lrhost_vulkan.h.
+ * LRHOST_UPSCALER (lrhost_vk) offers a temporal upscaler, and LRHOST_COUNT_PIPELINES=1
+ * counts the pipelines the core creates by thread; see lrhost_vulkan.h.
+ * LRHOST_SYSTEM_DIR=dir is the system and save folder (lrhost-system).
  */
 #if defined(_WIN32)
 #include <windows.h>
@@ -49,6 +51,8 @@
 #endif
 #include <features/features_cpu.h>
 
+/* LRHOST_SYSTEM_DIR: the system, save and assets folder (lrhost-system) */
+static const char *system_dir = "lrhost-system";
 static struct { char key[64]; char val[64]; } opts[64];
 static int nopts;
 static const char *opt(const char *key)
@@ -230,7 +234,7 @@ static bool env_cb(unsigned cmd, void *data)
     case RETRO_ENVIRONMENT_GET_SYSTEM_DIRECTORY:
     case RETRO_ENVIRONMENT_GET_SAVE_DIRECTORY:
     case RETRO_ENVIRONMENT_GET_CORE_ASSETS_DIRECTORY:
-        *(const char**)data = "lrhost-system"; return true;
+        *(const char**)data = system_dir; return true;
     case RETRO_ENVIRONMENT_GET_CURRENT_SOFTWARE_FRAMEBUFFER:
     {
         struct retro_framebuffer *fb = (struct retro_framebuffer*)data;
@@ -380,7 +384,8 @@ int main(int argc, char **argv)
     if (getenv("LRHOST_VK_NEGOTIATION")) vk_offer = (unsigned)atoi(getenv("LRHOST_VK_NEGOTIATION"));
     vk_up_init();
 #endif
-    MKDIR("lrhost-system");
+    if (getenv("LRHOST_SYSTEM_DIR")) system_dir = getenv("LRHOST_SYSTEM_DIR");
+    MKDIR(system_dir);
 
     h = lib_open(argv[1]);
     if (!h) { fprintf(stderr, "cannot load %s: %s\n", argv[1], lib_err()); return 1; }

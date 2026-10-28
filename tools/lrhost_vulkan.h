@@ -12,6 +12,9 @@
  * interface defines that as mutual exclusion, so this test host uses a
  * plain mutex for it. */
 #include <pthread.h>
+#if defined(_WIN32)
+#include <wchar.h>
+#endif
 #define VK_NO_PROTOTYPES
 #include <vulkan/vulkan.h>
 #include <libretro_vulkan.h>
@@ -61,6 +64,104 @@ VKF(vkBindBufferMemory); VKF(vkMapMemory); VKF(vkQueueWaitIdle); VKF(vkDeviceWai
 VKF(vkDestroyBuffer); VKF(vkFreeMemory); VKF(vkDestroyFence); VKF(vkDestroyCommandPool);
 VKF(vkDestroyDevice); VKF(vkDestroyInstance);
 VKF(vkCreateDevice); VKF(vkEnumerateDeviceExtensionProperties);
+
+/* LRHOST_COUNT_PIPELINES=1 hands the core its Vulkan functions through
+ * wrappers that count the pipelines it creates, by the thread creating
+ * them: paraLLEl-RDP names its pipeline worker "RDP Pipelines", and any
+ * other thread is one a frame waits on. A creation asked to fail when it
+ * would have to compile (VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_
+ * REQUIRED_BIT) that succeeds was found in the driver's cache, and is
+ * counted apart. The totals are printed at the end of the run. */
+static int vk_count;
+static PFN_vkGetDeviceProcAddr vk_real_gdpa;
+static PFN_vkCreateComputePipelines vk_real_ccp;
+static PFN_vkCreateGraphicsPipelines vk_real_cgp;
+static long vk_built_frame, vk_built_worker, vk_cached_frame, vk_cached_worker;
+
+static int vk_on_pipeline_worker(void)
+{
+#if defined(_WIN32)
+    typedef HRESULT (WINAPI *get_description_t)(HANDLE, PWSTR *);
+    static const WCHAR want[] = L"RDP Pipelines";
+    get_description_t get_description = (get_description_t)(void*)GetProcAddress(
+            GetModuleHandleA("kernel32.dll"), "GetThreadDescription");
+    PWSTR name = NULL; int is = 0;
+    if (get_description && SUCCEEDED(get_description(GetCurrentThread(), &name)) && name)
+    {
+        is = !wcscmp(name, want);
+        LocalFree(name);
+    }
+    return is;
+#else
+    char name[32];
+    return !pthread_getname_np(pthread_self(), name, sizeof name) && !strcmp(name, "RDP Pipelines");
+#endif
+}
+
+static void vk_count_created(VkResult res, uint32_t n, VkPipelineCreateFlags flags)
+{
+    int worker;
+    long *counter;
+    if (res != VK_SUCCESS) return;
+    worker = vk_on_pipeline_worker();
+    if (flags & VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT_EXT)
+        counter = worker ? &vk_cached_worker : &vk_cached_frame;
+    else
+        counter = worker ? &vk_built_worker : &vk_built_frame;
+    __sync_fetch_and_add(counter, (long)n);
+}
+
+static VkResult VKAPI_CALL vk_count_ccp(VkDevice d, VkPipelineCache c, uint32_t n,
+        const VkComputePipelineCreateInfo *info, const VkAllocationCallbacks *a, VkPipeline *out)
+{
+    VkResult res = vk_real_ccp(d, c, n, info, a, out);
+    vk_count_created(res, n, n ? info[0].flags : 0);
+    return res;
+}
+
+static VkResult VKAPI_CALL vk_count_cgp(VkDevice d, VkPipelineCache c, uint32_t n,
+        const VkGraphicsPipelineCreateInfo *info, const VkAllocationCallbacks *a, VkPipeline *out)
+{
+    VkResult res = vk_real_cgp(d, c, n, info, a, out);
+    vk_count_created(res, n, n ? info[0].flags : 0);
+    return res;
+}
+
+/* the creation functions are wrapped whichever way the core asks for them */
+static PFN_vkVoidFunction vk_count_wrap(const char *n, PFN_vkVoidFunction real)
+{
+    if (!real) return NULL;
+    if (!strcmp(n, "vkCreateComputePipelines"))
+    { if (!vk_real_ccp) vk_real_ccp = (PFN_vkCreateComputePipelines)real; return (PFN_vkVoidFunction)vk_count_ccp; }
+    if (!strcmp(n, "vkCreateGraphicsPipelines"))
+    { if (!vk_real_cgp) vk_real_cgp = (PFN_vkCreateGraphicsPipelines)real; return (PFN_vkVoidFunction)vk_count_cgp; }
+    return real;
+}
+
+static PFN_vkVoidFunction VKAPI_CALL vk_count_gdpa(VkDevice d, const char *n)
+{
+    if (!strcmp(n, "vkGetDeviceProcAddr")) return (PFN_vkVoidFunction)vk_count_gdpa;
+    return vk_count_wrap(n, vk_real_gdpa(d, n));
+}
+
+static PFN_vkVoidFunction VKAPI_CALL vk_count_gipa(VkInstance i, const char *n)
+{
+    if (!strcmp(n, "vkGetDeviceProcAddr"))
+    {
+        if (!vk_real_gdpa) vk_real_gdpa = (PFN_vkGetDeviceProcAddr)vk_gipa(i, n);
+        return vk_real_gdpa ? (PFN_vkVoidFunction)vk_count_gdpa : NULL;
+    }
+    if (!strcmp(n, "vkGetInstanceProcAddr")) return (PFN_vkVoidFunction)vk_count_gipa;
+    return vk_count_wrap(n, vk_gipa(i, n));
+}
+
+static void vk_count_report(void)
+{
+    if (!vk_count) return;
+    printf("pipelines: %ld built on the frame's threads, %ld on the pipeline worker; "
+           "found in the driver's cache: %ld on the frame's threads, %ld on the pipeline worker\n",
+           vk_built_frame, vk_built_worker, vk_cached_frame, vk_cached_worker);
+}
 
 /* create_device2's wrapper: adds an extension of the frontend's own, as
  * RetroArch adds its low-latency ones, and creates the device. */
@@ -127,9 +228,18 @@ static int vk_init(void)
     VkCommandBufferAllocateInfo cai = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO };
     VkFenceCreateInfo fci = { VK_STRUCTURE_TYPE_FENCE_CREATE_INFO };
 
+    PFN_vkGetInstanceProcAddr gipa;
+#if defined(_WIN32)
+    vk_lib = (void*)LoadLibraryA("vulkan-1.dll");
+    if (!vk_lib) { fprintf(stderr, "lrhost_vk: no vulkan-1.dll\n"); return 0; }
+    *(void**)&vk_gipa = (void*)GetProcAddress((HMODULE)vk_lib, "vkGetInstanceProcAddr");
+#else
     vk_lib = dlopen("libvulkan.so.1", RTLD_NOW | RTLD_LOCAL);
     if (!vk_lib) { fprintf(stderr, "lrhost_vk: no libvulkan.so.1\n"); return 0; }
     *(void**)&vk_gipa = dlsym(vk_lib, "vkGetInstanceProcAddr");
+#endif
+    vk_count = getenv("LRHOST_COUNT_PIPELINES") && atoi(getenv("LRHOST_COUNT_PIPELINES"));
+    gipa = vk_count ? vk_count_gipa : vk_gipa;
     *(void**)&p_vkCreateInstance = (void*)vk_gipa(NULL, "vkCreateInstance");
 
     app.pApplicationName = "lrhost"; app.apiVersion = VK_API_VERSION_1_1;
@@ -150,13 +260,13 @@ static int vk_init(void)
         /* RetroArch: create_device2 when the core has it */
         if (!vk_neg || vk_neg->interface_version < 2 || !vk_neg->create_device2)
         { fprintf(stderr, "lrhost_vk: the core did not offer create_device2\n"); return 0; }
-        if (!vk_neg->create_device2(&vk_ctx, vk_inst, gpus[0], VK_NULL_HANDLE, vk_gipa, vk_create_device_wrapper, NULL))
+        if (!vk_neg->create_device2(&vk_ctx, vk_inst, gpus[0], VK_NULL_HANDLE, gipa, vk_create_device_wrapper, NULL))
         { fprintf(stderr, "lrhost_vk: the core did not create a device\n"); return 0; }
         if (vk_wrapper_calls != 1 || vk_wrapper_gpu != gpus[0] || vk_ctx.gpu != gpus[0])
         { fprintf(stderr, "lrhost_vk: the core did not create its device through the frontend (%u)\n", vk_wrapper_calls); return 0; }
     }
     else if (!vk_neg || !vk_neg->create_device ||
-        !vk_neg->create_device(&vk_ctx, vk_inst, gpus[0], VK_NULL_HANDLE, vk_gipa, NULL, 0, NULL, 0, &vk_features))
+        !vk_neg->create_device(&vk_ctx, vk_inst, gpus[0], VK_NULL_HANDLE, gipa, NULL, 0, NULL, 0, &vk_features))
     { fprintf(stderr, "lrhost_vk: the core did not create a device\n"); return 0; }
 
 #define DFN(name) *(void**)&p_##name = (void*)vk_dev_proc(#name)
@@ -180,8 +290,9 @@ static int vk_init(void)
     vk_iface.instance = vk_inst;
     vk_iface.gpu = vk_ctx.gpu;
     vk_iface.device = vk_ctx.device;
-    vk_iface.get_device_proc_addr = p_vkGetDeviceProcAddr;
-    vk_iface.get_instance_proc_addr = vk_gipa;
+    if (vk_count && !vk_real_gdpa) vk_real_gdpa = p_vkGetDeviceProcAddr;
+    vk_iface.get_device_proc_addr = vk_count ? vk_count_gdpa : p_vkGetDeviceProcAddr;
+    vk_iface.get_instance_proc_addr = gipa;
     vk_iface.queue = vk_ctx.queue;
     vk_iface.queue_index = vk_ctx.queue_family_index;
     vk_iface.set_image = vk_set_image;
@@ -374,4 +485,5 @@ static void vk_shutdown(void)
     p_vkDestroyFence(vk_ctx.device, vk_fence, NULL);
     p_vkDestroyCommandPool(vk_ctx.device, vk_pool, NULL);
     vk_ready = 0;
+    vk_count_report();
 }
