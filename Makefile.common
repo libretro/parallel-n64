@@ -640,6 +640,11 @@ ifeq ($(HAVE_PARALLEL),1)
 	include $(PARALLEL_RDP_IMPLEMENTATION)/config.mk
 	CFLAGS   += $(PARALLEL_RDP_CFLAGS) -DHAVE_PARALLEL
 	CXXFLAGS += $(PARALLEL_RDP_CXXFLAGS) -DHAVE_PARALLEL
+	# a build that checks every RDRAM upload and readback against a full
+	# one, and stops at the first difference (tools/ci/parallel_rdp_rdram.py)
+	ifeq ($(PARALLEL_RDP_VERIFY_UPLOADS),1)
+		CXXFLAGS += -DPARALLEL_RDP_VERIFY_UPLOADS
+	endif
 	INCFLAGS += $(PARALLEL_RDP_INCLUDE_DIRS)
 	SOURCES_CXX += $(PARALLEL_RDP_SOURCES_CXX) $(VIDEODIR_PARALLEL)/parallel.cpp $(VIDEODIR_PARALLEL)/rdp.cpp $(VIDEODIR_PARALLEL)/parallel_hle.cpp
 	SOURCES_C += $(PARALLEL_RDP_SOURCES_C)

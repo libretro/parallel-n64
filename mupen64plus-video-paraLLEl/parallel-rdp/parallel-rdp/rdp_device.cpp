@@ -1527,9 +1527,17 @@ static void masked_memcpy(uint8_t * __restrict dst,
 #if defined(__SSE2__)
 	for (size_t i = 0; i < size; i += 16)
 	{
-		__m128i data = _mm_loadu_si128(reinterpret_cast<const __m128i *>(data_src + i));
+		// What the masked store would do, without it where it is all or
+		// nothing: the GPU wrote none of most chunks, or all of them.
 		__m128i mask = _mm_loadu_si128(reinterpret_cast<const __m128i *>(masked_src + i));
-		_mm_maskmoveu_si128(data, mask, reinterpret_cast<char *>(dst + i));
+		int bits = _mm_movemask_epi8(mask);
+		if (!bits)
+			continue;
+		__m128i data = _mm_loadu_si128(reinterpret_cast<const __m128i *>(data_src + i));
+		if (bits == 0xffff)
+			_mm_storeu_si128(reinterpret_cast<__m128i *>(dst + i), data);
+		else
+			_mm_maskmoveu_si128(data, mask, reinterpret_cast<char *>(dst + i));
 	}
 #else
 	auto * __restrict data32 = reinterpret_cast<const uint32_t *>(data_src);
@@ -1555,6 +1563,45 @@ static void masked_memcpy(uint8_t * __restrict dst,
 #endif
 }
 
+#if defined(PARALLEL_RDP_VERIFY_UPLOADS) && defined(__SSE2__)
+/* The readback above against the masked store of every chunk, on copies
+ * of what it reads and what it reads back over, which other threads (the
+ * GPU's next work, the emulation) may be writing: the same bytes, or the
+ * build stops here. */
+static void verify_masked_memcpy(const uint8_t *dst, const uint8_t *data_src,
+                                 const uint8_t *masked_src, size_t size)
+{
+	uint8_t *buf = static_cast<uint8_t *>(malloc(4 * size));
+	uint8_t *got, *want, *data, *mask;
+	size_t i;
+
+	if (!buf)
+		abort();
+	got  = buf;
+	want = buf + size;
+	data = buf + 2 * size;
+	mask = buf + 3 * size;
+	memcpy(got, dst, size);
+	memcpy(want, got, size);
+	memcpy(data, data_src, size);
+	memcpy(mask, masked_src, size);
+	masked_memcpy(got, data, mask, size);
+	for (i = 0; i < size; i += 16)
+		_mm_maskmoveu_si128(_mm_loadu_si128(reinterpret_cast<const __m128i *>(data + i)),
+		                    _mm_loadu_si128(reinterpret_cast<const __m128i *>(mask + i)),
+		                    reinterpret_cast<char *>(want + i));
+	_mm_mfence();
+	for (i = 0; i < size; i++)
+		if (got[i] != want[i])
+		{
+			fprintf(stderr, "parallel-rdp: RDRAM byte 0x%x of a readback is not as the masked store leaves it\n",
+			        unsigned(i));
+			abort();
+		}
+	free(buf);
+}
+#endif
+
 void CommandProcessor::perform_coherency(CoherencyOperation &work)
 {
 	if (work.fence)
@@ -1569,7 +1616,11 @@ void CommandProcessor::perform_coherency(CoherencyOperation &work)
 		{
 			auto *mapped_data = static_cast<uint8_t *>(device.map_host_buffer(*work.src, MEMORY_ACCESS_READ_BIT, copy.src_offset, copy.size));
 			auto *mapped_mask = static_cast<uint8_t *>(device.map_host_buffer(*work.src, MEMORY_ACCESS_READ_BIT, copy.mask_offset, copy.size));
+#if defined(PARALLEL_RDP_VERIFY_UPLOADS) && defined(__SSE2__)
+			verify_masked_memcpy(work.dst + copy.dst_offset, mapped_data, mapped_mask, copy.size);
+#endif
 			masked_memcpy(work.dst + copy.dst_offset, mapped_data, mapped_mask, copy.size);
+
 			for (unsigned i = 0; i < copy.counters; i++)
 			{
 				unsigned val = copy.counter_base[i].fetch_sub(1, std::memory_order_release);
