@@ -83,6 +83,35 @@ static inline void jit_write_disable(void) { }
 #endif // HAVE_LIBNX
 #endif
 
+#if !defined(WIN32) && !defined(HAVE_LIBNX) && !(defined(__APPLE__) && defined(__aarch64__)) && !defined(RECOMP_DBG)
+#include <errno.h>
+#if defined(__linux__) || defined(__APPLE__) || defined(__unix__)
+#include <unistd.h>
+#endif
+#include "cache_protect.h"
+
+/* Apply prot to the cache at g_dev.r4300.extra_memory through the host
+   pages that hold it; hosts without a page size query keep 4 KiB pages. */
+static void protect_extra_memory_cache(int prot)
+{
+  long page_size = 4096;
+  uintptr_t start;
+  size_t length;
+
+#if (defined(__linux__) || defined(__APPLE__) || defined(__unix__)) && defined(_SC_PAGESIZE)
+  page_size = sysconf(_SC_PAGESIZE);
+  if (page_size <= 0)
+    page_size = 4096;
+#endif
+
+  new_dynarec_cache_pages((uintptr_t)g_dev.r4300.extra_memory, sizeof(g_dev.r4300.extra_memory),
+                          (size_t)page_size, &start, &length);
+  if (mprotect((void*)start, length, prot) != 0)
+    DebugMessage(M64MSG_ERROR, "dynarec cache: mprotect of %lx+%lx failed (%d)",
+                 (unsigned long)start, (unsigned long)length, errno);
+}
+#endif
+
 #if defined(RECOMPILER_DEBUG) && !defined(RECOMP_DBG)
 void recomp_dbg_init(void);
 void recomp_dbg_cleanup(void);
@@ -9087,8 +9116,7 @@ void new_dynarec_init(void)
   close(fd);
 #endif // HAVE_LIBNX
 #elif CACHE_ADDR==FIXED_CACHE_ADDR
-  mprotect ((u_char *)g_dev.r4300.extra_memory, 1<<TARGET_SIZE_2,
-            PROT_READ | PROT_WRITE | PROT_EXEC);
+  protect_extra_memory_cache(PROT_READ | PROT_WRITE | PROT_EXEC);
   base_addr = g_dev.r4300.extra_memory;
   base_addr_rx = base_addr;
 #else /*DYNAMIC_CACHE_ADDR*/
@@ -9099,8 +9127,7 @@ void new_dynarec_init(void)
   base_addr_rx = base_addr;
 #endif
 #elif NEW_DYNAREC == NEW_DYNAREC_ARM
-  mprotect ((u_char *)g_dev.r4300.extra_memory, 1<<TARGET_SIZE_2,
-            PROT_READ | PROT_WRITE | PROT_EXEC);
+  protect_extra_memory_cache(PROT_READ | PROT_WRITE | PROT_EXEC);
   base_addr = g_dev.r4300.extra_memory;
   base_addr_rx = base_addr;
 #else
@@ -9110,8 +9137,7 @@ void new_dynarec_init(void)
   assert(res!=0);
   base_addr = base_addr_rx = (void*)g_dev.r4300.extra_memory;
 #else
-  mprotect ((u_char *)g_dev.r4300.extra_memory, 1<<TARGET_SIZE_2,
-            PROT_READ | PROT_WRITE | PROT_EXEC);
+  protect_extra_memory_cache(PROT_READ | PROT_WRITE | PROT_EXEC);
   base_addr = g_dev.r4300.extra_memory;
   base_addr_rx = base_addr;
 #endif
@@ -9185,7 +9211,7 @@ void new_dynarec_cleanup(void)
   #elif NEW_DYNAREC == NEW_DYNAREC_ARM64 && CACHE_ADDR!=FIXED_CACHE_ADDR
     if (munmap (base_addr_rx, 1<<TARGET_SIZE_2) < 0) {DebugMessage(M64MSG_ERROR, "munmap() failed");}
   #else
-    mprotect(base_addr, 1<<TARGET_SIZE_2, PROT_READ | PROT_WRITE);
+    protect_extra_memory_cache(PROT_READ | PROT_WRITE);
   #endif
 #endif
 }

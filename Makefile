@@ -1444,6 +1444,11 @@ test_gb_cart_banks$(EXE_EXT): tools/test_gb_cart_banks.c $(TEST_GB_CART_SRCS)
 		-I$(CORE_DIR)/custom -I$(LIBRETRO_COMM_DIR)/include -I$(ROOT_DIR)/libretro \
 		$^ -o $@ $(CHECK_LDFLAGS) $(CHECK_SANITIZE)
 
+test_dynarec_cache_pages$(EXE_EXT): tools/test_dynarec_cache_pages.c \
+		$(CORE_DEVICE_DIR)/r4300/new_dynarec/cache_protect.h
+	$(CC) $(CHECK_CFLAGS) $(CHECK_SANITIZE) -I$(CORE_DIR)/src \
+		$< -o $@ $(CHECK_LDFLAGS) $(CHECK_SANITIZE)
+
 test_re2_fill$(EXE_EXT): tools/test_re2_fill.c $(RSPDIR)/src/re2.c $(RSPDIR)/src/hle_memory.c
 	$(CC) $(CHECK_CFLAGS) $(CHECK_SANITIZE) -I$(RSPDIR)/src -I$(LIBRETRO_COMM_DIR)/include \
 		$< $(RSPDIR)/src/hle_memory.c -o $@ $(CHECK_LDFLAGS) $(CHECK_SANITIZE)
@@ -1512,7 +1517,7 @@ CORE_CHECKS := test_rcp_bounds$(EXE_EXT) test_memory_map$(EXE_EXT) test_fb_write
 	test_musyx_bounds$(EXE_EXT) test_musyx_aux$(EXE_EXT) test_alist_ops$(EXE_EXT) test_alist_abi1$(EXE_EXT) test_hle_dispatch$(EXE_EXT) angrylion_zboss_audio_test$(EXE_EXT) \
 	test_mouse_accum$(EXE_EXT) test_hle_dram_wrap$(EXE_EXT) test_pif_write$(EXE_EXT) \
 	test_re2_fill$(EXE_EXT) test_temporal_upscaler$(EXE_EXT) test_pipeline_records$(EXE_EXT) \
-	test_command_ring$(EXE_EXT) test_gb_cart_banks$(EXE_EXT)
+	test_command_ring$(EXE_EXT) test_gb_cart_banks$(EXE_EXT) test_dynarec_cache_pages$(EXE_EXT)
 
 ifeq ($(HAVE_PARALLEL_RSP), 1)
 PRSP_TEST_OBJS := $(filter $(RSPDIR_PARALLEL)/%,$(OBJECTS))
