@@ -26,6 +26,7 @@
 #include "bitops.hpp"
 #include "luts.hpp"
 #include "timer.hpp"
+#include "thread_name.hpp"
 #include <limits>
 #ifdef PARALLEL_RDP_SHADER_DIR
 #include "global_managers.hpp"
@@ -41,7 +42,15 @@ namespace
 struct PipelineNode : mpsc_stack_node_t
 {
 	Vulkan::DeferredPipelineCompile compile;
+	uint32_t kind;   /* PIPELINE_RECORD_* */
+	uint8_t ahead;   /* one of build_pipelines_ahead's block */
+	uint8_t urgent;  /* a draw waits for it */
 };
+
+void pipeline_worker_start(void *)
+{
+	Util::set_current_thread_name("RDP Pipelines");
+}
 }
 
 Renderer::Renderer(CommandProcessor &processor_)
@@ -52,6 +61,11 @@ Renderer::Renderer(CommandProcessor &processor_)
 
 Renderer::~Renderer()
 {
+	/* The worker drains what is queued before it goes; built ahead, that
+	 * is skipped. */
+	retro_atomic_store_release_int(&pipeline_ahead_stop, 1);
+	pipeline_worker.reset();
+	free(pipeline_ahead_nodes);
 }
 
 void Renderer::set_shader_bank(const ShaderBank *bank)
@@ -76,7 +90,7 @@ bool Renderer::init_renderer(const RendererOptions &options)
 	caps.max_num_tile_instances = options.upscaling_factor * options.upscaling_factor * Limits::MaxTileInstances;
 
 	pipeline_worker.reset(new PipelineWorker);
-	pipeline_worker->worker = rdp_worker_new(nullptr, pipeline_work, device);
+	pipeline_worker->worker = rdp_worker_new(pipeline_worker_start, pipeline_work, this);
 	if (!pipeline_worker->worker)
 		return false;
 
@@ -1840,6 +1854,9 @@ void Renderer::submit_rasterization(Vulkan::CommandBuffer &cmd, Vulkan::Buffer &
 				pending_async_pipelines.insert(compile.hash);
 				auto *node = new PipelineNode;
 				node->compile = std::move(compile);
+				node->kind = PIPELINE_RECORD_COMPUTE;
+				node->ahead = 0;
+				node->urgent = 0;
 				rdp_worker_push(pipeline_worker->worker, node);
 			}
 			cmd.set_specialization_constant_mask(7);
@@ -3590,13 +3607,82 @@ bool Renderer::supports_subgroup_size_control(uint32_t minimum_size, uint32_t ma
 
 void Renderer::pipeline_work(void *user, mpsc_stack_node_t *item)
 {
-	auto *device = static_cast<Vulkan::Device *>(user);
+	auto *renderer = static_cast<Renderer *>(user);
+	auto *device = renderer->device;
 	auto *node = static_cast<PipelineNode *>(item);
-	auto start_ts = device->write_calibrated_timestamp();
-	Vulkan::CommandBuffer::build_compute_pipeline(device, node->compile, Vulkan::CommandBuffer::CompileMode::AsyncThread);
-	auto end_ts = device->write_calibrated_timestamp();
-	device->register_time_interval("RDP Pipeline", std::move(start_ts), std::move(end_ts),
-	                               "pipeline-compilation", std::to_string(node->compile.hash));
-	delete node;
+
+	/* Not one built meanwhile (ahead, or by a draw); built ahead, not past
+	 * teardown. */
+	if ((!node->ahead || !retro_atomic_load_acquire_int(&renderer->pipeline_ahead_stop)) &&
+	    node->compile.program->get_pipeline(node->compile.hash).pipeline == VK_NULL_HANDLE)
+	{
+		auto start_ts = device->write_calibrated_timestamp();
+		if (node->kind == PIPELINE_RECORD_GRAPHICS)
+			Vulkan::CommandBuffer::build_graphics_pipeline(device, node->compile,
+			                                               Vulkan::CommandBuffer::CompileMode::AsyncThread);
+		else
+			Vulkan::CommandBuffer::build_compute_pipeline(device, node->compile,
+			                                              Vulkan::CommandBuffer::CompileMode::AsyncThread);
+		auto end_ts = device->write_calibrated_timestamp();
+		device->register_time_interval("RDP Pipeline", std::move(start_ts), std::move(end_ts),
+		                               "pipeline-compilation", std::to_string(node->compile.hash));
+	}
+	if (node->urgent)
+		retro_atomic_fetch_add_int(&renderer->pipeline_ahead_urgent_done, 1);
+	if (!node->ahead)
+		delete node;
+}
+
+void Renderer::build_pipelines_ahead(const pipeline_record_t *records, size_t count)
+{
+	PipelineNode *nodes;
+	size_t i, n = 0;
+	unsigned pass;
+
+	if (!count || !pipeline_worker || pipeline_ahead_nodes)
+		return;
+	if (!(nodes = static_cast<PipelineNode *>(calloc(count, sizeof(*nodes)))))
+		return;
+	pipeline_ahead_nodes = nodes;
+
+	for (i = 0; i < count; i++)
+	{
+		PipelineNode *node = &nodes[n];
+		/* (what a record names is gone, or is not the same any more) */
+		if (!device->resolve_pipeline_record(records[i], node->compile)
+		    || node->compile.program->get_pipeline(node->compile.hash).pipeline != VK_NULL_HANDLE)
+			continue;
+		node->kind   = records[i].kind;
+		node->ahead  = 1;
+		node->urgent = 1;
+#ifndef PARALLEL_RDP_SHADER_DIR
+		/* The rasterizer's specialised variants: a draw that misses one
+		 * runs on the ubershader meanwhile, and asks the worker for it,
+		 * which finds it built by then (the worker takes its work in
+		 * order). */
+		if (node->kind == PIPELINE_RECORD_COMPUTE && !caps.force_sync
+		    && node->compile.program == shader_bank->rasterizer
+		    && node->compile.potential_static_state.spec_constant_mask == 0xff)
+			node->urgent = 0;
+#endif
+		pipeline_ahead_urgent += node->urgent;
+		n++;
+	}
+	for (pass = 0; pass < 2; pass++)
+		for (i = 0; i < n; i++)
+			if (nodes[i].urgent == (pass == 0))
+				rdp_worker_push(pipeline_worker->worker, &nodes[i]);
+}
+
+bool Renderer::pipeline_ahead_urgent_built(void *ctx)
+{
+	auto *renderer = static_cast<Renderer *>(ctx);
+	return retro_atomic_load_acquire_int(&renderer->pipeline_ahead_urgent_done) >= renderer->pipeline_ahead_urgent;
+}
+
+void Renderer::wait_pipelines_ahead()
+{
+	if (pipeline_worker && pipeline_ahead_urgent)
+		rdp_worker_wait(pipeline_worker->worker, pipeline_ahead_urgent_built, this);
 }
 }

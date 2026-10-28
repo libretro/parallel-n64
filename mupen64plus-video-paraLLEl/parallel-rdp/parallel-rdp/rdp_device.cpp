@@ -1418,6 +1418,34 @@ void CommandProcessor::run_on_command_thread(void (*fn)(void *), void *ctx)
 	drain_command_ring();
 }
 
+namespace
+{
+struct PipelinesAhead
+{
+	Renderer *renderer;
+	const pipeline_record_t *records;
+	size_t count;
+};
+
+void build_pipelines_ahead_on_command_thread(void *ctx)
+{
+	auto *ahead = static_cast<PipelinesAhead *>(ctx);
+	ahead->renderer->build_pipelines_ahead(ahead->records, ahead->count);
+}
+}
+
+void CommandProcessor::build_pipelines_ahead(const pipeline_record_t *records, size_t count)
+{
+	PipelinesAhead ahead;
+	if (!count)
+		return;
+	ahead.renderer = &renderer;
+	ahead.records  = records;
+	ahead.count    = count;
+	run_on_command_thread(build_pipelines_ahead_on_command_thread, &ahead);
+	renderer.wait_pipelines_ahead();
+}
+
 Vulkan::ImageHandle CommandProcessor::scanout(const ScanoutOptions &opts)
 {
 	return scanout(opts, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);

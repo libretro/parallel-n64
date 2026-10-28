@@ -6,6 +6,11 @@
 #include <assert.h>
 #include <math.h>
 #include <string.h>
+#include <stdlib.h>
+#include <streams/file_stream.h>
+#include <file/file_path.h>
+#include <encodings/crc32.h>
+#include "pipeline_record_list.h"
 
 using namespace Vulkan;
 using namespace std;
@@ -264,6 +269,90 @@ void begin_frame()
 	//pending_timeline_value = timeline_value;
 }
 
+/* The driver's pipeline cache and the list of the pipelines built, kept
+ * in the system folder from one session to the next: the list outlives a
+ * cache another driver no longer takes. What was loaded is kept to merge
+ * into, and to leave the files alone when nothing changed. */
+static pipeline_record_t *pipeline_list;
+static size_t pipeline_list_count;
+static uint32_t pipeline_cache_loaded_crc;
+static int64_t pipeline_cache_loaded_size;
+
+static bool pipeline_file_path(char *s, size_t len, const char *name)
+{
+	const char *dir = NULL;
+	if (!environ_cb(RETRO_ENVIRONMENT_GET_SYSTEM_DIRECTORY, &dir) || !dir || !*dir)
+		return false;
+	fill_pathname_join_special(s, dir, name, len);
+	return true;
+}
+
+static void pipeline_files_load(void)
+{
+	char path[PATH_MAX_LENGTH];
+	void *blob = NULL;
+	int64_t size = 0;
+
+	pipeline_cache_loaded_crc  = 0;
+	pipeline_cache_loaded_size = -1;
+	if (pipeline_file_path(path, sizeof(path), "parallel_rdp_pipeline_cache.bin")
+	    && filestream_read_file(path, &blob, &size) && blob)
+	{
+		pipeline_cache_loaded_crc  = encoding_crc32(0, (const uint8_t *)blob, (size_t)size);
+		pipeline_cache_loaded_size = size;
+	}
+	/* (one the device does not take is replaced by an empty one) */
+	device->init_pipeline_cache((const uint8_t *)blob, blob ? (size_t)size : 0);
+	free(blob);
+
+	free(pipeline_list);
+	pipeline_list       = NULL;
+	pipeline_list_count = 0;
+	if (pipeline_file_path(path, sizeof(path), "parallel_rdp_pipelines.bin"))
+		pipeline_list = pipeline_record_list_load(path, &pipeline_list_count);
+}
+
+/* Once no thread builds pipelines any more and the device is still there. */
+static void pipeline_files_save(void)
+{
+	char path[PATH_MAX_LENGTH];
+	const pipeline_record_t *built = NULL;
+	pipeline_record_t *merged;
+	size_t num_built = device->get_pipeline_records(&built);
+	size_t count, size;
+	uint8_t *blob;
+
+	/* this session's first, so what is past the cap is the oldest */
+	merged = (pipeline_record_t *)malloc((num_built + pipeline_list_count + 1) * sizeof(*merged));
+	if (merged)
+	{
+		if (num_built)
+			memcpy(merged, built, num_built * sizeof(*merged));
+		if (pipeline_list_count)
+			memcpy(merged + num_built, pipeline_list, pipeline_list_count * sizeof(*merged));
+		count = pipeline_record_list_unique(merged, num_built + pipeline_list_count,
+		                                    PIPELINE_RECORD_LIST_MAX);
+		if ((count != pipeline_list_count
+		     || (count && memcmp(merged, pipeline_list, count * sizeof(*merged))))
+		    && pipeline_file_path(path, sizeof(path), "parallel_rdp_pipelines.bin"))
+			pipeline_record_list_save(path, merged, count);
+		free(merged);
+	}
+	free(pipeline_list);
+	pipeline_list       = NULL;
+	pipeline_list_count = 0;
+
+	size = device->get_pipeline_cache_size();
+	if (!size || !(blob = (uint8_t *)malloc(size)))
+		return;
+	if (device->get_pipeline_cache_data(blob, size)
+	    && ((int64_t)size != pipeline_cache_loaded_size
+	        || encoding_crc32(0, blob, size) != pipeline_cache_loaded_crc)
+	    && pipeline_file_path(path, sizeof(path), "parallel_rdp_pipeline_cache.bin"))
+		filestream_write_file_atomic(path, blob, (int64_t)size);
+	free(blob);
+}
+
 static bool create_processor(unsigned factor)
 {
 	CommandProcessorFlags flags = 0;
@@ -505,6 +594,7 @@ bool init()
 
 	device.reset(new Device);
 	device->set_context(*context);
+	pipeline_files_load();
 	device->init_frame_contexts(num_sync_frames);
 	log_cb(RETRO_LOG_INFO, "Using %u sync frames for parallel-RDP.\n", num_sync_frames);
 	device->set_queue_lock(
@@ -531,6 +621,7 @@ bool init()
 	upscaler_reset_pending = true;
 	if (!create_processor(upscaling))
 		return false;
+	frontend->build_pipelines_ahead(pipeline_list, pipeline_list_count);
 
 	timeline_value = 0;
 	pending_timeline_value = 0;
@@ -551,6 +642,8 @@ void deinit()
 	upscaler_iface = nullptr;
 	upscaler_on = false;
 	frontend.reset();
+	if (device)
+		pipeline_files_save();
 	device.reset();
 	context.reset();
 	timeline_trace_file.reset();

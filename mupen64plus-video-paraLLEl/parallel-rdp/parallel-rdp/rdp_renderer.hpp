@@ -115,6 +115,14 @@ public:
 
 	bool init_renderer(const RendererOptions &options);
 
+	/* Hands the pipelines @records lists to the pipeline worker: those a
+	 * draw cannot do without first, then those it has a fallback for. The
+	 * thread that processes commands, once, after init_renderer. */
+	void build_pipelines_ahead(const pipeline_record_t *records, size_t count);
+	/* Returns once the worker has built the first kind; any thread but the
+	 * one processing commands, after build_pipelines_ahead returned. */
+	void wait_pipelines_ahead();
+
 	// setup may be mutated to apply various fixups to triangle setup.
 	void draw_flat_primitive(TriangleSetup &setup);
 	void draw_shaded_primitive(TriangleSetup &setup, const AttributeSetup &attr);
@@ -404,6 +412,14 @@ private:
 	};
 	std::unique_ptr<PipelineWorker> pipeline_worker;
 	static void pipeline_work(void *user, mpsc_stack_node_t *item);
+	/* build_pipelines_ahead's nodes, one block freed once the worker is
+	 * gone; the worker counts the urgent ones it is done with, and builds
+	 * none past teardown. */
+	void *pipeline_ahead_nodes = nullptr;
+	int pipeline_ahead_urgent = 0;
+	retro_atomic_int_t pipeline_ahead_urgent_done{0};
+	retro_atomic_int_t pipeline_ahead_stop{0};
+	static bool pipeline_ahead_urgent_built(void *ctx);
 
 	void resolve_coherency_host_to_gpu(Vulkan::CommandBuffer &cmd);
 	void resolve_coherency_gpu_to_host(CoherencyOperation &op, Vulkan::CommandBuffer &cmd);
