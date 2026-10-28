@@ -43,3 +43,5 @@ new_dynarec_disasm.txt
 /test_dynarec_cache_pages
 /dynarec_long_block_test
 /dynarec_block_check.tmp/
+/savestate_latch_test
+/savestate_latch_check.tmp/

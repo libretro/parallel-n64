@@ -3976,8 +3976,9 @@ size_t retro_serialize_size (void)
      * board SDRAM (v1.5 block), and E90 boards their sprite VRAM, palette
      * and enable word (v1.6 block). The v1.7 block is the mouse-to-stick
      * accumulator; the v1.8 block the Flash RAM page buffer, silicon ID
-     * and erase page plus the angrylion noise phase (146 bytes). */
-    return 16789580 + 4 * INPUT_MOUSE_STATE_WORDS + 146 + 1024
+     * and erase page plus the angrylion noise phase (146 bytes); the v1.9
+     * block the COP0 and COP2 move latches (16 bytes). */
+    return 16789580 + 4 * INPUT_MOUSE_STATE_WORDS + 146 + 16 + 1024
          + (g_aleck64_enabled ? (ALECK64_SDRAM_SIZE + 16) : 0)
          + (g_aleck64_e90 ? (ALECK64_E90_VRAM_SIZE + ALECK64_E90_PAL_SIZE + 4) : 0);
 }

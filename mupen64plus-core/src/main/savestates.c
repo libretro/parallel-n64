@@ -40,7 +40,9 @@
 
 #include "../device/rcp/ai/ai_controller.h"
 #include "../device/memory/m64p_memory.h"
+#include "../device/r4300/cp0.h"
 #include "../device/r4300/cp1.h"
+#include "../device/r4300/cp2.h"
 #include "../device/rcp/pi/pi_controller.h"
 #include "../plugin/plugin.h"
 #include "../device/r4300/r4300_core.h"
@@ -60,7 +62,7 @@
 extern uint32_t RollbackRtcOnLoadState;
 
 static const char* savestate_magic = "M64+SAVE";
-static const int savestate_latest_version = 0x00010008;  /* 1.8 */
+static const int savestate_latest_version = 0x00010009;  /* 1.9 */
 
 #ifdef HAVE_THR_AL
 void n64video_noise_save(uint32_t* out);
@@ -456,6 +458,18 @@ int savestates_load_m64p(const unsigned char *data, size_t size)
 #endif
    }
 
+   /* COP0 and COP2 move latches (since 1.9): an MFC0 of an unused register
+    * and the COP2 moves read back the last value moved in. Older states
+    * clear them, as at power-on. */
+   if (version >= 0x00010009) {
+      *r4300_cp0_latch(&g_dev.r4300.cp0) = GETDATA(curr, uint64_t);
+      *r4300_cp2_latch(&g_dev.r4300.cp2) = GETDATA(curr, uint64_t);
+   }
+   else {
+      *r4300_cp0_latch(&g_dev.r4300.cp0) = 0;
+      *r4300_cp2_latch(&g_dev.r4300.cp2) = 0;
+   }
+
    rdp_restore_dpc_clock(&g_dev.dp);
 
    /* deliver callback to indicate 
@@ -817,6 +831,10 @@ int savestates_save_m64p(unsigned char *data, size_t size)
       PUTDATA(curr, uint16_t, g_dev.cart.flashram.erase_page);
       PUTARRAY(noise, curr, uint32_t, 2);
    }
+
+   /* COP0 and COP2 move latches (since 1.9) */
+   PUTDATA(curr, uint64_t, *r4300_cp0_latch(&g_dev.r4300.cp0));
+   PUTDATA(curr, uint64_t, *r4300_cp2_latch(&g_dev.r4300.cp2));
 
    /* Deliver callback to indicate completion
     * of state saving operation */
