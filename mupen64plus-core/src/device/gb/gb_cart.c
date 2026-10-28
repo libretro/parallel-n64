@@ -54,13 +54,13 @@ enum gbcart_extra_devices
 /* various helper functions for ram, rom, or MBC uses */
 
 
-static void read_rom(const void* rom_storage, const struct storage_backend_interface* irom_storage, uint16_t address, uint8_t* data, size_t size)
+static void read_rom(const void* rom_storage, const struct storage_backend_interface* irom_storage, uint32_t address, uint8_t* data, size_t size)
 {
     assert(size > 0);
 
     if (address + size > irom_storage->size(rom_storage))
     {
-        DebugMessage(M64MSG_WARNING, "Out of bound read from GB ROM %04x", address);
+        DebugMessage(M64MSG_WARNING, "Out of bound read from GB ROM %05x", (unsigned)address);
         return;
     }
 
@@ -68,28 +68,28 @@ static void read_rom(const void* rom_storage, const struct storage_backend_inter
 }
 
 
-static void read_ram(const void* ram_storage, const struct storage_backend_interface* iram_storage, unsigned int enabled, uint16_t address, uint8_t* data, size_t size, uint8_t mask)
+static void read_ram(const void* ram_storage, const struct storage_backend_interface* iram_storage, unsigned int enabled, uint32_t address, uint8_t* data, size_t size, uint8_t mask)
 {
     size_t i;
     assert(size > 0);
 
     /* RAM has to be enabled before use */
     if (!enabled) {
-        DebugMessage(M64MSG_WARNING, "Trying to read from non enabled GB RAM %04x", address);
+        DebugMessage(M64MSG_WARNING, "Trying to read from non enabled GB RAM %05x", (unsigned)address);
         memset(data, 0xff, size);
         return;
     }
 
     /* RAM must be present */
     if (iram_storage->data(ram_storage) == NULL) {
-        DebugMessage(M64MSG_WARNING, "Trying to read from absent GB RAM %04x", address);
+        DebugMessage(M64MSG_WARNING, "Trying to read from absent GB RAM %05x", (unsigned)address);
         memset(data, 0xff, size);
         return;
     }
 
     if (address + size > iram_storage->size(ram_storage))
     {
-        DebugMessage(M64MSG_WARNING, "Out of bound read from GB RAM %04x", address);
+        DebugMessage(M64MSG_WARNING, "Out of bound read from GB RAM %05x", (unsigned)address);
         return;
     }
 
@@ -102,7 +102,7 @@ static void read_ram(const void* ram_storage, const struct storage_backend_inter
     }
 }
 
-static void write_ram(void* ram_storage, const struct storage_backend_interface* iram_storage, unsigned int enabled, uint16_t address, const uint8_t* data, size_t size, uint8_t mask)
+static void write_ram(void* ram_storage, const struct storage_backend_interface* iram_storage, unsigned int enabled, uint32_t address, const uint8_t* data, size_t size, uint8_t mask)
 {
     size_t i;
     uint8_t* dst;
@@ -111,19 +111,19 @@ static void write_ram(void* ram_storage, const struct storage_backend_interface*
 
     /* RAM has to be enabled before use */
     if (!enabled) {
-        DebugMessage(M64MSG_WARNING, "Trying to write to non enabled GB RAM %04x", address);
+        DebugMessage(M64MSG_WARNING, "Trying to write to non enabled GB RAM %05x", (unsigned)address);
         return;
     }
 
     /* RAM must be present */
     if (iram_storage->data(ram_storage) == NULL) {
-        DebugMessage(M64MSG_WARNING, "Trying to write to absent GB RAM %04x", address);
+        DebugMessage(M64MSG_WARNING, "Trying to write to absent GB RAM %05x", (unsigned)address);
         return;
     }
 
     if (address + size > iram_storage->size(ram_storage))
     {
-        DebugMessage(M64MSG_WARNING, "Out of bound write to GB RAM %04x", address);
+        DebugMessage(M64MSG_WARNING, "Out of bound write to GB RAM %05x", (unsigned)address);
         return;
     }
 

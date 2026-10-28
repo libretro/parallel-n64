@@ -37,3 +37,6 @@ new_dynarec_debug.txt
 new_dynarec_disasm.txt
 *.zip
 .build-flags
+
+# check-core executables
+/test_gb_cart_banks
