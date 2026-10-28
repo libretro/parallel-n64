@@ -29,7 +29,9 @@
  * number, for lining up two runs; LRHOST_RAMDUMP=file writes the system RAM at the end.
  * LRHOST_UPSCALER (lrhost_vk) offers a temporal upscaler, and LRHOST_COUNT_PIPELINES=1
  * counts the pipelines the core creates by thread; see lrhost_vulkan.h.
- * LRHOST_SYSTEM_DIR=dir is the system and save folder (lrhost-system).
+ * LRHOST_SYSTEM_DIR=dir is the system and save folder (lrhost-system). LRHOST_POKE=offset,length
+ * writes bytes that change every frame into the system RAM through the memory map
+ * before each run after the first, as a cheat or achievement frontend may.
  */
 #if defined(_WIN32)
 #include <windows.h>
@@ -444,6 +446,18 @@ int main(int argc, char **argv)
     t_first = now_ms();
     for (i = 0; i < nframes; i++)
     {
+        /* LRHOST_POKE=offset,length writes bytes that change every frame
+         * into the system RAM through the memory map before each run, as a
+         * cheat or achievement frontend may */
+        if (getenv("LRHOST_POKE") && i > 0)
+        {
+            unsigned long off = 0, len = 0, k;
+            unsigned char *ram = (unsigned char*)r_get_memory_data(RETRO_MEMORY_SYSTEM_RAM);
+            size_t ram_size = r_get_memory_size(RETRO_MEMORY_SYSTEM_RAM);
+            if (ram && sscanf(getenv("LRHOST_POKE"), "%lu,%lu", &off, &len) == 2 && off + len <= ram_size)
+                for (k = 0; k < len; k++)
+                    ram[off + k] = (unsigned char)((k * 7u + (unsigned)i * 13u) ^ (k >> 3));
+        }
         run_frame = i; t0 = now_ms(); r_run(); t1 = now_ms();
         /* LRHOST_SAVE=file with LRHOST_SAVE_AT=n saves a state after run n */
         if (getenv("LRHOST_SAVE") && getenv("LRHOST_SAVE_AT") && i == atol(getenv("LRHOST_SAVE_AT")))
