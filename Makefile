@@ -1203,7 +1203,7 @@ clean: clean-tools
 
 clean-tools:
 	rm -f $(ANGRYLION_TOOLS) lrhost$(EXE_EXT) lrhost_vk$(EXE_EXT) angrylion_replay$(EXE_EXT) $(ANGRYLION_CHECKS) dd_ipl_hle_test$(EXE_EXT) \
-		$(CORE_CHECKS) tools/test_prsp_dmem_wrap.o
+		$(CORE_CHECKS) tools/test_prsp_dmem_wrap.o tools/test_command_ring_rthreads.o tools/test_command_ring_ec.o
 
 # Angrylion benchmark and bit-exactness harnesses (tools/angrylion_*.c),
 # linked against the core's own angrylion objects: `make tools` after a
@@ -1484,11 +1484,27 @@ test_pipeline_records$(EXE_EXT): tools/test_pipeline_records.c $(PIPELINE_RECORD
 	$(CC) $(CHECK_CFLAGS) $(CHECK_SANITIZE) -I$(VIDEODIR_PARALLEL)/parallel-rdp/vulkan \
 		-I$(LIBRETRO_COMM_DIR)/include $^ -o $@ $(CHECK_LDFLAGS) $(CHECK_SANITIZE)
 
+# The command ring alone, with a stand-in processor (tools/test_command_ring.cpp).
+COMMAND_RING_TEST_INC := -I$(VIDEODIR_PARALLEL)/parallel-rdp/parallel-rdp -I$(VIDEODIR_PARALLEL)/parallel-rdp/vulkan \
+	-I$(VIDEODIR_PARALLEL)/parallel-rdp/util -I$(VIDEODIR_PARALLEL)/parallel-rdp/volk \
+	-I$(VIDEODIR_PARALLEL)/parallel-rdp/vulkan-headers/include -I$(LIBRETRO_COMM_DIR)/include
+test_command_ring$(EXE_EXT): tools/test_command_ring.cpp \
+		$(VIDEODIR_PARALLEL)/parallel-rdp/parallel-rdp/command_ring.cpp \
+		$(VIDEODIR_PARALLEL)/parallel-rdp/util/thread_id.cpp \
+		$(LIBRETRO_COMM_DIR)/rthreads/rthreads.c $(LIBRETRO_COMM_DIR)/rthreads/retro_eventcount.c
+	$(CC) $(CHECK_CFLAGS) $(CHECK_SANITIZE) -I$(LIBRETRO_COMM_DIR)/include -c $(LIBRETRO_COMM_DIR)/rthreads/rthreads.c -o tools/test_command_ring_rthreads.o
+	$(CC) $(CHECK_CFLAGS) $(CHECK_SANITIZE) -I$(LIBRETRO_COMM_DIR)/include -c $(LIBRETRO_COMM_DIR)/rthreads/retro_eventcount.c -o tools/test_command_ring_ec.o
+	$(CXX) -std=c++11 $(CHECK_CFLAGS) $(CHECK_SANITIZE) -DGRANITE_VULKAN_MT $(COMMAND_RING_TEST_INC) \
+		tools/test_command_ring.cpp $(VIDEODIR_PARALLEL)/parallel-rdp/parallel-rdp/command_ring.cpp \
+		$(VIDEODIR_PARALLEL)/parallel-rdp/util/thread_id.cpp tools/test_command_ring_rthreads.o tools/test_command_ring_ec.o \
+		-o $@ $(CHECK_LDFLAGS) $(CHECK_SANITIZE) -lpthread
+
 CORE_CHECKS := test_rcp_bounds$(EXE_EXT) test_memory_map$(EXE_EXT) test_fb_write$(EXE_EXT) \
 	test_cp0_exceptions$(EXE_EXT) test_r4300_interp$(EXE_EXT) test_fpu_compare$(EXE_EXT) test_pi_status$(EXE_EXT) \
 	test_musyx_bounds$(EXE_EXT) test_musyx_aux$(EXE_EXT) test_alist_ops$(EXE_EXT) test_alist_abi1$(EXE_EXT) test_hle_dispatch$(EXE_EXT) angrylion_zboss_audio_test$(EXE_EXT) \
 	test_mouse_accum$(EXE_EXT) test_hle_dram_wrap$(EXE_EXT) test_pif_write$(EXE_EXT) \
-	test_re2_fill$(EXE_EXT) test_temporal_upscaler$(EXE_EXT) test_pipeline_records$(EXE_EXT)
+	test_re2_fill$(EXE_EXT) test_temporal_upscaler$(EXE_EXT) test_pipeline_records$(EXE_EXT) \
+	test_command_ring$(EXE_EXT)
 
 ifeq ($(HAVE_PARALLEL_RSP), 1)
 PRSP_TEST_OBJS := $(filter $(RSPDIR_PARALLEL)/%,$(OBJECTS))

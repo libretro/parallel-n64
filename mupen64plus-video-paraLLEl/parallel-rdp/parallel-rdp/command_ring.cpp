@@ -151,10 +151,14 @@ void CommandRing::thread_loop()
 	tmp_buffer.reserve(64);
 	size_t mask = ring.size() - 1;
 	size_t r = 0;
+	static const uint32_t idle_words[1] = { uint32_t(Op::MetaIdle) << 24 };
 
 	for (;;)
 	{
 		bool is_idle = false;
+		bool in_place = false;
+		const uint32_t *words = idle_words;
+		uint32_t num_words = 1;
 		bool have_work = ring_load(&write_count) != r;
 
 		if (!have_work)
@@ -174,24 +178,34 @@ void CommandRing::thread_loop()
 
 		if (have_work)
 		{
-			uint32_t num_words = ring[r++ & mask];
-			tmp_buffer.resize(num_words);
-			for (uint32_t i = 0; i < num_words; i++)
-				tmp_buffer[i] = ring[r++ & mask];
-			// The words are copied out: hand the space back right away.
-			retro_atomic_store_release_size(&read_count, r);
+			num_words = ring[r++ & mask];
+			if ((r & mask) + num_words <= ring.size())
+			{
+				// In one piece: run where it is, and hand the space back
+				// once it has run.
+				words = ring.data() + (r & mask);
+				r += num_words;
+				in_place = true;
+			}
+			else
+			{
+				tmp_buffer.resize(num_words);
+				for (uint32_t i = 0; i < num_words; i++)
+					tmp_buffer[i] = ring[r++ & mask];
+				// The words are copied out: hand the space back right away.
+				retro_atomic_store_release_size(&read_count, r);
+				words = tmp_buffer.data();
+			}
 		}
 		else
-		{
-			tmp_buffer.resize(1);
-			tmp_buffer[0] = uint32_t(Op::MetaIdle) << 24;
 			is_idle = true;
-		}
 
-		if (tmp_buffer.empty())
+		if (!num_words)
 			break;
 
-		processor->enqueue_command_direct(tmp_buffer.size(), tmp_buffer.data());
+		processor->enqueue_command_direct(num_words, words);
+		if (in_place)
+			retro_atomic_store_release_size(&read_count, r);
 		if (!is_idle)
 		{
 			retro_atomic_store_release_size(&completed_count, r);
