@@ -3489,7 +3489,7 @@ static void imm16_alloc(struct regstat *current,int i)
     current->is32|=1LL<<rt1[i];
   }
   else {
-    set_const(current,rt1[i],((long long)((short)imm[i]))<<16); // LUI
+    set_const(current,rt1[i],((long long)((short)imm[i]))*65536); // LUI
     current->is32|=1LL<<rt1[i];
   }
   dirty_reg(current,rt1[i]);
@@ -6168,7 +6168,7 @@ static void imm16_assemble(int i,struct regstat *i_regs)
       //assert(t>=0);
       if(t>=0) {
         if(!((i_regs->isconst>>t)&1))
-          emit_movimm(imm[i]<<16,t);
+          emit_movimm(imm[i]*65536,t);
       }
     }
   }
