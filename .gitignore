@@ -45,3 +45,5 @@ new_dynarec_disasm.txt
 /dynarec_block_check.tmp/
 /savestate_latch_test
 /savestate_latch_check.tmp/
+/cpu_fallback_test
+/cpu_fallback_check.tmp/

@@ -1203,7 +1203,7 @@ clean: clean-tools
 
 clean-tools:
 	rm -f $(ANGRYLION_TOOLS) lrhost$(EXE_EXT) lrhost_vk$(EXE_EXT) angrylion_replay$(EXE_EXT) $(ANGRYLION_CHECKS) dd_ipl_hle_test$(EXE_EXT) \
-		$(CORE_CHECKS) dynarec_long_block_test$(EXE_EXT) savestate_latch_test$(EXE_EXT) tools/test_prsp_dmem_wrap.o tools/test_command_ring_rthreads.o tools/test_command_ring_ec.o
+		$(CORE_CHECKS) dynarec_long_block_test$(EXE_EXT) savestate_latch_test$(EXE_EXT) cpu_fallback_test$(EXE_EXT) tools/test_prsp_dmem_wrap.o tools/test_command_ring_rthreads.o tools/test_command_ring_ec.o
 
 # Angrylion benchmark and bit-exactness harnesses (tools/angrylion_*.c),
 # linked against the core's own angrylion objects: `make tools` after a
@@ -1371,9 +1371,11 @@ check-dynarec-block: $(TARGET) lrhost$(EXE_EXT) dynarec_long_block_test$(EXE_EXT
 
 # The COP0 and COP2 move latches across a savestate: a state saved between
 # the moves and their read-back is loaded into a fresh boot, with each CPU
-# core. The `saved` step checks the save frame lands in that window; the
-# recompilers do not implement COP2 moves, so they check the COP0 latch.
+# core. The `saved` step checks the save frame lands in that window; ari64
+# does not implement COP2 moves, so its runs check the COP0 latch only.
+# "dynamic_recompiler" is Hacktarux when x86_64 builds both recompilers.
 SAVESTATE_LATCH_CHECK_DIR := savestate_latch_check.tmp
+CHECK_HACKTARUX := $(if $(and $(filter x86_64,$(WITH_DYNAREC)),$(filter 1,$(WANT_HACKTARUX)),$(filter 1,$(HAVE_ARI64_X64))),1,0)
 SAVESTATE_LATCH_SAVE_AT := 16
 
 savestate_latch_test$(EXE_EXT): tools/savestate_latch_test.c
@@ -1384,7 +1386,9 @@ check-savestate-latch: $(TARGET) lrhost$(EXE_EXT) savestate_latch_test$(EXE_EXT)
 	./savestate_latch_test$(EXE_EXT) rom $(SAVESTATE_LATCH_CHECK_DIR)/latch.z64; \
 	for core in pure_interpreter cached_interpreter dynamic_recompiler dynamic_recompiler_ari64; do \
 		echo "== $$core"; \
-		case $$core in dynamic_*) check=check-cop0 ;; *) check=check ;; esac; \
+		case $$core in dynamic_recompiler_ari64) check=check-cop0 ;; \
+			dynamic_recompiler) check=check-cop0; [ "$(CHECK_HACKTARUX)" = 1 ] && check=check ;; \
+			*) check=check ;; esac; \
 		( cd $(SAVESTATE_LATCH_CHECK_DIR) && LRHOST_SAVE=state_$$core.bin LRHOST_SAVE_AT=$(SAVESTATE_LATCH_SAVE_AT) \
 			LRHOST_RAMDUMP=saved_$$core.bin ../lrhost$(EXE_EXT) ../$(TARGET) latch.z64 $$(( $(SAVESTATE_LATCH_SAVE_AT) + 1 )) \
 			parallel-n64-gfxplugin=angrylion parallel-n64-rspplugin=hle \
@@ -1396,6 +1400,36 @@ check-savestate-latch: $(TARGET) lrhost$(EXE_EXT) savestate_latch_test$(EXE_EXT)
 			parallel-n64-cpucore=$$core > /dev/null ); \
 		./savestate_latch_test$(EXE_EXT) $$check $(SAVESTATE_LATCH_CHECK_DIR)/ram_$$core.bin; \
 	done; rm -rf $(SAVESTATE_LATCH_CHECK_DIR)
+
+# Instructions a recompiler runs through the interpreter (BREAK, the COP2
+# moves, DCFC1/DCTC1): the pure interpreter's exception and value log is the
+# reference, and the cached interpreter and Hacktarux must log the same.
+# ari64 does not implement these yet and is not compared.
+CPU_FALLBACK_CHECK_DIR := cpu_fallback_check.tmp
+CPU_FALLBACK_CORES := cached_interpreter
+ifeq ($(CHECK_HACKTARUX), 1)
+CPU_FALLBACK_CORES += dynamic_recompiler
+endif
+
+cpu_fallback_test$(EXE_EXT): tools/cpu_fallback_test.c
+	$(CC) -O1 -g $< -o $@
+
+check-cpu-fallback: $(TARGET) lrhost$(EXE_EXT) cpu_fallback_test$(EXE_EXT)
+	@set -e; rm -rf $(CPU_FALLBACK_CHECK_DIR); mkdir -p $(CPU_FALLBACK_CHECK_DIR)/lrhost-system; \
+	./cpu_fallback_test$(EXE_EXT) rom $(CPU_FALLBACK_CHECK_DIR)/fallback.z64; \
+	for core in pure_interpreter $(CPU_FALLBACK_CORES); do \
+		echo "== $$core"; \
+		( cd $(CPU_FALLBACK_CHECK_DIR) && LRHOST_RAMDUMP=ram_$$core.bin \
+			../lrhost$(EXE_EXT) ../$(TARGET) fallback.z64 4 \
+			parallel-n64-gfxplugin=angrylion parallel-n64-rspplugin=hle \
+			parallel-n64-cpucore=$$core > /dev/null ); \
+		if [ $$core = pure_interpreter ]; then \
+			./cpu_fallback_test$(EXE_EXT) check $(CPU_FALLBACK_CHECK_DIR)/ram_$$core.bin; \
+		else \
+			./cpu_fallback_test$(EXE_EXT) compare $(CPU_FALLBACK_CHECK_DIR)/ram_pure_interpreter.bin \
+				$(CPU_FALLBACK_CHECK_DIR)/ram_$$core.bin; \
+		fi; \
+	done; rm -rf $(CPU_FALLBACK_CHECK_DIR)
 
 # Core self-tests: MMIO register and DMA bounds, the frontend memory map,
 # framebuffer write notifications, COP0 exceptions, PI status, the MusyX
@@ -1577,7 +1611,7 @@ endif
 check-core: $(CORE_CHECKS)
 	@set -e; for t in $(CORE_CHECKS); do echo "== $$t"; ./$$t; done
 
-.PHONY: clean clean-tools tools check-angrylion check-core check-dynarec-block check-savestate-latch
+.PHONY: clean clean-tools tools check-angrylion check-core check-dynarec-block check-savestate-latch check-cpu-fallback
 -include $(OBJECTS:.o=.d)
 
 # A header named by an existing .d file but since deleted is not an error:

@@ -4210,6 +4210,56 @@ void gen_SYSCALL(struct r4300_core* r4300)
     gencallinterp(r4300, (unsigned long long)cached_interp_SYSCALL, 1);
 }
 
+/* BREAK, the COP2 moves and the doubleword COP1 control moves have no
+ * native form: run them through the interpreter. Each can raise an
+ * exception (Breakpoint, Coprocessor Unusable, Reserved Instruction), so
+ * the jump flag is set, as for SYSCALL. */
+
+void gen_BREAK(struct r4300_core* r4300)
+{
+    gencallinterp(r4300, (unsigned long long)cached_interp_BREAK, 1);
+}
+
+void gen_CFC2(struct r4300_core* r4300)
+{
+    gencallinterp(r4300, (unsigned long long)cached_interp_CFC2, 1);
+}
+
+void gen_CTC2(struct r4300_core* r4300)
+{
+    gencallinterp(r4300, (unsigned long long)cached_interp_CTC2, 1);
+}
+
+void gen_DCFC1(struct r4300_core* r4300)
+{
+    gencallinterp(r4300, (unsigned long long)cached_interp_DCFC1, 1);
+}
+
+void gen_DCTC1(struct r4300_core* r4300)
+{
+    gencallinterp(r4300, (unsigned long long)cached_interp_DCTC1, 1);
+}
+
+void gen_DMFC2(struct r4300_core* r4300)
+{
+    gencallinterp(r4300, (unsigned long long)cached_interp_DMFC2, 1);
+}
+
+void gen_DMTC2(struct r4300_core* r4300)
+{
+    gencallinterp(r4300, (unsigned long long)cached_interp_DMTC2, 1);
+}
+
+void gen_MFC2(struct r4300_core* r4300)
+{
+    gencallinterp(r4300, (unsigned long long)cached_interp_MFC2, 1);
+}
+
+void gen_MTC2(struct r4300_core* r4300)
+{
+    gencallinterp(r4300, (unsigned long long)cached_interp_MTC2, 1);
+}
+
 /* Trap instructions */
 
 void gen_TGE(struct r4300_core* r4300)

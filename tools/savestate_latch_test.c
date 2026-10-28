@@ -14,9 +14,9 @@
  *
  * `make check-savestate-latch` saves a state during the second wait, loads
  * it into a fresh boot that has not reached the latch writes, and checks the
- * values read back are the ones moved in before the save. Hacktarux and
- * ari64 run COP2 moves as unimplemented instructions that write nothing, so
- * their runs check the COP0 latch only.
+ * values read back are the ones moved in before the save. ari64 runs COP2
+ * moves as unimplemented instructions that write nothing, so its runs
+ * check the COP0 latch only.
  */
 #include <stdio.h>
 #include <stdlib.h>
