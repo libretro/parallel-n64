@@ -65,6 +65,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <boolean.h>
+#include <retro_inline.h>
 
 #ifndef CPU_CLASS_SYSFS
 #define CPU_CLASS_SYSFS "/sys/devices/system/cpu"
@@ -136,12 +137,17 @@ static size_t cpu_class_by_value(const char *leaf, unsigned pct,
    unsigned long best = 0;
    size_t        i, n = 0;
    /* 32-bit is plenty: kHz clocks top out below 10^7 and capacities
-    * at 1024; unsigned long would double the frame past the 2 KiB
-    * thread-stack budget (PSP, GX). */
-   unsigned      vals[CPU_CLASS_MAX_IDS];
+    * at 1024. On the heap, so the callers' frames stay within the
+    * 2 KiB thread-stack budget (PSP, GX). */
+   unsigned     *vals;
 
    if (len > CPU_CLASS_MAX_IDS)
       len = CPU_CLASS_MAX_IDS;
+   if (!(vals = (unsigned*)malloc(len * sizeof(*vals) + 1)))
+   {
+      memset(cls, 0, len);
+      return 0;
+   }
    for (i = 0; i < len; i++)
    {
       char path[256];
@@ -157,6 +163,7 @@ static size_t cpu_class_by_value(const char *leaf, unsigned pct,
    }
    for (i = 0; i < len; i++)
       cls[i] = (vals[i] && vals[i] * 100 >= best * pct) ? 1 : 0;
+   free(vals);
    return n;
 }
 
@@ -251,7 +258,9 @@ static size_t cpu_class_read(unsigned char *cls, size_t len)
 
 #else
 
-static size_t cpu_class_read(unsigned char *cls, size_t len)
+/* No class source: inline so a platform whose callers are compiled
+ * out of the ranking does not carry an unreferenced function. */
+static INLINE size_t cpu_class_read(unsigned char *cls, size_t len)
 {
    memset(cls, 0, len);
    return 0;

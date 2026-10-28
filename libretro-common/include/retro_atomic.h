@@ -546,7 +546,11 @@ RETRO_END_DECLS_CXX
 typedef std::atomic<int>         retro_atomic_int_t;
 typedef std::atomic<std::size_t> retro_atomic_size_t;
 
-#define retro_atomic_int_init(p, v)    std::atomic_init((p), (v))
+/* Every free-function form below casts the value to the atomic's type:
+ * before P0558R1 (libstdc++ < 9) the value parameter was deduced too,
+ * so an enumerator or any non-int argument made the deduction conflict
+ * and the call fail to compile. */
+#define retro_atomic_int_init(p, v)    std::atomic_init((p), (int)(v))
 
 /* Static/aggregate initializer for a retro_atomic_int_t member.
  * std::atomic<int> is a class type, so it must be brace-initialized
@@ -561,21 +565,21 @@ typedef std::atomic<std::size_t> retro_atomic_size_t;
 #define retro_atomic_load_relaxed_int(p) \
    std::atomic_load_explicit((p), std::memory_order_relaxed)
 #define retro_atomic_store_release_int(p, v) \
-   std::atomic_store_explicit((p), (v), std::memory_order_release)
+   std::atomic_store_explicit((p), (int)(v), std::memory_order_release)
 #define retro_atomic_store_relaxed_int(p, v) \
-   std::atomic_store_explicit((p), (v), std::memory_order_relaxed)
+   std::atomic_store_explicit((p), (int)(v), std::memory_order_relaxed)
 #define retro_atomic_fetch_add_int(p, v) \
-   std::atomic_fetch_add_explicit((p), (v), std::memory_order_acq_rel)
+   std::atomic_fetch_add_explicit((p), (int)(v), std::memory_order_acq_rel)
 #define retro_atomic_fetch_add_seq_cst_int(p, v) \
-   std::atomic_fetch_add_explicit((p), (v), std::memory_order_seq_cst)
+   std::atomic_fetch_add_explicit((p), (int)(v), std::memory_order_seq_cst)
 #define retro_atomic_load_seq_cst_int(p) \
    std::atomic_load_explicit((p), std::memory_order_seq_cst)
 #define retro_atomic_fetch_sub_int(p, v) \
-   std::atomic_fetch_sub_explicit((p), (v), std::memory_order_acq_rel)
+   std::atomic_fetch_sub_explicit((p), (int)(v), std::memory_order_acq_rel)
 #define retro_atomic_fetch_or_int(p, v) \
-   std::atomic_fetch_or_explicit((p), (v), std::memory_order_acq_rel)
+   std::atomic_fetch_or_explicit((p), (int)(v), std::memory_order_acq_rel)
 #define retro_atomic_fetch_and_int(p, v) \
-   std::atomic_fetch_and_explicit((p), (v), std::memory_order_acq_rel)
+   std::atomic_fetch_and_explicit((p), (int)(v), std::memory_order_acq_rel)
 
 #define retro_atomic_load_acquire_size(p) \
    std::atomic_load_explicit((p), std::memory_order_acquire)
@@ -1081,14 +1085,14 @@ typedef volatile size_t retro_atomic_size_t;
 static INLINE int retro_atomic_fetch_add_int_fb(retro_atomic_int_t *p, int v)
 {
    int old = *p;
-   *p      = old + v;
+   *p      = (int)((unsigned)old + (unsigned)v);
    return old;
 }
 
 static INLINE int retro_atomic_fetch_sub_int_fb(retro_atomic_int_t *p, int v)
 {
    int old = *p;
-   *p      = old - v;
+   *p      = (int)((unsigned)old - (unsigned)v);
    return old;
 }
 
@@ -1555,9 +1559,21 @@ static INLINE int retro_atomic_load_seq_cst_int_fb_(retro_atomic_int_t *p)
  * word.  Every real backend can express these (OSAtomic and
  * Interlocked both have 64-bit CAS; cmpxchg8b covers 32-bit x86), but
  * old 32-bit __sync targets may not - RETRO_ATOMIC_HAS_64 gates.
- * Callers on the volatile fallback get nothing, as with CAS/PTR. */
+ * Callers on the volatile fallback get nothing, as with CAS/PTR.
+ *
+ * C11, C++11 and GCC __atomic accept an 8-byte operation on any target,
+ * but where the target has no 8-byte atomic instructions (32-bit
+ * PowerPC, MIPS32: the compiler reports 8-byte atomics as not always
+ * lock-free) each one compiles to a libatomic call (__atomic_load_8),
+ * which Darwin and the console toolchains do not ship, and the link
+ * fails.  There the 64-bit operations are left out, as on the 32-bit
+ * __sync targets. */
 
-#if defined(RETRO_ATOMIC_BACKEND_C11)
+#if (defined(RETRO_ATOMIC_BACKEND_C11) || defined(RETRO_ATOMIC_BACKEND_CXX11) \
+      || defined(RETRO_ATOMIC_BACKEND_GCC_NEW)) \
+      && defined(__GCC_ATOMIC_LLONG_LOCK_FREE) && __GCC_ATOMIC_LLONG_LOCK_FREE < 2
+/* RETRO_ATOMIC_HAS_64 stays undefined. */
+#elif defined(RETRO_ATOMIC_BACKEND_C11)
 
 #include <stdint.h>
 typedef _Atomic(int64_t) retro_atomic_64_t;

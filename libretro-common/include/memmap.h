@@ -320,6 +320,8 @@ size_t         memshm_area_size(const memshm_area_t *area);
  * @len        : bytes.
  * @prot       : PROT_READ | PROT_WRITE | PROT_EXEC.
  *
+ * Refused when any part of the range is already mapped.
+ *
  * Returns: @at on success, NULL on failure.
  */
 unsigned char *memshm_area_map(memshm_area_t *area, void *handle,
@@ -330,7 +332,10 @@ unsigned char *memshm_area_map(memshm_area_t *area, void *handle,
  * @at         : an address a previous memshm_area_map returned.
  * @len        : the length it was mapped with.
  *
- * Restores the reservation over that range. Returns true on success.
+ * Restores the reservation over that range. Refused, with nothing
+ * changed, unless @at and @len are exactly a mapping the area holds:
+ * part of one, a hole, or a range spanning several is not unmapped.
+ * Returns true on success.
  */
 bool memshm_area_unmap(memshm_area_t *area, void *at, size_t len);
 

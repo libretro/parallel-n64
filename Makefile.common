@@ -322,6 +322,14 @@ SOURCES_C += $(LIBRETRO_DIR)/libretro.c \
 				 $(LIBRETRO_COMM_DIR)/memmap/memalign.c \
 				 $(LIBRETRO_COMM_DIR)/encodings/encoding_crc32.c \
 				 $(LIBRETRO_COMM_DIR)/encodings/encoding_deflate.c \
+				 $(LIBRETRO_COMM_DIR)/formats/zip/rzip_archive.c \
+				 $(LIBRETRO_COMM_DIR)/formats/7z/r7z_archive.c \
+				 $(LIBRETRO_COMM_DIR)/formats/7z/r7z_lzma.c \
+				 $(LIBRETRO_COMM_DIR)/formats/7z/r7z_lzma_stream.c \
+				 $(LIBRETRO_COMM_DIR)/formats/7z/r7z_lzma2.c \
+				 $(LIBRETRO_COMM_DIR)/formats/7z/r7z_bcj2.c \
+				 $(LIBRETRO_COMM_DIR)/formats/7z/r7z_filters.c \
+				 $(LIBRETRO_COMM_DIR)/formats/rar/rrar_ppmd7.c \
 				 $(LIBRETRO_COMM_DIR)/formats/png/rpng.c \
 				 $(LIBRETRO_COMM_DIR)/formats/png/rpng_encode.c \
 				 $(LIBRETRO_COMM_DIR)/file/rpng_file.c \

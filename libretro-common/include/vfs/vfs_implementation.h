@@ -42,6 +42,7 @@ int retro_vfs_file_punch_hole_impl(libretro_vfs_implementation_file *stream, int
  * filestream_get_sparse_granularity. 0 when unknown. */
 int64_t retro_vfs_file_get_sparse_granularity_impl(libretro_vfs_implementation_file *stream);
 
+/* Consumes stream even when reporting final I/O failure; do not retry close. */
 int retro_vfs_file_close_impl(libretro_vfs_implementation_file *stream);
 
 int retro_vfs_file_error_impl(libretro_vfs_implementation_file *stream);
@@ -84,6 +85,37 @@ const char *retro_vfs_file_get_path_impl(libretro_vfs_implementation_file *strea
  * treat this as a fast lane, never as the only one. */
 const uint8_t *retro_vfs_file_get_mapped_ptr_impl(
       libretro_vfs_implementation_file *stream, int64_t *len);
+
+/**
+ * retro_vfs_file_view_impl:
+ *
+ * retro_vfs_file_read_impl() without the copy: points @ptr at up to
+ * @len octets at the position, in the file's mapping or in a network
+ * stream's read-ahead window, and moves past them. They stay valid
+ * until the next call on @stream. Returns the octets lent, 0 at the
+ * end of the file, or -1 when nothing there can be lent; the caller
+ * then reads.
+ **/
+int64_t retro_vfs_file_view_impl(libretro_vfs_implementation_file *stream,
+      uint64_t len, const uint8_t **ptr);
+
+/**
+ * retro_vfs_file_prefetch_impl:
+ * @offset : first byte of the range about to be read
+ * @len    : bytes of it
+ *
+ * Asks the OS to start bringing the range into memory, so a read or a
+ * touch of the mapping that follows finds it resident instead of
+ * stalling on the disk. Returns at once: madvise(MADV_WILLNEED) on a
+ * mapped file, posix_fadvise(WILLNEED) on a descriptor; on Windows the
+ * range is handed to the file's read-ahead thread, which calls
+ * PrefetchVirtualMemory() (or touches the pages before Windows 8), so
+ * the caller never waits on the disk. A no-op where none of these
+ * exists, on a scheme that is not a local file, or when the OS
+ * declines. A hint, never an error. */
+void retro_vfs_file_prefetch_impl(
+      libretro_vfs_implementation_file *stream, uint64_t offset,
+      uint64_t len);
 
 int retro_vfs_stat_impl(const char *path, int32_t *size);
 

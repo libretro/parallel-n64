@@ -1,288 +1,197 @@
 /* Aleck64 MAME romset loader.
  *
- * Takes a MAME-format .zip (starsldr.zip, vivdolls.zip, ...), assembles the
+ * Takes a MAME-format set (starsldr.zip, vivdolls.zip, ...), assembles the
  * program rom ("user2" region), and hands back a rom image the regular
  * mupen64plus cart path can boot (rom.c normalizes the v64 byte order).
  * Game layouts transposed from ares' mia/Database/Arcade.bml (ISC license,
  * Copyright (c) 2004-2025 ares team, Near et al).
  *
- * Also extracts a plain rom (.z64/.v64/.n64/.ndd) out of a zip, since the
- * core sets block_extract and must handle zipped roms itself.
+ * Also extracts a plain rom (.z64/.v64/.n64/.ndd) out of a zip or 7z, since
+ * the core sets block_extract and handles archives itself.
  */
 
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include <encodings/deflate.h>
+#include <7z/r7z_archive.h>
+#include <encodings/utf.h>
 #include <streams/file_stream.h>
+#include <string/stdstring.h>
+#include <zip/rzip_archive.h>
 
 #include <libretro.h>
 
 #include "device/aleck64/aleck64.h"
 
-#ifdef _MSC_VER
-#define strncasecmp _strnicmp
-#endif
-
 extern retro_environment_t environ_cb;
 
-/* ---- minimal in-memory zip reader (stored + deflate) ---- */
+/* ---- archive access ----------------------------------------------------
+ *
+ * Zip and 7z are parsed by libretro-common, from memory or through
+ * positioned reads of the file, so an archive on disk is never read whole:
+ * a zip gives up its directory and the chosen member's bytes, a 7z its
+ * header and the folder holding the member. */
 
-static uint16_t rd16(const uint8_t* p) { return (uint16_t)(p[0] | (p[1] << 8)); }
-static uint32_t rd32(const uint8_t* p) { return p[0] | (p[1] << 8) | ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24); }
+#define A64_NAME_MAX 512
+/* smallest member taken for a rom: the header plus the IPL3 */
+#define A64_ROM_MIN  0x1000
 
-struct zip_entry
+struct a64_src
 {
-    const char* name;    /* points into central directory, NOT nul-terminated */
-    uint16_t name_len;
-    uint16_t method;
-    uint32_t csize;
-    uint32_t usize;
-    uint32_t local_off;
+    RFILE*   fp;
+    uint64_t pos;   /* where the handle stands, so sequential reads skip the seek */
 };
 
-/* ---- byte source ------------------------------------------------------
- *
- * A zip is read through this rather than from one whole-file buffer.  A zip
- * only needs three regions to yield an entry: the end-of-central-directory
- * record in the tail, the central directory, and the entry's own compressed
- * bytes.  Slurping the archive to reach them costs a full read and a
- * full-size allocation on top of the rom buffer itself, and for a MAME set
- * or a multi-rom archive most of what it reads is never looked at.
- *
- * The memory backend keeps the old in-memory entry points working (the
- * frontend sometimes hands the core the data directly, and the standalone
- * test harness builds archives in memory); the file backend seeks. */
-struct zsrc
+struct a64_arc
 {
-    const uint8_t* mem;   /* non-NULL: memory backend */
-    RFILE*         fp;    /* non-NULL: file backend   */
-    int64_t        size;
+    rzip_archive_t* zip;
+    r7z_archive_t*  sz;
+    uint32_t        count;
 };
 
-/* Read n bytes at off into dst. Returns 0 on success. */
-static int zsrc_read(struct zsrc* z, int64_t off, void* dst, size_t n)
+static int64_t a64_src_read(void* ud, uint64_t off, void* dst, size_t len)
 {
-    if (off < 0 || n > (uint64_t)(z->size - off))
+    struct a64_src* s = (struct a64_src*)ud;
+    int64_t rd;
+
+    if (off != s->pos
+        && filestream_seek(s->fp, (int64_t)off, RETRO_VFS_SEEK_POSITION_START) < 0) {
+        s->pos = (uint64_t)-1;
         return -1;
-    if (z->mem) {
-        memcpy(dst, z->mem + off, n);
-        return 0;
     }
-    if (filestream_seek(z->fp, off, RETRO_VFS_SEEK_POSITION_START) < 0)
-        return -1;
-    return (filestream_read(z->fp, dst, (int64_t)n) == (int64_t)n) ? 0 : -1;
+    rd     = filestream_read(s->fp, dst, (int64_t)len);
+    s->pos = (rd >= 0) ? off + (uint64_t)rd : (uint64_t)-1;
+    return rd;
 }
 
-/* Borrow a span without copying when possible: the memory backend can point
- * straight at it, the file backend has to stage it in the caller's buffer. */
-static const uint8_t* zsrc_map(struct zsrc* z, int64_t off, size_t n,
-                               uint8_t* stage)
+int aleck64_archive_kind(const uint8_t* head, size_t len)
 {
-    if (off < 0 || n > (uint64_t)(z->size - off))
-        return NULL;
-    if (z->mem)
-        return z->mem + off;
-    return zsrc_read(z, off, stage, n) == 0 ? stage : NULL;
+    static const uint8_t sig_7z[R7Z_SIGNATURE_SIZE] = { '7', 'z', 0xBC, 0xAF, 0x27, 0x1C };
+
+    if (len >= 4 && head[0] == 'P' && head[1] == 'K' && head[2] == 0x03 && head[3] == 0x04)
+        return A64_ARCHIVE_ZIP;
+    if (len >= R7Z_SIGNATURE_SIZE && memcmp(head, sig_7z, R7Z_SIGNATURE_SIZE) == 0)
+        return A64_ARCHIVE_7Z;
+    return A64_ARCHIVE_NONE;
 }
 
-/* Locate the end-of-central-directory record and read the central directory.
- * Returns entry count and, for the file backend, the buffer holding the
- * directory (caller frees via *cd_owned); entry names point into it.
- *
- * The EOCD lives in the last 22 bytes plus up to a 64 KiB comment, so only
- * that tail is examined - not the archive.  The backwards scan is over that
- * tail only and stops at the first signature, which for a comment-less
- * archive is the very first position tried. */
-static int zip_list_src(struct zsrc* z, struct zip_entry* entries, int max,
-                        uint8_t** cd_owned)
+/* Opens from memory when @data is set, through @src otherwise. */
+static int a64_arc_open(struct a64_arc* a, int kind, const uint8_t* data,
+                        uint64_t size, struct a64_src* src)
 {
-    uint8_t  tail[66*1024];
-    uint8_t* cd = NULL;
-    size_t   tail_len, i;
-    int64_t  tail_off;
-    const uint8_t* eocd = NULL;
-    uint32_t cd_off, cd_size;
-    uint16_t count;
-    int n = 0;
+    a->zip   = NULL;
+    a->sz    = NULL;
+    a->count = 0;
 
-    *cd_owned = NULL;
-
-    if (z->size < 22)
-        return 0;
-
-    /* Two stages: an archive with no comment - which is nearly all of them -
-     * ends with the 22-byte record itself, so probe a small tail first and
-     * only pay for the full 64 KiB comment allowance when that misses.  A
-     * fixed 64 KiB probe made the single-entry case read more from disk than
-     * slurping the archive did. */
-    {
-        size_t probe = 4096;
-
-        for (;;) {
-            tail_len = (size_t)((z->size < (int64_t)probe) ? z->size : (int64_t)probe);
-            tail_off = z->size - (int64_t)tail_len;
-            if (zsrc_read(z, tail_off, tail, tail_len) != 0)
-                return 0;
-
-            for (i = tail_len - 22; ; --i) {
-                if (tail[i] == 0x50 && rd32(tail + i) == 0x06054b50) { eocd = tail + i; break; }
-                if (i == 0) break;
-            }
-
-            if (eocd != NULL || tail_len == (size_t)z->size || probe == sizeof(tail))
-                break;
-            probe = sizeof(tail);
-        }
+    if (kind == A64_ARCHIVE_ZIP) {
+        if (rzip_archive_open(&a->zip, data, size,
+                              data ? NULL : a64_src_read, src) != RZIP_OK)
+            return 0;
+        a->count = rzip_archive_num_entries(a->zip);
+        return 1;
     }
-    if (eocd == NULL)
-        return 0;
+    if (kind == A64_ARCHIVE_7Z) {
+        int st;
+        if (data)
+            st = (size == (uint64_t)(size_t)size)
+                ? r7z_archive_open(&a->sz, data, (size_t)size) : R7Z_ERROR_PARAM;
+        else
+            st = r7z_archive_open_read(&a->sz, size, a64_src_read, src);
+        if (st != R7Z_OK)
+            return 0;
+        a->count = r7z_archive_num_entries(a->sz);
+        return 1;
+    }
+    return 0;
+}
 
-    count   = rd16(eocd + 10);
-    cd_size = rd32(eocd + 12);
-    cd_off  = rd32(eocd + 16);
+static void a64_arc_close(struct a64_arc* a)
+{
+    rzip_archive_close(a->zip);
+    r7z_archive_close(a->sz);
+}
 
-    if (count == 0 || cd_size == 0 || (int64_t)cd_off + cd_size > z->size)
-        return 0;
+/* Size of a regular member; 0 for a directory or one this build cannot
+ * hold in memory. */
+static size_t a64_arc_size(const struct a64_arc* a, uint32_t i)
+{
+    uint64_t size;
 
-    if (z->mem) {
-        cd = (uint8_t*)(uintptr_t)(z->mem + cd_off);
+    if (a->zip) {
+        const rzip_entry_t* e = rzip_archive_entry(a->zip, i);
+        if (!e || e->is_dir)
+            return 0;
+        size = e->size;
     } else {
-        if (!(cd = (uint8_t*)malloc(cd_size)))
+        const r7z_entry_t* e = r7z_archive_entry(a->sz, i);
+        if (!e || e->is_dir)
             return 0;
-        if (zsrc_read(z, cd_off, cd, cd_size) != 0) {
-            free(cd);
-            return 0;
-        }
-        *cd_owned = cd;
+        size = e->size;
     }
+    return (size == (uint64_t)(size_t)size) ? (size_t)size : 0;
+}
 
+/* The member's name as UTF-8: the zip's own string, or the 7z's UTF-16 name
+ * converted into @buf. NULL when there is none or it does not fit. */
+static const char* a64_arc_name(const struct a64_arc* a, uint32_t i, char* buf)
+{
+    const r7z_entry_t* e;
+    size_t in_len = 0, out_len = 0;
+
+    if (a->zip) {
+        const rzip_entry_t* z = rzip_archive_entry(a->zip, i);
+        return z ? z->name : NULL;
+    }
+    if (!(e = r7z_archive_entry(a->sz, i)) || !e->name)
+        return NULL;
+    while (e->name[in_len])
+        ++in_len;
+    if (!utf16_conv_utf8(NULL, &out_len, e->name, in_len) || out_len >= A64_NAME_MAX)
+        return NULL;
+    utf16_conv_utf8((uint8_t*)buf, &out_len, e->name, in_len);
+    buf[out_len] = '\0';
+    return buf;
+}
+
+/* Member @i decoded into @dst, which is @size bytes - the member's size. */
+static int a64_arc_extract_into(struct a64_arc* a, uint32_t i, uint8_t* dst, size_t size)
+{
+    size_t len = 0;
+
+    if (a->zip)
+        return rzip_archive_extract_into(a->zip, i, dst, size, &len) == RZIP_OK
+            && len == size;
     {
-        uint32_t p = 0;
-        while (n < count && n < max && p + 46 <= cd_size) {
-            const uint8_t* e = cd + p;
-            if (rd32(e) != 0x02014b50)
-                break;
-            entries[n].method    = rd16(e + 10);
-            entries[n].csize     = rd32(e + 20);
-            entries[n].usize     = rd32(e + 24);
-            entries[n].name_len  = rd16(e + 28);
-            entries[n].local_off = rd32(e + 42);
-            entries[n].name      = (const char*)(e + 46);
-            if (p + 46u + entries[n].name_len > cd_size)
-                break;
-            p += 46u + entries[n].name_len + rd16(e + 30) + rd16(e + 32);
-            ++n;
-        }
+        const uint8_t* src = NULL;
+        if (r7z_archive_entry_borrow(a->sz, i, &src, &len) != R7Z_OK || len != size)
+            return 0;
+        memcpy(dst, src, size);
+        return 1;
     }
-    return n;
 }
 
-/* Decompress an entry into dst (usize bytes); returns 0 on success.
- *
- * The compressed bytes are streamed through a fixed window straight into the
- * destination, so the archive is never held in memory: peak cost is the rom
- * buffer plus this window, rather than the rom buffer plus the whole file.
- * The memory backend feeds rinflate the span directly, with no window and no
- * copy at all. */
-#define ZIP_IN_WINDOW (64 * 1024)
-
-static int zip_extract_src(struct zsrc* z, const struct zip_entry* e, uint8_t* dst)
+/* Member @i in a buffer of its own, for the caller to free(). A 7z member
+ * that is its folder's whole output is handed over as the decoded folder,
+ * with nothing copied. */
+static uint8_t* a64_arc_extract(struct a64_arc* a, uint32_t i, size_t* out_size)
 {
-    uint8_t  lh[30];
-    int64_t  data_off;
+    uint8_t* buf = NULL;
+    size_t   len = 0;
 
-    if ((int64_t)e->local_off + 30 > z->size)
-        return -1;
-    if (zsrc_read(z, e->local_off, lh, sizeof(lh)) != 0 || rd32(lh) != 0x04034b50)
-        return -1;
-
-    data_off = (int64_t)e->local_off + 30 + rd16(lh + 26) + rd16(lh + 28);
-    if (data_off + e->csize > z->size)
-        return -1;
-
-    if (e->method == 0) {
-        if (e->csize != e->usize)
-            return -1;
-        return zsrc_read(z, data_off, dst, e->usize);
-    }
-
-    if (e->method == 8) {
-        /* Zip stores a bare deflate stream with no wrapper, which is what
-         * negative window bits select - the same thing -MAX_WBITS meant to
-         * inflateInit2(). */
-        void*    stream = rinflate_new(-15);
-        uint8_t* window = NULL;
-        uint32_t left   = e->csize;
-        size_t   produced = 0;
-        int      ok = 0;
-
-        if (!stream)
-            return -1;
-
-        if (!z->mem && !(window = (uint8_t*)malloc(ZIP_IN_WINDOW))) {
-            rinflate_free(stream);
-            return -1;
-        }
-
-        rinflate_set_out(stream, dst, e->usize);
-
-        if (z->mem) {
-            rinflate_set_in(stream, z->mem + data_off, left);
-            left = 0;
-        }
-
-        for (;;) {
-            size_t rd = 0, wn = 0;
-            int    st;
-
-            /* Refill only when the decoder has drained the window. */
-            if (window && left > 0 && produced < e->usize) {
-                size_t want = (left < ZIP_IN_WINDOW) ? left : ZIP_IN_WINDOW;
-                if (zsrc_read(z, data_off, window, want) != 0)
-                    break;
-                rinflate_set_in(stream, window, want);
-                data_off += (int64_t)want;
-                left     -= (uint32_t)want;
-            }
-
-            st = rinflate_process(stream, &rd, &wn);
-            produced += wn;
-
-            if (st == RDEFLATE_PROCESS_END) {
-                ok = 1;
-                break;
-            }
-            if (st == RDEFLATE_PROCESS_ERROR)
-                break;
-            /* No progress and nothing left to feed: truncated stream. */
-            if (rd == 0 && wn == 0 && left == 0)
-                break;
-        }
-
-        free(window);
-        rinflate_free(stream);
-        return (ok && produced == e->usize) ? 0 : -1;
-    }
-
-    return -1;
+    if (a->zip) {
+        if (rzip_archive_extract(a->zip, i, &buf, &len) != RZIP_OK)
+            return NULL;
+    } else if (r7z_archive_extract_detach(a->sz, i, &buf, &len) != R7Z_OK)
+        return NULL;
+    *out_size = len;
+    return buf;
 }
 
-static int name_is(const struct zip_entry* e, const char* name)
+static int name_ends_with(const char* name, const char* ext)
 {
-    size_t len = strlen(name);
-    if (e->name_len != len)
-        return 0;
-    return strncasecmp(e->name, name, len) == 0;
-}
-
-static int name_ends_with(const struct zip_entry* e, const char* ext)
-{
-    size_t len = strlen(ext);
-    if (e->name_len < len)
-        return 0;
-    return strncasecmp(e->name + e->name_len - len, ext, len) == 0;
+    size_t len = strlen(name), elen = strlen(ext);
+    return len >= elen && string_is_equal_noncase(name + len - elen, ext);
 }
 
 /* ---- Aleck64 game database (from ares' Arcade.bml, MAME romset 0.273) ---- */
@@ -332,18 +241,18 @@ static void aleck64_select(const struct a64_game* game)
     aleck64_apply_dips();
 }
 
-#define A64_MAX_ENTRIES 64
-
-/* Returns 1 and fills out and out_size (malloc'd) when the zip produced a rom
- * image; 0 otherwise. Sets the g_aleck64_* game flags when the zip matched a
- * MAME Aleck64 set. */
-static int aleck64_load_zip_src(struct zsrc* z, const char* prefer,
-                                uint8_t** out, size_t* out_size)
+/* Loads the rom from an opened archive: a MAME Aleck64 set assembled into
+ * its program rom, else the member the frontend named, else the first one
+ * with a rom extension. Returns 1 with the image in *out, -1 when the
+ * archive holds nothing loadable. Sets the g_aleck64_* game flags when the
+ * archive matched a MAME set. */
+static int aleck64_load_arc(struct a64_arc* a, const char* prefer,
+                            uint8_t** out, size_t* out_size)
 {
-    struct zip_entry entries[A64_MAX_ENTRIES];
-    uint8_t* cd_owned = NULL;
-    int n, i, g, f;
-    int ret = 0;
+    static const char* const exts[] = { ".z64", ".v64", ".n64", ".ndd", ".bin", ".u1" };
+    char     name[A64_NAME_MAX];
+    size_t   g, e;
+    uint32_t i;
 
     g_aleck64_enabled = 0;
     g_aleck64_e90 = 0;
@@ -351,96 +260,73 @@ static int aleck64_load_zip_src(struct zsrc* z, const char* prefer,
     g_aleck64_dpad_disabled = 0;
     g_game = NULL;
 
-    n = zip_list_src(z, entries, A64_MAX_ENTRIES, &cd_owned);
-    if (n == 0)
-        goto done;
-
-    /* MAME Aleck64 set: identified by its program rom filename */
-    for (g = 0; g < (int)(sizeof(a64_games)/sizeof(a64_games[0])); ++g) {
+    /* MAME Aleck64 set: identified by its program rom filenames */
+    for (g = 0; g < sizeof(a64_games) / sizeof(a64_games[0]); ++g) {
         const struct a64_game* game = &a64_games[g];
-        const struct zip_entry* found[2] = { NULL, NULL };
-        size_t total = 0;
-        uint8_t* rom;
+        const int files = game->files[1].name ? 2 : 1;
+        uint32_t  found[2];
+        size_t    size[2];
+        size_t    total = 0;
+        uint8_t*  rom;
+        int       f;
 
-        for (f = 0; f < 2 && game->files[f].name != NULL; ++f) {
-            for (i = 0; i < n; ++i) {
-                if (name_is(&entries[i], game->files[f].name)) { found[f] = &entries[i]; break; }
+        for (f = 0; f < files; ++f) {
+            for (i = 0; i < a->count; ++i) {
+                const char* n = a64_arc_name(a, i, name);
+                if (n && string_is_equal_noncase(n, game->files[f].name))
+                    break;
             }
-            if (found[f] == NULL)
+            if (i == a->count || !(size[f] = a64_arc_size(a, i)))
                 break;
-            if (game->files[f].offset + found[f]->usize > total)
-                total = game->files[f].offset + found[f]->usize;
+            found[f] = i;
+            if (game->files[f].offset + size[f] > total)
+                total = game->files[f].offset + size[f];
         }
-        if (found[0] == NULL || (game->files[1].name != NULL && found[1] == NULL))
+        if (f < files)
             continue;
 
-        rom = (uint8_t*)malloc(total);
-        if (rom == NULL)
-            goto done;
-        for (f = 0; f < 2 && game->files[f].name != NULL; ++f) {
-            if (zip_extract_src(z, found[f], rom + game->files[f].offset) != 0) {
+        /* calloc: a short first chip leaves a gap below the second */
+        if (!(rom = (uint8_t*)calloc(1, total)))
+            return -1;
+        for (f = 0; f < files; ++f) {
+            if (!a64_arc_extract_into(a, found[f], rom + game->files[f].offset, size[f])) {
                 free(rom);
-                goto done;
+                return -1;
             }
         }
 
         /* data is in MAME's byte-swapped (v64) order; rom.c normalizes it */
         aleck64_select(game);
-        *out = rom;
+        *out      = rom;
         *out_size = total;
-        ret = 1;
-        goto done;
+        return 1;
     }
 
-    aleck64_apply_dips();
-
-    /* The frontend passed "archive.zip#entry": load exactly that entry, so a
-     * multi-rom archive gives the user the rom they picked rather than
-     * whichever one happens to come first. */
+    /* The frontend passed "archive#member": load exactly that member, so a
+     * multi-rom archive gives the user the rom they picked. When it is absent
+     * or unusable, fall through to the scan rather than failing the load. */
     if (prefer != NULL && *prefer != '\0') {
-        for (i = 0; i < n; ++i) {
-            if (name_is(&entries[i], prefer) && entries[i].usize >= 0x1000) {
-                uint8_t* rom = (uint8_t*)malloc(entries[i].usize);
-                if (rom == NULL)
-                    goto done;
-                if (zip_extract_src(z, &entries[i], rom) != 0) {
-                    free(rom);
-                    goto done;
-                }
-                *out = rom;
-                *out_size = entries[i].usize;
-                ret = 1;
-                goto done;
-            }
-        }
-        /* Named entry absent or unusable: fall through to the scan below
-         * rather than failing the load outright. */
-    }
-
-    /* plain rom inside a zip (the frontend no longer extracts for us) */
-    for (i = 0; i < n; ++i) {
-        static const char* exts[] = { ".z64", ".v64", ".n64", ".ndd", ".bin", ".u1" };
-        size_t e;
-        for (e = 0; e < sizeof(exts)/sizeof(exts[0]); ++e) {
-            if (name_ends_with(&entries[i], exts[e]) && entries[i].usize >= 0x1000) {
-                uint8_t* rom = (uint8_t*)malloc(entries[i].usize);
-                if (rom == NULL)
-                    goto done;
-                if (zip_extract_src(z, &entries[i], rom) != 0) {
-                    free(rom);
-                    goto done;
-                }
-                *out = rom;
-                *out_size = entries[i].usize;
-                ret = 1;
-                goto done;
+        for (i = 0; i < a->count; ++i) {
+            const char* n = a64_arc_name(a, i, name);
+            if (n && string_is_equal_noncase(n, prefer) && a64_arc_size(a, i) >= A64_ROM_MIN) {
+                if ((*out = a64_arc_extract(a, i, out_size)) != NULL)
+                    return 1;
+                break;
             }
         }
     }
 
-done:
-    free(cd_owned);
-    return ret;
+    for (i = 0; i < a->count; ++i) {
+        const char* n = a64_arc_name(a, i, name);
+        if (!n || a64_arc_size(a, i) < A64_ROM_MIN)
+            continue;
+        for (e = 0; e < sizeof(exts) / sizeof(exts[0]); ++e) {
+            if (name_ends_with(n, exts[e]))
+                return ((*out = a64_arc_extract(a, i, out_size)) != NULL) ? 1 : -1;
+        }
+    }
+
+    return -1;
 }
 
 /* ---- dipswitches, driven by the core options ---- */
@@ -572,7 +458,7 @@ int aleck64_identify_rom(const uint8_t* rom, size_t size)
     if (g_aleck64_enabled)
         return 1;
 
-    /* The zip loader clears the board state before it looks; a plain rom
+    /* The archive loader clears the board state before it looks; a plain rom
      * never passes through it, so clear it here too or a game loaded after
      * an E90 title keeps its overlay and savestate block. */
     g_aleck64_e90 = 0;
@@ -593,38 +479,36 @@ int aleck64_identify_rom(const uint8_t* rom, size_t size)
     return 0;
 }
 
-int aleck64_load_zip_named(const uint8_t* data, size_t size, const char* prefer,
-                           uint8_t** out, size_t* out_size)
-{
-    struct zsrc z;
-    z.mem  = data;
-    z.fp   = NULL;
-    z.size = (int64_t)size;
-    return aleck64_load_zip_src(&z, prefer, out, out_size);
-}
 
-int aleck64_load_zip(const uint8_t* data, size_t size, uint8_t** out, size_t* out_size)
+int aleck64_load_archive(const uint8_t* data, size_t size, const char* prefer,
+                         uint8_t** out, size_t* out_size)
 {
-    return aleck64_load_zip_named(data, size, NULL, out, out_size);
-}
-
-/* Path-based load: the archive is read where it lies, so nothing larger than
- * the rom itself is ever allocated. */
-int aleck64_load_zip_path(const char* path, const char* prefer,
-                          uint8_t** out, size_t* out_size)
-{
-    struct zsrc z;
+    struct a64_arc a;
+    int kind = aleck64_archive_kind(data, size);
     int ret;
 
-    z.mem = NULL;
-    z.fp  = filestream_open(path, RETRO_VFS_FILE_ACCESS_READ,
-                            RETRO_VFS_FILE_ACCESS_HINT_NONE);
-    if (!z.fp)
+    if (kind == A64_ARCHIVE_NONE)
         return 0;
+    if (!a64_arc_open(&a, kind, data, size, NULL))
+        return -1;
+    ret = aleck64_load_arc(&a, prefer, out, out_size);
+    a64_arc_close(&a);
+    return ret;
+}
 
-    z.size = filestream_get_size(z.fp);
-    ret = (z.size > 0) ? aleck64_load_zip_src(&z, prefer, out, out_size) : 0;
+int aleck64_load_archive_file(struct RFILE* fp, uint64_t size, int kind,
+                              const char* prefer, uint8_t** out, size_t* out_size)
+{
+    struct a64_src src;
+    struct a64_arc a;
+    int64_t pos = filestream_tell(fp);
+    int ret;
 
-    filestream_close(z.fp);
+    src.fp  = fp;
+    src.pos = (pos >= 0) ? (uint64_t)pos : (uint64_t)-1;
+    if (!a64_arc_open(&a, kind, NULL, size, &src))
+        return -1;
+    ret = aleck64_load_arc(&a, prefer, out, out_size);
+    a64_arc_close(&a);
     return ret;
 }

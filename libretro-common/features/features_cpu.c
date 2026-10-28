@@ -39,6 +39,17 @@
  * build, where glibc hides it, sees the same one. */
 extern long syscall(long number, ...);
 #endif
+#if defined(__linux__) && (defined(__arm__) || defined(__aarch64__))
+#if defined(HAVE_GETAUXVAL) || \
+      (defined(__GLIBC__) && ((__GLIBC__ > 2) || \
+       (__GLIBC__ == 2 && __GLIBC_MINOR__ >= 16))) || \
+      (defined(__ANDROID__) && defined(__ANDROID_API__) && __ANDROID_API__ >= 18)
+#define CPU_ARM_GETAUXVAL 1
+#include <errno.h>
+#include <sys/auxv.h>
+#include <asm/hwcap.h>
+#endif
+#endif
 #include <retro_atomic.h>
 #include <retro_timers.h>
 
@@ -109,9 +120,6 @@ extern long syscall(long number, ...);
 
 #if defined(HAVE_LIBNX)
 #include <switch.h>
-#elif defined(SWITCH)
-#include <libtransistor/types.h>
-#include <libtransistor/svc.h>
 #endif
 
 #if defined(_3DS)
@@ -386,7 +394,89 @@ static unsigned char check_arm_cpu_feature(const char* feature)
 {
    char line[1024];
    unsigned char status = 0;
-   FILE *fp = fopen("/proc/cpuinfo", "r");
+   FILE *fp;
+
+#ifdef CPU_ARM_GETAUXVAL
+   unsigned long mask = 0;
+   unsigned long caps;
+   unsigned long type = AT_HWCAP;
+#if defined(__aarch64__)
+#ifdef HWCAP_ASIMD
+   if (!strcmp(feature, "asimd"))
+      mask = HWCAP_ASIMD;
+#endif
+#ifdef HWCAP_AES
+   if (!strcmp(feature, "aes"))
+      mask = HWCAP_AES;
+#endif
+#ifdef HWCAP_CRC32
+   if (!strcmp(feature, "crc32"))
+      mask = HWCAP_CRC32;
+#endif
+#ifdef HWCAP_SHA1
+   if (!strcmp(feature, "sha1"))
+      mask = HWCAP_SHA1;
+#endif
+#ifdef HWCAP_SHA2
+   if (!strcmp(feature, "sha2"))
+      mask = HWCAP_SHA2;
+#endif
+#ifdef HWCAP_SHA512
+   if (!strcmp(feature, "sha512"))
+      mask = HWCAP_SHA512;
+#endif
+#else
+#ifdef HWCAP_NEON
+   if (!strcmp(feature, "neon"))
+      mask = HWCAP_NEON;
+#endif
+#ifdef HWCAP_VFPv3
+   if (!strcmp(feature, "vfpv3"))
+      mask = HWCAP_VFPv3;
+#endif
+#ifdef HWCAP_VFPv4
+   if (!strcmp(feature, "vfpv4"))
+      mask = HWCAP_VFPv4;
+#endif
+#if defined(AT_HWCAP2) && defined(HWCAP2_AES)
+   if (!strcmp(feature, "aes"))
+   {
+      mask = HWCAP2_AES;
+      type = AT_HWCAP2;
+   }
+#endif
+#if defined(AT_HWCAP2) && defined(HWCAP2_CRC32)
+   if (!strcmp(feature, "crc32"))
+   {
+      mask = HWCAP2_CRC32;
+      type = AT_HWCAP2;
+   }
+#endif
+#if defined(AT_HWCAP2) && defined(HWCAP2_SHA1)
+   if (!strcmp(feature, "sha1"))
+   {
+      mask = HWCAP2_SHA1;
+      type = AT_HWCAP2;
+   }
+#endif
+#if defined(AT_HWCAP2) && defined(HWCAP2_SHA2)
+   if (!strcmp(feature, "sha2"))
+   {
+      mask = HWCAP2_SHA2;
+      type = AT_HWCAP2;
+   }
+#endif
+#endif
+   if (mask)
+   {
+      errno = 0;
+      caps = getauxval(type);
+      if (errno == 0)
+         return (caps & mask) != 0;
+   }
+#endif
+
+   fp = fopen("/proc/cpuinfo", "r");
 
    if (!fp)
       return 0;
@@ -929,7 +1019,9 @@ static size_t cpu_features_processor_order_masked(
 
 size_t cpu_features_get_processor_order(unsigned *s, size_t len)
 {
+#if defined(__linux__) || (defined(_WIN32) && !defined(_XBOX) && !defined(__WINRT__))
    unsigned char allowed[CPU_CLASS_MAX_IDS];
+#endif
    const unsigned char *mask = NULL;
 #if defined(__linux__)
    {
@@ -1198,8 +1290,31 @@ static uint64_t cpu_features_probe(void)
       cpu |= RETRO_SIMD_AVX2;
    _val = 0;
    _len = sizeof(_val);
-   if (sysctlbyname("hw.optional.avx512f", &_val, &_len, NULL, 0) == 0 && _val)
-      cpu |= RETRO_SIMD_AVX512;
+   /* RETRO_SIMD_AVX512 means the x86-64-v4 baseline (F, CD, BW, DQ,
+    * VL), so every one of those keys has to answer. Darwin enables ZMM
+    * state lazily on first use, which is why these sysctls and not
+    * xgetbv decide it here. */
+   {
+      static const char *avx512_keys[] = {
+         "hw.optional.avx512f",  "hw.optional.avx512cd",
+         "hw.optional.avx512bw", "hw.optional.avx512dq",
+         "hw.optional.avx512vl"
+      };
+      size_t k;
+      int have_avx512 = 1;
+      for (k = 0; k < sizeof(avx512_keys) / sizeof(avx512_keys[0]); k++)
+      {
+         _val = 0;
+         _len = sizeof(_val);
+         if (!(sysctlbyname(avx512_keys[k], &_val, &_len, NULL, 0) == 0 && _val))
+         {
+            have_avx512 = 0;
+            break;
+         }
+      }
+      if (have_avx512)
+         cpu |= RETRO_SIMD_AVX512;
+   }
    _val = 0;
    _len = sizeof(_val);
    if (sysctlbyname("hw.optional.altivec", &_val, &_len, NULL, 0) == 0 && _val)
@@ -1383,20 +1498,33 @@ static uint64_t cpu_features_probe(void)
       memset(flags7, 0, sizeof(flags7));
 #endif
 
-      if (flags7[1] & (1 << 5))
+      /* AVX2 executes on YMM registers, so like AVX it needs the OS
+       * to save that state, not just the CPUID bit. */
+      if (ymm_state && (flags7[1] & (1 << 5)))
          cpu |= RETRO_SIMD_AVX2;
 
       /* SHA-NI is one bit covering both digests. */
       if (flags7[1] & (1 << 29))
          cpu |= RETRO_SIMD_SHA1 | RETRO_SIMD_SHA256;
 
-      /* AVX-512 Foundation detection.
-       * Requires CPUID leaf 7 sub-leaf 0 EBX bit 16 (AVX-512F),
-       * and OS support for saving ZMM state:
-       * xgetbv XCR0 bits 1,2 (SSE/AVX) and 5,6,7 (opmask, ZMM_Hi256, Hi16_ZMM). */
-      if ((flags7[1] & (1 << 16))
-            && ((xgetbv_x86(0) & 0xe6) == 0xe6))
-         cpu |= RETRO_SIMD_AVX512;
+      /* AVX-512 means the x86-64-v4 baseline: leaf 7 sub-leaf 0 EBX
+       * bits 16 (F), 17 (DQ), 28 (CD), 30 (BW) and 31 (VL). Code that
+       * checks this one flag may then use any of them; that is every
+       * AVX-512 CPU except the Xeon Phi parts, which lack BW/DQ/VL.
+       *
+       * The OS must also save opmask and ZMM state (XCR0 bits 5,6,7 on
+       * top of 1,2). xgetbv is only valid once OSXSAVE is set, and
+       * ymm_state already proved that, so test it first: without it
+       * xgetbv faults on a CPU that has AVX-512 but an OS that never
+       * enabled XSAVE. */
+      {
+         const uint32_t avx512_v4 = (1u << 16) | (1u << 17)
+                                  | (1u << 28) | (1u << 30) | (1u << 31);
+         if (    ymm_state
+               && (((uint32_t)flags7[1] & avx512_v4) == avx512_v4)
+               && ((xgetbv_x86(0) & 0xe6) == 0xe6))
+            cpu |= RETRO_SIMD_AVX512;
+      }
 
       /* Leaf 7 EAX carries the highest sub-leaf the CPU implements, so
        * consult it before asking for sub-leaf 1: an out of range

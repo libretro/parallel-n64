@@ -41,9 +41,12 @@ typedef void* HANDLE;
 #endif
 
 #ifdef HAVE_CDROM
+struct cdrom_toc;
 typedef struct
 {
    int64_t byte_pos;
+   uint64_t disc_bytes; /* cooked 2048-byte image; zero for CD paths */
+   struct cdrom_toc *toc;
    char *cue_buf;
    size_t cue_len;
    unsigned cur_lba;
@@ -55,6 +58,10 @@ typedef struct
    unsigned char last_frame[2352];
    char drive;
    bool last_frame_valid;
+   bool logical_blocks;
+   bool device_only;
+   bool media_changed; /* bound geometry is stale; reopen before reading */
+   bool io_error;
 } vfs_cdrom_t;
 #endif
 
@@ -88,13 +95,24 @@ typedef struct
 #if defined(VFS_HAVE_FILE_MAPPING) \
  || defined(VITA) \
  || defined(_3DS) \
- || defined(WIIU) \
+ || (defined(WIIU) && defined(HAVE_WIIU_DESCRIPTOR_IO)) \
  || defined(__SWITCH__) \
  || defined(GEKKO) \
  || defined(PSP) \
  || defined(PS2)
 #define VFS_HAVE_DESCRIPTOR_IO 1
 #endif
+#endif
+
+/* Wii U takes the descriptor path only when built with
+ * HAVE_WIIU_DESCRIPTOR_IO (Makefile.wiiu), until it has run on
+ * hardware. Its SD reads land by DMA in whole cache lines, so a
+ * whole-file read there allocates its buffer on a line and asks for
+ * whole lines, which lets the read land in place in one FS call;
+ * VFS_DESCRIPTOR_READ_ALIGN is that line. */
+#if defined(WIIU) && defined(HAVE_WIIU_DESCRIPTOR_IO) \
+ && !defined(VFS_DESCRIPTOR_READ_ALIGN)
+#define VFS_DESCRIPTOR_READ_ALIGN 64
 #endif
 
 /* Descriptor-backed I/O for one-shot writers as well: a stream opened
@@ -135,11 +153,19 @@ struct libretro_vfs_implementation_file
    int64_t size;
    uint64_t mappos;
    uint64_t mapsize;
+#if defined(_WIN32) && !defined(_XBOX) && !defined(HAVE_MMAP)
+   /* mapped read-ahead: where the next hint is due, the last read's end */
+   uint64_t ra_next;
+   uint64_t ra_last;
+#endif
    FILE *fp;
 #ifdef _WIN32
    HANDLE fh;
    /* CreateFileMapping handle backing `mapped`; NULL when unmapped */
    HANDLE map_handle;
+#if !defined(_XBOX) && !defined(HAVE_MMAP)
+   void *warm;   /* mapped read-ahead thread, NULL until used */
+#endif
 #endif
    char *buf;
    char* orig_path;

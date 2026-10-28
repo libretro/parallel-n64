@@ -139,7 +139,13 @@ static bool scaler_ctx_gen_filter_internal(struct scaler_ctx *ctx)
    ctx->scaler_special = NULL;
    ctx->unscaled       = false;
 
-   if (!allocate_frames(ctx))
+   /* A conversion at one size runs straight between the caller's
+    * buffers, so only a scaled context gets the intermediate frames:
+    * a converter set up before its size is known (0 x 0) is unscaled
+    * and has nothing to allocate. */
+   if (     (   ctx->in_width  != ctx->out_width
+             || ctx->in_height != ctx->out_height)
+         && !allocate_frames(ctx))
       return false;
 
    if (     ctx->in_width  == ctx->out_width
@@ -147,8 +153,26 @@ static bool scaler_ctx_gen_filter_internal(struct scaler_ctx *ctx)
    {
       ctx->unscaled     = true; /* Only pixel format conversion ... */
 
+      /* The rows' own pixels: the output may be a rectangle inside a
+       * larger image, whose stride is more than the row */
       if (ctx->in_fmt == ctx->out_fmt)
-         ctx->direct_pixconv = conv_copy;
+      {
+         switch (ctx->in_fmt)
+         {
+            case SCALER_FMT_BGR24:
+               ctx->direct_pixconv = conv_copy_24;
+               break;
+            case SCALER_FMT_0RGB1555:
+            case SCALER_FMT_RGB565:
+            case SCALER_FMT_YUYV:
+            case SCALER_FMT_RGBA4444:
+               ctx->direct_pixconv = conv_copy_16;
+               break;
+            default:
+               ctx->direct_pixconv = conv_copy_32;
+               break;
+         }
+      }
       else
       {
          /* Bind a pixel converter callback function to the
@@ -247,6 +271,10 @@ static bool scaler_ctx_gen_filter_internal(struct scaler_ctx *ctx)
             case SCALER_FMT_ABGR8888:
                switch (ctx->out_fmt)
                {
+                  case SCALER_FMT_ARGB8888:
+                     /* Swapping red and blue is its own inverse. */
+                     ctx->direct_pixconv = conv_argb8888_abgr8888;
+                     break;
                   case SCALER_FMT_BGR24:
                      ctx->direct_pixconv = conv_abgr8888_bgr24;
                      break;

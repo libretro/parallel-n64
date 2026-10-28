@@ -105,22 +105,29 @@ int aleck64_e90_overlay(void* pixels, unsigned pitch, unsigned width, unsigned h
                         unsigned src_width);
 
 /* implemented in libretro/aleck64_mame.c */
-int aleck64_load_zip(const uint8_t* data, size_t size, uint8_t** out, size_t* out_size);
+struct RFILE;
 
-/* As aleck64_load_zip, but when 'prefer' is non-NULL the plain-rom-in-a-zip
- * path selects that entry by name rather than the first one with a known
- * extension.  Frontends hand the core an "archive.zip#entry" path when the
- * user picks a specific rom inside a multi-rom archive, and that choice has
- * to be honoured. */
-int aleck64_load_zip_named(const uint8_t* data, size_t size, const char* prefer,
-                           uint8_t** out, size_t* out_size);
+#define A64_ARCHIVE_NONE 0
+#define A64_ARCHIVE_ZIP  1
+#define A64_ARCHIVE_7Z   2
 
-/* As aleck64_load_zip_named, but reads the archive from disk: only the
- * end-of-central-directory tail, the central directory and the chosen
- * entry's compressed bytes are read, so peak memory is the rom image
- * rather than the rom image plus the whole archive. */
-int aleck64_load_zip_path(const char* path, const char* prefer,
-                          uint8_t** out, size_t* out_size);
+/* Which archive format the leading bytes of a file belong to, if any. */
+int aleck64_archive_kind(const uint8_t* head, size_t len);
+
+/* Pulls the rom out of a zip or 7z: a MAME Aleck64 set assembled into its
+ * program rom, else the member named by 'prefer' (frontends hand the core
+ * "archive#member" when the user picks one rom inside a multi-rom archive),
+ * else the first member with a rom extension.  *out is malloc'd.
+ * Returns 1 when loaded, 0 when 'data' is not an archive, -1 when it is
+ * one but holds nothing loadable. */
+int aleck64_load_archive(const uint8_t* data, size_t size, const char* prefer,
+                         uint8_t** out, size_t* out_size);
+
+/* The same for an archive of 'kind' read in place through 'fp' ('size'
+ * bytes long): only the directory or header and the chosen member's bytes
+ * are read. */
+int aleck64_load_archive_file(struct RFILE* fp, uint64_t size, int kind,
+                              const char* prefer, uint8_t** out, size_t* out_size);
 void aleck64_apply_dips(void);
 /* Recognises an Aleck64 program rom by its header CRCs and switches the board
  * on, for dumps that arrive as one plain rom rather than a MAME set.  Returns

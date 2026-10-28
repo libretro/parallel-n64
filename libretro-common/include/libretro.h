@@ -4496,6 +4496,12 @@ enum retro_hw_render_interface_type
     */
    RETRO_HW_RENDER_INTERFACE_GSKIT_PS2  = 5,
 
+   /**
+    * PlayStation 3 RSX (PSL1GHT).
+    * @see retro_hw_render_interface_rsx in libretro_rsx.h
+    */
+   RETRO_HW_RENDER_INTERFACE_RSX        = 6,
+
    /** @private Defined to ensure <tt>sizeof(retro_hw_render_interface_type) == sizeof(int)</tt>.
     * Do not use. */
    RETRO_HW_RENDER_INTERFACE_DUMMY      = INT_MAX
@@ -5560,7 +5566,9 @@ struct retro_log_callback
 /** Indicates CPU support for the ASIMD instruction set. */
 #define RETRO_SIMD_ASIMD    (1 << 21)
 
-/** Indicates CPU support for the AVX512 instruction set. */
+/** Indicates CPU support for the AVX-512 x86-64-v4 baseline:
+ * AVX-512 F, CD, BW, DQ and VL are all present and the OS saves
+ * ZMM state. */
 #define RETRO_SIMD_AVX512   (1 << 22)
 
 /** Indicates CPU support for the LZCNT instruction (x86 ABM / ARM CLZ). */
@@ -5960,6 +5968,55 @@ enum retro_sensor_action
  * @see https://en.wikipedia.org/wiki/Lux for a table of common lux values.
  */
 #define RETRO_SENSOR_ILLUMINANCE 6
+/** @} */
+
+/** @defgroup RETRO_SENSOR_SUBDEVICE Sensor Sub-Device Index
+ * @{
+ */
+
+/**
+ * The number of bits that a sub-device index is shifted by within a sensor ID
+ * or a \c retro_sensor_action.
+ *
+ * Addresses more than one sensor of the same kind on a single port.
+ * Index 0 denotes the controller itself and encodes to the values already in
+ * use (<tt>RETRO_SENSOR_SUBDEVICE(0, id) == id</tt>). Index 1 denotes the part
+ * of the controller held in the left hand: a Wii Remote's Nunchuk, or the
+ * left Joy-Con of a pair held as one controller (whose index 0 is the right
+ * one). Higher indices are left for controllers with more parts.
+ *
+ * A core learns whether the frontend has a sub-device's sensor from the
+ * enable action, \c retro_set_sensor_state_t returning \c true for it; a
+ * reading of 0 says nothing, as a frontend without it returns 0 for every
+ * read. For instance:
+ * @code
+ * bool nunchuk = sensor.set_sensor_state(port, (enum retro_sensor_action)
+ *       RETRO_SENSOR_SUBDEVICE(1, RETRO_SENSOR_ACCELEROMETER_ENABLE), 100);
+ * float x      = sensor.get_sensor_input(port,
+ *       RETRO_SENSOR_SUBDEVICE(1, RETRO_SENSOR_ACCELEROMETER_X));
+ * @endcode
+ *
+ * @note \c retro_sensor_action is an enum, so an encoded action must be cast at
+ * the call site. \c RETRO_SENSOR_DUMMY pins the underlying type to \c int, so
+ * the encoded value is in range.
+ *
+ * @see RETRO_SENSOR_ID
+ * @see retro_sensor_action
+ */
+#define RETRO_SENSOR_INDEX_SHIFT 8
+
+/** Mask of the bits below the sub-device index. */
+#define RETRO_SENSOR_INDEX_MASK ((1u << RETRO_SENSOR_INDEX_SHIFT) - 1u)
+
+/** Returns the sub-device index encoded in \c id; 0 is the controller itself. */
+#define RETRO_SENSOR_INDEX(id) ((unsigned)(id) >> RETRO_SENSOR_INDEX_SHIFT)
+
+/** Returns the sensor ID or action in \c id, without its sub-device index. */
+#define RETRO_SENSOR_BASE(id) ((unsigned)(id) & RETRO_SENSOR_INDEX_MASK)
+
+/** Addresses sensor \c id on sub-device \c index of a port. */
+#define RETRO_SENSOR_SUBDEVICE(index, id) \
+   ((unsigned)((((unsigned)(index)) << RETRO_SENSOR_INDEX_SHIFT) | ((unsigned)(id))))
 /** @} */
 
 /**
@@ -6588,6 +6645,9 @@ enum retro_hw_context_type
 
    /* Direct3D9, see RETRO_ENVIRONMENT_GET_HW_RENDER_INTERFACE */
    RETRO_HW_CONTEXT_D3D9             = 10,
+
+   /* PlayStation 3 RSX, see libretro_rsx.h */
+   RETRO_HW_CONTEXT_RSX              = 11,
 
    /** Dummy value to ensure sizeof(enum retro_hw_context_type) == sizeof(int). Do not use. */
    RETRO_HW_CONTEXT_DUMMY = INT_MAX

@@ -1367,10 +1367,10 @@ void retro_get_system_info(struct retro_system_info *info)
 {
    info->library_name = "ParaLLEl N64";
    info->library_version = "1.0" GIT_VERSION;
-   info->valid_extensions = "n64|v64|z64|bin|u1|ndd|zip";
+   info->valid_extensions = "n64|v64|z64|bin|u1|ndd|zip|7z";
    /* fullpath + block_extract: the frontend hands us the file untouched, so
-    * zips (MAME Aleck64 sets or zipped roms) are parsed by the core itself;
-    * retro_load_game reads the file when the frontend passes no data */
+    * zips and 7zs (MAME Aleck64 sets or archived roms) are opened in place
+    * by the core itself rather than extracted to disk first */
    info->need_fullpath = true;
    info->block_extract = true;
 }
@@ -3398,6 +3398,73 @@ static void format_saved_memory(void)
    format_disk(saved_memory.disk);
 }
 
+/* Reads the content at 'path' into one malloc'd buffer: a zip or 7z is
+ * opened where it lies and only the rom is pulled out of it, anything else
+ * is read whole through the handle that sniffed it.  When the user picks a
+ * rom inside an archive, a block_extract core is handed
+ * "archive#member"; that is split only when the whole path does not open,
+ * since '#' is legal in a filename. */
+static bool load_content_path(const char* path, uint8_t** out, size_t* out_size)
+{
+   uint8_t     head[8];
+   char*       arc_path = NULL;
+   const char* member   = NULL;
+   uint8_t*    buf      = NULL;
+   bool        ret      = false;
+   int64_t     size, got;
+   int         kind;
+   RFILE*      fp       = filestream_open(path, RETRO_VFS_FILE_ACCESS_READ,
+         RETRO_VFS_FILE_ACCESS_HINT_NONE);
+
+   if (!fp)
+   {
+      const char* hash = strrchr(path, '#');
+
+      if (!hash || hash == path
+            || !(arc_path = (char*)malloc((size_t)(hash - path) + 1)))
+         return false;
+      memcpy(arc_path, path, (size_t)(hash - path));
+      arc_path[hash - path] = '\0';
+      member = hash + 1;
+      if (!(fp = filestream_open(arc_path, RETRO_VFS_FILE_ACCESS_READ,
+            RETRO_VFS_FILE_ACCESS_HINT_NONE)))
+         goto done;
+   }
+
+   if ((size = filestream_get_size(fp)) <= 0 || (uint64_t)size != (uint64_t)(size_t)size)
+      goto done;
+   got = filestream_read(fp, head,
+         (size < (int64_t)sizeof(head)) ? size : (int64_t)sizeof(head));
+   if (got <= 0)
+      goto done;
+
+   kind = aleck64_archive_kind(head, (size_t)got);
+   if (kind != A64_ARCHIVE_NONE)
+   {
+      ret = aleck64_load_archive_file(fp, (uint64_t)size, kind, member,
+            out, out_size) > 0;
+      goto done;
+   }
+
+   if (!(buf = (uint8_t*)malloc((size_t)size)))
+      goto done;
+   memcpy(buf, head, (size_t)got);
+   if (got < size && filestream_read(fp, buf + got, size - got) != size - got)
+   {
+      free(buf);
+      goto done;
+   }
+   *out      = buf;
+   *out_size = (size_t)size;
+   ret       = true;
+
+done:
+   if (fp)
+      filestream_close(fp);
+   free(arc_path);
+   return ret;
+}
+
 bool retro_load_game(const struct retro_game_info *game)
 {
    format_saved_memory();
@@ -3473,125 +3540,44 @@ bool retro_load_game(const struct retro_game_info *game)
 
    g_aleck64_enabled = 0;
    {
-      const uint8_t* game_data = (const uint8_t*)game->data;
-      size_t game_size = game->size;
-      uint8_t* file_buf = NULL;
-      uint8_t* zip_rom  = NULL;
-      size_t zip_size = 0;
+      uint8_t* rom      = NULL;
+      size_t   rom_size = 0;
 
-      /* need_fullpath core: the frontend usually passes only the path.
-       *
-       * Archives are handled without reading the archive into memory.  A zip
-       * only needs its end-of-central-directory tail, its central directory
-       * and the chosen entry's compressed bytes; those are read where they
-       * lie and inflated straight into the rom buffer.  Slurping first cost a
-       * second full-size allocation and a full read on top of the rom itself,
-       * most of it never looked at for a MAME set or a multi-rom archive. */
-      if (game_data == NULL && game->path != NULL)
+      if (game->data)
       {
-         int64_t len = 0;
-         char*   arc_path = NULL;
-         const char* zip_entry = NULL;
-         const char* arc = game->path;
-
-         /* This core sets block_extract, so when the user picks a rom from
-          * inside an archive the frontend hands us "archive.zip#entry"
-          * rather than an extracted file.  Split it, remembering which entry
-          * was asked for - but only when the whole path is not itself a
-          * file, since '#' is legal in a filename and a real file by that
-          * name has to keep winning. */
-         if (!path_is_valid(game->path))
+         int st = aleck64_load_archive((const uint8_t*)game->data, game->size,
+               NULL, &rom, &rom_size);
+         if (st == 0 && (rom = (uint8_t*)malloc(game->size)))
          {
-            const char* hash = strrchr(game->path, '#');
-
-            if (hash && hash != game->path)
-            {
-               size_t arc_len = (size_t)(hash - game->path);
-
-               if ((arc_path = (char*)malloc(arc_len + 1)))
-               {
-                  memcpy(arc_path, game->path, arc_len);
-                  arc_path[arc_len] = '\0';
-                  arc       = arc_path;
-                  zip_entry = hash + 1;
-               }
-            }
+            memcpy(rom, game->data, game->size);
+            rom_size = game->size;
          }
-
-         if (aleck64_load_zip_path(arc, zip_entry, &zip_rom, &zip_size))
-         {
-            free(arc_path);
-            /* the entry can be a 64DD disk as easily as a cartridge; route
-             * it the same way a loose file is routed */
-            if (!is_cartridge_rom(zip_rom))
-            {
-               disk_data = zip_rom;
-               disk_size = (uint32_t)zip_size;
-               goto content_ready;
-            }
-            cart_data = zip_rom;
-            cart_size = (uint32_t)zip_size;
-            goto content_ready;
-         }
-
-         if (!filestream_read_file(arc, (void**)&file_buf, &len) || len <= 0)
-         {
-            if (log_cb)
-               log_cb(RETRO_LOG_ERROR, "Failed to read content file: %s\n", game->path);
-            free(arc_path);
-            return false;
-         }
-         free(arc_path);
-         game_data = file_buf;
-         game_size = (size_t)len;
       }
+      else if (game->path)
+         load_content_path(game->path, &rom, &rom_size);
 
-      if (game_data == NULL)
+      if (!rom || rom_size < 4 || rom_size > 0xFFFFFFFFu)
+      {
+         if (log_cb)
+            log_cb(RETRO_LOG_ERROR, "Failed to load content: %s\n",
+                  game->path ? game->path : "(in memory)");
+         free(rom);
          return false;
+      }
 
-      if (game_size >= 4 && memcmp(game_data, "PK\x03\x04", 4) == 0
-          && aleck64_load_zip(game_data, game_size, &zip_rom, &zip_size)
-          && !is_cartridge_rom(zip_rom))
+      /* an archive member can be a 64DD disk as easily as a cartridge */
+      if (is_cartridge_rom(rom))
       {
-         disk_data = zip_rom;
-         disk_size = (uint32_t)zip_size;
-         zip_rom   = NULL;
-      }
-      else if (zip_rom != NULL)
-      {
-         cart_data = zip_rom;
-         cart_size = (uint32_t)zip_size;
-      }
-      else if (is_cartridge_rom(game_data))
-      {
-         /* Take ownership of the buffer the read already produced rather than
-          * allocating a second one the size of the rom and copying across;
-          * both are released with free(). */
-         if (file_buf)
-         {
-            cart_data = file_buf;
-            file_buf  = NULL;
-         }
-         else if ((cart_data = malloc(game_size)))
-            memcpy(cart_data, game_data, game_size);
-         cart_size = game_size;
+         cart_data = rom;
+         cart_size = (uint32_t)rom_size;
       }
       else
       {
-         if (file_buf)
-         {
-            disk_data = file_buf;
-            file_buf  = NULL;
-         }
-         else if ((disk_data = malloc(game_size)))
-            memcpy(disk_data, game_data, game_size);
-         disk_size = game_size;
+         disk_data = rom;
+         disk_size = (uint32_t)rom_size;
       }
-
-      free(file_buf);
    }
 
-content_ready:
 
    /* A MAME set is recognised by its chip names while it is unpacked; a
     * single-file dump, zipped or not, only by its header. */

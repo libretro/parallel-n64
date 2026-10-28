@@ -44,6 +44,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <errno.h>
+#include <ctype.h>
 
 #include <rthreads/retro_eventcount.h>
 #include <rthreads/rthreads.h>
@@ -161,7 +163,6 @@ typedef char retro_eventcount_epoch_is_a_word_
 #if defined(RETRO_EC_ADDR_LINUX)
 #include <unistd.h>
 #include <limits.h>
-#include <errno.h>
 #include <sys/syscall.h>
 #include <linux/futex.h>
 
@@ -173,6 +174,13 @@ typedef char retro_eventcount_epoch_is_a_word_
 #ifndef FUTEX_WAKE_PRIVATE
 #define FUTEX_WAKE_PRIVATE 129
 #endif
+
+/* The spin before the futex: the same budget, calibration and gates as
+ * the Win32 backend's (see EC_SPIN_US), on the epoch word itself since
+ * the futex waiter has no flag of its own. Resolved once, on the first
+ * wait. */
+static retro_atomic_int_t ec_linux_spin_state;
+static unsigned           ec_linux_spin;
 #endif
 
 #if defined(RETRO_EC_ADDR_SWITCH)
@@ -205,6 +213,22 @@ static void ec_switch_wake_all(retro_eventcount_t *ec)
 #include <3ds/svc.h>
 #include <3ds/synchronization.h>
 #include <3ds/result.h>
+#include <retro_inline.h>
+
+/* One call on the process's arbiter.  libctru 2 wraps it as
+ * syncArbitrateAddress[WithTimeout]; libctru 1.x has the arbiter and
+ * the svc but not the wrappers, so the call is made directly there,
+ * as rthreads.c does on the same toolchains. */
+static INLINE Result ec_3ds_arbitrate(s32 *addr, ArbitrationType type,
+      s32 value, s64 timeout_ns)
+{
+#if defined(_3DS) && !defined(USE_CTRULIB_2)
+   return svcArbitrateAddress(__sync_get_arbiter(), (u32)addr, type,
+         value, timeout_ns);
+#else
+   return syncArbitrateAddressWithTimeout(addr, type, value, timeout_ns);
+#endif
+}
 
 /* Waits while the epoch still reads @key, for @timeout_ns.  The
  * arbiter waits while the word is below the value given, and the epoch
@@ -216,15 +240,15 @@ static bool ec_3ds_park(retro_eventcount_t *ec, int key, s64 timeout_ns)
    Result rc;
    if (key == INT_MAX)
       return true;
-   rc = syncArbitrateAddressWithTimeout((s32*)&ec->epoch,
+   rc = ec_3ds_arbitrate((s32*)&ec->epoch,
          ARBITRATION_WAIT_IF_LESS_THAN_TIMEOUT, (s32)key + 1, timeout_ns);
    return R_DESCRIPTION(rc) != RD_TIMEOUT;
 }
 
 static void ec_3ds_wake_all(retro_eventcount_t *ec)
 {
-   syncArbitrateAddress((s32*)&ec->epoch, ARBITRATION_SIGNAL,
-         ARBITRATION_SIGNAL_ALL);
+   ec_3ds_arbitrate((s32*)&ec->epoch, ARBITRATION_SIGNAL,
+         ARBITRATION_SIGNAL_ALL, 0);
 }
 #endif
 
@@ -291,6 +315,59 @@ typedef sys_semaphore_t ec_ps3_sem_t;
 #include <windows.h>
 #endif
 
+/* How long a waiter spins before committing to the kernel - on its
+ * flag word (Win32) or the epoch (Linux), multiprocessor only.  A
+ * budget in microseconds rather than a count of iterations: a PAUSE
+ * is worth an order of magnitude more cycles on some processors than
+ * others, so a fixed count is a different amount of time on every
+ * machine.  The count is derived from a measured relax at resolve
+ * time.
+ *
+ * Measured on Windows 11 x64, four waiters on one object, where a
+ * relax costs 11.8ns.  Round trip and broadcast per waiter, against
+ * what a spin that finds nothing costs:
+ *
+ *     spin      burn    round trip   broadcast/waiter
+ *        0     0.00us      4.21us          0.94us
+ *       64     0.76us      0.27us          0.96us
+ *      128     1.49us      0.11us          0.51us
+ *      256     2.99us      0.06us          0.11us
+ *      512     6.04us      0.08us          0.12us
+ *     4096    48.63us      0.07us          0.12us
+ *
+ * The knee is at 256 iterations there, which is 3us, and nothing above
+ * it buys anything -- a spin that finds nothing then costs about what
+ * the wake syscall it avoids would have.  RETRO_EVENTCOUNT_SPIN_US
+ * moves the budget; RETRO_EVENTCOUNT_SPIN sets the count outright. */
+#define EC_SPIN_US 3
+
+/* Calibration bounds; explicit overrides share the upper limit. */
+#define EC_SPIN_MIN 32
+#define EC_SPIN_MAX 8192
+
+#if defined(RETRO_EC_ADDR_LINUX) || defined(RETRO_EC_ADDR_WIN32)
+static unsigned ec_spin_override(const char *text, unsigned fallback)
+{
+   char *end;
+   unsigned long value;
+   while (isspace((unsigned char)*text))
+      text++;
+   if (*text == '-')
+      return fallback;
+   errno = 0;
+   value = strtoul(text, &end, 0);
+   if (end == text)
+      return fallback;
+   while (isspace((unsigned char)*end))
+      end++;
+   if (*end)
+      return fallback;
+   if (errno == ERANGE || value > EC_SPIN_MAX)
+      return EC_SPIN_MAX;
+   return (unsigned)value;
+}
+#endif
+
 #if defined(RETRO_EC_WAITLIST)
 /* Windows has no one primitive that reaches every version, so the
  * waiter list is ours and only the sleep is delegated.  Three tiers,
@@ -344,37 +421,6 @@ typedef semaphore_t ec_sem_t;
 typedef sem_t       ec_sem_t;
 #endif
 #endif
-
-/* How long a waiter spins on its flag word before committing to the
- * kernel, on multiprocessor only.  A budget in microseconds rather
- * than a count of iterations: a PAUSE is worth an order of magnitude
- * more cycles on some processors than others, so a fixed count is a
- * different amount of time on every machine.  The count is derived
- * from a measured relax at resolve time.
- *
- * Measured on Windows 11 x64, four waiters on one object, where a
- * relax costs 11.8ns.  Round trip and broadcast per waiter, against
- * what a spin that finds nothing costs:
- *
- *     spin      burn    round trip   broadcast/waiter
- *        0     0.00us      4.21us          0.94us
- *       64     0.76us      0.27us          0.96us
- *      128     1.49us      0.11us          0.51us
- *      256     2.99us      0.06us          0.11us
- *      512     6.04us      0.08us          0.12us
- *     4096    48.63us      0.07us          0.12us
- *
- * The knee is at 256 iterations there, which is 3us, and nothing above
- * it buys anything -- a spin that finds nothing then costs about what
- * the wake syscall it avoids would have.  RETRO_EVENTCOUNT_SPIN_US
- * moves the budget; RETRO_EVENTCOUNT_SPIN sets the count outright and
- * skips the calibration. */
-#define EC_SPIN_US 3
-
-/* Bounds on the derived count, so a mismeasured relax cannot turn the
- * spin into either a no-op or an unbounded burn. */
-#define EC_SPIN_MIN 32
-#define EC_SPIN_MAX 8192
 
 struct ec_waiter
 {
@@ -592,7 +638,7 @@ static void ec_win32_resolve(void)
        * so the calibration is reachable for measurement on a machine
        * that would otherwise skip the spin entirely. */
       if ((env = getenv("RETRO_EVENTCOUNT_SPIN_US")))
-         budget = (unsigned)strtoul(env, NULL, 0);
+         budget = ec_spin_override(env, budget);
       else if (si.dwNumberOfProcessors <= 1)
          budget = 0;
 
@@ -600,7 +646,7 @@ static void ec_win32_resolve(void)
 
       /* An explicit count wins over the budget, for sweeping. */
       if ((env = getenv("RETRO_EVENTCOUNT_SPIN")))
-         ec_g.spin = (unsigned)strtoul(env, NULL, 0);
+         ec_g.spin = ec_spin_override(env, ec_g.spin);
    }
 }
 
@@ -1080,7 +1126,8 @@ static void ec_list_lock(retro_eventcount_t *ec)
    unsigned spins = 0;
    for (;;)
    {
-      uintptr_t old = ec_head(ec);
+      /* The successful CAS acquires the list; polling only tests its bit. */
+      uintptr_t old = (uintptr_t)retro_atomic_load_relaxed_ptr(&ec->waitlist);
       if (!(old & EC_HEAD_LOCK)
             && retro_atomic_cas_ptr(&ec->waitlist, (void*)old,
                (void*)(old | EC_HEAD_LOCK)))
@@ -1530,11 +1577,148 @@ void retro_eventcount_cancel_wait(retro_eventcount_t *ec)
 #endif
 }
 
+#if defined(RETRO_EC_ADDR_LINUX)
+/* Relax iterations that fit in @budget_us, timed as the Win32 backend
+ * times its own, on the monotonic clock. */
+static unsigned ec_linux_spin_for_budget(unsigned budget_us)
+{
+   const unsigned  samples = 3;
+   const unsigned  iters   = 2048;
+   double          best    = 0.0;
+   unsigned        s, i;
+
+   if (!budget_us)
+      return 0;
+
+   for (s = 0; s < samples; s++)
+   {
+      struct timespec t0, t1;
+      double          us;
+
+      if (clock_gettime(CLOCK_MONOTONIC, &t0) != 0)
+         return EC_SPIN_MIN * 8;   /* no clock: a middling fixed count */
+      for (i = 0; i < iters; i++)
+         retro_cpu_relax();
+      clock_gettime(CLOCK_MONOTONIC, &t1);
+
+      us = (double)(t1.tv_sec - t0.tv_sec) * 1000000.0
+         + (double)(t1.tv_nsec - t0.tv_nsec) / 1000.0;
+
+      if (us > 0.0 && (best == 0.0 || us < best))
+         best = us;
+   }
+
+   if (best <= 0.0)
+      return EC_SPIN_MIN * 8;
+
+   {
+      double n = (double)budget_us * (double)iters / best;
+
+      if (n < (double)EC_SPIN_MIN)
+         return EC_SPIN_MIN;
+      if (n > (double)EC_SPIN_MAX)
+         return EC_SPIN_MAX;
+      return (unsigned)n;
+   }
+}
+
+static void ec_linux_spin_init(void)
+{
+   if (retro_atomic_load_acquire_int(&ec_linux_spin_state) == 2)
+      return;
+   if (retro_atomic_cas_int(&ec_linux_spin_state, 0, 1))
+   {
+      const char *env;
+      unsigned    budget = EC_SPIN_US;
+      long        cpus   = sysconf(_SC_NPROCESSORS_ONLN);
+
+      /* An asked-for budget is honoured whatever the processor count;
+       * otherwise one processor does not spin. */
+      if ((env = getenv("RETRO_EVENTCOUNT_SPIN_US")))
+         budget = ec_spin_override(env, budget);
+      else if (cpus <= 1)
+         budget = 0;
+
+      ec_linux_spin = ec_linux_spin_for_budget(budget);
+
+      if ((env = getenv("RETRO_EVENTCOUNT_SPIN")))
+         ec_linux_spin = ec_spin_override(env, ec_linux_spin);
+
+      retro_atomic_store_release_int(&ec_linux_spin_state, 2);
+      return;
+   }
+   while (retro_atomic_load_acquire_int(&ec_linux_spin_state) != 2)
+      retro_cpu_relax();
+}
+
+/* 1: time remains, 0: expired, -1: clock unavailable (a spurious wake). */
+static int ec_linux_remaining(const struct timespec *start, int64_t budget,
+      struct timespec *remaining)
+{
+   struct timespec now;
+   int64_t seconds, left;
+   long ns, budget_ns;
+   if (clock_gettime(CLOCK_MONOTONIC, &now) != 0)
+      return -1;
+   seconds = (int64_t)now.tv_sec - (int64_t)start->tv_sec;
+   ns = now.tv_nsec - start->tv_nsec;
+   if (ns < 0)
+   {
+      seconds--;
+      ns += 1000000000L;
+   }
+   if (seconds < 0)
+   {
+      seconds = 0;
+      ns = 0;
+   }
+   budget_ns = (long)((budget % 1000000) * 1000);
+   if (seconds > budget / 1000000
+         || (seconds == budget / 1000000 && ns >= budget_ns))
+      return 0;
+   if (remaining)
+   {
+      left = budget / 1000000 - seconds;
+      ns = budget_ns - ns;
+      if (ns < 0)
+      {
+         left--;
+         ns += 1000000000L;
+      }
+      if (sizeof(time_t) < sizeof(int64_t) && left > INT32_MAX)
+      {
+         left = INT32_MAX;
+         ns = 999999999L;
+      }
+      remaining->tv_sec = (time_t)left;
+      remaining->tv_nsec = ns;
+   }
+   return 1;
+}
+
+/* True when the epoch moved on from @key before the spin ended. */
+static bool ec_linux_spun(retro_eventcount_t *ec, int key,
+      const struct timespec *start, int64_t budget)
+{
+   unsigned i;
+   ec_linux_spin_init();
+   for (i = 0; i < ec_linux_spin; i++)
+   {
+      if (retro_atomic_load_acquire_int(&ec->epoch) != key)
+         return true;
+      if (start && !(i & 31) && ec_linux_remaining(start, budget, NULL) <= 0)
+         return false;
+      retro_cpu_relax();
+   }
+   return retro_atomic_load_acquire_int(&ec->epoch) != key;
+}
+#endif
+
 void retro_eventcount_commit_wait(retro_eventcount_t *ec, int key)
 {
 #if defined(RETRO_EC_ADDR_LINUX)
    int expect = key;
-   if (retro_atomic_load_acquire_int(&ec->epoch) == key)
+   if (!ec_linux_spun(ec, key, NULL, 0))
       syscall(SYS_futex, (void*)&ec->epoch, FUTEX_WAIT_PRIVATE,
             expect, NULL, NULL, 0);
    retro_atomic_fetch_sub_int(&ec->waiters, 1);
@@ -1592,21 +1776,50 @@ bool retro_eventcount_commit_wait_timeout(retro_eventcount_t *ec,
 {
    bool signalled = true;
 
-   if (timeout_us < 0)
-      timeout_us = 0;
+   if (timeout_us <= 0)
+   {
+#if defined(RETRO_EC_LOCKED_BOOKKEEPING)
+      slock_lock(ec->lock);
+#endif
+      signalled = retro_atomic_load_acquire_int(&ec->epoch) != key;
+      retro_atomic_fetch_sub_int(&ec->waiters, 1);
+#if defined(RETRO_EC_LOCKED_BOOKKEEPING)
+      slock_unlock(ec->lock);
+#endif
+      return signalled;
+   }
 
 #if defined(RETRO_EC_ADDR_LINUX)
-   if (retro_atomic_load_acquire_int(&ec->epoch) == key)
    {
-      struct timespec ts;
+      struct timespec start, ts;
+      bool clock_ok = clock_gettime(CLOCK_MONOTONIC, &start) == 0;
       int expect = key;
-
-      ts.tv_sec  = (time_t)(timeout_us / 1000000);
-      ts.tv_nsec = (long)((timeout_us % 1000000) * 1000);
-
-      if (syscall(SYS_futex, (void*)&ec->epoch, FUTEX_WAIT_PRIVATE,
-               expect, &ts, NULL, 0) != 0 && errno == ETIMEDOUT)
-         signalled = false;
+      if (!(clock_ok ? ec_linux_spun(ec, key, &start, timeout_us)
+               : retro_atomic_load_acquire_int(&ec->epoch) != key))
+      {
+         int remaining;
+         if (clock_ok)
+            remaining = ec_linux_remaining(&start, timeout_us, &ts);
+         else
+         {
+            ts.tv_sec = (time_t)(timeout_us / 1000000);
+            ts.tv_nsec = (long)((timeout_us % 1000000) * 1000);
+            if (sizeof(time_t) < sizeof(int64_t) && timeout_us / 1000000 > INT32_MAX)
+            {
+               ts.tv_sec = (time_t)INT32_MAX;
+               ts.tv_nsec = 999999999L;
+            }
+            remaining = 1;
+         }
+         if (remaining == 0)
+            signalled = retro_atomic_load_acquire_int(&ec->epoch) != key;
+         else if (remaining > 0)
+         {
+            if (syscall(SYS_futex, (void*)&ec->epoch, FUTEX_WAIT_PRIVATE,
+                     expect, &ts, NULL, 0) != 0 && errno == ETIMEDOUT)
+               signalled = false;
+         }
+      }
    }
    retro_atomic_fetch_sub_int(&ec->waiters, 1);
 #else
@@ -1666,6 +1879,9 @@ unsigned retro_eventcount_spin_iters(void)
    /* The fallback parks on a condition variable, which has no flag word
     * to spin on. */
    return ec_g.sleep ? ec_g.spin : 0;
+#elif defined(RETRO_EC_ADDR_LINUX)
+   ec_linux_spin_init();
+   return ec_linux_spin;
 #else
    return 0;
 #endif

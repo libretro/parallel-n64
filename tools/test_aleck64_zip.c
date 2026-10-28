@@ -1,11 +1,19 @@
 /* Standalone self-check for libretro/aleck64_mame.c
- * (zip parsing, game table, dipswitch defaults, mahjong flag).
+ * (zip and 7z loading, game table, dipswitch defaults, mahjong flag).
  *
  * Build & run from the repo root:
  *   cc -Imupen64plus-core/src -Ilibretro-common/include -o /tmp/test_a64 \
  *      tools/test_aleck64_zip.c libretro/aleck64_mame.c \
  *      mupen64plus-core/src/device/aleck64/aleck64.c \
  *      libretro-common/encodings/encoding_deflate.c \
+ *      libretro-common/formats/zip/rzip_archive.c \
+ *      libretro-common/formats/7z/r7z_archive.c \
+ *      libretro-common/formats/7z/r7z_lzma.c \
+ *      libretro-common/formats/7z/r7z_lzma_stream.c \
+ *      libretro-common/formats/7z/r7z_lzma2.c \
+ *      libretro-common/formats/7z/r7z_bcj2.c \
+ *      libretro-common/formats/7z/r7z_filters.c \
+ *      libretro-common/formats/rar/rrar_ppmd7.c \
  *      libretro-common/encodings/encoding_crc32.c \
  *      libretro-common/encodings/encoding_utf.c \
  *      libretro-common/features/features_cpu.c \
@@ -13,7 +21,8 @@
  *      libretro-common/vfs/vfs_implementation.c \
  *      libretro-common/compat/compat_strl.c \
  *      libretro-common/file/file_path.c libretro-common/file/file_path_io.c \
- *      libretro-common/time/rtime.c \
+ *      libretro-common/time/rtime.c libretro-common/string/rstrtod.c \
+ *      libretro-common/string/stdstring.c libretro-common/compat/fopen_utf8.c \
  *      && /tmp/test_a64
  */
 #include <assert.h>
@@ -22,10 +31,13 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <encodings/crc32.h>
 #include <encodings/deflate.h>
+#include <streams/file_stream.h>
 #include <libretro.h>
 
 #include "device/aleck64/aleck64.h"
+#include "test_aleck64_7z_fixtures.h"
 
 /* aleck64.c is linked in for the E90 overlay checks, so it brings the
  * g_aleck64_* globals with it; only the frontend callbacks are stubbed. */
@@ -79,6 +91,7 @@ static void zip_add(struct zipw* z, const char* name, const uint8_t* data, uint3
     memset(p, 0, 30);
     w32(p, 0x04034b50);
     w16(p + 8, method);
+    w32(p + 14, encoding_crc32(0, data, usize));
     w32(p + 18, csize);
     w32(p + 22, usize);
     w16(p + 26, nlen);
@@ -99,6 +112,7 @@ static void zip_finish(struct zipw* z)
         memset(p, 0, 46);
         w32(p, 0x02014b50);
         w16(p + 10, (uint16_t)(lh[8] | (lh[9] << 8)));          /* method */
+        memcpy(p + 16, lh + 14, 4);                              /* crc32 */
         w32(p + 20, lh[18] | (lh[19]<<8) | ((uint32_t)lh[20]<<16) | ((uint32_t)lh[21]<<24)); /* csize */
         w32(p + 24, lh[22] | (lh[23]<<8) | ((uint32_t)lh[24]<<16) | ((uint32_t)lh[25]<<24)); /* usize */
         w16(p + 28, nlen);
@@ -134,8 +148,11 @@ static uint8_t* v64_file(uint32_t size)
 
 static uint8_t* e90_setup(struct aleck64* a64, uint8_t* fb, uint32_t attr)
 {
+    uint32_t* sdram = a64->sdram;   /* init_aleck64 keeps an existing one */
+
     memset(fb, 0, FB_W * FB_H * 4);
     memset(a64, 0, sizeof(*a64));
+    a64->sdram = sdram;
     init_aleck64(a64);
     poweron_aleck64(a64);
 
@@ -222,6 +239,120 @@ static void e90_overlay_checks(void)
 
     g_aleck64_enabled = 0;
     g_aleck64_e90 = 0;
+    free(a64.sdram);
+}
+
+/* pattern(size, seed) as test_aleck64_7z_fixtures.h describes it */
+static int pattern_is(const uint8_t* d, size_t size, unsigned seed, const uint8_t magic[4])
+{
+    size_t i;
+    if (memcmp(d, magic, 4) != 0)
+        return 0;
+    for (i = 4; i < size; ++i)
+        if (d[i] != (uint8_t)(i * 31 + (i >> 8) + seed))
+            return 0;
+    return 1;
+}
+
+static const uint8_t magic_v64[4] = { 0x37, 0x80, 0x40, 0x12 };
+static const uint8_t magic_z64[4] = { 0x80, 0x37, 0x12, 0x40 };
+
+/* What the core does with an archive on disk: sniff the head through the
+ * handle, then let the loader read the rest in place. */
+static int load_file(const char* path, const uint8_t* data, size_t len,
+                     const char* prefer, uint8_t** rom, size_t* rom_size)
+{
+    uint8_t head[8];
+    RFILE*  fp = filestream_open(path, RETRO_VFS_FILE_ACCESS_WRITE,
+                                 RETRO_VFS_FILE_ACCESS_HINT_NONE);
+    int64_t got;
+    int     ret;
+
+    assert(fp != NULL);
+    assert(filestream_write(fp, data, (int64_t)len) == (int64_t)len);
+    filestream_close(fp);
+
+    fp = filestream_open(path, RETRO_VFS_FILE_ACCESS_READ,
+                         RETRO_VFS_FILE_ACCESS_HINT_NONE);
+    assert(fp != NULL);
+    got = filestream_read(fp, head, sizeof(head));
+    assert(got == (int64_t)sizeof(head));
+    ret = aleck64_load_archive_file(fp, (uint64_t)filestream_get_size(fp),
+                                    aleck64_archive_kind(head, (size_t)got),
+                                    prefer, rom, rom_size);
+    filestream_close(fp);
+    filestream_delete(path);
+    return ret;
+}
+
+static void archive_7z_checks(void)
+{
+    static const char tmp_path[] = "test_aleck64_tmp.bin";
+    uint8_t* rom;
+    size_t   rom_size;
+
+    assert(aleck64_archive_kind(a64_7z_solid, sizeof(a64_7z_solid)) == A64_ARCHIVE_7Z);
+
+    /* non-solid: the rom member found past a non-rom one, by extension and
+     * by name, handed over as its own decoded folder */
+    assert(aleck64_load_archive(a64_7z_nonsolid, sizeof(a64_7z_nonsolid), NULL,
+                                &rom, &rom_size) == 1);
+    assert(g_aleck64_enabled == 0);
+    assert(rom_size == 0x3000 && pattern_is(rom, rom_size, 1, magic_v64));
+    free(rom);
+    assert(aleck64_load_archive(a64_7z_nonsolid, sizeof(a64_7z_nonsolid), "sub/game.v64",
+                                &rom, &rom_size) == 1);
+    assert(rom_size == 0x3000 && pattern_is(rom, rom_size, 1, magic_v64));
+    free(rom);
+
+    /* solid: the named member, not the first, out of a shared folder */
+    assert(aleck64_load_archive(a64_7z_solid, sizeof(a64_7z_solid), "B.Z64",
+                                &rom, &rom_size) == 1);
+    assert(rom_size == 0x2800 && pattern_is(rom, rom_size, 3, magic_z64));
+    free(rom);
+    assert(aleck64_load_archive(a64_7z_solid, sizeof(a64_7z_solid), "missing.z64",
+                                &rom, &rom_size) == 1);
+    assert(rom_size == 0x2000 && pattern_is(rom, rom_size, 2, magic_z64));
+    free(rom);
+
+    /* a two-chip MAME set packed as 7z */
+    assert(aleck64_load_archive(a64_7z_mame, sizeof(a64_7z_mame), NULL,
+                                &rom, &rom_size) == 1);
+    assert(g_aleck64_enabled == 1);
+    assert(rom_size == 0x1000000 + 0x2000);
+    assert(pattern_is(rom, 0x2000, 4, magic_v64));
+    assert(pattern_is(rom + 0x1000000, 0x2000, 5, magic_v64));
+    assert(rom[0x2000] == 0 && rom[0xffffff] == 0);
+    free(rom);
+
+    /* read in place from disk, positioned after the sniffed head */
+    assert(load_file(tmp_path, a64_7z_solid, sizeof(a64_7z_solid), "b.z64",
+                     &rom, &rom_size) == 1);
+    assert(rom_size == 0x2800 && pattern_is(rom, rom_size, 3, magic_z64));
+    free(rom);
+    assert(load_file(tmp_path, a64_7z_mame, sizeof(a64_7z_mame), NULL,
+                     &rom, &rom_size) == 1);
+    assert(g_aleck64_enabled == 1 && rom_size == 0x1000000 + 0x2000);
+    assert(pattern_is(rom + 0x1000000, 0x2000, 5, magic_v64));
+    free(rom);
+
+    /* not an archive: left to the caller */
+    {
+        uint8_t plain[0x40];
+        memcpy(plain, magic_z64, 4);
+        memset(plain + 4, 0, sizeof(plain) - 4);
+        assert(aleck64_load_archive(plain, sizeof(plain), NULL, &rom, &rom_size) == 0);
+    }
+
+    /* a recognised archive that is broken is a failure, never content: a
+     * 7z the core could not read used to be booted as a 64DD disk */
+    {
+        uint8_t bad[sizeof(a64_7z_solid)];
+        memcpy(bad, a64_7z_solid, sizeof(bad));
+        memset(bad + 12, 0xff, 20);  /* start header: next-header offset/size/crc */
+        assert(aleck64_load_archive(bad, sizeof(bad), NULL, &rom, &rom_size) == -1);
+        assert(load_file(tmp_path, bad, sizeof(bad), NULL, &rom, &rom_size) == -1);
+    }
 }
 
 int main(void)
@@ -235,7 +366,7 @@ int main(void)
     memset(&z, 0, sizeof(z)); f = v64_file(0x10000);
     zip_add(&z, "nus-zsaj-0.u3", f, 0x10000, 1);
     zip_finish(&z); free(f);
-    assert(aleck64_load_zip(z.buf, z.len, &rom, &rom_size) == 1);
+    assert(aleck64_load_archive(z.buf, z.len, NULL, &rom, &rom_size) == 1);
     assert(g_aleck64_enabled == 1 && g_aleck64_e90 == 0 && g_aleck64_mahjong == 0);
     assert(rom_size == 0x10000);
     assert(rom[0] == 0x37 && rom[1] == 0x80 && rom[2] == 0x40 && rom[3] == 0x12);
@@ -248,7 +379,7 @@ int main(void)
     memset(&z, 0, sizeof(z)); f = v64_file(0x10000);
     zip_add(&z, "nus-zhbj-0.u3", f, 0x10000, 0);
     zip_finish(&z); free(f);
-    assert(aleck64_load_zip(z.buf, z.len, &rom, &rom_size) == 1);
+    assert(aleck64_load_archive(z.buf, z.len, NULL, &rom, &rom_size) == 1);
     assert(g_aleck64_enabled == 1);
     /* d0: coin=7, players 3 (3<<3), autolevel 3<<5, joystick 2D (bit7=0) = 0x7f
      * d1: diff 3, extend 3<<2, rapid 0, demo on (bit5=0), english (bit6=1), test off (bit7=1) = 0xcf */
@@ -262,7 +393,7 @@ int main(void)
     f[0] = 'H'; f[1] = 'I';
     zip_add(&z, "ua3003-alh01.u4", f, 0x10000, 0);
     zip_finish(&z); free(f);
-    assert(aleck64_load_zip(z.buf, z.len, &rom, &rom_size) == 1);
+    assert(aleck64_load_archive(z.buf, z.len, NULL, &rom, &rom_size) == 1);
     assert(rom_size == 0x1000000 + 0x10000);
     assert(rom[0] == 0x37);
     assert(rom[0x1000000] == 'H' && rom[0x1000001] == 'I');
@@ -273,7 +404,7 @@ int main(void)
     zip_add(&z, "ua2011-all02.u3", f, 0x10000, 0);
     zip_add(&z, "ua2011-alh02.u4", f, 0x10000, 0);
     zip_finish(&z); free(f);
-    assert(aleck64_load_zip(z.buf, z.len, &rom, &rom_size) == 1);
+    assert(aleck64_load_archive(z.buf, z.len, NULL, &rom, &rom_size) == 1);
     assert(g_aleck64_mahjong == 1);
     /* d0: coin 7, freeplay off (bit7=1) = 0xff
      * d1: diff Normal=7, kuitan 0, continue 0, demo on (bit5=0), bit6=1, test off = 0xc7 */
@@ -287,8 +418,13 @@ int main(void)
     f[0] = 0x80; f[1] = 0x37; f[2] = 0x12; f[3] = 0x40;
     zip_add(&z, "somegame.z64", f, 0x2000, 1);
     zip_finish(&z); free(f);
-    assert(aleck64_load_zip(z.buf, z.len, &rom, &rom_size) == 1);
+    assert(aleck64_load_archive(z.buf, z.len, NULL, &rom, &rom_size) == 1);
     assert(g_aleck64_enabled == 0);
+    assert(rom_size == 0x2000 && rom[0] == 0x80 && rom[1] == 0x37);
+    free(rom);
+    /* the same zip read in place from disk */
+    assert(load_file("test_aleck64_tmp.bin", z.buf, z.len, "somegame.z64",
+                     &rom, &rom_size) == 1);
     assert(rom_size == 0x2000 && rom[0] == 0x80 && rom[1] == 0x37);
     free(rom);
 
@@ -296,7 +432,7 @@ int main(void)
     memset(&z, 0, sizeof(z));
     zip_add(&z, "readme.txt", (const uint8_t*)"hello", 5, 0);
     zip_finish(&z);
-    assert(aleck64_load_zip(z.buf, z.len, &rom, &rom_size) == 0);
+    assert(aleck64_load_archive(z.buf, z.len, NULL, &rom, &rom_size) == -1);
     assert(g_aleck64_enabled == 0);
 
     /* 7: a single-file dump (No-Intro) carries no chip names, so the zip
@@ -315,7 +451,7 @@ int main(void)
         memcpy(f, z64_head, sizeof(z64_head));
         zip_add(&z, "Magical Tetris Challenge (Japan).z64", f, 0x2000, 1);
         zip_finish(&z); free(f);
-        assert(aleck64_load_zip(z.buf, z.len, &rom, &rom_size) == 1);
+        assert(aleck64_load_archive(z.buf, z.len, NULL, &rom, &rom_size) == 1);
         assert(g_aleck64_enabled == 0);
         assert(aleck64_identify_rom(rom, rom_size) == 1);
         assert(g_aleck64_enabled == 1 && g_aleck64_e90 == 1 && g_aleck64_mahjong == 0);
@@ -342,7 +478,8 @@ int main(void)
     }
 
     e90_overlay_checks();
+    archive_7z_checks();
 
-    printf("aleck64 zip loader: all checks passed\n");
+    printf("aleck64 archive loader: all checks passed\n");
     return 0;
 }
