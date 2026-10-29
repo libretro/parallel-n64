@@ -4588,7 +4588,7 @@ static void address_generation(int i,struct regstat *i_regs,signed char entry[])
     int rm=get_reg(i_regs->regmap,TLREG);
     if(ra>=0) {
       int offset=imm[i];
-      int c=(i_regs->wasconst>>rs)&1;
+      int c=rs>=0&&((i_regs->wasconst>>rs)&1);
       if(rs1[i]==0) {
         // Using r0 as a base address
         /*if(rm>=0) {
@@ -4675,7 +4675,7 @@ static void address_generation(int i,struct regstat *i_regs,signed char entry[])
     if(ra>=0) {
       int rs=get_reg(regs[i+1].regmap,rs1[i+1]);
       int offset=imm[i+1];
-      int c=(regs[i+1].wasconst>>rs)&1;
+      int c=rs>=0&&((regs[i+1].wasconst>>rs)&1);
       if(c) {
         if(itype[i+1]==STORE||itype[i+1]==STORELR||opcode[i+1]==0x39||opcode[i+1]==0x3D) {
           // Stores to memory go thru the mapper to detect self-modifying
@@ -4699,7 +4699,7 @@ static void address_generation(int i,struct regstat *i_regs,signed char entry[])
     if(ra>=0) {
       int rs=get_reg(regs[i+1].regmap,rs1[i+1]);
       int offset=imm[i+1];
-      int c=(regs[i+1].wasconst>>rs)&1;
+      int c=rs>=0&&((regs[i+1].wasconst>>rs)&1);
       if(c) {
         int load=0;
         #ifndef INTERPRET_LOAD
