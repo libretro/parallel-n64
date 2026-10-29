@@ -296,6 +296,11 @@ void fp_exception(void);
 void jump_syscall(void);
 void jump_eret(void);
 void jump_intcall(void);
+
+/* TGE..TNE (SPECIAL 0x30-0x36) and TGEI..TNEI (REGIMM 0x08-0x0E) */
+#define IS_TRAP(w) (((w)>>26)==0x00 \
+    ? (((w)&0x3f)>=0x30&&((w)&0x3f)<=0x36&&((w)&0x3f)!=0x35) \
+    : ((w)>>26)==0x01&&(((w)>>16)&0x1f)>=0x08&&(((w)>>16)&0x1f)<=0x0e&&(((w)>>16)&0x1f)!=0x0d)
 void dyna_linker(void);
 void dyna_linker_ds(void);
 void breakpoint(void);
@@ -1959,9 +1964,9 @@ void* ERET_new(void)
     }
 }
 
-/* BREAK, the COP2 moves and DCFC1/DCTC1 have no native form: the block
-   writes the registers back and jump_intcall arrives here with the
-   instruction's address in pcaddr and the cycle count stored. The cached interpreter runs it against
+/* BREAK, the traps, the COP2 moves and DCFC1/DCTC1 have no native form:
+   the block writes the registers back and jump_intcall arrives here with
+   the instruction's address in pcaddr and the cycle count stored. The cached interpreter runs it against
    fake_pc, whose rt operand is staged from and back to the guest register. */
 void* intcall_new(void)
 {
@@ -1975,9 +1980,40 @@ void* intcall_new(void)
 
   r4300->delay_slot = 0;
   state->pending_exception = 0;
+  state->rs = state->regs[(op >> 21) & 0x1f];
   state->rt = state->regs[rt];
 
-  if ((op >> 26) == 0x11)
+  if (IS_TRAP(op))
+  {
+    if ((op >> 26) == 0x00)
+    {
+      switch (op & 0x3f)
+      {
+        case 0x30: cached_interp_TGE(); break;
+        case 0x31: cached_interp_TGEU(); break;
+        case 0x32: cached_interp_TLT(); break;
+        case 0x33: cached_interp_TLTU(); break;
+        case 0x34: cached_interp_TEQ(); break;
+        default: cached_interp_TNE(); break;
+      }
+    }
+    else
+    {
+      /* the immediate shares fake_pc's operand slots with rd */
+      state->fake_pc.f.i.immediate = (int16_t)op;
+      switch ((op >> 16) & 0x1f)
+      {
+        case 0x08: cached_interp_TGEI(); break;
+        case 0x09: cached_interp_TGEIU(); break;
+        case 0x0a: cached_interp_TLTI(); break;
+        case 0x0b: cached_interp_TLTIU(); break;
+        case 0x0c: cached_interp_TEQI(); break;
+        default: cached_interp_TNEI(); break;
+      }
+      state->fake_pc.f.r.rd = &state->rd;
+    }
+  }
+  else if ((op >> 26) == 0x11)
   {
     if (((op >> 21) & 0x1f) == 0x03)
       cached_interp_DCFC1();
@@ -3871,6 +3907,12 @@ static void atomic_alloc(struct regstat *current,int i)
     dirty_reg(current,rt1[i]);
   }
   current->isconst=0;
+}
+
+static void trap_alloc(struct regstat *current,int i)
+{
+  if(rs1[i]) alloc_reg(current,i,rs1[i]);
+  if(rs2[i]) alloc_reg(current,i,rs2[i]);
 }
 
 static void syscall_alloc(struct regstat *current,int i)
@@ -7454,11 +7496,12 @@ static void syscall_assemble(int i,struct regstat *i_regs)
   }
 }
 
-/* BREAK stays an OTHER-class instruction, so the guarded break the
-   compilers place after a division costs the register passes nothing: it
-   writes the registers back where it stands, as an exception exit does, and
-   leaves through jump_intcall, which raises the Breakpoint exception. */
-static void break_assemble(int i,struct regstat *i_regs)
+/* BREAK and the traps stay OTHER-class instructions, so the guarded break
+   and teq compilers place after a division cost the register passes
+   nothing. Where the instruction may raise its exception, it writes the
+   registers back where it stands, as an exception exit does, and leaves
+   through jump_intcall, which runs it in the interpreter. */
+static void intcall_exit(int i,struct regstat *i_regs)
 {
   load_all_consts(regs[i].regmap_entry,regs[i].was32,regs[i].wasdirty,regs[i].wasconst,i);
   wb_exception_dirtys(i_regs);
@@ -7466,6 +7509,62 @@ static void break_assemble(int i,struct regstat *i_regs)
   if(i_regs->regmap[HOST_CCREG]!=CCREG) emit_loadreg(CCREG,HOST_CCREG);
   emit_addimm(HOST_CCREG,CLOCK_DIVIDER*(ccadj[i]+1),HOST_CCREG);
   emit_jmp((intptr_t)jump_intcall);
+}
+
+/* TEQ and TEQI cannot trap while the low words differ, so only an equal
+   low word leaves for the interpreter, which compares all 64 bits and
+   either raises the exception or resumes after the trap. The other traps,
+   which compilers do not emit, always leave. A constant source may not be
+   in its host register yet, so it is compared by value. */
+static void trap_assemble(int i,struct regstat *i_regs)
+{
+  int teq=(opcode[i]==0x00&&(source[i]&0x3f)==0x34)||(opcode[i]==0x01&&((source[i]>>16)&0x1f)==0x0c);
+  signed char s1=rs1[i]?get_reg(i_regs->regmap,rs1[i]):-1;
+  signed char s2=rs2[i]?get_reg(i_regs->regmap,rs2[i]):-1;
+  int c1=0,c2=0;
+  int v1=0,v2=0;
+  intptr_t jaddr=0;
+
+  if(rs1[i]) {
+    assert(s1>=0);
+    c1=(i_regs->wasconst>>s1)&1;
+    if(c1) v1=(int)constmap[i][s1];
+  }
+  if(opcode[i]==0x01) {
+    c2=1;
+    v2=imm[i];
+  }
+  else if(rs2[i]) {
+    assert(s2>=0);
+    c2=(i_regs->wasconst>>s2)&1;
+    if(c2) v2=(int)constmap[i][s2];
+  }
+  else
+    c2=1;
+
+  if(teq) {
+    if(!rs1[i]) c1=1;
+    if(c1&&c2) {
+      if(v1!=v2) return;
+    }
+    else if(!c1&&!c2) {
+      emit_cmp(s1,s2);
+      jaddr=(intptr_t)out;
+      emit_jne(0);
+    }
+    else {
+      signed char s=c1?s2:s1;
+      int v=c1?v1:v2;
+      if(v>-65536&&v<65536) {
+        if(v) emit_cmpimm(s,v);
+        else emit_test(s,s);
+        jaddr=(intptr_t)out;
+        emit_jne(0);
+      }
+    }
+  }
+  intcall_exit(i,i_regs);
+  if(jaddr) set_jump_target(jaddr,(intptr_t)out);
 }
 
 static void ds_assemble(int i,struct regstat *i_regs)
@@ -9456,12 +9555,12 @@ int new_recompile_block(int addr)
           case 0x2D: assem_strcpy(insn[i],"DADDU"); type=ALU; break;
           case 0x2E: assem_strcpy(insn[i],"DSUB"); type=ALU; break;
           case 0x2F: assem_strcpy(insn[i],"DSUBU"); type=ALU; break;
-          case 0x30: assem_strcpy(insn[i],"TGE"); type=NI; break;
-          case 0x31: assem_strcpy(insn[i],"TGEU"); type=NI; break;
-          case 0x32: assem_strcpy(insn[i],"TLT"); type=NI; break;
-          case 0x33: assem_strcpy(insn[i],"TLTU"); type=NI; break;
-          case 0x34: assem_strcpy(insn[i],"TEQ"); type=NI; break;
-          case 0x36: assem_strcpy(insn[i],"TNE"); type=NI; break;
+          case 0x30: assem_strcpy(insn[i],"TGE"); type=OTHER; break;
+          case 0x31: assem_strcpy(insn[i],"TGEU"); type=OTHER; break;
+          case 0x32: assem_strcpy(insn[i],"TLT"); type=OTHER; break;
+          case 0x33: assem_strcpy(insn[i],"TLTU"); type=OTHER; break;
+          case 0x34: assem_strcpy(insn[i],"TEQ"); type=OTHER; break;
+          case 0x36: assem_strcpy(insn[i],"TNE"); type=OTHER; break;
           case 0x38: assem_strcpy(insn[i],"DSLL"); type=SHIFTIMM; break;
           case 0x3A: assem_strcpy(insn[i],"DSRL"); type=SHIFTIMM; break;
           case 0x3B: assem_strcpy(insn[i],"DSRA"); type=SHIFTIMM; break;
@@ -9478,12 +9577,12 @@ int new_recompile_block(int addr)
           case 0x01: assem_strcpy(insn[i],"BGEZ"); type=SJUMP; break;
           case 0x02: assem_strcpy(insn[i],"BLTZL"); type=SJUMP; break;
           case 0x03: assem_strcpy(insn[i],"BGEZL"); type=SJUMP; break;
-          case 0x08: assem_strcpy(insn[i],"TGEI"); type=NI; break;
-          case 0x09: assem_strcpy(insn[i],"TGEIU"); type=NI; break;
-          case 0x0A: assem_strcpy(insn[i],"TLTI"); type=NI; break;
-          case 0x0B: assem_strcpy(insn[i],"TLTIU"); type=NI; break;
-          case 0x0C: assem_strcpy(insn[i],"TEQI"); type=NI; break;
-          case 0x0E: assem_strcpy(insn[i],"TNEI"); type=NI; break;
+          case 0x08: assem_strcpy(insn[i],"TGEI"); type=OTHER; break;
+          case 0x09: assem_strcpy(insn[i],"TGEIU"); type=OTHER; break;
+          case 0x0A: assem_strcpy(insn[i],"TLTI"); type=OTHER; break;
+          case 0x0B: assem_strcpy(insn[i],"TLTIU"); type=OTHER; break;
+          case 0x0C: assem_strcpy(insn[i],"TEQI"); type=OTHER; break;
+          case 0x0E: assem_strcpy(insn[i],"TNEI"); type=OTHER; break;
           case 0x10: assem_strcpy(insn[i],"BLTZAL"); type=SJUMP; break;
           case 0x11: assem_strcpy(insn[i],"BGEZAL"); type=SJUMP; break;
           case 0x12: assem_strcpy(insn[i],"BLTZALL"); type=SJUMP; break;
@@ -9916,6 +10015,14 @@ int new_recompile_block(int addr)
         rs2[i]=0;
         rt1[i]=0;
         rt2[i]=0;
+    }
+    /* Traps compare their full 64-bit sources */
+    if(type==OTHER&&IS_TRAP(source[i])) {
+      rs1[i]=(source[i]>>21)&0x1f;
+      rs2[i]=(op==0x00)?(source[i]>>16)&0x1f:0;
+      us1[i]=rs1[i];
+      us2[i]=rs2[i];
+      imm[i]=(short)source[i];
     }
     /* Calculate branch target addresses */
     if(type==UJUMP)
@@ -10573,6 +10680,9 @@ int new_recompile_block(int addr)
           break;
         case SYSCALL:
           syscall_alloc(&current,i);
+          break;
+        case OTHER:
+          if(IS_TRAP(source[i])) trap_alloc(&current,i);
           break;
         case ATOMIC:
           atomic_alloc(&current,i);
@@ -12236,7 +12346,8 @@ int new_recompile_block(int addr)
         case SYSCALL:
           syscall_assemble(i,&regs[i]);break;
         case OTHER:
-          if((source[i]&0xfc00003f)==0x0d) break_assemble(i,&regs[i]);
+          if((source[i]&0xfc00003f)==0x0d) intcall_exit(i,&regs[i]);
+          else if(IS_TRAP(source[i])) trap_assemble(i,&regs[i]);
           break;
         case ATOMIC:
           atomic_assemble(i,&regs[i]);break;

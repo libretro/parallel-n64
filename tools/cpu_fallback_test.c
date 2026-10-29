@@ -10,9 +10,11 @@
  * handler logs Cause.ExcCode, steps EPC past the instruction and returns.
  * The payload runs BREAK with a register value pending across it, a guarded
  * BREAK skipped and taken as compilers emit after a division, the COP2
- * moves with COP2 unusable and usable, DCFC1 and DCTC1, logging each
- * exception and each value moved back, then stores how many words it
- * logged and a marker.
+ * moves with COP2 unusable and usable, DCFC1 and DCTC1, and the traps,
+ * including a TEQ whose low words match while the upper words differ and
+ * the TEQ compilers place after a division, logging each exception, each
+ * value moved back and a marker per trap step, then stores how many words
+ * it logged and a marker.
  *
  * `make check-cpu-fallback` takes the pure interpreter's log as the
  * reference, checks its exception codes, and requires every other CPU core
@@ -25,13 +27,13 @@
 #define ROM_SIZE       0x100000
 #define PAYLOAD_ROM    0x1000
 #define PAYLOAD_RDRAM  0x400
-#define PAYLOAD_WORDS  96
+#define PAYLOAD_WORDS  192
 #define HANDLER_ROM    0x2000
 #define HANDLER_RDRAM  0x180
 #define HANDLER_WORDS  10
 
 #define LOG_ADDR       0x200
-#define LOG_WORDS      20
+#define LOG_WORDS      40
 #define COUNT_ADDR     0x1f8
 #define MARKER_ADDR    0x1fc
 #define MARKER         0x600dUL
@@ -39,6 +41,7 @@
 #define EXC_BP         0x24UL  /* Breakpoint << 2 */
 #define EXC_CPU        0x2cUL  /* Coprocessor Unusable << 2 */
 #define EXC_FPE        0x3cUL  /* Floating-Point << 2 */
+#define EXC_TR         0x34UL  /* Trap << 2 */
 
 #define VAL_MOVE       0x1357c2deUL
 #define VAL_DMOVE      0x89abcdefUL  /* sign-extends to 64 bits */
@@ -72,6 +75,13 @@
 #define AND(rd, rs, rt)     R(0, rs, rt, rd, 0, 0x24)
 #define NOR(rd, rs, rt)     R(0, rs, rt, rd, 0, 0x27)
 #define DSRL32(rd, rt, sa)  R(0, 0, rt, rd, sa, 0x3e)
+#define DSLL32(rd, rt, sa)  R(0, 0, rt, rd, sa, 0x3c)
+#define DIV(rs, rt)         R(0, rs, rt, 0, 0, 0x1a)
+#define TEQ(rs, rt, code)   R(0, rs, rt, 0, 0, 0x34 | ((code) << 6))
+#define TNE(rs, rt)         R(0, rs, rt, 0, 0, 0x36)
+#define TLTU(rs, rt)        R(0, rs, rt, 0, 0, 0x33)
+#define TEQI(rs, imm)       I(0x01, rs, 0x0c, imm)
+#define TGEI(rs, imm)       I(0x01, rs, 0x08, imm)
 #define JR(rs)              R(0, rs, 0, 0, 0, 0x08)
 #define BREAK               R(0, 0, 0, 0, 0, 0x0d)
 #define MFC0(rt, rd)        R(0x10, 0x00, rt, rd, 0, 0)
@@ -136,6 +146,13 @@ static void emit_log(struct emitter* e, unsigned rt)
 {
     emit(e, SW(rt, 0, S7));
     emit(e, ADDIU(S7, S7, 4));
+}
+
+/* log a step marker */
+static void emit_mark(struct emitter* e, unsigned n)
+{
+    emit(e, ORI(T6, 0, 0x100 + n));
+    emit_log(e, T6);
 }
 
 /* Status.CU2 on or off, through $t1/$t2 */
@@ -236,6 +253,37 @@ static int write_rom(const char* path)
     emit(&e, DCTC1(T4, 0));                               /* FPE */
     emit_cu2(&e, 0);
     emit(&e, MFC2(T4, 0));                                /* CpU */
+
+    /* traps: 5 vs 3, 5 vs 5, 2^32+5 vs 5 (low words equal) */
+    emit(&e, ORI(T1, 0, 5));
+    emit(&e, ORI(T2, 0, 3));
+    emit(&e, ORI(T3, 0, 1));
+    emit(&e, DSLL32(T3, T3, 0));
+    emit(&e, ORI(T3, T3, 5));
+    emit(&e, TEQ(T1, T2, 0));                             /* no trap */
+    emit_mark(&e, 1);
+    emit(&e, ORI(T2, 0, 5));
+    emit(&e, TEQ(T1, T2, 0));                             /* Tr */
+    emit_mark(&e, 2);
+    emit(&e, TEQ(T3, T1, 0));                             /* no trap */
+    emit_mark(&e, 3);
+    emit(&e, TEQI(T1, 5));                                /* Tr */
+    emit(&e, TEQI(T1, 6));                                /* no trap */
+    emit_mark(&e, 4);
+    emit(&e, TNE(T1, T2));                                /* no trap */
+    emit(&e, TNE(T3, T1));                                /* Tr */
+    emit_mark(&e, 5);
+    emit(&e, TGEI(T1, 0xffff));                           /* Tr: 5 >= -1 */
+    emit(&e, TLTU(T1, T2));                               /* no trap: 5 < 5 */
+    emit_mark(&e, 6);
+    /* a division guarded the way compilers emit it */
+    emit(&e, ORI(T2, 0, 7));
+    emit(&e, DIV(T1, T2));
+    emit(&e, TEQ(T2, 0, 7));                              /* no trap */
+    emit_mark(&e, 7);
+    emit(&e, DIV(T1, 0));
+    emit(&e, TEQ(0, 0, 7));                               /* Tr */
+    emit_mark(&e, 8);
     emit_li(&e, T1, 0x80000000UL);
     emit_li(&e, T2, LOG_ADDR + 0x80000000UL);
     emit(&e, R(0, S7, T2, T2, 0, 0x23));                  /* SUBU: bytes logged */
@@ -308,7 +356,9 @@ int main(int argc, char** argv)
 {
     static const unsigned long expect[] = {
         EXC_BP, VAL_LIVE, 3, EXC_BP, 0,
-        EXC_CPU, VAL_MOVE, VAL_DMOVE, 0xffffffffUL, VAL_CTRL, EXC_FPE, EXC_FPE, EXC_CPU
+        EXC_CPU, VAL_MOVE, VAL_DMOVE, 0xffffffffUL, VAL_CTRL, EXC_FPE, EXC_FPE, EXC_CPU,
+        0x101, EXC_TR, 0x102, 0x103, EXC_TR, 0x104, EXC_TR, 0x105, EXC_TR, 0x106,
+        0x107, EXC_TR, 0x108
     };
     unsigned long ref[LOG_WORDS], got[LOG_WORDS];
     unsigned nref, ngot, i;
