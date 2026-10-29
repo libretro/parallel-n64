@@ -895,6 +895,12 @@ static void unneeded_registers(int istart,int iend,int r)
       u=1;
       uu=1;
     }
+    else if(itype[i]==OTHER&&((source[i]&0xfc00003f)==0x0d||IS_TRAP(source[i])))
+    {
+      /* the exception handler may read any register */
+      u=1;
+      uu=1;
+    }
     else if(itype[i]==COP0 && (source[i]&0x3f)==0x18)
     {
       // ERET instruction (return from interrupt)
@@ -1964,24 +1970,15 @@ void* ERET_new(void)
     }
 }
 
-/* BREAK, the traps, the COP2 moves and DCFC1/DCTC1 have no native form:
-   the block writes the registers back and jump_intcall arrives here with
-   the instruction's address in pcaddr and the cycle count stored. The cached interpreter runs it against
-   fake_pc, whose rt operand is staged from and back to the guest register. */
-void* intcall_new(void)
+/* Runs one instruction with no native form against fake_pc, whose rs and
+   rt operands are staged from the guest registers. Returns whether it
+   produced a value in state->rt for its rt register. */
+static int intcall_run(struct new_dynarec_hot_state* state, uint32_t op)
 {
-  struct r4300_core* r4300 = &g_dev.r4300;
-  struct new_dynarec_hot_state* state = &r4300->new_dynarec_hot_state;
-  uint32_t op = *fast_mem_access(r4300, state->pcaddr);
-  unsigned int rt = (op >> 16) & 0x1f;
   int writes_rt = 0;
-  uint32_t is64 = 0;
-  int i;
 
-  r4300->delay_slot = 0;
-  state->pending_exception = 0;
   state->rs = state->regs[(op >> 21) & 0x1f];
-  state->rt = state->regs[rt];
+  state->rt = state->regs[(op >> 16) & 0x1f];
 
   if (IS_TRAP(op))
   {
@@ -2032,11 +2029,122 @@ void* intcall_new(void)
       default: cached_interp_CTC2(); break;
     }
   }
+  else if ((op & 0xfc00003f) == 0x0c)
+    cached_interp_SYSCALL();
   else
     cached_interp_BREAK();
 
-  if (writes_rt && rt != 0 && !state->pending_exception)
-    state->regs[rt] = state->rt;
+  return writes_rt;
+}
+
+/* J/JAL, JR/JALR, the REGIMM, I-type and BC1 branches */
+static int intcall_is_branch(uint32_t op)
+{
+  uint32_t major = op >> 26;
+
+  if (major == 0x00)
+    return (op & 0x3e) == 0x08;
+  if (major == 0x01)
+    return (((op >> 16) & 0x1f) & 0x0c) == 0x00;
+  if (major == 0x11)
+    return ((op >> 21) & 0x1f) == 0x08;
+  return (major >= 0x02 && major <= 0x07) || (major >= 0x14 && major <= 0x17);
+}
+
+/* Writes the branch's link register and decides it: 1 taken to *target,
+   0 not taken, -1 a likely branch not taken, whose delay slot is skipped.
+   A BC1 branch with COP1 unusable raises its exception and returns 0. */
+static int intcall_branch(struct r4300_core* r4300, uint32_t pc, uint32_t op, uint32_t* target)
+{
+  struct new_dynarec_hot_state* state = &r4300->new_dynarec_hot_state;
+  uint32_t major = op >> 26;
+  int64_t rs = state->regs[(op >> 21) & 0x1f];
+  int64_t rt = state->regs[(op >> 16) & 0x1f];
+  int likely = 0;
+  int taken = 0;
+
+  *target = pc + 4 + ((uint32_t)(int32_t)(int16_t)op << 2);
+  switch (major)
+  {
+    case 0x00:
+      *target = (uint32_t)rs;
+      if ((op & 0x3f) == 0x09 && ((op >> 11) & 0x1f) != 0)
+        state->regs[(op >> 11) & 0x1f] = (int64_t)(int32_t)(pc + 8);
+      return 1;
+    case 0x01:
+      likely = (op >> 17) & 1;
+      taken = ((op >> 16) & 1) ? rs >= 0 : rs < 0;
+      if ((op >> 20) & 1)
+        state->regs[31] = (int64_t)(int32_t)(pc + 8);
+      break;
+    case 0x02:
+    case 0x03:
+      *target = ((pc + 4) & UINT32_C(0xf0000000)) | ((op & UINT32_C(0x03ffffff)) << 2);
+      if (major == 0x03)
+        state->regs[31] = (int64_t)(int32_t)(pc + 8);
+      return 1;
+    case 0x11:
+      if (check_cop1_unusable(r4300))
+        return 0;
+      likely = (op >> 17) & 1;
+      taken = ((*r4300_cp1_fcr31(&r4300->cp1) & FCR31_CMP_BIT) != 0) == (int)((op >> 16) & 1);
+      break;
+    default:
+      likely = major >= 0x14;
+      switch (major & 0x03)
+      {
+        case 0x00: taken = rs == rt; break;
+        case 0x01: taken = rs != rt; break;
+        case 0x02: taken = rs <= 0; break;
+        default: taken = rs > 0; break;
+      }
+      break;
+  }
+  return taken ? 1 : likely ? -1 : 0;
+}
+
+/* BREAK, the traps, the COP2 moves and DCFC1/DCTC1 have no native form,
+   nor does a branch whose delay slot holds one of them or SYSCALL: the
+   block writes the registers back and jump_intcall arrives here with the
+   instruction's address in pcaddr and the cycle count stored. A branch
+   runs its delay slot here too, then resumes at its destination. */
+void* intcall_new(void)
+{
+  struct r4300_core* r4300 = &g_dev.r4300;
+  struct new_dynarec_hot_state* state = &r4300->new_dynarec_hot_state;
+  uint32_t pc = state->pcaddr;
+  uint32_t op = *fast_mem_access(r4300, pc);
+  uint32_t target = 0;
+  uint32_t is64 = 0;
+  int writes_rt = 0;
+  int i;
+
+  r4300->delay_slot = 0;
+  state->pending_exception = 0;
+
+  if (intcall_is_branch(op))
+  {
+    int taken = intcall_branch(r4300, pc, op, &target);
+
+    if (!state->pending_exception)
+    {
+      if (taken >= 0)
+      {
+        state->pcaddr = pc + 4;
+        op = *fast_mem_access(r4300, pc + 4);
+        r4300->delay_slot = 1;
+        writes_rt = intcall_run(state, op);
+        r4300->delay_slot = 0;
+      }
+      if (!state->pending_exception)
+        state->pcaddr = taken > 0 ? target : pc + 8;
+    }
+  }
+  else
+    writes_rt = intcall_run(state, op);
+
+  if (writes_rt && ((op >> 16) & 0x1f) != 0 && !state->pending_exception)
+    state->regs[(op >> 16) & 0x1f] = state->rt;
 
   r4300->cp0.last_addr = state->pcaddr;
   if (state->cycle_count >= 0) { gen_interrupt(r4300); }
@@ -7490,8 +7598,10 @@ static void syscall_assemble(int i,struct regstat *i_regs)
   }
   else {
     /* Run through the interpreter, which charges nothing for it, then
-       resume at the next instruction or the exception vector */
-    emit_addimm(HOST_CCREG,CLOCK_DIVIDER*(ccadj[i]+1),HOST_CCREG);
+       resume at the next instruction, the branch destination or the
+       exception vector. A branch is charged with its delay slot. */
+    int n=intcall_is_branch(source[i])?2:1;
+    emit_addimm(HOST_CCREG,CLOCK_DIVIDER*(ccadj[i]+n),HOST_CCREG);
     emit_jmp((intptr_t)jump_intcall);
   }
 }
@@ -10085,6 +10195,26 @@ int new_recompile_block(int addr)
     if(itype[i]==NI&&opcode[i]==0x11) {
       done=stop_after_jal=1;
       DebugMessage(M64MSG_VERBOSE, "Disabled speculative precompilation");
+    }
+    /* A delay slot only the interpreter runs takes its branch along: the
+       branch leaves through jump_intcall, which runs both, and ends the
+       block there. */
+    if(i>0&&(itype[i-1]==UJUMP||itype[i-1]==RJUMP||itype[i-1]==CJUMP||itype[i-1]==SJUMP||itype[i-1]==FJUMP)
+       &&(itype[i]==SYSCALL||(itype[i]==OTHER&&((source[i]&0xfc00003f)==0x0d||IS_TRAP(source[i])))))
+    {
+      itype[i-1]=SYSCALL;
+      rs1[i-1]=CCREG;
+      rs2[i-1]=0;
+      rt1[i-1]=0;
+      rt2[i-1]=0;
+      us1[i-1]=0;
+      us2[i-1]=0;
+      dep1[i-1]=0;
+      dep2[i-1]=0;
+      ba[i-1]=-1;
+      likely[i-1]=0;
+      done=1;
+      i--;
     }
   }
   slen=i;
