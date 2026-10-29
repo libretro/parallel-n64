@@ -136,6 +136,7 @@ static uintptr_t jump_table_symbols[] = {
   (intptr_t)fp_exception,
   (intptr_t)jump_syscall,
   (intptr_t)jump_eret,
+  (intptr_t)jump_intcall,
   (intptr_t)do_interrupt,
   (intptr_t)TLBWI_new,
   (intptr_t)TLBWR_new,

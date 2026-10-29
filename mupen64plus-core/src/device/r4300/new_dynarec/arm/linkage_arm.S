@@ -191,6 +191,15 @@ GLOBAL_FUNCTION(jump_eret):
     beq    new_dyna_stop
     mov    pc, r0
 
+GLOBAL_FUNCTION(jump_intcall):
+    str    r0, [fp, #fp_pcaddr]
+    str    r10, [fp, #fp_cycle_count]
+    bl     intcall_new
+    ldr    r10, [fp, #fp_cycle_count]
+    tst    r0, r0
+    beq    new_dyna_stop
+    mov    pc, r0
+
 GLOBAL_FUNCTION(dyna_linker):
     bl     dynamic_linker
     mov    pc, r0

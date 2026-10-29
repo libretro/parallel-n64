@@ -8,13 +8,15 @@
  * VI's V_SYNC so frames are timed, copies a payload to RDRAM 0x400 and an
  * exception handler to 0x180 by PI DMA, and jumps to the payload. The
  * handler logs Cause.ExcCode, steps EPC past the instruction and returns.
- * The payload runs BREAK, the COP2 moves with COP2 unusable and usable,
- * DCFC1 and DCTC1, logging each exception and each value moved back, then
- * stores how many words it logged and a marker.
+ * The payload runs BREAK with a register value pending across it, a guarded
+ * BREAK skipped and taken as compilers emit after a division, the COP2
+ * moves with COP2 unusable and usable, DCFC1 and DCTC1, logging each
+ * exception and each value moved back, then stores how many words it
+ * logged and a marker.
  *
  * `make check-cpu-fallback` takes the pure interpreter's log as the
- * reference, checks its exception codes, and requires the cached
- * interpreter and Hacktarux to log the same words.
+ * reference, checks its exception codes, and requires every other CPU core
+ * to log the same words.
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -29,7 +31,7 @@
 #define HANDLER_WORDS  10
 
 #define LOG_ADDR       0x200
-#define LOG_WORDS      16
+#define LOG_WORDS      20
 #define COUNT_ADDR     0x1f8
 #define MARKER_ADDR    0x1fc
 #define MARKER         0x600dUL
@@ -41,6 +43,7 @@
 #define VAL_MOVE       0x1357c2deUL
 #define VAL_DMOVE      0x89abcdefUL  /* sign-extends to 64 bits */
 #define VAL_CTRL       0x2468c2c2UL
+#define VAL_LIVE       0x5a5a1235UL
 
 #define T0 8
 #define T1 9
@@ -198,7 +201,20 @@ static int write_rom(const char* path)
     e.base = rom + PAYLOAD_ROM;
     e.n = 0;
     emit_li(&e, S7, 0x80000000UL + LOG_ADDR);
+    emit_li(&e, T5, VAL_LIVE - 1);
+    emit(&e, ADDIU(T5, T5, 1));                           /* dirty across BREAK */
     emit(&e, BREAK);                                      /* Bp */
+    emit_log(&e, T5);                                     /* VAL_LIVE */
+    emit(&e, ORI(T1, 0, 3));                              /* guarded, skipped */
+    emit(&e, BNE(T1, 0, 2));
+    emit(&e, NOP);
+    emit(&e, BREAK);
+    emit_log(&e, T1);                                     /* 3 */
+    emit(&e, ORI(T1, 0, 0));                              /* guarded, taken */
+    emit(&e, BNE(T1, 0, 2));
+    emit(&e, NOP);
+    emit(&e, BREAK);                                      /* Bp */
+    emit_log(&e, T1);                                     /* 0 */
     emit_cu2(&e, 0);
     emit_li(&e, T3, VAL_MOVE);
     emit(&e, MTC2(T3, 0));                                /* CpU */
@@ -291,7 +307,8 @@ static int load_log(const char* path, unsigned long* log, unsigned* count)
 int main(int argc, char** argv)
 {
     static const unsigned long expect[] = {
-        EXC_BP, EXC_CPU, VAL_MOVE, VAL_DMOVE, 0xffffffffUL, VAL_CTRL, EXC_FPE, EXC_FPE, EXC_CPU
+        EXC_BP, VAL_LIVE, 3, EXC_BP, 0,
+        EXC_CPU, VAL_MOVE, VAL_DMOVE, 0xffffffffUL, VAL_CTRL, EXC_FPE, EXC_FPE, EXC_CPU
     };
     unsigned long ref[LOG_WORDS], got[LOG_WORDS];
     unsigned nref, ngot, i;

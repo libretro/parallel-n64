@@ -295,6 +295,7 @@ void do_interrupt(void);
 void fp_exception(void);
 void jump_syscall(void);
 void jump_eret(void);
+void jump_intcall(void);
 void dyna_linker(void);
 void dyna_linker_ds(void);
 void breakpoint(void);
@@ -1956,6 +1957,65 @@ void* ERET_new(void)
         is64 |= (((int)(state->lo>>32)^((int)state->lo>>31))!=0);
         return get_addr_32(state->pcaddr, is64);
     }
+}
+
+/* BREAK, the COP2 moves and DCFC1/DCTC1 have no native form: the block
+   writes the registers back and jump_intcall arrives here with the
+   instruction's address in pcaddr and the cycle count stored. The cached interpreter runs it against
+   fake_pc, whose rt operand is staged from and back to the guest register. */
+void* intcall_new(void)
+{
+  struct r4300_core* r4300 = &g_dev.r4300;
+  struct new_dynarec_hot_state* state = &r4300->new_dynarec_hot_state;
+  uint32_t op = *fast_mem_access(r4300, state->pcaddr);
+  unsigned int rt = (op >> 16) & 0x1f;
+  int writes_rt = 0;
+  uint32_t is64 = 0;
+  int i;
+
+  r4300->delay_slot = 0;
+  state->pending_exception = 0;
+  state->rt = state->regs[rt];
+
+  if ((op >> 26) == 0x11)
+  {
+    if (((op >> 21) & 0x1f) == 0x03)
+      cached_interp_DCFC1();
+    else
+      cached_interp_DCTC1();
+  }
+  else if ((op >> 26) == 0x12)
+  {
+    switch ((op >> 21) & 0x1f)
+    {
+      case 0x00: cached_interp_MFC2(); writes_rt = 1; break;
+      case 0x01: cached_interp_DMFC2(); writes_rt = 1; break;
+      case 0x02: cached_interp_CFC2(); writes_rt = 1; break;
+      case 0x04: cached_interp_MTC2(); break;
+      case 0x05: cached_interp_DMTC2(); break;
+      default: cached_interp_CTC2(); break;
+    }
+  }
+  else
+    cached_interp_BREAK();
+
+  if (writes_rt && rt != 0 && !state->pending_exception)
+    state->regs[rt] = state->rt;
+
+  r4300->cp0.last_addr = state->pcaddr;
+  if (state->cycle_count >= 0) { gen_interrupt(r4300); }
+
+  if (state->stop)
+    return NULL;
+
+  if (state->pending_exception)
+    return get_addr_ht(state->pcaddr);
+
+  for (i = 0; i < 32; i++)
+    is64 |= (((int)(state->regs[i] >> 32) ^ ((int)state->regs[i] >> 31)) != 0) << i;
+  is64 |= (((int)(state->hi >> 32) ^ ((int)state->hi >> 31)) != 0);
+  is64 |= (((int)(state->lo >> 32) ^ ((int)state->lo >> 31)) != 0);
+  return get_addr_32(state->pcaddr, is64);
 }
 
 /* Host backing of a TLB'd guest page. Aleck64 games map the arcade bus at
@@ -7382,8 +7442,30 @@ static void syscall_assemble(int i,struct regstat *i_regs)
   assert(ccreg==HOST_CCREG);
   assert(!is_delayslot);
   emit_movimm(start+i*4,0); // Get PC
-  emit_addimm(HOST_CCREG,CLOCK_DIVIDER*ccadj[i],HOST_CCREG); // CHECK: is this right?  There should probably be an extra cycle...
-  emit_jmp((intptr_t)jump_syscall);
+  if((source[i]&0xfc00003f)==0x0c) {
+    emit_addimm(HOST_CCREG,CLOCK_DIVIDER*ccadj[i],HOST_CCREG); /* CHECK: is this right?  There should probably be an extra cycle... */
+    emit_jmp((intptr_t)jump_syscall);
+  }
+  else {
+    /* Run through the interpreter, which charges nothing for it, then
+       resume at the next instruction or the exception vector */
+    emit_addimm(HOST_CCREG,CLOCK_DIVIDER*(ccadj[i]+1),HOST_CCREG);
+    emit_jmp((intptr_t)jump_intcall);
+  }
+}
+
+/* BREAK stays an OTHER-class instruction, so the guarded break the
+   compilers place after a division costs the register passes nothing: it
+   writes the registers back where it stands, as an exception exit does, and
+   leaves through jump_intcall, which raises the Breakpoint exception. */
+static void break_assemble(int i,struct regstat *i_regs)
+{
+  load_all_consts(regs[i].regmap_entry,regs[i].was32,regs[i].wasdirty,regs[i].wasconst,i);
+  wb_exception_dirtys(i_regs);
+  emit_movimm(start+i*4,0);
+  if(i_regs->regmap[HOST_CCREG]!=CCREG) emit_loadreg(CCREG,HOST_CCREG);
+  emit_addimm(HOST_CCREG,CLOCK_DIVIDER*(ccadj[i]+1),HOST_CCREG);
+  emit_jmp((intptr_t)jump_intcall);
 }
 
 static void ds_assemble(int i,struct regstat *i_regs)
@@ -9448,9 +9530,11 @@ int new_recompile_block(int addr)
           case 0x00: assem_strcpy(insn[i],"MFC1"); type=COP1; break;
           case 0x01: assem_strcpy(insn[i],"DMFC1"); type=COP1; break;
           case 0x02: assem_strcpy(insn[i],"CFC1"); type=COP1; break;
+          case 0x03: assem_strcpy(insn[i],"DCFC1"); type=SYSCALL; break;
           case 0x04: assem_strcpy(insn[i],"MTC1"); type=COP1; break;
           case 0x05: assem_strcpy(insn[i],"DMTC1"); type=COP1; break;
           case 0x06: assem_strcpy(insn[i],"CTC1"); type=COP1; break;
+          case 0x07: assem_strcpy(insn[i],"DCTC1"); type=SYSCALL; break;
           case 0x08: assem_strcpy(insn[i],"BC1"); type=FJUMP;
           switch((source[i]>>16)&0x3)
           {
@@ -9554,6 +9638,19 @@ int new_recompile_block(int addr)
             case 0x21: assem_strcpy(insn[i],"CVT.D.L"); type=FCONV; break;
           }
           break;
+        }
+        break;
+      /* COP2 moves run through the interpreter (intcall_new) */
+      case 0x12: assem_strcpy(insn[i],"cop2"); type=NI;
+        op2=(source[i]>>21)&0x1f;
+        switch(op2)
+        {
+          case 0x00: assem_strcpy(insn[i],"MFC2"); type=SYSCALL; break;
+          case 0x01: assem_strcpy(insn[i],"DMFC2"); type=SYSCALL; break;
+          case 0x02: assem_strcpy(insn[i],"CFC2"); type=SYSCALL; break;
+          case 0x04: assem_strcpy(insn[i],"MTC2"); type=SYSCALL; break;
+          case 0x05: assem_strcpy(insn[i],"DMTC2"); type=SYSCALL; break;
+          case 0x06: assem_strcpy(insn[i],"CTC2"); type=SYSCALL; break;
         }
         break;
       case 0x14: assem_strcpy(insn[i],"BEQL"); type=CJUMP; break;
@@ -12138,6 +12235,9 @@ int new_recompile_block(int addr)
           mov_assemble(i,&regs[i]);break;
         case SYSCALL:
           syscall_assemble(i,&regs[i]);break;
+        case OTHER:
+          if((source[i]&0xfc00003f)==0x0d) break_assemble(i,&regs[i]);
+          break;
         case ATOMIC:
           atomic_assemble(i,&regs[i]);break;
         case UJUMP:

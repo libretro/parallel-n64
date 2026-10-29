@@ -264,6 +264,14 @@ GLOBAL_FUNCTION jump_eret
     b.eq   new_dyna_stop
     br     x0
 
+GLOBAL_FUNCTION jump_intcall
+    str    w0, [x29, #fp_pcaddr]
+    str    w20, [x29, #fp_cycle_count]
+    bl     GLABEL(intcall_new)
+    ldr    w20, [x29, #fp_cycle_count]
+    cbz    x0, new_dyna_stop
+    br     x0
+
 GLOBAL_FUNCTION dyna_linker
     bl     GLABEL(dynamic_linker)
     br     x0

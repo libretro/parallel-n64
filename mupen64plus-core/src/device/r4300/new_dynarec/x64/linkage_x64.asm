@@ -88,6 +88,7 @@ cglobal do_interrupt
 cglobal fp_exception
 cglobal jump_syscall
 cglobal jump_eret
+cglobal jump_intcall
 cglobal new_dyna_start
 cglobal invalidate_block_eax
 cglobal invalidate_block_ecx
@@ -108,6 +109,7 @@ cextern dynarec_gen_interrupt
 cextern clean_blocks
 cextern invalidate_block
 cextern ERET_new
+cextern intcall_new
 cextern get_addr_32
 cextern g_dev
 cextern verify_dirty
@@ -235,6 +237,15 @@ jump_syscall:
 jump_eret:
     mov     DWORD[rel g_dev_r4300_new_dynarec_hot_state_cycle_count],    CCREG
     call    ERET_new
+    mov     CCREG,    DWORD[rel g_dev_r4300_new_dynarec_hot_state_cycle_count]
+    test    rax,    rax
+    je      new_dyna_stop
+    jmp     rax
+
+jump_intcall:
+    mov     DWORD[rel g_dev_r4300_new_dynarec_hot_state_pcaddr],    eax
+    mov     DWORD[rel g_dev_r4300_new_dynarec_hot_state_cycle_count],    CCREG
+    call    intcall_new
     mov     CCREG,    DWORD[rel g_dev_r4300_new_dynarec_hot_state_cycle_count]
     test    rax,    rax
     je      new_dyna_stop

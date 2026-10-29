@@ -1371,11 +1371,8 @@ check-dynarec-block: $(TARGET) lrhost$(EXE_EXT) dynarec_long_block_test$(EXE_EXT
 
 # The COP0 and COP2 move latches across a savestate: a state saved between
 # the moves and their read-back is loaded into a fresh boot, with each CPU
-# core. The `saved` step checks the save frame lands in that window; ari64
-# does not implement COP2 moves, so its runs check the COP0 latch only.
-# "dynamic_recompiler" is Hacktarux when x86_64 builds both recompilers.
+# core. The `saved` step checks the save frame lands in that window.
 SAVESTATE_LATCH_CHECK_DIR := savestate_latch_check.tmp
-CHECK_HACKTARUX := $(if $(and $(filter x86_64,$(WITH_DYNAREC)),$(filter 1,$(WANT_HACKTARUX)),$(filter 1,$(HAVE_ARI64_X64))),1,0)
 SAVESTATE_LATCH_SAVE_AT := 16
 
 savestate_latch_test$(EXE_EXT): tools/savestate_latch_test.c
@@ -1386,9 +1383,6 @@ check-savestate-latch: $(TARGET) lrhost$(EXE_EXT) savestate_latch_test$(EXE_EXT)
 	./savestate_latch_test$(EXE_EXT) rom $(SAVESTATE_LATCH_CHECK_DIR)/latch.z64; \
 	for core in pure_interpreter cached_interpreter dynamic_recompiler dynamic_recompiler_ari64; do \
 		echo "== $$core"; \
-		case $$core in dynamic_recompiler_ari64) check=check-cop0 ;; \
-			dynamic_recompiler) check=check-cop0; [ "$(CHECK_HACKTARUX)" = 1 ] && check=check ;; \
-			*) check=check ;; esac; \
 		( cd $(SAVESTATE_LATCH_CHECK_DIR) && UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1 LRHOST_SAVE=state_$$core.bin LRHOST_SAVE_AT=$(SAVESTATE_LATCH_SAVE_AT) \
 			LRHOST_RAMDUMP=saved_$$core.bin ../lrhost$(EXE_EXT) ../$(TARGET) latch.z64 $$(( $(SAVESTATE_LATCH_SAVE_AT) + 1 )) \
 			parallel-n64-gfxplugin=angrylion parallel-n64-rspplugin=hle \
@@ -1398,18 +1392,13 @@ check-savestate-latch: $(TARGET) lrhost$(EXE_EXT) savestate_latch_test$(EXE_EXT)
 			../lrhost$(EXE_EXT) ../$(TARGET) latch.z64 120 \
 			parallel-n64-gfxplugin=angrylion parallel-n64-rspplugin=hle \
 			parallel-n64-cpucore=$$core > /dev/null ); \
-		./savestate_latch_test$(EXE_EXT) $$check $(SAVESTATE_LATCH_CHECK_DIR)/ram_$$core.bin; \
+		./savestate_latch_test$(EXE_EXT) check $(SAVESTATE_LATCH_CHECK_DIR)/ram_$$core.bin; \
 	done; rm -rf $(SAVESTATE_LATCH_CHECK_DIR)
 
-# Instructions a recompiler runs through the interpreter (BREAK, the COP2
-# moves, DCFC1/DCTC1): the pure interpreter's exception and value log is the
-# reference, and the cached interpreter and Hacktarux must log the same.
-# ari64 does not implement these yet and is not compared.
+# Instructions the recompilers run through the interpreter (BREAK, the
+# COP2 moves, DCFC1/DCTC1): the pure interpreter's exception and value log is
+# the reference, and every other CPU core must log the same.
 CPU_FALLBACK_CHECK_DIR := cpu_fallback_check.tmp
-CPU_FALLBACK_CORES := cached_interpreter
-ifeq ($(CHECK_HACKTARUX), 1)
-CPU_FALLBACK_CORES += dynamic_recompiler
-endif
 
 cpu_fallback_test$(EXE_EXT): tools/cpu_fallback_test.c
 	$(CC) -O1 -g $< -o $@
@@ -1417,7 +1406,7 @@ cpu_fallback_test$(EXE_EXT): tools/cpu_fallback_test.c
 check-cpu-fallback: $(TARGET) lrhost$(EXE_EXT) cpu_fallback_test$(EXE_EXT)
 	@set -e; rm -rf $(CPU_FALLBACK_CHECK_DIR); mkdir -p $(CPU_FALLBACK_CHECK_DIR)/lrhost-system; \
 	./cpu_fallback_test$(EXE_EXT) rom $(CPU_FALLBACK_CHECK_DIR)/fallback.z64; \
-	for core in pure_interpreter $(CPU_FALLBACK_CORES); do \
+	for core in pure_interpreter cached_interpreter dynamic_recompiler dynamic_recompiler_ari64; do \
 		echo "== $$core"; \
 		( cd $(CPU_FALLBACK_CHECK_DIR) && UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1 LRHOST_RAMDUMP=ram_$$core.bin \
 			../lrhost$(EXE_EXT) ../$(TARGET) fallback.z64 4 \

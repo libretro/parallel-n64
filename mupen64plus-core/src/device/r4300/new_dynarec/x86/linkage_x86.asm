@@ -89,6 +89,7 @@ cglobal do_interrupt
 cglobal fp_exception
 cglobal jump_syscall
 cglobal jump_eret
+cglobal jump_intcall
 cglobal new_dyna_start
 cglobal invalidate_block_eax
 cglobal invalidate_block_ecx
@@ -109,6 +110,7 @@ cextern dynarec_gen_interrupt
 cextern clean_blocks
 cextern invalidate_block
 cextern ERET_new
+cextern intcall_new
 cextern get_addr_32
 cextern g_dev
 cextern verify_dirty
@@ -234,6 +236,16 @@ jump_eret:
     get_got_address
     mov     [find_local_data(g_dev_r4300_new_dynarec_hot_state_cycle_count)],    esi
     call    ERET_new
+    mov     esi,    [find_local_data(g_dev_r4300_new_dynarec_hot_state_cycle_count)]
+    test    eax,   eax
+    je      new_dyna_stop
+    jmp     eax
+
+jump_intcall:
+    get_got_address
+    mov     [find_local_data(g_dev_r4300_new_dynarec_hot_state_pcaddr)],    eax
+    mov     [find_local_data(g_dev_r4300_new_dynarec_hot_state_cycle_count)],    esi
+    call    intcall_new
     mov     esi,    [find_local_data(g_dev_r4300_new_dynarec_hot_state_cycle_count)]
     test    eax,   eax
     je      new_dyna_stop

@@ -3,7 +3,6 @@
  *   savestate_latch_test rom FILE          write the test cartridge
  *   savestate_latch_test saved RAMDUMP     check RAM at the save point
  *   savestate_latch_test check RAMDUMP     check RAM after the state ran on
- *   savestate_latch_test check-cop0 RAMDUMP  the same, COP0 latch only
  *
  * The cartridge's boot code, run from DMEM by the HLE PIF boot, programs
  * the VI's V_SYNC so frames are timed, copies a
@@ -14,9 +13,7 @@
  *
  * `make check-savestate-latch` saves a state during the second wait, loads
  * it into a fresh boot that has not reached the latch writes, and checks the
- * values read back are the ones moved in before the save. ari64 runs COP2
- * moves as unimplemented instructions that write nothing, so its runs
- * check the COP0 latch only.
+ * values read back are the ones moved in before the save.
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -219,16 +216,15 @@ int main(int argc, char** argv)
         return 0;
     }
 
-    if (argc == 3 && (!strcmp(argv[1], "check") || !strcmp(argv[1], "check-cop0")))
+    if (argc == 3 && !strcmp(argv[1], "check"))
     {
         unsigned long cp0, cp2;
-        int with_cop2 = !strcmp(argv[1], "check");
 
         if (load_ram(argv[2], ram, sizeof(ram)))
             return 1;
         cp0 = ram_word(ram, CP0_RESULT);
         cp2 = ram_word(ram, CP2_RESULT);
-        if (ram_word(ram, PHASE_ADDR) != 2 || cp0 != CP0_VALUE || (with_cop2 && cp2 != CP2_VALUE))
+        if (ram_word(ram, PHASE_ADDR) != 2 || cp0 != CP0_VALUE || cp2 != CP2_VALUE)
         {
             fprintf(stderr, "FAIL: %s: phase %lu, COP0 latch %#lx, COP2 latch %#lx, expected 2, %#lx, %#lx\n",
                     argv[2], ram_word(ram, PHASE_ADDR), cp0, cp2, CP0_VALUE, CP2_VALUE);
@@ -238,6 +234,6 @@ int main(int argc, char** argv)
         return 0;
     }
 
-    fprintf(stderr, "usage: %s rom FILE | saved RAMDUMP | check RAMDUMP | check-cop0 RAMDUMP\n", argv[0]);
+    fprintf(stderr, "usage: %s rom FILE | saved RAMDUMP | check RAMDUMP\n", argv[0]);
     return 2;
 }
