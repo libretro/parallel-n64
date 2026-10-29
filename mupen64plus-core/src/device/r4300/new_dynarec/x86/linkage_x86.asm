@@ -102,8 +102,6 @@ cglobal breakpoint
 cglobal dyna_linker
 cglobal dyna_linker_ds
 
-cextern base_addr
-cextern new_recompile_block
 cextern get_addr_ht
 cextern get_addr
 cextern dynarec_gen_interrupt
@@ -266,12 +264,17 @@ new_dyna_start:
     push    ebx
     push    esi
     push    edi
-    add     esp,    -8    ;align stack
-    push    0a4000040h
-    call    new_recompile_block
+    add     esp,    -12
+    ;Resume at pcaddr (seeded to the boot vector by new_dynarec_init), so
+    ;new_dyna_start is re-enterable per frame. get_addr_ht compiles the block
+    ;if needed and returns its host address.
+    get_got_address
+    push    DWORD [find_local_data(g_dev_r4300_new_dynarec_hot_state_pcaddr)]
+    call    get_addr_ht
+    add     esp,    4
     get_got_address
     mov     esi,    DWORD [find_local_data(g_dev_r4300_new_dynarec_hot_state_cycle_count)]
-    jmp     DWORD [find_local_data(base_addr)]
+    jmp     eax
 
 invalidate_block_eax:
     push    eax

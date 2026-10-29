@@ -16,7 +16,9 @@
  * upper words differ and the TEQ compilers place after a division. Then
  * taken, not taken, nullified, linking, register and BC1 branches with a
  * COP2 move, a trap, SYSCALL or BREAK in their delay slot, and a BREAK and
- * a trap whose handler reads a value the code after them overwrites. It
+ * a trap whose handler reads a value the code after them overwrites, and
+ * the FPU moves, sign operations and conversions, a loop keeping eight
+ * registers live across interrupt checks, and LL/SC and LLD/SCD. It
  * logs each exception, each value moved back and a marker per step, then
  * stores how many words it logged and a marker.
  *
@@ -31,14 +33,15 @@
 #define ROM_SIZE       0x100000
 #define PAYLOAD_ROM    0x1000
 #define PAYLOAD_RDRAM  0x400
-#define PAYLOAD_WORDS  256
+#define PAYLOAD_WORDS  320
 #define HANDLER_ROM    0x2000
 #define HANDLER_RDRAM  0x180
 #define HANDLER_WORDS  16
 
 #define LOG_ADDR       0x200
-#define LOG_WORDS      48
+#define LOG_WORDS      60
 #define SAVED_ADDR     0x1f4
+#define LINKED_ADDR    0x2f0
 #define COUNT_ADDR     0x1f8
 #define MARKER_ADDR    0x1fc
 #define MARKER         0x600dUL
@@ -57,6 +60,7 @@
 #define VAL_DS1        0x0d5c2001UL
 #define VAL_DS2        0x0d5c2002UL
 #define VAL_DEAD       0x0dead123UL
+#define LOOP_SUM       0x8a73c024UL
 
 #define T0 8
 #define T1 9
@@ -66,6 +70,10 @@
 #define T5 13
 #define T6 14
 #define T7 15
+#define S0 16
+#define S1 17
+#define S2 18
+#define S3 19
 #define S7 23
 #define K0 26
 #define K1 27
@@ -82,6 +90,11 @@
 #define ADDIU(rt, rs, imm)  I(0x09, rs, rt, imm)
 #define LW(rt, off, base)   I(0x23, base, rt, off)
 #define SW(rt, off, base)   I(0x2b, base, rt, off)
+#define LL(rt, off, base)   I(0x30, base, rt, off)
+#define SC(rt, off, base)   I(0x38, base, rt, off)
+#define LLD(rt, off, base)  I(0x34, base, rt, off)
+#define SCD(rt, off, base)  I(0x3c, base, rt, off)
+#define DADDIU(rt, rs, imm) I(0x19, rs, rt, imm)
 #define BNE(rs, rt, off)    I(0x05, rs, rt, off)
 #define BEQ(rs, rt, off)    I(0x04, rs, rt, off)
 #define BEQL(rs, rt, off)   I(0x14, rs, rt, off)
@@ -110,6 +123,13 @@
 #define DCFC1(rt, rd)       R(0x11, 0x03, rt, rd, 0, 0)
 #define DCTC1(rt, rd)       R(0x11, 0x07, rt, rd, 0, 0)
 #define CTC1(rt, rd)        R(0x11, 0x06, rt, rd, 0, 0)
+#define MTC1(rt, fs)        R(0x11, 0x04, rt, fs, 0, 0)
+#define MFC1(rt, fs)        R(0x11, 0x00, rt, fs, 0, 0)
+#define DMFC1(rt, fs)       R(0x11, 0x01, rt, fs, 0, 0)
+#define FOP(fmt, fd, fs, fn) R(0x11, fmt, 0, fs, fd, fn)
+#define FMT_S 0x10
+#define FMT_D 0x11
+#define FMT_W 0x14
 #define MFC2(rt, rd)        R(0x12, 0x00, rt, rd, 0, 0)
 #define DMFC2(rt, rd)       R(0x12, 0x01, rt, rd, 0, 0)
 #define CFC2(rt, rd)        R(0x12, 0x02, rt, rd, 0, 0)
@@ -196,7 +216,7 @@ static int write_rom(const char* path)
 {
     unsigned char* rom = (unsigned char*)calloc(1, ROM_SIZE);
     struct emitter e;
-    unsigned link;
+    unsigned link, loop;
     FILE* f;
 
     if (!rom)
@@ -380,6 +400,76 @@ static int write_rom(const char* path)
     emit_mark(&e, 0xfd);                                  /* skipped */
     emit(&e, MFC2(T4, 0));
     emit_log(&e, T4);                                     /* 5 */
+
+    /* FPU moves, sign operations and conversions */
+    emit(&e, MTC1(T1, 0));                                /* 5 */
+    emit(&e, FOP(FMT_W, 2, 0, 0x21));                     /* cvt.d.w */
+    emit(&e, FOP(FMT_D, 4, 2, 0x20));                     /* cvt.s.d */
+    emit(&e, FOP(FMT_S, 6, 4, 0x07));                     /* neg.s */
+    emit(&e, MFC1(T4, 6));
+    emit_log(&e, T4);                                     /* -5.0f */
+    emit(&e, FOP(FMT_S, 8, 6, 0x05));                     /* abs.s */
+    emit(&e, FOP(FMT_S, 10, 8, 0x06));                    /* mov.s */
+    emit(&e, FOP(FMT_S, 12, 10, 0x21));                   /* cvt.d.s */
+    emit(&e, FOP(FMT_D, 14, 12, 0x07));                   /* neg.d */
+    emit(&e, FOP(FMT_D, 14, 14, 0x05));                   /* abs.d */
+    emit(&e, FOP(FMT_D, 16, 14, 0x06));                   /* mov.d */
+    emit(&e, DMFC1(T4, 16));
+    emit(&e, DSRL32(T5, T4, 0));
+    emit_log(&e, T4);                                     /* 5.0 low */
+    emit_log(&e, T5);                                     /* 5.0 high */
+    emit(&e, FOP(FMT_D, 18, 16, 0x0d));                   /* trunc.w.d */
+    emit(&e, MFC1(T4, 18));
+    emit_log(&e, T4);                                     /* 5 */
+
+    /* a loop long enough to cross interrupt checks, with every value it
+     * keeps in a register live across them */
+    emit(&e, ORI(T0, 0, 1));
+    emit(&e, ORI(T1, 0, 2));
+    emit(&e, ORI(T2, 0, 3));
+    emit(&e, ORI(T3, 0, 4));
+    emit(&e, ORI(T4, 0, 5));
+    emit(&e, ORI(T5, 0, 6));
+    emit(&e, ORI(S0, 0, 7));
+    emit(&e, ORI(S1, 0, 8));
+    emit(&e, LUI(T6, 2));                                 /* 0x20000 turns */
+    loop = e.n;
+    emit(&e, ADDIU(T0, T0, 1));
+    emit(&e, ADDU(T1, T1, T0));
+    emit(&e, ADDU(T2, T2, T1));
+    emit(&e, ADDU(T3, T3, T2));
+    emit(&e, ADDU(T4, T4, T3));
+    emit(&e, ADDU(T5, T5, T4));
+    emit(&e, ADDU(S0, S0, T5));
+    emit(&e, ADDU(S1, S1, S0));
+    emit(&e, ADDIU(T6, T6, 0xffff));
+    emit(&e, BNE(T6, 0, (int)loop - (int)(e.n + 1)));
+    emit(&e, NOP);
+    emit(&e, ADDU(T0, T0, T1));
+    emit(&e, ADDU(T0, T0, T2));
+    emit(&e, ADDU(T0, T0, T3));
+    emit(&e, ADDU(T0, T0, T4));
+    emit(&e, ADDU(T0, T0, T5));
+    emit(&e, ADDU(T0, T0, S0));
+    emit(&e, ADDU(T0, T0, S1));
+    emit_log(&e, T0);                                     /* LOOP_SUM */
+
+    /* LL/SC and LLD/SCD */
+    emit(&e, LUI(T2, 0x8000));
+    emit(&e, LL(T4, SAVED_ADDR, T2));
+    emit(&e, ADDIU(T4, T4, 1));
+    emit(&e, SC(T4, SAVED_ADDR, T2));
+    emit_log(&e, T4);                                     /* 1 */
+    emit(&e, LW(T4, SAVED_ADDR, T2));
+    emit_log(&e, T4);                                     /* VAL_DEAD + 1 */
+    emit(&e, LLD(T4, LINKED_ADDR, T2));
+    emit(&e, DADDIU(T4, T4, 0xffff));
+    emit(&e, SCD(T4, LINKED_ADDR, T2));
+    emit_log(&e, T4);                                     /* 1 */
+    emit(&e, LW(T4, LINKED_ADDR, T2));
+    emit(&e, LW(T5, LINKED_ADDR + 4, T2));
+    emit_log(&e, T4);                                     /* -1 high */
+    emit_log(&e, T5);                                     /* -1 low */
     emit_li(&e, T1, 0x80000000UL);
     emit_li(&e, T2, LOG_ADDR + 0x80000000UL);
     emit(&e, R(0, S7, T2, T2, 0, 0x23));                  /* SUBU: bytes logged */
@@ -457,7 +547,9 @@ int main(int argc, char** argv)
         0x107, EXC_TR, 0x108,
         VAL_DS1, 0x109, VAL_DS2, 0x10a, VAL_DS2, VAL_DS2, 0,
         CAUSE_BD | EXC_TR, 0x10b, CAUSE_BD | EXC_SYS, 0x10c, CAUSE_BD | EXC_BP, 0x10d,
-        EXC_BP, VAL_DEAD, EXC_TR, VAL_DEAD, 5
+        EXC_BP, VAL_DEAD, EXC_TR, VAL_DEAD, 5,
+        0xc0a00000UL, 0, 0x40140000UL, 5, LOOP_SUM,
+        1, VAL_DEAD + 1, 1, 0xffffffffUL, 0xffffffffUL
     };
     unsigned long ref[LOG_WORDS], got[LOG_WORDS];
     unsigned nref, ngot, i;

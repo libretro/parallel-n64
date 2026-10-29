@@ -4181,8 +4181,10 @@ static void wb_invalidate(signed char pre[],signed char entry[],uint64_t dirty,u
   // overwrote a destination that a later move still had to read - a
   // 64-bit value whose halves were being relocated lost its upper word
   // that way, and the store that followed wrote the lower word twice.
-  // Emit a move only once nothing else still needs its destination, and
-  // break a cycle through the scratch register.
+  // Emit a move only once nothing else still needs its destination. A
+  // cycle is broken by moving one destination's value aside and pointing
+  // its readers there: into the scratch register, or, on a backend without
+  // one, into the source register through an exchange.
   {
     int src[HOST_REGS], dst[HOST_REGS], wide[HOST_REGS], n=0, k, progress;
     for(hr=0;hr<HOST_REGS;hr++) {
@@ -4215,14 +4217,23 @@ static void wb_invalidate(signed char pre[],signed char entry[],uint64_t dirty,u
       }
       if(!progress) {
         for(k=0;k<n;k++) {
+          int j;
           if(src[k]<0) continue;
-          /* cycle: stage this one through the scratch register */
+          #ifdef HOST_TEMPREG
           #ifdef NATIVE_64
-          if(wide[k]) { emit_mov64(src[k],HOST_TEMPREG); emit_mov64(HOST_TEMPREG,dst[k]); }
-          else
+          emit_mov64(dst[k],HOST_TEMPREG);
+          #else
+          emit_mov(dst[k],HOST_TEMPREG);
           #endif
-          { emit_mov(src[k],HOST_TEMPREG); emit_mov(HOST_TEMPREG,dst[k]); }
-          src[k]=-1; progress=1; break;
+          for(j=0;j<n;j++)
+            if(src[j]==dst[k]) src[j]=HOST_TEMPREG;
+          #else
+          emit_xchg(src[k],dst[k]);
+          for(j=0;j<n;j++)
+            if(j!=k&&src[j]==dst[k]) src[j]=src[k];
+          src[k]=-1;
+          #endif
+          progress=1; break;
         }
       }
     } while(progress);
@@ -5301,6 +5312,11 @@ static void emit_xkphys_fold(int i,const struct regstat *i_regs,int addr)
 {
   signed char sh;
   intptr_t no_fold1,no_fold2,done;
+#ifdef HOST_TEMPREG
+  int temp=HOST_TEMPREG;
+#else
+  int temp=addr==EAX?ECX:EAX; /* saved around the fold */
+#endif
   if(rs1[i]==0) {
     emit_writeword(addr,(intptr_t)&g_dev.r4300.new_dynarec_hot_state.address);
     return;
@@ -5309,10 +5325,13 @@ static void emit_xkphys_fold(int i,const struct regstat *i_regs,int addr)
     emit_writeword(addr,(intptr_t)&g_dev.r4300.new_dynarec_hot_state.address);
     return;
   }
+#ifndef HOST_TEMPREG
+  emit_pushreg(temp);
+#endif
   sh=get_reg(i_regs->regmap,rs1[i]|64);
   if(sh<0) {
-    emit_loadreg(rs1[i]|64,HOST_TEMPREG);
-    sh=HOST_TEMPREG;
+    emit_loadreg(rs1[i]|64,temp);
+    sh=temp;
   }
   emit_testimm(sh,0x80000000);
   no_fold1=(intptr_t)out;
@@ -5320,16 +5339,19 @@ static void emit_xkphys_fold(int i,const struct regstat *i_regs,int addr)
   emit_testimm(sh,0x40000000);
   no_fold2=(intptr_t)out;
   emit_jne(0);
-  emit_mov(addr,HOST_TEMPREG);
-  emit_orimm(HOST_TEMPREG,0x80000000,HOST_TEMPREG);
-  emit_orimm(HOST_TEMPREG,0x20000000,HOST_TEMPREG);
-  emit_writeword(HOST_TEMPREG,(intptr_t)&g_dev.r4300.new_dynarec_hot_state.address);
+  emit_mov(addr,temp);
+  emit_orimm(temp,0x80000000,temp);
+  emit_orimm(temp,0x20000000,temp);
+  emit_writeword(temp,(intptr_t)&g_dev.r4300.new_dynarec_hot_state.address);
   done=(intptr_t)out;
   emit_jmp(0);
   set_jump_target(no_fold1,(intptr_t)out);
   set_jump_target(no_fold2,(intptr_t)out);
   emit_writeword(addr,(intptr_t)&g_dev.r4300.new_dynarec_hot_state.address);
   set_jump_target(done,(intptr_t)out);
+#ifndef HOST_TEMPREG
+  emit_popreg(temp);
+#endif
 }
 
 static void do_readstub(int n)
@@ -7556,10 +7578,6 @@ static void atomic_assemble(int i,struct regstat *i_regs)
   cc=get_reg(i_regs->regmap,CCREG);
   if(cc>=0) emit_storereg(CCREG,cc);
 
-  /* the address first, so the temp is free again before the call */
-  if(s>=0) emit_addimm(s,imm[i],HOST_TEMPREG);
-  else     emit_movimm(imm[i],HOST_TEMPREG);
-
   if(is_sc) {
     /* stage the value the helper is to store; this backend keeps a
      * doubleword as two host registers, so there is no single argument
@@ -7568,6 +7586,25 @@ static void atomic_assemble(int i,struct regstat *i_regs)
     if(is_d)
       emit_writeword(th>=0?th:t,((uintptr_t)&g_dev.r4300.new_dynarec_hot_state.rt)+4);
   }
+
+#if NEW_DYNAREC == NEW_DYNAREC_X86
+  /* the result register is free now: the address goes there, and the
+   * arguments go on the stack */
+  if(s>=0) emit_addimm(s,imm[i],t);
+  else     emit_movimm(imm[i],t);
+
+  save_regs(reglist);
+  if(!is_sc) emit_pushimm(CLOCK_DIVIDER*ccadj[i]);
+  emit_pushreg(t);
+  if(is_sc)
+    emit_call((intptr_t)(is_d ? (void*)SCD_new : (void*)SC_new));
+  else
+    emit_call((intptr_t)(is_d ? (void*)LLD_new : (void*)LL_new));
+  emit_addimm(ESP,is_sc?4:8,ESP);
+#else
+  /* the address first, so the temp is free again before the call */
+  if(s>=0) emit_addimm(s,imm[i],HOST_TEMPREG);
+  else     emit_movimm(imm[i],HOST_TEMPREG);
 
   save_regs(reglist);
   emit_mov(HOST_TEMPREG,ARG1_REG);
@@ -7578,6 +7615,7 @@ static void atomic_assemble(int i,struct regstat *i_regs)
     emit_movimm(CLOCK_DIVIDER*ccadj[i],ARG2_REG);
     emit_call((intptr_t)(is_d ? (void*)LLD_new : (void*)LL_new));
   }
+#endif
 
   restore_regs(reglist);
 

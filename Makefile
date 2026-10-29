@@ -920,18 +920,16 @@ ifeq ($(WITH_DYNAREC), $(filter $(WITH_DYNAREC), x86_64 x64))
    endif
 endif
 ifeq ($(WITH_DYNAREC), x86)
-   # The 32-bit (i686) ari64 dynarec is not built: its win32 linkage is emitted
-   # without the leading-underscore symbol decoration the Win32 cdecl ABI
-   # requires (NASMFLAGS lacks -DLEADING_UNDERSCORE), so it does not link, and
-   # the path is otherwise unvalidated in this fork. Leave HAVE_ARI64_X86 off so
-   # i686 builds the interpreters only. Set HAVE_ARI64_X86=1 explicitly to opt in
-   # if/when the 32-bit linkage is fixed.
+   # The 32-bit (i686) ari64 dynarec; HAVE_ARI64_X86=0 builds the
+   # interpreters only.
+   ifneq (,$(findstring unix,$(platform)))
+      HAVE_ARI64_X86 ?= 1
+      NASMFLAGS = -f elf32 -DELF_TYPE -DPIC
+   else ifneq (,$(findstring win,$(platform)))
+      HAVE_ARI64_X86 ?= 1
+      NASMFLAGS = -f win32 -DLEADING_UNDERSCORE
+   endif
    ifeq ($(HAVE_ARI64_X86), 1)
-      ifneq (,$(findstring unix,$(platform)))
-         NASMFLAGS = -f elf32 -DELF_TYPE
-      else ifneq (,$(findstring win,$(platform)))
-         NASMFLAGS = -f win32 -DLEADING_UNDERSCORE
-      endif
       # The generated code and linkage only keep 4-byte stack alignment
       # (the pre-SSE i386 ABI); have gcc realign in functions that spill
       # SSE registers instead of assuming 16-byte incoming alignment.
@@ -1145,7 +1143,7 @@ endif
 %.o: %.asm
 	$(NASM) $(NASMFLAGS) -i$(ASM_DEFINES_DIR)/ -o $@ $<
 
-# region 14: the x64 asm_defines headers (x64/asm_defines_{nasm,gas}.h) are
+# region 14: the asm_defines headers (x64/ and x86/asm_defines_{nasm,gas}.h) are
 # GENERATED from the shared C struct (new_dynarec_hot_state) but COMMITTED to the
 # tree and treated as source. A normal build NEVER regenerates or touches them --
 # doing so on every compile needlessly rebuilt the assembly and (on Windows, via
@@ -1160,11 +1158,17 @@ endif
 AWK     ?= awk
 STRINGS ?= strings
 TR      ?= tr
+ifeq ($(WITH_DYNAREC), x86)
+ASM_DEFINES_DIR := $(CORE_DIR)/src/device/r4300/new_dynarec/x86
+ASM_DEFINES_DYNAREC := 1
+else
 ASM_DEFINES_DIR := $(CORE_DIR)/src/device/r4300/new_dynarec/x64
+ASM_DEFINES_DYNAREC := 2
+endif
 
 .PHONY: asm-defines-regen
 asm-defines-regen:
-	$(CC) $(CFLAGS) $(DYNAFLAGS) -DNEW_DYNAREC=2 -c $(CORE_DIR)/src/asm_defines/asm_defines.c $(OBJOUT)$(CORE_DIR)/src/asm_defines/asm_defines.o
+	$(CC) $(CFLAGS) $(DYNAFLAGS) -DNEW_DYNAREC=$(ASM_DEFINES_DYNAREC) -c $(CORE_DIR)/src/asm_defines/asm_defines.c $(OBJOUT)$(CORE_DIR)/src/asm_defines/asm_defines.o
 	$(STRINGS) "$(CORE_DIR)/src/asm_defines/asm_defines.o" | $(TR) -d '\r' | $(AWK) -v dest_dir="$(ASM_DEFINES_DIR)" -f $(CORE_DIR)/tools/gen_asm_defines.awk
 	$(RM) $(CORE_DIR)/src/asm_defines/asm_defines.o
 
