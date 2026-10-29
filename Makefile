@@ -1351,8 +1351,8 @@ check-dd-ipl: $(TARGET) lrhost$(EXE_EXT) dd_ipl_hle_test$(EXE_EXT)
 	done; rm -rf $(DD_IPL_CHECK_DIR)
 
 # A straight-line block longer than ari64's instruction buffer, booted
-# through the core with each CPU core. Build with SANITIZER=address,undefined
-# to also catch reads past the decoder's per-instruction arrays.
+# through the core with each CPU core. Built with SANITIZER=address,undefined
+# it also fails on any memory error or undefined behaviour in the CPU cores.
 DYNAREC_BLOCK_CHECK_DIR := dynarec_block_check.tmp
 
 dynarec_long_block_test$(EXE_EXT): tools/dynarec_long_block_test.c
@@ -1363,7 +1363,7 @@ check-dynarec-block: $(TARGET) lrhost$(EXE_EXT) dynarec_long_block_test$(EXE_EXT
 	./dynarec_long_block_test$(EXE_EXT) rom $(DYNAREC_BLOCK_CHECK_DIR)/long_block.z64; \
 	for core in pure_interpreter cached_interpreter dynamic_recompiler dynamic_recompiler_ari64; do \
 		echo "== $$core"; \
-		( cd $(DYNAREC_BLOCK_CHECK_DIR) && LRHOST_RAMDUMP=ram_$$core.bin ../lrhost$(EXE_EXT) ../$(TARGET) long_block.z64 4 \
+		( cd $(DYNAREC_BLOCK_CHECK_DIR) && UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1 LRHOST_RAMDUMP=ram_$$core.bin ../lrhost$(EXE_EXT) ../$(TARGET) long_block.z64 4 \
 			parallel-n64-gfxplugin=angrylion parallel-n64-rspplugin=hle \
 			parallel-n64-cpucore=$$core > /dev/null ); \
 		./dynarec_long_block_test$(EXE_EXT) check $(DYNAREC_BLOCK_CHECK_DIR)/ram_$$core.bin; \
@@ -1389,12 +1389,12 @@ check-savestate-latch: $(TARGET) lrhost$(EXE_EXT) savestate_latch_test$(EXE_EXT)
 		case $$core in dynamic_recompiler_ari64) check=check-cop0 ;; \
 			dynamic_recompiler) check=check-cop0; [ "$(CHECK_HACKTARUX)" = 1 ] && check=check ;; \
 			*) check=check ;; esac; \
-		( cd $(SAVESTATE_LATCH_CHECK_DIR) && LRHOST_SAVE=state_$$core.bin LRHOST_SAVE_AT=$(SAVESTATE_LATCH_SAVE_AT) \
+		( cd $(SAVESTATE_LATCH_CHECK_DIR) && UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1 LRHOST_SAVE=state_$$core.bin LRHOST_SAVE_AT=$(SAVESTATE_LATCH_SAVE_AT) \
 			LRHOST_RAMDUMP=saved_$$core.bin ../lrhost$(EXE_EXT) ../$(TARGET) latch.z64 $$(( $(SAVESTATE_LATCH_SAVE_AT) + 1 )) \
 			parallel-n64-gfxplugin=angrylion parallel-n64-rspplugin=hle \
 			parallel-n64-cpucore=$$core > /dev/null ); \
 		./savestate_latch_test$(EXE_EXT) saved $(SAVESTATE_LATCH_CHECK_DIR)/saved_$$core.bin; \
-		( cd $(SAVESTATE_LATCH_CHECK_DIR) && LRHOST_STATE=state_$$core.bin LRHOST_RAMDUMP=ram_$$core.bin \
+		( cd $(SAVESTATE_LATCH_CHECK_DIR) && UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1 LRHOST_STATE=state_$$core.bin LRHOST_RAMDUMP=ram_$$core.bin \
 			../lrhost$(EXE_EXT) ../$(TARGET) latch.z64 120 \
 			parallel-n64-gfxplugin=angrylion parallel-n64-rspplugin=hle \
 			parallel-n64-cpucore=$$core > /dev/null ); \
@@ -1419,7 +1419,7 @@ check-cpu-fallback: $(TARGET) lrhost$(EXE_EXT) cpu_fallback_test$(EXE_EXT)
 	./cpu_fallback_test$(EXE_EXT) rom $(CPU_FALLBACK_CHECK_DIR)/fallback.z64; \
 	for core in pure_interpreter $(CPU_FALLBACK_CORES); do \
 		echo "== $$core"; \
-		( cd $(CPU_FALLBACK_CHECK_DIR) && LRHOST_RAMDUMP=ram_$$core.bin \
+		( cd $(CPU_FALLBACK_CHECK_DIR) && UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1 LRHOST_RAMDUMP=ram_$$core.bin \
 			../lrhost$(EXE_EXT) ../$(TARGET) fallback.z64 4 \
 			parallel-n64-gfxplugin=angrylion parallel-n64-rspplugin=hle \
 			parallel-n64-cpucore=$$core > /dev/null ); \

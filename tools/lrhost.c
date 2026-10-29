@@ -494,6 +494,7 @@ int main(int argc, char **argv)
                strrchr(argv[2], '/') ? strrchr(argv[2], '/') + 1 : argv[2], av.geometry.base_width, av.geometry.base_height, av.timing.fps,
                nframes, (now_ms() - t_first) / 1e3, mean, sd, s[n / 2], s[n * 9 / 10], s[n * 99 / 100], s[n - 1],
                frames_presented, frames_duped, frame_crc);
+        free(s);
     }
 #ifdef LRHOST_VULKAN
     if (vk_up_on)
@@ -501,5 +502,7 @@ int main(int argc, char **argv)
     vk_shutdown();
 #endif
     r_deinit();
+    free(ft);
+    free((void*)game.data);
     return 0;
 }
