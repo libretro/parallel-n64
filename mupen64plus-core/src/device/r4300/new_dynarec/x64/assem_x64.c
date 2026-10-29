@@ -2589,8 +2589,10 @@ static void emit_cdq(void)
 // Load 2 immediates optimizing for small code size
 static void emit_mov2imm_compact(int imm1,u_int rt1,int imm2,u_int rt2)
 {
+  /* the 32-bit add wraps, so the difference is taken modulo 2^32 */
+  int diff=(int)((u_int)imm2-(u_int)imm1);
   emit_movimm(imm1,rt1);
-  if(imm2-imm1<128&&imm2-imm1>=-128) emit_addimm(rt1,imm2-imm1,rt2);
+  if(diff<128&&diff>=-128) emit_addimm(rt1,diff,rt2);
   else emit_movimm(imm2,rt2);
 }
 

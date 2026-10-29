@@ -2531,18 +2531,22 @@ static void emit_bic64(u_int rs1,u_int rs2,u_int rt)
 // Load 2 immediates optimizing for small code size
 static void emit_mov2imm_compact(int imm1,u_int rt1,int imm2,u_int rt2)
 {
+  /* the 32-bit add wraps, so the difference is taken modulo 2^32; the
+     shifted forms hold a 12-bit value above bit 12 */
+  u_int up=(u_int)imm2-(u_int)imm1;
+  u_int down=(u_int)imm1-(u_int)imm2;
+  int imm=(int)up;
   emit_movimm(imm1,rt1);
-  int imm=imm2-imm1;
   if(imm<0&&imm>-4096) {
-    assem_debug("sub %s, %s, #%d",regname[rt2],regname[rt1],-imm&0xfff);
-    output_w32(0x51000000|((-imm)&0xfff)<<10|rt1<<5|rt2);
+    assem_debug("sub %s, %s, #%d",regname[rt2],regname[rt1],down&0xfff);
+    output_w32(0x51000000|(down&0xfff)<<10|rt1<<5|rt2);
   }else if(imm>=0&&imm<4096) {
     assem_debug("add %s, %s, #%d",regname[rt2],regname[rt1],imm&0xfff);
     output_w32(0x11000000|(imm&0xfff)<<10|rt1<<5|rt2);
-  }else if(imm<0&&(-imm&0xfff)==0) {
-    assem_debug("sub %s, %s, #%d lsl #%d",regname[rt2],regname[rt1],((-imm)>>12)&0xfff,12);
-    output_w32(0x51400000|(((-imm)>>12)&0xfff)<<10|rt1<<5|rt2);
-  }else if(imm>=0&&(imm&0xfff)==0) {
+  }else if(imm<0&&(down&0xfff)==0&&down<0x1000000) {
+    assem_debug("sub %s, %s, #%d lsl #%d",regname[rt2],regname[rt1],(down>>12)&0xfff,12);
+    output_w32(0x51400000|((down>>12)&0xfff)<<10|rt1<<5|rt2);
+  }else if(imm>=0&&(imm&0xfff)==0&&up<0x1000000) {
     assem_debug("add %s, %s, #%d lsl #%d",regname[rt2],regname[rt1],(imm>>12)&0xfff,12);
     output_w32(0x11400000|((imm>>12)&0xfff)<<10|rt1<<5|rt2);
   }
