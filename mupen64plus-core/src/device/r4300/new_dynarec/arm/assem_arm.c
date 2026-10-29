@@ -934,6 +934,7 @@ static u_int genimm(u_int imm,u_int *encoded)
     }
     imm=(imm>>2)|(imm<<30);i-=2;
   }
+  *encoded=0;
   return 0;
 }
 static u_int genjmp(u_int addr)

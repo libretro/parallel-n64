@@ -2519,7 +2519,11 @@ u_int verify_dirty(struct ll_entry * head)
     source=(void*)(head->start+(map_value<<2));
   }
   else
+  {
+    /* no other range holds compiled code: recompile rather than compare */
     assert(0);
+    return head->vaddr;
+  }
 
   if(memcmp(source,head->copy,head->length))
     return head->vaddr;
@@ -4848,7 +4852,7 @@ static void do_ccstub(int n)
           emit_loadreg(rs2[i],s2l);
       #endif
       int hr=0;
-      int addr,alt,ntaddr;
+      int addr=0,alt=0,ntaddr=0;
       while(hr<HOST_REGS)
       {
         if(!IS_REG_EXCLUDED(hr) && hr!=HOST_CCREG &&
@@ -6817,7 +6821,7 @@ static void store_assemble(int i,struct regstat *i_regs)
 
 static void storelr_assemble(int i,struct regstat *i_regs)
 {
-  signed char s,th,tl,real_addr,addr,temp,temp2,map=-1;
+  signed char s,th,tl,real_addr,addr,temp,temp2=-1,map=-1;
   int offset,type=0,memtarget=0,c=0;
   intptr_t jaddr=0;
   u_int hr,reglist=0;
@@ -6881,8 +6885,8 @@ static void storelr_assemble(int i,struct regstat *i_regs)
 
   if(!c||memtarget)
   {
-    intptr_t case1,case2,case3;
-    intptr_t done0,done1,done2;
+    intptr_t case1=0,case2=0,case3=0;
+    intptr_t done0=0,done1=0,done2=0;
 
 #if NEW_DYNAREC >= NEW_DYNAREC_ARM
     assert(map>=0);
@@ -8636,7 +8640,7 @@ static void pagespan_assemble(int i,struct regstat *i_regs)
     s1h=s2h=-1;
   }
   int hr=0;
-  int addr,alt,ntaddr;
+  int addr=0,alt=0,ntaddr=0;
   if(i_regs->regmap[HOST_BTREG]<0) {addr=HOST_BTREG;}
   else {
     while(hr<HOST_REGS)
