@@ -218,8 +218,6 @@ DEFINE_RSP(cxd4);
 
 m64p_error plugin_start_gfx(void)
 {
-    printf("plugin_start_gfx\n");
-
     uint8_t media = *((uint8_t*)mem_base_u32(g_mem_base, MM_CART_ROM) + (0x3b ^ S8));
 
     /* Here we feed 64DD IPL ROM header to GFX plugin if 64DD is present.

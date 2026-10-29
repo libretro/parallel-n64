@@ -22,18 +22,41 @@
 
 #include "logging.hpp"
 
+#ifdef __LIBRETRO__
+#include <libretro_private.h>
+static char log_buf[1024];
+static bool log_helper(const char *tag, const char *fmt, va_list va)
+{
+	retro_log_level log_level = RETRO_LOG_INFO;
+	if (!strcmp(tag, "[WARN]: "))
+		log_level = RETRO_LOG_WARN;
+	else if (!strcmp(tag, "[ERROR]: "))
+		log_level = RETRO_LOG_ERROR;
+
+	int rc = vsprintf(log_buf, fmt, va);
+	log_cb(log_level, "%s", log_buf);
+	return true;
+}
+#endif
+
 namespace Util
 {
 static thread_local LoggingInterface *logging_iface;
 
 bool interface_log(const char *tag, const char *fmt, ...)
 {
+#ifndef __LIBRETRO__
 	if (!logging_iface)
 		return false;
+#endif
 
 	va_list va;
 	va_start(va, fmt);
+#ifdef __LIBRETRO__
+	bool ret = log_helper(tag, fmt, va);
+#else
 	bool ret = logging_iface->log(tag, fmt, va);
+#endif
 	va_end(va);
 	return ret;
 }
