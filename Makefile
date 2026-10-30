@@ -19,6 +19,10 @@ HAVE_THR_AL?=1
 STATIC_LINKING=0
 HAVE_LTCG ?= 0
 
+ifeq ($(ECHO),1)
+    E := 1
+endif
+
 DYNAFLAGS :=
 INCFLAGS  :=
 COREFLAGS :=
@@ -1203,9 +1207,11 @@ $(VIDEODIR_ANGRYLION)/%.o: CFLAGS += -fwrapv
 endif
 
 %.o: %.c
+	@$(if $(E), $(shell echo echo CC $<),)
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< $(OBJOUT)$@
 
 %.o: %.cpp
+	@$(if $(E), $(shell echo echo CXX $<),)
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -c $< $(OBJOUT)$@
 
 ifeq (,$(findstring msvc,$(platform)))
