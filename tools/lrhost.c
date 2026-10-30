@@ -24,7 +24,7 @@
  * LRHOST_AUDIODUMP=file writes the audio as raw s16 stereo frames.
  * LRHOST_VK_NEGOTIATION=1 makes lrhost_vk a frontend that predates
  * Vulkan negotiation v2. LRHOST_VERBOSE=1 shows the core's log; LRHOST_STATE=file loads a
- * savestate after the first frame, and LRHOST_SAVE=file with LRHOST_SAVE_AT=n saves one
+ * savestate after the first frame (LRHOST_RESAVE=file saves it straight back), and LRHOST_SAVE=file with LRHOST_SAVE_AT=n saves one
  * after frame n. LRHOST_HASHLOG=file logs a hash of every presented frame with its frame
  * number, for lining up two runs; LRHOST_RAMDUMP=file writes the system RAM at the end.
  * LRHOST_UPSCALER (lrhost_vk) offers a temporal upscaler, and LRHOST_COUNT_PIPELINES=1
@@ -432,14 +432,37 @@ int main(int argc, char **argv)
             long n; void *st;
             fseek(sf, 0, SEEK_END); n = ftell(sf); fseek(sf, 0, SEEK_SET);
             st = malloc(n);
-            if (fread(st, 1, n, sf) == (size_t)n)
+            if (!st || fread(st, 1, n, sf) != (size_t)n)
             {
-                r_run();
-                if (!r_unserialize(st, n)) fprintf(stderr, "savestate rejected\n");
+                fprintf(stderr, "%s: short read\n", getenv("LRHOST_STATE"));
+                return 1;
+            }
+            r_run();
+            if (!r_unserialize(st, n))
+            {
+                fprintf(stderr, "savestate rejected\n");
+                return 1;
+            }
+            /* LRHOST_RESAVE=file saves the state straight back after the load */
+            if (getenv("LRHOST_RESAVE"))
+            {
+                size_t rn = r_serialize_size(); void *rb = malloc(rn); FILE *rf;
+                if (!rb || !r_serialize(rb, rn) || (rf = fopen(getenv("LRHOST_RESAVE"), "wb")) == NULL)
+                {
+                    fprintf(stderr, "resave failed\n");
+                    return 1;
+                }
+                fwrite(rb, 1, rn, rf);
+                fclose(rf);
+                free(rb);
             }
             free(st); fclose(sf);
         }
-        else perror(getenv("LRHOST_STATE"));
+        else
+        {
+            perror(getenv("LRHOST_STATE"));
+            return 1;
+        }
     }
 
     ft = calloc(nframes, sizeof *ft);

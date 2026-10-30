@@ -75,7 +75,19 @@ void n64video_noise_load(const uint32_t* in);
      (type *)(buff-count*sizeof(type)))
 #define COPYARRAY(dst, buff, type, count) \
     memcpy(dst, GETARRAY(buff, type, count), sizeof(type)*count)
-#define GETDATA(buff, type) *GETARRAY(buff, type, 1)
+#define GETDATA(buff, type) ((type)savestates_getdata(&(buff), sizeof(type)))
+
+/* One little-endian scalar of 1 to 8 bytes, read bytewise: the state
+ * buffer has no alignment for its fields. */
+static uint64_t savestates_getdata(unsigned char **buff, size_t size)
+{
+   uint64_t v = 0;
+   size_t i;
+   for (i = size; i-- > 0;)
+      v = (v << 8) | (*buff)[i];
+   *buff += size;
+   return v;
+}
 
 #define PUTARRAY(src, buff, type, count) \
     memcpy(buff, src, sizeof(type)*count); \
@@ -105,7 +117,8 @@ int savestates_load_m64p(const unsigned char *data, size_t size)
    version = (version << 8) | *curr++;
    version = (version << 8) | *curr++;
 
-   if(version != 0x00010000 && version != 0x00010001 && version != 0x00010002 && version != 0x00010003 && version != 0x00010004 && version != 0x00010005 && version != 0x00010006 && version != 0x00010007 && version != 0x00010008)
+   /* any 1.x up to the version this build writes */
+   if (version < 0x00010000 || version > savestate_latest_version)
       return 0;
 
    /* Identity check.  New states carry the "M64H"-prefixed header
@@ -343,11 +356,14 @@ int savestates_load_m64p(const unsigned char *data, size_t size)
 
    *r4300_cp0_last_addr(&g_dev.r4300.cp0) = *r4300_pc(&g_dev.r4300);
    
-   if( RollbackRtcOnLoadState && version >= 0x00010001 ) {
+   /* The RTC block (since 1.1) is always present; the option only
+    * decides whether it is applied. */
+   if (version >= 0x00010001) {
       struct tm timestamp;
       /* af_rtc: next stores control/now/last_update_rtc (not tm) */
       COPYARRAY( ((void*)&timestamp), curr, int, 9 );
-      g_dev.cart.af_rtc.control = (uint16_t)timestamp.tm_year;
+      if (RollbackRtcOnLoadState)
+         g_dev.cart.af_rtc.control = (uint16_t)timestamp.tm_year;
    }
 
    /* Transfer Pak / GB cart volatile state (since 1.3); see the matching

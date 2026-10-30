@@ -1375,7 +1375,8 @@ check-dynarec-block: $(TARGET) lrhost$(EXE_EXT) dynarec_long_block_test$(EXE_EXT
 
 # The COP0 and COP2 move latches across a savestate: a state saved between
 # the moves and their read-back is loaded into a fresh boot, with each CPU
-# core. The `saved` step checks the save frame lands in that window.
+# core, and must save back byte for byte. The `saved` step checks the save
+# frame lands in that window.
 SAVESTATE_LATCH_CHECK_DIR := savestate_latch_check.tmp
 SAVESTATE_LATCH_SAVE_AT := 16
 
@@ -1392,10 +1393,11 @@ check-savestate-latch: $(TARGET) lrhost$(EXE_EXT) savestate_latch_test$(EXE_EXT)
 			parallel-n64-gfxplugin=angrylion parallel-n64-rspplugin=hle \
 			parallel-n64-cpucore=$$core > /dev/null ); \
 		./savestate_latch_test$(EXE_EXT) saved $(SAVESTATE_LATCH_CHECK_DIR)/saved_$$core.bin; \
-		( cd $(SAVESTATE_LATCH_CHECK_DIR) && UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1 LRHOST_STATE=state_$$core.bin LRHOST_RAMDUMP=ram_$$core.bin \
-			../lrhost$(EXE_EXT) ../$(TARGET) latch.z64 120 \
+		( cd $(SAVESTATE_LATCH_CHECK_DIR) && UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1 LRHOST_STATE=state_$$core.bin LRHOST_RESAVE=resave_$$core.bin \
+			LRHOST_RAMDUMP=ram_$$core.bin ../lrhost$(EXE_EXT) ../$(TARGET) latch.z64 120 \
 			parallel-n64-gfxplugin=angrylion parallel-n64-rspplugin=hle \
 			parallel-n64-cpucore=$$core > /dev/null ); \
+		cmp $(SAVESTATE_LATCH_CHECK_DIR)/state_$$core.bin $(SAVESTATE_LATCH_CHECK_DIR)/resave_$$core.bin; \
 		./savestate_latch_test$(EXE_EXT) check $(SAVESTATE_LATCH_CHECK_DIR)/ram_$$core.bin; \
 	done; rm -rf $(SAVESTATE_LATCH_CHECK_DIR)
 
