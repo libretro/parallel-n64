@@ -37,7 +37,7 @@
 #include "swappy/swappyVk.h"
 #endif
 
-//#undef VULKAN_DEBUG
+#undef VULKAN_DEBUG
 
 namespace Vulkan
 {
