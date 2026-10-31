@@ -24,6 +24,11 @@
 
 #include <stdlib.h>
 #include <string.h>
+#ifndef _MSC_VER
+/* strcasecmp: with _POSIX_C_SOURCE set (retro_posix_source.h) glibc
+ * declares it only in <strings.h>, its POSIX home. */
+#include <strings.h>
+#endif
 #include <stdio.h>
 #include <errno.h>
 #include <limits.h>

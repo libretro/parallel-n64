@@ -647,14 +647,69 @@ static uint32_t rinf_getbits(struct rinflate *s, int n)
    return v;
 }
 
-/* Build a huffman decode table from an array of code lengths. */
-static int rinf_build(struct rinf_huff *h, const uint8_t *lengths, int num)
+/* What a table decodes, for the packed entries: RINF_TABLE_CL fills
+ * none (the code-length table is never read by the fast loop). */
+enum
 {
-   int i, k;
+   RINF_TABLE_CL = 0,
+   RINF_TABLE_LEN,
+   RINF_TABLE_DIST
+};
+
+/* Packed fast entries: layout in the struct note. */
+#define RINF_PF_LIT  (1u << 9)
+#define RINF_PF_EOB  (1u << 10)
+#define RINF_PF_BAD  (1u << 11)
+
+/* length/distance base + extra-bit tables */
+static const uint16_t rinf_len_base[29] = {
+   3,4,5,6,7,8,9,10,11,13,15,17,19,23,27,31,35,43,51,59,
+   67,83,99,115,131,163,195,227,258 };
+static const uint8_t rinf_len_extra[29] = {
+   0,0,0,0,0,0,0,0,1,1,1,1,2,2,2,2,3,3,3,3,4,4,4,4,5,5,5,5,0 };
+static const uint16_t rinf_dist_base[30] = {
+   1,2,3,4,5,7,9,13,17,25,33,49,65,97,129,193,257,385,513,769,
+   1025,1537,2049,3073,4097,6145,8193,12289,16385,24577 };
+static const uint8_t rinf_dist_extra[30] = {
+   0,0,0,0,1,1,2,2,3,3,4,4,5,5,6,6,7,7,8,8,9,9,10,10,11,11,12,12,13,13 };
+
+/* The bits of a byte in the other order */
+static const uint8_t rinf_rev8[256] = {
+   0x00,0x80,0x40,0xc0,0x20,0xa0,0x60,0xe0,0x10,0x90,0x50,0xd0,0x30,0xb0,0x70,0xf0,
+   0x08,0x88,0x48,0xc8,0x28,0xa8,0x68,0xe8,0x18,0x98,0x58,0xd8,0x38,0xb8,0x78,0xf8,
+   0x04,0x84,0x44,0xc4,0x24,0xa4,0x64,0xe4,0x14,0x94,0x54,0xd4,0x34,0xb4,0x74,0xf4,
+   0x0c,0x8c,0x4c,0xcc,0x2c,0xac,0x6c,0xec,0x1c,0x9c,0x5c,0xdc,0x3c,0xbc,0x7c,0xfc,
+   0x02,0x82,0x42,0xc2,0x22,0xa2,0x62,0xe2,0x12,0x92,0x52,0xd2,0x32,0xb2,0x72,0xf2,
+   0x0a,0x8a,0x4a,0xca,0x2a,0xaa,0x6a,0xea,0x1a,0x9a,0x5a,0xda,0x3a,0xba,0x7a,0xfa,
+   0x06,0x86,0x46,0xc6,0x26,0xa6,0x66,0xe6,0x16,0x96,0x56,0xd6,0x36,0xb6,0x76,0xf6,
+   0x0e,0x8e,0x4e,0xce,0x2e,0xae,0x6e,0xee,0x1e,0x9e,0x5e,0xde,0x3e,0xbe,0x7e,0xfe,
+   0x01,0x81,0x41,0xc1,0x21,0xa1,0x61,0xe1,0x11,0x91,0x51,0xd1,0x31,0xb1,0x71,0xf1,
+   0x09,0x89,0x49,0xc9,0x29,0xa9,0x69,0xe9,0x19,0x99,0x59,0xd9,0x39,0xb9,0x79,0xf9,
+   0x05,0x85,0x45,0xc5,0x25,0xa5,0x65,0xe5,0x15,0x95,0x55,0xd5,0x35,0xb5,0x75,0xf5,
+   0x0d,0x8d,0x4d,0xcd,0x2d,0xad,0x6d,0xed,0x1d,0x9d,0x5d,0xdd,0x3d,0xbd,0x7d,0xfd,
+   0x03,0x83,0x43,0xc3,0x23,0xa3,0x63,0xe3,0x13,0x93,0x53,0xd3,0x33,0xb3,0x73,0xf3,
+   0x0b,0x8b,0x4b,0xcb,0x2b,0xab,0x6b,0xeb,0x1b,0x9b,0x5b,0xdb,0x3b,0xbb,0x7b,0xfb,
+   0x07,0x87,0x47,0xc7,0x27,0xa7,0x67,0xe7,0x17,0x97,0x57,0xd7,0x37,0xb7,0x77,0xf7,
+   0x0f,0x8f,0x4f,0xcf,0x2f,0xaf,0x6f,0xef,0x1f,0x9f,0x5f,0xdf,0x3f,0xbf,0x7f,0xff
+};
+
+/* Builds a table from its code lengths: the canonical arrays for the
+ * slow path, and fast[] with the packed entries filled together, one
+ * splat per symbol. No entry is cleared first: a short code writes
+ * every index it covers, and a long code writes the one index its
+ * first FAST_BITS bits name (0, the slow-path mark), so between them
+ * every index a complete code set can reach is written; what a stale
+ * entry at an index no code reaches would decode never arrives, as
+ * the bits there are not a code. An incomplete set (one code, the
+ * degenerate distance tables zlib accepts) leaves indexes a hostile
+ * stream could reach, so those are cleared. */
+static int rinf_build(struct rinf_huff *h, const uint8_t *lengths, int num,
+      int table)
+{
+   int i, k, left;
    int code, next_code[RINF_MAX_BITS + 1];
    int sizes[RINF_MAX_BITS + 1];
 
-   memset(h->fast, 0, sizeof(h->fast));
    for (i = 0; i <= RINF_MAX_BITS; i++)
       sizes[i] = 0;
    for (i = 0; i < num; i++)
@@ -666,17 +721,20 @@ static int rinf_build(struct rinf_huff *h, const uint8_t *lengths, int num)
    sizes[0] = 0;
 
    /* over-subscribed / incomplete check per RFC (allow single-symbol) */
+   left = 1;
+   for (i = 1; i <= RINF_MAX_BITS; i++)
    {
-      int left = 1;
-      for (i = 1; i <= RINF_MAX_BITS; i++)
-      {
-         left <<= 1;
-         left -= sizes[i];
-         if (left < 0)
-            return 0;
-      }
-      /* left > 0 means incomplete; permitted only in degenerate cases,
-       * zlib accepts them for the distance table, so we allow it. */
+      left <<= 1;
+      left -= sizes[i];
+      if (left < 0)
+         return 0;
+   }
+   /* left > 0 means incomplete; permitted only in degenerate cases,
+    * zlib accepts them for the distance table, so we allow it. */
+   if (left > 0)
+   {
+      memset(h->fast, 0, sizeof(h->fast));
+      memset(h->pfast, 0, sizeof(h->pfast));
    }
 
    code = 0;
@@ -699,23 +757,59 @@ static int rinf_build(struct rinf_huff *h, const uint8_t *lengths, int num)
    for (i = 0; i < num; i++)
    {
       int len = lengths[i];
+      int c, sym, rev;
       if (!len)
          continue;
-      {
-         int c         = next_code[len]++;
-         int sym       = h->firstsym[len] + (c - h->firstcode[len]);
-         h->size[sym]  = (uint8_t)len;
-         h->value[sym] = (uint16_t)i;
+      c             = next_code[len]++;
+      sym           = h->firstsym[len] + (c - h->firstcode[len]);
+      h->size[sym]  = (uint8_t)len;
+      h->value[sym] = (uint16_t)i;
 
-         if (len <= RINF_FAST_BITS)
+      /* the 'len' bits of c in reading order */
+      rev = ((rinf_rev8[c & 0xff] << 8) | rinf_rev8[(c >> 8) & 0xff])
+          >> (16 - len);
+      if (len > RINF_FAST_BITS)
+      {
+         rev &= (1 << RINF_FAST_BITS) - 1;
+         h->fast[rev]  = 0;
+         h->pfast[rev] = 0;
+      }
+      else
+      {
+         uint16_t f = (uint16_t)((i << 4) | len);
+         uint32_t e = 0;
+         int j;
+         if (table == RINF_TABLE_LEN)
          {
-            /* reverse the 'len' bits of c into reading order and splat
-             * across all high-bit combinations */
-            int j, rev = 0;
-            for (j = 0; j < len; j++)
-               rev |= ((c >> j) & 1) << (len - 1 - j);
-            for (j = rev; j < (1 << RINF_FAST_BITS); j += (1 << len))
-               h->fast[j] = (uint16_t)((i << 4) | len);
+            if (i < 256)
+               e = (uint32_t)len | RINF_PF_LIT | ((uint32_t)i << 16);
+            else if (i == 256)
+               e = (uint32_t)len | RINF_PF_EOB;
+            else if (i - 257 < 29)
+               /* Bits [4:8] hold the code-plus-extra TOTAL, not the
+                * extra count: the critical-path shift that advances
+                * to the next code then uses the field directly, and
+                * the extra count for the value mask falls off the
+                * path as total - len. */
+               e = (uint32_t)len
+                 | ((uint32_t)(len + rinf_len_extra[i - 257]) << 4)
+                 | ((uint32_t)rinf_len_base[i - 257] << 16);
+            else
+               e = (uint32_t)len | RINF_PF_BAD;
+         }
+         else if (table == RINF_TABLE_DIST)
+         {
+            if (i < 30)
+               e = (uint32_t)len
+                 | ((uint32_t)(len + rinf_dist_extra[i]) << 4)
+                 | ((uint32_t)rinf_dist_base[i] << 16);
+            else
+               e = (uint32_t)len | RINF_PF_BAD;
+         }
+         for (j = rev; j < (1 << RINF_FAST_BITS); j += (1 << len))
+         {
+            h->fast[j]  = f;
+            h->pfast[j] = e;
          }
       }
    }
@@ -775,80 +869,9 @@ static int rinf_decode(struct rinflate *s, struct rinf_huff *h)
 }
 
 
-/* length/distance base + extra-bit tables */
-static const uint16_t rinf_len_base[29] = {
-   3,4,5,6,7,8,9,10,11,13,15,17,19,23,27,31,35,43,51,59,
-   67,83,99,115,131,163,195,227,258 };
-static const uint8_t rinf_len_extra[29] = {
-   0,0,0,0,0,0,0,0,1,1,1,1,2,2,2,2,3,3,3,3,4,4,4,4,5,5,5,5,0 };
-static const uint16_t rinf_dist_base[30] = {
-   1,2,3,4,5,7,9,13,17,25,33,49,65,97,129,193,257,385,513,769,
-   1025,1537,2049,3073,4097,6145,8193,12289,16385,24577 };
-static const uint8_t rinf_dist_extra[30] = {
-   0,0,0,0,1,1,2,2,3,3,4,4,5,5,6,6,7,7,8,8,9,9,10,10,11,11,12,12,13,13 };
-
 /* order of code-length code lengths (RFC 1951 3.2.7) */
 static const uint8_t rinf_clc_order[19] = {
    16,17,18,0,8,7,9,6,10,5,11,4,12,3,13,2,14,1,15 };
-
-/* Populate pfast[] from a freshly built fast[]; layout in the struct
- * note.  Two variants because the litlen and distance base tables
- * differ. */
-#define RINF_PF_LIT  (1u << 9)
-#define RINF_PF_EOB  (1u << 10)
-#define RINF_PF_BAD  (1u << 11)
-
-static void rinf_pack_len(struct rinf_huff *h)
-{
-   int j;
-   for (j = 0; j < (1 << RINF_FAST_BITS); j++)
-   {
-      uint16_t f = h->fast[j];
-      uint32_t e = 0;
-      if (f)
-      {
-         int sym = f >> 4;
-         int len = f & 15;
-         if (sym < 256)
-            e = (uint32_t)len | RINF_PF_LIT | ((uint32_t)sym << 16);
-         else if (sym == 256)
-            e = (uint32_t)len | RINF_PF_EOB;
-         else if (sym - 257 < 29)
-            /* Bits [4:8] hold the code-plus-extra TOTAL, not the extra
-             * count: the critical-path shift that advances to the next
-             * code then uses the field directly, and the extra count
-             * for the value mask falls off the path as total - len. */
-            e = (uint32_t)len
-              | ((uint32_t)(len + rinf_len_extra[sym - 257]) << 4)
-              | ((uint32_t)rinf_len_base[sym - 257] << 16);
-         else
-            e = (uint32_t)len | RINF_PF_BAD;
-      }
-      h->pfast[j] = e;
-   }
-}
-
-static void rinf_pack_dist(struct rinf_huff *h)
-{
-   int j;
-   for (j = 0; j < (1 << RINF_FAST_BITS); j++)
-   {
-      uint16_t f = h->fast[j];
-      uint32_t e = 0;
-      if (f)
-      {
-         int sym = f >> 4;
-         int len = f & 15;
-         if (sym < 30)
-            e = (uint32_t)len
-              | ((uint32_t)(len + rinf_dist_extra[sym]) << 4)
-              | ((uint32_t)rinf_dist_base[sym] << 16);
-         else
-            e = (uint32_t)len | RINF_PF_BAD;
-      }
-      h->pfast[j] = e;
-   }
-}
 
 /* fixed huffman tables (RFC 1951 3.2.6) */
 /* The fixed tables are the same two tables every time - RFC 1951 states
@@ -878,10 +901,8 @@ static void rinf_fixed_tables(struct rinflate *s)
       ll[i] = 8;
    for (i = 0;   i < 30;  i++)
       dd[i] = 5;
-   rinf_build(&s->lencode, ll, 288);
-   rinf_build(&s->distcode, dd, 30);
-   rinf_pack_len(&s->lencode);
-   rinf_pack_dist(&s->distcode);
+   rinf_build(&s->lencode, ll, 288, RINF_TABLE_LEN);
+   rinf_build(&s->distcode, dd, 30, RINF_TABLE_DIST);
    s->have_tables  = 1;
    s->fixed_loaded = 1;
 }
@@ -981,8 +1002,8 @@ void rinflate_reset(void *data, int window_bits)
     * reachable, exactly as for a fresh instance whose window happens
     * to be zeroed. The tables are safe because have_tables and
     * fixed_loaded are cleared, so any stream must rebuild them before
-    * a symbol is decoded, and rinf_build clears each table's fast
-    * lookup as it goes.
+    * a symbol is decoded, and rinf_build writes every entry a code of
+    * its own can reach.
     *
     * Everything else is set to the same value calloc would have
     * produced. Fields are listed rather than memset in bulk so that
@@ -1151,31 +1172,30 @@ int rinflate_process(void *data, size_t *read, size_t *wrote)
             break;
 
          case RINF_GZHEADER:
-            /* ID1 ID2 CM FLG MTIME[4] XFL OS */
-            if (!rinf_need(s, 16)) goto suspend;
+            /* ID1 ID2 CM FLG MTIME[4] XFL OS, in two steps so that
+             * input ending inside the header resumes where it was */
+            if (s->gz_step == 0)
             {
-               uint32_t id1 = rinf_getbits(s, 8);
-               uint32_t id2 = rinf_getbits(s, 8);
-               if (id1 != 0x1f || id2 != 0x8b) { s->error = 1; goto error; }
-            }
-            if (!rinf_need(s, 16)) goto suspend;
-            {
-               uint32_t cm = rinf_getbits(s, 8);
+               uint32_t id1, id2, cm;
+               if (!rinf_need(s, 32)) goto suspend;
+               id1         = rinf_getbits(s, 8);
+               id2         = rinf_getbits(s, 8);
+               cm          = rinf_getbits(s, 8);
                s->gz_flg   = rinf_getbits(s, 8);
+               if (id1 != 0x1f || id2 != 0x8b) { s->error = 1; goto error; }
                if (cm != 8)              { s->error = 1; goto error; }
                /* bits 5-7 are reserved and must be zero */
                if (s->gz_flg & 0xe0)     { s->error = 1; goto error; }
+               s->gz_step  = 1;
+               s->gz_count = 6;
             }
+            while (s->gz_count)   /* MTIME[4], XFL, OS */
             {
-               int i;
-               for (i = 0; i < 6; i++)   /* MTIME[4], XFL, OS */
-               {
-                  if (!rinf_need(s, 8)) goto suspend;
-                  rinf_getbits(s, 8);
-               }
+               if (!rinf_need(s, 8)) goto suspend;
+               rinf_getbits(s, 8);
+               s->gz_count--;
             }
             s->gz_step  = 0;
-            s->gz_count = 0;
             s->phase    = RINF_GZ_EXTRA;
             break;
 
@@ -1328,19 +1348,33 @@ int rinflate_process(void *data, size_t *read, size_t *wrote)
                s->have_pending_lit = 0;
                s->stored_len--;
             }
-            /* Bulk copy: a stored block is byte-aligned by
-             * construction, and the LEN/NLEN read that precedes this
-             * phase consumes whole bytes from an aligned start, so
-             * the bit buffer is empty on arrival and the payload can
-             * go straight from input to output.  The bitcnt test is
-             * an invariant check rather than a live branch - if a
-             * future change leaves bits buffered, the byte-at-a-time
-             * loop below still produces correct output, just slowly. */
-            if (s->stored_len > 0 && s->bitcnt == 0)
+            /* The whole bytes the bit buffer holds come first (the
+             * block is byte-aligned, so it holds nothing else): after
+             * a Huffman block the fast loop leaves up to seven of
+             * them. Then the payload goes straight from input to
+             * output. */
+            while (s->stored_len > 0 && s->bitcnt >= 8)
+            {
+               uint8_t b = (uint8_t)rinf_getbits(s, 8);
+               if (!rinf_emit(s, b))
+               {
+                  /* output full: stash the already-decoded byte so we do
+                   * not re-read it, and resume here next call */
+                  s->pending_lit = b;
+                  s->have_pending_lit = 1;
+                  goto suspend;
+               }
+               s->stored_len--;
+            }
+            if (s->stored_len > 0)
             {
                size_t avail_in  = s->in_size  - s->in_pos;
                size_t avail_out = s->out_size - s->out_pos;
                size_t n         = s->stored_len;
+               /* The fast loop's refill leaves the next input bytes
+                * above bitcnt too; the input cursor passes them here
+                * without the buffer, so they go. */
+               s->bitbuf = 0;
                if (n > avail_in)  n = avail_in;
                if (n > avail_out) n = avail_out;
                if (n)
@@ -1352,21 +1386,6 @@ int rinflate_process(void *data, size_t *read, size_t *wrote)
                }
                if (s->stored_len > 0)
                   goto suspend;   /* input or output exhausted */
-            }
-            while (s->stored_len > 0)
-            {
-               uint8_t b;
-               if (!rinf_need(s, 8)) goto suspend;
-               b = (uint8_t)rinf_getbits(s, 8);
-               if (!rinf_emit(s, b))
-               {
-                  /* output full: stash the already-decoded byte so we do
-                   * not re-read it, and resume here next call */
-                  s->pending_lit = b;
-                  s->have_pending_lit = 1;
-                  goto suspend;
-               }
-               s->stored_len--;
             }
             s->phase = s->bfinal ? rinf_end_phase(s->wrap)
                                  : RINF_BLOCK_HDR;
@@ -1398,7 +1417,8 @@ int rinflate_process(void *data, size_t *read, size_t *wrote)
                }
                if (!s->clcode_built)
                {
-                  if (!rinf_build(&s->clcode, s->cl_lengths, 19))
+                  if (!rinf_build(&s->clcode, s->cl_lengths, 19,
+                           RINF_TABLE_CL))
                      { s->error = 1; goto error; }
                   s->clcode_built = 1;
                }
@@ -1451,12 +1471,12 @@ int rinflate_process(void *data, size_t *read, size_t *wrote)
             }
             /* build lit/len and dist tables */
             s->fixed_loaded = 0;
-            if (!rinf_build(&s->lencode, s->lengths, s->hlit))
+            if (!rinf_build(&s->lencode, s->lengths, s->hlit,
+                     RINF_TABLE_LEN))
                { s->error = 1; goto error; }
-            if (!rinf_build(&s->distcode, s->lengths + s->hlit, s->hdist))
+            if (!rinf_build(&s->distcode, s->lengths + s->hlit, s->hdist,
+                     RINF_TABLE_DIST))
                { s->error = 1; goto error; }
-            rinf_pack_len(&s->lencode);
-            rinf_pack_dist(&s->distcode);
             s->have_tables = 1;
             s->copy_active = 0;
             s->phase = RINF_BLOCK_DATA;
@@ -1496,6 +1516,13 @@ fast_again:
                const uint32_t *plen  = s->lencode.pfast;
                const uint32_t *pdist = s->distcode.pfast;
                int      done_fast    = 0;
+               /* The guards' limits and the window's reach, read once:
+                * through s-> they would be reloaded after every store
+                * to out[], which the compiler cannot tell from a store
+                * to the struct. */
+               size_t   in_size      = s->in_size;
+               size_t   out_size     = s->out_size;
+               size_t   reach        = s->wprior;
 
                /* The output guard reserves the longest match plus the
                 * copy over-run pad: the inlined copies below write in
@@ -1518,8 +1545,8 @@ fast_again:
                 * mirrors the literal chain's own reuse condition. */
                uint32_t e_pre    = 0;
                int      have_pre = 0;
-               while (in_pos + 8 <= s->in_size
-                     && out_pos + 258 + 16 <= s->out_size)
+               while (in_pos + 8 <= in_size
+                     && out_pos + 258 + 16 <= out_size)
                {
                   uint32_t e;
                   /* Refill only when the buffer cannot already cover a
@@ -1538,31 +1565,25 @@ fast_again:
                    * half of them, and worth 30-40%.  It costs nothing
                    * on match-dominated input, where a group empties the
                    * buffer far enough to refill anyway. */
-                  if (bitcnt < 48)
                   {
-                     /* Exactly what the byte loop did, in one load: take
-                      * the whole bytes that fit above bitcnt, mask off
-                      * the rest so nothing lands above the new count,
-                      * and advance by that many.  Keeping the mask means
-                      * the invariant every other path relies on - bits
-                      * at or above bitcnt are zero - still holds, which
-                      * the maskless form used elsewhere would break for
-                      * the byte-aligning stored-block path. */
-                     static const uint64_t keep[8] = {
-                        0x0000000000000000ull, 0x00000000000000ffull,
-                        0x000000000000ffffull, 0x0000000000ffffffull,
-                        0x00000000ffffffffull, 0x000000ffffffffffull,
-                        0x0000ffffffffffffull, 0x00ffffffffffffffull
-                     };
-                     int      nb_ = (63 - bitcnt) >> 3;
+                     /* Eight bytes shifted in above bitcnt, of which
+                      * the whole ones that fit are counted: the rest,
+                      * the first bits of the byte at the new in_pos,
+                      * stay above the count. They are the bits the
+                      * next refill puts there again, so ORing is
+                      * idempotent and no mask is needed; what
+                      * consumes bits shifts them down with the count.
+                      * The one path that passes input bytes by
+                      * without the buffer, the stored block's copy,
+                      * clears the buffer first. */
                      uint64_t chunk_;
                      memcpy(&chunk_, in + in_pos, sizeof(chunk_));
 #if RETRO_IS_BIG_ENDIAN
                      chunk_ = SWAP64(chunk_);
 #endif
-                     bitbuf |= (chunk_ & keep[nb_]) << bitcnt;
-                     in_pos += (size_t)nb_;
-                     bitcnt += nb_ * 8;
+                     bitbuf |= chunk_ << bitcnt;
+                     in_pos += (size_t)((63 - bitcnt) >> 3);
+                     bitcnt |= 56;
                   }
                   if (have_pre)
                   {
@@ -1751,7 +1772,7 @@ fast_again:
                            }
                         }
                      }
-                     if (dist > out_pos + s->wprior)
+                     if (dist > out_pos + reach)
                      {
                         s->error   = 1;
                         s->out_pos = out_pos;
@@ -2089,6 +2110,8 @@ struct rdeflate
    int      wrapped;   /* wrap != RINF_WRAP_RAW                         */
    int      use_crc_hash; /* settled once at construction; see rd_hash */
    int      good, lazy, nice, chain;  /* match-finder tuning per level     */
+   uint32_t max_dist;  /* the window window_bits asked for, <= RD_WINDOW */
+   uint8_t  cmf;       /* zlib header: CM=8 with CINFO for max_dist     */
 
    /* input history: a linear buffer holding the sliding window + lookahead.
     * We keep it simple: accumulate into `win`, slide when it fills. */
@@ -2524,7 +2547,7 @@ static INLINE uint32_t rd_longest_match(struct rdeflate *s, uint32_t pos,
        * Evaluated once here, never in the inner loop. */
       if (best_len >= (uint32_t)s->good)
          chain >>= 2;
-      limit = pos > RD_WINDOW ? pos - RD_WINDOW : 0;
+      limit = pos > s->max_dist ? pos - s->max_dist : 0;
       /* Load the two bytes bracketing the current best as a single 16-bit value
        * so the per-candidate quick reject is one 16-bit load + compare instead
        * of two byte loads + compares.  Endianness does not matter: we only test
@@ -3381,6 +3404,26 @@ void *rdeflate_new(int level, int window_bits)
    if (s->wrap == RINF_WRAP_AUTO)
       s->wrap = RINF_WRAP_GZIP;
    s->wrapped = (s->wrap != RINF_WRAP_RAW);
+   /* The window's size is in window_bits as zlib reads it: |bits| for
+    * raw and zlib, bits - 16 for gzip, 8..15; 0 and 32..47 mean the
+    * whole window. A match never reaches further back than that, so
+    * the stream decodes with a window that small (qcow2 clusters are
+    * written with 4K, -12). */
+   {
+      int bits = window_bits < 0 ? -window_bits : window_bits;
+      if (bits >= 32)
+         bits = 15;
+      else if (bits >= 16)
+         bits -= 16;
+      if (bits == 0)
+         bits = 15;
+      if (bits < 8)
+         bits = 8;
+      if (bits > 15)
+         bits = 15;
+      s->max_dist = 1u << bits;
+      s->cmf      = (uint8_t)(0x08 | ((bits - 8) << 4));
+   }
    s->crc     = encoding_crc32(0, NULL, 0);
    s->total_in = 0;
    s->adler   = 1;
@@ -3455,13 +3498,13 @@ int rdeflate_process(void *data, size_t *read, size_t *wrote)
    }
    if (s->wrap == RINF_WRAP_ZLIB && !s->header_done)
    {
-      /* CM=8 (deflate), CINFO=7 (32K window) -> CMF=0x78; FLG chosen so that
-       * (CMF*256+FLG) % 31 == 0 and no preset dict. 0x78 0x9C is the common
-       * "default compression" pair. */
+      /* FLG: FLEVEL 2 (default compression), no preset dict, and the
+       * check bits making (CMF*256+FLG) % 31 == 0; 0x78 0x9C for a 32K
+       * window. */
       if (s->out_pos + 2 > s->out_size)
          goto suspend;
-      s->out[s->out_pos++] = 0x78;
-      s->out[s->out_pos++] = 0x9c;
+      s->out[s->out_pos++] = s->cmf;
+      s->out[s->out_pos++] = (uint8_t)(0x80 + 31 - (s->cmf * 256 + 0x80) % 31);
       s->header_done       = 1;
    }
 
