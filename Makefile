@@ -1553,7 +1553,7 @@ test_mouse_accum$(EXE_EXT): tools/test_mouse_accum.c \
 		$(CORE_DIR)/src/plugin/emulate_game_controller_via_libretro.c
 	$(CC) $(CHECK_CFLAGS) $(CHECK_SANITIZE) -I$(CORE_DIR)/src -I$(CORE_DIR)/src/api \
 		-I$(CORE_DIR)/custom -I$(LIBRETRO_COMM_DIR)/include -I$(ROOT_DIR)/libretro \
-		$< -o $@ $(CHECK_LDFLAGS) $(CHECK_SANITIZE)
+		$< -o $@ $(CHECK_LDFLAGS) $(CHECK_SANITIZE) -lm
 
 test_temporal_upscaler$(EXE_EXT): tools/test_temporal_upscaler.c \
 		$(VIDEODIR_PARALLEL)/parallel-rdp/parallel-rdp/temporal_upscaler.c
