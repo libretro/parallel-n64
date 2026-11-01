@@ -18,6 +18,7 @@
 #include "small_vector.hpp"
 #include "intrusive.hpp"
 #include "intrusive_hash_map.hpp"
+#include "bitops.hpp"
 
 #include <rthreads/rthreads.h>
 
@@ -347,6 +348,51 @@ static void test_concurrent_cookies()
 		CHECK(all[i] == uint64_t(i + 1) * 16);
 }
 
+/* next_bit / next_bit_range against a bit-by-bit walk */
+static void check_bits(uint32_t mask)
+{
+	uint32_t expect[32], got[32];
+	unsigned ne = 0, ng = 0, i;
+	for (i = 0; i < 32; i++)
+		if (mask & (1u << i))
+			expect[ne++] = i;
+	for (uint32_t bits = mask, bit; Util::next_bit(bits, bit);)
+		got[ng++] = bit;
+	CHECK(ne == ng && memcmp(expect, got, ne * sizeof(uint32_t)) == 0);
+
+	/* runs: each must be maximal, in order, and cover the mask exactly */
+	uint32_t covered = 0, last_end = 0;
+	bool first = true;
+	for (uint32_t bits = mask, base = 0, off, count; Util::next_bit_range(bits, base, off, count);)
+	{
+		uint64_t run = ((count == 32 ? 0xffffffffull : ((1ull << count) - 1)) << off);
+		CHECK(count >= 1 && off + count <= 32);
+		CHECK(first || off > last_end);
+		CHECK((covered & uint32_t(run)) == 0);
+		CHECK((mask & uint32_t(run)) == uint32_t(run));
+		CHECK(off + count == 32 || !(mask & (1u << (off + count))));
+		covered |= uint32_t(run);
+		last_end = off + count;
+		first = false;
+	}
+	CHECK(covered == mask);
+}
+
+static void test_bit_iteration()
+{
+	static const uint32_t fixed[] = { 0, 1, 0x80000000u, ~0u, 0x7fffffffu, 0xfffffffeu, 0x0f0f0f0fu, 0xaaaaaaaau, 0x80000001u };
+	uint32_t x = 0x12345678u;
+	unsigned i;
+	for (i = 0; i < sizeof(fixed) / sizeof(fixed[0]); i++)
+		check_bits(fixed[i]);
+	for (i = 0; i < 200000; i++)
+	{
+		x ^= x << 13; x ^= x >> 17; x ^= x << 5;
+		check_bits(x);
+		check_bits(x & (x >> 1));
+	}
+}
+
 int main()
 {
 	test_thread_safe_pool();
@@ -358,6 +404,7 @@ int main()
 	test_owned_ptr_array();
 	test_scalars();
 	test_concurrent_cookies();
+	test_bit_iteration();
 	if (failures)
 	{
 		fprintf(stderr, "test_granite_util: %d failures\n", failures);

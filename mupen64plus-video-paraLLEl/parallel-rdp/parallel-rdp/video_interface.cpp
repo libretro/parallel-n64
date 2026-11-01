@@ -31,6 +31,30 @@
 
 namespace RDP
 {
+static void shift_rect(VkRect2D &rect, int x, int y)
+{
+	rect.offset.x += x;
+	rect.offset.y += y;
+
+	if (rect.offset.x < 0)
+	{
+		rect.extent.width += rect.offset.x;
+		rect.offset.x = 0;
+	}
+
+	if (rect.offset.y < 0)
+	{
+		rect.extent.height += rect.offset.y;
+		rect.offset.y = 0;
+	}
+
+	// Check for signed overflow without relying on -fwrapv.
+	if (rect.extent.width & 0x80000000u)
+		rect.extent.width = 0;
+	if (rect.extent.height & 0x80000000u)
+		rect.extent.height = 0;
+}
+
 void VideoInterface::set_device(Vulkan::Device *device_)
 {
 	device = device_;
@@ -171,6 +195,59 @@ static VkAccessFlags layout_to_access(VkImageLayout layout)
 	}
 }
 
+inline void VideoInterface::analyze_line(const HorizontalBounds &b, int x_start, int x_add, int h_start, int h_end,
+                                         HorizontalInfo *line)
+{
+	// Clamp horizontal region to [0, 640].
+	bool left_clamp = false;
+	bool right_clamp = false;
+
+	h_start -= b.is_pal ? VI_H_OFFSET_PAL : VI_H_OFFSET_NTSC;
+	h_end -= b.is_pal ? VI_H_OFFSET_PAL : VI_H_OFFSET_NTSC;
+
+	if (h_start < 0)
+	{
+		x_start -= x_add * h_start;
+		h_start = 0;
+		// Reference weirdness that doesn't really make sense.
+		left_clamp = true;
+	}
+
+	if (h_end > VI_SCANOUT_WIDTH)
+	{
+		h_end = VI_SCANOUT_WIDTH;
+		// Reference weirdness that doesn't really make sense.
+		right_clamp = true;
+	}
+
+	int h_start_clamp = h_start + (left_clamp ? 0 : 8);
+	int h_end_clamp = h_end - (right_clamp ? 0 : 7);
+
+	// Effectively, these are bounding boxes.
+	int h_res = h_end - h_start;
+	int max_x = (x_start + h_res * x_add) >> 10;
+	*b.max_x = rdp_max(*b.max_x, max_x);
+	*b.min_x = rdp_min(*b.min_x, (x_start + (h_start_clamp - h_start) * x_add) >> 10);
+	*b.max_x_clamp = rdp_max(*b.max_x_clamp, (x_start + (h_end_clamp - h_start) * x_add + 1023) >> 10);
+	*b.h_start_lo = rdp_min(*b.h_start_lo, h_start);
+	*b.h_end_hi = rdp_max(*b.h_end_hi, h_end);
+	*b.h_start_clamp_lo = rdp_min(*b.h_start_clamp_lo, h_start_clamp);
+	*b.h_end_clamp_hi = rdp_max(*b.h_end_clamp_hi, h_end_clamp);
+
+	if (line)
+	{
+		auto &l = *line;
+		l.h_start = h_start;
+		l.h_start_clamp = h_start_clamp;
+		l.h_end_clamp = h_end_clamp;
+		l.x_start = x_start;
+		l.x_add = x_add;
+		l.y_start = b.y_start;
+		l.y_add = b.y_add;
+		l.y_base = 0; // TODO: If we start adjusting YAdd per scanline, we'll need to begin a new base region.
+	}
+}
+
 VideoInterface::Registers VideoInterface::decode_vi_registers(HorizontalInfoLines *lines) const
 {
 	Registers reg = {};
@@ -245,55 +322,10 @@ VideoInterface::Registers VideoInterface::decode_vi_registers(HorizontalInfoLine
 		}
 	}
 
-	const auto analyze_line = [&](int x_start, int x_add, int h_start, int h_end, HorizontalInfo *line) {
-		// Clamp horizontal region to [0, 640].
-		bool left_clamp = false;
-		bool right_clamp = false;
-
-		h_start -= reg.is_pal ? VI_H_OFFSET_PAL : VI_H_OFFSET_NTSC;
-		h_end -= reg.is_pal ? VI_H_OFFSET_PAL : VI_H_OFFSET_NTSC;
-
-		if (h_start < 0)
-		{
-			x_start -= x_add * h_start;
-			h_start = 0;
-			// Reference weirdness that doesn't really make sense.
-			left_clamp = true;
-		}
-
-		if (h_end > VI_SCANOUT_WIDTH)
-		{
-			h_end = VI_SCANOUT_WIDTH;
-			// Reference weirdness that doesn't really make sense.
-			right_clamp = true;
-		}
-
-		int h_start_clamp = h_start + (left_clamp ? 0 : 8);
-		int h_end_clamp = h_end - (right_clamp ? 0 : 7);
-
-		// Effectively, these are bounding boxes.
-		int h_res = h_end - h_start;
-		int max_x = (x_start + h_res * x_add) >> 10;
-		reg.max_x = rdp_max(reg.max_x, max_x);
-		reg.min_x = rdp_min(reg.min_x, (x_start + (h_start_clamp - h_start) * x_add) >> 10);
-		reg.max_x_clamp = rdp_max(reg.max_x_clamp, (x_start + (h_end_clamp - h_start) * x_add + 1023) >> 10);
-		h_start_lo = rdp_min(h_start_lo, h_start);
-		h_end_hi = rdp_max(h_end_hi, h_end);
-		h_start_clamp_lo = rdp_min(h_start_clamp_lo, h_start_clamp);
-		h_end_clamp_hi = rdp_max(h_end_clamp_hi, h_end_clamp);
-
-		if (line)
-		{
-			auto &l = *line;
-			l.h_start = h_start;
-			l.h_start_clamp = h_start_clamp;
-			l.h_end_clamp = h_end_clamp;
-			l.x_start = x_start;
-			l.x_add = x_add;
-			l.y_start = y_start;
-			l.y_add = y_add;
-			l.y_base = 0; // TODO: If we start adjusting YAdd per scanline, we'll need to begin a new base region.
-		}
+	HorizontalBounds b = {
+		reg.is_pal, y_start, y_add,
+		&h_start_lo, &h_end_hi, &h_start_clamp_lo, &h_end_clamp_hi,
+		&reg.max_x, &reg.min_x, &reg.max_x_clamp,
 	};
 
 	if (degenerate_y || !per_line_state.ended)
@@ -308,7 +340,7 @@ VideoInterface::Registers VideoInterface::decode_vi_registers(HorizontalInfoLine
 		// Need to make sure we update bounding box state for X at least.
 		// This is treated as a degenerate frame, not necessarily invalid frame (null handle).
 		// This is to have same behavior as reference.
-		analyze_line(x_start, x_add, h_start, h_end, &line_info);
+		analyze_line(b, x_start, x_add, h_start, h_end, &line_info);
 
 		if (lines)
 			for (int line = reg.v_start; line < reg.v_start + reg.v_res; line++)
@@ -326,7 +358,7 @@ VideoInterface::Registers VideoInterface::decode_vi_registers(HorizontalInfoLine
 			int h_start = (per_line_state.h_start.line_state[effective_line] >> 16) & 0x3ff;
 			int h_end = per_line_state.h_start.line_state[effective_line] & 0x3ff;
 
-			analyze_line(x_start, x_add, h_start, h_end, lines ? &lines->lines[line] : nullptr);
+			analyze_line(b, x_start, x_add, h_start, h_end, lines ? &lines->lines[line] : nullptr);
 		}
 	}
 
@@ -857,29 +889,6 @@ Vulkan::ImageHandle VideoInterface::scale_stage(Vulkan::CommandBuffer &cmd, cons
 	bind_horizontal_info_view(cmd, lines);
 
 	cmd.push_constants(&push, 0, sizeof(push));
-
-	const auto shift_rect = [](VkRect2D &rect, int x, int y) {
-		rect.offset.x += x;
-		rect.offset.y += y;
-
-		if (rect.offset.x < 0)
-		{
-			rect.extent.width += rect.offset.x;
-			rect.offset.x = 0;
-		}
-
-		if (rect.offset.y < 0)
-		{
-			rect.extent.height += rect.offset.y;
-			rect.offset.y = 0;
-		}
-
-		// Check for signed overflow without relying on -fwrapv.
-		if (rect.extent.width & 0x80000000u)
-			rect.extent.width = 0;
-		if (rect.extent.height & 0x80000000u)
-			rect.extent.height = 0;
-	};
 
 	if (!degenerate && divot_image && regs.h_res > 0 && regs.v_res > 0)
 	{

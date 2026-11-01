@@ -469,10 +469,11 @@ PipelineLayout *Device::request_pipeline_layout(const CombinedResourceLayout &la
 	h.u32(layout.render_target_mask);
 	for (unsigned set = 0; set < VULKAN_NUM_DESCRIPTOR_SETS; set++)
 	{
-		Util::for_each_bit(layout.sets[set].immutable_sampler_mask, [&](unsigned bit) {
+		for (uint32_t bit_bits = layout.sets[set].immutable_sampler_mask, bit; Util::next_bit(bit_bits, bit);)
+		{
 			VK_ASSERT(sampler_bank && sampler_bank->samplers[set][bit]);
 			h.u64(sampler_bank->samplers[set][bit]->get_hash());
-		});
+		}
 	}
 
 	auto hash = h.get();
@@ -488,10 +489,11 @@ DescriptorSetAllocator *Device::request_descriptor_set_allocator(const Descripto
 	Hasher h;
 	h.data(reinterpret_cast<const uint32_t *>(&layout), sizeof(layout));
 	h.data(stages_for_bindings, sizeof(uint32_t) * VULKAN_NUM_BINDINGS);
-	Util::for_each_bit(layout.immutable_sampler_mask, [&](unsigned bit) {
+	for (uint32_t bit_bits = layout.immutable_sampler_mask, bit; Util::next_bit(bit_bits, bit);)
+	{
 		VK_ASSERT(immutable_samplers_ && immutable_samplers_[bit]);
 		h.u64(immutable_samplers_[bit]->get_hash());
-	});
+	}
 	auto hash = h.get();
 
 	auto *ret = descriptor_set_allocators.find(hash);
@@ -538,7 +540,8 @@ void Device::bake_program(Program &program)
 			auto immutable_mask = shader_layout.sets[set].immutable_sampler_mask;
 			layout.sets[set].immutable_sampler_mask |= immutable_mask;
 
-			for_each_bit(immutable_mask, [&](uint32_t binding) {
+			for (uint32_t binding_bits = immutable_mask, binding; Util::next_bit(binding_bits, binding);)
+			{
 				if (ext_immutable_samplers.samplers[set][binding] &&
 				    immutable_bank.samplers[set][binding] != ext_immutable_samplers.samplers[set][binding])
 				{
@@ -549,7 +552,7 @@ void Device::bake_program(Program &program)
 					VK_ASSERT(immutable_bank.samplers[set][binding]);
 					ext_immutable_samplers.samplers[set][binding] = immutable_bank.samplers[set][binding];
 				}
-			});
+			}
 
 			uint32_t active_binds =
 					shader_layout.sets[set].sampled_image_mask |
@@ -565,7 +568,8 @@ void Device::bake_program(Program &program)
 			if (active_binds)
 				layout.stages_for_sets[set] |= stage_mask;
 
-			for_each_bit(active_binds, [&](uint32_t bit) {
+			for (uint32_t bit_bits = active_binds, bit; Util::next_bit(bit_bits, bit);)
+			{
 				layout.stages_for_bindings[set][bit] |= stage_mask;
 
 				auto &combined_size = layout.sets[set].array_size[bit];
@@ -574,7 +578,7 @@ void Device::bake_program(Program &program)
 					LOGE("Mismatch between array sizes in different shaders.\n");
 				else
 					combined_size = shader_size;
-			});
+			}
 		}
 
 		// Merge push constant ranges into one range.

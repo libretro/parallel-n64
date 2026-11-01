@@ -34,6 +34,39 @@ using namespace Util;
 
 namespace Vulkan
 {
+static VkAttachmentReference *find_color(const VkSubpassDescription &sp, unsigned attachment)
+{
+	for (unsigned i = 0; i < sp.colorAttachmentCount; i++)
+		if (sp.pColorAttachments[i].attachment == attachment)
+			return const_cast<VkAttachmentReference *>(&sp.pColorAttachments[i]);
+	return nullptr;
+}
+
+static VkAttachmentReference *find_resolve(const VkSubpassDescription &sp, unsigned attachment)
+{
+	if (!sp.pResolveAttachments)
+		return nullptr;
+	for (unsigned i = 0; i < sp.colorAttachmentCount; i++)
+		if (sp.pResolveAttachments[i].attachment == attachment)
+			return const_cast<VkAttachmentReference *>(&sp.pResolveAttachments[i]);
+	return nullptr;
+}
+
+static VkAttachmentReference *find_input(const VkSubpassDescription &sp, unsigned attachment)
+{
+	for (unsigned i = 0; i < sp.inputAttachmentCount; i++)
+		if (sp.pInputAttachments[i].attachment == attachment)
+			return const_cast<VkAttachmentReference *>(&sp.pInputAttachments[i]);
+	return nullptr;
+}
+
+static VkAttachmentReference *find_depth_stencil(const VkSubpassDescription &sp, unsigned attachment)
+{
+	if (sp.pDepthStencilAttachment->attachment == attachment)
+		return const_cast<VkAttachmentReference *>(sp.pDepthStencilAttachment);
+	return nullptr;
+}
+
 void RenderPass::setup_subpasses(const VkRenderPassCreateInfo &create_info)
 {
 	auto *attachments = create_info.pAttachments;
@@ -416,40 +449,6 @@ RenderPass::RenderPass(Hash hash, Device *device_, const RenderPassInfo &info)
 		}
 	}
 
-	const auto find_color = [&](unsigned subpass, unsigned attachment) -> VkAttachmentReference * {
-		auto *colors = subpasses[subpass].pColorAttachments;
-		for (unsigned i = 0; i < subpasses[subpass].colorAttachmentCount; i++)
-			if (colors[i].attachment == attachment)
-				return const_cast<VkAttachmentReference *>(&colors[i]);
-		return nullptr;
-	};
-
-	const auto find_resolve = [&](unsigned subpass, unsigned attachment) -> VkAttachmentReference * {
-		if (!subpasses[subpass].pResolveAttachments)
-			return nullptr;
-
-		auto *resolves = subpasses[subpass].pResolveAttachments;
-		for (unsigned i = 0; i < subpasses[subpass].colorAttachmentCount; i++)
-			if (resolves[i].attachment == attachment)
-				return const_cast<VkAttachmentReference *>(&resolves[i]);
-		return nullptr;
-	};
-
-	const auto find_input = [&](unsigned subpass, unsigned attachment) -> VkAttachmentReference * {
-		auto *inputs = subpasses[subpass].pInputAttachments;
-		for (unsigned i = 0; i < subpasses[subpass].inputAttachmentCount; i++)
-			if (inputs[i].attachment == attachment)
-				return const_cast<VkAttachmentReference *>(&inputs[i]);
-		return nullptr;
-	};
-
-	const auto find_depth_stencil = [&](unsigned subpass, unsigned attachment) -> VkAttachmentReference * {
-		if (subpasses[subpass].pDepthStencilAttachment->attachment == attachment)
-			return const_cast<VkAttachmentReference *>(subpasses[subpass].pDepthStencilAttachment);
-		else
-			return nullptr;
-	};
-
 	// Now, figure out how each attachment is used throughout the subpasses.
 	// Either we don't care (inherit previous pass), or we need something specific.
 	// Start with initial layouts.
@@ -482,10 +481,10 @@ RenderPass::RenderPass(Hash hash, Device *device_, const RenderPassInfo &info)
 		auto current_layout = attachments[attachment].initialLayout;
 		for (unsigned subpass = 0; subpass < num_subpasses; subpass++)
 		{
-			auto *color = find_color(subpass, attachment);
-			auto *resolve = find_resolve(subpass, attachment);
-			auto *input = find_input(subpass, attachment);
-			auto *depth = find_depth_stencil(subpass, attachment);
+			auto *color = find_color(subpasses[subpass], attachment);
+			auto *resolve = find_resolve(subpasses[subpass], attachment);
+			auto *input = find_input(subpasses[subpass], attachment);
+			auto *depth = find_depth_stencil(subpasses[subpass], attachment);
 
 			// Sanity check.
 			if (color || resolve)
@@ -711,8 +710,8 @@ RenderPass::RenderPass(Hash hash, Device *device_, const RenderPassInfo &info)
 	rp_info.attachmentCount = num_attachments;
 
 	// Add external subpass dependencies.
-	for_each_bit(external_color_dependencies | external_depth_dependencies | external_input_dependencies,
-	             [&](unsigned subpass) {
+	for (uint32_t subpass_bits = external_color_dependencies | external_depth_dependencies | external_input_dependencies, subpass; Util::next_bit(subpass_bits, subpass);)
+	{
 		             external_dependencies.emplace_back();
 		             auto &dep = external_dependencies.back();
 		             dep.srcSubpass = VK_SUBPASS_EXTERNAL;
@@ -746,10 +745,11 @@ RenderPass::RenderPass(Hash hash, Device *device_, const RenderPassInfo &info)
 			                                  VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
 			             dep.dstAccessMask |= VK_ACCESS_INPUT_ATTACHMENT_READ_BIT;
 		             }
-	             });
+	             }
 
 	// Queue up self-dependencies (COLOR | DEPTH) -> INPUT.
-	for_each_bit(color_self_dependencies | depth_self_dependencies, [&](unsigned subpass) {
+	for (uint32_t subpass_bits = color_self_dependencies | depth_self_dependencies, subpass; Util::next_bit(subpass_bits, subpass);)
+	{
 		external_dependencies.emplace_back();
 		auto &dep = external_dependencies.back();
 		dep.srcSubpass = subpass;
@@ -772,7 +772,7 @@ RenderPass::RenderPass(Hash hash, Device *device_, const RenderPassInfo &info)
 
 		dep.dstStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
 		dep.dstAccessMask = VK_ACCESS_INPUT_ATTACHMENT_READ_BIT;
-	});
+	}
 
 	// Flush and invalidate caches between each subpass.
 	for (unsigned subpass = 1; subpass < num_subpasses; subpass++)

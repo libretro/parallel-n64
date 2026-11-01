@@ -229,6 +229,19 @@ private:
 	};
 
 	Registers decode_vi_registers(HorizontalInfoLines *lines) const;
+
+	// Horizontal bounding boxes gathered over the scanlines.
+	// Points at the caller's accumulators, as a by-reference capture
+	// would: separate scalars keep GCC from vectorizing four min/max.
+	struct HorizontalBounds
+	{
+		bool is_pal;
+		int y_start, y_add;
+		int *h_start_lo, *h_end_hi, *h_start_clamp_lo, *h_end_clamp_hi;
+		int *max_x, *min_x, *max_x_clamp;
+	};
+	static void analyze_line(const HorizontalBounds &b, int x_start, int x_add, int h_start, int h_end,
+	                         HorizontalInfo *line);
 	void clear_per_scanline_state();
 
 	Vulkan::ImageHandle vram_fetch_stage(const Registers &registers,

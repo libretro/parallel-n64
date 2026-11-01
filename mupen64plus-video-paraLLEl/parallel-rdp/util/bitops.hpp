@@ -61,36 +61,37 @@ static inline uint32_t ctz(uint32_t x)
 #error "Implement me."
 #endif
 
-template <typename T>
-inline void for_each_bit(uint32_t value, const T &func)
+// Iterates set bits, or runs of set bits:
+//   for (uint32_t bits = mask, bit; next_bit(bits, bit);)
+//   for (uint32_t bits = mask, base = 0, off, count; next_bit_range(bits, base, off, count);)
+static inline bool next_bit(uint32_t &bits, uint32_t &bit)
 {
-	while (value)
-	{
-		uint32_t bit = trailing_zeroes(value);
-		func(bit);
-		value &= ~(1u << bit);
-	}
+	if (!bits)
+		return false;
+	bit = trailing_zeroes(bits);
+	bits &= bits - 1;
+	return true;
 }
 
-template <typename T>
-inline void for_each_bit_range(uint32_t value, const T &func)
+static inline bool next_bit_range(uint32_t &bits, uint32_t &base, uint32_t &offset, uint32_t &count)
 {
-	if (value == ~0u)
+	uint32_t bit;
+	if (!bits)
+		return false;
+	if (bits == ~0u)
 	{
-		func(0, 32);
-		return;
+		offset = 0;
+		count = 32;
+		bits = 0;
+		return true;
 	}
-
-	uint32_t bit_offset = 0;
-	while (value)
-	{
-		uint32_t bit = trailing_zeroes(value);
-		bit_offset += bit;
-		value >>= bit;
-		uint32_t range = trailing_ones(value);
-		func(bit_offset, range);
-		value &= ~((1u << range) - 1);
-	}
+	bit = trailing_zeroes(bits);
+	base += bit;
+	bits >>= bit;
+	count = trailing_ones(bits);
+	offset = base;
+	bits &= ~((1u << count) - 1);
+	return true;
 }
 
 template <typename T>

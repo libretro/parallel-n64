@@ -107,7 +107,8 @@ void PipelineLayout::create_update_templates()
 
 		auto &set_layout = layout.sets[desc_set];
 
-		for_each_bit(set_layout.uniform_buffer_mask, [&](uint32_t binding) {
+		for (uint32_t binding_bits = set_layout.uniform_buffer_mask, binding; Util::next_bit(binding_bits, binding);)
+		{
 			unsigned array_size = set_layout.array_size[binding];
 			VK_ASSERT(update_count < VULKAN_NUM_BINDINGS);
 			auto &entry = update_entries[update_count++];
@@ -117,9 +118,10 @@ void PipelineLayout::create_update_templates()
 			entry.descriptorCount = array_size;
 			entry.offset = offsetof(ResourceBinding, buffer) + sizeof(ResourceBinding) * binding;
 			entry.stride = sizeof(ResourceBinding);
-		});
+		}
 
-		for_each_bit(set_layout.storage_buffer_mask, [&](uint32_t binding) {
+		for (uint32_t binding_bits = set_layout.storage_buffer_mask, binding; Util::next_bit(binding_bits, binding);)
+		{
 			unsigned array_size = set_layout.array_size[binding];
 			VK_ASSERT(update_count < VULKAN_NUM_BINDINGS);
 			auto &entry = update_entries[update_count++];
@@ -129,9 +131,10 @@ void PipelineLayout::create_update_templates()
 			entry.descriptorCount = array_size;
 			entry.offset = offsetof(ResourceBinding, buffer) + sizeof(ResourceBinding) * binding;
 			entry.stride = sizeof(ResourceBinding);
-		});
+		}
 
-		for_each_bit(set_layout.sampled_texel_buffer_mask, [&](uint32_t binding) {
+		for (uint32_t binding_bits = set_layout.sampled_texel_buffer_mask, binding; Util::next_bit(binding_bits, binding);)
+		{
 			unsigned array_size = set_layout.array_size[binding];
 			VK_ASSERT(update_count < VULKAN_NUM_BINDINGS);
 			auto &entry = update_entries[update_count++];
@@ -141,9 +144,10 @@ void PipelineLayout::create_update_templates()
 			entry.descriptorCount = array_size;
 			entry.offset = offsetof(ResourceBinding, buffer_view) + sizeof(ResourceBinding) * binding;
 			entry.stride = sizeof(ResourceBinding);
-		});
+		}
 
-		for_each_bit(set_layout.storage_texel_buffer_mask, [&](uint32_t binding) {
+		for (uint32_t binding_bits = set_layout.storage_texel_buffer_mask, binding; Util::next_bit(binding_bits, binding);)
+		{
 			unsigned array_size = set_layout.array_size[binding];
 			VK_ASSERT(update_count < VULKAN_NUM_BINDINGS);
 			auto &entry = update_entries[update_count++];
@@ -153,9 +157,10 @@ void PipelineLayout::create_update_templates()
 			entry.descriptorCount = array_size;
 			entry.offset = offsetof(ResourceBinding, buffer_view) + sizeof(ResourceBinding) * binding;
 			entry.stride = sizeof(ResourceBinding);
-		});
+		}
 
-		for_each_bit(set_layout.sampled_image_mask, [&](uint32_t binding) {
+		for (uint32_t binding_bits = set_layout.sampled_image_mask, binding; Util::next_bit(binding_bits, binding);)
+		{
 			unsigned array_size = set_layout.array_size[binding];
 			VK_ASSERT(update_count < VULKAN_NUM_BINDINGS);
 			auto &entry = update_entries[update_count++];
@@ -168,9 +173,10 @@ void PipelineLayout::create_update_templates()
 			else
 				entry.offset = offsetof(ResourceBinding, image.integer) + sizeof(ResourceBinding) * binding;
 			entry.stride = sizeof(ResourceBinding);
-		});
+		}
 
-		for_each_bit(set_layout.separate_image_mask, [&](uint32_t binding) {
+		for (uint32_t binding_bits = set_layout.separate_image_mask, binding; Util::next_bit(binding_bits, binding);)
+		{
 			unsigned array_size = set_layout.array_size[binding];
 			VK_ASSERT(update_count < VULKAN_NUM_BINDINGS);
 			auto &entry = update_entries[update_count++];
@@ -183,9 +189,10 @@ void PipelineLayout::create_update_templates()
 			else
 				entry.offset = offsetof(ResourceBinding, image.integer) + sizeof(ResourceBinding) * binding;
 			entry.stride = sizeof(ResourceBinding);
-		});
+		}
 
-		for_each_bit(set_layout.sampler_mask & ~set_layout.immutable_sampler_mask, [&](uint32_t binding) {
+		for (uint32_t binding_bits = set_layout.sampler_mask & ~set_layout.immutable_sampler_mask, binding; Util::next_bit(binding_bits, binding);)
+		{
 			unsigned array_size = set_layout.array_size[binding];
 			VK_ASSERT(update_count < VULKAN_NUM_BINDINGS);
 			auto &entry = update_entries[update_count++];
@@ -195,9 +202,10 @@ void PipelineLayout::create_update_templates()
 			entry.descriptorCount = array_size;
 			entry.offset = offsetof(ResourceBinding, image.fp) + sizeof(ResourceBinding) * binding;
 			entry.stride = sizeof(ResourceBinding);
-		});
+		}
 
-		for_each_bit(set_layout.storage_image_mask, [&](uint32_t binding) {
+		for (uint32_t binding_bits = set_layout.storage_image_mask, binding; Util::next_bit(binding_bits, binding);)
+		{
 			unsigned array_size = set_layout.array_size[binding];
 			VK_ASSERT(update_count < VULKAN_NUM_BINDINGS);
 			auto &entry = update_entries[update_count++];
@@ -210,9 +218,10 @@ void PipelineLayout::create_update_templates()
 			else
 				entry.offset = offsetof(ResourceBinding, image.integer) + sizeof(ResourceBinding) * binding;
 			entry.stride = sizeof(ResourceBinding);
-		});
+		}
 
-		for_each_bit(set_layout.input_attachment_mask, [&](uint32_t binding) {
+		for (uint32_t binding_bits = set_layout.input_attachment_mask, binding; Util::next_bit(binding_bits, binding);)
+		{
 			unsigned array_size = set_layout.array_size[binding];
 			VK_ASSERT(update_count < VULKAN_NUM_BINDINGS);
 			auto &entry = update_entries[update_count++];
@@ -225,7 +234,7 @@ void PipelineLayout::create_update_templates()
 			else
 				entry.offset = offsetof(ResourceBinding, image.integer) + sizeof(ResourceBinding) * binding;
 			entry.stride = sizeof(ResourceBinding);
-		});
+		}
 
 		VkDescriptorUpdateTemplateCreateInfo info = {VK_STRUCTURE_TYPE_DESCRIPTOR_UPDATE_TEMPLATE_CREATE_INFO };
 		info.pipelineLayout = pipe_layout;
@@ -356,10 +365,11 @@ Shader::Shader(Hash hash, Device *device_, const uint32_t *data, size_t size,
 
 	for (unsigned set = 0; set < VULKAN_NUM_DESCRIPTOR_SETS; set++)
 	{
-		for_each_bit(layout.sets[set].sampler_mask | layout.sets[set].sampled_image_mask, [&](unsigned binding) {
+		for (uint32_t binding_bits = layout.sets[set].sampler_mask | layout.sets[set].sampled_image_mask, binding; Util::next_bit(binding_bits, binding);)
+		{
 			if (sampler_bank && sampler_bank->samplers[set][binding])
 				layout.sets[set].immutable_sampler_mask |= 1u << binding;
-		});
+		}
 	}
 
 	if (layout.bindless_set_mask != 0 && !device->get_device_features().supports_descriptor_indexing)

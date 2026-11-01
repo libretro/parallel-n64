@@ -33,6 +33,11 @@
 
 namespace RDP
 {
+static size_t div_round_up(size_t a, size_t b)
+{
+	return (a + b - 1) / b;
+}
+
 namespace
 {
 struct PipelineNode : mpsc_stack_node_t
@@ -700,8 +705,6 @@ void Renderer::set_rdram(Vulkan::Buffer *buffer, uint8_t *host_rdram, size_t off
 		info.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
 		incoherent.staging_rdram = device->create_buffer(info);
 		device->set_name(*incoherent.staging_rdram, "staging-rdram");
-
-		const auto div_round_up = [](size_t a, size_t b) -> size_t { return (a + b - 1) / b; };
 
 		if (!rdram->get_allocation().is_host_allocation())
 		{
@@ -2500,10 +2503,11 @@ void Renderer::submit_to_queue()
 		}
 	}
 
-	Util::for_each_bit(sync_indices_needs_flush, [&](unsigned bit) {
+	for (uint32_t bit_bits = sync_indices_needs_flush, bit; Util::next_bit(bit_bits, bit);)
+	{
 		auto &sync = internal_sync[bit];
 		sync.fence = fence;
-	});
+	}
 	sync_indices_needs_flush = 0;
 	stream.cmd.reset();
 }
@@ -2659,7 +2663,8 @@ void Renderer::resolve_coherency_gpu_to_host(CoherencyOperation &op, Vulkan::Com
 			uint32_t &readback = incoherent.page_to_pending_readback[word];
 			uint32_t base_index = 32 * word;
 
-			Util::for_each_bit_range(readback, [&](unsigned index, unsigned count) {
+			for (uint32_t index_bits = readback, index_base = 0, index, count; Util::next_bit_range(index_bits, index_base, index, count);)
+			{
 				index += base_index;
 
 				for (unsigned i = 0; i < count; i++)
@@ -2673,7 +2678,7 @@ void Renderer::resolve_coherency_gpu_to_host(CoherencyOperation &op, Vulkan::Com
 				coherent_copy.dst_offset = index * ImplementationConstants::IncoherentPageSize;
 				coherent_copy.size = ImplementationConstants::IncoherentPageSize * count;
 				op.copies[op.num_copies++] = coherent_copy;
-			});
+			}
 
 			readback = 0;
 		}
@@ -2692,7 +2697,8 @@ void Renderer::resolve_coherency_gpu_to_host(CoherencyOperation &op, Vulkan::Com
 			uint32_t &readback = incoherent.page_to_pending_readback[word];
 			uint32_t base_index = 32 * word;
 
-			Util::for_each_bit_range(readback, [&](unsigned index, unsigned count) {
+			for (uint32_t index_bits = readback, index_base = 0, index, count; Util::next_bit_range(index_bits, index_base, index, count);)
+			{
 				index += base_index;
 
 				for (unsigned i = 0; i < count; i++)
@@ -2743,7 +2749,7 @@ void Renderer::resolve_coherency_gpu_to_host(CoherencyOperation &op, Vulkan::Com
 				coherent_copy.mask_offset = mask_copy.dstOffset;
 
 				op.copies[op.num_copies++] = coherent_copy;
-			});
+			}
 
 			readback = 0;
 		}
@@ -2869,12 +2875,13 @@ void Renderer::resolve_coherency_host_to_gpu(Vulkan::CommandBuffer &cmd)
 		{
 			uint32_t &direct = incoherent.page_to_direct_copy[word];
 			uint32_t base_index = 32 * word;
-			Util::for_each_bit_range(direct, [&](unsigned index, unsigned count) {
+			for (uint32_t index_bits = direct, index_base = 0, index, count; Util::next_bit_range(index_bits, index_base, index, count);)
+			{
 				index += base_index;
 				if (incoherent.compare_before_upload)
 				{
 					upload_pages_compared(index, count);
-					return;
+					continue;
 				}
 				auto *mapped_rdram = device->map_host_buffer(*rdram, Vulkan::MEMORY_ACCESS_WRITE_BIT,
 				                                             ImplementationConstants::IncoherentPageSize * index,
@@ -2896,7 +2903,7 @@ void Renderer::resolve_coherency_host_to_gpu(Vulkan::CommandBuffer &cmd)
 				device->unmap_host_buffer(*rdram, Vulkan::MEMORY_ACCESS_WRITE_BIT,
 				                          ImplementationConstants::IncoherentPageSize * index + rdram_size,
 				                          ImplementationConstants::IncoherentPageSize * count);
-			});
+			}
 			direct = 0;
 		}
 
@@ -2907,13 +2914,14 @@ void Renderer::resolve_coherency_host_to_gpu(Vulkan::CommandBuffer &cmd)
 		{
 			uint32_t &indirect = incoherent.page_to_masked_copy[word];
 			uint32_t base_index = 32 * word;
-			Util::for_each_bit(indirect, [&](unsigned index) {
+			for (uint32_t index_bits = indirect, index; Util::next_bit(index_bits, index);)
+			{
 				index += base_index;
 				masked_page_copies.push_back(index);
 				memcpy(mapped_staging + ImplementationConstants::IncoherentPageSize * index,
 				       incoherent.host_rdram + ImplementationConstants::IncoherentPageSize * index,
 				       ImplementationConstants::IncoherentPageSize);
-			});
+			}
 			indirect = 0;
 		}
 
@@ -2928,7 +2936,8 @@ void Renderer::resolve_coherency_host_to_gpu(Vulkan::CommandBuffer &cmd)
 		{
 			uint32_t base_index = 32 * i;
 			uint32_t tmp = incoherent.page_to_masked_copy[i] | incoherent.page_to_direct_copy[i];
-			Util::for_each_bit(tmp, [&](unsigned index) {
+			for (uint32_t index_bits = tmp, index; Util::next_bit(index_bits, index);)
+			{
 				unsigned bit = index;
 				index += base_index;
 
@@ -2946,7 +2955,7 @@ void Renderer::resolve_coherency_host_to_gpu(Vulkan::CommandBuffer &cmd)
 				memcpy(mapped_rdram + ImplementationConstants::IncoherentPageSize * index,
 				       incoherent.host_rdram + ImplementationConstants::IncoherentPageSize * index,
 				       ImplementationConstants::IncoherentPageSize);
-			});
+			}
 
 			incoherent.page_to_masked_copy[i] = 0;
 			incoherent.page_to_direct_copy[i] = 0;

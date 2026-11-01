@@ -32,6 +32,15 @@
 
 namespace Vulkan
 {
+static void log_heap_budget(uint32_t size, const HeapBudget &budget)
+{
+	LOGW("  Size: %u MiB.\n", unsigned(size / (1024 * 1024)));
+	LOGW("  Device usage: %u MiB.\n", unsigned(budget.device_usage / (1024 * 1024)));
+	LOGW("  Tracked usage: %u MiB.\n", unsigned(budget.tracked_usage / (1024 * 1024)));
+	LOGW("  Budget size: %u MiB.\n", unsigned(budget.budget_size / (1024 * 1024)));
+	LOGW("  Max size: %u MiB.\n", unsigned(budget.max_size / (1024 * 1024)));
+}
+
 void DeviceAllocation::free_immediate()
 {
 	if (!alloc)
@@ -613,20 +622,11 @@ bool DeviceAllocator::internal_allocate(
 		     double(budgets[heap_index].max_size) / double(1024 * 1024));
 #endif
 
-		const auto log_heap_index = [&]()
-		{
-			LOGW("  Size: %u MiB.\n", unsigned(size / (1024 * 1024)));
-			LOGW("  Device usage: %u MiB.\n", unsigned(budgets[heap_index].device_usage / (1024 * 1024)));
-			LOGW("  Tracked usage: %u MiB.\n", unsigned(budgets[heap_index].tracked_usage / (1024 * 1024)));
-			LOGW("  Budget size: %u MiB.\n", unsigned(budgets[heap_index].budget_size / (1024 * 1024)));
-			LOGW("  Max size: %u MiB.\n", unsigned(budgets[heap_index].max_size / (1024 * 1024)));
-		};
-
 		// If we're going to blow out the budget, we should recycle a bit.
 		if (budgets[heap_index].device_usage + size >= budgets[heap_index].budget_size)
 		{
 			LOGW("Will exceed memory budget, cleaning up ...\n");
-			log_heap_index();
+			log_heap_budget(size, budgets[heap_index]);
 			heap.garbage_collect(device);
 		}
 
@@ -636,7 +636,7 @@ bool DeviceAllocator::internal_allocate(
 			LOGW("Even after garbage collection, we will exceed budget ...\n");
 			if (memory_heap_is_budget_critical[heap_index])
 				return false;
-			log_heap_index();
+			log_heap_budget(size, budgets[heap_index]);
 		}
 	}
 

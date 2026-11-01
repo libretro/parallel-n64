@@ -39,6 +39,17 @@ using namespace Util;
 
 namespace Vulkan
 {
+static VkOffset3D add_offset(const VkOffset3D &a, const VkOffset3D &b)
+{
+	VkOffset3D o = { a.x + b.x, a.y + b.y, a.z + b.z };
+	return o;
+}
+
+static bool needs_blend_constant(VkBlendFactor factor)
+{
+	return factor == VK_BLEND_FACTOR_CONSTANT_COLOR || factor == VK_BLEND_FACTOR_CONSTANT_ALPHA;
+}
+
 static inline uint32_t get_combined_spec_constant_mask(const DeferredPipelineCompile &compile)
 {
 	return compile.potential_static_state.spec_constant_mask |
@@ -564,10 +575,6 @@ void CommandBuffer::blit_image(const Image &dst, const Image &src,
                                unsigned dst_level, unsigned src_level, unsigned dst_base_layer, unsigned src_base_layer,
                                unsigned num_layers, VkFilter filter)
 {
-	const auto add_offset = [](const VkOffset3D &a, const VkOffset3D &b) -> VkOffset3D {
-		return { a.x + b.x, a.y + b.y, a.z + b.z };
-	};
-
 #if 0
 	const VkImageBlit blit = {
 		{ format_to_aspect_mask(src.get_create_info().format), src_level, src_base_layer, num_layers },
@@ -935,7 +942,8 @@ Pipeline CommandBuffer::build_compute_pipeline(Device *device, const DeferredPip
 		spec_info.pData = spec_constants;
 		spec_info.pMapEntries = spec_entries;
 
-		for_each_bit(mask, [&](uint32_t bit) {
+		for (uint32_t bit_bits = mask, bit; Util::next_bit(bit_bits, bit);)
+		{
 			auto &entry = spec_entries[spec_info.mapEntryCount];
 			entry.offset = sizeof(uint32_t) * spec_info.mapEntryCount;
 			entry.size = sizeof(uint32_t);
@@ -943,7 +951,7 @@ Pipeline CommandBuffer::build_compute_pipeline(Device *device, const DeferredPip
 
 			spec_constants[spec_info.mapEntryCount] = compile.potential_static_state.spec_constants[bit];
 			spec_info.mapEntryCount++;
-		});
+		}
 		spec_info.dataSize = spec_info.mapEntryCount * sizeof(uint32_t);
 	}
 
@@ -1126,23 +1134,25 @@ Pipeline CommandBuffer::build_graphics_pipeline(Device *device, const DeferredPi
 	vi.pVertexAttributeDescriptions = vi_attribs;
 	uint32_t attr_mask = compile.program->get_pipeline_layout()->get_resource_layout().attribute_mask;
 	uint32_t binding_mask = 0;
-	for_each_bit(attr_mask, [&](uint32_t bit) {
+	for (uint32_t bit_bits = attr_mask, bit; Util::next_bit(bit_bits, bit);)
+	{
 		auto &attr = vi_attribs[vi.vertexAttributeDescriptionCount++];
 		attr.location = bit;
 		attr.binding = compile.attribs[bit].binding;
 		attr.format = compile.attribs[bit].format;
 		attr.offset = compile.attribs[bit].offset;
 		binding_mask |= 1u << attr.binding;
-	});
+	}
 
 	VkVertexInputBindingDescription vi_bindings[VULKAN_NUM_VERTEX_BUFFERS];
 	vi.pVertexBindingDescriptions = vi_bindings;
-	for_each_bit(binding_mask, [&](uint32_t bit) {
+	for (uint32_t bit_bits = binding_mask, bit; Util::next_bit(bit_bits, bit);)
+	{
 		auto &bind = vi_bindings[vi.vertexBindingDescriptionCount++];
 		bind.binding = bit;
 		bind.inputRate = compile.input_rates[bit];
 		bind.stride = compile.strides[bit];
-	});
+	}
 
 	// Input assembly
 	VkPipelineInputAssemblyStateCreateInfo ia = { VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO };
@@ -1214,14 +1224,15 @@ Pipeline CommandBuffer::build_graphics_pipeline(Device *device, const DeferredPi
 				spec_info[i].pData = spec_constants[i];
 				spec_info[i].pMapEntries = spec_entries[i];
 
-				for_each_bit(mask, [&](uint32_t bit) {
+				for (uint32_t bit_bits = mask, bit; Util::next_bit(bit_bits, bit);)
+				{
 					auto &entry = spec_entries[i][spec_info[i].mapEntryCount];
 					entry.offset = sizeof(uint32_t) * spec_info[i].mapEntryCount;
 					entry.size = sizeof(uint32_t);
 					entry.constantID = bit;
 					spec_constants[i][spec_info[i].mapEntryCount] = compile.potential_static_state.spec_constants[bit];
 					spec_info[i].mapEntryCount++;
-				});
+				}
 				spec_info[i].dataSize = spec_info[i].mapEntryCount * sizeof(uint32_t);
 			}
 		}
@@ -1293,9 +1304,10 @@ void CommandBuffer::update_hash_compute_pipeline(DeferredPipelineCompile &compil
 	uint32_t combined_spec_constant = layout.combined_spec_constant_mask;
 	combined_spec_constant &= get_combined_spec_constant_mask(compile);
 	h.u32(combined_spec_constant);
-	for_each_bit(combined_spec_constant, [&](uint32_t bit) {
+	for (uint32_t bit_bits = combined_spec_constant, bit; Util::next_bit(bit_bits, bit);)
+	{
 		h.u32(compile.potential_static_state.spec_constants[bit]);
-	});
+	}
 
 	if (compile.static_state.state.subgroup_control_size)
 	{
@@ -1318,18 +1330,20 @@ void CommandBuffer::update_hash_graphics_pipeline(DeferredPipelineCompile &compi
 	Hasher h;
 	active_vbos = 0;
 	auto &layout = compile.program->get_pipeline_layout()->get_resource_layout();
-	for_each_bit(layout.attribute_mask, [&](uint32_t bit) {
+	for (uint32_t bit_bits = layout.attribute_mask, bit; Util::next_bit(bit_bits, bit);)
+	{
 		h.u32(bit);
 		active_vbos |= 1u << compile.attribs[bit].binding;
 		h.u32(compile.attribs[bit].binding);
 		h.u32(compile.attribs[bit].format);
 		h.u32(compile.attribs[bit].offset);
-	});
+	}
 
-	for_each_bit(active_vbos, [&](uint32_t bit) {
+	for (uint32_t bit_bits = active_vbos, bit; Util::next_bit(bit_bits, bit);)
+	{
 		h.u32(compile.input_rates[bit]);
 		h.u32(compile.strides[bit]);
-	});
+	}
 
 	h.u64(compile.compatible_render_pass->get_hash());
 	h.u32(compile.subpass_index);
@@ -1338,9 +1352,6 @@ void CommandBuffer::update_hash_graphics_pipeline(DeferredPipelineCompile &compi
 
 	if (compile.static_state.state.blend_enable)
 	{
-		const auto needs_blend_constant = [](VkBlendFactor factor) {
-			return factor == VK_BLEND_FACTOR_CONSTANT_COLOR || factor == VK_BLEND_FACTOR_CONSTANT_ALPHA;
-		};
 		bool b0 = needs_blend_constant(static_cast<VkBlendFactor>(compile.static_state.state.src_color_blend));
 		bool b1 = needs_blend_constant(static_cast<VkBlendFactor>(compile.static_state.state.src_alpha_blend));
 		bool b2 = needs_blend_constant(static_cast<VkBlendFactor>(compile.static_state.state.dst_color_blend));
@@ -1354,9 +1365,10 @@ void CommandBuffer::update_hash_graphics_pipeline(DeferredPipelineCompile &compi
 	uint32_t combined_spec_constant = layout.combined_spec_constant_mask;
 	combined_spec_constant &= get_combined_spec_constant_mask(compile);
 	h.u32(combined_spec_constant);
-	for_each_bit(combined_spec_constant, [&](uint32_t bit) {
+	for (uint32_t bit_bits = combined_spec_constant, bit; Util::next_bit(bit_bits, bit);)
+	{
 		h.u32(compile.potential_static_state.spec_constants[bit]);
-	});
+	}
 
 	compile.hash = h.get();
 }
@@ -1506,13 +1518,14 @@ bool CommandBuffer::flush_render_state(bool synchronous)
 	}
 
 	uint32_t update_vbo_mask = dirty_vbos & active_vbos;
-	for_each_bit_range(update_vbo_mask, [&](uint32_t binding, uint32_t binding_count) {
+	for (uint32_t binding_bits = update_vbo_mask, binding_base = 0, binding, binding_count; Util::next_bit_range(binding_bits, binding_base, binding, binding_count);)
+	{
 #ifdef VULKAN_DEBUG
 		for (unsigned i = binding; i < binding + binding_count; i++)
 			VK_ASSERT(vbo.buffers[i] != VK_NULL_HANDLE);
 #endif
 		table.vkCmdBindVertexBuffers(cmd, binding, binding_count, vbo.buffers + binding, vbo.offsets + binding);
-	});
+	}
 	dirty_vbos &= ~update_vbo_mask;
 
 	return true;
@@ -2039,14 +2052,15 @@ void CommandBuffer::rebind_descriptor_set(uint32_t set)
 	uint32_t dynamic_offsets[VULKAN_NUM_BINDINGS];
 
 	// UBOs
-	for_each_bit(set_layout.uniform_buffer_mask, [&](uint32_t binding) {
+	for (uint32_t binding_bits = set_layout.uniform_buffer_mask, binding; Util::next_bit(binding_bits, binding);)
+	{
 		unsigned array_size = set_layout.array_size[binding];
 		for (unsigned i = 0; i < array_size; i++)
 		{
 			VK_ASSERT(num_dynamic_offsets < VULKAN_NUM_BINDINGS);
 			dynamic_offsets[num_dynamic_offsets++] = bindings.bindings[set][binding + i].dynamic_offset;
 		}
-	});
+	}
 
 	table.vkCmdBindDescriptorSets(cmd, actual_render_pass ? VK_PIPELINE_BIND_POINT_GRAPHICS : VK_PIPELINE_BIND_POINT_COMPUTE,
 	                              current_pipeline_layout, set, 1, &allocated_sets[set], num_dynamic_offsets, dynamic_offsets);
@@ -2071,7 +2085,8 @@ void CommandBuffer::flush_descriptor_set(uint32_t set)
 	h.u32(set_layout.fp_mask);
 
 	// UBOs
-	for_each_bit(set_layout.uniform_buffer_mask, [&](uint32_t binding) {
+	for (uint32_t binding_bits = set_layout.uniform_buffer_mask, binding; Util::next_bit(binding_bits, binding);)
+	{
 		unsigned array_size = set_layout.array_size[binding];
 		for (unsigned i = 0; i < array_size; i++)
 		{
@@ -2082,10 +2097,11 @@ void CommandBuffer::flush_descriptor_set(uint32_t set)
 			VK_ASSERT(num_dynamic_offsets < VULKAN_NUM_BINDINGS);
 			dynamic_offsets[num_dynamic_offsets++] = bindings.bindings[set][binding + i].dynamic_offset;
 		}
-	});
+	}
 
 	// SSBOs
-	for_each_bit(set_layout.storage_buffer_mask, [&](uint32_t binding) {
+	for (uint32_t binding_bits = set_layout.storage_buffer_mask, binding; Util::next_bit(binding_bits, binding);)
+	{
 		unsigned array_size = set_layout.array_size[binding];
 		for (unsigned i = 0; i < array_size; i++)
 		{
@@ -2094,20 +2110,22 @@ void CommandBuffer::flush_descriptor_set(uint32_t set)
 			h.u32(bindings.bindings[set][binding + i].buffer.range);
 			VK_ASSERT(bindings.bindings[set][binding + i].buffer.buffer != VK_NULL_HANDLE);
 		}
-	});
+	}
 
 	// Texel buffers
-	for_each_bit(set_layout.sampled_texel_buffer_mask | set_layout.storage_texel_buffer_mask, [&](uint32_t binding) {
+	for (uint32_t binding_bits = set_layout.sampled_texel_buffer_mask | set_layout.storage_texel_buffer_mask, binding; Util::next_bit(binding_bits, binding);)
+	{
 		unsigned array_size = set_layout.array_size[binding];
 		for (unsigned i = 0; i < array_size; i++)
 		{
 			h.u64(bindings.cookies[set][binding + i]);
 			VK_ASSERT(bindings.bindings[set][binding + i].buffer_view != VK_NULL_HANDLE);
 		}
-	});
+	}
 
 	// Sampled images
-	for_each_bit(set_layout.sampled_image_mask, [&](uint32_t binding) {
+	for (uint32_t binding_bits = set_layout.sampled_image_mask, binding; Util::next_bit(binding_bits, binding);)
+	{
 		unsigned array_size = set_layout.array_size[binding];
 		for (unsigned i = 0; i < array_size; i++)
 		{
@@ -2120,10 +2138,11 @@ void CommandBuffer::flush_descriptor_set(uint32_t set)
 			h.u32(bindings.bindings[set][binding + i].image.fp.imageLayout);
 			VK_ASSERT(bindings.bindings[set][binding + i].image.fp.imageView != VK_NULL_HANDLE);
 		}
-	});
+	}
 
 	// Separate images
-	for_each_bit(set_layout.separate_image_mask, [&](uint32_t binding) {
+	for (uint32_t binding_bits = set_layout.separate_image_mask, binding; Util::next_bit(binding_bits, binding);)
+	{
 		unsigned array_size = set_layout.array_size[binding];
 		for (unsigned i = 0; i < array_size; i++)
 		{
@@ -2131,20 +2150,22 @@ void CommandBuffer::flush_descriptor_set(uint32_t set)
 			h.u32(bindings.bindings[set][binding + i].image.fp.imageLayout);
 			VK_ASSERT(bindings.bindings[set][binding + i].image.fp.imageView != VK_NULL_HANDLE);
 		}
-	});
+	}
 
 	// Separate samplers
-	for_each_bit(set_layout.sampler_mask & ~set_layout.immutable_sampler_mask, [&](uint32_t binding) {
+	for (uint32_t binding_bits = set_layout.sampler_mask & ~set_layout.immutable_sampler_mask, binding; Util::next_bit(binding_bits, binding);)
+	{
 		unsigned array_size = set_layout.array_size[binding];
 		for (unsigned i = 0; i < array_size; i++)
 		{
 			h.u64(bindings.secondary_cookies[set][binding + i]);
 			VK_ASSERT(bindings.bindings[set][binding + i].image.fp.sampler != VK_NULL_HANDLE);
 		}
-	});
+	}
 
 	// Storage images
-	for_each_bit(set_layout.storage_image_mask, [&](uint32_t binding) {
+	for (uint32_t binding_bits = set_layout.storage_image_mask, binding; Util::next_bit(binding_bits, binding);)
+	{
 		unsigned array_size = set_layout.array_size[binding];
 		for (unsigned i = 0; i < array_size; i++)
 		{
@@ -2152,10 +2173,11 @@ void CommandBuffer::flush_descriptor_set(uint32_t set)
 			h.u32(bindings.bindings[set][binding + i].image.fp.imageLayout);
 			VK_ASSERT(bindings.bindings[set][binding + i].image.fp.imageView != VK_NULL_HANDLE);
 		}
-	});
+	}
 
 	// Input attachments
-	for_each_bit(set_layout.input_attachment_mask, [&](uint32_t binding) {
+	for (uint32_t binding_bits = set_layout.input_attachment_mask, binding; Util::next_bit(binding_bits, binding);)
+	{
 		unsigned array_size = set_layout.array_size[binding];
 		for (unsigned i = 0; i < array_size; i++)
 		{
@@ -2163,7 +2185,7 @@ void CommandBuffer::flush_descriptor_set(uint32_t set)
 			h.u32(bindings.bindings[set][binding + i].image.fp.imageLayout);
 			VK_ASSERT(bindings.bindings[set][binding + i].image.fp.imageView != VK_NULL_HANDLE);
 		}
-	});
+	}
 
 	Hash hash = h.get();
 	auto allocated = current_layout->get_allocator(set)->find(thread_index, hash);
@@ -2187,7 +2209,8 @@ void CommandBuffer::flush_descriptor_sets()
 	auto &layout = current_layout->get_resource_layout();
 
 	uint32_t set_update = layout.descriptor_set_mask & dirty_sets;
-	for_each_bit(set_update, [&](uint32_t set) { flush_descriptor_set(set); });
+	for (uint32_t set_bits = set_update, set; Util::next_bit(set_bits, set);)
+		flush_descriptor_set(set);
 	dirty_sets &= ~set_update;
 
 	// If we update a set, we also bind dynamically.
@@ -2195,7 +2218,8 @@ void CommandBuffer::flush_descriptor_sets()
 
 	// If we only rebound UBOs, we might get away with just rebinding descriptor sets, no hashing and lookup required.
 	uint32_t dynamic_set_update = layout.descriptor_set_mask & dirty_sets_dynamic;
-	for_each_bit(dynamic_set_update, [&](uint32_t set) { rebind_descriptor_set(set); });
+	for (uint32_t set_bits = dynamic_set_update, set; Util::next_bit(set_bits, set);)
+		rebind_descriptor_set(set);
 	dirty_sets_dynamic &= ~dynamic_set_update;
 }
 

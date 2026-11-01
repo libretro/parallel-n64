@@ -39,6 +39,30 @@ using namespace Vulkan;
 
 namespace RDP
 {
+// The generated shader bank asks each shader's owner for its defines.
+struct ShaderDefineResolver
+{
+	const VideoInterface *vi;
+	const Renderer *renderer;
+	int operator()(const char *name, const char *define) const
+	{
+		if (strncmp(name, "vi_", 3) == 0)
+			return vi->resolve_shader_define(name, define);
+		return renderer->resolve_shader_define(name, define);
+	}
+};
+
+// Flattened so each shader's name folds into a direct call to its owner.
+#if defined(__GNUC__) || defined(__clang__)
+__attribute__((flatten))
+#endif
+static ShaderBank *create_shader_bank(Vulkan::Device &device, Vulkan::ResourceLayout &layout,
+                                      const VideoInterface &vi, const Renderer &renderer)
+{
+	ShaderDefineResolver resolver = { &vi, &renderer };
+	return new ShaderBank(device, layout, resolver);
+}
+
 namespace
 {
 struct CoherencyNode : mpsc_stack_node_t
@@ -245,12 +269,7 @@ void CommandProcessor::init_renderer()
 	vi.set_renderer(&renderer);
 
 	Vulkan::ResourceLayout layout;
-	shader_bank.bank = (new ShaderBank(device, layout, [&](const char *name, const char *define) -> int {
-		if (strncmp(name, "vi_", 3) == 0)
-			return vi.resolve_shader_define(name, define);
-		else
-			return renderer.resolve_shader_define(name, define);
-	}));
+	shader_bank.bank = create_shader_bank(device, layout, vi, renderer);
 	renderer.set_shader_bank(shader_bank.bank);
 	vi.set_shader_bank(shader_bank.bank);
 }
