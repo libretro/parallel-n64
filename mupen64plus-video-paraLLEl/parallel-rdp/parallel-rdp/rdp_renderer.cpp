@@ -1089,11 +1089,10 @@ unsigned Renderer::compute_conservative_max_num_tiles(const TriangleSetup &setup
 	auto start_x = std::min(std::min(upper.first, lower.first), std::min(mid.first, mid1.first));
 	auto end_x = std::max(std::max(upper.second, lower.second), std::max(mid.second, mid1.second));
 
-	auto max_range_x = std::max(std::abs(start_x), std::abs(end_x));
 	// Effective X range is [-2048, 2047], but just make it [-2047, 2047] to match binning shader.
 	// If we interpolate X to something outside that range,
 	// we must assume the entire X range will be covered.
-	if (max_range_x > 2047 * scaling)
+	if (x_range_exceeds(start_x, end_x, 2047 * scaling))
 	{
 		start_x = 0;
 		end_x = 0x7fffffff;

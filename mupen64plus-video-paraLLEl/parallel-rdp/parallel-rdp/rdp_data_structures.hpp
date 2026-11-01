@@ -395,4 +395,14 @@ constexpr unsigned MaxPendingRenderPassesBeforeFlush = 8;
 constexpr unsigned MinimumPrimitivesForIdleFlush = 32;
 constexpr unsigned MinimumRenderPassesForIdleFlush = 2;
 }
+
+// Whether an interpolated X span reaches past +-limit. Interpolation
+// clamps to int32, and std::abs of INT_MIN is not representable, so the
+// magnitudes are taken in 64 bits.
+static inline bool x_range_exceeds(int32_t start_x, int32_t end_x, int32_t limit)
+{
+	int64_t a = start_x < 0 ? -int64_t(start_x) : int64_t(start_x);
+	int64_t b = end_x < 0 ? -int64_t(end_x) : int64_t(end_x);
+	return (a > b ? a : b) > int64_t(limit);
+}
 }
