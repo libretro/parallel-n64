@@ -22,7 +22,6 @@
 
 #pragma once
 
-#include <algorithm>
 
 namespace Util
 {
@@ -45,8 +44,10 @@ public:
 	T *allocate_cleared(size_t count)
 	{
 		T *ret = allocate(count);
+		size_t i;
 		if (ret)
-			std::fill(ret, ret + count, T());
+			for (i = 0; i < count; i++)
+				ret[i] = T();
 		return ret;
 	}
 

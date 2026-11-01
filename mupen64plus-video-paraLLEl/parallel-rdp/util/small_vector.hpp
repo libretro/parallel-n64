@@ -24,10 +24,7 @@
 
 #include <stddef.h>
 #include <stdlib.h>
-#include <utility>
-#include <exception>
-#include <algorithm>
-#include <initializer_list>
+#include "util_lite.hpp"
 
 namespace Util
 {
@@ -160,18 +157,13 @@ public:
 		auto count = size_t(arg_list_end - arg_list_begin);
 		reserve(count);
 		for (size_t i = 0; i < count; i++, arg_list_begin++)
-			new (&this->ptr[i]) T(*arg_list_begin);
+			UTIL_PLACEMENT_NEW(&this->ptr[i]) T(*arg_list_begin);
 		this->buffer_size = count;
 	}
 
 	SmallVector(SmallVector &&other) noexcept : SmallVector()
 	{
-		*this = std::move(other);
-	}
-
-	SmallVector(const std::initializer_list<T> &init_list) : SmallVector()
-	{
-		insert(this->end(), init_list.begin(), init_list.end());
+		*this = Util::move(other);
 	}
 
 	SmallVector &operator=(SmallVector &&other) noexcept
@@ -195,7 +187,7 @@ public:
 			reserve(other.buffer_size);
 			for (size_t i = 0; i < other.buffer_size; i++)
 			{
-				new (&this->ptr[i]) T(std::move(other.ptr[i]));
+				UTIL_PLACEMENT_NEW(&this->ptr[i]) T(Util::move(other.ptr[i]));
 				other.ptr[i].~T();
 			}
 			this->buffer_size = other.buffer_size;
@@ -215,7 +207,7 @@ public:
 		clear();
 		reserve(other.buffer_size);
 		for (size_t i = 0; i < other.buffer_size; i++)
-			new (&this->ptr[i]) T(other.ptr[i]);
+			UTIL_PLACEMENT_NEW(&this->ptr[i]) T(other.ptr[i]);
 		this->buffer_size = other.buffer_size;
 		return *this;
 	}
@@ -243,14 +235,14 @@ public:
 	void push_back(const T &t)
 	{
 		reserve(this->buffer_size + 1);
-		new (&this->ptr[this->buffer_size]) T(t);
+		UTIL_PLACEMENT_NEW(&this->ptr[this->buffer_size]) T(t);
 		this->buffer_size++;
 	}
 
 	void push_back(T &&t)
 	{
 		reserve(this->buffer_size + 1);
-		new (&this->ptr[this->buffer_size]) T(std::move(t));
+		UTIL_PLACEMENT_NEW(&this->ptr[this->buffer_size]) T(Util::move(t));
 		this->buffer_size++;
 	}
 
@@ -266,7 +258,7 @@ public:
 	void emplace_back(Ts &&... ts)
 	{
 		reserve(this->buffer_size + 1);
-		new (&this->ptr[this->buffer_size]) T(std::forward<Ts>(ts)...);
+		UTIL_PLACEMENT_NEW(&this->ptr[this->buffer_size]) T(Util::forward<Ts>(ts)...);
 		this->buffer_size++;
 	}
 
@@ -287,7 +279,7 @@ public:
 			    target_capacity > N ? static_cast<T *>(malloc(target_capacity * sizeof(T))) : stack_storage.data();
 
 			if (!new_buffer)
-				std::terminate();
+				abort();
 
 			// In case for some reason two allocations both come from same stack.
 			if (new_buffer != this->ptr)
@@ -295,7 +287,7 @@ public:
 				// We don't deal with types which can throw in move constructor.
 				for (size_t i = 0; i < this->buffer_size; i++)
 				{
-					new (&new_buffer[i]) T(std::move(this->ptr[i]));
+					UTIL_PLACEMENT_NEW(&new_buffer[i]) T(Util::move(this->ptr[i]));
 					this->ptr[i].~T();
 				}
 			}
@@ -314,7 +306,7 @@ public:
 		{
 			reserve(this->buffer_size + count);
 			for (size_t i = 0; i < count; i++, insert_begin++)
-				new (&this->ptr[this->buffer_size + i]) T(*insert_begin);
+				UTIL_PLACEMENT_NEW(&this->ptr[this->buffer_size + i]) T(*insert_begin);
 			this->buffer_size += count;
 		}
 		else
@@ -334,7 +326,7 @@ public:
 				T *new_buffer =
 				    target_capacity > N ? static_cast<T *>(malloc(target_capacity * sizeof(T))) : stack_storage.data();
 				if (!new_buffer)
-					std::terminate();
+					abort();
 
 				// First, move elements from source buffer to new buffer.
 				// We don't deal with types which can throw in move constructor.
@@ -345,7 +337,7 @@ public:
 				{
 					while (original_source_itr != itr)
 					{
-						new (target_itr) T(std::move(*original_source_itr));
+						UTIL_PLACEMENT_NEW(target_itr) T(Util::move(*original_source_itr));
 						original_source_itr->~T();
 						++original_source_itr;
 						++target_itr;
@@ -354,14 +346,14 @@ public:
 
 				// Copy-construct new elements.
 				for (auto *source_itr = insert_begin; source_itr != insert_end; ++source_itr, ++target_itr)
-					new (target_itr) T(*source_itr);
+					UTIL_PLACEMENT_NEW(target_itr) T(*source_itr);
 
 				// Move over the other half.
 				if (new_buffer != this->ptr || insert_begin != insert_end)
 				{
 					while (original_source_itr != this->end())
 					{
-						new (target_itr) T(std::move(*original_source_itr));
+						UTIL_PLACEMENT_NEW(target_itr) T(Util::move(*original_source_itr));
 						original_source_itr->~T();
 						++original_source_itr;
 						++target_itr;
@@ -383,11 +375,12 @@ public:
 				{
 					--target_itr;
 					--source_itr;
-					new (target_itr) T(std::move(*source_itr));
+					UTIL_PLACEMENT_NEW(target_itr) T(Util::move(*source_itr));
 				}
 
 				// For already constructed elements we can move-assign.
-				std::move_backward(itr, source_itr, target_itr);
+				while (source_itr != itr)
+					*--target_itr = Util::move(*--source_itr);
 
 				// For the inserts which go to already constructed elements, we can do a plain copy.
 				while (itr != this->end() && insert_begin != insert_end)
@@ -396,7 +389,7 @@ public:
 				// For inserts into newly allocated memory, we must copy-construct instead.
 				while (insert_begin != insert_end)
 				{
-					new (itr) T(*insert_begin);
+					UTIL_PLACEMENT_NEW(itr) T(*insert_begin);
 					++itr;
 					++insert_begin;
 				}
@@ -413,7 +406,9 @@ public:
 
 	T *erase(T *itr)
 	{
-		std::move(itr + 1, this->end(), itr);
+		T *dst;
+		for (dst = itr; dst + 1 != this->end(); dst++)
+			*dst = Util::move(dst[1]);
 		this->ptr[--this->buffer_size].~T();
 		return itr;
 	}
@@ -427,7 +422,9 @@ public:
 		else
 		{
 			auto new_size = this->buffer_size - (end_erase - start_erase);
-			std::move(end_erase, this->end(), start_erase);
+			T *src;
+			for (src = end_erase; src != this->end(); src++, start_erase++)
+				*start_erase = Util::move(*src);
 			resize(new_size);
 		}
 	}
@@ -443,7 +440,7 @@ public:
 		{
 			reserve(new_size);
 			for (size_t i = this->buffer_size; i < new_size; i++)
-				new (&this->ptr[i]) T();
+				UTIL_PLACEMENT_NEW(&this->ptr[i]) T();
 		}
 
 		this->buffer_size = new_size;

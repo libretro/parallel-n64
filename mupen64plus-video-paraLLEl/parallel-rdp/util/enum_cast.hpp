@@ -22,13 +22,19 @@
 
 #pragma once
 
-#include <type_traits>
+#include "util_lite.hpp"
 
 namespace Util
 {
 template <typename T>
-constexpr typename std::underlying_type<T>::type ecast(T x)
+struct UnderlyingType
 {
-	return static_cast<typename std::underlying_type<T>::type>(x);
+	typedef UTIL_UNDERLYING_TYPE(T) type;
+};
+
+template <typename T>
+constexpr typename UnderlyingType<T>::type ecast(T x)
+{
+	return static_cast<typename UnderlyingType<T>::type>(x);
 }
 }

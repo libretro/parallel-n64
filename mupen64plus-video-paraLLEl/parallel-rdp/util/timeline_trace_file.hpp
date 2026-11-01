@@ -22,7 +22,6 @@
 
 #pragma once
 
-#include <string>
 #include <stdio.h>
 #include <stdint.h>
 #include "rdp_worker.h"
@@ -32,7 +31,7 @@ namespace Util
 class TimelineTraceFile
 {
 public:
-	explicit TimelineTraceFile(const std::string &path);
+	explicit TimelineTraceFile(const char *path);
 	~TimelineTraceFile();
 
 	static void set_tid(const char *tid);

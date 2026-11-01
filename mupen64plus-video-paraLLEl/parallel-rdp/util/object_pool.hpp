@@ -22,13 +22,10 @@
 
 #pragma once
 
-#include <memory>
-#include <new>
-#include <vector>
 #include <stdint.h>
 #include <retro_atomic.h>
-#include <algorithm>
 #include <stdlib.h>
+#include "util_lite.hpp"
 #include "aligned_alloc.hpp"
 
 //#define OBJECT_POOL_DEBUG
@@ -43,26 +40,14 @@ public:
 	T *allocate(P &&... p)
 	{
 #ifndef OBJECT_POOL_DEBUG
-		if (vacants.empty())
-		{
-			unsigned num_objects = 64u << memory.size();
-			T *ptr = static_cast<T *>(memalign_alloc(std::max(size_t(64), alignof(T)),
-			                                         num_objects * sizeof(T)));
-			if (!ptr)
-				return nullptr;
+		if (!num_vacants && !grow())
+			return nullptr;
 
-			for (unsigned i = 0; i < num_objects; i++)
-				vacants.push_back(&ptr[i]);
-
-			memory.emplace_back(ptr);
-		}
-
-		T *ptr = vacants.back();
-		vacants.pop_back();
-		new(ptr) T(std::forward<P>(p)...);
+		T *ptr = vacants[--num_vacants];
+		UTIL_PLACEMENT_NEW(ptr) T(Util::forward<P>(p)...);
 		return ptr;
 #else
-		return new T(std::forward<P>(p)...);
+		return new T(Util::forward<P>(p)...);
 #endif
 	}
 
@@ -70,7 +55,7 @@ public:
 	{
 #ifndef OBJECT_POOL_DEBUG
 		ptr->~T();
-		vacants.push_back(ptr);
+		vacants[num_vacants++] = ptr;
 #else
 		delete ptr;
 #endif
@@ -79,9 +64,23 @@ public:
 	void clear()
 	{
 #ifndef OBJECT_POOL_DEBUG
-		vacants.clear();
-		memory.clear();
+		unsigned k;
+		for (k = 0; k < num_blocks; k++)
+			memalign_free(blocks[k]);
+		::free(vacants);
+		vacants = nullptr;
+		num_vacants = 0;
+		num_blocks = 0;
 #endif
+	}
+
+	ObjectPool() = default;
+	ObjectPool(const ObjectPool &) = delete;
+	void operator=(const ObjectPool &) = delete;
+
+	~ObjectPool()
+	{
+		clear();
 	}
 
 	// Pooled types befriend ObjectPool<T> for their private constructors;
@@ -89,7 +88,7 @@ public:
 	template<typename... P>
 	static T *construct_at(void *mem, P &&... p)
 	{
-		return new(mem) T(std::forward<P>(p)...);
+		return UTIL_PLACEMENT_NEW(mem) T(Util::forward<P>(p)...);
 	}
 
 	static void destroy(T *ptr)
@@ -99,17 +98,39 @@ public:
 
 protected:
 #ifndef OBJECT_POOL_DEBUG
-	std::vector<T *> vacants;
+	// Block k holds 64 << k objects. Every object is either live or in
+	// vacants, which holds room for all of them, so a free never grows it.
+	enum { MAX_BLOCKS = 26 };
+	T *blocks[MAX_BLOCKS];
+	unsigned num_blocks = 0;
+	T **vacants = nullptr;
+	size_t num_vacants = 0;
 
-	struct MallocDeleter
+	bool grow()
 	{
-		void operator()(T *ptr)
+		size_t num_objects, total, i;
+		T *ptr;
+		T **list;
+
+		if (num_blocks >= MAX_BLOCKS)
+			return false;
+		num_objects = size_t(64) << num_blocks;
+		total = (size_t(64) << (num_blocks + 1)) - 64;
+		ptr = static_cast<T *>(memalign_alloc(alignof(T) > 64 ? alignof(T) : 64, num_objects * sizeof(T)));
+		if (!ptr)
+			return false;
+		list = static_cast<T **>(realloc(vacants, total * sizeof(T *)));
+		if (!list)
 		{
 			memalign_free(ptr);
+			return false;
 		}
-	};
-
-	std::vector<std::unique_ptr<T, MallocDeleter>> memory;
+		vacants = list;
+		for (i = 0; i < num_objects; i++)
+			vacants[num_vacants++] = &ptr[i];
+		blocks[num_blocks++] = ptr;
+		return true;
+	}
 #endif
 };
 
@@ -156,9 +177,9 @@ public:
 			idx = grow();
 		if (!idx)
 			return nullptr;
-		return ObjectPool<T>::construct_at(slot(idx), std::forward<P>(p)...);
+		return ObjectPool<T>::construct_at(slot(idx), Util::forward<P>(p)...);
 #else
-		return ObjectPool<T>::construct_at(::operator new(sizeof(T)), std::forward<P>(p)...);
+		return ObjectPool<T>::construct_at(::operator new(sizeof(T)), Util::forward<P>(p)...);
 #endif
 	}
 
@@ -182,7 +203,7 @@ public:
 			void *objs = retro_atomic_load_acquire_ptr(&block_objs[k]);
 			if (objs)
 				memalign_free(objs);
-			delete[] block_next[k];
+			::free(block_next[k]);
 			block_next[k] = nullptr;
 			retro_atomic_ptr_init(&block_objs[k], nullptr);
 		}
@@ -211,9 +232,8 @@ private:
 	static unsigned block_of(uint32_t idx, uint32_t &offset)
 	{
 		uint32_t i = idx - 1;
-		unsigned k = 0;
-		while (i >= block_base(k + 1))
-			k++;
+		/* block k holds i in [64 * (2^k - 1), 64 * (2^(k+1) - 1)) */
+		unsigned k = util_bsr32((i >> 6) + 1);
 		offset = i - block_base(k);
 		return k;
 	}
@@ -264,7 +284,7 @@ private:
 	}
 
 	// Adds a block, returns one of its slots and pushes the rest.
-	uint32_t grow()
+	UTIL_NOINLINE_COLD uint32_t grow()
 	{
 		unsigned k = unsigned(retro_atomic_fetch_add_int(&block_count, 1));
 		if (k >= MAX_BLOCKS)
@@ -274,7 +294,7 @@ private:
 		void *objs = memalign_alloc(alignof(T) > 64 ? alignof(T) : 64, cap * sizeof(T));
 		if (!objs)
 			return 0;
-		retro_atomic_int_t *next = new (std::nothrow) retro_atomic_int_t[cap];
+		retro_atomic_int_t *next = static_cast<retro_atomic_int_t *>(malloc(cap * sizeof(retro_atomic_int_t)));
 		if (!next)
 		{
 			memalign_free(objs);

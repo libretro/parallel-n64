@@ -22,6 +22,7 @@
 
 #pragma once
 
+#include <memory>
 #include "hash.hpp"
 #include "object_pool.hpp"
 #include "temporary_hashmap.hpp"

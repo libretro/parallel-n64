@@ -23,8 +23,7 @@
 #pragma once
 
 #include <stddef.h>
-#include <stdexcept>
-#include <new>
+#include <stdlib.h>
 
 namespace Util
 {
@@ -40,14 +39,14 @@ struct AlignedAllocation
     static void *operator new(size_t size)
     {
         void *ret = ::Util::memalign_alloc(alignof(T), size);
-        if (!ret) throw std::bad_alloc();
+        if (!ret) abort();
         return ret;
     }
 
     static void *operator new[](size_t size)
     {
         void *ret = ::Util::memalign_alloc(alignof(T), size);
-        if (!ret) throw std::bad_alloc();
+        if (!ret) abort();
         return ret;
     }
 

@@ -22,6 +22,7 @@
 
 #pragma once
 
+#include <string>
 #include "buffer.hpp"
 #include "command_buffer.hpp"
 #include "command_pool.hpp"

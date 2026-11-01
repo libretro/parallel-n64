@@ -26,7 +26,7 @@
 #include "object_pool.hpp"
 #include "intrusive_list.hpp"
 #include "intrusive_hash_map.hpp"
-#include <vector>
+#include "small_vector.hpp"
 
 namespace Util
 {
@@ -116,7 +116,7 @@ public:
 	template <typename... P>
 	void make_vacant(P &&... p)
 	{
-		vacants.push_back(object_pool.allocate(std::forward<P>(p)...));
+		vacants.push_back(object_pool.allocate(Util::forward<P>(p)...));
 	}
 
 	T *request_vacant(Hash hash)
@@ -136,7 +136,7 @@ public:
 	template <typename... P>
 	T *emplace(Hash hash, P &&... p)
 	{
-		auto *node = object_pool.allocate(std::forward<P>(p)...);
+		auto *node = object_pool.allocate(Util::forward<P>(p)...);
 		node->set_index(index);
 		node->set_hash(hash);
 		hashmap.emplace_replace(hash, node);
@@ -149,7 +149,7 @@ private:
 	ObjectPool<T> object_pool;
 	unsigned index = 0;
 	IntrusiveHashMap<IntrusivePODWrapper<typename IntrusiveList<T>::Iterator>> hashmap;
-	std::vector<typename IntrusiveList<T>::Iterator> vacants;
+	SmallVector<typename IntrusiveList<T>::Iterator> vacants;
 
 	template <bool reuse>
 	struct ReuseTag

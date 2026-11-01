@@ -22,6 +22,8 @@
 
 #pragma once
 
+#include <vector>
+#include <string>
 #include "vulkan_headers.hpp"
 #include "vulkan_common.hpp"
 #include "object_pool.hpp"

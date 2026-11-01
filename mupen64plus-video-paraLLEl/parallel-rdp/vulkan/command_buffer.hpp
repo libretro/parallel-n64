@@ -22,6 +22,7 @@
 
 #pragma once
 
+#include <string>
 #include "buffer.hpp"
 #include "buffer_pool.hpp"
 #include "vulkan_headers.hpp"

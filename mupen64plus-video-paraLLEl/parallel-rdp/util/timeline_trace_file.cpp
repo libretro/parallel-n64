@@ -117,11 +117,11 @@ static void name_io_thread(void *)
 	set_current_thread_name("json-trace-io");
 }
 
-TimelineTraceFile::TimelineTraceFile(const std::string &path)
+TimelineTraceFile::TimelineTraceFile(const char *path)
 {
-	file = fopen(path.c_str(), "w");
+	file = fopen(path, "w");
 	if (!file)
-		LOGE("Failed to open file: %s.\n", path.c_str());
+		LOGE("Failed to open file: %s.\n", path);
 	else
 		fputs("[\n", file);
 

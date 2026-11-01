@@ -23,10 +23,7 @@
 #pragma once
 
 #include <stddef.h>
-#include <utility>
-#include <memory>
-#include <atomic>
-#include <type_traits>
+#include "util_lite.hpp"
 
 namespace Util
 {
@@ -52,28 +49,27 @@ class MultiThreadCounter
 public:
 	MultiThreadCounter()
 	{
-		count.store(1, std::memory_order_relaxed);
+		count.init(1);
 	}
 
 	inline void add_ref()
 	{
-		count.fetch_add(1, std::memory_order_relaxed);
+		count.add();
 	}
 
 	inline bool release()
 	{
-		auto result = count.fetch_sub(1, std::memory_order_acq_rel);
-		return result == 1;
+		return count.sub_is_last();
 	}
 
 private:
-	std::atomic_uint32_t count;
+	AtomicCount count;
 };
 
 template <typename T>
 class IntrusivePtr;
 
-template <typename T, typename Deleter = std::default_delete<T>, typename ReferenceOps = SingleThreadCounter>
+template <typename T, typename Deleter = DefaultDelete<T>, typename ReferenceOps = SingleThreadCounter>
 class IntrusivePtrEnabled
 {
 public:
@@ -182,7 +178,7 @@ public:
 	template <typename U>
 	IntrusivePtr &operator=(const IntrusivePtr<U> &other)
 	{
-		static_assert(std::is_base_of<T, U>::value,
+		static_assert(UTIL_IS_BASE_OF(T, U),
 		              "Cannot safely assign downcasted intrusive pointers.");
 
 		using ReferenceBase = IntrusivePtrEnabled<
@@ -256,13 +252,13 @@ public:
 	template <typename U>
 	IntrusivePtr(IntrusivePtr<U> &&other) noexcept
 	{
-		*this = std::move(other);
+		*this = Util::move(other);
 	}
 
 	template <typename U>
 	IntrusivePtr(IntrusivePtr &&other) noexcept
 	{
-		*this = std::move(other);
+		*this = Util::move(other);
 	}
 
 	T *release() &
@@ -296,15 +292,15 @@ using DerivedIntrusivePtrType = IntrusivePtr<Derived>;
 template <typename T, typename... P>
 DerivedIntrusivePtrType<T> make_handle(P &&... p)
 {
-	return DerivedIntrusivePtrType<T>(new T(std::forward<P>(p)...));
+	return DerivedIntrusivePtrType<T>(new T(Util::forward<P>(p)...));
 }
 
 template <typename Base, typename Derived, typename... P>
 typename Base::IntrusivePtrType make_derived_handle(P &&... p)
 {
-	return typename Base::IntrusivePtrType(new Derived(std::forward<P>(p)...));
+	return typename Base::IntrusivePtrType(new Derived(Util::forward<P>(p)...));
 }
 
 template <typename T>
-using ThreadSafeIntrusivePtrEnabled = IntrusivePtrEnabled<T, std::default_delete<T>, MultiThreadCounter>;
+using ThreadSafeIntrusivePtrEnabled = IntrusivePtrEnabled<T, DefaultDelete<T>, MultiThreadCounter>;
 }

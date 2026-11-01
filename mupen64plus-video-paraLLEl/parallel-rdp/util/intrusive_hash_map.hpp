@@ -26,8 +26,8 @@
 #include "intrusive_list.hpp"
 #include "object_pool.hpp"
 #include <retro_atomic.h>
+#include <stdlib.h>
 #include <assert.h>
-#include <vector>
 
 namespace Util
 {
@@ -60,7 +60,7 @@ struct IntrusivePODWrapper : public IntrusiveHashMapEnabled<IntrusivePODWrapper<
 {
 	template <typename U>
 	explicit IntrusivePODWrapper(U&& value_)
-		: value(std::forward<U>(value_))
+		: value(Util::forward<U>(value_))
 	{
 	}
 
@@ -93,10 +93,10 @@ public:
 
 	T *find(Hash hash) const
 	{
-		if (values.empty())
+		if (values_size == 0)
 			return nullptr;
 
-		Hash hash_mask = values.size() - 1;
+		Hash hash_mask = values_size - 1;
 		auto masked = hash & hash_mask;
 		for (unsigned i = 0; i < load_count; i++)
 		{
@@ -127,10 +127,10 @@ public:
 	// Returns nullptr if nothing was in the hashmap for this key.
 	T *insert_yield(T *&value)
 	{
-		if (values.empty())
+		if (values_size == 0)
 			grow();
 
-		Hash hash_mask = values.size() - 1;
+		Hash hash_mask = values_size - 1;
 		auto hash = get_hash(value);
 		auto masked = hash & hash_mask;
 
@@ -157,10 +157,10 @@ public:
 
 	T *insert_replace(T *value)
 	{
-		if (values.empty())
+		if (values_size == 0)
 			grow();
 
-		Hash hash_mask = values.size() - 1;
+		Hash hash_mask = values_size - 1;
 		auto hash = get_hash(value);
 		auto masked = hash & hash_mask;
 
@@ -168,7 +168,11 @@ public:
 		{
 			if (values[masked] && get_hash(values[masked]) == hash)
 			{
-				std::swap(values[masked], value);
+				{
+					T *swapped = values[masked];
+					values[masked] = value;
+					value = swapped;
+				}
 				list.erase(value);
 				list.insert_front(values[masked]);
 				return value;
@@ -189,7 +193,7 @@ public:
 
 	T *erase(Hash hash)
 	{
-		Hash hash_mask = values.size() - 1;
+		Hash hash_mask = values_size - 1;
 		auto masked = hash & hash_mask;
 
 		for (unsigned i = 0; i < load_count; i++)
@@ -214,8 +218,19 @@ public:
 	void clear()
 	{
 		list.clear();
-		values.clear();
+		free(values);
+		values = nullptr;
+		values_size = 0;
 		load_count = 0;
+	}
+
+	IntrusiveHashMapHolder() = default;
+	IntrusiveHashMapHolder(const IntrusiveHashMapHolder &) = delete;
+	void operator=(const IntrusiveHashMapHolder &) = delete;
+
+	~IntrusiveHashMapHolder()
+	{
+		free(values);
 	}
 
 	typename IntrusiveList<T>::Iterator begin() const
@@ -257,7 +272,7 @@ private:
 
 	bool insert_inner(T *value)
 	{
-		Hash hash_mask = values.size() - 1;
+		Hash hash_mask = values_size - 1;
 		auto hash = get_hash(value);
 		auto masked = hash & hash_mask;
 
@@ -278,21 +293,17 @@ private:
 		bool success;
 		do
 		{
-			for (auto &v : values)
-				v = nullptr;
-
-			if (values.empty())
-			{
-				values.resize(InitialSize);
+			size_t size = values_size ? 2 * values_size : size_t(InitialSize);
+			T **table = static_cast<T **>(calloc(size, sizeof(T *)));
+			if (!table)
+				abort();
+			free(values);
+			values = table;
+			if (!values_size)
 				load_count = InitialLoadCount;
-				//LOGI("Growing hashmap to %u elements.\n", InitialSize);
-			}
 			else
-			{
-				values.resize(values.size() * 2);
-				//LOGI("Growing hashmap to %u elements.\n", unsigned(values.size()));
 				load_count++;
-			}
+			values_size = size;
 
 			// Re-insert.
 			success = true;
@@ -307,7 +318,9 @@ private:
 		} while (!success);
 	}
 
-	std::vector<T *> values;
+	// An open-addressed table of values_size pointers, a power of two.
+	T **values = nullptr;
+	size_t values_size = 0;
 	IntrusiveList<T> list;
 	unsigned load_count = 0;
 };
@@ -374,21 +387,21 @@ public:
 	template <typename... P>
 	T *emplace_replace(Hash hash, P&&... p)
 	{
-		T *t = allocate(std::forward<P>(p)...);
+		T *t = allocate(Util::forward<P>(p)...);
 		return insert_replace(hash, t);
 	}
 
 	template <typename... P>
 	T *emplace_yield(Hash hash, P&&... p)
 	{
-		T *t = allocate(std::forward<P>(p)...);
+		T *t = allocate(Util::forward<P>(p)...);
 		return insert_yield(hash, t);
 	}
 
 	template <typename... P>
 	T *allocate(P&&... p)
 	{
-		return pool.allocate(std::forward<P>(p)...);
+		return pool.allocate(Util::forward<P>(p)...);
 	}
 
 	void free(T *value)
@@ -544,7 +557,7 @@ public:
 	template <typename... P>
 	T *allocate(P&&... p)
 	{
-		return object_pool.allocate(std::forward<P>(p)...);
+		return object_pool.allocate(Util::forward<P>(p)...);
 	}
 
 	void free(T *ptr)
@@ -588,7 +601,7 @@ public:
 	template <typename... P>
 	T *emplace_yield(Hash hash, P&&... p)
 	{
-		T *t = allocate(std::forward<P>(p)...);
+		T *t = allocate(Util::forward<P>(p)...);
 		return insert_yield(hash, t);
 	}
 
