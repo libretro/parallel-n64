@@ -565,9 +565,8 @@ void generic_jump_to(struct r4300_core* r4300, uint32_t address)
 }
 
 
-/* XXX: not really a good interface but it gets the job done... */
+/* The loader has invalidated the code the state made stale first. */
 void savestates_load_set_pc(struct r4300_core* r4300, uint32_t pc)
 {
     generic_jump_to(r4300, pc);
-    invalidate_r4300_cached_code(r4300, 0, 0);
 }

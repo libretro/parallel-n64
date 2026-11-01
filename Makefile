@@ -1207,7 +1207,7 @@ clean: clean-tools
 
 clean-tools:
 	rm -f $(ANGRYLION_TOOLS) lrhost$(EXE_EXT) lrhost_vk$(EXE_EXT) angrylion_replay$(EXE_EXT) $(ANGRYLION_CHECKS) dd_ipl_hle_test$(EXE_EXT) \
-		$(CORE_CHECKS) dynarec_long_block_test$(EXE_EXT) savestate_latch_test$(EXE_EXT) cpu_fallback_test$(EXE_EXT) tools/test_prsp_dmem_wrap.o tools/test_command_ring_rthreads.o tools/test_command_ring_ec.o
+		$(CORE_CHECKS) dynarec_long_block_test$(EXE_EXT) savestate_latch_test$(EXE_EXT) savestate_code_test$(EXE_EXT) cpu_fallback_test$(EXE_EXT) tools/test_prsp_dmem_wrap.o tools/test_command_ring_rthreads.o tools/test_command_ring_ec.o
 
 # Angrylion benchmark and bit-exactness harnesses (tools/angrylion_*.c),
 # linked against the core's own angrylion objects: `make tools` after a
@@ -1400,6 +1400,47 @@ check-savestate-latch: $(TARGET) lrhost$(EXE_EXT) savestate_latch_test$(EXE_EXT)
 		cmp $(SAVESTATE_LATCH_CHECK_DIR)/state_$$core.bin $(SAVESTATE_LATCH_CHECK_DIR)/resave_$$core.bin; \
 		./savestate_latch_test$(EXE_EXT) check $(SAVESTATE_LATCH_CHECK_DIR)/ram_$$core.bin; \
 	done; rm -rf $(SAVESTATE_LATCH_CHECK_DIR)
+
+# Cached code across a state loaded back into the running session, as
+# run-ahead and rewind load one: the state is saved before a function the
+# payload later rewrites is called, and loaded once the rewritten one has
+# run, so every CPU core must invalidate what it compiled from the page.
+# A run-ahead pass, saving and loading around every frame, must end as the
+# plain run does.
+SAVESTATE_CODE_CHECK_DIR := savestate_code_check.tmp
+SAVESTATE_CODE_SAVE_AT := 16
+SAVESTATE_CODE_LOAD_AT := 100
+SAVESTATE_CODE_OPTS := parallel-n64-gfxplugin=angrylion parallel-n64-rspplugin=hle
+
+savestate_code_test$(EXE_EXT): tools/savestate_code_test.c
+	$(CC) -O1 -g $< -o $@
+
+check-savestate-code: $(TARGET) lrhost$(EXE_EXT) savestate_code_test$(EXE_EXT)
+	@set -e; rm -rf $(SAVESTATE_CODE_CHECK_DIR); mkdir -p $(SAVESTATE_CODE_CHECK_DIR)/lrhost-system; \
+	./savestate_code_test$(EXE_EXT) rom $(SAVESTATE_CODE_CHECK_DIR)/code.z64; \
+	for core in pure_interpreter cached_interpreter dynamic_recompiler dynamic_recompiler_ari64; do \
+		echo "== $$core"; \
+		( cd $(SAVESTATE_CODE_CHECK_DIR) && UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1 \
+			LRHOST_RAMDUMP=saved_$$core.bin ../lrhost$(EXE_EXT) ../$(TARGET) code.z64 $$(( $(SAVESTATE_CODE_SAVE_AT) + 1 )) \
+			$(SAVESTATE_CODE_OPTS) parallel-n64-cpucore=$$core > /dev/null ); \
+		./savestate_code_test$(EXE_EXT) saved $(SAVESTATE_CODE_CHECK_DIR)/saved_$$core.bin; \
+		( cd $(SAVESTATE_CODE_CHECK_DIR) && UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1 \
+			LRHOST_RAMDUMP=before_$$core.bin ../lrhost$(EXE_EXT) ../$(TARGET) code.z64 $$(( $(SAVESTATE_CODE_LOAD_AT) + 1 )) \
+			$(SAVESTATE_CODE_OPTS) parallel-n64-cpucore=$$core > /dev/null ); \
+		./savestate_code_test$(EXE_EXT) check $(SAVESTATE_CODE_CHECK_DIR)/before_$$core.bin; \
+		( cd $(SAVESTATE_CODE_CHECK_DIR) && UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1 \
+			LRHOST_SAVE=state_$$core.bin LRHOST_SAVE_AT=$(SAVESTATE_CODE_SAVE_AT) LRHOST_LOAD_AT=$(SAVESTATE_CODE_LOAD_AT) \
+			LRHOST_RAMDUMP=after_$$core.bin ../lrhost$(EXE_EXT) ../$(TARGET) code.z64 $$(( $(SAVESTATE_CODE_LOAD_AT) * 2 )) \
+			$(SAVESTATE_CODE_OPTS) parallel-n64-cpucore=$$core > /dev/null ); \
+		./savestate_code_test$(EXE_EXT) check $(SAVESTATE_CODE_CHECK_DIR)/after_$$core.bin; \
+		( cd $(SAVESTATE_CODE_CHECK_DIR) && UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1 \
+			LRHOST_RAMDUMP=plain_$$core.bin ../lrhost$(EXE_EXT) ../$(TARGET) code.z64 $$(( $(SAVESTATE_CODE_LOAD_AT) * 2 )) \
+			$(SAVESTATE_CODE_OPTS) parallel-n64-cpucore=$$core > /dev/null ); \
+		( cd $(SAVESTATE_CODE_CHECK_DIR) && UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1 LRHOST_RUNAHEAD=1 \
+			LRHOST_RAMDUMP=runahead_$$core.bin ../lrhost$(EXE_EXT) ../$(TARGET) code.z64 $$(( $(SAVESTATE_CODE_LOAD_AT) * 2 )) \
+			$(SAVESTATE_CODE_OPTS) parallel-n64-cpucore=$$core > /dev/null ); \
+		cmp $(SAVESTATE_CODE_CHECK_DIR)/plain_$$core.bin $(SAVESTATE_CODE_CHECK_DIR)/runahead_$$core.bin; \
+	done; rm -rf $(SAVESTATE_CODE_CHECK_DIR)
 
 # Instructions the recompilers run through the interpreter (BREAK, the
 # COP2 moves, DCFC1/DCTC1): the pure interpreter's exception and value log is
@@ -1607,7 +1648,7 @@ endif
 check-core: $(CORE_CHECKS)
 	@set -e; for t in $(CORE_CHECKS); do echo "== $$t"; ./$$t; done
 
-.PHONY: clean clean-tools tools check-angrylion check-core check-dynarec-block check-savestate-latch check-cpu-fallback
+.PHONY: clean clean-tools tools check-angrylion check-core check-dynarec-block check-savestate-latch check-savestate-code check-cpu-fallback
 -include $(OBJECTS:.o=.d)
 
 # A header named by an existing .d file but since deleted is not an error:

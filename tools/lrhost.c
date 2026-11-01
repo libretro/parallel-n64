@@ -32,6 +32,10 @@
  * LRHOST_SYSTEM_DIR=dir is the system and save folder (lrhost-system). LRHOST_POKE=offset,length
  * writes bytes that change every frame into the system RAM through the memory map
  * before each run after the first, as a cheat or achievement frontend may.
+ * LRHOST_RUNAHEAD=1 runs ahead as a frontend does: before each run it saves a
+ * state, runs a frame with video and audio off, and loads the state back, so
+ * the frames shown are the plain run's and the times include the save and load.
+ * LRHOST_LOAD_AT=n loads the state LRHOST_SAVE took back after run n.
  */
 #if defined(_WIN32)
 #include <windows.h>
@@ -66,6 +70,8 @@ static const char *opt(const char *key)
 
 static long frames_presented, frames_duped;
 static long run_frame;
+/* a frame run ahead: its video and audio are not the run's */
+static int hidden_run;
 static long dump_from = 595, dump_to = 605, dump_every = 1;
 static enum retro_pixel_format pixfmt = RETRO_PIXEL_FORMAT_0RGB1555;
 static unsigned vid_w, vid_h;
@@ -80,6 +86,7 @@ static unsigned long swfb_lent, swfb_frames, swfb_hits;
 
 static void video_cb(const void *data, unsigned w, unsigned h, size_t pitch)
 {
+    if (hidden_run) return;
 #ifdef LRHOST_VULKAN
     /* a HW frame: read the image back and treat it like a 32-bit frame */
     if (data == RETRO_HW_FRAME_BUFFER_VALID)
@@ -180,13 +187,13 @@ static FILE *audio_dump;
 static void audio_sample_cb(int16_t l, int16_t r)
 {
     int16_t f[2];
-    if (!audio_dump) return;
+    if (!audio_dump || hidden_run) return;
     f[0] = l; f[1] = r;
     fwrite(f, sizeof(f), 1, audio_dump);
 }
 static size_t audio_batch_cb(const int16_t *d, size_t n)
 {
-    if (audio_dump) fwrite(d, 4, n, audio_dump);
+    if (audio_dump && !hidden_run) fwrite(d, 4, n, audio_dump);
     return n;
 }
 static void input_poll_cb(void) {}
@@ -255,7 +262,7 @@ static bool env_cb(unsigned cmd, void *data)
     case RETRO_ENVIRONMENT_GET_CAN_DUPE:
         *(bool*)data = true; return true;
     case RETRO_ENVIRONMENT_GET_AUDIO_VIDEO_ENABLE:
-        *(int*)data = 3; return true;
+        *(int*)data = hidden_run ? 0 : 3; return true;
 #ifdef LRHOST_VULKAN
     case RETRO_ENVIRONMENT_SET_HW_RENDER:
     {
@@ -347,6 +354,7 @@ static int cmp_d(const void *a, const void *b) { double x = *(const double*)a, y
 int main(int argc, char **argv)
 {
     void *h; int i, nframes;
+    void *ra_buf = NULL, *saved = NULL; size_t ra_size = 0, saved_size = 0;
     void (*set_env)(retro_environment_t);
     void (*set_video)(retro_video_refresh_t);
     void (*set_audio)(retro_audio_sample_t);
@@ -481,7 +489,15 @@ int main(int argc, char **argv)
                 for (k = 0; k < len; k++)
                     ram[off + k] = (unsigned char)((k * 7u + (unsigned)i * 13u) ^ (k >> 3));
         }
-        run_frame = i; t0 = now_ms(); r_run(); t1 = now_ms();
+        run_frame = i; t0 = now_ms();
+        if (getenv("LRHOST_RUNAHEAD") && i > 0)
+        {
+            if (!ra_buf) { ra_size = r_serialize_size(); ra_buf = malloc(ra_size); }
+            if (!ra_buf || !r_serialize(ra_buf, ra_size)) { fprintf(stderr, "run-ahead save failed at %d\n", i); return 1; }
+            hidden_run = 1; r_run(); hidden_run = 0;
+            if (!r_unserialize(ra_buf, ra_size)) { fprintf(stderr, "run-ahead load failed at %d\n", i); return 1; }
+        }
+        r_run(); t1 = now_ms();
         /* LRHOST_SAVE=file with LRHOST_SAVE_AT=n saves a state after run n */
         if (getenv("LRHOST_SAVE") && getenv("LRHOST_SAVE_AT") && i == atol(getenv("LRHOST_SAVE_AT")))
         {
@@ -491,7 +507,15 @@ int main(int argc, char **argv)
                 fwrite(sb, 1, sn, sf);
                 fclose(sf);
             }
-            free(sb);
+            free(saved);
+            saved = sb; saved_size = sn;
+        }
+        /* LRHOST_LOAD_AT=n loads that state back after run n */
+        if (saved && getenv("LRHOST_LOAD_AT") && i == atol(getenv("LRHOST_LOAD_AT"))
+              && !r_unserialize(saved, saved_size))
+        {
+            fprintf(stderr, "load failed at %d\n", i);
+            return 1;
         }
         ft[i] = t1 - t0;
     }
@@ -526,6 +550,8 @@ int main(int argc, char **argv)
 #endif
     r_deinit();
     free(ft);
+    free(saved);
+    free(ra_buf);
     free((void*)game.data);
     return 0;
 }

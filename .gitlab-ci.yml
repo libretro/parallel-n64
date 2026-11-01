@@ -112,7 +112,9 @@ libretro-build-linux-x64:
 # MusyX checks and parallel-RDP's temporal upscaler geometry (make
 # check-core), and a 64DD disk booted through the core
 # with no IPL ROM (make check-dd-ipl), and a savestate saved and loaded
-# back with each CPU core (make check-savestate-latch).
+# back with each CPU core (make check-savestate-latch), and cached code
+# across a state loaded back in session and under run-ahead
+# (make check-savestate-code).
 test-angrylion-linux-x64:
   extends:
     - .core-defs
@@ -128,6 +130,7 @@ test-angrylion-linux-x64:
     - make platform=unix check-core
     - make platform=unix check-dd-ipl
     - make platform=unix check-savestate-latch
+    - make platform=unix check-savestate-code
 
 # Linux 64-bit: parallel-rdp on Mesa's software Vulkan driver (lavapipe),
 # no GPU. tools/lrhost_vk runs krom's RDP tests through the core and every

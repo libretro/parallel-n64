@@ -97,6 +97,104 @@ static uint64_t savestates_getdata(unsigned char **buff, size_t size)
 #define PUTDATA(buff, type, value) \
     do { type x = value; PUTARRAY(&x, buff, type, 1); } while(0)
 
+#define SAVESTATES_PAGE   0x1000
+#define SAVESTATES_PAGES  (RDRAM_MAX_SIZE / SAVESTATES_PAGE)
+
+#ifndef MSB_FIRST
+/* Copies the pages of src that differ from dst, and sets their bits in
+ * changed when it is given. Returns how many pages differed. */
+static size_t savestates_restore_pages(void *dst, const unsigned char *src,
+      size_t size, uint8_t *changed)
+{
+   unsigned char *d = (unsigned char*)dst;
+   size_t n         = 0;
+   size_t off;
+
+   for (off = 0; off < size; off += SAVESTATES_PAGE)
+   {
+      size_t len = size - off;
+      if (len > SAVESTATES_PAGE)
+         len = SAVESTATES_PAGE;
+      if (memcmp(d + off, src + off, len))
+      {
+         memcpy(d + off, src + off, len);
+         if (changed)
+            changed[(off / SAVESTATES_PAGE) >> 3] |=
+               (uint8_t)(1u << ((off / SAVESTATES_PAGE) & 7));
+         n++;
+      }
+   }
+   return n;
+}
+#endif
+
+/* The part of [paddr, paddr + len) a TLB half maps, through its virtual
+ * pages: the interpreters cache code by virtual page. */
+static void savestates_invalidate_mapped(uint32_t paddr, size_t len,
+      int valid, uint32_t start, uint32_t end, uint32_t phys)
+{
+   uint32_t size = end - start + 1;
+   uint32_t lo, hi;
+
+   if (!valid || start >= end)
+      return;
+   lo = paddr > phys ? paddr : phys;
+   hi = paddr + len < phys + size ? paddr + (uint32_t)len : phys + size;
+   if (lo < hi)
+      invalidate_r4300_cached_code(&g_dev.r4300, start + (lo - phys), hi - lo);
+}
+
+/* The code cached from physical [paddr, paddr + len): through both
+ * unmapped segments, as a DMA into it invalidates it, and through every
+ * TLB page over it. */
+static void savestates_invalidate_range(uint32_t paddr, size_t len)
+{
+   size_t i;
+
+   invalidate_r4300_cached_code(&g_dev.r4300, R4300_KSEG0 + paddr, len);
+   invalidate_r4300_cached_code(&g_dev.r4300, R4300_KSEG1 + paddr, len);
+   for (i = 0; i < 32; i++)
+   {
+      const struct tlb_entry *e = &g_dev.r4300.cp0.tlb.entries[i];
+      savestates_invalidate_mapped(paddr, len, e->v_even,
+            e->start_even, e->end_even, e->phys_even);
+      savestates_invalidate_mapped(paddr, len, e->v_odd,
+            e->start_odd, e->end_odd, e->phys_odd);
+   }
+}
+
+/* Invalidates the cached code a load made stale: only what came from
+ * memory that changed, unless the TLB or the arcade SDRAM did. */
+static void savestates_invalidate_code(const uint8_t *dram_changed,
+      int sp_changed, int pif_changed, int all)
+{
+   size_t p = 0;
+
+   if (all)
+   {
+      invalidate_r4300_cached_code(&g_dev.r4300, 0, 0);
+      return;
+   }
+
+   while (p < SAVESTATES_PAGES)
+   {
+      size_t first;
+      if (!(dram_changed[p >> 3] & (1u << (p & 7))))
+      {
+         p++;
+         continue;
+      }
+      for (first = p; p < SAVESTATES_PAGES
+            && (dram_changed[p >> 3] & (1u << (p & 7))); p++);
+      savestates_invalidate_range((uint32_t)(first * SAVESTATES_PAGE),
+            (p - first) * SAVESTATES_PAGE);
+   }
+   if (sp_changed)
+      savestates_invalidate_range(UINT32_C(0x04000000), SP_MEM_SIZE);
+   if (pif_changed)
+      savestates_invalidate_range(UINT32_C(0x1fc00000), 0x800);
+}
+
 int savestates_load_m64p(const unsigned char *data, size_t size)
 {
    char queue[1024];
@@ -105,6 +203,10 @@ int savestates_load_m64p(const unsigned char *data, size_t size)
    uint32_t FCR31;
    uint32_t* cp0_regs = r4300_cp0_regs(&g_dev.r4300.cp0);
    unsigned char *curr = (unsigned char*)data; // < HACK
+   uint8_t dram_changed[SAVESTATES_PAGES / 8];
+   int sp_changed  = 1;
+   int pif_changed = 1;
+   int tlb_changed = 1;
 
    /* Read and check Mupen64Plus magic number. */
    if(strncmp((char *)curr, savestate_magic, 8)!=0)
@@ -260,9 +362,23 @@ int savestates_load_m64p(const unsigned char *data, size_t size)
    g_dev.dp.dps_regs[DPS_BUFTEST_ADDR_REG] = GETDATA(curr, uint32_t);
    g_dev.dp.dps_regs[DPS_BUFTEST_DATA_REG] = GETDATA(curr, uint32_t);
 
+   /* Run-ahead and rewind load a state every frame, nearly all of it
+    * what is already there: copy only the pages that differ, so that
+    * only the code cached from those has to be invalidated. */
+#ifdef MSB_FIRST
+   memset(dram_changed, 0xff, sizeof(dram_changed));
    COPYARRAY(g_dev.rdram.dram, curr, uint32_t, RDRAM_MAX_SIZE/4);
    COPYARRAY(g_dev.sp.mem, curr, uint32_t, SP_MEM_SIZE/4);
    COPYARRAY(g_dev.pif.ram, curr, uint8_t, PIF_RAM_SIZE);
+#else
+   memset(dram_changed, 0, sizeof(dram_changed));
+   savestates_restore_pages(g_dev.rdram.dram, curr, RDRAM_MAX_SIZE, dram_changed);
+   curr += RDRAM_MAX_SIZE;
+   sp_changed  = savestates_restore_pages(g_dev.sp.mem, curr, SP_MEM_SIZE, NULL) != 0;
+   curr += SP_MEM_SIZE;
+   pif_changed = savestates_restore_pages(g_dev.pif.ram, curr, PIF_RAM_SIZE, NULL) != 0;
+   curr += PIF_RAM_SIZE;
+#endif
    /* The joybus channel layout (each channel's tx/rx pointers into PIF RAM)
     * is derived state set up when the game writes a command block with the
     * format flag, and is not part of the savestate. Games that format the
@@ -293,8 +409,17 @@ int savestates_load_m64p(const unsigned char *data, size_t size)
    g_dev.cart.flashram.mode = GETDATA(curr, int);
    g_dev.cart.flashram.status = GETDATA(curr, unsigned long long);
 
+#ifdef MSB_FIRST
    COPYARRAY(g_dev.r4300.cp0.tlb.LUT_r, curr, unsigned int, 0x100000);
    COPYARRAY(g_dev.r4300.cp0.tlb.LUT_w, curr, unsigned int, 0x100000);
+#else
+   tlb_changed  = savestates_restore_pages(g_dev.r4300.cp0.tlb.LUT_r, curr,
+         0x100000 * sizeof(unsigned int), NULL) != 0;
+   curr += 0x100000 * sizeof(unsigned int);
+   tlb_changed |= savestates_restore_pages(g_dev.r4300.cp0.tlb.LUT_w, curr,
+         0x100000 * sizeof(unsigned int), NULL) != 0;
+   curr += 0x100000 * sizeof(unsigned int);
+#endif
 
    *r4300_llbit(&g_dev.r4300) = GETDATA(curr, unsigned int);
    COPYARRAY(r4300_regs(&g_dev.r4300), curr, int64_t, 32);
@@ -343,6 +468,8 @@ int savestates_load_m64p(const unsigned char *data, size_t size)
       g_dev.r4300.cp0.tlb.entries[i].phys_odd   = GETDATA(curr, unsigned int);
    }
 
+   savestates_invalidate_code(dram_changed, sp_changed, pif_changed,
+         tlb_changed || g_aleck64_enabled);
    savestates_load_set_pc(&g_dev.r4300, GETDATA(curr, uint32_t));
 
    *r4300_cp0_next_interrupt(&g_dev.r4300.cp0) = GETDATA(curr, unsigned int);
