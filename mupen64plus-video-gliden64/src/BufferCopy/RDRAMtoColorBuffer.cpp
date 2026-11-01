@@ -189,17 +189,9 @@ void RDRAMtoColorBuffer::_copyFromRDRAM(u32 _height, bool _fullAlpha)
 	m_pTexture->width = width;
 	m_pTexture->height = height;
 
-	u32 * pDst = nullptr;
-	std::unique_ptr<u8[]> dstData;
-
-	//If not using float, the initial coversion will already be correct
-	if (fbTexFormats.colorType == datatype::FLOAT) {
-		const u32 initialDataSize = width*height * 4;
-		dstData = std::unique_ptr<u8[]>(new u8[initialDataSize]);
-		pDst = reinterpret_cast<u32*>(dstData.get());
-	} else {
-		pDst = reinterpret_cast<u32*>(m_pbuf);
-	}
+	/* converted into the upload buffer itself; a float one is widened
+	 * in place below */
+	u32 * pDst = reinterpret_cast<u32*>(m_pbuf);
 
 	bool bCopy;
 	if (m_vecAddress.empty()) {
@@ -214,18 +206,14 @@ void RDRAMtoColorBuffer::_copyFromRDRAM(u32 _height, bool _fullAlpha)
 			bCopy = _copyPixelsFromRdram<u32>(address, m_vecAddress, pDst, RGBA32ToABGR32, 0, width, height, _fullAlpha);
 	}
 
-	//Convert integer format to float
+	/* Widen the channels to float in place, from the last one down: the
+	 * float for channel i lands on bytes 4i..4i+3, all past i and already
+	 * read, and byte 0 is read before its float is written. */
 	if (fbTexFormats.colorType == datatype::FLOAT) {
 		f32* floatData = reinterpret_cast<f32*>(m_pbuf);
-		u8* byteData = dstData.get();
-		const u32 widthPixels = width*4;
-		for (unsigned int heightIndex = 0; heightIndex < height; ++heightIndex) {
-			for (unsigned int widthIndex = 0; widthIndex < widthPixels; ++widthIndex) {
-				u8& src = *(byteData + heightIndex*widthPixels + widthIndex);
-				float& dst = *(floatData + heightIndex*widthPixels + widthIndex);
-				dst = src/255.0f;
-			}
-		}
+		const u8* byteData = m_pbuf;
+		for (u32 i = width * height * 4; i-- > 0;)
+			floatData[i] = byteData[i] / 255.0f;
 	}
 
 	if (!FBInfo::fbInfo.isSupported()) {
