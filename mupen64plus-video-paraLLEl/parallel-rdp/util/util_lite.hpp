@@ -57,6 +57,38 @@ static inline T &&forward(typename RemoveReference<T>::type &&t) noexcept
 }
 
 template <typename T>
+static inline const T &min_of(const T &a, const T &b)
+{
+	return b < a ? b : a;
+}
+
+template <typename T>
+static inline const T &max_of(const T &a, const T &b)
+{
+	return a < b ? b : a;
+}
+
+template <typename T>
+static inline void swap(T &a, T &b)
+{
+	T t(Util::move(a));
+	a = Util::move(b);
+	b = Util::move(t);
+}
+
+/* Copies a C string, truncating to size - 1 bytes and terminating. */
+static inline void copy_string(char *dst, size_t size, const char *src)
+{
+	size_t i = 0;
+	if (!size)
+		return;
+	if (src)
+		for (; i + 1 < size && src[i]; i++)
+			dst[i] = src[i];
+	dst[i] = '\0';
+}
+
+template <typename T>
 struct DefaultDelete
 {
 	void operator()(T *t) const
@@ -123,3 +155,72 @@ static inline unsigned util_bsr32(uint32_t v)
 	return 31u - (unsigned)__builtin_clz(v);
 }
 #endif
+
+namespace Util
+{
+/* 64-bit counter, atomic on 32-bit targets too */
+struct AtomicU64
+{
+#if defined(_MSC_VER) && !defined(__clang__)
+	volatile __int64 v;
+	void init(uint64_t x) { v = (__int64)x; }
+	uint64_t add_fetch_relaxed(uint64_t d)
+	{
+		__int64 old, cur = v;
+		do
+		{
+			old = cur;
+			cur = _InterlockedCompareExchange64(&v, old + (__int64)d, old);
+		} while (cur != old);
+		return (uint64_t)(old + (__int64)d);
+	}
+#else
+	uint64_t v __attribute__((aligned(8)));
+	void init(uint64_t x) { __atomic_store_n(&v, x, __ATOMIC_RELAXED); }
+	uint64_t add_fetch_relaxed(uint64_t d) { return __atomic_add_fetch(&v, d, __ATOMIC_RELAXED); }
+#endif
+};
+}
+
+namespace Util
+{
+/* Up to N owned objects, deleted on clear() and destruction. */
+template <typename T, unsigned N>
+class OwnedPtrArray
+{
+public:
+	OwnedPtrArray() = default;
+	~OwnedPtrArray()
+	{
+		clear();
+	}
+	OwnedPtrArray(const OwnedPtrArray &) = delete;
+	void operator=(const OwnedPtrArray &) = delete;
+
+	void push_back(T *p)
+	{
+		items[count++] = p;
+	}
+
+	void clear()
+	{
+		unsigned i;
+		for (i = 0; i < count; i++)
+			delete items[i];
+		count = 0;
+	}
+
+	size_t size() const { return count; }
+	bool empty() const { return count == 0; }
+	T *&operator[](size_t i) { return items[i]; }
+	T *const &operator[](size_t i) const { return items[i]; }
+	T **begin() { return items; }
+	T **end() { return items + count; }
+	T *const *begin() const { return items; }
+	T *const *end() const { return items + count; }
+
+private:
+	T *items[N];
+	unsigned count = 0;
+};
+}

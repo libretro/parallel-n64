@@ -22,10 +22,6 @@
 
 #include "shader.hpp"
 #include "device.hpp"
-#ifdef GRANITE_VULKAN_SPIRV_CROSS
-#include "spirv_cross.hpp"
-using namespace spirv_cross;
-#endif
 
 using namespace Util;
 
@@ -92,9 +88,6 @@ PipelineLayout::PipelineLayout(Hash hash, Device *device_, const CombinedResourc
 	auto &table = device->get_device_table();
 	if (table.vkCreatePipelineLayout(device->get_device(), &info, nullptr, &pipe_layout) != VK_SUCCESS)
 		LOGE("Failed to create pipeline layout.\n");
-#ifdef GRANITE_VULKAN_FOSSILIZE
-	device->register_pipeline_layout(pipe_layout, get_hash(), info);
-#endif
 
 	create_update_templates();
 }
@@ -333,202 +326,10 @@ Util::Hash Shader::hash(const uint32_t *data, size_t size, const ImmutableSample
 	return hasher.get();
 }
 
-#ifdef GRANITE_VULKAN_SPIRV_CROSS
-static void update_array_info(ResourceLayout &layout, const SPIRType &type, unsigned set, unsigned binding)
-{
-	auto &size = layout.sets[set].array_size[binding];
-	if (!type.array.empty())
-	{
-		if (type.array.size() != 1)
-			LOGE("Array dimension must be 1.\n");
-		else if (!type.array_size_literal.front())
-			LOGE("Array dimension must be a literal.\n");
-		else
-		{
-			if (type.array.front() == 0)
-			{
-				if (binding != 0)
-					LOGE("Bindless textures can only be used with binding = 0 in a set.\n");
-
-				if (type.basetype != SPIRType::Image || type.image.dim == spv::DimBuffer)
-					LOGE("Can only use bindless for sampled images.\n");
-				else
-					layout.bindless_set_mask |= 1u << set;
-
-				size = DescriptorSetLayout::UNSIZED_ARRAY;
-			}
-			else if (size && size != type.array.front())
-				LOGE("Array dimension for (%u, %u) is inconsistent.\n", set, binding);
-			else if (type.array.front() + binding > VULKAN_NUM_BINDINGS)
-				LOGE("Binding array will go out of bounds.\n");
-			else
-				size = uint8_t(type.array.front());
-		}
-	}
-	else
-	{
-		if (size && size != 1)
-			LOGE("Array dimension for (%u, %u) is inconsistent.\n", set, binding);
-		size = 1;
-	}
-}
-
-bool Shader::reflect_resource_layout(ResourceLayout &layout, const uint32_t *data, size_t size)
-{
-	Compiler compiler(data, size / sizeof(uint32_t));
-
-#ifdef VULKAN_DEBUG
-	LOGI("Reflecting shader layout.\n");
-#endif
-
-	auto resources = compiler.get_shader_resources();
-	for (auto &image : resources.sampled_images)
-	{
-		auto set = compiler.get_decoration(image.id, spv::DecorationDescriptorSet);
-		auto binding = compiler.get_decoration(image.id, spv::DecorationBinding);
-		VK_ASSERT(set < VULKAN_NUM_DESCRIPTOR_SETS);
-		VK_ASSERT(binding < VULKAN_NUM_BINDINGS);
-
-		auto &type = compiler.get_type(image.type_id);
-		if (type.image.dim == spv::DimBuffer)
-			layout.sets[set].sampled_texel_buffer_mask |= 1u << binding;
-		else
-			layout.sets[set].sampled_image_mask |= 1u << binding;
-
-		if (compiler.get_type(type.image.type).basetype == SPIRType::BaseType::Float)
-			layout.sets[set].fp_mask |= 1u << binding;
-
-		update_array_info(layout, type, set, binding);
-	}
-
-	for (auto &image : resources.subpass_inputs)
-	{
-		auto set = compiler.get_decoration(image.id, spv::DecorationDescriptorSet);
-		auto binding = compiler.get_decoration(image.id, spv::DecorationBinding);
-		VK_ASSERT(set < VULKAN_NUM_DESCRIPTOR_SETS);
-		VK_ASSERT(binding < VULKAN_NUM_BINDINGS);
-
-		layout.sets[set].input_attachment_mask |= 1u << binding;
-
-		auto &type = compiler.get_type(image.type_id);
-		if (compiler.get_type(type.image.type).basetype == SPIRType::BaseType::Float)
-			layout.sets[set].fp_mask |= 1u << binding;
-		update_array_info(layout, type, set, binding);
-	}
-
-	for (auto &image : resources.separate_images)
-	{
-		auto set = compiler.get_decoration(image.id, spv::DecorationDescriptorSet);
-		auto binding = compiler.get_decoration(image.id, spv::DecorationBinding);
-		VK_ASSERT(set < VULKAN_NUM_DESCRIPTOR_SETS);
-		VK_ASSERT(binding < VULKAN_NUM_BINDINGS);
-
-		auto &type = compiler.get_type(image.type_id);
-		if (compiler.get_type(type.image.type).basetype == SPIRType::BaseType::Float)
-			layout.sets[set].fp_mask |= 1u << binding;
-
-		if (type.image.dim == spv::DimBuffer)
-			layout.sets[set].sampled_texel_buffer_mask |= 1u << binding;
-		else
-			layout.sets[set].separate_image_mask |= 1u << binding;
-
-		update_array_info(layout, type, set, binding);
-	}
-
-	for (auto &image : resources.separate_samplers)
-	{
-		auto set = compiler.get_decoration(image.id, spv::DecorationDescriptorSet);
-		auto binding = compiler.get_decoration(image.id, spv::DecorationBinding);
-		VK_ASSERT(set < VULKAN_NUM_DESCRIPTOR_SETS);
-		VK_ASSERT(binding < VULKAN_NUM_BINDINGS);
-
-		layout.sets[set].sampler_mask |= 1u << binding;
-		update_array_info(layout, compiler.get_type(image.type_id), set, binding);
-	}
-
-	for (auto &image : resources.storage_images)
-	{
-		auto set = compiler.get_decoration(image.id, spv::DecorationDescriptorSet);
-		auto binding = compiler.get_decoration(image.id, spv::DecorationBinding);
-		VK_ASSERT(set < VULKAN_NUM_DESCRIPTOR_SETS);
-		VK_ASSERT(binding < VULKAN_NUM_BINDINGS);
-
-		auto &type = compiler.get_type(image.type_id);
-		if (type.image.dim == spv::DimBuffer)
-			layout.sets[set].storage_texel_buffer_mask |= 1u << binding;
-		else
-			layout.sets[set].storage_image_mask |= 1u << binding;
-
-		if (compiler.get_type(type.image.type).basetype == SPIRType::BaseType::Float)
-			layout.sets[set].fp_mask |= 1u << binding;
-
-		update_array_info(layout, type, set, binding);
-	}
-
-	for (auto &buffer : resources.uniform_buffers)
-	{
-		auto set = compiler.get_decoration(buffer.id, spv::DecorationDescriptorSet);
-		auto binding = compiler.get_decoration(buffer.id, spv::DecorationBinding);
-		VK_ASSERT(set < VULKAN_NUM_DESCRIPTOR_SETS);
-		VK_ASSERT(binding < VULKAN_NUM_BINDINGS);
-
-		layout.sets[set].uniform_buffer_mask |= 1u << binding;
-		update_array_info(layout, compiler.get_type(buffer.type_id), set, binding);
-	}
-
-	for (auto &buffer : resources.storage_buffers)
-	{
-		auto set = compiler.get_decoration(buffer.id, spv::DecorationDescriptorSet);
-		auto binding = compiler.get_decoration(buffer.id, spv::DecorationBinding);
-		VK_ASSERT(set < VULKAN_NUM_DESCRIPTOR_SETS);
-		VK_ASSERT(binding < VULKAN_NUM_BINDINGS);
-
-		layout.sets[set].storage_buffer_mask |= 1u << binding;
-		update_array_info(layout, compiler.get_type(buffer.type_id), set, binding);
-	}
-
-	for (auto &attrib : resources.stage_inputs)
-	{
-		auto location = compiler.get_decoration(attrib.id, spv::DecorationLocation);
-		layout.input_mask |= 1u << location;
-	}
-
-	for (auto &attrib : resources.stage_outputs)
-	{
-		auto location = compiler.get_decoration(attrib.id, spv::DecorationLocation);
-		layout.output_mask |= 1u << location;
-	}
-
-	if (!resources.push_constant_buffers.empty())
-	{
-		// Don't bother trying to extract which part of a push constant block we're using.
-		// Just assume we're accessing everything. At least on older validation layers,
-		// it did not do a static analysis to determine similar information, so we got a lot
-		// of false positives.
-		layout.push_constant_size =
-				compiler.get_declared_struct_size(compiler.get_type(resources.push_constant_buffers.front().base_type_id));
-	}
-
-	auto spec_constants = compiler.get_specialization_constants();
-	for (auto &c : spec_constants)
-	{
-		if (c.constant_id >= VULKAN_NUM_TOTAL_SPEC_CONSTANTS)
-		{
-			LOGE("Spec constant ID: %u is out of range, will be ignored.\n", c.constant_id);
-			continue;
-		}
-
-		layout.spec_constant_mask |= 1u << c.constant_id;
-	}
-
-	return true;
-}
-#else
 bool Shader::reflect_resource_layout(ResourceLayout &, const uint32_t *, size_t)
 {
 	return false;
 }
-#endif
 
 Shader::Shader(Hash hash, Device *device_, const uint32_t *data, size_t size,
                const ResourceLayout *resource_layout, const ImmutableSamplerBank *sampler_bank)
@@ -546,16 +347,9 @@ Shader::Shader(Hash hash, Device *device_, const uint32_t *data, size_t size,
 	if (table.vkCreateShaderModule(device->get_device(), &info, nullptr, &module) != VK_SUCCESS)
 		LOGE("Failed to create shader module.\n");
 
-#ifdef GRANITE_VULKAN_FOSSILIZE
-	device->register_shader_module(module, get_hash(), info);
-#endif
 
 	if (resource_layout)
 		layout = *resource_layout;
-#ifdef GRANITE_VULKAN_SPIRV_CROSS
-	else if (!reflect_resource_layout(layout, data, size))
-		LOGE("Failed to reflect resource layout.\n");
-#endif
 
 	if (sampler_bank)
 		immutable_sampler_bank = *sampler_bank;

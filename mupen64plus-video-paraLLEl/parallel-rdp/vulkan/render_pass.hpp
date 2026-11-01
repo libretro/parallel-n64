@@ -173,7 +173,7 @@ private:
 
 	VkFormat color_attachments[VULKAN_NUM_ATTACHMENTS] = {};
 	VkFormat depth_stencil = VK_FORMAT_UNDEFINED;
-	std::vector<SubpassInfo> subpasses_info;
+	Util::Vector<SubpassInfo> subpasses_info;
 	pipeline_record_pass_t signature;
 
 	void setup_subpasses(const VkRenderPassCreateInfo &create_info);
@@ -262,7 +262,7 @@ private:
 	struct TransientNode : Util::TemporaryHashmapEnabled<TransientNode>, Util::IntrusiveListEnabled<TransientNode>
 	{
 		explicit TransientNode(ImageHandle handle_)
-		    : handle(std::move(handle_))
+		    : handle(Util::move(handle_))
 		{
 		}
 

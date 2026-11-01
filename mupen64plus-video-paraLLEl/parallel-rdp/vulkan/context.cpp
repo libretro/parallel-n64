@@ -22,8 +22,6 @@
 
 #include "context.hpp"
 #include "small_vector.hpp"
-#include <vector>
-#include <algorithm>
 #include <string.h>
 
 #ifndef _WIN32
@@ -33,14 +31,29 @@
 #include <windows.h>
 #endif
 
-#if defined(ANDROID) && defined(HAVE_SWAPPY)
-#include "swappy/swappyVk.h"
-#endif
 
 #undef VULKAN_DEBUG
 
 namespace Vulkan
 {
+static bool has_extension_property(const Util::Vector<VkExtensionProperties> &exts, const char *name)
+{
+	for (auto &e : exts)
+		if (strcmp(e.extensionName, name) == 0)
+			return true;
+	return false;
+}
+
+#ifdef VULKAN_DEBUG
+static bool has_layer_property(const Util::Vector<VkLayerProperties> &layers, const char *name)
+{
+	for (auto &l : layers)
+		if (strcmp(l.layerName, name) == 0)
+			return true;
+	return false;
+}
+#endif
+
 void Context::set_application_info(const VkApplicationInfo *app_info)
 {
 	user_application_info = app_info;
@@ -199,10 +212,6 @@ void Context::destroy()
 	debug_messenger = VK_NULL_HANDLE;
 #endif
 
-#if defined(ANDROID) && defined(HAVE_SWAPPY)
-	if (device != VK_NULL_HANDLE)
-		SwappyVk_destroyDevice(device);
-#endif
 
 	if (owned_device && device != VK_NULL_HANDLE)
 		device_table.vkDestroyDevice(device, nullptr);
@@ -227,12 +236,13 @@ const VkApplicationInfo &Context::get_application_info() const
 void Context::notify_validation_error(const char *msg)
 {
 	if (message_callback)
-		message_callback(msg);
+		message_callback(message_userdata, msg);
 }
 
-void Context::set_notification_callback(std::function<void(const char *)> func)
+void Context::set_notification_callback(NotificationCallback func, void *userdata)
 {
-	message_callback = std::move(func);
+	message_callback = func;
+	message_userdata = userdata;
 }
 
 #ifdef VULKAN_DEBUG
@@ -313,20 +323,20 @@ bool Context::create_instance(const char **instance_ext, uint32_t instance_ext_c
 	VkInstanceCreateInfo info = { VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO };
 	info.pApplicationInfo = &get_application_info();
 
-	std::vector<const char *> instance_exts;
-	std::vector<const char *> instance_layers;
+	Util::Vector<const char *> instance_exts;
+	Util::Vector<const char *> instance_layers;
 	for (uint32_t i = 0; i < instance_ext_count; i++)
 		instance_exts.push_back(instance_ext[i]);
 
 	uint32_t ext_count = 0;
 	vkEnumerateInstanceExtensionProperties(nullptr, &ext_count, nullptr);
-	std::vector<VkExtensionProperties> queried_extensions(ext_count);
+	Util::Vector<VkExtensionProperties> queried_extensions(ext_count);
 	if (ext_count)
 		vkEnumerateInstanceExtensionProperties(nullptr, &ext_count, queried_extensions.data());
 
 	uint32_t layer_count = 0;
 	vkEnumerateInstanceLayerProperties(&layer_count, nullptr);
-	std::vector<VkLayerProperties> queried_layers(layer_count);
+	Util::Vector<VkLayerProperties> queried_layers(layer_count);
 	if (layer_count)
 		vkEnumerateInstanceLayerProperties(&layer_count, queried_layers.data());
 
@@ -335,10 +345,7 @@ bool Context::create_instance(const char **instance_ext, uint32_t instance_ext_c
 		LOGI("Found layer: %s.\n", layer.layerName);
 
 	const auto has_extension = [&](const char *name) -> bool {
-		auto itr = find_if(begin(queried_extensions), end(queried_extensions), [name](const VkExtensionProperties &e) -> bool {
-			return strcmp(e.extensionName, name) == 0;
-		});
-		return itr != end(queried_extensions);
+		return has_extension_property(queried_extensions, name);
 	};
 
 	for (uint32_t i = 0; i < instance_ext_count; i++)
@@ -351,10 +358,10 @@ bool Context::create_instance(const char **instance_ext, uint32_t instance_ext_c
 		ext.supports_debug_utils = true;
 	}
 
-	auto itr = std::find_if(instance_ext, instance_ext + instance_ext_count, [](const char *name) {
-		return strcmp(name, VK_KHR_SURFACE_EXTENSION_NAME) == 0;
-	});
-	bool has_surface_extension = itr != (instance_ext + instance_ext_count);
+	bool has_surface_extension = false;
+	for (uint32_t i = 0; i < instance_ext_count; i++)
+		if (strcmp(instance_ext[i], VK_KHR_SURFACE_EXTENSION_NAME) == 0)
+			has_surface_extension = true;
 
 	if (has_surface_extension && has_extension(VK_KHR_GET_SURFACE_CAPABILITIES_2_EXTENSION_NAME))
 	{
@@ -372,10 +379,7 @@ bool Context::create_instance(const char **instance_ext, uint32_t instance_ext_c
 
 #ifdef VULKAN_DEBUG
 	const auto has_layer = [&](const char *name) -> bool {
-		auto layer_itr = find_if(begin(queried_layers), end(queried_layers), [name](const VkLayerProperties &e) -> bool {
-			return strcmp(e.layerName, name) == 0;
-		});
-		return layer_itr != end(queried_layers);
+		return has_layer_property(queried_layers, name);
 	};
 
 	VkValidationFeaturesEXT validation_features = { VK_STRUCTURE_TYPE_VALIDATION_FEATURES_EXT };
@@ -390,12 +394,10 @@ bool Context::create_instance(const char **instance_ext, uint32_t instance_ext_c
 
 		uint32_t layer_ext_count = 0;
 		vkEnumerateInstanceExtensionProperties("VK_LAYER_KHRONOS_validation", &layer_ext_count, nullptr);
-		std::vector<VkExtensionProperties> layer_exts(layer_ext_count);
+		Util::Vector<VkExtensionProperties> layer_exts(layer_ext_count);
 		vkEnumerateInstanceExtensionProperties("VK_LAYER_KHRONOS_validation", &layer_ext_count, layer_exts.data());
 
-		if (find_if(begin(layer_exts), end(layer_exts), [](const VkExtensionProperties &e) {
-			return strcmp(e.extensionName, VK_EXT_VALIDATION_FEATURES_EXTENSION_NAME) == 0;
-		}) != end(layer_exts))
+		if (has_extension_property(layer_exts, VK_EXT_VALIDATION_FEATURES_EXTENSION_NAME))
 		{
 			instance_exts.push_back(VK_EXT_VALIDATION_FEATURES_EXTENSION_NAME);
 			static const VkValidationFeatureEnableEXT validation_sync_features[1] = {
@@ -408,9 +410,7 @@ bool Context::create_instance(const char **instance_ext, uint32_t instance_ext_c
 		}
 
 		if (!ext.supports_debug_utils &&
-		    find_if(begin(layer_exts), end(layer_exts), [](const VkExtensionProperties &e) {
-			    return strcmp(e.extensionName, VK_EXT_DEBUG_UTILS_EXTENSION_NAME) == 0;
-		    }) != end(layer_exts))
+		    has_extension_property(layer_exts, VK_EXT_DEBUG_UTILS_EXTENSION_NAME))
 		{
 			instance_exts.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 			ext.supports_debug_utils = true;
@@ -496,7 +496,7 @@ bool Context::create_device(VkPhysicalDevice gpu_, VkSurfaceKHR surface, const c
 		if (gpu_count == 0)
 			return false;
 
-		std::vector<VkPhysicalDevice> gpus(gpu_count);
+		Util::Vector<VkPhysicalDevice> gpus(gpu_count);
 		if (vkEnumeratePhysicalDevices(instance, &gpu_count, gpus.data()) != VK_SUCCESS)
 			return false;
 
@@ -541,15 +541,12 @@ bool Context::create_device(VkPhysicalDevice gpu_, VkSurfaceKHR surface, const c
 
 	uint32_t ext_count = 0;
 	vkEnumerateDeviceExtensionProperties(gpu, nullptr, &ext_count, nullptr);
-	std::vector<VkExtensionProperties> queried_extensions(ext_count);
+	Util::Vector<VkExtensionProperties> queried_extensions(ext_count);
 	if (ext_count)
 		vkEnumerateDeviceExtensionProperties(gpu, nullptr, &ext_count, queried_extensions.data());
 
 	const auto has_extension = [&](const char *name) -> bool {
-		auto itr = find_if(begin(queried_extensions), end(queried_extensions), [name](const VkExtensionProperties &e) -> bool {
-			return strcmp(e.extensionName, name) == 0;
-		});
-		return itr != end(queried_extensions);
+		return has_extension_property(queried_extensions, name);
 	};
 
 	for (uint32_t i = 0; i < num_required_device_extensions; i++)
@@ -711,7 +708,7 @@ bool Context::create_device(VkPhysicalDevice gpu_, VkSurfaceKHR surface, const c
 	device_info.pQueueCreateInfos = queue_infos.data();
 	device_info.queueCreateInfoCount = uint32_t(queue_infos.size());
 
-	std::vector<const char *> enabled_extensions;
+	Util::Vector<const char *> enabled_extensions;
 
 	bool requires_swapchain = false;
 	for (uint32_t i = 0; i < num_required_device_extensions; i++)
@@ -731,34 +728,6 @@ bool Context::create_device(VkPhysicalDevice gpu_, VkSurfaceKHR surface, const c
 		}
 	}
 
-#if defined(ANDROID) && defined(HAVE_SWAPPY)
-	// Enable additional extensions required by SwappyVk.
-	std::unique_ptr<char[]> swappy_str_buffer;
-	if (requires_swapchain)
-	{
-		uint32_t required_swappy_extension_count = 0;
-
-		// I'm really not sure why the API just didn't return static const char * strings here,
-		// but oh well.
-		SwappyVk_determineDeviceExtensions(gpu, uint32_t(queried_extensions.size()),
-		                                   queried_extensions.data(),
-		                                   &required_swappy_extension_count,
-		                                   nullptr);
-		swappy_str_buffer.reset(new char[required_swappy_extension_count * (VK_MAX_EXTENSION_NAME_SIZE + 1)]);
-
-		std::vector<char *> extension_buffer;
-		extension_buffer.reserve(required_swappy_extension_count);
-		for (uint32_t i = 0; i < required_swappy_extension_count; i++)
-			extension_buffer.push_back(swappy_str_buffer.get() + i * (VK_MAX_EXTENSION_NAME_SIZE + 1));
-		SwappyVk_determineDeviceExtensions(gpu, uint32_t(queried_extensions.size()),
-		                                   queried_extensions.data(),
-		                                   &required_swappy_extension_count,
-		                                   extension_buffer.data());
-
-		for (auto *required_ext : extension_buffer)
-			enabled_extensions.push_back(required_ext);
-	}
-#endif
 
 	if (has_extension(VK_KHR_SAMPLER_MIRROR_CLAMP_TO_EDGE_EXTENSION_NAME))
 	{
@@ -1193,12 +1162,6 @@ bool Context::create_device(VkPhysicalDevice gpu_, VkSurfaceKHR surface, const c
 	else if (vkCreateDevice(gpu, &device_info, nullptr, &device) != VK_SUCCESS)
 		return false;
 
-#ifdef GRANITE_VULKAN_FOSSILIZE
-	feature_filter.init(user_application_info ? user_application_info->apiVersion : VK_API_VERSION_1_1,
-			enabled_extensions.data(), device_info.enabledExtensionCount,
-			&features, &props);
-	feature_filter.set_device_query_interface(this);
-#endif
 
 	volkLoadDeviceTable(&device_table, device);
 
@@ -1209,9 +1172,6 @@ bool Context::create_device(VkPhysicalDevice gpu_, VkSurfaceKHR surface, const c
 			device_table.vkGetDeviceQueue(device, queue_info.family_indices[i], queue_indices[i],
 			                              &queue_info.queues[i]);
 
-#if defined(ANDROID) && defined(HAVE_SWAPPY)
-			SwappyVk_setQueueFamilyIndex(device, queue_info.queues[i], queue_info.family_indices[i]);
-#endif
 		}
 		else
 		{
@@ -1244,26 +1204,4 @@ void Context::check_descriptor_indexing_features()
 	}
 }
 
-#ifdef GRANITE_VULKAN_FOSSILIZE
-bool Context::format_is_supported(VkFormat format, VkFormatFeatureFlags features)
-{
-	if (gpu == VK_NULL_HANDLE)
-		return false;
-
-	VkFormatProperties props;
-	vkGetPhysicalDeviceFormatProperties(gpu, format, &props);
-	auto supported = props.bufferFeatures | props.linearTilingFeatures | props.optimalTilingFeatures;
-	return (supported & features) == features;
-}
-
-bool Context::descriptor_set_layout_is_supported(const VkDescriptorSetLayoutCreateInfo *set_layout)
-{
-	if (device == VK_NULL_HANDLE)
-		return false;
-
-	VkDescriptorSetLayoutSupport support = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_SUPPORT };
-	vkGetDescriptorSetLayoutSupport(device, set_layout, &support);
-	return support.supported == VK_TRUE;
-}
-#endif
 }

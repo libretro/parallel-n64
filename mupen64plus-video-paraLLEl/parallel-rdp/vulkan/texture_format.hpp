@@ -24,7 +24,6 @@
 
 #include "vulkan_headers.hpp"
 #include "small_vector.hpp"
-#include <vector>
 #include <stddef.h>
 #include <assert.h>
 

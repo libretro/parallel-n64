@@ -48,7 +48,7 @@ static inline void viewport_transform_xy(VkViewport &vp, VkSurfaceTransformFlagB
 		float new_x = float(fb_width) - (vp.y + vp.height);
 		vp.x = new_x;
 		vp.y = new_y;
-		std::swap(vp.width, vp.height);
+		Util::swap(vp.width, vp.height);
 		break;
 	}
 
@@ -68,7 +68,7 @@ static inline void viewport_transform_xy(VkViewport &vp, VkSurfaceTransformFlagB
 		float new_y = float(fb_height) - (vp.x + vp.width);
 		vp.x = new_x;
 		vp.y = new_y;
-		std::swap(vp.width, vp.height);
+		Util::swap(vp.width, vp.height);
 		break;
 	}
 
@@ -91,8 +91,8 @@ static inline void rect2d_clip(VkRect2D &rect)
 		rect.offset.y = 0;
 	}
 
-	rect.extent.width = std::min(rect.extent.width, 0x7fffffffu - rect.offset.x);
-	rect.extent.height = std::min(rect.extent.height, 0x7fffffffu - rect.offset.y);
+	rect.extent.width = Util::min_of(rect.extent.width, 0x7fffffffu - rect.offset.x);
+	rect.extent.height = Util::min_of(rect.extent.height, 0x7fffffffu - rect.offset.y);
 }
 
 static inline void rect2d_transform_xy(VkRect2D &rect, VkSurfaceTransformFlagBitsKHR transform,
@@ -105,7 +105,7 @@ static inline void rect2d_transform_xy(VkRect2D &rect, VkSurfaceTransformFlagBit
 		int new_y = rect.offset.x;
 		int new_x = int(fb_width) - int(rect.offset.y + rect.extent.height);
 		rect.offset = { new_x, new_y };
-		std::swap(rect.extent.width, rect.extent.height);
+		Util::swap(rect.extent.width, rect.extent.height);
 		break;
 	}
 
@@ -123,7 +123,7 @@ static inline void rect2d_transform_xy(VkRect2D &rect, VkSurfaceTransformFlagBit
 		int new_x = rect.offset.y;
 		int new_y = int(fb_height) - int(rect.offset.x + rect.extent.width);
 		rect.offset = { new_x, new_y };
-		std::swap(rect.extent.width, rect.extent.height);
+		Util::swap(rect.extent.width, rect.extent.height);
 		break;
 	}
 

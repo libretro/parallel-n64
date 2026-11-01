@@ -7,6 +7,8 @@
  * containers did: every object constructed and destroyed exactly once,
  * slots unique across block boundaries and reused after a free, element
  * order kept by insert and erase, and lookups surviving table growth.
+ * The Vulkan layer's replacements for std::vector, unique_ptr arrays,
+ * std::atomic<uint64_t> and std::string tags are checked the same way.
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -16,6 +18,8 @@
 #include "small_vector.hpp"
 #include "intrusive.hpp"
 #include "intrusive_hash_map.hpp"
+
+#include <rthreads/rthreads.h>
 
 static int failures;
 static int live;
@@ -234,6 +238,115 @@ static void test_intrusive_ptr()
 	CHECK(live == 0);
 }
 
+static void test_heap_vector()
+{
+	{
+		Util::Vector<Tracked> v;
+		Util::Vector<Tracked> empty_moved(Util::move(v));
+		CHECK(empty_moved.empty() && v.empty());
+
+		int i;
+		for (i = 0; i < 100; i++)
+			v.push_back(Tracked(i));
+		CHECK(v.size() == 100 && live == 100);
+		for (i = 0; i < 100; i++)
+			CHECK(v[i].value == i);
+
+		/* pop_back destroys exactly the last element */
+		v.pop_back();
+		CHECK(v.size() == 99 && live == 99 && v.back().value == 98);
+
+		/* resize with a fill value, both directions */
+		v.resize(120, Tracked(-7));
+		CHECK(v.size() == 120 && live == 120 && v[98].value == 98 && v[99].value == -7 && v[119].value == -7);
+		v.resize(10, Tracked(5));
+		CHECK(v.size() == 10 && live == 10 && v[9].value == 9);
+
+		Util::Vector<Tracked> w;
+		w = Util::move(v);
+		CHECK(w.size() == 10 && v.empty() && live == 10);
+		Util::swap(v, w);
+		CHECK(v.size() == 10 && w.empty() && live == 10);
+	}
+	CHECK(live == 0);
+}
+
+static void test_owned_ptr_array()
+{
+	{
+		Util::OwnedPtrArray<Tracked, 4> a;
+		a.push_back(new Tracked(1));
+		a.push_back(new Tracked(2));
+		CHECK(a.size() == 2 && live == 2 && a[1]->value == 2);
+		int sum = 0;
+		for (auto *t : a)
+			sum += t->value;
+		CHECK(sum == 3);
+		a.clear();
+		CHECK(a.empty() && live == 0);
+		a.push_back(new Tracked(3));
+	}
+	CHECK(live == 0);
+}
+
+static void test_scalars()
+{
+	Util::AtomicU64 c;
+	c.init(0xfffffff0ull);
+	/* crosses 32 bits, as the 64-bit cookie counter must on 32-bit hosts */
+	CHECK(c.add_fetch_relaxed(16) == 0x100000000ull);
+	CHECK(c.add_fetch_relaxed(16) == 0x100000010ull);
+
+	char buf[8];
+	Util::copy_string(buf, sizeof(buf), "abc");
+	CHECK(strcmp(buf, "abc") == 0);
+	Util::copy_string(buf, sizeof(buf), "truncated tag");
+	CHECK(strcmp(buf, "truncat") == 0);
+	Util::copy_string(buf, sizeof(buf), nullptr);
+	CHECK(buf[0] == '\0');
+
+	CHECK(Util::min_of(3u, 7u) == 3u && Util::max_of(3u, 7u) == 7u);
+	CHECK(Util::max_of<unsigned>(size_t(9), 1u) == 9u);
+}
+
+/* Cookies from several threads at once stay unique, as Device hands
+ * them out from any thread. */
+enum { COOKIE_THREADS = 4, COOKIES_PER_THREAD = 20000 };
+static Util::AtomicU64 shared_cookie;
+static uint64_t cookies[COOKIE_THREADS][COOKIES_PER_THREAD];
+
+static void cookie_thread(void *arg)
+{
+	uint64_t *out = (uint64_t *)arg;
+	int i;
+	for (i = 0; i < COOKIES_PER_THREAD; i++)
+		out[i] = shared_cookie.add_fetch_relaxed(16);
+}
+
+static int cmp_u64(const void *a, const void *b)
+{
+	uint64_t x = *(const uint64_t *)a, y = *(const uint64_t *)b;
+	return x < y ? -1 : x > y;
+}
+
+static void test_concurrent_cookies()
+{
+	sthread_t *threads[COOKIE_THREADS];
+	int i;
+	shared_cookie.init(0);
+	for (i = 0; i < COOKIE_THREADS; i++)
+		threads[i] = sthread_create(cookie_thread, cookies[i]);
+	for (i = 0; i < COOKIE_THREADS; i++)
+		if (threads[i])
+			sthread_join(threads[i]);
+		else
+			cookie_thread(cookies[i]);
+	qsort(cookies, COOKIE_THREADS * COOKIES_PER_THREAD, sizeof(uint64_t), cmp_u64);
+	const uint64_t *all = &cookies[0][0];
+	for (i = 0; i < COOKIE_THREADS * COOKIES_PER_THREAD; i++)
+		CHECK(all[i] == uint64_t(i + 1) * 16);
+}
+
 int main()
 {
 	test_thread_safe_pool();
@@ -241,6 +354,10 @@ int main()
 	test_small_vector();
 	test_intrusive_hash_map();
 	test_intrusive_ptr();
+	test_heap_vector();
+	test_owned_ptr_array();
+	test_scalars();
+	test_concurrent_cookies();
 	if (failures)
 	{
 		fprintf(stderr, "test_granite_util: %d failures\n", failures);

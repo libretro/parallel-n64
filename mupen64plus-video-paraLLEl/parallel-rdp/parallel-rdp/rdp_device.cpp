@@ -28,9 +28,7 @@
 #include <emmintrin.h>
 #endif
 
-#ifndef PARALLEL_RDP_SHADER_DIR
 #include "shaders/slangmosh.hpp"
-#endif
 
 using namespace Vulkan;
 
@@ -174,9 +172,6 @@ CommandProcessor::CommandProcessor(Vulkan::Device &device_, void *rdram_ptr,
 	if (!single_threaded_processing)
 	{
 		if (!ring.init(
-#ifdef PARALLEL_RDP_SHADER_DIR
-				Granite::Global::create_thread_context(),
-#endif
 				this, 4 * 1024))
 			single_threaded_processing = true;
 	}
@@ -185,13 +180,11 @@ CommandProcessor::CommandProcessor(Vulkan::Device &device_, void *rdram_ptr,
 		timestamp = strtol(env, nullptr, 0) > 0;
 }
 
-#ifndef PARALLEL_RDP_SHADER_DIR
 // Here, where ShaderBank is complete.
 CommandProcessor::ShaderBankOwner::~ShaderBankOwner()
 {
 	delete bank;
 }
-#endif
 
 CommandProcessor::~CommandProcessor()
 {
@@ -251,7 +244,6 @@ void CommandProcessor::init_renderer()
 	vi.set_hidden_rdram(hidden_rdram.get());
 	vi.set_renderer(&renderer);
 
-#ifndef PARALLEL_RDP_SHADER_DIR
 	Vulkan::ResourceLayout layout;
 	shader_bank.bank = (new ShaderBank(device, layout, [&](const char *name, const char *define) -> int {
 		if (strncmp(name, "vi_", 3) == 0)
@@ -261,7 +253,6 @@ void CommandProcessor::init_renderer()
 	}));
 	renderer.set_shader_bank(shader_bank.bank);
 	vi.set_shader_bank(shader_bank.bank);
-#endif
 }
 
 // Dumps keep one byte per hidden RDRAM entry in either layout.
@@ -1644,7 +1635,7 @@ void CommandProcessor::enqueue_coherency_operation(CoherencyOperation &&op)
 {
 	size_t bytes = sizeof(CoherencyNode) + op.num_copies * sizeof(CoherencyCopy);
 	void *mem = ::operator new(bytes);
-	auto *node = new (mem) CoherencyNode;
+	auto *node = UTIL_PLACEMENT_NEW(mem) CoherencyNode;
 	auto *copies = reinterpret_cast<CoherencyCopy *>(node + 1);
 	unsigned i;
 

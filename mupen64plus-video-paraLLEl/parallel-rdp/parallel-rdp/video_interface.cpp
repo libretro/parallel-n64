@@ -27,9 +27,7 @@
 #include "upscaler_pass.hpp"
 #include <math.h>
 
-#ifndef PARALLEL_RDP_SHADER_DIR
 #include "shaders/slangmosh.hpp"
-#endif
 
 namespace RDP
 {
@@ -62,7 +60,7 @@ int VideoInterface::resolve_shader_define(const char *name, const char *define) 
 		return 0;
 }
 
-void VideoInterface::message(const std::string &tag, uint32_t code, uint32_t x, uint32_t y, uint32_t, uint32_t num_words,
+void VideoInterface::message(const char *tag, uint32_t code, uint32_t x, uint32_t y, uint32_t, uint32_t num_words,
                              const Vulkan::DebugChannelInterface::Word *words)
 {
 	if (filter_debug_channel_x >= 0 && x != uint32_t(filter_debug_channel_x))
@@ -446,11 +444,7 @@ Vulkan::ImageHandle VideoInterface::vram_fetch_stage(const Registers &regs, unsi
 	                         VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, 0,
 	                         VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_WRITE_BIT);
 
-#ifdef PARALLEL_RDP_SHADER_DIR
-	async_cmd->set_program("rdp://extract_vram.comp");
-#else
 	async_cmd->set_program(shader_bank->extract_vram);
-#endif
 	async_cmd->set_storage_texture(0, 0, vram_image->get_view());
 
 	if (scaling_factor > 1)
@@ -574,15 +568,7 @@ Vulkan::ImageHandle VideoInterface::aa_fetch_stage(Vulkan::CommandBuffer &cmd, V
 	cmd.begin_render_pass(rp);
 	cmd.set_opaque_state();
 
-#ifdef PARALLEL_RDP_SHADER_DIR
-	cmd.set_program("rdp://fullscreen.vert", "rdp://vi_fetch.frag",
-	                {
-			                { "DEBUG_ENABLE", debug_channel ? 1 : 0 },
-			                { "FETCH_BUG", fetch_bug ? 1 : 0 },
-	                });
-#else
 	cmd.set_program(device->request_program(shader_bank->fullscreen, shader_bank->vi_fetch[int(fetch_bug)]));
-#endif
 
 	struct Push
 	{
@@ -677,14 +663,7 @@ Vulkan::ImageHandle VideoInterface::divot_stage(Vulkan::CommandBuffer &cmd, Vulk
 	cmd.begin_render_pass(rp);
 	cmd.set_opaque_state();
 
-#ifdef PARALLEL_RDP_SHADER_DIR
-	cmd.set_program("rdp://fullscreen.vert", "rdp://vi_divot.frag", {
-			{ "DEBUG_ENABLE", debug_channel ? 1 : 0 },
-			{ "FETCH_BUG", fetch_bug ? 1 : 0 },
-	});
-#else
 	cmd.set_program(device->request_program(shader_bank->fullscreen, shader_bank->vi_divot[int(fetch_bug)]));
-#endif
 
 	cmd.set_texture(0, 0, aa_image.get_view());
 	cmd.draw(3);
@@ -873,13 +852,7 @@ Vulkan::ImageHandle VideoInterface::scale_stage(Vulkan::CommandBuffer &cmd, cons
 	push.frame_count = frame_count;
 
 	cmd.set_opaque_state();
-#ifdef PARALLEL_RDP_SHADER_DIR
-	cmd.set_program("rdp://fullscreen.vert", "rdp://vi_scale.frag", {
-			{ "DEBUG_ENABLE", debug_channel ? 1 : 0 },
-	});
-#else
 	cmd.set_program(device->request_program(shader_bank->fullscreen, shader_bank->vi_scale));
-#endif
 	cmd.set_buffer_view(1, 0, *gamma_lut_view);
 	bind_horizontal_info_view(cmd, lines);
 
@@ -932,13 +905,7 @@ Vulkan::ImageHandle VideoInterface::scale_stage(Vulkan::CommandBuffer &cmd, cons
 		cmd.set_color_write_mask(0x7);
 		cmd.set_specialization_constant_mask(0);
 		cmd.set_texture(0, 0, prev_scanout_image->get_view());
-#ifdef PARALLEL_RDP_SHADER_DIR
-		cmd.set_program("rdp://fullscreen.vert", "rdp://vi_blend_fields.frag", {
-				{ "DEBUG_ENABLE", debug_channel ? 1 : 0 },
-		});
-#else
 		cmd.set_program(device->request_program(shader_bank->fullscreen, shader_bank->vi_blend_fields));
-#endif
 
 		if (degenerate)
 		{
@@ -1119,13 +1086,7 @@ Vulkan::ImageHandle VideoInterface::upscale_deinterlace(Vulkan::CommandBuffer &c
 	push.y_offset = (float(scaling_factor) * (field_select ? -0.25f : +0.25f)) / float(scale_image.get_height());
 	cmd.push_constants(&push, 0, sizeof(push));
 
-#ifdef PARALLEL_RDP_SHADER_DIR
-	cmd.set_program("rdp://vi_deinterlace.vert", "rdp://vi_deinterlace.frag", {
-		{ "DEBUG_ENABLE", debug_channel ? 1 : 0 },
-	});
-#else
 	cmd.set_program(device->request_program(shader_bank->vi_deinterlace_vert, shader_bank->vi_deinterlace_frag));
-#endif
 	cmd.set_texture(0, 0, scale_image.get_view(), Vulkan::StockSampler::LinearClamp);
 	cmd.draw(3);
 	cmd.end_render_pass();

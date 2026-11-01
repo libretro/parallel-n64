@@ -22,7 +22,6 @@
 
 #include "buffer_pool.hpp"
 #include "device.hpp"
-#include <utility>
 
 namespace Vulkan
 {
@@ -104,11 +103,11 @@ BufferBlock BufferPool::request_block(VkDeviceSize minimum_size)
 {
 	if ((minimum_size > block_size) || blocks.empty())
 	{
-		return allocate_block(std::max(block_size, minimum_size));
+		return allocate_block(Util::max_of(block_size, minimum_size));
 	}
 	else
 	{
-		auto back = std::move(blocks.back());
+		auto back = Util::move(blocks.back());
 		blocks.pop_back();
 
 		back.mapped = static_cast<uint8_t *>(device->map_host_buffer(*back.cpu, MEMORY_ACCESS_WRITE_BIT));
@@ -122,7 +121,7 @@ void BufferPool::recycle_block(BufferBlock &block)
 	VK_ASSERT(block.size == block_size);
 
 	if (blocks.size() < max_retained_blocks)
-		blocks.push_back(std::move(block));
+		blocks.push_back(Util::move(block));
 	else
 		block = {};
 }

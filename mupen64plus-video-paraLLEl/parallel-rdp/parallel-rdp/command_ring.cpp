@@ -35,9 +35,6 @@ static size_t ring_load(retro_atomic_size_t *v)
 }
 
 bool CommandRing::init(
-#ifdef PARALLEL_RDP_SHADER_DIR
-		Granite::Global::GlobalManagersHandle global_handles_,
-#endif
 		CommandProcessor *processor_, unsigned count)
 {
 	assert((count & (count - 1)) == 0);
@@ -66,9 +63,6 @@ bool CommandRing::init(
 		}
 		ec_live = true;
 	}
-#ifdef PARALLEL_RDP_SHADER_DIR
-	global_handles = rdp_move(global_handles_);
-#endif
 	thr = sthread_create(thread_entry, this);
 	return thr != nullptr;
 }
@@ -162,12 +156,6 @@ void CommandRing::thread_loop()
 {
 	Util::register_thread_index(0);
 
-#ifdef PARALLEL_RDP_SHADER_DIR
-	// Here to let the RDP play nice with full Granite.
-	// When we move to standalone Granite, we won't need to interact with global subsystems like this.
-	Granite::Global::set_thread_context(*global_handles);
-	global_handles.reset();
-#endif
 
 	size_t mask = ring_size - 1;
 	size_t r = 0;

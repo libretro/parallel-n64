@@ -22,7 +22,6 @@
 
 #pragma once
 
-#include <string>
 #include "buffer.hpp"
 #include "command_buffer.hpp"
 #include "command_pool.hpp"
@@ -39,30 +38,18 @@
 #include "context.hpp"
 #include "query_pool.hpp"
 #include "buffer_pool.hpp"
-#include <memory>
-#include <vector>
-#include <functional>
-#include <unordered_map>
+#include "small_vector.hpp"
 #include <stdio.h>
 
-#ifdef GRANITE_VULKAN_FILESYSTEM
-#include "shader_manager.hpp"
-#include "texture_manager.hpp"
-#endif
 
 #ifdef GRANITE_VULKAN_MT
-#include <atomic>
 #include <rthreads/retro_eventcount.h>
 #include <queues/mpsc_stack.h>
 #include <retro_atomic.h>
 #endif
 
-#ifdef GRANITE_VULKAN_FOSSILIZE
-#include "fossilize.hpp"
-#endif
 
 #include "quirks.hpp"
-#include "small_vector.hpp"
 
 namespace Util
 {
@@ -108,7 +95,7 @@ struct DeferredRelease : mpsc_stack_node_t
 // owner; recorded by the owner when the frame it was sent to begins.
 struct DeferredInterval : mpsc_stack_node_t
 {
-	std::string tid, tag, extra;
+	char tid[32], tag[64];
 	QueryPoolHandle start_ts, end_ts;
 };
 
@@ -140,7 +127,7 @@ public:
 		int32_t s32;
 		float f32;
 	};
-	virtual void message(const std::string &tag, uint32_t code, uint32_t x, uint32_t y, uint32_t z,
+	virtual void message(const char *tag, uint32_t code, uint32_t x, uint32_t y, uint32_t z,
 	                     uint32_t word_count, const Word *words) = 0;
 };
 
@@ -190,10 +177,7 @@ private:
 }
 
 class Device
-	: public Util::IntrusivePtrEnabled<Device, std::default_delete<Device>, HandleCounter>
-#ifdef GRANITE_VULKAN_FOSSILIZE
-	, public Fossilize::StateCreatorInterface
-#endif
+	: public Util::IntrusivePtrEnabled<Device, Util::DefaultDelete<Device>, HandleCounter>
 {
 public:
 	// Device-based objects which need to poke at internal data structures when their lifetimes end.
@@ -245,16 +229,16 @@ public:
 
 	// Only called by main thread, during setup phase.
 	void set_context(const Context &context);
-	void init_swapchain(const std::vector<VkImage> &swapchain_images, unsigned width, unsigned height, VkFormat format,
+	void init_swapchain(const Util::Vector<VkImage> &swapchain_images, unsigned width, unsigned height, VkFormat format,
 	                    VkSurfaceTransformFlagBitsKHR transform, VkImageUsageFlags usage);
 	void set_swapchain_queue_family_support(uint32_t queue_family_support);
 	bool can_touch_swapchain_in_command_buffer(CommandBuffer::Type type) const;
-	void init_external_swapchain(const std::vector<ImageHandle> &swapchain_images);
+	void init_external_swapchain(const Util::Vector<ImageHandle> &swapchain_images);
 	void init_frame_contexts(unsigned count);
 	const VolkDeviceTable &get_device_table() const;
 
 	// Profiling
-	bool init_performance_counters(CommandBuffer::Type type, const std::vector<std::string> &names);
+	bool init_performance_counters(CommandBuffer::Type type, const char *const *names, unsigned count);
 	bool acquire_profiling();
 	void release_profiling();
 	void query_available_performance_counters(CommandBuffer::Type type,
@@ -316,8 +300,9 @@ public:
 	void submit_discard(CommandBufferHandle &cmd);
 	void add_wait_semaphore(CommandBuffer::Type type, Semaphore semaphore, VkPipelineStageFlags stages, bool flush);
 	QueueIndices get_physical_queue_type(CommandBuffer::Type queue_type) const;
-	void register_time_interval(std::string tid, QueryPoolHandle start_ts, QueryPoolHandle end_ts,
-	                            std::string tag, std::string extra = {});
+	// Strings are copied; extra is not recorded by the timeline trace.
+	void register_time_interval(const char *tid, QueryPoolHandle start_ts, QueryPoolHandle end_ts,
+	                            const char *tag, const char *extra = nullptr);
 
 	// Request shaders and programs. These objects are owned by the Device.
 	Shader *request_shader(const uint32_t *code, size_t size,
@@ -442,17 +427,11 @@ public:
 
 	const Sampler &get_stock_sampler(StockSampler sampler) const;
 
-#ifdef GRANITE_VULKAN_FILESYSTEM
-	ShaderManager &get_shader_manager();
-	TextureManager &get_texture_manager();
-	void init_shader_manager_cache();
-	void flush_shader_manager_cache();
-#endif
 
 	// For some platforms, the device and queue might be shared, possibly across threads, so need some mechanism to
 	// lock the global device and queue.
-	void set_queue_lock(std::function<void ()> lock_callback,
-	                    std::function<void ()> unlock_callback);
+	typedef void (*QueueLockCallback)(void *userdata);
+	void set_queue_lock(QueueLockCallback lock_callback, QueueLockCallback unlock_callback, void *userdata);
 
 	const ImplementationWorkarounds &get_workarounds() const
 	{
@@ -508,7 +487,7 @@ private:
 	unsigned num_thread_indices = 1;
 
 #ifdef GRANITE_VULKAN_MT
-	std::atomic_uint64_t cookie;
+	Util::AtomicU64 cookie;
 #else
 	uint64_t cookie = 0;
 #endif
@@ -551,7 +530,7 @@ private:
 
 	QueryPoolHandle write_timestamp_nolock(VkCommandBuffer cmd, VkPipelineStageFlagBits stage);
 	QueryPoolHandle write_calibrated_timestamp_nolock();
-	void register_time_interval_nolock(std::string tid, QueryPoolHandle start_ts, QueryPoolHandle end_ts, std::string tag, std::string extra);
+	void register_time_interval_nolock(const char *tid, QueryPoolHandle start_ts, QueryPoolHandle end_ts, const char *tag);
 
 	// Make sure this is deleted last.
 	HandlePool handle_pool;
@@ -623,64 +602,63 @@ private:
 		const VolkDeviceTable &table;
 		Managers &managers;
 
-		std::vector<CommandPool> cmd_pools[QUEUE_INDEX_COUNT];
+		Util::Vector<CommandPool> cmd_pools[QUEUE_INDEX_COUNT];
 		VkSemaphore timeline_semaphores[QUEUE_INDEX_COUNT] = {};
 		uint64_t timeline_fences[QUEUE_INDEX_COUNT] = {};
 
 		QueryPool query_pool;
 
-		std::vector<BufferBlock> vbo_blocks;
-		std::vector<BufferBlock> ibo_blocks;
-		std::vector<BufferBlock> ubo_blocks;
-		std::vector<BufferBlock> staging_blocks;
+		Util::Vector<BufferBlock> vbo_blocks;
+		Util::Vector<BufferBlock> ibo_blocks;
+		Util::Vector<BufferBlock> ubo_blocks;
+		Util::Vector<BufferBlock> staging_blocks;
 
-		std::vector<VkFence> wait_fences;
-		std::vector<VkFence> recycle_fences;
+		Util::Vector<VkFence> wait_fences;
+		Util::Vector<VkFence> recycle_fences;
 
-		std::vector<DeviceAllocation> allocations;
-		std::vector<VkFramebuffer> destroyed_framebuffers;
-		std::vector<VkSampler> destroyed_samplers;
-		std::vector<VkPipeline> destroyed_pipelines;
-		std::vector<VkImageView> destroyed_image_views;
-		std::vector<VkBufferView> destroyed_buffer_views;
-		std::vector<VkImage> destroyed_images;
-		std::vector<VkBuffer> destroyed_buffers;
-		std::vector<VkDescriptorPool> destroyed_descriptor_pools;
+		Util::Vector<DeviceAllocation> allocations;
+		Util::Vector<VkFramebuffer> destroyed_framebuffers;
+		Util::Vector<VkSampler> destroyed_samplers;
+		Util::Vector<VkPipeline> destroyed_pipelines;
+		Util::Vector<VkImageView> destroyed_image_views;
+		Util::Vector<VkBufferView> destroyed_buffer_views;
+		Util::Vector<VkImage> destroyed_images;
+		Util::Vector<VkBuffer> destroyed_buffers;
+		Util::Vector<VkDescriptorPool> destroyed_descriptor_pools;
 		Util::SmallVector<CommandBufferHandle> submissions[QUEUE_INDEX_COUNT];
-		std::vector<VkSemaphore> recycled_semaphores;
-		std::vector<VkEvent> recycled_events;
-		std::vector<VkSemaphore> destroyed_semaphores;
-		std::vector<ImageHandle> keep_alive_images;
+		Util::Vector<VkSemaphore> recycled_semaphores;
+		Util::Vector<VkEvent> recycled_events;
+		Util::Vector<VkSemaphore> destroyed_semaphores;
+		Util::Vector<ImageHandle> keep_alive_images;
 
 		struct DebugChannel
 		{
 			DebugChannelInterface *iface;
-			std::string tag;
+			char tag[32];
 			BufferHandle buffer;
 		};
-		std::vector<DebugChannel> debug_channels;
+		Util::Vector<DebugChannel> debug_channels;
 
 		struct TimestampIntervalHandles
 		{
-			std::string tid;
+			char tid[32];
 			QueryPoolHandle start_ts;
 			QueryPoolHandle end_ts;
 			TimestampInterval *timestamp_tag;
-			std::string extra;
 		};
-		std::vector<TimestampIntervalHandles> timestamp_intervals;
+		Util::Vector<TimestampIntervalHandles> timestamp_intervals;
 
 		bool in_destructor = false;
 	};
 	// The per frame structure must be destroyed after
 	// the hashmap data structures below, so it must be declared before.
-	std::vector<std::unique_ptr<PerFrame>> per_frame;
+	Util::OwnedPtrArray<PerFrame, MAX_DEFERRED_FRAMES> per_frame;
 
 	struct
 	{
 		Semaphore acquire;
 		Semaphore release;
-		std::vector<ImageHandle> swapchain;
+		Util::Vector<ImageHandle> swapchain;
 		VkQueue present_queue = VK_NULL_HANDLE;
 		uint32_t queue_family_support_mask = 0;
 		unsigned index = 0;
@@ -709,9 +687,9 @@ private:
 	// Pending buffers which need to be copied from CPU to GPU before submitting graphics or compute work.
 	struct
 	{
-		std::vector<BufferBlock> vbo;
-		std::vector<BufferBlock> ibo;
-		std::vector<BufferBlock> ubo;
+		Util::Vector<BufferBlock> vbo;
+		Util::Vector<BufferBlock> ibo;
+		Util::Vector<BufferBlock> ubo;
 	} dma;
 
 	void submit_queue(QueueIndices physical_type, InternalFence *fence,
@@ -770,8 +748,9 @@ private:
 	void submit_staging(CommandBufferHandle &cmd, VkBufferUsageFlags usage, bool flush);
 	PipelineEvent request_pipeline_event();
 
-	std::function<void ()> queue_lock_callback;
-	std::function<void ()> queue_unlock_callback;
+	QueueLockCallback queue_lock_callback = nullptr;
+	QueueLockCallback queue_unlock_callback = nullptr;
+	void *queue_lock_userdata = nullptr;
 	void flush_frame(QueueIndices physical_type);
 	void sync_buffer_blocks();
 	void submit_empty_inner(QueueIndices type, InternalFence *fence,
@@ -841,53 +820,12 @@ private:
 	void wait_idle_nolock();
 	void end_frame_nolock();
 
-	void add_debug_channel_buffer(DebugChannelInterface *iface, std::string tag, BufferHandle buffer);
+	void add_debug_channel_buffer(DebugChannelInterface *iface, const char *tag, BufferHandle buffer);
 	void parse_debug_channel(const PerFrame::DebugChannel &channel);
 
 	Fence request_legacy_fence();
 
-#ifdef GRANITE_VULKAN_FILESYSTEM
-	ShaderManager shader_manager;
-	TextureManager texture_manager;
-#endif
 
-#ifdef GRANITE_VULKAN_FOSSILIZE
-	Fossilize::StateRecorder state_recorder;
-	bool enqueue_create_sampler(Fossilize::Hash hash, const VkSamplerCreateInfo *create_info, VkSampler *sampler) override;
-	bool enqueue_create_descriptor_set_layout(Fossilize::Hash hash, const VkDescriptorSetLayoutCreateInfo *create_info, VkDescriptorSetLayout *layout) override;
-	bool enqueue_create_pipeline_layout(Fossilize::Hash hash, const VkPipelineLayoutCreateInfo *create_info, VkPipelineLayout *layout) override;
-	bool enqueue_create_shader_module(Fossilize::Hash hash, const VkShaderModuleCreateInfo *create_info, VkShaderModule *module) override;
-	bool enqueue_create_render_pass(Fossilize::Hash hash, const VkRenderPassCreateInfo *create_info, VkRenderPass *render_pass) override;
-	bool enqueue_create_render_pass2(Fossilize::Hash hash, const VkRenderPassCreateInfo2 *create_info, VkRenderPass *render_pass) override;
-	bool enqueue_create_compute_pipeline(Fossilize::Hash hash, const VkComputePipelineCreateInfo *create_info, VkPipeline *pipeline) override;
-	bool enqueue_create_graphics_pipeline(Fossilize::Hash hash, const VkGraphicsPipelineCreateInfo *create_info, VkPipeline *pipeline) override;
-	bool enqueue_create_raytracing_pipeline(Fossilize::Hash hash, const VkRayTracingPipelineCreateInfoKHR *create_info, VkPipeline *pipeline) override;
-	void notify_replayed_resources_for_type() override;
-	VkPipeline fossilize_create_graphics_pipeline(Fossilize::Hash hash, VkGraphicsPipelineCreateInfo &info);
-	VkPipeline fossilize_create_compute_pipeline(Fossilize::Hash hash, VkComputePipelineCreateInfo &info);
-
-	void register_graphics_pipeline(Fossilize::Hash hash, const VkGraphicsPipelineCreateInfo &info);
-	void register_compute_pipeline(Fossilize::Hash hash, const VkComputePipelineCreateInfo &info);
-	void register_render_pass(VkRenderPass render_pass, Fossilize::Hash hash, const VkRenderPassCreateInfo &info);
-	void register_descriptor_set_layout(VkDescriptorSetLayout layout, Fossilize::Hash hash, const VkDescriptorSetLayoutCreateInfo &info);
-	void register_pipeline_layout(VkPipelineLayout layout, Fossilize::Hash hash, const VkPipelineLayoutCreateInfo &info);
-	void register_shader_module(VkShaderModule module, Fossilize::Hash hash, const VkShaderModuleCreateInfo &info);
-	//void register_sampler(VkSampler sampler, Fossilize::Hash hash, const VkSamplerCreateInfo &info);
-
-	struct
-	{
-		std::unordered_map<VkShaderModule, Shader *> shader_map;
-		std::unordered_map<VkRenderPass, RenderPass *> render_pass_map;
-		const Fossilize::FeatureFilter *feature_filter = nullptr;
-#ifdef GRANITE_VULKAN_MT
-		// Need to forward-declare the type, avoid the ref-counted wrapper.
-		Granite::TaskGroup *pipeline_group = nullptr;
-#endif
-	} replayer_state;
-
-	void init_pipeline_state(const Fossilize::FeatureFilter &filter);
-	void flush_pipeline_state();
-#endif
 
 	ImplementationWorkarounds workarounds;
 	void init_workarounds();

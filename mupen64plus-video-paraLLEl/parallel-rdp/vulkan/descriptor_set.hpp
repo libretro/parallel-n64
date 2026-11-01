@@ -22,15 +22,13 @@
 
 #pragma once
 
-#include <memory>
 #include "hash.hpp"
 #include "object_pool.hpp"
 #include "temporary_hashmap.hpp"
 #include "vulkan_headers.hpp"
 #include "sampler.hpp"
 #include "limits.hpp"
-#include <utility>
-#include <vector>
+#include "small_vector.hpp"
 #include "cookie.hpp"
 
 namespace Vulkan
@@ -119,7 +117,12 @@ public:
 	DescriptorSetAllocator(const DescriptorSetAllocator &) = delete;
 
 	void begin_frame();
-	std::pair<VkDescriptorSet, bool> find(unsigned thread_index, Util::Hash hash);
+	struct Lookup
+	{
+		VkDescriptorSet set;
+		bool cached;
+	};
+	Lookup find(unsigned thread_index, Util::Hash hash);
 
 	VkDescriptorSetLayout get_layout() const
 	{
@@ -155,11 +158,12 @@ private:
 	struct PerThread
 	{
 		Util::TemporaryHashmap<DescriptorSetNode, VULKAN_DESCRIPTOR_RING_SIZE, true> set_nodes;
-		std::vector<VkDescriptorPool> pools;
+		Util::Vector<VkDescriptorPool> pools;
 		bool should_begin = true;
 	};
-	std::vector<std::unique_ptr<PerThread>> per_thread;
-	std::vector<VkDescriptorPoolSize> pool_size;
+	PerThread *per_thread = nullptr;
+	unsigned num_per_thread = 0;
+	Util::Vector<VkDescriptorPoolSize> pool_size;
 	bool bindless = false;
 };
 
@@ -182,6 +186,6 @@ private:
 	unsigned max_sets_per_pool = 0;
 	unsigned max_descriptors_per_pool = 0;
 	BindlessResourceType resource_type = BindlessResourceType::ImageFP;
-	std::vector<const ImageView *> views;
+	Util::Vector<const ImageView *> views;
 };
 }

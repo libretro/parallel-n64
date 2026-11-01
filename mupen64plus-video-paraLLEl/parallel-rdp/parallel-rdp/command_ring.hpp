@@ -27,9 +27,6 @@
 #include <retro_atomic.h>
 #include <rthreads/retro_eventcount.h>
 
-#ifdef PARALLEL_RDP_SHADER_DIR
-#include "global_managers.hpp"
-#endif
 
 namespace RDP
 {
@@ -40,9 +37,6 @@ public:
 	// Returns false if the ring cannot run; the caller then processes
 	// commands on its own thread.
 	bool init(
-#ifdef PARALLEL_RDP_SHADER_DIR
-			Granite::Global::GlobalManagersHandle global_handles,
-#endif
 			CommandProcessor *processor, unsigned count);
 	~CommandRing();
 	void drain();
@@ -72,8 +66,5 @@ private:
 
 	void thread_loop();
 	static void thread_entry(void *self);
-#ifdef PARALLEL_RDP_SHADER_DIR
-	Granite::Global::GlobalManagersHandle global_handles;
-#endif
 };
 }

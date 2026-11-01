@@ -23,7 +23,7 @@
 #pragma once
 
 #include "vulkan_headers.hpp"
-#include <vector>
+#include "small_vector.hpp"
 
 namespace Vulkan
 {
@@ -40,6 +40,6 @@ public:
 private:
 	Device *device = nullptr;
 	const VolkDeviceTable *table = nullptr;
-	std::vector<VkFence> fences;
+	Util::Vector<VkFence> fences;
 };
 }

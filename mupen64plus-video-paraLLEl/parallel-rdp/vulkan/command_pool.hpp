@@ -23,8 +23,7 @@
 #pragma once
 
 #include "vulkan_headers.hpp"
-#include <unordered_set>
-#include <vector>
+#include "small_vector.hpp"
 
 namespace Vulkan
 {
@@ -50,10 +49,27 @@ private:
 	Device *device;
 	const VolkDeviceTable *table;
 	VkCommandPool pool = VK_NULL_HANDLE;
-	std::vector<VkCommandBuffer> buffers;
-	std::vector<VkCommandBuffer> secondary_buffers;
+	Util::Vector<VkCommandBuffer> buffers;
+	Util::Vector<VkCommandBuffer> secondary_buffers;
 #ifdef VULKAN_DEBUG
-	std::unordered_set<VkCommandBuffer> in_flight;
+	Util::Vector<VkCommandBuffer> in_flight;
+	bool in_flight_has(VkCommandBuffer cmd) const
+	{
+		for (auto c : in_flight)
+			if (c == cmd)
+				return true;
+		return false;
+	}
+	void in_flight_erase(VkCommandBuffer cmd)
+	{
+		for (auto &c : in_flight)
+			if (c == cmd)
+			{
+				c = in_flight.back();
+				in_flight.pop_back();
+				return;
+			}
+	}
 #endif
 	unsigned index = 0;
 	unsigned secondary_index = 0;

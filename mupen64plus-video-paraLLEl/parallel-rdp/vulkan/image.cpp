@@ -125,7 +125,7 @@ Image::Image(Device *device_, VkImage image_, VkImageView default_view, const De
 DeviceAllocation Image::take_allocation_ownership()
 {
 	DeviceAllocation ret = {};
-	std::swap(ret, alloc);
+	Util::swap(ret, alloc);
 	return ret;
 }
 
@@ -205,7 +205,7 @@ VkPipelineStageFlags LinearHostImage::get_used_pipeline_stages() const
 }
 
 LinearHostImage::LinearHostImage(Device *device_, ImageHandle gpu_image_, BufferHandle cpu_image_, VkPipelineStageFlags stages_)
-	: device(device_), gpu_image(std::move(gpu_image_)), cpu_image(std::move(cpu_image_)), stages(stages_)
+	: device(device_), gpu_image(Util::move(gpu_image_)), cpu_image(Util::move(cpu_image_)), stages(stages_)
 {
 	if (gpu_image->get_create_info().domain == ImageDomain::LinearHostCached ||
 	    gpu_image->get_create_info().domain == ImageDomain::LinearHost)

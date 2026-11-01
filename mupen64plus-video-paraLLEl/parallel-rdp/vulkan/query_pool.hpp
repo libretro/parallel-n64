@@ -22,12 +22,10 @@
 
 #pragma once
 
-#include <vector>
-#include <string>
+#include "small_vector.hpp"
 #include "vulkan_headers.hpp"
 #include "vulkan_common.hpp"
 #include "object_pool.hpp"
-#include <functional>
 
 namespace Vulkan
 {
@@ -38,7 +36,7 @@ class PerformanceQueryPool
 public:
 	void init_device(Device *device, uint32_t queue_family_index);
 	~PerformanceQueryPool();
-	bool init_counters(const std::vector<std::string> &enable_counter_names);
+	bool init_counters(const char *const *enable_counter_names, unsigned count);
 
 	void begin_command_buffer(VkCommandBuffer cmd);
 	void end_command_buffer(VkCommandBuffer cmd);
@@ -57,10 +55,10 @@ private:
 	Device *device = nullptr;
 	uint32_t queue_family_index = 0;
 	VkQueryPool pool = VK_NULL_HANDLE;
-	std::vector<VkPerformanceCounterResultKHR> results;
-	std::vector<VkPerformanceCounterKHR> counters;
-	std::vector<VkPerformanceCounterDescriptionKHR> counter_descriptions;
-	std::vector<uint32_t> active_indices;
+	Util::Vector<VkPerformanceCounterResultKHR> results;
+	Util::Vector<VkPerformanceCounterKHR> counters;
+	Util::Vector<VkPerformanceCounterDescriptionKHR> counter_descriptions;
+	Util::Vector<uint32_t> active_indices;
 };
 
 class QueryPoolResult;
@@ -129,12 +127,12 @@ private:
 	struct Pool
 	{
 		VkQueryPool pool = VK_NULL_HANDLE;
-		std::vector<uint64_t> query_results;
-		std::vector<QueryPoolHandle> cookies;
+		Util::Vector<uint64_t> query_results;
+		Util::Vector<QueryPoolHandle> cookies;
 		unsigned index = 0;
 		unsigned size = 0;
 	};
-	std::vector<Pool> pools;
+	Util::Vector<Pool> pools;
 	unsigned pool_index = 0;
 
 	void add_pool();
@@ -145,12 +143,12 @@ private:
 class TimestampInterval : public Util::IntrusiveHashMapEnabled<TimestampInterval>
 {
 public:
-	explicit TimestampInterval(std::string tag);
+	explicit TimestampInterval(const char *tag);
 
 	void accumulate_time(double t);
 	double get_time_per_iteration() const;
 	double get_time_per_accumulation() const;
-	const std::string &get_tag() const;
+	const char *get_tag() const;
 	void mark_end_of_frame_context();
 
 	double get_total_time() const;
@@ -159,7 +157,7 @@ public:
 	void reset();
 
 private:
-	std::string tag;
+	char tag[64];
 	double total_time = 0.0;
 	uint64_t total_frame_iterations = 0;
 	uint64_t total_accumulations = 0;
@@ -172,7 +170,7 @@ struct TimestampIntervalReport
 	double accumulations_per_frame_context;
 };
 
-using TimestampIntervalReportCallback = std::function<void (const std::string &, const TimestampIntervalReport &)>;
+typedef void (*TimestampIntervalReportCallback)(void *userdata, const char *tag, const TimestampIntervalReport &report);
 
 class TimestampIntervalManager
 {
@@ -180,7 +178,7 @@ public:
 	TimestampInterval *get_timestamp_tag(const char *tag);
 	void mark_end_of_frame_context();
 	void reset();
-	void log_simple(const TimestampIntervalReportCallback &func = {}) const;
+	void log_simple(TimestampIntervalReportCallback func = nullptr, void *userdata = nullptr) const;
 
 private:
 	Util::IntrusiveHashMap<TimestampInterval> timestamps;

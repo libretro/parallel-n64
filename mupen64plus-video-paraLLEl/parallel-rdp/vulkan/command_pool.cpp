@@ -37,7 +37,7 @@ CommandPool::CommandPool(Device *device_, uint32_t queue_family_index)
 
 CommandPool::CommandPool(CommandPool &&other) noexcept
 {
-	*this = std::move(other);
+	*this = Util::move(other);
 }
 
 CommandPool &CommandPool::operator=(CommandPool &&other) noexcept
@@ -53,13 +53,13 @@ CommandPool &CommandPool::operator=(CommandPool &&other) noexcept
 
 		pool = VK_NULL_HANDLE;
 		buffers.clear();
-		std::swap(pool, other.pool);
-		std::swap(buffers, other.buffers);
+		Util::swap(pool, other.pool);
+		Util::swap(buffers, other.buffers);
 		index = other.index;
 		other.index = 0;
 #ifdef VULKAN_DEBUG
 		in_flight.clear();
-		std::swap(in_flight, other.in_flight);
+		Util::swap(in_flight, other.in_flight);
 #endif
 	}
 	return *this;
@@ -78,8 +78,8 @@ CommandPool::~CommandPool()
 void CommandPool::signal_submitted(VkCommandBuffer cmd)
 {
 #ifdef VULKAN_DEBUG
-	VK_ASSERT(in_flight.find(cmd) != end(in_flight));
-	in_flight.erase(cmd);
+	VK_ASSERT(in_flight_has(cmd));
+	in_flight_erase(cmd);
 #else
 	(void)cmd;
 #endif
@@ -93,8 +93,8 @@ VkCommandBuffer CommandPool::request_secondary_command_buffer()
 	{
 		auto ret = secondary_buffers[secondary_index++];
 #ifdef VULKAN_DEBUG
-		VK_ASSERT(in_flight.find(ret) == end(in_flight));
-		in_flight.insert(ret);
+		VK_ASSERT(!in_flight_has(ret));
+		in_flight.push_back(ret);
 #endif
 		return ret;
 	}
@@ -108,8 +108,8 @@ VkCommandBuffer CommandPool::request_secondary_command_buffer()
 
 		table->vkAllocateCommandBuffers(device->get_device(), &info, &cmd);
 #ifdef VULKAN_DEBUG
-		VK_ASSERT(in_flight.find(cmd) == end(in_flight));
-		in_flight.insert(cmd);
+		VK_ASSERT(!in_flight_has(cmd));
+		in_flight.push_back(cmd);
 #endif
 		secondary_buffers.push_back(cmd);
 		secondary_index++;
@@ -125,8 +125,8 @@ VkCommandBuffer CommandPool::request_command_buffer()
 	{
 		auto ret = buffers[index++];
 #ifdef VULKAN_DEBUG
-		VK_ASSERT(in_flight.find(ret) == end(in_flight));
-		in_flight.insert(ret);
+		VK_ASSERT(!in_flight_has(ret));
+		in_flight.push_back(ret);
 #endif
 		return ret;
 	}
@@ -140,8 +140,8 @@ VkCommandBuffer CommandPool::request_command_buffer()
 
 		table->vkAllocateCommandBuffers(device->get_device(), &info, &cmd);
 #ifdef VULKAN_DEBUG
-		VK_ASSERT(in_flight.find(cmd) == end(in_flight));
-		in_flight.insert(cmd);
+		VK_ASSERT(!in_flight_has(cmd));
+		in_flight.push_back(cmd);
 #endif
 		buffers.push_back(cmd);
 		index++;

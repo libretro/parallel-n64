@@ -248,10 +248,12 @@ public:
 
 	void pop_back()
 	{
-		// Work around false positive warning on GCC 8.3.
 		// Calling pop_back on empty vector is undefined.
 		if (!this->empty())
-			resize(this->buffer_size - 1);
+		{
+			this->buffer_size--;
+			this->ptr[this->buffer_size].~T();
+		}
 	}
 
 	template <typename... Ts>
@@ -265,6 +267,13 @@ public:
 	void reserve(size_t count)
 	{
 		if (count > buffer_capacity)
+			grow(count);
+	}
+
+private:
+	// Out of line, so push_back inlines to a compare and a store.
+	UTIL_NOINLINE_COLD void grow(size_t count)
+	{
 		{
 			size_t target_capacity = buffer_capacity;
 			if (target_capacity == 0)
@@ -299,6 +308,7 @@ public:
 		}
 	}
 
+public:
 	void insert(T *itr, const T *insert_begin, const T *insert_end)
 	{
 		auto count = size_t(insert_end - insert_begin);
@@ -446,8 +456,29 @@ public:
 		this->buffer_size = new_size;
 	}
 
+	void resize(size_t new_size, const T &value)
+	{
+		if (new_size < this->buffer_size)
+		{
+			for (size_t i = new_size; i < this->buffer_size; i++)
+				this->ptr[i].~T();
+		}
+		else if (new_size > this->buffer_size)
+		{
+			reserve(new_size);
+			for (size_t i = this->buffer_size; i < new_size; i++)
+				UTIL_PLACEMENT_NEW(&this->ptr[i]) T(value);
+		}
+
+		this->buffer_size = new_size;
+	}
+
 private:
 	size_t buffer_capacity = 0;
 	AlignedBuffer<T, N> stack_storage;
 };
+
+/* Heap-only, like std::vector */
+template <typename T>
+using Vector = SmallVector<T, 0>;
 }

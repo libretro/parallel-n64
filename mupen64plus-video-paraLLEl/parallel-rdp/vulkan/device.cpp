@@ -26,9 +26,7 @@
 #include "type_to_string.hpp"
 #include "quirks.hpp"
 #include "timer.hpp"
-#include <algorithm>
 #include <string.h>
-#include <limits>
 #include <stdlib.h>
 
 #ifdef _WIN32
@@ -36,9 +34,6 @@
 #include <windows.h>
 #endif
 
-#ifdef GRANITE_VULKAN_FILESYSTEM
-#include "string_helpers.hpp"
-#endif
 
 #ifdef GRANITE_VULKAN_MT
 #include "thread_id.hpp"
@@ -97,13 +92,9 @@ static constexpr VkImageUsageFlags vk_video_image_usage_flags = 0;
 Device::Device()
     : framebuffer_allocator(this)
     , transient_allocator(this)
-#ifdef GRANITE_VULKAN_FILESYSTEM
-	, shader_manager(this)
-	, texture_manager(this)
-#endif
 {
 #ifdef GRANITE_VULKAN_MT
-	cookie.store(0);
+	cookie.init(0);
 #endif
 	fence_wait_ec_live = retro_eventcount_init(&fence_wait_ec);
 	for (auto &stack : deferred_releases)
@@ -254,7 +245,7 @@ void Device::add_wait_semaphore(CommandBuffer::Type type, Semaphore semaphore, V
 	VK_ASSERT(!semaphore->is_proxy_timeline());
 
 	LOCK();
-	add_wait_semaphore_nolock(get_physical_queue_type(type), std::move(semaphore), stages, flush);
+	add_wait_semaphore_nolock(get_physical_queue_type(type), Util::move(semaphore), stages, flush);
 }
 
 void Device::add_wait_semaphore_nolock(QueueIndices physical_type, Semaphore semaphore, VkPipelineStageFlags stages,
@@ -331,7 +322,7 @@ LinearHostImageHandle Device::create_linear_host_image(const LinearHostImageCrea
 	else
 		gpu_image->set_layout(Layout::General);
 
-	return LinearHostImageHandle(handle_pool.linear_images.allocate(this, std::move(gpu_image), std::move(cpu_image), info.stages));
+	return LinearHostImageHandle(handle_pool.linear_images.allocate(this, Util::move(gpu_image), Util::move(cpu_image), info.stages));
 }
 
 void *Device::map_linear_host_image(const LinearHostImage &image, MemoryAccessFlags access)
@@ -592,7 +583,7 @@ void Device::bake_program(Program &program)
 		{
 			layout.push_constant_range.stageFlags |= 1u << i;
 			layout.push_constant_range.size =
-					std::max(layout.push_constant_range.size, shader_layout.push_constant_size);
+					Util::max_of(layout.push_constant_range.size, shader_layout.push_constant_size);
 		}
 
 		layout.spec_constant_mask[i] = shader_layout.spec_constant_mask;
@@ -690,20 +681,6 @@ bool Device::init_pipeline_cache(const uint8_t *data, size_t size)
 
 void Device::init_pipeline_cache()
 {
-#ifdef GRANITE_VULKAN_FILESYSTEM
-	if (!system_handles.filesystem)
-		return;
-	auto file = system_handles.filesystem->open_readonly_mapping("cache://pipeline_cache.bin");
-	if (file)
-	{
-		auto size = file->get_size();
-		auto *mapped = file->data<uint8_t>();
-		if (mapped && !init_pipeline_cache(mapped, size))
-			LOGE("Failed to initialize pipeline cache.\n");
-	}
-	else if (!init_pipeline_cache(nullptr, 0))
-		LOGE("Failed to initialize pipeline cache.\n");
-#endif
 }
 
 size_t Device::get_pipeline_cache_size()
@@ -961,32 +938,6 @@ bool Device::resolve_pipeline_record(const pipeline_record_t &record, DeferredPi
 
 void Device::flush_pipeline_cache()
 {
-#ifdef GRANITE_VULKAN_FILESYSTEM
-	if (!system_handles.filesystem)
-		return;
-
-	size_t size = get_pipeline_cache_size();
-	if (!size)
-	{
-		LOGE("Failed to get pipeline cache size.\n");
-		return;
-	}
-
-	auto file = system_handles.filesystem->open_transactional_mapping(
-			"cache://pipeline_cache.bin", size);
-
-	if (!file)
-	{
-		LOGE("Failed to get pipeline cache data.\n");
-		return;
-	}
-
-	if (!get_pipeline_cache_data(file->mutable_data<uint8_t>(), size))
-	{
-		LOGE("Failed to get pipeline cache data.\n");
-		return;
-	}
-#endif
 }
 
 void Device::init_workarounds()
@@ -1081,11 +1032,11 @@ void Device::set_context(const Context &context)
 	                  ImplementationQuirks::get().staging_need_device_local);
 	managers.ibo.init(this, 4 * 1024, 16, VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
 	                  ImplementationQuirks::get().staging_need_device_local);
-	managers.ubo.init(this, 256 * 1024, std::max<VkDeviceSize>(16u, gpu_props.limits.minUniformBufferOffsetAlignment),
+	managers.ubo.init(this, 256 * 1024, Util::max_of<VkDeviceSize>(16u, gpu_props.limits.minUniformBufferOffsetAlignment),
 	                  VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
 	                  ImplementationQuirks::get().staging_need_device_local);
 	managers.ubo.set_spill_region_size(VULKAN_MAX_UBO_SIZE);
-	managers.staging.init(this, 64 * 1024, std::max<VkDeviceSize>(16u, gpu_props.limits.optimalBufferCopyOffsetAlignment),
+	managers.staging.init(this, 64 * 1024, Util::max_of<VkDeviceSize>(16u, gpu_props.limits.optimalBufferCopyOffsetAlignment),
 	                      VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
 	                      false);
 
@@ -1113,13 +1064,7 @@ void Device::set_context(const Context &context)
 			queue_data[i].performance_query_pool.init_device(this, queue_info.family_indices[i]);
 	}
 
-#ifdef GRANITE_VULKAN_FILESYSTEM
-	init_shader_manager_cache();
-#endif
 
-#ifdef GRANITE_VULKAN_FOSSILIZE
-	init_pipeline_state(context.get_feature_filter());
-#endif
 
 	if (system_handles.timeline_trace_file)
 		init_calibrated_timestamps();
@@ -1248,7 +1193,7 @@ void Device::init_stock_sampler(StockSampler mode, float max_aniso, float lod_bi
 		if (get_device_features().enabled_features.samplerAnisotropy)
 		{
 			info.anisotropy_enable = true;
-			info.max_anisotropy = std::min(max_aniso, get_gpu_properties().limits.maxSamplerAnisotropy);
+			info.max_anisotropy = Util::min_of(max_aniso, get_gpu_properties().limits.maxSamplerAnisotropy);
 		}
 		info.mip_lod_bias = lod_bias;
 		break;
@@ -1270,7 +1215,7 @@ void Device::init_stock_samplers()
 }
 
 static void request_block(Device &device, BufferBlock &block, VkDeviceSize size,
-                          BufferPool &pool, std::vector<BufferBlock> *dma, std::vector<BufferBlock> &recycle)
+                          BufferPool &pool, Util::Vector<BufferBlock> *dma, Util::Vector<BufferBlock> &recycle)
 {
 	if (block.mapped)
 		device.unmap_host_buffer(*block.cpu, MEMORY_ACCESS_WRITE_BIT);
@@ -1347,7 +1292,7 @@ void Device::submit(CommandBufferHandle &cmd, Fence *fence, unsigned semaphore_c
 	cmd->end_debug_channel();
 
 	LOCK();
-	submit_nolock(std::move(cmd), fence, semaphore_count, semaphores);
+	submit_nolock(Util::move(cmd), fence, semaphore_count, semaphores);
 }
 
 void Device::submit_discard_nolock(CommandBufferHandle &cmd)
@@ -1411,7 +1356,7 @@ void Device::submit_nolock(CommandBufferHandle cmd, Fence *fence, unsigned semap
 	}
 
 	cmd->end();
-	submissions.push_back(std::move(cmd));
+	submissions.push_back(Util::move(cmd));
 
 	InternalFence signalled_fence;
 
@@ -1503,7 +1448,7 @@ void Device::submit_empty_inner(QueueIndices physical_type, InternalFence *fence
 	auto start_ts = write_calibrated_timestamp_nolock();
 	auto result = submit_batches(composer, queue, cleared_fence);
 	auto end_ts = write_calibrated_timestamp_nolock();
-	register_time_interval_nolock("CPU", std::move(start_ts), std::move(end_ts), "submit", "");
+	register_time_interval_nolock("CPU", Util::move(start_ts), Util::move(end_ts), "submit");
 
 	if (result != VK_SUCCESS)
 		LOGE("vkQueueSubmit failed (code: %d).\n", int(result));
@@ -1634,16 +1579,18 @@ void Device::collect_wait_semaphores(QueueData &data, Helper::WaitSemaphores &se
 
 static bool has_timeline_semaphore(const SmallVector<uint64_t> &counts)
 {
-	return std::find_if(counts.begin(), counts.end(), [](uint64_t count) {
-		return count != 0;
-	}) != counts.end();
+	for (uint64_t count : counts)
+		if (count != 0)
+			return true;
+	return false;
 }
 
 static bool has_binary_semaphore(const SmallVector<uint64_t> &counts)
 {
-	return std::find_if(counts.begin(), counts.end(), [](uint64_t count) {
-		return count == 0;
-	}) != counts.end();
+	for (uint64_t count : counts)
+		if (count == 0)
+			return true;
+	return false;
 }
 
 bool Helper::BatchComposer::has_timeline_semaphore_in_batch(unsigned index) const
@@ -1870,7 +1817,7 @@ VkResult Device::submit_batches(Helper::BatchComposer &composer, VkQueue queue, 
 {
 	auto &submits = composer.bake(profiling_iteration);
 	if (queue_lock_callback)
-		queue_lock_callback();
+		queue_lock_callback(queue_lock_userdata);
 
 	VkResult result = VK_SUCCESS;
 	if (get_workarounds().split_binary_timeline_semaphores)
@@ -1889,7 +1836,7 @@ VkResult Device::submit_batches(Helper::BatchComposer &composer, VkQueue queue, 
 	if (ImplementationQuirks::get().queue_wait_on_submission)
 		table->vkQueueWaitIdle(queue);
 	if (queue_unlock_callback)
-		queue_unlock_callback();
+		queue_unlock_callback(queue_lock_userdata);
 
 	return result;
 }
@@ -1983,7 +1930,7 @@ void Device::submit_queue(QueueIndices physical_type, InternalFence *fence,
 	auto start_ts = write_calibrated_timestamp_nolock();
 	auto result = submit_batches(composer, queue, cleared_fence, profiling_iteration);
 	auto end_ts = write_calibrated_timestamp_nolock();
-	register_time_interval_nolock("CPU", std::move(start_ts), std::move(end_ts), "submit", "");
+	register_time_interval_nolock("CPU", Util::move(start_ts), Util::move(end_ts), "submit");
 
 	if (result != VK_SUCCESS)
 		LOGE("vkQueueSubmit failed (code: %d).\n", int(result));
@@ -2202,7 +2149,7 @@ CommandBufferHandle Device::request_secondary_command_buffer_for_thread(unsigned
 
 void Device::set_acquire_semaphore(unsigned index, Semaphore acquire)
 {
-	wsi.acquire = std::move(acquire);
+	wsi.acquire = Util::move(acquire);
 	wsi.index = index;
 	wsi.consumed = false;
 
@@ -2215,7 +2162,7 @@ void Device::set_acquire_semaphore(unsigned index, Semaphore acquire)
 
 Semaphore Device::consume_release_semaphore()
 {
-	auto ret = std::move(wsi.release);
+	auto ret = Util::move(wsi.release);
 	wsi.release.reset();
 	return ret;
 }
@@ -2261,13 +2208,7 @@ Device::~Device()
 		table->vkDestroyPipelineCache(device, pipeline_cache, nullptr);
 	}
 
-#ifdef GRANITE_VULKAN_FILESYSTEM
-	flush_shader_manager_cache();
-#endif
 
-#ifdef GRANITE_VULKAN_FOSSILIZE
-	flush_pipeline_state();
-#endif
 
 	free(pipeline_records);
 	pipeline_records = nullptr;
@@ -2311,15 +2252,14 @@ void Device::init_frame_contexts(unsigned count)
 		count = MAX_DEFERRED_FRAMES;
 	for (unsigned i = 0; i < count; i++)
 	{
-		auto frame = std::unique_ptr<PerFrame>(new PerFrame(this, i));
-		per_frame.emplace_back(std::move(frame));
+		per_frame.push_back(new PerFrame(this, i));
 	}
 	if (frame_context_index >= per_frame.size())
 		frame_context_index = 0;
 	retro_atomic_store_release_int(&deferred_frame_index, int(frame_context_index));
 }
 
-void Device::init_external_swapchain(const std::vector<ImageHandle> &swapchain_images)
+void Device::init_external_swapchain(const Util::Vector<ImageHandle> &swapchain_images)
 {
 	DRAIN_FRAME_LOCK();
 	wsi.swapchain.clear();
@@ -2357,7 +2297,7 @@ void Device::set_swapchain_queue_family_support(uint32_t queue_family_support)
 	wsi.queue_family_support_mask = queue_family_support;
 }
 
-void Device::init_swapchain(const std::vector<VkImage> &swapchain_images, unsigned width, unsigned height, VkFormat format,
+void Device::init_swapchain(const Util::Vector<VkImage> &swapchain_images, unsigned width, unsigned height, VkFormat format,
                             VkSurfaceTransformFlagBitsKHR transform, VkImageUsageFlags usage)
 {
 	DRAIN_FRAME_LOCK();
@@ -2456,7 +2396,7 @@ void Device::drain_deferred_releases(PerFrame &f)
 		case DeferredRelease::Kind::Event: f.recycled_events.push_back((VkEvent)node->handle); break;
 		case DeferredRelease::Kind::Fence: f.recycle_fences.push_back((VkFence)node->handle); break;
 		case DeferredRelease::Kind::Memory: f.allocations.push_back(node->alloc); break;
-		case DeferredRelease::Kind::KeepAliveImage: f.keep_alive_images.push_back(std::move(node->image)); break;
+		case DeferredRelease::Kind::KeepAliveImage: f.keep_alive_images.push_back(Util::move(node->image)); break;
 		}
 		handle_pool.deferred.free(node);
 		node = next;
@@ -2466,8 +2406,7 @@ void Device::drain_deferred_releases(PerFrame &f)
 	while (iv)
 	{
 		auto *next = static_cast<DeferredInterval *>(iv->next);
-		register_time_interval_nolock(std::move(iv->tid), std::move(iv->start_ts), std::move(iv->end_ts),
-		                              std::move(iv->tag), std::move(iv->extra));
+		register_time_interval_nolock(iv->tid, Util::move(iv->start_ts), Util::move(iv->end_ts), iv->tag);
 		handle_pool.deferred_intervals.free(iv);
 		iv = next;
 	}
@@ -2477,7 +2416,7 @@ void Device::keep_handle_alive(ImageHandle handle)
 {
 	auto *node = handle_pool.deferred.allocate();
 	node->kind = DeferredRelease::Kind::KeepAliveImage;
-	node->image = std::move(handle);
+	node->image = Util::move(handle);
 	defer_release_node(node);
 }
 
@@ -2491,7 +2430,10 @@ void Device::free_memory_nolock(const DeviceAllocation &alloc)
 template <typename T, typename U>
 static inline bool exists(const T &container, const U &value)
 {
-	return find(begin(container), end(container), value) != end(container);
+	for (auto &v : container)
+		if (v == value)
+			return true;
+	return false;
 }
 
 #endif
@@ -2674,14 +2616,14 @@ void Device::wait_idle_nolock()
 	if (device != VK_NULL_HANDLE)
 	{
 		if (queue_lock_callback)
-			queue_lock_callback();
+			queue_lock_callback(queue_lock_userdata);
 		auto result = table->vkDeviceWaitIdle(device);
 		if (result != VK_SUCCESS)
 			LOGE("vkDeviceWaitIdle failed with code: %d\n", result);
 		if (result == VK_ERROR_DEVICE_LOST)
 			report_checkpoints();
 		if (queue_unlock_callback)
-			queue_unlock_callback();
+			queue_unlock_callback(queue_lock_userdata);
 	}
 
 	clear_wait_semaphores();
@@ -2738,9 +2680,6 @@ void Device::promote_read_write_caches_to_read_only()
 	render_passes.move_to_read_only();
 	immutable_samplers.move_to_read_only();
 	immutable_ycbcr_conversions.move_to_read_only();
-#ifdef GRANITE_VULKAN_FILESYSTEM
-	shader_manager.promote_read_write_caches_to_read_only();
-#endif
 #endif
 }
 
@@ -2751,7 +2690,7 @@ void Device::next_frame_context()
 	if (frame_context_begin_ts)
 	{
 		auto frame_context_end_ts = write_calibrated_timestamp_nolock();
-		register_time_interval_nolock("CPU", std::move(frame_context_begin_ts), std::move(frame_context_end_ts), "command submissions", "");
+		register_time_interval_nolock("CPU", Util::move(frame_context_begin_ts), Util::move(frame_context_end_ts), "command submissions");
 		frame_context_begin_ts = {};
 	}
 
@@ -2844,7 +2783,7 @@ void Device::init_calibrated_timestamps()
 
 	uint32_t count;
 	vkGetPhysicalDeviceCalibrateableTimeDomainsEXT(gpu, &count, nullptr);
-	std::vector<VkTimeDomainEXT> domains(count);
+	Util::Vector<VkTimeDomainEXT> domains(count);
 	if (vkGetPhysicalDeviceCalibrateableTimeDomainsEXT(gpu, &count, domains.data()) != VK_SUCCESS)
 		return;
 
@@ -2938,7 +2877,7 @@ void Device::recalibrate_timestamps()
 		resample_calibrated_timestamps();
 }
 
-void Device::register_time_interval(std::string tid, QueryPoolHandle start_ts, QueryPoolHandle end_ts, std::string tag, std::string extra)
+void Device::register_time_interval(const char *tid, QueryPoolHandle start_ts, QueryPoolHandle end_ts, const char *tag, const char *)
 {
 	// Without a timeline trace the timestamps are empty and there is
 	// nothing to record.
@@ -2947,26 +2886,30 @@ void Device::register_time_interval(std::string tid, QueryPoolHandle start_ts, Q
 	// May come from any thread (profiling); handed to the owner like a
 	// release, recorded when its frame begins.
 	auto *node = handle_pool.deferred_intervals.allocate();
-	node->tid = std::move(tid);
-	node->tag = std::move(tag);
-	node->extra = std::move(extra);
-	node->start_ts = std::move(start_ts);
-	node->end_ts = std::move(end_ts);
+	Util::copy_string(node->tid, sizeof(node->tid), tid);
+	Util::copy_string(node->tag, sizeof(node->tag), tag);
+	node->start_ts = Util::move(start_ts);
+	node->end_ts = Util::move(end_ts);
 	unsigned index = unsigned(retro_atomic_load_acquire_int(&deferred_frame_index));
 	mpsc_stack_push(&deferred_intervals[index % MAX_DEFERRED_FRAMES], node);
 }
 
-void Device::register_time_interval_nolock(std::string tid, QueryPoolHandle start_ts, QueryPoolHandle end_ts,
-                                           std::string tag, std::string extra)
+void Device::register_time_interval_nolock(const char *tid, QueryPoolHandle start_ts, QueryPoolHandle end_ts,
+                                           const char *tag)
 {
 	if (start_ts && end_ts)
 	{
-		TimestampInterval *timestamp_tag = managers.timestamps.get_timestamp_tag(tag.c_str());
+		TimestampInterval *timestamp_tag = managers.timestamps.get_timestamp_tag(tag);
 #ifdef VULKAN_DEBUG
 		if (start_ts->is_signalled() && end_ts->is_signalled())
 			VK_ASSERT(end_ts->get_timestamp_ticks() >= start_ts->get_timestamp_ticks());
 #endif
-		frame().timestamp_intervals.push_back({ std::move(tid), std::move(start_ts), std::move(end_ts), timestamp_tag, std::move(extra) });
+		frame().timestamp_intervals.emplace_back();
+		auto &ts = frame().timestamp_intervals.back();
+		Util::copy_string(ts.tid, sizeof(ts.tid), tid);
+		ts.start_ts = Util::move(start_ts);
+		ts.end_ts = Util::move(end_ts);
+		ts.timestamp_tag = timestamp_tag;
 	}
 }
 
@@ -3116,9 +3059,9 @@ void Device::PerFrame::begin()
 	allocations.clear();
 
 	if (!in_destructor)
-		device.register_time_interval_nolock("CPU", std::move(wait_fence_ts), device.write_calibrated_timestamp_nolock(), "fence + recycle", "");
+		device.register_time_interval_nolock("CPU", Util::move(wait_fence_ts), device.write_calibrated_timestamp_nolock(), "fence + recycle");
 
-	int64_t min_timestamp_us = std::numeric_limits<int64_t>::max();
+	int64_t min_timestamp_us = INT64_MAX;
 	int64_t max_timestamp_us = 0;
 
 	for (auto &ts : timestamp_intervals)
@@ -3138,12 +3081,12 @@ void Device::PerFrame::begin()
 			{
 				start_ts = device.convert_timestamp_to_absolute_nsec(*ts.start_ts);
 				end_ts = device.convert_timestamp_to_absolute_nsec(*ts.end_ts);
-				min_timestamp_us = (std::min)(min_timestamp_us, start_ts);
-				max_timestamp_us = (std::max)(max_timestamp_us, end_ts);
+				min_timestamp_us = Util::min_of(min_timestamp_us, start_ts);
+				max_timestamp_us = Util::max_of(max_timestamp_us, end_ts);
 
 				auto *e = device.system_handles.timeline_trace_file->allocate_event();
-				e->set_desc(ts.timestamp_tag->get_tag().c_str());
-				e->set_tid(ts.tid.c_str());
+				e->set_desc(ts.timestamp_tag->get_tag());
+				e->set_tid(ts.tid);
 				e->pid = frame_index + 1;
 				e->start_ns = start_ts;
 				e->end_ns = end_ts;
@@ -3402,7 +3345,7 @@ public:
 	VkImageView unorm_view = VK_NULL_HANDLE;
 	VkImageView srgb_view = VK_NULL_HANDLE;
 	VkImageViewType default_view_type = VK_IMAGE_VIEW_TYPE_MAX_ENUM;
-	std::vector<VkImageView> rt_views;
+	Util::Vector<VkImageView> rt_views;
 	DeviceAllocation allocation;
 	DeviceAllocator *allocator = nullptr;
 	bool owned = true;
@@ -3700,7 +3643,7 @@ ImageViewHandle Device::create_image_view(const ImageViewCreateInfo &create_info
 	{
 		holder.owned = false;
 		ret->set_alt_views(holder.depth_view, holder.stencil_view);
-		ret->set_render_target_views(std::move(holder.rt_views));
+		ret->set_render_target_views(Util::move(holder.rt_views));
 		return ret;
 	}
 	else
@@ -4253,7 +4196,7 @@ ImageHandle Device::create_image_from_staging_buffer(const ImageCreateInfo &crea
 		if (has_view)
 		{
 			handle->get_view().set_alt_views(holder.depth_view, holder.stencil_view);
-			handle->get_view().set_render_target_views(std::move(holder.rt_views));
+			handle->get_view().set_render_target_views(Util::move(holder.rt_views));
 			handle->get_view().set_unorm_view(holder.unorm_view);
 			handle->get_view().set_srgb_view(holder.srgb_view);
 		}
@@ -4391,7 +4334,7 @@ ImageHandle Device::create_image_from_staging_buffer(const ImageCreateInfo &crea
 					handle->get_access_flags() & image_layout_to_possible_access(create_info.initial_layout));
 		}
 
-		transition_cmd = std::move(graphics_cmd);
+		transition_cmd = Util::move(graphics_cmd);
 	}
 	else if (create_info.initial_layout != VK_IMAGE_LAYOUT_UNDEFINED)
 	{
@@ -4401,7 +4344,7 @@ ImageHandle Device::create_image_from_staging_buffer(const ImageCreateInfo &crea
 		                   VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, 0, handle->get_stage_flags(),
 		                   handle->get_access_flags() &
 		                   image_layout_to_possible_access(create_info.initial_layout));
-		transition_cmd = std::move(cmd);
+		transition_cmd = Util::move(cmd);
 	}
 
 	// For concurrent queue, make sure that compute can see the final image as well.
@@ -4969,7 +4912,7 @@ uint64_t Device::allocate_cookie()
 {
 	// Reserve lower bits for "special purposes".
 #ifdef GRANITE_VULKAN_MT
-	return cookie.fetch_add(16, std::memory_order_relaxed) + 16;
+	return cookie.add_fetch_relaxed(16);
 #else
 	cookie += 16;
 	return cookie;
@@ -5137,10 +5080,11 @@ RenderPassInfo Device::get_swapchain_render_pass(SwapchainRenderPass style)
 	return info;
 }
 
-void Device::set_queue_lock(std::function<void()> lock_callback, std::function<void()> unlock_callback)
+void Device::set_queue_lock(QueueLockCallback lock_callback, QueueLockCallback unlock_callback, void *userdata)
 {
-	queue_lock_callback = std::move(lock_callback);
-	queue_unlock_callback = std::move(unlock_callback);
+	queue_lock_callback = lock_callback;
+	queue_unlock_callback = unlock_callback;
+	queue_lock_userdata = userdata;
 }
 
 void Device::set_name(const Buffer &buffer, const char *name)
@@ -5194,7 +5138,7 @@ void Device::report_checkpoints()
 
 		uint32_t count;
 		table->vkGetQueueCheckpointDataNV(queue_info.queues[i], &count, nullptr);
-		std::vector<VkCheckpointDataNV> checkpoint_data(count);
+		Util::Vector<VkCheckpointDataNV> checkpoint_data(count);
 		for (auto &data : checkpoint_data)
 			data.sType = VK_STRUCTURE_TYPE_CHECKPOINT_DATA_NV;
 		table->vkGetQueueCheckpointDataNV(queue_info.queues[i], &count, checkpoint_data.data());
@@ -5218,9 +5162,9 @@ void Device::query_available_performance_counters(CommandBuffer::Type type, uint
 	*desc = query_pool.get_available_counter_descs();
 }
 
-bool Device::init_performance_counters(CommandBuffer::Type type, const std::vector<std::string> &names)
+bool Device::init_performance_counters(CommandBuffer::Type type, const char *const *names, unsigned count)
 {
-	return queue_data[get_physical_queue_type(type)].performance_query_pool.init_counters(names);
+	return queue_data[get_physical_queue_type(type)].performance_query_pool.init_counters(names, count);
 }
 
 void Device::release_profiling()
@@ -5244,11 +5188,15 @@ bool Device::acquire_profiling()
 	return true;
 }
 
-void Device::add_debug_channel_buffer(DebugChannelInterface *iface, std::string tag, Vulkan::BufferHandle buffer)
+void Device::add_debug_channel_buffer(DebugChannelInterface *iface, const char *tag, Vulkan::BufferHandle buffer)
 {
 	buffer->set_internal_sync_object();
 	LOCK();
-	frame().debug_channels.push_back({ iface, std::move(tag), std::move(buffer) });
+	frame().debug_channels.emplace_back();
+	auto &channel = frame().debug_channels.back();
+	channel.iface = iface;
+	Util::copy_string(channel.tag, sizeof(channel.tag), tag);
+	channel.buffer = Util::move(buffer);
 }
 
 void Device::parse_debug_channel(const PerFrame::DebugChannel &channel)
@@ -5338,30 +5286,7 @@ PipelineEvent Device::begin_signal_event(VkPipelineStageFlags stages)
 	return event;
 }
 
-#ifdef GRANITE_VULKAN_FILESYSTEM
-TextureManager &Device::get_texture_manager()
-{
-	return texture_manager;
-}
 
-ShaderManager &Device::get_shader_manager()
-{
-	return shader_manager;
-}
-#endif
-
-#ifdef GRANITE_VULKAN_FILESYSTEM
-void Device::init_shader_manager_cache()
-{
-	if (!shader_manager.load_shader_cache("assets://shader_cache.json"))
-		shader_manager.load_shader_cache("cache://shader_cache.json");
-}
-
-void Device::flush_shader_manager_cache()
-{
-	shader_manager.save_shader_cache("cache://shader_cache.json");
-}
-#endif
 
 const VolkDeviceTable &Device::get_device_table() const
 {

@@ -22,7 +22,6 @@
 
 #pragma once
 
-#include <string>
 #include "buffer.hpp"
 #include "buffer_pool.hpp"
 #include "vulkan_headers.hpp"
@@ -360,11 +359,6 @@ public:
 
 	void set_program(Program *program);
 
-#ifdef GRANITE_VULKAN_FILESYSTEM
-	// Convenience functions for one-off shader binds.
-	void set_program(const std::string &vertex, const std::string &fragment, const std::vector<std::pair<std::string, int>> &defines = {});
-	void set_program(const std::string &compute, const std::vector<std::pair<std::string, int>> &defines = {});
-#endif
 
 	void set_buffer_view(unsigned set, unsigned binding, const BufferView &view);
 	void set_storage_buffer_view(unsigned set, unsigned binding, const BufferView &view);
@@ -780,7 +774,7 @@ private:
 	VkSurfaceTransformFlagBitsKHR current_framebuffer_surface_transform = VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR;
 
 	bool profiling = false;
-	std::string debug_channel_tag;
+	char debug_channel_tag[32] = {};
 	Vulkan::BufferHandle debug_channel_buffer;
 	DebugChannelInterface *debug_channel_interface = nullptr;
 
@@ -789,26 +783,6 @@ private:
 	void set_surface_transform_specialization_constants();
 };
 
-#ifdef GRANITE_VULKAN_FILESYSTEM
-struct CommandBufferUtil
-{
-	static void draw_fullscreen_quad(CommandBuffer &cmd, const std::string &vertex, const std::string &fragment,
-	                                 const std::vector<std::pair<std::string, int>> &defines = {});
-	static void draw_fullscreen_quad_depth(CommandBuffer &cmd, const std::string &vertex, const std::string &fragment,
-	                                       bool depth_test, bool depth_write, VkCompareOp depth_compare,
-	                                       const std::vector<std::pair<std::string, int>> &defines = {});
-	static void set_fullscreen_quad_vertex_state(CommandBuffer &cmd);
-	static void set_quad_vertex_state(CommandBuffer &cmd);
-
-	static void setup_fullscreen_quad(CommandBuffer &cmd, const std::string &vertex, const std::string &fragment,
-	                                  const std::vector<std::pair<std::string, int>> &defines = {},
-	                                  bool depth_test = false, bool depth_write = false,
-	                                  VkCompareOp depth_compare = VK_COMPARE_OP_ALWAYS);
-
-	static void draw_fullscreen_quad(CommandBuffer &cmd, unsigned instances = 1);
-	static void draw_quad(CommandBuffer &cmd, unsigned instances = 1);
-};
-#endif
 
 using CommandBufferHandle = Util::IntrusivePtr<CommandBuffer>;
 }

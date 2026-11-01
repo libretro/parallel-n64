@@ -24,8 +24,7 @@
 
 #include "vulkan_headers.hpp"
 #include "intrusive.hpp"
-#include <vector>
-#include <algorithm>
+#include "small_vector.hpp"
 
 namespace Vulkan
 {
@@ -58,8 +57,8 @@ struct BufferBlock
 			auto *ret = mapped + aligned_offset;
 			offset = aligned_offset + allocate_size;
 
-			VkDeviceSize padded_size = std::max(allocate_size, spill_size);
-			padded_size = std::min(padded_size, size - aligned_offset);
+			VkDeviceSize padded_size = Util::max_of(allocate_size, spill_size);
+			padded_size = Util::min_of(padded_size, size - aligned_offset);
 
 			return { ret, aligned_offset, padded_size };
 		}
@@ -95,7 +94,7 @@ private:
 	VkDeviceSize spill_size = 0;
 	VkBufferUsageFlags usage = 0;
 	size_t max_retained_blocks = 0;
-	std::vector<BufferBlock> blocks;
+	Util::Vector<BufferBlock> blocks;
 	BufferBlock allocate_block(VkDeviceSize size);
 	bool need_device_local = false;
 };

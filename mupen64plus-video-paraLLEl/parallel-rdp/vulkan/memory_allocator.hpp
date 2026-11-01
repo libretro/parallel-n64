@@ -32,10 +32,9 @@
 #include "vulkan_common.hpp"
 #include "arena_allocator.hpp"
 #include <assert.h>
-#include <memory>
 #include <stddef.h>
 #include <stdint.h>
-#include <vector>
+#include "small_vector.hpp"
 
 namespace Vulkan
 {
@@ -254,7 +253,10 @@ class DeviceAllocator
 public:
 	void init(Device *device);
 
+	DeviceAllocator() = default;
 	~DeviceAllocator();
+	DeviceAllocator(const DeviceAllocator &) = delete;
+	void operator=(const DeviceAllocator &) = delete;
 
 	bool allocate_generic_memory(uint32_t size, uint32_t alignment, AllocationMode mode, uint32_t memory_type,
 	                             DeviceAllocation *alloc);
@@ -277,7 +279,9 @@ public:
 
 private:
 	Util::ObjectPool<MiniHeap> object_pool;
-	std::vector<std::unique_ptr<Allocator>> allocators;
+	Allocator *allocators[VK_MAX_MEMORY_TYPES] = {};
+	unsigned num_allocators = 0;
+	void free_allocators();
 	Device *device = nullptr;
 	const VolkDeviceTable *table = nullptr;
 	VkPhysicalDeviceMemoryProperties mem_props;
@@ -293,11 +297,11 @@ private:
 	struct Heap
 	{
 		uint64_t size = 0;
-		std::vector<Allocation> blocks;
+		Util::Vector<Allocation> blocks;
 		void garbage_collect(Device *device);
 	};
 
-	std::vector<Heap> heaps;
+	Util::Vector<Heap> heaps;
 	bool memory_heap_is_budget_critical[VK_MAX_MEMORY_HEAPS] = {};
 	void get_memory_budget_nolock(HeapBudget *heaps);
 };

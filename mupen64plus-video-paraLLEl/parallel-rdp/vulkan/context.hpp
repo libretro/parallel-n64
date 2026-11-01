@@ -25,12 +25,7 @@
 #include "vulkan_headers.hpp"
 #include "logging.hpp"
 #include "vulkan_common.hpp"
-#include <memory>
-#include <functional>
 
-#ifdef GRANITE_VULKAN_FOSSILIZE
-#include "cli/fossilize_feature_filter.hpp"
-#endif
 
 namespace Util
 {
@@ -147,10 +142,7 @@ struct DeviceFactory
 };
 
 class Context
-	: public Util::IntrusivePtrEnabled<Context, std::default_delete<Context>, HandleCounter>
-#ifdef GRANITE_VULKAN_FOSSILIZE
-	, public Fossilize::DeviceQueryInterface
-#endif
+	: public Util::IntrusivePtrEnabled<Context, Util::DefaultDelete<Context>, HandleCounter>
 {
 public:
 	// Call before initializing instances. Pointer must remain valid until instance and device creation completes.
@@ -227,7 +219,8 @@ public:
 	const VkApplicationInfo &get_application_info() const;
 
 	void notify_validation_error(const char *msg);
-	void set_notification_callback(std::function<void (const char *)> func);
+	typedef void (*NotificationCallback)(void *userdata, const char *msg);
+	void set_notification_callback(NotificationCallback func, void *userdata);
 
 	void set_num_thread_indices(unsigned indices)
 	{
@@ -261,12 +254,6 @@ public:
 		return handles;
 	}
 
-#ifdef GRANITE_VULKAN_FOSSILIZE
-	const Fossilize::FeatureFilter &get_feature_filter() const
-	{
-		return feature_filter;
-	}
-#endif
 
 private:
 	VkDevice device = VK_NULL_HANDLE;
@@ -296,16 +283,12 @@ private:
 	VkDebugUtilsMessengerEXT debug_messenger = VK_NULL_HANDLE;
 	bool force_no_validation = false;
 #endif
-	std::function<void (const char *)> message_callback;
+	NotificationCallback message_callback = nullptr;
+	void *message_userdata = nullptr;
 
 	void destroy();
 	void check_descriptor_indexing_features();
 
-#ifdef GRANITE_VULKAN_FOSSILIZE
-	Fossilize::FeatureFilter feature_filter;
-	bool format_is_supported(VkFormat format, VkFormatFeatureFlags features) override;
-	bool descriptor_set_layout_is_supported(const VkDescriptorSetLayoutCreateInfo *set_layout) override;
-#endif
 };
 
 using ContextHandle = Util::IntrusivePtr<Context>;

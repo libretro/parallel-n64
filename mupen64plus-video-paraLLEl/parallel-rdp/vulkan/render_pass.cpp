@@ -24,8 +24,7 @@
 #include "stack_allocator.hpp"
 #include "device.hpp"
 #include "quirks.hpp"
-#include <utility>
-#include <cstring>
+#include <string.h>
 
 using namespace Util;
 
@@ -110,9 +109,6 @@ RenderPass::RenderPass(Hash hash, Device *device_, const VkRenderPassCreateInfo 
 	if (table.vkCreateRenderPass(device->get_device(), &create_info, nullptr, &render_pass) != VK_SUCCESS)
 		LOGE("Failed to create render pass.");
 
-#ifdef GRANITE_VULKAN_FOSSILIZE
-	device->register_render_pass(render_pass, get_hash(), create_info);
-#endif
 }
 
 /* What @info makes, without its images: the pass's signature. */
@@ -167,7 +163,8 @@ RenderPass::RenderPass(Hash hash, Device *device_, const RenderPassInfo &info)
 	, device(device_)
 {
 	fill_render_pass_signature(signature, info);
-	std::fill(std::begin(color_attachments), std::end(color_attachments), VK_FORMAT_UNDEFINED);
+	for (auto &fmt : color_attachments)
+		fmt = VK_FORMAT_UNDEFINED;
 
 	VK_ASSERT(info.num_color_attachments || info.depth_stencil);
 
@@ -353,8 +350,8 @@ RenderPass::RenderPass(Hash hash, Device *device_, const RenderPassInfo &info)
 	Util::StackAllocator<VkAttachmentReference, 1024> reference_allocator;
 	Util::StackAllocator<uint32_t, 1024> preserve_allocator;
 
-	std::vector<VkSubpassDescription> subpasses(num_subpasses);
-	std::vector<VkSubpassDependency> external_dependencies;
+	Util::Vector<VkSubpassDescription> subpasses(num_subpasses);
+	Util::Vector<VkSubpassDependency> external_dependencies;
 	for (unsigned i = 0; i < num_subpasses; i++)
 	{
 		auto *colors = reference_allocator.allocate_cleared(subpass_infos[i].num_color_attachments);
@@ -835,7 +832,7 @@ RenderPass::RenderPass(Hash hash, Device *device_, const RenderPassInfo &info)
 	setup_subpasses(rp_info);
 
 	VkRenderPassMultiviewCreateInfo multiview_info = { VK_STRUCTURE_TYPE_RENDER_PASS_MULTIVIEW_CREATE_INFO };
-	std::vector<uint32_t> multiview_view_mask;
+	Util::Vector<uint32_t> multiview_view_mask;
 	if (multiview && device->get_device_features().multiview_features.multiview)
 	{
 		multiview_view_mask.resize(num_subpasses);
@@ -855,9 +852,6 @@ RenderPass::RenderPass(Hash hash, Device *device_, const RenderPassInfo &info)
 	if (table.vkCreateRenderPass(device->get_device(), &rp_info, nullptr, &render_pass) != VK_SUCCESS)
 		LOGE("Failed to create render pass.");
 
-#ifdef GRANITE_VULKAN_FOSSILIZE
-	device->register_render_pass(render_pass, get_hash(), rp_info);
-#endif
 }
 
 RenderPass::~RenderPass()
@@ -920,14 +914,14 @@ void Framebuffer::compute_dimensions(const RenderPassInfo &info, uint32_t &width
 	for (unsigned i = 0; i < info.num_color_attachments; i++)
 	{
 		VK_ASSERT(info.color_attachments[i]);
-		width = std::min(width, info.color_attachments[i]->get_view_width());
-		height = std::min(height, info.color_attachments[i]->get_view_height());
+		width = Util::min_of(width, info.color_attachments[i]->get_view_width());
+		height = Util::min_of(height, info.color_attachments[i]->get_view_height());
 	}
 
 	if (info.depth_stencil)
 	{
-		width = std::min(width, info.depth_stencil->get_view_width());
-		height = std::min(height, info.depth_stencil->get_view_height());
+		width = Util::min_of(width, info.depth_stencil->get_view_width());
+		height = Util::min_of(height, info.depth_stencil->get_view_height());
 	}
 }
 

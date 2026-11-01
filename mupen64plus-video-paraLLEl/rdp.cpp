@@ -639,9 +639,7 @@ bool init()
 	pipeline_files_load();
 	device->init_frame_contexts(num_sync_frames);
 	log_cb(RETRO_LOG_INFO, "Using %u sync frames for parallel-RDP.\n", num_sync_frames);
-	device->set_queue_lock(
-			[]() { vulkan->lock_queue(vulkan->handle); },
-			[]() { vulkan->unlock_queue(vulkan->handle); });
+	device->set_queue_lock(vulkan->lock_queue, vulkan->unlock_queue, vulkan->handle);
 
 	uintptr_t aligned_rdram = reinterpret_cast<uintptr_t>(gfx_info.RDRAM);
 	uintptr_t offset = 0;

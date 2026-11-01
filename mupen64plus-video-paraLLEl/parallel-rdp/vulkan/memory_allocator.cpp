@@ -22,7 +22,6 @@
 
 #include "memory_allocator.hpp"
 #include "device.hpp"
-#include <algorithm>
 
 #ifndef _WIN32
 #include <unistd.h>
@@ -301,15 +300,15 @@ void DeviceAllocator::init(Device *device_)
 	atom_alignment = props.limits.nonCoherentAtomSize;
 
 	heaps.clear();
-	allocators.clear();
+	free_allocators();
 
 	heaps.resize(mem_props.memoryHeapCount);
-	allocators.reserve(mem_props.memoryTypeCount);
 	for (unsigned i = 0; i < mem_props.memoryTypeCount; i++)
 	{
-		allocators.emplace_back(new Allocator(object_pool));
-		allocators.back()->set_global_allocator(this, i);
+		allocators[i] = new Allocator(object_pool);
+		allocators[i]->set_global_allocator(this, i);
 	}
+	num_allocators = mem_props.memoryTypeCount;
 
 	HeapBudget budgets[VK_MAX_MEMORY_HEAPS];
 	get_memory_budget(budgets);
@@ -335,12 +334,12 @@ void DeviceAllocator::init(Device *device_)
 		if ((combined_allowed_flags[i] & pinned_flags) == VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)
 		{
 			has_host_only_heap = true;
-			host_heap_size = (std::max)(host_heap_size, mem_props.memoryHeaps[i].size);
+			host_heap_size = Util::max_of(host_heap_size, mem_props.memoryHeaps[i].size);
 		}
 		else if ((combined_allowed_flags[i] & pinned_flags) == VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
 		{
 			has_device_only_heap = true;
-			device_heap_size = (std::max)(device_heap_size, mem_props.memoryHeaps[i].size);
+			device_heap_size = Util::max_of(device_heap_size, mem_props.memoryHeaps[i].size);
 		}
 	}
 
@@ -428,6 +427,17 @@ DeviceAllocator::~DeviceAllocator()
 {
 	for (auto &heap : heaps)
 		heap.garbage_collect(device);
+	free_allocators();
+}
+
+void DeviceAllocator::free_allocators()
+{
+	for (unsigned i = 0; i < num_allocators; i++)
+	{
+		delete allocators[i];
+		allocators[i] = nullptr;
+	}
+	num_allocators = 0;
 }
 
 void DeviceAllocator::internal_free(uint32_t size, uint32_t memory_type, AllocationMode mode, VkDeviceMemory memory, bool is_mapped)
@@ -562,18 +572,19 @@ bool DeviceAllocator::internal_allocate(
 	auto &heap = heaps[heap_index];
 
 	// Naive searching is fine here as vkAllocate blocks are *huge* and we won't have many of them.
-	auto itr = end(heap.blocks);
+	auto itr = heap.blocks.end();
 	if (dedicated_object == 0 && !external)
 	{
-		itr = find_if(begin(heap.blocks), end(heap.blocks),
-		              [=](const Allocation &alloc) { return size == alloc.size && memory_type == alloc.type && mode == alloc.mode; });
+		for (itr = heap.blocks.begin(); itr != heap.blocks.end(); ++itr)
+			if (size == itr->size && memory_type == itr->type && mode == itr->mode)
+				break;
 	}
 
 	bool host_visible = (mem_props.memoryTypes[memory_type].propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) != 0 &&
 	                    host_memory != nullptr;
 
 	// Found previously used block.
-	if (itr != end(heap.blocks))
+	if (itr != heap.blocks.end())
 	{
 		*memory = itr->memory;
 		if (host_visible)
@@ -731,8 +742,8 @@ bool DeviceAllocator::internal_allocate(
 	else
 	{
 		// Look through our heap and see if there are blocks of other types we can free.
-		auto block_itr = begin(heap.blocks);
-		while (res != VK_SUCCESS && itr != end(heap.blocks))
+		auto block_itr = heap.blocks.begin();
+		while (res != VK_SUCCESS && itr != heap.blocks.end())
 		{
 			table->vkFreeMemory(device->get_device(), block_itr->memory, nullptr);
 			heap.size -= block_itr->size;
@@ -740,7 +751,7 @@ bool DeviceAllocator::internal_allocate(
 			++block_itr;
 		}
 
-		heap.blocks.erase(begin(heap.blocks), block_itr);
+		heap.blocks.erase(heap.blocks.begin(), block_itr);
 
 		if (res == VK_SUCCESS)
 		{

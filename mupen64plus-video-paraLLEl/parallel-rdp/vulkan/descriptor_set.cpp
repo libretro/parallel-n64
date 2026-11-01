@@ -22,7 +22,7 @@
 
 #include "descriptor_set.hpp"
 #include "device.hpp"
-#include <vector>
+#include "small_vector.hpp"
 
 using namespace Util;
 
@@ -39,9 +39,8 @@ DescriptorSetAllocator::DescriptorSetAllocator(Hash hash, Device *device_, const
 
 	if (!bindless)
 	{
-		unsigned count = device_->num_thread_indices;
-		for (unsigned i = 0; i < count; i++)
-			per_thread.emplace_back(new PerThread);
+		num_per_thread = device_->num_thread_indices;
+		per_thread = new PerThread[num_per_thread];
 	}
 
 	if (bindless && !device->get_device_features().supports_descriptor_indexing)
@@ -53,7 +52,7 @@ DescriptorSetAllocator::DescriptorSetAllocator(Hash hash, Device *device_, const
 	VkDescriptorSetLayoutCreateInfo info = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO };
 	VkDescriptorSetLayoutBindingFlagsCreateInfoEXT flags = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO_EXT };
 	VkSampler vk_immutable_samplers[VULKAN_NUM_BINDINGS] = {};
-	std::vector<VkDescriptorSetLayoutBinding> bindings;
+	Util::Vector<VkDescriptorSetLayoutBinding> bindings;
 	VkDescriptorBindingFlagsEXT binding_flags = 0;
 
 	if (bindless)
@@ -177,9 +176,6 @@ DescriptorSetAllocator::DescriptorSetAllocator(Hash hash, Device *device_, const
 #endif
 	if (table.vkCreateDescriptorSetLayout(device->get_device(), &info, nullptr, &set_layout) != VK_SUCCESS)
 		LOGE("Failed to create descriptor set layout.");
-#ifdef GRANITE_VULKAN_FOSSILIZE
-	device->register_descriptor_set_layout(set_layout, get_hash(), info);
-#endif
 }
 
 void DescriptorSetAllocator::reset_bindless_pool(VkDescriptorPool pool)
@@ -246,16 +242,16 @@ void DescriptorSetAllocator::begin_frame()
 {
 	if (!bindless)
 	{
-		for (auto &thr : per_thread)
-			thr->should_begin = true;
+		for (unsigned i = 0; i < num_per_thread; i++)
+			per_thread[i].should_begin = true;
 	}
 }
 
-std::pair<VkDescriptorSet, bool> DescriptorSetAllocator::find(unsigned thread_index, Hash hash)
+DescriptorSetAllocator::Lookup DescriptorSetAllocator::find(unsigned thread_index, Hash hash)
 {
 	VK_ASSERT(!bindless);
 
-	auto &state = *per_thread[thread_index];
+	auto &state = per_thread[thread_index];
 	if (state.should_begin)
 	{
 		state.set_nodes.begin_frame();
@@ -287,7 +283,8 @@ std::pair<VkDescriptorSet, bool> DescriptorSetAllocator::find(unsigned thread_in
 
 	VkDescriptorSet sets[VULKAN_NUM_SETS_PER_POOL];
 	VkDescriptorSetLayout layouts[VULKAN_NUM_SETS_PER_POOL];
-	std::fill(std::begin(layouts), std::end(layouts), set_layout);
+	for (unsigned i = 0; i < VULKAN_NUM_SETS_PER_POOL; i++)
+		layouts[i] = set_layout;
 
 	VkDescriptorSetAllocateInfo alloc = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO };
 	alloc.descriptorPool = pool;
@@ -306,8 +303,9 @@ std::pair<VkDescriptorSet, bool> DescriptorSetAllocator::find(unsigned thread_in
 
 void DescriptorSetAllocator::clear()
 {
-	for (auto &thr : per_thread)
+	for (unsigned i = 0; i < num_per_thread; i++)
 	{
+		PerThread *thr = &per_thread[i];
 		thr->set_nodes.clear();
 		for (auto &pool : thr->pools)
 		{
@@ -323,6 +321,7 @@ DescriptorSetAllocator::~DescriptorSetAllocator()
 	if (set_layout != VK_NULL_HANDLE)
 		table.vkDestroyDescriptorSetLayout(device->get_device(), set_layout, nullptr);
 	clear();
+	delete[] per_thread;
 }
 
 BindlessDescriptorPool::BindlessDescriptorPool(Device *device_, DescriptorSetAllocator *allocator_,
@@ -440,8 +439,8 @@ unsigned BindlessAllocator::get_next_offset() const
 
 void BindlessAllocator::reserve_max_resources_per_pool(unsigned set_count, unsigned descriptor_count)
 {
-	max_sets_per_pool = std::max(max_sets_per_pool, set_count);
-	max_descriptors_per_pool = std::max(max_descriptors_per_pool, descriptor_count);
+	max_sets_per_pool = Util::max_of(max_sets_per_pool, set_count);
+	max_descriptors_per_pool = Util::max_of(max_descriptors_per_pool, descriptor_count);
 	views.reserve(max_descriptors_per_pool);
 }
 
@@ -452,11 +451,11 @@ void BindlessAllocator::set_bindless_resource_type(BindlessResourceType type)
 
 VkDescriptorSet BindlessAllocator::commit(Device &device)
 {
-	max_sets_per_pool = std::max(1u, max_sets_per_pool);
-	max_descriptors_per_pool = std::max<unsigned>(views.size(), max_descriptors_per_pool);
-	max_descriptors_per_pool = std::max<unsigned>(1u, max_descriptors_per_pool);
-	max_descriptors_per_pool = std::min(max_descriptors_per_pool, VULKAN_NUM_BINDINGS_BINDLESS_VARYING);
-	unsigned to_allocate = std::max<unsigned>(views.size(), 1u);
+	max_sets_per_pool = Util::max_of(1u, max_sets_per_pool);
+	max_descriptors_per_pool = Util::max_of<unsigned>(views.size(), max_descriptors_per_pool);
+	max_descriptors_per_pool = Util::max_of<unsigned>(1u, max_descriptors_per_pool);
+	max_descriptors_per_pool = Util::min_of(max_descriptors_per_pool, VULKAN_NUM_BINDINGS_BINDLESS_VARYING);
+	unsigned to_allocate = Util::max_of<unsigned>(views.size(), 1u);
 
 	if (!descriptor_pool)
 	{

@@ -21,8 +21,8 @@
  */
 
 #include "query_pool.hpp"
+#include <string.h>
 #include "device.hpp"
-#include <utility>
 
 namespace Vulkan
 {
@@ -245,7 +245,7 @@ const VkPerformanceCounterDescriptionKHR *PerformanceQueryPool::get_available_co
 	return counter_descriptions.data();
 }
 
-bool PerformanceQueryPool::init_counters(const std::vector<std::string> &counter_names)
+bool PerformanceQueryPool::init_counters(const char *const *counter_names, unsigned count)
 {
 	if (!device->get_device_features().performance_query_features.performanceCounterQueryPools)
 	{
@@ -273,16 +273,17 @@ bool PerformanceQueryPool::init_counters(const std::vector<std::string> &counter
 
 	active_indices.clear();
 
-	for (auto &name : counter_names)
+	for (unsigned n = 0; n < count; n++)
 	{
-		auto itr = find_if(begin(counter_descriptions), end(counter_descriptions), [&](const VkPerformanceCounterDescriptionKHR &desc) {
-			return name == desc.name;
-		});
-
-		if (itr != end(counter_descriptions))
+		for (size_t i = 0; i < counter_descriptions.size(); i++)
 		{
-			LOGI("Found counter %s: %s\n", itr->name, itr->description);
-			active_indices.push_back(itr - begin(counter_descriptions));
+			const VkPerformanceCounterDescriptionKHR &desc = counter_descriptions[i];
+			if (strcmp(counter_names[n], desc.name) == 0)
+			{
+				LOGI("Found counter %s: %s\n", desc.name, desc.description);
+				active_indices.push_back(uint32_t(i));
+				break;
+			}
 		}
 	}
 
@@ -380,7 +381,7 @@ void QueryPool::add_pool()
 	if (device->get_device_features().host_query_reset_features.hostQueryReset)
 		table.vkResetQueryPoolEXT(device->get_device(), pool.pool, 0, pool.size);
 
-	pools.push_back(std::move(pool));
+	pools.push_back(Util::move(pool));
 }
 
 QueryPoolHandle QueryPool::write_timestamp(VkCommandBuffer cmd, VkPipelineStageFlagBits stage)
@@ -458,7 +459,7 @@ double TimestampInterval::get_time_per_accumulation() const
 		return 0.0;
 }
 
-const std::string &TimestampInterval::get_tag() const
+const char *TimestampInterval::get_tag() const
 {
 	return tag;
 }
@@ -470,9 +471,9 @@ void TimestampInterval::reset()
 	total_frame_iterations = 0;
 }
 
-TimestampInterval::TimestampInterval(std::string tag_)
-	: tag(std::move(tag_))
+TimestampInterval::TimestampInterval(const char *tag_)
 {
+	Util::copy_string(tag, sizeof(tag), tag_);
 }
 
 TimestampInterval *TimestampIntervalManager::get_timestamp_tag(const char *tag)
@@ -494,7 +495,7 @@ void TimestampIntervalManager::reset()
 		timestamp.reset();
 }
 
-void TimestampIntervalManager::log_simple(const TimestampIntervalReportCallback &func) const
+void TimestampIntervalManager::log_simple(TimestampIntervalReportCallback func, void *userdata) const
 {
 	for (auto &timestamp : timestamps)
 	{
@@ -508,11 +509,11 @@ void TimestampIntervalManager::log_simple(const TimestampIntervalReportCallback 
 
 			if (func)
 			{
-				func(timestamp.get_tag(), report);
+				func(userdata, timestamp.get_tag(), report);
 			}
 			else
 			{
-				LOGI("Timestamp tag report: %s\n", timestamp.get_tag().c_str());
+				LOGI("Timestamp tag report: %s\n", timestamp.get_tag());
 				LOGI("  %.3f ms / iteration\n", 1000.0 * report.time_per_accumulation);
 				LOGI("  %.3f ms / frame context\n", 1000.0 * report.time_per_frame_context);
 				LOGI("  %.3f iterations / frame context\n", report.accumulations_per_frame_context);

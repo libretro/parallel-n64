@@ -23,7 +23,7 @@
 #pragma once
 
 #include "vulkan_headers.hpp"
-#include <vector>
+#include "small_vector.hpp"
 
 namespace Vulkan
 {
@@ -40,7 +40,7 @@ public:
 private:
 	Device *device = nullptr;
 	const VolkDeviceTable *table = nullptr;
-	std::vector<VkEvent> events;
+	Util::Vector<VkEvent> events;
 	uint64_t workaround_counter = 0;
 	bool workaround = false;
 };

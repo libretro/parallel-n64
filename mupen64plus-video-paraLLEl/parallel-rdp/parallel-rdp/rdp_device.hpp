@@ -223,14 +223,12 @@ private:
 	size_t rdram_offset;
 	size_t rdram_size;
 	CommandProcessorFlags flags;
-#ifndef PARALLEL_RDP_SHADER_DIR
 	// Outlives the renderer below, whose pipeline worker reads it.
 	struct ShaderBankOwner
 	{
 		ShaderBank *bank = nullptr;
 		~ShaderBankOwner();
 	} shader_bank;
-#endif
 
 	// Tear-down order is important here.
 	Renderer renderer;

@@ -29,12 +29,7 @@
 #include "luts.hpp"
 #include "timer.hpp"
 #include "thread_name.hpp"
-#ifdef PARALLEL_RDP_SHADER_DIR
-#include "global_managers.hpp"
-#include "os_filesystem.hpp"
-#else
 #include "shaders/slangmosh.hpp"
-#endif
 
 namespace RDP
 {
@@ -142,11 +137,6 @@ bool Renderer::init_renderer(const RendererOptions &options)
 	if (!pipeline_worker)
 		return false;
 
-#ifdef PARALLEL_RDP_SHADER_DIR
-	if (!GRANITE_FILESYSTEM()->get_backend("rdp"))
-		GRANITE_FILESYSTEM()->register_protocol("rdp", std::make_unique<Granite::OSFilesystem>(PARALLEL_RDP_SHADER_DIR));
-	device->get_shader_manager().add_include_directory("builtin://shaders/inc");
-#endif
 
 	for (auto &buffer : buffer_instances)
 		buffer.init(*device);
@@ -433,7 +423,7 @@ void Renderer::init_blender_lut()
 	blender_divider_buffer = device->create_buffer_view(view);
 }
 
-void Renderer::message(const std::string &tag, uint32_t code, uint32_t x, uint32_t y, uint32_t, uint32_t num_words,
+void Renderer::message(const char *tag, uint32_t code, uint32_t x, uint32_t y, uint32_t, uint32_t num_words,
                        const Vulkan::DebugChannelInterface::Word *words)
 {
 	if (filter_debug_channel_x >= 0 && x != uint32_t(filter_debug_channel_x))
@@ -1765,11 +1755,7 @@ void Renderer::update_tmem_instances(Vulkan::CommandBuffer &cmd)
 
 	auto count = uint32_t(stream.num_tmem_uploads);
 
-#ifdef PARALLEL_RDP_SHADER_DIR
-	cmd.set_program("rdp://tmem_update.comp", {{ "DEBUG_ENABLE", debug_channel ? 1 : 0 }});
-#else
 	cmd.set_program(shader_bank->tmem_update);
-#endif
 
 	cmd.push_constants(&count, 0, sizeof(count));
 	cmd.set_specialization_constant_mask(1);
@@ -1799,11 +1785,7 @@ void Renderer::submit_span_setup_jobs(Vulkan::CommandBuffer &cmd, bool upscale)
 	cmd.set_storage_buffer(0, 2, *instance.gpu.scissor_setup.buffer);
 	cmd.set_storage_buffer(0, 3, *span_setups);
 
-#ifdef PARALLEL_RDP_SHADER_DIR
-	cmd.set_program("rdp://span_setup.comp", {{ "DEBUG_ENABLE", debug_channel ? 1 : 0 }});
-#else
 	cmd.set_program(shader_bank->span_setup);
-#endif
 
 	cmd.set_buffer_view(1, 0, *instance.gpu.span_info_jobs_view);
 	cmd.set_specialization_constant_mask(3);
@@ -1826,11 +1808,7 @@ void Renderer::clear_indirect_buffer(Vulkan::CommandBuffer &cmd)
 {
 	cmd.begin_region("clear-indirect-buffer");
 
-#ifdef PARALLEL_RDP_SHADER_DIR
-	cmd.set_program("rdp://clear_indirect_buffer.comp");
-#else
 	cmd.set_program(shader_bank->clear_indirect_buffer);
-#endif
 
 	cmd.set_storage_buffer(0, 0, *indirect_dispatch_buffer);
 
@@ -1892,14 +1870,7 @@ void Renderer::submit_rasterization(Vulkan::CommandBuffer &cmd, Vulkan::Buffer &
 
 	global_fb_info->base_primitive_index = base_primitive_index;
 
-#ifdef PARALLEL_RDP_SHADER_DIR
-	cmd.set_program("rdp://rasterizer.comp", {
-		{ "DEBUG_ENABLE", debug_channel ? 1 : 0 },
-		{ "SMALL_TYPES", caps.supports_small_integer_arithmetic ? 1 : 0 },
-	});
-#else
 	cmd.set_program(shader_bank->rasterizer);
-#endif
 
 	cmd.set_specialization_constant(0, ImplementationConstants::TileWidth);
 	cmd.set_specialization_constant(1, ImplementationConstants::TileHeight);
@@ -2009,16 +1980,7 @@ void Renderer::submit_tile_binning_combined(Vulkan::CommandBuffer &cmd, bool ups
 
 	if (caps.subgroup_tile_binning)
 	{
-#ifdef PARALLEL_RDP_SHADER_DIR
-		cmd.set_program("rdp://tile_binning_combined.comp", {
-			{ "DEBUG_ENABLE", debug_channel ? 1 : 0 },
-			{ "SUBGROUP", 1 },
-			{ "UBERSHADER", int(caps.ubershader) },
-			{ "SMALL_TYPES", caps.supports_small_integer_arithmetic ? 1 : 0 },
-		});
-#else
 		cmd.set_program(shader_bank->tile_binning_combined);
-#endif
 
 		if (supports_subgroup_size_control(32, subgroup_size))
 		{
@@ -2028,16 +1990,7 @@ void Renderer::submit_tile_binning_combined(Vulkan::CommandBuffer &cmd, bool ups
 	}
 	else
 	{
-#ifdef PARALLEL_RDP_SHADER_DIR
-		cmd.set_program("rdp://tile_binning_combined.comp", {
-			{ "DEBUG_ENABLE", debug_channel ? 1 : 0 },
-			{ "SUBGROUP", 0 },
-			{ "UBERSHADER", int(caps.ubershader) },
-			{ "SMALL_TYPES", caps.supports_small_integer_arithmetic ? 1 : 0 },
-		});
-#else
 		cmd.set_program(shader_bank->tile_binning_combined);
-#endif
 
 		subgroup_size = 32;
 	}
@@ -2072,21 +2025,12 @@ void Renderer::submit_update_upscaled_domain(Vulkan::CommandBuffer &cmd, Resolve
                                              unsigned width, unsigned height,
                                              unsigned pixel_size_log2)
 {
-#ifdef PARALLEL_RDP_SHADER_DIR
-	if (stage == ResolveStage::Pre)
-		cmd.set_program("rdp://update_upscaled_domain_pre.comp");
-	else if (stage == ResolveStage::Post)
-		cmd.set_program("rdp://update_upscaled_domain_post.comp");
-	else
-		cmd.set_program("rdp://update_upscaled_domain_resolve.comp");
-#else
 	if (stage == ResolveStage::Pre)
 		cmd.set_program(shader_bank->update_upscaled_domain_pre);
 	else if (stage == ResolveStage::Post)
 		cmd.set_program(shader_bank->update_upscaled_domain_post);
 	else
 		cmd.set_program(shader_bank->update_upscaled_domain_resolve);
-#endif
 
 	unsigned num_pixels = width * height;
 
@@ -2171,11 +2115,7 @@ void Renderer::submit_clear_super_sample_write_mask(Vulkan::CommandBuffer &cmd, 
 	unsigned num_workgroups = (num_words + ImplementationConstants::DefaultWorkgroupSize - 1) /
 	                          ImplementationConstants::DefaultWorkgroupSize;
 
-#ifdef PARALLEL_RDP_SHADER_DIR
-	cmd.set_program("rdp://clear_super_sampled_write_mask.comp");
-#else
 	cmd.set_program(shader_bank->clear_super_sampled_write_mask);
-#endif
 
 	cmd.set_storage_buffer(0, 0, *upscaling_multisampled_rdram, rdram_size * caps.upscaling * caps.upscaling,
 	                       2 * Limits::MaxWidth * Limits::MaxHeight / 8);
@@ -2309,27 +2249,11 @@ void Renderer::submit_depth_blend(Vulkan::CommandBuffer &cmd, Vulkan::Buffer &tm
 
 	if (caps.ubershader)
 	{
-#ifdef PARALLEL_RDP_SHADER_DIR
-		cmd.set_program("rdp://ubershader.comp", {
-				{ "DEBUG_ENABLE", debug_channel ? 1 : 0 },
-				{ "SMALL_TYPES", caps.supports_small_integer_arithmetic ? 1 : 0 },
-				{ "SUBGROUP", caps.subgroup_depth_blend ? 1 : 0 },
-		});
-#else
 		cmd.set_program(shader_bank->ubershader);
-#endif
 	}
 	else
 	{
-#ifdef PARALLEL_RDP_SHADER_DIR
-		cmd.set_program("rdp://depth_blend.comp", {
-				{ "DEBUG_ENABLE", debug_channel ? 1 : 0 },
-				{ "SMALL_TYPES", caps.supports_small_integer_arithmetic ? 1 : 0 },
-				{ "SUBGROUP", caps.subgroup_depth_blend ? 1 : 0 },
-		});
-#else
 		cmd.set_program(shader_bank->depth_blend);
-#endif
 	}
 
 	Vulkan::QueryPoolHandle start_ts, end_ts;
@@ -2834,7 +2758,7 @@ void Renderer::resolve_coherency_gpu_to_host(CoherencyOperation &op, Vulkan::Com
 			cmd.copy_buffer(*incoherent.staging_readback, *rdram, copies.data(), copies.size());
 #ifdef COHERENCY_READBACK_TIMESTAMPS
 			end_ts = cmd.write_timestamp(VK_PIPELINE_STAGE_TRANSFER_BIT);
-			device->register_time_interval(rdp_move(start_ts), rdp_move(end_ts), "coherency-readback");
+			device->register_time_interval("RDP GPU", rdp_move(start_ts), rdp_move(end_ts), "coherency-readback");
 #endif
 			cmd.barrier(VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_TRANSFER_WRITE_BIT,
 			            VK_PIPELINE_STAGE_HOST_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
@@ -3033,11 +2957,7 @@ void Renderer::resolve_coherency_host_to_gpu(Vulkan::CommandBuffer &cmd)
 
 	if (!masked_page_copies.empty())
 	{
-#ifdef PARALLEL_RDP_SHADER_DIR
-		cmd.set_program("rdp://masked_rdram_resolve.comp");
-#else
 		cmd.set_program(shader_bank->masked_rdram_resolve);
-#endif
 		cmd.set_specialization_constant_mask(3);
 		cmd.set_specialization_constant(0, ImplementationConstants::IncoherentPageSize / 4);
 		cmd.set_specialization_constant(1, ImplementationConstants::IncoherentPageSize / 4);
@@ -3063,18 +2983,14 @@ void Renderer::resolve_coherency_host_to_gpu(Vulkan::CommandBuffer &cmd)
 
 #ifdef COHERENCY_MASK_TIMESTAMPS
 		end_ts = cmd->write_timestamp(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
-		device->register_time_interval(rdp_move(start_ts), rdp_move(end_ts), "coherent-mask-copy");
+		device->register_time_interval("RDP GPU", rdp_move(start_ts), rdp_move(end_ts), "coherent-mask-copy");
 #endif
 	}
 
 	// Could use FillBuffer here, but would need to use TRANSFER stage, and introduce more barriers than needed.
 	if (!to_clear_write_mask.empty())
 	{
-#ifdef PARALLEL_RDP_SHADER_DIR
-		cmd.set_program("rdp://clear_write_mask.comp");
-#else
 		cmd.set_program(shader_bank->clear_write_mask);
-#endif
 		cmd.set_specialization_constant_mask(3);
 		cmd.set_specialization_constant(0, ImplementationConstants::IncoherentPageSize / 4);
 		cmd.set_specialization_constant(1, ImplementationConstants::IncoherentPageSize / 4);
@@ -3109,7 +3025,7 @@ void Renderer::resolve_coherency_host_to_gpu(Vulkan::CommandBuffer &cmd)
 		cmd.copy_buffer(*rdram, *incoherent.staging_rdram, buffer_copies.data(), buffer_copies.size());
 #ifdef COHERENCY_COPY_TIMESTAMPS
 		end_ts = cmd->write_timestamp(VK_PIPELINE_STAGE_TRANSFER_BIT);
-		device->register_time_interval(rdp_move(start_ts), rdp_move(end_ts), "coherent-copy");
+		device->register_time_interval("RDP GPU", rdp_move(start_ts), rdp_move(end_ts), "coherent-copy");
 #endif
 
 		cmd.barrier(VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_TRANSFER_WRITE_BIT,
@@ -3826,7 +3742,6 @@ void Renderer::build_pipelines_ahead(const pipeline_record_t *records, size_t co
 		node->kind   = records[i].kind;
 		node->ahead  = 1;
 		node->urgent = 1;
-#ifndef PARALLEL_RDP_SHADER_DIR
 		/* The rasterizer's specialised variants: a draw that misses one
 		 * runs on the ubershader meanwhile, and asks the worker for it,
 		 * which finds it built by then (the worker takes its work in
@@ -3835,7 +3750,6 @@ void Renderer::build_pipelines_ahead(const pipeline_record_t *records, size_t co
 		    && node->compile.program == shader_bank->rasterizer
 		    && node->compile.potential_static_state.spec_constant_mask == 0xff)
 			node->urgent = 0;
-#endif
 		pipeline_ahead_urgent += node->urgent;
 		n++;
 	}

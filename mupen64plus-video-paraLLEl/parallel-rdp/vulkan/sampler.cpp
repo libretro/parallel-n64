@@ -95,9 +95,6 @@ ImmutableSampler::ImmutableSampler(Util::Hash hash, Device *device_, const Sampl
 	if (device->get_device_table().vkCreateSampler(device->get_device(), &info, nullptr, &vk_sampler) != VK_SUCCESS)
 		LOGE("Failed to create sampler.\n");
 
-#ifdef GRANITE_VULKAN_FOSSILIZE
-	//device->register_sampler(vk_sampler, hash, info);
-#endif
 
 	sampler = SamplerHandle(device->handle_pool.samplers.allocate(device, vk_sampler, sampler_info, true));
 }

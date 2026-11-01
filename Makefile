@@ -1202,12 +1202,16 @@ $(OBJECTS): .build-flags
 %.o: %.cpp
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -c $< $(OBJOUT)$@
 
+ifeq (,$(findstring msvc,$(platform)))
+$(PARALLEL_RDP_NOEXCEPT_OBJECTS): CXXFLAGS += -fno-exceptions
+endif
+
 clean: clean-tools
 	rm -f $(OBJECTS) $(TARGET) $(OBJECTS:.o=.d) .build-flags
 
 clean-tools:
 	rm -f $(ANGRYLION_TOOLS) lrhost$(EXE_EXT) lrhost_vk$(EXE_EXT) angrylion_replay$(EXE_EXT) $(ANGRYLION_CHECKS) dd_ipl_hle_test$(EXE_EXT) \
-		$(CORE_CHECKS) dynarec_long_block_test$(EXE_EXT) savestate_latch_test$(EXE_EXT) savestate_code_test$(EXE_EXT) cpu_fallback_test$(EXE_EXT) tools/test_prsp_dmem_wrap.o tools/test_command_ring_rthreads.o tools/test_command_ring_ec.o
+		$(CORE_CHECKS) dynarec_long_block_test$(EXE_EXT) savestate_latch_test$(EXE_EXT) savestate_code_test$(EXE_EXT) cpu_fallback_test$(EXE_EXT) tools/test_prsp_dmem_wrap.o tools/test_command_ring_rthreads.o tools/test_command_ring_ec.o tools/test_granite_util_rthreads.o
 
 # Angrylion benchmark and bit-exactness harnesses (tools/angrylion_*.c),
 # linked against the core's own angrylion objects: `make tools` after a
@@ -1621,9 +1625,12 @@ test_rdp_x_range$(EXE_EXT): tools/test_rdp_x_range.cpp $(VIDEODIR_PARALLEL)/para
 		-I$(VIDEODIR_PARALLEL)/parallel-rdp/util $< -o $@ $(CHECK_LDFLAGS) $(CHECK_SANITIZE)
 
 # Granite's util containers, written without the standard library
-test_granite_util$(EXE_EXT): tools/test_granite_util.cpp $(wildcard $(VIDEODIR_PARALLEL)/parallel-rdp/util/*.hpp)
+test_granite_util$(EXE_EXT): tools/test_granite_util.cpp $(wildcard $(VIDEODIR_PARALLEL)/parallel-rdp/util/*.hpp) \
+		$(LIBRETRO_COMM_DIR)/rthreads/rthreads.c
+	$(CC) $(CHECK_CFLAGS) $(CHECK_SANITIZE) -I$(LIBRETRO_COMM_DIR)/include -c $(LIBRETRO_COMM_DIR)/rthreads/rthreads.c -o tools/test_granite_util_rthreads.o
 	$(CXX) -std=c++11 $(CHECK_CFLAGS) $(CHECK_SANITIZE) -DRETRO_ATOMIC_FORCE_GCC_NEW -I$(VIDEODIR_PARALLEL)/parallel-rdp/util \
-		-I$(LIBRETRO_COMM_DIR)/include $< $(VIDEODIR_PARALLEL)/parallel-rdp/util/aligned_alloc.cpp -o $@ $(CHECK_LDFLAGS) $(CHECK_SANITIZE)
+		-I$(LIBRETRO_COMM_DIR)/include $< $(VIDEODIR_PARALLEL)/parallel-rdp/util/aligned_alloc.cpp tools/test_granite_util_rthreads.o \
+		-o $@ $(CHECK_LDFLAGS) $(CHECK_SANITIZE) -lpthread
 
 # The command ring alone, with a stand-in processor (tools/test_command_ring.cpp).
 COMMAND_RING_TEST_INC := -I$(VIDEODIR_PARALLEL)/parallel-rdp/parallel-rdp -I$(VIDEODIR_PARALLEL)/parallel-rdp/vulkan \

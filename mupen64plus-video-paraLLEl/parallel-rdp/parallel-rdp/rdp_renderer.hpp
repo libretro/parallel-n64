@@ -381,7 +381,7 @@ private:
 	int filter_debug_channel_y = -1;
 	bool debug_channel = false;
 
-	void message(const std::string &tag, uint32_t code,
+	void message(const char *tag, uint32_t code,
 	             uint32_t x, uint32_t y, uint32_t z,
 	             uint32_t num_words, const Vulkan::DebugChannelInterface::Word *words) override;
 
