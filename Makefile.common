@@ -49,7 +49,6 @@ INCFLAGS += \
 	-I$(CORE_DIR)/src/api \
 	-I$(CORE_DIR)/custom \
 	-I$(CORE_DIR)/subprojects/md5 \
-	-I$(CORE_DIR)/subprojects/xxhash \
 	-I$(ROOT_DIR)/include \
 	-I$(AUDIO_LIBRETRO_DIR) \
 	-I$(LIBRETRO_COMM_DIR)/include \
@@ -315,6 +314,7 @@ SOURCES_C += $(LIBRETRO_DIR)/libretro.c \
 				 $(CORE_DIR)/src/plugin/emulate_game_controller_via_libretro.c \
 				 $(LIBRETRO_COMM_DIR)/memmap/memalign.c \
 				 $(LIBRETRO_COMM_DIR)/encodings/encoding_crc32.c \
+				 $(LIBRETRO_COMM_DIR)/encodings/encoding_xxh3.c \
 				 $(LIBRETRO_COMM_DIR)/encodings/encoding_deflate.c \
 				 $(LIBRETRO_COMM_DIR)/formats/zip/rzip_archive.c \
 				 $(LIBRETRO_COMM_DIR)/formats/7z/r7z_archive.c \

@@ -1480,11 +1480,12 @@ test_fpu_compare$(EXE_EXT): tools/test_fpu_compare.c
 		$^ -o $@ $(CHECK_LDFLAGS) $(CHECK_SANITIZE) -lm
 
 TEST_R4300_INTERP_SRCS := $(CORE_DEVICE_DIR)/r4300/cp0.c $(CORE_DEVICE_DIR)/r4300/interrupt.c \
-	$(CORE_DEVICE_DIR)/r4300/cp1.c $(CORE_DEVICE_DIR)/r4300/idec.c
+	$(CORE_DEVICE_DIR)/r4300/cp1.c $(CORE_DEVICE_DIR)/r4300/idec.c \
+	$(LIBRETRO_COMM_DIR)/encodings/encoding_xxh3.c $(LIBRETRO_COMM_DIR)/features/features_cpu.c
 test_r4300_interp$(EXE_EXT): tools/test_r4300_interp.c $(CORE_DEVICE_DIR)/r4300/pure_interp.c \
 		$(CORE_DEVICE_DIR)/r4300/mips_instructions.def $(TEST_R4300_INTERP_SRCS)
 	$(CC) $(CHECK_CFLAGS) $(CHECK_SANITIZE) -I$(CORE_DIR)/src -I$(CORE_DIR)/src/api \
-		-I$(CORE_DIR)/custom -I$(CORE_DIR)/subprojects/xxhash -I$(LIBRETRO_COMM_DIR)/include -I$(ROOT_DIR)/libretro \
+		-I$(CORE_DIR)/custom -I$(LIBRETRO_COMM_DIR)/include -I$(ROOT_DIR)/libretro \
 		$< $(TEST_R4300_INTERP_SRCS) -o $@ $(CHECK_LDFLAGS) $(CHECK_SANITIZE) -lm
 
 TEST_PI_SRCS := $(CORE_DEVICE_DIR)/rcp/pi/pi_controller.c $(CORE_DEVICE_DIR)/rcp/mi/mi_controller.c
