@@ -247,12 +247,12 @@ bool DepthBufferToRDRAM::_copy(u32 _startAddress, u32 _endAddress)
 	if (pixelData == nullptr)
 		return false;
 
-	f32 * ptr_src = (f32*)pixelData;
+	const f32 * ptr_src = (const f32*)pixelData;
 	u16 *ptr_dst = (u16*)(RDRAM + _startAddress);
 
-	std::vector<f32> srcBuf(width * height);
-	memcpy(srcBuf.data(), ptr_src, width * height * sizeof(f32));
-	writeToRdram<f32, u16>(srcBuf.data(),
+	/* converted straight out of the mapped pack buffer */
+	writeToRdram<f32, u16>(ptr_src,
+						   width,
 						   ptr_dst,
 						   &DepthBufferToRDRAM::_FloatToUInt16,
 						   2.0f,

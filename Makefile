@@ -1630,12 +1630,18 @@ test_command_ring$(EXE_EXT): tools/test_command_ring.cpp \
 		$(VIDEODIR_PARALLEL)/parallel-rdp/util/thread_id.cpp tools/test_command_ring_rthreads.o tools/test_command_ring_ec.o \
 		-o $@ $(CHECK_LDFLAGS) $(CHECK_SANITIZE) -lpthread
 
+# GLideN64's RDRAM writeback converting read-back rows in place, against
+# the compacting copy it replaced
+test_gliden64_write_rdram$(EXE_EXT): tools/test_gliden64_write_rdram.cpp $(VIDEODIR_GLIDEN64)/src/BufferCopy/WriteToRDRAM.h
+	$(CXX) -std=c++11 $(CHECK_CFLAGS) $(CHECK_SANITIZE) $< -o $@ $(CHECK_LDFLAGS) $(CHECK_SANITIZE)
+
 CORE_CHECKS := test_rcp_bounds$(EXE_EXT) test_memory_map$(EXE_EXT) test_fb_write$(EXE_EXT) \
 	test_cp0_exceptions$(EXE_EXT) test_r4300_interp$(EXE_EXT) test_fpu_compare$(EXE_EXT) test_pi_status$(EXE_EXT) \
 	test_musyx_bounds$(EXE_EXT) test_musyx_aux$(EXE_EXT) test_alist_ops$(EXE_EXT) test_alist_abi1$(EXE_EXT) test_hle_dispatch$(EXE_EXT) angrylion_zboss_audio_test$(EXE_EXT) \
 	test_mouse_accum$(EXE_EXT) test_hle_dram_wrap$(EXE_EXT) test_pif_write$(EXE_EXT) \
 	test_re2_fill$(EXE_EXT) test_temporal_upscaler$(EXE_EXT) test_pipeline_records$(EXE_EXT) \
-	test_command_ring$(EXE_EXT) test_gb_cart_banks$(EXE_EXT) test_dynarec_cache_pages$(EXE_EXT)
+	test_command_ring$(EXE_EXT) test_gb_cart_banks$(EXE_EXT) test_dynarec_cache_pages$(EXE_EXT) \
+	test_gliden64_write_rdram$(EXE_EXT)
 
 ifeq ($(HAVE_PARALLEL_RSP), 1)
 PRSP_TEST_OBJS := $(filter $(RSPDIR_PARALLEL)/%,$(OBJECTS))

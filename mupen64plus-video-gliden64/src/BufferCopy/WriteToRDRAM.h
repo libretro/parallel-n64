@@ -4,8 +4,9 @@
 
 #include "../Types.h"
 
+/* _src holds _height rows of _width pixels, _srcStride pixels apart */
 template <typename TSrc, typename TDst>
-void writeToRdram(TSrc* _src, TDst* _dst, TDst(*converter)(TSrc _c), TSrc _testValue, u32 _xor, u32 _width, u32 _height, u32 _numPixels, u32 _startAddress, u32 _bufferAddress, u32 _bufferSize)
+void writeToRdram(const TSrc* _src, u32 _srcStride, TDst* _dst, TDst(*converter)(TSrc _c), TSrc _testValue, u32 _xor, u32 _width, u32 _height, u32 _numPixels, u32 _startAddress, u32 _bufferAddress, u32 _bufferSize)
 {
 	u32 chunkStart = ((_startAddress - _bufferAddress) >> (_bufferSize - 1)) % _width;
 	if (chunkStart % 2 != 0) {
@@ -31,7 +32,7 @@ void writeToRdram(TSrc* _src, TDst* _dst, TDst(*converter)(TSrc _c), TSrc _testV
 	u32 dsty = 0;
 	for (; y < _height; ++y) {
 		for (u32 x = 0; x < _width && numStored < _numPixels; ++x) {
-			c = _src[x + y *_width];
+			c = _src[x + y * _srcStride];
 			if (c != _testValue)
 				_dst[(x + dsty*_width) ^ _xor] = converter(c);
 			++numStored;

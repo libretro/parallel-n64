@@ -11,7 +11,10 @@ public:
 	ColorBufferReader(CachedTexture * _pTexture);
 	virtual ~ColorBufferReader() = default;
 
-	virtual const u8 * readPixels(s32 _x0, s32 _y0, u32 _width, u32 _height, u32 _size, bool _sync);
+	/* The rows read back, _stride pixels apart, valid until cleanUp().
+	 * _height comes back as the rows the buffer holds. Integer formats
+	 * are the reader's own memory, read where they lie. */
+	virtual const u8 * readPixels(s32 _x0, s32 _y0, u32 _width, u32 & _height, u32 _size, bool _sync, u32 & _stride);
 	virtual void cleanUp() = 0;
 
 protected:
@@ -28,11 +31,9 @@ protected:
 
 	CachedTexture * m_pTexture;
 	std::vector<u8> m_pixelData;
-	std::vector<u8> m_tempPixelData;
 
 private:
-	const u8* _convertFloatTextureBuffer(const u8* _gpuData, u32 _width, u32 _height, u32 _heightOffset, u32 _stride);
-	const u8* _convertIntegerTextureBuffer(const u8* _gpuData, u32 _width, u32 _height,u32 _heightOffset, u32 _stride, u32 _colorsPerPixel);
+	const u8* _convertFloatTextureBuffer(const u8* _gpuData, u32 _width, u32 & _height, u32 _heightOffset, u32 _stride);
 	virtual const u8 * _readPixels(const ReadColorBufferParams& _params, u32& _heightOffset, u32& _stride) = 0;
 };
 
