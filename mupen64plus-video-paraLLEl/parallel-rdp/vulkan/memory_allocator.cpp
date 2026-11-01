@@ -739,19 +739,13 @@ bool DeviceAllocator::internal_allocate(
 
 		return true;
 	}
-	else
+	else if (!(external && bool(*external)))
 	{
-		// Look through our heap and see if there are blocks of other types we can free.
-		auto block_itr = heap.blocks.begin();
-		while (res != VK_SUCCESS && itr != heap.blocks.end())
-		{
-			table->vkFreeMemory(device->get_device(), block_itr->memory, nullptr);
-			heap.size -= block_itr->size;
-			res = table->vkAllocateMemory(device->get_device(), &info, nullptr, &device_memory);
-			++block_itr;
-		}
-
-		heap.blocks.erase(heap.blocks.begin(), block_itr);
+		// Free cached blocks of other types until the allocation fits.
+		// An import is not retried: freeing memory cannot fix it, and its
+		// handle may already be closed.
+		res = allocate_after_freeing_cached(*table, device->get_device(), heap.blocks, heap.size,
+		                                    info, &device_memory, res);
 
 		if (res == VK_SUCCESS)
 		{
@@ -774,6 +768,8 @@ bool DeviceAllocator::internal_allocate(
 		else
 			return false;
 	}
+	else
+		return false;
 }
 
 DeviceAllocationOwner::DeviceAllocationOwner(Device *device_, const DeviceAllocation &alloc_)

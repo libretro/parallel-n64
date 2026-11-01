@@ -248,6 +248,35 @@ struct HeapBudget
 	VkDeviceSize device_usage;
 };
 
+// A freed vkAllocateMemory block kept for reuse.
+struct CachedAllocation
+{
+	VkDeviceMemory memory;
+	uint32_t size;
+	uint32_t type;
+	AllocationMode mode;
+};
+
+// After an allocation failed with res, frees cached blocks oldest first,
+// retrying after each, until it succeeds or the cache is empty. The freed
+// blocks leave the cache.
+static inline VkResult allocate_after_freeing_cached(const VolkDeviceTable &table, VkDevice device,
+                                                     Util::Vector<CachedAllocation> &blocks, uint64_t &heap_size,
+                                                     const VkMemoryAllocateInfo &info, VkDeviceMemory *memory,
+                                                     VkResult res)
+{
+	size_t freed = 0;
+	while (res != VK_SUCCESS && freed < blocks.size())
+	{
+		table.vkFreeMemory(device, blocks[freed].memory, nullptr);
+		heap_size -= blocks[freed].size;
+		freed++;
+		res = table.vkAllocateMemory(device, &info, nullptr, memory);
+	}
+	blocks.erase(blocks.begin(), blocks.begin() + freed);
+	return res;
+}
+
 class DeviceAllocator
 {
 public:
@@ -286,18 +315,10 @@ private:
 	const VolkDeviceTable *table = nullptr;
 	VkPhysicalDeviceMemoryProperties mem_props;
 	VkDeviceSize atom_alignment = 1;
-	struct Allocation
-	{
-		VkDeviceMemory memory;
-		uint32_t size;
-		uint32_t type;
-		AllocationMode mode;
-	};
-
 	struct Heap
 	{
 		uint64_t size = 0;
-		Util::Vector<Allocation> blocks;
+		Util::Vector<CachedAllocation> blocks;
 		void garbage_collect(Device *device);
 	};
 

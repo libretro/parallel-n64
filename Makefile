@@ -1632,6 +1632,11 @@ test_granite_util$(EXE_EXT): tools/test_granite_util.cpp $(wildcard $(VIDEODIR_P
 		-I$(LIBRETRO_COMM_DIR)/include $< $(VIDEODIR_PARALLEL)/parallel-rdp/util/aligned_alloc.cpp tools/test_granite_util_rthreads.o \
 		-o $@ $(CHECK_LDFLAGS) $(CHECK_SANITIZE) -lpthread
 
+# Granite's allocation retry after freeing cached memory blocks
+test_vk_alloc_fallback$(EXE_EXT): tools/test_vk_alloc_fallback.cpp $(VIDEODIR_PARALLEL)/parallel-rdp/vulkan/memory_allocator.hpp
+	$(CXX) -std=c++11 $(CHECK_CFLAGS) $(CHECK_SANITIZE) -DGRANITE_VULKAN_MT -DRETRO_ATOMIC_FORCE_GCC_NEW $(COMMAND_RING_TEST_INC) \
+		$< -o $@ $(CHECK_LDFLAGS) $(CHECK_SANITIZE)
+
 # The command ring alone, with a stand-in processor (tools/test_command_ring.cpp).
 COMMAND_RING_TEST_INC := -I$(VIDEODIR_PARALLEL)/parallel-rdp/parallel-rdp -I$(VIDEODIR_PARALLEL)/parallel-rdp/vulkan \
 	-I$(VIDEODIR_PARALLEL)/parallel-rdp/util -I$(VIDEODIR_PARALLEL)/parallel-rdp/volk \
@@ -1658,7 +1663,7 @@ CORE_CHECKS := test_rcp_bounds$(EXE_EXT) test_memory_map$(EXE_EXT) test_fb_write
 	test_mouse_accum$(EXE_EXT) test_hle_dram_wrap$(EXE_EXT) test_pif_write$(EXE_EXT) \
 	test_re2_fill$(EXE_EXT) test_temporal_upscaler$(EXE_EXT) test_pipeline_records$(EXE_EXT) test_rdp_x_range$(EXE_EXT) \
 	test_command_ring$(EXE_EXT) test_gb_cart_banks$(EXE_EXT) test_dynarec_cache_pages$(EXE_EXT) \
-	test_gliden64_write_rdram$(EXE_EXT) test_granite_util$(EXE_EXT)
+	test_gliden64_write_rdram$(EXE_EXT) test_granite_util$(EXE_EXT) test_vk_alloc_fallback$(EXE_EXT)
 
 ifeq ($(HAVE_PARALLEL_RSP), 1)
 PRSP_TEST_OBJS := $(filter $(RSPDIR_PARALLEL)/%,$(OBJECTS))
