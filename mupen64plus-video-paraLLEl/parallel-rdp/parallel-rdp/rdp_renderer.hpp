@@ -328,6 +328,7 @@ private:
 	InternalSynchronization internal_sync[Limits::NumSyncStates];
 	uint32_t sync_indices_needs_flush = 0;
 	unsigned buffer_instance = 0;
+	void bind_stream_instance();
 	uint32_t base_primitive_index = 0;
 	unsigned pending_render_passes = 0;
 	unsigned pending_render_passes_upscaled = 0;

@@ -102,6 +102,7 @@ bool Renderer::init_renderer(const RendererOptions &options)
 
 	for (auto &buffer : buffer_instances)
 		buffer.init(*device);
+	bind_stream_instance();
 
 	if (const char *env = getenv("RDP_DEBUG"))
 		debug_channel = strtoul(env, nullptr, 0) != 0;
@@ -1649,8 +1650,11 @@ void Renderer::RenderBuffersUpdater::upload(Vulkan::CommandBuffer &cmd, Vulkan::
 {
 	if (!cache.empty())
 	{
-		memcpy(device.map_host_buffer(*cpu.buffer, Vulkan::MEMORY_ACCESS_WRITE_BIT), cache.data(), cache.byte_size());
-		device.unmap_host_buffer(*cpu.buffer, Vulkan::MEMORY_ACCESS_WRITE_BIT);
+		// The streams are built in place; only the state caches are copied.
+		void *mapped = device.map_host_buffer(*cpu.buffer, Vulkan::MEMORY_ACCESS_WRITE_BIT);
+		if (mapped != static_cast<const void *>(cache.data()))
+			memcpy(mapped, cache.data(), cache.byte_size());
+		device.unmap_host_buffer(*cpu.buffer, Vulkan::MEMORY_ACCESS_WRITE_BIT, 0, cache.byte_size());
 		if (gpu.buffer != cpu.buffer)
 		{
 			cmd.copy_buffer(*gpu.buffer, 0, *cpu.buffer, 0, cache.byte_size());
@@ -2540,6 +2544,43 @@ void Renderer::begin_new_context()
 {
 	buffer_instance = (buffer_instance + 1) % Limits::NumSyncStates;
 	reset_context();
+	bind_stream_instance();
+}
+
+// The streams of the next context are written straight into this
+// instance's upload buffers, so the GPU must be done with what it last
+// read from them before the first primitive is added, not at the flush.
+void Renderer::bind_stream_instance()
+{
+	auto &instance = buffer_instances[buffer_instance];
+	auto &sync = internal_sync[buffer_instance];
+
+	if (sync_indices_needs_flush & (1u << buffer_instance))
+		submit_to_queue();
+
+	if (sync.fence)
+	{
+		Vulkan::QueryPoolHandle start_ts, end_ts;
+		if (caps.timestamp)
+			start_ts = device->write_calibrated_timestamp();
+		sync.fence->wait();
+		if (caps.timestamp)
+		{
+			end_ts = device->write_calibrated_timestamp();
+			device->register_time_interval("RDP CPU", std::move(start_ts), std::move(end_ts), "render-pass-fence");
+		}
+		sync.fence.reset();
+	}
+
+	// The upload buffers are host-visible, so they always map.
+	const Vulkan::MemoryAccessFlags w = Vulkan::MEMORY_ACCESS_WRITE_BIT;
+	stream.triangle_setup.bind(device->map_host_buffer(*instance.cpu.triangle_setup.buffer, w));
+	stream.scissor_setup.bind(device->map_host_buffer(*instance.cpu.scissor_setup.buffer, w));
+	stream.attribute_setup.bind(device->map_host_buffer(*instance.cpu.attribute_setup.buffer, w));
+	stream.derived_setup.bind(device->map_host_buffer(*instance.cpu.derived_setup.buffer, w));
+	stream.state_indices.bind(device->map_host_buffer(*instance.cpu.state_indices.buffer, w));
+	stream.span_info_offsets.bind(device->map_host_buffer(*instance.cpu.span_info_offsets.buffer, w));
+	stream.span_info_jobs.bind(device->map_host_buffer(*instance.cpu.span_info_jobs.buffer, w));
 }
 
 uint32_t Renderer::get_byte_size_for_bound_color_framebuffer() const
@@ -3029,25 +3070,9 @@ void Renderer::flush_queues()
 		lock_pages_for_gpu_write(fb.depth_addr, get_byte_size_for_bound_depth_framebuffer());
 	}
 
+	// bind_stream_instance waited for this instance's last use
 	auto &instance = buffer_instances[buffer_instance];
-	auto &sync = internal_sync[buffer_instance];
-	if (sync_indices_needs_flush & (1u << buffer_instance))
-		submit_to_queue();
 	sync_indices_needs_flush |= 1u << buffer_instance;
-
-	if (sync.fence)
-	{
-		Vulkan::QueryPoolHandle start_ts, end_ts;
-		if (caps.timestamp)
-			start_ts = device->write_calibrated_timestamp();
-		sync.fence->wait();
-		if (caps.timestamp)
-		{
-			end_ts = device->write_calibrated_timestamp();
-			device->register_time_interval("RDP CPU", std::move(start_ts), std::move(end_ts), "render-pass-fence");
-		}
-		sync.fence.reset();
-	}
 
 	ensure_command_buffer();
 
