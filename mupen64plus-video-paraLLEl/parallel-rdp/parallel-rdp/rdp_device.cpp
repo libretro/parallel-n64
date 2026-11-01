@@ -1128,6 +1128,7 @@ void CommandProcessor::enqueue_command_direct(unsigned, const uint32_t *words)
 
 	case Op::MetaNextFrameContext:
 		device.next_frame_context();
+		vi.begin_frame_context();
 		break;
 
 	case Op::MetaCall:

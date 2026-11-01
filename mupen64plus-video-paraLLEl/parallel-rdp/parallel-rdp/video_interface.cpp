@@ -435,6 +435,42 @@ bool VideoInterface::need_fetch_bug_emulation(const Registers &regs, unsigned sc
 	return regs.init_y_add < 1024 && scaling_factor == 1;
 }
 
+void VideoInterface::begin_frame_context()
+{
+	frame_serial++;
+	if (device)
+		image_pool.trim(frame_serial, device->get_num_frame_contexts());
+}
+
+const VIImagePool::Entry &VideoInterface::acquire_image(const Vulkan::ImageCreateInfo &info, bool layer_views) const
+{
+	VIImagePool::Entry *e = image_pool.reuse(info, layer_views, frame_serial, device->get_num_frame_contexts());
+	if (e)
+		return *e;
+	return create_pooled_image(info, layer_views);
+}
+
+// Only when the size or format changes, or while the pool fills.
+UTIL_NOINLINE_COLD const VIImagePool::Entry &VideoInterface::create_pooled_image(
+		const Vulkan::ImageCreateInfo &info, bool layer_views) const
+{
+	VIImagePool::Entry *e = image_pool.add(info, frame_serial, device->get_num_frame_contexts());
+	e->image = device->create_image(info);
+	if (layer_views && e->image)
+	{
+		Vulkan::ImageViewCreateInfo view_info = {};
+		view_info.image = e->image.get();
+		view_info.view_type = VK_IMAGE_VIEW_TYPE_2D;
+		view_info.layers = 1;
+		for (unsigned layer = 0; layer < info.layers && layer < 2; layer++)
+		{
+			view_info.base_layer = layer;
+			e->layer_views[layer] = device->create_image_view(view_info);
+		}
+	}
+	return *e;
+}
+
 Vulkan::ImageHandle VideoInterface::vram_fetch_stage(const Registers &regs, unsigned scaling_factor) const
 {
 	auto async_cmd = device->request_command_buffer(Vulkan::CommandBuffer::Type::AsyncCompute);
@@ -469,7 +505,7 @@ Vulkan::ImageHandle VideoInterface::vram_fetch_stage(const Registers &regs, unsi
 	rt_info.initial_layout = VK_IMAGE_LAYOUT_UNDEFINED;
 	rt_info.misc = Vulkan::IMAGE_MISC_CONCURRENT_QUEUE_GRAPHICS_BIT |
 	               Vulkan::IMAGE_MISC_CONCURRENT_QUEUE_ASYNC_COMPUTE_BIT;
-	vram_image = device->create_image(rt_info);
+	vram_image = acquire_image(rt_info, false).image;
 	vram_image->set_layout(Vulkan::Layout::General);
 
 	async_cmd->image_barrier(*vram_image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL,
@@ -557,30 +593,18 @@ Vulkan::ImageHandle VideoInterface::aa_fetch_stage(Vulkan::CommandBuffer &cmd, V
 	rt_info.initial_layout = VK_IMAGE_LAYOUT_UNDEFINED;
 	rt_info.layers = fetch_bug ? 2 : 1;
 	rt_info.misc = Vulkan::IMAGE_MISC_FORCE_ARRAY_BIT;
-	aa_image = device->create_image(rt_info);
-
-	Vulkan::ImageViewCreateInfo view_info = {};
-	view_info.image = aa_image.get();
-	view_info.view_type = VK_IMAGE_VIEW_TYPE_2D;
-	view_info.layers = 1;
-
-	Vulkan::ImageViewHandle aa_primary, aa_secondary;
-	view_info.base_layer = 0;
-	aa_primary = device->create_image_view(view_info);
-
-	if (fetch_bug)
-	{
-		view_info.base_layer = 1;
-		aa_secondary = device->create_image_view(view_info);
-	}
+	const VIImagePool::Entry &aa = acquire_image(rt_info, true);
+	aa_image = aa.image;
+	const Vulkan::ImageView *aa_primary = aa.layer_views[0].get();
+	const Vulkan::ImageView *aa_secondary = aa.layer_views[1].get();
 
 	Vulkan::RenderPassInfo rp;
-	rp.color_attachments[0] = aa_primary.get();
+	rp.color_attachments[0] = aa_primary;
 	rp.clear_attachments = 0;
 
 	if (fetch_bug)
 	{
-		rp.color_attachments[1] = aa_secondary.get();
+		rp.color_attachments[1] = aa_secondary;
 		rp.num_color_attachments = 2;
 		rp.store_attachments = 3;
 	}
@@ -652,30 +676,18 @@ Vulkan::ImageHandle VideoInterface::divot_stage(Vulkan::CommandBuffer &cmd, Vulk
 	rt_info.initial_layout = VK_IMAGE_LAYOUT_UNDEFINED;
 	rt_info.layers = fetch_bug ? 2 : 1;
 	rt_info.misc = Vulkan::IMAGE_MISC_FORCE_ARRAY_BIT;
-	divot_image = device->create_image(rt_info);
-
-	Vulkan::ImageViewCreateInfo view_info = {};
-	view_info.image = divot_image.get();
-	view_info.view_type = VK_IMAGE_VIEW_TYPE_2D;
-	view_info.layers = 1;
-
-	Vulkan::ImageViewHandle divot_primary, divot_secondary;
-	view_info.base_layer = 0;
-	divot_primary = device->create_image_view(view_info);
-
-	if (fetch_bug)
-	{
-		view_info.base_layer = 1;
-		divot_secondary = device->create_image_view(view_info);
-	}
+	const VIImagePool::Entry &divot = acquire_image(rt_info, true);
+	divot_image = divot.image;
+	const Vulkan::ImageView *divot_primary = divot.layer_views[0].get();
+	const Vulkan::ImageView *divot_secondary = divot.layer_views[1].get();
 
 	Vulkan::RenderPassInfo rp;
-	rp.color_attachments[0] = divot_primary.get();
+	rp.color_attachments[0] = divot_primary;
 	rp.clear_attachments = 0;
 
 	if (fetch_bug)
 	{
-		rp.color_attachments[1] = divot_secondary.get();
+		rp.color_attachments[1] = divot_secondary;
 		rp.num_color_attachments = 2;
 		rp.store_attachments = 3;
 	}
