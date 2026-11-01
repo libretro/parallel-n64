@@ -7,8 +7,10 @@
  * The payload maps virtual 0x00400000 to the code page at RDRAM 0x20000
  * through the TLB, writes a function returning VALUE_A there and marks
  * phase 1; the state is saved in the wait that follows. It then calls the
- * function through KSEG0 and through the TLB, rewrites it to return
- * VALUE_B, calls it both ways again and marks phase 2.
+ * function through KSEG0 and through the TLB, rewrites it through KSEG0
+ * to return VALUE_B, calls it both ways again and marks phase 2: the TLB
+ * call must find the rewrite even though the KSEG0 call compiled the
+ * physical page again first.
  *
  * `make check-savestate-code` loads the state back into the same session
  * once phase 2 is reached, as run-ahead and rewind do: the CPU cores then
@@ -185,10 +187,10 @@ static int write_rom(const char* path)
     emit_call(&e, 0x8000 | (CODE_PAGE >> 16), KSEG0_FIRST);
     emit_call(&e, CODE_VADDR >> 16, TLB_FIRST);
     emit_function(&e, VALUE_B);
-    /* the TLB first here: a store through KSEG0 leaves the TLB page's
-     * code to be found stale from the physical page's on the jump */
-    emit_call(&e, CODE_VADDR >> 16, TLB_SECOND);
+    /* KSEG0 first again: compiling the physical page anew must not leave
+     * the TLB page over it with the function the store replaced */
     emit_call(&e, 0x8000 | (CODE_PAGE >> 16), KSEG0_SECOND);
+    emit_call(&e, CODE_VADDR >> 16, TLB_SECOND);
     emit(&e, ORI(T1, 0, 2));
     emit(&e, SW(T1, PHASE_ADDR, T6));
     emit(&e, BEQ(0, 0, 0xffff));

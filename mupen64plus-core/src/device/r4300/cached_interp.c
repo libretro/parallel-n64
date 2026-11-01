@@ -717,6 +717,30 @@ enum r4300_opcode r4300_decode(struct precomp_instr* inst, struct r4300_core* r4
 }
 
 
+/* Code is cached by virtual page, and a TLB page keeps its own copy of
+ * the physical page it maps. Before an unmapped page whose code went
+ * stale is compiled again, so must every TLB page over it be: once the
+ * physical page is valid again, a jump through the TLB no longer finds
+ * that it changed. */
+static void invalidate_tlb_aliases(struct r4300_core* r4300, uint32_t addr)
+{
+    char* const invalid_code = r4300->cached_interp.invalid_code;
+    const uint32_t paddr = addr & UINT32_C(0x1ffff000);
+    size_t i;
+
+    for (i = 0; i < 32; ++i)
+    {
+        const struct tlb_entry* e = &r4300->cp0.tlb.entries[i];
+
+        if (e->v_even && e->start_even < e->end_even
+         && paddr >= e->phys_even && paddr - e->phys_even <= e->end_even - e->start_even)
+            invalid_code[(e->start_even + (paddr - e->phys_even)) >> 12] = 1;
+        if (e->v_odd && e->start_odd < e->end_odd
+         && paddr >= e->phys_odd && paddr - e->phys_odd <= e->end_odd - e->start_odd)
+            invalid_code[(e->start_odd + (paddr - e->phys_odd)) >> 12] = 1;
+    }
+}
+
 static uint32_t update_invalid_addr(struct r4300_core* r4300, uint32_t addr)
 {
     char* const invalid_code = r4300->cached_interp.invalid_code;
@@ -728,6 +752,9 @@ static uint32_t update_invalid_addr(struct r4300_core* r4300, uint32_t addr)
         }
         if (invalid_code[(addr^0x20000000)>>12]) {
             invalid_code[addr>>12] = 1;
+        }
+        if (invalid_code[addr>>12]) {
+            invalidate_tlb_aliases(r4300, addr);
         }
         return addr;
     }
