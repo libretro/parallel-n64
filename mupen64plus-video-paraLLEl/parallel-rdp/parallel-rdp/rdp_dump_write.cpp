@@ -32,6 +32,7 @@ RDPDumpWriter::~RDPDumpWriter()
 	end();
 	if (file)
 		fclose(file);
+	free(rdp_dram_cache);
 }
 
 bool RDPDumpWriter::init(const char *path, uint32_t dram_size, uint32_t hidden_dram_size)
@@ -39,10 +40,11 @@ bool RDPDumpWriter::init(const char *path, uint32_t dram_size, uint32_t hidden_d
 	if (file)
 		return false;
 
-	rdp_dram_cache.clear();
-	rdp_dram_cache.resize(dram_size);
-	rdp_hidden_dram_cache.clear();
-	rdp_hidden_dram_cache.resize(hidden_dram_size);
+	free(rdp_dram_cache);
+	rdp_dram_cache = static_cast<uint8_t *>(calloc(1, size_t(dram_size) + hidden_dram_size));
+	rdp_hidden_dram_cache = rdp_dram_cache ? rdp_dram_cache + dram_size : nullptr;
+	if (!rdp_dram_cache)
+		return false;
 
 	file = fopen(path, "wb");
 	if (!file)
@@ -74,8 +76,9 @@ void RDPDumpWriter::end()
 	fclose(file);
 	file = nullptr;
 
-	rdp_dram_cache.clear();
-	rdp_hidden_dram_cache.clear();
+	free(rdp_dram_cache);
+	rdp_dram_cache = nullptr;
+	rdp_hidden_dram_cache = nullptr;
 }
 
 void RDPDumpWriter::flush(const void *dram_, uint32_t size,
@@ -109,12 +112,12 @@ void RDPDumpWriter::flush(const void *dram_, uint32_t size,
 
 void RDPDumpWriter::flush_dram(const void *dram_, uint32_t size)
 {
-	flush(dram_, size, RDP_DUMP_CMD_UPDATE_DRAM, RDP_DUMP_CMD_UPDATE_DRAM_FLUSH, rdp_dram_cache.data());
+	flush(dram_, size, RDP_DUMP_CMD_UPDATE_DRAM, RDP_DUMP_CMD_UPDATE_DRAM_FLUSH, rdp_dram_cache);
 }
 
 void RDPDumpWriter::flush_hidden_dram(const void *dram_, uint32_t size)
 {
-	flush(dram_, size, RDP_DUMP_CMD_UPDATE_HIDDEN_DRAM, RDP_DUMP_CMD_UPDATE_HIDDEN_DRAM_FLUSH, rdp_hidden_dram_cache.data());
+	flush(dram_, size, RDP_DUMP_CMD_UPDATE_HIDDEN_DRAM, RDP_DUMP_CMD_UPDATE_HIDDEN_DRAM_FLUSH, rdp_hidden_dram_cache);
 }
 
 void RDPDumpWriter::signal_complete()

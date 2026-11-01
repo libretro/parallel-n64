@@ -21,13 +21,14 @@
  */
 
 #include "rdp_renderer.hpp"
+#include <stdio.h>
+#include <stdlib.h>
 #include "rdp_device.hpp"
 #include "logging.hpp"
 #include "bitops.hpp"
 #include "luts.hpp"
 #include "timer.hpp"
 #include "thread_name.hpp"
-#include <limits>
 #ifdef PARALLEL_RDP_SHADER_DIR
 #include "global_managers.hpp"
 #include "os_filesystem.hpp"
@@ -56,7 +57,7 @@ void pipeline_worker_start(void *)
 Renderer::Renderer(CommandProcessor &processor_)
 	: processor(processor_)
 {
-	active_submissions = 0;
+	retro_atomic_int_init(&active_submissions, 0);
 }
 
 Renderer::~Renderer()
@@ -64,8 +65,55 @@ Renderer::~Renderer()
 	/* The worker drains what is queued before it goes; built ahead, that
 	 * is skipped. */
 	retro_atomic_store_release_int(&pipeline_ahead_stop, 1);
-	pipeline_worker.reset();
+	rdp_worker_free(pipeline_worker);
 	free(pipeline_ahead_nodes);
+	free(pending_async_pipelines.keys);
+	free(incoherent.arena);
+}
+
+// Adds hash to the pipelines queued to the worker; false if it was there.
+bool Renderer::pending_async_pipeline_insert(Util::Hash hash)
+{
+	auto &set = pending_async_pipelines;
+	unsigned mask, i;
+
+	if (hash == 0)
+	{
+		bool had = set.has_zero;
+		set.has_zero = true;
+		return !had;
+	}
+
+	if (2 * (set.count + 1) > set.capacity)
+	{
+		unsigned capacity = set.capacity ? 2 * set.capacity : 64;
+		auto *keys = static_cast<Util::Hash *>(calloc(capacity, sizeof(Util::Hash)));
+		unsigned j;
+		if (!keys)
+			return true;
+		for (j = 0; j < set.capacity; j++)
+		{
+			Util::Hash k = set.keys[j];
+			if (k)
+			{
+				i = unsigned(k) & (capacity - 1);
+				while (keys[i])
+					i = (i + 1) & (capacity - 1);
+				keys[i] = k;
+			}
+		}
+		free(set.keys);
+		set.keys = keys;
+		set.capacity = capacity;
+	}
+
+	mask = set.capacity - 1;
+	for (i = unsigned(hash) & mask; set.keys[i]; i = (i + 1) & mask)
+		if (set.keys[i] == hash)
+			return false;
+	set.keys[i] = hash;
+	set.count++;
+	return true;
 }
 
 void Renderer::set_shader_bank(const ShaderBank *bank)
@@ -89,9 +137,9 @@ bool Renderer::init_renderer(const RendererOptions &options)
 	caps.max_tiles_y = options.upscaling_factor * ImplementationConstants::MaxTilesY;
 	caps.max_num_tile_instances = options.upscaling_factor * options.upscaling_factor * Limits::MaxTileInstances;
 
-	pipeline_worker.reset(new PipelineWorker);
-	pipeline_worker->worker = rdp_worker_new(pipeline_worker_start, pipeline_work, this);
-	if (!pipeline_worker->worker)
+	rdp_worker_free(pipeline_worker);
+	pipeline_worker = rdp_worker_new(pipeline_worker_start, pipeline_work, this);
+	if (!pipeline_worker)
 		return false;
 
 #ifdef PARALLEL_RDP_SHADER_DIR
@@ -119,7 +167,6 @@ bool Renderer::init_renderer(const RendererOptions &options)
 		info.misc = Vulkan::BUFFER_MISC_ZERO_INITIALIZE_BIT;
 		tmem_instances = device->create_buffer(info);
 		device->set_name(*tmem_instances, "tmem-instances");
-		stream.tmem_upload_infos.reserve(Limits::MaxTMEMInstances);
 	}
 
 	{
@@ -691,22 +738,35 @@ void Renderer::set_rdram(Vulkan::Buffer *buffer, uint8_t *host_rdram, size_t off
 					incoherent.compare_before_upload = false;
 		}
 
-		incoherent.page_to_direct_copy.clear();
-		incoherent.page_to_masked_copy.clear();
-		incoherent.page_to_pending_readback.clear();
 
 		auto packed_pages = div_round_up(size, ImplementationConstants::IncoherentPageSize * 32);
 		incoherent.num_pages = div_round_up(size, ImplementationConstants::IncoherentPageSize);
 
-		incoherent.page_to_direct_copy.resize(packed_pages);
-		incoherent.page_to_masked_copy.resize(packed_pages);
-		incoherent.page_to_pending_readback.resize(packed_pages);
-		incoherent.pending_writes_for_page.reset(new std::atomic_uint32_t[incoherent.num_pages]);
-		for (unsigned i = 0; i < incoherent.num_pages; i++)
-			incoherent.pending_writes_for_page[i].store(0);
+		{
+			size_t counters = sizeof(retro_atomic_int_t) * incoherent.num_pages;
+			size_t bitmaps = sizeof(uint32_t) * packed_pages;
+			size_t copies = sizeof(CoherencyCopy) * incoherent.num_pages;
+			uint8_t *arena;
+			unsigned i;
+
+			counters = (counters + 7) & ~size_t(7);
+			bitmaps = (bitmaps + 7) & ~size_t(7);
+			free(incoherent.arena);
+			arena = static_cast<uint8_t *>(calloc(1, counters + 3 * bitmaps + copies));
+			incoherent.arena = arena;
+			incoherent.packed_pages = unsigned(packed_pages);
+			incoherent.pending_writes_for_page = reinterpret_cast<retro_atomic_int_t *>(arena);
+			incoherent.page_to_direct_copy = reinterpret_cast<uint32_t *>(arena + counters);
+			incoherent.page_to_masked_copy = reinterpret_cast<uint32_t *>(arena + counters + bitmaps);
+			incoherent.page_to_pending_readback = reinterpret_cast<uint32_t *>(arena + counters + 2 * bitmaps);
+			incoherent.copies = reinterpret_cast<CoherencyCopy *>(arena + counters + 3 * bitmaps);
+			for (i = 0; i < incoherent.num_pages; i++)
+				retro_atomic_int_init(&incoherent.pending_writes_for_page[i], 0);
+		}
 	}
 	else
 	{
+		free(incoherent.arena);
 		incoherent = {};
 	}
 }
@@ -1005,15 +1065,20 @@ static constexpr unsigned SUBPIXELS_Y = 4;
 
 static int32_t clamp_int32(int64_t v)
 {
-	if (v < std::numeric_limits<int32_t>::min())
-		return std::numeric_limits<int32_t>::min();
-	else if (v > std::numeric_limits<int32_t>::max())
-		return std::numeric_limits<int32_t>::max();
+	if (v < INT32_MIN)
+		return INT32_MIN;
+	else if (v > INT32_MAX)
+		return INT32_MAX;
 	else
 		return int32_t(v);
 }
 
-static std::pair<int32_t, int32_t> interpolate_x(const TriangleSetup &setup, int y, bool flip, int scaling)
+struct XSpan
+{
+	int32_t first, second;
+};
+
+static XSpan interpolate_x(const TriangleSetup &setup, int y, bool flip, int scaling)
 {
 	// Interpolate in 64-bit so we are guaranteed to catch any overflow scenario.
 	int64_t yh_interpolation_base = setup.yh & ~(SUBPIXELS_Y - 1);
@@ -1054,8 +1119,8 @@ unsigned Renderer::compute_conservative_max_num_tiles(const TriangleSetup &setup
 	int start_y = setup.yh & ~(SUBPIXELS_Y - 1);
 	int end_y = (setup.yl - 1) | (SUBPIXELS_Y - 1);
 
-	start_y = std::max(int(stream.scissor_state.ylo), start_y);
-	end_y = std::min(int(stream.scissor_state.yhi) - 1, end_y);
+	start_y = rdp_max(int(stream.scissor_state.ylo), start_y);
+	end_y = rdp_min(int(stream.scissor_state.yhi) - 1, end_y);
 	start_y *= scaling;
 	end_y *= scaling;
 
@@ -1086,8 +1151,8 @@ unsigned Renderer::compute_conservative_max_num_tiles(const TriangleSetup &setup
 	// and we have ~32 overflows happening at once,
 	// So we need to interpolate in 64-bit to make this work.
 
-	auto start_x = std::min(std::min(upper.first, lower.first), std::min(mid.first, mid1.first));
-	auto end_x = std::max(std::max(upper.second, lower.second), std::max(mid.second, mid1.second));
+	auto start_x = rdp_min(rdp_min(upper.first, lower.first), rdp_min(mid.first, mid1.first));
+	auto end_x = rdp_max(rdp_max(upper.second, lower.second), rdp_max(mid.second, mid1.second));
 
 	// Effective X range is [-2048, 2047], but just make it [-2047, 2047] to match binning shader.
 	// If we interpolate X to something outside that range,
@@ -1098,8 +1163,8 @@ unsigned Renderer::compute_conservative_max_num_tiles(const TriangleSetup &setup
 		end_x = 0x7fffffff;
 	}
 
-	start_x = std::max(start_x, scaling * (int(stream.scissor_state.xlo) >> 2));
-	end_x = std::min(end_x, scaling * ((int(stream.scissor_state.xhi) + 3) >> 2) - 1);
+	start_x = rdp_max(start_x, scaling * (int(stream.scissor_state.xlo) >> 2));
+	end_x = rdp_min(end_x, scaling * ((int(stream.scissor_state.xhi) + 3) >> 2) - 1);
 
 	if (end_x < start_x)
 		return 0;
@@ -1434,7 +1499,7 @@ void Renderer::deduce_static_texture_state(unsigned tile, unsigned max_lod_level
 			max_lod_level = uses_physical_texel1 ? 1 : 0;
 		if (use_detail)
 			max_lod_level++;
-		max_lod_level = std::min(max_lod_level, 7u);
+		max_lod_level = rdp_min(max_lod_level, 7u);
 
 		for (unsigned i = 1; i <= max_lod_level; i++)
 		{
@@ -1459,7 +1524,7 @@ void Renderer::fixup_triangle_setup(TriangleSetup &setup) const
 	// No known content actually triggers this, but some public tests triggered it.
 	int start_y = setup.yh & ~(SUBPIXELS_Y - 1);
 	if (setup.ym < start_y)
-		setup.ym = std::numeric_limits<int16_t>::max();
+		setup.ym = INT16_MAX;
 
 	if ((stream.static_raster_state.flags & RASTERIZATION_INTERLACE_FIELD_BIT) != 0)
 	{
@@ -1559,7 +1624,7 @@ void Renderer::draw_shaded_primitive(TriangleSetup &setup, const AttributeSetup 
 	InstanceIndices indices = {};
 	indices.static_index = stream.static_raster_state_cache.add(normalize_static_state(stream.static_raster_state));
 	indices.depth_blend_index = stream.depth_blend_state_cache.add(stream.depth_blend_state);
-	indices.tile_instance_index = uint8_t(stream.tmem_upload_infos.size());
+	indices.tile_instance_index = uint8_t(stream.num_tmem_uploads);
 	for (unsigned i = 0; i < 8; i++)
 		indices.tile_indices[i] = stream.tile_info_state_cache.add(tiles[i]);
 	stream.state_indices.add(indices);
@@ -1575,18 +1640,18 @@ void Renderer::draw_shaded_primitive(TriangleSetup &setup, const AttributeSetup 
 
 SpanInfoOffsets Renderer::allocate_span_jobs(const TriangleSetup &setup)
 {
-	int min_active_sub_scanline = std::max(int(setup.yh), int(stream.scissor_state.ylo));
+	int min_active_sub_scanline = rdp_max(int(setup.yh), int(stream.scissor_state.ylo));
 	int min_active_line = min_active_sub_scanline >> 2;
 
-	int max_active_sub_scanline = std::min(setup.yl - 1, int(stream.scissor_state.yhi) - 1);
+	int max_active_sub_scanline = rdp_min(setup.yl - 1, int(stream.scissor_state.yhi) - 1);
 	int max_active_line = max_active_sub_scanline >> 2;
 
 	if (max_active_line < min_active_line)
 		return { 0, 0, -1, 0 };
 
 	// Need to poke into next scanline validation for certain workarounds.
-	int height = std::max(max_active_line - min_active_line + 2, 0);
-	height = std::min(height, 1024);
+	int height = rdp_max(max_active_line - min_active_line + 2, 0);
+	height = rdp_min(height, 1024);
 
 	int num_jobs = (height + ImplementationConstants::DefaultWorkgroupSize - 1) / ImplementationConstants::DefaultWorkgroupSize;
 
@@ -1608,10 +1673,10 @@ SpanInfoOffsets Renderer::allocate_span_jobs(const TriangleSetup &setup)
 
 void Renderer::update_deduced_height(const TriangleSetup &setup)
 {
-	int max_active_sub_scanline = std::min(setup.yl - 1, int(stream.scissor_state.yhi) - 1);
+	int max_active_sub_scanline = rdp_min(setup.yl - 1, int(stream.scissor_state.yhi) - 1);
 	int max_active_line = max_active_sub_scanline >> 2;
-	int height = std::max(max_active_line + 1, 0);
-	fb.deduced_height = std::max(fb.deduced_height, uint32_t(height));
+	int height = rdp_max(max_active_line + 1, 0);
+	fb.deduced_height = rdp_max(fb.deduced_height, uint32_t(height));
 }
 
 bool Renderer::need_flush() const
@@ -1694,11 +1759,11 @@ void Renderer::update_tmem_instances(Vulkan::CommandBuffer &cmd)
 	cmd.set_storage_buffer(0, 1, *tmem);
 	cmd.set_storage_buffer(0, 2, *tmem_instances);
 
-	memcpy(cmd.allocate_typed_constant_data<UploadInfo>(1, 0, stream.tmem_upload_infos.size()),
-	       stream.tmem_upload_infos.data(),
-	       stream.tmem_upload_infos.size() * sizeof(UploadInfo));
+	memcpy(cmd.allocate_typed_constant_data<UploadInfo>(1, 0, stream.num_tmem_uploads),
+	       stream.tmem_upload_infos,
+	       stream.num_tmem_uploads * sizeof(UploadInfo));
 
-	auto count = uint32_t(stream.tmem_upload_infos.size());
+	auto count = uint32_t(stream.num_tmem_uploads);
 
 #ifdef PARALLEL_RDP_SHADER_DIR
 	cmd.set_program("rdp://tmem_update.comp", {{ "DEBUG_ENABLE", debug_channel ? 1 : 0 }});
@@ -1717,8 +1782,10 @@ void Renderer::update_tmem_instances(Vulkan::CommandBuffer &cmd)
 	if (caps.timestamp >= 2)
 	{
 		end_ts = cmd.write_timestamp(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
-		device->register_time_interval("RDP GPU", std::move(start_ts), std::move(end_ts),
-		                               "tmem-update", std::to_string(stream.tmem_upload_infos.size()));
+		char count[16];
+		snprintf(count, sizeof(count), "%u", stream.num_tmem_uploads);
+		device->register_time_interval("RDP GPU", rdp_move(start_ts), rdp_move(end_ts),
+		                               "tmem-update", count);
 	}
 	cmd.end_region();
 }
@@ -1750,7 +1817,7 @@ void Renderer::submit_span_setup_jobs(Vulkan::CommandBuffer &cmd, bool upscale)
 	if (caps.timestamp >= 2)
 	{
 		end_ts = cmd.write_timestamp(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
-		device->register_time_interval("RDP GPU", std::move(begin_ts), std::move(end_ts), "span-info-jobs");
+		device->register_time_interval("RDP GPU", rdp_move(begin_ts), rdp_move(end_ts), "span-info-jobs");
 	}
 	cmd.end_region();
 }
@@ -1865,15 +1932,14 @@ void Renderer::submit_rasterization(Vulkan::CommandBuffer &cmd, Vulkan::Buffer &
 		{
 			Vulkan::DeferredPipelineCompile compile;
 			cmd.extract_pipeline_state(compile);
-			if (pending_async_pipelines.count(compile.hash) == 0)
+			if (pending_async_pipeline_insert(compile.hash))
 			{
-				pending_async_pipelines.insert(compile.hash);
 				auto *node = new PipelineNode;
-				node->compile = std::move(compile);
+				node->compile = rdp_move(compile);
 				node->kind = PIPELINE_RECORD_COMPUTE;
 				node->ahead = 0;
 				node->urgent = 0;
-				rdp_worker_push(pipeline_worker->worker, node);
+				rdp_worker_push(pipeline_worker, node);
 			}
 			cmd.set_specialization_constant_mask(7);
 			cmd.set_specialization_constant(2, scale_log2_bit);
@@ -1885,7 +1951,7 @@ void Renderer::submit_rasterization(Vulkan::CommandBuffer &cmd, Vulkan::Buffer &
 	if (caps.timestamp >= 2)
 	{
 		end_ts = cmd.write_timestamp(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
-		device->register_time_interval("RDP GPU", std::move(start_ts), std::move(end_ts), "shading");
+		device->register_time_interval("RDP GPU", rdp_move(start_ts), rdp_move(end_ts), "shading");
 	}
 	cmd.end_region();
 }
@@ -1988,7 +2054,7 @@ void Renderer::submit_tile_binning_combined(Vulkan::CommandBuffer &cmd, bool ups
 	if (caps.timestamp >= 2)
 	{
 		end_ts = cmd.write_timestamp(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
-		device->register_time_interval("RDP GPU", std::move(start_ts), std::move(end_ts), "tile-binning");
+		device->register_time_interval("RDP GPU", rdp_move(start_ts), rdp_move(end_ts), "tile-binning");
 	}
 
 	cmd.enable_subgroup_size_control(false);
@@ -2091,7 +2157,7 @@ void Renderer::submit_update_upscaled_domain(Vulkan::CommandBuffer &cmd, Resolve
 	if (caps.timestamp >= 2 && stage == ResolveStage::SSAAResolve)
 	{
 		end_ts = cmd.write_timestamp(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
-		device->register_time_interval("RDP GPU", std::move(start_ts), std::move(end_ts), "ssaa-resolve");
+		device->register_time_interval("RDP GPU", rdp_move(start_ts), rdp_move(end_ts), "ssaa-resolve");
 	}
 }
 
@@ -2275,7 +2341,7 @@ void Renderer::submit_depth_blend(Vulkan::CommandBuffer &cmd, Vulkan::Buffer &tm
 	if (caps.timestamp >= 2)
 	{
 		end_ts = cmd.write_timestamp(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
-		device->register_time_interval("RDP GPU", std::move(start_ts), std::move(end_ts), "depth-blending");
+		device->register_time_interval("RDP GPU", rdp_move(start_ts), rdp_move(end_ts), "depth-blending");
 	}
 
 	cmd.end_region();
@@ -2284,7 +2350,7 @@ void Renderer::submit_depth_blend(Vulkan::CommandBuffer &cmd, Vulkan::Buffer &tm
 void Renderer::submit_render_pass(Vulkan::CommandBuffer &cmd)
 {
 	bool need_render_pass = fb.width != 0 && fb.deduced_height != 0 && !stream.span_info_jobs.empty();
-	bool need_tmem_upload = !stream.tmem_upload_infos.empty();
+	bool need_tmem_upload = stream.num_tmem_uploads != 0;
 	bool need_submit = need_render_pass || need_tmem_upload;
 	if (!need_submit)
 		return;
@@ -2341,10 +2407,10 @@ void Renderer::submit_render_pass(Vulkan::CommandBuffer &cmd)
 	if (caps.timestamp >= 1)
 	{
 		render_pass_end = cmd.write_timestamp(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
-		std::string tag;
-		tag = "(" + std::to_string(fb.width) + " x " + std::to_string(fb.deduced_height) + ")";
-		tag += " (" + std::to_string(stream.triangle_setup.size()) + " triangles)";
-		device->register_time_interval("RDP GPU", std::move(render_pass_start), std::move(render_pass_end), "render-pass", std::move(tag));
+		char tag[64];
+		snprintf(tag, sizeof(tag), "(%u x %u) (%u triangles)",
+		         unsigned(fb.width), unsigned(fb.deduced_height), stream.triangle_setup.size());
+		device->register_time_interval("RDP GPU", rdp_move(render_pass_start), rdp_move(render_pass_end), "render-pass", tag);
 	}
 }
 
@@ -2355,7 +2421,7 @@ void Renderer::submit_render_pass_upscaled(Vulkan::CommandBuffer &cmd)
 	if (caps.timestamp >= 1)
 		start_ts = cmd.write_timestamp(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
 
-	bool need_tmem_upload = !stream.tmem_upload_infos.empty();
+	bool need_tmem_upload = stream.num_tmem_uploads != 0;
 
 	submit_span_setup_jobs(cmd, true);
 	submit_tile_binning_combined(cmd, true);
@@ -2400,7 +2466,7 @@ void Renderer::submit_render_pass_upscaled(Vulkan::CommandBuffer &cmd)
 	if (caps.timestamp >= 1)
 	{
 		end_ts = cmd.write_timestamp(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
-		device->register_time_interval("RDP GPU", std::move(start_ts), std::move(end_ts), "render-pass-upscaled");
+		device->register_time_interval("RDP GPU", rdp_move(start_ts), rdp_move(end_ts), "render-pass-upscaled");
 	}
 	cmd.end_region();
 }
@@ -2427,7 +2493,7 @@ void Renderer::maintain_queues()
 	    (caps.super_sample_readback && pending_render_passes_upscaled >= ImplementationConstants::MaxPendingRenderPassesBeforeFlush) ||
 	    pending_primitives >= Limits::MaxPrimitives ||
 	    pending_primitives_upscaled >= Limits::MaxPrimitives ||
-	    active_submissions.load(std::memory_order_relaxed) == 0 ||
+	    retro_atomic_load_relaxed_int(&active_submissions) == 0 ||
 	    int64_t(Util::get_current_time_nsecs() - last_submit_ns) > 1000000)
 	{
 		submit_to_queue();
@@ -2447,10 +2513,10 @@ void Renderer::maintain_queues_idle()
 void Renderer::enqueue_fence_wait(Vulkan::Fence fence)
 {
 	CoherencyOperation op;
-	op.fence = std::move(fence);
+	op.fence = rdp_move(fence);
 	op.unlock_cookie = &active_submissions;
-	active_submissions.fetch_add(1, std::memory_order_relaxed);
-	processor.enqueue_coherency_operation(std::move(op));
+	retro_atomic_fetch_add_int(&active_submissions, 1);
+	processor.enqueue_coherency_operation(rdp_move(op));
 	last_submit_ns = Util::get_current_time_nsecs();
 }
 
@@ -2505,8 +2571,8 @@ void Renderer::submit_to_queue()
 		{
 			enqueue_fence_wait(fence);
 			op.fence = fence;
-			if (!op.copies.empty())
-				processor.enqueue_coherency_operation(std::move(op));
+			if (op.num_copies)
+				processor.enqueue_coherency_operation(rdp_move(op));
 		}
 	}
 
@@ -2536,7 +2602,7 @@ void Renderer::reset_context()
 	fb.color_write_pending = false;
 	fb.depth_write_pending = false;
 
-	stream.tmem_upload_infos.clear();
+	stream.num_tmem_uploads = 0;
 }
 
 void Renderer::begin_new_context()
@@ -2566,7 +2632,7 @@ void Renderer::bind_stream_instance()
 		if (caps.timestamp)
 		{
 			end_ts = device->write_calibrated_timestamp();
-			device->register_time_interval("RDP CPU", std::move(start_ts), std::move(end_ts), "render-pass-fence");
+			device->register_time_interval("RDP CPU", rdp_move(start_ts), rdp_move(end_ts), "render-pass-fence");
 		}
 		sync.fence.reset();
 	}
@@ -2624,7 +2690,7 @@ void Renderer::mark_pages_for_gpu_read(uint32_t base_addr, uint32_t byte_count)
 	while (page != end_page)
 	{
 		bool pending_writes = (incoherent.page_to_pending_readback[page / 32] & (1u << (page & 31))) != 0 ||
-		                      incoherent.pending_writes_for_page[page].load(std::memory_order_relaxed) != 0;
+		                      retro_atomic_load_relaxed_int(&incoherent.pending_writes_for_page[page]) != 0;
 
 		// We'll do an acquire memory barrier later before we start memcpy-ing from host memory.
 		if (pending_writes)
@@ -2654,6 +2720,8 @@ void Renderer::lock_pages_for_gpu_write(uint32_t base_addr, uint32_t byte_count)
 void Renderer::resolve_coherency_gpu_to_host(CoherencyOperation &op, Vulkan::CommandBuffer &cmd)
 {
 	cmd.begin_region("resolve-coherency-gpu-to-host");
+	op.copies = incoherent.copies;
+	op.num_copies = 0;
 	if (!incoherent.staging_readback)
 	{
 		// iGPU path.
@@ -2661,15 +2729,17 @@ void Renderer::resolve_coherency_gpu_to_host(CoherencyOperation &op, Vulkan::Com
 		op.dst = incoherent.host_rdram;
 		op.timeline_value = 0;
 
-		for (auto &readback : incoherent.page_to_pending_readback)
+		unsigned word;
+		for (word = 0; word < incoherent.packed_pages; word++)
 		{
-			uint32_t base_index = 32 * uint32_t(&readback - incoherent.page_to_pending_readback.data());
+			uint32_t &readback = incoherent.page_to_pending_readback[word];
+			uint32_t base_index = 32 * word;
 
 			Util::for_each_bit_range(readback, [&](unsigned index, unsigned count) {
 				index += base_index;
 
 				for (unsigned i = 0; i < count; i++)
-					incoherent.pending_writes_for_page[index + i].fetch_add(1, std::memory_order_relaxed);
+					retro_atomic_fetch_add_int(&incoherent.pending_writes_for_page[index + i], 1);
 
 				CoherencyCopy coherent_copy = {};
 				coherent_copy.counter_base = &incoherent.pending_writes_for_page[index];
@@ -2678,7 +2748,7 @@ void Renderer::resolve_coherency_gpu_to_host(CoherencyOperation &op, Vulkan::Com
 				coherent_copy.mask_offset = coherent_copy.src_offset + rdram_size;
 				coherent_copy.dst_offset = index * ImplementationConstants::IncoherentPageSize;
 				coherent_copy.size = ImplementationConstants::IncoherentPageSize * count;
-				op.copies.push_back(coherent_copy);
+				op.copies[op.num_copies++] = coherent_copy;
 			});
 
 			readback = 0;
@@ -2692,15 +2762,17 @@ void Renderer::resolve_coherency_gpu_to_host(CoherencyOperation &op, Vulkan::Com
 		op.dst = incoherent.host_rdram;
 		op.timeline_value = 0;
 
-		for (auto &readback : incoherent.page_to_pending_readback)
+		unsigned word;
+		for (word = 0; word < incoherent.packed_pages; word++)
 		{
-			uint32_t base_index = 32 * uint32_t(&readback - incoherent.page_to_pending_readback.data());
+			uint32_t &readback = incoherent.page_to_pending_readback[word];
+			uint32_t base_index = 32 * word;
 
 			Util::for_each_bit_range(readback, [&](unsigned index, unsigned count) {
 				index += base_index;
 
 				for (unsigned i = 0; i < count; i++)
-					incoherent.pending_writes_for_page[index + i].fetch_add(1, std::memory_order_relaxed);
+					retro_atomic_fetch_add_int(&incoherent.pending_writes_for_page[index + i], 1);
 
 				VkBufferCopy copy = {};
 				copy.srcOffset = index * ImplementationConstants::IncoherentPageSize;
@@ -2746,7 +2818,7 @@ void Renderer::resolve_coherency_gpu_to_host(CoherencyOperation &op, Vulkan::Com
 				copies.push_back(mask_copy);
 				coherent_copy.mask_offset = mask_copy.dstOffset;
 
-				op.copies.push_back(coherent_copy);
+				op.copies[op.num_copies++] = coherent_copy;
 			});
 
 			readback = 0;
@@ -2762,7 +2834,7 @@ void Renderer::resolve_coherency_gpu_to_host(CoherencyOperation &op, Vulkan::Com
 			cmd.copy_buffer(*incoherent.staging_readback, *rdram, copies.data(), copies.size());
 #ifdef COHERENCY_READBACK_TIMESTAMPS
 			end_ts = cmd.write_timestamp(VK_PIPELINE_STAGE_TRANSFER_BIT);
-			device->register_time_interval(std::move(start_ts), std::move(end_ts), "coherency-readback");
+			device->register_time_interval(rdp_move(start_ts), rdp_move(end_ts), "coherency-readback");
 #endif
 			cmd.barrier(VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_TRANSFER_WRITE_BIT,
 			            VK_PIPELINE_STAGE_HOST_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
@@ -2858,7 +2930,7 @@ void Renderer::resolve_coherency_host_to_gpu(Vulkan::CommandBuffer &cmd)
 	if (caps.timestamp)
 		start_ts = device->write_calibrated_timestamp();
 
-	std::atomic_thread_fence(std::memory_order_acquire);
+	retro_atomic_thread_fence_acquire();
 
 	Util::SmallVector<VkBufferCopy, 1024> buffer_copies;
 	Util::SmallVector<uint32_t, 1024> masked_page_copies;
@@ -2868,9 +2940,11 @@ void Renderer::resolve_coherency_host_to_gpu(Vulkan::CommandBuffer &cmd)
 	// Important for iGPU.
 	if (rdram->get_allocation().is_host_allocation())
 	{
-		for (auto &direct : incoherent.page_to_direct_copy)
+		unsigned word;
+		for (word = 0; word < incoherent.packed_pages; word++)
 		{
-			uint32_t base_index = 32 * (&direct - incoherent.page_to_direct_copy.data());
+			uint32_t &direct = incoherent.page_to_direct_copy[word];
+			uint32_t base_index = 32 * word;
 			Util::for_each_bit_range(direct, [&](unsigned index, unsigned count) {
 				index += base_index;
 				if (incoherent.compare_before_upload)
@@ -2905,9 +2979,10 @@ void Renderer::resolve_coherency_host_to_gpu(Vulkan::CommandBuffer &cmd)
 		auto *mapped_staging = static_cast<uint8_t *>(device->map_host_buffer(*incoherent.staging_rdram,
 		                                                                      Vulkan::MEMORY_ACCESS_WRITE_BIT));
 
-		for (auto &indirect : incoherent.page_to_masked_copy)
+		for (word = 0; word < incoherent.packed_pages; word++)
 		{
-			uint32_t base_index = 32 * (&indirect - incoherent.page_to_masked_copy.data());
+			uint32_t &indirect = incoherent.page_to_masked_copy[word];
+			uint32_t base_index = 32 * word;
 			Util::for_each_bit(indirect, [&](unsigned index) {
 				index += base_index;
 				masked_page_copies.push_back(index);
@@ -2924,7 +2999,7 @@ void Renderer::resolve_coherency_host_to_gpu(Vulkan::CommandBuffer &cmd)
 	{
 		auto *mapped_rdram = static_cast<uint8_t *>(device->map_host_buffer(*incoherent.staging_rdram, Vulkan::MEMORY_ACCESS_WRITE_BIT));
 
-		size_t num_packed_pages = incoherent.page_to_masked_copy.size();
+		size_t num_packed_pages = incoherent.packed_pages;
 		for (size_t i = 0; i < num_packed_pages; i++)
 		{
 			uint32_t base_index = 32 * i;
@@ -2979,7 +3054,7 @@ void Renderer::resolve_coherency_host_to_gpu(Vulkan::CommandBuffer &cmd)
 
 		for (size_t i = 0; i < masked_page_copies.size(); i += 4096)
 		{
-			size_t to_copy = std::min(masked_page_copies.size() - i, size_t(4096));
+			size_t to_copy = rdp_min(masked_page_copies.size() - i, size_t(4096));
 			memcpy(cmd.allocate_typed_constant_data<uint32_t>(1, 0, to_copy),
 				   masked_page_copies.data() + i,
 				   to_copy * sizeof(uint32_t));
@@ -2988,7 +3063,7 @@ void Renderer::resolve_coherency_host_to_gpu(Vulkan::CommandBuffer &cmd)
 
 #ifdef COHERENCY_MASK_TIMESTAMPS
 		end_ts = cmd->write_timestamp(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
-		device->register_time_interval(std::move(start_ts), std::move(end_ts), "coherent-mask-copy");
+		device->register_time_interval(rdp_move(start_ts), rdp_move(end_ts), "coherent-mask-copy");
 #endif
 	}
 
@@ -3006,7 +3081,7 @@ void Renderer::resolve_coherency_host_to_gpu(Vulkan::CommandBuffer &cmd)
 		cmd.set_storage_buffer(0, 0, *rdram, rdram_offset + rdram_size, rdram_size);
 		for (size_t i = 0; i < to_clear_write_mask.size(); i += 4096)
 		{
-			size_t to_copy = std::min(to_clear_write_mask.size() - i, size_t(4096));
+			size_t to_copy = rdp_min(to_clear_write_mask.size() - i, size_t(4096));
 			memcpy(cmd.allocate_typed_constant_data<uint32_t>(1, 0, to_copy),
 				   to_clear_write_mask.data() + i,
 				   to_copy * sizeof(uint32_t));
@@ -3034,7 +3109,7 @@ void Renderer::resolve_coherency_host_to_gpu(Vulkan::CommandBuffer &cmd)
 		cmd.copy_buffer(*rdram, *incoherent.staging_rdram, buffer_copies.data(), buffer_copies.size());
 #ifdef COHERENCY_COPY_TIMESTAMPS
 		end_ts = cmd->write_timestamp(VK_PIPELINE_STAGE_TRANSFER_BIT);
-		device->register_time_interval(std::move(start_ts), std::move(end_ts), "coherent-copy");
+		device->register_time_interval(rdp_move(start_ts), rdp_move(end_ts), "coherent-copy");
 #endif
 
 		cmd.barrier(VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_TRANSFER_WRITE_BIT,
@@ -3044,7 +3119,7 @@ void Renderer::resolve_coherency_host_to_gpu(Vulkan::CommandBuffer &cmd)
 	if (caps.timestamp)
 	{
 		end_ts = device->write_calibrated_timestamp();
-		device->register_time_interval("RDP CPU", std::move(start_ts), std::move(end_ts), "coherency-host-to-gpu");
+		device->register_time_interval("RDP CPU", rdp_move(start_ts), rdp_move(end_ts), "coherency-host-to-gpu");
 	}
 
 	cmd.end_region();
@@ -3052,7 +3127,7 @@ void Renderer::resolve_coherency_host_to_gpu(Vulkan::CommandBuffer &cmd)
 
 void Renderer::flush_queues()
 {
-	if (stream.tmem_upload_infos.empty() && stream.span_info_jobs.empty())
+	if (stream.num_tmem_uploads == 0 && stream.span_info_jobs.empty())
 	{
 		base_primitive_index += stream.triangle_setup.size();
 		reset_context();
@@ -3295,7 +3370,7 @@ void Renderer::load_tile(uint32_t tile, const LoadTileInfo &info)
 			quad_words_covered_per_line >>= unsigned(info.size) - unsigned(meta.size);
 
 		// Compute a conservative estimate for how many bytes we're going to splat down into TMEM.
-		unsigned bytes_covered_per_line = std::max<unsigned>(quad_words_covered_per_line * 8, meta.stride);
+		unsigned bytes_covered_per_line = rdp_max<unsigned>(quad_words_covered_per_line * 8, meta.stride);
 
 		unsigned max_bytes_per_line = 0x1000;
 		// We need to write lower and upper halves at once,
@@ -3325,7 +3400,7 @@ void Renderer::load_tile(uint32_t tile, const LoadTileInfo &info)
 
 			for (unsigned line = 0; line < num_lines; line += max_lines_per_iteration)
 			{
-				unsigned to_copy_lines = std::min(num_lines - line, max_lines_per_iteration);
+				unsigned to_copy_lines = rdp_min(num_lines - line, max_lines_per_iteration);
 
 				LoadTileInfo tmp_info = info;
 				tmp_info.tlo = info.tlo + (line << 2);
@@ -3607,8 +3682,8 @@ void Renderer::load_tile_iteration(uint32_t tile, const LoadTileInfo &info, uint
 
 	upload.inv_tmem_stride_words = 1.0f / float(upload.tmem_stride_words);
 
-	stream.tmem_upload_infos.push_back(upload);
-	if (stream.tmem_upload_infos.size() + 1 >= Limits::MaxTMEMInstances)
+	stream.tmem_upload_infos[stream.num_tmem_uploads++] = upload;
+	if (stream.num_tmem_uploads + 1 >= Limits::MaxTMEMInstances)
 		flush_queues();
 }
 
@@ -3715,8 +3790,13 @@ void Renderer::pipeline_work(void *user, mpsc_stack_node_t *item)
 			Vulkan::CommandBuffer::build_compute_pipeline(device, node->compile,
 			                                              Vulkan::CommandBuffer::CompileMode::AsyncThread);
 		auto end_ts = device->write_calibrated_timestamp();
-		device->register_time_interval("RDP Pipeline", std::move(start_ts), std::move(end_ts),
-		                               "pipeline-compilation", std::to_string(node->compile.hash));
+		if (end_ts)
+		{
+			char hash[24];
+			snprintf(hash, sizeof(hash), "%llu", (unsigned long long)node->compile.hash);
+			device->register_time_interval("RDP Pipeline", rdp_move(start_ts), rdp_move(end_ts),
+			                               "pipeline-compilation", hash);
+		}
 	}
 	if (node->urgent)
 		retro_atomic_fetch_add_int(&renderer->pipeline_ahead_urgent_done, 1);
@@ -3762,7 +3842,7 @@ void Renderer::build_pipelines_ahead(const pipeline_record_t *records, size_t co
 	for (pass = 0; pass < 2; pass++)
 		for (i = 0; i < n; i++)
 			if (nodes[i].urgent == (pass == 0))
-				rdp_worker_push(pipeline_worker->worker, &nodes[i]);
+				rdp_worker_push(pipeline_worker, &nodes[i]);
 }
 
 bool Renderer::pipeline_ahead_urgent_built(void *ctx)
@@ -3774,6 +3854,6 @@ bool Renderer::pipeline_ahead_urgent_built(void *ctx)
 void Renderer::wait_pipelines_ahead()
 {
 	if (pipeline_worker && pipeline_ahead_urgent)
-		rdp_worker_wait(pipeline_worker->worker, pipeline_ahead_urgent_built, this);
+		rdp_worker_wait(pipeline_worker, pipeline_ahead_urgent_built, this);
 }
 }

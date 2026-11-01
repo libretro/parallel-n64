@@ -26,11 +26,12 @@
 #include "device.hpp"
 #include "rdp_common.hpp"
 #include "rdp_worker.h"
-#include <unordered_set>
+#include <retro_atomic.h>
 
 namespace RDP
 {
 struct CoherencyOperation;
+struct CoherencyCopy;
 
 struct SyncObject
 {
@@ -182,10 +183,15 @@ private:
 		uint8_t *host_rdram = nullptr;
 		Vulkan::BufferHandle staging_rdram;
 		Vulkan::BufferHandle staging_readback;
-		std::unique_ptr<std::atomic_uint32_t[]> pending_writes_for_page;
-		std::vector<uint32_t> page_to_direct_copy;
-		std::vector<uint32_t> page_to_masked_copy;
-		std::vector<uint32_t> page_to_pending_readback;
+		// One block: the page counters, the three page bitmaps of
+		// packed_pages words each, and room for a copy per page.
+		void *arena = nullptr;
+		retro_atomic_int_t *pending_writes_for_page = nullptr;
+		uint32_t *page_to_direct_copy = nullptr;
+		uint32_t *page_to_masked_copy = nullptr;
+		uint32_t *page_to_pending_readback = nullptr;
+		CoherencyCopy *copies = nullptr;
+		unsigned packed_pages = 0;
 		unsigned num_pages = 0;
 		unsigned staging_readback_pages = 0;
 		unsigned staging_readback_index = 0; // Ringbuffer the readbacks.
@@ -236,7 +242,8 @@ private:
 		StreamCache<SpanInfoOffsets, Limits::MaxPrimitives> span_info_offsets;
 		StreamCache<SpanInterpolationJob, Limits::MaxSpanSetups> span_info_jobs;
 
-		std::vector<UploadInfo> tmem_upload_infos;
+		UploadInfo tmem_upload_infos[Limits::MaxTMEMInstances];
+		unsigned num_tmem_uploads = 0;
 		unsigned max_shaded_tiles = 0;
 		Vulkan::CommandBufferHandle cmd;
 	} stream;
@@ -381,7 +388,16 @@ private:
 	bool can_support_minimum_subgroup_size(unsigned size) const;
 	bool supports_subgroup_size_control(uint32_t minimum_size, uint32_t maximum_size) const;
 
-	std::unordered_set<Util::Hash> pending_async_pipelines;
+	// The compute pipelines queued to the worker: open addressing on the
+	// hash, a power of two long, with 0 kept apart.
+	struct
+	{
+		Util::Hash *keys = nullptr;
+		unsigned capacity = 0;
+		unsigned count = 0;
+		bool has_zero = false;
+	} pending_async_pipelines;
+	bool pending_async_pipeline_insert(Util::Hash hash);
 
 	unsigned compute_conservative_max_num_tiles(const TriangleSetup &setup) const;
 
@@ -410,12 +426,7 @@ private:
 	} caps;
 
 	// Background compute pipeline compiles (rdp_worker.c).
-	struct PipelineWorker
-	{
-		rdp_worker_t *worker = nullptr;
-		~PipelineWorker() { rdp_worker_free(worker); }
-	};
-	std::unique_ptr<PipelineWorker> pipeline_worker;
+	rdp_worker_t *pipeline_worker = nullptr;
 	static void pipeline_work(void *user, mpsc_stack_node_t *item);
 	/* build_pipelines_ahead's nodes, one block freed once the worker is
 	 * gone; the worker counts the urgent ones it is done with, and builds
@@ -433,7 +444,7 @@ private:
 	void mark_pages_for_gpu_read(uint32_t base_addr, uint32_t byte_count);
 	void lock_pages_for_gpu_write(uint32_t base_addr, uint32_t byte_count);
 
-	std::atomic_uint32_t active_submissions;
+	retro_atomic_int_t active_submissions;
 	void enqueue_fence_wait(Vulkan::Fence fence);
 	uint64_t last_submit_ns = 0;
 };

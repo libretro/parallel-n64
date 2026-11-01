@@ -24,7 +24,6 @@
 
 #include <stdint.h>
 #include <stdio.h>
-#include <vector>
 
 namespace RDP
 {
@@ -57,8 +56,9 @@ private:
 	};
 
 	FILE *file = nullptr;
-	std::vector<uint8_t> rdp_dram_cache;
-	std::vector<uint8_t> rdp_hidden_dram_cache;
+	// One block: the RDRAM as last written, then the hidden RDRAM.
+	uint8_t *rdp_dram_cache = nullptr;
+	uint8_t *rdp_hidden_dram_cache = nullptr;
 	void flush(const void *dram_, uint32_t size, RDPDumpCmd block_cmd, RDPDumpCmd flush_cmd, uint8_t *cache);
 	void end();
 };

@@ -2,6 +2,12 @@
 
 PARALLEL_RDP_CFLAGS :=
 PARALLEL_RDP_CXXFLAGS := -DGRANITE_VULKAN_MT
+# retro_atomic.h picks std::atomic in C++: the builtins instead
+ifneq (,$(findstring msvc,$(platform)))
+PARALLEL_RDP_CXXFLAGS += -DRETRO_ATOMIC_FORCE_MSVC
+else
+PARALLEL_RDP_CXXFLAGS += -DRETRO_ATOMIC_FORCE_GCC_NEW
+endif
 
 PARALLEL_RDP_SOURCES_CXX := \
         $(wildcard $(PARALLEL_RDP_IMPLEMENTATION)/parallel-rdp/*.cpp) \

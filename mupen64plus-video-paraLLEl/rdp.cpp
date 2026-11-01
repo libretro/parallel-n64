@@ -13,7 +13,6 @@
 #include "pipeline_record_list.h"
 
 using namespace Vulkan;
-using namespace std;
 
 extern retro_log_printf_t log_cb;
 extern retro_environment_t environ_cb;
@@ -38,10 +37,10 @@ static const uint8_t *hle_cmd_buf = nullptr;
 static uint32_t hle_cmd_base = 0;
 static uint32_t hle_cmd_len = 0;
 
-static unique_ptr<Util::TimelineTraceFile> timeline_trace_file;
-static unique_ptr<CommandProcessor> frontend;
-static unique_ptr<Device> device;
-static unique_ptr<Context> context;
+static Util::TimelineTraceFile *timeline_trace_file;
+static CommandProcessor *frontend;
+static Device *device;
+static Context *context;
 static QueryPoolHandle begin_ts, end_ts;
 
 /* Set true only when init() fully succeeds (including the device meeting
@@ -52,8 +51,11 @@ static QueryPoolHandle begin_ts, end_ts;
  * of dereferencing a half-initialized Vulkan device and crashing. */
 static bool device_supported = false;
 
-static vector<retro_vulkan_image> retro_images;
-static vector<ImageHandle> retro_image_handles;
+/* Per sync index; the frontend's index mask is 32 bits */
+#define RDP_MAX_SYNC_FRAMES 32
+static retro_vulkan_image retro_images[RDP_MAX_SYNC_FRAMES];
+static ImageHandle retro_image_handles[RDP_MAX_SYNC_FRAMES];
+static unsigned num_retro_images;
 
 /* RDRAM as the command processor imports it */
 static uintptr_t rdram_base;
@@ -66,8 +68,25 @@ static const struct retro_hw_render_upscaler_interface *upscaler_iface;
 static struct retro_hw_upscaler_request upscaler_request;
 static struct retro_hw_upscaler_inputs upscaler_inputs;
 /* Per sync index: motion vectors, depth, then the translucency mask */
-static vector<ImageHandle> upscaler_handles;
+static ImageHandle upscaler_handles[3 * RDP_MAX_SYNC_FRAMES];
 static bool upscaler_on;
+
+/* The frames released past n, as a shrinking vector did. */
+static void set_num_sync_frames(unsigned n)
+{
+	unsigned i;
+	if (n > RDP_MAX_SYNC_FRAMES)
+		n = RDP_MAX_SYNC_FRAMES;
+	for (i = n; i < RDP_MAX_SYNC_FRAMES; i++)
+	{
+		memset(&retro_images[i], 0, sizeof(retro_images[i]));
+		retro_image_handles[i].reset();
+		upscaler_handles[3 * i].reset();
+		upscaler_handles[3 * i + 1].reset();
+		upscaler_handles[3 * i + 2].reset();
+	}
+	num_retro_images = n;
+}
 static bool upscaler_reset_pending = true;
 /* The size of the framebuffer last shown, in native pixels, and the
  * size the factor was chosen for */
@@ -283,14 +302,7 @@ void begin_frame()
 		if (mask & (1u << i))
 			num_frames = i + 1;
 
-	if (num_frames != retro_images.size())
-	{
-		retro_images.resize(num_frames);
-		retro_image_handles.resize(num_frames);
-	}
-
-	if (upscaler_handles.size() != 3 * num_frames)
-		upscaler_handles.resize(3 * num_frames);
+	set_num_sync_frames(num_frames);
 
 	vulkan->wait_sync_index(vulkan->handle);
 	if (!begin_ts)
@@ -423,14 +435,15 @@ static bool create_processor(unsigned factor)
 	}
 
 	/* (the old one goes first: both at once may not fit) */
-	frontend.reset();
-	frontend.reset(new CommandProcessor(*device, reinterpret_cast<void *>(rdram_base),
-				rdram_offset, 8 * 1024 * 1024, 4 * 1024 * 1024, flags));
+	delete frontend;
+	frontend = new CommandProcessor(*device, reinterpret_cast<void *>(rdram_base),
+				rdram_offset, 8 * 1024 * 1024, 4 * 1024 * 1024, flags);
 
 	if (!frontend->device_is_supported())
 	{
 		log_cb(RETRO_LOG_ERROR, "This device probably does not support 16-bit storage. Make sure you're using up-to-date drivers!\n");
-		frontend.reset();
+		delete frontend;
+		frontend = nullptr;
 		return false;
 	}
 
@@ -618,11 +631,10 @@ bool init()
 		}
 	}
 
-	retro_images.resize(num_frames);
-	retro_image_handles.resize(num_frames);
-	upscaler_handles.resize(3 * num_frames);
+	set_num_sync_frames(num_frames);
 
-	device.reset(new Device);
+	delete device;
+	device = new Device;
 	device->set_context(*context);
 	pipeline_files_load();
 	device->init_frame_contexts(num_sync_frames);
@@ -666,17 +678,19 @@ void deinit()
 	device_supported = false;
 	begin_ts.reset();
 	end_ts.reset();
-	retro_image_handles.clear();
-	retro_images.clear();
-	upscaler_handles.clear();
+	set_num_sync_frames(0);
 	upscaler_iface = nullptr;
 	upscaler_on = false;
-	frontend.reset();
+	delete frontend;
+	frontend = nullptr;
 	if (device)
 		pipeline_files_save();
-	device.reset();
-	context.reset();
-	timeline_trace_file.reset();
+	delete device;
+	device = nullptr;
+	delete context;
+	context = nullptr;
+	delete timeline_trace_file;
+	timeline_trace_file = nullptr;
 }
 
 static void complete_frame_error()
@@ -705,7 +719,7 @@ static void complete_frame_error()
 	auto image = device->create_image(info, &data);
 
 	unsigned index = vulkan->get_sync_index(vulkan->handle);
-	assert(index < retro_images.size());
+	assert(index < num_retro_images);
 
 	retro_images[index].image_view = image->get_view().get_view();
 	retro_images[index].image_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -814,7 +828,7 @@ void complete_frame()
 		frontend->run_on_command_thread(make_blank_image, &image);
 	}
 
-	assert(index < retro_images.size());
+	assert(index < num_retro_images);
 
 	retro_images[index].image_view = image->get_view().get_view();
 	retro_images[index].image_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -903,14 +917,16 @@ static bool create_device(struct retro_vulkan_context *frontend_context, VkInsta
 	if (!Vulkan::Context::init_loader(get_instance_proc_addr))
 		return false;
 
-	::RDP::context.reset(new Vulkan::Context);
+	delete ::RDP::context;
+	::RDP::context = new Vulkan::Context;
 
 	::Vulkan::Context::SystemHandles handles;
 
 	if (const char *env = getenv("PARALLEL_RDP_TIMELINE_TRACE"))
 	{
-		::RDP::timeline_trace_file.reset(new Util::TimelineTraceFile(env));
-		handles.timeline_trace_file = ::RDP::timeline_trace_file.get();
+		delete ::RDP::timeline_trace_file;
+		::RDP::timeline_trace_file = new Util::TimelineTraceFile(env);
+		handles.timeline_trace_file = ::RDP::timeline_trace_file;
 	}
 
 	::RDP::context->set_system_handles(handles);
@@ -922,7 +938,8 @@ static bool create_device(struct retro_vulkan_context *frontend_context, VkInsta
 	::RDP::context->set_device_factory(nullptr);
 	if (!ok)
 	{
-		::RDP::context.reset();
+		delete ::RDP::context;
+		::RDP::context = nullptr;
 		return false;
 	}
 

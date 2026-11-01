@@ -22,8 +22,6 @@
 
 #pragma once
 
-#include <memory>
-#include <queue>
 #include "device.hpp"
 #include "video_interface.hpp"
 #include "rdp_renderer.hpp"
@@ -64,7 +62,7 @@ struct CoherencyCopy
 	size_t mask_offset = 0;
 	size_t dst_offset = 0;
 	size_t size = 0;
-	std::atomic_uint32_t *counter_base = nullptr;
+	retro_atomic_int_t *counter_base = nullptr;
 	unsigned counters = 0;
 };
 
@@ -75,8 +73,10 @@ struct CoherencyOperation
 
 	uint8_t *dst = nullptr;
 	const Vulkan::Buffer *src = nullptr;
-	std::vector<CoherencyCopy> copies;
-	std::atomic_uint32_t *unlock_cookie = nullptr;
+	// num_copies of them, in storage of the producer's until enqueued
+	CoherencyCopy *copies = nullptr;
+	unsigned num_copies = 0;
+	retro_atomic_int_t *unlock_cookie = nullptr;
 };
 
 // These options control various behavior when upscaling to workaround glitches which arise naturally as part of upscaling.
@@ -170,7 +170,6 @@ public:
 	/* After a scanout with ScanoutOptions::upscaler: that frame's motion
 	 * vectors, depth and jitter. No images when it had none. */
 	void get_upscaler_frame(UpscalerFrame &frame);
-	void scanout_sync(std::vector<RGBA> &colors, unsigned &width, unsigned &height, const ScanoutOptions &opts = {});
 	void scanout_async_buffer(VIScanoutBuffer &buffer, const ScanoutOptions &opts = {});
 
 	// Support for modifying certain registers per-scanline.
@@ -225,7 +224,12 @@ private:
 	size_t rdram_size;
 	CommandProcessorFlags flags;
 #ifndef PARALLEL_RDP_SHADER_DIR
-	std::unique_ptr<ShaderBank> shader_bank;
+	// Outlives the renderer below, whose pipeline worker reads it.
+	struct ShaderBankOwner
+	{
+		ShaderBank *bank = nullptr;
+		~ShaderBankOwner();
+	} shader_bank;
 #endif
 
 	// Tear-down order is important here.
@@ -317,7 +321,13 @@ private:
 	void upscaler_triangle(unsigned op, TriangleSetup &setup, AttributeSetup &attr);
 	void upscaler_scanout();
 
-	std::unique_ptr<RDPDumpWriter> dump_writer;
+	RDPDumpWriter *dump_writer = nullptr;
+#if defined(__GNUC__)
+	__attribute__((noinline, cold))
+#elif defined(_MSC_VER)
+	__declspec(noinline)
+#endif
+	void enqueue_command_dumped(unsigned num_words, const uint32_t *words);
 	bool dump_in_command_list = false;
 };
 }

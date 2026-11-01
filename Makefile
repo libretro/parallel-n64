@@ -1630,7 +1630,7 @@ test_command_ring$(EXE_EXT): tools/test_command_ring.cpp \
 		$(LIBRETRO_COMM_DIR)/rthreads/rthreads.c $(LIBRETRO_COMM_DIR)/rthreads/retro_eventcount.c
 	$(CC) $(CHECK_CFLAGS) $(CHECK_SANITIZE) -I$(LIBRETRO_COMM_DIR)/include -c $(LIBRETRO_COMM_DIR)/rthreads/rthreads.c -o tools/test_command_ring_rthreads.o
 	$(CC) $(CHECK_CFLAGS) $(CHECK_SANITIZE) -I$(LIBRETRO_COMM_DIR)/include -c $(LIBRETRO_COMM_DIR)/rthreads/retro_eventcount.c -o tools/test_command_ring_ec.o
-	$(CXX) -std=c++11 $(CHECK_CFLAGS) $(CHECK_SANITIZE) -DGRANITE_VULKAN_MT $(COMMAND_RING_TEST_INC) \
+	$(CXX) -std=c++11 $(CHECK_CFLAGS) $(CHECK_SANITIZE) -DGRANITE_VULKAN_MT -DRETRO_ATOMIC_FORCE_GCC_NEW $(COMMAND_RING_TEST_INC) \
 		tools/test_command_ring.cpp $(VIDEODIR_PARALLEL)/parallel-rdp/parallel-rdp/command_ring.cpp \
 		$(VIDEODIR_PARALLEL)/parallel-rdp/util/thread_id.cpp tools/test_command_ring_rthreads.o tools/test_command_ring_ec.o \
 		-o $@ $(CHECK_LDFLAGS) $(CHECK_SANITIZE) -lpthread

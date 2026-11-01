@@ -25,7 +25,7 @@
 #include "luts.hpp"
 #include "bitops.hpp"
 #include "upscaler_pass.hpp"
-#include <cmath>
+#include <math.h>
 
 #ifndef PARALLEL_RDP_SHADER_DIR
 #include "shaders/slangmosh.hpp"
@@ -217,7 +217,7 @@ VideoInterface::Registers VideoInterface::decode_vi_registers(HorizontalInfoLine
 	}
 
 	// Clamp v_res to scanout range.
-	reg.v_res = std::min(reg.v_res, int(VI_MAX_OUTPUT_SCANLINES) - reg.v_start);
+	reg.v_res = rdp_min(reg.v_res, int(VI_MAX_OUTPUT_SCANLINES) - reg.v_start);
 
 	// Horizontal shenanigans.
 	int h_start_clamp_lo = INT32_MAX;
@@ -276,13 +276,13 @@ VideoInterface::Registers VideoInterface::decode_vi_registers(HorizontalInfoLine
 		// Effectively, these are bounding boxes.
 		int h_res = h_end - h_start;
 		int max_x = (x_start + h_res * x_add) >> 10;
-		reg.max_x = std::max(reg.max_x, max_x);
-		reg.min_x = std::min(reg.min_x, (x_start + (h_start_clamp - h_start) * x_add) >> 10);
-		reg.max_x_clamp = std::max(reg.max_x_clamp, (x_start + (h_end_clamp - h_start) * x_add + 1023) >> 10);
-		h_start_lo = std::min(h_start_lo, h_start);
-		h_end_hi = std::max(h_end_hi, h_end);
-		h_start_clamp_lo = std::min(h_start_clamp_lo, h_start_clamp);
-		h_end_clamp_hi = std::max(h_end_clamp_hi, h_end_clamp);
+		reg.max_x = rdp_max(reg.max_x, max_x);
+		reg.min_x = rdp_min(reg.min_x, (x_start + (h_start_clamp - h_start) * x_add) >> 10);
+		reg.max_x_clamp = rdp_max(reg.max_x_clamp, (x_start + (h_end_clamp - h_start) * x_add + 1023) >> 10);
+		h_start_lo = rdp_min(h_start_lo, h_start);
+		h_end_hi = rdp_max(h_end_hi, h_end);
+		h_start_clamp_lo = rdp_min(h_start_clamp_lo, h_start_clamp);
+		h_end_clamp_hi = rdp_max(h_end_clamp_hi, h_end_clamp);
 
 		if (line)
 		{
@@ -502,12 +502,12 @@ Vulkan::ImageHandle VideoInterface::vram_fetch_stage(const Registers &regs, unsi
 	if (timestamp)
 	{
 		end_ts = async_cmd->write_timestamp(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
-		device->register_time_interval("VI GPU", std::move(start_ts), std::move(end_ts), "extract-vram");
+		device->register_time_interval("VI GPU", rdp_move(start_ts), rdp_move(end_ts), "extract-vram");
 	}
 
 	Vulkan::Semaphore sem;
 	device->submit(async_cmd, nullptr, 1, &sem);
-	device->add_wait_semaphore(Vulkan::CommandBuffer::Type::Generic, std::move(sem),
+	device->add_wait_semaphore(Vulkan::CommandBuffer::Type::Generic, rdp_move(sem),
 	                           VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, true);
 
 	return vram_image;
@@ -607,7 +607,7 @@ Vulkan::ImageHandle VideoInterface::aa_fetch_stage(Vulkan::CommandBuffer &cmd, V
 	if (timestamp)
 	{
 		end_ts = cmd.write_timestamp(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
-		device->register_time_interval("VI GPU", std::move(start_ts), std::move(end_ts), "vi-fetch");
+		device->register_time_interval("VI GPU", rdp_move(start_ts), rdp_move(end_ts), "vi-fetch");
 	}
 
 	cmd.image_barrier(*aa_image, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
@@ -693,7 +693,7 @@ Vulkan::ImageHandle VideoInterface::divot_stage(Vulkan::CommandBuffer &cmd, Vulk
 	if (timestamp)
 	{
 		end_ts = cmd.write_timestamp(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
-		device->register_time_interval("VI GPU", std::move(start_ts), std::move(end_ts), "vi-divot");
+		device->register_time_interval("VI GPU", rdp_move(start_ts), rdp_move(end_ts), "vi-divot");
 	}
 
 	cmd.image_barrier(*divot_image, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
@@ -759,7 +759,7 @@ Vulkan::ImageHandle VideoInterface::scale_stage(Vulkan::CommandBuffer &cmd, cons
 	{
 		// Rescale crop pixels to preserve aspect ratio.
 		auto crop_pixels_y = options.crop_overscan_pixels * (serrate ? 2 : 1);
-		auto crop_pixels_x = unsigned(std::round(float(crop_pixels_y) * (float(rt_info.width) / float(rt_info.height))));
+		auto crop_pixels_x = unsigned(floor(double(float(crop_pixels_y) * (float(rt_info.width) / float(rt_info.height))) + 0.5));
 
 		crop_left = crop_right = crop_pixels_x;
 		crop_top = crop_bottom = crop_pixels_y;
@@ -999,7 +999,7 @@ Vulkan::ImageHandle VideoInterface::scale_stage(Vulkan::CommandBuffer &cmd, cons
 	if (timestamp)
 	{
 		end_ts = cmd.write_timestamp(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
-		device->register_time_interval("VI GPU", std::move(start_ts), std::move(end_ts), "vi-scale");
+		device->register_time_interval("VI GPU", rdp_move(start_ts), rdp_move(end_ts), "vi-scale");
 	}
 
 	return scale_image;
@@ -1169,7 +1169,7 @@ void VideoInterface::set_vi_register_for_scanline(PerScanlineRegisterBits reg, u
 
 void VideoInterface::latch_vi_register_for_scanline(unsigned vi_line)
 {
-	vi_line = std::min(vi_line, VI_V_END_MAX - 1);
+	vi_line = rdp_min(vi_line, VI_V_END_MAX - 1);
 
 	if (vi_line <= per_line_state.line)
 	{
@@ -1250,7 +1250,7 @@ Vulkan::ImageHandle VideoInterface::upscaler_scanout(unsigned scaling_factor,
 	}
 
 	size_log2 = (regs.status & VI_CONTROL_TYPE_MASK) == VI_CONTROL_TYPE_RGBA8888_BIT ? 2 : 1;
-	width = std::min(regs.max_x, regs.vi_width);
+	width = rdp_min(regs.max_x, regs.vi_width);
 	height = regs.max_y;
 
 	if (regs.h_res <= 0 || regs.h_start >= VI_SCANOUT_WIDTH || regs.v_res <= 0 || width <= 0 || height <= 0)
@@ -1315,8 +1315,8 @@ Vulkan::ImageHandle VideoInterface::upscaler_scanout(unsigned scaling_factor,
 	push.res_y = int32_t(info.height);
 	/* black beside what the scanout shows (the guard band it blanks at
 	 * the sides), as the screen has it */
-	push.shown_x0 = std::max(regs.min_x, 0) * int32_t(scaling_factor);
-	push.shown_x1 = std::min(regs.max_x_clamp, width) * int32_t(scaling_factor);
+	push.shown_x0 = rdp_max(regs.min_x, 0) * int32_t(scaling_factor);
+	push.shown_x1 = rdp_min(regs.max_x_clamp, width) * int32_t(scaling_factor);
 
 	async_cmd->set_specialization_constant_mask(0xf);
 	async_cmd->set_specialization_constant(0, uint32_t(rdram_size));
@@ -1335,7 +1335,7 @@ Vulkan::ImageHandle VideoInterface::upscaler_scanout(unsigned scaling_factor,
 	{
 		Vulkan::Semaphore sem;
 		device->submit(async_cmd, nullptr, 1, &sem);
-		device->add_wait_semaphore(Vulkan::CommandBuffer::Type::Generic, std::move(sem),
+		device->add_wait_semaphore(Vulkan::CommandBuffer::Type::Generic, rdp_move(sem),
 		                           VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
 		                           true);
 	}
@@ -1354,7 +1354,7 @@ Vulkan::ImageHandle VideoInterface::scanout(VkImageLayout target_layout, const S
 {
 	prev_upscaler_image.reset();
 
-	unsigned downscale_steps = std::min(8u, options.downscale_steps);
+	unsigned downscale_steps = rdp_min(8u, options.downscale_steps);
 	int scaling_factor = int(scaling_factor_);
 	Vulkan::ImageHandle scanout;
 	HorizontalInfoLines lines;
@@ -1488,7 +1488,7 @@ Vulkan::ImageHandle VideoInterface::scanout(VkImageLayout target_layout, const S
 	if (divot && !degenerate)
 		divot_image = divot_stage(*cmd, *aa_image, regs, scaling_factor);
 	else
-		divot_image = std::move(aa_image);
+		divot_image = rdp_move(aa_image);
 
 	// Scale pass
 	bool is_final_pass = !downscale_steps || scaling_factor <= 1;
@@ -1523,7 +1523,7 @@ Vulkan::ImageHandle VideoInterface::scanout(VkImageLayout target_layout, const S
 
 		bool field_state = regs.v_current_line == 0;
 		scale_image = upscale_deinterlace(*cmd, *scale_image,
-		                                  std::max(1, scaling_factor >> downscale_steps),
+		                                  rdp_max(1, scaling_factor >> downscale_steps),
 		                                  field_state, options);
 		src_layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 	}
@@ -1560,7 +1560,7 @@ Vulkan::ImageHandle VideoInterface::scanout(VkImageLayout target_layout, const S
 	}
 
 	device->submit(cmd);
-	scanout = std::move(scale_image);
+	scanout = rdp_move(scale_image);
 	frame_count++;
 	return scanout;
 }

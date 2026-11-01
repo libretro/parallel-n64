@@ -5,8 +5,6 @@
 
 #include <libretro.h>
 #include <libretro_vulkan.h>
-#include <memory>
-#include <vector>
 
 #include "rdp_device.hpp"
 #include "context.hpp"

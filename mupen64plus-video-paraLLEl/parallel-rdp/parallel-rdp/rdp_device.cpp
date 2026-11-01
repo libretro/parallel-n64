@@ -72,11 +72,12 @@ CommandProcessor::CommandProcessor(Vulkan::Device &device_, void *rdram_ptr,
 
 	if (const char *env = getenv("PARALLEL_RDP_DUMP_PATH"))
 	{
-		dump_writer.reset(new RDPDumpWriter);
+		dump_writer = new RDPDumpWriter;
 		if (!dump_writer->init(env, rdram_size, hidden_rdram_size))
 		{
 			LOGE("Failed to init RDP dump: %s.\n", env);
-			dump_writer.reset();
+			delete dump_writer;
+			dump_writer = nullptr;
 		}
 		else
 		{
@@ -184,6 +185,14 @@ CommandProcessor::CommandProcessor(Vulkan::Device &device_, void *rdram_ptr,
 		timestamp = strtol(env, nullptr, 0) > 0;
 }
 
+#ifndef PARALLEL_RDP_SHADER_DIR
+// Here, where ShaderBank is complete.
+CommandProcessor::ShaderBankOwner::~ShaderBankOwner()
+{
+	delete bank;
+}
+#endif
+
 CommandProcessor::~CommandProcessor()
 {
 	idle();
@@ -192,6 +201,7 @@ CommandProcessor::~CommandProcessor()
 	// destroyed before the ring would otherwise be.
 	ring.teardown_thread();
 	rdp_upscaler_free(upscaler);
+	delete dump_writer;
 }
 
 void CommandProcessor::begin_frame_context()
@@ -243,14 +253,14 @@ void CommandProcessor::init_renderer()
 
 #ifndef PARALLEL_RDP_SHADER_DIR
 	Vulkan::ResourceLayout layout;
-	shader_bank.reset(new ShaderBank(device, layout, [&](const char *name, const char *define) -> int {
+	shader_bank.bank = (new ShaderBank(device, layout, [&](const char *name, const char *define) -> int {
 		if (strncmp(name, "vi_", 3) == 0)
 			return vi.resolve_shader_define(name, define);
 		else
 			return renderer.resolve_shader_define(name, define);
 	}));
-	renderer.set_shader_bank(shader_bank.get());
-	vi.set_shader_bank(shader_bank.get());
+	renderer.set_shader_bank(shader_bank.bank);
+	vi.set_shader_bank(shader_bank.bank);
 #endif
 }
 
@@ -263,10 +273,15 @@ void CommandProcessor::flush_hidden_dram_to_dump()
 	if (no_storage_8bit)
 	{
 		const uint16_t *wide = static_cast<const uint16_t *>(hidden);
-		std::vector<uint8_t> narrow(size / 2);
-		for (size_t i = 0; i < narrow.size(); i++)
+		size_t count = size / 2;
+		uint8_t *narrow = static_cast<uint8_t *>(malloc(count));
+		size_t i;
+		if (!narrow)
+			return;
+		for (i = 0; i < count; i++)
 			narrow[i] = uint8_t(wide[i]);
-		dump_writer->flush_hidden_dram(narrow.data(), uint32_t(narrow.size()));
+		dump_writer->flush_hidden_dram(narrow, uint32_t(count));
+		free(narrow);
 	}
 	else
 		dump_writer->flush_hidden_dram(hidden, uint32_t(size));
@@ -992,7 +1007,21 @@ void CommandProcessor::enqueue_command(unsigned num_words, const uint32_t *words
 			return;
 	}
 
-	if (dump_writer && !dump_in_command_list)
+	if (dump_writer)
+	{
+		enqueue_command_dumped(num_words, words);
+		return;
+	}
+
+	enqueue_command_inner(num_words, words);
+}
+
+// Out of the way of enqueue_command, which runs for every command.
+void CommandProcessor::enqueue_command_dumped(unsigned num_words, const uint32_t *words)
+{
+	uint32_t cmd_id = (words[0] >> 24) & 63;
+
+	if (!dump_in_command_list)
 	{
 		wait_for_timeline(signal_timeline());
 		dump_writer->flush_dram(begin_read_rdram(), rdram_size);
@@ -1002,17 +1031,13 @@ void CommandProcessor::enqueue_command(unsigned num_words, const uint32_t *words
 
 	enqueue_command_inner(num_words, words);
 
-	if (dump_writer)
+	if (Op(cmd_id) == Op::SyncFull)
 	{
-		uint32_t cmd_id = (words[0] >> 24) & 63;
-		if (Op(cmd_id) == Op::SyncFull)
-		{
-			dump_writer->signal_complete();
-			dump_in_command_list = false;
-		}
-		else
-			dump_writer->emit_command(cmd_id, words, num_words);
+		dump_writer->signal_complete();
+		dump_in_command_list = false;
 	}
+	else
+		dump_writer->emit_command(cmd_id, words, num_words);
 }
 
 void CommandProcessor::enqueue_command_direct(unsigned, const uint32_t *words)
@@ -1048,7 +1073,7 @@ void CommandProcessor::enqueue_command_direct(unsigned, const uint32_t *words)
 		uint64_t val = words[1] | (uint64_t(words[2]) << 32);
 		CoherencyOperation signal_op;
 		signal_op.timeline_value = val;
-		enqueue_coherency_operation(std::move(signal_op));
+		enqueue_coherency_operation(rdp_move(signal_op));
 		break;
 	}
 
@@ -1227,7 +1252,7 @@ void CommandProcessor::wait_for_timeline(uint64_t index)
 	if (measure_stall_time)
 	{
 		end_ts = device.write_calibrated_timestamp();
-		device.register_time_interval("RDP CPU", std::move(start_ts), std::move(end_ts), "wait-for-timeline");
+		device.register_time_interval("RDP CPU", rdp_move(start_ts), rdp_move(end_ts), "wait-for-timeline");
 	}
 }
 
@@ -1263,7 +1288,7 @@ Vulkan::ImageHandle CommandProcessor::scanout(const ScanoutOptions &opts, VkImag
 		drain_command_ring();
 	}
 
-	return std::move(scanout_result);
+	return rdp_move(scanout_result);
 }
 
 void CommandProcessor::get_upscaler_frame(UpscalerFrame &frame)
@@ -1443,7 +1468,7 @@ void CommandProcessor::drain_command_ring()
 	if (timestamp)
 	{
 		end_ts = device.write_calibrated_timestamp();
-		device.register_time_interval("RDP CPU", std::move(start_ts), std::move(end_ts), "drain-command-ring");
+		device.register_time_interval("RDP CPU", rdp_move(start_ts), rdp_move(end_ts), "drain-command-ring");
 	}
 }
 
@@ -1477,30 +1502,6 @@ void CommandProcessor::scanout_async_buffer(VIScanoutBuffer &buffer, const Scano
 	device.submit(cmd, &buffer.fence);
 }
 
-void CommandProcessor::scanout_sync(std::vector<RGBA> &colors, unsigned &width, unsigned &height,
-                                    const ScanoutOptions &opts)
-{
-	VIScanoutBuffer scanout;
-	scanout_async_buffer(scanout, opts);
-
-	if (!scanout.width || !scanout.height)
-	{
-		width = 0;
-		height = 0;
-		colors.clear();
-		return;
-	}
-
-	width = scanout.width;
-	height = scanout.height;
-	colors.resize(width * height);
-
-	scanout.fence->wait();
-	memcpy(colors.data(), device.map_host_buffer(*scanout.buffer, Vulkan::MEMORY_ACCESS_READ_BIT),
-	       width * height * sizeof(uint32_t));
-	device.unmap_host_buffer(*scanout.buffer, Vulkan::MEMORY_ACCESS_READ_BIT);
-}
-
 void CommandProcessor::timeline_work(void *user, mpsc_stack_node_t *item)
 {
 	auto *self = static_cast<CommandProcessor *>(user);
@@ -1508,7 +1509,8 @@ void CommandProcessor::timeline_work(void *user, mpsc_stack_node_t *item)
 	self->perform_coherency(node->op);
 	if (node->op.timeline_value)
 		retro_atomic_store_release_size(&self->thread_timeline_value, size_t(node->op.timeline_value));
-	delete node;
+	node->~CoherencyNode();
+	::operator delete(node);
 }
 
 bool CommandProcessor::timeline_reached(void *ctx)
@@ -1608,12 +1610,14 @@ void CommandProcessor::perform_coherency(CoherencyOperation &work)
 		work.fence->wait();
 
 	if (work.unlock_cookie)
-		work.unlock_cookie->fetch_sub(1, std::memory_order_relaxed);
+		retro_atomic_fetch_sub_int(work.unlock_cookie, 1);
 
 	if (work.src)
 	{
-		for (auto &copy : work.copies)
+		unsigned c;
+		for (c = 0; c < work.num_copies; c++)
 		{
+			const CoherencyCopy &copy = work.copies[c];
 			auto *mapped_data = static_cast<uint8_t *>(device.map_host_buffer(*work.src, MEMORY_ACCESS_READ_BIT, copy.src_offset, copy.size));
 			auto *mapped_mask = static_cast<uint8_t *>(device.map_host_buffer(*work.src, MEMORY_ACCESS_READ_BIT, copy.mask_offset, copy.size));
 #if defined(PARALLEL_RDP_VERIFY_UPLOADS) && defined(__SSE2__)
@@ -1623,7 +1627,7 @@ void CommandProcessor::perform_coherency(CoherencyOperation &work)
 
 			for (unsigned i = 0; i < copy.counters; i++)
 			{
-				unsigned val = copy.counter_base[i].fetch_sub(1, std::memory_order_release);
+				int val = retro_atomic_fetch_sub_int(&copy.counter_base[i], 1);
 				(void)val;
 				assert(val > 0);
 			}
@@ -1635,10 +1639,24 @@ void CommandProcessor::perform_coherency(CoherencyOperation &work)
 	}
 }
 
+// One allocation per operation: the node, with its copies after it.
 void CommandProcessor::enqueue_coherency_operation(CoherencyOperation &&op)
 {
-	auto *node = new CoherencyNode;
-	node->op = std::move(op);
+	size_t bytes = sizeof(CoherencyNode) + op.num_copies * sizeof(CoherencyCopy);
+	void *mem = ::operator new(bytes);
+	auto *node = new (mem) CoherencyNode;
+	auto *copies = reinterpret_cast<CoherencyCopy *>(node + 1);
+	unsigned i;
+
+	for (i = 0; i < op.num_copies; i++)
+		copies[i] = op.copies[i];
+	node->op.fence = static_cast<Vulkan::Fence &&>(op.fence);
+	node->op.timeline_value = op.timeline_value;
+	node->op.dst = op.dst;
+	node->op.src = op.src;
+	node->op.copies = copies;
+	node->op.num_copies = op.num_copies;
+	node->op.unlock_cookie = op.unlock_cookie;
 	rdp_worker_push(timeline_worker.worker, node);
 }
 }

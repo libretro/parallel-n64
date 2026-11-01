@@ -24,6 +24,8 @@
 #include "rdp_device.hpp"
 #include "thread_id.hpp"
 #include <assert.h>
+#include <stdlib.h>
+#include <string.h>
 
 namespace RDP
 {
@@ -41,7 +43,14 @@ bool CommandRing::init(
 	assert((count & (count - 1)) == 0);
 	teardown_thread();
 	processor = processor_;
-	ring.resize(count);
+	if (ring_size != count)
+	{
+		uint32_t *words = static_cast<uint32_t *>(realloc(ring, count * sizeof(uint32_t)));
+		if (!words)
+			return false;
+		ring = words;
+		ring_size = count;
+	}
 	retro_atomic_size_init(&write_count, 0);
 	retro_atomic_size_init(&read_count, 0);
 	retro_atomic_size_init(&completed_count, 0);
@@ -58,7 +67,7 @@ bool CommandRing::init(
 		ec_live = true;
 	}
 #ifdef PARALLEL_RDP_SHADER_DIR
-	global_handles = std::move(global_handles_);
+	global_handles = rdp_move(global_handles_);
 #endif
 	thr = sthread_create(thread_entry, this);
 	return thr != nullptr;
@@ -87,6 +96,8 @@ CommandRing::~CommandRing()
 		retro_eventcount_free(&work_ec);
 		retro_eventcount_free(&done_ec);
 	}
+	free(ring);
+	free(wrap_words);
 }
 
 void CommandRing::drain()
@@ -109,9 +120,10 @@ void CommandRing::drain()
 
 void CommandRing::enqueue_command(unsigned num_words, const uint32_t *words)
 {
-	size_t size = ring.size();
+	size_t size = ring_size;
 	size_t mask = size - 1;
 	size_t w = retro_atomic_load_relaxed_size(&write_count);
+	size_t at, first;
 
 	// Wait for room for the header word plus the payload.
 	for (;;)
@@ -128,9 +140,19 @@ void CommandRing::enqueue_command(unsigned num_words, const uint32_t *words)
 		retro_eventcount_commit_wait(&done_ec, key);
 	}
 
+	// The header, then the payload: word by word when it is short or
+	// wraps, where a call costs more than the copy, and in one memcpy
+	// past that.
 	ring[w++ & mask] = num_words;
-	for (unsigned i = 0; i < num_words; i++)
-		ring[w++ & mask] = words[i];
+	at = w & mask;
+	if (num_words <= 8 || at + num_words > size)
+	{
+		for (first = 0; first < num_words; first++)
+			ring[(w + first) & mask] = words[first];
+	}
+	else
+		memcpy(ring + at, words, num_words * sizeof(uint32_t));
+	w += num_words;
 
 	retro_atomic_store_release_size(&write_count, w);
 	retro_eventcount_notify(&work_ec);
@@ -147,9 +169,7 @@ void CommandRing::thread_loop()
 	global_handles.reset();
 #endif
 
-	std::vector<uint32_t> tmp_buffer;
-	tmp_buffer.reserve(64);
-	size_t mask = ring.size() - 1;
+	size_t mask = ring_size - 1;
 	size_t r = 0;
 	static const uint32_t idle_words[1] = { uint32_t(Op::MetaIdle) << 24 };
 
@@ -179,22 +199,32 @@ void CommandRing::thread_loop()
 		if (have_work)
 		{
 			num_words = ring[r++ & mask];
-			if ((r & mask) + num_words <= ring.size())
+			if ((r & mask) + num_words <= ring_size)
 			{
 				// In one piece: run where it is, and hand the space back
 				// once it has run.
-				words = ring.data() + (r & mask);
+				words = ring + (r & mask);
 				r += num_words;
 				in_place = true;
 			}
 			else
 			{
-				tmp_buffer.resize(num_words);
-				for (uint32_t i = 0; i < num_words; i++)
-					tmp_buffer[i] = ring[r++ & mask];
+				size_t at = r & mask;
+				size_t first = ring_size - at;
+				if (num_words > wrap_capacity)
+				{
+					uint32_t *grown = static_cast<uint32_t *>(realloc(wrap_words, num_words * sizeof(uint32_t)));
+					if (!grown)
+						abort();
+					wrap_words = grown;
+					wrap_capacity = num_words;
+				}
+				memcpy(wrap_words, ring + at, first * sizeof(uint32_t));
+				memcpy(wrap_words + first, ring, (num_words - first) * sizeof(uint32_t));
+				r += num_words;
 				// The words are copied out: hand the space back right away.
 				retro_atomic_store_release_size(&read_count, r);
-				words = tmp_buffer.data();
+				words = wrap_words;
 			}
 		}
 		else

@@ -28,6 +28,26 @@ class Program;
 class Shader;
 }
 
+// In place of <utility> and <algorithm>: the same code, without the
+// standard library headers.
+template <typename T>
+static inline T &&rdp_move(T &v)
+{
+	return static_cast<T &&>(v);
+}
+
+template <typename T>
+static inline const T &rdp_min(const T &a, const T &b)
+{
+	return b < a ? b : a;
+}
+
+template <typename T>
+static inline const T &rdp_max(const T &a, const T &b)
+{
+	return a < b ? b : a;
+}
+
 namespace RDP
 {
 template <typename Program, typename Shader> struct Shaders;
