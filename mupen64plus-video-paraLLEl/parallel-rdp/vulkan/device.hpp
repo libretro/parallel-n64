@@ -433,6 +433,10 @@ public:
 	typedef void (*QueueLockCallback)(void *userdata);
 	void set_queue_lock(QueueLockCallback lock_callback, QueueLockCallback unlock_callback, void *userdata);
 
+	// Submits one-off initialisation of a resource the way zero-initialised
+	// buffers are: ordered before later work on every queue that may use it.
+	void submit_initialization(CommandBufferHandle &cmd, VkBufferUsageFlags usage);
+
 	const ImplementationWorkarounds &get_workarounds() const
 	{
 		return workarounds;

@@ -1469,6 +1469,12 @@ Fence Device::request_legacy_fence()
 	return Fence(handle_pool.fences.allocate(this, fence));
 }
 
+void Device::submit_initialization(CommandBufferHandle &cmd, VkBufferUsageFlags usage)
+{
+	LOCK();
+	submit_staging(cmd, usage, true);
+}
+
 void Device::submit_staging(CommandBufferHandle &cmd, VkBufferUsageFlags usage, bool flush)
 {
 	auto access = buffer_usage_to_possible_access(usage);

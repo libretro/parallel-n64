@@ -672,12 +672,12 @@ bool Renderer::init_internal_upscaling_factor(const RendererOptions &options)
 	device->set_name(*upscaling_multisampled_hidden_rdram, "multisampled-hidden-rdram");
 
 	{
-		auto cmd = device->request_command_buffer();
+		// On the queue the renderer and VI use, and ordered before them on
+		// every queue: a plain submit on the graphics queue could land after
+		// the first frame's work on the compute queue and overwrite it.
+		auto cmd = device->request_command_buffer(Vulkan::CommandBuffer::Type::AsyncCompute);
 		cmd->fill_buffer(*upscaling_multisampled_hidden_rdram, caps.no_storage_8bit ? 0x00030003u : 0x03030303u);
-		cmd->barrier(VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_TRANSFER_WRITE_BIT,
-		             VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
-		             VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT);
-		device->submit(cmd);
+		device->submit_initialization(cmd, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
 	}
 
 	return true;
