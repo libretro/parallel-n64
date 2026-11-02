@@ -95,36 +95,6 @@ protected:
     int     m_lastTextureBufferIndex;
 };
 
-//
-// DirectX Framebuffer
-//
-class DXFrameBufferManager : public FrameBufferManager
-{
-    virtual ~DXFrameBufferManager() {}
-
-public:
-    // Device dependent functions
-    virtual void CopyBackBufferToRenderTexture(int idx, RecentCIInfo &ciInfo, M64P_RECT* pRect);    // Copy the current back buffer to temp buffer
-    virtual void StoreBackBufferToRDRAM(uint32_t addr, uint32_t fmt, uint32_t siz, uint32_t width, 
-        uint32_t height, uint32_t bufWidth, uint32_t bufHeight, uint32_t startaddr, 
-        uint32_t memsize, uint32_t pitch, SURFFORMAT surf_fmt);
-};
-
-//
-// OpenGL Framebuffer
-//
-class OGLFrameBufferManager : public FrameBufferManager
-{
-    virtual ~OGLFrameBufferManager() {}
-
-public:
-    // Device dependent functions
-    virtual void CopyBackBufferToRenderTexture(int idx, RecentCIInfo &ciInfo, M64P_RECT* pRect);    // Copy the current back buffer to temp buffer
-    virtual void StoreBackBufferToRDRAM(uint32_t addr, uint32_t fmt, uint32_t siz, uint32_t width, 
-        uint32_t height, uint32_t bufWidth, uint32_t bufHeight, uint32_t startaddr, 
-        uint32_t memsize, uint32_t pitch, SURFFORMAT surf_fmt);
-};
-
 extern RenderTextureInfo gRenderTextureInfos[];
 extern RenderTextureInfo newRenderTextureInfo;
 

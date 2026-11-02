@@ -55,8 +55,6 @@ public:
     friend class CGraphicsContext;
     friend class CDXGraphicsContext;
     friend class FrameBufferManager;
-    friend class DXFrameBufferManager;
-    friend class OGLFrameBufferManager;
     CRenderTexture(int width, int height, RenderTextureInfo* pInfo, TextureUsage usage)
     {
         m_beingRendered = false;
