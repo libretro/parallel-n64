@@ -276,8 +276,8 @@ static void test_owned_ptr_array()
 {
 	{
 		Util::OwnedPtrArray<Tracked, 4> a;
-		a.push_back(new Tracked(1));
-		a.push_back(new Tracked(2));
+		a.push_back(Util::create<Tracked>(1));
+		a.push_back(Util::create<Tracked>(2));
 		CHECK(a.size() == 2 && live == 2 && a[1]->value == 2);
 		int sum = 0;
 		for (auto *t : a)
@@ -285,7 +285,7 @@ static void test_owned_ptr_array()
 		CHECK(sum == 3);
 		a.clear();
 		CHECK(a.empty() && live == 0);
-		a.push_back(new Tracked(3));
+		a.push_back(Util::create<Tracked>(3));
 	}
 	CHECK(live == 0);
 }
