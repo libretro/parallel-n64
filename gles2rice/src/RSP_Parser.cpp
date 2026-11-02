@@ -1271,8 +1271,9 @@ void RDP_DLParser_Process(void)
 
     status.gDlistCount++;
 
-    uint32_t start      = *(gfx_info.DPC_START_REG);
-    uint32_t end        = *(gfx_info.DPC_END_REG);
+    /* the DP's address registers are 24-bit, and RDRAM is 8 MB at most */
+    uint32_t start      = *(gfx_info.DPC_START_REG) & 0x007FFFF8;
+    uint32_t end        = *(gfx_info.DPC_END_REG) & 0x007FFFF8;
     uint32_t *rdram_u32 = (uint32_t*)gfx_info.RDRAM;
 
     __RSP.PCi                  = 0;

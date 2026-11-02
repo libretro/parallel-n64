@@ -163,27 +163,22 @@ int32_t grLfbLock( int32_t type, int32_t buffer, int32_t writeMode,
    return FXTRUE;
 }
 
-int32_t grLfbReadRegion( int32_t src_buffer,
-      uint32_t src_x, uint32_t src_y,
-      uint32_t src_width, uint32_t src_height,
-      uint32_t dst_stride, void *dst_data )
+const uint8_t *grLfbReadRect(int32_t *x, int32_t *y, int32_t *w, int32_t *h, uint32_t *stride)
 {
-   unsigned int i,j;
+   int32_t x0 = *x < 0 ? 0 : *x;
+   int32_t y0 = *y < 0 ? 0 : *y;
+   int32_t x1 = *x + *w > width  ? width  : *x + *w;
+   int32_t y1 = *y + *h > height ? height : *y + *h;
 
-   glReadPixels(src_x, height-src_y-src_height, src_width, src_height, GL_RGBA, GL_UNSIGNED_BYTE, buf);
-
-   for (j=0; j<src_height; j++)
-   {
-      for (i=0; i<src_width; i++)
-      {
-         glide64_frameBuffer[j*(dst_stride/2)+i] =
-            ((buf[(src_height-j-1)*src_width*4+i*4+0] >> 3) << 11) |
-            ((buf[(src_height-j-1)*src_width*4+i*4+1] >> 2) <<  5) |
-            (buf[(src_height-j-1)*src_width*4+i*4+2] >> 3);
-      }
-   }
-
-   return FXTRUE;
+   if (x1 <= x0 || y1 <= y0)
+      return NULL;
+   *x = x0;
+   *y = y0;
+   *w = x1 - x0;
+   *h = y1 - y0;
+   *stride = (uint32_t)*w * 4;
+   glReadPixels(x0, height - y1, *w, *h, GL_RGBA, GL_UNSIGNED_BYTE, buf);
+   return buf;
 }
 
 int32_t
@@ -199,12 +194,7 @@ grLfbWriteRegion( int32_t dst_buffer,
 
    if(dst_buffer == GR_BUFFER_AUXBUFFER)
    {
-      for (j=0; j<src_height; j++)
-         for (i=0; i<src_width; i++)
-            buf[j*src_width + i] = (uint8_t)
-               ((frameBuffer[(src_height-j-1)*(src_stride/2)+i]/(65536.0f*(2.0f/zscale)))+1-zscale/2.0f)
-            ;
-
+      /* depth images are not drawn: the depth buffer is cleared */
       glEnable(GL_DEPTH_TEST);
       glDepthFunc(GL_ALWAYS);
 

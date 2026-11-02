@@ -51,6 +51,7 @@
 #include "../../../Graphics/RDP/gDP_state.h"
 
 #include "Framebuffer_glide64.h"
+#include "FBReadback.h"
 #include "TexCache.h"
 #include "../Glitch64/glide.h"
 #include "GlideExtensions.h"
@@ -1030,124 +1031,67 @@ void CopyFrameBuffer(int32_t buffer)
 
    if (rdp.scale_x < 1.1f)
    {
-      uint16_t * ptr_src = (uint16_t*)glide64_frameBuffer;
-      if (grLfbReadRegion(buffer,
-               (uint32_t)rdp.offset_x,
-               (uint32_t)rdp.offset_y,//rdp.ci_upper_bound,
-               width,
-               height,
-               width<<1,
-               ptr_src))
-      {
-         uint32_t y, x;
+      /* the rect read back, each pixel turned into RDRAM's format as it
+       * is read: no window-sized copy in between */
+      int32_t rx = (int32_t)(uint32_t)rdp.offset_x;
+      int32_t ry = (int32_t)(uint32_t)rdp.offset_y;
+      int32_t rw = (int32_t)width;
+      int32_t rh = (int32_t)height;
+      uint32_t stride;
+      const uint8_t *rows = grLfbReadRect(&rx, &ry, &rw, &rh, &stride);
 
-         if (g_gdp.fb_size == G_IM_SIZ_16b)
-         {
-            uint16_t *ptr_dst   = (uint16_t*)(gfx_info.RDRAM + gDP.colorImage.address);
-
-            for (y = 0; y < height; y++)
-            {
-               for (x = 0; x < width; x++)
-               {
-                  uint16_t c = ptr_src[x + y * width];
-                  if ((settings.frame_buffer & fb_read_alpha) && c <= 0) {}
-                  else
-                     c = (c&0xFFC0) | ((c&0x001F) << 1) | 1;
-                  ptr_dst[(x + y * width)^1] = c;
-               }
-            }
-         }
-         else
-         {
-            uint32_t *ptr_dst = (uint32_t*)(gfx_info.RDRAM + gDP.colorImage.address);
-            for (y = 0; y < height; y++)
-            {
-               for (x = 0; x < width; x++)
-               {
-                  uint16_t c = ptr_src[x + y * width];
-                  if ((settings.frame_buffer & fb_read_alpha) && c <= 0) {}
-                  else
-                     c = (c&0xFFC0) | ((c&0x001F) << 1) | 1;
-                  ptr_dst[x + y * width]   = RGBA16toRGBA32(c);
-               }
-            }
-         }
-      }
+      if (rows)
+         fb_readback_direct(rows, stride,
+               (uint32_t)rw < width ? (uint32_t)rw : width,
+               (uint32_t)rh < height ? (uint32_t)rh : height,
+               width, settings.frame_buffer & fb_read_alpha,
+               g_gdp.fb_size == G_IM_SIZ_16b,
+               gfx_info.RDRAM + gDP.colorImage.address);
    }
    else
    {
-      GrLfbInfo_t info;
       float scale_x = (settings.scr_res_x - rdp.offset_x*2.0f)  / MAX(width, rdp.vi_width);
       float scale_y = (settings.scr_res_y - rdp.offset_y*2.0f) / MAX(height, rdp.vi_height);
+      int        x_start  = 0;
+      int        y_start  = 0;
+      int         x_end   = width;
+      int         y_end   = height;
+      int read_alpha      = settings.frame_buffer & fb_read_alpha;
 
       FRDP("width: %d, height: %d, ul_y: %d, lr_y: %d, scale_x: %f, scale_y: %f, ci_width: %d, ci_height: %d\n",width, height, rdp.ci_upper_bound, rdp.ci_lower_bound, scale_x, scale_y, gDP.colorImage.width, gDP.colorImage.height);
-      info.size = sizeof(GrLfbInfo_t);
 
-      if (grLfbLock (GR_LFB_READ_ONLY,
-               buffer,
-               GR_LFBWRITEMODE_565,
-               GR_ORIGIN_UPPER_LEFT,
-               FXFALSE,
-               &info))
+      if ((settings.hacks&hack_PMario) && rdp.ci_count > 0 && rdp.frame_buffers[rdp.ci_count-1].status != CI_AUX)
+         read_alpha = false;
+
+      if (settings.hacks&hack_BAR)
       {
-         int        x_start  = 0;
-         int        y_start  = 0;
-         int         x_end   = width;
-         int         y_end   = height;
-         uint32_t stride     = info.strideInBytes>>1;
-         int read_alpha      = settings.frame_buffer & fb_read_alpha;
+         x_start = 80;
+         y_start = 24;
+         x_end   = 240;
+         y_end   = 86;
+      }
 
-         if ((settings.hacks&hack_PMario) && rdp.ci_count > 0 && rdp.frame_buffers[rdp.ci_count-1].status != CI_AUX)
-            read_alpha = false;
+      if (x_end > x_start && y_end > y_start)
+      {
+         /* Only the window rows and columns the N64 pixels sample are
+          * read back, and only those pixels converted. */
+         int32_t sx0 = (int)(x_start*scale_x + rdp.offset_x);
+         int32_t sy0 = (int)(y_start * scale_y + rdp.offset_y);
+         int32_t rx = sx0, ry = sy0;
+         int32_t rw = (int)((x_end - 1)*scale_x + rdp.offset_x) - sx0 + 1;
+         int32_t rh = (int)((y_end - 1) * scale_y + rdp.offset_y) - sy0 + 1;
+         uint32_t stride;
+         const uint8_t *rows = grLfbReadRect(&rx, &ry, &rw, &rh, &stride);
 
-         if (settings.hacks&hack_BAR)
+         if (rows)
          {
-            x_start = 80;
-            y_start = 24;
-            x_end   = 240;
-            y_end   = 86;
+            fb_readback_sampled(rows, stride, rx, ry, rw, rh,
+                  scale_x, scale_y, rdp.offset_x, rdp.offset_y,
+                  x_start, y_start, x_end, y_end, width, read_alpha,
+                  g_gdp.fb_size <= G_IM_SIZ_16b,
+                  gfx_info.RDRAM + gDP.colorImage.address);
+            LRDP("Framebuffer copy complete.\n");
          }
-
-         if (g_gdp.fb_size <= G_IM_SIZ_16b)
-         {
-            int y, x;
-            uint16_t *ptr_src   = (uint16_t*)info.lfbPtr;
-            uint16_t *ptr_dst   = (uint16_t*)(gfx_info.RDRAM + gDP.colorImage.address);
-
-            for (y = y_start; y < y_end; y++)
-            {
-               for (x = x_start; x < x_end; x++)
-               {
-                  uint16_t c = ptr_src[(int)(x*scale_x + rdp.offset_x) + (int)(y * scale_y + rdp.offset_y) * stride];
-                  c = (c&0xFFC0) | ((c&0x001F) << 1) | 1;
-                  if (read_alpha && c == 1)
-                     c = 0;
-                  ptr_dst[(x + y * width)^1] = c;
-               }
-            }
-         }
-         else
-         {
-            int y, x;
-            uint16_t *ptr_src   = (uint16_t*)info.lfbPtr;
-            uint32_t *ptr_dst = (uint32_t*)(gfx_info.RDRAM + gDP.colorImage.address);
-
-            for (y = y_start; y < y_end; y++)
-            {
-               for (x = x_start; x < x_end; x++)
-               {
-                  uint16_t c = ptr_src[(int)(x*scale_x + rdp.offset_x) + (int)(y * scale_y + rdp.offset_y) * stride];
-                  c = (c&0xFFC0) | ((c&0x001F) << 1) | 1;
-                  if (read_alpha && c == 1)
-                     c = 0;
-                  ptr_dst[x + y * width] = RGBA16toRGBA32(c);
-               }
-            }
-         }
-
-         // Unlock the backbuffer
-         grLfbUnlock (GR_LFB_READ_ONLY, buffer);
-         LRDP("LfbLock.  Framebuffer copy complete.\n");
       }
    }
 }

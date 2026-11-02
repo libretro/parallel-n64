@@ -734,6 +734,9 @@ typedef struct
     MicrocodeInfo *current, *top, *bottom;
 } GBIInfo;
 
+/* GLideN64 has a GBI of its own, a C++ object: under -fcommon this one
+ * would be merged into it and write over it */
+#define GBI gln64GBI
 extern GBIInfo GBI;
 
 uint32_t GBI_GetCurrentMicrocodeType(void);

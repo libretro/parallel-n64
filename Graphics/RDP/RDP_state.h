@@ -373,7 +373,9 @@ static INLINE uint32_t rdp_read_data(uint32_t address)
 {
    if ((*(uint32_t*)gfx_info.DPC_STATUS_REG) & 0x1) /* XBUS_DMEM_DMA enabled */
       return ((uint32_t*)gfx_info.DMEM)[(address & 0xfff) >> 2];
-   return ((uint32_t*)gfx_info.RDRAM)[address >> 2];
+   /* The DP's address registers are 24-bit: a list given as a KSEG
+    * address (as homebrew does) reads RDRAM, as it does on hardware. */
+   return ((uint32_t*)gfx_info.RDRAM)[(address & 0x007FFFFC) >> 2];
 }
 
 bool RDP_Half1(uint32_t _c);

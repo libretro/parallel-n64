@@ -137,7 +137,7 @@ static INLINE uint32_t RGBA16toRGBA32(uint32_t _c)
 {
    union RGBA c;
    c.raw = _c;
-   return (c.r << 24) | (c.g << 16) | (c.b << 8) | c.a;
+   return ((uint32_t)c.r << 24) | ((uint32_t)c.g << 16) | ((uint32_t)c.b << 8) | c.a;
 }
 
 static INLINE void UnswapCopyWrap(const uint8_t *src, uint32_t srcIdx, uint8_t *dest, uint32_t destIdx, uint32_t destMask, uint32_t numBytes)

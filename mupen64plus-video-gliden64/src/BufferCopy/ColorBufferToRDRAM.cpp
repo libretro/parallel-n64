@@ -125,11 +125,14 @@ void ColorBufferToRDRAM::_initFBTexture(void)
 	gfxContext.bindFramebuffer(graphics::bufferTarget::DRAW_FRAMEBUFFER, graphics::ObjectHandle::defaultFramebuffer);
 
 	m_bufferReader.reset(gfxContext.createColorBufferReader(m_pTexture));
+	m_readback.reset(m_bufferReader->numSlots());
 }
 
 void ColorBufferToRDRAM::_destroyFBTexure(void)
 {
+	/* reads still in flight die with the reader's buffers */
 	m_bufferReader.reset();
+	m_readback.reset(1);
 
 	if (m_pTexture != nullptr) {
 		textureCache().removeFrameBufferTexture(m_pTexture);
@@ -270,53 +273,94 @@ void ColorBufferToRDRAM::_copy(u32 _startAddress, u32 _endAddress, bool _sync)
 	const s32 y0 = (_startAddress - m_pCurFrameBuffer->m_startAddress) / stride;
 	const u32 y1 = (_endAddress - m_pCurFrameBuffer->m_startAddress) / stride;
 	u32 height = std::min(max_height, 1u + y1 - y0);
-	u32 srcStride = width;
 
-	const u8* pPixels = m_bufferReader->readPixels(x0, y0, width, height, m_pCurFrameBuffer->m_size, _sync, srcStride);
-	frameBufferList().setCurrentDrawBuffer();
-	if (pPixels == nullptr)
-		return;
-	if (height == 0) {
+	ColorCopyGeometry g;
+	g.startAddress = _startAddress;
+	g.numPixels = numPixels;
+	g.bufferAddress = m_pCurFrameBuffer->m_startAddress;
+	g.width = width;
+	g.size = m_pCurFrameBuffer->m_size;
+
+	if (m_bufferReader->numSlots() == 0) {
+		u32 srcStride = width;
+		const u8* pPixels = m_bufferReader->readPixels(x0, y0, width, height, g.size, _sync, srcStride);
+		frameBufferList().setCurrentDrawBuffer();
+		if (pPixels == nullptr)
+			return;
+		g.height = height;
+		_write(pPixels, srcStride, g);
 		m_bufferReader->cleanUp();
+		gDP.changed |= CHANGED_SCISSOR;
 		return;
 	}
 
-	if (m_pCurFrameBuffer->m_size == G_IM_SIZ_32b) {
-		const u32 *ptr_src = (const u32*)pPixels;
-		u32 *ptr_dst = (u32*)(RDRAM + _startAddress);
+	g.height = std::min(height, (u32)m_pTexture->realHeight);
 
-		if (!FBInfo::fbInfo.isSupported() && config.frameBufferEmulation.copyFromRDRAM != 0) {
-			memset(ptr_dst, 0, numPixels * 4);
-		}
-
-		writeToRdram<u32, u32>(ptr_src, srcStride, ptr_dst, &ColorBufferToRDRAM::_RGBAtoRGBA32, 0, 0, width, height, numPixels, _startAddress, m_pCurFrameBuffer->m_startAddress, m_pCurFrameBuffer->m_size);
-	} else if (m_pCurFrameBuffer->m_size == G_IM_SIZ_16b) {
-		const u32 *ptr_src = (const u32*)pPixels;
-		u16 *ptr_dst = (u16*)(RDRAM + _startAddress);
-
-		if (!FBInfo::fbInfo.isSupported() && config.frameBufferEmulation.copyFromRDRAM != 0) {
-			memset(ptr_dst, 0, numPixels * 2);
-		}
-
-		writeToRdram<u32, u16>(ptr_src, srcStride, ptr_dst, &ColorBufferToRDRAM::_RGBAtoRGBA16, 0, 1, width, height, numPixels, _startAddress, m_pCurFrameBuffer->m_startAddress, m_pCurFrameBuffer->m_size);
-	} else if (m_pCurFrameBuffer->m_size == G_IM_SIZ_8b) {
-		const u8 *ptr_src = (const u8*)pPixels;
-		u8 *ptr_dst = RDRAM + _startAddress;
-
-		if (!FBInfo::fbInfo.isSupported() && config.frameBufferEmulation.copyFromRDRAM != 0) {
-			memset(ptr_dst, 0, numPixels);
-		}
-
-		writeToRdram<u8, u8>(ptr_src, srcStride, ptr_dst, &ColorBufferToRDRAM::_RGBAtoR8, 0, 3, width, height, numPixels, _startAddress, m_pCurFrameBuffer->m_startAddress, m_pCurFrameBuffer->m_size);
+	/* An asynchronous copy writes the reads the GPU has finished and
+	 * leaves this one in flight; a synchronous one writes those first,
+	 * waiting for them, then its own. */
+	const u32 slot = _sync ? m_readback.drain(*this) : m_readback.begin(*this);
+	m_bufferReader->readToSlot(slot, x0, y0, g.height, g.size);
+	frameBufferList().setCurrentDrawBuffer();
+	if (_sync) {
+		m_bufferReader->slotReady(slot, true);
+		write(slot, g);
+	} else {
+		m_readback.issued(g);
 	}
-
-	m_pCurFrameBuffer->m_copiedToRdram = true;
-	m_pCurFrameBuffer->copyRdram();
-	m_pCurFrameBuffer->m_cleared = false;
-
-	m_bufferReader->cleanUp();
 
 	gDP.changed |= CHANGED_SCISSOR;
+}
+
+bool ColorBufferToRDRAM::ready(u32 _slot, bool _wait)
+{
+	return m_bufferReader->slotReady(_slot, _wait);
+}
+
+void ColorBufferToRDRAM::write(u32 _slot, const ColorCopyGeometry & _g)
+{
+	u32 srcStride = 0;
+	ColorCopyGeometry g = _g;
+	const u8 * pPixels = m_bufferReader->slotPixels(_slot, g.width, g.height, g.size, srcStride);
+	if (pPixels != nullptr)
+		_write(pPixels, srcStride, g);
+	m_bufferReader->cleanUp();
+}
+
+void ColorBufferToRDRAM::_write(const u8 * _pixels, u32 _stride, const ColorCopyGeometry & _g)
+{
+	if (_g.height == 0)
+		return;
+	/* the RDRAM it was read for may have changed hands since */
+	if (!isMemoryWritable(RDRAM + _g.startAddress, _g.numPixels << _g.size >> 1))
+		return;
+
+	const bool clear = !FBInfo::fbInfo.isSupported() && config.frameBufferEmulation.copyFromRDRAM != 0;
+	if (_g.size == G_IM_SIZ_32b) {
+		u32 *ptr_dst = (u32*)(RDRAM + _g.startAddress);
+		if (clear)
+			memset(ptr_dst, 0, _g.numPixels * 4);
+		writeToRdram<u32, u32>((const u32*)_pixels, _stride, ptr_dst, &ColorBufferToRDRAM::_RGBAtoRGBA32, 0, 0, _g.width, _g.height, _g.numPixels, _g.startAddress, _g.bufferAddress, _g.size);
+	} else if (_g.size == G_IM_SIZ_16b) {
+		u16 *ptr_dst = (u16*)(RDRAM + _g.startAddress);
+		if (clear)
+			memset(ptr_dst, 0, _g.numPixels * 2);
+		writeToRdram<u32, u16>((const u32*)_pixels, _stride, ptr_dst, &ColorBufferToRDRAM::_RGBAtoRGBA16, 0, 1, _g.width, _g.height, _g.numPixels, _g.startAddress, _g.bufferAddress, _g.size);
+	} else if (_g.size == G_IM_SIZ_8b) {
+		u8 *ptr_dst = RDRAM + _g.startAddress;
+		if (clear)
+			memset(ptr_dst, 0, _g.numPixels);
+		writeToRdram<u8, u8>(_pixels, _stride, ptr_dst, &ColorBufferToRDRAM::_RGBAtoR8, 0, 3, _g.width, _g.height, _g.numPixels, _g.startAddress, _g.bufferAddress, _g.size);
+	}
+
+	/* the buffer it was read from, if it is still there as it was */
+	FrameBuffer * pBuffer = frameBufferList().findBuffer(_g.bufferAddress);
+	if (pBuffer != nullptr && pBuffer->m_startAddress == _g.bufferAddress &&
+		pBuffer->m_width == _g.width && pBuffer->m_size == _g.size) {
+		pBuffer->m_copiedToRdram = true;
+		pBuffer->copyRdram();
+		pBuffer->m_cleared = false;
+	}
 }
 
 u32 ColorBufferToRDRAM::_getRealWidth(u32 _viWidth)

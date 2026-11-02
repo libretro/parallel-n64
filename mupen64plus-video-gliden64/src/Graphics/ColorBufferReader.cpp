@@ -38,6 +38,39 @@ namespace graphics {
 	}
 
 
+	void ColorBufferReader::_slotFormat(u32 _size, ColorFormatParam & _format, DatatypeParam & _type, u32 & _bytes) const
+	{
+		const FramebufferTextureFormats & fbTexFormat = gfxContext.getFramebufferTextureFormats();
+		if (_size > G_IM_SIZ_8b) {
+			_format = fbTexFormat.colorFormat;
+			_type = fbTexFormat.colorType;
+			_bytes = fbTexFormat.colorFormatBytes;
+		} else {
+			_format = fbTexFormat.monochromeFormat;
+			_type = fbTexFormat.monochromeType;
+			_bytes = fbTexFormat.monochromeFormatBytes;
+		}
+	}
+
+	const u8 * ColorBufferReader::slotPixels(u32 _slot, u32 _width, u32 & _height, u32 _size, u32 & _stride)
+	{
+		ColorFormatParam format;
+		DatatypeParam type;
+		u32 bytes;
+		_slotFormat(_size, format, type, bytes);
+
+		u32 stride = 0;
+		const u8 * pixelData = _mapSlot(_slot, _height, bytes, stride);
+		if (pixelData == nullptr)
+			return nullptr;
+		if (type == datatype::FLOAT && _size > G_IM_SIZ_8b) {
+			_stride = _width;
+			return _convertFloatTextureBuffer(pixelData, _width, _height, 0, stride);
+		}
+		_stride = stride;
+		return pixelData;
+	}
+
 	const u8 * ColorBufferReader::readPixels(s32 _x0, s32 _y0, u32 _width, u32 & _height, u32 _size, bool _sync,
 		u32 & _stride)
 	{

@@ -61,41 +61,21 @@ typedef struct DRAWIMAGE_t
   float scaleY;
 } DRAWIMAGE;
 
+/* The depth image is not drawn, only the depth buffer cleared for it. */
 static void DrawDepthImage (const DRAWIMAGE *d)
 {
-   float scale_x_src, scale_y_src, scale_x_dst, scale_y_dst;
-   uint16_t *src, *dst;
-   int32_t x, y, src_width, src_height, dst_width, dst_height;
-
    if (!fb_depth_render_enabled || d->imageH > d->imageW)
       return;
 
-   scale_x_dst = rdp.scale_x;
-   scale_y_dst = rdp.scale_y;
-   scale_x_src = 1.0f/rdp.scale_x;
-   scale_y_src = 1.0f/rdp.scale_y;
-   src_width   = d->imageW;
-   src_height  = d->imageH;
-   dst_width   = MIN((int)(src_width*scale_x_dst), (int)settings.scr_res_x);
-   dst_height  = MIN((int)(src_height*scale_y_dst), (int)settings.scr_res_y);
-   src         = (uint16_t*)(gfx_info.RDRAM+d->imagePtr);
-   dst         = (uint16_t*)malloc(dst_width * dst_height * sizeof(uint16_t));
-
-   for (y = 0; y < dst_height; y++)
-   {
-      for (x = 0; x < dst_width; x++)
-         dst[x + y * dst_width] = src[((int)(x * scale_x_src) + (int)(y*scale_y_src) * src_width)^1];
-   }
    grLfbWriteRegion(GR_BUFFER_AUXBUFFER,
          0,
          0,
          GR_LFB_SRC_FMT_ZA16,
-         dst_width,
-         dst_height,
+         0,
+         0,
          FXFALSE,
-         dst_width<<1,
-         dst);
-   free(dst);
+         0,
+         NULL);
 }
 
 static void DrawImage (DRAWIMAGE *d)

@@ -4,6 +4,7 @@
 #include "opengl_GLInfo.h"
 #include "opengl_GraphicsDrawer.h"
 #include "opengl_CachedFunctions.h"
+#include "opengl_RingSegments.h"
 
 namespace opengl {
 
@@ -39,6 +40,8 @@ namespace opengl {
 			GLint pos = 0;
 			GLuint size = 0;
 			GLubyte * data = nullptr;
+			RingSegments<3> ring;
+			GLsync fences[3] = {};
 		};
 
 		struct RectBuffers {
@@ -62,7 +65,10 @@ namespace opengl {
 
 		void _initBuffer(Buffer & _buffer, GLuint _bufSize);
 		void _updateBuffer(Buffer & _buffer, u32 _count, u32 _dataSize, const void * _data);
-		void _convertFromSPVertex(bool _flatColors, u32 _count, const SPVertex * _data);
+		GLubyte * _reserve(Buffer & _buffer, u32 _dataSize);
+		void _commit(Buffer & _buffer, u32 _count, u32 _dataSize);
+		static void _convertFromSPVertex(Vertex * _dst, bool _flatColors, u32 _count, const SPVertex * _data);
+		void _updateVertices(bool _flatColors, u32 _count, const SPVertex * _data);
 
 		const GLInfo & m_glInfo;
 		CachedVertexAttribArray * m_cachedAttribArray;

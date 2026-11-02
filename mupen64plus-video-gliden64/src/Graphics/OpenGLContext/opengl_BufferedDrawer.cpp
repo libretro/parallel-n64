@@ -52,6 +52,7 @@ BufferedDrawer::BufferedDrawer(const GLInfo & _glinfo, CachedVertexAttribArray *
 void BufferedDrawer::_initBuffer(Buffer & _buffer, GLuint _bufSize)
 {
 	_buffer.size = _bufSize;
+	_buffer.ring.init(_bufSize);
 	glGenBuffers(1, &_buffer.handle);
 	m_bindBuffer->bind(Parameter(_buffer.type), ObjectHandle(_buffer.handle));
 	if (m_glInfo.bufferStorage) {
@@ -66,6 +67,11 @@ BufferedDrawer::~BufferedDrawer()
 {
 	m_bindBuffer->bind(Parameter(GL_ARRAY_BUFFER), ObjectHandle::null);
 	m_bindBuffer->bind(Parameter(GL_ELEMENT_ARRAY_BUFFER), ObjectHandle::null);
+	Buffer * all[3] = { &m_rectsBuffers.vbo, &m_trisBuffers.vbo, &m_trisBuffers.ebo };
+	for (Buffer * b : all)
+		for (GLsync & fence : b->fences)
+			if (fence != 0)
+				glDeleteSync(fence);
 	GLuint buffers[3] = { m_rectsBuffers.vbo.handle, m_trisBuffers.vbo.handle, m_trisBuffers.ebo.handle };
 	glDeleteBuffers(3, buffers);
 	glBindVertexArray(0);
@@ -73,28 +79,66 @@ BufferedDrawer::~BufferedDrawer()
 	glDeleteVertexArrays(2, arrays);
 }
 
-void BufferedDrawer::_updateBuffer(Buffer & _buffer, u32 _count, u32 _dataSize, const void * _data)
+namespace {
+	/* the draws so far, marked when the writes leave a segment */
+	struct SegmentFences
+	{
+		GLsync * fences;
+		void fence(u32 _seg)
+		{
+			if (fences[_seg] != 0)
+				glDeleteSync(fences[_seg]);
+			fences[_seg] = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
+		}
+		void wait(u32 _seg)
+		{
+			if (fences[_seg] == 0)
+				return;
+			GLenum res = glClientWaitSync(fences[_seg], GL_SYNC_FLUSH_COMMANDS_BIT, 0);
+			while (res == GL_TIMEOUT_EXPIRED)
+				res = glClientWaitSync(fences[_seg], 0, 1000000000);
+			glDeleteSync(fences[_seg]);
+			fences[_seg] = 0;
+		}
+	};
+}
+
+GLubyte * BufferedDrawer::_reserve(Buffer & _buffer, u32 _dataSize)
 {
-	if (_buffer.offset + _dataSize >= _buffer.size) {
-		_buffer.offset = 0;
+	SegmentFences fences = { _buffer.fences };
+	const u32 offset = _buffer.ring.place(u32(_buffer.offset), _dataSize, fences);
+	if (offset != u32(_buffer.offset)) {
+		_buffer.offset = offset;
 		_buffer.pos = 0;
 	}
+	return m_glInfo.bufferStorage ? &_buffer.data[_buffer.offset] : nullptr;
+}
 
-	if (m_glInfo.bufferStorage) {
-		memcpy(&_buffer.data[_buffer.offset], _data, _dataSize);
+void BufferedDrawer::_commit(Buffer & _buffer, u32 _count, u32 _dataSize)
+{
 #ifdef GL_DEBUG
+	if (m_glInfo.bufferStorage) {
 		m_bindBuffer->bind(Parameter(_buffer.type), ObjectHandle(_buffer.handle));
 		glFlushMappedBufferRange(_buffer.type, _buffer.offset, _dataSize);
+	}
 #endif
+	_buffer.offset += _dataSize;
+	_buffer.pos += _count;
+}
+
+void BufferedDrawer::_updateBuffer(Buffer & _buffer, u32 _count, u32 _dataSize, const void * _data)
+{
+	GLubyte * dst = _reserve(_buffer, _dataSize);
+	if (dst != nullptr) {
+		memcpy(dst, _data, _dataSize);
 	} else {
+		/* unsynchronized: the segment fences keep the GPU's data apart */
 		m_bindBuffer->bind(Parameter(_buffer.type), ObjectHandle(_buffer.handle));
 		void* buffer_pointer = glMapBufferRange(_buffer.type, _buffer.offset, _dataSize, GL_MAP_WRITE_BIT | GL_MAP_UNSYNCHRONIZED_BIT);
 		memcpy(buffer_pointer, _data, _dataSize);
 		glUnmapBuffer(_buffer.type);
 	}
-
-	_buffer.offset += _dataSize;
-	_buffer.pos += _count;
+	_commit(_buffer, _count, _dataSize);
 }
 
 void BufferedDrawer::_updateRectBuffer(const graphics::Context::DrawRectParameters & _params)
@@ -140,14 +184,11 @@ void BufferedDrawer::drawRects(const graphics::Context::DrawRectParameters & _pa
 	glDrawArrays(GLenum(_params.mode), m_rectsBuffers.vbo.pos - _params.verticesCount, _params.verticesCount);
 }
 
-void BufferedDrawer::_convertFromSPVertex(bool _flatColors, u32 _count, const SPVertex * _data)
+void BufferedDrawer::_convertFromSPVertex(Vertex * _dst, bool _flatColors, u32 _count, const SPVertex * _data)
 {
-	if (_count > m_vertices.size())
-		m_vertices.resize(_count);
-
 	for (u32 i = 0; i < _count; ++i) {
 		const SPVertex & src = _data[i];
-		Vertex & dst = m_vertices[i];
+		Vertex & dst = _dst[i];
 		dst.x = src.x;
 		dst.y = src.y;
 		dst.z = src.z;
@@ -169,6 +210,23 @@ void BufferedDrawer::_convertFromSPVertex(bool _flatColors, u32 _count, const SP
 	}
 }
 
+/* Converted straight into the mapped ring where there is one. */
+void BufferedDrawer::_updateVertices(bool _flatColors, u32 _count, const SPVertex * _data)
+{
+	Buffer & vboBuffer = m_trisBuffers.vbo;
+	const u32 vboDataSize = _count * static_cast<u32>(sizeof(Vertex));
+	GLubyte * dst = _reserve(vboBuffer, vboDataSize);
+	if (dst != nullptr) {
+		_convertFromSPVertex(reinterpret_cast<Vertex*>(dst), _flatColors, _count, _data);
+		_commit(vboBuffer, _count, vboDataSize);
+		return;
+	}
+	if (_count > m_vertices.size())
+		m_vertices.resize(_count);
+	_convertFromSPVertex(m_vertices.data(), _flatColors, _count, _data);
+	_updateBuffer(vboBuffer, _count, vboDataSize, m_vertices.data());
+}
+
 void BufferedDrawer::_updateTrianglesBuffers(const graphics::Context::DrawTriangleParameters & _params)
 {
 	const BuffersType type = BuffersType::triangles;
@@ -178,10 +236,7 @@ void BufferedDrawer::_updateTrianglesBuffers(const graphics::Context::DrawTriang
 		m_type = type;
 	}
 
-	_convertFromSPVertex(_params.flatColors, _params.verticesCount, _params.vertices);
-	const u32 vboDataSize = _params.verticesCount * static_cast<u32>(sizeof(Vertex));
-	Buffer & vboBuffer = m_trisBuffers.vbo;
-	_updateBuffer(vboBuffer, _params.verticesCount, vboDataSize, m_vertices.data());
+	_updateVertices(_params.flatColors, _params.verticesCount, _params.vertices);
 
 	if (_params.elements == nullptr)
 		return;
@@ -216,10 +271,7 @@ void BufferedDrawer::drawLine(f32 _width, SPVertex * _vertices)
 		m_type = type;
 	}
 
-	_convertFromSPVertex(false, 2, _vertices);
-	const GLsizeiptr vboDataSize = 2 * sizeof(Vertex);
-	Buffer & vboBuffer = m_trisBuffers.vbo;
-	_updateBuffer(vboBuffer, 2, vboDataSize, m_vertices.data());
+	_updateVertices(false, 2, _vertices);
 
 	glLineWidth(_width);
 	glDrawArrays(GL_LINES, m_trisBuffers.vbo.pos - 2, 2);

@@ -52,6 +52,9 @@
 #include <math.h>
 #include <stdarg.h>
 #include <libretro.h>
+#ifdef LRHOST_GL
+#include "lrhost_gl.h"
+#endif
 #ifdef LRHOST_VULKAN
 #include "lrhost_vulkan.h"
 #endif
@@ -87,6 +90,15 @@ static unsigned long swfb_lent, swfb_frames, swfb_hits;
 static void video_cb(const void *data, unsigned w, unsigned h, size_t pitch)
 {
     if (hidden_run) return;
+#ifdef LRHOST_GL
+    if (data == RETRO_HW_FRAME_BUFFER_VALID)
+    {
+        data = gl_read_frame(w, h);
+        pitch = (size_t)w * 4;
+        pixfmt = RETRO_PIXEL_FORMAT_XRGB8888;
+        if (!data) { frames_duped++; return; }
+    }
+#endif
 #ifdef LRHOST_VULKAN
     /* a HW frame: read the image back and treat it like a 32-bit frame */
     if (data == RETRO_HW_FRAME_BUFFER_VALID)
@@ -263,6 +275,19 @@ static bool env_cb(unsigned cmd, void *data)
         *(bool*)data = true; return true;
     case RETRO_ENVIRONMENT_GET_AUDIO_VIDEO_ENABLE:
         *(int*)data = hidden_run ? 0 : 3; return true;
+#ifdef LRHOST_GL
+    case RETRO_ENVIRONMENT_SET_HW_RENDER:
+    {
+        struct retro_hw_render_callback *cb = (struct retro_hw_render_callback*)data;
+        if (cb->context_type != RETRO_HW_CONTEXT_OPENGL && cb->context_type != RETRO_HW_CONTEXT_OPENGL_CORE) return false;
+        cb->get_current_framebuffer = gl_get_current_framebuffer;
+        cb->get_proc_address = gl_get_proc_address;
+        gl_hw = *cb;
+        return true;
+    }
+    case RETRO_ENVIRONMENT_GET_PREFERRED_HW_RENDER:
+        *(unsigned*)data = RETRO_HW_CONTEXT_OPENGL; return true;
+#endif
 #ifdef LRHOST_VULKAN
     case RETRO_ENVIRONMENT_SET_HW_RENDER:
     {
@@ -300,7 +325,7 @@ static bool env_cb(unsigned cmd, void *data)
         if (!vk_ready) { vk_up_announced++; return false; }
         *(const struct retro_hw_render_upscaler_interface**)data = &vk_up_iface;
         return true;
-#else
+#elif !defined(LRHOST_GL)
     case RETRO_ENVIRONMENT_SET_HW_RENDER:
         return false;   /* software renderers only */
     case RETRO_ENVIRONMENT_GET_PREFERRED_HW_RENDER:
@@ -421,6 +446,15 @@ int main(int argc, char **argv)
     game.data = malloc(game.size); if (fread((void*)game.data, 1, game.size, f) != game.size) return 1; fclose(f);
     game.path = argv[2]; game.meta = NULL;
     if (!r_load(&game)) { fprintf(stderr, "retro_load_game failed\n"); return 1; }
+#ifdef LRHOST_GL
+    if (gl_hw.context_type == RETRO_HW_CONTEXT_OPENGL || gl_hw.context_type == RETRO_HW_CONTEXT_OPENGL_CORE)
+    {
+        struct retro_system_av_info gav;
+        r_get_av(&gav);
+        if (!gl_init(gav.geometry.max_width, gav.geometry.max_height)) return 1;
+        if (gl_hw.context_reset) gl_hw.context_reset();
+    }
+#endif
 #ifdef LRHOST_VULKAN
     if (vk_hw.context_type == RETRO_HW_CONTEXT_VULKAN)
     {
@@ -543,6 +577,9 @@ int main(int argc, char **argv)
                frames_presented, frames_duped, frame_crc);
         free(s);
     }
+#ifdef LRHOST_GL
+    gl_shutdown();
+#endif
 #ifdef LRHOST_VULKAN
     if (vk_up_on)
         printf("upscaler: asked for in retro_load_game %d, frames with inputs %ld\n", vk_up_announced, vk_up_frames);

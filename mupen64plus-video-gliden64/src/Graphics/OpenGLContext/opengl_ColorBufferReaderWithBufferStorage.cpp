@@ -26,7 +26,6 @@ void ColorBufferReaderWithBufferStorage::_initBuffers()
 
 	// Generate Pixel Buffer Objects
 	glGenBuffers(m_numPBO, m_PBO);
-	m_curIndex = 0;
 
 	// Initialize Pixel Buffer Objects
 	for (u32 index = 0; index < m_numPBO; ++index) {
@@ -52,30 +51,53 @@ void ColorBufferReaderWithBufferStorage::_destroyBuffers()
 const u8 * ColorBufferReaderWithBufferStorage::_readPixels(const ReadColorBufferParams& _params, u32& _heightOffset,
 	u32& _stride)
 {
-	GLenum format = GLenum(_params.colorFormat);
-	GLenum type = GLenum(_params.colorType);
-
-	m_bindBuffer->bind(Parameter(GL_PIXEL_PACK_BUFFER), ObjectHandle(m_PBO[m_curIndex]));
-	glReadPixels(_params.x0, _params.y0, m_pTexture->width, _params.height, format, type, 0);
-
-	if (!_params.sync) {
-		//Setup a fence sync object so that we know when glReadPixels completes
-		m_fence[m_curIndex] = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
-		m_curIndex = (m_curIndex + 1) % m_numPBO;
-		//Wait for glReadPixels to complete for the currently selected PBO
-		if (m_fence[m_curIndex] != 0) {
-			glClientWaitSync(m_fence[m_curIndex], 0, 100000000);
-			glDeleteSync(m_fence[m_curIndex]);
-			m_fence[m_curIndex] = 0;
-		}
-	} else {
-		glFinish();
-	}
-
+	m_bindBuffer->bind(Parameter(GL_PIXEL_PACK_BUFFER), ObjectHandle(m_PBO[0]));
+	glReadPixels(_params.x0, _params.y0, m_pTexture->width, _params.height,
+		GLenum(_params.colorFormat), GLenum(_params.colorType), 0);
+	if (m_fence[0] != 0)
+		glDeleteSync(m_fence[0]);
+	m_fence[0] = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
+	slotReady(0, true);
 	_heightOffset = 0;
 	_stride = m_pTexture->width;
+	return reinterpret_cast<u8*>(m_PBOData[0]);
+}
 
-	return reinterpret_cast<u8*>(m_PBOData[m_curIndex]);
+void ColorBufferReaderWithBufferStorage::readToSlot(u32 _slot, s32 _x0, s32 _y0, u32 _height, u32 _size)
+{
+	ColorFormatParam format;
+	DatatypeParam type;
+	u32 bytes;
+	_slotFormat(_size, format, type, bytes);
+
+	m_bindBuffer->bind(Parameter(GL_PIXEL_PACK_BUFFER), ObjectHandle(m_PBO[_slot]));
+	glReadPixels(_x0, _y0, m_pTexture->width, _height, GLenum(format), GLenum(type), 0);
+	m_bindBuffer->bind(Parameter(GL_PIXEL_PACK_BUFFER), ObjectHandle::null);
+	if (m_fence[_slot] != 0)
+		glDeleteSync(m_fence[_slot]);
+	m_fence[_slot] = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
+}
+
+bool ColorBufferReaderWithBufferStorage::slotReady(u32 _slot, bool _wait)
+{
+	if (m_fence[_slot] == 0)
+		return true;
+	/* the poll flushes, so the fence is bound to signal; a wait has no
+	 * limit, as the rows are not valid before it does */
+	GLenum res = glClientWaitSync(m_fence[_slot], GL_SYNC_FLUSH_COMMANDS_BIT, 0);
+	while (_wait && res == GL_TIMEOUT_EXPIRED)
+		res = glClientWaitSync(m_fence[_slot], 0, 1000000000);
+	if (res == GL_TIMEOUT_EXPIRED)
+		return false;
+	glDeleteSync(m_fence[_slot]);
+	m_fence[_slot] = 0;
+	return true;
+}
+
+const u8 * ColorBufferReaderWithBufferStorage::_mapSlot(u32 _slot, u32, u32, u32 & _stride)
+{
+	_stride = m_pTexture->width;
+	return reinterpret_cast<const u8*>(m_PBOData[_slot]);
 }
 
 void ColorBufferReaderWithBufferStorage::cleanUp()

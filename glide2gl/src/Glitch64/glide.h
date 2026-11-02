@@ -520,11 +520,11 @@ grLfbWriteRegion( int32_t dst_buffer,
                   int32_t pixelPipeline,
                   int32_t src_stride, void *src_data );
 
- int32_t 
-grLfbReadRegion( int32_t src_buffer,
-                 uint32_t src_x, uint32_t src_y,
-                 uint32_t src_width, uint32_t src_height,
-                 uint32_t dst_stride, void *dst_data );
+/* The window's pixels in [x, x + w) x [y, y + h), upper-left origin,
+ * as RGBA8 rows *stride bytes apart, the bottom row first; the rect is
+ * clipped to the window (*w, *h). Valid until the next read. */
+const uint8_t *grLfbReadRect(int32_t *x, int32_t *y, int32_t *w, int32_t *h, uint32_t *stride);
+
 
 #define guFogGenerateLinear(nearZ, farZ) \
 { \

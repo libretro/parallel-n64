@@ -18,7 +18,12 @@ namespace opengl {
 
 		void cleanUp() override;
 
+		u32 numSlots() const override { return m_numPBO; }
+		void readToSlot(u32 _slot, s32 _x0, s32 _y0, u32 _height, u32 _size) override;
+		bool slotReady(u32 _slot, bool _wait) override;
+
 	private:
+		const u8 * _mapSlot(u32 _slot, u32 _height, u32 _bytes, u32 & _stride) override;
 		void _initBuffers();
 		void _destroyBuffers();
 
@@ -28,7 +33,6 @@ namespace opengl {
 		u32 m_numPBO;
 		GLuint m_PBO[_maxPBO];
 		void* m_PBOData[_maxPBO];
-		u32 m_curIndex;
 		GLsync m_fence[_maxPBO];
 	};
 
