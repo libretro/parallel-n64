@@ -41,6 +41,17 @@ struct UpscalerFrame
 	float jitter_x;
 	float jitter_y;
 	bool reset;
+
+	/* back to none, in place */
+	void clear()
+	{
+		motion_vectors.reset();
+		depth.reset();
+		translucent.reset();
+		jitter_x = 0.0f;
+		jitter_y = 0.0f;
+		reset = false;
+	}
 };
 
 /* upscaler_color.comp: the framebuffer the VI shows, upscaled RDRAM read

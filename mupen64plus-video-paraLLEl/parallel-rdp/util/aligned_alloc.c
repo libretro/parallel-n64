@@ -20,44 +20,41 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include "aligned_alloc.hpp"
+#if !defined(_WIN32) && !defined(_POSIX_C_SOURCE)
+#define _POSIX_C_SOURCE 200112L
+#endif
+
 #include <stdlib.h>
-#include <string.h>
 #ifdef _WIN32
 #include <malloc.h>
 #endif
+#include "aligned_alloc.h"
 
-namespace Util
+void *granite_memalign_alloc(size_t boundary, size_t size)
 {
-void *memalign_alloc(size_t boundary, size_t size)
-{
-#if defined(_WIN32)
-    return _aligned_malloc(size, boundary);
-#elif defined(_ISOC11_SOURCE)
-    return aligned_alloc(boundary, (size + boundary - 1) & ~(boundary - 1));
-#elif (_POSIX_C_SOURCE >= 200112L) || (_XOPEN_SOURCE >= 600)
-	void *ptr = nullptr;
-	if (posix_memalign(&ptr, boundary, size) < 0)
-		return nullptr;
-	return ptr;
+#ifdef _WIN32
+	return _aligned_malloc(size, boundary);
 #else
-    // Align stuff ourselves. Kinda ugly, but will work anywhere.
-    void **place;
-    uintptr_t addr = 0;
-    void *ptr = malloc(boundary + size + sizeof(uintptr_t));
-
-    if (ptr == nullptr)
-        return nullptr;
-
-    addr = ((uintptr_t)ptr + sizeof(uintptr_t) + boundary) & ~(boundary - 1);
-    place = (void **) addr;
-    place[-1] = ptr;
-
-    return (void *) addr;
+	void *ptr = NULL;
+	/* posix_memalign wants a multiple of sizeof(void *) */
+	if (boundary < sizeof(void *))
+		boundary = sizeof(void *);
+	if (posix_memalign(&ptr, boundary, size) != 0)
+		return NULL;
+	return ptr;
 #endif
 }
 
-void *heap_new(size_t size)
+void granite_memalign_free(void *ptr)
+{
+#ifdef _WIN32
+	_aligned_free(ptr);
+#else
+	free(ptr);
+#endif
+}
+
+void *granite_heap_new(size_t size)
 {
 	void *ptr = malloc(size);
 	if (!ptr)
@@ -65,26 +62,10 @@ void *heap_new(size_t size)
 	return ptr;
 }
 
-void *heap_new_aligned(size_t size, size_t align)
+void *granite_heap_new_aligned(size_t size, size_t align)
 {
-	void *ptr = memalign_alloc(align, size);
+	void *ptr = granite_memalign_alloc(align, size);
 	if (!ptr)
 		abort();
 	return ptr;
-}
-
-void memalign_free(void *ptr)
-{
-#if defined(_WIN32)
-    _aligned_free(ptr);
-#elif !defined(_ISOC11_SOURCE) && !((_POSIX_C_SOURCE >= 200112L) || (_XOPEN_SOURCE >= 600))
-    if (ptr != nullptr)
-    {
-        void **p = (void **) ptr;
-        free(p[-1]);
-    }
-#else
-    free(ptr);
-#endif
-}
 }

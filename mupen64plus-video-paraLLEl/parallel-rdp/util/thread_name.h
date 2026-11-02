@@ -20,11 +20,16 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#pragma once
+#ifndef GRANITE_THREAD_NAME_H
+#define GRANITE_THREAD_NAME_H
 
-#include <stdint.h>
+#include <retro_common_api.h>
 
-namespace Util
-{
-int64_t get_current_time_nsecs();
-}
+RETRO_BEGIN_DECLS
+
+/* Names the calling thread for debuggers and profilers, where the OS can */
+void granite_set_thread_name(const char *name);
+
+RETRO_END_DECLS
+
+#endif

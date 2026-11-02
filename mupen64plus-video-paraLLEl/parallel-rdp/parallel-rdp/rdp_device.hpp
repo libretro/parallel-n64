@@ -26,7 +26,7 @@
 #include "video_interface.hpp"
 #include "rdp_renderer.hpp"
 #include "rdp_common.hpp"
-#include "command_ring.hpp"
+#include "command_ring.h"
 #include "rdp_worker.h"
 #include <retro_atomic.h>
 #include "rdp_dump_write.hpp"
@@ -245,7 +245,9 @@ private:
 	VkImageLayout scanout_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 	Vulkan::ImageHandle scanout_result;
 	UpscalerFrame upscaler_frame = {};
-	CommandRing ring;
+	// NULL when commands run on the caller's thread
+	rdp_command_ring_t *ring = nullptr;
+	static void run_ring_command(void *self, unsigned num_words, const uint32_t *words);
 
 	void clear_hidden_rdram();
 	void clear_tmem();

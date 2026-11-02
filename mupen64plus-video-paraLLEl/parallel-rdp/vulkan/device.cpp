@@ -22,10 +22,10 @@
 
 #include "device.hpp"
 #include "format.hpp"
-#include "timeline_trace_file.hpp"
+#include "timeline_trace_file.h"
 #include "type_to_string.hpp"
 #include "quirks.hpp"
-#include "timer.hpp"
+#include "timer.h"
 #include <string.h>
 #include <stdlib.h>
 
@@ -36,10 +36,10 @@
 
 
 #ifdef GRANITE_VULKAN_MT
-#include "thread_id.hpp"
+#include "thread_id.h"
 static unsigned get_thread_index()
 {
-	return Util::get_current_thread_index();
+	return granite_thread_index();
 }
 // No lock. The Device's frame, submission, command pool, buffer pool and
 // memory allocator state has a single owner at any time: the thread that
@@ -763,7 +763,7 @@ void Device::set_context(const Context &context)
 	table = &context.get_device_table();
 
 #ifdef GRANITE_VULKAN_MT
-	register_thread_index(0);
+	granite_register_thread_index(0);
 #endif
 	instance = context.get_instance();
 	gpu = context.get_gpu();
@@ -2254,11 +2254,11 @@ QueryPoolHandle Device::write_calibrated_timestamp_nolock()
 		return {};
 
 	auto handle = QueryPoolHandle(handle_pool.query.allocate(this, false));
-	handle->signal_timestamp_ticks(get_current_time_nsecs());
+	handle->signal_timestamp_ticks(granite_time_nsecs());
 	return handle;
 }
 
-void Device::recalibrate_timestamps_fallback()
+UTIL_NOINLINE_COLD void Device::recalibrate_timestamps_fallback()
 {
 	wait_idle_nolock();
 	auto cmd = request_command_buffer_nolock(0, CommandBuffer::Type::Generic, false);
@@ -2268,10 +2268,10 @@ void Device::recalibrate_timestamps_fallback()
 		submit_discard_nolock(cmd);
 		return;
 	}
-	auto start_ts = Util::get_current_time_nsecs();
+	auto start_ts = granite_time_nsecs();
 	submit_nolock(cmd, nullptr, 0, nullptr);
 	wait_idle_nolock();
-	auto end_ts = Util::get_current_time_nsecs();
+	auto end_ts = granite_time_nsecs();
 	auto host_ts = (start_ts + end_ts) / 2;
 
 	LOGI("Calibrated timestamps with a fallback method. Uncertainty: %.3f us.\n", 1e-3 * (end_ts - start_ts));
@@ -2339,7 +2339,7 @@ void Device::init_calibrated_timestamps()
 	}
 }
 
-bool Device::resample_calibrated_timestamps()
+UTIL_NOINLINE_COLD bool Device::resample_calibrated_timestamps()
 {
 	VkCalibratedTimestampInfoEXT infos[2] = {};
 	infos[0].sType = VK_STRUCTURE_TYPE_CALIBRATED_TIMESTAMP_INFO_EXT;
@@ -2590,26 +2590,16 @@ void Device::PerFrame::begin()
 				min_timestamp_us = Util::min_of(min_timestamp_us, start_ts);
 				max_timestamp_us = Util::max_of(max_timestamp_us, end_ts);
 
-				auto *e = device.system_handles.timeline_trace_file->allocate_event();
-				e->set_desc(ts.timestamp_tag->get_tag());
-				e->set_tid(ts.tid);
-				e->pid = frame_index + 1;
-				e->start_ns = start_ts;
-				e->end_ns = end_ts;
-				device.system_handles.timeline_trace_file->submit_event(e);
+				granite_trace_file_record(device.system_handles.timeline_trace_file,
+						ts.timestamp_tag->get_tag(), ts.tid, frame_index + 1, start_ts, end_ts);
 			}
 		}
 	}
 
 	if (device.system_handles.timeline_trace_file && min_timestamp_us <= max_timestamp_us)
 	{
-		auto *e = device.system_handles.timeline_trace_file->allocate_event();
-		e->set_desc("CPU + GPU full frame");
-		e->set_tid("Frame context");
-		e->pid = frame_index + 1;
-		e->start_ns = min_timestamp_us;
-		e->end_ns = max_timestamp_us;
-		device.system_handles.timeline_trace_file->submit_event(e);
+		granite_trace_file_record(device.system_handles.timeline_trace_file,
+				"CPU + GPU full frame", "Frame context", frame_index + 1, min_timestamp_us, max_timestamp_us);
 	}
 
 	managers.timestamps.mark_end_of_frame_context();

@@ -26,7 +26,7 @@
 #include <retro_atomic.h>
 #include <stdlib.h>
 #include "util_lite.hpp"
-#include "aligned_alloc.hpp"
+#include "aligned_alloc.h"
 
 //#define OBJECT_POOL_DEBUG
 
@@ -66,7 +66,7 @@ public:
 #ifndef OBJECT_POOL_DEBUG
 		unsigned k;
 		for (k = 0; k < num_blocks; k++)
-			memalign_free(blocks[k]);
+			granite_memalign_free(blocks[k]);
 		::free(vacants);
 		vacants = nullptr;
 		num_vacants = 0;
@@ -116,13 +116,13 @@ protected:
 			return false;
 		num_objects = size_t(64) << num_blocks;
 		total = (size_t(64) << (num_blocks + 1)) - 64;
-		ptr = static_cast<T *>(memalign_alloc(alignof(T) > 64 ? alignof(T) : 64, num_objects * sizeof(T)));
+		ptr = static_cast<T *>(granite_memalign_alloc(alignof(T) > 64 ? alignof(T) : 64, num_objects * sizeof(T)));
 		if (!ptr)
 			return false;
 		list = static_cast<T **>(realloc(vacants, total * sizeof(T *)));
 		if (!list)
 		{
-			memalign_free(ptr);
+			granite_memalign_free(ptr);
 			return false;
 		}
 		vacants = list;
@@ -202,7 +202,7 @@ public:
 		{
 			void *objs = retro_atomic_load_acquire_ptr(&block_objs[k]);
 			if (objs)
-				memalign_free(objs);
+				granite_memalign_free(objs);
 			::free(block_next[k]);
 			block_next[k] = nullptr;
 			retro_atomic_ptr_init(&block_objs[k], nullptr);
@@ -291,13 +291,13 @@ private:
 			return 0;
 
 		uint32_t cap = block_cap(k);
-		void *objs = memalign_alloc(alignof(T) > 64 ? alignof(T) : 64, cap * sizeof(T));
+		void *objs = granite_memalign_alloc(alignof(T) > 64 ? alignof(T) : 64, cap * sizeof(T));
 		if (!objs)
 			return 0;
 		retro_atomic_int_t *next = static_cast<retro_atomic_int_t *>(malloc(cap * sizeof(retro_atomic_int_t)));
 		if (!next)
 		{
-			memalign_free(objs);
+			granite_memalign_free(objs);
 			return 0;
 		}
 

@@ -26,7 +26,7 @@
 #include "object_pool.hpp"
 #include "intrusive_list.hpp"
 #include "vulkan_headers.hpp"
-#include "logging.hpp"
+#include "logging.h"
 #include "bitops.hpp"
 #include "enum_cast.hpp"
 #include "vulkan_common.hpp"

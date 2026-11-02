@@ -23,9 +23,9 @@
 #include "command_buffer.hpp"
 #include "device.hpp"
 #include "format.hpp"
-#include "thread_id.hpp"
+#include "thread_id.h"
 #include "vulkan_prerotate.hpp"
-#include "timer.hpp"
+#include "timer.h"
 #include <string.h>
 
 //#define FULL_BACKTRACE_CHECKPOINTS
@@ -621,7 +621,7 @@ void CommandBuffer::end_render_pass()
 	begin_compute();
 }
 
-static void log_compile_time(const char *tag, Hash hash,
+static UTIL_NOINLINE void log_compile_time(const char *tag, Hash hash,
                              int64_t time_ns, VkResult result,
                              CommandBuffer::CompileMode mode)
 {
@@ -655,7 +655,7 @@ static void log_compile_time(const char *tag, Hash hash,
 		{
 			LOGI("Compile (%s, %016llx): thread %u - %.3f us (mode: %s, success: %s).\n",
 			     tag, static_cast<unsigned long long>(hash),
-			     get_current_thread_index(),
+			     granite_thread_index(),
 			     time_us, mode_str, result == VK_SUCCESS ? "yes" : "no");
 		}
 		else
@@ -663,7 +663,7 @@ static void log_compile_time(const char *tag, Hash hash,
 		{
 			LOGW("Stalled compile (%s, %016llx): thread %u - %.3f us (mode: %s, success: %s).\n",
 			     tag, static_cast<unsigned long long>(hash),
-			     get_current_thread_index(),
+			     granite_thread_index(),
 			     time_us, mode_str, result == VK_SUCCESS ? "yes" : "no");
 		}
 	}
@@ -759,9 +759,9 @@ Pipeline CommandBuffer::build_compute_pipeline(Device *device, const DeferredPip
 	if (mode == CompileMode::FailOnCompileRequired)
 		info.flags |= VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT_EXT;
 
-	auto start_ts = Util::get_current_time_nsecs();
+	auto start_ts = granite_time_nsecs();
 	VkResult vr = table.vkCreateComputePipelines(device->get_device(), compile.cache, 1, &info, nullptr, &compute_pipeline);
-	auto end_ts = Util::get_current_time_nsecs();
+	auto end_ts = granite_time_nsecs();
 	log_compile_time("compute", compile.hash, end_ts - start_ts, vr, mode);
 
 	if (vr != VK_SUCCESS || compute_pipeline == VK_NULL_HANDLE)
@@ -1021,9 +1021,9 @@ Pipeline CommandBuffer::build_graphics_pipeline(Device *device, const DeferredPi
 	if (mode == CompileMode::FailOnCompileRequired)
 		pipe.flags |= VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT_EXT;
 
-	auto start_ts = Util::get_current_time_nsecs();
+	auto start_ts = granite_time_nsecs();
 	VkResult res = table.vkCreateGraphicsPipelines(device->get_device(), compile.cache, 1, &pipe, nullptr, &pipeline);
-	auto end_ts = Util::get_current_time_nsecs();
+	auto end_ts = granite_time_nsecs();
 	log_compile_time("graphics", compile.hash, end_ts - start_ts, res, mode);
 
 	if (res != VK_SUCCESS || pipeline == VK_NULL_HANDLE)
@@ -1874,7 +1874,7 @@ void CommandBuffer::end_threaded_recording()
 	is_ended = true;
 
 	// We must end a command buffer on the same thread index we started it on.
-	VK_ASSERT(get_current_thread_index() == thread_index);
+	VK_ASSERT(granite_thread_index() == thread_index);
 
 	if (has_profiling())
 	{

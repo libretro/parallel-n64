@@ -24,12 +24,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "rdp_device.hpp"
-#include "logging.hpp"
+#include "logging.h"
 #include "bitops.hpp"
 #include "luts.hpp"
 #include "incoherent_pages.hpp"
-#include "timer.hpp"
-#include "thread_name.hpp"
+#include "timer.h"
+#include "thread_name.h"
 #include "shaders/slangmosh.hpp"
 
 namespace RDP
@@ -51,7 +51,7 @@ struct PipelineNode : mpsc_stack_node_t
 
 void pipeline_worker_start(void *)
 {
-	Util::set_current_thread_name("RDP Pipelines");
+	granite_set_thread_name("RDP Pipelines");
 }
 }
 
@@ -2484,7 +2484,7 @@ void Renderer::maintain_queues()
 	    pending_primitives >= Limits::MaxPrimitives ||
 	    pending_primitives_upscaled >= Limits::MaxPrimitives ||
 	    retro_atomic_load_relaxed_int(&active_submissions) == 0 ||
-	    int64_t(Util::get_current_time_nsecs() - last_submit_ns) > 1000000)
+	    int64_t(granite_time_nsecs() - last_submit_ns) > 1000000)
 	{
 		submit_to_queue();
 	}
@@ -2507,7 +2507,7 @@ void Renderer::enqueue_fence_wait(Vulkan::Fence fence)
 	op.unlock_cookie = &active_submissions;
 	retro_atomic_fetch_add_int(&active_submissions, 1);
 	processor.enqueue_coherency_operation(rdp_move(op));
-	last_submit_ns = Util::get_current_time_nsecs();
+	last_submit_ns = granite_time_nsecs();
 }
 
 void Renderer::submit_to_queue()

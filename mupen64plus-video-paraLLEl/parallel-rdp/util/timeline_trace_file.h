@@ -20,45 +20,29 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#pragma once
+#ifndef GRANITE_TIMELINE_TRACE_FILE_H
+#define GRANITE_TIMELINE_TRACE_FILE_H
 
-#include <stdio.h>
 #include <stdint.h>
-#include "rdp_worker.h"
+#include <retro_common_api.h>
 
-namespace Util
-{
-class TimelineTraceFile
-{
-public:
-	explicit TimelineTraceFile(const char *path);
-	~TimelineTraceFile();
+RETRO_BEGIN_DECLS
 
-	static void set_tid(const char *tid);
+/* A Chrome trace (JSON) of timed intervals. Any thread records; one I/O
+ * thread writes, without a lock. */
+typedef struct granite_trace_file granite_trace_file_t;
 
-	// The link is first so the I/O thread can take an event straight off
-	// the worker queue.
-	struct Event : mpsc_stack_node_t
-	{
-		char desc[256];
-		char tid[32];
-		uint32_t pid;
-		uint64_t start_ns, end_ns;
+/* NULL when the I/O thread cannot start; a file that cannot be opened
+ * still takes events, and drops them */
+granite_trace_file_t *granite_trace_file_new(const char *path);
 
-		void set_desc(const char *desc);
-		void set_tid(const char *tid);
-	};
+/* Writes out what is queued, joins the I/O thread, closes the file */
+void granite_trace_file_free(granite_trace_file_t *file);
 
-	Event *allocate_event();
-	void submit_event(Event *e);
+void granite_trace_file_record(granite_trace_file_t *file,
+		const char *desc, const char *tid, uint32_t pid,
+		uint64_t start_ns, uint64_t end_ns);
 
-private:
-	// Events are written out by one I/O thread (rdp_worker.c): any thread
-	// submits, no lock. Each event is its own allocation, freed by the
-	// I/O thread once written.
-	static void write_event(void *self, mpsc_stack_node_t *item);
-	rdp_worker_t *worker = nullptr;
-	FILE *file = nullptr;
-	uint64_t base_ts = 0;
-};
-}
+RETRO_END_DECLS
+
+#endif

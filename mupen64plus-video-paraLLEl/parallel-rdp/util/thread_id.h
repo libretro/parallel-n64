@@ -20,9 +20,37 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#pragma once
+#ifndef GRANITE_THREAD_ID_H
+#define GRANITE_THREAD_ID_H
 
-namespace Util
+#include <retro_common_api.h>
+#include <retro_inline.h>
+
+#if defined(_MSC_VER)
+#define GRANITE_THREAD_LOCAL __declspec(thread)
+#else
+#define GRANITE_THREAD_LOCAL __thread
+#endif
+
+RETRO_BEGIN_DECLS
+
+/* The calling thread's index for per-thread state; ~0u until registered */
+extern GRANITE_THREAD_LOCAL unsigned granite_thread_index_slot;
+
+/* Reports a thread that was never registered, and gives it index 0 */
+unsigned granite_thread_index_missing(void);
+
+static INLINE unsigned granite_thread_index(void)
 {
-void set_current_thread_name(const char *name);
+	unsigned index = granite_thread_index_slot;
+	return index != ~0u ? index : granite_thread_index_missing();
 }
+
+static INLINE void granite_register_thread_index(unsigned index)
+{
+	granite_thread_index_slot = index;
+}
+
+RETRO_END_DECLS
+
+#endif

@@ -48,11 +48,6 @@
 
 #include "quirks.hpp"
 
-namespace Util
-{
-class TimelineTraceFile;
-}
-
 namespace Granite
 {
 struct TaskGroup;

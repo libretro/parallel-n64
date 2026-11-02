@@ -1,5 +1,5 @@
 #include "rdp.hpp"
-#include "timeline_trace_file.hpp"
+#include "timeline_trace_file.h"
 #include "Gfx #1.3.h"
 #include "parallel.h"
 #include "z64.h"
@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include <streams/file_stream.h>
 #include <file/file_path.h>
+#include <retro_miscellaneous.h>
 #include <encodings/crc32.h>
 #include "pipeline_record_list.h"
 
@@ -37,7 +38,7 @@ static const uint8_t *hle_cmd_buf = nullptr;
 static uint32_t hle_cmd_base = 0;
 static uint32_t hle_cmd_len = 0;
 
-static Util::TimelineTraceFile *timeline_trace_file;
+static granite_trace_file_t *timeline_trace_file;
 static CommandProcessor *frontend;
 static Device *device;
 static Context *context;
@@ -717,7 +718,7 @@ void deinit()
 	device = nullptr;
 	Util::destroy(context);
 	context = nullptr;
-	Util::destroy(timeline_trace_file);
+	granite_trace_file_free(timeline_trace_file);
 	timeline_trace_file = nullptr;
 }
 
@@ -953,8 +954,8 @@ static bool create_device(struct retro_vulkan_context *frontend_context, VkInsta
 
 	if (const char *env = getenv("PARALLEL_RDP_TIMELINE_TRACE"))
 	{
-		Util::destroy(::RDP::timeline_trace_file);
-		::RDP::timeline_trace_file = Util::create<Util::TimelineTraceFile>(env);
+		granite_trace_file_free(::RDP::timeline_trace_file);
+		::RDP::timeline_trace_file = granite_trace_file_new(env);
 		handles.timeline_trace_file = ::RDP::timeline_trace_file;
 	}
 

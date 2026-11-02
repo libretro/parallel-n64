@@ -197,8 +197,8 @@ CommandProcessor::CommandProcessor(Vulkan::Device &device_, void *rdram_ptr,
 
 	if (!single_threaded_processing)
 	{
-		if (!ring.init(
-				this, 4 * 1024))
+		ring = rdp_command_ring_new(run_ring_command, this, 4 * 1024);
+		if (!ring)
 			single_threaded_processing = true;
 	}
 
@@ -218,7 +218,8 @@ CommandProcessor::~CommandProcessor()
 	// Join the command thread before any member goes: an idle tick can
 	// still flush and queue work to the timeline worker, which is
 	// destroyed before the ring would otherwise be.
-	ring.teardown_thread();
+	rdp_command_ring_free(ring);
+	ring = nullptr;
 	rdp_upscaler_free(upscaler);
 	Util::destroy(dump_writer);
 }
@@ -1032,7 +1033,7 @@ void CommandProcessor::enqueue_command_inner(unsigned num_words, const uint32_t 
 	if (single_threaded_processing)
 		enqueue_command_direct(num_words, words);
 	else
-		ring.enqueue_command(num_words, words);
+		rdp_command_ring_enqueue(ring, num_words, words);
 }
 
 void CommandProcessor::enqueue_command(unsigned num_words, const uint32_t *words)
@@ -1080,7 +1081,15 @@ void CommandProcessor::enqueue_command_dumped(unsigned num_words, const uint32_t
 		dump_writer->emit_command(cmd_id, words, num_words);
 }
 
-void CommandProcessor::enqueue_command_direct(unsigned, const uint32_t *words)
+// command_ring.c names the idle tick by number
+static_assert(unsigned(Op::MetaIdle) == 3, "RDP_COMMAND_RING_IDLE_OP");
+
+void CommandProcessor::run_ring_command(void *self, unsigned num_words, const uint32_t *words)
+{
+	static_cast<CommandProcessor *>(self)->enqueue_command_direct(num_words, words);
+}
+
+UTIL_NOINLINE void CommandProcessor::enqueue_command_direct(unsigned, const uint32_t *words)
 {
 #define OP(x) &CommandProcessor::op_##x
 	using CommandFunc = void (CommandProcessor::*)(const uint32_t *words);
@@ -1150,7 +1159,7 @@ void CommandProcessor::enqueue_command_direct(unsigned, const uint32_t *words)
 		{
 			if (upscaler)
 				rdp_upscaler_configure(upscaler, false, 1, false);
-			upscaler_frame = UpscalerFrame();
+			upscaler_frame.clear();
 			scanout_result = vi.scanout(scanout_layout, scanout_opts, renderer.get_scaling_factor());
 		}
 		break;
@@ -1394,7 +1403,7 @@ void CommandProcessor::upscaler_scanout()
 	cmd = device.request_command_buffer();
 	scanout_result = vi.upscaler_scanout(scale, fb, repeat);
 	if (!scanout_result)
-		upscaler_frame = UpscalerFrame();
+		upscaler_frame.clear();
 	else if (repeat)
 		upscaler_frame.reset = false;
 	else
@@ -1456,7 +1465,8 @@ void CommandProcessor::drain_command_ring()
 	Vulkan::QueryPoolHandle start_ts, end_ts;
 	if (timestamp)
 		start_ts = device.write_calibrated_timestamp();
-	ring.drain();
+	if (ring)
+		rdp_command_ring_drain(ring);
 	if (timestamp)
 	{
 		end_ts = device.write_calibrated_timestamp();
@@ -1648,7 +1658,7 @@ static CoherencyNode *take_coherency_node(mpsc_stack_node_t **spare, mpsc_stack_
 	unsigned capacity = 8;
 	while (capacity < n)
 		capacity <<= 1;
-	void *mem = Util::heap_new(sizeof(CoherencyNode) + capacity * sizeof(CoherencyCopy));
+	void *mem = granite_heap_new(sizeof(CoherencyNode) + capacity * sizeof(CoherencyCopy));
 	auto *node = UTIL_PLACEMENT_NEW(mem) CoherencyNode;
 	node->capacity = capacity;
 	return node;

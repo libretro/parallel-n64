@@ -23,13 +23,9 @@
 #pragma once
 
 #include "vulkan_headers.hpp"
-#include "logging.hpp"
+#include "logging.h"
+#include "timeline_trace_file.h"
 #include "vulkan_common.hpp"
-
-namespace Util
-{
-class TimelineTraceFile;
-}
 
 namespace Granite
 {
@@ -230,7 +226,7 @@ public:
 
 	struct SystemHandles
 	{
-		Util::TimelineTraceFile *timeline_trace_file = nullptr;
+		granite_trace_file_t *timeline_trace_file = nullptr;
 		Granite::Filesystem *filesystem = nullptr;
 		Granite::ThreadGroup *thread_group = nullptr;
 	};

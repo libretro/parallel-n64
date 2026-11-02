@@ -20,49 +20,57 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include "timer.hpp"
+#if !defined(_WIN32) && !defined(_POSIX_C_SOURCE)
+#define _POSIX_C_SOURCE 199309L
+#endif
+
+#include "timer.h"
 
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
-#else
-#include <time.h>
-#endif
+#include <retro_atomic.h>
 
-namespace Util
+/* The counter's rate is fixed at boot. The first thread to read it keeps
+ * it; others racing it use their own reading. */
+static double qpc_ns_per_tick;
+static retro_atomic_int_t qpc_rate_state; /* 0 unread, 1 being kept, 2 kept */
+
+static double granite_qpc_ns_per_tick(void)
 {
-#ifdef _WIN32
-struct QPCFreq
-{
-	QPCFreq()
+	LARGE_INTEGER freq;
+	double ns_per_tick;
+	if (retro_atomic_load_acquire_int(&qpc_rate_state) == 2)
+		return qpc_ns_per_tick;
+	QueryPerformanceFrequency(&freq);
+	ns_per_tick = 1e9 / (double)freq.QuadPart;
+	if (retro_atomic_cas_int(&qpc_rate_state, 0, 1))
 	{
-		LARGE_INTEGER freq;
-		QueryPerformanceFrequency(&freq);
-		inv_freq = 1e9 / double(freq.QuadPart);
+		qpc_ns_per_tick = ns_per_tick;
+		retro_atomic_store_release_int(&qpc_rate_state, 2);
 	}
+	return ns_per_tick;
+}
 
-	double inv_freq;
-} static static_qpc_freq;
-#endif
-
-int64_t get_current_time_nsecs()
+int64_t granite_time_nsecs(void)
 {
-#ifdef _WIN32
 	LARGE_INTEGER li;
 	if (!QueryPerformanceCounter(&li))
 		return 0;
-	return int64_t(double(li.QuadPart) * static_qpc_freq.inv_freq);
-#else
-	struct timespec ts = {};
-#ifdef ANDROID
-	constexpr auto timebase = CLOCK_MONOTONIC;
-#else
-	constexpr auto timebase = CLOCK_MONOTONIC_RAW;
-#endif
-	if (clock_gettime(timebase, &ts) < 0)
-		return 0;
-	return ts.tv_sec * 1000000000ll + ts.tv_nsec;
-#endif
+	return (int64_t)((double)li.QuadPart * granite_qpc_ns_per_tick());
 }
+#else
+#include <time.h>
 
+int64_t granite_time_nsecs(void)
+{
+	struct timespec ts;
+#if defined(CLOCK_MONOTONIC_RAW) && !defined(ANDROID)
+	if (clock_gettime(CLOCK_MONOTONIC_RAW, &ts) < 0)
+#else
+	if (clock_gettime(CLOCK_MONOTONIC, &ts) < 0)
+#endif
+		return 0;
+	return (int64_t)ts.tv_sec * 1000000000 + ts.tv_nsec;
 }
+#endif

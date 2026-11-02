@@ -20,16 +20,40 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#pragma once
+#ifndef GRANITE_LOGGING_H
+#define GRANITE_LOGGING_H
 
-#include <stddef.h>
-#include <stdlib.h>
+#include <stdio.h>
+#include <retro_common_api.h>
 
-namespace Util
-{
-void *memalign_alloc(size_t boundary, size_t size);
-void memalign_free(void *ptr);
+#ifdef __LIBRETRO__
+#include <libretro.h>
 
-struct AlignedDeleter { void operator()(void *ptr) { memalign_free(ptr); }};
+RETRO_BEGIN_DECLS
 
-}
+/* To the frontend's log, at its own level */
+void granite_log(enum retro_log_level level, const char *fmt, ...);
+
+RETRO_END_DECLS
+
+#define LOGE(...) granite_log(RETRO_LOG_ERROR, __VA_ARGS__)
+#define LOGW(...) granite_log(RETRO_LOG_WARN, __VA_ARGS__)
+#define LOGI(...) granite_log(RETRO_LOG_INFO, __VA_ARGS__)
+#elif defined(ANDROID)
+#include <android/log.h>
+#define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, "Granite", __VA_ARGS__)
+#define LOGW(...) __android_log_print(ANDROID_LOG_WARN, "Granite", __VA_ARGS__)
+#define LOGI(...) __android_log_print(ANDROID_LOG_INFO, "Granite", __VA_ARGS__)
+#else
+#define GRANITE_LOG_STDERR(tag, ...) \
+	do \
+	{ \
+		fprintf(stderr, tag __VA_ARGS__); \
+		fflush(stderr); \
+	} while (0)
+#define LOGE(...) GRANITE_LOG_STDERR("[ERROR]: ", __VA_ARGS__)
+#define LOGW(...) GRANITE_LOG_STDERR("[WARN]: ", __VA_ARGS__)
+#define LOGI(...) GRANITE_LOG_STDERR("[INFO]: ", __VA_ARGS__)
+#endif
+
+#endif

@@ -29,6 +29,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include "aligned_alloc.h"
 #if defined(_MSC_VER) && !defined(__clang__)
 #include <intrin.h>
 #endif
@@ -149,9 +150,6 @@ inline void operator delete(void *, Util::PlacementTag, void *) noexcept
    promise everywhere (32-bit MSVC), comes from memalign. */
 namespace Util
 {
-void *memalign_alloc(size_t boundary, size_t size);
-void memalign_free(void *ptr);
-
 /* Clang and MSVC name it as the standard trait does; GCC up to 13 has
    only the older builtin, which Clang now warns of. */
 #if defined(__clang__) || defined(_MSC_VER)
@@ -160,29 +158,17 @@ void memalign_free(void *ptr);
 #define UTIL_IS_TRIVIALLY_DESTRUCTIBLE(T) __has_trivial_destructor(T)
 #endif
 
-/* What a new-expression's operator new does: never NULL, out of memory
-   ends the program. Out of line, as operator new is, so a call site is a
-   call and nothing else. */
-#if defined(__GNUC__) || defined(__clang__)
-#define UTIL_HEAP_NEW_ATTRS __attribute__((malloc, returns_nonnull, alloc_size(1)))
-#else
-#define UTIL_HEAP_NEW_ATTRS
-#endif
-UTIL_HEAP_NEW_ATTRS void *heap_new(size_t size);
-/* for types aligned past what malloc promises */
-UTIL_HEAP_NEW_ATTRS void *heap_new_aligned(size_t size, size_t align);
-
 template <typename T>
 static inline void *heap_alloc(size_t size)
 {
-	return alignof(T) > 8 ? heap_new_aligned(size, alignof(T)) : heap_new(size);
+	return alignof(T) > 8 ? granite_heap_new_aligned(size, alignof(T)) : granite_heap_new(size);
 }
 
 template <typename T>
 static inline void heap_free(void *p)
 {
 	if (alignof(T) > 8)
-		memalign_free(p);
+		granite_memalign_free(p);
 	else
 		free(p);
 }
