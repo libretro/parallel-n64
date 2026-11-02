@@ -41,6 +41,7 @@ PARALLEL_RDP_SOURCES_C := \
         $(PARALLEL_RDP_IMPLEMENTATION)/util/aligned_alloc.c \
         $(PARALLEL_RDP_IMPLEMENTATION)/util/legion_allocator.c \
         $(PARALLEL_RDP_IMPLEMENTATION)/util/logging.c \
+        $(PARALLEL_RDP_IMPLEMENTATION)/util/pool.c \
         $(PARALLEL_RDP_IMPLEMENTATION)/util/thread_id.c \
         $(PARALLEL_RDP_IMPLEMENTATION)/util/thread_name.c \
         $(PARALLEL_RDP_IMPLEMENTATION)/util/timeline_trace_file.c \
