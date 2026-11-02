@@ -40,6 +40,11 @@ public:
 		return --count == 0;
 	}
 
+	inline bool is_one() const
+	{
+		return count == 1;
+	}
+
 private:
 	uint32_t count = 1;
 };
@@ -60,6 +65,11 @@ public:
 	inline bool release()
 	{
 		return count.sub_is_last();
+	}
+
+	inline bool is_one() const
+	{
+		return count.is_one();
 	}
 
 private:
@@ -87,6 +97,12 @@ public:
 	void add_reference()
 	{
 		reference_count.add_ref();
+	}
+
+	/* No other handle to it: none could be in use, or start to be. */
+	bool only_reference() const
+	{
+		return reference_count.is_one();
 	}
 
 	IntrusivePtrEnabled() = default;

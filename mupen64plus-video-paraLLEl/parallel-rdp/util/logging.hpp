@@ -36,7 +36,6 @@ public:
 };
 
 bool interface_log(const char *tag, const char *fmt, ...);
-void set_thread_logging_interface(LoggingInterface *iface);
 }
 
 #if defined(_MSC_VER)

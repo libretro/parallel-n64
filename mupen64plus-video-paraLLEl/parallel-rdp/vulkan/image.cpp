@@ -95,11 +95,6 @@ unsigned ImageView::get_view_height() const
 	return info.image->get_height(info.base_level);
 }
 
-unsigned ImageView::get_view_depth() const
-{
-	return info.image->get_depth(info.base_level);
-}
-
 Image::Image(Device *device_, VkImage image_, VkImageView default_view, const DeviceAllocation &alloc_,
              const ImageCreateInfo &create_info_, VkImageViewType view_type)
     : Cookie(device_)
@@ -122,28 +117,6 @@ Image::Image(Device *device_, VkImage image_, VkImageView default_view, const De
 	}
 }
 
-DeviceAllocation Image::take_allocation_ownership()
-{
-	DeviceAllocation ret = {};
-	Util::swap(ret, alloc);
-	return ret;
-}
-
-ExternalHandle Image::export_handle()
-{
-	return alloc.export_handle(*device);
-}
-
-void Image::disown_image()
-{
-	owns_image = false;
-}
-
-void Image::disown_memory_allocation()
-{
-	owns_memory_allocation = false;
-}
-
 Image::~Image()
 {
 	if (owns_image)
@@ -161,47 +134,6 @@ Image::~Image()
 		else
 			device->free_memory(alloc);
 	}
-}
-
-const Buffer &LinearHostImage::get_host_visible_buffer() const
-{
-	return *cpu_image;
-}
-
-bool LinearHostImage::need_staging_copy() const
-{
-	return gpu_image->get_create_info().domain != ImageDomain::LinearHostCached &&
-	       gpu_image->get_create_info().domain != ImageDomain::LinearHost;
-}
-
-const DeviceAllocation &LinearHostImage::get_host_visible_allocation() const
-{
-	return need_staging_copy() ? cpu_image->get_allocation() : gpu_image->get_allocation();
-}
-
-const ImageView &LinearHostImage::get_view() const
-{
-	return gpu_image->get_view();
-}
-
-const Image &LinearHostImage::get_image() const
-{
-	return *gpu_image;
-}
-
-size_t LinearHostImage::get_offset() const
-{
-	return row_offset;
-}
-
-size_t LinearHostImage::get_row_pitch_bytes() const
-{
-	return row_pitch;
-}
-
-VkPipelineStageFlags LinearHostImage::get_used_pipeline_stages() const
-{
-	return stages;
 }
 
 LinearHostImage::LinearHostImage(Device *device_, ImageHandle gpu_image_, BufferHandle cpu_image_, VkPipelineStageFlags stages_)
@@ -237,8 +169,4 @@ void ImageDeleter::operator()(Image *image)
 	image->device->handle_pool.images.free(image);
 }
 
-void LinearHostImageDeleter::operator()(LinearHostImage *image)
-{
-	image->device->handle_pool.linear_images.free(image);
-}
 }

@@ -94,44 +94,8 @@ static bool has_layer_property(const Util::Vector<VkLayerProperties> &layers, co
 }
 #endif
 
-void Context::set_application_info(const VkApplicationInfo *app_info)
-{
-	user_application_info = app_info;
-	VK_ASSERT(!app_info || app_info->apiVersion >= VK_API_VERSION_1_1);
-}
-
-bool Context::init_instance_and_device(const char **instance_ext, uint32_t instance_ext_count, const char **device_ext,
-                                       uint32_t device_ext_count, ContextCreationFlags flags)
-{
-	destroy();
-
-	owned_instance = true;
-	owned_device = true;
-	if (!create_instance(instance_ext, instance_ext_count, flags))
-	{
-		destroy();
-		LOGE("Failed to create Vulkan instance.\n");
-		return false;
-	}
-
-	VkPhysicalDeviceFeatures features = {};
-	if (!create_device(VK_NULL_HANDLE, VK_NULL_HANDLE, device_ext, device_ext_count, &features, flags))
-	{
-		destroy();
-		LOGE("Failed to create Vulkan device.\n");
-		return false;
-	}
-
-	return true;
-}
-
 static bool loader_init_once;
 static PFN_vkGetInstanceProcAddr instance_proc_addr;
-
-PFN_vkGetInstanceProcAddr Context::get_instance_proc_addr()
-{
-	return instance_proc_addr;
-}
 
 bool Context::init_loader(PFN_vkGetInstanceProcAddr addr)
 {
@@ -192,31 +156,6 @@ bool Context::init_loader(PFN_vkGetInstanceProcAddr addr)
 	return true;
 }
 
-bool Context::init_from_instance_and_device(VkInstance instance_, VkPhysicalDevice gpu_, VkDevice device_, VkQueue queue_, uint32_t queue_family_)
-{
-	destroy();
-
-	device = device_;
-	instance = instance_;
-	gpu = gpu_;
-
-	queue_info = {};
-	queue_info.queues[QUEUE_INDEX_GRAPHICS] = queue_;
-	queue_info.queues[QUEUE_INDEX_COMPUTE] = queue_;
-	queue_info.queues[QUEUE_INDEX_TRANSFER] = queue_;
-	queue_info.family_indices[QUEUE_INDEX_GRAPHICS] = queue_family_;
-	queue_info.family_indices[QUEUE_INDEX_COMPUTE] = queue_family_;
-	queue_info.family_indices[QUEUE_INDEX_TRANSFER] = queue_family_;
-	owned_instance = false;
-	owned_device = true;
-
-	volkLoadInstance(instance);
-	volkLoadDeviceTable(&device_table, device);
-	vkGetPhysicalDeviceProperties(gpu, &gpu_props);
-	vkGetPhysicalDeviceMemoryProperties(gpu, &mem_props);
-	return true;
-}
-
 bool Context::init_device_from_instance(VkInstance instance_, VkPhysicalDevice gpu_, VkSurfaceKHR surface,
                                         const char **required_device_extensions, unsigned num_required_device_extensions,
                                         const VkPhysicalDeviceFeatures *required_features,
@@ -271,18 +210,6 @@ const VkApplicationInfo &Context::get_application_info() const
 		VK_STRUCTURE_TYPE_APPLICATION_INFO, nullptr, "Granite", 0, "Granite", 0, VK_API_VERSION_1_1,
 	};
 	return user_application_info ? *user_application_info : info_11;
-}
-
-void Context::notify_validation_error(const char *msg)
-{
-	if (message_callback)
-		message_callback(message_userdata, msg);
-}
-
-void Context::set_notification_callback(NotificationCallback func, void *userdata)
-{
-	message_callback = func;
-	message_userdata = userdata;
 }
 
 #ifdef VULKAN_DEBUG
@@ -723,10 +650,6 @@ bool Context::create_device(VkPhysicalDevice gpu_, VkSurfaceKHR surface, const c
 		{
 			flags |= CONTEXT_CREATION_ENABLE_ADVANCED_WSI_BIT;
 		}
-		else if (strcmp(required_device_extensions[i], VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME) == 0)
-		{
-			flags &= ~CONTEXT_CREATION_DISABLE_BINDLESS_BIT;
-		}
 	}
 
 
@@ -734,6 +657,12 @@ bool Context::create_device(VkPhysicalDevice gpu_, VkSurfaceKHR surface, const c
 	{
 		ext.supports_mirror_clamp_to_edge = true;
 		enabled_extensions.push_back(VK_KHR_SAMPLER_MIRROR_CLAMP_TO_EDGE_EXTENSION_NAME);
+	}
+
+	if (has_extension_property(queried_extensions, VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME))
+	{
+		ext.supports_push_descriptor = true;
+		enabled_extensions.push_back(VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME);
 	}
 
 #ifdef _WIN32
@@ -853,7 +782,6 @@ bool Context::create_device(VkPhysicalDevice gpu_, VkSurfaceKHR surface, const c
 	ext.host_query_reset_features = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_QUERY_RESET_FEATURES_EXT };
 	ext.demote_to_helper_invocation_features = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_DEMOTE_TO_HELPER_INVOCATION_FEATURES_EXT };
 	ext.scalar_block_features = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SCALAR_BLOCK_LAYOUT_FEATURES_EXT };
-	ext.descriptor_indexing_features = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES_EXT };
 	ext.memory_priority_features = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PRIORITY_FEATURES_EXT };
 	ext.astc_decode_features = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ASTC_DECODE_FEATURES_EXT };
 	ext.astc_hdr_features = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TEXTURE_COMPRESSION_ASTC_HDR_FEATURES_EXT };
@@ -940,12 +868,6 @@ bool Context::create_device(VkPhysicalDevice gpu_, VkSurfaceKHR surface, const c
 		ppNext = &ext.timeline_semaphore_features.pNext;
 	}
 
-	if ((flags & CONTEXT_CREATION_DISABLE_BINDLESS_BIT) == 0 && has_extension_property(queried_extensions, VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME))
-	{
-		enabled_extensions.push_back(VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME);
-		*ppNext = &ext.descriptor_indexing_features;
-		ppNext = &ext.descriptor_indexing_features.pNext;
-	}
 
 	if (has_extension_property(queried_extensions, VK_KHR_PERFORMANCE_QUERY_EXTENSION_NAME))
 	{
@@ -1098,10 +1020,10 @@ bool Context::create_device(VkPhysicalDevice gpu_, VkSurfaceKHR surface, const c
 
 	ext.host_memory_properties = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_MEMORY_HOST_PROPERTIES_EXT };
 	ext.subgroup_size_control_properties = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_SIZE_CONTROL_PROPERTIES_EXT };
-	ext.descriptor_indexing_properties = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_PROPERTIES_EXT };
 	ext.conservative_rasterization_properties = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CONSERVATIVE_RASTERIZATION_PROPERTIES_EXT };
 	ext.float_control_properties = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FLOAT_CONTROLS_PROPERTIES_KHR };
 	ext.id_properties = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ID_PROPERTIES };
+	ext.push_descriptor_properties = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PUSH_DESCRIPTOR_PROPERTIES_KHR };
 
 	ppNext = &props.pNext;
 
@@ -1122,11 +1044,6 @@ bool Context::create_device(VkPhysicalDevice gpu_, VkSurfaceKHR surface, const c
 		ppNext = &ext.subgroup_size_control_properties.pNext;
 	}
 
-	if (has_extension_property(queried_extensions, VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME))
-	{
-		*ppNext = &ext.descriptor_indexing_properties;
-		ppNext = &ext.descriptor_indexing_properties.pNext;
-	}
 
 	if (ext.supports_conservative_rasterization)
 	{
@@ -1144,6 +1061,12 @@ bool Context::create_device(VkPhysicalDevice gpu_, VkSurfaceKHR surface, const c
 	{
 		*ppNext = &ext.id_properties;
 		ppNext = &ext.id_properties.pNext;
+	}
+
+	if (ext.supports_push_descriptor)
+	{
+		*ppNext = &ext.push_descriptor_properties;
+		ppNext = &ext.push_descriptor_properties.pNext;
 	}
 
 	vkGetPhysicalDeviceProperties2(gpu, &props);
@@ -1187,22 +1110,7 @@ bool Context::create_device(VkPhysicalDevice gpu_, VkSurfaceKHR surface, const c
 			LOGI("%s queue: family %u, index %u.\n", family_names[i], queue_info.family_indices[i], queue_indices[i]);
 #endif
 
-	check_descriptor_indexing_features();
-
 	return true;
-}
-
-void Context::check_descriptor_indexing_features()
-{
-	auto &f = ext.descriptor_indexing_features;
-	if (f.descriptorBindingSampledImageUpdateAfterBind &&
-	    f.descriptorBindingPartiallyBound &&
-		f.descriptorBindingVariableDescriptorCount &&
-	    f.runtimeDescriptorArray &&
-	    f.shaderSampledImageArrayNonUniformIndexing)
-	{
-		ext.supports_descriptor_indexing = true;
-	}
 }
 
 }

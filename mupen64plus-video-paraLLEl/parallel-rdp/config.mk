@@ -19,12 +19,10 @@ PARALLEL_RDP_SOURCES_CXX := \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/cookie.cpp \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/descriptor_set.cpp \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/device.cpp \
-        $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/event_manager.cpp \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/fence.cpp \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/fence_manager.cpp \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/image.cpp \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/memory_allocator.cpp \
-        $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/pipeline_event.cpp \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/query_pool.cpp \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/render_pass.cpp \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/sampler.cpp \

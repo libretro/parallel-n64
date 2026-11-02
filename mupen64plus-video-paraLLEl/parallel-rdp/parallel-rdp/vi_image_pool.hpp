@@ -27,11 +27,13 @@
 
 namespace RDP
 {
-// The VI's intermediate images, reused across frames instead of created
-// every frame. An image handed out at frame serial S is free again at
-// S + contexts: by then the device has begun the same frame context
-// again, which waits for all of that context's work, as it does before
-// destroying what was released in it.
+// The VI's images, reused across frames instead of created every frame.
+// An image handed out at frame serial S is free again at S + contexts:
+// by then the device has begun the same frame context again, which waits
+// for all of that context's work, as it does before destroying what was
+// released in it. An image handed on (the scanout the frontend shows, the
+// previous frame kept to blend with) is free only once the pool holds
+// its last handle as well: whoever had it is done with it.
 class VIImagePool
 {
 public:
@@ -52,7 +54,8 @@ public:
 		for (size_t i = 0; i < entries.size(); i++)
 		{
 			Entry &e = entries[i];
-			if (e.free_serial <= serial && same(e.info, info) && (!layer_views || e.layer_views[0]))
+			if (e.free_serial <= serial && same(e.info, info) && (!layer_views || e.layer_views[0]) &&
+			    unshared(e))
 			{
 				e.free_serial = serial + contexts;
 				return &e;
@@ -72,7 +75,7 @@ public:
 		{
 			size_t oldest = entries.size();
 			for (i = 0; i < entries.size(); i++)
-				if (entries[i].free_serial <= serial &&
+				if (entries[i].free_serial <= serial && unshared(entries[i]) &&
 				    (oldest == entries.size() || entries[i].free_serial < entries[oldest].free_serial))
 					oldest = i;
 			if (oldest != entries.size())
@@ -112,6 +115,12 @@ private:
 		if (i + 1 != entries.size())
 			entries[i] = Util::move(entries.back());
 		entries.pop_back();
+	}
+
+	// An entry whose image failed to be created holds none.
+	static bool unshared(const Entry &e)
+	{
+		return !e.image || e.image->only_reference();
 	}
 
 	static bool same(const Vulkan::ImageCreateInfo &a, const Vulkan::ImageCreateInfo &b)

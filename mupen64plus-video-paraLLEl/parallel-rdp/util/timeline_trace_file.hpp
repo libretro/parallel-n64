@@ -35,8 +35,6 @@ public:
 	~TimelineTraceFile();
 
 	static void set_tid(const char *tid);
-	static TimelineTraceFile *get_per_thread();
-	static void set_per_thread(TimelineTraceFile *file);
 
 	// The link is first so the I/O thread can take an event straight off
 	// the worker queue.
@@ -50,8 +48,6 @@ public:
 		void set_desc(const char *desc);
 		void set_tid(const char *tid);
 	};
-	Event *begin_event(const char *desc, uint32_t pid = 0);
-	void end_event(Event *e);
 
 	Event *allocate_event();
 	void submit_event(Event *e);

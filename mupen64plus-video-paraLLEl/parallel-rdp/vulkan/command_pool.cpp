@@ -75,48 +75,6 @@ CommandPool::~CommandPool()
 		table->vkDestroyCommandPool(device->get_device(), pool, nullptr);
 }
 
-void CommandPool::signal_submitted(VkCommandBuffer cmd)
-{
-#ifdef VULKAN_DEBUG
-	VK_ASSERT(in_flight_has(cmd));
-	in_flight_erase(cmd);
-#else
-	(void)cmd;
-#endif
-}
-
-VkCommandBuffer CommandPool::request_secondary_command_buffer()
-{
-	VK_ASSERT(pool != VK_NULL_HANDLE);
-
-	if (secondary_index < secondary_buffers.size())
-	{
-		auto ret = secondary_buffers[secondary_index++];
-#ifdef VULKAN_DEBUG
-		VK_ASSERT(!in_flight_has(ret));
-		in_flight.push_back(ret);
-#endif
-		return ret;
-	}
-	else
-	{
-		VkCommandBuffer cmd;
-		VkCommandBufferAllocateInfo info = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO };
-		info.commandPool = pool;
-		info.level = VK_COMMAND_BUFFER_LEVEL_SECONDARY;
-		info.commandBufferCount = 1;
-
-		table->vkAllocateCommandBuffers(device->get_device(), &info, &cmd);
-#ifdef VULKAN_DEBUG
-		VK_ASSERT(!in_flight_has(cmd));
-		in_flight.push_back(cmd);
-#endif
-		secondary_buffers.push_back(cmd);
-		secondary_index++;
-		return cmd;
-	}
-}
-
 VkCommandBuffer CommandPool::request_command_buffer()
 {
 	VK_ASSERT(pool != VK_NULL_HANDLE);

@@ -932,7 +932,7 @@ static bool create_device(struct retro_vulkan_context *frontend_context, VkInsta
 
 	bool ok = ::RDP::context->init_device_from_instance(
 			instance, gpu, surface, required_device_extensions, num_required_device_extensions,
-			required_features, Vulkan::CONTEXT_CREATION_DISABLE_BINDLESS_BIT);
+			required_features, 0);
 	::RDP::context->set_device_factory(nullptr);
 	if (!ok)
 	{

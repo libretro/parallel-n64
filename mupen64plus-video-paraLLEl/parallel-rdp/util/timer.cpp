@@ -31,59 +31,6 @@
 
 namespace Util
 {
-FrameTimer::FrameTimer()
-{
-	reset();
-}
-
-void FrameTimer::reset()
-{
-	start = get_time();
-	last = start;
-	last_period = 0;
-}
-
-void FrameTimer::enter_idle()
-{
-	idle_start = get_time();
-}
-
-void FrameTimer::leave_idle()
-{
-	auto idle_end = get_time();
-	idle_time += idle_end - idle_start;
-}
-
-double FrameTimer::get_frame_time() const
-{
-	return double(last_period) * 1e-9;
-}
-
-double FrameTimer::frame()
-{
-	auto new_time = get_time() - idle_time;
-	last_period = new_time - last;
-	last = new_time;
-	return double(last_period) * 1e-9;
-}
-
-double FrameTimer::frame(double frame_time)
-{
-	last_period = int64_t(frame_time * 1e9);
-	last += last_period;
-	return frame_time;
-}
-
-double FrameTimer::get_elapsed() const
-{
-	return double(last - start) * 1e-9;
-}
-
-int64_t FrameTimer::get_time()
-{
-	return get_current_time_nsecs();
-}
-
 #ifdef _WIN32
 struct QPCFreq
 {
@@ -118,14 +65,4 @@ int64_t get_current_time_nsecs()
 #endif
 }
 
-void Timer::start()
-{
-	t = get_current_time_nsecs();
-}
-
-double Timer::end()
-{
-	auto nt = get_current_time_nsecs();
-	return double(nt - t) * 1e-9;
-}
 }

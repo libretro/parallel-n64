@@ -26,7 +26,6 @@
 #include "buffer_pool.hpp"
 #include "vulkan_headers.hpp"
 #include "image.hpp"
-#include "pipeline_event.hpp"
 #include "query_pool.hpp"
 #include "render_pass.hpp"
 #include "sampler.hpp"
@@ -289,28 +288,13 @@ public:
 	void copy_image_to_buffer(const Buffer &dst, const Image &src, VkDeviceSize buffer_offset, const VkOffset3D &offset,
 	                          const VkExtent3D &extent, unsigned row_length, unsigned slice_height,
 	                          const VkImageSubresourceLayers &subresrouce);
-
-	void full_barrier();
-	void pixel_barrier();
 	void barrier(VkPipelineStageFlags src_stage, VkAccessFlags src_access, VkPipelineStageFlags dst_stage,
 	             VkAccessFlags dst_access);
-
-	PipelineEvent signal_event(VkPipelineStageFlags stages);
-	void complete_signal_event(const EventHolder &event);
-
-	void wait_events(unsigned num_events, const VkEvent *events,
-	                 VkPipelineStageFlags src_stages, VkPipelineStageFlags dst_stages,
-	                 unsigned barriers, const VkMemoryBarrier *globals,
-	                 unsigned buffer_barriers, const VkBufferMemoryBarrier *buffers,
-	                 unsigned image_barriers, const VkImageMemoryBarrier *images);
 
 	void barrier(VkPipelineStageFlags src_stages, VkPipelineStageFlags dst_stages,
 	             unsigned barriers, const VkMemoryBarrier *globals,
 	             unsigned buffer_barriers, const VkBufferMemoryBarrier *buffers,
 	             unsigned image_barriers, const VkImageMemoryBarrier *images);
-
-	void buffer_barrier(const Buffer &buffer, VkPipelineStageFlags src_stage, VkAccessFlags src_access,
-	                    VkPipelineStageFlags dst_stage, VkAccessFlags dst_access);
 
 	void image_barrier(const Image &image, VkImageLayout old_layout, VkImageLayout new_layout,
 	                   VkPipelineStageFlags src_stage, VkAccessFlags src_access, VkPipelineStageFlags dst_stage,
@@ -320,9 +304,6 @@ public:
 	                     unsigned buffer_barriers, const VkBufferMemoryBarrier *buffers);
 	void image_barriers(VkPipelineStageFlags src_stages, VkPipelineStageFlags dst_stages,
 	                    unsigned image_barriers, const VkImageMemoryBarrier *images);
-
-	void release_external_buffer_barrier(const Buffer &buffer, VkPipelineStageFlags src_stage, VkAccessFlags src_access);
-	void acquire_external_buffer_barrier(const Buffer &buffer, VkPipelineStageFlags dst_stage, VkAccessFlags dst_access);
 	void release_external_image_barrier(const Image &image, VkImageLayout old_layout, VkImageLayout new_layout,
 	                                    VkPipelineStageFlags src_stage, VkAccessFlags src_access);
 	void acquire_external_image_barrier(const Image &image, VkImageLayout old_layout, VkImageLayout new_layout,
@@ -346,7 +327,6 @@ public:
 	void generate_mipmap(const Image &image);
 
 	void begin_render_pass(const RenderPassInfo &info, VkSubpassContents contents = VK_SUBPASS_CONTENTS_INLINE);
-	void next_subpass(VkSubpassContents contents = VK_SUBPASS_CONTENTS_INLINE);
 	void end_render_pass();
 	void submit_secondary(Util::IntrusivePtr<CommandBuffer> secondary);
 	inline unsigned get_current_subpass() const
@@ -359,17 +339,11 @@ public:
 
 	void set_program(Program *program);
 
-
 	void set_buffer_view(unsigned set, unsigned binding, const BufferView &view);
-	void set_storage_buffer_view(unsigned set, unsigned binding, const BufferView &view);
-	void set_input_attachments(unsigned set, unsigned start_binding);
 	void set_texture(unsigned set, unsigned binding, const ImageView &view);
-	void set_unorm_texture(unsigned set, unsigned binding, const ImageView &view);
-	void set_srgb_texture(unsigned set, unsigned binding, const ImageView &view);
 	void set_texture(unsigned set, unsigned binding, const ImageView &view, const Sampler &sampler);
 	void set_texture(unsigned set, unsigned binding, const ImageView &view, StockSampler sampler);
 	void set_storage_texture(unsigned set, unsigned binding, const ImageView &view);
-	void set_unorm_storage_texture(unsigned set, unsigned binding, const ImageView &view);
 	void set_sampler(unsigned set, unsigned binding, const Sampler &sampler);
 	void set_sampler(unsigned set, unsigned binding, StockSampler sampler);
 	void set_uniform_buffer(unsigned set, unsigned binding, const Buffer &buffer);
@@ -378,8 +352,6 @@ public:
 	void set_storage_buffer(unsigned set, unsigned binding, const Buffer &buffer);
 	void set_storage_buffer(unsigned set, unsigned binding, const Buffer &buffer, VkDeviceSize offset,
 	                        VkDeviceSize range);
-
-	void set_bindless(unsigned set, VkDescriptorSet desc_set);
 
 	void push_constants(const void *data, VkDeviceSize offset, VkDeviceSize range);
 
@@ -393,44 +365,22 @@ public:
 
 	void *allocate_vertex_data(unsigned binding, VkDeviceSize size, VkDeviceSize stride,
 	                           VkVertexInputRate step_rate = VK_VERTEX_INPUT_RATE_VERTEX);
-	void *allocate_index_data(VkDeviceSize size, VkIndexType index_type);
-
-	void *update_buffer(const Buffer &buffer, VkDeviceSize offset, VkDeviceSize size);
 	void *update_image(const Image &image, const VkOffset3D &offset, const VkExtent3D &extent, uint32_t row_length,
 	                   uint32_t image_height, const VkImageSubresourceLayers &subresource);
 	void *update_image(const Image &image, uint32_t row_length = 0, uint32_t image_height = 0);
-
-	void set_viewport(const VkViewport &viewport);
-	const VkViewport &get_viewport() const;
 	void set_scissor(const VkRect2D &rect);
 
 	void set_vertex_attrib(uint32_t attrib, uint32_t binding, VkFormat format, VkDeviceSize offset);
 	void set_vertex_binding(uint32_t binding, const Buffer &buffer, VkDeviceSize offset, VkDeviceSize stride,
 	                        VkVertexInputRate step_rate = VK_VERTEX_INPUT_RATE_VERTEX);
-	void set_index_buffer(const Buffer &buffer, VkDeviceSize offset, VkIndexType index_type);
 
 	void draw(uint32_t vertex_count, uint32_t instance_count = 1, uint32_t first_vertex = 0,
 	          uint32_t first_instance = 0);
-	void draw_indexed(uint32_t index_count, uint32_t instance_count = 1, uint32_t first_index = 0,
-	                  int32_t vertex_offset = 0, uint32_t first_instance = 0);
 
 	void dispatch(uint32_t groups_x, uint32_t groups_y, uint32_t groups_z);
-
-	void draw_indirect(const Buffer &buffer, uint32_t offset, uint32_t draw_count, uint32_t stride);
-	void draw_indexed_indirect(const Buffer &buffer, uint32_t offset, uint32_t draw_count, uint32_t stride);
-	void draw_multi_indirect(const Buffer &buffer, uint32_t offset, uint32_t draw_count, uint32_t stride,
-	                         const Buffer &count, uint32_t count_offset);
-	void draw_indexed_multi_indirect(const Buffer &buffer, uint32_t offset, uint32_t draw_count, uint32_t stride,
-	                                 const Buffer &count, uint32_t count_offset);
 	void dispatch_indirect(const Buffer &buffer, uint32_t offset);
 
 	void set_opaque_state();
-	void set_quad_state();
-	void set_opaque_sprite_state();
-	void set_transparent_sprite_state();
-
-	void save_state(CommandBufferSaveStateFlags flags, CommandBufferSavedState &state);
-	void restore_state(const CommandBufferSavedState &state);
 
 #define SET_STATIC_STATE(value)                               \
 	do                                                        \
@@ -705,7 +655,6 @@ private:
 	IndexState index_state = {};
 	VertexBindingState vbo = {};
 	ResourceBindings bindings;
-	VkDescriptorSet bindless_sets[VULKAN_NUM_DESCRIPTOR_SETS] = {};
 	VkDescriptorSet allocated_sets[VULKAN_NUM_DESCRIPTOR_SETS] = {};
 
 	Pipeline current_pipeline = {};
@@ -756,6 +705,7 @@ private:
 	void begin_graphics();
 	void flush_descriptor_set(uint32_t set);
 	void rebind_descriptor_set(uint32_t set);
+	void push_descriptor_set(uint32_t set);
 	void begin_compute();
 	void begin_context();
 
@@ -782,7 +732,6 @@ private:
 
 	void set_surface_transform_specialization_constants();
 };
-
 
 using CommandBufferHandle = Util::IntrusivePtr<CommandBuffer>;
 }

@@ -105,11 +105,14 @@ struct AtomicCount
 	inline void init(uint32_t v) { value = long(v); }
 	inline void add() { _InterlockedIncrement(&value); }
 	inline bool sub_is_last() { return _InterlockedDecrement(&value) == 0; }
+	inline bool is_one() const { return _InterlockedOr(const_cast<volatile long *>(&value), 0) == 1; }
 #else
 	uint32_t value;
 	inline void init(uint32_t v) { __atomic_store_n(&value, v, __ATOMIC_RELAXED); }
 	inline void add() { __atomic_fetch_add(&value, 1u, __ATOMIC_RELAXED); }
 	inline bool sub_is_last() { return __atomic_fetch_sub(&value, 1u, __ATOMIC_ACQ_REL) == 1; }
+	/* acquire: what the last other owner did happens before */
+	inline bool is_one() const { return __atomic_load_n(&value, __ATOMIC_ACQUIRE) == 1; }
 #endif
 };
 }

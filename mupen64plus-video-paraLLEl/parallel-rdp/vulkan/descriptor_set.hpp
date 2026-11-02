@@ -49,7 +49,6 @@ struct DescriptorSetLayout
 	uint32_t immutable_sampler_mask = 0;
 	uint8_t array_size[VULKAN_NUM_BINDINGS] = {};
 	uint32_t padding = 0;
-	enum { UNSIZED_ARRAY = 0xff };
 };
 
 // Avoid -Wclass-memaccess warnings since we hash DescriptorSetLayout.
@@ -58,60 +57,14 @@ static const unsigned VULKAN_NUM_SETS_PER_POOL = 16;
 static const unsigned VULKAN_DESCRIPTOR_RING_SIZE = 8;
 
 class DescriptorSetAllocator;
-class BindlessDescriptorPool;
 class ImageView;
-
-struct BindlessDescriptorPoolDeleter
-{
-	void operator()(BindlessDescriptorPool *pool);
-};
-
-class BindlessDescriptorPool : public Util::IntrusivePtrEnabled<BindlessDescriptorPool, BindlessDescriptorPoolDeleter, HandleCounter>,
-                               public InternalSyncEnabled
-{
-public:
-	friend struct BindlessDescriptorPoolDeleter;
-	explicit BindlessDescriptorPool(Device *device, DescriptorSetAllocator *allocator, VkDescriptorPool pool,
-	                                uint32_t total_sets, uint32_t total_descriptors);
-	~BindlessDescriptorPool();
-	void operator=(const BindlessDescriptorPool &) = delete;
-	BindlessDescriptorPool(const BindlessDescriptorPool &) = delete;
-
-	void reset();
-	bool allocate_descriptors(unsigned count);
-	VkDescriptorSet get_descriptor_set() const;
-
-	void set_texture(unsigned binding, const ImageView &view);
-	void set_texture_unorm(unsigned binding, const ImageView &view);
-	void set_texture_srgb(unsigned binding, const ImageView &view);
-
-private:
-	Device *device;
-	DescriptorSetAllocator *allocator;
-	VkDescriptorPool desc_pool;
-	VkDescriptorSet desc_set = VK_NULL_HANDLE;
-
-	uint32_t allocated_sets = 0;
-	uint32_t total_sets = 0;
-	uint32_t allocated_descriptor_count = 0;
-	uint32_t total_descriptors = 0;
-
-	void set_texture(unsigned binding, VkImageView view, VkImageLayout layout);
-};
-using BindlessDescriptorPoolHandle = Util::IntrusivePtr<BindlessDescriptorPool>;
-
-enum class BindlessResourceType
-{
-	ImageFP,
-	ImageInt
-};
 
 class DescriptorSetAllocator : public HashedObject<DescriptorSetAllocator>
 {
 public:
 	DescriptorSetAllocator(Util::Hash hash, Device *device, const DescriptorSetLayout &layout,
 	                       const uint32_t *stages_for_bindings,
-	                       const ImmutableSampler * const *immutable_samplers);
+	                       const ImmutableSampler * const *immutable_samplers, bool push);
 	~DescriptorSetAllocator();
 	void operator=(const DescriptorSetAllocator &) = delete;
 	DescriptorSetAllocator(const DescriptorSetAllocator &) = delete;
@@ -129,16 +82,14 @@ public:
 		return set_layout;
 	}
 
-	void clear();
-
-	bool is_bindless() const
+	// Push sets are written into the command buffer directly: no pools,
+	// no hashing, no cache.
+	bool is_push() const
 	{
-		return bindless;
+		return push;
 	}
 
-	VkDescriptorPool allocate_bindless_pool(unsigned num_sets, unsigned num_descriptors);
-	VkDescriptorSet allocate_bindless_set(VkDescriptorPool pool, unsigned num_descriptors);
-	void reset_bindless_pool(VkDescriptorPool pool);
+	void clear();
 
 private:
 	struct DescriptorSetNode : Util::TemporaryHashmapEnabled<DescriptorSetNode>, Util::IntrusiveListEnabled<DescriptorSetNode>
@@ -163,29 +114,7 @@ private:
 	};
 	PerThread *per_thread = nullptr;
 	unsigned num_per_thread = 0;
+	bool push;
 	Util::Vector<VkDescriptorPoolSize> pool_size;
-	bool bindless = false;
-};
-
-class BindlessAllocator
-{
-public:
-	void reserve_max_resources_per_pool(unsigned set_count, unsigned descriptor_count);
-	void set_bindless_resource_type(BindlessResourceType type);
-
-	void begin();
-	unsigned push(const ImageView &view);
-	VkDescriptorSet commit(Device &device);
-
-	unsigned get_next_offset() const;
-
-	void reset();
-
-private:
-	BindlessDescriptorPoolHandle descriptor_pool;
-	unsigned max_sets_per_pool = 0;
-	unsigned max_descriptors_per_pool = 0;
-	BindlessResourceType resource_type = BindlessResourceType::ImageFP;
-	Util::Vector<const ImageView *> views;
 };
 }

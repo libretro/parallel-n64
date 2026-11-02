@@ -57,12 +57,11 @@ struct ResourceLayout
 	uint32_t output_mask = 0;
 	uint32_t push_constant_size = 0;
 	uint32_t spec_constant_mask = 0;
+	// Carried in the reflection the shader bank stores; never set.
 	uint32_t bindless_set_mask = 0;
 	enum { Version = 3 };
 
 	bool unserialize(const uint8_t *data, size_t size);
-	bool serialize(uint8_t *data, size_t size) const;
-	static size_t serialization_size();
 };
 static_assert(sizeof(DescriptorSetLayout) % 8 == 0, "Size of DescriptorSetLayout does not align to 64 bits.");
 
@@ -75,7 +74,6 @@ struct CombinedResourceLayout
 	uint32_t stages_for_sets[VULKAN_NUM_DESCRIPTOR_SETS] = {};
 	VkPushConstantRange push_constant_range = {};
 	uint32_t descriptor_set_mask = 0;
-	uint32_t bindless_descriptor_set_mask = 0;
 	uint32_t spec_constant_mask[Util::ecast(ShaderStage::Count)] = {};
 	uint32_t combined_spec_constant_mask = 0;
 	Util::Hash push_constant_layout_hash = 0;
@@ -136,12 +134,18 @@ public:
 		return update_template[set];
 	}
 
+	uint32_t get_push_set_mask() const
+	{
+		return push_set_mask;
+	}
+
 private:
 	Device *device;
 	VkPipelineLayout pipe_layout = VK_NULL_HANDLE;
 	CombinedResourceLayout layout;
 	DescriptorSetAllocator *set_allocators[VULKAN_NUM_DESCRIPTOR_SETS] = {};
 	VkDescriptorUpdateTemplate update_template[VULKAN_NUM_DESCRIPTOR_SETS] = {};
+	uint32_t push_set_mask = 0;
 	void create_update_templates();
 };
 
@@ -167,9 +171,6 @@ public:
 	{
 		return module;
 	}
-
-	static bool reflect_resource_layout(ResourceLayout &layout, const uint32_t *spirv_data, size_t spirv_size);
-	static const char *stage_to_name(ShaderStage stage);
 	static Util::Hash hash(const uint32_t *data, size_t size, const ImmutableSamplerBank *sampler_bank);
 
 private:
@@ -209,8 +210,6 @@ public:
 
 	Pipeline get_pipeline(Util::Hash hash) const;
 	Pipeline add_pipeline(Util::Hash hash, const Pipeline &pipeline);
-
-	void promote_read_write_to_read_only();
 
 private:
 	void set_shader(ShaderStage stage, Shader *handle);

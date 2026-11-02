@@ -51,9 +51,6 @@ public:
 	uint32_t get_depth(uint32_t mip = 0) const;
 	uint32_t get_levels() const;
 	uint32_t get_layers() const;
-	uint32_t get_block_stride() const;
-	uint32_t get_block_dim_x() const;
-	uint32_t get_block_dim_y() const;
 	VkImageType get_image_type() const;
 	VkFormat get_format() const;
 

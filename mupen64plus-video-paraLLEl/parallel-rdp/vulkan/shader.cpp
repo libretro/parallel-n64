@@ -54,10 +54,26 @@ PipelineLayout::PipelineLayout(Hash hash, Device *device_, const CombinedResourc
 {
 	VkDescriptorSetLayout layouts[VULKAN_NUM_DESCRIPTOR_SETS] = {};
 	unsigned num_sets = 0;
+	// Set 0 is pushed straight into the command buffer when the device
+	// can take it whole: one push set per layout is all Vulkan allows.
+	// The choice depends on the set layout alone, so layouts that share
+	// set 0 make the same choice and stay compatible.
+	auto &features = device->get_device_features();
+	if (features.supports_push_descriptor && (layout.descriptor_set_mask & 1u))
+	{
+		uint32_t count = 0;
+		for (unsigned binding = 0; binding < VULKAN_NUM_BINDINGS; binding++)
+			if (layout.stages_for_bindings[0][binding])
+				count += layout.sets[0].array_size[binding];
+		if (count && count <= features.push_descriptor_properties.maxPushDescriptors)
+			push_set_mask = 1u;
+	}
+
 	for (unsigned i = 0; i < VULKAN_NUM_DESCRIPTOR_SETS; i++)
 	{
 		set_allocators[i] = device->request_descriptor_set_allocator(layout.sets[i], layout.stages_for_bindings[i],
-		                                                             immutable_samplers ? immutable_samplers->samplers[i] : nullptr);
+		                                                             immutable_samplers ? immutable_samplers->samplers[i] : nullptr,
+		                                                             (push_set_mask & (1u << i)) != 0);
 		layouts[i] = set_allocators[i]->get_layout();
 		if (layout.descriptor_set_mask & (1u << i))
 			num_sets = i + 1;
@@ -99,20 +115,19 @@ void PipelineLayout::create_update_templates()
 	{
 		if ((layout.descriptor_set_mask & (1u << desc_set)) == 0)
 			continue;
-		if ((layout.bindless_descriptor_set_mask & (1u << desc_set)) != 0)
-			continue;
 
 		VkDescriptorUpdateTemplateEntry update_entries[VULKAN_NUM_BINDINGS];
 		uint32_t update_count = 0;
 
 		auto &set_layout = layout.sets[desc_set];
+		bool is_push = (push_set_mask & (1u << desc_set)) != 0;
 
 		for (uint32_t binding_bits = set_layout.uniform_buffer_mask, binding; Util::next_bit(binding_bits, binding);)
 		{
 			unsigned array_size = set_layout.array_size[binding];
 			VK_ASSERT(update_count < VULKAN_NUM_BINDINGS);
 			auto &entry = update_entries[update_count++];
-			entry.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+			entry.descriptorType = is_push ? VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER : VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
 			entry.dstBinding = binding;
 			entry.dstArrayElement = 0;
 			entry.descriptorCount = array_size;
@@ -239,7 +254,8 @@ void PipelineLayout::create_update_templates()
 		VkDescriptorUpdateTemplateCreateInfo info = {VK_STRUCTURE_TYPE_DESCRIPTOR_UPDATE_TEMPLATE_CREATE_INFO };
 		info.pipelineLayout = pipe_layout;
 		info.descriptorSetLayout = set_allocators[desc_set]->get_layout();
-		info.templateType = VK_DESCRIPTOR_UPDATE_TEMPLATE_TYPE_DESCRIPTOR_SET;
+		info.templateType = is_push ? VK_DESCRIPTOR_UPDATE_TEMPLATE_TYPE_PUSH_DESCRIPTORS_KHR :
+		                    VK_DESCRIPTOR_UPDATE_TEMPLATE_TYPE_DESCRIPTOR_SET;
 		info.set = desc_set;
 		info.descriptorUpdateEntryCount = update_count;
 		info.pDescriptorUpdateEntries = update_entries;
@@ -265,49 +281,8 @@ PipelineLayout::~PipelineLayout()
 			table.vkDestroyDescriptorUpdateTemplate(device->get_device(), update, nullptr);
 }
 
-const char *Shader::stage_to_name(ShaderStage stage)
-{
-	switch (stage)
-	{
-	case ShaderStage::Compute:
-		return "compute";
-	case ShaderStage::Vertex:
-		return "vertex";
-	case ShaderStage::Fragment:
-		return "fragment";
-	case ShaderStage::Geometry:
-		return "geometry";
-	case ShaderStage::TessControl:
-		return "tess_control";
-	case ShaderStage::TessEvaluation:
-		return "tess_evaluation";
-	default:
-		return "unknown";
-	}
-}
-
 // Implicitly also checks for endian issues.
 static const uint16_t reflection_magic[] = { 'G', 'R', 'A', ResourceLayout::Version };
-
-size_t ResourceLayout::serialization_size()
-{
-	return sizeof(ResourceLayout) + sizeof(reflection_magic);
-}
-
-bool ResourceLayout::serialize(uint8_t *data, size_t size) const
-{
-	if (size != serialization_size())
-		return false;
-
-	// Cannot serialize externally defined immutable samplers.
-	for (auto &set : sets)
-		if (set.immutable_sampler_mask != 0)
-			return false;
-
-	memcpy(data, reflection_magic, sizeof(reflection_magic));
-	memcpy(data + sizeof(reflection_magic), this, sizeof(*this));
-	return true;
-}
 
 bool ResourceLayout::unserialize(const uint8_t *data, size_t size)
 {
@@ -333,11 +308,6 @@ Util::Hash Shader::hash(const uint32_t *data, size_t size, const ImmutableSample
 	hasher.data(data, size);
 	ImmutableSamplerBank::hash(hasher, sampler_bank);
 	return hasher.get();
-}
-
-bool Shader::reflect_resource_layout(ResourceLayout &, const uint32_t *, size_t)
-{
-	return false;
 }
 
 Shader::Shader(Hash hash, Device *device_, const uint32_t *data, size_t size,
@@ -371,9 +341,6 @@ Shader::Shader(Hash hash, Device *device_, const uint32_t *data, size_t size,
 				layout.sets[set].immutable_sampler_mask |= 1u << binding;
 		}
 	}
-
-	if (layout.bindless_set_mask != 0 && !device->get_device_features().supports_descriptor_indexing)
-		LOGE("Sufficient features for descriptor indexing is not supported on this device.\n");
 }
 
 Shader::~Shader()
@@ -420,13 +387,6 @@ void Program::destroy_pipeline(const Pipeline &pipeline)
 		device->destroy_pipeline_nolock(pipeline.pipeline);
 	else
 		device->destroy_pipeline(pipeline.pipeline);
-}
-
-void Program::promote_read_write_to_read_only()
-{
-#ifdef GRANITE_VULKAN_MT
-	pipelines.move_to_read_only();
-#endif
 }
 
 Program::~Program()

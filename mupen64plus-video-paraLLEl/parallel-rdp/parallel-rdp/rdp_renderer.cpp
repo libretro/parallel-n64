@@ -27,6 +27,7 @@
 #include "logging.hpp"
 #include "bitops.hpp"
 #include "luts.hpp"
+#include "incoherent_pages.hpp"
 #include "timer.hpp"
 #include "thread_name.hpp"
 #include "shaders/slangmosh.hpp"
@@ -184,11 +185,6 @@ bool Renderer::init_renderer(const RendererOptions &options)
 void Renderer::set_device(Vulkan::Device *device_)
 {
 	device = device_;
-}
-
-void Renderer::set_validation_interface(ValidationInterface *iface)
-{
-	validation_iface = iface;
 }
 
 bool Renderer::init_caps()
@@ -2611,23 +2607,13 @@ void Renderer::mark_pages_for_gpu_read(uint32_t base_addr, uint32_t byte_count)
 
 	uint32_t start_page = base_addr / ImplementationConstants::IncoherentPageSize;
 	uint32_t end_page = (base_addr + byte_count - 1) / ImplementationConstants::IncoherentPageSize + 1;
-	start_page &= incoherent.num_pages - 1;
-	end_page &= incoherent.num_pages - 1;
+	retro_atomic_int_t *pending = incoherent.pending_writes_for_page;
 
-	uint32_t page = start_page;
-	while (page != end_page)
-	{
-		bool pending_writes = (incoherent.page_to_pending_readback[page / 32] & (1u << (page & 31))) != 0 ||
-		                      retro_atomic_load_relaxed_int(&incoherent.pending_writes_for_page[page]) != 0;
-
-		// We'll do an acquire memory barrier later before we start memcpy-ing from host memory.
-		if (pending_writes)
-			incoherent.page_to_masked_copy[page / 32] |= 1u << (page & 31);
-		else
-			incoherent.page_to_direct_copy[page / 32] |= 1u << (page & 31);
-
-		page = (page + 1) & (incoherent.num_pages - 1);
-	}
+	// We'll do an acquire memory barrier later before we start memcpy-ing from host memory.
+	mark_incoherent_pages_for_read(start_page, end_page - start_page, incoherent.num_pages,
+	                               incoherent.page_to_pending_readback,
+	                               [pending](uint32_t page) { return retro_atomic_load_relaxed_int(&pending[page]) != 0; },
+	                               incoherent.page_to_masked_copy, incoherent.page_to_direct_copy);
 }
 
 void Renderer::lock_pages_for_gpu_write(uint32_t base_addr, uint32_t byte_count)

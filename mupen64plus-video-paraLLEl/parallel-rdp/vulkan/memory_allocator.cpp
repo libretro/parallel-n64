@@ -53,45 +53,6 @@ void DeviceAllocation::free_immediate()
 	offset = 0;
 }
 
-ExternalHandle DeviceAllocation::export_handle(Device &device)
-{
-	ExternalHandle h;
-
-	if (exportable_types == 0)
-	{
-		LOGE("Cannot export from this allocation.\n");
-		return h;
-	}
-
-	auto &table = device.get_device_table();
-
-#ifdef _WIN32
-	VkMemoryGetWin32HandleInfoKHR handle_info = { VK_STRUCTURE_TYPE_MEMORY_GET_WIN32_HANDLE_INFO_KHR };
-	handle_info.handleType = static_cast<VkExternalMemoryHandleTypeFlagBits>(exportable_types);
-	handle_info.memory = base;
-	h.memory_handle_type = handle_info.handleType;
-
-	if (table.vkGetMemoryWin32HandleKHR(device.get_device(), &handle_info, &h.handle) != VK_SUCCESS)
-	{
-		LOGE("Failed to export memory handle.\n");
-		h.handle = nullptr;
-	}
-#else
-	VkMemoryGetFdInfoKHR fd_info = { VK_STRUCTURE_TYPE_MEMORY_GET_FD_INFO_KHR };
-	fd_info.handleType = static_cast<VkExternalMemoryHandleTypeFlagBits>(exportable_types);
-	fd_info.memory = base;
-	h.memory_handle_type = fd_info.handleType;
-
-	if (table.vkGetMemoryFdKHR(device.get_device(), &fd_info, &h.handle) != VK_SUCCESS)
-	{
-		LOGE("Failed to export memory handle.\n");
-		h.handle = -1;
-	}
-#endif
-
-	return h;
-}
-
 void DeviceAllocation::free_immediate(DeviceAllocator &allocator)
 {
 	if (alloc)
@@ -783,13 +744,4 @@ DeviceAllocationOwner::~DeviceAllocationOwner()
 		device->free_memory(alloc);
 }
 
-const DeviceAllocation &DeviceAllocationOwner::get_allocation() const
-{
-	return alloc;
-}
-
-void DeviceAllocationDeleter::operator()(DeviceAllocationOwner *owner)
-{
-	owner->device->handle_pool.allocations.free(owner);
-}
 }

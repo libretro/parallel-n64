@@ -32,21 +32,6 @@ namespace Util
 static thread_local char trace_tid[32];
 static thread_local TimelineTraceFile *trace_file;
 
-void TimelineTraceFile::set_tid(const char *tid)
-{
-	snprintf(trace_tid, sizeof(trace_tid), "%s", tid);
-}
-
-void TimelineTraceFile::set_per_thread(TimelineTraceFile *file)
-{
-	trace_file = file;
-}
-
-TimelineTraceFile *TimelineTraceFile::get_per_thread()
-{
-	return trace_file;
-}
-
 void TimelineTraceFile::Event::set_desc(const char *desc_)
 {
 	snprintf(desc, sizeof(desc), "%s", desc_);
@@ -55,16 +40,6 @@ void TimelineTraceFile::Event::set_desc(const char *desc_)
 void TimelineTraceFile::Event::set_tid(const char *tid_)
 {
 	snprintf(tid, sizeof(tid), "%s", tid_);
-}
-
-TimelineTraceFile::Event *TimelineTraceFile::begin_event(const char *desc, uint32_t pid)
-{
-	auto *e = allocate_event();
-	e->pid = pid;
-	e->set_tid(trace_tid);
-	e->set_desc(desc);
-	e->start_ns = get_current_time_nsecs();
-	return e;
 }
 
 TimelineTraceFile::Event *TimelineTraceFile::allocate_event()
@@ -85,12 +60,6 @@ void TimelineTraceFile::submit_event(Event *e)
 		rdp_worker_push(worker, e);
 	else
 		delete e;
-}
-
-void TimelineTraceFile::end_event(Event *e)
-{
-	e->end_ns = get_current_time_nsecs();
-	submit_event(e);
 }
 
 void TimelineTraceFile::write_event(void *self_, mpsc_stack_node_t *item)

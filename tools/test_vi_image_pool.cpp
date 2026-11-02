@@ -6,9 +6,16 @@
  * begins it; handing an image out sooner races the GPU. This checks
  * when entries come back, that one is never handed out twice in a
  * frame, that a mismatch never reuses, and that the pool stays bounded.
+ *
+ * The images handed on (the scanout the frontend shows, the previous
+ * frame kept to blend with) come from the pool too, so an image comes
+ * back only once the pool holds its last handle: the frontend keeps the
+ * scanout for as many frames as it has sync indices, however many frame
+ * contexts the device has.
  */
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "vi_image_pool.hpp"
 
@@ -16,6 +23,18 @@
  * deleted. The deleters only need to link. */
 void Vulkan::ImageDeleter::operator()(Vulkan::Image *) { abort(); }
 void Vulkan::ImageViewDeleter::operator()(Vulkan::ImageView *) { abort(); }
+
+/* An image with a reference count and nothing else: no device; the
+ * test keeps it from being destroyed. */
+static Vulkan::ImageHandle counted_image()
+{
+	static unsigned char storage[64][sizeof(Vulkan::Image)] __attribute__((aligned(16)));
+	static unsigned used;
+	unsigned char *p = storage[used++];
+	uint32_t one = 1;
+	memcpy(p, &one, sizeof(one)); /* the count: the base's first member */
+	return Vulkan::ImageHandle(reinterpret_cast<Vulkan::Image *>(p));
+}
 
 static int failures;
 #define CHECK(cond) do { if (!(cond)) { fprintf(stderr, "%s:%d: %s\n", __FILE__, __LINE__, #cond); failures++; } } while (0)
@@ -129,6 +148,28 @@ int main()
 		for (uint64_t serial = 0; serial < 200; serial++)
 			get(pool, image(64 + unsigned(serial), 64), serial, 1, adds);
 		CHECK(pool.size() <= RDP::VIImagePool::MAX_ENTRIES);
+	}
+
+	/* Handed on: back only when the pool holds the last handle, however
+	 * long after its frame context came round that is. */
+	{
+		RDP::VIImagePool pool;
+		Vulkan::ImageCreateInfo a = image(640, 480);
+		RDP::VIImagePool::Entry *e = pool.add(a, 0, 2);
+		e->image = counted_image();
+		Vulkan::ImageHandle shown = e->image;
+		for (uint64_t serial = 2; serial < 8; serial++)
+			CHECK(pool.reuse(a, false, serial, 2) == nullptr);
+		/* nor evicted for a new size while it is out */
+		for (unsigned i = 0; i < RDP::VIImagePool::MAX_ENTRIES; i++)
+			pool.add(image(10 + i, 10), 0, 1);
+		CHECK(pool.reuse(a, false, 8, 2) == nullptr);
+		shown.reset();
+		RDP::VIImagePool::Entry *back = pool.reuse(a, false, 8, 2);
+		CHECK(back && back->image);
+		/* the pool's last handle goes with it: keep it from the deleter */
+		if (back && back->image)
+			back->image->add_reference();
 	}
 
 	/* Full of busy entries: grows rather than evicting one in use. */

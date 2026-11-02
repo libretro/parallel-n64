@@ -36,11 +36,6 @@ FenceHolder::~FenceHolder()
 	}
 }
 
-VkFence FenceHolder::get_fence() const
-{
-	return fence;
-}
-
 bool FenceHolder::vk_wait(uint64_t timeout)
 {
 	auto &table = device->get_device_table();
@@ -106,17 +101,6 @@ void FenceHolder::wait()
 			return;
 		}
 	}
-}
-
-bool FenceHolder::wait_timeout(uint64_t timeout)
-{
-	if (observed_wait())
-		return true;
-	// A bounded probe; it does not claim the fence, as before.
-	bool ret = vk_wait(timeout);
-	if (ret)
-		publish_wait_state(2);
-	return ret;
 }
 
 void FenceHolderDeleter::operator()(Vulkan::FenceHolder *fence)

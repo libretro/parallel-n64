@@ -60,9 +60,4 @@ bool interface_log(const char *tag, const char *fmt, ...)
 	va_end(va);
 	return ret;
 }
-
-void set_thread_logging_interface(LoggingInterface *iface)
-{
-	logging_iface = iface;
-}
 }

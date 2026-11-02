@@ -30,42 +30,21 @@ namespace Vulkan
 {
 DescriptorSetAllocator::DescriptorSetAllocator(Hash hash, Device *device_, const DescriptorSetLayout &layout,
                                                const uint32_t *stages_for_binds,
-                                               const ImmutableSampler * const *immutable_samplers)
+                                               const ImmutableSampler * const *immutable_samplers, bool push_)
 	: IntrusiveHashMapEnabled<DescriptorSetAllocator>(hash)
 	, device(device_)
 	, table(device_->get_device_table())
+	, push(push_)
 {
-	bindless = layout.array_size[0] == DescriptorSetLayout::UNSIZED_ARRAY;
-
-	if (!bindless)
+	if (!push)
 	{
 		num_per_thread = device_->num_thread_indices;
 		per_thread = new PerThread[num_per_thread];
 	}
 
-	if (bindless && !device->get_device_features().supports_descriptor_indexing)
-	{
-		LOGE("Cannot support descriptor indexing on this device.\n");
-		return;
-	}
-
 	VkDescriptorSetLayoutCreateInfo info = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO };
-	VkDescriptorSetLayoutBindingFlagsCreateInfoEXT flags = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO_EXT };
 	VkSampler vk_immutable_samplers[VULKAN_NUM_BINDINGS] = {};
 	Util::Vector<VkDescriptorSetLayoutBinding> bindings;
-	VkDescriptorBindingFlagsEXT binding_flags = 0;
-
-	if (bindless)
-	{
-		info.flags |= VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT_EXT;
-		info.pNext = &flags;
-
-		flags.bindingCount = 1;
-		flags.pBindingFlags = &binding_flags;
-		binding_flags = VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT_EXT |
-		                VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT_EXT |
-		                VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT_EXT;
-	}
 
 	for (unsigned i = 0; i < VULKAN_NUM_BINDINGS; i++)
 	{
@@ -74,14 +53,7 @@ DescriptorSetAllocator::DescriptorSetAllocator(Hash hash, Device *device_, const
 			continue;
 
 		unsigned array_size = layout.array_size[i];
-		unsigned pool_array_size;
-		if (array_size == DescriptorSetLayout::UNSIZED_ARRAY)
-		{
-			array_size = VULKAN_NUM_BINDINGS_BINDLESS_VARYING;
-			pool_array_size = array_size;
-		}
-		else
-			pool_array_size = array_size * VULKAN_NUM_SETS_PER_POOL;
+		unsigned pool_array_size = array_size * VULKAN_NUM_SETS_PER_POOL;
 
 		unsigned types = 0;
 		if (layout.sampled_image_mask & (1u << i))
@@ -118,7 +90,9 @@ DescriptorSetAllocator::DescriptorSetAllocator(Hash hash, Device *device_, const
 
 		if (layout.uniform_buffer_mask & (1u << i))
 		{
-			bindings.push_back({ i, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, array_size, stages, nullptr });
+			// Push sets fold the offset into the descriptor itself.
+			bindings.push_back({ i, push ? VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER : VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
+			                     array_size, stages, nullptr });
 			pool_size.push_back({ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, pool_array_size });
 			types++;
 		}
@@ -163,12 +137,12 @@ DescriptorSetAllocator::DescriptorSetAllocator(Hash hash, Device *device_, const
 	{
 		info.bindingCount = bindings.size();
 		info.pBindings = bindings.data();
+	}
 
-		if (bindless && bindings.size() != 1)
-		{
-			LOGE("Using bindless but have bindingCount != 1.\n");
-			return;
-		}
+	if (push)
+	{
+		info.flags |= VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR;
+		pool_size.clear();
 	}
 
 #ifdef VULKAN_DEBUG
@@ -178,79 +152,14 @@ DescriptorSetAllocator::DescriptorSetAllocator(Hash hash, Device *device_, const
 		LOGE("Failed to create descriptor set layout.");
 }
 
-void DescriptorSetAllocator::reset_bindless_pool(VkDescriptorPool pool)
-{
-	table.vkResetDescriptorPool(device->get_device(), pool, 0);
-}
-
-VkDescriptorSet DescriptorSetAllocator::allocate_bindless_set(VkDescriptorPool pool, unsigned num_descriptors)
-{
-	if (!pool || !bindless)
-		return VK_NULL_HANDLE;
-
-	VkDescriptorSetAllocateInfo info = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO };
-	info.descriptorPool = pool;
-	info.descriptorSetCount = 1;
-	info.pSetLayouts = &set_layout;
-
-	VkDescriptorSetVariableDescriptorCountAllocateInfoEXT count_info =
-			{ VK_STRUCTURE_TYPE_DESCRIPTOR_SET_VARIABLE_DESCRIPTOR_COUNT_ALLOCATE_INFO_EXT };
-
-	uint32_t num_desc = num_descriptors;
-	count_info.descriptorSetCount = 1;
-	count_info.pDescriptorCounts = &num_desc;
-	info.pNext = &count_info;
-
-	VkDescriptorSet desc_set = VK_NULL_HANDLE;
-	if (table.vkAllocateDescriptorSets(device->get_device(), &info, &desc_set) != VK_SUCCESS)
-		return VK_NULL_HANDLE;
-
-	return desc_set;
-}
-
-VkDescriptorPool DescriptorSetAllocator::allocate_bindless_pool(unsigned num_sets, unsigned num_descriptors)
-{
-	if (!bindless)
-		return VK_NULL_HANDLE;
-
-	VkDescriptorPool pool = VK_NULL_HANDLE;
-	VkDescriptorPoolCreateInfo info = { VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO };
-	info.flags = VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT_EXT;
-	info.maxSets = num_sets;
-	info.poolSizeCount = 1;
-
-	VkDescriptorPoolSize size = pool_size[0];
-	if (num_descriptors > size.descriptorCount)
-	{
-		LOGE("Trying to allocate more than max bindless descriptors for descriptor layout.\n");
-		return VK_NULL_HANDLE;
-	}
-
-	size.descriptorCount = num_descriptors;
-	info.pPoolSizes = &size;
-
-	if (table.vkCreateDescriptorPool(device->get_device(), &info, nullptr, &pool) != VK_SUCCESS)
-	{
-		LOGE("Failed to create descriptor pool.\n");
-		return VK_NULL_HANDLE;
-	}
-
-	return pool;
-}
-
 void DescriptorSetAllocator::begin_frame()
 {
-	if (!bindless)
-	{
-		for (unsigned i = 0; i < num_per_thread; i++)
-			per_thread[i].should_begin = true;
-	}
+	for (unsigned i = 0; i < num_per_thread; i++)
+		per_thread[i].should_begin = true;
 }
 
 DescriptorSetAllocator::Lookup DescriptorSetAllocator::find(unsigned thread_index, Hash hash)
 {
-	VK_ASSERT(!bindless);
-
 	auto &state = per_thread[thread_index];
 	if (state.should_begin)
 	{
@@ -324,159 +233,4 @@ DescriptorSetAllocator::~DescriptorSetAllocator()
 	delete[] per_thread;
 }
 
-BindlessDescriptorPool::BindlessDescriptorPool(Device *device_, DescriptorSetAllocator *allocator_,
-                                               VkDescriptorPool pool, uint32_t num_sets, uint32_t num_desc)
-	: device(device_), allocator(allocator_), desc_pool(pool), total_sets(num_sets), total_descriptors(num_desc)
-{
-}
-
-BindlessDescriptorPool::~BindlessDescriptorPool()
-{
-	if (desc_pool)
-	{
-		if (internal_sync)
-			device->destroy_descriptor_pool_nolock(desc_pool);
-		else
-			device->destroy_descriptor_pool(desc_pool);
-	}
-}
-
-VkDescriptorSet BindlessDescriptorPool::get_descriptor_set() const
-{
-	return desc_set;
-}
-
-void BindlessDescriptorPool::reset()
-{
-	if (desc_pool != VK_NULL_HANDLE)
-		allocator->reset_bindless_pool(desc_pool);
-	desc_set = VK_NULL_HANDLE;
-	allocated_descriptor_count = 0;
-	allocated_sets = 0;
-}
-
-bool BindlessDescriptorPool::allocate_descriptors(unsigned count)
-{
-	// Not all drivers will exhaust the pool for us, so make sure we don't allocate more than expected.
-	if (allocated_sets == total_sets)
-		return false;
-	if (allocated_descriptor_count + count > total_descriptors)
-		return false;
-
-	allocated_descriptor_count += count;
-	allocated_sets++;
-
-	desc_set = allocator->allocate_bindless_set(desc_pool, count);
-	return desc_set != VK_NULL_HANDLE;
-}
-
-void BindlessDescriptorPool::set_texture(unsigned binding, const ImageView &view)
-{
-	// TODO: Deal with integer view for depth-stencil images?
-	set_texture(binding, view.get_float_view(), view.get_image().get_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL));
-}
-
-void BindlessDescriptorPool::set_texture_unorm(unsigned binding, const ImageView &view)
-{
-	set_texture(binding, view.get_unorm_view(), view.get_image().get_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL));
-}
-
-void BindlessDescriptorPool::set_texture_srgb(unsigned binding, const ImageView &view)
-{
-	set_texture(binding, view.get_srgb_view(), view.get_image().get_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL));
-}
-
-void BindlessDescriptorPool::set_texture(unsigned binding, VkImageView view, VkImageLayout layout)
-{
-	VkWriteDescriptorSet write = { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
-	write.descriptorCount = 1;
-	write.dstArrayElement = binding;
-	write.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-	write.dstSet = desc_set;
-
-	const VkDescriptorImageInfo info = {
-		VK_NULL_HANDLE,
-		view,
-		layout,
-	};
-	write.pImageInfo = &info;
-
-	auto &table = device->get_device_table();
-	table.vkUpdateDescriptorSets(device->get_device(), 1, &write, 0, nullptr);
-}
-
-void BindlessDescriptorPoolDeleter::operator()(BindlessDescriptorPool *pool)
-{
-	pool->device->handle_pool.bindless_descriptor_pool.free(pool);
-}
-
-unsigned BindlessAllocator::push(const ImageView &view)
-{
-	auto ret = unsigned(views.size());
-	views.push_back(&view);
-	if (views.size() > VULKAN_NUM_BINDINGS_BINDLESS_VARYING)
-	{
-		LOGE("Exceeding maximum number of bindless resources per set (%u >= %u).\n",
-		     unsigned(views.size()), VULKAN_NUM_BINDINGS_BINDLESS_VARYING);
-	}
-	return ret;
-}
-
-void BindlessAllocator::begin()
-{
-	views.clear();
-}
-
-void BindlessAllocator::reset()
-{
-	descriptor_pool.reset();
-}
-
-unsigned BindlessAllocator::get_next_offset() const
-{
-	return unsigned(views.size());
-}
-
-void BindlessAllocator::reserve_max_resources_per_pool(unsigned set_count, unsigned descriptor_count)
-{
-	max_sets_per_pool = Util::max_of(max_sets_per_pool, set_count);
-	max_descriptors_per_pool = Util::max_of(max_descriptors_per_pool, descriptor_count);
-	views.reserve(max_descriptors_per_pool);
-}
-
-void BindlessAllocator::set_bindless_resource_type(BindlessResourceType type)
-{
-	resource_type = type;
-}
-
-VkDescriptorSet BindlessAllocator::commit(Device &device)
-{
-	max_sets_per_pool = Util::max_of(1u, max_sets_per_pool);
-	max_descriptors_per_pool = Util::max_of<unsigned>(views.size(), max_descriptors_per_pool);
-	max_descriptors_per_pool = Util::max_of<unsigned>(1u, max_descriptors_per_pool);
-	max_descriptors_per_pool = Util::min_of(max_descriptors_per_pool, VULKAN_NUM_BINDINGS_BINDLESS_VARYING);
-	unsigned to_allocate = Util::max_of<unsigned>(views.size(), 1u);
-
-	if (!descriptor_pool)
-	{
-		descriptor_pool = device.create_bindless_descriptor_pool(
-				resource_type, max_sets_per_pool, max_descriptors_per_pool);
-	}
-
-	if (!descriptor_pool->allocate_descriptors(to_allocate))
-	{
-		descriptor_pool = device.create_bindless_descriptor_pool(
-				resource_type, max_sets_per_pool, max_descriptors_per_pool);
-
-		if (!descriptor_pool->allocate_descriptors(to_allocate))
-		{
-			LOGE("Failed to allocate descriptors on a fresh descriptor pool!\n");
-			return VK_NULL_HANDLE;
-		}
-	}
-
-	for (size_t i = 0, n = views.size(); i < n; i++)
-		descriptor_pool->set_texture(i, *views[i]);
-	return descriptor_pool->get_descriptor_set();
-}
 }

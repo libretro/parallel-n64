@@ -56,15 +56,6 @@ void *memalign_alloc(size_t boundary, size_t size)
     return (void *) addr;
 #endif
 }
-
-void *memalign_calloc(size_t boundary, size_t size)
-{
-    void *ret = memalign_alloc(boundary, size);
-    if (ret)
-        memset(ret, 0, size);
-    return ret;
-}
-
 void memalign_free(void *ptr)
 {
 #if defined(_WIN32)

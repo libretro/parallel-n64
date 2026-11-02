@@ -26,42 +26,6 @@
 
 namespace Vulkan
 {
-static const char *storage_to_str(VkPerformanceCounterStorageKHR storage)
-{
-	switch (storage)
-	{
-	case VK_PERFORMANCE_COUNTER_STORAGE_FLOAT32_KHR:
-		return "float32";
-	case VK_PERFORMANCE_COUNTER_STORAGE_FLOAT64_KHR:
-		return "float64";
-	case VK_PERFORMANCE_COUNTER_STORAGE_INT32_KHR:
-		return "int32";
-	case VK_PERFORMANCE_COUNTER_STORAGE_INT64_KHR:
-		return "int64";
-	case VK_PERFORMANCE_COUNTER_STORAGE_UINT32_KHR:
-		return "uint32";
-	case VK_PERFORMANCE_COUNTER_STORAGE_UINT64_KHR:
-		return "uint64";
-	default:
-		return "???";
-	}
-}
-
-static const char *scope_to_str(VkPerformanceCounterScopeKHR scope)
-{
-	switch (scope)
-	{
-	case VK_QUERY_SCOPE_COMMAND_BUFFER_KHR:
-		return "command buffer";
-	case VK_QUERY_SCOPE_RENDER_PASS_KHR:
-		return "render pass";
-	case VK_QUERY_SCOPE_COMMAND_KHR:
-		return "command";
-	default:
-		return "???";
-	}
-}
-
 static const char *unit_to_str(VkPerformanceCounterUnitKHR unit)
 {
 	switch (unit)
@@ -90,19 +54,6 @@ static const char *unit_to_str(VkPerformanceCounterUnitKHR unit)
 		return "W";
 	default:
 		return "???";
-	}
-}
-
-void PerformanceQueryPool::log_available_counters(const VkPerformanceCounterKHR *counters,
-                                                  const VkPerformanceCounterDescriptionKHR *descs,
-                                                  uint32_t count)
-{
-	for (uint32_t i = 0; i < count; i++)
-	{
-		LOGI("  %s: %s\n", descs[i].name, descs[i].description);
-		LOGI("    Storage: %s\n", storage_to_str(counters[i].storage));
-		LOGI("    Scope: %s\n", scope_to_str(counters[i].scope));
-		LOGI("    Unit: %s\n", unit_to_str(counters[i].unit));
 	}
 }
 
@@ -230,94 +181,6 @@ void PerformanceQueryPool::report()
 	LOGI("================================\n\n");
 }
 
-uint32_t PerformanceQueryPool::get_num_counters() const
-{
-	return uint32_t(counters.size());
-}
-
-const VkPerformanceCounterKHR *PerformanceQueryPool::get_available_counters() const
-{
-	return counters.data();
-}
-
-const VkPerformanceCounterDescriptionKHR *PerformanceQueryPool::get_available_counter_descs() const
-{
-	return counter_descriptions.data();
-}
-
-bool PerformanceQueryPool::init_counters(const char *const *counter_names, unsigned count)
-{
-	if (!device->get_device_features().performance_query_features.performanceCounterQueryPools)
-	{
-		LOGE("Device does not support VK_KHR_performance_query.\n");
-		return false;
-	}
-
-	if (!device->get_device_features().host_query_reset_features.hostQueryReset)
-	{
-		LOGE("Device does not support host query reset.\n");
-		return false;
-	}
-
-	auto &table = device->get_device_table();
-	if (pool)
-		table.vkDestroyQueryPool(device->get_device(), pool, nullptr);
-	pool = VK_NULL_HANDLE;
-
-	VkQueryPoolPerformanceCreateInfoKHR performance_info = { VK_STRUCTURE_TYPE_QUERY_POOL_PERFORMANCE_CREATE_INFO_KHR };
-	VkQueryPoolCreateInfo info = { VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO };
-	info.pNext = &performance_info;
-
-	info.queryType = VK_QUERY_TYPE_PERFORMANCE_QUERY_KHR;
-	info.queryCount = 1;
-
-	active_indices.clear();
-
-	for (unsigned n = 0; n < count; n++)
-	{
-		for (size_t i = 0; i < counter_descriptions.size(); i++)
-		{
-			const VkPerformanceCounterDescriptionKHR &desc = counter_descriptions[i];
-			if (strcmp(counter_names[n], desc.name) == 0)
-			{
-				LOGI("Found counter %s: %s\n", desc.name, desc.description);
-				active_indices.push_back(uint32_t(i));
-				break;
-			}
-		}
-	}
-
-	if (active_indices.empty())
-	{
-		LOGW("No performance counters were enabled.\n");
-		return false;
-	}
-
-	performance_info.queueFamilyIndex = queue_family_index;
-	performance_info.counterIndexCount = active_indices.size();
-	performance_info.pCounterIndices = active_indices.data();
-	results.resize(active_indices.size());
-
-	uint32_t num_passes = 0;
-	vkGetPhysicalDeviceQueueFamilyPerformanceQueryPassesKHR(device->get_physical_device(),
-	                                                        &performance_info, &num_passes);
-
-	if (num_passes != 1)
-	{
-		LOGE("Implementation requires %u passes to query performance counters. Cannot create query pool.\n",
-		     num_passes);
-		return false;
-	}
-
-	if (table.vkCreateQueryPool(device->get_device(), &info, nullptr, &pool) != VK_SUCCESS)
-	{
-		LOGE("Failed to create performance query pool.\n");
-		return false;
-	}
-
-	return true;
-}
-
 QueryPool::QueryPool(Device *device_)
 	: device(device_)
 	, table(device_->get_device_table())
@@ -432,11 +295,6 @@ uint64_t TimestampInterval::get_total_frame_iterations() const
 	return total_frame_iterations;
 }
 
-double TimestampInterval::get_total_time() const
-{
-	return total_time;
-}
-
 void TimestampInterval::accumulate_time(double t)
 {
 	total_time += t;
@@ -464,13 +322,6 @@ const char *TimestampInterval::get_tag() const
 	return tag;
 }
 
-void TimestampInterval::reset()
-{
-	total_time = 0.0;
-	total_accumulations = 0;
-	total_frame_iterations = 0;
-}
-
 TimestampInterval::TimestampInterval(const char *tag_)
 {
 	Util::copy_string(tag, sizeof(tag), tag_);
@@ -487,12 +338,6 @@ void TimestampIntervalManager::mark_end_of_frame_context()
 {
 	for (auto &timestamp : timestamps)
 		timestamp.mark_end_of_frame_context();
-}
-
-void TimestampIntervalManager::reset()
-{
-	for (auto &timestamp : timestamps)
-		timestamp.reset();
 }
 
 void TimestampIntervalManager::log_simple(TimestampIntervalReportCallback func, void *userdata) const

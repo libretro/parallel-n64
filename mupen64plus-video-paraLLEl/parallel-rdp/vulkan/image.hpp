@@ -277,7 +277,6 @@ public:
 
 	unsigned get_view_width() const;
 	unsigned get_view_height() const;
-	unsigned get_view_depth() const;
 
 private:
 	Device *device;
@@ -567,10 +566,6 @@ public:
 		return alloc;
 	}
 
-	void disown_image();
-	void disown_memory_allocation();
-	DeviceAllocation take_allocation_ownership();
-
 	void set_surface_transform(VkSurfaceTransformFlagBitsKHR transform)
 	{
 		surface_transform = transform;
@@ -654,15 +649,9 @@ class LinearHostImage : public Util::IntrusivePtrEnabled<LinearHostImage, Linear
 {
 public:
 	friend struct LinearHostImageDeleter;
-
-	size_t get_row_pitch_bytes() const;
 	size_t get_offset() const;
 	const ImageView &get_view() const;
 	const Image &get_image() const;
-	const DeviceAllocation &get_host_visible_allocation() const;
-	const Buffer &get_host_visible_buffer() const;
-	bool need_staging_copy() const;
-	VkPipelineStageFlags get_used_pipeline_stages() const;
 
 private:
 	friend class Util::ObjectPool<LinearHostImage>;

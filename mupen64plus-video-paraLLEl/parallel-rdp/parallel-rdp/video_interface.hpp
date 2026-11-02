@@ -179,6 +179,19 @@ private:
 
 	// Intermediate images, reused instead of created every frame.
 	mutable VIImagePool image_pool;
+
+	// The per-line horizontal state the scale pass reads, decoded straight
+	// into a persistently mapped buffer; one is reused once its frame
+	// context comes round again, as the images are.
+	struct HorizontalBuffer
+	{
+		Vulkan::BufferHandle buffer;
+		Vulkan::BufferViewHandle view;
+		uint64_t free_serial;
+	};
+	enum { MAX_HORIZONTAL_BUFFERS = 32 };
+	HorizontalBuffer horizontal_buffers[MAX_HORIZONTAL_BUFFERS] = {};
+	HorizontalBuffer *acquire_horizontal_buffer();
 	uint64_t frame_serial = 0;
 	const VIImagePool::Entry &acquire_image(const Vulkan::ImageCreateInfo &info, bool layer_views) const;
 	const VIImagePool::Entry &create_pooled_image(const Vulkan::ImageCreateInfo &info, bool layer_views) const;
@@ -213,7 +226,7 @@ private:
 		HorizontalInfo lines[VI_MAX_OUTPUT_SCANLINES];
 	};
 
-	static void bind_horizontal_info_view(Vulkan::CommandBuffer &cmd, const HorizontalInfoLines &lines);
+	static void bind_horizontal_info_view(Vulkan::CommandBuffer &cmd, const HorizontalBuffer &buffer);
 
 	struct Registers
 	{
@@ -266,7 +279,7 @@ private:
 	Vulkan::ImageHandle scale_stage(Vulkan::CommandBuffer &cmd,
 	                                const Vulkan::Image *divot_image,
 	                                Registers registers,
-	                                const HorizontalInfoLines &lines,
+	                                const HorizontalBuffer &lines,
 	                                unsigned scaling_factor,
 	                                bool degenerate,
 	                                const ScanoutOptions &options,

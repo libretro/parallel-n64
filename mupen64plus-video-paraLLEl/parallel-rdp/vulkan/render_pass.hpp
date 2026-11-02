@@ -192,7 +192,6 @@ public:
 
 	static unsigned setup_raw_views(VkImageView *views, const RenderPassInfo &info);
 	static void compute_dimensions(const RenderPassInfo &info, uint32_t &width, uint32_t &height);
-	static void compute_attachment_dimensions(const RenderPassInfo &info, unsigned index, uint32_t &width, uint32_t &height);
 
 	uint32_t get_width() const
 	{
@@ -251,9 +250,6 @@ public:
 		: device(device_)
 	{
 	}
-
-	ImageHandle request_attachment(unsigned width, unsigned height, VkFormat format,
-	                               unsigned index = 0, unsigned samples = 1, unsigned layers = 1);
 
 	void begin_frame();
 	void clear();

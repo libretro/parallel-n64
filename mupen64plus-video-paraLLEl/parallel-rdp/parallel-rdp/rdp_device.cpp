@@ -302,11 +302,6 @@ bool CommandProcessor::device_is_supported() const
 	return is_supported;
 }
 
-void CommandProcessor::set_validation_interface(ValidationInterface *iface)
-{
-	renderer.set_validation_interface(iface);
-}
-
 void CommandProcessor::clear_hidden_rdram()
 {
 	clear_buffer(*hidden_rdram, no_storage_8bit ? 0x00030003u : 0x03030303u);
@@ -1163,26 +1158,6 @@ void CommandProcessor::set_vi_register(VIRegister reg, uint32_t value)
 		dump_writer->set_vi_register(uint32_t(reg), value);
 }
 
-void CommandProcessor::begin_vi_register_per_scanline(VideoInterface::PerScanlineRegisterFlags vi_flags)
-{
-	vi.begin_vi_register_per_scanline(vi_flags);
-}
-
-void CommandProcessor::set_vi_register_for_scanline(VideoInterface::PerScanlineRegisterBits reg, uint32_t value)
-{
-	vi.set_vi_register_for_scanline(reg, value);
-}
-
-void CommandProcessor::latch_vi_register_for_scanline(unsigned vi_line)
-{
-	vi.latch_vi_register_for_scanline(vi_line);
-}
-
-void CommandProcessor::end_vi_register_per_scanline()
-{
-	vi.end_vi_register_per_scanline();
-}
-
 void *CommandProcessor::begin_read_rdram()
 {
 	if (rdram)
@@ -1191,38 +1166,9 @@ void *CommandProcessor::begin_read_rdram()
 		return nullptr;
 }
 
-void CommandProcessor::end_write_rdram()
-{
-	if (rdram)
-		device.unmap_host_buffer(*rdram, MEMORY_ACCESS_WRITE_BIT);
-}
-
 void *CommandProcessor::begin_read_hidden_rdram()
 {
 	return device.map_host_buffer(*hidden_rdram, MEMORY_ACCESS_READ_BIT);
-}
-
-void CommandProcessor::end_write_hidden_rdram()
-{
-	device.unmap_host_buffer(*hidden_rdram, MEMORY_ACCESS_WRITE_BIT);
-}
-
-size_t CommandProcessor::get_rdram_size() const
-{
-	if (is_host_coherent)
-		return rdram->get_create_info().size;
-	else
-		return rdram->get_create_info().size / 2;
-}
-
-size_t CommandProcessor::get_hidden_rdram_size() const
-{
-	return hidden_rdram->get_create_info().size;
-}
-
-void *CommandProcessor::get_tmem()
-{
-	return device.map_host_buffer(*tmem, MEMORY_ACCESS_READ_BIT);
 }
 
 void CommandProcessor::idle()
@@ -1481,36 +1427,6 @@ void CommandProcessor::drain_command_ring()
 		end_ts = device.write_calibrated_timestamp();
 		device.register_time_interval("RDP CPU", rdp_move(start_ts), rdp_move(end_ts), "drain-command-ring");
 	}
-}
-
-void CommandProcessor::scanout_async_buffer(VIScanoutBuffer &buffer, const ScanoutOptions &opts)
-{
-	auto handle = scanout(opts, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
-	if (!handle)
-	{
-		buffer.width = 0;
-		buffer.height = 0;
-		buffer.fence.reset();
-		return;
-	}
-
-	buffer.width = handle->get_width();
-	buffer.height = handle->get_height();
-
-	Vulkan::BufferCreateInfo info = {};
-	info.size = buffer.width * buffer.height * sizeof(uint32_t);
-	info.usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-	info.domain = Vulkan::BufferDomain::CachedHost;
-	if (!buffer.buffer || buffer.buffer->get_create_info().size < info.size)
-		buffer.buffer = device.create_buffer(info);
-
-	auto cmd = device.request_command_buffer();
-	cmd->copy_image_to_buffer(*buffer.buffer, *handle, 0, {}, { buffer.width, buffer.height, 1 }, 0, 0, { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1 });
-	cmd->barrier(VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_TRANSFER_WRITE_BIT,
-	             VK_PIPELINE_STAGE_HOST_BIT, VK_ACCESS_HOST_READ_BIT);
-
-	buffer.fence.reset();
-	device.submit(cmd, &buffer.fence);
 }
 
 void CommandProcessor::timeline_work(void *user, mpsc_stack_node_t *item)

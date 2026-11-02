@@ -36,20 +36,11 @@ class PerformanceQueryPool
 public:
 	void init_device(Device *device, uint32_t queue_family_index);
 	~PerformanceQueryPool();
-	bool init_counters(const char *const *enable_counter_names, unsigned count);
 
 	void begin_command_buffer(VkCommandBuffer cmd);
 	void end_command_buffer(VkCommandBuffer cmd);
 
 	void report();
-
-	uint32_t get_num_counters() const;
-	const VkPerformanceCounterKHR *get_available_counters() const;
-	const VkPerformanceCounterDescriptionKHR *get_available_counter_descs() const;
-
-	static void log_available_counters(const VkPerformanceCounterKHR *counters,
-	                                   const VkPerformanceCounterDescriptionKHR *descs,
-	                                   uint32_t count);
 
 private:
 	Device *device = nullptr;
@@ -150,8 +141,6 @@ public:
 	double get_time_per_accumulation() const;
 	const char *get_tag() const;
 	void mark_end_of_frame_context();
-
-	double get_total_time() const;
 	uint64_t get_total_frame_iterations() const;
 	uint64_t get_total_accumulations() const;
 	void reset();

@@ -726,27 +726,57 @@ Vulkan::ImageHandle VideoInterface::divot_stage(Vulkan::CommandBuffer &cmd, Vulk
 	return divot_image;
 }
 
-void VideoInterface::bind_horizontal_info_view(Vulkan::CommandBuffer &cmd, const HorizontalInfoLines &lines)
+VideoInterface::HorizontalBuffer *VideoInterface::acquire_horizontal_buffer()
 {
-	auto &device = cmd.get_device();
+	uint64_t contexts = device->get_num_frame_contexts();
+	HorizontalBuffer *slot = nullptr;
+	unsigned i;
 
-	Vulkan::BufferCreateInfo horizontal_buffer_info = {};
-	horizontal_buffer_info.size = sizeof(lines);
-	horizontal_buffer_info.usage = VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT;
-	horizontal_buffer_info.domain = Vulkan::BufferDomain::LinkedDeviceHost;
-	auto scanout_parameters = device.create_buffer(horizontal_buffer_info, &lines);
+	for (i = 0; i < MAX_HORIZONTAL_BUFFERS; i++)
+	{
+		HorizontalBuffer &b = horizontal_buffers[i];
+		if (b.buffer && b.free_serial <= frame_serial)
+		{
+			slot = &b;
+			break;
+		}
+		if (!b.buffer && !slot)
+			slot = &b;
+	}
+	if (!slot)
+		return nullptr;
 
-	Vulkan::BufferViewCreateInfo horizontal_view_info = {};
-	horizontal_view_info.format = VK_FORMAT_R32G32B32A32_SINT;
-	horizontal_view_info.buffer = scanout_parameters.get();
-	horizontal_view_info.range = sizeof(lines);
+	if (!slot->buffer)
+	{
+		Vulkan::BufferCreateInfo info = {};
+		info.size = sizeof(HorizontalInfoLines);
+		info.usage = VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT;
+		// Read back by the CPU while scaling, so cached.
+		info.domain = Vulkan::BufferDomain::CachedCoherentHostPreferCached;
+		slot->buffer = device->create_buffer(info);
+		if (!slot->buffer)
+			return nullptr;
 
-	auto scanout_parameters_view = device.create_buffer_view(horizontal_view_info);
-	cmd.set_buffer_view(0, 1, *scanout_parameters_view);
+		Vulkan::BufferViewCreateInfo view_info = {};
+		view_info.format = VK_FORMAT_R32G32B32A32_SINT;
+		view_info.buffer = slot->buffer.get();
+		view_info.range = sizeof(HorizontalInfoLines);
+		slot->view = device->create_buffer_view(view_info);
+	}
+
+	slot->free_serial = frame_serial + contexts;
+	return slot;
+}
+
+void VideoInterface::bind_horizontal_info_view(Vulkan::CommandBuffer &cmd, const HorizontalBuffer &buffer)
+{
+	// Written in place: flushed if the memory is not coherent.
+	cmd.get_device().unmap_host_buffer(*buffer.buffer, Vulkan::MEMORY_ACCESS_WRITE_BIT);
+	cmd.set_buffer_view(0, 1, *buffer.view);
 }
 
 Vulkan::ImageHandle VideoInterface::scale_stage(Vulkan::CommandBuffer &cmd, const Vulkan::Image *divot_image,
-                                                Registers regs, const HorizontalInfoLines &lines,
+                                                Registers regs, const HorizontalBuffer &lines,
                                                 unsigned scaling_factor, bool degenerate,
                                                 const ScanoutOptions &options, bool final_pass) const
 {
@@ -814,7 +844,7 @@ Vulkan::ImageHandle VideoInterface::scale_stage(Vulkan::CommandBuffer &cmd, cons
 		rt_info.external.memory_handle_type = options.export_handle_type;
 	}
 
-	scale_image = device->create_image(rt_info);
+	scale_image = acquire_image(rt_info, false).image;
 
 	if (!scale_image)
 	{
@@ -1035,7 +1065,7 @@ Vulkan::ImageHandle VideoInterface::downscale_stage(Vulkan::CommandBuffer &cmd, 
 			rt_info.external.memory_handle_type = options.export_handle_type;
 		}
 
-		downscale_image = device->create_image(rt_info);
+		downscale_image = acquire_image(rt_info, false).image;
 
 		if (!downscale_image)
 		{
@@ -1080,7 +1110,7 @@ Vulkan::ImageHandle VideoInterface::upscale_deinterlace(Vulkan::CommandBuffer &c
 		rt_info.external.memory_handle_type = options.export_handle_type;
 	}
 
-	deinterlaced_image = device->create_image(rt_info);
+	deinterlaced_image = acquire_image(rt_info, false).image;
 
 	if (!deinterlaced_image)
 	{
@@ -1114,93 +1144,10 @@ Vulkan::ImageHandle VideoInterface::upscale_deinterlace(Vulkan::CommandBuffer &c
 	return deinterlaced_image;
 }
 
-void VideoInterface::begin_vi_register_per_scanline(PerScanlineRegisterFlags flags)
-{
-	per_line_state.flags = flags;
-	per_line_state.h_start.latched_state = vi_registers[unsigned(VIRegister::HStart)];
-	per_line_state.x_scale.latched_state = vi_registers[unsigned(VIRegister::XScale)];
-	per_line_state.h_start.line_state[0] = vi_registers[unsigned(VIRegister::HStart)];
-	per_line_state.x_scale.line_state[0] = vi_registers[unsigned(VIRegister::XScale)];
-	per_line_state.line = 0;
-	per_line_state.ended = false;
-}
-
-void VideoInterface::set_vi_register_for_scanline(PerScanlineRegisterBits reg, uint32_t value)
-{
-	if ((per_line_state.flags & reg) == 0)
-	{
-		LOGW("Attempting to set VI register %u per scanline, "
-		     "but was not flagged in begin_vi_register_per_scanline, ignoring.\n", reg);
-		return;
-	}
-
-	switch (reg)
-	{
-	case PER_SCANLINE_HSTART_BIT:
-		per_line_state.h_start.latched_state = value;
-		break;
-
-	case PER_SCANLINE_XSCALE_BIT:
-		per_line_state.x_scale.latched_state = value;
-		break;
-
-	default:
-		break;
-	}
-}
-
-void VideoInterface::latch_vi_register_for_scanline(unsigned vi_line)
-{
-	vi_line = rdp_min(vi_line, VI_V_END_MAX - 1);
-
-	if (vi_line <= per_line_state.line)
-	{
-		LOGW("Ignoring vi_line %u, current line is %u, not monotonically increasing, ignoring.\n",
-			 vi_line, per_line_state.line);
-		return;
-	}
-
-	unsigned new_counter = per_line_state.line;
-
-	while (++new_counter < vi_line)
-	{
-		per_line_state.h_start.line_state[new_counter] = per_line_state.h_start.line_state[per_line_state.line];
-		per_line_state.x_scale.line_state[new_counter] = per_line_state.x_scale.line_state[per_line_state.line];
-	}
-
-	per_line_state.h_start.line_state[new_counter] = per_line_state.h_start.latched_state;
-	per_line_state.x_scale.line_state[new_counter] = per_line_state.x_scale.latched_state;
-	per_line_state.line = new_counter;
-}
-
 void VideoInterface::clear_per_scanline_state()
 {
 	per_line_state.flags = 0;
 	per_line_state.ended = false;
-}
-
-void VideoInterface::end_vi_register_per_scanline()
-{
-	if (per_line_state.flags == 0)
-	{
-		LOGW("Cannot end vi_register_per_scanline() with per line flags == 0, ignoring.\n");
-		return;
-	}
-
-	if (per_line_state.ended)
-	{
-		LOGW("Already ended per line register state, ignoring.\n");
-		return;
-	}
-
-	unsigned new_counter = per_line_state.line;
-	while (++new_counter < VI_V_END_MAX)
-	{
-		per_line_state.h_start.line_state[new_counter] = per_line_state.h_start.line_state[per_line_state.line];
-		per_line_state.x_scale.line_state[new_counter] = per_line_state.x_scale.line_state[per_line_state.line];
-	}
-
-	per_line_state.ended = true;
 }
 
 Vulkan::ImageHandle VideoInterface::upscaler_scanout(unsigned scaling_factor,
@@ -1271,7 +1218,7 @@ Vulkan::ImageHandle VideoInterface::upscaler_scanout(unsigned scaling_factor,
 	info.initial_layout = VK_IMAGE_LAYOUT_UNDEFINED;
 	info.misc = Vulkan::IMAGE_MISC_CONCURRENT_QUEUE_GRAPHICS_BIT |
 	            Vulkan::IMAGE_MISC_CONCURRENT_QUEUE_ASYNC_COMPUTE_BIT;
-	image = device->create_image(info);
+	image = acquire_image(info, false).image;
 	if (!image)
 	{
 		device->submit(async_cmd);
@@ -1339,7 +1286,11 @@ Vulkan::ImageHandle VideoInterface::scanout(VkImageLayout target_layout, const S
 	unsigned downscale_steps = rdp_min(8u, options.downscale_steps);
 	int scaling_factor = int(scaling_factor_);
 	Vulkan::ImageHandle scanout;
-	HorizontalInfoLines lines;
+	HorizontalBuffer *horizontal = acquire_horizontal_buffer();
+	if (!horizontal)
+		return scanout;
+	auto &lines = *static_cast<HorizontalInfoLines *>(
+			device->map_host_buffer(*horizontal->buffer, Vulkan::MEMORY_ACCESS_WRITE_BIT));
 
 	auto regs = decode_vi_registers(&lines);
 	clear_per_scanline_state();
@@ -1477,7 +1428,7 @@ Vulkan::ImageHandle VideoInterface::scanout(VkImageLayout target_layout, const S
 	bool serrate = (regs.status & VI_CONTROL_SERRATE_BIT) != 0;
 
 	auto scale_image = scale_stage(*cmd, divot_image.get(),
-	                               regs, lines,
+	                               regs, *horizontal,
 	                               scaling_factor, degenerate, options,
 	                               is_final_pass);
 
