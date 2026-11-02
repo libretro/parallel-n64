@@ -38,6 +38,8 @@ CTexture::CTexture(uint32_t dwWidth, uint32_t dwHeight, TextureUsage usage) :
     m_bClampedT(false),
     m_bIsEnhancedTexture(false),
     m_Usage(usage),
+    m_bHoldUpload(false),
+    m_bUploadPending(false),
         m_pTexture(NULL),
         m_dwTextureFmt(TEXTURE_FMT_A8R8G8B8)
 {

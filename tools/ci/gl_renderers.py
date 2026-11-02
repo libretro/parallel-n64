@@ -17,6 +17,10 @@ across drivers, so the frames are not held to stored hashes; the lane holds them
     and must not disturb what is drawn, its pixel buffers or the vertex
     ring the draws read.
 
+CI runs the lane a second time with the core and host built with
+SANITIZER=address (glN64 used to read its texture cache after freeing it
+when the context went).
+
   gl_renderers.py --core parallel_n64_libretro.so --host ./lrhost_gl [--roms krom-roms]
 """
 import argparse, os, subprocess, sys, tempfile

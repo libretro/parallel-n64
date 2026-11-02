@@ -278,6 +278,18 @@ private:
 	// size_t, compared by difference, so it may wrap on 32-bit hosts.
 	retro_atomic_size_t thread_timeline_value{0};
 
+	// The nodes of the timeline worker's work, handed back by it once done
+	// and reused by the thread that queues them: no allocation per
+	// operation once enough are about. Destroyed after the worker below.
+	struct CoherencyNodePool
+	{
+		mpsc_stack_t returned;
+		// the queuing thread's own, taken from returned
+		mpsc_stack_node_t *spare = nullptr;
+		CoherencyNodePool() { mpsc_stack_init(&returned); }
+		~CoherencyNodePool();
+	} coherency_nodes;
+
 	// The timeline worker (rdp_worker.c): waits on fences, copies GPU
 	// writes back to RDRAM and publishes timeline values. Owned so that
 	// it is freed here, at the same point the member was destroyed.

@@ -310,6 +310,10 @@ bool FrameBuffer::isValid(bool _forceCheck) const
 		const u32 size_dwords = size >> 2;
 		u32 start = m_startAddress >> 2;
 		u32 wrongPixels = 0;
+		/* Nothing written since the copy is the usual case: then there is
+		 * nothing to count, and memcmp finds that out the fastest. */
+		if (memcmp(pData + start, pCopy, size_dwords << 2) == 0)
+			return 0 < size / 400;
 		for (u32 i = 0; i < size_dwords; ++i) {
 			if ((pData[start++] & 0xFFFEFFFE) != (pCopy[i] & 0xFFFEFFFE))
 				++wrongPixels;

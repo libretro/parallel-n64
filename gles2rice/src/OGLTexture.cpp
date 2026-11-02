@@ -63,7 +63,8 @@ COGLTexture::COGLTexture(uint32_t dwWidth, uint32_t dwHeight, TextureUsage usage
    };
 
    glBindTexture(GL_TEXTURE_2D, m_dwTextureName);
-   glTexImage2D(GL_TEXTURE_2D, 0, m_glFmt, m_dwCreatedTextureWidth, m_dwCreatedTextureHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, m_pTexture);
+   /* storage only: the pixels come with the first update */
+   glTexImage2D(GL_TEXTURE_2D, 0, m_glFmt, m_dwCreatedTextureWidth, m_dwCreatedTextureHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
 }
 
 COGLTexture::~COGLTexture()
@@ -94,6 +95,12 @@ bool COGLTexture::StartUpdate(DrawInfo *di)
 
 void COGLTexture::EndUpdate(DrawInfo *di)
 {
+    if (m_bHoldUpload)
+    {
+        m_bUploadPending = true;
+        return;
+    }
+
     COGLGraphicsContext *pcontext = (COGLGraphicsContext *)(CGraphicsContext::g_pGraphicsContext); // we need this to check if the GL extension is available
 
     glBindTexture(GL_TEXTURE_2D, m_dwTextureName);

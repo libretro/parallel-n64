@@ -95,10 +95,24 @@ public:
     virtual bool StartUpdate(DrawInfo *di)=0;
     virtual void EndUpdate(DrawInfo *di)=0;
 
+    /* While held, EndUpdate leaves the upload for later: a texture that is
+     * converted and then expanded goes to the GPU once, when released. */
+    void HoldUpload(bool hold)
+    {
+        m_bHoldUpload = hold;
+        if (!hold && m_bUploadPending)
+        {
+            m_bUploadPending = false;
+            EndUpdate(0);
+        }
+    }
+
     virtual void RestoreAlphaChannel(void); // Restore Alpha channel from RGB channel
 
 protected:
     CTexture(uint32_t dwWidth, uint32_t dwHeight, TextureUsage usage);
+    bool            m_bHoldUpload;
+    bool            m_bUploadPending;
     LPRICETEXTURE   m_pTexture;
     TextureFmt      m_dwTextureFmt;
 };

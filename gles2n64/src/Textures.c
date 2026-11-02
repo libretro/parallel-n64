@@ -39,6 +39,23 @@
 
 TextureCache    cache;
 
+/* The decoded texels of a texture being loaded, and a background's
+ * unswapped bytes: grown as needed and kept, rather than allocated and
+ * freed for every texture. */
+static void *texture_scratch_ptr[2];
+static size_t texture_scratch_size[2];
+
+static void *texture_scratch(unsigned slot, size_t bytes)
+{
+   if (bytes > texture_scratch_size[slot])
+   {
+      free(texture_scratch_ptr[slot]);
+      texture_scratch_ptr[slot]  = malloc(bytes);
+      texture_scratch_size[slot] = texture_scratch_ptr[slot] ? bytes : 0;
+   }
+   return texture_scratch_ptr[slot];
+}
+
 static INLINE uint32_t GetNone( uint64_t *src, uint16_t x, uint16_t i, uint8_t palette )
 {
 	return 0x00000000;
@@ -585,14 +602,24 @@ void TextureCache_MoveToTop( CachedTexture *newtop )
 
 void TextureCache_Destroy(void)
 {
+   unsigned i;
+
+   /* the dummy is one of the cached textures: this deletes it too */
    while (cache.bottom)
       TextureCache_RemoveBottom();
 
    glDeleteTextures( 32, cache.glNoiseNames );
-   glDeleteTextures( 1, &cache.dummy->glName  );
 
    cache.top = NULL;
    cache.bottom = NULL;
+   cache.dummy = NULL;
+
+   for (i = 0; i < 2; i++)
+   {
+      free(texture_scratch_ptr[i]);
+      texture_scratch_ptr[i]  = NULL;
+      texture_scratch_size[i] = 0;
+   }
 }
 
 struct TileSizes
@@ -731,16 +758,13 @@ static void _loadBackground( CachedTexture *pTexture )
 
 	bpl = gSP.bgImage.width << gSP.bgImage.size >> 1;
 	numBytes = bpl * gSP.bgImage.height;
-	pSwapped = (uint8_t*)malloc(numBytes);
+	pSwapped = (uint8_t*)texture_scratch(1, numBytes);
 	if (pSwapped == NULL)
 		return;
 	UnswapCopyWrap(gfx_info.RDRAM, gSP.bgImage.address, pSwapped, 0, RDRAMSize, numBytes);
-	pDest = (uint32_t*)malloc(pTexture->textureBytes);
+	pDest = (uint32_t*)texture_scratch(0, pTexture->textureBytes);
 	if (pDest == NULL)
-	{
-		free(pSwapped);
 		return;
-	}
 
 	clampSClamp = pTexture->width - 1;
 	clampTClamp = pTexture->height - 1;
@@ -781,8 +805,6 @@ static void _loadBackground( CachedTexture *pTexture )
       glTexImage2D(GL_TEXTURE_2D, 0, glInternalFormat, pTexture->realWidth, pTexture->realHeight, 0, GL_RGBA, glType, pDest);
    }
 	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-	free(pSwapped);
-	free(pDest);
 }
 
 static INLINE void TextureCache_getTextureDestData(CachedTexture *tmptex, uint32_t* pDest, GLuint glInternalFormat, GetTexelFunc GetTexel, uint16_t* pLine)
@@ -927,7 +949,9 @@ static void _load(uint32_t _tile, CachedTexture *_pTexture)
 		glType = loadParams->glType16;
 	}
 
-	pDest = (uint32_t*)malloc(_pTexture->textureBytes);
+	pDest = (uint32_t*)texture_scratch(0, _pTexture->textureBytes);
+	if (pDest == NULL)
+		return;
 
 
 	if (config.generalEmulation.enableLOD != 0 && gSP.texture.level > gSP.texture.tile + 1)
@@ -994,7 +1018,6 @@ static void _load(uint32_t _tile, CachedTexture *_pTexture)
       _pTexture->textureBytes += (tmptex.realWidth * tmptex.realHeight) << sizeShift;
    }
 	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-	free(pDest);
 }
 
 struct TextureParams

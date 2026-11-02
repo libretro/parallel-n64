@@ -68,6 +68,8 @@ namespace
 struct CoherencyNode : mpsc_stack_node_t
 {
 	CoherencyOperation op;
+	// copies the node has room for, after it
+	unsigned capacity;
 };
 
 struct TimelineWait
@@ -1436,8 +1438,23 @@ void CommandProcessor::timeline_work(void *user, mpsc_stack_node_t *item)
 	self->perform_coherency(node->op);
 	if (node->op.timeline_value)
 		retro_atomic_store_release_size(&self->thread_timeline_value, size_t(node->op.timeline_value));
-	node->~CoherencyNode();
-	::operator delete(node);
+	node->op.fence.reset();
+	mpsc_stack_push(&self->coherency_nodes.returned, node);
+}
+
+CommandProcessor::CoherencyNodePool::~CoherencyNodePool()
+{
+	mpsc_stack_node_t *lists[2] = { spare, mpsc_stack_drain(&returned) };
+	unsigned i;
+
+	for (i = 0; i < 2; i++)
+		while (lists[i])
+		{
+			auto *node = static_cast<CoherencyNode *>(lists[i]);
+			lists[i] = node->next;
+			node->~CoherencyNode();
+			::operator delete(node);
+		}
 }
 
 bool CommandProcessor::timeline_reached(void *ctx)
@@ -1566,12 +1583,47 @@ void CommandProcessor::perform_coherency(CoherencyOperation &work)
 	}
 }
 
-// One allocation per operation: the node, with its copies after it.
+// A node with room for n copies: one the worker has handed back, or
+// failing that a new one, with its copies after it.
+static CoherencyNode *take_coherency_node(mpsc_stack_node_t **spare, mpsc_stack_t *returned, unsigned n)
+{
+	unsigned pass;
+
+	for (pass = 0; pass < 2; pass++)
+	{
+		mpsc_stack_node_t **link = spare;
+		for (; *link; link = &(*link)->next)
+		{
+			auto *node = static_cast<CoherencyNode *>(*link);
+			if (node->capacity >= n)
+			{
+				*link = node->next;
+				return node;
+			}
+		}
+		// what came back since: put in front of the rest
+		mpsc_stack_node_t *back = mpsc_stack_drain(returned);
+		if (!back)
+			break;
+		mpsc_stack_node_t *tail = back;
+		while (tail->next)
+			tail = tail->next;
+		tail->next = *spare;
+		*spare = back;
+	}
+
+	unsigned capacity = 8;
+	while (capacity < n)
+		capacity <<= 1;
+	void *mem = ::operator new(sizeof(CoherencyNode) + capacity * sizeof(CoherencyCopy));
+	auto *node = UTIL_PLACEMENT_NEW(mem) CoherencyNode;
+	node->capacity = capacity;
+	return node;
+}
+
 void CommandProcessor::enqueue_coherency_operation(CoherencyOperation &&op)
 {
-	size_t bytes = sizeof(CoherencyNode) + op.num_copies * sizeof(CoherencyCopy);
-	void *mem = ::operator new(bytes);
-	auto *node = UTIL_PLACEMENT_NEW(mem) CoherencyNode;
+	auto *node = take_coherency_node(&coherency_nodes.spare, &coherency_nodes.returned, op.num_copies);
 	auto *copies = reinterpret_cast<CoherencyCopy *>(node + 1);
 	unsigned i;
 

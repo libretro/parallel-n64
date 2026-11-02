@@ -31,12 +31,7 @@ COGLRenderTexture::COGLRenderTexture(int width, int height, RenderTextureInfo* p
     {
         m_pTexture = m_pOGLTexture = new COGLTexture(width, height, usage);
         if( !m_pTexture )
-        {
             TRACE0("Error to create OGL render_texture");
-            if (m_pTexture)
-               free(m_pTexture);
-            m_pTexture = NULL;
-        }
     }
 
     m_width = width;
@@ -53,8 +48,8 @@ COGLRenderTexture::~COGLRenderTexture()
     }
 
     ShutdownPBuffer();
-    if (m_pTexture)
-       free(m_pTexture);
+    /* made with new: its destructor gives back the GL texture too */
+    delete m_pTexture;
     m_pTexture      = NULL;
     m_pOGLTexture   = NULL;
     m_beingRendered = false;

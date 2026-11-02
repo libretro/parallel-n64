@@ -172,7 +172,10 @@ test-parallel-rdp-linux-x64:
 # EGL, no GPU. tools/lrhost_gl runs krom's RDP tests through Glide64,
 # GLideN64, Rice and glN64: each must run to the end and draw, and
 # GLideN64 must draw the same frames whatever its colour buffer copy to
-# RDRAM is set to.
+# RDRAM is set to; then again with the core and host built with
+# AddressSanitizer. tools/lrhost runs them through angrylion with and
+# without a lent software framebuffer, for each VI output: the pictures
+# must match, and the modes that can draw into the lent buffer must.
 test-gl-renderers-linux-x64:
   extends:
     - .core-defs
@@ -187,8 +190,13 @@ test-gl-renderers-linux-x64:
   script:
     - apt-get update -qq && apt-get install -y -qq build-essential nasm git ca-certificates curl python3 libgl-dev libegl-dev libegl-mesa0 libgl1-mesa-dri
     - make -j$(nproc) platform=unix WITH_DYNAREC=$WITH_DYNAREC HAVE_THR_AL=$HAVE_THR_AL HAVE_PARALLEL=$HAVE_PARALLEL HAVE_PARALLEL_RSP=$HAVE_PARALLEL_RSP
-    - make platform=unix lrhost_gl
+    - make platform=unix lrhost_gl lrhost
     - python3 tools/ci/gl_renderers.py --core ./parallel_n64_libretro.so --host ./lrhost_gl
+    - python3 tools/ci/angrylion_lend.py --core ./parallel_n64_libretro.so --host ./lrhost
+    - make platform=unix clean
+    - make -j$(nproc) platform=unix WITH_DYNAREC=$WITH_DYNAREC HAVE_THR_AL=$HAVE_THR_AL HAVE_PARALLEL=$HAVE_PARALLEL HAVE_PARALLEL_RSP=$HAVE_PARALLEL_RSP SANITIZER=address
+    - make platform=unix SANITIZER=address lrhost_gl
+    - ASAN_OPTIONS=detect_leaks=0 python3 tools/ci/gl_renderers.py --core ./parallel_n64_libretro.so --host ./lrhost_gl
 
 # Linux 64-bit (ARM64)
 libretro-build-linux-aarch64:

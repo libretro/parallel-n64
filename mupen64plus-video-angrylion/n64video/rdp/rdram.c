@@ -147,65 +147,79 @@ static struct
 static void px_resolve_rows(uint32_t wid)
 {
     uint32_t f = px_scale, samples = f * f;
-    uint32_t stride = px_resolve_job.width * f;     /* domain pixels per domain row */
+    /* the factor is a power of two: so is the sample count, and the
+     * rounded average is a shift */
+    uint32_t shift = f == 4 ? 4 : (f == 2 ? 2 : 0);
+    uint32_t half = samples >> 1;
+    uint32_t width = px_resolve_job.width;
+    uint32_t stride = width * f;     /* domain pixels per domain row */
     uint32_t nw = parallel_num_workers();
     uint32_t y;
 
-    for (y = wid; y < px_resolve_job.rows; y += nw)
+    if (px_resolve_job.size == 2)
     {
-        uint32_t x;
-        for (x = 0; x < px_resolve_job.width; x++)
+        uint32_t base16 = (px_resolve_job.addr * samples) >> 1;
+        for (y = wid; y < px_resolve_job.rows; y += nw)
         {
-            uint32_t sx, sy;
-            if (px_resolve_job.size == 2)
+            uint32_t x;
+            uint32_t idx16 = (px_resolve_job.addr >> 1) + y * width;
+            uint32_t row0 = base16 + stride * (y * f);
+            for (x = 0; x < width; x++, idx16++)
             {
-                uint32_t base16 = (px_resolve_job.addr * samples) >> 1;
-                uint32_t idx16  = (px_resolve_job.addr >> 1) + y * px_resolve_job.width + x;
+                uint32_t sx, sy, i;
                 uint32_t r = 0, g = 0, b = 0, cvg = 0;
                 for (sy = 0; sy < f; sy++)
                     for (sx = 0; sx < f; sx++)
                     {
-                        uint32_t di = (base16 + stride * (y * f + sy) + x * f + sx) & px_mask16;
+                        uint32_t di = (row0 + stride * sy + x * f + sx) & px_mask16;
                         uint16_t v = px16[di ^ WORD_ADDR_XOR];
                         r += (v >> 11) & 31; g += (v >> 6) & 31; b += (v >> 1) & 31;
                         /* three-bit coverage: the word's low bit above the
                          * two hidden bits */
                         cvg += ((v & 1) << 2) | (px_hidden[di] & 3);
                     }
-                r = (r + samples / 2) / samples; g = (g + samples / 2) / samples; b = (b + samples / 2) / samples;
+                r = (r + half) >> shift; g = (g + half) >> shift; b = (b + half) >> shift;
                 /* the block's coverage is what the video interface's edge
                  * filter keys on: the average, so a pixel whose colour is
                  * already the supersampled blend of an edge is not blurred
                  * a second time as a partly covered one */
-                cvg = (cvg + samples / 2) / samples;
-                idx16 &= RDRAM_MASK >> 1;
-                if (idx16 <= idxlim16)
+                cvg = (cvg + half) >> shift;
+                i = idx16 & (RDRAM_MASK >> 1);
+                if (i <= idxlim16)
                 {
-                    rdram16[idx16 ^ WORD_ADDR_XOR] = (uint16_t)((r << 11) | (g << 6) | (b << 1) | ((cvg >> 2) & 1));
-                    rdram_hidden[idx16] = (uint8_t)(cvg & 3);
+                    rdram16[i ^ WORD_ADDR_XOR] = (uint16_t)((r << 11) | (g << 6) | (b << 1) | ((cvg >> 2) & 1));
+                    rdram_hidden[i] = (uint8_t)(cvg & 3);
                 }
             }
-            else if (px_resolve_job.size == 3)
+        }
+    }
+    else if (px_resolve_job.size == 3)
+    {
+        uint32_t base32 = (px_resolve_job.addr * samples) >> 2;
+        for (y = wid; y < px_resolve_job.rows; y += nw)
+        {
+            uint32_t x;
+            uint32_t idx32 = (px_resolve_job.addr >> 2) + y * width;
+            uint32_t row0 = base32 + stride * (y * f);
+            for (x = 0; x < width; x++, idx32++)
             {
-                uint32_t base32 = (px_resolve_job.addr * samples) >> 2;
-                uint32_t idx32  = (px_resolve_job.addr >> 2) + y * px_resolve_job.width + x;
-                uint32_t r = 0, g = 0, b = 0, a = 0, first = 0;
+                uint32_t sx, sy, i;
+                uint32_t r = 0, g = 0, b = 0, a = 0;
+                uint32_t first = row0 + x * f;
                 for (sy = 0; sy < f; sy++)
                     for (sx = 0; sx < f; sx++)
                     {
-                        uint32_t di = base32 + stride * (y * f + sy) + x * f + sx;
-                        uint32_t v = px32[di & px_mask32];
-                        if (!sy && !sx) first = di;
+                        uint32_t v = px32[(first + stride * sy + sx) & px_mask32];
                         r += v >> 24; g += (v >> 16) & 0xff; b += (v >> 8) & 0xff; a += v & 0xff;
                     }
-                r = (r + samples / 2) / samples; g = (g + samples / 2) / samples;
-                b = (b + samples / 2) / samples; a = (a + samples / 2) / samples;
-                idx32 &= RDRAM_MASK >> 2;
-                if (idx32 <= idxlim32)
+                r = (r + half) >> shift; g = (g + half) >> shift;
+                b = (b + half) >> shift; a = (a + half) >> shift;
+                i = idx32 & (RDRAM_MASK >> 2);
+                if (i <= idxlim32)
                 {
-                    rdram32[idx32] = (r << 24) | (g << 16) | (b << 8) | a;
-                    rdram_hidden[idx32 << 1]       = px_hidden[(first << 1) & (px_mask16)];
-                    rdram_hidden[(idx32 << 1) + 1] = px_hidden[((first << 1) + 1) & (px_mask16)];
+                    rdram32[i] = (r << 24) | (g << 16) | (b << 8) | a;
+                    rdram_hidden[i << 1]       = px_hidden[(first << 1) & (px_mask16)];
+                    rdram_hidden[(i << 1) + 1] = px_hidden[((first << 1) + 1) & (px_mask16)];
                 }
             }
         }

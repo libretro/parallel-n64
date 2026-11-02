@@ -186,7 +186,8 @@ void COGLGraphicsContext::UpdateFrame(bool swapOnly)
 {
     status.gFrameCount++;
 
-    glFlush();
+    /* (no glFlush: the frame is drawn into the frontend's framebuffer,
+     * and the frontend submits it) */
 
     // if emulator defined a render callback function, call it before buffer swap
     if (renderCallback)

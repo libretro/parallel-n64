@@ -157,6 +157,9 @@ static size_t prescale_up_pixels;
  * frame copies nothing */
 static struct rgba *vi_up_out;
 static size_t vi_up_stride;
+/* the same for the unfiltered modes */
+static struct rgba *vi_fast_out;
+static uint32_t vi_fast_pitch;
 /* the same for the 1x filtered path */
 static struct rgba *vi_direct;
 static uint32_t vi_direct_h;
@@ -669,14 +672,6 @@ static void vi_process_fast_parallel(uint32_t worker_id)
     int32_t y_end = vres_raw;
     int32_t y_inc = 1;
 
-    // drop every other interlaced frame to avoid "wobbly" output due to the
-    // vertical offset
-    // TODO: completely skip rendering these frames in unfiltered to improve
-    // performance?
-    if (ctrl.serrate && v_current_line) {
-        return;
-    }
-
     if (config.parallel) {
         y_begin = worker_id;
         y_inc = parallel_num_workers();
@@ -688,7 +683,7 @@ static void vi_process_fast_parallel(uint32_t worker_id)
         uint32_t line_rseed = (vi_field_count * 0x9e3779b9u)
                             ^ ((uint32_t)y * 0x85ebca6bu) ^ 3u;
 
-        struct rgba* pixel_row = &prescale[y * hres_raw];
+        struct rgba* pixel_row = &vi_fast_out[(size_t)y * vi_fast_pitch];
 
         for (x = 0; x < hres_raw; x++) {
             struct rgba* pixel = &pixel_row[x];
@@ -912,6 +907,27 @@ static bool vi_process_fast(void)
         return false;
     }
 
+    // drop every other interlaced frame to avoid "wobbly" output due to the
+    // vertical offset: the frame before is shown again
+    if (ctrl.serrate && v_current_line) {
+        return false;
+    }
+
+    /* Into the host's buffer when it lends one, so that presenting the
+     * frame copies nothing: every pixel is written each frame, except the
+     * depth view's with no depth buffer, which keeps what was there. The
+     * gamma filters read back what they write. */
+    vi_fast_out = prescale;
+    vi_fast_pitch = (uint32_t)hres_raw;
+    if (config.vi.mode != VI_MODE_DEPTH || zb_address) {
+        uint32_t host_pitch = 0;
+        struct rgba *host = vdac_acquire((uint32_t)hres_raw, (uint32_t)vres_raw, &host_pitch, true);
+        if (host) {
+            vi_fast_out = host;
+            vi_fast_pitch = host_pitch;
+        }
+    }
+
     // run filter update in parallel if enabled
     if (config.parallel) {
         parallel_run(vi_process_fast_parallel);
@@ -921,10 +937,10 @@ static bool vi_process_fast(void)
 
     // finish and send buffer to screen
     struct frame_buffer fb;
-    fb.pixels = prescale;
+    fb.pixels = vi_fast_out;
     fb.width = hres_raw;
     fb.height = vres_raw;
-    fb.pitch = hres_raw;
+    fb.pitch = vi_fast_pitch;
 
     // get display size of filtered mode
     int32_t filtered_width = maxhpass - minhpass;

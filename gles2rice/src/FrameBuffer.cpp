@@ -84,7 +84,7 @@ void FrameBufferManager::CloseUp()
    for (i=0; i<numOfTxtBufInfos; i++)
    {
       if (gRenderTextureInfos[i].pRenderTexture)
-         free(gRenderTextureInfos[i].pRenderTexture);
+         delete gRenderTextureInfos[i].pRenderTexture;
       gRenderTextureInfos[i].pRenderTexture = NULL;
    }
 }
@@ -1068,7 +1068,7 @@ int FrameBufferManager::CheckRenderTexturesWithNewCI(SetImgInfo &CIinfo, uint32_
                 i, info.CI_Info.dwAddr, CIinfo.dwAddr, CIinfo.dwWidth, height ));
 
             if (info.pRenderTexture)
-               free(info.pRenderTexture);
+               delete info.pRenderTexture;
             info.pRenderTexture    = NULL;
             info.txtEntry.pTexture = NULL;
             continue;
@@ -1115,7 +1115,7 @@ int FrameBufferManager::FindASlot(void)
     }
 
     if (gRenderTextureInfos[idx].pRenderTexture)
-       free(gRenderTextureInfos[idx].pRenderTexture);
+       delete gRenderTextureInfos[idx].pRenderTexture;
     gRenderTextureInfos[idx].pRenderTexture = NULL;
 
     return idx;
@@ -1230,7 +1230,7 @@ void FrameBufferManager::CloseRenderTexture(bool toSave)
         {
             TXTRBUF_DUMP(TRACE0("Closing render_texture without save"););
             if (gRenderTextureInfos[m_curRenderTextureIndex].pRenderTexture)
-               free(gRenderTextureInfos[m_curRenderTextureIndex].pRenderTexture);
+               delete gRenderTextureInfos[m_curRenderTextureIndex].pRenderTexture;
             gRenderTextureInfos[m_curRenderTextureIndex].pRenderTexture = NULL;
             gRenderTextureInfos[m_curRenderTextureIndex].isUsed         = false;
             TXTRBUF_DUMP(TRACE1("Delete render_texture %d",m_curRenderTextureIndex););
@@ -1243,7 +1243,7 @@ void FrameBufferManager::CloseRenderTexture(bool toSave)
             if (frameBufferOptions.bRenderTextureWriteBack)
             {
                if (gRenderTextureInfos[m_curRenderTextureIndex].pRenderTexture)
-                  free(gRenderTextureInfos[m_curRenderTextureIndex].pRenderTexture);
+                  delete gRenderTextureInfos[m_curRenderTextureIndex].pRenderTexture;
                gRenderTextureInfos[m_curRenderTextureIndex].pRenderTexture = NULL;
                gRenderTextureInfos[m_curRenderTextureIndex].isUsed = false;
                TXTRBUF_DUMP(TRACE1("Delete render_texture %d after writing back to RDRAM",m_curRenderTextureIndex););
@@ -1343,7 +1343,7 @@ void FrameBufferManager::CheckRenderTextureCRCInRDRAM(void)
                 TXTRBUF_DUMP(TRACE2("Delete texture buffer %d at %08X, CRC in RDRAM changed", i, gRenderTextureInfos[i].CI_Info.dwAddr ));
 
                 if (gRenderTextureInfos[i].pRenderTexture)
-                   free(gRenderTextureInfos[i].pRenderTexture);
+                   delete gRenderTextureInfos[i].pRenderTexture;
                 gRenderTextureInfos[i].pRenderTexture = NULL;
                 gRenderTextureInfos[i].isUsed         = false;
                 continue;
@@ -1384,7 +1384,7 @@ int FrameBufferManager::CheckAddrInRenderTextures(uint32_t addr, bool checkcrc)
                         TXTRBUF_DUMP(TRACE2("Delete texture buffer %d at %08X, crcInRDRAM failed.", i, gRenderTextureInfos[i].CI_Info.dwAddr ));
 
                         if (gRenderTextureInfos[i].pRenderTexture)
-                           free(gRenderTextureInfos[i].pRenderTexture);
+                           delete gRenderTextureInfos[i].pRenderTexture;
                         gRenderTextureInfos[i].pRenderTexture = NULL;
                         gRenderTextureInfos[i].isUsed         = false;
                         continue;
@@ -1435,7 +1435,7 @@ void FrameBufferManager::RestoreNormalBackBuffer()
         TXTRBUF_DUMP(TRACE2("Delete texture buffer %d at %08X, it is never rendered", m_curRenderTextureIndex, gRenderTextureInfos[m_curRenderTextureIndex].CI_Info.dwAddr ));
 
         if (gRenderTextureInfos[m_curRenderTextureIndex].pRenderTexture)
-           free(gRenderTextureInfos[m_curRenderTextureIndex].pRenderTexture);
+           delete gRenderTextureInfos[m_curRenderTextureIndex].pRenderTexture;
         gRenderTextureInfos[m_curRenderTextureIndex].pRenderTexture = NULL;
     }
 }

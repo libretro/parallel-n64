@@ -98,8 +98,7 @@ void CDeviceBuilder::DeleteGraphicsContext(void)
         CGraphicsContext::g_pGraphicsContext = m_pGraphicsContext = NULL;
     }
 
-    if (g_pFrameBufferManager)
-       free(g_pFrameBufferManager);
+    delete g_pFrameBufferManager;
     g_pFrameBufferManager = NULL;
 }
 
