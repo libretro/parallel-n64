@@ -27,6 +27,7 @@
 #include "command_pool.hpp"
 #include "fence.hpp"
 #include "sync_pools.h"
+#include "frame_garbage.h"
 #include "image.hpp"
 #include "memory_allocator.hpp"
 #include "render_pass.hpp"
@@ -71,10 +72,21 @@ struct InitialImageBuffer
 // the frame it was last used in (see Device::defer_release).
 struct DeferredRelease : mpsc_stack_node_t
 {
+	// The handle kinds go straight to the frame's garbage lists
 	enum class Kind
 	{
-		Framebuffer, Sampler, Pipeline, ImageView, BufferView, Image, Buffer,
-		DescriptorPool, Semaphore, RecycleSemaphore, Fence, Memory, KeepAliveImage
+		Framebuffer = GRANITE_GARBAGE_FRAMEBUFFER,
+		Sampler = GRANITE_GARBAGE_SAMPLER,
+		Pipeline = GRANITE_GARBAGE_PIPELINE,
+		ImageView = GRANITE_GARBAGE_IMAGE_VIEW,
+		BufferView = GRANITE_GARBAGE_BUFFER_VIEW,
+		Image = GRANITE_GARBAGE_IMAGE,
+		Buffer = GRANITE_GARBAGE_BUFFER,
+		Semaphore = GRANITE_GARBAGE_SEMAPHORE,
+		RecycleSemaphore = GRANITE_GARBAGE_RECYCLE_SEMAPHORE,
+		Fence = GRANITE_GARBAGE_KINDS,
+		Memory,
+		KeepAliveImage
 	};
 	Kind kind;
 	uint64_t handle = 0; // any non-dispatchable Vulkan handle
@@ -546,17 +558,9 @@ private:
 		Util::Vector<VkFence> recycle_fences;
 
 		Util::Vector<DeviceAllocation> allocations;
-		Util::Vector<VkFramebuffer> destroyed_framebuffers;
-		Util::Vector<VkSampler> destroyed_samplers;
-		Util::Vector<VkPipeline> destroyed_pipelines;
-		Util::Vector<VkImageView> destroyed_image_views;
-		Util::Vector<VkBufferView> destroyed_buffer_views;
-		Util::Vector<VkImage> destroyed_images;
-		Util::Vector<VkBuffer> destroyed_buffers;
-		Util::Vector<VkDescriptorPool> destroyed_descriptor_pools;
 		Util::SmallVector<CommandBufferHandle> submissions[QUEUE_INDEX_COUNT];
-		Util::Vector<VkSemaphore> recycled_semaphores;
-		Util::Vector<VkSemaphore> destroyed_semaphores;
+		// destroyed, or recycled, by begin() (frame_garbage.c)
+		granite_frame_garbage_t garbage = {};
 		Util::Vector<ImageHandle> keep_alive_images;
 
 		struct DebugChannel

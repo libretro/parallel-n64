@@ -35,6 +35,7 @@ PARALLEL_RDP_SOURCES_C := \
         $(PARALLEL_RDP_IMPLEMENTATION)/parallel-rdp/temporal_upscaler.c \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/cookie.c \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/fence_wait.c \
+        $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/frame_garbage.c \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/pipeline_record_list.c \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/sync_pools.c \
         $(PARALLEL_RDP_IMPLEMENTATION)/util/aligned_alloc.c \

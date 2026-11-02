@@ -1280,9 +1280,9 @@ void Device::collect_wait_semaphores(QueueData &data, Helper::WaitSemaphores &se
 		else
 		{
 			if (semaphore->is_external_object_compatible())
-				frame().destroyed_semaphores.push_back(vk_semaphore);
+				granite_frame_garbage_push(&frame().garbage, GRANITE_GARBAGE_SEMAPHORE, GRANITE_VK_TO_BITS(vk_semaphore));
 			else
-				frame().recycled_semaphores.push_back(vk_semaphore);
+				granite_frame_garbage_push(&frame().garbage, GRANITE_GARBAGE_RECYCLE_SEMAPHORE, GRANITE_VK_TO_BITS(vk_semaphore));
 
 			sem.binary_waits.push_back(vk_semaphore);
 			sem.binary_wait_stages.push_back(data.wait_stages[i]);
@@ -1607,9 +1607,9 @@ void Device::submit_queue(QueueIndices physical_type, InternalFence *fence,
 				if (wsi.acquire->get_semaphore_type() == VK_SEMAPHORE_TYPE_BINARY_KHR)
 				{
 					if (wsi.acquire->is_external_object_compatible())
-						frame().destroyed_semaphores.push_back(wsi.acquire->get_semaphore());
+						granite_frame_garbage_push(&frame().garbage, GRANITE_GARBAGE_SEMAPHORE, GRANITE_VK_TO_BITS(wsi.acquire->get_semaphore()));
 					else
-						frame().recycled_semaphores.push_back(wsi.acquire->get_semaphore());
+						granite_frame_garbage_push(&frame().garbage, GRANITE_GARBAGE_RECYCLE_SEMAPHORE, GRANITE_VK_TO_BITS(wsi.acquire->get_semaphore()));
 				}
 				wsi.acquire->consume();
 				wsi.acquire.reset();
@@ -1938,21 +1938,14 @@ void Device::drain_deferred_releases(PerFrame &f)
 	while (node)
 	{
 		auto *next = static_cast<DeferredRelease *>(node->next);
-		switch (node->kind)
+		if (unsigned(node->kind) < GRANITE_GARBAGE_KINDS)
+			granite_frame_garbage_push(&f.garbage, granite_garbage_kind(node->kind), node->handle);
+		else switch (node->kind)
 		{
-		case DeferredRelease::Kind::Framebuffer: f.destroyed_framebuffers.push_back((VkFramebuffer)node->handle); break;
-		case DeferredRelease::Kind::Sampler: f.destroyed_samplers.push_back((VkSampler)node->handle); break;
-		case DeferredRelease::Kind::Pipeline: f.destroyed_pipelines.push_back((VkPipeline)node->handle); break;
-		case DeferredRelease::Kind::ImageView: f.destroyed_image_views.push_back((VkImageView)node->handle); break;
-		case DeferredRelease::Kind::BufferView: f.destroyed_buffer_views.push_back((VkBufferView)node->handle); break;
-		case DeferredRelease::Kind::Image: f.destroyed_images.push_back((VkImage)node->handle); break;
-		case DeferredRelease::Kind::Buffer: f.destroyed_buffers.push_back((VkBuffer)node->handle); break;
-		case DeferredRelease::Kind::DescriptorPool: f.destroyed_descriptor_pools.push_back((VkDescriptorPool)node->handle); break;
-		case DeferredRelease::Kind::Semaphore: f.destroyed_semaphores.push_back((VkSemaphore)node->handle); break;
-		case DeferredRelease::Kind::RecycleSemaphore: f.recycled_semaphores.push_back((VkSemaphore)node->handle); break;
 		case DeferredRelease::Kind::Fence: f.recycle_fences.push_back((VkFence)node->handle); break;
 		case DeferredRelease::Kind::Memory: f.allocations.push_back(node->alloc); break;
 		case DeferredRelease::Kind::KeepAliveImage: f.keep_alive_images.push_back(Util::move(node->image)); break;
+		default: break;
 		}
 		handle_pool.deferred.free(node);
 		node = next;
@@ -1972,19 +1965,6 @@ void Device::free_memory_nolock(const DeviceAllocation &alloc)
 {
 	frame().allocations.push_back(alloc);
 }
-
-#ifdef VULKAN_DEBUG
-
-template <typename T, typename U>
-static inline bool exists(const T &container, const U &value)
-{
-	for (auto &v : container)
-		if (v == value)
-			return true;
-	return false;
-}
-
-#endif
 
 void Device::destroy_pipeline(VkPipeline pipeline)
 {
@@ -2049,32 +2029,32 @@ void Device::destroy_image_view(VkImageView view)
 
 void Device::destroy_pipeline_nolock(VkPipeline pipeline)
 {
-	VK_ASSERT(!exists(frame().destroyed_pipelines, pipeline));
-	frame().destroyed_pipelines.push_back(pipeline);
+	VK_ASSERT(!granite_frame_garbage_has(&frame().garbage, GRANITE_GARBAGE_PIPELINE, GRANITE_VK_TO_BITS(pipeline)));
+	granite_frame_garbage_push(&frame().garbage, GRANITE_GARBAGE_PIPELINE, GRANITE_VK_TO_BITS(pipeline));
 }
 
 void Device::destroy_image_view_nolock(VkImageView view)
 {
-	VK_ASSERT(!exists(frame().destroyed_image_views, view));
-	frame().destroyed_image_views.push_back(view);
+	VK_ASSERT(!granite_frame_garbage_has(&frame().garbage, GRANITE_GARBAGE_IMAGE_VIEW, GRANITE_VK_TO_BITS(view)));
+	granite_frame_garbage_push(&frame().garbage, GRANITE_GARBAGE_IMAGE_VIEW, GRANITE_VK_TO_BITS(view));
 }
 
 void Device::destroy_buffer_view_nolock(VkBufferView view)
 {
-	VK_ASSERT(!exists(frame().destroyed_buffer_views, view));
-	frame().destroyed_buffer_views.push_back(view);
+	VK_ASSERT(!granite_frame_garbage_has(&frame().garbage, GRANITE_GARBAGE_BUFFER_VIEW, GRANITE_VK_TO_BITS(view)));
+	granite_frame_garbage_push(&frame().garbage, GRANITE_GARBAGE_BUFFER_VIEW, GRANITE_VK_TO_BITS(view));
 }
 
 void Device::destroy_semaphore_nolock(VkSemaphore semaphore)
 {
-	VK_ASSERT(!exists(frame().destroyed_semaphores, semaphore));
-	frame().destroyed_semaphores.push_back(semaphore);
+	VK_ASSERT(!granite_frame_garbage_has(&frame().garbage, GRANITE_GARBAGE_SEMAPHORE, GRANITE_VK_TO_BITS(semaphore)));
+	granite_frame_garbage_push(&frame().garbage, GRANITE_GARBAGE_SEMAPHORE, GRANITE_VK_TO_BITS(semaphore));
 }
 
 void Device::recycle_semaphore_nolock(VkSemaphore semaphore)
 {
-	VK_ASSERT(!exists(frame().recycled_semaphores, semaphore));
-	frame().recycled_semaphores.push_back(semaphore);
+	VK_ASSERT(!granite_frame_garbage_has(&frame().garbage, GRANITE_GARBAGE_RECYCLE_SEMAPHORE, GRANITE_VK_TO_BITS(semaphore)));
+	granite_frame_garbage_push(&frame().garbage, GRANITE_GARBAGE_RECYCLE_SEMAPHORE, GRANITE_VK_TO_BITS(semaphore));
 }
 
 void Device::reset_fence_nolock(VkFence fence, bool observed_wait)
@@ -2090,26 +2070,26 @@ void Device::reset_fence_nolock(VkFence fence, bool observed_wait)
 
 void Device::destroy_image_nolock(VkImage image)
 {
-	VK_ASSERT(!exists(frame().destroyed_images, image));
-	frame().destroyed_images.push_back(image);
+	VK_ASSERT(!granite_frame_garbage_has(&frame().garbage, GRANITE_GARBAGE_IMAGE, GRANITE_VK_TO_BITS(image)));
+	granite_frame_garbage_push(&frame().garbage, GRANITE_GARBAGE_IMAGE, GRANITE_VK_TO_BITS(image));
 }
 
 void Device::destroy_buffer_nolock(VkBuffer buffer)
 {
-	VK_ASSERT(!exists(frame().destroyed_buffers, buffer));
-	frame().destroyed_buffers.push_back(buffer);
+	VK_ASSERT(!granite_frame_garbage_has(&frame().garbage, GRANITE_GARBAGE_BUFFER, GRANITE_VK_TO_BITS(buffer)));
+	granite_frame_garbage_push(&frame().garbage, GRANITE_GARBAGE_BUFFER, GRANITE_VK_TO_BITS(buffer));
 }
 
 void Device::destroy_sampler_nolock(VkSampler sampler)
 {
-	VK_ASSERT(!exists(frame().destroyed_samplers, sampler));
-	frame().destroyed_samplers.push_back(sampler);
+	VK_ASSERT(!granite_frame_garbage_has(&frame().garbage, GRANITE_GARBAGE_SAMPLER, GRANITE_VK_TO_BITS(sampler)));
+	granite_frame_garbage_push(&frame().garbage, GRANITE_GARBAGE_SAMPLER, GRANITE_VK_TO_BITS(sampler));
 }
 
 void Device::destroy_framebuffer_nolock(VkFramebuffer framebuffer)
 {
-	VK_ASSERT(!exists(frame().destroyed_framebuffers, framebuffer));
-	frame().destroyed_framebuffers.push_back(framebuffer);
+	VK_ASSERT(!granite_frame_garbage_has(&frame().garbage, GRANITE_GARBAGE_FRAMEBUFFER, GRANITE_VK_TO_BITS(framebuffer)));
+	granite_frame_garbage_push(&frame().garbage, GRANITE_GARBAGE_FRAMEBUFFER, GRANITE_VK_TO_BITS(framebuffer));
 }
 
 void Device::clear_wait_semaphores()
@@ -2506,7 +2486,7 @@ void Device::PerFrame::begin()
 	for (auto &channel : debug_channels)
 		device.parse_debug_channel(channel);
 
-	// Free the debug channel buffers here, and they will immediately be recycled by the destroyed_buffers right below.
+	// Free the debug channel buffers here, and they will immediately be recycled with the frame's garbage right below.
 	debug_channels.clear();
 
 	for (auto &block : vbo_blocks)
@@ -2522,26 +2502,7 @@ void Device::PerFrame::begin()
 	ubo_blocks.clear();
 	staging_blocks.clear();
 
-	for (auto &framebuffer : destroyed_framebuffers)
-		table.vkDestroyFramebuffer(vkdevice, framebuffer, nullptr);
-	for (auto &sampler : destroyed_samplers)
-		table.vkDestroySampler(vkdevice, sampler, nullptr);
-	for (auto &pipeline : destroyed_pipelines)
-		table.vkDestroyPipeline(vkdevice, pipeline, nullptr);
-	for (auto &view : destroyed_image_views)
-		table.vkDestroyImageView(vkdevice, view, nullptr);
-	for (auto &view : destroyed_buffer_views)
-		table.vkDestroyBufferView(vkdevice, view, nullptr);
-	for (auto &image : destroyed_images)
-		table.vkDestroyImage(vkdevice, image, nullptr);
-	for (auto &buffer : destroyed_buffers)
-		table.vkDestroyBuffer(vkdevice, buffer, nullptr);
-	for (auto &semaphore : destroyed_semaphores)
-		table.vkDestroySemaphore(vkdevice, semaphore, nullptr);
-	for (auto &pool : destroyed_descriptor_pools)
-		table.vkDestroyDescriptorPool(vkdevice, pool, nullptr);
-	for (auto &semaphore : recycled_semaphores)
-		granite_semaphore_pool_recycle(&managers.semaphore, semaphore);
+	granite_frame_garbage_collect(&garbage, vkdevice, &table, &managers.semaphore);
 
 	if (!allocations.empty())
 	{
@@ -2549,16 +2510,6 @@ void Device::PerFrame::begin()
 			alloc.free_immediate(managers.memory);
 	}
 
-	destroyed_framebuffers.clear();
-	destroyed_samplers.clear();
-	destroyed_pipelines.clear();
-	destroyed_image_views.clear();
-	destroyed_buffer_views.clear();
-	destroyed_images.clear();
-	destroyed_buffers.clear();
-	destroyed_semaphores.clear();
-	destroyed_descriptor_pools.clear();
-	recycled_semaphores.clear();
 	allocations.clear();
 
 	if (!in_destructor)
@@ -2607,6 +2558,7 @@ Device::PerFrame::~PerFrame()
 {
 	in_destructor = true;
 	begin();
+	granite_frame_garbage_free(&garbage);
 }
 
 uint32_t Device::find_memory_type(uint32_t required, uint32_t mask) const
