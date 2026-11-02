@@ -164,6 +164,7 @@ test-parallel-rdp-linux-x64:
     - make platform=unix HAVE_PARALLEL=$HAVE_PARALLEL lrhost_vk
     - python3 tools/rdp_no_storage_8bit_bank.py --check
     - python3 tools/ci/check_cxx_runtime.py
+    - python3 tools/ci/check_stale_deps.py
     - python3 tools/gen_upscaler_shaders.py --check
     - python3 tools/ci/parallel_rdp_regress.py --core ./parallel_n64_libretro.so --host ./lrhost_vk --out parallel-rdp-artifacts
     - python3 tools/ci/parallel_rdp_syncval.py --core ./parallel_n64_libretro.so --host ./lrhost_vk

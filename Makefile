@@ -1739,6 +1739,16 @@ check-core: $(CORE_CHECKS)
 # the objects that included it just rebuild.
 %.h %.hpp:
 	@:
+
+# Nor is a source it names that was since removed or renamed (a .cpp
+# that became a .c): the object is rebuilt from the source there is. The
+# built-in rules that make a program from a source are dropped, so that
+# no missing file is ever "made" from such a source.
+%: %.c
+%: %.cpp
+%: %.o
+%.c %.cpp:
+	@:
 endif
 
 print-%:
