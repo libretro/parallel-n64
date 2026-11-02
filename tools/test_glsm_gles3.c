@@ -1,4 +1,4 @@
-/* cc -std=c99 -DHAVE_OPENGLES -DHAVE_OPENGLES3 -Ilibretro-common/include
+/* cc -std=c99 -DHAVE_OPENGLES -DHAVE_OPENGLES3 -Ilibretro-common/include -Ilibretro
  * tools/test_glsm_gles3.c libretro-common/glsym/glsym_es3.c
  * libretro-common/glsym/rglgen.c -lEGL -lGLESv2 -o test_glsm_gles3
  * EGL_PLATFORM=surfaceless ./test_glsm_gles3
@@ -7,7 +7,7 @@
 #include <EGL/egl.h>
 #include <glsym/glsym.h>
 #ifndef GLSM_SOURCE
-#define GLSM_SOURCE "../libretro-common/glsm/glsm.c"
+#define GLSM_SOURCE "../libretro/glsm/glsm.c"
 #endif
 #include GLSM_SOURCE
 

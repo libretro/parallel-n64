@@ -737,7 +737,7 @@
     <ClCompile Include="..\..\..\libretro-common\conversion\float_to_s16.c" />
     <ClCompile Include="..\..\..\libretro-common\conversion\s16_to_float.c" />
     <ClCompile Include="..\..\..\libretro-common\features\features_cpu.c" />
-    <ClCompile Include="..\..\..\libretro-common\glsm\glsm.c" />
+    <ClCompile Include="..\..\glsm\glsm.c" />
     <ClCompile Include="..\..\..\libretro-common\glsym\glsym_gl.c" />
     <ClCompile Include="..\..\..\libretro-common\glsym\rglgen.c" />
     <ClCompile Include="..\..\..\libretro-common\libco\libco.c" />

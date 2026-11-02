@@ -35,6 +35,7 @@ def main():
             "-DHAVE_OPENGLES3", "-DHAVE_THR_AL", "-DHAVE_PARALLEL",
             f'-DGLSM_FRAME_BOUNDARY_SOURCE="{header}"',
             "-I" + str(root / "libretro-common/include"),
+            "-I" + str(root / "libretro"),
             str(root / "tools/test_glsm_gles3.c"),
             str(root / "libretro-common/glsym/glsym_es3.c"),
             str(root / "libretro-common/glsym/rglgen.c"),

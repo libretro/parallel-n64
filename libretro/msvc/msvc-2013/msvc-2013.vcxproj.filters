@@ -495,7 +495,7 @@
     <ClCompile Include="..\..\..\libretro-common\libco\libco.c">
       <Filter>Source Files\libretro\libco</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\libretro-common\glsm\glsm.c">
+    <ClCompile Include="..\..\glsm\glsm.c">
       <Filter>Source Files\libretro\glsm</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\mupen64plus-core\src\dd\dd_controller.c">

@@ -1258,7 +1258,7 @@ lrhost_gl$(EXE_EXT): tools/lrhost.c tools/lrhost_gl.h $(LIBRETRO_COMM_DIR)/featu
 # write, and its texture uploads for desktop GL and for GLES 2
 GLITCH64_TEST_SRCS := $(VIDEODIR_GLIDE)/Glitch64/glitchmain.c $(VIDEODIR_GLIDE)/Glitch64/glitch64_combiner.c \
 	$(VIDEODIR_GLIDE)/Glitch64/geometry.c $(VIDEODIR_GLIDE)/Glitch64/glitch64_textures.c \
-	$(LIBRETRO_COMM_DIR)/glsm/glsm.c $(LIBRETRO_COMM_DIR)/gfx/gl_capabilities.c $(LIBRETRO_COMM_DIR)/glsym/rglgen.c
+	$(ROOT_DIR)/libretro/glsm/glsm.c $(LIBRETRO_COMM_DIR)/gfx/gl_capabilities.c $(LIBRETRO_COMM_DIR)/glsym/rglgen.c
 GLITCH64_TEST_FLAGS := -D__LIBRETRO__ -DINLINE=inline -DM64P_PLUGIN_API -DM64P_CORE_PROTOTYPES -DHAVE_GLIDE64 \
 	-I$(VIDEODIR_GLIDE)/Glitch64/inc -I$(ROOT_DIR)/include -I$(ROOT_DIR)/libretro -I$(LIBRETRO_COMM_DIR)/include \
 	-I$(CORE_DIR)/src -I$(CORE_DIR)/src/api $(filter -fsanitize=% -O% -g,$(CFLAGS)) -w
