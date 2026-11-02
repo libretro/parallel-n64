@@ -233,6 +233,11 @@ void CommandProcessor::begin_frame_context()
 	drain_command_ring();
 }
 
+unsigned CommandProcessor::get_scaling_factor() const
+{
+	return renderer.get_scaling_factor();
+}
+
 void CommandProcessor::init_renderer()
 {
 	if (!rdram || !timeline_worker.worker)
@@ -254,6 +259,9 @@ void CommandProcessor::init_renderer()
 	else if (flags & COMMAND_PROCESSOR_FLAG_UPSCALING_2X_BIT)
 		factor = 2;
 
+	factor = Renderer::fitting_upscaling_factor(device, factor, rdram_size,
+	                                            hidden_rdram->get_create_info().size,
+	                                            (flags & COMMAND_PROCESSOR_FLAG_SUPER_SAMPLED_READ_BACK_BIT) != 0);
 	if (factor != 1)
 		LOGI("Enabling upscaling: %ux.\n", factor);
 

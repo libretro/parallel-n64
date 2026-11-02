@@ -161,6 +161,9 @@ public:
 	void end_write_hidden_rdram();
 	size_t get_rdram_size() const;
 	size_t get_hidden_rdram_size() const;
+	// What it renders at: the factor asked for, or less where the device
+	// cannot bind buffers that large.
+	unsigned get_scaling_factor() const;
 	void *get_tmem();
 
 	// Sets VI register

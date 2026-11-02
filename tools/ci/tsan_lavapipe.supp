@@ -1,0 +1,6 @@
+# Races inside Mesa's software Vulkan driver (lavapipe) and the LLVM it
+# compiles shaders with, which the core does not own; races in the core
+# are not suppressed.
+race:libvulkan_lvp.so
+race:libLLVM
+race:libgallium

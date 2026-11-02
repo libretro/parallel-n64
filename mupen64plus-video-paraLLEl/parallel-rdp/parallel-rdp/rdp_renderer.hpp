@@ -161,6 +161,11 @@ public:
 	void submit_update_upscaled_domain_external(Vulkan::CommandBuffer &cmd,
 	                                            unsigned addr, unsigned pixels, unsigned pixel_size_log2);
 	unsigned get_scaling_factor() const;
+	// The largest factor up to 'factor' whose buffers each fit in one
+	// storage buffer binding (maxStorageBufferRange).
+	static unsigned fitting_upscaling_factor(const Vulkan::Device &device, unsigned factor,
+	                                         VkDeviceSize rdram_size, VkDeviceSize hidden_rdram_bytes,
+	                                         bool super_sampled_readback);
 
 	const Vulkan::Buffer *get_upscaled_rdram_buffer() const;
 	const Vulkan::Buffer *get_upscaled_hidden_rdram_buffer() const;
@@ -419,6 +424,9 @@ private:
 		bool super_sample_readback_dither = false;
 		unsigned upscaling = 1;
 		unsigned max_num_tile_instances = Limits::MaxTileInstances;
+		// static raster states per flush: as many as the work list's
+		// per-state slices that fit in one storage buffer binding
+		unsigned max_static_raster_states = Limits::MaxStaticRasterizationStates;
 		unsigned max_tiles_x = ImplementationConstants::MaxTilesX;
 		unsigned max_tiles_y = ImplementationConstants::MaxTilesY;
 		unsigned max_width = Limits::MaxWidth;

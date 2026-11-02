@@ -60,8 +60,10 @@ static unsigned num_retro_images;
 /* RDRAM as the command processor imports it */
 static uintptr_t rdram_base;
 static uintptr_t rdram_offset;
-/* The upscaling factor the command processor renders at */
+/* The upscaling factor the command processor renders at, and the one it
+ * was made for (the device may not fit that) */
 static unsigned processor_factor = 1;
+static unsigned processor_requested = 1;
 
 /* The frontend's temporal upscaler (RETRO_ENVIRONMENT_GET_HW_RENDER_UPSCALER_INTERFACE) */
 static const struct retro_hw_render_upscaler_interface *upscaler_iface;
@@ -450,7 +452,11 @@ static bool create_processor(unsigned factor)
 	quirks.set_native_texture_lod(native_texture_lod);
 	quirks.set_native_resolution_tex_rect(native_tex_rect);
 	frontend->set_quirks(quirks);
-	processor_factor = factor;
+	processor_requested = factor;
+	processor_factor = frontend->get_scaling_factor();
+	if (processor_factor != factor)
+		log_cb(RETRO_LOG_WARN, "This device's storage buffers are too small for %ux upscaling: using %ux.\n",
+				factor, processor_factor);
 	return true;
 }
 
@@ -543,7 +549,7 @@ static void upscaler_poll()
 	}
 
 	/* (super-sampled read-back is off while the upscaler is on) */
-	remake = factor != processor_factor
+	remake = factor != processor_requested
 		|| (on != upscaler_on && super_sampled_read_back && factor > 1);
 	if (on != upscaler_on)
 		upscaler_reset_pending = true;

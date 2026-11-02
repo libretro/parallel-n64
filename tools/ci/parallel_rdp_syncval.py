@@ -5,8 +5,10 @@
 
 Runs a few krom ROMs for a few frames through tools/lrhost_vk with the
 Khronos validation layer and synchronization validation on, natively, upscaled
-2x, and upscaled 2x and downscaled back (the scale pass with its downscale
-folded in), and fails on any validation error, and on any write-after-read
+2x, upscaled 2x and downscaled back (the scale pass with its downscale
+folded in), and at 4x and 8x, whose buffers outgrow lavapipe's 128 MiB
+storage buffer bindings (the 4x work list used to be bound whole, 512 MiB),
+and fails on any validation error, and on any write-after-read
 or write-after-write hazard: work that overwrites memory another submission
 may still be using, such as an initialisation submitted where it lands
 after the first frame that reads it.
@@ -26,7 +28,10 @@ from parallel_rdp_regress import OPTIONS, fetch
 
 ROMS = ("cube16", "rottri32xlu")
 CONFIGS = (("native", ()), ("2x", ("parallel-n64-upscaling=2x",)),
-           ("2x-downscaled", ("parallel-n64-upscaling=2x", "parallel-n64-parallel-rdp-downscaling=1/2")))
+           ("2x-downscaled", ("parallel-n64-upscaling=2x", "parallel-n64-parallel-rdp-downscaling=1/2")),
+           # lavapipe binds at most 128 MiB of a storage buffer: 4x flushes
+           # every 16 static raster states, 8x falls back to 4x
+           ("4x", ("parallel-n64-upscaling=4x",)), ("8x", ("parallel-n64-upscaling=8x",)))
 FRAMES = 8
 
 HAZARD = re.compile(r"SYNC-HAZARD-([A-Z-]+)")

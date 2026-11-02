@@ -117,6 +117,53 @@ bool Renderer::pending_async_pipeline_insert(Util::Hash hash)
 	return true;
 }
 
+// maxStorageBufferRange; PARALLEL_RDP_MAX_STORAGE_BUFFER_RANGE=bytes lowers
+// it, to run what a device with a smaller one gets.
+static VkDeviceSize storage_buffer_range(const Vulkan::Device &device)
+{
+	VkDeviceSize range = device.get_gpu_properties().limits.maxStorageBufferRange;
+	if (const char *env = getenv("PARALLEL_RDP_MAX_STORAGE_BUFFER_RANGE"))
+	{
+		VkDeviceSize cap = strtoull(env, nullptr, 0);
+		if (cap && cap < range)
+			range = cap;
+	}
+	return range;
+}
+
+unsigned Renderer::fitting_upscaling_factor(const Vulkan::Device &device, unsigned factor,
+                                            VkDeviceSize rdram_size, VkDeviceSize hidden_rdram_bytes,
+                                            bool super_sampled_readback)
+{
+	const VkDeviceSize range = storage_buffer_range(device);
+
+	for (; factor > 1; factor /= 2)
+	{
+		const VkDeviceSize f2 = VkDeviceSize(factor) * factor;
+		const VkDeviceSize instances = f2 * Limits::MaxTileInstances;
+		const VkDeviceSize tiles = f2 * ImplementationConstants::MaxTilesX * ImplementationConstants::MaxTilesY;
+		const VkDeviceSize sizes[] = {
+			// multisampled RDRAM, with the super-sampled write mask after it
+			rdram_size * f2 + (super_sampled_readback ? 2 * Limits::MaxWidth * Limits::MaxHeight / 8 : 0),
+			hidden_rdram_bytes * f2,
+			// per-tile shaded colour and depth
+			sizeof(uint32_t) * instances * ImplementationConstants::TileWidth * ImplementationConstants::TileHeight,
+			// tile binning and per-tile offsets
+			sizeof(uint32_t) * (Limits::MaxPrimitives / 32) * tiles,
+			// one static raster state's slice of the work list
+			sizeof(TileRasterWork) * instances,
+		};
+		bool fits = true;
+		for (VkDeviceSize size : sizes)
+			fits = fits && size <= range;
+		if (fits)
+			break;
+		LOGW("Upscaling %ux needs a storage buffer binding larger than this device's %llu bytes.\n",
+		     factor, (unsigned long long)range);
+	}
+	return factor;
+}
+
 void Renderer::set_shader_bank(const ShaderBank *bank)
 {
 	shader_bank = bank;
@@ -137,6 +184,19 @@ bool Renderer::init_renderer(const RendererOptions &options)
 	caps.max_tiles_x = options.upscaling_factor * ImplementationConstants::MaxTilesX;
 	caps.max_tiles_y = options.upscaling_factor * ImplementationConstants::MaxTilesY;
 	caps.max_num_tile_instances = options.upscaling_factor * options.upscaling_factor * Limits::MaxTileInstances;
+	{
+		// The work list holds a slice of max_num_tile_instances entries per
+		// static raster state, and tile binning binds all of them at once.
+		VkDeviceSize range = storage_buffer_range(*device);
+		VkDeviceSize slice = sizeof(TileRasterWork) * VkDeviceSize(caps.max_num_tile_instances);
+		VkDeviceSize states = range / slice;
+		caps.max_static_raster_states = unsigned(rdp_min(VkDeviceSize(Limits::MaxStaticRasterizationStates), states));
+		if (caps.max_static_raster_states == 0)
+			return false;
+		if (caps.max_static_raster_states < Limits::MaxStaticRasterizationStates)
+			LOGI("Flushing every %u static raster states: the work list's binding is limited to %llu bytes.\n",
+			     caps.max_static_raster_states, (unsigned long long)range);
+	}
 
 	rdp_worker_free(pipeline_worker);
 	pipeline_worker = rdp_worker_new(pipeline_worker_start, pipeline_work, this);
@@ -379,7 +439,7 @@ void Renderer::init_buffers(const RendererOptions &options)
 		per_tile_offsets = device->create_buffer(info);
 		device->set_name(*per_tile_offsets, "per-tile-offsets");
 
-		info.size = sizeof(TileRasterWork) * Limits::MaxStaticRasterizationStates * caps.max_num_tile_instances;
+		info.size = sizeof(TileRasterWork) * caps.max_static_raster_states * caps.max_num_tile_instances;
 		tile_work_list = device->create_buffer(info);
 		device->set_name(*tile_work_list, "tile-work-list");
 
@@ -1671,7 +1731,7 @@ void Renderer::update_deduced_height(const TriangleSetup &setup)
 bool Renderer::need_flush() const
 {
 	bool cache_full =
-			stream.static_raster_state_cache.full() ||
+			stream.static_raster_state_cache.size() >= caps.max_static_raster_states ||
 			stream.depth_blend_state_cache.full() ||
 			(stream.tile_info_state_cache.size() + 8 > Limits::MaxTileInfoStates);
 
@@ -2609,10 +2669,13 @@ void Renderer::mark_pages_for_gpu_read(uint32_t base_addr, uint32_t byte_count)
 	uint32_t end_page = (base_addr + byte_count - 1) / ImplementationConstants::IncoherentPageSize + 1;
 	retro_atomic_int_t *pending = incoherent.pending_writes_for_page;
 
-	// We'll do an acquire memory barrier later before we start memcpy-ing from host memory.
+	// A page whose write-backs are all done is read straight from host
+	// memory: the acquire load pairs with the timeline worker's decrement
+	// after its copy, so the copy is seen (as a relaxed load and the fence
+	// before the reads would be too, but thread sanitizers see no fences).
 	mark_incoherent_pages_for_read(start_page, end_page - start_page, incoherent.num_pages,
 	                               incoherent.page_to_pending_readback,
-	                               [pending](uint32_t page) { return retro_atomic_load_relaxed_int(&pending[page]) != 0; },
+	                               [pending](uint32_t page) { return retro_atomic_load_acquire_int(&pending[page]) != 0; },
 	                               incoherent.page_to_masked_copy, incoherent.page_to_direct_copy);
 }
 

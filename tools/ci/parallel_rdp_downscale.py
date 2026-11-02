@@ -21,7 +21,8 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from parallel_rdp_regress import OPTIONS, fetch  # noqa: E402
 
 # (ROM, upscaling, downscaling, halvings)
-CONFIGS = (("cube16", "2x", "1/2", 1), ("cube16", "4x", "1/4", 2), ("cube16", "8x", "1/8", 3),
+# (8x does not fit lavapipe's storage buffer bindings: it renders 4x)
+CONFIGS = (("cube16", "2x", "1/2", 1), ("cube16", "4x", "1/4", 2),
            ("shade32", "4x", "1/2", 1), ("rottri32aa", "2x", "1/2", 1))
 FRAMES = 12
 FRAME = FRAMES - 1
