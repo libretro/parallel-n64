@@ -158,8 +158,6 @@ unsigned Renderer::fitting_upscaling_factor(const Vulkan::Device &device, unsign
 			fits = fits && size <= range;
 		if (fits)
 			break;
-		LOGW("Upscaling %ux needs a storage buffer binding larger than this device's %llu bytes.\n",
-		     factor, (unsigned long long)range);
 	}
 	return factor;
 }

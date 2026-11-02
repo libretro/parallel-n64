@@ -238,6 +238,11 @@ unsigned CommandProcessor::get_scaling_factor() const
 	return renderer.get_scaling_factor();
 }
 
+bool CommandProcessor::get_super_sampled_readback() const
+{
+	return super_sampled_readback;
+}
+
 void CommandProcessor::init_renderer()
 {
 	if (!rdram || !timeline_worker.worker)
@@ -259,16 +264,36 @@ void CommandProcessor::init_renderer()
 	else if (flags & COMMAND_PROCESSOR_FLAG_UPSCALING_2X_BIT)
 		factor = 2;
 
-	factor = Renderer::fitting_upscaling_factor(device, factor, rdram_size,
-	                                            hidden_rdram->get_create_info().size,
-	                                            (flags & COMMAND_PROCESSOR_FLAG_SUPER_SAMPLED_READ_BACK_BIT) != 0);
+	// Where the device's storage buffer bindings are too small for the
+	// factor, the factor comes down; but where only the super-sampled
+	// read-back's write mask (which sits after the upscaled RDRAM) is what
+	// does not fit, the read-back goes rather than half the resolution.
+	{
+		const VkDeviceSize hidden_size = hidden_rdram->get_create_info().size;
+		unsigned plain = Renderer::fitting_upscaling_factor(device, factor, rdram_size, hidden_size, false);
+		super_sampled_readback = (flags & COMMAND_PROCESSOR_FLAG_SUPER_SAMPLED_READ_BACK_BIT) != 0;
+		if (super_sampled_readback)
+		{
+			unsigned with_ssaa = Renderer::fitting_upscaling_factor(device, factor, rdram_size, hidden_size, true);
+			if (with_ssaa < plain || with_ssaa == 1)
+			{
+				LOGW("Super-sampled read-back does not fit this device's storage buffer bindings at %ux: off.\n",
+				     plain);
+				super_sampled_readback = false;
+			}
+		}
+		if (plain < factor)
+			LOGW("Upscaling %ux does not fit this device's storage buffer bindings: %ux.\n", factor, plain);
+		factor = plain;
+	}
 	if (factor != 1)
 		LOGI("Enabling upscaling: %ux.\n", factor);
 
 	RendererOptions opts;
 	opts.upscaling_factor = factor;
-	opts.super_sampled_readback = (flags & COMMAND_PROCESSOR_FLAG_SUPER_SAMPLED_READ_BACK_BIT) != 0;
-	opts.super_sampled_readback_dither = (flags & COMMAND_PROCESSOR_FLAG_SUPER_SAMPLED_DITHER_BIT) != 0;
+	opts.super_sampled_readback = super_sampled_readback;
+	opts.super_sampled_readback_dither = super_sampled_readback &&
+	                                     (flags & COMMAND_PROCESSOR_FLAG_SUPER_SAMPLED_DITHER_BIT) != 0;
 	opts.no_storage_8bit = no_storage_8bit;
 
 	is_supported = renderer.init_renderer(opts);

@@ -140,7 +140,8 @@ test-angrylion-linux-x64:
 # variants for devices without 8-bit SSBO storage, at 2x, and for a
 # frontend temporal upscaler (jitter, motion vectors, depth); upscaled and
 # downscaled frames must be the upscaled ones halved as a blit halves them,
-# every byte. The shader
+# every byte; and with 128 MiB storage buffer bindings each upscaling
+# setting must render at the factor that fits. The shader
 # bank check needs no GPU: those variants must not use 8-bit storage; nor
 # does the upscaler shaders' check: the SPIR-V committed must be current.
 test-parallel-rdp-linux-x64:
@@ -166,6 +167,7 @@ test-parallel-rdp-linux-x64:
     - python3 tools/ci/parallel_rdp_regress.py --core ./parallel_n64_libretro.so --host ./lrhost_vk --out parallel-rdp-artifacts
     - python3 tools/ci/parallel_rdp_syncval.py --core ./parallel_n64_libretro.so --host ./lrhost_vk
     - python3 tools/ci/parallel_rdp_downscale.py --core ./parallel_n64_libretro.so --host ./lrhost_vk
+    - python3 tools/ci/parallel_rdp_binding_fit.py --core ./parallel_n64_libretro.so --host ./lrhost_vk
   artifacts:
     when: on_failure
     paths:

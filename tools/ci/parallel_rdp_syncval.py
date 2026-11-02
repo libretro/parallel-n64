@@ -31,7 +31,10 @@ CONFIGS = (("native", ()), ("2x", ("parallel-n64-upscaling=2x",)),
            ("2x-downscaled", ("parallel-n64-upscaling=2x", "parallel-n64-parallel-rdp-downscaling=1/2")),
            # lavapipe binds at most 128 MiB of a storage buffer: 4x flushes
            # every 16 static raster states, 8x falls back to 4x
-           ("4x", ("parallel-n64-upscaling=4x",)), ("8x", ("parallel-n64-upscaling=8x",)))
+           ("4x", ("parallel-n64-upscaling=4x",)), ("8x", ("parallel-n64-upscaling=8x",)),
+           # 4x with super-sampled read-back: 4x, the read-back off
+           ("4x-read-back", ("parallel-n64-upscaling=4x",
+                             "parallel-n64-parallel-rdp-super-sampled-read-back=enabled")))
 FRAMES = 8
 
 HAZARD = re.compile(r"SYNC-HAZARD-([A-Z-]+)")

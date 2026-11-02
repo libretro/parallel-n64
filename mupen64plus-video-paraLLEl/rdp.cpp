@@ -431,7 +431,6 @@ static bool create_processor(unsigned factor)
 	if (factor > 1 && super_sampled_read_back && !upscaler_on)
 	{
 		flags |= COMMAND_PROCESSOR_FLAG_SUPER_SAMPLED_READ_BACK_BIT;
-		log_cb(RETRO_LOG_INFO, "Using super-sampled read-back!\n");
 		if (super_sampled_dither)
 			flags |= COMMAND_PROCESSOR_FLAG_SUPER_SAMPLED_DITHER_BIT;
 	}
@@ -454,9 +453,33 @@ static bool create_processor(unsigned factor)
 	frontend->set_quirks(quirks);
 	processor_requested = factor;
 	processor_factor = frontend->get_scaling_factor();
-	if (processor_factor != factor)
-		log_cb(RETRO_LOG_WARN, "This device's storage buffers are too small for %ux upscaling: using %ux.\n",
-				factor, processor_factor);
+	{
+		/* What the device's storage buffer bindings did not fit, said on
+		 * screen too: the options still show what was chosen */
+		bool ssaa_asked = (flags & COMMAND_PROCESSOR_FLAG_SUPER_SAMPLED_READ_BACK_BIT) != 0;
+		bool ssaa = frontend->get_super_sampled_readback();
+		char text[160];
+		text[0] = '\0';
+		if (processor_factor != factor)
+			snprintf(text, sizeof(text),
+					"Upscaling: %ux needs larger storage buffers than this GPU allows, rendering at %ux%s.",
+					factor, processor_factor,
+					ssaa_asked && !ssaa ? " without super-sampled read-back" : "");
+		else if (ssaa_asked && !ssaa)
+			snprintf(text, sizeof(text),
+					"Super-sampled read-back is off: at %ux it needs a larger storage buffer than this GPU allows.",
+					processor_factor);
+		if (text[0])
+		{
+			struct retro_message msg;
+			msg.msg = text;
+			msg.frames = 360;
+			log_cb(RETRO_LOG_WARN, "%s\n", text);
+			environ_cb(RETRO_ENVIRONMENT_SET_MESSAGE, &msg);
+		}
+		else if (ssaa)
+			log_cb(RETRO_LOG_INFO, "Using super-sampled read-back!\n");
+	}
 	return true;
 }
 

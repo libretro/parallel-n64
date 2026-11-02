@@ -164,6 +164,9 @@ public:
 	// What it renders at: the factor asked for, or less where the device
 	// cannot bind buffers that large.
 	unsigned get_scaling_factor() const;
+	// Whether super-sampled read-back is on: as asked, unless the device
+	// cannot bind the write mask with the factor.
+	bool get_super_sampled_readback() const;
 	void *get_tmem();
 
 	// Sets VI register
@@ -309,6 +312,7 @@ private:
 	bool measure_stall_time = false;
 	bool single_threaded_processing = false;
 	bool is_supported = false;
+	bool super_sampled_readback = false;
 	// Hidden RDRAM is 16 bits per entry (see RendererOptions::no_storage_8bit).
 	bool no_storage_8bit = false;
 	void flush_hidden_dram_to_dump();
