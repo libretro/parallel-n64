@@ -318,8 +318,8 @@ void COGL_FragmentProgramCombiner::DisableCombiner(void)
 
 void COGL_FragmentProgramCombiner::InitCombinerCycleCopy(void)
 {
-    m_pOGLRender->DisableMultiTexture();
-    m_pOGLRender->EnableTexUnit(0, true);
+    OGLRenderer()->DisableMultiTexture();
+    OGLRenderer()->EnableTexUnit(0, true);
     UseProgram(copyProgram);
     glUniform1f(copyAlphaLocation,m_AlphaRef);
     glEnableVertexAttribArray(VS_POSITION);
@@ -330,9 +330,21 @@ void COGL_FragmentProgramCombiner::InitCombinerCycleCopy(void)
     COGLTexture* pTexture = g_textures[gRSP.curTile].m_pCOGLTexture;
     if( pTexture )
     {
-        m_pOGLRender->BindTexture(pTexture->m_dwTextureName, 0);
-        m_pOGLRender->SetTexelRepeatFlags(gRSP.curTile);
+        OGLRenderer()->BindTexture(pTexture->m_dwTextureName, 0);
+        OGLRenderer()->SetTexelRepeatFlags(gRSP.curTile);
     }
+}
+
+/* DrawFrameBuffer puts a frame the CPU wrote into RDRAM on screen through
+ * this. The base version only sets up fixed-function state, which leaves
+ * no program bound: the draw then runs with program 0, which is undefined
+ * in a core context and crashes Mesa. Sample the frame with the copy
+ * program instead, with nothing discarded. */
+void COGL_FragmentProgramCombiner::InitCombinerBlenderForSimpleTextureDraw(uint32_t tile)
+{
+    COGLColorCombiner::InitCombinerBlenderForSimpleTextureDraw(tile);
+    UseProgram(copyProgram);
+    glUniform1f(copyAlphaLocation, 0.0f);
 }
 
 void COGL_FragmentProgramCombiner::InitCombinerCycleFill(void)
@@ -736,7 +748,7 @@ void COGL_FragmentProgramCombiner::InitCombinerCycle12(void)
     }
 #endif
 
-    m_pOGLRender->EnableMultiTexture();
+    OGLRenderer()->EnableMultiTexture();
 
     bool combinerIsChanged = false;
 
@@ -754,7 +766,7 @@ void COGL_FragmentProgramCombiner::InitCombinerCycle12(void)
         m_dwLastMux1 = m_pDecodedMux->m_dwMux1;
         bAlphaTestPreviousState = bAlphaTestState;
         bFogPreviousState = bFogState;
-        m_AlphaRef = (float)(m_pOGLRender->m_dwAlpha) / 255.0f;
+        m_AlphaRef = (float)(OGLRenderer()->m_dwAlpha) / 255.0f;
     }
 
 
@@ -771,14 +783,14 @@ void COGL_FragmentProgramCombiner::InitCombinerCycle12(void)
             GenerateCombinerSettingConstants(m_lastIndex);
         }
 
-        m_pOGLRender->SetAllTexelRepeatFlag();
+        OGLRenderer()->SetAllTexelRepeatFlag();
 
         gRDP.colorsAreReloaded = false;
         gRDP.texturesAreReloaded = false;
     }
     else
     {
-        m_pOGLRender->SetAllTexelRepeatFlag();
+        OGLRenderer()->SetAllTexelRepeatFlag();
     }
 }
 

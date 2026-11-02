@@ -173,7 +173,7 @@ static uint8_t* e90_setup(struct aleck64* a64, uint8_t* fb, uint32_t attr)
     a64->e90_pal[6] = UINT32_C(0x00001084); /* 0x0d = grey 4 in the low half */
     a64->e90_pal[7] = UINT32_C(0x21084210); /* 0x0e = grey 8, 0x0f = grey 16 */
 
-    aleck64_e90_overlay(fb, FB_W, FB_W, FB_H, SRC_W);
+    aleck64_e90_overlay(fb, FB_W, FB_W, FB_H, SRC_W, 0, FB_W);
     return fb;
 }
 
@@ -233,7 +233,7 @@ static void e90_overlay_checks(void)
     /* the chip-level enable does turn everything off */
     memset(fb, 0, sizeof(fb));
     a64.e90_enable = 0;
-    aleck64_e90_overlay(fb, FB_W, FB_W, FB_H, SRC_W);
+    aleck64_e90_overlay(fb, FB_W, FB_W, FB_H, SRC_W, 0, FB_W);
     px = fb + (y0 * FB_W + x0) * 4;
     assert(px[3] == 0);
 

@@ -24,6 +24,7 @@
 
 #include "Blender.h"
 #include "Combiner.h"
+#include "OGLRender.h"
 
 class OGLRender;
 
@@ -42,7 +43,9 @@ protected:
 
     COGLColorCombiner(CRender *pRender);
     ~COGLColorCombiner();
-    OGLRender *m_pOGLRender;
+    /* The combiner is built inside CRender's constructor, before the
+     * OGLRender part exists, so the downcast is done when it is used. */
+    OGLRender *OGLRenderer() const { return static_cast<OGLRender*>(m_pRender); }
     
     bool    m_bSupportAdd;
     bool    m_bSupportSubtract;
@@ -64,10 +67,10 @@ public:
 
 protected:
     friend class OGLDeviceBuilder;
-    COGLBlender(CRender *pRender) : CBlender(pRender), m_pOGLRender((OGLRender*)pRender) {};
+    COGLBlender(CRender *pRender) : CBlender(pRender) {};
     ~COGLBlender() {};
 
-    OGLRender *m_pOGLRender;
+    OGLRender *OGLRenderer() const { return static_cast<OGLRender*>(m_pRender); }
 };
 
 

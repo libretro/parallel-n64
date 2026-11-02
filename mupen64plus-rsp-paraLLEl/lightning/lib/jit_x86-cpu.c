@@ -138,10 +138,11 @@
 #  define mrm(md, r, m)			*_jit->pc.uc++ = (md<<6) | (r<<3) | m
 #  define sib(sc, i, b)			*_jit->pc.uc++ = (sc<<6) | (i<<3) | b
 #  define ic(c)				*_jit->pc.uc++ = c
-#  define is(s)				*_jit->pc.us++ = s
-#  define ii(i)				*_jit->pc.ui++ = i
+/* code bytes are not aligned: wider immediates are stored bytewise */
+#  define is(s)				do { jit_uint16_t _s = (jit_uint16_t)(s); memcpy(_jit->pc.us, &_s, sizeof(_s)); _jit->pc.us++; } while (0)
+#  define ii(i)				do { jit_uint32_t _i = (jit_uint32_t)(i); memcpy(_jit->pc.ui, &_i, sizeof(_i)); _jit->pc.ui++; } while (0)
 #  if __X64 && !__X64_32
-#    define il(l)			*_jit->pc.ul++ = l
+#    define il(l)			do { jit_uint64_t _l = (jit_uint64_t)(l); memcpy(_jit->pc.ul, &_l, sizeof(_l)); _jit->pc.ul++; } while (0)
 #  else
 #    define il(l)			ii(l)
 #  endif

@@ -74,7 +74,9 @@ endif
 # -fcommon as in the Makefile: the C plugins' tentative definitions of the
 # state GLideN64 also defines (gDP, gSP, GBI, the G_* opcodes, RDRAM, TMEM)
 # merge with GLideN64's at link, and only one plugin is ever active.
-LOCAL_CFLAGS       := -fcommon $(COREFLAGS) $(CFLAGS)
+# -fwrapv as the Makefile builds angrylion: its RDP model's int arithmetic
+# wraps as the hardware's adders and shifters do.
+LOCAL_CFLAGS       := -fcommon -fwrapv $(COREFLAGS) $(CFLAGS)
 LOCAL_CXXFLAGS     := -std=c++11 $(COREFLAGS) $(CXXFLAGS)
 LOCAL_LDFLAGS      := -Wl,-version-script=$(LIBRETRO_DIR)/link.T
 ifeq ($(GLES3),1)

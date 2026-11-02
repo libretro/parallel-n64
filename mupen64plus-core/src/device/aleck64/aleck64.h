@@ -98,11 +98,14 @@ void write_aleck64_e90(void* opaque, uint32_t address, uint32_t value, uint32_t 
  * pixels, so 'src_width' is that framebuffer's width and the overlay stretches
  * horizontally to the 'width' the VI scaled it to; vertically the VI does not
  * scale mtetrisc, so rows map 1:1.
+ * Only the columns [clip_lo, clip_hi) of the active picture are drawn, and
+ * 'pixels' points at column clip_lo, for a frame cropped to them (0, width
+ * for the whole picture).
  * No-op unless an E90 romset is running and the chip is enabled.
  * Returns the number of sprites drawn, so a caller that has to spend work
  * presenting the result (the GL path) can skip an empty frame. */
 int aleck64_e90_overlay(void* pixels, unsigned pitch, unsigned width, unsigned height,
-                        unsigned src_width);
+                        unsigned src_width, unsigned clip_lo, unsigned clip_hi);
 
 /* implemented in libretro/aleck64_mame.c */
 struct RFILE;

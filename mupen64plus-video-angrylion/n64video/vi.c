@@ -160,9 +160,12 @@ static size_t vi_up_stride;
 /* the same for the unfiltered modes */
 static struct rgba *vi_fast_out;
 static uint32_t vi_fast_pitch;
-/* the same for the 1x filtered path */
+/* the same for the 1x filtered path; when the frame is cropped to the
+ * overscan, the lent buffer holds only the columns [minhpass, maxhpass)
+ * of each row, and the rows' other pixels are not written */
 static struct rgba *vi_direct;
-static uint32_t vi_direct_h;
+static uint32_t vi_direct_w, vi_direct_h, vi_direct_pitch;
+static bool vi_out_cropped;
 static uint32_t prescale_ptr;
 static int32_t linecount;
 
@@ -287,12 +290,20 @@ static void vi_process_full_parallel(uint32_t worker_id)
             {
                 const struct rgba* lsrc = ctrl.divot_enable ? divot_cache : viaa_cache;
                 const struct rgba* lsrcn = ctrl.divot_enable ? divot_cache_next : viaa_cache_next;
-                vi_lerp_row(pixel_row, hres, minhpass, maxhpass, lsrc, lsrcn, x_offs, x_add, (uint32_t)yfrac, ctrl.aa_mode != VI_AA_REPLICATE);
+                if (vi_out_cropped)
+                    /* the row from minhpass, which is where it starts */
+                    vi_lerp_row(pixel_row, maxhpass - minhpass, 0, maxhpass - minhpass, lsrc, lsrcn,
+                                x_offs + (uint32_t)minhpass * x_add, x_add, (uint32_t)yfrac, ctrl.aa_mode != VI_AA_REPLICATE);
+                else
+                    vi_lerp_row(pixel_row, hres, minhpass, maxhpass, lsrc, lsrcn, x_offs, x_add, (uint32_t)yfrac, ctrl.aa_mode != VI_AA_REPLICATE);
             }
 
             if (ctrl.gamma_enable || ctrl.gamma_dither_enable) {
                 int32_t gx_hi = maxhpass < hres ? maxhpass : hres;
-                vi_gamma_row(pixel_row, minhpass > 0 ? minhpass : 0, gx_hi, ctrl.gamma_enable, ctrl.gamma_dither_enable, &line_rseed);
+                if (vi_out_cropped)
+                    vi_gamma_row(pixel_row, 0, maxhpass - minhpass, ctrl.gamma_enable, ctrl.gamma_dither_enable, &line_rseed);
+                else
+                    vi_gamma_row(pixel_row, minhpass > 0 ? minhpass : 0, gx_hi, ctrl.gamma_enable, ctrl.gamma_dither_enable, &line_rseed);
             }
         } else
         for (x = 0; x < hres; x++, x_offs += x_add) {
@@ -398,12 +409,12 @@ static void vi_process_full_parallel(uint32_t worker_id)
                 vi_vl_lerp(&color, nextcolor, xfrac);
             }
 
-            struct rgba* pixel = &pixel_row[x];
-
             if (x >= minhpass && x < maxhpass) {
+                struct rgba* pixel = &pixel_row[vi_out_cropped ? x - minhpass : x];
                 *pixel = color;
                 gamma_filters(pixel, ctrl.gamma_enable, ctrl.gamma_dither_enable, &line_rseed);
-            } else {
+            } else if (!vi_out_cropped) {
+                struct rgba* pixel = &pixel_row[x];
                 pixel->r = pixel->g = pixel->b = 0;
             }
         }
@@ -470,30 +481,59 @@ static bool vi_process_full(void)
     /* Render straight into the host's buffer when it lends one, so that
      * presenting the frame copies nothing. The fixed buffer is persistent -
      * its borders are cleared once and an interlaced field leaves the other
-     * field's lines in place - and the host's is not, so this is for a
-     * progressive, uncropped frame whose picture lies wholly inside the
-     * presented area; its borders are cleared here every frame. The loop
-     * lerps and gamma-corrects its rows in place, so the memory has to be
-     * readable. */
+     * field's lines in place - and the host's is not, so this is for a frame
+     * every line of which is drawn this frame: a progressive one, or an
+     * interlaced one under bob deinterlacing, which fills the other field's
+     * lines from this one's. Its picture has to lie wholly inside the
+     * presented area. Uncropped, the buffer's borders are cleared here every
+     * frame; cropped to the overscan, the buffer is the crop, and the rows
+     * write only the columns in it. The loop lerps and gamma-corrects its
+     * rows in place, so the memory has to be readable. */
     vi_direct = NULL;
     vi_out = prescale;
-    vi_direct_h = (uint32_t)((ispal ? V_RES_PAL : V_RES_NTSC) >> 1);
-    if (!isblank && validh && !ctrl.serrate && !config.vi.hide_overscan
-        && v_start >= 0 && vres > 0 && (uint32_t)(v_start + vres) <= vi_direct_h
-        && h_start >= 0 && hres > 0 && h_start + hres <= PRESCALE_WIDTH)
+    vi_out_cropped = false;
+    if (!isblank && validh && (!ctrl.serrate || config.vi.bob_deinterlace)
+        && v_start >= 0 && vres > 0 && h_start >= 0 && hres > 0 && h_start + hres <= PRESCALE_WIDTH)
     {
+        const int32_t full_h = ispal ? V_RES_PAL : V_RES_NTSC;
+        const int32_t field = ctrl.serrate ? lowerfield : 0;
+        bool fits;
         uint32_t host_pitch = 0;
-        vi_direct = vdac_acquire(PRESCALE_WIDTH, vi_direct_h, &host_pitch, true);
-        if (vi_direct)
+
+        if (config.vi.hide_overscan) {
+            /* the crop as presented below: rows from v_start, columns
+             * [minhpass, maxhpass) of the active picture */
+            fits = minhpass >= 0 && minhpass < maxhpass && maxhpass <= hres
+                && !(emucontrolsvicurrent && lowerfield)
+                && ((v_start + vres) << ctrl.serrate) <= full_h;
+            vi_direct_w = (uint32_t)(maxhpass - minhpass);
+            vi_direct_h = (uint32_t)(vres << ctrl.serrate);
+        } else {
+            fits = ((v_start + vres) << ctrl.serrate) <= (full_h >> !ctrl.serrate);
+            vi_direct_w = PRESCALE_WIDTH;
+            vi_direct_h = (uint32_t)(full_h >> !ctrl.serrate);
+        }
+        if (fits)
+            vi_direct = vdac_acquire(vi_direct_w, vi_direct_h, &host_pitch, true);
+        if (vi_direct && config.vi.hide_overscan)
+        {
+            vi_direct_pitch = host_pitch;
+            vi_out = vi_direct;
+            vi_out_cropped = true;
+            linecount = (int32_t)(host_pitch << ctrl.serrate);
+            prescale_ptr = (uint32_t)field * host_pitch;
+        }
+        else if (vi_direct)
         {
             int32_t lo = h_start + (minhpass > 0 ? minhpass : 0);
             int32_t hi = h_start + (maxhpass < hres ? maxhpass : hres);
+            int32_t top = v_start << ctrl.serrate, bottom = (v_start + vres) << ctrl.serrate;
             uint32_t r;
             if (lo > hi) lo = hi;
             for (r = 0; r < vi_direct_h; r++)
             {
                 struct rgba *row = &vi_direct[(size_t)r * host_pitch];
-                if ((int32_t)r < v_start || (int32_t)r >= v_start + vres)
+                if ((int32_t)r < top || (int32_t)r >= bottom)
                     memset(row, 0, PRESCALE_WIDTH * sizeof(*row));
                 else
                 {
@@ -501,9 +541,10 @@ static bool vi_process_full(void)
                     memset(row + hi, 0, (size_t)(PRESCALE_WIDTH - hi) * sizeof(*row));
                 }
             }
+            vi_direct_pitch = host_pitch;
             vi_out = vi_direct;
-            linecount = (int32_t)host_pitch;
-            prescale_ptr = v_start * linecount + h_start;
+            linecount = (int32_t)(host_pitch << ctrl.serrate);
+            prescale_ptr = (uint32_t)(top + field) * host_pitch + (uint32_t)h_start;
         }
     }
 
@@ -610,24 +651,43 @@ static bool vi_process_full(void)
     // bob deinterlacing: overwrite the stale sibling lines with the field
     // just rendered instead of leaving the previous field woven in
     if (ctrl.serrate && config.vi.bob_deinterlace) {
-        int32_t row = (v_start << 1) + lowerfield;
         int32_t sibling_off = lowerfield ? -1 : 1;
         int32_t n;
-        for (n = 0; n < vres; n++, row += 2) {
-            int32_t sib = row + sibling_off;
-            if (row < 0 || row >= PRESCALE_HEIGHT || sib < 0 || sib >= PRESCALE_HEIGHT)
-                continue;
-            memcpy(&prescale[sib * PRESCALE_WIDTH], &prescale[row * PRESCALE_WIDTH],
-                   PRESCALE_WIDTH * sizeof(prescale[0]));
+        if (vi_direct) {
+            /* the field's lines are every other row of the buffer, from the
+             * one prescale_ptr starts on */
+            const size_t pitch = vi_direct_pitch;
+            const size_t width = vi_out_cropped ? vi_direct_w : PRESCALE_WIDTH;
+            int32_t row = (int32_t)(prescale_ptr / pitch);
+            for (n = 0; n < vres; n++, row += 2) {
+                int32_t sib = row + sibling_off;
+                if (sib < 0 || (uint32_t)sib >= vi_direct_h)
+                    continue;
+                memcpy(&vi_direct[(size_t)sib * pitch], &vi_direct[(size_t)row * pitch],
+                       width * sizeof(vi_direct[0]));
+            }
+        } else {
+            int32_t row = (v_start << 1) + lowerfield;
+            for (n = 0; n < vres; n++, row += 2) {
+                int32_t sib = row + sibling_off;
+                if (row < 0 || row >= PRESCALE_HEIGHT || sib < 0 || sib >= PRESCALE_HEIGHT)
+                    continue;
+                memcpy(&prescale[sib * PRESCALE_WIDTH], &prescale[row * PRESCALE_WIDTH],
+                       PRESCALE_WIDTH * sizeof(prescale[0]));
+            }
         }
     }
 
     // the E90 board draws mtetrisc's playfield with a sprite chip of its own,
     // over the finished VI frame and in the active picture's coordinates
-    aleck64_e90_overlay(vi_direct ? &vi_direct[(size_t)v_start * linecount + h_start]
-                                  : &prescale[((uint32_t)v_start << ctrl.serrate) * PRESCALE_WIDTH + h_start],
-                        vi_direct ? linecount : PRESCALE_WIDTH, hres, vres << ctrl.serrate,
-                        (uint32_t)x_add * hres / 1024);
+    if (vi_out_cropped)
+        aleck64_e90_overlay(vi_direct, vi_direct_pitch, hres, vres << ctrl.serrate,
+                            (uint32_t)x_add * hres / 1024, (uint32_t)minhpass, (uint32_t)maxhpass);
+    else
+        aleck64_e90_overlay(vi_direct ? &vi_direct[((size_t)v_start << ctrl.serrate) * vi_direct_pitch + h_start]
+                                      : &prescale[((uint32_t)v_start << ctrl.serrate) * PRESCALE_WIDTH + h_start],
+                            vi_direct ? vi_direct_pitch : PRESCALE_WIDTH, hres, vres << ctrl.serrate,
+                            (uint32_t)x_add * hres / 1024, 0, (uint32_t)hres);
 
     // finish and send buffer to screen
     struct frame_buffer fb;
@@ -636,11 +696,17 @@ static bool vi_process_full(void)
     if (vi_direct)
     {
         fb.pixels = vi_direct;
-        fb.pitch = (uint32_t)linecount;
+        fb.pitch = vi_direct_pitch;
         vi_out = prescale;
     }
 
-    if (config.vi.hide_overscan) {
+    if (vi_out_cropped) {
+        // the lent buffer is the crop
+        fb.width = vi_direct_w;
+        fb.height = vi_direct_h;
+        fb.height_out = (vres << 1) * V_SYNC_NTSC / v_sync;
+        vi_out_cropped = false;
+    } else if (config.vi.hide_overscan) {
         // crop away overscan area from prescale
         fb.width = maxhpass - minhpass;
         fb.height = vres << ctrl.serrate;

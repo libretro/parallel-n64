@@ -50,7 +50,7 @@ void COGLColorCombiner4::InitCombinerCycleFill(void)
     for( int i=0; i<m_supportedStages; i++ )
     {
         glActiveTexture(GL_TEXTURE0+i);
-        m_pOGLRender->EnableTexUnit(i, false);
+        OGLRenderer()->EnableTexUnit(i, false);
     }
 }
 
@@ -67,7 +67,7 @@ void COGLColorCombiner4::InitCombinerCycle12(void)
     }
 #endif
 
-    m_pOGLRender->EnableMultiTexture();
+    OGLRenderer()->EnableMultiTexture();
 
     bool combinerIsChanged = false;
 
@@ -100,14 +100,14 @@ void COGLColorCombiner4::InitCombinerCycle12(void)
             GenerateCombinerSettingConstants(m_lastIndex);
         }
 
-        m_pOGLRender->SetAllTexelRepeatFlag();
+        OGLRenderer()->SetAllTexelRepeatFlag();
 
         gRDP.colorsAreReloaded = false;
         gRDP.texturesAreReloaded = false;
     }
     else
     {
-        m_pOGLRender->SetAllTexelRepeatFlag();
+        OGLRenderer()->SetAllTexelRepeatFlag();
     }
 }
 
@@ -336,12 +336,12 @@ void COGLColorCombiner4::GenerateCombinerSetting(int index)
         if( m_bTex0Enabled || gRDP.otherMode.cycle_type  == G_CYC_COPY )
         {
             pTexture = g_textures[gRSP.curTile].m_pCOGLTexture;
-            if( pTexture )  m_pOGLRender->BindTexture(pTexture->m_dwTextureName, 0);
+            if( pTexture )  OGLRenderer()->BindTexture(pTexture->m_dwTextureName, 0);
         }
         if( m_bTex1Enabled )
         {
             pTexture1 = g_textures[(gRSP.curTile+1)&7].m_pCOGLTexture;
-            if( pTexture1 ) m_pOGLRender->BindTexture(pTexture1->m_dwTextureName, 1);
+            if( pTexture1 ) OGLRenderer()->BindTexture(pTexture1->m_dwTextureName, 1);
         }
     }
 
@@ -350,7 +350,7 @@ void COGLColorCombiner4::GenerateCombinerSetting(int index)
     for( int i=0; i<res.numOfUnits; i++ )
     {
         glActiveTexture(GL_TEXTURE0 + i);
-        m_pOGLRender->EnableTexUnit(i, true);
+        OGLRenderer()->EnableTexUnit(i, true);
         glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_COMBINE);
         ApplyFor1Unit(res.units[i]);
     }
@@ -360,8 +360,8 @@ void COGLColorCombiner4::GenerateCombinerSetting(int index)
         for( int i=res.numOfUnits; i<m_maxTexUnits; i++ )
         {
             glActiveTexture(GL_TEXTURE0 + i);
-            m_pOGLRender->DisBindTexture(0, i);
-            m_pOGLRender->EnableTexUnit(i, false);
+            OGLRenderer()->DisBindTexture(0, i);
+            OGLRenderer()->EnableTexUnit(i, false);
         }
     }
 }

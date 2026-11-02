@@ -285,7 +285,16 @@ inline void SetLighting(bool bLighting) { gRSP.bLightingEnable = bLighting; }
 // Generate texture coords?
 inline void SetTextureGen(bool bTextureGen) { gRSP.bTextureGen = bTextureGen; }
 inline COLOR GetVertexDiffuseColor(uint32_t ver) { return g_dwVtxDifColor[ver]; }
-inline void SetScreenMult(float fMultX, float fMultY) { windowSetting.fMultX = fMultX; windowSetting.fMultY = fMultY; }
+/* Before the VI has been programmed its width or height can be 0, which
+ * makes the ratio infinite and the int viewport derived from it overflow;
+ * keep the last usable scale until then. */
+inline void SetScreenMult(float fMultX, float fMultY)
+{
+    if (fMultX > 0.0f && fMultX < 65536.0f)
+        windowSetting.fMultX = fMultX;
+    if (fMultY > 0.0f && fMultY < 65536.0f)
+        windowSetting.fMultY = fMultY;
+}
 inline COLOR GetLightCol(uint32_t dwLight) { return gRSPlights[dwLight].col; }
 
 void ricegSPNumLights(int32_t n);

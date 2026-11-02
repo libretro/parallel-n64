@@ -260,7 +260,7 @@ void aleck64_e90_gl_draw(unsigned out_width, unsigned out_height)
     }
 
     /* 1:1 into the chip's own space; the GPU does the scaling */
-    if (aleck64_e90_overlay(e90_buf, E90_MAX_W, w, h, w) == 0)
+    if (aleck64_e90_overlay(e90_buf, E90_MAX_W, w, h, w, 0, w) == 0)
         return;
 
     /* The renderer may well have left its own target bound, so aim at the

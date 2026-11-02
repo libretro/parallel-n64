@@ -78,6 +78,7 @@ protected:
     void InitCombinerCycleCopy(void);
     void InitCombinerCycleFill(void);
     void InitCombinerCycle12(void);
+    void InitCombinerBlenderForSimpleTextureDraw(uint32_t tile);
 
     COGL_FragmentProgramCombiner(CRender *pRender);
     ~COGL_FragmentProgramCombiner();

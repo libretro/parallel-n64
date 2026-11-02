@@ -172,10 +172,13 @@ test-parallel-rdp-linux-x64:
 # EGL, no GPU. tools/lrhost_gl runs krom's RDP tests through Glide64,
 # GLideN64, Rice and glN64: each must run to the end and draw, and
 # GLideN64 must draw the same frames whatever its colour buffer copy to
-# RDRAM is set to; then again with the core and host built with
-# AddressSanitizer. tools/lrhost runs them through angrylion with and
+# RDRAM is set to. test_glitch64_lfb_write holds Glide64's LFB write to
+# the image it was given, and test_glitch64_textures(_gles) its texture
+# uploads, on GL and on GLES 2, to what each Glide format means. tools/lrhost runs them through angrylion with and
 # without a lent software framebuffer, for each VI output: the pictures
-# must match, and the modes that can draw into the lent buffer must.
+# must match, and the modes that can draw into the lent buffer must. Then
+# both again with the core and hosts built with AddressSanitizer and
+# UndefinedBehaviorSanitizer: any report fails the lane.
 test-gl-renderers-linux-x64:
   extends:
     - .core-defs
@@ -188,15 +191,18 @@ test-gl-renderers-linux-x64:
     DEBIAN_FRONTEND: noninteractive
   image: ubuntu:24.04
   script:
-    - apt-get update -qq && apt-get install -y -qq build-essential nasm git ca-certificates curl python3 libgl-dev libegl-dev libegl-mesa0 libgl1-mesa-dri
+    - apt-get update -qq && apt-get install -y -qq build-essential nasm git ca-certificates curl python3 libgl-dev libegl-dev libgles-dev libegl-mesa0 libgl1-mesa-dri
     - make -j$(nproc) platform=unix WITH_DYNAREC=$WITH_DYNAREC HAVE_THR_AL=$HAVE_THR_AL HAVE_PARALLEL=$HAVE_PARALLEL HAVE_PARALLEL_RSP=$HAVE_PARALLEL_RSP
-    - make platform=unix lrhost_gl lrhost
+    - make platform=unix lrhost_gl lrhost test_glitch64_lfb_write test_glitch64_textures test_glitch64_textures_gles
+    - for t in test_glitch64_lfb_write test_glitch64_textures test_glitch64_textures_gles; do EGL_PLATFORM=surfaceless ./$t || exit 1; done
     - python3 tools/ci/gl_renderers.py --core ./parallel_n64_libretro.so --host ./lrhost_gl
     - python3 tools/ci/angrylion_lend.py --core ./parallel_n64_libretro.so --host ./lrhost
     - make platform=unix clean
-    - make -j$(nproc) platform=unix WITH_DYNAREC=$WITH_DYNAREC HAVE_THR_AL=$HAVE_THR_AL HAVE_PARALLEL=$HAVE_PARALLEL HAVE_PARALLEL_RSP=$HAVE_PARALLEL_RSP SANITIZER=address
-    - make platform=unix SANITIZER=address lrhost_gl
-    - ASAN_OPTIONS=detect_leaks=0 python3 tools/ci/gl_renderers.py --core ./parallel_n64_libretro.so --host ./lrhost_gl
+    - make -j$(nproc) platform=unix WITH_DYNAREC=$WITH_DYNAREC HAVE_THR_AL=$HAVE_THR_AL HAVE_PARALLEL=$HAVE_PARALLEL HAVE_PARALLEL_RSP=$HAVE_PARALLEL_RSP SANITIZER=address,undefined
+    - make platform=unix SANITIZER=address,undefined lrhost_gl lrhost test_glitch64_lfb_write test_glitch64_textures test_glitch64_textures_gles
+    - for t in test_glitch64_lfb_write test_glitch64_textures test_glitch64_textures_gles; do EGL_PLATFORM=surfaceless ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1 ./$t || exit 1; done
+    - ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=print_stacktrace=1 python3 tools/ci/gl_renderers.py --core ./parallel_n64_libretro.so --host ./lrhost_gl
+    - ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=print_stacktrace=1 python3 tools/ci/angrylion_lend.py --core ./parallel_n64_libretro.so --host ./lrhost
 
 # Linux 64-bit (ARM64)
 libretro-build-linux-aarch64:

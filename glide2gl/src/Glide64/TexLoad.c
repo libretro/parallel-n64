@@ -465,13 +465,13 @@ static uint32_t Load4bCI(uintptr_t dst, uintptr_t src, int wid_64, int height, i
     palette =(uintptr_t)(rdp.pal_8 + (g_gdp.tile[tile].palette << 4));
     if (rdp.tlut_mode == 2)
     {
-        ext <<= 1;
+        ext *= 2; /* can be negative */
         load4bCI ((uint8_t *)src,(uint8_t *)dst, wid_64, height, line, ext,(uint16_t *)palette);
 
         return (1 << 16) | GR_TEXFMT_ARGB_1555;
     }
 
-    ext <<= 1;
+    ext *= 2;
     load4bIAPal ((uint8_t *)src,(uint8_t *)dst, wid_64, height, line, ext,(uint16_t *)palette);
     return (1 << 16) | GR_TEXFMT_ALPHA_INTENSITY_88;
 }
@@ -552,11 +552,11 @@ static uint32_t Load8bCI(uintptr_t dst, uintptr_t src, int wid_64, int height, i
           load8bI ((uint8_t *)src,(uint8_t *)dst, wid_64, height, line, ext);
           return /*(0 << 16) | */GR_TEXFMT_ALPHA_8;
        case 2: //color palette
-          ext <<= 1;
+          ext *= 2; /* can be negative */
           load8bCI ((uint8_t *)src,(uint8_t *)dst, wid_64, height, line, ext, palette);
           return (1 << 16) | GR_TEXFMT_ARGB_1555;
        default: /*IA palette */
-          ext <<= 1;
+          ext *= 2;
           load8bIA8 ((uint8_t *)src,(uint8_t *)dst, wid_64, height, line, ext, palette);
           return (1 << 16) | GR_TEXFMT_ALPHA_INTENSITY_88;
     }
@@ -610,7 +610,7 @@ static uint32_t Load16bRGBA(uintptr_t dst, uintptr_t src, int wid_64, int height
         wid_64 = 1;
     if (height < 1)
         height = 1;
-    ext = (real_width - (wid_64 << 2)) << 1;
+    ext = (real_width - (wid_64 << 2)) * 2;
 
     load16bRGBA((uint8_t *)src,(uint8_t *)dst, wid_64, height, line, ext);
 
@@ -629,7 +629,7 @@ static uint32_t Load16bIA(uintptr_t dst, uintptr_t src, int wid_64, int height, 
         wid_64 = 1;
     if (height < 1)
         height = 1;
-    ext = (real_width - (wid_64 << 2)) << 1;
+    ext = (real_width - (wid_64 << 2)) * 2;
 
     load16bIA((uint8_t *)src,(uint8_t *)dst, wid_64, height, line, ext);
 

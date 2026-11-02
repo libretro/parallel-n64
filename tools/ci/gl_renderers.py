@@ -10,16 +10,20 @@ across drivers, so the frames are not held to stored hashes; the lane holds them
   * every renderer running every ROM to the end, and all but glN64 (which
     presents nothing for display lists sent straight to the RDP) presenting
     frames: Glide64 and Rice used to crash on a display list given as a
-    KSEG address, as homebrew gives it, and glN64's GBI state, merged into
-    GLideN64's under -fcommon, crashed at exit;
+    KSEG address, as homebrew gives it, glN64's GBI state, merged into
+    GLideN64's under -fcommon, crashed at exit, and Rice crashed in the
+    driver putting a frame the CPU left in RDRAM on screen with no program
+    bound (shade32, tlut16 and zbuf16 draw once, so Rice shows RDRAM after);
   * GLideN64 drawing the same frames whatever its colour buffer copy to
     RDRAM is set to (Off, Sync, Async, TripleBuffer): the copy writes RDRAM
     and must not disturb what is drawn, its pixel buffers or the vertex
     ring the draws read.
 
 CI runs the lane a second time with the core and host built with
-SANITIZER=address (glN64 used to read its texture cache after freeing it
-when the context went).
+SANITIZER=address,undefined (glN64 used to read its texture cache after
+freeing it when the context went); any sanitizer report in a run's output
+fails it, so undefined behaviour fails the lane even where it does not
+crash.
 
   gl_renderers.py --core parallel_n64_libretro.so --host ./lrhost_gl [--roms krom-roms]
 """
@@ -31,9 +35,6 @@ from parallel_rdp_regress import fetch  # noqa: E402
 ROMS = ["cube16", "rottri32", "rottri32aa", "shade32", "tlut16", "zbuf16"]
 PLUGINS = ["glide64", "gliden64", "rice", "gln64"]
 PRESENTS_NOTHING = {"gln64"}
-# Rice crashes in the driver drawing a frame the CPU left in RDRAM (its
-# DrawFrameBuffer); until that is fixed it runs the ROMs that draw.
-SKIP = {"rice": {"shade32", "tlut16", "zbuf16"}}
 COPY_MODES = ["Off", "Sync", "Async", "TripleBuffer"]
 FRAMES = 40
 
@@ -50,6 +51,9 @@ def run(host, core, rom, plugin, extra, tmp):
     p = subprocess.run(args, env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                        timeout=600)
     out = p.stdout.decode("utf-8", "replace")
+    if "runtime error:" in out or "ERROR: AddressSanitizer" in out:
+        # a sanitizer report: the run fails even if it got to the end
+        return p.returncode or 1, [], out
     frames = []
     if os.path.exists(hashlog):
         with open(hashlog) as f:
@@ -69,8 +73,6 @@ def main():
         for rom in ROMS:
             path = fetch(a.roms, rom)
             for plugin in PLUGINS:
-                if rom in SKIP.get(plugin, ()):
-                    continue
                 rc, frames, out = run(a.host, a.core, path, plugin, [], tmp)
                 ok = rc == 0 and (len(frames) > 0 or plugin in PRESENTS_NOTHING)
                 print("%-10s %-9s %s" % (rom, plugin, "ok" if ok else "FAILED (exit %d, %d frames)" % (rc, len(frames))))

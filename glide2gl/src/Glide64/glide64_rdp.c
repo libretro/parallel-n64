@@ -1083,12 +1083,12 @@ static void rdp_setscissor(uint32_t w0, uint32_t w1)
 }
 
 #define F3DEX2_SETOTHERMODE(cmd,sft,len,data) { \
-   __RSP.w0 = (cmd<<24) | ((32-(sft)-(len))<<8) | (((len)-1)); \
+   __RSP.w0 = ((uint32_t)(cmd)<<24) | ((32-(sft)-(len))<<8) | (((len)-1)); \
    __RSP.w1 = data; \
    gfx_instruction[settings.ucode][cmd](__RSP.w0, __RSP.w1); \
 }
 #define SETOTHERMODE(cmd,sft,len,data) { \
-   __RSP.w0 = (cmd<<24) | ((sft)<<8) | (len); \
+   __RSP.w0 = ((uint32_t)(cmd)<<24) | ((sft)<<8) | (len); \
    __RSP.w1 = data; \
    gfx_instruction[settings.ucode][cmd](__RSP.w0, __RSP.w1); \
 }

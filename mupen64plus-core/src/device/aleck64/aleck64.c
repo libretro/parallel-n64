@@ -290,7 +290,7 @@ static uint8_t pal5(uint32_t c)
 }
 
 int aleck64_e90_overlay(void* pixels, unsigned pitch, unsigned width, unsigned height,
-                        unsigned src_width)
+                        unsigned src_width, unsigned clip_lo, unsigned clip_hi)
 {
     /* Per-pixel shade index of an 8x8 block.  The real chip presumably reads
      * this from its character rom (tet-01m.u5), whose format nobody has worked
@@ -370,13 +370,15 @@ int aleck64_e90_overlay(void* pixels, unsigned pitch, unsigned width, unsigned h
 
                 if (rx1 <= rx0)
                     rx1 = rx0 + 1;
-                if (rx0 < 0)
-                    rx0 = 0;
+                if (rx0 < (int)clip_lo)
+                    rx0 = (int)clip_lo;
                 if ((unsigned)rx1 > width)
                     rx1 = (int)width;
+                if ((unsigned)rx1 > clip_hi)
+                    rx1 = (int)clip_hi;
 
                 for (rx = rx0; rx < rx1; rx++) {
-                    uint8_t* px = out + ((unsigned)ry * pitch + (unsigned)rx) * 4;
+                    uint8_t* px = out + ((unsigned)ry * pitch + (unsigned)(rx - (int)clip_lo)) * 4;
                     px[0] = b;
                     px[1] = g;
                     px[2] = r;

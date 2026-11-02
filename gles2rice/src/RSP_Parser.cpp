@@ -1,3 +1,4 @@
+#include <string.h>
 /*
 Copyright (C) 2003 Rice1964
 
@@ -1367,9 +1368,12 @@ void LoadMatrix(uint32_t addr)
    {
       for (j = 0; j < 4; j++) 
       {
-         int hi = *(short *)(rdram_u8 + ((addr+(i<<3)+(j<<1)     )^0x2));
-         int lo = *(unsigned short *)(rdram_u8 + ((addr+(i<<3)+(j<<1) + 32)^0x2));
-         matToLoad.m[i][j] = (float)((hi<<16) | lo) * fRecip;
+         /* a display list can give any address: read the halves bytewise */
+         int16_t  hi;
+         uint16_t lo;
+         memcpy(&hi, rdram_u8 + ((addr+(i<<3)+(j<<1)     )^0x2), sizeof(hi));
+         memcpy(&lo, rdram_u8 + ((addr+(i<<3)+(j<<1) + 32)^0x2), sizeof(lo));
+         matToLoad.m[i][j] = (float)(int32_t)(((uint32_t)(uint16_t)hi << 16) | lo) * fRecip;
       }
    }
 }

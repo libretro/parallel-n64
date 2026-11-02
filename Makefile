@@ -1196,6 +1196,12 @@ BUILD_FLAG_STATE := HLE_AUDIT=$(HAVE_HLE_AUDIT) RSP_DMA_TRACE=$(HAVE_RSP_DMA_TRA
 
 $(OBJECTS): .build-flags
 
+# angrylion models the RDP's adders and shifters with plain int arithmetic
+# that wraps as the hardware's does: with -fwrapv that is defined.
+ifeq (,$(findstring msvc,$(platform)))
+$(VIDEODIR_ANGRYLION)/%.o: CFLAGS += -fwrapv
+endif
+
 %.o: %.c
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< $(OBJOUT)$@
 
@@ -1210,7 +1216,7 @@ clean: clean-tools
 	rm -f $(OBJECTS) $(TARGET) $(OBJECTS:.o=.d) .build-flags
 
 clean-tools:
-	rm -f $(ANGRYLION_TOOLS) lrhost$(EXE_EXT) lrhost_vk$(EXE_EXT) lrhost_gl$(EXE_EXT) angrylion_replay$(EXE_EXT) $(ANGRYLION_CHECKS) dd_ipl_hle_test$(EXE_EXT) \
+	rm -f $(ANGRYLION_TOOLS) lrhost$(EXE_EXT) lrhost_vk$(EXE_EXT) lrhost_gl$(EXE_EXT) $(GLITCH64_TESTS) angrylion_replay$(EXE_EXT) $(ANGRYLION_CHECKS) dd_ipl_hle_test$(EXE_EXT) \
 		$(CORE_CHECKS) dynarec_long_block_test$(EXE_EXT) savestate_latch_test$(EXE_EXT) savestate_code_test$(EXE_EXT) cpu_fallback_test$(EXE_EXT) tools/test_prsp_dmem_wrap.o tools/test_command_ring_rthreads.o tools/test_command_ring_ec.o tools/test_granite_util_rthreads.o
 
 # Angrylion benchmark and bit-exactness harnesses (tools/angrylion_*.c),
@@ -1246,6 +1252,28 @@ lrhost_vk$(EXE_EXT): tools/lrhost.c tools/lrhost_vulkan.h $(LIBRETRO_COMM_DIR)/f
 # with EGL_PLATFORM=surfaceless works), for the GL renderers: make lrhost_gl
 lrhost_gl$(EXE_EXT): tools/lrhost.c tools/lrhost_gl.h $(LIBRETRO_COMM_DIR)/features/features_cpu.o
 	$(CC) $(CPPFLAGS) $(CFLAGS) -DLRHOST_GL -w $< $(LIBRETRO_COMM_DIR)/features/features_cpu.o -o $@ $(LRHOST_LIBS) -lEGL -lpthread -lm
+
+# Glitch64 run on the GL the host gives it (headless EGL in the GL lane),
+# built from the renderer's own sources, with glsm, as the core is: its LFB
+# write, and its texture uploads for desktop GL and for GLES 2
+GLITCH64_TEST_SRCS := $(VIDEODIR_GLIDE)/Glitch64/glitchmain.c $(VIDEODIR_GLIDE)/Glitch64/glitch64_combiner.c \
+	$(VIDEODIR_GLIDE)/Glitch64/geometry.c $(VIDEODIR_GLIDE)/Glitch64/glitch64_textures.c \
+	$(LIBRETRO_COMM_DIR)/glsm/glsm.c $(LIBRETRO_COMM_DIR)/gfx/gl_capabilities.c $(LIBRETRO_COMM_DIR)/glsym/rglgen.c
+GLITCH64_TEST_FLAGS := -D__LIBRETRO__ -DINLINE=inline -DM64P_PLUGIN_API -DM64P_CORE_PROTOTYPES -DHAVE_GLIDE64 \
+	-I$(VIDEODIR_GLIDE)/Glitch64/inc -I$(ROOT_DIR)/include -I$(ROOT_DIR)/libretro -I$(LIBRETRO_COMM_DIR)/include \
+	-I$(CORE_DIR)/src -I$(CORE_DIR)/src/api $(filter -fsanitize=% -O% -g,$(CFLAGS)) -w
+GLITCH64_GL_FLAGS := -DHAVE_OPENGL -DENABLE_3POINT
+GLITCH64_GLES_FLAGS := -DHAVE_OPENGLES -DHAVE_OPENGLES2 -DDISABLE_3POINT
+test_glitch64_lfb_write$(EXE_EXT): tools/test_glitch64_lfb_write.c $(GLITCH64_TEST_SRCS)
+	$(CC) $(GLITCH64_TEST_FLAGS) $(GLITCH64_GL_FLAGS) $< $(GLITCH64_TEST_SRCS) $(LIBRETRO_COMM_DIR)/glsym/glsym_gl.c \
+		-o $@ $(filter -fsanitize=%,$(LDFLAGS)) -lEGL -lGL -lm
+test_glitch64_textures$(EXE_EXT): tools/test_glitch64_textures.c $(GLITCH64_TEST_SRCS)
+	$(CC) $(GLITCH64_TEST_FLAGS) $(GLITCH64_GL_FLAGS) $< $(GLITCH64_TEST_SRCS) $(LIBRETRO_COMM_DIR)/glsym/glsym_gl.c \
+		-o $@ $(filter -fsanitize=%,$(LDFLAGS)) -lEGL -lGL -lm
+test_glitch64_textures_gles$(EXE_EXT): tools/test_glitch64_textures.c $(GLITCH64_TEST_SRCS)
+	$(CC) $(GLITCH64_TEST_FLAGS) $(GLITCH64_GLES_FLAGS) $< $(GLITCH64_TEST_SRCS) $(LIBRETRO_COMM_DIR)/glsym/glsym_es2.c \
+		-o $@ $(filter -fsanitize=%,$(LDFLAGS)) -lEGL -lGLESv2 -lm
+GLITCH64_TESTS := test_glitch64_lfb_write$(EXE_EXT) test_glitch64_textures$(EXE_EXT) test_glitch64_textures_gles$(EXE_EXT)
 
 angrylion_replay$(EXE_EXT): tools/angrylion_replay.c $(ANGRYLION_TOOL_OBJS)
 	$(CC) $(CPPFLAGS) $(CFLAGS) -I$(VIDEODIR_ANGRYLION) -w $< $(ANGRYLION_TOOL_OBJS) -o $@ -lpthread -lm

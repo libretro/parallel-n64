@@ -205,10 +205,18 @@ grLfbWriteRegion( int32_t dst_buffer,
    }
    else
    {
-      int invert;
-      int textureSizes_location;
-      static float data[16];
+      /* An LFB write bypasses the pixel pipeline: the frame's clip window,
+       * cull mode, depth test and blending do not apply to it. */
+      const GLboolean scissor = glIsEnabled(GL_SCISSOR_TEST);
+      const GLboolean cull    = glIsEnabled(GL_CULL_FACE);
+      const GLboolean depth   = glIsEnabled(GL_DEPTH_TEST);
+      const GLboolean blend   = glIsEnabled(GL_BLEND);
+      int location;
+      float data[16];
       const unsigned int half_stride = src_stride / 2;
+      const float x0 = (float)dst_x, x1 = (float)(dst_x + src_width);
+      const float y0 = (float)dst_y, y1 = (float)(dst_y + src_height);
+      const float u1 = (float)src_width, v1 = (float)src_height;
 
       glActiveTexture(GL_TEXTURE0);
 
@@ -225,31 +233,33 @@ grLfbWriteRegion( int32_t dst_buffer,
          }
       }
 
+      /* default_texture is only a name until here: give it the image */
       glBindTexture(GL_TEXTURE_2D, default_texture);
-      glTexSubImage2D(GL_TEXTURE_2D, 0, 4, src_width, src_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, buf);
+      glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, src_width, src_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, buf);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
       set_copy_shader();
+      /* the default program's other uniforms are never set: the shader
+       * maps window pixels through vertexOffset, and texels through
+       * textureSizes */
+      location = glGetUniformLocation(program_object_default, "vertexOffset");
+      glUniform3f(location, (float)width / 2.0f, (float)height / 2.0f, 1.0f);
+      location = glGetUniformLocation(program_object_default, "textureSizes");
+      glUniform4f(location, u1, v1, 1.0f, 1.0f);
 
+      glDisable(GL_SCISSOR_TEST);
+      glDisable(GL_CULL_FACE);
       glDisable(GL_DEPTH_TEST);
       glDisable(GL_BLEND);
-      invert = 1;
 
-      data[ 0] = (float)((int)dst_x);                             /* X 0 */
-      data[ 1] = (float)(invert*-((int)dst_y));                   /* Y 0 */
-      data[ 2] = 0.0f;                                            /* U 0 */
-      data[ 3] = 0.0f;                                            /* V 0 */
-      data[ 4] = (float)((int)dst_x);                             /* X 1 */
-      data[ 5] = (float)(invert*-((int)dst_y + (int)src_height)); /* Y 1 */
-      data[ 6] = 0.0f;                                            /* U 1 */
-      data[ 7] = (float)src_height;                               /* V 1 */
-      data[ 8] = (float)((int)dst_x + (int)src_width);
-      data[ 9] = (float)(invert*-((int)dst_y + (int)src_height));
-      data[10] = (float)src_width;
-      data[11] = (float)src_height;
-      data[12] = (float)((int)dst_x);
-      data[13] = (float)(invert*-((int)dst_y));
-      data[14] = 0.0f;
-      data[15] = 0.0f;
+      /* a strip: top left, bottom left, top right, bottom right */
+      data[ 0] = x0; data[ 1] = y0; data[ 2] = 0.0f; data[ 3] = 0.0f;
+      data[ 4] = x0; data[ 5] = y1; data[ 6] = 0.0f; data[ 7] = v1;
+      data[ 8] = x1; data[ 9] = y0; data[10] = u1;   data[11] = 0.0f;
+      data[12] = x1; data[13] = y1; data[14] = u1;   data[15] = v1;
 
       glDisableVertexAttribArray(COLOUR_ATTR);
       glDisableVertexAttribArray(TEXCOORD_1_ATTR);
@@ -257,20 +267,25 @@ grLfbWriteRegion( int32_t dst_buffer,
 
       glVertexAttribPointer(POSITION_ATTR,2,GL_FLOAT,false,4 * sizeof(float), &data[0]); //Position
       glVertexAttribPointer(TEXCOORD_0_ATTR,2,GL_FLOAT,false,4 * sizeof(float), &data[2]); //Tex
+      glEnableVertexAttribArray(POSITION_ATTR);
+      glEnableVertexAttribArray(TEXCOORD_0_ATTR);
+
+      glDrawArrays(GL_TRIANGLE_STRIP,0,4);
 
       glEnableVertexAttribArray(COLOUR_ATTR);
       glEnableVertexAttribArray(TEXCOORD_1_ATTR);
       glEnableVertexAttribArray(FOG_ATTR);
 
-      textureSizes_location = glGetUniformLocation(program_object_default,"textureSizes");
-      glUniform4f(textureSizes_location,1,1,1,1);
-
-      glDrawArrays(GL_TRIANGLE_STRIP,0,4);
-
       compile_shader();
 
-      glEnable(GL_DEPTH_TEST);
-      glEnable(GL_BLEND);
+      if (scissor)
+         glEnable(GL_SCISSOR_TEST);
+      if (cull)
+         glEnable(GL_CULL_FACE);
+      if (depth)
+         glEnable(GL_DEPTH_TEST);
+      if (blend)
+         glEnable(GL_BLEND);
    }
 
    return FXTRUE;

@@ -131,10 +131,9 @@ typedef struct TxtrCacheEntry
 
     ~TxtrCacheEntry()
     {
-       if (pTexture)
-          free(pTexture);
-       if (pEnhancedTexture)
-          free(pEnhancedTexture);
+       /* both come from CDeviceBuilder::CreateTexture, with new */
+       delete pTexture;
+       delete pEnhancedTexture;
 
        pTexture         = NULL;
        pEnhancedTexture = NULL;
