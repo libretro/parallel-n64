@@ -41,7 +41,8 @@ static Util::TimelineTraceFile *timeline_trace_file;
 static CommandProcessor *frontend;
 static Device *device;
 static Context *context;
-static QueryPoolHandle begin_ts, end_ts;
+/* (held without destructors: dropped by hand while the device is up) */
+static Util::HeldHandle<Vulkan::QueryPoolResult> begin_ts, end_ts;
 
 /* Set true only when init() fully succeeds (including the device meeting
  * parallel-RDP's feature requirements). The frame-driving entry points
@@ -54,7 +55,7 @@ static bool device_supported = false;
 /* Per sync index; the frontend's index mask is 32 bits */
 #define RDP_MAX_SYNC_FRAMES 32
 static retro_vulkan_image retro_images[RDP_MAX_SYNC_FRAMES];
-static ImageHandle retro_image_handles[RDP_MAX_SYNC_FRAMES];
+static Util::HeldHandle<Vulkan::Image> retro_image_handles[RDP_MAX_SYNC_FRAMES];
 static unsigned num_retro_images;
 
 /* RDRAM as the command processor imports it */
@@ -70,7 +71,7 @@ static const struct retro_hw_render_upscaler_interface *upscaler_iface;
 static struct retro_hw_upscaler_request upscaler_request;
 static struct retro_hw_upscaler_inputs upscaler_inputs;
 /* Per sync index: motion vectors, depth, then the translucency mask */
-static ImageHandle upscaler_handles[3 * RDP_MAX_SYNC_FRAMES];
+static Util::HeldHandle<Vulkan::Image> upscaler_handles[3 * RDP_MAX_SYNC_FRAMES];
 static bool upscaler_on;
 
 /* The frames released past n, as a shrinking vector did. */
@@ -276,7 +277,7 @@ void process_commands()
 	*GET_GFX_INFO(DPC_CURRENT_REG) = *GET_GFX_INFO(DPC_END_REG);
 }
 
-static QueryPoolHandle refresh_begin_ts;
+static Util::HeldHandle<Vulkan::QueryPoolResult> refresh_begin_ts;
 
 void profile_refresh_begin()
 {
@@ -436,14 +437,14 @@ static bool create_processor(unsigned factor)
 	}
 
 	/* (the old one goes first: both at once may not fit) */
-	delete frontend;
-	frontend = new CommandProcessor(*device, reinterpret_cast<void *>(rdram_base),
+	Util::destroy(frontend);
+	frontend = Util::create<CommandProcessor>(*device, reinterpret_cast<void *>(rdram_base),
 				rdram_offset, 8 * 1024 * 1024, 4 * 1024 * 1024, flags);
 
 	if (!frontend->device_is_supported())
 	{
 		log_cb(RETRO_LOG_ERROR, "This device probably does not support 16-bit storage. Make sure you're using up-to-date drivers!\n");
-		delete frontend;
+		Util::destroy(frontend);
 		frontend = nullptr;
 		return false;
 	}
@@ -662,8 +663,8 @@ bool init()
 
 	set_num_sync_frames(num_frames);
 
-	delete device;
-	device = new Device;
+	Util::destroy(device);
+	device = Util::create<Device>();
 	device->set_context(*context);
 	pipeline_files_load();
 	device->init_frame_contexts(num_sync_frames);
@@ -708,15 +709,15 @@ void deinit()
 	set_num_sync_frames(0);
 	upscaler_iface = nullptr;
 	upscaler_on = false;
-	delete frontend;
+	Util::destroy(frontend);
 	frontend = nullptr;
 	if (device)
 		pipeline_files_save();
-	delete device;
+	Util::destroy(device);
 	device = nullptr;
-	delete context;
+	Util::destroy(context);
 	context = nullptr;
-	delete timeline_trace_file;
+	Util::destroy(timeline_trace_file);
 	timeline_trace_file = nullptr;
 }
 
@@ -925,16 +926,17 @@ namespace RDP
 {
 // vkCreateDevice through the frontend (negotiation v2), which adds the
 // extensions and features it wants, e.g. for its low-latency modes.
-struct FrontendDeviceFactory : Vulkan::DeviceFactory
+struct FrontendDeviceFactory
 {
 	retro_vulkan_create_device_wrapper_t wrapper;
 	void *opaque;
-
-	VkDevice create_device(VkPhysicalDevice gpu, const VkDeviceCreateInfo *info) override
-	{
-		return wrapper(gpu, opaque, info);
-	}
 };
+
+static VkDevice frontend_create_device(void *user, VkPhysicalDevice gpu, const VkDeviceCreateInfo *info)
+{
+	auto *f = static_cast<FrontendDeviceFactory *>(user);
+	return f->wrapper(gpu, f->opaque, info);
+}
 
 static bool create_device(struct retro_vulkan_context *frontend_context, VkInstance instance, VkPhysicalDevice gpu,
                           VkSurfaceKHR surface, PFN_vkGetInstanceProcAddr get_instance_proc_addr,
@@ -944,15 +946,15 @@ static bool create_device(struct retro_vulkan_context *frontend_context, VkInsta
 	if (!Vulkan::Context::init_loader(get_instance_proc_addr))
 		return false;
 
-	delete ::RDP::context;
-	::RDP::context = new Vulkan::Context;
+	Util::destroy(::RDP::context);
+	::RDP::context = Util::create<Vulkan::Context>();
 
 	::Vulkan::Context::SystemHandles handles;
 
 	if (const char *env = getenv("PARALLEL_RDP_TIMELINE_TRACE"))
 	{
-		delete ::RDP::timeline_trace_file;
-		::RDP::timeline_trace_file = new Util::TimelineTraceFile(env);
+		Util::destroy(::RDP::timeline_trace_file);
+		::RDP::timeline_trace_file = Util::create<Util::TimelineTraceFile>(env);
 		handles.timeline_trace_file = ::RDP::timeline_trace_file;
 	}
 
@@ -965,7 +967,7 @@ static bool create_device(struct retro_vulkan_context *frontend_context, VkInsta
 	::RDP::context->set_device_factory(nullptr);
 	if (!ok)
 	{
-		delete ::RDP::context;
+		Util::destroy(::RDP::context);
 		::RDP::context = nullptr;
 		return false;
 	}
@@ -999,9 +1001,12 @@ bool parallel_create_device2(struct retro_vulkan_context *frontend_context, VkIn
                              retro_vulkan_create_device_wrapper_t create_device_wrapper, void *opaque)
 {
 	static const VkPhysicalDeviceFeatures no_features = {};
-	::RDP::FrontendDeviceFactory factory;
-	factory.wrapper = create_device_wrapper;
-	factory.opaque = opaque;
+	::RDP::FrontendDeviceFactory frontend;
+	Vulkan::DeviceFactory factory;
+	frontend.wrapper = create_device_wrapper;
+	frontend.opaque = opaque;
+	factory.create_device = ::RDP::frontend_create_device;
+	factory.user = &frontend;
 	return ::RDP::create_device(frontend_context, instance, gpu, surface, get_instance_proc_addr,
 	                            nullptr, 0, &no_features, &factory);
 }

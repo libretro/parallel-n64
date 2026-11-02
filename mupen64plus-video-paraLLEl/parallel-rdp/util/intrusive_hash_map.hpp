@@ -509,7 +509,7 @@ public:
 				T *to_delete = read_only.insert_yield(to_move);
 				if (to_delete)
 					object_pool.free(to_delete);
-				delete l;
+				Util::destroy(l);
 				l = next;
 			}
 		}
@@ -548,7 +548,7 @@ public:
 			{
 				Link *next = static_cast<Link *>(retro_atomic_load_relaxed_ptr(&l->next));
 				object_pool.free(l->value);
-				delete l;
+				Util::destroy(l);
 				l = next;
 			}
 		}
@@ -569,7 +569,7 @@ public:
 	{
 		static_cast<IntrusiveHashMapEnabled<T> *>(value)->set_hash(hash);
 
-		Link *link = new Link;
+		Link *link = Util::create<Link>();
 		link->hash = hash;
 		link->value = value;
 
@@ -584,7 +584,7 @@ public:
 			{
 				if (l->hash == hash)
 				{
-					delete link;
+					Util::destroy(link);
 					object_pool.free(value);
 					return l->value;
 				}

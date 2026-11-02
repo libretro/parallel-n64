@@ -113,17 +113,18 @@ struct HandlePool
 	VulkanObjectPool<DeferredInterval> deferred_intervals;
 };
 
-class DebugChannelInterface
+// Where a debug channel's messages go: a function and what it is called on
+struct DebugChannelInterface
 {
-public:
 	union Word
 	{
 		uint32_t u32;
 		int32_t s32;
 		float f32;
 	};
-	virtual void message(const char *tag, uint32_t code, uint32_t x, uint32_t y, uint32_t z,
-	                     uint32_t word_count, const Word *words) = 0;
+	void (*message)(void *user, const char *tag, uint32_t code, uint32_t x, uint32_t y, uint32_t z,
+	                uint32_t word_count, const Word *words);
+	void *user;
 };
 
 namespace Helper

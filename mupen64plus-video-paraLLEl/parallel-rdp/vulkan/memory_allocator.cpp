@@ -275,7 +275,7 @@ void DeviceAllocator::init(Device *device_)
 	heaps.resize(mem_props.memoryHeapCount);
 	for (unsigned i = 0; i < mem_props.memoryTypeCount; i++)
 	{
-		allocators[i] = new Allocator(object_pool);
+		allocators[i] = Util::create<Allocator>(object_pool);
 		allocators[i]->set_global_allocator(this, i);
 	}
 	num_allocators = mem_props.memoryTypeCount;
@@ -404,8 +404,7 @@ void DeviceAllocator::free_allocators()
 {
 	for (unsigned i = 0; i < num_allocators; i++)
 	{
-		delete allocators[i];
-		allocators[i] = nullptr;
+		Util::destroy_object(allocators[i]);
 	}
 	num_allocators = 0;
 }

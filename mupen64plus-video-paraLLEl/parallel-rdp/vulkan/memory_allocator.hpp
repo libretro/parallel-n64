@@ -310,7 +310,7 @@ private:
 	Util::ObjectPool<MiniHeap> object_pool;
 	Allocator *allocators[VK_MAX_MEMORY_TYPES] = {};
 	unsigned num_allocators = 0;
-	void free_allocators();
+	UTIL_NOINLINE void free_allocators();
 	Device *device = nullptr;
 	const VolkDeviceTable *table = nullptr;
 	VkPhysicalDeviceMemoryProperties mem_props;

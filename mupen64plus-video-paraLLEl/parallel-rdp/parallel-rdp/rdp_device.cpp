@@ -60,7 +60,7 @@ static ShaderBank *create_shader_bank(Vulkan::Device &device, Vulkan::ResourceLa
                                       const VideoInterface &vi, const Renderer &renderer)
 {
 	ShaderDefineResolver resolver = { &vi, &renderer };
-	return new ShaderBank(device, layout, resolver);
+	return Util::create<ShaderBank>(device, layout, resolver);
 }
 
 namespace
@@ -96,11 +96,11 @@ CommandProcessor::CommandProcessor(Vulkan::Device &device_, void *rdram_ptr,
 
 	if (const char *env = getenv("PARALLEL_RDP_DUMP_PATH"))
 	{
-		dump_writer = new RDPDumpWriter;
+		dump_writer = Util::create<RDPDumpWriter>();
 		if (!dump_writer->init(env, rdram_size, hidden_rdram_size))
 		{
 			LOGE("Failed to init RDP dump: %s.\n", env);
-			delete dump_writer;
+			Util::destroy(dump_writer);
 			dump_writer = nullptr;
 		}
 		else
@@ -209,7 +209,7 @@ CommandProcessor::CommandProcessor(Vulkan::Device &device_, void *rdram_ptr,
 // Here, where ShaderBank is complete.
 CommandProcessor::ShaderBankOwner::~ShaderBankOwner()
 {
-	delete bank;
+	Util::destroy(bank);
 }
 
 CommandProcessor::~CommandProcessor()
@@ -220,7 +220,7 @@ CommandProcessor::~CommandProcessor()
 	// destroyed before the ring would otherwise be.
 	ring.teardown_thread();
 	rdp_upscaler_free(upscaler);
-	delete dump_writer;
+	Util::destroy(dump_writer);
 }
 
 void CommandProcessor::begin_frame_context()
@@ -1486,7 +1486,7 @@ CommandProcessor::CoherencyNodePool::~CoherencyNodePool()
 			auto *node = static_cast<CoherencyNode *>(lists[i]);
 			lists[i] = node->next;
 			node->~CoherencyNode();
-			::operator delete(node);
+			free(node);
 		}
 }
 
@@ -1648,7 +1648,7 @@ static CoherencyNode *take_coherency_node(mpsc_stack_node_t **spare, mpsc_stack_
 	unsigned capacity = 8;
 	while (capacity < n)
 		capacity <<= 1;
-	void *mem = ::operator new(sizeof(CoherencyNode) + capacity * sizeof(CoherencyCopy));
+	void *mem = Util::heap_new(sizeof(CoherencyNode) + capacity * sizeof(CoherencyCopy));
 	auto *node = UTIL_PLACEMENT_NEW(mem) CoherencyNode;
 	node->capacity = capacity;
 	return node;

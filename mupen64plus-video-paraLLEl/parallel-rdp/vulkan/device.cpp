@@ -1879,7 +1879,7 @@ void Device::init_frame_contexts(unsigned count)
 		count = MAX_DEFERRED_FRAMES;
 	for (unsigned i = 0; i < count; i++)
 	{
-		per_frame.push_back(new PerFrame(this, i));
+		per_frame.push_back(Util::create<PerFrame>(this, i));
 	}
 	if (frame_context_index >= per_frame.size())
 		frame_context_index = 0;
@@ -4498,7 +4498,7 @@ void Device::parse_debug_channel(const PerFrame::DebugChannel &channel)
 
 	while (size != 0 && words[0].u32 >= 5 && words[0].u32 <= size)
 	{
-		channel.iface->message(channel.tag, words[1].u32,
+		channel.iface->message(channel.iface->user, channel.tag, words[1].u32,
 		                       words[2].u32, words[3].u32, words[4].u32,
 		                       words[0].u32 - 5, &words[5]);
 		size -= words[0].u32;

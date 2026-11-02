@@ -56,6 +56,23 @@ void *memalign_alloc(size_t boundary, size_t size)
     return (void *) addr;
 #endif
 }
+
+void *heap_new(size_t size)
+{
+	void *ptr = malloc(size);
+	if (!ptr)
+		abort();
+	return ptr;
+}
+
+void *heap_new_aligned(size_t size, size_t align)
+{
+	void *ptr = memalign_alloc(align, size);
+	if (!ptr)
+		abort();
+	return ptr;
+}
+
 void memalign_free(void *ptr)
 {
 #if defined(_WIN32)

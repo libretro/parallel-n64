@@ -39,7 +39,7 @@ DescriptorSetAllocator::DescriptorSetAllocator(Hash hash, Device *device_, const
 	if (!push)
 	{
 		num_per_thread = device_->num_thread_indices;
-		per_thread = new PerThread[num_per_thread];
+		per_thread = Util::create_array<PerThread>(num_per_thread);
 	}
 
 	VkDescriptorSetLayoutCreateInfo info = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO };
@@ -230,7 +230,7 @@ DescriptorSetAllocator::~DescriptorSetAllocator()
 	if (set_layout != VK_NULL_HANDLE)
 		table.vkDestroyDescriptorSetLayout(device->get_device(), set_layout, nullptr);
 	clear();
-	delete[] per_thread;
+	Util::destroy_array(per_thread, num_per_thread);
 }
 
 }

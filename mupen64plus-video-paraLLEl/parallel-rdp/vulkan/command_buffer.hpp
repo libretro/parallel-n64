@@ -35,7 +35,7 @@
 
 namespace Vulkan
 {
-class DebugChannelInterface;
+struct DebugChannelInterface;
 
 enum CommandBufferDirtyBits
 {

@@ -134,8 +134,8 @@ struct QueueInfo
 // libretro frontend that adds what it needs to the create info.
 struct DeviceFactory
 {
-	virtual ~DeviceFactory() = default;
-	virtual VkDevice create_device(VkPhysicalDevice gpu, const VkDeviceCreateInfo *info) = 0;
+	VkDevice (*create_device)(void *user, VkPhysicalDevice gpu, const VkDeviceCreateInfo *info);
+	void *user;
 };
 
 class Context

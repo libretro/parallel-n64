@@ -87,18 +87,17 @@ enum class ValidationError
 	Copy32bpp
 };
 
-class ValidationInterface
+struct ValidationInterface
 {
-public:
-	virtual ~ValidationInterface() = default;
 	// Validation errors may be called from a thread as errors are encountered.
 	// Reports situations that would cause fatal error on a real RDP.
 	// We only opt to report these situations rather than deliberately crashing the renderer.
 	// Handling crashes is only relevant during development of N64 homebrew.
-	virtual void report_rdp_crash(ValidationError err, const char *msg) = 0;
+	void (*report_rdp_crash)(void *user, ValidationError err, const char *msg);
+	void *user;
 };
 
-class Renderer : public Vulkan::DebugChannelInterface
+class Renderer
 {
 public:
 	explicit Renderer(CommandProcessor &processor);
@@ -176,6 +175,7 @@ private:
 	Vulkan::Device *device = nullptr;
 	Vulkan::Buffer *rdram = nullptr;
 	ValidationInterface *validation_iface = nullptr;
+	void report_rdp_crash(ValidationError err, const char *msg) const;
 
 	Vulkan::BufferHandle upscaling_reference_rdram;
 	Vulkan::BufferHandle upscaling_multisampled_rdram;
@@ -388,7 +388,13 @@ private:
 
 	void message(const char *tag, uint32_t code,
 	             uint32_t x, uint32_t y, uint32_t z,
-	             uint32_t num_words, const Vulkan::DebugChannelInterface::Word *words) override;
+	             uint32_t num_words, const Vulkan::DebugChannelInterface::Word *words);
+	static void debug_channel_message(void *user, const char *tag, uint32_t code,
+	                                  uint32_t x, uint32_t y, uint32_t z,
+	                                  uint32_t num_words, const Vulkan::DebugChannelInterface::Word *words)
+	{
+		static_cast<Renderer *>(user)->message(tag, code, x, y, z, num_words, words);
+	}
 
 	bool can_support_minimum_subgroup_size(unsigned size) const;
 	bool supports_subgroup_size_control(uint32_t minimum_size, uint32_t maximum_size) const;
@@ -455,5 +461,8 @@ private:
 	retro_atomic_int_t active_submissions;
 	void enqueue_fence_wait(Vulkan::Fence fence);
 	uint64_t last_submit_ns = 0;
+
+	// last: it is read only with a debug channel on
+	Vulkan::DebugChannelInterface debug_channel_iface = { debug_channel_message, this };
 };
 }

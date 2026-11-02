@@ -1079,7 +1079,7 @@ bool Context::create_device(VkPhysicalDevice gpu_, VkSurfaceKHR surface, const c
 
 	if (device_factory)
 	{
-		device = device_factory->create_device(gpu, &device_info);
+		device = device_factory->create_device(device_factory->user, gpu, &device_info);
 		if (device == VK_NULL_HANDLE)
 			return false;
 	}

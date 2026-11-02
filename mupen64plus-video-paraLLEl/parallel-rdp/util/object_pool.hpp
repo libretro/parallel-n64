@@ -47,7 +47,7 @@ public:
 		UTIL_PLACEMENT_NEW(ptr) T(Util::forward<P>(p)...);
 		return ptr;
 #else
-		return new T(Util::forward<P>(p)...);
+		return Util::create_init<T>(Util::forward<P>(p)...);
 #endif
 	}
 
@@ -57,7 +57,7 @@ public:
 		ptr->~T();
 		vacants[num_vacants++] = ptr;
 #else
-		delete ptr;
+		Util::destroy(ptr);
 #endif
 	}
 
@@ -179,7 +179,7 @@ public:
 			return nullptr;
 		return ObjectPool<T>::construct_at(slot(idx), Util::forward<P>(p)...);
 #else
-		return ObjectPool<T>::construct_at(::operator new(sizeof(T)), Util::forward<P>(p)...);
+		return ObjectPool<T>::construct_at(Util::heap_alloc<T>(sizeof(T)), Util::forward<P>(p)...);
 #endif
 	}
 
@@ -190,7 +190,7 @@ public:
 		push_chain(index_of(ptr), index_of(ptr));
 #else
 		ObjectPool<T>::destroy(ptr);
-		::operator delete(ptr);
+		Util::heap_free<T>(ptr);
 #endif
 	}
 

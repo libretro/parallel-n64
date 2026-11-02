@@ -1519,7 +1519,7 @@ Vulkan::ImageHandle VideoInterface::scanout(VkImageLayout target_layout, const S
 	auto cmd = device->request_command_buffer();
 
 	if (debug_channel)
-		cmd->begin_debug_channel(this, "VI", 32 * 1024 * 1024);
+		cmd->begin_debug_channel(&debug_channel_iface, "VI", 32 * 1024 * 1024);
 
 	// In the first pass, we need to read from VRAM and apply the fetch filter.
 	// This is either the AA filter if coverage < 7, or the dither reconstruction filter if coverage == 7 and enabled.

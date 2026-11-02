@@ -22,6 +22,7 @@
 
 #include "logging.hpp"
 #include "timeline_trace_file.hpp"
+#include "util_lite.hpp"
 #include "thread_name.hpp"
 #include "timer.hpp"
 #include <string.h>
@@ -44,7 +45,7 @@ void TimelineTraceFile::Event::set_tid(const char *tid_)
 
 TimelineTraceFile::Event *TimelineTraceFile::allocate_event()
 {
-	auto *e = new Event;
+	auto *e = Util::create<Event>();
 	e->next = nullptr;
 	e->desc[0] = '\0';
 	e->tid[0] = '\0';
@@ -59,7 +60,7 @@ void TimelineTraceFile::submit_event(Event *e)
 	if (worker)
 		rdp_worker_push(worker, e);
 	else
-		delete e;
+		Util::destroy(e);
 }
 
 void TimelineTraceFile::write_event(void *self_, mpsc_stack_node_t *item)
@@ -78,7 +79,7 @@ void TimelineTraceFile::write_event(void *self_, mpsc_stack_node_t *item)
 		        e->desc, e->tid, e->pid, end_us);
 	}
 
-	delete e;
+	Util::destroy(e);
 }
 
 static void name_io_thread(void *)

@@ -295,6 +295,58 @@ private:
 	T *data = nullptr;
 };
 
+// A reference held without a destructor, for objects of static storage:
+// they are dropped by hand while the device is up, rather than by a
+// destructor registered to run at exit, after it is gone. Zero is empty.
+template <typename T>
+struct HeldHandle
+{
+	T *data;
+
+	// The reference goes first, and the slot is written after it,
+	// so a temporary handed in is known empty when it dies.
+	static void drop(T *object)
+	{
+		IntrusivePtr<T> last(object);
+	}
+
+	void reset()
+	{
+		drop(data);
+		data = nullptr;
+	}
+
+	HeldHandle &operator=(const IntrusivePtr<T> &handle)
+	{
+		IntrusivePtr<T> keep(handle);
+		drop(data);
+		data = keep.release();
+		return *this;
+	}
+
+	HeldHandle &operator=(IntrusivePtr<T> &&handle)
+	{
+		drop(data);
+		data = handle.release();
+		return *this;
+	}
+
+	explicit operator bool() const
+	{
+		return data != nullptr;
+	}
+
+	// a handle of its own to it
+	operator IntrusivePtr<T>() const
+	{
+		IntrusivePtr<T> handle;
+		IntrusivePtr<T> borrowed(data);
+		handle = borrowed;
+		borrowed.release();
+		return handle;
+	}
+};
+
 template <typename T, typename Deleter, typename ReferenceOps>
 IntrusivePtr<T> IntrusivePtrEnabled<T, Deleter, ReferenceOps>::reference_from_this()
 {
@@ -308,13 +360,13 @@ using DerivedIntrusivePtrType = IntrusivePtr<Derived>;
 template <typename T, typename... P>
 DerivedIntrusivePtrType<T> make_handle(P &&... p)
 {
-	return DerivedIntrusivePtrType<T>(new T(Util::forward<P>(p)...));
+	return DerivedIntrusivePtrType<T>(Util::create_init<T>(Util::forward<P>(p)...));
 }
 
 template <typename Base, typename Derived, typename... P>
 typename Base::IntrusivePtrType make_derived_handle(P &&... p)
 {
-	return typename Base::IntrusivePtrType(new Derived(Util::forward<P>(p)...));
+	return typename Base::IntrusivePtrType(Util::create_init<Derived>(Util::forward<P>(p)...));
 }
 
 template <typename T>

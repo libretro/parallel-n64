@@ -41,7 +41,7 @@ static bool log_helper(const char *tag, const char *fmt, va_list va)
 
 namespace Util
 {
-static thread_local LoggingInterface *logging_iface;
+static thread_local LoggingInterface logging_iface;
 
 bool interface_log(const char *tag, const char *fmt, ...)
 {
@@ -55,7 +55,7 @@ bool interface_log(const char *tag, const char *fmt, ...)
 #ifdef __LIBRETRO__
 	bool ret = log_helper(tag, fmt, va);
 #else
-	bool ret = logging_iface->log(tag, fmt, va);
+	bool ret = logging_iface(tag, fmt, va);
 #endif
 	va_end(va);
 	return ret;

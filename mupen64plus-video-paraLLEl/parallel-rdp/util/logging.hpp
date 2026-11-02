@@ -28,12 +28,8 @@
 
 namespace Util
 {
-class LoggingInterface
-{
-public:
-	virtual ~LoggingInterface() = default;
-	virtual bool log(const char *tag, const char *fmt, va_list va) = 0;
-};
+// Where a thread's log lines go, when not to the libretro log
+typedef bool (*LoggingInterface)(const char *tag, const char *fmt, va_list va);
 
 bool interface_log(const char *tag, const char *fmt, ...);
 }

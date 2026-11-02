@@ -32,31 +32,4 @@ void memalign_free(void *ptr);
 
 struct AlignedDeleter { void operator()(void *ptr) { memalign_free(ptr); }};
 
-template <typename T>
-struct AlignedAllocation
-{
-    static void *operator new(size_t size)
-    {
-        void *ret = ::Util::memalign_alloc(alignof(T), size);
-        if (!ret) abort();
-        return ret;
-    }
-
-    static void *operator new[](size_t size)
-    {
-        void *ret = ::Util::memalign_alloc(alignof(T), size);
-        if (!ret) abort();
-        return ret;
-    }
-
-    static void operator delete(void *ptr)
-    {
-        return ::Util::memalign_free(ptr);
-    }
-
-    static void operator delete[](void *ptr)
-    {
-        return ::Util::memalign_free(ptr);
-    }
-};
 }
