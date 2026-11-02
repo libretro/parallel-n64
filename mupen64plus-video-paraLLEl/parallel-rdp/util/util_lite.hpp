@@ -271,32 +271,6 @@ static inline unsigned util_bsr32(uint32_t v)
 
 namespace Util
 {
-/* 64-bit counter, atomic on 32-bit targets too */
-struct AtomicU64
-{
-#if defined(_MSC_VER) && !defined(__clang__)
-	volatile __int64 v;
-	void init(uint64_t x) { v = (__int64)x; }
-	uint64_t add_fetch_relaxed(uint64_t d)
-	{
-		__int64 old, cur = v;
-		do
-		{
-			old = cur;
-			cur = _InterlockedCompareExchange64(&v, old + (__int64)d, old);
-		} while (cur != old);
-		return (uint64_t)(old + (__int64)d);
-	}
-#else
-	uint64_t v __attribute__((aligned(8)));
-	void init(uint64_t x) { __atomic_store_n(&v, x, __ATOMIC_RELAXED); }
-	uint64_t add_fetch_relaxed(uint64_t d) { return __atomic_add_fetch(&v, d, __ATOMIC_RELAXED); }
-#endif
-};
-}
-
-namespace Util
-{
 /* Up to N owned objects, deleted on clear() and destruction. */
 template <typename T, unsigned N>
 class OwnedPtrArray

@@ -23,6 +23,7 @@
 #pragma once
 
 #include <stdint.h>
+#include "cookie.h"
 #include "hash.hpp"
 #include "intrusive_hash_map.hpp"
 
@@ -33,7 +34,10 @@ class Device;
 class Cookie
 {
 public:
-	Cookie(Device *device);
+	explicit Cookie(Device *)
+		: cookie(granite_cookie_next())
+	{
+	}
 
 	uint64_t get_cookie() const
 	{

@@ -93,9 +93,6 @@ Device::Device()
     : framebuffer_allocator(this)
     , transient_allocator(this)
 {
-#ifdef GRANITE_VULKAN_MT
-	cookie.init(0);
-#endif
 	fence_wait_ec_live = retro_eventcount_init(&fence_wait_ec);
 	for (auto &stack : deferred_releases)
 		mpsc_stack_init(&stack);
@@ -787,8 +784,8 @@ void Device::set_context(const Context &context)
 	init_frame_contexts(2); // By default, regular double buffer between CPU and GPU.
 
 	managers.memory.init(this);
-	managers.semaphore.init(this);
-	managers.fence.init(this);
+	granite_semaphore_pool_init(&managers.semaphore, device, table);
+	granite_fence_pool_init(&managers.fence, device, table);
 	managers.vbo.init(this, 4 * 1024, 16, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
 	                  ImplementationQuirks::get().staging_need_device_local);
 	managers.ibo.init(this, 4 * 1024, 16, VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
@@ -1159,7 +1156,7 @@ void Device::submit_empty_inner(QueueIndices physical_type, InternalFence *fence
 	                   fence, semaphore_count, semaphores);
 
 	VkFence cleared_fence = fence && !ext.timeline_semaphore_features.timelineSemaphore ?
-	                        managers.fence.request_cleared_fence() :
+	                        granite_fence_pool_request(&managers.fence) :
 	                        VK_NULL_HANDLE;
 	if (fence)
 		fence->fence = cleared_fence;
@@ -1524,7 +1521,7 @@ void Device::emit_queue_signals(Helper::BatchComposer &composer,
 
 		for (unsigned i = 0; i < semaphore_count; i++)
 		{
-			VkSemaphore cleared_semaphore = managers.semaphore.request_cleared_semaphore();
+			VkSemaphore cleared_semaphore = granite_semaphore_pool_request(&managers.semaphore);
 			composer.add_signal_semaphore(cleared_semaphore, 0);
 			VK_ASSERT(!semaphores[i]);
 			semaphores[i] = Semaphore(handle_pool.semaphores.allocate(this, cleared_semaphore, true, true));
@@ -1620,7 +1617,7 @@ void Device::submit_queue(QueueIndices physical_type, InternalFence *fence,
 
 			composer.add_command_buffer(cmd->get_command_buffer());
 
-			VkSemaphore release = managers.semaphore.request_cleared_semaphore();
+			VkSemaphore release = granite_semaphore_pool_request(&managers.semaphore);
 			wsi.release = Semaphore(handle_pool.semaphores.allocate(this, release, true, true));
 			wsi.release->set_internal_sync_object();
 			composer.add_signal_semaphore(release, 0);
@@ -1637,7 +1634,7 @@ void Device::submit_queue(QueueIndices physical_type, InternalFence *fence,
 	}
 
 	VkFence cleared_fence = fence && !ext.timeline_semaphore_features.timelineSemaphore ?
-	                        managers.fence.request_cleared_fence() :
+	                        granite_fence_pool_request(&managers.fence) :
 	                        VK_NULL_HANDLE;
 
 	if (fence)
@@ -2085,7 +2082,7 @@ void Device::reset_fence_nolock(VkFence fence, bool observed_wait)
 	if (observed_wait)
 	{
 		table->vkResetFences(device, 1, &fence);
-		managers.fence.recycle_fence(fence);
+		granite_fence_pool_recycle(&managers.fence, fence);
 	}
 	else
 		frame().recycle_fences.push_back(fence);
@@ -2496,7 +2493,7 @@ void Device::PerFrame::begin()
 	{
 		table.vkResetFences(vkdevice, recycle_fences.size(), recycle_fences.data());
 		for (auto &fence : recycle_fences)
-			managers.fence.recycle_fence(fence);
+			granite_fence_pool_recycle(&managers.fence, fence);
 		recycle_fences.clear();
 	}
 
@@ -2544,7 +2541,7 @@ void Device::PerFrame::begin()
 	for (auto &pool : destroyed_descriptor_pools)
 		table.vkDestroyDescriptorPool(vkdevice, pool, nullptr);
 	for (auto &semaphore : recycled_semaphores)
-		managers.semaphore.recycle(semaphore);
+		granite_semaphore_pool_recycle(&managers.semaphore, semaphore);
 
 	if (!allocations.empty())
 	{
@@ -4269,17 +4266,6 @@ bool Device::image_format_is_supported(VkFormat format, VkFormatFeatureFlags2KHR
 	get_format_properties(format, &props3);
 	auto flags = tiling == VK_IMAGE_TILING_OPTIMAL ? props3.optimalTilingFeatures : props3.linearTilingFeatures;
 	return (flags & required) == required;
-}
-
-uint64_t Device::allocate_cookie()
-{
-	// Reserve lower bits for "special purposes".
-#ifdef GRANITE_VULKAN_MT
-	return cookie.add_fetch_relaxed(16);
-#else
-	cookie += 16;
-	return cookie;
-#endif
 }
 
 const RenderPass &Device::request_render_pass(const RenderPassInfo &info, bool compatible)

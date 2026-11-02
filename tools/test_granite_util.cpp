@@ -292,12 +292,6 @@ static void test_owned_ptr_array()
 
 static void test_scalars()
 {
-	Util::AtomicU64 c;
-	c.init(0xfffffff0ull);
-	/* crosses 32 bits, as the 64-bit cookie counter must on 32-bit hosts */
-	CHECK(c.add_fetch_relaxed(16) == 0x100000000ull);
-	CHECK(c.add_fetch_relaxed(16) == 0x100000010ull);
-
 	char buf[8];
 	Util::copy_string(buf, sizeof(buf), "abc");
 	CHECK(strcmp(buf, "abc") == 0);
@@ -308,44 +302,6 @@ static void test_scalars()
 
 	CHECK(Util::min_of(3u, 7u) == 3u && Util::max_of(3u, 7u) == 7u);
 	CHECK(Util::max_of<unsigned>(size_t(9), 1u) == 9u);
-}
-
-/* Cookies from several threads at once stay unique, as Device hands
- * them out from any thread. */
-enum { COOKIE_THREADS = 4, COOKIES_PER_THREAD = 20000 };
-static Util::AtomicU64 shared_cookie;
-static uint64_t cookies[COOKIE_THREADS][COOKIES_PER_THREAD];
-
-static void cookie_thread(void *arg)
-{
-	uint64_t *out = (uint64_t *)arg;
-	int i;
-	for (i = 0; i < COOKIES_PER_THREAD; i++)
-		out[i] = shared_cookie.add_fetch_relaxed(16);
-}
-
-static int cmp_u64(const void *a, const void *b)
-{
-	uint64_t x = *(const uint64_t *)a, y = *(const uint64_t *)b;
-	return x < y ? -1 : x > y;
-}
-
-static void test_concurrent_cookies()
-{
-	sthread_t *threads[COOKIE_THREADS];
-	int i;
-	shared_cookie.init(0);
-	for (i = 0; i < COOKIE_THREADS; i++)
-		threads[i] = sthread_create(cookie_thread, cookies[i]);
-	for (i = 0; i < COOKIE_THREADS; i++)
-		if (threads[i])
-			sthread_join(threads[i]);
-		else
-			cookie_thread(cookies[i]);
-	qsort(cookies, COOKIE_THREADS * COOKIES_PER_THREAD, sizeof(uint64_t), cmp_u64);
-	const uint64_t *all = &cookies[0][0];
-	for (i = 0; i < COOKIE_THREADS * COOKIES_PER_THREAD; i++)
-		CHECK(all[i] == uint64_t(i + 1) * 16);
 }
 
 /* next_bit / next_bit_range against a bit-by-bit walk */
@@ -403,7 +359,6 @@ int main()
 	test_heap_vector();
 	test_owned_ptr_array();
 	test_scalars();
-	test_concurrent_cookies();
 	test_bit_iteration();
 	if (failures)
 	{

@@ -26,13 +26,12 @@
 #include "command_buffer.hpp"
 #include "command_pool.hpp"
 #include "fence.hpp"
-#include "fence_manager.hpp"
+#include "sync_pools.h"
 #include "image.hpp"
 #include "memory_allocator.hpp"
 #include "render_pass.hpp"
 #include "sampler.hpp"
 #include "semaphore.hpp"
-#include "semaphore_manager.hpp"
 #include "shader.hpp"
 #include "context.hpp"
 #include "query_pool.hpp"
@@ -424,13 +423,6 @@ private:
 	QueueInfo queue_info;
 	unsigned num_thread_indices = 1;
 
-#ifdef GRANITE_VULKAN_MT
-	Util::AtomicU64 cookie;
-#else
-	uint64_t cookie = 0;
-#endif
-
-	uint64_t allocate_cookie();
 	void bake_program(Program &program);
 
 	void request_vertex_block(BufferBlock &block, VkDeviceSize size);
@@ -504,10 +496,16 @@ private:
 	struct Managers
 	{
 		DeviceAllocator memory;
-		FenceManager fence;
-		SemaphoreManager semaphore;
+		granite_fence_pool_t fence = {};
+		granite_semaphore_pool_t semaphore = {};
 		BufferPool vbo, ibo, ubo, staging;
 		TimestampIntervalManager timestamps;
+
+		~Managers()
+		{
+			granite_semaphore_pool_free(&semaphore);
+			granite_fence_pool_free(&fence);
+		}
 	};
 	Managers managers;
 

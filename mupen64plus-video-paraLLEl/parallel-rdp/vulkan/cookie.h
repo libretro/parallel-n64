@@ -20,26 +20,32 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#pragma once
+#ifndef GRANITE_COOKIE_H
+#define GRANITE_COOKIE_H
 
-#include "vulkan_headers.hpp"
-#include "small_vector.hpp"
+#include <stdint.h>
+#include <retro_common_api.h>
 
-namespace Vulkan
+RETRO_BEGIN_DECLS
+
+/* A 64-bit counter, atomic on 32-bit targets too */
+typedef struct granite_counter64
 {
-class Device;
-class FenceManager
-{
-public:
-	void init(Device *device);
-	~FenceManager();
+#if defined(_MSC_VER) && !defined(__clang__)
+	volatile __int64 value;
+#else
+	uint64_t value __attribute__((aligned(8)));
+#endif
+} granite_counter64_t;
 
-	VkFence request_cleared_fence();
-	void recycle_fence(VkFence fence);
+void granite_counter64_init(granite_counter64_t *counter, uint64_t value);
+/* Adds, and returns the sum; relaxed */
+uint64_t granite_counter64_add(granite_counter64_t *counter, uint64_t delta);
 
-private:
-	Device *device = nullptr;
-	const VolkDeviceTable *table = nullptr;
-	Util::Vector<VkFence> fences;
-};
-}
+/* A value no other object has had in this process, from any thread.
+ * Steps of 16: the low bits are kept for special purposes. */
+uint64_t granite_cookie_next(void);
+
+RETRO_END_DECLS
+
+#endif

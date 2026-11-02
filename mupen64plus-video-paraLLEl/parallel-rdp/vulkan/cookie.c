@@ -20,42 +20,42 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include "fence_manager.hpp"
-#include "device.hpp"
+#if defined(_MSC_VER)
+#include <intrin.h>
+#endif
+#include "cookie.h"
 
-namespace Vulkan
+static granite_counter64_t granite_cookie;
+
+#if defined(_MSC_VER) && !defined(__clang__)
+void granite_counter64_init(granite_counter64_t *counter, uint64_t value)
 {
-void FenceManager::init(Device *device_)
-{
-	device = device_;
-	table = &device->get_device_table();
+	counter->value = (__int64)value;
 }
 
-VkFence FenceManager::request_cleared_fence()
+uint64_t granite_counter64_add(granite_counter64_t *counter, uint64_t delta)
 {
-	if (!fences.empty())
+	__int64 old, cur = counter->value;
+	do
 	{
-		auto ret = fences.back();
-		fences.pop_back();
-		return ret;
-	}
-	else
-	{
-		VkFence fence;
-		VkFenceCreateInfo info = { VK_STRUCTURE_TYPE_FENCE_CREATE_INFO };
-		table->vkCreateFence(device->get_device(), &info, nullptr, &fence);
-		return fence;
-	}
+		old = cur;
+		cur = _InterlockedCompareExchange64(&counter->value, old + (__int64)delta, old);
+	} while (cur != old);
+	return (uint64_t)(old + (__int64)delta);
+}
+#else
+void granite_counter64_init(granite_counter64_t *counter, uint64_t value)
+{
+	__atomic_store_n(&counter->value, value, __ATOMIC_RELAXED);
 }
 
-void FenceManager::recycle_fence(VkFence fence)
+uint64_t granite_counter64_add(granite_counter64_t *counter, uint64_t delta)
 {
-	fences.push_back(fence);
+	return __atomic_add_fetch(&counter->value, delta, __ATOMIC_RELAXED);
 }
+#endif
 
-FenceManager::~FenceManager()
+uint64_t granite_cookie_next(void)
 {
-	for (auto &fence : fences)
-		table->vkDestroyFence(device->get_device(), fence, nullptr);
-}
+	return granite_counter64_add(&granite_cookie, 16);
 }

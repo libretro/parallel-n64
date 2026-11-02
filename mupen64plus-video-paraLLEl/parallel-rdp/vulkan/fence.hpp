@@ -26,7 +26,7 @@
 #include "vulkan_headers.hpp"
 #include "object_pool.hpp"
 #include "cookie.hpp"
-#include <retro_atomic.h>
+#include "fence_wait.h"
 
 namespace Vulkan
 {
@@ -70,14 +70,9 @@ private:
 	VkFence fence;
 	VkSemaphore timeline_semaphore;
 	uint64_t timeline_value;
-	// 0: not waited for, 1: one thread is waiting, 2: signalled and seen.
-	// Vulkan forbids waiting on one VkFence from two threads at once, so
-	// the first waiter claims it with a CAS and the rest park on the
-	// device's fence eventcount until it is done. No lock.
-	retro_atomic_int_t wait_state{0};
-	bool observed_wait() { return retro_atomic_load_acquire_int(&wait_state) == 2; }
-	bool vk_wait(uint64_t timeout);
-	void publish_wait_state(int state);
+	// fence_wait.c
+	retro_atomic_int_t wait_state{GRANITE_FENCE_UNWAITED};
+	static bool vk_wait(void *self);
 };
 
 using Fence = Util::IntrusivePtr<FenceHolder>;
