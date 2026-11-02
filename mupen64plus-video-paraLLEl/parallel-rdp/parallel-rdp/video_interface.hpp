@@ -166,6 +166,11 @@ private:
 	Vulkan::BufferHandle gamma_lut;
 	Vulkan::BufferViewHandle gamma_lut_view;
 	const ShaderBank *shader_bank = nullptr;
+	// vi_scale with the passes after it folded in
+	Vulkan::Shader *vi_scale_fold = nullptr;
+	bool fold_disabled = false;
+	// what it reads as the previous frame when there is none
+	Vulkan::ImageHandle no_previous_frame;
 
 	void init_gamma_table();
 	bool previous_frame_blank = false;
@@ -276,6 +281,14 @@ private:
 	                                Vulkan::Image &aa_image,
 	                                const Registers &registers,
 	                                unsigned scaling_factor) const;
+	// The passes after the scale pass that it can do itself: its 2:1
+	// downscales, and the deinterlace of a bobbed field.
+	struct ScaleFold
+	{
+		unsigned downscale_steps;
+		bool deinterlace;
+		bool field_select;
+	};
 	Vulkan::ImageHandle scale_stage(Vulkan::CommandBuffer &cmd,
 	                                const Vulkan::Image *divot_image,
 	                                Registers registers,
@@ -283,7 +296,8 @@ private:
 	                                unsigned scaling_factor,
 	                                bool degenerate,
 	                                const ScanoutOptions &options,
-	                                bool final_pass) const;
+	                                bool final_pass,
+	                                const ScaleFold *fold = nullptr) const;
 	Vulkan::ImageHandle downscale_stage(Vulkan::CommandBuffer &cmd,
 	                                    Vulkan::Image &scale_image,
 	                                    unsigned scaling_factor,

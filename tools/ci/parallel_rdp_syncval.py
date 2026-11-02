@@ -4,8 +4,9 @@
   parallel_rdp_syncval.py --core parallel_n64_libretro.so --host ./lrhost_vk [--roms dir]
 
 Runs a few krom ROMs for a few frames through tools/lrhost_vk with the
-Khronos validation layer and synchronization validation on, natively and
-upscaled 2x, and fails on any validation error, and on any write-after-read
+Khronos validation layer and synchronization validation on, natively, upscaled
+2x, and upscaled 2x and downscaled back (the scale pass with its downscale
+folded in), and fails on any validation error, and on any write-after-read
 or write-after-write hazard: work that overwrites memory another submission
 may still be using, such as an initialisation submitted where it lands
 after the first frame that reads it.
@@ -24,7 +25,8 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from parallel_rdp_regress import OPTIONS, fetch
 
 ROMS = ("cube16", "rottri32xlu")
-CONFIGS = (("native", ()), ("2x", ("parallel-n64-upscaling=2x",)))
+CONFIGS = (("native", ()), ("2x", ("parallel-n64-upscaling=2x",)),
+           ("2x-downscaled", ("parallel-n64-upscaling=2x", "parallel-n64-parallel-rdp-downscaling=1/2")))
 FRAMES = 8
 
 HAZARD = re.compile(r"SYNC-HAZARD-([A-Z-]+)")

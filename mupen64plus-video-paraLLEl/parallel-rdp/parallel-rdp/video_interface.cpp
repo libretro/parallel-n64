@@ -25,6 +25,7 @@
 #include "luts.hpp"
 #include "bitops.hpp"
 #include "upscaler_pass.hpp"
+#include "upscaler_shaders.hpp"
 #include <math.h>
 
 #include "shaders/slangmosh.hpp"
@@ -153,6 +154,35 @@ void VideoInterface::set_hidden_rdram(const Vulkan::Buffer *hidden_rdram_)
 void VideoInterface::set_shader_bank(const ShaderBank *bank)
 {
 	shader_bank = bank;
+	vi_scale_fold = nullptr;
+	if (!bank || !device)
+		return;
+
+	// vi_scale's own layout, with the fold's registers after its own.
+	Vulkan::ResourceLayout layout;
+	layout.sets[0].separate_image_mask = (1u << 0) | (1u << 2);
+	layout.sets[0].sampled_texel_buffer_mask = 1u << 1;
+	layout.sets[0].fp_mask = 1u << 2;
+	layout.sets[0].array_size[0] = 1;
+	layout.sets[0].array_size[1] = 1;
+	layout.sets[0].array_size[2] = 1;
+	layout.sets[1].sampled_texel_buffer_mask = 1u << 0;
+	layout.sets[1].array_size[0] = 1;
+	layout.output_mask = 1;
+	layout.push_constant_size = 120;
+	layout.spec_constant_mask = (1u << 1) | (1u << 2);
+	vi_scale_fold = device->request_shader(UpscalerShaders::vi_scale_fold_frag,
+	                                       sizeof(UpscalerShaders::vi_scale_fold_frag), &layout);
+
+	static const uint32_t black = 0;
+	Vulkan::ImageInitialData initial = { &black, 1, 1 };
+	no_previous_frame = device->create_image(
+			Vulkan::ImageCreateInfo::immutable_2d_image(1, 1, VK_FORMAT_R8G8B8A8_UNORM), &initial);
+
+	// PARALLEL_RDP_VI_NO_FOLD=1 runs the downscale and deinterlace as
+	// passes of their own, as they were, to compare against.
+	if (const char *env = getenv("PARALLEL_RDP_VI_NO_FOLD"))
+		fold_disabled = strtol(env, nullptr, 0) != 0;
 }
 
 static VkPipelineStageFlagBits layout_to_stage(VkImageLayout layout)
@@ -778,7 +808,8 @@ void VideoInterface::bind_horizontal_info_view(Vulkan::CommandBuffer &cmd, const
 Vulkan::ImageHandle VideoInterface::scale_stage(Vulkan::CommandBuffer &cmd, const Vulkan::Image *divot_image,
                                                 Registers regs, const HorizontalBuffer &lines,
                                                 unsigned scaling_factor, bool degenerate,
-                                                const ScanoutOptions &options, bool final_pass) const
+                                                const ScanoutOptions &options, bool final_pass,
+                                                const ScaleFold *fold) const
 {
 	Vulkan::ImageHandle scale_image;
 	Vulkan::QueryPoolHandle start_ts, end_ts;
@@ -832,6 +863,34 @@ Vulkan::ImageHandle VideoInterface::scale_stage(Vulkan::CommandBuffer &cmd, cons
 	{
 		LOGE("Too large crop of %u x %u for RT %u x %u.\n",
 			 crop_left + crop_right, crop_top + crop_bottom, rt_info.width, rt_info.height);
+	}
+
+	// What the folded passes need: the downscaled image's height, and how
+	// the deinterlace reads it, in quarter rows (see vi_scale_fold.frag).
+	int deinterlace_mul = 0, deinterlace_add = 0, deinterlace_rows = 0;
+	const unsigned scale_height = rt_info.height;
+	if (fold)
+	{
+		rt_info.width >>= fold->downscale_steps;
+		rt_info.height >>= fold->downscale_steps;
+		if (fold->deinterlace)
+		{
+			// As upscale_deinterlace samples it: a quarter field line up or
+			// down, at twice the height at 1x.
+			int field_scale = int(rdp_max(1u, scaling_factor >> fold->downscale_steps));
+			deinterlace_rows = int(rt_info.height);
+			if (field_scale == 1)
+			{
+				rt_info.height *= 2;
+				deinterlace_mul = 2;
+				deinterlace_add = fold->field_select ? -2 : 0;
+			}
+			else
+			{
+				deinterlace_mul = 4;
+				deinterlace_add = fold->field_select ? -field_scale : field_scale;
+			}
+		}
 	}
 
 	rt_info.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
@@ -904,7 +963,17 @@ Vulkan::ImageHandle VideoInterface::scale_stage(Vulkan::CommandBuffer &cmd, cons
 		uint32_t serrate_select;
 
 		uint32_t info_y_shift;
+
+		// vi_scale_fold only
+		int32_t pad;
+		int32_t rect_lo[2], rect_hi[2];
+		int32_t downscale_steps;
+		int32_t deinterlace_mul, deinterlace_add, deinterlace_rows;
+		int32_t blend_lo[3][2], blend_hi[3][2];
 	} push = {};
+	static_assert(sizeof(push) == 120, "vi_scale_fold's registers are 120 bytes");
+	// vi_scale's registers end where the fold's begin
+	const size_t push_size = fold ? sizeof(push) : offsetof(Push, pad);
 
 	push.info_y_shift = Util::floor_log2(scaling_factor);
 
@@ -926,11 +995,10 @@ Vulkan::ImageHandle VideoInterface::scale_stage(Vulkan::CommandBuffer &cmd, cons
 	push.frame_count = frame_count;
 
 	cmd.set_opaque_state();
-	cmd.set_program(device->request_program(shader_bank->fullscreen, shader_bank->vi_scale));
+	cmd.set_program(fold ? device->request_program(shader_bank->fullscreen, vi_scale_fold)
+	                     : device->request_program(shader_bank->fullscreen, shader_bank->vi_scale));
 	cmd.set_buffer_view(1, 0, *gamma_lut_view);
 	bind_horizontal_info_view(cmd, lines);
-
-	cmd.push_constants(&push, 0, sizeof(push));
 
 	if (!degenerate && divot_image && regs.h_res > 0 && regs.v_res > 0)
 	{
@@ -940,15 +1008,66 @@ Vulkan::ImageHandle VideoInterface::scale_stage(Vulkan::CommandBuffer &cmd, cons
 		if (rect.extent.width > 0 && rect.extent.height > 0)
 		{
 			cmd.set_texture(0, 0, divot_image->get_view());
-			cmd.set_scissor(rect);
+			if (fold)
+			{
+				// Every output pixel is drawn: the shader leaves the scale
+				// pixels outside the scissor at the clear colour itself.
+				push.rect_lo[0] = rect.offset.x;
+				push.rect_lo[1] = rect.offset.y;
+				push.rect_hi[0] = rect.offset.x + int(rect.extent.width);
+				push.rect_hi[1] = rect.offset.y + int(rect.extent.height);
+				push.downscale_steps = int(fold->downscale_steps);
+				push.deinterlace_mul = deinterlace_mul;
+				push.deinterlace_add = deinterlace_add;
+				push.deinterlace_rows = deinterlace_rows;
+
+				// The blend pass's rects, below, in the scale pass's
+				// coordinates; the previous frame is read where the scale
+				// pixel ends up, so it has to be this frame's size.
+				const Vulkan::Image *prev = no_previous_frame.get();
+				if (prev_scanout_image && options.blend_previous_frame &&
+				    prev_scanout_image->get_width() == rt_info.width &&
+				    prev_scanout_image->get_height() == rt_info.height)
+				{
+					const int bottom = int(scale_height + crop_top);
+					VkRect2D blend[3] = {
+						{{ regs.h_start, 0 }, { uint32_t(regs.h_res), uint32_t(regs.v_start) }},
+						{{ regs.h_start_clamp, regs.v_start }, { uint32_t(regs.h_res_clamp), uint32_t(regs.v_res) }},
+						{{ regs.h_start, regs.v_start + regs.v_res },
+						 { uint32_t(regs.h_res), uint32_t(rdp_max(0, bottom - (regs.v_start + regs.v_res))) }},
+					};
+					bool use[3] = {
+						regs.h_res > 0 && regs.v_start > 0,
+						regs.h_res_clamp > 0 && regs.v_res > 0,
+						regs.h_res > 0 && bottom > regs.v_start + regs.v_res,
+					};
+					for (unsigned i = 0; i < 3; i++)
+					{
+						if (!use[i])
+							continue;
+						shift_rect(blend[i], -int(crop_left), -int(crop_top));
+						push.blend_lo[i][0] = blend[i].offset.x;
+						push.blend_lo[i][1] = blend[i].offset.y;
+						push.blend_hi[i][0] = blend[i].offset.x + int(blend[i].extent.width);
+						push.blend_hi[i][1] = blend[i].offset.y + int(blend[i].extent.height);
+					}
+					prev = prev_scanout_image.get();
+				}
+				cmd.set_texture(0, 2, prev->get_view());
+			}
+			else
+				cmd.set_scissor(rect);
+			cmd.push_constants(&push, 0, push_size);
 			cmd.draw(3);
 		}
 	}
+	else
+		cmd.push_constants(&push, 0, push_size);
 
 	// To deal with weave interlacing and other "persistence effects", we blend in previous frame's result.
 	// This is somewhat arbitrary, but seems to work well enough in practice.
 
-	if (prev_scanout_image && options.blend_previous_frame)
+	if (prev_scanout_image && options.blend_previous_frame && !fold)
 	{
 		cmd.set_blend_enable(true);
 		cmd.set_blend_factors(VK_BLEND_FACTOR_ONE_MINUS_DST_ALPHA, VK_BLEND_FACTOR_DST_ALPHA);
@@ -1427,10 +1546,36 @@ Vulkan::ImageHandle VideoInterface::scanout(VkImageLayout target_layout, const S
 	bool is_final_pass = !downscale_steps || scaling_factor <= 1;
 	bool serrate = (regs.status & VI_CONTROL_SERRATE_BIT) != 0;
 
+	// The downscales and the deinterlace after the scale pass are folded
+	// into it, so their images are never written and read back; the blend
+	// of the previous frame (weave) with them, reading it where each scale
+	// pixel ends up, rather than at the scale pass's own coordinates in the
+	// downscaled frame. (A frame is only blended or deinterlaced, never
+	// both, here.)
+	ScaleFold fold = {};
+	{
+		unsigned f = unsigned(scaling_factor), steps = downscale_steps;
+		while (f > 1 && steps)
+		{
+			f /= 2;
+			steps--;
+			fold.downscale_steps++;
+		}
+	}
+	// (the field is deinterlaced only after a downscale: without one, the
+	// frame is the field's height)
+	fold.deinterlace = fold.downscale_steps && serrate && options.upscale_deinterlacing;
+	fold.field_select = regs.v_current_line == 0;
+	bool can_fold = vi_scale_fold && !fold_disabled && !degenerate && divot_image &&
+	                !(options.blend_previous_frame && fold.deinterlace) &&
+	                fold.downscale_steps > 0 && fold.downscale_steps <= 3;
+
 	auto scale_image = scale_stage(*cmd, divot_image.get(),
 	                               regs, *horizontal,
 	                               scaling_factor, degenerate, options,
-	                               is_final_pass);
+	                               is_final_pass || can_fold, can_fold ? &fold : nullptr);
+	if (can_fold)
+		is_final_pass = true;
 
 	auto src_layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
