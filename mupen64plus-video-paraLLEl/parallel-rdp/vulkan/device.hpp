@@ -28,6 +28,7 @@
 #include "fence.hpp"
 #include "sync_pools.h"
 #include "frame_garbage.h"
+#include "release_queue.h"
 #include "image.hpp"
 #include "memory_allocator.hpp"
 #include "render_pass.hpp"
@@ -68,32 +69,12 @@ struct InitialImageBuffer
 	Util::SmallVector<VkBufferImageCopy, 32> blits;
 };
 
-// One object handed to the Device to release once the GPU is done with
-// the frame it was last used in (see Device::defer_release).
+// Memory handed to the Device to free once the GPU is done with the
+// frame it was last used in. Vulkan objects go through release_queue.c.
 struct DeferredRelease : mpsc_stack_node_t
 {
-	// The handle kinds go straight to the frame's garbage lists
-	enum class Kind
-	{
-		Framebuffer = GRANITE_GARBAGE_FRAMEBUFFER,
-		Sampler = GRANITE_GARBAGE_SAMPLER,
-		Pipeline = GRANITE_GARBAGE_PIPELINE,
-		ImageView = GRANITE_GARBAGE_IMAGE_VIEW,
-		BufferView = GRANITE_GARBAGE_BUFFER_VIEW,
-		Image = GRANITE_GARBAGE_IMAGE,
-		Buffer = GRANITE_GARBAGE_BUFFER,
-		Semaphore = GRANITE_GARBAGE_SEMAPHORE,
-		RecycleSemaphore = GRANITE_GARBAGE_RECYCLE_SEMAPHORE,
-		Fence = GRANITE_GARBAGE_KINDS,
-		Memory,
-		KeepAliveImage
-	};
-	Kind kind;
-	uint64_t handle = 0; // any non-dispatchable Vulkan handle
 	DeviceAllocation alloc = {};
-	ImageHandle image;
 };
-
 // A timeline-trace interval registered from a thread other than the
 // owner; recorded by the owner when the frame it was sent to begins.
 struct DeferredInterval : mpsc_stack_node_t
@@ -471,21 +452,26 @@ private:
 	// Make sure this is deleted last.
 	HandlePool handle_pool;
 
-	// Objects released from any thread without the device lock: each frame
-	// context drains its stack in PerFrame::begin(), after waiting for
-	// that frame's GPU work. A fixed array, so recreating the frame
-	// contexts never moves what a releasing thread is pushing onto.
+	// Released from any thread without a lock: Vulkan objects through
+	// release_queue.c, memory and timeline intervals on these stacks. Each
+	// frame context drains its own in PerFrame::begin(), after waiting for
+	// that frame's GPU work. Fixed arrays, so recreating the frame
+	// contexts never moves what a releasing thread is pushing onto. The
+	// queue's frame index says where all of them go.
 	struct PerFrame;
-	enum { MAX_DEFERRED_FRAMES = 16 };
+	enum { MAX_DEFERRED_FRAMES = GRANITE_RELEASE_FRAMES };
+	struct ReleaseQueue
+	{
+		granite_release_queue_t q;
+		ReleaseQueue() { granite_release_queue_init(&q); }
+		~ReleaseQueue() { granite_release_queue_free(&q); }
+	} releases;
 	mpsc_stack_t deferred_releases[MAX_DEFERRED_FRAMES];
 	mpsc_stack_t deferred_intervals[MAX_DEFERRED_FRAMES];
-	// The frame index releases go to: published only once a frame has
-	// begun, so nothing released for the new frame is drained by its own
-	// begin().
-	retro_atomic_int_t deferred_frame_index{0};
-	template <typename T>
-	void defer_release(DeferredRelease::Kind kind, T handle);
-	void defer_release_node(DeferredRelease *node);
+	void release_handle(granite_garbage_kind kind, uint64_t handle)
+	{
+		granite_release_queue_push(&releases.q, kind, handle);
+	}
 	void drain_deferred_releases(PerFrame &frame);
 
 	// Threads that find another thread already waiting on a FenceHolder
@@ -555,7 +541,6 @@ private:
 		Util::Vector<BufferBlock> staging_blocks;
 
 		Util::Vector<VkFence> wait_fences;
-		Util::Vector<VkFence> recycle_fences;
 
 		Util::Vector<DeviceAllocation> allocations;
 		Util::SmallVector<CommandBufferHandle> submissions[QUEUE_INDEX_COUNT];

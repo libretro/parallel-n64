@@ -85,15 +85,38 @@ bool granite_frame_garbage_has(const granite_frame_garbage_t *garbage,
 	return false;
 }
 
+/* in one vkResetFences call per batch, then back to the pool */
+static void garbage_recycle_fences(granite_garbage_list_t *list,
+		VkDevice device, const struct VolkDeviceTable *t, granite_fence_pool_t *fences)
+{
+	VkFence batch[32];
+	size_t i = 0;
+	while (i < list->count)
+	{
+		uint32_t n = 0, k;
+		while (n < 32 && i < list->count)
+			batch[n++] = GRANITE_VK_FROM_BITS(VkFence, list->items[i++]);
+		t->vkResetFences(device, n, batch);
+		for (k = 0; k < n; k++)
+			granite_fence_pool_recycle(fences, batch[k]);
+	}
+	list->count = 0;
+}
+
 void granite_frame_garbage_collect(granite_frame_garbage_t *garbage,
 		VkDevice device, const struct VolkDeviceTable *table,
-		granite_semaphore_pool_t *semaphores)
+		granite_semaphore_pool_t *semaphores, granite_fence_pool_t *fences)
 {
 	unsigned kind;
 	for (kind = 0; kind < GRANITE_GARBAGE_KINDS; kind++)
 	{
 		granite_garbage_list_t *list = &garbage->lists[kind];
 		size_t i;
+		if (kind == GRANITE_GARBAGE_RECYCLE_FENCE)
+		{
+			garbage_recycle_fences(list, device, table, fences);
+			continue;
+		}
 		for (i = 0; i < list->count; i++)
 			garbage_release((enum granite_garbage_kind)kind, list->items[i], device, table, semaphores);
 		list->count = 0;

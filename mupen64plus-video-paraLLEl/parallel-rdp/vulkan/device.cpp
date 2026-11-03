@@ -1732,7 +1732,7 @@ void Device::end_frame_nolock()
 			if (fence.fence != VK_NULL_HANDLE)
 			{
 				frame().wait_fences.push_back(fence.fence);
-				frame().recycle_fences.push_back(fence.fence);
+				granite_frame_garbage_push(&frame().garbage, GRANITE_GARBAGE_RECYCLE_FENCE, GRANITE_VK_TO_BITS(fence.fence));
 			}
 			queue_data[i].need_fence = false;
 		}
@@ -1880,7 +1880,7 @@ void Device::init_frame_contexts(unsigned count)
 	}
 	if (frame_context_index >= per_frame.size())
 		frame_context_index = 0;
-	retro_atomic_store_release_int(&deferred_frame_index, int(frame_context_index));
+	granite_release_queue_set_frame(&releases.q, frame_context_index);
 }
 
 bool Device::can_touch_swapchain_in_command_buffer(QueueIndices physical_type) const
@@ -1914,39 +1914,17 @@ Device::PerFrame::PerFrame(Device *device_, unsigned frame_index_)
 	}
 }
 
-template <typename T>
-void Device::defer_release(DeferredRelease::Kind kind, T handle)
-{
-	auto *node = handle_pool.deferred.allocate();
-	node->kind = kind;
-	node->handle = (uint64_t)handle;
-	defer_release_node(node);
-}
-
-void Device::defer_release_node(DeferredRelease *node)
-{
-	unsigned index = unsigned(retro_atomic_load_acquire_int(&deferred_frame_index));
-	mpsc_stack_push(&deferred_releases[index % MAX_DEFERRED_FRAMES], node);
-}
-
 // Moves everything released to this frame into its lists, which begin()
 // then processes. Called after the frame's GPU work has been waited for.
 void Device::drain_deferred_releases(PerFrame &f)
 {
+	granite_release_queue_drain(&releases.q, f.frame_index, &f.garbage);
 	auto *node = static_cast<DeferredRelease *>(
 			mpsc_stack_drain(&deferred_releases[f.frame_index % MAX_DEFERRED_FRAMES]));
 	while (node)
 	{
 		auto *next = static_cast<DeferredRelease *>(node->next);
-		if (unsigned(node->kind) < GRANITE_GARBAGE_KINDS)
-			granite_frame_garbage_push(&f.garbage, granite_garbage_kind(node->kind), node->handle);
-		else switch (node->kind)
-		{
-		case DeferredRelease::Kind::Fence: f.recycle_fences.push_back((VkFence)node->handle); break;
-		case DeferredRelease::Kind::Memory: f.allocations.push_back(node->alloc); break;
-		case DeferredRelease::Kind::KeepAliveImage: f.keep_alive_images.push_back(Util::move(node->image)); break;
-		default: break;
-		}
+		f.allocations.push_back(node->alloc);
 		handle_pool.deferred.free(node);
 		node = next;
 	}
@@ -1968,7 +1946,7 @@ void Device::free_memory_nolock(const DeviceAllocation &alloc)
 
 void Device::destroy_pipeline(VkPipeline pipeline)
 {
-	defer_release(DeferredRelease::Kind::Pipeline, pipeline);
+	release_handle(GRANITE_GARBAGE_PIPELINE, GRANITE_VK_TO_BITS(pipeline));
 }
 
 void Device::reset_fence(VkFence fence, bool observed_wait)
@@ -1976,55 +1954,54 @@ void Device::reset_fence(VkFence fence, bool observed_wait)
 	// Reset and recycled when this frame comes round again, whether or
 	// not someone already waited on it.
 	(void)observed_wait;
-	defer_release(DeferredRelease::Kind::Fence, fence);
+	release_handle(GRANITE_GARBAGE_RECYCLE_FENCE, GRANITE_VK_TO_BITS(fence));
 }
 
 void Device::destroy_buffer(VkBuffer buffer)
 {
-	defer_release(DeferredRelease::Kind::Buffer, buffer);
+	release_handle(GRANITE_GARBAGE_BUFFER, GRANITE_VK_TO_BITS(buffer));
 }
 
 void Device::destroy_buffer_view(VkBufferView view)
 {
-	defer_release(DeferredRelease::Kind::BufferView, view);
+	release_handle(GRANITE_GARBAGE_BUFFER_VIEW, GRANITE_VK_TO_BITS(view));
 }
 
 void Device::destroy_framebuffer(VkFramebuffer framebuffer)
 {
-	defer_release(DeferredRelease::Kind::Framebuffer, framebuffer);
+	release_handle(GRANITE_GARBAGE_FRAMEBUFFER, GRANITE_VK_TO_BITS(framebuffer));
 }
 
 void Device::destroy_image(VkImage image)
 {
-	defer_release(DeferredRelease::Kind::Image, image);
+	release_handle(GRANITE_GARBAGE_IMAGE, GRANITE_VK_TO_BITS(image));
 }
 
 void Device::destroy_semaphore(VkSemaphore semaphore)
 {
-	defer_release(DeferredRelease::Kind::Semaphore, semaphore);
+	release_handle(GRANITE_GARBAGE_SEMAPHORE, GRANITE_VK_TO_BITS(semaphore));
 }
 
 void Device::recycle_semaphore(VkSemaphore semaphore)
 {
-	defer_release(DeferredRelease::Kind::RecycleSemaphore, semaphore);
+	release_handle(GRANITE_GARBAGE_RECYCLE_SEMAPHORE, GRANITE_VK_TO_BITS(semaphore));
 }
 
 void Device::free_memory(const DeviceAllocation &alloc)
 {
 	auto *node = handle_pool.deferred.allocate();
-	node->kind = DeferredRelease::Kind::Memory;
 	node->alloc = alloc;
-	defer_release_node(node);
+	mpsc_stack_push(&deferred_releases[granite_release_queue_frame(&releases.q) % MAX_DEFERRED_FRAMES], node);
 }
 
 void Device::destroy_sampler(VkSampler sampler)
 {
-	defer_release(DeferredRelease::Kind::Sampler, sampler);
+	release_handle(GRANITE_GARBAGE_SAMPLER, GRANITE_VK_TO_BITS(sampler));
 }
 
 void Device::destroy_image_view(VkImageView view)
 {
-	defer_release(DeferredRelease::Kind::ImageView, view);
+	release_handle(GRANITE_GARBAGE_IMAGE_VIEW, GRANITE_VK_TO_BITS(view));
 }
 
 void Device::destroy_pipeline_nolock(VkPipeline pipeline)
@@ -2065,7 +2042,7 @@ void Device::reset_fence_nolock(VkFence fence, bool observed_wait)
 		granite_fence_pool_recycle(&managers.fence, fence);
 	}
 	else
-		frame().recycle_fences.push_back(fence);
+		granite_frame_garbage_push(&frame().garbage, GRANITE_GARBAGE_RECYCLE_FENCE, GRANITE_VK_TO_BITS(fence));
 }
 
 void Device::destroy_image_nolock(VkImage image)
@@ -2202,7 +2179,7 @@ void Device::next_frame_context()
 		frame_context_index = 0;
 
 	frame().begin();
-	retro_atomic_store_release_int(&deferred_frame_index, int(frame_context_index));
+	granite_release_queue_set_frame(&releases.q, frame_context_index);
 	recalibrate_timestamps();
 	frame_context_begin_ts = write_calibrated_timestamp_nolock();
 }
@@ -2376,8 +2353,7 @@ void Device::register_time_interval(const char *tid, QueryPoolHandle start_ts, Q
 	Util::copy_string(node->tag, sizeof(node->tag), tag);
 	node->start_ts = Util::move(start_ts);
 	node->end_ts = Util::move(end_ts);
-	unsigned index = unsigned(retro_atomic_load_acquire_int(&deferred_frame_index));
-	mpsc_stack_push(&deferred_intervals[index % MAX_DEFERRED_FRAMES], node);
+	mpsc_stack_push(&deferred_intervals[granite_release_queue_frame(&releases.q) % MAX_DEFERRED_FRAMES], node);
 }
 
 void Device::register_time_interval_nolock(const char *tid, QueryPoolHandle start_ts, QueryPoolHandle end_ts,
@@ -2468,15 +2444,6 @@ void Device::PerFrame::begin()
 	// This frame's GPU work is done: take what other threads released to it.
 	device.drain_deferred_releases(*this);
 
-	// If we're using timeline semaphores, these paths should never be hit.
-	if (!recycle_fences.empty())
-	{
-		table.vkResetFences(vkdevice, recycle_fences.size(), recycle_fences.data());
-		for (auto &fence : recycle_fences)
-			granite_fence_pool_recycle(&managers.fence, fence);
-		recycle_fences.clear();
-	}
-
 	for (auto &cmd_pool : cmd_pools)
 		for (auto &pool : cmd_pool)
 			pool.begin();
@@ -2502,7 +2469,7 @@ void Device::PerFrame::begin()
 	ubo_blocks.clear();
 	staging_blocks.clear();
 
-	granite_frame_garbage_collect(&garbage, vkdevice, &table, &managers.semaphore);
+	granite_frame_garbage_collect(&garbage, vkdevice, &table, &managers.semaphore, &managers.fence);
 
 	if (!allocations.empty())
 	{

@@ -57,6 +57,8 @@ enum granite_garbage_kind
 	GRANITE_GARBAGE_SEMAPHORE,
 	/* unsignalled, back to the semaphore pool rather than destroyed */
 	GRANITE_GARBAGE_RECYCLE_SEMAPHORE,
+	/* reset, and back to the fence pool */
+	GRANITE_GARBAGE_RECYCLE_FENCE,
 	GRANITE_GARBAGE_KINDS
 };
 
@@ -95,7 +97,7 @@ bool granite_frame_garbage_has(const granite_frame_garbage_t *garbage,
 /* Destroys (or recycles) everything held, and empties the lists */
 void granite_frame_garbage_collect(granite_frame_garbage_t *garbage,
 		VkDevice device, const struct VolkDeviceTable *table,
-		granite_semaphore_pool_t *semaphores);
+		granite_semaphore_pool_t *semaphores, granite_fence_pool_t *fences);
 
 /* Frees the lists; collect first */
 void granite_frame_garbage_free(granite_frame_garbage_t *garbage);

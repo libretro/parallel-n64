@@ -1718,6 +1718,13 @@ test_frame_garbage$(EXE_EXT): tools/test_frame_garbage.c $(VIDEODIR_PARALLEL)/pa
 		$(VIDEODIR_PARALLEL)/parallel-rdp/vulkan/sync_pools.c
 	$(CC) $(CHECK_CFLAGS) $(CHECK_SANITIZE) $(COMMAND_RING_TEST_INC) $^ -o $@ $(CHECK_LDFLAGS) $(CHECK_SANITIZE)
 
+# Granite's release queue, from several threads (tools/test_release_queue.c)
+test_release_queue$(EXE_EXT): tools/test_release_queue.c $(VIDEODIR_PARALLEL)/parallel-rdp/vulkan/release_queue.c \
+		$(VIDEODIR_PARALLEL)/parallel-rdp/vulkan/frame_garbage.c $(VIDEODIR_PARALLEL)/parallel-rdp/vulkan/sync_pools.c \
+		$(VIDEODIR_PARALLEL)/parallel-rdp/util/pool.c $(VIDEODIR_PARALLEL)/parallel-rdp/util/aligned_alloc.c \
+		$(LIBRETRO_COMM_DIR)/rthreads/rthreads.c
+	$(CC) $(CHECK_CFLAGS) $(CHECK_SANITIZE) $(COMMAND_RING_TEST_INC) $^ -o $@ $(CHECK_LDFLAGS) $(CHECK_SANITIZE) -lpthread
+
 # GLideN64's RDRAM writeback converting read-back rows in place, against
 # the compacting copy it replaced
 test_gliden64_write_rdram$(EXE_EXT): tools/test_gliden64_write_rdram.cpp $(VIDEODIR_GLIDEN64)/src/BufferCopy/WriteToRDRAM.h
@@ -1737,7 +1744,7 @@ CORE_CHECKS := test_rcp_bounds$(EXE_EXT) test_memory_map$(EXE_EXT) test_fb_write
 	test_musyx_bounds$(EXE_EXT) test_musyx_aux$(EXE_EXT) test_alist_ops$(EXE_EXT) test_alist_abi1$(EXE_EXT) test_hle_dispatch$(EXE_EXT) angrylion_zboss_audio_test$(EXE_EXT) \
 	test_mouse_accum$(EXE_EXT) test_hle_dram_wrap$(EXE_EXT) test_pif_write$(EXE_EXT) \
 	test_re2_fill$(EXE_EXT) test_temporal_upscaler$(EXE_EXT) test_pipeline_records$(EXE_EXT) test_rdp_x_range$(EXE_EXT) \
-	test_command_ring$(EXE_EXT) test_vk_sync$(EXE_EXT) test_frame_garbage$(EXE_EXT) test_gb_cart_banks$(EXE_EXT) test_dynarec_cache_pages$(EXE_EXT) \
+	test_command_ring$(EXE_EXT) test_vk_sync$(EXE_EXT) test_frame_garbage$(EXE_EXT) test_release_queue$(EXE_EXT) test_gb_cart_banks$(EXE_EXT) test_dynarec_cache_pages$(EXE_EXT) \
 	test_gliden64_write_rdram$(EXE_EXT) test_gliden64_deferred_readback$(EXE_EXT) test_gliden64_ring_segments$(EXE_EXT) test_glide64_fb_readback$(EXE_EXT) test_granite_util$(EXE_EXT) test_granite_pool$(EXE_EXT) test_vk_alloc_fallback$(EXE_EXT) \
 	test_vi_image_pool$(EXE_EXT) test_incoherent_pages$(EXE_EXT)
 
