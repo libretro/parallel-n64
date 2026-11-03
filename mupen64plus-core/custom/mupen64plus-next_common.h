@@ -167,23 +167,8 @@ extern uint32_t OverscanBottom;
 #define RETRO_MEMORY_TRANSFERPAK 0x100 + 2
 #define RETRO_GAME_TYPE_TRANSFERPAK 2
 
-#if defined(HAVE_PARALLEL)
-#define FLAVOUR_VERSION "-Vulkan"
-#elif defined(HAVE_OPENGLES2)
-#define FLAVOUR_VERSION "-GLES2"
-#elif defined(HAVE_OPENGLES3)
-#define FLAVOUR_VERSION "-GLES3"
-#else
-#define FLAVOUR_VERSION "-OpenGL"
-#endif
-
 #ifndef GIT_VERSION
 #define GIT_VERSION " git"
-#endif
-
-// Keep it optional (f.e. Raspberry Pi Platforms override it in Makefile)
-#ifndef CORE_NAME
-#define CORE_NAME "mupen64plus"
 #endif
 
 // RetroArch Extensions

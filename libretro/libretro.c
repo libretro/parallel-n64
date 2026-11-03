@@ -1,25 +1,4 @@
 #include <stdio.h>
-#include <mupen64plus-next_common.h>
-
-/* libretro-fork compat: legacy CONT_* controller-presence + M64CMD_DDROM_OPEN +
- * mempak format defaults, retained for the fork's libretro glue (next dropped
- * these names but the underlying values are unchanged). */
-#ifndef CONT_NONE
-#define CONT_NONE     0
-#define CONT_JOYPAD   1
-#define CONT_MOUSE    2
-#define CONT_GCN      4
-#endif
-#ifndef M64CMD_DDROM_OPEN
-#define M64CMD_DDROM_OPEN 25
-#endif
-#ifndef DEFAULT_MEMPAK_DEVICEID
-#define DEFAULT_MEMPAK_DEVICEID 0x0500
-#define DEFAULT_MEMPAK_BANKS    1
-#define DEFAULT_MEMPAK_VERSION  0
-#endif
-
-uint8_t* g_dd_disk;
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -29,10 +8,7 @@ uint8_t* g_dd_disk;
 #include <file/file_path.h>
 #include <retro_miscellaneous.h>
 
-#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-#include <glsm/glsmsym.h>
-#endif
-
+#include <mupen64plus-next_common.h>
 #include "api/m64p_frontend.h"
 #include "plugin/plugin.h"
 #include "api/m64p_types.h"
@@ -77,6 +53,24 @@ uint8_t* g_dd_disk;
  * enough here - the stub needs the enum and nothing else. */
 #include <glsm/glsm.h>
 bool glsm_ctl(enum glsm_state_ctl state, void *data) { return false; }
+#endif
+
+/* libretro-fork compat: legacy CONT_* controller-presence + M64CMD_DDROM_OPEN +
+ * mempak format defaults, retained for the fork's libretro glue (next dropped
+ * these names but the underlying values are unchanged). */
+#ifndef CONT_NONE
+#define CONT_NONE     0
+#define CONT_JOYPAD   1
+#define CONT_MOUSE    2
+#define CONT_GCN      4
+#endif
+#ifndef M64CMD_DDROM_OPEN
+#define M64CMD_DDROM_OPEN 25
+#endif
+#ifndef DEFAULT_MEMPAK_DEVICEID
+#define DEFAULT_MEMPAK_DEVICEID 0x0500
+#define DEFAULT_MEMPAK_BANKS    1
+#define DEFAULT_MEMPAK_VERSION  0
 #endif
 
 #ifndef PRESCALE_WIDTH
@@ -161,6 +155,7 @@ char* retro_transferpak_ram_path = NULL;
 
 /* fork 64DD: a fresh disk image is an empty (zeroed) buffer; the IPL writes
  * its own structure on first use. next has no format_disk, so define it here. */
+uint8_t* g_dd_disk;
 void format_disk(uint8_t* disk)
 {
    if (disk) memset(disk, 0, 0x0435B0C0);
@@ -502,11 +497,6 @@ static void core_settings_autoselect_gfx_plugin(void)
 #endif
 }
 
-unsigned libretro_get_gfx_plugin(void)
-{
-   return gfx_plugin;
-}
-
 static void core_settings_autoselect_rsp_plugin(void);
 
 static void core_settings_set_defaults(void)
@@ -659,18 +649,12 @@ static void core_settings_autoselect_rsp_plugin(void)
 
 static bool set_variable_visibility(void)
 {
-    // For simplicity we create a prepared var per plugin, maybe create a macro for this?
-    struct retro_core_option_display option_display_gliden64;
-    struct retro_core_option_display option_display_angrylion;
-    struct retro_core_option_display option_display_parallel;
-    struct retro_core_option_display option_display_glide64;
-
+    struct retro_variable var;
+    struct retro_core_option_display option_display;
     size_t i;
     size_t num_options = 0;
-    char **values_buf = NULL;
-    struct retro_variable var;
     const char *rdp_plugin_current = "__NULL__";
-    bool rdp_plugin_found = false;
+    const char *rdp_plugin_prefix = NULL;
 
     // If option categories are supported but
     // the option update display callback is not,
@@ -683,10 +667,7 @@ static bool set_variable_visibility(void)
     var.key = CORE_NAME "-gfxplugin";
     var.value = NULL;
     if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
-    {
         rdp_plugin_current = var.value;
-        rdp_plugin_found = true;
-    }
 
     // Check if plugin has changed since last
     // call of this function
@@ -695,15 +676,17 @@ static bool set_variable_visibility(void)
 
     strncpy(rdp_plugin_last, rdp_plugin_current, sizeof(rdp_plugin_last));
 
-    // Show/hide options depending on Plugins (Active isn't relevant!)
-    if (rdp_plugin_found)
+    // Define gfx plugin specific option description prefix
+    if (rdp_plugin_current)
     {
-        option_display_gliden64.visible = !strcmp(rdp_plugin_current, "gliden64");
-        option_display_angrylion.visible = !strcmp(rdp_plugin_current, "angrylion");
-        option_display_parallel.visible = !strcmp(rdp_plugin_current, "parallel");
-        option_display_glide64.visible = !strcmp(rdp_plugin_current, "glide64");
-    } else {
-        option_display_gliden64.visible = option_display_angrylion.visible = option_display_parallel.visible = option_display_glide64.visible = true;
+        if (!strcmp(rdp_plugin_current, "angrylion"))
+           rdp_plugin_prefix = "Angrylion: ";
+        else if (!strcmp(rdp_plugin_current, "parallel"))
+           rdp_plugin_prefix = "ParaLLEl: ";
+        else if (!strcmp(rdp_plugin_current, "glide64"))
+           rdp_plugin_prefix = "Glide64: ";
+        else if (!strcmp(rdp_plugin_current, "gliden64"))
+           rdp_plugin_prefix = "GLideN64: ";
     }
 
     // Determine number of options
@@ -714,32 +697,52 @@ static bool set_variable_visibility(void)
         num_options++;
     }
 
-    // Copy parameters from option_defs_us array
     for (i = 0; i < num_options; i++)
     {
         const char *key  = option_defs_us[i].key;
-        const char *hint = option_defs_us[i].info;
-        if (hint)
+        const char *desc = option_defs_us[i].desc;
+
+        // Show video options depending on selected plugin
+        if (desc && !(strcmp(option_defs_us[i].category_key, "video")))
         {
-            // Quick and dirty, its the only consistent naming
-            // Otherwise GlideN64 Setting keys will need to be broken again..
-            if (!!strstr(hint, "(GLideN64)"))
+            bool gfx_plugin_specific = strstr(desc, ": ");
+
+            option_display.key     = key;
+            option_display.visible = true;
+
+            if (gfx_plugin_specific && !strcmp(rdp_plugin_current, "parallel") && !strstr(desc, rdp_plugin_prefix))
+                option_display.visible = false;
+            else if (gfx_plugin_specific && !strcmp(rdp_plugin_current, "angrylion") && !strstr(desc, rdp_plugin_prefix))
+                option_display.visible = false;
+            else if (gfx_plugin_specific && !strcmp(rdp_plugin_current, "glide64") && !strstr(desc, rdp_plugin_prefix))
+                option_display.visible = false;
+            else if (gfx_plugin_specific && !strcmp(rdp_plugin_current, "gliden64") && !strstr(desc, rdp_plugin_prefix))
+                option_display.visible = false;
+            else if (gfx_plugin_specific && !rdp_plugin_prefix)
+                option_display.visible = false;
+            
+            // ParaLLEl and Angrylion use "upscaling" and "native-texture-lod", others only "screensize"
+            if (!strcmp(rdp_plugin_current, "parallel") || !strcmp(rdp_plugin_current, "angrylion"))
             {
-                option_display_gliden64.key = key;
-                environ_cb(RETRO_ENVIRONMENT_SET_CORE_OPTIONS_DISPLAY, &option_display_gliden64);
-            } else if (!!strstr(hint, "(Angrylion)"))
-            {
-                option_display_angrylion.key = key;
-                environ_cb(RETRO_ENVIRONMENT_SET_CORE_OPTIONS_DISPLAY, &option_display_angrylion);
-            } else if (!!strstr(key, "(ParaLLEl-RDP)")) // Maybe unify it later?
-            {
-                option_display_parallel.key = key;
-                environ_cb(RETRO_ENVIRONMENT_SET_CORE_OPTIONS_DISPLAY, &option_display_glide64);
-            } else if (!!strstr(key, "(Glide64)")) // Maybe unify it later?
-            {
-                option_display_glide64.key = key;
-                environ_cb(RETRO_ENVIRONMENT_SET_CORE_OPTIONS_DISPLAY, &option_display_parallel);
+                if (!strcmp(key, "parallel-n64-screensize"))
+                    option_display.visible = false;
             }
+            else
+            {
+                if (       !strcmp(key, "parallel-n64-upscaling")
+                        || !strcmp(key, "parallel-n64-parallel-rdp-native-texture-lod"))
+                    option_display.visible = false;
+            }
+
+            environ_cb(RETRO_ENVIRONMENT_SET_CORE_OPTIONS_DISPLAY, &option_display);
+        }
+        // Show VR options only for GLideN64
+        else if (desc && !(strcmp(option_defs_us[i].category_key, "vr")))
+        {
+            option_display.key     = key;
+            option_display.visible = !strcmp(rdp_plugin_current, "gliden64");
+
+            environ_cb(RETRO_ENVIRONMENT_SET_CORE_OPTIONS_DISPLAY, &option_display);
         }
     }
 
@@ -754,9 +757,8 @@ static void setup_variables(void)
 
    static const struct retro_controller_description port[] = {
       { "Controller", RETRO_DEVICE_JOYPAD },
+      { "Gamecube Controller", RETRO_DEVICE_ANALOG },
       { "Mouse", RETRO_DEVICE_MOUSE },
-      { "RetroPad", RETRO_DEVICE_JOYPAD },
-      { "Analog", RETRO_DEVICE_ANALOG },
    };
 
    static const struct retro_controller_info ports[] = {
@@ -1720,7 +1722,7 @@ extern void ChangeSize();
 static void gfx_set_filtering(void)
 {
      if (log_cb)
-        log_cb(RETRO_LOG_DEBUG, "set filtering mode...\n");
+        log_cb(RETRO_LOG_DEBUG, "Set filtering mode...\n");
      switch (gfx_plugin)
      {
         case GFX_GLIDE64:
@@ -1763,7 +1765,7 @@ unsigned setting_get_dithering(void)
 static void gfx_set_dithering(void)
 {
    if (log_cb)
-      log_cb(RETRO_LOG_DEBUG, "set dithering mode...\n");
+      log_cb(RETRO_LOG_DEBUG, "Set dithering mode...\n");
 
    switch (gfx_plugin)
    {
@@ -2412,7 +2414,7 @@ void update_variables(bool startup)
 #endif
             sscanf(var.value ? var.value : "640x480", "%dx%d", &screen_width, &screen_height) != 2)
       {
-         screen_width = 640;
+         screen_width  = 640;
          screen_height = 480;
       }
    }

@@ -35,38 +35,64 @@ extern "C"
 #endif
 
 #define VR_AIM_BUTTON_VALUES \
-   {"None", "Disabled"}, \
+   {"None", "disabled"}, \
    {"A", "A Button"}, {"B", "B Button"}, {"Z", "Z Trigger"}, \
    {"L", "L Trigger"}, {"R", "R Trigger"}, {"Start", "Start"}, \
    {"C-Up", NULL}, {"C-Down", NULL}, {"C-Left", NULL}, {"C-Right", NULL}, \
    {"D-Pad Up", NULL}, {"D-Pad Down", NULL}, {"D-Pad Left", NULL}, {"D-Pad Right", NULL}, \
    { NULL, NULL }
 
+#define MOUSE_MAP_VALUES \
+   {"None", "disabled"}, \
+   {"A", "A Button"}, {"B", "B Button"}, {"Z", "Z Trigger"}, \
+   {"L", "L Trigger"}, {"R", "R Trigger"}, {"Start", "Start"}, \
+   {"C-Up", NULL}, {"C-Down", NULL}, {"C-Left", NULL}, {"C-Right", NULL}, \
+   { NULL, NULL },
+
+#define CONTROLLER_PAK_VALUES \
+   { "none", "disabled" }, \
+   { "memory", "Memory" }, \
+   { "rumble", "Rumble" }, \
+   { "biosensor", "Biosensor" }, \
+   { "transfer", "Transfer" }, \
+   { NULL, NULL },
+
+#define OVERSCAN_VALUES \
+   {"0", NULL}, {"1", NULL}, {"2", NULL}, {"3", NULL}, {"4", NULL}, \
+   {"5", NULL}, {"6", NULL}, {"7", NULL}, {"8", NULL}, {"9", NULL}, \
+   {"10", NULL},{"11", NULL},{"12", NULL},{"13", NULL},{"14", NULL},\
+   {"15", NULL},{"16", NULL},{"17", NULL},{"18", NULL},{"19", NULL},\
+   {"20", NULL},{"21", NULL},{"22", NULL},{"23", NULL},{"24", NULL},\
+   {"25", NULL},{"26", NULL},{"27", NULL},{"28", NULL},{"29", NULL},\
+   {"30", NULL},{"31", NULL},{"32", NULL},{"33", NULL},{"34", NULL},\
+   {"35", NULL},{"36", NULL},{"37", NULL},{"38", NULL},{"39", NULL},\
+   {"40", NULL},{"41", NULL},{"42", NULL},{"43", NULL},{"44", NULL},\
+   {"45", NULL},{"46", NULL},{"47", NULL},{"48", NULL},{"49", NULL},\
+   {"50", NULL}, \
+   { NULL, NULL },
+
+
 #define HAVE_NO_LANGEXTRA
 struct retro_core_option_v2_category option_cats_us[] = {
    {
+      "system",
+      "System",
+      "Configure system options."
+   },
+   {
+      "video",
+      "Video",
+      "Configure video options."
+   },
+   {
+      "audio",
+      "Audio",
+      "Configure audio options."
+   },
+   {
       "input",
-      "Pak/Controller Options",
-      "Configure Core Pak/Controller Options."
-   },
-#ifdef HAVE_PARALLEL
-   {
-      "parallel",
-      "ParaLLEl",
-      "Configure ParaLLEl Options."
-   },
-#endif // HAVE_PARALLEL
-#ifdef HAVE_THR_AL
-   {
-      "angrylion",
-      "Angrylion",
-      "Configure Angrylion Options."
-   },
-#endif // HAVE_THR_AL
-   {
-      "gliden64",
-      "GLideN64",
-      "Configure GLideN64 Options."
+      "Input",
+      "Configure input & Controller Pak options."
    },
 #if defined(HAVE_GLIDEN64) && !defined(HAVE_OPENGLES2)
    {
@@ -76,26 +102,270 @@ struct retro_core_option_v2_category option_cats_us[] = {
    },
 #endif
    {
-      "glide64",
-      "Glide64",
-      "Configure Glide64 Options."
-   },
-   {
       "aleck64",
       "Aleck64",
       "Aleck64 arcade dipswitches (only used by Aleck64 MAME romsets)."
+   },
+   {
+      "hacks",
+      "Emulation Hacks",
+      "Configure emulation hack options."
    },
    { NULL, NULL, NULL },
 };
 
 struct retro_core_option_v2_definition option_defs_us[] = {
     {
+        CORE_NAME "-gfxplugin",
+        "RDP Plugin",
+        NULL,
+        "Reality Display Processor plugin.",
+        NULL,
+        "system",
+        {
+#ifdef HAVE_PARALLEL
+            { "parallel", "ParaLLEl" },
+#endif
+            { "angrylion", "Angrylion" },
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
+            { "gliden64", "GLideN64" },
+            { "glide64", "Glide64" },
+            { "gln64", "glN64" },
+            { "rice", "Rice" },
+#endif
+            { NULL, NULL },
+        },
+#ifdef HAVE_PARALLEL
+        "parallel"
+#elif defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
+        "gliden64"
+#else
+        "angrylion"
+#endif
+    },
+    {
+        CORE_NAME "-rspplugin",
+        "RSP Plugin",
+        NULL,
+        "Reality Signal Processor plugin.",
+        NULL,
+        "system",
+        {
+            { "auto", "Auto" },
+#ifdef HAVE_PARALLEL_RSP
+            { "parallel", "ParaLLEl" },
+#endif
+            { "cxd4", "Cxd4" },
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
+            { "hle", "HLE" },
+#endif
+            { NULL, NULL },
+        },
+        "auto"
+    },
+    {
+        CORE_NAME "-cpucore",
+        "CPU Core",
+        NULL,
+        "CPU emulation mode.",
+        NULL,
+        "system",
+        {
+            {"cached_interpreter", "Cached Interpreter"},
+            {"pure_interpreter", "Pure Interpreter"},
+#ifdef DYNAREC
+#if defined(HAVE_DYNAREC_HACKTARUX) && defined(NEW_DYNAREC)
+            {"dynamic_recompiler", "Dynamic Recompiler (Hacktarux)"},
+            {"dynamic_recompiler_ari64", "Dynamic Recompiler (Ari64)"},
+#elif defined(NEW_DYNAREC)
+            {"dynamic_recompiler", "Dynamic Recompiler (Ari64)"},
+#else
+            {"dynamic_recompiler", "Dynamic Recompiler"},
+#endif
+#endif
+            { NULL, NULL },
+        },
+#if defined(IOS)
+        "cached_interpreter"
+#else
+#ifdef DYNAREC
+#if defined(HAVE_DYNAREC_HACKTARUX) && defined(NEW_DYNAREC)
+        "dynamic_recompiler_ari64"
+#else
+        "dynamic_recompiler"
+#endif
+#else
+        "cached_interpreter"
+#endif
+#endif
+    },
+    {
+        CORE_NAME "-disable_expmem",
+        "Enable Expansion Pak RAM",
+        NULL,
+        "Give the console 8MB of RAM instead of 4MB, as the Expansion Pak does. Games that require the Pak (Donkey Kong 64, Majora's Mask) will not boot with this disabled. Applied when content starts.",
+        NULL,
+        "system",
+        {
+            { "disabled", NULL },
+            { "enabled", NULL },
+            { NULL, NULL },
+        },
+        "enabled"
+    },
+    {
+        CORE_NAME "-64dd-hardware",
+        "64DD Hardware",
+        NULL,
+        "Treat content without a recognised cartridge or disk header as a 64DD disk. Development disks and MAME/SDK dumps carry no header marker; regular cartridges and retail D64 images are identified by their header and unaffected by this setting.",
+        NULL,
+        "system",
+        {
+            { "disabled", NULL },
+            { "enabled", NULL },
+            { NULL, NULL },
+        },
+        "disabled"
+    },
+    {
+        CORE_NAME "-boot-device",
+        "Boot Device",
+        NULL,
+        "Boot device used for 64DD mode.",
+        NULL,
+        "system",
+        {
+            { "Default", NULL },
+            { "64DD IPL", NULL },
+            { NULL, NULL },
+        },
+        "Default"
+    },
+    {
+        CORE_NAME "-sdcard",
+        "Flashcart SD Drive",
+        NULL,
+        "Emulate a flashcart.",
+        NULL,
+        "system",
+        {
+            {"disabled", "disabled"},
+            {"SummerCart64", "SummerCart64"},
+            { NULL, NULL }
+        },
+        "disabled"
+    },
+    {
+        CORE_NAME "-virefresh",
+        "VI Refresh",
+        NULL,
+        "Video Interface clock speed.",
+        NULL,
+        "hacks",
+        {
+            { "auto", "Auto" },
+            { "1500", NULL },
+            { "2200", NULL },
+            { NULL, NULL },
+        },
+        "auto"
+    },
+    {
+        CORE_NAME "-allow-large-roms",
+        "Allow Large ROMs",
+        NULL,
+        "Enable support for ROMs that are larger than 64 MiB.",
+        NULL,
+        "hacks",
+        {
+            {"False", "disabled"},
+            {"True", "enabled"},
+            { NULL, NULL }
+        },
+        "True"
+    },
+    {
+        CORE_NAME "-OverrideSaveType",
+        "Save Type For Unknown ROMs",
+        NULL,
+        "Force save type when not sure.",
+        NULL,
+        "hacks",
+        {
+            {"NONE", "Auto"},
+            {"IGNORE", "Do not force"},
+            {"EEPROM_4KB", "EEPROM (4kB)"},
+            {"EEPROM_16KB", "EEPROM (16kB)"},
+            {"SRAM", "SRAM"},
+            {"FLASH_RAM", "FlashRAM"},
+            {"CONTROLLER_PACK", "MemPak"},
+            { NULL, NULL }
+        },
+        "NONE"
+    },
+    {
+        CORE_NAME "-rtc-savestate",
+        "Rollback N64 System Clock on Savestate Load",
+        NULL,
+        "Use state saved timestamp for system clock after loading a state.",
+        NULL,
+        "hacks",
+        {
+            { "disabled", NULL },
+            { "enabled", NULL },
+            { NULL, NULL }
+        },
+        "disabled"
+    },
+    {
+        CORE_NAME "-allow-unaligned-dma",
+        "Unaligned DMA Behaviour",
+        NULL,
+        "'Allow Unaligned' causes minor issues on Taz Express; 'Force Alignment' is accurate to N64, but breaks some romhacks.",
+        NULL,
+        "hacks",
+        {
+            {"False", "Force Alignment"},
+            {"True", "Allow Unaligned"},
+            { NULL, NULL }
+        },
+        "True"
+    },
+    {
+        CORE_NAME "-dma-timing",
+        "PI/SI DMA Timing",
+        NULL,
+        "'Bus Registers' times cartridge and controller DMAs from the PI domain timing registers and the joybus command list, as the hardware does. 'Fixed' keeps the per-device durations.",
+        NULL,
+        "hacks",
+        {
+            {"fixed", "Fixed"},
+            {"registers", "Bus Registers"},
+            { NULL, NULL }
+        },
+        "fixed"
+    },
+    {
+        CORE_NAME "-goldeneye-tlb-hack",
+        "GoldenEye TLB Mapping Hack (Restart)",
+        NULL,
+        "Map GoldenEye's demand-paged 0x7F000000 code segment directly onto the ROM, bypassing the game's own TLB pager (ari64 dynarec only). Historically required for GoldenEye to run at all; on desktop-class hosts the accurate path now measures just as fast. Disable for hardware-faithful TLB behaviour or for modified ROMs that relocate the game segment, which the mapping would corrupt.",
+        NULL,
+        "hacks",
+        {
+            { "disabled", NULL },
+            { "enabled", NULL },
+            { NULL, NULL },
+        },
+        "enabled"
+    },
+    {
         CORE_NAME "-upscaling",
-        "Upscaling factor (restart)",
+        "Upscaling Factor",
         NULL,
         "Render at a multiple of the console's resolution. ParaLLEl-RDP honours every factor; Angrylion renders at up to 4x and treats 8x as 4x.",
         NULL,
-        NULL,
+        "video",
         {
             { "1x", NULL },
             { "2x", NULL },
@@ -109,18 +379,1591 @@ struct retro_core_option_v2_definition option_defs_us[] = {
         /* The key keeps its ParaLLEl-RDP name so existing configurations
          * carry over; both upscaling renderers honour it. */
         CORE_NAME "-parallel-rdp-native-texture-lod",
-        "Use native texture LOD when upscaling",
+        "Use Native Texture LOD When Upscaling",
         NULL,
-        "Pick texture mip levels as the console would, from a console pixel's footprint rather than an upscaled pixel's. Without it an upscaled render selects sharper levels, and games that use the level as a switch show the wrong image (the painting at the end of the castle corridor in Super Mario 64). Honoured by ParaLLEl-RDP and Angrylion.",
+        "Pick texture mip levels as the console would, from a console pixel's footprint rather than an upscaled pixel's. Without it an upscaled render selects sharper levels, and games that use the level as a switch show the wrong image (the painting at the end of the castle corridor in Super Mario 64).",
         NULL,
-        NULL,
+        "video",
         {
-            { "enabled", NULL },
             { "disabled", NULL },
+            { "enabled", NULL },
             { NULL, NULL },
         },
         "disabled"
     },
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
+    {
+        CORE_NAME "-screensize",
+        "Resolution",
+        NULL,
+        "Render resolution for gl renderers. Restart required.",
+        NULL,
+        "video",
+        {
+            { "320x240", NULL },
+            { "640x480", NULL },
+            { "960x720", NULL },
+            { "1280x960", NULL },
+            { "1440x1080", NULL },
+            { "1600x1200", NULL },
+            { "1920x1440", NULL },
+            { "2240x1680", NULL },
+            { "2880x2160", NULL },
+            { "5760x4320", NULL },
+            { NULL, NULL },
+        },
+#ifdef CLASSIC
+        "320x240"
+#else
+        "640x480"
+#endif
+    },
+    {
+        CORE_NAME "-aspectratiohint",
+        "Aspect Ratio Hint",
+        NULL,
+        "Force display aspect ratio.",
+        NULL,
+        "video",
+        {
+            { "normal", "Normal" },
+            { "widescreen", "Widescreen" },
+            { NULL, NULL },
+        },
+        "normal"
+    },
+#ifdef HAVE_PARALLEL
+    {
+        CORE_NAME "-parallel-rdp-downscaling",
+        "ParaLLEl: Downsampling",
+        NULL,
+        "Scale upscaled images back to smaller size.",
+        NULL,
+        "video",
+        {
+            { "disable", "disabled" },
+            { "1/2", NULL },
+            { "1/4", NULL },
+            { "1/8", NULL },
+            { NULL, NULL },
+        },
+        "disable"
+    },
+    {
+        CORE_NAME "-parallel-rdp-vi-aa",
+        "ParaLLEl: VI Anti-aliasing",
+        NULL,
+        "Anti-aliasing is performed to minimize jagged edges in low-resolution polygons.",
+        NULL,
+        "video",
+        {
+            { "disabled", NULL },
+            { "enabled", NULL },
+            { NULL, NULL },
+        },
+        "enabled"
+    },
+    {
+        CORE_NAME "-parallel-rdp-vi-bilinear",
+        "ParaLLEl: VI Bilinear Filtering",
+        NULL,
+        "Fullscreen post-process blur filter.",
+        NULL,
+        "video",
+        {
+            { "disabled", NULL },
+            { "enabled", NULL },
+            { NULL, NULL },
+        },
+        "enabled"
+    },
+    {
+        CORE_NAME "-parallel-rdp-gamma-dither",
+        "ParaLLEl: VI Gamma Dither",
+        NULL,
+        "Perform gamma correction using a dither pattern.",
+        NULL,
+        "video",
+        {
+            { "disabled", NULL },
+            { "enabled", NULL },
+            { NULL, NULL },
+        },
+        "enabled"
+    },
+    {
+        CORE_NAME "-parallel-rdp-dither-filter",
+        "ParaLLEl: VI Dither Filter",
+        NULL,
+        "Make Mach bands less apparent with 16-bit pixels.",
+        NULL,
+        "video",
+        {
+            { "disabled", NULL },
+            { "enabled", NULL },
+            { NULL, NULL },
+        },
+        "enabled"
+    },
+    {
+        CORE_NAME "-parallel-rdp-divot-filter",
+        "ParaLLEl: VI Divot Filter",
+        NULL,
+        "Filter for eliminating 'divots' (single-pixel holes created when multiple boundary edges overlap in one pixel) in anti-aliased pixels.",
+        NULL,
+        "video",
+        {
+            { "disabled", NULL },
+            { "enabled", NULL },
+            { NULL, NULL },
+        },
+        "enabled"
+    },
+    {
+        CORE_NAME "-parallel-rdp-super-sampled-read-back",
+        "ParaLLEl: Supersampled Readback",
+        NULL,
+        "When upscaling, average the upscaled samples when a frame is read back into game memory instead of taking one sample per pixel. Can smooth framebuffer effects; changes what the game reads back. Takes effect on restart.",
+        NULL,
+        "video",
+        {
+            { "disabled", NULL },
+            { "enabled", NULL },
+            { NULL, NULL },
+        },
+        "disabled"
+    },
+    {
+        CORE_NAME "-parallel-rdp-super-sampled-read-back-dither",
+        "ParaLLEl: Supersampled Readback Dither",
+        NULL,
+        "Dither the averaged read-back down to the game's colour depth. Only applies with super-sampled read-back. Takes effect on restart.",
+        NULL,
+        "video",
+        {
+            { "disabled", NULL },
+            { "enabled", NULL },
+            { NULL, NULL },
+        },
+        "enabled"
+    },
+    {
+        CORE_NAME "-parallel-rdp-native-tex-rect",
+        "ParaLLEl: Native Resolution Texture Rectangles",
+        NULL,
+        "Use native resolution for texture rectangles.",
+        NULL,
+        "video",
+        {
+            { "disabled", NULL },
+            { "enabled", NULL },
+            { NULL, NULL },
+        },
+        "enabled"
+    },
+    {
+        CORE_NAME "-parallel-rdp-synchronous",
+        "ParaLLEl: Synchronous RDP",
+        NULL,
+        "Make the CPU wait for the GPU to finish rendering at RDP full sync. Disabling can improve performance but breaks games that read rendered frames back from memory (e.g. Resident Evil 2 never starts its intro FMV); such games force this on automatically.",
+        NULL,
+        "video",
+        {
+            { "disabled", NULL },
+            { "enabled", NULL },
+            { NULL, NULL },
+        },
+        "enabled"
+    },
+    {
+        CORE_NAME "-parallel-rdp-overscan",
+        "ParaLLEl: Crop Overscan",
+        NULL,
+        "Crop overscan border pixels.",
+        NULL,
+        "video",
+        {
+            { "0", NULL },
+            { "2", NULL },
+            { "4", NULL },
+            { "6", NULL },
+            { "8", NULL },
+            { "10", NULL },
+            { "12", NULL },
+            { "14", NULL },
+            { "16", NULL },
+            { "18", NULL },
+            { "20", NULL },
+            { "22", NULL },
+            { "24", NULL },
+            { "26", NULL },
+            { "28", NULL },
+            { "30", NULL },
+            { "32", NULL },
+            { "34", NULL },
+            { "36", NULL },
+            { "38", NULL },
+            { "40", NULL },
+            { "42", NULL },
+            { "44", NULL },
+            { "46", NULL },
+            { "48", NULL },
+            { "50", NULL },
+            { "52", NULL },
+            { "54", NULL },
+            { "56", NULL },
+            { "58", NULL },
+            { "60", NULL },
+            { "62", NULL },
+            { "64", NULL },
+            { NULL, NULL },
+        },
+        "0"
+    },
+#endif
+    {
+        CORE_NAME "-angrylion-vioverlay",
+        "Angrylion: VI Overlay",
+        NULL,
+        "Accuracy and performance related post-processings.",
+        NULL,
+        "video",
+        {
+            { "Filtered", NULL },
+            { "AA+Blur", NULL },
+            { "AA+Dedither", NULL },
+            { "AA only", NULL },
+            { "Unfiltered", NULL },
+            { "Depth", NULL },
+            { "Coverage", NULL },
+            { NULL, NULL },
+        },
+        "Filtered"
+    },
+    {
+        CORE_NAME "-angrylion-deinterlace",
+        "Angrylion: Deinterlacing",
+        NULL,
+        "How interlaced (480i) content is displayed. 'Weave' merges both fields (sharp but combs on motion), 'Bob' line-doubles the current field (no combing, slight shimmer). Affects 480i games like Kuru Kuru Fever or Hanabi de Doon and hi-res title screens.",
+        NULL,
+        "video",
+        {
+            { "weave", "Weave" },
+            { "bob", "Bob" },
+            { NULL, NULL },
+        },
+        "weave"
+    },
+    {
+        CORE_NAME "-dithering",
+        "Angrylion: Dithering",
+        NULL,
+        "Make Mach bands less apparent with 16-bit pixels.",
+        NULL,
+        "video",
+        {
+            { "disabled", NULL },
+            { "enabled", NULL },
+            { NULL, NULL },
+        },
+        "enabled"
+    },
+    {
+        CORE_NAME "-angrylion-sync",
+        "Angrylion: Thread Sync Level",
+        NULL,
+        "Sacrifice accuracy for performance.",
+        NULL,
+        "video",
+        {
+            { "Low", NULL },
+            { "Medium", NULL },
+            { "High", NULL },
+            { NULL, NULL },
+        },
+        "Low"
+    },
+    {
+        CORE_NAME "-angrylion-multithread",
+        "Angrylion: Multithreading",
+        NULL,
+        "'OFF' renders synchronously on the emulator thread: no worker pool, no command buffering, no thread synchronization. Numeric values use the threaded renderer with that many worker threads ('1' keeps the threaded pipeline with a single worker). 'All threads' uses the host's physical cores, at most 8. Every worker replays the whole command stream, so past 8 the duplicated work outweighs what more workers take off the spans, and a second thread on the same core only adds contention.",
+        NULL,
+        "video",
+        {
+            { "off", "disabled" },
+            { "all threads", "All threads" },
+            { "1", NULL },
+            { "2", NULL },
+            { "3", NULL },
+            { "4", NULL },
+            { "5", NULL },
+            { "6", NULL },
+            { "7", NULL },
+            { "8", NULL },
+            { NULL, NULL },
+        },
+        "all threads"
+    },
+    {
+        CORE_NAME "-angrylion-overscan",
+        "Angrylion: Crop Overscan",
+        NULL,
+        "Crop overscan border pixels.",
+        NULL,
+        "video",
+        {
+            { "disabled", NULL },
+            { "enabled", NULL },
+            { NULL, NULL },
+        },
+        "disabled"
+    },
+    {
+        CORE_NAME "-gfxplugin-accuracy",
+        "Glide64: GFX Accuracy",
+        NULL,
+        NULL,
+        NULL,
+        "video",
+        {
+            { "low", "Low" },
+            { "medium", "Medium" },
+            { "high", "High" },
+            { "veryhigh", "Very High" },
+            { NULL, NULL },
+        },
+#if defined(IOS) || defined(ANDROID)
+        "medium"
+#else
+        "veryhigh"
+#endif
+    },
+    {
+        CORE_NAME "-filtering",
+        "Glide64: Texture Filtering",
+        NULL,
+        NULL,
+        NULL,
+        "video",
+        {
+            { "automatic", "Auto" },
+            { "N64 3-point", NULL },
+            { "bilinear", "Bilinear" },
+            { "nearest", "Nearest" },
+            { NULL, NULL },
+        },
+        "automatic"
+    },
+    {
+        CORE_NAME "-polyoffset-factor",
+        "Glide64: Polygon Offset Factor",
+        NULL,
+        NULL,
+        NULL,
+        "video",
+        {
+            { "-5.0", NULL },
+            { "-4.5", NULL },
+            { "-4.0", NULL },
+            { "-3.5", NULL },
+            { "-3.0", NULL },
+            { "-2.5", NULL },
+            { "-2.0", NULL },
+            { "-1.5", NULL },
+            { "-1.0", NULL },
+            { "-0.5", NULL },
+            {  "0.0", NULL },
+            {  "0.5", NULL },
+            {  "1.0", NULL },
+            {  "1.5", NULL },
+            {  "2.0", NULL },
+            {  "2.5", NULL },
+            {  "3.0", NULL },
+            {  "3.5", NULL },
+            {  "4.0", NULL },
+            {  "4.5", NULL },
+            {  "5.0", NULL },
+            { NULL, NULL },
+        },
+        "-3.0"
+    },
+    {
+        CORE_NAME "-polyoffset-units",
+        "Glide64: Polygon Offset Units",
+        NULL,
+        NULL,
+        NULL,
+        "video",
+        {
+            { "-5.0", NULL },
+            { "-4.5", NULL },
+            { "-4.0", NULL },
+            { "-3.5", NULL },
+            { "-3.0", NULL },
+            { "-2.5", NULL },
+            { "-2.0", NULL },
+            { "-1.5", NULL },
+            { "-1.0", NULL },
+            { "-0.5", NULL },
+            {  "0.0", NULL },
+            {  "0.5", NULL },
+            {  "1.0", NULL },
+            {  "1.5", NULL },
+            {  "2.0", NULL },
+            {  "2.5", NULL },
+            {  "3.0", NULL },
+            {  "3.5", NULL },
+            {  "4.0", NULL },
+            {  "4.5", NULL },
+            {  "5.0", NULL },
+            { NULL, NULL },
+        },
+        "-3.0"
+    },
+#endif
+    {
+        CORE_NAME "-gliden64-viewport-hack",
+        "GLideN64: Widescreen Hack",
+        NULL,
+        "Hack that adjusts the viewport to allow unstretched 16:9",
+        NULL,
+        "video",
+        {
+            {"disabled", NULL},
+            {"enabled", NULL},
+            {"steamdeck", "Steam Deck (16:10)"},
+            { NULL, NULL },
+        },
+        "disabled"
+    },
+    {
+        CORE_NAME "-gliden64-EnableNativeResFactor",
+        "GLideN64: Native Resolution Factor",
+        NULL,
+        "Render at N times the native resolution.",
+        NULL,
+        "video",
+        {
+            {"0", "disabled"},
+            {"1", "1x"},
+            {"2", "2x"},
+            {"3", "3x"},
+            {"4", "4x"},
+            {"5", "5x"},
+            {"6", "6x"},
+            {"7", "7x"},
+            {"8", "8x"},
+            { NULL, NULL },
+        },
+        "0"
+    },
+    {
+        CORE_NAME "-gliden64-BilinearMode",
+        "GLideN64: Bilinear Filtering Mode",
+        NULL,
+        "Select a Bilinear filtering method, 3point is the original system specific way.",
+        NULL,
+        "video",
+        {
+            {"standard", "Standard"},
+            {"3point", "3-point"},
+            { NULL, NULL },
+        },
+        "standard"
+    },
+#ifndef HAVE_OPENGLES2
+    {
+        CORE_NAME "-gliden64-MultiSampling",
+        "GLideN64: MSAA Level",
+        NULL,
+        "Anti-Aliasing level.",
+        NULL,
+        "video",
+        {
+            {"0", "disabled"},
+            {"2", "2x"},
+            {"4", "4x"},
+            {"8", "8x"},
+            {"16", "16x"},
+            { NULL, NULL },
+        },
+        "0"
+    },
+#endif
+    {
+        CORE_NAME "-gliden64-FXAA",
+        "GLideN64: FXAA",
+        NULL,
+        "Fast Approximate Anti-Aliasing shader, moderately blur textures.",
+        NULL,
+        "video",
+        {
+            {"0", "disabled"},
+            {"1", "enabled"},
+            { NULL, NULL },
+        },
+        "0"
+    },
+    {
+        CORE_NAME "-gliden64-EnableLODEmulation",
+        "GLideN64: LOD Emulation",
+        NULL,
+        "Calculate per-pixel level of details to select texture mip levels and blend them with each other using LOD fraction.",
+        NULL,
+        "video",
+        {
+            {"False", "disabled"},
+            {"True", "enabled"},
+            { NULL, NULL },
+        },
+        "True"
+    },
+    {
+        CORE_NAME "-gliden64-EnableFBEmulation",
+        "GLideN64: Framebuffer Emulation",
+        NULL,
+        "Frame/depth buffer emulation. Disabling it can shorten input lag for particular games, but also break some special effects.",
+        NULL,
+        "video",
+        {
+            {"False", "disabled"},
+            {"True", "enabled"},
+            { NULL, NULL },
+        },
+#ifndef VC
+        "True"
+#else
+        "False"
+#endif // VC
+    },
+    {
+        CORE_NAME "-gliden64-EnableCopyAuxToRDRAM",
+        "GLideN64: Copy Auxiliary Buffers to RDRAM",
+        NULL,
+        "Copy auxiliary buffers to RDRAM. Fixes some game artifacts like Paper Mario intro.",
+        NULL,
+        "video",
+        {
+            {"False", "disabled"},
+            {"True", "enabled"},
+            { NULL, NULL },
+        },
+        "False",
+    },
+    {
+        CORE_NAME "-gliden64-EnableCopyColorToRDRAM",
+        "GLideN64: Color Buffer to RDRAM",
+        NULL,
+        "Color buffer copy to RDRAM. 'OFF' trades compatibility for performance.",
+        NULL,
+        "video",
+        {
+            {"Off", "disabled"},
+            {"Sync", NULL},
+#ifndef HAVE_OPENGLES2
+            {"Async", "DoubleBuffer"},
+            {"TripleBuffer", "TripleBuffer"},
+#endif // HAVE_OPENGLES2
+            { NULL, NULL },
+        },
+#ifndef HAVE_OPENGLES2
+        "Async"
+#else
+        "Sync"
+#endif // HAVE_OPENGLES2
+    },
+    {
+        CORE_NAME "-gliden64-EnableCopyColorFromRDRAM",
+        "GLideN64: Color Buffer From RDRAM",
+        NULL,
+        "Always copy the color buffer from RDRAM. GLideN64 already does this by itself whenever it detects that the CPU painted the frame the VI is about to show, so this setting only adds a second, unconditional trigger for the titles that detection misses (Donkey Kong 64 anti-aliased shadows, some Indiana Jones effects). Needs Framebuffer Emulation on. Default off for the performance cost.",
+        NULL,
+        "video",
+        {
+            {"False", "disabled"},
+            {"True", "enabled"},
+            { NULL, NULL },
+        },
+        "False"
+    },
+    {
+        CORE_NAME "-gliden64-EnableCopyDepthToRDRAM",
+        "GLideN64: Depth Buffer to RDRAM",
+        NULL,
+        "Depth buffer copy to RDRAM (Off will trade compatibility for Performance).",
+        NULL,
+        "video",
+        {
+            {"Off", "disabled"},
+            {"Software", NULL},
+            {"FromMem", NULL},
+            { NULL, NULL },
+        },
+        "Software"
+    },
+    {
+        CORE_NAME "-gliden64-GLideN64IniBehaviour",
+        "GLideN64: Per-game Settings",
+        NULL,
+        "When to apply GLideN64's built-in per-game settings. 'Late' lets them override your choices below, 'Early' lets your choices win, 'OFF' ignores them entirely.",
+        NULL,
+        "video",
+        {
+            {"disabled", "disabled"},
+            {"late", "Late"},
+            {"early", "Early"},
+            { NULL, NULL },
+        },
+        "late"
+    },
+    {
+        CORE_NAME "-gliden64-BackgroundMode",
+        "GLideN64: Background Mode",
+        NULL,
+        "Render backgrounds mode (HLE only). One piece (fast), Stripped (precise).",
+        NULL,
+        "video",
+        {
+            {"Stripped", NULL},
+            {"OnePiece", NULL},
+            { NULL, NULL },
+        },
+        "OnePiece"
+    },
+    {
+        CORE_NAME "-gliden64-EnableHWLighting",
+        "GLideN64: Hardware Per-pixel Lighting",
+        NULL,
+        "Standard per-vertex lighting when disabled. Slightly different rendering.",
+        NULL,
+        "video",
+        {
+            {"False", "disabled"},
+            {"True", "enabled"},
+            { NULL, NULL },
+        },
+        "False"
+    },
+    {
+        CORE_NAME "-gliden64-CorrectTexrectCoords",
+        "GLideN64: Continuous Texrect Coords",
+        NULL,
+        "Make texrect coordinates continuous to avoid black lines between them.",
+        NULL,
+        "video",
+        {
+            {"Off", "disabled"},
+            {"Auto", NULL},
+            {"Force", NULL},
+            { NULL, NULL },
+        },
+        "Off"
+    },
+    {
+        CORE_NAME "-gliden64-EnableInaccurateTextureCoordinates",
+        "GLideN64: Enable Inaccurate Texture Coordinates",
+        NULL,
+        "Enables inaccurate texture coordinate calculations. This can improve performance and texture pack compatibity at the cost of accuracy.",
+        NULL,
+        "video",
+        {
+            {"False", "disabled"},
+            {"True", "enabled"},
+            { NULL, NULL },
+        },
+        "False"
+    },
+    {
+        CORE_NAME "-gliden64-EnableNativeResTexrects",
+        "GLideN64: Native Resolution 2D Texrects",
+        NULL,
+        "Render 2D texrects in native resolution to fix misalignment between parts of 2D image (example: Mario Kart driver selection portraits).",
+        NULL,
+        "video",
+        {
+            {"Disabled", "disabled"},
+            {"Unoptimized", NULL},
+            {"Optimized", NULL},
+            { NULL, NULL },
+        },
+        "Disabled"
+    },
+    {
+        CORE_NAME "-gliden64-EnableLegacyBlending",
+        "GLideN64: Less Accurate Blending Mode",
+        NULL,
+        "Do not use shaders to emulate N64 blending modes. Works faster on slow GPU. Can cause glitches.",
+        NULL,
+        "video",
+        {
+            {"False", "disabled"},
+            {"True", "enabled"},
+            { NULL, NULL },
+        },
+#ifdef HAVE_OPENGLES
+        "True"
+#else
+        "False"
+#endif
+    },
+    {
+        CORE_NAME "-gliden64-EnableFragmentDepthWrite",
+        "GLideN64: GPU Shader Depth Write",
+        NULL,
+        "Enable writing of fragment depth. Some mobile GPUs do not support it, thus it's optional. Leave enabled.",
+        NULL,
+        "video",
+        {
+            {"False", "disabled"},
+            {"True", "enabled"},
+            { NULL, NULL },
+        },
+/* GLES2 only. GLSL ES 1.00 has no gl_FragDepth without GL_EXT_frag_depth, and
+ * GLideN64 declines to emit writeDepth() there at all, so the setting cannot
+ * work on GLES2. GLSL ES 3.00 makes gl_FragDepth core, and a GLES 3.x target is
+ * no less capable than the desktop one this already defaults to True for. */
+#ifdef HAVE_OPENGLES2
+        "False"
+#else
+        "True"
+#endif
+    },
+    {
+        CORE_NAME "-gliden64-EnableN64DepthCompare",
+        "GLideN64: N64 Depth Compare",
+        NULL,
+        "Enable N64 depth compare instead of OpenGL standard one. Experimental, Fast mode will have more glitches.",
+        NULL,
+        "video",
+        {
+            {"False", "disabled"},
+            {"True", "Fast"},
+            {"Compatible", NULL},
+        },
+        "False"
+    },
+#if !defined(VC) && !defined(HAVE_OPENGLES2)
+    {
+        CORE_NAME "-gliden64-EnableShadersStorage",
+        "GLideN64: Cache GPU Shaders",
+        NULL,
+        "Use persistent storage for compiled shaders.",
+        NULL,
+        "video",
+        {
+            {"False", "disabled"},
+            {"True", "enabled"},
+            { NULL, NULL },
+        },
+        "True"
+    },
+#endif
+    {
+        CORE_NAME "-gliden64-EnableTextureCache",
+        "GLideN64: Cache Textures",
+        NULL,
+        "Save texture cache to hard disk.",
+        NULL,
+        "video",
+        {
+            {"False", "disabled"},
+            {"True", "enabled"},
+            { NULL, NULL },
+        },
+        "True"
+    },
+    {
+        CORE_NAME "-gliden64-EnableOverscan",
+        "GLideN64: Overscan",
+        NULL,
+        "Crop black borders from the overscan region around the screen.",
+        NULL,
+        "video",
+        {
+            {"Disabled", "disabled"},
+            {"Enabled", "enabled"},
+            { NULL, NULL },
+        },
+        "Disabled"
+    },
+    {
+        CORE_NAME "-gliden64-OverscanTop",
+        "GLideN64: Overscan Offset (Top)",
+        NULL,
+        "Overscan top offset.",
+        NULL,
+        "video",
+        { OVERSCAN_VALUES },
+        "0"
+    },
+    {
+        CORE_NAME "-gliden64-OverscanLeft",
+        "GLideN64: Overscan Offset (Left)",
+        NULL,
+        "Overscan left offset.",
+        NULL,
+        "video",
+        { OVERSCAN_VALUES },
+        "0"
+    },
+    {
+        CORE_NAME "-gliden64-OverscanRight",
+        "GLideN64: Overscan Offset (Right)",
+        NULL,
+        "Overscan right offset.",
+        NULL,
+        "video",
+        { OVERSCAN_VALUES },
+        "0"
+    },
+    {
+        CORE_NAME "-gliden64-OverscanBottom",
+        "GLideN64: Overscan Offset (Bottom)",
+        NULL,
+        "Overscan bottom offset.",
+        NULL,
+        "video",
+        { OVERSCAN_VALUES },
+        "0"
+    },
+    {
+        CORE_NAME "-gliden64-txFilterMode",
+        "GLideN64: Texture Filter",
+        NULL,
+        "Select Texture Filtering mode.",
+        NULL,
+        "video",
+        {
+            {"None", "disabled"},
+            {"Smooth filtering 1", NULL},
+            {"Smooth filtering 2", NULL},
+            {"Smooth filtering 3", NULL},
+            {"Smooth filtering 4", NULL},
+            {"Sharp filtering 1", NULL},
+            {"Sharp filtering 2", NULL},
+            { NULL, NULL },
+        },
+        "None"
+    },
+    {
+        CORE_NAME "-gliden64-txEnhancementMode",
+        "GLideN64: Texture Enhancement",
+        NULL,
+        "Various texture filters.",
+        NULL,
+        "video",
+        {
+            {"None", "disabled"},
+            {"As Is", "Cached"},
+            {"X2", NULL},
+            {"X2SAI", NULL},
+            {"HQ2X", NULL},
+            {"HQ2XS", NULL},
+            {"LQ2X", NULL},
+            {"LQ2XS", NULL},
+            {"HQ4X", NULL},
+            {"2xBRZ", NULL},
+            {"3xBRZ", NULL},
+            {"4xBRZ", NULL},
+            {"5xBRZ", NULL},
+            {"6xBRZ", NULL},
+            { NULL, NULL },
+        },
+        "None"
+    },
+    {
+        CORE_NAME "-gliden64-txFilterIgnoreBG",
+        "GLideN64: Don't Filter Background Textures",
+        NULL,
+        "Ignore filtering for background textures.",
+        NULL,
+        "video",
+        {
+            {"False", "disabled"},
+            {"True", "enabled"},
+            { NULL, NULL },
+        },
+        "True"
+    },
+    {
+        CORE_NAME "-gliden64-txHiresEnable",
+        "GLideN64: Use High-Res Textures",
+        NULL,
+        "Enable high-res texture packs if available.",
+        NULL,
+        "video",
+        {
+            {"False", "disabled"},
+            {"True", "enabled"},
+            { NULL, NULL },
+        },
+        "False"
+    },
+    {
+        CORE_NAME "-gliden64-txCacheCompression",
+        "GLideN64: Use High-Res Texture Cache Compression",
+        NULL,
+        "Compress created texture caches.",
+        NULL,
+        "video",
+        {
+            {"False", "disabled"},
+            {"True", "enabled"},
+            { NULL, NULL },
+        },
+        "True"
+    },
+    {
+        CORE_NAME "-gliden64-txHiresFullAlphaChannel",
+        "GLideN64: Use High-Res Full Alpha Channel",
+        NULL,
+        "This should be enabled unless it's an old RICE texture pack.",
+        NULL,
+        "video",
+        {
+            {"False", "disabled"},
+            {"True", "enabled"},
+            { NULL, NULL },
+        },
+        "True"
+    },
+    {
+        CORE_NAME "-gliden64-EnableHiResAltCRC",
+        "GLideN64: Use Alternative Method for High-Res Checksums",
+        NULL,
+        "Use an alternative method for High-Res paletted textures CRC calculations.",
+        NULL,
+        "video",
+        {
+            {"False", "disabled"},
+            {"True", "enabled"},
+            { NULL, NULL },
+        },
+        "False"
+    },
+    {
+        CORE_NAME "-gliden64-IniBehaviour",
+        "GLideN64: INI Behaviour",
+        NULL,
+        "Specifies INI Settings behaviour. This should really only contain essential options. Changing this can and will break ROM's, if the correct options aren't set manually. Some options may only be set via INI (fbInfoDisabled).",
+        NULL,
+        "video",
+        {
+            { "disabled", "Disable INI" },
+            { "late", "Prioritize INI over Core Options" },
+            { "early", "Prioritize Core Options over INI" },
+            { NULL, NULL },
+        },
+        "late"
+    },
+    {
+        CORE_NAME "-gliden64-LegacySm64ToolsHacks",
+        "GLideN64: Patch SM64 Hacks Made With SM64 Editor",
+        NULL,
+        "Make plugin behave like Jabo in certain case to fix compatibility with legacy SM64 hacks. It adds undocumented behavior that may interfere with real N64 games (unlikely).",
+        NULL,
+        "video",
+        {
+            { "disabled", NULL },
+            { "enabled", NULL },
+            { NULL, NULL },
+        },
+        "enabled"
+    },
+    {
+        CORE_NAME "-gliden64-RemoveFBBlackBars",
+        "GLideN64: Fix VI Resolution",
+        NULL,
+        "Remove the black bars added by VI emulation of the FrameBuffer.",
+        NULL,
+        "video",
+        {
+            { "disabled", NULL },
+            { "enabled", NULL },
+            { NULL, NULL },
+        },
+        "enabled"
+    },
+    {
+        CORE_NAME "-send_allist_to_hle_rsp",
+        "Audio Processing",
+        NULL,
+        "Which RSP runs the audio microcode, independently of the one running graphics. 'Same as RSP Plugin' follows the RSP Plugin setting. 'Fast (HLE)' emulates audio lists at a high level instead of cycle-by-cycle, which is faster but glitches in some games. 'Accurate (LLE)' keeps audio cycle-accurate even when graphics run on the HLE RSP, which is the pairing to use if you want HLE speed for graphics without HLE audio glitches.",
+        NULL,
+        "audio",
+        {
+            { "disabled", "Same as RSP Plugin" },
+            { "hle",      "Fast (HLE)" },
+            { "accurate", "Accurate (LLE)" },
+            { NULL, NULL },
+        },
+        "disabled"
+    },
+    {
+        CORE_NAME "-enhanced-hle-audio",
+        "Enhanced RSP HLE Audio",
+        NULL,
+        "Replace the audio microcode's four-tap voice interpolator with a windowed-sinc resampler. The microcode's kernel cannot band-limit a sample that is played back faster than it was recorded, so its image folds back into the audible range - the grain and grit on high-pitched sounds. This removes most of that and is slightly less muffled besides. Only affects the HLE RSP audio path. Deliberately not bit-accurate to the hardware, so leave it off if you want the exact output the console produced.",
+        NULL,
+        "audio",
+        {
+            { "disabled", NULL },
+            { "enabled",  NULL },
+            { NULL, NULL },
+        },
+        "disabled"
+    },
+    {
+        CORE_NAME "-enhanced-hle-audio-quality",
+        "Enhanced RSP HLE Audio Quality",
+        NULL,
+        "How many taps the enhanced resampler uses. More taps reject more of the folded-back image and cost a little more CPU and memory: 16 taps is already a large improvement over the microcode's four, 32 and 64 taps tighten the filter further. Has no effect unless Enhanced RSP HLE Audio is enabled.",
+        NULL,
+        "audio",
+        {
+            { "16", "16 taps" },
+            { "32", "32 taps" },
+            { "64", "64 taps" },
+            { NULL, NULL },
+        },
+        "32"
+    },
+    {
+        CORE_NAME "-pak1",
+        "Player 1 Pak",
+        NULL,
+        "Controller Pak for port 1.",
+        NULL,
+        "input",
+        { CONTROLLER_PAK_VALUES },
+        "none"
+    },
+    {
+        CORE_NAME "-pak2",
+        "Player 2 Pak",
+        NULL,
+        "Controller Pak for port 2.",
+        NULL,
+        "input",
+        { CONTROLLER_PAK_VALUES },
+        "none"
+    },
+    {
+        CORE_NAME "-pak3",
+        "Player 3 Pak",
+        NULL,
+        "Controller Pak for port 3.",
+        NULL,
+        "input",
+        { CONTROLLER_PAK_VALUES },
+        "none"
+    },
+    {
+        CORE_NAME "-pak4",
+        "Player 4 Pak",
+        NULL,
+        "Controller Pak for port 4.",
+        NULL,
+        "input",
+        { CONTROLLER_PAK_VALUES },
+        "none"
+    },
+    {
+        CORE_NAME "-alt-map",
+        "Independent C-button Controls",
+        NULL,
+        "Make C-buttons as separate buttons instead of behind R2 toggle. Restart required.",
+        NULL,
+        "input",
+        {
+            { "disabled", NULL },
+            { "enabled", NULL },
+            { NULL, NULL },
+        },
+        "disabled"
+    },
+    {
+        CORE_NAME "-astick-deadzone",
+        "Analog Deadzone",
+        NULL,
+        "How far the analog stick must be pushed for the input to register.",
+        NULL,
+        "input",
+        {
+            { "0", "0%" },
+            { "5", "5%" },
+            { "10", "10%" },
+            { "15", "15%" },
+            { "20", "20%" },
+            { "25", "25%" },
+            { "30", "30%" },
+            { NULL, NULL },
+        },
+        "15"
+    },
+    {
+        CORE_NAME "-astick-sensitivity",
+        "Analog Sensitivity",
+        NULL,
+        "How far the analog stick can be pushed.",
+        NULL,
+        "input",
+        {
+            { "50", "50%" },
+            { "55", "55%" },
+            { "60", "60%" },
+            { "65", "65%" },
+            { "70", "70%" },
+            { "75", "75%" },
+            { "80", "80%" },
+            { "85", "85%" },
+            { "90", "90%" },
+            { "95", "95%" },
+            { "100", "100%" },
+            { "105", "105%" },
+            { "110", "110%" },
+            { "115", "115%" },
+            { "120", "120%" },
+            { "125", "125%" },
+            { "130", "130%" },
+            { "135", "135%" },
+            { "140", "140%" },
+            { "145", "145%" },
+            { "150", "150%" },
+            { "200", "200%" },
+            { NULL, NULL },
+        },
+        "100"
+    },
+    {
+        CORE_NAME "-astick-snap-angle-active",
+        "Snap Controller Angle",
+        NULL,
+        "Snap analog stick angle to multiples of 45 degrees, to better support circular design controllers that should behave like classic N64 controllers.",
+        NULL,
+        "input",
+        {
+            { "disabled", NULL },
+            { "enabled",  NULL },
+            { NULL, NULL },
+        },
+        "disabled"
+    },
+    {
+        CORE_NAME "-astick-snap-max-angle",
+        "Snap Maximum Angle",
+        NULL,
+        "Maximum deviation from a 45-degree multiple at which snapping is applied (e.g. value of 5 means 85 to 95 degrees are snapped to 90).",
+        NULL,
+        "input",
+        {
+            { "1",  NULL },
+            { "2",  NULL },
+            { "3",  NULL },
+            { "4",  NULL },
+            { "5",  NULL },
+            { "6",  NULL },
+            { "7",  NULL },
+            { "8",  NULL },
+            { "9",  NULL },
+            { "10", NULL },
+            { "11", NULL },
+            { "12", NULL },
+            { "13", NULL },
+            { "14", NULL },
+            { "15", NULL },
+            { "16", NULL },
+            { "17", NULL },
+            { "18", NULL },
+            { "19", NULL },
+            { "20", NULL },
+            { "21", NULL },
+            { NULL, NULL },
+        },
+        "15"
+    },
+    {
+        CORE_NAME "-astick-snap-min-displacement-percent",
+        "Snap Minimum Displacement",
+        NULL,
+        "Percentage of stick displacement from the center required before snapping activates (0 means always).",
+        NULL,
+        "input",
+        {
+            { "0",  "0%" },
+            { "10", "10%" },
+            { "20", "20%" },
+            { "30", "30%" },
+            { "40", "40%" },
+            { "50", "50%" },
+            { "60", "60%" },
+            { "65", "65%" },
+            { "70", "70%" },
+            { "75", "75%" },
+            { "80", "80%" },
+            { "85", "85%" },
+            { "90", "90%" },
+            { "95", "95%" },
+            { NULL, NULL },
+        },
+        "70"
+    },
+    {
+        CORE_NAME "-mouse-mode",
+        "Mouse to Analog Stick",
+        NULL,
+        "Use mouse input to control the N64 analog stick with player 1. The mouse takes over whenever the real stick is neutral. Useful for FPS games.",
+        NULL,
+        "input",
+        {
+            {"False", "disabled"},
+            {"True", "enabled"},
+            { NULL, NULL },
+        },
+        "False"
+    },
+    {
+        CORE_NAME "-mouse-sensitivity-x",
+        "Mouse Sensitivity X (percent)",
+        NULL,
+        "Horizontal mouse sensitivity. Negative values invert the axis. Set to 0 to disable horizontal movement.",
+        NULL,
+        "input",
+        {
+            {"-500", NULL}, {"-400", NULL}, {"-300", NULL}, {"-250", NULL}, {"-200", NULL},
+            {"-175", NULL}, {"-150", NULL}, {"-125", NULL}, {"-100", NULL}, {"-75", NULL}, {"-50", NULL},
+            {"0", NULL},
+            {"50", NULL}, {"75", NULL}, {"100", NULL}, {"125", NULL}, {"150", NULL},
+            {"175", NULL}, {"200", NULL}, {"250", NULL}, {"300", NULL}, {"400", NULL}, {"500", NULL},
+            { NULL, NULL },
+        },
+        "100"
+    },
+    {
+        CORE_NAME "-mouse-sensitivity-y",
+        "Mouse Sensitivity Y (percent)",
+        NULL,
+        "Vertical mouse sensitivity. Negative values invert the axis; the default is negative because positive mouse Y points down. Set to 0 for Doom-like horizontal-only control.",
+        NULL,
+        "input",
+        {
+            {"-500", NULL}, {"-400", NULL}, {"-300", NULL}, {"-250", NULL}, {"-200", NULL},
+            {"-175", NULL}, {"-150", NULL}, {"-125", NULL}, {"-100", NULL}, {"-75", NULL}, {"-50", NULL},
+            {"0", NULL},
+            {"50", NULL}, {"75", NULL}, {"100", NULL}, {"125", NULL}, {"150", NULL},
+            {"175", NULL}, {"200", NULL}, {"250", NULL}, {"300", NULL}, {"400", NULL}, {"500", NULL},
+            { NULL, NULL },
+        },
+        "-100"
+    },
+    {
+        CORE_NAME "-mouse-boost",
+        "Mouse Small Movement Boost",
+        NULL,
+        "Amplifies small mouse movements to make fine aiming practical. Higher = more boost; at 10 the stick follows the square root of the motion.",
+        NULL,
+        "input",
+        {
+            {"0", "Off"}, {"1", NULL}, {"2", NULL}, {"3", NULL}, {"4", NULL},
+            {"5", NULL}, {"6", NULL}, {"7", NULL}, {"8", NULL}, {"9", NULL}, {"10", NULL},
+            { NULL, NULL },
+        },
+        "0"
+    },
+    {
+        CORE_NAME "-mouse-left",
+        "Mouse Left Button",
+        NULL,
+        "Map mouse left button to an N64 button.",
+        NULL,
+        "input",
+        { MOUSE_MAP_VALUES },
+        "Z"
+    },
+    {
+        CORE_NAME "-mouse-right",
+        "Mouse Right Button",
+        NULL,
+        "Map mouse right button to an N64 button.",
+        NULL,
+        "input",
+        { MOUSE_MAP_VALUES },
+        "A"
+    },
+    {
+        CORE_NAME "-mouse-middle",
+        "Mouse Middle Button",
+        NULL,
+        "Map mouse middle button to an N64 button.",
+        NULL,
+        "input",
+        { MOUSE_MAP_VALUES },
+        "None"
+    },
+    {
+        CORE_NAME "-mouse-wheel-up",
+        "Mouse Wheel Up",
+        NULL,
+        "Map mouse wheel up to an N64 button.",
+        NULL,
+        "input",
+        { MOUSE_MAP_VALUES },
+        "L"
+    },
+    {
+        CORE_NAME "-mouse-wheel-down",
+        "Mouse Wheel Down",
+        NULL,
+        "Map mouse wheel down to an N64 button.",
+        NULL,
+        "input",
+        { MOUSE_MAP_VALUES },
+        "R"
+    },
+#if defined(HAVE_GLIDEN64) && !defined(HAVE_OPENGLES2)
+    {
+        CORE_NAME "-vr-mode",
+        "VR Mode",
+        NULL,
+        "'Stereoscopic' renders each eye separately for real depth. 'Immersive' needs a VR headset: the game fills the view and turning your head turns the game's camera; scenes that can't fill the view fall back to the screen. Both double the rendering work, turn on frame buffer emulation and need a frontend that supports video views. Resolution and aspect ratio apply per eye. Restart required.",
+        NULL,
+        "vr",
+        {
+            {"off", "disabled"},
+            {"stereoscopic", "Stereoscopic"},
+            {"immersive", "Immersive"},
+            { NULL, NULL },
+        },
+        "off"
+    },
+    {
+        CORE_NAME "-vr-separation",
+        "VR Eye Separation",
+        NULL,
+        "Strength of the 3D effect: the parallax of distant objects, in thousandths of the screen width. Lower is more comfortable.",
+        NULL,
+        "vr",
+        {
+            {"5", NULL},
+            {"10", NULL},
+            {"15", NULL},
+            {"20", NULL},
+            {"25", NULL},
+            {"30", NULL},
+            {"35", NULL},
+            {"40", NULL},
+            {"50", NULL},
+            {"60", NULL},
+            {"80", NULL},
+            {"100", NULL},
+            {"120", NULL},
+            { NULL, NULL },
+        },
+        "30"
+    },
+    {
+        CORE_NAME "-vr-depth-boost",
+        "VR Depth Boost",
+        NULL,
+        "Spreads deep scenes, such as race tracks, that would otherwise look flat near the horizon.",
+        NULL,
+        "vr",
+        {
+            {"0", "0%"},
+            {"10", "10%"},
+            {"20", "20%"},
+            {"30", "30%"},
+            {"40", "40%"},
+            {"50", "50%"},
+            {"60", "60%"},
+            {"70", "70%"},
+            {"80", "80%"},
+            {"90", "90%"},
+            {"100", "100%"},
+            { NULL, NULL },
+        },
+        "0"
+    },
+    {
+        CORE_NAME "-vr-immersive-world-scale",
+        "VR Immersive World Size",
+        NULL,
+        "Immersive mode only. Shows the scene at a smaller angle, as if the game's camera had a narrower view. Head turns still match. Below 100% the picture no longer fills the view.",
+        NULL,
+        "vr",
+        {
+            {"30", "30%"},
+            {"35", "35%"},
+            {"40", "40%"},
+            {"45", "45%"},
+            {"50", "50%"},
+            {"55", "55%"},
+            {"60", "60%"},
+            {"65", "65%"},
+            {"70", "70%"},
+            {"75", "75%"},
+            {"80", "80%"},
+            {"85", "85%"},
+            {"90", "90%"},
+            {"95", "95%"},
+            {"100", "100%"},
+            { NULL, NULL },
+        },
+        "100"
+    },
+    {
+        CORE_NAME "-vr-immersive-hud-scale",
+        "VR Immersive HUD Size",
+        NULL,
+        "Immersive mode only. How wide the HUD and overlays are spread. At 100% they cover as much of the view as the game's own camera, which can push them into the corners.",
+        NULL,
+        "vr",
+        {
+            {"30", "30%"},
+            {"35", "35%"},
+            {"40", "40%"},
+            {"45", "45%"},
+            {"50", "50%"},
+            {"55", "55%"},
+            {"60", "60%"},
+            {"65", "65%"},
+            {"70", "70%"},
+            {"75", "75%"},
+            {"80", "80%"},
+            {"85", "85%"},
+            {"90", "90%"},
+            {"95", "95%"},
+            {"100", "100%"},
+            { NULL, NULL },
+        },
+        "100"
+    },
+    {
+        CORE_NAME "-vr-immersive-distance",
+        "VR Immersive Camera Distance",
+        NULL,
+        "Immersive mode only. Moves the camera back along its own axis, in percent of the nearest depth of the scene.",
+        NULL,
+        "vr",
+        {
+            {"0", "0%"},
+            {"25", "25%"},
+            {"50", "50%"},
+            {"75", "75%"},
+            {"100", "100%"},
+            {"125", "125%"},
+            {"150", "150%"},
+            {"175", "175%"},
+            {"200", "200%"},
+            {"225", "225%"},
+            {"250", "250%"},
+            {"275", "275%"},
+            {"300", "300%"},
+            { NULL, NULL },
+        },
+        "0"
+    },
+    {
+        CORE_NAME "-vr-aim-controller",
+        "VR Laser Pointer Aim",
+        NULL,
+        "Aim with a VR motion controller like a laser pointer. This drives the N64 analog stick. Needs a headset session.",
+        NULL,
+        "vr",
+        {
+            {"off", "disabled"},
+            {"left", "Left Controller"},
+            {"right", "Right Controller"},
+            { NULL, NULL },
+        },
+        "off"
+    },
+    {
+        CORE_NAME "-vr-aim-output",
+        "VR Laser Pointer Output",
+        NULL,
+        "The laser pointer drives the analog stick, or four configurable buttons. Only used while VR Laser Pointer Aim is set to a controller.",
+        NULL,
+        "vr",
+        {
+            {"stick", "Analog Stick (Pad 1)"},
+            {"buttons", "Four Buttons (Pad 1)"},
+            {"stick-p2", "Analog Stick (Pad 2)"},
+            {"buttons-p2", "Four Buttons (Pad 2)"},
+            { NULL, NULL },
+        },
+        "stick"
+    },
+    {
+        CORE_NAME "-vr-aim-invert-y",
+        "VR Laser Pointer Invert Y (Thumbstick mode only)",
+        NULL,
+        "Invert the vertical axis of laser pointer aim. Only used while VR Laser Pointer Aim is set to a controller.",
+        NULL,
+        "vr",
+        {
+            {"off", "disabled"},
+            {"on", "enabled"},
+            { NULL, NULL },
+        },
+        "off"
+    },
+    {
+        CORE_NAME "-vr-aim-button-threshold",
+        "VR Laser Pointer Button Threshold (Four Buttons mode only)",
+        NULL,
+        "Four Buttons output only. How far from the centre the pointer must be to press a direction, in percent of its range. Releases a little closer to the centre than it presses.",
+        NULL,
+        "vr",
+        {
+            {"20", "20%"}, {"30", "30%"}, {"40", "40%"}, {"50", "50%"},
+            {"60", "60%"}, {"70", "70%"}, {"80", "80%"}, {"90", "90%"},
+            { NULL, NULL },
+        },
+        "50"
+    },
+    {
+        CORE_NAME "-vr-aim-button-up",
+        "VR Laser Pointer Up Button",
+        NULL,
+        "Four Buttons output only. Button pressed while the pointer is above the threshold.",
+        NULL,
+        "vr",
+        { VR_AIM_BUTTON_VALUES },
+        "C-Up"
+    },
+    {
+        CORE_NAME "-vr-aim-button-down",
+        "VR Laser Pointer Down Button",
+        NULL,
+        "Four Buttons output only. Button pressed while the pointer is below the threshold.",
+        NULL,
+        "vr",
+        { VR_AIM_BUTTON_VALUES },
+        "C-Down"
+    },
+    {
+        CORE_NAME "-vr-aim-button-left",
+        "VR Laser Pointer Left Button",
+        NULL,
+        "Four Buttons output only. Button pressed while the pointer is left of the threshold.",
+        NULL,
+        "vr",
+        { VR_AIM_BUTTON_VALUES },
+        "C-Left"
+    },
+    {
+        CORE_NAME "-vr-aim-button-right",
+        "VR Laser Pointer Right Button",
+        NULL,
+        "Four Buttons output only. Button pressed while the pointer is right of the threshold.",
+        NULL,
+        "vr",
+        { VR_AIM_BUTTON_VALUES },
+        "C-Right"
+    },
+#endif
     {
         CORE_NAME "-aleck64-testmode",
         "Aleck64: Test Mode",
@@ -330,2128 +2173,6 @@ struct retro_core_option_v2_definition option_defs_us[] = {
             {"disabled", NULL},
             {"enabled", NULL},
             { NULL, NULL },
-        },
-        "disabled"
-    },
-    {
-        CORE_NAME "-cpucore",
-        "CPU Core",
-        NULL,
-        "Select CPU Core",
-        NULL,
-        NULL,
-        {
-            {"cached_interpreter", "Cached Interpreter"},
-            {"pure_interpreter", "Pure Interpreter"},
-#ifdef DYNAREC
-#if defined(HAVE_DYNAREC_HACKTARUX) && defined(NEW_DYNAREC)
-            {"dynamic_recompiler", "Dynamic Recompiler (Hacktarux)"},
-            {"dynamic_recompiler_ari64", "Dynamic Recompiler (Ari64)"},
-#elif defined(NEW_DYNAREC)
-            {"dynamic_recompiler", "Dynamic Recompiler (Ari64)"},
-#else
-            {"dynamic_recompiler", "Dynamic Recompiler"},
-#endif
-#endif
-            { NULL, NULL },
-        },
-#if defined(IOS)
-        "cached_interpreter"
-#else
-#ifdef DYNAREC
-#if defined(HAVE_DYNAREC_HACKTARUX) && defined(NEW_DYNAREC)
-        "dynamic_recompiler_ari64"
-#else
-        "dynamic_recompiler"
-#endif
-#else
-        "cached_interpreter"
-#endif
-#endif
-    },
-    {
-        CORE_NAME "-astick-deadzone",
-        "Analog Deadzone",
-        NULL,
-        "Analog Deadzone (percent)",
-        NULL,
-        "input",
-        {
-            { "0", NULL },
-            { "5", NULL },
-            { "10", NULL },
-            { "15", NULL },
-            { "20", NULL },
-            { "25", NULL },
-            { "30", NULL },
-            { NULL, NULL },
-        },
-        "15"
-    },
-    {
-        CORE_NAME "-astick-sensitivity",
-        "Analog Sensitivity",
-        NULL,
-        "Analog Sensitivity (percent)",
-        NULL,
-        "input",
-        {
-            { "50", NULL },
-            { "55", NULL },
-            { "60", NULL },
-            { "65", NULL },
-            { "70", NULL },
-            { "75", NULL },
-            { "80", NULL },
-            { "85", NULL },
-            { "90", NULL },
-            { "95", NULL },
-            { "100", NULL },
-            { "105", NULL },
-            { "110", NULL },
-            { "115", NULL },
-            { "120", NULL },
-            { "125", NULL },
-            { "130", NULL },
-            { "135", NULL },
-            { "140", NULL },
-            { "145", NULL },
-            { "150", NULL },
-            { "200", NULL },
-            { NULL, NULL },
-        },
-        "100"
-    },
-    {
-        CORE_NAME "-mouse-mode",
-        "Mouse to Analog Stick",
-        NULL,
-        "Use mouse input to control the N64 analog stick with player 1. The mouse takes over whenever the real stick is neutral. Useful for FPS games.",
-        NULL,
-        "input",
-        {
-            {"False", "Disabled"},
-            {"True", "Enabled"},
-            { NULL, NULL },
-        },
-        "False"
-    },
-    {
-        CORE_NAME "-mouse-sensitivity-x",
-        "Mouse Sensitivity X (percent)",
-        NULL,
-        "Horizontal mouse sensitivity. Negative values invert the axis. Set to 0 to disable horizontal movement.",
-        NULL,
-        "input",
-        {
-            {"-500", NULL}, {"-400", NULL}, {"-300", NULL}, {"-250", NULL}, {"-200", NULL},
-            {"-175", NULL}, {"-150", NULL}, {"-125", NULL}, {"-100", NULL}, {"-75", NULL}, {"-50", NULL},
-            {"0", NULL},
-            {"50", NULL}, {"75", NULL}, {"100", NULL}, {"125", NULL}, {"150", NULL},
-            {"175", NULL}, {"200", NULL}, {"250", NULL}, {"300", NULL}, {"400", NULL}, {"500", NULL},
-            { NULL, NULL },
-        },
-        "100"
-    },
-    {
-        CORE_NAME "-mouse-sensitivity-y",
-        "Mouse Sensitivity Y (percent)",
-        NULL,
-        "Vertical mouse sensitivity. Negative values invert the axis; the default is negative because positive mouse Y points down. Set to 0 for Doom-like horizontal-only control.",
-        NULL,
-        "input",
-        {
-            {"-500", NULL}, {"-400", NULL}, {"-300", NULL}, {"-250", NULL}, {"-200", NULL},
-            {"-175", NULL}, {"-150", NULL}, {"-125", NULL}, {"-100", NULL}, {"-75", NULL}, {"-50", NULL},
-            {"0", NULL},
-            {"50", NULL}, {"75", NULL}, {"100", NULL}, {"125", NULL}, {"150", NULL},
-            {"175", NULL}, {"200", NULL}, {"250", NULL}, {"300", NULL}, {"400", NULL}, {"500", NULL},
-            { NULL, NULL },
-        },
-        "-100"
-    },
-    {
-        CORE_NAME "-mouse-boost",
-        "Mouse Small Movement Boost",
-        NULL,
-        "Amplifies small mouse movements to make fine aiming practical. Higher = more boost; at 10 the stick follows the square root of the motion.",
-        NULL,
-        "input",
-        {
-            {"0", "Off"}, {"1", NULL}, {"2", NULL}, {"3", NULL}, {"4", NULL},
-            {"5", NULL}, {"6", NULL}, {"7", NULL}, {"8", NULL}, {"9", NULL}, {"10", NULL},
-            { NULL, NULL },
-        },
-        "0"
-    },
-    {
-        CORE_NAME "-mouse-left",
-        "Mouse Left Click",
-        NULL,
-        "Map mouse left click to an N64 button.",
-        NULL,
-        "input",
-        {
-            {"Z", "Z Trigger"},
-            {"A", "A Button"},
-            {"B", "B Button"},
-            {"L", "L Trigger"},
-            {"R", "R Trigger"},
-            {"Start", "Start"},
-            {"C-Up", NULL}, {"C-Down", NULL}, {"C-Left", NULL}, {"C-Right", NULL},
-            {"None", "Disabled"},
-            { NULL, NULL },
-        },
-        "Z"
-    },
-    {
-        CORE_NAME "-mouse-right",
-        "Mouse Right Click",
-        NULL,
-        "Map mouse right click to an N64 button.",
-        NULL,
-        "input",
-        {
-            {"A", "A Button"},
-            {"B", "B Button"},
-            {"Z", "Z Trigger"},
-            {"L", "L Trigger"},
-            {"R", "R Trigger"},
-            {"Start", "Start"},
-            {"C-Up", NULL}, {"C-Down", NULL}, {"C-Left", NULL}, {"C-Right", NULL},
-            {"None", "Disabled"},
-            { NULL, NULL },
-        },
-        "A"
-    },
-    {
-        CORE_NAME "-mouse-middle",
-        "Mouse Middle Click",
-        NULL,
-        "Map mouse middle click to an N64 button.",
-        NULL,
-        "input",
-        {
-            {"None", "Disabled"},
-            {"A", "A Button"},
-            {"B", "B Button"},
-            {"Z", "Z Trigger"},
-            {"L", "L Trigger"},
-            {"R", "R Trigger"},
-            {"Start", "Start"},
-            {"C-Up", NULL}, {"C-Down", NULL}, {"C-Left", NULL}, {"C-Right", NULL},
-            { NULL, NULL },
-        },
-        "None"
-    },
-    {
-        CORE_NAME "-mouse-wheel-up",
-        "Mouse Wheel Up",
-        NULL,
-        "Map mouse wheel up to an N64 button.",
-        NULL,
-        "input",
-        {
-            {"L", "L Trigger"},
-            {"R", "R Trigger"},
-            {"A", "A Button"},
-            {"B", "B Button"},
-            {"Z", "Z Trigger"},
-            {"Start", "Start"},
-            {"C-Up", NULL}, {"C-Down", NULL}, {"C-Left", NULL}, {"C-Right", NULL},
-            {"None", "Disabled"},
-            { NULL, NULL },
-        },
-        "L"
-    },
-    {
-        CORE_NAME "-mouse-wheel-down",
-        "Mouse Wheel Down",
-        NULL,
-        "Map mouse wheel down to an N64 button.",
-        NULL,
-        "input",
-        {
-            {"R", "R Trigger"},
-            {"L", "L Trigger"},
-            {"A", "A Button"},
-            {"B", "B Button"},
-            {"Z", "Z Trigger"},
-            {"Start", "Start"},
-            {"C-Up", NULL}, {"C-Down", NULL}, {"C-Left", NULL}, {"C-Right", NULL},
-            {"None", "Disabled"},
-            { NULL, NULL },
-        },
-        "R"
-    },
-    {
-        CORE_NAME "-astick-snap-angle-active",
-        "Snap Controller Angle",
-        NULL,
-        "Snap analog stick angle to multiples of 45 degrees, to better support circular design controllers that should behave like classic N64 controllers.",
-        NULL,
-        "input",
-        {
-            { "disabled", NULL },
-            { "enabled",  NULL },
-            { NULL, NULL },
-        },
-        "disabled"
-    },
-    {
-        CORE_NAME "-astick-snap-max-angle",
-        "Maximum Snap Angle",
-        NULL,
-        "Maximum deviation from a 45-degree multiple at which snapping is applied (e.g. value of 5 means 85 to 95 degrees are snapped to 90).",
-        NULL,
-        "input",
-        {
-            { "1",  NULL },
-            { "2",  NULL },
-            { "3",  NULL },
-            { "4",  NULL },
-            { "5",  NULL },
-            { "6",  NULL },
-            { "7",  NULL },
-            { "8",  NULL },
-            { "9",  NULL },
-            { "10", NULL },
-            { "11", NULL },
-            { "12", NULL },
-            { "13", NULL },
-            { "14", NULL },
-            { "15", NULL },
-            { "16", NULL },
-            { "17", NULL },
-            { "18", NULL },
-            { "19", NULL },
-            { "20", NULL },
-            { "21", NULL },
-            { NULL, NULL },
-        },
-        "15"
-    },
-    {
-        CORE_NAME "-astick-snap-min-displacement-percent",
-        "Snap Minimum Displacement (%)",
-        NULL,
-        "Percentage of stick displacement from the center required before snapping activates (0 means always).",
-        NULL,
-        "input",
-        {
-            { "0",  NULL },
-            { "10", NULL },
-            { "20", NULL },
-            { "30", NULL },
-            { "40", NULL },
-            { "50", NULL },
-            { "60", NULL },
-            { "65", NULL },
-            { "70", NULL },
-            { "75", NULL },
-            { "80", NULL },
-            { "85", NULL },
-            { "90", NULL },
-            { "95", NULL },
-            { NULL, NULL },
-        },
-        "70"
-    },
-    {
-        CORE_NAME "-pak1",
-        "Player 1 Pak",
-        NULL,
-        "Player 1 Pak",
-        NULL,
-        "input",
-        {
-            { "none", NULL },
-            { "memory", NULL },
-            { "rumble", NULL },
-            { "biosensor", NULL },
-            { "transfer", NULL },
-            { NULL, NULL },
-        },
-        "none"
-    },
-    {
-        CORE_NAME "-pak2",
-        "Player 2 Pak",
-        NULL,
-        "Player 2 Pak",
-        NULL,
-        "input",
-        {
-            { "none", NULL },
-            { "memory", NULL },
-            { "rumble", NULL },
-            { "biosensor", NULL },
-            { "transfer", NULL },
-            { NULL, NULL },
-        },
-        "none"
-    },
-    {
-        CORE_NAME "-pak3",
-        "Player 3 Pak",
-        NULL,
-        "Player 3 Pak",
-        NULL,
-        "input",
-        {
-            { "none", NULL },
-            { "memory", NULL },
-            { "rumble", NULL },
-            { "biosensor", NULL },
-            { "transfer", NULL },
-            { NULL, NULL },
-        },
-        "none"
-    },
-    {
-        CORE_NAME "-pak4",
-        "Player 4 Pak",
-        NULL,
-        "Player 4 Pak",
-        NULL,
-        "input",
-        {
-            { "none", NULL },
-            { "memory", NULL },
-            { "rumble", NULL },
-            { "biosensor", NULL },
-            { "transfer", NULL },
-            { NULL, NULL },
-        },
-        "none"
-    },
-    {
-        CORE_NAME "-disable_expmem",
-        "Enable Expansion Pak RAM",
-        NULL,
-        "Give the console 8MB of RAM instead of 4MB, as the Expansion Pak does. Games that require the Pak (Donkey Kong 64, Majora's Mask) will not boot with this disabled. Applied when content starts.",
-        NULL,
-        NULL,
-        {
-            { "enabled", NULL },
-            { "disabled", NULL },
-            { NULL, NULL },
-        },
-        "enabled"
-    },
-    {
-        CORE_NAME "-gfxplugin-accuracy",
-        "GFX Accuracy",
-        NULL,
-        "GFX Accuracy, required restart",
-        NULL,
-        NULL,
-        {
-            { "low", NULL },
-            { "medium", NULL },
-            { "high", NULL },
-            { "veryhigh", NULL },
-            { NULL, NULL },
-        },
-#if defined(IOS) || defined(ANDROID)
-        "medium"
-#else
-        "veryhigh"
-#endif
-    },
-#ifdef HAVE_PARALLEL
-    {
-        CORE_NAME "-parallel-rdp-synchronous",
-        "ParaLLEl Synchronous RDP",
-        NULL,
-        "Make the CPU wait for the GPU to finish rendering at RDP full sync. Disabling can improve performance but breaks games that read rendered frames back from memory (e.g. Resident Evil 2 never starts its intro FMV); such games force this on automatically.",
-        NULL,
-        "parallel",
-        {
-            { "enabled", NULL },
-            { "disabled", NULL },
-            { NULL, NULL },
-        },
-        "enabled"
-    },
-    {
-        CORE_NAME "-parallel-rdp-overscan",
-        "(ParaLLEl-RDP) Crop pixel border pixels",
-        "Crop pixel border pixels",
-        "Crop pixel border pixels",
-        NULL,
-        "parallel",
-        {
-            { "0", NULL },
-            { "2", NULL },
-            { "4", NULL },
-            { "6", NULL },
-            { "8", NULL },
-            { "10", NULL },
-            { "12", NULL },
-            { "14", NULL },
-            { "16", NULL },
-            { "18", NULL },
-            { "20", NULL },
-            { "22", NULL },
-            { "24", NULL },
-            { "26", NULL },
-            { "28", NULL },
-            { "30", NULL },
-            { "32", NULL },
-            { "34", NULL },
-            { "36", NULL },
-            { "38", NULL },
-            { "40", NULL },
-            { "42", NULL },
-            { "44", NULL },
-            { "46", NULL },
-            { "48", NULL },
-            { "50", NULL },
-            { "52", NULL },
-            { "54", NULL },
-            { "56", NULL },
-            { "58", NULL },
-            { "60", NULL },
-            { "62", NULL },
-            { "64", NULL },
-            { NULL, NULL },
-        },
-        "0"
-    },
-    {
-        CORE_NAME "-parallel-rdp-divot-filter",
-        "(ParaLLEl-RDP) VI divot filter",
-        "VI divot filter",
-        "VI divot filter",
-        NULL,
-        "parallel",
-        {
-            { "enabled", NULL },
-            { "disabled", NULL },
-            { NULL, NULL },
-        },
-        "enabled"
-    },
-    {
-        CORE_NAME "-parallel-rdp-gamma-dither",
-        "(ParaLLEl-RDP) VI gamma dither",
-        "VI gamma dither",
-        "VI gamma dither",
-        NULL,
-        "parallel",
-        {
-            { "enabled", NULL },
-            { "disabled", NULL },
-            { NULL, NULL },
-        },
-        "enabled"
-    },
-    {
-        CORE_NAME "-parallel-rdp-vi-aa",
-        "(ParaLLEl-RDP) VI AA",
-        "VI AA",
-        "VI AntiAliasing",
-        NULL,
-        "parallel",
-        {
-            { "enabled", NULL },
-            { "disabled", NULL },
-            { NULL, NULL },
-        },
-        "enabled"
-    },
-    {
-        CORE_NAME "-parallel-rdp-vi-bilinear",
-        "(ParaLLEl-RDP) VI bilinear",
-        "VI bilinear",
-        "VI bilinear filtering",
-        NULL,
-        "parallel",
-        {
-            { "enabled", NULL },
-            { "disabled", NULL },
-            { NULL, NULL },
-        },
-        "enabled"
-    },
-    {
-        CORE_NAME "-parallel-rdp-dither-filter",
-        "(ParaLLEl-RDP) VI dither filter",
-        "VI dither filter",
-        "VI dither filter",
-        NULL,
-        "parallel",
-        {
-            { "enabled", NULL },
-            { "disabled", NULL },
-            { NULL, NULL },
-        },
-        "enabled"
-    },
-    {
-        CORE_NAME "-parallel-rdp-downscaling",
-        "(ParaLLEl-RDP) Downsampling",
-        "Downsampling",
-        "Downsampling",
-        NULL,
-        "parallel",
-        {
-            { "disable", NULL },
-            { "1/2", NULL },
-            { "1/4", NULL },
-            { "1/8", NULL },
-            { NULL, NULL },
-        },
-        "disable"
-    },
-    {
-        CORE_NAME "-parallel-rdp-super-sampled-read-back",
-        "(ParaLLEl-RDP) Super-sampled read-back",
-        "Super-sampled read-back",
-        "When upscaling, average the upscaled samples when a frame is read back into game memory instead of taking one sample per pixel. Can smooth framebuffer effects; changes what the game reads back. Takes effect on restart.",
-        NULL,
-        "parallel",
-        {
-            { "disabled", NULL },
-            { "enabled", NULL },
-            { NULL, NULL },
-        },
-        "disabled"
-    },
-    {
-        CORE_NAME "-parallel-rdp-super-sampled-read-back-dither",
-        "(ParaLLEl-RDP) Super-sampled read-back dither",
-        "Super-sampled read-back dither",
-        "Dither the averaged read-back down to the game's colour depth. Only applies with super-sampled read-back. Takes effect on restart.",
-        NULL,
-        "parallel",
-        {
-            { "enabled", NULL },
-            { "disabled", NULL },
-            { NULL, NULL },
-        },
-        "enabled"
-    },
-    {
-        CORE_NAME "-parallel-rdp-native-tex-rect",
-        "(ParaLLEl-RDP) Use native resolution for TEX_RECT",
-        "Use native resolution for TEX_RECT",
-        "Use native resolution for TEX_RECT",
-        NULL,
-        "parallel",
-        {
-            { "enabled", NULL },
-            { "disabled", NULL },
-            { NULL, NULL },
-        },
-        "enabled"
-    },
-#endif
-
-    {
-        CORE_NAME "-send_allist_to_hle_rsp",
-        "Audio Processing",
-        NULL,
-        "Which RSP runs the audio microcode, independently of the one running graphics. 'Same as RSP Plugin' follows the RSP Plugin setting. 'Fast (HLE)' emulates audio lists at a high level instead of cycle-by-cycle, which is faster but glitches in some games. 'Accurate (LLE)' keeps audio cycle-accurate even when graphics run on the HLE RSP, which is the pairing to use if you want HLE speed for graphics without HLE audio glitches.",
-        NULL,
-        NULL,
-        {
-            { "disabled", "Same as RSP Plugin" },
-            { "hle",      "Fast (HLE)" },
-            { "accurate", "Accurate (LLE)" },
-            { NULL, NULL },
-        },
-        "disabled"
-    },
-    {
-        CORE_NAME "-enhanced-hle-audio",
-        "Enhanced RSP HLE Audio",
-        NULL,
-        "Replace the audio microcode's four-tap voice interpolator with a windowed-sinc resampler. The microcode's kernel cannot band-limit a sample that is played back faster than it was recorded, so its image folds back into the audible range - the grain and grit on high-pitched sounds. This removes most of that and is slightly less muffled besides. Only affects the HLE RSP audio path. Deliberately not bit-accurate to the hardware, so leave it off if you want the exact output the console produced.",
-        NULL,
-        NULL,
-        {
-            { "disabled", NULL },
-            { "enabled",  NULL },
-            { NULL, NULL },
-        },
-        "disabled"
-    },
-    {
-        CORE_NAME "-enhanced-hle-audio-quality",
-        "Enhanced RSP HLE Audio Quality",
-        NULL,
-        "How many taps the enhanced resampler uses. More taps reject more of the folded-back image and cost a little more CPU and memory: 16 taps is already a large improvement over the microcode's four, 32 and 64 taps tighten the filter further. Has no effect unless Enhanced RSP HLE Audio is enabled.",
-        NULL,
-        NULL,
-        {
-            { "16", "16 taps" },
-            { "32", "32 taps" },
-            { "64", "64 taps" },
-            { NULL, NULL },
-        },
-        "32"
-    },
-    {
-        CORE_NAME "-gfxplugin",
-        "GFX Plugin",
-        NULL,
-        "Graphics plugin",
-        NULL,
-        NULL,
-        {
-#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-            { "gliden64", NULL },
-            { "glide64", NULL },
-            { "gln64", NULL },
-            { "rice", NULL },
-#endif
-            { "angrylion", NULL },
-#ifdef HAVE_PARALLEL
-            { "parallel", NULL },
-#endif
-            { NULL, NULL },
-        },
-#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-        "gliden64"
-#else
-        "angrylion"
-#endif
-    },
-    {
-        CORE_NAME "-rspplugin",
-        "RSP Plugin",
-        NULL,
-        "RSP Plugin",
-        NULL,
-        NULL,
-        {
-            { "auto", NULL },
-#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
-            { "hle", NULL },
-#endif
-            { "cxd4", NULL },
-#ifdef HAVE_PARALLEL_RSP
-            { "parallel", NULL },
-#endif
-            { NULL, NULL },
-        },
-        "auto"
-    },
-#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES) || defined(HAVE_PARALLEL)
-    {
-        CORE_NAME "-screensize",
-        "Resolution",
-        NULL,
-        "Resolution (restart)",
-        NULL,
-        NULL,
-        {
-            { "320x240", NULL },
-            { "640x480", NULL },
-            { "960x720", NULL },
-            { "1280x960", NULL },
-            { "1440x1080", NULL },
-            { "1600x1200", NULL },
-            { "1920x1440", NULL },
-            { "2240x1680", NULL },
-            { "2880x2160", NULL },
-            { "5760x4320", NULL },
-            { NULL, NULL },
-        },
-#ifdef CLASSIC
-        "320x240"
-#else
-        "640x480"
-#endif
-    },
-    {
-        CORE_NAME "-aspectratiohint",
-        "Aspect ratio hint",
-        NULL,
-        "Aspect ratio hint (reinit)",
-        NULL,
-        NULL,
-        {
-            { "normal", NULL },
-            { "widescreen", NULL },
-            { NULL, NULL },
-        },
-        "normal"
-    },
-    {
-        CORE_NAME "-filtering",
-        "(Glide64) Texture Filtering",
-        "Texture Filtering",
-        "Texture Filtering",
-        NULL,
-        "glide64",
-        {
-            { "automatic", NULL },
-            { "N64 3-point", NULL },
-            { "bilinear", NULL },
-            { "nearest", NULL },
-            { NULL, NULL },
-        },
-        "automatic"
-    },
-    {
-        CORE_NAME "-dithering",
-        "(Angrylion) Dithering",
-        "Dithering",
-        "Dithering",
-        NULL,
-        "angrylion",
-        {
-            { "enabled", NULL },
-            { "disabled", NULL },
-            { NULL, NULL },
-        },
-        "enabled"
-    },
-    {
-        CORE_NAME "-polyoffset-factor",
-        "(Glide64) Polygon Offset Factor",
-        "Polygon Offset Factor",
-        "Polygon Offset Factor",
-        NULL,
-        "glide64",
-        {
-            { "-5.0", NULL },
-            { "-4.5", NULL },
-            { "-4.0", NULL },
-            { "-3.5", NULL },
-            { "-3.0", NULL },
-            { "-2.5", NULL },
-            { "-2.0", NULL },
-            { "-1.5", NULL },
-            { "-1.0", NULL },
-            { "-0.5", NULL },
-            {  "0.0", NULL },
-            {  "0.5", NULL },
-            {  "1.0", NULL },
-            {  "1.5", NULL },
-            {  "2.0", NULL },
-            {  "2.5", NULL },
-            {  "3.0", NULL },
-            {  "3.5", NULL },
-            {  "4.0", NULL },
-            {  "4.5", NULL },
-            {  "5.0", NULL },
-            { NULL, NULL },
-        },
-        "-3.0"
-    },
-    {
-        CORE_NAME "-polyoffset-units",
-        "(Glide64) Polygon Offset Units",
-        "Polygon Offset Units",
-        "Polygon Offset Units",
-        NULL,
-        "glide64",
-        {
-            { "-5.0", NULL },
-            { "-4.5", NULL },
-            { "-4.0", NULL },
-            { "-3.5", NULL },
-            { "-3.0", NULL },
-            { "-2.5", NULL },
-            { "-2.0", NULL },
-            { "-1.5", NULL },
-            { "-1.0", NULL },
-            { "-0.5", NULL },
-            {  "0.0", NULL },
-            {  "0.5", NULL },
-            {  "1.0", NULL },
-            {  "1.5", NULL },
-            {  "2.0", NULL },
-            {  "2.5", NULL },
-            {  "3.0", NULL },
-            {  "3.5", NULL },
-            {  "4.0", NULL },
-            {  "4.5", NULL },
-            {  "5.0", NULL },
-            { NULL, NULL },
-        },
-        "-3.0"
-    },
-#endif
-    {
-        CORE_NAME "-angrylion-vioverlay",
-        "(Angrylion) VI Overlay",
-        "VI Overlay",
-        "VI Overlay",
-        NULL,
-        "angrylion",
-        {
-            { "Filtered", NULL },
-            { "AA+Blur", NULL },
-            { "AA+Dedither", NULL },
-            { "AA only", NULL },
-            { "Unfiltered", NULL },
-            { "Depth", NULL },
-            { "Coverage", NULL },
-            { NULL, NULL },
-        },
-        "Filtered"
-    },
-    {
-        CORE_NAME "-angrylion-deinterlace",
-        "(Angrylion) Deinterlacing",
-        "Deinterlacing",
-        "How interlaced (480i) content is displayed. 'weave' merges both fields (sharp but combs on motion), 'bob' line-doubles the current field (no combing, slight shimmer). Affects 480i games like Kuru Kuru Fever or Hanabi de Doon and hi-res title screens.",
-        NULL,
-        "angrylion",
-        {
-            { "weave", NULL },
-            { "bob", NULL },
-            { NULL, NULL },
-        },
-        "weave"
-    },
-    {
-        CORE_NAME "-angrylion-sync",
-        "(Angrylion) Thread sync level",
-        "Thread sync level",
-        "Thread sync level",
-        NULL,
-        "angrylion",
-        {
-            { "Low", NULL },
-            { "Medium", NULL },
-            { "High", NULL },
-            { NULL, NULL },
-        },
-        "Low"
-    },
-    {
-        CORE_NAME "-angrylion-multithread",
-        "(Angrylion) Multi-threading",
-        "Multi-threading",
-        "Multi-threading",
-        "'off' renders synchronously on the emulator thread: no worker pool, no command buffering, no thread synchronization. Numeric values use the threaded renderer with that many worker threads ('1' keeps the threaded pipeline with a single worker). 'all threads' uses the host's physical cores, at most 8. Every worker replays the whole command stream, so past 8 the duplicated work outweighs what more workers take off the spans, and a second thread on the same core only adds contention; that is where the list stops.",
-        "angrylion",
-        {
-            { "off", NULL },
-            { "all threads", NULL },
-            { "1", NULL },
-            { "2", NULL },
-            { "3", NULL },
-            { "4", NULL },
-            { "5", NULL },
-            { "6", NULL },
-            { "7", NULL },
-            { "8", NULL },
-            { NULL, NULL },
-        },
-        "all threads"
-    },
-    {
-        CORE_NAME "-angrylion-overscan",
-        "(Angrylion) Hide overscan",
-        "Hide overscan",
-        "Hide overscan",
-        NULL,
-        "angrylion",
-        {
-            { "disabled", NULL },
-            { "enabled", NULL },
-            { NULL, NULL },
-        },
-        "disabled"
-    },
-    {
-        CORE_NAME "-virefresh",
-        "VI Refresh (Overclock)",
-        NULL,
-        "VI Refresh",
-        NULL,
-        NULL,
-        {
-            { "auto", NULL },
-            { "1500", NULL },
-            { "2200", NULL },
-            { NULL, NULL },
-        },
-        "auto"
-    },
-    {
-        CORE_NAME "-alt-map",
-        "Independent C-button Controls",
-        NULL,
-        "Independent C-button Controls",
-        NULL,
-        "input",
-        {
-            { "disabled", NULL },
-            { "enabled", NULL },
-            { NULL, NULL },
-        },
-        "disabled"
-    },
-#if defined(HAVE_PARALLEL) || !defined(HAVE_OPENGL) || !defined(HAVE_OPENGLES)
-    {
-        CORE_NAME "-vcache-vbo",
-        "(Glide64) Vertex cache VBO",
-        "Vertex cache VBO",
-        "Vertex cache VBO (restart)",
-        NULL,
-        "glide64",
-        {
-            { "disabled", NULL },
-            { "enabled", NULL },
-            { NULL, NULL },
-        },
-        "disabled"
-    },
-#endif
-    {
-        CORE_NAME "-boot-device",
-        "Boot Device",
-        NULL,
-        "Boot Device",
-        NULL,
-        NULL,
-        {
-            { "Default", NULL },
-            { "64DD IPL", NULL },
-            { NULL, NULL },
-        },
-        "Default"
-    },
-    {
-        CORE_NAME "-64dd-hardware",
-        "64DD Hardware",
-        NULL,
-        "Treat content without a recognised cartridge or disk header as a 64DD disk. Development disks and MAME/SDK dumps carry no header marker; regular cartridges and retail D64 images are identified by their header and unaffected by this setting.",
-        NULL,
-        NULL,
-        {
-            { "disabled", NULL },
-            { "enabled", NULL },
-            { NULL, NULL },
-        },
-        "disabled"
-    },
-    {
-        CORE_NAME "-goldeneye-tlb-hack",
-        "GoldenEye TLB Mapping Hack (Restart)",
-        NULL,
-        "Map GoldenEye's demand-paged 0x7F000000 code segment directly onto the ROM, bypassing the game's own TLB pager (ari64 dynarec only). Historically required for GoldenEye to run at all; on desktop-class hosts the accurate path now measures just as fast. Disable for hardware-faithful TLB behaviour or for modified ROMs that relocate the game segment, which the mapping would corrupt.",
-        NULL,
-        NULL,
-        {
-            { "enabled", NULL },
-            { "disabled", NULL },
-            { NULL, NULL },
-        },
-        "enabled"
-    },
-    {
-        CORE_NAME "-allow-unaligned-dma",
-        "Unaligned DMA Behaviour",
-        NULL,
-        "'Allow Unaligned' causes minor issues on Taz Express; 'Force Alignment' is accurate to N64, but breaks some romhacks.",
-        NULL,
-        NULL,
-        {
-            {"True", "Allow Unaligned"},
-            {"False", "Force Alignment"},
-            { NULL, NULL }
-        },
-        "True"
-    },
-    {
-        CORE_NAME "-dma-timing",
-        "PI/SI DMA Timing",
-        NULL,
-        "'Bus Registers' times cartridge and controller DMAs from the PI domain timing registers and the joybus command list, as the hardware does. 'Fixed' keeps the per-device durations.",
-        NULL,
-        NULL,
-        {
-            {"fixed", "Fixed"},
-            {"registers", "Bus Registers"},
-            { NULL, NULL }
-        },
-        "fixed"
-    },
-    {
-        CORE_NAME "-allow-large-roms",
-        "Allow Large Roms",
-        NULL,
-        "Enable support for roms that are larger than 64 MiB.",
-        NULL,
-        NULL,
-        {
-            {"True", "Yes"},
-            {"False", "No"},
-            { NULL, NULL }
-        },
-        "True"
-    },
-    {
-        CORE_NAME "-gliden64-viewport-hack",
-        "Widescreen Hack",
-        NULL,
-        "(GLideN64) Hack that adjusts the viewport to allow unstretched 16:9",
-        "Hack that adjusts the viewport to allow unstretched 16:9",
-        "gliden64",
-        {
-            {"enabled", NULL},
-            {"disabled", NULL},
-            {"steamdeck", "Steam Deck (16:10)"},
-            { NULL, NULL },
-        },
-        "disabled"
-    },
-    {
-        CORE_NAME "-gliden64-EnableNativeResFactor",
-        "Native Resolution Factor",
-        NULL,
-        "(GLideN64) Render at N times the native resolution.",
-        "Render at N times the native resolution.",
-        "gliden64",
-        {
-            {"0", "Disabled"},
-            {"1", "1x"},
-            {"2", "2x"},
-            {"3", "3x"},
-            {"4", "4x"},
-            {"5", "5x"},
-            {"6", "6x"},
-            {"7", "7x"},
-            {"8", "8x"},
-            { NULL, NULL },
-        },
-        "0"
-    },
-    {
-        CORE_NAME "-gliden64-BilinearMode",
-        "Bilinear filtering mode",
-        NULL,
-        "(GLideN64) Select a Bilinear filtering method, 3point is the original system specific way.",
-        "Select a Bilinear filtering method, 3point is the original system specific way.",
-        "gliden64",
-        {
-            {"3point", NULL},
-            {"standard", NULL},
-            { NULL, NULL },
-        },
-        "standard"
-    },
-#ifndef HAVE_OPENGLES2
-    {
-        CORE_NAME "-gliden64-MultiSampling",
-        "MSAA level",
-        NULL,
-        "(GLideN64) Anti-Aliasing level (0 = disabled).",
-        "Anti-Aliasing level (0 = disabled).",
-        "gliden64",
-        {
-            {"0", NULL},
-            {"2", NULL},
-            {"4", NULL},
-            {"8", NULL},
-            {"16", NULL},
-            { NULL, NULL },
-        },
-        "0"
-    },
-#endif
-    {
-        CORE_NAME "-gliden64-FXAA",
-        "FXAA",
-        NULL,
-        "(GLideN64) Fast Approximate Anti-Aliasing shader, moderately blur textures (0 = disabled).",
-        "Fast Approximate Anti-Aliasing shader, moderately blur textures (0 = disabled).",
-        "gliden64",
-        {
-            {"0", NULL},
-            {"1", NULL},
-            { NULL, NULL },
-        },
-        "0"
-    },
-    {
-        CORE_NAME "-gliden64-EnableLODEmulation",
-        "LOD Emulation",
-        NULL,
-        "(GLideN64) Calculate per-pixel Level Of Details to select texture mip levels and blend them with each other using LOD fraction.",
-        "Calculate per-pixel Level Of Details to select texture mip levels and blend them with each other using LOD fraction.",
-        "gliden64",
-        {
-            {"False", NULL},
-            {"True", NULL},
-            { NULL, NULL },
-        },
-        "True"
-    },
-    {
-        CORE_NAME "-gliden64-EnableFBEmulation",
-        "Framebuffer Emulation",
-        NULL,
-        "(GLideN64) Frame/depth buffer emulation. Disabling it can shorten input lag for particular games, but also break some special effects.",
-        "Frame/depth buffer emulation. Disabling it can shorten input lag for particular games, but also break some special effects.",
-        "gliden64",
-        {
-            {"False", NULL},
-            {"True", NULL},
-            { NULL, NULL },
-        },
-#ifndef VC
-        "True"
-#else
-        "False"
-#endif // VC
-    },
-    {
-        CORE_NAME "-gliden64-EnableCopyAuxToRDRAM",
-        "Copy auxiliary buffers to RDRAM",
-        NULL,
-        "(GLideN64) Copy auxiliary buffers to RDRAM (fixes some Game artifacts like Paper Mario Intro).",
-        "Copy auxiliary buffers to RDRAM (fixes some Game artifacts like Paper Mario Intro).",
-        "gliden64",
-        {
-            {"False", NULL},
-            {"True", NULL},
-            { NULL, NULL },
-        },
-        "False",
-    },
-    {
-        CORE_NAME "-gliden64-EnableCopyColorToRDRAM",
-        "Color buffer to RDRAM",
-        NULL,
-        "(GLideN64) Color buffer copy to RDRAM (Off will trade compatibility for Performance).",
-        "Color buffer copy to RDRAM (Off will trade compatibility for Performance).",
-        "gliden64",
-        {
-            {"Off", NULL},
-            {"Sync", NULL},
-#ifndef HAVE_OPENGLES2
-            {"Async", "DoubleBuffer"},
-            {"TripleBuffer", "TripleBuffer"},
-#endif // HAVE_OPENGLES2
-            { NULL, NULL },
-        },
-#ifndef HAVE_OPENGLES2
-        "Async"
-#else
-        "Sync"
-#endif // HAVE_OPENGLES2
-    },
-    {
-        CORE_NAME "-gliden64-EnableCopyColorFromRDRAM",
-        "Color buffer from RDRAM",
-        NULL,
-        "(GLideN64) Always copy the color buffer from RDRAM. GLideN64 already does this by itself whenever it detects that the CPU painted the frame the VI is about to show, so this setting only adds a second, unconditional trigger for the titles that detection misses (Donkey Kong 64 anti-aliased shadows, some Indiana Jones effects). Needs Framebuffer Emulation on. Default off for the performance cost.",
-        "Always copy the color buffer from RDRAM, for the titles GLideN64's own CPU-write detection misses. Needs Framebuffer Emulation on. Default off for the performance cost.",
-        "gliden64",
-        {
-            {"False", NULL},
-            {"True", NULL},
-            { NULL, NULL },
-        },
-        "False"
-    },
-    {
-        CORE_NAME "-gliden64-EnableCopyDepthToRDRAM",
-        "Depth buffer to RDRAM",
-        NULL,
-        "(GLideN64) Depth buffer copy to RDRAM (Off will trade compatibility for Performance).",
-        "Depth buffer copy to RDRAM (Off will trade compatibility for Performance).",
-        "gliden64",
-        {
-            {"Off", NULL},
-            {"Software", NULL},
-            {"FromMem", NULL},
-            { NULL, NULL },
-        },
-        "Software"
-    },
-    {
-        CORE_NAME "-gliden64-GLideN64IniBehaviour",
-        "Per-game settings",
-        NULL,
-        "(GLideN64) When to apply GLideN64's built-in per-game settings. 'late' lets them override your choices below, 'early' lets your choices win, 'disabled' ignores them entirely.",
-        "When to apply GLideN64's built-in per-game settings. 'late' lets them override your choices below, 'early' lets your choices win, 'disabled' ignores them entirely.",
-        "gliden64",
-        {
-            {"late", NULL},
-            {"early", NULL},
-            {"disabled", NULL},
-            { NULL, NULL },
-        },
-        "late"
-    },
-    {
-        CORE_NAME "-gliden64-BackgroundMode",
-        "Background Mode",
-        NULL,
-        "(GLideN64) Render backgrounds mode (HLE only). One piece (fast), Stripped (precise).",
-        "Render backgrounds mode (HLE only). One piece (fast), Stripped (precise).",
-        "gliden64",
-        {
-            {"Stripped", NULL},
-            {"OnePiece", NULL},
-            { NULL, NULL },
-        },
-        "OnePiece"
-    },
-    {
-        CORE_NAME "-gliden64-EnableHWLighting",
-        "Hardware per-pixel lighting",
-        NULL,
-        "(GLideN64) Standard per-vertex lighting when disabled. Slightly different rendering.",
-        "Standard per-vertex lighting when disabled. Slightly different rendering.",
-        "gliden64",
-        {
-            {"False", NULL},
-            {"True", NULL},
-            { NULL, NULL },
-        },
-        "False"
-    },
-    {
-        CORE_NAME "-gliden64-CorrectTexrectCoords",
-        "Continuous texrect coords",
-        NULL,
-        "(GLideN64) Make texrect coordinates continuous to avoid black lines between them.",
-        "Make texrect coordinates continuous to avoid black lines between them.",
-        "gliden64",
-        {
-            {"Off", NULL},
-            {"Auto", NULL},
-            {"Force", NULL},
-            { NULL, NULL },
-        },
-        "Off"
-    },
-    {
-        CORE_NAME "-gliden64-EnableInaccurateTextureCoordinates",
-        "Enable inaccurate texture coordinates",
-        NULL,
-        "(GLideN64) Enables inaccurate texture coordinate calculations. This can improve performance and texture pack compatibity at the cost of accuracy.",
-        "Enables inaccurate texture coordinate calculations. This can improve performance and texture pack compatibity at the cost of accuracy.",
-        "gliden64",
-        {
-            {"False", NULL},
-            {"True", NULL},
-            { NULL, NULL },
-        },
-        "False"
-    },
-    {
-        CORE_NAME "-gliden64-EnableNativeResTexrects",
-        "Native res. 2D texrects",
-        NULL,
-        "(GLideN64) Render 2D texrects in native resolution to fix misalignment between parts of 2D image (example: Mario Kart driver selection portraits).",
-        "Render 2D texrects in native resolution to fix misalignment between parts of 2D image (example: Mario Kart driver selection portraits).",
-        "gliden64",
-        {
-            {"Disabled", NULL},
-            {"Unoptimized", NULL},
-            {"Optimized", NULL},
-            { NULL, NULL },
-        },
-        "Disabled"
-    },
-    {
-        CORE_NAME "-gliden64-EnableLegacyBlending",
-        "Less accurate blending mode",
-        NULL,
-        "(GLideN64) Do not use shaders to emulate N64 blending modes. Works faster on slow GPU. Can cause glitches.",
-        "Do not use shaders to emulate N64 blending modes. Works faster on slow GPU. Can cause glitches.",
-        "gliden64",
-        {
-            {"False", NULL},
-            {"True", NULL},
-            { NULL, NULL },
-        },
-#ifdef HAVE_OPENGLES
-        "True"
-#else
-        "False"
-#endif
-    },
-    {
-        CORE_NAME "-gliden64-EnableFragmentDepthWrite",
-        "GPU shader depth write",
-        NULL,
-        "(GLideN64) Enable writing of fragment depth. Some mobile GPUs do not support it, thus it's optional. Leave enabled.",
-        "Enable writing of fragment depth. Some mobile GPUs do not support it, thus it's optional. Leave enabled.",
-        "gliden64",
-        {
-            {"False", NULL},
-            {"True", NULL},
-            { NULL, NULL },
-        },
-/* GLES2 only. GLSL ES 1.00 has no gl_FragDepth without GL_EXT_frag_depth, and
- * GLideN64 declines to emit writeDepth() there at all, so the setting cannot
- * work on GLES2. GLSL ES 3.00 makes gl_FragDepth core, and a GLES 3.x target is
- * no less capable than the desktop one this already defaults to True for. */
-#ifdef HAVE_OPENGLES2
-        "False"
-#else
-        "True"
-#endif
-    },
-    {
-        CORE_NAME "-gliden64-EnableN64DepthCompare",
-        "N64 Depth Compare",
-        NULL,
-        "(GLideN64) Enable N64 depth compare instead of OpenGL standard one. Experimental, Fast mode will have more glitches.",
-        "Enable N64 depth compare instead of OpenGL standard one. Experimental, Fast mode will have more glitches.",
-        "gliden64",
-        {
-            {"False", "Off"},
-            {"True", "Fast"},
-            {"Compatible", NULL},
-        },
-        "False"
-    },
-#if !defined(VC) && !defined(HAVE_OPENGLES2)
-    {
-        CORE_NAME "-gliden64-EnableShadersStorage",
-        "Cache GPU Shaders",
-        NULL,
-        "(GLideN64) Use persistent storage for compiled shaders.",
-        "Use persistent storage for compiled shaders.",
-        "gliden64",
-        {
-            {"False", NULL},
-            {"True", NULL},
-            { NULL, NULL },
-        },
-        "True"
-    },
-#endif
-    {
-        CORE_NAME "-gliden64-EnableTextureCache",
-        "Cache Textures",
-        NULL,
-        "(GLideN64) Save texture cache to hard disk.",
-        "Save texture cache to hard disk.",
-        "gliden64",
-        {
-            {"False", NULL},
-            {"True", NULL},
-            { NULL, NULL },
-        },
-        "True"
-    },
-    {
-        CORE_NAME "-gliden64-EnableOverscan",
-        "Overscan",
-        NULL,
-        "(GLideN64) Crop black borders from the overscan region around the screen.",
-        "Crop black borders from the overscan region around the screen.",
-        "gliden64",
-        {
-            {"Disabled", NULL},
-            {"Enabled", NULL},
-            { NULL, NULL },
-        },
-        "Disabled"
-    },
-    {
-        CORE_NAME "-gliden64-OverscanTop",
-        "Overscan Offset (Top)",
-        NULL,
-        "(GLideN64) Overscan Top Offset.",
-        "Overscan Top Offset.",
-        "gliden64",
-        {
-            {"0", NULL},
-            {"1", NULL},
-            {"2", NULL},
-            {"3", NULL},
-            {"4", NULL},
-            {"5", NULL},
-            {"6", NULL},
-            {"7", NULL},
-            {"8", NULL},
-            {"9", NULL},
-            {"10", NULL},
-            {"11", NULL},
-            {"12", NULL},
-            {"13", NULL},
-            {"14", NULL},
-            {"15", NULL},
-            {"16", NULL},
-            {"17", NULL},
-            {"18", NULL},
-            {"19", NULL},
-            {"20", NULL},
-            {"21", NULL},
-            {"22", NULL},
-            {"23", NULL},
-            {"24", NULL},
-            {"25", NULL},
-            {"26", NULL},
-            {"27", NULL},
-            {"28", NULL},
-            {"29", NULL},
-            {"30", NULL},
-            {"31", NULL},
-            {"32", NULL},
-            {"33", NULL},
-            {"34", NULL},
-            {"35", NULL},
-            {"36", NULL},
-            {"37", NULL},
-            {"38", NULL},
-            {"39", NULL},
-            {"40", NULL},
-            {"41", NULL},
-            {"42", NULL},
-            {"43", NULL},
-            {"44", NULL},
-            {"45", NULL},
-            {"46", NULL},
-            {"47", NULL},
-            {"48", NULL},
-            {"49", NULL},
-            {"50", NULL},
-            { NULL, NULL },
-        },
-        "0"
-    },
-    {
-        CORE_NAME "-gliden64-OverscanLeft",
-        "Overscan Offset (Left)",
-        NULL,
-        "(GLideN64) Overscan Left Offset.",
-        "Overscan Left Offset.",
-        "gliden64",
-        {
-            {"0", NULL},
-            {"1", NULL},
-            {"2", NULL},
-            {"3", NULL},
-            {"4", NULL},
-            {"5", NULL},
-            {"6", NULL},
-            {"7", NULL},
-            {"8", NULL},
-            {"9", NULL},
-            {"10", NULL},
-            {"11", NULL},
-            {"12", NULL},
-            {"13", NULL},
-            {"14", NULL},
-            {"15", NULL},
-            {"16", NULL},
-            {"17", NULL},
-            {"18", NULL},
-            {"19", NULL},
-            {"20", NULL},
-            {"21", NULL},
-            {"22", NULL},
-            {"23", NULL},
-            {"24", NULL},
-            {"25", NULL},
-            {"26", NULL},
-            {"27", NULL},
-            {"28", NULL},
-            {"29", NULL},
-            {"30", NULL},
-            {"31", NULL},
-            {"32", NULL},
-            {"33", NULL},
-            {"34", NULL},
-            {"35", NULL},
-            {"36", NULL},
-            {"37", NULL},
-            {"38", NULL},
-            {"39", NULL},
-            {"40", NULL},
-            {"41", NULL},
-            {"42", NULL},
-            {"43", NULL},
-            {"44", NULL},
-            {"45", NULL},
-            {"46", NULL},
-            {"47", NULL},
-            {"48", NULL},
-            {"49", NULL},
-            {"50", NULL},
-            { NULL, NULL },
-        },
-        "0"
-    },
-    {
-        CORE_NAME "-gliden64-OverscanRight",
-        "Overscan Offset (Right)",
-        NULL,
-        "(GLideN64) Overscan Right Offset.",
-        "Overscan Right Offset.",
-        "gliden64",
-        {
-            {"0", NULL},
-            {"1", NULL},
-            {"2", NULL},
-            {"3", NULL},
-            {"4", NULL},
-            {"5", NULL},
-            {"6", NULL},
-            {"7", NULL},
-            {"8", NULL},
-            {"9", NULL},
-            {"10", NULL},
-            {"11", NULL},
-            {"12", NULL},
-            {"13", NULL},
-            {"14", NULL},
-            {"15", NULL},
-            {"16", NULL},
-            {"17", NULL},
-            {"18", NULL},
-            {"19", NULL},
-            {"20", NULL},
-            {"21", NULL},
-            {"22", NULL},
-            {"23", NULL},
-            {"24", NULL},
-            {"25", NULL},
-            {"26", NULL},
-            {"27", NULL},
-            {"28", NULL},
-            {"29", NULL},
-            {"30", NULL},
-            {"31", NULL},
-            {"32", NULL},
-            {"33", NULL},
-            {"34", NULL},
-            {"35", NULL},
-            {"36", NULL},
-            {"37", NULL},
-            {"38", NULL},
-            {"39", NULL},
-            {"40", NULL},
-            {"41", NULL},
-            {"42", NULL},
-            {"43", NULL},
-            {"44", NULL},
-            {"45", NULL},
-            {"46", NULL},
-            {"47", NULL},
-            {"48", NULL},
-            {"49", NULL},
-            {"50", NULL},
-            { NULL, NULL },
-        },
-        "0"
-    },
-    {
-        CORE_NAME "-gliden64-OverscanBottom",
-        "Overscan Offset (Bottom)",
-        NULL,
-        "(GLideN64) Overscan Bottom Offset.",
-        "Overscan Bottom Offset.",
-        "gliden64",
-        {
-            {"0", NULL},
-            {"1", NULL},
-            {"2", NULL},
-            {"3", NULL},
-            {"4", NULL},
-            {"5", NULL},
-            {"6", NULL},
-            {"7", NULL},
-            {"8", NULL},
-            {"9", NULL},
-            {"10", NULL},
-            {"11", NULL},
-            {"12", NULL},
-            {"13", NULL},
-            {"14", NULL},
-            {"15", NULL},
-            {"16", NULL},
-            {"17", NULL},
-            {"18", NULL},
-            {"19", NULL},
-            {"20", NULL},
-            {"21", NULL},
-            {"22", NULL},
-            {"23", NULL},
-            {"24", NULL},
-            {"25", NULL},
-            {"26", NULL},
-            {"27", NULL},
-            {"28", NULL},
-            {"29", NULL},
-            {"30", NULL},
-            {"31", NULL},
-            {"32", NULL},
-            {"33", NULL},
-            {"34", NULL},
-            {"35", NULL},
-            {"36", NULL},
-            {"37", NULL},
-            {"38", NULL},
-            {"39", NULL},
-            {"40", NULL},
-            {"41", NULL},
-            {"42", NULL},
-            {"43", NULL},
-            {"44", NULL},
-            {"45", NULL},
-            {"46", NULL},
-            {"47", NULL},
-            {"48", NULL},
-            {"49", NULL},
-            {"50", NULL},
-            { NULL, NULL },
-        },
-        "0"
-    },
-    {
-        CORE_NAME "-gliden64-txFilterMode",
-        "Texture filter",
-        NULL,
-        "(GLideN64) Select Texture Filtering mode.",
-        "Select Texture Filtering mode.",
-        "gliden64",
-        {
-            {"None", NULL},
-            {"Smooth filtering 1", NULL},
-            {"Smooth filtering 2", NULL},
-            {"Smooth filtering 3", NULL},
-            {"Smooth filtering 4", NULL},
-            {"Sharp filtering 1", NULL},
-            {"Sharp filtering 2", NULL},
-            { NULL, NULL },
-        },
-        "None"
-    },
-    {
-        CORE_NAME "-gliden64-txEnhancementMode",
-        "Texture Enhancement",
-        NULL,
-        "(GLideN64) Various Texture Filters ('As-Is' will just cache).",
-        "Various Texture Filters ('As-Is' will just cache).",
-        "gliden64",
-        {
-            {"None", NULL},
-            {"As Is", NULL},
-            {"X2", NULL},
-            {"X2SAI", NULL},
-            {"HQ2X", NULL},
-            {"HQ2XS", NULL},
-            {"LQ2X", NULL},
-            {"LQ2XS", NULL},
-            {"HQ4X", NULL},
-            {"2xBRZ", NULL},
-            {"3xBRZ", NULL},
-            {"4xBRZ", NULL},
-            {"5xBRZ", NULL},
-            {"6xBRZ", NULL},
-            { NULL, NULL },
-        },
-        "None"
-    },
-    {
-        CORE_NAME "-gliden64-txFilterIgnoreBG",
-        "Don't filter background textures",
-        NULL,
-        "(GLideN64) Ignore filtering for Background Textures.",
-        "Ignore filtering for Background Textures.",
-        "gliden64",
-        {
-            {"False", NULL},
-            {"True", NULL},
-            { NULL, NULL },
-        },
-        "True"
-    },
-    {
-        CORE_NAME "-gliden64-txHiresEnable",
-        "Use High-Res textures",
-        NULL,
-        "(GLideN64) Enable High-Res Texture packs if available.",
-        "Enable High-Res Texture packs if available.",
-        "gliden64",
-        {
-            {"False", NULL},
-            {"True", NULL},
-            { NULL, NULL },
-        },
-        "False"
-    },
-    {
-        CORE_NAME "-gliden64-txCacheCompression",
-        "Use High-Res Texture Cache Compression",
-        NULL,
-        "(GLideN64) Compress created texture caches.",
-        "Compress created texture caches.",
-        "gliden64",
-        {
-            {"False", NULL},
-            {"True", NULL},
-            { NULL, NULL },
-        },
-        "True"
-    },
-    {
-        CORE_NAME "-gliden64-txHiresFullAlphaChannel",
-        "Use High-Res Full Alpha Channel",
-        NULL,
-        "(GLideN64) This should be enabled unless it's a old RICE Texture pack.",
-        "This should be enabled unless it's a old RICE Texture pack.",
-        "gliden64",
-        {
-            {"False", NULL},
-            {"True", NULL},
-            { NULL, NULL },
-        },
-        "False"
-    },
-    {
-        CORE_NAME "-gliden64-EnableHiResAltCRC",
-        "Use alternative method for High-Res Checksums",
-        NULL,
-        "(GLideN64) Use an alternative method for High-Res paletted textures CRC calculations.",
-        "Use an alternative method for High-Res paletted textures CRC calculations.",
-        "gliden64",
-        {
-            {"False", NULL},
-            {"True", NULL},
-            { NULL, NULL },
-        },
-        "False"
-    },
-    {
-        CORE_NAME "-gliden64-IniBehaviour",
-        "INI Behaviour",
-        NULL,
-        "(GLideN64) Specifies INI Settings behaviour. This should really only contain essential options. Changing this can and will break ROM's, if the correct options aren't set manually. Some options may only be set via INI (fbInfoDisabled).",
-        "Specifies INI Settings behaviour. This should really only contain essential options. Changing this can and will break ROM's, if the correct options aren't set manually. Some options may only be set via INI (fbInfoDisabled).",
-        "gliden64",
-        {
-            {"late", "Prioritize INI over Core Options"},
-            {"early", "Prioritize Core Options over INI"},
-            {"disabled", "Disable INI"},
-            { NULL, NULL },
-        },
-        "late"
-    },
-    {
-        CORE_NAME "-gliden64-LegacySm64ToolsHacks",
-        "Patch SM64 Hacks made with SM64 Editor",
-        NULL,
-        "(GLideN64) Make plugin behave like Jabo in certain case to fix compatibility with legacy SM64 hacks. It adds undocumented behavior that may interfere with real N64 games (unlikely).",
-        "Make plugin behave like Jabo in certain case to fix compatibility with legacy SM64 hacks. It adds undocumented behavior that may interfere with real N64 games (unlikely).",
-        "gliden64",
-        {
-            {"enabled", NULL},
-            {"disabled", NULL},
-            { NULL, NULL },
-        },
-        "enabled"
-    },
-    {
-        CORE_NAME "-gliden64-RemoveFBBlackBars",
-        "Fix VI Resolution",
-        NULL,
-        "(GLideN64) Remove the black bars added by VI emulation of the FrameBuffer.",
-        "Remove the black bars added by VI emulation of the FrameBuffer.",
-        "gliden64",
-        {
-            {"enabled", NULL},
-            {"disabled", NULL},
-            { NULL, NULL },
-        },
-        "enabled"
-    },
-#if defined(HAVE_GLIDEN64) && !defined(HAVE_OPENGLES2)
-    {
-        CORE_NAME "-vr-mode",
-        "VR Mode",
-        NULL,
-        "(GLideN64) 'Stereoscopic' renders each eye separately for real depth. 'Immersive' needs a VR headset: the game fills the view and turning your head turns the game's camera; scenes that can't fill the view fall back to the screen. Both double the rendering work, turn on frame buffer emulation and need a frontend that supports video views. Resolution and aspect ratio apply per eye. Restart required.",
-        "'Stereoscopic' renders each eye separately for real depth. 'Immersive' needs a VR headset: the game fills the view and turning your head turns the game's camera; scenes that can't fill the view fall back to the screen. Both double the rendering work, turn on frame buffer emulation and need a frontend that supports video views. Resolution and aspect ratio apply per eye. Restart required.",
-        "vr",
-        {
-            {"off", "Off"},
-            {"stereoscopic", "Stereoscopic"},
-            {"immersive", "Immersive"},
-            { NULL, NULL },
-        },
-        "off"
-    },
-    {
-        CORE_NAME "-vr-separation",
-        "VR Eye Separation",
-        NULL,
-        "(GLideN64) Strength of the 3D effect: the parallax of distant objects, in thousandths of the screen width. Lower is more comfortable.",
-        "Strength of the 3D effect: the parallax of distant objects, in thousandths of the screen width. Lower is more comfortable.",
-        "vr",
-        {
-            {"5", NULL},
-            {"10", NULL},
-            {"15", NULL},
-            {"20", NULL},
-            {"25", NULL},
-            {"30", NULL},
-            {"35", NULL},
-            {"40", NULL},
-            {"50", NULL},
-            {"60", NULL},
-            {"80", NULL},
-            {"100", NULL},
-            {"120", NULL},
-            { NULL, NULL },
-        },
-        "30"
-    },
-    {
-        CORE_NAME "-vr-depth-boost",
-        "VR Depth Boost",
-        NULL,
-        "(GLideN64) Spreads deep scenes, such as race tracks, that would otherwise look flat near the horizon.",
-        "Spreads deep scenes, such as race tracks, that would otherwise look flat near the horizon.",
-        "vr",
-        {
-            {"0", "0%"},
-            {"10", "10%"},
-            {"20", "20%"},
-            {"30", "30%"},
-            {"40", "40%"},
-            {"50", "50%"},
-            {"60", "60%"},
-            {"70", "70%"},
-            {"80", "80%"},
-            {"90", "90%"},
-            {"100", "100%"},
-            { NULL, NULL },
-        },
-        "0"
-    },
-    {
-        CORE_NAME "-vr-immersive-world-scale",
-        "VR Immersive World Size",
-        NULL,
-        "(GLideN64) Immersive mode only. Shows the scene at a smaller angle, as if the game's camera had a narrower view. Head turns still match. Below 100% the picture no longer fills the view.",
-        "Immersive mode only. Shows the scene at a smaller angle, as if the game's camera had a narrower view. Head turns still match. Below 100% the picture no longer fills the view.",
-        "vr",
-        {
-            {"30", "30%"},
-            {"35", "35%"},
-            {"40", "40%"},
-            {"45", "45%"},
-            {"50", "50%"},
-            {"55", "55%"},
-            {"60", "60%"},
-            {"65", "65%"},
-            {"70", "70%"},
-            {"75", "75%"},
-            {"80", "80%"},
-            {"85", "85%"},
-            {"90", "90%"},
-            {"95", "95%"},
-            {"100", "100%"},
-            { NULL, NULL },
-        },
-        "100"
-    },
-    {
-        CORE_NAME "-vr-immersive-hud-scale",
-        "VR Immersive HUD Size",
-        NULL,
-        "(GLideN64) Immersive mode only. How wide the HUD and overlays are spread. At 100% they cover as much of the view as the game's own camera, which can push them into the corners.",
-        "Immersive mode only. How wide the HUD and overlays are spread. At 100% they cover as much of the view as the game's own camera, which can push them into the corners.",
-        "vr",
-        {
-            {"30", "30%"},
-            {"35", "35%"},
-            {"40", "40%"},
-            {"45", "45%"},
-            {"50", "50%"},
-            {"55", "55%"},
-            {"60", "60%"},
-            {"65", "65%"},
-            {"70", "70%"},
-            {"75", "75%"},
-            {"80", "80%"},
-            {"85", "85%"},
-            {"90", "90%"},
-            {"95", "95%"},
-            {"100", "100%"},
-            { NULL, NULL },
-        },
-        "100"
-    },
-    {
-        CORE_NAME "-vr-immersive-distance",
-        "VR Immersive Camera Distance",
-        NULL,
-        "(GLideN64) Immersive mode only. Moves the camera back along its own axis, in percent of the nearest depth of the scene.",
-        "Immersive mode only. Moves the camera back along its own axis, in percent of the nearest depth of the scene.",
-        "vr",
-        {
-            {"0", "0%"},
-            {"25", "25%"},
-            {"50", "50%"},
-            {"75", "75%"},
-            {"100", "100%"},
-            {"125", "125%"},
-            {"150", "150%"},
-            {"175", "175%"},
-            {"200", "200%"},
-            {"225", "225%"},
-            {"250", "250%"},
-            {"275", "275%"},
-            {"300", "300%"},
-            { NULL, NULL },
-        },
-        "0"
-    },
-    {
-        CORE_NAME "-vr-aim-controller",
-        "VR Laser Pointer Aim",
-        NULL,
-        "(GLideN64) Aim with a VR motion controller like a laser pointer. This drives the N64 analog stick. Needs a headset session.",
-        "Aim with a VR motion controller like a laser pointer. This drives the N64 analog stick. Needs a headset session.",
-        "vr",
-        {
-            {"off", "Off"},
-            {"left", "Left Controller"},
-            {"right", "Right Controller"},
-            { NULL, NULL },
-        },
-        "off"
-    },
-    {
-        CORE_NAME "-vr-aim-output",
-        "VR Laser Pointer Output",
-        NULL,
-        "(GLideN64) The laser pointer drives the analog stick, or four configurable buttons. Only used while VR Laser Pointer Aim is set to a controller.",
-        "The laser pointer drives the analog stick, or four configurable buttons. Only used while VR Laser Pointer Aim is set to a controller.",
-        "vr",
-        {
-            {"stick", "Analog Stick (Pad 1)"},
-            {"buttons", "Four Buttons (Pad 1)"},
-            {"stick-p2", "Analog Stick (Pad 2)"},
-            {"buttons-p2", "Four Buttons (Pad 2)"},
-            { NULL, NULL },
-        },
-        "stick"
-    },
-    {
-        CORE_NAME "-vr-aim-invert-y",
-        "VR Laser Pointer Invert Y (Thumbstick mode only)",
-        NULL,
-        "(GLideN64) Invert the vertical axis of laser pointer aim. Only used while VR Laser Pointer Aim is set to a controller.",
-        "Invert the vertical axis of laser pointer aim. Only used while VR Laser Pointer Aim is set to a controller.",
-        "vr",
-        {
-            {"off", "Off"},
-            {"on", "On"},
-            { NULL, NULL },
-        },
-        "off"
-    },
-    {
-        CORE_NAME "-vr-aim-button-threshold",
-        "VR Laser Pointer Button Threshold (Four Buttons mode only)",
-        NULL,
-        "(GLideN64) Four Buttons output only. How far from the centre the pointer must be to press a direction, in percent of its range. Releases a little closer to the centre than it presses.",
-        "Four Buttons output only. How far from the centre the pointer must be to press a direction, in percent of its range.",
-        "vr",
-        {
-            {"20", "20%"}, {"30", "30%"}, {"40", "40%"}, {"50", "50%"},
-            {"60", "60%"}, {"70", "70%"}, {"80", "80%"}, {"90", "90%"},
-            { NULL, NULL },
-        },
-        "50"
-    },
-    {
-        CORE_NAME "-vr-aim-button-up",
-        "VR Laser Pointer Up Button",
-        NULL,
-        "(GLideN64) Four Buttons output only. Button pressed while the pointer is above the threshold.",
-        "Four Buttons output only. Button pressed while the pointer is above the threshold.",
-        "vr",
-        { VR_AIM_BUTTON_VALUES },
-        "C-Up"
-    },
-    {
-        CORE_NAME "-vr-aim-button-down",
-        "VR Laser Pointer Down Button",
-        NULL,
-        "(GLideN64) Four Buttons output only. Button pressed while the pointer is below the threshold.",
-        "Four Buttons output only. Button pressed while the pointer is below the threshold.",
-        "vr",
-        { VR_AIM_BUTTON_VALUES },
-        "C-Down"
-    },
-    {
-        CORE_NAME "-vr-aim-button-left",
-        "VR Laser Pointer Left Button",
-        NULL,
-        "(GLideN64) Four Buttons output only. Button pressed while the pointer is left of the threshold.",
-        "Four Buttons output only. Button pressed while the pointer is left of the threshold.",
-        "vr",
-        { VR_AIM_BUTTON_VALUES },
-        "C-Left"
-    },
-    {
-        CORE_NAME "-vr-aim-button-right",
-        "VR Laser Pointer Right Button",
-        NULL,
-        "(GLideN64) Four Buttons output only. Button pressed while the pointer is right of the threshold.",
-        "Four Buttons output only. Button pressed while the pointer is right of the threshold.",
-        "vr",
-        { VR_AIM_BUTTON_VALUES },
-        "C-Right"
-    },
-#endif
-    {
-        CORE_NAME "-OverrideSaveType",
-        "Save type for unknown ROMs",
-        NULL,
-        "Sets the save type used by unknown ROMs",
-        NULL,
-        NULL,
-        {
-            {"IGNORE", "Do not force savetype"},
-            {"EEPROM_4KB", "EEPROM (4kB)"},
-            {"EEPROM_16KB", "EEPROM (16kB)"},
-            {"SRAM", "SRAM"},
-            {"FLASH_RAM", "FlashRAM"},
-            {"CONTROLLER_PACK", "MemPak"},
-            {"NONE", "Guess"},
-            { NULL, NULL }
-        },
-        "NONE"
-    },
-    {
-        CORE_NAME "-sdcard",
-        "Emulate flashcart SD drive",
-        NULL,
-        NULL,
-        NULL,
-        NULL,
-        {
-            {"disabled", "Disabled"},
-            {"SummerCart64", "SummerCart64"},
-            { NULL, NULL }
-        },
-        "disabled"
-    },
-    {
-        CORE_NAME "-rtc-savestate",
-        "Rollback N64 system clock on savestate load",
-        NULL,
-        NULL,
-        NULL,
-        NULL,
-        {
-            {"enabled", "Yes"},
-            {"disabled", "No"},
-            { NULL, NULL }
         },
         "disabled"
     },
@@ -2720,7 +2441,6 @@ static INLINE void libretro_set_core_options(retro_environment_t environ_cb,
 
 error:
       /* Clean up */
-
       if (option_v1_defs_us)
       {
          free(option_v1_defs_us);
