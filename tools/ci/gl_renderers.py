@@ -14,6 +14,15 @@ across drivers, so the frames are not held to stored hashes; the lane holds them
     GLideN64's under -fcommon, crashed at exit, and Rice crashed in the
     driver putting a frame the CPU left in RDRAM on screen with no program
     bound (shade32, tlut16 and zbuf16 draw once, so Rice shows RDRAM after);
+  * every renderer running on when the frontend moves it to a new
+    context every 10 runs and calls context_reset (lrhost_gl's
+    LRHOST_GL_SWITCH_EVERY), with and without context_destroy first, as
+    RetroArch does when its video driver restarts - threaded video
+    toggled moves a hardware core between two contexts - and GLideN64
+    drawing the same frames as without: Glide64, Rice and glN64 crashed
+    in the second context_reset, which drove GLideN64's window change
+    whichever renderer was in use, and GLideN64 deleted the lost
+    context's objects by name in the new one;
   * GLideN64 drawing the same frames whatever its colour buffer copy to
     RDRAM is set to (Off, Sync, Async, TripleBuffer): the copy writes RDRAM
     and must not disturb what is drawn, its pixel buffers or the vertex
@@ -94,6 +103,22 @@ def main():
                 if not ok:
                     failures += 1
                     sys.stdout.write(out[-2000:])
+            for plugin in PLUGINS:
+                rc, base, out = run(a.host, a.core, path, plugin, [], tmp)
+                for name, env_extra in (("switch", {"LRHOST_GL_SWITCH_EVERY": "10"}),
+                                        ("destroy+switch", {"LRHOST_GL_SWITCH_EVERY": "10",
+                                                            "LRHOST_GL_SWITCH_DESTROY": "1"})):
+                    rc, frames, out = run(a.host, a.core, path, plugin, [], tmp, env_extra)
+                    ok = rc == 0 and len(frames) == len(base)
+                    if ok and plugin == "gliden64" and frames != base:
+                        ok = False
+                    print("%-10s %-9s context %-14s %s" % (rom, plugin, name,
+                          "ok" if ok else "FAILED (exit %d, %d of %d frames%s)" % (
+                              rc, len(frames), len(base),
+                              ", other frames" if rc == 0 and len(frames) == len(base) else "")))
+                    if not ok:
+                        failures += 1
+                        sys.stdout.write(out[-2000:])
             reference = None
             for mode in COPY_MODES:
                 rc, frames, out = run(a.host, a.core, path, "gliden64",

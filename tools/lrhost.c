@@ -523,6 +523,11 @@ int main(int argc, char **argv)
                 for (k = 0; k < len; k++)
                     ram[off + k] = (unsigned char)((k * 7u + (unsigned)i * 13u) ^ (k >> 3));
         }
+#ifdef LRHOST_GL
+        if (getenv("LRHOST_GL_SWITCH_EVERY") && i > 0 && gl_egl_ctx != EGL_NO_CONTEXT
+              && i % atoi(getenv("LRHOST_GL_SWITCH_EVERY")) == 0 && !gl_switch_context())
+            return 1;
+#endif
         run_frame = i; t0 = now_ms();
         if (getenv("LRHOST_RUNAHEAD") && i > 0)
         {

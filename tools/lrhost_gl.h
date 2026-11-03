@@ -29,6 +29,8 @@ typedef int GLHsizei;
 static struct retro_hw_render_callback gl_hw;
 static EGLDisplay gl_dpy = EGL_NO_DISPLAY;
 static EGLContext gl_egl_ctx = EGL_NO_CONTEXT;
+static EGLConfig gl_cfg;
+static EGLint gl_ctx_attr[16];
 static GLHuint gl_fbo, gl_rb_color, gl_rb_depth;
 static unsigned gl_fb_w, gl_fb_h;
 static uint32_t *gl_frame; static size_t gl_frame_cap;
@@ -51,12 +53,14 @@ static retro_proc_address_t gl_get_proc_address(const char *sym)
     return (retro_proc_address_t)eglGetProcAddress(sym);
 }
 
+static int gl_make_framebuffer(unsigned max_w, unsigned max_h);
+
 static int gl_init(unsigned max_w, unsigned max_h)
 {
     EGLint major, minor, n;
     EGLConfig cfg;
+    EGLint *ctx_attr = gl_ctx_attr;
     const EGLint cfg_attr[] = { EGL_SURFACE_TYPE, EGL_PBUFFER_BIT, EGL_RENDERABLE_TYPE, EGL_OPENGL_BIT, EGL_NONE };
-    EGLint ctx_attr[16];
     int i = 0;
     PFNEGLGETPLATFORMDISPLAYEXTPROC get_platform_display =
         (PFNEGLGETPLATFORMDISPLAYEXTPROC)eglGetProcAddress("eglGetPlatformDisplayEXT");
@@ -83,6 +87,7 @@ static int gl_init(unsigned max_w, unsigned max_h)
         ctx_attr[i++] = EGL_CONTEXT_OPENGL_PROFILE_MASK; ctx_attr[i++] = EGL_CONTEXT_OPENGL_COMPATIBILITY_PROFILE_BIT;
     }
     ctx_attr[i++] = EGL_NONE;
+    gl_cfg = cfg;
     gl_egl_ctx = eglCreateContext(gl_dpy, cfg, EGL_NO_CONTEXT, ctx_attr);
     if (gl_egl_ctx == EGL_NO_CONTEXT || !eglMakeCurrent(gl_dpy, EGL_NO_SURFACE, EGL_NO_SURFACE, gl_egl_ctx))
     { fprintf(stderr, "lrhost_gl: cannot make a %s %u.%u context current\n",
@@ -96,6 +101,12 @@ static int gl_init(unsigned max_w, unsigned max_h)
 #undef GLP
 
     gl_fb_w = max_w; gl_fb_h = max_h;
+    return gl_make_framebuffer(max_w, max_h);
+}
+
+/* the framebuffer the core draws into, in the context current */
+static int gl_make_framebuffer(unsigned max_w, unsigned max_h)
+{
     p_glGenFramebuffers(1, &gl_fbo);
     p_glBindFramebuffer(GLH_FRAMEBUFFER, gl_fbo);
     p_glGenRenderbuffers(1, &gl_rb_color);
@@ -112,6 +123,30 @@ static int gl_init(unsigned max_w, unsigned max_h)
                                     GLH_RENDERBUFFER, gl_rb_depth);
     }
     p_glBindRenderbuffer(GLH_RENDERBUFFER, 0);
+    return 1;
+}
+
+/* LRHOST_GL_SWITCH_EVERY=n: every n runs the core is moved to a new
+ * context sharing objects with the old one, with a new framebuffer, as
+ * a frontend restarting its video driver moves it (RetroArch toggling
+ * threaded video moves a hardware core between its own context and a
+ * shared one). The new context is made current and context_reset
+ * called; LRHOST_GL_SWITCH_DESTROY=1 calls context_destroy in the old
+ * one first, as a frontend that tears the core down before does. */
+static int gl_switch_context(void)
+{
+    EGLContext old = gl_egl_ctx;
+    if (getenv("LRHOST_GL_SWITCH_DESTROY") && gl_hw.context_destroy)
+        gl_hw.context_destroy();
+    gl_egl_ctx = eglCreateContext(gl_dpy, gl_cfg, old, gl_ctx_attr);
+    if (gl_egl_ctx == EGL_NO_CONTEXT
+          || !eglMakeCurrent(gl_dpy, EGL_NO_SURFACE, EGL_NO_SURFACE, gl_egl_ctx))
+    { fprintf(stderr, "lrhost_gl: no second context\n"); return 0; }
+    eglDestroyContext(gl_dpy, old);
+    if (!gl_make_framebuffer(gl_fb_w, gl_fb_h))
+        return 0;
+    if (gl_hw.context_reset)
+        gl_hw.context_reset();
     return 1;
 }
 

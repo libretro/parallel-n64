@@ -1520,7 +1520,10 @@ static void context_reset(void)
           * before a context exists. */
          if (gfx_plugin == GFX_GLIDEN64 && !first_context_reset)
          {
+            /* its objects were the lost context's: forgotten, not deleted */
+            glsm_abandon_objects(true);
             gliden64DestroyGfxContext();
+            glsm_abandon_objects(false);
             gliden64ReinitGfxContext();
          }
 #endif

@@ -295,8 +295,14 @@ static GLuint frontend_framebuffer;
 
 static GLenum active_texture;
 static int window_first = 0;
+/* the objects named are the lost context's: deleting them would delete
+ * whatever the new context has under those names */
 static int resetting_context = 0;
-extern void retroChangeWindow();
+
+void glsm_abandon_objects(bool abandon)
+{
+   resetting_context = abandon ? 1 : 0;
+}
 
 static void bindFBO(GLenum target)
 {
@@ -1003,6 +1009,8 @@ void rglCompressedTexImage2D(GLenum target, GLint level,
 void rglDeleteFramebuffers(GLsizei n, const GLuint *_framebuffers)
 {
    int i, p;
+   if (resetting_context)
+      return;
    for (i = 0; i < n; ++i)
    {
       if (_framebuffers[i] == 0)
@@ -1026,6 +1034,8 @@ void rglDeleteTextures(GLsizei n, const GLuint *textures)
    int i;
    size_t f;
    unsigned u;
+   if (resetting_context)
+      return;
    for (i = 0; i < n; ++i)
    {
       if (textures[i] == 0)
@@ -1077,6 +1087,8 @@ void rglBindRenderbuffer(GLenum target, GLuint renderbuffer)
  */
 void rglDeleteRenderbuffers(GLsizei n, GLuint *renderbuffers)
 {
+   if (resetting_context)
+      return;
    glDeleteRenderbuffers(n, renderbuffers);
 }
 
@@ -1214,6 +1226,8 @@ void rglGetQueryObjectuiv(	GLuint id,
 void rglDeleteQueries(	GLsizei n,
  	const GLuint * ids)
 {
+   if (resetting_context)
+      return;
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES) && defined(HAVE_OPENGLES3)
    glDeleteQueries(n, ids);
 #endif
@@ -1710,6 +1724,8 @@ void rglDeleteBuffers(GLsizei n, const GLuint *buffers)
 {
    int i;
    unsigned a;
+   if (resetting_context)
+      return;
    for (i = 0; i < n; ++i)
    {
       if (buffers[i] == 0)
@@ -2280,6 +2296,8 @@ void * rglMapBuffer(	GLenum target, GLenum access)
  */
 GLboolean rglUnmapBuffer( 	GLenum target)
 {
+   if (resetting_context)
+      return GL_TRUE;
 #if defined(HAVE_OPENGLES)
    return glUnmapBufferOES(target);
 #else
@@ -2446,6 +2464,8 @@ void rglDeleteVertexArrays(GLsizei n, const GLuint *arrays)
 {
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES) && defined(HAVE_OPENGLES3)
    int i;
+   if (resetting_context)
+      return;
    for (i = 0; i < n; ++i)
    {
       if (arrays[i] != 0 && arrays[i] == gl_state.bindvertex.array)
@@ -2487,6 +2507,8 @@ void *rglFenceSync(GLenum condition, GLbitfield flags)
  */
 void rglDeleteSync(GLsync sync)
 {
+   if (resetting_context)
+      return;
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES) && defined(HAVE_OPENGLES3)
   glDeleteSync((GLsync)sync);
 #endif
@@ -3411,17 +3433,14 @@ bool glsm_ctl(enum glsm_state_ctl state, void *data)
          initGLFunctions();
 #endif
 
-         if (window_first > 0) {
-            resetting_context = 1;
+         /* a new context: what glsm knew of the old one is dropped */
+         if (window_first > 0)
+         {
             glsm_state_setup();
-#ifdef HAVE_GLIDEN64
-            retroChangeWindow();
-#endif
             glsm_state_unbind();
-            resetting_context = 0;
-	      }
+         }
          else
-            window_first = 1; 
+            window_first = 1;
          break;
       case GLSM_CTL_STATE_CONTEXT_DESTROY:
          glsm_state_ctx_destroy(data);

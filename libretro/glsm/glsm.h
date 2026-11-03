@@ -141,6 +141,11 @@ void glsm_draw_target(unsigned width, unsigned height);
 void glsm_draw_target_present(void);
 bool glsm_draw_target_show(void);
 
+/* While set, deleting GL objects does nothing: for tearing down a
+ * renderer whose context was lost, after GLSM_CTL_STATE_CONTEXT_RESET,
+ * where the names may be the new context's. */
+void glsm_abandon_objects(bool abandon);
+
 RETRO_END_DECLS
 
 #endif
