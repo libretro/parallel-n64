@@ -5,14 +5,19 @@
  * and went on into the next frame after a swap, before the VI ended the
  * slice: the frontend presented, and with threaded video composited, a
  * framebuffer the next frame was being drawn into, frames interleaved.
- * They draw into a target of the core's own now (glsm_draw_target), and
- * glsm_draw_target_present() puts each finished frame into the
- * frontend's at the swap.
+ * They draw into a target of the core's own now (glsm_draw_target),
+ * glsm_draw_target_present() keeps each frame they finish, and
+ * glsm_draw_target_show() puts it in the frontend's framebuffer at the
+ * end of every slice. A slice in which they finished no frame handed
+ * the frontend none, and with threaded video's three framebuffers it
+ * presented one it had since handed out again: frames out of order,
+ * ghosting.
  *
  * Here a renderer clears a frame to one colour, swaps with a scissor
- * set, and draws part of the next frame in another, for frames into two
- * frontend framebuffers taken in turn: every frame the frontend presents
- * must be the swapped one in full, the renderer's own target must keep
+ * set, and draws part of the next frame in another, every third slice
+ * without a swap, for frames into three frontend framebuffers taken in
+ * turn: every slice the frontend must be handed the frame last swapped,
+ * in full, the renderer's own target must keep
  * what it drew across the slice boundary, and the core's bindings must
  * be what they were around the swap. Then the target is resized, and
  * glsm set up again as on a context reset. Drawing straight into the
@@ -36,7 +41,8 @@
 
 retro_log_printf_t log_cb;
 
-static GLuint frontend_fbo[2], frontend_tex[2];
+#define FRONTEND_FBS 3 /* RetroArch's threaded video rotates three */
+static GLuint frontend_fbo[FRONTEND_FBS], frontend_tex[FRONTEND_FBS];
 static unsigned frontend_cur;
 
 static uintptr_t framebuffer(void) { return frontend_fbo[frontend_cur]; }
@@ -62,9 +68,9 @@ static bool environment(unsigned cmd, void *data)
 static void frontend_setup(void)
 {
    unsigned i;
-   glGenTextures(2, frontend_tex);
-   glGenFramebuffers(2, frontend_fbo);
-   for (i = 0; i < 2; i++)
+   glGenTextures(FRONTEND_FBS, frontend_tex);
+   glGenFramebuffers(FRONTEND_FBS, frontend_fbo);
+   for (i = 0; i < FRONTEND_FBS; i++)
    {
       glBindTexture(GL_TEXTURE_2D, frontend_tex[i]);
       glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, FB_W, FB_H, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
@@ -122,42 +128,58 @@ static unsigned run_frames(unsigned w, unsigned h, unsigned frames, unsigned fir
 {
    const unsigned pw = w ? w : FB_W, ph = h ? h : FB_H;
    unsigned k, good = 0;
+   uint32_t last = 0, drawn = 0;
    GLuint core_tex;
    glGenTextures(1, &core_tex);
    for (k = first; k < first + frames; k++)
    {
+      /* every third slice the renderer finishes no frame, as a 20 or
+       * 30 fps game does on the VIs between its frames */
+      const bool swaps       = (k - first) % 3 != 2;
       const uint32_t swapped = 0x102030u + 0x0b0000u * (k % 8);
       const uint32_t next    = 0x40c080u + 0x000b00u * (k % 8);
       GLint draw_fb = 0;
-      frontend_cur = k & 1;
+      frontend_cur = k % FRONTEND_FBS;
       glsm_draw_target(w, h);
       assert(glsm_ctl(GLSM_CTL_STATE_BIND, NULL));
 
       /* what the renderer drew into before the boundary is still there */
       if (w && k != first)
-         assert(core_pixel(4, 4) == 0x40c080u + 0x000b00u * ((k - 1) % 8));
+         assert(core_pixel(4, 4) == drawn);
 
       rglBindFramebuffer(GL_FRAMEBUFFER, 0);
       rglBindTexture(GL_TEXTURE_2D, core_tex);
-      rglDisable(SGL_SCISSOR_TEST);
-      clear_to(swapped);
-      /* the swap, with the renderer's scissor round a corner */
+      if (swaps)
+      {
+         rglDisable(SGL_SCISSOR_TEST);
+         clear_to(swapped);
+         /* the swap, with the renderer's scissor round a corner */
+         rglEnable(SGL_SCISSOR_TEST);
+         rglScissor(0, 0, 16, 16);
+         rglDrawArrays(GL_POINTS, 0, 0); /* glsm binds what is pending */
+         draw_fb = gl_int(GL_FRAMEBUFFER_BINDING);
+         glsm_draw_target_present();
+         assert(gl_int(GL_FRAMEBUFFER_BINDING) == draw_fb);
+         assert(gl_int(GL_TEXTURE_BINDING_2D) == (GLint)core_tex);
+         assert(scissor_enabled());
+         last = swapped;
+      }
+      /* the next frame begins in the corner */
       rglEnable(SGL_SCISSOR_TEST);
       rglScissor(0, 0, 16, 16);
-      rglDrawArrays(GL_POINTS, 0, 0); /* glsm binds what is pending */
-      draw_fb = gl_int(GL_FRAMEBUFFER_BINDING);
-      glsm_draw_target_present();
-      assert(gl_int(GL_FRAMEBUFFER_BINDING) == draw_fb);
-      assert(gl_int(GL_TEXTURE_BINDING_2D) == (GLint)core_tex);
-      assert(scissor_enabled());
-      /* the next frame begins in the corner */
       clear_to(next);
+      drawn = next;
       assert(core_pixel(4, 4) == next);
       assert(gl_error() == GL_NO_ERROR);
       assert(glsm_ctl(GLSM_CTL_STATE_UNBIND, NULL));
 
-      if (presented(4, 4) == swapped && presented(pw - 1, ph - 1) == swapped
-            && presented(pw / 2, ph / 2) == swapped)
+      /* the end of the slice: the frontend is handed the frame last
+       * finished, in the framebuffer it gave for this slice */
+      if (glsm_draw_target_show())
+         assert(gl_error() == GL_NO_ERROR);
+
+      if (last && presented(4, 4) == last && presented(pw - 1, ph - 1) == last
+            && presented(pw / 2, ph / 2) == last)
          good++;
    }
    glDeleteTextures(1, &core_tex);
@@ -208,17 +230,17 @@ int main(void)
    assert(glsm_ctl(GLSM_CTL_STATE_UNBIND, NULL));
    while (gl_error() != GL_NO_ERROR) {}
 
-   assert(run_frames(FB_W, FB_H, 8, 0) == 8);
+   assert(run_frames(FB_W, FB_H, 9, 0) == 9);
    /* a smaller frame: the target follows it */
-   assert(run_frames(40, 30, 6, 8) == 6);
+   assert(run_frames(40, 30, 6, 9) == 6);
    /* set up again, as on a context reset */
    assert(glsm_ctl(GLSM_CTL_STATE_SETUP, NULL));
    assert(glsm_ctl(GLSM_CTL_STATE_UNBIND, NULL));
-   assert(run_frames(FB_W, FB_H, 6, 14) == 6);
+   assert(run_frames(FB_W, FB_H, 6, 15) == 6);
 
    /* drawing straight into the frontend's framebuffer, as before, shows
     * the next frame in the corner of every one */
-   if (run_frames(0, 0, 6, 20) != 0)
+   if (run_frames(0, 0, 6, 21) != 0)
    {
       fprintf(stderr, "the check passes drawing into the frontend's framebuffer\n");
       return 1;

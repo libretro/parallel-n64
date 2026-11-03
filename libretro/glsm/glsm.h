@@ -132,11 +132,14 @@ bool glsm_context_is_core(void);
 
 /* For renderers that draw straight on into the next frame after a swap:
  * draw into a width x height target of the core's own from the next
- * GLSM_CTL_STATE_BIND (0, 0: into the frontend's framebuffer), and put
- * each finished frame into the frontend's with glsm_draw_target_present
- * as the renderer swaps. */
+ * GLSM_CTL_STATE_BIND (0, 0: into the frontend's framebuffer); keep each
+ * frame finished with glsm_draw_target_present as the renderer swaps;
+ * after GLSM_CTL_STATE_UNBIND, glsm_draw_target_show puts the frame last
+ * finished in the frontend's framebuffer for this slice and returns
+ * whether there is one. */
 void glsm_draw_target(unsigned width, unsigned height);
 void glsm_draw_target_present(void);
+bool glsm_draw_target_show(void);
 
 RETRO_END_DECLS
 

@@ -286,6 +286,8 @@ static void glsm_fb_forget(GLuint id)
 
 /* The draw target (see glsm_draw_target) */
 static GLuint draw_fbo, draw_color, draw_depth;
+static GLuint front_fbo, front_color;     /* the frame last finished */
+static bool front_valid;
 static unsigned draw_w, draw_h;           /* the target allocated */
 static unsigned draw_want_w, draw_want_h; /* the one asked for: 0 for none */
 static bool draw_failed;                  /* the frontend's can only be drawn into */
@@ -2745,6 +2747,9 @@ static void glsm_state_setup(void)
    draw_fbo    = 0;
    draw_color  = 0;
    draw_depth  = 0;
+   front_fbo   = 0;
+   front_color = 0;
+   front_valid = false;
    draw_w      = 0;
    draw_h      = 0;
    draw_failed = false;
@@ -2797,9 +2802,10 @@ static void glsm_state_setup(void)
 /* The draw target: a framebuffer of the core's own that the renderers
  * which draw straight on from one frame into the next (Glide64, Rice,
  * glN64) draw into instead of the frontend's. glsm_draw_target_present()
- * puts each frame they finish into the frontend's framebuffer at the
- * swap, so the frontend presents that frame, not the next one drawn
- * over it by the end of the slice. */
+ * copies each frame they finish into the front buffer at the swap, and
+ * glsm_draw_target_show() puts it in the frontend's framebuffer at the
+ * end of every slice, so the frontend presents that frame, not the next
+ * one drawn over it, and is handed a frame every slice. */
 
 /* GLES 3 has the blit; desktop GL from 3.0 or ARB_framebuffer_object */
 #if defined(HAVE_OPENGLES3)
@@ -2816,23 +2822,43 @@ static void glsm_draw_target_free(void)
       glsm_fb_forget(draw_fbo);
    if (draw_fbo)
       glDeleteFramebuffers(1, &draw_fbo);
+   if (front_fbo)
+      glDeleteFramebuffers(1, &front_fbo);
    if (draw_color)
       glDeleteTextures(1, &draw_color);
+   if (front_color)
+      glDeleteTextures(1, &front_color);
    if (draw_depth)
       glDeleteRenderbuffers(1, &draw_depth);
-   draw_fbo   = 0;
-   draw_color = 0;
-   draw_depth = 0;
-   draw_w     = 0;
-   draw_h     = 0;
+   draw_fbo    = 0;
+   draw_color  = 0;
+   draw_depth  = 0;
+   front_fbo   = 0;
+   front_color = 0;
+   front_valid = false;
+   draw_w      = 0;
+   draw_h      = 0;
 }
 
 /* (Re)allocates the target at the size asked for. Bindings it changes
  * are put back as the frontend's: glsm_state_bind binds the core's after. */
+static GLuint glsm_colour_texture(unsigned w, unsigned h)
+{
+   GLuint tex = 0;
+   glGenTextures(1, &tex);
+   glBindTexture(GL_TEXTURE_2D, tex);
+   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+   glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, (GLsizei)w, (GLsizei)h,
+         0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+   return tex;
+}
+
 static void glsm_draw_target_alloc(void)
 {
    GLint prev_tex = 0, prev_rb = 0;
    GLenum depth_format = GL_DEPTH_COMPONENT16;
+   bool complete;
 
    glsm_draw_target_free();
 #ifdef GLSM_HAVE_BLIT
@@ -2846,12 +2872,8 @@ static void glsm_draw_target_alloc(void)
    glGetIntegerv(GL_TEXTURE_BINDING_2D, &prev_tex);
    glGetIntegerv(GL_RENDERBUFFER_BINDING, &prev_rb);
 
-   glGenTextures(1, &draw_color);
-   glBindTexture(GL_TEXTURE_2D, draw_color);
-   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-   glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, (GLsizei)draw_want_w, (GLsizei)draw_want_h,
-         0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+   draw_color  = glsm_colour_texture(draw_want_w, draw_want_h);
+   front_color = glsm_colour_texture(draw_want_w, draw_want_h);
 
 #if defined(HAVE_OPENGLES) && !defined(HAVE_OPENGLES3)
    if (gl_query_extension("GL_OES_depth24"))
@@ -2864,36 +2886,42 @@ static void glsm_draw_target_alloc(void)
    glRenderbufferStorage(GL_RENDERBUFFER, depth_format,
          (GLsizei)draw_want_w, (GLsizei)draw_want_h);
 
+   glGenFramebuffers(1, &front_fbo);
+   glBindFramebuffer(GL_FRAMEBUFFER, front_fbo);
+   glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, front_color, 0);
+   complete = glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE;
+
    glGenFramebuffers(1, &draw_fbo);
    glBindFramebuffer(GL_FRAMEBUFFER, draw_fbo);
    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, draw_color, 0);
    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, draw_depth);
+   complete = complete && glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE;
 
-   if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+   if (!complete)
    {
       glsm_draw_target_free();
       draw_failed = true;
    }
    else
    {
+      struct gl_framebuffers *fb = glsm_fb(draw_fbo);
       draw_w = draw_want_w;
       draw_h = draw_want_h;
+      if (fb)
       {
-         struct gl_framebuffers *fb = glsm_fb(draw_fbo);
-         if (fb)
-         {
-            fb->color_attachment = draw_color;
-            fb->depth_attachment = 0; /* a renderbuffer */
-         }
+         fb->color_attachment = draw_color;
+         fb->depth_attachment = 0; /* a renderbuffer */
       }
-      /* starts black, as the frontend's is cleared once; the masks and
-       * scissor are the frontend's here, and glsm_state_bind puts the
-       * core's in place after */
+      /* both start black, as the frontend's is cleared once; the masks
+       * and scissor are the frontend's here, and glsm_state_bind puts
+       * the core's in place after */
       glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
       glDepthMask(GL_TRUE);
       glDisable(GL_SCISSOR_TEST);
       glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
       glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+      glBindFramebuffer(GL_FRAMEBUFFER, front_fbo);
+      glClear(GL_COLOR_BUFFER_BIT);
    }
 
    glBindTexture(GL_TEXTURE_2D, (GLuint)prev_tex);
@@ -2918,7 +2946,7 @@ void glsm_draw_target_present(void)
 #ifdef GLSM_HAVE_BLIT
    int scissor_on;
 #else
-   GLint type = 0, tex = 0;
+   GLint prev_tex = 0;
 #endif
    if (!draw_fbo)
       return;
@@ -2927,7 +2955,7 @@ void glsm_draw_target_present(void)
    if (scissor_on)
       glDisable(gl_state.cap_translate[SGL_SCISSOR_TEST]);
    glBindFramebuffer(GL_READ_FRAMEBUFFER, draw_fbo);
-   glBindFramebuffer(GL_DRAW_FRAMEBUFFER, frontend_framebuffer);
+   glBindFramebuffer(GL_DRAW_FRAMEBUFFER, front_fbo);
    glBlitFramebuffer(0, 0, (GLint)draw_w, (GLint)draw_h,
          0, 0, (GLint)draw_w, (GLint)draw_h, GL_COLOR_BUFFER_BIT, GL_NEAREST);
    glBindFramebuffer(GL_READ_FRAMEBUFFER, gl_state.framebuf[1].location);
@@ -2935,26 +2963,57 @@ void glsm_draw_target_present(void)
    if (scissor_on)
       glEnable(gl_state.cap_translate[SGL_SCISSOR_TEST]);
 #else
-   /* GLES 2 has no blit: copy into the texture the frontend's draws to */
+   /* GLES 2 has no blit: a copy into the front texture */
+   glGetIntegerv(GL_TEXTURE_BINDING_2D, &prev_tex);
+   glBindFramebuffer(GL_FRAMEBUFFER, draw_fbo);
+   glBindTexture(GL_TEXTURE_2D, front_color);
+   glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0, (GLsizei)draw_w, (GLsizei)draw_h);
+   glBindTexture(GL_TEXTURE_2D, (GLuint)prev_tex);
+   glBindFramebuffer(GL_FRAMEBUFFER, gl_state.framebuf[0].location);
+#endif
+   front_valid = true;
+}
+
+/* After GLSM_CTL_STATE_UNBIND, with GL's defaults in place: puts the
+ * frame last finished in the framebuffer the frontend gave for this
+ * slice, whether one was finished in it or not. Returns whether there
+ * is a frame to present: the frontend gets one every slice, as from
+ * GLideN64, and never has to present one again from a framebuffer it
+ * has since handed out for another. */
+bool glsm_draw_target_show(void)
+{
+#ifndef GLSM_HAVE_BLIT
+   GLint type = 0, tex = 0;
+#endif
+   if (!draw_fbo || !front_valid)
+      return false;
+#ifdef GLSM_HAVE_BLIT
+   glBindFramebuffer(GL_READ_FRAMEBUFFER, front_fbo);
+   glBindFramebuffer(GL_DRAW_FRAMEBUFFER, frontend_framebuffer);
+   glBlitFramebuffer(0, 0, (GLint)draw_w, (GLint)draw_h,
+         0, 0, (GLint)draw_w, (GLint)draw_h, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+#else
+   /* GLES 2: a copy into the texture the frontend's framebuffer draws to */
    glBindFramebuffer(GL_FRAMEBUFFER, frontend_framebuffer);
    glGetFramebufferAttachmentParameteriv(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
          GL_FRAMEBUFFER_ATTACHMENT_OBJECT_TYPE, &type);
    if (type == GL_TEXTURE)
       glGetFramebufferAttachmentParameteriv(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
             GL_FRAMEBUFFER_ATTACHMENT_OBJECT_NAME, &tex);
-   if (tex)
+   if (!tex)
    {
-      GLint prev_tex = 0;
-      glGetIntegerv(GL_TEXTURE_BINDING_2D, &prev_tex);
-      glBindFramebuffer(GL_FRAMEBUFFER, draw_fbo);
-      glBindTexture(GL_TEXTURE_2D, (GLuint)tex);
-      glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0, (GLsizei)draw_w, (GLsizei)draw_h);
-      glBindTexture(GL_TEXTURE_2D, (GLuint)prev_tex);
+      /* nothing to copy into: draw into it from the next bind */
+      draw_failed = true;
+      glBindFramebuffer(GL_FRAMEBUFFER, 0);
+      return false;
    }
-   else
-      draw_failed = true; /* no texture to copy into: draw into it from the next bind */
-   glBindFramebuffer(GL_FRAMEBUFFER, gl_state.framebuf[0].location);
+   glBindFramebuffer(GL_FRAMEBUFFER, front_fbo);
+   glBindTexture(GL_TEXTURE_2D, (GLuint)tex);
+   glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0, (GLsizei)draw_w, (GLsizei)draw_h);
+   glBindTexture(GL_TEXTURE_2D, 0);
 #endif
+   glBindFramebuffer(GL_FRAMEBUFFER, 0);
+   return true;
 }
 
 /* GL's defaults for the render state glsm keeps (not the bindings) */
@@ -3242,11 +3301,14 @@ static bool glsm_state_ctx_destroy(void *data)
    fb_records = NULL;
    fb_count   = 0;
    fb_cap     = 0;
-   draw_fbo   = 0;
-   draw_color = 0;
-   draw_depth = 0;
-   draw_w     = 0;
-   draw_h     = 0;
+   draw_fbo    = 0;
+   draw_color  = 0;
+   draw_depth  = 0;
+   front_fbo   = 0;
+   front_color = 0;
+   front_valid = false;
+   draw_w      = 0;
+   draw_h      = 0;
    return true;
 }
 

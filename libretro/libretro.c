@@ -1106,6 +1106,20 @@ void emu_step_render(void)
       return;
    }
 
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
+   /* Glide64, glN64 and Rice: the frame they last finished, put in the
+    * frontend's framebuffer for this slice, every slice, as GLideN64
+    * hands one over every VI. Handed none, a frontend that rotates its
+    * framebuffers presents the one it last had again; under threaded
+    * video that was not always the frame last finished. */
+   if ((gfx_plugin == GFX_GLIDE64 || gfx_plugin == GFX_GLN64 || gfx_plugin == GFX_RICE)
+         && glsm_draw_target_show())
+   {
+      frame_latched = false;
+      present_frame();
+      return;
+   }
+#endif
    if (frame_latched)
    {
       frame_latched = false;
@@ -3712,8 +3726,8 @@ static void glsm_enter(void)
       return;
    /* Glide64, glN64 and Rice draw on into the next frame after a swap,
     * before the VI ends the slice: they draw into a target of the core's
-    * own, and retro_return(true) puts each finished frame in the
-    * frontend's. GLideN64 draws into its own framebuffers and blits the
+    * own, retro_return(true) keeps each frame they finish, and
+    * emu_step_render puts it in the frontend's. GLideN64 draws into its own framebuffers and blits the
     * finished frame to the frontend's itself. */
    if (gfx_plugin == GFX_GLIDEN64)
       glsm_draw_target(0, 0);
@@ -4174,7 +4188,7 @@ int retro_return(bool just_flipping)
    {
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
       /* The renderer goes straight on to the next frame: the one it
-       * finished goes into the frontend's framebuffer now. */
+       * finished is kept now, for emu_step_render to show. */
       if (gfx_plugin == GFX_GLIDE64 || gfx_plugin == GFX_GLN64 || gfx_plugin == GFX_RICE)
          glsm_draw_target_present();
 #endif
