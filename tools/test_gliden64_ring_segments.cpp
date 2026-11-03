@@ -12,6 +12,16 @@
  * against the bytes of the draws not yet run, over ring sizes, allocation
  * sizes and lags, and the waits are counted: there must be none while the
  * GPU keeps within a lap less a segment. The old wrap must fail the check.
+ *
+ * The draws index the ring in vertices (or indices), BufferedDrawer
+ * keeping the element its writes are at beside the byte offset: each
+ * draw must read the element its data starts at. A move to a segment
+ * start used to set the element to 0, and the segments did not start on
+ * a vertex (8 MB / 3 is not a multiple of 32 or 44 bytes): GLideN64 drew
+ * garbage triangles once a game went past the first segment. Over the
+ * strides BufferedDrawer uses, every placement must start on an element
+ * and the element kept must be the one the placement is at; the old
+ * cursor must fail that.
  */
 #include <cstdio>
 #include <cstdlib>
@@ -100,6 +110,38 @@ static bool run(u32 _size, u32 _maxAlloc, u32 _lag, u32 &_waits)
 	return !gpu.failed;
 }
 
+/* BufferedDrawer's cursor over a ring of _stride byte elements: whether
+ * every draw read the elements it wrote */
+template <bool Old>
+static bool run_cursor(u32 _size, u32 _stride, u32 _maxCount)
+{
+	opengl::RingSegments<3> ring;
+	Gpu gpu(16, 3);
+	Ops ops = { gpu };
+	u32 offset = 0, pos = 0;
+	ring.init(_size, Old ? 1 : _stride);
+	if (!Old && ring.size() % (3 * _stride) != 0)
+		return false;
+	for (u32 k = 0; k < 4000; ++k) {
+		const u32 count = 1 + next_rand(_maxCount);
+		const u32 bytes = count * _stride;
+		gpu.run();
+		const u32 start = ring.place(offset, bytes, ops);
+		if (start != offset) {
+			offset = start;
+			pos = Old ? 0 : ring.element(start);
+		}
+		/* the draw reads from element pos: its data is at offset */
+		if (start % _stride != 0 || pos * _stride != start || start + bytes > _size)
+			return false;
+		Draw d = { start, start + bytes, false };
+		gpu.draws.push_back(d);
+		offset += bytes;
+		pos += count;
+	}
+	return true;
+}
+
 int main()
 {
 	int failures = 0;
@@ -122,6 +164,24 @@ int main()
 					++failures;
 				}
 			}
+
+	/* RectVertex, Vertex, GLushort: what BufferedDrawer's rings hold */
+	const u32 strides[] = { 32, 44, 2 };
+	const u32 cursorSizes[] = { 49152, 50000, 1u << 20, 8u << 20 };
+	for (u32 size : cursorSizes)
+		for (u32 stride : strides) {
+			const u32 maxCount = size / 3 / stride < 256 ? size / 3 / stride : 256;
+			++runs;
+			if (!run_cursor<false>(size, stride, maxCount)) {
+				fprintf(stderr, "size %u stride %u: a draw read other elements than it wrote\n",
+				        size, stride);
+				++failures;
+			}
+		}
+	if (run_cursor<true>(8u << 20, 44, 256) || run_cursor<true>(49152, 32, 256)) {
+		fprintf(stderr, "the check passes the old cursor\n");
+		return 1;
+	}
 
 	/* the check catches the old wrap */
 	{

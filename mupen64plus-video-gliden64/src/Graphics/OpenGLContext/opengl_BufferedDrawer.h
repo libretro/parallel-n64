@@ -63,7 +63,7 @@ namespace opengl {
 			u32 modify;
 		};
 
-		void _initBuffer(Buffer & _buffer, GLuint _bufSize);
+		void _initBuffer(Buffer & _buffer, GLuint _bufSize, GLuint _stride);
 		void _updateBuffer(Buffer & _buffer, u32 _count, u32 _dataSize, const void * _data);
 		GLubyte * _reserve(Buffer & _buffer, u32 _dataSize);
 		void _commit(Buffer & _buffer, u32 _count, u32 _dataSize);
@@ -84,6 +84,8 @@ namespace opengl {
 		BufferOffsets m_rectBufferOffsets;
 
 		static const u32 m_bufMaxSize;
+		static const u32 m_bufMinSize;
+		static u32 _ringSize();
 		static const GLbitfield m_bufAccessBits;
 		static const GLbitfield m_bufMapBits;
 	};

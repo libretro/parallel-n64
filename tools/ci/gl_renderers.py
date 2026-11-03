@@ -17,7 +17,17 @@ across drivers, so the frames are not held to stored hashes; the lane holds them
   * GLideN64 drawing the same frames whatever its colour buffer copy to
     RDRAM is set to (Off, Sync, Async, TripleBuffer): the copy writes RDRAM
     and must not disturb what is drawn, its pixel buffers or the vertex
-    ring the draws read.
+    ring the draws read;
+  * GLideN64 drawing the same frames with its vertex rings shrunk to the
+    smallest they go (GLIDEN64_RING_BYTES) as with the full 8 MB, which
+    these tests never go round: the small rings go round many times, so
+    every draw placed at a segment start or back at 0 must index the
+    vertices it wrote. The draws used to index from 0 after a move to a
+    segment start, and the segments did not start on a vertex: geometry
+    torn into garbage triangles once a game went past the first segment.
+    Both with persistent mapped rings (GL 4.4 / ARB_buffer_storage) and,
+    with Mesa told to hide them, the rings written through
+    glMapBufferRange.
 
 CI runs the lane a second time with the core and host built with
 SANITIZER=address,undefined (glN64 used to read its texture cache after
@@ -37,13 +47,18 @@ PLUGINS = ["glide64", "gliden64", "rice", "gln64"]
 PRESENTS_NOTHING = {"gln64"}
 COPY_MODES = ["Off", "Sync", "Async", "TripleBuffer"]
 FRAMES = 40
+SMALL_RING = "49152"
+# Mesa without buffer storage: GLideN64 writes its rings through glMapBufferRange
+NO_BUFFER_STORAGE = {"MESA_GL_VERSION_OVERRIDE": "4.3",
+                     "MESA_EXTENSION_OVERRIDE": "-GL_ARB_buffer_storage"}
 
 
-def run(host, core, rom, plugin, extra, tmp):
+def run(host, core, rom, plugin, extra, tmp, env_extra=None):
     hashlog = os.path.join(tmp, "hash")
     if os.path.exists(hashlog):
         os.remove(hashlog)
     env = dict(os.environ, EGL_PLATFORM="surfaceless", LRHOST_HASHLOG=hashlog)
+    env.update(env_extra or {})
     args = [host, core, rom, str(FRAMES),
             "parallel-n64-gfxplugin=" + plugin,
             "parallel-n64-rspplugin=hle",
@@ -96,6 +111,25 @@ def main():
                     failures += 1
                     continue
                 print("%-10s gliden64 copy %-12s ok" % (rom, mode))
+            for name, mesa in (("buffer storage", {}), ("map range", NO_BUFFER_STORAGE)):
+                runs = []
+                for ring in (None, SMALL_RING):
+                    env_extra = dict(mesa)
+                    if ring is not None:
+                        env_extra["GLIDEN64_RING_BYTES"] = ring
+                    runs.append(run(a.host, a.core, path, "gliden64", [], tmp, env_extra))
+                bad = [r for r in runs if r[0] != 0 or not r[1]]
+                if bad:
+                    print("%-10s gliden64 ring %-14s FAILED (exit %d)" % (rom, name, bad[0][0]))
+                    sys.stdout.write(bad[0][2][-2000:])
+                    failures += 1
+                elif runs[0][1] != runs[1][1]:
+                    differ = sum(1 for x, y in zip(runs[0][1], runs[1][1]) if x != y)
+                    print("%-10s gliden64 ring %-14s draws other frames with a small ring (%d of %d differ)"
+                          % (rom, name, differ, len(runs[0][1])))
+                    failures += 1
+                else:
+                    print("%-10s gliden64 ring %-14s ok" % (rom, name))
 
     if failures:
         print("%d failures" % failures)

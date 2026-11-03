@@ -1,3 +1,4 @@
+#include <stdlib.h>
 #include <Config.h>
 #include <CRC.h>
 #include "GLFunctions.h"
@@ -8,6 +9,23 @@ using namespace graphics;
 using namespace opengl;
 
 const u32 BufferedDrawer::m_bufMaxSize = 8 * 1024 * 1024; // 8 MB
+/* a segment still holds the largest vertex batch (VERTBUFF_SIZE) */
+const u32 BufferedDrawer::m_bufMinSize = 48 * 1024;
+
+/* GLIDEN64_RING_BYTES shrinks the rings so a short test goes round them
+ * many times: CI draws the same frames with a small ring as with the
+ * full one, which every draw placed at a segment start or back at 0
+ * must keep. */
+u32 BufferedDrawer::_ringSize()
+{
+	const char * env = getenv("GLIDEN64_RING_BYTES");
+	if (env == nullptr || *env == '\0')
+		return m_bufMaxSize;
+	const unsigned long bytes = strtoul(env, nullptr, 0);
+	if (bytes < m_bufMinSize)
+		return m_bufMinSize;
+	return bytes > m_bufMaxSize ? m_bufMaxSize : u32(bytes);
+}
 #ifndef GL_DEBUG
 const GLbitfield BufferedDrawer::m_bufAccessBits = GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT;
 const GLbitfield BufferedDrawer::m_bufMapBits = GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT;
@@ -22,10 +40,11 @@ BufferedDrawer::BufferedDrawer(const GLInfo & _glinfo, CachedVertexAttribArray *
 , m_bindBuffer(_bindBuffer)
 {
 	m_vertices.resize(VERTBUFF_SIZE);
+	const u32 ringSize = _ringSize();
 	/* Init buffers for rects */
 	glGenVertexArrays(1, &m_rectsBuffers.vao);
 	glBindVertexArray(m_rectsBuffers.vao);
-	_initBuffer(m_rectsBuffers.vbo, m_bufMaxSize);
+	_initBuffer(m_rectsBuffers.vbo, ringSize, sizeof(RectVertex));
 	m_cachedAttribArray->enableVertexAttribArray(rectAttrib::position, true);
 	m_cachedAttribArray->enableVertexAttribArray(rectAttrib::texcoord0, true);
 	m_cachedAttribArray->enableVertexAttribArray(rectAttrib::texcoord1, true);
@@ -36,8 +55,8 @@ BufferedDrawer::BufferedDrawer(const GLInfo & _glinfo, CachedVertexAttribArray *
 	/* Init buffers for triangles */
 	glGenVertexArrays(1, &m_trisBuffers.vao);
 	glBindVertexArray(m_trisBuffers.vao);
-	_initBuffer(m_trisBuffers.vbo, m_bufMaxSize);
-	_initBuffer(m_trisBuffers.ebo, m_bufMaxSize);
+	_initBuffer(m_trisBuffers.vbo, ringSize, sizeof(Vertex));
+	_initBuffer(m_trisBuffers.ebo, ringSize, sizeof(GLushort));
 	m_cachedAttribArray->enableVertexAttribArray(triangleAttrib::position, true);
 	m_cachedAttribArray->enableVertexAttribArray(triangleAttrib::color, true);
 	m_cachedAttribArray->enableVertexAttribArray(triangleAttrib::texcoord, true);
@@ -49,10 +68,10 @@ BufferedDrawer::BufferedDrawer(const GLInfo & _glinfo, CachedVertexAttribArray *
 	glVertexAttribPointer(triangleAttrib::modify, 4, GL_BYTE, GL_TRUE, sizeof(Vertex), (const GLvoid *)(offsetof(Vertex, modify)));
 }
 
-void BufferedDrawer::_initBuffer(Buffer & _buffer, GLuint _bufSize)
+void BufferedDrawer::_initBuffer(Buffer & _buffer, GLuint _bufSize, GLuint _stride)
 {
-	_buffer.size = _bufSize;
-	_buffer.ring.init(_bufSize);
+	_buffer.ring.init(_bufSize, _stride);
+	_buffer.size = _buffer.ring.size();
 	glGenBuffers(1, &_buffer.handle);
 	m_bindBuffer->bind(Parameter(_buffer.type), ObjectHandle(_buffer.handle));
 	if (m_glInfo.bufferStorage) {
@@ -108,8 +127,9 @@ GLubyte * BufferedDrawer::_reserve(Buffer & _buffer, u32 _dataSize)
 	SegmentFences fences = { _buffer.fences };
 	const u32 offset = _buffer.ring.place(u32(_buffer.offset), _dataSize, fences);
 	if (offset != u32(_buffer.offset)) {
+		/* a segment start, or 0: the draws index from there */
 		_buffer.offset = offset;
-		_buffer.pos = 0;
+		_buffer.pos = GLint(_buffer.ring.element(offset));
 	}
 	return m_glInfo.bufferStorage ? &_buffer.data[_buffer.offset] : nullptr;
 }

@@ -11,10 +11,13 @@ template <u32 Segments = 3>
 class RingSegments
 {
 public:
-	void init(u32 _size)
+	/* _align: the size of what the ring holds. The draws index the ring
+	 * in those (a vertex, an index), so every segment starts on one. */
+	void init(u32 _size, u32 _align = 1)
 	{
-		m_size = _size;
-		m_segSize = _size / Segments;
+		m_align = _align != 0 ? _align : 1;
+		m_segSize = _size / Segments / m_align * m_align;
+		m_size = m_segSize * Segments;
 		m_cur = 0;
 		for (u32 i = 0; i < Segments; ++i)
 			m_fenced[i] = false;
@@ -51,6 +54,11 @@ public:
 
 	u32 segment() const { return m_cur; }
 
+	/* the element a placed offset is at: what a draw indexes the ring by */
+	u32 element(u32 _offset) const { return _offset / m_align; }
+
+	u32 size() const { return m_size; }
+
 private:
 	u32 _seg(u32 _at) const
 	{
@@ -60,6 +68,7 @@ private:
 
 	u32 m_size = 0;
 	u32 m_segSize = 0;
+	u32 m_align = 1;
 	u32 m_cur = 0;
 	bool m_fenced[Segments];
 };

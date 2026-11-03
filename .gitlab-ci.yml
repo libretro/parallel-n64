@@ -203,7 +203,9 @@ test-parallel-rdp-tsan-linux-x64:
 # EGL, no GPU. tools/lrhost_gl runs krom's RDP tests through Glide64,
 # GLideN64, Rice and glN64: each must run to the end and draw, and
 # GLideN64 must draw the same frames whatever its colour buffer copy to
-# RDRAM is set to. check_vtables.py fails on a class that declares a
+# RDRAM is set to, and the same with its vertex rings shrunk so they go
+# round (the draws used to read the wrong vertices past the first
+# segment). .github/workflows/gl-renderers.yml runs the same lane. check_vtables.py fails on a class that declares a
 # virtual function nobody defines (GCC 16's MinGW link failed on two such
 # Rice classes). test_glitch64_lfb_write holds Glide64's LFB write to
 # the image it was given, and test_glitch64_textures(_gles) its texture
