@@ -49,6 +49,7 @@
 #include <string.h>
 #include <glsym/glsym.h>
 #include <glsm/glsm.h>
+#include <gfx/gl_capabilities.h>
 
 #if defined(HAVE_OPENGLES)
 #if !defined(IOS)
@@ -304,6 +305,13 @@ static struct gl_program_uniforms *glsm_uniform_slot(GLint location)
    return &program_uniforms[gl_state.program][location];
 }
 static struct gl_framebuffers* framebuffers[MAX_FRAMEBUFFERS];
+
+/* The draw target (see glsm_draw_target) */
+static GLuint draw_fbo, draw_color, draw_depth;
+static unsigned draw_w, draw_h;           /* the target allocated */
+static unsigned draw_want_w, draw_want_h; /* the one asked for: 0 for none */
+static bool draw_failed;                  /* the frontend's can only be drawn into */
+static GLuint frontend_framebuffer;
 
 static GLenum active_texture;
 static int window_first = 0;
@@ -3176,7 +3184,21 @@ static void glsm_state_setup(void)
    gl_state.array_buffer                = 0;
    gl_state.index_buffer                = 0;
 
+   /* a new context: the draw target's names are gone with the old one */
+   if (draw_fbo && draw_fbo < MAX_FRAMEBUFFERS && framebuffers[draw_fbo])
+   {
+      free(framebuffers[draw_fbo]);
+      framebuffers[draw_fbo] = NULL;
+   }
+   draw_fbo    = 0;
+   draw_color  = 0;
+   draw_depth  = 0;
+   draw_w      = 0;
+   draw_h      = 0;
+   draw_failed = false;
+
    default_framebuffer                  = glsm_get_current_framebuffer();
+   frontend_framebuffer                 = default_framebuffer;
 
    gl_state.framebuf[0].location        = default_framebuffer;
    gl_state.framebuf[1].location        = default_framebuffer;
@@ -3185,7 +3207,7 @@ static void glsm_state_setup(void)
 
    glBindFramebuffer(GL_FRAMEBUFFER, default_framebuffer);
    GLint params;
-   if (!resetting_context)
+   if (!resetting_context || !framebuffers[default_framebuffer])
       framebuffers[default_framebuffer] = (struct gl_framebuffers*)calloc(1, sizeof(struct gl_framebuffers));
 
    glGetFramebufferAttachmentParameteriv(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_FRAMEBUFFER_ATTACHMENT_OBJECT_NAME, &params);
@@ -3253,6 +3275,176 @@ static void glsm_state_setup(void)
 #endif
 }
 
+/* The draw target: a framebuffer of the core's own that the renderers
+ * which draw straight on from one frame into the next (Glide64, Rice,
+ * glN64) draw into instead of the frontend's. glsm_draw_target_present()
+ * puts each frame they finish into the frontend's framebuffer at the
+ * swap, so the frontend presents that frame, not the next one drawn
+ * over it by the end of the slice. */
+
+/* GLES 3 has the blit; desktop GL from 3.0 or ARB_framebuffer_object */
+#if defined(HAVE_OPENGLES3)
+#define GLSM_HAVE_BLIT
+#define GLSM_BLIT_AVAILABLE 1
+#elif !defined(HAVE_OPENGLES)
+#define GLSM_HAVE_BLIT
+#define GLSM_BLIT_AVAILABLE (glBlitFramebuffer != NULL)
+#endif
+
+static void glsm_draw_target_free(void)
+{
+   if (draw_fbo && draw_fbo < MAX_FRAMEBUFFERS && framebuffers[draw_fbo])
+   {
+      free(framebuffers[draw_fbo]);
+      framebuffers[draw_fbo] = NULL;
+   }
+   if (draw_fbo)
+      glDeleteFramebuffers(1, &draw_fbo);
+   if (draw_color)
+      glDeleteTextures(1, &draw_color);
+   if (draw_depth)
+      glDeleteRenderbuffers(1, &draw_depth);
+   draw_fbo   = 0;
+   draw_color = 0;
+   draw_depth = 0;
+   draw_w     = 0;
+   draw_h     = 0;
+}
+
+/* (Re)allocates the target at the size asked for. Bindings it changes
+ * are put back as the frontend's: glsm_state_bind binds the core's after. */
+static void glsm_draw_target_alloc(void)
+{
+   GLint prev_tex = 0, prev_rb = 0;
+   GLenum depth_format = GL_DEPTH_COMPONENT16;
+
+   glsm_draw_target_free();
+#ifdef GLSM_HAVE_BLIT
+   if (!GLSM_BLIT_AVAILABLE)
+   {
+      /* nothing to put the frames in the frontend's with */
+      draw_failed = true;
+      return;
+   }
+#endif
+   glGetIntegerv(GL_TEXTURE_BINDING_2D, &prev_tex);
+   glGetIntegerv(GL_RENDERBUFFER_BINDING, &prev_rb);
+
+   glGenTextures(1, &draw_color);
+   glBindTexture(GL_TEXTURE_2D, draw_color);
+   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+   glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, (GLsizei)draw_want_w, (GLsizei)draw_want_h,
+         0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+
+#if defined(HAVE_OPENGLES) && !defined(HAVE_OPENGLES3)
+   if (gl_query_extension("GL_OES_depth24"))
+      depth_format = 0x81A6; /* GL_DEPTH_COMPONENT24_OES */
+#else
+   depth_format = GL_DEPTH_COMPONENT24;
+#endif
+   glGenRenderbuffers(1, &draw_depth);
+   glBindRenderbuffer(GL_RENDERBUFFER, draw_depth);
+   glRenderbufferStorage(GL_RENDERBUFFER, depth_format,
+         (GLsizei)draw_want_w, (GLsizei)draw_want_h);
+
+   glGenFramebuffers(1, &draw_fbo);
+   glBindFramebuffer(GL_FRAMEBUFFER, draw_fbo);
+   glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, draw_color, 0);
+   glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, draw_depth);
+
+   if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+   {
+      glsm_draw_target_free();
+      draw_failed = true;
+   }
+   else
+   {
+      draw_w = draw_want_w;
+      draw_h = draw_want_h;
+      if (draw_fbo < MAX_FRAMEBUFFERS)
+      {
+         if (!framebuffers[draw_fbo])
+            framebuffers[draw_fbo] = (struct gl_framebuffers*)
+               calloc(1, sizeof(struct gl_framebuffers));
+         if (framebuffers[draw_fbo])
+         {
+            framebuffers[draw_fbo]->color_attachment = draw_color;
+            framebuffers[draw_fbo]->depth_attachment = draw_depth;
+            framebuffers[draw_fbo]->target           = GL_TEXTURE_2D;
+         }
+      }
+      /* starts black, as the frontend's is cleared once; the masks and
+       * scissor are the frontend's here, and glsm_state_bind puts the
+       * core's in place after */
+      glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+      glDepthMask(GL_TRUE);
+      glDisable(GL_SCISSOR_TEST);
+      glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+      glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+   }
+
+   glBindTexture(GL_TEXTURE_2D, (GLuint)prev_tex);
+   glBindRenderbuffer(GL_RENDERBUFFER, (GLuint)prev_rb);
+   glBindFramebuffer(GL_FRAMEBUFFER, frontend_framebuffer);
+}
+
+/* Draw into a target of the core's own, width x height, from the next
+ * glsm_state_bind on (0, 0: into the frontend's framebuffer). */
+void glsm_draw_target(unsigned width, unsigned height)
+{
+   draw_want_w = width;
+   draw_want_h = height;
+}
+
+/* A frame is finished: put it in the frontend's framebuffer. Called with
+ * the core's state bound, as the renderers swap; the frame is copied in
+ * full, whatever the renderer's scissor, and the core's bindings are
+ * left as they were. */
+void glsm_draw_target_present(void)
+{
+#ifdef GLSM_HAVE_BLIT
+   int scissor_on;
+#else
+   GLint type = 0, tex = 0;
+#endif
+   if (!draw_fbo)
+      return;
+#ifdef GLSM_HAVE_BLIT
+   scissor_on = gl_state.cap_state[SGL_SCISSOR_TEST];
+   if (scissor_on)
+      glDisable(gl_state.cap_translate[SGL_SCISSOR_TEST]);
+   glBindFramebuffer(GL_READ_FRAMEBUFFER, draw_fbo);
+   glBindFramebuffer(GL_DRAW_FRAMEBUFFER, frontend_framebuffer);
+   glBlitFramebuffer(0, 0, (GLint)draw_w, (GLint)draw_h,
+         0, 0, (GLint)draw_w, (GLint)draw_h, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+   glBindFramebuffer(GL_READ_FRAMEBUFFER, gl_state.framebuf[1].location);
+   glBindFramebuffer(GL_DRAW_FRAMEBUFFER, gl_state.framebuf[0].location);
+   if (scissor_on)
+      glEnable(gl_state.cap_translate[SGL_SCISSOR_TEST]);
+#else
+   /* GLES 2 has no blit: copy into the texture the frontend's draws to */
+   glBindFramebuffer(GL_FRAMEBUFFER, frontend_framebuffer);
+   glGetFramebufferAttachmentParameteriv(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+         GL_FRAMEBUFFER_ATTACHMENT_OBJECT_TYPE, &type);
+   if (type == GL_TEXTURE)
+      glGetFramebufferAttachmentParameteriv(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+            GL_FRAMEBUFFER_ATTACHMENT_OBJECT_NAME, &tex);
+   if (tex)
+   {
+      GLint prev_tex = 0;
+      glGetIntegerv(GL_TEXTURE_BINDING_2D, &prev_tex);
+      glBindFramebuffer(GL_FRAMEBUFFER, draw_fbo);
+      glBindTexture(GL_TEXTURE_2D, (GLuint)tex);
+      glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0, (GLsizei)draw_w, (GLsizei)draw_h);
+      glBindTexture(GL_TEXTURE_2D, (GLuint)prev_tex);
+   }
+   else
+      draw_failed = true; /* no texture to copy into: draw into it from the next bind */
+   glBindFramebuffer(GL_FRAMEBUFFER, gl_state.framebuf[0].location);
+#endif
+}
+
 static void glsm_state_bind(void)
 {
    unsigned i;
@@ -3264,7 +3456,15 @@ static void glsm_state_bind(void)
     * into the one the frontend is actually compositing this frame -- otherwise
     * the core draws into a stale FBO and the screen stays black on the gl
     * driver. No VAO is involved; this is plain framebuffer-binding state. */
-   default_framebuffer = glsm_get_current_framebuffer();
+   frontend_framebuffer = glsm_get_current_framebuffer();
+   if (draw_want_w && draw_want_h && !draw_failed)
+   {
+      if (draw_w != draw_want_w || draw_h != draw_want_h)
+         glsm_draw_target_alloc();
+   }
+   else if (draw_fbo)
+      glsm_draw_target_free();
+   default_framebuffer = draw_fbo ? draw_fbo : frontend_framebuffer;
    /* Keep the per-id tracking slot allocated for whatever id the frontend
     * returned, matching the one-time allocation done at context setup, so a
     * later lookup keyed on this id cannot dereference a NULL slot. */
@@ -3333,8 +3533,12 @@ static void glsm_state_bind(void)
       int scissor_on = gl_state.cap_state[SGL_SCISSOR_TEST];
       if (scissor_on)
          glDisable(gl_state.cap_translate[SGL_SCISSOR_TEST]);
+      if (draw_fbo)
+         glBindFramebuffer(GL_FRAMEBUFFER, frontend_framebuffer);
       glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
       glClear(GL_COLOR_BUFFER_BIT);
+      if (draw_fbo)
+         glBindFramebuffer(GL_FRAMEBUFFER, default_framebuffer);
       if (scissor_on)
          glEnable(gl_state.cap_translate[SGL_SCISSOR_TEST]);
       gl_state.fbo_cleared_once = 1;

@@ -3710,6 +3710,15 @@ static void glsm_enter(void)
    if (gfx_plugin != GFX_GLIDE64 && gfx_plugin != GFX_GLN64 &&
        gfx_plugin != GFX_RICE && gfx_plugin != GFX_GLIDEN64)
       return;
+   /* Glide64, glN64 and Rice draw on into the next frame after a swap,
+    * before the VI ends the slice: they draw into a target of the core's
+    * own, and retro_return(true) puts each finished frame in the
+    * frontend's. GLideN64 draws into its own framebuffers and blits the
+    * finished frame to the frontend's itself. */
+   if (gfx_plugin == GFX_GLIDEN64)
+      glsm_draw_target(0, 0);
+   else
+      glsm_draw_target(screen_width, screen_height);
    glsm_ctl(GLSM_CTL_STATE_BIND, NULL);
 #endif
 }
@@ -4163,6 +4172,12 @@ int retro_return(bool just_flipping)
 
    if (just_flipping)
    {
+#if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
+      /* The renderer goes straight on to the next frame: the one it
+       * finished goes into the frontend's framebuffer now. */
+      if (gfx_plugin == GFX_GLIDE64 || gfx_plugin == GFX_GLN64 || gfx_plugin == GFX_RICE)
+         glsm_draw_target_present();
+#endif
       /* Latch the frame for presentation after the glsm state is unbound.
        * video_cb must not run while glsm still has the core's GL state bound
        * (FBO, program, textures): the frontend composites the hardware frame
@@ -4170,9 +4185,7 @@ int retro_return(bool just_flipping)
        * presents these renderers only after GLSM_CTL_STATE_UNBIND. Presenting
        * from here -- inside the bind window, as OGL_SwapBuffers does -- left the
        * screen black and corrupted the frontend on the compatibility gl driver
-       * (the glcore path tolerated the dirty state and so masked it). The frame
-       * still exists in the single hardware FBO when emu_step_render presents it
-       * immediately after glsm_exit, before the next slice clears it. */
+       * (the glcore path tolerated the dirty state and so masked it). */
       frame_latched = true;
       return 0;
    }

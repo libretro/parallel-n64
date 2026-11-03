@@ -130,6 +130,14 @@ GLuint glsm_get_current_framebuffer(void);
 
 bool glsm_context_is_core(void);
 
+/* For renderers that draw straight on into the next frame after a swap:
+ * draw into a width x height target of the core's own from the next
+ * GLSM_CTL_STATE_BIND (0, 0: into the frontend's framebuffer), and put
+ * each finished frame into the frontend's with glsm_draw_target_present
+ * as the renderer swaps. */
+void glsm_draw_target(unsigned width, unsigned height);
+void glsm_draw_target_present(void);
+
 RETRO_END_DECLS
 
 #endif
