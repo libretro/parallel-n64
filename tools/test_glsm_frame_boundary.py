@@ -39,6 +39,7 @@ def main():
             str(root / "tools/test_glsm_gles3.c"),
             str(root / "libretro-common/glsym/glsym_es3.c"),
             str(root / "libretro-common/glsym/rglgen.c"),
+            str(root / "libretro-common/gfx/gl_capabilities.c"),
             "-lEGL", "-lGLESv2", "-o", str(binary),
         ], check=True)
         subprocess.run([str(binary)], check=True,

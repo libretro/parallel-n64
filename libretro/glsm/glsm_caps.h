@@ -52,4 +52,4 @@ enum
 }
 #endif
 
-#endif // LIBRETRO_SDK_GLSM_CAPS_H
+#endif /* LIBRETRO_SDK_GLSM_CAPS_H */

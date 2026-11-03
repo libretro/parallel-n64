@@ -1274,7 +1274,8 @@ test_glitch64_textures_gles$(EXE_EXT): tools/test_glitch64_textures.c $(GLITCH64
 	$(CC) $(GLITCH64_TEST_FLAGS) $(GLITCH64_GLES_FLAGS) $< $(GLITCH64_TEST_SRCS) $(LIBRETRO_COMM_DIR)/glsym/glsym_es2.c \
 		-o $@ $(filter -fsanitize=%,$(LDFLAGS)) -lEGL -lGLESv2 -lm
 # glsm's draw target: the frontend presents the frame a renderer swapped,
-# through the blit (desktop GL) and the texture copy (GLES 2)
+# through the blit (desktop GL) and the texture copy (GLES 2); and the
+# state glsm keeps is the state GL holds while the core draws
 GLSM_TEST_SRCS := $(ROOT_DIR)/libretro/glsm/glsm.c $(LIBRETRO_COMM_DIR)/gfx/gl_capabilities.c $(LIBRETRO_COMM_DIR)/glsym/rglgen.c
 GLSM_TEST_FLAGS := -D__LIBRETRO__ -I$(ROOT_DIR)/libretro -I$(LIBRETRO_COMM_DIR)/include \
 	$(filter -fsanitize=% -O% -g,$(CFLAGS)) -w
@@ -1285,8 +1286,15 @@ test_glsm_draw_target_gles$(EXE_EXT): tools/test_glsm_draw_target.c $(GLSM_TEST_
 	$(CC) $(GLSM_TEST_FLAGS) -DHAVE_OPENGLES -DHAVE_OPENGLES2 $< $(GLSM_TEST_SRCS) $(LIBRETRO_COMM_DIR)/glsym/glsym_es2.c \
 		-o $@ $(filter -fsanitize=%,$(LDFLAGS)) -lEGL -lGLESv2 -lm
 
+test_glsm_state$(EXE_EXT): tools/test_glsm_state.c $(GLSM_TEST_SRCS)
+	$(CC) $(GLSM_TEST_FLAGS) -DHAVE_OPENGL $< $(GLSM_TEST_SRCS) $(LIBRETRO_COMM_DIR)/glsym/glsym_gl.c \
+		-o $@ $(filter -fsanitize=%,$(LDFLAGS)) -lEGL -lGL -lm
+test_glsm_state_gles$(EXE_EXT): tools/test_glsm_state.c $(GLSM_TEST_SRCS)
+	$(CC) $(GLSM_TEST_FLAGS) -DHAVE_OPENGLES -DHAVE_OPENGLES2 $< $(GLSM_TEST_SRCS) $(LIBRETRO_COMM_DIR)/glsym/glsym_es2.c \
+		-o $@ $(filter -fsanitize=%,$(LDFLAGS)) -lEGL -lGLESv2 -lm
+
 GLITCH64_TESTS := test_glitch64_lfb_write$(EXE_EXT) test_glitch64_textures$(EXE_EXT) test_glitch64_textures_gles$(EXE_EXT) \
-	test_glsm_draw_target$(EXE_EXT) test_glsm_draw_target_gles$(EXE_EXT)
+	test_glsm_draw_target$(EXE_EXT) test_glsm_draw_target_gles$(EXE_EXT) test_glsm_state$(EXE_EXT) test_glsm_state_gles$(EXE_EXT)
 
 angrylion_replay$(EXE_EXT): tools/angrylion_replay.c $(ANGRYLION_TOOL_OBJS)
 	$(CC) $(CPPFLAGS) $(CFLAGS) -I$(VIDEODIR_ANGRYLION) -w $< $(ANGRYLION_TOOL_OBJS) -o $@ -lpthread -lm

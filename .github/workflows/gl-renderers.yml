@@ -14,7 +14,8 @@
 # (test_gliden64_ring_segments). test_glsm_draw_target(_gles) holds the
 # frame Glide64, Rice and glN64 swap to the one the frontend presents,
 # not the next one they go on to draw over it, through the blit and
-# through GLES 2's texture copy; the Glitch64 tests hold its LFB write
+# through GLES 2's texture copy; test_glsm_state(_gles) holds the GL
+# state glsm restores for the core to what the core set; the Glitch64 tests hold its LFB write
 # and texture uploads. The sanitize leg runs it all again with
 # AddressSanitizer and UndefinedBehaviorSanitizer: any report fails.
 name: GL renderers
@@ -45,7 +46,7 @@ jobs:
     env:
       MAKEFLAGS: --no-print-directory
       CORE_FLAGS: platform=unix WITH_DYNAREC=x86_64 HAVE_THR_AL=1 HAVE_PARALLEL=1 HAVE_PARALLEL_RSP=1
-      GL_TESTS: test_glitch64_lfb_write test_glitch64_textures test_glitch64_textures_gles test_glsm_draw_target test_glsm_draw_target_gles
+      GL_TESTS: test_glitch64_lfb_write test_glitch64_textures test_glitch64_textures_gles test_glsm_draw_target test_glsm_draw_target_gles test_glsm_state test_glsm_state_gles
     steps:
       - uses: actions/checkout@v4
 
@@ -66,7 +67,9 @@ jobs:
           make platform=unix SANITIZER=${{ matrix.sanitizer }} lrhost_gl $GL_TESTS
 
       - name: GL unit tests
-        run: for t in $GL_TESTS; do env EGL_PLATFORM=surfaceless ${{ matrix.sanitizer_env }} ./$t || exit 1; done
+        run: |
+          for t in $GL_TESTS; do env EGL_PLATFORM=surfaceless ${{ matrix.sanitizer_env }} ./$t || exit 1; done
+          python3 tools/test_glsm_frame_boundary.py
 
       - name: krom ROMs cache
         uses: actions/cache@v4

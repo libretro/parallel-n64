@@ -50,4 +50,4 @@ bool glsm_ctl(enum glsm_state_ctl state, void *data);
 }
 #endif
 
-#endif // LIBRETRO_SDK_GLSM_STATE_CTL_H
+#endif /* LIBRETRO_SDK_GLSM_STATE_CTL_H */

@@ -1,6 +1,7 @@
 /* cc -std=c99 -DHAVE_OPENGLES -DHAVE_OPENGLES3 -Ilibretro-common/include -Ilibretro
  * tools/test_glsm_gles3.c libretro-common/glsym/glsym_es3.c
- * libretro-common/glsym/rglgen.c -lEGL -lGLESv2 -o test_glsm_gles3
+ * libretro-common/glsym/rglgen.c libretro-common/gfx/gl_capabilities.c
+ * -lEGL -lGLESv2 -o test_glsm_gles3
  * EGL_PLATFORM=surfaceless ./test_glsm_gles3
  */
 #include <assert.h>
@@ -14,6 +15,7 @@
 #ifdef GLSM_FRAME_BOUNDARY_SOURCE
 #include "../Graphics/plugin.h"
 static int g_real_stop;
+static unsigned screen_width = 16, screen_height = 16;
 enum gfx_plugin_type gfx_plugin = GFX_GLIDEN64;
 #include GLSM_FRAME_BOUNDARY_SOURCE
 #else
