@@ -31,6 +31,14 @@ const int16_t* resample_hq_taps_capped(uint32_t pitch, uint32_t pitch_accu,
  * tap bank could not be allocated. */
 const int16_t* resample_hq_taps(uint32_t pitch, uint32_t pitch_accu);
 
+/* As resample_hq_taps, but at an explicit width and regardless of the
+ * quality option, which belongs to the HLE voice path alone.  For callers
+ * outside it -- the libretro audio backend resamples the AI stream to the
+ * rate the frontend was told -- whose kernel is not the user's to switch
+ * off.  Returns NULL only if the bank cannot be built. */
+const int16_t* resample_hq_taps_fixed(int taps, uint32_t pitch,
+                                      uint32_t pitch_accu);
+
 /* Release the tap bank. */
 void resample_hq_release(void);
 
