@@ -279,15 +279,12 @@ static uint32_t disk_size           = 0;
 /* Set from the 64DD Hardware core option, read at content load. */
 static bool     dd_hardware         = false;
 
-static bool     emu_initialized     = false;
-static unsigned initial_boot        = true;
-
 static unsigned retro_filtering     = 0;
 static unsigned retro_dithering     = 0;
 static bool     reinit_screen       = false;
 static bool     first_context_reset = false;
 static bool     context_setup_first_init = false;
-
+static bool     emu_initialized     = false;
 
 /* Set per retro_run from RETRO_ENVIRONMENT_GET_AUDIO_VIDEO_ENABLE: nonzero
  * means the frontend will discard this frame's video (a run-ahead "future"
@@ -778,7 +775,12 @@ static void setup_variables(void)
             RETRO_ENVIRONMENT_SET_CORE_OPTIONS_UPDATE_DISPLAY_CALLBACK,
             &updateDisplayCb);
     if (updateDisplayCbSupported)
+    {
         CoreOptionUpdateDisplayCbSupported = 1;
+        /* FIXME: Enforce initial trigger since playlist launch does not
+         * call the callback, but CLI launch does.. */
+        set_variable_visibility();
+    }
 
    environ_cb(RETRO_ENVIRONMENT_SET_CONTROLLER_INFO, (void*)ports);
    environ_cb(RETRO_ENVIRONMENT_SET_SUBSYSTEM_INFO, (void*)subsystems);
@@ -3495,8 +3497,6 @@ bool retro_load_game(const struct retro_game_info *game)
    VRMode = VR_MODE_OFF;
 #endif
    update_variables(true);
-   initial_boot = false;
-
    init_audio_libretro();
 
 #ifdef HAVE_THR_AL
