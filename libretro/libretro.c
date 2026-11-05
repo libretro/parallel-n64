@@ -99,6 +99,7 @@ extern void riceRomClosed(void);
 static struct retro_hw_render_callback hw_render;
 static struct retro_hw_render_context_negotiation_interface_vulkan hw_context_negotiation;
 static const struct retro_hw_render_interface_vulkan *vulkan;
+static void reset_upscaler_options(void);
 #endif
 
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
@@ -743,6 +744,10 @@ static bool set_variable_visibility(void)
         }
     }
 
+#ifdef HAVE_PARALLEL
+    // Reset temporal upscaling options for hiding them again
+    reset_upscaler_options();
+#endif
     return true;
 }
 
@@ -1199,6 +1204,12 @@ static void update_upscaler_options(void)
       display.key = keys[i];
       environ_cb(RETRO_ENVIRONMENT_SET_CORE_OPTIONS_DISPLAY, &display);
    }
+}
+
+static void reset_upscaler_options(void)
+{
+    upscaler_options_hidden = false;
+    update_upscaler_options();
 }
 #endif
 
