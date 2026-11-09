@@ -112,8 +112,8 @@ MY_LOCAL_SRC_FILES :=                                                           
     $(SRCDIR)/uCodes/S2DEX.cpp                                                     \
     $(SRCDIR)/uCodes/T3DUX.c                                                     \
     $(SRCDIR)/uCodes/Turbo3D.c                                                   \
-    $(SRCDIR)/uCodes/ZSort.cpp                                                     \
-    $(SRCDIR)/uCodes/ZSortBOSS.cpp                                                 \
+    $(SRCDIR)/uCodes/ZSort.c                                                     \
+    $(SRCDIR)/uCodes/ZSortBOSS.c                                                 \
     $(SRCDIR)/xxHash/xxhash.c                                                      \
 
 MY_LOCAL_CFLAGS :=          \

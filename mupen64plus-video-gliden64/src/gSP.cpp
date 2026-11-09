@@ -1164,9 +1164,9 @@ void gli_gSPLightVertex(u32 _v, SPVertex * _spVtx)
 		gSPLightVertexStandard<VNUM>(_v, _spVtx);
 }
 
-void gli_gSPLightVertex(SPVertex & _vtx)
+void gli_gSPLightVertex(SPVertex * _vtx)
 {
-	gli_gSPLightVertex<1>(0, &_vtx);
+	gli_gSPLightVertex<1>(0, _vtx);
 }
 
 template <u32 VNUM>

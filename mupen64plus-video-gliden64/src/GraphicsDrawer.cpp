@@ -188,6 +188,11 @@ void gli_drawer_draw_screen_triangles(u32 _numVtx)
 	dwnd().getDrawer().drawScreenSpaceTriangle(_numVtx, graphics::drawmode::TRIANGLES);
 }
 
+void gli_drawer_draw_screen_strip(u32 _numVtx)
+{
+	dwnd().getDrawer().drawScreenSpaceTriangle(_numVtx);
+}
+
 SPVertex & GraphicsDrawer::getCurrentDMAVertex()
 {
 	if (m_dmaVerticesNum >= m_dmaVertices.size())

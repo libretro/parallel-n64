@@ -5,6 +5,7 @@
 extern "C" {
 #endif
 
+typedef struct zSortVDest zSortVDest;
 struct zSortVDest{
 	s16 sy;
 	s16 sx;

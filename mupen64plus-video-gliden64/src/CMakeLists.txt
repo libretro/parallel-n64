@@ -100,8 +100,8 @@ set(GLideN64_SOURCES
   uCodes/S2DEX.cpp
   uCodes/T3DUX.c
   uCodes/Turbo3D.c
-  uCodes/ZSort.cpp
-  uCodes/ZSortBOSS.cpp
+  uCodes/ZSort.c
+  uCodes/ZSortBOSS.c
 )
 
 #check if we're running on Raspberry Pi

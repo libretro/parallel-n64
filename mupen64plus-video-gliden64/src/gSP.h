@@ -164,6 +164,7 @@ void gli_gSPLight( u32 l, s32 n );
 void gli_gSPLightCBFD( u32 l, s32 n );
 void gli_gSPLookAt( u32 l, u32 n );
 void gli_gSPLightAcclaim(u32 l, s32 n);
+void gli_gSPLightVertex(SPVertex * _vtx);
 void gli_gSPVertex( u32 v, u32 n, u32 v0 );
 void gli_gSPCIVertex( u32 v, u32 n, u32 v0 );
 void gli_gSPDMAVertex( u32 v, u32 n, u32 v0 );
@@ -246,7 +247,6 @@ void gli_gSPSWVertex(const SWVertex * vertex, u32 n, const bool * const vertices
 void gli_gSPSWVertex(const SWVertex * vertex, u32 v0, u32 n);
 void gli_gSPImmersiveRect(RectVertex * _vertices, u32 _count, bool _fullScreen);
 void gli_gSPImmersiveScreenTriangles(SPVertex * _vertices, u32 _count);
-void gli_gSPLightVertex(SPVertex & _vtx);
 #endif
 
 #endif
