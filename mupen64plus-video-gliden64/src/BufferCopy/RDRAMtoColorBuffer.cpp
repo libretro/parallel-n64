@@ -217,7 +217,7 @@ void RDRAMtoColorBuffer::_copyFromRDRAM(u32 _height, bool _fullAlpha)
 	}
 
 	if (!FBInfo::fbInfo.isSupported()) {
-		if (bUseAlpha && config.frameBufferEmulation.copyToRDRAM == Config::ctDisable) {
+		if (bUseAlpha && config.frameBufferEmulation.copyToRDRAM == ctDisable) {
 			u32 totalBytes = (width * height) << m_pCurBuffer->m_size >> 1;
 			if (address + totalBytes > RDRAMSize + 1)
 				totalBytes = RDRAMSize + 1 - address;

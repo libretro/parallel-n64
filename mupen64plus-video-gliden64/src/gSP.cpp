@@ -56,10 +56,10 @@ void gli_gSPFlushTriangles()
 // Stereoscopic 3D. The matrix supplies the eye-dependent separation * w term. The
 // convergence term is applied after the transform, where it can be limited safely in screen space.
 // Vertices are transformed as a row vector, so x reads column 0 and w reads column 3.
-static u32 l_stereoEye = Config::stereoOff;
+static u32 l_stereoEye = stereoOff;
 
 // Which eye's pose and frustum uses in immersive mode
-static inline int _immersiveEye() { return l_stereoEye == Config::stereoRightEye ? 1 : 0; }
+static inline int _immersiveEye() { return l_stereoEye == stereoRightEye ? 1 : 0; }
 static bool l_stereoPerspectiveSeen = false;
 
 static
@@ -224,7 +224,7 @@ void _immersiveBeginFrame()
 
 bool gli_gSPImmersiveActive()
 {
-	return _immersiveOn() && (l_stereoEye == Config::stereoLeftEye || l_stereoEye == Config::stereoRightEye);
+	return _immersiveOn() && (l_stereoEye == stereoLeftEye || l_stereoEye == stereoRightEye);
 }
 
 bool gli_gSPImmersiveIsFlat() { return l_immersiveFlat; }
@@ -475,7 +475,7 @@ void _immersivePlaceSky(f32 nx, f32 ny, f32 nz, f32 & x, f32 & y, f32 & z, f32 &
 static
 f32 _stereoSeparation()
 {
-	const f32 separation = l_stereoEye == Config::stereoLeftEye
+	const f32 separation = l_stereoEye == stereoLeftEye
 		? -config.stereo.separation : config.stereo.separation;
 	return _immersiveOn() ? separation * 0.5f / l_immersiveTan[_immersiveEye()][0] : separation;
 }
@@ -500,7 +500,7 @@ void gli_gSPImmersiveWorldSprite(bool _world)
 void gli_gSPStereoReset()
 {
 	int eye, i;
-	l_stereoEye = Config::stereoOff;
+	l_stereoEye = stereoOff;
 	l_stereoPerspectiveSeen = false;
 	memset(l_logWHistogram, 0, sizeof(l_logWHistogram));
 	l_logWCount = 0;
@@ -650,7 +650,7 @@ void gli_gSPSetStereoEye(u32 _eye)
 
 void gli_gSPApplyStereo(f32 matrix[4][4])
 {
-	if (l_stereoEye != Config::stereoLeftEye && l_stereoEye != Config::stereoRightEye)
+	if (l_stereoEye != stereoLeftEye && l_stereoEye != stereoRightEye)
 		return;
 
 	if (!_isOrthographic(matrix)) {
@@ -1300,7 +1300,7 @@ void gSPBillboardVertex(u32 v, SPVertex * spVtx)
 template <u32 VNUM>
 void gSPApplyStereoConvergence(u32 v, SPVertex * spVtx)
 {
-	if (l_stereoEye != Config::stereoLeftEye && l_stereoEye != Config::stereoRightEye)
+	if (l_stereoEye != stereoLeftEye && l_stereoEye != stereoRightEye)
 		return;
 
 	const f32 separation = _stereoSeparation();
@@ -1309,7 +1309,7 @@ void gSPApplyStereoConvergence(u32 v, SPVertex * spVtx)
 		l_stereoPerspectiveSeen = true;
 	const f32 convergence = l_autoConvergence;
 	const bool measure = !orthographic &&
-		(config.stereo.mode != Config::stereoBothEyes || l_stereoEye == Config::stereoLeftEye);
+		(config.stereo.mode != stereoBothEyes || l_stereoEye == stereoLeftEye);
 	for (u32 j = 0; j < VNUM; ++j) {
 		SPVertex & vtx = spVtx[v+j];
 		// gli_gSPApplyStereo() already contributed separation*w, which is the parallax at infinity.

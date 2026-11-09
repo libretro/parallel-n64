@@ -1,3 +1,4 @@
+#include <string>
 #include <assert.h>
 #include <Log.h>
 #include <Config.h>

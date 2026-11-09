@@ -63,7 +63,7 @@ bool DisplayWindowMupen64plus::_start()
 
 	m_bFullscreen = false;
 	// Both eyes side by side: GLideN64 draws for one eye's half
-	m_screenWidth = config.stereo.mode == Config::stereoBothEyes ? screen_width / 2 : screen_width;
+	m_screenWidth = config.stereo.mode == stereoBothEyes ? screen_width / 2 : screen_width;
 	m_screenHeight = screen_height;
 	_getDisplaySize();
 	_setBufferSize();

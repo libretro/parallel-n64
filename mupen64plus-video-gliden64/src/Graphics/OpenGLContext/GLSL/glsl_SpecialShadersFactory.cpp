@@ -1,3 +1,4 @@
+#include <string>
 #include <assert.h>
 #include <N64.h>
 #include <FrameBuffer.h>

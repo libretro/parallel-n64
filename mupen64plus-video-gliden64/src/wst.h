@@ -1,6 +1,7 @@
 #ifndef WST_H
 #define WST_H
 
+#include <wchar.h>
 #include <cstdlib>
 
 #ifdef OS_ANDROID

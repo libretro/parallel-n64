@@ -283,7 +283,7 @@ bool _getTexRectParams(u32 * _w2, u32 * _w3)
 		RSP.PC[RSP.PCi] += 8;
 		break;
 	case gdpTexRect:
-		if ((gli_Config_hacks() & hack_WinBack) != 0) {
+		if ((config.generalEmulation.hacks & hack_WinBack) != 0) {
 			RSP.PC[RSP.PCi] += 8;
 			return false;
 		}

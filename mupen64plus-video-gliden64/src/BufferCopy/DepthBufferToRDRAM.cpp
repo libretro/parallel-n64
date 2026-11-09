@@ -277,7 +277,7 @@ bool DepthBufferToRDRAM::_copy(u32 _startAddress, u32 _endAddress)
 
 bool DepthBufferToRDRAM::copyToRDRAM(u32 _address)
 {
-	if (config.frameBufferEmulation.copyDepthToRDRAM == Config::cdSoftwareRender)
+	if (config.frameBufferEmulation.copyDepthToRDRAM == cdSoftwareRender)
 		return true;
 
 	if (!m_pbuf)
@@ -297,7 +297,7 @@ bool DepthBufferToRDRAM::copyToRDRAM(u32 _address)
 
 bool DepthBufferToRDRAM::copyChunkToRDRAM(u32 _startAddress)
 {
-	if (config.frameBufferEmulation.copyDepthToRDRAM == Config::cdSoftwareRender)
+	if (config.frameBufferEmulation.copyDepthToRDRAM == cdSoftwareRender)
 		return true;
 
 	if (!m_pbuf)

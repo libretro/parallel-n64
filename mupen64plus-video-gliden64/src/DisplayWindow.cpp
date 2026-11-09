@@ -1,3 +1,4 @@
+#include <string>
 #include <assert.h>
 #include <cstdlib>
 #include "Config.h"
@@ -143,11 +144,11 @@ void DisplayWindow::_setBufferSize()
 {
 	m_bAdjustScreen = false;
 	switch (config.frameBufferEmulation.aspect) {
-	case Config::aStretch: // stretch
+	case aStretch: // stretch
 		m_width = m_screenWidth;
 		m_height = m_screenHeight;
 		break;
-	case Config::a43: // force 4/3
+	case a43: // force 4/3
 		if (m_screenWidth * 3 / 4 > m_screenHeight) {
 			m_height = m_screenHeight;
 			m_width = m_screenHeight * 4 / 3;
@@ -159,7 +160,7 @@ void DisplayWindow::_setBufferSize()
 			m_height = m_screenHeight;
 		}
 		break;
-	case Config::a169: // force 16/9
+	case a169: // force 16/9
 		if (m_screenWidth * 9 / 16 > m_screenHeight) {
 			m_height = m_screenHeight;
 			m_width = m_screenHeight * 16 / 9;
@@ -171,7 +172,7 @@ void DisplayWindow::_setBufferSize()
 			m_height = m_screenHeight;
 		}
 		break;
-	case Config::aAdjust: // adjust
+	case aAdjust: // adjust
 		m_width = m_screenWidth;
 		m_height = m_screenHeight;
 		if (m_screenWidth * 3 / 4 > m_screenHeight) {

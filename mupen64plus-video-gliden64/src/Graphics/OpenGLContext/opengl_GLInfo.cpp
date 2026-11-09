@@ -1,3 +1,4 @@
+#include <string>
 #include <Log.h>
 #include <Config.h>
 #include "opengl_Utils.h"
@@ -171,8 +172,8 @@ void GLInfo::init() {
 	}
 #endif
 #ifndef OS_ANDROID
-	if (isGLES2 && config.frameBufferEmulation.copyToRDRAM > Config::ctSync) {
-		config.frameBufferEmulation.copyToRDRAM = Config::ctDisable;
+	if (isGLES2 && config.frameBufferEmulation.copyToRDRAM > ctSync) {
+		config.frameBufferEmulation.copyToRDRAM = ctDisable;
 		LOG(LOG_WARNING, "Async color buffer copies are not supported on GLES2\n");
 	}
 #endif

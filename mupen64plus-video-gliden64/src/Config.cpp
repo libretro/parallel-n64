@@ -11,16 +11,6 @@
 
 extern uint32_t screen_width;
 extern uint32_t screen_height;
-u32 gli_Config_hacks(void)
-{
-	return config.generalEmulation.hacks;
-}
-
-u32 gli_Config_fragmentDepthWrite(void)
-{
-	return config.generalEmulation.enableFragmentDepthWrite;
-}
-
 void Config::resetToDefaults()
 {
 	printf("Configs reset\n");

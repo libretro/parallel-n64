@@ -1,4 +1,7 @@
-// #include <mupen64plus-next_common.h>
+// #include <ctype.h>
+#include <stdio.h>
+#include <string>
+#include <mupen64plus-next_common.h>
 #include "GLideN64_mupenplus.h"
 // #include "GLideN64_libretro.h"
 #include <assert.h>
@@ -213,7 +216,7 @@ extern "C" void Config_LoadConfig()
 	config.frameBufferEmulation.copyFromRDRAM = EnableCopyColorFromRDRAM;
 
 	// TODO: Make this a Core options or maybe only default to bsOnVerticalInterrupt on Android with Thr Renderer
-	config.frameBufferEmulation.bufferSwapMode = Config::bsOnVerticalInterrupt;
+	config.frameBufferEmulation.bufferSwapMode = bsOnVerticalInterrupt;
 
 #ifdef HAVE_OPENGLES2
 	config.generalEmulation.enableFragmentDepthWrite = 0;
@@ -270,7 +273,7 @@ extern "C" void Config_LoadConfig()
 
 	// VR: both eyes side by side, each presented into its half of the window from the frame
 	// buffer it was drawn into
-	config.stereo.mode = VRMode != 0 ? Config::stereoBothEyes : Config::stereoOff;
+	config.stereo.mode = VRMode != 0 ? stereoBothEyes : stereoOff;
 	config.stereo.immersive = VRMode == 2 ? 1 : 0;
 	gln64_vr_update_config();
 	if (VRMode != 0)
@@ -278,7 +281,7 @@ extern "C" void Config_LoadConfig()
 	// A head tracked picture covers exactly the field of view it was drawn for: no aspect
 	// correction, no overscan crop
 	if (VRMode == 2) {
-		config.frameBufferEmulation.aspect = Config::aStretch;
+		config.frameBufferEmulation.aspect = aStretch;
 		config.frameBufferEmulation.enableOverscan = 0;
 	}
 }

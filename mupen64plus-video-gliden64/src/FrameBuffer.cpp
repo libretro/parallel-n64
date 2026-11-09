@@ -846,7 +846,7 @@ void FrameBufferList::saveBuffer(u32 _address, u16 _format, u16 _size, u16 _widt
 		gfxContext.bindFramebuffer(bufferTarget::FRAMEBUFFER, m_pCurrent->m_FBO);
 		gfxContext.clearColorBuffer(0.0f, 0.0f, 0.0f, 0.0f);
 	}
-	if (config.stereo.mode == Config::stereoBothEyes)
+	if (config.stereo.mode == stereoBothEyes)
 		StereoFrames_noteEntered(m_pCurrent->m_startAddress);
 	m_pCurrent->m_isPauseScreen = m_pCurrent->m_isOBScreen = false;
 	m_pCurrent->m_copied = false;
@@ -1046,7 +1046,7 @@ void FrameBufferList::_renderScreenSizeBuffer()
 
 	gfxContext.bindFramebuffer(bufferTarget::READ_FRAMEBUFFER, ObjectHandle::defaultFramebuffer);
 
-	if (config.stereo.mode != Config::stereoOff)
+	if (config.stereo.mode != stereoOff)
 		gli_gSPStereoEndFrame();
 	wnd.swapBuffers();
 	gfxContext.bindFramebuffer(bufferTarget::DRAW_FRAMEBUFFER, pBuffer->m_FBO);
@@ -1500,7 +1500,7 @@ void FrameBufferList::renderBuffer()
 	}
 
 	// Stereoscopic 3D: GLideN64 draws for one eye's window; each eye is presented into its half
-	const u32 eyes = config.stereo.mode == Config::stereoBothEyes ? 2U : 1U;
+	const u32 eyes = config.stereo.mode == stereoBothEyes ? 2U : 1U;
 	const s32 eyeWidth = static_cast<s32>(wnd.getScreenWidth());
 	const bool overscan = config.frameBufferEmulation.enableOverscan != 0;
 	for (u32 eye = 0; eye < eyes; ++eye) {
@@ -1597,7 +1597,7 @@ void FrameBufferList::renderBuffer()
 		m_overscan.draw(vFullHeight, rdpRes.vi_ispal, eyeOffset, static_cast<u32>(eyeWidth) * eyes, eye == 0);
 	}
 
-	if (config.stereo.mode != Config::stereoOff)
+	if (config.stereo.mode != stereoOff)
 		gli_gSPStereoEndFrame();
 	// Immersive mode: tell the headset which head pose this picture was drawn for
 	gli_gSPImmersivePresent(pBuffer->m_startAddress);
@@ -1789,15 +1789,15 @@ void gli_fb_full_sync(bool _lle)
 	frameBufferList().updateCurrentBufferEndAddress();
 
 	FrameBuffer * pCurrentBuffer = frameBufferList().getCurrent();
-	if ((config.frameBufferEmulation.copyToRDRAM != Config::ctDisable || (config.generalEmulation.hacks & hack_subscreen) != 0) &&
+	if ((config.frameBufferEmulation.copyToRDRAM != ctDisable || (config.generalEmulation.hacks & hack_subscreen) != 0) &&
 		!FBInfo::fbInfo.isSupported() &&
 		pCurrentBuffer != nullptr &&
 		!pCurrentBuffer->isAuxiliary()
 	)
-		FrameBuffer_CopyToRDRAM(gDP.colorImage.address, config.frameBufferEmulation.copyToRDRAM == Config::ctSync);
+		FrameBuffer_CopyToRDRAM(gDP.colorImage.address, config.frameBufferEmulation.copyToRDRAM == ctSync);
 
 	if (_lle) {
-		if (config.frameBufferEmulation.copyDepthToRDRAM != Config::cdDisable && !FBInfo::fbInfo.isSupported())
+		if (config.frameBufferEmulation.copyDepthToRDRAM != cdDisable && !FBInfo::fbInfo.isSupported())
 			FrameBuffer_CopyDepthBuffer(gDP.colorImage.address);
 	}
 }

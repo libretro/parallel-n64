@@ -13,7 +13,7 @@
 using namespace graphics;
 
 u32 gli_s2dex_hacks(void) { return config.generalEmulation.hacks; }
-int gli_s2dex_bg_one_piece(void) { return config.graphics2D.bgMode == Config::BGMode::bgOnePiece; }
+int gli_s2dex_bg_one_piece(void) { return config.graphics2D.bgMode == BGMode::bgOnePiece; }
 int gli_s2dex_native_res_texrects(void) { return config.graphics2D.enableNativeResTexrects != 0; }
 
 void gli_s2dex_mark_current_ob_screen(void)

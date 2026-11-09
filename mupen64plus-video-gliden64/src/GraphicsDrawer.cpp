@@ -228,7 +228,7 @@ void gli_drawer_textured_rect(f32 _ulx, f32 _uly, f32 _lrx, f32 _lry, f32 _dsdx,
 	GraphicsDrawer & drawer = dwnd().getDrawer();
 	GraphicsDrawer::TexturedRectParams params(_ulx, _uly, _lrx, _lry, _dsdx, _dtdy, _s, _t,
 		_flip, false, true, frameBufferList().getCurrent());
-	if (config.graphics2D.enableNativeResTexrects == 0 && config.graphics2D.correctTexrectCoords != Config::tcDisable)
+	if (config.graphics2D.enableNativeResTexrects == 0 && config.graphics2D.correctTexrectCoords != tcDisable)
 		drawer.correctTexturedRectParams(params);
 	drawer.drawTexturedRect(params);
 }
@@ -836,7 +836,7 @@ void GraphicsDrawer::drawTriangles()
 	if (config.frameBufferEmulation.enable != 0) {
 		const f32 maxY = gli_renderTriangles(triangles.vertices.data(), triangles.elements.data(), triangles.num);
 		frameBufferList().setBufferChanged(maxY);
-		if (config.frameBufferEmulation.copyDepthToRDRAM == Config::cdSoftwareRender &&
+		if (config.frameBufferEmulation.copyDepthToRDRAM == cdSoftwareRender &&
 			gDP.otherMode.depthUpdate != 0) {
 			FrameBuffer * pCurrentDepthBuffer = frameBufferList().findBuffer(gDP.depthImageAddress);
 			if (pCurrentDepthBuffer != nullptr)
@@ -900,7 +900,7 @@ void GraphicsDrawer::drawDMATriangles(u32 _numVtx)
 	if (config.frameBufferEmulation.enable != 0) {
 		const f32 maxY = gli_renderTriangles(m_dmaVertices.data(), nullptr, _numVtx);
 		frameBufferList().setBufferChanged(maxY);
-		if (config.frameBufferEmulation.copyDepthToRDRAM == Config::cdSoftwareRender &&
+		if (config.frameBufferEmulation.copyDepthToRDRAM == cdSoftwareRender &&
 			gDP.otherMode.depthUpdate != 0) {
 			FrameBuffer * pCurrentDepthBuffer = frameBufferList().findBuffer(gDP.depthImageAddress);
 			if (pCurrentDepthBuffer != nullptr)
@@ -1154,13 +1154,13 @@ bool texturedRectDepthBufferCopy(const GraphicsDrawer::TexturedRectParams & _par
 	if (pTile->loadType == LOADTYPE_BLOCK && gDP.textureImage.size == 2 &&
 		gDP.textureImage.address >= gDP.depthImageAddress &&
 		gDP.textureImage.address < (gDP.depthImageAddress + gDP.colorImage.width*gDP.scissor.lry*2)) {
-		if (config.frameBufferEmulation.copyDepthToRDRAM == Config::cdDisable)
+		if (config.frameBufferEmulation.copyDepthToRDRAM == cdDisable)
 			return true;
 		FrameBuffer * pBuffer = frameBufferList().getCurrent();
 		if (pBuffer == nullptr)
 			return true;
 		pBuffer->m_cleared = true;
-		if (config.frameBufferEmulation.copyDepthToRDRAM == Config::cdCopyFromVRam) {
+		if (config.frameBufferEmulation.copyDepthToRDRAM == cdCopyFromVRam) {
 			if (rectDepthBufferCopyFrame != dwnd().getBuffersSwapCount()) {
 				rectDepthBufferCopyFrame = dwnd().getBuffersSwapCount();
 				if (!FrameBuffer_CopyDepthBuffer(gDP.depthImageAddress))
@@ -1507,7 +1507,7 @@ void GraphicsDrawer::drawTexturedRect(const TexturedRectParams & _params)
 
 void GraphicsDrawer::correctTexturedRectParams(TexturedRectParams & _params)
 {
-	if (config.graphics2D.correctTexrectCoords == Config::tcSmart) {
+	if (config.graphics2D.correctTexrectCoords == tcSmart) {
 		if (_params.ulx == m_texrectParams.ulx && _params.lrx == m_texrectParams.lrx) {
 			if (fabsf(_params.uly - m_texrectParams.lry) < 0.51f)
 				_params.uly = m_texrectParams.lry;
@@ -1521,7 +1521,7 @@ void GraphicsDrawer::correctTexturedRectParams(TexturedRectParams & _params)
 				_params.lrx = m_texrectParams.ulx;
 		}
 	}
-	else if (config.graphics2D.correctTexrectCoords == Config::tcForce) {
+	else if (config.graphics2D.correctTexrectCoords == tcForce) {
 		_params.lrx += 0.25f;
 		_params.lry += 0.25f;
 	}

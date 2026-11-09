@@ -677,7 +677,7 @@ void gli_gDPFillRectangle( s32 ulx, s32 uly, s32 lrx, s32 lry )
 		/* If color is not depth clear color, that is most likely the case */
 		if (gDP.fillColor.color == DepthClearColor) {
 			depthBuffer = dbFound;
-			if (gli_Config_fragmentDepthWrite() == 0) {
+			if (config.generalEmulation.enableFragmentDepthWrite == 0) {
 				gli_drawer_clear_depth();
 				depthBuffer = dbCleared;
 			} else
@@ -686,8 +686,8 @@ void gli_gDPFillRectangle( s32 ulx, s32 uly, s32 lrx, s32 lry )
 	} else if (gDP.fillColor.color == DepthClearColor && gDP.otherMode.cycleType == G_CYC_FILL) {
 		depthBuffer = dbFound;
 		gli_depth_set_image(gDP.colorImage.address);
-		if (gli_Config_fragmentDepthWrite() == 0 ||
-			(gli_Config_hacks() & hack_Snap) != 0) {
+		if (config.generalEmulation.enableFragmentDepthWrite == 0 ||
+			(config.generalEmulation.hacks & hack_Snap) != 0) {
 			gli_drawer_clear_depth();
 			depthBuffer = dbCleared;
 		} else
@@ -769,7 +769,7 @@ void gli_gDPTextureRectangle(f32 ulx, f32 uly, f32 lrx, f32 lry, s32 tile, s16 s
 
 	gdp_clear_rect_color();
 	if (gDP.otherMode.cycleType < G_CYC_COPY) {
-		if ((gli_Config_hacks() & hack_texrect_shade_alpha) != 0 &&
+		if ((config.generalEmulation.hacks & hack_texrect_shade_alpha) != 0 &&
 			gDP.combine.mA0 == G_ACMUX_0 && gDP.combine.aA0 == G_ACMUX_SHADE)
 			gDP.rectColor.a = 1.0f;
 	}

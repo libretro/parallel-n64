@@ -1,9 +1,7 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
-#ifdef __cplusplus
-#include <string>
-#endif
+#include <stddef.h>
 #include "Types.h"
 
 #define CONFIG_WITH_PROFILES 23U
@@ -16,12 +14,75 @@
 
 static const u32 gc_uMegabyte = 1024U * 1024U;
 
-#ifdef __cplusplus
+enum TexrectCorrectionMode {
+	tcDisable = 0,
+	tcSmart,
+	tcForce
+};
+
+enum BufferDitheringMode {
+	bdmDisable = 0,
+	bdmBayer,
+	bdmMagicSquare,
+	bdmBlueNoise
+};
+
+enum BGMode {
+	bgOnePiece = 0,
+	bgStripped = 1
+};
+
+enum NativeResTexrectsMode {
+	ntDisable = 0,
+	ntOptimized,
+	ntUnptimized
+};
+
+enum Aspect {
+	aStretch = 0,
+	a43 = 1,
+	a169 = 2,
+	aAdjust = 3,
+	aTotal = 4
+};
+
+enum CopyToRDRAM {
+	ctDisable = 0,
+	ctSync = 1,
+	ctDoubleBuffer = 2,
+	ctTripleBuffer = 3
+};
+
+enum BufferSwapMode {
+	bsOnVerticalInterrupt = 0,
+	bsOnVIOriginChange,
+	bsOnColorImageChange
+};
+
+enum CopyDepthMode {
+	cdDisable = 0,
+	cdCopyFromVRam = 1,
+	cdSoftwareRender = 2
+};
+
+enum N64DepthCompareMode {
+	dcDisable = 0,
+	dcFast,
+	dcCompatible
+};
+
+/* Stereoscopic 3D */
+enum StereoMode {
+	stereoOff = 0,
+	stereoLeftEye = 1,
+	stereoRightEye = 2,
+	stereoBothEyes = 3
+};
+
+typedef struct Config Config;
 struct Config
 {
 	u32 version;
-
-	std::string translationFile;
 
 	struct
 	{
@@ -45,19 +106,6 @@ struct Config
 		u32 enableHalosRemoval;
 		u32 screenShotFormat;
 	} texture;
-
-	enum TexrectCorrectionMode {
-		tcDisable = 0,
-		tcSmart,
-		tcForce
-	};
-
-	enum BufferDitheringMode {
-		bdmDisable = 0,
-		bdmBayer,
-		bdmMagicSquare,
-		bdmBlueNoise
-	};
 
 	struct {
 		u32 enableNoise;
@@ -83,56 +131,12 @@ struct Config
 #endif
 	} generalEmulation;
 
-	enum BGMode {
-		bgOnePiece = 0,
-		bgStripped = 1
-	};
-
-	enum NativeResTexrectsMode {
-		ntDisable = 0,
-		ntOptimized,
-		ntUnptimized
-	};
-
 	struct {
 		u32 correctTexrectCoords;
 		u32 enableNativeResTexrects;
 		u32 bgMode;
 		u32 enableTexCoordBounds;
 	} graphics2D;
-
-	enum Aspect {
-		aStretch = 0,
-		a43 = 1,
-		a169 = 2,
-		aAdjust = 3,
-		aTotal = 4
-	};
-
-	enum CopyToRDRAM {
-		ctDisable = 0,
-		ctSync = 1,
-		ctDoubleBuffer = 2,
-		ctTripleBuffer = 3
-	};
-
-	enum BufferSwapMode {
-		bsOnVerticalInterrupt = 0,
-		bsOnVIOriginChange,
-		bsOnColorImageChange
-	};
-
-	enum CopyDepthMode {
-		cdDisable = 0,
-		cdCopyFromVRam = 1,
-		cdSoftwareRender = 2
-	};
-
-	enum N64DepthCompareMode {
-		dcDisable = 0,
-		dcFast,
-		dcCompatible
-	};
 
 	struct {
 		u32 enable;
@@ -159,10 +163,10 @@ struct Config
 		/* Overscan */
 		u32 enableOverscan;
 		struct {
-			s32 left = 0;
-			s32 right = 0;
-			s32 top = 0;
-			s32 bottom = 0;
+			s32 left;
+			s32 right;
+			s32 top;
+			s32 bottom;
 		} overscanPAL, overscanNTSC;
 	} frameBufferEmulation;
 
@@ -200,14 +204,6 @@ struct Config
 		f32 level;
 	} gammaCorrection;
 
-	/* Stereoscopic 3D */
-	enum StereoMode {
-		stereoOff = 0,
-		stereoLeftEye = 1,
-		stereoRightEye = 2,
-		stereoBothEyes = 3
-	};
-
 	struct {
 		u32 mode;         /* StereoMode */
 		f32 separation;   /* eye offset in clip units, 0 is mono */
@@ -218,11 +214,12 @@ struct Config
 		f32 immersiveHudScale;    /* immersive angular size of HUD and overlays, 1 spans the old screen */
 	} stereo;
 
+#ifdef __cplusplus
 	void resetToDefaults();
 	void validate();
+#endif
 };
 
-#endif /* __cplusplus */
 #define hack_Ogre64					(1<<0)  /*Ogre Battle 64 background copy */
 #define hack_noDepthFrameBuffers	(1<<1)  /*Do not use depth buffers as texture */
 #define hack_blurPauseScreen		(1<<2)  /*Game copies frame buffer to depth buffer area, CPU blurs it. That image is used as background for pause screen. */
@@ -253,16 +250,11 @@ struct Config
 #ifdef __cplusplus
 extern "C" {
 #endif
-u32 gli_Config_hacks(void);
-u32 gli_Config_fragmentDepthWrite(void);
+extern Config gliden64Config;
+void Config_LoadConfig(void);
 #ifdef __cplusplus
 }
-#endif
 
-#ifdef __cplusplus
-extern Config gliden64Config;
-
-extern "C" void Config_LoadConfig();
 bool isHWLightingAllowed();
 #endif
 

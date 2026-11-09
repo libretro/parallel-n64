@@ -200,18 +200,18 @@ void gli_RSP_ProcessDList()
 		return;
 	}
 
-	if (config.stereo.mode == Config::stereoOff) {
+	if (config.stereo.mode == stereoOff) {
 		_runDisplayList();
 	} else {
 		FrameBuffer * pCurrent;
 		gli_gSPStereoBeginTask();
-		if (config.stereo.mode != Config::stereoBothEyes || RSP.infloop) {
+		if (config.stereo.mode != stereoBothEyes || RSP.infloop) {
 			/* One eye; or a task going on after waiting on the CPU, which goes on
 			 * with the eye it was started with and is shown flat */
-			gli_gSPSetStereoEye(config.stereo.mode == Config::stereoBothEyes
-				? Config::stereoLeftEye : config.stereo.mode);
+			gli_gSPSetStereoEye(config.stereo.mode == stereoBothEyes
+				? stereoLeftEye : config.stereo.mode);
 			_runDisplayList();
-			if (config.stereo.mode == Config::stereoBothEyes)
+			if (config.stereo.mode == stereoBothEyes)
 				StereoFrames_forget(frameBufferList().getCurrent());
 		} else {
 			const FrameBuffer * pStart = frameBufferList().getCurrent();
@@ -222,7 +222,7 @@ void gli_RSP_ProcessDList()
 			stereo_journal_clear(&l_stereoJournal);
 			StereoFrames_beginTask();
 			RSP.stereoPass = RSP_STEREO_LEFT;
-			gli_gSPSetStereoEye(Config::stereoLeftEye);
+			gli_gSPSetStereoEye(stereoLeftEye);
 			StereoFrames_setCapturing(true);
 			_runDisplayList();
 			StereoFrames_setCapturing(false);
@@ -250,7 +250,7 @@ void gli_RSP_ProcessDList()
 					}
 				}
 				RSP.stereoPass = RSP_STEREO_RIGHT;
-				gli_gSPSetStereoEye(Config::stereoRightEye);
+				gli_gSPSetStereoEye(stereoRightEye);
 				_runDisplayList();
 				RSP.stereoPass = RSP_STEREO_MONO;
 			}
@@ -266,7 +266,7 @@ void gli_RSP_ProcessDList()
 		return;
 	}
 
-	if (config.frameBufferEmulation.copyDepthToRDRAM != Config::cdDisable) {
+	if (config.frameBufferEmulation.copyDepthToRDRAM != cdDisable) {
 		if ((config.generalEmulation.hacks & hack_rectDepthBufferCopyCBFD) != 0) {
 			; // do nothing
 		} else if ((config.generalEmulation.hacks & hack_rectDepthBufferCopyPD) != 0) {
