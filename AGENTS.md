@@ -44,8 +44,7 @@ on the pipeline worker, and only at content load.
 
 These still break the rules and are debts, not precedent: GLideN64 on GL compiles a
 combiner on first use where its ubershader cannot stand in (below), the other
-GL plugins always do; GLideN64 on Vulkan builds a generic pipeline for a state
-outside the prewarmed set at first use, once; the paraLLEl RSP JIT compiles
+GL plugins always do; the paraLLEl RSP JIT compiles
 blocks on first use and allocates `cached_blocks` nodes; pipelines the record
 list does not cover are still built synchronously.
 
@@ -140,9 +139,14 @@ Know which layer you are changing. Having one does not give you the next.
   every module goes through `test_gliden64_spirv`. One writer gives both the
   generic shader (combiner read from push constants) and each combiner's own,
   so a known condition writes only the arm that runs.
-- A draw never waits: without its own pipeline it runs the generic one, which
-  draws the same, and the job goes to the worker. Only the generic pipelines
-  built by `prewarm` at creation are waited for, at load.
+- A draw never waits and never compiles: without its own pipeline it runs the
+  generic one, which draws the same, and the job goes to the worker. `prewarm`
+  builds every generic and special pipeline at load, the only wait there is.
+  A new blend pair or special goes into `prewarm` too; the lane's strict mode
+  aborts on one it missed.
+- Blending and depth clamp are dynamic state where the device allows
+  (`VK_EXT_extended_dynamic_state3`): a state left out of the pipeline key is
+  a pipeline never built. `GLIDEN64_VULKAN_NO_EDS3` runs the other path.
 - Anything added to `compileCombiner` goes into `vkr_write_combiner` too.
   `tools/ci/gliden64_vulkan.py` holds Vulkan to GL frame for frame.
 - Vertices and combiner values are written once, final, into the frame's

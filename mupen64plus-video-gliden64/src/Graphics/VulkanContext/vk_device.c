@@ -8,6 +8,7 @@
 static const struct retro_hw_render_interface_vulkan *g_interface;
 static int g_enabled;
 static int g_interlock;
+static int g_dynamic_blend;
 
 void gliden64_vulkan_set_interface(const struct retro_hw_render_interface_vulkan *vk) { g_interface = vk; }
 const struct retro_hw_render_interface_vulkan *gliden64_vulkan_interface(void) { return g_interface; }
@@ -62,6 +63,7 @@ static bool create_device(struct retro_vulkan_context *context,
    LOAD(PFN_vkCreateDevice, vkCreateDevice);
    LOAD(PFN_vkGetDeviceProcAddr, vkGetDeviceProcAddr);
 #undef LOAD
+   PFN_vkGetPhysicalDeviceFeatures2 features2 = (PFN_vkGetPhysicalDeviceFeatures2)get(instance, "vkGetPhysicalDeviceFeatures2");
    PFN_vkGetDeviceQueue get_queue;
    VkPhysicalDeviceFeatures have, want;
    VkQueueFamilyProperties fam[16];
@@ -73,7 +75,9 @@ static bool create_device(struct retro_vulkan_context *context,
    VkDeviceQueueCreateInfo qi;
    VkDeviceCreateInfo di;
    VkPhysicalDeviceExtendedDynamicStateFeaturesEXT eds;
-   VkPhysicalDeviceFragmentShaderInterlockFeaturesEXT interlock;
+   VkPhysicalDeviceExtendedDynamicState3FeaturesEXT eds3, eds3_have;
+   VkPhysicalDeviceFragmentShaderInterlockFeaturesEXT interlock, interlock_have;
+   VkPhysicalDeviceFeatures2 query;
    void *chain = NULL;
    VkDevice device;
 
@@ -84,6 +88,8 @@ static bool create_device(struct retro_vulkan_context *context,
          return false;
    }
 
+   g_interlock = 0;
+   g_dynamic_blend = 0;
    vkGetPhysicalDeviceFeatures(gpu, &have);
    /* the N64's near plane needs these: without them there is no backend */
    if (!have.depthClamp || !have.shaderClipDistance)
@@ -126,7 +132,38 @@ static bool create_device(struct retro_vulkan_context *context,
       eds.pNext = chain;
       chain = &eds;
    }
-   if (have_extension(ext, n_ext, VK_EXT_FRAGMENT_SHADER_INTERLOCK_EXTENSION_NAME))
+   /* what the extensions offer: an extension does not promise its features */
+   memset(&eds3, 0, sizeof(eds3));
+   memset(&eds3_have, 0, sizeof(eds3_have));
+   memset(&interlock_have, 0, sizeof(interlock_have));
+   memset(&query, 0, sizeof(query));
+   eds3_have.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_3_FEATURES_EXT;
+   interlock_have.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADER_INTERLOCK_FEATURES_EXT;
+   eds3_have.pNext = &interlock_have;
+   query.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+   query.pNext = &eds3_have;
+   if (features2)
+      features2(gpu, &query);
+
+   /* blending and depth clamp as dynamic state take them out of the pipeline
+    * key: fewer pipelines to build, and fewer binds */
+   if (have_extension(ext, n_ext, VK_EXT_EXTENDED_DYNAMIC_STATE_3_EXTENSION_NAME)
+         && eds.extendedDynamicState
+         && eds3_have.extendedDynamicState3ColorBlendEnable
+         && eds3_have.extendedDynamicState3ColorBlendEquation
+         && eds3_have.extendedDynamicState3DepthClampEnable)
+   {
+      add_extension(exts, &n_exts, VK_EXT_EXTENDED_DYNAMIC_STATE_3_EXTENSION_NAME);
+      eds3.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_3_FEATURES_EXT;
+      eds3.extendedDynamicState3ColorBlendEnable = VK_TRUE;
+      eds3.extendedDynamicState3ColorBlendEquation = VK_TRUE;
+      eds3.extendedDynamicState3DepthClampEnable = VK_TRUE;
+      eds3.pNext = chain;
+      chain = &eds3;
+      g_dynamic_blend = 1;
+   }
+   if (have_extension(ext, n_ext, VK_EXT_FRAGMENT_SHADER_INTERLOCK_EXTENSION_NAME)
+         && interlock_have.fragmentShaderPixelInterlock)
    {
       add_extension(exts, &n_exts, VK_EXT_FRAGMENT_SHADER_INTERLOCK_EXTENSION_NAME);
       interlock.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADER_INTERLOCK_FEATURES_EXT;
@@ -199,4 +236,9 @@ bool gliden64_vulkan_create_device2(struct retro_vulkan_context *context,
       retro_vulkan_create_device_wrapper_t wrapper, void *opaque)
 {
    return create_device(context, instance, gpu, surface, get, wrapper, opaque, NULL, 0, NULL, 0, NULL);
+}
+
+int gliden64_vulkan_has_dynamic_blend(void)
+{
+   return g_dynamic_blend;
 }

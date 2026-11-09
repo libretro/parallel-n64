@@ -3,6 +3,7 @@
 #include <libretro_vulkan.h>
 
 #include <stdlib.h>
+#include <file/file_path.h>
 #include <string.h>
 
 #include <boolean.h>
@@ -12,6 +13,7 @@
 #include <compat/strl.h>
 #include <rdp_worker.h>
 
+#include "vk_device.h"
 #include "vk_renderer.h"
 
 /* ---- capacity: every pool is fixed at creation, exhaustion is defined ---- */
@@ -54,7 +56,8 @@
 
 #define VKR_EDS_FUNCS(X) \
    X(CmdSetCullModeEXT) X(CmdSetFrontFaceEXT) X(CmdSetDepthTestEnableEXT) X(CmdSetDepthWriteEnableEXT) \
-   X(CmdSetDepthCompareOpEXT) X(CmdSetPrimitiveTopologyEXT)
+   X(CmdSetDepthCompareOpEXT) X(CmdSetPrimitiveTopologyEXT) \
+   X(CmdSetColorBlendEnableEXT) X(CmdSetColorBlendEquationEXT) X(CmdSetDepthClampEnableEXT)
 
 typedef struct vkr_fn
 {
@@ -170,7 +173,8 @@ typedef struct pipe_job
 {
    mpsc_stack_node_t node;
    pipe_entry *entry;
-   vkr_program *program;
+   vkr_program *program;       /* NULL: vs and fs below are all it needs */
+   VkShaderModule vs, fs;
    uint64_t key;
 } pipe_job;
 
@@ -189,7 +193,7 @@ typedef struct pipe_state
    unsigned blend_en : 1, src : 4, dst : 4, src_a : 4, dst_a : 4;
    unsigned rp : 5;
    unsigned rect : 1, kind : 3;
-   unsigned depth_clamp : 1, bias : 1, lines : 1;
+   unsigned depth_clamp : 1, lines : 1;
    unsigned cull : 2, depth_test : 1, depth_write : 1, depth_cmp : 2, strip : 1;
 } pipe_state;
 
@@ -203,6 +207,7 @@ struct vkr_renderer
    vkr_shader_config cfg;
    vkr_caps caps;
    int eds;
+   int eds3; /* blending and depth clamp are dynamic state */
    VkFormat depth_format;
 
    VkPipelineCache cache;
@@ -276,12 +281,13 @@ struct vkr_renderer
    int push_clip_sent;
    int cur_rect;
    int force_generic;
+   int strict; /* tools/ci: a pipeline prewarm did not build is a failure */
    char cache_path[1024];
    VkDeviceSize vb_offset, ib_offset;
    int vb_valid, ib_valid;
 };
 
-enum { D_VIEWPORT = 1, D_SCISSOR = 2, D_BIAS = 4, D_BLEND = 8, D_LINE = 16, D_EDS = 32, D_ALL = 63 };
+enum { D_VIEWPORT = 1, D_SCISSOR = 2, D_BIAS = 4, D_BLEND = 8, D_LINE = 16, D_EDS = 32, D_EDS3 = 64, D_ALL = 127 };
 
 #define F(N) (r->fn.N)
 
@@ -1317,6 +1323,13 @@ static void framebuffer_height(const vkr_renderer *r, int *h)
    *h = (int)r->f->win_h;
 }
 
+static const VkBlendFactor blend_factors[11] = {
+   VK_BLEND_FACTOR_ZERO, VK_BLEND_FACTOR_ONE, VK_BLEND_FACTOR_SRC_ALPHA, VK_BLEND_FACTOR_DST_ALPHA,
+   VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA, VK_BLEND_FACTOR_CONSTANT_ALPHA, VK_BLEND_FACTOR_ONE_MINUS_CONSTANT_ALPHA,
+   VK_BLEND_FACTOR_SRC1_COLOR, VK_BLEND_FACTOR_ONE_MINUS_SRC1_COLOR, VK_BLEND_FACTOR_SRC1_ALPHA,
+   VK_BLEND_FACTOR_ONE_MINUS_SRC1_ALPHA
+};
+
 static void flush_dynamic(vkr_renderer *r)
 {
    if (r->dirty & D_VIEWPORT)
@@ -1383,7 +1396,10 @@ static void flush_dynamic(vkr_renderer *r)
    }
 scissor_done:
    if (r->dirty & D_BIAS)
-      F(CmdSetDepthBias)(r->cmd, r->bias_units, 0.f, r->bias_factor);
+   {
+      int on = r->enable[VKR_CAP_POLY_OFFSET];
+      F(CmdSetDepthBias)(r->cmd, on ? r->bias_units : 0.f, 0.f, on ? r->bias_factor : 0.f);
+   }
    if (r->dirty & D_BLEND)
       F(CmdSetBlendConstants)(r->cmd, r->blend_color);
    if (r->dirty & D_LINE)
@@ -1398,6 +1414,20 @@ scissor_done:
       F(CmdSetDepthWriteEnableEXT)(r->cmd, r->depth_write_on ? VK_TRUE : VK_FALSE);
       F(CmdSetDepthCompareOpEXT)(r->cmd, cmp[r->depth_cmp]);
    }
+   if ((r->dirty & D_EDS3) && r->eds3)
+   {
+      VkBool32 on = r->enable[VKR_CAP_BLEND] ? VK_TRUE : VK_FALSE;
+      VkColorBlendEquationEXT eq;
+      eq.srcColorBlendFactor = blend_factors[r->st.src];
+      eq.dstColorBlendFactor = blend_factors[r->st.dst];
+      eq.colorBlendOp = VK_BLEND_OP_ADD;
+      eq.srcAlphaBlendFactor = blend_factors[r->st.src_a];
+      eq.dstAlphaBlendFactor = blend_factors[r->st.dst_a];
+      eq.alphaBlendOp = VK_BLEND_OP_ADD;
+      F(CmdSetColorBlendEnableEXT)(r->cmd, 0, 1, &on);
+      F(CmdSetColorBlendEquationEXT)(r->cmd, 0, 1, &eq);
+      F(CmdSetDepthClampEnableEXT)(r->cmd, r->depth_clamp ? VK_TRUE : VK_FALSE);
+   }
    r->dirty = 0;
 }
 
@@ -1411,7 +1441,11 @@ static uint64_t state_key(const vkr_renderer *r, int rect, int lines, int strip)
    if (!s.blend_en)
       s.src = s.dst = s.src_a = s.dst_a = 0;
    s.depth_clamp = r->depth_clamp ? 1 : 0;
-   s.bias        = r->enable[VKR_CAP_POLY_OFFSET] ? 1 : 0;
+   if (r->eds3)
+   {
+      s.blend_en = s.src = s.dst = s.src_a = s.dst_a = 0;
+      s.depth_clamp = 0;
+   }
    s.rect        = rect ? 1 : 0;
    s.lines       = lines ? 1 : 0;
    s.kind        = 0;
@@ -1434,12 +1468,6 @@ static uint64_t state_key(const vkr_renderer *r, int rect, int lines, int strip)
 
 static VkPipeline build_pipeline(vkr_renderer *r, VkShaderModule vs, VkShaderModule fs, uint64_t key)
 {
-   static const VkBlendFactor factors[11] = {
-      VK_BLEND_FACTOR_ZERO, VK_BLEND_FACTOR_ONE, VK_BLEND_FACTOR_SRC_ALPHA, VK_BLEND_FACTOR_DST_ALPHA,
-      VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA, VK_BLEND_FACTOR_CONSTANT_ALPHA, VK_BLEND_FACTOR_ONE_MINUS_CONSTANT_ALPHA,
-      VK_BLEND_FACTOR_SRC1_COLOR, VK_BLEND_FACTOR_ONE_MINUS_SRC1_COLOR, VK_BLEND_FACTOR_SRC1_ALPHA,
-      VK_BLEND_FACTOR_ONE_MINUS_SRC1_ALPHA
-   };
    static const VkCullModeFlags cull[4] = { VK_CULL_MODE_NONE, VK_CULL_MODE_FRONT_BIT, VK_CULL_MODE_BACK_BIT, VK_CULL_MODE_FRONT_AND_BACK };
    static const VkCompareOp cmp[3] = { VK_COMPARE_OP_LESS_OR_EQUAL, VK_COMPARE_OP_LESS, VK_COMPARE_OP_ALWAYS };
    static const VkDynamicState base_dyn[5] = {
@@ -1450,7 +1478,7 @@ static VkPipeline build_pipeline(vkr_renderer *r, VkShaderModule vs, VkShaderMod
       VK_DYNAMIC_STATE_CULL_MODE_EXT, VK_DYNAMIC_STATE_FRONT_FACE_EXT, VK_DYNAMIC_STATE_DEPTH_TEST_ENABLE_EXT,
       VK_DYNAMIC_STATE_DEPTH_WRITE_ENABLE_EXT, VK_DYNAMIC_STATE_DEPTH_COMPARE_OP_EXT, VK_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY_EXT
    };
-   VkDynamicState dyn[11];
+   VkDynamicState dyn[14];
    pipe_state s;
    VkPipelineShaderStageCreateInfo stages[2];
    VkVertexInputBindingDescription vb;
@@ -1533,7 +1561,7 @@ static VkPipeline build_pipeline(vkr_renderer *r, VkShaderModule vs, VkShaderMod
    rs.polygonMode = VK_POLYGON_MODE_FILL;
    rs.cullMode = cull[s.cull];
    rs.frontFace = VK_FRONT_FACE_CLOCKWISE;
-   rs.depthBiasEnable = s.bias ? VK_TRUE : VK_FALSE;
+   rs.depthBiasEnable = VK_TRUE; /* off is zero: one pipeline less each way */
    rs.lineWidth = 1.f;
 
    memset(&ms, 0, sizeof(ms));
@@ -1548,11 +1576,11 @@ static VkPipeline build_pipeline(vkr_renderer *r, VkShaderModule vs, VkShaderMod
 
    memset(&cba, 0, sizeof(cba));
    cba.blendEnable = s.blend_en ? VK_TRUE : VK_FALSE;
-   cba.srcColorBlendFactor = factors[s.src];
-   cba.dstColorBlendFactor = factors[s.dst];
+   cba.srcColorBlendFactor = blend_factors[s.src];
+   cba.dstColorBlendFactor = blend_factors[s.dst];
    cba.colorBlendOp = VK_BLEND_OP_ADD;
-   cba.srcAlphaBlendFactor = factors[s.src_a];
-   cba.dstAlphaBlendFactor = factors[s.dst_a];
+   cba.srcAlphaBlendFactor = blend_factors[s.src_a];
+   cba.dstAlphaBlendFactor = blend_factors[s.dst_a];
    cba.alphaBlendOp = VK_BLEND_OP_ADD;
    cba.colorWriteMask = 0xf;
 
@@ -1562,6 +1590,12 @@ static VkPipeline build_pipeline(vkr_renderer *r, VkShaderModule vs, VkShaderMod
    cb.pAttachments = &cba;
 
    memset(&dy, 0, sizeof(dy));
+   if (r->eds3)
+   {
+      dyn[n++] = VK_DYNAMIC_STATE_COLOR_BLEND_ENABLE_EXT;
+      dyn[n++] = VK_DYNAMIC_STATE_COLOR_BLEND_EQUATION_EXT;
+      dyn[n++] = VK_DYNAMIC_STATE_DEPTH_CLAMP_ENABLE_EXT;
+   }
    dy.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
    dy.dynamicStateCount = n;
    dy.pDynamicStates = dyn;
@@ -1608,20 +1642,19 @@ static void pipeline_work(void *user, mpsc_stack_node_t *node)
    VkPipeline pipe = VK_NULL_HANDLE;
 
    if (!p)
+      pipe = build_pipeline(r, job->vs, job->fs, job->key);
+   else
    {
-      pipe_state st;
-      memcpy(&st, &job->key, sizeof(st) < sizeof(job->key) ? sizeof(st) : sizeof(job->key));
-      pipe = build_pipeline(r, r->vs[st.rect ? VKR_VS_RECT : VKR_VS_TRIANGLE], r->generic_fs, job->key);
+      if (p->fs == VK_NULL_HANDLE)
+      {
+         unsigned count = 0;
+         const uint32_t *words = vkr_write_combiner(&r->worker_spv, &r->cfg, &p->desc, 0, &count);
+         if (words)
+            p->fs = make_module(r, words, count);
+      }
+      if (p->fs != VK_NULL_HANDLE)
+         pipe = build_pipeline(r, r->vs[p->rect ? VKR_VS_RECT : VKR_VS_TRIANGLE], p->fs, job->key);
    }
-   else if (p->fs == VK_NULL_HANDLE)
-   {
-      unsigned count = 0;
-      const uint32_t *words = vkr_write_combiner(&r->worker_spv, &r->cfg, &p->desc, 0, &count);
-      if (words)
-         p->fs = make_module(r, words, count);
-   }
-   if (p && p->fs != VK_NULL_HANDLE)
-      pipe = build_pipeline(r, r->vs[p->rect ? VKR_VS_RECT : VKR_VS_TRIANGLE], p->fs, job->key);
 
    /* published in its own entry, the moment it exists */
    job->entry->pipeline = pipe;
@@ -1664,24 +1697,47 @@ static pipe_entry *pipe_lookup(vkr_renderer *r, uint32_t prog, uint64_t key)
    return NULL; /* a run this long: this state stays on the generic pipeline */
 }
 
-/* The generic pipeline for this state: built here the first time, or ahead. */
-static VkPipeline generic_pipeline(vkr_renderer *r, uint64_t key, int rect)
+/* Hands a pipeline to the worker; a full queue leaves it for next time. */
+static int pipe_queue(vkr_renderer *r, pipe_entry *e, vkr_program *p,
+      VkShaderModule vs, VkShaderModule fs, uint64_t key)
 {
-   pipe_entry *e = pipe_lookup(r, 0, key);
-   VkPipeline p;
-
-   if (e && retro_atomic_load_acquire_int(&e->status) == PS_READY)
-      return e->pipeline;
-   p = build_pipeline(r, r->vs[rect ? VKR_VS_RECT : VKR_VS_TRIANGLE], r->generic_fs, key);
-   if (e && p != VK_NULL_HANDLE)
-   {
-      e->pipeline = p;
-      retro_atomic_store_release_int(&e->status, PS_READY);
-   }
-   return p;
+   pipe_job *job = job_take(r);
+   if (!job)
+      return 0;
+   job->entry = e;
+   job->program = p;
+   job->vs = vs;
+   job->fs = fs;
+   job->key = key;
+   retro_atomic_store_release_int(&e->status, PS_PENDING);
+   retro_atomic_fetch_add_int(&r->job_count, 1);
+   rdp_worker_push(r->worker, &job->node);
+   return 1;
 }
 
-static void bind_for_draw(vkr_renderer *r, int rect, int lines, int strip)
+static uint32_t special_id(int vs, int fs)
+{
+   return 0x80000000u | ((uint32_t)vs << 8) | (uint32_t)fs;
+}
+
+/* A generic or special pipeline. prewarm built every one the renderer can
+ * ask for, so this finds it. Should a state ever be missed, the draw thread
+ * still never compiles: the worker builds it for the next frame. */
+static VkPipeline fixed_pipeline(vkr_renderer *r, uint32_t prog, VkShaderModule vs, VkShaderModule fs, uint64_t key)
+{
+   pipe_entry *e = pipe_lookup(r, prog, key);
+   int status = e ? retro_atomic_load_acquire_int(&e->status) : PS_FAILED;
+
+   if (status == PS_READY)
+      return e->pipeline;
+   if (r->strict)
+      abort(); /* tools/ci: prewarm no longer covers what the renderer draws */
+   if (status == PS_EMPTY)
+      pipe_queue(r, e, NULL, vs, fs, key);
+   return VK_NULL_HANDLE;
+}
+
+static int bind_for_draw(vkr_renderer *r, int rect, int lines, int strip)
 {
    vkr_program *p = r->current;
    VkPipeline pipe = VK_NULL_HANDLE;
@@ -1690,24 +1746,11 @@ static void bind_for_draw(vkr_renderer *r, int rect, int lines, int strip)
    int generic = 0;
 
    if (!p)
-      return;
+      return 0;
    key = state_key(r, rect, lines, strip);
 
    if (p->is_special)
-   {
-      pipe_entry *e = pipe_lookup(r, p->id, key);
-      if (e && retro_atomic_load_acquire_int(&e->status) == PS_READY)
-         pipe = e->pipeline;
-      else
-      {
-         pipe = build_pipeline(r, r->vs[p->vs_kind], r->special_fs[p->fs_kind], key);
-         if (e && pipe != VK_NULL_HANDLE)
-         {
-            e->pipeline = pipe;
-            retro_atomic_store_release_int(&e->status, PS_READY);
-         }
-      }
-   }
+      pipe = fixed_pipeline(r, special_id(p->vs_kind, p->fs_kind), r->vs[p->vs_kind], r->special_fs[p->fs_kind], key);
    else
    {
       pipe_entry *e = pipe_lookup(r, p->id, key);
@@ -1717,25 +1760,13 @@ static void bind_for_draw(vkr_renderer *r, int rect, int lines, int strip)
       else
       {
          if (status == PS_EMPTY)
-         {
-            /* a full queue defers this: the generic pipeline covers it */
-            pipe_job *job = job_take(r);
-            if (job)
-            {
-               job->entry = e;
-               job->program = p;
-               job->key = key;
-               retro_atomic_store_release_int(&e->status, PS_PENDING);
-               retro_atomic_fetch_add_int(&r->job_count, 1);
-               rdp_worker_push(r->worker, &job->node);
-            }
-         }
-         pipe = generic_pipeline(r, key, rect);
+            pipe_queue(r, e, p, VK_NULL_HANDLE, VK_NULL_HANDLE, key);
+         pipe = fixed_pipeline(r, 0, r->vs[rect ? VKR_VS_RECT : VKR_VS_TRIANGLE], r->generic_fs, key);
          generic = 1;
       }
    }
    if (pipe == VK_NULL_HANDLE)
-      return;
+      return 0;
    if (pipe != r->bound_pipe)
    {
       F(CmdBindPipeline)(r->cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipe);
@@ -1768,6 +1799,7 @@ static void bind_for_draw(vkr_renderer *r, int rect, int lines, int strip)
             68, 4, &push.clip_enable);
       r->push_clip_sent = r->clip;
    }
+   return 1;
 }
 
 static uint32_t image_key(const vkr_renderer *r, unsigned h)
@@ -1913,8 +1945,7 @@ static int draw_begin(vkr_renderer *r, int rect, int lines, int strip)
 
    if (r->dirty)
       flush_dynamic(r);
-   bind_for_draw(r, rect, lines, strip);
-   if (r->bound_pipe == VK_NULL_HANDLE)
+   if (!bind_for_draw(r, rect, lines, strip))
       return 0;
 
    set = descriptors(r);
@@ -2022,6 +2053,10 @@ void vkr_enable(vkr_renderer *r, int cap, int on)
       r->dirty |= D_SCISSOR;
    else if (cap == VKR_CAP_CULL || cap == VKR_CAP_DEPTH_TEST)
       r->dirty |= D_EDS;
+   else if (cap == VKR_CAP_POLY_OFFSET)
+      r->dirty |= D_BIAS;
+   else if (cap == VKR_CAP_BLEND)
+      r->dirty |= D_EDS3;
 }
 
 int vkr_is_enabled(const vkr_renderer *r, int cap) { return r->enable[cap]; }
@@ -2029,6 +2064,7 @@ int vkr_is_enabled(const vkr_renderer *r, int cap) { return r->enable[cap]; }
 void vkr_set_clamp(vkr_renderer *r, int depth_clamp, int clip)
 {
    r->depth_clamp = depth_clamp;
+   r->dirty |= D_EDS3;
    r->clip = clip;
 }
 
@@ -2083,6 +2119,7 @@ void vkr_blend(vkr_renderer *r, int src, int dst, int src_a, int dst_a)
 {
    r->st.src = (unsigned)src;
    r->st.dst = (unsigned)dst;
+   r->dirty |= D_EDS3;
    r->st.src_a = (unsigned)src_a;
    r->st.dst_a = (unsigned)dst_a;
 }
@@ -2621,6 +2658,10 @@ static void save_cache(vkr_renderer *r)
       return;
    if (F(GetPipelineCacheData)(r->device, r->cache, &size, data) == VK_SUCCESS)
    {
+      char dir[1024];
+      /* a first run has no directory yet, and the save would be lost */
+      fill_pathname_basedir(dir, r->cache_path, sizeof(dir));
+      path_mkdir(dir);
       f = filestream_open(r->cache_path, RETRO_VFS_FILE_ACCESS_WRITE, RETRO_VFS_FILE_ACCESS_HINT_NONE);
       if (f)
       {
@@ -2774,70 +2815,94 @@ static void load_functions(vkr_renderer *r)
 #undef X
 }
 
-/* The generic pipelines of the states games use, built before the first
- * frame: a draw then always has its generic pipeline to fall back on. */
+/* Queues one pipeline; at load, and only here, waits for room. */
+static void prewarm_one(vkr_renderer *r, uint32_t prog, VkShaderModule vs, VkShaderModule fs, uint64_t key)
+{
+   pipe_entry *e = pipe_lookup(r, prog, key);
+   if (!e || retro_atomic_load_acquire_int(&e->status) != PS_EMPTY)
+      return;
+   while (!pipe_queue(r, e, NULL, vs, fs, key))
+      rdp_worker_wait(r->worker, jobs_done, r);
+}
+
+/* Every generic and special pipeline the renderer can ask for, before the
+ * first frame, so no draw ever compiles or waits. The pairs are all the ones
+ * _setBlendMode and _legacySetBlendMode can set. */
 static void prewarm(vkr_renderer *r)
 {
-   static const unsigned char pairs[8][2] = {
+   static const unsigned char pairs[20][2] = {
       { VKR_BLEND_ONE, VKR_BLEND_ZERO },
+      { VKR_BLEND_ONE, VKR_BLEND_ONE },
+      { VKR_BLEND_ONE, VKR_BLEND_SRC_ALPHA },
+      { VKR_BLEND_ONE, VKR_BLEND_INV_SRC_ALPHA },
+      { VKR_BLEND_ONE, VKR_BLEND_DST_ALPHA },
+      { VKR_BLEND_ONE, VKR_BLEND_CONST_ALPHA },
+      { VKR_BLEND_ONE, VKR_BLEND_INV_CONST_ALPHA },
+      { VKR_BLEND_DST_ALPHA, VKR_BLEND_ZERO },
+      { VKR_BLEND_DST_ALPHA, VKR_BLEND_ONE },
+      { VKR_BLEND_DST_ALPHA, VKR_BLEND_SRC_ALPHA },
+      { VKR_BLEND_DST_ALPHA, VKR_BLEND_INV_SRC_ALPHA },
+      { VKR_BLEND_DST_ALPHA, VKR_BLEND_DST_ALPHA },
+      { VKR_BLEND_DST_ALPHA, VKR_BLEND_CONST_ALPHA },
+      { VKR_BLEND_DST_ALPHA, VKR_BLEND_INV_CONST_ALPHA },
       { VKR_BLEND_ZERO, VKR_BLEND_ONE },
+      { VKR_BLEND_ZERO, VKR_BLEND_INV_SRC_ALPHA },
       { VKR_BLEND_SRC_ALPHA, VKR_BLEND_INV_SRC_ALPHA },
       { VKR_BLEND_SRC_ALPHA, VKR_BLEND_ONE },
-      { VKR_BLEND_DST_ALPHA, VKR_BLEND_INV_SRC_ALPHA },
-      { VKR_BLEND_CONST_ALPHA, VKR_BLEND_INV_SRC_ALPHA },
-      { VKR_BLEND_SRC_ALPHA, VKR_BLEND_ZERO },
-      { VKR_BLEND_ONE, VKR_BLEND_INV_SRC_ALPHA }
+      { VKR_BLEND_SRC_ALPHA, VKR_BLEND_DST_ALPHA },
+      { VKR_BLEND_INV_SRC_ALPHA, VKR_BLEND_SRC_ALPHA }
    };
-   int rps[3];
-   unsigned n_rps = 0, p, rect, clampf, bias, k;
+   /* the fs of every special, and the vs each goes with */
+   static const unsigned char specials[VKR_FS_COUNT][2] = {
+      { VKR_VS_SPECIAL, VKR_FS_SHADOW_MAP },
+      { VKR_VS_SPECIAL, VKR_FS_TEXRECT_DRAW },
+      { VKR_VS_SPECIAL, VKR_FS_TEXRECT_CLEAR },
+      { VKR_VS_SPECIAL, VKR_FS_TEXRECT_COPY },
+      { VKR_VS_SPECIAL, VKR_FS_GAMMA },
+      { VKR_VS_FXAA, VKR_FS_FXAA }
+   };
+   int rps[4];
+   unsigned n_rps = 0, p, clampf, shape, k, i;
    int depth;
 
    rps[n_rps++] = get_render_pass(r, VK_FORMAT_R8G8B8A8_UNORM, VK_FORMAT_UNDEFINED, 1);
    rps[n_rps++] = get_render_pass(r, VK_FORMAT_R8G8B8A8_UNORM, r->depth_format, 1);
    if (r->cfg.msaa)
+   {
       rps[n_rps++] = get_render_pass(r, VK_FORMAT_R8G8B8A8_UNORM, r->depth_format, (uint32_t)r->cfg.msaa);
+      rps[n_rps++] = get_render_pass(r, VK_FORMAT_R8G8B8A8_UNORM, VK_FORMAT_UNDEFINED, (uint32_t)r->cfg.msaa);
+   }
 
    for (k = 0; k < n_rps; k++)
    {
       if (rps[k] < 0)
          continue;
       r->st.rp = (unsigned)rps[k];
-      for (depth = 0; depth < 2; depth++)
-      for (p = 0; p < 9; p++)
-      for (rect = 0; rect < 2; rect++)
+      for (depth = 0; depth < (r->eds ? 1 : 2); depth++)
+      for (p = 0; p <= 20; p++)
       for (clampf = 0; clampf < 2; clampf++)
-      for (bias = 0; bias < 2; bias++)
+      for (shape = 0; shape < 3; shape++) /* triangles, rects, lines */
       {
-         pipe_entry *e;
-         pipe_job *job;
-         uint64_t key;
-
          r->enable[VKR_CAP_BLEND] = p != 0;
          if (p)
          {
             r->st.src = r->st.src_a = pairs[p - 1][0];
             r->st.dst = r->st.dst_a = pairs[p - 1][1];
          }
-         r->enable[VKR_CAP_POLY_OFFSET] = (int)bias;
          r->depth_clamp = (int)clampf;
          r->enable[VKR_CAP_DEPTH_TEST] = depth;
-         key = state_key(r, (int)rect, 0, 0);
-         e = pipe_lookup(r, 0, key);
-         if (!e || retro_atomic_load_acquire_int(&e->status) != PS_EMPTY)
+         prewarm_one(r, 0, r->vs[shape == 1 ? VKR_VS_RECT : VKR_VS_TRIANGLE], r->generic_fs,
+               state_key(r, shape == 1, shape == 2, 0));
+         if (shape == 2)
             continue;
-         job = job_take(r);
-         if (!job)
-            continue; /* the rest are built when first needed */
-         job->entry = e;
-         job->program = NULL;
-         job->key = key;
-         retro_atomic_store_release_int(&e->status, PS_PENDING);
-         retro_atomic_fetch_add_int(&r->job_count, 1);
-         rdp_worker_push(r->worker, &job->node);
+         for (i = 0; i < VKR_FS_COUNT; i++)
+            /* only the shadow map is drawn blended: the rest turn it off */
+            if (p == 0 || specials[i][1] == VKR_FS_SHADOW_MAP)
+               prewarm_one(r, special_id(specials[i][0], specials[i][1]), r->vs[specials[i][0]],
+                     r->special_fs[specials[i][1]], state_key(r, shape == 1, 0, 0));
       }
    }
    r->enable[VKR_CAP_BLEND] = 0;
-   r->enable[VKR_CAP_POLY_OFFSET] = 0;
    r->enable[VKR_CAP_DEPTH_TEST] = 0;
    r->depth_clamp = 0;
    r->st.src = r->st.dst = r->st.src_a = r->st.dst_a = 0;
@@ -2885,6 +2950,10 @@ vkr_renderer *vkr_create(const struct retro_hw_render_interface_vulkan *vk, cons
    r->eds = r->fn.CmdSetCullModeEXT != NULL && r->fn.CmdSetDepthCompareOpEXT != NULL;
    /* for tools/ci: every combiner through the generic shader */
    r->force_generic = getenv("GLIDEN64_VULKAN") != NULL && strcmp(getenv("GLIDEN64_VULKAN"), "generic") == 0;
+   r->strict = getenv("GLIDEN64_VULKAN_STRICT") != NULL;
+   /* tools/ci: GPUs without it take the other path, and it stays tested */
+   r->eds3 = r->eds && r->fn.CmdSetColorBlendEnableEXT != NULL && gliden64_vulkan_has_dynamic_blend()
+         && getenv("GLIDEN64_VULKAN_NO_EDS3") == NULL;
    get_format(vk->gpu, VK_FORMAT_D32_SFLOAT, &fp);
    r->depth_format = (fp.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT)
       ? VK_FORMAT_D32_SFLOAT : VK_FORMAT_X8_D24_UNORM_PACK32;

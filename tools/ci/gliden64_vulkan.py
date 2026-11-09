@@ -23,7 +23,7 @@ def run(host, core, rom, tmp, name, frames, api, env_extra, options=()):
     dump = os.path.join(tmp, name)
     os.makedirs(sysdir, exist_ok=True)
     os.makedirs(dump, exist_ok=True)
-    env = dict(os.environ, EGL_PLATFORM="surfaceless", LRHOST_SYSTEM_DIR=sysdir, LRHOST_DUMPDIR=dump,
+    env = dict(os.environ, EGL_PLATFORM="surfaceless", LRHOST_SYSTEM_DIR=sysdir, LRHOST_DUMPDIR=dump, GLIDEN64_VULKAN_STRICT="1",
                LRHOST_DUMP_FROM="1", LRHOST_DUMP_TO=str(frames))
     env.update(env_extra)
     p = subprocess.run([host, core, rom, str(frames)] + OPTIONS + list(options) + ["parallel-n64-gliden64-API=" + api],
@@ -93,6 +93,10 @@ def main():
         failures += compare(a, "cart0", rom, 8)
     for name in (cart.KROM[:1] if a.quick else cart.KROM):
         failures += compare(a, name, cart.fetch(a.roms, name), 20 if a.quick else 60)
+    # GPUs without dynamic blending build a pipeline for each state instead
+    if not a.quick:
+        failures += compare(a, "static", cart.fetch(a.roms, "cube32"), 20,
+                            modes=(("no-eds3", {"GLIDEN64_VULKAN_NO_EDS3": "1"}),))
     # what shapes the shaders and the targets
     for opt in () if a.quick else ("MultiSampling=4", "EnableN64DepthCompare=True", "BilinearMode=standard",
                 "EnableCopyColorToRDRAM=Sync", "EnableCopyColorToRDRAM=Async"):
