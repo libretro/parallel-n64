@@ -188,6 +188,26 @@ void gli_drawer_draw_screen_triangles(u32 _numVtx)
 	dwnd().getDrawer().drawScreenSpaceTriangle(_numVtx, graphics::drawmode::TRIANGLES);
 }
 
+SPVertex * gli_drawer_take_dma_vertices(u32 _n)
+{
+	GraphicsDrawer & drawer = dwnd().getDrawer();
+	SPVertex * first;
+	u32 i;
+	/* flush rather than grow: the vector must not move under a game */
+	if (drawer.getDMAVerticesCount() + _n > drawer.getDMAVerticesCapacity())
+		drawer.drawDMATriangles(drawer.getDMAVerticesCount());
+	first = &drawer.getCurrentDMAVertex();
+	for (i = 1; i < _n; ++i)
+		drawer.getCurrentDMAVertex();
+	return first;
+}
+
+void gli_drawer_draw_dma_pending(void)
+{
+	GraphicsDrawer & drawer = dwnd().getDrawer();
+	drawer.drawDMATriangles(drawer.getDMAVerticesCount());
+}
+
 void gli_drawer_draw_screen_strip(u32 _numVtx)
 {
 	dwnd().getDrawer().drawScreenSpaceTriangle(_numVtx);

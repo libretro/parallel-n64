@@ -1853,6 +1853,11 @@ u32 gSPLoadSWVertexData(const SWVertex *orgVtx, SPVertex * spVtx, u32 vi, u32 n)
 	return vi;
 }
 
+void gli_gSPSWVertexN(const SWVertex * vertex, u32 n)
+{
+	gli_gSPSWVertex(vertex, n, nullptr);
+}
+
 void gli_gSPSWVertex(const SWVertex * vertex, u32 n, const bool * const verticesToProcess)
 {
 

@@ -1784,6 +1784,7 @@ test_glide64_fb_readback$(EXE_EXT): tools/test_glide64_fb_readback.c $(VIDEODIR_
 
 # GLideN64 is moving to C89 a file at a time: what has moved stays there
 GLIDEN64_C89 := N64.c convert.c RSP_LoadMatrix.c 3DMath.c CRC32.c \
+	uCodes/F5Rogue.c \
 	uCodes/S2DEX.c \
 	uCodes/ZSort.c uCodes/ZSortBOSS.c \
 	uCodes/T3DUX.c uCodes/Turbo3D.c \

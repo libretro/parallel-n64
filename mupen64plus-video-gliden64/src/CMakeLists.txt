@@ -92,7 +92,7 @@ set(GLideN64_SOURCES
   uCodes/F3DPD.c
   uCodes/F3DSETA.c
   uCodes/F5Indi_Naboo.cpp
-  uCodes/F5Rogue.cpp
+  uCodes/F5Rogue.c
   uCodes/L3D.c
   uCodes/L3DEX2.c
   uCodes/L3DEX.c

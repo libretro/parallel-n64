@@ -14,6 +14,8 @@ SPVertex *gli_drawer_dma_vertices(u32 _atLeast);
 void gli_drawer_draw_triangles(void);
 void gli_drawer_draw_dma_triangles(u32 _numVtx);
 void gli_drawer_draw_screen_triangles(u32 _numVtx);
+SPVertex *gli_drawer_take_dma_vertices(u32 _n);
+void gli_drawer_draw_dma_pending(void);
 void gli_drawer_draw_screen_strip(u32 _numVtx);
 
 /* all three vertices outside the same clip plane */

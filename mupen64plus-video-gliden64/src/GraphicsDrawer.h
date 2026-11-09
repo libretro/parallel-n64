@@ -138,6 +138,7 @@ public:
 
 	SPVertex & getCurrentDMAVertex();
 	u32 getDMAVerticesCount() const { return m_dmaVerticesNum; }
+	u32 getDMAVerticesCapacity() const { return (u32)m_dmaVertices.size(); }
 
 	void updateScissor(FrameBuffer * _pBuffer) const;
 
