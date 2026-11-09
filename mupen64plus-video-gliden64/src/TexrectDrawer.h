@@ -1,58 +1,41 @@
 #ifndef TEXRECTDRAWER_H
 #define TEXRECTDRAWER_H
 
-#include <memory>
-#include <vector>
-#include "gDP.h"
-#include "Graphics/ObjectHandle.h"
-#include "Graphics/ShaderProgram.h"
+#include <boolean.h>
+#include "Types.h"
+#include "gSP.h"
 
-struct CachedTexture;
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct FrameBuffer;
 
-class TexrectDrawer
-{
-public:
-	TexrectDrawer();
+void gli_texrect_init(void);
+void gli_texrect_destroy(void);
+bool gli_texrect_add_rect(void);
+void gli_texrect_add_background_rect(void);
+bool gli_texrect_draw(void);
+bool gli_texrect_is_empty(void);
+bool gli_texrect_can_continue(void);
 
-	void init();
-	void destroy();
-	bool addRect();
-	void addBackgroundRect();
-	bool draw();
-	bool isEmpty() const;
-	bool canContinue() const;
+/* TexrectDrawerGpu.cpp: the GPU work */
+void gli_texrect_gpu_init(void);
+void gli_texrect_gpu_destroy(void);
+RectVertex * gli_texrect_gpu_rect(void);
+void gli_texrect_gpu_begin(u32 _width, u32 _height, s32 _sx, s32 _sy, s32 _sw, s32 _sh);
+void gli_texrect_gpu_restart(void);
+void gli_texrect_gpu_draw_rect(RectVertex * _pRect);
+void gli_texrect_gpu_set_blend(void);
+void gli_texrect_gpu_update_depth_compare(void);
+void gli_texrect_gpu_scales(const struct FrameBuffer * _pBuffer, f32 * _x, f32 * _y);
+void gli_texrect_gpu_begin_composite(const struct FrameBuffer * _pBuffer, int _alphaTest);
+void gli_texrect_gpu_update_scissor(struct FrameBuffer * _pBuffer);
+void gli_texrect_gpu_composite(RectVertex * _rect);
+void gli_texrect_gpu_clear(RectVertex * _rect, u32 _width, u32 _height);
 
-private:
-	void _setViewport() const;
-	void _setDrawBuffer();
-	bool _lookAhead(bool _checkCoordinates) const;
+#ifdef __cplusplus
+}
+#endif
 
-	u32 m_numRects;
-	u64 m_otherMode;
-	u64 m_mux;
-	f32 m_ulx, m_lrx, m_uly, m_lry, m_Z;
-	s32 m_ulx_i, m_uly_i, m_lry_i;
-	f32 m_max_lrx, m_max_lry;
-	f32 m_stepY;
-	f32 m_stepX;
-	graphics::ObjectHandle m_FBO;
-	gDPScissor m_scissor;
-	CachedTexture * m_pTexture;
-	FrameBuffer * m_pBuffer;
-	std::unique_ptr<graphics::TexrectDrawerShaderProgram> m_programTex;
-	std::unique_ptr<graphics::ShaderProgram> m_programClear;
-
-	struct RectCoords {
-		s32 x, y;
-	};
-	std::vector<RectCoords> m_vecRectCoords;
-
-	struct iRect {
-		s32 ulx = 0, uly = 0, lrx = 0, lry = 0;
-	};
-	iRect _getiRect(u32 w0, u32 w1) const;
-	iRect m_curRect;
-};
-
-#endif // TEXRECTDRAWER_H
+#endif /* TEXRECTDRAWER_H */

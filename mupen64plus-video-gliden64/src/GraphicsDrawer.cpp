@@ -798,7 +798,7 @@ void GraphicsDrawer::_updateStates(DrawingState _drawingState) const
 
 void GraphicsDrawer::_prepareDrawTriangle()
 {
-	m_texrectDrawer.draw();
+	gli_texrect_draw();
 
 	if ((m_modifyVertices & MODIFY_XY) != 0)
 		gSP.changed &= ~CHANGED_VIEWPORT;
@@ -1001,7 +1001,7 @@ void GraphicsDrawer::_drawThickLine(u32 _v0, u32 _v1, float _width, u32 _flag)
 
 void GraphicsDrawer::drawLine(u32 _v0, u32 _v1, float _width, u32 _flag)
 {
-	m_texrectDrawer.draw();
+	gli_texrect_draw();
 
 	if (!_canDraw())
 		return;
@@ -1063,7 +1063,7 @@ void _immersiveRectClip(RectVertex * _vertices, bool _fullScreen, const FrameBuf
 
 void GraphicsDrawer::drawRect(int _ulx, int _uly, int _lrx, int _lry)
 {
-	m_texrectDrawer.draw();
+	gli_texrect_draw();
 
 	if (!_canDraw())
 		return;
@@ -1280,15 +1280,15 @@ void GraphicsDrawer::drawTexturedRect(const TexturedRectParams & _params)
 	gSP.changed &= ~CHANGED_GEOMETRYMODE; // Don't update cull mode
 	m_drawingState = DrawingState::TexRect;
 
-	if (m_texrectDrawer.canContinue()) {
+	if (gli_texrect_can_continue()) {
 		CombinerInfo & cmbInfo = CombinerInfo::get();
 		cmbInfo.setPolygonMode(DrawingState::TexRect);
 		cmbInfo.update();
 		_updateTextures();
 		cmbInfo.updateParameters();
 	} else {
-		if (!m_texrectDrawer.isEmpty())
-			m_texrectDrawer.draw();
+		if (!gli_texrect_is_empty())
+			gli_texrect_draw();
 		gSP.changed &= ~CHANGED_GEOMETRYMODE; // Don't update cull mode
 		gSP.changed &= ~CHANGED_VIEWPORT; // Don't update viewport
 		if (_params.texrectCmd && (gSP.changed | gDP.changed) != 0)
@@ -1496,10 +1496,10 @@ void GraphicsDrawer::drawTexturedRect(const TexturedRectParams & _params)
 
 	if (bUseTexrectDrawer) {
 		if (m_bBGMode) {
-			m_texrectDrawer.addBackgroundRect();
+			gli_texrect_add_background_rect();
 			return;
 		}
-		if (m_texrectDrawer.addRect())
+		if (gli_texrect_add_rect())
 			return;
 	}
 
@@ -1786,7 +1786,7 @@ void GraphicsDrawer::_initData()
 	g_noiseTexture.init();
 	g_paletteTexture.init();
 	FBInfo::fbInfo.reset();
-	m_texrectDrawer.init();
+	gli_texrect_init();
 	m_drawingState = DrawingState::Non;
 	m_maxLineWidth = gfxContext.getMaxLineWidth();
 
@@ -1803,7 +1803,7 @@ void GraphicsDrawer::_initData()
 void GraphicsDrawer::_destroyData()
 {
 	m_drawingState = DrawingState::Non;
-	m_texrectDrawer.destroy();
+	gli_texrect_destroy();
 	g_paletteTexture.destroy();
 	g_zlutTexture.destroy();
 	g_noiseTexture.destroy();

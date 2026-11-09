@@ -376,6 +376,7 @@ CXXFLAGS += -DHAVE_GLIDEN64 -DMUPENPLUSAPI -D__LIBRETRO__
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/StereoJournal.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/N64.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/gDP.c
+SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/TexrectDrawer.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/gSP.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/GBI.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/RSP.c
@@ -437,7 +438,7 @@ SOURCES_CXX   += \
     $(VIDEODIR_GLIDEN64)/src/PaletteTexture.cpp                                                   \
     $(VIDEODIR_GLIDEN64)/src/PostProcessor.cpp                                                    \
     $(VIDEODIR_GLIDEN64)/src/StereoFrames.cpp                                                     \
-    $(VIDEODIR_GLIDEN64)/src/TexrectDrawer.cpp                                                    \
+    $(VIDEODIR_GLIDEN64)/src/TexrectDrawerGpu.cpp                                                    \
     $(VIDEODIR_GLIDEN64)/src/TextureFilterHandler.cpp                                             \
     $(VIDEODIR_GLIDEN64)/src/Textures.cpp                                                         \
     $(VIDEODIR_GLIDEN64)/src/ZlutTexture.cpp                                                      \

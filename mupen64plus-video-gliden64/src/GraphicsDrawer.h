@@ -138,15 +138,15 @@ public:
 
 	void dropRenderState() { m_drawingState = DrawingState::Non; }
 
-	void flush() { m_texrectDrawer.draw(); }
+	void flush() { gli_texrect_draw(); }
 
-	bool isTexrectDrawerMode() const { return !m_texrectDrawer.isEmpty(); }
+	bool isTexrectDrawerMode() const { return !gli_texrect_is_empty(); }
 
 	void setBackgroundDrawingMode(bool _mode) { m_bBGMode = _mode; }
 
 private:
 	friend class DisplayWindow;
-	friend TexrectDrawer;
+	friend struct TexrectGpu;
 
 	GraphicsDrawer();
 	~GraphicsDrawer();
@@ -191,5 +191,4 @@ private:
 	f32 m_maxLineWidth;
 	bool m_bFlatColors;
 	bool m_bBGMode;
-	TexrectDrawer m_texrectDrawer;
 };

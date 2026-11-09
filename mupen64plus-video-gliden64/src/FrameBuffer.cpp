@@ -1983,3 +1983,13 @@ void gli_fb_remove(u32 _address)
 {
 	frameBufferList().removeBuffer(_address);
 }
+
+void gli_fb_bind_draw(const FrameBuffer * _pBuffer)
+{
+	gfxContext.bindFramebuffer(bufferTarget::DRAW_FRAMEBUFFER, _pBuffer->m_FBO);
+}
+
+void gli_fb_set_current_draw_buffer(void)
+{
+	frameBufferList().setCurrentDrawBuffer();
+}

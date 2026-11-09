@@ -39,7 +39,8 @@ set(GLideN64_SOURCES
   RSP.c
   RSP_LoadMatrix.c
   SoftwareRender.c
-  TexrectDrawer.cpp
+  TexrectDrawer.c
+  TexrectDrawerGpu.cpp
   TextureFilterHandler.cpp
   Textures.cpp
   VI.c

@@ -24,6 +24,8 @@ bool gli_fb_is_cpu(const struct FrameBuffer *_pBuffer);
 void gli_fb_remove(u32 _address);
 u32 gli_fb_start_address(const struct FrameBuffer *_pBuffer);
 void gli_fb_make_current(u32 _address);
+void gli_fb_bind_draw(const struct FrameBuffer *_pBuffer);
+void gli_fb_set_current_draw_buffer(void);
 bool gli_fb_copy_depth(u32 _address);
 u32 gli_fb_width(const struct FrameBuffer *_pBuffer);
 bool gli_fb_is_valid_scanout(struct FrameBuffer *_pBuffer);

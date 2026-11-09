@@ -42,7 +42,8 @@ MY_LOCAL_SRC_FILES :=                                                           
     $(SRCDIR)/RDP.c                                                              \
     $(SRCDIR)/RSP.c                                                              \
     $(SRCDIR)/SoftwareRender.c                                                   \
-    $(SRCDIR)/TexrectDrawer.cpp                                                    \
+    $(SRCDIR)/TexrectDrawer.c                                                      \
+    $(SRCDIR)/TexrectDrawerGpu.cpp                                                    \
     $(SRCDIR)/TextureFilterHandler.cpp                                             \
     $(SRCDIR)/Textures.cpp                                                         \
     $(SRCDIR)/VI.c                                                               \
