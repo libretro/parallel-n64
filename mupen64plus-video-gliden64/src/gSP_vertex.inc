@@ -514,7 +514,7 @@ static void VN(gSPProcessVertex)(u32 v, SPVertex * spVtx)
 					SPVertex * vtx = &spVtx[v+i];
 					const f32 intensity = DotProduct(gSP.lookat.i_xyz[0], &vtx->nx) * 128.0f;
 					const s16 index = (s16)(intensity);
-					vtx->a = _FIXED2FLOATCOLOR(RDRAM[(gSP.DMAIO_address + 128 + index) ^ 3], 8);
+					vtx->a = _FIXED2FLOATCOLOR(RDRAM[((gSP.DMAIO_address + 128 + index) & RDRAMSize) ^ 3], 8);
 				}
 			}
 		}
@@ -581,7 +581,7 @@ static u32 VN(gSPLoadCIVertexData)(const PDVertex *orgVtx, SPVertex * spVtx, u32
 			vtx->z = orgVtx->z;
 			vtx->s = _FIXED2FLOAT( orgVtx->s, 5 );
 			vtx->t = _FIXED2FLOAT( orgVtx->t, 5 );
-			color = &RDRAM[gSP.vertexColorBase + (orgVtx->ci & 0xff)];
+			color = &RDRAM[(gSP.vertexColorBase + (orgVtx->ci & 0xff)) & RDRAMSize];
 
 			if (gSP.geometryMode & G_LIGHTING) {
 				vtx->nx = _FIXED2FLOATCOLOR((s8)color[3], 7);

@@ -863,6 +863,9 @@ void gli_gSPDMAMatrix( u32 matrix, u8 index, u8 multiply )
 		return;
 	}
 
+	if (index >= 32)
+		return;
+
 	gli_RSP_LoadMatrix(mtx, address);
 
 	gSP.matrix.modelViewi = index;
@@ -938,7 +941,7 @@ void gli_gSPLight( u32 l, s32 n )
 
 	light = (Light*)&RDRAM[addrByte];
 
-	if (n < 8) {
+	if (n >= 0 && n < 8) {
 		u32 addrShort;
 		gSP.lights.rgb[n][R] = _FIXED2FLOATCOLOR(light->r,8);
 		gSP.lights.rgb[n][G] = _FIXED2FLOATCOLOR(light->g,8);
@@ -973,7 +976,7 @@ void gli_gSPLightCBFD( u32 l, s32 n )
 
 	light = (Light*)&RDRAM[addrByte];
 
-	if (n < 12) {
+	if (n >= 0 && n < 12) {
 		u32 addrShort;
 		gSP.lights.rgb[n][R] = _FIXED2FLOATCOLOR(light->r, 8);
 		gSP.lights.rgb[n][G] = _FIXED2FLOATCOLOR(light->g, 8);
@@ -1000,7 +1003,10 @@ void gli_gSPLightAcclaim(u32 l, s32 n)
 {
 	u32 addrByte = RSP_SegmentToPhysical(l);
 
-	if (n < 10) {
+	if ((addrByte + 16) > RDRAMSize)
+		return;
+
+	if (n >= 0 && n < 10) {
 		const u32 addrShort = addrByte >> 1;
 		gSP.lights.pos_xyzw[n][X] = (f32)(((s16*)RDRAM)[(addrShort + 0) ^ 1]);
 		gSP.lights.pos_xyzw[n][Y] = (f32)(((s16*)RDRAM)[(addrShort + 1) ^ 1]);
@@ -1025,7 +1031,8 @@ void gli_gSPLookAt( u32 _l, u32 _n )
 	if ((address + sizeof(Light)) > RDRAMSize) {
 		return;
 	}
-	assert(_n < 2);
+	if (_n >= 2)
+		return;
 
 	light = (Light*)&RDRAM[address];
 
@@ -1631,7 +1638,8 @@ void gli_gSPPopMatrix( u32 param )
 
 void gli_gSPSegment( s32 seg, s32 base )
 {
-	gSP.segment[seg] = base;
+	if ((u32)seg < 16)
+		gSP.segment[seg] = base;
 
 }
 
@@ -1751,7 +1759,7 @@ void gli_gSPModifyVertex( u32 _vtx, u32 _where, u32 _val )
 
 void gli_gSPNumLights( s32 n )
 {
-	if (n < 12) {
+	if (n >= 0 && n < 12) {
 		gSP.numLights = n;
 		gSP.changed |= CHANGED_LIGHT;
 	} else {
