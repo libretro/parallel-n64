@@ -225,6 +225,8 @@ void gli_gSPImmersiveWorldSprite(bool _world);
 void gli_gSPTriangle(s32 v0, s32 v1, s32 v2);
 void gli_gSP1Triangle(s32 v0, s32 v1, s32 v2);
 void gli_gSPSWVertexN(const SWVertex * vertex, u32 n);
+void gli_gSPSWVertexAt(const SWVertex * vertex, u32 v0, u32 n);
+void gli_gSPSWVertexSelected(const SWVertex * vertex, u32 n, const bool * verticesToProcess);
 void gli_gSP2Triangles(const s32 v00, const s32 v01, const s32 v02, const s32 flag0,
 					const s32 v10, const s32 v11, const s32 v12, const s32 flag1 );
 void gli_gSP4Triangles(const s32 v00, const s32 v01, const s32 v02,

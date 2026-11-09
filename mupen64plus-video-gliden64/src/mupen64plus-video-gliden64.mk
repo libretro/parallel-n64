@@ -102,7 +102,7 @@ MY_LOCAL_SRC_FILES :=                                                           
     $(SRCDIR)/uCodes/F3DGOLDEN.c                                                 \
     $(SRCDIR)/uCodes/F3DPD.c                                                     \
     $(SRCDIR)/uCodes/F3DSETA.c                                                   \
-    $(SRCDIR)/uCodes/F5Indi_Naboo.cpp                                              \
+    $(SRCDIR)/uCodes/F5Indi_Naboo.c                                              \
     $(SRCDIR)/uCodes/F5Rogue.c                                                    \
     $(SRCDIR)/uCodes/F3DTEXA.c                                                   \
     $(SRCDIR)/uCodes/L3D.c                                                       \
