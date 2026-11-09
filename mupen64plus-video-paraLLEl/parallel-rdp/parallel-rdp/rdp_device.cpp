@@ -1446,8 +1446,6 @@ void build_pipelines_ahead_on_command_thread(void *ctx)
 void CommandProcessor::build_pipelines_ahead(const pipeline_record_t *records, size_t count)
 {
 	PipelinesAhead ahead;
-	if (!count)
-		return;
 	ahead.renderer = &renderer;
 	ahead.records  = records;
 	ahead.count    = count;

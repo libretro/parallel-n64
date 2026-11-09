@@ -368,10 +368,19 @@ private:
 	void update_deduced_height(const TriangleSetup &setup);
 	void submit_tile_binning_combined(Vulkan::CommandBuffer &cmd, bool upscaled);
 	void clear_indirect_buffer(Vulkan::CommandBuffer &cmd);
+
+	enum { MaxKnownPipelines = 128 };
+	size_t queue_known_pipelines(void *nodes, size_t n);
+	void set_span_setup_pipeline(Vulkan::CommandBuffer &cmd, bool upscale);
+	uint32_t set_tile_binning_pipeline(Vulkan::CommandBuffer &cmd, bool upscale);
+	void set_depth_blend_pipeline(Vulkan::CommandBuffer &cmd, uint32_t fmt, bool same_addr,
+	                              bool upscaled, bool force_write_mask);
 	void submit_rasterization(Vulkan::CommandBuffer &cmd, Vulkan::Buffer &tmem, bool upscaled);
 	void submit_depth_blend(Vulkan::CommandBuffer &cmd, Vulkan::Buffer &tmem, bool upscaled, bool force_write_mask);
 
 	enum class ResolveStage { Pre, Post, SSAAResolve };
+	void set_upscaled_domain_pipeline(Vulkan::CommandBuffer &cmd, ResolveStage stage,
+	                                  unsigned pixel_size_log2, bool same_addr);
 	void submit_update_upscaled_domain(Vulkan::CommandBuffer &cmd, ResolveStage stage);
 	void submit_update_upscaled_domain(Vulkan::CommandBuffer &cmd, ResolveStage stage,
 	                                   unsigned addr, unsigned depth_addr,

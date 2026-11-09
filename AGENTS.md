@@ -25,7 +25,9 @@ Not there yet, most urgent first. These are debts, not precedent:
 2. `gles2n64`, `gles2rice` and `glide2gl` build what earlier sessions met at load,
    but what they have never met still compiles: they have no ubershader or
    parallel compile to stand in, so a cold first session cannot avoid it.
-3. paraLLEl-RDP builds pipelines the record list does not cover synchronously.
+3. paraLLEl-RDP builds its compute pipelines at load (`queue_known_pipelines`), but
+   a first run still builds the VI graphics pipelines the record list does not
+   cover synchronously.
 
 ## Method: the speed of light
 
@@ -93,6 +95,8 @@ Know which layer you are changing. Having one does not give you the next.
   never substitute an approximation, never wait.
 - Every new pipeline goes through the records (`recordable`) so a warm run
   builds it ahead. A warm run must build none on the frame's threads.
+- A new compute pipeline joins `queue_known_pipelines` in the same change, through
+  the state setter its draw uses, so a cold run builds it at load too.
 - `wait_pipelines_ahead` is for load time. Specialised rasterizer variants are
   never urgent: the generic variant covers them.
 - Each bit in the specialization constants multiplies the variants. Fewer
