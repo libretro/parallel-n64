@@ -468,9 +468,14 @@ void TextureCache::_initDummyTexture(CachedTexture * _pDummy)
 	_pDummy->tMem = 0;
 }
 
+/* N64 textures fit in 4 MB by a wide margin: one allocation, at load */
+static const u32 DecodeScratchBytes = 4 * 1024 * 1024;
+
 void TextureCache::init()
 {
 	m_curUnpackAlignment = 0;
+	m_decodeScratch = (u8*)malloc(DecodeScratchBytes);
+	m_swapScratch = (u8*)malloc(DecodeScratchBytes);
 
 	u32 dummyTexture[16] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 
@@ -517,9 +522,44 @@ void TextureCache::init()
 	assert(!gfxContext.isError());
 }
 
+bool TextureCache::_decodedIsRead() const
+{
+	return (config.textureFilter.txHiresEnable != 0 && config.textureFilter.txDump != 0) ||
+		(config.textureFilter.txEnhancementMode | config.textureFilter.txFilterMode) != 0 ||
+		(config.generalEmulation.hacks & hack_LoadDepthTextures) != 0;
+}
+
+/* Where to decode: lent GPU-visible memory when nothing reads it back,
+ * otherwise the scratch. Only a texture past the scratch allocates. */
+u32 * TextureCache::_takeDecode(u32 _bytes, bool _lend)
+{
+	if (_lend) {
+		void * lent = gfxContext.lendTextureData(_bytes);
+		if (lent != nullptr)
+			return (u32*)lent;
+	}
+	if (_bytes <= DecodeScratchBytes && m_decodeScratch != nullptr)
+		return (u32*)m_decodeScratch;
+	m_lastHeapDecode = (u8*)malloc(_bytes);
+	return (u32*)m_lastHeapDecode;
+}
+
+void TextureCache::_dropDecode(u32 * _p)
+{
+	if (_p == nullptr || (u8*)_p == m_decodeScratch)
+		return;
+	/* the renderer's own: nothing to give back */
+	if ((u8*)_p != m_lastHeapDecode)
+		return;
+	free(_p);
+}
+
 void TextureCache::destroy()
 {
 	current[0] = current[1] = nullptr;
+	free(m_decodeScratch);
+	free(m_swapScratch);
+	m_decodeScratch = m_swapScratch = nullptr;
 
 	for (Textures::const_iterator cur = m_textures.cbegin(); cur != m_textures.cend(); ++cur)
 		gfxContext.deleteTexture(cur->name);
@@ -822,13 +862,15 @@ void TextureCache::_loadBackground(CachedTexture *pTexture)
 
 	bpl = gSP.bgImage.width << gSP.bgImage.size >> 1;
 	numBytes = bpl * gSP.bgImage.height;
-	pSwapped = (u8*)malloc(numBytes);
+	const bool swappedOnHeap = numBytes > DecodeScratchBytes || m_swapScratch == nullptr;
+	pSwapped = swappedOnHeap ? (u8*)malloc(numBytes) : m_swapScratch;
 	if (pSwapped == nullptr)
 		return;
 	gli_UnswapCopyWrap(RDRAM, gSP.bgImage.address, pSwapped, 0, RDRAMSize, numBytes);
-	pDest = (u32*)malloc(pTexture->textureBytes);
+	pDest = _takeDecode(pTexture->textureBytes, !_decodedIsRead());
 	if (pDest == nullptr) {
-		free(pSwapped);
+		if (swappedOnHeap)
+			free(pSwapped);
 		return;
 	}
 	pDest16 = reinterpret_cast<u16*>(pDest);
@@ -854,8 +896,9 @@ void TextureCache::_loadBackground(CachedTexture *pTexture)
 
 	if ((config.generalEmulation.hacks&hack_LoadDepthTextures) != 0 && gDP.colorImage.address == gDP.depthImageAddress) {
 		_loadDepthTexture(pTexture, (u16*)pDest);
-		free(pDest);
-		free(pSwapped);
+		_dropDecode(pDest);
+		if (swappedOnHeap)
+			free(pSwapped);
 		return;
 	}
 
@@ -916,8 +959,9 @@ void TextureCache::_loadBackground(CachedTexture *pTexture)
 	}
 	if (m_curUnpackAlignment > 1)
 		gfxContext.setTextureUnpackAlignment(m_curUnpackAlignment);
-	free(pSwapped);
-	free(pDest);
+	if (swappedOnHeap)
+		free(pSwapped);
+	_dropDecode(pDest);
 }
 
 bool TextureCache::_loadHiresTexture(u32 _tile, CachedTexture *_pTexture, u64 & _ricecrc)
@@ -1199,8 +1243,7 @@ void TextureCache::_load(u32 _tile, CachedTexture *_pTexture)
 		glType = loadParams.glType16;
 	}
 
-	pDest = (u32*)malloc(_pTexture->textureBytes);
-	assert(pDest != nullptr);
+	const bool lend = !_decodedIsRead();
 
 	s32 mipLevel = 0;
 	_pTexture->max_level = 0;
@@ -1223,11 +1266,14 @@ void TextureCache::_load(u32 _tile, CachedTexture *_pTexture)
 	line = tmptex.line;
 
 	while (true) {
+		pDest = _takeDecode((tmptex.realWidth * tmptex.realHeight) << sizeShift, lend);
+		if (pDest == nullptr)
+			return;
 		_getTextureDestData(tmptex, pDest, glInternalFormat, GetTexel, &line);
 
 		if ((config.generalEmulation.hacks&hack_LoadDepthTextures) != 0 && gDP.colorImage.address == gDP.depthImageAddress) {
 			_loadDepthTexture(_pTexture, (u16*)pDest);
-			free(pDest);
+			_dropDecode(pDest);
 			return;
 		}
 
@@ -1305,6 +1351,7 @@ void TextureCache::_load(u32 _tile, CachedTexture *_pTexture)
 			params.mutableStorage = true;
 			gfxContext.init2DTexture(params);
 		}
+		_dropDecode(pDest);
 		if (mipLevel == _pTexture->max_level)
 			break;
 		++mipLevel;
@@ -1330,7 +1377,6 @@ void TextureCache::_load(u32 _tile, CachedTexture *_pTexture)
 	}
 	if (m_curUnpackAlignment > 1)
 		gfxContext.setTextureUnpackAlignment(m_curUnpackAlignment);
-	free(pDest);
 }
 
 struct TextureParams

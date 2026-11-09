@@ -162,6 +162,11 @@ void Context::bindTexture(const BindTextureParameters & _params)
 	m_impl->bindTexture(_params);
 }
 
+void * Context::lendTextureData(size_t _bytes)
+{
+	return m_impl->lendTextureData(_bytes);
+}
+
 void Context::setTextureUnpackAlignment(s32 _param)
 {
 	m_impl->setTextureUnpackAlignment(_param);

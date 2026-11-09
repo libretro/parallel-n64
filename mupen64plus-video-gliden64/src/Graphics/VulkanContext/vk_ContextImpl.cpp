@@ -446,6 +446,7 @@ public:
 		vkr_texture_update(g_r, u32(_p.handle), _p.mipMapLevel, _p.x, _p.y, _p.width, _p.height, _p.data,
 			size_t(_p.width) * _p.height * formatBytes(fmt));
 	}
+	void * lendTextureData(size_t _bytes) override { return vkr_texture_lend(g_r, _bytes); }
 	void setTextureParameters(const Context::TexParameters & _p) override {
 		const int mag = _p.magFilter.isValid() ? (_p.magFilter == textureParameters::FILTER_LINEAR ? 1 : 0) : VKR_KEEP;
 		int min = VKR_KEEP;

@@ -31,6 +31,8 @@ namespace graphics {
 		virtual void deleteTexture(ObjectHandle _name) = 0;
 		virtual void init2DTexture(const Context::InitTextureParams & _params) = 0;
 		virtual void update2DTexture(const Context::UpdateTextureDataParams & _params) = 0;
+		/* Memory to decode a texture straight into, handed back as its data. */
+		virtual void * lendTextureData(size_t) { return nullptr; }
 		virtual void setTextureParameters(const Context::TexParameters & _parameters) = 0;
 		virtual void bindTexture(const Context::BindTextureParameters & _params) = 0;
 		virtual void setTextureUnpackAlignment(s32 _param) = 0;

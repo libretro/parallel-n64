@@ -153,9 +153,10 @@ Know which layer you are changing. Having one does not give you the next.
 - Anything added to `compileCombiner` goes into `vkr_write_combiner` too.
   `tools/ci/gliden64_vulkan.py` holds Vulkan to GL frame for frame.
 - Vertices and combiner values are written once, final, into the frame's
-  ring. Values are the `CombinerValues` the GL backend also reads. Texture
-  uploads are one memcpy into the ring (API staging), ahead of the render
-  pass unless the image was already used in the commands being recorded.
+  ring. Values are the `CombinerValues` the GL backend also reads. Textures
+  decode straight into the ring (`lendTextureData`) unless something has to
+  read them back, which leaves no copy, and upload ahead of the render pass
+  unless the image was already used in the commands being recorded.
 
 ### paraLLEl RSP JIT
 

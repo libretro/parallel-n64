@@ -99,6 +99,9 @@ unsigned vkr_texture_new(vkr_renderer *r);
 void vkr_texture_delete(vkr_renderer *r, unsigned h);
 void vkr_texture_init(vkr_renderer *r, unsigned h, int fmt, unsigned samples,
       unsigned w, unsigned hgt, unsigned level, unsigned levels, const void *data, size_t data_bytes);
+/* Memory in the ring to decode one texture level into, passed back as its
+ * data with no copy; NULL if it does not fit. Write only. */
+void *vkr_texture_lend(vkr_renderer *r, size_t bytes);
 void vkr_texture_update(vkr_renderer *r, unsigned h, unsigned level,
       unsigned x, unsigned y, unsigned w, unsigned hgt, const void *data, size_t data_bytes);
 void vkr_texture_params(vkr_renderer *r, unsigned h, int mag, int min, int mip_linear,

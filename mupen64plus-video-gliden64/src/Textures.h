@@ -72,6 +72,9 @@ private:
 		, m_hits(0)
 		, m_misses(0)
 		, m_curUnpackAlignment(4)
+		, m_decodeScratch(nullptr)
+		, m_swapScratch(nullptr)
+		, m_lastHeapDecode(nullptr)
 	{
 		current[0] = nullptr;
 		current[1] = nullptr;
@@ -101,6 +104,13 @@ private:
 	CachedTexture * m_pMSDummy;
 	u32 m_hits, m_misses;
 	s32 m_curUnpackAlignment;
+	u8 * m_decodeScratch;
+	u8 * m_swapScratch;
+	u8 * m_lastHeapDecode;
+
+	bool _decodedIsRead() const;
+	u32 * _takeDecode(u32 _bytes, bool _lend);
+	void _dropDecode(u32 * _p);
 	/* Objects freed by eviction, waiting to be handed to the next texture:
 	 * deleting one costs ~160us on a tiled GPU, reusing it costs nothing. */
 	std::vector<graphics::ObjectHandle> m_freeTextures;

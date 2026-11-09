@@ -122,6 +122,8 @@ namespace graphics {
 
 		void update2DTexture(const UpdateTextureDataParams & _params);
 
+		void * lendTextureData(size_t _bytes);
+
 		struct TexParameters {
 			ObjectHandle handle;
 			TextureUnitParam textureUnitIndex{0};

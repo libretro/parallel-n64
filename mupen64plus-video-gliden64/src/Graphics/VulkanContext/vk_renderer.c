@@ -865,13 +865,16 @@ static void upload(vkr_renderer *r, vkr_image *i, unsigned level, unsigned x, un
       unsigned w, unsigned h, const void *data, size_t bytes)
 {
    VkDeviceSize offset;
-   void *dst = ring_reserve(r, bytes, 16, &offset);
    VkBufferImageCopy c;
    VkCommandBuffer cmd;
    int in_this_cmd = i->used_serial == r->serial;
+   const uint8_t *from = (const uint8_t*)data;
 
-   /* A plain memcpy: the API's staging copy, the one left. */
-   memcpy(dst, data, bytes);
+   /* decoded in place: it is in the ring already */
+   if (from >= r->f->ring_map && from < r->f->ring_map + RING_BYTES)
+      offset = (VkDeviceSize)(from - r->f->ring_map);
+   else
+      memcpy(ring_reserve(r, bytes, 16, &offset), data, bytes);
 
    memset(&c, 0, sizeof(c));
    c.bufferOffset = offset;
@@ -920,6 +923,16 @@ void vkr_texture_init(vkr_renderer *r, unsigned h, int fmt, unsigned samples,
    }
    if (data && data_bytes)
       upload(r, i, level, 0, 0, w, hgt, data, data_bytes);
+}
+
+void *vkr_texture_lend(vkr_renderer *r, size_t bytes)
+{
+   VkDeviceSize offset;
+   /* one texture must not be able to end the frame's ring early */
+   if (bytes > RING_BYTES / 4)
+      return NULL;
+   frame_begin(r);
+   return ring_reserve(r, bytes, 16, &offset);
 }
 
 void vkr_texture_update(vkr_renderer *r, unsigned h, unsigned level,
