@@ -264,7 +264,7 @@ struct uObjSubMtx
 
 static uObjMtx objMtx;
 
-void gli_resetObjMtx()
+void gli_resetObjMtx(void)
 {
 	objMtx.A = 1 << 16;
 	objMtx.B = 0;
@@ -1760,7 +1760,7 @@ void gli_S2DEX_Obj_LdTx_Sprite(u32 w0, u32 w1)
 	gSPObjSprite(w1 + sizeof(uObjTxtr));
 }
 
-void gli_S2DEX_Init()
+void gli_S2DEX_Init(void)
 {
 	gli_gSPSetupFunctions();
 	/* Set GeometryMode flags */
@@ -1794,19 +1794,19 @@ void gli_S2DEX_Init()
 	GBI_SetGBI(	G_LOAD_UCODE,			S2DEX_LOAD_UCODE,		gli_F3DEX_Load_uCode );
 }
 
-void gli_S2DEX_1_03_Init()
+void gli_S2DEX_1_03_Init(void)
 {
 	gli_S2DEX_Init();
 	gs_s2dexversion = eVer1_3;
 }
 
-void gli_S2DEX_1_05_Init()
+void gli_S2DEX_1_05_Init(void)
 {
 	gli_S2DEX_Init();
 	gs_s2dexversion = eVer1_5;
 }
 
-void gli_S2DEX_1_07_Init()
+void gli_S2DEX_1_07_Init(void)
 {
 	gli_S2DEX_Init();
 	gs_s2dexversion = eVer1_7;

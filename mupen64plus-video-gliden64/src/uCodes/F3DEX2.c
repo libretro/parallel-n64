@@ -167,7 +167,7 @@ void gli_F3DEX2_Quad( u32 w0, u32 w1 )
 				   0 );
 }
 
-void gli_F3DEX2_Init()
+void gli_F3DEX2_Init(void)
 {
 	gli_gSPSetupFunctions();
 	/* Set GeometryMode flags */

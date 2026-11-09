@@ -240,7 +240,7 @@ static void F3DEX3_RelSegment(u32 w0, u32 w1)
 	gli_gSPRelSegment(_SHIFTR(w0, 2, 4), w1 & 0x00FFFFFF);
 }
 
-void gli_F3DEX3_Init()
+void gli_F3DEX3_Init(void)
 {
 	gli_gSPSetupFunctions();
 	/* Set GeometryMode flags */

@@ -39,7 +39,7 @@ void gli_F3DEX2ACCLAIM_MoveMem( u32 w0, u32 w1 )
 	}
 }
 
-void gli_F3DEX2ACCLAIM_Init()
+void gli_F3DEX2ACCLAIM_Init(void)
 {
 	gli_gSPSetupFunctions();
 	/* Set GeometryMode flags */

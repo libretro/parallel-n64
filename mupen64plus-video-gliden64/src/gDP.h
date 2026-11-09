@@ -8,11 +8,6 @@
 extern "C" {
 #endif
 
-/* only unnamed members: fine in MSVC C, and in GCC C once it stops asking */
-#if defined(__GNUC__) && !defined(__cplusplus)
-#pragma GCC diagnostic ignored "-Wpedantic"
-#endif
-
 #define CHANGED_RENDERMODE		0x001U
 #define CHANGED_CYCLETYPE		0x002U
 #define CHANGED_SCISSOR			0x004U
@@ -36,11 +31,9 @@ extern "C" {
 #define LOADTYPE_BLOCK			0
 #define LOADTYPE_TILE			1
 
-typedef struct gDPCombine gDPCombine;
-struct gDPCombine
+typedef union gDPCombine gDPCombine;
+union gDPCombine
 {
-	GLI_ANON union
-	{
 		GLI_ANON struct
 		{
 			/* muxs1 */
@@ -70,7 +63,6 @@ struct gDPCombine
 		};
 
 		u64				mux;
-	};
 };
 
 struct FrameBuffer;
@@ -139,10 +131,8 @@ struct gDPScissor
 typedef struct gDPInfo gDPInfo;
 struct gDPInfo
 {
-	struct OtherMode
+	union OtherMode
 	{
-		GLI_ANON union
-		{
 			GLI_ANON struct
 			{
 				unsigned int alphaCompare : 2;
@@ -207,7 +197,6 @@ struct gDPInfo
 			{
 				u32			l, h;
 			};
-		};
 	} otherMode;
 
 	gDPCombine combine;

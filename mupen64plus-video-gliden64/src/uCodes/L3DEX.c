@@ -57,7 +57,7 @@ void gli_L3DEX_Tri2(u32 w0, u32 w1)
 		gli_gSPLine3D(v12, v10, 0, v10);
 }
 
-void gli_L3DEX_Init()
+void gli_L3DEX_Init(void)
 {
 	gli_gSPSetupFunctions();
 	/* Set GeometryMode flags */

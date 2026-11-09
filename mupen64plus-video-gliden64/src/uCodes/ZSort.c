@@ -33,7 +33,7 @@ struct ZSORTRDP
 	f32 view_trans[2];
 } zSortRdp = {{0, 0}, {0, 0}};
 
-void gli_ZSort_RDPCMD( u32, u32 _w1 )
+void gli_ZSort_RDPCMD( u32 _w0, u32 _w1 )
 {
 	u32 addr = RSP_SegmentToPhysical(_w1) >> 2;
 	if (addr) {
@@ -184,7 +184,7 @@ void gli_ZSort_Obj( u32 _w0, u32 _w1 )
 		zHeader = ZSort_LoadObject(zHeader, rdpcmds);
 }
 
-void gli_ZSort_Interpolate( u32, u32 )
+void gli_ZSort_Interpolate( u32 _w0, u32 _w1 )
 {
 }
 
@@ -237,7 +237,7 @@ void gli_ZSort_XFMLight( u32 _w0, u32 _w1 )
 	}
 }
 
-void gli_ZSort_LightingL( u32, u32 )
+void gli_ZSort_LightingL( u32 _w0, u32 _w1 )
 {
 }
 
@@ -294,7 +294,7 @@ void gli_ZSort_Lighting( u32 _w0, u32 _w1 )
 	}
 }
 
-void gli_ZSort_MTXRNSP( u32, u32 )
+void gli_ZSort_MTXRNSP( u32 _w0, u32 _w1 )
 {
 }
 
@@ -391,24 +391,24 @@ void gli_ZSort_MultMPMTX( u32 _w0, u32 _w1 )
 	}
 }
 
-void gli_ZSort_LinkSubDL( u32, u32 )
+void gli_ZSort_LinkSubDL( u32 _w0, u32 _w1 )
 {
 }
 
-void gli_ZSort_SetSubDL( u32, u32 )
+void gli_ZSort_SetSubDL( u32 _w0, u32 _w1 )
 {
 }
 
-void gli_ZSort_WaitSignal( u32, u32 )
+void gli_ZSort_WaitSignal( u32 _w0, u32 _w1 )
 {
 }
 
-void gli_ZSort_SendSignal( u32, u32 )
+void gli_ZSort_SendSignal( u32 _w0, u32 _w1 )
 {
 }
 
 static
-void ZSort_SetTexture()
+void ZSort_SetTexture(void)
 {
 	gSP.texture.scales = 1.0f;
 	gSP.texture.scalet = 1.0f;
@@ -496,6 +496,7 @@ void gli_ZSort_MoveMem( u32 _w0, u32 _w1 )
 	break;
 
 	default:
+		break;
 	}
 
 }
@@ -553,7 +554,7 @@ void gli_SZort_SetScissor(u32 _w0, u32 _w1)
 u32 G_ZSENDSIGNAL, G_ZSETSUBDL, G_ZLINKSUBDL, G_ZMTXTRNSP;
 u32 G_ZLIGHTING_L, G_ZXFMLIGHT, G_ZINTERPOLATE, G_ZSETSCISSOR;
 
-void gli_ZSort_Init()
+void gli_ZSort_Init(void)
 {
 	gli_gSPSetupFunctions();
 	/* Set GeometryMode flags */

@@ -40,7 +40,7 @@ void gli_L3D_Tri1(u32 w0, u32 w1)
 		gli_gSPLine3D(v2, v0, 0, flatShadeVtx);
 }
 
-void gli_L3D_Init()
+void gli_L3D_Init(void)
 {
 	gli_gSPSetupFunctions();
 	/* Set GeometryMode flags */

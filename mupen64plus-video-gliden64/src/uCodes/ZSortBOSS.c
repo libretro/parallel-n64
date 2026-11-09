@@ -36,7 +36,7 @@ struct ZSortBOSSState {
 
 struct ZSortBOSSState gstate;
 
-void gli_ZSortBOSS_EndMainDL( u32, u32 )
+void gli_ZSortBOSS_EndMainDL( u32 _w0, u32 _w1 )
 {
 	if(gstate.subdl == PROCESSED) {
 		/* is this really happening? */
@@ -62,7 +62,7 @@ void gli_ZSortBOSS_EndMainDL( u32, u32 )
 	}
 }
 
-void gli_ZSortBOSS_EndSubDL( u32, u32 )
+void gli_ZSortBOSS_EndSubDL( u32 _w0, u32 _w1 )
 {
 	if(gstate.maindl == PROCESSED) {
 		RSP.halt = true;
@@ -78,7 +78,7 @@ void gli_ZSortBOSS_EndSubDL( u32, u32 )
 	}
 }
 
-void gli_ZSortBOSS_WaitSignal( u32 , u32 )
+void gli_ZSortBOSS_WaitSignal( u32 _w0, u32 _w1 )
 {
 	if(!gstate.waiting_for_signal) {
 		/* *REG.MI_INTR |= MI_INTR_SP; */
@@ -109,7 +109,7 @@ void gli_ZSortBOSS_MoveWord( u32 _w0, u32 _w1 )
 	memcpy((DMEM + (_w0 & 0xfff)), &_w1, sizeof(u32));
 }
 
-void gli_ZSortBOSS_ClearBuffer( u32, u32 )
+void gli_ZSortBOSS_ClearBuffer( u32 _w0, u32 _w1 )
 {
 	memset((DMEM + 0xc20), 0, 512);
 }
@@ -468,7 +468,7 @@ void gli_ZSortBOSS_Obj( u32 _w0, u32 _w1 )
 		zHeader = ZSortBOSS_LoadObject(zHeader);
 }
 
-void gli_ZSortBOSS_TransposeMTX( u32, u32 _w1 )
+void gli_ZSortBOSS_TransposeMTX( u32 _w0, u32 _w1 )
 {
 	int i;
 	M44 *mtx = NULL;
@@ -840,7 +840,7 @@ void gli_ZSortBOSS_SetOtherMode( u32 _w0, u32 _w1 )
 
 }
 
-void gli_ZSortBOSS_TriangleCommand( u32, u32 _w1 )
+void gli_ZSortBOSS_TriangleCommand( u32 _w0, u32 _w1 )
 {
 	assert(((_w1 >> 8) & 0x3f) == 0x0e);	/*Shade, Texture Triangle */
 	gSP.texture.scales = 1.0f;
@@ -852,11 +852,11 @@ void gli_ZSortBOSS_TriangleCommand( u32, u32 _w1 )
 	gli_gSPSetGeometryMode(G_SHADING_SMOOTH | G_SHADE);
 }
 
-void gli_ZSortBOSS_FlushRDPCMDBuffer( u32, u32 )
+void gli_ZSortBOSS_FlushRDPCMDBuffer( u32 _w0, u32 _w1 )
 {
 }
 
-void gli_ZSortBOSS_Reserved( u32, u32 )
+void gli_ZSortBOSS_Reserved( u32 _w0, u32 _w1 )
 {
 	assert(0);
 }
@@ -891,7 +891,7 @@ void gli_ZSortBOSS_Reserved( u32, u32 )
 
 u32 G_ZENDMAINDL, G_ZENDSUBDL, G_ZUPDATEMASK, G_ZSETOTHERMODE, G_ZFLUSHRDPCMDBUFFER, G_ZMOVEWORD, G_ZCLEARBUFFER, G_ZTRIANGLECOMMAND, G_ZTRANSPOSEMTX, G_ZTRANSFORMLIGHTS, G_ZAUDIO1, G_ZAUDIO2, G_ZAUDIO3, G_ZAUDIO4;
 
-void gli_ZSortBOSS_Init()
+void gli_ZSortBOSS_Init(void)
 {
 	gli_gSPSetupFunctions();
 	/* Set GeometryMode flags */
