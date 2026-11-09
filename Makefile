@@ -995,6 +995,9 @@ ifneq (,$(findstring msvc,$(platform)))
    CPUOPTS += -O2
 else ifeq ($(platform), emscripten)
    CPUOPTS += -O3
+else ifneq ($(SANITIZER),)
+	# what a sanitizer finds does not need -Ofast, and -Ofast takes far longer
+	CPUOPTS += -O1
 else
 	CPUOPTS += -Ofast
 endif

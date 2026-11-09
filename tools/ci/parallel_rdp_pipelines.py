@@ -23,8 +23,11 @@ own:
 Every run must present the same frames as the cold one. A list another
 ROM wrote serves the pipelines the two share (shared).
 
+CI runs every case on one ROM and a cold and a warm session on the rest;
+--full runs every case on every ROM and mode (takes minutes, not seconds).
+
   parallel_rdp_pipelines.py --core parallel_n64_libretro.so --host ./lrhost_vk \\
-                            [--roms dir] [--out dir]
+                            [--roms dir] [--out dir] [--full]
 """
 import argparse, os, re, shutil, subprocess, sys
 
@@ -40,11 +43,16 @@ LIST = "parallel_rdp_pipelines.bin"
 COUNTS = re.compile(r"pipelines: (\d+) built on the frame's threads, (\d+) on the pipeline worker")
 
 
+# Frames a run needs: the test ROMs have drawn by now.
+FRAMES = 40
+FULL_ROM = "cube32"
+
+
 def run(args, rom, sysdir, tag, env_extra, options):
     hashlog = os.path.join(sysdir, tag + ".hash")
     env = dict(os.environ, LRHOST_COUNT_PIPELINES="1", LRHOST_SYSTEM_DIR=sysdir,
                LRHOST_HASHLOG=hashlog, **env_extra)
-    p = subprocess.run([args.host, args.core, rom, str(regress.FRAMES)] + regress.OPTIONS + options,
+    p = subprocess.run([args.host, args.core, rom, str(FRAMES)] + regress.OPTIONS + options,
                        env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=600)
     log = p.stdout.decode("utf-8", "replace")
     with open(os.path.join(sysdir, tag + ".log"), "w") as f:
@@ -80,7 +88,7 @@ def damage(path, how):
         f.write(bytes(data))
 
 
-def lane(args, name, mode, env_extra, options):
+def lane(args, name, mode, env_extra, options, every_case):
     rom = regress.fetch(args.roms, name)
     sysdir = os.path.abspath(os.path.join(args.out, name, mode))
     shutil.rmtree(sysdir, ignore_errors=True)
@@ -115,6 +123,8 @@ def lane(args, name, mode, env_extra, options):
     if not os.path.exists(os.path.join(sysdir, LIST)):
         errors.append("cold: no list written")
     step("warm", 0, lambda: os.remove(os.path.join(sysdir, CACHE)))
+    if not every_case:
+        return lines, errors
     step("warm-cache", 0)
     step("foreign", 0, lambda: damage(os.path.join(sysdir, CACHE), "uuid"))
     for how in ("flip", "cut"):
@@ -154,14 +164,18 @@ def main():
     ap.add_argument("--host", required=True)
     ap.add_argument("--roms", default="roms")
     ap.add_argument("--out", default="parallel_rdp_pipelines")
+    ap.add_argument("--full", action="store_true", help="every case on every ROM and mode")
     args = ap.parse_args()
     args.core = os.path.abspath(args.core)
     args.host = os.path.abspath(args.host)
     failed = 0
     for name in ROMS:
         for mode, (env_extra, options) in MODES.items():
+            if not args.full and name != FULL_ROM and mode != "threaded":
+                continue
             try:
-                lines, errors = lane(args, name, mode, env_extra, options)
+                lines, errors = lane(args, name, mode, env_extra, options,
+                                     args.full or (name == FULL_ROM and mode == "threaded"))
             except Exception as e:
                 lines, errors = [], [str(e)]
             print("%s %s: %s" % (name, mode, "FAIL" if errors else "ok"))

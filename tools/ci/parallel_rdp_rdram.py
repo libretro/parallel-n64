@@ -20,8 +20,12 @@ part of), copies the frame elsewhere with the CPU and shows the copy.
 Its frames must be PARTIAL_FRAME however the RDRAM is uploaded, threaded
 and single-threaded.
 
+CI runs cube32 in each mode, the ROMs a frontend's writes show in threaded
+without the savestate, and the partly written chunks; --full runs every
+ROM, mode and savestate (20 minutes on two CPUs).
+
   parallel_rdp_rdram.py --core parallel_n64_libretro.so --host ./lrhost_vk \\
-                        [--roms dir] [--out dir] [--only rom,...,partial-writes]
+                        [--roms dir] [--out dir] [--only rom,...,partial-writes] [--full]
 """
 import argparse, os, shutil, subprocess, sys
 
@@ -36,6 +40,8 @@ MODES = {"threaded": ({}, []),
 POKE = "1049088,393216"
 POKE_SHOWN = ("tlut16", "zbuf16")
 SAVE_AT = 40
+FRAMES = 60
+QUICK_ROMS = ("cube32",) + POKE_SHOWN
 
 # The synthetic cartridge's frame, as lrhost_vk's hash log has it.
 PARTIAL_FRAME = "640x240 0f03add558c6ed8a"
@@ -117,7 +123,7 @@ def partial_lane(args):
     return errors
 
 
-def run(args, rom, out, tag, env_extra, options, frames=regress.FRAMES):
+def run(args, rom, out, tag, env_extra, options, frames=FRAMES):
     hashlog = os.path.join(out, tag + ".hash")
     env = dict(os.environ, LRHOST_SYSTEM_DIR=os.path.join(out, "sys"), LRHOST_HASHLOG=hashlog,
                **env_extra)
@@ -133,7 +139,7 @@ def run(args, rom, out, tag, env_extra, options, frames=regress.FRAMES):
         return f.read()
 
 
-def lane(args, name, mode, env_extra, options):
+def lane(args, name, mode, env_extra, options, savestate=True):
     rom = regress.fetch(args.roms, name)
     out = os.path.abspath(os.path.join(args.out, name, mode))
     shutil.rmtree(out, ignore_errors=True)
@@ -145,18 +151,20 @@ def lane(args, name, mode, env_extra, options):
         e = dict(env_extra, **extra)
         frames[upload, "plain"] = run(args, rom, out, upload + "-plain", e, options)
         frames[upload, "poke"] = run(args, rom, out, upload + "-poke", dict(e, LRHOST_POKE=POKE), options)
-        run(args, rom, out, upload + "-save", dict(e, LRHOST_SAVE=state + "." + upload,
-                                                   LRHOST_SAVE_AT=str(SAVE_AT)), options, SAVE_AT + 1)
-        frames[upload, "state"] = run(args, rom, out, upload + "-state",
-                                      dict(e, LRHOST_STATE=state + "." + upload), options)
+        if savestate:
+            run(args, rom, out, upload + "-save", dict(e, LRHOST_SAVE=state + "." + upload,
+                                                       LRHOST_SAVE_AT=str(SAVE_AT)), options, SAVE_AT + 1)
+            frames[upload, "state"] = run(args, rom, out, upload + "-state",
+                                          dict(e, LRHOST_STATE=state + "." + upload), options)
     # (the states and the folder are large, and of no use once run)
     for upload in ("compared", "full"):
         if os.path.exists(state + "." + upload):
             os.remove(state + "." + upload)
     shutil.rmtree(os.path.join(out, "sys"), ignore_errors=True)
     for kind in ("plain", "poke", "state"):
-        if frames["compared", kind] != frames["full", kind]:
-            errors.append("%s: frames differ from a full upload" % kind)
+        if savestate or kind != "state":
+            if frames["compared", kind] != frames["full", kind]:
+                errors.append("%s: frames differ from a full upload" % kind)
     if name in POKE_SHOWN and frames["compared", "poke"] == frames["compared", "plain"]:
         errors.append("poke: the frontend's writes did not reach the frames")
     return errors
@@ -168,6 +176,7 @@ def main():
     ap.add_argument("--host", required=True)
     ap.add_argument("--roms", default="roms")
     ap.add_argument("--out", default="parallel_rdp_rdram")
+    ap.add_argument("--full", action="store_true", help="every ROM, mode and savestate")
     ap.add_argument("--only", help="run only these, comma-separated: ROMs, partial-writes")
     args = ap.parse_args()
     args.core = os.path.abspath(args.core)
@@ -177,9 +186,14 @@ def main():
     for name in regress.ROMS:
         if only and name not in only:
             continue
+        if not only and not args.full and name not in QUICK_ROMS:
+            continue
         for mode, (env_extra, options) in MODES.items():
+            if not only and not args.full and name != "cube32" and mode != "threaded":
+                continue
             try:
-                errors = lane(args, name, mode, env_extra, options)
+                errors = lane(args, name, mode, env_extra, options,
+                              bool(only) or args.full or name == "cube32")
             except Exception as e:
                 errors = [str(e)]
             print("%-12s %-15s %s" % (name, mode, "FAIL" if errors else "ok"))

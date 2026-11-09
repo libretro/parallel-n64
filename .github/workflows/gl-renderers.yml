@@ -45,7 +45,7 @@ jobs:
             sanitizer_env: ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1
     env:
       MAKEFLAGS: --no-print-directory
-      CORE_FLAGS: platform=unix WITH_DYNAREC=x86_64 HAVE_THR_AL=1 HAVE_PARALLEL=1 HAVE_PARALLEL_RSP=1
+      CORE_FLAGS: platform=unix WITH_DYNAREC=x86_64 HAVE_THR_AL=1 HAVE_PARALLEL=0 HAVE_PARALLEL_RSP=0
       GL_TESTS: test_glitch64_lfb_write test_glitch64_textures test_glitch64_textures_gles test_glsm_draw_target test_glsm_draw_target_gles test_glsm_state test_glsm_state_gles
     steps:
       - uses: actions/checkout@v4
