@@ -2030,3 +2030,112 @@ bool gli_depth_current(u32 * _address, u32 * _width)
 	*_width = pDepthBuffer->m_width;
 	return true;
 }
+
+/* the stereo left eye: a copy of the buffer's color image */
+static
+FrameBuffer * _createStereoBuffer(const FrameBuffer * _pMainBuffer)
+{
+	FrameBuffer * pLeftEye = new FrameBuffer();
+	const CachedTexture * pMainTexture = _pMainBuffer->m_pTexture;
+	CachedTexture * pTexture = pLeftEye->m_pTexture;
+	Context::InitTextureParams initParams;
+	Context::TexParameters setParams;
+	Context::FrameBufferRenderTarget bufTarget;
+
+	pLeftEye->m_startAddress = _pMainBuffer->m_startAddress;
+	pLeftEye->m_width = _pMainBuffer->m_width;
+	pLeftEye->m_height = _pMainBuffer->m_height;
+	pLeftEye->m_size = _pMainBuffer->m_size;
+	pLeftEye->m_scale = _pMainBuffer->m_scale;
+
+	pTexture->format = G_IM_FMT_RGBA;
+	pTexture->size = pMainTexture->size;
+	pTexture->address = pMainTexture->address;
+	pTexture->clampS = 1;
+	pTexture->clampT = 1;
+	pTexture->clampWidth = pMainTexture->clampWidth;
+	pTexture->clampHeight = pMainTexture->clampHeight;
+	pTexture->frameBufferTexture = CachedTexture::fbOneSample;
+	pTexture->maskS = 0;
+	pTexture->maskT = 0;
+	pTexture->mirrorS = 0;
+	pTexture->mirrorT = 0;
+	pTexture->width = pMainTexture->width;
+	pTexture->height = pMainTexture->height;
+	pTexture->realWidth = pMainTexture->realWidth;
+	pTexture->realHeight = pMainTexture->realHeight;
+	pTexture->textureBytes = pTexture->realWidth * pTexture->realHeight * 4;
+
+	initParams.handle = pTexture->name;
+	initParams.width = pTexture->realWidth;
+	initParams.height = pTexture->realHeight;
+	initParams.internalFormat = gfxContext.convertInternalTextureFormat(u32(internalcolorFormat::RGBA8));
+	initParams.format = colorFormat::RGBA;
+	initParams.dataType = datatype::UNSIGNED_BYTE;
+	gfxContext.init2DTexture(initParams);
+
+	setParams.handle = pTexture->name;
+	setParams.target = textureTarget::TEXTURE_2D;
+	setParams.minFilter = textureParameters::FILTER_LINEAR;
+	setParams.magFilter = textureParameters::FILTER_LINEAR;
+	gfxContext.setTextureParameters(setParams);
+
+	bufTarget.bufferHandle = pLeftEye->m_FBO;
+	bufTarget.bufferTarget = bufferTarget::DRAW_FRAMEBUFFER;
+	bufTarget.attachment = bufferAttachment::COLOR_ATTACHMENT0;
+	bufTarget.textureTarget = textureTarget::TEXTURE_2D;
+	bufTarget.textureHandle = pTexture->name;
+	gfxContext.addFrameBufferRenderTarget(bufTarget);
+	return pLeftEye;
+}
+
+bool gli_fb_stereo_copy(FrameBuffer * _pBuffer, FrameBuffer ** _ppLeftEye)
+{
+	const CachedTexture * pSource = _pBuffer->m_pTexture;
+	FrameBuffer * pLeftEye = *_ppLeftEye;
+	bool copied;
+	ObjectHandle readBuffer;
+	Context::BlitFramebuffersParams params;
+
+	if (pLeftEye == nullptr ||
+		pLeftEye->m_pTexture->realWidth != pSource->realWidth ||
+		pLeftEye->m_pTexture->realHeight != pSource->realHeight) {
+		delete pLeftEye;
+		pLeftEye = _createStereoBuffer(_pBuffer);
+		*_ppLeftEye = pLeftEye;
+	}
+
+	readBuffer = _pBuffer->m_FBO;
+	if (pSource->frameBufferTexture == CachedTexture::fbMultiSample) {
+		_pBuffer->resolveMultisampledTexture(true);
+		readBuffer = _pBuffer->m_resolveFBO;
+	}
+
+	params.readBuffer = readBuffer;
+	params.drawBuffer = pLeftEye->m_FBO;
+	params.srcX0 = 0;
+	params.srcY0 = 0;
+	params.srcX1 = pSource->realWidth;
+	params.srcY1 = pSource->realHeight;
+	params.dstX0 = 0;
+	params.dstY0 = 0;
+	params.dstX1 = pLeftEye->m_pTexture->realWidth;
+	params.dstY1 = pLeftEye->m_pTexture->realHeight;
+	params.mask = blitMask::COLOR_BUFFER;
+	params.filter = textureParameters::FILTER_NEAREST;
+
+	copied = gfxContext.blitFramebuffers(params);
+
+	gfxContext.bindFramebuffer(bufferTarget::DRAW_FRAMEBUFFER, ObjectHandle::defaultFramebuffer);
+	return copied;
+}
+
+void gli_fb_stereo_delete(FrameBuffer * _pBuffer)
+{
+	delete _pBuffer;
+}
+
+bool gli_fb_has_texture(const FrameBuffer * _pBuffer)
+{
+	return _pBuffer->m_pTexture != nullptr;
+}

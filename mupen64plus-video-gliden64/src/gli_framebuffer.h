@@ -23,6 +23,10 @@ struct FrameBuffer *gli_fb_current(void);
 bool gli_fb_is_cpu(const struct FrameBuffer *_pBuffer);
 void gli_fb_remove(u32 _address);
 u32 gli_fb_start_address(const struct FrameBuffer *_pBuffer);
+bool gli_fb_has_texture(const struct FrameBuffer *_pBuffer);
+/* copies the color image into *_ppLeftEye, made or remade to fit */
+bool gli_fb_stereo_copy(struct FrameBuffer *_pBuffer, struct FrameBuffer **_ppLeftEye);
+void gli_fb_stereo_delete(struct FrameBuffer *_pBuffer);
 void gli_fb_make_current(u32 _address);
 void gli_fb_bind_draw(const struct FrameBuffer *_pBuffer);
 void gli_fb_set_current_draw_buffer(void);
