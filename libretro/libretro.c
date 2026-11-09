@@ -3580,6 +3580,9 @@ done:
 
 bool retro_load_game(const struct retro_game_info *game)
 {
+#ifdef HAVE_GLIDEN64
+   bool tried_vulkan = false;
+#endif
    format_saved_memory();
 
    if (!transfer_pak_from_subsystem)
@@ -3612,19 +3615,42 @@ bool retro_load_game(const struct retro_game_info *game)
       {
          vulkan_inited = false;
 #ifdef HAVE_GLIDEN64
-         if (gfx_plugin == GFX_GLIDEN64 && gliden64_wants_vulkan() && retro_init_gliden64_vulkan())
+         if (gfx_plugin == GFX_GLIDEN64 && gliden64_wants_vulkan())
          {
-            gliden64_on_vulkan = true;
-            gliden64_vulkan_enable(1);
+            tried_vulkan = true;
+            if (retro_init_gliden64_vulkan())
+            {
+               gliden64_on_vulkan = true;
+               gliden64_vulkan_enable(1);
+            }
          }
 #endif
       }
 
       if (!vulkan_inited && !gliden64_on_vulkan)
       {
-         retro_init_gl(/*core*/ (gfx_plugin == GFX_GLIDEN64)
-                             || (gfx_plugin == GFX_PARALLEL));
-         gl_inited = true;
+         if (retro_init_gl(/*core*/ (gfx_plugin == GFX_GLIDEN64)
+                             || (gfx_plugin == GFX_PARALLEL)))
+            gl_inited = true;
+#ifdef HAVE_GLIDEN64
+         else if (gfx_plugin == GFX_GLIDEN64 && !tried_vulkan && retro_init_gliden64_vulkan())
+         {
+            gliden64_on_vulkan = true;
+            gliden64_vulkan_enable(1);
+         }
+#endif
+         else
+         {
+            /* The frontend gave no context: running on would call into a
+             * frontend callback nobody filled in. */
+            struct retro_message msg;
+            msg.msg    = "parallel-n64: the video driver refused both OpenGL and Vulkan for this renderer.";
+            msg.frames = 360;
+            environ_cb(RETRO_ENVIRONMENT_SET_MESSAGE, &msg);
+            if (log_cb)
+               log_cb(RETRO_LOG_ERROR, "%s\n", msg.msg);
+            return false;
+         }
       }
    }
 

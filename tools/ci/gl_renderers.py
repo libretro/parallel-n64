@@ -94,6 +94,13 @@ def main():
 
     failures = 0
     with tempfile.TemporaryDirectory() as tmp:
+        # a frontend that gives no context: the load fails, nothing crashes
+        path = fetch(a.roms, ROMS[0])
+        for plugin in PLUGINS:
+            rc, frames, out = run(a.host, a.core, path, plugin, [], tmp, {"LRHOST_REFUSE_HW_RENDER": "1"})
+            ok = rc == 1 and "retro_load_game failed" in out
+            print("%-10s %-9s no context: %s" % (ROMS[0], plugin, "load fails" if ok else "FAILED (exit %d)" % rc))
+            failures += not ok
         for rom in ROMS:
             path = fetch(a.roms, rom)
             for plugin in PLUGINS:

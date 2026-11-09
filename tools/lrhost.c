@@ -27,6 +27,7 @@
  * savestate after the first frame (LRHOST_RESAVE=file saves it straight back), and LRHOST_SAVE=file with LRHOST_SAVE_AT=n saves one
  * after frame n. LRHOST_HASHLOG=file logs a hash of every presented frame with its frame
  * number, for lining up two runs; LRHOST_RAMDUMP=file writes the system RAM at the end.
+ * LRHOST_REFUSE_HW_RENDER=1 refuses every hardware context, =gl only OpenGL ones.
  * LRHOST_UPSCALER (lrhost_vk) offers a temporal upscaler, and LRHOST_COUNT_PIPELINES=1
  * counts the pipelines the core creates by thread; see lrhost_vulkan.h.
  * LRHOST_SYSTEM_DIR=dir is the system and save folder (lrhost-system). LRHOST_POKE=offset,length
@@ -238,6 +239,11 @@ static void log_cb(enum retro_log_level lvl, const char *fmt, ...)
 
 static bool env_cb(unsigned cmd, void *data)
 {
+    /* a frontend whose video driver cannot give the core a context */
+    if (cmd == RETRO_ENVIRONMENT_SET_HW_RENDER && getenv("LRHOST_REFUSE_HW_RENDER")
+            && (strcmp(getenv("LRHOST_REFUSE_HW_RENDER"), "gl") != 0
+                || ((struct retro_hw_render_callback*)data)->context_type != RETRO_HW_CONTEXT_VULKAN))
+        return false;
     switch (cmd)
     {
     case RETRO_ENVIRONMENT_GET_LOG_INTERFACE:
