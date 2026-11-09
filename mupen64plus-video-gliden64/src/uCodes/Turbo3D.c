@@ -4,7 +4,7 @@
 #include "RDP.h"
 #include "gSP.h"
 #include "gDP.h"
-#include "DisplayWindow.h"
+#include "gli_drawer.h"
 
 /******************Turbo3D microcode*************************/
 
@@ -12,6 +12,7 @@
 #define GT_FLAG_NO_XFM		0x02	/* load vtx, use verbatim */
 #define GT_FLAG_XFM_ONLY	0x04	/* xform vtx, write to *TriN */
 
+typedef struct T3DGlobState T3DGlobState;
 struct T3DGlobState
 {
 	u16 pad0;
@@ -32,6 +33,7 @@ struct T3DGlobState
 	u32 rdpCmds;
 };
 
+typedef struct T3DState T3DState;
 struct T3DState
 {
 	u32 renderState;	/* render state */
@@ -45,11 +47,13 @@ struct T3DState
 	u32 othermode1;
 };
 
+typedef struct T3DTriN T3DTriN;
 struct T3DTriN
 {
 	u8	flag, v2, v1, v0;	/* flag is which one for flat shade */
 };
 
+typedef struct VtxOut VtxOut;
 struct VtxOut {
 	s16 yscrn; /* x,y screen coordinates are SSSS10.2 */
 	s16 xscrn;
@@ -58,7 +62,7 @@ struct VtxOut {
 	s16 t;
 	s16 s;
 
-	union {
+	GLI_ANON union {
 		struct
 		{
 			u8 a;
@@ -69,9 +73,9 @@ struct VtxOut {
 		struct
 		{
 			s8 a;
-			s8 z;	// b
-			s8 y;	//g
-			s8 x;	//r
+			s8 z;	/* b */
+			s8 y;	/*g */
+			s8 x;	/*r */
 		} normal;
 	};
 };
@@ -81,9 +85,10 @@ void Turbo3D_ProcessRDP(u32 _cmds)
 {
 	u32 addr = RSP_SegmentToPhysical(_cmds) >> 2;
 	if (addr != 0) {
+		u32 w0, w1;
 		RSP.LLE = true;
-		u32 w0 = ((u32*)RDRAM)[addr++];
-		u32 w1 = ((u32*)RDRAM)[addr++];
+		w0 = ((u32*)RDRAM)[addr++];
+		w1 = ((u32*)RDRAM)[addr++];
 		RSP.cmd = _SHIFTR( w0, 24, 8 );
 		while (w0 + w1 != 0) {
 			gli_GBIcmd[RSP.cmd]( w0, w1 );
@@ -106,10 +111,11 @@ void Turbo3D_LoadGlobState(u32 pgstate)
 	T3DGlobState *gstate = (T3DGlobState*)&RDRAM[addr];
 	const u32 w0 = gstate->othermode0;
 	const u32 w1 = gstate->othermode1;
-	gli_gDPSetOtherMode( _SHIFTR( w0, 0, 24 ),	// mode0
-					 w1 );					// mode1
+	int s;
+	gli_gDPSetOtherMode( _SHIFTR( w0, 0, 24 ),	/* mode0 */
+					 w1 );					/* mode1 */
 
-	for (int s = 0; s < 16; ++s)
+	for (s = 0; s < 16; ++s)
 		gli_gSPSegment(s, gstate->segBases[s] & 0x00FFFFFF);
 
 	gli_gSPViewport(pgstate + 80);
@@ -123,16 +129,16 @@ void Turbo3D_LoadObject(u32 pstate, u32 pvtx, u32 ptri)
 	u32 addr = RSP_SegmentToPhysical(pstate);
 	T3DState *ostate = (T3DState*)&RDRAM[addr];
 	const u32 tile = (ostate->textureState)&7;
+	int t;
+	u32 i;
+
 	gSP.texture.tile = tile;
 	gSP.textureTile[0] = &gDP.tiles[tile];
 	gSP.textureTile[1] = &gDP.tiles[(tile + 1) & 7];
 	gSP.texture.scales = 1.0f;
 	gSP.texture.scalet = 1.0f;
 
-	const u32 w0 = ostate->othermode0;
-	const u32 w1 = ostate->othermode1;
-	gli_gDPSetOtherMode( _SHIFTR( w0, 0, 24 ),	// mode0
-					 w1 );					// mode1
+	gli_gDPSetOtherMode(_SHIFTR(ostate->othermode0, 0, 24), ostate->othermode1);
 
 	if (ostate->flag != GT_FLAG_NOMTX)
 		gli_gSPForceMatrix(pstate + sizeof(T3DState));
@@ -145,43 +151,43 @@ void Turbo3D_LoadObject(u32 pstate, u32 pvtx, u32 ptri)
 
 	Turbo3D_ProcessRDP(ostate->rdpCmds);
 
-	GraphicsDrawer & drawer = dwnd().getDrawer();
 	if (ptri != 0) {
 		addr = RSP_SegmentToPhysical(ptri);
 		if (ostate->flag != GT_FLAG_NO_XFM) {
-			for (int t = 0; t < ostate->triCount; ++t) {
+			for (t = 0; t < ostate->triCount; ++t) {
 				T3DTriN * tri = (T3DTriN*)&RDRAM[addr];
 				addr += 4;
 				gli_gSPTriangle(tri->v0, tri->v1, tri->v2);
 			}
-			drawer.drawTriangles();
+			gli_drawer_draw_triangles();
 		} else {
 			const u32 vtxAddr = RSP_SegmentToPhysical(pvtx);
 			const VtxOut *pVertices = (VtxOut*)&RDRAM[vtxAddr];
-			for (u32 i = 0; i < ostate->vtxCount; ++i) {
-				SPVertex & vtx = drawer.getVertex(i);
-				vtx.x = _FIXED2FLOAT(pVertices[i].xscrn, 2);
-				vtx.y = _FIXED2FLOAT(pVertices[i].yscrn, 2);
-				vtx.z = _FIXED2FLOAT(pVertices[i].zscrn, 16);
-				vtx.w = 1.0f;
+			SPVertex * vertices = gli_drawer_vertices();
+			SPVertex * dma = gli_drawer_dma_vertices(ostate->triCount * 3);
+			u32 n = 0;
+			for (i = 0; i < ostate->vtxCount; ++i) {
+				SPVertex * vtx = &vertices[i];
+				vtx->x = _FIXED2FLOAT(pVertices[i].xscrn, 2);
+				vtx->y = _FIXED2FLOAT(pVertices[i].yscrn, 2);
+				vtx->z = _FIXED2FLOAT(pVertices[i].zscrn, 16);
+				vtx->w = 1.0f;
 			}
-			for (int t = 0; t < ostate->triCount; ++t) {
+			for (t = 0; t < ostate->triCount; ++t) {
 				T3DTriN * tri = (T3DTriN*)&RDRAM[addr];
 				addr += 4;
-				u32 vtxIdx[3] = { tri->v0, tri->v1, tri->v2 };
-				for (u32 i = 0; i < 3; ++i) {
-					SPVertex & vtx = drawer.getCurrentDMAVertex();
-					vtx = drawer.getVertex(vtxIdx[i]);
-				}
+				dma[n++] = vertices[tri->v0];
+				dma[n++] = vertices[tri->v1];
+				dma[n++] = vertices[tri->v2];
 			}
-			drawer.drawScreenSpaceTriangle(drawer.getDMAVerticesCount(), graphics::drawmode::TRIANGLES);
+			gli_drawer_draw_screen_triangles(n);
 		}
 	}
 }
 
-void gli_RunTurbo3D()
+void gli_RunTurbo3D(void)
 {
-	while (true) {
+	for (;;) {
 		u32 addr = RSP.PC[RSP.PCi] >> 2;
 		const u32 pgstate = ((u32*)RDRAM)[addr++];
 		const u32 pstate = ((u32*)RDRAM)[addr++];
@@ -194,7 +200,7 @@ void gli_RunTurbo3D()
 		if (pgstate != 0)
 			Turbo3D_LoadGlobState(pgstate);
 		Turbo3D_LoadObject(pstate, pvtx, ptri);
-		// Go to the next instruction
+		/* Go to the next instruction */
 		RSP.PC[RSP.PCi] += 16;
-	};
+	}
 }

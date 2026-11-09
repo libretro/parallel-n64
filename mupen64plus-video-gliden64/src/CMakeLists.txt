@@ -98,8 +98,8 @@ set(GLideN64_SOURCES
   uCodes/L3DEX.c
   uCodes/S2DEX2.c
   uCodes/S2DEX.cpp
-  uCodes/T3DUX.cpp
-  uCodes/Turbo3D.cpp
+  uCodes/T3DUX.c
+  uCodes/Turbo3D.c
   uCodes/ZSort.cpp
   uCodes/ZSortBOSS.cpp
 )

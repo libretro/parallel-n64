@@ -4,10 +4,11 @@
 #include "RDP.h"
 #include "gSP.h"
 #include "gDP.h"
-#include "DisplayWindow.h"
+#include "gli_drawer.h"
 
 /******************T3DUX microcode*************************/
 
+typedef struct T3DUXGlobState T3DUXGlobState;
 struct T3DUXGlobState
 {
 	u16 pad0;
@@ -28,6 +29,7 @@ struct T3DUXGlobState
 	u32 rdpCmds;
 };
 
+typedef struct T3DUXState T3DUXState;
 struct T3DUXState
 {
 	u32 renderState;	/* render state */
@@ -48,6 +50,7 @@ struct T3DUXState
 };
 
 
+typedef struct T3DUXTriN T3DUXTriN;
 struct T3DUXTriN
 {
 	u8	flag, v2, v1, v0; /* flag is which one for flat shade */
@@ -62,9 +65,10 @@ void T3DUX_ProcessRDP(u32 _cmds)
 {
 	u32 addr = RSP_SegmentToPhysical(_cmds) >> 2;
 	if (addr != 0) {
+		u32 w0, w1;
 		RSP.LLE = true;
-		u32 w0 = ((u32*)RDRAM)[addr++];
-		u32 w1 = ((u32*)RDRAM)[addr++];
+		w0 = ((u32*)RDRAM)[addr++];
+		w1 = ((u32*)RDRAM)[addr++];
 		RSP.cmd = _SHIFTR( w0, 24, 8 );
 		while (w0 + w1 != 0) {
 			gli_GBIcmd[RSP.cmd]( w0, w1 );
@@ -94,10 +98,11 @@ void T3DUX_LoadGlobState(u32 pgstate)
 	T3DUXGlobState *gstate = (T3DUXGlobState*)&RDRAM[addr];
 	const u32 w0 = gstate->othermode0;
 	const u32 w1 = gstate->othermode1;
-	gli_gDPSetOtherMode( _SHIFTR( w0, 0, 24 ),	// mode0
-					 w1 );					// mode1
+	int s;
+	gli_gDPSetOtherMode( _SHIFTR( w0, 0, 24 ),	/* mode0 */
+					 w1 );					/* mode1 */
 
-	for (int s = 0; s < 16; ++s)
+	for (s = 0; s < 16; ++s)
 		gli_gSPSegment(s, gstate->segBases[s] & 0x00FFFFFF);
 
 	gli_gSPViewport(pgstate + 80);
@@ -109,29 +114,31 @@ static
 void T3DUX_LoadObject(u32 pstate, u32 pvtx, u32 ptri, u32 pcol)
 {
 	T3DUXState *ostate = (T3DUXState*)&RDRAM[RSP_SegmentToPhysical(pstate)];
-	// TODO: fix me
+	/* TODO: fix me */
 	const u32 tile = 0;
+	u32 coladdr;
+	const T3DUXTriN * tri;
+	u8 pal;
+	bool flatShading, texturing;
+	f32 flatr = 0.f, flatg = 0.f, flatb = 0.f, flata = 0.f;
+	SPVertex * vertices, * dma, * pVtx;
+	int t;
+
 	gSP.texture.tile = tile;
 	gSP.textureTile[0] = &gDP.tiles[tile];
 	gSP.textureTile[1] = &gDP.tiles[(tile + 1) & 7];
 	gSP.texture.scales = 1.0f;
 	gSP.texture.scalet = 1.0f;
 
-	{
-		const u32 w0 = ostate->othermode0;
-		const u32 w1 = ostate->othermode1;
-		gli_gDPSetOtherMode(
-			_SHIFTR(w0, 0, 24),	// mode0
-			w1);				// mode1
-	}
+	gli_gDPSetOtherMode(_SHIFTR(ostate->othermode0, 0, 24), ostate->othermode1);
 
-	if ((ostate->matrixFlag & 1) == 0) //load matrix
+	if ((ostate->matrixFlag & 1) == 0) /* load matrix */
 		gli_gSPForceMatrix(pstate + sizeof(T3DUXState));
 
 	gli_gSPClearGeometryMode(G_LIGHTING | G_FOG);
 	gli_gSPSetGeometryMode(ostate->renderState | G_SHADING_SMOOTH | G_SHADE | G_ZBUFFER | G_CULL_BACK);
 
-	if (pvtx != 0) //load vtx
+	if (pvtx != 0) /* load vtx */
 		gli_gSPT3DUXVertex(pvtx, ostate->vtxCount, pcol);
 
 	T3DUX_ProcessRDP(ostate->rdpCmds);
@@ -139,24 +146,25 @@ void T3DUX_LoadObject(u32 pstate, u32 pvtx, u32 ptri, u32 pcol)
 	if (ptri == 0)
 		return;
 
-	GraphicsDrawer & drawer = dwnd().getDrawer();
-	const u32 coladdr = RSP_SegmentToPhysical(pcol);
-	const T3DUXTriN * tri = (const T3DUXTriN*)&RDRAM[RSP_SegmentToPhysical(ptri)];
-	u8 pal = _SHIFTR(t32uxSetTileW1, 20, 4);
+	coladdr = RSP_SegmentToPhysical(pcol);
+	tri = (const T3DUXTriN*)&RDRAM[RSP_SegmentToPhysical(ptri)];
+	pal = _SHIFTR(t32uxSetTileW1, 20, 4);
 	t32uxSetTileW1 &= 0xFF0FFFFF;
-	const bool flatShading = (ostate->geommode & 0x0F) == 0;
-	const bool texturing = ostate->texmode != 1;
-	f32 flatr, flatg, flatb, flata;
+	flatShading = (ostate->geommode & 0x0F) == 0;
+	texturing = ostate->texmode != 1;
 
-	drawer.setDMAVerticesSize(ostate->triCount * 3);
-	SPVertex * pVtx = drawer.getDMAVerticesData();
-	for (int t = 0; t < ostate->triCount; ++t, ++tri) {
+	vertices = gli_drawer_vertices();
+	dma = gli_drawer_dma_vertices(ostate->triCount * 3);
+	pVtx = dma;
+	for (t = 0; t < ostate->triCount; ++t, ++tri) {
+		u32 vtxIdx[3], texIdx[3], v;
+
 		if (texturing && tri->pal != 0) {
 			const u32 w1 = t32uxSetTileW1 | (tri->pal << 20);
 			const u32 newPal = _SHIFTR(w1, 20, 4);
 			if (pal != newPal) {
-				drawer.drawDMATriangles(static_cast<u32>(pVtx - drawer.getDMAVerticesData()));
-				pVtx = drawer.getDMAVerticesData();
+				gli_drawer_draw_dma_triangles((u32)(pVtx - dma));
+				pVtx = dma;
 				pal = newPal;
 				gli_RDP_SetTile(t32uxSetTileW0, w1);
 			}
@@ -165,27 +173,21 @@ void T3DUX_LoadObject(u32 pstate, u32 pvtx, u32 ptri, u32 pcol)
 		if (tri->v0 >= ostate->vtxCount || tri->v1 >= ostate->vtxCount || tri->v2 >= ostate->vtxCount)
 			continue;
 
-		if (drawer.isClipped(tri->v0, tri->v1, tri->v2))
+		if (GLI_IS_CLIPPED(vertices, tri->v0, tri->v1, tri->v2))
 			continue;
 
 		if (flatShading) {
-			struct T3DUXColor
-			{
-				u8 a;
-				u8 b;
-				u8 g;
-				u8 r;
-			} color = *(T3DUXColor*)&RDRAM[coladdr + ((tri->flag << 2) & 0x03FC)];
-			flata = _FIXED2FLOAT(color.a, 8);
-			flatb = _FIXED2FLOAT(color.b, 8);
-			flatg = _FIXED2FLOAT(color.g, 8);
-			flatr = _FIXED2FLOAT(color.r, 8);
+			const u8 * color = &RDRAM[coladdr + ((tri->flag << 2) & 0x03FC)];
+			flata = _FIXED2FLOAT(color[0], 8);
+			flatb = _FIXED2FLOAT(color[1], 8);
+			flatg = _FIXED2FLOAT(color[2], 8);
+			flatr = _FIXED2FLOAT(color[3], 8);
 		}
 
-		u32 vtxIdx[3] = { tri->v0, tri->v1, tri->v2 };
-		u32 texIdx[3] = { tri->v0tex, tri->v1tex, tri->v2tex };
-		for (u32 v = 0; v < 3; ++v) {
-			*pVtx = drawer.getVertex(vtxIdx[v]);
+		vtxIdx[0] = tri->v0; vtxIdx[1] = tri->v1; vtxIdx[2] = tri->v2;
+		texIdx[0] = tri->v0tex; texIdx[1] = tri->v1tex; texIdx[2] = tri->v2tex;
+		for (v = 0; v < 3; ++v) {
+			*pVtx = vertices[vtxIdx[v]];
 
 			if (texturing) {
 				u32 texcoords = *(const u32*)&RDRAM[coladdr + (texIdx[v] << 2)];
@@ -207,19 +209,19 @@ void T3DUX_LoadObject(u32 pstate, u32 pvtx, u32 ptri, u32 pcol)
 		}
 	}
 
-	drawer.drawDMATriangles(static_cast<u32>(pVtx - drawer.getDMAVerticesData()));
+	gli_drawer_draw_dma_triangles((u32)(pVtx - dma));
 }
 
-void gli_RunT3DUX()
+void gli_RunT3DUX(void)
 {
-	while (true) {
+	for (;;) {
 		u32 addr = RSP.PC[RSP.PCi] >> 2;
 		const u32 pgstate = ((u32*)RDRAM)[addr++];
 		const u32 pstate = ((u32*)RDRAM)[addr++];
 		const u32 pvtx = ((u32*)RDRAM)[addr++];
 		const u32 ptri = ((u32*)RDRAM)[addr++];
 		const u32 pcol = ((u32*)RDRAM)[addr++];
-		//const u32 pstore = ((u32*)RDRAM)[addr];
+		/*const u32 pstore = ((u32*)RDRAM)[addr]; */
 		if (pstate == 0) {
 			RSP.halt = true;
 			break;
@@ -227,7 +229,7 @@ void gli_RunT3DUX()
 		if (pgstate != 0)
 			T3DUX_LoadGlobState(pgstate);
 		T3DUX_LoadObject(pstate, pvtx, ptri, pcol);
-		// Go to the next instruction
+		/* Go to the next instruction */
 		RSP.PC[RSP.PCi] += 24;
-	};
+	}
 }

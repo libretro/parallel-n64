@@ -7,6 +7,7 @@
 #include "DisplayWindow.h"
 #include "SoftwareRender.h"
 #include "GraphicsDrawer.h"
+#include "gli_drawer.h"
 #include "TextureFilterHandler.h"
 #include "PostProcessor.h"
 #include "NoiseTexture.h"
@@ -158,6 +159,33 @@ void GraphicsDrawer::_updateDepthCompare() const
 				gfxContext.setClampMode(graphics::ClampMode::NoClipping);
 		}
 	}
+}
+
+SPVertex * gli_drawer_vertices(void)
+{
+	return dwnd().getDrawer().getVertexPtr(0);
+}
+
+SPVertex * gli_drawer_dma_vertices(u32 _atLeast)
+{
+	GraphicsDrawer & drawer = dwnd().getDrawer();
+	drawer.setDMAVerticesSize(_atLeast);
+	return drawer.getDMAVerticesData();
+}
+
+void gli_drawer_draw_triangles(void)
+{
+	dwnd().getDrawer().drawTriangles();
+}
+
+void gli_drawer_draw_dma_triangles(u32 _numVtx)
+{
+	dwnd().getDrawer().drawDMATriangles(_numVtx);
+}
+
+void gli_drawer_draw_screen_triangles(u32 _numVtx)
+{
+	dwnd().getDrawer().drawScreenSpaceTriangle(_numVtx, graphics::drawmode::TRIANGLES);
 }
 
 SPVertex & GraphicsDrawer::getCurrentDMAVertex()
@@ -1685,6 +1713,9 @@ void GraphicsDrawer::_setSpecialTexrect() const
 
 void GraphicsDrawer::_initData()
 {
+	/* the microcodes fill this directly: sized here, not mid-game */
+	m_dmaVertices.resize(4096);
+
 	_initStates();
 	_setSpecialTexrect();
 

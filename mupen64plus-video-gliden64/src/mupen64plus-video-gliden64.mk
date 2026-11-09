@@ -110,8 +110,8 @@ MY_LOCAL_SRC_FILES :=                                                           
     $(SRCDIR)/uCodes/L3DEX.c                                                     \
     $(SRCDIR)/uCodes/S2DEX2.c                                                    \
     $(SRCDIR)/uCodes/S2DEX.cpp                                                     \
-    $(SRCDIR)/uCodes/T3DUX.cpp                                                     \
-    $(SRCDIR)/uCodes/Turbo3D.cpp                                                   \
+    $(SRCDIR)/uCodes/T3DUX.c                                                     \
+    $(SRCDIR)/uCodes/Turbo3D.c                                                   \
     $(SRCDIR)/uCodes/ZSort.cpp                                                     \
     $(SRCDIR)/uCodes/ZSortBOSS.cpp                                                 \
     $(SRCDIR)/xxHash/xxhash.c                                                      \
