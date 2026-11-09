@@ -144,6 +144,10 @@ test-angrylion-linux-x64:
 # setting must render at the factor that fits. The shader
 # bank check needs no GPU: those variants must not use 8-bit storage; nor
 # does the upscaler shaders' check: the SPIR-V committed must be current.
+# A second session must build ahead the pipelines the first one built, on
+# the worker and none on the frame's threads, and the frames must not
+# depend on how RDRAM is uploaded (the ROMs a frontend's writes show in,
+# one more, and the partly written chunks: the whole lane takes 20 minutes).
 test-parallel-rdp-linux-x64:
   extends:
     - .core-defs
@@ -170,6 +174,8 @@ test-parallel-rdp-linux-x64:
     - python3 tools/ci/parallel_rdp_syncval.py --core ./parallel_n64_libretro.so --host ./lrhost_vk
     - python3 tools/ci/parallel_rdp_downscale.py --core ./parallel_n64_libretro.so --host ./lrhost_vk
     - python3 tools/ci/parallel_rdp_binding_fit.py --core ./parallel_n64_libretro.so --host ./lrhost_vk
+    - python3 tools/ci/parallel_rdp_pipelines.py --core ./parallel_n64_libretro.so --host ./lrhost_vk --roms krom-roms
+    - python3 tools/ci/parallel_rdp_rdram.py --core ./parallel_n64_libretro.so --host ./lrhost_vk --roms krom-roms --only cube32,tlut16,zbuf16,partial-writes
   artifacts:
     when: on_failure
     paths:

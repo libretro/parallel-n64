@@ -21,7 +21,7 @@ Its frames must be PARTIAL_FRAME however the RDRAM is uploaded, threaded
 and single-threaded.
 
   parallel_rdp_rdram.py --core parallel_n64_libretro.so --host ./lrhost_vk \\
-                        [--roms dir] [--out dir] [--only rom|partial-writes]
+                        [--roms dir] [--out dir] [--only rom,...,partial-writes]
 """
 import argparse, os, shutil, subprocess, sys
 
@@ -168,13 +168,14 @@ def main():
     ap.add_argument("--host", required=True)
     ap.add_argument("--roms", default="roms")
     ap.add_argument("--out", default="parallel_rdp_rdram")
-    ap.add_argument("--only", help="run only this ROM, or partial-writes")
+    ap.add_argument("--only", help="run only these, comma-separated: ROMs, partial-writes")
     args = ap.parse_args()
     args.core = os.path.abspath(args.core)
     args.host = os.path.abspath(args.host)
+    only = args.only.split(",") if args.only else None
     failed = 0
     for name in regress.ROMS:
-        if args.only and args.only != name:
+        if only and name not in only:
             continue
         for mode, (env_extra, options) in MODES.items():
             try:
@@ -185,7 +186,7 @@ def main():
             for e in errors:
                 print("  FAIL: " + e)
             failed += bool(errors)
-    if not args.only or args.only == "partial-writes":
+    if not only or "partial-writes" in only:
         try:
             errors = partial_lane(args)
         except Exception as e:

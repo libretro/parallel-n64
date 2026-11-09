@@ -1,0 +1,46 @@
+# parallel-RDP on Mesa's software Vulkan driver (lavapipe), no GPU.
+#
+# A second session must build ahead the pipelines the first one built:
+# none on the frame's threads, with the driver's cache there or gone, and
+# from a list that is damaged, cut short or another ROM's it must recover.
+# The frames must not depend on how RDRAM is uploaded. The RDRAM lane runs
+# the ROMs a frontend's writes show in, one more, and the partly written
+# chunks: all of its ROMs would take 20 minutes.
+name: parallel-RDP
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  parallel-rdp:
+    name: parallel-RDP (lavapipe)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    env:
+      MAKEFLAGS: --no-print-directory
+      CORE_FLAGS: platform=unix WITH_DYNAREC=x86_64 HAVE_THR_AL=1 HAVE_PARALLEL=1 HAVE_PARALLEL_RSP=1
+      VK_ICD_FILENAMES: /usr/share/vulkan/icd.d/lvp_icd.json
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq build-essential nasm git ca-certificates curl python3 \
+            mesa-vulkan-drivers libvulkan1 libgl-dev
+
+      - name: Build
+        run: |
+          make -j$(nproc) $CORE_FLAGS
+          make platform=unix HAVE_PARALLEL=1 lrhost_vk
+
+      - name: Pipelines built ahead
+        run: python3 tools/ci/parallel_rdp_pipelines.py --core ./parallel_n64_libretro.so --host ./lrhost_vk --roms krom-roms
+
+      - name: RDRAM uploads
+        run: python3 tools/ci/parallel_rdp_rdram.py --core ./parallel_n64_libretro.so --host ./lrhost_vk --roms krom-roms --only cube32,tlut16,zbuf16,partial-writes
