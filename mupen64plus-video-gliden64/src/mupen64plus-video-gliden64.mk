@@ -27,7 +27,7 @@ MY_LOCAL_SRC_FILES :=                                                           
     $(SRCDIR)/DepthBuffer.cpp                                                      \
     $(SRCDIR)/DisplayWindow.cpp                                                    \
     $(SRCDIR)/FrameBuffer.cpp                                                      \
-    $(SRCDIR)/FrameBufferInfo.cpp                                                  \
+    $(SRCDIR)/FrameBufferInfo.c                                                   \
     $(SRCDIR)/GBI.c                                                              \
     $(SRCDIR)/gDP.c                                                              \
     $(SRCDIR)/GLideN64.c                                                         \

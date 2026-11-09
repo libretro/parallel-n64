@@ -1,3 +1,4 @@
+#include <string.h>
 #include "RDRAMtoColorBuffer.h"
 
 #include <FrameBufferInfo.h>
@@ -216,7 +217,7 @@ void RDRAMtoColorBuffer::_copyFromRDRAM(u32 _height, bool _fullAlpha)
 			floatData[i] = byteData[i] / 255.0f;
 	}
 
-	if (!FBInfo::fbInfo.isSupported()) {
+	if (!gli_FBInfo_supported()) {
 		if (bUseAlpha && config.frameBufferEmulation.copyToRDRAM == ctDisable) {
 			u32 totalBytes = (width * height) << m_pCurBuffer->m_size >> 1;
 			if (address + totalBytes > RDRAMSize + 1)
@@ -282,7 +283,7 @@ void RDRAMtoColorBuffer::_copyFromRDRAM(u32 _height, bool _fullAlpha)
 void RDRAMtoColorBuffer::copyFromRDRAM(u32 _address, bool _bCFB)
 {
 	if (m_pCurBuffer == nullptr) {
-		if (_bCFB || (config.frameBufferEmulation.copyFromRDRAM != 0 && !FBInfo::fbInfo.isSupported()))
+		if (_bCFB || (config.frameBufferEmulation.copyFromRDRAM != 0 && !gli_FBInfo_supported()))
 			m_pCurBuffer = frameBufferList().findBuffer(_address);
 	} else {
 		if (m_vecAddress.empty()) {

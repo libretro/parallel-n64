@@ -334,7 +334,7 @@ void ColorBufferToRDRAM::_write(const u8 * _pixels, u32 _stride, const ColorCopy
 	if (!isMemoryWritable(RDRAM + _g.startAddress, _g.numPixels << _g.size >> 1))
 		return;
 
-	const bool clear = !FBInfo::fbInfo.isSupported() && config.frameBufferEmulation.copyFromRDRAM != 0;
+	const bool clear = !gli_FBInfo_supported() && config.frameBufferEmulation.copyFromRDRAM != 0;
 	if (_g.size == G_IM_SIZ_32b) {
 		u32 *ptr_dst = (u32*)(RDRAM + _g.startAddress);
 		if (clear)

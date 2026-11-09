@@ -1783,7 +1783,7 @@ void GraphicsDrawer::_initData()
 	g_zlutTexture.init();
 	g_noiseTexture.init();
 	g_paletteTexture.init();
-	FBInfo::fbInfo.reset();
+	gli_fbinfo_reset();
 	gli_texrect_init();
 	m_drawingState = DrawingState::Non;
 	m_maxLineWidth = gfxContext.getMaxLineWidth();

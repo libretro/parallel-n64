@@ -914,7 +914,7 @@ void FrameBufferList::depthBufferCopyRdram()
 
 void FrameBufferList::fillBufferInfo(void * _pinfo, u32 _size)
 {
-	FBInfo::FrameBufferInfo* pInfo = reinterpret_cast<FBInfo::FrameBufferInfo*>(_pinfo);
+	FBInfoEntry* pInfo = reinterpret_cast<FBInfoEntry*>(_pinfo);
 
 	u32 idx = 0;
 	for (auto iter = m_list.begin(); iter != m_list.end(); ++iter) {
@@ -1788,14 +1788,14 @@ void gli_fb_full_sync(bool _lle)
 
 	FrameBuffer * pCurrentBuffer = frameBufferList().getCurrent();
 	if ((config.frameBufferEmulation.copyToRDRAM != ctDisable || (config.generalEmulation.hacks & hack_subscreen) != 0) &&
-		!FBInfo::fbInfo.isSupported() &&
+		!gli_FBInfo_supported() &&
 		pCurrentBuffer != nullptr &&
 		!pCurrentBuffer->isAuxiliary()
 	)
 		FrameBuffer_CopyToRDRAM(gDP.colorImage.address, config.frameBufferEmulation.copyToRDRAM == ctSync);
 
 	if (_lle) {
-		if (config.frameBufferEmulation.copyDepthToRDRAM != cdDisable && !FBInfo::fbInfo.isSupported())
+		if (config.frameBufferEmulation.copyDepthToRDRAM != cdDisable && !gli_FBInfo_supported())
 			FrameBuffer_CopyDepthBuffer(gDP.colorImage.address);
 	}
 }
@@ -1989,4 +1989,44 @@ void gli_fb_bind_draw(const FrameBuffer * _pBuffer)
 void gli_fb_set_current_draw_buffer(void)
 {
 	frameBufferList().setCurrentDrawBuffer();
+}
+
+void gli_fb_add_address(u32 _address, u32 _size)
+{
+	FrameBuffer_AddAddress(_address, _size);
+}
+
+bool gli_fb_is_depth(const FrameBuffer * _pBuffer)
+{
+	return _pBuffer->m_isDepthBuffer;
+}
+
+void gli_fb_copy_depth_chunk(u32 _address)
+{
+	FrameBuffer_CopyDepthBufferChunk(_address);
+}
+
+void gli_fb_copy_chunk(u32 _address)
+{
+	FrameBuffer_CopyChunkToRDRAM(_address);
+}
+
+void gli_fb_copy_to_rdram(u32 _address, bool _sync)
+{
+	FrameBuffer_CopyToRDRAM(_address, _sync);
+}
+
+void gli_fb_fill_info(void * _pinfo, u32 _size)
+{
+	frameBufferList().fillBufferInfo(_pinfo, _size);
+}
+
+bool gli_depth_current(u32 * _address, u32 * _width)
+{
+	const DepthBuffer * pDepthBuffer = depthBufferList().getCurrent();
+	if (pDepthBuffer == nullptr)
+		return false;
+	*_address = pDepthBuffer->m_address;
+	*_width = pDepthBuffer->m_width;
+	return true;
 }

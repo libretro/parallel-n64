@@ -74,7 +74,7 @@ public:
 	}
 
 	bool run() {
-		FBInfo::fbInfo.Read(m_addr);
+		gli_fbinfo_read(m_addr);
 		return true;
 	}
 private:
@@ -226,7 +226,7 @@ void PluginAPI::ChangeWindow()
 
 void PluginAPI::FBWrite(unsigned int _addr, unsigned int _size)
 {
-	FBInfo::fbInfo.Write(_addr, _size);
+	gli_fbinfo_write(_addr, _size);
 }
 
 void PluginAPI::FBRead(unsigned int _addr)
@@ -234,12 +234,12 @@ void PluginAPI::FBRead(unsigned int _addr)
 #ifdef RSPTHREAD
 	_callAPICommand(FBReadCommand(_addr));
 #else
-	FBInfo::fbInfo.Read(_addr);
+	gli_fbinfo_read(_addr);
 #endif
 }
 
 void PluginAPI::FBGetFrameBufferInfo(void * _pinfo)
 {
-	FBInfo::fbInfo.GetInfo(_pinfo);
+	gli_fbinfo_get_info(_pinfo);
 }
 
