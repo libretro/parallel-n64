@@ -489,7 +489,7 @@ void gli_gDPLoadTile(u32 tile, u32 uls, u32 ult, u32 lrs, u32 lrt)
 
 	if (gDP.loadTile->size == G_IM_SIZ_32b)
 		gDPLoadTile32b(gDP.loadTile->uls, gDP.loadTile->ult, gDP.loadTile->lrs, gDP.loadTile->lrt);
-	else {
+	else if (address < RDRAMSize) {
 		u32 tmemAddr = gDP.loadTile->tmem;
 		const u32 line = gDP.loadTile->line;
 		for (u32 y = 0; y < height; ++y) {
@@ -537,6 +537,8 @@ void gDPLoadBlock32(u32 uls,u32 lrs, u32 dxt)
 	 * guest-derived base/width and is otherwise unbounded. Skip any
 	 * word past RDRAM; the TMEM destination is masked to 0x3ff. */
 	const u32 ramWords = (RDRAMSize >> 2) + 1;
+	if (lrs < uls)
+		return;
 	if (width == 4) // lr_s == 0, 1x1 texture
 		width = 1;
 	else if (width & 7)
@@ -628,7 +630,7 @@ void gli_gDPLoadBlock(u32 tile, u32 uls, u32 ult, u32 lrs, u32 dxt)
 	if (gDP.loadTile->size == G_IM_SIZ_32b)
 		gDPLoadBlock32(gDP.loadTile->uls, gDP.loadTile->lrs, dxt);
 	else if (gDP.loadTile->format == G_IM_FMT_YUV)
-		memcpy(TMEM, &RDRAM[address], bytes); // HACK!
+		memcpy(TMEM, &RDRAM[address], min(bytes, (u32)sizeof(TMEM))); // HACK!
 	else {
 		u32 tmemAddr = gDP.loadTile->tmem;
 		gli_UnswapCopyWrap(RDRAM, address, (u8*)TMEM, tmemAddr << 3, 0xFFF, bytes);
@@ -680,8 +682,10 @@ void gli_gDPLoadTLUT( u32 tile, u32 uls, u32 ult, u32 lrs, u32 lrt )
 			/* address is guest-derived and advances per entry; stop if
 			 * the 2-byte read would leave RDRAM. The TMEM destination is
 			 * already masked to 0x07FF. */
-			if ((address + 2) > RDRAMSize)
+			if ((address + 2) > RDRAMSize) {
+				i = count;
 				break;
+			}
 			dest[(destIdx | 0x0400) & 0x07FF] = swapword(*(u16*)(RDRAM + (address ^ 2)));
 			address += 2;
 			destIdx += 4;
