@@ -39,10 +39,11 @@ def run(host, core, rom, tmp, name, frames, api, env_extra, options=()):
     return out
 
 
-def culling_cartridge(path):
+def culling_cartridge(path, resize=False):
     """An F3D task, run by the HLE RSP: triangles of both windings, under each
-    cull mode. The other test content goes straight to the RDP and never culls."""
-    t0, t1, t2, t3 = 8, 9, 10, 11
+    cull mode. The other test content goes straight to the RDP and never culls.
+    With resize the game's image changes width every few frames."""
+    t0, t1, t2, t3, t4, t5, t6, t7 = 8, 9, 10, 11, 12, 13, 14, 15
     mips = cart.mips
     FB, DATA = 0x100000, 0x200000
     W, H = cart.WIDTH, cart.HEIGHT
@@ -118,6 +119,12 @@ def culling_cartridge(path):
     prog += li(t0, 0xA4040010) + li(t2, 0xA4400010)
     start = len(prog)
     prog += [lw(t1, 0, t2), ori(t3, 0, 0x200), bne(t1, t3, -3), 0]
+    if resize:
+        prog += [mips(0x09, t4, t4, 1), mips(0x0c, t4, t1, 8)]  # eight frames of each width
+        prog += li(t5, 0xFF100000 | (W - 1)) + li(t6, W) + li(t7, FB)
+        prog += [beq(t1, 0, 7), 0] + li(t5, 0xFF100000 | 255) + li(t6, 256) + li(t7, FB + 0x80000)
+        prog += li(t1, 0xA0000000 | (DATA + DLIST)) + [sw(t5, 0, t1), sw(t7, 4, t1)]
+        prog += li(t1, 0xA4400000) + [sw(t7, 4, t1), sw(t6, 8, t1)]
     prog += [ori(t1, 0, 0x125), sw(t1, 0, t0)]  # go, and ask for no interrupt
     prog += [lw(t1, 0, t2), ori(t3, 0, 0x200), beq(t1, t3, -3), 0]
     prog += [beq(0, 0, start - len(prog) - 1), 0]
@@ -147,7 +154,7 @@ def worst(gl, vk):
     return m
 
 
-def compare(a, name, rom, frames, options=(), modes=(("generic", {"GLIDEN64_VULKAN": "generic"}), ("own", {}))):
+def compare(a, name, rom, frames, options=(), modes=(("generic", {"GLIDEN64_VULKAN": "generic"}), ("own", {})), skip=1):
     failures = 0
     with tempfile.TemporaryDirectory() as tmp:
         gl = run(a.gl, a.core, rom, tmp, "gl", frames, "opengl", {}, options)
@@ -160,9 +167,9 @@ def compare(a, name, rom, frames, options=(), modes=(("generic", {"GLIDEN64_VULK
             top = 0
             # The first presented frame is a dupe (nothing latched yet): GL's
             # host then reads its framebuffer, Vulkan's has no image to read.
-            common = sorted(set(gl) & set(vk))[1:]
-            if len(common) != len(gl) - 1:
-                bad = abs(len(gl) - 1 - len(common))
+            common = sorted(set(gl) & set(vk))[skip:]
+            if len(common) != len(gl) - skip:
+                bad = abs(len(gl) - skip - len(common))
             for f in common:
                 w = worst(gl[f], vk[f])
                 top = max(top, w)
@@ -189,8 +196,15 @@ def main():
         rom = os.path.join(tmp, "culling.z64")
         culling_cartridge(rom)
         failures += compare(a, "culling", rom, 8)
+        failures += compare(a, "culling fb", rom, 8, ["parallel-n64-gliden64-EnableFBEmulation=True"])
+        # the overscan target follows the game's image: resizing replaces its texture
+        culling_cartridge(rom, resize=True)
+        failures += compare(a, "resize", rom, 40, ["parallel-n64-gliden64-EnableFBEmulation=True", "parallel-n64-gliden64-EnableOverscan=Enabled",
+                                                  "parallel-n64-gliden64-EnableNativeResFactor=2"], skip=8)
     for name in (cart.KROM[:1] if a.quick else cart.KROM):
         failures += compare(a, name, cart.fetch(a.roms, name), 20 if a.quick else 60)
+        failures += compare(a, name + " fb", cart.fetch(a.roms, name), 20,
+                            ["parallel-n64-gliden64-EnableFBEmulation=True"])
     # GPUs without dynamic blending build a pipeline for each state instead
     if not a.quick:
         failures += compare(a, "static", cart.fetch(a.roms, "cube32"), 20,

@@ -91,7 +91,7 @@ typedef struct vkr_image
    uint32_t    used_serial;
    uint16_t    gen;
    uint16_t    w, h;
-   uint8_t     samples, levels, is_depth, live;
+   uint8_t     samples, levels, is_depth, live, attached;
    int         fmt;
    VkSampler   sampler;
    int         mag, min, mip, wrap_s, wrap_t;
@@ -709,8 +709,28 @@ static void ensure_layout(vkr_renderer *r, vkr_image *i, VkImageLayout l)
    i->layout = l;
 }
 
+static void fbo_reset(vkr_renderer *r, vkr_fbo *f);
+static void end_pass(vkr_renderer *r);
+
+/* A framebuffer object holds the image's view: it has to be built again */
+static void forget_framebuffers_of(vkr_renderer *r, const vkr_image *i)
+{
+   unsigned h = (unsigned)(i - r->images);
+   unsigned f;
+   if (!i->attached)
+      return;
+   for (f = 1; f < MAX_FBOS; f++)
+      if (r->fbos[f].live && (r->fbos[f].color == h || r->fbos[f].depth == h))
+      {
+         if (f == r->draw_fbo)
+            end_pass(r);
+         fbo_reset(r, &r->fbos[f]);
+      }
+}
+
 static void destroy_image_now(vkr_renderer *r, vkr_image *i)
 {
+   forget_framebuffers_of(r, i);
    if (i->view != VK_NULL_HANDLE)
       trash(r, G_VIEW, (uint64_t)(uintptr_t)i->view, NULL);
    if (i->image != VK_NULL_HANDLE)
@@ -838,6 +858,7 @@ unsigned vkr_texture_new(vkr_renderer *r)
    h = r->image_free[--r->n_image_free];
    i = &r->images[h];
    i->live = 1;
+   i->attached = 0;
    i->gen++;
    i->sampler = VK_NULL_HANDLE;
    i->mag = i->min = i->mip = VKR_FILTER_NEAREST;
@@ -855,6 +876,17 @@ void vkr_texture_delete(vkr_renderer *r, unsigned h)
       return;
    i = &r->images[h];
    destroy_image_now(r, i);
+   if (i->attached)
+   {
+      unsigned f;
+      for (f = 1; f < MAX_FBOS; f++)
+      {
+         if (r->fbos[f].color == h)
+            r->fbos[f].color = 0;
+         if (r->fbos[f].depth == h)
+            r->fbos[f].depth = 0;
+      }
+   }
    i->live = 0;
    r->image_free[r->n_image_free++] = h;
    for (u = 0; u < VKR_BIND_COUNT; u++)
@@ -1075,6 +1107,8 @@ void vkr_fbo_color(vkr_renderer *r, unsigned fbo, unsigned tex)
    if (fbo == r->draw_fbo)
       end_pass(r);
    r->fbos[fbo].color = tex;
+   if (tex && tex < MAX_IMAGES)
+      r->images[tex].attached = 1;
    fbo_reset(r, &r->fbos[fbo]);
 }
 
@@ -1085,6 +1119,8 @@ void vkr_fbo_depth(vkr_renderer *r, unsigned fbo, unsigned tex)
    if (fbo == r->draw_fbo)
       end_pass(r);
    r->fbos[fbo].depth = tex;
+   if (tex && tex < MAX_IMAGES)
+      r->images[tex].attached = 1;
    fbo_reset(r, &r->fbos[fbo]);
 }
 
@@ -1278,7 +1314,11 @@ static int begin_pass(vkr_renderer *r)
       vkr_fbo *o = &r->fbos[r->draw_fbo];
       vkr_image *c = o->color ? &r->images[o->color] : NULL;
       vkr_image *d = o->depth ? &r->images[o->depth] : NULL;
-      if ((!c || c->image == VK_NULL_HANDLE) && (!d || d->image == VK_NULL_HANDLE))
+      if (c && c->image == VK_NULL_HANDLE)
+         c = NULL;
+      if (d && d->image == VK_NULL_HANDLE)
+         d = NULL;
+      if (!c && !d)
          return 0;
       if (c)
       {
