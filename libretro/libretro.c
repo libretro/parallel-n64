@@ -93,11 +93,19 @@ extern int  riceRomOpen(void);
 extern void riceRomClosed(void);
 #endif
 
+#ifdef HAVE_GLIDEN64
+#include "../mupen64plus-video-gliden64/src/Graphics/VulkanContext/vk_device.h"
+#include "../mupen64plus-video-gliden64/src/Graphics/VulkanContext/vk_ContextImpl.h"
+#endif
+
+#if defined(HAVE_PARALLEL) || defined(HAVE_GLIDEN64)
+static struct retro_hw_render_callback hw_render;
+static struct retro_hw_render_context_negotiation_interface_vulkan hw_context_negotiation;
+#endif
+
 #if defined(HAVE_PARALLEL)
 #include "../mupen64plus-video-paraLLEl/parallel.h"
 
-static struct retro_hw_render_callback hw_render;
-static struct retro_hw_render_context_negotiation_interface_vulkan hw_context_negotiation;
 static const struct retro_hw_render_interface_vulkan *vulkan;
 static void reset_upscaler_options(void);
 #endif
@@ -263,6 +271,7 @@ float polygonOffsetFactor           = 0.0f;
 float polygonOffsetUnits            = 0.0f;
 
 static bool vulkan_inited           = false;
+static bool gliden64_on_vulkan      = false;
 static bool gl_inited               = false;
 
 int astick_deadzone                       = 0;
@@ -516,7 +525,7 @@ static void core_settings_set_defaults(void)
 #endif
 
 #ifdef HAVE_GLIDEN64
-      if (gfx_var.value && !strcmp(gfx_var.value, "gliden64") && gl_inited)
+      if (gfx_var.value && !strcmp(gfx_var.value, "gliden64") && (gl_inited || gliden64_on_vulkan))
          gfx_plugin = GFX_GLIDEN64;
 #endif
 
@@ -1083,7 +1092,10 @@ static void present_frame(void)
                vr_set_views();
             }
 #endif
-            aleck64_e90_gl_draw(screen_width, screen_height);
+            if (gliden64_on_vulkan)
+               gliden64_vulkan_present();
+            else
+               aleck64_e90_gl_draw(screen_width, screen_height);
             video_cb(RETRO_HW_FRAME_BUFFER_VALID, screen_width, screen_height, 0);
 #elif defined(HAVE_THR_AL)
             video_cb((screen_pitch == 0) ? NULL : (screen_pixels ? screen_pixels : prescale), screen_width, screen_height, screen_pitch);
@@ -1122,7 +1134,7 @@ void emu_step_render(void)
     * framebuffers presents the one it last had again; under threaded
     * video that was not always the frame last finished. */
    if ((gfx_plugin == GFX_GLIDE64 || gfx_plugin == GFX_GLN64 || gfx_plugin == GFX_RICE)
-         && glsm_draw_target_show())
+         && !gliden64_on_vulkan && glsm_draw_target_show())
    {
       frame_latched = false;
       present_frame();
@@ -1335,7 +1347,8 @@ void deinit_gfx_plugin(void)
            * never touch glsm, so they must not fall into this path -- doing so
            * drove GLSM_CTL_STATE_CONTEXT_DESTROY on a context glsm never set up,
            * which hung content-close on the parallel back-end. */
-          glsm_ctl(GLSM_CTL_STATE_CONTEXT_DESTROY, NULL);
+          if (!gliden64_on_vulkan)
+             glsm_ctl(GLSM_CTL_STATE_CONTEXT_DESTROY, NULL);
           break;
     }
 }
@@ -1510,6 +1523,21 @@ extern void gliden64ReinitGfxContext(void);
 
 static void context_reset(void)
 {
+#ifdef HAVE_GLIDEN64
+   if (gliden64_on_vulkan)
+   {
+      const struct retro_hw_render_interface_vulkan *vk = NULL;
+      if (environ_cb(RETRO_ENVIRONMENT_GET_HW_RENDER_INTERFACE, &vk) && vk)
+         gliden64_vulkan_set_interface(vk);
+      if (!first_context_reset)
+      {
+         gliden64DestroyGfxContext();
+         gliden64ReinitGfxContext();
+      }
+      reinit_gfx_plugin();
+      return;
+   }
+#endif
    switch (gfx_plugin)
    {
       case GFX_ANGRYLION:
@@ -1552,8 +1580,55 @@ static void context_reset(void)
 
 static void context_destroy(void)
 {
-   aleck64_e90_gl_destroy();
+   if (!gliden64_on_vulkan)
+      aleck64_e90_gl_destroy();
    deinit_gfx_plugin();
+}
+#endif
+
+#ifdef HAVE_GLIDEN64
+/* GLideN64 on Vulkan: the frontend's own preference unless the option says. */
+static bool gliden64_wants_vulkan(void)
+{
+   struct retro_variable var;
+   unsigned preferred = RETRO_HW_CONTEXT_NONE;
+
+   var.key = CORE_NAME "-gliden64-API";
+   var.value = NULL;
+   environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var);
+   if (var.value && !strcmp(var.value, "opengl"))
+      return false;
+   if (var.value && !strcmp(var.value, "vulkan"))
+      return true;
+   if (!environ_cb(RETRO_ENVIRONMENT_GET_PREFERRED_HW_RENDER, &preferred))
+      return false;
+   return preferred == RETRO_HW_CONTEXT_VULKAN;
+}
+
+static bool retro_init_gliden64_vulkan(void)
+{
+   struct retro_hw_render_context_negotiation_interface support;
+   hw_render.context_type    = RETRO_HW_CONTEXT_VULKAN;
+   hw_render.version_major   = VK_API_VERSION_1_1;
+   hw_render.context_reset   = context_reset;
+   hw_render.context_destroy = context_destroy;
+   if (!environ_cb(RETRO_ENVIRONMENT_SET_HW_RENDER, &hw_render))
+      return false;
+
+   memset(&hw_context_negotiation, 0, sizeof(hw_context_negotiation));
+   hw_context_negotiation.interface_type = RETRO_HW_RENDER_CONTEXT_NEGOTIATION_INTERFACE_VULKAN;
+   /* v2 where the frontend has it: it can add what it needs */
+   support.interface_type    = RETRO_HW_RENDER_CONTEXT_NEGOTIATION_INTERFACE_VULKAN;
+   support.interface_version = 0;
+   if (!environ_cb(RETRO_ENVIRONMENT_GET_HW_RENDER_CONTEXT_NEGOTIATION_INTERFACE_SUPPORT, &support))
+      support.interface_version = 0;
+   hw_context_negotiation.interface_version = support.interface_version >= 2 ? 2 : 1;
+   hw_context_negotiation.get_application_info = gliden64_vulkan_get_application_info;
+   hw_context_negotiation.create_device = gliden64_vulkan_create_device;
+   hw_context_negotiation.create_device2 = support.interface_version >= 2 ? gliden64_vulkan_create_device2 : NULL;
+   if (!environ_cb(RETRO_ENVIRONMENT_SET_HW_RENDER_CONTEXT_NEGOTIATION_INTERFACE, &hw_context_negotiation))
+      return false;
+   return true;
 }
 #endif
 
@@ -1708,6 +1783,10 @@ void retro_deinit(void)
 
    vulkan_inited     = false;
    gl_inited         = false;
+   gliden64_on_vulkan = false;
+#ifdef HAVE_GLIDEN64
+   gliden64_vulkan_enable(0);
+#endif
 
    CoreOptionCategoriesSupported = 0;
    CoreOptionUpdateDisplayCbSupported = 0;
@@ -3530,9 +3609,16 @@ bool retro_load_game(const struct retro_game_info *game)
       else
       {
          vulkan_inited = false;
+#ifdef HAVE_GLIDEN64
+         if (gfx_plugin == GFX_GLIDEN64 && gliden64_wants_vulkan() && retro_init_gliden64_vulkan())
+         {
+            gliden64_on_vulkan = true;
+            gliden64_vulkan_enable(1);
+         }
+#endif
       }
 
-      if (!vulkan_inited)
+      if (!vulkan_inited && !gliden64_on_vulkan)
       {
          retro_init_gl(/*core*/ (gfx_plugin == GFX_GLIDEN64)
                              || (gfx_plugin == GFX_PARALLEL));
@@ -3702,6 +3788,8 @@ void retro_unload_game(void)
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
 static void glsm_exit(void)
 {
+   if (gliden64_on_vulkan)
+      return;
 #ifndef HAVE_SHARED_CONTEXT
    if (g_real_stop)
       return;
@@ -3725,6 +3813,8 @@ static void glsm_exit(void)
 
 static void glsm_enter(void)
 {
+   if (gliden64_on_vulkan)
+      return;
 #ifndef HAVE_SHARED_CONTEXT
    if (g_real_stop)
       return;

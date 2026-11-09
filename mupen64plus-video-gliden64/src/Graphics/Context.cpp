@@ -1,5 +1,7 @@
 #include "Context.h"
 #include "OpenGLContext/opengl_ContextImpl.h"
+#include "VulkanContext/vk_ContextImpl.h"
+#include "VulkanContext/vk_device.h"
 
 using namespace graphics;
 
@@ -28,7 +30,10 @@ Context::~Context() {
 
 void Context::init()
 {
-	m_impl.reset(new opengl::ContextImpl);
+	if (gliden64_vulkan_enabled())
+		m_impl.reset(vulkan::createContextImpl());
+	else
+		m_impl.reset(new opengl::ContextImpl);
 	m_impl->init();
 	m_fbTexFormats.reset(m_impl->getFramebufferTextureFormats());
 	Multisampling = m_impl->isSupported(SpecialFeatures::Multisampling);

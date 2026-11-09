@@ -40,9 +40,11 @@ jobs:
           - name: release
             sanitizer: ""
             sanitizer_env: ""
+            vulkan_scope: ""
           - name: asan-ubsan
             sanitizer: address,undefined
             sanitizer_env: ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1
+            vulkan_scope: --quick
     env:
       MAKEFLAGS: --no-print-directory
       CORE_FLAGS: platform=unix WITH_DYNAREC=x86_64 HAVE_THR_AL=1 HAVE_PARALLEL=0 HAVE_PARALLEL_RSP=0
@@ -54,7 +56,7 @@ jobs:
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq build-essential nasm git ca-certificates curl python3 \
-            libgl-dev libegl-dev libgles-dev libegl-mesa0 libgl1-mesa-dri
+            libgl-dev libegl-dev libgles-dev libegl-mesa0 libgl1-mesa-dri mesa-vulkan-drivers libvulkan1 spirv-tools
 
       - name: Ring unit test
         run: |
@@ -85,3 +87,13 @@ jobs:
 
       - name: GLideN64 ubershader
         run: env ${{ matrix.sanitizer_env }} python3 tools/ci/gliden64_ubershader.py --core ./parallel_n64_libretro.so --host ./lrhost_gl
+
+      - name: GLideN64 SPIR-V
+        run: |
+          make platform=unix test_gliden64_spirv
+          ./test_gliden64_spirv
+
+      - name: GLideN64 on Vulkan
+        run: |
+          make platform=unix HAVE_PARALLEL=1 SANITIZER=${{ matrix.sanitizer }} lrhost_vk
+          env ${{ matrix.sanitizer_env }} python3 tools/ci/gliden64_vulkan.py --core ./parallel_n64_libretro.so --gl ./lrhost_gl --vk ./lrhost_vk ${{ matrix.vulkan_scope }}

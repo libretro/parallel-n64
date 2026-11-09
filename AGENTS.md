@@ -42,9 +42,10 @@ savestates, teardown, `wait_sync_index`. Name the producer and the consumer of
 any wait before keeping or adding one. Only `build_pipelines_ahead` may wait
 on the pipeline worker, and only at content load.
 
-These still break the rules and are debts, not precedent: GLideN64 compiles a
+These still break the rules and are debts, not precedent: GLideN64 on GL compiles a
 combiner on first use where its ubershader cannot stand in (below), the other
-GL plugins always do; the paraLLEl RSP JIT compiles
+GL plugins always do; GLideN64 on Vulkan builds a generic pipeline for a state
+outside the prewarmed set at first use, once; the paraLLEl RSP JIT compiles
 blocks on first use and allocates `cached_blocks` nodes; pipelines the record
 list does not cover are still built synchronously.
 
@@ -128,6 +129,26 @@ Know which layer you are changing. Having one does not give you the next.
   compiled. Asking for link status or uniform locations early serializes the
   driver.
 - New file access uses libretro-common `file_stream`, not iostreams.
+
+### GLideN64 on Vulkan
+
+- Written from the ground up in MSVC C89 under
+  `src/Graphics/VulkanContext/` (`vk_spirv.c`, `vk_shaders.c`, `vk_renderer.c`,
+  `vk_device.c`); `vk_ContextImpl.cpp` is the C++ boundary and holds no logic
+  of its own. New code here stays C89.
+- There is no GLSL and no compiler. Shaders are written directly as SPIR-V;
+  every module goes through `test_gliden64_spirv`. One writer gives both the
+  generic shader (combiner read from push constants) and each combiner's own,
+  so a known condition writes only the arm that runs.
+- A draw never waits: without its own pipeline it runs the generic one, which
+  draws the same, and the job goes to the worker. Only the generic pipelines
+  built by `prewarm` at creation are waited for, at load.
+- Anything added to `compileCombiner` goes into `vkr_write_combiner` too.
+  `tools/ci/gliden64_vulkan.py` holds Vulkan to GL frame for frame.
+- Vertices and combiner values are written once, final, into the frame's
+  ring. Values are the `CombinerValues` the GL backend also reads. Texture
+  uploads are one memcpy into the ring (API staging), ahead of the render
+  pass unless the image was already used in the commands being recorded.
 
 ### paraLLEl RSP JIT
 
@@ -269,6 +290,8 @@ Run what the change touches:
     python3 tools/ci/parallel_rdp_pipelines.py --core ./parallel_n64_libretro.so --host ./lrhost_vk
     python3 tools/ci/parallel_rdp_rdram.py --core ./parallel_n64_libretro.so --host ./lrhost_vk
     python3 tools/ci/gl_renderers.py --core ./parallel_n64_libretro.so --host ./lrhost_gl
+    make platform=unix test_gliden64_spirv && ./test_gliden64_spirv
+    python3 tools/ci/gliden64_vulkan.py --core ./parallel_n64_libretro.so --gl ./lrhost_gl --vk ./lrhost_vk
     python3 tools/ci/angrylion_lend.py --core ./parallel_n64_libretro.so --host ./lrhost
 
 Threading changes also go through the ThreadSanitizer lane in

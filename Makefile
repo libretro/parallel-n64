@@ -1225,7 +1225,7 @@ clean: clean-tools
 	rm -f $(OBJECTS) $(TARGET) $(OBJECTS:.o=.d) .build-flags
 
 clean-tools:
-	rm -f $(ANGRYLION_TOOLS) lrhost$(EXE_EXT) lrhost_vk$(EXE_EXT) lrhost_gl$(EXE_EXT) $(GLITCH64_TESTS) angrylion_replay$(EXE_EXT) $(ANGRYLION_CHECKS) dd_ipl_hle_test$(EXE_EXT) \
+	rm -f test_gliden64_spirv$(EXE_EXT) $(ANGRYLION_TOOLS) lrhost$(EXE_EXT) lrhost_vk$(EXE_EXT) lrhost_gl$(EXE_EXT) $(GLITCH64_TESTS) angrylion_replay$(EXE_EXT) $(ANGRYLION_CHECKS) dd_ipl_hle_test$(EXE_EXT) \
 		$(CORE_CHECKS) dynarec_long_block_test$(EXE_EXT) savestate_latch_test$(EXE_EXT) savestate_code_test$(EXE_EXT) cpu_fallback_test$(EXE_EXT) tools/test_prsp_dmem_wrap.o tools/test_granite_util_rthreads.o $(GRANITE_POOL_TEST_OBJS)
 
 # Angrylion benchmark and bit-exactness harnesses (tools/angrylion_*.c),
@@ -1781,6 +1781,10 @@ test_gliden64_deferred_readback$(EXE_EXT): tools/test_gliden64_deferred_readback
 
 test_glide64_fb_readback$(EXE_EXT): tools/test_glide64_fb_readback.c $(VIDEODIR_GLIDE)/Glide64/FBReadback.h Graphics/image_convert.h
 	$(CC) $(CHECK_CFLAGS) $(CHECK_SANITIZE) -I$(LIBRETRO_COMM_DIR)/include $< -o $@ $(CHECK_LDFLAGS) $(CHECK_SANITIZE)
+
+GLIDEN64_SPIRV_SRC := $(VIDEODIR_GLIDEN64)/src/Graphics/VulkanContext/vk_spirv.c $(VIDEODIR_GLIDEN64)/src/Graphics/VulkanContext/vk_shaders.c
+test_gliden64_spirv$(EXE_EXT): tools/test_gliden64_spirv.c $(GLIDEN64_SPIRV_SRC)
+	$(CC) $(CHECK_CFLAGS) $(CHECK_SANITIZE) -I$(VIDEODIR_GLIDEN64)/src/Graphics/VulkanContext $< $(GLIDEN64_SPIRV_SRC) -o $@ $(CHECK_LDFLAGS) $(CHECK_SANITIZE)
 
 test_gliden64_ring_segments$(EXE_EXT): tools/test_gliden64_ring_segments.cpp $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/opengl_RingSegments.h
 	$(CXX) -std=c++11 $(CHECK_CFLAGS) $(CHECK_SANITIZE) -I$(VIDEODIR_GLIDEN64)/src $< -o $@ $(CHECK_LDFLAGS) $(CHECK_SANITIZE)

@@ -2,6 +2,7 @@
 #include <cstdlib>
 #include <Graphics/Context.h>
 #include <Graphics/OpenGLContext/GLFunctions.h>
+#include <Graphics/VulkanContext/vk_device.h>
 #include <Graphics/OpenGLContext/opengl_Utils.h>
 #include <mupenplus/GLideN64_mupenplus.h>
 #include <GLideN64.h>
@@ -111,7 +112,8 @@ bool DisplayWindowMupen64plus::_resizeWindow()
 	m_bFullscreen = true;
 	m_width = m_screenWidth = m_resizeWidth;
 	m_height = m_screenHeight = m_resizeHeight;
-	opengl::Utils::isGLError(); // reset GL error.
+	if (!gliden64_vulkan_enabled())
+		opengl::Utils::isGLError(); // reset GL error.
 
 	return true;
 }

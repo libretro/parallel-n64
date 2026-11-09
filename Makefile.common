@@ -375,6 +375,14 @@ CXXFLAGS += -DHAVE_GLIDEN64 -DMUPENPLUSAPI -D__LIBRETRO__
 
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/StereoJournal.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/CombinerKeyJournal.c
+SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/Graphics/VulkanContext/vk_spirv.c
+SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/Graphics/VulkanContext/vk_shaders.c
+SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/Graphics/VulkanContext/vk_renderer.c
+SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/Graphics/VulkanContext/vk_device.c
+ifneq ($(HAVE_PARALLEL),1)
+SOURCES_C     += $(VIDEODIR_PARALLEL)/parallel-rdp/parallel-rdp/rdp_worker.c
+endif
+INCFLAGS      += -I$(VIDEODIR_PARALLEL)/parallel-rdp/vulkan-headers/include -I$(VIDEODIR_PARALLEL)/parallel-rdp/parallel-rdp -I$(CORE_DIR)/src/api -I$(VIDEODIR_GLIDEN64)/src/Graphics/VulkanContext
 
 SOURCES_CXX   += \
 	$(VIDEODIR_GLIDEN64)/src/Combiner.cpp                                                         \
@@ -418,6 +426,7 @@ SOURCES_CXX   += \
     $(VIDEODIR_GLIDEN64)/src/Graphics/CombinerProgram.cpp                                         \
     $(VIDEODIR_GLIDEN64)/src/Graphics/ObjectHandle.cpp                                            \
     $(VIDEODIR_GLIDEN64)/src/Graphics/CombinerValues.cpp                                          \
+    $(VIDEODIR_GLIDEN64)/src/Graphics/VulkanContext/vk_ContextImpl.cpp                            \
     $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/GLFunctions.cpp                               \
     $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/opengl_Attributes.cpp                         \
     $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/opengl_BufferedDrawer.cpp                     \

@@ -1130,6 +1130,21 @@ struct retro_core_option_v2_definition option_defs_us[] = {
 #endif
     },
     {
+        CORE_NAME "-gliden64-API",
+        "GLideN64: Graphics API (Restart)",
+        NULL,
+        "Automatic follows the frontend's video driver.",
+        NULL,
+        "video",
+        {
+            {"auto", "Automatic"},
+            {"opengl", "OpenGL"},
+            {"vulkan", "Vulkan"},
+            {NULL, NULL},
+        },
+        "auto"
+    },
+    {
         CORE_NAME "-gliden64-EnableN64DepthCompare",
         "GLideN64: N64 Depth Compare",
         NULL,
