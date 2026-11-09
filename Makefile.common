@@ -410,7 +410,6 @@ SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/uCodes/F3DEX2CBFD.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/uCodes/F3D.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/convert.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/RSP_LoadMatrix.c
-SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/CombinerKeyJournal.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/Graphics/VulkanContext/vk_spirv.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/Graphics/VulkanContext/vk_shaders.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/Graphics/VulkanContext/vk_renderer.c
@@ -523,6 +522,10 @@ ifeq ($(HAVE_NEON),1)
 else
 	SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/3DMath.c
 endif
+endif
+
+ifneq (,$(filter 1,$(HAVE_GLIDEN64) $(HAVE_GLN64)))
+SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/CombinerKeyJournal.c
 endif
 
 ifeq ($(HAVE_GLN64),1)

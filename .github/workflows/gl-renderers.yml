@@ -87,6 +87,8 @@ jobs:
 
       - name: GLideN64 ubershader
         run: env ${{ matrix.sanitizer_env }} python3 tools/ci/gliden64_ubershader.py --core ./parallel_n64_libretro.so --host ./lrhost_gl
+      - name: Combiners known at load
+        run: env ${{ matrix.sanitizer_env }} python3 tools/ci/combiner_warm_start.py --core ./parallel_n64_libretro.so --host ./lrhost_gl
 
       - name: GLideN64 SPIR-V
         run: |

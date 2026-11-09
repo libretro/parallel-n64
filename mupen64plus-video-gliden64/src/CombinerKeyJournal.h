@@ -21,7 +21,8 @@ typedef struct combiner_journal combiner_journal_t;
 combiner_journal_t *combiner_journal_open(const char *path, uint32_t version);
 
 /* The owner only. Never waits; 0 when the queue is full and @key is not
- * written (it is still saved at the end, on a clean exit). */
+ * written (it is still saved at the end, on a clean exit). @hwl is up to
+ * four bits of whatever else tells the plugin's keys apart. */
 int combiner_journal_push(combiner_journal_t *journal, uint64_t key, unsigned hwl);
 
 /* Writes what is queued and stops. */

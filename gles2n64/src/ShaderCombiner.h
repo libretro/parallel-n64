@@ -11,6 +11,9 @@
 extern "C" {
 #endif
 
+void ShaderCombiner_Prebuild(DecodedMux *dmux, int flags);
+void ShaderCombiner_OpenJournal(const char *path);
+
 #define SC_POSITION             0
 #define SC_COLOR                1
 #define SC_TEXCOORD0            2

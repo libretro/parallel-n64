@@ -27,7 +27,7 @@ struct seen { unsigned next; unsigned bad; };
 static void in_order(void *ctx, uint64_t key, unsigned hwl)
 {
    struct seen *s = (struct seen*)ctx;
-   if (key != key_of(s->next) || hwl != (s->next & 1))
+   if (key != key_of(s->next) || hwl != (s->next & 15))
       s->bad++;
    s->next++;
 }
@@ -52,7 +52,7 @@ int main(void)
    j = combiner_journal_open(PATH, 5);
    CHECK(j != NULL);
    for (i = 0; i < KEYS; i++)
-      while (!combiner_journal_push(j, key_of(i), i & 1))
+      while (!combiner_journal_push(j, key_of(i), i & 15))
          refused++;
    combiner_journal_close(j);
    memset(&s, 0, sizeof(s));
@@ -67,7 +67,7 @@ int main(void)
    append("0123456789ab");
    j = combiner_journal_open(PATH, 5);
    CHECK(j != NULL);
-   CHECK(combiner_journal_push(j, key_of(KEYS), KEYS & 1));
+   CHECK(combiner_journal_push(j, key_of(KEYS), KEYS & 15));
    combiner_journal_close(j);
    memset(&s, 0, sizeof(s));
    CHECK(combiner_journal_read(PATH, 5, in_order, &s) == KEYS + 1);

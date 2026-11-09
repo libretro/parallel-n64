@@ -11,7 +11,7 @@
 
 #define QUEUE_SIZE 256u /* a power of two */
 #define BATCH      32u
-#define LINE_SIZE  19u  /* 16 hex digits, a space, 0 or 1, a newline */
+#define LINE_SIZE  19u  /* 16 hex digits, a space, a hex digit, a newline */
 #define HEADER     "gliden64-combiner-keys "
 #define HEADER_LEN (sizeof(HEADER) - 1)
 
@@ -48,7 +48,7 @@ static size_t format_line(char *line, const struct journal_entry *entry)
 {
    write_hex(line, entry->key, 16);
    line[16] = ' ';
-   line[17] = entry->hwl ? '1' : '0';
+   write_hex(line + 17, entry->hwl, 1);
    line[18] = '\n';
    return LINE_SIZE;
 }
@@ -239,15 +239,16 @@ unsigned combiner_journal_read(const char *path, uint32_t version,
       {
          const char *nl = (const char*)memchr(p, '\n', (size_t)(end - p));
          uint64_t key;
+         uint64_t flags;
 
          if (!nl)
             break; /* the last line, cut short */
          if (      (size_t)(nl - p) == LINE_SIZE - 1
                && read_hex(p, 16, &key)
                && p[16] == ' '
-               && (p[17] == '0' || p[17] == '1'))
+               && read_hex(p + 17, 1, &flags))
          {
-            cb(ctx, key, (unsigned)(p[17] - '0'));
+            cb(ctx, key, (unsigned)flags);
             count++;
          }
          p = nl + 1;

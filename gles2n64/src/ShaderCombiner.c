@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include "OpenGL.h"
 #include "ShaderCombiner.h"
+#include "../../mupen64plus-video-gliden64/src/CombinerKeyJournal.h"
 #include "Common.h"
 #include "Textures.h"
 #include "Config.h"
@@ -298,6 +299,13 @@ static void force_uniforms(void)
    }
 }
 
+static combiner_journal_t *sc_journal = NULL;
+
+void ShaderCombiner_OpenJournal(const char *path)
+{
+   sc_journal = combiner_journal_open(path, 1u);
+}
+
 static ShaderProgram *ShaderCombiner_Compile(DecodedMux *dmux, int flags)
 {
    int i, j;
@@ -502,10 +510,59 @@ static void Combiner_DeletePrograms(ShaderProgram *prog)
 
 void ShaderCombiner_Destroy(void)
 {
+   combiner_journal_close(sc_journal);
+   sc_journal = NULL;
    Combiner_DeletePrograms(scProgramRoot);
    glDeleteShader(_vertex_shader);
    scProgramCount = scProgramChanged = 0;
    scProgramRoot = scProgramCurrent = NULL;
+}
+
+static ShaderProgram *ShaderCombiner_Find(DecodedMux *dmux, int flags, int draw)
+{
+   ShaderProgram *root = (ShaderProgram*)scProgramRoot;
+   ShaderProgram *prog = root;
+
+   /* traverse binary tree for cached programs */
+   while (!program_compare(prog, dmux, flags))
+   {
+      root = prog;
+      if (prog->combine.mux < dmux->combine.mux)
+         prog = prog->right;
+      else
+         prog = prog->left;
+   }
+
+   if (prog)
+      return prog;
+
+   if (draw)
+   {
+      static int strict = -1;
+      if (strict < 0)
+         strict = getenv("PARALLEL_N64_COMBINER_STRICT") != NULL;
+      if (strict)
+         abort();
+      combiner_journal_push(sc_journal, dmux->combine.mux, (unsigned)flags);
+   }
+
+   prog = ShaderCombiner_Compile(dmux, flags);
+   if (!prog)
+      return NULL;
+   scProgramCount++;
+   if (!root)
+      scProgramRoot = prog;
+   else if (root->combine.mux < dmux->combine.mux)
+      root->right = prog;
+   else
+      root->left = prog;
+   return prog;
+}
+
+/* Keys earlier sessions met, built now so that a draw does not have to. */
+void ShaderCombiner_Prebuild(DecodedMux *dmux, int flags)
+{
+   ShaderCombiner_Find(dmux, flags, 0);
 }
 
 void ShaderCombiner_Set(DecodedMux *dmux, int flags)
@@ -522,35 +579,11 @@ void ShaderCombiner_Set(DecodedMux *dmux, int flags)
       }
    }
 
-   //traverse binary tree for cached programs
    scProgramChanged = 1;
 
-   root = (ShaderProgram*)scProgramRoot;
-   prog = (ShaderProgram*)root;
-   while(!program_compare(prog, dmux, flags))
-   {
-      root = prog;
-      if (prog->combine.mux < dmux->combine.mux)
-         prog = prog->right;
-      else
-         prog = prog->left;
-   }
-
-   //build new program
+   prog = ShaderCombiner_Find(dmux, flags, 1);
    if (!prog)
-   {
-      prog = ShaderCombiner_Compile(dmux, flags);
-      if (!prog)
-         return;
-      scProgramCount++;
-      if (!root)
-         scProgramRoot = prog;
-      else if (root->combine.mux < dmux->combine.mux)
-         root->right = prog;
-      else
-         root->left = prog;
-
-   }
+      return;
 
    prog->lastUsed = OGL.frame_dl;
    scProgramCurrent = prog;
