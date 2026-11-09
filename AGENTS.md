@@ -22,10 +22,9 @@ anywhere a draw waits for the result, on a cold cache as much as a warm one.
 Not there yet, most urgent first. These are debts, not precedent:
 
 1. GLideN64 on GLES2, which has no ubershader, compiles on the draw path.
-2. `glide2gl` compiles every combiner on first use. `gles2n64` and `gles2rice`
-   build the keys of earlier sessions at load, but a key they have never met still
-   compiles: GLES2 has no ubershader or parallel compile to stand in, so a cold
-   first session cannot avoid it.
+2. `gles2n64`, `gles2rice` and `glide2gl` build what earlier sessions met at load,
+   but what they have never met still compiles: they have no ubershader or
+   parallel compile to stand in, so a cold first session cannot avoid it.
 3. paraLLEl-RDP builds pipelines the record list does not cover synchronously.
 
 ## Method: the speed of light

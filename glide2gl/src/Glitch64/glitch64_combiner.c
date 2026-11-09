@@ -27,6 +27,10 @@
 #endif // _WIN32
 #include <math.h>
 
+#include <streams/file_stream.h>
+#include <encodings/crc32.h>
+#include "../../../mupen64plus-video-gliden64/src/CombinerKeyPath.h"
+#include "../../../mupen64plus-core/src/plugin/plugin.h"
 #include "glide.h"
 #include "glitchmain.h"
 #include "../../libretro/libretro_private.h"
@@ -437,6 +441,9 @@ void check_link(GLuint program)
    }
 }
 
+#define SHADER_PROGRAMS_RESERVED 1024
+static int shader_programs_capacity = 0;
+
 static void append_shader_program(shader_program_key *shader)
 {
    int curr_index;
@@ -447,16 +454,17 @@ static void append_shader_program(shader_program_key *shader)
 
    shader->index = index;
 
-   if (!shader_programs)
-      shader_programs = (shader_program_key*)malloc(sizeof(shader_program_key));
-   else
+   /* room for a game's worth is taken at init: this stays off the draw path */
+   if (index >= shader_programs_capacity)
    {
+      int capacity = shader_programs_capacity ? shader_programs_capacity * 2 : SHADER_PROGRAMS_RESERVED;
       shader_program_key *new_ptr = (shader_program_key*)
-         realloc(shader_programs, (index + 1) * sizeof(shader_program_key));
+         realloc(shader_programs, capacity * sizeof(shader_program_key));
       if (!new_ptr)
          return;
 
-      shader_programs = new_ptr;
+      shader_programs          = new_ptr;
+      shader_programs_capacity = capacity;
    }
 
    if (current_shader)
@@ -528,6 +536,138 @@ static void finish_shader_program_setup(shader_program_key *shader)
    append_shader_program(shader);
 }
 
+/* What a game compiled, keyed as compile_shader looks it up and kept as
+ * source: the fragment text depends on the order of the state calls, so a key
+ * cannot be turned back into it. Written at the end of a session. */
+#define FRAGMENT_SHADER_SIZE (4096 * 2)
+#define SHADER_CACHE_SIZE    (4u * 1024u * 1024u)
+#define SHADER_CACHE_MAGIC   0x47324c47u
+#define SHADER_CACHE_FIELDS  11
+#define SHADER_CACHE_RECORD  ((SHADER_CACHE_FIELDS + 1) * sizeof(int32_t))
+
+static char   *cache_arena = NULL;
+static size_t  cache_used  = 0;
+static int     cache_dirty = 0;
+static char    cache_path[PATH_MAX_LENGTH];
+
+static uint32_t combiner_cache_version(void)
+{
+   uint32_t crc = encoding_crc32(0, (const uint8_t*)vertex_shader, strlen(vertex_shader));
+   return encoding_crc32(crc, (const uint8_t*)fragment_shader_header, strlen(fragment_shader_header));
+}
+
+static void combiner_cache_key(const shader_program_key *shader, int32_t *fields)
+{
+   fields[0]  = shader->color_combiner;
+   fields[1]  = shader->alpha_combiner;
+   fields[2]  = shader->texture0_combiner;
+   fields[3]  = shader->texture1_combiner;
+   fields[4]  = shader->texture0_combinera;
+   fields[5]  = shader->texture1_combinera;
+   fields[6]  = shader->fog_enabled;
+   fields[7]  = shader->chroma_enabled;
+   fields[8]  = shader->dither_enabled;
+   fields[9]  = shader->three_point_filter0;
+   fields[10] = shader->three_point_filter1;
+}
+
+static void combiner_cache_record(const shader_program_key *shader)
+{
+   int32_t fields[SHADER_CACHE_FIELDS + 1];
+   size_t  len = strlen(fragment_shader);
+
+   if (!cache_arena || cache_used + SHADER_CACHE_RECORD + len > SHADER_CACHE_SIZE)
+      return;
+   combiner_cache_key(shader, fields);
+   fields[SHADER_CACHE_FIELDS] = (int32_t)len;
+   memcpy(cache_arena + cache_used, fields, SHADER_CACHE_RECORD);
+   memcpy(cache_arena + cache_used + SHADER_CACHE_RECORD, fragment_shader, len);
+   cache_used  += SHADER_CACHE_RECORD + len;
+   cache_dirty  = 1;
+}
+
+static void combiner_cache_load(void)
+{
+   void    *data = NULL;
+   int64_t  size = 0;
+   size_t   pos  = 8;
+
+   cache_used  = 0;
+   cache_dirty = 0;
+   if (!cache_arena)
+      cache_arena = (char*)malloc(SHADER_CACHE_SIZE);
+   combiner_key_path(cache_path, sizeof(cache_path), "glide64", gfx_info.HEADER);
+
+   if (!cache_arena || !filestream_exists(cache_path)
+         || !filestream_read_file(cache_path, &data, &size) || !data)
+      return;
+
+   if (      size > 8
+         && ((const uint32_t*)data)[0] == SHADER_CACHE_MAGIC
+         && ((const uint32_t*)data)[1] == combiner_cache_version())
+   {
+      const char *p = (const char*)data;
+
+      while (pos + SHADER_CACHE_RECORD <= (size_t)size)
+      {
+         int32_t fields[SHADER_CACHE_FIELDS + 1];
+         shader_program_key shader;
+         size_t len;
+
+         memcpy(fields, p + pos, SHADER_CACHE_RECORD);
+         len = (size_t)(uint32_t)fields[SHADER_CACHE_FIELDS];
+         if (      len >= FRAGMENT_SHADER_SIZE
+               || pos + SHADER_CACHE_RECORD + len > (size_t)size
+               || cache_used + SHADER_CACHE_RECORD + len > SHADER_CACHE_SIZE)
+            break;
+
+         memset(&shader, 0, sizeof(shader));
+         shader.color_combiner      = fields[0];
+         shader.alpha_combiner      = fields[1];
+         shader.texture0_combiner   = fields[2];
+         shader.texture1_combiner   = fields[3];
+         shader.texture0_combinera  = fields[4];
+         shader.texture1_combinera  = fields[5];
+         shader.fog_enabled         = fields[6];
+         shader.chroma_enabled      = fields[7];
+         shader.dither_enabled      = fields[8];
+         shader.three_point_filter0 = fields[9];
+         shader.three_point_filter1 = fields[10];
+
+         memcpy(fragment_shader, p + pos + SHADER_CACHE_RECORD, len);
+         fragment_shader[len] = '\0';
+         finish_shader_program_setup(&shader);
+
+         memcpy(cache_arena + cache_used, p + pos, SHADER_CACHE_RECORD + len);
+         cache_used += SHADER_CACHE_RECORD + len;
+         pos        += SHADER_CACHE_RECORD + len;
+      }
+      use_shader_program(&shader_programs[0]);
+   }
+   free(data);
+}
+
+static void combiner_cache_save(void)
+{
+   if (cache_arena && cache_dirty)
+   {
+      RFILE *f = filestream_open(cache_path, RETRO_VFS_FILE_ACCESS_WRITE,
+            RETRO_VFS_FILE_ACCESS_HINT_NONE);
+      if (f)
+      {
+         uint32_t head[2];
+         head[0] = SHADER_CACHE_MAGIC;
+         head[1] = combiner_cache_version();
+         filestream_write(f, head, sizeof(head));
+         filestream_write(f, cache_arena, (int64_t)cache_used);
+         filestream_close(f);
+      }
+   }
+   free(cache_arena);
+   cache_arena = NULL;
+   cache_dirty = 0;
+}
+
 void init_combiner(void)
 {
    shader_program_key shader;
@@ -537,8 +677,9 @@ void init_combiner(void)
 
    number_of_programs = 0;
    shader_programs    = NULL;
+   shader_programs_capacity = 0;
    current_shader     = NULL;
-   fragment_shader    = (char*)malloc(4096*2);
+   fragment_shader    = (char*)malloc(FRAGMENT_SHADER_SIZE);
    need_to_compile    = true;
 
    /* default shader */
@@ -574,6 +715,8 @@ void init_combiner(void)
    fog_enabled = 0;
    chroma_enabled = 0;
    dither_enabled = 0;
+
+   combiner_cache_load();
 }
 
 static void compile_chroma_shader(void)
@@ -689,6 +832,14 @@ void compile_shader(void)
       }
    }
 
+   {
+      static int strict = -1;
+      if (strict < 0)
+         strict = getenv("PARALLEL_N64_COMBINER_STRICT") != NULL;
+      if (strict)
+         abort();
+   }
+
    shader.color_combiner        = color_combiner_key;
    shader.alpha_combiner        = alpha_combiner_key;
    shader.texture0_combiner     = texture0_combiner_key;
@@ -739,6 +890,7 @@ void compile_shader(void)
 
    strcat(fragment_shader, fragment_shader_end);
 
+   combiner_cache_record(&shader);
    finish_shader_program_setup(&shader);
 
    update_uniforms(&shader);
@@ -746,6 +898,8 @@ void compile_shader(void)
 
 void free_combiners(void)
 {
+   combiner_cache_save();
+
    if (shader_programs)
    {
       shader_program_key *s = shader_programs;
@@ -754,6 +908,7 @@ void free_combiners(void)
       {
          if (glIsProgram(s->program_object))
             glDeleteProgram(s->program_object);
+         s++;
       }
 
       free(shader_programs);
@@ -763,6 +918,7 @@ void free_combiners(void)
       free(fragment_shader);
 
    shader_programs = NULL;
+   shader_programs_capacity = 0;
    current_shader  = NULL;
    fragment_shader = NULL;
 

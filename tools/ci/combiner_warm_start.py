@@ -14,7 +14,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from parallel_rdp_regress import fetch  # noqa: E402
 
 ROMS = ["cube16", "rottri32", "shade32", "tlut16"]
-PLUGINS = {"gln64": "gln64_*.keys", "rice": "rice_*.keys"}
+PLUGINS = {"gln64": "gln64_*.keys", "rice": "rice_*.keys", "glide64": "glide64_*.keys"}
 SEEDED = {"rice"}
 FRAMES = 40
 
@@ -55,7 +55,9 @@ def main():
                 keys = 0
                 if found and plugin in SEEDED:
                     seed(found[0], name)
-                if found:
+                if found and plugin == "glide64":
+                    keys = 1 if os.path.getsize(found[0]) > 8 else 0
+                elif found:
                     with open(found[0]) as f:
                         keys = sum(1 for line in f if len(line) == 19)
                 total += keys
