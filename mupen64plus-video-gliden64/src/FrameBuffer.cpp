@@ -1972,3 +1972,13 @@ bool gli_fb_copy_depth(u32 _address)
 {
 	return FrameBuffer_CopyDepthBuffer(_address);
 }
+
+bool gli_fb_is_cpu(const FrameBuffer * _pBuffer)
+{
+	return _pBuffer->m_cfb;
+}
+
+void gli_fb_remove(u32 _address)
+{
+	frameBufferList().removeBuffer(_address);
+}

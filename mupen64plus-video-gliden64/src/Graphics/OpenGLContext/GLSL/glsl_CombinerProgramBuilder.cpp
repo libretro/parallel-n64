@@ -2204,7 +2204,7 @@ graphics::CombinerProgram * CombinerProgramBuilder::buildCombinerProgram(Combine
 	const bool bUseTextures = combinerInputs.usesTexture();
 	const bool bIsRect = _key.isRectKey();
 	const bool bUseHWLight = !bIsRect && // Rects not use lighting
-							 isHWLightingAllowed() &&
+							 gli_isHWLightingAllowed() &&
 							 combinerInputs.usesShadeColor();
 
 	if (bUseHWLight)
@@ -2676,7 +2676,7 @@ graphics::CombinerProgram * CombinerProgramBuilder::buildCombinerProgramAsync(Co
 	const bool bIsRect = _key.isRectKey();
 	const bool bUseTextures = combinerInputs.usesTexture();
 	const bool bUseLod = combinerInputs.usesLOD();
-	const bool bUseHWLight = !bIsRect && isHWLightingAllowed() && combinerInputs.usesShadeColor();
+	const bool bUseHWLight = !bIsRect && gli_isHWLightingAllowed() && combinerInputs.usesShadeColor();
 	if (bUseHWLight)
 		combinerInputs.addInput(G_GCI_HW_LIGHT);
 	if (bUseLod && !bUseTextures)

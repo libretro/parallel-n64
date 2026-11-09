@@ -270,7 +270,7 @@ void BufferedDrawer::drawTriangles(const graphics::Context::DrawTriangleParamete
 {
 	_updateTrianglesBuffers(_params);
 
-	if (isHWLightingAllowed())
+	if (gli_isHWLightingAllowed())
 		glVertexAttrib1f(triangleAttrib::numlights, GLfloat(_params.vertices[0].HWLight));
 
 	if (_params.elements == nullptr) {

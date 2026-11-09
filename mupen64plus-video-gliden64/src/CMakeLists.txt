@@ -29,7 +29,7 @@ set(GLideN64_SOURCES
   gDP.c
   GLideN64.c
   GraphicsDrawer.cpp
-  gSP.cpp
+  gSP.c
   Log.cpp
   N64.c
   NoiseTexture.cpp

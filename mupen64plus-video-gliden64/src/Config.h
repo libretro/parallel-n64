@@ -2,6 +2,7 @@
 #define CONFIG_H
 
 #include <stddef.h>
+#include <boolean.h>
 #include "Types.h"
 
 #define CONFIG_WITH_PROFILES 23U
@@ -252,10 +253,10 @@ extern "C" {
 #endif
 extern Config gliden64Config;
 void Config_LoadConfig(void);
+bool gli_isHWLightingAllowed(void);
 #ifdef __cplusplus
 }
 
-bool isHWLightingAllowed();
 #endif
 
 #endif /* CONFIG_H */

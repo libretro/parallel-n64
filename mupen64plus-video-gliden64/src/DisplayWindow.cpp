@@ -243,3 +243,13 @@ void gli_gfx_set_no_near_clip(bool _noNearClip)
 {
 	gfxContext.setClampMode(_noNearClip ? graphics::ClampMode::NoNearPlaneClipping : graphics::ClampMode::ClippingEnabled);
 }
+
+bool gli_window_is_adjust_screen(void)
+{
+	return dwnd().isAdjustScreen();
+}
+
+f32 gli_window_adjust_scale(void)
+{
+	return dwnd().getAdjustScale();
+}

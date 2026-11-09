@@ -29,12 +29,6 @@ enum class DrawingState
 	TexRect = 4,
 };
 
-struct RectVertex
-{
-	float x, y, z, w;
-	float s0, t0, s1, t1;
-};
-
 typedef std::chrono::milliseconds Milliseconds;
 
 class GraphicsDrawer

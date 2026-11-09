@@ -233,6 +233,21 @@ void gli_drawer_textured_rect(f32 _ulx, f32 _uly, f32 _lrx, f32 _lry, f32 _dsdx,
 	drawer.drawTexturedRect(params);
 }
 
+bool gli_drawer_is_rejected(s32 _v0, s32 _v1, s32 _v2)
+{
+	return dwnd().getDrawer().isRejected(_v0, _v1, _v2);
+}
+
+void gli_drawer_add_triangle(s32 _v0, s32 _v1, s32 _v2)
+{
+	dwnd().getDrawer().addTriangle(_v0, _v1, _v2);
+}
+
+void gli_drawer_draw_line(u32 _v0, u32 _v1, f32 _width, u32 _flag)
+{
+	dwnd().getDrawer().drawLine(_v0, _v1, _width, _flag);
+}
+
 SPVertex & GraphicsDrawer::getCurrentDMAVertex()
 {
 	if (m_dmaVerticesNum >= m_dmaVertices.size())

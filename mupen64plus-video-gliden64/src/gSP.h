@@ -213,7 +213,13 @@ void gli_gSPSetStereoEye(u32 _eye);
 void gli_gSPApplyStereo(f32 matrix[4][4]);
 
 /* Immersive mode */
-struct RectVertex;
+typedef struct RectVertex
+{
+	f32 x, y, z, w;
+	f32 s0, t0, s1, t1;
+} RectVertex;
+void gli_gSPImmersiveRect(RectVertex * _vertices, u32 _count, bool _fullScreen);
+void gli_gSPImmersiveScreenTriangles(SPVertex * _vertices, u32 _count);
 bool gli_gSPImmersiveActive(void);
 bool gli_gSPImmersiveBackground(void);
 bool gli_gSPImmersiveClearsShownBuffers(void);
@@ -242,14 +248,6 @@ void gli_gSPFlushTriangles(void);
 
 #ifdef __cplusplus
 }
-#endif
-
-#ifdef __cplusplus
-struct RectVertex;
-void gli_gSPSWVertex(const SWVertex * vertex, u32 n, const bool * const verticesToProcess);
-void gli_gSPSWVertex(const SWVertex * vertex, u32 v0, u32 n);
-void gli_gSPImmersiveRect(RectVertex * _vertices, u32 _count, bool _fullScreen);
-void gli_gSPImmersiveScreenTriangles(SPVertex * _vertices, u32 _count);
 #endif
 
 #endif

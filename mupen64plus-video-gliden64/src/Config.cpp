@@ -129,7 +129,7 @@ void Config::resetToDefaults()
 
 }
 
-bool isHWLightingAllowed()
+bool gli_isHWLightingAllowed(void)
 {
 	if (config.generalEmulation.enableHWLighting == 0)
 		return false;

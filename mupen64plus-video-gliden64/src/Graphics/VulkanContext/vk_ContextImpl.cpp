@@ -190,7 +190,7 @@ CombinerProgram * buildCombiner(Combiner & _color, Combiner & _alpha, const Comb
 	}
 
 	const bool isRect = _key.isRectKey();
-	const bool hwLight = !isRect && isHWLightingAllowed() && inputs.usesShadeColor();
+	const bool hwLight = !isRect && gli_isHWLightingAllowed() && inputs.usesShadeColor();
 	if (hwLight)
 		inputs.addInput(G_GCI_HW_LIGHT);
 
@@ -544,7 +544,7 @@ public:
 	void drawTriangles(const Context::DrawTriangleParameters & _p) override {
 		/* converted straight into the ring the GPU reads */
 		vkr_tri_vertex * dst = vkr_tri_reserve(g_r, _p.verticesCount);
-		const f32 lights = isHWLightingAllowed() ? f32(_p.vertices[0].HWLight) : 0.f;
+		const f32 lights = gli_isHWLightingAllowed() ? f32(_p.vertices[0].HWLight) : 0.f;
 		for (u32 i = 0; i < _p.verticesCount; ++i) {
 			const SPVertex & src = _p.vertices[i];
 			vkr_tri_vertex & d = dst[i];
