@@ -158,6 +158,20 @@ def shared(args, first, second):
     return line, errors
 
 
+def known_at_load(args):
+    """A first run builds nothing on the frame's threads: everything it can
+    need is built at load. One ROM: a software driver takes most of a minute."""
+    sysdir = os.path.abspath(os.path.join(args.out, "known"))
+    shutil.rmtree(sysdir, ignore_errors=True)
+    os.makedirs(sysdir)
+    frame, worker, _ = run(args, regress.fetch(args.roms, FULL_ROM), sysdir, "known",
+                           {"LRHOST_KNOWN_PIPELINES": "1"}, [])
+    ok = frame == 0
+    print("known at load: %s (%d on the frame's threads, %d on the worker)"
+          % ("ok" if ok else "FAIL", frame, worker))
+    return 0 if ok else 1
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--core", required=True)
@@ -184,6 +198,7 @@ def main():
             for e in errors:
                 print("  FAIL: " + e)
             failed += bool(errors)
+    failed += known_at_load(args)
     line, errors = shared(args, "tlut16", "pal8")
     print("shared: %s\n%s" % ("FAIL" if errors else "ok", line))
     for e in errors:

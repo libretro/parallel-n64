@@ -106,6 +106,10 @@ class Renderer;
 class VideoInterface
 {
 public:
+	/* Hands @add every pipeline a scanout can need. The thread that processes
+	 * commands, once, at load. */
+	void queue_known_pipelines(unsigned upscaling, void (*add)(void *, Vulkan::CommandBuffer &, uint32_t), void *ctx);
+
 	void set_device(Vulkan::Device *device);
 	void set_renderer(Renderer *renderer);
 	void set_vi_register(VIRegister reg, uint32_t value);
@@ -142,6 +146,13 @@ public:
 	void end_vi_register_per_scanline();
 
 private:
+	void set_extract_vram_pipeline(Vulkan::CommandBuffer &cmd, uint32_t status, unsigned scaling_factor) const;
+	void set_fetch_pipeline(Vulkan::CommandBuffer &cmd, uint32_t status, bool fetch_bug) const;
+	void set_divot_pipeline(Vulkan::CommandBuffer &cmd, bool fetch_bug) const;
+	void set_scale_pipeline(Vulkan::CommandBuffer &cmd, uint32_t status, bool fetch_bug, bool fold) const;
+	void set_blend_fields_pipeline(Vulkan::CommandBuffer &cmd) const;
+	void set_deinterlace_pipeline(Vulkan::CommandBuffer &cmd) const;
+
 	Vulkan::Device *device = nullptr;
 	Renderer *renderer = nullptr;
 	uint32_t vi_registers[unsigned(VIRegister::Count)] = {};

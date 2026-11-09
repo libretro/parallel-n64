@@ -426,6 +426,8 @@ int main(int argc, char **argv)
     vk_up_init();
 #endif
     if (getenv("LRHOST_SYSTEM_DIR")) system_dir = getenv("LRHOST_SYSTEM_DIR");
+    /* minutes of software compiling that only the pipelines lane is about */
+    if (!getenv("LRHOST_KNOWN_PIPELINES")) putenv((char*)"PARALLEL_RDP_NO_KNOWN_PIPELINES=1");
     MKDIR(system_dir);
 
     h = lib_open(argv[1]);

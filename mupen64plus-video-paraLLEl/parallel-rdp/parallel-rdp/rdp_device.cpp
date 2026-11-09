@@ -1431,6 +1431,7 @@ namespace
 {
 struct PipelinesAhead
 {
+	VideoInterface *vi;
 	Renderer *renderer;
 	const pipeline_record_t *records;
 	size_t count;
@@ -1439,7 +1440,7 @@ struct PipelinesAhead
 void build_pipelines_ahead_on_command_thread(void *ctx)
 {
 	auto *ahead = static_cast<PipelinesAhead *>(ctx);
-	ahead->renderer->build_pipelines_ahead(ahead->records, ahead->count);
+	ahead->renderer->build_pipelines_ahead(ahead->records, ahead->count, ahead->vi);
 }
 }
 
@@ -1447,6 +1448,7 @@ void CommandProcessor::build_pipelines_ahead(const pipeline_record_t *records, s
 {
 	PipelinesAhead ahead;
 	ahead.renderer = &renderer;
+	ahead.vi       = &vi;
 	ahead.records  = records;
 	ahead.count    = count;
 	run_on_command_thread(build_pipelines_ahead_on_command_thread, &ahead);

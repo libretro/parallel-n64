@@ -3774,31 +3774,41 @@ void Renderer::pipeline_work(void *user, mpsc_stack_node_t *item)
  * the renderer's own options: no draw has to build one, even on a first run.
  * The specialised rasterizer variants are not here: the generic one covers
  * them. Each uses the state setter its draw uses, so the two cannot differ. */
-size_t Renderer::queue_known_pipelines(void *nodes_, size_t n)
+void Renderer::add_known_pipeline(void *list_, Vulkan::CommandBuffer &cmd, uint32_t kind)
 {
-	auto *nodes = static_cast<PipelineNode *>(nodes_);
-	const size_t limit = n + MaxKnownPipelines;
+	auto *list = static_cast<KnownPipelines *>(list_);
+	auto *nodes = static_cast<PipelineNode *>(list->nodes);
+	PipelineNode *node = &nodes[list->n];
+	size_t i;
+
+	if (list->n >= list->limit)
+		return;
+	cmd.extract_pipeline_state(node->compile);
+	if (node->compile.program->get_pipeline(node->compile.hash).pipeline != VK_NULL_HANDLE)
+		return;
+	for (i = 0; i < list->n; i++)
+		if (nodes[i].kind == kind && nodes[i].compile.hash == node->compile.hash)
+			return;
+	node->kind   = kind;
+	node->ahead  = 1;
+	node->urgent = 1;
+	list->renderer->pipeline_ahead_urgent++;
+	list->n++;
+}
+
+size_t Renderer::queue_known_pipelines(void *nodes_, size_t n, VideoInterface *vi)
+{
+	KnownPipelines list;
 	const bool can_upscale = caps.upscaling > 1;
 	auto cmd_handle = device->request_command_buffer(Vulkan::CommandBuffer::Type::AsyncCompute);
 	auto &cmd = *cmd_handle;
 
-	const auto add = [&]() {
-		PipelineNode *node = &nodes[n];
-		size_t i;
-		if (n >= limit)
-			return;
-		cmd.extract_pipeline_state(node->compile);
-		if (node->compile.program->get_pipeline(node->compile.hash).pipeline != VK_NULL_HANDLE)
-			return;
-		for (i = 0; i < n; i++)
-			if (nodes[i].kind == PIPELINE_RECORD_COMPUTE && nodes[i].compile.hash == node->compile.hash)
-				return;
-		node->kind   = PIPELINE_RECORD_COMPUTE;
-		node->ahead  = 1;
-		node->urgent = 1;
-		pipeline_ahead_urgent++;
-		n++;
-	};
+	list.nodes    = nodes_;
+	list.n        = n;
+	list.limit    = n + MaxKnownPipelines;
+	list.renderer = this;
+
+	const auto add = [&]() { add_known_pipeline(&list, cmd, PIPELINE_RECORD_COMPUTE); };
 
 	cmd.set_program(shader_bank->tmem_update);
 	cmd.set_specialization_constant_mask(1);
@@ -3872,10 +3882,13 @@ size_t Renderer::queue_known_pipelines(void *nodes_, size_t n)
 	}
 
 	device->submit(cmd_handle);
-	return n;
+
+	if (vi)
+		vi->queue_known_pipelines(caps.upscaling, add_known_pipeline, &list);
+	return list.n;
 }
 
-void Renderer::build_pipelines_ahead(const pipeline_record_t *records, size_t count)
+void Renderer::build_pipelines_ahead(const pipeline_record_t *records, size_t count, VideoInterface *vi)
 {
 	PipelineNode *nodes;
 	size_t i, n = 0;
@@ -3908,7 +3921,10 @@ void Renderer::build_pipelines_ahead(const pipeline_record_t *records, size_t co
 		pipeline_ahead_urgent += node->urgent;
 		n++;
 	}
-	n = queue_known_pipelines(nodes, n);
+	/* tools/ci: frames do not depend on it, and a software driver takes most of
+	 * a minute over these */
+	if (!getenv("PARALLEL_RDP_NO_KNOWN_PIPELINES"))
+		n = queue_known_pipelines(nodes, n, vi);
 	for (pass = 0; pass < 2; pass++)
 		for (i = 0; i < n; i++)
 			if (nodes[i].urgent == (pass == 0))

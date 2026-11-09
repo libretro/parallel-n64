@@ -1,3 +1,4 @@
+#include <functional>
 /* Copyright (c) 2020 Themaister
  *
  * Permission is hereby granted, free of charge, to any person obtaining
@@ -54,6 +55,149 @@ static void shift_rect(VkRect2D &rect, int x, int y)
 		rect.extent.width = 0;
 	if (rect.extent.height & 0x80000000u)
 		rect.extent.height = 0;
+}
+
+void VideoInterface::set_extract_vram_pipeline(Vulkan::CommandBuffer &cmd, uint32_t status, unsigned scaling_factor) const
+{
+	cmd.set_program(shader_bank->extract_vram);
+	cmd.set_specialization_constant_mask(7);
+	cmd.set_specialization_constant(0, uint32_t(rdram_size));
+	cmd.set_specialization_constant(1, status & (VI_CONTROL_TYPE_MASK | VI_CONTROL_META_AA_BIT));
+	cmd.set_specialization_constant(2, trailing_zeroes(scaling_factor));
+}
+
+void VideoInterface::set_fetch_pipeline(Vulkan::CommandBuffer &cmd, uint32_t status, bool fetch_bug) const
+{
+	cmd.set_opaque_state();
+	cmd.set_program(device->request_program(shader_bank->fullscreen, shader_bank->vi_fetch[int(fetch_bug)]));
+	cmd.set_specialization_constant_mask(3);
+	cmd.set_specialization_constant(0, uint32_t(rdram_size));
+	cmd.set_specialization_constant(1, status & (VI_CONTROL_META_AA_BIT | VI_CONTROL_DITHER_FILTER_ENABLE_BIT));
+}
+
+void VideoInterface::set_divot_pipeline(Vulkan::CommandBuffer &cmd, bool fetch_bug) const
+{
+	cmd.set_opaque_state();
+	cmd.set_program(device->request_program(shader_bank->fullscreen, shader_bank->vi_divot[int(fetch_bug)]));
+}
+
+void VideoInterface::set_scale_pipeline(Vulkan::CommandBuffer &cmd, uint32_t status, bool fetch_bug, bool fold) const
+{
+	cmd.set_specialization_constant_mask((1 << 1) | (1 << 2));
+	cmd.set_specialization_constant(1, status & (VI_CONTROL_GAMMA_ENABLE_BIT |
+	                                             VI_CONTROL_GAMMA_DITHER_ENABLE_BIT |
+	                                             VI_CONTROL_META_SCALE_BIT |
+	                                             VI_CONTROL_META_AA_BIT));
+	cmd.set_specialization_constant(2, uint32_t(fetch_bug));
+	cmd.set_opaque_state();
+	cmd.set_program(fold ? device->request_program(shader_bank->fullscreen, vi_scale_fold)
+	                     : device->request_program(shader_bank->fullscreen, shader_bank->vi_scale));
+}
+
+void VideoInterface::set_blend_fields_pipeline(Vulkan::CommandBuffer &cmd) const
+{
+	cmd.set_blend_enable(true);
+	cmd.set_blend_factors(VK_BLEND_FACTOR_ONE_MINUS_DST_ALPHA, VK_BLEND_FACTOR_DST_ALPHA);
+	// Don't overwrite alpha, it's already zero.
+	cmd.set_color_write_mask(0x7);
+	cmd.set_specialization_constant_mask(0);
+	cmd.set_program(device->request_program(shader_bank->fullscreen, shader_bank->vi_blend_fields));
+}
+
+void VideoInterface::set_deinterlace_pipeline(Vulkan::CommandBuffer &cmd) const
+{
+	cmd.set_opaque_state();
+	cmd.set_program(device->request_program(shader_bank->vi_deinterlace_vert, shader_bank->vi_deinterlace_frag));
+}
+
+/* Every pipeline a scanout can ask for, on 1x1 targets of the formats scanout
+ * uses: only their formats reach a pipeline. */
+void VideoInterface::queue_known_pipelines(unsigned upscaling, void (*add)(void *, Vulkan::CommandBuffer &, uint32_t), void *ctx)
+{
+	const auto each_status = [](uint32_t mask, const std::function<void(uint32_t)> &fn) {
+		uint32_t s = mask;
+		for (;;)
+		{
+			fn(s);
+			if (!s)
+				break;
+			s = (s - 1) & mask;
+		}
+	};
+
+	auto cmd_handle = device->request_command_buffer();
+	auto &cmd = *cmd_handle;
+
+	Vulkan::ImageCreateInfo uint_info = Vulkan::ImageCreateInfo::render_target(1, 1, VK_FORMAT_R8G8B8A8_UINT);
+	uint_info.initial_layout = VK_IMAGE_LAYOUT_UNDEFINED;
+	Vulkan::ImageCreateInfo unorm_info = Vulkan::ImageCreateInfo::render_target(1, 1, VK_FORMAT_R8G8B8A8_UNORM);
+	unorm_info.initial_layout = VK_IMAGE_LAYOUT_UNDEFINED;
+	Vulkan::ImageHandle uint0 = device->create_image(uint_info);
+	Vulkan::ImageHandle uint1 = device->create_image(uint_info);
+	Vulkan::ImageHandle unorm = device->create_image(unorm_info);
+	const Vulkan::ImageHandle *const targets[] = { &uint0, &uint1, &unorm };
+
+	for (auto *target : targets)
+		cmd.image_barrier(**target, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+		                  VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, 0,
+		                  VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT);
+
+	/* the fetch bug only exists without upscaling */
+	const unsigned bugs = upscaling == 1 ? 2 : 1;
+
+	/* one attachment without the fetch bug, two with it */
+	for (unsigned bug = 0; bug < bugs; bug++)
+	{
+		Vulkan::RenderPassInfo rp;
+		rp.color_attachments[0] = &uint0->get_view();
+		rp.color_attachments[1] = &uint1->get_view();
+		rp.num_color_attachments = bug + 1;
+		rp.store_attachments = (1u << rp.num_color_attachments) - 1;
+
+		cmd.begin_render_pass(rp);
+		each_status(VI_CONTROL_META_AA_BIT | VI_CONTROL_DITHER_FILTER_ENABLE_BIT, [&](uint32_t status) {
+			set_fetch_pipeline(cmd, status, bug != 0);
+			add(ctx, cmd, PIPELINE_RECORD_GRAPHICS);
+		});
+		set_divot_pipeline(cmd, bug != 0);
+		add(ctx, cmd, PIPELINE_RECORD_GRAPHICS);
+		cmd.end_render_pass();
+	}
+
+	{
+		Vulkan::RenderPassInfo rp;
+		rp.color_attachments[0] = &unorm->get_view();
+		rp.num_color_attachments = 1;
+		rp.store_attachments = 1;
+
+		cmd.begin_render_pass(rp);
+		for (unsigned bug = 0; bug < bugs; bug++)
+			for (unsigned fold = 0; fold < (vi_scale_fold ? 2u : 1u); fold++)
+				each_status(VI_CONTROL_GAMMA_ENABLE_BIT | VI_CONTROL_GAMMA_DITHER_ENABLE_BIT |
+				            VI_CONTROL_META_SCALE_BIT | VI_CONTROL_META_AA_BIT, [&](uint32_t status) {
+					set_scale_pipeline(cmd, status, bug != 0, fold != 0);
+					add(ctx, cmd, PIPELINE_RECORD_GRAPHICS);
+				});
+
+		cmd.set_opaque_state();
+		set_blend_fields_pipeline(cmd);
+		add(ctx, cmd, PIPELINE_RECORD_GRAPHICS);
+
+		set_deinterlace_pipeline(cmd);
+		add(ctx, cmd, PIPELINE_RECORD_GRAPHICS);
+		cmd.end_render_pass();
+	}
+
+	for (unsigned scale = 1; scale <= upscaling; scale = (scale == upscaling) ? scale + 1 : upscaling)
+		each_status(VI_CONTROL_TYPE_MASK | VI_CONTROL_META_AA_BIT, [&](uint32_t status) {
+			/* a blank or reserved type scans out as RGBA5551 */
+			if ((status & VI_CONTROL_TYPE_RGBA5551_BIT) == 0)
+				return;
+			set_extract_vram_pipeline(cmd, status, scale);
+			add(ctx, cmd, PIPELINE_RECORD_COMPUTE);
+		});
+
+	device->submit(cmd_handle);
 }
 
 void VideoInterface::set_device(Vulkan::Device *device_)
@@ -542,7 +686,6 @@ Vulkan::ImageHandle VideoInterface::vram_fetch_stage(const Registers &regs, unsi
 	                         VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, 0,
 	                         VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_WRITE_BIT);
 
-	async_cmd->set_program(shader_bank->extract_vram);
 	async_cmd->set_storage_texture(0, 0, vram_image->get_view());
 
 	if (scaling_factor > 1)
@@ -577,10 +720,7 @@ Vulkan::ImageHandle VideoInterface::vram_fetch_stage(const Registers &regs, unsi
 	push.x_res = extract_width;
 	push.y_res = extract_height;
 
-	async_cmd->set_specialization_constant_mask(7);
-	async_cmd->set_specialization_constant(0, uint32_t(rdram_size));
-	async_cmd->set_specialization_constant(1, regs.status & (VI_CONTROL_TYPE_MASK | VI_CONTROL_META_AA_BIT));
-	async_cmd->set_specialization_constant(2, trailing_zeroes(scaling_factor));
+	set_extract_vram_pipeline(*async_cmd, regs.status, scaling_factor);
 
 	async_cmd->push_constants(&push, 0, sizeof(push));
 	async_cmd->dispatch((extract_width + 15) / 16,
@@ -652,9 +792,7 @@ Vulkan::ImageHandle VideoInterface::aa_fetch_stage(Vulkan::CommandBuffer &cmd, V
 		start_ts = cmd.write_timestamp(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
 
 	cmd.begin_render_pass(rp);
-	cmd.set_opaque_state();
-
-	cmd.set_program(device->request_program(shader_bank->fullscreen, shader_bank->vi_fetch[int(fetch_bug)]));
+	set_fetch_pipeline(cmd, regs.status, fetch_bug);
 
 	struct Push
 	{
@@ -666,11 +804,6 @@ Vulkan::ImageHandle VideoInterface::aa_fetch_stage(Vulkan::CommandBuffer &cmd, V
 	push.y_offset = 2;
 
 	cmd.push_constants(&push, 0, sizeof(push));
-
-	cmd.set_specialization_constant_mask(3);
-	cmd.set_specialization_constant(0, uint32_t(rdram_size));
-	cmd.set_specialization_constant(1,
-	                                regs.status & (VI_CONTROL_META_AA_BIT | VI_CONTROL_DITHER_FILTER_ENABLE_BIT));
 
 	cmd.set_texture(0, 0, vram_image.get_view());
 	cmd.draw(3);
@@ -735,9 +868,7 @@ Vulkan::ImageHandle VideoInterface::divot_stage(Vulkan::CommandBuffer &cmd, Vulk
 		start_ts = cmd.write_timestamp(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
 
 	cmd.begin_render_pass(rp);
-	cmd.set_opaque_state();
-
-	cmd.set_program(device->request_program(shader_bank->fullscreen, shader_bank->vi_divot[int(fetch_bug)]));
+	set_divot_pipeline(cmd, fetch_bug);
 
 	cmd.set_texture(0, 0, aa_image.get_view());
 	cmd.draw(3);
@@ -943,14 +1074,6 @@ Vulkan::ImageHandle VideoInterface::scale_stage(Vulkan::CommandBuffer &cmd, cons
 
 	cmd.begin_render_pass(rp);
 
-	cmd.set_specialization_constant_mask((1 << 1) | (1 << 2));
-	cmd.set_specialization_constant(1,
-	                                regs.status & (VI_CONTROL_GAMMA_ENABLE_BIT |
-	                                               VI_CONTROL_GAMMA_DITHER_ENABLE_BIT |
-	                                               VI_CONTROL_META_SCALE_BIT |
-	                                               VI_CONTROL_META_AA_BIT));
-	cmd.set_specialization_constant(2, uint32_t(fetch_bug));
-
 	struct Push
 	{
 		int32_t h_offset, v_offset;
@@ -994,9 +1117,7 @@ Vulkan::ImageHandle VideoInterface::scale_stage(Vulkan::CommandBuffer &cmd, cons
 	push.y_add = regs.init_y_add;
 	push.frame_count = frame_count;
 
-	cmd.set_opaque_state();
-	cmd.set_program(fold ? device->request_program(shader_bank->fullscreen, vi_scale_fold)
-	                     : device->request_program(shader_bank->fullscreen, shader_bank->vi_scale));
+	set_scale_pipeline(cmd, regs.status, fetch_bug, fold != nullptr);
 	cmd.set_buffer_view(1, 0, *gamma_lut_view);
 	bind_horizontal_info_view(cmd, lines);
 
@@ -1069,13 +1190,8 @@ Vulkan::ImageHandle VideoInterface::scale_stage(Vulkan::CommandBuffer &cmd, cons
 
 	if (prev_scanout_image && options.blend_previous_frame && !fold)
 	{
-		cmd.set_blend_enable(true);
-		cmd.set_blend_factors(VK_BLEND_FACTOR_ONE_MINUS_DST_ALPHA, VK_BLEND_FACTOR_DST_ALPHA);
-		// Don't overwrite alpha, it's already zero.
-		cmd.set_color_write_mask(0x7);
-		cmd.set_specialization_constant_mask(0);
+		set_blend_fields_pipeline(cmd);
 		cmd.set_texture(0, 0, prev_scanout_image->get_view());
-		cmd.set_program(device->request_program(shader_bank->fullscreen, shader_bank->vi_blend_fields));
 
 		if (degenerate)
 		{
@@ -1247,7 +1363,7 @@ Vulkan::ImageHandle VideoInterface::upscale_deinterlace(Vulkan::CommandBuffer &c
 	                  VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT);
 
 	cmd.begin_render_pass(rp);
-	cmd.set_opaque_state();
+	set_deinterlace_pipeline(cmd);
 
 	struct Push
 	{
@@ -1256,7 +1372,6 @@ Vulkan::ImageHandle VideoInterface::upscale_deinterlace(Vulkan::CommandBuffer &c
 	push.y_offset = (float(scaling_factor) * (field_select ? -0.25f : +0.25f)) / float(scale_image.get_height());
 	cmd.push_constants(&push, 0, sizeof(push));
 
-	cmd.set_program(device->request_program(shader_bank->vi_deinterlace_vert, shader_bank->vi_deinterlace_frag));
 	cmd.set_texture(0, 0, scale_image.get_view(), Vulkan::StockSampler::LinearClamp);
 	cmd.draw(3);
 	cmd.end_render_pass();
