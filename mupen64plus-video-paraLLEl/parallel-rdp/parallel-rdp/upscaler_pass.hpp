@@ -58,6 +58,10 @@ struct UpscalerFrame
  * into an RGBA8 storage image */
 Vulkan::Program *upscaler_color_program(Vulkan::Device &device);
 
+/* Hands @add the motion pass's pipelines, on 1x1 targets. At load. */
+void upscaler_queue_known_pipelines(Vulkan::Device &device, Vulkan::CommandBuffer &cmd,
+                                    void (*add)(void *, Vulkan::CommandBuffer &, uint32_t), void *ctx);
+
 /* Draws @geometry's motion vectors and depth into new images of
  * @width x @height, recorded into @cmd */
 void upscaler_motion_pass(Vulkan::Device &device, Vulkan::CommandBuffer &cmd,

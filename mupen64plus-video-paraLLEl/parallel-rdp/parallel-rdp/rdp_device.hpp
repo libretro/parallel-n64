@@ -146,7 +146,7 @@ public:
 	// Builds the pipelines @records lists on the pipeline worker, ahead of
 	// their first use, and returns once those a draw cannot do without are
 	// built. The thread that queues commands, before the first one.
-	void build_pipelines_ahead(const pipeline_record_t *records, size_t count);
+	void build_pipelines_ahead(const pipeline_record_t *records, size_t count, bool with_upscaler);
 
 	// Queues up state and drawing commands.
 	void enqueue_command(unsigned num_words, const uint32_t *words);

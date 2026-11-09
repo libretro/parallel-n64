@@ -160,12 +160,13 @@ def shared(args, first, second):
 
 def known_at_load(args):
     """A first run builds nothing on the frame's threads: everything it can
-    need is built at load. One ROM: a software driver takes most of a minute."""
+    need is built at load, with a temporal upscaler at that. One ROM: a software
+    driver takes minutes over these."""
     sysdir = os.path.abspath(os.path.join(args.out, "known"))
     shutil.rmtree(sysdir, ignore_errors=True)
     os.makedirs(sysdir)
     frame, worker, _ = run(args, regress.fetch(args.roms, FULL_ROM), sysdir, "known",
-                           {"LRHOST_KNOWN_PIPELINES": "1"}, [])
+                           {"LRHOST_KNOWN_PIPELINES": "1", "LRHOST_UPSCALER": "640,480"}, [])
     ok = frame == 0
     print("known at load: %s (%d on the frame's threads, %d on the worker)"
           % ("ok" if ok else "FAIL", frame, worker))

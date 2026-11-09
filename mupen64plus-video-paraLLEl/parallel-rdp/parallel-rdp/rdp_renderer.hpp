@@ -121,7 +121,7 @@ public:
 	/* Hands the pipelines @records lists to the pipeline worker: those a
 	 * draw cannot do without first, then those it has a fallback for. The
 	 * thread that processes commands, once, after init_renderer. */
-	void build_pipelines_ahead(const pipeline_record_t *records, size_t count, VideoInterface *vi);
+	void build_pipelines_ahead(const pipeline_record_t *records, size_t count, VideoInterface *vi, bool with_upscaler);
 	/* Returns once the worker has built the first kind; any thread but the
 	 * one processing commands, after build_pipelines_ahead returned. */
 	void wait_pipelines_ahead();
@@ -379,7 +379,7 @@ private:
 		Renderer *renderer;
 	};
 	static void add_known_pipeline(void *list, Vulkan::CommandBuffer &cmd, uint32_t kind);
-	size_t queue_known_pipelines(void *nodes, size_t n, VideoInterface *vi);
+	size_t queue_known_pipelines(void *nodes, size_t n, VideoInterface *vi, bool with_upscaler);
 	void set_span_setup_pipeline(Vulkan::CommandBuffer &cmd, bool upscale);
 	uint32_t set_tile_binning_pipeline(Vulkan::CommandBuffer &cmd, bool upscale);
 	void set_depth_blend_pipeline(Vulkan::CommandBuffer &cmd, uint32_t fmt, bool same_addr,

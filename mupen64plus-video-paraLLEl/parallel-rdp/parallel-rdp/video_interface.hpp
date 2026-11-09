@@ -108,7 +108,8 @@ class VideoInterface
 public:
 	/* Hands @add every pipeline a scanout can need. The thread that processes
 	 * commands, once, at load. */
-	void queue_known_pipelines(unsigned upscaling, void (*add)(void *, Vulkan::CommandBuffer &, uint32_t), void *ctx);
+	void queue_known_pipelines(unsigned upscaling, bool with_upscaler,
+	                           void (*add)(void *, Vulkan::CommandBuffer &, uint32_t), void *ctx);
 
 	void set_device(Vulkan::Device *device);
 	void set_renderer(Renderer *renderer);
@@ -148,6 +149,7 @@ public:
 private:
 	void set_extract_vram_pipeline(Vulkan::CommandBuffer &cmd, uint32_t status, unsigned scaling_factor) const;
 	void set_fetch_pipeline(Vulkan::CommandBuffer &cmd, uint32_t status, bool fetch_bug) const;
+	void set_upscaler_color_pipeline(Vulkan::CommandBuffer &cmd, bool rgba32, unsigned scaling_factor, bool gamma) const;
 	void set_divot_pipeline(Vulkan::CommandBuffer &cmd, bool fetch_bug) const;
 	void set_scale_pipeline(Vulkan::CommandBuffer &cmd, uint32_t status, bool fetch_bug, bool fold) const;
 	void set_blend_fields_pipeline(Vulkan::CommandBuffer &cmd) const;

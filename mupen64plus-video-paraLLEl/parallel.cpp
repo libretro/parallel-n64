@@ -237,6 +237,11 @@ void parallel_set_overscan_crop(unsigned pixels)
 	RDP::overscan = pixels;
 }
 
+void parallel_offer_upscaler_interface(const struct retro_hw_render_upscaler_interface *iface)
+{
+	RDP::offer_upscaler_interface(iface);
+}
+
 void parallel_set_upscaler_interface(const struct retro_hw_render_upscaler_interface *iface)
 {
 	RDP::set_upscaler_interface(iface);

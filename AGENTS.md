@@ -25,8 +25,8 @@ Not there yet, most urgent first. These are debts, not precedent:
 2. `gles2n64`, `gles2rice` and `glide2gl` build what earlier sessions met at load,
    but what they have never met still compiles: they have no ubershader or
    parallel compile to stand in, so a cold first session cannot avoid it.
-3. paraLLEl-RDP still builds a specialised path it has no entry for synchronously
-   (the temporal upscaler's own passes); everything else is built at load.
+3. paraLLEl-RDP needs the pipeline worker, which needs the device's pipeline cache
+   control: a device without it builds on the frame's threads.
 
 ## Method: the speed of light
 

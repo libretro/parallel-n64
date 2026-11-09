@@ -66,6 +66,16 @@ void VideoInterface::set_extract_vram_pipeline(Vulkan::CommandBuffer &cmd, uint3
 	cmd.set_specialization_constant(2, trailing_zeroes(scaling_factor));
 }
 
+void VideoInterface::set_upscaler_color_pipeline(Vulkan::CommandBuffer &cmd, bool rgba32, unsigned scaling_factor, bool gamma) const
+{
+	cmd.set_program(upscaler_color_program(*device));
+	cmd.set_specialization_constant_mask(0xf);
+	cmd.set_specialization_constant(0, uint32_t(rdram_size));
+	cmd.set_specialization_constant(1, uint32_t(rgba32));
+	cmd.set_specialization_constant(2, trailing_zeroes(scaling_factor));
+	cmd.set_specialization_constant(3, uint32_t(gamma));
+}
+
 void VideoInterface::set_fetch_pipeline(Vulkan::CommandBuffer &cmd, uint32_t status, bool fetch_bug) const
 {
 	cmd.set_opaque_state();
@@ -112,7 +122,8 @@ void VideoInterface::set_deinterlace_pipeline(Vulkan::CommandBuffer &cmd) const
 
 /* Every pipeline a scanout can ask for, on 1x1 targets of the formats scanout
  * uses: only their formats reach a pipeline. */
-void VideoInterface::queue_known_pipelines(unsigned upscaling, void (*add)(void *, Vulkan::CommandBuffer &, uint32_t), void *ctx)
+void VideoInterface::queue_known_pipelines(unsigned upscaling, bool with_upscaler,
+                                           void (*add)(void *, Vulkan::CommandBuffer &, uint32_t), void *ctx)
 {
 	const auto each_status = [](uint32_t mask, const std::function<void(uint32_t)> &fn) {
 		uint32_t s = mask;
@@ -196,6 +207,18 @@ void VideoInterface::queue_known_pipelines(unsigned upscaling, void (*add)(void 
 			set_extract_vram_pipeline(cmd, status, scale);
 			add(ctx, cmd, PIPELINE_RECORD_COMPUTE);
 		});
+
+	if (with_upscaler)
+	{
+		for (unsigned scale = 1; scale <= upscaling; scale = (scale == upscaling) ? scale + 1 : upscaling)
+			for (unsigned rgba32 = 0; rgba32 < 2; rgba32++)
+				for (unsigned gamma = 0; gamma < 2; gamma++)
+				{
+					set_upscaler_color_pipeline(cmd, rgba32 != 0, scale, gamma != 0);
+					add(ctx, cmd, PIPELINE_RECORD_COMPUTE);
+				}
+		upscaler_queue_known_pipelines(*device, cmd, add, ctx);
+	}
 
 	device->submit(cmd_handle);
 }
@@ -1464,7 +1487,6 @@ Vulkan::ImageHandle VideoInterface::upscaler_scanout(unsigned scaling_factor,
 	                         VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, 0,
 	                         VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_WRITE_BIT);
 
-	async_cmd->set_program(upscaler_color_program(*device));
 	async_cmd->set_storage_texture(0, 0, image->get_view());
 	if (scaling_factor > 1)
 		async_cmd->set_storage_buffer(0, 1, *renderer->get_upscaled_rdram_buffer());
@@ -1481,11 +1503,7 @@ Vulkan::ImageHandle VideoInterface::upscaler_scanout(unsigned scaling_factor,
 	push.shown_x0 = rdp_max(regs.min_x, 0) * int32_t(scaling_factor);
 	push.shown_x1 = rdp_min(regs.max_x_clamp, width) * int32_t(scaling_factor);
 
-	async_cmd->set_specialization_constant_mask(0xf);
-	async_cmd->set_specialization_constant(0, uint32_t(rdram_size));
-	async_cmd->set_specialization_constant(1, uint32_t(size_log2 == 2));
-	async_cmd->set_specialization_constant(2, trailing_zeroes(scaling_factor));
-	async_cmd->set_specialization_constant(3, uint32_t((regs.status & VI_CONTROL_GAMMA_ENABLE_BIT) != 0));
+	set_upscaler_color_pipeline(*async_cmd, size_log2 == 2, scaling_factor, (regs.status & VI_CONTROL_GAMMA_ENABLE_BIT) != 0);
 	async_cmd->push_constants(&push, 0, sizeof(push));
 	async_cmd->dispatch((info.width + 7) / 8, (info.height + 7) / 8, 1);
 	async_cmd->set_specialization_constant_mask(0);

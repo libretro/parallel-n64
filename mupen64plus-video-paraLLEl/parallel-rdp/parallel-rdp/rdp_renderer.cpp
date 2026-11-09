@@ -3796,7 +3796,7 @@ void Renderer::add_known_pipeline(void *list_, Vulkan::CommandBuffer &cmd, uint3
 	list->n++;
 }
 
-size_t Renderer::queue_known_pipelines(void *nodes_, size_t n, VideoInterface *vi)
+size_t Renderer::queue_known_pipelines(void *nodes_, size_t n, VideoInterface *vi, bool with_upscaler)
 {
 	KnownPipelines list;
 	const bool can_upscale = caps.upscaling > 1;
@@ -3884,11 +3884,11 @@ size_t Renderer::queue_known_pipelines(void *nodes_, size_t n, VideoInterface *v
 	device->submit(cmd_handle);
 
 	if (vi)
-		vi->queue_known_pipelines(caps.upscaling, add_known_pipeline, &list);
+		vi->queue_known_pipelines(caps.upscaling, with_upscaler, add_known_pipeline, &list);
 	return list.n;
 }
 
-void Renderer::build_pipelines_ahead(const pipeline_record_t *records, size_t count, VideoInterface *vi)
+void Renderer::build_pipelines_ahead(const pipeline_record_t *records, size_t count, VideoInterface *vi, bool with_upscaler)
 {
 	PipelineNode *nodes;
 	size_t i, n = 0;
@@ -3924,7 +3924,7 @@ void Renderer::build_pipelines_ahead(const pipeline_record_t *records, size_t co
 	/* tools/ci: frames do not depend on it, and a software driver takes most of
 	 * a minute over these */
 	if (!getenv("PARALLEL_RDP_NO_KNOWN_PIPELINES"))
-		n = queue_known_pipelines(nodes, n, vi);
+		n = queue_known_pipelines(nodes, n, vi, with_upscaler);
 	for (pass = 0; pass < 2; pass++)
 		for (i = 0; i < n; i++)
 			if (nodes[i].urgent == (pass == 0))

@@ -36,6 +36,7 @@ void complete_frame();
 void deinit();
 
 /* The frontend's temporal upscaler, NULL without one */
+void offer_upscaler_interface(const struct retro_hw_render_upscaler_interface *iface);
 void set_upscaler_interface(const struct retro_hw_render_upscaler_interface *iface);
 /* Frames are drawn for the upscaler */
 bool upscaler_active();

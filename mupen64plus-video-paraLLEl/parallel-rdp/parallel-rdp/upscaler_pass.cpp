@@ -68,6 +68,70 @@ static VkFormat upscaler_depth_format(Vulkan::Device &device)
 	return VK_FORMAT_D16_UNORM;
 }
 
+static void set_motion_pipeline(Vulkan::Device &device, Vulkan::CommandBuffer &cmd)
+{
+	unsigned i;
+
+	cmd.set_opaque_state();
+	cmd.set_cull_mode(VK_CULL_MODE_NONE);
+	cmd.set_depth_compare(VK_COMPARE_OP_LESS_OR_EQUAL);
+	cmd.set_program(upscaler_motion_program(device));
+	cmd.set_vertex_attrib(0, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(rdp_upscaler_vertex_t, x));
+	cmd.set_vertex_attrib(1, 0, VK_FORMAT_R32G32_SFLOAT, offsetof(rdp_upscaler_vertex_t, motion_x));
+	for (i = 0; i < 6; i++)
+		cmd.set_vertex_attrib(2 + i, 0, VK_FORMAT_R32G32B32_SFLOAT,
+		                      offsetof(rdp_upscaler_vertex_t, plane) + i * 3 * sizeof(float));
+}
+
+void upscaler_queue_known_pipelines(Vulkan::Device &device, Vulkan::CommandBuffer &cmd,
+                                    void (*add)(void *, Vulkan::CommandBuffer &, uint32_t), void *ctx)
+{
+	Vulkan::ImageCreateInfo info;
+	Vulkan::RenderPassInfo rp;
+	Vulkan::ImageHandle motion, depth, translucent;
+	unsigned test, write;
+
+	info = Vulkan::ImageCreateInfo::render_target(1, 1, VK_FORMAT_R16G16_SFLOAT);
+	info.initial_layout = VK_IMAGE_LAYOUT_UNDEFINED;
+	motion = device.create_image(info);
+	info = Vulkan::ImageCreateInfo::render_target(1, 1, upscaler_depth_format(device));
+	info.initial_layout = VK_IMAGE_LAYOUT_UNDEFINED;
+	depth = device.create_image(info);
+	info = Vulkan::ImageCreateInfo::render_target(1, 1, VK_FORMAT_R8_UNORM);
+	info.initial_layout = VK_IMAGE_LAYOUT_UNDEFINED;
+	translucent = device.create_image(info);
+	if (!motion || !depth || !translucent)
+		return;
+
+	cmd.image_barrier(*motion, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+	                  VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, 0,
+	                  VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT);
+	cmd.image_barrier(*translucent, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+	                  VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, 0,
+	                  VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT);
+	cmd.image_barrier(*depth, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+	                  VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, 0,
+	                  VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
+	                  VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT);
+
+	rp.color_attachments[0] = &motion->get_view();
+	rp.color_attachments[1] = &translucent->get_view();
+	rp.depth_stencil = &depth->get_view();
+	rp.num_color_attachments = 2;
+	rp.store_attachments = 3;
+	rp.op_flags = Vulkan::RENDER_PASS_OP_CLEAR_DEPTH_STENCIL_BIT | Vulkan::RENDER_PASS_OP_STORE_DEPTH_STENCIL_BIT;
+	cmd.begin_render_pass(rp);
+	cmd.allocate_vertex_data(0, sizeof(rdp_upscaler_vertex_t), sizeof(rdp_upscaler_vertex_t));
+	set_motion_pipeline(device, cmd);
+	for (test = 0; test < 2; test++)
+		for (write = 0; write < 2; write++)
+		{
+			cmd.set_depth_test(test != 0, write != 0);
+			add(ctx, cmd, PIPELINE_RECORD_GRAPHICS);
+		}
+	cmd.end_render_pass();
+}
+
 void upscaler_motion_pass(Vulkan::Device &device, Vulkan::CommandBuffer &cmd,
                           const rdp_upscaler_geometry_t &geometry,
                           unsigned width, unsigned height, UpscalerFrame &frame)
@@ -132,15 +196,7 @@ void upscaler_motion_pass(Vulkan::Device &device, Vulkan::CommandBuffer &cmd,
 		vertices = cmd.allocate_vertex_data(0, geometry.num_vertices * sizeof(rdp_upscaler_vertex_t),
 		                                    sizeof(rdp_upscaler_vertex_t));
 		memcpy(vertices, geometry.vertices, geometry.num_vertices * sizeof(rdp_upscaler_vertex_t));
-		cmd.set_opaque_state();
-		cmd.set_cull_mode(VK_CULL_MODE_NONE);
-		cmd.set_depth_compare(VK_COMPARE_OP_LESS_OR_EQUAL);
-		cmd.set_program(upscaler_motion_program(device));
-		cmd.set_vertex_attrib(0, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(rdp_upscaler_vertex_t, x));
-		cmd.set_vertex_attrib(1, 0, VK_FORMAT_R32G32_SFLOAT, offsetof(rdp_upscaler_vertex_t, motion_x));
-		for (i = 0; i < 6; i++)
-			cmd.set_vertex_attrib(2 + i, 0, VK_FORMAT_R32G32B32_SFLOAT,
-			                      offsetof(rdp_upscaler_vertex_t, plane) + i * 3 * sizeof(float));
+		set_motion_pipeline(device, cmd);
 		inv_resolution[0] = 1.0f / float(width);
 		inv_resolution[1] = 1.0f / float(height);
 		cmd.push_constants(inv_resolution, 0, sizeof(inv_resolution));

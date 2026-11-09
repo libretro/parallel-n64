@@ -588,10 +588,19 @@ static void upscaler_poll()
 			replay_state();
 		else if (!create_processor(1))
 			device_supported = false;
+		/* (only what this factor adds is new) */
+		if (device_supported)
+			frontend->build_pipelines_ahead(pipeline_list, pipeline_list_count, upscaler_iface != nullptr);
 		upscaler_reset_pending = true;
 	}
 	if (upscaler_iface)
 		upscaler_log(requested, on, processor_factor);
+}
+
+/* Before init: init builds this upscaler's pipelines at load. */
+void offer_upscaler_interface(const struct retro_hw_render_upscaler_interface *iface)
+{
+	upscaler_iface = iface;
 }
 
 void set_upscaler_interface(const struct retro_hw_render_upscaler_interface *iface)
@@ -692,7 +701,7 @@ bool init()
 	upscaler_reset_pending = true;
 	if (!create_processor(upscaling))
 		return false;
-	frontend->build_pipelines_ahead(pipeline_list, pipeline_list_count);
+	frontend->build_pipelines_ahead(pipeline_list, pipeline_list_count, upscaler_iface != nullptr);
 
 	timeline_value = 0;
 	pending_timeline_value = 0;

@@ -1159,10 +1159,21 @@ static bool parallel_initialized = false;
  * before the guest executes a single instruction: an RDP list submitted
  * while it is down is dropped, and a program that draws once at boot
  * (krom's RDP tests, homebrew) would then show nothing but black. */
+static const struct retro_hw_render_upscaler_interface *frontend_upscaler(void)
+{
+   const struct retro_hw_render_upscaler_interface *upscaler = NULL;
+   if (     !environ_cb(RETRO_ENVIRONMENT_GET_HW_RENDER_UPSCALER_INTERFACE, &upscaler)
+         || !upscaler
+         || upscaler->interface_version != RETRO_HW_RENDER_UPSCALER_INTERFACE_VERSION)
+      upscaler = NULL;
+   return upscaler;
+}
+
 static void init_parallel_plugin(void)
 {
    if (parallel_initialized)
       return;
+   parallel_offer_upscaler_interface(frontend_upscaler());
    if (!environ_cb(RETRO_ENVIRONMENT_GET_HW_RENDER_INTERFACE, &vulkan) || !vulkan)
    {
       if (log_cb)
@@ -1175,12 +1186,7 @@ static void init_parallel_plugin(void)
    }
    else
    {
-      const struct retro_hw_render_upscaler_interface *upscaler = NULL;
-      if (     !environ_cb(RETRO_ENVIRONMENT_GET_HW_RENDER_UPSCALER_INTERFACE, &upscaler)
-            || !upscaler
-            || upscaler->interface_version != RETRO_HW_RENDER_UPSCALER_INTERFACE_VERSION)
-         upscaler = NULL;
-      parallel_set_upscaler_interface(upscaler);
+      parallel_set_upscaler_interface(frontend_upscaler());
       parallel_initialized = true;
    }
 }

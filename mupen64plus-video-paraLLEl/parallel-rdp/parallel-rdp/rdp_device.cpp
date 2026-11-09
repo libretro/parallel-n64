@@ -1432,6 +1432,7 @@ namespace
 struct PipelinesAhead
 {
 	VideoInterface *vi;
+	bool with_upscaler;
 	Renderer *renderer;
 	const pipeline_record_t *records;
 	size_t count;
@@ -1440,15 +1441,16 @@ struct PipelinesAhead
 void build_pipelines_ahead_on_command_thread(void *ctx)
 {
 	auto *ahead = static_cast<PipelinesAhead *>(ctx);
-	ahead->renderer->build_pipelines_ahead(ahead->records, ahead->count, ahead->vi);
+	ahead->renderer->build_pipelines_ahead(ahead->records, ahead->count, ahead->vi, ahead->with_upscaler);
 }
 }
 
-void CommandProcessor::build_pipelines_ahead(const pipeline_record_t *records, size_t count)
+void CommandProcessor::build_pipelines_ahead(const pipeline_record_t *records, size_t count, bool with_upscaler)
 {
 	PipelinesAhead ahead;
 	ahead.renderer = &renderer;
 	ahead.vi       = &vi;
+	ahead.with_upscaler = with_upscaler;
 	ahead.records  = records;
 	ahead.count    = count;
 	run_on_command_thread(build_pipelines_ahead_on_command_thread, &ahead);
