@@ -46,8 +46,6 @@ Not there yet, in GLideN64. These are debts, not precedent:
    nodes, textures and FBOs alike (`FrameBufferList`, `DepthBufferList`).
 2. The texture cache allocates a new entry and GPU texture on each miss, and a
    decode too big for its scratch buffer uses the heap (`Textures.cpp`).
-3. `m_dmaVertices` grows when a game asks for more than it holds, the texrect coords
-   vector grows past its reserve, and `m_RdramCopy` is sized when a buffer is copied.
 
 ## Method: the speed of light
 

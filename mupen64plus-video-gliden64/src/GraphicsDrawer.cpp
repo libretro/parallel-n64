@@ -168,9 +168,9 @@ SPVertex * gli_drawer_vertices(void)
 
 SPVertex * gli_drawer_dma_vertices(u32 _atLeast)
 {
-	GraphicsDrawer & drawer = dwnd().getDrawer();
-	drawer.setDMAVerticesSize(_atLeast);
-	return drawer.getDMAVerticesData();
+	/* the largest ask is 765, Turbo3D's 255 triangles; 4096 are allocated at load */
+	(void)_atLeast;
+	return dwnd().getDrawer().getDMAVerticesData();
 }
 
 void gli_drawer_draw_triangles(void)
@@ -250,8 +250,6 @@ void gli_drawer_draw_line(u32 _v0, u32 _v1, f32 _width, u32 _flag)
 
 SPVertex & GraphicsDrawer::getCurrentDMAVertex()
 {
-	if (m_dmaVerticesNum >= m_dmaVertices.size())
-		m_dmaVertices.resize(std::max(static_cast<std::vector<SPVertex>::size_type>(64), m_dmaVertices.size() * 2));
 	return m_dmaVertices[m_dmaVerticesNum++];
 }
 
@@ -955,7 +953,6 @@ void GraphicsDrawer::_drawThickLine(u32 _v0, u32 _v1, float _width, u32 _flag)
 		}
 	}
 
-	setDMAVerticesSize(4);
 	SPVertex * pVtx = getDMAVerticesData();
 	const f32 ySign = gli_GBI->negativeY ? -1.0f : 1.0f;
 	pVtx[0] = triangles.vertices[_v0];

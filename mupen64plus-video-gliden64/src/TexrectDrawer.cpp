@@ -91,7 +91,7 @@ void TexrectDrawer::init()
 	m_programClear.reset(gfxContext.createTexrectDrawerClearShader());
 	m_programTex->setTextureSize(m_pTexture->realWidth, m_pTexture->realHeight);
 
-	m_vecRectCoords.reserve(256);
+	m_vecRectCoords.reserve(8192);
 }
 
 void TexrectDrawer::destroy()
@@ -192,6 +192,10 @@ bool TexrectDrawer::addRect()
 	DisplayWindow & wnd = dwnd();
 	GraphicsDrawer &  drawer = wnd.getDrawer();
 	RectVertex * pRect = drawer.m_rect;
+
+	/* flush rather than grow */
+	if (m_vecRectCoords.size() + 2 > m_vecRectCoords.capacity())
+		draw();
 
 	m_curRect = _getiRect(RDP.w0, RDP.w1);
 
