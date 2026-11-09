@@ -1092,9 +1092,11 @@ static void present_frame(void)
                vr_set_views();
             }
 #endif
+#ifdef HAVE_GLIDEN64
             if (gliden64_on_vulkan)
                gliden64_vulkan_present();
             else
+#endif
                aleck64_e90_gl_draw(screen_width, screen_height);
             video_cb(RETRO_HW_FRAME_BUFFER_VALID, screen_width, screen_height, 0);
 #elif defined(HAVE_THR_AL)
