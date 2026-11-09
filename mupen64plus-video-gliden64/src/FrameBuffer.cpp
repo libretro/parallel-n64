@@ -187,7 +187,7 @@ void FrameBuffer::init(u32 _address, u16 _format, u16 _size, u16 _width, bool _c
 	m_fingerprint = false;
 	m_swapCount = dwnd().getBuffersSwapCount();
 
-	const u16 maxHeight = VI_GetMaxBufferHeight(_width);
+	const u16 maxHeight = gli_VI_GetMaxBufferHeight(_width);
 	_initTexture(_width, maxHeight, _format, _size, m_pTexture);
 
 	if (config.video.multisampling != 0) {
@@ -440,7 +440,7 @@ void FrameBuffer::_initCopyTexture()
 	m_copyFBO = gfxContext.createFramebuffer();
 	m_pFrameBufferCopyTexture = textureCache().addFrameBufferTexture(config.video.multisampling != 0 ?
 		textureTarget::TEXTURE_2D_MULTISAMPLE : textureTarget::TEXTURE_2D);
-	_initTexture(m_width, VI_GetMaxBufferHeight(m_width), m_pTexture->format, m_pTexture->size, m_pFrameBufferCopyTexture);
+	_initTexture(m_width, gli_VI_GetMaxBufferHeight(m_width), m_pTexture->format, m_pTexture->size, m_pFrameBufferCopyTexture);
 	_setAndAttachTexture(m_copyFBO, m_pFrameBufferCopyTexture, 0, config.video.multisampling != 0);
 	if (config.video.multisampling != 0)
 		m_pFrameBufferCopyTexture->frameBufferTexture = CachedTexture::fbMultiSample;
@@ -1288,7 +1288,7 @@ void FrameBufferList::OverscanBuffer::setInputBuffer(const FrameBuffer *  _pBuff
 	const CachedTexture * pSrcTexture = _pBuffer->m_pTexture;
 	_initFrameBufferTexture(0,
 		_pBuffer->m_width,
-		VI_GetMaxBufferHeight(_pBuffer->m_width),
+		gli_VI_GetMaxBufferHeight(_pBuffer->m_width),
 		_pBuffer->m_scale,
 		pSrcTexture->format,
 		pSrcTexture->size,
@@ -1750,7 +1750,7 @@ u32 cutHeight(u32 _address, u32 _height, u32 _stride)
 void calcCoordsScales(const FrameBuffer * _pBuffer, f32 & _scaleX, f32 & _scaleY)
 {
 	const u32 bufferWidth = _pBuffer != nullptr ? _pBuffer->m_width : VI.width;
-	const u32 bufferHeight = VI_GetMaxBufferHeight(bufferWidth);
+	const u32 bufferHeight = gli_VI_GetMaxBufferHeight(bufferWidth);
 	_scaleX = 1.0f / f32(bufferWidth);
 	_scaleY = 1.0f / f32(bufferHeight);
 }
@@ -1886,4 +1886,65 @@ bool gli_fb_check_texture(u32 _address, u32 _width, u32 _bytes)
 		}
 	}
 	return bRes;
+}
+
+/* VI's way in */
+FrameBuffer * gli_fb_find(u32 _address)
+{
+	return frameBufferList().findBuffer(_address);
+}
+
+u32 gli_fb_width(const FrameBuffer * _pBuffer)
+{
+	return _pBuffer->m_width;
+}
+
+bool gli_fb_is_valid_scanout(FrameBuffer * _pBuffer)
+{
+	return _pBuffer->isValid(true);
+}
+
+bool gli_fb_rendered_uncopied(const FrameBuffer * _pBuffer)
+{
+	return !_pBuffer->m_cfb && !_pBuffer->m_copiedToRdram;
+}
+
+void gli_fb_copy_rdram(FrameBuffer * _pBuffer)
+{
+	_pBuffer->copyRdram();
+}
+
+bool gli_fb_depth_width_differs(u32 _address, u32 _width)
+{
+	FrameBuffer * pBuffer = frameBufferList().findBuffer(_address);
+	DepthBuffer * pDepthBuffer = pBuffer != nullptr ? pBuffer->m_pDepthBuffer : nullptr;
+	return pDepthBuffer != nullptr && pDepthBuffer->m_width != _width;
+}
+
+void gli_fb_vi_resized(u32 _widthPrev, u32 _width)
+{
+	frameBufferList().removeBuffers(_widthPrev);
+	frameBufferList().removeBuffers(_width);
+	depthBufferList().destroy();
+	depthBufferList().init();
+}
+
+void gli_fb_save_cpu_buffer(u32 _address, u32 _size, u32 _width)
+{
+	frameBufferList().saveBuffer(_address, G_IM_FMT_RGBA, _size, _width, true);
+}
+
+void gli_fb_copy_from_rdram(u32 _address, bool _useAlpha)
+{
+	FrameBuffer_CopyFromRDRAM(_address, _useAlpha);
+}
+
+void gli_fb_render(void)
+{
+	frameBufferList().renderBuffer();
+}
+
+void gli_fb_clear_changed(void)
+{
+	frameBufferList().clearBuffersChanged();
 }

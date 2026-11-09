@@ -320,7 +320,7 @@ void RDRAMtoColorBuffer::copyFromRDRAM(u32 _address, bool _bCFB)
 	/* Resident Evil 2: never upload past the buffer's own height.
 	 *
 	 * When the address does not match the buffer start, the height taken here is
-	 * VI_GetMaxBufferHeight -- a global ceiling rather than anything about this
+	 * gli_VI_GetMaxBufferHeight -- a global ceiling rather than anything about this
 	 * buffer. Read back from the GPU on the pre-rendered rooms, the band of noise
 	 * under the picture measures out to m_height, the tallest row the RDP ever
 	 * rasterised into this buffer, which outlives the scene that set it:
@@ -346,16 +346,16 @@ void RDRAMtoColorBuffer::copyFromRDRAM(u32 _address, bool _bCFB)
 	 * content begins at 140.3. Sixteen was the first attempt and stages four rows
 	 * of that stale content for nothing.
 	 *
-	 * Not VI_GetMaxBufferHeight: that adds 154 unwritten rows in this mode, which
+	 * Not gli_VI_GetMaxBufferHeight: that adds 154 unwritten rows in this mode, which
 	 * is where the band of noise under the picture came from. Anything below the
 	 * picture is content nobody wrote this scene, so the margin has to stay
 	 * small. */
 	u32 fillHeight = VI.real_height;
 	if ((config.generalEmulation.hacks & hack_RE2) != 0)
-		fillHeight = std::min((u32)VI_GetMaxBufferHeight(m_pCurBuffer->m_width),
+		fillHeight = std::min((u32)gli_VI_GetMaxBufferHeight(m_pCurBuffer->m_width),
 		                      fillHeight + 4u);
 
-	u32 maxHeight = VI_GetMaxBufferHeight(m_pCurBuffer->m_width);
+	u32 maxHeight = gli_VI_GetMaxBufferHeight(m_pCurBuffer->m_width);
 	if ((config.generalEmulation.hacks & hack_RE2) != 0) {
 		if (m_pCurBuffer->m_height > 0)
 			maxHeight = std::min(maxHeight, (u32)m_pCurBuffer->m_height);
@@ -382,11 +382,11 @@ void RDRAMtoColorBuffer::copyFromRDRAM(FrameBuffer * _pBuffer)
 	m_pCurBuffer = _pBuffer;
 	/* Resident Evil 2: same limit as the address form above.
 	 *
-	 * This overload takes VI_GetMaxBufferHeight bare -- 290 for a 320-wide buffer
+	 * This overload takes gli_VI_GetMaxBufferHeight bare -- 290 for a 320-wide buffer
 	 * and 580 above that. On the boot screens the noise ends at texture row 579
 	 * of 580, exactly that ceiling, so this call is the one that paints it there.
 	 * Bound it to what the VI actually shows. */
-	u32 uploadHeight = VI_GetMaxBufferHeight(m_pCurBuffer->m_width);
+	u32 uploadHeight = gli_VI_GetMaxBufferHeight(m_pCurBuffer->m_width);
 	if ((config.generalEmulation.hacks & hack_RE2) != 0 && VI.real_height > 0)
 		uploadHeight = std::min(uploadHeight, VI.real_height + 4u);
 	const u32 height = cutHeight(m_pCurBuffer->m_startAddress,

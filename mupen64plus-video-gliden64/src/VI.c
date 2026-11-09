@@ -1,23 +1,18 @@
-#include "GLideN64.h"
 #include <math.h>
+#include "GLideN64.h"
 #include "Types.h"
 #include "VI.h"
 #include "N64.h"
 #include "gSP.h"
 #include "gDP.h"
 #include "RSP.h"
-#include "FrameBuffer.h"
-#include "DepthBuffer.h"
-#include "FrameBufferInfo.h"
+#include "GBI.h"
 #include "Config.h"
-#include "DisplayWindow.h"
-#include <Graphics/Context.h>
+#include "gli_framebuffer.h"
 
-using namespace std;
+VIInfo VI = { 0, 0, 0, 0, 0.0f, 0.0f, (u32)-1, false, false };
 
-VIInfo VI;
-
-u16 VI_GetMaxBufferHeight(u16 _width)
+u16 gli_VI_GetMaxBufferHeight(u16 _width)
 {
 	if (_width > 320 || VI.interlaced)
 		return VI.PAL ? 580 : 480;
@@ -25,27 +20,26 @@ u16 VI_GetMaxBufferHeight(u16 _width)
 	return VI.PAL ? 290 : 240;
 }
 
-extern "C" uint32_t LegacySm64ToolsHacks;
-void VI_UpdateSize()
+extern u32 LegacySm64ToolsHacks;
+void gli_VI_UpdateSize(void)
 {
+	f32 xScale;
+	u32 vScale, vEnd, vStart;
+	bool interlacedPrev, depthMismatch;
+
 	if (LegacySm64ToolsHacks)
 	{
 		if (*REG.VI_V_SYNC == 0x0627) *REG.VI_V_SYNC = 0x0834;
 	}
 	
-	const f32 xScale = _FIXED2FLOAT( _SHIFTR( *REG.VI_X_SCALE, 0, 12 ), 10 );
-//	f32 xOffset = _FIXED2FLOAT( _SHIFTR( *REG.VI_X_SCALE, 16, 12 ), 10 );
+	xScale = _FIXED2FLOAT( _SHIFTR( *REG.VI_X_SCALE, 0, 12 ), 10 );
 
-	const u32 vScale = _SHIFTR(*REG.VI_Y_SCALE, 0, 12);
-//	f32 yOffset = _FIXED2FLOAT( _SHIFTR( *REG.VI_Y_SCALE, 16, 12 ), 10 );
+	vScale = _SHIFTR(*REG.VI_Y_SCALE, 0, 12);
 
-//	const u32 hEnd = _SHIFTR( *REG.VI_H_START, 0, 10 );
-//	const u32 hStart = _SHIFTR( *REG.VI_H_START, 16, 10 );
-
-	// These are in half-lines, so shift an extra bit
-	const u32 vEnd = _SHIFTR( *REG.VI_V_START, 0, 10 );
-	const u32 vStart = _SHIFTR( *REG.VI_V_START, 16, 10 );
-	const bool interlacedPrev = VI.interlaced;
+	/* These are in half-lines, so shift an extra bit */
+	vEnd = _SHIFTR( *REG.VI_V_START, 0, 10 );
+	vStart = _SHIFTR( *REG.VI_V_START, 16, 10 );
+	interlacedPrev = VI.interlaced;
 	if (VI.width > 0)
 		VI.widthPrev = VI.width;
 
@@ -58,14 +52,13 @@ void VI_UpdateSize()
 		if ((*REG.VI_X_SCALE) % 512 == 0)
 			fullWidth *= xScale;
 		if (*REG.VI_WIDTH > fullWidth) {
-			const u32 scale = (u32)floorf(*REG.VI_WIDTH / fullWidth + 0.5f);
+			const u32 scale = (u32)floor(*REG.VI_WIDTH / fullWidth + 0.5f);
 			VI.width /= scale;
 			VI.real_height *= scale;
 		}
 		if (VI.real_height % 2 == 1)
 			--VI.real_height;
-	} //else if (hEnd != 0 && *REG.VI_WIDTH != 0)
-		//VI.width = min((u32)floorf((hEnd - hStart)*xScale + 0.5f), *REG.VI_WIDTH);
+	}
 
 	VI.PAL = (*REG.VI_V_SYNC & 0x3ff) > 550;
 	if (VI.PAL && (vEnd - vStart) > 478) {
@@ -81,57 +74,55 @@ void VI_UpdateSize()
 	if (VI.height % 2 == 1)
 		--VI.height;
 
-//	const int fsaa = ((*REG.VI_STATUS) >> 8) & 3;
-//	const int divot = ((*REG.VI_STATUS) >> 4) & 1;
-	FrameBufferList & fbList = frameBufferList();
-	FrameBuffer * pBuffer = fbList.findBuffer(VI.lastOrigin);
-	DepthBuffer * pDepthBuffer = pBuffer != nullptr ? pBuffer->m_pDepthBuffer : nullptr;
+	depthMismatch = gli_fb_depth_width_differs(VI.lastOrigin, VI.width);
 	if (config.frameBufferEmulation.enable &&
 		((interlacedPrev != VI.interlaced) ||
 		(VI.width > 0 && VI.width != VI.widthPrev) ||
-		(!VI.interlaced && pDepthBuffer != nullptr && pDepthBuffer->m_width != VI.width))) {
-		fbList.removeBuffers(VI.widthPrev);
-		fbList.removeBuffers(VI.width);
-		depthBufferList().destroy();
-		depthBufferList().init();
+		(!VI.interlaced && depthMismatch))) {
+		gli_fb_vi_resized(VI.widthPrev, VI.width);
 	}
 
 	VI.rwidth = VI.width != 0 ? 1.0f / VI.width : 0.0f;
 	VI.rheight = VI.height != 0 ? 1.0f / VI.height : 0.0f;
 }
 
-void VI_UpdateScreen()
+void gli_VI_UpdateScreen(void)
 {
-	if (VI.lastOrigin == -1) // Workaround for Mupen64Plus issue with initialization
-		gfxContext.isError();
+	bool bVIUpdated;
+	bool bCFB;
+	bool bNeedSwap;
+	struct FrameBuffer *pBuffer;
+	u32 size;
+
+	if (VI.lastOrigin == (u32)-1) /* Workaround for Mupen64Plus issue with initialization */
+		gli_gfx_touch_error();
 
 
 	if (ConfigOpen)
 		return;
 
-	DisplayWindow & wnd = dwnd();
-	if (wnd.changeWindow())
+	if (gli_window_change())
 		return;
-	if (wnd.resizeWindow())
+	if (gli_window_resize())
 		return;
-	wnd.saveScreenshot();
-	bool bVIUpdated = false;
+	gli_window_screenshot();
+	bVIUpdated = false;
 	if (*REG.VI_ORIGIN != VI.lastOrigin) {
-		VI_UpdateSize();
+		gli_VI_UpdateSize();
 		bVIUpdated = true;
-		wnd.updateScale();
+		gli_window_update_scale();
 	}
 
 	if (config.frameBufferEmulation.enable) {
 
-		FrameBuffer * pBuffer = frameBufferList().findBuffer(*REG.VI_ORIGIN);
-		if (pBuffer == nullptr) {
+		pBuffer = gli_fb_find(*REG.VI_ORIGIN);
+		if (pBuffer == NULL) {
 			gDP.changed |= CHANGED_CPU_FB_WRITE;
-		} else if (!FBInfo::fbInfo.isSupported() &&
+		} else if (!gli_FBInfo_supported() &&
 				 (config.generalEmulation.hacks & hack_RE2) == 0 &&
-				 !pBuffer->isValid(true)) {
+				 !gli_fb_is_valid_scanout(pBuffer)) {
 			if (config.frameBufferEmulation.copyToRDRAM != 0 &&
-				!pBuffer->m_cfb && !pBuffer->m_copiedToRdram &&
+				gli_fb_rendered_uncopied(pBuffer) &&
 				(config.generalEmulation.hacks & hack_subscreen) == 0) {
 				/* CPU writes landed under a buffer the RDP rendered. That
 				 * buffer's RDRAM was never synchronized, so it does not hold
@@ -150,16 +141,16 @@ void VI_UpdateScreen()
 				 * not need the color copy at all -- for any address that
 				 * ever hosted 3D, freezing genuine CPU-drawn screens on the
 				 * last rendered frame. */
-				pBuffer->copyRdram();
+				gli_fb_copy_rdram(pBuffer);
 			} else {
 				gDP.changed |= CHANGED_CPU_FB_WRITE;
 				if (config.frameBufferEmulation.copyToRDRAM == 0 && (config.generalEmulation.hacks & hack_subscreen) == 0)
-					pBuffer->copyRdram();
+					gli_fb_copy_rdram(pBuffer);
 			}
 		}
 
-		const bool bCFB = (gDP.changed&CHANGED_CPU_FB_WRITE) == CHANGED_CPU_FB_WRITE;
-		bool bNeedSwap = false;
+		bCFB = (gDP.changed&CHANGED_CPU_FB_WRITE) == CHANGED_CPU_FB_WRITE;
+		bNeedSwap = false;
 		switch (config.frameBufferEmulation.bufferSwapMode) {
 		case bsOnVerticalInterrupt:
 			bNeedSwap = true;
@@ -174,38 +165,37 @@ void VI_UpdateScreen()
 
 		if (bNeedSwap) {
 			if (bCFB) {
-				if (pBuffer == nullptr || pBuffer->m_width != VI.width) {
+				if (pBuffer == NULL || gli_fb_width(pBuffer) != VI.width) {
 					if (!bVIUpdated) {
-						VI_UpdateSize();
-						wnd.updateScale();
+						gli_VI_UpdateSize();
+						gli_window_update_scale();
 						bVIUpdated = true;
 					}
-					const u32 size = *REG.VI_STATUS & 3;
+					size = *REG.VI_STATUS & 3;
 					if (VI.height > 0 && size > G_IM_SIZ_8b  && VI.width > 0)
-						frameBufferList().saveBuffer(*REG.VI_ORIGIN, G_IM_FMT_RGBA, size, VI.width, true);
+						gli_fb_save_cpu_buffer(*REG.VI_ORIGIN, size, VI.width);
 				}
 			}
-//			if ((((*REG.VI_STATUS) & 3) > 0) && (gDP.colorImage.changed || bCFB)) { // Does not work in release build!!!
 			if (((*REG.VI_STATUS) & 3) > 0) {
 				if (!bVIUpdated) {
-					VI_UpdateSize();
+					gli_VI_UpdateSize();
 					bVIUpdated = true;
 				}
-				FrameBuffer_CopyFromRDRAM(*REG.VI_ORIGIN, bCFB);
+				gli_fb_copy_from_rdram(*REG.VI_ORIGIN, bCFB);
 			}
-			frameBufferList().renderBuffer();
-			frameBufferList().clearBuffersChanged();
+			gli_fb_render();
+			gli_fb_clear_changed();
 			VI.lastOrigin = *REG.VI_ORIGIN;
-		} 
+		}
 	} else {
 		if (gDP.changed & CHANGED_COLORBUFFER) {
-			frameBufferList().renderBuffer();
+			gli_fb_render();
 			gDP.changed &= ~CHANGED_COLORBUFFER;
 			VI.lastOrigin = *REG.VI_ORIGIN;
 		}
 	}
 
-	if (VI.lastOrigin == -1) { // Workaround for Mupen64Plus issue with initialization
-		gfxContext.clearColorBuffer(0.0f, 0.0f, 0.0f, 0.0f);
+	if (VI.lastOrigin == (u32)-1) { /* Workaround for Mupen64Plus issue with initialization */
+		gli_gfx_clear_color();
 	}
 }

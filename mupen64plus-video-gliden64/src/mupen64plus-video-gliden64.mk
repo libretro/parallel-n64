@@ -45,7 +45,7 @@ MY_LOCAL_SRC_FILES :=                                                           
     $(SRCDIR)/TexrectDrawer.cpp                                                    \
     $(SRCDIR)/TextureFilterHandler.cpp                                             \
     $(SRCDIR)/Textures.cpp                                                         \
-    $(SRCDIR)/VI.cpp                                                               \
+    $(SRCDIR)/VI.c                                                               \
     $(SRCDIR)/ZlutTexture.cpp                                                      \
     $(SRCDIR)/common/CommonAPIImpl_common.cpp                                      \
     $(SRCDIR)/mupenplus/CommonAPIImpl_mupenplus.cpp                                \

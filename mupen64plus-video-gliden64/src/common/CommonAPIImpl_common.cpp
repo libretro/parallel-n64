@@ -64,7 +64,7 @@ public:
 class ProcessUpdateScreenCommand : public APICommand {
 public:
 	bool run() {
-		VI_UpdateScreen();
+		gli_VI_UpdateScreen();
 		return true;
 	}
 };
@@ -183,7 +183,7 @@ void PluginAPI::UpdateScreen()
 #ifdef RSPTHREAD
 	_callAPICommand(ProcessUpdateScreenCommand());
 #else
-	VI_UpdateScreen();
+	gli_VI_UpdateScreen();
 #endif
 }
 

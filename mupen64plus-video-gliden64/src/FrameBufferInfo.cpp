@@ -1,6 +1,7 @@
 #include <assert.h>
 #include "FrameBufferInfoAPI.h"
 #include "FrameBufferInfo.h"
+#include "gli_framebuffer.h"
 #include "Config.h"
 #include "gSP.h"
 #include "FrameBuffer.h"
@@ -101,4 +102,9 @@ namespace FBInfo {
 		m_readBuffers.fill(nullptr);
 		m_supported = true;
 	}
+}
+
+bool gli_FBInfo_supported(void)
+{
+	return FBInfo::fbInfo.isSupported();
 }

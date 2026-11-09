@@ -111,9 +111,9 @@ void DepthBuffer::_initDepthBufferTexture(FrameBuffer * _pBuffer, CachedTexture 
 		_pTexture->height = (u32)(_pBuffer->m_pTexture->height);
 		_pTexture->address = _pBuffer->m_startAddress;
 		_pTexture->clampWidth = _pBuffer->m_width;
-		_pTexture->clampHeight = VI_GetMaxBufferHeight(_pBuffer->m_width);
+		_pTexture->clampHeight = gli_VI_GetMaxBufferHeight(_pBuffer->m_width);
 	} else {
-		const u16 maxHeight = VI_GetMaxBufferHeight(VI.width);
+		const u16 maxHeight = gli_VI_GetMaxBufferHeight(VI.width);
 		if (config.frameBufferEmulation.nativeResFactor == 0) {
 			_pTexture->width = dwnd().getWidth();
 			_pTexture->height = (u16)(u32)(maxHeight * dwnd().getScaleX());
@@ -171,10 +171,10 @@ void DepthBuffer::_initDepthBufferRenderbuffer(FrameBuffer * _pBuffer)
 	} else {
 		if (config.frameBufferEmulation.nativeResFactor == 0) {
 			m_depthRenderbufferWidth = dwnd().getWidth();
-			height = (u32)(VI_GetMaxBufferHeight(VI.width) * dwnd().getScaleX());
+			height = (u32)(gli_VI_GetMaxBufferHeight(VI.width) * dwnd().getScaleX());
 		} else {
 			m_depthRenderbufferWidth = VI.width * config.frameBufferEmulation.nativeResFactor;
-			height = VI_GetMaxBufferHeight(VI.width) * config.frameBufferEmulation.nativeResFactor;
+			height = gli_VI_GetMaxBufferHeight(VI.width) * config.frameBufferEmulation.nativeResFactor;
 		}
 	}
 
@@ -509,7 +509,7 @@ void DepthBufferList::clearBuffer()
 	//	gDP.otherMode.cycleType = G_CYC_FILL;
 	//	gDP.fillColor.color = 0;
 	//	const int lrx = pColorBuffer->m_width;
-	//	const int lry = VI_GetMaxBufferHeight(pColorBuffer->m_width);
+	//	const int lry = gli_VI_GetMaxBufferHeight(pColorBuffer->m_width);
 	//	gDP.rectColor.r = 1.0f;
 	//	gfxContext.bindFramebuffer(bufferTarget::DRAW_FRAMEBUFFER, pDepthBuffer->m_ZTextureClearFBO);
 	//	dwnd().getDrawer().drawRect(0, 0, lrx, lry);

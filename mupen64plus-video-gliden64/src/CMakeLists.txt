@@ -42,7 +42,7 @@ set(GLideN64_SOURCES
   TexrectDrawer.cpp
   TextureFilterHandler.cpp
   Textures.cpp
-  VI.cpp
+  VI.c
   ZlutTexture.cpp
   BufferCopy/ColorBufferToRDRAM.cpp
   BufferCopy/DepthBufferToRDRAM.cpp

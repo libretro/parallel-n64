@@ -78,7 +78,7 @@ void ColorBufferToRDRAM::_initFBTexture(void)
 	//The actual VI width is not used for texture width because most texture widths
 	//cause slowdowns in the glReadPixels call, at least on Android
 	m_pTexture->realWidth = m_lastBufferWidth;
-	m_pTexture->realHeight = VI_GetMaxBufferHeight(m_lastBufferWidth);
+	m_pTexture->realHeight = gli_VI_GetMaxBufferHeight(m_lastBufferWidth);
 	/* The color-buffer readers size their glReadPixels rows and source
 	 * stride from width, not realWidth.  addFrameBufferTexture recycles
 	 * CachedTexture objects, so without this the readback runs with
@@ -170,7 +170,7 @@ bool ColorBufferToRDRAM::_prepareCopy(u32& _startAddress)
 
 	if(m_pTexture == nullptr ||
 		m_pTexture->realWidth != _getRealWidth(pBuffer->m_width) ||
-		m_pTexture->realHeight != VI_GetMaxBufferHeight(_getRealWidth(pBuffer->m_width)))
+		m_pTexture->realHeight != gli_VI_GetMaxBufferHeight(_getRealWidth(pBuffer->m_width)))
 	{
 		_destroyFBTexure();
 
@@ -260,7 +260,7 @@ u32 ColorBufferToRDRAM::_RGBAtoRGBA32(u32 _c) {
 void ColorBufferToRDRAM::_copy(u32 _startAddress, u32 _endAddress, bool _sync)
 {
 	const u32 stride = m_pCurFrameBuffer->m_width << m_pCurFrameBuffer->m_size >> 1;
-	const u32 max_height = std::min((u32)VI_GetMaxBufferHeight(m_pCurFrameBuffer->m_width), cutHeight(_startAddress, m_pCurFrameBuffer->m_height, stride));
+	const u32 max_height = std::min((u32)gli_VI_GetMaxBufferHeight(m_pCurFrameBuffer->m_width), cutHeight(_startAddress, m_pCurFrameBuffer->m_height, stride));
 
 	u32 numPixels = (_endAddress - _startAddress) >> (m_pCurFrameBuffer->m_size - 1);
 	if (numPixels / m_pCurFrameBuffer->m_width > max_height) {

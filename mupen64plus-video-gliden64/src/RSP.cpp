@@ -132,7 +132,7 @@ void _runDisplayList()
 		RSP.halt = false;
 	} else {
 		if (*REG.VI_ORIGIN != VI.lastOrigin) {
-			VI_UpdateSize();
+			gli_VI_UpdateSize();
 			dwnd().updateScale();
 		}
 

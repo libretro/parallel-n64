@@ -108,7 +108,7 @@ void TexrectDrawer::destroy()
 void TexrectDrawer::_setViewport() const
 {
 	const u32 bufferWidth = m_pBuffer == nullptr ? VI.width : m_pBuffer->m_width;
-	gfxContext.setViewport(0, 0, bufferWidth, VI_GetMaxBufferHeight(bufferWidth));
+	gfxContext.setViewport(0, 0, bufferWidth, gli_VI_GetMaxBufferHeight(bufferWidth));
 }
 
 void TexrectDrawer::_setDrawBuffer()

@@ -6,6 +6,7 @@
 #include "VI.h"
 #include "Graphics/Context.h"
 #include "DisplayWindow.h"
+#include "gli_framebuffer.h"
 #include "PluginAPI.h"
 #include "FrameBuffer.h"
 
@@ -196,4 +197,34 @@ void DisplayWindow::readScreen(void **_pDest, long *_pWidth, long *_pHeight)
 void DisplayWindow::readScreen2(void * _dest, int * _width, int * _height, int _front)
 {
 	_readScreen2(_dest, _width, _height, _front);
+}
+
+bool gli_window_change(void)
+{
+	return dwnd().changeWindow();
+}
+
+bool gli_window_resize(void)
+{
+	return dwnd().resizeWindow();
+}
+
+void gli_window_screenshot(void)
+{
+	dwnd().saveScreenshot();
+}
+
+void gli_window_update_scale(void)
+{
+	dwnd().updateScale();
+}
+
+void gli_gfx_touch_error(void)
+{
+	gfxContext.isError();
+}
+
+void gli_gfx_clear_color(void)
+{
+	gfxContext.clearColorBuffer(0.0f, 0.0f, 0.0f, 0.0f);
 }
