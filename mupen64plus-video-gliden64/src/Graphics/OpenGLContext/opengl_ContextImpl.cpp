@@ -411,6 +411,11 @@ void ContextImpl::resetCombinerProgramBuilder()
 		m_combinerProgramBuilder->getFragmentShaderEnd()));
 }
 
+graphics::CombinerProgram * ContextImpl::createCombinerProgramAsync(Combiner & _color, Combiner & _alpha, const CombinerKey & _key)
+{
+	return m_combinerProgramBuilder->buildCombinerProgramAsync(_color, _alpha, _key);
+}
+
 graphics::CombinerProgram * ContextImpl::createCombinerProgram(Combiner & _color, Combiner & _alpha, const CombinerKey & _key)
 {
 	return m_combinerProgramBuilder->buildCombinerProgram(_color, _alpha, _key);

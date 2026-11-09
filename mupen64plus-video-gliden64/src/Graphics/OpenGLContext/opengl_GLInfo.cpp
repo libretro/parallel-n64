@@ -121,6 +121,9 @@ void GLInfo::init() {
 		}
 	}
 
+	parallelShaderCompile = Utils::isExtensionSupported(*this, "GL_KHR_parallel_shader_compile")
+		|| Utils::isExtensionSupported(*this, "GL_ARB_parallel_shader_compile");
+
 	fragment_interlock = Utils::isExtensionSupported(*this, "GL_ARB_fragment_shader_interlock") && !hasBuggyFragmentShaderInterlock;
 	fragment_interlockNV = Utils::isExtensionSupported(*this, "GL_NV_fragment_shader_interlock") && !fragment_interlock && !hasBuggyFragmentShaderInterlock;
 	fragment_ordering = Utils::isExtensionSupported(*this, "GL_INTEL_fragment_shader_ordering") && !fragment_interlock && !fragment_interlockNV;

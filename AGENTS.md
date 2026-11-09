@@ -42,8 +42,9 @@ savestates, teardown, `wait_sync_index`. Name the producer and the consumer of
 any wait before keeping or adding one. Only `build_pipelines_ahead` may wait
 on the pipeline worker, and only at content load.
 
-These still break the rules and are debts, not precedent: GLideN64 and the
-other GL plugins compile combiners on first use; the paraLLEl RSP JIT compiles
+These still break the rules and are debts, not precedent: GLideN64 compiles a
+combiner on first use where its ubershader cannot stand in (below), the other
+GL plugins always do; the paraLLEl RSP JIT compiles
 blocks on first use and allocates `cached_blocks` nodes; pipelines the record
 list does not cover are still built synchronously.
 
@@ -111,14 +112,21 @@ Know which layer you are changing. Having one does not give you the next.
 - GL calls stay on the context thread. `glsm` state must be restored for the
   frontend; do not move a compile to a worker without a shared context and
   explicit ownership.
-- `CombinerInfo::setCombine` compiles on a miss and there is no equivalent
-  fallback, so a miss must be correct first. Cut misses through
+- On a combiner miss, where the driver compiles on its own threads
+  (`GL_KHR_parallel_shader_compile`), the ubershader
+  (`CombinerProgramBuilder::buildCombinerProgramAsync`) draws while the key's
+  own program compiles. It must draw the same: anything added to
+  `compileCombiner` goes into `_uberCombiner` too, and
+  `tools/ci/gliden64_ubershader.py` holds the two to the same frames.
+- It cannot stand in for LOD fraction, hardware lighting or copy and fill
+  modes, the first miss of a variant, or a driver without the extension:
+  those compile as ever, so a miss must be correct first. Cut misses through
   `CombinerKey` canonicalization and shader storage.
 - Bump `m_formatVersion` when generated shaders or the binary layout change
   and `m_keysFormatVersion` when a key's meaning changes.
-- Async linking (`GL_KHR_parallel_shader_compile`) needs a capability check,
-  `GL_COMPLETION_STATUS_KHR` polling and an exact fallback for the draw.
-  Asking for link status or uniform locations early serializes the driver.
+- Poll `GL_COMPLETION_STATUS_KHR` before asking anything of a program being
+  compiled. Asking for link status or uniform locations early serializes the
+  driver.
 - New file access uses libretro-common `file_stream`, not iostreams.
 
 ### paraLLEl RSP JIT

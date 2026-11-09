@@ -191,7 +191,7 @@ void SimplifyCycle( CombineCycle *cc, CombinerStage *stage )
 	}
 }
 
-graphics::CombinerProgram * Combiner_Compile(CombinerKey key)
+graphics::CombinerProgram * Combiner_Compile(CombinerKey key, bool _mayDefer)
 {
 	gDPCombine combine;
 
@@ -266,6 +266,14 @@ graphics::CombinerProgram * Combiner_Compile(CombinerKey key)
 			color.numStages = 1;
 			alpha.numStages = 1;
 		}
+	}
+
+	if (_mayDefer) {
+		// The builder corrects the stages in place: on copies, for what may still compile below.
+		Combiner deferredColor = color, deferredAlpha = alpha;
+		graphics::CombinerProgram * program = gfxContext.createCombinerProgramAsync(deferredColor, deferredAlpha, key);
+		if (program != nullptr)
+			return program;
 	}
 
 	return gfxContext.createCombinerProgram(color, alpha, key);
@@ -358,7 +366,7 @@ void CombinerInfo::setCombine(u64 _mux )
 	if (iter != m_combiners.end()) {
 		m_pCurrent = iter->second;
 	} else {
-		m_pCurrent = Combiner_Compile(key);
+		m_pCurrent = Combiner_Compile(key, true);
 		m_pCurrent->update(true);
 		m_combiners[m_pCurrent->getKey()] = m_pCurrent;
 		combiner_journal_push(m_journal, m_pCurrent->getKey().getMux(), GBI.isHWLSupported() ? 1 : 0);

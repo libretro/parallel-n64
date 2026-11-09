@@ -82,3 +82,6 @@ jobs:
 
       - name: GLideN64 combiner key journal
         run: env ${{ matrix.sanitizer_env }} python3 tools/ci/gliden64_keys_journal.py --core ./parallel_n64_libretro.so --host ./lrhost_gl
+
+      - name: GLideN64 ubershader
+        run: env ${{ matrix.sanitizer_env }} python3 tools/ci/gliden64_ubershader.py --core ./parallel_n64_libretro.so --host ./lrhost_gl

@@ -174,7 +174,7 @@ graphics::CombinerProgram * currentCombiner() {
 
 void Combiner_Init();
 void Combiner_Destroy();
-graphics::CombinerProgram * Combiner_Compile(CombinerKey key);
+graphics::CombinerProgram * Combiner_Compile(CombinerKey key, bool _mayDefer = false);
 
 #endif
 

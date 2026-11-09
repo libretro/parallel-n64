@@ -1,6 +1,8 @@
 #pragma once
 #include <memory>
 #include <Combiner.h>
+#include <Graphics/OpenGLContext/GLFunctions.h>
+#include "glsl_CombinerInputs.h"
 #include <Graphics/OpenGLContext/opengl_GLInfo.h>
 
 namespace graphics {
@@ -16,6 +18,8 @@ namespace glsl {
 	class ShaderPart;
 	class CombinerInputs;
 	class CombinerProgramUniformFactory;
+	class CombinerProgramImpl;
+	class CombinerProgramAsync;
 
 	class CombinerProgramBuilder
 	{
@@ -31,10 +35,41 @@ namespace glsl {
 
 		const ShaderPart * getFragmentShaderEnd() const;
 
+		/* A key's program started on the driver's threads, drawing with
+		 * the ubershader until then; nullptr when that cannot be done and
+		 * the program has to be built as ever. */
+		graphics::CombinerProgram * buildCombinerProgramAsync(Combiner & _color, Combiner & _alpha, const CombinerKey & _key);
+
 		bool isObsolete() const;
+
+		struct UberVariant
+		{
+			GLuint handle = 0;
+			bool failed = false;
+			CombinerProgramImpl * program = nullptr;
+			CombinerProgramAsync * owner = nullptr;
+			GLint opsLoc[16];
+			GLint flagsLoc = -1;
+			CombinerInputs inputs;
+			CombinerKey key;
+		};
 
 	private:
 		CombinerInputs compileCombiner(const CombinerKey & _key, Combiner & _color, Combiner & _alpha, std::string & _strShader);
+		std::string _fragmentSource(const CombinerInputs & combinerInputs, const std::string & strCombiner,
+			bool bUseLod, bool bUseTextures, bool bUseHWLight, const char * _uberDeclarations);
+		GLuint _startProgram(const std::string & _fragment, bool bIsRect, bool bUseTextures, bool _check);
+		std::string _uberCombiner(bool _textured);
+		UberVariant * _readyUber(const CombinerKey & _key, bool _textured);
+		void _startUber(UberVariant & _variant, const CombinerKey & _key, bool _textured);
+		void _startUbers();
+
+		// [rect][cycle: 1, 2][bilerp][textured]
+		UberVariant m_uber[2][2][4][2];
+		bool m_parallelCompile = false;
+		bool m_isGLES2 = false;
+		bool m_forceUber = false;
+		int m_uberDelay = 0;
 
 		typedef std::unique_ptr<ShaderPart> ShaderPartPtr;
 		ShaderPartPtr m_blender1;

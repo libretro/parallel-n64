@@ -262,6 +262,11 @@ void Context::resetCombinerProgramBuilder()
 	m_impl->resetCombinerProgramBuilder();
 }
 
+CombinerProgram * Context::createCombinerProgramAsync(Combiner & _color, Combiner & _alpha, const CombinerKey & _key)
+{
+	return m_impl->createCombinerProgramAsync(_color, _alpha, _key);
+}
+
 CombinerProgram * Context::createCombinerProgram(Combiner & _color, Combiner & _alpha, const CombinerKey & _key)
 {
 	return m_impl->createCombinerProgram(_color, _alpha, _key);

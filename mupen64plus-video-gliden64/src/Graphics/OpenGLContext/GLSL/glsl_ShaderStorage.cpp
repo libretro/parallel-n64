@@ -133,6 +133,10 @@ bool ShaderStorage::saveShadersStorage(const graphics::Combiners & _combiners) c
 		// Shaders storage is not supported, but we saved combiners keys.
 		return true;
 
+	if (glGetString(GL_RENDERER) == nullptr)
+		// No current context any more; but we saved combiners keys.
+		return true;
+
 	std::string shadersFileName = getStorageFileName(m_glinfo, "shaders");
 
 #if defined(OS_WINDOWS) && !defined(MINGW)
