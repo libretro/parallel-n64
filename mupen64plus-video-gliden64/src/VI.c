@@ -51,7 +51,7 @@ void gli_VI_UpdateSize(void)
 		f32 fullWidth = 640.0f;
 		if ((*REG.VI_X_SCALE) % 512 == 0)
 			fullWidth *= xScale;
-		if (*REG.VI_WIDTH > fullWidth) {
+		if (fullWidth > 0.0f && *REG.VI_WIDTH > fullWidth) {
 			const u32 scale = (u32)floor(*REG.VI_WIDTH / fullWidth + 0.5f);
 			VI.width /= scale;
 			VI.real_height *= scale;
