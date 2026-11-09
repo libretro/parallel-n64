@@ -35,12 +35,14 @@ namespace glsl {
 
 		const ShaderPart * getFragmentShaderEnd() const;
 
-		/* A key's program started on the driver's threads, drawing with
-		 * the ubershader until then; nullptr when that cannot be done and
-		 * the program has to be built as ever. */
+		/* Draws with the ubershader, built at load, and starts the key's own
+		 * program where the driver compiles on its own threads; nullptr when
+		 * the ubershader cannot draw this key. */
 		graphics::CombinerProgram * buildCombinerProgramAsync(Combiner & _color, Combiner & _alpha, const CombinerKey & _key);
 
 		bool isObsolete() const;
+
+		bool isUberOnly() const { return m_uberOnly && !m_uberOff && !m_isGLES2; }
 
 		struct UberVariant
 		{
@@ -59,16 +61,17 @@ namespace glsl {
 		std::string _fragmentSource(const CombinerInputs & combinerInputs, const std::string & strCombiner,
 			bool bUseLod, bool bUseTextures, bool bUseHWLight, const char * _uberDeclarations);
 		GLuint _startProgram(const std::string & _fragment, bool bIsRect, bool bUseTextures, bool _check);
-		std::string _uberCombiner(bool _textured);
-		UberVariant * _readyUber(const CombinerKey & _key, bool _textured);
-		void _startUber(UberVariant & _variant, const CombinerKey & _key, bool _textured);
-		void _startUbers();
+		std::string _uberCombiner(bool _textured, bool _lod);
+		UberVariant * _readyUber(const CombinerKey & _key, bool _textured, bool _lod, bool _hwl);
+		void _startUber(UberVariant & _variant, const CombinerKey & _key, bool _textured, bool _lod, bool _hwl);
+		void _finishUber(UberVariant & _variant);
+		void _buildUbers();
 
-		// [rect][cycle: 1, 2][bilerp][textured]
-		UberVariant m_uber[2][2][4][2];
-		bool m_parallelCompile = false;
+		// [rect][cycle: 1, 2][bilerp][textured][lod][hardware lighting]
+		UberVariant m_uber[2][2][4][2][2][2];
 		bool m_isGLES2 = false;
-		bool m_forceUber = false;
+		bool m_uberOff = false;
+		bool m_uberOnly = false;
 		int m_uberDelay = 0;
 
 		typedef std::unique_ptr<ShaderPart> ShaderPartPtr;

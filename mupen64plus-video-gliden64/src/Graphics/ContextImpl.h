@@ -54,6 +54,7 @@ namespace graphics {
 		virtual PixelReadBuffer * createPixelReadBuffer(size_t _sizeInBytes) = 0;
 		virtual ColorBufferReader * createColorBufferReader(CachedTexture * _pTexture) = 0;
 		virtual bool isCombinerProgramBuilderObsolete() = 0;
+		virtual bool isCombinerUberOnly() { return false; }
 		virtual void resetCombinerProgramBuilder() = 0;
 		virtual CombinerProgram * createCombinerProgram(Combiner & _color, Combiner & _alpha, const CombinerKey & _key) = 0;
 

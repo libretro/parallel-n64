@@ -164,9 +164,10 @@ def compare(a, name, rom, frames):
         if not base:
             print("FAILED: %s presented nothing" % name)
             return 1
+        # GLIDEN64_GL_STRICT aborts if a draw has to compile.
         for label, env in (("ubershader", {"GLIDEN64_UBERSHADER": "1"}), ("deferred", {}),
                            ("held-back", {"GLIDEN64_UBERSHADER": "delay"})):
-            frames_ = run(a, rom, os.path.join(tmp, label), env, frames)
+            frames_ = run(a, rom, os.path.join(tmp, label), dict(env, GLIDEN64_GL_STRICT="1"), frames)
             same = frames_ == base
             print("%-10s %-10s %s (%d frames, %d combiners)" % (name, label, "ok" if same else "DIFFERENT", len(base), count))
             failures += 0 if same else 1

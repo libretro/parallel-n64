@@ -21,9 +21,7 @@ anywhere a draw waits for the result, on a cold cache as much as a warm one.
 
 Not there yet, most urgent first. These are debts, not precedent:
 
-1. GLideN64 on GL compiles on the draw path for LOD, hardware lighting, copy and
-   fill modes, a variant whose ubershader is not ready, drivers without
-   `GL_KHR_parallel_shader_compile`, and GLES2.
+1. GLideN64 on GLES2, which has no ubershader, compiles on the draw path.
 2. `gles2n64`, `glide2gl` and `gles2rice` compile every combiner on first use.
 3. paraLLEl-RDP builds pipelines the record list does not cover synchronously.
 
@@ -136,13 +134,15 @@ Know which layer you are changing. Having one does not give you the next.
 - On a combiner miss, where the driver compiles on its own threads
   (`GL_KHR_parallel_shader_compile`), the ubershader
   (`CombinerProgramBuilder::buildCombinerProgramAsync`) draws while the key's
-  own program compiles. It must draw the same: anything added to
-  `compileCombiner` goes into `_uberCombiner` too, and
-  `tools/ci/gliden64_ubershader.py` holds the two to the same frames.
-- It cannot stand in for LOD fraction, hardware lighting or copy and fill
-  modes, the first miss of a variant, or a driver without the extension:
-  those compile as ever, so a miss must be correct first. Cut misses through
-  `CombinerKey` canonicalization and shader storage.
+  own program compiles. A driver without the extension stays on the ubershader
+  until the next load builds the keys from the journal. It must draw the same:
+  anything added to `compileCombiner` goes into `_uberCombiner` too, and
+  `tools/ci/gliden64_ubershader.py` holds the two to the same frames, with
+  `GLIDEN64_GL_STRICT` aborting on a draw that has to compile.
+- Every ubershader variant is finished at load, and every copy and fill key is
+  built at load (`_buildFixedKeys`). Nothing else may be waited for.
+- GLES2 has no ubershader and still compiles on a miss, so a miss must be correct
+  first. Cut misses through `CombinerKey` canonicalization and shader storage.
 - Bump `m_formatVersion` when generated shaders or the binary layout change
   and `m_keysFormatVersion` when a key's meaning changes.
 - Poll `GL_COMPLETION_STATUS_KHR` before asking anything of a program being

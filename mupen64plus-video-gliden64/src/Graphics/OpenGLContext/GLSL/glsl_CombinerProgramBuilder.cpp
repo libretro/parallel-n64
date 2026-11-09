@@ -2403,7 +2403,7 @@ void _uberStage(std::stringstream & _s, const char * _target, const char * _type
 
 /* What compileCombiner writes, with the stages and the sign extensions
  * chosen by uniforms instead of written in. */
-std::string CombinerProgramBuilder::_uberCombiner(bool _textured)
+std::string CombinerProgramBuilder::_uberCombiner(bool _textured, bool _lod)
 {
 	std::stringstream s;
 	s << "  lowp vec3 ci[21]; lowp float ai[21];\n"
@@ -2411,6 +2411,8 @@ std::string CombinerProgramBuilder::_uberCombiner(bool _textured)
 	if (_textured) {
 		s << "  ci[1] = readtex0.rgb; ci[2] = readtex1.rgb; ci[9] = vec3(readtex0.a); ci[10] = vec3(readtex1.a);\n"
 		  << "  ai[1] = readtex0.a; ai[2] = readtex1.a; ai[9] = readtex0.a; ai[10] = readtex1.a;\n";
+		if (_lod)
+			s << "  ci[14] = vec3(lod_frac); ai[14] = lod_frac;\n";
 	}
 	s << "  ci[3] = uPrimColor.rgb; ci[4] = vec_color.rgb; ci[5] = uEnvColor.rgb; ci[6] = uCenterColor.rgb; ci[7] = uScaleColor.rgb;\n"
 	  << "  ci[11] = vec3(uPrimColor.a); ci[12] = vec3(vec_color.a); ci[13] = vec3(uEnvColor.a); ci[15] = vec3(uPrimLod);\n"
@@ -2576,7 +2578,7 @@ private:
 	int m_delay;
 };
 
-void CombinerProgramBuilder::_startUber(UberVariant & _variant, const CombinerKey & _key, bool _textured)
+void CombinerProgramBuilder::_startUber(UberVariant & _variant, const CombinerKey & _key, bool _textured, bool _lod, bool _hwl)
 {
 	g_cycleType = _key.getCycleType();
 	g_textureConvert.setMode(_key.getBilerp());
@@ -2588,74 +2590,77 @@ void CombinerProgramBuilder::_startUber(UberVariant & _variant, const CombinerKe
 	}
 	inputs.addInput(G_GCI_SHADE);
 	inputs.addInput(G_GCI_NOISE);
+	if (_lod)
+		inputs.addInput(G_GCI_LOD_FRACTION);
+	if (_hwl)
+		inputs.addInput(G_GCI_HW_LIGHT);
 	_variant.inputs = inputs;
 	_variant.key = _key;
-	_variant.handle = _startProgram(_fragmentSource(inputs, _uberCombiner(_textured), false, _textured, false, uberDeclarations),
+	_variant.handle = _startProgram(_fragmentSource(inputs, _uberCombiner(_textured, _lod), _lod, _textured, _hwl, uberDeclarations),
 		_key.isRectKey(), _textured, false);
 }
 
-/* All of them, on the driver's threads, before the game needs one. */
-void CombinerProgramBuilder::_startUbers()
+/* All of them, before the game needs one. */
+void CombinerProgramBuilder::_buildUbers()
 {
+	const u32 hwlVariants = config.generalEmulation.enableHWLighting != 0 ? 2U : 1U;
 	for (u32 rect = 0; rect < 2; ++rect)
 		for (u32 cycle = 0; cycle < 2; ++cycle)
 			for (u32 textured = 0; textured < 2; ++textured)
-				for (u32 bilerp = 0; bilerp < (textured != 0 ? 4U : 1U); ++bilerp) {
-					gDPCombine combine;
-					combine.mux = 0;
-					combine.muxs0 = (rect | (cycle << 1) | (bilerp << 3)) << 24;
-					_startUber(m_uber[rect][cycle][bilerp][textured], CombinerKey(combine.mux, false), textured != 0);
-				}
+				for (u32 bilerp = 0; bilerp < (textured != 0 ? 4U : 1U); ++bilerp)
+					for (u32 lod = 0; lod < (textured != 0 ? 2U : 1U); ++lod)
+						for (u32 hwl = 0; hwl < (rect == 0 ? hwlVariants : 1U); ++hwl) {
+							gDPCombine combine;
+							combine.mux = 0;
+							combine.muxs0 = (rect | (cycle << 1) | (bilerp << 3)) << 24;
+							_startUber(m_uber[rect][cycle][bilerp][textured][lod][hwl],
+								CombinerKey(combine.mux, false), textured != 0, lod != 0, hwl != 0);
+						}
+
+	for (auto & rect : m_uber)
+		for (auto & cycle : rect)
+			for (auto & bilerp : cycle)
+				for (auto & textured : bilerp)
+					for (auto & lod : textured)
+						for (auto & variant : lod)
+							if (variant.handle != 0)
+								_finishUber(variant);
 }
 
-/* The variant of the ubershader _key draws with, once the driver is done
- * with it. */
-CombinerProgramBuilder::UberVariant * CombinerProgramBuilder::_readyUber(const CombinerKey & _key, bool _textured)
+/* Waits for the driver: only at load, where a compile may be waited for. */
+void CombinerProgramBuilder::_finishUber(UberVariant & _variant)
 {
-	const u32 cycle = _key.getCycleType();
-	UberVariant & v = m_uber[_key.isRectKey() ? 1 : 0][cycle][_textured ? _key.getBilerp() : 0][_textured ? 1 : 0];
-
-	if (v.failed)
-		return nullptr;
-
-	if (v.handle == 0) {
-		_startUber(v, _key, _textured);
-		if (!m_forceUber)
-			return nullptr;
-	}
-
-	if (v.program != nullptr)
-		return &v;
-
-	GLint done = GL_TRUE;
-	if (!m_forceUber)
-		glGetProgramiv(v.handle, GL_COMPLETION_STATUS_KHR, &done);
-	if (done == GL_FALSE)
-		return nullptr;
-
 	GLint linked = GL_FALSE;
-	glGetProgramiv(v.handle, GL_LINK_STATUS, &linked);
+	glGetProgramiv(_variant.handle, GL_LINK_STATUS, &linked);
 	if (linked == GL_FALSE) {
-		Utils::checkProgramLinkStatus(v.handle, true);
-		v.failed = true;
-		return nullptr;
+		Utils::checkProgramLinkStatus(_variant.handle, true);
+		_variant.failed = true;
+		if (getenv("GLIDEN64_GL_STRICT") != nullptr)
+			abort();
+		return;
 	}
 	char name[32];
 	for (int i = 0; i < 16; ++i) {
 		sprintf(name, "uCmbOps[%d]", i);
-		v.opsLoc[i] = glGetUniformLocation(v.handle, name);
+		_variant.opsLoc[i] = glGetUniformLocation(_variant.handle, name);
 	}
-	v.flagsLoc = glGetUniformLocation(v.handle, "uCmbFlags");
+	_variant.flagsLoc = glGetUniformLocation(_variant.handle, "uCmbFlags");
 	CombinerUniforms uniforms;
-	m_uniformFactory->buildUniforms(v.handle, v.inputs, v.key, uniforms);
-	v.program = new CombinerProgramImpl(v.key, v.handle, m_useProgram, v.inputs, std::move(uniforms));
-	return &v;
+	m_uniformFactory->buildUniforms(_variant.handle, _variant.inputs, _variant.key, uniforms);
+	_variant.program = new CombinerProgramImpl(_variant.key, _variant.handle, m_useProgram, _variant.inputs, std::move(uniforms));
+}
+
+/* The variant of the ubershader _key draws with: built at load. */
+CombinerProgramBuilder::UberVariant * CombinerProgramBuilder::_readyUber(const CombinerKey & _key, bool _textured, bool _lod, bool _hwl)
+{
+	UberVariant & v = m_uber[_key.isRectKey() ? 1 : 0][_key.getCycleType()][_textured ? _key.getBilerp() : 0][_textured ? 1 : 0][_lod ? 1 : 0][_hwl ? 1 : 0];
+	return v.program != nullptr ? &v : nullptr;
 }
 
 graphics::CombinerProgram * CombinerProgramBuilder::buildCombinerProgramAsync(Combiner & _color,
 	Combiner & _alpha, const CombinerKey & _key)
 {
-	if ((!m_parallelCompile && !m_forceUber) || m_isGLES2 || _key.getCycleType() > G_CYC_2CYCLE)
+	if (m_uberOff || m_isGLES2 || _key.getCycleType() > G_CYC_2CYCLE)
 		return nullptr;
 
 	g_cycleType = _key.getCycleType();
@@ -2669,10 +2674,14 @@ graphics::CombinerProgram * CombinerProgramBuilder::buildCombinerProgramAsync(Co
 
 	const bool bIsRect = _key.isRectKey();
 	const bool bUseTextures = combinerInputs.usesTexture();
-	if (combinerInputs.usesLOD() || (!bIsRect && isHWLightingAllowed() && combinerInputs.usesShadeColor()))
-		return nullptr; // Not what the ubershader draws: compiles as it always did.
+	const bool bUseLod = combinerInputs.usesLOD();
+	const bool bUseHWLight = !bIsRect && isHWLightingAllowed() && combinerInputs.usesShadeColor();
+	if (bUseHWLight)
+		combinerInputs.addInput(G_GCI_HW_LIGHT);
+	if (bUseLod && !bUseTextures)
+		return nullptr;
 
-	UberVariant * uber = _readyUber(_key, bUseTextures);
+	UberVariant * uber = _readyUber(_key, bUseTextures, bUseLod, bUseHWLight);
 	if (uber == nullptr)
 		return nullptr;
 
@@ -2695,8 +2704,8 @@ graphics::CombinerProgram * CombinerProgramBuilder::buildCombinerProgramAsync(Co
 		flags |= UBER_TWO_STAGES;
 
 	GLuint pending = 0;
-	if (!m_forceUber)
-		pending = _startProgram(_fragmentSource(combinerInputs, strCombiner, false, bUseTextures, false, nullptr),
+	if (!m_uberOnly)
+		pending = _startProgram(_fragmentSource(combinerInputs, strCombiner, bUseLod, bUseTextures, bUseHWLight, nullptr),
 			bIsRect, bUseTextures, false);
 
 	return new CombinerProgramAsync(_key, combinerInputs, uber, ops, flags, pending,
@@ -2792,21 +2801,23 @@ CombinerProgramBuilder::CombinerProgramBuilder(const opengl::GLInfo & _glinfo, o
 	m_vertexShaderTexturedRect = _createVertexShader(m_vertexHeader.get(), m_vertexTexturedRect.get(), m_vertexEnd.get());
 	m_vertexShaderTexturedTriangle = _createVertexShader(m_vertexHeader.get(), m_vertexTexturedTriangle.get(), m_vertexEnd.get());
 	m_uniformFactory.reset(new CombinerProgramUniformFactory(_glinfo));
-	m_parallelCompile = _glinfo.parallelShaderCompile;
 	m_isGLES2 = _glinfo.isGLES2;
+	// Without the driver's own compile threads a key's program would stall the
+	// draw that wants it: those drivers stay on the ubershader until the next load.
+	m_uberOnly = !_glinfo.parallelShaderCompile;
 	// For tools/ci: "off" compiles everything as ever, "delay" holds each program
 	// back for a while, as a driver compiling slowly would, anything else draws
 	// everything with the ubershader.
 	const char * uberEnv = getenv("GLIDEN64_UBERSHADER");
 	if (uberEnv != nullptr && strcmp(uberEnv, "off") == 0)
-		m_parallelCompile = false;
+		m_uberOff = true;
 	else if (uberEnv != nullptr && strcmp(uberEnv, "delay") == 0)
 		m_uberDelay = 3;
-	else
-		m_forceUber = !_glinfo.isGLES2 && uberEnv != nullptr;
+	else if (uberEnv != nullptr)
+		m_uberOnly = true;
 
-	if (m_parallelCompile && !m_isGLES2 && !m_forceUber)
-		_startUbers();
+	if (!m_isGLES2 && !m_uberOff)
+		_buildUbers();
 }
 
 CombinerProgramBuilder::~CombinerProgramBuilder()
@@ -2814,11 +2825,13 @@ CombinerProgramBuilder::~CombinerProgramBuilder()
 	for (auto & rect : m_uber)
 		for (auto & cycle : rect)
 			for (auto & bilerp : cycle)
-				for (auto & v : bilerp) {
-					delete v.program;
-					if (v.program == nullptr && v.handle != 0)
-						glDeleteProgram(v.handle);
-				}
+				for (auto & textured : bilerp)
+					for (auto & lod : textured)
+						for (auto & v : lod) {
+							delete v.program;
+							if (v.program == nullptr && v.handle != 0)
+								glDeleteProgram(v.handle);
+						}
 
 	glDeleteShader(m_vertexShaderRect);
 	glDeleteShader(m_vertexShaderTriangle);

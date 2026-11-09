@@ -229,6 +229,8 @@ namespace graphics {
 
 		bool isCombinerProgramBuilderObsolete();
 
+		bool isCombinerUberOnly();
+
 		void resetCombinerProgramBuilder();
 
 		CombinerProgram * createCombinerProgram(Combiner & _color, Combiner & _alpha, const CombinerKey & _key);

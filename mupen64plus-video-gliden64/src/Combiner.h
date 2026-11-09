@@ -148,6 +148,7 @@ private:
 		, m_journal(nullptr) {}
 	CombinerInfo(const CombinerInfo &) = delete;
 
+	void _buildFixedKeys();
 	bool _saveShadersStorage() const;
 	bool _loadShadersStorage();
 	void _openKeysJournal();

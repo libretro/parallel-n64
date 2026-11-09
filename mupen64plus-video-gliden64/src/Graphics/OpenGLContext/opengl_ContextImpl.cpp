@@ -399,6 +399,11 @@ bool ContextImpl::isCombinerProgramBuilderObsolete()
 	return m_combinerProgramBuilder->isObsolete();
 }
 
+bool ContextImpl::isCombinerUberOnly()
+{
+	return m_combinerProgramBuilder && m_combinerProgramBuilder->isUberOnly();
+}
+
 void ContextImpl::resetCombinerProgramBuilder()
 {
 	if (!isCombinerProgramBuilderObsolete())

@@ -111,6 +111,7 @@ namespace opengl {
 		/*---------------Shaders-------------*/
 
 		bool isCombinerProgramBuilderObsolete() override;
+		bool isCombinerUberOnly() override;
 
 		void resetCombinerProgramBuilder() override;
 

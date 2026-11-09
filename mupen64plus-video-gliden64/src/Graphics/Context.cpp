@@ -267,6 +267,11 @@ bool Context::isCombinerProgramBuilderObsolete()
 
 }
 
+bool Context::isCombinerUberOnly()
+{
+	return m_impl->isCombinerUberOnly();
+}
+
 void Context::resetCombinerProgramBuilder()
 {
 	m_impl->resetCombinerProgramBuilder();

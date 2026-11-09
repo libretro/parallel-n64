@@ -1,3 +1,4 @@
+#include <stdlib.h>
 #include <fstream>
 #include <functional>
 #include <cstring>
@@ -102,13 +103,7 @@ void CombinerInfo::init()
 		m_combiners.clear();
 	}
 
-	if (m_combiners.empty()) {
-		setPolygonMode(DrawingState::TexRect);
-		gDP.otherMode.cycleType = G_CYC_COPY;
-		setCombine(EncodeCombineMode(0, 0, 0, TEXEL0, 0, 0, 0, TEXEL0, 0, 0, 0, TEXEL0, 0, 0, 0, TEXEL0));
-		gDP.otherMode.cycleType = G_CYC_FILL;
-		setCombine(EncodeCombineMode(0, 0, 0, SHADE, 0, 0, 0, SHADE, 0, 0, 0, SHADE, 0, 0, 0, SHADE));
-	}
+	_buildFixedKeys();
 
 	if (config.generalEmulation.enableShadersStorage != 0)
 		_openKeysJournal();
@@ -274,6 +269,9 @@ graphics::CombinerProgram * Combiner_Compile(CombinerKey key, bool _mayDefer)
 		graphics::CombinerProgram * program = gfxContext.createCombinerProgramAsync(deferredColor, deferredAlpha, key);
 		if (program != nullptr)
 			return program;
+		static const bool strict = getenv("GLIDEN64_GL_STRICT") != nullptr;
+		if (strict)
+			abort();
 	}
 
 	return gfxContext.createCombinerProgram(color, alpha, key);
@@ -418,6 +416,33 @@ bool CombinerInfo::_saveShadersStorage() const
 	return gfxContext.saveShadersStorage(m_combiners);
 }
 
+/* Copy and fill modes use one combine each, so every key they can make is
+ * known: build them all here rather than when a game first draws one. */
+void CombinerInfo::_buildFixedKeys()
+{
+	static const u64 muxes[2][2] = {
+		{ G_CYC_COPY, EncodeCombineMode(0, 0, 0, TEXEL0, 0, 0, 0, TEXEL0, 0, 0, 0, TEXEL0, 0, 0, 0, TEXEL0) },
+		{ G_CYC_FILL, EncodeCombineMode(0, 0, 0, SHADE, 0, 0, 0, SHADE, 0, 0, 0, SHADE, 0, 0, 0, SHADE) }
+	};
+	const bool hwl = GBI.isHWLSupported();
+	for (u32 mode = 0; mode < 2; ++mode)
+		for (u32 bits = 0; bits < 16; ++bits) {
+			/* bits: rect, two of bilerp, hardware lighting */
+			const u32 flags = (bits & 1) | (static_cast<u32>(muxes[mode][0]) << 1) | ((bits & 6) << 2) | ((bits & 8) << 2);
+			gDPCombine combine;
+			combine.mux = muxes[mode][1];
+			combine.muxs0 |= flags << 24;
+			const CombinerKey key(combine.mux, false);
+			if (m_combiners.find(key) != m_combiners.end())
+				continue;
+			GBI.setHWLSupported((bits & 8) != 0);
+			graphics::CombinerProgram * pCombiner = Combiner_Compile(key);
+			pCombiner->update(true);
+			m_combiners[pCombiner->getKey()] = pCombiner;
+		}
+	GBI.setHWLSupported(hwl);
+}
+
 void CombinerInfo::_journalKey(void * _ctx, uint64_t _key, unsigned _hwl)
 {
 	CombinerInfo * info = static_cast<CombinerInfo *>(_ctx);
@@ -447,7 +472,9 @@ void CombinerInfo::_closeKeysJournal(bool _saved)
 	u32 version = 0;
 	combiner_journal_close(m_journal);
 	m_journal = nullptr;
-	if (_saved) {
+	/* An ubershader-only driver has no program of these keys to save: the
+	 * journal is how the next load builds them. */
+	if (_saved && !gfxContext.isCombinerUberOnly()) {
 		const std::string path = gfxContext.getCombinerJournalPath(version);
 		combiner_journal_remove(path.c_str());
 	}
