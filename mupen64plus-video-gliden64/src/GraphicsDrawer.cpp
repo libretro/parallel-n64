@@ -213,6 +213,26 @@ void gli_drawer_draw_screen_strip(u32 _numVtx)
 	dwnd().getDrawer().drawScreenSpaceTriangle(_numVtx);
 }
 
+void gli_drawer_clear_depth(void)
+{
+	dwnd().getDrawer().clearDepthBuffer();
+}
+
+void gli_drawer_draw_rect(s32 _ulx, s32 _uly, s32 _lrx, s32 _lry)
+{
+	dwnd().getDrawer().drawRect(_ulx, _uly, _lrx, _lry);
+}
+
+void gli_drawer_textured_rect(f32 _ulx, f32 _uly, f32 _lrx, f32 _lry, f32 _dsdx, f32 _dtdy, s16 _s, s16 _t, bool _flip)
+{
+	GraphicsDrawer & drawer = dwnd().getDrawer();
+	GraphicsDrawer::TexturedRectParams params(_ulx, _uly, _lrx, _lry, _dsdx, _dtdy, _s, _t,
+		_flip, false, true, frameBufferList().getCurrent());
+	if (config.graphics2D.enableNativeResTexrects == 0 && config.graphics2D.correctTexrectCoords != Config::tcDisable)
+		drawer.correctTexturedRectParams(params);
+	drawer.drawTexturedRect(params);
+}
+
 SPVertex & GraphicsDrawer::getCurrentDMAVertex()
 {
 	if (m_dmaVerticesNum >= m_dmaVertices.size())

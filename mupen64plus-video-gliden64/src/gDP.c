@@ -1,6 +1,5 @@
 #include <assert.h>
-#include <algorithm>
-#include <cmath>
+#include <string.h>
 #include "GLideN64.h"
 #include "N64.h"
 #include "GBI.h"
@@ -11,27 +10,40 @@
 #include "Types.h"
 #include "convert.h"
 #include "CRC.h"
-#include "FrameBuffer.h"
-#include "DepthBuffer.h"
-#include "FrameBufferInfo.h"
-#include "TextureFilterHandler.h"
-#include "VI.h"
+#include "CombinerMux.h"
 #include "Config.h"
-#include "Combiner.h"
-#include "DisplayWindow.h"
-#include <Graphics/Context.h>
+#include "TextureFilterHandler.h"
+#include "gli_drawer.h"
+#include "gli_framebuffer.h"
 
-using namespace std;
+/* b only if it is strictly less/greater, as std::min and std::max choose */
+static u32 gdp_min(u32 _a, u32 _b)
+{
+	return _b < _a ? _b : _a;
+}
+
+static u32 gdp_max(u32 _a, u32 _b)
+{
+	return _a < _b ? _b : _a;
+}
+
+static void gdp_clear_rect_color(void)
+{
+	gDP.rectColor.r = 0.0f;
+	gDP.rectColor.g = 0.0f;
+	gDP.rectColor.b = 0.0f;
+	gDP.rectColor.a = 0.0f;
+}
 
 gDPInfo gDP;
 
-bool gli_isCurrentColorImageDepthImage()
+bool gli_isCurrentColorImageDepthImage(void)
 {
 	return (gDP.colorImage.address == gDP.depthImageAddress) ||
 		(gDP.fillColor.color == DepthClearColor && gDP.otherMode.cycleType == G_CYC_FILL);
 }
 
-bool gli_isDepthCompareEnabled()
+bool gli_isDepthCompareEnabled(void)
 {
 	return gDP.otherMode.cycleType <= G_CYC_2CYCLE &&
 		gDP.otherMode.depthCompare != 0 &&
@@ -84,7 +96,7 @@ void gli_gDPSetColorImage( u32 format, u32 size, u32 width, u32 address )
 	gDP.colorImage.height = 0;
 	gDP.colorImage.address = address;
 
-	frameBufferList().saveBuffer(address, (u16)format, (u16)size, (u16)width, false);
+	gli_fb_set_color_image(address, format, size, width);
 
 }
 
@@ -112,7 +124,7 @@ void gli_gDPSetDepthImage( u32 address )
 {
 	address = RSP_SegmentToPhysical( address );
 	gDP.depthImageAddress = address;
-	depthBufferList().saveBuffer(address);
+	gli_depth_set_image(address);
 
 }
 
@@ -215,37 +227,7 @@ void gli_gDPSetTile( u32 format, u32 size, u32 line, u32 tmem, u32 tile, u32 pal
 
 }
 
-#ifdef __GNUC__
-#define leading_zeroes(x) ((x) == 0 ? 0 : __builtin_clz(x))
-#define trailing_zeroes(x) ((x) == 0 ? 0 : __builtin_ctz(x))
-#define trailing_ones(x) __builtin_ctz(~uint32_t(x))
-#elif defined(_MSC_VER)
-static inline uint32_t clz(uint32_t x)
-{
-	unsigned long result;
-	if (_BitScanReverse(&result, x))
-		return 31 - result;
-	else
-		return 0;
-}
-
-static inline uint32_t ctz(uint32_t x)
-{
-	unsigned long result;
-	if (_BitScanForward(&result, x))
-		return result;
-	else
-		return 0;
-}
-
-#define leading_zeroes(x) clz(x)
-#define trailing_zeroes(x) ctz(x)
-#define trailing_ones(x) ctz(~uint32_t(x))
-#else
-#error "Implement me."
-#endif
-
-extern "C" uint32_t LegacySm64ToolsHacks;
+extern u32 LegacySm64ToolsHacks;
 void gli_gDPSetTileSize( u32 tile, u32 uls, u32 ult, u32 lrs, u32 lrt )
 {
 	gDP.tiles[tile].uls = _SHIFTR( uls, 2, 10 );
@@ -260,31 +242,29 @@ void gli_gDPSetTileSize( u32 tile, u32 uls, u32 ult, u32 lrs, u32 lrt )
 
 	if (LegacySm64ToolsHacks)
 	{
-		// Force maskT and maskS for given sizes if we go too far
-		// Get normal sizes for lrs/lrt
+		/* Force maskT and maskS for given sizes if we go too far */
+		/* Get normal sizes for lrs/lrt */
 		u32 lrsizes = gDP.tiles[tile].lrs + 1;
 		u32 lrsizet = gDP.tiles[tile].lrt + 1;
 
 		if (lrsizes == 16 && lrsizet == 2)
 		{
-			// Get normal sizes for masks/maskt
+			/* Get normal sizes for masks/maskt */
 			u32 masksizes = 1 << gDP.tiles[tile].masks;
 			u32 masksizet = 1 << gDP.tiles[tile].maskt;
 
-			// Do validity check
-			// TODO: Not sure if this actually works
+			/* Do validity check */
+			/* TODO: Not sure if this actually works */
 			if (masksizes > lrsizes)
 			{
-				unsigned long index = trailing_zeroes(lrsizes);
-				gDP.tiles[tile].masks = index;
-				gDP.tiles[tile].originalMaskS = index;
+				gDP.tiles[tile].masks = 4; /* log2 of lrsizes */
+				gDP.tiles[tile].originalMaskS = 4;
 			}
 
 			if (masksizet > lrsizet)
 			{
-				unsigned long index = trailing_zeroes(lrsizet);
-				gDP.tiles[tile].maskt = index;
-				gDP.tiles[tile].originalMaskT = index;
+				gDP.tiles[tile].maskt = 1; /* log2 of lrsizet */
+				gDP.tiles[tile].originalMaskT = 1;
 			}
 		}
 	}
@@ -293,99 +273,14 @@ void gli_gDPSetTileSize( u32 tile, u32 uls, u32 ult, u32 lrs, u32 lrt )
 
 }
 
-static
-bool CheckForFrameBufferTexture(u32 _address, u32 _width, u32 _bytes)
+/****************/
+/* LoadTile for 32bit RGBA texture */
+/* Based on sources of angrylion's software plugin. */
+
+static void gDPLoadTile32b(u32 uls, u32 ult, u32 lrs, u32 lrt)
 {
-	gDP.loadTile->textureMode = TEXTUREMODE_NORMAL;
-	gDP.loadTile->frameBufferAddress = 0U;
-	gDP.changed |= CHANGED_TMEM;
-	if (!config.frameBufferEmulation.enable)
-		return false;
-
-	FrameBufferList & fbList = frameBufferList();
-	FrameBuffer *pBuffer = fbList.findBuffer(_address);
-	bool bRes = pBuffer != nullptr && pBuffer->m_readable;
-	while (bRes) {
-		if ((config.generalEmulation.hacks & hack_blurPauseScreen) != 0) {
-			if (gDP.colorImage.address == gDP.depthImageAddress && pBuffer->m_copiedToRdram) {
-				memcpy(RDRAM + gDP.depthImageAddress,
-					RDRAM + pBuffer->m_startAddress,
-					(pBuffer->m_width*pBuffer->m_height) << pBuffer->m_size >> 1);
-				pBuffer->m_copiedToRdram = false;
-				fbList.getCurrent()->m_isPauseScreen = true;
-			}
-			if (pBuffer->m_isPauseScreen) {
-				bRes = false;
-				break;
-			}
-		}
-
-		if (gDP.otherMode.textureLUT == G_TT_RGBA16 && (config.generalEmulation.hacks & hack_StarCraftBackgrounds) != 0) {
-			bRes = false;
-			break;
-		}
-
-		if (pBuffer->m_cfb) {
-			fbList.removeBuffer(pBuffer->m_startAddress);
-			bRes = false;
-			break;
-		}
-
-		if ((config.generalEmulation.hacks & hack_noDepthFrameBuffers) != 0 && pBuffer->m_isDepthBuffer) {
-			fbList.removeBuffer(pBuffer->m_startAddress);
-			bRes = false;
-			break;
-		}
-
-		const u32 texEndAddress = _address + _bytes - 1;
-		if (_address > pBuffer->m_startAddress &&
-			pBuffer->m_width != _width &&
-			texEndAddress > (pBuffer->m_endAddress + (pBuffer->m_width << pBuffer->m_size >> 1))) {
-			//fbList.removeBuffer(pBuffer->m_startAddress);
-			bRes = false;
-			break;
-		}
-
-		if (gDP.loadTile->loadType == LOADTYPE_TILE &&
-			gDP.textureImage.width != pBuffer->m_width &&
-			gDP.textureImage.size != pBuffer->m_size) {
-			//fbList.removeBuffer(pBuffer->m_startAddress); // Does not work with Zelda MM
-			bRes = false;
-			break;
-		}
-
-		bRes = pBuffer->isValid(false);
-		if (!bRes && pBuffer != fbList.getCurrent()) {
-			fbList.removeBuffer(pBuffer->m_startAddress);
-			break;
-		}
-
-		pBuffer->m_loadType = gDP.loadTile->loadType;
-		pBuffer->m_loadTileOrigin.uls = gDP.loadTile->uls;
-		pBuffer->m_loadTileOrigin.ult = gDP.loadTile->ult;
-		gDP.loadTile->frameBufferAddress = pBuffer->m_startAddress;
-		gDP.loadTile->textureMode = TEXTUREMODE_FRAMEBUFFER;
-		break;
-	}
-
-	for (int nTile = gSP.texture.tile; nTile < 6; ++nTile) {
-		if (gDP.tiles[nTile].tmem == gDP.loadTile->tmem) {
-			gDPTile & curTile = gDP.tiles[nTile];
-			curTile.textureMode = gDP.loadTile->textureMode;
-			curTile.loadType = gDP.loadTile->loadType;
-			curTile.frameBufferAddress = gDP.loadTile->frameBufferAddress;
-			curTile.imageAddress = gDP.loadTile->imageAddress;
-		}
-	}
-	return bRes;
-}
-
-//****************************************************************
-// LoadTile for 32bit RGBA texture
-// Based on sources of angrylion's software plugin.
-//
-void gDPLoadTile32b(u32 uls, u32 ult, u32 lrs, u32 lrt)
-{
+	u32 ramWords;
+	u32 j;
 	const u32 width = lrs - uls + 1;
 	const u32 height = lrt - ult + 1;
 	const u32 line = gDP.loadTile->line << 2;
@@ -400,13 +295,14 @@ void gDPLoadTile32b(u32 uls, u32 ult, u32 lrs, u32 lrt)
 	 * below which clamps each row to RDRAMSize. Skip any word that
 	 * would read past RDRAM. The TMEM destination is already safe
 	 * (ptr is masked to 0x3ff). */
-	const u32 ramWords = (RDRAMSize >> 2) + 1;
+	ramWords = (RDRAMSize >> 2) + 1;
 
-	for (u32 j = 0; j < height; ++j) {
+	for (j = 0; j < height; ++j) {
+		u32 i;
 		tline = tbase + line * j;
 		s = ((j + ult) * gDP.textureImage.width) + uls;
 		xorval = (j & 1) ? 3 : 1;
-		for (u32 i = 0; i < width; ++i) {
+		for (i = 0; i < width; ++i) {
 			const u32 srcIdx = addr + s + i;
 			if (srcIdx >= ramWords)
 				continue;
@@ -420,6 +316,16 @@ void gDPLoadTile32b(u32 uls, u32 ult, u32 lrs, u32 lrt)
 
 void gli_gDPLoadTile(u32 tile, u32 uls, u32 ult, u32 lrs, u32 lrt)
 {
+	gDPLoadTileInfo *info;
+	u32 width;
+	u32 height;
+	u32 bpl;
+	u32 alignedWidth;
+	u32 wmask;
+	u32 bpr;
+	u32 address;
+	u32 bpl2;
+	u32 height2;
 	gli_gDPSetTileSize( tile, uls, ult, lrs, lrt );
 	gDP.loadTileIdx = tile;
 	gDP.loadTile = &gDP.tiles[tile];
@@ -429,12 +335,12 @@ void gli_gDPLoadTile(u32 tile, u32 uls, u32 ult, u32 lrs, u32 lrt)
 	if (gDP.loadTile->lrs < gDP.loadTile->uls || gDP.loadTile->lrt < gDP.loadTile->ult)
 		return;
 
-	const u32 width = (gDP.loadTile->lrs - gDP.loadTile->uls + 1) & 0x03FF;
-	const u32 height = (gDP.loadTile->lrt - gDP.loadTile->ult + 1) & 0x03FF;
-	const u32 bpl = gDP.loadTile->line << 3;
+	width = (gDP.loadTile->lrs - gDP.loadTile->uls + 1) & 0x03FF;
+	height = (gDP.loadTile->lrt - gDP.loadTile->ult + 1) & 0x03FF;
+	bpl = gDP.loadTile->line << 3;
 
-	u32 alignedWidth = width;
-	u32 wmask = 0;
+	alignedWidth = width;
+	wmask = 0;
 	switch (gDP.textureImage.size) {
 	case G_IM_SIZ_8b:
 		wmask = 7;
@@ -448,64 +354,67 @@ void gli_gDPLoadTile(u32 tile, u32 uls, u32 ult, u32 lrs, u32 lrt)
 	}
 	if ((width & wmask) != 0)
 		alignedWidth = (width & (~wmask)) + wmask + 1;
-	const u32 bpr = alignedWidth << gDP.loadTile->size >> 1;
+	bpr = alignedWidth << gDP.loadTile->size >> 1;
 
-	gDPLoadTileInfo &info = gDP.loadInfo[gDP.loadTile->tmem];
-	info.texAddress = gDP.loadTile->imageAddress;
-	info.uls = gDP.loadTile->uls;
-	info.ult = gDP.loadTile->ult;
-	info.lrs = gDP.loadTile->lrs;
-	info.lrt = gDP.loadTile->lrt;
-	info.width = gDP.loadTile->masks != 0 ? (u16)min(width, 1U << gDP.loadTile->masks) : (u16)width;
-	info.height = gDP.loadTile->maskt != 0 ? (u16)min(height, 1U << gDP.loadTile->maskt) : (u16)height;
-	info.texWidth = gDP.textureImage.width;
-	info.size = gDP.textureImage.size;
-	info.loadType = LOADTYPE_TILE;
-	info.bytes = bpl * height;
+	info = &gDP.loadInfo[gDP.loadTile->tmem];
+	info->texAddress = gDP.loadTile->imageAddress;
+	info->uls = gDP.loadTile->uls;
+	info->ult = gDP.loadTile->ult;
+	info->lrs = gDP.loadTile->lrs;
+	info->lrt = gDP.loadTile->lrt;
+	info->width = gDP.loadTile->masks != 0 ? (u16)gdp_min(width, 1U << gDP.loadTile->masks) : (u16)width;
+	info->height = gDP.loadTile->maskt != 0 ? (u16)gdp_min(height, 1U << gDP.loadTile->maskt) : (u16)height;
+	info->texWidth = gDP.textureImage.width;
+	info->size = gDP.textureImage.size;
+	info->loadType = LOADTYPE_TILE;
+	info->bytes = bpl * height;
 	if (gDP.loadTile->size == G_IM_SIZ_32b)
-		// 32 bit texture loaded into lower and upper half of TMEM, thus actual bytes doubled.
-		info.bytes *= 2;
+		/* 32 bit texture loaded into lower and upper half of TMEM, thus actual bytes doubled. */
+		info->bytes *= 2;
 
 	if (gDP.loadTile->line == 0)
 		return;
 
 	if (gDP.loadTile->masks == 0)
-		gDP.loadTile->loadWidth = max(gDP.loadTile->loadWidth, info.width);
+		gDP.loadTile->loadWidth = gdp_max(gDP.loadTile->loadWidth, info->width);
 	if (gDP.loadTile->maskt == 0 && gDP.loadTile->tmem % gDP.loadTile->line == 0) {
-		const u16 theight = info.height + gDP.loadTile->tmem / gDP.loadTile->line;
-		gDP.loadTile->loadHeight = max(gDP.loadTile->loadHeight, theight);
+		const u16 theight = info->height + gDP.loadTile->tmem / gDP.loadTile->line;
+		gDP.loadTile->loadHeight = gdp_max(gDP.loadTile->loadHeight, theight);
 	}
 
-	u32 address = gDP.textureImage.address + gDP.loadTile->ult * gDP.textureImage.bpl + (gDP.loadTile->uls << gDP.textureImage.size >> 1);
-	u32 bpl2 = bpl;
+	address = gDP.textureImage.address + gDP.loadTile->ult * gDP.textureImage.bpl + (gDP.loadTile->uls << gDP.textureImage.size >> 1);
+	bpl2 = bpl;
 	if (gDP.loadTile->lrs > gDP.textureImage.width)
 		bpl2 = (gDP.textureImage.width - gDP.loadTile->uls);
-	u32 height2 = height;
+	height2 = height;
 	if (gDP.loadTile->lrt > gDP.scissor.lry)
 		height2 = (u32)gDP.scissor.lry - gDP.loadTile->ult;
 
-	if (CheckForFrameBufferTexture(address, info.width, bpl2*height2))
+	if (gli_fb_check_texture(address, info->width, bpl2*height2))
 		return;
 
 	if (gDP.loadTile->size == G_IM_SIZ_32b)
 		gDPLoadTile32b(gDP.loadTile->uls, gDP.loadTile->ult, gDP.loadTile->lrs, gDP.loadTile->lrt);
 	else if (address < RDRAMSize) {
+		u32 y;
 		u32 tmemAddr = gDP.loadTile->tmem;
 		const u32 line = gDP.loadTile->line;
-		for (u32 y = 0; y < height; ++y) {
-			// A row that runs past the end of TMEM stops there instead of
-			// wrapping round onto the rows loaded first.  Vivid Dolls blits its
-			// background in 6-line strips and asks for one line more than the
-			// 4KB holds: wrapping laid that line over line 0 and left a corrupt
-			// line at every strip boundary.  The RDP-accurate renderers show no
-			// such line, so dropping the overflow is what matches them.
+		for (y = 0; y < height; ++y) {
+			u32 room;
+			u32 rowBytes;
+			/* A row that runs past the end of TMEM stops there instead of */
+			/* wrapping round onto the rows loaded first.  Vivid Dolls blits its */
+			/* background in 6-line strips and asks for one line more than the */
+			/* 4KB holds: wrapping laid that line over line 0 and left a corrupt */
+			/* line at every strip boundary.  The RDP-accurate renderers show no */
+			/* such line, so dropping the overflow is what matches them. */
 			const u32 tmemByte = tmemAddr << 3;
 			if (tmemByte >= 0x1000)
 				break;
-			const u32 room = 0x1000 - tmemByte;
-			const u32 rowBytes = min(bpr, room);
+			room = 0x1000 - tmemByte;
+			rowBytes = gdp_min(bpr, room);
 			if (address + bpl > RDRAMSize)
-				gli_UnswapCopyWrap(RDRAM, address, (u8*)TMEM, tmemByte, 0xFFF, min(RDRAMSize - address, room));
+				gli_UnswapCopyWrap(RDRAM, address, (u8*)TMEM, tmemByte, 0xFFF, gdp_min(RDRAMSize - address, room));
 			else
 				gli_UnswapCopyWrap(RDRAM, address, (u8*)TMEM, tmemByte, 0xFFF, rowBytes);
 			if (y & 1)
@@ -520,12 +429,13 @@ void gli_gDPLoadTile(u32 tile, u32 uls, u32 ult, u32 lrs, u32 lrt)
 
 }
 
-//****************************************************************
-// LoadBlock for 32bit RGBA texture
-// Based on sources of angrylion's software plugin.
-//
-void gDPLoadBlock32(u32 uls,u32 lrs, u32 dxt)
+/****************/
+/* LoadBlock for 32bit RGBA texture */
+/* Based on sources of angrylion's software plugin. */
+
+static void gDPLoadBlock32(u32 uls,u32 lrs, u32 dxt)
 {
+	u32 ramWords;
 	const u32 * src = (const u32*)RDRAM;
 	const u32 tb = gDP.loadTile->tmem << 2;
 	const u32 line = gDP.loadTile->line << 2;
@@ -536,22 +446,23 @@ void gDPLoadBlock32(u32 uls,u32 lrs, u32 dxt)
 	/* As in gDPLoadTile32b: src is indexed in 32-bit words from a
 	 * guest-derived base/width and is otherwise unbounded. Skip any
 	 * word past RDRAM; the TMEM destination is masked to 0x3ff. */
-	const u32 ramWords = (RDRAMSize >> 2) + 1;
+	ramWords = (RDRAMSize >> 2) + 1;
 	if (lrs < uls)
 		return;
-	if (width == 4) // lr_s == 0, 1x1 texture
+	if (width == 4) /* lr_s == 0, 1x1 texture */
 		width = 1;
 	else if (width & 7)
 		width = (width & (~7)) + 8;
 
 	if (dxt != 0) {
+		u32 i;
 		u32 j = 0;
 		u32 t = 0;
 		u32 oldt = 0;
 		u32 ptr;
 
 		u32 c = 0;
-		for (u32 i = 0; i < width; i += 2) {
+		for (i = 0; i < width; i += 2) {
 			oldt = t;
 			t = ((j >> 11) & 1) ? 3 : 1;
 			if (t != oldt)
@@ -571,8 +482,9 @@ void gDPLoadBlock32(u32 uls,u32 lrs, u32 dxt)
 			j += dxt;
 		}
 	} else {
+		u32 i;
 		u32 c, ptr;
-		for (u32 i = 0; i < width; i++) {
+		for (i = 0; i < width; i++) {
 			if ((addr + i) >= ramWords)
 				continue;
 			ptr = ((tb + i) ^ 1) & 0x3ff;
@@ -585,6 +497,10 @@ void gDPLoadBlock32(u32 uls,u32 lrs, u32 dxt)
 
 void gli_gDPLoadBlock(u32 tile, u32 uls, u32 ult, u32 lrs, u32 dxt)
 {
+	gDPLoadTileInfo *info;
+	u32 width;
+	u32 bytes;
+	u32 address;
 	gli_gDPSetTileSize( tile, uls, ult, lrs, dxt );
 	gDP.loadTileIdx = tile;
 	gDP.loadTile = &gDP.tiles[tile];
@@ -601,36 +517,36 @@ void gli_gDPLoadBlock(u32 tile, u32 uls, u32 ult, u32 lrs, u32 dxt)
 	}
 	gDP.loadTile->imageAddress = gDP.textureImage.address;
 
-	gDPLoadTileInfo &info = gDP.loadInfo[gDP.loadTile->tmem];
-	info.texAddress = gDP.loadTile->imageAddress;
-	info.uls = gDP.loadTile->uls;
-	info.ult = gDP.loadTile->ult;
-	info.lrs = gDP.loadTile->lrs;
-	info.lrt = gDP.loadTile->lrt;
-	info.width = gDP.loadTile->lrs;
-	info.dxt = dxt;
-	info.size = gDP.textureImage.size;
-	info.loadType = LOADTYPE_BLOCK;
+	info = &gDP.loadInfo[gDP.loadTile->tmem];
+	info->texAddress = gDP.loadTile->imageAddress;
+	info->uls = gDP.loadTile->uls;
+	info->ult = gDP.loadTile->ult;
+	info->lrs = gDP.loadTile->lrs;
+	info->lrt = gDP.loadTile->lrt;
+	info->width = gDP.loadTile->lrs;
+	info->dxt = dxt;
+	info->size = gDP.textureImage.size;
+	info->loadType = LOADTYPE_BLOCK;
 
-	const u32 width = (lrs - uls + 1) & 0x0FFF;
-	u32 bytes = width << gDP.loadTile->size >> 1;
+	width = (lrs - uls + 1) & 0x0FFF;
+	bytes = width << gDP.loadTile->size >> 1;
 	if ((bytes & 7) != 0)
 		bytes = (bytes & (~7)) + 8;
 
-	info.bytes = bytes;
-	u32 address = gDP.textureImage.address + ult * gDP.textureImage.bpl + (uls << gDP.textureImage.size >> 1);
+	info->bytes = bytes;
+	address = gDP.textureImage.address + ult * gDP.textureImage.bpl + (uls << gDP.textureImage.size >> 1);
 
 	if (bytes == 0 || (address + bytes) > RDRAMSize) {
 		return;
 	}
 
 	gDP.loadTile->frameBufferAddress = 0;
-	CheckForFrameBufferTexture(address, info.width, bytes); // Load data to TMEM even if FB texture is found. See comment to texturedRectDepthBufferCopy
+	gli_fb_check_texture(address, info->width, bytes); /* Load data to TMEM even if FB texture is found. See comment to texturedRectDepthBufferCopy */
 
 	if (gDP.loadTile->size == G_IM_SIZ_32b)
 		gDPLoadBlock32(gDP.loadTile->uls, gDP.loadTile->lrs, dxt);
 	else if (gDP.loadTile->format == G_IM_FMT_YUV)
-		memcpy(TMEM, &RDRAM[address], min(bytes, (u32)sizeof(TMEM))); // HACK!
+		memcpy(TMEM, &RDRAM[address], gdp_min(bytes, (u32)sizeof(TMEM))); /* HACK! */
 	else {
 		u32 tmemAddr = gDP.loadTile->tmem;
 		gli_UnswapCopyWrap(RDRAM, address, (u8*)TMEM, tmemAddr << 3, 0xFFF, bytes);
@@ -638,7 +554,7 @@ void gli_gDPLoadBlock(u32 tile, u32 uls, u32 ult, u32 lrs, u32 dxt)
 			u32 dxtCounter = 0;
 			u32 qwords = (bytes >> 3);
 			u32 line = 0;
-			while (true) {
+			for (;;) {
 				do {
 					++tmemAddr;
 					--qwords;
@@ -666,19 +582,26 @@ void gli_gDPLoadBlock(u32 tile, u32 uls, u32 ult, u32 lrs, u32 dxt)
 
 void gli_gDPLoadTLUT( u32 tile, u32 uls, u32 ult, u32 lrs, u32 lrt )
 {
+	u16 count;
+	u32 address;
+	u16 pal;
+	u16 * dest;
+	u32 destIdx;
+	int i;
 	gli_gDPSetTileSize( tile, uls, ult, lrs, lrt );
 	if (gDP.tiles[tile].tmem < 256) {
 		return;
 	}
-	u16 count = (u16)((gDP.tiles[tile].lrs - gDP.tiles[tile].uls + 1) * (gDP.tiles[tile].lrt - gDP.tiles[tile].ult + 1));
-	u32 address = gDP.textureImage.address + gDP.tiles[tile].ult * gDP.textureImage.bpl + (gDP.tiles[tile].uls << gDP.textureImage.size >> 1);
-	u16 pal = (u16)((gDP.tiles[tile].tmem - 256) >> 4);
-	u16 * dest = reinterpret_cast<u16*>(TMEM);
-	u32 destIdx = gDP.tiles[tile].tmem << 2;
+	count = (u16)((gDP.tiles[tile].lrs - gDP.tiles[tile].uls + 1) * (gDP.tiles[tile].lrt - gDP.tiles[tile].ult + 1));
+	address = gDP.textureImage.address + gDP.tiles[tile].ult * gDP.textureImage.bpl + (gDP.tiles[tile].uls << gDP.textureImage.size >> 1);
+	pal = (u16)((gDP.tiles[tile].tmem - 256) >> 4);
+	dest = (u16*)TMEM;
+	destIdx = gDP.tiles[tile].tmem << 2;
 
-	int i = 0;
+	i = 0;
 	while (i < count) {
-		for (u16 j = 0; (j < 16) && (i < count); ++j, ++i) {
+		u16 j;
+		for (j = 0; (j < 16) && (i < count); ++j, ++i) {
 			/* address is guest-derived and advances per entry; stop if
 			 * the 2-byte read would leave RDRAM. The TMEM destination is
 			 * already masked to 0x07FF. */
@@ -691,19 +614,20 @@ void gli_gDPLoadTLUT( u32 tile, u32 uls, u32 ult, u32 lrs, u32 lrt )
 			destIdx += 4;
 		}
 
-		gDP.paletteCRC16[pal] = CRC_CalculatePalette(UINT64_MAX, &TMEM[256 + (pal << 4)], 16);
+		gDP.paletteCRC16[pal] = CRC_CalculatePalette((u64)-1, &TMEM[256 + (pal << 4)], 16);
 		pal = (pal + 1) & 0x0F;
 	}
 
-	gDP.paletteCRC256 = CRC_Calculate(UINT64_MAX, gDP.paletteCRC16, sizeof(u64) * 16);
+	gDP.paletteCRC256 = CRC_Calculate((u64)-1, gDP.paletteCRC16, sizeof(u64) * 16);
 
-	if (TFH.isInited()) {
-		const u16 start = gDP.tiles[tile].tmem - 256; // starting location in the palettes
+	if (gli_TFH_is_inited()) {
+		u32 words;
+		const u16 start = gDP.tiles[tile].tmem - 256; /* starting location in the palettes */
 		u16 *spal = (u16*)(RDRAM + gDP.textureImage.address);
 		/* Clamp the copy to the TexFilterPalette[512] destination and to
 		 * RDRAM: both 'count' and the source address come from the tile
 		 * descriptor. */
-		u32 words = count;
+		words = count;
 		if (start >= 512)
 			words = 0;
 		else if (start + words > 512)
@@ -737,38 +661,37 @@ void gli_gDPSetScissor(u32 mode, s16 xh, s16 yh, s16 xl, s16 yl)
 
 void gli_gDPFillRectangle( s32 ulx, s32 uly, s32 lrx, s32 lry )
 {
-	GraphicsDrawer & drawer = dwnd().getDrawer();
+	enum {
+		dbNone,
+		dbFound,
+		dbCleared
+	} depthBuffer = dbNone;
 	if (gDP.otherMode.cycleType == G_CYC_FILL) {
 		++lrx;
 		++lry;
 	} else if (lry == uly)
 		++lry;
 
-	enum {
-		dbNone,
-		dbFound,
-		dbCleared
-	} depthBuffer = dbNone;
 	if (gDP.depthImageAddress == gDP.colorImage.address) {
-		// Game may use depth texture as auxilary color texture. Example: Mario Tennis
-		// If color is not depth clear color, that is most likely the case
+		/* Game may use depth texture as auxilary color texture. Example: Mario Tennis */
+		/* If color is not depth clear color, that is most likely the case */
 		if (gDP.fillColor.color == DepthClearColor) {
 			depthBuffer = dbFound;
-			if (config.generalEmulation.enableFragmentDepthWrite == 0) {
-				drawer.clearDepthBuffer();
+			if (gli_Config_fragmentDepthWrite() == 0) {
+				gli_drawer_clear_depth();
 				depthBuffer = dbCleared;
 			} else
-				depthBufferList().setCleared(true);
+				gli_depth_set_cleared();
 		}
 	} else if (gDP.fillColor.color == DepthClearColor && gDP.otherMode.cycleType == G_CYC_FILL) {
 		depthBuffer = dbFound;
-		depthBufferList().saveBuffer(gDP.colorImage.address);
-		if (config.generalEmulation.enableFragmentDepthWrite == 0 ||
-			(config.generalEmulation.hacks & hack_Snap) != 0) {
-			drawer.clearDepthBuffer();
+		gli_depth_set_image(gDP.colorImage.address);
+		if (gli_Config_fragmentDepthWrite() == 0 ||
+			(gli_Config_hacks() & hack_Snap) != 0) {
+			gli_drawer_clear_depth();
 			depthBuffer = dbCleared;
 		} else
-			depthBufferList().setCleared(true);
+			gli_depth_set_cleared();
 	}
 
 	if (depthBuffer != dbCleared) {
@@ -780,22 +703,22 @@ void gli_gDPFillRectangle( s32 ulx, s32 uly, s32 lrx, s32 lry )
 			gDP.rectColor.b = fillColor[2];
 			gDP.rectColor.a = fillColor[3];
 		} else {
-			gDP.rectColor = gDPInfo::Color();
+			gdp_clear_rect_color();
 		}
-		drawer.drawRect(ulx, uly, lrx, lry);
+		gli_drawer_draw_rect(ulx, uly, lrx, lry);
 	}
 
 	if (gDP.otherMode.cycleType == G_CYC_FILL)
-		frameBufferList().fillRDRAM(ulx, uly, lrx, lry);
+		gli_fb_fill_rdram(ulx, uly, lrx, lry);
 
-	frameBufferList().setBufferChanged(f32(lry));
+	gli_fb_set_changed((f32)lry);
 
 	gSP.tri_num += 2;
 }
 
 void gli_gDPSetConvert( s32 k0, s32 k1, s32 k2, s32 k3, s32 k4, s32 k5 )
 {
-// angrylion's macro
+/* angrylion's macro */
 #define SIGN(x, numb)	(((x) & ((1 << numb) - 1)) | -((x) & (1 << (numb - 1))))
 
 	gDP.convert.k0 = (SIGN(k0, 9) << 1) + 1;
@@ -826,75 +749,50 @@ void gli_gDPSetKeyGB(u32 cG, u32 sG, u32 wG, u32 cB, u32 sB, u32 wB )
 
 void gli_gDPTextureRectangle(f32 ulx, f32 uly, f32 lrx, f32 lry, s32 tile, s16 s, s16 t, f32 dsdx, f32 dtdy , bool flip)
 {
+	gDPTile *textureTileOrg[2];
 	if (gDP.otherMode.cycleType == G_CYC_COPY) {
 		dsdx /= 4.0f;
 		lrx += 1.0f;
 		lry += 1.0f;
 	}
-	lry = max(lry, uly + 1.0f);
+	if (lry < uly + 1.0f)
+		lry = uly + 1.0f;
 
-	gDPTile *textureTileOrg[2];
 	textureTileOrg[0] = gSP.textureTile[0];
 	textureTileOrg[1] = gSP.textureTile[1];
 	gSP.textureTile[0] = &gDP.tiles[tile];
 	gSP.textureTile[1] = &gDP.tiles[(tile + 1) & 7];
 
-	// HACK ALERT!
+	/* HACK ALERT! */
 	if (s == 0x4000 && (gDP.colorImage.width + gSP.textureTile[0]->uls < 512))
 		s = 0;
 
-	gDP.rectColor = gDPInfo::Color();
+	gdp_clear_rect_color();
 	if (gDP.otherMode.cycleType < G_CYC_COPY) {
-		if ((config.generalEmulation.hacks & hack_texrect_shade_alpha) != 0 &&
+		if ((gli_Config_hacks() & hack_texrect_shade_alpha) != 0 &&
 			gDP.combine.mA0 == G_ACMUX_0 && gDP.combine.aA0 == G_ACMUX_SHADE)
 			gDP.rectColor.a = 1.0f;
 	}
 
-	GraphicsDrawer & drawer = dwnd().getDrawer();
-	GraphicsDrawer::TexturedRectParams params(ulx, uly, lrx, lry, dsdx, dtdy, s, t,
-		flip, false, true, frameBufferList().getCurrent());
-	if (config.graphics2D.enableNativeResTexrects == 0 && config.graphics2D.correctTexrectCoords != Config::tcDisable)
-		drawer.correctTexturedRectParams(params);
-	drawer.drawTexturedRect(params);
+	gli_drawer_textured_rect(ulx, uly, lrx, lry, dsdx, dtdy, s, t, flip);
 
 	gSP.textureTile[0] = textureTileOrg[0];
 	gSP.textureTile[1] = textureTileOrg[1];
 
-	frameBufferList().setBufferChanged(lry);
+	gli_fb_set_changed(lry);
 
 	gSP.tri_num += 2;
 }
 
-void gli_gDPFullSync()
+void gli_gDPFullSync(void)
 {
 	if (RSP.stereoPass == RSP_STEREO_LEFT) {
 		/* The right pass hands the task over to the CPU */
-		dwnd().getDrawer().flush();
-		frameBufferList().updateCurrentBufferEndAddress();
+		gli_fb_stereo_sync();
 		return;
 	}
 
-	if (config.frameBufferEmulation.copyAuxToRDRAM != 0) {
-		frameBufferList().copyAux();
-		frameBufferList().removeAux();
-	}
-
-	dwnd().getDrawer().flush();
-
-	frameBufferList().updateCurrentBufferEndAddress();
-
-	FrameBuffer * pCurrentBuffer = frameBufferList().getCurrent();
-	if ((config.frameBufferEmulation.copyToRDRAM != Config::ctDisable || (config.generalEmulation.hacks & hack_subscreen) != 0) &&
-		!FBInfo::fbInfo.isSupported() &&
-		pCurrentBuffer != nullptr &&
-		!pCurrentBuffer->isAuxiliary()
-	)
-		FrameBuffer_CopyToRDRAM(gDP.colorImage.address, config.frameBufferEmulation.copyToRDRAM == Config::ctSync);
-
-	if (RSP.LLE) {
-		if (config.frameBufferEmulation.copyDepthToRDRAM != Config::cdDisable && !FBInfo::fbInfo.isSupported())
-			FrameBuffer_CopyDepthBuffer(gDP.colorImage.address);
-	}
+	gli_fb_full_sync(RSP.LLE);
 
 	*REG.MI_INTR |= MI_INTR_DP;
 
@@ -902,19 +800,19 @@ void gli_gDPFullSync()
 
 }
 
-void gli_gDPTileSync()
+void gli_gDPTileSync(void)
 {
 }
 
-void gli_gDPPipeSync()
+void gli_gDPPipeSync(void)
 {
 }
 
-void gli_gDPLoadSync()
+void gli_gDPLoadSync(void)
 {
 }
 
-void gli_gDPNoOp()
+void gli_gDPNoOp(void)
 {
 }
 
@@ -924,31 +822,89 @@ void gli_gDPNoOp()
  *    based on sources of ziggy's z64      *
  *******************************************/
 
-void gDPLLETriangle(u32 _w1, u32 _w2, int _shade, int _texture, int _zbuffer, const u32 * _pRdpCmd)
+static void gDPLLETriangle(u32 _w1, u32 _w2, int _shade, int _texture, int _zbuffer, const u32 * _pRdpCmd)
 {
-	gSP.texture.level = _SHIFTR(_w1, 19, 3);
-	const u32 tile = _SHIFTR(_w1, 16, 3);
+	u32 tile;
 	gDPTile *textureTileOrg[2];
+	SPVertex * vtx0;
+	SPVertex * vtx;
+	int j;
+	int xleft;
+	int xright;
+	int xleft_inc;
+	int xright_inc;
+	int r;
+	int g;
+	int b;
+	int a;
+	int z;
+	int s;
+	int t;
+	int w;
+	int drdx;
+	int dgdx;
+	int dbdx;
+	int dadx;
+	int dzdx;
+	int dsdx;
+	int dtdx;
+	int dwdx;
+	int drde;
+	int dgde;
+	int dbde;
+	int dade;
+	int dzde;
+	int dsde;
+	int dtde;
+	int dwde;
+	int flip;
+	s32 yl;
+	s32 ym;
+	s32 yh;
+	s32 xl;
+	s32 xm;
+	s32 xh;
+	s32 dxldy;
+	s32 dxhdy;
+	s32 dxmdy;
+	u32 w3;
+	u32 w4;
+	u32 w5;
+	u32 w6;
+	u32 w7;
+	u32 w8;
+	const u32 * shade_base;
+	const u32 * texture_base;
+	const u32 * zbuffer_base;
+	gSP.texture.level = _SHIFTR(_w1, 19, 3);
+	tile = _SHIFTR(_w1, 16, 3);
 	textureTileOrg[0] = gSP.textureTile[0];
 	textureTileOrg[1] = gSP.textureTile[1];
 	gSP.textureTile[0] = &gDP.tiles[tile];
 	gSP.textureTile[1] = &gDP.tiles[(tile + 1) & 7];
 
-	int j;
-	int xleft, xright, xleft_inc, xright_inc;
-	int r, g, b, a, z, s, t, w;
-	int drdx = 0, dgdx = 0, dbdx = 0, dadx = 0, dzdx = 0, dsdx = 0, dtdx = 0, dwdx = 0;
-	int drde = 0, dgde = 0, dbde = 0, dade = 0, dzde = 0, dsde = 0, dtde = 0, dwde = 0;
-	int flip = (_w1 & 0x800000) ? 1 : 0;
+	drdx = 0;
+	dgdx = 0;
+	dbdx = 0;
+	dadx = 0;
+	dzdx = 0;
+	dsdx = 0;
+	dtdx = 0;
+	dwdx = 0;
+	drde = 0;
+	dgde = 0;
+	dbde = 0;
+	dade = 0;
+	dzde = 0;
+	dsde = 0;
+	dtde = 0;
+	dwde = 0;
+	flip = (_w1 & 0x800000) ? 1 : 0;
 
-	s32 yl, ym, yh;
-	s32 xl, xm, xh;
-	s32 dxldy, dxhdy, dxmdy;
-	u32 w3, w4, w5, w6, w7, w8;
 
-	const u32 * shade_base = _pRdpCmd + 8;
-	const u32 * texture_base = _pRdpCmd + 8;
-	const u32 * zbuffer_base = _pRdpCmd + 8;
+	shade_base = _pRdpCmd + 8;
+	texture_base = _pRdpCmd + 8;
+	zbuffer_base = _pRdpCmd + 8;
 
 	if (_shade != 0) {
 		texture_base += 16;
@@ -1001,7 +957,7 @@ void gDPLLETriangle(u32 _w1, u32 _w2, int _shade, int _texture, int _zbuffer, co
 		s    = (texture_base[0 ] & 0xffff0000) | ((texture_base[4 ] >> 16) & 0x0000ffff);
 		t    = ((texture_base[0 ] << 16) & 0xffff0000)      | (texture_base[4 ] & 0x0000ffff);
 		w    = (texture_base[1 ] & 0xffff0000) | ((texture_base[5 ] >> 16) & 0x0000ffff);
-		//    w = abs(w);
+		/* w = abs(w); */
 		dsdx = (texture_base[2 ] & 0xffff0000) | ((texture_base[6 ] >> 16) & 0x0000ffff);
 		dtdx = ((texture_base[2 ] << 16) & 0xffff0000)      | (texture_base[6 ] & 0x0000ffff);
 		dwdx = (texture_base[3 ] & 0xffff0000) | ((texture_base[7 ] >> 16) & 0x0000ffff);
@@ -1021,21 +977,19 @@ void gDPLLETriangle(u32 _w1, u32 _w2, int _shade, int _texture, int _zbuffer, co
 	dzdx >>= 2;  dzde >>= 2;
 	dwdx >>= 2;  dwde >>= 2;
 
-#define XSCALE(x) (float(x)/(1<<18))
-#define YSCALE(y) (float(y)/(1<<2))
-#define ZSCALE(z) ((gDP.otherMode.depthSource == G_ZS_PRIM)? gDP.primDepth.z : float(u32(z))/0xffff0000)
+#define XSCALE(x) ((float)(x)/(1<<18))
+#define YSCALE(y) ((float)(y)/(1<<2))
+#define ZSCALE(z) ((gDP.otherMode.depthSource == G_ZS_PRIM)? gDP.primDepth.z : (float)((u32)(z))/0xffff0000)
 #define PERSP_EN (gDP.otherMode.texturePersp != 0)
-#define WSCALE(z) 1.0f/(PERSP_EN? (float(u32(z) + 0x10000)/0xffff0000) : 1.0f)
+#define WSCALE(z) 1.0f/(PERSP_EN? ((float)((u32)(z) + 0x10000)/0xffff0000) : 1.0f)
 #define CSCALE(c) _FIXED2FLOATCOLOR((((c)>0x3ff0000? 0x3ff0000:((c)<0? 0 : (c)))>>18), 8)
 #define _PERSP(w) ( w )
 #define PERSP(s, w) ( ((s64)(s) << 20) / (_PERSP(w)? _PERSP(w):1) )
-#define SSCALE(s, _w) (PERSP_EN? float(PERSP(s, _w))/(1 << 10) : float(s)/(1<<21))
-#define TSCALE(s, w) (PERSP_EN? float(PERSP(s, w))/(1 << 10) : float(s)/(1<<21))
+#define SSCALE(s, _w) (PERSP_EN? (float)(PERSP(s, _w))/(1 << 10) : (float)(s)/(1<<21))
+#define TSCALE(s, w) (PERSP_EN? (float)(PERSP(s, w))/(1 << 10) : (float)(s)/(1<<21))
 
-	GraphicsDrawer & drawer = dwnd().getDrawer();
-	drawer.setDMAVerticesSize(16);
-	SPVertex * vtx0 = drawer.getDMAVerticesData();
-	SPVertex * vtx = vtx0;
+	vtx0 = gli_drawer_dma_vertices(16);
+	vtx = vtx0;
 
 	xleft = xm;
 	xright = xh;
@@ -1098,13 +1052,13 @@ void gDPLLETriangle(u32 _w1, u32 _w2, int _shade, int _texture, int _zbuffer, co
 		else w += dwde*(j-1);
 		r += drde*j;  g += dgde*j;  b += dbde*j;  a += dade*j;
 		z += dzde*j;
-		// render ...
+		/* render ... */
 	}
 
 	if (xl != xh)
 		xleft = xl;
 
-	//if (yl-ym > 0)
+	/* if (yl-ym > 0) */
 	{
 		int dx = (xleft-xright)>>16;
 		if ((!flip && xleft <= xright) ||
@@ -1150,7 +1104,7 @@ void gDPLLETriangle(u32 _w1, u32 _w2, int _shade, int _texture, int _zbuffer, co
 	xright_inc = dxhdy;
 
 	j = yl-ym;
-	//j--; // ?
+	/* j--; ? */
 	xleft += xleft_inc*j;  xright += xright_inc*j;
 	s += dsde*j;  t += dtde*j;  w += dwde*j;
 	r += drde*j;  g += dgde*j;  b += dbde*j;  a += dade*j;
@@ -1167,7 +1121,7 @@ void gDPLLETriangle(u32 _w1, u32 _w2, int _shade, int _texture, int _zbuffer, co
 		--yl;
 	}
 
-	// render ...
+	/* render ... */
 	if (j >= 0) {
 		int dx = (xleft-xright)>>16;
 		if ((!flip && xleft <= xright) ||
@@ -1215,7 +1169,7 @@ void gDPLLETriangle(u32 _w1, u32 _w2, int _shade, int _texture, int _zbuffer, co
 	if (_zbuffer != 0)
 		gSP.geometryMode |= G_ZBUFFER;
 
-	drawer.drawScreenSpaceTriangle(static_cast<u32>(vtx - vtx0));
+	gli_drawer_draw_screen_strip((u32)(vtx - vtx0));
 	gSP.textureTile[0] = textureTileOrg[0];
 	gSP.textureTile[1] = textureTileOrg[1];
 

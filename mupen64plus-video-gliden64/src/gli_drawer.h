@@ -17,6 +17,9 @@ void gli_drawer_draw_screen_triangles(u32 _numVtx);
 SPVertex *gli_drawer_take_dma_vertices(u32 _n);
 void gli_drawer_draw_dma_pending(void);
 void gli_drawer_draw_screen_strip(u32 _numVtx);
+void gli_drawer_clear_depth(void);
+void gli_drawer_draw_rect(s32 _ulx, s32 _uly, s32 _lrx, s32 _lry);
+void gli_drawer_textured_rect(f32 _ulx, f32 _uly, f32 _lrx, f32 _lry, f32 _dsdx, f32 _dtdy, s16 _s, s16 _t, bool _flip);
 
 /* all three vertices outside the same clip plane */
 #define GLI_IS_CLIPPED(_v, _a, _b, _c) (((_v)[_a].clip & (_v)[_b].clip & (_v)[_c].clip) != 0)

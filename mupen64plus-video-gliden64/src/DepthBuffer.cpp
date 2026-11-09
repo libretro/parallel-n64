@@ -13,6 +13,7 @@
 #include <Graphics/Context.h>
 #include <Graphics/Parameters.h>
 #include "DisplayWindow.h"
+#include "gli_framebuffer.h"
 
 using namespace graphics;
 
@@ -540,4 +541,14 @@ bool gli_depthbuffer_software_target(const u16 ** _zLUT, u32 * _width)
 	*_zLUT = depthBufferList().getZLUT();
 	*_width = current->m_width;
 	return true;
+}
+
+void gli_depth_set_image(u32 _address)
+{
+	depthBufferList().saveBuffer(_address);
+}
+
+void gli_depth_set_cleared(void)
+{
+	depthBufferList().setCleared(true);
 }

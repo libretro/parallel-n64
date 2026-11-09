@@ -27,6 +27,8 @@
 #include <Graphics/Context.h>
 #include <Graphics/Parameters.h>
 #include "DisplayWindow.h"
+#include "gli_framebuffer.h"
+#include "gli_drawer.h"
 
 using namespace std;
 using namespace graphics;
@@ -1751,4 +1753,137 @@ void calcCoordsScales(const FrameBuffer * _pBuffer, f32 & _scaleX, f32 & _scaleY
 	const u32 bufferHeight = VI_GetMaxBufferHeight(bufferWidth);
 	_scaleX = 1.0f / f32(bufferWidth);
 	_scaleY = 1.0f / f32(bufferHeight);
+}
+
+/* gDP's way into the list */
+void gli_fb_set_color_image(u32 _address, u32 _format, u32 _size, u32 _width)
+{
+	frameBufferList().saveBuffer(_address, (u16)_format, (u16)_size, (u16)_width, false);
+}
+
+void gli_fb_fill_rdram(s32 _ulx, s32 _uly, s32 _lrx, s32 _lry)
+{
+	frameBufferList().fillRDRAM(_ulx, _uly, _lrx, _lry);
+}
+
+void gli_fb_set_changed(f32 _maxY)
+{
+	frameBufferList().setBufferChanged(_maxY);
+}
+
+void gli_fb_stereo_sync(void)
+{
+	dwnd().getDrawer().flush();
+	frameBufferList().updateCurrentBufferEndAddress();
+}
+
+void gli_fb_full_sync(bool _lle)
+{
+	if (config.frameBufferEmulation.copyAuxToRDRAM != 0) {
+		frameBufferList().copyAux();
+		frameBufferList().removeAux();
+	}
+
+	dwnd().getDrawer().flush();
+
+	frameBufferList().updateCurrentBufferEndAddress();
+
+	FrameBuffer * pCurrentBuffer = frameBufferList().getCurrent();
+	if ((config.frameBufferEmulation.copyToRDRAM != Config::ctDisable || (config.generalEmulation.hacks & hack_subscreen) != 0) &&
+		!FBInfo::fbInfo.isSupported() &&
+		pCurrentBuffer != nullptr &&
+		!pCurrentBuffer->isAuxiliary()
+	)
+		FrameBuffer_CopyToRDRAM(gDP.colorImage.address, config.frameBufferEmulation.copyToRDRAM == Config::ctSync);
+
+	if (_lle) {
+		if (config.frameBufferEmulation.copyDepthToRDRAM != Config::cdDisable && !FBInfo::fbInfo.isSupported())
+			FrameBuffer_CopyDepthBuffer(gDP.colorImage.address);
+	}
+}
+
+bool gli_fb_check_texture(u32 _address, u32 _width, u32 _bytes)
+{
+	gDP.loadTile->textureMode = TEXTUREMODE_NORMAL;
+	gDP.loadTile->frameBufferAddress = 0U;
+	gDP.changed |= CHANGED_TMEM;
+	if (!config.frameBufferEmulation.enable)
+		return false;
+
+	FrameBufferList & fbList = frameBufferList();
+	FrameBuffer *pBuffer = fbList.findBuffer(_address);
+	bool bRes = pBuffer != nullptr && pBuffer->m_readable;
+	while (bRes) {
+		if ((config.generalEmulation.hacks & hack_blurPauseScreen) != 0) {
+			if (gDP.colorImage.address == gDP.depthImageAddress && pBuffer->m_copiedToRdram) {
+				memcpy(RDRAM + gDP.depthImageAddress,
+					RDRAM + pBuffer->m_startAddress,
+					(pBuffer->m_width*pBuffer->m_height) << pBuffer->m_size >> 1);
+				pBuffer->m_copiedToRdram = false;
+				fbList.getCurrent()->m_isPauseScreen = true;
+			}
+			if (pBuffer->m_isPauseScreen) {
+				bRes = false;
+				break;
+			}
+		}
+
+		if (gDP.otherMode.textureLUT == G_TT_RGBA16 && (config.generalEmulation.hacks & hack_StarCraftBackgrounds) != 0) {
+			bRes = false;
+			break;
+		}
+
+		if (pBuffer->m_cfb) {
+			fbList.removeBuffer(pBuffer->m_startAddress);
+			bRes = false;
+			break;
+		}
+
+		if ((config.generalEmulation.hacks & hack_noDepthFrameBuffers) != 0 && pBuffer->m_isDepthBuffer) {
+			fbList.removeBuffer(pBuffer->m_startAddress);
+			bRes = false;
+			break;
+		}
+
+		const u32 texEndAddress = _address + _bytes - 1;
+		if (_address > pBuffer->m_startAddress &&
+			pBuffer->m_width != _width &&
+			texEndAddress > (pBuffer->m_endAddress + (pBuffer->m_width << pBuffer->m_size >> 1))) {
+			//fbList.removeBuffer(pBuffer->m_startAddress);
+			bRes = false;
+			break;
+		}
+
+		if (gDP.loadTile->loadType == LOADTYPE_TILE &&
+			gDP.textureImage.width != pBuffer->m_width &&
+			gDP.textureImage.size != pBuffer->m_size) {
+			//fbList.removeBuffer(pBuffer->m_startAddress); // Does not work with Zelda MM
+			bRes = false;
+			break;
+		}
+
+		bRes = pBuffer->isValid(false);
+		if (!bRes && pBuffer != fbList.getCurrent()) {
+			fbList.removeBuffer(pBuffer->m_startAddress);
+			break;
+		}
+
+		pBuffer->m_loadType = gDP.loadTile->loadType;
+		pBuffer->m_loadTileOrigin.uls = gDP.loadTile->uls;
+		pBuffer->m_loadTileOrigin.ult = gDP.loadTile->ult;
+		gDP.loadTile->frameBufferAddress = pBuffer->m_startAddress;
+		gDP.loadTile->textureMode = TEXTUREMODE_FRAMEBUFFER;
+		break;
+	}
+
+	for (int nTile = gSP.texture.tile; nTile < 6; ++nTile) {
+		if (gDP.tiles[nTile].tmem == gDP.loadTile->tmem) {
+			gDPTile & curTile = gDP.tiles[nTile];
+			curTile.textureMode = gDP.loadTile->textureMode;
+			curTile.loadType = gDP.loadTile->loadType;
+			curTile.frameBufferAddress = gDP.loadTile->frameBufferAddress;
+			curTile.imageAddress = gDP.loadTile->imageAddress;
+		}
+	}
+	return bRes;
 }

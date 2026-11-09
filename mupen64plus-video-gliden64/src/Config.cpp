@@ -16,6 +16,11 @@ u32 gli_Config_hacks(void)
 	return config.generalEmulation.hacks;
 }
 
+u32 gli_Config_fragmentDepthWrite(void)
+{
+	return config.generalEmulation.enableFragmentDepthWrite;
+}
+
 void Config::resetToDefaults()
 {
 	printf("Configs reset\n");

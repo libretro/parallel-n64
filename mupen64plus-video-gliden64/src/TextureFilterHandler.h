@@ -1,13 +1,20 @@
 #ifndef TEXTUREFILTERHANDLER_H
 #define TEXTUREFILTERHANDLER_H
 
+#include <boolean.h>
 #include "Types.h"
 
+#ifdef __cplusplus
+extern "C"
+#endif
+bool gli_TFH_is_inited(void);
+
+#ifdef __cplusplus
 class TextureFilterHandler
 {
 public:
 	TextureFilterHandler() : m_inited(0), m_options(0) {}
-	// It's not safe to call shutdown() in destructor, because texture filter has its own static objects, which can be destroyed first.
+	/* It's not safe to call shutdown() in destructor, because texture filter has its own static objects, which can be destroyed first. */
 	~TextureFilterHandler() { shutdown(); }
 	void init();
 	void shutdown();
@@ -21,5 +28,6 @@ private:
 };
 
 extern TextureFilterHandler TFH;
+#endif
 
-#endif // TEXTUREFILTERHANDLER_H
+#endif /* TEXTUREFILTERHANDLER_H */

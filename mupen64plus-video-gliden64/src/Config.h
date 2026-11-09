@@ -251,9 +251,13 @@ struct Config
 #define config gliden64Config
 
 #ifdef __cplusplus
-extern "C"
+extern "C" {
 #endif
 u32 gli_Config_hacks(void);
+u32 gli_Config_fragmentDepthWrite(void);
+#ifdef __cplusplus
+}
+#endif
 
 #ifdef __cplusplus
 extern Config gliden64Config;

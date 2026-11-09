@@ -131,3 +131,8 @@ void TextureFilterHandler::dumpcache()
 }
 
 TextureFilterHandler TFH;
+
+bool gli_TFH_is_inited(void)
+{
+	return TFH.isInited();
+}

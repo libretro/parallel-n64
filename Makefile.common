@@ -375,6 +375,7 @@ CXXFLAGS += -DHAVE_GLIDEN64 -DMUPENPLUSAPI -D__LIBRETRO__
 
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/StereoJournal.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/N64.c
+SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/gDP.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/SoftwareRender.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/DepthBufferRender/ClipPolygon.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/DepthBufferRender/DepthBufferRender.c
@@ -430,7 +431,6 @@ SOURCES_CXX   += \
     $(VIDEODIR_GLIDEN64)/src/FrameBuffer.cpp                                                      \
     $(VIDEODIR_GLIDEN64)/src/FrameBufferInfo.cpp                                                  \
     $(VIDEODIR_GLIDEN64)/src/GBI.cpp                                                              \
-    $(VIDEODIR_GLIDEN64)/src/gDP.cpp                                                              \
     $(VIDEODIR_GLIDEN64)/src/gSP.cpp                                                              \
     $(VIDEODIR_GLIDEN64)/src/PaletteTexture.cpp                                                   \
     $(VIDEODIR_GLIDEN64)/src/PostProcessor.cpp                                                    \
