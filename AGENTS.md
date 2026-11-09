@@ -28,6 +28,27 @@ Not there yet, most urgent first. These are debts, not precedent:
 3. paraLLEl-RDP needs the pipeline worker, which needs the device's pipeline cache
    control: a device without it builds on the frame's threads.
 
+## Second rule: no allocation mid-game
+
+Nothing allocates while a game runs: no `malloc`, `new`, growing container or new
+GPU object on the emulation, RDP, render or audio paths. An allocation mid-game is
+a stutter, and "only when it first grows" is the same stutter.
+
+- Allocate at content load, context reset or a resolution change, sized for the
+  worst case the guest can ask for.
+- Past that size, flush, drop or recycle something already allocated. Never grow.
+- A new per-frame or per-draw path brings its storage with it, in the same change.
+- Pools and fixed tables are the default; a free list costs nothing to pop.
+
+Not there yet, in GLideN64. These are debts, not precedent:
+
+1. New frame and depth buffers are created when a game first draws to them, list
+   nodes, textures and FBOs alike (`FrameBufferList`, `DepthBufferList`).
+2. The texture cache allocates a new entry and GPU texture on each miss, and a
+   decode too big for its scratch buffer uses the heap (`Textures.cpp`).
+3. `m_dmaVertices` grows when a game asks for more than it holds, the texrect coords
+   vector grows past its reserve, and `m_RdramCopy` is sized when a buffer is copied.
+
 ## Method: the speed of light
 
 Compare a path with what the hardware must physically do, not with the last
