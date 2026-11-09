@@ -154,7 +154,7 @@ def worst(gl, vk):
     return m
 
 
-def compare(a, name, rom, frames, options=(), modes=(("generic", {"GLIDEN64_VULKAN": "generic"}), ("own", {})), skip=1):
+def compare(a, name, rom, frames, options=(), modes=(("generic", {"GLIDEN64_VULKAN": "generic"}), ("own", {}))):
     failures = 0
     with tempfile.TemporaryDirectory() as tmp:
         gl = run(a.gl, a.core, rom, tmp, "gl", frames, "opengl", {}, options)
@@ -167,9 +167,9 @@ def compare(a, name, rom, frames, options=(), modes=(("generic", {"GLIDEN64_VULK
             top = 0
             # The first presented frame is a dupe (nothing latched yet): GL's
             # host then reads its framebuffer, Vulkan's has no image to read.
-            common = sorted(set(gl) & set(vk))[skip:]
-            if len(common) != len(gl) - skip:
-                bad = abs(len(gl) - skip - len(common))
+            common = sorted(set(gl) & set(vk))[1:]
+            if len(common) != len(gl) - 1:
+                bad = abs(len(gl) - 1 - len(common))
             for f in common:
                 w = worst(gl[f], vk[f])
                 top = max(top, w)
@@ -200,7 +200,7 @@ def main():
         # the overscan target follows the game's image: resizing replaces its texture
         culling_cartridge(rom, resize=True)
         failures += compare(a, "resize", rom, 40, ["parallel-n64-gliden64-EnableFBEmulation=True", "parallel-n64-gliden64-EnableOverscan=Enabled",
-                                                  "parallel-n64-gliden64-EnableNativeResFactor=2"], skip=8)
+                                                  "parallel-n64-gliden64-EnableNativeResFactor=2"])
     for name in (cart.KROM[:1] if a.quick else cart.KROM):
         failures += compare(a, name, cart.fetch(a.roms, name), 20 if a.quick else 60)
         failures += compare(a, name + " fb", cart.fetch(a.roms, name), 20,

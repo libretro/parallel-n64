@@ -491,6 +491,8 @@ public:
 		else vkr_fbo_bind(g_r, 1, 1, u32(_h));
 	}
 	void addFrameBufferRenderTarget(const Context::FrameBufferRenderTarget & _p) override {
+		/* attaching binds, as it does in GL: a new buffer is drawn to without another bind */
+		bindFramebuffer(_p.bufferTarget, _p.bufferHandle);
 		if (_p.attachment == bufferAttachment::COLOR_ATTACHMENT0)
 			vkr_fbo_color(g_r, u32(_p.bufferHandle), u32(_p.textureHandle));
 		else if (_p.attachment == bufferAttachment::DEPTH_ATTACHMENT)
