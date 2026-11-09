@@ -10,6 +10,7 @@
 #include "glsl_CombinerInputs.h"
 #include "glsl_CombinerProgramImpl.h"
 #include "glsl_CombinerProgramBuilder.h"
+#include <Graphics/CombinerStages.h>
 #include "glsl_CombinerProgramUniformFactory.h"
 #include <NoiseTexture.h>
 #include <Graphics/OpenGLContext/opengl_CachedFunctions.h>
@@ -100,53 +101,6 @@ const char *AlphaInput[] = {
 	"1.0",
 	"0.0"
 };
-
-inline
-int correctFirstStageParam(int _param)
-{
-	switch (_param) {
-	case G_GCI_TEXEL1:
-		return G_GCI_TEXEL0;
-	case G_GCI_TEXEL1_ALPHA:
-		return G_GCI_TEXEL0_ALPHA;
-	}
-	return _param;
-}
-
-static
-void _correctFirstStageParams(CombinerStage & _stage)
-{
-	for (int i = 0; i < _stage.numOps; ++i) {
-		_stage.op[i].param1 = correctFirstStageParam(_stage.op[i].param1);
-		_stage.op[i].param2 = correctFirstStageParam(_stage.op[i].param2);
-		_stage.op[i].param3 = correctFirstStageParam(_stage.op[i].param3);
-	}
-}
-
-inline
-int correctSecondStageParam(int _param)
-{
-	switch (_param) {
-	case G_GCI_TEXEL0:
-		return G_GCI_TEXEL1;
-	case G_GCI_TEXEL1:
-		return G_GCI_TEXEL0;
-	case G_GCI_TEXEL0_ALPHA:
-		return G_GCI_TEXEL1_ALPHA;
-	case G_GCI_TEXEL1_ALPHA:
-		return G_GCI_TEXEL0_ALPHA;
-	}
-	return _param;
-}
-
-static
-void _correctSecondStageParams(CombinerStage & _stage) {
-	for (int i = 0; i < _stage.numOps; ++i) {
-		_stage.op[i].param1 = correctSecondStageParam(_stage.op[i].param1);
-		_stage.op[i].param2 = correctSecondStageParam(_stage.op[i].param2);
-		_stage.op[i].param3 = correctSecondStageParam(_stage.op[i].param3);
-	}
-}
 
 static
 CombinerInputs _compileCombiner(const CombinerStage & _stage, const char** _Input, std::stringstream & _strShader) {
@@ -2150,42 +2104,6 @@ bool needClampColor() {
 	return g_cycleType <= G_CYC_2CYCLE;
 }
 
-static
-bool combinedColorC(const gDPCombine & _combine) {
-	if (g_cycleType != G_CYC_2CYCLE)
-		return false;
-	return _combine.mRGB1 == G_CCMUX_COMBINED;
-}
-
-static
-bool combinedAlphaC(const gDPCombine & _combine) {
-	if (g_cycleType != G_CYC_2CYCLE)
-		return false;
-	return _combine.mA1 == G_ACMUX_COMBINED;
-}
-
-static
-bool combinedColorABD(const gDPCombine & _combine) {
-	if (g_cycleType != G_CYC_2CYCLE)
-		return false;
-	if (_combine.aRGB1 == G_CCMUX_COMBINED)
-		return true;
-	if (_combine.saRGB1 == G_CCMUX_COMBINED || _combine.sbRGB1 == G_CCMUX_COMBINED)
-		return _combine.mRGB1 != G_CCMUX_0;
-	return false;
-}
-
-static
-bool combinedAlphaABD(const gDPCombine & _combine) {
-	if (g_cycleType != G_CYC_2CYCLE)
-		return false;
-	if (_combine.aA1 == G_ACMUX_COMBINED)
-		return true;
-	if (_combine.saA1 == G_ACMUX_COMBINED || _combine.sbA1 == G_ACMUX_COMBINED)
-		return _combine.mA1 != G_ACMUX_0;
-	return false;
-}
-
 CombinerInputs CombinerProgramBuilder::compileCombiner(const CombinerKey & _key, Combiner & _color, Combiner & _alpha, std::string & _strShader)
 {
 	gDPCombine combine;
@@ -2194,15 +2112,15 @@ CombinerInputs CombinerProgramBuilder::compileCombiner(const CombinerKey & _key,
 	std::stringstream ssShader;
 
 	if (g_cycleType != G_CYC_2CYCLE) {
-		_correctFirstStageParams(_alpha.stage[0]);
-		_correctFirstStageParams(_color.stage[0]);
+		graphics::correctFirstStageParams(_alpha.stage[0]);
+		graphics::correctFirstStageParams(_color.stage[0]);
 	}
 	ssShader << "  alpha1 = ";
 	CombinerInputs inputs = _compileCombiner(_alpha.stage[0], AlphaInput, ssShader);
 	// Simulate N64 color sign-extend.
-	if (combinedAlphaC(combine))
+	if (graphics::combinedAlphaC(g_cycleType, combine))
 		m_signExtendAlphaC->write(ssShader);
-	else if (combinedAlphaABD(combine))
+	else if (graphics::combinedAlphaABD(g_cycleType, combine))
 		m_signExtendAlphaABD->write(ssShader);
 
 	if (g_cycleType < G_CYC_FILL)
@@ -2211,9 +2129,9 @@ CombinerInputs CombinerProgramBuilder::compileCombiner(const CombinerKey & _key,
 	ssShader << "  color1 = ";
 	inputs += _compileCombiner(_color.stage[0], ColorInput, ssShader);
 	// Simulate N64 color sign-extend.
-	if (combinedColorC(combine))
+	if (graphics::combinedColorC(g_cycleType, combine))
 		m_signExtendColorC->write(ssShader);
-	else if (combinedColorABD(combine))
+	else if (graphics::combinedColorABD(g_cycleType, combine))
 		m_signExtendColorABD->write(ssShader);
 
 	if (g_cycleType == G_CYC_2CYCLE) {
@@ -2221,7 +2139,7 @@ CombinerInputs CombinerProgramBuilder::compileCombiner(const CombinerKey & _key,
 		ssShader << "  combined_color = vec4(color1, alpha1);" << std::endl;
 		if (_alpha.numStages == 2) {
 			ssShader << "  alpha2 = ";
-			_correctSecondStageParams(_alpha.stage[1]);
+			graphics::correctSecondStageParams(_alpha.stage[1]);
 			inputs += _compileCombiner(_alpha.stage[1], AlphaInput, ssShader);
 		}
 		else
@@ -2231,7 +2149,7 @@ CombinerInputs CombinerProgramBuilder::compileCombiner(const CombinerKey & _key,
 
 		if (_color.numStages == 2) {
 			ssShader << "  color2 = ";
-			_correctSecondStageParams(_color.stage[1]);
+			graphics::correctSecondStageParams(_color.stage[1]);
 			inputs += _compileCombiner(_color.stage[1], ColorInput, ssShader);
 		}
 		else
@@ -2548,24 +2466,6 @@ std::string CombinerProgramBuilder::_uberCombiner(bool _textured)
 	return s.str();
 }
 
-static
-void _encodeStage(const CombinerStage & _stage, GLint * _ops)
-{
-	for (int i = 0; i < 4; ++i)
-		_ops[i] = -1;
-	for (int i = 0; i < _stage.numOps && i < 4; ++i) {
-		const CombinerOp & op = _stage.op[i];
-		if (op.op == INTER) {
-			_ops[0] = (INTER << 8) | op.param1;
-			_ops[1] = op.param2;
-			_ops[2] = op.param3;
-			_ops[3] = -1;
-			return;
-		}
-		_ops[i] = (op.op << 8) | op.param1;
-	}
-}
-
 /* Draws with the ubershader, with this key's stages, while the driver
  * compiles the key's own program; from then on it is that program. */
 class glsl::CombinerProgramAsync : public graphics::CombinerProgram
@@ -2777,19 +2677,19 @@ graphics::CombinerProgram * CombinerProgramBuilder::buildCombinerProgramAsync(Co
 		return nullptr;
 
 	GLint ops[16];
-	_encodeStage(_alpha.stage[0], ops);
-	_encodeStage(_color.stage[0], ops + 4);
-	_encodeStage(_alpha.stage[1], ops + 8);
-	_encodeStage(_color.stage[1], ops + 12);
+	graphics::encodeStage(_alpha.stage[0], ops);
+	graphics::encodeStage(_color.stage[0], ops + 4);
+	graphics::encodeStage(_alpha.stage[1], ops + 8);
+	graphics::encodeStage(_color.stage[1], ops + 12);
 
 	GLint flags = 0;
-	if (combinedAlphaC(combine))
+	if (graphics::combinedAlphaC(g_cycleType, combine))
 		flags |= UBER_ALPHA_C;
-	else if (combinedAlphaABD(combine))
+	else if (graphics::combinedAlphaABD(g_cycleType, combine))
 		flags |= UBER_ALPHA_ABD;
-	if (combinedColorC(combine))
+	if (graphics::combinedColorC(g_cycleType, combine))
 		flags |= UBER_COLOR_C;
-	else if (combinedColorABD(combine))
+	else if (graphics::combinedColorABD(g_cycleType, combine))
 		flags |= UBER_COLOR_ABD;
 	if (_alpha.numStages == 2 && _color.numStages == 2)
 		flags |= UBER_TWO_STAGES;

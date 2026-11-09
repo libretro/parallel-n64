@@ -1,6 +1,5 @@
 #include <string.h>
 #include <Config.h>
-#include <CombinerKey.h>
 #include <Combiner.h>
 #include <Textures.h>
 #include <NoiseTexture.h>
@@ -15,15 +14,17 @@
 #include <Graphics/Parameters.h>
 #include "CombinerValues.h"
 
-namespace graphics {
+using namespace graphics;
+
 
 static inline void set2(f32 * _d, f32 _a, f32 _b) { _d[0] = _a; _d[1] = _b; }
 static inline void set2(s32 * _d, s32 _a, s32 _b) { _d[0] = _a; _d[1] = _b; }
 static inline void set4(s32 * _d, s32 _a, s32 _b, s32 _c, s32 _e) { _d[0] = _a; _d[1] = _b; _d[2] = _c; _d[3] = _e; }
 static inline void copy4(f32 * _d, const f32 * _s) { memcpy(_d, _s, sizeof(f32) * 4); }
 
-u32 combinerValueGroups(const CombinerNeeds & _n, const CombinerKey & _key)
+extern "C" unsigned combinerValueGroups(const CombinerNeeds * _needs)
 {
+	const CombinerNeeds & _n = *_needs;
 	u32 g = 0;
 
 	if (_n.usesNoise)
@@ -43,20 +44,20 @@ u32 combinerValueGroups(const CombinerNeeds & _n, const CombinerKey & _key)
 			g |= CVG_Mipmap1;
 			if (config.generalEmulation.enableLOD != 0)
 				g |= CVG_Mipmap2;
-		} else if (_key.getCycleType() < G_CYC_COPY) {
+		} else if (_n.cycleType < G_CYC_COPY) {
 			g |= CVG_TextureFetch;
 		}
 		g |= CVG_TexturePersp;
 		if (_n.textureSize)
 			g |= CVG_TextureSize;
-		if (!_key.isRectKey())
+		if (!_n.isRect)
 			g |= CVG_TextureParams;
 	}
 
 	if (config.generalEmulation.enableLegacyBlending == 0) {
-		if (_key.getCycleType() == G_CYC_1CYCLE)
+		if (_n.cycleType == G_CYC_1CYCLE)
 			g |= CVG_Blend1Cycle;
-		else if (_key.getCycleType() == G_CYC_2CYCLE)
+		else if (_n.cycleType == G_CYC_2CYCLE)
 			g |= CVG_Blend2Cycle;
 	}
 
@@ -68,7 +69,7 @@ u32 combinerValueGroups(const CombinerNeeds & _n, const CombinerKey & _key)
 
 	if (_n.clampOffset)
 		g |= CVG_ClampOffset;
-	if (_key.isRectKey())
+	if (_n.isRect)
 		g |= CVG_RectColor;
 	if (_n.usesHwLighting)
 		g |= CVG_Lights;
@@ -333,8 +334,9 @@ static void updateColors(CombinerValues & _v)
 	_v.k5 = _FIXED2FLOATCOLOR(gDP.convert.k5, 8 );
 }
 
-void updateCombinerValues(CombinerValues & _v, u32 _groups)
+extern "C" void updateCombinerValues(CombinerValues * _values, unsigned _groups)
 {
+	CombinerValues & _v = *_values;
 	if (_groups & CVG_DepthScale) {
 		if (RSP.LLE)
 			set2(_v.depthScale, 0.5f, 0.5f);
@@ -433,6 +435,4 @@ void updateCombinerValues(CombinerValues & _v, u32 _groups)
 			memcpy(_v.lightColor[i], gSP.lights.rgb[i], sizeof(f32) * 3);
 		}
 	}
-}
-
 }

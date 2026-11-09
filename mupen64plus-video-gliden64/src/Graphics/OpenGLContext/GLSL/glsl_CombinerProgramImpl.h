@@ -36,8 +36,8 @@ namespace glsl {
 		u32 m_groups;
 		std::vector<Entry> m_entries;
 		std::vector<Sampler> m_samplers;
-		graphics::CombinerValues m_values;
-		graphics::CombinerValues m_uploaded;
+		CombinerValues m_values;
+		CombinerValues m_uploaded;
 	};
 
 	class CombinerProgramImpl : public graphics::CombinerProgram

@@ -6,8 +6,6 @@
 
 namespace glsl {
 
-using graphics::CombinerValues;
-
 enum Kind { I1, I2, I4, F1, F2, F3, F4 };
 
 static const u8 kindBytes[] = { 4, 8, 16, 4, 8, 12, 16 };
@@ -58,7 +56,7 @@ void CombinerUniforms::_add(GLint _loc, int _kind, u32 _offset)
 
 void CombinerUniforms::update(bool _force)
 {
-	graphics::updateCombinerValues(m_values, m_groups);
+	updateCombinerValues(&m_values, m_groups);
 
 	const u8 * const values = reinterpret_cast<const u8*>(&m_values);
 	u8 * const uploaded = reinterpret_cast<u8*>(&m_uploaded);
@@ -94,7 +92,7 @@ void CombinerProgramUniformFactory::buildUniforms(GLuint _program,
 												  const CombinerKey & _key,
 												  CombinerUniforms & _uniforms)
 {
-	graphics::CombinerNeeds needs;
+	CombinerNeeds needs;
 	needs.usesTexture = _inputs.usesTexture();
 	needs.usesLOD = _inputs.usesLOD();
 	needs.usesNoise = _inputs.usesNoise();
@@ -104,7 +102,9 @@ void CombinerProgramUniformFactory::buildUniforms(GLuint _program,
 	needs.textureSize = m_glInfo.isGLES2;
 	needs.depthScale = !m_glInfo.isGLES2;
 	needs.clampOffset = m_glInfo.isGLESX && m_glInfo.noPerspective;
-	_uniforms.m_groups = graphics::combinerValueGroups(needs, _key);
+	needs.cycleType = _key.getCycleType();
+	needs.isRect = _key.isRectKey();
+	_uniforms.m_groups = combinerValueGroups(&needs);
 
 	_uniforms.m_entries.reserve(sizeof(uniformNames) / sizeof(uniformNames[0]) + 16);
 	for (const UniformName & n : uniformNames)
