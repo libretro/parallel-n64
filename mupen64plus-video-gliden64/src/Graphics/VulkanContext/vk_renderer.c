@@ -282,6 +282,7 @@ struct vkr_renderer
    int cur_rect;
    int force_generic;
    int strict; /* tools/ci: a pipeline prewarm did not build is a failure */
+   int prewarmed;
    char cache_path[1024];
    VkDeviceSize vb_offset, ib_offset;
    int vb_valid, ib_valid;
@@ -1099,6 +1100,8 @@ static int get_render_pass(vkr_renderer *r, VkFormat color, VkFormat depth, uint
    for (i = 0; i < r->n_rps; i++)
       if (r->rps[i].color == color && r->rps[i].depth == depth && r->rps[i].samples == samples)
          return (int)i;
+   if (r->strict && r->prewarmed)
+      abort(); /* tools/ci: a format prewarm does not cover */
    if (r->n_rps >= MAX_RPS)
       return -1;
 
@@ -2874,8 +2877,8 @@ static void prewarm(vkr_renderer *r)
       { VKR_VS_SPECIAL, VKR_FS_GAMMA },
       { VKR_VS_FXAA, VKR_FS_FXAA }
    };
-   int rps[4];
-   unsigned n_rps = 0, p, clampf, shape, k, i;
+   int rps[6];
+   unsigned n_rps = 0, n_full, p, clampf, shape, k, i;
    int depth;
 
    rps[n_rps++] = get_render_pass(r, VK_FORMAT_R8G8B8A8_UNORM, VK_FORMAT_UNDEFINED, 1);
@@ -2885,10 +2888,17 @@ static void prewarm(vkr_renderer *r)
       rps[n_rps++] = get_render_pass(r, VK_FORMAT_R8G8B8A8_UNORM, r->depth_format, (uint32_t)r->cfg.msaa);
       rps[n_rps++] = get_render_pass(r, VK_FORMAT_R8G8B8A8_UNORM, VK_FORMAT_UNDEFINED, (uint32_t)r->cfg.msaa);
    }
+   n_full = n_rps;
+   /* the monochrome targets: every render pass exists before the first draw */
+   rps[n_rps++] = get_render_pass(r, VK_FORMAT_R8_UNORM, VK_FORMAT_UNDEFINED, 1);
+   rps[n_rps++] = get_render_pass(r, VK_FORMAT_R8_UNORM, r->depth_format, 1);
 
    for (k = 0; k < n_rps; k++)
    {
       if (rps[k] < 0)
+         continue;
+      /* each state of its own would be a lot of pipelines for targets this rare */
+      if (k >= n_full && !r->eds3)
          continue;
       r->st.rp = (unsigned)rps[k];
       for (depth = 0; depth < (r->eds ? 1 : 2); depth++)
@@ -2920,6 +2930,7 @@ static void prewarm(vkr_renderer *r)
    r->depth_clamp = 0;
    r->st.src = r->st.dst = r->st.src_a = r->st.dst_a = 0;
    rdp_worker_wait(r->worker, jobs_done, r);
+   r->prewarmed = 1;
 }
 
 static unsigned make_dummy(vkr_renderer *r, int fmt, unsigned samples)
