@@ -1,7 +1,12 @@
 #ifndef STEREO_FRAMES_H
 #define STEREO_FRAMES_H
 
+#include <boolean.h>
 #include "Types.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 struct FrameBuffer;
 
@@ -12,25 +17,29 @@ struct FrameBuffer;
 extern bool g_stereoFramesCapturing;
 
 /* A task drawn for both eyes starts: no left eye of it is kept yet */
-void StereoFrames_beginTask();
+void gli_StereoFrames_beginTask(void);
 
-void StereoFrames_setCapturing(bool _capturing);
+void gli_StereoFrames_setCapturing(bool _capturing);
 
 /* A buffer drawn into again without its left eye kept by this task loses the old one */
-void StereoFrames_noteEntered(u32 _address);
+void gli_StereoFrames_noteEntered(u32 _address);
 
 /* Entered during this left eye pass */
-bool StereoFrames_wasEntered(u32 _address);
+bool gli_StereoFrames_wasEntered(u32 _address);
 
 /* Keeps a copy of the buffer as its left eye */
-void StereoFrames_captureLeftEye(FrameBuffer * _pBuffer);
+void gli_StereoFrames_captureLeftEye(struct FrameBuffer * _pBuffer);
 
 /* The kept copy belonging to this N64 frame buffer, or NULL */
-FrameBuffer * StereoFrames_leftEye(const FrameBuffer * _pBuffer);
+struct FrameBuffer * gli_StereoFrames_leftEye(const struct FrameBuffer * _pBuffer);
 
 /* Drops the kept copy, so the buffer is shown flat */
-void StereoFrames_forget(const FrameBuffer * _pBuffer);
+void gli_StereoFrames_forget(const struct FrameBuffer * _pBuffer);
 
-void StereoFrames_destroy();
+void gli_StereoFrames_destroy(void);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* STEREO_FRAMES_H */

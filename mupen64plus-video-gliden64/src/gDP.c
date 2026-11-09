@@ -681,7 +681,7 @@ void gli_gDPFillRectangle( s32 ulx, s32 uly, s32 lrx, s32 lry )
 				gli_drawer_clear_depth();
 				depthBuffer = dbCleared;
 			} else
-				gli_depth_set_cleared();
+				gli_depth_set_cleared(true);
 		}
 	} else if (gDP.fillColor.color == DepthClearColor && gDP.otherMode.cycleType == G_CYC_FILL) {
 		depthBuffer = dbFound;
@@ -691,7 +691,7 @@ void gli_gDPFillRectangle( s32 ulx, s32 uly, s32 lrx, s32 lry )
 			gli_drawer_clear_depth();
 			depthBuffer = dbCleared;
 		} else
-			gli_depth_set_cleared();
+			gli_depth_set_cleared(true);
 	}
 
 	if (depthBuffer != dbCleared) {

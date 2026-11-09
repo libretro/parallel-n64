@@ -40,7 +40,7 @@ MY_LOCAL_SRC_FILES :=                                                           
     $(SRCDIR)/PaletteTexture.cpp                                                   \
     $(SRCDIR)/PostProcessor.cpp                                                    \
     $(SRCDIR)/RDP.c                                                              \
-    $(SRCDIR)/RSP.cpp                                                              \
+    $(SRCDIR)/RSP.c                                                              \
     $(SRCDIR)/SoftwareRender.c                                                   \
     $(SRCDIR)/TexrectDrawer.cpp                                                    \
     $(SRCDIR)/TextureFilterHandler.cpp                                             \

@@ -228,3 +228,13 @@ void gli_gfx_clear_color(void)
 {
 	gfxContext.clearColorBuffer(0.0f, 0.0f, 0.0f, 0.0f);
 }
+
+bool gli_window_is_resizing(void)
+{
+	return dwnd().isResizeWindow();
+}
+
+u32 gli_window_swap_count(void)
+{
+	return dwnd().getBuffersSwapCount();
+}

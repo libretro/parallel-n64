@@ -10,6 +10,11 @@ extern "C"
 bool gli_TFH_is_inited(void);
 
 #ifdef __cplusplus
+extern "C"
+#endif
+void gli_TFH_shutdown(void);
+
+#ifdef __cplusplus
 class TextureFilterHandler
 {
 public:

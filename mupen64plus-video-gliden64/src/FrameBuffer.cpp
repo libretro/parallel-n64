@@ -566,7 +566,7 @@ void FrameBufferList::init()
 void FrameBufferList::destroy() {
 	gfxContext.bindFramebuffer(bufferTarget::FRAMEBUFFER, ObjectHandle::defaultFramebuffer);
 	m_list.clear();
-	StereoFrames_destroy();
+	gli_StereoFrames_destroy();
 	m_pCurrent = nullptr;
 	m_pCopy = nullptr;
 	m_overscan.destroy();
@@ -699,8 +699,8 @@ void FrameBufferList::saveBuffer(u32 _address, u16 _format, u16 _size, u16 _widt
 
 	// stereoscopic 3D
 	if (m_pCurrent != nullptr && !m_pCurrent->m_isDepthBuffer && g_stereoFramesCapturing &&
-		StereoFrames_wasEntered(m_pCurrent->m_startAddress)) {
-		StereoFrames_captureLeftEye(m_pCurrent);
+		gli_StereoFrames_wasEntered(m_pCurrent->m_startAddress)) {
+		gli_StereoFrames_captureLeftEye(m_pCurrent);
 		// The copy binds the screen; leave the state as the walk had it
 		gfxContext.bindFramebuffer(bufferTarget::DRAW_FRAMEBUFFER, m_pCurrent->m_FBO);
 	}
@@ -847,7 +847,7 @@ void FrameBufferList::saveBuffer(u32 _address, u16 _format, u16 _size, u16 _widt
 		gfxContext.clearColorBuffer(0.0f, 0.0f, 0.0f, 0.0f);
 	}
 	if (config.stereo.mode == stereoBothEyes)
-		StereoFrames_noteEntered(m_pCurrent->m_startAddress);
+		gli_StereoFrames_noteEntered(m_pCurrent->m_startAddress);
 	m_pCurrent->m_isPauseScreen = m_pCurrent->m_isOBScreen = false;
 	m_pCurrent->m_copied = false;
 	m_pCurrent->m_swapCount = wnd.getBuffersSwapCount();
@@ -1514,7 +1514,7 @@ void FrameBufferList::renderBuffer()
 
 		// The left eye from the copy its pass left, through the same post-processing
 		if (eyes == 2 && eye == 0) {
-			FrameBuffer * pLeftEye = StereoFrames_leftEye(pBuffer);
+			FrameBuffer * pLeftEye = gli_StereoFrames_leftEye(pBuffer);
 			if (pLeftEye != nullptr)
 				pSource = pLeftEye;
 		}
@@ -1563,7 +1563,7 @@ void FrameBufferList::renderBuffer()
 			pNextBuffer->m_isMainBuffer = true;
 			pSource = pNextBuffer;
 			if (eyes == 2 && eye == 0) {
-				FrameBuffer * pLeftEye = StereoFrames_leftEye(pNextBuffer);
+				FrameBuffer * pLeftEye = gli_StereoFrames_leftEye(pNextBuffer);
 				if (pLeftEye != nullptr)
 					pSource = pLeftEye;
 			}
@@ -1947,4 +1947,28 @@ void gli_fb_render(void)
 void gli_fb_clear_changed(void)
 {
 	frameBufferList().clearBuffersChanged();
+}
+
+FrameBuffer * gli_fb_current(void)
+{
+	return frameBufferList().getCurrent();
+}
+
+u32 gli_fb_start_address(const FrameBuffer * _pBuffer)
+{
+	return _pBuffer->m_startAddress;
+}
+
+void gli_fb_make_current(u32 _address)
+{
+	FrameBuffer * pBuffer = frameBufferList().findBuffer(_address);
+	if (pBuffer != nullptr) {
+		frameBufferList().setCurrent(pBuffer);
+		frameBufferList().setCurrentDrawBuffer();
+	}
+}
+
+bool gli_fb_copy_depth(u32 _address)
+{
+	return FrameBuffer_CopyDepthBuffer(_address);
 }

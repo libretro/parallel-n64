@@ -548,7 +548,7 @@ void gli_depth_set_image(u32 _address)
 	depthBufferList().saveBuffer(_address);
 }
 
-void gli_depth_set_cleared(void)
+void gli_depth_set_cleared(bool _cleared)
 {
-	depthBufferList().setCleared(true);
+	depthBufferList().setCleared(_cleared);
 }

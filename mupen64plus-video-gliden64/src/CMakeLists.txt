@@ -36,7 +36,7 @@ set(GLideN64_SOURCES
   PaletteTexture.cpp
   PostProcessor.cpp
   RDP.c
-  RSP.cpp
+  RSP.c
   RSP_LoadMatrix.c
   SoftwareRender.c
   TexrectDrawer.cpp

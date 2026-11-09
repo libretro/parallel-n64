@@ -136,3 +136,8 @@ bool gli_TFH_is_inited(void)
 {
 	return TFH.isInited();
 }
+
+void gli_TFH_shutdown(void)
+{
+	TFH.shutdown();
+}

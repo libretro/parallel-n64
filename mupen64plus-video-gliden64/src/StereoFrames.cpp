@@ -117,14 +117,14 @@ FrameBuffer * _createBuffer(const FrameBuffer * _pMainBuffer)
 	return pLeftEye;
 }
 
-void StereoFrames_beginTask()
+void gli_StereoFrames_beginTask()
 {
 	u32 i;
 	for (i = 0; i < l_slotCount; ++i)
 		l_slots[i].flags &= ~STEREO_FRAME_CAPTURED_TASK;
 }
 
-void StereoFrames_setCapturing(bool _capturing)
+void gli_StereoFrames_setCapturing(bool _capturing)
 {
 	u32 i;
 	g_stereoFramesCapturing = _capturing;
@@ -132,7 +132,7 @@ void StereoFrames_setCapturing(bool _capturing)
 		l_slots[i].flags &= ~STEREO_FRAME_ENTERED_PASS;
 }
 
-void StereoFrames_noteEntered(u32 _address)
+void gli_StereoFrames_noteEntered(u32 _address)
 {
 	struct StereoFrameSlot * pSlot;
 	if (g_stereoFramesCapturing) {
@@ -144,13 +144,13 @@ void StereoFrames_noteEntered(u32 _address)
 		pSlot->flags &= ~STEREO_FRAME_CAPTURED;
 }
 
-bool StereoFrames_wasEntered(u32 _address)
+bool gli_StereoFrames_wasEntered(u32 _address)
 {
 	const struct StereoFrameSlot * pSlot = _findSlot(_address);
 	return pSlot != NULL && (pSlot->flags & STEREO_FRAME_ENTERED_PASS) != 0;
 }
 
-void StereoFrames_captureLeftEye(FrameBuffer * _pBuffer)
+void gli_StereoFrames_captureLeftEye(FrameBuffer * _pBuffer)
 {
 	struct StereoFrameSlot * pSlot;
 	const CachedTexture * pSource;
@@ -196,7 +196,7 @@ void StereoFrames_captureLeftEye(FrameBuffer * _pBuffer)
 	gfxContext.bindFramebuffer(bufferTarget::DRAW_FRAMEBUFFER, ObjectHandle::defaultFramebuffer);
 }
 
-FrameBuffer * StereoFrames_leftEye(const FrameBuffer * _pBuffer)
+FrameBuffer * gli_StereoFrames_leftEye(const FrameBuffer * _pBuffer)
 {
 	const struct StereoFrameSlot * pSlot;
 	if (_pBuffer == NULL)
@@ -205,7 +205,7 @@ FrameBuffer * StereoFrames_leftEye(const FrameBuffer * _pBuffer)
 	return pSlot != NULL && (pSlot->flags & STEREO_FRAME_CAPTURED) != 0 ? pSlot->pLeftEye : NULL;
 }
 
-void StereoFrames_forget(const FrameBuffer * _pBuffer)
+void gli_StereoFrames_forget(const FrameBuffer * _pBuffer)
 {
 	struct StereoFrameSlot * pSlot;
 	if (_pBuffer == NULL)
@@ -215,7 +215,7 @@ void StereoFrames_forget(const FrameBuffer * _pBuffer)
 		pSlot->flags &= ~(STEREO_FRAME_CAPTURED | STEREO_FRAME_CAPTURED_TASK);
 }
 
-void StereoFrames_destroy()
+void gli_StereoFrames_destroy()
 {
 	u32 i;
 	for (i = 0; i < l_slotCount; ++i)

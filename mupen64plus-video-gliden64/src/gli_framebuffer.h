@@ -1,6 +1,7 @@
 #ifndef GLI_FRAMEBUFFER_H
 #define GLI_FRAMEBUFFER_H
 
+#include <stddef.h>
 #include <boolean.h>
 #include "Types.h"
 
@@ -16,8 +17,12 @@ void gli_fb_stereo_sync(void);
 void gli_fb_full_sync(bool _lle);
 bool gli_fb_check_texture(u32 _address, u32 _width, u32 _bytes);
 void gli_depth_set_image(u32 _address);
-void gli_depth_set_cleared(void);
+void gli_depth_set_cleared(bool _cleared);
 struct FrameBuffer *gli_fb_find(u32 _address);
+struct FrameBuffer *gli_fb_current(void);
+u32 gli_fb_start_address(const struct FrameBuffer *_pBuffer);
+void gli_fb_make_current(u32 _address);
+bool gli_fb_copy_depth(u32 _address);
 u32 gli_fb_width(const struct FrameBuffer *_pBuffer);
 bool gli_fb_is_valid_scanout(struct FrameBuffer *_pBuffer);
 bool gli_fb_rendered_uncopied(const struct FrameBuffer *_pBuffer);
@@ -33,6 +38,9 @@ bool gli_window_change(void);
 bool gli_window_resize(void);
 void gli_window_screenshot(void);
 void gli_window_update_scale(void);
+bool gli_window_is_resizing(void);
+u32 gli_window_swap_count(void);
+void gli_api_find_plugin_path(wchar_t *_path);
 void gli_gfx_touch_error(void);
 void gli_gfx_clear_color(void);
 

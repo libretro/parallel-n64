@@ -84,3 +84,8 @@ EXPORT void CALL gliden64ReinitGfxContext(void)
 	dwnd().reinitGfxContext();
 }
 }
+
+extern "C" void gli_api_find_plugin_path(wchar_t * _path)
+{
+	api().FindPluginPath(_path);
+}
