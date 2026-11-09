@@ -1424,7 +1424,7 @@ scissor_done:
    {
       static const VkCullModeFlags cull[4] = { VK_CULL_MODE_NONE, VK_CULL_MODE_FRONT_BIT, VK_CULL_MODE_BACK_BIT, VK_CULL_MODE_FRONT_AND_BACK };
       static const VkCompareOp cmp[3] = { VK_COMPARE_OP_LESS_OR_EQUAL, VK_COMPARE_OP_LESS, VK_COMPARE_OP_ALWAYS };
-      F(CmdSetFrontFaceEXT)(r->cmd, VK_FRONT_FACE_CLOCKWISE);
+      F(CmdSetFrontFaceEXT)(r->cmd, VK_FRONT_FACE_COUNTER_CLOCKWISE);
       F(CmdSetCullModeEXT)(r->cmd, cull[r->enable[VKR_CAP_CULL] ? r->cull_mode : 0]);
       F(CmdSetDepthTestEnableEXT)(r->cmd, r->enable[VKR_CAP_DEPTH_TEST] ? VK_TRUE : VK_FALSE);
       F(CmdSetDepthWriteEnableEXT)(r->cmd, r->depth_write_on ? VK_TRUE : VK_FALSE);
@@ -1576,7 +1576,7 @@ static VkPipeline build_pipeline(vkr_renderer *r, VkShaderModule vs, VkShaderMod
    rs.depthClampEnable = s.depth_clamp ? VK_TRUE : VK_FALSE;
    rs.polygonMode = VK_POLYGON_MODE_FILL;
    rs.cullMode = cull[s.cull];
-   rs.frontFace = VK_FRONT_FACE_CLOCKWISE;
+   rs.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
    rs.depthBiasEnable = VK_TRUE; /* off is zero: one pipeline less each way */
    rs.lineWidth = 1.f;
 
