@@ -13,7 +13,6 @@ extern uint32_t screen_width;
 extern uint32_t screen_height;
 void Config::resetToDefaults()
 {
-	printf("Configs reset\n");
 	version = CONFIG_VERSION_CURRENT;
 
 #if defined(PANDORA) || defined(VC)

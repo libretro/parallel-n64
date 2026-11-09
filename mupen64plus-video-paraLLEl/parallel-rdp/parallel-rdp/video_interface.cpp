@@ -1,4 +1,3 @@
-#include <functional>
 /* Copyright (c) 2020 Themaister
  *
  * Permission is hereby granted, free of charge, to any person obtaining
@@ -122,20 +121,22 @@ void VideoInterface::set_deinterlace_pipeline(Vulkan::CommandBuffer &cmd) const
 
 /* Every pipeline a scanout can ask for, on 1x1 targets of the formats scanout
  * uses: only their formats reach a pipeline. */
+template <typename F>
+static void each_status(uint32_t mask, const F &fn)
+{
+	uint32_t s = mask;
+	for (;;)
+	{
+		fn(s);
+		if (!s)
+			break;
+		s = (s - 1) & mask;
+	}
+}
+
 void VideoInterface::queue_known_pipelines(unsigned upscaling, bool with_upscaler,
                                            void (*add)(void *, Vulkan::CommandBuffer &, uint32_t), void *ctx)
 {
-	const auto each_status = [](uint32_t mask, const std::function<void(uint32_t)> &fn) {
-		uint32_t s = mask;
-		for (;;)
-		{
-			fn(s);
-			if (!s)
-				break;
-			s = (s - 1) & mask;
-		}
-	};
-
 	auto cmd_handle = device->request_command_buffer();
 	auto &cmd = *cmd_handle;
 

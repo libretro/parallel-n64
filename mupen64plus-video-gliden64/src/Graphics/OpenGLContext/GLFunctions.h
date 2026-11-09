@@ -506,7 +506,6 @@ template<typename F> void checked(F fn, const char* _functionName)
 	if (error != GL_NO_ERROR) {
 		std::stringstream errorString;
 		errorString << _functionName << " OpenGL error: 0x" << std::hex << error;
-		printf("%s\n", errorString.str().c_str());
 		throw std::runtime_error(errorString.str().c_str());
 	}
 }
@@ -518,7 +517,6 @@ template<typename R, typename F> R checkedWithReturn(F fn, const char* _function
 	if (error != GL_NO_ERROR) {
 		std::stringstream errorString;
 		errorString << _functionName << " OpenGL error: 0x" << std::hex << error;
-		printf("%s\n", errorString.str().c_str());
 		throw std::runtime_error(errorString.str().c_str());
 	}
 

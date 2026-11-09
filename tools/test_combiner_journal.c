@@ -74,7 +74,7 @@ int main(void)
    CHECK(!s.bad);
 
    /* garbage lines are skipped */
-   append("not a key at all\n0123456789abcdeg 0\n0123456789abcdef 7\n");
+   append("not a key at all\n0123456789abcdeg 0\n0123456789abcde 7\n");
    memset(&s, 0, sizeof(s));
    CHECK(combiner_journal_read(PATH, 5, in_order, &s) == KEYS + 1);
 
