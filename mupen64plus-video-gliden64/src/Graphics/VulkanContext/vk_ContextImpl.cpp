@@ -112,6 +112,9 @@ public:
 		: m_key(_key), m_p(_p), m_inputs(_inputs), m_groups(_groups), m_values() {}
 	~VkCombinerProgram() { vkr_program_delete(g_r, m_p); }
 
+	static void * operator new(size_t);
+	static void operator delete(void *);
+
 	void activate() override { vkr_use(g_r, m_p); }
 	void update(bool) override {
 		vkr_use(g_r, m_p);
@@ -145,6 +148,11 @@ glsl::CombinerInputs addStage(glsl::CombinerInputs _in, const CombinerStage & _s
 	}
 	return _in;
 }
+
+/* as many as the renderer has programs: a miss allocates nothing */
+static FixedCellPool<sizeof(VkCombinerProgram), 4096> s_combinerPool;
+void * VkCombinerProgram::operator new(size_t) { return s_combinerPool.take(); }
+void VkCombinerProgram::operator delete(void * _p) { s_combinerPool.give(_p); }
 
 CombinerProgram * buildCombiner(Combiner & _color, Combiner & _alpha, const CombinerKey & _key)
 {
