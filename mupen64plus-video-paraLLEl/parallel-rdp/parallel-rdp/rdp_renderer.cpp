@@ -28,6 +28,7 @@
 #include "bitops.hpp"
 #include "luts.hpp"
 #include "incoherent_pages.hpp"
+#include "pipeline_record_list.h"
 #include "timer.h"
 #include "thread_name.h"
 #include "shaders/slangmosh.hpp"
@@ -41,6 +42,9 @@ static size_t div_round_up(size_t a, size_t b)
 
 namespace
 {
+/* Never more than this many misses queued to the worker. */
+const unsigned MaxQueuedPipelines = 4 * Limits::MaxStaticRasterizationStates;
+
 struct PipelineNode : mpsc_stack_node_t
 {
 	Vulkan::DeferredPipelineCompile compile;
@@ -68,53 +72,9 @@ Renderer::~Renderer()
 	retro_atomic_store_release_int(&pipeline_ahead_stop, 1);
 	rdp_worker_free(pipeline_worker);
 	free(pipeline_ahead_nodes);
-	free(pending_async_pipelines.keys);
+	free(pipeline_nodes);
+	rdp_hash_set_free(&pending_async_pipelines);
 	free(incoherent.arena);
-}
-
-// Adds hash to the pipelines queued to the worker; false if it was there.
-bool Renderer::pending_async_pipeline_insert(Util::Hash hash)
-{
-	auto &set = pending_async_pipelines;
-	unsigned mask, i;
-
-	if (hash == 0)
-	{
-		bool had = set.has_zero;
-		set.has_zero = true;
-		return !had;
-	}
-
-	if (2 * (set.count + 1) > set.capacity)
-	{
-		unsigned capacity = set.capacity ? 2 * set.capacity : 64;
-		auto *keys = static_cast<Util::Hash *>(calloc(capacity, sizeof(Util::Hash)));
-		unsigned j;
-		if (!keys)
-			return true;
-		for (j = 0; j < set.capacity; j++)
-		{
-			Util::Hash k = set.keys[j];
-			if (k)
-			{
-				i = unsigned(k) & (capacity - 1);
-				while (keys[i])
-					i = (i + 1) & (capacity - 1);
-				keys[i] = k;
-			}
-		}
-		free(set.keys);
-		set.keys = keys;
-		set.capacity = capacity;
-	}
-
-	mask = set.capacity - 1;
-	for (i = unsigned(hash) & mask; set.keys[i]; i = (i + 1) & mask)
-		if (set.keys[i] == hash)
-			return false;
-	set.keys[i] = hash;
-	set.count++;
-	return true;
 }
 
 // maxStorageBufferRange; PARALLEL_RDP_MAX_STORAGE_BUFFER_RANGE=bytes lowers
@@ -201,6 +161,16 @@ bool Renderer::init_renderer(const RendererOptions &options)
 	if (!pipeline_worker)
 		return false;
 
+	/* All a pipeline miss needs, so that it allocates nothing mid-game. */
+	free(pipeline_nodes);
+	rdp_hash_set_free(&pending_async_pipelines);
+	rdp_hash_set_init(&pending_async_pipelines, PIPELINE_RECORD_LIST_MAX);
+	rdp_node_pool_init(&pipeline_node_pool);
+	auto *nodes = static_cast<PipelineNode *>(calloc(MaxQueuedPipelines, sizeof(PipelineNode)));
+	pipeline_nodes = nodes;
+	if (nodes)
+		for (unsigned i = 0; i < MaxQueuedPipelines; i++)
+			rdp_node_pool_release(&pipeline_node_pool, &nodes[i]);
 
 	for (auto &buffer : buffer_instances)
 		buffer.init(*device);
@@ -1969,9 +1939,15 @@ void Renderer::submit_rasterization(Vulkan::CommandBuffer &cmd, Vulkan::Buffer &
 		{
 			Vulkan::DeferredPipelineCompile compile;
 			cmd.extract_pipeline_state(compile);
-			if (pending_async_pipeline_insert(compile.hash))
+			/* (no node free: the next miss of this variant asks again) */
+			auto *node = static_cast<PipelineNode *>(rdp_node_pool_acquire(&pipeline_node_pool));
+			if (node && !rdp_hash_set_insert(&pending_async_pipelines, compile.hash))
 			{
-				auto *node = Util::create<PipelineNode>();
+				rdp_node_pool_release(&pipeline_node_pool, node);
+				node = nullptr;
+			}
+			if (node)
+			{
 				node->compile = rdp_move(compile);
 				node->kind = PIPELINE_RECORD_COMPUTE;
 				node->ahead = 0;
@@ -3782,7 +3758,7 @@ void Renderer::pipeline_work(void *user, mpsc_stack_node_t *item)
 	if (node->urgent)
 		retro_atomic_fetch_add_int(&renderer->pipeline_ahead_urgent_done, 1);
 	if (!node->ahead)
-		Util::destroy(node);
+		rdp_node_pool_release(&renderer->pipeline_node_pool, node);
 }
 
 void Renderer::build_pipelines_ahead(const pipeline_record_t *records, size_t count)

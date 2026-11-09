@@ -26,6 +26,7 @@
 #include "device.hpp"
 #include "rdp_common.hpp"
 #include "rdp_worker.h"
+#include "pipeline_pending.h"
 #include <retro_atomic.h>
 
 namespace RDP
@@ -399,16 +400,11 @@ private:
 	bool can_support_minimum_subgroup_size(unsigned size) const;
 	bool supports_subgroup_size_control(uint32_t minimum_size, uint32_t maximum_size) const;
 
-	// The compute pipelines queued to the worker: open addressing on the
-	// hash, a power of two long, with 0 kept apart.
-	struct
-	{
-		Util::Hash *keys = nullptr;
-		unsigned capacity = 0;
-		unsigned count = 0;
-		bool has_zero = false;
-	} pending_async_pipelines;
-	bool pending_async_pipeline_insert(Util::Hash hash);
+	// The compute pipelines queued to the worker, and the jobs carrying
+	// them (pipeline_nodes): both allocated before the first frame.
+	rdp_hash_set_t pending_async_pipelines = {};
+	rdp_node_pool_t pipeline_node_pool;
+	void *pipeline_nodes = nullptr;
 
 	unsigned compute_conservative_max_num_tiles(const TriangleSetup &setup) const;
 

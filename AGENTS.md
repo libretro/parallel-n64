@@ -44,9 +44,8 @@ on the pipeline worker, and only at content load.
 
 These still break the rules and are debts, not precedent: GLideN64 and the
 other GL plugins compile combiners on first use; the paraLLEl RSP JIT compiles
-blocks on first use and allocates `cached_blocks` nodes; a pipeline miss
-allocates a `PipelineNode` and can grow `pending_async_pipelines`; pipelines
-the record list does not cover are still built synchronously.
+blocks on first use and allocates `cached_blocks` nodes; pipelines the record
+list does not cover are still built synchronously.
 
 ## Shaders and pipelines
 
