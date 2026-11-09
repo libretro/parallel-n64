@@ -27,11 +27,12 @@ void gli_fbinfo_reset(void)
 	_clearBuffers();
 }
 
-/* true if found; else *_idx is the first free slot */
+/* true if found; else *_idx is the first free slot, or
+ * FBINFO_BUFFERS when full */
 static bool _findBuffer(const struct FrameBuffer * const * _buffers, const struct FrameBuffer * _buf, u32 * _idx)
 {
 	u32 i = 0;
-	while (_buffers[i] != NULL) {
+	while (i < FBINFO_BUFFERS && _buffers[i] != NULL) {
 		if (_buffers[i++] == _buf) {
 			*_idx = i;
 			return true;
@@ -48,7 +49,7 @@ void gli_fbinfo_write(u32 addr, u32 size)
 	u32 idx;
 	if (writeBuffer == NULL)
 		return;
-	if (!_findBuffer(l_writeBuffers, writeBuffer, &idx))
+	if (!_findBuffer(l_writeBuffers, writeBuffer, &idx) && idx < FBINFO_BUFFERS)
 		l_writeBuffers[idx] = writeBuffer;
 	gli_fb_add_address(address, size);
 }
@@ -76,7 +77,7 @@ void gli_fbinfo_read(u32 addr)
 			gli_fb_copy_to_rdram(address, true);
 	}
 
-	if (!found)
+	if (!found && idx < FBINFO_BUFFERS)
 		l_readBuffers[idx] = pBuffer;
 }
 
