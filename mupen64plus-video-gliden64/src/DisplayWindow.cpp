@@ -238,3 +238,8 @@ u32 gli_window_swap_count(void)
 {
 	return dwnd().getBuffersSwapCount();
 }
+
+void gli_gfx_set_no_near_clip(bool _noNearClip)
+{
+	gfxContext.setClampMode(_noNearClip ? graphics::ClampMode::NoNearPlaneClipping : graphics::ClampMode::ClippingEnabled);
+}

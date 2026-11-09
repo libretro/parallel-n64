@@ -1,9 +1,6 @@
 #ifndef GBI_H
 #define GBI_H
 
-#ifdef __cplusplus
-#include <list>
-#endif
 #include <boolean.h>
 
 #include "Types.h"
@@ -490,65 +487,35 @@ typedef void (*GBIFunc)( u32 w0, u32 w1 );
 extern GBIFunc gli_GBIcmd[256];
 extern u32 gli_GBIPCStackSize;
 
-bool gli_GBI_isCombineMatrices(void);
-u32 gli_GBI_getMicrocodeType(void);
-
-#ifdef __cplusplus
-struct MicrocodeInfo
+typedef struct MicrocodeInfo
 {
-	u32 address = 0;
-	u32 dataAddress = 0;;
-	u16 dataSize = 0;
-	u32 type = NONE;
-	bool NoN = false;
-	bool Rej = false;
-	bool cullBoth = true;
-	bool negativeY = true;
-	bool fast3DPersp = false;
-	bool texturePersp = true;
-	bool combineMatrices = false;
+	u32 address;
+	u32 dataAddress;
+	u16 dataSize;
+	u32 type;
+	bool NoN;
+	bool Rej;
+	bool cullBoth;
+	bool negativeY;
+	bool fast3DPersp;
+	bool texturePersp;
+	bool combineMatrices;
 	struct
 	{
 		/* LVP is how microcodes other than F3DEX3 function */
-		bool legacyVertexPipeline = true;
-		bool noOcclusionPlane = false;
-		bool branchOnZ = false;
+		bool legacyVertexPipeline;
+		bool noOcclusionPlane;
+		bool branchOnZ;
 	} f3dex3;
-};
+} MicrocodeInfo;
 
-struct GBIInfo
-{
-	void init(void);
-	void destroy(void);
-	void loadMicrocode(u32 uc_start, u32 uc_dstart, u16 uc_dsize);
-	u32 getMicrocodeType() const {return m_pCurrent != nullptr ? m_pCurrent->type : NONE;}
-	bool isHWLSupported() const;
-	void setHWLSupported(bool _supported);
-	bool isNoN() const { return m_pCurrent != nullptr ? m_pCurrent->NoN : false; }
-	bool isRej() const { return m_pCurrent != nullptr ? m_pCurrent->Rej : false; }
-	bool isCullBoth() const { return m_pCurrent != nullptr ? m_pCurrent->cullBoth : false; }
-	bool isNegativeY() const { return m_pCurrent != nullptr ? m_pCurrent->negativeY : true; }
-	bool isTexturePersp() const { return m_pCurrent != nullptr ? m_pCurrent->texturePersp: true; }
-	bool isCombineMatrices() const { return m_pCurrent != nullptr ? m_pCurrent->combineMatrices: false; }
-	bool isLegacyVertexPipeline() const { return m_pCurrent != nullptr ? m_pCurrent->f3dex3.legacyVertexPipeline : true; }
-	bool isNoOcclusionPlane() const { return m_pCurrent != nullptr ? m_pCurrent->f3dex3.noOcclusionPlane : false; }
-	bool isBranchOnZ() const { return m_pCurrent != nullptr ? m_pCurrent->f3dex3.branchOnZ : false; }
+/* The current microcode, never NULL */
+extern const MicrocodeInfo * gli_GBI;
+extern bool gli_GBI_hwlSupported;
 
-private:
-	void _flushCommands(void);
-
-	void _makeCurrent(MicrocodeInfo * _pCurrent);
-	bool _makeExistingMicrocodeCurrent(u32 uc_start, u32 uc_dstart, u32 uc_dsize);
-
-	bool m_hwlSupported;
-	MicrocodeInfo * m_pCurrent;
-
-	typedef std::list<MicrocodeInfo> Microcodes;
-	Microcodes m_list;
-};
-
-extern GBIInfo GBI;
-#endif
+void gli_GBI_init(void);
+void gli_GBI_destroy(void);
+void gli_GBI_loadMicrocode(u32 uc_start, u32 uc_dstart, u16 uc_dsize);
 
 /* Allows easier setting of GBI commands */
 #define GBI_SetGBI( command, value, function ) \

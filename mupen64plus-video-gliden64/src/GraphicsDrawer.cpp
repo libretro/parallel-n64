@@ -84,7 +84,7 @@ void GraphicsDrawer::addTriangle(int _v0, int _v1, int _v2)
 	}
 
 	if (!Context::ClipControl) {
-		if (GBI.isNoN() && gDP.otherMode.depthCompare == 0 && gDP.otherMode.depthUpdate == 0) {
+		if (gli_GBI->NoN && gDP.otherMode.depthCompare == 0 && gDP.otherMode.depthUpdate == 0) {
 			for (u32 i = firstIndex; i < triangles.num; ++i) {
 				SPVertex & vtx = triangles.vertices[triangles.elements[i]];
 				vtx.z = 0.0f;
@@ -98,7 +98,7 @@ void GraphicsDrawer::_updateCullFace() const
 	if (gSP.geometryMode & G_CULL_BOTH) {
 		gfxContext.enable(enable::CULL_FACE, true);
 
-		if ((gSP.geometryMode & G_CULL_BOTH) == G_CULL_BOTH && GBI.isCullBoth())
+		if ((gSP.geometryMode & G_CULL_BOTH) == G_CULL_BOTH && gli_GBI->cullBoth)
 			gfxContext.cullFace(cullMode::FRONT_AND_BACK);
 		else if ((gSP.geometryMode & G_CULL_BACK) == G_CULL_BACK)
 			gfxContext.cullFace(cullMode::BACK);
@@ -151,11 +151,11 @@ void GraphicsDrawer::_updateDepthCompare() const
 			_updateDepthUpdate();
 
 			gfxContext.enable(enable::DEPTH_TEST, true);
-			if (!GBI.isNoN())
+			if (!gli_GBI->NoN)
 				gfxContext.setClampMode(graphics::ClampMode::ClippingEnabled);
 		} else {
 			gfxContext.enable(enable::DEPTH_TEST, false);
-			if (!GBI.isNoN())
+			if (!gli_GBI->NoN)
 				gfxContext.setClampMode(graphics::ClampMode::NoClipping);
 		}
 	}
@@ -942,7 +942,7 @@ void GraphicsDrawer::_drawThickLine(u32 _v0, u32 _v1, float _width, u32 _flag)
 
 	setDMAVerticesSize(4);
 	SPVertex * pVtx = getDMAVerticesData();
-	const f32 ySign = GBI.isNegativeY() ? -1.0f : 1.0f;
+	const f32 ySign = gli_GBI->negativeY ? -1.0f : 1.0f;
 	pVtx[0] = triangles.vertices[_v0];
 	pVtx[0].x = pVtx[0].x / pVtx[0].w * gSP.viewport.vscale[0] + gSP.viewport.vtrans[0];
 	pVtx[0].y = ySign * pVtx[0].y / pVtx[0].w * gSP.viewport.vscale[1] + gSP.viewport.vtrans[1];
@@ -1549,7 +1549,7 @@ void GraphicsDrawer::clearColorBuffer(float *_pColor)
 
 bool GraphicsDrawer::isRejected(s32 _v0, s32 _v1, s32 _v2) const
 {
-	if (!GBI.isRej() || gSP.clipRatio < 2)
+	if (!gli_GBI->Rej || gSP.clipRatio < 2)
 		return false;
 
 	static gDPScissor rejectBox;
@@ -1563,7 +1563,7 @@ bool GraphicsDrawer::isRejected(s32 _v0, s32 _v1, s32 _v2) const
 		gDP.changed ^= CHANGED_REJECT_BOX;
 	}
 	s32 verts[3] = { _v0, _v1, _v2 };
-	const f32 ySign = GBI.isNegativeY() ? -1.0f : 1.0f;
+	const f32 ySign = gli_GBI->negativeY ? -1.0f : 1.0f;
 	for (u32 i = 0; i < 3; ++i) {
 		const SPVertex & v = triangles.vertices[verts[i]];
 		const f32 sx = gSP.viewport.vtrans[0] + (v.x / v.w) * gSP.viewport.vscale[0];

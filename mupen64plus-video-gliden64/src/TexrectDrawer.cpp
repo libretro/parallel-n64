@@ -135,7 +135,7 @@ bool TexrectDrawer::_lookAhead(bool _checkCoordinates) const
 {
 	if (RSP.LLE)
 		return true;
-	switch (GBI.getMicrocodeType()) {
+	switch (gli_GBI->type) {
 	case Turbo3D:
 	case T3DUX:
 	case F5Rogue:

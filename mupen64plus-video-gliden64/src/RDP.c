@@ -288,7 +288,7 @@ bool _getTexRectParams(u32 * _w2, u32 * _w3)
 			return false;
 		}
 		{
-			const u32 ucode = gli_GBI_getMicrocodeType();
+			const u32 ucode = gli_GBI->type;
 			if (ucode == F5Rogue || ucode == F5Indi_Naboo) {
 				*_w2 = *(u32*)&RDRAM[RSP.PC[RSP.PCi] + 8];
 				*_w3 = *(u32*)&RDRAM[RSP.PC[RSP.PCi] + 12];

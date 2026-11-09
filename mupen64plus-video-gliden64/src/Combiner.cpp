@@ -368,7 +368,7 @@ void CombinerInfo::setCombine(u64 _mux )
 		m_pCurrent = Combiner_Compile(key, true);
 		m_pCurrent->update(true);
 		m_combiners[m_pCurrent->getKey()] = m_pCurrent;
-		combiner_journal_push(m_journal, m_pCurrent->getKey().getMux(), GBI.isHWLSupported() ? 1 : 0);
+		combiner_journal_push(m_journal, m_pCurrent->getKey().getMux(), gli_GBI_hwlSupported ? 1 : 0);
 	}
 	m_bChanged = true;
 }
@@ -425,7 +425,7 @@ void CombinerInfo::_buildFixedKeys()
 		{ G_CYC_COPY, EncodeCombineMode(0, 0, 0, TEXEL0, 0, 0, 0, TEXEL0, 0, 0, 0, TEXEL0, 0, 0, 0, TEXEL0) },
 		{ G_CYC_FILL, EncodeCombineMode(0, 0, 0, SHADE, 0, 0, 0, SHADE, 0, 0, 0, SHADE, 0, 0, 0, SHADE) }
 	};
-	const bool hwl = GBI.isHWLSupported();
+	const bool hwl = gli_GBI_hwlSupported;
 	for (u32 mode = 0; mode < 2; ++mode)
 		for (u32 bits = 0; bits < 16; ++bits) {
 			/* bits: rect, two of bilerp, hardware lighting */
@@ -436,12 +436,12 @@ void CombinerInfo::_buildFixedKeys()
 			const CombinerKey key(combine.mux, false);
 			if (m_combiners.find(key) != m_combiners.end())
 				continue;
-			GBI.setHWLSupported((bits & 8) != 0);
+			gli_GBI_hwlSupported = (bits & 8) != 0;
 			graphics::CombinerProgram * pCombiner = Combiner_Compile(key);
 			pCombiner->update(true);
 			m_combiners[pCombiner->getKey()] = pCombiner;
 		}
-	GBI.setHWLSupported(hwl);
+	gli_GBI_hwlSupported = hwl;
 }
 
 void CombinerInfo::_journalKey(void * _ctx, uint64_t _key, unsigned _hwl)
@@ -450,12 +450,12 @@ void CombinerInfo::_journalKey(void * _ctx, uint64_t _key, unsigned _hwl)
 	const CombinerKey key(_key, false);
 	if (info->m_combiners.find(key) != info->m_combiners.end())
 		return;
-	const bool hwl = GBI.isHWLSupported();
-	GBI.setHWLSupported(_hwl != 0);
+	const bool hwl = gli_GBI_hwlSupported;
+	gli_GBI_hwlSupported = _hwl != 0;
 	graphics::CombinerProgram * pCombiner = Combiner_Compile(key);
 	pCombiner->update(true);
 	info->m_combiners[pCombiner->getKey()] = pCombiner;
-	GBI.setHWLSupported(hwl);
+	gli_GBI_hwlSupported = hwl;
 }
 
 /* Keys a session that crashed wrote down are built now, at load, and are

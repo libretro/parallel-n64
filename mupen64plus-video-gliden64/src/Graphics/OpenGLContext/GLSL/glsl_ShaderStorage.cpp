@@ -99,7 +99,7 @@ bool ShaderStorage::_saveCombinerKeys(const graphics::Combiners & _combiners) co
 
 	std::sort(keysData.begin(), keysData.end());
 	keysOut << "0x" << std::hex << std::setfill('0') << std::setw(8) << m_keysFormatVersion << "\n";
-	keysOut << "0x" << std::hex << std::setfill('0') << std::setw(8) << static_cast<u32>(GBI.isHWLSupported()) << "\n";
+	keysOut << "0x" << std::hex << std::setfill('0') << std::setw(8) << static_cast<u32>(gli_GBI_hwlSupported) << "\n";
 	keysOut << "0x" << std::hex << std::setfill('0') << std::setw(8) << keysData.size() << "\n";
 	for (u64 key : keysData)
 		keysOut << "0x" << std::hex << std::setfill('0') << std::setw(16) << key << "\n";
@@ -241,7 +241,7 @@ bool ShaderStorage::_loadFromCombinerKeys(graphics::Combiners & _combiners)
 
 	u32 hwlSupport;
 	fin >> std::hex >> hwlSupport;
-	GBI.setHWLSupported(hwlSupport != 0);
+	gli_GBI_hwlSupported = hwlSupport != 0;
 
 	u32 szCombiners;
 	fin >> std::hex >> szCombiners;

@@ -25,7 +25,7 @@ set(GLideN64_SOURCES
   DisplayWindow.cpp
   FrameBuffer.cpp
   FrameBufferInfo.cpp
-  GBI.cpp
+  GBI.c
   gDP.c
   GLideN64.c
   GraphicsDrawer.cpp

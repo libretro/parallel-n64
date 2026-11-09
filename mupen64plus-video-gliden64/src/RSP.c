@@ -168,14 +168,14 @@ void _runDisplayList(void)
 
 		gli_depth_set_cleared(false);
 
-		if (gli_GBI_getMicrocodeType() == ZSortBOSS) {
+		if (gli_GBI->type == ZSortBOSS) {
 			RSP.PC[1] = *(u32*)&DMEM[0xff8];
 			*REG.SP_STATUS &= ~0x300;  /* clear sig1 | sig2 */
 			*REG.SP_STATUS |= 0x800;   /* set sig4 */
 		}
 	}
 
-	switch (gli_GBI_getMicrocodeType()) {
+	switch (gli_GBI->type) {
 	case Turbo3D:
 		gli_RunTurbo3D();
 		break;

@@ -133,7 +133,7 @@ bool isHWLightingAllowed()
 {
 	if (config.generalEmulation.enableHWLighting == 0)
 		return false;
-	return GBI.isHWLSupported();
+	return gli_GBI_hwlSupported;
 }
 
 void Config::validate()

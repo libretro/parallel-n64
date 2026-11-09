@@ -32,7 +32,7 @@ class RomOpenCommand : public APICommand {
 public:
 	bool run() {
 		gli_RSP_Init();
-		GBI.init();
+		gli_GBI_init();
 		Config_LoadConfig();
 		dwnd().start();
 		assert(!gfxContext.isError());
@@ -106,7 +106,7 @@ public:
 	bool run() {
 		TFH.dumpcache();
 		dwnd().stop();
-		GBI.destroy();
+		gli_GBI_destroy();
 		gli_RSP_StereoDestroy();
 		return false;
 	}
@@ -148,7 +148,7 @@ void PluginAPI::RomClosed()
 #else
 	TFH.dumpcache();
 	dwnd().stop();
-	GBI.destroy();
+	gli_GBI_destroy();
 	gli_RSP_StereoDestroy();
 #endif
 }
@@ -165,7 +165,7 @@ void PluginAPI::RomOpen()
 	_callAPICommand(RomOpenCommand());
 #else
 	gli_RSP_Init();
-	GBI.init();
+	gli_GBI_init();
 	Config_LoadConfig();
 	dwnd().start();
 #endif

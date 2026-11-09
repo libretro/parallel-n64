@@ -123,7 +123,7 @@ static void updateFog(CombinerValues & _v)
 	}
 
 	int usage = ((gSP.geometryMode & G_FOG) != 0) ? 1 : 0;
-	if (GBI.getMicrocodeType() == F3DAM) {
+	if (gli_GBI->type == F3DAM) {
 		const s16 fogMode = ((gSP.geometryMode >> 13) & 9) + 0xFFF8;
 		if (fogMode == 0)
 			usage = 1;
@@ -364,7 +364,7 @@ extern "C" void updateCombinerValues(CombinerValues * _values, unsigned _groups)
 		updateTextureFetch(_v);
 
 	if (_groups & CVG_TexturePersp)
-		_v.texturePersp = (RSP.LLE || GBI.isTexturePersp()) ? gDP.otherMode.texturePersp : 1U;
+		_v.texturePersp = (RSP.LLE || gli_GBI->texturePersp) ? gDP.otherMode.texturePersp : 1U;
 
 	if (_groups & CVG_TextureSize) {
 		TextureCache & cache = textureCache();

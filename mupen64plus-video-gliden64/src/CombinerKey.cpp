@@ -19,7 +19,7 @@ CombinerKey::CombinerKey(u64 _mux, bool _setModeBits)
 	u32 flags = CombinerInfo::get().isRectMode() ? 1U : 0U;
 	const u32 cycleType = gDP.otherMode.cycleType;
 	const u32 bilerp = (gDP.otherMode.h >> 10) & 3;
-	const u32 isHWLSupported = static_cast<u32>(GBI.isHWLSupported());
+	const u32 isHWLSupported = static_cast<u32>(gli_GBI_hwlSupported);
 	flags |= (cycleType << 1);
 	flags |= (bilerp << 3);
 	flags |= (isHWLSupported << 5);

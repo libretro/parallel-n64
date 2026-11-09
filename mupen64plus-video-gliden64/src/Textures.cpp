@@ -1291,7 +1291,7 @@ void TextureCache::_load(u32 _tile, CachedTexture *_pTexture)
 			TFH.isInited();
 		if (needEnhance) {
 			if (config.textureFilter.txFilterIgnoreBG != 0) {
-				switch (GBI.getMicrocodeType()) {
+				switch (gli_GBI->type) {
 				case S2DEX_1_07:
 				case S2DEX_1_03:
 				case S2DEX_1_05:

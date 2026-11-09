@@ -144,7 +144,7 @@ static f32 l_immersiveQ[2][3][3] = {{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}},
 	{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}};  // camera direction -> eye direction
 static f32 l_immersiveTan[2][2] = {{1.0f, 1.0f}, {1.0f, 1.0f}};
 static f32 l_immersiveCentre[2][2] = {};
-#define STEREO_FLIP_Y ((GBI.getMicrocodeType() == F5Rogue || GBI.getMicrocodeType() == F5Indi_Naboo) ? -1.0f : 1.0f)
+#define STEREO_FLIP_Y ((gli_GBI->type == F5Rogue || gli_GBI->type == F5Indi_Naboo) ? -1.0f : 1.0f)
 static bool l_combiningMatrices = false;
 static f32 l_immersiveDistance = 0.0f;
 static f32 l_immersiveRefNearest = 0.0f;   // nearest depth of the scene the game plays at
@@ -751,7 +751,7 @@ void gli_gSPLoadUcodeEx( u32 uc_start, u32 uc_dstart, u16 uc_dsize )
 		return;
 	}
 
-	GBI.loadMicrocode(uc_start, uc_dstart, uc_dsize);
+	gli_GBI_loadMicrocode(uc_start, uc_dstart, uc_dsize);
 	RSP.uc_start = uc_start;
 	RSP.uc_dstart = uc_dstart;
 
@@ -840,7 +840,7 @@ void gli_gSPViewport( u32 v )
 	gSP.viewport.vtrans[2] = _FIXED2FLOAT( *(s16*)&RDRAM[address + 14], 10 );// * 0.00097847357f;
 	gSP.viewport.vtrans[3] = *(s16*)&RDRAM[address + 12];
 
-	if (gSP.viewport.vscale[1] < 0.0f && !GBI.isNegativeY())
+	if (gSP.viewport.vscale[1] < 0.0f && !gli_GBI->negativeY)
 		gSP.viewport.vscale[1] = -gSP.viewport.vscale[1];
 
 	gSP.viewport.x		= gSP.viewport.vtrans[0] - gSP.viewport.vscale[0];
@@ -1472,7 +1472,7 @@ void gSPProcessVertex(u32 v, SPVertex * spVtx)
 			gSPPointLightVertexAcclaim<VNUM>(v, spVtx);
 
 		if ((gSP.geometryMode & G_TEXTURE_GEN) != 0) {
-			if (GBI.getMicrocodeType() != F3DFLX2) {
+			if (gli_GBI->type != F3DFLX2) {
 				for(int i = 0; i < VNUM; ++i) {
 					SPVertex & vtx = spVtx[v+i];
 					f32 fLightDir[3] = {vtx.nx, vtx.ny, vtx.nz};
@@ -2621,5 +2621,5 @@ void(*gSPTransformVector)(float vtx[4], float mtx[4][4]) = gSPTransformVector_NE
 
 void gli_gSPSetupFunctions()
 {
-	g_ConkerUcode = GBI.getMicrocodeType() == F3DEX2CBFD;
+	g_ConkerUcode = gli_GBI->type == F3DEX2CBFD;
 }

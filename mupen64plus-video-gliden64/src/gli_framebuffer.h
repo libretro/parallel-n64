@@ -43,6 +43,7 @@ u32 gli_window_swap_count(void);
 void gli_api_find_plugin_path(wchar_t *_path);
 void gli_gfx_touch_error(void);
 void gli_gfx_clear_color(void);
+void gli_gfx_set_no_near_clip(bool _noNearClip);
 
 #ifdef __cplusplus
 }

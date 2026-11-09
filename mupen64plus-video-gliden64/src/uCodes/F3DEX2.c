@@ -141,7 +141,7 @@ void gli_F3DEX2_DMAIO( u32 w0, u32 w1 )
 void gli_F3DEX2_Special_1( u32 w0, u32 w1 )
 {
 	const u32 param = _SHIFTR(w0, 0, 8);
-	if (gli_GBI_isCombineMatrices())
+	if (gli_GBI->combineMatrices)
 		gli_gSPCombineMatrices(param);
 	else
 		gli_gSPDlistCount(param, w1);
