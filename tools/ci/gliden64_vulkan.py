@@ -39,13 +39,16 @@ def run(host, core, rom, tmp, name, frames, api, env_extra, options=()):
     return out
 
 
-def culling_cartridge(path, resize=False):
+def culling_cartridge(path, resize=False, shadow=False):
     """An F3D task, run by the HLE RSP: triangles of both windings, under each
     cull mode. The other test content goes straight to the RDP and never culls.
-    With resize the game's image changes width every few frames."""
+    With resize the game's image changes width every few frames. With shadow
+    the rows are depth tested at three depths and a texrect then reads the
+    depth image, which a game named BEETLE draws as a shadow map through the
+    z and palette lookup textures."""
     t0, t1, t2, t3, t4, t5, t6, t7 = 8, 9, 10, 11, 12, 13, 14, 15
     mips = cart.mips
-    FB, DATA = 0x100000, 0x200000
+    FB, ZB, DATA = 0x100000, 0x180000, 0x200000
     W, H = cart.WIDTH, cart.HEIGHT
     lui = lambda rt, imm: mips(0x0f, 0, rt, imm)
     ori = lambda rt, rs, imm: mips(0x0d, rs, rt, imm)
@@ -55,14 +58,14 @@ def culling_cartridge(path, resize=False):
     beq = lambda rs, rt, off: mips(0x04, rs, rt, off)
     li = lambda rt, v: [lui(rt, (v >> 16) & 0xffff), ori(rt, rt, v & 0xffff)]
 
-    UCODE_TEXT, PROJ, VIEWPORT, MODEL, VERTS, DLIST = 0x0, 0x1000, 0x1040, 0x1060, 0x1100, 0x2000
+    UCODE_TEXT, PROJ, VIEWPORT, MODEL, VERTS, PAL, DLIST = 0x0, 0x1000, 0x1040, 0x1060, 0x1100, 0x1800, 0x2000
     text = b"RSP SW Version: 2.0D, 04-01-96\n".ljust(0x800, b"\0")
     proj = struct.pack(">32H", *([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 100] + [0] * 16))  # units of 1%
     model = struct.pack(">32H", *([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1] + [0] * 16))
     viewport = struct.pack(">8h", W * 2, H * 2, 511, 0, W * 2, H * 2, 511, 0)
 
-    def vtx(x, y, r, g, b):
-        return struct.pack(">3hH2h4B", x, y, 0, 0, 0, 0, r, g, b, 255)
+    def vtx(x, y, r, g, b, z=0):
+        return struct.pack(">3hH2h4B", x, y, z, 0, 0, 0, r, g, b, 255)
 
     # counter-clockwise on the left half, clockwise on the right, one row per cull mode
     verts = b""
@@ -74,26 +77,46 @@ def culling_cartridge(path, resize=False):
             x0 = -80 + 80 * c
             a, b, d = (x0 - 30, y0 - 20), (x0 + 30, y0 - 20), (x0, y0 + 20)
             for p in ((a, b, d) if c == 0 else (a, d, b)):
-                verts += vtx(p[0], p[1], *colour)
+                verts += vtx(p[0], p[1], *colour, z=(40 * r - 40) if shadow else 0)
         tris.append(cull)
 
-    cmds = [0xFF100000 | (W - 1), FB,
+    cmds = []
+    if shadow:  # clear the depth image the way games do
+        cmds += [0xFE000000, ZB,
+                 0xFF100000 | (W - 1), ZB,
+                 0xED000000, ((W * 4) << 12) | (H * 4),
+                 0xEF300000, 0,
+                 0xF7000000, 0xFFFCFFFC,
+                 0xF6000000 | ((W - 1) << 14) | ((H - 1) << 2), 0,
+                 0xE7000000, 0]
+    cmds += [0xFF100000 | (W - 1), FB,
             0xED000000, ((W * 4) << 12) | (H * 4),
             0xEF300000, 0,
             0xF7000000, 0x00010001,
             0xF6000000 | ((W - 1) << 14) | ((H - 1) << 2), 0,
             0xE7000000, 0,
-            0xEF000000 | (2 << 12), 0,
+            0xEF000000 | (2 << 12), 0x00552078 if shadow else 0,
             0xFCFFFFFF, 0xFFFE793C,
             0x03800010, DATA + VIEWPORT,
             0x01030040, DATA + PROJ,
             0x01020040, DATA + MODEL]
     for r, cull in enumerate(tris):
         cmds += [0xB6000000, 0xFFFFFFFF,
-                 0xB7000000, 0x0204 | cull,
+                 0xB7000000, 0x0204 | cull | (1 if shadow else 0),
                  0x04000000 | (5 << 20) | 96, DATA + VERTS + r * 96]
         cmds += [0xBF000000, (0 << 16) | (10 << 8) | 20]
         cmds += [0xBF000000, (30 << 16) | (40 << 8) | 50]
+    if shadow:
+        cmds += [0xE7000000, 0,
+                 0xFD100000, DATA + PAL,              # the TLUT, to TMEM's upper half
+                 0xF5000100, 0x07000000,
+                 0xF0000000, 0x073FC000,
+                 0xE7000000, 0,
+                 0xFD100000 | (W - 1), ZB,            # the depth image as the texture
+                 0xF8000000, 0x2040C0FF,
+                 0xE4000000 | ((280 * 4) << 12) | (200 * 4), (40 * 4) << 12 | (40 * 4),
+                 0xB4000000, 0,
+                 0xB3000000, (1 << 26) | (1 << 10)]
     cmds += [0xE7000000, 0, 0xE9000000, 0, 0xB8000000, 0]
 
     data = bytearray(DLIST + 8 * len(cmds))
@@ -102,6 +125,7 @@ def culling_cartridge(path, resize=False):
     data[MODEL:MODEL + len(model)] = model
     data[VIEWPORT:VIEWPORT + len(viewport)] = viewport
     data[VERTS:VERTS + len(verts)] = verts
+    data[PAL:PAL + 512] = struct.pack(">256H", *(((i * 7) & 0xff) << 8 | i for i in range(256)))
     data[DLIST:] = struct.pack(">%dI" % len(cmds), *cmds)
 
     prog = li(t0, 0xA4600000) + li(t1, DATA) + [sw(t1, 0, t0)]
@@ -132,7 +156,7 @@ def culling_cartridge(path, resize=False):
     image = bytearray(max(0x100000, cart.PAYLOAD + len(data)))
     image[0:4] = (0x80371240).to_bytes(4, "big")
     image[8:12] = (0x80000400).to_bytes(4, "big")
-    image[0x20:0x34] = b"GLIDEN64 CULLING    "
+    image[0x20:0x34] = b"BEETLE SHADOW MAP   " if shadow else b"GLIDEN64 CULLING    "
     assert 0x40 + 4 * len(prog) <= 0x1000
     for k, word in enumerate(prog):
         image[0x40 + 4 * k:0x40 + 4 * k + 4] = (word & 0xffffffff).to_bytes(4, "big")
@@ -201,6 +225,9 @@ def main():
         culling_cartridge(rom, resize=True)
         failures += compare(a, "resize", rom, 40, ["parallel-n64-gliden64-EnableFBEmulation=True", "parallel-n64-gliden64-EnableOverscan=Enabled",
                                                   "parallel-n64-gliden64-EnableNativeResFactor=2"])
+        # the depth image read back through the z and palette lookup textures
+        culling_cartridge(rom, shadow=True)
+        failures += compare(a, "shadow", rom, 8, ["parallel-n64-gliden64-EnableFBEmulation=True"])
     for name in (cart.KROM[:1] if a.quick else cart.KROM):
         failures += compare(a, name, cart.fetch(a.roms, name), 20 if a.quick else 60)
         failures += compare(a, name + " fb", cart.fetch(a.roms, name), 20,
