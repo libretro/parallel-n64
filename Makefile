@@ -1782,6 +1782,16 @@ test_gliden64_deferred_readback$(EXE_EXT): tools/test_gliden64_deferred_readback
 test_glide64_fb_readback$(EXE_EXT): tools/test_glide64_fb_readback.c $(VIDEODIR_GLIDE)/Glide64/FBReadback.h Graphics/image_convert.h
 	$(CC) $(CHECK_CFLAGS) $(CHECK_SANITIZE) -I$(LIBRETRO_COMM_DIR)/include $< -o $@ $(CHECK_LDFLAGS) $(CHECK_SANITIZE)
 
+# GLideN64 is moving to C89 a file at a time: what has moved stays there
+GLIDEN64_C89 := N64.c convert.c RSP_LoadMatrix.c 3DMath.c CRC32.c \
+	Graphics/VulkanContext/vk_spirv.c Graphics/VulkanContext/vk_shaders.c \
+	Graphics/VulkanContext/vk_renderer.c Graphics/VulkanContext/vk_device.c
+check_gliden64_c89:
+	for f in $(GLIDEN64_C89); do $(CC) -std=c89 -pedantic -Werror=pedantic -Werror=declaration-after-statement -D_DEFAULT_SOURCE \
+		-isystem $(VIDEODIR_PARALLEL)/parallel-rdp/vulkan-headers/include -isystem mupen64plus-core/src/api -isystem $(LIBRETRO_COMM_DIR)/include \
+		-I$(VIDEODIR_PARALLEL)/parallel-rdp/parallel-rdp -I$(VIDEODIR_GLIDEN64)/src -I$(VIDEODIR_GLIDEN64)/src/Graphics/VulkanContext \
+		-fsyntax-only $(VIDEODIR_GLIDEN64)/src/$$f || exit 1; done
+
 GLIDEN64_SPIRV_SRC := $(VIDEODIR_GLIDEN64)/src/Graphics/VulkanContext/vk_spirv.c $(VIDEODIR_GLIDEN64)/src/Graphics/VulkanContext/vk_shaders.c
 test_gliden64_spirv$(EXE_EXT): tools/test_gliden64_spirv.c $(GLIDEN64_SPIRV_SRC)
 	$(CC) $(CHECK_CFLAGS) $(CHECK_SANITIZE) -I$(VIDEODIR_GLIDEN64)/src/Graphics/VulkanContext $< $(GLIDEN64_SPIRV_SRC) -o $@ $(CHECK_LDFLAGS) $(CHECK_SANITIZE)

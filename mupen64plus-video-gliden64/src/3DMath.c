@@ -1,7 +1,7 @@
 #include <math.h>
 #include "3DMath.h"
 
-void MultMatrix(float m0[4][4], float m1[4][4], float dest[4][4])
+void gli_MultMatrix(float m0[4][4], float m1[4][4], float dest[4][4])
 {
 	int i;
 	for (i = 0; i < 4; i++)
@@ -13,14 +13,14 @@ void MultMatrix(float m0[4][4], float m1[4][4], float dest[4][4])
 	}
 }
 
-void MultMatrix2(float m0[4][4], float m1[4][4])
+void gli_MultMatrix2(float m0[4][4], float m1[4][4])
 {
 	float dst[4][4];
-	MultMatrix(m0, m1, dst);
+	gli_MultMatrix(m0, m1, dst);
 	memcpy( m0, dst, sizeof(float) * 16 );
 }
 
-void TransformVectorNormalize(float *vec, float mtx[4][4])
+void gli_TransformVectorNormalize(float *vec, float mtx[4][4])
 {
 	float vres[3];
 	vres[0] = mtx[0][0] * vec[0] + mtx[1][0] * vec[1] + mtx[2][0] * vec[2];
@@ -30,52 +30,52 @@ void TransformVectorNormalize(float *vec, float mtx[4][4])
 	vec[1] = vres[1];
 	vec[2] = vres[2];
 
-	Normalize(vec);
+	gli_Normalize(vec);
 }
 
-void InverseTransformVectorNormalize(float *src, float *dst, float mtx[4][4])
+void gli_InverseTransformVectorNormalize(float *src, float *dst, float mtx[4][4])
 {
 	dst[0] = mtx[0][0] * src[0] + mtx[0][1] * src[1] + mtx[0][2] * src[2];
 	dst[1] = mtx[1][0] * src[0] + mtx[1][1] * src[1] + mtx[1][2] * src[2];
 	dst[2] = mtx[2][0] * src[0] + mtx[2][1] * src[1] + mtx[2][2] * src[2];
 
-	Normalize(dst);
+	gli_Normalize(dst);
 }
 
-void Normalize(float *v)
+void gli_Normalize(float *v)
 {
 #ifdef WIN32_ASM
 	__asm {
 		mov		esi, dword ptr [v]
-										//	ST(6)			ST(5)			ST(4)			ST(3)			ST(2)			ST(1)			ST
-		fld		dword ptr [esi+08h]		//																									v2
-		fld		dword ptr [esi+04h]		//																					v2				v1
-		fld		dword ptr [esi]			//																	v2				v1				v0
-		fld1							//													v2				v1				v0				1.0
-		fld		ST(3)					//									v2				v1				v0				1.0				v2
-		fmul	ST, ST					//									v2				v1				v0				1.0				v2*v2
-		fld		ST(3)					//					v2				v1				v0				1.0				v2*v2			v1
-		fmul	ST, ST					//					v2				v1				v0				1.0				v2*v2			v1*v1
-		fld		ST(3)					//	v2				v1				v0				1.0				v2*v2			v1*v1			v0
-		fmul	ST, ST					//	v2				v1				v0				1.0				v2*v2			v1*v1			v0*v0
-		fadd							//					v2				v1				v0				1.0				v2*v2			v1*v1+v0*v0
-		fadd							//									v2				v1				v0				1.0				v2*v2+v1*v1+v0*v0
-		ftst							// Compare ST to 0
-		fstsw	ax						// Store FPU status word in ax
-		sahf							// Transfer ax to flags register
-		jz		End						// Skip if length is zero
-		fsqrt							//									v2				v1				v0				1.0				len
-		fdiv							//													v2				v1				v0				1.0/len
-		fmul	ST(3), ST				//													v2*(1.0/len)	v1				v0				1.0/len
-		fmul	ST(2), ST				//													v2*(1.0/len)	v1*(1.0/len)	v0				1.0/len
-		fmul							//																	v2*(1.0/len)	v1*(1.0/len)	v0*(1.0/len)
-		fstp	dword ptr [esi]			//																					v2*(1.0/len)	v1*(1.0/len)
-		fstp	dword ptr [esi+04h]		//																									v2*(1.0/len)
-		fstp	dword ptr [esi+08h]		//
+										/*	ST(6)			ST(5)			ST(4)			ST(3)			ST(2)			ST(1)			ST */
+		fld		dword ptr [esi+08h]		/*																									v2 */
+		fld		dword ptr [esi+04h]		/*																					v2				v1 */
+		fld		dword ptr [esi]			/*																	v2				v1				v0 */
+		fld1							/*													v2				v1				v0				1.0 */
+		fld		ST(3)					/*									v2				v1				v0				1.0				v2 */
+		fmul	ST, ST					/*									v2				v1				v0				1.0				v2*v2 */
+		fld		ST(3)					/*					v2				v1				v0				1.0				v2*v2			v1 */
+		fmul	ST, ST					/*					v2				v1				v0				1.0				v2*v2			v1*v1 */
+		fld		ST(3)					/*	v2				v1				v0				1.0				v2*v2			v1*v1			v0 */
+		fmul	ST, ST					/*	v2				v1				v0				1.0				v2*v2			v1*v1			v0*v0 */
+		fadd							/*					v2				v1				v0				1.0				v2*v2			v1*v1+v0*v0 */
+		fadd							/*									v2				v1				v0				1.0				v2*v2+v1*v1+v0*v0 */
+		ftst							/* Compare ST to 0 */
+		fstsw	ax						/* Store FPU status word in ax */
+		sahf							/* Transfer ax to flags register */
+		jz		End						/* Skip if length is zero */
+		fsqrt							/*									v2				v1				v0				1.0				len */
+		fdiv							/*													v2				v1				v0				1.0/len */
+		fmul	ST(3), ST				/*													v2*(1.0/len)	v1				v0				1.0/len */
+		fmul	ST(2), ST				/*													v2*(1.0/len)	v1*(1.0/len)	v0				1.0/len */
+		fmul							/*																	v2*(1.0/len)	v1*(1.0/len)	v0*(1.0/len) */
+		fstp	dword ptr [esi]			/*																					v2*(1.0/len)	v1*(1.0/len) */
+		fstp	dword ptr [esi+04h]		/*																									v2*(1.0/len) */
+		fstp	dword ptr [esi+08h]		/* */
 End:
 		finit
 	}
-#else // WIN32_ASM
+#else /* WIN32_ASM */
 	float len;
 
 	len = v[0]*v[0] + v[1]*v[1] + v[2]*v[2];
@@ -85,18 +85,19 @@ End:
 		v[1] /= len;
 		v[2] /= len;
 	}
-#endif // WIN32_ASM
+#endif /* WIN32_ASM */
 }
 
-void InverseTransformVectorNormalizeN(float src[][3], float dst[][3], float mtx[4][4], u32 count)
+void gli_InverseTransformVectorNormalizeN(float src[][3], float dst[][3], float mtx[4][4], u32 count)
 {
-	for (u32 i = 0; i < count; i++)
+	u32 i;
+	for (i = 0; i < count; i++)
 	{
-		InverseTransformVectorNormalize((float(*))src[i], (float(*))dst[i], mtx);
+		gli_InverseTransformVectorNormalize((float(*))src[i], (float(*))dst[i], mtx);
 	}
 }
 
-void CopyMatrix( float m0[4][4], float m1[4][4] )
+void gli_CopyMatrix( float m0[4][4], float m1[4][4] )
 {
 #ifdef WIN32_ASM
 	__asm {
@@ -141,5 +142,5 @@ void CopyMatrix( float m0[4][4], float m1[4][4] )
 	}
 #else
 	memcpy( m0, m1, 16 * sizeof( float ) );
-#endif // WIN32_ASM
+#endif /* WIN32_ASM */
 }

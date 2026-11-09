@@ -41,7 +41,10 @@ extern u32 rectDepthBufferCopyFrame;
 
 void RSP_Init();
 void RSP_ProcessDList();
-void RSP_LoadMatrix( f32 mtx[4][4], u32 address );
+#ifdef __cplusplus
+extern "C"
+#endif
+void gli_RSP_LoadMatrix( f32 mtx[4][4], u32 address );
 void RSP_CheckDLCounter();
 void RSP_StereoJournal(u32 _address, u32 _size);
 void RSP_StereoDestroy();

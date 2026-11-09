@@ -3,9 +3,9 @@
 
 #include "Types.h"
 
-#define MI_INTR_DP		0x20		// Bit 5: DP intr
+#define MI_INTR_DP		0x20		/* Bit 5: DP intr */
 
-struct N64Regs
+typedef struct N64Regs
 {
 	u32 *MI_INTR;
 
@@ -34,21 +34,27 @@ struct N64Regs
 	u32 *VI_Y_SCALE;
 
 	u32 *SP_STATUS;
-};
+} N64Regs;
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 extern N64Regs REG;
 extern u8 *HEADER;
 
-extern "C" {
-	// See comment in N64.cpp
-	extern u8 *DMEM;
-	extern u8 *IMEM;
-}
+/* DMEM and IMEM are defined by mupen64plus-rsp-cxd4 */
+extern u8 *DMEM;
+extern u8 *IMEM;
 
 extern u8 *RDRAM;
 extern u64 TMEM[512];
 extern u32 RDRAMSize;
-extern bool ConfigOpen;
+extern int ConfigOpen;
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
 

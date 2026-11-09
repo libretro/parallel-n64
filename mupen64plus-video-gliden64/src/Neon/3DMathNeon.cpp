@@ -4,7 +4,7 @@
 #include "Types.h"
 #include <arm_neon.h>
 
-void MultMatrix( float m0[4][4], float m1[4][4], float dest[4][4])
+void gli_MultMatrix( float m0[4][4], float m1[4][4], float dest[4][4])
 {
     // Load m0
     float32x4x4_t _m0;
@@ -45,12 +45,12 @@ void MultMatrix( float m0[4][4], float m1[4][4], float dest[4][4])
     vst1q_f32(dest[3], _dest.val[3]);
 }
 
-void MultMatrix2(float m0[4][4], float m1[4][4])
+void gli_MultMatrix2(float m0[4][4], float m1[4][4])
 {
-    MultMatrix(m0, m1, m0);
+    gli_MultMatrix(m0, m1, m0);
 }
 
-void TransformVectorNormalize(float *vec, float mtx[4][4])
+void gli_TransformVectorNormalize(float *vec, float mtx[4][4])
 {
     // Load mtx
     float32x4x4_t _mtx;
@@ -65,7 +65,7 @@ void TransformVectorNormalize(float *vec, float mtx[4][4])
     product = vmlaq_n_f32(product, _mtx.val[1], vec[1]);
     product = vmlaq_n_f32(product, _mtx.val[2], vec[2]);
 
-    // Normalize
+    // gli_Normalize
     float32x2_t product0 = {product[0],product[1]};
     float32x2_t product1 = {product[2],product[3]};
     float32x2_t temp;
@@ -94,7 +94,7 @@ void TransformVectorNormalize(float *vec, float mtx[4][4])
     vec[2] = product[2];
 }
 
-void InverseTransformVectorNormalize(float *src, float *dst, float mtx[4][4])
+void gli_InverseTransformVectorNormalize(float *src, float *dst, float mtx[4][4])
 {
     // Load mtx
     float32x4x4_t _mtx = vld4q_f32(mtx[0]);
@@ -105,7 +105,7 @@ void InverseTransformVectorNormalize(float *src, float *dst, float mtx[4][4])
     product = vmlaq_n_f32(product, _mtx.val[1], src[1]);
     product = vmlaq_n_f32(product, _mtx.val[2], src[2]);
 
-    // Normalize
+    // gli_Normalize
     float32x2_t product0 = {product[0],product[1]};
     float32x2_t product1 = {product[2],product[3]};
     float32x2_t temp;
@@ -154,7 +154,7 @@ static void InverseTransformVectorNormalize4(float src[4][3], float dst[4][3], f
     product.val[2] = vmlaq_n_f32(product.val[2], _mtx.val[2], src[2][2]);
     product.val[3] = vmlaq_n_f32(product.val[3], _mtx.val[2], src[3][2]);
 
-    // Normalize
+    // gli_Normalize
     float32x2_t product00 = {product.val[0][0],product.val[0][1]};
     float32x2_t product01 = {product.val[0][2],product.val[0][3]};
     float32x2_t product10 = {product.val[1][0],product.val[1][1]};
@@ -247,7 +247,7 @@ static void InverseTransformVectorNormalize7(float src[4][3], float dst[4][3], f
     product1.val[1] = vmlaq_n_f32(product1.val[1], _mtx.val[2], src[5][2]);
     product1.val[2] = vmlaq_n_f32(product1.val[2], _mtx.val[2], src[6][2]);
 
-    // Normalize
+    // gli_Normalize
     float32x2_t product00 = {product0.val[0][0],product0.val[0][1]};
     float32x2_t product01 = {product0.val[0][2],product0.val[0][3]};
     float32x2_t product10 = {product0.val[1][0],product0.val[1][1]};
@@ -351,12 +351,12 @@ static void InverseTransformVectorNormalize7(float src[4][3], float dst[4][3], f
 
 }
 
-void Normalize(float *v)
+void gli_Normalize(float *v)
 {
     // Load vector
     float32x4_t product = {v[0], v[1], v[2], 0.0};
 
-    // Normalize
+    // gli_Normalize
     float32x2_t product0 = {product[0],product[1]};
     float32x2_t product1 = {product[2],product[3]};
     float32x2_t temp;
@@ -385,7 +385,7 @@ void Normalize(float *v)
     v[2] = product[2];
 }
 
-void InverseTransformVectorNormalizeN(float src[][3], float dst[][3], float mtx[4][4], u32 count)
+void gli_InverseTransformVectorNormalizeN(float src[][3], float dst[][3], float mtx[4][4], u32 count)
 {
     while (count >= 7) {
         InverseTransformVectorNormalize7((float (*)[3])src[count-7], (float (*)[3])dst[count-7], mtx);
@@ -396,13 +396,13 @@ void InverseTransformVectorNormalizeN(float src[][3], float dst[][3], float mtx[
         count -= 4;
     }
     while (count >= 1) {
-        InverseTransformVectorNormalize((float (*))src[count-1], (float (*))dst[count-1], mtx);
+        gli_InverseTransformVectorNormalize((float (*))src[count-1], (float (*))dst[count-1], mtx);
         count--;
     }
 
 }
 
-void CopyMatrix( float m0[4][4], float m1[4][4] )
+void gli_CopyMatrix( float m0[4][4], float m1[4][4] )
 {
     // load and store 16 floats
     vst4q_f32(m0[0],vld4q_f32(m1[0]));

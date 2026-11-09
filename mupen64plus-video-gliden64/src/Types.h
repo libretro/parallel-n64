@@ -4,22 +4,27 @@
 typedef unsigned char			u8;	/* unsigned  8-bit */
 typedef unsigned short			u16;	/* unsigned 16-bit */
 typedef unsigned int			u32;	/* unsigned 32-bit */
-typedef unsigned long long		u64;	/* unsigned 64-bit */
+#if defined(_MSC_VER)
+typedef unsigned __int64		u64;	/* unsigned 64-bit */
+typedef signed __int64			s64;	/* signed 64-bit */
+#else
+__extension__ typedef unsigned long long	u64;	/* unsigned 64-bit */
+__extension__ typedef long long			s64;	/* signed 64-bit */
+#endif
 
 typedef signed char			s8;	/* signed  8-bit */
 typedef short				s16;	/* signed 16-bit */
 typedef int				s32;	/* signed 32-bit */
-typedef long long			s64;	/* signed 64-bit */
 
 typedef volatile unsigned char		vu8;	/* unsigned  8-bit */
 typedef volatile unsigned short		vu16;	/* unsigned 16-bit */
 typedef volatile unsigned int		vu32;	/* unsigned 32-bit */
-typedef volatile unsigned long long	vu64;	/* unsigned 64-bit */
+typedef volatile u64		vu64;	/* unsigned 64-bit */
 
 typedef volatile signed char	vs8;	/* signed  8-bit */
 typedef volatile short			vs16;	/* signed 16-bit */
 typedef volatile int			vs32;	/* signed 32-bit */
-typedef volatile long long		vs64;	/* signed 64-bit */
+typedef volatile s64		vs64;	/* signed 64-bit */
 
 typedef float				f32;	/* single prec floating point */
 typedef double				f64;	/* double prec floating point */
@@ -40,6 +45,7 @@ typedef double				f64;	/* double prec floating point */
 #define PLUGIN_PATH_SIZE 260
 #endif
 
+#ifdef __cplusplus
 template <typename T>
 class ValueKeeper
 {
@@ -60,5 +66,6 @@ private:
 	T & m_obj;
 	T m_val;
 };
+#endif
 
-#endif // TYPES_H
+#endif /* TYPES_H */

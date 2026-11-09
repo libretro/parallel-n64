@@ -505,11 +505,11 @@ void gDPLoadTile(u32 tile, u32 uls, u32 ult, u32 lrs, u32 lrt)
 			const u32 room = 0x1000 - tmemByte;
 			const u32 rowBytes = min(bpr, room);
 			if (address + bpl > RDRAMSize)
-				UnswapCopyWrap(RDRAM, address, (u8*)TMEM, tmemByte, 0xFFF, min(RDRAMSize - address, room));
+				gli_UnswapCopyWrap(RDRAM, address, (u8*)TMEM, tmemByte, 0xFFF, min(RDRAMSize - address, room));
 			else
-				UnswapCopyWrap(RDRAM, address, (u8*)TMEM, tmemByte, 0xFFF, rowBytes);
+				gli_UnswapCopyWrap(RDRAM, address, (u8*)TMEM, tmemByte, 0xFFF, rowBytes);
 			if (y & 1)
-				DWordInterleaveWrap((u32*)TMEM, tmemAddr << 1, 0x3FF, rowBytes >> 3);
+				gli_DWordInterleaveWrap((u32*)TMEM, tmemAddr << 1, 0x3FF, rowBytes >> 3);
 
 			address += gDP.textureImage.bpl;
 			if (address >= RDRAMSize)
@@ -631,7 +631,7 @@ void gDPLoadBlock(u32 tile, u32 uls, u32 ult, u32 lrs, u32 dxt)
 		memcpy(TMEM, &RDRAM[address], bytes); // HACK!
 	else {
 		u32 tmemAddr = gDP.loadTile->tmem;
-		UnswapCopyWrap(RDRAM, address, (u8*)TMEM, tmemAddr << 3, 0xFFF, bytes);
+		gli_UnswapCopyWrap(RDRAM, address, (u8*)TMEM, tmemAddr << 3, 0xFFF, bytes);
 		if (dxt != 0) {
 			u32 dxtCounter = 0;
 			u32 qwords = (bytes >> 3);
@@ -651,12 +651,12 @@ void gDPLoadBlock(u32 tile, u32 uls, u32 ult, u32 lrs, u32 dxt)
 						goto end_dxt_test;
 					dxtCounter += dxt;
 				} while ((dxtCounter & 0x800) != 0);
-				DWordInterleaveWrap((u32*)TMEM, tmemAddr << 1, 0x3FF, line);
+				gli_DWordInterleaveWrap((u32*)TMEM, tmemAddr << 1, 0x3FF, line);
 				tmemAddr += line;
 				line = 0;
 			}
 			end_dxt_test:
-				DWordInterleaveWrap((u32*)TMEM, tmemAddr << 1, 0x3FF, line);
+				gli_DWordInterleaveWrap((u32*)TMEM, tmemAddr << 1, 0x3FF, line);
 		}
 	}
 

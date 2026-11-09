@@ -269,7 +269,7 @@ void gSPLightVertex_NEON(u32 vnum, u32 v, SPVertex * spVtx)
 	} else {
 		for(int j = 0; j < vnum; ++j) {
 			SPVertex & vtx = spVtx[v+j];
-			TransformVectorNormalize(&vtx.r, gSP.matrix.modelView[gSP.matrix.modelViewi]);
+			gli_TransformVectorNormalize(&vtx.r, gSP.matrix.modelView[gSP.matrix.modelViewi]);
 			vtx.HWLight = gSP.numLights;
 		}
 	}

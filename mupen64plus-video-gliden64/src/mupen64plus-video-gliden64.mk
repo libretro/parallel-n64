@@ -23,7 +23,7 @@ MY_LOCAL_SRC_FILES :=                                                           
     $(SRCDIR)/CombinerKey.cpp                                                      \
     $(SRCDIR)/CommonPluginAPI.cpp                                                  \
     $(SRCDIR)/Config.cpp                                                           \
-    $(SRCDIR)/convert.cpp                                                          \
+    $(SRCDIR)/convert.c                                                          \
     $(SRCDIR)/DepthBuffer.cpp                                                      \
     $(SRCDIR)/DisplayWindow.cpp                                                    \
     $(SRCDIR)/FrameBuffer.cpp                                                      \
@@ -35,7 +35,7 @@ MY_LOCAL_SRC_FILES :=                                                           
     $(SRCDIR)/gSP.cpp                                                              \
     $(SRCDIR)/Log_android.cpp                                                      \
     $(SRCDIR)/MupenPlusPluginAPI.cpp                                               \
-    $(SRCDIR)/N64.cpp                                                              \
+    $(SRCDIR)/N64.c                                                              \
     $(SRCDIR)/NoiseTexture.cpp                                                     \
     $(SRCDIR)/PaletteTexture.cpp                                                   \
     $(SRCDIR)/PostProcessor.cpp                                                    \
@@ -155,15 +155,15 @@ else ifeq ($(TARGET_ARCH_ABI), arm64-v8a)
 else ifeq ($(TARGET_ARCH_ABI), x86)
 #    MY_LOCAL_CFLAGS += -DX86_ASM
     MY_LOCAL_CFLAGS += -D__VEC4_OPT
-    MY_LOCAL_SRC_FILES += $(SRCDIR)/3DMath.cpp
-    MY_LOCAL_SRC_FILES += $(SRCDIR)/RSP_LoadMatrix.cpp
+    MY_LOCAL_SRC_FILES += $(SRCDIR)/3DMath.c
+    MY_LOCAL_SRC_FILES += $(SRCDIR)/RSP_LoadMatrix.c
     MY_LOCAL_SRC_FILES += $(SRCDIR)/CRC_OPT.cpp
 
 else ifeq ($(TARGET_ARCH_ABI), x86_64)
 #    MY_LOCAL_CFLAGS += -DX86_ASM
     MY_LOCAL_CFLAGS += -D__VEC4_OPT
-    MY_LOCAL_SRC_FILES += $(SRCDIR)/3DMath.cpp
-    MY_LOCAL_SRC_FILES += $(SRCDIR)/RSP_LoadMatrix.cpp
+    MY_LOCAL_SRC_FILES += $(SRCDIR)/3DMath.c
+    MY_LOCAL_SRC_FILES += $(SRCDIR)/RSP_LoadMatrix.c
     MY_LOCAL_SRC_FILES += $(SRCDIR)/CRC_OPT.cpp
 endif
 

@@ -135,6 +135,9 @@ Know which layer you are changing. Having one does not give you the next.
   `src/Graphics/VulkanContext/` (`vk_spirv.c`, `vk_shaders.c`, `vk_renderer.c`,
   `vk_device.c`); `vk_ContextImpl.cpp` is the C++ boundary and holds no logic
   of its own. New code here stays C89.
+- The rest of GLideN64 moves to C89 a file at a time, leaf files first. A moved
+  file goes on `GLIDEN64_C89` so it stays moved; its public functions take a
+  `gli_` prefix, because the other plugins export the same C names.
 - There is no GLSL and no compiler. Shaders are written directly as SPIR-V;
   every module goes through `test_gliden64_spirv`. One writer gives both the
   generic shader (combiner read from push constants) and each combiner's own,

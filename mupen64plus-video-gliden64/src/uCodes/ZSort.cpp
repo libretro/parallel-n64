@@ -261,10 +261,10 @@ void ZSort_Lighting( u32 _w0, u32 _w1 )
 		vtx.nx = ((s8*)DMEM)[(nsrs++)^3];
 		vtx.ny = ((s8*)DMEM)[(nsrs++)^3];
 		vtx.nz = ((s8*)DMEM)[(nsrs++)^3];
-		TransformVectorNormalize( &vtx.nx, gSP.matrix.modelView[gSP.matrix.modelViewi] );
+		gli_TransformVectorNormalize( &vtx.nx, gSP.matrix.modelView[gSP.matrix.modelViewi] );
 		gSPLightVertex(vtx);
 		f32 fLightDir[3] = {vtx.nx, vtx.ny, vtx.nz};
-		TransformVectorNormalize(fLightDir, gSP.matrix.projection);
+		gli_TransformVectorNormalize(fLightDir, gSP.matrix.projection);
 		f32 x, y;
 		if (gSP.lookatEnable) {
 			x = DotProduct(gSP.lookat.xyz[0], fLightDir);
@@ -329,7 +329,7 @@ void ZSort_MTXCAT(u32 _w0, u32 _w1)
 	}
 	assert(s != nullptr && t != nullptr);
 	f32 m[4][4];
-	MultMatrix(*s, *t, m);
+	gli_MultMatrix(*s, *t, m);
 
 	switch (D) {
 	case GZM_MMTX:
@@ -443,17 +443,17 @@ void ZSort_MoveMem( u32 _w0, u32 _w1 )
 	break;
 
 	case GZM_MMTX:  // model matrix
-		RSP_LoadMatrix(gSP.matrix.modelView[gSP.matrix.modelViewi], addr);
+		gli_RSP_LoadMatrix(gSP.matrix.modelView[gSP.matrix.modelViewi], addr);
 		gSP.changed |= CHANGED_MATRIX;
 	break;
 
 	case GZM_PMTX:  // projection matrix
-		RSP_LoadMatrix(gSP.matrix.projection, addr);
+		gli_RSP_LoadMatrix(gSP.matrix.projection, addr);
 		gSP.changed |= CHANGED_MATRIX;
 	break;
 
 	case GZM_MPMTX:  // combined matrix
-		RSP_LoadMatrix(gSP.matrix.combined, addr);
+		gli_RSP_LoadMatrix(gSP.matrix.combined, addr);
 		gSP.changed &= ~CHANGED_MATRIX;
 	break;
 

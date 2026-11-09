@@ -249,6 +249,7 @@ test-gl-renderers-linux-x64:
     - python3 tools/ci/gliden64_ubershader.py --core ./parallel_n64_libretro.so --host ./lrhost_gl
     - make platform=unix HAVE_PARALLEL=1 lrhost_vk test_gliden64_spirv
     - ./test_gliden64_spirv
+    - make platform=unix check_gliden64_c89
     - python3 tools/ci/gliden64_vulkan.py --core ./parallel_n64_libretro.so --gl ./lrhost_gl --vk ./lrhost_vk
     - python3 tools/ci/angrylion_lend.py --core ./parallel_n64_libretro.so --host ./lrhost
     - make platform=unix clean

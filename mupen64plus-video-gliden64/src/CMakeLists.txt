@@ -14,13 +14,13 @@ option(VERO4K "Set to ON if targeting a Vero4k" ${VERO4K})
 project( GLideN64 )
 
 set(GLideN64_SOURCES
-  3DMath.cpp
+  3DMath.c
   Combiner.cpp
   CombinerKey.cpp
   CommonPluginAPI.cpp
   Config.cpp
-  convert.cpp
-  CRC32.cpp
+  convert.c
+  CRC32.c
   DepthBuffer.cpp
   DisplayWindow.cpp
   FrameBuffer.cpp
@@ -31,13 +31,13 @@ set(GLideN64_SOURCES
   GraphicsDrawer.cpp
   gSP.cpp
   Log.cpp
-  N64.cpp
+  N64.c
   NoiseTexture.cpp
   PaletteTexture.cpp
   PostProcessor.cpp
   RDP.cpp
   RSP.cpp
-  RSP_LoadMatrix.cpp
+  RSP_LoadMatrix.c
   SoftwareRender.cpp
   TexrectDrawer.cpp
   TextureFilterHandler.cpp
@@ -247,7 +247,7 @@ endif(VEC4_OPT)
 
 if(CRC_OPT)
   list(REMOVE_ITEM GLideN64_SOURCES
-        CRC32.cpp
+        CRC32.c
   )
   list(APPEND GLideN64_SOURCES
         CRC_OPT.cpp
@@ -265,8 +265,8 @@ if(NEON_OPT)
     Neon/RSP_LoadMatrixNeon.cpp
   )
   list(REMOVE_ITEM GLideN64_SOURCES
-    3DMath.cpp
-    RSP_LoadMatrix.cpp
+    3DMath.c
+    RSP_LoadMatrix.c
   )
 endif(NEON_OPT)
 
@@ -275,7 +275,7 @@ if(X86_OPT)
     RSP_LoadMatrixX86.cpp
   )
   list(REMOVE_ITEM GLideN64_SOURCES
-    RSP_LoadMatrix.cpp
+    RSP_LoadMatrix.c
   )
 endif(X86_OPT)
 

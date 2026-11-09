@@ -374,6 +374,9 @@ CXXFLAGS += -DHAVE_GLIDEN64 -DMUPENPLUSAPI -D__LIBRETRO__
 # library bump and is no longer present in the tree.
 
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/StereoJournal.c
+SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/N64.c
+SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/convert.c
+SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/RSP_LoadMatrix.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/CombinerKeyJournal.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/Graphics/VulkanContext/vk_spirv.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/Graphics/VulkanContext/vk_shaders.c
@@ -389,7 +392,6 @@ SOURCES_CXX   += \
     $(VIDEODIR_GLIDEN64)/src/CombinerKey.cpp                                                      \
     $(VIDEODIR_GLIDEN64)/src/CommonPluginAPI.cpp                                                  \
     $(VIDEODIR_GLIDEN64)/src/Config.cpp                                                           \
-    $(VIDEODIR_GLIDEN64)/src/convert.cpp                                                          \
     $(VIDEODIR_GLIDEN64)/src/CRC_OPT.cpp                                                          \
     $(VIDEODIR_GLIDEN64)/src/DepthBuffer.cpp                                                      \
     $(VIDEODIR_GLIDEN64)/src/DisplayWindow.cpp                                                    \
@@ -400,7 +402,6 @@ SOURCES_CXX   += \
     $(VIDEODIR_GLIDEN64)/src/gDP.cpp                                                              \
     $(VIDEODIR_GLIDEN64)/src/GLideN64.cpp                                                         \
     $(VIDEODIR_GLIDEN64)/src/gSP.cpp                                                              \
-    $(VIDEODIR_GLIDEN64)/src/N64.cpp                                                              \
     $(VIDEODIR_GLIDEN64)/src/PaletteTexture.cpp                                                   \
     $(VIDEODIR_GLIDEN64)/src/PostProcessor.cpp                                                    \
     $(VIDEODIR_GLIDEN64)/src/StereoFrames.cpp                                                     \
@@ -499,8 +500,7 @@ SOURCES_CXX   += \
 	$(VIDEODIR_GLIDEN64)/src/GLideNHQ/TxQuantize.cpp \
 	$(VIDEODIR_GLIDEN64)/src/GLideNHQ/TxReSample.cpp \
 	$(VIDEODIR_GLIDEN64)/src/GLideNHQ/TxTexCache.cpp \
-	$(VIDEODIR_GLIDEN64)/src/GLideNHQ/TxUtil.cpp \
-	$(VIDEODIR_GLIDEN64)/src/RSP_LoadMatrix.cpp
+	$(VIDEODIR_GLIDEN64)/src/GLideNHQ/TxUtil.cpp
 
 # GLideNHQ's persistent filter/quantize pool (C89)
 SOURCES_C += $(VIDEODIR_GLIDEN64)/src/GLideNHQ/txpool.c
@@ -520,7 +520,7 @@ ifeq ($(HAVE_NEON),1)
 	SOURCES_CXX   += $(VIDEODIR_GLIDEN64)/src/Neon/3DMathNeon.cpp \
 					 $(VIDEODIR_GLIDEN64)/src/Neon/gSPNeon.cpp
 else
-	SOURCES_CXX   += $(VIDEODIR_GLIDEN64)/src/3DMath.cpp
+	SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/3DMath.c
 endif
 endif
 

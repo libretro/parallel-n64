@@ -1,4 +1,5 @@
 #include <string.h>
+#include <retro_inline.h>
 #include <encodings/crc32.h>
 #include "CRC.h"
 
@@ -16,20 +17,20 @@ static INLINE u32 crc32_raw(u32 crc, const u8 *buffer, u32 count)
 	return ~encoding_crc32(~crc, buffer, count);
 }
 
-void CRC_Init()
+void CRC_Init(void)
 {
 }
 
 u64 CRC_Calculate( u64 crc, const void * buffer, u32 count )
 {
-	const u32 orig = static_cast<u32>(crc);
+	const u32 orig = (u32)crc;
 
-	return crc32_raw(orig, reinterpret_cast<const u8*>(buffer), count) ^ orig;
+	return crc32_raw(orig, (const u8*)buffer, count) ^ orig;
 }
 
 u32 CRC_Calculate_Strict( u32 crc, const void * buffer, u32 count )
 {
-	return static_cast<u32>(CRC_Calculate(crc, buffer, count));
+	return (u32)CRC_Calculate(crc, buffer, count);
 }
 
 /* Palette entries are 16 bits stored every 8 bytes, so the CRC covers 2 of
@@ -39,9 +40,9 @@ u32 CRC_Calculate_Strict( u32 crc, const void * buffer, u32 count )
  * unchanged, so the result is identical. */
 u64 CRC_CalculatePalette(u64 crc, const void * buffer, u32 count )
 {
-	const u32 orig = static_cast<u32>(crc);
+	const u32 orig = (u32)crc;
 	u32 crc32      = orig;
-	const u8 *p    = reinterpret_cast<const u8*>(buffer);
+	const u8 *p    = (const u8*)buffer;
 	u8 staging[512];
 
 	while (count > 0) {

@@ -534,7 +534,7 @@ void F5INDI_MoveMem(u32 _w0, u32 _w1)
 			gSPForceMatrix(_w1);
 			break;
 		case 0x010E403F:
-			RSP_LoadMatrix(getIndiData().mtx_vtx_gen, _SHIFTR(_w1, 0, 24));
+			gli_RSP_LoadMatrix(getIndiData().mtx_vtx_gen, _SHIFTR(_w1, 0, 24));
 			F5INDI_LoadSTMatrix();
 			break;
 		}

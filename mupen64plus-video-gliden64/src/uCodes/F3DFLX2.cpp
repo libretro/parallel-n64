@@ -23,7 +23,7 @@ void F3DFLX2_LoadAlphaLight(u32 _a)
 
 	gSP.lookatEnable = true;
 
-	Normalize(gSP.lookat.xyz[0]);
+	gli_Normalize(gSP.lookat.xyz[0]);
 	gSP.changed |= CHANGED_LOOKAT;
 }
 

@@ -671,7 +671,7 @@ void gSPApplyStereo(f32 matrix[4][4])
 static
 void _gSPCombineMatrices()
 {
-	MultMatrix(gSP.matrix.projection, gSP.matrix.modelView[gSP.matrix.modelViewi], gSP.matrix.combined);
+	gli_MultMatrix(gSP.matrix.projection, gSP.matrix.modelView[gSP.matrix.modelViewi], gSP.matrix.combined);
 	l_combiningMatrices = true;
 	gSPApplyStereo(gSP.matrix.combined);
 	l_combiningMatrices = false;
@@ -772,25 +772,25 @@ void gSPMatrix( u32 matrix, u8 param )
 		return;
 	}
 
-	RSP_LoadMatrix( mtx, address );
+	gli_RSP_LoadMatrix( mtx, address );
 
 	if (param & G_MTX_PROJECTION) {
 		if (param & G_MTX_LOAD)
-			CopyMatrix( gSP.matrix.projection, mtx );
+			gli_CopyMatrix( gSP.matrix.projection, mtx );
 		else
-			MultMatrix2( gSP.matrix.projection, mtx );
+			gli_MultMatrix2( gSP.matrix.projection, mtx );
 	} else {
 		if ((param & G_MTX_PUSH)) {
 			if (gSP.matrix.modelViewi < (gSP.matrix.stackSize)) {
-				CopyMatrix(gSP.matrix.modelView[gSP.matrix.modelViewi + 1], gSP.matrix.modelView[gSP.matrix.modelViewi]);
+				gli_CopyMatrix(gSP.matrix.modelView[gSP.matrix.modelViewi + 1], gSP.matrix.modelView[gSP.matrix.modelViewi]);
 				gSP.matrix.modelViewi++;
 			}
 		}
 
 		if (param & G_MTX_LOAD)
-			CopyMatrix( gSP.matrix.modelView[gSP.matrix.modelViewi], mtx );
+			gli_CopyMatrix( gSP.matrix.modelView[gSP.matrix.modelViewi], mtx );
 		else
-			MultMatrix2( gSP.matrix.modelView[gSP.matrix.modelViewi], mtx );
+			gli_MultMatrix2( gSP.matrix.modelView[gSP.matrix.modelViewi], mtx );
 		gSP.changed |= CHANGED_LIGHT | CHANGED_LOOKAT;
 	}
 
@@ -807,16 +807,16 @@ void gSPDMAMatrix( u32 matrix, u8 index, u8 multiply )
 		return;
 	}
 
-	RSP_LoadMatrix(mtx, address);
+	gli_RSP_LoadMatrix(mtx, address);
 
 	gSP.matrix.modelViewi = index;
 
 	if (multiply)
-		MultMatrix(gSP.matrix.modelView[0], mtx, gSP.matrix.modelView[gSP.matrix.modelViewi]);
+		gli_MultMatrix(gSP.matrix.modelView[0], mtx, gSP.matrix.modelView[gSP.matrix.modelViewi]);
 	else
-		CopyMatrix( gSP.matrix.modelView[gSP.matrix.modelViewi], mtx );
+		gli_CopyMatrix( gSP.matrix.modelView[gSP.matrix.modelViewi], mtx );
 
-	CopyMatrix( gSP.matrix.projection, identityMatrix );
+	gli_CopyMatrix( gSP.matrix.projection, identityMatrix );
 
 
 	gSP.changed |= CHANGED_MATRIX | CHANGED_LIGHT | CHANGED_LOOKAT;
@@ -862,7 +862,7 @@ void gSPForceMatrix( u32 mptr )
 		return;
 	}
 
-	RSP_LoadMatrix(gSP.matrix.combined, address);
+	gli_RSP_LoadMatrix(gSP.matrix.combined, address);
 	gSPApplyStereo(gSP.matrix.combined);
 
 	gSP.changed &= ~CHANGED_MATRIX;
@@ -889,7 +889,7 @@ void gSPLight( u32 l, s32 n )
 		gSP.lights.xyz[n][Y] = light->y;
 		gSP.lights.xyz[n][Z] = light->z;
 
-		Normalize( gSP.lights.xyz[n] );
+		gli_Normalize( gSP.lights.xyz[n] );
 		u32 addrShort = addrByte >> 1;
 		gSP.lights.pos_xyzw[n][X] = (float)(((short*)RDRAM)[(addrShort+4)^1]);
 		gSP.lights.pos_xyzw[n][Y] = (float)(((short*)RDRAM)[(addrShort+5)^1]);
@@ -922,7 +922,7 @@ void gSPLightCBFD( u32 l, s32 n )
 		gSP.lights.xyz[n][Y] = light->y;
 		gSP.lights.xyz[n][Z] = light->z;
 
-		Normalize( gSP.lights.xyz[n] );
+		gli_Normalize( gSP.lights.xyz[n] );
 		u32 addrShort = addrByte >> 1;
 		gSP.lights.pos_xyzw[n][X] = (float)(((short*)RDRAM)[(addrShort+16)^1]);
 		gSP.lights.pos_xyzw[n][Y] = (float)(((short*)RDRAM)[(addrShort+17)^1]);
@@ -973,14 +973,14 @@ void gSPLookAt( u32 _l, u32 _n )
 
 	gSP.lookatEnable = (_n == 0) || (_n == 1 && (light->x != 0 || light->y != 0));
 
-	Normalize(gSP.lookat.xyz[_n]);
+	gli_Normalize(gSP.lookat.xyz[_n]);
 	gSP.changed |= CHANGED_LOOKAT;
 }
 
 static
 void gSPUpdateLightVectors()
 {
-	InverseTransformVectorNormalizeN(&gSP.lights.xyz[0], &gSP.lights.i_xyz[0], 
+	gli_InverseTransformVectorNormalizeN(&gSP.lights.xyz[0], &gSP.lights.i_xyz[0], 
 			gSP.matrix.modelView[gSP.matrix.modelViewi], gSP.numLights);
 	gSP.changed ^= CHANGED_LIGHT;
 	gSP.changed |= CHANGED_HW_LIGHT;
@@ -990,7 +990,7 @@ static
 void gSPUpdateLookatVectors()
 {
 	if (gSP.lookatEnable) {
-		InverseTransformVectorNormalizeN(&gSP.lookat.xyz[0], &gSP.lookat.i_xyz[0],
+		gli_InverseTransformVectorNormalizeN(&gSP.lookat.xyz[0], &gSP.lookat.i_xyz[0],
 				gSP.matrix.modelView[gSP.matrix.modelViewi], 2);
 	}
 	gSP.changed ^= CHANGED_LOOKAT;
@@ -1050,7 +1050,7 @@ void gSPLightVertexStandard(u32 v, SPVertex * spVtx)
 	} else {
 		for(int j = 0; j < VNUM; ++j) {
 			SPVertex & vtx = spVtx[v+j];
-			TransformVectorNormalize(&vtx.r, gSP.matrix.modelView[gSP.matrix.modelViewi]);
+			gli_TransformVectorNormalize(&vtx.r, gSP.matrix.modelView[gSP.matrix.modelViewi]);
 			vtx.HWLight = gSP.numLights;
 		}
 	}
@@ -1484,7 +1484,7 @@ void gSPProcessVertex(u32 v, SPVertex * spVtx)
 						fLightDir[0] *= 128.0f;
 						fLightDir[1] *= 128.0f;
 						fLightDir[2] *= 128.0f;
-						TransformVectorNormalize(fLightDir, gSP.matrix.modelView[gSP.matrix.modelViewi]);
+						gli_TransformVectorNormalize(fLightDir, gSP.matrix.modelView[gSP.matrix.modelViewi]);
 						x = fLightDir[0];
 						y = fLightDir[1];
 					}

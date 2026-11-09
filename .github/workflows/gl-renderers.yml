@@ -92,6 +92,7 @@ jobs:
         run: |
           make platform=unix test_gliden64_spirv
           ./test_gliden64_spirv
+          make platform=unix check_gliden64_c89
 
       - name: GLideN64 on Vulkan
         run: |
