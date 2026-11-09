@@ -1,21 +1,16 @@
-#pragma once
-#include <memory>
+#ifndef PALETTETEXTURE_H
+#define PALETTETEXTURE_H
 
-struct CachedTexture;
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-class PaletteTexture
-{
-public:
-	PaletteTexture();
+void gli_palette_init(void);
+void gli_palette_destroy(void);
+void gli_palette_update(void);
 
-	void init();
-	void destroy();
-	void update();
+#ifdef __cplusplus
+}
+#endif
 
-private:
-	CachedTexture * m_pTexture;
-	u8* m_pbuf;
-	u64 m_paletteCRC256;
-};
-
-extern PaletteTexture g_paletteTexture;
+#endif

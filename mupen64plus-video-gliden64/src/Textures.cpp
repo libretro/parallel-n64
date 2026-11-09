@@ -17,6 +17,7 @@
 #include "Graphics/Context.h"
 #include "Graphics/Parameters.h"
 #include "DisplayWindow.h"
+#include "gli_textures.h"
 
 using namespace std;
 using namespace graphics;
@@ -1729,4 +1730,115 @@ void getTextureShiftScale(u32 t, const TextureCache & cache, f32 & shiftScaleS, 
 		shiftScaleT = (f32)(1 << (16 - gSP.textureTile[t]->shiftt));
 	else if (gSP.textureTile[t]->shiftt > 0)
 		shiftScaleT /= (f32)(1 << gSP.textureTile[t]->shiftt);
+}
+
+bool gli_tex_integer_supported(void)
+{
+	return Context::IntegerTextures;
+}
+
+static CachedTexture * _createFrameBufferTexture(u16 _format, u32 _width, u32 _height, u32 _bytes)
+{
+	CachedTexture * pTexture = textureCache().addFrameBufferTexture(textureTarget::TEXTURE_2D);
+	pTexture->format = _format;
+	pTexture->clampS = 1;
+	pTexture->clampT = 1;
+	pTexture->frameBufferTexture = CachedTexture::fbOneSample;
+	pTexture->maskS = 0;
+	pTexture->maskT = 0;
+	pTexture->mirrorS = 0;
+	pTexture->mirrorT = 0;
+	pTexture->width = _width;
+	pTexture->height = _height;
+	pTexture->textureBytes = pTexture->width * pTexture->height * _bytes;
+	return pTexture;
+}
+
+static TextureUnitParam _lutUnit(u32 _unit)
+{
+	return _unit == GLI_TEX_UNIT_ZLUT ? textureIndices::ZLUTTex : textureIndices::PaletteTex;
+}
+
+CachedTexture * gli_tex_lut_create(u32 _width, u32 _height, u32 _unit, const void * _data)
+{
+	const FramebufferTextureFormats & fbTexFormats = gfxContext.getFramebufferTextureFormats();
+	CachedTexture * pTexture = _createFrameBufferTexture(G_IM_FMT_IA, _width, _height, fbTexFormats.lutFormatBytes);
+
+	Context::InitTextureParams initParams;
+	initParams.handle = pTexture->name;
+	initParams.width = pTexture->width;
+	initParams.height = pTexture->height;
+	initParams.internalFormat = fbTexFormats.lutInternalFormat;
+	initParams.format = fbTexFormats.lutFormat;
+	initParams.dataType = fbTexFormats.lutType;
+	initParams.data = _data;
+	gfxContext.init2DTexture(initParams);
+
+	Context::TexParameters setParams;
+	setParams.handle = pTexture->name;
+	setParams.target = textureTarget::TEXTURE_2D;
+	setParams.textureUnitIndex = _lutUnit(_unit);
+	setParams.minFilter = textureParameters::FILTER_NEAREST;
+	setParams.magFilter = textureParameters::FILTER_NEAREST;
+	setParams.wrapS = textureParameters::WRAP_CLAMP_TO_EDGE;
+	setParams.wrapT = textureParameters::WRAP_CLAMP_TO_EDGE;
+	gfxContext.setTextureParameters(setParams);
+	return pTexture;
+}
+
+void gli_tex_lut_update(CachedTexture * _pTexture, u32 _unit, const void * _data)
+{
+	const FramebufferTextureFormats & fbTexFormats = gfxContext.getFramebufferTextureFormats();
+	Context::UpdateTextureDataParams params;
+	params.handle = _pTexture->name;
+	params.textureUnitIndex = _lutUnit(_unit);
+	params.width = _pTexture->width;
+	params.height = _pTexture->height;
+	params.format = fbTexFormats.lutFormat;
+	params.internalFormat = fbTexFormats.lutInternalFormat;
+	params.dataType = fbTexFormats.lutType;
+	params.data = _data;
+	gfxContext.update2DTexture(params);
+}
+
+CachedTexture * gli_tex_noise_create(u32 _width, u32 _height, const void * _data)
+{
+	CachedTexture * pTexture = _createFrameBufferTexture(G_IM_FMT_RGBA, _width, _height, 1);
+	const FramebufferTextureFormats & fbTexFormats = gfxContext.getFramebufferTextureFormats();
+	{
+		Context::InitTextureParams params;
+		params.handle = pTexture->name;
+		params.textureUnitIndex = textureIndices::NoiseTex;
+		params.width = pTexture->width;
+		params.height = pTexture->height;
+		params.internalFormat = fbTexFormats.noiseInternalFormat;
+		params.format = fbTexFormats.noiseFormat;
+		params.dataType = fbTexFormats.noiseType;
+		params.data = _data;
+		gfxContext.init2DTexture(params);
+	}
+	{
+		Context::TexParameters params;
+		params.handle = pTexture->name;
+		params.target = textureTarget::TEXTURE_2D;
+		params.textureUnitIndex = textureIndices::NoiseTex;
+		params.minFilter = textureParameters::FILTER_NEAREST;
+		params.magFilter = textureParameters::FILTER_NEAREST;
+		gfxContext.setTextureParameters(params);
+	}
+	return pTexture;
+}
+
+void gli_tex_noise_bind(CachedTexture * _pTexture)
+{
+	Context::BindTextureParameters params;
+	params.texture = _pTexture->name;
+	params.textureUnitIndex = textureIndices::NoiseTex;
+	params.target = textureTarget::TEXTURE_2D;
+	gfxContext.bindTexture(params);
+}
+
+void gli_tex_remove(CachedTexture * _pTexture)
+{
+	textureCache().removeFrameBufferTexture(_pTexture);
 }

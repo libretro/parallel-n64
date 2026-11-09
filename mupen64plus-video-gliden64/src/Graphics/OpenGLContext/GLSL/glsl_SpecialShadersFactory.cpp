@@ -480,7 +480,7 @@ namespace glsl {
 			glUniform1i(m_locTlut, int(graphics::textureIndices::PaletteTex));
 			glUniform1i(m_locDepthImage, 0);
 			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-			g_paletteTexture.update();
+			gli_palette_update();
 		}
 
 	private:

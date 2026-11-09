@@ -245,7 +245,7 @@ public:
 		VkShader::activate();
 		vkr_blend(g_r, VKR_BLEND_SRC_ALPHA, VKR_BLEND_INV_SRC_ALPHA, VKR_BLEND_SRC_ALPHA, VKR_BLEND_INV_SRC_ALPHA);
 		vkr_special_params(g_r, m_p, gDP.fogColor.r, gDP.fogColor.g, gDP.fogColor.b, gDP.fogColor.a);
-		g_paletteTexture.update();
+		gli_palette_update();
 	}
 };
 

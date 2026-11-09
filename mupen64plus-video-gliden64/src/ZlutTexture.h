@@ -1,17 +1,15 @@
-#pragma once
+#ifndef ZLUTTEXTURE_H
+#define ZLUTTEXTURE_H
 
-struct CachedTexture;
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-class ZlutTexture
-{
-public:
-	ZlutTexture();
+void gli_zlut_init(void);
+void gli_zlut_destroy(void);
 
-	void init();
-	void destroy();
+#ifdef __cplusplus
+}
+#endif
 
-private:
-	CachedTexture * m_pTexture;
-};
-
-extern ZlutTexture g_zlutTexture;
+#endif

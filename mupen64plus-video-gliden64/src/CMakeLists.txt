@@ -31,8 +31,8 @@ set(GLideN64_SOURCES
   GraphicsDrawer.cpp
   gSP.c
   N64.c
-  NoiseTexture.cpp
-  PaletteTexture.cpp
+  NoiseTexture.c
+  PaletteTexture.c
   PostProcessor.cpp
   RDP.c
   RSP.c
@@ -43,7 +43,7 @@ set(GLideN64_SOURCES
   TextureFilterHandler.cpp
   Textures.cpp
   VI.c
-  ZlutTexture.cpp
+  ZlutTexture.c
   BufferCopy/ColorBufferToRDRAM.cpp
   BufferCopy/DepthBufferToRDRAM.cpp
   BufferCopy/RDRAMtoColorBuffer.cpp

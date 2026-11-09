@@ -1780,9 +1780,9 @@ void GraphicsDrawer::_initData()
 	Combiner_Init();
 	TFH.init();
 	PostProcessor::get().init();
-	g_zlutTexture.init();
-	g_noiseTexture.init();
-	g_paletteTexture.init();
+	gli_zlut_init();
+	gli_noise_init();
+	gli_palette_init();
 	gli_fbinfo_reset();
 	gli_texrect_init();
 	m_drawingState = DrawingState::Non;
@@ -1802,9 +1802,9 @@ void GraphicsDrawer::_destroyData()
 {
 	m_drawingState = DrawingState::Non;
 	gli_texrect_destroy();
-	g_paletteTexture.destroy();
-	g_zlutTexture.destroy();
-	g_noiseTexture.destroy();
+	gli_palette_destroy();
+	gli_zlut_destroy();
+	gli_noise_destroy();
 	PostProcessor::get().destroy();
 	if (TFH.optionsChanged())
 		TFH.shutdown();

@@ -10,6 +10,7 @@
 #include "SoftwareRender.h"
 #include "VI.h"
 #include "Config.h"
+#include "gli_textures.h"
 #include <Graphics/Context.h>
 #include <Graphics/Parameters.h>
 #include "DisplayWindow.h"
@@ -551,4 +552,9 @@ void gli_depth_set_image(u32 _address)
 void gli_depth_set_cleared(bool _cleared)
 {
 	depthBufferList().setCleared(_cleared);
+}
+
+const u16 * gli_depth_zlut(void)
+{
+	return depthBufferList().getZLUT();
 }

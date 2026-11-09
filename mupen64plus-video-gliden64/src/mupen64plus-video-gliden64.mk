@@ -35,8 +35,8 @@ MY_LOCAL_SRC_FILES :=                                                           
     $(SRCDIR)/gSP.c                                                              \
     $(SRCDIR)/MupenPlusPluginAPI.cpp                                               \
     $(SRCDIR)/N64.c                                                              \
-    $(SRCDIR)/NoiseTexture.cpp                                                     \
-    $(SRCDIR)/PaletteTexture.cpp                                                   \
+    $(SRCDIR)/NoiseTexture.c                                                       \
+    $(SRCDIR)/PaletteTexture.c                                                     \
     $(SRCDIR)/PostProcessor.cpp                                                    \
     $(SRCDIR)/RDP.c                                                              \
     $(SRCDIR)/RSP.c                                                              \
@@ -46,7 +46,7 @@ MY_LOCAL_SRC_FILES :=                                                           
     $(SRCDIR)/TextureFilterHandler.cpp                                             \
     $(SRCDIR)/Textures.cpp                                                         \
     $(SRCDIR)/VI.c                                                               \
-    $(SRCDIR)/ZlutTexture.cpp                                                      \
+    $(SRCDIR)/ZlutTexture.c                                                        \
     $(SRCDIR)/common/CommonAPIImpl_common.cpp                                      \
     $(SRCDIR)/mupenplus/CommonAPIImpl_mupenplus.cpp                                \
     $(SRCDIR)/mupenplus/Config_mupenplus.cpp                                       \

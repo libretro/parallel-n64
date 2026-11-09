@@ -1,30 +1,23 @@
-#pragma once
-#include <vector>
+#ifndef NOISETEXTURE_H
+#define NOISETEXTURE_H
+
 #include "Types.h"
 
 #define NOISE_TEX_WIDTH 640
 #define NOISE_TEX_HEIGHT 580
 
-struct CachedTexture;
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-class NoiseTexture
-{
-public:
-	NoiseTexture();
+void gli_noise_init(void);
+void gli_noise_destroy(void);
+void gli_noise_update(void);
+u32 gli_noise_offset_x(void);
+u32 gli_noise_offset_y(void);
 
-	void init();
-	void destroy();
-	void update();
-	u32 getOffsetX() const { return m_offsetX; }
-	u32 getOffsetY() const { return m_offsetY; }
+#ifdef __cplusplus
+}
+#endif
 
-private:
-	void _fillTextureData();
-
-	CachedTexture * m_pTexture;
-	u32 m_DList;
-	u32 m_offsetX, m_offsetY;
-	std::vector<u8> m_texData;
-};
-
-extern NoiseTexture g_noiseTexture;
+#endif

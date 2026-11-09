@@ -198,8 +198,8 @@ static void updateDither(CombinerValues & _v, bool _usesNoise)
 	bool updateNoiseTex = _usesNoise;
 	updateNoiseTex |= (gDP.otherMode.cycleType < G_CYC_COPY) && (gDP.otherMode.colorDither == G_CD_NOISE || gDP.otherMode.alphaDither == G_AD_NOISE || gDP.otherMode.alphaCompare == G_AC_DITHER);
 	if (updateNoiseTex) {
-		g_noiseTexture.update();
-		set2(_v.noiseOffset, f32(g_noiseTexture.getOffsetX()), f32(g_noiseTexture.getOffsetY()));
+		gli_noise_update();
+		set2(_v.noiseOffset, f32(gli_noise_offset_x()), f32(gli_noise_offset_y()));
 	}
 }
 
