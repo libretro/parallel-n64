@@ -528,10 +528,10 @@ void F5INDI_MoveMem(u32 _w0, u32 _w1)
 	case 0x00000000:
 		switch (_w0) {
 		case 0x0101300F:
-			gSPViewport(_w1);
+			gli_gSPViewport(_w1);
 			break;
 		case 0x0105C03F:
-			gSPForceMatrix(_w1);
+			gli_gSPForceMatrix(_w1);
 			break;
 		case 0x010E403F:
 			gli_RSP_LoadMatrix(getIndiData().mtx_vtx_gen, _SHIFTR(_w1, 0, 24));
@@ -544,7 +544,7 @@ void F5INDI_MoveMem(u32 _w0, u32 _w1)
 		{
 		std::vector<SWVertex> vertices;
 		const u32 n = _SHIFTR(_w1, 24, 7);
-		gSPSWVertex(F5INDI_AdjustVtx(_w0, _w1, vertices), n, nullptr);
+		gli_gSPSWVertex(F5INDI_AdjustVtx(_w0, _w1, vertices), n, nullptr);
 		}
 		break;
 
@@ -557,7 +557,7 @@ void F5INDI_MoveMem(u32 _w0, u32 _w1)
 	{
 		const u32 n = _SHIFTR(_w1, 24, 7);
 		std::vector<SWVertex> vres(n);
-		gSPSWVertex(F5INDI_LoadVtx(_w0, _w1, vres), n, nullptr);
+		gli_gSPSWVertex(F5INDI_LoadVtx(_w0, _w1, vres), n, nullptr);
 	}
 	break;
 
@@ -595,14 +595,14 @@ void F5INDI_SetDListAddr(u32 _w0, u32 _w1)
 static
 void F5INDI_DList(u32 _w0, u32 _w1)
 {
-	gSPDisplayList(_w1);
+	gli_gSPDisplayList(_w1);
 	_updateF5DL();
 }
 
 static
 void F5INDI_BranchDList(u32 _w0, u32 _w1)
 {
-	gSPBranchList(_w1);
+	gli_gSPBranchList(_w1);
 	_updateF5DL();
 }
 
@@ -671,7 +671,7 @@ void F5INDI_DoSubDList()
 
 		RSP.nextCmd = _SHIFTR(*CAST_RDRAM(const u32*, RSP.PC[RSP.PCi] + 8), 24, 8);
 
-		GBI.cmd[RSP.cmd](RSP.w0, RSP.w1);
+		gli_GBIcmd[RSP.cmd](RSP.w0, RSP.w1);
 		RSP.PC[RSP.PCi] += 8;
 
 		if (RSP.nextCmd == 0xBD) {
@@ -813,7 +813,7 @@ void F5INDI_GenVertices(u32 _w0, u32 _w1)
 	memcpy(combined, gSP.matrix.combined, sizeof(combined));
 	memcpy(gSP.matrix.combined, getIndiData().mtx_vtx_gen, sizeof(gSP.matrix.combined));
 	// This microcode brings its own combined matrix, so the stereo shear has to be applied here
-	gSPApplyStereo(gSP.matrix.combined);
+	gli_gSPApplyStereo(gSP.matrix.combined);
 
 	const SWVertex * vertex = CAST_DMEM(const SWVertex*, 0x170);
 	bool verticesToProcess[32];
@@ -831,7 +831,7 @@ void F5INDI_GenVertices(u32 _w0, u32 _w1)
 		B <<= 1;
 	}
 
-	gSPSWVertex(vertex, count, verticesToProcess);
+	gli_gSPSWVertex(vertex, count, verticesToProcess);
 
 	memcpy(gSP.matrix.combined, combined, sizeof(gSP.matrix.combined));
 }
@@ -1096,7 +1096,7 @@ void F5INDI_TexrectGen()
 	u32 vtxAddr = _SHIFTR(params[2], 0, 24);
 	for (; count > 0; --count) {
 		const SWVertex * vertex = CAST_RDRAM(const SWVertex*, vtxAddr);
-		gSPSWVertex(vertex, 0x20, nullptr);
+		gli_gSPSWVertex(vertex, 0x20, nullptr);
 		u32 K = params[8];
 		u32 B = params[9] & 0xFF;
 		u32 limAddr = 0xC28;
@@ -1178,9 +1178,9 @@ void F5INDI_TexrectGen()
 			F5INDI_AddParticle(ulx, uly, lrx, lry, S, T, dsdx, dtdy);
 #else
 			// A glow or a spark in the world, not a HUD element
-			gSPImmersiveWorldSprite(true);
-			gDPTextureRectangle(ulx, uly, lrx, lry, 0, S, T, dsdx, dtdy, false);
-			gSPImmersiveWorldSprite(false);
+			gli_gSPImmersiveWorldSprite(true);
+			gli_gDPTextureRectangle(ulx, uly, lrx, lry, 0, S, T, dsdx, dtdy, false);
+			gli_gSPImmersiveWorldSprite(false);
 #endif
 		}
 		vtxAddr += 0x100;
@@ -1294,15 +1294,15 @@ void F5Naboo_TexrectGen()
 
 	if ((gSP.geometryMode & G_FOG) != 0) {
 		const u32 fogColor = (params[7] & 0xFFFFFF00) | u32(v.a*255.0f);
-		gDPSetFogColor(_SHIFTR(fogColor, 24, 8),	// r
+		gli_gDPSetFogColor(_SHIFTR(fogColor, 24, 8),	// r
 		                _SHIFTR(fogColor, 16, 8),	// g
 		                _SHIFTR(fogColor, 8, 8),	// b
 		                _SHIFTR(fogColor, 0, 8));	// a
 	}
 
-	gSPImmersiveWorldSprite(true);
-	gDPTextureRectangle(ulx, uly, lrx, lry, gSP.texture.tile, (s16)S, (s16)T, dsdx, dtdy, flip);
-	gSPImmersiveWorldSprite(false);
+	gli_gSPImmersiveWorldSprite(true);
+	gli_gDPTextureRectangle(ulx, uly, lrx, lry, gSP.texture.tile, (s16)S, (s16)T, dsdx, dtdy, flip);
+	gli_gSPImmersiveWorldSprite(false);
 }
 
 static
@@ -1464,11 +1464,11 @@ void F5Naboo_PrepareAndDrawTriangle(const u32 _vert[3], GraphicsDrawer & _drawer
 		u32 w0 = commands[0];
 		u32 w1 = commands[1];
 		u32 cmd = _SHIFTR(w0, 24, 8);
-		GBI.cmd[cmd](w0, w1);
+		gli_GBIcmd[cmd](w0, w1);
 		w0 = commands[2];
 		w1 = commands[3];
 		cmd = _SHIFTR(w0, 24, 8);
-		GBI.cmd[cmd](w0, w1);
+		gli_GBIcmd[cmd](w0, w1);
 	};
 
 	const u32 dlistAddr = _SHIFTR(*CAST_DMEM(const u32*, 0x58C), 0, 24);
@@ -1883,7 +1883,7 @@ void F5Naboo_GenVertices0C()
 		const u32 vtxSrcAddr = _dmemSrcAddr + offset;
 		const u32 vtxDstAddr = _SHIFTR(*CAST_DMEM(const u32*, dmemSrcAddr + _dstOffset), 16, 16) + offset * 5;
 		if (!needAdjustVertices) {
-			gSPSWVertex(CAST_DMEM(const SWVertex*, vtxSrcAddr), (vtxDstAddr - 0x600) / 40, numVtx);
+			gli_gSPSWVertex(CAST_DMEM(const SWVertex*, vtxSrcAddr), (vtxDstAddr - 0x600) / 40, numVtx);
 			return;
 		}
 		std::vector<SWVertex> vtxData(numVtx);
@@ -1894,7 +1894,7 @@ void F5Naboo_GenVertices0C()
 			vtxData[i].y += Y0;
 			vtxData[i].x += Z0;
 		}
-		gSPSWVertex(vtxData.data(), (vtxDstAddr - 0x600) / 40, numVtx);
+		gli_gSPSWVertex(vtxData.data(), (vtxDstAddr - 0x600) / 40, numVtx);
 	};
 	processVertices(_SHIFTR(params[2], 16, 16), 0x170, 0x10);
 	processVertices(_SHIFTR(params[2], 0, 16), 0x1C0, 0x18);
@@ -2121,7 +2121,7 @@ void F5Naboo_GenVertices09()
 		const u32 vtxSrcAddr = _dmemSrcAddr + offset;
 		const u32 vtxDstAddr = _SHIFTR(*CAST_DMEM(const u32*, dmemSrcAddr + _dstOffset), 16, 16) + offset * 5;
 		if (!needAdjustVertices) {
-			gSPSWVertex(CAST_DMEM(const SWVertex*, vtxSrcAddr), (vtxDstAddr - 0x600) / 40, numVtx);
+			gli_gSPSWVertex(CAST_DMEM(const SWVertex*, vtxSrcAddr), (vtxDstAddr - 0x600) / 40, numVtx);
 			return;
 		}
 		std::vector<SWVertex> vtxData(numVtx);
@@ -2132,7 +2132,7 @@ void F5Naboo_GenVertices09()
 			vtxData[i].y += Y0;
 			vtxData[i].x += Z0;
 		}
-		gSPSWVertex(vtxData.data(), (vtxDstAddr - 0x600) / 40, numVtx);
+		gli_gSPSWVertex(vtxData.data(), (vtxDstAddr - 0x600) / 40, numVtx);
 	};
 	processVertices(_SHIFTR(params[2], 16, 16), 0x170, 0x10);
 	processVertices(_SHIFTR(params[2], 0, 16), 0x1C0, 0x18);
@@ -2205,7 +2205,7 @@ static
 void F5INDI_Texrect(u32 _w0, u32 _w1)
 {
 	F5INDI_DoSubDList();
-	RDP_TexRect(_w0, _w1);
+	gli_RDP_TexRect(_w0, _w1);
 }
 
 static
@@ -2218,7 +2218,7 @@ void F5INDI_JumpDL(u32 _w0, u32 _w1)
 static
 void F5INDI_EndDisplayList(u32 _w0, u32 _w1)
 {
-	gSPEndDisplayList();
+	gli_gSPEndDisplayList();
 }
 
 static
@@ -2232,7 +2232,7 @@ void F5INDI_MoveWord(u32 _w0, u32 _w1)
 	case G_MWO_CLIP_RNY:
 	case G_MWO_CLIP_RPX:
 	case G_MWO_CLIP_RPY:
-		gSPClipRatio(_w1);
+		gli_gSPClipRatio(_w1);
 		break;
 	case G_MW_SEGMENT:
 		assert(false);
@@ -2250,7 +2250,7 @@ void F5INDI_MoveWord(u32 _w0, u32 _w1)
 		gSP.changed |= CHANGED_FOGPOSITION;
 		break;
 	case 0x14C:
-		gSPPerspNormalize(_w1);
+		gli_gSPPerspNormalize(_w1);
 		break;
 	case 0x58C:
 		// sub dlist address;
@@ -2296,31 +2296,31 @@ void F5INDI_SetOtherMode_Conditional(u32 w0, u32 w1)
 static
 void F5INDI_ClearGeometryMode(u32 w0, u32 w1)
 {
-	gSPClearGeometryMode(~w1);
+	gli_gSPClearGeometryMode(~w1);
 }
 
 static
 void F5INDI_Texture(u32 w0, u32 w1)
 {
-	F3D_Texture(w0, w1);
+	gli_F3D_Texture(w0, w1);
 	*CAST_DMEM(u32*, 0x148) = w0;
 	const u32 V0 = (gSP.geometryMode ^ w0) & 2;
 	gSP.geometryMode ^= V0;
 }
 
-void F5Indi_Naboo_Init()
+void gli_F5Indi_Naboo_Init()
 {
 	srand((unsigned int)time(NULL));
 
-	gSPSetupFunctions();
+	gli_gSPSetupFunctions();
 	// Set GeometryMode flags
 	GBI_InitFlags(F3D);
 	G_SHADING_SMOOTH = G_SHADE;
 
-	GBI.PCStackSize = 10;
+	gli_GBIPCStackSize = 10;
 
 	//			GBI Command				Command Value				Command Function
-	GBI_SetGBI(G_SPNOOP,				F3D_SPNOOP,					F3D_SPNoOp);
+	GBI_SetGBI(G_SPNOOP,				F3D_SPNOOP,					gli_F3D_SPNoOp);
 	GBI_SetGBI(G_MOVEMEM,				F5INDI_MOVEMEM,				F5INDI_MoveMem);
 	GBI_SetGBI(G_SET_DLIST_ADDR,		F5INDI_SET_DLIST_ADDR,		F5INDI_SetDListAddr);
 	GBI_SetGBI(G_RESERVED1,				F5INDI_GEOMETRY_GEN,		F5INDI_GeometryGen);
@@ -2328,7 +2328,7 @@ void F5Indi_Naboo_Init()
 	GBI_SetGBI(G_RESERVED2,				F5INDI_BRANCHDL,			F5INDI_BranchDList);
 	GBI_SetGBI(G_TRI2,					F5INDI_TRI2,				F5INDI_Tri);
 	GBI_SetGBI(G_JUMPDL,				F5INDI_JUMPDL,				F5INDI_JumpDL);
-	GBI_SetGBI(G_SETGEOMETRYMODE,		F3D_SETGEOMETRYMODE,		F3D_SetGeometryMode);
+	GBI_SetGBI(G_SETGEOMETRYMODE,		F3D_SETGEOMETRYMODE,		gli_F3D_SetGeometryMode);
 	GBI_SetGBI(G_CLEARGEOMETRYMODE,		F3D_CLEARGEOMETRYMODE,		F5INDI_ClearGeometryMode);
 	GBI_SetGBI(G_ENDDL,					F5INDI_ENDDL,				F5INDI_EndDisplayList);
 	GBI_SetGBI(G_SETOTHERMODE_L,		F5INDI_SETOTHERMODE_C,		F5INDI_SetOtherMode_Conditional);

@@ -398,8 +398,8 @@ extern "C" void updateCombinerValues(CombinerValues * _values, unsigned _groups)
 
 	if (_groups & CVG_RenderTarget) {
 		int renderTarget = 0;
-		if (isCurrentColorImageDepthImage())
-			renderTarget = isDepthCompareEnabled() ? 2 : 1;
+		if (gli_isCurrentColorImageDepthImage())
+			renderTarget = gli_isDepthCompareEnabled() ? 2 : 1;
 		_v.renderTarget = renderTarget;
 	}
 

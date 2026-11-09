@@ -137,12 +137,12 @@ void F3DSWRS_Mtx(u32 w0, u32 w1)
 	const u32 param = _SHIFTR(w0, 16, 8);
 	if ((param & G_MTX_PROJECTION) != 0)
 		F3DSWRS_PerspMatrixAddress = _SHIFTR(w1, 0, 24);
-	F3D_Mtx(w0, w1);
+	gli_F3D_Mtx(w0, w1);
 }
 
 void F3DSWRS_VertexColor(u32, u32 _w1)
 {
-	gSPSetVertexColorBase(_w1);
+	gli_gSPSetVertexColorBase(_w1);
 }
 
 void F3DSWRS_MoveMem(u32 _w0, u32)
@@ -150,7 +150,7 @@ void F3DSWRS_MoveMem(u32 _w0, u32)
 	switch (_SHIFTR(_w0, 16, 8)) {
 	case F3D_MV_VIEWPORT://G_MV_VIEWPORT:
 		F3DSWRS_ViewportAddress = _SHIFTR((RSP.PC[RSP.PCi] + 8), 0, 24);
-		gSPViewport(F3DSWRS_ViewportAddress);
+		gli_gSPViewport(F3DSWRS_ViewportAddress);
 		break;
 	case F3DSWRS_MV_TEXSCALE:
 		gSP.textureCoordScale[0] = *(u32*)&RDRAM[RSP.PC[RSP.PCi] + 16];
@@ -170,7 +170,7 @@ void F3DSWRS_Vtx(u32 _w0, u32 _w1)
 		return;
 
 	const SWVertex * vertex = (const SWVertex*)&RDRAM[address];
-	gSPSWVertex(vertex, n, nullptr );
+	gli_gSPSWVertex(vertex, n, nullptr );
 }
 
 static
@@ -832,7 +832,7 @@ void TriGen0000()
 	// Step 3. Process vertices
 	const SWVertex * vertex = (const SWVertex*)vtxData32.data();
 	const u32 vtxSize = static_cast<u32>(vtxData32.size()) / 2;
-	gSPSWVertex(vertex, vtxSize, nullptr);
+	gli_gSPSWVertex(vertex, vtxSize, nullptr);
 
 	// Step 4. Prepare color indices and texture coordinates. Prepare vertices for rendering
 
@@ -860,7 +860,7 @@ void TriGen0000()
 	std::stable_sort(triangles.begin(), triangles.end(), SWRSTriangleCompare);
 
 	for (const auto& t : triangles) {
-		gSP1Triangle(t.V0, t.V1, t.V2);
+		gli_gSP1Triangle(t.V0, t.V1, t.V2);
 	}
 	drawer.drawTriangles();
 }
@@ -900,7 +900,7 @@ void TriGen0001()
 	// Step 3. Process vertices
 	const SWVertex * vertex = (const SWVertex*)vtxData32.data();
 	const u32 vtxSize = static_cast<u32>(vtxData32.size()) / 2;
-	gSPSWVertex(vertex, vtxSize, nullptr);
+	gli_gSPSWVertex(vertex, vtxSize, nullptr);
 
 	// Step 4. Prepare color indices and texture coordinates. Prepare vertices for rendering
 
@@ -928,7 +928,7 @@ void TriGen0001()
 	std::stable_sort(triangles.begin(), triangles.end(), SWRSTriangleCompare);
 
 	for (const auto& t : triangles) {
-		gSP1Triangle(t.V0, t.V1, t.V2);
+		gli_gSP1Triangle(t.V0, t.V1, t.V2);
 	}
 	drawer.drawTriangles();
 }
@@ -941,7 +941,7 @@ void TriGen02()
 	u32 vecdata[8];
 	TriGen02_BuildVtxData(params, vecdata);
 	const SWVertex * vertex = (const SWVertex*)&vecdata[0];
-	gSPSWVertex(vertex, 4, nullptr);
+	gli_gSPSWVertex(vertex, 4, nullptr);
 	GraphicsDrawer & drawer = dwnd().getDrawer();
 
 	const u32 v1 = 0;
@@ -962,9 +962,9 @@ void TriGen02()
 	SPVertex & vtx3 = drawer.getVertex(v3);
 
 	if (vtx3.z / vtx3.w > vtx2.z / vtx2.w)
-		gSP2Triangles(v1, v2, v4, 0, v1, v4, v3, 0);
+		gli_gSP2Triangles(v1, v2, v4, 0, v1, v4, v3, 0);
 	else
-		gSP2Triangles(v1, v4, v3, 0, v1, v2, v4, 0);
+		gli_gSP2Triangles(v1, v4, v3, 0, v1, v2, v4, 0);
 	drawer.drawTriangles();
 }
 
@@ -1010,19 +1010,19 @@ void F3DSWRS_JumpSWDL(u32, u32)
 
 void F3DSWRS_DList(u32, u32 _w1)
 {
-	gSPDisplayList(_w1);
+	gli_gSPDisplayList(_w1);
 	_updateF5DL();
 }
 
 void F3DSWRS_BranchDList(u32, u32 _w1)
 {
-	gSPBranchList(_w1);
+	gli_gSPBranchList(_w1);
 	_updateF5DL();
 }
 
 void F3DSWRS_EndDisplayList(u32, u32)
 {
-	gSPEndDisplayList();
+	gli_gSPEndDisplayList();
 //	_updateSWDL();
 }
 
@@ -1100,10 +1100,10 @@ void F3DSWRS_MoveWord(u32 _w0, u32 _w1)
 {
 	switch (_SHIFTR(_w0, 0, 8)){
 	case G_MW_CLIP:
-		gSPClipRatio( _w1 );
+		gli_gSPClipRatio( _w1 );
 		break;
 	case G_MW_SEGMENT:
-		gSPSegment( _SHIFTR( _w0, 8, 16 ) >> 2, _w1 & 0x00FFFFFF );
+		gli_gSPSegment( _SHIFTR( _w0, 8, 16 ) >> 2, _w1 & 0x00FFFFFF );
 		break;
 	case F3DSWRS_MW_FOG_MULTIPLIER:
 		gSP.fog.multiplierf = _FIXED2FLOAT((s32)_w1, 16);
@@ -1114,7 +1114,7 @@ void F3DSWRS_MoveWord(u32 _w0, u32 _w1)
 		gSP.changed |= CHANGED_FOGPOSITION;
 		break;
 	case G_MW_PERSPNORM:
-		gSPPerspNormalize( _w1 );
+		gli_gSPPerspNormalize( _w1 );
 		break;
 	}
 }
@@ -1223,13 +1223,13 @@ void F3DSWRS_TexrectGen(u32 _w0, u32 _w1)
 
 	if ((gSP.geometryMode & G_FOG) != 0) {
 		const u32 fogColor = (params[1] & 0xFFFFFF00) | u32(v.a*255.0f);
-		gDPSetFogColor( _SHIFTR( fogColor, 24, 8 ),	// r
+		gli_gDPSetFogColor( _SHIFTR( fogColor, 24, 8 ),	// r
 		                _SHIFTR( fogColor, 16, 8 ),	// g
 		                _SHIFTR( fogColor,  8, 8 ),	// b
 		                _SHIFTR( fogColor,  0, 8 ) );	// a
 	}
 
-	gDPTextureRectangle(ulx, uly, lrx, lry, gSP.texture.tile, (s16)S, (s16)T, dsdx, dtdy, flip);
+	gli_gDPTextureRectangle(ulx, uly, lrx, lry, gSP.texture.tile, (s16)S, (s16)T, dsdx, dtdy, flip);
 }
 
 void F3DSWRS_SetOtherMode_H_EX(u32 _w0, u32 _w1)
@@ -1246,16 +1246,16 @@ void F3DSWRS_SetOtherMode_L_EX(u32 _w0, u32 _w1)
 	gDP.otherMode.l |= _w1;
 }
 
-void F5Rogue_Init()
+void gli_F5Rogue_Init()
 {
-	gSPSetupFunctions();
+	gli_gSPSetupFunctions();
 	// Set GeometryMode flags
 	GBI_InitFlags( F3D );
 
-	GBI.PCStackSize = 10;
+	gli_GBIPCStackSize = 10;
 
 	//          GBI Command             Command Value				Command Function
-	GBI_SetGBI( G_SPNOOP,				F3D_SPNOOP,					F3D_SPNoOp );
+	GBI_SetGBI( G_SPNOOP,				F3D_SPNOOP,					gli_F3D_SPNoOp );
 	GBI_SetGBI( G_MTX,					F3D_MTX,					F3DSWRS_Mtx );
 	GBI_SetGBI( G_RESERVED0,			F3DSWRS_VTXCOLOR,			F3DSWRS_VertexColor );
 	GBI_SetGBI( G_MOVEMEM,				F3DSWRS_MOVEMEM,			F3DSWRS_MoveMem );
@@ -1263,18 +1263,18 @@ void F5Rogue_Init()
 	GBI_SetGBI( G_RESERVED1,			F3DSWRS_TRI_GEN,			F3DSWRS_TriGen );
 	GBI_SetGBI( G_DL,					F3DSWRS_DL,					F3DSWRS_DList );
 	GBI_SetGBI( G_RESERVED2,			F3DSWRS_BRANCHDL,			F3DSWRS_BranchDList );
-	GBI_SetGBI( G_RESERVED3,			F3D_RESERVED3,				F3D_Reserved3 );
+	GBI_SetGBI( G_RESERVED3,			F3D_RESERVED3,				gli_F3D_Reserved3 );
 
 	GBI_SetGBI( G_TRI1,					F3DSWRS_TRI1,				F3DSWRS_Tri );
 	GBI_SetGBI( G_SETOTHERMODE_H_EX,	F3DSWRS_SETOTHERMODE_H_EX,	F3DSWRS_SetOtherMode_H_EX );
 	GBI_SetGBI( G_POPMTX,				F3DSWRS_TEXRECT_GEN,		F3DSWRS_TexrectGen );
 	GBI_SetGBI( G_MOVEWORD,				F3DSWRS_MOVEWORD,			F3DSWRS_MoveWord );
-	GBI_SetGBI( G_TEXTURE,				F3D_TEXTURE,				F3D_Texture );
-	GBI_SetGBI( G_SETOTHERMODE_H,		F3D_SETOTHERMODE_H,			F3D_SetOtherMode_H );
-	GBI_SetGBI( G_SETOTHERMODE_L,		F3D_SETOTHERMODE_L,			F3D_SetOtherMode_L );
+	GBI_SetGBI( G_TEXTURE,				F3D_TEXTURE,				gli_F3D_Texture );
+	GBI_SetGBI( G_SETOTHERMODE_H,		F3D_SETOTHERMODE_H,			gli_F3D_SetOtherMode_H );
+	GBI_SetGBI( G_SETOTHERMODE_L,		F3D_SETOTHERMODE_L,			gli_F3D_SetOtherMode_L );
 	GBI_SetGBI( G_ENDDL,				F3DSWRS_ENDDL,				F3DSWRS_EndDisplayList );
-	GBI_SetGBI( G_SETGEOMETRYMODE,		F3D_SETGEOMETRYMODE,		F3D_SetGeometryMode );
-	GBI_SetGBI( G_CLEARGEOMETRYMODE,	F3D_CLEARGEOMETRYMODE,		F3D_ClearGeometryMode );
+	GBI_SetGBI( G_SETGEOMETRYMODE,		F3D_SETGEOMETRYMODE,		gli_F3D_SetGeometryMode );
+	GBI_SetGBI( G_CLEARGEOMETRYMODE,	F3D_CLEARGEOMETRYMODE,		gli_F3D_ClearGeometryMode );
 	GBI_SetGBI( G_JUMPSWDL,				F3DSWRS_JUMPSWDL,			F3DSWRS_JumpSWDL );
 	GBI_SetGBI( G_TRI2,					F3DSWRS_TRI2,				F3DSWRS_Tri );
 	GBI_SetGBI( G_SETOTHERMODE_L_EX,	F3DSWRS_SETOTHERMODE_L_EX,	F3DSWRS_SetOtherMode_L_EX );

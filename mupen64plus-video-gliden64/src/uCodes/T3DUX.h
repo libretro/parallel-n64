@@ -1,6 +1,14 @@
 #ifndef T3DUX_H
 #define T3DUX_H
 
-void RunT3DUX();
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-#endif // T3DUX_H
+void gli_RunT3DUX(void);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* T3DUX_H */

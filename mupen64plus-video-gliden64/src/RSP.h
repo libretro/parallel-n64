@@ -1,8 +1,14 @@
 #ifndef RSP_H
 #define RSP_H
 
+#include <stddef.h>
+#include <boolean.h>
 #include "Types.h"
 #include "N64.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 typedef struct
 {
@@ -34,19 +40,23 @@ extern u32 rectDepthBufferCopyFrame;
  * see undone */
 #define RSP_StereoWillWrite(_address, _size) do { \
 	if (RSP.stereoPass == RSP_STEREO_LEFT) \
-		RSP_StereoJournal((_address), (_size)); \
+		gli_RSP_StereoJournal((_address), (_size)); \
 	} while (0)
 
 #define RSP_SegmentToPhysical( segaddr ) ((gSP.segment[(segaddr >> 24) & 0x0F] + (segaddr & RDRAMSize)) & RDRAMSize)
 
-void RSP_Init();
-void RSP_ProcessDList();
+void gli_RSP_Init(void);
+void gli_RSP_ProcessDList(void);
 #ifdef __cplusplus
 extern "C"
 #endif
 void gli_RSP_LoadMatrix( f32 mtx[4][4], u32 address );
-void RSP_CheckDLCounter();
-void RSP_StereoJournal(u32 _address, u32 _size);
-void RSP_StereoDestroy();
+void gli_RSP_CheckDLCounter(void);
+void gli_RSP_StereoJournal(u32 _address, u32 _size);
+void gli_RSP_StereoDestroy(void);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

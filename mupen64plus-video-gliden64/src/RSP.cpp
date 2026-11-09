@@ -54,8 +54,8 @@ void _ProcessDList()
 		else
 			RSP.nextCmd = 0;
 
-		GBI.cmd[RSP.cmd](RSP.w0, RSP.w1);
-		RSP_CheckDLCounter();
+		gli_GBIcmd[RSP.cmd](RSP.w0, RSP.w1);
+		gli_RSP_CheckDLCounter();
 	}
 }
 
@@ -89,13 +89,13 @@ void _ProcessDListFactor5()
 		else
 			RSP.nextCmd = 0;
 
-		GBI.cmd[RSP.cmd](RSP.w0, RSP.w1);
+		gli_GBIcmd[RSP.cmd](RSP.w0, RSP.w1);
 		RSP.PC[RSP.PCi] += 8;
-		RSP_CheckDLCounter();
+		gli_RSP_CheckDLCounter();
 	}
 }
 
-void RSP_CheckDLCounter()
+void gli_RSP_CheckDLCounter()
 {
 	if (RSP.count != -1) {
 		--RSP.count;
@@ -113,12 +113,12 @@ static gSPInfo l_stereoGSP;
 static gDPInfo l_stereoGDP;
 static stereo_journal_t l_stereoJournal;
 
-void RSP_StereoJournal(u32 _address, u32 _size)
+void gli_RSP_StereoJournal(u32 _address, u32 _size)
 {
 	stereo_journal_record(&l_stereoJournal, RDRAM, RDRAMSize, _address, _size);
 }
 
-void RSP_StereoDestroy()
+void gli_RSP_StereoDestroy()
 {
 	stereo_journal_free(&l_stereoJournal);
 	RSP.stereoPass = RSP_STEREO_MONO;
@@ -153,7 +153,7 @@ void _runDisplayList()
 		gSP.tri_num = 0;
 		gSP.cbfd.advancedLighting = false;
 		gDP.changed &= ~CHANGED_CPU_FB_WRITE;
-		gDPSetTexturePersp(G_TP_PERSP);
+		gli_gDPSetTexturePersp(G_TP_PERSP);
 
 		// Get the start of the display list and the length of it
 		const u32 dlist_start = *(u32*)(DMEM + 0xFF0);
@@ -164,7 +164,7 @@ void _runDisplayList()
 		u32 uc_dsize = *(u32*)&DMEM[0x0FDC];
 
 		if ((uc_start != RSP.uc_start) || (uc_dstart != RSP.uc_dstart))
-			gSPLoadUcodeEx(uc_start, uc_dstart, uc_dsize);
+			gli_gSPLoadUcodeEx(uc_start, uc_dstart, uc_dsize);
 
 		depthBufferList().setCleared(false);
 
@@ -177,10 +177,10 @@ void _runDisplayList()
 
 	switch (GBI.getMicrocodeType()) {
 	case Turbo3D:
-		RunTurbo3D();
+		gli_RunTurbo3D();
 		break;
 	case T3DUX:
-		RunT3DUX();
+		gli_RunT3DUX();
 		break;
 	case F5Rogue:
 	case F5Indi_Naboo:
@@ -192,7 +192,7 @@ void _runDisplayList()
 	}
 }
 
-void RSP_ProcessDList()
+void gli_RSP_ProcessDList()
 {
 	if (ConfigOpen || dwnd().isResizeWindow()) {
 		*REG.MI_INTR |= MI_INTR_DP;
@@ -204,11 +204,11 @@ void RSP_ProcessDList()
 		_runDisplayList();
 	} else {
 		FrameBuffer * pCurrent;
-		gSPStereoBeginTask();
+		gli_gSPStereoBeginTask();
 		if (config.stereo.mode != Config::stereoBothEyes || RSP.infloop) {
 			/* One eye; or a task going on after waiting on the CPU, which goes on
 			 * with the eye it was started with and is shown flat */
-			gSPSetStereoEye(config.stereo.mode == Config::stereoBothEyes
+			gli_gSPSetStereoEye(config.stereo.mode == Config::stereoBothEyes
 				? Config::stereoLeftEye : config.stereo.mode);
 			_runDisplayList();
 			if (config.stereo.mode == Config::stereoBothEyes)
@@ -222,7 +222,7 @@ void RSP_ProcessDList()
 			stereo_journal_clear(&l_stereoJournal);
 			StereoFrames_beginTask();
 			RSP.stereoPass = RSP_STEREO_LEFT;
-			gSPSetStereoEye(Config::stereoLeftEye);
+			gli_gSPSetStereoEye(Config::stereoLeftEye);
 			StereoFrames_setCapturing(true);
 			_runDisplayList();
 			StereoFrames_setCapturing(false);
@@ -250,15 +250,15 @@ void RSP_ProcessDList()
 					}
 				}
 				RSP.stereoPass = RSP_STEREO_RIGHT;
-				gSPSetStereoEye(Config::stereoRightEye);
+				gli_gSPSetStereoEye(Config::stereoRightEye);
 				_runDisplayList();
 				RSP.stereoPass = RSP_STEREO_MONO;
 			}
 		}
 		pCurrent = frameBufferList().getCurrent();
 		if (pCurrent != nullptr)
-			gSPImmersiveFrameDrawn(pCurrent->m_startAddress);
-		gSPSetStereoEye(config.stereo.mode);
+			gli_gSPImmersiveFrameDrawn(pCurrent->m_startAddress);
+		gli_gSPSetStereoEye(config.stereo.mode);
 	}
 
 	if (RSP.infloop && REG.SP_STATUS) {
@@ -285,7 +285,7 @@ void RSP_SetDefaultState()
 {
 	memset(&gSP, 0, sizeof(gSPInfo));
 
-	gSPTexture(1.0f, 1.0f, 0, 0, TRUE);
+	gli_gSPTexture(1.0f, 1.0f, 0, 0, TRUE);
 	gDP.loadTile = &gDP.tiles[7];
 	gSP.textureTile[0] = &gDP.tiles[0];
 	gSP.textureTile[1] = &gDP.tiles[1];
@@ -324,7 +324,7 @@ void setDepthClearColor()
 		DepthClearColor = 0xFFFCFFFC;
 }
 
-void RSP_Init()
+void gli_RSP_Init()
 {
 	if (RDRAMSize == 0) {
 #ifdef OS_WINDOWS
@@ -363,15 +363,15 @@ void RSP_Init()
 	RSP.LLE = false;
 	RSP.infloop = false;
 	RSP.stereoPass = RSP_STEREO_MONO;
-	gSPStereoReset();
+	gli_gSPStereoReset();
 
 	/* HEADER points at the ROM header and is only populated once the core has
 	 * called initiateGFX (CommonAPIImpl::_initiateGFX: HEADER = _gfxInfo.HEADER).
 	 * On some front-end paths (e.g. the libretro core on macOS arm64) a GL context
-	 * reset drives RomOpen -> RSP_Init before initiateGFX has run, so HEADER is
+	 * reset drives RomOpen -> gli_RSP_Init before initiateGFX has run, so HEADER is
 	 * still NULL; reading HEADER[(32+i)^3] then dereferences a near-NULL address
 	 * and crashes. Only derive the ROM name (and its per-game hacks) when HEADER
-	 * is valid -- RSP_Init runs again from the real RomOpen once it is set. The
+	 * is valid -- gli_RSP_Init runs again from the real RomOpen once it is set. The
 	 * tail (setDepthClearColor / FindPluginPath / RSP_SetDefaultState) must still
 	 * run on every call, so it stays outside this guard. */
 	if (HEADER != nullptr)

@@ -1,6 +1,10 @@
 #ifndef ZSORT_H
 #define ZSORT_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct zSortVDest{
 	s16 sy;
 	s16 sx;
@@ -14,8 +18,12 @@ struct zSortVDest{
 
 typedef f32 M44[4][4];
 
-void ZSort_Init();
-void ZSort_RDPCMD( u32, u32 _w1 );
-int Calc_invw( int _w );
+void gli_ZSort_Init(void);
+void gli_ZSort_RDPCMD( u32, u32 _w1 );
+int gli_Calc_invw( int _w );
 
-#endif // ZSORT_H
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* ZSORT_H */

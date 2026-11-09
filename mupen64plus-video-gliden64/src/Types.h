@@ -29,6 +29,13 @@ typedef volatile s64		vs64;	/* signed 64-bit */
 typedef float				f32;	/* single prec floating point */
 typedef double				f64;	/* double prec floating point */
 
+/* unnamed members: MSVC takes them in C, GCC with __extension__ */
+#if defined(__GNUC__) && !defined(__cplusplus)
+#define GLI_ANON __extension__
+#else
+#define GLI_ANON
+#endif
+
 #ifndef TRUE
 #define TRUE    1
 #endif

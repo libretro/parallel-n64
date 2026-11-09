@@ -1,6 +1,10 @@
 #ifndef F3DEX2_H
 #define F3DEX2_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define F3DEX2_MTX_STACKSIZE		18
 
 #define F3DEX2_MTX_MODELVIEW		0x00
@@ -66,23 +70,28 @@
 #define F3DEX2_LINE3D			0x08
 
 
-void F3DEX2_Mtx( u32 w0, u32 w1 );
-void F3DEX2_MoveMem( u32 w0, u32 w1 );
-void F3DEX2_Vtx( u32 w0, u32 w1 );
-void F3DEX2_Reserved1( u32 w0, u32 w1 );
-void F3DEX2_Tri1( u32 w0, u32 w1 );
-void F3DEX2_PopMtx( u32 w0, u32 w1 );
-void F3DEX2_MoveWord( u32 w0, u32 w1 );
-void F3DEX2_Texture( u32 w0, u32 w1 );
-void F3DEX2_SetOtherMode_H( u32 w0, u32 w1 );
-void F3DEX2_SetOtherMode_L( u32 w0, u32 w1 );
-void F3DEX2_GeometryMode( u32 w0, u32 w1 );
-void F3DEX2_Line3D( u32 w0, u32 w1 );
-void F3DEX2_DMAIO( u32 w0, u32 w1 );
-void F3DEX2_Special_1( u32 w0, u32 w1 );
-void F3DEX2_Special_2( u32 w0, u32 w1 );
-void F3DEX2_Special_3( u32 w0, u32 w1 );
-void F3DEX2_Quad( u32 w0, u32 w1 );
-void F3DEX2_Init();
+void gli_F3DEX2_Mtx( u32 w0, u32 w1 );
+void gli_F3DEX2_MoveMem( u32 w0, u32 w1 );
+void gli_F3DEX2_Vtx( u32 w0, u32 w1 );
+void gli_F3DEX2_Reserved1( u32 w0, u32 w1 );
+void gli_F3DEX2_Tri1( u32 w0, u32 w1 );
+void gli_F3DEX2_PopMtx( u32 w0, u32 w1 );
+void gli_F3DEX2_MoveWord( u32 w0, u32 w1 );
+void gli_F3DEX2_Texture( u32 w0, u32 w1 );
+void gli_F3DEX2_SetOtherMode_H( u32 w0, u32 w1 );
+void gli_F3DEX2_SetOtherMode_L( u32 w0, u32 w1 );
+void gli_F3DEX2_GeometryMode( u32 w0, u32 w1 );
+void gli_F3DEX2_Line3D( u32 w0, u32 w1 );
+void gli_F3DEX2_DMAIO( u32 w0, u32 w1 );
+void gli_F3DEX2_Special_1( u32 w0, u32 w1 );
+void gli_F3DEX2_Special_2( u32 w0, u32 w1 );
+void gli_F3DEX2_Special_3( u32 w0, u32 w1 );
+void gli_F3DEX2_Quad( u32 w0, u32 w1 );
+void gli_F3DEX2_Init(void);
+
+#ifdef __cplusplus
+}
+#endif
+
 #endif
 

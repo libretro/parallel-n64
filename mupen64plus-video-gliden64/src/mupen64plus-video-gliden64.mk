@@ -89,26 +89,26 @@ MY_LOCAL_SRC_FILES :=                                                           
     $(SRCDIR)/Graphics/OpenGLContext/GraphicBuffer/PrivateApi/libhardware.cpp      \
     $(SRCDIR)/Graphics/OpenGLContext/GraphicBuffer/PublicApi/android_hardware_buffer_compat.cpp     \
     $(SRCDIR)/Graphics/OpenGLContext/GraphicBuffer/GraphicBufferWrapper.cpp        \
-    $(SRCDIR)/uCodes/F3D.cpp                                                       \
-    $(SRCDIR)/uCodes/F3DAM.cpp                                                     \
-    $(SRCDIR)/uCodes/F3DBETA.cpp                                                   \
-    $(SRCDIR)/uCodes/F3DDKR.cpp                                                    \
-    $(SRCDIR)/uCodes/F3DEX.cpp                                                     \
+    $(SRCDIR)/uCodes/F3D.c                                                       \
+    $(SRCDIR)/uCodes/F3DAM.c                                                     \
+    $(SRCDIR)/uCodes/F3DBETA.c                                                   \
+    $(SRCDIR)/uCodes/F3DDKR.c                                                    \
+    $(SRCDIR)/uCodes/F3DEX.c                                                     \
     $(SRCDIR)/uCodes/F3DEX2.cpp                                                    \
     $(SRCDIR)/uCodes/F3DEX2ACCLAIM.cpp                                             \
-    $(SRCDIR)/uCodes/F3DEX2CBFD.cpp                                                \
-    $(SRCDIR)/uCodes/F3DZEX2.cpp                                                   \
+    $(SRCDIR)/uCodes/F3DEX2CBFD.c                                                \
+    $(SRCDIR)/uCodes/F3DZEX2.c                                                   \
     $(SRCDIR)/uCodes/F3DFLX2.cpp                                                   \
-    $(SRCDIR)/uCodes/F3DGOLDEN.cpp                                                 \
-    $(SRCDIR)/uCodes/F3DPD.cpp                                                     \
-    $(SRCDIR)/uCodes/F3DSETA.cpp                                                   \
+    $(SRCDIR)/uCodes/F3DGOLDEN.c                                                 \
+    $(SRCDIR)/uCodes/F3DPD.c                                                     \
+    $(SRCDIR)/uCodes/F3DSETA.c                                                   \
     $(SRCDIR)/uCodes/F5Indi_Naboo.cpp                                              \
     $(SRCDIR)/uCodes/F5Rogue.cpp                                                    \
-    $(SRCDIR)/uCodes/F3DTEXA.cpp                                                   \
+    $(SRCDIR)/uCodes/F3DTEXA.c                                                   \
     $(SRCDIR)/uCodes/L3D.cpp                                                       \
     $(SRCDIR)/uCodes/L3DEX2.cpp                                                    \
     $(SRCDIR)/uCodes/L3DEX.cpp                                                     \
-    $(SRCDIR)/uCodes/S2DEX2.cpp                                                    \
+    $(SRCDIR)/uCodes/S2DEX2.c                                                    \
     $(SRCDIR)/uCodes/S2DEX.cpp                                                     \
     $(SRCDIR)/uCodes/T3DUX.cpp                                                     \
     $(SRCDIR)/uCodes/Turbo3D.cpp                                                   \

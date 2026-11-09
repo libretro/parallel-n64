@@ -1,6 +1,14 @@
 #ifndef F3DEX3_H
 #define F3DEX3_H
 
-void F3DEX3_Init();
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-#endif // F3DEX3_H
+void gli_F3DEX3_Init(void);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* F3DEX3_H */

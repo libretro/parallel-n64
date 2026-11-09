@@ -796,7 +796,7 @@ void FrameBufferList::saveBuffer(u32 _address, u16 _format, u16 _size, u16 _widt
 			gfxContext.bindFramebuffer(bufferTarget::FRAMEBUFFER, m_pCurrent->m_FBO);
 			if (m_pCurrent->m_size != _size) {
 				f32 fillColor[4];
-				gDPGetFillColor(fillColor);
+				gli_gDPGetFillColor(fillColor);
 				wnd.getDrawer().clearColorBuffer(fillColor);
 				m_pCurrent->m_size = _size;
 				m_pCurrent->m_pTexture->format = _format;
@@ -839,7 +839,7 @@ void FrameBufferList::saveBuffer(u32 _address, u16 _format, u16 _size, u16 _widt
 
 	m_pCurrent->m_isDepthBuffer = _address == gDP.depthImageAddress;
 	// Immersive mode
-	if (gSPImmersiveClearsShownBuffers() && !m_pCurrent->m_isDepthBuffer && !m_pCurrent->isAuxiliary() &&
+	if (gli_gSPImmersiveClearsShownBuffers() && !m_pCurrent->m_isDepthBuffer && !m_pCurrent->isAuxiliary() &&
 		m_pCurrent->m_swapCount != wnd.getBuffersSwapCount()) {
 		gfxContext.bindFramebuffer(bufferTarget::FRAMEBUFFER, m_pCurrent->m_FBO);
 		gfxContext.clearColorBuffer(0.0f, 0.0f, 0.0f, 0.0f);
@@ -1045,7 +1045,7 @@ void FrameBufferList::_renderScreenSizeBuffer()
 	gfxContext.bindFramebuffer(bufferTarget::READ_FRAMEBUFFER, ObjectHandle::defaultFramebuffer);
 
 	if (config.stereo.mode != Config::stereoOff)
-		gSPStereoEndFrame();
+		gli_gSPStereoEndFrame();
 	wnd.swapBuffers();
 	gfxContext.bindFramebuffer(bufferTarget::DRAW_FRAMEBUFFER, pBuffer->m_FBO);
 	if (config.frameBufferEmulation.forceDepthBufferClear != 0) {
@@ -1489,7 +1489,7 @@ void FrameBufferList::renderBuffer()
 						vOffset + (s32)(dstY0*dstScaleY),
 						hOffset + dstX1,
 						vOffset + (s32)(dstY1*dstScaleY) };
-	if (config.stereo.immersive != 0 && !gSPImmersiveIsFlat() && pNextBuffer == nullptr) {
+	if (config.stereo.immersive != 0 && !gli_gSPImmersiveIsFlat() && pNextBuffer == nullptr) {
 		// Immersive mode: the picture must fill exactly the field of view
 		dstCoord[0] = 0;
 		dstCoord[1] = 0;
@@ -1596,9 +1596,9 @@ void FrameBufferList::renderBuffer()
 	}
 
 	if (config.stereo.mode != Config::stereoOff)
-		gSPStereoEndFrame();
+		gli_gSPStereoEndFrame();
 	// Immersive mode: tell the headset which head pose this picture was drawn for
-	gSPImmersivePresent(pBuffer->m_startAddress);
+	gli_gSPImmersivePresent(pBuffer->m_startAddress);
 	wnd.swapBuffers();
 	if (m_pCurrent != nullptr) {
 		gfxContext.bindFramebuffer(bufferTarget::DRAW_FRAMEBUFFER, m_pCurrent->m_FBO);

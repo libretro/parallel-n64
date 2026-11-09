@@ -8,6 +8,7 @@
 #include "Log.h"
 #include "F3D.h"
 #include "ZSort.h"
+#include "ZSortBOSS.h"
 #include "3DMath.h"
 #include "DisplayWindow.h"
 
@@ -186,7 +187,7 @@ void ZSortBOSS_MoveMem( u32 _w0, u32 _w1 )
 		const f32 trans_y = _FIXED2FLOAT( ((s16*)RDRAM)[(a+5)^1], 2 );
 		const f32 trans_z = _FIXED2FLOAT( ((s16*)RDRAM)[(a+6)^1], 10 );
 		const s16 fo = ((s16*)RDRAM)[(a+7)^1];
-		gSPFogFactor(fm, fo);
+		gli_gSPFogFactor(fm, fo);
 
 		gSP.viewport.vscale[0] = scale_x;
 		gSP.viewport.vscale[1] = scale_y;
@@ -322,7 +323,7 @@ void ZSortBOSS_MultMPMTX( u32 _w0, u32 _w1 )
 		v.yi = (s16)y;
 		v.wi = (s16)w;
 
-		v.invw = Calc_invw((int)(w * gstate.invw_factor));
+		v.invw = gli_Calc_invw((int)(w * gstate.invw_factor));
 
 		f32 invw = (w <= 0.f) ? gstate.invw_factor : (1.f / w);
 
@@ -402,7 +403,7 @@ void ZSortBOSS_DrawObject(u8 * _addr, u32 _type)
 			if((invw == rgba) || (invw < 0))
 				vtx.w = 1.0f;
 			else
-				vtx.w = Calc_invw(invw) / gstate.invw_factor;
+				vtx.w = gli_Calc_invw(invw) / gstate.invw_factor;
 
 		} else
 			vtx.w = 1.0f;
@@ -426,16 +427,16 @@ u32 ZSortBOSS_LoadObject(u32 _zHeader)
 			w1 = ((u32*)addr)[1];
 			if(w1 != gstate.rdpcmds[0]) {
 				gstate.rdpcmds[0] = w1;
-				ZSort_RDPCMD (0, w1);
+				gli_ZSort_RDPCMD (0, w1);
 			}
 			w1 = ((u32*)addr)[2];
 			if(w1 != gstate.rdpcmds[1]) {
-				ZSort_RDPCMD (0, w1);
+				gli_ZSort_RDPCMD (0, w1);
 				gstate.rdpcmds[1] = w1;
 			}
 			w1 = ((u32*)addr)[3];
 			if(w1 != gstate.rdpcmds[2]) {
-				ZSort_RDPCMD (0,  w1);
+				gli_ZSort_RDPCMD (0,  w1);
 				gstate.rdpcmds[2] = w1;
 			}
 			if(type != ZH_NULL) {
@@ -526,7 +527,7 @@ void ZSortBOSS_Lighting( u32 _w0, u32 _w1 )
 		vtx.nz = _FIXED2FLOAT(((s8*)DMEM)[(nsrs++)^3],8);
 
 		// TODO: implement light vertex if ever needed
-		//gSPLightVertex(vtx);
+		//gli_gSPLightVertex(vtx);
 
 		f32 fLightDir[3] = {vtx.nx, vtx.ny, vtx.nz};
 		f32 x, y;
@@ -791,7 +792,7 @@ void ZSortBOSS_SetOtherMode_L( u32 _w0, u32 _w1 )
 	const u32 w0 = gDP.otherMode.h;
 	const u32 w1 = gDP.otherMode.l;
 
-	gDPSetOtherMode( _SHIFTR( w0, 0, 24 ),	// mode0
+	gli_gDPSetOtherMode( _SHIFTR( w0, 0, 24 ),	// mode0
 					 w1 );					// mode1
 
 	LOG(LOG_VERBOSE, "ZSortBOSS_SetOtherMode_L (mode0: 0x%08x, mode1: 0x%08x)\n", gDP.otherMode.h, gDP.otherMode.l);
@@ -806,7 +807,7 @@ void ZSortBOSS_SetOtherMode_H( u32 _w0, u32 _w1 )
 	const u32 w0 = gDP.otherMode.h;
 	const u32 w1 = gDP.otherMode.l;
 
-	gDPSetOtherMode( _SHIFTR( w0, 0, 24 ),	// mode0
+	gli_gDPSetOtherMode( _SHIFTR( w0, 0, 24 ),	// mode0
 					 w1 );					// mode1
 
 	LOG(LOG_VERBOSE, "ZSortBOSS_SetOtherMode_H (mode0: 0x%08x, mode1: 0x%08x)\n", gDP.otherMode.h, gDP.otherMode.l);
@@ -820,7 +821,7 @@ void ZSortBOSS_SetOtherMode( u32 _w0, u32 _w1 )
 	const u32 w0 = gDP.otherMode.h;
 	const u32 w1 = gDP.otherMode.l;
 
-	gDPSetOtherMode( _SHIFTR( w0, 0, 24 ),	// mode0
+	gli_gDPSetOtherMode( _SHIFTR( w0, 0, 24 ),	// mode0
 					 w1 );					// mode1
 
 	LOG(LOG_VERBOSE, "ZSortBOSS_SetOtherMode (mode0: 0x%08x, mode1: 0x%08x)\n", gDP.otherMode.h, gDP.otherMode.l);
@@ -835,7 +836,7 @@ void ZSortBOSS_TriangleCommand( u32, u32 _w1 )
 	gSP.texture.on = 1;
 	gSP.texture.tile = _w1 & 0x7;
 
-	gSPSetGeometryMode(G_SHADING_SMOOTH | G_SHADE);
+	gli_gSPSetGeometryMode(G_SHADING_SMOOTH | G_SHADE);
 	LOG(LOG_VERBOSE, "ZSortBOSS_TriangleCommand (cmd: 0x%02x, level: %d, tile: %d)\n", ((_w1 >> 8) & 0x3f), gSP.texture.level, gSP.texture.tile);
 }
 
@@ -879,26 +880,26 @@ void ZSortBOSS_Reserved( u32, u32 )
 
 u32 G_ZENDMAINDL, G_ZENDSUBDL, G_ZUPDATEMASK, G_ZSETOTHERMODE, G_ZFLUSHRDPCMDBUFFER, G_ZMOVEWORD, G_ZCLEARBUFFER, G_ZTRIANGLECOMMAND, G_ZTRANSPOSEMTX, G_ZTRANSFORMLIGHTS, G_ZAUDIO1, G_ZAUDIO2, G_ZAUDIO3, G_ZAUDIO4;
 
-void ZSortBOSS_Init()
+void gli_ZSortBOSS_Init()
 {
-	gSPSetupFunctions();
+	gli_gSPSetupFunctions();
 	// Set GeometryMode flags
 	GBI_InitFlags( F3D );
 
-	GBI.PCStackSize = 10;
+	gli_GBIPCStackSize = 10;
 
 	memset(&gstate, 0, sizeof(gstate));
 	gstate.invw_factor = 10.0f;
 
 	//			GBI Command				Command Value				Command Function
-	GBI_SetGBI( G_SPNOOP,				F3D_SPNOOP,					F3D_SPNoOp );
+	GBI_SetGBI( G_SPNOOP,				F3D_SPNOOP,					gli_F3D_SPNoOp );
 	GBI_SetGBI( G_ZENDMAINDL,			G_ZSBOSS_ENDMAINDL,			ZSortBOSS_EndMainDL );
 	GBI_SetGBI( G_MOVEMEM,				G_ZSBOSS_MOVEMEM,			ZSortBOSS_MoveMem );
 	GBI_SetGBI( G_ZMOVEWORD,			G_ZSBOSS_MOVEWORD,			ZSortBOSS_MoveWord );
 	GBI_SetGBI( G_ZTRANSPOSEMTX,		G_ZSBOSS_TRANSPOSEMTX,		ZSortBOSS_TransposeMTX );
 	GBI_SetGBI( G_ZMTXCAT,				G_ZSBOSS_MTXCAT,			ZSortBOSS_MTXCAT );
 	GBI_SetGBI( G_ZMULT_MPMTX,			G_ZSBOSS_MULT_MPMTX,		ZSortBOSS_MultMPMTX );
-	GBI_SetGBI( G_ZRDPCMD,				G_ZSBOSS_RDPCMD,			ZSort_RDPCMD );
+	GBI_SetGBI( G_ZRDPCMD,				G_ZSBOSS_RDPCMD,			gli_ZSort_RDPCMD );
 	GBI_SetGBI( G_ZOBJ,					G_ZSBOSS_OBJ,				ZSortBOSS_Obj );
 	GBI_SetGBI( G_ZWAITSIGNAL,			G_ZSBOSS_WAITSIGNAL,		ZSortBOSS_WaitSignal );
 	GBI_SetGBI( G_ZLIGHTING,			G_ZSBOSS_LIGHTING,			ZSortBOSS_Lighting );
@@ -916,9 +917,9 @@ void ZSortBOSS_Init()
 	GBI_SetGBI( G_ZUPDATEMASK,			G_ZSBOSS_UPDATEMASK,		ZSortBOSS_UpdateMask );
 	GBI_SetGBI( G_ZTRIANGLECOMMAND,		G_ZSBOSS_TRIANGLECOMMAND,	ZSortBOSS_TriangleCommand );
 	GBI_SetGBI( G_ZFLUSHRDPCMDBUFFER,	G_ZSBOSS_FLUSHRDPCMDBUFFER,	ZSortBOSS_FlushRDPCMDBuffer );
-	GBI_SetGBI( G_RDPHALF_1,			G_ZSBOSS_RDPHALF_1,			F3D_RDPHalf_1 );
+	GBI_SetGBI( G_RDPHALF_1,			G_ZSBOSS_RDPHALF_1,			gli_F3D_RDPHalf_1 );
 	GBI_SetGBI( G_SETOTHERMODE_L,		G_ZSBOSS_SETOTHERMODE_L,	ZSortBOSS_SetOtherMode_L );
 	GBI_SetGBI( G_SETOTHERMODE_H,		G_ZSBOSS_SETOTHERMODE_H,	ZSortBOSS_SetOtherMode_H );
 	GBI_SetGBI( G_ZSETOTHERMODE,		G_ZSBOSS_RDPSETOTHERMODE,	ZSortBOSS_SetOtherMode );
-	GBI_SetGBI( G_RDPHALF_2,			G_ZSBOSS_RDPHALF_2,			F3D_RDPHalf_2 );
+	GBI_SetGBI( G_RDPHALF_2,			G_ZSBOSS_RDPHALF_2,			gli_F3D_RDPHalf_2 );
 }

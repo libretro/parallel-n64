@@ -67,7 +67,7 @@ void T3DUX_ProcessRDP(u32 _cmds)
 		u32 w1 = ((u32*)RDRAM)[addr++];
 		RSP.cmd = _SHIFTR( w0, 24, 8 );
 		while (w0 + w1 != 0) {
-			GBI.cmd[RSP.cmd]( w0, w1 );
+			gli_GBIcmd[RSP.cmd]( w0, w1 );
 			w0 = ((u32*)RDRAM)[addr++];
 			w1 = ((u32*)RDRAM)[addr++];
 			RSP.cmd = _SHIFTR( w0, 24, 8 );
@@ -94,13 +94,13 @@ void T3DUX_LoadGlobState(u32 pgstate)
 	T3DUXGlobState *gstate = (T3DUXGlobState*)&RDRAM[addr];
 	const u32 w0 = gstate->othermode0;
 	const u32 w1 = gstate->othermode1;
-	gDPSetOtherMode( _SHIFTR( w0, 0, 24 ),	// mode0
+	gli_gDPSetOtherMode( _SHIFTR( w0, 0, 24 ),	// mode0
 					 w1 );					// mode1
 
 	for (int s = 0; s < 16; ++s)
-		gSPSegment(s, gstate->segBases[s] & 0x00FFFFFF);
+		gli_gSPSegment(s, gstate->segBases[s] & 0x00FFFFFF);
 
-	gSPViewport(pgstate + 80);
+	gli_gSPViewport(pgstate + 80);
 
 	T3DUX_ProcessRDP(gstate->rdpCmds);
 }
@@ -120,19 +120,19 @@ void T3DUX_LoadObject(u32 pstate, u32 pvtx, u32 ptri, u32 pcol)
 	{
 		const u32 w0 = ostate->othermode0;
 		const u32 w1 = ostate->othermode1;
-		gDPSetOtherMode(
+		gli_gDPSetOtherMode(
 			_SHIFTR(w0, 0, 24),	// mode0
 			w1);				// mode1
 	}
 
 	if ((ostate->matrixFlag & 1) == 0) //load matrix
-		gSPForceMatrix(pstate + sizeof(T3DUXState));
+		gli_gSPForceMatrix(pstate + sizeof(T3DUXState));
 
-	gSPClearGeometryMode(G_LIGHTING | G_FOG);
-	gSPSetGeometryMode(ostate->renderState | G_SHADING_SMOOTH | G_SHADE | G_ZBUFFER | G_CULL_BACK);
+	gli_gSPClearGeometryMode(G_LIGHTING | G_FOG);
+	gli_gSPSetGeometryMode(ostate->renderState | G_SHADING_SMOOTH | G_SHADE | G_ZBUFFER | G_CULL_BACK);
 
 	if (pvtx != 0) //load vtx
-		gSPT3DUXVertex(pvtx, ostate->vtxCount, pcol);
+		gli_gSPT3DUXVertex(pvtx, ostate->vtxCount, pcol);
 
 	T3DUX_ProcessRDP(ostate->rdpCmds);
 
@@ -158,7 +158,7 @@ void T3DUX_LoadObject(u32 pstate, u32 pvtx, u32 ptri, u32 pcol)
 				drawer.drawDMATriangles(static_cast<u32>(pVtx - drawer.getDMAVerticesData()));
 				pVtx = drawer.getDMAVerticesData();
 				pal = newPal;
-				RDP_SetTile(t32uxSetTileW0, w1);
+				gli_RDP_SetTile(t32uxSetTileW0, w1);
 			}
 		}
 
@@ -210,7 +210,7 @@ void T3DUX_LoadObject(u32 pstate, u32 pvtx, u32 ptri, u32 pcol)
 	drawer.drawDMATriangles(static_cast<u32>(pVtx - drawer.getDMAVerticesData()));
 }
 
-void RunT3DUX()
+void gli_RunT3DUX()
 {
 	while (true) {
 		u32 addr = RSP.PC[RSP.PCi] >> 2;

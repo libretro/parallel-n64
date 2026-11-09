@@ -31,7 +31,7 @@ PluginAPI & PluginAPI::get()
 class RomOpenCommand : public APICommand {
 public:
 	bool run() {
-		RSP_Init();
+		gli_RSP_Init();
 		GBI.init();
 		Config_LoadConfig();
 		dwnd().start();
@@ -48,7 +48,7 @@ void PluginAPI::_callAPICommand(APICommand && _command)
 class ProcessDListCommand : public APICommand {
 public:
 	bool run() {
-		RSP_ProcessDList();
+		gli_RSP_ProcessDList();
 		return true;
 	}
 };
@@ -56,7 +56,7 @@ public:
 class ProcessRDPListCommand : public APICommand {
 public:
 	bool run() {
-		RDP_ProcessRDPList();
+		gli_RDP_ProcessRDPList();
 		return true;
 	}
 };
@@ -107,7 +107,7 @@ public:
 		TFH.dumpcache();
 		dwnd().stop();
 		GBI.destroy();
-		RSP_StereoDestroy();
+		gli_RSP_StereoDestroy();
 		return false;
 	}
 
@@ -120,7 +120,7 @@ void PluginAPI::ProcessDList()
 #ifdef RSPTHREAD
 	_callAPICommand(ProcessDListCommand());
 #else
-	RSP_ProcessDList();
+	gli_RSP_ProcessDList();
 #endif
 }
 
@@ -130,7 +130,7 @@ void PluginAPI::ProcessRDPList()
 #ifdef RSPTHREAD
 	_callAPICommand(ProcessRDPListCommand());
 #else
-	RDP_ProcessRDPList();
+	gli_RDP_ProcessRDPList();
 #endif
 }
 
@@ -149,7 +149,7 @@ void PluginAPI::RomClosed()
 	TFH.dumpcache();
 	dwnd().stop();
 	GBI.destroy();
-	RSP_StereoDestroy();
+	gli_RSP_StereoDestroy();
 #endif
 }
 
@@ -164,7 +164,7 @@ void PluginAPI::RomOpen()
 	m_rspThread.start();
 	_callAPICommand(RomOpenCommand());
 #else
-	RSP_Init();
+	gli_RSP_Init();
 	GBI.init();
 	Config_LoadConfig();
 	dwnd().start();

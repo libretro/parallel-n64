@@ -86,7 +86,7 @@ void Turbo3D_ProcessRDP(u32 _cmds)
 		u32 w1 = ((u32*)RDRAM)[addr++];
 		RSP.cmd = _SHIFTR( w0, 24, 8 );
 		while (w0 + w1 != 0) {
-			GBI.cmd[RSP.cmd]( w0, w1 );
+			gli_GBIcmd[RSP.cmd]( w0, w1 );
 			w0 = ((u32*)RDRAM)[addr++];
 			w1 = ((u32*)RDRAM)[addr++];
 			RSP.cmd = _SHIFTR( w0, 24, 8 );
@@ -106,13 +106,13 @@ void Turbo3D_LoadGlobState(u32 pgstate)
 	T3DGlobState *gstate = (T3DGlobState*)&RDRAM[addr];
 	const u32 w0 = gstate->othermode0;
 	const u32 w1 = gstate->othermode1;
-	gDPSetOtherMode( _SHIFTR( w0, 0, 24 ),	// mode0
+	gli_gDPSetOtherMode( _SHIFTR( w0, 0, 24 ),	// mode0
 					 w1 );					// mode1
 
 	for (int s = 0; s < 16; ++s)
-		gSPSegment(s, gstate->segBases[s] & 0x00FFFFFF);
+		gli_gSPSegment(s, gstate->segBases[s] & 0x00FFFFFF);
 
-	gSPViewport(pgstate + 80);
+	gli_gSPViewport(pgstate + 80);
 
 	Turbo3D_ProcessRDP(gstate->rdpCmds);
 }
@@ -131,17 +131,17 @@ void Turbo3D_LoadObject(u32 pstate, u32 pvtx, u32 ptri)
 
 	const u32 w0 = ostate->othermode0;
 	const u32 w1 = ostate->othermode1;
-	gDPSetOtherMode( _SHIFTR( w0, 0, 24 ),	// mode0
+	gli_gDPSetOtherMode( _SHIFTR( w0, 0, 24 ),	// mode0
 					 w1 );					// mode1
 
 	if (ostate->flag != GT_FLAG_NOMTX)
-		gSPForceMatrix(pstate + sizeof(T3DState));
+		gli_gSPForceMatrix(pstate + sizeof(T3DState));
 
-	gSPClearGeometryMode(G_LIGHTING | G_FOG);
-	gSPSetGeometryMode(ostate->renderState | G_SHADING_SMOOTH | G_SHADE | G_ZBUFFER | G_CULL_BACK);
+	gli_gSPClearGeometryMode(G_LIGHTING | G_FOG);
+	gli_gSPSetGeometryMode(ostate->renderState | G_SHADING_SMOOTH | G_SHADE | G_ZBUFFER | G_CULL_BACK);
 
 	if (pvtx != 0)
-		gSPVertex(pvtx, ostate->vtxCount, ostate->vtxV0);
+		gli_gSPVertex(pvtx, ostate->vtxCount, ostate->vtxV0);
 
 	Turbo3D_ProcessRDP(ostate->rdpCmds);
 
@@ -152,7 +152,7 @@ void Turbo3D_LoadObject(u32 pstate, u32 pvtx, u32 ptri)
 			for (int t = 0; t < ostate->triCount; ++t) {
 				T3DTriN * tri = (T3DTriN*)&RDRAM[addr];
 				addr += 4;
-				gSPTriangle(tri->v0, tri->v1, tri->v2);
+				gli_gSPTriangle(tri->v0, tri->v1, tri->v2);
 			}
 			drawer.drawTriangles();
 		} else {
@@ -179,7 +179,7 @@ void Turbo3D_LoadObject(u32 pstate, u32 pvtx, u32 ptri)
 	}
 }
 
-void RunTurbo3D()
+void gli_RunTurbo3D()
 {
 	while (true) {
 		u32 addr = RSP.PC[RSP.PCi] >> 2;

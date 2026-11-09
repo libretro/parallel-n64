@@ -1,6 +1,14 @@
 #ifndef F3DAM_H
 #define F3DAM_H
 
-void F3DAM_Init();
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-#endif // F3DAM_H
+void gli_F3DAM_Init(void);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* F3DAM_H */

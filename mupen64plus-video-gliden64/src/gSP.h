@@ -1,9 +1,14 @@
 #ifndef GSP_H
 #define GSP_H
 
+#include <boolean.h>
 #include "Types.h"
 #include "GBI.h"
 #include "gDP.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #define CHANGED_VIEWPORT		0x01U
 #define CHANGED_MATRIX			0x02U
@@ -22,7 +27,7 @@
 #define CLIP_NEGY   0x04
 #define CLIP_POSY   0x08
 #define CLIP_W      0x10
-#define CLIP_ALL	0x1F // CLIP_NEGX|CLIP_POSX|CLIP_NEGY|CLIP_POSY|CLIP_W
+#define CLIP_ALL	0x1F /* CLIP_NEGX|CLIP_POSX|CLIP_NEGY|CLIP_POSY|CLIP_W */
 
 #define MODIFY_XY	0x000000FF
 #define MODIFY_Z	0x0000FF00
@@ -33,6 +38,7 @@
 enum Component { R, G, B };
 enum Axis { X ,Y, Z, W };
 
+typedef struct SPVertex SPVertex;
 struct SPVertex
 {
 	f32 x, y, z, w;
@@ -46,6 +52,7 @@ struct SPVertex
 	s16 flag;
 };
 
+typedef struct gSPInfo gSPInfo;
 struct gSPInfo
 {
 	u32 segment[16];
@@ -147,90 +154,99 @@ struct gSPInfo
 
 extern gSPInfo gSP;
 
-void gSPLoadUcodeEx( u32 uc_start, u32 uc_dstart, u16 uc_dsize );
-void gSPNoOp();
-void gSPMatrix( u32 matrix, u8 param );
-void gSPDMAMatrix( u32 matrix, u8 index, u8 multiply );
-void gSPViewport( u32 v );
-void gSPForceMatrix( u32 mptr );
-void gSPLight( u32 l, s32 n );
-void gSPLightCBFD( u32 l, s32 n );
-void gSPLookAt( u32 l, u32 n );
-void gSPLightAcclaim(u32 l, s32 n);
-void gSPVertex( u32 v, u32 n, u32 v0 );
-void gSPCIVertex( u32 v, u32 n, u32 v0 );
-void gSPDMAVertex( u32 v, u32 n, u32 v0 );
-void gSPCBFDVertex( u32 v, u32 n, u32 v0 );
-void gSPT3DUXVertex(u32 v, u32 n, u32 ci);
-void gSPF3DAMVertex( u32 v, u32 n, u32 v0 );
-void gSPSWVertex(const SWVertex * vertex, u32 n, const bool * const verticesToProcess);
-void gSPSWVertex(const SWVertex * vertex, u32 v0, u32 n);
-void gSPDisplayList(u32 dl);
-void gSPBranchList( u32 dl );
-void gSPBranchLessZ(u32 branchdl, u32 vtx, u32 zval);
-void gSPBranchLessW( u32 branchdl, u32 vtx, u32 wval );
-void gSPDlistCount(u32 count, u32 v);
-void gSPSprite2DBase(u32 _base );
-void gSPDMATriangles( u32 tris, u32 n );
-void gSP1Quadrangle( s32 v0, s32 v1, s32 v2, s32 v3 );
-void gSPCullDisplayList( u32 v0, u32 vn );
-void gSPPopMatrix( u32 param );
-void gSPPopMatrixN( u32 param, u32 num );
-void gSPSegment( s32 seg, s32 base );
-void gSPRelSegment( s32 seg, s32 base );
-void gSPClipRatio( u32 ratio );
-void gSPInsertMatrix( u32 where, u32 num );
-void gSPModifyVertex(u32 _vtx, u32 _where, u32 _val );
-void gSPNumLights( s32 n );
-void gSPLightColor( u32 lightNum, u32 packedColor );
-void gSPFogFactor( s16 fm, s16 fo );
-void gSPPerspNormalize( u16 scale );
-void gSPTexture( f32 sc, f32 tc, u32 level, u32 tile, u32 on );
-void gSPEndDisplayList();
-void gSPGeometryMode( u32 clear, u32 set );
-void gSPSetGeometryMode( u32 mode );
-void gSPClearGeometryMode( u32 mode );
-void gSPSetOtherMode_H(u32 _length, u32 _shift, u32 _data);
-void gSPSetOtherMode_L(u32 _length, u32 _shift, u32 _data);
-void gSPLine3D(u32 v0, u32 v1, s32 wd, u32 flag);
-void gSPSetStatus(u32 sid, u32 val);
-void gSPSetDMAOffsets( u32 mtxoffset, u32 vtxoffset );
-void gSPSetDMATexOffset(u32 _addr);
-void gSPSetVertexColorBase( u32 base );
-void gSPCombineMatrices(u32 _mode);
+void gli_gSPLoadUcodeEx( u32 uc_start, u32 uc_dstart, u16 uc_dsize );
+void gli_gSPNoOp(void);
+void gli_gSPMatrix( u32 matrix, u8 param );
+void gli_gSPDMAMatrix( u32 matrix, u8 index, u8 multiply );
+void gli_gSPViewport( u32 v );
+void gli_gSPForceMatrix( u32 mptr );
+void gli_gSPLight( u32 l, s32 n );
+void gli_gSPLightCBFD( u32 l, s32 n );
+void gli_gSPLookAt( u32 l, u32 n );
+void gli_gSPLightAcclaim(u32 l, s32 n);
+void gli_gSPVertex( u32 v, u32 n, u32 v0 );
+void gli_gSPCIVertex( u32 v, u32 n, u32 v0 );
+void gli_gSPDMAVertex( u32 v, u32 n, u32 v0 );
+void gli_gSPCBFDVertex( u32 v, u32 n, u32 v0 );
+void gli_gSPT3DUXVertex(u32 v, u32 n, u32 ci);
+void gli_gSPF3DAMVertex( u32 v, u32 n, u32 v0 );
+void gli_gSPDisplayList(u32 dl);
+void gli_gSPBranchList( u32 dl );
+void gli_gSPBranchLessZ(u32 branchdl, u32 vtx, u32 zval);
+void gli_gSPBranchLessW( u32 branchdl, u32 vtx, u32 wval );
+void gli_gSPDlistCount(u32 count, u32 v);
+void gli_gSPSprite2DBase(u32 _base );
+void gli_gSPDMATriangles( u32 tris, u32 n );
+void gli_gSP1Quadrangle( s32 v0, s32 v1, s32 v2, s32 v3 );
+void gli_gSPCullDisplayList( u32 v0, u32 vn );
+void gli_gSPPopMatrix( u32 param );
+void gli_gSPPopMatrixN( u32 param, u32 num );
+void gli_gSPSegment( s32 seg, s32 base );
+void gli_gSPRelSegment( s32 seg, s32 base );
+void gli_gSPClipRatio( u32 ratio );
+void gli_gSPInsertMatrix( u32 where, u32 num );
+void gli_gSPModifyVertex(u32 _vtx, u32 _where, u32 _val );
+void gli_gSPNumLights( s32 n );
+void gli_gSPLightColor( u32 lightNum, u32 packedColor );
+void gli_gSPFogFactor( s16 fm, s16 fo );
+void gli_gSPPerspNormalize( u16 scale );
+void gli_gSPTexture( f32 sc, f32 tc, u32 level, u32 tile, u32 on );
+void gli_gSPEndDisplayList(void);
+void gli_gSPGeometryMode( u32 clear, u32 set );
+void gli_gSPSetGeometryMode( u32 mode );
+void gli_gSPClearGeometryMode( u32 mode );
+void gli_gSPSetOtherMode_H(u32 _length, u32 _shift, u32 _data);
+void gli_gSPSetOtherMode_L(u32 _length, u32 _shift, u32 _data);
+void gli_gSPLine3D(u32 v0, u32 v1, s32 wd, u32 flag);
+void gli_gSPSetStatus(u32 sid, u32 val);
+void gli_gSPSetDMAOffsets( u32 mtxoffset, u32 vtxoffset );
+void gli_gSPSetDMATexOffset(u32 _addr);
+void gli_gSPSetVertexColorBase( u32 base );
+void gli_gSPCombineMatrices(u32 _mode);
 
 /** Stereo rendering. */
-void gSPStereoBeginTask();
-void gSPStereoEndFrame();
-void gSPStereoReset();
-void gSPSetStereoEye(u32 _eye);
-void gSPApplyStereo(f32 matrix[4][4]);
+void gli_gSPStereoBeginTask(void);
+void gli_gSPStereoEndFrame(void);
+void gli_gSPStereoReset(void);
+void gli_gSPSetStereoEye(u32 _eye);
+void gli_gSPApplyStereo(f32 matrix[4][4]);
 
-// Immersive mode
+/* Immersive mode */
 struct RectVertex;
-bool gSPImmersiveActive();
-bool gSPImmersiveBackground();
-bool gSPImmersiveClearsShownBuffers();
-void gSPImmersiveFrameDrawn(u32 _address);
-void gSPImmersivePresent(u32 _address);
-bool gSPImmersiveIsFlat();
-void gSPImmersiveRect(RectVertex * _vertices, u32 _count, bool _fullScreen);
-void gSPImmersiveScreenTriangles(SPVertex * _vertices, u32 _count);
-void gSPImmersiveWorldSprite(bool _world);
+bool gli_gSPImmersiveActive(void);
+bool gli_gSPImmersiveBackground(void);
+bool gli_gSPImmersiveClearsShownBuffers(void);
+void gli_gSPImmersiveFrameDrawn(u32 _address);
+void gli_gSPImmersivePresent(u32 _address);
+bool gli_gSPImmersiveIsFlat(void);
+void gli_gSPImmersiveWorldSprite(bool _world);
 
-void gSPTriangle(s32 v0, s32 v1, s32 v2);
-void gSP1Triangle(s32 v0, s32 v1, s32 v2);
-void gSP2Triangles(const s32 v00, const s32 v01, const s32 v02, const s32 flag0,
+void gli_gSPTriangle(s32 v0, s32 v1, s32 v2);
+void gli_gSP1Triangle(s32 v0, s32 v1, s32 v2);
+void gli_gSP2Triangles(const s32 v00, const s32 v01, const s32 v02, const s32 flag0,
 					const s32 v10, const s32 v11, const s32 v12, const s32 flag1 );
-void gSP4Triangles(const s32 v00, const s32 v01, const s32 v02,
+void gli_gSP4Triangles(const s32 v00, const s32 v01, const s32 v02,
 					const s32 v10, const s32 v11, const s32 v12,
 					const s32 v20, const s32 v21, const s32 v22,
 					const s32 v30, const s32 v31, const s32 v32 );
 
-void gSPLightVertex(SPVertex & _vtx);
 
 extern void (*gSPTransformVector)(float vtx[4], float mtx[4][4]);
 extern void (*gSPInverseTransformVector)(float vec[3], float mtx[4][4]);
-void gSPSetupFunctions();
-void gSPFlushTriangles();
+void gli_gSPSetupFunctions(void);
+void gli_gSPFlushTriangles(void);
+
+#ifdef __cplusplus
+}
+#endif
+
+#ifdef __cplusplus
+struct RectVertex;
+void gli_gSPSWVertex(const SWVertex * vertex, u32 n, const bool * const verticesToProcess);
+void gli_gSPSWVertex(const SWVertex * vertex, u32 v0, u32 n);
+void gli_gSPImmersiveRect(RectVertex * _vertices, u32 _count, bool _fullScreen);
+void gli_gSPImmersiveScreenTriangles(SPVertex * _vertices, u32 _count);
+void gli_gSPLightVertex(SPVertex & _vtx);
+#endif
+
 #endif

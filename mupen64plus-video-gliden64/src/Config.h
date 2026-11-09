@@ -231,7 +231,7 @@ struct Config
 #define hack_rectDepthBufferCopyCBFD (1<<9) //Copy depth buffer only when game need it. Optimized for CBFD
 #define hack_WinBack				(1<<10) //Hack for WinBack to remove gray rectangle in HLE mode
 #define hack_ZeldaMM				(1<<11) //Special hacks for Zelda MM
-#define hack_ModifyVertexXyInShader	(1<<12) //Pass screen coordinates provided in gSPModifyVertex to vertes shader.
+#define hack_ModifyVertexXyInShader	(1<<12) //Pass screen coordinates provided in gli_gSPModifyVertex to vertes shader.
 #define hack_LodeRunner				(1<<13) //Hack for Lode runner VI issues.
 #define hack_doNotResetOtherModeH	(1<<14) //Don't reset othermode.h after dlist end. Quake and Quake 2
 #define hack_doNotResetOtherModeL	(1<<15) //Don't reset othermode.l after dlist end. Quake

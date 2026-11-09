@@ -1784,12 +1784,13 @@ test_glide64_fb_readback$(EXE_EXT): tools/test_glide64_fb_readback.c $(VIDEODIR_
 
 # GLideN64 is moving to C89 a file at a time: what has moved stays there
 GLIDEN64_C89 := N64.c convert.c RSP_LoadMatrix.c 3DMath.c CRC32.c \
+	uCodes/F3DEX095.c uCodes/F3DZEX2.c uCodes/F3DPD.c uCodes/F3DTEXA.c uCodes/F3DGOLDEN.c uCodes/S2DEX2.c uCodes/F3DBETA.c uCodes/F3DAM.c uCodes/F3DEX.c uCodes/F3DSETA.c uCodes/F3DDKR.c uCodes/F3DEX2CBFD.c uCodes/F3D.c \
 	Graphics/VulkanContext/vk_spirv.c Graphics/VulkanContext/vk_shaders.c \
 	Graphics/VulkanContext/vk_renderer.c Graphics/VulkanContext/vk_device.c
 check_gliden64_c89:
 	for f in $(GLIDEN64_C89); do $(CC) -std=c89 -pedantic -Werror=pedantic -Werror=declaration-after-statement -D_DEFAULT_SOURCE \
 		-isystem $(VIDEODIR_PARALLEL)/parallel-rdp/vulkan-headers/include -isystem mupen64plus-core/src/api -isystem $(LIBRETRO_COMM_DIR)/include \
-		-I$(VIDEODIR_PARALLEL)/parallel-rdp/parallel-rdp -I$(VIDEODIR_GLIDEN64)/src -I$(VIDEODIR_GLIDEN64)/src/Graphics/VulkanContext \
+		-I$(VIDEODIR_PARALLEL)/parallel-rdp/parallel-rdp -I$(VIDEODIR_GLIDEN64)/src -I$(VIDEODIR_GLIDEN64)/src/uCodes -I$(VIDEODIR_GLIDEN64)/src/Graphics/VulkanContext \
 		-fsyntax-only $(VIDEODIR_GLIDEN64)/src/$$f || exit 1; done
 
 GLIDEN64_SPIRV_SRC := $(VIDEODIR_GLIDEN64)/src/Graphics/VulkanContext/vk_spirv.c $(VIDEODIR_GLIDEN64)/src/Graphics/VulkanContext/vk_shaders.c

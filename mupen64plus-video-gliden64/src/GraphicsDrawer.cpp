@@ -219,7 +219,7 @@ void GraphicsDrawer::updateScissor(FrameBuffer * _pBuffer) const
 		_adjustScissorX(SX0, SX1, wnd.getAdjustScale());
 
 	// Immersive mode draws the whole picture, including the border the game left
-	if (gSPImmersiveActive() && gDP.colorImage.address != gDP.depthImageAddress &&
+	if (gli_gSPImmersiveActive() && gDP.colorImage.address != gDP.depthImageAddress &&
 		gDP.colorImage.width >= VI.width * 98 / 100) {
 		SX0 = offsetX;
 		SY0 = offsetY;
@@ -677,7 +677,7 @@ void GraphicsDrawer::_updateStates(DrawingState _drawingState) const
 	if (!config.generalEmulation.enableFragmentDepthWrite)
 		return;
 
-	if (isCurrentColorImageDepthImage() &&
+	if (gli_isCurrentColorImageDepthImage() &&
 		config.generalEmulation.enableFragmentDepthWrite != 0 &&
 		config.frameBufferEmulation.N64DepthCompare == 0) {
 		// Current render target is depth buffer.
@@ -781,7 +781,7 @@ void GraphicsDrawer::drawScreenSpaceTriangle(u32 _numVtx, graphics::DrawModePara
 		return;
 
 	// Immersive mode
-	gSPImmersiveScreenTriangles(m_dmaVertices.data(), _numVtx);
+	gli_gSPImmersiveScreenTriangles(m_dmaVertices.data(), _numVtx);
 
 	f32 maxY = 0;
 	for (u32 i = 0; i < _numVtx; ++i) {
@@ -949,7 +949,7 @@ void GraphicsDrawer::drawLine(u32 _v0, u32 _v1, float _width, u32 _flag)
 static
 bool _immersiveScreenRect(f32 _ulx, f32 _uly, f32 _lrx, f32 _lry, bool & _fullScreen)
 {
-	if (!gSPImmersiveActive() || gDP.colorImage.address == gDP.depthImageAddress ||
+	if (!gli_gSPImmersiveActive() || gDP.colorImage.address == gDP.depthImageAddress ||
 		gDP.colorImage.width < VI.width * 98 / 100)
 		return false;
 	const f32 width = static_cast<f32>(gDP.colorImage.width);
@@ -969,7 +969,7 @@ void _immersiveRectClip(RectVertex * _vertices, bool _fullScreen, const FrameBuf
 		_vertices[i].x = (_vertices[i].x + 1.0f) / (2.0f * scaleX);
 		_vertices[i].y = (_vertices[i].y + 1.0f) / (2.0f * scaleY);
 	}
-	gSPImmersiveRect(_vertices, 4, _fullScreen);
+	gli_gSPImmersiveRect(_vertices, 4, _fullScreen);
 	for (u32 i = 0; i < 4; ++i) {
 		_vertices[i].x = _vertices[i].x * 2.0f * scaleX - _vertices[i].w;
 		_vertices[i].y = _vertices[i].y * 2.0f * scaleY - _vertices[i].w;
@@ -1027,14 +1027,14 @@ void GraphicsDrawer::drawRect(int _ulx, int _uly, int _lrx, int _lry)
 			static_cast<f32>(_lry), fullScreen)) {
 		const s32 width = static_cast<s32>(gDP.colorImage.width);
 		const s32 height = static_cast<s32>(VI.height);
-		const bool letterbox = !gSPImmersiveBackground() && _ulx <= 16 && _lrx >= width - 16 &&
+		const bool letterbox = !gli_gSPImmersiveBackground() && _ulx <= 16 && _lrx >= width - 16 &&
 			(_uly <= 16 || _lry >= height - 16) && (_lry - _uly) < height / 4;
 		if (letterbox) {
 			gSP.changed |= CHANGED_GEOMETRYMODE | CHANGED_VIEWPORT;
 			dropRenderState();
 			return;
 		}
-		if (!fullScreen || gSPImmersiveBackground() || gSPImmersiveClearsShownBuffers())
+		if (!fullScreen || gli_gSPImmersiveBackground() || gli_gSPImmersiveClearsShownBuffers())
 			_immersiveRectClip(m_rect, fullScreen, frameBufferList().getCurrent());
 	}
 
@@ -1093,7 +1093,7 @@ bool texturedRectDepthBufferCopy(const GraphicsDrawer::TexturedRectParams & _par
 				if (!FrameBuffer_CopyDepthBuffer(gDP.depthImageAddress))
 					return true;
 			}
-			RDP_RepeatLastLoadBlock();
+			gli_RDP_RepeatLastLoadBlock();
 		}
 
 		const u32 width = (u32)(_params.lrx - _params.ulx);

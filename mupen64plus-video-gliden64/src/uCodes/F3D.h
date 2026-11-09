@@ -2,6 +2,10 @@
 #define F3D_H
 #include "Types.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define F3D_MTX_STACKSIZE		10
 
 #define F3D_MTX_MODELVIEW		0x00
@@ -37,7 +41,7 @@
 #define F3D_MWO_aLIGHT_8		0xe0
 #define F3D_MWO_bLIGHT_8		0xe4
 
-// FAST3D commands
+/* FAST3D commands */
 #define F3D_SPNOOP				0x00
 #define F3D_MTX					0x01
 #define F3D_RESERVED0			0x02
@@ -59,38 +63,43 @@
 #define F3D_ENDDL				0xB8
 #define F3D_SETGEOMETRYMODE		0xB7
 #define F3D_CLEARGEOMETRYMODE	0xB6
-//#define F3D_LINE3D				0xB5 // Only used in Line3D
+/*#define F3D_LINE3D				0xB5 // Only used in Line3D */
 #define F3D_QUAD				0xB5
 #define F3D_RDPHALF_1			0xB4
 #define F3D_RDPHALF_2			0xB3
 #define F3D_RDPHALF_CONT		0xB2
 #define F3D_TRI4				0xB1
 
-void F3D_SPNoOp( u32 w0, u32 w1 );
-void F3D_Mtx( u32 w0, u32 w1 );
-void F3D_Reserved0( u32 w0, u32 w1 );
-void F3D_MoveMem( u32 w0, u32 w1 );
-void F3D_Vtx( u32 w0, u32 w1 );
-void F3D_Reserved1( u32 w0, u32 w1 );
-void F3D_DList( u32 w0, u32 w1 );
-void F3D_Reserved2( u32 w0, u32 w1 );
-void F3D_Reserved3( u32 w0, u32 w1 );
-void F3D_Sprite2D_Base( u32 w0, u32 w1 );
-void F3D_Tri1( u32 w0, u32 w1 );
-void F3D_CullDL( u32 w0, u32 w1 );
-void F3D_PopMtx( u32 w0, u32 w1 );
-void F3D_MoveWord( u32 w0, u32 w1 );
-void F3D_Texture( u32 w0, u32 w1 );
-void F3D_SetOtherMode_H( u32 w0, u32 w1 );
-void F3D_SetOtherMode_L( u32 w0, u32 w1 );
-void F3D_EndDL( u32 w0, u32 w1 );
-void F3D_SetGeometryMode( u32 w0, u32 w1 );
-void F3D_ClearGeometryMode( u32 w0, u32 w1 );
-//void F3D_Line3D( u32 w0, u32 w1 );
-void F3D_Quad( u32 w0, u32 w1 );
-void F3D_RDPHalf_1( u32 w0, u32 w1 );
-void F3D_RDPHalf_2( u32 w0, u32 w1 );
-void F3D_RDPHalf_Cont( u32 w0, u32 w1 );
-void F3D_Init();
+void gli_F3D_SPNoOp( u32 w0, u32 w1 );
+void gli_F3D_Mtx( u32 w0, u32 w1 );
+void gli_F3D_Reserved0( u32 w0, u32 w1 );
+void gli_F3D_MoveMem( u32 w0, u32 w1 );
+void gli_F3D_Vtx( u32 w0, u32 w1 );
+void gli_F3D_Reserved1( u32 w0, u32 w1 );
+void gli_F3D_DList( u32 w0, u32 w1 );
+void gli_F3D_Reserved2( u32 w0, u32 w1 );
+void gli_F3D_Reserved3( u32 w0, u32 w1 );
+void gli_F3D_Sprite2D_Base( u32 w0, u32 w1 );
+void gli_F3D_Tri1( u32 w0, u32 w1 );
+void gli_F3D_CullDL( u32 w0, u32 w1 );
+void gli_F3D_PopMtx( u32 w0, u32 w1 );
+void gli_F3D_MoveWord( u32 w0, u32 w1 );
+void gli_F3D_Texture( u32 w0, u32 w1 );
+void gli_F3D_SetOtherMode_H( u32 w0, u32 w1 );
+void gli_F3D_SetOtherMode_L( u32 w0, u32 w1 );
+void gli_F3D_EndDL( u32 w0, u32 w1 );
+void gli_F3D_SetGeometryMode( u32 w0, u32 w1 );
+void gli_F3D_ClearGeometryMode( u32 w0, u32 w1 );
+/*void F3D_Line3D( u32 w0, u32 w1 ); */
+void gli_F3D_Quad( u32 w0, u32 w1 );
+void gli_F3D_RDPHalf_1( u32 w0, u32 w1 );
+void gli_F3D_RDPHalf_2( u32 w0, u32 w1 );
+void gli_F3D_RDPHalf_Cont( u32 w0, u32 w1 );
+void gli_F3D_Init(void);
+
+#ifdef __cplusplus
+}
+#endif
+
 #endif
 

@@ -1,6 +1,14 @@
 #ifndef TURBO3D_H
 #define TURBO3D_H
 
-void RunTurbo3D();
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-#endif // TURBO3D_H
+void gli_RunTurbo3D(void);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* TURBO3D_H */

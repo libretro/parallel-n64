@@ -1,7 +1,15 @@
 #ifndef F3DPD_H
 #define F3DPD_H
 
-void F3DPD_Init();
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+void gli_F3DPD_Init(void);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
 

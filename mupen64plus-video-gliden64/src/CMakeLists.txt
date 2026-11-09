@@ -77,26 +77,26 @@ set(GLideN64_SOURCES
   Graphics/OpenGLContext/GLSL/glsl_ShaderStorage.cpp
   Graphics/OpenGLContext/GLSL/glsl_SpecialShadersFactory.cpp
   Graphics/OpenGLContext/GLSL/glsl_Utils.cpp
-  uCodes/F3D.cpp
-  uCodes/F3DBETA.cpp
-  uCodes/F3DDKR.cpp
-  uCodes/F3DEX.cpp
-  uCodes/F3DAM.cpp
+  uCodes/F3D.c
+  uCodes/F3DBETA.c
+  uCodes/F3DDKR.c
+  uCodes/F3DEX.c
+  uCodes/F3DAM.c
   uCodes/F3DEX2.cpp
   uCodes/F3DEX2ACCLAIM.cpp
-  uCodes/F3DEX2CBFD.cpp
-  uCodes/F3DZEX2.cpp
+  uCodes/F3DEX2CBFD.c
+  uCodes/F3DZEX2.c
   uCodes/F3DFLX2.cpp
-  uCodes/F3DGOLDEN.cpp
-  uCodes/F3DTEXA.cpp
-  uCodes/F3DPD.cpp
-  uCodes/F3DSETA.cpp
+  uCodes/F3DGOLDEN.c
+  uCodes/F3DTEXA.c
+  uCodes/F3DPD.c
+  uCodes/F3DSETA.c
   uCodes/F5Indi_Naboo.cpp
   uCodes/F5Rogue.cpp
   uCodes/L3D.cpp
   uCodes/L3DEX2.cpp
   uCodes/L3DEX.cpp
-  uCodes/S2DEX2.cpp
+  uCodes/S2DEX2.c
   uCodes/S2DEX.cpp
   uCodes/T3DUX.cpp
   uCodes/Turbo3D.cpp

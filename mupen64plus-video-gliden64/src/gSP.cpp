@@ -36,7 +36,7 @@ using namespace graphics;
 
 static bool g_ConkerUcode;
 
-void gSPFlushTriangles()
+void gli_gSPFlushTriangles()
 {
 	if ((gSP.geometryMode & G_SHADING_SMOOTH) == 0) {
 		dwnd().getDrawer().drawTriangles();
@@ -101,13 +101,13 @@ f32 _stereoPercentile(f32 fraction)
 static void _immersiveBeginFrame();
 static void _immersiveCountVotes();
 
-void gSPStereoBeginTask()
+void gli_gSPStereoBeginTask()
 {
 	_immersiveBeginFrame();
 }
 
 // Once per shown picture: what its display lists measured
-void gSPStereoEndFrame()
+void gli_gSPStereoEndFrame()
 {
 	_immersiveCountVotes();
 
@@ -222,15 +222,15 @@ void _immersiveBeginFrame()
 	gSP.changed |= CHANGED_MATRIX;
 }
 
-bool gSPImmersiveActive()
+bool gli_gSPImmersiveActive()
 {
 	return _immersiveOn() && (l_stereoEye == Config::stereoLeftEye || l_stereoEye == Config::stereoRightEye);
 }
 
-bool gSPImmersiveIsFlat() { return l_immersiveFlat; }
+bool gli_gSPImmersiveIsFlat() { return l_immersiveFlat; }
 
 // Remembers which pose drew a color image, for when that image is shown
-void gSPImmersiveFrameDrawn(u32 _address)
+void gli_gSPImmersiveFrameDrawn(u32 _address)
 {
 	if (!l_immersiveActive)
 		return;
@@ -246,7 +246,7 @@ void gSPImmersiveFrameDrawn(u32 _address)
 }
 
 // Called just before the frame showing the image at _address is swapped out to the headset
-void gSPImmersivePresent(u32 _address)
+void gli_gSPImmersivePresent(u32 _address)
 {
 	if (!l_immersiveActive) {
 		l_immersiveNeedsPose = true;
@@ -482,7 +482,7 @@ f32 _stereoSeparation()
 
 // Games that install their own matrices, like Factor 5's, clear only their viewport. Immersive mode
 // stretches that viewport over the whole picture, so the border keeps old frames around.
-bool gSPImmersiveClearsShownBuffers()
+bool gli_gSPImmersiveClearsShownBuffers()
 {
 	return l_immersiveActive && l_immersiveVoted;
 }
@@ -491,13 +491,13 @@ bool gSPImmersiveClearsShownBuffers()
 // they placed themselves. Those belong in the scene, not on the HUD.
 static bool l_immersiveWorldSprite = false;
 
-void gSPImmersiveWorldSprite(bool _world)
+void gli_gSPImmersiveWorldSprite(bool _world)
 {
 	l_immersiveWorldSprite = _world;
 }
 
 // Each content starts with nothing measured
-void gSPStereoReset()
+void gli_gSPStereoReset()
 {
 	int eye, i;
 	l_stereoEye = Config::stereoOff;
@@ -542,16 +542,16 @@ void gSPStereoReset()
 	l_immersiveWorldSprite = false;
 }
 
-bool gSPImmersiveBackground()
+bool gli_gSPImmersiveBackground()
 {
 	return !l_stereoPerspectiveSeen;
 }
 
 // Screen space triangles carry no depth of their own, but the game put them where its camera saw
 // them, so their direction is known. Factor 5 draws engine glows and other particles this way.
-void gSPImmersiveScreenTriangles(SPVertex * _vertices, u32 _count)
+void gli_gSPImmersiveScreenTriangles(SPVertex * _vertices, u32 _count)
 {
-	if (!gSPImmersiveActive() || !l_immersiveVoted)
+	if (!gli_gSPImmersiveActive() || !l_immersiveVoted)
 		return;
 	const f32 halfWidth = static_cast<f32>(gDP.colorImage.width) * 0.5f;
 	const f32 halfHeight = (VI.height > 0 ? static_cast<f32>(VI.height) : halfWidth * 1.5f) * 0.5f;
@@ -569,9 +569,9 @@ void gSPImmersiveScreenTriangles(SPVertex * _vertices, u32 _count)
 	}
 }
 
-void gSPImmersiveRect(RectVertex * _vertices, u32 _count, bool _fullScreen)
+void gli_gSPImmersiveRect(RectVertex * _vertices, u32 _count, bool _fullScreen)
 {
-	if (!gSPImmersiveActive())
+	if (!gli_gSPImmersiveActive())
 		return;
 	const f32 width = static_cast<f32>(gDP.colorImage.width);
 	const f32 height = VI.height > 0 ? static_cast<f32>(VI.height) : width * 0.75f;
@@ -639,7 +639,7 @@ void gSPImmersiveRect(RectVertex * _vertices, u32 _count, bool _fullScreen)
 	}
 }
 
-void gSPSetStereoEye(u32 _eye)
+void gli_gSPSetStereoEye(u32 _eye)
 {
 	l_stereoPerspectiveSeen = false;
 	if (l_stereoEye == _eye)
@@ -648,7 +648,7 @@ void gSPSetStereoEye(u32 _eye)
 	gSP.changed |= CHANGED_MATRIX;
 }
 
-void gSPApplyStereo(f32 matrix[4][4])
+void gli_gSPApplyStereo(f32 matrix[4][4])
 {
 	if (l_stereoEye != Config::stereoLeftEye && l_stereoEye != Config::stereoRightEye)
 		return;
@@ -673,18 +673,18 @@ void _gSPCombineMatrices()
 {
 	gli_MultMatrix(gSP.matrix.projection, gSP.matrix.modelView[gSP.matrix.modelViewi], gSP.matrix.combined);
 	l_combiningMatrices = true;
-	gSPApplyStereo(gSP.matrix.combined);
+	gli_gSPApplyStereo(gSP.matrix.combined);
 	l_combiningMatrices = false;
 	gSP.changed &= ~CHANGED_MATRIX;
 }
 
-void gSPCombineMatrices(u32 _mode)
+void gli_gSPCombineMatrices(u32 _mode)
 {
 	if (_mode == 1)
 		_gSPCombineMatrices();
 }
 
-void gSPTriangle(s32 v0, s32 v1, s32 v2)
+void gli_gSPTriangle(s32 v0, s32 v1, s32 v2)
 {
 	GraphicsDrawer & drawer = dwnd().getDrawer();
 	if ((v0 < INDEXMAP_SIZE) && (v1 < INDEXMAP_SIZE) && (v2 < INDEXMAP_SIZE)) {
@@ -698,33 +698,33 @@ void gSPTriangle(s32 v0, s32 v1, s32 v2)
 	}
 }
 
-void gSP1Triangle( const s32 v0, const s32 v1, const s32 v2)
+void gli_gSP1Triangle( const s32 v0, const s32 v1, const s32 v2)
 {
 
-	gSPTriangle( v0, v1, v2);
-	gSPFlushTriangles();
+	gli_gSPTriangle( v0, v1, v2);
+	gli_gSPFlushTriangles();
 }
 
-void gSP2Triangles(const s32 v00, const s32 v01, const s32 v02, const s32 flag0,
+void gli_gSP2Triangles(const s32 v00, const s32 v01, const s32 v02, const s32 flag0,
 				   const s32 v10, const s32 v11, const s32 v12, const s32 flag1 )
 {
 
-	gSPTriangle( v00, v01, v02);
-	gSPTriangle( v10, v11, v12);
-	gSPFlushTriangles();
+	gli_gSPTriangle( v00, v01, v02);
+	gli_gSPTriangle( v10, v11, v12);
+	gli_gSPFlushTriangles();
 }
 
-void gSP4Triangles(const s32 v00, const s32 v01, const s32 v02,
+void gli_gSP4Triangles(const s32 v00, const s32 v01, const s32 v02,
 				   const s32 v10, const s32 v11, const s32 v12,
 				   const s32 v20, const s32 v21, const s32 v22,
 				   const s32 v30, const s32 v31, const s32 v32 )
 {
 
-	gSPTriangle(v00, v01, v02);
-	gSPTriangle(v10, v11, v12);
-	gSPTriangle(v20, v21, v22);
-	gSPTriangle(v30, v31, v32);
-	gSPFlushTriangles();
+	gli_gSPTriangle(v00, v01, v02);
+	gli_gSPTriangle(v10, v11, v12);
+	gli_gSPTriangle(v20, v21, v22);
+	gli_gSPTriangle(v30, v31, v32);
+	gli_gSPFlushTriangles();
 }
 
 gSPInfo gSP;
@@ -738,7 +738,7 @@ f32 identityMatrix[4][4] =
 	{ 0.0f, 0.0f, 0.0f, 1.0f }
 };
 
-void gSPLoadUcodeEx( u32 uc_start, u32 uc_dstart, u16 uc_dsize )
+void gli_gSPLoadUcodeEx( u32 uc_start, u32 uc_dstart, u16 uc_dsize )
 {
 	gSP.matrix.modelViewi = 0;
 	gSP.status[0] = gSP.status[1] = gSP.status[2] = gSP.status[3] = 0;
@@ -757,12 +757,12 @@ void gSPLoadUcodeEx( u32 uc_start, u32 uc_dstart, u16 uc_dsize )
 
 }
 
-void gSPNoOp()
+void gli_gSPNoOp()
 {
-	gSPFlushTriangles();
+	gli_gSPFlushTriangles();
 }
 
-void gSPMatrix( u32 matrix, u8 param )
+void gli_gSPMatrix( u32 matrix, u8 param )
 {
 
 	f32 mtx[4][4];
@@ -798,7 +798,7 @@ void gSPMatrix( u32 matrix, u8 param )
 
 }
 
-void gSPDMAMatrix( u32 matrix, u8 index, u8 multiply )
+void gli_gSPDMAMatrix( u32 matrix, u8 index, u8 multiply )
 {
 	f32 mtx[4][4];
 	u32 address = gSP.DMAOffsets.mtx + RSP_SegmentToPhysical( matrix );
@@ -823,7 +823,7 @@ void gSPDMAMatrix( u32 matrix, u8 index, u8 multiply )
 
 }
 
-void gSPViewport( u32 v )
+void gli_gSPViewport( u32 v )
 {
 	u32 address = RSP_SegmentToPhysical( v );
 
@@ -854,7 +854,7 @@ void gSPViewport( u32 v )
 
 }
 
-void gSPForceMatrix( u32 mptr )
+void gli_gSPForceMatrix( u32 mptr )
 {
 	u32 address = RSP_SegmentToPhysical( mptr );
 
@@ -863,13 +863,13 @@ void gSPForceMatrix( u32 mptr )
 	}
 
 	gli_RSP_LoadMatrix(gSP.matrix.combined, address);
-	gSPApplyStereo(gSP.matrix.combined);
+	gli_gSPApplyStereo(gSP.matrix.combined);
 
 	gSP.changed &= ~CHANGED_MATRIX;
 
 }
 
-void gSPLight( u32 l, s32 n )
+void gli_gSPLight( u32 l, s32 n )
 {
 	--n;
 	u32 addrByte = RSP_SegmentToPhysical( l );
@@ -903,7 +903,7 @@ void gSPLight( u32 l, s32 n )
 
 }
 
-void gSPLightCBFD( u32 l, s32 n )
+void gli_gSPLightCBFD( u32 l, s32 n )
 {
 	u32 addrByte = RSP_SegmentToPhysical( l );
 
@@ -935,7 +935,7 @@ void gSPLightCBFD( u32 l, s32 n )
 
 }
 
-void gSPLightAcclaim(u32 l, s32 n)
+void gli_gSPLightAcclaim(u32 l, s32 n)
 {
 	u32 addrByte = RSP_SegmentToPhysical(l);
 
@@ -956,7 +956,7 @@ void gSPLightAcclaim(u32 l, s32 n)
 
 }
 
-void gSPLookAt( u32 _l, u32 _n )
+void gli_gSPLookAt( u32 _l, u32 _n )
 {
 	u32 address = RSP_SegmentToPhysical(_l);
 
@@ -1153,7 +1153,7 @@ void gSPLightVertexCBFD_advanced(u32 v, SPVertex * spVtx)
 }
 
 template <u32 VNUM>
-void gSPLightVertex(u32 _v, SPVertex * _spVtx)
+void gli_gSPLightVertex(u32 _v, SPVertex * _spVtx)
 {
 	if (g_ConkerUcode) {
 		if (gSP.cbfd.advancedLighting)
@@ -1164,9 +1164,9 @@ void gSPLightVertex(u32 _v, SPVertex * _spVtx)
 		gSPLightVertexStandard<VNUM>(_v, _spVtx);
 }
 
-void gSPLightVertex(SPVertex & _vtx)
+void gli_gSPLightVertex(SPVertex & _vtx)
 {
-	gSPLightVertex<1>(0, &_vtx);
+	gli_gSPLightVertex<1>(0, &_vtx);
 }
 
 template <u32 VNUM>
@@ -1312,7 +1312,7 @@ void gSPApplyStereoConvergence(u32 v, SPVertex * spVtx)
 		(config.stereo.mode != Config::stereoBothEyes || l_stereoEye == Config::stereoLeftEye);
 	for (u32 j = 0; j < VNUM; ++j) {
 		SPVertex & vtx = spVtx[v+j];
-		// gSPApplyStereo() already contributed separation*w, which is the parallax at infinity.
+		// gli_gSPApplyStereo() already contributed separation*w, which is the parallax at infinity.
 		const f32 matrixShift = separation * vtx.w;
 		if (orthographic && _immersiveOn()) {
 			// A background covers the game's screen and is stretched over
@@ -1378,7 +1378,7 @@ void gSPClipVertex(u32 v, SPVertex * spVtx)
 template <u32 VNUM>
 void gSPImmersiveViewport(u32 v, SPVertex * spVtx)
 {
-	if (!gSPImmersiveActive() || gSP.viewport.vscale[0] == 0.0f || gSP.viewport.vscale[1] == 0.0f)
+	if (!gli_gSPImmersiveActive() || gSP.viewport.vscale[0] == 0.0f || gSP.viewport.vscale[1] == 0.0f)
 		return;
 	const f32 halfWidth = static_cast<f32>(gDP.colorImage.width) * 0.5f;
 	const f32 halfHeight = VI.height > 0 ? static_cast<f32>(VI.height) * 0.5f : halfWidth * 0.75f;
@@ -1466,7 +1466,7 @@ void gSPProcessVertex(u32 v, SPVertex * spVtx)
 		if (gSP.geometryMode & G_POINT_LIGHTING)
 			gSPPointLightVertex<VNUM>(v, vPos, spVtx);
 		else
-			gSPLightVertex<VNUM>(v, spVtx);
+			gli_gSPLightVertex<VNUM>(v, spVtx);
 
 		if (gSP.geometryMode & G_ACCLAIM_LIGHTING)
 			gSPPointLightVertexAcclaim<VNUM>(v, spVtx);
@@ -1558,7 +1558,7 @@ u32 gSPLoadVertexData(const Vertex *orgVtx, SPVertex * spVtx, u32 v0, u32 vi, u3
 	return vi;
 }
 
-void gSPVertex(u32 a, u32 n, u32 v0)
+void gli_gSPVertex(u32 a, u32 n, u32 v0)
 {
 
 	if ((n + v0) > INDEXMAP_SIZE) {
@@ -1625,7 +1625,7 @@ u32 gSPLoadCIVertexData(const PDVertex *orgVtx, SPVertex * spVtx, u32 v0, u32 vi
 	return vi;
 }
 
-void gSPCIVertex( u32 a, u32 n, u32 v0 )
+void gli_gSPCIVertex( u32 a, u32 n, u32 v0 )
 {
 
 	if ((n + v0) > INDEXMAP_SIZE) {
@@ -1678,7 +1678,7 @@ u32 gSPLoadDMAVertexData(u32 address, SPVertex * spVtx, u32 v0, u32 vi, u32 n)
 	return vi;
 }
 
-void gSPDMAVertex( u32 a, u32 n, u32 v0 )
+void gli_gSPDMAVertex( u32 a, u32 n, u32 v0 )
 {
 
 	if ((n + v0) > INDEXMAP_SIZE) {
@@ -1727,7 +1727,7 @@ u32 gSPLoadCBFDVertexData(const Vertex *orgVtx, SPVertex * spVtx, u32 v0, u32 vi
 	return vi;
 }
 
-void gSPCBFDVertex( u32 a, u32 n, u32 v0 )
+void gli_gSPCBFDVertex( u32 a, u32 n, u32 v0 )
 {
 
 	if ((n + v0) > INDEXMAP_SIZE) {
@@ -1802,7 +1802,7 @@ u32 gSPLoadF3DAMVertexData(const Vertex *orgVtx, SPVertex * spVtx, u32 v0, u32 v
 	return vi;
 }
 
-void gSPF3DAMVertex(u32 a, u32 n, u32 v0)
+void gli_gSPF3DAMVertex(u32 a, u32 n, u32 v0)
 {
 
 	if ((n + v0) > INDEXMAP_SIZE) {
@@ -1853,7 +1853,7 @@ u32 gSPLoadSWVertexData(const SWVertex *orgVtx, SPVertex * spVtx, u32 vi, u32 n)
 	return vi;
 }
 
-void gSPSWVertex(const SWVertex * vertex, u32 n, const bool * const verticesToProcess)
+void gli_gSPSWVertex(const SWVertex * vertex, u32 n, const bool * const verticesToProcess)
 {
 
 	SPVertex * spVtx = dwnd().getDrawer().getVertexPtr(0);
@@ -1869,7 +1869,7 @@ void gSPSWVertex(const SWVertex * vertex, u32 n, const bool * const verticesToPr
 	}
 }
 
-void gSPSWVertex(const SWVertex * vertex, u32 v0, u32 n)
+void gli_gSPSWVertex(const SWVertex * vertex, u32 v0, u32 n)
 {
 
 	SPVertex * spVtx = dwnd().getDrawer().getVertexPtr(0);
@@ -1879,7 +1879,7 @@ void gSPSWVertex(const SWVertex * vertex, u32 v0, u32 n)
 		gSPLoadSWVertexData<1>(vertex + i - v0, spVtx, i, endIdx);
 }
 
-void gSPT3DUXVertex(u32 a, u32 n, u32 ci)
+void gli_gSPT3DUXVertex(u32 a, u32 n, u32 ci)
 {
 	const u32 address = RSP_SegmentToPhysical(a);
 	const u32 colors = RSP_SegmentToPhysical(ci);
@@ -1951,7 +1951,7 @@ void gSPT3DUXVertex(u32 a, u32 n, u32 ci)
 	}
 }
 
-void gSPDisplayList( u32 dl )
+void gli_gSPDisplayList( u32 dl )
 {
 	u32 address = RSP_SegmentToPhysical( dl );
 
@@ -1959,7 +1959,7 @@ void gSPDisplayList( u32 dl )
 		return;
 	}
 
-	if (RSP.PCi < (GBI.PCStackSize - 1)) {
+	if (RSP.PCi < (gli_GBIPCStackSize - 1)) {
 		RSP.PCi++;
 		RSP.PC[RSP.PCi] = address;
 		RSP.nextCmd = _SHIFTR( *(u32*)&RDRAM[address], 24, 8 );
@@ -1968,7 +1968,7 @@ void gSPDisplayList( u32 dl )
 	}
 }
 
-void gSPBranchList( u32 dl )
+void gli_gSPBranchList( u32 dl )
 {
 	u32 address = RSP_SegmentToPhysical( dl );
 
@@ -1988,7 +1988,7 @@ void gSPBranchList( u32 dl )
 	RSP.nextCmd = _SHIFTR( *(u32*)&RDRAM[address], 24, 8 );
 }
 
-void gSPBranchLessZ(u32 branchdl, u32 vtx, u32 zval)
+void gli_gSPBranchLessZ(u32 branchdl, u32 vtx, u32 zval)
 {
 	const u32 address = RSP_SegmentToPhysical( branchdl );
 
@@ -2003,7 +2003,7 @@ void gSPBranchLessZ(u32 branchdl, u32 vtx, u32 zval)
 
 }
 
-void gSPBranchLessW( u32 branchdl, u32 vtx, u32 wval )
+void gli_gSPBranchLessW( u32 branchdl, u32 vtx, u32 wval )
 {
 	const u32 address = RSP_SegmentToPhysical( branchdl );
 
@@ -2017,7 +2017,7 @@ void gSPBranchLessW( u32 branchdl, u32 vtx, u32 wval )
 
 }
 
-void gSPDlistCount(u32 count, u32 v)
+void gli_gSPDlistCount(u32 count, u32 v)
 {
 	u32 address = RSP_SegmentToPhysical( v );
 	if (address == 0 || (address + 8) > RDRAMSize) {
@@ -2035,27 +2035,27 @@ void gSPDlistCount(u32 count, u32 v)
 	RSP.count = count + 1;
 }
 
-void gSPSetDMAOffsets( u32 mtxoffset, u32 vtxoffset )
+void gli_gSPSetDMAOffsets( u32 mtxoffset, u32 vtxoffset )
 {
 	gSP.DMAOffsets.mtx = mtxoffset;
 	gSP.DMAOffsets.vtx = vtxoffset;
 
 }
 
-void gSPSetDMATexOffset(u32 _addr)
+void gli_gSPSetDMATexOffset(u32 _addr)
 {
 	gSP.DMAOffsets.tex_offset = RSP_SegmentToPhysical(_addr);
 	gSP.DMAOffsets.tex_shift = 0;
 	gSP.DMAOffsets.tex_count = 0;
 }
 
-void gSPSetVertexColorBase( u32 base )
+void gli_gSPSetVertexColorBase( u32 base )
 {
 	gSP.vertexColorBase = RSP_SegmentToPhysical( base );
 
 }
 
-void gSPDMATriangles( u32 tris, u32 n ){
+void gli_gSPDMATriangles( u32 tris, u32 n ){
 	const u32 address = RSP_SegmentToPhysical( tris );
 
 	if (address + sizeof( DKRTriangle ) * n > RDRAMSize) {
@@ -2107,11 +2107,11 @@ void gSPDMATriangles( u32 tris, u32 n ){
 	drawer.drawDMATriangles(static_cast<u32>(pVtx - drawer.getDMAVerticesData()));
 }
 
-void gSP1Quadrangle( s32 v0, s32 v1, s32 v2, s32 v3 )
+void gli_gSP1Quadrangle( s32 v0, s32 v1, s32 v2, s32 v3 )
 {
-	gSPTriangle( v0, v1, v2);
-	gSPTriangle( v0, v2, v3);
-	gSPFlushTriangles();
+	gli_gSPTriangle( v0, v1, v2);
+	gli_gSPTriangle( v0, v2, v3);
+	gli_gSPFlushTriangles();
 
 }
 
@@ -2133,7 +2133,7 @@ bool gSPCullVertices( u32 v0, u32 vn )
 	return true;
 }
 
-void gSPCullDisplayList( u32 v0, u32 vn )
+void gli_gSPCullDisplayList( u32 v0, u32 vn )
 {
 	if (gSPCullVertices( v0, vn )) {
 		if (RSP.PCi > 0)
@@ -2145,7 +2145,7 @@ void gSPCullDisplayList( u32 v0, u32 vn )
 	}
 }
 
-void gSPPopMatrixN(u32 param, u32 num)
+void gli_gSPPopMatrixN(u32 param, u32 num)
 {
 	if (gSP.matrix.modelViewi > num - 1) {
 		gSP.matrix.modelViewi -= num;
@@ -2154,7 +2154,7 @@ void gSPPopMatrixN(u32 param, u32 num)
 	}
 }
 
-void gSPPopMatrix( u32 param )
+void gli_gSPPopMatrix( u32 param )
 {
 	switch (param) {
 	case 0: // modelview
@@ -2171,15 +2171,15 @@ void gSPPopMatrix( u32 param )
 	}
 }
 
-void gSPSegment( s32 seg, s32 base )
+void gli_gSPSegment( s32 seg, s32 base )
 {
 	gSP.segment[seg] = base;
 
 }
 
-void gSPRelSegment( s32 seg, s32 base )
+void gli_gSPRelSegment( s32 seg, s32 base )
 {
-	// F3DEX3 G_RELSEGMENT: like G_MW_SEGMENT (gSPSegment) but the address
+	// F3DEX3 G_RELSEGMENT: like G_MW_SEGMENT (gli_gSPSegment) but the address
 	// is encoded as 0x0?123456 where the upper nibble selects an existing
 	// segment to add to the 24-bit offset.
 	const s32 offset = base & 0x00FFFFFF;
@@ -2188,12 +2188,12 @@ void gSPRelSegment( s32 seg, s32 base )
 
 }
 
-void gSPClipRatio(u32 ratio)
+void gli_gSPClipRatio(u32 ratio)
 {
 	gSP.clipRatio = std::abs(static_cast<s16>(ratio & 0xFFFF));
 }
 
-void gSPInsertMatrix( u32 where, u32 num )
+void gli_gSPInsertMatrix( u32 where, u32 num )
 {
 
 	if ((where & 0x3) != 0)
@@ -2229,7 +2229,7 @@ void gSPInsertMatrix( u32 where, u32 num )
 	}
 }
 
-void gSPModifyVertex( u32 _vtx, u32 _where, u32 _val )
+void gli_gSPModifyVertex( u32 _vtx, u32 _where, u32 _val )
 {
 	GraphicsDrawer & drawer = dwnd().getDrawer();
 
@@ -2288,7 +2288,7 @@ void gSPModifyVertex( u32 _vtx, u32 _where, u32 _val )
 	}
 }
 
-void gSPNumLights( s32 n )
+void gli_gSPNumLights( s32 n )
 {
 	if (n < 12) {
 		gSP.numLights = n;
@@ -2298,7 +2298,7 @@ void gSPNumLights( s32 n )
 
 }
 
-void gSPLightColor( u32 lightNum, u32 packedColor )
+void gli_gSPLightColor( u32 lightNum, u32 packedColor )
 {
 	--lightNum;
 
@@ -2311,7 +2311,7 @@ void gSPLightColor( u32 lightNum, u32 packedColor )
 	}
 }
 
-void gSPFogFactor( s16 fm, s16 fo )
+void gli_gSPFogFactor( s16 fm, s16 fo )
 {
 	gSP.fog.multiplier = fm;
 	gSP.fog.offset = fo;
@@ -2321,17 +2321,17 @@ void gSPFogFactor( s16 fm, s16 fo )
 	gSP.changed |= CHANGED_FOGPOSITION;
 }
 
-void gSPPerspNormalize( u16 scale )
+void gli_gSPPerspNormalize( u16 scale )
 {
 }
 
 extern "C" uint32_t LegacySm64ToolsHacks;
-void gSPTexture( f32 sc, f32 tc, u32 level, u32 tile, u32 on )
+void gli_gSPTexture( f32 sc, f32 tc, u32 level, u32 tile, u32 on )
 {
 	gSP.texture.on = on;
 	if (on == 0) {
 		if (LegacySm64ToolsHacks)
-			gDPSetCombine(0xffffff, 0xFFFE793C);
+			gli_gDPSetCombine(0xffffff, 0xFFFE793C);
 
 		return;
 	}
@@ -2352,7 +2352,7 @@ void gSPTexture( f32 sc, f32 tc, u32 level, u32 tile, u32 on )
 
 }
 
-void gSPEndDisplayList()
+void gli_gSPEndDisplayList()
 {
 	if (RSP.PCi > 0)
 		--RSP.PCi;
@@ -2362,7 +2362,7 @@ void gSPEndDisplayList()
 
 }
 
-void gSPGeometryMode( u32 clear, u32 set )
+void gli_gSPGeometryMode( u32 clear, u32 set )
 {
 	gSP.geometryMode = (gSP.geometryMode & ~clear) | set;
 
@@ -2370,7 +2370,7 @@ void gSPGeometryMode( u32 clear, u32 set )
 
 }
 
-void gSPSetGeometryMode( u32 mode )
+void gli_gSPSetGeometryMode( u32 mode )
 {
 	gSP.geometryMode |= mode;
 
@@ -2378,7 +2378,7 @@ void gSPSetGeometryMode( u32 mode )
 
 }
 
-void gSPClearGeometryMode( u32 mode )
+void gli_gSPClearGeometryMode( u32 mode )
 {
 	gSP.geometryMode &= ~mode;
 
@@ -2386,7 +2386,7 @@ void gSPClearGeometryMode( u32 mode )
 
 }
 
-void gSPSetOtherMode_H(u32 _length, u32 _shift, u32 _data)
+void gli_gSPSetOtherMode_H(u32 _length, u32 _shift, u32 _data)
 {
 	const u32 mask = (((u64)1 << _length) - 1) << _shift;
 	gDP.otherMode.h = (gDP.otherMode.h&(~mask)) | _data;
@@ -2396,7 +2396,7 @@ void gSPSetOtherMode_H(u32 _length, u32 _shift, u32 _data)
 
 }
 
-void gSPSetOtherMode_L(u32 _length, u32 _shift, u32 _data)
+void gli_gSPSetOtherMode_L(u32 _length, u32 _shift, u32 _data)
 {
 	if (LegacySm64ToolsHacks)
 	{
@@ -2420,13 +2420,13 @@ void gSPSetOtherMode_L(u32 _length, u32 _shift, u32 _data)
 
 }
 
-void gSPLine3D(u32 v0, u32 v1, s32 wd, u32 flag)
+void gli_gSPLine3D(u32 v0, u32 v1, s32 wd, u32 flag)
 {
 	dwnd().getDrawer().drawLine(v0, v1, 1.5f + wd * 0.5f, flag);
 
 }
 
-void gSPSetStatus(u32 sid, u32 val)
+void gli_gSPSetStatus(u32 sid, u32 val)
 {
 	assert(sid <= 12);
 	gSP.status[sid>>2] = val;
@@ -2477,16 +2477,16 @@ void _loadSpriteImage(const uSprite *_pSprite)
 	}
 }
 
-void gSPSprite2DBase(u32 _base)
+void gli_gSPSprite2DBase(u32 _base)
 {
 	assert(RSP.nextCmd == 0xBE);
 	const u32 address = RSP_SegmentToPhysical( _base );
 	uSprite *pSprite = (uSprite*)&RDRAM[address];
 
 	if (pSprite->tlutPtr != 0) {
-		gDPSetTextureImage( G_IM_FMT_RGBA, G_IM_SIZ_16b, 1, pSprite->tlutPtr );
-		gDPSetTile( G_IM_FMT_RGBA, G_IM_SIZ_16b, 0, 256, 7, 0, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMIRROR | G_TX_WRAP, 0, 0, 0, 0 );
-		gDPLoadTLUT( 7, 0, 0, 1020, 0 );
+		gli_gDPSetTextureImage( G_IM_FMT_RGBA, G_IM_SIZ_16b, 1, pSprite->tlutPtr );
+		gli_gDPSetTile( G_IM_FMT_RGBA, G_IM_SIZ_16b, 0, 256, 7, 0, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMIRROR | G_TX_WRAP, 0, 0, 0, 0 );
+		gli_gDPLoadTLUT( 7, 0, 0, 1020, 0 );
 
 		if (pSprite->imageFmt != G_IM_FMT_RGBA)
 			gDP.otherMode.textureLUT = G_TT_RGBA16;
@@ -2496,7 +2496,7 @@ void gSPSprite2DBase(u32 _base)
 		gDP.otherMode.textureLUT = G_TT_NONE;
 
 	_loadSpriteImage(pSprite);
-	gSPTexture( 1.0f, 1.0f, 0, 0, TRUE );
+	gli_gSPTexture( 1.0f, 1.0f, 0, 0, TRUE );
 	gDP.otherMode.texturePersp = 1;
 
 	const f32 z = (gDP.otherMode.depthSource == G_ZS_PRIM) ? gDP.primDepth.z : gSP.viewport.nearz;
@@ -2604,7 +2604,7 @@ void(*gSPInverseTransformVector)(float vec[3], float mtx[4][4]) = gSPInverseTran
 void(*gSPTransformVector)(float vtx[4], float mtx[4][4]) = gSPTransformVector_NEON;
 #endif //__NEON_OPT
 
-void gSPSetupFunctions()
+void gli_gSPSetupFunctions()
 {
 	g_ConkerUcode = GBI.getMicrocodeType() == F3DEX2CBFD;
 }

@@ -69,7 +69,7 @@ std::vector<SpecialMicrocodeInfo> specialMicrocodes =
 	// Vivid Dolls [ALECK64]: its viewport carries a negative Y scale and the
 	// game's own transform already accounts for it; honouring the sign again
 	// (gSPProcessVertex) draws the whole screen upside down.  negativeY off is
-	// what makes gSPViewport normalise the sign away, as for the 0x55be9bad
+	// what makes gli_gSPViewport normalise the sign away, as for the 0x55be9bad
 	// F3D entry below.
 	{ F3D,			false,	false,	false,	0x4AED6B3B }, // Vivid Dolls [ALECK64]
 	{ F3D,			true,	true,	true,	0x54c558ba }, // RSP SW Version: 2.0D, 04-01-96 Pilot Wings, Blast Corps
@@ -152,6 +152,8 @@ u32 G_MWO_aLIGHT_7, G_MWO_bLIGHT_7;
 u32 G_MWO_aLIGHT_8, G_MWO_bLIGHT_8;
 
 GBIInfo GBI;
+GBIFunc gli_GBIcmd[256];
+u32 gli_GBIPCStackSize;
 
 void GBI_Unknown( u32 w0, u32 w1 )
 {
@@ -182,7 +184,7 @@ void GBIInfo::setHWLSupported(bool _supported)
 
 void GBIInfo::_flushCommands()
 {
-	std::fill(std::begin(cmd), std::end(cmd), GBI_Unknown);
+	std::fill(std::begin(gli_GBIcmd), std::end(gli_GBIcmd), GBI_Unknown);
 }
 
 void GBIInfo::_makeCurrent(MicrocodeInfo * _pCurrent)
@@ -200,133 +202,133 @@ void GBIInfo::_makeCurrent(MicrocodeInfo * _pCurrent)
 		m_pCurrent = _pCurrent;
 		_flushCommands();
 
-		RDP_Init();
+		gli_RDP_Init();
 
-		G_TRI1 = G_TRI2 = G_TRIX = G_QUAD = -1; // For correct work of gSPFlushTriangles()
+		G_TRI1 = G_TRI2 = G_TRIX = G_QUAD = -1; // For correct work of gli_gSPFlushTriangles()
 
 		switch (m_pCurrent->type) {
 			case F3D:
-				F3D_Init();
+				gli_F3D_Init();
 				m_hwlSupported = true;
 			break;
 			case F3DEX:
-				F3DEX_Init();
+				gli_F3DEX_Init();
 				m_hwlSupported = true;
 			break;
 			case F3DEX095:
-				F3DEX095_Init();
+				gli_F3DEX095_Init();
 				m_hwlSupported = true;
 			break;
 			case F3DEX3:
-				F3DEX3_Init();
+				gli_F3DEX3_Init();
 				m_hwlSupported = true;
 			break;
 			case F3DEX2:
-				F3DEX2_Init();
+				gli_F3DEX2_Init();
 				m_hwlSupported = true;
 			break;
 			case L3D:
-				L3D_Init();
+				gli_L3D_Init();
 				m_hwlSupported = false;
 			break;
 			case L3DEX:
-				L3DEX_Init();
+				gli_L3DEX_Init();
 				m_hwlSupported = false;
 			break;
 			case L3DEX2:
-				L3DEX2_Init();
+				gli_L3DEX2_Init();
 				m_hwlSupported = false;
 			break;
 			case S2DEX_1_03:
-				S2DEX_1_03_Init();
+				gli_S2DEX_1_03_Init();
 				m_hwlSupported = false;
 				break;
 			case S2DEX_1_05:
-				S2DEX_1_05_Init();
+				gli_S2DEX_1_05_Init();
 				m_hwlSupported = false;
 				break;
 			case S2DEX_1_07:
-				S2DEX_1_07_Init();
+				gli_S2DEX_1_07_Init();
 				m_hwlSupported = false;
 				break;
 			case S2DEX2:
-				S2DEX2_Init();
+				gli_S2DEX2_Init();
 				m_hwlSupported = false;
 				break;
 			case F3DDKR:
-				F3DDKR_Init();
+				gli_F3DDKR_Init();
 				m_hwlSupported = false;
 			break;
 			case F3DJFG:
-				F3DJFG_Init();
+				gli_F3DJFG_Init();
 				m_hwlSupported = false;
 			break;
 			case F3DBETA:
-				F3DBETA_Init();
+				gli_F3DBETA_Init();
 				m_hwlSupported = true;
 			break;
 			case F3DPD:
-				F3DPD_Init();
+				gli_F3DPD_Init();
 				m_hwlSupported = true;
 			break;
 			case F3DAM:
-				F3DAM_Init();
+				gli_F3DAM_Init();
 				m_hwlSupported = true;
 			break;
 			case Turbo3D:
-				F3D_Init();
+				gli_F3D_Init();
 				m_hwlSupported = true;
 			break;
 			case ZSortp:
-				ZSort_Init();
+				gli_ZSort_Init();
 				m_hwlSupported = true;
 			break;
 			case F3DEX2CBFD:
-				F3DEX2CBFD_Init();
+				gli_F3DEX2CBFD_Init();
 				m_hwlSupported = false;
 			break;
 			case F3DSETA:
-				F3DSETA_Init();
+				gli_F3DSETA_Init();
 				m_hwlSupported = true;
 			break;
 			case F3DGOLDEN:
-				F3DGOLDEN_Init();
+				gli_F3DGOLDEN_Init();
 				m_hwlSupported = true;
 			break;
 			case F3DZEX2OOT:
-				F3DZEX2_Init();
+				gli_F3DZEX2_Init();
 				m_hwlSupported = true;
 			break;
 			case F3DZEX2MM:
-				F3DZEX2_Init();
+				gli_F3DZEX2_Init();
 				m_hwlSupported = false;
 			break;
 			case F3DTEXA:
-				F3DTEXA_Init();
+				gli_F3DTEXA_Init();
 				m_hwlSupported = true;
 			break;
 			case T3DUX:
-				F3D_Init();
+				gli_F3D_Init();
 				m_hwlSupported = false;
 			break;
 			case F3DEX2ACCLAIM:
-				F3DEX2ACCLAIM_Init();
+				gli_F3DEX2ACCLAIM_Init();
 				m_hwlSupported = false;
 			break;
 			case F5Rogue:
-				F5Rogue_Init();
+				gli_F5Rogue_Init();
 				m_hwlSupported = false;
 			break;
 			case F3DFLX2:
-				F3DFLX2_Init();
+				gli_F3DFLX2_Init();
 				m_hwlSupported = true;
 			break;
 			case ZSortBOSS:
-				ZSortBOSS_Init();
+				gli_ZSortBOSS_Init();
 				m_hwlSupported = true;
 			break;
 			case F5Indi_Naboo:
-				F5Indi_Naboo_Init();
+				gli_F5Indi_Naboo_Init();
 				m_hwlSupported = false;
 				break;
 		}
@@ -335,9 +337,9 @@ void GBIInfo::_makeCurrent(MicrocodeInfo * _pCurrent)
 		else
 			gfxContext.setClampMode(graphics::ClampMode::ClippingEnabled);
 		if (m_pCurrent->fast3DPersp) {
-			GBI_SetGBI(G_PERSPNORM, F3DBETA_PERSPNORM, F3DBETA_Perpnorm);
-			GBI_SetGBI(G_RDPHALF_1, F3DBETA_RDPHALF_1, F3D_RDPHalf_1);
-			GBI_SetGBI(G_RDPHALF_2, F3DBETA_RDPHALF_2, F3D_RDPHalf_2);
+			GBI_SetGBI(G_PERSPNORM, F3DBETA_PERSPNORM, gli_F3DBETA_Perpnorm);
+			GBI_SetGBI(G_RDPHALF_1, F3DBETA_RDPHALF_1, gli_F3D_RDPHalf_1);
+			GBI_SetGBI(G_RDPHALF_2, F3DBETA_RDPHALF_2, gli_F3D_RDPHalf_2);
 		}
 	} else if (m_pCurrent->NoN != _pCurrent->NoN) {
 		if (_pCurrent->NoN)

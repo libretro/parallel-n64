@@ -258,7 +258,7 @@ struct uObjSubMtx
 
 static uObjMtx objMtx;
 
-void resetObjMtx()
+void gli_resetObjMtx()
 {
 	objMtx.A = 1 << 16;
 	objMtx.B = 0;
@@ -658,9 +658,9 @@ void gSPSetSpriteTile(const uObjSprite *_pObjSprite)
 	const u32 w = std::max(_pObjSprite->imageW >> 5, 1);
 	const u32 h = std::max(_pObjSprite->imageH >> 5, 1);
 
-	gDPSetTile( _pObjSprite->imageFmt, _pObjSprite->imageSiz, _pObjSprite->imageStride, _pObjSprite->imageAdrs, G_TX_RENDERTILE, _pObjSprite->imagePal, G_TX_NOMIRROR | G_TX_CLAMP, G_TX_NOMIRROR | G_TX_CLAMP, 0, 0, 0, 0 );
-	gDPSetTileSize( G_TX_RENDERTILE, 0, 0, (w - 1) << 2, (h - 1) << 2 );
-	gSPTexture(1.0f, 1.0f, 0, 0, TRUE);
+	gli_gDPSetTile( _pObjSprite->imageFmt, _pObjSprite->imageSiz, _pObjSprite->imageStride, _pObjSprite->imageAdrs, G_TX_RENDERTILE, _pObjSprite->imagePal, G_TX_NOMIRROR | G_TX_CLAMP, G_TX_NOMIRROR | G_TX_CLAMP, 0, 0, 0, 0 );
+	gli_gDPSetTileSize( G_TX_RENDERTILE, 0, 0, (w - 1) << 2, (h - 1) << 2 );
+	gli_gSPTexture(1.0f, 1.0f, 0, 0, TRUE);
 }
 
 static
@@ -672,22 +672,22 @@ void gSPObjLoadTxtr(u32 tx)
 	if ((gSP.status[objTxtr->block.sid >> 2] & objTxtr->block.mask) != objTxtr->block.flag) {
 		switch (objTxtr->block.type) {
 			case G_OBJLT_TXTRBLOCK:
-				gDPSetTextureImage(G_IM_FMT_RGBA, G_IM_SIZ_16b, objTxtr->block.tsize + 1, objTxtr->block.image);
-				gDPSetTile(G_IM_FMT_RGBA, G_IM_SIZ_16b, 0, objTxtr->block.tmem,
+				gli_gDPSetTextureImage(G_IM_FMT_RGBA, G_IM_SIZ_16b, objTxtr->block.tsize + 1, objTxtr->block.image);
+				gli_gDPSetTile(G_IM_FMT_RGBA, G_IM_SIZ_16b, 0, objTxtr->block.tmem,
 						   G_TX_LOADTILE, 0, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMIRROR | G_TX_WRAP, 0, 0, 0, 0);
-				gDPLoadBlock( G_TX_LOADTILE, 0, 0, objTxtr->block.tsize << 2, objTxtr->block.tline );
+				gli_gDPLoadBlock( G_TX_LOADTILE, 0, 0, objTxtr->block.tsize << 2, objTxtr->block.tline );
 				break;
 			case G_OBJLT_TXTRTILE:
-				gDPSetTextureImage(G_IM_FMT_RGBA, G_IM_SIZ_16b, objTxtr->tile.twidth + 1, objTxtr->tile.image);
-				gDPSetTile(G_IM_FMT_RGBA, G_IM_SIZ_16b, (objTxtr->tile.twidth + 1) >> 2, objTxtr->tile.tmem,
+				gli_gDPSetTextureImage(G_IM_FMT_RGBA, G_IM_SIZ_16b, objTxtr->tile.twidth + 1, objTxtr->tile.image);
+				gli_gDPSetTile(G_IM_FMT_RGBA, G_IM_SIZ_16b, (objTxtr->tile.twidth + 1) >> 2, objTxtr->tile.tmem,
 						   G_TX_LOADTILE, 0, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMIRROR | G_TX_WRAP, 0, 0, 0, 0);
-				gDPLoadTile( G_TX_LOADTILE, 0, 0, objTxtr->tile.twidth << 2, objTxtr->tile.theight );
+				gli_gDPLoadTile( G_TX_LOADTILE, 0, 0, objTxtr->tile.twidth << 2, objTxtr->tile.theight );
 				break;
 			case G_OBJLT_TLUT:
-				gDPSetTextureImage(G_IM_FMT_RGBA, G_IM_SIZ_16b, 1, objTxtr->tlut.image);
-				gDPSetTile(G_IM_FMT_RGBA, G_IM_SIZ_4b, 0, objTxtr->tlut.phead,
+				gli_gDPSetTextureImage(G_IM_FMT_RGBA, G_IM_SIZ_16b, 1, objTxtr->tlut.image);
+				gli_gDPSetTile(G_IM_FMT_RGBA, G_IM_SIZ_4b, 0, objTxtr->tlut.phead,
 						   G_TX_LOADTILE, 0, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMIRROR | G_TX_WRAP, 0, 0, 0, 0);
-				gDPLoadTLUT( G_TX_LOADTILE, 0, 0, objTxtr->tlut.pnum << 2, 0 );
+				gli_gDPLoadTLUT( G_TX_LOADTILE, 0, 0, objTxtr->tlut.pnum << 2, 0 );
 				break;
 		}
 		gSP.status[objTxtr->block.sid >> 2] =
@@ -958,7 +958,7 @@ void BgRect1CycOnePiece(u32 _bg, bool _fbImage)
 
 	gDP.otherMode.cycleType = G_CYC_1CYCLE;
 	gDP.changed |= CHANGED_CYCLETYPE;
-	gSPTexture(1.0f, 1.0f, 0, 0, TRUE);
+	gli_gSPTexture(1.0f, 1.0f, 0, 0, TRUE);
 
 	ObjCoordinates objCoords(pObjScaleBg);
 	gSPDrawObjRect(objCoords);
@@ -979,18 +979,18 @@ void BgRectCopyOnePiece(u32 _bg, bool _fbImage)
 
 	gDP.otherMode.cycleType = G_CYC_COPY;
 	gDP.changed |= CHANGED_CYCLETYPE;
-	gSPTexture(1.0f, 1.0f, 0, 0, TRUE);
+	gli_gSPTexture(1.0f, 1.0f, 0, 0, TRUE);
 
 	ObjCoordinates objCoords(pObjBg);
 	gSPDrawObjRect(objCoords);
 
 }
 
-//#define runCommand(w0, w1) GBI.cmd[_SHIFTR(w0, 24, 8)](w0, w1)
+//#define runCommand(w0, w1) gli_GBIcmd[_SHIFTR(w0, 24, 8)](w0, w1)
 inline
 void runCommand(u32 w0, u32 w1)
 {
-	GBI.cmd[_SHIFTR(w0, 24, 8)](w0, w1);
+	gli_GBIcmd[_SHIFTR(w0, 24, 8)](w0, w1);
 };
 
 static
@@ -1319,7 +1319,7 @@ void BgRect1CycStripped(u32 _bgAddr)
 			const u32 w1 = (JJ << 2) | HH;
 			RDP.w2 = (H2 << 16) | F1_1;
 			RDP.w3 = (objBg.scaleW << 16) | objBg.scaleH;
-			RDP_TexRect(w0, w1);
+			gli_RDP_TexRect(w0, w1);
 			if (FF <= 0)
 				stop = true;
 			else {
@@ -1477,7 +1477,7 @@ void BgRectCopyStripped(u32 _bgAddr)
 			w1 = T0 | T1;
 			RDP.w2 = R;
 			RDP.w3 = 0x10000400;
-			RDP_TexRect(w0, w1);
+			gli_RDP_TexRect(w0, w1);
 			T1 = BB + 1;
 			S += Z;
 			if (U > 0)
@@ -1501,7 +1501,7 @@ void BgRectCopyStripped(u32 _bgAddr)
 				w1 = T0 | T1;
 				RDP.w2 = R;
 				RDP.w3 = 0x10000400;
-				RDP_TexRect(w0, w1);
+				gli_RDP_TexRect(w0, w1);
 				T1 += 4;
 				AT -= 4;
 				if (AT <= 0)
@@ -1525,7 +1525,7 @@ void BgRectCopyStripped(u32 _bgAddr)
 	}
 }
 
-void S2DEX_BG_1Cyc(u32 w0, u32 w1)
+void gli_S2DEX_BG_1Cyc(u32 w0, u32 w1)
 {
 	const u32 bgAddr = RSP_SegmentToPhysical(w1);
 	bool fbImage = false;
@@ -1535,7 +1535,7 @@ void S2DEX_BG_1Cyc(u32 w0, u32 w1)
 		BgRect1CycStripped(bgAddr);
 }
 
-void S2DEX_BG_Copy(u32 w0, u32 w1)
+void gli_S2DEX_BG_Copy(u32 w0, u32 w1)
 {
 	const u32 bgAddr = RSP_SegmentToPhysical(w1);
 	bool fbImage = false;
@@ -1545,7 +1545,7 @@ void S2DEX_BG_Copy(u32 w0, u32 w1)
 		BgRectCopyStripped(bgAddr);
 }
 
-void S2DEX_Obj_MoveMem(u32 w0, u32 w1)
+void gli_S2DEX_Obj_MoveMem(u32 w0, u32 w1)
 {
 	switch (_SHIFTR(w0, 0, 16)) {
 	case S2DEX_MV_MATRIX:
@@ -1555,7 +1555,7 @@ void S2DEX_Obj_MoveMem(u32 w0, u32 w1)
 		gSPObjSubMatrix(w1);
 		break;
 	case S2DEX_MV_VIEWPORT:
-		gSPViewport(w1);
+		gli_gSPViewport(w1);
 		break;
 	}
 }
@@ -1565,15 +1565,15 @@ void S2DEX_MoveWord(u32 w0, u32 w1)
 	switch (_SHIFTR(w0, 0, 8))
 	{
 	case G_MW_GENSTAT:
-		gSPSetStatus(_SHIFTR(w0, 0, 16), w1);
+		gli_gSPSetStatus(_SHIFTR(w0, 0, 16), w1);
 		break;
 	default:
-		F3D_MoveWord(w0, w1);
+		gli_F3D_MoveWord(w0, w1);
 		break;
 	}
 }
 
-void S2DEX_RDPHalf_0(u32 w0, u32 w1) {
+void gli_S2DEX_RDPHalf_0(u32 w0, u32 w1) {
 	if (RSP.nextCmd == G_SELECT_DL) {
 		gSP.selectDL.addr = _SHIFTR(w0, 0, 16);
 		gSP.selectDL.sid = _SHIFTR(w0, 18, 8);
@@ -1581,13 +1581,13 @@ void S2DEX_RDPHalf_0(u32 w0, u32 w1) {
 		return;
 	}
 	if (RSP.nextCmd == G_RDPHALF_1) {
-		RDP_TexRect(w0, w1);
+		gli_RDP_TexRect(w0, w1);
 		return;
 	}
 	assert(false);
 }
 
-void S2DEX_Select_DL(u32 w0, u32 w1)
+void gli_S2DEX_Select_DL(u32 w0, u32 w1)
 {
 	gSP.selectDL.addr |= (_SHIFTR(w0, 0, 16)) << 16;
 	const u8 sid = gSP.selectDL.sid;
@@ -1602,52 +1602,52 @@ void S2DEX_Select_DL(u32 w0, u32 w1)
 	switch (_SHIFTR(w0, 16, 8))
 	{
 	case G_DL_PUSH:
-		gSPDisplayList(gSP.selectDL.addr);
+		gli_gSPDisplayList(gSP.selectDL.addr);
 		break;
 	case G_DL_NOPUSH:
-		gSPBranchList(gSP.selectDL.addr);
+		gli_gSPBranchList(gSP.selectDL.addr);
 		break;
 	}
 }
 
-void S2DEX_Obj_RenderMode(u32 w0, u32 w1)
+void gli_S2DEX_Obj_RenderMode(u32 w0, u32 w1)
 {
 	gSP.objRendermode = w1;
 }
 
-void S2DEX_Obj_Rectangle(u32 w0, u32 w1)
+void gli_S2DEX_Obj_Rectangle(u32 w0, u32 w1)
 {
 	gSPObjRectangle(w1);
 }
 
-void S2DEX_Obj_Rectangle_R(u32 w0, u32 w1)
+void gli_S2DEX_Obj_Rectangle_R(u32 w0, u32 w1)
 {
 	gSPObjRectangleR(w1);
 }
 
-void S2DEX_Obj_Sprite(u32 w0, u32 w1)
+void gli_S2DEX_Obj_Sprite(u32 w0, u32 w1)
 {
 	gSPObjSprite(w1);
 }
 
-void S2DEX_Obj_LoadTxtr(u32 w0, u32 w1)
+void gli_S2DEX_Obj_LoadTxtr(u32 w0, u32 w1)
 {
 	gSPObjLoadTxtr(w1);
 }
 
-void S2DEX_Obj_LdTx_Rect(u32 w0, u32 w1)
+void gli_S2DEX_Obj_LdTx_Rect(u32 w0, u32 w1)
 {
 	gSPObjLoadTxtr(w1);
 	gSPObjRectangle(w1 + sizeof(uObjTxtr));
 }
 
-void S2DEX_Obj_LdTx_Rect_R(u32 w0, u32 w1)
+void gli_S2DEX_Obj_LdTx_Rect_R(u32 w0, u32 w1)
 {
 	gSPObjLoadTxtr(w1);
 	gSPObjRectangleR(w1 + sizeof(uObjTxtr));
 }
 
-void S2DEX_Obj_LdTx_Sprite(u32 w0, u32 w1)
+void gli_S2DEX_Obj_LdTx_Sprite(u32 w0, u32 w1)
 {
 	gSPObjLoadTxtr(w1);
 	gSPObjSprite(w1 + sizeof(uObjTxtr));
@@ -1655,51 +1655,51 @@ void S2DEX_Obj_LdTx_Sprite(u32 w0, u32 w1)
 
 void S2DEX_Init()
 {
-	gSPSetupFunctions();
+	gli_gSPSetupFunctions();
 	// Set GeometryMode flags
 	GBI_InitFlags( F3DEX );
-	resetObjMtx();
+	gli_resetObjMtx();
 
-	GBI.PCStackSize = 18;
+	gli_GBIPCStackSize = 18;
 
 	//          GBI Command             Command Value			Command Function
-	GBI_SetGBI( G_SPNOOP,				F3D_SPNOOP,				F3D_SPNoOp );
-	GBI_SetGBI( G_BG_1CYC,				S2DEX_BG_1CYC,			S2DEX_BG_1Cyc );
-	GBI_SetGBI( G_BG_COPY,				S2DEX_BG_COPY,			S2DEX_BG_Copy );
-	GBI_SetGBI( G_OBJ_RECTANGLE,		S2DEX_OBJ_RECTANGLE,	S2DEX_Obj_Rectangle );
-	GBI_SetGBI( G_OBJ_SPRITE,			S2DEX_OBJ_SPRITE,		S2DEX_Obj_Sprite );
-	GBI_SetGBI( G_OBJ_MOVEMEM,			S2DEX_OBJ_MOVEMEM,		S2DEX_Obj_MoveMem );
-	GBI_SetGBI( G_DL,					F3D_DL,					F3D_DList );
-	GBI_SetGBI( G_SELECT_DL,			S2DEX_SELECT_DL,		S2DEX_Select_DL );
-	GBI_SetGBI( G_OBJ_RENDERMODE,		S2DEX_OBJ_RENDERMODE,	S2DEX_Obj_RenderMode );
-	GBI_SetGBI( G_OBJ_RECTANGLE_R,		S2DEX_OBJ_RECTANGLE_R,	S2DEX_Obj_Rectangle_R );
-	GBI_SetGBI( G_OBJ_LOADTXTR,			S2DEX_OBJ_LOADTXTR,		S2DEX_Obj_LoadTxtr );
-	GBI_SetGBI( G_OBJ_LDTX_SPRITE,		S2DEX_OBJ_LDTX_SPRITE,	S2DEX_Obj_LdTx_Sprite );
-	GBI_SetGBI( G_OBJ_LDTX_RECT,		S2DEX_OBJ_LDTX_RECT,	S2DEX_Obj_LdTx_Rect );
-	GBI_SetGBI( G_OBJ_LDTX_RECT_R,		S2DEX_OBJ_LDTX_RECT_R,	S2DEX_Obj_LdTx_Rect_R );
+	GBI_SetGBI( G_SPNOOP,				F3D_SPNOOP,				gli_F3D_SPNoOp );
+	GBI_SetGBI( G_BG_1CYC,				S2DEX_BG_1CYC,			gli_S2DEX_BG_1Cyc );
+	GBI_SetGBI( G_BG_COPY,				S2DEX_BG_COPY,			gli_S2DEX_BG_Copy );
+	GBI_SetGBI( G_OBJ_RECTANGLE,		S2DEX_OBJ_RECTANGLE,	gli_S2DEX_Obj_Rectangle );
+	GBI_SetGBI( G_OBJ_SPRITE,			S2DEX_OBJ_SPRITE,		gli_S2DEX_Obj_Sprite );
+	GBI_SetGBI( G_OBJ_MOVEMEM,			S2DEX_OBJ_MOVEMEM,		gli_S2DEX_Obj_MoveMem );
+	GBI_SetGBI( G_DL,					F3D_DL,					gli_F3D_DList );
+	GBI_SetGBI( G_SELECT_DL,			S2DEX_SELECT_DL,		gli_S2DEX_Select_DL );
+	GBI_SetGBI( G_OBJ_RENDERMODE,		S2DEX_OBJ_RENDERMODE,	gli_S2DEX_Obj_RenderMode );
+	GBI_SetGBI( G_OBJ_RECTANGLE_R,		S2DEX_OBJ_RECTANGLE_R,	gli_S2DEX_Obj_Rectangle_R );
+	GBI_SetGBI( G_OBJ_LOADTXTR,			S2DEX_OBJ_LOADTXTR,		gli_S2DEX_Obj_LoadTxtr );
+	GBI_SetGBI( G_OBJ_LDTX_SPRITE,		S2DEX_OBJ_LDTX_SPRITE,	gli_S2DEX_Obj_LdTx_Sprite );
+	GBI_SetGBI( G_OBJ_LDTX_RECT,		S2DEX_OBJ_LDTX_RECT,	gli_S2DEX_Obj_LdTx_Rect );
+	GBI_SetGBI( G_OBJ_LDTX_RECT_R,		S2DEX_OBJ_LDTX_RECT_R,	gli_S2DEX_Obj_LdTx_Rect_R );
 	GBI_SetGBI( G_MOVEWORD,				F3D_MOVEWORD,			S2DEX_MoveWord );
-	GBI_SetGBI( G_SETOTHERMODE_H,		F3D_SETOTHERMODE_H,		F3D_SetOtherMode_H );
-	GBI_SetGBI( G_SETOTHERMODE_L,		F3D_SETOTHERMODE_L,		F3D_SetOtherMode_L );
-	GBI_SetGBI( G_ENDDL,				F3D_ENDDL,				F3D_EndDL );
-	GBI_SetGBI( G_RDPHALF_0,			S2DEX_RDPHALF_0,		S2DEX_RDPHalf_0 );
-	GBI_SetGBI( G_RDPHALF_1,			F3D_RDPHALF_1,			F3D_RDPHalf_1 );
-	GBI_SetGBI( G_RDPHALF_2,			F3D_RDPHALF_2,			F3D_RDPHalf_2 );
-	GBI_SetGBI(	G_LOAD_UCODE,			S2DEX_LOAD_UCODE,		F3DEX_Load_uCode );
+	GBI_SetGBI( G_SETOTHERMODE_H,		F3D_SETOTHERMODE_H,		gli_F3D_SetOtherMode_H );
+	GBI_SetGBI( G_SETOTHERMODE_L,		F3D_SETOTHERMODE_L,		gli_F3D_SetOtherMode_L );
+	GBI_SetGBI( G_ENDDL,				F3D_ENDDL,				gli_F3D_EndDL );
+	GBI_SetGBI( G_RDPHALF_0,			S2DEX_RDPHALF_0,		gli_S2DEX_RDPHalf_0 );
+	GBI_SetGBI( G_RDPHALF_1,			F3D_RDPHALF_1,			gli_F3D_RDPHalf_1 );
+	GBI_SetGBI( G_RDPHALF_2,			F3D_RDPHALF_2,			gli_F3D_RDPHalf_2 );
+	GBI_SetGBI(	G_LOAD_UCODE,			S2DEX_LOAD_UCODE,		gli_F3DEX_Load_uCode );
 }
 
-void S2DEX_1_03_Init()
+void gli_S2DEX_1_03_Init()
 {
 	S2DEX_Init();
 	gs_s2dexversion = eVer1_3;
 }
 
-void S2DEX_1_05_Init()
+void gli_S2DEX_1_05_Init()
 {
 	S2DEX_Init();
 	gs_s2dexversion = eVer1_5;
 }
 
-void S2DEX_1_07_Init()
+void gli_S2DEX_1_07_Init()
 {
 	S2DEX_Init();
 	gs_s2dexversion = eVer1_7;

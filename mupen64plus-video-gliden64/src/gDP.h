@@ -1,7 +1,17 @@
 #ifndef GDP_H
 #define GDP_H
 
+#include <boolean.h>
 #include "Types.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/* only unnamed members: fine in MSVC C, and in GCC C once it stops asking */
+#if defined(__GNUC__) && !defined(__cplusplus)
+#pragma GCC diagnostic ignored "-Wpedantic"
+#endif
 
 #define CHANGED_RENDERMODE		0x001U
 #define CHANGED_CYCLETYPE		0x002U
@@ -9,7 +19,7 @@
 #define CHANGED_TMEM			0x008U
 #define CHANGED_TILE			0x010U
 #define CHANGED_REJECT_BOX		0x020U
-//#define CHANGED_COMBINE_COLORS	0x020
+/*#define CHANGED_COMBINE_COLORS	0x020 */
 #define CHANGED_COMBINE			0x040U
 #define CHANGED_ALPHACOMPARE	0x080U
 #define CHANGED_FOGCOLOR		0x100U
@@ -26,13 +36,14 @@
 #define LOADTYPE_BLOCK			0
 #define LOADTYPE_TILE			1
 
+typedef struct gDPCombine gDPCombine;
 struct gDPCombine
 {
-	union
+	GLI_ANON union
 	{
-		struct
+		GLI_ANON struct
 		{
-			// muxs1
+			/* muxs1 */
 			unsigned	aA1		: 3;
 			unsigned	sbA1	: 3;
 			unsigned	aRGB1	: 3;
@@ -44,7 +55,7 @@ struct gDPCombine
 			unsigned	sbRGB1	: 4;
 			unsigned	sbRGB0	: 4;
 
-			// muxs0
+			/* muxs0 */
 			unsigned	mRGB1	: 5;
 			unsigned	saRGB1	: 4;
 			unsigned	mA0		: 3;
@@ -53,7 +64,7 @@ struct gDPCombine
 			unsigned	saRGB0	: 4;
 		};
 
-		struct
+		GLI_ANON struct
 		{
 			u32			muxs1, muxs0;
 		};
@@ -63,13 +74,14 @@ struct gDPCombine
 };
 
 struct FrameBuffer;
+typedef struct gDPTile gDPTile;
 struct gDPTile
 {
 	u32 format, size, line, tmem, palette;
 
-	union
+	GLI_ANON union
 	{
-		struct
+		GLI_ANON struct
 		{
 			unsigned	mirrort	: 1;
 			unsigned	clampt	: 1;
@@ -80,7 +92,7 @@ struct gDPTile
 			unsigned	pad1	: 30;
 		};
 
-		struct
+		GLI_ANON struct
 		{
 			u32 cmt, cms;
 		};
@@ -100,6 +112,7 @@ struct gDPTile
 	u32 frameBufferAddress;
 };
 
+typedef struct gDPLoadTileInfo gDPLoadTileInfo;
 struct gDPLoadTileInfo {
 	u8 size;
 	u8 loadType;
@@ -115,6 +128,7 @@ struct gDPLoadTileInfo {
 	u32 bytes;
 };
 
+typedef struct gDPScissor gDPScissor;
 struct gDPScissor
 {
 	u32 mode;
@@ -122,19 +136,20 @@ struct gDPScissor
 	s16 xh, yh, xl, yl;
 };
 
+typedef struct gDPInfo gDPInfo;
 struct gDPInfo
 {
 	struct OtherMode
 	{
-		union
+		GLI_ANON union
 		{
-			struct
+			GLI_ANON struct
 			{
 				unsigned int alphaCompare : 2;
 				unsigned int depthSource : 1;
 
-//				struct
-//				{
+/*				struct */
+/*				{ */
 					unsigned int AAEnable : 1;
 					unsigned int depthCompare : 1;
 					unsigned int depthUpdate : 1;
@@ -148,10 +163,10 @@ struct gDPInfo
 					unsigned int alphaCvgSel : 1;
 					unsigned int forceBlender : 1;
 					unsigned int textureEdge : 1;
-//				} renderMode;
+/*				} renderMode; */
 
-//				struct
-//				{
+/*				struct */
+/*				{ */
 					unsigned int c2_m2b : 2;
 					unsigned int c1_m2b : 2;
 					unsigned int c2_m2a : 2;
@@ -160,14 +175,14 @@ struct gDPInfo
 					unsigned int c1_m1b : 2;
 					unsigned int c2_m1a : 2;
 					unsigned int c1_m1a : 2;
-//				} blender;
+/*				} blender; */
 
 				unsigned int blendMask : 4;
 				unsigned int alphaDither : 2;
 				unsigned int colorDither : 2;
 
 				unsigned int combineKey : 1;
-//				unsigned int textureConvert : 3;
+/*				unsigned int textureConvert : 3; */
 				unsigned int convert_one : 1;
 				unsigned int bi_lerp1 : 1;
 				unsigned int bi_lerp0 : 1;
@@ -179,7 +194,7 @@ struct gDPInfo
 				unsigned int textureDetail : 2;
 				unsigned int texturePersp : 1;
 				unsigned int cycleType : 2;
-				unsigned int unusedColorDither : 1; // unsupported
+				unsigned int unusedColorDither : 1; /* unsupported */
 				unsigned int pipelineMode : 1;
 
 				unsigned int pad : 8;
@@ -188,7 +203,7 @@ struct gDPInfo
 
 			u64			_u64;
 
-			struct
+			GLI_ANON struct
 			{
 				u32			l, h;
 			};
@@ -202,7 +217,9 @@ struct gDPInfo
 
 	struct Color
 	{
+#ifdef __cplusplus
 		Color() : r(0), g(0), b(0), a(0) {}
+#endif
 		f32 r, g, b, a;
 	} fogColor,  blendColor, envColor, rectColor;
 
@@ -212,10 +229,18 @@ struct gDPInfo
 		u32 color;
 	} fillColor;
 
+#ifdef __cplusplus
 	struct PrimColor : public Color
 	{
 		f32 l, m;
 	} primColor;
+#else
+	struct PrimColor
+	{
+		f32 r, g, b, a;
+		f32 l, m;
+	} primColor;
+#endif
 
 	struct
 	{
@@ -245,7 +270,7 @@ struct gDPInfo
 
 	struct
 	{
-		Color center, scale, width;
+		struct Color center, scale, width;
 	} key;
 
 	u32 changed;
@@ -260,47 +285,51 @@ struct gDPInfo
 
 extern gDPInfo gDP;
 
-void gDPSetOtherMode( u32 mode0, u32 mode1 );
-void gDPSetPrimDepth( u16 z, u16 dz );
-void gDPSetTexturePersp( u32 enable );
-void gDPSetTextureLUT( u32 mode );
-void gDPSetCombine( s32 muxs0, s32 muxs1 );
-void gDPSetColorImage( u32 format, u32 size, u32 width, u32 address );
-void gDPSetTextureImage( u32 format, u32 size, u32 width, u32 address );
-void gDPSetDepthImage( u32 address );
-void gDPSetEnvColor( u32 r, u32 g, u32 b, u32 a );
-void gDPSetBlendColor( u32 r, u32 g, u32 b, u32 a );
-void gDPSetFogColor( u32 r, u32 g, u32 b, u32 a );
-void gDPSetFillColor( u32 c );
-void gDPGetFillColor(f32 _fillColor[4]);
-void gDPSetPrimColor( u32 m, u32 l, u32 r, u32 g, u32 b, u32 a );
-void gDPSetTile( u32 format, u32 size, u32 line, u32 tmem, u32 tile, u32 palette, u32 cmt, u32 cms, u32 maskt, u32 masks, u32 shiftt, u32 shifts );
-void gDPSetTileSize( u32 tile, u32 uls, u32 ult, u32 lrs, u32 lrt );
-void gDPLoadTile( u32 tile, u32 uls, u32 ult, u32 lrs, u32 lrt );
-void gDPLoadBlock( u32 tile, u32 uls, u32 ult, u32 lrs, u32 dxt );
-void gDPLoadTLUT( u32 tile, u32 uls, u32 ult, u32 lrs, u32 lrt );
-void gDPSetScissor( u32 mode, s16 xh, s16 yh, s16 xl, s16 yl);
-void gDPFillRectangle( s32 ulx, s32 uly, s32 lrx, s32 lry );
-void gDPSetConvert( s32 k0, s32 k1, s32 k2, s32 k3, s32 k4, s32 k5 );
-void gDPSetKeyR( u32 cR, u32 sR, u32 wR );
-void gDPSetKeyGB(u32 cG, u32 sG, u32 wG, u32 cB, u32 sB, u32 wB );
-void gDPTextureRectangle( f32 ulx, f32 uly, f32 lrx, f32 lry, s32 tile, s16 s, s16 t, f32 dsdx, f32 dtdy, bool flip );
-void gDPFullSync();
-void gDPTileSync();
-void gDPPipeSync();
-void gDPLoadSync();
-void gDPNoOp();
+void gli_gDPSetOtherMode( u32 mode0, u32 mode1 );
+void gli_gDPSetPrimDepth( u16 z, u16 dz );
+void gli_gDPSetTexturePersp( u32 enable );
+void gli_gDPSetTextureLUT( u32 mode );
+void gli_gDPSetCombine( s32 muxs0, s32 muxs1 );
+void gli_gDPSetColorImage( u32 format, u32 size, u32 width, u32 address );
+void gli_gDPSetTextureImage( u32 format, u32 size, u32 width, u32 address );
+void gli_gDPSetDepthImage( u32 address );
+void gli_gDPSetEnvColor( u32 r, u32 g, u32 b, u32 a );
+void gli_gDPSetBlendColor( u32 r, u32 g, u32 b, u32 a );
+void gli_gDPSetFogColor( u32 r, u32 g, u32 b, u32 a );
+void gli_gDPSetFillColor( u32 c );
+void gli_gDPGetFillColor(f32 _fillColor[4]);
+void gli_gDPSetPrimColor( u32 m, u32 l, u32 r, u32 g, u32 b, u32 a );
+void gli_gDPSetTile( u32 format, u32 size, u32 line, u32 tmem, u32 tile, u32 palette, u32 cmt, u32 cms, u32 maskt, u32 masks, u32 shiftt, u32 shifts );
+void gli_gDPSetTileSize( u32 tile, u32 uls, u32 ult, u32 lrs, u32 lrt );
+void gli_gDPLoadTile( u32 tile, u32 uls, u32 ult, u32 lrs, u32 lrt );
+void gli_gDPLoadBlock( u32 tile, u32 uls, u32 ult, u32 lrs, u32 dxt );
+void gli_gDPLoadTLUT( u32 tile, u32 uls, u32 ult, u32 lrs, u32 lrt );
+void gli_gDPSetScissor( u32 mode, s16 xh, s16 yh, s16 xl, s16 yl);
+void gli_gDPFillRectangle( s32 ulx, s32 uly, s32 lrx, s32 lry );
+void gli_gDPSetConvert( s32 k0, s32 k1, s32 k2, s32 k3, s32 k4, s32 k5 );
+void gli_gDPSetKeyR( u32 cR, u32 sR, u32 wR );
+void gli_gDPSetKeyGB(u32 cG, u32 sG, u32 wG, u32 cB, u32 sB, u32 wB );
+void gli_gDPTextureRectangle( f32 ulx, f32 uly, f32 lrx, f32 lry, s32 tile, s16 s, s16 t, f32 dsdx, f32 dtdy, bool flip );
+void gli_gDPFullSync(void);
+void gli_gDPTileSync(void);
+void gli_gDPPipeSync(void);
+void gli_gDPLoadSync(void);
+void gli_gDPNoOp(void);
 
-void gDPTriFill( u32 w0, u32 w1 );
-void gDPTriShade( u32 w0, u32 w1 );
-void gDPTriTxtr( u32 w0, u32 w1 );
-void gDPTriShadeTxtr( u32 w0, u32 w1 );
-void gDPTriFillZ( u32 w0, u32 w1 );
-void gDPTriShadeZ( u32 w0, u32 w1 );
-void gDPTriTxtrZ( u32 w0, u32 w1 );
-void gDPTriShadeTxtrZ( u32 w0, u32 w1 );
+void gli_gDPTriFill( u32 w0, u32 w1 );
+void gli_gDPTriShade( u32 w0, u32 w1 );
+void gli_gDPTriTxtr( u32 w0, u32 w1 );
+void gli_gDPTriShadeTxtr( u32 w0, u32 w1 );
+void gli_gDPTriFillZ( u32 w0, u32 w1 );
+void gli_gDPTriShadeZ( u32 w0, u32 w1 );
+void gli_gDPTriTxtrZ( u32 w0, u32 w1 );
+void gli_gDPTriShadeTxtrZ( u32 w0, u32 w1 );
 
-bool isCurrentColorImageDepthImage();
-bool isDepthCompareEnabled();
+bool gli_isCurrentColorImageDepthImage(void);
+bool gli_isDepthCompareEnabled(void);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

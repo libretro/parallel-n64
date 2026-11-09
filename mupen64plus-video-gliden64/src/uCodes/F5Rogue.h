@@ -1,6 +1,14 @@
 #ifndef F5ROGUE_H
 #define F5ROGUE_H
 
-void F5Rogue_Init();
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-#endif // F5ROGUE_H
+void gli_F5Rogue_Init(void);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* F5ROGUE_H */

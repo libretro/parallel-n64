@@ -34,7 +34,7 @@ struct ZSORTRDP
 	f32 view_trans[2];
 } zSortRdp = {{0, 0}, {0, 0}};
 
-void ZSort_RDPCMD( u32, u32 _w1 )
+void gli_ZSort_RDPCMD( u32, u32 _w1 )
 {
 	u32 addr = RSP_SegmentToPhysical(_w1) >> 2;
 	if (addr) {
@@ -52,13 +52,13 @@ void ZSort_RDPCMD( u32, u32 _w1 )
 				addr++;
 				RDP.w3 = ((u32*)RDRAM)[addr++];
 			}
-			GBI.cmd[RSP.cmd]( w0, w1 );
+			gli_GBIcmd[RSP.cmd]( w0, w1 );
 		};
 		RSP.LLE = false;
 	}
 }
 
-int Calc_invw (int _w) {
+int gli_Calc_invw (int _w) {
 	if (_w == 0)
 		return 0x7FFFFFFF;
 	return 0x7FFFFFFF / _w;
@@ -117,7 +117,7 @@ void ZSort_DrawObject (u8 * _addr, u32 _type)
 				vtx.s = _FIXED2FLOAT(((s16*)_addr)[0x4 ^ 0x1], 6);
 				vtx.t = _FIXED2FLOAT(((s16*)_addr)[0x5 ^ 0x1], 6);
 			}
-			vtx.w = Calc_invw(((int*)_addr)[3]) / 31.0f;
+			vtx.w = gli_Calc_invw(((int*)_addr)[3]) / 31.0f;
 		} else
 			vtx.w = 1.0f;
 
@@ -139,7 +139,7 @@ u32 ZSort_LoadObject (u32 _zHeader, u32 * _pRdpCmds)
 		w1 = ((u32*)addr)[1];
 		if (w1 != _pRdpCmds[0]) {
 			_pRdpCmds[0] = w1;
-			ZSort_RDPCMD (0, w1);
+			gli_ZSort_RDPCMD (0, w1);
 		}
 		ZSort_DrawObject(addr + 8, type);
 	}
@@ -151,16 +151,16 @@ u32 ZSort_LoadObject (u32 _zHeader, u32 * _pRdpCmds)
 		w1 = ((u32*)addr)[1];
 		if (w1 != _pRdpCmds[0]) {
 			_pRdpCmds[0] = w1;
-			ZSort_RDPCMD (0, w1);
+			gli_ZSort_RDPCMD (0, w1);
 		}
 		w1 = ((u32*)addr)[2];
 		if (w1 != _pRdpCmds[1]) {
-			ZSort_RDPCMD (0, w1);
+			gli_ZSort_RDPCMD (0, w1);
 			_pRdpCmds[1] = w1;
 		}
 		w1 = ((u32*)addr)[3];
 		if (w1 != _pRdpCmds[2]) {
-			ZSort_RDPCMD (0,  w1);
+			gli_ZSort_RDPCMD (0,  w1);
 			_pRdpCmds[2] = w1;
 		}
 		if (type != 0) {
@@ -192,7 +192,7 @@ void ZSort_Interpolate( u32, u32 )
 void ZSort_XFMLight( u32 _w0, u32 _w1 )
 {
 	int mid = _SHIFTR(_w0, 0, 8);
-	gSPNumLights(1 + _SHIFTR(_w1, 12, 8));
+	gli_gSPNumLights(1 + _SHIFTR(_w1, 12, 8));
 	u32 addr = -1024 + _SHIFTR(_w1, 0, 12);
 
 	assert(mid == GZM_MMTX);
@@ -262,7 +262,7 @@ void ZSort_Lighting( u32 _w0, u32 _w1 )
 		vtx.ny = ((s8*)DMEM)[(nsrs++)^3];
 		vtx.nz = ((s8*)DMEM)[(nsrs++)^3];
 		gli_TransformVectorNormalize( &vtx.nx, gSP.matrix.modelView[gSP.matrix.modelViewi] );
-		gSPLightVertex(vtx);
+		gli_gSPLightVertex(vtx);
 		f32 fLightDir[3] = {vtx.nx, vtx.ny, vtx.nz};
 		gli_TransformVectorNormalize(fLightDir, gSP.matrix.projection);
 		f32 x, y;
@@ -368,7 +368,7 @@ void ZSort_MultMPMTX( u32 _w0, u32 _w1 )
 		v.xi = (s16)x;
 		v.yi = (s16)y;
 		v.wi = (s16)w;
-		v.invw = Calc_invw((int)(w * 31.0));
+		v.invw = gli_Calc_invw((int)(w * 31.0));
 
 		if (w < 0.0f)
 			v.fog = 0;
@@ -419,7 +419,7 @@ void ZSort_SetTexture()
 	gSP.texture.on = 1;
 	gSP.texture.tile = 0;
 
-	gSPSetGeometryMode(G_SHADING_SMOOTH | G_SHADE);
+	gli_gSPSetGeometryMode(G_SHADING_SMOOTH | G_SHADE);
 }
 
 void ZSort_MoveMem( u32 _w0, u32 _w1 )
@@ -472,7 +472,7 @@ void ZSort_MoveMem( u32 _w0, u32 _w1 )
 		const f32 trans_y = _FIXED2FLOAT( *(s16*)&RDRAM[(a+5)^1], 2 );
 		const f32 trans_z = _FIXED2FLOAT( *(s16*)&RDRAM[(a+6)^1], 10 );
 		const s16 fo = ((s16*)RDRAM)[(a+7)^1];
-		gSPFogFactor(fm, fo);
+		gli_gSPFogFactor(fm, fo);
 
 		gSP.viewport.vscale[0] = scale_x;
 		gSP.viewport.vscale[1] = scale_y;
@@ -507,7 +507,7 @@ void ZSort_MoveMem( u32 _w0, u32 _w1 )
 
 void SZort_SetScissor(u32 _w0, u32 _w1)
 {
-	RDP_SetScissor(_w0, _w1);
+	gli_RDP_SetScissor(_w0, _w1);
 
 	if ((gDP.scissor.lrx - gDP.scissor.ulx) > (zSortRdp.view_scale[0] - zSortRdp.view_trans[0]))
 	{
@@ -558,37 +558,37 @@ void SZort_SetScissor(u32 _w0, u32 _w1)
 u32 G_ZSENDSIGNAL, G_ZSETSUBDL, G_ZLINKSUBDL, G_ZMTXTRNSP;
 u32 G_ZLIGHTING_L, G_ZXFMLIGHT, G_ZINTERPOLATE, G_ZSETSCISSOR;
 
-void ZSort_Init()
+void gli_ZSort_Init()
 {
-	gSPSetupFunctions();
+	gli_gSPSetupFunctions();
 	// Set GeometryMode flags
 	GBI_InitFlags( F3D );
 
-	GBI.PCStackSize = 10;
+	gli_GBIPCStackSize = 10;
 
 	//          GBI Command             Command Value			Command Function
-	GBI_SetGBI( G_SPNOOP,				F3D_SPNOOP,				F3D_SPNoOp );
-	GBI_SetGBI( G_RESERVED0,			F3D_RESERVED0,			F3D_Reserved0 );
-	GBI_SetGBI( G_RESERVED1,			F3D_RESERVED1,			F3D_Reserved1 );
-	GBI_SetGBI( G_DL,					G_ZS_DL,				F3D_DList );
-	GBI_SetGBI( G_RESERVED2,			F3D_RESERVED2,			F3D_Reserved2 );
-	GBI_SetGBI( G_RESERVED3,			F3D_RESERVED3,			F3D_Reserved3 );
+	GBI_SetGBI( G_SPNOOP,				F3D_SPNOOP,				gli_F3D_SPNoOp );
+	GBI_SetGBI( G_RESERVED0,			F3D_RESERVED0,			gli_F3D_Reserved0 );
+	GBI_SetGBI( G_RESERVED1,			F3D_RESERVED1,			gli_F3D_Reserved1 );
+	GBI_SetGBI( G_DL,					G_ZS_DL,				gli_F3D_DList );
+	GBI_SetGBI( G_RESERVED2,			F3D_RESERVED2,			gli_F3D_Reserved2 );
+	GBI_SetGBI( G_RESERVED3,			F3D_RESERVED3,			gli_F3D_Reserved3 );
 
-	GBI_SetGBI( G_CULLDL,				F3D_CULLDL,				F3D_CullDL );
-	GBI_SetGBI( G_MOVEWORD,				G_ZS_MOVEWORD,			F3D_MoveWord );
-	GBI_SetGBI( G_TEXTURE,				F3D_TEXTURE,			F3D_Texture );
+	GBI_SetGBI( G_CULLDL,				F3D_CULLDL,				gli_F3D_CullDL );
+	GBI_SetGBI( G_MOVEWORD,				G_ZS_MOVEWORD,			gli_F3D_MoveWord );
+	GBI_SetGBI( G_TEXTURE,				F3D_TEXTURE,			gli_F3D_Texture );
 	GBI_SetGBI( G_ZSETSCISSOR,			G_SETSCISSOR,			SZort_SetScissor );
-	GBI_SetGBI( G_SETOTHERMODE_H,		G_ZS_SETOTHERMODE_H,	F3D_SetOtherMode_H );
-	GBI_SetGBI( G_SETOTHERMODE_L,		G_ZS_SETOTHERMODE_L,	F3D_SetOtherMode_L );
-	GBI_SetGBI( G_ENDDL,				G_ZS_ENDDL,				F3D_EndDL );
-	GBI_SetGBI( G_SETGEOMETRYMODE,		F3D_SETGEOMETRYMODE,	F3D_SetGeometryMode );
-	GBI_SetGBI( G_CLEARGEOMETRYMODE,	F3D_CLEARGEOMETRYMODE,	F3D_ClearGeometryMode );
-	GBI_SetGBI( G_RDPHALF_1,			F3D_RDPHALF_1,			F3D_RDPHalf_1 );
-	GBI_SetGBI( G_RDPHALF_2,			F3D_RDPHALF_2,			F3D_RDPHalf_2 );
-	GBI_SetGBI( G_RDPHALF_CONT,			F3D_RDPHALF_CONT,		F3D_RDPHalf_Cont );
+	GBI_SetGBI( G_SETOTHERMODE_H,		G_ZS_SETOTHERMODE_H,	gli_F3D_SetOtherMode_H );
+	GBI_SetGBI( G_SETOTHERMODE_L,		G_ZS_SETOTHERMODE_L,	gli_F3D_SetOtherMode_L );
+	GBI_SetGBI( G_ENDDL,				G_ZS_ENDDL,				gli_F3D_EndDL );
+	GBI_SetGBI( G_SETGEOMETRYMODE,		F3D_SETGEOMETRYMODE,	gli_F3D_SetGeometryMode );
+	GBI_SetGBI( G_CLEARGEOMETRYMODE,	F3D_CLEARGEOMETRYMODE,	gli_F3D_ClearGeometryMode );
+	GBI_SetGBI( G_RDPHALF_1,			F3D_RDPHALF_1,			gli_F3D_RDPHalf_1 );
+	GBI_SetGBI( G_RDPHALF_2,			F3D_RDPHALF_2,			gli_F3D_RDPHalf_2 );
+	GBI_SetGBI( G_RDPHALF_CONT,			F3D_RDPHALF_CONT,		gli_F3D_RDPHalf_Cont );
 
 	GBI_SetGBI( G_ZOBJ,					G_ZS_ZOBJ,				ZSort_Obj );
-	GBI_SetGBI( G_ZRDPCMD,				G_ZS_RDPCMD,			ZSort_RDPCMD );
+	GBI_SetGBI( G_ZRDPCMD,				G_ZS_RDPCMD,			gli_ZSort_RDPCMD );
 	GBI_SetGBI( G_MOVEMEM,				G_ZS_MOVEMEM,			ZSort_MoveMem );
 	GBI_SetGBI( G_ZSENDSIGNAL,			G_ZS_SENDSIGNAL,		ZSort_SendSignal );
 	GBI_SetGBI( G_ZWAITSIGNAL,			G_ZS_WAITSIGNAL,		ZSort_WaitSignal );
