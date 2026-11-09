@@ -36,7 +36,7 @@ vkr_renderer * g_r = nullptr;
 
 /* GL's numbers, which GLideN64's parameters carry */
 enum {
-	GLV_R8 = 0x8229, GLV_R16F = 0x822D, GLV_R32F = 0x822E, GLV_R32UI = 0x8236,
+	GLV_R8 = 0x8229, GLV_R16F = 0x822D, GLV_R32F = 0x822E, GLV_R32UI = 0x8236, GLV_R16UI = 0x8234,
 	GLV_RGBA8 = 0x8058, GLV_RGB8 = 0x8051, GLV_RGBA4 = 0x8056, GLV_RGB5_A1 = 0x8057,
 	GLV_DEPTH = 0x81A6
 };
@@ -52,6 +52,7 @@ int toFormat(u32 _internal)
 	case GLV_R16F: return VKR_FMT_R16F;
 	case GLV_R32F: return VKR_FMT_R32F;
 	case GLV_R32UI: return VKR_FMT_R32UI;
+	case GLV_R16UI: return VKR_FMT_R16UI;
 	case GLV_DEPTH: return VKR_FMT_DEPTH;
 	}
 	return VKR_FMT_NONE;
@@ -60,7 +61,7 @@ int toFormat(u32 _internal)
 u32 formatBytes(int _fmt)
 {
 	switch (_fmt) {
-	case VKR_FMT_RGBA4: case VKR_FMT_RGB5A1: case VKR_FMT_R16F: return 2;
+	case VKR_FMT_RGBA4: case VKR_FMT_RGB5A1: case VKR_FMT_R16F: case VKR_FMT_R16UI: return 2;
 	case VKR_FMT_R8: return 1;
 	}
 	return 4;
@@ -371,12 +372,12 @@ struct VkFramebufferFormats : public FramebufferTextureFormats
 protected:
 	void init() override {
 		enum { GLV_RGBA = 0x1908, GLV_RED = 0x1903, GLV_RED_INT = 0x8D94, GLV_DEPTHC = 0x1902,
-			GLV_UBYTE = 0x1401, GLV_UINT = 0x1405, GLV_FLOAT = 0x1406 };
+			GLV_UBYTE = 0x1401, GLV_USHORT = 0x1403, GLV_UINT = 0x1405, GLV_FLOAT = 0x1406 };
 		colorInternalFormat = GLV_RGBA8; colorFormat = GLV_RGBA; colorType = GLV_UBYTE; colorFormatBytes = 4;
 		monochromeInternalFormat = GLV_R8; monochromeFormat = GLV_RED; monochromeType = GLV_UBYTE; monochromeFormatBytes = 1;
 		depthInternalFormat = GLV_DEPTH; depthFormat = GLV_DEPTHC; depthType = GLV_FLOAT; depthFormatBytes = 4;
 		depthImageInternalFormat = GLV_R32F; depthImageFormat = GLV_RED; depthImageType = GLV_FLOAT; depthImageFormatBytes = 4;
-		lutInternalFormat = GLV_R32UI; lutFormat = GLV_RED_INT; lutType = GLV_UINT; lutFormatBytes = 4;
+		lutInternalFormat = GLV_R16UI; lutFormat = GLV_RED_INT; lutType = GLV_USHORT; lutFormatBytes = 2;
 		noiseInternalFormat = GLV_R8; noiseFormat = GLV_RED; noiseType = GLV_UBYTE; noiseFormatBytes = 1;
 	}
 };

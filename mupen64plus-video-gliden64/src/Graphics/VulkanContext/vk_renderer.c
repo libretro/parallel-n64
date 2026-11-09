@@ -305,6 +305,7 @@ static VkFormat to_vk_format(vkr_renderer *r, int fmt)
       case VKR_FMT_R16F:   return VK_FORMAT_R16_SFLOAT;
       case VKR_FMT_R32F:   return VK_FORMAT_R32_SFLOAT;
       case VKR_FMT_R32UI:  return VK_FORMAT_R32_UINT;
+      case VKR_FMT_R16UI:  return VK_FORMAT_R16_UINT;
       case VKR_FMT_DEPTH:  return r->depth_format;
       default: break;
    }

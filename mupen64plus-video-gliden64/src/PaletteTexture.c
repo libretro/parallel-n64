@@ -6,7 +6,7 @@
 #include "PaletteTexture.h"
 
 static struct CachedTexture * l_pTexture;
-static u32 l_palette[256];
+static u16 l_palette[256];
 static u64 l_paletteCRC256;
 
 void gli_palette_init(void)
