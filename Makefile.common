@@ -374,6 +374,7 @@ CXXFLAGS += -DHAVE_GLIDEN64 -DMUPENPLUSAPI -D__LIBRETRO__
 # library bump and is no longer present in the tree.
 
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/StereoJournal.c
+SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/CombinerKeyJournal.c
 
 SOURCES_CXX   += \
 	$(VIDEODIR_GLIDEN64)/src/Combiner.cpp                                                         \

@@ -235,6 +235,9 @@ namespace graphics {
 
 		bool loadShadersStorage(Combiners & _combiners);
 
+		/* where the keys met this session go, and their format's version */
+		std::string getCombinerJournalPath(u32 & _version);
+
 		ShaderProgram * createDepthFogShader();
 
 		TexrectDrawerShaderProgram * createTexrectDrawerDrawShader();

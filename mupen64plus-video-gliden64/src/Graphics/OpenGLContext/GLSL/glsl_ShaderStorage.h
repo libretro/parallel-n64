@@ -16,6 +16,8 @@ namespace glsl {
 
 		bool loadShadersStorage(graphics::Combiners & _combiners);
 
+		std::string getKeysJournalPath(u32 & _version) const;
+
 	private:
 		bool _saveCombinerKeys(const graphics::Combiners & _combiners) const;
 		bool _loadFromCombinerKeys(graphics::Combiners & _combiners);

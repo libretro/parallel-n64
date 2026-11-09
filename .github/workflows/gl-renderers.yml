@@ -79,3 +79,6 @@ jobs:
 
       - name: GL renderers lane
         run: env ${{ matrix.sanitizer_env }} python3 tools/ci/gl_renderers.py --core ./parallel_n64_libretro.so --host ./lrhost_gl
+
+      - name: GLideN64 combiner key journal
+        run: env ${{ matrix.sanitizer_env }} python3 tools/ci/gliden64_keys_journal.py --core ./parallel_n64_libretro.so --host ./lrhost_gl

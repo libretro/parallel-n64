@@ -272,6 +272,11 @@ bool Context::saveShadersStorage(const Combiners & _combiners)
 	return m_impl->saveShadersStorage(_combiners);
 }
 
+std::string Context::getCombinerJournalPath(u32 & _version)
+{
+	return m_impl->getCombinerJournalPath(_version);
+}
+
 bool Context::loadShadersStorage(Combiners & _combiners)
 {
 	return m_impl->loadShadersStorage(_combiners);

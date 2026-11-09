@@ -5,6 +5,7 @@
 #include <osal_files.h>
 
 #include "Combiner.h"
+#include "CombinerKeyJournal.h"
 #include "gDP.h"
 #include "Config.h"
 #include "PluginAPI.h"
@@ -109,6 +110,9 @@ void CombinerInfo::init()
 		setCombine(EncodeCombineMode(0, 0, 0, SHADE, 0, 0, 0, SHADE, 0, 0, 0, SHADE, 0, 0, 0, SHADE));
 	}
 
+	if (config.generalEmulation.enableShadersStorage != 0)
+		_openKeysJournal();
+
 	m_shadowmapProgram.reset(gfxContext.createDepthFogShader());
 	m_texrectCopyProgram.reset(gfxContext.createTexrectCopyShader());
 }
@@ -120,7 +124,7 @@ void CombinerInfo::destroy()
 
 	m_pCurrent = nullptr;
 	if (config.generalEmulation.enableShadersStorage != 0)
-		_saveShadersStorage();
+		_closeKeysJournal(_saveShadersStorage());
 	m_shadersLoaded = 0;
 	for (auto cur = m_combiners.begin(); cur != m_combiners.end(); ++cur)
 		delete cur->second;
@@ -357,6 +361,7 @@ void CombinerInfo::setCombine(u64 _mux )
 		m_pCurrent = Combiner_Compile(key);
 		m_pCurrent->update(true);
 		m_combiners[m_pCurrent->getKey()] = m_pCurrent;
+		combiner_journal_push(m_journal, m_pCurrent->getKey().getMux(), GBI.isHWLSupported() ? 1 : 0);
 	}
 	m_bChanged = true;
 }
@@ -397,12 +402,47 @@ void CombinerInfo::setPolygonMode(DrawingState _drawingState)
 	}
 }
 
-void CombinerInfo::_saveShadersStorage() const
+bool CombinerInfo::_saveShadersStorage() const
 {
 	if (m_shadersLoaded >= m_combiners.size())
-		return;
+		return true;
 
-	gfxContext.saveShadersStorage(m_combiners);
+	return gfxContext.saveShadersStorage(m_combiners);
+}
+
+void CombinerInfo::_journalKey(void * _ctx, uint64_t _key, unsigned _hwl)
+{
+	CombinerInfo * info = static_cast<CombinerInfo *>(_ctx);
+	const CombinerKey key(_key, false);
+	if (info->m_combiners.find(key) != info->m_combiners.end())
+		return;
+	const bool hwl = GBI.isHWLSupported();
+	GBI.setHWLSupported(_hwl != 0);
+	graphics::CombinerProgram * pCombiner = Combiner_Compile(key);
+	pCombiner->update(true);
+	info->m_combiners[pCombiner->getKey()] = pCombiner;
+	GBI.setHWLSupported(hwl);
+}
+
+/* Keys a session that crashed wrote down are built now, at load, and are
+ * in what this session saves: m_shadersLoaded does not count them. */
+void CombinerInfo::_openKeysJournal()
+{
+	u32 version = 0;
+	const std::string path = gfxContext.getCombinerJournalPath(version);
+	combiner_journal_read(path.c_str(), version, _journalKey, this);
+	m_journal = combiner_journal_open(path.c_str(), version);
+}
+
+void CombinerInfo::_closeKeysJournal(bool _saved)
+{
+	u32 version = 0;
+	combiner_journal_close(m_journal);
+	m_journal = nullptr;
+	if (_saved) {
+		const std::string path = gfxContext.getCombinerJournalPath(version);
+		combiner_journal_remove(path.c_str());
+	}
 }
 
 bool CombinerInfo::_loadShadersStorage()

@@ -42,6 +42,7 @@ new_dynarec_disasm.txt
 /test_gb_cart_banks
 /test_dynarec_cache_pages
 /test_pipeline_pending
+/test_combiner_journal
 /dynarec_long_block_test
 /dynarec_block_check.tmp/
 /savestate_latch_test

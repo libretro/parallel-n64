@@ -422,6 +422,12 @@ bool ContextImpl::saveShadersStorage(const graphics::Combiners & _combiners)
 	return storage.saveShadersStorage(_combiners);
 }
 
+std::string ContextImpl::getCombinerJournalPath(u32 & _version)
+{
+	glsl::ShaderStorage storage(m_glInfo, m_cachedFunctions->getCachedUseProgram());
+	return storage.getKeysJournalPath(_version);
+}
+
 bool ContextImpl::loadShadersStorage(graphics::Combiners & _combiners)
 {
 	glsl::ShaderStorage storage(m_glInfo, m_cachedFunctions->getCachedUseProgram());

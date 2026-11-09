@@ -333,6 +333,12 @@ bool ShaderStorage::loadShadersStorage(graphics::Combiners & _combiners)
 }
 
 
+std::string ShaderStorage::getKeysJournalPath(u32 & _version) const
+{
+	_version = m_keysFormatVersion;
+	return getStorageFileName(m_glinfo, "keys.journal");
+}
+
 ShaderStorage::ShaderStorage(const opengl::GLInfo & _glinfo, opengl::CachedUseProgram * _useProgram)
 : m_glinfo(_glinfo)
 , m_useProgram(_useProgram)

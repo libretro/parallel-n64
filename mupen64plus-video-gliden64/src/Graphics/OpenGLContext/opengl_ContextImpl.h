@@ -120,6 +120,8 @@ namespace opengl {
 
 		bool loadShadersStorage(graphics::Combiners & _combiners) override;
 
+		std::string getCombinerJournalPath(u32 & _version) override;
+
 		graphics::ShaderProgram * createDepthFogShader() override;
 
 		graphics::TexrectDrawerShaderProgram * createTexrectDrawerDrawShader() override;

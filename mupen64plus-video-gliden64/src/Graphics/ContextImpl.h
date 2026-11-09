@@ -56,6 +56,8 @@ namespace graphics {
 		virtual CombinerProgram * createCombinerProgram(Combiner & _color, Combiner & _alpha, const CombinerKey & _key) = 0;
 		virtual bool saveShadersStorage(const Combiners & _combiners) = 0;
 		virtual bool loadShadersStorage(Combiners & _combiners) = 0;
+
+		virtual std::string getCombinerJournalPath(u32 & _version) = 0;
 		virtual ShaderProgram * createDepthFogShader() = 0;
 		virtual TexrectDrawerShaderProgram * createTexrectDrawerDrawShader() = 0;
 		virtual ShaderProgram * createTexrectDrawerClearShader() = 0;

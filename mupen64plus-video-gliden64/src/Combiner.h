@@ -144,11 +144,15 @@ private:
 		, m_rectMode(true)
 		, m_shadersLoaded(0)
 		, m_configOptionsBitSet(0)
-		, m_pCurrent(nullptr) {}
+		, m_pCurrent(nullptr)
+		, m_journal(nullptr) {}
 	CombinerInfo(const CombinerInfo &) = delete;
 
-	void _saveShadersStorage() const;
+	bool _saveShadersStorage() const;
 	bool _loadShadersStorage();
+	void _openKeysJournal();
+	void _closeKeysJournal(bool _saved);
+	static void _journalKey(void * _ctx, uint64_t _key, unsigned _hwl);
 
 	bool m_bChanged;
 	bool m_rectMode;
@@ -157,6 +161,7 @@ private:
 
 	graphics::CombinerProgram * m_pCurrent;
 	graphics::Combiners m_combiners;
+	struct combiner_journal * m_journal;
 
 	std::unique_ptr<graphics::ShaderProgram> m_shadowmapProgram;
 	std::unique_ptr<graphics::ShaderProgram> m_texrectCopyProgram;
