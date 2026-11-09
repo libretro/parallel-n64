@@ -27,7 +27,7 @@ void _ProcessDList(void)
 {
 	while (!RSP.halt) {
 		u32 pci;
-		if ((RSP.PC[RSP.PCi] + 8) > RDRAMSize) {
+		if (RSP.PC[RSP.PCi] > RDRAMSize - 8) {
 			break;
 		}
 
@@ -38,13 +38,13 @@ void _ProcessDList(void)
 
 		RSP.PC[RSP.PCi] += 8;
 		pci = RSP.PCi;
-		if (RSP.count == 1)
+		if (RSP.count == 1 && pci != 0)
 			--pci;
 		/* The loop guard above only validated the current command at the
 		 * pre-increment PC; this prefetch reads a word at the advanced PC
 		 * (or, when count==1, a shallower stack level), which can sit one
 		 * word past RDRAM at the buffer boundary. Bound it the same way. */
-		if ((RSP.PC[pci] + 4) <= RDRAMSize)
+		if (RSP.PC[pci] <= RDRAMSize - 4)
 			RSP.nextCmd = _SHIFTR(*(u32*)&RDRAM[RSP.PC[pci]], 24, 8);
 		else
 			RSP.nextCmd = 0;
@@ -63,14 +63,15 @@ void _ProcessDListFactor5(void)
 	u32 i;
 
 	/* Lemmy's note: read first 64 bits of this dlist */
-	RSP.F5DL[0] = _SHIFTR(*(u32*)&RDRAM[RSP.PC[0]], 0, 24);
+	if (RSP.PC[0] <= RDRAMSize - 4)
+		RSP.F5DL[0] = _SHIFTR(*(u32*)&RDRAM[RSP.PC[0]], 0, 24);
 	RSP.PC[0] += 8;
 
 	for (i = 0; i < 7; ++i)
 		pDmem32[vAddrToClear[i]] = 0U;
 
 	while (!RSP.halt) {
-		if ((RSP.PC[RSP.PCi] + 8) > RDRAMSize) {
+		if (RSP.PC[RSP.PCi] > RDRAMSize - 8) {
 			break;
 		}
 
@@ -81,7 +82,7 @@ void _ProcessDListFactor5(void)
 
 		/* Same boundary case as _ProcessDList: the guard validated the
 		 * current command, but this prefetch reads a word at PC + 8. */
-		if ((RSP.PC[RSP.PCi] + 8 + 4) <= RDRAMSize)
+		if (RSP.PC[RSP.PCi] <= RDRAMSize - 12)
 			RSP.nextCmd = _SHIFTR(*(u32*)&RDRAM[RSP.PC[RSP.PCi] + 8], 24, 8);
 		else
 			RSP.nextCmd = 0;
@@ -98,7 +99,10 @@ void gli_RSP_CheckDLCounter(void)
 		--RSP.count;
 		if (RSP.count == 0) {
 			RSP.count = -1;
-			--RSP.PCi;
+			if (RSP.PCi != 0)
+				--RSP.PCi;
+			else
+				RSP.halt = true;
 		}
 	}
 }
