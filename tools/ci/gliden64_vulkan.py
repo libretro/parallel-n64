@@ -8,7 +8,7 @@ pipelines (own). Any pixel off by more than one step fails.
 
   gliden64_vulkan.py --core parallel_n64_libretro.so --gl ./lrhost_gl --vk ./lrhost_vk [--roms krom-roms]
 """
-import argparse, os, subprocess, sys, tempfile
+import argparse, os, struct, subprocess, sys, tempfile
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import gliden64_ubershader as cart
 
@@ -37,6 +37,101 @@ def run(host, core, rom, tmp, name, frames, api, env_extra, options=()):
             with open(os.path.join(dump, f), "rb") as h:
                 out[f] = h.read()
     return out
+
+
+def culling_cartridge(path):
+    """An F3D task, run by the HLE RSP: triangles of both windings, under each
+    cull mode. The other test content goes straight to the RDP and never culls."""
+    t0, t1, t2, t3 = 8, 9, 10, 11
+    mips = cart.mips
+    FB, DATA = 0x100000, 0x200000
+    W, H = cart.WIDTH, cart.HEIGHT
+    lui = lambda rt, imm: mips(0x0f, 0, rt, imm)
+    ori = lambda rt, rs, imm: mips(0x0d, rs, rt, imm)
+    sw = lambda rt, off, base: mips(0x2b, base, rt, off)
+    lw = lambda rt, off, base: mips(0x23, base, rt, off)
+    bne = lambda rs, rt, off: mips(0x05, rs, rt, off)
+    beq = lambda rs, rt, off: mips(0x04, rs, rt, off)
+    li = lambda rt, v: [lui(rt, (v >> 16) & 0xffff), ori(rt, rt, v & 0xffff)]
+
+    UCODE_TEXT, PROJ, VIEWPORT, MODEL, VERTS, DLIST = 0x0, 0x1000, 0x1040, 0x1060, 0x1100, 0x2000
+    text = b"RSP SW Version: 2.0D, 04-01-96\n".ljust(0x800, b"\0")
+    proj = struct.pack(">32H", *([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 100] + [0] * 16))  # units of 1%
+    model = struct.pack(">32H", *([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1] + [0] * 16))
+    viewport = struct.pack(">8h", W * 2, H * 2, 511, 0, W * 2, H * 2, 511, 0)
+
+    def vtx(x, y, r, g, b):
+        return struct.pack(">3hH2h4B", x, y, 0, 0, 0, 0, r, g, b, 255)
+
+    # counter-clockwise on the left half, clockwise on the right, one row per cull mode
+    verts = b""
+    tris = []
+    rows = [(0, (255, 0, 0), (0, 255, 0)), (0x2000, (0, 0, 255), (255, 255, 0)), (0x1000, (255, 0, 255), (0, 255, 255))]
+    for r, (cull, left, right) in enumerate(rows):
+        y0 = 70 - 60 * r
+        for c, colour in enumerate((left, right)):
+            x0 = -80 + 80 * c
+            a, b, d = (x0 - 30, y0 - 20), (x0 + 30, y0 - 20), (x0, y0 + 20)
+            for p in ((a, b, d) if c == 0 else (a, d, b)):
+                verts += vtx(p[0], p[1], *colour)
+        tris.append(cull)
+
+    cmds = [0xFF100000 | (W - 1), FB,
+            0xED000000, ((W * 4) << 12) | (H * 4),
+            0xEF300000, 0,
+            0xF7000000, 0x00010001,
+            0xF6000000 | ((W - 1) << 14) | ((H - 1) << 2), 0,
+            0xE7000000, 0,
+            0xEF000000 | (2 << 12), 0,
+            0xFCFFFFFF, 0xFFFE793C,
+            0x03800010, DATA + VIEWPORT,
+            0x01030040, DATA + PROJ,
+            0x01020040, DATA + MODEL]
+    for r, cull in enumerate(tris):
+        cmds += [0xB6000000, 0xFFFFFFFF,
+                 0xB7000000, 0x0204 | cull,
+                 0x04000000 | (5 << 20) | 96, DATA + VERTS + r * 96]
+        cmds += [0xBF000000, (0 << 16) | (10 << 8) | 20]
+        cmds += [0xBF000000, (30 << 16) | (40 << 8) | 50]
+    cmds += [0xE7000000, 0, 0xE9000000, 0, 0xB8000000, 0]
+
+    data = bytearray(DLIST + 8 * len(cmds))
+    data[UCODE_TEXT:UCODE_TEXT + len(text)] = text
+    data[PROJ:PROJ + len(proj)] = proj
+    data[MODEL:MODEL + len(model)] = model
+    data[VIEWPORT:VIEWPORT + len(viewport)] = viewport
+    data[VERTS:VERTS + len(verts)] = verts
+    data[DLIST:] = struct.pack(">%dI" % len(cmds), *cmds)
+
+    prog = li(t0, 0xA4600000) + li(t1, DATA) + [sw(t1, 0, t0)]
+    prog += li(t1, 0x10000000 + cart.PAYLOAD) + [sw(t1, 4, t0)]
+    prog += li(t1, len(data) - 1) + [sw(t1, 0xC, t0)]
+    prog += [lui(t0, 0xA440)]
+    for k, v in enumerate([0x3002, FB, W, 2, 0, 0x03E52239, 0x20D, 0xC15, 0x0C150C15,
+                           0x006C02EC, 0x002501FF, 0x000E0204, 0x200, 0x400]):
+        prog += li(t2, v) + [sw(t2, 4 * k, t0)]
+    prog += li(t0, 0xA4000FC0)
+    task = {0: 1, 0x10: DATA + 0x8000, 0x14: 0x1000, 0x18: DATA + UCODE_TEXT, 0x1C: 0x800,
+            0x24: 0x400, 0x30: DATA + DLIST, 0x34: 8 * len(cmds)}
+    for off, v in task.items():
+        prog += li(t1, v) + [sw(t1, off, t0)]
+    prog += li(t0, 0xA4040010) + li(t2, 0xA4400010)
+    start = len(prog)
+    prog += [lw(t1, 0, t2), ori(t3, 0, 0x200), bne(t1, t3, -3), 0]
+    prog += [ori(t1, 0, 0x125), sw(t1, 0, t0)]  # go, and ask for no interrupt
+    prog += [lw(t1, 0, t2), ori(t3, 0, 0x200), beq(t1, t3, -3), 0]
+    prog += [beq(0, 0, start - len(prog) - 1), 0]
+
+    image = bytearray(max(0x100000, cart.PAYLOAD + len(data)))
+    image[0:4] = (0x80371240).to_bytes(4, "big")
+    image[8:12] = (0x80000400).to_bytes(4, "big")
+    image[0x20:0x34] = b"GLIDEN64 CULLING    "
+    assert 0x40 + 4 * len(prog) <= 0x1000
+    for k, word in enumerate(prog):
+        image[0x40 + 4 * k:0x40 + 4 * k + 4] = (word & 0xffffffff).to_bytes(4, "big")
+    image[cart.PAYLOAD:cart.PAYLOAD + len(data)] = data
+    with open(path, "wb") as f:
+        f.write(image)
 
 
 def worst(gl, vk):
@@ -91,6 +186,9 @@ def main():
         rom = os.path.join(tmp, "combiners0.z64")
         cart.cartridge(rom, 0)
         failures += compare(a, "cart0", rom, 8)
+        rom = os.path.join(tmp, "culling.z64")
+        culling_cartridge(rom)
+        failures += compare(a, "culling", rom, 8)
     for name in (cart.KROM[:1] if a.quick else cart.KROM):
         failures += compare(a, name, cart.fetch(a.roms, name), 20 if a.quick else 60)
     # GPUs without dynamic blending build a pipeline for each state instead
