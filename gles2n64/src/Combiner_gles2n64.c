@@ -1,10 +1,8 @@
 #include <string.h>
 #include <stdlib.h>
-#include <stdio.h>
 #include <stdint.h>
-#include <file/file_path.h>
-#include <retro_miscellaneous.h>
 #include "../../mupen64plus-video-gliden64/src/CombinerKeyJournal.h"
+#include "../../mupen64plus-video-gliden64/src/CombinerKeyPath.h"
 #include "OpenGL.h"
 #include "Combiner.h"
 #include "ShaderCombiner.h"
@@ -127,8 +125,6 @@ static bool mux_replace(DecodedMux *dmux, int cycle, int src, int dest)
  * the struct is small and short-lived, so build it on the stack. */
 #define COMBINER_JOURNAL_VERSION 1u
 
-extern const char *retro_get_system_directory(void);
-
 static void mux_init(DecodedMux *mux, uint64_t dmux, bool cycle2)
 {
    int i;
@@ -250,27 +246,12 @@ static void Combiner_PrebuildKey(void *ctx, uint64_t key, unsigned flags)
    ShaderCombiner_Prebuild(&dmux, (int)flags);
 }
 
-/* The keys of this game, by the CRC in its header. */
-static void Combiner_JournalPath(char *path, size_t size)
-{
-   char dir[PATH_MAX_LENGTH];
-   char name[32];
-   const char *system = retro_get_system_directory();
-
-   fill_pathname_join(dir, system ? system : "", "ParallelN64", sizeof(dir));
-   fill_pathname_join(dir, dir, "shaders", sizeof(dir));
-   path_mkdir(dir);
-   snprintf(name, sizeof(name), "gln64_%08x%08x.keys",
-         *(uint32_t*)(gfx_info.HEADER + 0x10), *(uint32_t*)(gfx_info.HEADER + 0x14));
-   fill_pathname_join(path, dir, name, size);
-}
-
 void Combiner_Init(void)
 {
    char path[PATH_MAX_LENGTH];
 
    ShaderCombiner_Init();
-   Combiner_JournalPath(path, sizeof(path));
+   combiner_key_path(path, sizeof(path), "gln64", gfx_info.HEADER);
    combiner_journal_read(path, COMBINER_JOURNAL_VERSION, Combiner_PrebuildKey, NULL);
    ShaderCombiner_OpenJournal(path);
 }

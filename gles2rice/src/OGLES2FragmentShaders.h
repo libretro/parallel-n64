@@ -90,6 +90,9 @@ private:
     virtual int ParseDecodedMux();
     virtual void GenerateProgramStr();
     int FindCompiledMux();
+    static void PrebuildKey(void *ctx, uint64_t key, unsigned flags);
+    void BuildKnownKeys();
+    struct combiner_journal *m_journal;
     virtual void GenerateCombinerSetting(int index);
     virtual void GenerateCombinerSettingConstants(int index);
     float m_AlphaRef;

@@ -17,6 +17,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 
 #include <stdlib.h>
+#include "../../mupen64plus-video-gliden64/src/CombinerKeyJournal.h"
+#include "../../mupen64plus-video-gliden64/src/CombinerKeyPath.h"
 #include "OGLES2FragmentShaders.h"
 #include "OGLRender.h"
 #include "OGLTexture.h"
@@ -202,6 +204,7 @@ COGL_FragmentProgramCombiner::COGL_FragmentProgramCombiner(CRender *pRender)
 {
     delete m_pDecodedMux;
     m_pDecodedMux = new DecodedMuxForPixelShader;
+    m_journal = NULL;
     m_bFragmentProgramIsSupported = true;
     m_AlphaRef = 0.0f;
     bAlphaTestState = false;
@@ -284,6 +287,9 @@ COGL_FragmentProgramCombiner::COGL_FragmentProgramCombiner(CRender *pRender)
 }
 COGL_FragmentProgramCombiner::~COGL_FragmentProgramCombiner()
 {
+    combiner_journal_close(m_journal);
+    m_journal = NULL;
+
     int size = m_vCompiledShaders.size();
     for (int i=0; i<size; i++)
     {
@@ -299,6 +305,8 @@ COGL_FragmentProgramCombiner::~COGL_FragmentProgramCombiner()
 bool COGL_FragmentProgramCombiner::Initialize(void)
 {
     m_bFragmentProgramIsSupported = true;
+
+    BuildKnownKeys();
 
     return true;
 }
@@ -354,48 +362,48 @@ void COGL_FragmentProgramCombiner::InitCombinerCycleFill(void)
 }
 
 #ifdef BGR_SHADER
-const char *muxToFP_Maps[][2] = {
-//color -- alpha
-{"vec3(0.0)", "0.0"},                      //MUX_0 = 0,
-{"vec3(1.0)", "1.0"},                      //MUX_1,
-{"comb.rgb", "comb.a"},                    //MUX_COMBINED,
-{"t0.rgb", "t0.a"},                        //MUX_TEXEL0,
-{"t1.rgb", "t1.a"},                        //MUX_TEXEL1,
-{"PrimColor.rgb", "PrimColor.a"},          //MUX_PRIM,
-{"vShadeColor.rgb", "vShadeColor.a"},      //MUX_SHADE,
-{"EnvColor.rgb", "EnvColor.a"},            //MUX_ENV,
-{"comb.rgb", "comb.a"},                    //MUX_COMBALPHA,
-{"t0.rgb", "t0.a"},                        //MUX_T0_ALPHA,
-{"t1.rgb", "t1.a"},                        //MUX_T1_ALPHA,
-{"PrimColor.rgb", "PrimColor.a"},          //MUX_PRIM_ALPHA,
-{"vShadeColor.rgb", "vShadeColor.a"},      //MUX_SHADE_ALPHA,
-{"EnvColor.rgb", "EnvColor.a"},            //MUX_ENV_ALPHA,
-{"EnvFrac.a", "EnvFrac.a"},                //MUX_LODFRAC,
-{"PrimFrac.a", "PrimFrac.a"},              //MUX_PRIMLODFRAC,
-{"vec3(1.0)", "1.0"},                      //MUX_K5,
-{"vec3(1.0)", "1.0"},                      //MUX_UNK,  // Should not be used
+const char *muxToFP_Maps[][3] = {
+//color -- alpha -- alpha as a color
+{"vec3(0.0)", "0.0", "vec3(0.0)"},                      //MUX_0 = 0,
+{"vec3(1.0)", "1.0", "vec3(1.0)"},                      //MUX_1,
+{"comb.rgb", "comb.a", "vec3(comb.a)"},                    //MUX_COMBINED,
+{"t0.rgb", "t0.a", "vec3(t0.a)"},                        //MUX_TEXEL0,
+{"t1.rgb", "t1.a", "vec3(t1.a)"},                        //MUX_TEXEL1,
+{"PrimColor.rgb", "PrimColor.a", "vec3(PrimColor.a)"},          //MUX_PRIM,
+{"vShadeColor.rgb", "vShadeColor.a", "vec3(vShadeColor.a)"},      //MUX_SHADE,
+{"EnvColor.rgb", "EnvColor.a", "vec3(EnvColor.a)"},            //MUX_ENV,
+{"comb.rgb", "comb.a", "vec3(comb.a)"},                    //MUX_COMBALPHA,
+{"t0.rgb", "t0.a", "vec3(t0.a)"},                        //MUX_T0_ALPHA,
+{"t1.rgb", "t1.a", "vec3(t1.a)"},                        //MUX_T1_ALPHA,
+{"PrimColor.rgb", "PrimColor.a", "vec3(PrimColor.a)"},          //MUX_PRIM_ALPHA,
+{"vShadeColor.rgb", "vShadeColor.a", "vec3(vShadeColor.a)"},      //MUX_SHADE_ALPHA,
+{"EnvColor.rgb", "EnvColor.a", "vec3(EnvColor.a)"},            //MUX_ENV_ALPHA,
+{"vec3(EnvFrac.a)", "EnvFrac.a", "vec3(EnvFrac.a)"},                //MUX_LODFRAC,
+{"vec3(PrimFrac.a)", "PrimFrac.a", "vec3(PrimFrac.a)"},              //MUX_PRIMLODFRAC,
+{"vec3(1.0)", "1.0", "vec3(1.0)"},                      //MUX_K5,
+{"vec3(1.0)", "1.0", "vec3(1.0)"},                      //MUX_UNK,  // Should not be used
 };
 #else
-const char *muxToFP_Maps[][2] = {
-//color -- alpha
-{"vec3(0.0)", "0.0"},                      //MUX_0 = 0,
-{"vec3(1.0)", "1.0"},                      //MUX_1,
-{"comb.rgb", "comb.a"},                    //MUX_COMBINED,
-{"t0.bgr", "t0.a"},                        //MUX_TEXEL0,
-{"t1.bgr", "t1.a"},                        //MUX_TEXEL1,
-{"PrimColor.rgb", "PrimColor.a"},          //MUX_PRIM,
-{"vShadeColor.rgb", "vShadeColor.a"},      //MUX_SHADE,
-{"EnvColor.rgb", "EnvColor.a"},            //MUX_ENV,
-{"comb.rgb", "comb.a"},                    //MUX_COMBALPHA,
-{"t0.bgr", "t0.a"},                        //MUX_T0_ALPHA,
-{"t1.bgr", "t1.a"},                        //MUX_T1_ALPHA,
-{"PrimColor.rgb", "PrimColor.a"},          //MUX_PRIM_ALPHA,
-{"vShadeColor.rgb", "vShadeColor.a"},      //MUX_SHADE_ALPHA,
-{"EnvColor.rgb", "EnvColor.a"},            //MUX_ENV_ALPHA,
-{"EnvFrac.a", "EnvFrac.a"},                //MUX_LODFRAC,
-{"PrimFrac.a", "PrimFrac.a"},              //MUX_PRIMLODFRAC,
-{"vec3(1.0)", "1.0"},                      //MUX_K5,
-{"vec3(1.0)", "1.0"},                      //MUX_UNK,  // Should not be used
+const char *muxToFP_Maps[][3] = {
+//color -- alpha -- alpha as a color
+{"vec3(0.0)", "0.0", "vec3(0.0)"},                      //MUX_0 = 0,
+{"vec3(1.0)", "1.0", "vec3(1.0)"},                      //MUX_1,
+{"comb.rgb", "comb.a", "vec3(comb.a)"},                    //MUX_COMBINED,
+{"t0.bgr", "t0.a", "vec3(t0.a)"},                        //MUX_TEXEL0,
+{"t1.bgr", "t1.a", "vec3(t1.a)"},                        //MUX_TEXEL1,
+{"PrimColor.rgb", "PrimColor.a", "vec3(PrimColor.a)"},          //MUX_PRIM,
+{"vShadeColor.rgb", "vShadeColor.a", "vec3(vShadeColor.a)"},      //MUX_SHADE,
+{"EnvColor.rgb", "EnvColor.a", "vec3(EnvColor.a)"},            //MUX_ENV,
+{"comb.rgb", "comb.a", "vec3(comb.a)"},                    //MUX_COMBALPHA,
+{"t0.bgr", "t0.a", "vec3(t0.a)"},                        //MUX_T0_ALPHA,
+{"t1.bgr", "t1.a", "vec3(t1.a)"},                        //MUX_T1_ALPHA,
+{"PrimColor.rgb", "PrimColor.a", "vec3(PrimColor.a)"},          //MUX_PRIM_ALPHA,
+{"vShadeColor.rgb", "vShadeColor.a", "vec3(vShadeColor.a)"},      //MUX_SHADE_ALPHA,
+{"EnvColor.rgb", "EnvColor.a", "vec3(EnvColor.a)"},            //MUX_ENV_ALPHA,
+{"vec3(EnvFrac.a)", "EnvFrac.a", "vec3(EnvFrac.a)"},                //MUX_LODFRAC,
+{"vec3(PrimFrac.a)", "PrimFrac.a", "vec3(PrimFrac.a)"},              //MUX_PRIMLODFRAC,
+{"vec3(1.0)", "1.0", "vec3(1.0)"},                      //MUX_K5,
+{"vec3(1.0)", "1.0", "vec3(1.0)"},                      //MUX_UNK,  // Should not be used
 };
 #endif
 
@@ -406,7 +414,7 @@ char* MuxToOC(uint8_t val)
 {
     // For color channel
     if( val&MUX_ALPHAREPLICATE )
-        return (char*)muxToFP_Maps[val&0x1F][1];
+        return (char*)muxToFP_Maps[val&0x1F][2];
     else
         return (char*)muxToFP_Maps[val&0x1F][0];
 }
@@ -416,6 +424,8 @@ char* MuxToOA(uint8_t val)
     // For alpha channel
     return (char*)muxToFP_Maps[val&0x1F][1];
 }
+
+#define COMBINER_JOURNAL_VERSION 1u
 
 static void CheckFpVars(uint8_t MuxVar, bool &bNeedT0, bool &bNeedT1)
 {
@@ -507,6 +517,7 @@ void COGL_FragmentProgramCombiner::GenerateProgramStr()
 
 }
 
+/* Builds one program, for the fog and alpha test it is asked for. */
 int COGL_FragmentProgramCombiner::ParseDecodedMux()
 {
     OGLShaderCombinerSaveType res;
@@ -524,16 +535,17 @@ int COGL_FragmentProgramCombiner::ParseDecodedMux()
     }
 
 
-    //Create 4 shaders, with and without alphatest + with and without fog
     GenerateProgramStr();
 
-    for(int alphaTest = 0;alphaTest < 2;alphaTest++)
     {
-       for(int fog = 0; fog < 2; fog++)
        {
+          const int alphaTest = bAlphaTestState ? 1 : 0;
+          const int fog = bFogState ? 1 : 0;
+          char tmpShader[4096];
+          const char *shaderSource = tmpShader;
+
           res.fragmentShaderID = glCreateShader(GL_FRAGMENT_SHADER);
 
-          char* tmpShader = (char*)malloc(sizeof(char) * 4096);
           strcpy(tmpShader,"#version " GLSL_VERSION "\n");
 
           if(alphaTest == 1)
@@ -546,9 +558,7 @@ int COGL_FragmentProgramCombiner::ParseDecodedMux()
           res.alphaTest = alphaTest == 1;
           strcat(tmpShader,oglNewFP);
 
-          glShaderSource(res.fragmentShaderID, 1,(const char**) &tmpShader,NULL);
-          free(tmpShader);
-
+          glShaderSource(res.fragmentShaderID, 1, &shaderSource, NULL);
 
           glCompileShader(res.fragmentShaderID);
 
@@ -611,9 +621,38 @@ int COGL_FragmentProgramCombiner::ParseDecodedMux()
           m_vCompiledShaders.push_back(res);
        }
     }
-    m_lastIndex = m_vCompiledShaders.size()-4;
+    m_lastIndex = (int)m_vCompiledShaders.size()-1;
 
     return m_lastIndex;
+}
+
+/* Each key an earlier session met, built before the first draw. */
+void COGL_FragmentProgramCombiner::PrebuildKey(void *ctx, uint64_t key, unsigned flags)
+{
+    COGL_FragmentProgramCombiner *self = (COGL_FragmentProgramCombiner*)ctx;
+
+    self->bAlphaTestState = (flags & 1) != 0;
+    self->bFogState       = (flags & 2) != 0;
+    self->UpdateCombiner((uint32_t)key, (uint32_t)(key >> 32));
+    if (self->FindCompiledMux() < 0)
+        self->ParseDecodedMux();
+}
+
+void COGL_FragmentProgramCombiner::BuildKnownKeys()
+{
+    char path[PATH_MAX_LENGTH];
+    const bool alpha = bAlphaTestState;
+    const bool fog   = bFogState;
+
+    if (m_journal)
+        return;
+    combiner_key_path(path, sizeof(path), "rice", gfx_info.HEADER);
+    combiner_journal_read(path, COMBINER_JOURNAL_VERSION, PrebuildKey, this);
+    /* the next draw decodes its own mux, with the game's own state */
+    m_pDecodedMux->m_dwMux0 = m_pDecodedMux->m_dwMux1 = 0;
+    bAlphaTestState = alpha;
+    bFogState       = fog;
+    m_journal = combiner_journal_open(path, COMBINER_JOURNAL_VERSION);
 }
 
 void COGL_FragmentProgramCombiner::GenerateCombinerSetting(int index)
@@ -759,6 +798,14 @@ void COGL_FragmentProgramCombiner::InitCombinerCycle12(void)
         m_lastIndex = FindCompiledMux();
         if( m_lastIndex < 0 )       // Can not found
         {
+            static int strict = -1;
+            if (strict < 0)
+                strict = getenv("PARALLEL_N64_COMBINER_STRICT") != NULL;
+            if (strict)
+                abort();
+            combiner_journal_push(m_journal,
+                  ((uint64_t)m_pDecodedMux->m_dwMux1 << 32) | m_pDecodedMux->m_dwMux0,
+                  (bAlphaTestState ? 1u : 0u) | (bFogState ? 2u : 0u));
             m_lastIndex = ParseDecodedMux();
         }
 

@@ -3,16 +3,19 @@
 
 The first session writes down the keys it meets. The second must build them
 all at load: PARALLEL_N64_COMBINER_STRICT aborts if a draw has to compile.
+Rice reaches no combiner on these ROMs, so its keys are written in here, which
+tests that they build at load but not that a draw finds them.
 
   combiner_warm_start.py --core parallel_n64_libretro.so --host ./lrhost_gl [--roms krom-roms]
 """
-import argparse, glob, os, subprocess, sys, tempfile
+import argparse, glob, os, random, subprocess, sys, tempfile
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from parallel_rdp_regress import fetch  # noqa: E402
 
 ROMS = ["cube16", "rottri32", "shade32", "tlut16"]
-PLUGINS = {"gln64": "gln64_*.keys"}
+PLUGINS = {"gln64": "gln64_*.keys", "rice": "rice_*.keys"}
+SEEDED = {"rice"}
 FRAMES = 40
 
 
@@ -24,8 +27,15 @@ def run(a, rom, plugin, sysdir, strict):
                            "parallel-n64-gfxplugin=" + plugin,
                            "parallel-n64-rspplugin=hle",
                            "parallel-n64-cpucore=cached_interpreter"],
-                          env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                          timeout=120).returncode
+                          env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                          timeout=120)
+
+
+def seed(path, name):
+    rnd = random.Random(name)
+    with open(path, "a") as f:
+        for flags in range(8):
+            f.write("%016x %x\n" % (rnd.getrandbits(64), flags & 3))
 
 
 def main():
@@ -40,15 +50,18 @@ def main():
         for name in ROMS:
             rom = fetch(a.roms, name)
             with tempfile.TemporaryDirectory() as sysdir:
-                first = run(a, rom, plugin, sysdir, False)
+                first = run(a, rom, plugin, sysdir, False).returncode
                 found = glob.glob(os.path.join(sysdir, "ParallelN64", "shaders", pattern))
                 keys = 0
+                if found and plugin in SEEDED:
+                    seed(found[0], name)
                 if found:
                     with open(found[0]) as f:
                         keys = sum(1 for line in f if len(line) == 19)
                 total += keys
-                second = run(a, rom, plugin, sysdir, True)
-                ok = first == 0 and second == 0
+                warm = run(a, rom, plugin, sysdir, True)
+                second = warm.returncode
+                ok = first == 0 and second == 0 and b"Error " not in warm.stdout
                 print("%-8s %-10s %d keys, warm run %s" % (plugin, name, keys, "ok" if ok else "FAILED (%d)" % second))
                 failures += not ok
         if total == 0:

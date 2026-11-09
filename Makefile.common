@@ -524,7 +524,7 @@ else
 endif
 endif
 
-ifneq (,$(filter 1,$(HAVE_GLIDEN64) $(HAVE_GLN64)))
+ifneq (,$(filter 1,$(HAVE_GLIDEN64) $(HAVE_GLN64) $(HAVE_RICE)))
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/CombinerKeyJournal.c
 endif
 
