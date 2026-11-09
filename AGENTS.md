@@ -4,6 +4,29 @@ Rules for anyone, human or agent, changing this core. Accuracy comes first:
 the same guest-visible bytes, order and timing. Within that, the goal is that
 a game never hitches and no work is done that the hardware did not need done.
 
+## First rule: never compile a pipeline on the draw path
+
+A shader, program or pipeline is never compiled because a draw needs it. That
+holds on the emulation thread, the RDP command thread, the GL context thread and
+anywhere a draw waits for the result, on a cold cache as much as a warm one.
+"Only the first time" is the hitch this rule exists to stop.
+
+- Everything a game can reach is built at content load, or by a worker or the
+  driver's own threads without anyone waiting for it.
+- On a miss, draw with something already built that renders the same. If nothing
+  can, skip the draw; never wait.
+- A new shader variant, pipeline key or special case joins the load-time build in
+  the same change.
+- Content load is the only place that may wait for a compile.
+
+Not there yet, most urgent first. These are debts, not precedent:
+
+1. GLideN64 on GL compiles on the draw path for LOD, hardware lighting, copy and
+   fill modes, a variant whose ubershader is not ready, drivers without
+   `GL_KHR_parallel_shader_compile`, and GLES2.
+2. `gles2n64`, `glide2gl` and `gles2rice` compile every combiner on first use.
+3. paraLLEl-RDP builds pipelines the record list does not cover synchronously.
+
 ## Method: the speed of light
 
 Compare a path with what the hardware must physically do, not with the last
@@ -42,11 +65,9 @@ savestates, teardown, `wait_sync_index`. Name the producer and the consumer of
 any wait before keeping or adding one. Only `build_pipelines_ahead` may wait
 on the pipeline worker, and only at content load.
 
-These still break the rules and are debts, not precedent: GLideN64 on GL compiles a
-combiner on first use where its ubershader cannot stand in (below), the other
-GL plugins always do; the paraLLEl RSP JIT compiles
-blocks on first use and allocates `cached_blocks` nodes; pipelines the record
-list does not cover are still built synchronously.
+These also still break the rules: the pipeline compiles listed under the first
+rule, and the paraLLEl RSP JIT, which compiles blocks on first use and allocates
+`cached_blocks` nodes.
 
 ## Shaders and pipelines
 
