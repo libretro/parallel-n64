@@ -1783,7 +1783,7 @@ test_glide64_fb_readback$(EXE_EXT): tools/test_glide64_fb_readback.c $(VIDEODIR_
 	$(CC) $(CHECK_CFLAGS) $(CHECK_SANITIZE) -I$(LIBRETRO_COMM_DIR)/include $< -o $@ $(CHECK_LDFLAGS) $(CHECK_SANITIZE)
 
 # GLideN64 is moving to C89 a file at a time: what has moved stays there
-GLIDEN64_C89 := N64.c convert.c RSP_LoadMatrix.c 3DMath.c CRC32.c RDP.c CRC_OPT.c GLideN64.c \
+GLIDEN64_C89 := N64.c convert.c RSP_LoadMatrix.c 3DMath.c CRC32.c RDP.c CRC_OPT.c GLideN64.c SoftwareRender.c DepthBufferRender/ClipPolygon.c DepthBufferRender/DepthBufferRender.c \
 	uCodes/F5Rogue.c uCodes/F5Indi_Naboo.c \
 	uCodes/S2DEX.c \
 	uCodes/ZSort.c uCodes/ZSortBOSS.c \

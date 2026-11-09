@@ -7,6 +7,7 @@
 #include "Combiner.h"
 #include "FrameBuffer.h"
 #include "DepthBuffer.h"
+#include "SoftwareRender.h"
 #include "VI.h"
 #include "Config.h"
 #include <Graphics/Context.h>
@@ -528,4 +529,15 @@ void DepthBuffer_Init()
 void DepthBuffer_Destroy()
 {
 	depthBufferList().destroy();
+}
+
+bool gli_depthbuffer_software_target(const u16 ** _zLUT, u32 * _width)
+{
+	/* Current depth buffer can be null if we are loading from a save state */
+	DepthBuffer * current = depthBufferList().getCurrent();
+	if (current == nullptr || config.frameBufferEmulation.copyDepthToRDRAM != Config::cdSoftwareRender)
+		return false;
+	*_zLUT = depthBufferList().getZLUT();
+	*_width = current->m_width;
+	return true;
 }

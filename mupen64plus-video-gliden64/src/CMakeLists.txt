@@ -38,7 +38,7 @@ set(GLideN64_SOURCES
   RDP.c
   RSP.cpp
   RSP_LoadMatrix.c
-  SoftwareRender.cpp
+  SoftwareRender.c
   TexrectDrawer.cpp
   TextureFilterHandler.cpp
   Textures.cpp
@@ -47,8 +47,8 @@ set(GLideN64_SOURCES
   BufferCopy/ColorBufferToRDRAM.cpp
   BufferCopy/DepthBufferToRDRAM.cpp
   BufferCopy/RDRAMtoColorBuffer.cpp
-  DepthBufferRender/ClipPolygon.cpp
-  DepthBufferRender/DepthBufferRender.cpp
+  DepthBufferRender/ClipPolygon.c
+  DepthBufferRender/DepthBufferRender.c
   common/CommonAPIImpl_common.cpp
   Graphics/Context.cpp
   Graphics/ColorBufferReader.cpp

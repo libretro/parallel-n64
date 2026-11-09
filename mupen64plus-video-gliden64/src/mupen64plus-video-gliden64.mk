@@ -41,7 +41,7 @@ MY_LOCAL_SRC_FILES :=                                                           
     $(SRCDIR)/PostProcessor.cpp                                                    \
     $(SRCDIR)/RDP.c                                                              \
     $(SRCDIR)/RSP.cpp                                                              \
-    $(SRCDIR)/SoftwareRender.cpp                                                   \
+    $(SRCDIR)/SoftwareRender.c                                                   \
     $(SRCDIR)/TexrectDrawer.cpp                                                    \
     $(SRCDIR)/TextureFilterHandler.cpp                                             \
     $(SRCDIR)/Textures.cpp                                                         \
@@ -52,8 +52,8 @@ MY_LOCAL_SRC_FILES :=                                                           
     $(SRCDIR)/mupenplus/Config_mupenplus.cpp                                       \
     $(SRCDIR)/mupenplus/MemoryStatus_mupenplus.cpp                                 \
     $(SRCDIR)/mupenplus/MupenPlusAPIImpl.cpp                                       \
-    $(SRCDIR)/DepthBufferRender/ClipPolygon.cpp                                    \
-    $(SRCDIR)/DepthBufferRender/DepthBufferRender.cpp                              \
+    $(SRCDIR)/DepthBufferRender/ClipPolygon.c                                    \
+    $(SRCDIR)/DepthBufferRender/DepthBufferRender.c                              \
     $(SRCDIR)/BufferCopy/ColorBufferToRDRAM.cpp                                    \
     $(SRCDIR)/BufferCopy/DepthBufferToRDRAM.cpp                                    \
     $(SRCDIR)/BufferCopy/RDRAMtoColorBuffer.cpp                                    \

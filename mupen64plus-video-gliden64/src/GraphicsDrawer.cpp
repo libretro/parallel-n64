@@ -814,7 +814,7 @@ void GraphicsDrawer::drawTriangles()
 	gfxContext.drawTriangles(triParams);
 
 	if (config.frameBufferEmulation.enable != 0) {
-		const f32 maxY = renderTriangles(triangles.vertices.data(), triangles.elements.data(), triangles.num);
+		const f32 maxY = gli_renderTriangles(triangles.vertices.data(), triangles.elements.data(), triangles.num);
 		frameBufferList().setBufferChanged(maxY);
 		if (config.frameBufferEmulation.copyDepthToRDRAM == Config::cdSoftwareRender &&
 			gDP.otherMode.depthUpdate != 0) {
@@ -878,7 +878,7 @@ void GraphicsDrawer::drawDMATriangles(u32 _numVtx)
 	m_dmaVerticesNum = 0;
 
 	if (config.frameBufferEmulation.enable != 0) {
-		const f32 maxY = renderTriangles(m_dmaVertices.data(), nullptr, _numVtx);
+		const f32 maxY = gli_renderTriangles(m_dmaVertices.data(), nullptr, _numVtx);
 		frameBufferList().setBufferChanged(maxY);
 		if (config.frameBufferEmulation.copyDepthToRDRAM == Config::cdSoftwareRender &&
 			gDP.otherMode.depthUpdate != 0) {

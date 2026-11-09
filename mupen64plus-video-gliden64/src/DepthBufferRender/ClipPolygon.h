@@ -7,11 +7,16 @@
 #define TOP         4
 #define BOT         8
 
-struct vertexclip
+typedef struct vertexclip
 {
 	float x,y,z;
 	int visible;
-};
+} vertexclip;
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 
 /*
  *      vbp is a pointer to a vertex array. The first 3 vertices in that
@@ -22,6 +27,10 @@ struct vertexclip
  *
  *      function returns the number of vertices in the resulting polygon
  */
-int ClipPolygon(vertexclip *** final, vertexclip * vbp, int numVertices);
+int gli_ClipPolygon(vertexclip *** final, vertexclip * vbp, int numVertices);
 
-#endif // CLIP_POLYGON_H
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* CLIP_POLYGON_H */
