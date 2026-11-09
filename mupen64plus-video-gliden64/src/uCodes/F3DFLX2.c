@@ -1,3 +1,4 @@
+#include <retro_inline.h>
 #include "GLideN64.h"
 #include "3DMath.h"
 #include "F3D.h"
@@ -7,16 +8,16 @@
 #include "RSP.h"
 #include "gSP.h"
 
-inline
+static INLINE
 void F3DFLX2_LoadAlphaLight(u32 _a)
 {
 	const u32 address = RSP_SegmentToPhysical(_a);
 
-	const s16* const data = reinterpret_cast<const s16*>(RDRAM + address);
+	const s16* const data = (const s16*)(RDRAM + address);
 
-//	gSP.lookat.xyz[0][X] = static_cast<f32>(data[0x4 ^ 0x1]);
-//	gSP.lookat.xyz[0][Y] = static_cast<f32>(data[0x5 ^ 0x1]);
-//	gSP.lookat.xyz[0][Z] = static_cast<f32>(data[0x6 ^ 0x1]);
+/*	gSP.lookat.xyz[0][X] = (f32)(data[0x4 ^ 0x1]); */
+/*	gSP.lookat.xyz[0][Y] = (f32)(data[0x5 ^ 0x1]); */
+/*	gSP.lookat.xyz[0][Z] = (f32)(data[0x6 ^ 0x1]); */
 	gSP.lookat.xyz[0][X] = _FIXED2FLOAT(data[0x4 ^ 0x1], 8);
 	gSP.lookat.xyz[0][Y] = _FIXED2FLOAT(data[0x5 ^ 0x1], 8);
 	gSP.lookat.xyz[0][Z] = _FIXED2FLOAT(data[0x6 ^ 0x1], 8);
@@ -52,12 +53,12 @@ void F3DFLX2_MoveMem(u32 w0, u32 w1)
 void gli_F3DFLX2_Init()
 {
 	gli_gSPSetupFunctions();
-	// Set GeometryMode flags
+	/* Set GeometryMode flags */
 	GBI_InitFlags( F3DEX2 );
 
 	gli_GBIPCStackSize = 18;
 
-	// GBI Command						Command Value				Command Function
+	/* GBI Command						Command Value				Command Function */
 	GBI_SetGBI( G_RDPHALF_2,			F3DEX2_RDPHALF_2,			gli_F3D_RDPHalf_2 );
 	GBI_SetGBI( G_SETOTHERMODE_H,		F3DEX2_SETOTHERMODE_H,		gli_F3DEX2_SetOtherMode_H );
 	GBI_SetGBI( G_SETOTHERMODE_L,		F3DEX2_SETOTHERMODE_L,		gli_F3DEX2_SetOtherMode_L );

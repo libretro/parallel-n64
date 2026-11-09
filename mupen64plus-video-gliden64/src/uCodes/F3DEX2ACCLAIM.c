@@ -1,4 +1,3 @@
-#include <algorithm>
 #include <assert.h>
 #include "GLideN64.h"
 #include "RSP.h"
@@ -8,9 +7,8 @@
 #include "F3DEX2.h"
 #include "F3DEX2ACCLAIM.h"
 
-using namespace std;
 
-void F3DEX2ACCLAIM_MoveMem( u32 w0, u32 w1 )
+void gli_F3DEX2ACCLAIM_MoveMem( u32 w0, u32 w1 )
 {
 	switch (_SHIFTR( w0, 0, 8 ))
 	{
@@ -20,7 +18,7 @@ void F3DEX2ACCLAIM_MoveMem( u32 w0, u32 w1 )
 		case G_MV_MATRIX:
 			gli_gSPForceMatrix( w1 );
 
-			// force matrix takes two commands
+			/* force matrix takes two commands */
 			RSP.PC[RSP.PCi] += 8;
 			break;
 		case G_MV_LIGHT:
@@ -44,12 +42,12 @@ void F3DEX2ACCLAIM_MoveMem( u32 w0, u32 w1 )
 void gli_F3DEX2ACCLAIM_Init()
 {
 	gli_gSPSetupFunctions();
-	// Set GeometryMode flags
+	/* Set GeometryMode flags */
 	GBI_InitFlags( F3DEX2 );
 
 	gli_GBIPCStackSize = 18;
 
-	// GBI Command						Command Value				Command Function
+	/* GBI Command						Command Value				Command Function */
 	GBI_SetGBI( G_RDPHALF_2,			F3DEX2_RDPHALF_2,			gli_F3D_RDPHalf_2 );
 	GBI_SetGBI( G_SETOTHERMODE_H,		F3DEX2_SETOTHERMODE_H,		gli_F3DEX2_SetOtherMode_H );
 	GBI_SetGBI( G_SETOTHERMODE_L,		F3DEX2_SETOTHERMODE_L,		gli_F3DEX2_SetOtherMode_L );
@@ -58,7 +56,7 @@ void gli_F3DEX2ACCLAIM_Init()
 	GBI_SetGBI( G_ENDDL,				F3DEX2_ENDDL,				gli_F3D_EndDL );
 	GBI_SetGBI( G_DL,					F3DEX2_DL,					gli_F3D_DList );
 	GBI_SetGBI( G_LOAD_UCODE,			F3DEX2_LOAD_UCODE,			gli_F3DEX_Load_uCode );
-	GBI_SetGBI( G_MOVEMEM,				F3DEX2_MOVEMEM,				F3DEX2ACCLAIM_MoveMem );
+	GBI_SetGBI( G_MOVEMEM,				F3DEX2_MOVEMEM,				gli_F3DEX2ACCLAIM_MoveMem );
 	GBI_SetGBI( G_MOVEWORD,				F3DEX2_MOVEWORD,			gli_F3DEX2_MoveWord );
 	GBI_SetGBI( G_MTX,					F3DEX2_MTX,					gli_F3DEX2_Mtx );
 	GBI_SetGBI( G_GEOMETRYMODE,			F3DEX2_GEOMETRYMODE,		gli_F3DEX2_GeometryMode );

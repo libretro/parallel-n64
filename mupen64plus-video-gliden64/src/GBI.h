@@ -490,6 +490,8 @@ typedef void (*GBIFunc)( u32 w0, u32 w1 );
 extern GBIFunc gli_GBIcmd[256];
 extern u32 gli_GBIPCStackSize;
 
+bool gli_GBI_isCombineMatrices(void);
+
 #ifdef __cplusplus
 struct MicrocodeInfo
 {

@@ -375,6 +375,13 @@ CXXFLAGS += -DHAVE_GLIDEN64 -DMUPENPLUSAPI -D__LIBRETRO__
 
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/StereoJournal.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/N64.c
+SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/uCodes/F3DEX2.c
+SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/uCodes/F3DEX2ACCLAIM.c
+SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/uCodes/F3DFLX2.c
+SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/uCodes/L3D.c
+SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/uCodes/L3DEX.c
+SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/uCodes/L3DEX2.c
+SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/uCodes/F3DEX3.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/uCodes/F3DEX095.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/uCodes/F3DZEX2.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/uCodes/F3DPD.c
@@ -465,15 +472,8 @@ SOURCES_CXX   += \
     $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/GLSL/glsl_SpecialShadersFactory.cpp           \
     $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/GLSL/glsl_Utils.cpp                           \
     $(VIDEODIR_GLIDEN64)/src/mupenplus/MemoryStatus_mupenplus.cpp                                 \
-    $(VIDEODIR_GLIDEN64)/src/uCodes/F3DEX2.cpp                                                    \
-    $(VIDEODIR_GLIDEN64)/src/uCodes/F3DEX2ACCLAIM.cpp                                             \
-    $(VIDEODIR_GLIDEN64)/src/uCodes/F3DEX3.cpp                                                    \
-    $(VIDEODIR_GLIDEN64)/src/uCodes/F3DFLX2.cpp                                                   \
     $(VIDEODIR_GLIDEN64)/src/uCodes/F5Indi_Naboo.cpp                                              \
     $(VIDEODIR_GLIDEN64)/src/uCodes/F5Rogue.cpp                                                   \
-    $(VIDEODIR_GLIDEN64)/src/uCodes/L3D.cpp                                                       \
-    $(VIDEODIR_GLIDEN64)/src/uCodes/L3DEX2.cpp                                                    \
-    $(VIDEODIR_GLIDEN64)/src/uCodes/L3DEX.cpp                                                     \
     $(VIDEODIR_GLIDEN64)/src/uCodes/S2DEX.cpp                                                     \
     $(VIDEODIR_GLIDEN64)/src/uCodes/T3DUX.cpp                                                     \
     $(VIDEODIR_GLIDEN64)/src/uCodes/Turbo3D.cpp                                                   \

@@ -10,14 +10,14 @@
 
 void gli_L3D_Line3D( u32 w0, u32 w1 )
 {
-	s32 wd = static_cast<s8>(_SHIFTR( w1, 0, 8 ));
+	s32 wd = (s8)(_SHIFTR( w1, 0, 8 ));
 	u32 v0 = _SHIFTR(w1, 16, 8) / 10;
 	u32 v1 = _SHIFTR(w1, 8, 8) / 10;
 	u32 flag = _SHIFTR(w1, 24, 8);
 	gli_gSPLine3D( v0, v1, wd, flag == 0 ? v0 : v1 );
 }
 
-void L3D_Tri1(u32 w0, u32 w1)
+void gli_L3D_Tri1(u32 w0, u32 w1)
 {
 	u32 v0 = _SHIFTR(w1, 16, 8) / 10;
 	u32 v1 = _SHIFTR(w1,  8, 8) / 10;
@@ -43,12 +43,12 @@ void L3D_Tri1(u32 w0, u32 w1)
 void gli_L3D_Init()
 {
 	gli_gSPSetupFunctions();
-	// Set GeometryMode flags
+	/* Set GeometryMode flags */
 	GBI_InitFlags( F3D );
 
 	gli_GBIPCStackSize = 10;
 
-	//          GBI Command             Command Value			Command Function
+	/*          GBI Command             Command Value			Command Function */
 	GBI_SetGBI( G_SPNOOP,				F3D_SPNOOP,				gli_F3D_SPNoOp );
 	GBI_SetGBI( G_MTX,					F3D_MTX,				gli_F3D_Mtx );
 	GBI_SetGBI( G_RESERVED0,			F3D_RESERVED0,			gli_F3D_Reserved0 );
@@ -60,7 +60,7 @@ void gli_L3D_Init()
 	GBI_SetGBI( G_RESERVED3,			F3D_RESERVED3,			gli_F3D_Reserved3 );
 	GBI_SetGBI( G_SPRITE2D_BASE,		F3D_SPRITE2D_BASE,		gli_F3D_Sprite2D_Base );
 
-	GBI_SetGBI( G_TRI1,					L3D_TRI1,				L3D_Tri1 );
+	GBI_SetGBI( G_TRI1,					L3D_TRI1,				gli_L3D_Tri1 );
 	GBI_SetGBI( G_CULLDL,				F3D_CULLDL,				gli_F3D_CullDL );
 	GBI_SetGBI( G_POPMTX,				F3D_POPMTX,				gli_F3D_PopMtx );
 	GBI_SetGBI( G_MOVEWORD,				F3D_MOVEWORD,			gli_F3D_MoveWord );
@@ -74,6 +74,6 @@ void gli_L3D_Init()
 	GBI_SetGBI( G_RDPHALF_1,			F3D_RDPHALF_1,			gli_F3D_RDPHalf_1 );
 	GBI_SetGBI( G_RDPHALF_2,			F3D_RDPHALF_2,			gli_F3D_RDPHalf_2 );
 	GBI_SetGBI( G_RDPHALF_CONT,			F3D_RDPHALF_CONT,		gli_F3D_RDPHalf_Cont );
-//	GBI_SetGBI( G_TRI4,					F3D_TRI4,				F3D_Tri4 );
+/*	GBI_SetGBI( G_TRI4,					F3D_TRI4,				F3D_Tri4 ); */
 }
 

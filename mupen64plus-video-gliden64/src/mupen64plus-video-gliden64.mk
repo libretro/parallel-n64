@@ -94,20 +94,20 @@ MY_LOCAL_SRC_FILES :=                                                           
     $(SRCDIR)/uCodes/F3DBETA.c                                                   \
     $(SRCDIR)/uCodes/F3DDKR.c                                                    \
     $(SRCDIR)/uCodes/F3DEX.c                                                     \
-    $(SRCDIR)/uCodes/F3DEX2.cpp                                                    \
-    $(SRCDIR)/uCodes/F3DEX2ACCLAIM.cpp                                             \
+    $(SRCDIR)/uCodes/F3DEX2.c                                                    \
+    $(SRCDIR)/uCodes/F3DEX2ACCLAIM.c                                             \
     $(SRCDIR)/uCodes/F3DEX2CBFD.c                                                \
     $(SRCDIR)/uCodes/F3DZEX2.c                                                   \
-    $(SRCDIR)/uCodes/F3DFLX2.cpp                                                   \
+    $(SRCDIR)/uCodes/F3DFLX2.c                                                   \
     $(SRCDIR)/uCodes/F3DGOLDEN.c                                                 \
     $(SRCDIR)/uCodes/F3DPD.c                                                     \
     $(SRCDIR)/uCodes/F3DSETA.c                                                   \
     $(SRCDIR)/uCodes/F5Indi_Naboo.cpp                                              \
     $(SRCDIR)/uCodes/F5Rogue.cpp                                                    \
     $(SRCDIR)/uCodes/F3DTEXA.c                                                   \
-    $(SRCDIR)/uCodes/L3D.cpp                                                       \
-    $(SRCDIR)/uCodes/L3DEX2.cpp                                                    \
-    $(SRCDIR)/uCodes/L3DEX.cpp                                                     \
+    $(SRCDIR)/uCodes/L3D.c                                                       \
+    $(SRCDIR)/uCodes/L3DEX2.c                                                    \
+    $(SRCDIR)/uCodes/L3DEX.c                                                     \
     $(SRCDIR)/uCodes/S2DEX2.c                                                    \
     $(SRCDIR)/uCodes/S2DEX.cpp                                                     \
     $(SRCDIR)/uCodes/T3DUX.cpp                                                     \

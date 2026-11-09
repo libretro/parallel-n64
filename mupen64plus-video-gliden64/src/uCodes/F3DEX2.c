@@ -1,4 +1,4 @@
-#include <algorithm>
+#include <retro_miscellaneous.h>
 #include <assert.h>
 #include "GLideN64.h"
 #include "F3D.h"
@@ -11,7 +11,6 @@
 #include "gDP.h"
 #include "GBI.h"
 
-using namespace std;
 
 void gli_F3DEX2_Mtx( u32 w0, u32 w1 )
 {
@@ -28,7 +27,7 @@ void gli_F3DEX2_MoveMem( u32 w0, u32 w1 )
 		case G_MV_MATRIX:
 			gli_gSPForceMatrix( w1 );
 
-			// force matrix takes two commands
+			/* force matrix takes two commands */
 			RSP.PC[RSP.PCi] += 8;
 			break;
 		case G_MV_LIGHT:
@@ -118,14 +117,14 @@ void gli_F3DEX2_Texture( u32 w0, u32 w1 )
 void gli_F3DEX2_SetOtherMode_H( u32 w0, u32 w1 )
 {
 	const u32 length = _SHIFTR(w0, 0, 8) + 1;
-	const u32 shift = max(0, (s32)(32 - _SHIFTR(w0, 8, 8) - length));
+	const u32 shift = MAX(0, (s32)(32 - _SHIFTR(w0, 8, 8) - length));
 	gli_gSPSetOtherMode_H(length, shift, w1);
 }
 
 void gli_F3DEX2_SetOtherMode_L( u32 w0, u32 w1 )
 {
 	const u32 length = _SHIFTR(w0, 0, 8) + 1;
-	const u32 shift = max(0, (s32)(32 - _SHIFTR(w0, 8, 8) - length));
+	const u32 shift = MAX(0, (s32)(32 - _SHIFTR(w0, 8, 8) - length));
 	gli_gSPSetOtherMode_L(length, shift, w1);
 }
 
@@ -142,7 +141,7 @@ void gli_F3DEX2_DMAIO( u32 w0, u32 w1 )
 void gli_F3DEX2_Special_1( u32 w0, u32 w1 )
 {
 	const u32 param = _SHIFTR(w0, 0, 8);
-	if (GBI.isCombineMatrices())
+	if (gli_GBI_isCombineMatrices())
 		gli_gSPCombineMatrices(param);
 	else
 		gli_gSPDlistCount(param, w1);
@@ -171,12 +170,12 @@ void gli_F3DEX2_Quad( u32 w0, u32 w1 )
 void gli_F3DEX2_Init()
 {
 	gli_gSPSetupFunctions();
-	// Set GeometryMode flags
+	/* Set GeometryMode flags */
 	GBI_InitFlags( F3DEX2 );
 
 	gli_GBIPCStackSize = 18;
 
-	// GBI Command						Command Value				Command Function
+	/* GBI Command						Command Value				Command Function */
 	GBI_SetGBI( G_RDPHALF_2,			F3DEX2_RDPHALF_2,			gli_F3D_RDPHalf_2 );
 	GBI_SetGBI( G_SETOTHERMODE_H,		F3DEX2_SETOTHERMODE_H,		gli_F3DEX2_SetOtherMode_H );
 	GBI_SetGBI( G_SETOTHERMODE_L,		F3DEX2_SETOTHERMODE_L,		gli_F3DEX2_SetOtherMode_L );

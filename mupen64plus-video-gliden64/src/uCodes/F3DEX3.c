@@ -1,3 +1,4 @@
+#include <retro_inline.h>
 #include "GLideN64.h"
 #include "F3D.h"
 #include "F3DEX.h"
@@ -35,7 +36,7 @@
 
 #define F3DEX3_G_MAX_LIGHTS 9
 
-// Notice how it looks like Light but the ending so there are 8 bytes of difference
+/* Notice how it looks like Light but the ending so there are 8 bytes of difference */
 struct F3DEX3_LookAt
 {
 	s8 pad, z, y, x;
@@ -48,7 +49,7 @@ struct F3DEX3_LookAtOld
 	s8 pad2, z, y, x;
 };
 
-// TODO: This seems incorrect to me?
+/* TODO: This seems incorrect to me? */
 static void F3DZEX3_Branch_W(u32 w0, u32 w1)
 {
 	gli_gSPBranchLessW(gDP.half_1, _SHIFTR(w0, 1, 7), w1);
@@ -60,35 +61,38 @@ static void writeLight(int off, u32 w)
 {
 	if (0 == off)
 	{
-		// CameraWorld not supported
+		/* CameraWorld not supported */
 	}
 	if (0x8 == off)
 	{
-		// gli_gSPLookAt would like to have a F3DEX3_LookAtOld struct, so we need to do some math magic
-		gli_gSPLookAt(w - (sizeof(F3DEX3_LookAtOld) - sizeof(F3DEX3_LookAt)), 0);
-		gli_gSPLookAt(w - (sizeof(F3DEX3_LookAtOld) - sizeof(F3DEX3_LookAt)) + sizeof(F3DEX3_LookAt), 1);
+		/* gli_gSPLookAt would like to have a F3DEX3_LookAtOld struct, so we need to do some math magic */
+		gli_gSPLookAt(w - (sizeof(struct F3DEX3_LookAtOld) - sizeof(struct F3DEX3_LookAt)), 0);
+		gli_gSPLookAt(w - (sizeof(struct F3DEX3_LookAtOld) - sizeof(struct F3DEX3_LookAt)) + sizeof(struct F3DEX3_LookAt), 1);
 	}
 
-	for (u32 i = 1; i <= gSP.numLights + 1; i++)
 	{
-		if (_LIGHT_TO_OFFSET(i) == off)
+		u32 i;
+		for (i = 1; i <= gSP.numLights + 1; i++)
 		{
-			gli_gSPLight(w, i);
+			if (_LIGHT_TO_OFFSET(i) == off)
+			{
+				gli_gSPLight(w, i);
+			}
 		}
 	}
 
 	if ((F3DEX3_G_MAX_LIGHTS * 0x10) + 0x18 == off)
 	{
-		// TODO: OcclusionPlane not supported
+		/* TODO: OcclusionPlane not supported */
 	}
 }
 
-void F3DEX3_MoveMem(u32 w0, u32 w1)
+void gli_F3DEX3_MoveMem(u32 w0, u32 w1)
 {
 	switch (_SHIFTR(w0, 0, 8))
 	{
 	case F3DEX3_G_MV_MMTX:
-		// TODO: Not supported!
+		/* TODO: Not supported! */
 		break;
 	case F3DEX2_MV_VIEWPORT:
 		gli_gSPViewport(w1);
@@ -97,7 +101,8 @@ void F3DEX3_MoveMem(u32 w0, u32 w1)
 	{
 		const u32 ofs = _SHIFTR(w0, 8, 8) * 8;
 		const u32 len = (1 + _SHIFTR(w0, 19, 5)) * 8;
-		for (u32 i = 0; i < len; i += 4)
+		u32 i;
+		for (i = 0; i < len; i += 4)
 		{
 			writeLight(ofs + i, w1 + i);
 		}
@@ -106,7 +111,7 @@ void F3DEX3_MoveMem(u32 w0, u32 w1)
 	}
 }
 
-void F3DEX3_MoveWord(u32 w0, u32 w1)
+void gli_F3DEX3_MoveWord(u32 w0, u32 w1)
 {
 	switch (_SHIFTR(w0, 16, 8))
 	{
@@ -157,21 +162,22 @@ void F3DEX3_MoveWord(u32 w0, u32 w1)
 		gli_gSPFogFactor((s16)_SHIFTR(w1, 16, 16), (s16)_SHIFTR(w1, 0, 16));
 		break;
 	case G_MW_LIGHTCOL:
+	{
 		int off = _SHIFTR(w0, 0, 16);
 		gli_gSPLightColor((off / 0x10) + 1, w1);
+	}
 		break;
 	}
 }
 
-struct Vertices7
+typedef struct Vertices7
 {
 	u8 v[7];
+} Vertices7;
 
-	inline bool valid(u8 i) const
-	{ return v[i] < 64; }
-};
+#define VTX7_VALID(_vs, _i) ((_vs).v[_i] < 64)
 
-static inline Vertices7 unpackVertices7(u32 w0, u32 w1)
+static INLINE Vertices7 unpackVertices7(u32 w0, u32 w1)
 {
 	Vertices7 v;
 	v.v[0] = _SHIFTR(w0, 17, 7);
@@ -187,46 +193,46 @@ static inline Vertices7 unpackVertices7(u32 w0, u32 w1)
 static void F3DEX3_TriStrip(u32 w0, u32 w1)
 {
 	Vertices7 vertices = unpackVertices7(w0, w1);
-	// *v1 - v2 - v3, v3 - v2 - v4, v3 - v4 - v5, v5 - v4 - v6, v5 - v6 - v7
-	if (!vertices.valid(0) || !vertices.valid(1) || !vertices.valid(2)) return;
+	/* *v1 - v2 - v3, v3 - v2 - v4, v3 - v4 - v5, v5 - v4 - v6, v5 - v6 - v7 */
+	if (!VTX7_VALID(vertices, 0) || !VTX7_VALID(vertices, 1) || !VTX7_VALID(vertices, 2)) return;
 	gli_gSPTriangle(vertices.v[0], vertices.v[1], vertices.v[2]);
 
-	if (!vertices.valid(3)) return;
+	if (!VTX7_VALID(vertices, 3)) return;
 	gli_gSPTriangle(vertices.v[2], vertices.v[1], vertices.v[3]);
 
-	if (!vertices.valid(4)) return;
+	if (!VTX7_VALID(vertices, 4)) return;
 	gli_gSPTriangle(vertices.v[2], vertices.v[3], vertices.v[4]);
 
-	if (!vertices.valid(5)) return;
+	if (!VTX7_VALID(vertices, 5)) return;
 	gli_gSPTriangle(vertices.v[4], vertices.v[3], vertices.v[5]);
 
-	if (!vertices.valid(6)) return;
+	if (!VTX7_VALID(vertices, 6)) return;
 	gli_gSPTriangle(vertices.v[4], vertices.v[5], vertices.v[6]);
 }
 
 static void F3DEX3_TriFan(u32 w0, u32 w1)
 {
 	Vertices7 vertices = unpackVertices7(w0, w1);
-	// *v1 - v2 - v3, v1 - v3 - v4, v1 - v4 - v5, v1 - v5 - v6, v1 - v6 - v7
-	if (!vertices.valid(0) || !vertices.valid(1) || !vertices.valid(2)) return;
+	/* *v1 - v2 - v3, v1 - v3 - v4, v1 - v4 - v5, v1 - v5 - v6, v1 - v6 - v7 */
+	if (!VTX7_VALID(vertices, 0) || !VTX7_VALID(vertices, 1) || !VTX7_VALID(vertices, 2)) return;
 	gli_gSPTriangle(vertices.v[0], vertices.v[1], vertices.v[2]);
 
-	if (!vertices.valid(3)) return;
+	if (!VTX7_VALID(vertices, 3)) return;
 	gli_gSPTriangle(vertices.v[0], vertices.v[2], vertices.v[3]);
 
-	if (!vertices.valid(4)) return;
+	if (!VTX7_VALID(vertices, 4)) return;
 	gli_gSPTriangle(vertices.v[0], vertices.v[3], vertices.v[4]);
 
-	if (!vertices.valid(5)) return;
+	if (!VTX7_VALID(vertices, 5)) return;
 	gli_gSPTriangle(vertices.v[0], vertices.v[3], vertices.v[5]);
 
-	if (!vertices.valid(6)) return;
+	if (!VTX7_VALID(vertices, 6)) return;
 	gli_gSPTriangle(vertices.v[0], vertices.v[5], vertices.v[6]);
 }
 
 static void F3DEX3_LightToRDP(u32 w0, u32 w1)
 {
-	// unsupported, i do not know what this is for
+	/* unsupported, i do not know what this is for */
 }
 
 static void F3DEX3_RelSegment(u32 w0, u32 w1)
@@ -237,12 +243,12 @@ static void F3DEX3_RelSegment(u32 w0, u32 w1)
 void gli_F3DEX3_Init()
 {
 	gli_gSPSetupFunctions();
-	// Set GeometryMode flags
+	/* Set GeometryMode flags */
 	GBI_InitFlags(F3DEX2);
 
 	gli_GBIPCStackSize = 18;
 
-	// GBI Command						Command Value				Command Function
+	/* GBI Command						Command Value				Command Function */
 	GBI_SetGBI(G_RDPHALF_2, F3DEX2_RDPHALF_2, gli_F3D_RDPHalf_2);
 	GBI_SetGBI(G_SETOTHERMODE_H, F3DEX2_SETOTHERMODE_H, gli_F3DEX2_SetOtherMode_H);
 	GBI_SetGBI(G_SETOTHERMODE_L, F3DEX2_SETOTHERMODE_L, gli_F3DEX2_SetOtherMode_L);
@@ -251,8 +257,8 @@ void gli_F3DEX3_Init()
 	GBI_SetGBI(G_ENDDL, F3DEX2_ENDDL, gli_F3D_EndDL);
 	GBI_SetGBI(G_DL, F3DEX2_DL, gli_F3D_DList);
 	GBI_SetGBI(G_LOAD_UCODE, F3DEX2_LOAD_UCODE, gli_F3DEX_Load_uCode);
-	GBI_SetGBI(G_MOVEMEM, F3DEX2_MOVEMEM, F3DEX3_MoveMem);
-	GBI_SetGBI(G_MOVEWORD, F3DEX2_MOVEWORD, F3DEX3_MoveWord);
+	GBI_SetGBI(G_MOVEMEM, F3DEX2_MOVEMEM, gli_F3DEX3_MoveMem);
+	GBI_SetGBI(G_MOVEWORD, F3DEX2_MOVEWORD, gli_F3DEX3_MoveWord);
 	GBI_SetGBI(G_MTX, F3DEX2_MTX, gli_F3DEX2_Mtx);
 	GBI_SetGBI(G_GEOMETRYMODE, F3DEX2_GEOMETRYMODE, gli_F3DEX2_GeometryMode);
 	GBI_SetGBI(G_POPMTX, F3DEX2_POPMTX, gli_F3DEX2_PopMtx);

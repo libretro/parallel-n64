@@ -82,20 +82,20 @@ set(GLideN64_SOURCES
   uCodes/F3DDKR.c
   uCodes/F3DEX.c
   uCodes/F3DAM.c
-  uCodes/F3DEX2.cpp
-  uCodes/F3DEX2ACCLAIM.cpp
+  uCodes/F3DEX2.c
+  uCodes/F3DEX2ACCLAIM.c
   uCodes/F3DEX2CBFD.c
   uCodes/F3DZEX2.c
-  uCodes/F3DFLX2.cpp
+  uCodes/F3DFLX2.c
   uCodes/F3DGOLDEN.c
   uCodes/F3DTEXA.c
   uCodes/F3DPD.c
   uCodes/F3DSETA.c
   uCodes/F5Indi_Naboo.cpp
   uCodes/F5Rogue.cpp
-  uCodes/L3D.cpp
-  uCodes/L3DEX2.cpp
-  uCodes/L3DEX.cpp
+  uCodes/L3D.c
+  uCodes/L3DEX2.c
+  uCodes/L3DEX.c
   uCodes/S2DEX2.c
   uCodes/S2DEX.cpp
   uCodes/T3DUX.cpp

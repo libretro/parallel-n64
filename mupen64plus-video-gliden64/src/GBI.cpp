@@ -152,6 +152,8 @@ u32 G_MWO_aLIGHT_7, G_MWO_bLIGHT_7;
 u32 G_MWO_aLIGHT_8, G_MWO_bLIGHT_8;
 
 GBIInfo GBI;
+bool gli_GBI_isCombineMatrices(void) { return GBI.isCombineMatrices(); }
+
 GBIFunc gli_GBIcmd[256];
 u32 gli_GBIPCStackSize;
 
