@@ -18,7 +18,6 @@
 #include "FrameBuffer.h"
 #include "DepthBuffer.h"
 #include "Config.h"
-#include "Log.h"
 #include "DisplayWindow.h"
 #include <arm_neon.h>
 

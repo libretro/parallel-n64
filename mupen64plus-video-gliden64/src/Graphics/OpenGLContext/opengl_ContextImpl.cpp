@@ -1,6 +1,5 @@
 #include <string>
 #include <assert.h>
-#include <Log.h>
 #include <Config.h>
 #include <Graphics/Parameters.h>
 #include "opengl_ContextImpl.h"

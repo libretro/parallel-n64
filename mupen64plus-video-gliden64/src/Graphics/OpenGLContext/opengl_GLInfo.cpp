@@ -1,5 +1,4 @@
 #include <string>
-#include <Log.h>
 #include <Config.h>
 #include "opengl_Utils.h"
 #include "opengl_GLInfo.h"
@@ -25,11 +24,8 @@ void GLInfo::init() {
 		glGetIntegerv(GL_MAJOR_VERSION, &majorVersion);
 		glGetIntegerv(GL_MINOR_VERSION, &minorVersion);
 	}
-	LOG(LOG_VERBOSE, "%s major version: %d\n", isGLESX ? "OpenGL ES" : "OpenGL", majorVersion);
-	LOG(LOG_VERBOSE, "%s minor version: %d\n", isGLESX ? "OpenGL ES" : "OpenGL", minorVersion);
 
 
-	LOG(LOG_VERBOSE, "OpenGL vendor: %s\n", glGetString(GL_VENDOR));
 	const GLubyte * strRenderer = glGetString(GL_RENDERER);
 	const GLubyte * strDriverVersion = glGetString(GL_VERSION);
 
@@ -55,7 +51,6 @@ void GLInfo::init() {
 		renderer = Renderer::PowerVR;
 	else if (strstr((const char*)strRenderer, "NVIDIA Tegra") != nullptr)
 		renderer = Renderer::Tegra;
-	LOG(LOG_VERBOSE, "OpenGL renderer: %s\n", strRenderer);
 
 	/* ANGLE (Microsoft's GLES translator over D3D11 / D3D12 / Vulkan /
 	 * Metal) reports its underlying device through GL_RENDERER and is
@@ -174,13 +169,11 @@ void GLInfo::init() {
 #ifndef OS_ANDROID
 	if (isGLES2 && config.frameBufferEmulation.copyToRDRAM > ctSync) {
 		config.frameBufferEmulation.copyToRDRAM = ctDisable;
-		LOG(LOG_WARNING, "Async color buffer copies are not supported on GLES2\n");
 	}
 #endif
 	if (isGLES2 && config.generalEmulation.enableLOD) {
 		if (!Utils::isExtensionSupported(*this, "GL_EXT_shader_texture_lod") || !Utils::isExtensionSupported(*this, "GL_OES_standard_derivatives")) {
 			config.generalEmulation.enableLOD = 0;
-			LOG(LOG_WARNING, "LOD emulation not possible on this device\n");
 		}
 	}
 
@@ -260,7 +253,6 @@ void GLInfo::init() {
 	if (config.frameBufferEmulation.N64DepthCompare != 0) {
 		if (!imageTextures && !ext_fetch) {
 			config.frameBufferEmulation.N64DepthCompare = 0;
-			LOG(LOG_WARNING, "Your GPU does not support the extensions needed for N64 Depth Compare.\n");
 		}
 	}
 }

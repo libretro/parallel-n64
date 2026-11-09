@@ -4,7 +4,6 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
-#include <Log.h>
 #include <Config.h>
 #include "glsl_Utils.h"
 #include "glsl_ShaderPart.h"
@@ -2344,8 +2343,6 @@ GLuint CombinerProgramBuilder::_startProgram(const std::string & _fragment, bool
 	const GLchar * strShaderData = _fragment.data();
 	glShaderSource(fragmentShader, 1, &strShaderData, nullptr);
 	glCompileShader(fragmentShader);
-	if (_check && !Utils::checkShaderCompileStatus(fragmentShader))
-		Utils::logErrorShader(GL_FRAGMENT_SHADER, _fragment);
 
 	GLuint program = glCreateProgram();
 	Utils::locateAttributes(program, bIsRect, bUseTextures);
@@ -2741,8 +2738,6 @@ GLuint _createVertexShader(ShaderPart * _header, ShaderPart * _body, ShaderPart 
 	GLuint shader_object = glCreateShader(GL_VERTEX_SHADER);
 	glShaderSource(shader_object, 1, &strShaderData, nullptr);
 	glCompileShader(shader_object);
-	if (!Utils::checkShaderCompileStatus(shader_object))
-		Utils::logErrorShader(GL_VERTEX_SHADER, strShaderData);
 	return shader_object;
 }
 

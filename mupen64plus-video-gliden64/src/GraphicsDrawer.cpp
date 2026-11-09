@@ -515,7 +515,6 @@ void _legacySetBlendMode()
 			break;
 
 		default:
-			//LOG(LOG_VERBOSE, "Unhandled blend mode=%x", gDP.otherMode.l >> 16);
 			sfactor = blend::SRC_ALPHA;
 			dfactor = blend::ONE_MINUS_SRC_ALPHA;
 			break;
@@ -1219,7 +1218,6 @@ bool texturedRectBGCopy(const GraphicsDrawer::TexturedRectParams & _params)
 
 	u8 * texaddr = RDRAM + gDP.loadInfo[gSP.textureTile[0]->tmem].texAddress + tex_width*_params.t/32 + _params.s/32;
 	u8 * fbaddr = RDRAM + gDP.colorImage.address + (u32)_params.ulx;
-	//	LOG(LOG_VERBOSE, "memrect (%d, %d, %d, %d), ci_width: %d texaddr: 0x%08lx fbaddr: 0x%08lx\n", (u32)_params.ulx, uly, (u32)_params.lrx, lry, gDP.colorImage.width, gSP.textureTile[0]->imageAddress + tex_width*(u32)_params.ult + (u32)_params.uls, gDP.colorImage.address + (u32)_params.ulx);
 
 	for (u32 y = uly; y < lry; ++y) {
 		u8 *src = texaddr + (y - uly) * tex_width;

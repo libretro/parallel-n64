@@ -9,7 +9,6 @@
 #include <Config.h>
 #include <N64.h>
 #include <gSP.h>
-#include <Log.h>
 #include <FrameBuffer.h>
 #include <DisplayWindow.h>
 
@@ -50,7 +49,6 @@ DisplayWindow & DisplayWindow::get()
 
 void DisplayWindowMupen64plus::_setAttributes()
 {
-	LOG(LOG_VERBOSE, "[GlideN64]: _setAttributes");
 }
 
 extern uint32_t screen_width;
@@ -76,7 +74,6 @@ bool DisplayWindowMupen64plus::_start()
 	eglInitialize(eglGetDisplay(EGL_DEFAULT_DISPLAY), nullptr, nullptr);
 #endif // EGL
 
-	LOG(LOG_VERBOSE, "[GlideN64]: Create setting videomode %dx%d", m_screenWidth, m_screenHeight);
 	return true;
 }
 

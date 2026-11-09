@@ -1,6 +1,5 @@
 #include "3DMath.h"
 #include <cmath>
-#include "Log.h"
 #include "Types.h"
 #include <arm_neon.h>
 

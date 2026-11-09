@@ -15,7 +15,6 @@
 
 #include "gralloc.h"
 #include "GraphicBuffer.h"
-#include "Log.h"
 #include <cstring>
 
 namespace opengl
@@ -30,38 +29,31 @@ static void initAllocDev()
 		return;
 	if(!libhardware_dl())
 	{
-		LOG(LOG_ERROR,"Incompatible libhardware.so");
 		return;
 	}
 	if(hw_get_module(GRALLOC_HARDWARE_MODULE_ID, (hw_module_t const**)&grallocMod) != 0)
 	{
-		LOG(LOG_ERROR,"Can't load gralloc module");
 		return;
 	}
 	gralloc_open((const hw_module_t*)grallocMod, &allocDev);
 	if(!allocDev)
 	{
-		LOG(LOG_ERROR,"Can't load allocator device");
 		return;
 	}
 	if(!allocDev->alloc || !allocDev->free)
 	{
-		LOG(LOG_ERROR,"Missing alloc/free functions");
 		if(allocDev->common.close)
 			gralloc_close(allocDev);
-		else
-			LOG(LOG_WARNING,"Missing device close function");
 		allocDev = {};
 		return;
 	}
-	LOG(LOG_MINIMAL,"alloc device:%p", allocDev);
 }
 
 GraphicBuffer::GraphicBuffer()
 {
 	initAllocDev();
-	common.incRef = [](struct android_native_base_t *){ LOG(LOG_MINIMAL,"called incRef"); };
-	common.decRef = [](struct android_native_base_t *){ LOG(LOG_MINIMAL,"called decRef"); };
+	common.incRef = [](struct android_native_base_t *){};
+	common.decRef = [](struct android_native_base_t *){};
 }
 
 GraphicBuffer::~GraphicBuffer()
@@ -95,7 +87,6 @@ bool GraphicBuffer::initSize(unsigned int w, unsigned int h, unsigned int f, uns
 		usage = reqUsage;
 		return true;
 	}
-	LOG(LOG_ERROR,"alloc buffer failed: %s", std::strerror(-err));
 	return false;
 }
 
@@ -109,8 +100,6 @@ bool GraphicBuffer::lock(unsigned int _usage, int _x0, int _y0, int _width, int 
 	if (_x0 < 0 || _width > width ||
 		_y0 < 0 || _height > height)
 	{
-		LOG(LOG_ERROR,"locking pixels:[%d:%d:%d:%d] outside of buffer:%d,%d",
-			_x0, _y0, _width, _height, width, height);
 		return false;
 	}
 	auto err = grallocMod->lock(grallocMod, handle, _usage, _x0, _y0, _width, _height, _vaddr);

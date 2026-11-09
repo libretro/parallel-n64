@@ -9,7 +9,6 @@
 #include <Config.h>
 #include <N64.h>
 #include <VI.h>
-#include "Log.h"
 #include "MemoryStatus.h"
 
 /*

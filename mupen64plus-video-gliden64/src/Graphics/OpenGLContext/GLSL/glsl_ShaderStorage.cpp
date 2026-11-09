@@ -8,7 +8,6 @@
 #include <Graphics/Context.h>
 #include <Graphics/OpenGLContext/opengl_Utils.h>
 #include <Types.h>
-#include <Log.h>
 #include <RSP.h>
 #include <PluginAPI.h>
 #include <Combiner.h>
@@ -177,11 +176,6 @@ bool ShaderStorage::saveShadersStorage(const graphics::Combiners & _combiners) c
 			allShaderData.insert(allShaderData.end(), data.begin(), data.end());
 			++totalWritten;
 		}
-		else
-		{
-			LOG(LOG_ERROR, "Error while writing shader with key key=0x%016lX",
-				static_cast<long unsigned int>(cur->second->getKey().getMux()));
-		}
 	}
 
 	shadersOut.write((char*)&totalWritten, sizeof(totalWritten));
@@ -321,7 +315,6 @@ bool ShaderStorage::loadShadersStorage(graphics::Combiners & _combiners)
 				pCombiner->update(true);
 				_combiners[pCombiner->getKey()] = pCombiner;
 			} else {
-				LOG(LOG_ERROR, "Shader is not a valid binary, compiling from key instead");
 				graphics::CombinerProgram * pCombinerFromKey = Combiner_Compile(cmbKey);
 				pCombinerFromKey->update(true);
 				_combiners[cmbKey] = pCombinerFromKey;
@@ -329,7 +322,6 @@ bool ShaderStorage::loadShadersStorage(graphics::Combiners & _combiners)
 
 		}
 	} catch (...) {
-		LOG(LOG_ERROR, "Stream error while loading shader cache! Buffer is probably not big enough");
 	}
 
 	fin.close();

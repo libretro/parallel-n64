@@ -8,7 +8,6 @@
 #include "DepthBuffer.h"
 #include "RSP.h"
 #include "VI.h"
-#include "Log.h"
 
 namespace FBInfo {
 
@@ -51,7 +50,6 @@ namespace FBInfo {
 
 	void FBInfo::WriteList(FrameBufferModifyEntry *plist, u32 size)
 	{
-		LOG(LOG_WARNING, "FBWList size=%u", size);
 	}
 
 	void FBInfo::Read(u32 addr)
@@ -81,7 +79,6 @@ namespace FBInfo {
 
 	void FBInfo::GetInfo(void *pinfo)
 	{
-		//	debugPrint("FBGetInfo\n");
 		FrameBufferInfo * pFBInfo = (FrameBufferInfo*)pinfo;
 		memset(pFBInfo, 0, sizeof(FrameBufferInfo)* 6);
 

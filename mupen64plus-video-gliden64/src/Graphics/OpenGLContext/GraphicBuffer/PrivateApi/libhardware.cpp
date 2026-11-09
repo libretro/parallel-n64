@@ -1,7 +1,6 @@
 #include <assert.h>
 #include <dlfcn.h>
 #include "libhardware.h"
-#include "Log.h"
 
 typedef int (*hw_get_moduleProto)(const char *id, const struct hw_module_t **module);
 
@@ -14,18 +13,15 @@ bool libhardware_dl()
 	void *libhardware = dlopen("libhardware.so", RTLD_LAZY);
 	if(!libhardware)
 	{
-		LOG(LOG_ERROR, "libhardware not found");
 		return false;
 	}
 	hw_get_moduleSym = (hw_get_moduleProto)dlsym(libhardware, "hw_get_module");
 	if(!hw_get_moduleSym)
 	{
-		LOG(LOG_ERROR, "missing libhardware functions");
 		dlclose(libhardware);
 		hw_get_moduleSym = 0;
 		return false;
 	}
-	LOG(LOG_ERROR, "libhardware symbols loaded");
 	return true;
 }
 

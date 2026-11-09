@@ -15,7 +15,6 @@
 #include <Config.h>
 #include <FrameBufferInfo.h>
 #include <TextureFilterHandler.h>
-#include <Log.h>
 #include "Graphics/Context.h"
 #include <DisplayWindow.h>
 
@@ -116,7 +115,6 @@ public:
 
 void PluginAPI::ProcessDList()
 {
-	LOG(LOG_APIFUNC, "ProcessDList");
 #ifdef RSPTHREAD
 	_callAPICommand(ProcessDListCommand());
 #else
@@ -126,7 +124,6 @@ void PluginAPI::ProcessDList()
 
 void PluginAPI::ProcessRDPList()
 {
-	LOG(LOG_APIFUNC, "ProcessRDPList");
 #ifdef RSPTHREAD
 	_callAPICommand(ProcessRDPListCommand());
 #else
@@ -141,7 +138,6 @@ void PluginAPI::RomClosed()
 
 	m_bRomOpen = false;
 
-	LOG(LOG_APIFUNC, "RomClosed");
 #ifdef RSPTHREAD
 	_callAPICommand(RomClosedCommand());
 	m_rspThread.join();
@@ -158,7 +154,6 @@ void PluginAPI::RomOpen()
 	if (m_bRomOpen)
 		return;
 
-	LOG(LOG_APIFUNC, "RomOpen");
 #ifdef RSPTHREAD
 	// Resource failure or a target without lock-free atomics runs inline.
 	m_rspThread.start();
@@ -179,7 +174,6 @@ void PluginAPI::ShowCFB()
 
 void PluginAPI::UpdateScreen()
 {
-	LOG(LOG_APIFUNC, "UpdateScreen");
 #ifdef RSPTHREAD
 	_callAPICommand(ProcessUpdateScreenCommand());
 #else
@@ -225,7 +219,6 @@ void PluginAPI::_initiateGFX(const GFX_INFO & _gfxInfo) const {
 
 void PluginAPI::ChangeWindow()
 {
-	LOG(LOG_APIFUNC, "ChangeWindow");
 	dwnd().setToggleFullscreen();
 	if (!m_bRomOpen)
 		dwnd().closeWindow();

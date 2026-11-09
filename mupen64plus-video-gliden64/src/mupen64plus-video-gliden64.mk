@@ -33,7 +33,6 @@ MY_LOCAL_SRC_FILES :=                                                           
     $(SRCDIR)/GLideN64.c                                                         \
     $(SRCDIR)/GraphicsDrawer.cpp                                                   \
     $(SRCDIR)/gSP.c                                                              \
-    $(SRCDIR)/Log_android.cpp                                                      \
     $(SRCDIR)/MupenPlusPluginAPI.cpp                                               \
     $(SRCDIR)/N64.c                                                              \
     $(SRCDIR)/NoiseTexture.cpp                                                     \

@@ -65,7 +65,6 @@ typedef double GLdouble;
 #include <GL/glext.h>
 #include <stdexcept>
 #include <sstream>
-#include "Log.h"
 
 #include <string.h>
 

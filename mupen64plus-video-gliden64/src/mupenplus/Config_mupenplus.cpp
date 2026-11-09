@@ -15,7 +15,6 @@
 #include "../GLideN64.h"
 #include "../GBI.h"
 #include "../RSP.h"
-#include "../Log.h"
 extern "C" {
 #include "main/util.h"
 #include "GLideN64.custom.ini.h"
