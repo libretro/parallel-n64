@@ -306,8 +306,8 @@ namespace opengl {
 				(*m_texparams)[u32(_parameters.handle)].maxMipmapLevel = GLint(_parameters.maxMipmapLevel);
 			}
 			if (_parameters.maxAnisotropy.isValid() && !(iterValid && iter->second.maxAnisotropy == GLfloat(_parameters.maxAnisotropy))) {
-				glTexParameterf(target, GL_TEXTURE_MAX_ANISOTROPY_EXT, GLfloat(_parameters.maxMipmapLevel));
-				(*m_texparams)[u32(_parameters.handle)].maxAnisotropy = GLfloat(_parameters.maxMipmapLevel);
+				glTexParameterf(target, GL_TEXTURE_MAX_ANISOTROPY_EXT, GLfloat(_parameters.maxAnisotropy));
+				(*m_texparams)[u32(_parameters.handle)].maxAnisotropy = GLfloat(_parameters.maxAnisotropy);
 			}
 		}
 

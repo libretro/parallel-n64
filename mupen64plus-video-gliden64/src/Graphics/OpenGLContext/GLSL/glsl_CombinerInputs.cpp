@@ -12,7 +12,9 @@ bool CombinerInputs::usesTile(u32 _t) const
 
 bool CombinerInputs::usesTexture() const
 {
-	return (m_inputs & ((1 << G_GCI_TEXEL1) | (1 << G_GCI_TEXEL1_ALPHA) | (1 << G_GCI_TEXEL0) | (1 << G_GCI_TEXEL0_ALPHA))) != 0;
+	/* the LOD fraction is worked out by the texture path: without it the
+	 * fragment shader reads a lod_frac it never declares */
+	return (m_inputs & ((1 << G_GCI_TEXEL1) | (1 << G_GCI_TEXEL1_ALPHA) | (1 << G_GCI_TEXEL0) | (1 << G_GCI_TEXEL0_ALPHA) | (1 << G_GCI_LOD_FRACTION))) != 0;
 }
 
 bool CombinerInputs::usesLOD() const
