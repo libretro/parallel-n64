@@ -105,6 +105,8 @@ static bool _lookAhead(bool _checkCoordinates)
 
 	pc = RSP.PC[RSP.PCi];
 	for (;;) {
+		if (pc > RDRAMSize - 8)
+			return false;
 		switch (_SHIFTR(*(u32*)&RDRAM[pc], 24, 8)) {
 		case G_RDPLOADSYNC:
 		case G_RDPPIPESYNC:
