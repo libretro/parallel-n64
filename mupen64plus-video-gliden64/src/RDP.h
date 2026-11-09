@@ -13,7 +13,8 @@ typedef struct
 	u32 w0, w1, w2, w3;
 	u32 cmd_ptr;
 	u32 cmd_cur;
-	u32 cmd_data[MAXCMD + 32];
+	const u32 * cmd_lend;
+	u32 cmd_data[MAXCMD + 44];   /* a ring-end command is mirrored past MAXCMD */
 } RDPInfo;
 
 extern RDPInfo RDP;

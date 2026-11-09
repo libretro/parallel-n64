@@ -8,7 +8,7 @@
  * kernel off its own static tables.  Dropping it also removes the signed
  * left shift of 1 into bit 31 that the table build performed, which is
  * undefined behaviour and was reported by UBSan. */
-void CRC_Init()
+void CRC_Init(void)
 {
 }
 

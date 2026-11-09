@@ -920,7 +920,7 @@ void gli_gDPNoOp()
  *    based on sources of ziggy's z64      *
  *******************************************/
 
-void gDPLLETriangle(u32 _w1, u32 _w2, int _shade, int _texture, int _zbuffer, u32 * _pRdpCmd)
+void gDPLLETriangle(u32 _w1, u32 _w2, int _shade, int _texture, int _zbuffer, const u32 * _pRdpCmd)
 {
 	gSP.texture.level = _SHIFTR(_w1, 19, 3);
 	const u32 tile = _SHIFTR(_w1, 16, 3);
@@ -942,9 +942,9 @@ void gDPLLETriangle(u32 _w1, u32 _w2, int _shade, int _texture, int _zbuffer, u3
 	s32 dxldy, dxhdy, dxmdy;
 	u32 w3, w4, w5, w6, w7, w8;
 
-	u32 * shade_base = _pRdpCmd + 8;
-	u32 * texture_base = _pRdpCmd + 8;
-	u32 * zbuffer_base = _pRdpCmd + 8;
+	const u32 * shade_base = _pRdpCmd + 8;
+	const u32 * texture_base = _pRdpCmd + 8;
+	const u32 * zbuffer_base = _pRdpCmd + 8;
 
 	if (_shade != 0) {
 		texture_base += 16;
@@ -1219,7 +1219,7 @@ void gDPLLETriangle(u32 _w1, u32 _w2, int _shade, int _texture, int _zbuffer, u3
 
 static void gDPTriangle(u32 _w1, u32 _w2, int shade, int texture, int zbuffer)
 {
-	gDPLLETriangle(_w1, _w2, shade, texture, zbuffer, RDP.cmd_data + RDP.cmd_cur);
+	gDPLLETriangle(_w1, _w2, shade, texture, zbuffer, RDP.cmd_lend);
 }
 
 void gli_gDPTriFill(u32 w0, u32 w1)

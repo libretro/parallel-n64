@@ -30,7 +30,7 @@ MY_LOCAL_SRC_FILES :=                                                           
     $(SRCDIR)/FrameBufferInfo.cpp                                                  \
     $(SRCDIR)/GBI.cpp                                                              \
     $(SRCDIR)/gDP.cpp                                                              \
-    $(SRCDIR)/GLideN64.cpp                                                         \
+    $(SRCDIR)/GLideN64.c                                                         \
     $(SRCDIR)/GraphicsDrawer.cpp                                                   \
     $(SRCDIR)/gSP.cpp                                                              \
     $(SRCDIR)/Log_android.cpp                                                      \
@@ -39,7 +39,7 @@ MY_LOCAL_SRC_FILES :=                                                           
     $(SRCDIR)/NoiseTexture.cpp                                                     \
     $(SRCDIR)/PaletteTexture.cpp                                                   \
     $(SRCDIR)/PostProcessor.cpp                                                    \
-    $(SRCDIR)/RDP.cpp                                                              \
+    $(SRCDIR)/RDP.c                                                              \
     $(SRCDIR)/RSP.cpp                                                              \
     $(SRCDIR)/SoftwareRender.cpp                                                   \
     $(SRCDIR)/TexrectDrawer.cpp                                                    \
@@ -158,14 +158,14 @@ else ifeq ($(TARGET_ARCH_ABI), x86)
     MY_LOCAL_CFLAGS += -D__VEC4_OPT
     MY_LOCAL_SRC_FILES += $(SRCDIR)/3DMath.c
     MY_LOCAL_SRC_FILES += $(SRCDIR)/RSP_LoadMatrix.c
-    MY_LOCAL_SRC_FILES += $(SRCDIR)/CRC_OPT.cpp
+    MY_LOCAL_SRC_FILES += $(SRCDIR)/CRC_OPT.c
 
 else ifeq ($(TARGET_ARCH_ABI), x86_64)
 #    MY_LOCAL_CFLAGS += -DX86_ASM
     MY_LOCAL_CFLAGS += -D__VEC4_OPT
     MY_LOCAL_SRC_FILES += $(SRCDIR)/3DMath.c
     MY_LOCAL_SRC_FILES += $(SRCDIR)/RSP_LoadMatrix.c
-    MY_LOCAL_SRC_FILES += $(SRCDIR)/CRC_OPT.cpp
+    MY_LOCAL_SRC_FILES += $(SRCDIR)/CRC_OPT.c
 endif
 
 ###########

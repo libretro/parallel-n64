@@ -14,7 +14,7 @@
 #define BILINEAR_3POINT_WITH_COLOR_BLEEDING 2
 #define BILINEAR_STANDARD_WITH_COLOR_BLEEDING_AND_PREMULTIPLIED_ALPHA 3
 
-const u32 gc_uMegabyte = 1024U * 1024U;
+static const u32 gc_uMegabyte = 1024U * 1024U;
 
 #ifdef __cplusplus
 struct Config
@@ -249,6 +249,12 @@ struct Config
 #define hack_fbTextureOffset		(1<<23) /*Hack to offset Conker's shadow in CBFD and Bob-ombs in Mario Tennis. */
 
 #define config gliden64Config
+
+#ifdef __cplusplus
+extern "C"
+#endif
+u32 gli_Config_hacks(void);
+
 #ifdef __cplusplus
 extern Config gliden64Config;
 

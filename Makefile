@@ -1783,7 +1783,7 @@ test_glide64_fb_readback$(EXE_EXT): tools/test_glide64_fb_readback.c $(VIDEODIR_
 	$(CC) $(CHECK_CFLAGS) $(CHECK_SANITIZE) -I$(LIBRETRO_COMM_DIR)/include $< -o $@ $(CHECK_LDFLAGS) $(CHECK_SANITIZE)
 
 # GLideN64 is moving to C89 a file at a time: what has moved stays there
-GLIDEN64_C89 := N64.c convert.c RSP_LoadMatrix.c 3DMath.c CRC32.c \
+GLIDEN64_C89 := N64.c convert.c RSP_LoadMatrix.c 3DMath.c CRC32.c RDP.c CRC_OPT.c GLideN64.c \
 	uCodes/F5Rogue.c uCodes/F5Indi_Naboo.c \
 	uCodes/S2DEX.c \
 	uCodes/ZSort.c uCodes/ZSortBOSS.c \
@@ -1794,7 +1794,7 @@ GLIDEN64_C89 := N64.c convert.c RSP_LoadMatrix.c 3DMath.c CRC32.c \
 	Graphics/VulkanContext/vk_renderer.c Graphics/VulkanContext/vk_device.c
 check_gliden64_c89:
 	@if grep -rn "pragma GCC diagnostic" $(VIDEODIR_GLIDEN64)/src --include=*.h --include=*.c --exclude-dir=xxHash --exclude-dir=inc; then echo "no diagnostic pragmas: they turn this check off"; exit 1; fi
-	for f in $(GLIDEN64_C89); do $(CC) -std=c89 -pedantic -Werror=pedantic -Werror=declaration-after-statement \
+	for f in $(GLIDEN64_C89); do $(CC) -std=c89 -pedantic -Wno-long-long -Werror=pedantic -Werror=declaration-after-statement \
 		-Werror=implicit-function-declaration -Werror=implicit-int -Werror=strict-prototypes -D_DEFAULT_SOURCE \
 		-isystem $(VIDEODIR_PARALLEL)/parallel-rdp/vulkan-headers/include -isystem mupen64plus-core/src/api -isystem $(LIBRETRO_COMM_DIR)/include \
 		-I$(VIDEODIR_PARALLEL)/parallel-rdp/parallel-rdp -I$(VIDEODIR_GLIDEN64)/src -I$(VIDEODIR_GLIDEN64)/src/uCodes -I$(VIDEODIR_GLIDEN64)/src/Graphics/VulkanContext \

@@ -11,6 +11,11 @@
 
 extern uint32_t screen_width;
 extern uint32_t screen_height;
+u32 gli_Config_hacks(void)
+{
+	return config.generalEmulation.hacks;
+}
+
 void Config::resetToDefaults()
 {
 	printf("Configs reset\n");

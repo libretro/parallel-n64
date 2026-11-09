@@ -369,12 +369,15 @@ CFLAGS   += -DHAVE_GLIDEN64 -DMUPENPLUSAPI -D__LIBRETRO__
 CXXFLAGS += -DHAVE_GLIDEN64 -DMUPENPLUSAPI -D__LIBRETRO__
 
 # xxhash 0.8 is a single-header library; the implementation is inlined
-# into CRC_OPT.cpp via #define XXH_INLINE_ALL. No separate xxhash.c
+# into CRC_OPT.c via #define XXH_INLINE_ALL. No separate xxhash.c
 # translation unit is required - the 0.6.5 xxhash.c was deleted on the
 # library bump and is no longer present in the tree.
 
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/StereoJournal.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/N64.c
+SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/RDP.c
+SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/CRC_OPT.c
+SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/GLideN64.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/uCodes/F5Indi_Naboo.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/uCodes/F5Rogue.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/uCodes/S2DEX.c
@@ -419,7 +422,6 @@ SOURCES_CXX   += \
     $(VIDEODIR_GLIDEN64)/src/CombinerKey.cpp                                                      \
     $(VIDEODIR_GLIDEN64)/src/CommonPluginAPI.cpp                                                  \
     $(VIDEODIR_GLIDEN64)/src/Config.cpp                                                           \
-    $(VIDEODIR_GLIDEN64)/src/CRC_OPT.cpp                                                          \
     $(VIDEODIR_GLIDEN64)/src/DepthBuffer.cpp                                                      \
     $(VIDEODIR_GLIDEN64)/src/DisplayWindow.cpp                                                    \
     $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/mupen64plus/mupen64plus_DisplayWindow.cpp     \
@@ -427,12 +429,10 @@ SOURCES_CXX   += \
     $(VIDEODIR_GLIDEN64)/src/FrameBufferInfo.cpp                                                  \
     $(VIDEODIR_GLIDEN64)/src/GBI.cpp                                                              \
     $(VIDEODIR_GLIDEN64)/src/gDP.cpp                                                              \
-    $(VIDEODIR_GLIDEN64)/src/GLideN64.cpp                                                         \
     $(VIDEODIR_GLIDEN64)/src/gSP.cpp                                                              \
     $(VIDEODIR_GLIDEN64)/src/PaletteTexture.cpp                                                   \
     $(VIDEODIR_GLIDEN64)/src/PostProcessor.cpp                                                    \
     $(VIDEODIR_GLIDEN64)/src/StereoFrames.cpp                                                     \
-    $(VIDEODIR_GLIDEN64)/src/RDP.cpp                                                              \
     $(VIDEODIR_GLIDEN64)/src/RSP.cpp                                                              \
     $(VIDEODIR_GLIDEN64)/src/SoftwareRender.cpp                                                   \
     $(VIDEODIR_GLIDEN64)/src/TexrectDrawer.cpp                                                    \

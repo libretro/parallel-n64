@@ -27,7 +27,7 @@ set(GLideN64_SOURCES
   FrameBufferInfo.cpp
   GBI.cpp
   gDP.cpp
-  GLideN64.cpp
+  GLideN64.c
   GraphicsDrawer.cpp
   gSP.cpp
   Log.cpp
@@ -35,7 +35,7 @@ set(GLideN64_SOURCES
   NoiseTexture.cpp
   PaletteTexture.cpp
   PostProcessor.cpp
-  RDP.cpp
+  RDP.c
   RSP.cpp
   RSP_LoadMatrix.c
   SoftwareRender.cpp
@@ -251,7 +251,7 @@ if(CRC_OPT)
         CRC32.c
   )
   list(APPEND GLideN64_SOURCES
-        CRC_OPT.cpp
+        CRC_OPT.c
         xxHash/xxhash.c
   )
 endif(CRC_OPT)
