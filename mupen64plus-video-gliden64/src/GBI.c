@@ -435,7 +435,9 @@ void gli_GBI_loadMicrocode(u32 uc_start, u32 uc_dstart, u16 uc_dsize)
 	current->type = NONE;
 
 	/* See if we can identify it by CRC */
-	uc_crc = CRC_Calculate_Strict( 0xFFFFFFFF, &RDRAM[uc_start & 0x1FFFFFFF], 4096 );
+	/* both addresses come from the guest's task */
+	uc_crc = (uc_start & 0x1FFFFFFF) <= RDRAMSize + 1 - 4096
+		? CRC_Calculate_Strict( 0xFFFFFFFF, &RDRAM[uc_start & 0x1FFFFFFF], 4096 ) : 0;
 	it = _findSpecialMicrocode(uc_crc);
 	if (it != NULL && it->crc == uc_crc)	{
 		current->type = it->type;
@@ -447,7 +449,10 @@ void gli_GBI_loadMicrocode(u32 uc_start, u32 uc_dstart, u16 uc_dsize)
 	}
 
 	/* See if we can identify it by text */
-	gli_UnswapCopyWrap(RDRAM, uc_dstart & 0x1FFFFFFF, (u8*)uc_data, 0, 0x7FF, 2048);
+	if ((uc_dstart & 0x1FFFFFFF) <= RDRAMSize + 1 - 2048)
+		gli_UnswapCopyWrap(RDRAM, uc_dstart & 0x1FFFFFFF, (u8*)uc_data, 0, 0x7FF, 2048);
+	else
+		memset(uc_data, 0, sizeof(uc_data));
 	strcpy(uc_str, "Not Found");
 
 	/* Check for F3DEX3 microcode. Tharo's F3DEX3 places its name string */
