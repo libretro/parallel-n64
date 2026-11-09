@@ -375,6 +375,7 @@ CXXFLAGS += -DHAVE_GLIDEN64 -DMUPENPLUSAPI -D__LIBRETRO__
 
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/StereoJournal.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/N64.c
+SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/uCodes/S2DEX.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/uCodes/ZSort.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/uCodes/ZSortBOSS.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/uCodes/T3DUX.c
@@ -478,7 +479,7 @@ SOURCES_CXX   += \
     $(VIDEODIR_GLIDEN64)/src/mupenplus/MemoryStatus_mupenplus.cpp                                 \
     $(VIDEODIR_GLIDEN64)/src/uCodes/F5Indi_Naboo.cpp                                              \
     $(VIDEODIR_GLIDEN64)/src/uCodes/F5Rogue.cpp                                                   \
-    $(VIDEODIR_GLIDEN64)/src/uCodes/S2DEX.cpp                                                     \
+    $(VIDEODIR_GLIDEN64)/src/uCodes/S2DEX_gfx.cpp                                                     \
 	$(VIDEODIR_GLIDEN64)/src/MupenPlusPluginAPI.cpp                                               \
 	$(VIDEODIR_GLIDEN64)/src/mupenplus/MupenPlusAPIImpl.cpp                                       \
 	$(VIDEODIR_GLIDEN64)/src/mupenplus/Config_mupenplus.cpp                                       \

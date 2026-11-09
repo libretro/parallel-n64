@@ -97,7 +97,8 @@ set(GLideN64_SOURCES
   uCodes/L3DEX2.c
   uCodes/L3DEX.c
   uCodes/S2DEX2.c
-  uCodes/S2DEX.cpp
+  uCodes/S2DEX.c
+    uCodes/S2DEX_gfx.cpp
   uCodes/T3DUX.c
   uCodes/Turbo3D.c
   uCodes/ZSort.c
