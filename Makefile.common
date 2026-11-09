@@ -417,6 +417,7 @@ SOURCES_CXX   += \
     $(VIDEODIR_GLIDEN64)/src/Graphics/ColorBufferReader.cpp                                       \
     $(VIDEODIR_GLIDEN64)/src/Graphics/CombinerProgram.cpp                                         \
     $(VIDEODIR_GLIDEN64)/src/Graphics/ObjectHandle.cpp                                            \
+    $(VIDEODIR_GLIDEN64)/src/Graphics/CombinerValues.cpp                                          \
     $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/GLFunctions.cpp                               \
     $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/opengl_Attributes.cpp                         \
     $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/opengl_BufferedDrawer.cpp                     \

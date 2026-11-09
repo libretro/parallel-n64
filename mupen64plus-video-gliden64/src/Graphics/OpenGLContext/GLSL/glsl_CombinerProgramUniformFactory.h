@@ -12,7 +12,7 @@ namespace glsl {
 		void buildUniforms(GLuint _program,
 							const CombinerInputs & _inputs,
 							const CombinerKey & _key,
-							UniformGroups & _uniforms);
+							CombinerUniforms & _uniforms);
 
 	private:
 		const opengl::GLInfo & m_glInfo;

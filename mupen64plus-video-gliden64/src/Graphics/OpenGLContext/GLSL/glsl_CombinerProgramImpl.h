@@ -2,6 +2,7 @@
 #include <memory>
 #include <vector>
 #include <Graphics/CombinerProgram.h>
+#include <Graphics/CombinerValues.h>
 #include <Graphics/ObjectHandle.h>
 #include <Graphics/OpenGLContext/GLFunctions.h>
 #include "glsl_CombinerInputs.h"
@@ -12,13 +13,32 @@ namespace opengl {
 
 namespace glsl {
 
-	class UniformGroup {
+	/* A program's uniforms: this combiner's values, and what of them the
+	 * program has, each sent only when it differs from what it last got. */
+	class CombinerUniforms
+	{
 	public:
-		virtual ~UniformGroup() {}
-		virtual void update(bool _force) = 0;
-	};
+		CombinerUniforms() : m_groups(0), m_values(), m_uploaded() {}
+		void update(bool _force);
 
-	typedef std::vector< std::unique_ptr<UniformGroup> > UniformGroups;
+		struct Entry {
+			GLint loc;
+			u16 offset;
+			u8 kind;
+			u8 bytes;
+		};
+		struct Sampler {
+			GLint loc;
+			GLint unit;
+		};
+		void _add(GLint _loc, int _kind, u32 _offset);
+
+		u32 m_groups;
+		std::vector<Entry> m_entries;
+		std::vector<Sampler> m_samplers;
+		graphics::CombinerValues m_values;
+		graphics::CombinerValues m_uploaded;
+	};
 
 	class CombinerProgramImpl : public graphics::CombinerProgram
 	{
@@ -27,7 +47,7 @@ namespace glsl {
 			GLuint _program,
 			opengl::CachedUseProgram * _useProgram,
 			const CombinerInputs & _inputs,
-			UniformGroups && _uniforms);
+			CombinerUniforms && _uniforms);
 		~CombinerProgramImpl();
 
 		void activate() override;
@@ -48,7 +68,7 @@ namespace glsl {
 		graphics::ObjectHandle m_program;
 		opengl::CachedUseProgram * m_useProgram;
 		CombinerInputs m_inputs;
-		UniformGroups m_uniforms;
+		CombinerUniforms m_uniforms;
 	};
 
 }

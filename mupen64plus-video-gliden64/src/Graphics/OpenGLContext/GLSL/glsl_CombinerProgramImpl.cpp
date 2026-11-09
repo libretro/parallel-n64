@@ -13,7 +13,7 @@ CombinerProgramImpl::CombinerProgramImpl(const CombinerKey & _key,
 	GLuint _program,
 	opengl::CachedUseProgram * _useProgram,
 	const CombinerInputs & _inputs,
-	UniformGroups && _uniforms)
+	CombinerUniforms && _uniforms)
 : m_bNeedUpdate(true)
 , m_key(_key)
 , m_program(_program)
@@ -40,8 +40,7 @@ void CombinerProgramImpl::update(bool _force)
 	_force |= m_bNeedUpdate;
 	m_bNeedUpdate = false;
 	m_useProgram->useProgram(m_program);
-	for (auto it = m_uniforms.begin(); it != m_uniforms.end(); ++it)
-		(*it)->update(_force);
+	m_uniforms.update(_force);
 }
 
 const CombinerKey & CombinerProgramImpl::getKey() const

@@ -53,6 +53,7 @@ set(GLideN64_SOURCES
   Graphics/Context.cpp
   Graphics/ColorBufferReader.cpp
   Graphics/CombinerProgram.cpp
+  Graphics/CombinerValues.cpp
   Graphics/ObjectHandle.cpp
   Graphics/OpenGLContext/GLFunctions.cpp
   Graphics/OpenGLContext/opengl_Attributes.cpp

@@ -217,7 +217,7 @@ CombinerProgramImpl * _readCominerProgramFromStream(std::istream & _is,
 		return nullptr;
 	}
 
-	UniformGroups uniforms;
+	CombinerUniforms uniforms;
 	_uniformFactory.buildUniforms(program, cmbInputs, _cmbKey, uniforms);
 
 	return new CombinerProgramImpl(_cmbKey, program, _useProgram, cmbInputs, std::move(uniforms));

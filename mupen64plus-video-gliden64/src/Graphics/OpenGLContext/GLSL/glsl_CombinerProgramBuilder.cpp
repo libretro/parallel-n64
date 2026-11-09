@@ -516,7 +516,6 @@ class ShaderBlender1 : public ShaderPart
 public:
 	ShaderBlender1()
 	{
-#if 1
 			m_part =
 				"  muxPM[0] = clampedColor;													\n"
 				"  lowp vec4 vprobe = vec4(0.0, 1.0, 2.0, 3.0);								\n"
@@ -539,18 +538,6 @@ public:
 #endif
 				"  }																		\n"
 				;
-#else
-		// Keep old code for reference
-		m_part =
-			"  muxPM[0] = clampedColor;								\n"
-			"  if (uForceBlendCycle1 != 0) {						\n"
-			"    muxA[0] = clampedColor.a;							\n"
-			"    muxB[0] = 1.0 - muxA[uBlendMux1[1]];				\n"
-			"    lowp vec4 blend1 = (muxPM[uBlendMux1[0]] * muxA[uBlendMux1[1]]) + (muxPM[uBlendMux1[2]] * muxB[uBlendMux1[3]]);	\n"
-			"    clampedColor.rgb = clamp(blend1.rgb, 0.0, 1.0);	\n"
-			"  } else clampedColor.rgb = muxPM[uBlendMux1[0]].rgb;	\n"
-			;
-#endif
 	}
 };
 
@@ -559,7 +546,6 @@ class ShaderBlender2 : public ShaderPart
 public:
 	ShaderBlender2()
 	{
-#if 1
 			m_part =
 				"  muxPM[0] = clampedColor;													\n"
 				"  muxPM[1] = vec4(0.0);													\n"
@@ -582,19 +568,6 @@ public:
 #endif
 				"  }																		\n"
 				;
-#else
-		// Keep old code for reference
-		m_part =
-			"  muxPM[0] = clampedColor;								\n"
-			"  muxPM[1] = vec4(0.0);								\n"
-			"  if (uForceBlendCycle2 != 0) {						\n"
-			"    muxA[0] = clampedColor.a;							\n"
-			"    muxB[0] = 1.0 - muxA[uBlendMux2[1]];				\n"
-			"    lowp vec4 blend2 = muxPM[uBlendMux2[0]] * muxA[uBlendMux2[1]] + muxPM[uBlendMux2[2]] * muxB[uBlendMux2[3]];	\n"
-			"    clampedColor.rgb = clamp(blend2.rgb, 0.0, 1.0);	\n"
-			"  } else clampedColor.rgb = muxPM[uBlendMux2[0]].rgb;	\n"
-			;
-#endif
 	}
 };
 
@@ -2322,7 +2295,7 @@ graphics::CombinerProgram * CombinerProgramBuilder::buildCombinerProgram(Combine
 	GLuint program = _startProgram(strFragmentShader, bIsRect, bUseTextures, true);
 	assert(Utils::checkProgramLinkStatus(program));
 
-	UniformGroups uniforms;
+	CombinerUniforms uniforms;
 	m_uniformFactory->buildUniforms(program, combinerInputs, _key, uniforms);
 
 	return new CombinerProgramImpl(_key, program, m_useProgram, combinerInputs, std::move(uniforms));
@@ -2686,7 +2659,7 @@ private:
 			glDeleteProgram(program);
 			return;
 		}
-		UniformGroups uniforms;
+		CombinerUniforms uniforms;
 		m_factory->buildUniforms(program, m_inputs, m_key, uniforms);
 		m_real = new CombinerProgramImpl(m_key, program, m_useProgram, m_inputs, std::move(uniforms));
 	}
@@ -2773,7 +2746,7 @@ CombinerProgramBuilder::UberVariant * CombinerProgramBuilder::_readyUber(const C
 		v.opsLoc[i] = glGetUniformLocation(v.handle, name);
 	}
 	v.flagsLoc = glGetUniformLocation(v.handle, "uCmbFlags");
-	UniformGroups uniforms;
+	CombinerUniforms uniforms;
 	m_uniformFactory->buildUniforms(v.handle, v.inputs, v.key, uniforms);
 	v.program = new CombinerProgramImpl(v.key, v.handle, m_useProgram, v.inputs, std::move(uniforms));
 	return &v;
