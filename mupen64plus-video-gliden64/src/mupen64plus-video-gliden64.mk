@@ -22,7 +22,7 @@ MY_LOCAL_SRC_FILES :=                                                           
     $(SRCDIR)/Combiner.cpp                                                         \
     $(SRCDIR)/CombinerKey.cpp                                                      \
     $(SRCDIR)/CommonPluginAPI.cpp                                                  \
-    $(SRCDIR)/Config.cpp                                                           \
+    $(SRCDIR)/Config.c                                                            \
     $(SRCDIR)/convert.c                                                          \
     $(SRCDIR)/DepthBuffer.cpp                                                      \
     $(SRCDIR)/DisplayWindow.cpp                                                    \

@@ -192,7 +192,7 @@ extern "C" void Config_LoadConfig()
 {
 	u32 hacks = config.generalEmulation.hacks;
 	
-	config.resetToDefaults();
+	gli_config_reset_defaults(&config);
 
 	// Early
 	if(GLideN64IniBehaviour == 1)

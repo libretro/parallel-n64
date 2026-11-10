@@ -18,7 +18,7 @@ set(GLideN64_SOURCES
   Combiner.cpp
   CombinerKey.cpp
   CommonPluginAPI.cpp
-  Config.cpp
+  Config.c
   convert.c
   CRC32.c
   DepthBuffer.cpp

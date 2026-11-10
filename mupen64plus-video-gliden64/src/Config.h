@@ -215,10 +215,6 @@ struct Config
 		f32 immersiveHudScale;    /* immersive angular size of HUD and overlays, 1 spans the old screen */
 	} stereo;
 
-#ifdef __cplusplus
-	void resetToDefaults();
-	void validate();
-#endif
 };
 
 #define hack_Ogre64					(1<<0)  /*Ogre Battle 64 background copy */
@@ -253,6 +249,7 @@ extern "C" {
 #endif
 extern Config gliden64Config;
 void Config_LoadConfig(void);
+void gli_config_reset_defaults(Config * _config);
 bool gli_isHWLightingAllowed(void);
 #ifdef __cplusplus
 }
