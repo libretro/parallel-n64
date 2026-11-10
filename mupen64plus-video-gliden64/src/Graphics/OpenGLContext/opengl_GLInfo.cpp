@@ -97,7 +97,7 @@ void GLInfo::init() {
 		msaa = numericVersion >= 31;
 	} else {
 		imageTextures = (numericVersion >= 42) || Utils::isExtensionSupported(*this, "GL_ARB_shader_image_load_store");
-		msaa = false;
+		msaa = numericVersion >= 32;
 	}
 
 	//Tegra has a buggy implementation of fragment_shader_interlock that causes graphics lockups on drivers below 390.00

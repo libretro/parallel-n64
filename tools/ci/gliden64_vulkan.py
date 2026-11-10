@@ -262,9 +262,11 @@ def main():
         culling_cartridge(rom, shadow=True)
         failures += compare(a, "shadow", rom, 8, ["parallel-n64-gliden64-EnableFBEmulation=True"])
         failures += validate(a, "shadow", rom, 8, ["parallel-n64-gliden64-EnableFBEmulation=True"])
-        # with MSAA the depth image is resolved before the shadow map reads it
-        failures += validate(a, "shadow ms", rom, 8, ["parallel-n64-gliden64-EnableFBEmulation=True",
-                                                      "parallel-n64-gliden64-MultiSampling=4"])
+        # with MSAA the frame buffers are resolved before they are shown, and the
+        # depth image before the shadow map reads it
+        msaa = ["parallel-n64-gliden64-EnableFBEmulation=True", "parallel-n64-gliden64-MultiSampling=4"]
+        failures += compare(a, "shadow ms", rom, 8, msaa, (("own", {}),))
+        failures += validate(a, "shadow ms", rom, 8, msaa)
         # N64 depth compare: its depth images cleared, read and written draw after draw
         for fb in ("True", "False"):
             z = ["parallel-n64-gliden64-EnableFBEmulation=" + fb, "parallel-n64-gliden64-EnableN64DepthCompare=True"]
