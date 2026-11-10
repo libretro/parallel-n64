@@ -1,6 +1,9 @@
+#include <math.h>
+
 #include "Types.h"
 #include "N64.h"
 #include "GBI.h"
+#include "Config.h"
 #include "gli_vi_update.h"
 
 void gli_vi_state_init(gli_vi_state *_s)
@@ -120,4 +123,58 @@ int gli_vi_update(gli_vi_state *_s, gli_vi_result *_r)
 	_r->vi_fsaa = (*REG.VI_STATUS & 512) == 0;
 	_r->vi_divot = (*REG.VI_STATUS & 16) != 0;
 	return 1;
+}
+
+void gli_vi_source(const gli_vi_result *_r, u32 _bufStart, u32 _bufWidth, u32 _bufHeight,
+		u32 _bufSize, f32 _bufScale, u32 _texRealHeight, gli_vi_source_rect *_o)
+{
+	const u32 addrOffset = ((_r->vi_origin - _bufStart) << 1 >> _bufSize);
+	s32 srcY0 = addrOffset / _bufWidth;
+	s32 dstY0 = _r->vi_v_start;
+	s32 XoffsetLeft = 0, XoffsetRight = 0;
+	u32 srcWidth;
+	s32 srcHeight;
+
+	if ((addrOffset != 0) && (_bufWidth == addrOffset * 2))
+		srcY0 = 1;
+
+	if ((_r->vi_width != addrOffset * 2) && (addrOffset % _r->vi_width != 0))
+		XoffsetRight = _r->vi_width - addrOffset % _r->vi_width;
+	if ((u32)XoffsetRight == _bufWidth) {
+		XoffsetRight = 0;
+	} else if (XoffsetRight > (s32)(_bufWidth / 2)) {
+		XoffsetRight = 0;
+		XoffsetLeft = addrOffset % _r->vi_width;
+	}
+
+	if (!_r->vi_lowerfield) {
+		if (srcY0 > 0 && (_bufWidth > 320 || _bufHeight > 240))
+			--srcY0;
+		if (dstY0 > 0)
+			--dstY0;
+	}
+
+	if ((config.generalEmulation.hacks & hack_LodeRunner) != 0) {
+		srcY0 = 1;
+		XoffsetRight = XoffsetLeft = 0;
+	}
+
+	srcWidth = (_r->vi_hres * _r->vi_x_add) >> 10;
+	if (_r->vi_width < srcWidth)
+		srcWidth = _r->vi_width;
+	srcHeight = _r->vi_width * ((_r->vi_vres * _r->vi_y_add + _r->vi_y_start) >> 10) / _bufWidth;
+
+	/* Resident Evil 2: four more rows so the second subtitle line is not cut,
+	 * as far as the texture holds them */
+	if ((config.generalEmulation.hacks & hack_RE2) != 0) {
+		if ((s32)ceilf((f32)(srcY0 + srcHeight + 4) * _bufScale) <= (s32)_texRealHeight)
+			srcHeight += 4;
+	}
+
+	_o->srcY0 = srcY0;
+	_o->dstY0 = dstY0;
+	_o->XoffsetLeft = XoffsetLeft;
+	_o->XoffsetRight = XoffsetRight;
+	_o->srcWidth = (s32)srcWidth;
+	_o->srcHeight = srcHeight;
 }

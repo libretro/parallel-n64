@@ -1139,59 +1139,18 @@ void FrameBufferList::renderBuffer()
 	s32 srcPartHeight = 0;
 	s32 dstPartHeight = 0;
 
-	dstY0 = rdpRes.vi_v_start;
-
 	const u32 vFullHeight = rdpRes.vi_ispal ? 288 : 240;
 	const f32 dstScaleY = m_overscan.getScaleY(vFullHeight);
 
-	const u32 addrOffset = ((rdpRes.vi_origin - pBuffer->m_startAddress) << 1 >> pBuffer->m_size);
-	srcY0 = addrOffset / pBuffer->m_width;
-	if ((addrOffset != 0) && (pBuffer->m_width == addrOffset * 2))
-		srcY0 = 1;
-
-	if ((rdpRes.vi_width != addrOffset * 2) && (addrOffset % rdpRes.vi_width != 0))
-		XoffsetRight = rdpRes.vi_width - addrOffset % rdpRes.vi_width;
-	if (XoffsetRight == pBuffer->m_width) {
-		XoffsetRight = 0;
-	} else if (XoffsetRight > static_cast<s32>(pBuffer->m_width / 2)) {
-		XoffsetRight = 0;
-		XoffsetLeft = addrOffset % rdpRes.vi_width;
-	}
-
-	if (!rdpRes.vi_lowerfield) {
-		if (srcY0 > 0 && (pBuffer->m_width > 320 || pBuffer->m_height > 240))
-			--srcY0;
-		if (dstY0 > 0)
-			--dstY0;
-	}
-
-	if ((config.generalEmulation.hacks & hack_LodeRunner) != 0) {
-		srcY0 = 1;
-		XoffsetRight = XoffsetLeft = 0;
-	}
-
-	srcWidth = min(rdpRes.vi_width, (rdpRes.vi_hres * rdpRes.vi_x_add) >> 10);
-	srcHeight = rdpRes.vi_width * ((rdpRes.vi_vres*rdpRes.vi_y_add + rdpRes.vi_y_start) >> 10) / pBuffer->m_width;
-
-	/* Resident Evil 2: present the few rows the subtitle needs.
-	 *
-	 * Measured on buffers read back from the GPU during the intro, in the
-	 * 264x136 mode: srcHeight comes out at 136, the visible height, while the
-	 * second line of dialogue runs to N64 row 137.8 -- so the presentation cuts
-	 * through the glyphs even though the buffer holds them whole. Stale texture
-	 * content starts at 140.3, which caps how far this may go.
-	 *
-	 * Four rows therefore, matched to the fill in RDRAMtoColorBuffer so the two
-	 * limits agree. dstY1 is left alone: four rows on 136 is under 3%, far below
-	 * anything visible, and growing it would push past the frame.
-	 *
-	 * With no French dub the subtitles carry the story, which is why this is
-	 * worth a game-specific hack at all. */
-	if ((config.generalEmulation.hacks & hack_RE2) != 0) {
-		const s32 room = (s32)pBuffer->m_pTexture->realHeight;
-		if ((s32)ceilf(f32(srcY0 + srcHeight + 4) * pBuffer->m_scale) <= room)
-			srcHeight += 4;
-	}
+	gli_vi_source_rect src;
+	gli_vi_source(&rdpRes, pBuffer->m_startAddress, pBuffer->m_width, pBuffer->m_height,
+		pBuffer->m_size, pBuffer->m_scale, pBuffer->m_pTexture->realHeight, &src);
+	srcY0 = src.srcY0;
+	dstY0 = src.dstY0;
+	XoffsetLeft = src.XoffsetLeft;
+	XoffsetRight = src.XoffsetRight;
+	srcWidth = src.srcWidth;
+	srcHeight = src.srcHeight;
 
 	const u32 stride = pBuffer->m_width << pBuffer->m_size >> 1;
 	FrameBuffer *pNextBuffer = findBuffer(rdpRes.vi_origin + stride * min(u32(srcHeight) - 1, pBuffer->m_height - 1) - 1);

@@ -44,6 +44,17 @@ void gli_vi_state_init(gli_vi_state *_s);
 /* Reads the VI registers; false when nothing is scanned out */
 int gli_vi_update(gli_vi_state *_s, gli_vi_result *_r);
 
+/* Which part of the scanned-out buffer the VI shows */
+typedef struct gli_vi_source_rect
+{
+	s32 srcY0, dstY0;
+	s32 XoffsetLeft, XoffsetRight;
+	s32 srcWidth, srcHeight;
+} gli_vi_source_rect;
+
+void gli_vi_source(const gli_vi_result *_r, u32 _bufStart, u32 _bufWidth, u32 _bufHeight,
+		u32 _bufSize, f32 _bufScale, u32 _texRealHeight, gli_vi_source_rect *_o);
+
 #ifdef __cplusplus
 }
 #endif
