@@ -382,6 +382,7 @@ SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/ZlutTexture.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/PaletteTexture.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/NoiseTexture.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/StereoFrames.c
+SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/TextureFilterHandler.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/gSP.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/GBI.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/RSP.c
@@ -441,7 +442,6 @@ SOURCES_CXX   += \
     $(VIDEODIR_GLIDEN64)/src/FrameBuffer.cpp                                                      \
     $(VIDEODIR_GLIDEN64)/src/PostProcessor.cpp                                                    \
     $(VIDEODIR_GLIDEN64)/src/TexrectDrawerGpu.cpp                                                    \
-    $(VIDEODIR_GLIDEN64)/src/TextureFilterHandler.cpp                                             \
     $(VIDEODIR_GLIDEN64)/src/Textures.cpp                                                         \
     $(VIDEODIR_GLIDEN64)/src/common/CommonAPIImpl_common.cpp                                      \
     $(VIDEODIR_GLIDEN64)/src/BufferCopy/ColorBufferToRDRAM.cpp                                    \

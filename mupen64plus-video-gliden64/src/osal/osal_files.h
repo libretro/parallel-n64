@@ -52,17 +52,17 @@ extern "C" {
 #endif
 #endif
 
-// Returns 1 if name contains path to a directory, 0 otherwise
+/* Returns 1 if name contains path to a directory, 0 otherwise */
 EXPORT int CALL osal_is_directory(const wchar_t* name);
-// Returns 1 if name contains an absolute path, 0 otherwise. Path validity not tested.
+/* Returns 1 if name contains an absolute path, 0 otherwise. Path validity not tested. */
 EXPORT int CALL osal_is_absolute_path(const wchar_t* name);
-// Returns 1 if path points to file or directory, 0 otherwise
+/* Returns 1 if path points to file or directory, 0 otherwise */
 EXPORT int CALL osal_path_existsA(const char *path);
-// Returns 1 if path points to file or directory, 0 otherwise
+/* Returns 1 if path points to file or directory, 0 otherwise */
 EXPORT int CALL osal_path_existsW(const wchar_t *path);
-// Returns 0 if all directories on the path exist or successfully created
-// Returns 1 if path is bad
-// Returns 2 if we can't create some directory on the path
+/* Returns 0 if all directories on the path exist or successfully created */
+/* Returns 1 if path is bad */
+/* Returns 2 if we can't create some directory on the path */
 EXPORT int CALL osal_mkdirp(const wchar_t *dirpath);
 
 EXPORT void * CALL osal_search_dir_open(const wchar_t *_pathname);

@@ -40,7 +40,7 @@ set(GLideN64_SOURCES
   SoftwareRender.c
   TexrectDrawer.c
   TexrectDrawerGpu.cpp
-  TextureFilterHandler.cpp
+  TextureFilterHandler.c
   Textures.cpp
   VI.c
   ZlutTexture.c

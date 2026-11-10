@@ -33,7 +33,9 @@
 #define GETCWD(a, b) GetCurrentDirectoryW(a, b)
 #define CHDIR(a) SetCurrentDirectoryW(a)
 #else
+#ifdef __cplusplus
 #include <iostream>
+#endif
 #include <dlfcn.h>
 #include <unistd.h>
 #define MAX_PATH 4095
@@ -92,8 +94,7 @@ typedef unsigned char boolean;
 #define RICE_HIRESTEXTURES  0x00020000
 #define JABO_HIRESTEXTURES  0x00030000
 
-//#define COMPRESS_TEX        0x00100000 // Not used anymore
-//#define COMPRESS_HIRESTEX   0x00200000 // Not used anymore
+/* COMPRESS_TEX 0x00100000 and COMPRESS_HIRESTEX 0x00200000 are not used anymore */
 #define GZ_TEXCACHE         0x00400000
 #define GZ_HIRESTEXCACHE    0x00800000
 #define DUMP_TEXCACHE       0x01000000
@@ -105,6 +106,7 @@ typedef unsigned char boolean;
 #define LET_TEXARTISTS_FLY  0x40000000 /* a little freedom for texture artists */
 #define DUMP_TEX            0x80000000
 
+typedef struct GHQTexInfo GHQTexInfo;
 struct GHQTexInfo {
   unsigned char *data;
   int width;
@@ -114,10 +116,12 @@ struct GHQTexInfo {
   unsigned short pixel_type;
   unsigned char is_hires_tex;
 
+#ifdef __cplusplus
   GHQTexInfo() :
 	  data(NULL), width(0), height(0), format(0),
 	  texture_format(0), pixel_type(0), is_hires_tex(0)
   {}
+#endif
 };
 
 /* Callback to display hires texture info.
@@ -148,7 +152,7 @@ typedef void (*dispInfoFuncExt)(const wchar_t *format, ...);
 #define TAPI
 #define TAPIENTRY
 #endif
-#else // OS_WINDOWS
+#else /* OS_WINDOWS */
 #ifdef TXFILTER_LIB
 #define TAPI __attribute__((visibility("default")))
 #define TAPIENTRY
@@ -156,7 +160,7 @@ typedef void (*dispInfoFuncExt)(const wchar_t *format, ...);
 #define TAPI
 #define TAPIENTRY
 #endif
-#endif // OS_WINDOWS
+#endif /* OS_WINDOWS */
 
 #ifdef TXFILTER_DLL
 typedef unsigned char  uint8;
@@ -240,7 +244,7 @@ TAPI boolean TAPIENTRY
 txfilter_dmptx(uint8 *src, int width, int height, int rowStridePixel, uint16 gfmt, uint16 n64fmt, uint64 r_crc64);
 
 TAPI boolean TAPIENTRY
-txfilter_reloadhirestex();
+txfilter_reloadhirestex(void);
 
 TAPI void TAPIENTRY
 txfilter_dumpcache(void);

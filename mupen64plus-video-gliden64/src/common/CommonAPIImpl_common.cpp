@@ -103,7 +103,7 @@ private:
 class RomClosedCommand : public APICommand {
 public:
 	bool run() {
-		TFH.dumpcache();
+		gli_TFH_dumpcache();
 		dwnd().stop();
 		gli_GBI_destroy();
 		gli_RSP_StereoDestroy();
@@ -142,7 +142,7 @@ void PluginAPI::RomClosed()
 	_callAPICommand(RomClosedCommand());
 	m_rspThread.join();
 #else
-	TFH.dumpcache();
+	gli_TFH_dumpcache();
 	dwnd().stop();
 	gli_GBI_destroy();
 	gli_RSP_StereoDestroy();

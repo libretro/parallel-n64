@@ -219,6 +219,11 @@ void gli_window_update_scale(void)
 	dwnd().updateScale();
 }
 
+s32 gli_gfx_max_texture_size(void)
+{
+	return gfxContext.getMaxTextureSize();
+}
+
 void gli_gfx_touch_error(void)
 {
 	gfxContext.isError();

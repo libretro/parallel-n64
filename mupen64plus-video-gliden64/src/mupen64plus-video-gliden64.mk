@@ -43,7 +43,7 @@ MY_LOCAL_SRC_FILES :=                                                           
     $(SRCDIR)/SoftwareRender.c                                                   \
     $(SRCDIR)/TexrectDrawer.c                                                      \
     $(SRCDIR)/TexrectDrawerGpu.cpp                                                    \
-    $(SRCDIR)/TextureFilterHandler.cpp                                             \
+    $(SRCDIR)/TextureFilterHandler.c                                              \
     $(SRCDIR)/Textures.cpp                                                         \
     $(SRCDIR)/VI.c                                                               \
     $(SRCDIR)/ZlutTexture.c                                                        \

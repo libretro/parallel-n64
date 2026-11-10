@@ -89,3 +89,13 @@ extern "C" void gli_api_find_plugin_path(wchar_t * _path)
 {
 	api().FindPluginPath(_path);
 }
+
+extern "C" void gli_api_user_data_path(wchar_t * _path)
+{
+	api().GetUserDataPath(_path);
+}
+
+extern "C" void gli_api_user_cache_path(wchar_t * _path)
+{
+	api().GetUserCachePath(_path);
+}

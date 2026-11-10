@@ -780,7 +780,7 @@ void _updateCachedTexture(const GHQTexInfo & _info, CachedTexture *_pTexture, f3
 
 bool TextureCache::_loadHiresBackground(CachedTexture *_pTexture, u64 & _ricecrc)
 {
-	if (!TFH.isInited())
+	if (!gli_TFH_is_inited())
 		return false;
 
 	u8 * addr = (u8*)(RDRAM + gSP.bgImage.address);
@@ -914,7 +914,7 @@ void TextureCache::_loadBackground(CachedTexture *pTexture)
 	bool bLoaded = false;
 	if ((config.textureFilter.txEnhancementMode | config.textureFilter.txFilterMode) != 0 &&
 			config.textureFilter.txFilterIgnoreBG == 0 &&
-			TFH.isInited()) {
+			gli_TFH_is_inited()) {
 		GHQTexInfo ghqTexInfo;
 		if (txfilter_filter((u8*)pDest, pTexture->realWidth, pTexture->realHeight,
 				(u16)u32(glInternalFormat), (uint64)pTexture->crc, &ghqTexInfo) != 0 &&
@@ -967,7 +967,7 @@ void TextureCache::_loadBackground(CachedTexture *pTexture)
 
 bool TextureCache::_loadHiresTexture(u32 _tile, CachedTexture *_pTexture, u64 & _ricecrc)
 {
-	if (config.textureFilter.txHiresEnable == 0 || !TFH.isInited())
+	if (config.textureFilter.txHiresEnable == 0 || !gli_TFH_is_inited())
 		return false;
 
 	gDPLoadTileInfo & info = gDP.loadInfo[_pTexture->tMem];
@@ -1289,7 +1289,7 @@ void TextureCache::_load(u32 _tile, CachedTexture *_pTexture)
 		bool bLoaded = false;
 		bool needEnhance = (config.textureFilter.txEnhancementMode | config.textureFilter.txFilterMode) != 0 &&
 			_pTexture->max_level == 0 &&
-			TFH.isInited();
+			gli_TFH_is_inited();
 		if (needEnhance) {
 			if (config.textureFilter.txFilterIgnoreBG != 0) {
 				switch (gli_GBI->type) {

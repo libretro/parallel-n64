@@ -29,6 +29,11 @@
 
 TxFilter *txFilter = nullptr;
 
+/* frees the filter when the core unloads */
+static struct TxFilterUnload {
+	~TxFilterUnload() { delete txFilter; txFilter = nullptr; }
+} l_txFilterUnload;
+
 #ifdef __cplusplus
 extern "C"{
 #endif

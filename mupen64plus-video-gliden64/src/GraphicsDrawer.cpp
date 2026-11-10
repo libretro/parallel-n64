@@ -1778,7 +1778,7 @@ void GraphicsDrawer::_initData()
 	DepthBuffer_Init();
 	FrameBuffer_Init();
 	Combiner_Init();
-	TFH.init();
+	gli_TFH_init();
 	PostProcessor::get().init();
 	gli_zlut_init();
 	gli_noise_init();
@@ -1806,8 +1806,8 @@ void GraphicsDrawer::_destroyData()
 	gli_zlut_destroy();
 	gli_noise_destroy();
 	PostProcessor::get().destroy();
-	if (TFH.optionsChanged())
-		TFH.shutdown();
+	if (gli_TFH_options_changed())
+		gli_TFH_shutdown();
 	Combiner_Destroy();
 	FrameBuffer_Destroy();
 	DepthBuffer_Destroy();
