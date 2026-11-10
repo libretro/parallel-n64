@@ -490,3 +490,8 @@ bool CombinerInfo::_loadShadersStorage()
 
 	return false;
 }
+
+bool gli_combiner_is_rect_mode(void)
+{
+	return CombinerInfo::get().isRectMode();
+}
