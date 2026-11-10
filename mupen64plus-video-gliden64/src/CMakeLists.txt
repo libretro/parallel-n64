@@ -249,7 +249,6 @@ if(CRC_OPT)
   )
   list(APPEND GLideN64_SOURCES
         CRC_OPT.c
-        xxHash/xxhash.c
   )
 endif(CRC_OPT)
 

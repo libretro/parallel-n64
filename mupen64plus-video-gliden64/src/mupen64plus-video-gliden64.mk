@@ -112,7 +112,7 @@ MY_LOCAL_SRC_FILES :=                                                           
     $(SRCDIR)/uCodes/Turbo3D.c                                                   \
     $(SRCDIR)/uCodes/ZSort.c                                                     \
     $(SRCDIR)/uCodes/ZSortBOSS.c                                                 \
-    $(SRCDIR)/xxHash/xxhash.c                                                      \
+    $(SRCDIR)/CRC_OPT.c \
 
 MY_LOCAL_CFLAGS :=          \
     $(COMMON_CFLAGS)        \
@@ -137,7 +137,6 @@ ifeq ($(TARGET_ARCH_ABI), armeabi-v7a)
     MY_LOCAL_SRC_FILES += $(SRCDIR)/Neon/3DMathNeon.cpp
     MY_LOCAL_SRC_FILES += $(SRCDIR)/Neon/gSPNeon.cpp
     MY_LOCAL_SRC_FILES += $(SRCDIR)/Neon/RSP_LoadMatrixNeon.cpp
-    MY_LOCAL_SRC_FILES += $(SRCDIR)/Neon/CRC_OPT_NEON.cpp
     MY_LOCAL_CFLAGS += -D__NEON_OPT
     MY_LOCAL_CFLAGS += -D__VEC4_OPT -mfpu=neon
 
@@ -146,7 +145,6 @@ else ifeq ($(TARGET_ARCH_ABI), arm64-v8a)
     MY_LOCAL_SRC_FILES += $(SRCDIR)/Neon/3DMathNeon.cpp
     MY_LOCAL_SRC_FILES += $(SRCDIR)/Neon/gSPNeon.cpp
     MY_LOCAL_SRC_FILES += $(SRCDIR)/Neon/RSP_LoadMatrixNeon.cpp
-    MY_LOCAL_SRC_FILES += $(SRCDIR)/Neon/CRC_OPT_NEON.cpp
     MY_LOCAL_CFLAGS += -D__NEON_OPT
     MY_LOCAL_CFLAGS += -D__VEC4_OPT -mfpu=neon
 
@@ -155,14 +153,12 @@ else ifeq ($(TARGET_ARCH_ABI), x86)
     MY_LOCAL_CFLAGS += -D__VEC4_OPT
     MY_LOCAL_SRC_FILES += $(SRCDIR)/3DMath.c
     MY_LOCAL_SRC_FILES += $(SRCDIR)/RSP_LoadMatrix.c
-    MY_LOCAL_SRC_FILES += $(SRCDIR)/CRC_OPT.c
 
 else ifeq ($(TARGET_ARCH_ABI), x86_64)
 #    MY_LOCAL_CFLAGS += -DX86_ASM
     MY_LOCAL_CFLAGS += -D__VEC4_OPT
     MY_LOCAL_SRC_FILES += $(SRCDIR)/3DMath.c
     MY_LOCAL_SRC_FILES += $(SRCDIR)/RSP_LoadMatrix.c
-    MY_LOCAL_SRC_FILES += $(SRCDIR)/CRC_OPT.c
 endif
 
 ###########

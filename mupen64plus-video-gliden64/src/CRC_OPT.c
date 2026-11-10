@@ -1,7 +1,6 @@
 #include <encodings/crc32.h>
+#include <encodings/xxh3.h>
 #include "CRC.h"
-#define XXH_INLINE_ALL
-#include "xxHash/xxhash.h"
 
 /* The 256-entry CRC table this file used to carry is gone: encoding_crc32()
  * in libretro-common computes the same CRC-32/ISO-HDLC with a slicing-by-8
@@ -28,14 +27,14 @@ u32 CRC_Calculate_Strict( u32 crc, const void * buffer, u32 count )
 
 u64 CRC_Calculate( u64 crc, const void * buffer, u32 count )
 {
-	return XXH3_64bits_withSeed(buffer, count, crc);
+	return xxh3_64(buffer, count, crc);
 }
 
 u64 CRC_CalculatePalette(u64 crc, const void * buffer, u32 count )
 {
 	u8 *p = (u8*) buffer;
 	while (count--) {
-		crc = XXH3_64bits_withSeed(p, 2, crc);
+		crc = xxh3_64(p, 2, crc);
 		p += 8;
 	}
 	return crc;

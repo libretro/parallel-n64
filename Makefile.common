@@ -368,10 +368,7 @@ ifeq ($(HAVE_GLIDEN64),1)
 CFLAGS   += -DHAVE_GLIDEN64 -DMUPENPLUSAPI -D__LIBRETRO__
 CXXFLAGS += -DHAVE_GLIDEN64 -DMUPENPLUSAPI -D__LIBRETRO__
 
-# xxhash 0.8 is a single-header library; the implementation is inlined
-# into CRC_OPT.c via #define XXH_INLINE_ALL. No separate xxhash.c
-# translation unit is required - the 0.6.5 xxhash.c was deleted on the
-# library bump and is no longer present in the tree.
+# The texture hash is libretro-common xxh3 (encoding_xxh3.c).
 
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/StereoJournal.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/N64.c
