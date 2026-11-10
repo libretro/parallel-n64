@@ -17,6 +17,7 @@ set(GLideN64_SOURCES
   3DMath.c
   Combiner.cpp
   CombinerDecode.c
+  TextureDecode.c
   CombinerKey.c
   PluginAPI.c
   Config.c

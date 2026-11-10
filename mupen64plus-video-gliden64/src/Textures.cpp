@@ -18,389 +18,41 @@
 #include "Graphics/Parameters.h"
 #include "DisplayWindow.h"
 #include "gli_textures.h"
+#include "gli_texdecode.h"
 
 using namespace std;
 using namespace graphics;
 
-inline u32 GetNone( u64 *src, u16 x, u16 i, u8 palette )
+static InternalColorFormatParam _texFormat(u32 _f)
 {
-	return 0x00000000;
+	return _f == GLI_TEXF_RGBA8 ? internalcolorFormat::RGBA8 :
+		(_f == GLI_TEXF_RGB5A1 ? internalcolorFormat::RGB5_A1 : internalcolorFormat::RGBA4);
 }
 
-inline u32 GetCI4_RGBA8888(u64 *src, u16 x, u16 i, u8 palette)
+static DatatypeParam _texType(u32 _t)
 {
-	u8 color4B = ((u8*)src)[(x >> 1) ^ (i << 1)];
-
-	return CI4_RGBA8888((x & 1) ? (palette << 4) | (color4B & 0x0F) : (palette << 4) | (color4B >> 4));
+	return _t == GLI_TEXT_U8 ? datatype::UNSIGNED_BYTE :
+		(_t == GLI_TEXT_5551 ? datatype::UNSIGNED_SHORT_5_5_5_1 : datatype::UNSIGNED_SHORT_4_4_4_4);
 }
 
-inline u32 GetCI4_RGBA4444(u64 *src, u16 x, u16 i, u8 palette)
+static void _texDecodeParams(const CachedTexture & _t, gli_tex_decode & _d)
 {
-	u8 color4B = ((u8*)src)[(x >> 1) ^ (i << 1)];
-
-	return CI4_RGBA4444((x & 1) ? (palette << 4) | (color4B & 0x0F) : (palette << 4) | (color4B >> 4));
-}
-
-inline u32 GetCI4IA_RGBA4444(u64 *src, u16 x, u16 i, u8 palette)
-{
-	u8 color4B = ((u8*)src)[(x>>1)^(i<<1)];
-
-	if (x & 1)
-		return IA88_RGBA4444( *(u16*)&TMEM[256 + (palette << 4) + (color4B & 0x0F)] );
-	else
-		return IA88_RGBA4444( *(u16*)&TMEM[256 + (palette << 4) + (color4B >> 4)] );
-}
-
-inline u32 GetCI4IA_RGBA8888( u64 *src, u16 x, u16 i, u8 palette )
-{
-	u8 color4B = ((u8*)src)[(x>>1)^(i<<1)];
-
-	if (x & 1)
-		return IA88_RGBA8888( *(u16*)&TMEM[256 + (palette << 4) + (color4B & 0x0F)] );
-	else
-		return IA88_RGBA8888( *(u16*)&TMEM[256 + (palette << 4) + (color4B >> 4)] );
-}
-
-inline u32 GetCI4RGBA_RGBA5551( u64 *src, u16 x, u16 i, u8 palette )
-{
-	u8 color4B = ((u8*)src)[(x>>1)^(i<<1)];
-
-	if (x & 1)
-		return RGBA5551_RGBA5551( *(u16*)&TMEM[256 + (palette << 4) + (color4B & 0x0F)] );
-	else
-		return RGBA5551_RGBA5551( *(u16*)&TMEM[256 + (palette << 4) + (color4B >> 4)] );
-}
-
-inline u32 GetCI4RGBA_RGBA8888( u64 *src, u16 x, u16 i, u8 palette )
-{
-	u8 color4B = ((u8*)src)[(x>>1)^(i<<1)];
-
-	if (x & 1)
-		return RGBA5551_RGBA8888( *(u16*)&TMEM[256 + (palette << 4) + (color4B & 0x0F)] );
-	else
-		return RGBA5551_RGBA8888( *(u16*)&TMEM[256 + (palette << 4) + (color4B >> 4)] );
-}
-
-inline u32 GetIA31_RGBA8888( u64 *src, u16 x, u16 i, u8 palette )
-{
-	u8 color4B = ((u8*)src)[(x>>1)^(i<<1)];
-
-	return IA31_RGBA8888( (x & 1) ? (color4B & 0x0F) : (color4B >> 4) );
-}
-
-inline u32 GetIA31_RGBA4444( u64 *src, u16 x, u16 i, u8 palette )
-{
-	u8 color4B = ((u8*)src)[(x>>1)^(i<<1)];
-
-	return IA31_RGBA4444( (x & 1) ? (color4B & 0x0F) : (color4B >> 4) );
-}
-
-inline u32 GetI4_RGBA8888( u64 *src, u16 x, u16 i, u8 palette )
-{
-	u8 color4B = ((u8*)src)[(x>>1)^(i<<1)];
-
-	return I4_RGBA8888( (x & 1) ? (color4B & 0x0F) : (color4B >> 4) );
-}
-
-inline u32 GetI4_RGBA4444( u64 *src, u16 x, u16 i, u8 palette )
-{
-	u8 color4B = ((u8*)src)[(x>>1)^(i<<1)];
-
-	return I4_RGBA4444( (x & 1) ? (color4B & 0x0F) : (color4B >> 4) );
-}
-
-inline u32 GetCI8IA_RGBA4444( u64 *src, u16 x, u16 i, u8 palette )
-{
-	return IA88_RGBA4444( *(u16*)&TMEM[256 + ((u8*)src)[x^(i<<1)]] );
-}
-
-inline u32 GetCI8IA_RGBA8888( u64 *src, u16 x, u16 i, u8 palette )
-{
-	return IA88_RGBA8888( *(u16*)&TMEM[256 + ((u8*)src)[x^(i<<1)]] );
-}
-
-inline u32 GetCI8RGBA_RGBA5551( u64 *src, u16 x, u16 i, u8 palette )
-{
-	return RGBA5551_RGBA5551( *(u16*)&TMEM[256 + ((u8*)src)[x^(i<<1)]] );
-}
-
-inline u32 GetCI8RGBA_RGBA8888( u64 *src, u16 x, u16 i, u8 palette )
-{
-	return RGBA5551_RGBA8888( *(u16*)&TMEM[256 + ((u8*)src)[x^(i<<1)]] );
-}
-
-inline u32 GetIA44_RGBA8888( u64 *src, u16 x, u16 i, u8 palette )
-{
-	return IA44_RGBA8888(((u8*)src)[x^(i<<1)]);
-}
-
-inline u32 GetIA44_RGBA4444( u64 *src, u16 x, u16 i, u8 palette )
-{
-	return IA44_RGBA4444(((u8*)src)[x^(i<<1)]);
-}
-
-inline u32 GetI8_RGBA8888( u64 *src, u16 x, u16 i, u8 palette )
-{
-	return I8_RGBA8888(((u8*)src)[x^(i<<1)]);
-}
-
-inline u32 GetI8_RGBA4444( u64 *src, u16 x, u16 i, u8 palette )
-{
-	return I8_RGBA4444(((u8*)src)[x^(i<<1)]);
-}
-
-inline u32 GetCI16IA_RGBA8888(u64 *src, u16 x, u16 i, u8 palette)
-{
-	const u16 tex = ((u16*)src)[x^i];
-	const u16 col = (*(u16*)&TMEM[256 + (tex >> 8)]);
-	const u16 c = col >> 8;
-	const u16 a = col & 0xFF;
-	return (a << 24) | (c << 16) | (c << 8) | c;
-}
-
-inline u32 GetCI16IA_RGBA4444(u64 *src, u16 x, u16 i, u8 palette)
-{
-	const u16 tex = ((u16*)src)[x^i];
-	const u16 col = (*(u16*)&TMEM[256 + (tex >> 8)]);
-	const u16 c = col >> 12;
-	const u16 a = col & 0x0F;
-	return (a << 12) | (c << 8) | (c << 4) | c;
-}
-
-inline u32 GetCI16RGBA_RGBA8888(u64 *src, u16 x, u16 i, u8 palette)
-{
-	const u16 tex = (((u16*)src)[x^i])&0xFF;
-	return RGBA5551_RGBA8888(((u16*)&TMEM[256])[tex << 2]);
-}
-
-inline u32 GetCI16RGBA_RGBA5551(u64 *src, u16 x, u16 i, u8 palette)
-{
-	const u16 tex = (((u16*)src)[x^i]) & 0xFF;
-	return RGBA5551_RGBA5551(((u16*)&TMEM[256])[tex << 2]);
-}
-
-inline u32 GetRGBA5551_RGBA8888(u64 *src, u16 x, u16 i, u8 palette)
-{
-	u16 tex = ((u16*)src)[x^i];
-	return RGBA5551_RGBA8888(tex);
-}
-
-inline u32 GetRGBA5551_RGBA5551( u64 *src, u16 x, u16 i, u8 palette )
-{
-	u16 tex = ((u16*)src)[x^i];
-	return RGBA5551_RGBA5551(tex);
-}
-
-inline u32 GetIA88_RGBA8888( u64 *src, u16 x, u16 i, u8 palette )
-{
-	return IA88_RGBA8888(((u16*)src)[x^i]);
-}
-
-inline u32 GetIA88_RGBA4444( u64 *src, u16 x, u16 i, u8 palette )
-{
-	return IA88_RGBA4444(((u16*)src)[x^i]);
-}
-
-inline u32 GetRGBA8888_RGBA8888( u64 *src, u16 x, u16 i, u8 palette )
-{
-	return ((u32*)src)[x^i];
-}
-
-inline u32 GetRGBA8888_RGBA4444( u64 *src, u16 x, u16 i, u8 palette )
-{
-	return RGBA8888_RGBA4444(((u32*)src)[x^i]);
-}
-
-#if 0
-u32 YUV_RGBA8888(u8 y, u8 u, u8 v)
-{
-	s32 r = (s32)(y + (1.370705f * (v - 128)));
-	s32 g = (s32)((y - (0.698001f * (v - 128)) - (0.337633f * (u - 128))));
-	s32 b = (s32)(y + (1.732446f * (u - 128)));
-	//clipping the result
-	if (r > 255) r = 255;
-	if (g > 255) g = 255;
-	if (b > 255) b = 255;
-	if (r < 0) r = 0;
-	if (g < 0) g = 0;
-	if (b < 0) b = 0;
-
-	return (0xff << 24) | (b << 16) | (g << 8) | r;
-}
-#else
-inline u32 YUV_RGBA8888(u8 y, u8 u, u8 v)
-{
-	return (0xff << 24) | (y << 16) | (v << 8) | u;
-}
-#endif
-
-inline void GetYUV_RGBA8888(u64 * src, u32 * dst, u16 x)
-{
-	const u32 t = (((u32*)src)[x]);
-	u8 y1 = (u8)t & 0xFF;
-	u8 v = (u8)(t >> 8) & 0xFF;
-	u8 y0 = (u8)(t >> 16) & 0xFF;
-	u8 u = (u8)(t >> 24) & 0xFF;
-	u32 c = YUV_RGBA8888(y0, u, v);
-	*(dst++) = c;
-	c = YUV_RGBA8888(y1, u, v);
-	*(dst++) = c;
-}
-
-struct TextureLoadParameters
-{
-	GetTexelFunc				Get16;
-	DatatypeParam				glType16;
-	InternalColorFormatParam	glInternalFormat16;
-	GetTexelFunc				Get32;
-	DatatypeParam				glType32;
-	InternalColorFormatParam	glInternalFormat32;
-	InternalColorFormatParam	autoFormat;
-	u32							lineShift;
-	u32							maxTexels;
-};
-
-struct ImageFormat {
-	ImageFormat();
-
-	TextureLoadParameters tlp[4][4][5];
-
-	static ImageFormat & get() {
-		static ImageFormat imageFmt;
-		return imageFmt;
-	}
-};
-
-ImageFormat::ImageFormat()
-{
-	TextureLoadParameters imageFormat[4][4][5] =
-	{ // G_TT_NONE
-		{ //		Get16					glType16	glInternalFormat16		Get32					glType32	glInternalFormat32	autoFormat
-			{ // 4-bit
-				{ GetI4_RGBA4444, datatype::UNSIGNED_SHORT_4_4_4_4, internalcolorFormat::RGBA4, GetI4_RGBA8888, datatype::UNSIGNED_BYTE, internalcolorFormat::RGBA8, internalcolorFormat::RGBA4, 4, 8192 }, // RGBA as I
-				{ GetNone, datatype::UNSIGNED_SHORT_4_4_4_4, internalcolorFormat::RGBA4, GetNone, datatype::UNSIGNED_BYTE, internalcolorFormat::RGBA8, internalcolorFormat::RGBA4, 4, 8192 }, // YUV
-				{ GetCI4_RGBA4444, datatype::UNSIGNED_SHORT_4_4_4_4, internalcolorFormat::RGBA4, GetCI4_RGBA8888, datatype::UNSIGNED_BYTE, internalcolorFormat::RGBA8, internalcolorFormat::RGBA4, 4, 8192 }, // CI without palette
-				{ GetIA31_RGBA4444, datatype::UNSIGNED_SHORT_4_4_4_4, internalcolorFormat::RGBA4, GetIA31_RGBA8888, datatype::UNSIGNED_BYTE, internalcolorFormat::RGBA8, internalcolorFormat::RGBA4, 4, 8192 }, // IA
-				{ GetI4_RGBA4444, datatype::UNSIGNED_SHORT_4_4_4_4, internalcolorFormat::RGBA4, GetI4_RGBA8888, datatype::UNSIGNED_BYTE, internalcolorFormat::RGBA8, internalcolorFormat::RGBA4, 4, 8192 }, // I
-			},
-			{ // 8-bit
-				{ GetI8_RGBA4444, datatype::UNSIGNED_SHORT_4_4_4_4, internalcolorFormat::RGBA4, GetI8_RGBA8888, datatype::UNSIGNED_BYTE, internalcolorFormat::RGBA8, internalcolorFormat::RGBA8, 3, 4096 }, // RGBA as I
-				{ GetNone, datatype::UNSIGNED_SHORT_4_4_4_4, internalcolorFormat::RGBA4, GetNone, datatype::UNSIGNED_BYTE, internalcolorFormat::RGBA8, internalcolorFormat::RGBA4, 0, 4096 }, // YUV
-				{ GetI8_RGBA4444, datatype::UNSIGNED_SHORT_4_4_4_4, internalcolorFormat::RGBA4, GetI8_RGBA8888, datatype::UNSIGNED_BYTE, internalcolorFormat::RGBA8, internalcolorFormat::RGBA8, 3, 4096 }, // CI without palette
-				{ GetIA44_RGBA4444, datatype::UNSIGNED_SHORT_4_4_4_4, internalcolorFormat::RGBA4, GetIA44_RGBA8888, datatype::UNSIGNED_BYTE, internalcolorFormat::RGBA8, internalcolorFormat::RGBA4, 3, 4096 }, // IA
-				{ GetI8_RGBA4444, datatype::UNSIGNED_SHORT_4_4_4_4, internalcolorFormat::RGBA4, GetI8_RGBA8888, datatype::UNSIGNED_BYTE, internalcolorFormat::RGBA8, internalcolorFormat::RGBA8, 3, 4096 }, // I
-			},
-			{ // 16-bit
-				{ GetRGBA5551_RGBA5551, datatype::UNSIGNED_SHORT_5_5_5_1, internalcolorFormat::RGB5_A1, GetRGBA5551_RGBA8888, datatype::UNSIGNED_BYTE, internalcolorFormat::RGBA8, internalcolorFormat::RGB5_A1, 2, 2048 }, // RGBA
-				{ GetNone, datatype::UNSIGNED_SHORT_4_4_4_4, internalcolorFormat::RGBA4, GetNone, datatype::UNSIGNED_BYTE, internalcolorFormat::RGBA8, internalcolorFormat::RGBA8, 2, 2048 }, // YUV
-				{ GetIA88_RGBA4444, datatype::UNSIGNED_SHORT_4_4_4_4, internalcolorFormat::RGBA4, GetIA88_RGBA8888, datatype::UNSIGNED_BYTE, internalcolorFormat::RGBA8, internalcolorFormat::RGBA8, 2, 2048 }, // CI as IA
-				{ GetIA88_RGBA4444, datatype::UNSIGNED_SHORT_4_4_4_4, internalcolorFormat::RGBA4, GetIA88_RGBA8888, datatype::UNSIGNED_BYTE, internalcolorFormat::RGBA8, internalcolorFormat::RGBA8, 2, 2048 }, // IA
-				{ GetNone, datatype::UNSIGNED_SHORT_4_4_4_4, internalcolorFormat::RGBA4, GetNone, datatype::UNSIGNED_BYTE, internalcolorFormat::RGBA8, internalcolorFormat::RGBA4, 0, 2048 }, // I
-			},
-			{ // 32-bit
-				{ GetRGBA8888_RGBA4444, datatype::UNSIGNED_SHORT_4_4_4_4, internalcolorFormat::RGBA4, GetRGBA8888_RGBA8888, datatype::UNSIGNED_BYTE, internalcolorFormat::RGBA8, internalcolorFormat::RGBA8, 2, 1024 }, // RGBA
-				{ GetNone, datatype::UNSIGNED_SHORT_4_4_4_4, internalcolorFormat::RGBA4, GetNone, datatype::UNSIGNED_BYTE, internalcolorFormat::RGBA8, internalcolorFormat::RGBA4, 0, 1024 }, // YUV
-				{ GetNone, datatype::UNSIGNED_SHORT_4_4_4_4, internalcolorFormat::RGBA4, GetNone, datatype::UNSIGNED_BYTE, internalcolorFormat::RGBA8, internalcolorFormat::RGBA4, 0, 1024 }, // CI
-				{ GetNone, datatype::UNSIGNED_SHORT_4_4_4_4, internalcolorFormat::RGBA4, GetNone, datatype::UNSIGNED_BYTE, internalcolorFormat::RGBA8, internalcolorFormat::RGBA4, 0, 1024 }, // IA
-				{ GetNone, datatype::UNSIGNED_SHORT_4_4_4_4, internalcolorFormat::RGBA4, GetNone, datatype::UNSIGNED_BYTE, internalcolorFormat::RGBA8, internalcolorFormat::RGBA4, 0, 1024 }, // I
-			}
-		},
-			// DUMMY
-		{ //		Get16					glType16	glInternalFormat16			Get32				glType32	glInternalFormat32	autoFormat
-			{ // 4-bit
-				{ GetCI4RGBA_RGBA5551, datatype::UNSIGNED_SHORT_5_5_5_1, internalcolorFormat::RGB5_A1, GetCI4RGBA_RGBA8888, datatype::UNSIGNED_BYTE, internalcolorFormat::RGBA8, internalcolorFormat::RGB5_A1, 4, 4096 }, // CI (Banjo-Kazooie uses this, doesn't make sense, but it works...)
-				{ GetNone, datatype::UNSIGNED_SHORT_4_4_4_4, internalcolorFormat::RGBA4, GetNone, datatype::UNSIGNED_BYTE, internalcolorFormat::RGBA8, internalcolorFormat::RGBA4, 4, 8192 }, // YUV
-				{ GetCI4RGBA_RGBA5551, datatype::UNSIGNED_SHORT_5_5_5_1, internalcolorFormat::RGB5_A1, GetCI4RGBA_RGBA8888, datatype::UNSIGNED_BYTE, internalcolorFormat::RGBA8, internalcolorFormat::RGB5_A1, 4, 4096 }, // CI
-				{ GetCI4RGBA_RGBA5551, datatype::UNSIGNED_SHORT_5_5_5_1, internalcolorFormat::RGB5_A1, GetCI4RGBA_RGBA8888, datatype::UNSIGNED_BYTE, internalcolorFormat::RGBA8, internalcolorFormat::RGB5_A1, 4, 4096 }, // IA as CI
-				{ GetCI4RGBA_RGBA5551, datatype::UNSIGNED_SHORT_5_5_5_1, internalcolorFormat::RGB5_A1, GetCI4RGBA_RGBA8888, datatype::UNSIGNED_BYTE, internalcolorFormat::RGBA8, internalcolorFormat::RGB5_A1, 4, 4096 }, // I as CI
-			},
-			{ // 8-bit
-				{ GetCI8RGBA_RGBA5551, datatype::UNSIGNED_SHORT_5_5_5_1, internalcolorFormat::RGB5_A1, GetCI8RGBA_RGBA8888, datatype::UNSIGNED_BYTE, internalcolorFormat::RGBA8, internalcolorFormat::RGB5_A1, 3, 2048 }, // RGBA
-				{ GetNone, datatype::UNSIGNED_SHORT_4_4_4_4, internalcolorFormat::RGBA4, GetNone, datatype::UNSIGNED_BYTE, internalcolorFormat::RGBA8, internalcolorFormat::RGBA4, 0, 4096 }, // YUV
-				{ GetCI8RGBA_RGBA5551, datatype::UNSIGNED_SHORT_5_5_5_1, internalcolorFormat::RGB5_A1, GetCI8RGBA_RGBA8888, datatype::UNSIGNED_BYTE, internalcolorFormat::RGBA8, internalcolorFormat::RGB5_A1, 3, 2048 }, // CI
-				{ GetCI8RGBA_RGBA5551, datatype::UNSIGNED_SHORT_5_5_5_1, internalcolorFormat::RGB5_A1, GetCI8RGBA_RGBA8888, datatype::UNSIGNED_BYTE, internalcolorFormat::RGBA8, internalcolorFormat::RGB5_A1, 3, 2048 }, // IA as CI
-				{ GetCI8RGBA_RGBA5551, datatype::UNSIGNED_SHORT_5_5_5_1, internalcolorFormat::RGB5_A1, GetCI8RGBA_RGBA8888, datatype::UNSIGNED_BYTE, internalcolorFormat::RGBA8, internalcolorFormat::RGB5_A1, 3, 2048 }, // I as CI
-			},
-			{ // 16-bit
-				{ GetCI16RGBA_RGBA5551, datatype::UNSIGNED_SHORT_5_5_5_1, internalcolorFormat::RGB5_A1, GetRGBA5551_RGBA8888, datatype::UNSIGNED_BYTE, internalcolorFormat::RGBA8, internalcolorFormat::RGB5_A1, 2, 2048 }, // RGBA
-				{ GetNone, datatype::UNSIGNED_SHORT_4_4_4_4, internalcolorFormat::RGBA4, GetNone, datatype::UNSIGNED_BYTE, internalcolorFormat::RGBA8, internalcolorFormat::RGBA8, 2, 2048 }, // YUV
-				{ GetNone, datatype::UNSIGNED_SHORT_4_4_4_4, internalcolorFormat::RGBA4, GetNone, datatype::UNSIGNED_BYTE, internalcolorFormat::RGBA8, internalcolorFormat::RGBA4, 0, 2048 }, // CI
-				{ GetCI16RGBA_RGBA5551, datatype::UNSIGNED_SHORT_5_5_5_1, internalcolorFormat::RGB5_A1, GetCI16RGBA_RGBA8888, datatype::UNSIGNED_BYTE, internalcolorFormat::RGBA8, internalcolorFormat::RGB5_A1, 2, 2048 }, // IA as CI
-				{ GetNone, datatype::UNSIGNED_SHORT_4_4_4_4, internalcolorFormat::RGBA4, GetNone, datatype::UNSIGNED_BYTE, internalcolorFormat::RGBA8, internalcolorFormat::RGBA4, 0, 2048 }, // I
-			},
-			{ // 32-bit
-				{ GetRGBA8888_RGBA4444, datatype::UNSIGNED_SHORT_4_4_4_4, internalcolorFormat::RGBA4, GetRGBA8888_RGBA8888, datatype::UNSIGNED_BYTE, internalcolorFormat::RGBA8, internalcolorFormat::RGBA8, 2, 1024 }, // RGBA
-				{ GetNone, datatype::UNSIGNED_SHORT_4_4_4_4, internalcolorFormat::RGBA4, GetNone, datatype::UNSIGNED_BYTE, internalcolorFormat::RGBA8, internalcolorFormat::RGBA4, 0, 1024 }, // YUV
-				{ GetNone, datatype::UNSIGNED_SHORT_4_4_4_4, internalcolorFormat::RGBA4, GetNone, datatype::UNSIGNED_BYTE, internalcolorFormat::RGBA8, internalcolorFormat::RGBA4, 0, 1024 }, // CI
-				{ GetNone, datatype::UNSIGNED_SHORT_4_4_4_4, internalcolorFormat::RGBA4, GetNone, datatype::UNSIGNED_BYTE, internalcolorFormat::RGBA8, internalcolorFormat::RGBA4, 0, 1024 }, // IA
-				{ GetNone, datatype::UNSIGNED_SHORT_4_4_4_4, internalcolorFormat::RGBA4, GetNone, datatype::UNSIGNED_BYTE, internalcolorFormat::RGBA8, internalcolorFormat::RGBA4, 0, 1024 }, // I
-			}
-		},
-			// G_TT_RGBA16
-		{ //		Get16					glType16			glInternalFormat16	Get32				glType32	glInternalFormat32	autoFormat
-			{ // 4-bit
-				{ GetCI4RGBA_RGBA5551, datatype::UNSIGNED_SHORT_5_5_5_1, internalcolorFormat::RGB5_A1, GetCI4RGBA_RGBA8888, datatype::UNSIGNED_BYTE, internalcolorFormat::RGBA8, internalcolorFormat::RGB5_A1, 4, 4096 }, // CI (Banjo-Kazooie uses this, doesn't make sense, but it works...)
-				{ GetNone, datatype::UNSIGNED_SHORT_4_4_4_4, internalcolorFormat::RGBA4, GetNone, datatype::UNSIGNED_BYTE, internalcolorFormat::RGBA8, internalcolorFormat::RGBA4, 4, 8192 }, // YUV
-				{ GetCI4RGBA_RGBA5551, datatype::UNSIGNED_SHORT_5_5_5_1, internalcolorFormat::RGB5_A1, GetCI4RGBA_RGBA8888, datatype::UNSIGNED_BYTE, internalcolorFormat::RGBA8, internalcolorFormat::RGB5_A1, 4, 4096 }, // CI
-				{ GetCI4RGBA_RGBA5551, datatype::UNSIGNED_SHORT_5_5_5_1, internalcolorFormat::RGB5_A1, GetCI4RGBA_RGBA8888, datatype::UNSIGNED_BYTE, internalcolorFormat::RGBA8, internalcolorFormat::RGB5_A1, 4, 4096 }, // IA as CI
-				{ GetCI4RGBA_RGBA5551, datatype::UNSIGNED_SHORT_5_5_5_1, internalcolorFormat::RGB5_A1, GetCI4RGBA_RGBA8888, datatype::UNSIGNED_BYTE, internalcolorFormat::RGBA8, internalcolorFormat::RGB5_A1, 4, 4096 }, // I as CI
-			},
-			{ // 8-bit
-				{ GetCI8RGBA_RGBA5551, datatype::UNSIGNED_SHORT_5_5_5_1, internalcolorFormat::RGB5_A1, GetCI8RGBA_RGBA8888, datatype::UNSIGNED_BYTE, internalcolorFormat::RGBA8, internalcolorFormat::RGB5_A1, 3, 2048 }, // RGBA
-				{ GetNone, datatype::UNSIGNED_SHORT_4_4_4_4, internalcolorFormat::RGBA4, GetNone, datatype::UNSIGNED_BYTE, internalcolorFormat::RGBA8, internalcolorFormat::RGBA4, 0, 4096 }, // YUV
-				{ GetCI8RGBA_RGBA5551, datatype::UNSIGNED_SHORT_5_5_5_1, internalcolorFormat::RGB5_A1, GetCI8RGBA_RGBA8888, datatype::UNSIGNED_BYTE, internalcolorFormat::RGBA8, internalcolorFormat::RGB5_A1, 3, 2048 }, // CI
-				{ GetCI8RGBA_RGBA5551, datatype::UNSIGNED_SHORT_5_5_5_1, internalcolorFormat::RGB5_A1, GetCI8RGBA_RGBA8888, datatype::UNSIGNED_BYTE, internalcolorFormat::RGBA8, internalcolorFormat::RGB5_A1, 3, 2048 }, // IA as CI
-				{ GetCI8RGBA_RGBA5551, datatype::UNSIGNED_SHORT_5_5_5_1, internalcolorFormat::RGB5_A1, GetCI8RGBA_RGBA8888, datatype::UNSIGNED_BYTE, internalcolorFormat::RGBA8, internalcolorFormat::RGB5_A1, 3, 2048 }, // I as CI
-			},
-			{ // 16-bit
-				{ GetCI16RGBA_RGBA5551, datatype::UNSIGNED_SHORT_5_5_5_1, internalcolorFormat::RGB5_A1, GetRGBA5551_RGBA8888, datatype::UNSIGNED_BYTE, internalcolorFormat::RGBA8, internalcolorFormat::RGB5_A1, 2, 2048 }, // RGBA
-				{ GetNone, datatype::UNSIGNED_SHORT_4_4_4_4, internalcolorFormat::RGBA4, GetNone, datatype::UNSIGNED_BYTE, internalcolorFormat::RGBA8, internalcolorFormat::RGBA8, 2, 2048 }, // YUV
-				{ GetNone, datatype::UNSIGNED_SHORT_4_4_4_4, internalcolorFormat::RGBA4, GetNone, datatype::UNSIGNED_BYTE, internalcolorFormat::RGBA8, internalcolorFormat::RGBA4, 0, 2048 }, // CI
-				{ GetCI16RGBA_RGBA5551, datatype::UNSIGNED_SHORT_5_5_5_1, internalcolorFormat::RGB5_A1, GetCI16RGBA_RGBA8888, datatype::UNSIGNED_BYTE, internalcolorFormat::RGBA8, internalcolorFormat::RGB5_A1, 2, 2048 }, // IA as CI
-				{ GetNone, datatype::UNSIGNED_SHORT_4_4_4_4, internalcolorFormat::RGBA4, GetNone, datatype::UNSIGNED_BYTE, internalcolorFormat::RGBA8, internalcolorFormat::RGBA4, 0, 2048 }, // I
-			},
-			{ // 32-bit
-				{ GetRGBA8888_RGBA4444, datatype::UNSIGNED_SHORT_4_4_4_4, internalcolorFormat::RGBA4, GetRGBA8888_RGBA8888, datatype::UNSIGNED_BYTE, internalcolorFormat::RGBA8, internalcolorFormat::RGBA8, 2, 1024 }, // RGBA
-				{ GetNone, datatype::UNSIGNED_SHORT_4_4_4_4, internalcolorFormat::RGBA4, GetNone, datatype::UNSIGNED_BYTE, internalcolorFormat::RGBA8, internalcolorFormat::RGBA4, 0, 1024 }, // YUV
-				{ GetNone, datatype::UNSIGNED_SHORT_4_4_4_4, internalcolorFormat::RGBA4, GetNone, datatype::UNSIGNED_BYTE, internalcolorFormat::RGBA8, internalcolorFormat::RGBA4, 0, 1024 }, // CI
-				{ GetNone, datatype::UNSIGNED_SHORT_4_4_4_4, internalcolorFormat::RGBA4, GetNone, datatype::UNSIGNED_BYTE, internalcolorFormat::RGBA8, internalcolorFormat::RGBA4, 0, 1024 }, // IA
-				{ GetNone, datatype::UNSIGNED_SHORT_4_4_4_4, internalcolorFormat::RGBA4, GetNone, datatype::UNSIGNED_BYTE, internalcolorFormat::RGBA8, internalcolorFormat::RGBA4, 0, 1024 }, // I
-			}
-		},
-			// G_TT_IA16
-		{ //		Get16					glType16			glInternalFormat16	Get32				glType32	glInternalFormat32	autoFormat
-			{ // 4-bit
-				{ GetCI4IA_RGBA4444, datatype::UNSIGNED_SHORT_4_4_4_4, internalcolorFormat::RGBA4, GetCI4IA_RGBA8888, datatype::UNSIGNED_BYTE, internalcolorFormat::RGBA8, internalcolorFormat::RGBA8, 4, 4096 }, // IA
-				{ GetNone, datatype::UNSIGNED_SHORT_4_4_4_4, internalcolorFormat::RGBA4, GetNone, datatype::UNSIGNED_BYTE, internalcolorFormat::RGBA8, internalcolorFormat::RGBA8, 4, 8192 }, // YUV
-				{ GetCI4IA_RGBA4444, datatype::UNSIGNED_SHORT_4_4_4_4, internalcolorFormat::RGBA4, GetCI4IA_RGBA8888, datatype::UNSIGNED_BYTE, internalcolorFormat::RGBA8, internalcolorFormat::RGBA8, 4, 4096 }, // CI
-				{ GetCI4IA_RGBA4444, datatype::UNSIGNED_SHORT_4_4_4_4, internalcolorFormat::RGBA4, GetCI4IA_RGBA8888, datatype::UNSIGNED_BYTE, internalcolorFormat::RGBA8, internalcolorFormat::RGBA8, 4, 4096 }, // IA
-				{ GetCI4IA_RGBA4444, datatype::UNSIGNED_SHORT_4_4_4_4, internalcolorFormat::RGBA4, GetCI4IA_RGBA8888, datatype::UNSIGNED_BYTE, internalcolorFormat::RGBA8, internalcolorFormat::RGBA8, 4, 4096 }, // I
-			},
-			{ // 8-bit
-				{ GetCI8IA_RGBA4444, datatype::UNSIGNED_SHORT_4_4_4_4, internalcolorFormat::RGBA4, GetCI8IA_RGBA8888, datatype::UNSIGNED_BYTE, internalcolorFormat::RGBA8, internalcolorFormat::RGBA8, 3, 2048 }, // RGBA
-				{ GetNone, datatype::UNSIGNED_SHORT_4_4_4_4, internalcolorFormat::RGBA4, GetNone, datatype::UNSIGNED_BYTE, internalcolorFormat::RGBA8, internalcolorFormat::RGBA8, 0, 4096 }, // YUV
-				{ GetCI8IA_RGBA4444, datatype::UNSIGNED_SHORT_4_4_4_4, internalcolorFormat::RGBA4, GetCI8IA_RGBA8888, datatype::UNSIGNED_BYTE, internalcolorFormat::RGBA8, internalcolorFormat::RGBA8, 3, 2048 }, // CI
-				{ GetCI8IA_RGBA4444, datatype::UNSIGNED_SHORT_4_4_4_4, internalcolorFormat::RGBA4, GetCI8IA_RGBA8888, datatype::UNSIGNED_BYTE, internalcolorFormat::RGBA8, internalcolorFormat::RGBA8, 3, 2048 }, // IA
-				{ GetCI8IA_RGBA4444, datatype::UNSIGNED_SHORT_4_4_4_4, internalcolorFormat::RGBA4, GetCI8IA_RGBA8888, datatype::UNSIGNED_BYTE, internalcolorFormat::RGBA8, internalcolorFormat::RGBA8, 3, 2048 }, // I
-			},
-			{ // 16-bit
-				{ GetCI16IA_RGBA4444, datatype::UNSIGNED_SHORT_4_4_4_4, internalcolorFormat::RGBA4, GetCI16IA_RGBA8888, datatype::UNSIGNED_BYTE, internalcolorFormat::RGBA8, internalcolorFormat::RGBA8, 2, 2048 }, // RGBA
-				{ GetNone, datatype::UNSIGNED_SHORT_4_4_4_4, internalcolorFormat::RGBA4, GetNone, datatype::UNSIGNED_BYTE, internalcolorFormat::RGBA8, internalcolorFormat::RGBA8, 2, 2048 }, // YUV
-				{ GetNone, datatype::UNSIGNED_SHORT_4_4_4_4, internalcolorFormat::RGBA4, GetNone, datatype::UNSIGNED_BYTE, internalcolorFormat::RGBA8, internalcolorFormat::RGBA8, 0, 2048 }, // CI
-				{ GetCI16IA_RGBA4444, datatype::UNSIGNED_SHORT_4_4_4_4, internalcolorFormat::RGBA4, GetCI16IA_RGBA8888, datatype::UNSIGNED_BYTE, internalcolorFormat::RGBA8, internalcolorFormat::RGBA8, 2, 2048 }, // IA
-				{ GetNone, datatype::UNSIGNED_SHORT_4_4_4_4, internalcolorFormat::RGBA4, GetNone, datatype::UNSIGNED_BYTE, internalcolorFormat::RGBA8, internalcolorFormat::RGBA8, 0, 2048 }, // I
-			},
-			{ // 32-bit
-				{ GetRGBA8888_RGBA4444, datatype::UNSIGNED_SHORT_4_4_4_4, internalcolorFormat::RGBA4, GetRGBA8888_RGBA8888, datatype::UNSIGNED_BYTE, internalcolorFormat::RGBA8, internalcolorFormat::RGBA8, 2, 1024 }, // RGBA
-				{ GetNone, datatype::UNSIGNED_SHORT_4_4_4_4, internalcolorFormat::RGBA4, GetNone, datatype::UNSIGNED_BYTE, internalcolorFormat::RGBA8, internalcolorFormat::RGBA8, 0, 1024 }, // YUV
-				{ GetNone, datatype::UNSIGNED_SHORT_4_4_4_4, internalcolorFormat::RGBA4, GetNone, datatype::UNSIGNED_BYTE, internalcolorFormat::RGBA8, internalcolorFormat::RGBA8, 0, 1024 }, // CI
-				{ GetNone, datatype::UNSIGNED_SHORT_4_4_4_4, internalcolorFormat::RGBA4, GetNone, datatype::UNSIGNED_BYTE, internalcolorFormat::RGBA8, internalcolorFormat::RGBA8, 0, 1024 }, // IA
-				{ GetNone, datatype::UNSIGNED_SHORT_4_4_4_4, internalcolorFormat::RGBA4, GetNone, datatype::UNSIGNED_BYTE, internalcolorFormat::RGBA8, internalcolorFormat::RGBA8, 0, 1024 }, // I
-			}
-		}
-	};
-
-	memcpy(tlp, imageFormat, sizeof(tlp));
+	_d.tMem = _t.tMem;
+	_d.palette = _t.palette;
+	_d.size = _t.size;
+	_d.format = _t.format;
+	_d.width = _t.width;
+	_d.height = _t.height;
+	_d.clampWidth = _t.clampWidth;
+	_d.clampHeight = _t.clampHeight;
+	_d.realWidth = _t.realWidth;
+	_d.realHeight = _t.realHeight;
+	_d.maskS = _t.maskS;
+	_d.maskT = _t.maskT;
+	_d.clampS = _t.clampS;
+	_d.clampT = _t.clampT;
+	_d.mirrorS = _t.mirrorS;
+	_d.mirrorT = _t.mirrorT;
 }
 
 /** cite from RiceVideo */
@@ -635,9 +287,9 @@ void _calcTileSizes(u32 _t, TileSizes & _sizes, gDPTile * _pLoadTile)
 	pTile->masks = pTile->originalMaskS;
 	pTile->maskt = pTile->originalMaskT;
 
-	const TextureLoadParameters & loadParams =
-			ImageFormat::get().tlp[gDP.otherMode.textureLUT][pTile->size][pTile->format];
-	const u32 maxTexels = loadParams.maxTexels;
+	const gli_tex_format * loadParams =
+			gli_tex_format_get(gDP.otherMode.textureLUT, pTile->size, pTile->format);
+	const u32 maxTexels = loadParams->maxTexels;
 	u32 tileWidth = ((pTile->lrs - pTile->uls) & 0x03FF) + 1;
 	u32 tileHeight = ((pTile->lrt - pTile->ult) & 0x03FF) + 1;
 	if (tileWidth == 1 && tileHeight == 1 &&
@@ -661,7 +313,7 @@ void _calcTileSizes(u32 _t, TileSizes & _sizes, gDPTile * _pLoadTile)
 		loadHeight = ((_pLoadTile->lrt - _pLoadTile->ult) & 0x03FF) + 1;
 	}
 
-	const u32 lineWidth = pTile->line << loadParams.lineShift;
+	const u32 lineWidth = pTile->line << loadParams->lineShift;
 	const u32 lineHeight = lineWidth != 0 ? min(maxTexels / lineWidth, tileHeight) : 0;
 
 	u32 maskWidth = 1 << pTile->masks;
@@ -836,29 +488,23 @@ void TextureCache::_loadBackground(CachedTexture *pTexture)
 		return;
 
 	u32 *pDest = nullptr;
-	u16 *pDest16 = nullptr;
 
-	u8 *pSwapped, *pSrc;
+	u8 *pSwapped;
 	u32 numBytes, bpl;
-	u32 x, y, j, tx, ty;
-	u16 clampSClamp;
-	u16 clampTClamp;
-	GetTexelFunc GetTexel;
 	InternalColorFormatParam glInternalFormat;
 	DatatypeParam glType;
 
-	const TextureLoadParameters & loadParams =
-			ImageFormat::get().tlp[pTexture->format == 2 ? G_TT_RGBA16 : G_TT_NONE][pTexture->size][pTexture->format];
-	if (loadParams.autoFormat == internalcolorFormat::RGBA8) {
+	const gli_tex_format * loadParams =
+			gli_tex_format_get(pTexture->format == 2 ? G_TT_RGBA16 : G_TT_NONE, pTexture->size, pTexture->format);
+	const bool out32 = loadParams->autoFormat == GLI_TEXF_RGBA8;
+	if (out32) {
 		pTexture->textureBytes = (pTexture->realWidth * pTexture->realHeight) << 2;
-		GetTexel = loadParams.Get32;
-		glInternalFormat = loadParams.glInternalFormat32;
-		glType = loadParams.glType32;
+		glInternalFormat = _texFormat(loadParams->internal32);
+		glType = _texType(loadParams->type32);
 	} else {
 		pTexture->textureBytes = (pTexture->realWidth * pTexture->realHeight) << 1;
-		GetTexel = loadParams.Get16;
-		glInternalFormat = loadParams.glInternalFormat16;
-		glType = loadParams.glType16;
+		glInternalFormat = _texFormat(loadParams->internal16);
+		glType = _texType(loadParams->type16);
 	}
 
 	bpl = gSP.bgImage.width << gSP.bgImage.size >> 1;
@@ -874,25 +520,10 @@ void TextureCache::_loadBackground(CachedTexture *pTexture)
 			free(pSwapped);
 		return;
 	}
-	pDest16 = reinterpret_cast<u16*>(pDest);
-
-	clampSClamp = pTexture->width - 1;
-	clampTClamp = pTexture->height - 1;
-
-	j = 0;
-	for (y = 0; y < pTexture->realHeight; y++) {
-		ty = min(y, (u32)clampTClamp);
-
-		pSrc = &pSwapped[bpl * ty];
-
-		for (x = 0; x < pTexture->realWidth; x++) {
-			tx = min(x, (u32)clampSClamp);
-
-			if (glInternalFormat == internalcolorFormat::RGBA8)
-				pDest[j++] = GetTexel((u64*)pSrc, tx, 0, pTexture->palette);
-			else
-				pDest16[j++] = static_cast<u16>(GetTexel((u64*)pSrc, tx, 0, pTexture->palette));
-		}
+	{
+		gli_tex_decode d;
+		_texDecodeParams(*pTexture, d);
+		gli_tex_decode_bg(&d, loadParams, out32, pSwapped, bpl, pDest);
 	}
 
 	if ((config.generalEmulation.hacks&hack_LoadDepthTextures) != 0 && gDP.colorImage.address == gDP.depthImageAddress) {
@@ -1102,118 +733,6 @@ void TextureCache::_loadDepthTexture(CachedTexture * _pTexture, u16* _pDest)
 /*
  * Worker function for _load
 */
-void TextureCache::_getTextureDestData(CachedTexture& tmptex,
-						u32* pDest,
-						Parameter glInternalFormat,
-						GetTexelFunc GetTexel,
-						u16* pLine)
-{
-	u16 mirrorSBit, maskSMask, clampSClamp;
-	u16 mirrorTBit, maskTMask, clampTClamp;
-	u16 x, y, tx, ty;
-	u32 i, j;
-	u64 *pSrc;
-	if (tmptex.maskS > 0) {
-		clampSClamp = tmptex.clampS ? tmptex.clampWidth - 1 : (tmptex.mirrorS ? (tmptex.width << 1) - 1 : tmptex.width - 1);
-		maskSMask = (1 << tmptex.maskS) - 1;
-		mirrorSBit = tmptex.mirrorS != 0 ? 1 << tmptex.maskS : 0;
-	} else {
-		clampSClamp = tmptex.clampS ? tmptex.clampWidth - 1 : tmptex.width - 1;
-		maskSMask = 0xFFFF;
-		mirrorSBit = 0x0000;
-	}
-
-	if (tmptex.maskT > 0) {
-		clampTClamp = tmptex.clampT ? tmptex.clampHeight - 1 : (tmptex.mirrorT ? (tmptex.height << 1) - 1 : tmptex.height - 1);
-		maskTMask = (1 << tmptex.maskT) - 1;
-		mirrorTBit = tmptex.mirrorT != 0 ? 1 << tmptex.maskT : 0;
-	} else {
-		clampTClamp = tmptex.clampT ? tmptex.clampHeight - 1 : tmptex.height - 1;
-		maskTMask = 0xFFFF;
-		mirrorTBit = 0x0000;
-	}
-
-	if (tmptex.size == G_IM_SIZ_32b) {
-		const u16 * tmem16 = (u16*)TMEM;
-		const u32 tbase = tmptex.tMem << 2;
-
-		int wid_64 = (tmptex.clampWidth) << 2;
-		if (wid_64 & 15) {
-			wid_64 += 16;
-		}
-		wid_64 &= 0xFFFFFFF0;
-		wid_64 >>= 3;
-		int line32 = tmptex.line << 1;
-		line32 = (line32 - wid_64) << 3;
-		if (wid_64 < 1) {
-			wid_64 = 1;
-		}
-		int width = wid_64 << 1;
-		line32 = width + (line32 >> 2);
-
-		u16 gr, ab;
-
-		j = 0;
-		for (y = 0; y < tmptex.realHeight; ++y) {
-			ty = min(y, clampTClamp) & maskTMask;
-			if (y & mirrorTBit) {
-				ty ^= maskTMask;
-			}
-
-			u32 tline = tbase + line32 * ty;
-			u32 xorval = (ty & 1) ? 3 : 1;
-
-			for (x = 0; x < tmptex.realWidth; ++x) {
-				tx = min(x, clampSClamp) & maskSMask;
-				if (x & mirrorSBit) {
-					tx ^= maskSMask;
-				}
-
-				u32 taddr = ((tline + tx) ^ xorval) & 0x3ff;
-				gr = swapword(tmem16[taddr]);
-				ab = swapword(tmem16[taddr | 0x400]);
-				pDest[j++] = (ab << 16) | gr;
-			}
-		}
-	} else if (tmptex.format == G_IM_FMT_YUV) {
-		j = 0;
-		*pLine <<= 1;
-		for (y = 0; y < tmptex.realHeight; ++y) {
-			pSrc = &TMEM[tmptex.tMem] + *pLine * y;
-			for (x = 0; x < tmptex.realWidth / 2; x++) {
-				GetYUV_RGBA8888(pSrc, pDest + j, x);
-				j += 2;
-			}
-		}
-	} else {
-		j = 0;
-		const u32 tMemMask = gDP.otherMode.textureLUT == G_TT_NONE ? 0x1FF : 0xFF;
-		for (y = 0; y < tmptex.realHeight; ++y) {
-			ty = min(y, clampTClamp) & maskTMask;
-
-			if (y & mirrorTBit)
-			ty ^= maskTMask;
-
-			pSrc = &TMEM[(tmptex.tMem + *pLine * ty) & tMemMask];
-
-			i = (ty & 1) << 1;
-			for (x = 0; x < tmptex.realWidth; ++x) {
-				tx = min(x, clampSClamp) & maskSMask;
-
-				if (x & mirrorSBit) {
-					tx ^= maskSMask;
-				}
-
-				if (glInternalFormat == internalcolorFormat::RGBA8) {
-					pDest[j++] = GetTexel(pSrc, tx, i, tmptex.palette);
-				} else {
-					((u16*)pDest)[j++] = GetTexel(pSrc, tx, i, tmptex.palette);
-				}
-			}
-		}
-	}
-}
-
 void TextureCache::_load(u32 _tile, CachedTexture *_pTexture)
 {
 	u64 ricecrc = 0;
@@ -1223,25 +742,23 @@ void TextureCache::_load(u32 _tile, CachedTexture *_pTexture)
 	u32 *pDest;
 
 	u16 line;
-	GetTexelFunc GetTexel;
 	InternalColorFormatParam glInternalFormat;
 	DatatypeParam glType;
 	u32 sizeShift;
 
-	const TextureLoadParameters & loadParams =
-			ImageFormat::get().tlp[gDP.otherMode.textureLUT][_pTexture->size][_pTexture->format];
-	if (loadParams.autoFormat == internalcolorFormat::RGBA8) {
+	const gli_tex_format * loadParams =
+			gli_tex_format_get(gDP.otherMode.textureLUT, _pTexture->size, _pTexture->format);
+	const bool out32 = loadParams->autoFormat == GLI_TEXF_RGBA8;
+	if (out32) {
 		sizeShift = 2;
 		_pTexture->textureBytes = (_pTexture->realWidth * _pTexture->realHeight) << sizeShift;
-		GetTexel = loadParams.Get32;
-		glInternalFormat = loadParams.glInternalFormat32;
-		glType = loadParams.glType32;
+		glInternalFormat = _texFormat(loadParams->internal32);
+		glType = _texType(loadParams->type32);
 	} else {
 		sizeShift = 1;
 		_pTexture->textureBytes = (_pTexture->realWidth * _pTexture->realHeight) << sizeShift;
-		GetTexel = loadParams.Get16;
-		glInternalFormat = loadParams.glInternalFormat16;
-		glType = loadParams.glType16;
+		glInternalFormat = _texFormat(loadParams->internal16);
+		glType = _texType(loadParams->type16);
 	}
 
 	const bool lend = !_decodedIsRead();
@@ -1270,7 +787,11 @@ void TextureCache::_load(u32 _tile, CachedTexture *_pTexture)
 		pDest = _takeDecode((tmptex.realWidth * tmptex.realHeight) << sizeShift, lend);
 		if (pDest == nullptr)
 			return;
-		_getTextureDestData(tmptex, pDest, glInternalFormat, GetTexel, &line);
+		{
+			gli_tex_decode d;
+			_texDecodeParams(tmptex, d);
+			gli_tex_decode_tmem(&d, loadParams, out32, gDP.otherMode.textureLUT, &line, pDest);
+		}
 
 		if ((config.generalEmulation.hacks&hack_LoadDepthTextures) != 0 && gDP.colorImage.address == gDP.depthImageAddress) {
 			_loadDepthTexture(_pTexture, (u16*)pDest);

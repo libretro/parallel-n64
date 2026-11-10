@@ -13,8 +13,6 @@
 #include "Graphics/ObjectHandle.h"
 #include "Graphics/Parameter.h"
 
-typedef u32 (*GetTexelFunc)( u64 *src, u16 x, u16 i, u8 palette );
-
 struct CachedTexture
 {
 	CachedTexture(graphics::ObjectHandle _name) : name(_name), max_level(0), frameBufferTexture(fbNone), bHDTexture(false) {}
@@ -92,7 +90,6 @@ private:
 	void _updateBackground();
 	void _clear();
 	void _initDummyTexture(CachedTexture * _pDummy);
-	void _getTextureDestData(CachedTexture& tmptex, u32* pDest, graphics::Parameter glInternalFormat, GetTexelFunc GetTexel, u16* pLine);
 
 	typedef std::list<CachedTexture> Textures;
 	typedef std::unordered_map<u64, Textures::iterator> Texture_Locations;
