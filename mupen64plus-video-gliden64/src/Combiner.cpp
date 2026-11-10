@@ -95,15 +95,6 @@ void CombinerInfo::update()
 	{
 		setCombine(gli_combiner_mux());
 		gDP.changed &= ~CHANGED_COMBINE;
-
-
-		if (gDP.otherMode.cycleType == G_CYC_COPY)
-			setCombine(EncodeCombineMode(0, 0, 0, TEXEL0, 0, 0, 0, TEXEL0, 0, 0, 0, TEXEL0, 0, 0, 0, TEXEL0));
-		else if (gDP.otherMode.cycleType == G_CYC_FILL)
-			setCombine(EncodeCombineMode(0, 0, 0, SHADE, 0, 0, 0, SHADE, 0, 0, 0, SHADE, 0, 0, 0, SHADE));
-		else
-			setCombine(gDP.combine.mux);
-		gDP.changed &= ~CHANGED_COMBINE;
 	}
 }
 
