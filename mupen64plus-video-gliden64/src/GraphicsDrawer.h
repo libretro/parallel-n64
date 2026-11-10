@@ -146,6 +146,7 @@ public:
 
 private:
 	friend class DisplayWindow;
+	friend struct WindowGpu;
 	friend struct TexrectGpu;
 
 	GraphicsDrawer();

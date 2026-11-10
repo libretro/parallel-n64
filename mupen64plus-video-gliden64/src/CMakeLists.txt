@@ -22,7 +22,8 @@ set(GLideN64_SOURCES
   convert.c
   CRC32.c
   DepthBuffer.cpp
-  DisplayWindow.cpp
+  DisplayWindow.c
+  DisplayWindowGpu.cpp
   FrameBuffer.cpp
   FrameBufferInfo.c
   GBI.c
@@ -136,7 +137,6 @@ if(MUPENPLUSAPI)
   set(GLideN64_SOURCES_UNIX
 	mupenplus/Config_mupenplus.cpp
 	mupenplus/MemoryStatus_mupenplus.cpp
-	Graphics/OpenGLContext/mupen64plus/mupen64plus_DisplayWindow.cpp
   )
 
   set(GLideN64_SOURCES_WIN ${GLideN64_SOURCES_UNIX}

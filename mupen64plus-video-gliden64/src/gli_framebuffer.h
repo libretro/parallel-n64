@@ -70,11 +70,9 @@ void gli_window_read_screen2(void *_dest, int *_width, int *_height, int _front)
 void gli_window_destroy_gfx_context(void);
 void gli_window_reinit_gfx_context(void);
 bool gli_window_resize(void);
-void gli_window_screenshot(void);
 void gli_window_update_scale(void);
 bool gli_window_is_adjust_screen(void);
 f32 gli_window_adjust_scale(void);
-bool gli_window_is_resizing(void);
 u32 gli_window_swap_count(void);
 s32 gli_gfx_max_texture_size(void);
 void gli_gfx_touch_error(void);

@@ -25,7 +25,8 @@ MY_LOCAL_SRC_FILES :=                                                           
     $(SRCDIR)/Config.c                                                            \
     $(SRCDIR)/convert.c                                                          \
     $(SRCDIR)/DepthBuffer.cpp                                                      \
-    $(SRCDIR)/DisplayWindow.cpp                                                    \
+    $(SRCDIR)/DisplayWindow.c                                                      \
+    $(SRCDIR)/DisplayWindowGpu.cpp                                                 \
     $(SRCDIR)/FrameBuffer.cpp                                                      \
     $(SRCDIR)/FrameBufferInfo.c                                                   \
     $(SRCDIR)/GBI.c                                                              \
@@ -80,7 +81,6 @@ MY_LOCAL_SRC_FILES :=                                                           
     $(SRCDIR)/Graphics/OpenGLContext/GLSL/glsl_ShaderStorage.cpp                   \
     $(SRCDIR)/Graphics/OpenGLContext/GLSL/glsl_SpecialShadersFactory.cpp           \
     $(SRCDIR)/Graphics/OpenGLContext/GLSL/glsl_Utils.cpp                           \
-    $(SRCDIR)/Graphics/OpenGLContext/mupen64plus/mupen64plus_DisplayWindow.cpp     \
     $(SRCDIR)/Graphics/OpenGLContext/GraphicBuffer/PrivateApi/GraphicBuffer.cpp    \
     $(SRCDIR)/Graphics/OpenGLContext/GraphicBuffer/PrivateApi/libhardware.cpp      \
     $(SRCDIR)/Graphics/OpenGLContext/GraphicBuffer/PublicApi/android_hardware_buffer_compat.cpp     \

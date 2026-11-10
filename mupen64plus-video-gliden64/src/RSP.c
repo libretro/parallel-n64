@@ -194,7 +194,7 @@ void _runDisplayList(void)
 
 void gli_RSP_ProcessDList(void)
 {
-	if (ConfigOpen || gli_window_is_resizing()) {
+	if (ConfigOpen) {
 		*REG.MI_INTR |= MI_INTR_DP;
 		CheckInterrupts();
 		return;

@@ -105,7 +105,6 @@ void gli_VI_UpdateScreen(void)
 		return;
 	if (gli_window_resize())
 		return;
-	gli_window_screenshot();
 	bVIUpdated = false;
 	if (*REG.VI_ORIGIN != VI.lastOrigin) {
 		gli_VI_UpdateSize();
