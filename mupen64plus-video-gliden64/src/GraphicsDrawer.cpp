@@ -579,37 +579,6 @@ void GraphicsDrawer::drawLine(u32 _v0, u32 _v1, float _width, u32 _flag)
 	gfxContext.drawLine(lineWidth, vertexBuf);
 }
 
-// Immersive mode
-static
-bool _immersiveScreenRect(f32 _ulx, f32 _uly, f32 _lrx, f32 _lry, bool & _fullScreen)
-{
-	if (!gli_gSPImmersiveActive() || gDP.colorImage.address == gDP.depthImageAddress ||
-		gDP.colorImage.width < VI.width * 98 / 100)
-		return false;
-	const f32 width = static_cast<f32>(gDP.colorImage.width);
-	const f32 height = static_cast<f32>(VI.height);
-	_fullScreen = _ulx <= 1.0f && _uly <= 1.0f && _lrx >= width - 2.0f && _lry >= height - 2.0f;
-	return true;
-}
-
-// This GLideN64 keeps rectangles in clip space, w = 1, but the immersive placement works in N64
-// pixels and returns homogeneous ones. Converted there and back with the same scales.
-static
-void _immersiveRectClip(RectVertex * _vertices, bool _fullScreen, const FrameBuffer * _pBuffer)
-{
-	f32 scaleX, scaleY;
-	calcCoordsScales(_pBuffer, scaleX, scaleY);
-	for (u32 i = 0; i < 4; ++i) {
-		_vertices[i].x = (_vertices[i].x + 1.0f) / (2.0f * scaleX);
-		_vertices[i].y = (_vertices[i].y + 1.0f) / (2.0f * scaleY);
-	}
-	gli_gSPImmersiveRect(_vertices, 4, _fullScreen);
-	for (u32 i = 0; i < 4; ++i) {
-		_vertices[i].x = _vertices[i].x * 2.0f * scaleX - _vertices[i].w;
-		_vertices[i].y = _vertices[i].y * 2.0f * scaleY - _vertices[i].w;
-	}
-}
-
 void GraphicsDrawer::drawRect(int _ulx, int _uly, int _lrx, int _lry)
 {
 	gli_texrect_draw();
@@ -628,48 +597,14 @@ void GraphicsDrawer::drawRect(int _ulx, int _uly, int _lrx, int _lry)
 
 	gfxContext.enable(enable::CULL_FACE, false);
 
-	f32 scaleX, scaleY;
-	calcCoordsScales(frameBufferList().getCurrent(), scaleX, scaleY);
-	const float Z = (gDP.otherMode.depthSource == G_ZS_PRIM) ? gDP.primDepth.z : 0.0f;
-	const float W = 1.0f;
-	m_rect[0].x = (float)_ulx * (2.0f * scaleX) - 1.0f;
-	m_rect[0].y = (float)_uly * (2.0f * scaleY) - 1.0f;
-	m_rect[0].z = Z;
-	m_rect[0].w = W;
-	m_rect[1].x = (float)_lrx * (2.0f * scaleX) - 1.0f;
-	m_rect[1].y = m_rect[0].y;
-	m_rect[1].z = Z;
-	m_rect[1].w = W;
-	m_rect[2].x = m_rect[0].x;
-	m_rect[2].y = (float)_lry * (2.0f * scaleY) - 1.0f;
-	m_rect[2].z = Z;
-	m_rect[2].w = W;
-	m_rect[3].x = m_rect[1].x;
-	m_rect[3].y = m_rect[2].y;
-	m_rect[3].z = Z;
-	m_rect[3].w = W;
-
+	f32 scale[2];
+	calcCoordsScales(frameBufferList().getCurrent(), scale[0], scale[1]);
+	const s32 rect[4] = { _ulx, _uly, _lrx, _lry };
 	DisplayWindow & wnd = dwnd();
-	if (wnd.isAdjustScreen() && (gDP.colorImage.width > VI.width * 98 / 100) && ((u32)(_lrx - _ulx) < VI.width * 9 / 10)) {
-		const float scale = wnd.getAdjustScale();
-		for (u32 i = 0; i < 4; ++i)
-			m_rect[i].x *= scale;
-	}
-
-	bool fullScreen = false;
-	if (_immersiveScreenRect(static_cast<f32>(_ulx), static_cast<f32>(_uly), static_cast<f32>(_lrx),
-			static_cast<f32>(_lry), fullScreen)) {
-		const s32 width = static_cast<s32>(gDP.colorImage.width);
-		const s32 height = static_cast<s32>(VI.height);
-		const bool letterbox = !gli_gSPImmersiveBackground() && _ulx <= 16 && _lrx >= width - 16 &&
-			(_uly <= 16 || _lry >= height - 16) && (_lry - _uly) < height / 4;
-		if (letterbox) {
-			gSP.changed |= CHANGED_GEOMETRYMODE | CHANGED_VIEWPORT;
-			dropRenderState();
-			return;
-		}
-		if (!fullScreen || gli_gSPImmersiveBackground() || gli_gSPImmersiveClearsShownBuffers())
-			_immersiveRectClip(m_rect, fullScreen, frameBufferList().getCurrent());
+	if (!gli_drawer_fill_rect(m_rect, rect, scale, wnd.isAdjustScreen(), wnd.getAdjustScale())) {
+		gSP.changed |= CHANGED_GEOMETRYMODE | CHANGED_VIEWPORT;
+		dropRenderState();
+		return;
 	}
 
 	Context::DrawRectParameters rectParams;
@@ -857,9 +792,9 @@ void GraphicsDrawer::drawTexturedRect(const TexturedRectParams & _params)
 	DisplayWindow & wnd = dwnd();
 	TextureCache & cache = textureCache();
 	const bool bUseBilinear = gDP.otherMode.textureFilter != 0;
-	bool immersiveFullScreen = false;
+	int immersiveFullScreen = 0;
 	const bool immersiveRect = _params.texrectCmd &&
-		_immersiveScreenRect(_params.ulx, _params.uly, _params.lrx, _params.lry, immersiveFullScreen);
+		gli_drawer_immersive_rect(&_params.ulx, &immersiveFullScreen);
 	const bool bUseTexrectDrawer = !immersiveRect && (m_bBGMode || ((config.graphics2D.enableNativeResTexrects != 0)
 		&& bUseBilinear
 		&& pCurrentCombiner->usesTexture()
@@ -869,14 +804,14 @@ void GraphicsDrawer::drawTexturedRect(const TexturedRectParams & _params)
 		&& ((cache.current[0]->frameBufferTexture == CachedTexture::fbNone && !cache.current[0]->bHDTexture))
 		&& (cache.current[1] == nullptr || (cache.current[1]->frameBufferTexture == CachedTexture::fbNone && !cache.current[1]->bHDTexture))));
 
-	f32 scaleX, scaleY;
-	calcCoordsScales(pCurrentBuffer, scaleX, scaleY);
+	f32 scale[2];
+	calcCoordsScales(pCurrentBuffer, scale[0], scale[1]);
 	const float Z = (gDP.otherMode.depthSource == G_ZS_PRIM) ? gDP.primDepth.z : 0.0f;
 	const float W = 1.0f;
-	const f32 ulx = _params.ulx * (2.0f * scaleX) - 1.0f;
-	const f32 uly = _params.uly * (2.0f * scaleY) - 1.0f;
-	const f32 lrx = _params.lrx * (2.0f * scaleX) - 1.0f;
-	const f32 lry = _params.lry * (2.0f * scaleY) - 1.0f;
+	const f32 ulx = _params.ulx * (2.0f * scale[0]) - 1.0f;
+	const f32 uly = _params.uly * (2.0f * scale[1]) - 1.0f;
+	const f32 lrx = _params.lrx * (2.0f * scale[0]) - 1.0f;
+	const f32 lry = _params.lry * (2.0f * scale[1]) - 1.0f;
 	m_rect[0].x = ulx;
 	m_rect[0].y = uly;
 	m_rect[0].z = Z;
@@ -1052,7 +987,7 @@ void GraphicsDrawer::drawTexturedRect(const TexturedRectParams & _params)
 	}
 
 	if (immersiveRect)
-		_immersiveRectClip(m_rect, immersiveFullScreen, pCurrentBuffer);
+		gli_drawer_immersive_clip(m_rect, immersiveFullScreen, scale);
 
 	_updateScreenCoordsViewport(_params.pBuffer);
 	Context::DrawRectParameters rectParams;

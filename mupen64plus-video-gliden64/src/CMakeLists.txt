@@ -25,6 +25,7 @@ set(GLideN64_SOURCES
   TriangleList.c
   DrawerViewport.c
   DrawerStates.c
+  DrawerRect.c
   BlendMode.c
   CombinerKey.c
   PluginAPI.c

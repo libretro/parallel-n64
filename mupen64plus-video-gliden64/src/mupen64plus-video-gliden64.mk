@@ -29,6 +29,7 @@ MY_LOCAL_SRC_FILES :=                                                           
     $(SRCDIR)/TriangleList.c                                                       \
     $(SRCDIR)/DrawerViewport.c                                                     \
     $(SRCDIR)/DrawerStates.c                                                       \
+    $(SRCDIR)/DrawerRect.c                                                         \
     $(SRCDIR)/BlendMode.c                                                          \
     $(SRCDIR)/CombinerKey.c                                                       \
     $(SRCDIR)/PluginAPI.c                                                        \

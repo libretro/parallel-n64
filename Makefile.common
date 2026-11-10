@@ -395,6 +395,7 @@ SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/FrameBufferRdram.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/TriangleList.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/DrawerViewport.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/DrawerStates.c
+SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/DrawerRect.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/BlendMode.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/mupenplus/Config_mupenplus.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/gSP.c

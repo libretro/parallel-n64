@@ -55,6 +55,16 @@ void gli_drawer_depth_state(gli_depth_state *_out);
  * the previous one at @_prev, which then becomes @_rect */
 void gli_drawer_texrect_correct(f32 *_rect, f32 *_prev);
 
+/* Immersive mode: whether texrect @_rect (ulx, uly, lrx, lry, N64 pixels)
+ * is placed as a screen rect, and whether it covers the whole screen */
+int gli_drawer_immersive_rect(const f32 *_rect, int *_fullScreen);
+/* Places the four clip space vertices at @_v; @_scale is the buffer's x, y
+ * coordinate scale */
+void gli_drawer_immersive_clip(RectVertex *_v, int _fullScreen, const f32 *_scale);
+/* Fills the four vertices of fill rect @_r (ulx, uly, lrx, lry); 0 when the
+ * rect is to be dropped */
+int gli_drawer_fill_rect(RectVertex *_v, const s32 *_r, const f32 *_scale, int _adjustScreen, f32 _adjustScale);
+
 /* all three vertices outside the same clip plane */
 #define GLI_IS_CLIPPED(_v, _a, _b, _c) (((_v)[_a].clip & (_v)[_b].clip & (_v)[_c].clip) != 0)
 
