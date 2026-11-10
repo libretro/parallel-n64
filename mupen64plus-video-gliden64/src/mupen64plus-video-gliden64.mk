@@ -24,6 +24,7 @@ MY_LOCAL_SRC_FILES :=                                                           
     $(SRCDIR)/TextureDecode.c                                                      \
     $(SRCDIR)/TextureSizes.c                                                       \
     $(SRCDIR)/TextureLRU.c                                                         \
+    $(SRCDIR)/VIUpdate.c                                                           \
     $(SRCDIR)/CombinerKey.c                                                       \
     $(SRCDIR)/PluginAPI.c                                                        \
     $(SRCDIR)/Config.c                                                            \

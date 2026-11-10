@@ -560,7 +560,7 @@ void FrameBufferList::init()
 	 gfxContext.bindFramebuffer(bufferTarget::DRAW_FRAMEBUFFER, ObjectHandle::defaultFramebuffer);
 	 m_prevColorImageHeight = 0;
 	 m_overscan.init();
-	 m_rdpUpdate.init();
+	 gli_vi_state_init(&m_rdpUpdate);
 }
 
 void FrameBufferList::destroy() {
@@ -1053,164 +1053,6 @@ void FrameBufferList::_renderScreenSizeBuffer()
 	gDP.changed |= CHANGED_SCISSOR;
 }
 
-void FrameBufferList::RdpUpdate::init()
-{
-	oldvstart = 0U;
-	prevvicurrent = 0U;
-	prevwasblank = false;
-	prevserrate = false;
-	oldlowerfield = false;
-	emucontrolsvicurrent = -1;
-}
-
-/* This function was taken from angrylion's code and adopted for my needs */
-bool FrameBufferList::RdpUpdate::update(RdpUpdateResult & _result)
-{
-	static const s32 PRESCALE_WIDTH = 640U;
-	static const s32 PRESCALE_HEIGHT = 625U;
-
-	const s32 x_add = _SHIFTR(*REG.VI_X_SCALE, 0, 12);
-	const s32 y_add = _SHIFTR(*REG.VI_Y_SCALE, 0, 12);
-	const u32 v_sync = _SHIFTR(*REG.VI_V_SYNC, 0, 10);
-	const bool ispal = (v_sync > 550);
-	const s32 x1 = _SHIFTR( *REG.VI_H_START, 16, 10 );
-	const s32 y1 = _SHIFTR( *REG.VI_V_START, 16, 10 );
-	const s32 x2 = _SHIFTR( *REG.VI_H_START, 0, 10 );
-	const s32 y2 = _SHIFTR( *REG.VI_V_START, 0, 10 );
-
-	const s32 delta_x = x2 - x1;
-	const s32 delta_y = y2 - y1;
-	const u32 vitype = _SHIFTR( *REG.VI_STATUS, 0, 2 );
-
-	const bool serration_pulses = (*REG.VI_STATUS & 0x40) != 0;
-	const bool validinterlace = ((vitype & 2) != 0 ) && serration_pulses;
-	if (validinterlace && prevserrate && emucontrolsvicurrent < 0)
-		emucontrolsvicurrent = (*REG.VI_V_CURRENT_LINE & 1) != prevvicurrent ? 1 : 0;
-
-	bool lowerfield = 0;
-	if (validinterlace) {
-		if (emucontrolsvicurrent == 1)
-			lowerfield = (*REG.VI_V_CURRENT_LINE & 1) == 0;
-		else if (!emucontrolsvicurrent) {
-			if (y1 == oldvstart)
-				lowerfield = !oldlowerfield;
-			else
-				lowerfield = y1 < oldvstart;
-		}
-	}
-
-	oldlowerfield = lowerfield;
-
-	if (validinterlace) {
-		prevserrate = true;
-		prevvicurrent = *REG.VI_V_CURRENT_LINE & 1;
-		oldvstart = y1;
-	} else
-		prevserrate = false;
-
-	s32 hres = delta_x;
-	s32 vres = delta_y;
-	s32 h_start = x1 - (ispal ? 128 : 108);
-	s32 v_start = (y1 - (ispal ? 44 : 34)) / 2;
-	u32 x_start = _SHIFTR(*REG.VI_X_SCALE, 16, 12);
-	u32 y_start = _SHIFTR(*REG.VI_Y_SCALE, 16, 12);
-
-	bool h_start_clamped = h_start < 0;
-	if (h_start < 0) {
-		x_start -= x_add * h_start;
-		hres += h_start;
-
-		h_start = 0;
-	}
-
-	if (v_start < 0) {
-		y_start += (y_add * (u32)(-v_start));
-		v_start = 0;
-	}
-
-	vres >>= 1;
-
-	const bool hres_clamped = hres + h_start > PRESCALE_WIDTH;
-	if (hres_clamped)
-		hres = PRESCALE_WIDTH - h_start;
-	if (vres + v_start > PRESCALE_HEIGHT)
-		vres = PRESCALE_HEIGHT - v_start;
-
-	s32 vactivelines = v_sync - (ispal ? 44 : 34);
-	if (vactivelines > PRESCALE_HEIGHT) {
-		return false;
-	}
-
-	if (vactivelines < 0) {
-		return false;
-	}
-
-	if (hres <= 0 || vres <= 0 || ((vitype & 2) == 0 && prevwasblank)) /* early return. */
-		return false;
-
-	if ((vitype & 2) == 0) {
-		prevwasblank = true;
-		return false;
-	}
-
-	prevwasblank = false;
-
-	_result.vi_hres = hres;
-	_result.vi_vres = vres;
-	_result.vi_ispal = ispal;
-	_result.vi_h_start = h_start;
-	_result.vi_v_start = v_start;
-	_result.vi_x_start = x_start;
-	_result.vi_y_start = y_start;
-	_result.vi_x_add = x_add;
-	_result.vi_y_add = y_add;
-	_result.vi_minhpass = h_start_clamped ? 0 : 8;
-	_result.vi_maxhpass = hres_clamped ? 0 : 7;
-	_result.vi_width = _SHIFTR(*REG.VI_WIDTH, 0, 12);
-	_result.vi_lowerfield = lowerfield;
-	_result.vi_origin = _SHIFTR(*REG.VI_ORIGIN, 0, 24);
-	_result.vi_fsaa = (*REG.VI_STATUS & 512) == 0;
-	_result.vi_divot = (*REG.VI_STATUS & 16) != 0;
-	return true;
-
-#if 0
-	{
-		int pixels;
-		int prevy, y_start;
-		int cur_x, line_x;
-		register int i;
-		const int VI_width = *GET_GFX_INFO(VI_WIDTH) & 0x00000FFF;
-		const int x_add = *GET_GFX_INFO(VI_X_SCALE) & 0x00000FFF;
-		const int y_add = *GET_GFX_INFO(VI_Y_SCALE) & 0x00000FFF;
-
-		y_start = *GET_GFX_INFO(VI_Y_SCALE) >> 16 & 0x0FFF;
-
-		//while (--vres >= 0)
-		{
-			x_start = *GET_GFX_INFO(VI_X_SCALE) >> 16 & 0x0FFF;
-			prescale_ptr += line_count;
-
-			prevy = y_start >> 10;
-			pixels = VI_width * prevy;
-
-			//for (i = 0; i < hres; i++)
-			{
-				unsigned long pix;
-				unsigned long addr;
-
-				line_x = x_start >> 10;
-				cur_x = pixels + line_x;
-
-				x_start += x_add;
-				addr = frame_buffer + 4 * cur_x;
-				pix = *(int32_t *)(RDRAM + addr);
-			}
-			y_start += y_add;
-		}
-	}
-#endif
-}
-
 s32 FrameBufferList::OverscanBuffer::getHOffset() const
 {
 	if (m_enabled)
@@ -1352,7 +1194,7 @@ void FrameBufferList::renderBuffer()
 	}
 
 	RdpUpdateResult rdpRes;
-	if (!m_rdpUpdate.update(rdpRes)) {
+	if (!gli_vi_update(&m_rdpUpdate, &rdpRes)) {
 		gfxContext.bindFramebuffer(bufferTarget::DRAW_FRAMEBUFFER, ObjectHandle::defaultFramebuffer);
 		gfxContext.clearColorBuffer(0.0f, 0.0f, 0.0f, 0.0f);
 		dwnd().swapBuffers();

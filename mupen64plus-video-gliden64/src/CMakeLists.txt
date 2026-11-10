@@ -20,6 +20,7 @@ set(GLideN64_SOURCES
   TextureDecode.c
   TextureSizes.c
   TextureLRU.c
+  VIUpdate.c
   CombinerKey.c
   PluginAPI.c
   Config.c
