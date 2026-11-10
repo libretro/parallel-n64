@@ -180,22 +180,35 @@ static void lf_push_chain(granite_lf_pool_t *pool, uint32_t first, uint32_t last
 /* Adds a block, returns one of its slots and pushes the rest. */
 static LF_COLD uint32_t lf_grow(granite_lf_pool_t *pool)
 {
-	unsigned k = (unsigned)retro_atomic_fetch_add_int(&pool->block_count, 1);
+	unsigned k;
 	uint32_t cap, first, i;
 	void *objs;
 	retro_atomic_int_t *next;
 
-	if (k >= GRANITE_LF_POOL_BLOCKS)
+	if (retro_atomic_load_acquire_int(&pool->block_count) >= GRANITE_LF_POOL_BLOCKS)
 		return 0;
+	/* counted before the block is taken, so a thread that sees every
+	 * block taken also sees this grow in flight */
+	retro_atomic_fetch_add_int(&pool->growing, 1);
+	k = (unsigned)retro_atomic_fetch_add_int(&pool->block_count, 1);
+	if (k >= GRANITE_LF_POOL_BLOCKS)
+	{
+		retro_atomic_fetch_add_int(&pool->growing, -1);
+		return 0;
+	}
 
 	cap = lf_block_cap(k);
 	objs = granite_memalign_alloc(pool_block_align(pool->elem_align), cap * pool->elem_size);
 	if (!objs)
+	{
+		retro_atomic_fetch_add_int(&pool->growing, -1);
 		return 0;
+	}
 	next = (retro_atomic_int_t *)malloc(cap * sizeof(*next));
 	if (!next)
 	{
 		granite_memalign_free(objs);
+		retro_atomic_fetch_add_int(&pool->growing, -1);
 		return 0;
 	}
 
@@ -209,6 +222,7 @@ static LF_COLD uint32_t lf_grow(granite_lf_pool_t *pool)
 
 	if (cap > 1)
 		lf_push_chain(pool, first + 1, first + cap - 1);
+	retro_atomic_fetch_add_int(&pool->growing, -1);
 	return first;
 }
 
@@ -251,6 +265,7 @@ void granite_lf_pool_init(granite_lf_pool_t *pool, size_t elem_size, size_t elem
 	pool->div_shift = shift;
 	retro_atomic_int_init(&pool->head, 0);
 	retro_atomic_int_init(&pool->block_count, 0);
+	retro_atomic_int_init(&pool->growing, 0);
 	for (k = 0; k < GRANITE_LF_POOL_BLOCKS; k++)
 	{
 		retro_atomic_ptr_init(&pool->block_objs[k], NULL);
@@ -272,6 +287,7 @@ void granite_lf_pool_clear(granite_lf_pool_t *pool)
 	}
 	retro_atomic_int_init(&pool->head, 0);
 	retro_atomic_int_init(&pool->block_count, 0);
+	retro_atomic_int_init(&pool->growing, 0);
 }
 
 void *granite_lf_pool_alloc(granite_lf_pool_t *pool)
@@ -279,8 +295,16 @@ void *granite_lf_pool_alloc(granite_lf_pool_t *pool)
 	uint32_t idx = lf_pop(pool);
 	if (!idx)
 		idx = lf_grow(pool);
-	if (!idx)
-		return NULL;
+	/* every block taken: other grows may still be pushing their slots. No
+	 * new grow can start now, so once none is in flight before a pop that
+	 * finds the list empty, the pool is truly full */
+	while (!idx)
+	{
+		const int growing = retro_atomic_load_acquire_int(&pool->growing);
+		idx = lf_pop(pool);
+		if (!idx && !growing)
+			return NULL;
+	}
 	return lf_slot(pool, idx);
 }
 

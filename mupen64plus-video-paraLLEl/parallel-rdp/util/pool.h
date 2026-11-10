@@ -78,8 +78,15 @@ static INLINE void granite_pool_release(granite_pool_t *pool, void *slot)
  * empty), the high bits a tag bumped on every successful CAS, so a slot
  * popped and pushed back between another thread's read and CAS cannot
  * pass for the old head (ABA). 18 index bits give 262,080 slots; the
- * 14-bit tag would have to wrap 16,384 times inside one preempted CAS
- * window to fool it. */
+ * 14-bit tag repeats after 16,384 successful CASes, so a thread
+ * preempted between its read and its CAS for exactly a multiple of that
+ * many could still be fooled.
+ *
+ * A thread that finds the list empty grows the pool by the next block,
+ * and several may grow at once. Once every block is taken, a thread
+ * finding the list empty retries while another thread is still pushing
+ * a block's slots, so a slow big block cannot make an allocation fail
+ * that its slots would have served. */
 
 #define GRANITE_LF_POOL_BLOCKS 12 /* 64 * (2^12 - 1) = 262080 slots */
 
@@ -94,6 +101,8 @@ typedef struct granite_lf_pool
 	unsigned div_shift;
 	retro_atomic_int_t head;
 	retro_atomic_int_t block_count;
+	/* grows started and not yet pushed */
+	retro_atomic_int_t growing;
 	retro_atomic_ptr_t block_objs[GRANITE_LF_POOL_BLOCKS];
 	/* written before block_objs[k] is published, read only after it is
 	 * seen */
