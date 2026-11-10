@@ -35,6 +35,26 @@ void gli_drawer_draw_line(u32 _v0, u32 _v1, f32 _width, u32 _flag);
 void gli_drawer_draw_rect(s32 _ulx, s32 _uly, s32 _lrx, s32 _lry);
 void gli_drawer_textured_rect(f32 _ulx, f32 _uly, f32 _lrx, f32 _lry, f32 _dsdx, f32 _dtdy, s16 _s, s16 _t, bool _flip);
 
+/* The cull face for the current geometry mode */
+enum { GLI_CULL_NONE, GLI_CULL_FRONT, GLI_CULL_BACK, GLI_CULL_FRONT_AND_BACK };
+int gli_drawer_cull_mode(void);
+
+/* The depth state to apply: only the fields named in @set */
+enum { GLI_DS_TEST = 1, GLI_DS_WRITE = 2, GLI_DS_COMPARE = 4, GLI_DS_CLAMP = 8 };
+enum { GLI_CMP_LESS, GLI_CMP_LEQUAL, GLI_CMP_ALWAYS };
+typedef struct gli_depth_state
+{
+	u8 set;
+	u8 test, write;
+	u8 offset, compare; /* polygon offset goes with the compare */
+	u8 clipping;
+} gli_depth_state;
+void gli_drawer_depth_state(gli_depth_state *_out);
+
+/* Snaps or grows texrect @_rect (ulx, uly, lrx, lry) by the config, against
+ * the previous one at @_prev, which then becomes @_rect */
+void gli_drawer_texrect_correct(f32 *_rect, f32 *_prev);
+
 /* all three vertices outside the same clip plane */
 #define GLI_IS_CLIPPED(_v, _a, _b, _c) (((_v)[_a].clip & (_v)[_b].clip & (_v)[_c].clip) != 0)
 

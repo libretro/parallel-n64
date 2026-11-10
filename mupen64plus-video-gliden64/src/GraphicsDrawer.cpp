@@ -2,6 +2,7 @@
 #include <string>
 #include <assert.h>
 #include <cmath>
+#include <stddef.h>
 #include "Platform.h"
 #include "Graphics/Context.h"
 #include "DisplayWindow.h"
@@ -33,6 +34,7 @@ GraphicsDrawer::GraphicsDrawer()
 , m_bBGMode(false)
 {
 	memset(m_rect, 0, sizeof(m_rect));
+	memset(m_texrectRect, 0, sizeof(m_texrectRect));
 	gli_drawer_bind_triangles(triangles.vertices.data(), triangles.elements.data(), &triangles.num,
 		&triangles.maxElement, &m_modifyVertices, &Context::ClipControl);
 }
@@ -43,17 +45,11 @@ GraphicsDrawer::~GraphicsDrawer()
 
 void GraphicsDrawer::_updateCullFace() const
 {
-	if (gSP.geometryMode & G_CULL_BOTH) {
-		gfxContext.enable(enable::CULL_FACE, true);
-
-		if ((gSP.geometryMode & G_CULL_BOTH) == G_CULL_BOTH && gli_GBI->cullBoth)
-			gfxContext.cullFace(cullMode::FRONT_AND_BACK);
-		else if ((gSP.geometryMode & G_CULL_BACK) == G_CULL_BACK)
-			gfxContext.cullFace(cullMode::BACK);
-		else
-			gfxContext.cullFace(cullMode::FRONT);
-	} else
-		gfxContext.enable(enable::CULL_FACE, false);
+	static const CullModeParam modes[] = { cullMode::FRONT, cullMode::FRONT, cullMode::BACK, cullMode::FRONT_AND_BACK };
+	const int mode = gli_drawer_cull_mode();
+	gfxContext.enable(enable::CULL_FACE, mode != GLI_CULL_NONE);
+	if (mode != GLI_CULL_NONE)
+		gfxContext.cullFace(modes[mode]);
 }
 
 void GraphicsDrawer::_updateDepthUpdate() const
@@ -63,50 +59,19 @@ void GraphicsDrawer::_updateDepthUpdate() const
 
 void GraphicsDrawer::_updateDepthCompare() const
 {
-	if (config.frameBufferEmulation.N64DepthCompare != 0) {
-		gfxContext.enable(enable::DEPTH_TEST, false);
-		gfxContext.enableDepthWrite(false);
+	static const CompareParam compares[] = { compare::LESS, compare::LEQUAL, compare::ALWAYS };
+	gli_depth_state d;
+	gli_drawer_depth_state(&d);
+	if (d.set & GLI_DS_COMPARE) {
+		gfxContext.enable(enable::POLYGON_OFFSET_FILL, d.offset != 0);
+		gfxContext.setDepthCompare(compares[d.compare]);
 	}
-	else if ((gDP.changed & (CHANGED_RENDERMODE | CHANGED_CYCLETYPE)) != 0) {
-		if (((gSP.geometryMode & G_ZBUFFER) || gDP.otherMode.depthSource == G_ZS_PRIM) && gDP.otherMode.cycleType <= G_CYC_2CYCLE) {
-			if (gDP.otherMode.depthCompare != 0) {
-				switch (gDP.otherMode.depthMode) {
-				case ZMODE_INTER:
-					gfxContext.enable(enable::POLYGON_OFFSET_FILL, false);
-					gfxContext.setDepthCompare(compare::LEQUAL);
-					break;
-				case ZMODE_OPA:
-				case ZMODE_XLU:
-					// Max || Infront;
-					gfxContext.enable(enable::POLYGON_OFFSET_FILL, false);
-					if (gDP.otherMode.depthSource == G_ZS_PRIM && gDP.primDepth.z == 1.0f)
-						// Max
-						gfxContext.setDepthCompare(compare::LEQUAL);
-					else
-						// Infront
-						gfxContext.setDepthCompare(compare::LESS);
-					break;
-				case ZMODE_DEC:
-					gfxContext.enable(enable::POLYGON_OFFSET_FILL, true);
-					gfxContext.setDepthCompare(compare::LEQUAL);
-					break;
-				}
-			} else {
-				gfxContext.enable(enable::POLYGON_OFFSET_FILL, false);
-				gfxContext.setDepthCompare(compare::ALWAYS);
-			}
-
-			_updateDepthUpdate();
-
-			gfxContext.enable(enable::DEPTH_TEST, true);
-			if (!gli_GBI->NoN)
-				gfxContext.setClampMode(graphics::ClampMode::ClippingEnabled);
-		} else {
-			gfxContext.enable(enable::DEPTH_TEST, false);
-			if (!gli_GBI->NoN)
-				gfxContext.setClampMode(graphics::ClampMode::NoClipping);
-		}
-	}
+	if (d.set & GLI_DS_WRITE)
+		gfxContext.enableDepthWrite(d.write != 0);
+	if (d.set & GLI_DS_TEST)
+		gfxContext.enable(enable::DEPTH_TEST, d.test != 0);
+	if (d.set & GLI_DS_CLAMP)
+		gfxContext.setClampMode(d.clipping ? graphics::ClampMode::ClippingEnabled : graphics::ClampMode::NoClipping);
 }
 
 SPVertex * gli_drawer_vertices(void)
@@ -1100,28 +1065,13 @@ void GraphicsDrawer::drawTexturedRect(const TexturedRectParams & _params)
 	gSP.changed |= CHANGED_GEOMETRYMODE | CHANGED_VIEWPORT;
 }
 
+/* the C side takes ulx, uly, lrx, lry as one array */
+static_assert(offsetof(GraphicsDrawer::TexturedRectParams, lry) ==
+	offsetof(GraphicsDrawer::TexturedRectParams, ulx) + 3 * sizeof(float), "texrect rect packing");
+
 void GraphicsDrawer::correctTexturedRectParams(TexturedRectParams & _params)
 {
-	if (config.graphics2D.correctTexrectCoords == tcSmart) {
-		if (_params.ulx == m_texrectParams.ulx && _params.lrx == m_texrectParams.lrx) {
-			if (fabsf(_params.uly - m_texrectParams.lry) < 0.51f)
-				_params.uly = m_texrectParams.lry;
-			else if (fabsf(_params.lry - m_texrectParams.uly) < 0.51f)
-				_params.lry = m_texrectParams.uly;
-		}
-		else if (_params.uly == m_texrectParams.uly && _params.lry == m_texrectParams.lry) {
-			if (fabsf(_params.ulx - m_texrectParams.lrx) < 0.51f)
-				_params.ulx = m_texrectParams.lrx;
-			else if (fabsf(_params.lrx - m_texrectParams.ulx) < 0.51f)
-				_params.lrx = m_texrectParams.ulx;
-		}
-	}
-	else if (config.graphics2D.correctTexrectCoords == tcForce) {
-		_params.lrx += 0.25f;
-		_params.lry += 0.25f;
-	}
-
-	m_texrectParams = _params;
+	gli_drawer_texrect_correct(&_params.ulx, m_texrectRect);
 }
 
 void GraphicsDrawer::clearDepthBuffer()

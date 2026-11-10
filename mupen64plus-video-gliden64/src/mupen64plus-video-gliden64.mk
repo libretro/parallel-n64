@@ -28,6 +28,7 @@ MY_LOCAL_SRC_FILES :=                                                           
     $(SRCDIR)/FrameBufferRdram.c                                                   \
     $(SRCDIR)/TriangleList.c                                                       \
     $(SRCDIR)/DrawerViewport.c                                                     \
+    $(SRCDIR)/DrawerStates.c                                                       \
     $(SRCDIR)/BlendMode.c                                                          \
     $(SRCDIR)/CombinerKey.c                                                       \
     $(SRCDIR)/PluginAPI.c                                                        \

@@ -64,11 +64,6 @@ public:
 			flip(_flip), forceAjustScale(_forceAjustScale), texrectCmd(_texrectCmd),
 			pBuffer(_pBuffer)
 		{}
-	private:
-		friend class GraphicsDrawer;
-		TexturedRectParams() :
-			ulx(0), uly(0), lrx(0), lry(0)
-		{};
 	};
 
 	void correctTexturedRectParams(TexturedRectParams & _params);
@@ -171,7 +166,7 @@ private:
 	void _drawThickLine(u32 _v0, u32 _v1, float _width, u32 _flag);
 
 	DrawingState m_drawingState;
-	TexturedRectParams m_texrectParams;
+	f32 m_texrectRect[4]; /* the last texrect, ulx, uly, lrx, lry */
 
 	struct {
 		std::array<SPVertex, VERTBUFF_SIZE> vertices;
