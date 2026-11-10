@@ -358,7 +358,7 @@ static
 void _immersiveCountVotes(void)
 {
 	int best;
-	int near;
+	int match;
 	int i;
 	f32 dominantSx;
 	f32 dominantSy;
@@ -375,7 +375,7 @@ void _immersiveCountVotes(void)
 		return;
 	}
 	best = 0;
-	near = -1;
+	match = -1;
 	for (i = 0; i < l_immersiveVoteCount; ++i) {
 		if (l_immersiveVotes[i].count > l_immersiveVotes[best].count)
 			best = i;
@@ -383,8 +383,8 @@ void _immersiveCountVotes(void)
 		if (l_immersiveRefSx > 0.0f &&
 			l_immersiveVotes[i].sx > l_immersiveRefSx / kImmersiveScaleSlack &&
 			l_immersiveVotes[i].sx < l_immersiveRefSx * kImmersiveScaleSlack &&
-			(near < 0 || l_immersiveVotes[i].count > l_immersiveVotes[near].count))
-			near = i;
+			(match < 0 || l_immersiveVotes[i].count > l_immersiveVotes[match].count))
+			match = i;
 	}
 	dominantSx = l_immersiveVotes[best].sx;
 	dominantSy = l_immersiveVotes[best].sy;
