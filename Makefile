@@ -1785,7 +1785,7 @@ test_glide64_fb_readback$(EXE_EXT): tools/test_glide64_fb_readback.c $(VIDEODIR_
 
 # GLideN64 is moving to C89 a file at a time: what has moved stays there
 GLIDEN64_C89 := N64.c convert.c RSP_LoadMatrix.c 3DMath.c CRC32.c RDP.c CRC_OPT.c GLideN64.c SoftwareRender.c DepthBufferRender/ClipPolygon.c DepthBufferRender/DepthBufferRender.c \
-	gDP.c VI.c RSP.c GBI.c gSP.c TexrectDrawer.c FrameBufferInfo.c ZlutTexture.c PaletteTexture.c NoiseTexture.c StereoFrames.c TextureFilterHandler.c PostProcessor.c Config.c CombinerKey.c PluginAPI.c DisplayWindow.c DepthBuffer.c CombinerDecode.c TextureDecode.c TextureSizes.c TextureLRU.c VIUpdate.c FrameBufferRdram.c TriangleList.c DrawerViewport.c DrawerStates.c DrawerRect.c BlendMode.c mupenplus/Config_mupenplus.c uCodes/F5Rogue.c uCodes/F5Indi_Naboo.c \
+	gDP.c VI.c RSP.c GBI.c gSP.c TexrectDrawer.c FrameBufferInfo.c ZlutTexture.c PaletteTexture.c NoiseTexture.c StereoFrames.c TextureFilterHandler.c PostProcessor.c Config.c CombinerKey.c PluginAPI.c DisplayWindow.c DepthBuffer.c CombinerDecode.c TextureDecode.c TextureSizes.c TextureLRU.c VIUpdate.c FrameBufferRdram.c TriangleList.c DrawerViewport.c DrawerStates.c DrawerRect.c TexrectSpecial.c BlendMode.c mupenplus/Config_mupenplus.c uCodes/F5Rogue.c uCodes/F5Indi_Naboo.c \
 	uCodes/S2DEX.c \
 	uCodes/ZSort.c uCodes/ZSortBOSS.c \
 	uCodes/T3DUX.c uCodes/Turbo3D.c \

@@ -569,10 +569,7 @@ bool texturedRectDepthBufferCopy(const GraphicsDrawer::TexturedRectParams & _par
 	// Data from depth buffer loaded into TMEM and then rendered to RDRAM by texrect.
 	// Works only with depth buffer emulation enabled.
 	// Load of arbitrary data to that area causes weird camera rotation in CBFD.
-	const gDPTile * pTile = gSP.textureTile[0];
-	if (pTile->loadType == LOADTYPE_BLOCK && gDP.textureImage.size == 2 &&
-		gDP.textureImage.address >= gDP.depthImageAddress &&
-		gDP.textureImage.address < (gDP.depthImageAddress + gDP.colorImage.width*gDP.scissor.lry*2)) {
+	if (gli_texrect_is_depth_copy()) {
 		if (config.frameBufferEmulation.copyDepthToRDRAM == cdDisable)
 			return true;
 		FrameBuffer * pBuffer = frameBufferList().getCurrent();
@@ -588,12 +585,7 @@ bool texturedRectDepthBufferCopy(const GraphicsDrawer::TexturedRectParams & _par
 			gli_RDP_RepeatLastLoadBlock();
 		}
 
-		const u32 width = (u32)(_params.lrx - _params.ulx);
-		const u32 ulx = (u32)_params.ulx;
-		u16 * pSrc = ((u16*)TMEM) + _params.s/32;
-		u16 *pDst = (u16*)(RDRAM + gDP.colorImage.address);
-		for (u32 x = 0; x < width; ++x)
-			pDst[(ulx + x) ^ 1] = swapword(pSrc[x]);
+		gli_texrect_depth_row(&_params);
 
 		return true;
 	}
@@ -612,26 +604,8 @@ bool texturedRectCopyToItself(const GraphicsDrawer::TexturedRectParams & _params
 static
 bool texturedRectBGCopy(const GraphicsDrawer::TexturedRectParams & _params)
 {
-	if (gDP.colorImage.size > G_IM_SIZ_8b)
+	if (!gli_texrect_bg_copy(&_params))
 		return false;
-
-	float flry = _params.lry;
-	if (flry > gDP.scissor.lry)
-		flry = gDP.scissor.lry;
-
-	const u32 width = (u32)(_params.lrx - _params.ulx);
-	const u32 tex_width = gSP.textureTile[0]->line << 3;
-	const u32 uly = (u32)_params.uly;
-	const u32 lry = (u32)flry;
-
-	u8 * texaddr = RDRAM + gDP.loadInfo[gSP.textureTile[0]->tmem].texAddress + tex_width*_params.t/32 + _params.s/32;
-	u8 * fbaddr = RDRAM + gDP.colorImage.address + (u32)_params.ulx;
-
-	for (u32 y = uly; y < lry; ++y) {
-		u8 *src = texaddr + (y - uly) * tex_width;
-		u8 *dst = fbaddr + y * gDP.colorImage.width;
-		memcpy(dst, src, width);
-	}
 	frameBufferList().removeBuffer(gDP.colorImage.address);
 	return true;
 }
@@ -660,21 +634,7 @@ bool texturedRectPaletteMod(const GraphicsDrawer::TexturedRectParams & _params)
 	}
 
 	// Modify palette for Paper Mario "2D lighting" effect
-	if (gDP.scissor.lrx != 16 || gDP.scissor.lry != 1 || _params.lrx != 16 || _params.lry != 1)
-		return false;
-	u8 envr = (u8)(gDP.envColor.r * 31.0f);
-	u8 envg = (u8)(gDP.envColor.g * 31.0f);
-	u8 envb = (u8)(gDP.envColor.b * 31.0f);
-	u16 env16 = (u16)((envr << 11) | (envg << 6) | (envb << 1) | 1);
-	u8 prmr = (u8)(gDP.primColor.r * 31.0f);
-	u8 prmg = (u8)(gDP.primColor.g * 31.0f);
-	u8 prmb = (u8)(gDP.primColor.b * 31.0f);
-	u16 prim16 = (u16)((prmr << 11) | (prmg << 6) | (prmb << 1) | 1);
-	u16 * src = (u16*)&TMEM[256];
-	u16 * dst = (u16*)(RDRAM + gDP.colorImage.address);
-	for (u32 i = 0; i < 16; ++i)
-		dst[i ^ 1] = (src[i << 2] & 0x100) ? prim16 : env16;
-	return true;
+	return gli_texrect_palette_mod(&_params) != 0;
 }
 
 // Special processing of textured rect.

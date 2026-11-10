@@ -30,6 +30,7 @@ MY_LOCAL_SRC_FILES :=                                                           
     $(SRCDIR)/DrawerViewport.c                                                     \
     $(SRCDIR)/DrawerStates.c                                                       \
     $(SRCDIR)/DrawerRect.c                                                         \
+    $(SRCDIR)/TexrectSpecial.c                                                     \
     $(SRCDIR)/BlendMode.c                                                          \
     $(SRCDIR)/CombinerKey.c                                                       \
     $(SRCDIR)/PluginAPI.c                                                        \

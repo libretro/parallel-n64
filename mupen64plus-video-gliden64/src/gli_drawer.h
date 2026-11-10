@@ -111,6 +111,16 @@ typedef struct gli_copy_rect
  * coordinates s0, t0 */
 void gli_drawer_copy_rect(RectVertex *_v, const gli_copy_rect *_p);
 
+/* Texrects done on the CPU, straight into RDRAM */
+/* Whether tile 0 was block loaded from the depth image */
+int gli_texrect_is_depth_copy(void);
+/* Writes the depth line loaded in TMEM into the color image */
+void gli_texrect_depth_row(const gli_texrect_params *_p);
+/* Copies a background rect into an 8-bit color image; 0 for larger ones */
+int gli_texrect_bg_copy(const gli_texrect_params *_p);
+/* Paper Mario's 2D lighting palette, a 16x1 rect; 0 for other rects */
+int gli_texrect_palette_mod(const gli_texrect_params *_p);
+
 /* all three vertices outside the same clip plane */
 #define GLI_IS_CLIPPED(_v, _a, _b, _c) (((_v)[_a].clip & (_v)[_b].clip & (_v)[_c].clip) != 0)
 
