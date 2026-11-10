@@ -459,7 +459,6 @@ SOURCES_CXX   += \
     $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/opengl_BufferManipulationObjectFactory.cpp    \
     $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/opengl_CachedFunctions.cpp                    \
     $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/opengl_ColorBufferReaderWithBufferStorage.cpp \
-    $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/opengl_ColorBufferReaderWithEGLImage.cpp      \
     $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/opengl_ColorBufferReaderWithPixelBuffer.cpp   \
     $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/opengl_ColorBufferReaderWithReadPixels.cpp    \
     $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/opengl_ContextImpl.cpp                        \
@@ -503,11 +502,6 @@ ifneq (,$(findstring win,$(platform)))
 	SOURCES_C += $(VIDEODIR_GLIDEN64)/src/osal/osal_files_win32.c
 else
 	SOURCES_C += $(VIDEODIR_GLIDEN64)/src/osal/osal_files_unix.c
-endif
-
-ifneq (,$(findstring unix,$(platform)))
-	SOURCES_CXX   += $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/GraphicBuffer/PrivateApi/libhardware.cpp   \
-    			     $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/GraphicBuffer/PrivateApi/GraphicBuffer.cpp
 endif
 
 ifeq ($(HAVE_NEON),1)

@@ -3,12 +3,9 @@
 #include "opengl_Utils.h"
 #include "opengl_GLInfo.h"
 #include <regex>
-#ifdef EGL
-#include <EGL/egl.h>
-#endif
+extern "C" void* glsm_get_proc_address(const char*);
 
 #ifdef OS_ANDROID
-#include <Graphics/OpenGLContext/GraphicBuffer/GraphicBufferWrapper.h>
 #endif
 
 using namespace opengl;
@@ -148,24 +145,16 @@ void GLInfo::init() {
 	}
 
 	bool ext_draw_buffers_indexed = isGLESX && (Utils::isExtensionSupported(*this, "GL_EXT_draw_buffers_indexed") || numericVersion >= 32);
-#ifdef EGL
-	if (isGLESX && bufferStorage)
-		g_glBufferStorage = (PFNGLBUFFERSTORAGEPROC) eglGetProcAddress("glBufferStorageEXT");
+	/* GLES before 3.2 has these only as the EXT names */
 	if (isGLESX && numericVersion < 32) {
 		if (ext_draw_buffers_indexed) {
-			g_glEnablei = (PFNGLENABLEIPROC) eglGetProcAddress("glEnableiEXT");
-			g_glDisablei = (PFNGLDISABLEIPROC) eglGetProcAddress("glDisableiEXT");
+			g_glEnablei = (PFNGLENABLEIPROC) glsm_get_proc_address("glEnableiEXT");
+			g_glDisablei = (PFNGLDISABLEIPROC) glsm_get_proc_address("glDisableiEXT");
 		} else {
 			g_glEnablei = nullptr;
 			g_glDisablei = nullptr;
 		}
 	}
-	if (isGLES2 && shaderStorage) {
-		g_glProgramBinary = (PFNGLPROGRAMBINARYPROC) eglGetProcAddress("glProgramBinaryOES");
-		g_glGetProgramBinary = (PFNGLGETPROGRAMBINARYPROC) eglGetProcAddress("glGetProgramBinaryOES");
-		g_glProgramParameteri = nullptr;
-	}
-#endif
 #ifndef OS_ANDROID
 	if (isGLES2 && config.frameBufferEmulation.copyToRDRAM > ctSync) {
 		config.frameBufferEmulation.copyToRDRAM = ctDisable;
@@ -185,7 +174,6 @@ void GLInfo::init() {
 	texture_barrierNV = Utils::isExtensionSupported(*this, "GL_NV_texture_barrier");
 
 	ext_fetch = Utils::isExtensionSupported(*this, "GL_EXT_shader_framebuffer_fetch") && !isGLES2 && (!isGLESX || ext_draw_buffers_indexed) && !imageTextures;
-	eglImage = (Utils::isEGLExtensionSupported("EGL_KHR_image_base") || Utils::isEGLExtensionSupported("EGL_KHR_image"));
 
 	/* Mesa freedreno running on the desktop OpenGL profile (not GLES)
 	 * advertises GL_EXT_shader_framebuffer_fetch but the implementation
@@ -232,7 +220,6 @@ void GLInfo::init() {
 	 */
 	ext_fetch_arm = Utils::isExtensionSupported(*this, "GL_ARM_shader_framebuffer_fetch") && !ext_fetch;
 	n64DepthWithFbFetch = ext_fetch;
-	eglImageFramebuffer = eglImage && !isGLES2;
 	dual_source_blending = false;
 	anisotropic_filtering = Utils::isExtensionSupported(*this, "GL_EXT_texture_filter_anisotropic");
 	coverage = dual_source_blending || ext_fetch || ext_fetch_arm;
@@ -243,12 +230,6 @@ void GLInfo::init() {
 	}
 	drawElementsBaseVertex = !isGLESX ||
 		(Utils::isExtensionSupported(*this, "GL_EXT_draw_elements_base_vertex") || numericVersion >= 32);
-
-#ifdef OS_ANDROID
-	eglImage = eglImage &&
-	        ( (isGLES2 && GraphicBufferWrapper::isSupportAvailable()) || (isGLESX && GraphicBufferWrapper::isPublicSupportAvailable()) ) &&
-		    (renderer != Renderer::PowerVR);
-#endif
 
 	if (config.frameBufferEmulation.N64DepthCompare != 0) {
 		if (!imageTextures && !ext_fetch) {

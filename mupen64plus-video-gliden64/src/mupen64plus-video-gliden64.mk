@@ -67,7 +67,6 @@ MY_LOCAL_SRC_FILES :=                                                           
     $(SRCDIR)/Graphics/OpenGLContext/opengl_ColorBufferReaderWithBufferStorage.cpp \
     $(SRCDIR)/Graphics/OpenGLContext/opengl_ColorBufferReaderWithPixelBuffer.cpp   \
     $(SRCDIR)/Graphics/OpenGLContext/opengl_ColorBufferReaderWithReadPixels.cpp    \
-    $(SRCDIR)/Graphics/OpenGLContext/opengl_ColorBufferReaderWithEGLImage.cpp      \
     $(SRCDIR)/Graphics/OpenGLContext/opengl_ContextImpl.cpp                        \
     $(SRCDIR)/Graphics/OpenGLContext/opengl_GLInfo.cpp                             \
     $(SRCDIR)/Graphics/OpenGLContext/opengl_Parameters.cpp                         \
@@ -82,10 +81,6 @@ MY_LOCAL_SRC_FILES :=                                                           
     $(SRCDIR)/Graphics/OpenGLContext/GLSL/glsl_ShaderStorage.cpp                   \
     $(SRCDIR)/Graphics/OpenGLContext/GLSL/glsl_SpecialShadersFactory.cpp           \
     $(SRCDIR)/Graphics/OpenGLContext/GLSL/glsl_Utils.cpp                           \
-    $(SRCDIR)/Graphics/OpenGLContext/GraphicBuffer/PrivateApi/GraphicBuffer.cpp    \
-    $(SRCDIR)/Graphics/OpenGLContext/GraphicBuffer/PrivateApi/libhardware.cpp      \
-    $(SRCDIR)/Graphics/OpenGLContext/GraphicBuffer/PublicApi/android_hardware_buffer_compat.cpp     \
-    $(SRCDIR)/Graphics/OpenGLContext/GraphicBuffer/GraphicBufferWrapper.cpp        \
     $(SRCDIR)/uCodes/F3D.c                                                       \
     $(SRCDIR)/uCodes/F3DAM.c                                                     \
     $(SRCDIR)/uCodes/F3DBETA.c                                                   \

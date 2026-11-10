@@ -38,8 +38,6 @@ struct GLInfo {
 	bool ext_fetch = false;
 	bool ext_fetch_arm = false;
 	bool n64DepthWithFbFetch = false;
-	bool eglImage = false;
-	bool eglImageFramebuffer = false;
 	bool dual_source_blending = false;
 	bool anisotropic_filtering = false;
 	bool coverage = false;

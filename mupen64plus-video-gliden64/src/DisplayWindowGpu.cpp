@@ -32,9 +32,6 @@ void DisplayWindow::updateScale()
 
 void gli_window_gpu_start(void)
 {
-#ifdef EGL
-	eglInitialize(eglGetDisplay(EGL_DEFAULT_DISPLAY), nullptr, nullptr);
-#endif
 	graphics::ObjectHandle::defaultFramebuffer = graphics::ObjectHandle::null;
 	gfxContext.init();
 	WindowGpu::init();

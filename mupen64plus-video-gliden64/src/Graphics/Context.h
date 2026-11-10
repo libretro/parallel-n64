@@ -26,8 +26,6 @@ namespace graphics {
 		ClipControl,
 		FramebufferFetch,
 		TextureBarrier,
-		EglImage,
-		EglImageFramebuffer,
 		DualSourceBlending
 	};
 
@@ -308,8 +306,6 @@ namespace graphics {
 		static bool ClipControl;
 		static bool FramebufferFetch;
 		static bool TextureBarrier;
-		static bool EglImage;
-		static bool EglImageFramebuffer;
 		static bool DualSourceBlending;
 
 	private:

@@ -6,7 +6,6 @@
 #include "opengl_BufferManipulationObjectFactory.h"
 
 #ifdef OS_ANDROID
-#include <Graphics/OpenGLContext/GraphicBuffer/GraphicBufferWrapper.h>
 #endif
 
 //#define ENABLE_GL_4_5
@@ -325,16 +324,6 @@ protected:
 			colorType = GL_UNSIGNED_BYTE;
 			colorFormatBytes = 4;
 		}
-
-#ifdef OS_ANDROID
-		// If EGL image support is available, override above
-		if (m_glinfo.eglImage) {
-			colorInternalFormat = GL_RGBA8;
-			colorFormat = GL_RGBA;
-			colorType = GL_UNSIGNED_BYTE;
-			colorFormatBytes = 4;
-		}
-#endif
 
 		monochromeInternalFormat = GL_R8;
 		monochromeFormat = GL_RED;

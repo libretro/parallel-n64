@@ -8,7 +8,6 @@
 #include "opengl_ColorBufferReaderWithPixelBuffer.h"
 #include "opengl_ColorBufferReaderWithBufferStorage.h"
 #ifdef OS_ANDROID
-#include "opengl_ColorBufferReaderWithEGLImage.h"
 #endif
 #include "opengl_ColorBufferReaderWithReadPixels.h"
 #include "opengl_Utils.h"
@@ -27,7 +26,6 @@
 #endif
 
 #ifdef OS_ANDROID
-#include <Graphics/OpenGLContext/GraphicBuffer/GraphicBufferWrapper.h>
 #endif
 
 #include "glsm/glsm.h"
@@ -376,11 +374,6 @@ graphics::PixelReadBuffer * ContextImpl::createPixelReadBuffer(size_t _sizeInByt
 
 graphics::ColorBufferReader * ContextImpl::createColorBufferReader(CachedTexture * _pTexture)
 {
-#if defined(EGL) && defined(OS_ANDROID)
-	if (m_glInfo.eglImage)
-		return new ColorBufferReaderWithEGLImage(_pTexture, m_cachedFunctions->getCachedBindTexture());
-#endif
-
 	if (m_glInfo.bufferStorage && m_glInfo.renderer != Renderer::Intel)
 		return new ColorBufferReaderWithBufferStorage(_pTexture, m_cachedFunctions->getCachedBindBuffer());
 
@@ -533,10 +526,6 @@ bool ContextImpl::isSupported(graphics::SpecialFeatures _feature) const
 		return m_glInfo.ext_fetch;
 	case graphics::SpecialFeatures::TextureBarrier:
 		return m_glInfo.texture_barrier || m_glInfo.texture_barrierNV;
-	case graphics::SpecialFeatures::EglImage:
-		return m_glInfo.eglImage;
-	case graphics::SpecialFeatures::EglImageFramebuffer:
-		return m_glInfo.eglImageFramebuffer;
 	case graphics::SpecialFeatures::DualSourceBlending:
 		return m_glInfo.dual_source_blending;
 	}

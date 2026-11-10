@@ -12,11 +12,7 @@
 #undef GL_GLEXT_PROTOTYPES
 #endif // GL_GLEXT_PROTOTYPES
 
-#ifdef EGL
-#include <GL/glcorearb.h>
-#include <EGL/egl.h>
-#include <EGL/eglext.h>
-#elif defined(HAVE_OPENGLES3)
+#if defined(HAVE_OPENGLES3)
 /* Desktop <GL/gl.h> must stay out: it declares glEnable and friends as real
  * functions, and glsmsym.h has already turned those names into macros.
  * glcorearb.h has PFNGL*PROC typedefs this file needs and declares
@@ -70,7 +66,7 @@ typedef double GLdouble;
 
 #include <glsm/glsm_caps.h>
 
-#if !defined(EGL) && !defined(OS_IOS)
+#if !defined(OS_IOS)
 typedef void (APIENTRYP PFNGLPOLYGONOFFSETPROC) (GLfloat factor, GLfloat units);
 typedef void (APIENTRYP PFNGLBINDTEXTUREPROC) (GLenum target, GLuint texture);
 typedef void (APIENTRYP PFNGLTEXSUBIMAGE2DPROC) (GLenum target, GLint level, GLint xoffset, GLint yoffset, GLsizei width, GLsizei height, GLenum format, GLenum type, const void *pixels);
@@ -163,7 +159,6 @@ typedef void (APIENTRYP PFNGLBLENDCOLORPROC) (GLfloat red, GLfloat green, GLfloa
 #undef glFinish
 #define glFinish(...) CHECKED_GL_FUNCTION(g_glFinish, __VA_ARGS__)
 #if defined(OS_ANDROID)
-#define eglGetNativeClientBufferANDROID(...) CHECKED_GL_FUNCTION_WITH_RETURN(g_eglGetNativeClientBufferANDROID, EGLClientBuffer, __VA_ARGS__)
 #endif
 
 extern PFNGLBLENDFUNCPROC g_glBlendFunc;
@@ -199,7 +194,6 @@ extern PFNGLBLENDCOLORPROC g_glBlendColor;
 extern PFNGLREADBUFFERPROC g_glReadBuffer;
 extern PFNGLFINISHPROC g_glFinish;
 #if defined(OS_ANDROID)
-extern PFNEGLGETNATIVECLIENTBUFFERANDROIDPROC g_eglGetNativeClientBufferANDROID;
 #endif
 
 #undef glCreateShader
@@ -391,8 +385,6 @@ extern PFNEGLGETNATIVECLIENTBUFFERANDROIDPROC g_eglGetNativeClientBufferANDROID;
 #define glEnablei(...) CHECKED_GL_FUNCTION(g_glEnablei, __VA_ARGS__)
 #undef glDisablei
 #define glDisablei(...) CHECKED_GL_FUNCTION(g_glDisablei, __VA_ARGS__)
-#undef glEGLImageTargetTexture2DOES
-#define glEGLImageTargetTexture2DOES(...) CHECKED_GL_FUNCTION(g_glEGLImageTargetTexture2DOES, __VA_ARGS__)
 
 extern PFNGLCREATESHADERPROC g_glCreateShader;
 extern PFNGLCOMPILESHADERPROC g_glCompileShader;
@@ -493,8 +485,6 @@ extern PFNGLCLEARBUFFERFVPROC g_glClearBufferfv;
 extern PFNGLENABLEIPROC g_glEnablei;
 extern PFNGLDISABLEIPROC g_glDisablei;
 
-typedef void (APIENTRYP PFNGLEGLIMAGETARGETTEXTURE2DOESPROC) (GLenum target, void* image);
-extern PFNGLEGLIMAGETARGETTEXTURE2DOESPROC g_glEGLImageTargetTexture2DOES;
 
 extern "C" void initGLFunctions();
 
