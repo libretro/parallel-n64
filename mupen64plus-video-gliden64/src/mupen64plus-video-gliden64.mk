@@ -22,6 +22,7 @@ MY_LOCAL_SRC_FILES :=                                                           
     $(SRCDIR)/Combiner.cpp                                                         \
     $(SRCDIR)/CombinerDecode.c                                                     \
     $(SRCDIR)/TextureDecode.c                                                      \
+    $(SRCDIR)/TextureSizes.c                                                       \
     $(SRCDIR)/CombinerKey.c                                                       \
     $(SRCDIR)/PluginAPI.c                                                        \
     $(SRCDIR)/Config.c                                                            \

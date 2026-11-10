@@ -55,6 +55,26 @@ void gli_tex_decode_tmem(const gli_tex_decode *t, const gli_tex_format *f,
 void gli_tex_decode_bg(const gli_tex_decode *t, const gli_tex_format *f,
 		int out32, const u8 *src, u32 bpl, void *dst);
 
+/* The sizes of tile @_t, as the RDP will sample it */
+typedef struct gli_tile_sizes
+{
+	u32 maskWidth, clampWidth, width, realWidth;
+	u32 maskHeight, clampHeight, height, realHeight;
+	u32 bytes;
+} gli_tile_sizes;
+
+struct gDPTile;
+
+/* Sizes tile @_t (a texture tile when < 2) after load tile @_pLoadTile;
+ * resets and may shrink the tile's masks */
+void gli_tex_tile_sizes(u32 _t, gli_tile_sizes *_sizes, struct gDPTile *_pLoadTile);
+
+/* The cache key of texture tile @_t with @_sizes */
+u64 gli_tex_crc(u32 _t, const gli_tile_sizes *_sizes);
+
+/* The texel line width of a block load from its dxt step */
+u32 gli_tex_reverse_dxt(u32 val, u32 lrs, u32 width, u32 size);
+
 #ifdef __cplusplus
 }
 #endif

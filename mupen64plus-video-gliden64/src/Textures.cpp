@@ -55,42 +55,6 @@ static void _texDecodeParams(const CachedTexture & _t, gli_tex_decode & _d)
 	_d.mirrorT = _t.mirrorT;
 }
 
-/** cite from RiceVideo */
-inline u32 CalculateDXT(u32 txl2words)
-{
-	if (txl2words == 0) return 1;
-	else return (2048 + txl2words - 1) / txl2words;
-}
-
-static u32 sizeBytes[4] = {0, 1, 2, 4};
-
-inline u32 Txl2Words(u32 width, u32 size)
-{
-	if (size == 0)
-		return max(1U, width / 16);
-	else
-		return max(1U, width*sizeBytes[size] / 8);
-}
-
-inline u32 ReverseDXT(u32 val, u32 lrs, u32 width, u32 size)
-{
-	if (val == 0x800) return 1;
-
-	int low = 2047 / val;
-	if (CalculateDXT(low) > val)	low++;
-	int high = 2047 / (val - 1);
-
-	if (low == high)	return low;
-
-	for (int i = low; i <= high; i++) {
-		if (Txl2Words(width, size) == (u32)i)
-			return i;
-	}
-
-	return	(low + high) / 2;
-}
-/** end RiceVideo cite */
-
 TextureCache & TextureCache::get() {
 	static TextureCache cache;
 	return cache;
@@ -271,135 +235,6 @@ CachedTexture * TextureCache::addFrameBufferTexture(graphics::Parameter _target)
 	ObjectHandle texName(gfxContext.createTexture(_target));
 	m_fbTextures.emplace(u32(texName), texName);
 	return &m_fbTextures.at(u32(texName));
-}
-
-struct TileSizes
-{
-	u32 maskWidth, clampWidth, width, realWidth;
-	u32 maskHeight, clampHeight, height, realHeight;
-	u32 bytes;
-};
-
-static
-void _calcTileSizes(u32 _t, TileSizes & _sizes, gDPTile * _pLoadTile)
-{
-	gDPTile * pTile = _t < 2 ? gSP.textureTile[_t] : &gDP.tiles[_t];
-	pTile->masks = pTile->originalMaskS;
-	pTile->maskt = pTile->originalMaskT;
-
-	const gli_tex_format * loadParams =
-			gli_tex_format_get(gDP.otherMode.textureLUT, pTile->size, pTile->format);
-	const u32 maxTexels = loadParams->maxTexels;
-	u32 tileWidth = ((pTile->lrs - pTile->uls) & 0x03FF) + 1;
-	u32 tileHeight = ((pTile->lrt - pTile->ult) & 0x03FF) + 1;
-	if (tileWidth == 1 && tileHeight == 1 &&
-		gDP.otherMode.cycleType == G_CYC_COPY &&
-		_pLoadTile != nullptr &&
-		_pLoadTile->loadType == LOADTYPE_BLOCK) {
-		const u32 ulx = _SHIFTR(RDP.w1, 14, 10);
-		const u32 uly = _SHIFTR(RDP.w1, 2, 10);
-		const u32 lrx = _SHIFTR(RDP.w0, 14, 10);
-		const u32 lry = _SHIFTR(RDP.w0, 2, 10);
-		tileWidth = lrx - ulx + 1;
-		tileHeight = lry - uly + 1;
-	}
-
-	const bool bUseLoadSizes = _pLoadTile != nullptr && _pLoadTile->loadType == LOADTYPE_TILE &&
-		(pTile->tmem == _pLoadTile->tmem);
-
-	u32 loadWidth = 0, loadHeight = 0;
-	if (bUseLoadSizes) {
-		loadWidth = ((_pLoadTile->lrs - _pLoadTile->uls) & 0x03FF) + 1;
-		loadHeight = ((_pLoadTile->lrt - _pLoadTile->ult) & 0x03FF) + 1;
-	}
-
-	const u32 lineWidth = pTile->line << loadParams->lineShift;
-	const u32 lineHeight = lineWidth != 0 ? min(maxTexels / lineWidth, tileHeight) : 0;
-
-	u32 maskWidth = 1 << pTile->masks;
-	u32 maskHeight = 1 << pTile->maskt;
-	u32 width, height;
-
-	const u32 tMemMask = gDP.otherMode.textureLUT == G_TT_NONE ? 0x1FF : 0xFF;
-	gDPLoadTileInfo &info = gDP.loadInfo[pTile->tmem & tMemMask];
-	if (pTile->tmem == gDP.loadTile->tmem) {
-		if (gDP.loadTile->loadWidth != 0 && gDP.loadTile->masks == 0)
-			info.width = gDP.loadTile->loadWidth;
-		if (gDP.loadTile->loadHeight != 0 && gDP.loadTile->maskt == 0) {
-			info.height = gDP.loadTile->loadHeight;
-			info.bytes = info.height * (gDP.loadTile->line << 3);
-			if (gDP.loadTile->size == G_IM_SIZ_32b)
-				// 32 bit texture loaded into lower and upper half of TMEM, thus actual bytes doubled.
-				info.bytes *= 2;
-		}
-		gDP.loadTile->loadWidth = gDP.loadTile->loadHeight = 0;
-	}
-	_sizes.bytes = info.bytes;
-	if (info.loadType == LOADTYPE_TILE) {
-		if (pTile->masks && ((maskWidth * maskHeight) <= maxTexels))
-			width = maskWidth; // Use mask width if set and valid
-		else {
-			width = info.width;
-			if (info.size > pTile->size)
-				width <<= info.size - pTile->size;
-		}
-		if (pTile->maskt && ((maskWidth * maskHeight) <= maxTexels))
-			height = maskHeight;
-		else
-			height = info.height;
-	} else {
-		if (pTile->masks && ((maskWidth * maskHeight) <= maxTexels))
-			width = maskWidth; // Use mask width if set and valid
-		else if ((tileWidth * tileHeight) <= maxTexels)
-			width = tileWidth; // else use tile width if valid
-		else
-			width = lineWidth; // else use line-based width
-
-		if (pTile->maskt && ((maskWidth * maskHeight) <= maxTexels))
-			height = maskHeight;
-		else if ((tileWidth * tileHeight) <= maxTexels)
-			height = tileHeight;
-		else
-			height = lineHeight;
-	}
-
-	_sizes.clampWidth = (pTile->clamps && gDP.otherMode.cycleType != G_CYC_COPY) ? tileWidth : width;
-	_sizes.clampHeight = (pTile->clampt && gDP.otherMode.cycleType != G_CYC_COPY) ? tileHeight : height;
-
-	// Make sure masking is valid
-	if (maskWidth > width) {
-		pTile->masks = powof(width);
-		maskWidth = 1 << pTile->masks;
-	}
-
-	if (maskHeight > height) {
-		pTile->maskt = powof(height);
-		maskHeight = 1 << pTile->maskt;
-	}
-
-	_sizes.maskWidth = maskWidth;
-	_sizes.maskHeight = maskHeight;
-	_sizes.width = width;
-	_sizes.height = height;
-
-	if (pTile->clamps != 0)
-		_sizes.realWidth = _sizes.clampWidth;
-	else if (pTile->masks != 0)
-		_sizes.realWidth = _sizes.maskWidth;
-	else
-		_sizes.realWidth = _sizes.width;
-
-	if (pTile->clampt != 0)
-		_sizes.realHeight = _sizes.clampHeight;
-	else if (pTile->maskt != 0)
-		_sizes.realHeight = _sizes.maskHeight;
-	else
-		_sizes.realHeight = _sizes.height;
-
-	if (gSP.texture.level > 0) {
-		_sizes.realWidth = pow2(_sizes.realWidth);
-		_sizes.realHeight = pow2(_sizes.realHeight);
-	}
 }
 
 inline
@@ -641,7 +476,7 @@ bool TextureCache::_loadHiresTexture(u32 _tile, CachedTexture *_pTexture, u64 & 
 		else {
 			u32 dxt = info.dxt;
 			if (dxt > 1)
-				dxt = ReverseDXT(dxt, info.width, _pTexture->width, _pTexture->size);
+				dxt = gli_tex_reverse_dxt(dxt, info.width, _pTexture->width, _pTexture->size);
 			bpl = dxt << 3;
 		}
 	}
@@ -884,8 +719,8 @@ void TextureCache::_load(u32 _tile, CachedTexture *_pTexture)
 		tmptex.palette = mipTile.palette;
 		tmptex.maskS = mipTile.masks;
 		tmptex.maskT = mipTile.maskt;
-		TileSizes sizes;
-		_calcTileSizes(tileMipLevel, sizes, nullptr);
+		gli_tile_sizes sizes;
+		gli_tex_tile_sizes(tileMipLevel, &sizes, nullptr);
 		tmptex.width = sizes.width;
 		tmptex.clampWidth = sizes.clampWidth;
 		tmptex.height = sizes.height;
@@ -899,48 +734,6 @@ void TextureCache::_load(u32 _tile, CachedTexture *_pTexture)
 	}
 	if (m_curUnpackAlignment > 1)
 		gfxContext.setTextureUnpackAlignment(m_curUnpackAlignment);
-}
-
-struct TextureParams
-{
-	u16 width;
-	u16 height;
-	u32 flags;
-};
-
-static
-u64 _calculateCRC(u32 _t, const TextureParams & _params, u32 _bytes)
-{
-	const bool rgba32 = gSP.textureTile[_t]->size == G_IM_SIZ_32b;
-	if (_bytes == 0) {
-		const u32 lineBytes = gSP.textureTile[_t]->line << 3;
-		_bytes = _params.height*lineBytes;
-	}
-	if (rgba32)
-		_bytes >>= 1;
-	const u32 tMemMask = (gDP.otherMode.textureLUT == G_TT_NONE && !rgba32) ? 0x1FF : 0xFF;
-	const u64 *src = (u64*)&TMEM[gSP.textureTile[_t]->tmem & tMemMask];
-	u64 crc = UINT64_MAX;
-	crc = CRC_Calculate(crc, src, _bytes);
-
-	if (rgba32) {
-		src = (u64*)&TMEM[gSP.textureTile[_t]->tmem + 256];
-		crc = CRC_Calculate(crc, src, _bytes);
-	}
-
-	if (gDP.otherMode.textureLUT != G_TT_NONE || gSP.textureTile[_t]->format == G_IM_FMT_CI) {
-		if (gSP.textureTile[_t]->size == G_IM_SIZ_4b)
-			crc = CRC_Calculate( crc, &gDP.paletteCRC16[gSP.textureTile[_t]->palette], sizeof(u64) );
-		else if (gSP.textureTile[_t]->size == G_IM_SIZ_8b)
-			crc = CRC_Calculate( crc, &gDP.paletteCRC256, sizeof(u64) );
-	}
-
-	if (config.generalEmulation.enableLOD != 0 && gSP.texture.level > 1 && _t > 0)
-		crc = CRC_Calculate(crc, &gSP.texture.level, 4);
-
-	crc = CRC_Calculate(crc, &_params, sizeof(_params));
-
-	return crc;
 }
 
 void TextureCache::activateTexture(u32 _t, CachedTexture *_pTexture)
@@ -1141,22 +934,9 @@ void TextureCache::update(u32 _t)
 		pTile = gSP.textureTile[_t];
 	}
 
-	TileSizes sizes;
-	_calcTileSizes(_t, sizes, gDP.loadTile);
-	TextureParams params;
-	params.flags = pTile->masks	|
-		(pTile->maskt   << 4)	|
-		(pTile->mirrors << 8)	|
-		(pTile->mirrort << 9)	|
-		(pTile->clamps << 10)	|
-		(pTile->clampt << 11)	|
-		(pTile->size   << 12)	|
-		(pTile->format << 14)	|
-		(gDP.otherMode.textureLUT << 17);
-	params.width = sizes.realWidth;
-	params.height = sizes.realHeight;
-
-	const u64 crc = _calculateCRC(_t, params, sizes.bytes);
+	gli_tile_sizes sizes;
+	gli_tex_tile_sizes(_t, &sizes, gDP.loadTile);
+	const u64 crc = gli_tex_crc(_t, &sizes);
 
 	if (current[_t] != nullptr && current[_t]->crc == crc) {
 		activateTexture(_t, current[_t]);
