@@ -138,7 +138,6 @@ if(MUPENPLUSAPI)
   include_directories( . inc )
   set(GLideN64_SOURCES_UNIX
 	mupenplus/Config_mupenplus.cpp
-	mupenplus/MemoryStatus_mupenplus.cpp
   )
 
   set(GLideN64_SOURCES_WIN ${GLideN64_SOURCES_UNIX}

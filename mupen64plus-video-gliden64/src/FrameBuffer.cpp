@@ -1,5 +1,6 @@
 #include <assert.h>
 #include <math.h>
+#include <string.h>
 #include <algorithm>
 #include <vector>
 #include "FrameBuffer.h"
@@ -17,7 +18,6 @@
 #include "Config.h"
 #include "PostProcessor.h"
 #include "FrameBufferInfo.h"
-#include "MemoryStatus.h"
 
 #include "BufferCopy/ColorBufferToRDRAM.h"
 #include "BufferCopy/DepthBufferToRDRAM.h"
@@ -1645,8 +1645,6 @@ void FrameBufferList::fillRDRAM(s32 ulx, s32 uly, s32 lrx, s32 lry)
 	lrx >>= (3 - gDP.colorImage.size);
 	u32 * dst = (u32*)(RDRAM + gDP.colorImage.address);
 	dst += uly * ci_width_in_dwords;
-	if (!isMemoryWritable(dst, lowerBound - gDP.colorImage.address))
-		return;
 	for (s32 y = uly; y < lry; ++y) {
 		for (s32 x = ulx; x < lrx; ++x) {
 			dst[x] = gDP.fillColor.color;

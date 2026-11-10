@@ -5,7 +5,6 @@
 
 #include "DepthBufferToRDRAM.h"
 #include "WriteToRDRAM.h"
-#include "MemoryStatus.h"
 
 #include <FrameBuffer.h>
 #include <DepthBuffer.h>
@@ -283,9 +282,6 @@ bool DepthBufferToRDRAM::copyToRDRAM(u32 _address)
 	if (!m_pbuf)
 		return false;
 
-	if (!isMemoryWritable(RDRAM + _address, gDP.colorImage.width * 2))
-		return false;
-
 	if (!_prepareCopy(_address, false))
 		return false;
 
@@ -304,9 +300,6 @@ bool DepthBufferToRDRAM::copyChunkToRDRAM(u32 _startAddress)
 		return false;
 
 	const u32 endAddress = (_startAddress & ~0xfff) + 0x1000;
-
-	if (!isMemoryWritable(RDRAM + _startAddress, endAddress - _startAddress))
-		return false;
 
 	if (!_prepareCopy(_startAddress, true))
 		return false;

@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <string.h>
 #include <algorithm>
 
 #include "ColorBufferToRDRAM.h"
@@ -9,7 +10,6 @@
 #include <Config.h>
 #include <N64.h>
 #include <VI.h>
-#include "MemoryStatus.h"
 
 /*
 #include "ColorBufferToRDRAM_GL.h"
@@ -330,9 +330,6 @@ void ColorBufferToRDRAM::_write(const u8 * _pixels, u32 _stride, const ColorCopy
 {
 	if (_g.height == 0)
 		return;
-	/* the RDRAM it was read for may have changed hands since */
-	if (!isMemoryWritable(RDRAM + _g.startAddress, _g.numPixels << _g.size >> 1))
-		return;
 
 	const bool clear = !gli_FBInfo_supported() && config.frameBufferEmulation.copyFromRDRAM != 0;
 	if (_g.size == G_IM_SIZ_32b) {
@@ -376,8 +373,6 @@ u32 ColorBufferToRDRAM::_getRealWidth(u32 _viWidth)
 
 void ColorBufferToRDRAM::copyToRDRAM(u32 _address, bool _sync)
 {
-	if (!isMemoryWritable(RDRAM + _address, gDP.colorImage.width << gDP.colorImage.size >> 1))
-		return;
 	if (!_prepareCopy(_address))
 		return;
 	const u32 numBytes = (m_pCurFrameBuffer->m_width*m_pCurFrameBuffer->m_height) << m_pCurFrameBuffer->m_size >> 1;
@@ -388,8 +383,6 @@ void ColorBufferToRDRAM::copyChunkToRDRAM(u32 _startAddress)
 {
 	const u32 endAddress = (_startAddress & ~0xfff) + 0x1000;
 
-	if (!isMemoryWritable(RDRAM + _startAddress, endAddress - _startAddress))
-		return;
 	if (!_prepareCopy(_startAddress))
 		return;
 	_copy(_startAddress, endAddress, true);

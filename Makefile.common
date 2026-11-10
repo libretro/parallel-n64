@@ -478,7 +478,6 @@ SOURCES_CXX   += \
     $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/GLSL/glsl_ShaderStorage.cpp                   \
     $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/GLSL/glsl_SpecialShadersFactory.cpp           \
     $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/GLSL/glsl_Utils.cpp                           \
-    $(VIDEODIR_GLIDEN64)/src/mupenplus/MemoryStatus_mupenplus.cpp                                 \
     $(VIDEODIR_GLIDEN64)/src/uCodes/S2DEX_gfx.cpp                                                     \
 	$(VIDEODIR_GLIDEN64)/src/mupenplus/Config_mupenplus.cpp                                       
 

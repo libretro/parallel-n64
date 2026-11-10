@@ -50,7 +50,6 @@ MY_LOCAL_SRC_FILES :=                                                           
     $(SRCDIR)/VI.c                                                               \
     $(SRCDIR)/ZlutTexture.c                                                        \
     $(SRCDIR)/mupenplus/Config_mupenplus.cpp                                       \
-    $(SRCDIR)/mupenplus/MemoryStatus_mupenplus.cpp                                 \
     $(SRCDIR)/DepthBufferRender/ClipPolygon.c                                    \
     $(SRCDIR)/DepthBufferRender/DepthBufferRender.c                              \
     $(SRCDIR)/BufferCopy/ColorBufferToRDRAM.cpp                                    \
