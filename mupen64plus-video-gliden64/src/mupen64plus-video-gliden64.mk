@@ -25,6 +25,7 @@ MY_LOCAL_SRC_FILES :=                                                           
     $(SRCDIR)/TextureSizes.c                                                       \
     $(SRCDIR)/TextureLRU.c                                                         \
     $(SRCDIR)/VIUpdate.c                                                           \
+    $(SRCDIR)/FrameBufferRdram.c                                                   \
     $(SRCDIR)/CombinerKey.c                                                       \
     $(SRCDIR)/PluginAPI.c                                                        \
     $(SRCDIR)/Config.c                                                            \

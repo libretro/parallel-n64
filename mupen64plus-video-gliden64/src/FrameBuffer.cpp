@@ -213,16 +213,6 @@ void FrameBuffer::updateEndAddress()
 	m_endAddress = min(RDRAMSize, m_startAddress + (((m_width * height) << m_size >> 1) - 1));
 }
 
-inline
-u32 _cutHeight(u32 _address, u32 _height, u32 _stride)
-{
-	if (_address > RDRAMSize)
-		return 0;
-	if (_address + _stride * _height > (RDRAMSize + 1))
-		return (RDRAMSize + 1 - _address) / _stride;
-	return _height;
-}
-
 void FrameBuffer::setBufferClearParams(u32 _fillcolor, s32 _ulx, s32 _uly, s32 _lrx, s32 _lry)
 {
 	m_cleared = true;
@@ -236,7 +226,7 @@ void FrameBuffer::setBufferClearParams(u32 _fillcolor, s32 _ulx, s32 _uly, s32 _
 void FrameBuffer::copyRdram()
 {
 	const u32 stride = m_width << m_size >> 1;
-	const u32 height = _cutHeight(m_startAddress, m_height, stride);
+	const u32 height = cutHeight(m_startAddress, m_height, stride);
 	if (height == 0)
 		return;
 	const u32 dataSize = stride * height;
@@ -247,15 +237,7 @@ void FrameBuffer::copyRdram()
 		// This is necessary for auxilary buffers: game can restore content of RDRAM when buffer is not needed anymore
 		// Thus content of RDRAM on moment of buffer creation will be the same as when buffer becomes obsolete.
 		// Validity check will see that the RDRAM is the same and thus the buffer is valid, which is false.
-		const u32 twoPercent = max(4U, dataSize / 200);
-		u32 start = m_startAddress >> 2;
-		u32 * pData = (u32*)RDRAM;
-		for (u32 i = 0; i < twoPercent; ++i) {
-			if (i < 4)
-				pData[start++] = fingerprint[i];
-			else
-				pData[start++] = 0;
-		}
+		gli_fb_rdram_mark(m_startAddress, dataSize);
 		m_cleared = false;
 		m_fingerprint = true;
 		return;
@@ -278,50 +260,15 @@ bool FrameBuffer::isValid(bool _forceCheck) const
 		m_validityChecked = dwnd().getBuffersSwapCount();
 	}
 
-	const u32 * const pData = (const u32*)RDRAM;
-
-	if (m_cleared) {
-		const u32 testColor = m_clearParams.fillcolor & 0xFFFEFFFE;
-		const u32 stride = m_width << m_size >> 1;
-		const s32 lry = (s32)_cutHeight(m_startAddress, m_clearParams.lry, stride);
-		if (lry == 0)
-			return false;
-
-		const u32 ci_width_in_dwords = m_width >> (3 - m_size);
-		const u32 start = (m_startAddress >> 2) + m_clearParams.uly * ci_width_in_dwords;
-		const u32 * dst = pData + start;
-		u32 wrongPixels = 0;
-		for (s32 y = m_clearParams.uly; y < lry; ++y) {
-			for (s32 x = m_clearParams.ulx; x < m_clearParams.lrx; ++x) {
-				if ((dst[x] & 0xFFFEFFFE) != testColor)
-					++wrongPixels;
-			}
-			dst += ci_width_in_dwords;
-		}
-		return wrongPixels < (m_endAddress - m_startAddress) / 400; // threshold level 1% of dwords
-	} else if (m_fingerprint) {
-			//check if our fingerprint is still there
-			u32 start = m_startAddress >> 2;
-			for (u32 i = 0; i < 4; ++i)
-				if ((pData[start++] & 0xFFFEFFFE) != (fingerprint[i] & 0xFFFEFFFE))
-					return false;
-			return true;
-	} else if (!m_RdramCopy.empty()) {
-		const u32 * const pCopy = reinterpret_cast<const u32* >(m_RdramCopy.data());
-		const u32 size = static_cast<u32>(m_RdramCopy.size());
-		const u32 size_dwords = size >> 2;
-		u32 start = m_startAddress >> 2;
-		u32 wrongPixels = 0;
-		/* Nothing written since the copy is the usual case: then there is
-		 * nothing to count, and memcmp finds that out the fastest. */
-		if (memcmp(pData + start, pCopy, size_dwords << 2) == 0)
-			return 0 < size / 400;
-		for (u32 i = 0; i < size_dwords; ++i) {
-			if ((pData[start++] & 0xFFFEFFFE) != (pCopy[i] & 0xFFFEFFFE))
-				++wrongPixels;
-		}
-		return wrongPixels < size / 400; // threshold level 1% of dwords
-	}
+	if (m_cleared)
+		return gli_fb_rdram_cleared_valid(m_startAddress, m_endAddress, m_width, m_size,
+			m_clearParams.fillcolor, m_clearParams.ulx, m_clearParams.uly,
+			m_clearParams.lrx, m_clearParams.lry) != 0;
+	if (m_fingerprint)
+		return gli_fb_rdram_mark_valid(m_startAddress) != 0;
+	if (!m_RdramCopy.empty())
+		return gli_fb_rdram_copy_valid(m_startAddress, m_RdramCopy.data(),
+			static_cast<u32>(m_RdramCopy.size())) != 0;
 	return true; // No data to decide
 }
 
@@ -1570,11 +1517,6 @@ void FrameBuffer_CopyFromRDRAM(u32 _address, bool _bCFB)
 void FrameBuffer_AddAddress(u32 address, u32 _size)
 {
 	RDRAMtoColorBuffer::get().addAddress(address, _size);
-}
-
-u32 cutHeight(u32 _address, u32 _height, u32 _stride)
-{
-	return _cutHeight(_address, _height, _stride);
 }
 
 void calcCoordsScales(const FrameBuffer * _pBuffer, f32 & _scaleX, f32 & _scaleY)

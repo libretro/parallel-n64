@@ -6,13 +6,13 @@
 
 #include "Types.h"
 #include "gli_vi_update.h"
+#include "gli_fb_rdram.h"
 #include "Textures.h"
 #include "Graphics/ObjectHandle.h"
 
 struct gDPTile;
 struct DepthBuffer;
 
-const int fingerprint[4] = { 2, 6, 4, 3 };
 
 struct FrameBuffer
 {
@@ -183,7 +183,6 @@ FrameBufferList & frameBufferList()
 	return FrameBufferList::get();
 }
 
-u32 cutHeight(u32 _address, u32 _height, u32 _stride);
 void calcCoordsScales(const FrameBuffer * _pBuffer, f32 & _scaleX, f32 & _scaleY);
 
 void FrameBuffer_Init();
