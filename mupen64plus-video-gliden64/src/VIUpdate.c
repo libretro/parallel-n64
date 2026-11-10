@@ -178,3 +178,51 @@ void gli_vi_source(const gli_vi_result *_r, u32 _bufStart, u32 _bufWidth, u32 _b
 	_o->srcWidth = (s32)srcWidth;
 	_o->srcHeight = srcHeight;
 }
+
+int gli_vi_present_rects(const gli_vi_result *_r, const gli_vi_source_rect *_s,
+		const gli_vi_present_in *_in, gli_vi_present_out *_o)
+{
+	const s32 partHeight = _in->hasNext ? _s->srcY0 : 0;
+	const s32 srcY1 = _in->hasNext ? _s->srcHeight : _s->srcY0 + _s->srcHeight;
+	const s32 dstY1 = _s->dstY0 + _r->vi_vres - partHeight;
+	const f32 viScaleX = _FIXED2FLOAT(_SHIFTR(*REG.VI_X_SCALE, 0, 12), 10);
+	const f32 srcScale = _in->bufScale;
+	const f32 dstScaleX = _in->windowWidth / (640 * viScaleX);
+	const s32 hx0 = _r->vi_h_start + _r->vi_minhpass;
+	const s32 h0 = _r->vi_ispal ? 128 : 108;
+	const s32 hEnd = _SHIFTR(*REG.VI_H_START, 0, 10);
+	const s32 hx1raw = h0 + 640 - hEnd + (s32)_r->vi_maxhpass;
+	const s32 hx1 = hx1raw > 0 ? hx1raw : 0;
+	const s32 dstX0 = (s32)((hx0 * viScaleX + (f32)_s->XoffsetRight) * dstScaleX);
+	const s32 dstX1 = _in->drawingWidth - (s32)(hx1 * viScaleX * dstScaleX);
+	const s32 cutleft = (s32)(_r->vi_minhpass * viScaleX * srcScale);
+	const s32 cutright = (s32)(_r->vi_maxhpass * viScaleX * srcScale);
+	const s32 hOffset = _in->offset[0];
+	const s32 vOffset = _in->offset[1];
+
+	_o->src[0] = (s32)(_s->XoffsetLeft * srcScale) + cutleft;
+	_o->src[1] = (s32)(_s->srcY0 * srcScale);
+	_o->src[2] = (s32)((_s->srcWidth + _s->XoffsetLeft - _s->XoffsetRight) * srcScale) - cutright;
+	_o->src[3] = (s32)(srcY1 * srcScale);
+	if (_o->src[3] > (s32)_in->texSize[1])
+		_o->src[3] = (s32)_in->texSize[1];
+	if (_o->src[2] > _in->texSize[0] || _o->src[3] > _in->texSize[1])
+		return 0;
+
+	if (_in->immersive && !_in->hasNext) {
+		_o->dst[0] = 0;
+		_o->dst[1] = 0;
+		_o->dst[2] = (s32)_in->bufferSize[0];
+		_o->dst[3] = (s32)_in->bufferSize[1];
+	} else {
+		_o->dst[0] = dstX0 + hOffset;
+		_o->dst[1] = vOffset + (s32)(_s->dstY0 * _in->dstScaleY);
+		_o->dst[2] = hOffset + dstX1;
+		_o->dst[3] = vOffset + (s32)(dstY1 * _in->dstScaleY);
+	}
+
+	_o->nextSrcY1 = (s32)(partHeight * srcScale);
+	_o->nextDstY[0] = vOffset + (s32)(dstY1 * _in->dstScaleY);
+	_o->nextDstY[1] = vOffset + (s32)((dstY1 + partHeight) * _in->dstScaleY);
+	return 1;
+}

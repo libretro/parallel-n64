@@ -1132,80 +1132,40 @@ void FrameBufferList::renderBuffer()
 
 	DisplayWindow & wnd = dwnd();
 	GraphicsDrawer & drawer = wnd.getDrawer();
-	s32 srcY0, srcY1;
-	s32 dstX0, dstX1, dstY0, dstY1;
-	s32 srcWidth, srcHeight;
-	s32 XoffsetLeft = 0, XoffsetRight = 0;
-	s32 srcPartHeight = 0;
-	s32 dstPartHeight = 0;
-
 	const u32 vFullHeight = rdpRes.vi_ispal ? 288 : 240;
-	const f32 dstScaleY = m_overscan.getScaleY(vFullHeight);
 
 	gli_vi_source_rect src;
 	gli_vi_source(&rdpRes, pBuffer->m_startAddress, pBuffer->m_width, pBuffer->m_height,
 		pBuffer->m_size, pBuffer->m_scale, pBuffer->m_pTexture->realHeight, &src);
-	srcY0 = src.srcY0;
-	dstY0 = src.dstY0;
-	XoffsetLeft = src.XoffsetLeft;
-	XoffsetRight = src.XoffsetRight;
-	srcWidth = src.srcWidth;
-	srcHeight = src.srcHeight;
 
 	const u32 stride = pBuffer->m_width << pBuffer->m_size >> 1;
-	FrameBuffer *pNextBuffer = findBuffer(rdpRes.vi_origin + stride * min(u32(srcHeight) - 1, pBuffer->m_height - 1) - 1);
+	FrameBuffer *pNextBuffer = findBuffer(rdpRes.vi_origin + stride * min(u32(src.srcHeight) - 1, pBuffer->m_height - 1) - 1);
 	if (pNextBuffer == pBuffer)
 		pNextBuffer = nullptr;
 
-	if (pNextBuffer != nullptr) {
-		dstPartHeight = srcY0;
-		srcPartHeight = srcY0;
-		srcY1 = srcHeight;
-		dstY1 = dstY0 + rdpRes.vi_vres - dstPartHeight;
-	} else {
-		dstY1 = dstY0 + rdpRes.vi_vres;
-		srcY1 = srcY0 + srcHeight;
-	}
-	// Post-processing keeps the buffer's scale and size, so the presented area is measured on it
-	const FrameBuffer * pFilteredBuffer = pBuffer;
-
-	const f32 viScaleX = _FIXED2FLOAT(_SHIFTR(*REG.VI_X_SCALE, 0, 12), 10);
-	const f32 srcScaleX = pFilteredBuffer->m_scale;
-	const f32 dstScaleX = dwnd().getWidth() / (640 * viScaleX);
-	const s32 hx0 = rdpRes.vi_h_start + rdpRes.vi_minhpass;
-	const s32 h0 = (rdpRes.vi_ispal ? 128 : 108);
-	const s32 hEnd = _SHIFTR(*REG.VI_H_START, 0, 10);
-	const s32 hx1 = max(0, h0 + 640 - hEnd + (s32)rdpRes.vi_maxhpass);
-	//const s32 hx1 = hx0 + rdpRes.vi_hres;
-	dstX0 = (s32)((hx0 * viScaleX + f32(XoffsetRight)) * dstScaleX);
-	dstX1 = m_overscan.getDrawingWidth() - (s32)(hx1 * viScaleX * dstScaleX);
-
-	const f32 srcScaleY = pFilteredBuffer->m_scale;
-	CachedTexture * pBufferTexture = pFilteredBuffer->m_pTexture;
-	const s32 cutleft = static_cast<s32>(rdpRes.vi_minhpass * viScaleX * srcScaleX);
-	const s32 cutright = static_cast<s32>(rdpRes.vi_maxhpass * viScaleX * srcScaleX);
-	s32 srcCoord[4] = { (s32)((XoffsetLeft) * srcScaleX) + cutleft,
-						(s32)(srcY0*srcScaleY),
-						(s32)((srcWidth + XoffsetLeft - XoffsetRight) * srcScaleX) - cutright,
-						min((s32)(srcY1*srcScaleY), (s32)pBufferTexture->realHeight) };
-	if (srcCoord[2] > pBufferTexture->realWidth || srcCoord[3] > pBufferTexture->realHeight) {
+	/* post-processing keeps the buffer's scale and size, so the presented
+	 * area is measured on it */
+	gli_vi_present_in in;
+	in.bufScale = pBuffer->m_scale;
+	in.texSize[0] = pBuffer->m_pTexture->realWidth;
+	in.texSize[1] = pBuffer->m_pTexture->realHeight;
+	in.windowWidth = wnd.getWidth();
+	in.drawingWidth = m_overscan.getDrawingWidth();
+	in.offset[0] = m_overscan.getHOffset();
+	in.offset[1] = m_overscan.getVOffset();
+	in.dstScaleY = m_overscan.getScaleY(vFullHeight);
+	in.bufferSize[0] = m_overscan.getBufferWidth();
+	in.bufferSize[1] = m_overscan.getBufferHeight();
+	in.hasNext = pNextBuffer != nullptr;
+	in.immersive = config.stereo.immersive != 0 && !gli_gSPImmersiveIsFlat();
+	gli_vi_present_out rects;
+	if (!gli_vi_present_rects(&rdpRes, &src, &in, &rects)) {
 		removeBuffer(pBuffer->m_startAddress);
 		return;
 	}
-
-	const s32 hOffset = m_overscan.getHOffset();
-	const s32 vOffset = m_overscan.getVOffset();
-	s32 dstCoord[4] = { dstX0 + hOffset,
-						vOffset + (s32)(dstY0*dstScaleY),
-						hOffset + dstX1,
-						vOffset + (s32)(dstY1*dstScaleY) };
-	if (config.stereo.immersive != 0 && !gli_gSPImmersiveIsFlat() && pNextBuffer == nullptr) {
-		// Immersive mode: the picture must fill exactly the field of view
-		dstCoord[0] = 0;
-		dstCoord[1] = 0;
-		dstCoord[2] = static_cast<s32>(m_overscan.getBufferWidth());
-		dstCoord[3] = static_cast<s32>(m_overscan.getBufferHeight());
-	}
+	const s32 * srcCoord = rects.src;
+	const s32 * dstCoord = rects.dst;
+	const s32 hOffset = in.offset[0];
 
 	// Stereoscopic 3D: GLideN64 draws for one eye's window; each eye is presented into its half
 	const u32 eyes = config.stereo.mode == stereoBothEyes ? 2U : 1U;
@@ -1264,8 +1224,6 @@ void FrameBufferList::renderBuffer()
 		drawer.copyTexturedRect(blitParams);
 
 		if (pNextBuffer != nullptr) {
-			const s32 nextY0 = dstY1;
-			const s32 nextY1 = nextY0 + dstPartHeight;
 			pNextBuffer->m_isMainBuffer = true;
 			pSource = pNextBuffer;
 			if (eyes == 2 && eye == 0) {
@@ -1286,11 +1244,11 @@ void FrameBufferList::renderBuffer()
 			m_overscan.activate();
 
 			blitParams.srcY0 = 0;
-			blitParams.srcY1 = min((s32)(srcPartHeight * srcScaleY), (s32)pEyeBuffer->m_pTexture->realHeight);
+			blitParams.srcY1 = min(rects.nextSrcY1, (s32)pEyeBuffer->m_pTexture->realHeight);
 			blitParams.srcWidth = pEyeTexture->realWidth;
 			blitParams.srcHeight = pEyeTexture->realHeight;
-			blitParams.dstY0 = vOffset + (s32)(nextY0 * dstScaleY);
-			blitParams.dstY1 = vOffset + (s32)(nextY1 * dstScaleY);
+			blitParams.dstY0 = rects.nextDstY[0];
+			blitParams.dstY1 = rects.nextDstY[1];
 			blitParams.tex[0] = pEyeTexture;
 			blitParams.readBuffer = readBuffer;
 
