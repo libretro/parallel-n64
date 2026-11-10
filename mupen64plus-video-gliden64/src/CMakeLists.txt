@@ -22,6 +22,7 @@ set(GLideN64_SOURCES
   TextureLRU.c
   VIUpdate.c
   FrameBufferRdram.c
+  TriangleList.c
   CombinerKey.c
   PluginAPI.c
   Config.c

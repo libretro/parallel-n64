@@ -32,65 +32,12 @@ GraphicsDrawer::GraphicsDrawer()
 , m_bBGMode(false)
 {
 	memset(m_rect, 0, sizeof(m_rect));
+	gli_drawer_bind_triangles(triangles.vertices.data(), triangles.elements.data(), &triangles.num,
+		&triangles.maxElement, &m_modifyVertices, &Context::ClipControl);
 }
 
 GraphicsDrawer::~GraphicsDrawer()
 {
-}
-
-void GraphicsDrawer::addTriangle(int _v0, int _v1, int _v2)
-{
-	const u32 firstIndex = triangles.num;
-	triangles.elements[triangles.num++] = _v0;
-	triangles.elements[triangles.num++] = _v1;
-	triangles.elements[triangles.num++] = _v2;
-	triangles.maxElement = std::max(triangles.maxElement, _v0);
-	triangles.maxElement = std::max(triangles.maxElement, _v1);
-	triangles.maxElement = std::max(triangles.maxElement, _v2);
-
-	m_modifyVertices |= triangles.vertices[_v0].modify |
-		triangles.vertices[_v1].modify |
-		triangles.vertices[_v2].modify;
-
-	if ((gSP.geometryMode & G_LIGHTING) == 0) {
-		if ((gSP.geometryMode & G_SHADE) == 0) {
-			// Prim shading
-			for (u32 i = firstIndex; i < triangles.num; ++i) {
-				SPVertex & vtx = triangles.vertices[triangles.elements[i]];
-				vtx.flat_r = gDP.primColor.r;
-				vtx.flat_g = gDP.primColor.g;
-				vtx.flat_b = gDP.primColor.b;
-				vtx.flat_a = gDP.primColor.a;
-			}
-		}
-		else if ((gSP.geometryMode & G_SHADING_SMOOTH) == 0) {
-			// Flat shading
-			SPVertex & vtx0 = triangles.vertices[triangles.elements[firstIndex + (((RSP.w1 >> 24) & 3) % 3)]];
-			for (u32 i = firstIndex; i < triangles.num; ++i) {
-				SPVertex & vtx = triangles.vertices[triangles.elements[i]];
-				vtx.r = vtx.flat_r = vtx0.r;
-				vtx.g = vtx.flat_g = vtx0.g;
-				vtx.b = vtx.flat_b = vtx0.b;
-				vtx.a = vtx.flat_a = vtx0.a;
-			}
-		}
-	}
-
-	if (gDP.otherMode.depthSource == G_ZS_PRIM) {
-		for (u32 i = firstIndex; i < triangles.num; ++i) {
-			SPVertex & vtx = triangles.vertices[triangles.elements[i]];
-			vtx.z = gDP.primDepth.z * vtx.w;
-		}
-	}
-
-	if (!Context::ClipControl) {
-		if (gli_GBI->NoN && gDP.otherMode.depthCompare == 0 && gDP.otherMode.depthUpdate == 0) {
-			for (u32 i = firstIndex; i < triangles.num; ++i) {
-				SPVertex & vtx = triangles.vertices[triangles.elements[i]];
-				vtx.z = 0.0f;
-			}
-		}
-	}
 }
 
 void GraphicsDrawer::_updateCullFace() const
@@ -231,16 +178,6 @@ void gli_drawer_textured_rect(f32 _ulx, f32 _uly, f32 _lrx, f32 _lry, f32 _dsdx,
 	if (config.graphics2D.enableNativeResTexrects == 0 && config.graphics2D.correctTexrectCoords != tcDisable)
 		drawer.correctTexturedRectParams(params);
 	drawer.drawTexturedRect(params);
-}
-
-bool gli_drawer_is_rejected(s32 _v0, s32 _v1, s32 _v2)
-{
-	return dwnd().getDrawer().isRejected(_v0, _v1, _v2);
-}
-
-void gli_drawer_add_triangle(s32 _v0, s32 _v1, s32 _v2)
-{
-	dwnd().getDrawer().addTriangle(_v0, _v1, _v2);
 }
 
 void gli_drawer_draw_line(u32 _v0, u32 _v1, f32 _width, u32 _flag)
@@ -1555,39 +1492,6 @@ void GraphicsDrawer::clearColorBuffer(float *_pColor)
 		gfxContext.clearColorBuffer(_pColor[0], _pColor[1], _pColor[2], _pColor[3]);
 	else
 		gfxContext.clearColorBuffer(0.0f, 0.0f, 0.0f, 0.0f);
-}
-
-bool GraphicsDrawer::isRejected(s32 _v0, s32 _v1, s32 _v2) const
-{
-	if (!gli_GBI->Rej || gSP.clipRatio < 2)
-		return false;
-
-	static gDPScissor rejectBox;
-	if ((gDP.changed & CHANGED_REJECT_BOX) != 0) {
-		const f32 scissorWidth2 = (gDP.scissor.lrx - gDP.scissor.ulx) * (gSP.clipRatio - 1) * 0.5f;
-		const f32 scissorHeight2 = (gDP.scissor.lry - gDP.scissor.uly) * (gSP.clipRatio - 1) * 0.5f;
-		rejectBox.ulx = gDP.scissor.ulx - scissorWidth2;
-		rejectBox.lrx = gDP.scissor.lrx + scissorWidth2;
-		rejectBox.uly = gDP.scissor.uly - scissorHeight2;
-		rejectBox.lry = gDP.scissor.lry + scissorHeight2;
-		gDP.changed ^= CHANGED_REJECT_BOX;
-	}
-	s32 verts[3] = { _v0, _v1, _v2 };
-	const f32 ySign = gli_GBI->negativeY ? -1.0f : 1.0f;
-	for (u32 i = 0; i < 3; ++i) {
-		const SPVertex & v = triangles.vertices[verts[i]];
-		const f32 sx = gSP.viewport.vtrans[0] + (v.x / v.w) * gSP.viewport.vscale[0];
-		if (sx < rejectBox.ulx)
-			return true;
-		if (sx > rejectBox.lrx)
-			return true;
-		const f32 sy = gSP.viewport.vtrans[1] + (v.y / v.w) * gSP.viewport.vscale[1] * ySign;
-		if (sy < rejectBox.uly)
-			return true;
-		if (sy > rejectBox.lry)
-			return true;
-	}
-	return false;
 }
 
 void GraphicsDrawer::copyTexturedRect(const CopyRectParams & _params)

@@ -20,6 +20,9 @@ void gli_drawer_draw_screen_strip(u32 _numVtx);
 void gli_drawer_clear_depth(void);
 bool gli_drawer_is_rejected(s32 _v0, s32 _v1, s32 _v2);
 void gli_drawer_add_triangle(s32 _v0, s32 _v1, s32 _v2);
+/* Hands the drawer's triangle list to the C side, once */
+void gli_drawer_bind_triangles(SPVertex *_vertices, u16 *_elements, u32 *_num,
+		s32 *_maxElement, u32 *_modify, const bool *_clipControl);
 void gli_drawer_draw_line(u32 _v0, u32 _v1, f32 _width, u32 _flag);
 void gli_drawer_draw_rect(s32 _ulx, s32 _uly, s32 _lrx, s32 _lry);
 void gli_drawer_textured_rect(f32 _ulx, f32 _uly, f32 _lrx, f32 _lry, f32 _dsdx, f32 _dtdy, s16 _s, s16 _t, bool _flip);
