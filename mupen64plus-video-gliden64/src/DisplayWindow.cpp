@@ -79,7 +79,7 @@ void DisplayWindow::saveBufferContent(FrameBuffer * _pBuffer)
 void DisplayWindow::saveBufferContent(graphics::ObjectHandle _fbo, CachedTexture *_pTexture)
 {
 	if (wcslen(m_strScreenDirectory) == 0) {
-		api().FindPluginPath(m_strScreenDirectory);
+		gli_api_find_plugin_path(m_strScreenDirectory);
 		std::wstring pluginPath(m_strScreenDirectory);
 		if (pluginPath.back() != L'/')
 			pluginPath += L'/';
@@ -197,6 +197,46 @@ void DisplayWindow::readScreen(void **_pDest, long *_pWidth, long *_pHeight)
 void DisplayWindow::readScreen2(void * _dest, int * _width, int * _height, int _front)
 {
 	_readScreen2(_dest, _width, _height, _front);
+}
+
+void gli_window_start(void)
+{
+	dwnd().start();
+}
+
+void gli_window_stop(void)
+{
+	dwnd().stop();
+}
+
+void gli_window_close(void)
+{
+	dwnd().closeWindow();
+}
+
+void gli_window_set_toggle_fullscreen(void)
+{
+	dwnd().setToggleFullscreen();
+}
+
+void gli_window_set_size(u32 _width, u32 _height)
+{
+	dwnd().setWindowSize(_width, _height);
+}
+
+void gli_window_read_screen2(void * _dest, int * _width, int * _height, int _front)
+{
+	dwnd().readScreen2(_dest, _width, _height, _front);
+}
+
+void gli_window_destroy_gfx_context(void)
+{
+	dwnd().destroyGfxContext();
+}
+
+void gli_window_reinit_gfx_context(void)
+{
+	dwnd().reinitGfxContext();
 }
 
 bool gli_window_change(void)

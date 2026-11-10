@@ -529,7 +529,7 @@ public:
 	std::string getCombinerJournalPath(u32 & _version) override {
 		_version = 1;
 		wchar_t path[PLUGIN_PATH_SIZE];
-		api().GetUserCachePath(path);
+		gli_api_user_cache_path(path);
 		char mb[PLUGIN_PATH_SIZE * 4];
 		wcstombs(mb, path, sizeof(mb));
 		return std::string(mb) + "/GLideN64.vulkan.keys.journal";

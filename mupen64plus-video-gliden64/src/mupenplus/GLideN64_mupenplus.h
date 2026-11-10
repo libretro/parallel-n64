@@ -9,6 +9,9 @@
 #define CONFIG_API_VERSION          0x020000
 #define VIDEXT_API_VERSION          0x030000
 
-extern void(*renderCallback)();
+#ifdef __cplusplus
+extern "C"
+#endif
+void (*renderCallback)(int);
 
-#endif // GLIDEN64_MUPENPLUS_H
+#endif /* GLIDEN64_MUPENPLUS_H */

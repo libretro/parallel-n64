@@ -21,7 +21,7 @@ MY_LOCAL_C_INCLUDES :=                          \
 MY_LOCAL_SRC_FILES :=                                                              \
     $(SRCDIR)/Combiner.cpp                                                         \
     $(SRCDIR)/CombinerKey.c                                                       \
-    $(SRCDIR)/CommonPluginAPI.cpp                                                  \
+    $(SRCDIR)/PluginAPI.c                                                        \
     $(SRCDIR)/Config.c                                                            \
     $(SRCDIR)/convert.c                                                          \
     $(SRCDIR)/DepthBuffer.cpp                                                      \
@@ -33,7 +33,6 @@ MY_LOCAL_SRC_FILES :=                                                           
     $(SRCDIR)/GLideN64.c                                                         \
     $(SRCDIR)/GraphicsDrawer.cpp                                                   \
     $(SRCDIR)/gSP.c                                                              \
-    $(SRCDIR)/MupenPlusPluginAPI.cpp                                               \
     $(SRCDIR)/N64.c                                                              \
     $(SRCDIR)/NoiseTexture.c                                                       \
     $(SRCDIR)/PaletteTexture.c                                                     \
@@ -47,11 +46,8 @@ MY_LOCAL_SRC_FILES :=                                                           
     $(SRCDIR)/Textures.cpp                                                         \
     $(SRCDIR)/VI.c                                                               \
     $(SRCDIR)/ZlutTexture.c                                                        \
-    $(SRCDIR)/common/CommonAPIImpl_common.cpp                                      \
-    $(SRCDIR)/mupenplus/CommonAPIImpl_mupenplus.cpp                                \
     $(SRCDIR)/mupenplus/Config_mupenplus.cpp                                       \
     $(SRCDIR)/mupenplus/MemoryStatus_mupenplus.cpp                                 \
-    $(SRCDIR)/mupenplus/MupenPlusAPIImpl.cpp                                       \
     $(SRCDIR)/DepthBufferRender/ClipPolygon.c                                    \
     $(SRCDIR)/DepthBufferRender/DepthBufferRender.c                              \
     $(SRCDIR)/BufferCopy/ColorBufferToRDRAM.cpp                                    \

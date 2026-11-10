@@ -386,6 +386,7 @@ SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/TextureFilterHandler.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/PostProcessor.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/Config.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/CombinerKey.c
+SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/PluginAPI.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/gSP.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/GBI.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/RSP.c
@@ -436,14 +437,12 @@ INCFLAGS      += -I$(VIDEODIR_PARALLEL)/parallel-rdp/vulkan-headers/include -I$(
 
 SOURCES_CXX   += \
 	$(VIDEODIR_GLIDEN64)/src/Combiner.cpp                                                         \
-    $(VIDEODIR_GLIDEN64)/src/CommonPluginAPI.cpp                                                  \
     $(VIDEODIR_GLIDEN64)/src/DepthBuffer.cpp                                                      \
     $(VIDEODIR_GLIDEN64)/src/DisplayWindow.cpp                                                    \
     $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/mupen64plus/mupen64plus_DisplayWindow.cpp     \
     $(VIDEODIR_GLIDEN64)/src/FrameBuffer.cpp                                                      \
     $(VIDEODIR_GLIDEN64)/src/TexrectDrawerGpu.cpp                                                    \
     $(VIDEODIR_GLIDEN64)/src/Textures.cpp                                                         \
-    $(VIDEODIR_GLIDEN64)/src/common/CommonAPIImpl_common.cpp                                      \
     $(VIDEODIR_GLIDEN64)/src/BufferCopy/ColorBufferToRDRAM.cpp                                    \
     $(VIDEODIR_GLIDEN64)/src/BufferCopy/DepthBufferToRDRAM.cpp                                    \
     $(VIDEODIR_GLIDEN64)/src/BufferCopy/RDRAMtoColorBuffer.cpp                                    \
@@ -479,10 +478,7 @@ SOURCES_CXX   += \
     $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/GLSL/glsl_Utils.cpp                           \
     $(VIDEODIR_GLIDEN64)/src/mupenplus/MemoryStatus_mupenplus.cpp                                 \
     $(VIDEODIR_GLIDEN64)/src/uCodes/S2DEX_gfx.cpp                                                     \
-	$(VIDEODIR_GLIDEN64)/src/MupenPlusPluginAPI.cpp                                               \
-	$(VIDEODIR_GLIDEN64)/src/mupenplus/MupenPlusAPIImpl.cpp                                       \
-	$(VIDEODIR_GLIDEN64)/src/mupenplus/Config_mupenplus.cpp                                       \
-	$(VIDEODIR_GLIDEN64)/src/mupenplus/CommonAPIImpl_mupenplus.cpp							      
+	$(VIDEODIR_GLIDEN64)/src/mupenplus/Config_mupenplus.cpp                                       
 
 SOURCES_CXX   += \
 	$(VIDEODIR_GLIDEN64)/src/GLideNHQ/TextureFilters.cpp \

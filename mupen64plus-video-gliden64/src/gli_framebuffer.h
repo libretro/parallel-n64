@@ -4,6 +4,7 @@
 #include <stddef.h>
 #include <boolean.h>
 #include "Types.h"
+#include "PluginAPI.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -60,6 +61,14 @@ void gli_fb_copy_to_rdram(u32 _address, bool _sync);
 void gli_fb_fill_info(void *_pinfo, u32 _size);
 bool gli_depth_current(u32 *_address, u32 *_width);
 bool gli_window_change(void);
+void gli_window_start(void);
+void gli_window_stop(void);
+void gli_window_close(void);
+void gli_window_set_toggle_fullscreen(void);
+void gli_window_set_size(u32 _width, u32 _height);
+void gli_window_read_screen2(void *_dest, int *_width, int *_height, int _front);
+void gli_window_destroy_gfx_context(void);
+void gli_window_reinit_gfx_context(void);
 bool gli_window_resize(void);
 void gli_window_screenshot(void);
 void gli_window_update_scale(void);
@@ -67,9 +76,6 @@ bool gli_window_is_adjust_screen(void);
 f32 gli_window_adjust_scale(void);
 bool gli_window_is_resizing(void);
 u32 gli_window_swap_count(void);
-void gli_api_find_plugin_path(wchar_t *_path);
-void gli_api_user_data_path(wchar_t *_path);
-void gli_api_user_cache_path(wchar_t *_path);
 s32 gli_gfx_max_texture_size(void);
 void gli_gfx_touch_error(void);
 void gli_gfx_clear_color(void);

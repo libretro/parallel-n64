@@ -17,7 +17,7 @@ set(GLideN64_SOURCES
   3DMath.c
   Combiner.cpp
   CombinerKey.c
-  CommonPluginAPI.cpp
+  PluginAPI.c
   Config.c
   convert.c
   CRC32.c
@@ -49,7 +49,6 @@ set(GLideN64_SOURCES
   BufferCopy/RDRAMtoColorBuffer.cpp
   DepthBufferRender/ClipPolygon.c
   DepthBufferRender/DepthBufferRender.c
-  common/CommonAPIImpl_common.cpp
   Graphics/Context.cpp
   Graphics/ColorBufferReader.cpp
   Graphics/CombinerProgram.cpp
@@ -135,11 +134,8 @@ if(MUPENPLUSAPI)
   )
   include_directories( . inc )
   set(GLideN64_SOURCES_UNIX
-	MupenPlusPluginAPI.cpp
 	mupenplus/Config_mupenplus.cpp
-	mupenplus/CommonAPIImpl_mupenplus.cpp
 	mupenplus/MemoryStatus_mupenplus.cpp
-	mupenplus/MupenPlusAPIImpl.cpp
 	Graphics/OpenGLContext/mupen64plus/mupen64plus_DisplayWindow.cpp
   )
 

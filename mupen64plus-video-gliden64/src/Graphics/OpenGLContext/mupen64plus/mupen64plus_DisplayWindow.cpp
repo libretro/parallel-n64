@@ -90,7 +90,7 @@ void DisplayWindowMupen64plus::_swapBuffers()
 	// CoreVideo_GL_SwapBuffers();
 
 	if (renderCallback)
-		(*renderCallback)();
+		(*renderCallback)(1);
 
     retro_return(true);
 }

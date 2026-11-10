@@ -34,7 +34,7 @@ std::string getStorageFileName(const opengl::GLInfo & _glinfo, const char * _fil
 	} setLocale;
 
 	wchar_t strCacheFolderPath[PLUGIN_PATH_SIZE];
-	api().GetUserCachePath(strCacheFolderPath);
+	gli_api_user_cache_path(strCacheFolderPath);
 
 	// Convert wchar string to multibyte string
 	// Use large enough buffer to hold multibyte conversion of wchar string
