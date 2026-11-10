@@ -24,6 +24,7 @@ set(GLideN64_SOURCES
   FrameBufferRdram.c
   TriangleList.c
   DrawerViewport.c
+  BlendMode.c
   CombinerKey.c
   PluginAPI.c
   Config.c
