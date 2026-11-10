@@ -2092,8 +2092,6 @@ void gli_gSPSprite2DBase(u32 _base)
 void(*gSPInverseTransformVector)(float vec[3], float mtx[4][4]) = gSPInverseTransformVector_default;
 void(*gSPTransformVector)(float vtx[4], float mtx[4][4]) = gSPTransformVector_default;
 #else
-void gSPInverseTransformVector_NEON(float vec[3], float mtx[4][4]);
-void gSPTransformVector_NEON(float vtx[4], float mtx[4][4]);
 void(*gSPInverseTransformVector)(float vec[3], float mtx[4][4]) = gSPInverseTransformVector_NEON;
 void(*gSPTransformVector)(float vtx[4], float mtx[4][4]) = gSPTransformVector_NEON;
 #endif /* __NEON_OPT */

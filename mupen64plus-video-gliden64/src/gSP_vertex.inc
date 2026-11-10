@@ -32,7 +32,6 @@ static void VN(gSPLightVertexStandard)(u32 v, SPVertex * spVtx)
 		}
 	}
 #else
-	void gSPLightVertex_NEON(u32 vnum, u32 v, SPVertex * spVtx);
 	gSPLightVertex_NEON(VNUM, v, spVtx);
 #endif
 }
@@ -284,7 +283,6 @@ static void VN(gSPBillboardVertex)(u32 v, SPVertex * spVtx)
 		vtx->z += vtx0->z;
 		vtx->w += vtx0->w;
 	} else {
-		void gSPBillboardVertex4NEON(u32 v);
 		gSPBillboardVertex4NEON(v);
 	}
 #endif /* __NEON_OPT */
@@ -407,8 +405,6 @@ static void VN(gSPTransformVertex)(u32 v, SPVertex * spVtx, float mtx[4][4])
 		vtx->w = x * mtx[0][3] + y * mtx[1][3] + z * mtx[2][3] + mtx[3][3];
 	}
 #else
-	void gSPTransformVector_NEON(float vtx[4], float mtx[4][4]);
-	void gSPTransformVertex4NEON(u32 v, float mtx[4][4]);
 	if (VNUM == 1)
 		gSPTransformVector_NEON(&spVtx[v].x, mtx);
 	else
