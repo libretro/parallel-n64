@@ -243,6 +243,7 @@ struct vkr_renderer
    int pass_open;
    int depth_ro;              /* the next pass reads its depth attachment as a texture */
    int pass_depth_ro;         /* the open pass does */
+   int storage_written;       /* N64 depth compare: a draw since the last barrier wrote the depth images */
    uint32_t serial;           /* of the commands being recorded */
    VkFence fences[MAX_SUBMITS];
    uint32_t fence_serial[MAX_SUBMITS];
@@ -749,6 +750,12 @@ static void destroy_image_now(vkr_renderer *r, vkr_image *i)
    i->image = VK_NULL_HANDLE;
 }
 
+/* The formats drawn into; the others are cleared as transfers */
+static int color_attachable(int fmt)
+{
+   return fmt == VKR_FMT_RGBA8 || fmt == VKR_FMT_RGB8 || fmt == VKR_FMT_R8;
+}
+
 static int image_create(vkr_renderer *r, vkr_image *i, int fmt, unsigned samples,
       unsigned w, unsigned h, unsigned levels)
 {
@@ -772,7 +779,7 @@ static int image_create(vkr_renderer *r, vkr_image *i, int fmt, unsigned samples
    info.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
    if (depth)
       info.usage |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
-   else if (fmt == VKR_FMT_RGBA8 || fmt == VKR_FMT_RGB8 || fmt == VKR_FMT_R8)
+   else if (color_attachable(fmt))
       info.usage |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
    if (fmt == VKR_FMT_R32F && r->caps.storage_images)
       info.usage |= VK_IMAGE_USAGE_STORAGE_BIT;
@@ -1191,6 +1198,20 @@ static int get_render_pass(vkr_renderer *r, VkFormat color, VkFormat depth, uint
    info.pAttachments = att;
    info.subpassCount = 1;
    info.pSubpasses = &sub;
+   if (r->cfg.n64_depth_compare)
+   {
+      /* each draw reads the depth images the draws before it wrote */
+      static VkSubpassDependency self;
+      self.srcSubpass = 0;
+      self.dstSubpass = 0;
+      self.srcStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+      self.dstStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+      self.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
+      self.dstAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
+      self.dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+      info.dependencyCount = 1;
+      info.pDependencies = &self;
+   }
    if (F(CreateRenderPass)(r->device, &info, NULL, &r->rps[r->n_rps].rp) != VK_SUCCESS)
       return -1;
    r->rps[r->n_rps].rp_ro = VK_NULL_HANDLE;
@@ -1286,6 +1307,14 @@ static void window_image(vkr_renderer *r, vkr_frame *f)
    f->win_layout = VK_IMAGE_LAYOUT_UNDEFINED;
 }
 
+/* An image the draw also reads and writes as a storage image: it stays in
+ * the general layout, which sampling it takes too */
+static int storage_bound(const vkr_renderer *r, unsigned h)
+{
+   return r->cfg.n64_depth_compare && h
+      && (r->bound[VKR_BIND_DEPTH_Z] == h || r->bound[VKR_BIND_DEPTH_DZ] == h);
+}
+
 /* A draw that samples its own depth attachment. The N64 read that image
  * through TMEM, as it was before the draw: the attachment stays read only
  * for it, and the draw does not write depth. */
@@ -1328,7 +1357,7 @@ static void prepare_textures(vkr_renderer *r)
       i = &r->images[h];
       if (i->image == VK_NULL_HANDLE)
          continue;
-      if (u == VKR_BIND_DEPTH_Z || u == VKR_BIND_DEPTH_DZ)
+      if (u == VKR_BIND_DEPTH_Z || u == VKR_BIND_DEPTH_DZ || storage_bound(r, h))
          ensure_layout(r, i, VK_IMAGE_LAYOUT_GENERAL);
       else if (r->depth_ro && h == r->fbos[r->draw_fbo].depth)
          ensure_layout(r, i, VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL);
@@ -1336,6 +1365,22 @@ static void prepare_textures(vkr_renderer *r)
          ensure_layout(r, i, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
       i->used_serial = r->serial;
    }
+}
+
+/* N64 depth compare reads and writes its depth images in the fragment
+ * shader: a draw sees what the draws before it wrote */
+static void storage_barrier(vkr_renderer *r, int in_pass)
+{
+   VkMemoryBarrier mb;
+   if (!r->storage_written)
+      return;
+   memset(&mb, 0, sizeof(mb));
+   mb.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
+   mb.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
+   mb.dstAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
+   F(CmdPipelineBarrier)(r->cmd, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+         in_pass ? VK_DEPENDENCY_BY_REGION_BIT : 0, 1, &mb, 0, NULL, 0, NULL);
+   r->storage_written = 0;
 }
 
 static int begin_pass(vkr_renderer *r)
@@ -1422,6 +1467,7 @@ static int begin_pass(vkr_renderer *r)
       w = o->w;
       h = o->h;
    }
+   storage_barrier(r, 0);
    info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
    info.renderPass = rp;
    info.framebuffer = fb;
@@ -2028,7 +2074,7 @@ static VkDescriptorSet descriptors(vkr_renderer *r)
       im = &r->images[h];
       infos[u].sampler = im->sampler != VK_NULL_HANDLE ? im->sampler : r->samplers[0].s;
       infos[u].imageView = im->view;
-      infos[u].imageLayout = storage ? VK_IMAGE_LAYOUT_GENERAL
+      infos[u].imageLayout = storage || storage_bound(r, h) ? VK_IMAGE_LAYOUT_GENERAL
             : (key[u] & 0x8000) ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
       writes[n].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
       writes[n].dstSet = set;
@@ -2062,6 +2108,10 @@ static int draw_begin(vkr_renderer *r, int rect, int lines, int strip)
    prepare_textures(r);
    if (!begin_pass(r))
       return 0;
+
+   storage_barrier(r, 1);
+   if (r->cfg.n64_depth_compare)
+      r->storage_written = 1;
 
    if (r->dirty)
       flush_dynamic(r);
@@ -2295,6 +2345,30 @@ void vkr_clear_color(vkr_renderer *r, float cr, float g, float b, float a)
    frame_begin(r);
    if (r->draw_fbo && !r->fbos[r->draw_fbo].color)
       return;
+   if (r->draw_fbo)
+   {
+      /* N64 depth compare's depth images: storage, cleared outside a pass */
+      vkr_image *c = &r->images[r->fbos[r->draw_fbo].color];
+      if (c->image == VK_NULL_HANDLE)
+         return;
+      if (!color_attachable(c->fmt))
+      {
+         VkClearColorValue cv;
+         VkImageSubresourceRange range;
+         cv.float32[0] = cr;
+         cv.float32[1] = g;
+         cv.float32[2] = b;
+         cv.float32[3] = a;
+         memset(&range, 0, sizeof(range));
+         range.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+         range.levelCount = VK_REMAINING_MIP_LEVELS;
+         range.layerCount = 1;
+         ensure_layout(r, c, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+         F(CmdClearColorImage)(r->cmd, c->image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &cv, 1, &range);
+         c->used_serial = r->serial;
+         return;
+      }
+   }
    want_depth_ro(r, r->pass_open ? r->pass_depth_ro : 0);
    if (!begin_pass(r))
       return;

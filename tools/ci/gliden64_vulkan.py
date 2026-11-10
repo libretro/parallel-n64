@@ -262,6 +262,11 @@ def main():
         culling_cartridge(rom, shadow=True)
         failures += compare(a, "shadow", rom, 8, ["parallel-n64-gliden64-EnableFBEmulation=True"])
         failures += validate(a, "shadow", rom, 8, ["parallel-n64-gliden64-EnableFBEmulation=True"])
+        # N64 depth compare: its depth images cleared, read and written draw after draw
+        for fb in ("True", "False"):
+            z = ["parallel-n64-gliden64-EnableFBEmulation=" + fb, "parallel-n64-gliden64-EnableN64DepthCompare=True"]
+            failures += compare(a, "shadow z", rom, 8, z, (("own", {}),))
+            failures += validate(a, "shadow z", rom, 8, z)
     for name in (cart.KROM[:1] if a.quick else cart.KROM):
         failures += compare(a, name, cart.fetch(a.roms, name), 20 if a.quick else 60)
         failures += compare(a, name + " fb", cart.fetch(a.roms, name), 20,
