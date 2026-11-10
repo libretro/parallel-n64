@@ -33,36 +33,14 @@ using namespace std;
 using namespace graphics;
 
 FrameBuffer::FrameBuffer()
-	: m_startAddress(0)
-	, m_endAddress(0)
-	, m_size(0)
-	, m_width(0)
-	, m_height(0)
-	, m_originX(0)
-	, m_originY(0)
-	, m_swapCount(0)
-	, m_scale(0)
-	, m_copiedToRdram(false)
-	, m_fingerprint(false)
-	, m_cleared(false)
-	, m_changed(false)
-	, m_cfb(false)
-	, m_isDepthBuffer(false)
-	, m_isPauseScreen(false)
-	, m_isOBScreen(false)
-	, m_isMainBuffer(false)
-	, m_readable(false)
-	, m_loadType(LOADTYPE_BLOCK)
-	, m_pDepthBuffer(nullptr)
+	: m_pDepthBuffer(nullptr)
 	, m_pResolveTexture(nullptr)
-	, m_resolved(false)
 	, m_pSubTexture(nullptr)
-	, m_copied(false)
 	, m_pFrameBufferCopyTexture(nullptr)
 	, m_copyFBO(ObjectHandle::defaultFramebuffer)
-	, m_validityChecked(0)
 {
-	m_loadTileOrigin.uls = m_loadTileOrigin.ult = 0;
+	memset(static_cast<gli_fb *>(this), 0, sizeof(gli_fb));
+	m_loadType = LOADTYPE_BLOCK;
 	m_pTexture = textureCache().addFrameBufferTexture(config.video.multisampling != 0 ?
 		textureTarget::TEXTURE_2D_MULTISAMPLE : textureTarget::TEXTURE_2D);
 	m_FBO = gfxContext.createFramebuffer();
@@ -163,7 +141,7 @@ void FrameBuffer::_setAndAttachTexture(ObjectHandle _fbo, CachedTexture *_pTextu
 
 bool FrameBuffer::isAuxiliary() const
 {
-	return m_width != VI.width;
+	return gli_fb_is_auxiliary(this) != 0;
 }
 
 void FrameBuffer::init(u32 _address, u16 _format, u16 _size, u16 _width, bool _cfb)
@@ -209,18 +187,12 @@ void FrameBuffer::init(u32 _address, u16 _format, u16 _size, u16 _width, bool _c
 
 void FrameBuffer::updateEndAddress()
 {
-	const u32 height = max(1U, m_height);
-	m_endAddress = min(RDRAMSize, m_startAddress + (((m_width * height) << m_size >> 1) - 1));
+	gli_fb_update_end_address(this);
 }
 
 void FrameBuffer::setBufferClearParams(u32 _fillcolor, s32 _ulx, s32 _uly, s32 _lrx, s32 _lry)
 {
-	m_cleared = true;
-	m_clearParams.fillcolor = _fillcolor;
-	m_clearParams.ulx = _ulx;
-	m_clearParams.lrx = _lrx;
-	m_clearParams.uly = _uly;
-	m_clearParams.lry = _lry;
+	gli_fb_set_clear_params(this, _fillcolor, _ulx, _uly, _lrx, _lry);
 }
 
 void FrameBuffer::copyRdram()
@@ -254,22 +226,9 @@ void FrameBuffer::setDirty()
 
 bool FrameBuffer::isValid(bool _forceCheck) const
 {
-	if (!_forceCheck) {
-		if (m_validityChecked == dwnd().getBuffersSwapCount())
-			return true; // Already checked
-		m_validityChecked = dwnd().getBuffersSwapCount();
-	}
-
-	if (m_cleared)
-		return gli_fb_rdram_cleared_valid(m_startAddress, m_endAddress, m_width, m_size,
-			m_clearParams.fillcolor, m_clearParams.ulx, m_clearParams.uly,
-			m_clearParams.lrx, m_clearParams.lry) != 0;
-	if (m_fingerprint)
-		return gli_fb_rdram_mark_valid(m_startAddress) != 0;
-	if (!m_RdramCopy.empty())
-		return gli_fb_rdram_copy_valid(m_startAddress, m_RdramCopy.data(),
-			static_cast<u32>(m_RdramCopy.size())) != 0;
-	return true; // No data to decide
+	/* the check stamps the swap it ran in */
+	return gli_fb_is_valid(const_cast<FrameBuffer *>(this), _forceCheck, dwnd().getBuffersSwapCount(),
+		m_RdramCopy.data(), static_cast<u32>(m_RdramCopy.size())) != 0;
 }
 
 void FrameBuffer::resolveMultisampledTexture(bool _bForce)
@@ -568,8 +527,7 @@ FrameBuffer * FrameBufferList::getBuffer(u32 _startAddress)
 
 static bool isOverlapping(const FrameBuffer * _buf1, const FrameBuffer * _buf2)
 {
-	return gli_fb_overlapping(_buf1->m_startAddress, _buf1->m_endAddress, _buf1->m_width, _buf1->m_size,
-		_buf2->m_startAddress, _buf2->m_endAddress, _buf2->m_width, _buf2->m_size) != 0;
+	return gli_fb_overlapping(_buf1, _buf2) != 0;
 }
 
 void FrameBufferList::removeIntersections()
@@ -683,9 +641,7 @@ void FrameBufferList::saveBuffer(u32 _address, u16 _format, u16 _size, u16 _widt
 	if (m_pCurrent != nullptr) {
 		m_pCurrent->m_originX = m_pCurrent->m_originY = 0;
 		if ((m_pCurrent->m_startAddress != _address)) {
-			if (gli_fb_is_sub_buffer(m_pCurrent->m_startAddress, m_pCurrent->m_endAddress,
-					m_pCurrent->m_width, m_pCurrent->m_size, m_pCurrent->m_cfb,
-					m_pCurrent->m_swapCount, wnd.getBuffersSwapCount(), _address, _width, _size)) {
+			if (gli_fb_is_sub_buffer(m_pCurrent, wnd.getBuffersSwapCount(), _address, _width, _size)) {
 				u32 originX, originY;
 				gli_fb_sub_origin(m_pCurrent->m_startAddress, _address, _width, _size, &originX, &originY);
 				m_pCurrent->m_originX = originX;
@@ -693,8 +649,7 @@ void FrameBufferList::saveBuffer(u32 _address, u16 _format, u16 _size, u16 _widt
 				gSP.changed |= CHANGED_VIEWPORT;
 				gDP.changed |= CHANGED_SCISSOR;
 				return;
-			} else if (gli_fb_runs_into(m_pCurrent->m_endAddress, m_pCurrent->m_width,
-					m_pCurrent->m_size, _address, _width, _size)) {
+			} else if (gli_fb_runs_into(m_pCurrent, _address, _width, _size)) {
 				m_pCurrent->m_endAddress = _address - 1;
 				m_pCurrent = nullptr;
 			} else {

@@ -14,7 +14,7 @@ struct gDPTile;
 struct DepthBuffer;
 
 
-struct FrameBuffer
+struct FrameBuffer : gli_fb
 {
 	FrameBuffer();
 	~FrameBuffer();
@@ -29,32 +29,6 @@ struct FrameBuffer
 	bool isValid(bool _forceCheck) const;
 	bool isAuxiliary() const;
 
-	u32 m_startAddress;
-	u32 m_endAddress;
-	u32 m_size;
-	u32 m_width;
-	u32 m_height;
-	u32 m_originX;
-	u32 m_originY;
-	u32 m_swapCount;
-	float m_scale;
-	bool m_copiedToRdram;
-	bool m_fingerprint;
-	bool m_cleared;
-	bool m_changed;
-	bool m_cfb;
-	bool m_isDepthBuffer;
-	bool m_isPauseScreen;
-	bool m_isOBScreen;
-	bool m_isMainBuffer;
-	bool m_readable;
-	bool m_copied;
-
-	struct {
-		u32 uls, ult;
-	} m_loadTileOrigin;
-	u32 m_loadType;
-
 	graphics::ObjectHandle m_FBO;
 	CachedTexture *m_pTexture;
 	DepthBuffer *m_pDepthBuffer;
@@ -62,7 +36,6 @@ struct FrameBuffer
 	// multisampling
 	graphics::ObjectHandle m_resolveFBO;
 	CachedTexture *m_pResolveTexture;
-	bool m_resolved;
 
 	// subtexture
 	graphics::ObjectHandle m_SubFBO;
@@ -75,14 +48,6 @@ struct FrameBuffer
 	std::vector<u8> m_RdramCopy;
 
 private:
-	struct {
-		u32 fillcolor = 0;
-		s32 ulx = 0;
-		s32 uly = 0;
-		s32 lrx = 0;
-		s32 lry = 0;
-	} m_clearParams;
-
 	void _initTexture(u16 _width, u16 _height, u16 _format, u16 _size, CachedTexture *_pTexture);
 	void _setAndAttachTexture(graphics::ObjectHandle _fbo, CachedTexture *_pTexture, u32 _t, bool _multisampling);
 	bool _initSubTexture(u32 _t);
@@ -90,7 +55,6 @@ private:
 	CachedTexture * _copyFrameBufferTexture();
 	CachedTexture * _getSubTexture(u32 _t);
 
-	mutable u32 m_validityChecked;
 };
 
 class FrameBufferList

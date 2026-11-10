@@ -7,6 +7,56 @@
 extern "C" {
 #endif
 
+/* A frame buffer's plain state; FrameBuffer derives from it, so the C
+ * side reads a buffer in place */
+typedef struct gli_fb
+{
+	u32 m_startAddress;
+	u32 m_endAddress;
+	u32 m_size;
+	u32 m_width;
+	u32 m_height;
+	u32 m_originX;
+	u32 m_originY;
+	u32 m_swapCount;
+	f32 m_scale;
+	u8 m_copiedToRdram;
+	u8 m_fingerprint;
+	u8 m_cleared;
+	u8 m_changed;
+	u8 m_cfb;
+	u8 m_isDepthBuffer;
+	u8 m_isPauseScreen;
+	u8 m_isOBScreen;
+	u8 m_isMainBuffer;
+	u8 m_readable;
+	u8 m_copied;
+	u8 m_resolved;
+	struct
+	{
+		u32 uls, ult;
+	} m_loadTileOrigin;
+	u32 m_loadType;
+	/* the last clear, which a validity check expects in RDRAM */
+	struct
+	{
+		u32 fillcolor;
+		s32 ulx, uly, lrx, lry;
+	} m_clearParams;
+	/* the swap the validity was last checked in */
+	u32 m_validityChecked;
+} gli_fb;
+
+/* Ends @_fb at its last byte in RDRAM */
+void gli_fb_update_end_address(gli_fb *_fb);
+/* Whether @_fb is narrower or wider than the VI shows */
+int gli_fb_is_auxiliary(const gli_fb *_fb);
+/* Notes a clear of @_fb, for the validity check */
+void gli_fb_set_clear_params(gli_fb *_fb, u32 _fillcolor, s32 _ulx, s32 _uly, s32 _lrx, s32 _lry);
+/* Whether RDRAM still holds what @_fb left there: its clear, its mark or
+ * @_copy of @_copySize bytes. Unless @_force, once per swap @_swapCount */
+int gli_fb_is_valid(gli_fb *_fb, int _force, u32 _swapCount, const u8 *_copy, u32 _copySize);
+
 /* How many of @_height lines of @_stride bytes at @_address fit in RDRAM */
 u32 cutHeight(u32 _address, u32 _height, u32 _stride);
 
@@ -16,8 +66,7 @@ void gli_fb_rdram_mark(u32 _startAddress, u32 _dataSize);
 
 /* Whether RDRAM still holds what the buffer left there: within 1% of
  * the dwords for a clear or a copy, all of the mark */
-int gli_fb_rdram_cleared_valid(u32 _startAddress, u32 _endAddress, u32 _width,
-		u32 _size, u32 _fillcolor, s32 _ulx, s32 _uly, s32 _lrx, s32 _lry);
+int gli_fb_rdram_cleared_valid(const gli_fb *_fb);
 int gli_fb_rdram_mark_valid(u32 _startAddress);
 int gli_fb_rdram_copy_valid(u32 _startAddress, const u8 *_copy, u32 _size);
 
@@ -26,19 +75,16 @@ int gli_fb_rdram_copy_valid(u32 _startAddress, const u8 *_copy, u32 _size);
 void gli_fb_rdram_fill(s32 _ulx, s32 _uly, s32 _lrx, s32 _lry, s32 *_rect);
 
 /* Whether buffer 1, ending inside buffer 2, only runs a few lines into it */
-int gli_fb_overlapping(u32 _start1, u32 _end1, u32 _width1, u32 _size1,
-		u32 _start2, u32 _end2, u32 _width2, u32 _size2);
+int gli_fb_overlapping(const gli_fb *_fb1, const gli_fb *_fb2);
 
-/* Whether color image @_address of @_width and @_size, drawn this swap,
- * lies inside a buffer from @_bufStart to @_bufEnd off its line starts
- * or more than five lines before its end */
-int gli_fb_is_sub_buffer(u32 _bufStart, u32 _bufEnd, u32 _bufWidth, u32 _bufSize,
-		int _bufCfb, u32 _bufSwapCount, u32 _swapCount, u32 _address, u32 _width, u32 _size);
+/* Whether color image @_address of @_width and @_size, drawn in swap
+ * @_swapCount, lies inside buffer @_fb off its line starts or more than
+ * five lines before its end */
+int gli_fb_is_sub_buffer(const gli_fb *_fb, u32 _swapCount, u32 _address, u32 _width, u32 _size);
 
-/* Whether a buffer ending at @_bufEnd runs under five lines into the
- * color image at @_address */
-int gli_fb_runs_into(u32 _bufEnd, u32 _bufWidth, u32 _bufSize,
-		u32 _address, u32 _width, u32 _size);
+/* Whether buffer @_fb runs under five lines into the color image at
+ * @_address */
+int gli_fb_runs_into(const gli_fb *_fb, u32 _address, u32 _width, u32 _size);
 
 /* Where color image @_address starts inside the buffer at @_bufStart */
 void gli_fb_sub_origin(u32 _bufStart, u32 _address, u32 _width, u32 _size, u32 *_originX, u32 *_originY);
