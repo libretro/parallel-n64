@@ -827,56 +827,7 @@ void GraphicsDrawer::copyTexturedRect(const CopyRectParams & _params)
 {
 	m_drawingState = DrawingState::TexRect;
 
-	const float scaleX = 1.0f / _params.dstWidth;
-	const float scaleY = 1.0f / _params.dstHeight;
-	const float Z = 0.0f;
-	const float W = 1.0f;
-	float X0 = _params.dstX0 * (2.0f * scaleX) - 1.0f;
-	float Y0 = _params.dstY0 * (2.0f * scaleY) - 1.0f;
-	float X1 = _params.dstX1 * (2.0f * scaleX) - 1.0f;
-	float Y1 = _params.dstY1 * (2.0f * scaleY) - 1.0f;
-	if (_params.invertX) {
-		X0 = -X0;
-		X1 = -X1;
-	}
-	if (_params.invertY) {
-		Y0 = -Y0;
-		Y1 = -Y1;
-	}
-
-	m_rect[0].x = X0;
-	m_rect[0].y = Y0;
-	m_rect[0].z = Z;
-	m_rect[0].w = W;
-	m_rect[1].x = X1;
-	m_rect[1].y = Y0;
-	m_rect[1].z = Z;
-	m_rect[1].w = W;
-	m_rect[2].x = X0;
-	m_rect[2].y = Y1;
-	m_rect[2].z = Z;
-	m_rect[2].w = W;
-	m_rect[3].x = X1;
-	m_rect[3].y = Y1;
-	m_rect[3].z = Z;
-	m_rect[3].w = W;
-
-	const float scaleS = 1.0f / _params.srcWidth;
-	const float scaleT = 1.0f / _params.srcHeight;
-
-	const float S0 = _params.srcX0 * scaleS;
-	const float S1 = _params.srcX1 * scaleS;
-	const float T0 = _params.srcY0 * scaleT;
-	const float T1 = _params.srcY1 * scaleT;
-
-	m_rect[0].s0 = S0;
-	m_rect[0].t0 = T0;
-	m_rect[1].s0 = S1;
-	m_rect[1].t0 = T0;
-	m_rect[2].s0 = S0;
-	m_rect[2].t0 = T1;
-	m_rect[3].s0 = S1;
-	m_rect[3].t0 = T1;
+	gli_drawer_copy_rect(m_rect, &_params);
 
 	for (u32 i = 0; i < 2; ++i) {
 		CachedTexture * tex = _params.tex[i];

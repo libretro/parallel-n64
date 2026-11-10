@@ -195,3 +195,38 @@ u32 gli_drawer_texrect_vertices(RectVertex *_v, const gli_texrect_params *_p,
 	}
 	return clamp;
 }
+
+void gli_drawer_copy_rect(RectVertex *_v, const gli_copy_rect *_p)
+{
+	const f32 scaleX = 1.0f / (f32)_p->dstWidth;
+	const f32 scaleY = 1.0f / (f32)_p->dstHeight;
+	const f32 scaleS = 1.0f / (f32)_p->srcWidth;
+	const f32 scaleT = 1.0f / (f32)_p->srcHeight;
+	f32 x0 = (f32)_p->dstX0 * (2.0f * scaleX) - 1.0f;
+	f32 y0 = (f32)_p->dstY0 * (2.0f * scaleY) - 1.0f;
+	f32 x1 = (f32)_p->dstX1 * (2.0f * scaleX) - 1.0f;
+	f32 y1 = (f32)_p->dstY1 * (2.0f * scaleY) - 1.0f;
+	const f32 s0 = (f32)_p->srcX0 * scaleS;
+	const f32 s1 = (f32)_p->srcX1 * scaleS;
+	const f32 t0 = (f32)_p->srcY0 * scaleT;
+	const f32 t1 = (f32)_p->srcY1 * scaleT;
+	u32 i;
+
+	if (_p->invertX) {
+		x0 = -x0;
+		x1 = -x1;
+	}
+	if (_p->invertY) {
+		y0 = -y0;
+		y1 = -y1;
+	}
+
+	_v[0].x = x0; _v[0].y = y0; _v[0].s0 = s0; _v[0].t0 = t0;
+	_v[1].x = x1; _v[1].y = y0; _v[1].s0 = s1; _v[1].t0 = t0;
+	_v[2].x = x0; _v[2].y = y1; _v[2].s0 = s0; _v[2].t0 = t1;
+	_v[3].x = x1; _v[3].y = y1; _v[3].s0 = s1; _v[3].t0 = t1;
+	for (i = 0; i < 4; ++i) {
+		_v[i].z = 0.0f;
+		_v[i].w = 1.0f;
+	}
+}

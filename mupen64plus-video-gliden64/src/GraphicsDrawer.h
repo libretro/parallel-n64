@@ -68,22 +68,14 @@ public:
 
 	void drawTexturedRect(const TexturedRectParams & _params);
 
-	struct CopyRectParams
+	struct CopyRectParams : gli_copy_rect
 	{
-		s32 srcX0 = 0;
-		s32 srcY0 = 0;
-		s32 srcX1;
-		s32 srcY1;
-		u32 srcWidth;
-		u32 srcHeight;
-		s32 dstX0 = 0;
-		s32 dstY0 = 0;
-		s32 dstX1;
-		s32 dstY1;
-		u32 dstWidth;
-		u32 dstHeight;
-		bool invertX = false;
-		bool invertY = false;
+		CopyRectParams()
+		{
+			srcX0 = srcY0 = 0;
+			dstX0 = dstY0 = 0;
+			invertX = invertY = 0;
+		}
 		typedef std::array<CachedTexture *, 2> Textures;
 		Textures tex = Textures{ { nullptr, nullptr } };
 		graphics::CombinerProgram * combiner = nullptr;

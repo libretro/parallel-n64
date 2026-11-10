@@ -96,6 +96,21 @@ u32 gli_drawer_texrect_vertices(RectVertex *_v, const gli_texrect_params *_p,
  * flat shading from vertex @_flag */
 void gli_drawer_thick_line(SPVertex *_out, u32 _v0, u32 _v1, f32 _halfWidth, u32 _flag);
 
+/* A copy of texture pixels @src* of a @srcWidth x @srcHeight texture to
+ * pixels @dst* of a @dstWidth x @dstHeight target */
+typedef struct gli_copy_rect
+{
+	s32 srcX0, srcY0, srcX1, srcY1;
+	u32 srcWidth, srcHeight;
+	s32 dstX0, dstY0, dstX1, dstY1;
+	u32 dstWidth, dstHeight;
+	u8 invertX, invertY;
+} gli_copy_rect;
+
+/* Fills the four vertices of copy @_p: clip space positions and texture
+ * coordinates s0, t0 */
+void gli_drawer_copy_rect(RectVertex *_v, const gli_copy_rect *_p);
+
 /* all three vertices outside the same clip plane */
 #define GLI_IS_CLIPPED(_v, _a, _b, _c) (((_v)[_a].clip & (_v)[_b].clip & (_v)[_c].clip) != 0)
 
