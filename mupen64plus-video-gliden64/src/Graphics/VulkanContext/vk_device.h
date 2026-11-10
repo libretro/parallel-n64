@@ -41,6 +41,7 @@ int  gliden64_vulkan_has_interlock(void);
 /* The negotiated device has blending and depth clamp as dynamic state. */
 int  gliden64_vulkan_has_dynamic_blend(void);
 int  gliden64_vulkan_has_store_none(void);
+int  gliden64_vulkan_has_depth_resolve(void);
 
 #ifdef __cplusplus
 }

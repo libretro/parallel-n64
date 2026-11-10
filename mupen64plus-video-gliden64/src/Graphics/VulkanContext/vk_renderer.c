@@ -106,6 +106,8 @@ typedef struct vkr_fbo
    uint32_t      rp_index;
    uint16_t      w, h;
    uint8_t       live;
+   VkFramebuffer resolve_fb;  /* its depth resolved into resolve_dst's */
+   unsigned      resolve_dst;
 } vkr_fbo;
 
 /* rp_ro: the same pass with its depth read only, for draws that sample it */
@@ -243,6 +245,8 @@ struct vkr_renderer
    int pass_open;
    int depth_ro;              /* the next pass reads its depth attachment as a texture */
    int pass_depth_ro;         /* the open pass does */
+   VkRenderPass depth_resolve_rp;  /* MSAA depth into single sampled, sample zero */
+   PFN_vkCreateRenderPass2KHR CreateRenderPass2;
    int storage_written;       /* N64 depth compare: a draw since the last barrier wrote the depth images */
    uint32_t serial;           /* of the commands being recorded */
    VkFence fences[MAX_SUBMITS];
@@ -731,7 +735,7 @@ static void forget_framebuffers_of(vkr_renderer *r, const vkr_image *i)
    if (!i->attached)
       return;
    for (f = 1; f < MAX_FBOS; f++)
-      if (r->fbos[f].live && (r->fbos[f].color == h || r->fbos[f].depth == h))
+      if (r->fbos[f].live && (r->fbos[f].color == h || r->fbos[f].depth == h || r->fbos[f].resolve_dst == h))
       {
          if (f == r->draw_fbo)
             end_pass(r);
@@ -1089,6 +1093,10 @@ static void fbo_reset(vkr_renderer *r, vkr_fbo *f)
    if (f->fb != VK_NULL_HANDLE)
       trash(r, G_FB, (uint64_t)(uintptr_t)f->fb, NULL);
    f->fb = VK_NULL_HANDLE;
+   if (f->resolve_fb != VK_NULL_HANDLE)
+      trash(r, G_FB, (uint64_t)(uintptr_t)f->resolve_fb, NULL);
+   f->resolve_fb = VK_NULL_HANDLE;
+   f->resolve_dst = 0;
 }
 
 void vkr_fbo_delete(vkr_renderer *r, unsigned h)
@@ -2398,6 +2406,8 @@ void vkr_clear_depth(vkr_renderer *r)
 
 /* ---- blit ---- */
 
+static int resolve_depth(vkr_renderer *r, unsigned read, unsigned draw, vkr_image *src, vkr_image *dst);
+
 /* GL clips the source rectangle, scaling the destination with it. */
 static void blit_clip_axis(int size, int *s0, int *s1, int *d0, int *d1)
 {
@@ -2529,6 +2539,13 @@ int vkr_blit(vkr_renderer *r, unsigned read, unsigned draw,
       dst = &r->images[r->fbos[draw].depth];
       if (src->image == VK_NULL_HANDLE || dst->image == VK_NULL_HANDLE)
          return color;
+      if (src->samples > 1)
+      {
+         /* no blit takes a multisampled image: a whole, unscaled resolve */
+         if (dst->samples == 1)
+            resolve_depth(r, read, draw, src, dst);
+         return 1;
+      }
       blit_clip(src->w, src->h, &sx0, &sy0, &sx1, &sy1, &dx0, &dy0, &dx1, &dy1);
       ensure_layout(r, src, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
       ensure_layout(r, dst, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
@@ -3009,6 +3026,136 @@ static void load_functions(vkr_renderer *r)
    VKR_DEVICE_FUNCS(X)
    VKR_EDS_FUNCS(X)
 #undef X
+   r->CreateRenderPass2 = gliden64_vulkan_has_depth_resolve()
+      ? (PFN_vkCreateRenderPass2KHR)get(r->device, "vkCreateRenderPass2KHR") : NULL;
+}
+
+/* A pass with no draws whose end resolves the MSAA depth attachment into the
+ * single sampled one, as GL's depth blit from a multisampled framebuffer */
+static void create_depth_resolve_pass(vkr_renderer *r)
+{
+   VkAttachmentDescription2 att[2];
+   VkAttachmentReference2 ms, single;
+   VkSubpassDescriptionDepthStencilResolve dsr;
+   VkSubpassDescription2 sub;
+   VkSubpassDependency2 dep[2];
+   VkRenderPassCreateInfo2 info;
+   unsigned k;
+
+   r->depth_resolve_rp = VK_NULL_HANDLE;
+   if (!r->cfg.msaa || !r->CreateRenderPass2)
+      return;
+   memset(att, 0, sizeof(att));
+   for (k = 0; k < 2; k++)
+   {
+      att[k].sType = VK_STRUCTURE_TYPE_ATTACHMENT_DESCRIPTION_2;
+      att[k].format = r->depth_format;
+      att[k].samples = k ? VK_SAMPLE_COUNT_1_BIT : (VkSampleCountFlagBits)r->cfg.msaa;
+      att[k].loadOp = k ? VK_ATTACHMENT_LOAD_OP_DONT_CARE : VK_ATTACHMENT_LOAD_OP_LOAD;
+      att[k].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+      att[k].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+      att[k].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+      att[k].initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+      att[k].finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+   }
+   memset(&ms, 0, sizeof(ms));
+   ms.sType = VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2;
+   ms.attachment = 0;
+   ms.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+   ms.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+   single = ms;
+   single.attachment = 1;
+   memset(&dsr, 0, sizeof(dsr));
+   dsr.sType = VK_STRUCTURE_TYPE_SUBPASS_DESCRIPTION_DEPTH_STENCIL_RESOLVE;
+   dsr.depthResolveMode = VK_RESOLVE_MODE_SAMPLE_ZERO_BIT;
+   dsr.stencilResolveMode = VK_RESOLVE_MODE_NONE;
+   dsr.pDepthStencilResolveAttachment = &single;
+   memset(&sub, 0, sizeof(sub));
+   sub.sType = VK_STRUCTURE_TYPE_SUBPASS_DESCRIPTION_2;
+   sub.pNext = &dsr;
+   sub.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+   sub.pDepthStencilAttachment = &ms;
+   /* the resolve writes in the colour output stage */
+   memset(dep, 0, sizeof(dep));
+   dep[0].sType = VK_STRUCTURE_TYPE_SUBPASS_DEPENDENCY_2;
+   dep[0].srcSubpass = VK_SUBPASS_EXTERNAL;
+   dep[0].dstSubpass = 0;
+   dep[0].srcStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT
+      | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_TRANSFER_BIT;
+   dep[0].srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT | VK_ACCESS_TRANSFER_WRITE_BIT;
+   dep[0].dstStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT
+      | VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+   dep[0].dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT
+      | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+   dep[1].sType = VK_STRUCTURE_TYPE_SUBPASS_DEPENDENCY_2;
+   dep[1].srcSubpass = 0;
+   dep[1].dstSubpass = VK_SUBPASS_EXTERNAL;
+   dep[1].srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+   dep[1].srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+   dep[1].dstStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT
+      | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_TRANSFER_BIT;
+   dep[1].dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT
+      | VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_TRANSFER_READ_BIT | VK_ACCESS_TRANSFER_WRITE_BIT;
+   memset(&info, 0, sizeof(info));
+   info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO_2;
+   info.attachmentCount = 2;
+   info.pAttachments = att;
+   info.subpassCount = 1;
+   info.pSubpasses = &sub;
+   info.dependencyCount = 2;
+   info.pDependencies = dep;
+   if (r->CreateRenderPass2(r->device, &info, NULL, &r->depth_resolve_rp) != VK_SUCCESS)
+      r->depth_resolve_rp = VK_NULL_HANDLE;
+}
+
+/* Resolves the multisampled depth of the read framebuffer into the draw one's */
+static int resolve_depth(vkr_renderer *r, unsigned read, unsigned draw, vkr_image *src, vkr_image *dst)
+{
+   vkr_fbo *o = &r->fbos[read];
+   VkRenderPassBeginInfo info;
+
+   if (r->depth_resolve_rp == VK_NULL_HANDLE || src->w != dst->w || src->h != dst->h)
+      return 0;
+   if (o->resolve_fb != VK_NULL_HANDLE && o->resolve_dst != r->fbos[draw].depth)
+   {
+      trash(r, G_FB, (uint64_t)(uintptr_t)o->resolve_fb, NULL);
+      o->resolve_fb = VK_NULL_HANDLE;
+   }
+   if (o->resolve_fb == VK_NULL_HANDLE)
+   {
+      VkFramebufferCreateInfo fbi;
+      VkImageView views[2];
+      views[0] = src->view;
+      views[1] = dst->view;
+      memset(&fbi, 0, sizeof(fbi));
+      fbi.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+      fbi.renderPass = r->depth_resolve_rp;
+      fbi.attachmentCount = 2;
+      fbi.pAttachments = views;
+      fbi.width = src->w;
+      fbi.height = src->h;
+      fbi.layers = 1;
+      if (F(CreateFramebuffer)(r->device, &fbi, NULL, &o->resolve_fb) != VK_SUCCESS)
+      {
+         o->resolve_fb = VK_NULL_HANDLE;
+         return 0;
+      }
+      o->resolve_dst = r->fbos[draw].depth;
+      dst->attached = 1;
+   }
+   ensure_layout(r, src, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+   ensure_layout(r, dst, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+   src->used_serial = r->serial;
+   dst->used_serial = r->serial;
+   memset(&info, 0, sizeof(info));
+   info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+   info.renderPass = r->depth_resolve_rp;
+   info.framebuffer = o->resolve_fb;
+   info.renderArea.extent.width = src->w;
+   info.renderArea.extent.height = src->h;
+   F(CmdBeginRenderPass)(r->cmd, &info, VK_SUBPASS_CONTENTS_INLINE);
+   F(CmdEndRenderPass)(r->cmd);
+   return 1;
 }
 
 /* Queues one pipeline; at load, and only here, waits for room. */
@@ -3287,6 +3434,7 @@ vkr_renderer *vkr_create(const struct retro_hw_render_interface_vulkan *vk, cons
    r->worker = rdp_worker_new(NULL, pipeline_work, r);
    if (!r->worker)
       goto fail;
+   create_depth_resolve_pass(r);
    prewarm(r);
    return r;
 
@@ -3346,12 +3494,18 @@ void vkr_destroy(vkr_renderer *r)
          }
    if (r->fbos)
       for (i = 1; i < MAX_FBOS; i++)
+      {
          if (r->fbos[i].live && r->fbos[i].fb != VK_NULL_HANDLE)
             F(DestroyFramebuffer)(r->device, r->fbos[i].fb, NULL);
+         if (r->fbos[i].live && r->fbos[i].resolve_fb != VK_NULL_HANDLE)
+            F(DestroyFramebuffer)(r->device, r->fbos[i].resolve_fb, NULL);
+      }
    if (r->pipes)
       for (i = 0; i < MAX_PIPELINES; i++)
          if (r->pipes[i].pipeline != VK_NULL_HANDLE)
             F(DestroyPipeline)(r->device, r->pipes[i].pipeline, NULL);
+   if (r->depth_resolve_rp != VK_NULL_HANDLE)
+      F(DestroyRenderPass)(r->device, r->depth_resolve_rp, NULL);
    for (i = 0; i < r->n_rps; i++)
    {
       F(DestroyRenderPass)(r->device, r->rps[i].rp, NULL);

@@ -10,6 +10,7 @@ static int g_enabled;
 static int g_interlock;
 static int g_dynamic_blend;
 static int g_store_none;
+static int g_depth_resolve;
 
 void gliden64_vulkan_set_interface(const struct retro_hw_render_interface_vulkan *vk) { g_interface = vk; }
 const struct retro_hw_render_interface_vulkan *gliden64_vulkan_interface(void) { return g_interface; }
@@ -92,6 +93,7 @@ static bool create_device(struct retro_vulkan_context *context,
    g_interlock = 0;
    g_dynamic_blend = 0;
    g_store_none = 0;
+   g_depth_resolve = 0;
    vkGetPhysicalDeviceFeatures(gpu, &have);
    /* the N64's near plane needs these: without them there is no backend */
    if (!have.depthClamp || !have.shaderClipDistance)
@@ -173,6 +175,18 @@ static bool create_device(struct retro_vulkan_context *context,
       interlock.pNext = chain;
       chain = &interlock;
       g_interlock = 1;
+   }
+   /* MSAA depth resolves as a render pass does it: no blit takes it */
+   if (have_extension(ext, n_ext, VK_KHR_DEPTH_STENCIL_RESOLVE_EXTENSION_NAME)
+         && have_extension(ext, n_ext, VK_KHR_CREATE_RENDERPASS_2_EXTENSION_NAME)
+         && have_extension(ext, n_ext, VK_KHR_MULTIVIEW_EXTENSION_NAME)
+         && have_extension(ext, n_ext, VK_KHR_MAINTENANCE2_EXTENSION_NAME))
+   {
+      add_extension(exts, &n_exts, VK_KHR_MULTIVIEW_EXTENSION_NAME);
+      add_extension(exts, &n_exts, VK_KHR_MAINTENANCE2_EXTENSION_NAME);
+      add_extension(exts, &n_exts, VK_KHR_CREATE_RENDERPASS_2_EXTENSION_NAME);
+      add_extension(exts, &n_exts, VK_KHR_DEPTH_STENCIL_RESOLVE_EXTENSION_NAME);
+      g_depth_resolve = 1;
    }
    /* a read only depth pass need not store it */
    if (have_extension(ext, n_ext, VK_EXT_LOAD_STORE_OP_NONE_EXTENSION_NAME))
@@ -259,4 +273,9 @@ int gliden64_vulkan_has_dynamic_blend(void)
 int gliden64_vulkan_has_store_none(void)
 {
    return g_store_none;
+}
+
+int gliden64_vulkan_has_depth_resolve(void)
+{
+   return g_depth_resolve;
 }
