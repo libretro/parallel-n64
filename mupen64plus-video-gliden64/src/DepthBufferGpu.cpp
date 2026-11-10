@@ -1,8 +1,3 @@
-#if defined(OS_MAC_OS_X) || defined(OS_IOS)
-#include <malloc/malloc.h>
-#else
-#include <malloc.h>
-#endif
 #include <assert.h>
 #include "Combiner.h"
 #include "FrameBuffer.h"
@@ -100,7 +95,7 @@ void DepthBuffer::initDepthImageTexture(FrameBuffer * _pBuffer)
 	_initDepthImageTexture(_pBuffer, *m_pDepthImageZTexture, m_ZTextureClearFBO);
 	_initDepthImageTexture(_pBuffer, *m_pDepthImageDeltaZTexture, m_DeltaZTextureClearFBO);
 
-	depthBufferList().clearBuffer();
+	gli_depth_clear();
 }
 
 void DepthBuffer::_initDepthBufferTexture(FrameBuffer * _pBuffer, CachedTexture * _pTexture, bool _multisample)
@@ -352,209 +347,52 @@ void DepthBuffer::bindDepthImageTexture(ObjectHandle _fbo)
 	}
 }
 
-DepthBufferList::DepthBufferList() : m_pCurrent(nullptr), m_pzLUT(nullptr)
+void gli_depth_gpu_clear(void)
 {
-	m_pzLUT = new u16[0x40000];
-	for (int i = 0; i<0x40000; i++) {
-		u32 exponent = 0;
-		u32 testbit = 1 << 17;
-		while ((i & testbit) && (exponent < 7)) {
-			exponent++;
-			testbit = 1 << (17 - exponent);
-		}
-
-		const u32 mantissa = (i >> (6 - (6 < exponent ? 6 : exponent))) & 0x7ff;
-		m_pzLUT[i] = (u16)(((exponent << 11) | mantissa) << 2);
-	}
-}
-
-DepthBufferList::~DepthBufferList()
-{
-	delete[] m_pzLUT;
-	m_pzLUT = nullptr;
-	m_list.clear();
-}
-
-DepthBufferList & DepthBufferList::get()
-{
-	static DepthBufferList depthBufferList;
-	return depthBufferList;
-}
-
-void DepthBufferList::init()
-{
-	m_pCurrent = nullptr;
-}
-
-void DepthBufferList::destroy()
-{
-	m_pCurrent = nullptr;
-	m_list.clear();
-}
-
-void DepthBufferList::setCleared(bool _cleared)
-{
-	for (DepthBuffers::iterator iter = m_list.begin(); iter != m_list.end(); ++iter)
-		iter->m_cleared = _cleared;
-}
-
-DepthBuffer * DepthBufferList::findBuffer(u32 _address)
-{
-	for (DepthBuffers::iterator iter = m_list.begin(); iter != m_list.end(); ++iter)
-		if (iter->m_address == _address)
-				return &(*iter);
-	return nullptr;
-}
-
-void DepthBufferList::removeBuffer(u32 _address )
-{
-	for (DepthBuffers::iterator iter = m_list.begin(); iter != m_list.end(); ++iter)
-		if (iter->m_address == _address) {
-			frameBufferList().clearDepthBuffer(&(*iter));
-			m_list.erase(iter);
-			return;
-		}
-}
-
-void DepthBufferList::_createScreenSizeBuffer(u32 _address)
-{
-	FrameBuffer * pFrameBuffer = frameBufferList().findBuffer(VI.width*2);
-	if (pFrameBuffer == nullptr)
-		return;
-
-	m_list.emplace_front();
-	DepthBuffer & buffer = m_list.front();
-
-	buffer.m_address = _address;
-	buffer.m_width = pFrameBuffer->m_width;
-
-	buffer.initDepthBufferTexture(pFrameBuffer);
-
-	m_pCurrent = &buffer;
-	frameBufferList().attachDepthBuffer();
-	m_pCurrent = nullptr;
-}
-
-void DepthBufferList::saveBuffer(u32 _address)
-{
-	if (config.frameBufferEmulation.enable == 0) {
-		if (m_list.empty())
-			_createScreenSizeBuffer(_address);
-		return;
-	}
-
-	FrameBuffer * pFrameBuffer = frameBufferList().findBuffer(_address);
-	if (pFrameBuffer != nullptr)
-		pFrameBuffer->m_isDepthBuffer = true;
-
-	DepthBuffer * pDepthBuffer = nullptr;
-	if (pFrameBuffer != nullptr && pFrameBuffer->m_startAddress != _address)
-		pDepthBuffer = findBuffer(pFrameBuffer->m_startAddress);
-	else
-		pDepthBuffer = findBuffer(_address);
-
-	if (pDepthBuffer != nullptr && pFrameBuffer != nullptr && pDepthBuffer->m_width != pFrameBuffer->m_width) {
-		removeBuffer(_address);
-		pDepthBuffer = nullptr;
-	}
-
-	if (pDepthBuffer == nullptr) {
-		m_list.emplace_front();
-		DepthBuffer & buffer = m_list.front();
-
-		buffer.m_address = _address;
-		buffer.m_width = pFrameBuffer != nullptr ? pFrameBuffer->m_width : VI.width;
-
-		buffer.initDepthBufferTexture(pFrameBuffer);
-
-		pDepthBuffer = &buffer;
-	}
-
-	DepthBuffer * pCurrent = m_pCurrent;
-	m_pCurrent = pDepthBuffer;
-	frameBufferList().attachDepthBuffer();
-	if (pFrameBuffer == nullptr && (config.generalEmulation.hacks & hack_clearAloneDepthBuffer) != 0)
-		clearBuffer();
-	if (pDepthBuffer->m_address != gDP.depthImageAddress)
-		m_pCurrent = pCurrent;
-}
-
-void DepthBufferList::clearBuffer()
-{
-	if (m_pCurrent != nullptr)
-		m_pCurrent->m_cleared = true;
-
 	if (config.frameBufferEmulation.enable == 0 || config.frameBufferEmulation.N64DepthCompare == 0) {
 		gfxContext.clearDepthBuffer();
 		return;
 	}
 
-	// Clear depth image texture
+	/* Clear depth image texture */
 	FrameBuffer * pColorBuffer = frameBufferList().getCurrent();
 	if (pColorBuffer == nullptr || pColorBuffer->m_pDepthBuffer == nullptr)
 		return;
 	DepthBuffer * pDepthBuffer = pColorBuffer->m_pDepthBuffer;
 
-	//if (pColorBuffer->m_pTexture->realWidth == pDepthBuffer->m_pDepthImageZTexture->realWidth) 
-	{
-		gfxContext.bindFramebuffer(bufferTarget::DRAW_FRAMEBUFFER, pDepthBuffer->m_ZTextureClearFBO);
-		gfxContext.clearColorBuffer(1.0f, 0.0f, 0.0f, 0.0f);
+	gfxContext.bindFramebuffer(bufferTarget::DRAW_FRAMEBUFFER, pDepthBuffer->m_ZTextureClearFBO);
+	gfxContext.clearColorBuffer(1.0f, 0.0f, 0.0f, 0.0f);
 
-		gfxContext.bindFramebuffer(bufferTarget::DRAW_FRAMEBUFFER, pDepthBuffer->m_DeltaZTextureClearFBO);
-		gfxContext.clearColorBuffer(1.0f, 0.0f, 0.0f, 0.0f);
-	}
-	//else {
-	//	gDP.rectColor.g = gDP.rectColor.b = gDP.rectColor.a = 0.0f;
-	//	u32 cycleType = gDP.otherMode.cycleType;
-	//	u32 fillcolor = gDP.fillColor.color;
-	//	gDP.otherMode.cycleType = G_CYC_FILL;
-	//	gDP.fillColor.color = 0;
-	//	const int lrx = pColorBuffer->m_width;
-	//	const int lry = gli_VI_GetMaxBufferHeight(pColorBuffer->m_width);
-	//	gDP.rectColor.r = 1.0f;
-	//	gfxContext.bindFramebuffer(bufferTarget::DRAW_FRAMEBUFFER, pDepthBuffer->m_ZTextureClearFBO);
-	//	dwnd().getDrawer().drawRect(0, 0, lrx, lry);
-	//	gDP.rectColor.r = 0.0f;
-	//	gfxContext.bindFramebuffer(bufferTarget::DRAW_FRAMEBUFFER, pDepthBuffer->m_DeltaZTextureClearFBO);
-	//	dwnd().getDrawer().drawRect(0, 0, lrx, lry);
-	//	gDP.otherMode.cycleType = cycleType;
-	//	gDP.fillColor.color = fillcolor;
-	//}
+	gfxContext.bindFramebuffer(bufferTarget::DRAW_FRAMEBUFFER, pDepthBuffer->m_DeltaZTextureClearFBO);
+	gfxContext.clearColorBuffer(1.0f, 0.0f, 0.0f, 0.0f);
 	frameBufferList().setCurrentDrawBuffer();
 }
 
-void DepthBuffer_Init()
+struct DepthBuffer * gli_depth_new(u32 _address, FrameBuffer * _pBuffer)
 {
-	depthBufferList().init();
+	DepthBuffer * pBuffer = new DepthBuffer();
+	pBuffer->m_address = _address;
+	pBuffer->m_width = _pBuffer != nullptr ? _pBuffer->m_width : VI.width;
+	pBuffer->initDepthBufferTexture(_pBuffer);
+	return pBuffer;
 }
 
-void DepthBuffer_Destroy()
+void gli_depth_delete(DepthBuffer * _pBuffer)
 {
-	depthBufferList().destroy();
+	delete _pBuffer;
 }
 
-bool gli_depthbuffer_software_target(const u16 ** _zLUT, u32 * _width)
+u32 gli_depth_address(const DepthBuffer * _pBuffer)
 {
-	/* Current depth buffer can be null if we are loading from a save state */
-	DepthBuffer * current = depthBufferList().getCurrent();
-	if (current == nullptr || config.frameBufferEmulation.copyDepthToRDRAM != cdSoftwareRender)
-		return false;
-	*_zLUT = depthBufferList().getZLUT();
-	*_width = current->m_width;
-	return true;
+	return _pBuffer->m_address;
 }
 
-void gli_depth_set_image(u32 _address)
+u32 gli_depth_width(const DepthBuffer * _pBuffer)
 {
-	depthBufferList().saveBuffer(_address);
+	return _pBuffer->m_width;
 }
 
-void gli_depth_set_cleared(bool _cleared)
+void gli_depth_mark_cleared(DepthBuffer * _pBuffer, bool _cleared)
 {
-	depthBufferList().setCleared(_cleared);
-}
-
-const u16 * gli_depth_zlut(void)
-{
-	return depthBufferList().getZLUT();
+	_pBuffer->m_cleared = _cleared;
 }

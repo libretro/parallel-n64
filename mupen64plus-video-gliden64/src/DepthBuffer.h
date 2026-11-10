@@ -1,7 +1,10 @@
 #ifndef DEPTHBUFFER_H
 #define DEPTHBUFFER_H
 
+#include <boolean.h>
 #include "Types.h"
+
+#ifdef __cplusplus
 #include "Textures.h"
 #include "Graphics/ObjectHandle.h"
 #include "Graphics/Parameter.h"
@@ -51,42 +54,35 @@ private:
 	void _initDepthBufferRenderbuffer(FrameBuffer * _pBuffer);
 };
 
-class DepthBufferList
-{
-public:
-	void init();
-	void destroy();
-	void saveBuffer(u32 _address);
-	void removeBuffer(u32 _address);
-	void clearBuffer();
-	void setCleared(bool _cleared);
-	DepthBuffer *findBuffer(u32 _address);
-	DepthBuffer * getCurrent() const {return m_pCurrent;}
+#endif /* __cplusplus */
 
-	static DepthBufferList & get();
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-	const u16 * const getZLUT() const {return m_pzLUT;}
+struct DepthBuffer;
+struct FrameBuffer;
 
-private:
-	DepthBufferList();
-	DepthBufferList(const DepthBufferList &) = delete;
-	~DepthBufferList();
+/* DepthBuffer.c: the depth buffers the game has used, newest last */
+void gli_depth_list_init(void);
+void gli_depth_list_destroy(void);
+void gli_depth_save(u32 _address);
+void gli_depth_clear(void);
+void gli_depth_set_cleared(bool _cleared);
+struct DepthBuffer * gli_depth_find(u32 _address);
+struct DepthBuffer * gli_depth_current_buffer(void);
+const u16 * gli_depth_zlut(void);
 
-	void _createScreenSizeBuffer(u32 _address);
+/* DepthBufferGpu.cpp */
+struct DepthBuffer * gli_depth_new(u32 _address, struct FrameBuffer * _pBuffer);
+void gli_depth_delete(struct DepthBuffer * _pBuffer);
+u32 gli_depth_address(const struct DepthBuffer * _pBuffer);
+u32 gli_depth_width(const struct DepthBuffer * _pBuffer);
+void gli_depth_mark_cleared(struct DepthBuffer * _pBuffer, bool _cleared);
+void gli_depth_gpu_clear(void);
 
-	typedef std::list<DepthBuffer> DepthBuffers;
-	DepthBuffers m_list;
-	DepthBuffer *m_pCurrent;
-	u16 * m_pzLUT;
-};
-
-inline
-DepthBufferList & depthBufferList()
-{
-	return DepthBufferList::get();
+#ifdef __cplusplus
 }
-
-void DepthBuffer_Init();
-void DepthBuffer_Destroy();
+#endif
 
 #endif

@@ -388,6 +388,7 @@ SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/Config.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/CombinerKey.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/PluginAPI.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/DisplayWindow.c
+SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/DepthBuffer.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/gSP.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/GBI.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/RSP.c
@@ -438,7 +439,7 @@ INCFLAGS      += -I$(VIDEODIR_PARALLEL)/parallel-rdp/vulkan-headers/include -I$(
 
 SOURCES_CXX   += \
 	$(VIDEODIR_GLIDEN64)/src/Combiner.cpp                                                         \
-    $(VIDEODIR_GLIDEN64)/src/DepthBuffer.cpp                                                      \
+    $(VIDEODIR_GLIDEN64)/src/DepthBufferGpu.cpp                                                   \
     $(VIDEODIR_GLIDEN64)/src/DisplayWindowGpu.cpp                                                 \
     $(VIDEODIR_GLIDEN64)/src/FrameBuffer.cpp                                                      \
     $(VIDEODIR_GLIDEN64)/src/TexrectDrawerGpu.cpp                                                    \

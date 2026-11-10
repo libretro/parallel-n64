@@ -25,7 +25,7 @@ void gli_s2dex_mark_current_ob_screen(void)
 
 int gli_s2dex_depth_buffer_at(u32 _address)
 {
-	return depthBufferList().findBuffer(_address) != nullptr;
+	return gli_depth_find(_address) != nullptr;
 }
 
 void gli_s2dex_load_fb_image(void)
@@ -80,14 +80,13 @@ void gli_s2dex_copy_depth_buffer(void)
 	// OpenGL has different format for color and depth buffers, so this trick can't be performed directly
 	// To do that, depth buffer with address of current color buffer created and attached to the current FBO
 	// It will be copy depth buffer
-	DepthBufferList & dbList = depthBufferList();
-	dbList.saveBuffer(gDP.colorImage.address);
+	gli_depth_save(gDP.colorImage.address);
 	// Take any frame buffer and attach source depth buffer to it, to blit it into copy depth buffer
 	FrameBufferList & fbList = frameBufferList();
 	FrameBuffer * pTmpBuffer = fbList.findTmpBuffer(fbList.getCurrent()->m_startAddress);
 	if (pTmpBuffer == nullptr)
 		return;
-	DepthBuffer * pCopyBufferDepth = dbList.findBuffer(gSP.bgImage.address);
+	DepthBuffer * pCopyBufferDepth = gli_depth_find(gSP.bgImage.address);
 	if (pCopyBufferDepth == nullptr)
 		return;
 	pCopyBufferDepth->setDepthAttachment(pTmpBuffer->m_FBO, bufferTarget::READ_FRAMEBUFFER);
@@ -115,6 +114,6 @@ void gli_s2dex_copy_depth_buffer(void)
 	gfxContext.bindFramebuffer(bufferTarget::READ_FRAMEBUFFER, ObjectHandle::defaultFramebuffer);
 
 	// Set back current depth buffer
-	dbList.saveBuffer(gDP.depthImageAddress);
+	gli_depth_save(gDP.depthImageAddress);
 }
 

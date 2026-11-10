@@ -207,7 +207,7 @@ bool DepthBufferToRDRAM::_prepareCopy(u32& _startAddress, bool _copyChunk)
 
 u16 DepthBufferToRDRAM::_FloatToUInt16(f32 _z)
 {
-	static const u16 * const zLUT = depthBufferList().getZLUT();
+	static const u16 * const zLUT = gli_depth_zlut();
 	u32 idx = 0x3FFFF;
 
 	if (_z < 0.0f) {

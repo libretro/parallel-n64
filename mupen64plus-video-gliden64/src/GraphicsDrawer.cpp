@@ -1544,7 +1544,7 @@ void GraphicsDrawer::clearDepthBuffer()
 	if (!_canDraw())
 		return;
 
-	depthBufferList().clearBuffer();
+	gli_depth_clear();
 
 	_updateDepthUpdate();
 }
@@ -1775,7 +1775,7 @@ void GraphicsDrawer::_initData()
 	_setSpecialTexrect();
 
 	textureCache().init();
-	DepthBuffer_Init();
+	gli_depth_list_init();
 	FrameBuffer_Init();
 	Combiner_Init();
 	gli_TFH_init();
@@ -1810,6 +1810,6 @@ void GraphicsDrawer::_destroyData()
 		gli_TFH_shutdown();
 	Combiner_Destroy();
 	FrameBuffer_Destroy();
-	DepthBuffer_Destroy();
+	gli_depth_list_destroy();
 	textureCache().destroy();
 }

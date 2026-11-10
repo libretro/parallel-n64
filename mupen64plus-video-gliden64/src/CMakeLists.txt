@@ -21,7 +21,8 @@ set(GLideN64_SOURCES
   Config.c
   convert.c
   CRC32.c
-  DepthBuffer.cpp
+  DepthBuffer.c
+  DepthBufferGpu.cpp
   DisplayWindow.c
   DisplayWindowGpu.cpp
   FrameBuffer.cpp

@@ -825,7 +825,7 @@ void FrameBufferList::saveBuffer(u32 _address, u16 _format, u16 _size, u16 _widt
 	}
 
 	if (_address == gDP.depthImageAddress)
-		depthBufferList().saveBuffer(_address);
+		gli_depth_save(_address);
 	else
 		attachDepthBuffer();
 
@@ -935,7 +935,7 @@ void FrameBufferList::attachDepthBuffer()
 	if (pCurrent == nullptr)
 		return;
 
-	DepthBuffer * pDepthBuffer = depthBufferList().getCurrent();
+	DepthBuffer * pDepthBuffer = gli_depth_current_buffer();
 
 	if (pCurrent->m_FBO.isNotNull() && pDepthBuffer != nullptr) {
 		pDepthBuffer->initDepthImageTexture(pCurrent);
@@ -1915,8 +1915,8 @@ void gli_fb_vi_resized(u32 _widthPrev, u32 _width)
 {
 	frameBufferList().removeBuffers(_widthPrev);
 	frameBufferList().removeBuffers(_width);
-	depthBufferList().destroy();
-	depthBufferList().init();
+	gli_depth_list_destroy();
+	gli_depth_list_init();
 }
 
 void gli_fb_save_cpu_buffer(u32 _address, u32 _size, u32 _width)
@@ -2015,7 +2015,7 @@ void gli_fb_fill_info(void * _pinfo, u32 _size)
 
 bool gli_depth_current(u32 * _address, u32 * _width)
 {
-	const DepthBuffer * pDepthBuffer = depthBufferList().getCurrent();
+	const DepthBuffer * pDepthBuffer = gli_depth_current_buffer();
 	if (pDepthBuffer == nullptr)
 		return false;
 	*_address = pDepthBuffer->m_address;
@@ -2241,4 +2241,19 @@ gli_shader * gli_gfx_create_fxaa_shader(void)
 void gli_gfx_delete_shader(gli_shader * _pShader)
 {
 	delete reinterpret_cast<ShaderProgram*>(_pShader);
+}
+
+void gli_fb_clear_depth_buffer(DepthBuffer * _pDepthBuffer)
+{
+	frameBufferList().clearDepthBuffer(_pDepthBuffer);
+}
+
+void gli_fb_attach_depth_buffer(void)
+{
+	frameBufferList().attachDepthBuffer();
+}
+
+void gli_fb_set_is_depth(FrameBuffer * _pBuffer)
+{
+	_pBuffer->m_isDepthBuffer = true;
 }

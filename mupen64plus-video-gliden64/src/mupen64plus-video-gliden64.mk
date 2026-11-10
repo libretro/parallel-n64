@@ -24,7 +24,8 @@ MY_LOCAL_SRC_FILES :=                                                           
     $(SRCDIR)/PluginAPI.c                                                        \
     $(SRCDIR)/Config.c                                                            \
     $(SRCDIR)/convert.c                                                          \
-    $(SRCDIR)/DepthBuffer.cpp                                                      \
+    $(SRCDIR)/DepthBuffer.c                                                        \
+    $(SRCDIR)/DepthBufferGpu.cpp                                                   \
     $(SRCDIR)/DisplayWindow.c                                                      \
     $(SRCDIR)/DisplayWindowGpu.cpp                                                 \
     $(SRCDIR)/FrameBuffer.cpp                                                      \

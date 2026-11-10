@@ -10,6 +10,9 @@
 extern "C" {
 #endif
 
+struct FrameBuffer;
+struct DepthBuffer;
+
 /* a graphics::ShaderProgram, opaque to C */
 struct gli_shader;
 
@@ -21,6 +24,9 @@ void gli_fb_stereo_sync(void);
 void gli_fb_full_sync(bool _lle);
 bool gli_fb_check_texture(u32 _address, u32 _width, u32 _bytes);
 void gli_depth_set_image(u32 _address);
+void gli_fb_clear_depth_buffer(struct DepthBuffer *_pDepthBuffer);
+void gli_fb_attach_depth_buffer(void);
+void gli_fb_set_is_depth(struct FrameBuffer *_pBuffer);
 void gli_depth_set_cleared(bool _cleared);
 struct FrameBuffer *gli_fb_find(u32 _address);
 struct FrameBuffer *gli_fb_current(void);
