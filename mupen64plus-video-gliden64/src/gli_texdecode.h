@@ -55,6 +55,10 @@ void gli_tex_decode_tmem(const gli_tex_decode *t, const gli_tex_format *f,
 void gli_tex_decode_bg(const gli_tex_decode *t, const gli_tex_format *f,
 		int out32, const u8 *src, u32 bpl, void *dst);
 
+/* Turns @n N64 depth words at @buf into linear floats in place; @buf
+ * must hold n floats */
+f32 *gli_tex_depth_to_float(void *buf, u32 n);
+
 /* The sizes of tile @_t, as the RDP will sample it */
 typedef struct gli_tile_sizes
 {

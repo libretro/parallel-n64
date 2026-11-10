@@ -332,3 +332,23 @@ void gli_tex_decode_bg(const gli_tex_decode *t, const gli_tex_format *f,
 		row(d, src + bpl * (y < clampT ? y : clampT), 0, (u8)t->palette,
 			t->realWidth, clampS, 0xFFFF, 0);
 }
+
+/* N64 depth words, exponent in bits 15..13 and mantissa in 12..2, to
+ * linear floats, in place: float i lands at or after word i, so working
+ * back from the end never overwrites a word still to be read */
+f32 *gli_tex_depth_to_float(void *buf, u32 n)
+{
+	static const struct { u32 shift; u32 add; } zFormat[8] = {
+		{ 6, 0x00000 }, { 5, 0x20000 }, { 4, 0x30000 }, { 3, 0x38000 },
+		{ 2, 0x3c000 }, { 1, 0x3e000 }, { 0, 0x3f000 }, { 0, 0x3f800 }
+	};
+	const u16 *w = (const u16*)buf;
+	f32 *d = (f32*)buf;
+	while (n--) {
+		const u16 v = w[n];
+		const u32 e = (v >> 13) & 7;
+		const u32 m = (v >> 2) & 0x7ff;
+		d[n] = (f32)((m << zFormat[e].shift) + zFormat[e].add) / 262143.0f;
+	}
+	return d;
+}

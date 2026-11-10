@@ -528,28 +528,25 @@ void TextureCache::_loadDepthTexture(CachedTexture * _pTexture, u16* _pDest)
 
 	/* Decode the N64 depth words to linear before uploading them.
 	 *
-	 * The words are in the hardware exponent/mantissa form: bits 15..13 are the
-	 * exponent, bits 12..2 the mantissa. Uploading them raw, divided by 65535,
-	 * left the map in that non-linear space while the shader writes a linear
-	 * gl_FragDepth for everything else, so the two only agreed at the extremes:
-	 * geometry was correctly hidden behind near objects and wrongly hidden
-	 * behind distant scenery in the same frame.
+	 * The words are in the hardware exponent/mantissa form. Uploading them
+	 * raw, divided by 65535, left the map in that non-linear space while the
+	 * shader writes a linear gl_FragDepth for everything else, so the two only
+	 * agreed at the extremes.
 	 *
 	 * Decoding here rather than converting the fragment depth through the ZLUT
-	 * costs one pass per map instead of one lookup per fragment, and removes an
-	 * integer texture fetch from the fragment path entirely. */
-	static const struct { u32 shift; u32 add; } zFormat[8] = {
-		{ 6, 0x00000 }, { 5, 0x20000 }, { 4, 0x30000 }, { 3, 0x38000 },
-		{ 2, 0x3c000 }, { 1, 0x3e000 }, { 0, 0x3f000 }, { 0, 0x3f800 }
-	};
-	u32 size = _pTexture->realWidth * _pTexture->realHeight;
-	std::vector<f32> pDestFloat(size);
-	for (u32 i = 0; i < size; ++i) {
-		const u16 w = _pDest[i];
-		const u32 e = (w >> 13) & 7;
-		const u32 m = (w >> 2) & 0x7ff;
-		pDestFloat[i] = f32((m << zFormat[e].shift) + zFormat[e].add) / 262143.0f;
+	 * costs one pass per map instead of one lookup per fragment. The floats
+	 * replace the words in the decode scratch, so nothing is allocated. */
+	const u32 size = _pTexture->realWidth * _pTexture->realHeight;
+	void * buf = _pDest;
+	void * heap = nullptr;
+	if ((u8*)_pDest != m_decodeScratch || size * sizeof(f32) > DecodeScratchBytes) {
+		heap = malloc(size * sizeof(f32));
+		if (heap == nullptr)
+			return;
+		memcpy(heap, _pDest, size * sizeof(u16));
+		buf = heap;
 	}
+	const f32 * pDestFloat = gli_tex_depth_to_float(buf, size);
 
 	Context::InitTextureParams params;
 	params.handle = _pTexture->name;
@@ -560,9 +557,10 @@ void TextureCache::_loadDepthTexture(CachedTexture * _pTexture, u16* _pDest)
 	params.internalFormat = internalcolorFormat::R16F;
 	params.format = colorFormat::RED;
 	params.dataType = datatype::FLOAT;
-	params.data = pDestFloat.data();
+	params.data = pDestFloat;
 	params.mutableStorage = true;
 	gfxContext.init2DTexture(params);
+	free(heap);
 }
 
 /*
