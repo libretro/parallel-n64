@@ -2,7 +2,6 @@
 #include <string>
 #include <assert.h>
 #include <cmath>
-#include <stddef.h>
 #include "Platform.h"
 #include "Graphics/Context.h"
 #include "DisplayWindow.h"
@@ -806,124 +805,42 @@ void GraphicsDrawer::drawTexturedRect(const TexturedRectParams & _params)
 
 	f32 scale[2];
 	calcCoordsScales(pCurrentBuffer, scale[0], scale[1]);
-	const float Z = (gDP.otherMode.depthSource == G_ZS_PRIM) ? gDP.primDepth.z : 0.0f;
-	const float W = 1.0f;
-	const f32 ulx = _params.ulx * (2.0f * scale[0]) - 1.0f;
-	const f32 uly = _params.uly * (2.0f * scale[1]) - 1.0f;
-	const f32 lrx = _params.lrx * (2.0f * scale[0]) - 1.0f;
-	const f32 lry = _params.lry * (2.0f * scale[1]) - 1.0f;
-	m_rect[0].x = ulx;
-	m_rect[0].y = uly;
-	m_rect[0].z = Z;
-	m_rect[0].w = W;
-	m_rect[1].x = lrx;
-	m_rect[1].y = uly;
-	m_rect[1].z = Z;
-	m_rect[1].w = W;
-	m_rect[2].x = ulx;
-	m_rect[2].y = lry;
-	m_rect[2].z = Z;
-	m_rect[2].w = W;
-	m_rect[3].x = lrx;
-	m_rect[3].y = lry;
-	m_rect[3].z = Z;
-	m_rect[3].w = W;
 
-	struct
-	{
-		float s0, t0, s1, t1;
-	} texST[2] = { { 0, 0, 0, 0 }, { 0, 0, 0, 0 } }; //struct for texture coordinates
-
-	float offsetX, offsetY;
-	if (_params.flip) {
-		offsetX = (_params.lry - _params.uly) * _params.dsdx;
-		offsetY = (_params.lrx - _params.ulx) * _params.dtdy;
-	} else {
-		offsetX = (_params.lrx - _params.ulx) * _params.dsdx;
-		offsetY = (_params.lry - _params.uly) * _params.dtdy;
+	/* the cached textures the combiner samples, as the C side reads them */
+	gli_texrect_tex texs[2];
+	const gli_texrect_tex * tex[2] = { nullptr, nullptr };
+	for (u32 t = 0; t < 2; ++t) {
+		const CachedTexture * pTex = cache.current[t];
+		if (!pCurrentCombiner->usesTile(t) || pTex == nullptr || gSP.textureTile[t] == nullptr)
+			continue;
+		texs[t].offset[0] = pTex->offsetS;
+		texs[t].offset[1] = pTex->offsetT;
+		texs[t].scale[0] = pTex->scaleS;
+		texs[t].scale[1] = pTex->scaleT;
+		texs[t].size[0] = pTex->width;
+		texs[t].size[1] = pTex->height;
+		texs[t].fb = (u8)pTex->frameBufferTexture;
+		texs[t].maskS = pTex->maskS;
+		texs[t].mirrorS = pTex->mirrorS;
+		texs[t].mirrorT = pTex->mirrorT;
+		tex[t] = &texs[t];
 	}
 
+	const u32 clamp = gli_drawer_texrect_vertices(m_rect, &_params, tex, scale,
+		wnd.isAdjustScreen(), wnd.getAdjustScale());
 	for (u32 t = 0; t < 2; ++t) {
-		if (pCurrentCombiner->usesTile(t) && cache.current[t] && gSP.textureTile[t]) {
-			f32 shiftScaleS = 1.0f;
-			f32 shiftScaleT = 1.0f;
-
-			s16 S = _params.s;
-			if (gSP.textureTile[t]->shifts > 10) {
-				const u32 shifts = 16 - gSP.textureTile[t]->shifts;
-				S = (s16)(S << shifts);
-				shiftScaleS = (f32)(1 << shifts);
-			} else if (gSP.textureTile[t]->shifts > 0) {
-				const u32 shifts = gSP.textureTile[t]->shifts;
-				S = (s16)(S >> shifts);
-				shiftScaleS /= (f32)(1 << shifts);
-			}
-			const f32 uls = _FIXED2FLOAT(S, 5);
-			const f32 lrs = uls + offsetX * shiftScaleS;
-
-			s16 T = _params.t;
-			if (gSP.textureTile[t]->shiftt > 10) {
-				const u32 shiftt = 16 - gSP.textureTile[t]->shiftt;
-				T = (s16)(T << shiftt);
-				shiftScaleT = (f32)(1 << shiftt);
-			} else if (gSP.textureTile[t]->shiftt > 0) {
-				const u32 shiftt = gSP.textureTile[t]->shiftt;
-				T = (s16)(T >> shiftt);
-				shiftScaleT /= (f32)(1 << shiftt);
-			}
-			const f32 ult = _FIXED2FLOAT(T, 5);
-			const f32 lrt = ult + offsetY * shiftScaleT;
-
-			texST[t].s0 = uls - gSP.textureTile[t]->fuls;
-			texST[t].s1 = lrs - gSP.textureTile[t]->fuls;
-			texST[t].t0 = ult - gSP.textureTile[t]->fult;
-			texST[t].t1 = lrt - gSP.textureTile[t]->fult;
-
-			if (uls > lrs) {
-				texST[t].s0 -= _params.dsdx * shiftScaleS;
-				texST[t].s1 -= _params.dsdx * shiftScaleS;
-			}
-			if (ult > lrt) {
-				texST[t].t0 -= _params.dtdy * shiftScaleT;
-				texST[t].t1 -= _params.dtdy * shiftScaleT;
-			}
-
-			if (cache.current[t]->frameBufferTexture != CachedTexture::fbNone) {
-				texST[t].s0 = cache.current[t]->offsetS + texST[t].s0;
-				texST[t].t0 = cache.current[t]->offsetT + texST[t].t0;
-				texST[t].s1 = cache.current[t]->offsetS + texST[t].s1;
-				texST[t].t1 = cache.current[t]->offsetT + texST[t].t1;
-			}
-
-			if (cache.current[t]->frameBufferTexture != CachedTexture::fbMultiSample) {
-				Context::TexParameters texParams;
-
-				if ((cache.current[t]->mirrorS == 0 && cache.current[t]->maskS == 0 &&
-					(texST[t].s0 < texST[t].s1 ?
-					texST[t].s0 >= 0.0 && texST[t].s1 <= (float)cache.current[t]->width :
-					texST[t].s1 >= 0.0 && texST[t].s0 <= (float)cache.current[t]->width))
-					|| (cache.current[t]->maskS == 0 && (texST[t].s0 < -1024.0f || texST[t].s1 > 1023.99f)))
-					texParams.wrapS = textureParameters::WRAP_CLAMP_TO_EDGE;
-
-				if (cache.current[t]->mirrorT == 0 &&
-					(texST[t].t0 < texST[t].t1 ?
-					texST[t].t0 >= 0.0f && texST[t].t1 <= (float)cache.current[t]->height :
-					texST[t].t1 >= 0.0f && texST[t].t0 <= (float)cache.current[t]->height))
-					texParams.wrapT = textureParameters::WRAP_CLAMP_TO_EDGE;
-
-				if (texParams.wrapS.isValid() || texParams.wrapT.isValid()) {
-					texParams.handle = cache.current[t]->name;
-					texParams.target = textureTarget::TEXTURE_2D;
-					texParams.textureUnitIndex = textureIndices::Tex[t];
-					gfxContext.setTextureParameters(texParams);
-				}
-			}
-
-			texST[t].s0 *= cache.current[t]->scaleS;
-			texST[t].t0 *= cache.current[t]->scaleT;
-			texST[t].s1 *= cache.current[t]->scaleS;
-			texST[t].t1 *= cache.current[t]->scaleT;
-		}
+		const u32 c = (clamp >> (2 * t)) & 3;
+		if (c == 0)
+			continue;
+		Context::TexParameters texParams;
+		if (c & 1)
+			texParams.wrapS = textureParameters::WRAP_CLAMP_TO_EDGE;
+		if (c & 2)
+			texParams.wrapT = textureParameters::WRAP_CLAMP_TO_EDGE;
+		texParams.handle = cache.current[t]->name;
+		texParams.target = textureTarget::TEXTURE_2D;
+		texParams.textureUnitIndex = textureIndices::Tex[t];
+		gfxContext.setTextureParameters(texParams);
 	}
 
 	if (gDP.otherMode.cycleType == G_CYC_COPY && cache.current[0]->frameBufferTexture != CachedTexture::fbMultiSample) {
@@ -934,47 +851,6 @@ void GraphicsDrawer::drawTexturedRect(const TexturedRectParams & _params)
 		texParams.minFilter = textureParameters::FILTER_NEAREST;
 		texParams.magFilter = textureParameters::FILTER_NEAREST;
 		gfxContext.setTextureParameters(texParams);
-	}
-
-	m_rect[0].s0 = texST[0].s0;
-	m_rect[0].t0 = texST[0].t0;
-	m_rect[0].s1 = texST[1].s0;
-	m_rect[0].t1 = texST[1].t0;
-
-	m_rect[3].s0 = texST[0].s1;
-	m_rect[3].t0 = texST[0].t1;
-	m_rect[3].s1 = texST[1].s1;
-	m_rect[3].t1 = texST[1].t1;
-
-	if (_params.flip) {
-		m_rect[1].s0 = texST[0].s0;
-		m_rect[1].t0 = texST[0].t1;
-		m_rect[1].s1 = texST[1].s0;
-		m_rect[1].t1 = texST[1].t1;
-
-		m_rect[2].s0 = texST[0].s1;
-		m_rect[2].t0 = texST[0].t0;
-		m_rect[2].s1 = texST[1].s1;
-		m_rect[2].t1 = texST[1].t0;
-	} else {
-		m_rect[1].s0 = texST[0].s1;
-		m_rect[1].t0 = texST[0].t0;
-		m_rect[1].s1 = texST[1].s1;
-		m_rect[1].t1 = texST[1].t0;
-
-		m_rect[2].s0 = texST[0].s0;
-		m_rect[2].t0 = texST[0].t1;
-		m_rect[2].s1 = texST[1].s0;
-		m_rect[2].t1 = texST[1].t1;
-	}
-
-	if (wnd.isAdjustScreen() &&
-		(_params.forceAjustScale ||
-		((gDP.colorImage.width > VI.width * 98 / 100) && ((u32)(_params.lrx - _params.ulx) < VI.width * 9 / 10))))
-	{
-		const float scale = wnd.getAdjustScale();
-		for (u32 i = 0; i < 4; ++i)
-			m_rect[i].x *= scale;
 	}
 
 	if (bUseTexrectDrawer) {
@@ -999,10 +875,6 @@ void GraphicsDrawer::drawTexturedRect(const TexturedRectParams & _params)
 
 	gSP.changed |= CHANGED_GEOMETRYMODE | CHANGED_VIEWPORT;
 }
-
-/* the C side takes ulx, uly, lrx, lry as one array */
-static_assert(offsetof(GraphicsDrawer::TexturedRectParams, lry) ==
-	offsetof(GraphicsDrawer::TexturedRectParams, ulx) + 3 * sizeof(float), "texrect rect packing");
 
 void GraphicsDrawer::correctTexturedRectParams(TexturedRectParams & _params)
 {

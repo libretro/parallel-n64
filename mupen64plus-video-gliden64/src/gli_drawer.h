@@ -65,6 +65,32 @@ void gli_drawer_immersive_clip(RectVertex *_v, int _fullScreen, const f32 *_scal
  * rect is to be dropped */
 int gli_drawer_fill_rect(RectVertex *_v, const s32 *_r, const f32 *_scale, int _adjustScreen, f32 _adjustScale);
 
+/* A textured rectangle, in N64 pixels and texels */
+typedef struct gli_texrect_params
+{
+	f32 ulx, uly, lrx, lry;
+	f32 dsdx, dtdy;
+	s16 s, t;
+	u8 flip, forceAjustScale, texrectCmd;
+} gli_texrect_params;
+
+/* What the texrect math needs of a cached texture */
+enum { GLI_TEX_FB_NONE, GLI_TEX_FB_ONE_SAMPLE, GLI_TEX_FB_MULTI_SAMPLE };
+typedef struct gli_texrect_tex
+{
+	f32 offset[2]; /* offsetS, offsetT */
+	f32 scale[2];  /* scaleS, scaleT */
+	u16 size[2];   /* N64 width, height */
+	u8 fb;         /* GLI_TEX_FB_* */
+	u8 maskS, mirrorS, mirrorT;
+} gli_texrect_tex;
+
+/* Fills the four vertices of textured rect @_p, positions and both tiles'
+ * coordinates; @_tex[t] is NULL for a tile not sampled. Returns two bits per
+ * tile, bit 2t to clamp S to the edge and bit 2t + 1 to clamp T */
+u32 gli_drawer_texrect_vertices(RectVertex *_v, const gli_texrect_params *_p,
+		const gli_texrect_tex *const *_tex, const f32 *_scale, int _adjustScreen, f32 _adjustScale);
+
 /* all three vertices outside the same clip plane */
 #define GLI_IS_CLIPPED(_v, _a, _b, _c) (((_v)[_a].clip & (_v)[_b].clip & (_v)[_c].clip) != 0)
 

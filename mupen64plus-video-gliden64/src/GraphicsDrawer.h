@@ -6,6 +6,7 @@
 #include <chrono>
 #include <string>
 #include "gSP.h"
+#include "gli_drawer.h"
 #include "TexrectDrawer.h"
 #include "Graphics/ObjectHandle.h"
 #include "Graphics/Parameters.h"
@@ -45,12 +46,8 @@ public:
 
 	void drawRect(int _ulx, int _uly, int _lrx, int _lry);
 
-	struct TexturedRectParams
+	struct TexturedRectParams : gli_texrect_params
 	{
-		float ulx, uly, lrx, lry;
-		float dsdx, dtdy;
-		s16 s, t;
-		bool flip, forceAjustScale, texrectCmd;
 		const FrameBuffer * pBuffer;
 		TexturedRectParams(float _ulx, float _uly, float _lrx, float _lry,
 			float _dsdx, float _dtdy,
@@ -58,12 +55,13 @@ public:
 			bool _flip, bool _forceAjustScale, bool _texrectCmd,
 			const FrameBuffer * _pBuffer
 			) :
-			ulx(_ulx), uly(_uly), lrx(_lrx), lry(_lry),
-			dsdx(_dsdx), dtdy(_dtdy),
-			s(_s), t(_t),
-			flip(_flip), forceAjustScale(_forceAjustScale), texrectCmd(_texrectCmd),
 			pBuffer(_pBuffer)
-		{}
+		{
+			ulx = _ulx; uly = _uly; lrx = _lrx; lry = _lry;
+			dsdx = _dsdx; dtdy = _dtdy;
+			s = _s; t = _t;
+			flip = _flip; forceAjustScale = _forceAjustScale; texrectCmd = _texrectCmd;
+		}
 	};
 
 	void correctTexturedRectParams(TexturedRectParams & _params);
