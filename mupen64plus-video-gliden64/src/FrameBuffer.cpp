@@ -1000,10 +1000,7 @@ void FrameBufferList::_renderScreenSizeBuffer()
 	DisplayWindow & wnd = dwnd();
 	GraphicsDrawer & drawer = wnd.getDrawer();
 	FrameBuffer *pBuffer = &m_list.back();
-	PostProcessor & postProcessor = PostProcessor::get();
-	FrameBuffer * pFilteredBuffer = pBuffer;
-	for (const auto & f : postProcessor.getPostprocessingList())
-		pFilteredBuffer = f(postProcessor, pFilteredBuffer);
+	FrameBuffer * pFilteredBuffer = gli_pp_run(pBuffer);
 	CachedTexture * pBufferTexture = pFilteredBuffer->m_pTexture;
 
 	const u32 wndWidth = wnd.getWidth();
@@ -1455,7 +1452,6 @@ void FrameBufferList::renderBuffer()
 		dstY1 = dstY0 + rdpRes.vi_vres;
 		srcY1 = srcY0 + srcHeight;
 	}
-	PostProcessor & postProcessor = PostProcessor::get();
 	// Post-processing keeps the buffer's scale and size, so the presented area is measured on it
 	const FrameBuffer * pFilteredBuffer = pBuffer;
 
@@ -1516,9 +1512,7 @@ void FrameBufferList::renderBuffer()
 			if (pLeftEye != nullptr)
 				pSource = pLeftEye;
 		}
-		pEyeBuffer = pSource;
-		for (const auto & f : postProcessor.getPostprocessingList())
-			pEyeBuffer = f(postProcessor, pEyeBuffer);
+		pEyeBuffer = gli_pp_run(pSource);
 		if (pEyeBuffer->m_pTexture->frameBufferTexture == CachedTexture::fbMultiSample) {
 			pEyeBuffer->resolveMultisampledTexture(true);
 			readBuffer = pEyeBuffer->m_resolveFBO;
@@ -1565,9 +1559,7 @@ void FrameBufferList::renderBuffer()
 				if (pLeftEye != nullptr)
 					pSource = pLeftEye;
 			}
-			pEyeBuffer = pSource;
-			for (const auto & f : postProcessor.getPostprocessingList())
-				pEyeBuffer = f(postProcessor, pEyeBuffer);
+			pEyeBuffer = gli_pp_run(pSource);
 			if (pEyeBuffer->m_pTexture->frameBufferTexture == CachedTexture::fbMultiSample) {
 				pEyeBuffer->resolveMultisampledTexture();
 				readBuffer = pEyeBuffer->m_resolveFBO;
@@ -2138,4 +2130,115 @@ void gli_fb_stereo_delete(FrameBuffer * _pBuffer)
 bool gli_fb_has_texture(const FrameBuffer * _pBuffer)
 {
 	return _pBuffer->m_pTexture != nullptr;
+}
+
+/* post-processing */
+FrameBuffer * gli_fb_pp_create(const FrameBuffer * _pMainBuffer)
+{
+	FrameBuffer * pResultBuffer = new FrameBuffer();
+	pResultBuffer->m_width = _pMainBuffer->m_width;
+	pResultBuffer->m_height = _pMainBuffer->m_height;
+	pResultBuffer->m_scale = _pMainBuffer->m_scale;
+
+	const CachedTexture * pMainTexture = _pMainBuffer->m_pTexture;
+	CachedTexture * pTexture = pResultBuffer->m_pTexture;
+	pTexture->format = G_IM_FMT_RGBA;
+	pTexture->clampS = 1;
+	pTexture->clampT = 1;
+	pTexture->frameBufferTexture = CachedTexture::fbOneSample;
+	pTexture->maskS = 0;
+	pTexture->maskT = 0;
+	pTexture->mirrorS = 0;
+	pTexture->mirrorT = 0;
+	pTexture->realWidth = pMainTexture->realWidth;
+	pTexture->realHeight = pMainTexture->realHeight;
+	pTexture->textureBytes = pTexture->realWidth * pTexture->realHeight * 4;
+
+	Context::InitTextureParams initParams;
+	initParams.handle = pTexture->name;
+	initParams.width = pTexture->realWidth;
+	initParams.height = pTexture->realHeight;
+	initParams.internalFormat = gfxContext.convertInternalTextureFormat(u32(internalcolorFormat::RGBA8));
+	initParams.format = colorFormat::RGBA;
+	initParams.dataType = datatype::UNSIGNED_BYTE;
+	gfxContext.init2DTexture(initParams);
+
+	Context::TexParameters setParams;
+	setParams.handle = pTexture->name;
+	setParams.target = textureTarget::TEXTURE_2D;
+	setParams.minFilter = textureParameters::FILTER_NEAREST;
+	setParams.magFilter = textureParameters::FILTER_NEAREST;
+	gfxContext.setTextureParameters(setParams);
+
+	Context::FrameBufferRenderTarget bufTarget;
+	bufTarget.bufferHandle = pResultBuffer->m_FBO;
+	bufTarget.bufferTarget = bufferTarget::DRAW_FRAMEBUFFER;
+	bufTarget.attachment = bufferAttachment::COLOR_ATTACHMENT0;
+	bufTarget.textureTarget = textureTarget::TEXTURE_2D;
+	bufTarget.textureHandle = pTexture->name;
+	gfxContext.addFrameBufferRenderTarget(bufTarget);
+	assert(!gfxContext.isFramebufferError());
+	return pResultBuffer;
+}
+
+void gli_fb_pp_draw(FrameBuffer * _pBuffer, FrameBuffer * _pResult, gli_shader * _pShader)
+{
+	CachedTexture * pTextureOriginal;
+	if (_pBuffer->m_pTexture->frameBufferTexture == CachedTexture::fbMultiSample) {
+		_pBuffer->resolveMultisampledTexture(true);
+		pTextureOriginal = _pBuffer->m_pResolveTexture;
+	} else
+		pTextureOriginal = _pBuffer->m_pTexture;
+
+	gfxContext.bindFramebuffer(bufferTarget::READ_FRAMEBUFFER,
+		ObjectHandle::defaultFramebuffer);
+
+	gfxContext.bindFramebuffer(bufferTarget::DRAW_FRAMEBUFFER,
+		ObjectHandle(_pResult->m_FBO));
+
+	CachedTexture * pDstTex = _pResult->m_pTexture;
+	GraphicsDrawer::CopyRectParams copyParams;
+	copyParams.srcX0 = 0;
+	copyParams.srcY0 = 0;
+	copyParams.srcX1 = pTextureOriginal->realWidth;
+	copyParams.srcY1 = pTextureOriginal->realHeight;
+	copyParams.srcWidth = pTextureOriginal->realWidth;
+	copyParams.srcHeight = pTextureOriginal->realHeight;
+	copyParams.dstX0 = 0;
+	copyParams.dstY0 = 0;
+	copyParams.dstX1 = pDstTex->realWidth;
+	copyParams.dstY1 = pDstTex->realHeight;
+	copyParams.dstWidth = pDstTex->realWidth;
+	copyParams.dstHeight = pDstTex->realHeight;
+	copyParams.tex[0] = pTextureOriginal;
+	copyParams.filter = textureParameters::FILTER_NEAREST;
+	copyParams.combiner = reinterpret_cast<ShaderProgram*>(_pShader);
+
+	dwnd().getDrawer().copyTexturedRect(copyParams);
+
+	gfxContext.bindFramebuffer(bufferTarget::DRAW_FRAMEBUFFER,
+		ObjectHandle::defaultFramebuffer);
+
+	gfxContext.resetShaderProgram();
+}
+
+
+void gli_fb_delete(FrameBuffer * _pBuffer)
+{
+	delete _pBuffer;
+}
+
+gli_shader * gli_gfx_create_gamma_shader(void)
+{
+	return reinterpret_cast<gli_shader*>(gfxContext.createGammaCorrectionShader());
+}
+
+gli_shader * gli_gfx_create_fxaa_shader(void)
+{
+	return reinterpret_cast<gli_shader*>(gfxContext.createFXAAShader());
+}
+
+void gli_gfx_delete_shader(gli_shader * _pShader)
+{
+	delete reinterpret_cast<ShaderProgram*>(_pShader);
 }

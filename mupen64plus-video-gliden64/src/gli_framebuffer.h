@@ -9,6 +9,9 @@
 extern "C" {
 #endif
 
+/* a graphics::ShaderProgram, opaque to C */
+struct gli_shader;
+
 /* The buffer lists, for C command handlers */
 void gli_fb_set_color_image(u32 _address, u32 _format, u32 _size, u32 _width);
 void gli_fb_fill_rdram(s32 _ulx, s32 _uly, s32 _lrx, s32 _lry);
@@ -27,6 +30,13 @@ bool gli_fb_has_texture(const struct FrameBuffer *_pBuffer);
 /* copies the color image into *_ppLeftEye, made or remade to fit */
 bool gli_fb_stereo_copy(struct FrameBuffer *_pBuffer, struct FrameBuffer **_ppLeftEye);
 void gli_fb_stereo_delete(struct FrameBuffer *_pBuffer);
+void gli_fb_delete(struct FrameBuffer *_pBuffer);
+/* a buffer the size of _pMainBuffer for the post-processors to draw into */
+struct FrameBuffer *gli_fb_pp_create(const struct FrameBuffer *_pMainBuffer);
+void gli_fb_pp_draw(struct FrameBuffer *_pBuffer, struct FrameBuffer *_pResult, struct gli_shader *_pShader);
+struct gli_shader *gli_gfx_create_gamma_shader(void);
+struct gli_shader *gli_gfx_create_fxaa_shader(void);
+void gli_gfx_delete_shader(struct gli_shader *_pShader);
 void gli_fb_make_current(u32 _address);
 void gli_fb_bind_draw(const struct FrameBuffer *_pBuffer);
 void gli_fb_set_current_draw_buffer(void);

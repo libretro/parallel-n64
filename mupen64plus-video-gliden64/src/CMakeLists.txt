@@ -33,7 +33,7 @@ set(GLideN64_SOURCES
   N64.c
   NoiseTexture.c
   PaletteTexture.c
-  PostProcessor.cpp
+  PostProcessor.c
   RDP.c
   RSP.c
   RSP_LoadMatrix.c

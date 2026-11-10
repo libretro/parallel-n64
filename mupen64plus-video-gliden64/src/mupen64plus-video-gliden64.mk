@@ -37,7 +37,7 @@ MY_LOCAL_SRC_FILES :=                                                           
     $(SRCDIR)/N64.c                                                              \
     $(SRCDIR)/NoiseTexture.c                                                       \
     $(SRCDIR)/PaletteTexture.c                                                     \
-    $(SRCDIR)/PostProcessor.cpp                                                    \
+    $(SRCDIR)/PostProcessor.c                                                     \
     $(SRCDIR)/RDP.c                                                              \
     $(SRCDIR)/RSP.c                                                              \
     $(SRCDIR)/SoftwareRender.c                                                   \
