@@ -3353,9 +3353,11 @@ void vkr_destroy(vkr_renderer *r)
          if (r->pipes[i].pipeline != VK_NULL_HANDLE)
             F(DestroyPipeline)(r->device, r->pipes[i].pipeline, NULL);
    for (i = 0; i < r->n_rps; i++)
+   {
       F(DestroyRenderPass)(r->device, r->rps[i].rp, NULL);
       if (r->rps[i].rp_ro != VK_NULL_HANDLE)
          F(DestroyRenderPass)(r->device, r->rps[i].rp_ro, NULL);
+   }
    for (i = 0; i < r->n_samplers; i++)
       F(DestroySampler)(r->device, r->samplers[i].s, NULL);
    for (i = 0; i < VKR_VS_COUNT; i++)
