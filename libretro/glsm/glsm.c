@@ -1190,8 +1190,6 @@ void rglProgramParameteri( 	GLuint program,
 {
 #if !defined(HAVE_OPENGLES) || defined(HAVE_OPENGLES) && (defined(HAVE_OPENGLES3) || defined(HAVE_OPENGLES_3_1))
    glProgramParameteri(program, pname, value);
-#else
-   printf("WARNING! Not implemented.\n");
 #endif
 }
 
@@ -1264,8 +1262,6 @@ void rglGetActiveUniformBlockiv(GLuint program,
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES) && defined(HAVE_OPENGLES3)
    glGetActiveUniformBlockiv(program, uniformBlockIndex,
          pname, params);
-#else
-   printf("WARNING! Not implemented.\n");
 #endif
 }
 
@@ -1284,8 +1280,6 @@ void rglGetActiveUniformsiv( 	GLuint program,
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES) && defined(HAVE_OPENGLES3)
    glGetActiveUniformsiv(program, uniformCount,
          uniformIndices, pname, params);
-#else
-   printf("WARNING! Not implemented.\n");
 #endif
 }
 
@@ -1300,8 +1294,6 @@ void rglGetUniformIndices(GLuint program, GLsizei uniformCount, const GLchar *co
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES) && defined(HAVE_OPENGLES3)
    glGetUniformIndices(program, uniformCount,
          uniformNames, uniformIndices);
-#else
-   printf("WARNING! Not implemented.\n");
 #endif
 }
 
@@ -1318,8 +1310,6 @@ void rglBindBufferBase( 	GLenum target,
 {
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES) && defined(HAVE_OPENGLES3)
    glBindBufferBase(target, index, buffer);
-#else
-   printf("WARNING! Not implemented.\n");
 #endif
 }
 
@@ -1337,7 +1327,6 @@ GLuint rglGetUniformBlockIndex( 	GLuint program,
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES) && defined(HAVE_OPENGLES3)
    return glGetUniformBlockIndex(program, uniformBlockName);
 #else
-   printf("WARNING! Not implemented.\n");
    return 0;
 #endif
 }
@@ -1356,8 +1345,6 @@ void rglUniformBlockBinding( 	GLuint program,
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES) && defined(HAVE_OPENGLES3)
    glUniformBlockBinding(program, uniformBlockIndex,
          uniformBlockBinding);
-#else
-   printf("WARNING! Not implemented.\n");
 #endif
 }
 
@@ -2121,7 +2108,6 @@ void *rglMapBufferRange( 	GLenum target,
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES) && defined(HAVE_OPENGLES3)
    return glMapBufferRange(target, offset, length, access);
 #else
-   printf("WARNING! Not implemented.\n");
    return NULL;
 #endif
 }
@@ -2224,8 +2210,6 @@ void rglGetProgramBinary( 	GLuint program,
 {
 #if !defined(HAVE_OPENGLES) || defined(HAVE_OPENGLES) && defined(HAVE_OPENGLES3)
    glGetProgramBinary(program, bufsize, length, binaryFormat, binary);
-#else
-   printf("WARNING! Not implemented.\n");
 #endif
 }
 
@@ -2242,8 +2226,6 @@ void rglProgramBinary(GLuint program,
 {
 #if !defined(HAVE_OPENGLES) || defined(HAVE_OPENGLES) && (defined(HAVE_OPENGLES3) || defined(HAVE_OPENGLES_3_1))
    glProgramBinary(program, binaryFormat, binary, length);
-#else
-   printf("WARNING! Not implemented.\n");
 #endif
 }
 
