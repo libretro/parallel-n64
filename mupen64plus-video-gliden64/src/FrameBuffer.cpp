@@ -566,18 +566,10 @@ FrameBuffer * FrameBufferList::getBuffer(u32 _startAddress)
 	return nullptr;
 }
 
-inline
-bool isOverlapping(const FrameBuffer * _buf1, const FrameBuffer * _buf2)
+static bool isOverlapping(const FrameBuffer * _buf1, const FrameBuffer * _buf2)
 {
-	if (_buf1->m_endAddress < _buf2->m_endAddress && _buf1->m_width == _buf2->m_width && _buf1->m_size == _buf2->m_size) {
-		const u32 diff = _buf1->m_endAddress - _buf2->m_startAddress + 1;
-		const u32 stride = _buf1->m_width << _buf1->m_size >> 1;
-		if ((diff % stride == 0) && (diff / stride < 5))
-			return true;
-		else
-			return false;
-	}
-	return false;
+	return gli_fb_overlapping(_buf1->m_startAddress, _buf1->m_endAddress, _buf1->m_width, _buf1->m_size,
+		_buf2->m_startAddress, _buf2->m_endAddress, _buf2->m_width, _buf2->m_size) != 0;
 }
 
 void FrameBufferList::removeIntersections()
@@ -1420,28 +1412,9 @@ void FrameBufferList::fillRDRAM(s32 ulx, s32 uly, s32 lrx, s32 lry)
 		// Do not write to RDRAM color buffer if copyFromRDRAM enabled.
 		return;
 
-	ulx = (s32)min(max((float)ulx, gDP.scissor.ulx), gDP.scissor.lrx);
-	lrx = (s32)min(max((float)lrx, gDP.scissor.ulx), gDP.scissor.lrx);
-	uly = (s32)min(max((float)uly, gDP.scissor.uly), gDP.scissor.lry);
-	lry = (s32)min(max((float)lry, gDP.scissor.uly), gDP.scissor.lry);
-
-	const u32 stride = gDP.colorImage.width << gDP.colorImage.size >> 1;
-	const u32 lowerBound = gDP.colorImage.address + lry*stride;
-	if (lowerBound > RDRAMSize)
-		lry -= (lowerBound - RDRAMSize) / stride;
-	u32 ci_width_in_dwords = gDP.colorImage.width >> (3 - gDP.colorImage.size);
-	ulx >>= (3 - gDP.colorImage.size);
-	lrx >>= (3 - gDP.colorImage.size);
-	u32 * dst = (u32*)(RDRAM + gDP.colorImage.address);
-	dst += uly * ci_width_in_dwords;
-	for (s32 y = uly; y < lry; ++y) {
-		for (s32 x = ulx; x < lrx; ++x) {
-			dst[x] = gDP.fillColor.color;
-		}
-		dst += ci_width_in_dwords;
-	}
-
-	m_pCurrent->setBufferClearParams(gDP.fillColor.color, ulx, uly, lrx, lry);
+	s32 rect[4];
+	gli_fb_rdram_fill(ulx, uly, lrx, lry, rect);
+	m_pCurrent->setBufferClearParams(gDP.fillColor.color, rect[0], rect[1], rect[2], rect[3]);
 }
 
 void FrameBuffer_ActivateBufferTexture(u32 t, u32 _frameBufferAddress)

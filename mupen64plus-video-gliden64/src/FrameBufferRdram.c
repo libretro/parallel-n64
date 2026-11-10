@@ -2,6 +2,7 @@
 
 #include "Types.h"
 #include "N64.h"
+#include "gDP.h"
 #include "gli_fb_rdram.h"
 
 static const u32 fingerprint[4] = { 2, 6, 4, 3 };
@@ -73,4 +74,55 @@ int gli_fb_rdram_copy_valid(u32 _startAddress, const u8 *_copy, u32 _size)
 			++wrongPixels;
 	}
 	return wrongPixels < _size / 400;
+}
+
+/* std::min(std::max(v, lo), hi), comparisons in the same order */
+static f32 clampf(f32 _v, f32 _lo, f32 _hi)
+{
+	const f32 m = _v < _lo ? _lo : _v;
+	return _hi < m ? _hi : m;
+}
+
+void gli_fb_rdram_fill(s32 _ulx, s32 _uly, s32 _lrx, s32 _lry, s32 *_rect)
+{
+	u32 stride, lowerBound, ci_width_in_dwords;
+	u32 *dst;
+	s32 x, y;
+
+	_ulx = (s32)clampf((f32)_ulx, gDP.scissor.ulx, gDP.scissor.lrx);
+	_lrx = (s32)clampf((f32)_lrx, gDP.scissor.ulx, gDP.scissor.lrx);
+	_uly = (s32)clampf((f32)_uly, gDP.scissor.uly, gDP.scissor.lry);
+	_lry = (s32)clampf((f32)_lry, gDP.scissor.uly, gDP.scissor.lry);
+
+	stride = gDP.colorImage.width << gDP.colorImage.size >> 1;
+	lowerBound = gDP.colorImage.address + _lry * stride;
+	if (lowerBound > RDRAMSize)
+		_lry -= (lowerBound - RDRAMSize) / stride;
+	ci_width_in_dwords = gDP.colorImage.width >> (3 - gDP.colorImage.size);
+	_ulx >>= (3 - gDP.colorImage.size);
+	_lrx >>= (3 - gDP.colorImage.size);
+	dst = (u32*)(RDRAM + gDP.colorImage.address);
+	dst += _uly * ci_width_in_dwords;
+	for (y = _uly; y < _lry; ++y) {
+		for (x = _ulx; x < _lrx; ++x)
+			dst[x] = gDP.fillColor.color;
+		dst += ci_width_in_dwords;
+	}
+
+	_rect[0] = _ulx;
+	_rect[1] = _uly;
+	_rect[2] = _lrx;
+	_rect[3] = _lry;
+}
+
+int gli_fb_overlapping(u32 _start1, u32 _end1, u32 _width1, u32 _size1,
+		u32 _start2, u32 _end2, u32 _width2, u32 _size2)
+{
+	u32 diff, stride;
+	(void)_start1;
+	if (!(_end1 < _end2 && _width1 == _width2 && _size1 == _size2))
+		return 0;
+	diff = _end1 - _start2 + 1;
+	stride = _width1 << _size1 >> 1;
+	return (diff % stride == 0) && (diff / stride < 5);
 }
