@@ -126,3 +126,31 @@ int gli_fb_overlapping(u32 _start1, u32 _end1, u32 _width1, u32 _size1,
 	stride = _width1 << _size1 >> 1;
 	return (diff % stride == 0) && (diff / stride < 5);
 }
+
+int gli_fb_is_sub_buffer(u32 _bufStart, u32 _bufEnd, u32 _bufWidth, u32 _bufSize,
+		int _bufCfb, u32 _bufSwapCount, u32 _swapCount, u32 _address, u32 _width, u32 _size)
+{
+	u32 stride;
+	if (_bufSwapCount != _swapCount || _bufCfb || _bufWidth != _width || _bufSize != _size)
+		return 0;
+	stride = _width << _size >> 1;
+	if ((_address - _bufStart) % stride != 0)
+		return 1;
+	return (_bufEnd - _address + 1) / stride > 5;
+}
+
+int gli_fb_runs_into(u32 _bufEnd, u32 _bufWidth, u32 _bufSize,
+		u32 _address, u32 _width, u32 _size)
+{
+	if (_bufWidth != _width || _bufSize != _size)
+		return 0;
+	return (_bufEnd - _address + 1) / (_width << _size >> 1) < 5;
+}
+
+void gli_fb_sub_origin(u32 _bufStart, u32 _address, u32 _width, u32 _size, u32 *_originX, u32 *_originY)
+{
+	const u32 stride = _width << _size >> 1;
+	const u32 addrOffset = _address - _bufStart;
+	*_originX = (addrOffset % stride) >> (_size - 1);
+	*_originY = addrOffset / stride;
+}

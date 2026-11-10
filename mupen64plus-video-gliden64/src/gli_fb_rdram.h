@@ -29,6 +29,20 @@ void gli_fb_rdram_fill(s32 _ulx, s32 _uly, s32 _lrx, s32 _lry, s32 *_rect);
 int gli_fb_overlapping(u32 _start1, u32 _end1, u32 _width1, u32 _size1,
 		u32 _start2, u32 _end2, u32 _width2, u32 _size2);
 
+/* Whether color image @_address of @_width and @_size, drawn this swap,
+ * lies inside a buffer from @_bufStart to @_bufEnd off its line starts
+ * or more than five lines before its end */
+int gli_fb_is_sub_buffer(u32 _bufStart, u32 _bufEnd, u32 _bufWidth, u32 _bufSize,
+		int _bufCfb, u32 _bufSwapCount, u32 _swapCount, u32 _address, u32 _width, u32 _size);
+
+/* Whether a buffer ending at @_bufEnd runs under five lines into the
+ * color image at @_address */
+int gli_fb_runs_into(u32 _bufEnd, u32 _bufWidth, u32 _bufSize,
+		u32 _address, u32 _width, u32 _size);
+
+/* Where color image @_address starts inside the buffer at @_bufStart */
+void gli_fb_sub_origin(u32 _bufStart, u32 _address, u32 _width, u32 _size, u32 *_originX, u32 *_originY);
+
 #ifdef __cplusplus
 }
 #endif

@@ -680,47 +680,21 @@ void FrameBufferList::saveBuffer(u32 _address, u16 _format, u16 _size, u16 _widt
 	if (m_pCurrent == nullptr || m_pCurrent->m_startAddress != _address || m_pCurrent->m_width != _width)
 		m_pCurrent = findBuffer(_address);
 
-	auto isSubBuffer = [_address, _width, _size, &wnd](const FrameBuffer * _pBuffer) -> bool
-	{
-		if (_pBuffer->m_swapCount == wnd.getBuffersSwapCount() &&
-			!_pBuffer->m_cfb &&
-			_pBuffer->m_width == _width &&
-			_pBuffer->m_size == _size)
-		{
-			const u32 stride = _width << _size >> 1;
-			const u32 diffFromStart = _address - _pBuffer->m_startAddress;
-			if (diffFromStart % stride != 0)
-				return true;
-			const u32 diffFromEnd = _pBuffer->m_endAddress - _address + 1;
-			if ((diffFromEnd / stride > 5))
-				return true;
-		}
-		return false;
-	};
-
-	auto isOverlappingBuffer = [_address, _width, _size](const FrameBuffer * _pBuffer) -> bool
-	{
-		if (_pBuffer->m_width == _width && _pBuffer->m_size == _size) {
-			const u32 stride = _width << _size >> 1;
-			const u32 diffEnd = _pBuffer->m_endAddress - _address + 1;
-			if ((diffEnd / stride < 5))
-				return true;
-		}
-		return false;
-	};
-
 	if (m_pCurrent != nullptr) {
 		m_pCurrent->m_originX = m_pCurrent->m_originY = 0;
 		if ((m_pCurrent->m_startAddress != _address)) {
-			if (isSubBuffer(m_pCurrent)) {
-				const u32 stride = _width << _size >> 1;
-				const u32 addrOffset = _address - m_pCurrent->m_startAddress;
-				m_pCurrent->m_originX = (addrOffset % stride) >> (_size - 1);
-				m_pCurrent->m_originY = addrOffset / stride;
+			if (gli_fb_is_sub_buffer(m_pCurrent->m_startAddress, m_pCurrent->m_endAddress,
+					m_pCurrent->m_width, m_pCurrent->m_size, m_pCurrent->m_cfb,
+					m_pCurrent->m_swapCount, wnd.getBuffersSwapCount(), _address, _width, _size)) {
+				u32 originX, originY;
+				gli_fb_sub_origin(m_pCurrent->m_startAddress, _address, _width, _size, &originX, &originY);
+				m_pCurrent->m_originX = originX;
+				m_pCurrent->m_originY = originY;
 				gSP.changed |= CHANGED_VIEWPORT;
 				gDP.changed |= CHANGED_SCISSOR;
 				return;
-			} else if (isOverlappingBuffer(m_pCurrent)) {
+			} else if (gli_fb_runs_into(m_pCurrent->m_endAddress, m_pCurrent->m_width,
+					m_pCurrent->m_size, _address, _width, _size)) {
 				m_pCurrent->m_endAddress = _address - 1;
 				m_pCurrent = nullptr;
 			} else {
