@@ -5,7 +5,8 @@
 
 static struct gli_shader * l_gammaCorrectionProgram;
 static struct gli_shader * l_FXAAProgram;
-static struct FrameBuffer * l_pResultBuffer;
+/* two, so that a pass never reads the buffer it draws into */
+static struct FrameBuffer * l_pResultBuffers[2];
 static bool l_doFXAA;
 
 void gli_pp_init(void)
@@ -25,19 +26,21 @@ void gli_pp_destroy(void)
 	l_gammaCorrectionProgram = NULL;
 	gli_gfx_delete_shader(l_FXAAProgram);
 	l_FXAAProgram = NULL;
-	gli_fb_delete(l_pResultBuffer);
-	l_pResultBuffer = NULL;
+	gli_fb_delete(l_pResultBuffers[0]);
+	gli_fb_delete(l_pResultBuffers[1]);
+	l_pResultBuffers[0] = l_pResultBuffers[1] = NULL;
 }
 
 static struct FrameBuffer * _doPostProcessing(struct FrameBuffer * _pBuffer, struct gli_shader * _pShader)
 {
-	if (l_pResultBuffer == NULL || gli_fb_width(l_pResultBuffer) != gli_fb_width(_pBuffer)) {
+	struct FrameBuffer ** ppResult = &l_pResultBuffers[_pBuffer == l_pResultBuffers[0] ? 1 : 0];
+	if (*ppResult == NULL || gli_fb_width(*ppResult) != gli_fb_width(_pBuffer)) {
 		struct FrameBuffer * pResult = gli_fb_pp_create(_pBuffer);
-		gli_fb_delete(l_pResultBuffer);
-		l_pResultBuffer = pResult;
+		gli_fb_delete(*ppResult);
+		*ppResult = pResult;
 	}
-	gli_fb_pp_draw(_pBuffer, l_pResultBuffer, _pShader);
-	return l_pResultBuffer;
+	gli_fb_pp_draw(_pBuffer, *ppResult, _pShader);
+	return *ppResult;
 }
 
 static struct FrameBuffer * _doGammaCorrection(struct FrameBuffer * _pBuffer)

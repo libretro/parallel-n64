@@ -8,7 +8,7 @@ pipelines (own). Any pixel off by more than one step fails.
 
   gliden64_vulkan.py --core parallel_n64_libretro.so --gl ./lrhost_gl --vk ./lrhost_vk [--roms krom-roms]
 """
-import argparse, os, struct, subprocess, sys, tempfile
+import argparse, os, re, struct, subprocess, sys, tempfile
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import gliden64_ubershader as cart
 
@@ -39,13 +39,14 @@ def run(host, core, rom, tmp, name, frames, api, env_extra, options=()):
     return out
 
 
-def culling_cartridge(path, resize=False, shadow=False):
+def culling_cartridge(path, resize=False, shadow=False, gamma=False):
     """An F3D task, run by the HLE RSP: triangles of both windings, under each
     cull mode. The other test content goes straight to the RDP and never culls.
     With resize the game's image changes width every few frames. With shadow
     the rows are depth tested at three depths and a texrect then reads the
     depth image, which a game named BEETLE draws as a shadow map through the
-    z and palette lookup textures."""
+    z and palette lookup textures. With gamma the VI asks for gamma correction,
+    which GLideN64 does as a post-processing pass."""
     t0, t1, t2, t3, t4, t5, t6, t7 = 8, 9, 10, 11, 12, 13, 14, 15
     mips = cart.mips
     FB, ZB, DATA = 0x100000, 0x180000, 0x200000
@@ -76,6 +77,8 @@ def culling_cartridge(path, resize=False, shadow=False):
         for c, colour in enumerate((left, right)):
             x0 = -80 + 80 * c
             a, b, d = (x0 - 30, y0 - 20), (x0 + 30, y0 - 20), (x0, y0 + 20)
+            if gamma:  # mid tones, which gamma changes
+                colour = tuple(v * 120 // 255 for v in colour)
             for p in ((a, b, d) if c == 0 else (a, d, b)):
                 verts += vtx(p[0], p[1], *colour, z=(40 * r - 40) if shadow else 0)
         tris.append(cull)
@@ -132,7 +135,7 @@ def culling_cartridge(path, resize=False, shadow=False):
     prog += li(t1, 0x10000000 + cart.PAYLOAD) + [sw(t1, 4, t0)]
     prog += li(t1, len(data) - 1) + [sw(t1, 0xC, t0)]
     prog += [lui(t0, 0xA440)]
-    for k, v in enumerate([0x3002, FB, W, 2, 0, 0x03E52239, 0x20D, 0xC15, 0x0C150C15,
+    for k, v in enumerate([0x300A if gamma else 0x3002, FB, W, 2, 0, 0x03E52239, 0x20D, 0xC15, 0x0C150C15,
                            0x006C02EC, 0x002501FF, 0x000E0204, 0x200, 0x400]):
         prog += li(t2, v) + [sw(t2, 4 * k, t0)]
     prog += li(t0, 0xA4000FC0)
@@ -163,6 +166,31 @@ def culling_cartridge(path, resize=False, shadow=False):
     image[cart.PAYLOAD:cart.PAYLOAD + len(data)] = data
     with open(path, "wb") as f:
         f.write(image)
+
+
+def validate(a, name, rom, frames, options=()):
+    """Vulkan under the Khronos validation layer with synchronization validation:
+    no validation error and no read or write hazard."""
+    layers = [d for d in os.environ.get("VK_LAYER_PATH", "").split(os.pathsep) if d]
+    layers += ["/usr/share/vulkan/explicit_layer.d", "/usr/local/share/vulkan/explicit_layer.d", "/etc/vulkan/explicit_layer.d"]
+    if not any(os.path.isdir(d) and any("khronos_validation" in f.lower() for f in os.listdir(d)) for d in layers):
+        print("%-10s validation skipped: the Khronos validation layer is not installed" % name)
+        return 0
+    with tempfile.TemporaryDirectory() as tmp:
+        env = dict(os.environ, EGL_PLATFORM="surfaceless", LRHOST_SYSTEM_DIR=tmp,
+                   VK_INSTANCE_LAYERS="VK_LAYER_KHRONOS_validation",
+                   VK_LAYER_ENABLES="VK_VALIDATION_FEATURE_ENABLE_SYNCHRONIZATION_VALIDATION_EXT",
+                   VK_KHRONOS_VALIDATION_DEBUG_ACTION="VK_DBG_LAYER_ACTION_LOG_MSG",
+                   VK_KHRONOS_VALIDATION_REPORT_FLAGS="error,warn")
+        p = subprocess.run([a.vk, a.core, rom, str(frames)] + OPTIONS + list(options) + ["parallel-n64-gliden64-API=Vulkan"],
+                           env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=600)
+    out = p.stdout.decode("utf-8", "replace")
+    found = {}
+    for m in re.findall(r"(VUID-[A-Za-z0-9_-]+|SYNC-HAZARD-[A-Z-]+)", out):
+        found[m] = found.get(m, 0) + 1
+    bad = p.returncode != 0 or found
+    print("%-10s validation %s%s" % (name, "FAILED" if bad else "ok", "".join(" %s:%d" % kv for kv in sorted(found.items()))))
+    return 1 if bad else 0
 
 
 def worst(gl, vk):
@@ -225,6 +253,11 @@ def main():
         culling_cartridge(rom, resize=True)
         failures += compare(a, "resize", rom, 40, ["parallel-n64-gliden64-EnableFBEmulation=True", "parallel-n64-gliden64-EnableOverscan=Enabled",
                                                   "parallel-n64-gliden64-EnableNativeResFactor=2"])
+        # FXAA then gamma correction: each pass draws into a buffer the other reads
+        culling_cartridge(rom, gamma=True)
+        pp = ["parallel-n64-gliden64-EnableFBEmulation=True", "parallel-n64-gliden64-FXAA=1"]
+        failures += compare(a, "fxaa gamma", rom, 8, pp)
+        failures += validate(a, "fxaa gamma", rom, 8, pp)
         # the depth image read back through the z and palette lookup textures
         culling_cartridge(rom, shadow=True)
         failures += compare(a, "shadow", rom, 8, ["parallel-n64-gliden64-EnableFBEmulation=True"])
