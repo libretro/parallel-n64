@@ -9,6 +9,7 @@ static const struct retro_hw_render_interface_vulkan *g_interface;
 static int g_enabled;
 static int g_interlock;
 static int g_dynamic_blend;
+static int g_store_none;
 
 void gliden64_vulkan_set_interface(const struct retro_hw_render_interface_vulkan *vk) { g_interface = vk; }
 const struct retro_hw_render_interface_vulkan *gliden64_vulkan_interface(void) { return g_interface; }
@@ -90,6 +91,7 @@ static bool create_device(struct retro_vulkan_context *context,
 
    g_interlock = 0;
    g_dynamic_blend = 0;
+   g_store_none = 0;
    vkGetPhysicalDeviceFeatures(gpu, &have);
    /* the N64's near plane needs these: without them there is no backend */
    if (!have.depthClamp || !have.shaderClipDistance)
@@ -172,6 +174,17 @@ static bool create_device(struct retro_vulkan_context *context,
       chain = &interlock;
       g_interlock = 1;
    }
+   /* a read only depth pass need not store it */
+   if (have_extension(ext, n_ext, VK_EXT_LOAD_STORE_OP_NONE_EXTENSION_NAME))
+   {
+      add_extension(exts, &n_exts, VK_EXT_LOAD_STORE_OP_NONE_EXTENSION_NAME);
+      g_store_none = 1;
+   }
+   else if (have_extension(ext, n_ext, "VK_KHR_load_store_op_none"))
+   {
+      add_extension(exts, &n_exts, "VK_KHR_load_store_op_none");
+      g_store_none = 1;
+   }
    free(ext);
 
    memset(&want, 0, sizeof(want));
@@ -241,4 +254,9 @@ bool gliden64_vulkan_create_device2(struct retro_vulkan_context *context,
 int gliden64_vulkan_has_dynamic_blend(void)
 {
    return g_dynamic_blend;
+}
+
+int gliden64_vulkan_has_store_none(void)
+{
+   return g_store_none;
 }

@@ -108,7 +108,8 @@ typedef struct vkr_fbo
    uint8_t       live;
 } vkr_fbo;
 
-typedef struct vkr_rp { VkFormat color, depth; uint32_t samples; VkRenderPass rp; } vkr_rp;
+/* rp_ro: the same pass with its depth read only, for draws that sample it */
+typedef struct vkr_rp { VkFormat color, depth; uint32_t samples; VkRenderPass rp, rp_ro; } vkr_rp;
 
 typedef struct vkr_sampler_entry { uint32_t key; float max_lod; float aniso; VkSampler s; } vkr_sampler_entry;
 
@@ -240,6 +241,8 @@ struct vkr_renderer
    VkCommandBuffer cmd, xfer;
    int xfer_open;
    int pass_open;
+   int depth_ro;              /* the next pass reads its depth attachment as a texture */
+   int pass_depth_ro;         /* the open pass does */
    uint32_t serial;           /* of the commands being recorded */
    VkFence fences[MAX_SUBMITS];
    uint32_t fence_serial[MAX_SUBMITS];
@@ -328,6 +331,12 @@ static void layout_info(VkImageLayout l, VkPipelineStageFlags *stage, VkAccessFl
       case VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL:
          *stage  = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
          *access = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+         break;
+      case VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL:
+         /* tested by the pass and sampled by its draws */
+         *stage  = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT
+            | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+         *access = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_SHADER_READ_BIT;
          break;
       case VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL:
          *stage  = VK_PIPELINE_STAGE_TRANSFER_BIT;
@@ -1184,6 +1193,21 @@ static int get_render_pass(vkr_renderer *r, VkFormat color, VkFormat depth, uint
    info.pSubpasses = &sub;
    if (F(CreateRenderPass)(r->device, &info, NULL, &r->rps[r->n_rps].rp) != VK_SUCCESS)
       return -1;
+   r->rps[r->n_rps].rp_ro = VK_NULL_HANDLE;
+   if (depth != VK_FORMAT_UNDEFINED)
+   {
+      /* compatible with the pass above: the same framebuffers and pipelines */
+      att[n - 1].initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+      att[n - 1].finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+      dref.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+      if (gliden64_vulkan_has_store_none())
+         att[n - 1].storeOp = VK_ATTACHMENT_STORE_OP_NONE_KHR;
+      if (F(CreateRenderPass)(r->device, &info, NULL, &r->rps[r->n_rps].rp_ro) != VK_SUCCESS)
+      {
+         F(DestroyRenderPass)(r->device, r->rps[r->n_rps].rp, NULL);
+         return -1;
+      }
+   }
    r->rps[r->n_rps].color = color;
    r->rps[r->n_rps].depth = depth;
    r->rps[r->n_rps].samples = samples;
@@ -1262,6 +1286,35 @@ static void window_image(vkr_renderer *r, vkr_frame *f)
    f->win_layout = VK_IMAGE_LAYOUT_UNDEFINED;
 }
 
+/* A draw that samples its own depth attachment. The N64 read that image
+ * through TMEM, as it was before the draw: the attachment stays read only
+ * for it, and the draw does not write depth. */
+static int samples_depth_attachment(const vkr_renderer *r)
+{
+   unsigned u, d;
+   if (!r->draw_fbo)
+      return 0;
+   d = r->fbos[r->draw_fbo].depth;
+   if (!d)
+      return 0;
+   for (u = VKR_BIND_TEX0; u < VKR_BIND_COUNT; u++)
+      if (r->bound[u] == d && u != VKR_BIND_DEPTH_Z && u != VKR_BIND_DEPTH_DZ)
+         return 1;
+   return 0;
+}
+
+static void end_pass(vkr_renderer *r);
+
+/* The next pass reads its depth or not: an open pass of the other kind ends */
+static void want_depth_ro(vkr_renderer *r, int ro)
+{
+   if (r->pass_open && r->pass_depth_ro != ro)
+      end_pass(r);
+   if (r->depth_ro != ro)
+      r->dirty |= D_EDS;
+   r->depth_ro = ro;
+}
+
 /* Everything the draw reads, in the layouts it reads them in. */
 static void prepare_textures(vkr_renderer *r)
 {
@@ -1277,6 +1330,8 @@ static void prepare_textures(vkr_renderer *r)
          continue;
       if (u == VKR_BIND_DEPTH_Z || u == VKR_BIND_DEPTH_DZ)
          ensure_layout(r, i, VK_IMAGE_LAYOUT_GENERAL);
+      else if (r->depth_ro && h == r->fbos[r->draw_fbo].depth)
+         ensure_layout(r, i, VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL);
       else
          ensure_layout(r, i, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
       i->used_serial = r->serial;
@@ -1328,7 +1383,8 @@ static int begin_pass(vkr_renderer *r)
       }
       if (d)
       {
-         ensure_layout(r, d, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+         ensure_layout(r, d, r->depth_ro ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL
+               : VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
          d->used_serial = r->serial;
       }
       if (o->fb == VK_NULL_HANDLE)
@@ -1360,6 +1416,8 @@ static int begin_pass(vkr_renderer *r)
       }
       r->st.rp = o->rp_index;
       rp = o->rp;
+      if (r->depth_ro && d && r->rps[o->rp_index].rp_ro != VK_NULL_HANDLE)
+         rp = r->rps[o->rp_index].rp_ro;
       fb = o->fb;
       w = o->w;
       h = o->h;
@@ -1371,6 +1429,7 @@ static int begin_pass(vkr_renderer *r)
    info.renderArea.extent.height = h;
    F(CmdBeginRenderPass)(r->cmd, &info, VK_SUBPASS_CONTENTS_INLINE);
    r->pass_open = 1;
+   r->pass_depth_ro = r->depth_ro;
    r->dirty |= D_VIEWPORT | D_SCISSOR;
    return 1;
 }
@@ -1468,7 +1527,7 @@ scissor_done:
       F(CmdSetFrontFaceEXT)(r->cmd, VK_FRONT_FACE_COUNTER_CLOCKWISE);
       F(CmdSetCullModeEXT)(r->cmd, cull[r->enable[VKR_CAP_CULL] ? r->cull_mode : 0]);
       F(CmdSetDepthTestEnableEXT)(r->cmd, r->enable[VKR_CAP_DEPTH_TEST] ? VK_TRUE : VK_FALSE);
-      F(CmdSetDepthWriteEnableEXT)(r->cmd, r->depth_write_on ? VK_TRUE : VK_FALSE);
+      F(CmdSetDepthWriteEnableEXT)(r->cmd, r->depth_write_on && !r->depth_ro ? VK_TRUE : VK_FALSE);
       F(CmdSetDepthCompareOpEXT)(r->cmd, cmp[r->depth_cmp]);
    }
    if ((r->dirty & D_EDS3) && r->eds3)
@@ -1515,7 +1574,7 @@ static uint64_t state_key(const vkr_renderer *r, int rect, int lines, int strip)
    {
       s.cull        = r->enable[VKR_CAP_CULL] ? (unsigned)r->cull_mode : 0;
       s.depth_test  = r->enable[VKR_CAP_DEPTH_TEST] ? 1 : 0;
-      s.depth_write = r->depth_write_on ? 1 : 0;
+      s.depth_write = r->depth_write_on && !r->depth_ro ? 1 : 0;
       s.depth_cmp   = (unsigned)r->depth_cmp;
       s.strip       = strip ? 1 : 0;
    }
@@ -1882,6 +1941,8 @@ static VkDescriptorSet descriptors(vkr_renderer *r)
    for (u = 0; u < VKR_BIND_COUNT; u++)
    {
       key[u] = image_key(r, r->bound[u]);
+      if (r->depth_ro && r->bound[u] && r->bound[u] == r->fbos[r->draw_fbo].depth)
+         key[u] |= 0x8000; /* the read only layout; handles stay below it */
       hash = (hash ^ key[u]) * 16777619u;
    }
    for (i = 0; i < 16; i++)
@@ -1967,7 +2028,8 @@ static VkDescriptorSet descriptors(vkr_renderer *r)
       im = &r->images[h];
       infos[u].sampler = im->sampler != VK_NULL_HANDLE ? im->sampler : r->samplers[0].s;
       infos[u].imageView = im->view;
-      infos[u].imageLayout = storage ? VK_IMAGE_LAYOUT_GENERAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+      infos[u].imageLayout = storage ? VK_IMAGE_LAYOUT_GENERAL
+            : (key[u] & 0x8000) ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
       writes[n].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
       writes[n].dstSet = set;
       writes[n].dstBinding = u;
@@ -1996,6 +2058,7 @@ static int draw_begin(vkr_renderer *r, int rect, int lines, int strip)
    if (!r->current)
       return 0;
 
+   want_depth_ro(r, samples_depth_attachment(r));
    prepare_textures(r);
    if (!begin_pass(r))
       return 0;
@@ -2232,6 +2295,7 @@ void vkr_clear_color(vkr_renderer *r, float cr, float g, float b, float a)
    frame_begin(r);
    if (r->draw_fbo && !r->fbos[r->draw_fbo].color)
       return;
+   want_depth_ro(r, r->pass_open ? r->pass_depth_ro : 0);
    if (!begin_pass(r))
       return;
    v.color.float32[0] = cr;
@@ -2249,6 +2313,7 @@ void vkr_clear_depth(vkr_renderer *r)
    frame_begin(r);
    if (!r->draw_fbo || !r->fbos[r->draw_fbo].depth)
       return;
+   want_depth_ro(r, 0);
    if (!begin_pass(r))
       return;
    v.depthStencil.depth = 1.f;
@@ -3215,6 +3280,8 @@ void vkr_destroy(vkr_renderer *r)
             F(DestroyPipeline)(r->device, r->pipes[i].pipeline, NULL);
    for (i = 0; i < r->n_rps; i++)
       F(DestroyRenderPass)(r->device, r->rps[i].rp, NULL);
+      if (r->rps[i].rp_ro != VK_NULL_HANDLE)
+         F(DestroyRenderPass)(r->device, r->rps[i].rp_ro, NULL);
    for (i = 0; i < r->n_samplers; i++)
       F(DestroySampler)(r->device, r->samplers[i].s, NULL);
    for (i = 0; i < VKR_VS_COUNT; i++)

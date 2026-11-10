@@ -261,6 +261,7 @@ def main():
         # the depth image read back through the z and palette lookup textures
         culling_cartridge(rom, shadow=True)
         failures += compare(a, "shadow", rom, 8, ["parallel-n64-gliden64-EnableFBEmulation=True"])
+        failures += validate(a, "shadow", rom, 8, ["parallel-n64-gliden64-EnableFBEmulation=True"])
     for name in (cart.KROM[:1] if a.quick else cart.KROM):
         failures += compare(a, name, cart.fetch(a.roms, name), 20 if a.quick else 60)
         failures += compare(a, name + " fb", cart.fetch(a.roms, name), 20,
