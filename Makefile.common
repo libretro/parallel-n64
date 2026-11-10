@@ -389,6 +389,7 @@ SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/DepthBuffer.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/CombinerDecode.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/TextureDecode.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/TextureSizes.c
+SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/TextureLRU.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/mupenplus/Config_mupenplus.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/gSP.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/GBI.c

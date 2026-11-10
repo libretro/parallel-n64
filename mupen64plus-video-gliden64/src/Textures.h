@@ -9,12 +9,14 @@
 #include <stddef.h>
 
 #include "CRC.h"
+#include "gli_texlru.h"
 #include "convert.h"
 #include "Graphics/ObjectHandle.h"
 #include "Graphics/Parameter.h"
 
 struct CachedTexture
 {
+	CachedTexture() : max_level(0), frameBufferTexture(fbNone), bHDTexture(false) {}
 	CachedTexture(graphics::ObjectHandle _name) : name(_name), max_level(0), frameBufferTexture(fbNone), bHDTexture(false) {}
 
 	graphics::ObjectHandle name;
@@ -65,7 +67,8 @@ struct TextureCache
 
 private:
 	TextureCache()
-		: m_pDummy(nullptr)
+		: m_pool(nullptr)
+		, m_pDummy(nullptr)
 		, m_pMSDummy(nullptr)
 		, m_hits(0)
 		, m_misses(0)
@@ -80,7 +83,6 @@ private:
 	}
 	TextureCache(const TextureCache &) = delete;
 
-	void _checkCacheSize();
 	CachedTexture * _addTexture(u64 _crc);
 	void _load(u32 _tile, CachedTexture *_pTexture);
 	bool _loadHiresTexture(u32 _tile, CachedTexture *_pTexture, u64 & _ricecrc);
@@ -91,11 +93,12 @@ private:
 	void _clear();
 	void _initDummyTexture(CachedTexture * _pDummy);
 
-	typedef std::list<CachedTexture> Textures;
-	typedef std::unordered_map<u64, Textures::iterator> Texture_Locations;
 	typedef std::unordered_map<u32, CachedTexture> FBTextures;
-	Textures m_textures;
-	Texture_Locations m_lruTextureLocations;
+	/* The cached textures live in a pool sized at init; the LRU index maps
+	 * keys to its slots. An evicted or dropped slot keeps its GPU texture
+	 * for the next one: deleting one costs ~160us on a tiled GPU. */
+	CachedTexture * m_pool;
+	gli_lru m_lru;
 	FBTextures m_fbTextures;
 	CachedTexture * m_pDummy;
 	CachedTexture * m_pMSDummy;
@@ -108,9 +111,7 @@ private:
 	bool _decodedIsRead() const;
 	u32 * _takeDecode(u32 _bytes, bool _lend);
 	void _dropDecode(u32 * _p);
-	/* Objects freed by eviction, waiting to be handed to the next texture:
-	 * deleting one costs ~160us on a tiled GPU, reusing it costs nothing. */
-	std::vector<graphics::ObjectHandle> m_freeTextures;
+	void _deletePool();
 #ifdef VC
 	const size_t m_maxCacheSize = 1500;
 #else

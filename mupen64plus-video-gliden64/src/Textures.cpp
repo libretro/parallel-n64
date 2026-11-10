@@ -92,6 +92,10 @@ void TextureCache::init()
 {
 	m_curUnpackAlignment = 0;
 	m_decodeScratch = (u8*)malloc(DecodeScratchBytes);
+	if (m_pool == nullptr) {
+		m_pool = new CachedTexture[m_maxCacheSize];
+		gli_lru_init(&m_lru, (u32)m_maxCacheSize);
+	}
 	m_swapScratch = (u8*)malloc(DecodeScratchBytes);
 
 	u32 dummyTexture[16] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
@@ -178,46 +182,41 @@ void TextureCache::destroy()
 	free(m_swapScratch);
 	m_decodeScratch = m_swapScratch = nullptr;
 
-	for (Textures::const_iterator cur = m_textures.cbegin(); cur != m_textures.cend(); ++cur)
-		gfxContext.deleteTexture(cur->name);
-	for (graphics::ObjectHandle name : m_freeTextures)
-		gfxContext.deleteTexture(name);
-	m_freeTextures.clear();
-	m_textures.clear();
-	m_lruTextureLocations.clear();
+	_deletePool();
+	delete[] m_pool;
+	m_pool = nullptr;
+	gli_lru_deinit(&m_lru);
 
 	for (FBTextures::const_iterator cur = m_fbTextures.cbegin(); cur != m_fbTextures.cend(); ++cur)
 		gfxContext.deleteTexture(cur->second.name);
 	m_fbTextures.clear();
 }
 
-void TextureCache::_checkCacheSize()
+/* Deletes every pooled GPU texture, cached or kept for reuse */
+void TextureCache::_deletePool()
 {
-	if (m_textures.size() >= m_maxCacheSize) {
-		CachedTexture& clsTex = m_textures.back();
-		m_freeTextures.push_back(clsTex.name);
-		m_lruTextureLocations.erase(clsTex.crc);
-		m_textures.pop_back();
+	if (m_pool == nullptr)
+		return;
+	for (size_t i = 0; i < m_maxCacheSize; ++i) {
+		if (m_pool[i].name.isNotNull())
+			gfxContext.deleteTexture(m_pool[i].name);
+		m_pool[i] = CachedTexture();
 	}
+	gli_lru_reset(&m_lru);
 }
 
 CachedTexture * TextureCache::_addTexture(u64 _crc)
 {
 	if (m_curUnpackAlignment == 0)
 		m_curUnpackAlignment = gfxContext.getTextureUnpackAlignment();
-	_checkCacheSize();
-	ObjectHandle name;
-	if (m_freeTextures.empty())
+	const u32 slot = gli_lru_add(&m_lru, _crc);
+	CachedTexture & tex = m_pool[slot];
+	ObjectHandle name = tex.name;
+	if (!name.isNotNull())
 		name = gfxContext.createTexture(textureTarget::TEXTURE_2D);
-	else {
-		name = m_freeTextures.back();
-		m_freeTextures.pop_back();
-	}
-	m_textures.emplace_front(name);
-	Textures::iterator new_iter = m_textures.begin();
-	new_iter->crc = _crc;
-	m_lruTextureLocations.insert(std::pair<u64, Textures::iterator>(_crc, new_iter));
-	return &(*new_iter);
+	tex = CachedTexture(name);
+	tex.crc = _crc;
+	return &tex;
 }
 
 void TextureCache::removeFrameBufferTexture(CachedTexture * _pTexture)
@@ -825,11 +824,10 @@ void TextureCache::_updateBackground()
 	u32 params[4] = {gSP.bgImage.width, gSP.bgImage.height, gSP.bgImage.format, gSP.bgImage.size};
 	crc = CRC_Calculate(crc, params, sizeof(u32)*4);
 
-	Texture_Locations::iterator locations_iter = m_lruTextureLocations.find(crc);
-	if (locations_iter != m_lruTextureLocations.end()) {
-		Textures::iterator iter = locations_iter->second;
-		CachedTexture & currentTex = *iter;
-		m_textures.splice(m_textures.begin(), m_textures, iter);
+	const u32 slot = gli_lru_find(&m_lru, crc);
+	if (slot != GLI_LRU_NONE) {
+		CachedTexture & currentTex = m_pool[slot];
+		gli_lru_touch(&m_lru, slot);
 
 		assert(currentTex.width == gSP.bgImage.width);
 		assert(currentTex.height == gSP.bgImage.height);
@@ -889,15 +887,7 @@ void TextureCache::_updateBackground()
 void TextureCache::_clear()
 {
 	current[0] = current[1] = nullptr;
-
-	for (auto cur = m_textures.cbegin(); cur != m_textures.cend(); ++cur) {
-		gfxContext.deleteTexture(cur->name);
-	}
-	for (graphics::ObjectHandle name : m_freeTextures)
-		gfxContext.deleteTexture(name);
-	m_freeTextures.clear();
-	m_textures.clear();
-	m_lruTextureLocations.clear();
+	_deletePool();
 }
 
 void TextureCache::update(u32 _t)
@@ -941,13 +931,12 @@ void TextureCache::update(u32 _t)
 		return;
 	}
 
-	Texture_Locations::iterator locations_iter = m_lruTextureLocations.find(crc);
-	if (locations_iter != m_lruTextureLocations.end()) {
-		Textures::iterator iter = locations_iter->second;
-		CachedTexture & currentTex = *iter;
+	const u32 slot = gli_lru_find(&m_lru, crc);
+	if (slot != GLI_LRU_NONE) {
+		CachedTexture & currentTex = m_pool[slot];
 
 		if (currentTex.width == sizes.width && currentTex.height == sizes.height) {
-			m_textures.splice(m_textures.begin(), m_textures, iter);
+			gli_lru_touch(&m_lru, slot);
 
 			assert(currentTex.format == pTile->format);
 			assert(currentTex.size == pTile->size);
@@ -957,9 +946,8 @@ void TextureCache::update(u32 _t)
 			return;
 		}
 
-		m_freeTextures.push_back(currentTex.name);
-		m_lruTextureLocations.erase(locations_iter);
-		m_textures.erase(iter);
+		/* the slot keeps its GPU texture for the next one */
+		gli_lru_remove(&m_lru, slot);
 	}
 
 	m_misses++;
