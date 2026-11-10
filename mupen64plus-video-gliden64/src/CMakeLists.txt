@@ -16,6 +16,7 @@ project( GLideN64 )
 set(GLideN64_SOURCES
   3DMath.c
   Combiner.cpp
+  CombinerDecode.c
   CombinerKey.c
   PluginAPI.c
   Config.c

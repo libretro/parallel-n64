@@ -20,6 +20,7 @@ MY_LOCAL_C_INCLUDES :=                          \
 
 MY_LOCAL_SRC_FILES :=                                                              \
     $(SRCDIR)/Combiner.cpp                                                         \
+    $(SRCDIR)/CombinerDecode.c                                                     \
     $(SRCDIR)/CombinerKey.c                                                       \
     $(SRCDIR)/PluginAPI.c                                                        \
     $(SRCDIR)/Config.c                                                            \

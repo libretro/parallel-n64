@@ -13,31 +13,6 @@
 
 #include "CombinerMux.h"
 
-struct CombinerOp
-{
-	int op = LOAD;
-	int param1 = -1;
-	int param2 = -1;
-	int param3 = -1;
-};
-
-struct CombinerStage
-{
-	int numOps;
-	CombinerOp op[6];
-};
-
-struct Combiner
-{
-	int numStages;
-	CombinerStage stage[2];
-};
-
-struct CombineCycle
-{
-	int sa, sb, m, a;
-};
-
 class CombinerInfo
 {
 public:
