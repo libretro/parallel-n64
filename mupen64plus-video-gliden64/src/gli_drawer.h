@@ -20,6 +20,14 @@ void gli_drawer_draw_screen_strip(u32 _numVtx);
 void gli_drawer_clear_depth(void);
 bool gli_drawer_is_rejected(s32 _v0, s32 _v1, s32 _v2);
 void gli_drawer_add_triangle(s32 _v0, s32 _v1, s32 _v2);
+/* Whether the window's adjust-screen setting applies to the current image */
+int gli_drawer_need_adjust(int _adjustScreen);
+/* The scissor and viewport rectangles (x, y, width, height) for a buffer
+ * drawn at @_scale with its origin at @_offset */
+void gli_drawer_scissor_rect(f32 _scaleX, f32 _scaleY, f32 _offsetX, f32 _offsetY,
+		int _adjust, f32 _adjustScale, int _immersive, s32 *_rect);
+void gli_drawer_viewport_rect(int _buffer, f32 _scaleX, f32 _scaleY, u32 _originX, u32 _originY,
+		int _adjust, f32 _adjustScale, s32 *_rect);
 /* Hands the drawer's triangle list to the C side, once */
 void gli_drawer_bind_triangles(SPVertex *_vertices, u16 *_elements, u32 *_num,
 		s32 *_maxElement, u32 *_modify, const bool *_clipControl);

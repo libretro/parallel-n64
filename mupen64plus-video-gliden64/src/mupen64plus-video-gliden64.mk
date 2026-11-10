@@ -27,6 +27,7 @@ MY_LOCAL_SRC_FILES :=                                                           
     $(SRCDIR)/VIUpdate.c                                                           \
     $(SRCDIR)/FrameBufferRdram.c                                                   \
     $(SRCDIR)/TriangleList.c                                                       \
+    $(SRCDIR)/DrawerViewport.c                                                     \
     $(SRCDIR)/CombinerKey.c                                                       \
     $(SRCDIR)/PluginAPI.c                                                        \
     $(SRCDIR)/Config.c                                                            \

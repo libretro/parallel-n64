@@ -23,6 +23,7 @@ set(GLideN64_SOURCES
   VIUpdate.c
   FrameBufferRdram.c
   TriangleList.c
+  DrawerViewport.c
   CombinerKey.c
   PluginAPI.c
   Config.c

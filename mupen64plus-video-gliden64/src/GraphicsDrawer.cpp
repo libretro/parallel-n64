@@ -191,23 +191,6 @@ SPVertex & GraphicsDrawer::getCurrentDMAVertex()
 }
 
 inline
-bool _needAdjustCoordinate(DisplayWindow & _wnd)
-{
-	return _wnd.isAdjustScreen() &&
-		gSP.viewport.width < gDP.colorImage.width &&
-		u32(gSP.viewport.width + gSP.viewport.x * 2.0f) != gDP.colorImage.width &&
-		gDP.colorImage.width > VI.width * 98 / 100;
-}
-
-inline
-void _adjustScissorX(f32 & _X0, f32 & _X1, float _scale)
-{
-	const float halfX = gDP.colorImage.width / 2.0f;
-	_X0 = (_X0 - halfX) * _scale + halfX;
-	_X1 = (_X1 - halfX) * _scale + halfX;
-}
-
-inline
 s32 roundup(f32 _v, f32 _scale)
 {
 	return static_cast<s32>(floorf(_v * _scale + 0.5f));
@@ -228,70 +211,28 @@ void GraphicsDrawer::updateScissor(FrameBuffer * _pBuffer) const
 		offsetY = f32(_pBuffer->m_originY);
 	}
 
-	f32 SX0 = gDP.scissor.ulx + offsetX;
-	f32 SX1 = gDP.scissor.lrx + offsetX;
-	f32 SY0 = gDP.scissor.uly + offsetY;
-	f32 SY1 = gDP.scissor.lry + offsetY;
-
-	if (u32(SX1) == 512 && (config.generalEmulation.hacks & hack_RE2) != 0) {
-		SX1 = f32(*REG.VI_WIDTH);
-		SY1 *= 512.0f / SX1;
-	}
-
-	if (_needAdjustCoordinate(wnd))
-		_adjustScissorX(SX0, SX1, wnd.getAdjustScale());
-
-	// Immersive mode draws the whole picture, including the border the game left
-	if (gli_gSPImmersiveActive() && gDP.colorImage.address != gDP.depthImageAddress &&
-		gDP.colorImage.width >= VI.width * 98 / 100) {
-		SX0 = offsetX;
-		SY0 = offsetY;
-		SX1 = offsetX + static_cast<f32>(gDP.colorImage.width);
-		SY1 = offsetY + static_cast<f32>(VI.height);
-	}
-
-	gfxContext.setScissor(roundup(SX0, scaleX), roundup(SY0, scaleY),
-		std::max(roundup(SX1 - SX0, scaleX), 0), std::max(roundup(SY1 - SY0, scaleY), 0));
+	s32 rect[4];
+	gli_drawer_scissor_rect(scaleX, scaleY, offsetX, offsetY,
+		gli_drawer_need_adjust(wnd.isAdjustScreen()), wnd.getAdjustScale(),
+		gli_gSPImmersiveActive(), rect);
+	gfxContext.setScissor(rect[0], rect[1], rect[2], rect[3]);
 
 	gDP.changed &= ~CHANGED_SCISSOR;
-}
-
-inline
-float _adjustViewportX(f32 _X0)
-{
-	const f32 halfX = gDP.colorImage.width / 2.0f;
-	const f32 halfVP = gSP.viewport.width / 2.0f;
-	return (_X0 + halfVP - halfX) * dwnd().getAdjustScale() + halfX - halfVP;
 }
 
 void GraphicsDrawer::_updateViewport() const
 {
 	DisplayWindow & wnd = DisplayWindow::get();
 	FrameBuffer * pCurrentBuffer = frameBufferList().getCurrent();
-	if (pCurrentBuffer == nullptr) {
-		const f32 scaleX = wnd.getScaleX();
-		const f32 scaleY = wnd.getScaleY();
-		float Xf = gSP.viewport.vscale[0] < 0 ? (gSP.viewport.x + gSP.viewport.vscale[0] * 2.0f) : gSP.viewport.x;
-		if (_needAdjustCoordinate(wnd))
-			Xf = _adjustViewportX(Xf);
-		const s32 X = (s32)(Xf * scaleX);
-		const s32 Y = (s32)(gSP.viewport.y * scaleY);
-		gfxContext.setViewport(X, Y,
-			std::max((s32)(gSP.viewport.width * scaleX), 0), std::max((s32)(gSP.viewport.height * scaleY), 0));
-	} else {
-		const f32 scaleX = pCurrentBuffer->m_scale;
-		const f32 scaleY = pCurrentBuffer->m_scale;
-		float Xf = gSP.viewport.vscale[0] < 0 ? (gSP.viewport.x + gSP.viewport.vscale[0] * 2.0f) : gSP.viewport.x;
-		Xf += f32(pCurrentBuffer->m_originX);
-		if (_needAdjustCoordinate(wnd))
-			Xf = _adjustViewportX(Xf);
-		const s32 X = roundup(Xf, scaleX);
-		float Yf = gSP.viewport.vscale[1] < 0 ? (gSP.viewport.y + gSP.viewport.vscale[1] * 2.0f) : gSP.viewport.y;
-		Yf += f32(pCurrentBuffer->m_originY);
-		const s32 Y = roundup(Yf, scaleY);
-		gfxContext.setViewport(X, Y,
-			std::max(roundup(gSP.viewport.width, scaleX), 0), std::max(roundup(gSP.viewport.height, scaleY), 0));
-	}
+	s32 rect[4];
+	if (pCurrentBuffer == nullptr)
+		gli_drawer_viewport_rect(0, wnd.getScaleX(), wnd.getScaleY(), 0, 0,
+			gli_drawer_need_adjust(wnd.isAdjustScreen()), wnd.getAdjustScale(), rect);
+	else
+		gli_drawer_viewport_rect(1, pCurrentBuffer->m_scale, pCurrentBuffer->m_scale,
+			pCurrentBuffer->m_originX, pCurrentBuffer->m_originY,
+			gli_drawer_need_adjust(wnd.isAdjustScreen()), wnd.getAdjustScale(), rect);
+	gfxContext.setViewport(rect[0], rect[1], rect[2], rect[3]);
 	gSP.changed &= ~CHANGED_VIEWPORT;
 }
 
