@@ -91,6 +91,11 @@ typedef struct gli_texrect_tex
 u32 gli_drawer_texrect_vertices(RectVertex *_v, const gli_texrect_params *_p,
 		const gli_texrect_tex *const *_tex, const f32 *_scale, int _adjustScreen, f32 _adjustScale);
 
+/* Writes the four screen space vertices of a line from vertex @_v0 to @_v1,
+ * @_halfWidth either side, into @_out; colors the ends by the shading mode,
+ * flat shading from vertex @_flag */
+void gli_drawer_thick_line(SPVertex *_out, u32 _v0, u32 _v1, f32 _halfWidth, u32 _flag);
+
 /* all three vertices outside the same clip plane */
 #define GLI_IS_CLIPPED(_v, _a, _b, _c) (((_v)[_a].clip & (_v)[_b].clip & (_v)[_c].clip) != 0)
 

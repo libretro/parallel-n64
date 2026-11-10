@@ -1,3 +1,4 @@
+#include <math.h>
 #include <boolean.h>
 
 #include "Types.h"
@@ -127,4 +128,69 @@ bool gli_drawer_is_rejected(s32 _v0, s32 _v1, s32 _v2)
 			return true;
 	}
 	return false;
+}
+
+/* Screen space position of vertex @_v */
+static void line_end(SPVertex *_out, const SPVertex *_v, f32 _ySign)
+{
+	*_out = *_v;
+	_out->x = _out->x / _out->w * gSP.viewport.vscale[0] + gSP.viewport.vtrans[0];
+	_out->y = _ySign * _out->y / _out->w * gSP.viewport.vscale[1] + gSP.viewport.vtrans[1];
+	_out->z = _out->z / _out->w * gSP.viewport.vscale[2] + gSP.viewport.vtrans[2];
+}
+
+void gli_drawer_thick_line(SPVertex *_out, u32 _v0, u32 _v1, f32 _halfWidth, u32 _flag)
+{
+	SPVertex *vertices = g_tris.vertices;
+	const f32 ySign = gli_GBI->negativeY ? -1.0f : 1.0f;
+
+	if ((gSP.geometryMode & G_LIGHTING) == 0) {
+		SPVertex *vtx1 = &vertices[_v0];
+		SPVertex *vtx2 = &vertices[_v1];
+		if ((gSP.geometryMode & G_SHADE) == 0) {
+			vtx1->flat_r = vtx2->flat_r = gDP.primColor.r;
+			vtx1->flat_g = vtx2->flat_g = gDP.primColor.g;
+			vtx1->flat_b = vtx2->flat_b = gDP.primColor.b;
+			vtx1->flat_a = vtx2->flat_a = gDP.primColor.a;
+		} else if ((gSP.geometryMode & G_SHADING_SMOOTH) == 0) {
+			/* flat shading takes the color of vertex @_flag */
+			const SPVertex *vtx0 = &vertices[_flag];
+			const f32 r = vtx0->r, g = vtx0->g, b = vtx0->b, a = vtx0->a;
+			vtx1->r = vtx1->flat_r = r;
+			vtx1->g = vtx1->flat_g = g;
+			vtx1->b = vtx1->flat_b = b;
+			vtx1->a = vtx1->flat_a = a;
+			vtx2->r = vtx2->flat_r = r;
+			vtx2->g = vtx2->flat_g = g;
+			vtx2->b = vtx2->flat_b = b;
+			vtx2->a = vtx2->flat_a = a;
+		}
+	}
+
+	line_end(&_out[0], &vertices[_v0], ySign);
+	_out[1] = _out[0];
+	line_end(&_out[2], &vertices[_v1], ySign);
+	_out[3] = _out[2];
+
+	if (fabs(_out[0].y - _out[2].y) < 0.0001) {
+		const f32 y = _out[0].y;
+		_out[0].y = _out[2].y = y - _halfWidth;
+		_out[1].y = _out[3].y = y + _halfWidth;
+	} else if (fabs(_out[0].x - _out[2].x) < 0.0001) {
+		const f32 x = _out[0].x;
+		_out[0].x = _out[2].x = x - _halfWidth;
+		_out[1].x = _out[3].x = x + _halfWidth;
+	} else {
+		const f32 x0 = _out[0].x, y0 = _out[0].y;
+		const f32 x1 = _out[2].x, y1 = _out[2].y;
+		const f32 dx = x1 - x0;
+		const f32 dy = y1 - y0;
+		const f32 len = sqrtf(dx * dx + dy * dy);
+		const f32 wx = dy * _halfWidth / len;
+		const f32 wy = dx * _halfWidth / len;
+		_out[0].x = x0 + wx; _out[0].y = y0 - wy;
+		_out[1].x = x0 - wx; _out[1].y = y0 + wy;
+		_out[2].x = x1 + wx; _out[2].y = y1 - wy;
+		_out[3].x = x1 - wx; _out[3].y = y1 + wy;
+	}
 }

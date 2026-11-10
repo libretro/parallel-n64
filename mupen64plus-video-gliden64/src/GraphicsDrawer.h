@@ -161,7 +161,6 @@ private:
 	void _updateStates(DrawingState _drawingState) const;
 	void _prepareDrawTriangle();
 	bool _canDraw() const;
-	void _drawThickLine(u32 _v0, u32 _v1, float _width, u32 _flag);
 
 	DrawingState m_drawingState;
 	f32 m_texrectRect[4]; /* the last texrect, ulx, uly, lrx, lry */
