@@ -1,9 +1,11 @@
+#include <stdlib.h>
 #include <string.h>
 
 #include "Types.h"
 #include "N64.h"
 #include "VI.h"
 #include "gDP.h"
+#include "Config.h"
 #include "gli_fb_rdram.h"
 
 static const u32 fingerprint[4] = { 2, 6, 4, 3 };
@@ -176,7 +178,7 @@ void gli_fb_set_clear_params(gli_fb *_fb, u32 _fillcolor, s32 _ulx, s32 _uly, s3
 	_fb->m_clearParams.lry = _lry;
 }
 
-int gli_fb_is_valid(gli_fb *_fb, int _force, u32 _swapCount, const u8 *_copy, u32 _copySize)
+int gli_fb_is_valid(gli_fb *_fb, int _force, u32 _swapCount)
 {
 	if (!_force) {
 		if (_fb->m_validityChecked == _swapCount)
@@ -187,7 +189,46 @@ int gli_fb_is_valid(gli_fb *_fb, int _force, u32 _swapCount, const u8 *_copy, u3
 		return gli_fb_rdram_cleared_valid(_fb) != 0;
 	if (_fb->m_fingerprint)
 		return gli_fb_rdram_mark_valid(_fb->m_startAddress) != 0;
-	if (_copySize != 0)
-		return gli_fb_rdram_copy_valid(_fb->m_startAddress, _copy, _copySize) != 0;
+	if (_fb->m_RdramCopySize != 0)
+		return gli_fb_rdram_copy_valid(_fb->m_startAddress, _fb->m_RdramCopy, _fb->m_RdramCopySize) != 0;
 	return 1; /* no data to decide */
+}
+
+void gli_fb_rdram_copy_alloc(gli_fb *_fb, u32 _capacity)
+{
+	free(_fb->m_RdramCopy);
+	_fb->m_RdramCopy = _capacity != 0 ? (u8 *)malloc(_capacity) : NULL;
+	_fb->m_RdramCopyCapacity = _fb->m_RdramCopy != NULL ? _capacity : 0;
+	_fb->m_RdramCopySize = 0;
+}
+
+void gli_fb_save_rdram(gli_fb *_fb)
+{
+	const u32 stride = _fb->m_width << _fb->m_size >> 1;
+	const u32 height = cutHeight(_fb->m_startAddress, _fb->m_height, stride);
+	u32 dataSize;
+	if (height == 0)
+		return;
+	dataSize = stride * height;
+
+	/* An auxiliary buffer gets a mark at its start instead: a game can
+	 * restore the old RDRAM content when it is done with the buffer, and
+	 * a copy would then call the buffer valid */
+	if (gli_fb_is_auxiliary(_fb) && config.frameBufferEmulation.copyAuxToRDRAM == 0) {
+		gli_fb_rdram_mark(_fb->m_startAddress, dataSize);
+		_fb->m_cleared = 0;
+		_fb->m_fingerprint = 1;
+		return;
+	}
+	/* rows past the buffer's tallest texture are not in it to compare */
+	if (dataSize > _fb->m_RdramCopyCapacity)
+		dataSize = _fb->m_RdramCopyCapacity;
+	memcpy(_fb->m_RdramCopy, RDRAM + _fb->m_startAddress, dataSize);
+	_fb->m_RdramCopySize = dataSize;
+}
+
+void gli_fb_set_dirty(gli_fb *_fb)
+{
+	_fb->m_cleared = 0;
+	_fb->m_RdramCopySize = 0;
 }

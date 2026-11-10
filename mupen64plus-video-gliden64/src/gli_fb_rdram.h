@@ -45,7 +45,20 @@ typedef struct gli_fb
 	} m_clearParams;
 	/* the swap the validity was last checked in */
 	u32 m_validityChecked;
+	/* RDRAM as the buffer left it, for the validity check: allocated with
+	 * the buffer for its tallest texture, never grown */
+	u8 *m_RdramCopy;
+	u32 m_RdramCopySize;
+	u32 m_RdramCopyCapacity;
 } gli_fb;
+
+/* Allocates @_fb's RDRAM copy for @_capacity bytes; frees it with 0 */
+void gli_fb_rdram_copy_alloc(gli_fb *_fb, u32 _capacity);
+/* Copies, or for an auxiliary buffer marks, the RDRAM @_fb covers, up
+ * to its copy's capacity */
+void gli_fb_save_rdram(gli_fb *_fb);
+/* Forgets what @_fb left in RDRAM */
+void gli_fb_set_dirty(gli_fb *_fb);
 
 /* Ends @_fb at its last byte in RDRAM */
 void gli_fb_update_end_address(gli_fb *_fb);
@@ -54,8 +67,8 @@ int gli_fb_is_auxiliary(const gli_fb *_fb);
 /* Notes a clear of @_fb, for the validity check */
 void gli_fb_set_clear_params(gli_fb *_fb, u32 _fillcolor, s32 _ulx, s32 _uly, s32 _lrx, s32 _lry);
 /* Whether RDRAM still holds what @_fb left there: its clear, its mark or
- * @_copy of @_copySize bytes. Unless @_force, once per swap @_swapCount */
-int gli_fb_is_valid(gli_fb *_fb, int _force, u32 _swapCount, const u8 *_copy, u32 _copySize);
+ * its copy. Unless @_force, once per swap @_swapCount */
+int gli_fb_is_valid(gli_fb *_fb, int _force, u32 _swapCount);
 
 /* How many of @_height lines of @_stride bytes at @_address fit in RDRAM */
 u32 cutHeight(u32 _address, u32 _height, u32 _stride);

@@ -18,6 +18,9 @@ struct FrameBuffer : gli_fb
 {
 	FrameBuffer();
 	~FrameBuffer();
+	/* owns its RDRAM copy */
+	FrameBuffer(const FrameBuffer &) = delete;
+	FrameBuffer & operator=(const FrameBuffer &) = delete;
 	void init(u32 _address, u16 _format, u16 _size, u16 _width, bool _cfb);
 	void updateEndAddress();
 	void resolveMultisampledTexture(bool _bForce = false);
@@ -45,7 +48,6 @@ struct FrameBuffer : gli_fb
 	graphics::ObjectHandle m_copyFBO;
 	CachedTexture * m_pFrameBufferCopyTexture;
 
-	std::vector<u8> m_RdramCopy;
 
 private:
 	void _initTexture(u16 _width, u16 _height, u16 _format, u16 _size, CachedTexture *_pTexture);

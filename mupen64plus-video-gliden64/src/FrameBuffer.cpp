@@ -48,6 +48,7 @@ FrameBuffer::FrameBuffer()
 
 FrameBuffer::~FrameBuffer()
 {
+	gli_fb_rdram_copy_alloc(this, 0);
 	gfxContext.deleteFramebuffer(m_FBO);
 	gfxContext.deleteFramebuffer(m_resolveFBO);
 	gfxContext.deleteFramebuffer(m_SubFBO);
@@ -166,7 +167,7 @@ void FrameBuffer::init(u32 _address, u16 _format, u16 _size, u16 _width, bool _c
 
 	const u16 maxHeight = gli_VI_GetMaxBufferHeight(_width);
 	_initTexture(_width, maxHeight, _format, _size, m_pTexture);
-	m_RdramCopy.reserve((_width * maxHeight) << _size >> 1);
+	gli_fb_rdram_copy_alloc(this, (_width * maxHeight) << _size >> 1);
 
 	if (config.video.multisampling != 0) {
 		_setAndAttachTexture(m_FBO, m_pTexture, 0, true);
@@ -197,38 +198,18 @@ void FrameBuffer::setBufferClearParams(u32 _fillcolor, s32 _ulx, s32 _uly, s32 _
 
 void FrameBuffer::copyRdram()
 {
-	const u32 stride = m_width << m_size >> 1;
-	const u32 height = cutHeight(m_startAddress, m_height, stride);
-	if (height == 0)
-		return;
-	const u32 dataSize = stride * height;
-
-	// Auxiliary frame buffer
-	if (isAuxiliary() && config.frameBufferEmulation.copyAuxToRDRAM == 0) {
-		// Write small amount of data to the start of the buffer.
-		// This is necessary for auxilary buffers: game can restore content of RDRAM when buffer is not needed anymore
-		// Thus content of RDRAM on moment of buffer creation will be the same as when buffer becomes obsolete.
-		// Validity check will see that the RDRAM is the same and thus the buffer is valid, which is false.
-		gli_fb_rdram_mark(m_startAddress, dataSize);
-		m_cleared = false;
-		m_fingerprint = true;
-		return;
-	}
-	m_RdramCopy.resize(dataSize);
-	memcpy(m_RdramCopy.data(), RDRAM + m_startAddress, dataSize);
+	gli_fb_save_rdram(this);
 }
 
 void FrameBuffer::setDirty()
 {
-	m_cleared = false;
-	m_RdramCopy.clear();
+	gli_fb_set_dirty(this);
 }
 
 bool FrameBuffer::isValid(bool _forceCheck) const
 {
 	/* the check stamps the swap it ran in */
-	return gli_fb_is_valid(const_cast<FrameBuffer *>(this), _forceCheck, dwnd().getBuffersSwapCount(),
-		m_RdramCopy.data(), static_cast<u32>(m_RdramCopy.size())) != 0;
+	return gli_fb_is_valid(const_cast<FrameBuffer *>(this), _forceCheck, dwnd().getBuffersSwapCount()) != 0;
 }
 
 void FrameBuffer::resolveMultisampledTexture(bool _bForce)
@@ -623,7 +604,7 @@ void FrameBufferList::saveBuffer(u32 _address, u16 _format, u16 _size, u16 _widt
 			!m_pCurrent->m_copiedToRdram &&
 			!m_pCurrent->m_cfb &&
 			!m_pCurrent->m_cleared &&
-			m_pCurrent->m_RdramCopy.empty() &&
+			m_pCurrent->m_RdramCopySize == 0 &&
 			m_pCurrent->m_height > 1) {
 			m_pCurrent->copyRdram();
 		}
@@ -1310,7 +1291,7 @@ bool FrameBuffer_CopyDepthBuffer( u32 address )
 	if (pCopyBuffer != nullptr) {
 		// This code is mainly to emulate Zelda MM camera.
 		ColorBufferToRDRAM::get().copyToRDRAM(pCopyBuffer->m_startAddress, true);
-		pCopyBuffer->m_RdramCopy.resize(0); // To disable validity check by RDRAM content. CPU may change content of the buffer for some unknown reason.
+		pCopyBuffer->m_RdramCopySize = 0; // To disable validity check by RDRAM content. CPU may change content of the buffer for some unknown reason.
 		fblist.setCopyBuffer(nullptr);
 		return true;
 	}
