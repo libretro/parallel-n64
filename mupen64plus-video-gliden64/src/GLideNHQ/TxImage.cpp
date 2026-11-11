@@ -35,7 +35,6 @@
 
 #include "TxImage.h"
 #include "TxReSample.h"
-#include "TxDbg.h"
 
 /* Read the whole of an already-open stream into one allocation.
  *
@@ -102,7 +101,6 @@ TxImage::readPNG(FILE* fp, int* width, int* height, ColorFormat *format)
 		return nullptr;
 
 	if (!(filebuf = txReadWholeFile(fp, &filelen))) {
-		INFO(80, wst("error reading png file!\n"));
 		return nullptr;
 	}
 
@@ -112,7 +110,6 @@ TxImage::readPNG(FILE* fp, int* width, int* height, ColorFormat *format)
 	}
 
 	if (!rpng_set_buf_ptr(rpng, filebuf, filelen) || !rpng_start(rpng)) {
-		INFO(80, wst("error reading png file! png image is corrupt.\n"));
 		rpng_free(rpng);
 		free(filebuf);
 		return nullptr;
@@ -131,11 +128,9 @@ TxImage::readPNG(FILE* fp, int* width, int* height, ColorFormat *format)
 	if (ret != IMAGE_PROCESS_END || !data) {
 		if (data)
 			free(data);
-		DBG_INFO(80, wst("Error: failed to load png image!\n"));
 		return nullptr;
 	}
 
-	DBG_INFO(80, wst("png format %d x %d\n"), o_width, o_height);
 
 	*width  = (int)o_width;
 	*height = (int)o_height;
@@ -303,13 +298,9 @@ TxImage::readBMP(FILE* fp, int* width, int* height, ColorFormat *format)
 		return nullptr;
 
 	if (!getBMPInfo(fp, &bmp_fhdr, &bmp_ihdr)) {
-		INFO(80, wst("error reading bitmap file! bitmap image is corrupt.\n"));
 		return nullptr;
 	}
 
-	DBG_INFO(80, wst("bmp format %d x %d bitdepth:%d compression:%x offset:%d\n"),
-			 bmp_ihdr.biWidth, bmp_ihdr.biHeight, bmp_ihdr.biBitCount,
-			 bmp_ihdr.biCompression, bmp_fhdr.bfOffBits);
 
 	/* rowStride in bytes */
 	row_bytes = (bmp_ihdr.biWidth * bmp_ihdr.biBitCount) >> 3;
@@ -319,7 +310,6 @@ TxImage::readBMP(FILE* fp, int* width, int* height, ColorFormat *format)
 	/* Rice hi-res textures */
 	if (!(bmp_ihdr.biBitCount == 8 || bmp_ihdr.biBitCount == 4 || bmp_ihdr.biBitCount == 32 || bmp_ihdr.biBitCount == 24) ||
 			bmp_ihdr.biCompression != 0) {
-		DBG_INFO(80, wst("Error: incompatible bitmap format!\n"));
 		return nullptr;
 	}
 
@@ -436,11 +426,6 @@ TxImage::readBMP(FILE* fp, int* width, int* height, ColorFormat *format)
 #endif /* POW2_TEXTURES */
 	}
 
-#ifdef DEBUG
-	if (!image) {
-		DBG_INFO(80, wst("Error: failed to load bmp image!\n"));
-	}
-#endif
 
 	return image;
 }

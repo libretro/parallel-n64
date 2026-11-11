@@ -24,7 +24,6 @@
 #include "TxUtil.h"
 #include "txpool.h"
 #include <features/features_cpu.h>
-#include "TxDbg.h"
 #include <encodings/crc32.h>
 #include <assert.h>
 
@@ -73,7 +72,6 @@ TxUtil::sizeofTx(int width, int height, ColorFormat format)
 		dataSize = (width * height) << 2;
 	} else {
 		/* unsupported format */
-		DBG_INFO(80, wst("Error: cannot get size. unsupported gfmt:%x\n"), format);
 	}
 
 	return dataSize;
@@ -208,7 +206,6 @@ loop1:
 		}
 #endif
 	} catch(...) {
-		DBG_INFO(80, wst("Error: RiceCRC32 exception!\n"));
 	}
 
 	return crc32Ret;
@@ -377,7 +374,6 @@ findmax0:
 		cimaxRet = CalculateMaxCI4b(src, width, height, rowStride);
 #endif
 	} catch(...) {
-		DBG_INFO(80, wst("Error: RiceCRC32 exception!\n"));
 	}
 
 	*crc32 = crc32Ret;
@@ -479,7 +475,6 @@ findmax0:
 		cimaxRet = CalculateMaxCI8b(src, width, height, rowStride);
 #endif
 	} catch(...) {
-		DBG_INFO(80, wst("Error: RiceCRC32 exception!\n"));
 	}
 
 	*crc32 = crc32Ret;
@@ -496,7 +491,6 @@ uint32 TxUtil::getNumberofProcessors()
 	uint32 numcore = cpu_features_get_core_amount_physical();
 	if (numcore < 1) numcore = 1;
 	if (numcore > MAX_NUMCORE) numcore = MAX_NUMCORE;
-	DBG_INFO(80, wst("Number of processors : %d\n"), numcore);
 	return numcore;
 }
 

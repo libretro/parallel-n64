@@ -26,7 +26,6 @@
 #endif
 
 #include "TxCache.h"
-#include "TxDbg.h"
 #include <osal_files.h>
 #include <encodings/deflate.h>
 #include "TxGz.h"
@@ -192,9 +191,7 @@ TxCache::add(uint64 checksum, GHQTexInfo *info, int dataSize)
 			dest = (dest == _gzdest0) ? _gzdest1 : _gzdest0;
 			if (txDeflate(dest, &destLen, info->data, dataSize, 1) != 0) {
 				dest = info->data;
-				DBG_INFO(80, wst("Error: compression failed!\n"));
 			} else {
-				DBG_INFO(80, wst("compressed: %.02fkb->%.02fkb\n"), (float)dataSize/1000, (float)destLen/1000);
 				dataSize = destLen;
 				format |= GL_TEXFMT_GZ;
 			}
@@ -226,7 +223,6 @@ TxCache::add(uint64 checksum, GHQTexInfo *info, int dataSize)
 			/* remove from _cachelist */
 			_cachelist.erase(_cachelist.begin(), itList);
 
-			DBG_INFO(80, wst("+++++++++\n"));
 		}
 		_totalSize -= dataSize;
 	}
@@ -256,19 +252,6 @@ TxCache::add(uint64 checksum, GHQTexInfo *info, int dataSize)
 	/* _cache[checksum] = txCache; */
 	_cache.insert(std::map<uint64, TXCACHE*>::value_type(checksum, txCache));
 
-#ifdef DEBUG
-	DBG_INFO(80, wst("[%5d] added!! crc:%08X %08X %d x %d gfmt:%x total:%.02fmb\n"),
-		_cache.size(), (uint32)(checksum >> 32), (uint32)(checksum & 0xffffffff),
-		info->width, info->height, info->format & 0xffff, (float)_totalSize / 1000000);
-
-	if (_cacheSize > 0) {
-		DBG_INFO(80, wst("cache max config:%.02fmb\n"), (float)_cacheSize / 1000000);
-
-		if (_cache.size() != _cachelist.size()) {
-			DBG_INFO(80, wst("Error: cache/cachelist mismatch! (%d/%d)\n"), _cache.size(), _cachelist.size());
-		}
-	}
-#endif
 
 	/* total cache size */
 	_totalSize += dataSize;
@@ -299,12 +282,10 @@ TxCache::get(uint64 checksum, GHQTexInfo *info)
 			uint32 destLen = _gzdestLen;
 			uint8 *dest = (_gzdest0 == info->data) ? _gzdest1 : _gzdest0;
 			if (txInflate(dest, &destLen, info->data, ((*itMap).second)->size) != 0) {
-				DBG_INFO(80, wst("Error: decompression failed!\n"));
 				return 0;
 			}
 			info->data = dest;
 			info->format &= ~GL_TEXFMT_GZ;
-			DBG_INFO(80, wst("decompressed: %.02fkb->%.02fkb\n"), (float)(((*itMap).second)->size)/1000, (float)destLen/1000);
 		}
 
 		return 1;
@@ -339,7 +320,6 @@ TxCache::save(const wchar_t *path, const wchar_t *filename, int config)
 	wcstombs(cbuf, filename, MAX_PATH);
 
 	TxGzFile *gzfp = txgz_open(cbuf, "wb1");
-	DBG_INFO(80, wst("gzfp:%x file:%ls\n"), gzfp, filename);
 	if (gzfp) {
 		/* write header to determine config match */
 		txgz_write(gzfp, &config, 4);
@@ -417,7 +397,6 @@ TxCache::load(const wchar_t *path, const wchar_t *filename, int config, boolean 
 	wcstombs(cbuf, filename, MAX_PATH);
 
 	TxGzFile *gzfp = txgz_open(cbuf, "rb");
-	DBG_INFO(80, wst("gzfp:%x file:%ls\n"), gzfp, filename);
 	if (gzfp) {
 		/* yep, we have it. load it into memory cache. */
 		int dataSize;
@@ -484,7 +463,6 @@ TxCache::del(uint64 checksum)
 		delete (*itMap).second;
 		_cache.erase(itMap);
 
-		DBG_INFO(80, wst("removed from cache: checksum = %08X %08X\n"), (uint32)(checksum & 0xffffffff), (uint32)(checksum >> 32));
 
 		return 1;
 	}

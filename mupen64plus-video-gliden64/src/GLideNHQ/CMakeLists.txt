@@ -9,7 +9,6 @@ set(GLideNHQ_SOURCES
   TextureFilters_hq4x.cpp
   TextureFilters_xbrz.cpp
   TxCache.cpp
-  TxDbg.cpp
   TxFilter.cpp
   TxFilterExport.cpp
   TxGz.cpp

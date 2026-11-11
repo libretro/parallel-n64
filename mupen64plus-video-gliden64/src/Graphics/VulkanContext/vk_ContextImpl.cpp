@@ -22,7 +22,6 @@
 #include <GraphicsDrawer.h>
 #include <PluginAPI.h>
 #include <wchar.h>
-#include <osal_files.h>
 
 #include "vk_renderer.h"
 #include "vk_device.h"

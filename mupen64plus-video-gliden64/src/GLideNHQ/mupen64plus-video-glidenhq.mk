@@ -21,7 +21,6 @@ LOCAL_SRC_FILES :=                          \
     $(SRCDIR)/TextureFilters_hq4x.cpp       \
     $(SRCDIR)/TextureFilters_xbrz.cpp       \
     $(SRCDIR)/TxCache.cpp                   \
-    $(SRCDIR)/TxDbg.cpp                     \
     $(SRCDIR)/TxFilter.cpp                  \
     $(SRCDIR)/TxFilterExport.cpp            \
     $(SRCDIR)/TxGz.cpp                      \

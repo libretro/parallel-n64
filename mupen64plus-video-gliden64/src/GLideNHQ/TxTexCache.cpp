@@ -26,8 +26,6 @@
 #endif
 
 #include "TxTexCache.h"
-#include "TxDbg.h"
-#include <osal_files.h>
 
 TxTexCache::~TxTexCache()
 {
