@@ -23,6 +23,24 @@ static INLINE u32 rd32(const u8 *_s, u32 _k)
 	return v;
 }
 
+/* A TMEM row starting at byte @_start that a decoder reads @_bytes of:
+ * in place when it fits, else gathered with the address wrapping at the
+ * end of TMEM, as the RDP's does, so no read runs past TMEM */
+static u8 s_wrapped_row[(65536 << 1) + 64];
+static const u8 *tmem_row(u32 _start, u32 _bytes)
+{
+	const u8 *tmem = (const u8*)TMEM;
+	u32 k;
+	_start &= 0xFFF;
+	if (_start + _bytes <= 0x1000)
+		return tmem + _start;
+	if (_bytes > sizeof(s_wrapped_row))
+		_bytes = sizeof(s_wrapped_row);
+	for (k = 0; k < _bytes; ++k)
+		s_wrapped_row[k] = tmem[(_start + k) & 0xFFF];
+	return s_wrapped_row;
+}
+
 /* The first 16 bits of TLUT entry @_k in upper TMEM */
 static INLINE u16 tlut16(u32 _k)
 {
@@ -295,7 +313,7 @@ void gli_tex_decode_tmem(const struct gli_tex *t, const gli_tex_format *f,
 		u32 *d = (u32*)dst;
 		*line <<= 1;
 		for (y = 0; y < t->realHeight; ++y) {
-			const u8 *src = (const u8*)(&TMEM[t->tMem] + *line * y);
+			const u8 *src = tmem_row((t->tMem + *line * y) << 3, (u32)t->realWidth << 1);
 			u32 x;
 			for (x = 0; x < (u32)(t->realWidth / 2); ++x) {
 				const u32 c = rd32(src, x);
@@ -309,12 +327,22 @@ void gli_tex_decode_tmem(const struct gli_tex *t, const gli_tex_format *f,
 		const gli_tex_row_fn row = out32 ? f->row32 : f->row16;
 		const u32 tMemMask = tlut == G_TT_NONE ? 0x1FF : 0xFF;
 		const u32 pitch = (u32)t->realWidth << (out32 ? 2 : 1);
+		/* the furthest texel a row reads, and its bytes at the widest
+		 * row's 2 per texel, with the odd-line swap's reach */
+		u32 maxTx = t->realWidth != 0 ? (u32)t->realWidth - 1 : 0;
+		u32 rowBytes;
 		u8 *d = (u8*)dst;
+		if (maxTx > clampSClamp)
+			maxTx = clampSClamp;
+		/* a mirrored texel reaches up to the mask whatever the width */
+		if (maxTx > maskSMask || mirrorSBit != 0)
+			maxTx = maskSMask;
+		rowBytes = ((maxTx + 1) << 1) + 8;
 		for (y = 0; y < t->realHeight; ++y, d += pitch) {
 			u16 ty = (u16)((y < clampTClamp ? y : clampTClamp) & maskTMask);
 			if (y & mirrorTBit)
 				ty ^= maskTMask;
-			row(d, (const u8*)&TMEM[(t->tMem + *line * ty) & tMemMask], (u32)(ty & 1) << 1,
+			row(d, tmem_row(((t->tMem + *line * ty) & tMemMask) << 3, rowBytes), (u32)(ty & 1) << 1,
 				(u8)t->palette, t->realWidth, clampSClamp, maskSMask, mirrorSBit);
 		}
 	}
