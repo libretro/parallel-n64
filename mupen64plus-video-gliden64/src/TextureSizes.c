@@ -1,9 +1,11 @@
+#include <stddef.h>
 #include <stdint.h>
 
 #include "Types.h"
 #include "N64.h"
 #include "GBI.h"
 #include "RDP.h"
+#include "RSP.h"
 #include "gDP.h"
 #include "gSP.h"
 #include "CRC.h"
@@ -265,4 +267,55 @@ void gli_tex_from_tile(struct gli_tex *_tex, const struct gDPTile *_tile, const 
 	_tex->scaleT = 1.0f / (f32)(_tex->realHeight);
 	_tex->offsetS = 0.5f;
 	_tex->offsetT = 0.5f;
+}
+
+u8 gli_tex_max_level(const struct gli_tex *_tex, u32 _tile)
+{
+	u8 level;
+	u16 dim;
+	if (config.generalEmulation.enableLOD == 0 || gSP.texture.level <= 1 || _tile == 0)
+		return 0;
+	level = (u8)(gSP.texture.level - 1);
+	dim = _tex->width > _tex->height ? _tex->width : _tex->height;
+	while (dim < (u16)(1 << level))
+		--level;
+	return level;
+}
+
+u32 gli_tex_mip_step(struct gli_tex *_tex, u32 _mipLevel, u16 *_line, u32 _sizeShift)
+{
+	const u32 tileMipLevel = gSP.texture.tile + _mipLevel + 1;
+	const gDPTile *mipTile = &gDP.tiles[tileMipLevel];
+	gli_tile_sizes sizes;
+	*_line = (u16)mipTile->line;
+	_tex->tMem = mipTile->tmem;
+	_tex->palette = mipTile->palette;
+	_tex->maskS = (u8)mipTile->masks;
+	_tex->maskT = (u8)mipTile->maskt;
+	gli_tex_tile_sizes(tileMipLevel, &sizes, NULL);
+	_tex->width = (u16)sizes.width;
+	_tex->clampWidth = (u16)sizes.clampWidth;
+	_tex->height = (u16)sizes.height;
+	_tex->clampHeight = (u16)sizes.clampHeight;
+	/* insures mip-map levels size consistency */
+	if (_tex->realWidth > 1)
+		_tex->realWidth >>= 1;
+	if (_tex->realHeight > 1)
+		_tex->realHeight >>= 1;
+	return (u32)(_tex->realWidth * _tex->realHeight) << _sizeShift;
+}
+
+int gli_tex_filter_skips(void)
+{
+	if (config.textureFilter.txFilterIgnoreBG == 0)
+		return 0;
+	switch (gli_GBI->type) {
+	case S2DEX_1_07:
+	case S2DEX_1_03:
+	case S2DEX_1_05:
+		return RSP.cmd == 0x01 || RSP.cmd == 0x02;
+	case S2DEX2:
+		return RSP.cmd == 0x09 || RSP.cmd == 0x0A;
+	}
+	return 0;
 }

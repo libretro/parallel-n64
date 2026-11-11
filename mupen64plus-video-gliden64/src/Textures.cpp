@@ -35,26 +35,6 @@ static DatatypeParam _texType(u32 _t)
 		(_t == GLI_TEXT_5551 ? datatype::UNSIGNED_SHORT_5_5_5_1 : datatype::UNSIGNED_SHORT_4_4_4_4);
 }
 
-static void _texDecodeParams(const CachedTexture & _t, gli_tex_decode & _d)
-{
-	_d.tMem = _t.tMem;
-	_d.palette = _t.palette;
-	_d.size = _t.size;
-	_d.format = _t.format;
-	_d.width = _t.width;
-	_d.height = _t.height;
-	_d.clampWidth = _t.clampWidth;
-	_d.clampHeight = _t.clampHeight;
-	_d.realWidth = _t.realWidth;
-	_d.realHeight = _t.realHeight;
-	_d.maskS = _t.maskS;
-	_d.maskT = _t.maskT;
-	_d.clampS = _t.clampS;
-	_d.clampT = _t.clampT;
-	_d.mirrorS = _t.mirrorS;
-	_d.mirrorT = _t.mirrorT;
-}
-
 TextureCache & TextureCache::get() {
 	static TextureCache cache;
 	return cache;
@@ -355,9 +335,7 @@ void TextureCache::_loadBackground(CachedTexture *pTexture)
 		return;
 	}
 	{
-		gli_tex_decode d;
-		_texDecodeParams(*pTexture, d);
-		gli_tex_decode_bg(&d, loadParams, out32, pSwapped, bpl, pDest);
+		gli_tex_decode_bg(pTexture, loadParams, out32, pSwapped, bpl, pDest);
 	}
 
 	if ((config.generalEmulation.hacks&hack_LoadDepthTextures) != 0 && gDP.colorImage.address == gDP.depthImageAddress) {
@@ -596,22 +574,10 @@ void TextureCache::_load(u32 _tile, CachedTexture *_pTexture)
 	const bool lend = !_decodedIsRead();
 
 	s32 mipLevel = 0;
-	_pTexture->max_level = 0;
+	_pTexture->max_level = gli_tex_max_level(_pTexture, _tile);
 
-	if (config.generalEmulation.enableLOD != 0 && gSP.texture.level > 1) {
-		if (_tile == 0) {
-			_pTexture->max_level = 0;
-		} else {
-			_pTexture->max_level = static_cast<u8>(gSP.texture.level - 1);
-			const u16 dim = std::max(_pTexture->width, _pTexture->height);
-			while (dim <  static_cast<u16>(1 << _pTexture->max_level))
-				--_pTexture->max_level;
-		}
-	}
-
-	ObjectHandle name;
-	CachedTexture tmptex(name);
-	memcpy(&tmptex, _pTexture, sizeof(CachedTexture));
+	/* the level being decoded: the texture's plain state, stepped per mip level */
+	gli_tex tmptex = *_pTexture;
 
 	line = tmptex.line;
 
@@ -619,11 +585,7 @@ void TextureCache::_load(u32 _tile, CachedTexture *_pTexture)
 		pDest = _takeDecode((tmptex.realWidth * tmptex.realHeight) << sizeShift, lend);
 		if (pDest == nullptr)
 			return;
-		{
-			gli_tex_decode d;
-			_texDecodeParams(tmptex, d);
-			gli_tex_decode_tmem(&d, loadParams, out32, gDP.otherMode.textureLUT, &line, pDest);
-		}
+		gli_tex_decode_tmem(&tmptex, loadParams, out32, gDP.otherMode.textureLUT, &line, pDest);
 
 		if ((config.generalEmulation.hacks&hack_LoadDepthTextures) != 0 && gDP.colorImage.address == gDP.depthImageAddress) {
 			_loadDepthTexture(_pTexture, (u16*)pDest);
@@ -643,20 +605,8 @@ void TextureCache::_load(u32 _tile, CachedTexture *_pTexture)
 		bool needEnhance = (config.textureFilter.txEnhancementMode | config.textureFilter.txFilterMode) != 0 &&
 			_pTexture->max_level == 0 &&
 			gli_TFH_is_inited();
-		if (needEnhance) {
-			if (config.textureFilter.txFilterIgnoreBG != 0) {
-				switch (gli_GBI->type) {
-				case S2DEX_1_07:
-				case S2DEX_1_03:
-				case S2DEX_1_05:
-					needEnhance = RSP.cmd != 0x01 && RSP.cmd != 0x02;
-					break;
-				case S2DEX2:
-					needEnhance = RSP.cmd != 0x09 && RSP.cmd != 0x0A;
-					break;
-				}
-			}
-		}
+		if (needEnhance && gli_tex_filter_skips())
+			needEnhance = false;
 
 		if (needEnhance) {
 			GHQTexInfo ghqTexInfo;
@@ -709,25 +659,7 @@ void TextureCache::_load(u32 _tile, CachedTexture *_pTexture)
 		if (mipLevel == _pTexture->max_level)
 			break;
 		++mipLevel;
-		const u32 tileMipLevel = gSP.texture.tile + mipLevel + 1;
-		gDPTile & mipTile = gDP.tiles[tileMipLevel];
-		line = mipTile.line;
-		tmptex.tMem = mipTile.tmem;
-		tmptex.palette = mipTile.palette;
-		tmptex.maskS = mipTile.masks;
-		tmptex.maskT = mipTile.maskt;
-		gli_tile_sizes sizes;
-		gli_tex_tile_sizes(tileMipLevel, &sizes, nullptr);
-		tmptex.width = sizes.width;
-		tmptex.clampWidth = sizes.clampWidth;
-		tmptex.height = sizes.height;
-		tmptex.clampHeight = sizes.clampHeight;
-		// Insure mip-map levels size consistency.
-		if (tmptex.realWidth > 1)
-			tmptex.realWidth >>= 1;
-		if (tmptex.realHeight > 1)
-			tmptex.realHeight >>= 1;
-		_pTexture->textureBytes += (tmptex.realWidth * tmptex.realHeight) << sizeShift;
+		_pTexture->textureBytes += gli_tex_mip_step(&tmptex, mipLevel, &line, sizeShift);
 	}
 	if (m_curUnpackAlignment > 1)
 		gfxContext.setTextureUnpackAlignment(m_curUnpackAlignment);

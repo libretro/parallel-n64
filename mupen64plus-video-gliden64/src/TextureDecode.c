@@ -7,6 +7,7 @@
 #include "GBI.h"
 #include "convert.h"
 #include "gli_texdecode.h"
+#include "gli_tex.h"
 
 static INLINE u16 rd16(const u8 *_s, u32 _k)
 {
@@ -229,7 +230,7 @@ const gli_tex_format *gli_tex_format_get(u32 tlut, u32 size, u32 format)
 	return &l_formats[tlut & 3][size & 3][format < 5 ? format : 0];
 }
 
-void gli_tex_decode_tmem(const gli_tex_decode *t, const gli_tex_format *f,
+void gli_tex_decode_tmem(const struct gli_tex *t, const gli_tex_format *f,
 		int out32, u32 tlut, u16 *line, void *dst)
 {
 	u16 mirrorSBit, maskSMask, clampSClamp;
@@ -319,7 +320,7 @@ void gli_tex_decode_tmem(const gli_tex_decode *t, const gli_tex_format *f,
 	}
 }
 
-void gli_tex_decode_bg(const gli_tex_decode *t, const gli_tex_format *f,
+void gli_tex_decode_bg(const struct gli_tex *t, const gli_tex_format *f,
 		int out32, const u8 *src, u32 bpl, void *dst)
 {
 	const gli_tex_row_fn row = out32 ? f->row32 : f->row16;

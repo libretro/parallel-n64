@@ -32,27 +32,15 @@ typedef struct gli_tex_format
 /* The format for texture LUT mode @tlut, texel @size and @format */
 const gli_tex_format *gli_tex_format_get(u32 tlut, u32 size, u32 format);
 
-/* The texture to decode out of TMEM */
-typedef struct gli_tex_decode
-{
-	u32 tMem;
-	u32 palette;
-	u16 size, format;
-	u16 width, height;
-	u16 clampWidth, clampHeight;
-	u16 realWidth, realHeight;
-	u8  maskS, maskT;
-	u8  clampS, clampT;
-	u8  mirrorS, mirrorT;
-} gli_tex_decode;
+struct gli_tex;
 
-/* Decodes @t from TMEM into @dst: u32 texels when @out32, else u16.
+/* Decodes texture @t from TMEM into @dst: u32 texels when @out32, else u16.
  * @line is the TMEM line, which YUV doubles */
-void gli_tex_decode_tmem(const gli_tex_decode *t, const gli_tex_format *f,
+void gli_tex_decode_tmem(const struct gli_tex *t, const gli_tex_format *f,
 		int out32, u32 tlut, u16 *line, void *dst);
 
 /* Decodes a background image of @bpl bytes per line from @src */
-void gli_tex_decode_bg(const gli_tex_decode *t, const gli_tex_format *f,
+void gli_tex_decode_bg(const struct gli_tex *t, const gli_tex_format *f,
 		int out32, const u8 *src, u32 bpl, void *dst);
 
 /* Turns @n N64 depth words at @buf into linear floats in place; @buf
@@ -77,6 +65,14 @@ struct gli_tex;
 
 /* Describes tile @_tile of @_sizes in texture @_tex, ahead of its load */
 void gli_tex_from_tile(struct gli_tex *_tex, const struct gDPTile *_tile, const gli_tile_sizes *_sizes);
+
+/* The mip levels past the first that tile @_tile of texture @_tex has */
+u8 gli_tex_max_level(const struct gli_tex *_tex, u32 _tile);
+/* Steps @_tex, a copy of a texture, to its mip level @_mipLevel, with its
+ * TMEM @_line; returns the level's bytes at 1 << @_sizeShift per texel */
+u32 gli_tex_mip_step(struct gli_tex *_tex, u32 _mipLevel, u16 *_line, u32 _sizeShift);
+/* Whether texture filtering leaves this load alone as a background */
+int gli_tex_filter_skips(void);
 
 /* The cache key of texture tile @_t with @_sizes */
 u64 gli_tex_crc(u32 _t, const gli_tile_sizes *_sizes);
