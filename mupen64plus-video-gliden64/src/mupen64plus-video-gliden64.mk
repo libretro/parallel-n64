@@ -27,6 +27,7 @@ MY_LOCAL_SRC_FILES :=                                                           
     $(SRCDIR)/VIUpdate.c                                                           \
     $(SRCDIR)/FrameBufferRdram.c                                                   \
     $(SRCDIR)/FrameBufferList.c                                                    \
+    $(SRCDIR)/RdramWrite.c                                                         \
     $(SRCDIR)/TriangleList.c                                                       \
     $(SRCDIR)/DrawerViewport.c                                                     \
     $(SRCDIR)/DrawerStates.c                                                       \

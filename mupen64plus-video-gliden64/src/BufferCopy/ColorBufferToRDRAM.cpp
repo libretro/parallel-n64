@@ -3,7 +3,7 @@
 #include <algorithm>
 
 #include "ColorBufferToRDRAM.h"
-#include "WriteToRDRAM.h"
+#include "../gli_rdram_write.h"
 
 #include <FrameBuffer.h>
 #include <FrameBufferInfo.h>
@@ -240,22 +240,6 @@ bool ColorBufferToRDRAM::_prepareCopy(u32& _startAddress)
 	return true;
 }
 
-u8 ColorBufferToRDRAM::_RGBAtoR8(u8 _c) {
-	return _c;
-}
-
-u16 ColorBufferToRDRAM::_RGBAtoRGBA16(u32 _c) {
-	RGBA c;
-	c.raw = _c;
-	return ((c.r >> 3) << 11) | ((c.g >> 3) << 6) | ((c.b >> 3) << 1) | (c.a == 0 ? 0 : 1);
-}
-
-u32 ColorBufferToRDRAM::_RGBAtoRGBA32(u32 _c) {
-	RGBA c;
-	c.raw = _c;
-	return (c.r << 24) | (c.g << 16) | (c.b << 8) | c.a;
-}
-
 void ColorBufferToRDRAM::_copy(u32 _startAddress, u32 _endAddress, bool _sync)
 {
 	const u32 stride = m_pCurFrameBuffer->m_width << m_pCurFrameBuffer->m_size >> 1;
@@ -332,21 +316,26 @@ void ColorBufferToRDRAM::_write(const u8 * _pixels, u32 _stride, const ColorCopy
 		return;
 
 	const bool clear = !gli_FBInfo_supported() && config.frameBufferEmulation.copyFromRDRAM != 0;
+	gli_rdram_write w;
+	w.srcStride = _stride;
+	w.width = _g.width;
+	w.height = _g.height;
+	w.numPixels = _g.numPixels;
+	w.startAddress = _g.startAddress;
+	w.bufferAddress = _g.bufferAddress;
+	w.size = _g.size;
 	if (_g.size == G_IM_SIZ_32b) {
-		u32 *ptr_dst = (u32*)(RDRAM + _g.startAddress);
 		if (clear)
-			memset(ptr_dst, 0, _g.numPixels * 4);
-		writeToRdram<u32, u32>((const u32*)_pixels, _stride, ptr_dst, &ColorBufferToRDRAM::_RGBAtoRGBA32, 0, 0, _g.width, _g.height, _g.numPixels, _g.startAddress, _g.bufferAddress, _g.size);
+			memset(RDRAM + _g.startAddress, 0, _g.numPixels * 4);
+		gli_rdram_write_rgba32((const u32*)_pixels, &w);
 	} else if (_g.size == G_IM_SIZ_16b) {
-		u16 *ptr_dst = (u16*)(RDRAM + _g.startAddress);
 		if (clear)
-			memset(ptr_dst, 0, _g.numPixels * 2);
-		writeToRdram<u32, u16>((const u32*)_pixels, _stride, ptr_dst, &ColorBufferToRDRAM::_RGBAtoRGBA16, 0, 1, _g.width, _g.height, _g.numPixels, _g.startAddress, _g.bufferAddress, _g.size);
+			memset(RDRAM + _g.startAddress, 0, _g.numPixels * 2);
+		gli_rdram_write_rgba16((const u32*)_pixels, &w);
 	} else if (_g.size == G_IM_SIZ_8b) {
-		u8 *ptr_dst = RDRAM + _g.startAddress;
 		if (clear)
-			memset(ptr_dst, 0, _g.numPixels);
-		writeToRdram<u8, u8>(_pixels, _stride, ptr_dst, &ColorBufferToRDRAM::_RGBAtoR8, 0, 3, _g.width, _g.height, _g.numPixels, _g.startAddress, _g.bufferAddress, _g.size);
+			memset(RDRAM + _g.startAddress, 0, _g.numPixels);
+		gli_rdram_write_r8(_pixels, &w);
 	}
 
 	/* the buffer it was read from, if it is still there as it was */
@@ -397,22 +386,7 @@ ColorBufferToRDRAM & ColorBufferToRDRAM::get()
 
 void copyWhiteToRDRAM(FrameBuffer * _pBuffer)
 {
-	if (_pBuffer->m_size == G_IM_SIZ_32b) {
-		u32 *ptr_dst = (u32*)(RDRAM + _pBuffer->m_startAddress);
-
-		for (u32 y = 0; y < VI.height; ++y) {
-			for (u32 x = 0; x < VI.width; ++x)
-				ptr_dst[x + y*VI.width] = 0xFFFFFFFF;
-		}
-	} else {
-		u16 *ptr_dst = (u16*)(RDRAM + _pBuffer->m_startAddress);
-
-		for (u32 y = 0; y < VI.height; ++y) {
-			for (u32 x = 0; x < VI.width; ++x) {
-				ptr_dst[(x + y*VI.width) ^ 1] = 0xFFFF;
-			}
-		}
-	}
+	gli_rdram_write_white(_pBuffer->m_startAddress, _pBuffer->m_size);
 	_pBuffer->m_copiedToRdram = true;
 	_pBuffer->copyRdram();
 

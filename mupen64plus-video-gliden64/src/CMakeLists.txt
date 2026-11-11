@@ -23,6 +23,7 @@ set(GLideN64_SOURCES
   VIUpdate.c
   FrameBufferRdram.c
   FrameBufferList.c
+  RdramWrite.c
   TriangleList.c
   DrawerViewport.c
   DrawerStates.c

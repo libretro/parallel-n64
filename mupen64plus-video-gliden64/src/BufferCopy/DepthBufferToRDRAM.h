@@ -30,7 +30,6 @@ private:
 	bool _copy(u32 _startAddress, u32 _endAddress);
 
 	// Convert pixel from video memory to N64 depth buffer format.
-	static u16 _FloatToUInt16(f32 _z);
 
 	graphics::ObjectHandle m_FBO;
 	std::unique_ptr<graphics::PixelReadBuffer> m_pbuf;

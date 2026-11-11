@@ -1774,8 +1774,8 @@ test_release_queue$(EXE_EXT): tools/test_release_queue.c $(VIDEODIR_PARALLEL)/pa
 
 # GLideN64's RDRAM writeback converting read-back rows in place, against
 # the compacting copy it replaced
-test_gliden64_write_rdram$(EXE_EXT): tools/test_gliden64_write_rdram.cpp $(VIDEODIR_GLIDEN64)/src/BufferCopy/WriteToRDRAM.h
-	$(CXX) -std=c++11 $(CHECK_CFLAGS) $(CHECK_SANITIZE) $< -o $@ $(CHECK_LDFLAGS) $(CHECK_SANITIZE)
+test_gliden64_write_rdram$(EXE_EXT): tools/test_gliden64_write_rdram.c $(VIDEODIR_GLIDEN64)/src/RdramWrite.c $(VIDEODIR_GLIDEN64)/src/gli_rdram_write.h
+	$(CC) -std=c89 -D_DEFAULT_SOURCE $(CHECK_CFLAGS) $(CHECK_SANITIZE) -I$(VIDEODIR_GLIDEN64)/src -I$(LIBRETRO_COMM_DIR)/include tools/test_gliden64_write_rdram.c $(VIDEODIR_GLIDEN64)/src/RdramWrite.c -o $@ $(CHECK_LDFLAGS) $(CHECK_SANITIZE) -lm
 
 test_gliden64_deferred_readback$(EXE_EXT): tools/test_gliden64_deferred_readback.cpp $(VIDEODIR_GLIDEN64)/src/BufferCopy/DeferredReadback.h
 	$(CXX) -std=c++11 $(CHECK_CFLAGS) $(CHECK_SANITIZE) $< -o $@ $(CHECK_LDFLAGS) $(CHECK_SANITIZE)
@@ -1785,7 +1785,7 @@ test_glide64_fb_readback$(EXE_EXT): tools/test_glide64_fb_readback.c $(VIDEODIR_
 
 # GLideN64 is moving to C89 a file at a time: what has moved stays there
 GLIDEN64_C89 := N64.c convert.c RSP_LoadMatrix.c 3DMath.c CRC32.c RDP.c CRC_OPT.c GLideN64.c SoftwareRender.c DepthBufferRender/ClipPolygon.c DepthBufferRender/DepthBufferRender.c \
-	gDP.c VI.c RSP.c GBI.c gSP.c TexrectDrawer.c FrameBufferInfo.c ZlutTexture.c PaletteTexture.c NoiseTexture.c StereoFrames.c TextureFilterHandler.c PostProcessor.c Config.c CombinerKey.c PluginAPI.c DisplayWindow.c DepthBuffer.c CombinerDecode.c TextureDecode.c TextureSizes.c TextureLRU.c VIUpdate.c FrameBufferRdram.c FrameBufferList.c TriangleList.c DrawerViewport.c DrawerStates.c DrawerRect.c TexrectSpecial.c BlendMode.c mupenplus/Config_mupenplus.c uCodes/F5Rogue.c uCodes/F5Indi_Naboo.c \
+	gDP.c VI.c RSP.c GBI.c gSP.c TexrectDrawer.c FrameBufferInfo.c ZlutTexture.c PaletteTexture.c NoiseTexture.c StereoFrames.c TextureFilterHandler.c PostProcessor.c Config.c CombinerKey.c PluginAPI.c DisplayWindow.c DepthBuffer.c CombinerDecode.c TextureDecode.c TextureSizes.c TextureLRU.c VIUpdate.c FrameBufferRdram.c FrameBufferList.c RdramWrite.c TriangleList.c DrawerViewport.c DrawerStates.c DrawerRect.c TexrectSpecial.c BlendMode.c mupenplus/Config_mupenplus.c uCodes/F5Rogue.c uCodes/F5Indi_Naboo.c \
 	uCodes/S2DEX.c \
 	uCodes/ZSort.c uCodes/ZSortBOSS.c \
 	uCodes/T3DUX.c uCodes/Turbo3D.c \

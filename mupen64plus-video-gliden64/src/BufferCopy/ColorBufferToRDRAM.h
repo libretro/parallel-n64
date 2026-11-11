@@ -43,13 +43,6 @@ private:
 
 	CachedTexture * m_pTexture;
 
-	union RGBA {
-		struct {
-			u8 r, g, b, a;
-		};
-		u32 raw;
-	};
-
 	void _initFBTexture(void);
 
 	void _destroyFBTexure(void);
@@ -65,9 +58,6 @@ private:
 	u32 _getRealWidth(u32 _viWidth);
 
 	// Convert pixel from video memory to N64 buffer format.
-	static u8 _RGBAtoR8(u8 _c);
-	static u16 _RGBAtoRGBA16(u32 _c);
-	static u32 _RGBAtoRGBA32(u32 _c);
 
 	graphics::ObjectHandle m_FBO;
 	FrameBuffer * m_pCurFrameBuffer;

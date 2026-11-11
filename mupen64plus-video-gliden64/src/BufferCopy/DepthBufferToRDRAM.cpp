@@ -4,7 +4,7 @@
 #include <cstring>
 
 #include "DepthBufferToRDRAM.h"
-#include "WriteToRDRAM.h"
+#include "../gli_rdram_write.h"
 
 #include <FrameBuffer.h>
 #include <DepthBuffer.h>
@@ -204,21 +204,6 @@ bool DepthBufferToRDRAM::_prepareCopy(u32& _startAddress, bool _copyChunk)
 	return true;
 }
 
-u16 DepthBufferToRDRAM::_FloatToUInt16(f32 _z)
-{
-	static const u16 * const zLUT = gli_depth_zlut();
-	u32 idx = 0x3FFFF;
-
-	if (_z < 0.0f) {
-		idx = 0;
-	} else if (_z < 1.0f) {
-		_z *= 262144.0f;
-		idx = std::min(0x3FFFFU, u32(floorf(_z + 0.5f)));
-	}
-
-	return zLUT[idx];
-}
-
 bool DepthBufferToRDRAM::_copy(u32 _startAddress, u32 _endAddress)
 {
 	DepthBuffer * pDepthBuffer = m_pCurFrameBuffer->m_pDepthBuffer;
@@ -246,22 +231,16 @@ bool DepthBufferToRDRAM::_copy(u32 _startAddress, u32 _endAddress)
 	if (pixelData == nullptr)
 		return false;
 
-	const f32 * ptr_src = (const f32*)pixelData;
-	u16 *ptr_dst = (u16*)(RDRAM + _startAddress);
-
 	/* converted straight out of the mapped pack buffer */
-	writeToRdram<f32, u16>(ptr_src,
-						   width,
-						   ptr_dst,
-						   &DepthBufferToRDRAM::_FloatToUInt16,
-						   2.0f,
-						   1,
-						   width,
-						   height,
-						   numPixels,
-						   _startAddress,
-						   pDepthBuffer->m_address,
-						   G_IM_SIZ_16b);
+	gli_rdram_write w;
+	w.srcStride = width;
+	w.width = width;
+	w.height = height;
+	w.numPixels = numPixels;
+	w.startAddress = _startAddress;
+	w.bufferAddress = pDepthBuffer->m_address;
+	w.size = G_IM_SIZ_16b;
+	gli_rdram_write_depth((const f32*)pixelData, &w);
 
 	pDepthBuffer->m_cleared = false;
 	FrameBuffer * pBuffer = frameBufferList().findBuffer(pDepthBuffer->m_address);
