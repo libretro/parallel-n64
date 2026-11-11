@@ -1,3 +1,4 @@
+#include <new>
 #include <assert.h>
 #include <math.h>
 #include <string.h>
@@ -452,7 +453,8 @@ void FrameBufferList::init()
 
 void FrameBufferList::destroy() {
 	gfxContext.bindFramebuffer(bufferTarget::FRAMEBUFFER, ObjectHandle::defaultFramebuffer);
-	m_list.clear();
+	while (m_fbs.count != 0)
+		_slot(gli_fb_list_remove_at(&m_fbs, 0))->~FrameBuffer();
 	gli_StereoFrames_destroy();
 	m_pCurrent = nullptr;
 	m_pCopy = nullptr;
@@ -484,26 +486,50 @@ void FrameBufferList::setCurrentDrawBuffer() const
 {
 	if (m_pCurrent != nullptr)
 		gfxContext.bindFramebuffer(bufferTarget::DRAW_FRAMEBUFFER, m_pCurrent->m_FBO);
-	else if (!m_list.empty())
-		gfxContext.bindFramebuffer(bufferTarget::DRAW_FRAMEBUFFER, m_list.back().m_FBO);
+	else if (m_fbs.count != 0)
+		gfxContext.bindFramebuffer(bufferTarget::DRAW_FRAMEBUFFER, const_cast<FrameBufferList *>(this)->_at(m_fbs.count - 1)->m_FBO);
 }
 
 FrameBuffer * FrameBufferList::findBuffer(u32 _startAddress)
 {
-	for (auto iter = m_list.begin(); iter != m_list.end(); ++iter) {
-		if (iter->m_startAddress <= _startAddress && iter->m_endAddress >= _startAddress) // [  {  ]
-			return &(*iter);
-	}
-	return nullptr;
+	const u32 slot = gli_fb_list_find(&m_fbs, _startAddress);
+	return slot != GLI_FB_MAX ? _slot(slot) : nullptr;
 }
 
 FrameBuffer * FrameBufferList::getBuffer(u32 _startAddress)
 {
-	for (auto iter = m_list.begin(); iter != m_list.end(); ++iter) {
-		if (iter->m_startAddress == _startAddress)
-			return &(*iter);
+	const u32 slot = gli_fb_list_get(&m_fbs, _startAddress);
+	return slot != GLI_FB_MAX ? _slot(slot) : nullptr;
+}
+
+FrameBuffer & FrameBufferList::_addFront()
+{
+	u32 slot = gli_fb_list_free_slot(&m_fbs);
+	if (slot == GLI_FB_MAX) {
+		/* every slot in use: the oldest buffer other than the current one goes */
+		u32 pos = m_fbs.count;
+		while (pos-- > 0 && _at(pos) == m_pCurrent)
+			;
+		slot = gli_fb_list_remove_at(&m_fbs, pos);
+		if (_slot(slot) == m_pCopy)
+			m_pCopy = nullptr;
+		_slot(slot)->~FrameBuffer();
 	}
-	return nullptr;
+	FrameBuffer * pBuffer = new (m_storage[slot]) FrameBuffer();
+	gli_fb_list_push_front(&m_fbs, slot, pBuffer);
+	return *pBuffer;
+}
+
+void FrameBufferList::_destroyRemoved(const u8 * _removed, u32 _count)
+{
+	for (u32 i = 0; i < _count; ++i) {
+		FrameBuffer * pBuffer = _slot(_removed[i]);
+		if (pBuffer == m_pCurrent) {
+			m_pCurrent = nullptr;
+			gfxContext.bindFramebuffer(bufferTarget::DRAW_FRAMEBUFFER, ObjectHandle::defaultFramebuffer);
+		}
+		pBuffer->~FrameBuffer();
+	}
 }
 
 static bool isOverlapping(const FrameBuffer * _buf1, const FrameBuffer * _buf2)
@@ -513,35 +539,16 @@ static bool isOverlapping(const FrameBuffer * _buf1, const FrameBuffer * _buf2)
 
 void FrameBufferList::removeIntersections()
 {
-	assert(!m_list.empty());
-
-	FrameBuffers::iterator iter = m_list.end();
-	do {
-		--iter;
-		if (&(*iter) == m_pCurrent)
-			continue;
-		if (iter->m_startAddress <= m_pCurrent->m_startAddress && iter->m_endAddress >= m_pCurrent->m_startAddress) { // [  {  ]
-			if (isOverlapping(&(*iter), m_pCurrent)) {
-				iter->m_endAddress = m_pCurrent->m_startAddress - 1;
-				continue;
-			}
-			iter = m_list.erase(iter);
-		} else if (m_pCurrent->m_startAddress <= iter->m_startAddress && m_pCurrent->m_endAddress >= iter->m_startAddress) { // {  [  }
-			if (isOverlapping(m_pCurrent, &(*iter))) {
-				m_pCurrent->m_endAddress = iter->m_startAddress - 1;
-				continue;
-			}
-			iter = m_list.erase(iter);
-		}
-	} while (iter != m_list.begin());
+	u8 removed[GLI_FB_MAX];
+	const u32 count = gli_fb_list_remove_intersections(&m_fbs, m_pCurrent, removed);
+	for (u32 i = 0; i < count; ++i)
+		_slot(removed[i])->~FrameBuffer();
 }
 
 FrameBuffer * FrameBufferList::findTmpBuffer(u32 _address)
 {
-	for (auto iter = m_list.begin(); iter != m_list.end(); ++iter)
-		if (iter->m_startAddress > _address || iter->m_endAddress < _address)
-				return &(*iter);
-	return nullptr;
+	const u32 slot = gli_fb_list_find_other(&m_fbs, _address);
+	return slot != GLI_FB_MAX ? _slot(slot) : nullptr;
 }
 
 void FrameBufferList::updateCurrentBufferEndAddress()
@@ -556,8 +563,7 @@ void FrameBufferList::_createScreenSizeBuffer()
 {
 	if (VI.height == 0)
 		return;
-	m_list.emplace_front();
-	FrameBuffer & buffer = m_list.front();
+	FrameBuffer & buffer = _addFront();
 	buffer.init(VI.width * 2, G_IM_FMT_RGBA, G_IM_SIZ_16b, VI.width, false);
 }
 
@@ -570,7 +576,7 @@ void FrameBufferList::saveBuffer(u32 _address, u16 _format, u16 _size, u16 _widt
 		_width = *REG.VI_WIDTH;
 
 	if (config.frameBufferEmulation.enable == 0) {
-		if (m_list.empty())
+		if (m_fbs.count == 0)
 			_createScreenSizeBuffer();
 		return;
 	}
@@ -655,8 +661,7 @@ void FrameBufferList::saveBuffer(u32 _address, u16 _format, u16 _size, u16 _widt
 	const bool bNew = m_pCurrent == nullptr;
 	if  (bNew) {
 		// Wasn't found or removed, create a new one
-		m_list.emplace_front();
-		FrameBuffer & buffer = m_list.front();
+		FrameBuffer & buffer = _addFront();
 		buffer.init(_address, _format, _size, _width, _cfb);
 		m_pCurrent = &buffer;
 		RDRAMtoColorBuffer::get().copyFromRDRAM(m_pCurrent);
@@ -695,54 +700,34 @@ void FrameBufferList::saveBuffer(u32 _address, u16 _format, u16 _size, u16 _widt
 
 void FrameBufferList::copyAux()
 {
-	for (auto iter = m_list.begin(); iter != m_list.end(); ++iter) {
-		if (iter->isAuxiliary())
-			FrameBuffer_CopyToRDRAM(iter->m_startAddress, true);
+	for (u32 pos = 0; pos < m_fbs.count; ++pos) {
+		FrameBuffer * pBuffer = _at(pos);
+		if (pBuffer->isAuxiliary())
+			FrameBuffer_CopyToRDRAM(pBuffer->m_startAddress, true);
 	}
 }
 
 void FrameBufferList::removeAux()
 {
-	for (auto iter = m_list.begin(); iter != m_list.end(); ++iter) {
-		while (iter->isAuxiliary()) {
-			if (&(*iter) == m_pCurrent) {
-				m_pCurrent = nullptr;
-				gfxContext.bindFramebuffer(bufferTarget::DRAW_FRAMEBUFFER, ObjectHandle::defaultFramebuffer);
-			}
-			iter = m_list.erase(iter);
-			if (iter == m_list.end())
-				return;
-		}
-	}
+	u8 removed[GLI_FB_MAX];
+	_destroyRemoved(removed, gli_fb_list_remove_aux(&m_fbs, removed));
 }
 
 void FrameBufferList::removeBuffer(u32 _address )
 {
-	for (auto iter = m_list.begin(); iter != m_list.end(); ++iter)
-		if (iter->m_startAddress == _address) {
-			if (&(*iter) == m_pCurrent) {
-				m_pCurrent = nullptr;
-				gfxContext.bindFramebuffer(bufferTarget::DRAW_FRAMEBUFFER, ObjectHandle::defaultFramebuffer);
-			}
-			m_list.erase(iter);
+	for (u32 pos = 0; pos < m_fbs.count; ++pos)
+		if (_at(pos)->m_startAddress == _address) {
+			u8 removed = (u8)gli_fb_list_remove_at(&m_fbs, pos);
+			_destroyRemoved(&removed, 1);
 			return;
 		}
 }
 
 void FrameBufferList::removeBuffers(u32 _width)
 {
+	u8 removed[GLI_FB_MAX];
 	m_pCurrent = nullptr;
-	for (auto iter = m_list.begin(); iter != m_list.end(); ++iter) {
-		while (iter->m_width == _width) {
-			if (&(*iter) == m_pCurrent) {
-				m_pCurrent = nullptr;
-				gfxContext.bindFramebuffer(bufferTarget::DRAW_FRAMEBUFFER, ObjectHandle::defaultFramebuffer);
-			}
-			iter = m_list.erase(iter);
-			if (iter == m_list.end())
-				return;
-		}
-	}
+	_destroyRemoved(removed, gli_fb_list_remove_width(&m_fbs, _width, removed));
 }
 
 void FrameBufferList::depthBufferCopyRdram()
@@ -757,12 +742,13 @@ void FrameBufferList::fillBufferInfo(void * _pinfo, u32 _size)
 	FBInfoEntry* pInfo = reinterpret_cast<FBInfoEntry*>(_pinfo);
 
 	u32 idx = 0;
-	for (auto iter = m_list.begin(); iter != m_list.end(); ++iter) {
-		if (iter->m_width == VI.width && !iter->m_cfb && !iter->m_isDepthBuffer) {
-			pInfo[idx].addr = iter->m_startAddress;
-			pInfo[idx].width = iter->m_width;
-			pInfo[idx].height = iter->m_height;
-			pInfo[idx++].size = iter->m_size;
+	for (u32 pos = 0; pos < m_fbs.count; ++pos) {
+		const FrameBuffer * pBuffer = _at(pos);
+		if (pBuffer->m_width == VI.width && !pBuffer->m_cfb && !pBuffer->m_isDepthBuffer) {
+			pInfo[idx].addr = pBuffer->m_startAddress;
+			pInfo[idx].width = pBuffer->m_width;
+			pInfo[idx].height = pBuffer->m_height;
+			pInfo[idx++].size = pBuffer->m_size;
 			if (idx >= _size)
 				return;
 		}
@@ -771,7 +757,8 @@ void FrameBufferList::fillBufferInfo(void * _pinfo, u32 _size)
 
 void FrameBufferList::attachDepthBuffer()
 {
-	FrameBuffer * pCurrent = config.frameBufferEmulation.enable == 0 ? &m_list.back() : m_pCurrent;
+	FrameBuffer * pCurrent = config.frameBufferEmulation.enable == 0 ?
+		(m_fbs.count != 0 ? _at(m_fbs.count - 1) : nullptr) : m_pCurrent;
 	if (pCurrent == nullptr)
 		return;
 
@@ -807,10 +794,10 @@ void FrameBufferList::attachDepthBuffer()
 
 void FrameBufferList::clearDepthBuffer(DepthBuffer * _pDepthBuffer)
 {
-	for (auto iter = m_list.begin(); iter != m_list.end(); ++iter) {
-		if (iter->m_pDepthBuffer == _pDepthBuffer) {
-			iter->m_pDepthBuffer = nullptr;
-		}
+	for (u32 pos = 0; pos < m_fbs.count; ++pos) {
+		FrameBuffer * pBuffer = _at(pos);
+		if (pBuffer->m_pDepthBuffer == _pDepthBuffer)
+			pBuffer->m_pDepthBuffer = nullptr;
 	}
 }
 
@@ -834,12 +821,12 @@ void FrameBuffer_Destroy()
 
 void FrameBufferList::_renderScreenSizeBuffer()
 {
-	if (m_list.empty())
+	if (m_fbs.count == 0)
 		return;
 
 	DisplayWindow & wnd = dwnd();
 	GraphicsDrawer & drawer = wnd.getDrawer();
-	FrameBuffer *pBuffer = &m_list.back();
+	FrameBuffer *pBuffer = _at(m_fbs.count - 1);
 	FrameBuffer * pFilteredBuffer = gli_pp_run(pBuffer);
 	CachedTexture * pBufferTexture = pFilteredBuffer->m_pTexture;
 

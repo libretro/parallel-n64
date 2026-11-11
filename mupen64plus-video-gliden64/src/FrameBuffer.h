@@ -7,6 +7,7 @@
 #include "Types.h"
 #include "gli_vi_update.h"
 #include "gli_fb_rdram.h"
+#include "gli_fb_list.h"
 #include "Textures.h"
 #include "Graphics/ObjectHandle.h"
 
@@ -92,7 +93,7 @@ public:
 	static FrameBufferList & get();
 
 private:
-	FrameBufferList() : m_pCurrent(nullptr), m_pCopy(nullptr), m_prevColorImageHeight(0) {}
+	FrameBufferList() : m_pCurrent(nullptr), m_pCopy(nullptr), m_prevColorImageHeight(0) { gli_fb_list_init(&m_fbs); }
 	FrameBufferList(const FrameBufferList &) = delete;
 
 	void removeIntersections();
@@ -132,8 +133,15 @@ private:
 		CachedTexture *m_pTexture = nullptr;
 	};
 
-	typedef std::list<FrameBuffer> FrameBuffers;
-	FrameBuffers m_list;
+	/* the buffers live in fixed slots, built in place; the C list keeps
+	 * their order */
+	gli_fb_list m_fbs;
+	alignas(FrameBuffer) unsigned char m_storage[GLI_FB_MAX][sizeof(FrameBuffer)];
+	FrameBuffer * _slot(u32 _slot) { return reinterpret_cast<FrameBuffer *>(m_storage[_slot]); }
+	FrameBuffer * _at(u32 _pos) { return _slot(gli_fb_list_at(&m_fbs, _pos)); }
+	FrameBuffer & _addFront();
+	/* destroys the buffers taken out of the list, forgetting the current one */
+	void _destroyRemoved(const u8 * _removed, u32 _count);
 	FrameBuffer * m_pCurrent;
 	FrameBuffer * m_pCopy;
 	u32 m_prevColorImageHeight;

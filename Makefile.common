@@ -392,6 +392,7 @@ SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/TextureSizes.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/TextureLRU.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/VIUpdate.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/FrameBufferRdram.c
+SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/FrameBufferList.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/TriangleList.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/DrawerViewport.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/DrawerStates.c

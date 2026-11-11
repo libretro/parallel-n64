@@ -26,6 +26,7 @@ MY_LOCAL_SRC_FILES :=                                                           
     $(SRCDIR)/TextureLRU.c                                                         \
     $(SRCDIR)/VIUpdate.c                                                           \
     $(SRCDIR)/FrameBufferRdram.c                                                   \
+    $(SRCDIR)/FrameBufferList.c                                                    \
     $(SRCDIR)/TriangleList.c                                                       \
     $(SRCDIR)/DrawerViewport.c                                                     \
     $(SRCDIR)/DrawerStates.c                                                       \

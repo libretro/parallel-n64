@@ -22,6 +22,7 @@ set(GLideN64_SOURCES
   TextureLRU.c
   VIUpdate.c
   FrameBufferRdram.c
+  FrameBufferList.c
   TriangleList.c
   DrawerViewport.c
   DrawerStates.c
