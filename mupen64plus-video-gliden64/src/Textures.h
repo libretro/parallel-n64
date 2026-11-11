@@ -55,7 +55,6 @@ private:
 		, m_misses(0)
 		, m_curUnpackAlignment(4)
 		, m_decodeScratch(nullptr)
-		, m_swapScratch(nullptr)
 		, m_lastHeapDecode(nullptr)
 	{
 		current[0] = nullptr;
@@ -86,7 +85,6 @@ private:
 	u32 m_hits, m_misses;
 	s32 m_curUnpackAlignment;
 	u8 * m_decodeScratch;
-	u8 * m_swapScratch;
 	u8 * m_lastHeapDecode;
 
 	bool _decodedIsRead() const;

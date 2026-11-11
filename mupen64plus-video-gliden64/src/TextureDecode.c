@@ -1,5 +1,7 @@
 #include <string.h>
 
+#include <retro_endianness.h>
+
 #include <retro_inline.h>
 
 #include "Types.h"
@@ -348,18 +350,52 @@ void gli_tex_decode_tmem(const struct gli_tex *t, const gli_tex_format *f,
 	}
 }
 
+/* A background row: up to 4 bytes per texel and a word of slack */
+static u8 s_bg_row[(65536 << 2) + 16];
+
+/* @_bytes of the image at @_offset from RDRAM byte @_address, in N64
+ * order: RDRAM keeps each word's bytes swapped, and its address wraps */
+static void bg_gather(u32 _address, u32 _offset, u32 _bytes)
+{
+	const u32 start = (_address + _offset) & RDRAMSize;
+	u32 k = 0;
+	if ((start & 3) == 0 && start + _bytes <= RDRAMSize + 1) {
+		/* aligned and in one piece: a word at a time */
+		for (; k + 4 <= _bytes; k += 4) {
+			u32 w;
+			memcpy(&w, RDRAM + start + k, 4);
+			w = SWAP32(w);
+			memcpy(s_bg_row + k, &w, 4);
+		}
+	}
+	for (; k < _bytes; ++k)
+		s_bg_row[k] = RDRAM[((start + k) ^ 3) & RDRAMSize];
+}
+
 void gli_tex_decode_bg(const struct gli_tex *t, const gli_tex_format *f,
-		int out32, const u8 *src, u32 bpl, void *dst)
+		int out32, u32 address, u32 bpl, void *dst)
 {
 	const gli_tex_row_fn row = out32 ? f->row32 : f->row16;
 	const u32 clampS = (u16)(t->width - 1);
 	const u32 clampT = (u16)(t->height - 1);
 	const u32 pitch = (u32)t->realWidth << (out32 ? 2 : 1);
+	u32 maxTx = t->realWidth != 0 ? (u32)t->realWidth - 1 : 0;
+	u32 rowBytes, y, last = 0xFFFFFFFFu;
 	u8 *d = (u8*)dst;
-	u32 y;
-	for (y = 0; y < t->realHeight; ++y, d += pitch)
-		row(d, src + bpl * (y < clampT ? y : clampT), 0, (u8)t->palette,
-			t->realWidth, clampS, 0xFFFF, 0);
+	if (maxTx > clampS)
+		maxTx = clampS;
+	rowBytes = ((maxTx + 1) << 2) + 4;
+	if (rowBytes > sizeof(s_bg_row))
+		rowBytes = sizeof(s_bg_row);
+	for (y = 0; y < t->realHeight; ++y, d += pitch) {
+		const u32 ty = y < clampT ? y : clampT;
+		/* the rows past the clamp repeat the last one */
+		if (ty != last) {
+			bg_gather(address, bpl * ty, rowBytes);
+			last = ty;
+		}
+		row(d, s_bg_row, 0, (u8)t->palette, t->realWidth, clampS, 0xFFFF, 0);
+	}
 }
 
 /* N64 depth words, exponent in bits 15..13 and mantissa in 12..2, to

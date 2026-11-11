@@ -39,9 +39,10 @@ struct gli_tex;
 void gli_tex_decode_tmem(const struct gli_tex *t, const gli_tex_format *f,
 		int out32, u32 tlut, u16 *line, void *dst);
 
-/* Decodes a background image of @bpl bytes per line from @src */
+/* Decodes a background image of @bpl bytes per line straight out of
+ * RDRAM at @address, reading only the rows it shows */
 void gli_tex_decode_bg(const struct gli_tex *t, const gli_tex_format *f,
-		int out32, const u8 *src, u32 bpl, void *dst);
+		int out32, u32 address, u32 bpl, void *dst);
 
 /* Turns @n N64 depth words at @buf into linear floats in place; @buf
  * must hold n floats */

@@ -76,7 +76,6 @@ void TextureCache::init()
 		m_pool = new CachedTexture[m_maxCacheSize];
 		gli_lru_init(&m_lru, (u32)m_maxCacheSize);
 	}
-	m_swapScratch = (u8*)malloc(DecodeScratchBytes);
 
 	u32 dummyTexture[16] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 
@@ -159,8 +158,7 @@ void TextureCache::destroy()
 {
 	current[0] = current[1] = nullptr;
 	free(m_decodeScratch);
-	free(m_swapScratch);
-	m_decodeScratch = m_swapScratch = nullptr;
+	m_decodeScratch = nullptr;
 
 	_deletePool();
 	delete[] m_pool;
@@ -303,8 +301,7 @@ void TextureCache::_loadBackground(CachedTexture *pTexture)
 
 	u32 *pDest = nullptr;
 
-	u8 *pSwapped;
-	u32 numBytes, bpl;
+	u32 bpl;
 	InternalColorFormatParam glInternalFormat;
 	DatatypeParam glType;
 
@@ -322,27 +319,15 @@ void TextureCache::_loadBackground(CachedTexture *pTexture)
 	}
 
 	bpl = gSP.bgImage.width << gSP.bgImage.size >> 1;
-	numBytes = bpl * gSP.bgImage.height;
-	const bool swappedOnHeap = numBytes > DecodeScratchBytes || m_swapScratch == nullptr;
-	pSwapped = swappedOnHeap ? (u8*)malloc(numBytes) : m_swapScratch;
-	if (pSwapped == nullptr)
-		return;
-	gli_UnswapCopyWrap(RDRAM, gSP.bgImage.address, pSwapped, 0, RDRAMSize, numBytes);
 	pDest = _takeDecode(pTexture->textureBytes, !_decodedIsRead());
-	if (pDest == nullptr) {
-		if (swappedOnHeap)
-			free(pSwapped);
+	if (pDest == nullptr)
 		return;
-	}
-	{
-		gli_tex_decode_bg(pTexture, loadParams, out32, pSwapped, bpl, pDest);
-	}
+	/* read straight out of RDRAM, only the rows shown: no unswapped copy */
+	gli_tex_decode_bg(pTexture, loadParams, out32, gSP.bgImage.address, bpl, pDest);
 
 	if ((config.generalEmulation.hacks&hack_LoadDepthTextures) != 0 && gDP.colorImage.address == gDP.depthImageAddress) {
 		_loadDepthTexture(pTexture, (u16*)pDest);
 		_dropDecode(pDest);
-		if (swappedOnHeap)
-			free(pSwapped);
 		return;
 	}
 
@@ -403,8 +388,6 @@ void TextureCache::_loadBackground(CachedTexture *pTexture)
 	}
 	if (m_curUnpackAlignment > 1)
 		gfxContext.setTextureUnpackAlignment(m_curUnpackAlignment);
-	if (swappedOnHeap)
-		free(pSwapped);
 	_dropDecode(pDest);
 }
 
