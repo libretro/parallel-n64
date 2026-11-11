@@ -12,6 +12,8 @@ namespace graphics {
 		virtual void closeReadBuffer() = 0;
 		virtual void bind() = 0;
 		virtual void unbind() = 0;
+		/* Whether the last read has landed, waiting for it when @_wait */
+		virtual bool ready(bool _wait) { return true; }
 	};
 
 	template<class T>

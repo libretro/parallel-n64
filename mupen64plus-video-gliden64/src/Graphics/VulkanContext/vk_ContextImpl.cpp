@@ -314,6 +314,7 @@ public:
 	void closeReadBuffer() override {}
 	void bind() override {}
 	void unbind() override {}
+	bool ready(bool _wait) override { return vkr_readback_ready(g_r, m_rb, _wait ? 1 : 0) != 0; }
 private:
 	vkr_readback * m_rb;
 };

@@ -25,6 +25,8 @@ using namespace graphics;
 
 DepthBufferToRDRAM::DepthBufferToRDRAM()
 	: m_frameCount(-1)
+	, m_numSlots(1)
+	, m_written(false)
 	, m_pColorTexture(nullptr)
 	, m_pDepthTexture(nullptr)
 	, m_pCurFrameBuffer(nullptr)
@@ -43,9 +45,20 @@ DepthBufferToRDRAM & DepthBufferToRDRAM::get()
 
 void DepthBufferToRDRAM::init()
 {
-	// Generate and initialize Pixel Buffer Objects
-	m_pbuf.reset(gfxContext.createPixelReadBuffer(DEPTH_TEX_WIDTH * DEPTH_TEX_HEIGHT * sizeof(float)));
-	if (!m_pbuf)
+	/* a read-back buffer per read in flight: the colour copy's setting
+	 * (Async 2, TripleBuffer 3) leaves full copies in flight, Sync or Off
+	 * keeps one, waited for */
+	const u32 setting = config.frameBufferEmulation.copyToRDRAM;
+	m_numSlots = setting > 1 ? (setting < MaxSlots ? setting : MaxSlots) : 1;
+	for (u32 i = 0; i < m_numSlots; ++i) {
+		m_pbuf[i].reset(gfxContext.createPixelReadBuffer(DEPTH_TEX_WIDTH * DEPTH_TEX_HEIGHT * sizeof(float)));
+		if (!m_pbuf[i]) {
+			m_numSlots = i;
+			break;
+		}
+	}
+	m_readback.reset(m_numSlots);
+	if (m_numSlots == 0)
 		return;
 
 	m_pColorTexture = textureCache().addFrameBufferTexture(textureTarget::TEXTURE_2D);
@@ -64,7 +77,7 @@ void DepthBufferToRDRAM::init()
 
 	m_pDepthTexture = textureCache().addFrameBufferTexture(textureTarget::TEXTURE_2D);
 	m_pDepthTexture->format = G_IM_FMT_I;
-	m_pColorTexture->size = 2;
+	m_pDepthTexture->size = 2;
 	m_pDepthTexture->clampS = 1;
 	m_pDepthTexture->clampT = 1;
 	m_pDepthTexture->frameBufferTexture = CachedTexture::fbOneSample;
@@ -126,8 +139,10 @@ void DepthBufferToRDRAM::init()
 }
 
 void DepthBufferToRDRAM::destroy() {
-	if (!m_pbuf)
+	if (!m_pbuf[0])
 		return;
+	/* the reads in flight are dropped with their buffers */
+	m_readback.reset(m_numSlots);
 
 	gfxContext.deleteFramebuffer(m_FBO);
 	m_FBO.reset();
@@ -139,7 +154,9 @@ void DepthBufferToRDRAM::destroy() {
 		textureCache().removeFrameBufferTexture(m_pDepthTexture);
 		m_pDepthTexture = nullptr;
 	}
-	m_pbuf.reset();
+	for (u32 i = 0; i < MaxSlots; ++i)
+		m_pbuf[i].reset();
+	m_numSlots = 1;
 }
 
 bool DepthBufferToRDRAM::_prepareCopy(u32& _startAddress, bool _copyChunk)
@@ -204,7 +221,25 @@ bool DepthBufferToRDRAM::_prepareCopy(u32& _startAddress, bool _copyChunk)
 	return true;
 }
 
-bool DepthBufferToRDRAM::_copy(u32 _startAddress, u32 _endAddress)
+bool DepthBufferToRDRAM::ready(u32 _slot, bool _wait)
+{
+	return m_pbuf[_slot]->ready(_wait);
+}
+
+void DepthBufferToRDRAM::write(u32 _slot, const gli_rdram_write & _w)
+{
+	const FramebufferTextureFormats & fbTexFormats = gfxContext.getFramebufferTextureFormats();
+	PixelBufferBinder<PixelReadBuffer> binder(m_pbuf[_slot].get());
+	/* converted straight out of the mapped pack buffer */
+	const u8 * pixelData = (const u8*)m_pbuf[_slot]->getDataRange(0, _w.width * _w.height * fbTexFormats.depthFormatBytes);
+	m_written = pixelData != nullptr;
+	if (pixelData == nullptr)
+		return;
+	gli_rdram_write_depth((const f32*)pixelData, &_w);
+	m_pbuf[_slot]->closeReadBuffer();
+}
+
+bool DepthBufferToRDRAM::_copy(u32 _startAddress, u32 _endAddress, bool _sync)
 {
 	DepthBuffer * pDepthBuffer = m_pCurFrameBuffer->m_pDepthBuffer;
 	const u32 stride = m_pCurFrameBuffer->m_width << 1;
@@ -222,16 +257,6 @@ bool DepthBufferToRDRAM::_copy(u32 _startAddress, u32 _endAddress)
 	const u32 y1 = (_endAddress - pDepthBuffer->m_address) / stride;
 	const u32 height = std::min(max_height, 1u + y1 - y0);
 
-	gfxContext.bindFramebuffer(bufferTarget::READ_FRAMEBUFFER, m_FBO);
-
-	PixelBufferBinder<PixelReadBuffer> binder(m_pbuf.get());
-	const FramebufferTextureFormats & fbTexFormats = gfxContext.getFramebufferTextureFormats();
-	m_pbuf->readPixels(x0, y0, width, height, fbTexFormats.depthFormat, fbTexFormats.depthType);
-	u8 * pixelData = (u8*)m_pbuf->getDataRange(0, width * height * fbTexFormats.depthFormatBytes);
-	if (pixelData == nullptr)
-		return false;
-
-	/* converted straight out of the mapped pack buffer */
 	gli_rdram_write w;
 	w.srcStride = width;
 	w.width = width;
@@ -240,14 +265,30 @@ bool DepthBufferToRDRAM::_copy(u32 _startAddress, u32 _endAddress)
 	w.startAddress = _startAddress;
 	w.bufferAddress = pDepthBuffer->m_address;
 	w.size = G_IM_SIZ_16b;
-	gli_rdram_write_depth((const f32*)pixelData, &w);
+
+	/* an older read still in flight must land before this one */
+	const u32 slot = _sync ? m_readback.drain(*this) : m_readback.begin(*this);
+
+	gfxContext.bindFramebuffer(bufferTarget::READ_FRAMEBUFFER, m_FBO);
+	{
+		PixelBufferBinder<PixelReadBuffer> binder(m_pbuf[slot].get());
+		const FramebufferTextureFormats & fbTexFormats = gfxContext.getFramebufferTextureFormats();
+		m_pbuf[slot]->readPixels(x0, y0, width, height, fbTexFormats.depthFormat, fbTexFormats.depthType);
+	}
+
+	if (_sync) {
+		m_pbuf[slot]->ready(true);
+		write(slot, w);
+		if (!m_written)
+			return false;
+	} else {
+		m_readback.issued(w);
+	}
 
 	pDepthBuffer->m_cleared = false;
 	FrameBuffer * pBuffer = frameBufferList().findBuffer(pDepthBuffer->m_address);
 	if (pBuffer != nullptr)
 		pBuffer->m_cleared = false;
-
-	m_pbuf->closeReadBuffer();
 
 	gDP.changed |= CHANGED_SCISSOR;
 	return true;
@@ -258,7 +299,7 @@ bool DepthBufferToRDRAM::copyToRDRAM(u32 _address)
 	if (config.frameBufferEmulation.copyDepthToRDRAM == cdSoftwareRender)
 		return true;
 
-	if (!m_pbuf)
+	if (!m_pbuf[0])
 		return false;
 
 	if (!_prepareCopy(_address, false))
@@ -267,7 +308,7 @@ bool DepthBufferToRDRAM::copyToRDRAM(u32 _address)
 	const u32 endAddress = m_pCurFrameBuffer->m_pDepthBuffer->m_address +
 			m_pCurFrameBuffer->m_width * m_pCurFrameBuffer->m_height * 2;
 
-	return _copy(m_pCurFrameBuffer->m_pDepthBuffer->m_address, endAddress);
+	return _copy(m_pCurFrameBuffer->m_pDepthBuffer->m_address, endAddress, m_numSlots == 1);
 }
 
 bool DepthBufferToRDRAM::copyChunkToRDRAM(u32 _startAddress)
@@ -275,7 +316,7 @@ bool DepthBufferToRDRAM::copyChunkToRDRAM(u32 _startAddress)
 	if (config.frameBufferEmulation.copyDepthToRDRAM == cdSoftwareRender)
 		return true;
 
-	if (!m_pbuf)
+	if (!m_pbuf[0])
 		return false;
 
 	const u32 endAddress = (_startAddress & ~0xfff) + 0x1000;
@@ -283,5 +324,5 @@ bool DepthBufferToRDRAM::copyChunkToRDRAM(u32 _startAddress)
 	if (!_prepareCopy(_startAddress, true))
 		return false;
 
-	return _copy(_startAddress, endAddress);
+	return _copy(_startAddress, endAddress, true);
 }

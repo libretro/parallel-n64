@@ -139,6 +139,8 @@ public:
 	}
 
 	~PBOReadBuffer() {
+		if (m_fence != 0)
+			glDeleteSync(m_fence);
 		glDeleteBuffers(1, &m_PBO);
 		m_PBO = 0;
 	}
@@ -146,6 +148,24 @@ public:
 	void readPixels(s32 _x,s32 _y, u32 _width, u32 _height, graphics::Parameter _format, graphics::Parameter _type) override
 	{
 		glReadPixels(_x, _y, _width, _height, GLenum(_format), GLenum(_type), 0);
+		/* polled by ready(), so the read can be left in flight */
+		if (m_fence != 0)
+			glDeleteSync(m_fence);
+		m_fence = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
+	}
+
+	bool ready(bool _wait) override
+	{
+		if (m_fence == 0)
+			return true;
+		GLenum res = glClientWaitSync(m_fence, GL_SYNC_FLUSH_COMMANDS_BIT, 0);
+		while (_wait && res == GL_TIMEOUT_EXPIRED)
+			res = glClientWaitSync(m_fence, 0, 1000000000);
+		if (res == GL_TIMEOUT_EXPIRED)
+			return false;
+		glDeleteSync(m_fence);
+		m_fence = 0;
+		return true;
 	}
 
 	void * getDataRange(u32 _offset, u32 _range) override
@@ -172,6 +192,7 @@ private:
 	CachedBindBuffer * m_bind;
 	size_t m_size;
 	GLuint m_PBO;
+	GLsync m_fence = 0;
 };
 
 template<typename T>
