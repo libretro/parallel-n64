@@ -232,3 +232,22 @@ void gli_fb_set_dirty(gli_fb *_fb)
 	_fb->m_cleared = 0;
 	_fb->m_RdramCopySize = 0;
 }
+
+int gli_fb_reuse(gli_fb *_fb, u32 _swapCount, u32 _address, u32 _width, u32 _size, f32 _scale)
+{
+	_fb->m_originX = _fb->m_originY = 0;
+	if (_fb->m_startAddress != _address) {
+		if (gli_fb_is_sub_buffer(_fb, _swapCount, _address, _width, _size)) {
+			gli_fb_sub_origin(_fb->m_startAddress, _address, _width, _size, &_fb->m_originX, &_fb->m_originY);
+			return GLI_FB_REUSE_SUB;
+		}
+		if (gli_fb_runs_into(_fb, _address, _width, _size)) {
+			_fb->m_endAddress = _address - 1;
+			return GLI_FB_REUSE_TRUNCATE;
+		}
+		return GLI_FB_REUSE_REMOVE;
+	}
+	if (_fb->m_width != _width || _fb->m_size < _size || _fb->m_scale != _scale)
+		return GLI_FB_REUSE_REMOVE;
+	return GLI_FB_REUSE_KEEP;
+}

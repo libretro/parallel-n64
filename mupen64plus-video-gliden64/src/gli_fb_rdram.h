@@ -99,6 +99,18 @@ int gli_fb_is_sub_buffer(const gli_fb *_fb, u32 _swapCount, u32 _address, u32 _w
  * @_address */
 int gli_fb_runs_into(const gli_fb *_fb, u32 _address, u32 _width, u32 _size);
 
+/* What becomes of buffer @_fb when the color image moves to @_address
+ * of @_width and @_size at @_scale in swap @_swapCount */
+enum
+{
+	GLI_FB_REUSE_KEEP,     /* the same image: draw on into it */
+	GLI_FB_REUSE_SUB,      /* the image lies inside it: drawn at its origin */
+	GLI_FB_REUSE_TRUNCATE, /* it runs a few lines into the image: cut short */
+	GLI_FB_REUSE_REMOVE    /* it no longer matches */
+};
+/* Sets @_fb's origin, or its end when truncated, for the outcome */
+int gli_fb_reuse(gli_fb *_fb, u32 _swapCount, u32 _address, u32 _width, u32 _size, f32 _scale);
+
 /* Where color image @_address starts inside the buffer at @_bufStart */
 void gli_fb_sub_origin(u32 _bufStart, u32 _address, u32 _width, u32 _size, u32 *_originX, u32 *_originY);
 

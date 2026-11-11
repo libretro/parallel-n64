@@ -620,29 +620,19 @@ void FrameBufferList::saveBuffer(u32 _address, u16 _format, u16 _size, u16 _widt
 		m_pCurrent = findBuffer(_address);
 
 	if (m_pCurrent != nullptr) {
-		m_pCurrent->m_originX = m_pCurrent->m_originY = 0;
-		if ((m_pCurrent->m_startAddress != _address)) {
-			if (gli_fb_is_sub_buffer(m_pCurrent, wnd.getBuffersSwapCount(), _address, _width, _size)) {
-				u32 originX, originY;
-				gli_fb_sub_origin(m_pCurrent->m_startAddress, _address, _width, _size, &originX, &originY);
-				m_pCurrent->m_originX = originX;
-				m_pCurrent->m_originY = originY;
-				gSP.changed |= CHANGED_VIEWPORT;
-				gDP.changed |= CHANGED_SCISSOR;
-				return;
-			} else if (gli_fb_runs_into(m_pCurrent, _address, _width, _size)) {
-				m_pCurrent->m_endAddress = _address - 1;
-				m_pCurrent = nullptr;
-			} else {
-				removeBuffer(m_pCurrent->m_startAddress);
-				m_pCurrent = nullptr;
-			}
-		} else if ((m_pCurrent->m_width != _width) ||
-					(m_pCurrent->m_size < _size) ||
-					(m_pCurrent->m_scale != scaleX)) {
+		switch (gli_fb_reuse(m_pCurrent, wnd.getBuffersSwapCount(), _address, _width, _size, scaleX)) {
+		case GLI_FB_REUSE_SUB:
+			gSP.changed |= CHANGED_VIEWPORT;
+			gDP.changed |= CHANGED_SCISSOR;
+			return;
+		case GLI_FB_REUSE_TRUNCATE:
+			m_pCurrent = nullptr;
+			break;
+		case GLI_FB_REUSE_REMOVE:
 			removeBuffer(m_pCurrent->m_startAddress);
 			m_pCurrent = nullptr;
-		} else {
+			break;
+		default:
 			m_pCurrent->m_resolved = false;
 			gfxContext.bindFramebuffer(bufferTarget::FRAMEBUFFER, m_pCurrent->m_FBO);
 			if (m_pCurrent->m_size != _size) {
@@ -659,6 +649,7 @@ void FrameBufferList::saveBuffer(u32 _address, u16 _format, u16 _size, u16 _widt
 				if (m_pCurrent->m_copiedToRdram)
 					m_pCurrent->copyRdram();
 			}
+			break;
 		}
 	}
 	const bool bNew = m_pCurrent == nullptr;
