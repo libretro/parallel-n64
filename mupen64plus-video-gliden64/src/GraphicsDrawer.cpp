@@ -690,24 +690,11 @@ void GraphicsDrawer::drawTexturedRect(const TexturedRectParams & _params)
 	f32 scale[2];
 	calcCoordsScales(pCurrentBuffer, scale[0], scale[1]);
 
-	/* the cached textures the combiner samples, as the C side reads them */
-	gli_texrect_tex texs[2];
-	const gli_texrect_tex * tex[2] = { nullptr, nullptr };
+	/* the cached textures the combiner samples, read in place */
+	const gli_tex * tex[2] = { nullptr, nullptr };
 	for (u32 t = 0; t < 2; ++t) {
-		const CachedTexture * pTex = cache.current[t];
-		if (!pCurrentCombiner->usesTile(t) || pTex == nullptr || gSP.textureTile[t] == nullptr)
-			continue;
-		texs[t].offset[0] = pTex->offsetS;
-		texs[t].offset[1] = pTex->offsetT;
-		texs[t].scale[0] = pTex->scaleS;
-		texs[t].scale[1] = pTex->scaleT;
-		texs[t].size[0] = pTex->width;
-		texs[t].size[1] = pTex->height;
-		texs[t].fb = (u8)pTex->frameBufferTexture;
-		texs[t].maskS = pTex->maskS;
-		texs[t].mirrorS = pTex->mirrorS;
-		texs[t].mirrorT = pTex->mirrorT;
-		tex[t] = &texs[t];
+		if (pCurrentCombiner->usesTile(t) && cache.current[t] != nullptr && gSP.textureTile[t] != nullptr)
+			tex[t] = cache.current[t];
 	}
 
 	const u32 clamp = gli_drawer_texrect_vertices(m_rect, &_params, tex, scale,

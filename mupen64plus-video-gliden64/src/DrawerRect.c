@@ -101,7 +101,7 @@ static f32 shifted(s16 _c, u32 _shift, f32 *_shiftScale)
 }
 
 /* Tile @_t's s0, t0, s1, t1; returns its clamp bits */
-static u32 tile_st(u32 _t, const gli_texrect_params *_p, const gli_texrect_tex *_tex,
+static u32 tile_st(u32 _t, const gli_texrect_params *_p, const gli_tex *_tex,
 		f32 _offsetX, f32 _offsetY, f32 *_st)
 {
 	const gDPTile *tile = gSP.textureTile[_t];
@@ -126,16 +126,16 @@ static u32 tile_st(u32 _t, const gli_texrect_params *_p, const gli_texrect_tex *
 		_st[3] -= _p->dtdy * shiftScaleT;
 	}
 
-	if (_tex->fb != GLI_TEX_FB_NONE) {
-		_st[0] = _tex->offset[0] + _st[0];
-		_st[1] = _tex->offset[1] + _st[1];
-		_st[2] = _tex->offset[0] + _st[2];
-		_st[3] = _tex->offset[1] + _st[3];
+	if (_tex->frameBufferTexture != GLI_TEX_FB_NONE) {
+		_st[0] = _tex->offsetS + _st[0];
+		_st[1] = _tex->offsetT + _st[1];
+		_st[2] = _tex->offsetS + _st[2];
+		_st[3] = _tex->offsetT + _st[3];
 	}
 
-	if (_tex->fb != GLI_TEX_FB_MULTI_SAMPLE) {
-		const f32 w = (f32)_tex->size[0];
-		const f32 h = (f32)_tex->size[1];
+	if (_tex->frameBufferTexture != GLI_TEX_FB_MULTI_SAMPLE) {
+		const f32 w = (f32)_tex->width;
+		const f32 h = (f32)_tex->height;
 		/* inside the texture, or a non-masked S far out of range */
 		if ((_tex->mirrorS == 0 && _tex->maskS == 0 &&
 				(_st[0] < _st[2] ? _st[0] >= 0.0f && _st[2] <= w : _st[2] >= 0.0f && _st[0] <= w))
@@ -146,15 +146,15 @@ static u32 tile_st(u32 _t, const gli_texrect_params *_p, const gli_texrect_tex *
 			clamp |= 2;
 	}
 
-	_st[0] *= _tex->scale[0];
-	_st[1] *= _tex->scale[1];
-	_st[2] *= _tex->scale[0];
-	_st[3] *= _tex->scale[1];
+	_st[0] *= _tex->scaleS;
+	_st[1] *= _tex->scaleT;
+	_st[2] *= _tex->scaleS;
+	_st[3] *= _tex->scaleT;
 	return clamp;
 }
 
 u32 gli_drawer_texrect_vertices(RectVertex *_v, const gli_texrect_params *_p,
-		const gli_texrect_tex *const *_tex, const f32 *_scale, int _adjustScreen, f32 _adjustScale)
+		const gli_tex *const *_tex, const f32 *_scale, int _adjustScreen, f32 _adjustScale)
 {
 	/* s0, t0, s1, t1 per tile */
 	f32 st[2][4];

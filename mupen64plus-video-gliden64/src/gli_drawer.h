@@ -2,6 +2,7 @@
 #define GLI_DRAWER_H
 
 #include "gSP.h"
+#include "gli_tex.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -74,22 +75,11 @@ typedef struct gli_texrect_params
 	u8 flip, forceAjustScale, texrectCmd;
 } gli_texrect_params;
 
-/* What the texrect math needs of a cached texture */
-enum { GLI_TEX_FB_NONE, GLI_TEX_FB_ONE_SAMPLE, GLI_TEX_FB_MULTI_SAMPLE };
-typedef struct gli_texrect_tex
-{
-	f32 offset[2]; /* offsetS, offsetT */
-	f32 scale[2];  /* scaleS, scaleT */
-	u16 size[2];   /* N64 width, height */
-	u8 fb;         /* GLI_TEX_FB_* */
-	u8 maskS, mirrorS, mirrorT;
-} gli_texrect_tex;
-
 /* Fills the four vertices of textured rect @_p, positions and both tiles'
  * coordinates; @_tex[t] is NULL for a tile not sampled. Returns two bits per
  * tile, bit 2t to clamp S to the edge and bit 2t + 1 to clamp T */
 u32 gli_drawer_texrect_vertices(RectVertex *_v, const gli_texrect_params *_p,
-		const gli_texrect_tex *const *_tex, const f32 *_scale, int _adjustScreen, f32 _adjustScale);
+		const gli_tex *const *_tex, const f32 *_scale, int _adjustScreen, f32 _adjustScale);
 
 /* Writes the four screen space vertices of a line from vertex @_v0 to @_v1,
  * @_halfWidth either side, into @_out; colors the ends by the shading mode,

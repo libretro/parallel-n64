@@ -7,46 +7,27 @@
 #include <vector>
 
 #include <stddef.h>
+#include <string.h>
 
 #include "CRC.h"
 #include "gli_texlru.h"
+#include "gli_tex.h"
 #include "convert.h"
 #include "Graphics/ObjectHandle.h"
 #include "Graphics/Parameter.h"
 
-struct CachedTexture
+struct CachedTexture : gli_tex
 {
-	CachedTexture() : max_level(0), frameBufferTexture(fbNone), bHDTexture(false) {}
-	CachedTexture(graphics::ObjectHandle _name) : name(_name), max_level(0), frameBufferTexture(fbNone), bHDTexture(false) {}
+	enum {
+		fbNone = GLI_TEX_FB_NONE,
+		fbOneSample = GLI_TEX_FB_ONE_SAMPLE,
+		fbMultiSample = GLI_TEX_FB_MULTI_SAMPLE
+	};
+
+	CachedTexture() { memset(static_cast<gli_tex *>(this), 0, sizeof(gli_tex)); }
+	CachedTexture(graphics::ObjectHandle _name) : name(_name) { memset(static_cast<gli_tex *>(this), 0, sizeof(gli_tex)); }
 
 	graphics::ObjectHandle name;
-	u64		crc = 0;
-//	float	fulS, fulT;
-//	WORD	ulS, ulT, lrS, lrT;
-	float	offsetS, offsetT;
-	u8		maskS, maskT;
-	u8		clampS, clampT;
-	u8		mirrorS, mirrorT;
-	u16		line;
-	u16		size;
-	u16		format;
-	u32		tMem;
-	u32		palette;
-	u16		width, height;			  // N64 width and height
-	u16		clampWidth, clampHeight;  // Size to clamp to
-	u16		realWidth, realHeight;	  // Actual texture size
-	f32		scaleS, scaleT;			  // Scale to map to 0.0-1.0
-	f32		shiftScaleS, shiftScaleT; // Scale to shift
-	u32		textureBytes;
-
-	u32		address;
-	u8		max_level;
-	enum {
-		fbNone = 0,
-		fbOneSample = 1,
-		fbMultiSample = 2
-	} frameBufferTexture;
-	bool bHDTexture;
 };
 
 

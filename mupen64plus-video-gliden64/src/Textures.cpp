@@ -954,42 +954,7 @@ void TextureCache::update(u32 _t)
 
 	CachedTexture * pCurrent = _addTexture(crc);
 
-	pCurrent->address = gDP.loadInfo[pTile->tmem].texAddress;
-
-	pCurrent->format = pTile->format;
-	pCurrent->size = pTile->size;
-
-	pCurrent->width = sizes.width;
-	pCurrent->height = sizes.height;
-
-	pCurrent->clampWidth = sizes.clampWidth;
-	pCurrent->clampHeight = sizes.clampHeight;
-
-	pCurrent->palette = pTile->palette;
-/*	pCurrent->fulS = gSP.textureTile[t]->fulS;
-	pCurrent->fulT = gSP.textureTile[t]->fulT;
-	pCurrent->ulS = gSP.textureTile[t]->ulS;
-	pCurrent->ulT = gSP.textureTile[t]->ulT;
-	pCurrent->lrS = gSP.textureTile[t]->lrS;
-	pCurrent->lrT = gSP.textureTile[t]->lrT;*/
-	pCurrent->maskS = pTile->masks;
-	pCurrent->maskT = pTile->maskt;
-	pCurrent->mirrorS = pTile->mirrors;
-	pCurrent->mirrorT = pTile->mirrort;
-	pCurrent->clampS = pTile->clamps;
-	pCurrent->clampT = pTile->clampt;
-	pCurrent->line = pTile->line;
-	pCurrent->tMem = pTile->tmem;
-	pCurrent->frameBufferTexture = CachedTexture::fbNone;
-
-	pCurrent->realWidth = sizes.realWidth;
-	pCurrent->realHeight = sizes.realHeight;
-
-	pCurrent->scaleS = 1.0f / (f32)(pCurrent->realWidth);
-	pCurrent->scaleT = 1.0f / (f32)(pCurrent->realHeight);
-
-	pCurrent->offsetS = 0.5f;
-	pCurrent->offsetT = 0.5f;
+	gli_tex_from_tile(pCurrent, pTile, &sizes);
 
 	_load(_t, pCurrent);
 	activateTexture( _t, pCurrent );

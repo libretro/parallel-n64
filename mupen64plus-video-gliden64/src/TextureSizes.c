@@ -9,6 +9,7 @@
 #include "CRC.h"
 #include "Config.h"
 #include "gli_texdecode.h"
+#include "gli_tex.h"
 
 static u32 pow2(u32 dim)
 {
@@ -237,4 +238,31 @@ u32 gli_tex_reverse_dxt(u32 val, u32 lrs, u32 width, u32 size)
 	}
 
 	return (low + high) / 2;
+}
+
+void gli_tex_from_tile(struct gli_tex *_tex, const struct gDPTile *_tile, const gli_tile_sizes *_sizes)
+{
+	_tex->address = gDP.loadInfo[_tile->tmem].texAddress;
+	_tex->format = (u16)_tile->format;
+	_tex->size = (u16)_tile->size;
+	_tex->width = (u16)_sizes->width;
+	_tex->height = (u16)_sizes->height;
+	_tex->clampWidth = (u16)_sizes->clampWidth;
+	_tex->clampHeight = (u16)_sizes->clampHeight;
+	_tex->palette = _tile->palette;
+	_tex->maskS = (u8)_tile->masks;
+	_tex->maskT = (u8)_tile->maskt;
+	_tex->mirrorS = (u8)_tile->mirrors;
+	_tex->mirrorT = (u8)_tile->mirrort;
+	_tex->clampS = (u8)_tile->clamps;
+	_tex->clampT = (u8)_tile->clampt;
+	_tex->line = (u16)_tile->line;
+	_tex->tMem = _tile->tmem;
+	_tex->frameBufferTexture = GLI_TEX_FB_NONE;
+	_tex->realWidth = (u16)_sizes->realWidth;
+	_tex->realHeight = (u16)_sizes->realHeight;
+	_tex->scaleS = 1.0f / (f32)(_tex->realWidth);
+	_tex->scaleT = 1.0f / (f32)(_tex->realHeight);
+	_tex->offsetS = 0.5f;
+	_tex->offsetT = 0.5f;
 }

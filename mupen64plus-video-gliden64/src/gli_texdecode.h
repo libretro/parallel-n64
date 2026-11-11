@@ -73,6 +73,11 @@ struct gDPTile;
  * resets and may shrink the tile's masks */
 void gli_tex_tile_sizes(u32 _t, gli_tile_sizes *_sizes, struct gDPTile *_pLoadTile);
 
+struct gli_tex;
+
+/* Describes tile @_tile of @_sizes in texture @_tex, ahead of its load */
+void gli_tex_from_tile(struct gli_tex *_tex, const struct gDPTile *_tile, const gli_tile_sizes *_sizes);
+
 /* The cache key of texture tile @_t with @_sizes */
 u64 gli_tex_crc(u32 _t, const gli_tile_sizes *_sizes);
 
