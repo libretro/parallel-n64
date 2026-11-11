@@ -1367,87 +1367,21 @@ void gli_fb_full_sync(bool _lle)
 
 bool gli_fb_check_texture(u32 _address, u32 _width, u32 _bytes)
 {
-	gDP.loadTile->textureMode = TEXTUREMODE_NORMAL;
-	gDP.loadTile->frameBufferAddress = 0U;
-	gDP.changed |= CHANGED_TMEM;
+	gli_fb_texture_reset();
 	if (!config.frameBufferEmulation.enable)
 		return false;
 
 	FrameBufferList & fbList = frameBufferList();
 	FrameBuffer *pBuffer = fbList.findBuffer(_address);
-	bool bRes = pBuffer != nullptr && pBuffer->m_readable;
-	while (bRes) {
-		if ((config.generalEmulation.hacks & hack_blurPauseScreen) != 0) {
-			if (gDP.colorImage.address == gDP.depthImageAddress && pBuffer->m_copiedToRdram) {
-				memcpy(RDRAM + gDP.depthImageAddress,
-					RDRAM + pBuffer->m_startAddress,
-					(pBuffer->m_width*pBuffer->m_height) << pBuffer->m_size >> 1);
-				pBuffer->m_copiedToRdram = false;
-				fbList.getCurrent()->m_isPauseScreen = true;
-			}
-			if (pBuffer->m_isPauseScreen) {
-				bRes = false;
-				break;
-			}
-		}
-
-		if (gDP.otherMode.textureLUT == G_TT_RGBA16 && (config.generalEmulation.hacks & hack_StarCraftBackgrounds) != 0) {
-			bRes = false;
-			break;
-		}
-
-		if (pBuffer->m_cfb) {
+	bool bRes = false;
+	if (pBuffer != nullptr && pBuffer->m_readable) {
+		int remove;
+		bRes = gli_fb_texture_use(pBuffer, fbList.getCurrent(), _address, _width, _bytes,
+			dwnd().getBuffersSwapCount(), &remove) != 0;
+		if (remove)
 			fbList.removeBuffer(pBuffer->m_startAddress);
-			bRes = false;
-			break;
-		}
-
-		if ((config.generalEmulation.hacks & hack_noDepthFrameBuffers) != 0 && pBuffer->m_isDepthBuffer) {
-			fbList.removeBuffer(pBuffer->m_startAddress);
-			bRes = false;
-			break;
-		}
-
-		const u32 texEndAddress = _address + _bytes - 1;
-		if (_address > pBuffer->m_startAddress &&
-			pBuffer->m_width != _width &&
-			texEndAddress > (pBuffer->m_endAddress + (pBuffer->m_width << pBuffer->m_size >> 1))) {
-			//fbList.removeBuffer(pBuffer->m_startAddress);
-			bRes = false;
-			break;
-		}
-
-		if (gDP.loadTile->loadType == LOADTYPE_TILE &&
-			gDP.textureImage.width != pBuffer->m_width &&
-			gDP.textureImage.size != pBuffer->m_size) {
-			//fbList.removeBuffer(pBuffer->m_startAddress); // Does not work with Zelda MM
-			bRes = false;
-			break;
-		}
-
-		bRes = pBuffer->isValid(false);
-		if (!bRes && pBuffer != fbList.getCurrent()) {
-			fbList.removeBuffer(pBuffer->m_startAddress);
-			break;
-		}
-
-		pBuffer->m_loadType = gDP.loadTile->loadType;
-		pBuffer->m_loadTileOrigin.uls = gDP.loadTile->uls;
-		pBuffer->m_loadTileOrigin.ult = gDP.loadTile->ult;
-		gDP.loadTile->frameBufferAddress = pBuffer->m_startAddress;
-		gDP.loadTile->textureMode = TEXTUREMODE_FRAMEBUFFER;
-		break;
 	}
-
-	for (int nTile = gSP.texture.tile; nTile < 6; ++nTile) {
-		if (gDP.tiles[nTile].tmem == gDP.loadTile->tmem) {
-			gDPTile & curTile = gDP.tiles[nTile];
-			curTile.textureMode = gDP.loadTile->textureMode;
-			curTile.loadType = gDP.loadTile->loadType;
-			curTile.frameBufferAddress = gDP.loadTile->frameBufferAddress;
-			curTile.imageAddress = gDP.loadTile->imageAddress;
-		}
-	}
+	gli_fb_texture_tiles();
 	return bRes;
 }
 

@@ -5,6 +5,8 @@
 #include "N64.h"
 #include "VI.h"
 #include "gDP.h"
+#include "gSP.h"
+#include "GBI.h"
 #include "Config.h"
 #include "gli_fb_rdram.h"
 
@@ -250,4 +252,80 @@ int gli_fb_reuse(gli_fb *_fb, u32 _swapCount, u32 _address, u32 _width, u32 _siz
 	if (_fb->m_width != _width || _fb->m_size < _size || _fb->m_scale != _scale)
 		return GLI_FB_REUSE_REMOVE;
 	return GLI_FB_REUSE_KEEP;
+}
+
+void gli_fb_texture_reset(void)
+{
+	gDP.loadTile->textureMode = TEXTUREMODE_NORMAL;
+	gDP.loadTile->frameBufferAddress = 0U;
+	gDP.changed |= CHANGED_TMEM;
+}
+
+int gli_fb_texture_use(gli_fb *_fb, gli_fb *_current, u32 _address, u32 _width,
+		u32 _bytes, u32 _swapCount, int *_remove)
+{
+	const u32 texEndAddress = _address + _bytes - 1;
+	int valid;
+	*_remove = 0;
+
+	if ((config.generalEmulation.hacks & hack_blurPauseScreen) != 0) {
+		if (gDP.colorImage.address == gDP.depthImageAddress && _fb->m_copiedToRdram) {
+			memcpy(RDRAM + gDP.depthImageAddress, RDRAM + _fb->m_startAddress,
+				(_fb->m_width * _fb->m_height) << _fb->m_size >> 1);
+			_fb->m_copiedToRdram = 0;
+			if (_current != NULL)
+				_current->m_isPauseScreen = 1;
+		}
+		if (_fb->m_isPauseScreen)
+			return 0;
+	}
+
+	if (gDP.otherMode.textureLUT == G_TT_RGBA16 && (config.generalEmulation.hacks & hack_StarCraftBackgrounds) != 0)
+		return 0;
+
+	if (_fb->m_cfb || ((config.generalEmulation.hacks & hack_noDepthFrameBuffers) != 0 && _fb->m_isDepthBuffer)) {
+		*_remove = 1;
+		return 0;
+	}
+
+	/* a texture starting inside the buffer at another width and running
+	 * on past it */
+	if (_address > _fb->m_startAddress && _fb->m_width != _width &&
+			texEndAddress > (_fb->m_endAddress + (_fb->m_width << _fb->m_size >> 1)))
+		return 0;
+
+	/* removing the buffer here breaks Zelda MM */
+	if (gDP.loadTile->loadType == LOADTYPE_TILE &&
+			gDP.textureImage.width != _fb->m_width &&
+			gDP.textureImage.size != _fb->m_size)
+		return 0;
+
+	valid = gli_fb_is_valid(_fb, 0, _swapCount);
+	if (!valid && _fb != _current) {
+		*_remove = 1;
+		return 0;
+	}
+
+	/* the buffer drawn to is textured from even when RDRAM no longer
+	 * matches it; the load still reports it invalid */
+	_fb->m_loadType = gDP.loadTile->loadType;
+	_fb->m_loadTileOrigin.uls = gDP.loadTile->uls;
+	_fb->m_loadTileOrigin.ult = gDP.loadTile->ult;
+	gDP.loadTile->frameBufferAddress = _fb->m_startAddress;
+	gDP.loadTile->textureMode = TEXTUREMODE_FRAMEBUFFER;
+	return valid;
+}
+
+void gli_fb_texture_tiles(void)
+{
+	u32 nTile;
+	for (nTile = gSP.texture.tile; nTile < 6; ++nTile) {
+		gDPTile *curTile = &gDP.tiles[nTile];
+		if (curTile->tmem == gDP.loadTile->tmem) {
+			curTile->textureMode = gDP.loadTile->textureMode;
+			curTile->loadType = gDP.loadTile->loadType;
+			curTile->frameBufferAddress = gDP.loadTile->frameBufferAddress;
+			curTile->imageAddress = gDP.loadTile->imageAddress;
+		}
+	}
 }

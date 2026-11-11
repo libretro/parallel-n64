@@ -111,6 +111,16 @@ enum
 /* Sets @_fb's origin, or its end when truncated, for the outcome */
 int gli_fb_reuse(gli_fb *_fb, u32 _swapCount, u32 _address, u32 _width, u32 _size, f32 _scale);
 
+/* A texture load from @_address of @_width and @_bytes: the load tile
+ * reads plain RDRAM until a frame buffer is found to texture from */
+void gli_fb_texture_reset(void);
+/* Whether the load tile textures from buffer @_fb, found at @_address,
+ * with @_current the buffer drawn to; sets *@_remove when @_fb is to go */
+int gli_fb_texture_use(gli_fb *_fb, gli_fb *_current, u32 _address, u32 _width,
+		u32 _bytes, u32 _swapCount, int *_remove);
+/* The load tile's mode to the tiles that share its TMEM */
+void gli_fb_texture_tiles(void);
+
 /* Where color image @_address starts inside the buffer at @_bufStart */
 void gli_fb_sub_origin(u32 _bufStart, u32 _address, u32 _width, u32 _size, u32 *_originX, u32 *_originY);
 
