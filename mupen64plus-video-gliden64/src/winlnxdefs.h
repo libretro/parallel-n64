@@ -39,8 +39,6 @@
 #include <time.h>   // time()
 #include <unistd.h> // readlink()
 
-#define timeGetTime() time( 0 )
-
 typedef unsigned int BOOL, BOOLEAN;
 typedef unsigned int DWORD;
 typedef unsigned long long DWORD64, QWORD;
