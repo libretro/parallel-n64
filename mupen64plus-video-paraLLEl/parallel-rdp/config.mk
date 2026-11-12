@@ -31,6 +31,7 @@ PARALLEL_RDP_SOURCES_C := \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/cookie.c \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/fence_wait.c \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/frame_garbage.c \
+        $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/pipeline_map.c \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/pipeline_record_list.c \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/release_queue.c \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/command_pool.c \

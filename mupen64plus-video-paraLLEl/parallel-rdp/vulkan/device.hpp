@@ -686,7 +686,6 @@ private:
 	void destroy_image_nolock(VkImage image);
 	void destroy_image_view_nolock(VkImageView view);
 	void destroy_buffer_view_nolock(VkBufferView view);
-	void destroy_pipeline_nolock(VkPipeline pipeline);
 	void destroy_sampler_nolock(VkSampler sampler);
 	void destroy_framebuffer_nolock(VkFramebuffer framebuffer);
 	void destroy_semaphore_nolock(VkSemaphore semaphore);

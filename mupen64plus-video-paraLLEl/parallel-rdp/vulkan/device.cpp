@@ -327,6 +327,7 @@ void Program::set_shader(ShaderStage stage, Shader *handle)
 Program::Program(Device *device_, Shader *vertex, Shader *fragment)
     : device(device_)
 {
+	granite_pipeline_map_init(&pipelines);
 	set_shader(ShaderStage::Vertex, vertex);
 	set_shader(ShaderStage::Fragment, fragment);
 	device->bake_program(*this);
@@ -335,40 +336,16 @@ Program::Program(Device *device_, Shader *vertex, Shader *fragment)
 Program::Program(Device *device_, Shader *compute_shader)
     : device(device_)
 {
+	granite_pipeline_map_init(&pipelines);
 	set_shader(ShaderStage::Compute, compute_shader);
 	device->bake_program(*this);
 }
 
-Pipeline Program::get_pipeline(Hash hash) const
-{
-	auto *ret = pipelines.find(hash);
-	return ret ? ret->get() : Pipeline{};
-}
-
-Pipeline Program::add_pipeline(Hash hash, const Pipeline &pipeline)
-{
-	return pipelines.emplace_yield(hash, pipeline)->get();
-}
-
-void Program::destroy_pipeline(const Pipeline &pipeline)
-{
-	if (internal_sync)
-		device->destroy_pipeline_nolock(pipeline.pipeline);
-	else
-		device->destroy_pipeline(pipeline.pipeline);
-}
-
 Program::~Program()
 {
-#ifdef GRANITE_VULKAN_MT
-	for (auto &pipe : pipelines.get_read_only())
-		destroy_pipeline(pipe.get());
-	for (auto &pipe : pipelines.get_read_write())
-		destroy_pipeline(pipe.get());
-#else
-	for (auto &pipe : pipelines)
-		destroy_pipeline(pipe.get());
-#endif
+	granite_pipeline_map_free(&pipelines, [](void *userdata, const granite_pipeline_t *pipeline) {
+		static_cast<Device *>(userdata)->destroy_pipeline(pipeline->pipeline);
+	}, device);
 }
 
 bool Device::init_pipeline_cache(const uint8_t *data, size_t size)
@@ -1978,12 +1955,6 @@ void Device::destroy_sampler(VkSampler sampler)
 void Device::destroy_image_view(VkImageView view)
 {
 	release_handle(GRANITE_GARBAGE_IMAGE_VIEW, GRANITE_VK_TO_BITS(view));
-}
-
-void Device::destroy_pipeline_nolock(VkPipeline pipeline)
-{
-	VK_ASSERT(!granite_frame_garbage_has(&frame().garbage, GRANITE_GARBAGE_PIPELINE, GRANITE_VK_TO_BITS(pipeline)));
-	granite_frame_garbage_push(&frame().garbage, GRANITE_GARBAGE_PIPELINE, GRANITE_VK_TO_BITS(pipeline));
 }
 
 void Device::destroy_image_view_nolock(VkImageView view)

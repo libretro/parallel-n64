@@ -24,6 +24,7 @@
 
 #include <string.h>
 #include "shader.h"
+#include "pipeline_map.h"
 #include "cookie.hpp"
 #include "descriptor_set.hpp"
 #include "hash.hpp"
@@ -168,13 +169,9 @@ private:
 	ResourceLayout layout;
 };
 
-struct Pipeline
-{
-	VkPipeline pipeline;
-	uint32_t dynamic_mask;
-};
+using Pipeline = granite_pipeline_t;
 
-class Program : public HashedObject<Program>, public InternalSyncEnabled
+class Program : public HashedObject<Program>
 {
 public:
 	Program(Device *device, Shader *vertex, Shader *fragment);
@@ -196,15 +193,24 @@ public:
 		return layout;
 	}
 
-	Pipeline get_pipeline(Util::Hash hash) const;
-	Pipeline add_pipeline(Util::Hash hash, const Pipeline &pipeline);
+	Pipeline get_pipeline(Util::Hash hash) const
+	{
+		return granite_pipeline_map_find(&pipelines, hash);
+	}
+
+	// The program's pipeline for the hash: this one, or the one another
+	// thread added first, or none when out of memory. Unless it is this
+	// one, this one is the caller's to destroy.
+	Pipeline add_pipeline(Util::Hash hash, const Pipeline &pipeline)
+	{
+		return granite_pipeline_map_add(&pipelines, hash, &pipeline);
+	}
 
 private:
 	void set_shader(ShaderStage stage, Shader *handle);
 	Device *device;
 	Shader *shaders[Util::ecast(ShaderStage::Count)] = {};
 	PipelineLayout *layout = nullptr;
-	VulkanCache<Util::IntrusivePODWrapper<Pipeline>> pipelines;
-	void destroy_pipeline(const Pipeline &pipeline);
+	granite_pipeline_map_t pipelines;
 };
 }
