@@ -2129,133 +2129,15 @@ Device::PerFrame::~PerFrame()
 	granite_frame_garbage_free(&garbage);
 }
 
-uint32_t Device::find_memory_type(uint32_t required, uint32_t mask) const
-{
-	for (uint32_t i = 0; i < mem_props.memoryTypeCount; i++)
-	{
-		if ((1u << i) & mask)
-		{
-			uint32_t flags = mem_props.memoryTypes[i].propertyFlags;
-			if ((flags & required) == required)
-				return i;
-		}
-	}
-
-	return UINT32_MAX;
-}
-
 uint32_t Device::find_memory_type(BufferDomain domain, uint32_t mask) const
 {
-	uint32_t prio[3] = {};
-
-	// Optimize for tracing apps by not allocating host memory that is uncached.
-	if (workarounds.force_host_cached)
-	{
-		switch (domain)
-		{
-		case BufferDomain::LinkedDeviceHostPreferDevice:
-			domain = BufferDomain::Device;
-			break;
-
-		case BufferDomain::LinkedDeviceHost:
-		case BufferDomain::Host:
-		case BufferDomain::CachedCoherentHostPreferCoherent:
-			domain = BufferDomain::CachedCoherentHostPreferCached;
-			break;
-
-		default:
-			break;
-		}
-	}
-
-	switch (domain)
-	{
-	case BufferDomain::Device:
-		prio[0] = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-		break;
-
-	case BufferDomain::LinkedDeviceHost:
-		prio[0] = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
-		prio[1] = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
-		prio[2] = prio[1];
-		break;
-
-	case BufferDomain::LinkedDeviceHostPreferDevice:
-		prio[0] = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
-		prio[1] = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-		prio[2] = prio[1];
-		break;
-
-	case BufferDomain::Host:
-		prio[0] = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
-		prio[1] = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
-		prio[2] = prio[1];
-		break;
-
-	case BufferDomain::CachedHost:
-		prio[0] = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
-		prio[1] = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
-		prio[2] = prio[1];
-		break;
-
-	case BufferDomain::CachedCoherentHostPreferCached:
-		prio[0] = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_CACHED_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
-		prio[1] = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
-		prio[2] = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
-		break;
-
-	case BufferDomain::CachedCoherentHostPreferCoherent:
-		prio[0] = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_CACHED_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
-		prio[1] = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
-		prio[2] = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
-		break;
-	}
-
-	for (auto &p : prio)
-	{
-		uint32_t index = find_memory_type(p, mask);
-		if (index != UINT32_MAX)
-			return index;
-	}
-
-	return UINT32_MAX;
+	return granite_find_buffer_memory_type(&mem_props, granite_buffer_domain_t(domain), mask,
+	                                       workarounds.force_host_cached);
 }
 
 uint32_t Device::find_memory_type(ImageDomain domain, uint32_t mask) const
 {
-	uint32_t desired = 0, fallback = 0;
-	switch (domain)
-	{
-	case ImageDomain::Physical:
-		desired = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-		fallback = 0;
-		break;
-
-	case ImageDomain::Transient:
-		desired = VK_MEMORY_PROPERTY_LAZILY_ALLOCATED_BIT;
-		fallback = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-		break;
-
-	case ImageDomain::LinearHostCached:
-		desired = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
-		fallback = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
-		break;
-
-	case ImageDomain::LinearHost:
-		desired = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
-		fallback = 0;
-		break;
-	}
-
-	uint32_t index = find_memory_type(desired, mask);
-	if (index != UINT32_MAX)
-		return index;
-
-	index = find_memory_type(fallback, mask);
-	if (index != UINT32_MAX)
-		return index;
-
-	return UINT32_MAX;
+	return granite_find_image_memory_type(&mem_props, granite_image_domain_t(domain), mask);
 }
 
 static inline VkImageViewType get_image_view_type(const ImageCreateInfo &create_info, const ImageViewCreateInfo *view)
@@ -3354,25 +3236,6 @@ const ImmutableSampler *Device::request_immutable_sampler(const SamplerCreateInf
 	return sampler;
 }
 
-void Device::fill_buffer_sharing_indices(VkBufferCreateInfo &info, uint32_t *sharing_indices)
-{
-	for (auto &i : queue_info.family_indices)
-		if (i != VK_QUEUE_FAMILY_IGNORED)
-			add_unique_family(sharing_indices, info.queueFamilyIndexCount, i);
-
-	if (info.queueFamilyIndexCount > 1)
-	{
-		info.sharingMode = VK_SHARING_MODE_CONCURRENT;
-		info.pQueueFamilyIndices = sharing_indices;
-	}
-	else
-	{
-		info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-		info.queueFamilyIndexCount = 0;
-		info.pQueueFamilyIndices = nullptr;
-	}
-}
-
 BufferHandle Device::create_imported_host_buffer(const BufferCreateInfo &create_info, VkExternalMemoryHandleTypeFlagBits type, void *host_buffer)
 {
 	if (create_info.domain != BufferDomain::Host &&
@@ -3409,7 +3272,15 @@ BufferHandle Device::create_imported_host_buffer(const BufferCreateInfo &create_
 	info.pNext = &external_info;
 
 	uint32_t sharing_indices[QUEUE_INDEX_COUNT];
-	fill_buffer_sharing_indices(info, sharing_indices);
+	info.queueFamilyIndexCount = granite_unique_queue_families(queue_info.family_indices, QUEUE_INDEX_COUNT,
+	                                                           sharing_indices);
+	if (info.queueFamilyIndexCount > 1)
+	{
+		info.sharingMode = VK_SHARING_MODE_CONCURRENT;
+		info.pQueueFamilyIndices = sharing_indices;
+	}
+	else
+		info.queueFamilyIndexCount = 0;
 
 	VkBuffer buffer;
 	VkMemoryRequirements reqs;
@@ -3499,149 +3370,26 @@ BufferHandle Device::create_buffer(const BufferCreateInfo &create_info, const vo
 {
 	DeviceAllocation allocation;
 	VkBuffer buffer;
+	uint32_t memory_type;
 
 	bool zero_initialize = (create_info.misc & BUFFER_MISC_ZERO_INITIALIZE_BIT) != 0;
-	bool use_external = (create_info.misc & BUFFER_MISC_EXTERNAL_MEMORY_BIT) != 0;
 	if (initial && zero_initialize)
 	{
 		LOGE("Cannot initialize buffer with data and clear.\n");
 		return BufferHandle{};
 	}
 
-	if (use_external && create_info.domain != BufferDomain::Device)
-	{
-		LOGE("When using external memory, must be Device domain.\n");
-		return BufferHandle{};
-	}
-
-	VkBufferCreateInfo info = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
-	info.size = create_info.size;
-	info.usage = create_info.usage | VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-	info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-
-	uint32_t sharing_indices[QUEUE_INDEX_COUNT];
-	fill_buffer_sharing_indices(info, sharing_indices);
-
-	if (use_external && !ext.supports_external)
-	{
-		LOGE("External memory not supported.\n");
-		return BufferHandle{};
-	}
-
-	VkExternalMemoryBufferCreateInfo external_info = { VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_BUFFER_CREATE_INFO };
-	if (ext.supports_external && use_external)
-	{
-		// Ensure that the handle type is supported.
-		VkPhysicalDeviceExternalBufferInfo external_buffer_props_info =
-		    { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_BUFFER_INFO };
-		VkExternalBufferProperties external_buffer_props = { VK_STRUCTURE_TYPE_EXTERNAL_BUFFER_PROPERTIES };
-		external_buffer_props_info.handleType = create_info.external.memory_handle_type;
-		external_buffer_props_info.usage = info.usage;
-		external_buffer_props_info.flags = info.flags;
-		vkGetPhysicalDeviceExternalBufferProperties(gpu, &external_buffer_props_info, &external_buffer_props);
-
-		bool supports_import = (external_buffer_props.externalMemoryProperties.externalMemoryFeatures &
-		                        VK_EXTERNAL_MEMORY_FEATURE_IMPORTABLE_BIT) != 0;
-		bool supports_export = (external_buffer_props.externalMemoryProperties.externalMemoryFeatures &
-		                        VK_EXTERNAL_MEMORY_FEATURE_EXPORTABLE_BIT) != 0;
-
-		if (!supports_import && !create_info.external)
-		{
-			LOGE("Attempting to import with handle type #%x, but it is not supported.\n",
-			     create_info.external.memory_handle_type);
-			return BufferHandle{};
-		}
-		else if (!supports_export && create_info.external)
-		{
-			LOGE("Attempting to export with handle type #%x, but it is not supported.\n",
-			     create_info.external.memory_handle_type);
-			return BufferHandle{};
-		}
-
-		external_info.handleTypes = create_info.external.memory_handle_type;
-		info.pNext = &external_info;
-	}
-
-	if (table->vkCreateBuffer(device, &info, nullptr, &buffer) != VK_SUCCESS)
+	granite_buffer_env_t env;
+	env.device = device;
+	env.table = table;
+	env.allocator = &managers.memory;
+	env.memory = &mem_props;
+	env.queue_families = queue_info.family_indices;
+	env.num_queue_families = QUEUE_INDEX_COUNT;
+	env.force_host_cached = workarounds.force_host_cached;
+	if (!granite_buffer_create(&env, granite_buffer_domain_t(create_info.domain), create_info.size, create_info.usage,
+	                           &buffer, &allocation, &memory_type))
 		return BufferHandle(nullptr);
-
-	VkMemoryRequirements2 reqs = { VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2 };
-	VkBufferMemoryRequirementsInfo2 req_info = { VK_STRUCTURE_TYPE_BUFFER_MEMORY_REQUIREMENTS_INFO_2 };
-	req_info.buffer = buffer;
-	table->vkGetBufferMemoryRequirements2(device, &req_info, &reqs);
-
-	uint32_t memory_type = find_memory_type(create_info.domain, reqs.memoryRequirements.memoryTypeBits);
-	if (memory_type == UINT32_MAX)
-	{
-		LOGE("Failed to find memory type.\n");
-		table->vkDestroyBuffer(device, buffer, nullptr);
-		return BufferHandle(nullptr);
-	}
-
-	AllocationMode mode;
-	if ((create_info.misc & BUFFER_MISC_EXTERNAL_MEMORY_BIT) != 0)
-		mode = AllocationMode::External;
-	else if (create_info.domain == BufferDomain::Device &&
-	    (create_info.usage & (VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT)) != 0)
-		mode = AllocationMode::LinearDeviceHighPriority;
-	else if (create_info.domain == BufferDomain::Device ||
-	         create_info.domain == BufferDomain::LinkedDeviceHostPreferDevice)
-		mode = AllocationMode::LinearDevice;
-	else
-		mode = AllocationMode::LinearHostMappable;
-
-	auto external = create_info.external;
-
-	{
-		LOCK_MEMORY();
-		if (!managers.memory.allocate_buffer_memory(reqs.memoryRequirements.size, reqs.memoryRequirements.alignment,
-		                                            mode, memory_type, buffer, &allocation,
-		                                            use_external ? &external : nullptr))
-		{
-			if (use_external)
-			{
-				LOGE("Failed to export / import buffer memory.\n");
-				table->vkDestroyBuffer(device, buffer, nullptr);
-				return BufferHandle(nullptr);
-			}
-
-			auto fallback_domain = create_info.domain;
-
-			// This memory type is rather scarce, so fallback to Host type if we've exhausted this memory.
-			if (create_info.domain == BufferDomain::LinkedDeviceHost)
-			{
-				LOGW("Exhausted LinkedDeviceHost memory, falling back to host.\n");
-				fallback_domain = BufferDomain::Host;
-			}
-			else if (create_info.domain == BufferDomain::LinkedDeviceHostPreferDevice)
-			{
-				LOGW("Exhausted LinkedDeviceHostPreferDevice memory, falling back to device.\n");
-				fallback_domain = BufferDomain::Device;
-			}
-
-			memory_type = find_memory_type(fallback_domain, reqs.memoryRequirements.memoryTypeBits);
-
-			if (memory_type == UINT32_MAX || fallback_domain == create_info.domain ||
-			    !managers.memory.allocate_buffer_memory(reqs.memoryRequirements.size, reqs.memoryRequirements.alignment,
-			                                            mode, memory_type, buffer, &allocation, nullptr))
-			{
-				LOGE("Failed to allocate fallback memory.\n");
-				table->vkDestroyBuffer(device, buffer, nullptr);
-				return BufferHandle(nullptr);
-			}
-		}
-	}
-
-	if (table->vkBindBufferMemory(device, buffer, allocation.get_memory(), allocation.get_offset()) != VK_SUCCESS)
-	{
-		{
-			LOCK_MEMORY();
-			allocation.free_immediate(managers.memory);
-		}
-
-		table->vkDestroyBuffer(device, buffer, nullptr);
-		return BufferHandle(nullptr);
-	}
 
 	auto tmpinfo = create_info;
 	tmpinfo.usage |= VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
@@ -3671,7 +3419,7 @@ BufferHandle Device::create_buffer(const BufferCreateInfo &create_info, const vo
 		}
 
 		LOCK();
-		submit_staging(cmd, info.usage, true);
+		submit_staging(cmd, tmpinfo.usage, true);
 	}
 	else if (initial || zero_initialize)
 	{

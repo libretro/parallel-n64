@@ -24,6 +24,7 @@
 
 #include "cookie.hpp"
 #include "format.hpp"
+#include "buffer_create.h"
 #include "vulkan_common.hpp"
 #include "memory_allocator.hpp"
 #include "bitops.hpp"
@@ -295,10 +296,10 @@ using ImageViewHandle = Util::IntrusivePtr<ImageView>;
 
 enum class ImageDomain
 {
-	Physical,
-	Transient,
-	LinearHostCached,
-	LinearHost
+	Physical = GRANITE_IMAGE_DOMAIN_PHYSICAL,
+	Transient = GRANITE_IMAGE_DOMAIN_TRANSIENT,
+	LinearHostCached = GRANITE_IMAGE_DOMAIN_LINEAR_HOST_CACHED,
+	LinearHost = GRANITE_IMAGE_DOMAIN_LINEAR_HOST
 };
 
 class ImmutableYcbcrConversion;

@@ -25,64 +25,37 @@
 #include "cookie.hpp"
 #include "vulkan_common.hpp"
 #include "memory_allocator.hpp"
+#include "buffer_create.h"
 
 namespace Vulkan
 {
 class Device;
 
+// Creating a buffer is C (buffer_create.h).
 static inline VkPipelineStageFlags buffer_usage_to_possible_stages(VkBufferUsageFlags usage)
 {
-	VkPipelineStageFlags flags = 0;
-	if (usage & (VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT))
-		flags |= VK_PIPELINE_STAGE_TRANSFER_BIT;
-	if (usage & (VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT))
-		flags |= VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
-	if (usage & VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT)
-		flags |= VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT;
-	if (usage & (VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT |
-	             VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT))
-		flags |= VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_VERTEX_SHADER_BIT |
-		         VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-	if (usage & VK_BUFFER_USAGE_STORAGE_BUFFER_BIT)
-		flags |= VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
-
-	return flags;
+	return granite_buffer_usage_stages(usage);
 }
 
 static inline VkAccessFlags buffer_usage_to_possible_access(VkBufferUsageFlags usage)
 {
-	VkAccessFlags flags = 0;
-	if (usage & (VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT))
-		flags |= VK_ACCESS_TRANSFER_READ_BIT | VK_ACCESS_TRANSFER_WRITE_BIT;
-	if (usage & VK_BUFFER_USAGE_VERTEX_BUFFER_BIT)
-		flags |= VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT;
-	if (usage & VK_BUFFER_USAGE_INDEX_BUFFER_BIT)
-		flags |= VK_ACCESS_INDEX_READ_BIT;
-	if (usage & VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT)
-		flags |= VK_ACCESS_INDIRECT_COMMAND_READ_BIT;
-	if (usage & VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT)
-		flags |= VK_ACCESS_UNIFORM_READ_BIT;
-	if (usage & VK_BUFFER_USAGE_STORAGE_BUFFER_BIT)
-		flags |= VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
-
-	return flags;
+	return granite_buffer_usage_access(usage);
 }
 
 enum class BufferDomain
 {
-	Device, // Device local. Probably not visible from CPU.
-	LinkedDeviceHost, // On desktop, directly mapped VRAM over PCI.
-	LinkedDeviceHostPreferDevice, // Prefer device local of host visible.
-	Host, // Host-only, needs to be synced to GPU. Might be device local as well on iGPUs.
-	CachedHost,
-	CachedCoherentHostPreferCoherent, // Aim for both cached and coherent, but prefer COHERENT
-	CachedCoherentHostPreferCached, // Aim for both cached and coherent, but prefer CACHED
+	Device = GRANITE_BUFFER_DOMAIN_DEVICE, // Device local. Probably not visible from CPU.
+	LinkedDeviceHost = GRANITE_BUFFER_DOMAIN_LINKED_DEVICE_HOST, // On desktop, directly mapped VRAM over PCI.
+	LinkedDeviceHostPreferDevice = GRANITE_BUFFER_DOMAIN_LINKED_DEVICE_HOST_PREFER_DEVICE, // Prefer device local of host visible.
+	Host = GRANITE_BUFFER_DOMAIN_HOST, // Host-only, needs to be synced to GPU. Might be device local as well on iGPUs.
+	CachedHost = GRANITE_BUFFER_DOMAIN_CACHED_HOST,
+	CachedCoherentHostPreferCoherent = GRANITE_BUFFER_DOMAIN_CACHED_COHERENT_HOST_PREFER_COHERENT, // Aim for both cached and coherent, but prefer COHERENT
+	CachedCoherentHostPreferCached = GRANITE_BUFFER_DOMAIN_CACHED_COHERENT_HOST_PREFER_CACHED, // Aim for both cached and coherent, but prefer CACHED
 };
 
 enum BufferMiscFlagBits
 {
-	BUFFER_MISC_ZERO_INITIALIZE_BIT = 1 << 0,
-	BUFFER_MISC_EXTERNAL_MEMORY_BIT = 1 << 1
+	BUFFER_MISC_ZERO_INITIALIZE_BIT = 1 << 0
 };
 
 using BufferMiscFlags = uint32_t;
@@ -93,7 +66,6 @@ struct BufferCreateInfo
 	VkDeviceSize size = 0;
 	VkBufferUsageFlags usage = 0;
 	BufferMiscFlags misc = 0;
-	ExternalHandle external;
 };
 
 class Buffer;

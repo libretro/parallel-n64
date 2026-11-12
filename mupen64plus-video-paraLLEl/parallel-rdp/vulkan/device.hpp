@@ -561,7 +561,6 @@ private:
 
 	uint32_t find_memory_type(BufferDomain domain, uint32_t mask) const;
 	uint32_t find_memory_type(ImageDomain domain, uint32_t mask) const;
-	uint32_t find_memory_type(uint32_t required, uint32_t mask) const;
 	bool memory_type_is_host_visible(uint32_t type) const;
 
 	const ImmutableSampler *samplers[static_cast<unsigned>(StockSampler::Count)] = {};
@@ -652,7 +651,6 @@ private:
 	void init_workarounds();
 	void report_checkpoints();
 
-	void fill_buffer_sharing_indices(VkBufferCreateInfo &create_info, uint32_t *sharing_indices);
 
 	bool allocate_image_memory(DeviceAllocation *allocation, const ImageCreateInfo &info,
 	                           VkImage image, VkImageTiling tiling);
