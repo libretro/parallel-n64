@@ -241,6 +241,7 @@ struct Config
 #define hack_TonyHawk				(1<<21) /*Hack for Tony Hawk blend mode. */
 #define hack_WCWNitro				(1<<22) /*Hack for WCW Nitro backgrounds. */
 #define hack_fbTextureOffset		(1<<23) /*Hack to offset Conker's shadow in CBFD and Bob-ombs in Mario Tennis. */
+#define hack_SM64					(1<<24) /*Super Mario 64, or a hack made of it: the legacy SM64 editor behaviour may apply. */
 
 #define config gliden64Config
 
@@ -248,6 +249,11 @@ struct Config
 extern "C" {
 #endif
 extern Config gliden64Config;
+/* the core option: SM64 editor hacks behave as under Jabo */
+extern u32 LegacySm64ToolsHacks;
+/* That behaviour, wrong for real games, only where the option asks for it
+ * and the ROM is Super Mario 64 or made from it */
+#define gli_legacy_sm64_tools() (LegacySm64ToolsHacks != 0 && (config.generalEmulation.hacks & hack_SM64) != 0)
 void Config_LoadConfig(void);
 void gli_config_reset_defaults(Config * _config);
 bool gli_isHWLightingAllowed(void);

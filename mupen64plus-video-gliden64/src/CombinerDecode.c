@@ -3,8 +3,8 @@
 #include "gDP.h"
 #include "GBI.h"
 #include "CombinerMux.h"
+#include "Config.h"
 
-extern u32 LegacySm64ToolsHacks;
 
 static const u32 saRGBExpanded[] =
 {
@@ -228,7 +228,7 @@ u64 gli_combiner_mux(void)
 	}
 	else
 	{
-		if (LegacySm64ToolsHacks)
+		if (gli_legacy_sm64_tools())
 		{
 			/* This is sanity check of provided combiner - 1st and 2nd cycle must be equal */
 			if (gDP.otherMode.cycleType == G_CYC_1CYCLE)

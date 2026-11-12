@@ -1794,12 +1794,11 @@ void gli_gSPPerspNormalize( u16 scale )
 {
 }
 
-extern u32 LegacySm64ToolsHacks;
 void gli_gSPTexture( f32 sc, f32 tc, u32 level, u32 tile, u32 on )
 {
 	gSP.texture.on = on;
 	if (on == 0) {
-		if (LegacySm64ToolsHacks)
+		if (gli_legacy_sm64_tools())
 			gli_gDPSetCombine(0xffffff, 0xFFFE793C);
 
 		return;
@@ -1868,7 +1867,7 @@ void gli_gSPSetOtherMode_H(u32 _length, u32 _shift, u32 _data)
 void gli_gSPSetOtherMode_L(u32 _length, u32 _shift, u32 _data)
 {
 	u32 mask;
-	if (LegacySm64ToolsHacks)
+	if (gli_legacy_sm64_tools())
 	{
 		/* Typo fixrefix */
 		/* !!! This is very cheesy fix */

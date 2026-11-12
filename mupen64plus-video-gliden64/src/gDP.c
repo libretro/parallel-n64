@@ -227,7 +227,6 @@ void gli_gDPSetTile( u32 format, u32 size, u32 line, u32 tmem, u32 tile, u32 pal
 
 }
 
-extern u32 LegacySm64ToolsHacks;
 void gli_gDPSetTileSize( u32 tile, u32 uls, u32 ult, u32 lrs, u32 lrt )
 {
 	gDP.tiles[tile].uls = _SHIFTR( uls, 2, 10 );
@@ -240,7 +239,7 @@ void gli_gDPSetTileSize( u32 tile, u32 uls, u32 ult, u32 lrs, u32 lrt )
 	gDP.tiles[tile].flrs = _FIXED2FLOAT( lrs, 2 );
 	gDP.tiles[tile].flrt = _FIXED2FLOAT( lrt, 2 );
 
-	if (LegacySm64ToolsHacks)
+	if (gli_legacy_sm64_tools())
 	{
 		/* Force maskT and maskS for given sizes if we go too far */
 		/* Get normal sizes for lrs/lrt */

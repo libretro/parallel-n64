@@ -6,6 +6,7 @@
 #include "gSP.h"
 #include "gDP.h"
 #include "GBI.h"
+#include "Config.h"
 
 void gli_F3D_SPNoOp( u32 w0, u32 w1 )
 {
@@ -79,7 +80,6 @@ void gli_F3D_Reserved1( u32 w0, u32 w1 )
 {
 }
 
-extern unsigned int LegacySm64ToolsHacks;
 void gli_F3D_DList( u32 w0, u32 w1 )
 {
 	switch (_SHIFTR( w0, 16, 8 ))
@@ -91,7 +91,7 @@ void gli_F3D_DList( u32 w0, u32 w1 )
 			gli_gSPBranchList( w1 );
 			break;
 		default:
-			if (LegacySm64ToolsHacks)
+			if (gli_legacy_sm64_tools())
 				gli_gSPBranchList( w1 );
 
 			break;

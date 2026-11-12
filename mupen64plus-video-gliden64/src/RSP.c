@@ -430,6 +430,8 @@ void gli_RSP_Init(void)
 		config.generalEmulation.hacks |= hack_TonyHawk;
 	else if (strstr(RSP.romname, (const char *)"NITRO64") != NULL)
 		config.generalEmulation.hacks |= hack_WCWNitro;
+	else if (strstr(RSP.romname, (const char *)"SUPER MARIO 64") != NULL)
+		config.generalEmulation.hacks |= hack_SM64;
 
 	RSP_SetDefaultState();
 }

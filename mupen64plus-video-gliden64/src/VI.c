@@ -20,14 +20,13 @@ u16 gli_VI_GetMaxBufferHeight(u16 _width)
 	return VI.PAL ? 290 : 240;
 }
 
-extern u32 LegacySm64ToolsHacks;
 void gli_VI_UpdateSize(void)
 {
 	f32 xScale;
 	u32 vScale, vEnd, vStart;
 	bool interlacedPrev, depthMismatch;
 
-	if (LegacySm64ToolsHacks)
+	if (gli_legacy_sm64_tools())
 	{
 		if (*REG.VI_V_SYNC == 0x0627) *REG.VI_V_SYNC = 0x0834;
 	}
