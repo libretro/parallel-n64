@@ -62,12 +62,24 @@ static void _setBufferSize(void)
 	}
 }
 
+/* A window a whole number of times the N64's size is drawn at exactly
+ * that: the quotient of the floats, which a build with -ffast-math takes
+ * as a product with the reciprocal, comes out a hair under it, and a
+ * buffer of 320 pixels drawn at 1.9999999 is 639 wide, stretched over
+ * the 640 of the window. */
+static f32 _scaleOf(u32 _window, u32 _native)
+{
+	if (_window % _native == 0)
+		return (f32)(_window / _native);
+	return _window / (float)_native;
+}
+
 static void _updateScale(void)
 {
 	if (VI.width == 0 || VI.height == 0)
 		return;
-	g_window.scaleX = g_window.width / (float)VI.width;
-	g_window.scaleY = g_window.height / (float)VI.height;
+	g_window.scaleX = _scaleOf(g_window.width, VI.width);
+	g_window.scaleY = _scaleOf(g_window.height, VI.height);
 }
 
 void gli_window_start(void)

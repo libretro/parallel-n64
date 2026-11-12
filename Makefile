@@ -1789,6 +1789,11 @@ test_gliden64_texture_formats$(EXE_EXT): tools/test_gliden64_texture_formats.c $
 test_gliden64_rdram_to_color$(EXE_EXT): tools/test_gliden64_rdram_to_color.c $(VIDEODIR_GLIDEN64)/src/RdramToColor.c $(VIDEODIR_GLIDEN64)/src/gli_rdram_to_color.h
 	$(CC) -std=c89 -D_DEFAULT_SOURCE $(CHECK_CFLAGS) $(CHECK_SANITIZE) -I$(VIDEODIR_GLIDEN64)/src -I$(LIBRETRO_COMM_DIR)/include tools/test_gliden64_rdram_to_color.c $(VIDEODIR_GLIDEN64)/src/RdramToColor.c -o $@ $(CHECK_LDFLAGS) $(CHECK_SANITIZE)
 
+# -Ofast as the core itself is built: that is what turned the quotient into
+# a product with the reciprocal
+test_gliden64_window_scale$(EXE_EXT): tools/test_gliden64_window_scale.c $(VIDEODIR_GLIDEN64)/src/DisplayWindow.c
+	$(CC) $(CHECK_CFLAGS) -Ofast $(CHECK_SANITIZE) -I$(VIDEODIR_GLIDEN64)/src -I$(LIBRETRO_COMM_DIR)/include -I$(CORE_DIR)/src/api tools/test_gliden64_window_scale.c $(VIDEODIR_GLIDEN64)/src/DisplayWindow.c -o $@ $(CHECK_LDFLAGS) $(CHECK_SANITIZE)
+
 test_gliden64_deferred_readback$(EXE_EXT): tools/test_gliden64_deferred_readback.cpp $(VIDEODIR_GLIDEN64)/src/BufferCopy/DeferredReadback.h
 	$(CXX) -std=c++11 $(CHECK_CFLAGS) $(CHECK_SANITIZE) $< -o $@ $(CHECK_LDFLAGS) $(CHECK_SANITIZE)
 
@@ -1826,7 +1831,7 @@ CORE_CHECKS := test_rcp_bounds$(EXE_EXT) test_memory_map$(EXE_EXT) test_fb_write
 	test_mouse_accum$(EXE_EXT) test_hle_dram_wrap$(EXE_EXT) test_pif_write$(EXE_EXT) \
 	test_re2_fill$(EXE_EXT) test_temporal_upscaler$(EXE_EXT) test_pipeline_records$(EXE_EXT) test_pipeline_pending$(EXE_EXT) test_rdp_x_range$(EXE_EXT) \
 	test_command_ring$(EXE_EXT) test_vk_sync$(EXE_EXT) test_frame_garbage$(EXE_EXT) test_release_queue$(EXE_EXT) test_gb_cart_banks$(EXE_EXT) test_dynarec_cache_pages$(EXE_EXT) \
-	test_combiner_journal$(EXE_EXT) test_gliden64_write_rdram$(EXE_EXT) test_gliden64_rdram_to_color$(EXE_EXT) test_gliden64_texture_formats$(EXE_EXT) test_glide64_texmod$(EXE_EXT) test_gliden64_deferred_readback$(EXE_EXT) test_gliden64_ring_segments$(EXE_EXT) test_glide64_fb_readback$(EXE_EXT) test_granite_util$(EXE_EXT) test_granite_pool$(EXE_EXT) test_vk_alloc_fallback$(EXE_EXT) \
+	test_combiner_journal$(EXE_EXT) test_gliden64_write_rdram$(EXE_EXT) test_gliden64_rdram_to_color$(EXE_EXT) test_gliden64_window_scale$(EXE_EXT) test_gliden64_texture_formats$(EXE_EXT) test_glide64_texmod$(EXE_EXT) test_gliden64_deferred_readback$(EXE_EXT) test_gliden64_ring_segments$(EXE_EXT) test_glide64_fb_readback$(EXE_EXT) test_granite_util$(EXE_EXT) test_granite_pool$(EXE_EXT) test_vk_alloc_fallback$(EXE_EXT) \
 	test_vi_image_pool$(EXE_EXT) test_incoherent_pages$(EXE_EXT)
 
 ifeq ($(HAVE_PARALLEL_RSP), 1)
