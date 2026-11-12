@@ -12,6 +12,9 @@ extern "C" {
 bool parallel_init(const struct retro_hw_render_interface_vulkan *vulkan);
 void parallel_deinit(void);
 bool parallel_frame_is_valid(void);
+/* Whether the pipelines the first draws need are built, without waiting:
+ * until they are, the core holds the emulation back rather than block */
+bool parallel_pipelines_ready(void);
 unsigned parallel_frame_width(void);
 unsigned parallel_frame_height(void);
 void parallel_begin_frame(void);

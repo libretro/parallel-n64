@@ -3933,13 +3933,18 @@ void Renderer::build_pipelines_ahead(const pipeline_record_t *records, size_t co
 
 bool Renderer::pipeline_ahead_urgent_built(void *ctx)
 {
-	auto *renderer = static_cast<Renderer *>(ctx);
-	return retro_atomic_load_acquire_int(&renderer->pipeline_ahead_urgent_done) >= renderer->pipeline_ahead_urgent;
+	return static_cast<Renderer *>(ctx)->pipelines_ahead_ready();
 }
 
-void Renderer::wait_pipelines_ahead()
+void Renderer::wait_pipelines_ahead_for_test()
 {
-	if (pipeline_worker && pipeline_ahead_urgent)
+	if (pipeline_worker)
 		rdp_worker_wait(pipeline_worker, pipeline_ahead_urgent_built, this);
+}
+
+bool Renderer::pipelines_ahead_ready() const
+{
+	return !pipeline_worker ||
+		retro_atomic_load_acquire_int(const_cast<retro_atomic_int_t *>(&pipeline_ahead_urgent_done)) >= pipeline_ahead_urgent;
 }
 }

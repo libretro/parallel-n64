@@ -782,6 +782,8 @@ unsigned int r4300_emumode;
 unsigned int r4300_jit_backend;
 size_t rdram_size;
 
+int g_main_setup_only = 0;
+
 m64p_error main_run(void)
 {
     static int l_setup_done = 0;
@@ -1165,6 +1167,11 @@ m64p_error main_run(void)
 
     poweron_device(&g_dev);
     pif_bootrom_hle_execute(&g_dev.r4300);
+
+    if (g_main_setup_only) {
+        g_main_setup_only = 0;
+        return M64ERR_SUCCESS;
+    }
 
     run_device(&g_dev);
 

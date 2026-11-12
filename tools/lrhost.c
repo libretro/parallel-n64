@@ -384,7 +384,7 @@ static int cmp_d(const void *a, const void *b) { double x = *(const double*)a, y
 
 int main(int argc, char **argv)
 {
-    void *h; int i, nframes;
+    void *h; int i, nframes; double load_ms;
     void *ra_buf = NULL, *saved = NULL; size_t ra_size = 0, saved_size = 0;
     void (*set_env)(retro_environment_t);
     void (*set_video)(retro_video_refresh_t);
@@ -428,6 +428,11 @@ int main(int argc, char **argv)
     if (getenv("LRHOST_SYSTEM_DIR")) system_dir = getenv("LRHOST_SYSTEM_DIR");
     /* minutes of software compiling that only the pipelines lane is about */
     if (!getenv("LRHOST_KNOWN_PIPELINES")) putenv((char*)"PARALLEL_RDP_NO_KNOWN_PIPELINES=1");
+    /* parallel-RDP holds the machine back, showing the last frame again,
+     * until the worker has built what the first draws need; this host
+     * counts retro_runs, so it has the core wait instead, unless the run
+     * is about that hold (LRHOST_PIPELINE_HOLD=1) */
+    if (!getenv("LRHOST_PIPELINE_HOLD")) putenv((char*)"PARALLEL_RDP_TEST_WAIT_PIPELINES=1");
     MKDIR(system_dir);
 
     h = lib_open(argv[1]);
@@ -453,6 +458,7 @@ int main(int argc, char **argv)
     fseek(f, 0, SEEK_END); game.size = ftell(f); fseek(f, 0, SEEK_SET);
     game.data = malloc(game.size); if (fread((void*)game.data, 1, game.size, f) != game.size) return 1; fclose(f);
     game.path = argv[2]; game.meta = NULL;
+    load_ms = now_ms();
     if (!r_load(&game)) { fprintf(stderr, "retro_load_game failed\n"); return 1; }
 #ifdef LRHOST_GL
     if (gl_hw.context_type == RETRO_HW_CONTEXT_OPENGL || gl_hw.context_type == RETRO_HW_CONTEXT_OPENGL_CORE)
@@ -470,6 +476,10 @@ int main(int argc, char **argv)
         if (vk_hw.context_reset) vk_hw.context_reset();
     }
 #endif
+    /* what a frontend waits through before the first frame (the host's
+     * own GL or Vulkan set-up included) */
+    load_ms = now_ms() - load_ms;
+    printf("retro_load_game and context_reset: %.3f ms\n", load_ms);
     r_get_av(&av);
 
     /* LRHOST_STATE=file loads a savestate after the first frame, so a

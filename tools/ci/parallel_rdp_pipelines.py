@@ -23,6 +23,11 @@ own:
 Every run must present the same frames as the cold one. A list another
 ROM wrote serves the pipelines the two share (shared).
 
+The runs above have lrhost block until the pipelines built ahead are there
+(PARALLEL_RDP_TEST_WAIT_PIPELINES). A frontend never blocks: with every
+known pipeline queued at load, retro_load_game and each retro_run must
+return at once, the machine held until the worker is done (hold).
+
 CI runs every case on one ROM and a cold and a warm session on the rest;
 --full runs every case on every ROM and mode (takes minutes, not seconds).
 
@@ -173,6 +178,52 @@ def known_at_load(args):
     return 0 if ok else 1
 
 
+LOAD = re.compile(r"retro_load_game and context_reset: ([0-9.]+) ms")
+RUN_MAX = re.compile(r"per retro_run: .* max ([0-9.]+) ms \| presented (\d+) duped (\d+)")
+# No call may block on the pipelines built ahead: on a software driver
+# building every known one takes over a minute, and a call that waited for
+# them would take that long. The bounds leave room for a slow runner.
+HOLD_LOAD_MS = 2000.0
+HOLD_RUN_MS = 250.0
+
+
+def hold_at_load(args):
+    """Every known pipeline queued at load, as a frontend runs the core:
+    retro_load_game, context_reset and each retro_run return at once, the machine held
+    (the last frame shown again) until the worker has built the urgent
+    ones, and nothing built on the frame's threads meanwhile."""
+    sysdir = os.path.abspath(os.path.join(args.out, "hold"))
+    shutil.rmtree(sysdir, ignore_errors=True)
+    os.makedirs(sysdir)
+    env = dict(os.environ, LRHOST_COUNT_PIPELINES="1", LRHOST_SYSTEM_DIR=sysdir,
+               LRHOST_KNOWN_PIPELINES="1", LRHOST_PIPELINE_HOLD="1")
+    p = subprocess.run([args.host, args.core, regress.fetch(args.roms, FULL_ROM), str(FRAMES)]
+                       + regress.OPTIONS, env=env, stdout=subprocess.PIPE,
+                       stderr=subprocess.STDOUT, timeout=600)
+    log = p.stdout.decode("utf-8", "replace")
+    with open(os.path.join(sysdir, "hold.log"), "w") as f:
+        f.write(log)
+    load, run_max, counts = LOAD.search(log), RUN_MAX.search(log), COUNTS.search(log)
+    errors = []
+    if p.returncode != 0 or not (load and run_max and counts):
+        errors.append("exit %d, %s" % (p.returncode, "no timings" if p.returncode == 0 else ""))
+    else:
+        if float(load.group(1)) > HOLD_LOAD_MS:
+            errors.append("retro_load_game and context_reset took %s ms" % load.group(1))
+        if float(run_max.group(1)) > HOLD_RUN_MS:
+            errors.append("a retro_run took %s ms" % run_max.group(1))
+        if int(run_max.group(2)) + int(run_max.group(3)) != FRAMES:
+            errors.append("%s presented and %s duped of %d" % (run_max.group(2), run_max.group(3), FRAMES))
+        if int(counts.group(1)) != 0:
+            errors.append("%s built on the frame's threads" % counts.group(1))
+    print("hold at load: %s (load %s ms, longest retro_run %s ms, %s held)"
+          % ("FAIL" if errors else "ok", load.group(1) if load else "?",
+             run_max.group(1) if run_max else "?", run_max.group(3) if run_max else "?"))
+    for e in errors:
+        print("  FAIL: " + e)
+    return 1 if errors else 0
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--core", required=True)
@@ -200,6 +251,7 @@ def main():
                 print("  FAIL: " + e)
             failed += bool(errors)
     failed += known_at_load(args)
+    failed += hold_at_load(args)
     line, errors = shared(args, "tlut16", "pal8")
     print("shared: %s\n%s" % ("FAIL" if errors else "ok", line))
     for e in errors:

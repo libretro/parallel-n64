@@ -117,8 +117,12 @@ Know which layer you are changing. Having one does not give you the next.
   through the state setter its draw uses, so a cold run builds it at load too.
   `tools/ci/parallel_rdp_pipelines.py` holds a first run to none on the frame's
   threads. The other lanes skip this: it takes a software driver most of a minute.
-- `wait_pipelines_ahead` is for load time. Specialised rasterizer variants are
-  never urgent: the generic variant covers them.
+- Nothing blocks on the pipelines built ahead, at load or later, and nothing
+  spins. Until the worker has built the urgent ones, `retro_run` presents the
+  last frame again and does not step the machine; the test hosts block on an
+  eventcount instead (`PARALLEL_RDP_TEST_WAIT_PIPELINES`). Specialised
+  rasterizer variants are never urgent: the generic variant covers them.
+  `tools/ci/parallel_rdp_pipelines.py` (hold at load) bounds each `retro_run`.
 - Each bit in the specialization constants multiplies the variants. Fewer
   permutations beat compiling them faster. Prefer state read from buffers
   unless a specialisation is a measured win.

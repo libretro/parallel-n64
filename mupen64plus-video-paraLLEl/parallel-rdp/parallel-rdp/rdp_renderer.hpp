@@ -122,9 +122,12 @@ public:
 	 * draw cannot do without first, then those it has a fallback for. The
 	 * thread that processes commands, once, after init_renderer. */
 	void build_pipelines_ahead(const pipeline_record_t *records, size_t count, VideoInterface *vi, bool with_upscaler);
-	/* Returns once the worker has built the first kind; any thread but the
-	 * one processing commands, after build_pipelines_ahead returned. */
-	void wait_pipelines_ahead();
+	/* Whether the worker has built the first kind, without waiting; any
+	 * thread, after build_pipelines_ahead returned. */
+	bool pipelines_ahead_ready() const;
+	/* Sleeps until they are: for test hosts that count retro_runs, never
+	 * on a frontend's path */
+	void wait_pipelines_ahead_for_test();
 
 	// setup may be mutated to apply various fixups to triangle setup.
 	void draw_flat_primitive(TriangleSetup &setup);

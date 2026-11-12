@@ -74,6 +74,9 @@ static struct retro_hw_upscaler_inputs upscaler_inputs;
 /* Per sync index: motion vectors, depth, then the translucency mask */
 static Util::HeldHandle<Vulkan::Image> upscaler_handles[3 * RDP_MAX_SYNC_FRAMES];
 static bool upscaler_on;
+/* test hosts count retro_runs, and would count held frames: they block
+ * on the worker instead (read at init) */
+static bool test_wait_pipelines;
 
 /* The frames released past n, as a shrinking vector did. */
 static void set_num_sync_frames(unsigned n)
@@ -293,6 +296,15 @@ void profile_refresh_end()
 		device->register_time_interval("Emulation", refresh_begin_ts, device->write_calibrated_timestamp(), "refresh");
 		refresh_begin_ts.reset();
 	}
+}
+
+bool pipelines_ready()
+{
+	if (!frontend)
+		return true;
+	if (test_wait_pipelines)
+		frontend->wait_pipelines_ahead_for_test();
+	return frontend->pipelines_ahead_ready();
 }
 
 void begin_frame()
@@ -656,6 +668,7 @@ static void upscaler_image(struct retro_hw_upscaler_image &out, const Vulkan::Im
 
 bool init()
 {
+	test_wait_pipelines = getenv("PARALLEL_RDP_TEST_WAIT_PIPELINES") != nullptr;
 	if (!context || !vulkan)
 		return false;
 

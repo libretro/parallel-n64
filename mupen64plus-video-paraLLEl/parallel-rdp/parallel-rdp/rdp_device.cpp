@@ -1453,8 +1453,20 @@ void CommandProcessor::build_pipelines_ahead(const pipeline_record_t *records, s
 	ahead.with_upscaler = with_upscaler;
 	ahead.records  = records;
 	ahead.count    = count;
+	/* not waited for: building them on a cold driver cache takes most of
+	 * a minute on a software driver and long enough on a real one to look
+	 * like a hang, with load (or an upscale change mid-game) blocked on it */
 	run_on_command_thread(build_pipelines_ahead_on_command_thread, &ahead);
-	renderer.wait_pipelines_ahead();
+}
+
+bool CommandProcessor::pipelines_ahead_ready() const
+{
+	return renderer.pipelines_ahead_ready();
+}
+
+void CommandProcessor::wait_pipelines_ahead_for_test()
+{
+	renderer.wait_pipelines_ahead_for_test();
 }
 
 Vulkan::ImageHandle CommandProcessor::scanout(const ScanoutOptions &opts)
