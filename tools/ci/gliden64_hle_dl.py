@@ -133,7 +133,10 @@ def display_list(toggle, inter=False):
     return struct.pack(">%dI" % len(c), *c)
 
 
-def cartridge(path, toggle, name, inter=False, known=True):
+def cartridge(path, toggle, name, inter=False, known=True, areas=None, step=None):
+    """@areas: what to put in RDRAM in place of this file's own, by address.
+    @step: (address, value), the value added to the word there before each
+    frame's task."""
     t0, t1, t2, t3 = 8, 9, 10, 11
     lui = lambda rt, imm: mips(0x0f, 0, rt, imm)
     ori = lambda rt, rs, imm: mips(0x0d, rs, rt, imm)
@@ -161,6 +164,7 @@ def cartridge(path, toggle, name, inter=False, known=True):
     area[UCODE] = struct.pack(">I", 0x006bd77f if known else 0).ljust(0x1000, b"\0")
     # how GLideN64 tells Fast3D
     area[UDATA] = (b"\0" * 0x40 + b"RSP SW Version: 2.0D, 04-01-96" + b"\0").ljust(0x800, b"\0")
+    area.update(areas or {})
     payload = bytearray(UDATA + 0x800 - DL)
     for addr, data in area.items():
         payload[addr - DL:addr - DL + len(data)] = data
@@ -182,6 +186,11 @@ def cartridge(path, toggle, name, inter=False, known=True):
     prog += li(t0, 0xA4040010) + li(t2, 0xA4400010)
     start = len(prog)
     prog += [lw(t1, 0, t2), ori(t3, 0, 0x200), bne(t1, t3, -3), 0]
+    if step:
+        # (t0 and t2 are the loop's: the word through t3)
+        prog += li(t3, 0xA0000000 | step[0]) + [lw(t1, 0, t3)]
+        prog += li(t3, step[1]) + [(t1 << 21) | (t3 << 16) | (t1 << 11) | 0x21]      # addu t1, t1, t3
+        prog += li(t3, 0xA0000000 | step[0]) + [sw(t1, 0, t3)]
     # clear halt and broke: the RSP runs the task
     prog += [ori(t1, 0, 0x5), sw(t1, 0, t0)]
     prog += [lw(t1, 0, t2), ori(t3, 0, 0x200), beq(t1, t3, -3), 0]

@@ -37,7 +37,7 @@ static const value_member value_members[] = {
 };
 #undef X
 
-enum { PC_OPS = 0, PC_FLAGS, PC_CLIP, PC_SPECIAL };
+enum { PC_OPS = 0, PC_FLAGS, PC_CLIP, PC_SPECIAL, PC_JITTER };
 
 enum { CYC_1 = 0, CYC_2 = 1, CYC_COPY = 2, CYC_FILL = 3 };
 
@@ -105,19 +105,21 @@ static void declare_values(E *e)
 static void declare_push(E *e)
 {
    spv_module *m = e->m;
-   uint32_t    members[4];
+   uint32_t    members[5];
    uint32_t    block;
 
    members[PC_OPS]     = spv_array_type(m, spv_type(m, T_I1), 16, 4);
    members[PC_FLAGS]   = spv_type(m, T_I1);
    members[PC_CLIP]    = spv_type(m, T_I1);
    members[PC_SPECIAL] = spv_type(m, T_F4);
-   block = spv_struct(m, members, 4);
+   members[PC_JITTER]  = spv_type(m, T_F2);
+   block = spv_struct(m, members, 5);
    spv_decorate(m, block, SPV_DEC_BLOCK);
    spv_member_decorate(m, block, PC_OPS, SPV_DEC_OFFSET, (uint32_t)offsetof(vkr_push, ops));
    spv_member_decorate(m, block, PC_FLAGS, SPV_DEC_OFFSET, (uint32_t)offsetof(vkr_push, flags));
    spv_member_decorate(m, block, PC_CLIP, SPV_DEC_OFFSET, (uint32_t)offsetof(vkr_push, clip_enable));
    spv_member_decorate(m, block, PC_SPECIAL, SPV_DEC_OFFSET, (uint32_t)offsetof(vkr_push, special));
+   spv_member_decorate(m, block, PC_JITTER, SPV_DEC_OFFSET, (uint32_t)offsetof(vkr_push, jitter));
    e->pc = spv_global(m, block, SPV_PUSH_CONSTANT);
 }
 
@@ -1526,6 +1528,15 @@ const uint32_t *vkr_write_vertex(spv_module *m, const vkr_shader_config *cfg, in
       {
          spv_v q = spv_load(m, p);
          spv_store(m, p, spv_vec4(m, spv_x(m, q, 0), spv_neg(m, spv_x(m, q, 1)), spv_x(m, q, 2), spv_x(m, q, 3)));
+      }
+      /* a temporal upscaler's sub-pixel jitter, as a part of the viewport:
+       * zero without one */
+      {
+         spv_v q = spv_load(m, p);
+         spv_v j = spv_load_member(m, e->pc, SPV_PUSH_CONSTANT, PC_JITTER, T_F2);
+         spv_v w = spv_x(m, q, 3);
+         spv_store(m, p, spv_vec4(m, spv_add(m, spv_x(m, q, 0), spv_mul(m, spv_x(m, j, 0), w)),
+                  spv_add(m, spv_x(m, q, 1), spv_mul(m, spv_x(m, j, 1), w)), spv_x(m, q, 2), w));
       }
 
       if (spv_if(m, &b, spv_cond(spv_gt(m, u(e, U_fogUsage), spv_i(m, 0)))))

@@ -1,15 +1,20 @@
 #!/usr/bin/env python3
-"""Checks what parallel-rdp hands a temporal upscaler, from a dump of
+"""Checks what a renderer hands a temporal upscaler, from a dump of
 tools/lrhost_vk with LRHOST_UPSCALER (frames NNNN.raw, NNNN.mv.raw,
 NNNN.depth.raw, NNNN.mask.raw and the LRHOST_UPSCALER_LOG beside them).
 
-  upscaler_check.py DUMPDIR LOG FIRST LAST [--moving]
+  upscaler_check.py DUMPDIR LOG FIRST LAST [--moving] [--repeats]
 
 Every frame must come with inputs of the color's size (the transparency
 mask one byte a pixel), its jitter must
 follow the Halton (2, 3) sequence, and with --moving the motion vectors
 must take each pixel that changed from the frame before to where that
 frame had its color (to the pixel), where standing still would not.
+
+--repeats is for a renderer that shows the game's frames as the game
+finishes them (GLideN64): the frames before FIRST may come without inputs,
+and a frame shown again, the same picture, comes with the same jitter and
+is not compared.
 """
 import argparse, struct, sys
 
@@ -64,13 +69,20 @@ def main():
     ap.add_argument("first", type=int)
     ap.add_argument("last", type=int)
     ap.add_argument("--moving", action="store_true")
+    ap.add_argument("--repeats", action="store_true")
     a = ap.parse_args()
 
     frames = read_log(a.log)
     failures = []
     if not frames:
         failures.append("no frames logged")
+    def color(n):
+        with open("%s/%04d.raw" % (a.dumpdir, n), "rb") as f:
+            return f.read()
+
     for n, fr in sorted(frames.items()):
+        if a.repeats and n < a.first:
+            continue
         if fr is None:
             failures.append("frame %d: no inputs" % n)
             continue
@@ -83,7 +95,16 @@ def main():
 
     # the jittered frames: consecutive Halton points, from wherever it started
     jittered = [n for n in range(a.first, a.last + 1) if frames.get(n) and frames[n]["jitter"] != (0.0, 0.0)]
-    if a.moving and len(jittered) != a.last - a.first + 1:
+    if a.repeats:
+        # (the picture again: its jitter again)
+        again = [n for n in jittered if n > a.first and frames.get(n - 1)
+                 and frames[n]["jitter"] == frames[n - 1]["jitter"] and color(n) == color(n - 1)]
+        if a.moving and len(jittered) != a.last - a.first + 1:
+            failures.append("frames %d-%d: only %d jittered" % (a.first, a.last, len(jittered)))
+        jittered = [n for n in jittered if n not in again]
+        if len(jittered) < 3:
+            failures.append("frames %d-%d: only %d of them new" % (a.first, a.last, len(jittered)))
+    elif a.moving and len(jittered) != a.last - a.first + 1:
         failures.append("frames %d-%d: only %d jittered" % (a.first, a.last, len(jittered)))
     if jittered:
         seq = [(halton(i, 2) - 0.5, halton(i, 3) - 0.5) for i in range(64)]
@@ -106,8 +127,12 @@ def main():
                     break
 
     if a.moving:
+        compared = 0
         for n in range(a.first + 1, a.last + 1):
             cur, prev = frames.get(n), frames.get(n - 1)
+            if a.repeats and cur and prev and color(n) == color(n - 1):
+                continue
+            compared += 1
             if not cur or not prev or cur["size"] != prev["size"]:
                 failures.append("frame %d: no frame before it to compare with" % n)
                 continue
@@ -151,6 +176,8 @@ def main():
             # must at least halve what standing still misses)
             if moving < 0.9 or 1.0 - moving > 0.5 * (1.0 - still):
                 failures.append("frame %d: %.3f of the changed pixels found where the motion vectors say" % (n, moving))
+        if not compared:
+            failures.append("frames %d-%d: none differs from the one before" % (a.first, a.last))
 
     if failures:
         print("\n".join(failures))

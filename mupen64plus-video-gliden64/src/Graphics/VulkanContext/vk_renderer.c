@@ -15,6 +15,8 @@
 
 #include "vk_device.h"
 #include "vk_renderer.h"
+#define UPSCALER_SHADERS_MOTION_ONLY
+#include <upscaler_shaders.hpp>
 
 /* ---- capacity: every pool is fixed at creation, exhaustion is defined ---- */
 #define MAX_IMAGES      8192
@@ -141,6 +143,13 @@ typedef struct vkr_frame
    VkFramebuffer   win_fb;
    unsigned        win_w, win_h;
    VkImageLayout   win_layout;
+   /* beside the window, for a temporal upscaler: motion vectors, the
+    * translucency mask and depth, of its size */
+   VkImage         up_image[3];
+   VkImageView     up_view[3];
+   VkDeviceMemory  up_mem[3];
+   VkFramebuffer   up_fb;
+   unsigned        up_w, up_h;
 } vkr_frame;
 
 struct vkr_program
@@ -287,6 +296,10 @@ struct vkr_renderer
    VkDescriptorSet bound_set;
    uint32_t bound_set_offset;
    int push_clip_sent;
+   /* the next triangles' jitter in pixels, and what the shader has */
+   float jitter[2];
+   float push_jitter[2];
+   int push_jitter_sent;
    int cur_rect;
    int force_generic;
    int strict; /* tools/ci: a pipeline prewarm did not build is a failure */
@@ -294,6 +307,15 @@ struct vkr_renderer
    char cache_path[1024];
    VkDeviceSize vb_offset, ib_offset;
    int vb_valid, ib_valid;
+
+   /* the temporal upscaler's motion pass */
+   VkRenderPass up_rp;
+   VkPipelineLayout up_layout;
+   VkPipeline up_pipe[4]; /* depth test, depth write */
+   VkFormat up_depth_format;
+   int up_ready;
+   struct retro_hw_upscaler_inputs up_inputs;
+   unsigned presented_w, presented_h;
 };
 
 enum { D_VIEWPORT = 1, D_SCISSOR = 2, D_BIAS = 4, D_BLEND = 8, D_LINE = 16, D_EDS = 32, D_EDS3 = 64, D_ALL = 127 };
@@ -599,6 +621,7 @@ static void begin_cmds(vkr_renderer *r)
    r->bound_pipe = VK_NULL_HANDLE;
    r->bound_set = VK_NULL_HANDLE;
    r->push_clip_sent = -1;
+   r->push_jitter_sent = 0;
    r->vb_valid = r->ib_valid = 0;
    f->n_cmd++;
 }
@@ -1969,6 +1992,23 @@ static int bind_for_draw(vkr_renderer *r, int rect, int lines, int strip)
             68, 4, &push.clip_enable);
       r->push_clip_sent = r->clip;
    }
+   if (!rect)
+   {
+      /* in clip space: twice the pixels over the viewport's */
+      float j[2];
+      j[0] = r->viewport.width > 0.f ? 2.f * r->jitter[0] / r->viewport.width : 0.f;
+      j[1] = r->viewport.height > 0.f ? 2.f * r->jitter[1] / r->viewport.height : 0.f;
+      if (r->draw_fbo == 0)
+         j[0] = j[1] = 0.f;
+      if (!r->push_jitter_sent || j[0] != r->push_jitter[0] || j[1] != r->push_jitter[1])
+      {
+         F(CmdPushConstants)(r->cmd, r->layout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+               (uint32_t)offsetof(vkr_push, jitter), sizeof(j), j);
+         r->push_jitter[0] = j[0];
+         r->push_jitter[1] = j[1];
+         r->push_jitter_sent = 1;
+      }
+   }
    return 1;
 }
 
@@ -2198,6 +2238,41 @@ void vkr_draw_tris(vkr_renderer *r, int topology, unsigned vertices, unsigned in
       F(CmdDrawIndexed)(r->cmd, indices, 1, 0, 0, 0);
    else
       F(CmdDraw)(r->cmd, vertices, 1, 0, 0);
+}
+
+void vkr_jitter(vkr_renderer *r, float x, float y)
+{
+   r->jitter[0] = x;
+   r->jitter[1] = y;
+}
+
+void vkr_get_viewport(const vkr_renderer *r, float *xywh)
+{
+   xywh[0] = r->viewport.x;
+   xywh[1] = r->viewport.y;
+   xywh[2] = r->viewport.width;
+   xywh[3] = r->viewport.height;
+}
+
+unsigned vkr_draw_fbo(const vkr_renderer *r)
+{
+   return r->draw_fbo;
+}
+
+unsigned vkr_draw_state(const vkr_renderer *r, int *cull)
+{
+   unsigned state = 0;
+   if (r->enable[VKR_CAP_DEPTH_TEST])
+   {
+      if (r->depth_cmp != VKR_CMP_ALWAYS)
+         state |= 1;
+      if (r->depth_write_on)
+         state |= 2;
+   }
+   if (r->enable[VKR_CAP_BLEND])
+      state |= 4;
+   *cull = r->enable[VKR_CAP_CULL] ? r->cull_mode : VKR_CULL_NONE;
+   return state;
 }
 
 void vkr_draw_rects(vkr_renderer *r, int topology, unsigned vertices)
@@ -2781,10 +2856,419 @@ void vkr_set_window(vkr_renderer *r, unsigned w, unsigned h)
    }
 }
 
-void vkr_present(vkr_renderer *r)
+/* ---- the temporal upscaler's inputs ---- */
+#define UP_MV    0
+#define UP_MASK  1
+#define UP_DEPTH 2
+
+int vkr_upscaler_init(vkr_renderer *r)
+{
+   VkAttachmentDescription att[3];
+   VkAttachmentReference refs[3];
+   VkSubpassDescription sub;
+   VkRenderPassCreateInfo rpi;
+   VkPushConstantRange range;
+   VkPipelineLayoutCreateInfo pl;
+   VkFormatProperties fp;
+   VkShaderModule vs, fs;
+   PFN_vkGetPhysicalDeviceFormatProperties get_format;
+   unsigned i;
+   int ok = 1;
+
+   if (r->up_ready)
+      return 1;
+   get_format = (PFN_vkGetPhysicalDeviceFormatProperties)r->vk->get_instance_proc_addr(r->vk->instance,
+         "vkGetPhysicalDeviceFormatProperties");
+   memset(&fp, 0, sizeof(fp));
+   if (get_format)
+      get_format(r->vk->gpu, VK_FORMAT_D32_SFLOAT, &fp);
+   r->up_depth_format = ((fp.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT)
+         && (fp.optimalTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT))
+      ? VK_FORMAT_D32_SFLOAT : VK_FORMAT_D16_UNORM;
+
+   memset(att, 0, sizeof(att));
+   for (i = 0; i < 3; i++)
+   {
+      att[i].samples = VK_SAMPLE_COUNT_1_BIT;
+      att[i].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+      att[i].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+      att[i].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+      att[i].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+      att[i].initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+      /* read by the frontend as they leave the pass */
+      att[i].finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+      refs[i].attachment = i;
+      refs[i].layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+   }
+   att[UP_MV].format = VK_FORMAT_R16G16_SFLOAT;
+   att[UP_MASK].format = VK_FORMAT_R8_UNORM;
+   att[UP_DEPTH].format = r->up_depth_format;
+   refs[UP_DEPTH].layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+   memset(&sub, 0, sizeof(sub));
+   sub.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+   sub.colorAttachmentCount = 2;
+   sub.pColorAttachments = refs;
+   sub.pDepthStencilAttachment = &refs[UP_DEPTH];
+   memset(&rpi, 0, sizeof(rpi));
+   rpi.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+   rpi.attachmentCount = 3;
+   rpi.pAttachments = att;
+   rpi.subpassCount = 1;
+   rpi.pSubpasses = &sub;
+   if (F(CreateRenderPass)(r->device, &rpi, NULL, &r->up_rp) != VK_SUCCESS)
+      return 0;
+
+   /* upscaler_motion.vert and .frag: inv_resolution, translucent, origin, farthest */
+   range.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+   range.offset = 0;
+   range.size = 28;
+   memset(&pl, 0, sizeof(pl));
+   pl.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+   pl.pushConstantRangeCount = 1;
+   pl.pPushConstantRanges = &range;
+   if (F(CreatePipelineLayout)(r->device, &pl, NULL, &r->up_layout) != VK_SUCCESS)
+      return 0;
+
+   vs = make_module(r, upscaler_motion_vert, sizeof(upscaler_motion_vert) / sizeof(uint32_t));
+   fs = make_module(r, upscaler_motion_frag, sizeof(upscaler_motion_frag) / sizeof(uint32_t));
+   for (i = 0; i < 4 && vs != VK_NULL_HANDLE && fs != VK_NULL_HANDLE; i++)
+   {
+      static const VkDynamicState dyn[2] = { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR };
+      VkPipelineShaderStageCreateInfo stages[2];
+      VkVertexInputBindingDescription vb;
+      VkVertexInputAttributeDescription va[8];
+      VkPipelineVertexInputStateCreateInfo vi;
+      VkPipelineInputAssemblyStateCreateInfo ia;
+      VkPipelineViewportStateCreateInfo vp;
+      VkPipelineRasterizationStateCreateInfo rs;
+      VkPipelineMultisampleStateCreateInfo ms;
+      VkPipelineDepthStencilStateCreateInfo ds;
+      VkPipelineColorBlendAttachmentState cba[2];
+      VkPipelineColorBlendStateCreateInfo cb;
+      VkPipelineDynamicStateCreateInfo dy;
+      VkGraphicsPipelineCreateInfo info;
+      unsigned k;
+
+      memset(stages, 0, sizeof(stages));
+      stages[0].sType = stages[1].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+      stages[0].pName = stages[1].pName = "main";
+      stages[0].stage = VK_SHADER_STAGE_VERTEX_BIT;
+      stages[0].module = vs;
+      stages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+      stages[1].module = fs;
+
+      memset(&vb, 0, sizeof(vb));
+      vb.stride = sizeof(rdp_upscaler_vertex_t);
+      vb.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+      memset(va, 0, sizeof(va));
+      va[0].location = 0; va[0].format = VK_FORMAT_R32G32B32_SFLOAT; va[0].offset = offsetof(rdp_upscaler_vertex_t, x);
+      va[1].location = 1; va[1].format = VK_FORMAT_R32G32_SFLOAT; va[1].offset = offsetof(rdp_upscaler_vertex_t, motion_x);
+      for (k = 0; k < 6; k++)
+      {
+         va[2 + k].location = 2 + k;
+         va[2 + k].format = VK_FORMAT_R32G32B32_SFLOAT;
+         va[2 + k].offset = (uint32_t)(offsetof(rdp_upscaler_vertex_t, plane) + k * 3 * sizeof(float));
+      }
+      memset(&vi, 0, sizeof(vi));
+      vi.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+      vi.vertexBindingDescriptionCount = 1;
+      vi.pVertexBindingDescriptions = &vb;
+      vi.vertexAttributeDescriptionCount = 8;
+      vi.pVertexAttributeDescriptions = va;
+
+      memset(&ia, 0, sizeof(ia));
+      ia.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+      ia.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+      memset(&vp, 0, sizeof(vp));
+      vp.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+      vp.viewportCount = 1;
+      vp.scissorCount = 1;
+      memset(&rs, 0, sizeof(rs));
+      rs.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+      rs.polygonMode = VK_POLYGON_MODE_FILL;
+      rs.cullMode = VK_CULL_MODE_NONE;
+      rs.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+      rs.lineWidth = 1.f;
+      memset(&ms, 0, sizeof(ms));
+      ms.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+      ms.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+      memset(&ds, 0, sizeof(ds));
+      ds.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+      ds.depthTestEnable = (i & 1) ? VK_TRUE : VK_FALSE;
+      ds.depthWriteEnable = (i & 2) ? VK_TRUE : VK_FALSE;
+      /* (writing depth takes the test on: a write without it always passes) */
+      if ((i & 2) && !(i & 1))
+         ds.depthTestEnable = VK_TRUE;
+      ds.depthCompareOp = (i & 1) ? VK_COMPARE_OP_LESS_OR_EQUAL : VK_COMPARE_OP_ALWAYS;
+      memset(cba, 0, sizeof(cba));
+      cba[0].colorWriteMask = 0xf;
+      cba[1].colorWriteMask = 0xf;
+      memset(&cb, 0, sizeof(cb));
+      cb.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+      cb.attachmentCount = 2;
+      cb.pAttachments = cba;
+      memset(&dy, 0, sizeof(dy));
+      dy.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+      dy.dynamicStateCount = 2;
+      dy.pDynamicStates = dyn;
+
+      memset(&info, 0, sizeof(info));
+      info.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+      info.stageCount = 2;
+      info.pStages = stages;
+      info.pVertexInputState = &vi;
+      info.pInputAssemblyState = &ia;
+      info.pViewportState = &vp;
+      info.pRasterizationState = &rs;
+      info.pMultisampleState = &ms;
+      info.pDepthStencilState = &ds;
+      info.pColorBlendState = &cb;
+      info.pDynamicState = &dy;
+      info.layout = r->up_layout;
+      info.renderPass = r->up_rp;
+      if (F(CreateGraphicsPipelines)(r->device, r->cache, 1, &info, NULL, &r->up_pipe[i]) != VK_SUCCESS)
+         ok = 0;
+   }
+   if (vs == VK_NULL_HANDLE || fs == VK_NULL_HANDLE)
+      ok = 0;
+   if (vs != VK_NULL_HANDLE)
+      F(DestroyShaderModule)(r->device, vs, NULL);
+   if (fs != VK_NULL_HANDLE)
+      F(DestroyShaderModule)(r->device, fs, NULL);
+   r->up_ready = ok;
+   return ok;
+}
+
+static void upscaler_images_free(vkr_renderer *r, vkr_frame *f, int now)
+{
+   unsigned i;
+   if (f->up_fb != VK_NULL_HANDLE)
+   {
+      if (now)
+         F(DestroyFramebuffer)(r->device, f->up_fb, NULL);
+      else
+         trash(r, G_FB, (uint64_t)(uintptr_t)f->up_fb, NULL);
+   }
+   f->up_fb = VK_NULL_HANDLE;
+   for (i = 0; i < 3; i++)
+   {
+      if (now)
+      {
+         if (f->up_view[i] != VK_NULL_HANDLE)
+            F(DestroyImageView)(r->device, f->up_view[i], NULL);
+         if (f->up_image[i] != VK_NULL_HANDLE)
+            F(DestroyImage)(r->device, f->up_image[i], NULL);
+         if (f->up_mem[i] != VK_NULL_HANDLE)
+            F(FreeMemory)(r->device, f->up_mem[i], NULL);
+      }
+      else
+      {
+         if (f->up_view[i] != VK_NULL_HANDLE)
+            trash(r, G_VIEW, (uint64_t)(uintptr_t)f->up_view[i], NULL);
+         if (f->up_image[i] != VK_NULL_HANDLE)
+            trash(r, G_IMAGE, (uint64_t)(uintptr_t)f->up_image[i], NULL);
+         if (f->up_mem[i] != VK_NULL_HANDLE)
+            trash(r, G_MEMORY, (uint64_t)(uintptr_t)f->up_mem[i], NULL);
+      }
+      f->up_view[i] = VK_NULL_HANDLE;
+      f->up_image[i] = VK_NULL_HANDLE;
+      f->up_mem[i] = VK_NULL_HANDLE;
+   }
+   f->up_w = f->up_h = 0;
+}
+
+/* Of the window's size, made when it changes: never while it stands */
+static int upscaler_images(vkr_renderer *r, vkr_frame *f)
+{
+   VkFormat formats[3];
+   VkFramebufferCreateInfo fbi;
+   unsigned i;
+
+   if (f->up_fb != VK_NULL_HANDLE && f->up_w == f->win_w && f->up_h == f->win_h)
+      return 1;
+   upscaler_images_free(r, f, 0);
+   formats[UP_MV] = VK_FORMAT_R16G16_SFLOAT;
+   formats[UP_MASK] = VK_FORMAT_R8_UNORM;
+   formats[UP_DEPTH] = r->up_depth_format;
+   for (i = 0; i < 3; i++)
+   {
+      VkImageCreateInfo info;
+      VkImageViewCreateInfo view;
+      VkMemoryRequirements req;
+      VkMemoryAllocateInfo ma;
+
+      memset(&info, 0, sizeof(info));
+      info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+      info.imageType = VK_IMAGE_TYPE_2D;
+      info.format = formats[i];
+      info.extent.width = f->win_w;
+      info.extent.height = f->win_h;
+      info.extent.depth = 1;
+      info.mipLevels = 1;
+      info.arrayLayers = 1;
+      info.samples = VK_SAMPLE_COUNT_1_BIT;
+      info.tiling = VK_IMAGE_TILING_OPTIMAL;
+      info.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT
+         | (i == UP_DEPTH ? VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT : VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
+      if (F(CreateImage)(r->device, &info, NULL, &f->up_image[i]) != VK_SUCCESS)
+         goto fail;
+      F(GetImageMemoryRequirements)(r->device, f->up_image[i], &req);
+      memset(&ma, 0, sizeof(ma));
+      ma.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+      ma.allocationSize = req.size;
+      ma.memoryTypeIndex = (uint32_t)find_memory_type(r, req.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+      if (F(AllocateMemory)(r->device, &ma, NULL, &f->up_mem[i]) != VK_SUCCESS)
+         goto fail;
+      F(BindImageMemory)(r->device, f->up_image[i], f->up_mem[i], 0);
+      memset(&view, 0, sizeof(view));
+      view.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+      view.image = f->up_image[i];
+      view.viewType = VK_IMAGE_VIEW_TYPE_2D;
+      view.format = formats[i];
+      view.subresourceRange.aspectMask = i == UP_DEPTH ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT;
+      view.subresourceRange.levelCount = 1;
+      view.subresourceRange.layerCount = 1;
+      if (F(CreateImageView)(r->device, &view, NULL, &f->up_view[i]) != VK_SUCCESS)
+         goto fail;
+   }
+   memset(&fbi, 0, sizeof(fbi));
+   fbi.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+   fbi.renderPass = r->up_rp;
+   fbi.attachmentCount = 3;
+   fbi.pAttachments = f->up_view;
+   fbi.width = f->win_w;
+   fbi.height = f->win_h;
+   fbi.layers = 1;
+   if (F(CreateFramebuffer)(r->device, &fbi, NULL, &f->up_fb) != VK_SUCCESS)
+      goto fail;
+   f->up_w = f->win_w;
+   f->up_h = f->win_h;
+   return 1;
+
+fail:
+   upscaler_images_free(r, f, 0);
+   return 0;
+}
+
+/* The motion pass: the frame's triangles again, each writing how far it
+ * moved since the frame before, whether it is translucent, and its depth */
+static int upscaler_pass(vkr_renderer *r, vkr_frame *f, const vkr_upscaler_frame *u)
+{
+   VkRenderPassBeginInfo info;
+   VkClearValue clear[3];
+   VkViewport v;
+   VkRect2D sc;
+   float pc[7];
+   unsigned i;
+   int bound = -1;
+
+   if (!r->up_ready || !upscaler_images(r, f))
+      return 0;
+   /* (more than the ring holds: a frame without inputs, shown as it is) */
+   if ((VkDeviceSize)u->num_vertices * sizeof(rdp_upscaler_vertex_t) > RING_BYTES / 2)
+      return 0;
+
+   if (u->num_vertices)
+   {
+      VkDeviceSize offset;
+      rdp_upscaler_vertex_t *dst = (rdp_upscaler_vertex_t*)ring_reserve(r,
+            u->num_vertices * sizeof(rdp_upscaler_vertex_t), sizeof(float), &offset);
+      /* written once, where the GPU reads them, moved to where the window shows them */
+      for (i = 0; i < u->num_vertices; i++)
+      {
+         const rdp_upscaler_vertex_t *src = &u->vertices[i];
+         dst[i].x = src->x * u->scale[0] + u->offset[0];
+         dst[i].y = src->y * u->scale[1] + u->offset[1];
+         dst[i].z = src->z;
+         dst[i].motion_x = src->motion_x * u->scale[0];
+         dst[i].motion_y = src->motion_y * u->scale[1];
+         /* (its planes are over the framebuffer's pixels: the window's,
+          * where it shows them one for one) */
+         if (u->scale[0] == 1.f && u->scale[1] == 1.f)
+            memcpy(dst[i].plane, src->plane, sizeof(dst[i].plane));
+         else
+            memset(dst[i].plane, 0, sizeof(dst[i].plane));
+      }
+      r->vb_valid = 0;
+      end_pass(r);
+      F(CmdBindVertexBuffers)(r->cmd, 0, 1, &f->ring, &offset);
+   }
+   end_pass(r);
+
+   memset(clear, 0, sizeof(clear));
+   clear[UP_DEPTH].depthStencil.depth = 1.f;
+   memset(&info, 0, sizeof(info));
+   info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+   info.renderPass = r->up_rp;
+   info.framebuffer = f->up_fb;
+   info.renderArea.extent.width = f->up_w;
+   info.renderArea.extent.height = f->up_h;
+   info.clearValueCount = 3;
+   info.pClearValues = clear;
+   F(CmdBeginRenderPass)(r->cmd, &info, VK_SUBPASS_CONTENTS_INLINE);
+
+   memset(&v, 0, sizeof(v));
+   v.width = (float)f->up_w;
+   v.height = (float)f->up_h;
+   v.maxDepth = 1.f;
+   memset(&sc, 0, sizeof(sc));
+   sc.extent.width = f->up_w;
+   sc.extent.height = f->up_h;
+   F(CmdSetViewport)(r->cmd, 0, 1, &v);
+   F(CmdSetScissor)(r->cmd, 0, 1, &sc);
+
+   pc[0] = 1.f / (float)f->up_w;
+   pc[1] = 1.f / (float)f->up_h;
+   pc[2] = 0.f;
+   pc[3] = 0.f;
+   pc[4] = u->origin[0];
+   pc[5] = u->origin[1];
+   pc[6] = u->farthest;
+   for (i = 0; i < u->num_draws; i++)
+   {
+      const rdp_upscaler_draw_t *d = &u->draws[i];
+      int which = ((d->flags & RDP_UPSCALER_DEPTH_TEST) ? 1 : 0) | ((d->flags & RDP_UPSCALER_DEPTH_WRITE) ? 2 : 0);
+      float translucent = (d->flags & RDP_UPSCALER_TRANSLUCENT) ? 1.f : 0.f;
+      if (which != bound)
+      {
+         F(CmdBindPipeline)(r->cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, r->up_pipe[which]);
+         bound = which;
+      }
+      if (i == 0 || translucent != pc[2])
+      {
+         pc[2] = translucent;
+         F(CmdPushConstants)(r->cmd, r->up_layout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+               0, 28, pc);
+      }
+      F(CmdDraw)(r->cmd, d->count, 1, d->first, 0);
+   }
+   F(CmdEndRenderPass)(r->cmd);
+
+   /* this command buffer's state is the pass's now */
+   r->dirty = D_ALL;
+   r->bound_pipe = VK_NULL_HANDLE;
+   r->bound_set = VK_NULL_HANDLE;
+   r->push_clip_sent = -1;
+   r->push_jitter_sent = 0;
+   r->vb_valid = r->ib_valid = 0;
+   return 1;
+}
+
+static void upscaler_image(struct retro_hw_upscaler_image *out, const vkr_frame *f, unsigned i, VkFormat format)
+{
+   out->image = (uint64_t)(uintptr_t)f->up_image[i];
+   out->view = (uint64_t)(uintptr_t)f->up_view[i];
+   out->format = (unsigned)format;
+   out->state = (unsigned)VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+   out->width = f->up_w;
+   out->height = f->up_h;
+}
+
+void vkr_present_upscaled(vkr_renderer *r, const vkr_upscaler_frame *u)
 {
    vkr_frame *f;
    struct retro_vulkan_image image;
+   int inputs = 0;
 
    frame_begin(r);
    f = r->f;
@@ -2795,7 +3279,27 @@ void vkr_present(vkr_renderer *r)
       image_barrier(r, r->cmd, f->win_image, VK_IMAGE_ASPECT_COLOR_BIT, f->win_layout, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
       f->win_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
    }
+   if (u && u->iface)
+      inputs = upscaler_pass(r, f, u);
    submit(r);
+
+   if (inputs)
+   {
+      /* (valid until the frame is: the frontend reads it in video_refresh) */
+      struct retro_hw_upscaler_inputs *in = &r->up_inputs;
+      memset(in, 0, sizeof(*in));
+      in->flags = u->reset ? RETRO_HW_UPSCALER_RESET : 0;
+      upscaler_image(&in->motion_vectors, f, UP_MV, VK_FORMAT_R16G16_SFLOAT);
+      upscaler_image(&in->depth, f, UP_DEPTH, r->up_depth_format);
+      upscaler_image(&in->transparency_mask, f, UP_MASK, VK_FORMAT_R8_UNORM);
+      in->jitter_x = u->jitter[0];
+      in->jitter_y = u->jitter[1];
+      in->mv_scale_x = 1.f;
+      in->mv_scale_y = 1.f;
+      in->pre_exposure = 1.f;
+      in->exposure_scale = 1.f;
+      u->iface->set_inputs(u->iface->handle, in);
+   }
 
    memset(&image, 0, sizeof(image));
    image.image_view = f->win_view;
@@ -2808,9 +3312,22 @@ void vkr_present(vkr_renderer *r)
    image.create_info.subresourceRange.levelCount = 1;
    image.create_info.subresourceRange.layerCount = 1;
    r->vk->set_image(r->vk->handle, &image, 0, NULL, VK_QUEUE_FAMILY_IGNORED);
+   r->presented_w = f->win_w;
+   r->presented_h = f->win_h;
 
    r->frame_open = 0;
    r->f = NULL;
+}
+
+void vkr_presented_size(const vkr_renderer *r, unsigned *w, unsigned *h)
+{
+   *w = r->presented_w;
+   *h = r->presented_h;
+}
+
+void vkr_present(vkr_renderer *r)
+{
+   vkr_present_upscaled(r, NULL);
 }
 
 const vkr_caps *vkr_get_caps(const vkr_renderer *r) { return &r->caps; }
@@ -3473,6 +3990,7 @@ void vkr_destroy(vkr_renderer *r)
          F(DestroyImage)(r->device, f->win_image, NULL);
       if (f->win_mem != VK_NULL_HANDLE)
          F(FreeMemory)(r->device, f->win_mem, NULL);
+      upscaler_images_free(r, f, 1);
       if (f->dpool != VK_NULL_HANDLE)
          F(DestroyDescriptorPool)(r->device, f->dpool, NULL);
       if (f->pool != VK_NULL_HANDLE)
@@ -3506,6 +4024,13 @@ void vkr_destroy(vkr_renderer *r)
             F(DestroyPipeline)(r->device, r->pipes[i].pipeline, NULL);
    if (r->depth_resolve_rp != VK_NULL_HANDLE)
       F(DestroyRenderPass)(r->device, r->depth_resolve_rp, NULL);
+   for (i = 0; i < 4; i++)
+      if (r->up_pipe[i] != VK_NULL_HANDLE)
+         F(DestroyPipeline)(r->device, r->up_pipe[i], NULL);
+   if (r->up_layout != VK_NULL_HANDLE)
+      F(DestroyPipelineLayout)(r->device, r->up_layout, NULL);
+   if (r->up_rp != VK_NULL_HANDLE)
+      F(DestroyRenderPass)(r->device, r->up_rp, NULL);
    for (i = 0; i < r->n_rps; i++)
    {
       F(DestroyRenderPass)(r->device, r->rps[i].rp, NULL);

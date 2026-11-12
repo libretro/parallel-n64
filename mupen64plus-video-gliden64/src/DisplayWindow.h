@@ -32,6 +32,7 @@ typedef struct gli_window
 extern gli_window g_window;
 
 void gli_window_swap_buffers(void);
+void gli_window_set_size_now(u32 _width, u32 _height);
 
 /* DisplayWindowGpu.cpp */
 void gli_window_gpu_start(void);

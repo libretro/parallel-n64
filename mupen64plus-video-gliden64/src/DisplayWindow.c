@@ -136,6 +136,14 @@ void gli_window_set_size(u32 _width, u32 _height)
 	}
 }
 
+/* The same size again when what is drawn at it changed */
+void gli_window_set_size_now(u32 _width, u32 _height)
+{
+	g_window.resizeWidth = _width;
+	g_window.resizeHeight = _height;
+	g_window.resizeWindow = true;
+}
+
 bool gli_window_resize(void)
 {
 	if (!g_window.resizeWindow)

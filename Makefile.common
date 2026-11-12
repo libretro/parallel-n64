@@ -446,8 +446,10 @@ SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/Graphics/VulkanContext/vk_spirv.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/Graphics/VulkanContext/vk_shaders.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/Graphics/VulkanContext/vk_renderer.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/Graphics/VulkanContext/vk_device.c
+SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/Graphics/VulkanContext/vk_upscaler.c
 ifneq ($(HAVE_PARALLEL),1)
 SOURCES_C     += $(VIDEODIR_PARALLEL)/parallel-rdp/parallel-rdp/rdp_worker.c
+SOURCES_C     += $(VIDEODIR_PARALLEL)/parallel-rdp/parallel-rdp/temporal_upscaler.c
 endif
 INCFLAGS      += -I$(VIDEODIR_PARALLEL)/parallel-rdp/vulkan-headers/include -I$(VIDEODIR_PARALLEL)/parallel-rdp/parallel-rdp -I$(CORE_DIR)/src/api -I$(VIDEODIR_GLIDEN64)/src/Graphics/VulkanContext
 

@@ -50,7 +50,8 @@ typedef struct vkr_push
    int   ops[16];
    int   flags;
    int   clip_enable;
-   int   pad[2];
+   /* triangles: moved by this much of the viewport, in clip space */
+   float jitter[2];
    float special[4];
 } vkr_push;
 

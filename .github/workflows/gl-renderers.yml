@@ -103,3 +103,6 @@ jobs:
 
       - name: GLideN64 display lists through the HLE RSP
         run: env ${{ matrix.sanitizer_env }} python3 tools/ci/gliden64_hle_dl.py --core ./parallel_n64_libretro.so --gl ./lrhost_gl --vk ./lrhost_vk --glide64
+
+      - name: GLideN64 on Vulkan for the frontend's temporal upscaler
+        run: env ${{ matrix.sanitizer_env }} python3 tools/ci/gliden64_upscaler.py --core ./parallel_n64_libretro.so --vk ./lrhost_vk

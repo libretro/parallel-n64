@@ -43,6 +43,23 @@ int  gliden64_vulkan_has_dynamic_blend(void);
 int  gliden64_vulkan_has_store_none(void);
 int  gliden64_vulkan_has_depth_resolve(void);
 
+/* ---- the frontend's temporal upscaler
+ * (RETRO_ENVIRONMENT_GET_HW_RENDER_UPSCALER_INTERFACE): vk_upscaler.c ---- */
+struct retro_hw_render_upscaler_interface;
+
+/* The frontend's upscaler, NULL for none: after each context_reset. */
+void gliden64_upscaler_set_interface(const struct retro_hw_render_upscaler_interface *iface);
+/* Once a frame, before it runs: asks the upscaler what it wants. True
+ * while frames are drawn for it. */
+bool gliden64_upscaler_poll(void);
+bool gliden64_upscaler_active(void);
+/* The frontend has one for this context, whether or not it is on */
+bool gliden64_upscaler_offered(void);
+/* Nothing of the frames before applies to the next: a reset, a state load */
+void gliden64_upscaler_reset(void);
+/* Content closed */
+void gliden64_upscaler_close(void);
+
 #ifdef __cplusplus
 }
 #endif

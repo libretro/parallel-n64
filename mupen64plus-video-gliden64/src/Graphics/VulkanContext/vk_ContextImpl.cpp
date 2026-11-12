@@ -24,6 +24,7 @@
 
 #include "vk_renderer.h"
 #include "vk_device.h"
+#include "vk_upscaler.h"
 #include "vk_ContextImpl.h"
 
 using namespace graphics;
@@ -539,6 +540,57 @@ public:
 	ShaderProgram * createFXAAShader() override { return new VkFXAAShader; }
 	void resetShaderProgram() override { vkr_use(g_r, nullptr); }
 
+	/* For a temporal upscaler: where what is drawn now goes, when that is
+	 * the N64's color image */
+	static bool upscalerView(gliden64_upscaler_view & _view, unsigned & _state) {
+		if (!gliden64_upscaler_active())
+			return false;
+		const FrameBuffer * pCurrent = frameBufferList().getDrawn();
+		if (pCurrent == nullptr || vkr_draw_fbo(g_r) != u32(pCurrent->m_FBO))
+			return false;
+		gliden64_upscaler_color_image(pCurrent->m_startAddress, pCurrent->m_width, int(pCurrent->m_size) - 1);
+		f32 scaleX, scaleY;
+		calcCoordsScales(pCurrent, scaleX, scaleY);
+		vkr_get_viewport(g_r, _view.viewport);
+		_view.screen_scale[0] = 2.0f * scaleX;
+		_view.screen_scale[1] = -2.0f * scaleY;
+		_view.scale = pCurrent->m_scale;
+		_state = vkr_draw_state(g_r, &_view.cull);
+		return true;
+	}
+
+	/* Kept for the motion vectors, and moved by the frame's jitter */
+	static void upscalerTriangles(const vkr_tri_vertex * _v, u32 _count, const u16 * _elements, u32 _elementsCount, bool _strip) {
+		gliden64_upscaler_view view;
+		unsigned state = 0;
+		if (!upscalerView(view, state))
+			return;
+		/* the N64's own depth compare runs in the shader */
+		if (config.frameBufferEmulation.N64DepthCompare != 0)
+			state = (state & 4) | (gDP.otherMode.depthCompare != 0 ? 1 : 0) | (gDP.otherMode.depthUpdate != 0 ? 2 : 0);
+		unsigned flags = 0;
+		if (state & 1)
+			flags |= RDP_UPSCALER_DEPTH_TEST;
+		if (state & 2)
+			flags |= RDP_UPSCALER_DEPTH_WRITE;
+		else if (state & 4)
+			flags |= RDP_UPSCALER_TRANSLUCENT;
+		/* triangles drawn alike: the same combiner, modes and texture */
+		uint64_t signature = rdp_upscaler_hash_init();
+		signature = rdp_upscaler_hash(signature, u32(gDP.combine.mux));
+		signature = rdp_upscaler_hash(signature, u32(gDP.combine.mux >> 32));
+		signature = rdp_upscaler_hash(signature, u32(gDP.otherMode._u64));
+		signature = rdp_upscaler_hash(signature, u32(gDP.otherMode._u64 >> 32));
+		const CachedTexture * pTexture = textureCache().current[0];
+		if (pTexture != nullptr && currentCombiner() != nullptr && currentCombiner()->usesTile(0)) {
+			signature = rdp_upscaler_hash(signature, u32(pTexture->crc));
+			signature = rdp_upscaler_hash(signature, u32(pTexture->crc >> 32));
+		}
+		float jitter[2];
+		gliden64_upscaler_triangles(_v, _count, _elements, _elementsCount, _strip, &view, signature, flags, jitter);
+		vkr_jitter(g_r, jitter[0], jitter[1]);
+	}
+
 	void drawTriangles(const Context::DrawTriangleParameters & _p) override {
 		/* converted straight into the ring the GPU reads */
 		vkr_tri_vertex * dst = vkr_tri_reserve(g_r, _p.verticesCount);
@@ -560,7 +612,11 @@ public:
 			uint16_t * idx = vkr_index_reserve(g_r, _p.elementsCount);
 			memcpy(idx, _p.elements, _p.elementsCount * sizeof(uint16_t));
 		}
-		vkr_draw_tris(g_r, toTopology(_p.mode), _p.verticesCount, _p.elements != nullptr ? _p.elementsCount : 0);
+		const int topology = toTopology(_p.mode);
+		upscalerTriangles(dst, _p.verticesCount, static_cast<const u16 *>(_p.elements), _p.elements != nullptr ? _p.elementsCount : 0,
+			topology == VKR_TOPO_STRIP);
+		vkr_draw_tris(g_r, topology, _p.verticesCount, _p.elements != nullptr ? _p.elementsCount : 0);
+		vkr_jitter(g_r, 0.0f, 0.0f);
 	}
 	void drawRects(const Context::DrawRectParameters & _p) override {
 		vkr_rect_vertex * dst = vkr_rect_reserve(g_r, _p.verticesCount);
@@ -569,6 +625,13 @@ public:
 			/* GL reads the texture coordinates of such a rect as 0 */
 			for (u32 i = 0; i < _p.verticesCount; ++i)
 				dst[i].s0 = dst[i].t0 = dst[i].s1 = dst[i].t1 = 0.f;
+		}
+		{
+			/* (a rectangle stands still: over what moves under it) */
+			gliden64_upscaler_view view;
+			unsigned state = 0;
+			if (upscalerView(view, state))
+				gliden64_upscaler_rect(dst, _p.verticesCount, &view);
 		}
 		vkr_draw_rects(g_r, toTopology(_p.mode), _p.verticesCount);
 	}
@@ -629,8 +692,13 @@ private:
 		u32 version = 0;
 		const std::string cache = getCombinerJournalPath(version).append(".pipelines");
 		g_r = vkr_create(gliden64_vulkan_interface(), &cfg, cache.c_str());
-		if (g_r != nullptr)
+		if (g_r != nullptr) {
 			_windowSize();
+			/* its pipelines at load, with the rest; a device that cannot
+			 * make them draws as without one */
+			if (gliden64_upscaler_offered() && !vkr_upscaler_init(g_r))
+				gliden64_upscaler_set_interface(nullptr);
+		}
 	}
 	void _recreate() {
 		vkr_destroy(g_r);
@@ -653,6 +721,32 @@ ContextImpl * createContextImpl() { return new VkContextImpl; }
 /* What framebuffer 0 holds goes to the frontend, as this frame's image. */
 extern "C" void gliden64_vulkan_present(void)
 {
-	if (g_r != nullptr)
+	vkr_upscaler_frame frame;
+	if (g_r == nullptr)
+		return;
+	if (gliden64_upscaler_frame(&frame))
+		vkr_present_upscaled(g_r, &frame);
+	else
 		vkr_present(g_r);
+}
+
+extern "C" void gliden64_vulkan_presented_size(unsigned * _width, unsigned * _height)
+{
+	*_width = *_height = 0;
+	if (g_r != nullptr)
+		vkr_presented_size(g_r, _width, _height);
+}
+
+/* The buffer renderBuffer() shows, and where the window has it */
+extern "C" void gliden64_vulkan_shown(unsigned _address, unsigned _width, unsigned _size,
+	unsigned _height, float _scale, const int * _src, const int * _dst)
+{
+	float map[4];
+	if (!gliden64_upscaler_active() || _src[2] == _src[0] || _src[3] == _src[1])
+		return;
+	map[0] = float(_dst[2] - _dst[0]) / float(_src[2] - _src[0]);
+	map[1] = float(_dst[3] - _dst[1]) / float(_src[3] - _src[1]);
+	map[2] = float(_dst[0]) - float(_src[0]) * map[0];
+	map[3] = float(_dst[1]) - float(_src[1]) * map[1];
+	gliden64_upscaler_shown(_address, _width, int(_size) - 1, _width, _height, _scale, map);
 }

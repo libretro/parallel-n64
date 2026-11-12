@@ -78,6 +78,10 @@ public:
 	FrameBuffer * getBuffer(u32 _startAddress);
 	FrameBuffer * findTmpBuffer(u32 _address);
 	FrameBuffer * getCurrent() const {return m_pCurrent;}
+
+	/** What is drawn goes into this buffer: the current one, or, without
+	 * frame buffer emulation, the one there is */
+	FrameBuffer * getDrawn();
 	void setCurrent(FrameBuffer * _pCurrent) { m_pCurrent = _pCurrent; }
 	void updateCurrentBufferEndAddress();
 	void renderBuffer();

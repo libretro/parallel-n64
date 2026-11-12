@@ -17,3 +17,13 @@ namespace vulkan {
 extern "C"
 #endif
 void gliden64_vulkan_present(void);
+/* The size of the image it presented */
+#ifdef __cplusplus
+extern "C"
+#endif
+void gliden64_vulkan_presented_size(unsigned * _width, unsigned * _height);
+#ifdef __cplusplus
+extern "C"
+#endif
+void gliden64_vulkan_shown(unsigned _address, unsigned _width, unsigned _size,
+	unsigned _height, float _scale, const int * _src, const int * _dst);

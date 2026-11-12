@@ -11,6 +11,8 @@
 #include <stdint.h>
 #include <stddef.h>
 
+#include <temporal_upscaler.h>
+
 #include "../CombinerValues.h"
 #include "vk_shaders.h"
 
@@ -19,6 +21,7 @@ extern "C" {
 #endif
 
 struct retro_hw_render_interface_vulkan;
+struct retro_hw_render_upscaler_interface;
 typedef struct vkr_renderer vkr_renderer;
 typedef struct vkr_program vkr_program;
 typedef struct vkr_readback vkr_readback;
@@ -78,6 +81,41 @@ const vkr_caps *vkr_get_caps(const vkr_renderer *r);
 /* the window: what framebuffer 0 is and how it is presented */
 void vkr_set_window(vkr_renderer *r, unsigned w, unsigned h);
 void vkr_present(vkr_renderer *r);
+/* The size of the image last presented */
+void vkr_presented_size(const vkr_renderer *r, unsigned *w, unsigned *h);
+
+/* ---- a frontend's temporal upscaler ---- */
+/* What the frame presented brings for it: the frame's triangles again
+ * (rdp_upscaler_resolve), in pixels of the framebuffer shown, and where
+ * the window has those: x * scale + offset. */
+typedef struct vkr_upscaler_frame
+{
+   const struct retro_hw_render_upscaler_interface *iface;
+   const rdp_upscaler_vertex_t *vertices;
+   const rdp_upscaler_draw_t *draws;
+   unsigned num_vertices, num_draws;
+   float scale[2], offset[2];
+   /* as the window has it */
+   float jitter[2];
+   /* the window's pixel the vertices' planes are from */
+   float origin[2];
+   float farthest;
+   int reset;
+} vkr_upscaler_frame;
+
+/* At load: the pass's pipelines. Zero when the device cannot. */
+int  vkr_upscaler_init(vkr_renderer *r);
+/* vkr_present, the frame's motion vectors, translucency mask and depth
+ * handed over first. Without @u or its iface, vkr_present. */
+void vkr_present_upscaled(vkr_renderer *r, const vkr_upscaler_frame *u);
+/* The triangles of the next draw are moved by this many pixels (x right,
+ * y down the image) of the framebuffer drawn into. */
+void vkr_jitter(vkr_renderer *r, float x, float y);
+void vkr_get_viewport(const vkr_renderer *r, float *xywh);
+unsigned vkr_draw_fbo(const vkr_renderer *r);
+/* What the next draw does: bit 0 tests depth, bit 1 writes it, bit 2
+ * blends; @cull the faces it drops, VKR_CULL_*. */
+unsigned vkr_draw_state(const vkr_renderer *r, int *cull);
 
 /* ---- state ---- */
 void vkr_enable(vkr_renderer *r, int cap, int on);

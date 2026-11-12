@@ -129,6 +129,10 @@ typedef struct rdp_upscaler_geometry
 
 rdp_upscaler_t *rdp_upscaler_new(void);
 void rdp_upscaler_free(rdp_upscaler_t *u);
+/* At load: room for frames of @triangles, so that none is made while
+ * they are drawn; a frame of more still grows it. False when out of
+ * memory, with what room there is. */
+bool rdp_upscaler_reserve(rdp_upscaler_t *u, unsigned triangles);
 
 /* At each scanout. Triangles are jittered from the next frame on while
  * @enable is set; @jitter_phase frames make the sequence. */
@@ -150,6 +154,28 @@ void rdp_upscaler_triangle(rdp_upscaler_t *u, rdp_upscaler_triangle_t *tri,
 /* Corners in 10.2 fixed point, as the command has them */
 void rdp_upscaler_rectangle(rdp_upscaler_t *u, uint32_t xh, uint32_t yh,
       uint32_t xl, uint32_t yl);
+
+/* For a renderer that has a triangle's vertices rather than its edges
+ * (a high-level one, which transforms them itself):
+ *
+ * The jitter the triangles drawn into the color image now are to be
+ * moved by, in render pixels, x right, y down: false, and none, when the
+ * image is not one the VI shows. */
+bool rdp_upscaler_draw_jitter(rdp_upscaler_t *u, float *jitter_x, float *jitter_y);
+/* Keeps a triangle drawn into the color image: its three vertices, x and
+ * y in native pixels of that image (y down), z its depth, 0 near to 1;
+ * drawn on the pixels whose centre is inside, as a GPU fills it.
+ * @planes, or NULL: over those pixels, as c + cx x + cy y each, the
+ * weights of its second and third vertex over w, then 1 over w: what
+ * tells where each pixel of it was through perspective, and off the
+ * screen, where a triangle cut at the near plane has no vertex. Given
+ * for the triangle before it was cut, with its vertices in the order
+ * they come in every frame. */
+void rdp_upscaler_triangle_vertices(rdp_upscaler_t *u, const float *xyz,
+      const double *planes, uint64_t signature, unsigned flags);
+/* A rectangle by its corners in native pixels */
+void rdp_upscaler_rectangle_corners(rdp_upscaler_t *u, float x0, float y0,
+      float x1, float y1);
 
 /* At a scanout of @fb rendered at @scale times the native size */
 void rdp_upscaler_resolve(rdp_upscaler_t *u,

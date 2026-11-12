@@ -1094,7 +1094,20 @@ static void present_frame(void)
 #endif
 #ifdef HAVE_GLIDEN64
             if (gliden64_on_vulkan)
+            {
                gliden64_vulkan_present();
+               /* drawn for the frontend's temporal upscaler: at its size */
+               if (gliden64_upscaler_active())
+               {
+                  unsigned width, height;
+                  gliden64_vulkan_presented_size(&width, &height);
+                  if (width && height)
+                  {
+                     video_cb(RETRO_HW_FRAME_BUFFER_VALID, width, height, 0);
+                     break;
+                  }
+               }
+            }
             else
 #endif
                aleck64_e90_gl_draw(screen_width, screen_height);
@@ -1152,13 +1165,8 @@ void emu_step_render(void)
       video_cb(NULL, screen_width, screen_height, screen_pitch);
 }
 
-#ifdef HAVE_PARALLEL
-static bool parallel_initialized = false;
-
-/* Brings parallel-RDP up once per Vulkan context. It has to be running
- * before the guest executes a single instruction: an RDP list submitted
- * while it is down is dropped, and a program that draws once at boot
- * (krom's RDP tests, homebrew) would then show nothing but black. */
+#if defined(HAVE_PARALLEL) || defined(HAVE_GLIDEN64)
+/* The frontend's temporal upscaler for the context there is, or NULL */
 static const struct retro_hw_render_upscaler_interface *frontend_upscaler(void)
 {
    const struct retro_hw_render_upscaler_interface *upscaler = NULL;
@@ -1169,6 +1177,46 @@ static const struct retro_hw_render_upscaler_interface *frontend_upscaler(void)
    return upscaler;
 }
 
+#endif
+
+#ifdef HAVE_GLIDEN64
+/* The options the temporal upscaler overrides while GLideN64 draws for
+ * it: the size follows what it asks for, and it takes the frame without
+ * anti-aliasing or a border of the core's own */
+static bool gliden64_upscaler_options_hidden = false;
+
+static void update_gliden64_upscaler_options(bool hide)
+{
+   static const char *const keys[] = {
+      CORE_NAME "-screensize",
+      CORE_NAME "-gliden64-EnableNativeResFactor",
+      CORE_NAME "-gliden64-MultiSampling",
+      CORE_NAME "-gliden64-FXAA",
+      CORE_NAME "-gliden64-EnableOverscan",
+      NULL
+   };
+   struct retro_core_option_display display;
+   unsigned i;
+
+   if (hide == gliden64_upscaler_options_hidden)
+      return;
+   gliden64_upscaler_options_hidden = hide;
+   display.visible                  = !hide;
+   for (i = 0; keys[i]; i++)
+   {
+      display.key = keys[i];
+      environ_cb(RETRO_ENVIRONMENT_SET_CORE_OPTIONS_DISPLAY, &display);
+   }
+}
+#endif
+
+#ifdef HAVE_PARALLEL
+static bool parallel_initialized = false;
+
+/* Brings parallel-RDP up once per Vulkan context. It has to be running
+ * before the guest executes a single instruction: an RDP list submitted
+ * while it is down is dropped, and a program that draws once at boot
+ * (krom's RDP tests, homebrew) would then show nothing but black. */
 static void init_parallel_plugin(void)
 {
    if (parallel_initialized)
@@ -1537,6 +1585,9 @@ static void context_reset(void)
       const struct retro_hw_render_interface_vulkan *vk = NULL;
       if (environ_cb(RETRO_ENVIRONMENT_GET_HW_RENDER_INTERFACE, &vk) && vk)
          gliden64_vulkan_set_interface(vk);
+      /* before the renderer comes up: it builds the upscaler's pipelines
+       * with its own */
+      gliden64_upscaler_set_interface(frontend_upscaler());
       if (!first_context_reset)
       {
          gliden64DestroyGfxContext();
@@ -1794,6 +1845,8 @@ void retro_deinit(void)
    gliden64_on_vulkan = false;
 #ifdef HAVE_GLIDEN64
    gliden64_vulkan_enable(0);
+   gliden64_upscaler_close();
+   update_gliden64_upscaler_options(false);
 #endif
 
    CoreOptionCategoriesSupported = 0;
@@ -3660,6 +3713,16 @@ bool retro_load_game(const struct retro_game_info *game)
       }
    }
 
+#ifdef HAVE_GLIDEN64
+   /* tells the frontend to ready its temporal upscaler for the context;
+    * the interface comes after context_reset */
+   if (gliden64_on_vulkan)
+   {
+      const struct retro_hw_render_upscaler_interface *upscaler = NULL;
+      environ_cb(RETRO_ENVIRONMENT_GET_HW_RENDER_UPSCALER_INTERFACE, &upscaler);
+   }
+#endif
+
    if (gl_inited)
    {
       // we are not vulkan, defer to opengl - it is assumed it always exists, otherwise fail
@@ -4019,6 +4082,10 @@ void retro_run (void)
 #if defined(HAVE_OPENGL) || defined(HAVE_OPENGLES)
             glsm_enter();
 #endif
+#ifdef HAVE_GLIDEN64
+            if (gliden64_on_vulkan)
+               update_gliden64_upscaler_options(gliden64_upscaler_poll());
+#endif
             break;
          case GFX_PARALLEL:
 #if defined(HAVE_PARALLEL)
@@ -4091,6 +4158,9 @@ void retro_reset (void)
 #if defined(HAVE_PARALLEL)
     if (parallel_initialized)
         parallel_upscaler_reset();
+#endif
+#ifdef HAVE_GLIDEN64
+    gliden64_upscaler_reset();
 #endif
 }
 
@@ -4167,6 +4237,9 @@ bool retro_unserialize(const void * data, size_t size)
 #if defined(HAVE_PARALLEL)
         if (parallel_initialized)
             parallel_upscaler_reset();
+#endif
+#ifdef HAVE_GLIDEN64
+        gliden64_upscaler_reset();
 #endif
         /* The rumble motor is a latched on/off state driven by the game
          * writing to PAK_IO_RUMBLE; it is transient PIF/controller state and

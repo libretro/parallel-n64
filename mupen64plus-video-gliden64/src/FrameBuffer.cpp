@@ -26,6 +26,8 @@
 
 #include <Graphics/Context.h>
 #include <Graphics/Parameters.h>
+#include <Graphics/VulkanContext/vk_device.h>
+#include <Graphics/VulkanContext/vk_ContextImpl.h>
 #include "DisplayWindow.h"
 #include "gli_framebuffer.h"
 #include "gli_drawer.h"
@@ -559,6 +561,13 @@ void FrameBufferList::updateCurrentBufferEndAddress()
 	removeIntersections();
 }
 
+FrameBuffer * FrameBufferList::getDrawn()
+{
+	if (m_pCurrent != nullptr || config.frameBufferEmulation.enable != 0 || m_fbs.count == 0)
+		return m_pCurrent;
+	return _at(m_fbs.count - 1);
+}
+
 void FrameBufferList::_createScreenSizeBuffer()
 {
 	if (VI.height == 0)
@@ -840,6 +849,9 @@ void FrameBufferList::_renderScreenSizeBuffer()
 	const s32 hOffset = (screenWidth - wndWidth) / 2;
 	const s32 vOffset = (screenHeight - wndHeight) / 2 + wndHeightOffset;
 	s32 dstCoord[4] = { hOffset, vOffset, hOffset + static_cast<s32>(wndWidth), vOffset + static_cast<s32>(wndHeight) };
+	if (gliden64_vulkan_enabled())
+		gliden64_vulkan_shown(pBuffer->m_startAddress, pBuffer->m_width, pBuffer->m_size,
+			static_cast<u32>(pBuffer->m_pTexture->realHeight / pBuffer->m_scale), pBuffer->m_scale, srcCoord, dstCoord);
 
 	gfxContext.bindFramebuffer(bufferTarget::DRAW_FRAMEBUFFER, ObjectHandle::defaultFramebuffer);
 
@@ -1077,9 +1089,24 @@ void FrameBufferList::renderBuffer()
 		removeBuffer(pBuffer->m_startAddress);
 		return;
 	}
+	if (gliden64_vulkan_enabled() && gliden64_upscaler_active()) {
+		/* A temporal upscaler takes the buffer as it was drawn, pixel for
+		 * pixel: without the VI's scaling or crop, which would smear the
+		 * jitter it is drawn with */
+		const s32 width = min(static_cast<s32>(pBuffer->m_pTexture->realWidth), static_cast<s32>(wnd.getScreenWidth()));
+		const s32 height = min(static_cast<s32>(pBuffer->m_pTexture->realHeight), static_cast<s32>(wnd.getScreenHeight()));
+		rects.src[0] = rects.dst[0] = 0;
+		rects.src[1] = rects.dst[1] = 0;
+		rects.src[2] = rects.dst[2] = width;
+		rects.src[3] = rects.dst[3] = height;
+		pNextBuffer = nullptr;
+	}
 	const s32 * srcCoord = rects.src;
 	const s32 * dstCoord = rects.dst;
 	const s32 hOffset = in.offset[0];
+	if (gliden64_vulkan_enabled())
+		gliden64_vulkan_shown(pBuffer->m_startAddress, pBuffer->m_width, pBuffer->m_size,
+			static_cast<u32>(pBuffer->m_pTexture->realHeight / pBuffer->m_scale), pBuffer->m_scale, srcCoord, dstCoord);
 
 	// Stereoscopic 3D: GLideN64 draws for one eye's window; each eye is presented into its half
 	const u32 eyes = config.stereo.mode == stereoBothEyes ? 2U : 1U;

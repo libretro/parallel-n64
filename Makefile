@@ -1804,7 +1804,7 @@ GLIDEN64_C89 := N64.c convert.c RSP_LoadMatrix.c 3DMath.c CRC32.c RDP.c CRC_OPT.
 	uCodes/F3DEX2.c uCodes/F3DEX2ACCLAIM.c uCodes/F3DFLX2.c uCodes/L3D.c uCodes/L3DEX.c uCodes/L3DEX2.c uCodes/F3DEX3.c \
 	uCodes/F3DEX095.c uCodes/F3DZEX2.c uCodes/F3DPD.c uCodes/F3DTEXA.c uCodes/F3DGOLDEN.c uCodes/S2DEX2.c uCodes/F3DBETA.c uCodes/F3DAM.c uCodes/F3DEX.c uCodes/F3DSETA.c uCodes/F3DDKR.c uCodes/F3DEX2CBFD.c uCodes/F3D.c \
 	Graphics/VulkanContext/vk_spirv.c Graphics/VulkanContext/vk_shaders.c \
-	Graphics/VulkanContext/vk_renderer.c Graphics/VulkanContext/vk_device.c
+	Graphics/VulkanContext/vk_renderer.c Graphics/VulkanContext/vk_device.c Graphics/VulkanContext/vk_upscaler.c
 check_gliden64_c89:
 	@if grep -rn "pragma GCC diagnostic" $(VIDEODIR_GLIDEN64)/src --include=*.h --include=*.c --exclude-dir=inc; then echo "no diagnostic pragmas: they turn this check off"; exit 1; fi
 	for f in $(GLIDEN64_C89); do $(CC) -std=c89 -pedantic -Wno-long-long -Werror=pedantic -Werror=declaration-after-statement \

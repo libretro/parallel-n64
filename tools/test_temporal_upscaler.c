@@ -725,8 +725,216 @@ static void test_factor(void)
    CHECK(rdp_upscaler_factor(&r, 640, 474, 2, 640, 474) == 2, "and stands");
 }
 
+/* ---- triangles given by their vertices: a renderer that transforms
+ * them itself (GLideN64) ---- */
+
+/* A vertex of the world through a camera at (@cx, 0, 0) looking down -z:
+ * x, y in native pixels (y down), z 0 near to 1, and w */
+static void project(const double *world, double cx, double *out)
+{
+   const double f = 160.0;
+   double w = -world[2];
+   out[0] = 160.0 + f * (world[0] - cx) / w;
+   out[1] = 120.0 - f * world[1] / w;
+   out[2] = 1.0 - 1.0 / (w > 1.0 ? w : 1.0);
+   out[3] = w;
+}
+
+/* The planes of b1 / w, b2 / w and 1 / w over the native pixels, from the
+ * three vertices as (x w, y w, w) each: b / w = (x, y, 1) inverse(N) */
+static void vertex_planes(const double v[3][4], double *planes)
+{
+   double n[3][3], inv[3][3], det;
+   unsigned i;
+   for (i = 0; i < 3; i++)
+   {
+      n[i][0] = v[i][0] * v[i][3];
+      n[i][1] = v[i][1] * v[i][3];
+      n[i][2] = v[i][3];
+   }
+   inv[0][0] = n[1][1] * n[2][2] - n[1][2] * n[2][1];
+   inv[0][1] = n[0][2] * n[2][1] - n[0][1] * n[2][2];
+   inv[0][2] = n[0][1] * n[1][2] - n[0][2] * n[1][1];
+   inv[1][0] = n[1][2] * n[2][0] - n[1][0] * n[2][2];
+   inv[1][1] = n[0][0] * n[2][2] - n[0][2] * n[2][0];
+   inv[1][2] = n[0][2] * n[1][0] - n[0][0] * n[1][2];
+   inv[2][0] = n[1][0] * n[2][1] - n[1][1] * n[2][0];
+   inv[2][1] = n[0][1] * n[2][0] - n[0][0] * n[2][1];
+   inv[2][2] = n[0][0] * n[1][1] - n[0][1] * n[1][0];
+   det = n[0][0] * inv[0][0] + n[0][1] * inv[1][0] + n[0][2] * inv[2][0];
+   for (i = 0; i < 2; i++)
+   {
+      planes[3 * i]     = inv[2][i + 1] / det;
+      planes[3 * i + 1] = inv[0][i + 1] / det;
+      planes[3 * i + 2] = inv[1][i + 1] / det;
+   }
+   planes[6] = (inv[2][0] + inv[2][1] + inv[2][2]) / det;
+   planes[7] = (inv[0][0] + inv[0][1] + inv[0][2]) / det;
+   planes[8] = (inv[1][0] + inv[1][1] + inv[1][2]) / det;
+}
+
+/* Hands over the world triangle @tri as the camera at @cx sees it, with
+ * its planes or without */
+static void draw_world(rdp_upscaler_t *u, const double tri[3][3], double cx,
+      int with_planes, uint64_t signature, unsigned flags)
+{
+   double v[3][4], planes[9];
+   float xyz[9];
+   unsigned i;
+   for (i = 0; i < 3; i++)
+   {
+      project(tri[i], cx, v[i]);
+      xyz[3 * i]     = (float)v[i][0];
+      xyz[3 * i + 1] = (float)v[i][1];
+      xyz[3 * i + 2] = (float)v[i][2];
+   }
+   vertex_planes(v, planes);
+   rdp_upscaler_set_color_image(u, FB, STRIDE, 1);
+   rdp_upscaler_triangle_vertices(u, xyz, with_planes ? planes : NULL, signature, flags);
+}
+
+/* Where the world point seen at native pixel (@x, @y) on the plane
+ * y = -50 by the camera at @cx is seen by the camera at @px */
+static void floor_was(double x, double y, double cx, double px, double *ox, double *oy)
+{
+   const double f = 160.0;
+   double w  = -50.0 * f / (120.0 - y);      /* y = 120 - f * -50 / w */
+   double wx = cx + (x - 160.0) * w / f;
+   *ox = 160.0 + f * (wx - px) / w;
+   *oy = y;
+}
+
+static void test_vertices(void)
+{
+   /* the floor under the camera, running from before the eye to far
+    * off: its near vertices are off the screen by many of them */
+   static const double ground[3][3] = {
+      { -400.0, -50.0, -20.0 }, { 400.0, -50.0, -20.0 }, { 0.0, -50.0, -2000.0 } };
+   /* a small one facing the camera, all of it on screen */
+   static const double wall[3][3] = {
+      { -40.0, -20.0, -200.0 }, { 40.0, -20.0, -200.0 }, { 0.0, 40.0, -200.0 } };
+   rdp_upscaler_t *u = rdp_upscaler_new();
+   rdp_upscaler_geometry_t g;
+   const rdp_upscaler_vertex_t *v;
+   float jx, jy;
+   double mx, my, wx, wy, z;
+   unsigned i;
+   int k;
+
+   rdp_upscaler_configure(u, true, 8, false);
+   rdp_upscaler_set_color_image(u, FB, STRIDE, 1);
+   CHECK(!rdp_upscaler_draw_jitter(u, &jx, &jy) && jx == 0.0f && jy == 0.0f,
+         "no jitter before the VI showed the framebuffer");
+   scanout(u, FB, &g);
+   rdp_upscaler_set_color_image(u, OFFSCR, 64, 1);
+   CHECK(!rdp_upscaler_draw_jitter(u, &jx, &jy) && jx == 0.0f && jy == 0.0f,
+         "nor for a texture rendered to");
+
+   rdp_upscaler_set_color_image(u, FB, STRIDE, 1);
+   CHECK(rdp_upscaler_draw_jitter(u, &jx, &jy) && (jx != 0.0f || jy != 0.0f)
+         && jx >= -0.5f && jx <= 0.5f && jy >= -0.5f && jy <= 0.5f,
+         "the shown framebuffer's triangles are jittered");
+   draw_world(u, wall, 0.0, 1, sig(40), RDP_UPSCALER_DEPTH_TEST | RDP_UPSCALER_DEPTH_WRITE);
+   rdp_upscaler_rectangle_corners(u, 10.0f, 20.0f, 30.0f, 40.0f);
+   scanout(u, FB, &g);
+   CHECK(g.jitter_x == jx && g.jitter_y == jy, "the frame shown has the jitter its triangles were given");
+   CHECK(g.num_vertices == 9 && g.num_draws == 2, "three vertices a triangle, six a rectangle");
+   if (g.num_vertices == 9)
+   {
+      double p[4];
+      for (i = 0; i < 3; i++)
+      {
+         project(wall[i], 0.0, p);
+         CHECK(near(g.vertices[i].x, p[0] * SCALE + g.jitter_x, 1e-3)
+               && near(g.vertices[i].y, p[1] * SCALE + g.jitter_y, 1e-3)
+               && near(g.vertices[i].z, p[2], 1e-6),
+               "a vertex is drawn where it was given, jittered, at its depth");
+      }
+      CHECK(g.draws[0].flags == (RDP_UPSCALER_DEPTH_TEST | RDP_UPSCALER_DEPTH_WRITE) && g.draws[0].count == 3,
+            "under its depth state");
+      CHECK(near(g.vertices[3].x, 10.0 * SCALE + g.jitter_x, 1e-3) && near(g.vertices[8].y, 40.0 * SCALE + g.jitter_y, 1e-3)
+            && g.draws[1].flags == 0 && g.draws[1].count == 6,
+            "the rectangle at its corners, over everything");
+   }
+   rdp_upscaler_free(u);
+
+   /* k 0: the planes; 1: without them, the corners alone */
+   for (k = 0; k < 2; k++)
+   {
+      u = rdp_upscaler_new();
+      /* (with room made at load, and without: the same) */
+      if (k == 0)
+         CHECK(rdp_upscaler_reserve(u, 1000), "room for a frame's triangles");
+      rdp_upscaler_configure(u, true, 8, false);
+      scanout(u, FB, &g);
+      draw_world(u, ground, 0.0, k == 0, sig(41), 0);
+      draw_world(u, wall, 0.0, k == 0, sig(42), 0);
+      scanout(u, FB, &g);
+      /* the camera a step to the right: the floor's near vertices, 20
+       * before the eye, go 240 pixels, far further than anything on
+       * screen does */
+      draw_world(u, ground, 30.0, k == 0, sig(41), 0);
+      draw_world(u, wall, 30.0, k == 0, sig(42), 0);
+      scanout(u, FB, &g);
+      CHECK(g.num_vertices == 6, "both triangles drawn");
+
+      /* on the floor near the camera, and far up it */
+      for (i = 0; i < 2; i++)
+      {
+         double x = i ? 170.0 : 120.0, y = i ? 150.0 : 220.0;
+         double px = x * SCALE + g.jitter_x, py = y * SCALE + g.jitter_y;
+         floor_was(x, y, 30.0, 0.0, &wx, &wy);
+         v = vertex_at(&g, px, py);
+         CHECK(v != NULL, "the floor covers the pixel");
+         if (!v)
+            continue;
+         if (k == 0)
+         {
+            /* (the planes are over the pixels before the jitter: the
+             * shader takes it off) */
+            CHECK(plane_motion_at(v, x * SCALE, y * SCALE, &mx, &my)
+                  && near(mx, (wx - x) * SCALE, 0.05) && near(my, (wy - y) * SCALE, 0.05),
+                  i ? "far up the floor a pixel was where the floor there was"
+                    : "near the camera a floor pixel was where the floor there was, through perspective");
+         }
+         else
+         {
+            CHECK(!plane_motion_at(v, x * SCALE, y * SCALE, &mx, &my), "without planes there are none");
+            CHECK(motion_at(&g, px, py, &mx, &my, &z) && (mx != 0.0 || my != 0.0),
+                  "and the corners tell: the vertex far off the screen is matched, having gone as far as it is out");
+         }
+      }
+      /* the wall, 200 away: 24 pixels */
+      {
+         double px = 136.0 * SCALE + g.jitter_x, py = 110.0 * SCALE + g.jitter_y;
+         CHECK(motion_at(&g, px, py, &mx, &my, &z) && near(mx, 24.0 * SCALE, 0.05) && near(my, 0.0, 0.05),
+               "the wall's corners say how far it went");
+         v = vertex_at(&g, px, py);
+         if (k == 0)
+            CHECK(v && plane_motion_at(v, 136.0 * SCALE, 110.0 * SCALE, &mx, &my)
+                  && near(mx, 24.0 * SCALE, 0.05) && near(my, 0.0, 0.05),
+                  "and so do its planes");
+      }
+
+      /* a jump further than anything on screen goes in a frame */
+      draw_world(u, ground, 30.0, k == 0, sig(41), 0);
+      draw_world(u, wall, 230.0, k == 0, sig(42), 0);
+      scanout(u, FB, &g);
+      {
+         double p[4];
+         project(wall[2], 230.0, p);
+         v = vertex_at(&g, p[0] * SCALE + g.jitter_x, (p[1] + 10.0) * SCALE + g.jitter_y);
+         CHECK(v && v->motion_x == 0.0f && v->motion_y == 0.0f
+               && !plane_motion_at(v, p[0] * SCALE, (p[1] + 10.0) * SCALE, &mx, &my),
+               "a triangle on screen that jumped too far stands still");
+      }
+      rdp_upscaler_free(u);
+   }
+}
+
 int main(void)
 {
+   test_vertices();
    test_factor();
    test_inactive_and_offscreen();
    test_screen_image();
