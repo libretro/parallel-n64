@@ -24,7 +24,7 @@
 
 #include "buffer.hpp"
 #include "command_buffer.hpp"
-#include "command_pool.hpp"
+#include "command_pool.h"
 #include "fence.hpp"
 #include "sync_pools.h"
 #include "frame_garbage.h"
@@ -293,7 +293,6 @@ public:
 
 	// Create staging buffers for images.
 	InitialImageBuffer create_image_staging_buffer(const ImageCreateInfo &info, const ImageInitialData *initial);
-	InitialImageBuffer create_image_staging_buffer(const TextureFormatLayout &layout);
 
 	// Create image view, buffer views and samplers.
 	ImageViewHandle create_image_view(const ImageViewCreateInfo &view_info);
@@ -529,7 +528,8 @@ private:
 		const VolkDeviceTable &table;
 		Managers &managers;
 
-		Util::Vector<CommandPool> cmd_pools[QUEUE_INDEX_COUNT];
+		// One per thread index, of each queue.
+		Util::Vector<granite_command_pool_t> cmd_pools[QUEUE_INDEX_COUNT];
 		VkSemaphore timeline_semaphores[QUEUE_INDEX_COUNT] = {};
 		uint64_t timeline_fences[QUEUE_INDEX_COUNT] = {};
 

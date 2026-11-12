@@ -1019,12 +1019,6 @@ void Device::submit(CommandBufferHandle &cmd, Fence *fence, unsigned semaphore_c
 
 void Device::submit_discard_nolock(CommandBufferHandle &cmd)
 {
-#ifdef VULKAN_DEBUG
-	auto type = cmd->get_command_buffer_type();
-	auto &pool = frame().cmd_pools[get_physical_queue_type(type)][cmd->get_thread_index()];
-	pool.signal_submitted(cmd->get_command_buffer());
-#endif
-
 	cmd.reset();
 	decrement_frame_counter_nolock();
 }
@@ -1055,11 +1049,6 @@ void Device::submit_nolock(CommandBufferHandle cmd, Fence *fence, unsigned semap
 	auto type = cmd->get_command_buffer_type();
 	auto physical_type = get_physical_queue_type(type);
 	auto &submissions = frame().submissions[physical_type];
-#ifdef VULKAN_DEBUG
-	auto &pool = frame().cmd_pools[physical_type][cmd->get_thread_index()];
-	pool.signal_submitted(cmd->get_command_buffer());
-#endif
-
 	bool profiled_submit = cmd->has_profiling();
 
 	if (profiled_submit)
@@ -1776,8 +1765,10 @@ CommandBufferHandle Device::request_command_buffer_nolock(unsigned thread_index,
 	VK_ASSERT(thread_index == 0);
 #endif
 	auto physical_type = get_physical_queue_type(type);
-	auto &pool = frame().cmd_pools[physical_type][thread_index];
-	auto cmd = pool.request_command_buffer();
+	auto cmd = granite_command_pool_request(&frame().cmd_pools[physical_type][thread_index]);
+	// Out of memory: nothing to record into.
+	if (cmd == VK_NULL_HANDLE)
+		return {};
 
 	if (profiled && !ext.performance_query_features.performanceCounterQueryPools)
 	{
@@ -1908,9 +1899,10 @@ Device::PerFrame::PerFrame(Device *device_, unsigned frame_index_)
 	for (int i = 0; i < QUEUE_INDEX_COUNT; i++)
 	{
 		timeline_semaphores[i] = device.queue_data[i].timeline_semaphore;
-		cmd_pools[i].reserve(count);
+		cmd_pools[i].resize(count);
 		for (unsigned j = 0; j < count; j++)
-			cmd_pools[i].emplace_back(device_, device_->queue_info.family_indices[i]);
+			granite_command_pool_init(&cmd_pools[i][j], device_->get_device(), &table,
+			                          device_->queue_info.family_indices[i]);
 	}
 }
 
@@ -2390,7 +2382,7 @@ void Device::PerFrame::trim_command_pools()
 {
 	for (auto &cmd_pool : cmd_pools)
 		for (auto &pool : cmd_pool)
-			pool.trim();
+			granite_command_pool_trim(&pool);
 }
 
 void Device::PerFrame::begin()
@@ -2446,7 +2438,7 @@ void Device::PerFrame::begin()
 
 	for (auto &cmd_pool : cmd_pools)
 		for (auto &pool : cmd_pool)
-			pool.begin();
+			granite_command_pool_begin(&pool);
 
 	query_pool.begin();
 
@@ -2525,6 +2517,9 @@ Device::PerFrame::~PerFrame()
 {
 	in_destructor = true;
 	begin();
+	for (auto &cmd_pool : cmd_pools)
+		for (auto &pool : cmd_pool)
+			granite_command_pool_free(&pool);
 	granite_frame_garbage_free(&garbage);
 }
 
@@ -3062,58 +3057,31 @@ ImageViewHandle Device::create_image_view(const ImageViewCreateInfo &create_info
 		return ImageViewHandle(nullptr);
 }
 
-InitialImageBuffer Device::create_image_staging_buffer(const TextureFormatLayout &layout)
-{
-	InitialImageBuffer result;
-
-	BufferCreateInfo buffer_info = {};
-	buffer_info.domain = BufferDomain::Host;
-	buffer_info.size = layout.get_required_size();
-	buffer_info.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-	result.buffer = create_buffer(buffer_info, nullptr);
-	set_name(*result.buffer, "image-upload-staging-buffer");
-
-	auto *mapped = static_cast<uint8_t *>(map_host_buffer(*result.buffer, MEMORY_ACCESS_WRITE_BIT));
-	memcpy(mapped, layout.data(), layout.get_required_size());
-	unmap_host_buffer(*result.buffer, MEMORY_ACCESS_WRITE_BIT);
-
-	layout.build_buffer_image_copies(result.blits);
-	return result;
-}
-
 InitialImageBuffer Device::create_image_staging_buffer(const ImageCreateInfo &info, const ImageInitialData *initial)
 {
 	InitialImageBuffer result;
 
 	bool generate_mips = (info.misc & IMAGE_MISC_GENERATE_MIPS_BIT) != 0;
-	TextureFormatLayout layout;
+	granite_texture_layout_t layout;
 
 	unsigned copy_levels;
 	if (generate_mips)
 		copy_levels = 1;
 	else if (info.levels == 0)
-		copy_levels = TextureFormatLayout::num_miplevels(info.width, info.height, info.depth);
+		copy_levels = granite_num_miplevels(info.width, info.height, info.depth);
 	else
 		copy_levels = info.levels;
 
-	switch (info.type)
-	{
-	case VK_IMAGE_TYPE_1D:
-		layout.set_1d(info.format, info.width, info.layers, copy_levels);
-		break;
-	case VK_IMAGE_TYPE_2D:
-		layout.set_2d(info.format, info.width, info.height, info.layers, copy_levels);
-		break;
-	case VK_IMAGE_TYPE_3D:
-		layout.set_3d(info.format, info.width, info.height, info.depth, copy_levels);
-		break;
-	default:
+	if (info.type != VK_IMAGE_TYPE_1D && info.type != VK_IMAGE_TYPE_2D && info.type != VK_IMAGE_TYPE_3D)
 		return {};
-	}
+	granite_texture_layout_set(&layout, info.type, info.format, info.width, info.height, info.depth,
+	                           info.layers, copy_levels);
+	// (no more levels than a layout has)
+	copy_levels = layout.mip_levels;
 
 	BufferCreateInfo buffer_info = {};
 	buffer_info.domain = BufferDomain::Host;
-	buffer_info.size = layout.get_required_size();
+	buffer_info.size = layout.required_size;
 	buffer_info.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
 	result.buffer = create_buffer(buffer_info, nullptr);
 	set_name(*result.buffer, "image-upload-staging-buffer");
@@ -3122,13 +3090,13 @@ InitialImageBuffer Device::create_image_staging_buffer(const ImageCreateInfo &in
 	auto *mapped = static_cast<uint8_t *>(map_host_buffer(*result.buffer, MEMORY_ACCESS_WRITE_BIT));
 	unsigned index = 0;
 
-	layout.set_buffer(mapped, layout.get_required_size());
+	layout.buffer = mapped;
 
 	for (unsigned level = 0; level < copy_levels; level++)
 	{
-		const auto &mip_info = layout.get_mip_info(level);
-		uint32_t dst_height_stride = layout.get_layer_size(level);
-		size_t row_size = layout.get_row_size(level);
+		const auto &mip_info = layout.mips[level];
+		uint32_t dst_height_stride = granite_texture_layout_layer_size(&layout, level);
+		size_t row_size = granite_texture_layout_row_size(&layout, level);
 
 		for (unsigned layer = 0; layer < info.layers; layer++, index++)
 		{
@@ -3137,10 +3105,10 @@ InitialImageBuffer Device::create_image_staging_buffer(const ImageCreateInfo &in
 			uint32_t src_array_height =
 					initial[index].image_height ? initial[index].image_height : mip_info.image_height;
 
-			uint32_t src_row_stride = layout.row_byte_stride(src_row_length);
-			uint32_t src_height_stride = layout.layer_byte_stride(src_array_height, src_row_stride);
+			uint32_t src_row_stride = granite_texture_layout_row_stride(&layout, src_row_length);
+			uint32_t src_height_stride = granite_texture_layout_layer_stride(&layout, src_array_height, src_row_stride);
 
-			uint8_t *dst = static_cast<uint8_t *>(layout.data(layer, level));
+			uint8_t *dst = granite_texture_layout_data(&layout, layer, level);
 			const uint8_t *src = static_cast<const uint8_t *>(initial[index].data);
 
 			for (uint32_t z = 0; z < mip_info.depth; z++)
@@ -3150,7 +3118,8 @@ InitialImageBuffer Device::create_image_staging_buffer(const ImageCreateInfo &in
 	}
 
 	unmap_host_buffer(*result.buffer, MEMORY_ACCESS_WRITE_BIT);
-	layout.build_buffer_image_copies(result.blits);
+	result.blits.resize(layout.mip_levels);
+	granite_texture_layout_copies(&layout, format_to_aspect_mask(info.format), result.blits.data());
 	return result;
 }
 

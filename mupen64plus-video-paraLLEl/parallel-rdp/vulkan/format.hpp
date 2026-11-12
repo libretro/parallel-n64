@@ -23,7 +23,7 @@
 #pragma once
 
 #include "vulkan_headers.hpp"
-#include "texture_format.hpp"
+#include "texture_format.h"
 
 namespace Vulkan
 {
@@ -231,7 +231,7 @@ static inline VkImageAspectFlags format_to_aspect_mask(VkFormat format)
 static inline void format_align_dim(VkFormat format, uint32_t &width, uint32_t &height)
 {
 	uint32_t align_width, align_height;
-	TextureFormatLayout::format_block_dim(format, align_width, align_height);
+	granite_format_block_dim(format, &align_width, &align_height);
 	width = ((width + align_width - 1) / align_width) * align_width;
 	height = ((height + align_height - 1) / align_height) * align_height;
 }
@@ -239,7 +239,7 @@ static inline void format_align_dim(VkFormat format, uint32_t &width, uint32_t &
 static inline void format_num_blocks(VkFormat format, uint32_t &width, uint32_t &height)
 {
 	uint32_t align_width, align_height;
-	TextureFormatLayout::format_block_dim(format, align_width, align_height);
+	granite_format_block_dim(format, &align_width, &align_height);
 	width = (width + align_width - 1) / align_width;
 	height = (height + align_height - 1) / align_height;
 }
@@ -251,7 +251,7 @@ static inline VkDeviceSize format_get_layer_size(VkFormat format, VkImageAspectF
 	format_num_blocks(format, blocks_x, blocks_y);
 	format_align_dim(format, width, height);
 
-	VkDeviceSize size = TextureFormatLayout::format_block_size(format, aspect) * depth * blocks_x * blocks_y;
+	VkDeviceSize size = granite_format_block_size(format, aspect) * depth * blocks_x * blocks_y;
 	return size;
 }
 

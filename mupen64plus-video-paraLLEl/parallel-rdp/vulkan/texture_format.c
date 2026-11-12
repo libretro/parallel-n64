@@ -20,15 +20,16 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include "texture_format.hpp"
-#include "format.hpp"
+#include <assert.h>
+#include <string.h>
+#include "texture_format.h"
 
-namespace Vulkan
+uint32_t granite_num_miplevels(uint32_t width, uint32_t height, uint32_t depth)
 {
-uint32_t TextureFormatLayout::num_miplevels(uint32_t width, uint32_t height, uint32_t depth)
-{
-	uint32_t size = unsigned(Util::max_of(Util::max_of(width, height), depth));
+	uint32_t size = width > height ? width : height;
 	uint32_t levels = 0;
+	if (depth > size)
+		size = depth;
 	while (size)
 	{
 		levels++;
@@ -37,12 +38,12 @@ uint32_t TextureFormatLayout::num_miplevels(uint32_t width, uint32_t height, uin
 	return levels;
 }
 
-void TextureFormatLayout::format_block_dim(VkFormat format, uint32_t &width, uint32_t &height)
+void granite_format_block_dim(VkFormat format, uint32_t *width, uint32_t *height)
 {
 #define fmt(x, w, h)     \
     case VK_FORMAT_##x: \
-        width = w; \
-        height = h; \
+        *width = w; \
+        *height = h; \
         break
 
 	switch (format)
@@ -96,8 +97,8 @@ void TextureFormatLayout::format_block_dim(VkFormat format, uint32_t &width, uin
 	astc_fmt(12, 12);
 
 	default:
-		width = 1;
-		height = 1;
+		*width = 1;
+		*height = 1;
 		break;
 	}
 
@@ -105,7 +106,7 @@ void TextureFormatLayout::format_block_dim(VkFormat format, uint32_t &width, uin
 #undef astc_fmt
 }
 
-uint32_t TextureFormatLayout::format_block_size(VkFormat format, VkImageAspectFlags aspect)
+uint32_t granite_format_block_size(VkFormat format, VkImageAspectFlags aspect)
 {
 #define fmt(x, bpp)     \
     case VK_FORMAT_##x: \
@@ -344,123 +345,76 @@ uint32_t TextureFormatLayout::format_block_size(VkFormat format, VkImageAspectFl
 #undef astc_fmt
 }
 
-void TextureFormatLayout::fill_mipinfo(uint32_t width, uint32_t height, uint32_t depth)
+void granite_texture_layout_set(granite_texture_layout_t *layout, VkImageType type, VkFormat format,
+		uint32_t width, uint32_t height, uint32_t depth, uint32_t array_layers, uint32_t mip_levels)
 {
-	block_stride = format_block_size(format, 0);
-	format_block_dim(format, block_dim_x, block_dim_y);
+	size_t offset = 0;
+	uint32_t mip;
+
+	if (type == VK_IMAGE_TYPE_1D)
+		height = 1;
+	if (type != VK_IMAGE_TYPE_3D)
+		depth = 1;
+	else
+		array_layers = 1;
+
+	layout->buffer = NULL;
+	layout->image_type = type;
+	layout->format = format;
+	layout->array_layers = array_layers;
+	layout->block_stride = granite_format_block_size(format, 0);
+	granite_format_block_dim(format, &layout->block_dim_x, &layout->block_dim_y);
 
 	if (mip_levels == 0)
-		mip_levels = num_miplevels(width, height, depth);
+		mip_levels = granite_num_miplevels(width, height, depth);
+	if (mip_levels > GRANITE_TEXTURE_MAX_LEVELS)
+		mip_levels = GRANITE_TEXTURE_MAX_LEVELS;
+	layout->mip_levels = mip_levels;
 
-	size_t offset = 0;
-
-	for (uint32_t mip = 0; mip < mip_levels; mip++)
+	for (mip = 0; mip < mip_levels; mip++)
 	{
-		offset = (offset + 15) & ~15;
+		granite_mip_info_t *info = &layout->mips[mip];
+		uint32_t blocks_x = (width + layout->block_dim_x - 1) / layout->block_dim_x;
+		uint32_t blocks_y = (height + layout->block_dim_y - 1) / layout->block_dim_y;
 
-		uint32_t blocks_x = (width + block_dim_x - 1) / block_dim_x;
-		uint32_t blocks_y = (height + block_dim_y - 1) / block_dim_y;
-		size_t mip_size = blocks_x * blocks_y * array_layers * depth * block_stride;
+		offset = (offset + 15) & ~(size_t)15;
+		info->offset = offset;
+		info->block_row_length = blocks_x;
+		info->block_image_height = blocks_y;
+		info->row_length = blocks_x * layout->block_dim_x;
+		info->image_height = blocks_y * layout->block_dim_y;
+		info->width = width;
+		info->height = height;
+		info->depth = depth;
 
-		mips[mip].offset = offset;
+		offset += (size_t)blocks_x * blocks_y * array_layers * depth * layout->block_stride;
 
-		mips[mip].block_row_length = blocks_x;
-		mips[mip].block_image_height = blocks_y;
-
-		mips[mip].row_length = blocks_x * block_dim_x;
-		mips[mip].image_height = blocks_y * block_dim_y;
-
-		mips[mip].width = width;
-		mips[mip].height = height;
-		mips[mip].depth = depth;
-
-		offset += mip_size;
-
-		width = Util::max_of((width >> 1u), 1u);
-		height = Util::max_of((height >> 1u), 1u);
-		depth = Util::max_of((depth >> 1u), 1u);
+		width = width > 1 ? width >> 1 : 1;
+		height = height > 1 ? height >> 1 : 1;
+		depth = depth > 1 ? depth >> 1 : 1;
 	}
 
-	required_size = offset;
+	layout->required_size = offset;
 }
 
-void TextureFormatLayout::set_1d(VkFormat format_, uint32_t width, uint32_t array_layers_, uint32_t mip_levels_)
+void granite_texture_layout_copies(const granite_texture_layout_t *layout, VkImageAspectFlags aspect,
+		VkBufferImageCopy *copies)
 {
-	image_type = VK_IMAGE_TYPE_1D;
-	format = format_;
-	array_layers = array_layers_;
-	mip_levels = mip_levels_;
-
-	fill_mipinfo(width, 1, 1);
-}
-
-void TextureFormatLayout::set_2d(VkFormat format_, uint32_t width, uint32_t height,
-                                 uint32_t array_layers_, uint32_t mip_levels_)
-{
-	image_type = VK_IMAGE_TYPE_2D;
-	format = format_;
-	array_layers = array_layers_;
-	mip_levels = mip_levels_;
-
-	fill_mipinfo(width, height, 1);
-}
-
-void TextureFormatLayout::set_3d(VkFormat format_, uint32_t width, uint32_t height, uint32_t depth, uint32_t mip_levels_)
-{
-	image_type = VK_IMAGE_TYPE_3D;
-	format = format_;
-	array_layers = 1;
-	mip_levels = mip_levels_;
-
-	fill_mipinfo(width, height, depth);
-}
-
-void TextureFormatLayout::set_buffer(void *buffer_, size_t size)
-{
-	buffer = static_cast<uint8_t *>(buffer_);
-	buffer_size = size;
-}
-
-size_t TextureFormatLayout::get_required_size() const
-{
-	return required_size;
-}
-
-const TextureFormatLayout::MipInfo &TextureFormatLayout::get_mip_info(uint32_t mip) const
-{
-	return mips[mip];
-}
-
-size_t TextureFormatLayout::row_byte_stride(uint32_t row_length) const
-{
-	return ((row_length + block_dim_x - 1) / block_dim_x) * block_stride;
-}
-
-size_t TextureFormatLayout::layer_byte_stride(uint32_t image_height, size_t row_byte_stride) const
-{
-	return ((image_height + block_dim_y - 1) / block_dim_y) * row_byte_stride;
-}
-
-void TextureFormatLayout::build_buffer_image_copies(Util::SmallVector<VkBufferImageCopy, 32> &copies) const
-{
-	copies.resize(mip_levels);
-	for (unsigned level = 0; level < mip_levels; level++)
+	uint32_t level;
+	for (level = 0; level < layout->mip_levels; level++)
 	{
-		const auto &mip_info = mips[level];
-
-		auto &blit = copies[level];
-		blit = {};
-		blit.bufferOffset = mip_info.offset;
-		blit.bufferRowLength = mip_info.row_length;
-		blit.bufferImageHeight = mip_info.image_height;
-		blit.imageSubresource.aspectMask = format_to_aspect_mask(format);
-		blit.imageSubresource.mipLevel = level;
-		blit.imageSubresource.baseArrayLayer = 0;
-		blit.imageSubresource.layerCount = array_layers;
-		blit.imageExtent.width = mip_info.width;
-		blit.imageExtent.height = mip_info.height;
-		blit.imageExtent.depth = mip_info.depth;
+		const granite_mip_info_t *info = &layout->mips[level];
+		VkBufferImageCopy *copy = &copies[level];
+		memset(copy, 0, sizeof(*copy));
+		copy->bufferOffset = info->offset;
+		copy->bufferRowLength = info->row_length;
+		copy->bufferImageHeight = info->image_height;
+		copy->imageSubresource.aspectMask = aspect;
+		copy->imageSubresource.mipLevel = level;
+		copy->imageSubresource.baseArrayLayer = 0;
+		copy->imageSubresource.layerCount = layout->array_layers;
+		copy->imageExtent.width = info->width;
+		copy->imageExtent.height = info->height;
+		copy->imageExtent.depth = info->depth;
 	}
-}
-
 }
