@@ -431,8 +431,6 @@ private:
 	                 uint64_t cookie);
 
 	void init_viewport_scissor(const RenderPassInfo &info, const Framebuffer *framebuffer);
-	void init_surface_transform(const RenderPassInfo &info);
-	VkSurfaceTransformFlagBitsKHR current_framebuffer_surface_transform = VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR;
 
 	bool profiling = false;
 	char debug_channel_tag[32] = {};
@@ -441,7 +439,6 @@ private:
 
 	void bind_pipeline(VkPipelineBindPoint bind_point, VkPipeline pipeline, uint32_t active_dynamic_state);
 
-	void set_surface_transform_specialization_constants();
 };
 
 using CommandBufferHandle = Util::IntrusivePtr<CommandBuffer>;
