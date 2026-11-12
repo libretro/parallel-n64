@@ -3,14 +3,10 @@
  *
  * A format's aspects are colour, depth, stencil or depth and stencil.
  * The stages a barrier waits for are narrowed only when asked and only
- * for ALL_GRAPHICS. The family an external barrier names is the queue's
- * own, or IGNORED for an image used on a queue of another family: the
- * transfer queue's family counts for an image used on the transfer
- * queue.
+ * for ALL_GRAPHICS.
  *
  * An image barrier covers all levels and layers of the format's aspects.
- * An external barrier hands the image out or takes it back, the other
- * family being EXTERNAL. A clear goes to the colour or the depth and
+ * A clear goes to the colour or the depth and
  * stencil call, in the layout the image is kept in. A blit is a call a
  * layer. Preparing mipmaps moves level 0 to transfer source and
  * discards the rest into transfer destination; generating them halves
@@ -138,10 +134,6 @@ static void test_helpers(void)
 {
 	const VkPipelineStageFlags narrowed = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT |
 		VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
-	/* graphics, compute, transfer */
-	const uint32_t one_family[3] = { 0, 0, 0 };
-	const uint32_t own_transfer[3] = { 0, 0, 2 };
-	const uint32_t own_compute[3] = { 0, 1, 1 };
 
 	CHECK(granite_format_aspect_mask(VK_FORMAT_R8G8B8A8_UNORM) == VK_IMAGE_ASPECT_COLOR_BIT, "a colour format");
 	CHECK(granite_format_aspect_mask(VK_FORMAT_D32_SFLOAT) == VK_IMAGE_ASPECT_DEPTH_BIT &&
@@ -161,19 +153,6 @@ static void test_helpers(void)
 	CHECK(granite_barrier_src_stages(VK_PIPELINE_STAGE_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_TRANSFER_BIT, true) ==
 			(VK_PIPELINE_STAGE_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_TRANSFER_BIT), "other stages are not");
 
-	CHECK(granite_image_owner_family(one_family, 0, true, true, true) == 0, "one family for all queues: it owns the image");
-	CHECK(granite_image_owner_family(own_transfer, 0, true, true, false) == 0,
-			"an image not used on the transfer queue is not shared with it");
-	CHECK(granite_image_owner_family(own_transfer, 0, false, false, true) == VK_QUEUE_FAMILY_IGNORED,
-			"one used on a transfer queue of another family is shared");
-	CHECK(granite_image_owner_family(own_transfer, 2, false, false, true) == 2,
-			"but not as seen from the transfer queue alone");
-	CHECK(granite_image_owner_family(own_compute, 0, true, true, false) == VK_QUEUE_FAMILY_IGNORED,
-			"one used on a compute queue of another family is shared");
-	CHECK(granite_image_owner_family(own_compute, 1, true, false, false) == VK_QUEUE_FAMILY_IGNORED,
-			"so is one used on the graphics queue, seen from compute");
-	CHECK(granite_image_owner_family(own_compute, 1, false, true, true) == 1, "compute and transfer of one family share nothing");
-	CHECK(granite_image_owner_family(own_compute, 0, false, false, false) == 0, "an image of one queue is that queue's");
 }
 
 static void test_barriers(void)
@@ -201,28 +180,6 @@ static void test_barriers(void)
 			VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT, VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT);
 	CHECK(barriers[1][0].subresourceRange.aspectMask == (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT),
 			"a depth and stencil image: both aspects");
-
-	/* out of the device and back */
-	reset();
-	granite_cmd_external_image_barrier(&table, CMD, &color, true, VK_IMAGE_LAYOUT_GENERAL,
-			VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_WRITE_BIT, 3);
-	b = &barriers[0][0];
-	CHECK(num_barrier_calls == 1 && barrier_src[0] == VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT &&
-			barrier_dst[0] == VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, "a release waits for the stages given");
-	CHECK(b->srcQueueFamilyIndex == 3 && b->dstQueueFamilyIndex == VK_QUEUE_FAMILY_EXTERNAL &&
-			b->srcAccessMask == VK_ACCESS_SHADER_WRITE_BIT && b->dstAccessMask == 0 &&
-			b->oldLayout == VK_IMAGE_LAYOUT_GENERAL && b->newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-			"and hands the image from the family to outside");
-	CHECK(b->subresourceRange.levelCount == VK_REMAINING_MIP_LEVELS &&
-			b->subresourceRange.layerCount == VK_REMAINING_ARRAY_LAYERS, "all of it");
-	granite_cmd_external_image_barrier(&table, CMD, &color, false, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-			VK_IMAGE_LAYOUT_GENERAL, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_READ_BIT,
-			VK_QUEUE_FAMILY_IGNORED);
-	b = &barriers[1][0];
-	CHECK(barrier_src[1] == VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT && barrier_dst[1] == VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-			"an acquire makes it available to the stages given");
-	CHECK(b->srcQueueFamilyIndex == VK_QUEUE_FAMILY_EXTERNAL && b->dstQueueFamilyIndex == VK_QUEUE_FAMILY_IGNORED &&
-			b->dstAccessMask == VK_ACCESS_SHADER_READ_BIT && b->srcAccessMask == 0, "taking it from outside");
 }
 
 static void test_clear_blit(void)

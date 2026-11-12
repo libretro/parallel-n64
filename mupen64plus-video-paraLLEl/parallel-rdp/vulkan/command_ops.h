@@ -54,27 +54,11 @@ VkImageAspectFlags granite_format_aspect_mask(VkFormat format);
  * well, that bit becomes the fragment and attachment stages. */
 VkPipelineStageFlags granite_barrier_src_stages(VkPipelineStageFlags src_stages, bool narrow);
 
-/* The queue family a barrier names when @family hands an image to, or
- * takes it from, something outside the device. @families: the family of
- * the graphics, compute and transfer queues. VK_QUEUE_FAMILY_IGNORED for
- * an image shared between families, as Vulkan asks for those: it is
- * shared when one of the queues it is used on (@on_graphics, @on_compute,
- * @on_transfer) is of another family than @family. */
-uint32_t granite_image_owner_family(const uint32_t *families, uint32_t family, bool on_graphics, bool on_compute,
-		bool on_transfer);
-
 /* Every level and layer of @image moves from @old_layout to @new_layout */
 void granite_cmd_image_barrier(const struct VolkDeviceTable *table, VkCommandBuffer cmd,
 		const granite_image_ref_t *image, VkImageLayout old_layout, VkImageLayout new_layout,
 		VkPipelineStageFlags src_stages, VkAccessFlags src_access, VkPipelineStageFlags dst_stages,
 		VkAccessFlags dst_access);
-/* @image is handed to (@release) or taken back from what is outside the
- * device, by the queue family @family (granite_image_owner_family).
- * Releasing waits for @stages and @access; acquiring makes it available
- * to them. */
-void granite_cmd_external_image_barrier(const struct VolkDeviceTable *table, VkCommandBuffer cmd,
-		const granite_image_ref_t *image, bool release, VkImageLayout old_layout, VkImageLayout new_layout,
-		VkPipelineStageFlags stages, VkAccessFlags access, uint32_t family);
 /* Clears every level and layer of @aspect of @image, which is in its
  * transfer destination layout */
 void granite_cmd_clear_image(const struct VolkDeviceTable *table, VkCommandBuffer cmd,

@@ -107,7 +107,6 @@ public:
 		return alloc;
 	}
 
-	ExternalHandle export_handle();
 
 private:
 	friend class Util::ObjectPool<Buffer>;

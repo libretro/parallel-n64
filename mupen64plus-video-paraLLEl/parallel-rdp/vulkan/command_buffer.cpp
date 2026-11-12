@@ -155,43 +155,6 @@ void CommandBuffer::barrier(VkPipelineStageFlags src_stages, VkPipelineStageFlag
 	table.vkCmdPipelineBarrier(cmd, src_stages, dst_stages, 0, barriers, globals, buffer_barriers, buffers, image_barriers, images);
 }
 
-// The family to name when an image leaves the device or comes back.
-static uint32_t external_barrier_family(Device &device, const Image &image, CommandBuffer::Type type)
-{
-	auto &queue_info = device.get_queue_info();
-	const uint32_t families[3] = {
-		queue_info.family_indices[QUEUE_INDEX_GRAPHICS],
-		queue_info.family_indices[QUEUE_INDEX_COMPUTE],
-		queue_info.family_indices[QUEUE_INDEX_TRANSFER],
-	};
-	auto misc = image.get_create_info().misc;
-	return granite_image_owner_family(families, queue_info.family_indices[device.get_physical_queue_type(type)],
-	                                  (misc & IMAGE_MISC_CONCURRENT_QUEUE_GRAPHICS_BIT) != 0,
-	                                  (misc & (IMAGE_MISC_CONCURRENT_QUEUE_ASYNC_GRAPHICS_BIT |
-	                                           IMAGE_MISC_CONCURRENT_QUEUE_ASYNC_COMPUTE_BIT)) != 0,
-	                                  (misc & IMAGE_MISC_CONCURRENT_QUEUE_ASYNC_TRANSFER_BIT) != 0);
-}
-
-void CommandBuffer::release_external_image_barrier(
-		const Image &image,
-		VkImageLayout old_layout, VkImageLayout new_layout,
-		VkPipelineStageFlags src_stage, VkAccessFlags src_access)
-{
-	auto ref = image_ref(image);
-	granite_cmd_external_image_barrier(&table, cmd, &ref, true, old_layout, new_layout, src_stage, src_access,
-	                                   external_barrier_family(*device, image, type));
-}
-
-void CommandBuffer::acquire_external_image_barrier(
-		const Image &image,
-		VkImageLayout old_layout, VkImageLayout new_layout,
-		VkPipelineStageFlags dst_stage, VkAccessFlags dst_access)
-{
-	auto ref = image_ref(image);
-	granite_cmd_external_image_barrier(&table, cmd, &ref, false, old_layout, new_layout, dst_stage, dst_access,
-	                                   external_barrier_family(*device, image, type));
-}
-
 void CommandBuffer::image_barrier(const Image &image, VkImageLayout old_layout, VkImageLayout new_layout,
                                   VkPipelineStageFlags src_stages, VkAccessFlags src_access,
                                   VkPipelineStageFlags dst_stages, VkAccessFlags dst_access)

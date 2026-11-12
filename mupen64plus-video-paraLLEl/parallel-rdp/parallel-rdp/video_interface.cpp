@@ -1052,12 +1052,6 @@ Vulkan::ImageHandle VideoInterface::scale_stage(Vulkan::CommandBuffer &cmd, cons
 	rt_info.initial_layout = VK_IMAGE_LAYOUT_UNDEFINED;
 	rt_info.misc = Vulkan::IMAGE_MISC_MUTABLE_SRGB_BIT;
 
-	if (options.export_scanout && final_pass)
-	{
-		rt_info.misc |= Vulkan::IMAGE_MISC_EXTERNAL_MEMORY_BIT;
-		rt_info.external.memory_handle_type = options.export_handle_type;
-	}
-
 	scale_image = acquire_image(rt_info, false).image;
 
 	if (!scale_image)
@@ -1079,12 +1073,7 @@ Vulkan::ImageHandle VideoInterface::scale_stage(Vulkan::CommandBuffer &cmd, cons
 
 	if (prev_scanout_image)
 	{
-		if (prev_image_is_external)
-		{
-			cmd.acquire_external_image_barrier(*prev_scanout_image, prev_image_layout, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-											   VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_ACCESS_SHADER_READ_BIT);
-		}
-		else if (prev_image_layout != VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+		if (prev_image_layout != VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
 		{
 			VK_ASSERT(prev_image_layout == VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
 			cmd.image_barrier(*prev_scanout_image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
@@ -1318,12 +1307,6 @@ Vulkan::ImageHandle VideoInterface::downscale_stage(Vulkan::CommandBuffer &cmd, 
 		downscale_steps--;
 		need_pass = scaling_factor > 1 && downscale_steps;
 
-		if (options.export_scanout && final_pass && !need_pass)
-		{
-			rt_info.misc |= Vulkan::IMAGE_MISC_EXTERNAL_MEMORY_BIT;
-			rt_info.external.memory_handle_type = options.export_handle_type;
-		}
-
 		downscale_image = acquire_image(rt_info, false).image;
 
 		if (!downscale_image)
@@ -1362,12 +1345,6 @@ Vulkan::ImageHandle VideoInterface::upscale_deinterlace(Vulkan::CommandBuffer &c
 	rt_info.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
 	rt_info.initial_layout = VK_IMAGE_LAYOUT_UNDEFINED;
 	rt_info.misc = Vulkan::IMAGE_MISC_MUTABLE_SRGB_BIT;
-
-	if (options.export_scanout)
-	{
-		rt_info.misc |= Vulkan::IMAGE_MISC_EXTERNAL_MEMORY_BIT;
-		rt_info.external.memory_handle_type = options.export_handle_type;
-	}
 
 	deinterlaced_image = acquire_image(rt_info, false).image;
 
@@ -1742,34 +1719,13 @@ Vulkan::ImageHandle VideoInterface::scanout(VkImageLayout target_layout, const S
 
 	if (scale_image)
 	{
-		if (options.export_scanout)
-		{
-			// Foreign handle types (e.g. D3D) must use GENERAL layouts.
-			if (options.export_handle_type != Vulkan::ExternalHandle::get_opaque_memory_handle_type())
-				target_layout = VK_IMAGE_LAYOUT_GENERAL;
-
-			cmd->release_external_image_barrier(*scale_image, src_layout,
-			                                    target_layout,
-			                                    layout_to_stage(src_layout),
-			                                    layout_to_access(src_layout));
-		}
-		else
-		{
-			cmd->image_barrier(*scale_image, src_layout, target_layout,
-			                   layout_to_stage(src_layout), layout_to_access(src_layout),
-			                   layout_to_stage(target_layout), layout_to_access(target_layout));
-		}
+		cmd->image_barrier(*scale_image, src_layout, target_layout,
+		                   layout_to_stage(src_layout), layout_to_access(src_layout),
+		                   layout_to_stage(target_layout), layout_to_access(target_layout));
 	}
 
 	prev_image_layout = target_layout;
 	prev_scanout_image = scale_image;
-	prev_image_is_external = options.export_scanout;
-
-	if (options.persist_frame_on_invalid_input && options.export_scanout)
-	{
-		LOGE("persist_frame_on_invalid_input cannot be combined with export_scanout.\n");
-		prev_scanout_image.reset();
-	}
 
 	device->submit(cmd);
 	scanout = rdp_move(scale_image);

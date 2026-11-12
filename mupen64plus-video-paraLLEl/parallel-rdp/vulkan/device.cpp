@@ -2631,19 +2631,6 @@ bool Device::allocate_image_memory(DeviceAllocation *allocation, const ImageCrea
 		return false;
 	}
 
-	bool use_external = (info.misc & IMAGE_MISC_EXTERNAL_MEMORY_BIT) != 0;
-	if (use_external && info.num_memory_aliases != 0)
-	{
-		LOGE("Cannot use external and memory aliases at the same time.\n");
-		return false;
-	}
-
-	if (use_external && tiling == VK_IMAGE_TILING_LINEAR)
-	{
-		LOGE("Cannot use linear tiling with external memory.\n");
-		return false;
-	}
-
 	if (info.num_memory_aliases != 0)
 	{
 		*allocation = {};
@@ -2737,12 +2724,8 @@ bool Device::allocate_image_memory(DeviceAllocation *allocation, const ImageCrea
 				return false;
 		}
 
-		ExternalHandle external = info.external;
-
 		AllocationMode mode;
-		if (use_external)
-			mode = AllocationMode::External;
-		else if (tiling == VK_IMAGE_TILING_OPTIMAL &&
+		if (tiling == VK_IMAGE_TILING_OPTIMAL &&
 		         (info.usage & (VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_STORAGE_BIT)) != 0)
 			mode = AllocationMode::OptimalRenderTarget;
 		else
@@ -2751,8 +2734,7 @@ bool Device::allocate_image_memory(DeviceAllocation *allocation, const ImageCrea
 		{
 			LOCK_MEMORY();
 			if (!managers.memory.allocate_image_memory(reqs.size, reqs.alignment, mode, memory_type, image,
-			                                           (info.misc & IMAGE_MISC_FORCE_NO_DEDICATED_BIT) != 0, allocation,
-			                                           use_external ? &external : nullptr))
+			                                           (info.misc & IMAGE_MISC_FORCE_NO_DEDICATED_BIT) != 0, allocation))
 			{
 				LOGE("Failed to allocate image memory (type %u, size: %u).\n",
 				     unsigned(memory_type), unsigned(reqs.size));
@@ -2931,63 +2913,6 @@ ImageHandle Device::create_image_from_staging_buffer(const ImageCreateInfo &crea
 	{
 		LOGE("Format %u is not supported for usage flags!\n", unsigned(create_info.format));
 		return ImageHandle(nullptr);
-	}
-
-	bool use_external = (create_info.misc & IMAGE_MISC_EXTERNAL_MEMORY_BIT) != 0;
-	if (use_external && create_info.domain != ImageDomain::Physical)
-	{
-		LOGE("Must use physical image domain for external memory images.\n");
-		return ImageHandle(nullptr);
-	}
-
-	if (use_external && !ext.supports_external)
-	{
-		LOGE("External memory not supported.\n");
-		return ImageHandle(nullptr);
-	}
-
-	VkExternalMemoryImageCreateInfo external_info = { VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO };
-	if (ext.supports_external && use_external)
-	{
-		// Ensure that the handle type is supported.
-		VkImageFormatProperties2 props2 = { VK_STRUCTURE_TYPE_IMAGE_FORMAT_PROPERTIES_2 };
-		VkExternalImageFormatProperties external_props =
-		    { VK_STRUCTURE_TYPE_EXTERNAL_IMAGE_FORMAT_PROPERTIES };
-		VkPhysicalDeviceExternalImageFormatInfo external_format_info =
-		    { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_IMAGE_FORMAT_INFO };
-		external_format_info.handleType = create_info.external.memory_handle_type;
-
-		props2.pNext = &external_props;
-		if (!get_image_format_properties(info.format, info.imageType, info.tiling,
-		                                 info.usage, info.flags,
-		                                 &external_format_info, &props2))
-		{
-			LOGE("Image format is not supported for external memory type #%x.\n",
-			     external_format_info.handleType);
-			return ImageHandle(nullptr);
-		}
-
-		bool supports_import = (external_props.externalMemoryProperties.externalMemoryFeatures &
-		                        VK_EXTERNAL_MEMORY_FEATURE_IMPORTABLE_BIT) != 0;
-		bool supports_export = (external_props.externalMemoryProperties.externalMemoryFeatures &
-		                        VK_EXTERNAL_MEMORY_FEATURE_EXPORTABLE_BIT) != 0;
-
-		if (!supports_import && create_info.external)
-		{
-			LOGE("Attempting to import with handle type #%x, but it is not supported.\n",
-			     create_info.external.memory_handle_type);
-			return ImageHandle(nullptr);
-		}
-		else if (!supports_export && !create_info.external)
-		{
-			LOGE("Attempting to export with handle type #%x, but it is not supported.\n",
-			     create_info.external.memory_handle_type);
-			return ImageHandle(nullptr);
-		}
-
-		external_info.handleTypes = create_info.external.memory_handle_type;
-		external_info.pNext = info.pNext;
-		info.pNext = &external_info;
 	}
 
 	if (table->vkCreateImage(device, &info, nullptr, &holder.image) != VK_SUCCESS)

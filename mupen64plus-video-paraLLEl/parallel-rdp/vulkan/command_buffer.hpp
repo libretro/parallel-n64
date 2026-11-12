@@ -149,11 +149,6 @@ public:
 	                   VkPipelineStageFlags src_stage, VkAccessFlags src_access, VkPipelineStageFlags dst_stage,
 	                   VkAccessFlags dst_access);
 
-	void release_external_image_barrier(const Image &image, VkImageLayout old_layout, VkImageLayout new_layout,
-	                                    VkPipelineStageFlags src_stage, VkAccessFlags src_access);
-	void acquire_external_image_barrier(const Image &image, VkImageLayout old_layout, VkImageLayout new_layout,
-	                                    VkPipelineStageFlags dst_stage, VkAccessFlags dst_access);
-
 	void blit_image(const Image &dst,
 	                const Image &src,
 	                const VkOffset3D &dst_offset0, const VkOffset3D &dst_extent,

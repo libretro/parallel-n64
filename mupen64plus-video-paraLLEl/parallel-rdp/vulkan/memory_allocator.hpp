@@ -130,26 +130,11 @@ struct DeviceAllocator : granite_device_allocator_t
 	// device.cpp
 	void init(Device *device);
 
-	inline bool allocate_buffer_memory(uint32_t size, uint32_t alignment, AllocationMode mode, uint32_t memory_type,
-	                                   VkBuffer buffer, DeviceAllocation *alloc, const ExternalHandle *external)
-	{
-		granite_external_memory_t ext;
-		if (external)
-			ext = external_memory(*external);
-		return granite_device_allocator_allocate_buffer(this, size, alignment, granite_allocation_mode_t(mode),
-		                                                memory_type, buffer, alloc, external ? &ext : nullptr);
-	}
-
 	inline bool allocate_image_memory(uint32_t size, uint32_t alignment, AllocationMode mode, uint32_t memory_type,
-	                                  VkImage image, bool force_no_dedicated, DeviceAllocation *alloc,
-	                                  const ExternalHandle *external)
+	                                  VkImage image, bool force_no_dedicated, DeviceAllocation *alloc)
 	{
-		granite_external_memory_t ext;
-		if (external)
-			ext = external_memory(*external);
 		return granite_device_allocator_allocate_image(this, size, alignment, granite_allocation_mode_t(mode),
-		                                               memory_type, image, force_no_dedicated, alloc,
-		                                               external ? &ext : nullptr);
+		                                               memory_type, image, force_no_dedicated, alloc, nullptr);
 	}
 
 	inline void garbage_collect()
@@ -167,17 +152,6 @@ struct DeviceAllocator : granite_device_allocator_t
 	                         VkDeviceSize length)
 	{
 		granite_device_allocator_unmap(this, &alloc, flags, offset, length);
-	}
-
-private:
-	// A handle to import, or the type to make the memory exportable as.
-	static inline granite_external_memory_t external_memory(const ExternalHandle &handle)
-	{
-		granite_external_memory_t external;
-		external.import = bool(handle);
-		external.handle = handle.handle;
-		external.handle_type = handle.memory_handle_type;
-		return external;
 	}
 };
 }

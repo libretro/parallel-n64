@@ -56,15 +56,6 @@ VkPipelineStageFlags granite_barrier_src_stages(VkPipelineStageFlags src_stages,
 	return src_stages;
 }
 
-uint32_t granite_image_owner_family(const uint32_t *families, uint32_t family, bool on_graphics, bool on_compute,
-		bool on_transfer)
-{
-	if ((on_graphics && families[0] != family) || (on_compute && families[1] != family) ||
-			(on_transfer && families[2] != family))
-		return VK_QUEUE_FAMILY_IGNORED;
-	return family;
-}
-
 static VkImageLayout layout_of(const granite_image_ref_t *image, VkImageLayout optimal)
 {
 	return image->general ? VK_IMAGE_LAYOUT_GENERAL : optimal;
@@ -91,38 +82,6 @@ void granite_cmd_image_barrier(const struct VolkDeviceTable *table, VkCommandBuf
 	barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 
 	table->vkCmdPipelineBarrier(cmd, src_stages, dst_stages, 0, 0, NULL, 0, NULL, 1, &barrier);
-}
-
-void granite_cmd_external_image_barrier(const struct VolkDeviceTable *table, VkCommandBuffer cmd,
-		const granite_image_ref_t *image, bool release, VkImageLayout old_layout, VkImageLayout new_layout,
-		VkPipelineStageFlags stages, VkAccessFlags access, uint32_t family)
-{
-	VkImageMemoryBarrier barrier;
-
-	memset(&barrier, 0, sizeof(barrier));
-	barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-	barrier.image = image->image;
-	barrier.subresourceRange.aspectMask = granite_format_aspect_mask(image->format);
-	barrier.subresourceRange.levelCount = VK_REMAINING_MIP_LEVELS;
-	barrier.subresourceRange.layerCount = VK_REMAINING_ARRAY_LAYERS;
-	barrier.oldLayout = old_layout;
-	barrier.newLayout = new_layout;
-
-	if (release)
-	{
-		barrier.srcAccessMask = access;
-		barrier.srcQueueFamilyIndex = family;
-		barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_EXTERNAL;
-		/* nothing here uses it afterwards */
-		table->vkCmdPipelineBarrier(cmd, stages, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0, 0, NULL, 0, NULL, 1, &barrier);
-	}
-	else
-	{
-		barrier.dstAccessMask = access;
-		barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_EXTERNAL;
-		barrier.dstQueueFamilyIndex = family;
-		table->vkCmdPipelineBarrier(cmd, stages, stages, 0, 0, NULL, 0, NULL, 1, &barrier);
-	}
 }
 
 void granite_cmd_clear_image(const struct VolkDeviceTable *table, VkCommandBuffer cmd,

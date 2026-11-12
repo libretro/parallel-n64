@@ -75,12 +75,6 @@ struct ScanoutOptions
 		bool gamma_dither = true;
 	} vi;
 
-	// External memory support.
-	// If true, the scanout image will be created with external memory support.
-	// presist_frame_on_invalid_input must be false when using exports.
-	VkExternalMemoryHandleTypeFlagBits export_handle_type = {};
-	bool export_scanout = false;
-
 	/* For a temporal upscaler: the scanout is the framebuffer as drawn, at
 	 * the upscaling factor, without the VI's filters, scaling or crop; the
 	 * frame's motion vectors, depth and jitter come with it
@@ -225,7 +219,6 @@ private:
 	uint32_t last_valid_frame_count = 0;
 	Vulkan::ImageHandle prev_scanout_image;
 	VkImageLayout prev_image_layout = VK_IMAGE_LAYOUT_UNDEFINED;
-	bool prev_image_is_external = false;
 	Vulkan::ImageHandle prev_upscaler_image;
 	rdp_upscaler_framebuffer_t prev_upscaler_fb = {};
 
