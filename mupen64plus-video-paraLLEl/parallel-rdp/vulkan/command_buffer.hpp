@@ -67,26 +67,7 @@ static_assert(VULKAN_NUM_VERTEX_ATTRIBS == GRANITE_NUM_VERTEX_ATTRIBS &&
 using PipelineState = granite_pipeline_state_t;
 using PotentialState = granite_potential_state_t;
 
-struct DynamicState
-{
-	float depth_bias_constant = 0.0f;
-	float depth_bias_slope = 0.0f;
-	uint8_t front_compare_mask = 0;
-	uint8_t front_write_mask = 0;
-	uint8_t front_reference = 0;
-	uint8_t back_compare_mask = 0;
-	uint8_t back_write_mask = 0;
-	uint8_t back_reference = 0;
-};
-
 using VertexAttribState = granite_vertex_attrib_state_t;
-
-struct IndexState
-{
-	VkBuffer buffer;
-	VkDeviceSize offset;
-	VkIndexType index_type;
-};
 
 struct VertexBindingState
 {
@@ -156,21 +137,8 @@ public:
 		return thread_index;
 	}
 
-	void set_is_secondary()
-	{
-		is_secondary = true;
-	}
-
-	bool get_is_secondary() const
-	{
-		return is_secondary;
-	}
-
 	void clear_image(const Image &image, const VkClearValue &value);
 	void clear_image(const Image &image, const VkClearValue &value, VkImageAspectFlags aspect);
-	void clear_quad(unsigned attachment, const VkClearRect &rect, const VkClearValue &value,
-	                VkImageAspectFlags = VK_IMAGE_ASPECT_COLOR_BIT);
-	void clear_quad(const VkClearRect &rect, const VkClearAttachment *attachments, unsigned num_attachments);
 
 	void fill_buffer(const Buffer &dst, uint32_t value);
 	void fill_buffer(const Buffer &dst, uint32_t value, VkDeviceSize offset, VkDeviceSize size);
@@ -178,22 +146,12 @@ public:
 	                 VkDeviceSize size);
 	void copy_buffer(const Buffer &dst, const Buffer &src);
 	void copy_buffer(const Buffer &dst, const Buffer &src, const VkBufferCopy *copies, size_t count);
-	void copy_image(const Image &dst, const Image &src);
-	void copy_image(const Image &dst, const Image &src,
-	                const VkOffset3D &dst_offset, const VkOffset3D &src_offset,
-	                const VkExtent3D &extent,
-	                const VkImageSubresourceLayers &dst_subresource,
-	                const VkImageSubresourceLayers &src_subresource);
 
 	void copy_buffer_to_image(const Image &image, const Buffer &buffer, VkDeviceSize buffer_offset,
 	                          const VkOffset3D &offset, const VkExtent3D &extent, unsigned row_length,
 	                          unsigned slice_height, const VkImageSubresourceLayers &subresrouce);
 	void copy_buffer_to_image(const Image &image, const Buffer &buffer, unsigned num_blits, const VkBufferImageCopy *blits);
 
-	void copy_image_to_buffer(const Buffer &buffer, const Image &image, unsigned num_blits, const VkBufferImageCopy *blits);
-	void copy_image_to_buffer(const Buffer &dst, const Image &src, VkDeviceSize buffer_offset, const VkOffset3D &offset,
-	                          const VkExtent3D &extent, unsigned row_length, unsigned slice_height,
-	                          const VkImageSubresourceLayers &subresrouce);
 	void barrier(VkPipelineStageFlags src_stage, VkAccessFlags src_access, VkPipelineStageFlags dst_stage,
 	             VkAccessFlags dst_access);
 
@@ -206,10 +164,6 @@ public:
 	                   VkPipelineStageFlags src_stage, VkAccessFlags src_access, VkPipelineStageFlags dst_stage,
 	                   VkAccessFlags dst_access);
 
-	void buffer_barriers(VkPipelineStageFlags src_stages, VkPipelineStageFlags dst_stages,
-	                     unsigned buffer_barriers, const VkBufferMemoryBarrier *buffers);
-	void image_barriers(VkPipelineStageFlags src_stages, VkPipelineStageFlags dst_stages,
-	                    unsigned image_barriers, const VkImageMemoryBarrier *images);
 	void release_external_image_barrier(const Image &image, VkImageLayout old_layout, VkImageLayout new_layout,
 	                                    VkPipelineStageFlags src_stage, VkAccessFlags src_access);
 	void acquire_external_image_barrier(const Image &image, VkImageLayout old_layout, VkImageLayout new_layout,
@@ -232,16 +186,8 @@ public:
 	// Wait for TRANSFER stage to drain before transitioning away from TRANSFER_SRC_OPTIMAL.
 	void generate_mipmap(const Image &image);
 
-	void begin_render_pass(const RenderPassInfo &info, VkSubpassContents contents = VK_SUBPASS_CONTENTS_INLINE);
+	void begin_render_pass(const RenderPassInfo &info);
 	void end_render_pass();
-	void submit_secondary(Util::IntrusivePtr<CommandBuffer> secondary);
-	inline unsigned get_current_subpass() const
-	{
-		return pipeline_state.subpass_index;
-	}
-	Util::IntrusivePtr<CommandBuffer> request_secondary_command_buffer(unsigned thread_index, unsigned subpass);
-	static Util::IntrusivePtr<CommandBuffer> request_secondary_command_buffer(Device &device,
-	                                                                          const RenderPassInfo &rp, unsigned thread_index, unsigned subpass);
 
 	void set_program(Program *program);
 
@@ -271,9 +217,6 @@ public:
 
 	void *allocate_vertex_data(unsigned binding, VkDeviceSize size, VkDeviceSize stride,
 	                           VkVertexInputRate step_rate = VK_VERTEX_INPUT_RATE_VERTEX);
-	void *update_image(const Image &image, const VkOffset3D &offset, const VkExtent3D &extent, uint32_t row_length,
-	                   uint32_t image_height, const VkImageSubresourceLayers &subresource);
-	void *update_image(const Image &image, uint32_t row_length = 0, uint32_t image_height = 0);
 	void set_scissor(const VkRect2D &rect);
 
 	void set_vertex_attrib(uint32_t attrib, uint32_t binding, VkFormat format, VkDeviceSize offset);
@@ -314,11 +257,6 @@ public:
 		SET_STATIC_STATE(depth_write);
 	}
 
-	inline void set_wireframe(bool wireframe)
-	{
-		SET_STATIC_STATE(wireframe);
-	}
-
 	inline void set_depth_compare(VkCompareOp depth_compare)
 	{
 		SET_STATIC_STATE(depth_compare);
@@ -343,90 +281,14 @@ public:
 		set_blend_factors(src_blend, src_blend, dst_blend, dst_blend);
 	}
 
-	inline void set_blend_op(VkBlendOp color_blend_op, VkBlendOp alpha_blend_op)
-	{
-		SET_STATIC_STATE(color_blend_op);
-		SET_STATIC_STATE(alpha_blend_op);
-	}
-
-	inline void set_blend_op(VkBlendOp blend_op)
-	{
-		set_blend_op(blend_op, blend_op);
-	}
-
-	inline void set_depth_bias(bool depth_bias_enable)
-	{
-		SET_STATIC_STATE(depth_bias_enable);
-	}
-
 	inline void set_color_write_mask(uint32_t write_mask)
 	{
 		SET_STATIC_STATE(write_mask);
 	}
 
-	inline void set_stencil_test(bool stencil_test)
-	{
-		SET_STATIC_STATE(stencil_test);
-	}
-
-	inline void set_stencil_front_ops(VkCompareOp stencil_front_compare_op, VkStencilOp stencil_front_pass,
-	                                  VkStencilOp stencil_front_fail, VkStencilOp stencil_front_depth_fail)
-	{
-		SET_STATIC_STATE(stencil_front_compare_op);
-		SET_STATIC_STATE(stencil_front_pass);
-		SET_STATIC_STATE(stencil_front_fail);
-		SET_STATIC_STATE(stencil_front_depth_fail);
-	}
-
-	inline void set_stencil_back_ops(VkCompareOp stencil_back_compare_op, VkStencilOp stencil_back_pass,
-	                                 VkStencilOp stencil_back_fail, VkStencilOp stencil_back_depth_fail)
-	{
-		SET_STATIC_STATE(stencil_back_compare_op);
-		SET_STATIC_STATE(stencil_back_pass);
-		SET_STATIC_STATE(stencil_back_fail);
-		SET_STATIC_STATE(stencil_back_depth_fail);
-	}
-
-	inline void set_stencil_ops(VkCompareOp stencil_compare_op, VkStencilOp stencil_pass, VkStencilOp stencil_fail,
-	                            VkStencilOp stencil_depth_fail)
-	{
-		set_stencil_front_ops(stencil_compare_op, stencil_pass, stencil_fail, stencil_depth_fail);
-		set_stencil_back_ops(stencil_compare_op, stencil_pass, stencil_fail, stencil_depth_fail);
-	}
-
-	inline void set_primitive_topology(VkPrimitiveTopology topology)
-	{
-		SET_STATIC_STATE(topology);
-	}
-
-	inline void set_primitive_restart(bool primitive_restart)
-	{
-		SET_STATIC_STATE(primitive_restart);
-	}
-
-	inline void set_multisample_state(bool alpha_to_coverage, bool alpha_to_one = false, bool sample_shading = false)
-	{
-		SET_STATIC_STATE(alpha_to_coverage);
-		SET_STATIC_STATE(alpha_to_one);
-		SET_STATIC_STATE(sample_shading);
-	}
-
-	inline void set_front_face(VkFrontFace front_face)
-	{
-		SET_STATIC_STATE(front_face);
-	}
-
 	inline void set_cull_mode(VkCullModeFlags cull_mode)
 	{
 		SET_STATIC_STATE(cull_mode);
-	}
-
-	inline void set_blend_constants(const float blend_constants[4])
-	{
-		SET_POTENTIALLY_STATIC_STATE(blend_constants[0]);
-		SET_POTENTIALLY_STATIC_STATE(blend_constants[1]);
-		SET_POTENTIALLY_STATIC_STATE(blend_constants[2]);
-		SET_POTENTIALLY_STATIC_STATE(blend_constants[3]);
 	}
 
 	inline void set_specialization_constant_mask(uint32_t spec_constant_mask)
@@ -469,56 +331,12 @@ public:
 		SET_STATIC_STATE(subgroup_maximum_size_log2);
 	}
 
-	inline void set_conservative_rasterization(bool conservative_raster)
-	{
-		SET_STATIC_STATE(conservative_raster);
-	}
-
-#define SET_DYNAMIC_STATE(state, flags)   \
-	do                                    \
-	{                                     \
-		if (dynamic_state.state != state) \
-		{                                 \
-			dynamic_state.state = state;  \
-			set_dirty(flags);             \
-		}                                 \
-	} while (0)
-
-	inline void set_depth_bias(float depth_bias_constant, float depth_bias_slope)
-	{
-		SET_DYNAMIC_STATE(depth_bias_constant, COMMAND_BUFFER_DIRTY_DEPTH_BIAS_BIT);
-		SET_DYNAMIC_STATE(depth_bias_slope, COMMAND_BUFFER_DIRTY_DEPTH_BIAS_BIT);
-	}
-
-	inline void set_stencil_front_reference(uint8_t front_compare_mask, uint8_t front_write_mask,
-	                                        uint8_t front_reference)
-	{
-		SET_DYNAMIC_STATE(front_compare_mask, COMMAND_BUFFER_DIRTY_STENCIL_REFERENCE_BIT);
-		SET_DYNAMIC_STATE(front_write_mask, COMMAND_BUFFER_DIRTY_STENCIL_REFERENCE_BIT);
-		SET_DYNAMIC_STATE(front_reference, COMMAND_BUFFER_DIRTY_STENCIL_REFERENCE_BIT);
-	}
-
-	inline void set_stencil_back_reference(uint8_t back_compare_mask, uint8_t back_write_mask, uint8_t back_reference)
-	{
-		SET_DYNAMIC_STATE(back_compare_mask, COMMAND_BUFFER_DIRTY_STENCIL_REFERENCE_BIT);
-		SET_DYNAMIC_STATE(back_write_mask, COMMAND_BUFFER_DIRTY_STENCIL_REFERENCE_BIT);
-		SET_DYNAMIC_STATE(back_reference, COMMAND_BUFFER_DIRTY_STENCIL_REFERENCE_BIT);
-	}
-
-	inline void set_stencil_reference(uint8_t compare_mask, uint8_t write_mask, uint8_t reference)
-	{
-		set_stencil_front_reference(compare_mask, write_mask, reference);
-		set_stencil_back_reference(compare_mask, write_mask, reference);
-	}
-
 	inline Type get_command_buffer_type() const
 	{
 		return type;
 	}
 
 	QueryPoolHandle write_timestamp(VkPipelineStageFlagBits stage);
-	void add_checkpoint(const char *tag);
-	void set_backtrace_checkpoint();
 
 	// Used when recording command buffers in a thread, and submitting them in a different thread.
 	// Need to make sure that no further commands on the VkCommandBuffer happen.
@@ -558,14 +376,12 @@ private:
 	const RenderPass *actual_render_pass = nullptr;
 	const Vulkan::ImageView *framebuffer_attachments[VULKAN_NUM_ATTACHMENTS + 1] = {};
 
-	IndexState index_state = {};
 	VertexBindingState vbo = {};
 	ResourceBindings bindings;
 
 	Pipeline current_pipeline = {};
 	VkPipelineLayout current_pipeline_layout = VK_NULL_HANDLE;
 	PipelineLayout *current_layout = nullptr;
-	VkSubpassContents current_contents = VK_SUBPASS_CONTENTS_INLINE;
 	unsigned thread_index = 0;
 
 	VkViewport viewport = {};
@@ -576,7 +392,6 @@ private:
 	uint32_t active_vbos = 0;
 	VkPipelineStageFlags uses_swapchain_in_stages = 0;
 	bool is_compute = true;
-	bool is_secondary = false;
 	bool is_ended = false;
 
 	void set_dirty(CommandBufferDirtyFlags flags)
@@ -592,7 +407,6 @@ private:
 	}
 
 	DeferredPipelineCompile pipeline_state = {};
-	DynamicState dynamic_state = {};
 #ifndef _MSC_VER
 	static_assert(sizeof(pipeline_state.static_state.words) >= sizeof(pipeline_state.static_state.state),
 	              "Hashable pipeline state is not large enough!");
@@ -610,9 +424,7 @@ private:
 	void begin_context();
 
 	BufferBlock vbo_block;
-	BufferBlock ibo_block;
 	BufferBlock ubo_block;
-	BufferBlock staging_block;
 
 	void set_texture(unsigned set, unsigned binding, VkImageView float_view, VkImageView integer_view,
 	                 VkImageLayout layout,

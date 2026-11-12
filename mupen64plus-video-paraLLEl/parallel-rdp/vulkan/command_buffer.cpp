@@ -28,13 +28,6 @@
 #include "timer.h"
 #include <string.h>
 
-//#define FULL_BACKTRACE_CHECKPOINTS
-#ifdef FULL_BACKTRACE_CHECKPOINTS
-#ifdef __linux__
-#include <execinfo.h>
-#endif
-#endif
-
 using namespace Util;
 
 namespace Vulkan
@@ -70,9 +63,7 @@ CommandBuffer::CommandBuffer(Device *device_, VkCommandBuffer cmd_, VkPipelineCa
 CommandBuffer::~CommandBuffer()
 {
 	VK_ASSERT(vbo_block.mapped == nullptr);
-	VK_ASSERT(ibo_block.mapped == nullptr);
 	VK_ASSERT(ubo_block.mapped == nullptr);
-	VK_ASSERT(staging_block.mapped == nullptr);
 }
 
 void CommandBuffer::fill_buffer(const Buffer &dst, uint32_t value)
@@ -432,7 +423,6 @@ void CommandBuffer::begin_context()
 	pipeline_state.potential_static_state.spec_constant_mask = 0;
 	pipeline_state.potential_static_state.internal_spec_constant_mask = 0;
 	granite_bindings_invalidate(&bindings);
-	memset(&index_state, 0, sizeof(index_state));
 	memset(vbo.buffers, 0, sizeof(vbo.buffers));
 
 	if (debug_channel_buffer)
@@ -531,7 +521,7 @@ void CommandBuffer::init_surface_transform(const RenderPassInfo &info)
 	current_framebuffer_surface_transform = prerorate;
 }
 
-void CommandBuffer::begin_render_pass(const RenderPassInfo &info, VkSubpassContents contents)
+void CommandBuffer::begin_render_pass(const RenderPassInfo &info)
 {
 	VK_ASSERT(!framebuffer);
 	VK_ASSERT(!pipeline_state.compatible_render_pass);
@@ -586,9 +576,8 @@ void CommandBuffer::begin_render_pass(const RenderPassInfo &info, VkSubpassConte
 	rect2d_transform_xy(begin_info.renderArea, current_framebuffer_surface_transform,
 	                    framebuffer->width, framebuffer->height);
 
-	table.vkCmdBeginRenderPass(cmd, &begin_info, contents);
+	table.vkCmdBeginRenderPass(cmd, &begin_info, VK_SUBPASS_CONTENTS_INLINE);
 
-	current_contents = contents;
 	begin_graphics();
 }
 
@@ -919,18 +908,6 @@ bool CommandBuffer::flush_render_state(bool synchronous)
 		table.vkCmdSetScissor(cmd, 0, 1, &tmp_scissor);
 	}
 
-	if (pipeline_state.static_state.state.depth_bias_enable && get_and_clear(COMMAND_BUFFER_DIRTY_DEPTH_BIAS_BIT))
-		table.vkCmdSetDepthBias(cmd, dynamic_state.depth_bias_constant, 0.0f, dynamic_state.depth_bias_slope);
-	if (pipeline_state.static_state.state.stencil_test && get_and_clear(COMMAND_BUFFER_DIRTY_STENCIL_REFERENCE_BIT))
-	{
-		table.vkCmdSetStencilCompareMask(cmd, VK_STENCIL_FACE_FRONT_BIT, dynamic_state.front_compare_mask);
-		table.vkCmdSetStencilReference(cmd, VK_STENCIL_FACE_FRONT_BIT, dynamic_state.front_reference);
-		table.vkCmdSetStencilWriteMask(cmd, VK_STENCIL_FACE_FRONT_BIT, dynamic_state.front_write_mask);
-		table.vkCmdSetStencilCompareMask(cmd, VK_STENCIL_FACE_BACK_BIT, dynamic_state.back_compare_mask);
-		table.vkCmdSetStencilReference(cmd, VK_STENCIL_FACE_BACK_BIT, dynamic_state.back_reference);
-		table.vkCmdSetStencilWriteMask(cmd, VK_STENCIL_FACE_BACK_BIT, dynamic_state.back_write_mask);
-	}
-
 	uint32_t update_vbo_mask = dirty_vbos & active_vbos;
 	for (uint32_t binding_bits = update_vbo_mask, binding_base = 0, binding, binding_count; Util::next_bit_range(binding_bits, binding_base, binding, binding_count);)
 	{
@@ -1155,7 +1132,6 @@ void CommandBuffer::draw(uint32_t vertex_count, uint32_t instance_count, uint32_
 	VK_ASSERT(!is_compute);
 	if (flush_render_state(true))
 	{
-		set_backtrace_checkpoint();
 		table.vkCmdDraw(cmd, vertex_count, instance_count, first_vertex, first_instance);
 	}
 	else
@@ -1167,7 +1143,6 @@ void CommandBuffer::dispatch_indirect(const Buffer &buffer, uint32_t offset)
 	VK_ASSERT(is_compute);
 	if (flush_compute_state(true))
 	{
-		set_backtrace_checkpoint();
 		table.vkCmdDispatchIndirect(cmd, buffer.get_buffer(), offset);
 	}
 	else
@@ -1179,7 +1154,6 @@ void CommandBuffer::dispatch(uint32_t groups_x, uint32_t groups_y, uint32_t grou
 	VK_ASSERT(is_compute);
 	if (flush_compute_state(true))
 	{
-		set_backtrace_checkpoint();
 		table.vkCmdDispatch(cmd, groups_x, groups_y, groups_z);
 	}
 	else
@@ -1216,22 +1190,6 @@ QueryPoolHandle CommandBuffer::write_timestamp(VkPipelineStageFlagBits stage)
 	return device->write_timestamp(cmd, stage);
 }
 
-void CommandBuffer::set_backtrace_checkpoint()
-{
-#if defined(FULL_BACKTRACE_CHECKPOINTS) && defined(__linux__)
-	void *arr[1024];
-	int ret = backtrace(arr, 1024);
-
-	ostringstream str;
-	for (int i = 0; i < ret; i++)
-		str << arr[i] << endl;
-	auto s = str.str();
-
-	// Never free the duped string for now.
-	add_checkpoint(strdup(s.c_str()));
-#endif
-}
-
 void CommandBuffer::end_threaded_recording()
 {
 	VK_ASSERT(!debug_channel_buffer);
@@ -1260,12 +1218,8 @@ void CommandBuffer::end()
 
 	if (vbo_block.mapped)
 		device->request_vertex_block_nolock(vbo_block, 0);
-	if (ibo_block.mapped)
-		device->request_index_block_nolock(ibo_block, 0);
 	if (ubo_block.mapped)
 		device->request_uniform_block_nolock(ubo_block, 0);
-	if (staging_block.mapped)
-		device->request_staging_block_nolock(staging_block, 0);
 }
 
 void CommandBuffer::begin_region(const char *name, const float *color)
