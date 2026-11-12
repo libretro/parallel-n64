@@ -123,6 +123,15 @@ static unsigned lf_block_of(uint32_t idx, uint32_t *offset)
 	return k;
 }
 
+#define LF_SLOTS (64u * ((1u << GRANITE_LF_POOL_BLOCKS) - 1u))
+
+/* the next indices start here, past the slots */
+static size_t lf_next_offset(granite_lf_pool_t *pool, unsigned k)
+{
+	size_t bytes = (size_t)lf_block_cap(k) * pool->elem_size;
+	return (bytes + sizeof(retro_atomic_int_t) - 1) & ~(sizeof(retro_atomic_int_t) - 1);
+}
+
 static void *lf_slot(granite_lf_pool_t *pool, uint32_t idx)
 {
 	uint32_t off;
@@ -134,7 +143,8 @@ static retro_atomic_int_t *lf_next_of(granite_lf_pool_t *pool, uint32_t idx)
 {
 	uint32_t off;
 	unsigned k = lf_block_of(idx, &off);
-	return &pool->block_next[k][off];
+	char *objs = (char *)retro_atomic_load_acquire_ptr(&pool->block_objs[k]);
+	return (retro_atomic_int_t *)(objs + lf_next_offset(pool, k)) + off;
 }
 
 static int lf_pack(uint32_t tag, uint32_t idx)
@@ -169,70 +179,30 @@ static void lf_push_chain(granite_lf_pool_t *pool, uint32_t first, uint32_t last
 	}
 }
 
-#if defined(__GNUC__) || defined(__clang__)
-#define LF_COLD __attribute__((noinline, cold))
-#elif defined(_MSC_VER)
-#define LF_COLD __declspec(noinline)
-#else
-#define LF_COLD
-#endif
-
-/* Adds a block, returns one of its slots and pushes the rest. */
-static LF_COLD uint32_t lf_grow(granite_lf_pool_t *pool)
+/* Block @k, allocated and published by this thread or, when another
+ * got there first, that one's. NULL when out of memory. A next index is
+ * written when its slot is released, before the slot is pushed, so the
+ * block needs none set up. */
+static void *lf_block(granite_lf_pool_t *pool, unsigned k)
 {
-	unsigned k;
-	uint32_t cap, first, i;
-	void *objs;
-	retro_atomic_int_t *next;
-
-	if (retro_atomic_load_acquire_int(&pool->block_count) >= GRANITE_LF_POOL_BLOCKS)
-		return 0;
-	/* counted before the block is taken, so a thread that sees every
-	 * block taken also sees this grow in flight */
-	retro_atomic_fetch_add_int(&pool->growing, 1);
-	k = (unsigned)retro_atomic_fetch_add_int(&pool->block_count, 1);
-	if (k >= GRANITE_LF_POOL_BLOCKS)
-	{
-		retro_atomic_fetch_add_int(&pool->growing, -1);
-		return 0;
-	}
-
-	cap = lf_block_cap(k);
-	objs = granite_memalign_alloc(pool_block_align(pool->elem_align), cap * pool->elem_size);
-	if (!objs)
-	{
-		retro_atomic_fetch_add_int(&pool->growing, -1);
-		return 0;
-	}
-	next = (retro_atomic_int_t *)malloc(cap * sizeof(*next));
-	if (!next)
-	{
-		granite_memalign_free(objs);
-		retro_atomic_fetch_add_int(&pool->growing, -1);
-		return 0;
-	}
-
-	first = lf_block_base(k) + 1;
-	for (i = 0; i + 1 < cap; i++)
-		retro_atomic_int_init(&next[i], (int)(first + i + 1));
-	retro_atomic_int_init(&next[cap - 1], 0);
-
-	pool->block_next[k] = next;
-	retro_atomic_store_release_ptr(&pool->block_objs[k], objs);
-
-	if (cap > 1)
-		lf_push_chain(pool, first + 1, first + cap - 1);
-	retro_atomic_fetch_add_int(&pool->growing, -1);
-	return first;
+	void *objs = retro_atomic_load_acquire_ptr(&pool->block_objs[k]);
+	void *mine;
+	if (objs)
+		return objs;
+	mine = granite_memalign_alloc(pool_block_align(pool->elem_align),
+			lf_next_offset(pool, k) + (size_t)lf_block_cap(k) * sizeof(retro_atomic_int_t));
+	if (!mine)
+		return NULL;
+	if (retro_atomic_cas_ptr(&pool->block_objs[k], NULL, mine))
+		return mine;
+	granite_memalign_free(mine);
+	return retro_atomic_load_acquire_ptr(&pool->block_objs[k]);
 }
 
 static uint32_t lf_index_of(granite_lf_pool_t *pool, void *ptr)
 {
-	unsigned n = (unsigned)retro_atomic_load_acquire_int(&pool->block_count);
 	unsigned k;
-	if (n > GRANITE_LF_POOL_BLOCKS)
-		n = GRANITE_LF_POOL_BLOCKS;
-	for (k = 0; k < n; k++)
+	for (k = 0; k < GRANITE_LF_POOL_BLOCKS; k++)
 	{
 		char *objs = (char *)retro_atomic_load_acquire_ptr(&pool->block_objs[k]);
 		uintptr_t at = (uintptr_t)ptr - (uintptr_t)objs;
@@ -264,13 +234,11 @@ void granite_lf_pool_init(granite_lf_pool_t *pool, size_t elem_size, size_t elem
 	pool->div_inverse = inv;
 	pool->div_shift = shift;
 	retro_atomic_int_init(&pool->head, 0);
-	retro_atomic_int_init(&pool->block_count, 0);
-	retro_atomic_int_init(&pool->growing, 0);
+	retro_atomic_int_init(&pool->fresh, 0);
 	for (k = 0; k < GRANITE_LF_POOL_BLOCKS; k++)
-	{
 		retro_atomic_ptr_init(&pool->block_objs[k], NULL);
-		pool->block_next[k] = NULL;
-	}
+	/* the slots the first objects take, not allocated mid-frame */
+	lf_block(pool, 0);
 }
 
 void granite_lf_pool_clear(granite_lf_pool_t *pool)
@@ -281,31 +249,32 @@ void granite_lf_pool_clear(granite_lf_pool_t *pool)
 		void *objs = retro_atomic_load_acquire_ptr(&pool->block_objs[k]);
 		if (objs)
 			granite_memalign_free(objs);
-		free(pool->block_next[k]);
-		pool->block_next[k] = NULL;
 		retro_atomic_ptr_init(&pool->block_objs[k], NULL);
 	}
 	retro_atomic_int_init(&pool->head, 0);
-	retro_atomic_int_init(&pool->block_count, 0);
-	retro_atomic_int_init(&pool->growing, 0);
+	retro_atomic_int_init(&pool->fresh, 0);
 }
 
 void *granite_lf_pool_alloc(granite_lf_pool_t *pool)
 {
-	uint32_t idx = lf_pop(pool);
-	if (!idx)
-		idx = lf_grow(pool);
-	/* every block taken: other grows may still be pushing their slots. No
-	 * new grow can start now, so once none is in flight before a pop that
-	 * finds the list empty, the pool is truly full */
-	while (!idx)
-	{
-		const int growing = retro_atomic_load_acquire_int(&pool->growing);
-		idx = lf_pop(pool);
-		if (!idx && !growing)
-			return NULL;
-	}
-	return lf_slot(pool, idx);
+	uint32_t idx = lf_pop(pool), off;
+	unsigned k;
+	char *objs;
+	if (idx)
+		return lf_slot(pool, idx);
+	/* one never handed out; the check keeps the counter from running on
+	 * once the pool is full (it passes LF_SLOTS by the racing threads at
+	 * most) */
+	if ((uint32_t)retro_atomic_load_acquire_int(&pool->fresh) >= LF_SLOTS)
+		return NULL;
+	idx = (uint32_t)retro_atomic_fetch_add_int(&pool->fresh, 1) + 1;
+	if (idx > LF_SLOTS)
+		return NULL;
+	k = lf_block_of(idx, &off);
+	/* out of memory: this index is lost, and with it the slot */
+	if (!(objs = (char *)lf_block(pool, k)))
+		return NULL;
+	return objs + (size_t)off * pool->elem_size;
 }
 
 void granite_lf_pool_release(granite_lf_pool_t *pool, void *slot)

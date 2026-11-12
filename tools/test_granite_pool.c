@@ -5,7 +5,9 @@
  * division done as a shift and a multiply: every slot of every block,
  * once released, must come back from a later alloc, no slot may be handed
  * out twice, and slots must be aligned and never overlap. Several
- * threads allocating and releasing at once must never hold the same slot.
+ * threads allocating and releasing at once must never hold the same slot,
+ * nor several taking new slots at once, racing to put each block in; a
+ * full pool must say so at once, and only once it is full.
  * The single-threaded pool must hand out distinct, aligned slots across
  * block growth and take every one back. */
 #include <stdio.h>
@@ -91,7 +93,9 @@ static void test_lf_pool(size_t size, size_t align)
 		qsort(slots, SLOTS, sizeof(*slots), cmp_ptr);
 		CHECK(memcmp(again, slots, sizeof(slots)) == 0, "released slots did not all come back");
 	}
-	CHECK(retro_atomic_load_acquire_int(&pool.block_count) == 5, "a released slot was lost, and a block added");
+	CHECK(retro_atomic_load_acquire_int(&pool.fresh) == SLOTS, "a released slot was lost, and a new one handed out");
+	for (i = 0; i < GRANITE_LF_POOL_BLOCKS; i++)
+		CHECK((retro_atomic_load_acquire_ptr(&pool.block_objs[i]) != NULL) == (i < 5), "a block too many or too few");
 	granite_lf_pool_clear(&pool);
 }
 
@@ -193,6 +197,68 @@ static void test_lf_pool_threads(void)
 	granite_lf_pool_clear(&shared);
 }
 
+/* Every slot of the pool, then one past it */
+static void test_lf_pool_full(void)
+{
+	size_t size = 1;
+	const unsigned all = 64u * ((1u << GRANITE_LF_POOL_BLOCKS) - 1u);
+	granite_lf_pool_t pool;
+	unsigned i, got = 0;
+
+	granite_lf_pool_init(&pool, 1, 1);
+	for (i = 0; i < all; i++)
+		got += granite_lf_pool_alloc(&pool) != NULL;
+	CHECK(got == all, "a pool short of memory or slots before it was full");
+	CHECK(granite_lf_pool_alloc(&pool) == NULL, "a slot past the last");
+	CHECK(granite_lf_pool_alloc(&pool) == NULL, "a slot past the last, asked again");
+	CHECK((unsigned)retro_atomic_load_acquire_int(&pool.fresh) <= all + 2, "the counter ran on past a full pool");
+	granite_lf_pool_clear(&pool);
+}
+
+/* Threads taking new slots only, so that they keep reaching blocks not
+ * there yet together: each block is put in once, and no slot is handed
+ * out twice */
+#define GROW_EACH 20000
+static void *grown[THREADS * GROW_EACH];
+
+static void grower_run(void *data)
+{
+	void **out = (void **)data;
+	unsigned i;
+	for (i = 0; i < GROW_EACH; i++)
+		out[i] = granite_lf_pool_alloc(&shared);
+}
+
+static void test_lf_pool_grow_threads(void)
+{
+	size_t size = 3 * sizeof(unsigned);
+	sthread_t *threads[THREADS];
+	unsigned i, k;
+
+	granite_lf_pool_init(&shared, size, sizeof(unsigned));
+	for (i = 0; i < THREADS; i++)
+		threads[i] = sthread_create(grower_run, grown + i * GROW_EACH);
+	for (i = 0; i < THREADS; i++)
+		if (threads[i])
+			sthread_join(threads[i]);
+		else
+			grower_run(grown + i * GROW_EACH);
+	qsort(grown, THREADS * GROW_EACH, sizeof(*grown), cmp_ptr);
+	for (i = 0; i < THREADS * GROW_EACH; i++)
+	{
+		CHECK(grown[i] != NULL, "out of slots while growing");
+		if (i)
+			CHECK((size_t)((char *)grown[i] - (char *)grown[i - 1]) >= size, "a slot handed out twice while growing");
+	}
+	CHECK((unsigned)retro_atomic_load_acquire_int(&shared.fresh) == THREADS * GROW_EACH, "slots lost while growing");
+	/* 120000 slots: blocks 0 to 10 */
+	for (k = 0; k < GRANITE_LF_POOL_BLOCKS; k++)
+		CHECK((retro_atomic_load_acquire_ptr(&shared.block_objs[k]) != NULL) == (k < 11), "a block missing or one too many");
+	for (i = 0; i < THREADS * GROW_EACH; i++)
+		granite_lf_pool_release(&shared, grown[i]);
+	granite_lf_pool_clear(&shared);
+}
+
 int main(void)
 {
 	static const size_t sizes[] = { 1, 4, 12, 24, 40, 56, 64, 72, 200, 4096 + 16 };
@@ -205,6 +271,8 @@ int main(void)
 		test_pool(sizes[i], aligns[i]);
 	}
 	test_lf_pool_threads();
+	test_lf_pool_full();
+	test_lf_pool_grow_threads();
 	if (failures)
 		return 1;
 	printf("test_granite_pool: ok\n");

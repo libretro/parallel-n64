@@ -82,11 +82,13 @@ static INLINE void granite_pool_release(granite_pool_t *pool, void *slot)
  * preempted between its read and its CAS for exactly a multiple of that
  * many could still be fooled.
  *
- * A thread that finds the list empty grows the pool by the next block,
- * and several may grow at once. Once every block is taken, a thread
- * finding the list empty retries while another thread is still pushing
- * a block's slots, so a slow big block cannot make an allocation fail
- * that its slots would have served. */
+ * Slots never handed out are not on the list: a counter hands them out
+ * in index order, block after block. The first slot of a block that is
+ * not there yet makes whichever thread gets there allocate it and publish
+ * it with one CAS; a thread that loses frees its own and takes the
+ * winner's. No thread waits for another, and an allocation fails only
+ * when memory runs out or every slot is taken. The first block is
+ * allocated at init. */
 
 #define GRANITE_LF_POOL_BLOCKS 12 /* 64 * (2^12 - 1) = 262080 slots */
 
@@ -100,13 +102,11 @@ typedef struct granite_lf_pool
 	uint64_t div_inverse;
 	unsigned div_shift;
 	retro_atomic_int_t head;
-	retro_atomic_int_t block_count;
-	/* grows started and not yet pushed */
-	retro_atomic_int_t growing;
+	/* slots handed out by the counter, the next 0-based index */
+	retro_atomic_int_t fresh;
+	/* a block's slots, followed in the same allocation by its next
+	 * indices (next_offset bytes in) */
 	retro_atomic_ptr_t block_objs[GRANITE_LF_POOL_BLOCKS];
-	/* written before block_objs[k] is published, read only after it is
-	 * seen */
-	retro_atomic_int_t *block_next[GRANITE_LF_POOL_BLOCKS];
 } granite_lf_pool_t;
 
 void granite_lf_pool_init(granite_lf_pool_t *pool, size_t elem_size, size_t elem_align);
