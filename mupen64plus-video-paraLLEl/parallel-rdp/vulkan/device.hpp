@@ -187,9 +187,7 @@ public:
 	friend class Program;
 	friend class WSI;
 	friend class Cookie;
-	friend class Framebuffer;
 	friend class PipelineLayout;
-	friend class FramebufferAllocator;
 	friend class RenderPass;
 	friend class Texture;
 	friend class DescriptorSetAllocator;
@@ -422,6 +420,7 @@ private:
 	                                                         bool push);
 	const Framebuffer &request_framebuffer(const RenderPassInfo &info);
 	const RenderPass &request_render_pass(const RenderPassInfo &info, bool compatible);
+	const RenderPass &request_render_pass(const granite_render_pass_desc_t &desc, bool compatible);
 
 	VkPhysicalDeviceMemoryProperties mem_props;
 	VkPhysicalDeviceProperties gpu_props;
@@ -638,8 +637,7 @@ private:
 	VulkanCache<ImmutableSampler> immutable_samplers;
 	VulkanCache<ImmutableYcbcrConversion> immutable_ycbcr_conversions;
 
-	FramebufferAllocator framebuffer_allocator;
-	TransientAttachmentAllocator transient_allocator;
+	granite_framebuffer_allocator_t framebuffer_allocator;
 	VkPipelineCache pipeline_cache = VK_NULL_HANDLE;
 	pipeline_record_t *pipeline_records = nullptr;
 	retro_atomic_int_t pipeline_records_claimed{0};
@@ -676,7 +674,6 @@ private:
 	void destroy_buffer_view(VkBufferView view);
 	void destroy_pipeline(VkPipeline pipeline);
 	void destroy_sampler(VkSampler sampler);
-	void destroy_framebuffer(VkFramebuffer framebuffer);
 	void destroy_semaphore(VkSemaphore semaphore);
 	void recycle_semaphore(VkSemaphore semaphore);
 	void free_memory(const DeviceAllocation &alloc);

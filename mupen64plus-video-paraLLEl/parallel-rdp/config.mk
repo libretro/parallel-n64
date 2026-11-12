@@ -19,7 +19,6 @@ PARALLEL_RDP_SOURCES_CXX := \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/fence.cpp \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/image.cpp \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/query_pool.cpp \
-        $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/render_pass.cpp \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/sampler.cpp \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/semaphore.cpp
 
@@ -30,10 +29,12 @@ PARALLEL_RDP_SOURCES_C := \
         $(PARALLEL_RDP_IMPLEMENTATION)/parallel-rdp/temporal_upscaler.c \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/cookie.c \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/fence_wait.c \
+        $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/framebuffer.c \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/frame_garbage.c \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/pipeline_map.c \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/pipeline_record_list.c \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/release_queue.c \
+        $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/render_pass.c \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/command_pool.c \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/descriptor_set.c \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/memory_allocator.c \

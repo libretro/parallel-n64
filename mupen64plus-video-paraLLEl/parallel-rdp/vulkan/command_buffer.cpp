@@ -475,8 +475,8 @@ void CommandBuffer::init_viewport_scissor(const RenderPassInfo &info, const Fram
 {
 	VkRect2D rect = info.render_area;
 
-	uint32_t fb_width = fb->get_width();
-	uint32_t fb_height = fb->get_height();
+	uint32_t fb_width = fb->width;
+	uint32_t fb_height = fb->height;
 
 	// Convert fb_width / fb_height to logical width / height if need be.
 	if (surface_transform_swaps_xy(current_framebuffer_surface_transform))
@@ -554,7 +554,7 @@ void CommandBuffer::begin_render_pass(const RenderPassInfo &info, VkSubpassConte
 
 	framebuffer = &device->request_framebuffer(info);
 	init_surface_transform(info);
-	pipeline_state.compatible_render_pass = &framebuffer->get_compatible_render_pass();
+	pipeline_state.compatible_render_pass = static_cast<const RenderPass *>(framebuffer->render_pass);
 	actual_render_pass = &device->request_render_pass(info, false);
 	pipeline_state.subpass_index = 0;
 
@@ -591,7 +591,7 @@ void CommandBuffer::begin_render_pass(const RenderPassInfo &info, VkSubpassConte
 
 	VkRenderPassBeginInfo begin_info = { VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO };
 	begin_info.renderPass = actual_render_pass->get_render_pass();
-	begin_info.framebuffer = framebuffer->get_framebuffer();
+	begin_info.framebuffer = framebuffer->framebuffer;
 	begin_info.renderArea = scissor;
 	begin_info.clearValueCount = num_clear_values;
 	begin_info.pClearValues = clear_values;
@@ -599,7 +599,7 @@ void CommandBuffer::begin_render_pass(const RenderPassInfo &info, VkSubpassConte
 	// In the render pass interface, we pretend we are rendering with normal
 	// un-rotated coordinates.
 	rect2d_transform_xy(begin_info.renderArea, current_framebuffer_surface_transform,
-	                    framebuffer->get_width(), framebuffer->get_height());
+	                    framebuffer->width, framebuffer->height);
 
 	table.vkCmdBeginRenderPass(cmd, &begin_info, contents);
 
@@ -842,15 +842,14 @@ Pipeline CommandBuffer::build_graphics_pipeline(Device *device, const DeferredPi
 	// Blend state
 	VkPipelineColorBlendAttachmentState blend_attachments[VULKAN_NUM_ATTACHMENTS];
 	VkPipelineColorBlendStateCreateInfo blend = { VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO };
-	blend.attachmentCount = compile.compatible_render_pass->get_num_color_attachments(compile.subpass_index);
+	blend.attachmentCount = compile.compatible_render_pass->get_num_color_attachments();
 	blend.pAttachments = blend_attachments;
 	for (unsigned i = 0; i < blend.attachmentCount; i++)
 	{
 		auto &att = blend_attachments[i];
 		att = {};
 
-		if (compile.compatible_render_pass->get_color_attachment(compile.subpass_index, i).attachment != VK_ATTACHMENT_UNUSED &&
-			(compile.program->get_pipeline_layout()->get_resource_layout().render_target_mask & (1u << i)))
+		if (compile.program->get_pipeline_layout()->get_resource_layout().render_target_mask & (1u << i))
 		{
 			att.colorWriteMask = (compile.static_state.state.write_mask >> (4 * i)) & 0xf;
 			att.blendEnable = compile.static_state.state.blend_enable;
@@ -869,9 +868,9 @@ Pipeline CommandBuffer::build_graphics_pipeline(Device *device, const DeferredPi
 
 	// Depth state
 	VkPipelineDepthStencilStateCreateInfo ds = { VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO };
-	ds.stencilTestEnable = compile.compatible_render_pass->has_stencil(compile.subpass_index) && compile.static_state.state.stencil_test;
-	ds.depthTestEnable = compile.compatible_render_pass->has_depth(compile.subpass_index) && compile.static_state.state.depth_test;
-	ds.depthWriteEnable = compile.compatible_render_pass->has_depth(compile.subpass_index) && compile.static_state.state.depth_write;
+	ds.stencilTestEnable = compile.compatible_render_pass->has_stencil() && compile.static_state.state.stencil_test;
+	ds.depthTestEnable = compile.compatible_render_pass->has_depth() && compile.static_state.state.depth_test;
+	ds.depthWriteEnable = compile.compatible_render_pass->has_depth() && compile.static_state.state.depth_write;
 
 	if (ds.depthTestEnable)
 		ds.depthCompareOp = static_cast<VkCompareOp>(compile.static_state.state.depth_compare);
@@ -921,9 +920,9 @@ Pipeline CommandBuffer::build_graphics_pipeline(Device *device, const DeferredPi
 
 	// Multisample
 	VkPipelineMultisampleStateCreateInfo ms = { VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO };
-	ms.rasterizationSamples = static_cast<VkSampleCountFlagBits>(compile.compatible_render_pass->get_sample_count(compile.subpass_index));
+	ms.rasterizationSamples = static_cast<VkSampleCountFlagBits>(compile.compatible_render_pass->get_sample_count());
 
-	if (compile.compatible_render_pass->get_sample_count(compile.subpass_index) > 1)
+	if (compile.compatible_render_pass->get_sample_count() > 1)
 	{
 		ms.alphaToCoverageEnable = compile.static_state.state.alpha_to_coverage;
 		ms.alphaToOneEnable = compile.static_state.state.alpha_to_one;
@@ -1249,7 +1248,7 @@ bool CommandBuffer::flush_render_state(bool synchronous)
 		{
 			auto tmp_viewport = viewport;
 			viewport_transform_xy(tmp_viewport, current_framebuffer_surface_transform,
-			                      framebuffer->get_width(), framebuffer->get_height());
+			                      framebuffer->width, framebuffer->height);
 			table.vkCmdSetViewport(cmd, 0, 1, &tmp_viewport);
 		}
 		else
@@ -1260,7 +1259,7 @@ bool CommandBuffer::flush_render_state(bool synchronous)
 	{
 		auto tmp_scissor = scissor;
 		rect2d_transform_xy(tmp_scissor, current_framebuffer_surface_transform,
-							framebuffer->get_width(), framebuffer->get_height());
+							framebuffer->width, framebuffer->height);
 		rect2d_clip(tmp_scissor);
 		table.vkCmdSetScissor(cmd, 0, 1, &tmp_scissor);
 	}

@@ -90,9 +90,11 @@ static constexpr VkImageUsageFlags vk_video_image_usage_flags = 0;
 #endif
 
 Device::Device()
-    : framebuffer_allocator(this)
-    , transient_allocator(this)
 {
+	granite_framebuffer_allocator_init(&framebuffer_allocator, VK_NULL_HANDLE, nullptr,
+	                                   [](void *userdata, VkFramebuffer framebuffer) {
+		static_cast<Device *>(userdata)->destroy_framebuffer_nolock(framebuffer);
+	}, this);
 	fence_wait_ec_live = retro_eventcount_init(&fence_wait_ec);
 	for (auto &stack : deferred_releases)
 		mpsc_stack_init(&stack);
@@ -514,72 +516,12 @@ size_t Device::get_pipeline_records(const pipeline_record_t **records) const
 }
 
 /* A 1x1 attachment of @format: what a listed pass is made from again. */
-static ImageHandle render_pass_stand_in(Device &device, uint32_t format, uint32_t samples, bool lazy)
-{
-	ImageCreateInfo info = lazy
-		? ImageCreateInfo::transient_render_target(1, 1, VkFormat(format))
-		: ImageCreateInfo::render_target(1, 1, VkFormat(format));
-	info.samples        = VkSampleCountFlagBits(samples ? samples : 1);
-	info.initial_layout = VK_IMAGE_LAYOUT_UNDEFINED;
-	return device.create_image(info, nullptr);
-}
-
 const RenderPass *Device::recreate_render_pass(const pipeline_record_pass_t &sig)
 {
-	ImageHandle images[VULKAN_NUM_ATTACHMENTS + 1];
-	RenderPassInfo::Subpass subpasses[PIPELINE_RECORD_SUBPASSES];
-	RenderPassInfo info;
-	unsigned i, j;
-	const unsigned num_attachments = sig.num_color + (sig.depth_format != VK_FORMAT_UNDEFINED ? 1u : 0u);
-
-	/* (the list's checks make these hold; a pass is not made from less) */
-	if (!sig.recordable || sig.num_color > VULKAN_NUM_ATTACHMENTS || !num_attachments
-	    || sig.num_subpasses > PIPELINE_RECORD_SUBPASSES)
+	granite_render_pass_desc_t desc;
+	if (!granite_render_pass_desc_from_signature(&desc, &sig))
 		return nullptr;
-	for (i = 0; i < sig.num_subpasses; i++)
-	{
-		const pipeline_record_subpass_t &s = sig.subpasses[i];
-		if (s.num_color > VULKAN_NUM_ATTACHMENTS || s.num_input > VULKAN_NUM_ATTACHMENTS
-		    || s.num_resolve > VULKAN_NUM_ATTACHMENTS
-		    || s.depth_mode > uint32_t(RenderPassInfo::DepthStencil::ReadWrite))
-			return nullptr;
-		subpasses[i].num_color_attachments   = s.num_color;
-		subpasses[i].num_input_attachments   = s.num_input;
-		subpasses[i].num_resolve_attachments = s.num_resolve;
-		subpasses[i].depth_stencil_mode      = RenderPassInfo::DepthStencil(s.depth_mode);
-		for (j = 0; j < s.num_color; j++)
-			if ((subpasses[i].color_attachments[j] = s.color[j]) >= num_attachments)
-				return nullptr;
-		for (j = 0; j < s.num_input; j++)
-			if ((subpasses[i].input_attachments[j] = s.input[j]) >= num_attachments)
-				return nullptr;
-		for (j = 0; j < s.num_resolve; j++)
-			if ((subpasses[i].resolve_attachments[j] = s.resolve[j]) >= num_attachments)
-				return nullptr;
-	}
-
-	for (i = 0; i < sig.num_color; i++)
-	{
-		images[i] = render_pass_stand_in(*this, sig.formats[i], sig.samples[i], (sig.lazy >> i) & 1);
-		if (!images[i])
-			return nullptr;
-		info.color_attachments[i] = &images[i]->get_view();
-	}
-	if (sig.depth_format != VK_FORMAT_UNDEFINED)
-	{
-		images[VULKAN_NUM_ATTACHMENTS] = render_pass_stand_in(*this, sig.depth_format,
-		                                                      sig.samples[VULKAN_NUM_ATTACHMENTS],
-		                                                      (sig.lazy >> sig.num_color) & 1);
-		if (!images[VULKAN_NUM_ATTACHMENTS])
-			return nullptr;
-		info.depth_stencil = &images[VULKAN_NUM_ATTACHMENTS]->get_view();
-	}
-	info.num_color_attachments = sig.num_color;
-	info.op_flags              = sig.op_flags;
-	info.num_subpasses         = sig.num_subpasses;
-	info.subpasses             = sig.num_subpasses ? subpasses : nullptr;
-	/* The stand-ins go once this returns; the pass holds none of them. */
-	return &request_render_pass(info, true);
+	return &request_render_pass(desc, true);
 }
 
 bool Device::resolve_pipeline_record(const pipeline_record_t &record, DeferredPipelineCompile &compile)
@@ -605,7 +547,7 @@ bool Device::resolve_pipeline_record(const pipeline_record_t &record, DeferredPi
 		if (!pass)
 			pass = recreate_render_pass(record.pass);
 		if (!pass || pass->get_hash() != record.render_pass_hash
-		    || record.subpass_index >= pass->get_num_subpasses())
+		    || record.subpass_index != 0)
 			return false;
 	}
 
@@ -1789,8 +1731,7 @@ Device::~Device()
 	free(pipeline_records);
 	pipeline_records = nullptr;
 
-	framebuffer_allocator.clear();
-	transient_allocator.clear();
+	granite_framebuffer_allocator_free(&framebuffer_allocator);
 
 	deinit_timeline_semaphores();
 }
@@ -1820,8 +1761,7 @@ void Device::init_frame_contexts(unsigned count)
 	wait_idle_nolock();
 
 	// Clear out caches which might contain stale data from now on.
-	framebuffer_allocator.clear();
-	transient_allocator.clear();
+	granite_framebuffer_allocator_clear(&framebuffer_allocator);
 	per_frame.clear();
 
 	if (count > MAX_DEFERRED_FRAMES)
@@ -1918,11 +1858,6 @@ void Device::destroy_buffer(VkBuffer buffer)
 void Device::destroy_buffer_view(VkBufferView view)
 {
 	release_handle(GRANITE_GARBAGE_BUFFER_VIEW, GRANITE_VK_TO_BITS(view));
-}
-
-void Device::destroy_framebuffer(VkFramebuffer framebuffer)
-{
-	release_handle(GRANITE_GARBAGE_FRAMEBUFFER, GRANITE_VK_TO_BITS(framebuffer));
 }
 
 void Device::destroy_image(VkImage image)
@@ -2066,8 +2001,7 @@ void Device::wait_idle_nolock()
 		frame->staging_blocks.clear();
 	}
 
-	framebuffer_allocator.clear();
-	transient_allocator.clear();
+	granite_framebuffer_allocator_clear(&framebuffer_allocator);
 
 #ifdef GRANITE_VULKAN_MT
 	for (auto &allocator : descriptor_set_allocators.get_read_only())
@@ -2107,8 +2041,7 @@ void Device::next_frame_context()
 	// Flush the frame here as we might have pending staging command buffers from init stage.
 	end_frame_nolock();
 
-	framebuffer_allocator.begin_frame();
-	transient_allocator.begin_frame();
+	granite_framebuffer_allocator_begin_frame(&framebuffer_allocator);
 
 #ifdef GRANITE_VULKAN_MT
 	for (auto &allocator : descriptor_set_allocators.get_read_only())
@@ -4111,91 +4044,90 @@ bool Device::image_format_is_supported(VkFormat format, VkFormatFeatureFlags2KHR
 	return (flags & required) == required;
 }
 
+static granite_attachment_desc_t attachment_desc(const ImageView &view)
+{
+	const Image &image = view.get_image();
+	granite_attachment_desc_t desc;
+	desc.format = view.get_format();
+	desc.samples = image.get_create_info().samples;
+	desc.swapchain_layout = image.get_swapchain_layout();
+	desc.transient = image.get_create_info().domain == ImageDomain::Transient;
+	desc.general = image.get_layout_type() != Layout::Optimal;
+	return desc;
+}
+
 const RenderPass &Device::request_render_pass(const RenderPassInfo &info, bool compatible)
 {
-	Hasher h;
-	VkFormat formats[VULKAN_NUM_ATTACHMENTS];
-	VkFormat depth_stencil;
-	uint32_t lazy = 0;
-	uint32_t optimal = 0;
-
+	granite_render_pass_desc_t desc;
+	memset(&desc, 0, sizeof(desc));
+	desc.num_color = info.num_color_attachments;
 	for (unsigned i = 0; i < info.num_color_attachments; i++)
 	{
 		VK_ASSERT(info.color_attachments[i]);
-		formats[i] = info.color_attachments[i]->get_format();
-		if (info.color_attachments[i]->get_image().get_create_info().domain == ImageDomain::Transient)
-			lazy |= 1u << i;
-		if (info.color_attachments[i]->get_image().get_layout_type() == Layout::Optimal)
-			optimal |= 1u << i;
-
-		// This can change external subpass dependencies, so it must always be hashed.
-		h.u32(info.color_attachments[i]->get_image().get_swapchain_layout());
+		desc.color[i] = attachment_desc(*info.color_attachments[i]);
 	}
-
 	if (info.depth_stencil)
-	{
-		if (info.depth_stencil->get_image().get_create_info().domain == ImageDomain::Transient)
-			lazy |= 1u << info.num_color_attachments;
-		if (info.depth_stencil->get_image().get_layout_type() == Layout::Optimal)
-			optimal |= 1u << info.num_color_attachments;
-	}
+		desc.depth_stencil = attachment_desc(*info.depth_stencil);
+	desc.op_flags = info.op_flags;
+	desc.clear_attachments = info.clear_attachments;
+	desc.load_attachments = info.load_attachments;
+	desc.store_attachments = info.store_attachments;
+	return request_render_pass(desc, compatible);
+}
 
-	// For multiview, base layer is encoded into the view mask.
-	if (info.num_layers > 1)
-	{
-		h.u32(info.base_layer);
-		h.u32(info.num_layers);
-	}
-	else
-	{
-		h.u32(0);
-		h.u32(info.num_layers);
-	}
-
-	h.u32(info.num_subpasses);
-	for (unsigned i = 0; i < info.num_subpasses; i++)
-	{
-		h.u32(info.subpasses[i].num_color_attachments);
-		h.u32(info.subpasses[i].num_input_attachments);
-		h.u32(info.subpasses[i].num_resolve_attachments);
-		h.u32(static_cast<uint32_t>(info.subpasses[i].depth_stencil_mode));
-		for (unsigned j = 0; j < info.subpasses[i].num_color_attachments; j++)
-			h.u32(info.subpasses[i].color_attachments[j]);
-		for (unsigned j = 0; j < info.subpasses[i].num_input_attachments; j++)
-			h.u32(info.subpasses[i].input_attachments[j]);
-		for (unsigned j = 0; j < info.subpasses[i].num_resolve_attachments; j++)
-			h.u32(info.subpasses[i].resolve_attachments[j]);
-	}
-
-	depth_stencil = info.depth_stencil ? info.depth_stencil->get_format() : VK_FORMAT_UNDEFINED;
-	h.data(formats, info.num_color_attachments * sizeof(VkFormat));
-	h.u32(info.num_color_attachments);
-	h.u32(depth_stencil);
-
-	// Compatible render passes do not care about load/store, or image layouts.
-	if (!compatible)
-	{
-		h.u32(info.op_flags);
-		h.u32(info.clear_attachments);
-		h.u32(info.load_attachments);
-		h.u32(info.store_attachments);
-		h.u32(optimal);
-	}
-
-	// Lazy flag can change external subpass dependencies, which is not compatible.
-	h.u32(lazy);
-
-	auto hash = h.get();
-
+const RenderPass &Device::request_render_pass(const granite_render_pass_desc_t &desc, bool compatible)
+{
+	auto hash = granite_render_pass_hash(&desc, compatible);
 	auto *ret = render_passes.find(hash);
 	if (!ret)
-		ret = render_passes.emplace_yield(hash, hash, this, info);
+		ret = render_passes.emplace_yield(hash, hash, this, desc);
 	return *ret;
 }
 
+RenderPass::RenderPass(Hash hash, Device *device, const granite_render_pass_desc_t &desc)
+	: IntrusiveHashMapEnabled<RenderPass>(hash)
+{
+	granite_render_pass_init(&impl, device->get_device(), &device->get_device_table(), &desc);
+}
+
+// The device's owner thread only: the allocator takes no lock.
 const Framebuffer &Device::request_framebuffer(const RenderPassInfo &info)
 {
-	return framebuffer_allocator.request_framebuffer(info);
+	auto &rp = request_render_pass(info, true);
+	VkImageView views[VULKAN_NUM_ATTACHMENTS + 1];
+	unsigned num_views = 0;
+	uint32_t width = UINT32_MAX;
+	uint32_t height = UINT32_MAX;
+
+	Hasher h;
+	h.u64(rp.get_hash());
+	for (unsigned i = 0; i < info.num_color_attachments; i++)
+		h.u64(info.color_attachments[i]->get_cookie());
+	if (info.depth_stencil)
+		h.u64(info.depth_stencil->get_cookie());
+	// (the base layer, when there were layers)
+	h.u32(0);
+
+	auto hash = h.get();
+	auto *node = granite_framebuffer_allocator_find(&framebuffer_allocator, hash);
+	if (node)
+		return *node;
+
+	for (unsigned i = 0; i <= info.num_color_attachments; i++)
+	{
+		auto *view = i < info.num_color_attachments ? info.color_attachments[i] : info.depth_stencil;
+		if (!view)
+			continue;
+		views[num_views++] = view->get_render_target_view(0);
+		width = Util::min_of(width, view->get_view_width());
+		height = Util::min_of(height, view->get_view_height());
+	}
+
+	// (the allocator is made before the device has its handles)
+	framebuffer_allocator.device = device;
+	framebuffer_allocator.table = table;
+	return *granite_framebuffer_allocator_create(&framebuffer_allocator, hash, rp.get_render_pass(), &rp,
+	                                             views, num_views, width, height);
 }
 
 unsigned Device::get_num_frame_contexts() const
