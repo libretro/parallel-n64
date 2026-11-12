@@ -289,7 +289,7 @@ int savestates_load_m64p(const unsigned char *data, size_t size)
    g_dev.si.regs[SI_STATUS_REG]         = GETDATA(curr, uint32_t);
 
    g_dev.vi.regs[VI_STATUS_REG] = GETDATA(curr, uint32_t);
-   g_dev.vi.regs[VI_ORIGIN_REG] = GETDATA(curr, uint32_t);
+   g_dev.vi.regs[VI_ORIGIN_REG] = GETDATA(curr, uint32_t) & UINT32_C(0xffffff);
    g_dev.vi.regs[VI_WIDTH_REG] = GETDATA(curr, uint32_t);
    g_dev.vi.regs[VI_V_INTR_REG] = GETDATA(curr, uint32_t);
    g_dev.vi.regs[VI_CURRENT_REG] = GETDATA(curr, uint32_t);

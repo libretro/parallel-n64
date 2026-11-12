@@ -193,6 +193,15 @@ void write_vi_regs(void* opaque, uint32_t address, uint32_t value, uint32_t mask
         masked_write(&vi->regs[VI_V_INTR_REG], value, mask);
         set_vi_vertical_interrupt(vi);
         return;
+
+    case VI_ORIGIN_REG:
+        /* ORIGIN is a 24-bit register: a game may write a KSEG0 or KSEG1
+         * address (0xa0100000) and reads back the RDRAM one. Keeping the
+         * upper bits left the renderers looking for a frame buffer at an
+         * address none of them draws to. */
+        masked_write(&vi->regs[VI_ORIGIN_REG], value, mask);
+        vi->regs[VI_ORIGIN_REG] &= UINT32_C(0xffffff);
+        return;
     }
 
     masked_write(&vi->regs[reg], value, mask);
