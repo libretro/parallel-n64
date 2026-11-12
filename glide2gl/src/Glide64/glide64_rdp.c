@@ -426,9 +426,18 @@ void glide64ProcessDList(void)
      Turbo3D();
   else
   {
+     /* A display list that never ends (one read with the wrong
+      * microcode's table, where its end is some other command, or one a
+      * game left broken) walks RDRAM round and round: stop once it has
+      * run as many commands as RDRAM holds. */
+     uint32_t commands_left = (BMASK + 1) >> 3;
+
      /* MAIN PROCESSING LOOP */
      do
      {
+        if (commands_left-- == 0)
+           break;
+
         /* Get the address of the next command */
         a        = __RSP.PC[__RSP.PCi] & BMASK;
 

@@ -29,6 +29,10 @@ cannot give its combiner and works into the texture instead (TEXEL0 part
 of the way to ENVIRONMENT). It did that on four bits a channel; the frame
 must hold what the combine gives at eight.
 
+The same cartridge with a microcode Glide64 does not know must still
+run to its end: Glide64 read such a list with another microcode's table,
+never met its end, and went round RDRAM for ever.
+
   gliden64_hle_dl.py --core parallel_n64_libretro.so --gl ./lrhost_gl [--vk ./lrhost_vk] [--glide64]
 """
 import argparse, os, struct, subprocess, sys, tempfile
@@ -129,7 +133,7 @@ def display_list(toggle, inter=False):
     return struct.pack(">%dI" % len(c), *c)
 
 
-def cartridge(path, toggle, name, inter=False):
+def cartridge(path, toggle, name, inter=False, known=True):
     t0, t1, t2, t3 = 8, 9, 10, 11
     lui = lambda rt, imm: mips(0x0f, 0, rt, imm)
     ori = lambda rt, rs, imm: mips(0x0d, rs, rt, imm)
@@ -154,7 +158,7 @@ def cartridge(path, toggle, name, inter=False):
                          for v in range(32) for u in range(32))
     # Glide64 tells the microcode by the sum of its first 3072 bytes as
     # words: this is Fast3D's (Super Mario 64)
-    area[UCODE] = struct.pack(">I", 0x006bd77f).ljust(0x1000, b"\0")
+    area[UCODE] = struct.pack(">I", 0x006bd77f if known else 0).ljust(0x1000, b"\0")
     # how GLideN64 tells Fast3D
     area[UDATA] = (b"\0" * 0x40 + b"RSP SW Version: 2.0D, 04-01-96" + b"\0").ljust(0x800, b"\0")
     payload = bytearray(UDATA + 0x800 - DL)
@@ -275,6 +279,20 @@ def main():
                 print("%-7s %-28s %s (%s)" % (api, what, "ok" if ok else "FAIL", detail))
                 failures += 0 if ok else 1
         if a.glide64:
+            # a microcode Glide64 does not know: it reads the list with
+            # another's table, where this list's end is no end
+            rom = os.path.join(tmp, "unknown.z64")
+            cartridge(rom, False, "GLIDEN64 HLE DL", known=False)
+            env = dict(os.environ, EGL_PLATFORM="surfaceless", LRHOST_SYSTEM_DIR=os.path.join(tmp, "sys"))
+            try:
+                p = subprocess.run([os.path.abspath(a.gl), a.core, rom, str(FRAMES)] + OPTIONS
+                                   + ["parallel-n64-gfxplugin=glide64"], env=env, stdout=subprocess.PIPE,
+                                   stderr=subprocess.STDOUT, timeout=60)
+                ok, detail = p.returncode == 0, "exit %d" % p.returncode
+            except subprocess.TimeoutExpired:
+                ok, detail = False, "still running after 60 s"
+            print("glide64 %-28s %s (%s)" % ("a list that never ends", "ok" if ok else "FAIL", detail))
+            failures += 0 if ok else 1
             rom = os.path.join(tmp, "inter.z64")
             cartridge(rom, False, "GLIDEN64 HLE DL", inter=True)
             ok, worst = modified_exactly(run(os.path.abspath(a.gl), a.core, rom, tmp, "opengl", "glide64"))
