@@ -31,6 +31,7 @@
 #include "sampler.hpp"
 #include "shader.hpp"
 #include "vulkan_common.hpp"
+#include "pipeline_compile.h"
 #include <string.h>
 
 namespace Vulkan
@@ -39,17 +40,17 @@ struct DebugChannelInterface;
 
 enum CommandBufferDirtyBits
 {
-	COMMAND_BUFFER_DIRTY_STATIC_STATE_BIT = 1 << 0,
-	COMMAND_BUFFER_DIRTY_PIPELINE_BIT = 1 << 1,
+	COMMAND_BUFFER_DIRTY_STATIC_STATE_BIT = GRANITE_COMMAND_BUFFER_DIRTY_STATIC_STATE_BIT,
+	COMMAND_BUFFER_DIRTY_PIPELINE_BIT = GRANITE_COMMAND_BUFFER_DIRTY_PIPELINE_BIT,
 
-	COMMAND_BUFFER_DIRTY_VIEWPORT_BIT = 1 << 2,
-	COMMAND_BUFFER_DIRTY_SCISSOR_BIT = 1 << 3,
-	COMMAND_BUFFER_DIRTY_DEPTH_BIAS_BIT = 1 << 4,
-	COMMAND_BUFFER_DIRTY_STENCIL_REFERENCE_BIT = 1 << 5,
+	COMMAND_BUFFER_DIRTY_VIEWPORT_BIT = GRANITE_COMMAND_BUFFER_DIRTY_VIEWPORT_BIT,
+	COMMAND_BUFFER_DIRTY_SCISSOR_BIT = GRANITE_COMMAND_BUFFER_DIRTY_SCISSOR_BIT,
+	COMMAND_BUFFER_DIRTY_DEPTH_BIAS_BIT = GRANITE_COMMAND_BUFFER_DIRTY_DEPTH_BIAS_BIT,
+	COMMAND_BUFFER_DIRTY_STENCIL_REFERENCE_BIT = GRANITE_COMMAND_BUFFER_DIRTY_STENCIL_REFERENCE_BIT,
 
-	COMMAND_BUFFER_DIRTY_STATIC_VERTEX_BIT = 1 << 6,
+	COMMAND_BUFFER_DIRTY_STATIC_VERTEX_BIT = GRANITE_COMMAND_BUFFER_DIRTY_STATIC_VERTEX_BIT,
 
-	COMMAND_BUFFER_DIRTY_PUSH_CONSTANTS_BIT = 1 << 7,
+	COMMAND_BUFFER_DIRTY_PUSH_CONSTANTS_BIT = GRANITE_COMMAND_BUFFER_DIRTY_PUSH_CONSTANTS_BIT,
 
 	COMMAND_BUFFER_DYNAMIC_BITS = COMMAND_BUFFER_DIRTY_VIEWPORT_BIT | COMMAND_BUFFER_DIRTY_SCISSOR_BIT |
 	                              COMMAND_BUFFER_DIRTY_DEPTH_BIAS_BIT |
@@ -57,68 +58,14 @@ enum CommandBufferDirtyBits
 };
 using CommandBufferDirtyFlags = uint32_t;
 
-#define COMPARE_OP_BITS 3
-#define STENCIL_OP_BITS 3
-#define BLEND_FACTOR_BITS 5
-#define BLEND_OP_BITS 3
-#define CULL_MODE_BITS 2
-#define FRONT_FACE_BITS 1
-union PipelineState {
-	struct
-	{
-		// Depth state.
-		unsigned depth_write : 1;
-		unsigned depth_test : 1;
-		unsigned blend_enable : 1;
-
-		unsigned cull_mode : CULL_MODE_BITS;
-		unsigned front_face : FRONT_FACE_BITS;
-		unsigned depth_bias_enable : 1;
-
-		unsigned depth_compare : COMPARE_OP_BITS;
-
-		unsigned stencil_test : 1;
-		unsigned stencil_front_fail : STENCIL_OP_BITS;
-		unsigned stencil_front_pass : STENCIL_OP_BITS;
-		unsigned stencil_front_depth_fail : STENCIL_OP_BITS;
-		unsigned stencil_front_compare_op : COMPARE_OP_BITS;
-		unsigned stencil_back_fail : STENCIL_OP_BITS;
-		unsigned stencil_back_pass : STENCIL_OP_BITS;
-		unsigned stencil_back_depth_fail : STENCIL_OP_BITS;
-		unsigned stencil_back_compare_op : COMPARE_OP_BITS;
-
-		unsigned alpha_to_coverage : 1;
-		unsigned alpha_to_one : 1;
-		unsigned sample_shading : 1;
-
-		unsigned src_color_blend : BLEND_FACTOR_BITS;
-		unsigned dst_color_blend : BLEND_FACTOR_BITS;
-		unsigned color_blend_op : BLEND_OP_BITS;
-		unsigned src_alpha_blend : BLEND_FACTOR_BITS;
-		unsigned dst_alpha_blend : BLEND_FACTOR_BITS;
-		unsigned alpha_blend_op : BLEND_OP_BITS;
-		unsigned primitive_restart : 1;
-		unsigned topology : 4;
-
-		unsigned wireframe : 1;
-		unsigned subgroup_control_size : 1;
-		unsigned subgroup_full_group : 1;
-		unsigned subgroup_minimum_size_log2 : 3;
-		unsigned subgroup_maximum_size_log2 : 3;
-		unsigned conservative_raster : 1;
-
-		uint32_t write_mask;
-	} state;
-	uint32_t words[4];
-};
-
-struct PotentialState
-{
-	float blend_constants[4];
-	uint32_t spec_constants[VULKAN_NUM_TOTAL_SPEC_CONSTANTS];
-	uint8_t spec_constant_mask;
-	uint8_t internal_spec_constant_mask;
-};
+// What a pipeline is compiled from is C (pipeline_compile.h).
+static_assert(VULKAN_NUM_VERTEX_ATTRIBS == GRANITE_NUM_VERTEX_ATTRIBS &&
+              VULKAN_NUM_VERTEX_BUFFERS == GRANITE_NUM_VERTEX_BUFFERS &&
+              VULKAN_NUM_USER_SPEC_CONSTANTS == GRANITE_NUM_USER_SPEC_CONSTANTS &&
+              VULKAN_NUM_TOTAL_SPEC_CONSTANTS == GRANITE_NUM_TOTAL_SPEC_CONSTANTS,
+              "The C pipeline state has other limits.");
+using PipelineState = granite_pipeline_state_t;
+using PotentialState = granite_potential_state_t;
 
 struct DynamicState
 {
@@ -132,12 +79,7 @@ struct DynamicState
 	uint8_t back_reference = 0;
 };
 
-struct VertexAttribState
-{
-	uint32_t binding;
-	VkFormat format;
-	uint32_t offset;
-};
+using VertexAttribState = granite_vertex_attrib_state_t;
 
 struct IndexState
 {
@@ -178,20 +120,10 @@ struct CommandBufferSavedState
 	DynamicState dynamic_state;
 };
 
-struct DeferredPipelineCompile
+struct DeferredPipelineCompile : granite_pipeline_compile_t
 {
 	Program *program;
 	const RenderPass *compatible_render_pass;
-	PipelineState static_state;
-	PotentialState potential_static_state;
-	VertexAttribState attribs[VULKAN_NUM_VERTEX_ATTRIBS];
-	VkDeviceSize strides[VULKAN_NUM_VERTEX_BUFFERS];
-	VkVertexInputRate input_rates[VULKAN_NUM_VERTEX_BUFFERS];
-
-	unsigned subpass_index;
-	Util::Hash hash;
-	VkPipelineCache cache;
-	uint32_t subgroup_size_tag;
 };
 
 class CommandBuffer;

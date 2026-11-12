@@ -84,6 +84,11 @@ public:
 		return impl.render_pass;
 	}
 
+	const granite_render_pass_t &get_impl() const
+	{
+		return impl;
+	}
+
 	// What the pass is made from, without its images.
 	const pipeline_record_pass_t &get_signature() const
 	{

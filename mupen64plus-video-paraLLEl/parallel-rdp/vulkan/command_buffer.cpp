@@ -45,17 +45,6 @@ static VkOffset3D add_offset(const VkOffset3D &a, const VkOffset3D &b)
 	return o;
 }
 
-static bool needs_blend_constant(VkBlendFactor factor)
-{
-	return factor == VK_BLEND_FACTOR_CONSTANT_COLOR || factor == VK_BLEND_FACTOR_CONSTANT_ALPHA;
-}
-
-static inline uint32_t get_combined_spec_constant_mask(const DeferredPipelineCompile &compile)
-{
-	return compile.potential_static_state.spec_constant_mask |
-	       (compile.potential_static_state.internal_spec_constant_mask << VULKAN_NUM_USER_SPEC_CONSTANTS);
-}
-
 CommandBuffer::CommandBuffer(Device *device_, VkCommandBuffer cmd_, VkPipelineCache cache, Type type_)
     : device(device_)
     , table(device_->get_device_table())
@@ -669,114 +658,73 @@ static UTIL_NOINLINE void log_compile_time(const char *tag, Hash hash,
 	}
 }
 
+static granite_pipeline_device_t pipeline_device(Device *device)
+{
+	auto &features = device->get_device_features();
+	granite_pipeline_device_t dev;
+	dev.device = device->get_device();
+	dev.table = &device->get_device_table();
+	dev.cache_control = !device->get_workarounds().broken_pipeline_cache_control &&
+	                    features.pipeline_creation_cache_control_features.pipelineCreationCacheControl;
+	dev.conservative_rasterization = features.supports_conservative_rasterization;
+	dev.min_subgroup_size = features.subgroup_size_control_properties.minSubgroupSize;
+	dev.max_subgroup_size = features.subgroup_size_control_properties.maxSubgroupSize;
+	return dev;
+}
+
+static granite_pipeline_program_t pipeline_program(const Program &program)
+{
+	granite_pipeline_program_t p;
+	p.hash = program.get_hash();
+	p.layout = program.get_pipeline_layout()->get_layout();
+	p.resource_layout = &program.get_pipeline_layout()->get_resource_layout();
+	for (unsigned i = 0; i < GRANITE_SHADER_STAGE_COUNT; i++)
+	{
+		auto *shader = program.get_shader(static_cast<ShaderStage>(i));
+		p.modules[i] = shader ? shader->get_module() : VK_NULL_HANDLE;
+	}
+	return p;
+}
+
+// Keeps the pipeline under its hash in the program. If another thread got
+// there first, or there is no memory to keep it, this one goes.
+static Pipeline keep_pipeline(Device *device, const DeferredPipelineCompile &compile, VkPipeline pipeline,
+                              uint32_t dynamic_mask, uint32_t kind)
+{
+	if (pipeline == VK_NULL_HANDLE)
+		return {};
+
+	auto returned_pipeline = compile.program->add_pipeline(compile.hash, { pipeline, dynamic_mask });
+	if (returned_pipeline.pipeline != pipeline)
+		device->get_device_table().vkDestroyPipeline(device->get_device(), pipeline, nullptr);
+	else
+		device->record_pipeline(compile, kind);
+	return returned_pipeline;
+}
+
 Pipeline CommandBuffer::build_compute_pipeline(Device *device, const DeferredPipelineCompile &compile,
                                                CompileMode mode)
 {
-	// If we don't have pipeline creation cache control feature,
-	// we must assume compilation can be synchronous.
-	if (mode == CompileMode::FailOnCompileRequired &&
-	    (device->get_workarounds().broken_pipeline_cache_control ||
-	     !device->get_device_features().pipeline_creation_cache_control_features.pipelineCreationCacheControl))
+	if (compile.static_state.state.subgroup_control_size &&
+	    !device->supports_subgroup_size_log2(compile.static_state.state.subgroup_full_group,
+	                                         compile.static_state.state.subgroup_minimum_size_log2,
+	                                         compile.static_state.state.subgroup_maximum_size_log2))
 	{
+		LOGE("Subgroup size configuration not supported.\n");
 		return {};
 	}
 
-	auto &shader = *compile.program->get_shader(ShaderStage::Compute);
-	VkComputePipelineCreateInfo info = { VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO };
-	info.layout = compile.program->get_pipeline_layout()->get_layout();
-	info.stage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-	info.stage.module = shader.get_module();
-	info.stage.pName = "main";
-	info.stage.stage = VK_SHADER_STAGE_COMPUTE_BIT;
-
-	VkSpecializationInfo spec_info = {};
-	VkSpecializationMapEntry spec_entries[VULKAN_NUM_TOTAL_SPEC_CONSTANTS];
-	auto mask = compile.program->get_pipeline_layout()->get_resource_layout().combined_spec_constant_mask &
-	            get_combined_spec_constant_mask(compile);
-
-	uint32_t spec_constants[VULKAN_NUM_TOTAL_SPEC_CONSTANTS];
-
-	if (mask)
-	{
-		info.stage.pSpecializationInfo = &spec_info;
-		spec_info.pData = spec_constants;
-		spec_info.pMapEntries = spec_entries;
-
-		for (uint32_t bit_bits = mask, bit; Util::next_bit(bit_bits, bit);)
-		{
-			auto &entry = spec_entries[spec_info.mapEntryCount];
-			entry.offset = sizeof(uint32_t) * spec_info.mapEntryCount;
-			entry.size = sizeof(uint32_t);
-			entry.constantID = bit;
-
-			spec_constants[spec_info.mapEntryCount] = compile.potential_static_state.spec_constants[bit];
-			spec_info.mapEntryCount++;
-		}
-		spec_info.dataSize = spec_info.mapEntryCount * sizeof(uint32_t);
-	}
-
-	VkPipelineShaderStageRequiredSubgroupSizeCreateInfoEXT subgroup_size_info = {
-		VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_REQUIRED_SUBGROUP_SIZE_CREATE_INFO_EXT
-	};
-
-	if (compile.static_state.state.subgroup_control_size)
-	{
-		if (!device->supports_subgroup_size_log2(compile.static_state.state.subgroup_full_group,
-		                                         compile.static_state.state.subgroup_minimum_size_log2,
-		                                         compile.static_state.state.subgroup_maximum_size_log2))
-		{
-			LOGE("Subgroup size configuration not supported.\n");
-			return {};
-		}
-		auto &features = device->get_device_features();
-
-		if (compile.static_state.state.subgroup_full_group)
-			info.stage.flags |= VK_PIPELINE_SHADER_STAGE_CREATE_REQUIRE_FULL_SUBGROUPS_BIT_EXT;
-
-		uint32_t min_subgroups = 1u << compile.static_state.state.subgroup_minimum_size_log2;
-		uint32_t max_subgroups = 1u << compile.static_state.state.subgroup_maximum_size_log2;
-		if (min_subgroups <= features.subgroup_size_control_properties.minSubgroupSize &&
-		    max_subgroups >= features.subgroup_size_control_properties.maxSubgroupSize)
-		{
-			info.stage.flags |= VK_PIPELINE_SHADER_STAGE_CREATE_ALLOW_VARYING_SUBGROUP_SIZE_BIT_EXT;
-		}
-		else
-		{
-			// Pick a fixed subgroup size. Prefer smallest subgroup size.
-			if (min_subgroups < features.subgroup_size_control_properties.minSubgroupSize)
-				subgroup_size_info.requiredSubgroupSize = features.subgroup_size_control_properties.minSubgroupSize;
-			else
-				subgroup_size_info.requiredSubgroupSize = min_subgroups;
-
-			info.stage.pNext = &subgroup_size_info;
-		}
-	}
-
-	VkPipeline compute_pipeline = VK_NULL_HANDLE;
-
-	auto &table = device->get_device_table();
-
-	if (mode == CompileMode::FailOnCompileRequired)
-		info.flags |= VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT_EXT;
+	auto dev = pipeline_device(device);
+	auto program = pipeline_program(*compile.program);
+	VkResult vr = VK_SUCCESS;
 
 	auto start_ts = granite_time_nsecs();
-	VkResult vr = table.vkCreateComputePipelines(device->get_device(), compile.cache, 1, &info, nullptr, &compute_pipeline);
+	VkPipeline pipeline = granite_pipeline_build_compute(&dev, &compile, &program,
+	                                                     mode == CompileMode::FailOnCompileRequired, &vr);
 	auto end_ts = granite_time_nsecs();
 	log_compile_time("compute", compile.hash, end_ts - start_ts, vr, mode);
 
-	if (vr != VK_SUCCESS || compute_pipeline == VK_NULL_HANDLE)
-	{
-		if (vr < 0)
-			LOGE("Failed to create compute pipeline!\n");
-		return {};
-	}
-
-	auto returned_pipeline = compile.program->add_pipeline(compile.hash, { compute_pipeline, 0 });
-	if (returned_pipeline.pipeline != compute_pipeline)
-		table.vkDestroyPipeline(device->get_device(), compute_pipeline, nullptr);
-	else
-		device->record_pipeline(compile, PIPELINE_RECORD_COMPUTE);
-	return returned_pipeline;
+	return keep_pipeline(device, compile, pipeline, 0, PIPELINE_RECORD_COMPUTE);
 }
 
 void CommandBuffer::extract_pipeline_state(DeferredPipelineCompile &compile) const
@@ -801,243 +749,20 @@ void CommandBuffer::extract_pipeline_state(DeferredPipelineCompile &compile) con
 Pipeline CommandBuffer::build_graphics_pipeline(Device *device, const DeferredPipelineCompile &compile,
                                                 CompileMode mode)
 {
-	// If we don't have pipeline creation cache control feature,
-	// we must assume compilation can be synchronous.
-	if (mode == CompileMode::FailOnCompileRequired &&
-	    (device->get_workarounds().broken_pipeline_cache_control ||
-	     !device->get_device_features().pipeline_creation_cache_control_features.pipelineCreationCacheControl))
-	{
-		return {};
-	}
-
-	// Viewport state
-	VkPipelineViewportStateCreateInfo vp = { VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO };
-	vp.viewportCount = 1;
-	vp.scissorCount = 1;
-
-	// Dynamic state
-	VkPipelineDynamicStateCreateInfo dyn = { VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO };
-	dyn.dynamicStateCount = 2;
-	VkDynamicState states[7] = {
-		VK_DYNAMIC_STATE_SCISSOR, VK_DYNAMIC_STATE_VIEWPORT,
-	};
-	dyn.pDynamicStates = states;
-
-	uint32_t dynamic_mask = COMMAND_BUFFER_DIRTY_VIEWPORT_BIT | COMMAND_BUFFER_DIRTY_SCISSOR_BIT;
-
-	if (compile.static_state.state.depth_bias_enable)
-	{
-		states[dyn.dynamicStateCount++] = VK_DYNAMIC_STATE_DEPTH_BIAS;
-		dynamic_mask |= COMMAND_BUFFER_DIRTY_DEPTH_BIAS_BIT;
-	}
-
-	if (compile.static_state.state.stencil_test)
-	{
-		states[dyn.dynamicStateCount++] = VK_DYNAMIC_STATE_STENCIL_COMPARE_MASK;
-		states[dyn.dynamicStateCount++] = VK_DYNAMIC_STATE_STENCIL_REFERENCE;
-		states[dyn.dynamicStateCount++] = VK_DYNAMIC_STATE_STENCIL_WRITE_MASK;
-		dynamic_mask |= COMMAND_BUFFER_DIRTY_STENCIL_REFERENCE_BIT;
-	}
-
-	// Blend state
-	VkPipelineColorBlendAttachmentState blend_attachments[VULKAN_NUM_ATTACHMENTS];
-	VkPipelineColorBlendStateCreateInfo blend = { VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO };
-	blend.attachmentCount = compile.compatible_render_pass->get_num_color_attachments();
-	blend.pAttachments = blend_attachments;
-	for (unsigned i = 0; i < blend.attachmentCount; i++)
-	{
-		auto &att = blend_attachments[i];
-		att = {};
-
-		if (compile.program->get_pipeline_layout()->get_resource_layout().render_target_mask & (1u << i))
-		{
-			att.colorWriteMask = (compile.static_state.state.write_mask >> (4 * i)) & 0xf;
-			att.blendEnable = compile.static_state.state.blend_enable;
-			if (att.blendEnable)
-			{
-				att.alphaBlendOp = static_cast<VkBlendOp>(compile.static_state.state.alpha_blend_op);
-				att.colorBlendOp = static_cast<VkBlendOp>(compile.static_state.state.color_blend_op);
-				att.dstAlphaBlendFactor = static_cast<VkBlendFactor>(compile.static_state.state.dst_alpha_blend);
-				att.srcAlphaBlendFactor = static_cast<VkBlendFactor>(compile.static_state.state.src_alpha_blend);
-				att.dstColorBlendFactor = static_cast<VkBlendFactor>(compile.static_state.state.dst_color_blend);
-				att.srcColorBlendFactor = static_cast<VkBlendFactor>(compile.static_state.state.src_color_blend);
-			}
-		}
-	}
-	memcpy(blend.blendConstants, compile.potential_static_state.blend_constants, sizeof(blend.blendConstants));
-
-	// Depth state
-	VkPipelineDepthStencilStateCreateInfo ds = { VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO };
-	ds.stencilTestEnable = compile.compatible_render_pass->has_stencil() && compile.static_state.state.stencil_test;
-	ds.depthTestEnable = compile.compatible_render_pass->has_depth() && compile.static_state.state.depth_test;
-	ds.depthWriteEnable = compile.compatible_render_pass->has_depth() && compile.static_state.state.depth_write;
-
-	if (ds.depthTestEnable)
-		ds.depthCompareOp = static_cast<VkCompareOp>(compile.static_state.state.depth_compare);
-
-	if (ds.stencilTestEnable)
-	{
-		ds.front.compareOp = static_cast<VkCompareOp>(compile.static_state.state.stencil_front_compare_op);
-		ds.front.passOp = static_cast<VkStencilOp>(compile.static_state.state.stencil_front_pass);
-		ds.front.failOp = static_cast<VkStencilOp>(compile.static_state.state.stencil_front_fail);
-		ds.front.depthFailOp = static_cast<VkStencilOp>(compile.static_state.state.stencil_front_depth_fail);
-		ds.back.compareOp = static_cast<VkCompareOp>(compile.static_state.state.stencil_back_compare_op);
-		ds.back.passOp = static_cast<VkStencilOp>(compile.static_state.state.stencil_back_pass);
-		ds.back.failOp = static_cast<VkStencilOp>(compile.static_state.state.stencil_back_fail);
-		ds.back.depthFailOp = static_cast<VkStencilOp>(compile.static_state.state.stencil_back_depth_fail);
-	}
-
-	// Vertex input
-	VkPipelineVertexInputStateCreateInfo vi = { VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO };
-	VkVertexInputAttributeDescription vi_attribs[VULKAN_NUM_VERTEX_ATTRIBS];
-	vi.pVertexAttributeDescriptions = vi_attribs;
-	uint32_t attr_mask = compile.program->get_pipeline_layout()->get_resource_layout().attribute_mask;
-	uint32_t binding_mask = 0;
-	for (uint32_t bit_bits = attr_mask, bit; Util::next_bit(bit_bits, bit);)
-	{
-		auto &attr = vi_attribs[vi.vertexAttributeDescriptionCount++];
-		attr.location = bit;
-		attr.binding = compile.attribs[bit].binding;
-		attr.format = compile.attribs[bit].format;
-		attr.offset = compile.attribs[bit].offset;
-		binding_mask |= 1u << attr.binding;
-	}
-
-	VkVertexInputBindingDescription vi_bindings[VULKAN_NUM_VERTEX_BUFFERS];
-	vi.pVertexBindingDescriptions = vi_bindings;
-	for (uint32_t bit_bits = binding_mask, bit; Util::next_bit(bit_bits, bit);)
-	{
-		auto &bind = vi_bindings[vi.vertexBindingDescriptionCount++];
-		bind.binding = bit;
-		bind.inputRate = compile.input_rates[bit];
-		bind.stride = compile.strides[bit];
-	}
-
-	// Input assembly
-	VkPipelineInputAssemblyStateCreateInfo ia = { VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO };
-	ia.primitiveRestartEnable = compile.static_state.state.primitive_restart;
-	ia.topology = static_cast<VkPrimitiveTopology>(compile.static_state.state.topology);
-
-	// Multisample
-	VkPipelineMultisampleStateCreateInfo ms = { VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO };
-	ms.rasterizationSamples = static_cast<VkSampleCountFlagBits>(compile.compatible_render_pass->get_sample_count());
-
-	if (compile.compatible_render_pass->get_sample_count() > 1)
-	{
-		ms.alphaToCoverageEnable = compile.static_state.state.alpha_to_coverage;
-		ms.alphaToOneEnable = compile.static_state.state.alpha_to_one;
-		ms.sampleShadingEnable = compile.static_state.state.sample_shading;
-		ms.minSampleShading = 1.0f;
-	}
-
-	// Raster
-	VkPipelineRasterizationStateCreateInfo raster = { VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO };
-	raster.cullMode = static_cast<VkCullModeFlags>(compile.static_state.state.cull_mode);
-	raster.frontFace = static_cast<VkFrontFace>(compile.static_state.state.front_face);
-	raster.lineWidth = 1.0f;
-	raster.polygonMode = compile.static_state.state.wireframe ? VK_POLYGON_MODE_LINE : VK_POLYGON_MODE_FILL;
-	raster.depthBiasEnable = compile.static_state.state.depth_bias_enable != 0;
-
-	VkPipelineRasterizationConservativeStateCreateInfoEXT conservative_raster = {
-		VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_CONSERVATIVE_STATE_CREATE_INFO_EXT
-	};
-	if (compile.static_state.state.conservative_raster)
-	{
-		if (device->get_device_features().supports_conservative_rasterization)
-		{
-			raster.pNext = &conservative_raster;
-			conservative_raster.conservativeRasterizationMode = VK_CONSERVATIVE_RASTERIZATION_MODE_OVERESTIMATE_EXT;
-		}
-		else
-		{
-			LOGE("Conservative rasterization is not supported on this device.\n");
-			return {};
-		}
-	}
-
-	// Stages
-	VkPipelineShaderStageCreateInfo stages[static_cast<unsigned>(ShaderStage::Count)];
-	unsigned num_stages = 0;
-
-	VkSpecializationInfo spec_info[ecast(ShaderStage::Count)] = {};
-	VkSpecializationMapEntry spec_entries[ecast(ShaderStage::Count)][VULKAN_NUM_TOTAL_SPEC_CONSTANTS];
-	uint32_t spec_constants[static_cast<unsigned>(ShaderStage::Count)][VULKAN_NUM_TOTAL_SPEC_CONSTANTS];
-
-	for (unsigned i = 0; i < static_cast<unsigned>(ShaderStage::Count); i++)
-	{
-		auto stage = static_cast<ShaderStage>(i);
-		if (compile.program->get_shader(stage))
-		{
-			auto &s = stages[num_stages++];
-			s = { VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO };
-			s.module = compile.program->get_shader(stage)->get_module();
-			s.pName = "main";
-			s.stage = static_cast<VkShaderStageFlagBits>(1u << i);
-
-			auto mask = compile.program->get_pipeline_layout()->get_resource_layout().spec_constant_mask[i] &
-			            get_combined_spec_constant_mask(compile);
-
-			if (mask)
-			{
-				s.pSpecializationInfo = &spec_info[i];
-				spec_info[i].pData = spec_constants[i];
-				spec_info[i].pMapEntries = spec_entries[i];
-
-				for (uint32_t bit_bits = mask, bit; Util::next_bit(bit_bits, bit);)
-				{
-					auto &entry = spec_entries[i][spec_info[i].mapEntryCount];
-					entry.offset = sizeof(uint32_t) * spec_info[i].mapEntryCount;
-					entry.size = sizeof(uint32_t);
-					entry.constantID = bit;
-					spec_constants[i][spec_info[i].mapEntryCount] = compile.potential_static_state.spec_constants[bit];
-					spec_info[i].mapEntryCount++;
-				}
-				spec_info[i].dataSize = spec_info[i].mapEntryCount * sizeof(uint32_t);
-			}
-		}
-	}
-
-	VkGraphicsPipelineCreateInfo pipe = { VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO };
-	pipe.layout = compile.program->get_pipeline_layout()->get_layout();
-	pipe.renderPass = compile.compatible_render_pass->get_render_pass();
-	pipe.subpass = compile.subpass_index;
-
-	pipe.pViewportState = &vp;
-	pipe.pDynamicState = &dyn;
-	pipe.pColorBlendState = &blend;
-	pipe.pDepthStencilState = &ds;
-	pipe.pVertexInputState = &vi;
-	pipe.pInputAssemblyState = &ia;
-	pipe.pMultisampleState = &ms;
-	pipe.pRasterizationState = &raster;
-	pipe.pStages = stages;
-	pipe.stageCount = num_stages;
-
-	VkPipeline pipeline = VK_NULL_HANDLE;
-
-	auto &table = device->get_device_table();
-
-	if (mode == CompileMode::FailOnCompileRequired)
-		pipe.flags |= VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT_EXT;
+	auto dev = pipeline_device(device);
+	auto program = pipeline_program(*compile.program);
+	uint32_t dynamic_mask = 0;
+	VkResult vr = VK_SUCCESS;
 
 	auto start_ts = granite_time_nsecs();
-	VkResult res = table.vkCreateGraphicsPipelines(device->get_device(), compile.cache, 1, &pipe, nullptr, &pipeline);
+	VkPipeline pipeline = granite_pipeline_build_graphics(&dev, &compile, &program,
+	                                                      &compile.compatible_render_pass->get_impl(),
+	                                                      mode == CompileMode::FailOnCompileRequired,
+	                                                      &dynamic_mask, &vr);
 	auto end_ts = granite_time_nsecs();
-	log_compile_time("graphics", compile.hash, end_ts - start_ts, res, mode);
+	log_compile_time("graphics", compile.hash, end_ts - start_ts, vr, mode);
 
-	if (res != VK_SUCCESS || pipeline == VK_NULL_HANDLE)
-	{
-		if (res < 0)
-			LOGE("Failed to create graphics pipeline!\n");
-		return {};
-	}
-
-	auto returned_pipeline = compile.program->add_pipeline(compile.hash, { pipeline, dynamic_mask });
-	if (returned_pipeline.pipeline != pipeline)
-		table.vkDestroyPipeline(device->get_device(), pipeline, nullptr);
-	else
-		device->record_pipeline(compile, PIPELINE_RECORD_GRAPHICS);
-	return returned_pipeline;
+	return keep_pipeline(device, compile, pipeline, dynamic_mask, PIPELINE_RECORD_GRAPHICS);
 }
 
 bool CommandBuffer::flush_compute_pipeline(bool synchronous)
@@ -1055,81 +780,15 @@ bool CommandBuffer::flush_compute_pipeline(bool synchronous)
 
 void CommandBuffer::update_hash_compute_pipeline(DeferredPipelineCompile &compile)
 {
-	Hasher h;
-	h.u64(compile.program->get_hash());
-
-	// Spec constants.
-	auto &layout = compile.program->get_pipeline_layout()->get_resource_layout();
-	uint32_t combined_spec_constant = layout.combined_spec_constant_mask;
-	combined_spec_constant &= get_combined_spec_constant_mask(compile);
-	h.u32(combined_spec_constant);
-	for (uint32_t bit_bits = combined_spec_constant, bit; Util::next_bit(bit_bits, bit);)
-	{
-		h.u32(compile.potential_static_state.spec_constants[bit]);
-	}
-
-	if (compile.static_state.state.subgroup_control_size)
-	{
-		h.s32(1);
-		h.u32(compile.static_state.state.subgroup_minimum_size_log2);
-		h.u32(compile.static_state.state.subgroup_maximum_size_log2);
-		h.u32(compile.static_state.state.subgroup_full_group);
-		// Required for Fossilize since we don't know exactly how to lower these requirements to a PSO
-		// without knowing some device state.
-		h.u32(compile.subgroup_size_tag);
-	}
-	else
-		h.s32(0);
-
-	compile.hash = h.get();
+	auto program = pipeline_program(*compile.program);
+	compile.hash = granite_pipeline_hash_compute(&compile, &program);
 }
 
 void CommandBuffer::update_hash_graphics_pipeline(DeferredPipelineCompile &compile, uint32_t &active_vbos)
 {
-	Hasher h;
-	active_vbos = 0;
-	auto &layout = compile.program->get_pipeline_layout()->get_resource_layout();
-	for (uint32_t bit_bits = layout.attribute_mask, bit; Util::next_bit(bit_bits, bit);)
-	{
-		h.u32(bit);
-		active_vbos |= 1u << compile.attribs[bit].binding;
-		h.u32(compile.attribs[bit].binding);
-		h.u32(compile.attribs[bit].format);
-		h.u32(compile.attribs[bit].offset);
-	}
-
-	for (uint32_t bit_bits = active_vbos, bit; Util::next_bit(bit_bits, bit);)
-	{
-		h.u32(compile.input_rates[bit]);
-		h.u32(compile.strides[bit]);
-	}
-
-	h.u64(compile.compatible_render_pass->get_hash());
-	h.u32(compile.subpass_index);
-	h.u64(compile.program->get_hash());
-	h.data(compile.static_state.words, sizeof(compile.static_state.words));
-
-	if (compile.static_state.state.blend_enable)
-	{
-		bool b0 = needs_blend_constant(static_cast<VkBlendFactor>(compile.static_state.state.src_color_blend));
-		bool b1 = needs_blend_constant(static_cast<VkBlendFactor>(compile.static_state.state.src_alpha_blend));
-		bool b2 = needs_blend_constant(static_cast<VkBlendFactor>(compile.static_state.state.dst_color_blend));
-		bool b3 = needs_blend_constant(static_cast<VkBlendFactor>(compile.static_state.state.dst_alpha_blend));
-		if (b0 || b1 || b2 || b3)
-			h.data(reinterpret_cast<const uint32_t *>(compile.potential_static_state.blend_constants),
-			       sizeof(compile.potential_static_state.blend_constants));
-	}
-
-	// Spec constants.
-	uint32_t combined_spec_constant = layout.combined_spec_constant_mask;
-	combined_spec_constant &= get_combined_spec_constant_mask(compile);
-	h.u32(combined_spec_constant);
-	for (uint32_t bit_bits = combined_spec_constant, bit; Util::next_bit(bit_bits, bit);)
-	{
-		h.u32(compile.potential_static_state.spec_constants[bit]);
-	}
-
-	compile.hash = h.get();
+	auto program = pipeline_program(*compile.program);
+	compile.hash = granite_pipeline_hash_graphics(&compile, &program, compile.compatible_render_pass->get_hash(),
+	                                              &active_vbos);
 }
 
 bool CommandBuffer::flush_graphics_pipeline(bool synchronous)
