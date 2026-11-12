@@ -102,4 +102,4 @@ jobs:
           env ${{ matrix.sanitizer_env }} python3 tools/ci/gliden64_vulkan.py --core ./parallel_n64_libretro.so --gl ./lrhost_gl --vk ./lrhost_vk ${{ matrix.vulkan_scope }}
 
       - name: GLideN64 display lists through the HLE RSP
-        run: env ${{ matrix.sanitizer_env }} python3 tools/ci/gliden64_hle_dl.py --core ./parallel_n64_libretro.so --gl ./lrhost_gl --vk ./lrhost_vk
+        run: env ${{ matrix.sanitizer_env }} python3 tools/ci/gliden64_hle_dl.py --core ./parallel_n64_libretro.so --gl ./lrhost_gl --vk ./lrhost_vk --glide64

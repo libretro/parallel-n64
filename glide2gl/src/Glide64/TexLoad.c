@@ -141,49 +141,36 @@ static INLINE void load4bIAPal(uint8_t *src, uint8_t *dst, int wid_64, int heigh
     }
 }
 
+/* IA 3+1 as alpha-intensity 8+8: the three bits of intensity repeated
+ * to eight, as the RDP makes them, the alpha bit 0 or 255. Four bits a
+ * channel (alpha-intensity 4+4) cannot hold the intensity evenly. */
 static INLINE void load4bIA(uint8_t *src, uint8_t *dst, int wid_64, int height, int line, int ext)
 {
    unsigned odd = 0;
-   uint32_t *src32 = (uint32_t*)src;
-   uint32_t *dst32 = (uint32_t*)dst;
+   const uint32_t *src32 = (const uint32_t*)src;
+   uint16_t *dst16       = (uint16_t*)dst;
 
    while (height--)
    {
       int count = wid_64;
       while (count--)
       {
-         uint32_t v1, v2, v3, v4, v5, v6, v7, v8, v9, v10;
-
-#define do_load4biA \
-         v2 = v1;\
-         v3 = (8 * (v1 & 0x100000)) | (4 * (v1 & 0x100000)) | (2 * (v1 & 0x100000)) | (v1 & 0x100000) | ((((v1 >> 16) & 0xE00) >> 3) & 0x100) | ((v1 >> 16) & 0xE00) | (8 * ((v1 >> 12) & 0x1000)) | (4 * ((v1 >> 12) & 0x1000)) | (2 * ((v1 >> 12) & 0x1000)) | ((v1 >> 12) & 0x1000) | ((((v1 >> 28) & 0xE) >> 3)) | ((v1 >> 28) & 0xE) | (8 * ((v1 >> 24) & 0x10)) | (4 * ((v1 >> 24) & 0x10)) | (2 * ((v1 >> 24) & 0x10)) | ((v1 >> 24) & 0x10);\
-         v1 = (v1 >> 4) & 0xE0000u;\
-         v4 = v1 | v3;\
-         v1 >>= 3;\
-         *dst32++ = ((((v2 << 8) & 0xE000000) >> 3) & 0x1000000) | ((v2 << 8) & 0xE000000) | (8 * ((v2 << 12) & 0x10000000)) | (4 * ((v2 << 12) & 0x10000000)) | (2 * ((v2 << 12) & 0x10000000)) | ((v2 << 12) & 0x10000000) | (v1 & 0x10000) | v4;\
-         \
-         v5 = 16 * (uint16_t)v2 & 0x1000;\
-         v6 = (((v2 & 0xE00) >> 3) & 0x100) | (v2 & 0xE00) | (8 * v5) | (4 * v5) | (2 * v5) | (v5) | ((((v2 >> 12) & 0xE) >> 3)) | ((v2 >> 12) & 0xE) | (8 * ((v2 >> 8) & 0x10)) | (4 * ((v2 >> 8) & 0x10)) | (2 * ((v2 >> 8) & 0x10)) | ((v2 >> 8) & 0x10);\
-         v7 = v2 << 16;\
-         v8 = (8 * (v7 & 0x100000)) | (4 * (v7 & 0x100000)) | (2 * (v7 & 0x100000)) | (v7 & 0x100000) | v6;\
-         v9 = (v2 << 12) & 0xE0000u;\
-         v10 = v9 | v8;\
-         v9 >>= 3;\
-         *dst32++ = ((((v2 << 24) & 0xE000000) >> 3) & 0x1000000) | ((v2 << 24) & 0xE000000) | (8 * ((v2 << 28) & 0x10000000)) | (4 * ((v2 << 28) & 0x10000000)) | (2 * ((v2 << 28) & 0x10000000)) | ((v2 << 28) & 0x10000000) | (v9 & 0x10000) | v10
-
-         v1 = m64p_swap32(src32[odd]);
-         do_load4biA;
-
-         v1 = m64p_swap32(src32[!odd]);
-
-         do_load4biA;
-#undef do_load4biA
-
+         int half, k;
+         for (half = 0; half < 2; half++)
+         {
+            const uint32_t w = m64p_swap32(src32[half ? !odd : odd]);
+            for (k = 28; k >= 0; k -= 4)
+            {
+               const uint32_t n = (w >> k) & 0xF;
+               const uint32_t i = n >> 1;
+               *dst16++ = (uint16_t)(((n & 1) ? 0xFF00u : 0u) | (i << 5) | (i << 2) | (i >> 1));
+            }
+         }
          src32 += 2;
       }
 
-      src32 = (uint32_t*)((char*)src32 + line);
-      dst32 = (uint32_t*)((char*)dst32 + ext);
+      src32 = (const uint32_t*)((const char*)src32 + line);
+      dst16 = (uint16_t*)((char*)dst16 + ext);
       odd ^= 1;
    }
 }
@@ -489,9 +476,9 @@ static uint32_t Load4bIA(uintptr_t dst, uintptr_t src, int wid_64, int height, i
 
     if (wid_64 < 1) wid_64 = 1;
     if (height < 1) height = 1;
-    ext = (real_width - (wid_64 << 4));
+    ext = (real_width - (wid_64 << 4)) << 1;
     load4bIA ((uint8_t *)src,(uint8_t *)dst, wid_64, height, line, ext);
-    return /*(0 << 16) | */GR_TEXFMT_ALPHA_INTENSITY_44;
+    return (1 << 16) | GR_TEXFMT_ALPHA_INTENSITY_88;
 }
 
 //****************************************************************
@@ -678,8 +665,6 @@ static uint32_t Load16bYUV(uintptr_t dst, uintptr_t src,
 static uint32_t Load32bRGBA(uintptr_t dst, uintptr_t src, int wid_64, int height, int line, int real_width, int tile)
 {
     uint32_t s, t;
-    int id;
-    uint32_t mod;
     const uint32_t tbase = (src -(uintptr_t)g_gdp.tmem) >> 1;
     const uint32_t width = MAX(1, wid_64 << 1);
     const int ext        = real_width - width;
@@ -706,28 +691,8 @@ static uint32_t Load32bRGBA(uintptr_t dst, uintptr_t src, int wid_64, int height
        tex += ext;
     }
 
-    id  = tile - rdp.cur_tile;
-    mod = (id == 0) ? cmb.mod_0 : cmb.mod_1;
-
-    if (mod /*|| !voodoo.sup_32bit_tex*/)
-    {
-        uint32_t i;
-        //convert to ARGB_4444
-        const uint32_t tex_size = real_width * height;
-        uint16_t *tex16 = (uint16_t*)dst;
-        tex   = (uint32_t *)dst;
-
-        for (i = 0; i < tex_size; i++)
-        {
-           uint32_t c = tex[i];
-           uint16_t a = (c >> 28) & 0xF;
-           uint16_t r = (c >> 20) & 0xF;
-           uint16_t g = (c >> 12) & 0xF;
-           uint16_t b = (c >> 4)  & 0xF;
-           tex16[i] = PAL8toR4G4B4A4(r, g, b, a);
-        }
-        return (1 << 16) | GR_TEXFMT_ARGB_4444;
-    }
+    /* (a texture that is to be modified stays 32-bit: the modifications
+     * work on eight bits a channel) */
     return (2 << 16) | GR_TEXFMT_ARGB_8888;
 }
 

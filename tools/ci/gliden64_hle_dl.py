@@ -24,14 +24,19 @@ which put the state back without it at each frame: from the second frame
 on the quad was drawn unblended, as the clouds of Mario Kart 64 were, in
 black boxes. The quad must show what is under it.
 
-  gliden64_hle_dl.py --core parallel_n64_libretro.so --gl ./lrhost_gl [--vk ./lrhost_vk]
+With --glide64 a fourth cartridge draws the quads with a combine Glide64
+cannot give its combiner and works into the texture instead (TEXEL0 part
+of the way to ENVIRONMENT). It did that on four bits a channel; the frame
+must hold what the combine gives at eight.
+
+  gliden64_hle_dl.py --core parallel_n64_libretro.so --gl ./lrhost_gl [--vk ./lrhost_vk] [--glide64]
 """
 import argparse, os, struct, subprocess, sys, tempfile
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from gliden64_ubershader import mips  # noqa: E402
 
-OPTIONS = ["parallel-n64-gfxplugin=gliden64", "parallel-n64-rspplugin=hle",
+OPTIONS = ["parallel-n64-rspplugin=hle",
            "parallel-n64-cpucore=cached_interpreter",
            "parallel-n64-gliden64-LegacySm64ToolsHacks=enabled"]
 FB, DL, VTX, MTX, VP, TEX, UCODE, UDATA = (0x100000, 0x200000, 0x201000, 0x202000, 0x203000,
@@ -39,6 +44,12 @@ FB, DL, VTX, MTX, VP, TEX, UCODE, UDATA = (0x100000, 0x200000, 0x201000, 0x20200
 WIDTH, HEIGHT = 320, 240
 PAYLOAD = 0x4000
 FRAMES = 12
+# the environment colour and the share of the way to it (of 255) for the
+# combine Glide64 does by modifying the texture
+INTER_ENV = (255, 0, 0)
+INTER_SHARE = 128
+# the texture's two values a channel, widened from 5 bits to 8
+TEXEL = ((255, 66), (165, 33), (99, 16))
 
 
 def matrix(rows):
@@ -53,9 +64,12 @@ def vertex(x, y, s, t):
     return struct.pack(">hhhHhhBBBB", x, y, 0, 0, s << 5, t << 5, 255, 255, 255, 255)
 
 
-def display_list(toggle):
+def display_list(toggle, inter=False):
     c = []
     cmd = lambda w0, w1=0: c.extend([w0 & 0xffffffff, w1 & 0xffffffff])
+    # Glide64 presents a frame when the colour image changes: another
+    # image first, nothing drawn to it
+    cmd(0xFF000000 | (0 << 21) | (2 << 19) | (WIDTH - 1), FB + 0x80000)
     cmd(0xFF000000 | (0 << 21) | (2 << 19) | (WIDTH - 1), FB)                # SETCIMG RGBA16
     cmd(0xED000000, ((WIDTH * 4) << 12) | (HEIGHT * 4))                     # SETSCISSOR
     # clear, as Mario Kart 64 does: a rectangle in one-cycle mode, opaque,
@@ -70,7 +84,14 @@ def display_list(toggle):
     # one cycle, perspective texturing, point sampled, texels filtered not
     # converted (G_TC_FILT); an opaque surface
     cmd(0xEF000000 | (1 << 19) | (6 << 9), 0x0F0A4000)
-    cmd(0xFC000000 | 0x121824, 0xFF33FFFF)                                   # TEXEL0 * SHADE
+    if inter:
+        # TEXEL0 a share of the way to ENVIRONMENT, the share PRIMITIVE's
+        # alpha: Glide64 works this one into the texture itself
+        cmd(0xFC557EAA, 0x11FCFC7E)
+        cmd(0xFB000000, (INTER_ENV[0] << 24) | (INTER_ENV[1] << 16) | (INTER_ENV[2] << 8) | 0xFF)
+        cmd(0xFA000000, INTER_SHARE)
+    else:
+        cmd(0xFC000000 | 0x121824, 0xFF33FFFF)                               # TEXEL0 * SHADE
     cmd(0xB6000000, 0xFFFFFFFF)                                              # clear geometry mode
     cmd(0xB7000000, 0x00000204)                                              # SHADE | SMOOTH
     cmd(0x03800010, VP)                                                      # viewport
@@ -108,7 +129,7 @@ def display_list(toggle):
     return struct.pack(">%dI" % len(c), *c)
 
 
-def cartridge(path, toggle, name):
+def cartridge(path, toggle, name, inter=False):
     t0, t1, t2, t3 = 8, 9, 10, 11
     lui = lambda rt, imm: mips(0x0f, 0, rt, imm)
     ori = lambda rt, rs, imm: mips(0x0d, rs, rt, imm)
@@ -119,7 +140,7 @@ def cartridge(path, toggle, name):
     li = lambda rt, v: [lui(rt, (v >> 16) & 0xffff), ori(rt, rt, v & 0xffff)]
 
     area = {}
-    area[DL] = display_list(toggle)
+    area[DL] = display_list(toggle, inter)
     area[VTX] = b"".join(vertex(x, y, s, t) for (x0, y0) in ((-120, -50), (20, -50))
                          for (x, y, s, t) in ((x0, y0, 0, 32), (x0 + 100, y0, 32, 32),
                                               (x0 + 100, y0 + 100, 32, 0), (x0, y0 + 100, 0, 0)))
@@ -131,7 +152,9 @@ def cartridge(path, toggle, name):
     area[TEX] = b"".join(struct.pack(">H", ((0x1f if (u ^ v) & 8 else 0x08) << 11) |
                                      ((0x14 if u & 16 else 0x04) << 6) | ((0x0c if v & 16 else 0x02) << 1) | 1)
                          for v in range(32) for u in range(32))
-    area[UCODE] = b"\0" * 0x1000
+    # Glide64 tells the microcode by the sum of its first 3072 bytes as
+    # words: this is Fast3D's (Super Mario 64)
+    area[UCODE] = struct.pack(">I", 0x006bd77f).ljust(0x1000, b"\0")
     # how GLideN64 tells Fast3D
     area[UDATA] = (b"\0" * 0x40 + b"RSP SW Version: 2.0D, 04-01-96" + b"\0").ljust(0x800, b"\0")
     payload = bytearray(UDATA + 0x800 - DL)
@@ -172,12 +195,13 @@ def cartridge(path, toggle, name):
         f.write(image)
 
 
-def run(host, core, rom, tmp, api):
+def run(host, core, rom, tmp, api, plugin="gliden64"):
     dump = tempfile.mkdtemp(dir=tmp)
     env = dict(os.environ, EGL_PLATFORM="surfaceless", LRHOST_SYSTEM_DIR=os.path.join(tmp, "sys"),
                LRHOST_DUMPDIR=dump, LRHOST_DUMP_FROM=str(FRAMES - 4), LRHOST_DUMP_TO=str(FRAMES - 4))
-    p = subprocess.run([host, core, rom, str(FRAMES)] + OPTIONS + ["parallel-n64-gliden64-API=" + api],
-                       env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=600)
+    p = subprocess.run([host, core, rom, str(FRAMES)] + OPTIONS + ["parallel-n64-gliden64-API=" + api,
+                                                                    "parallel-n64-gfxplugin=" + plugin],
+                       env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=60)
     if p.returncode != 0:
         sys.stdout.write(p.stdout.decode("utf-8", "replace")[-2000:])
         raise RuntimeError("exit %d" % p.returncode)
@@ -193,6 +217,27 @@ def pixel(frame, x, y):
     return frame[(y * 640 + x) * 4:(y * 640 + x) * 4 + 3]
 
 
+def modified_exactly(frame):
+    """The first quad's top and bottom rows of texels, clear of the quad
+    drawn over its middle: each channel is one of the two values the
+    combine gives at eight bits, within a step, and both are there. With
+    the texture cut to four bits a channel they are up to 8 off."""
+    want = [[t + (e - t) * INTER_SHARE / 255.0 for t in ch] for ch, e in zip(TEXEL, INTER_ENV)]
+    seen = [set(), set(), set()]
+    worst = 0.0
+    for y in (165, 315):
+        for x in range(92, 280, 4):
+            if (x - 80) % 50 < 8 or (x - 80) % 50 > 42:
+                continue  # near a texel edge
+            px = pixel(frame, x, y)
+            for c in range(3):
+                got = px[2 - c]  # the dump is BGRA
+                off = [abs(got - w) for w in want[c]]
+                worst = max(worst, min(off))
+                seen[c].add(off.index(min(off)))
+    return worst <= 1.0 and all(len(s) == 2 for s in seen), worst
+
+
 def white_share(frame):
     """the share of pixels that are white, either channel order"""
     px = len(frame) // 4
@@ -205,6 +250,7 @@ def main():
     ap.add_argument("--core", required=True)
     ap.add_argument("--gl", required=True)
     ap.add_argument("--vk")
+    ap.add_argument("--glide64", action="store_true", help="Glide64's texture modifications too")
     a = ap.parse_args()
     a.core = os.path.abspath(a.core)
     failures = 0
@@ -228,6 +274,12 @@ def main():
             for what, ok, detail in checks:
                 print("%-7s %-28s %s (%s)" % (api, what, "ok" if ok else "FAIL", detail))
                 failures += 0 if ok else 1
+        if a.glide64:
+            rom = os.path.join(tmp, "inter.z64")
+            cartridge(rom, False, "GLIDEN64 HLE DL", inter=True)
+            ok, worst = modified_exactly(run(os.path.abspath(a.gl), a.core, rom, tmp, "opengl", "glide64"))
+            print("glide64 %-28s %s (%.1f of 255 off at most)" % ("texture modified at 8 bits", "ok" if ok else "FAIL", worst))
+            failures += 0 if ok else 1
     print("%d failed" % failures)
     return 1 if failures else 0
 
