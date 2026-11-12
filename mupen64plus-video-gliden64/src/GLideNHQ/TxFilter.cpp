@@ -28,8 +28,9 @@
 #include <stdlib.h>
 #include <assert.h>
 
-#include <osal_files.h>
-#include <encodings/utf.h>
+#include <stdio.h>
+#include <string.h>
+#include <file/file_path.h>
 #include "TxFilter.h"
 #include "TextureFilters.h"
 #include "txpool.h"
@@ -85,11 +86,10 @@ TxFilter::TxFilter(int maxwidth,
 				   int maxbpp,
 				   int options,
 				   int cachesize,
-				   const wchar_t * texCachePath,
-				   const wchar_t * texDumpPath,
-				   const wchar_t * texPackPath,
-				   const wchar_t * ident,
-				   dispInfoFuncExt callback)
+				   const char * texCachePath,
+				   const char * texDumpPath,
+				   const char * texPackPath,
+				   const char * ident)
 	: _tex1(nullptr)
 	, _tex2(nullptr)
 	, _txQuantize(nullptr)
@@ -98,22 +98,8 @@ TxFilter::TxFilter(int maxwidth,
 	, _txImage(nullptr)
 {
 	TxUtil::poolAcquire();
-	/* HACKALERT: the emulator misbehaves and sometimes forgets to shutdown */
-	if ((ident && wcscmp(ident, wst("DEFAULT")) != 0 && _ident.compare(ident) == 0) &&
-			_maxwidth  == maxwidth  &&
-			_maxheight == maxheight &&
-			_maxbpp    == maxbpp    &&
-			_options   == options   &&
-			_cacheSize == cachesize) return;
-	//  clear(); /* gcc does not allow the destructor to be called */
 	if (texCachePath == nullptr || texDumpPath == nullptr || texPackPath == nullptr)
 		return;
-
-	/* shamelessness :P this first call to the debug output message creates
-   * a file in the executable directory. */
-#ifdef GHQCHK
-#else
-#endif
 
 	_options = options;
 
@@ -141,7 +127,7 @@ TxFilter::TxFilter(int maxwidth,
 		_dumpPath.assign(texDumpPath);
 
 	/* save ROM name */
-	if (ident && wcscmp(ident, wst("DEFAULT")) != 0)
+	if (ident && strcmp(ident, "DEFAULT") != 0)
 		_ident.assign(ident);
 
 	if (TxMemBuf::getInstance()->init(_maxwidth, _maxheight)) {
@@ -158,11 +144,11 @@ TxFilter::TxFilter(int maxwidth,
 #endif
 
 	/* initialize texture cache in bytes. 128Mb will do nicely in most cases */
-	_txTexCache = new TxTexCache(_options, _cacheSize, texCachePath, _ident.c_str(), callback);
+	_txTexCache = new TxTexCache(_options, _cacheSize, texCachePath, _ident.c_str());
 
 	/* hires texture */
 #if HIRES_TEXTURE
-	_txHiResCache = new TxHiResCache(_maxwidth, _maxheight, _maxbpp, _options, texCachePath, texPackPath, _ident.c_str(), callback);
+	_txHiResCache = new TxHiResCache(_maxwidth, _maxheight, _maxbpp, _options, texCachePath, texPackPath, _ident.c_str());
 
 	if (_txHiResCache->empty())
 		_options &= ~HIRESTEXTURES_MASK;
@@ -574,40 +560,27 @@ TxFilter::dmptx(uint8 *src, int width, int height, int rowStridePixel, ColorForm
 
 	if (!_dumpPath.empty() && !_ident.empty()) {
 		/* dump it to disk */
-		tx_wstring tmpbuf;
+		char name[64]; /* the longest name is 36 bytes */
+		std::string path(_dumpPath);
 
 		/* create directories */
-		tmpbuf.assign(_dumpPath);
-		tmpbuf.append(wst("/"));
-		tmpbuf.append(_ident);
-		tmpbuf.append(wst("/GLideNHQ"));
-		if (!osal_path_existsW(tmpbuf.c_str()) && osal_mkdirp(tmpbuf.c_str()) != 0)
+		path += "/";
+		path += _ident;
+		path += "/GLideNHQ";
+		if (!path_mkdir(path.c_str()))
 			return 0;
 
-		if ((n64fmt >> 8) == 0x2) {
-			wchar_t wbuf[256];
-			tx_swprintf(wbuf, 256, wst("/%ls#%08X#%01X#%01X#%08X_ciByRGBA.png"), _ident.c_str(), (uint32)(r_crc64 & 0xffffffff), (n64fmt >> 8), (n64fmt & 0xf), (uint32)(r_crc64 >> 32));
-			tmpbuf.append(wbuf);
-		} else {
-			wchar_t wbuf[256];
-			tx_swprintf(wbuf, 256, wst("/%ls#%08X#%01X#%01X_all.png"), _ident.c_str(), (uint32)(r_crc64 & 0xffffffff), (n64fmt >> 8), (n64fmt & 0xf));
-			tmpbuf.append(wbuf);
-		}
+		if ((n64fmt >> 8) == 0x2)
+			sprintf(name, "#%08X#%01X#%01X#%08X_ciByRGBA.png", (uint32)(r_crc64 & 0xffffffff), (n64fmt >> 8), (n64fmt & 0xf), (uint32)(r_crc64 >> 32));
+		else
+			sprintf(name, "#%08X#%01X#%01X_all.png", (uint32)(r_crc64 & 0xffffffff), (n64fmt >> 8), (n64fmt & 0xf));
+		path += "/";
+		path += _ident;
+		path += name;
 
-		{
-			/* rpng opens the file itself through the VFS, so there is no
-			 * fopen/fclose pair here any more.  On Windows the path is
-			 * converted to UTF-8 rather than passed as UTF-16: the VFS
-			 * opens UTF-8 paths through fopen_utf8. */
-			char cbuf[MAX_PATH];
-#ifdef OS_WINDOWS
-			utf16_to_char_string((const uint16_t*)tmpbuf.c_str(), cbuf, MAX_PATH);
-#else
-			wcstombs(cbuf, tmpbuf.c_str(), MAX_PATH);
-#endif
-			_txImage->writePNG(src, cbuf, width, height, (rowStridePixel << 2), graphics::internalcolorFormat::RGBA8);
-			return 1;
-		}
+		/* rpng opens the UTF-8 path itself through the VFS */
+		_txImage->writePNG(src, path.c_str(), width, height, (rowStridePixel << 2), graphics::internalcolorFormat::RGBA8);
+		return 1;
 	}
 
 	return 0;

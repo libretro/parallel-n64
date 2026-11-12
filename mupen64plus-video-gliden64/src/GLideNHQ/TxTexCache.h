@@ -31,13 +31,12 @@ class TxTexCache : public TxCache
 private:
 	boolean _cacheDumped;
 
-	tx_wstring _getFileName() const;
+	std::string _getFileName() const;
 	int _getConfig() const;
 
 public:
   ~TxTexCache();
-  TxTexCache(int options, int cachesize, const wchar_t *cachePath, const wchar_t *ident,
-             dispInfoFuncExt callback);
+  TxTexCache(int options, int cachesize, const char *cachePath, const char *ident);
   boolean add(uint64 checksum, /* checksum hi:palette low:texture */
               GHQTexInfo *info);
   void dump();

@@ -20,11 +20,9 @@ set(GLideNHQ_SOURCES
   TxUtil.cpp
 )
 
-if(MINGW OR PANDORA OR BCMHOST)
-  include_directories( ${CMAKE_CURRENT_SOURCE_DIR}/../osal )
-else(MINGW OR PANDORA OR BCMHOST)
-  include_directories( inc ${CMAKE_CURRENT_SOURCE_DIR}/../osal )
-endif(MINGW OR PANDORA OR BCMHOST)
+if(NOT (MINGW OR PANDORA OR BCMHOST))
+  include_directories( inc )
+endif(NOT (MINGW OR PANDORA OR BCMHOST))
 LINK_DIRECTORIES( ${CMAKE_CURRENT_SOURCE_DIR}/lib )
 
 if(UNIX)
@@ -92,16 +90,11 @@ if( NOT GHQCHK )
       set_target_properties(GLideNHQd PROPERTIES LINK_SEARCH_START_STATIC 1)
       set_target_properties(GLideNHQd PROPERTIES LINK_SEARCH_END_STATIC 1)
 
-      if(MINGW OR BCMHOST OR APPLE OR USE_SYSTEM_LIBS)
-        target_link_libraries(GLideNHQd
-          osald
-        )
-      else(MINGW OR BCMHOST OR APPLE OR USE_SYSTEM_LIBS)
+      if(NOT (MINGW OR BCMHOST OR APPLE OR USE_SYSTEM_LIBS))
         target_link_libraries(GLideNHQd PRIVATE
           dl
-          osald
         )
-      endif(MINGW OR BCMHOST OR APPLE OR USE_SYSTEM_LIBS)
+      endif(NOT (MINGW OR BCMHOST OR APPLE OR USE_SYSTEM_LIBS))
     endif( CMAKE_BUILD_TYPE STREQUAL "Debug")
 
     if( CMAKE_BUILD_TYPE STREQUAL "Release")
@@ -110,20 +103,11 @@ if( NOT GHQCHK )
 #      set_target_properties(GLideNHQ PROPERTIES LINK_SEARCH_START_STATIC 1)
 #      set_target_properties(GLideNHQ PROPERTIES LINK_SEARCH_END_STATIC 1)
 
-      if(PANDORA)
-        target_link_libraries(GLideNHQ PRIVATE
-          osal
-        )
-      elseif(BCMHOST OR MINGW OR APPLE OR USE_SYSTEM_LIBS)
-        target_link_libraries(GLideNHQ
-          osal
-        )
-      else(PANDORA)
+      if(NOT (PANDORA OR BCMHOST OR MINGW OR APPLE OR USE_SYSTEM_LIBS))
         target_link_libraries(GLideNHQ PRIVATE
           dl
-          osal
         )
-      endif(PANDORA)
+      endif(NOT (PANDORA OR BCMHOST OR MINGW OR APPLE OR USE_SYSTEM_LIBS))
     endif( CMAKE_BUILD_TYPE STREQUAL "Release")
 else( NOT GHQCHK )
     add_definitions(-DGHQCHK)

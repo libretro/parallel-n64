@@ -1,5 +1,6 @@
-#include <wchar.h>
+#include <compat/strl.h>
 #include "Config.h"
+#include "PluginAPI.h"
 #include "GBI.h"
 #include "gli_framebuffer.h"
 
@@ -24,7 +25,6 @@ void gli_config_reset_defaults(Config * _config)
 	_config->video.maxMultiSampling = 0;
 	_config->video.borderless = 0;
 	_config->video.threadedVideo = 0;
-	_config->video.deviceName[0] = 0;
 	_config->video.verticalSync = 0;
 
 	config.video.fullscreenHeight = screen_height;
@@ -104,12 +104,12 @@ void gli_config_reset_defaults(Config * _config)
 	_config->textureFilter.txNoTextureFileStorage = 0;
 	_config->textureFilter.txHiresVramLimit = 0;
 
-	gli_api_user_data_path(_config->textureFilter.txPath);
-	wcscat(_config->textureFilter.txPath, L"/hires_texture");
-	gli_api_user_cache_path(_config->textureFilter.txCachePath);
-	wcscat(_config->textureFilter.txCachePath, L"/cache");
-	gli_api_user_cache_path(_config->textureFilter.txDumpPath);
-	wcscat(_config->textureFilter.txDumpPath, L"/texture_dump");
+	gli_api_user_data_path(_config->textureFilter.txPath, sizeof(_config->textureFilter.txPath));
+	strlcat(_config->textureFilter.txPath, "/hires_texture", sizeof(_config->textureFilter.txPath));
+	gli_api_user_cache_path(_config->textureFilter.txCachePath, sizeof(_config->textureFilter.txCachePath));
+	strlcat(_config->textureFilter.txCachePath, "/cache", sizeof(_config->textureFilter.txCachePath));
+	gli_api_user_cache_path(_config->textureFilter.txDumpPath, sizeof(_config->textureFilter.txDumpPath));
+	strlcat(_config->textureFilter.txDumpPath, "/texture_dump", sizeof(_config->textureFilter.txDumpPath));
 
 	_config->gammaCorrection.force = 0;
 	_config->gammaCorrection.level = 2.0f;

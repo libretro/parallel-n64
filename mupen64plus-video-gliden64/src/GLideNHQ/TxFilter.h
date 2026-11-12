@@ -43,8 +43,8 @@ private:
   int _maxbpp;
   int _options;
   int _cacheSize;
-  tx_wstring _ident;
-  tx_wstring _dumpPath;
+  std::string _ident;    /* UTF-8 */
+  std::string _dumpPath; /* UTF-8 */
   TxQuantize *_txQuantize;
   TxTexCache *_txTexCache;
   TxHiResCache *_txHiResCache;
@@ -58,11 +58,10 @@ public:
 		   int maxbpp,
 		   int options,
 		   int cachesize,
-		   const wchar_t * texCachePath,
-		   const wchar_t * texDumpPath,
-		   const wchar_t * texPackPath,
-		   const wchar_t * ident,
-		   dispInfoFuncExt callback);
+		   const char * texCachePath,
+		   const char * texDumpPath,
+		   const char * texPackPath,
+		   const char * ident);
   boolean filter(uint8 *src,
 				  int srcwidth,
 				  int srcheight,

@@ -8,7 +8,6 @@ extern "C" {
 #endif
 
 extern char	pluginName[];
-extern wchar_t	pluginNameW[];
 extern void (*CheckInterrupts)( void );
 
 #ifdef __cplusplus

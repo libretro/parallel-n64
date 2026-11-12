@@ -1,8 +1,11 @@
 #include <stdlib.h>
 #include <string.h>
-#include <wchar.h>
+#include <stdint.h>
+#include <compat/strl.h>
+#include <encodings/utf.h>
+#include <file/file_path.h>
 #include "GLideNHQ/Ext_TxFilter.h"
-#include "osal/osal_files.h"
+#include "PluginAPI.h"
 #include "RSP.h"
 #include "Config.h"
 #include "gli_framebuffer.h"
@@ -58,29 +61,46 @@ static u32 _getConfigOptions(void)
 	return options;
 }
 
-/* The configured path, or the default folder under _base */
-static const wchar_t * _path(const wchar_t * _configured, wchar_t * _buf, bool _data, const wchar_t * _folder)
+/* The configured path, or the default folder under the user data or cache path */
+static const char * _path(const char * _configured, char * _buf, size_t _size, bool _data, const char * _folder)
 {
-	if (wcslen(_configured) != 0 && osal_is_absolute_path(_configured) != 0)
+	if (_configured[0] != 0 && path_is_absolute(_configured))
 		return _configured;
 	if (_data)
-		gli_api_user_data_path(_buf);
+		gli_api_user_data_path(_buf, _size);
 	else
-		gli_api_user_cache_path(_buf);
-	wcscat(_buf, _folder);
+		gli_api_user_cache_path(_buf, _size);
+	strlcat(_buf, _folder, _size);
 	return _buf;
+}
+
+/* The ROM header name as UTF-8. Its bytes are taken as Latin-1, the way
+ * the wide-string build read them on Windows, so a pack or cache named
+ * after a ROM with bytes above 0x7F keeps its file name. */
+static void _romIdent(char * _out, size_t _size)
+{
+	uint16_t wide[sizeof(RSP.romname)];
+	size_t n = 0;
+	size_t outChars = _size - 1;
+	while (n < sizeof(RSP.romname) - 1 && RSP.romname[n] != 0) {
+		wide[n] = (u8)RSP.romname[n];
+		++n;
+	}
+	if (!utf16_conv_utf8((uint8_t *)_out, &outChars, wide, n))
+		outChars = 0;
+	_out[outChars] = 0;
 }
 
 void gli_TFH_init(void)
 {
 	s32 maxTextureSize;
-	wchar_t wRomName[32];
-	wchar_t txPath[PLUGIN_PATH_SIZE + 16];
-	wchar_t txCachePath[PLUGIN_PATH_SIZE + 16];
-	wchar_t txDumpPath[PLUGIN_PATH_SIZE + 16];
-	const wchar_t * pTexPackPath;
-	const wchar_t * pTexCachePath;
-	const wchar_t * pTexDumpPath;
+	char romName[sizeof(RSP.romname) * 2];
+	char txPath[PLUGIN_PATH_SIZE];
+	char txCachePath[PLUGIN_PATH_SIZE];
+	char txDumpPath[PLUGIN_PATH_SIZE];
+	const char * pTexPackPath;
+	const char * pTexCachePath;
+	const char * pTexDumpPath;
 
 	if (gli_TFH_is_inited())
 		return;
@@ -92,11 +112,11 @@ void gli_TFH_init(void)
 	l_options = _getConfigOptions();
 
 	maxTextureSize = gli_gfx_max_texture_size();
-	mbstowcs(wRomName, RSP.romname, 32);
+	_romIdent(romName, sizeof(romName));
 
-	pTexPackPath = _path(config.textureFilter.txPath, txPath, true, L"/hires_texture");
-	pTexCachePath = _path(config.textureFilter.txCachePath, txCachePath, false, L"/cache");
-	pTexDumpPath = _path(config.textureFilter.txDumpPath, txDumpPath, false, L"/texture_dump");
+	pTexPackPath = _path(config.textureFilter.txPath, txPath, sizeof(txPath), true, "/hires_texture");
+	pTexCachePath = _path(config.textureFilter.txCachePath, txCachePath, sizeof(txCachePath), false, "/cache");
+	pTexDumpPath = _path(config.textureFilter.txDumpPath, txDumpPath, sizeof(txDumpPath), false, "/texture_dump");
 
 	l_inited = txfilter_init(maxTextureSize, /* max texture width supported by hardware */
 		maxTextureSize, /* max texture height supported by hardware */
@@ -106,8 +126,7 @@ void gli_TFH_init(void)
 		pTexCachePath, /* path to store cache files */
 		pTexDumpPath, /* path to folder with dumped textures */
 		pTexPackPath, /* path to texture packs folder */
-		wRomName, /* name of ROM. must be no longer than 256 characters */
-		NULL); /* no progress display: the frontend owns the screen */
+		romName); /* name of ROM, UTF-8 */
 }
 
 void gli_TFH_shutdown(void)

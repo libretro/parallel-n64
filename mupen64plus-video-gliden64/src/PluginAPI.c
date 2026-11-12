@@ -1,15 +1,5 @@
-#ifdef OS_WINDOWS
-# include <windows.h>
-#endif
 #include <stdlib.h>
 #include <string.h>
-#include <wchar.h>
-#if defined(OS_LINUX)
-#include <unistd.h>
-#elif defined(OS_MAC_OS_X)
-#include <mach-o/dyld.h>
-#include <sys/param.h>
-#endif
 #include <compat/strl.h>
 #include <libretro.h>
 
@@ -37,78 +27,31 @@ static bool l_bRomOpen;
 
 /* ---- paths ---- */
 
-/* forward slashes, and the last one and what follows it cut */
-static void _cutLastPathSeparator(wchar_t * _strPath)
+/* <system>/ParallelN64, UTF-8 with forward slashes, no trailing slash */
+static void _getRetroArchDir(char * _strPath, size_t _size)
 {
-	wchar_t * last = NULL;
-	wchar_t * p;
-	for (p = _strPath; *p != 0; ++p) {
-		if (*p == L'\\')
-			*p = L'/';
-		if (*p == L'/')
-			last = p;
-	}
-	if (last != NULL)
-		*last = 0;
-}
-
-static void _getWSPath(const char * _path, wchar_t * _strPath)
-{
-	mbstowcs(_strPath, _path, PLUGIN_PATH_SIZE);
-	_cutLastPathSeparator(_strPath);
-}
-
-static void _getRetroArchDir(wchar_t * _strPath)
-{
-	char str[PLUGIN_PATH_SIZE * 4];
+	char * p;
 	size_t len;
 	const char * systemDir = NULL;
 	if (!environ_cb(RETRO_ENVIRONMENT_GET_SYSTEM_DIRECTORY, &systemDir) || !systemDir || !*systemDir)
-		systemDir = "./";
-	strlcpy(str, systemDir, sizeof(str));
-	len = strlen(str);
-	if (len > 0 && str[len - 1] != '/' && str[len - 1] != '\\')
-		strlcat(str, "/", sizeof(str));
-	strlcat(str, "ParallelN64/", sizeof(str));
-	_getWSPath(str, _strPath);
+		systemDir = ".";
+	len = strlcpy(_strPath, systemDir, _size);
+	if (len > 0 && len < _size && _strPath[len - 1] != '/' && _strPath[len - 1] != '\\')
+		strlcat(_strPath, "/", _size);
+	strlcat(_strPath, "ParallelN64", _size);
+	for (p = _strPath; *p != 0; ++p)
+		if (*p == '\\')
+			*p = '/';
 }
 
-void gli_api_user_data_path(wchar_t * _strPath)
+void gli_api_user_data_path(char * _strPath, size_t _size)
 {
-	_getRetroArchDir(_strPath);
+	_getRetroArchDir(_strPath, _size);
 }
 
-void gli_api_user_cache_path(wchar_t * _strPath)
+void gli_api_user_cache_path(char * _strPath, size_t _size)
 {
-	_getRetroArchDir(_strPath);
-}
-
-void gli_api_find_plugin_path(wchar_t * _strPath)
-{
-	if (_strPath == NULL)
-		return;
-#ifdef OS_WINDOWS
-	GetModuleFileNameW(NULL, _strPath, PLUGIN_PATH_SIZE);
-	_cutLastPathSeparator(_strPath);
-#elif defined(OS_LINUX)
-	{
-		char path[512];
-		ssize_t res = readlink("/proc/self/exe", path, 510);
-		if (res != -1) {
-			path[res] = 0;
-			_getWSPath(path, _strPath);
-		}
-	}
-#elif defined(OS_MAC_OS_X)
-	{
-		char path[MAXPATHLEN];
-		uint32_t pathLen = MAXPATHLEN;
-		if (_NSGetExecutablePath(path, &pathLen) == 0)
-			_getWSPath(path, _strPath);
-	}
-#elif defined(ANDROID)
-	gli_api_user_cache_path(_strPath);
-#endif
+	_getRetroArchDir(_strPath, _size);
 }
 
 /* ---- the plugin ---- */

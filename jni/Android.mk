@@ -44,14 +44,14 @@ ifneq ($(GIT_VERSION)," unknown")
   COREFLAGS += -DGIT_VERSION=\"$(GIT_VERSION)\"
 endif
 
-# GLideN64 resolves its headers from its own src/ and src/osal/ trees, and
+# GLideN64 resolves its headers from its own src/ tree, and
 # its names (Combiner.h, Config.h, N64.h) collide with the other video
 # plugins, so it builds as its own module with those directories first on
 # the include path - the same flags the Makefile's GLideN64 pattern rules
 # use. The NDK ships no GL/glcorearb.h, so the copy in src/inc is used.
 GLIDEN64_SRC       := $(ROOT_DIR)/mupen64plus-video-gliden64/src
 GLIDEN64_SOURCES   := $(filter $(GLIDEN64_SRC)/%,$(SOURCES_CXX) $(SOURCES_C))
-GLIDEN64_INCFLAGS  := -I$(GLIDEN64_SRC) -I$(GLIDEN64_SRC)/osal -I$(GLIDEN64_SRC)/inc
+GLIDEN64_INCFLAGS  := -I$(GLIDEN64_SRC) -I$(GLIDEN64_SRC)/inc
 
 ifneq ($(GLIDEN64_SOURCES),)
 include $(CLEAR_VARS)

@@ -31,9 +31,8 @@ TxTexCache::~TxTexCache()
 {
 }
 
-TxTexCache::TxTexCache(int options, int cachesize, const wchar_t *cachePath, const wchar_t *ident,
-					   dispInfoFuncExt callback
-					   ) : TxCache((options & ~GZ_HIRESTEXCACHE), cachesize, cachePath, ident, callback)
+TxTexCache::TxTexCache(int options, int cachesize, const char *cachePath, const char *ident)
+	: TxCache((options & ~GZ_HIRESTEXCACHE), cachesize, cachePath, ident)
 {
 	/* assert local options */
 	if (_cachePath.empty() || _ident.empty() || !_cacheSize)
@@ -68,10 +67,10 @@ TxTexCache::dump()
 	}
 }
 
-tx_wstring TxTexCache::_getFileName() const
+std::string TxTexCache::_getFileName() const
 {
-	tx_wstring filename = _ident + wst("_MEMORYCACHE.") + TEXCACHE_EXT;
-	removeColon(filename);
+	std::string filename = _ident + "_MEMORYCACHE." TEXCACHE_EXT;
+	std::replace(filename.begin(), filename.end(), ':', '-');
 	return filename;
 }
 

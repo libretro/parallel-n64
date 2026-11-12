@@ -21,7 +21,6 @@
 #include <Graphics/OpenGLContext/GLSL/glsl_CombinerInputs.h>
 #include <GraphicsDrawer.h>
 #include <PluginAPI.h>
-#include <wchar.h>
 
 #include "vk_renderer.h"
 #include "vk_device.h"
@@ -528,11 +527,9 @@ public:
 	bool loadShadersStorage(Combiners &) override { return false; }
 	std::string getCombinerJournalPath(u32 & _version) override {
 		_version = 1;
-		wchar_t path[PLUGIN_PATH_SIZE];
-		gli_api_user_cache_path(path);
-		char mb[PLUGIN_PATH_SIZE * 4];
-		wcstombs(mb, path, sizeof(mb));
-		return std::string(mb) + "/GLideN64.vulkan.keys.journal";
+		char path[PLUGIN_PATH_SIZE];
+		gli_api_user_cache_path(path, sizeof(path));
+		return std::string(path) + "/GLideN64.vulkan.keys.journal";
 	}
 	ShaderProgram * createDepthFogShader() override { return new VkShadowMapShader; }
 	TexrectDrawerShaderProgram * createTexrectDrawerDrawShader() override { return new VkTexrectDrawerDraw; }

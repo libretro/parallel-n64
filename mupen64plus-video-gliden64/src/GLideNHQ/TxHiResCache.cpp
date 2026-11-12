@@ -21,9 +21,6 @@
  * the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-/* 2007 Gonetz <gonetz(at)ngs.ru>
- * Added callback to display hires texture info. */
-
 #ifdef __MSC__
 #pragma warning(disable: 4786)
 #endif
@@ -37,10 +34,12 @@
 #define AGGRESSIVE_QUANTIZATION 1
 
 #include "TxHiResCache.h"
-#include <osal_files.h>
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
+#include <retro_dirent.h>
+#include <file/file_path.h>
 
 TxHiResCache::~TxHiResCache()
 {
@@ -53,11 +52,10 @@ TxHiResCache::TxHiResCache(int maxwidth,
 						   int maxheight,
 						   int maxbpp,
 						   int options,
-						   const wchar_t *cachePath,
-						   const wchar_t *texPackPath,
-						   const wchar_t *ident,
-						   dispInfoFuncExt callback)
-	: TxCache((options & ~GZ_TEXCACHE), 0, cachePath, ident, callback)
+						   const char *cachePath,
+						   const char *texPackPath,
+						   const char *ident)
+	: TxCache((options & ~GZ_TEXCACHE), 0, cachePath, ident)
 {
   _txImage = new TxImage();
   _txQuantize  = new TxQuantize();
@@ -97,10 +95,10 @@ void TxHiResCache::dump()
 	}
 }
 
-tx_wstring TxHiResCache::_getFileName() const
+std::string TxHiResCache::_getFileName() const
 {
-	tx_wstring filename = _ident + wst("_HIRESTEXTURES.") + TEXCACHE_EXT;
-	removeColon(filename);
+	std::string filename = _ident + "_HIRESTEXTURES." TEXCACHE_EXT;
+	std::replace(filename.begin(), filename.end(), ':', '-');
 	return filename;
 }
 
@@ -111,10 +109,8 @@ int TxHiResCache::_getConfig() const
 
 boolean TxHiResCache::_HiResTexPackPathExists() const
 {
-	tx_wstring dir_path(_texPackPath);
-	dir_path += OSAL_DIR_SEPARATOR_STR;
-	dir_path += _ident;
-	return osal_path_existsW(dir_path.c_str());
+	const std::string dir_path = _texPackPath + "/" + _ident;
+	return path_is_valid(dir_path.c_str());
 }
 
 boolean TxHiResCache::empty()
@@ -129,69 +125,52 @@ boolean TxHiResCache::load(boolean replace) /* 0 : reload, 1 : replace partial *
 
 	if (!replace) TxCache::clear();
 
-	tx_wstring dir_path(_texPackPath);
-
 	switch (_options & HIRESTEXTURES_MASK) {
 	case RICE_HIRESTEXTURES:
-
-		dir_path += OSAL_DIR_SEPARATOR_STR;
-		dir_path += _ident;
-
-		const LoadResult res = loadHiResTextures(dir_path.c_str(), replace);
-		if (res == resError) {
-			if (_callback) (*_callback)(wst("Texture pack load failed. Clear hiresolution texture cache.\n"));
+	{
+		const LoadResult res = loadHiResTextures(_texPackPath + "/" + _ident, replace);
+		if (res == resError)
 			_cache.clear();
-		}
 		return res == resOk ? 1 : 0;
+	}
 	}
 	return 0;
 }
 
 TxHiResCache::LoadResult
-TxHiResCache::loadHiResTextures(const wchar_t * dir_path, boolean replace)
+TxHiResCache::loadHiResTextures(const std::string & dir_path, boolean replace)
 {
-
   /* find it on disk */
-  if (!osal_path_existsW(dir_path)) {
+  if (!path_is_valid(dir_path.c_str()))
 	return resNotFound;
-  }
 
   LoadResult result = resOk;
 
+  /* XXX case sensitivity fiasco!
+   * files must use _a, _rgb, _all, _allciByRGBA, _ciByRGBA, _ci
+   * and file extensions must be in lower case letters! */
+  std::string ident(_ident);
 #ifdef OS_WINDOWS
-  wchar_t curpath[MAX_PATH];
-  GETCWD(MAX_PATH, curpath);
-  CHDIR(dir_path);
-#else
-  char curpath[MAX_PATH];
-  char cbuf[MAX_PATH];
-  wcstombs(cbuf, dir_path, MAX_PATH);
-  GETCWD(MAX_PATH, curpath);
-  CHDIR(cbuf);
+  for (size_t i = 0; i < ident.size(); i++) ident[i] = (char)tolower((unsigned char)ident[i]);
 #endif
 
-  void *dir = osal_search_dir_open(dir_path);
-  const wchar_t *foundfilename;
-  // the path of the texture
-  tx_wstring texturefilename;
+  /* files are opened by full UTF-8 path; the working directory is the
+   * frontend's and is left alone */
+  const std::string dir_prefix = dir_path + "/";
+  struct RDIR *dir = retro_opendir(dir_path.c_str());
+  if (dir == nullptr)
+	return result;
 
-  do {
-
-	foundfilename = osal_search_dir_read_next(dir);
-	// The array is empty,  break the current operation
-	if (foundfilename == nullptr)
-		break;
-	// The current file is a hidden one
-	if (wccmp(foundfilename, wst(".")))
+  while (retro_readdir(dir)) {
+	const char *foundfilename = retro_dirent_get_name(dir);
+	// The current file is a hidden one, or "." or ".."
+	if (foundfilename == nullptr || foundfilename[0] == '.')
 		// These files we don't need
 		continue;
-	texturefilename.assign(dir_path);
-	texturefilename += OSAL_DIR_SEPARATOR_STR;
-	texturefilename += foundfilename;
 
 	/* recursive read into sub-directory */
-	if (osal_is_directory(texturefilename.c_str())) {
-		result = loadHiResTextures(texturefilename.c_str(), replace);
+	if (retro_dirent_is_dir(dir, nullptr)) {
+		result = loadHiResTextures(dir_prefix + foundfilename, replace);
 		if (result == resOk)
 			continue;
 		else
@@ -210,33 +189,21 @@ TxHiResCache::loadHiResTextures(const wchar_t * dir_path, boolean replace)
 	/* Rice hi-res textures: begin
 	 */
 	uint32 chksum = 0, fmt = 0, siz = 0, palchksum = 0;
-	char *pfname = nullptr, fname[MAX_PATH];
-	std::string ident;
-	FILE *fp = nullptr;
+	/* room for the longest suffix swapped in below */
+	char *pfname = nullptr, fname[512];
+	std::string path;
 
-	wcstombs(fname, _ident.c_str(), MAX_PATH);
-	/* XXX case sensitivity fiasco!
-	 * files must use _a, _rgb, _all, _allciByRGBA, _ciByRGBA, _ci
-	 * and file extensions must be in lower case letters! */
-#ifdef OS_WINDOWS
-	{
-	  unsigned int i;
-	  for (i = 0; i < strlen(fname); i++) fname[i] = tolower(fname[i]);
-	}
-#endif
-	ident.assign(fname);
+	if (strlen(foundfilename) < 4 || strlen(foundfilename) + 16 > sizeof(fname))
+	  continue;
 
 	/* read in Rice's file naming convention */
 #define CRCFMTSIZ_LEN 13
 #define PALCRC_LEN 9
-	wcstombs(fname, foundfilename, MAX_PATH);
-	/* XXX case sensitivity fiasco!
-	 * files must use _a, _rgb, _all, _allciByRGBA, _ciByRGBA, _ci
-	 * and file extensions must be in lower case letters! */
+	strcpy(fname, foundfilename);
 #ifdef OS_WINDOWS
 	{
 	  unsigned int i;
-	  for (i = 0; i < strlen(fname); i++) fname[i] = tolower(fname[i]);
+	  for (i = 0; i < strlen(fname); i++) fname[i] = (char)tolower((unsigned char)fname[i]);
 	}
 #endif
 	pfname = fname + strlen(fname) - 4;
@@ -312,17 +279,11 @@ TxHiResCache::loadHiResTextures(const wchar_t * dir_path, boolean replace)
 	   * _rgb.*, which the old order paid for before discovering the pair
 	   * was unusable. */
 	  strcpy(pfname, "_rgb.png");
-	  if ((fp = fopen(fname, "rb")) != nullptr) {
-		tex = _txImage->readPNG(fp, &width, &height, &format);
-		fclose(fp);
-	  }
+	  tex = _txImage->readPNG((dir_prefix + fname).c_str(), &width, &height, &format);
 	  if (!tex) {
 		/* _rgb.bmp */
 		strcpy(pfname, "_rgb.bmp");
-		if ((fp = fopen(fname, "rb")) != nullptr) {
-		  tex = _txImage->readBMP(fp, &width, &height, &format);
-		  fclose(fp);
-		}
+		tex = _txImage->readBMP((dir_prefix + fname).c_str(), &width, &height, &format);
 	  }
 	  if (!tex) {
 #if !DEBUG
@@ -331,17 +292,11 @@ TxHiResCache::loadHiResTextures(const wchar_t * dir_path, boolean replace)
 	  }
 	  /* _a.png */
 	  strcpy(pfname, "_a.png");
-	  if ((fp = fopen(fname, "rb")) != nullptr) {
-		tmptex = _txImage->readPNG(fp, &tmpwidth, &tmpheight, &tmpformat);
-		fclose(fp);
-	  }
+	  tmptex = _txImage->readPNG((dir_prefix + fname).c_str(), &tmpwidth, &tmpheight, &tmpformat);
 	  if (!tmptex) {
 		/* _a.bmp */
 		strcpy(pfname, "_a.bmp");
-		if ((fp = fopen(fname, "rb")) != nullptr) {
-		  tmptex = _txImage->readBMP(fp, &tmpwidth, &tmpheight, &tmpformat);
-		  fclose(fp);
-		}
+		tmptex = _txImage->readBMP((dir_prefix + fname).c_str(), &tmpwidth, &tmpheight, &tmpformat);
 	  }
 	  if (tmptex) {
 		/* check if _rgb.* and _a.* have matching size and format. */
@@ -414,11 +369,9 @@ TxHiResCache::loadHiResTextures(const wchar_t * dir_path, boolean replace)
 		pfname == strstr(fname, "_ciByRGBA.dds") ||
 #endif
 		pfname == strstr(fname, "_ci.bmp")) {
-	  if ((fp = fopen(fname, "rb")) != nullptr) {
-		if      (strstr(fname, ".png")) tex = _txImage->readPNG(fp, &width, &height, &format);
-		else                            tex = _txImage->readBMP(fp, &width, &height, &format);
-		fclose(fp);
-	  }
+	  path = dir_prefix + fname;
+	  if      (strstr(fname, ".png")) tex = _txImage->readPNG(path.c_str(), &width, &height, &format);
+	  else                            tex = _txImage->readBMP(path.c_str(), &width, &height, &format);
 	}
 
 	/* if we do not have a texture at this point we are screwed */
@@ -654,24 +607,14 @@ TxHiResCache::loadHiResTextures(const wchar_t * dir_path, boolean replace)
 	  /* add to cache */
 	  const boolean added = TxCache::add(chksum64, &tmpInfo);
 	  free(tex);
-	  if (added) {
-		/* Callback to display hires texture info.
-		 * Gonetz <gonetz(at)ngs.ru> */
-		if (_callback) {
-		  wchar_t tmpbuf[MAX_PATH];
-		  mbstowcs(tmpbuf, fname, MAX_PATH);
-		  (*_callback)(wst("[%d] total mem:%.2fmb - %ls\n"), _cache.size(), (float)_totalSize/1000000, tmpbuf);
-		}
-	  } else {
+	  if (!added) {
 		  result = resError;
 		  break;
 	  }
 	}
 
-  } while (foundfilename != nullptr);
-  osal_search_dir_close(dir);
-
-  CHDIR(curpath);
+  }
+  retro_closedir(dir);
 
   return result;
 }

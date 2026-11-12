@@ -26,7 +26,7 @@
 #endif
 
 #include "TxCache.h"
-#include <osal_files.h>
+#include <file/file_path.h>
 #include <encodings/deflate.h>
 #include "TxGz.h"
 #include <memory.h>
@@ -114,12 +114,10 @@ TxCache::~TxCache()
 	clear();
 }
 
-TxCache::TxCache(int options, int cachesize, const wchar_t *cachePath, const wchar_t *ident,
-				 dispInfoFuncExt callback)
+TxCache::TxCache(int options, int cachesize, const char *cachePath, const char *ident)
 {
 	_options = options;
 	_cacheSize = cachesize;
-	_callback = callback;
 	_totalSize = 0;
 
 	/* save path name */
@@ -295,37 +293,21 @@ TxCache::get(uint64 checksum, GHQTexInfo *info)
 }
 
 boolean
-TxCache::save(const wchar_t *path, const wchar_t *filename, int config)
+TxCache::save(const char *path, const char *filename, int config)
 {
 	if (_cache.empty())
 		return 0;
 
 	/* dump cache to disk */
-	char cbuf[MAX_PATH];
+	path_mkdir(path);
 
-	osal_mkdirp(path);
-
-	/* Ugly hack to enable fopen/txgz_open in Win9x */
-#ifdef OS_WINDOWS
-	wchar_t curpath[MAX_PATH];
-	GETCWD(MAX_PATH, curpath);
-	CHDIR(path);
-#else
-	char curpath[MAX_PATH];
-	GETCWD(MAX_PATH, curpath);
-	wcstombs(cbuf, path, MAX_PATH);
-	CHDIR(cbuf);
-#endif
-
-	wcstombs(cbuf, filename, MAX_PATH);
-
-	TxGzFile *gzfp = txgz_open(cbuf, "wb1");
+	const std::string fullPath = std::string(path) + "/" + filename;
+	TxGzFile *gzfp = txgz_open(fullPath.c_str(), "wb1");
 	if (gzfp) {
 		/* write header to determine config match */
 		txgz_write(gzfp, &config, 4);
 
 		auto itMap = _cache.begin();
-		int total = 0;
 		while (itMap != _cache.end()) {
 			uint8 *dest = (*itMap).second->info.data;
 			uint32 destLen = (*itMap).second->size;
@@ -365,64 +347,47 @@ TxCache::save(const wchar_t *path, const wchar_t *filename, int config)
 			}
 
 			itMap++;
-
-			if (_callback)
-				(*_callback)(wst("Total textures saved to HDD: %d\n"), ++total);
 		}
 		txgz_close(gzfp);
 	}
-
-	CHDIR(curpath);
 
 	return _cache.empty() ? 0 : 1;
 }
 
 boolean
-TxCache::load(const wchar_t *path, const wchar_t *filename, int config, boolean force)
+TxCache::load(const char *path, const char *filename, int config, boolean force)
 {
 	/* find it on disk */
-	char cbuf[MAX_PATH];
-
-#ifdef OS_WINDOWS
-	wchar_t curpath[MAX_PATH];
-	GETCWD(MAX_PATH, curpath);
-	CHDIR(path);
-#else
-	char curpath[MAX_PATH];
-	GETCWD(MAX_PATH, curpath);
-	wcstombs(cbuf, path, MAX_PATH);
-	CHDIR(cbuf);
-#endif
-
-	wcstombs(cbuf, filename, MAX_PATH);
-
-	TxGzFile *gzfp = txgz_open(cbuf, "rb");
+	const std::string fullPath = std::string(path) + "/" + filename;
+	TxGzFile *gzfp = txgz_open(fullPath.c_str(), "rb");
 	if (gzfp) {
 		/* yep, we have it. load it into memory cache. */
 		int dataSize;
 		uint64 checksum;
 		int tmpconfig;
 		/* read header to determine config match */
-		txgz_read(gzfp, &tmpconfig, 4);
-
-		if (tmpconfig == config || force) {
+		if (txgz_read(gzfp, &tmpconfig, 4) == 4 && (tmpconfig == config || force)) {
 			do {
 				GHQTexInfo tmpInfo;
 
-				txgz_read(gzfp, &checksum, 8);
-
-				txgz_read(gzfp, &tmpInfo.width, 4);
-				txgz_read(gzfp, &tmpInfo.height, 4);
-				txgz_read(gzfp, &tmpInfo.format, 4);
-				txgz_read(gzfp, &tmpInfo.texture_format, 2);
-				txgz_read(gzfp, &tmpInfo.pixel_type, 2);
-				txgz_read(gzfp, &tmpInfo.is_hires_tex, 1);
-
-				txgz_read(gzfp, &dataSize, 4);
+				/* a short record ends the file: the cache was cut off */
+				if (txgz_read(gzfp, &checksum, 8) != 8 ||
+						txgz_read(gzfp, &tmpInfo.width, 4) != 4 ||
+						txgz_read(gzfp, &tmpInfo.height, 4) != 4 ||
+						txgz_read(gzfp, &tmpInfo.format, 4) != 4 ||
+						txgz_read(gzfp, &tmpInfo.texture_format, 2) != 2 ||
+						txgz_read(gzfp, &tmpInfo.pixel_type, 2) != 2 ||
+						txgz_read(gzfp, &tmpInfo.is_hires_tex, 1) != 1 ||
+						txgz_read(gzfp, &dataSize, 4) != 4 ||
+						dataSize <= 0)
+					break;
 
 				tmpInfo.data = (uint8*)malloc(dataSize);
 				if (tmpInfo.data) {
-					txgz_read(gzfp, tmpInfo.data, dataSize);
+					if (txgz_read(gzfp, tmpInfo.data, dataSize) != dataSize) {
+						free(tmpInfo.data);
+						break;
+					}
 
 					/* add to memory cache */
 					add(checksum, &tmpInfo, (tmpInfo.format & GL_TEXFMT_GZ) ? dataSize : 0);
@@ -432,16 +397,10 @@ TxCache::load(const wchar_t *path, const wchar_t *filename, int config, boolean 
 					txgz_skip(gzfp, dataSize);
 				}
 
-				/* skip in between to prevent the loop from being tied down to vsync */
-				if (_callback && (!(_cache.size() % 100) || txgz_eof(gzfp)))
-					(*_callback)(wst("[%d] total mem:%.02fmb - %ls\n"), _cache.size(), (float)_totalSize/1000000, filename);
-
 			} while (!txgz_eof(gzfp));
-			txgz_close(gzfp);
 		}
+		txgz_close(gzfp);
 	}
-
-	CHDIR(curpath);
 
 	return !_cache.empty();
 }

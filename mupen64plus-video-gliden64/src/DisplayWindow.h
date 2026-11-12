@@ -1,7 +1,6 @@
 #ifndef DISPLAYWINDOW_H
 #define DISPLAYWINDOW_H
 
-#include <wchar.h>
 #include <boolean.h>
 #include "Types.h"
 

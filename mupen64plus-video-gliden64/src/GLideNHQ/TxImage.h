@@ -24,46 +24,17 @@
 #ifndef __TXIMAGE_H__
 #define __TXIMAGE_H__
 
-#include <stdio.h>
 #include "TxInternal.h"
-
-#ifndef WIN32
-typedef struct tagBITMAPFILEHEADER {
-  unsigned short bfType;
-  unsigned long  bfSize;
-  unsigned short bfReserved1;
-  unsigned short bfReserved2;
-  unsigned long  bfOffBits;
-} BITMAPFILEHEADER;
-
-typedef struct tagBITMAPINFOHEADER {
-  unsigned long  biSize;
-  long           biWidth;
-  long           biHeight;
-  unsigned short biPlanes;
-  unsigned short biBitCount;
-  unsigned long  biCompression;
-  unsigned long  biSizeImage;
-  long           biXPelsPerMeter;
-  long           biYPelsPerMeter;
-  unsigned long  biClrUsed;
-  unsigned long  biClrImportant;
-} BITMAPINFOHEADER;
-#else
-typedef struct tagBITMAPFILEHEADER BITMAPFILEHEADER;
-typedef struct tagBITMAPINFOHEADER BITMAPINFOHEADER;
-#endif
 
 class TxImage
 {
-private:
-  boolean getBMPInfo(FILE *fp, BITMAPFILEHEADER *bmp_fhdr, BITMAPINFOHEADER *bmp_ihdr);
 public:
   TxImage() {}
   ~TxImage() {}
-  uint8* readPNG(FILE* fp, int* width, int* height, ColorFormat* format);
+  /* UTF-8 paths, read through the VFS */
+  uint8* readPNG(const char *path, int* width, int* height, ColorFormat* format);
   boolean writePNG(uint8* src, const char *path, int width, int height, int rowStride, ColorFormat format/*, uint8 *palette*/);
-  uint8* readBMP(FILE* fp, int* width, int* height, ColorFormat* format);
+  uint8* readBMP(const char *path, int* width, int* height, ColorFormat* format);
 };
 
 #endif /* __TXIMAGE_H__ */

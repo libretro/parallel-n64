@@ -6,7 +6,7 @@ LOCAL_PATH := $(JNI_LOCAL_PATH)
 SRCDIR := ./$(BASE_DIR)/src
 
 MY_LOCAL_MODULE := mupen64plus-video-gliden64
-MY_LOCAL_SHARED_LIBRARIES := freetype osal
+MY_LOCAL_SHARED_LIBRARIES := freetype
 MY_LOCAL_STATIC_LIBRARIES := glidenhq
 MY_LOCAL_ARM_MODE := arm
 
@@ -15,7 +15,6 @@ MY_LOCAL_C_INCLUDES :=                          \
     $(M64P_API_INCLUDES)                        \
     $(SDL_INCLUDES)                             \
     $(FREETYPE_INCLUDES)                        \
-    $(LOCAL_PATH)/$(SRCDIR)/osal                \
     $(GL_INCLUDES)
 
 MY_LOCAL_SRC_FILES :=                                                              \

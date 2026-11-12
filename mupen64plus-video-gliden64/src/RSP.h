@@ -21,7 +21,6 @@ typedef struct
 	bool busy, halt, infloop;
 	bool LLE;
 	char romname[21];
-	wchar_t pluginpath[PLUGIN_PATH_SIZE];
 } RSPInfo;
 
 extern RSPInfo RSP;

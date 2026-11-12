@@ -45,14 +45,14 @@ private:
   TxImage *_txImage;
   TxQuantize *_txQuantize;
   TxReSample *_txReSample;
-  tx_wstring _texPackPath;
+  std::string _texPackPath; /* UTF-8 */
   enum LoadResult {
 	  resOk,
 	  resNotFound,
 	  resError
   };
-  LoadResult loadHiResTextures(const wchar_t * dir_path, boolean replace);
-  tx_wstring _getFileName() const;
+  LoadResult loadHiResTextures(const std::string & dir_path, boolean replace);
+  std::string _getFileName() const;
   int _getConfig() const;
   boolean _HiResTexPackPathExists() const;
 
@@ -62,10 +62,9 @@ public:
 			   int maxheight,
 			   int maxbpp,
 			   int options,
-			   const wchar_t *cachePath,
-			   const wchar_t *texPackPath,
-			   const wchar_t *ident,
-			   dispInfoFuncExt callback);
+			   const char *cachePath,
+			   const char *texPackPath,
+			   const char *ident);
   boolean empty();
   boolean load(boolean replace);
   void dump();

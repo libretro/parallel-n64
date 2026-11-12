@@ -1180,10 +1180,10 @@ asm-defines-regen:
 	$(RM) $(CORE_DIR)/src/asm_defines/asm_defines.o
 
 mupen64plus-video-gliden64/src/%.o: mupen64plus-video-gliden64/src/%.c
-	$(CC) -I$(VIDEODIR_GLIDEN64)/src -I$(VIDEODIR_GLIDEN64)/src/osal $(CPPFLAGS) $(CFLAGS) -c $< $(OBJOUT)$@
+	$(CC) -I$(VIDEODIR_GLIDEN64)/src $(CPPFLAGS) $(CFLAGS) -c $< $(OBJOUT)$@
 
 mupen64plus-video-gliden64/src/%.o: mupen64plus-video-gliden64/src/%.cpp
-	$(CXX) -I$(VIDEODIR_GLIDEN64)/src -I$(VIDEODIR_GLIDEN64)/src/osal $(CPPFLAGS) $(CXXFLAGS) -c $< $(OBJOUT)$@
+	$(CXX) -I$(VIDEODIR_GLIDEN64)/src $(CPPFLAGS) $(CXXFLAGS) -c $< $(OBJOUT)$@
 
 # Objects do not otherwise depend on the flags they were built with, so
 # toggling one of the diagnostic switches left every object stale and the

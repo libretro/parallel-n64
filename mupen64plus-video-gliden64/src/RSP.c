@@ -431,7 +431,5 @@ void gli_RSP_Init(void)
 	else if (strstr(RSP.romname, (const char *)"NITRO64") != NULL)
 		config.generalEmulation.hacks |= hack_WCWNitro;
 
-	gli_api_find_plugin_path(RSP.pluginpath);
-
 	RSP_SetDefaultState();
 }

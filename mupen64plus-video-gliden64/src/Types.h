@@ -49,7 +49,7 @@ typedef double				f64;	/* double prec floating point */
 #endif
 
 #ifndef PLUGIN_PATH_SIZE
-#define PLUGIN_PATH_SIZE 260
+#define PLUGIN_PATH_SIZE 1024 /* bytes of a UTF-8 path */
 #endif
 
 #ifdef __cplusplus

@@ -30,7 +30,7 @@
 #include "TxInternal.h"
 
 /* extension for cache files */
-#define TEXCACHE_EXT wst("htc")
+#define TEXCACHE_EXT "htc"
 
 #include <vector>
 

@@ -21,8 +21,6 @@ bool gli_combiner_is_rect_mode(void);
 #ifdef __cplusplus
 }
 
-#include <istream>
-
 class CombinerKey {
 public:
 	CombinerKey() : m_mux(0) {}
@@ -41,8 +39,6 @@ public:
 	u32 getCycleType() const { return gli_combiner_key_cycle_type(m_mux); }
 	u32 getBilerp() const { return gli_combiner_key_bilerp(m_mux); }
 	u64 getMux() const { return m_mux; }
-
-	void read(std::istream & _is) { _is.read(reinterpret_cast<char*>(&m_mux), sizeof(m_mux)); }
 
 	static const CombinerKey & getEmpty()
 	{
