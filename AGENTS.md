@@ -101,8 +101,8 @@ Know which layer you are changing. Having one does not give you the next.
 | Layer | Where | Scope |
 | --- | --- | --- |
 | Prebuilt SPIR-V | `shaders/slangmosh.hpp`, `upscaler_shaders.hpp` | every device |
-| Recipes (what to build) | `parallel_rdp_pipelines.bin`, `pipeline_record.h` | portable |
-| Driver blob | `parallel_rdp_pipeline_cache.bin` | one device and driver |
+| Recipes (what to build) | `<system>/ParallelN64/parallel_rdp_pipelines.bin`, `pipeline_record.h` | portable |
+| Driver blob | `<system>/ParallelN64/parallel_rdp_pipeline_cache.bin` | one device and driver |
 | Live `VkPipeline` | `Program::get_pipeline` | this device |
 | GL binaries / keys | `glsl_ShaderStorage.cpp` | GL vendor and version / portable |
 

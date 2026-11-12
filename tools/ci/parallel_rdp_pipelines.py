@@ -44,8 +44,9 @@ ROMS = ["cube32", "zbuf16", "tlut16", "pal8", "maskcm", "alphacov"]
 MODES = {"threaded": ({}, []),
          "single-threaded": ({"PARALLEL_RDP_SINGLE_THREADED_COMMAND": "1"}, []),
          "2x": ({}, ["parallel-n64-upscaling=2x"])}
-CACHE = "parallel_rdp_pipeline_cache.bin"
-LIST = "parallel_rdp_pipelines.bin"
+# in the system folder, where GLideN64's files are too
+CACHE = os.path.join("ParallelN64", "parallel_rdp_pipeline_cache.bin")
+LIST = os.path.join("ParallelN64", "parallel_rdp_pipelines.bin")
 COUNTS = re.compile(r"pipelines: (\d+) built on the frame's threads, (\d+) on the pipeline worker")
 
 
@@ -264,6 +265,35 @@ def as_frontend(args):
     return 1 if errors else 0
 
 
+def moved_over(args):
+    """Files an earlier build left in the system folder itself are moved
+    into ParallelN64 and used: the session builds none on the frame's
+    threads that the list held, and leaves nothing behind."""
+    rom = regress.fetch(args.roms, FULL_ROM)
+    sysdir = os.path.abspath(os.path.join(args.out, "moved"))
+    shutil.rmtree(sysdir, ignore_errors=True)
+    os.makedirs(sysdir)
+    run(args, rom, sysdir, "cold", {}, [])
+    os.remove(os.path.join(sysdir, CACHE))
+    old = os.path.join(sysdir, os.path.basename(LIST))
+    os.rename(os.path.join(sysdir, LIST), old)
+    count = listed(old)
+    frame, worker, _ = run(args, rom, sysdir, "moved", {}, [])
+    new = listed(os.path.join(sysdir, LIST)) - count
+    errors = []
+    if os.path.exists(old):
+        errors.append("the list is still in the system folder")
+    if count == 0 or new < 0:
+        errors.append("the list was not taken (%d records before, %d more after)" % (count, new))
+    if frame > max(new, 0):
+        errors.append("built %d on the frame's threads" % frame)
+    print("moved over: %s (%d records, %d on the frame's threads, %d on the worker)"
+          % ("FAIL" if errors else "ok", count, frame, worker))
+    for e in errors:
+        print("  FAIL: " + e)
+    return 1 if errors else 0
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--core", required=True)
@@ -292,6 +322,7 @@ def main():
             failed += bool(errors)
     failed += known_at_load(args)
     failed += as_frontend(args)
+    failed += moved_over(args)
     line, errors = shared(args, "tlut16", "pal8")
     print("shared: %s\n%s" % ("FAIL" if errors else "ok", line))
     for e in errors:

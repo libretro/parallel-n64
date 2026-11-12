@@ -341,12 +341,24 @@ static void build_pipelines_ahead()
 static uint32_t pipeline_cache_loaded_crc;
 static int64_t pipeline_cache_loaded_size;
 
+/* <system>/ParallelN64/<name>, the folder GLideN64 keeps its files in,
+ * made if it is not there. A file an earlier build left in <system> itself
+ * is moved over first, so that what it holds is not built again. Content
+ * load and close only. */
 static bool pipeline_file_path(char *s, size_t len, const char *name)
 {
+	char folder[PATH_MAX_LENGTH];
+	char old[PATH_MAX_LENGTH];
 	const char *dir = NULL;
 	if (!environ_cb(RETRO_ENVIRONMENT_GET_SYSTEM_DIRECTORY, &dir) || !dir || !*dir)
 		return false;
-	fill_pathname_join_special(s, dir, name, len);
+	fill_pathname_join_special(folder, dir, "ParallelN64", sizeof(folder));
+	if (!path_mkdir(folder))
+		return false;
+	fill_pathname_join_special(s, folder, name, len);
+	fill_pathname_join_special(old, dir, name, sizeof(old));
+	if (!filestream_exists(s) && filestream_exists(old))
+		filestream_rename(old, s);
 	return true;
 }
 
