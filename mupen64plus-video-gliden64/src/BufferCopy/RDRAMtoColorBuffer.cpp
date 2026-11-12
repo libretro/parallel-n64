@@ -21,6 +21,7 @@ RDRAMtoColorBuffer::RDRAMtoColorBuffer()
 	: m_pCurBuffer(nullptr)
 	, m_pTexture(nullptr)
 	, m_pbuf(nullptr) {
+	gli_r2c_marks_init(&m_marks);
 }
 
 RDRAMtoColorBuffer & RDRAMtoColorBuffer::get()
@@ -43,8 +44,8 @@ void RDRAMtoColorBuffer::init()
 	m_pTexture->maskT = 0;
 	m_pTexture->mirrorS = 0;
 	m_pTexture->mirrorT = 0;
-	m_pTexture->realWidth = 640;
-	m_pTexture->realHeight = 580;
+	m_pTexture->realWidth = GLI_R2C_WIDTH;
+	m_pTexture->realHeight = GLI_R2C_HEIGHT;
 	m_pTexture->textureBytes = m_pTexture->realWidth * m_pTexture->realHeight * fbTexFormats.colorFormatBytes;
 
 	Context::InitTextureParams initParams;
@@ -64,7 +65,10 @@ void RDRAMtoColorBuffer::init()
 	setParams.magFilter = textureParameters::FILTER_LINEAR;
 	gfxContext.setTextureParameters(setParams);
 
-	m_pbuf = (u8*)malloc(m_pTexture->textureBytes);
+	/* the pixels are converted to ABGR8888 here first, then narrowed or
+	 * widened in place: room for whichever is bigger */
+	m_pbuf = (u8*)malloc(m_pTexture->realWidth * m_pTexture->realHeight *
+		std::max(fbTexFormats.colorFormatBytes, 4u));
 }
 
 void RDRAMtoColorBuffer::destroy()
@@ -74,6 +78,7 @@ void RDRAMtoColorBuffer::destroy()
 		m_pTexture = nullptr;
 	}
 	free(m_pbuf);
+	m_pbuf = nullptr;
 }
 
 void RDRAMtoColorBuffer::addAddress(u32 _address, u32 _size)
@@ -87,89 +92,8 @@ void RDRAMtoColorBuffer::addAddress(u32 _address, u32 _size)
 	const u32 pixelSize = 1 << m_pCurBuffer->m_size >> 1;
 	if (_size != pixelSize && (_address%pixelSize) > 0)
 		return;
-	m_vecAddress.push_back(_address);
+	gli_r2c_mark(&m_marks, _address);
 	gDP.colorImage.changed = TRUE;
-}
-
-// Write the whole buffer
-template <typename TSrc>
-bool _copyBufferFromRdram(u32 _address, u32* _dst, u32(*converter)(TSrc _c, bool _bCFB), u32 _xor, u32 _x0, u32 _y0, u32 _width, u32 _height, bool _fullAlpha)
-{
-	TSrc * src = reinterpret_cast<TSrc*>(RDRAM + _address);
-	const u32 bound = (RDRAMSize + 1 - _address) >> (sizeof(TSrc) / 2);
-	TSrc col;
-	u32 idx;
-	u32 summ = 0;
-	u32 dsty = 0;
-	const u32 y1 = _y0 + _height;
-	for (u32 y = _y0; y < y1; ++y) {
-		for (u32 x = _x0; x < _width; ++x) {
-			idx = (x + y *_width) ^ _xor;
-			if (idx >= bound)
-				break;
-			col = src[idx];
-			summ += col;
-			_dst[x + dsty*_width] = converter(col, _fullAlpha);
-		}
-		++dsty;
-	}
-
-	return summ != 0;
-}
-
-// Write only pixels provided with FBWrite
-template <typename TSrc>
-bool _copyPixelsFromRdram(u32 _address, const std::vector<u32> & _vecAddress, u32* _dst, u32(*converter)(TSrc _c, bool _bCFB), u32 _xor, u32 _width, u32 _height, bool _fullAlpha)
-{
-	memset(_dst, 0, _width*_height*sizeof(u32));
-	TSrc * src = reinterpret_cast<TSrc*>(RDRAM + _address);
-	const u32 szPixel = sizeof(TSrc);
-	const size_t numPixels = _vecAddress.size();
-	TSrc col;
-	u32 summ = 0;
-	u32 idx, w, h;
-	for (size_t i = 0; i < numPixels; ++i) {
-		if (_vecAddress[i] < _address)
-			return false;
-		idx = (_vecAddress[i] - _address) / szPixel;
-		w = idx % _width;
-		h = idx / _width;
-		if (h > _height)
-			return false;
-		col = src[idx];
-		summ += col;
-		_dst[(w + h * _width) ^ _xor] = converter(col, _fullAlpha);
-	}
-
-	return summ != 0;
-}
-
-static
-u32 RGBA16ToABGR32(u16 col, bool _fullAlpha)
-{
-	u32 r, g, b, a;
-	r = ((col >> 11) & 31) << 3;
-	g = ((col >> 6) & 31) << 3;
-	b = ((col >> 1) & 31) << 3;
-	if (_fullAlpha)
-		a = 0xFF;
-	else
-		a = (col & 1) > 0 ? 0xFF : 0U;
-	return ((a << 24) | (b << 16) | (g << 8) | r);
-}
-
-static
-u32 RGBA32ToABGR32(u32 col, bool _fullAlpha)
-{
-	u32 r, g, b, a;
-	r = (col >> 24) & 0xff;
-	g = (col >> 16) & 0xff;
-	b = (col >> 8) & 0xff;
-	if (_fullAlpha)
-		a = 0xFF;
-	else
-		a = col & 0xFF;
-	return ((a << 24) | (b << 16) | (g << 8) | r);
 }
 
 void RDRAMtoColorBuffer::_copyFromRDRAM(u32 _height, bool _fullAlpha)
@@ -187,35 +111,25 @@ void RDRAMtoColorBuffer::_copyFromRDRAM(u32 _height, bool _fullAlpha)
 
 	const FramebufferTextureFormats & fbTexFormats = gfxContext.getFramebufferTextureFormats();
 
+	/* past the upload texture, and the buffer behind it */
+	if (width > m_pTexture->realWidth || height > m_pTexture->realHeight || m_pbuf == nullptr)
+		return;
+
 	m_pTexture->width = width;
 	m_pTexture->height = height;
 
-	/* converted into the upload buffer itself; a float one is widened
-	 * in place below */
+	/* converted into the upload buffer itself, then put in the texture's
+	 * format in place */
 	u32 * pDst = reinterpret_cast<u32*>(m_pbuf);
 
-	bool bCopy;
-	if (m_vecAddress.empty()) {
-		if (m_pCurBuffer->m_size == G_IM_SIZ_16b)
-			bCopy = _copyBufferFromRdram<u16>(address, pDst, RGBA16ToABGR32, 1, x0, y0, width, height, _fullAlpha);
-		else
-			bCopy = _copyBufferFromRdram<u32>(address, pDst, RGBA32ToABGR32, 0, x0, y0, width, height, _fullAlpha);
-	} else {
-		if (m_pCurBuffer->m_size == G_IM_SIZ_16b)
-			bCopy = _copyPixelsFromRdram<u16>(address, m_vecAddress, pDst, RGBA16ToABGR32, 1, width, height, _fullAlpha);
-		else
-			bCopy = _copyPixelsFromRdram<u32>(address, m_vecAddress, pDst, RGBA32ToABGR32, 0, width, height, _fullAlpha);
-	}
+	const bool bCopy = m_marks.count == 0 ?
+		gli_r2c_copy_image(address, m_pCurBuffer->m_size, pDst, width, height, _fullAlpha) != 0 :
+		gli_r2c_copy_marked(&m_marks, address, m_pCurBuffer->m_size, pDst, width, height, _fullAlpha) != 0;
 
-	/* Widen the channels to float in place, from the last one down: the
-	 * float for channel i lands on bytes 4i..4i+3, all past i and already
-	 * read, and byte 0 is read before its float is written. */
-	if (fbTexFormats.colorType == datatype::FLOAT) {
-		f32* floatData = reinterpret_cast<f32*>(m_pbuf);
-		const u8* byteData = m_pbuf;
-		for (u32 i = width * height * 4; i-- > 0;)
-			floatData[i] = byteData[i] / 255.0f;
-	}
+	if (fbTexFormats.colorType == datatype::FLOAT)
+		gli_r2c_to_float(m_pbuf, width * height);
+	else if (fbTexFormats.colorType == datatype::UNSIGNED_SHORT_5_6_5)
+		gli_r2c_to_565(m_pbuf, width * height);
 
 	if (!gli_FBInfo_supported()) {
 		if (bUseAlpha && config.frameBufferEmulation.copyToRDRAM == ctDisable) {
@@ -286,7 +200,7 @@ void RDRAMtoColorBuffer::copyFromRDRAM(u32 _address, bool _bCFB)
 		if (_bCFB || (config.frameBufferEmulation.copyFromRDRAM != 0 && !gli_FBInfo_supported()))
 			m_pCurBuffer = frameBufferList().findBuffer(_address);
 	} else {
-		if (m_vecAddress.empty()) {
+		if (m_marks.count == 0) {
 			m_pCurBuffer = nullptr;
 			return;
 		}
@@ -398,5 +312,5 @@ void RDRAMtoColorBuffer::copyFromRDRAM(FrameBuffer * _pBuffer)
 void RDRAMtoColorBuffer::reset()
 {
 	m_pCurBuffer = nullptr;
-	m_vecAddress.clear();
+	gli_r2c_marks_clear(&m_marks);
 }

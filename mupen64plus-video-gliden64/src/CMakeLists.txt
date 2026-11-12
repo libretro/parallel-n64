@@ -24,6 +24,7 @@ set(GLideN64_SOURCES
   FrameBufferRdram.c
   FrameBufferList.c
   RdramWrite.c
+  RdramToColor.c
   TriangleList.c
   DrawerViewport.c
   DrawerStates.c

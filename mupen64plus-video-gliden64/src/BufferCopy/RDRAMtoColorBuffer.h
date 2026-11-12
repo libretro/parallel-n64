@@ -1,10 +1,9 @@
 #ifndef RDRAMtoColorBuffer_H
 #define RDRAMtoColorBuffer_H
 
-#include <vector>
-#include <memory>
 #include <Graphics/ObjectHandle.h>
 #include <FrameBuffer.h>
+#include <gli_rdram_to_color.h>
 
 struct CachedTexture;
 struct FrameBuffer;
@@ -45,7 +44,8 @@ private:
 
 	FrameBuffer * m_pCurBuffer;
 	CachedTexture * m_pTexture;
-	std::vector<u32> m_vecAddress;
+	/* the pixels the CPU wrote, when it wrote some rather than all */
+	gli_r2c_marks m_marks;
 	u8* m_pbuf;
 };
 
