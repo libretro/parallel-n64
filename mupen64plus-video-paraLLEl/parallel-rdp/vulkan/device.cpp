@@ -95,6 +95,7 @@ Device::Device()
 	                                   [](void *userdata, VkFramebuffer framebuffer) {
 		static_cast<Device *>(userdata)->destroy_framebuffer_nolock(framebuffer);
 	}, this);
+	granite_submit_composer_init(&composer);
 	fence_wait_ec_live = retro_eventcount_init(&fence_wait_ec);
 	for (auto &stack : deferred_releases)
 		mpsc_stack_init(&stack);
@@ -1028,12 +1029,10 @@ void Device::submit_empty_inner(QueueIndices physical_type, InternalFence *fence
 	frame().timeline_fences[physical_type] = data.current_timeline;
 
 	// Add external wait semaphores.
-	Helper::WaitSemaphores wait_semaphores;
-	Helper::BatchComposer composer(get_workarounds().split_binary_timeline_semaphores);
-	collect_wait_semaphores(data, wait_semaphores);
-	composer.add_wait_submissions(wait_semaphores);
+	granite_submit_composer_begin(&composer, get_workarounds().split_binary_timeline_semaphores);
+	collect_wait_semaphores(data);
 
-	emit_queue_signals(composer, external_semaphore,
+	emit_queue_signals(external_semaphore,
 	                   timeline_semaphore, timeline_value,
 	                   fence, semaphore_count, semaphores);
 
@@ -1044,7 +1043,7 @@ void Device::submit_empty_inner(QueueIndices physical_type, InternalFence *fence
 		fence->fence = cleared_fence;
 
 	auto start_ts = write_calibrated_timestamp_nolock();
-	auto result = submit_batches(composer, queue, cleared_fence);
+	auto result = submit_batches(queue, cleared_fence);
 	auto end_ts = write_calibrated_timestamp_nolock();
 	register_time_interval_nolock("CPU", Util::move(start_ts), Util::move(end_ts), "submit");
 
@@ -1147,27 +1146,34 @@ void Device::submit_staging(CommandBufferHandle &cmd, VkBufferUsageFlags usage, 
 	}
 }
 
-void Device::collect_wait_semaphores(QueueData &data, Helper::WaitSemaphores &sem)
+// The semaphores the queue's next submission waits for go to the composer:
+// the binary ones, then the timeline ones.
+void Device::collect_wait_semaphores(QueueData &data)
 {
-	for (size_t i = 0, n = data.wait_semaphores.size(); i < n; i++)
+	for (unsigned pass = 0; pass < 2; pass++)
 	{
-		auto &semaphore = data.wait_semaphores[i];
-		auto vk_semaphore = semaphore->consume();
-		if (semaphore->get_semaphore_type() == VK_SEMAPHORE_TYPE_TIMELINE_KHR)
+		for (size_t i = 0, n = data.wait_semaphores.size(); i < n; i++)
 		{
-			sem.timeline_waits.push_back(vk_semaphore);
-			sem.timeline_wait_stages.push_back(data.wait_stages[i]);
-			sem.timeline_wait_counts.push_back(semaphore->get_timeline_value());
-		}
-		else
-		{
-			if (semaphore->is_external_object_compatible())
-				granite_frame_garbage_push(&frame().garbage, GRANITE_GARBAGE_SEMAPHORE, GRANITE_VK_TO_BITS(vk_semaphore));
-			else
-				granite_frame_garbage_push(&frame().garbage, GRANITE_GARBAGE_RECYCLE_SEMAPHORE, GRANITE_VK_TO_BITS(vk_semaphore));
+			auto &semaphore = data.wait_semaphores[i];
+			bool timeline = semaphore->get_semaphore_type() == VK_SEMAPHORE_TYPE_TIMELINE_KHR;
+			if (timeline != (pass == 1))
+				continue;
 
-			sem.binary_waits.push_back(vk_semaphore);
-			sem.binary_wait_stages.push_back(data.wait_stages[i]);
+			auto vk_semaphore = semaphore->consume();
+			if (timeline)
+			{
+				granite_submit_composer_add_wait(&composer, vk_semaphore, data.wait_stages[i],
+				                                 semaphore->get_timeline_value());
+			}
+			else
+			{
+				if (semaphore->is_external_object_compatible())
+					granite_frame_garbage_push(&frame().garbage, GRANITE_GARBAGE_SEMAPHORE, GRANITE_VK_TO_BITS(vk_semaphore));
+				else
+					granite_frame_garbage_push(&frame().garbage, GRANITE_GARBAGE_RECYCLE_SEMAPHORE, GRANITE_VK_TO_BITS(vk_semaphore));
+
+				granite_submit_composer_add_wait(&composer, vk_semaphore, data.wait_stages[i], 0);
+			}
 		}
 	}
 
@@ -1175,187 +1181,7 @@ void Device::collect_wait_semaphores(QueueData &data, Helper::WaitSemaphores &se
 	data.wait_semaphores.clear();
 }
 
-static bool has_timeline_semaphore(const SmallVector<uint64_t> &counts)
-{
-	for (uint64_t count : counts)
-		if (count != 0)
-			return true;
-	return false;
-}
-
-static bool has_binary_semaphore(const SmallVector<uint64_t> &counts)
-{
-	for (uint64_t count : counts)
-		if (count == 0)
-			return true;
-	return false;
-}
-
-bool Helper::BatchComposer::has_timeline_semaphore_in_batch(unsigned index) const
-{
-	return has_timeline_semaphore(wait_counts[index]) ||
-	       has_timeline_semaphore(signal_counts[index]);
-}
-
-bool Helper::BatchComposer::has_binary_semaphore_in_batch(unsigned index) const
-{
-	return has_binary_semaphore(wait_counts[index]) ||
-	       has_binary_semaphore(signal_counts[index]);
-}
-
-Helper::BatchComposer::BatchComposer(bool split_binary_timeline_semaphores_)
-	: split_binary_timeline_semaphores(split_binary_timeline_semaphores_)
-{
-	submits.emplace_back();
-}
-
-void Helper::BatchComposer::begin_batch()
-{
-	if (!waits[submit_index].empty() || !cmds[submit_index].empty() || !signals[submit_index].empty())
-	{
-		submit_index = submits.size();
-		submits.emplace_back();
-		VK_ASSERT(submits.size() <= MaxSubmissions);
-	}
-}
-
-void Helper::BatchComposer::add_wait_submissions(WaitSemaphores &sem)
-{
-	if (!sem.binary_waits.empty())
-	{
-		// Split binary semaphore waits from timeline semaphore waits to work around driver bugs if needed.
-		if (split_binary_timeline_semaphores && has_timeline_semaphore_in_batch(submit_index))
-			begin_batch();
-
-		for (size_t i = 0, n = sem.binary_waits.size(); i < n; i++)
-		{
-			waits[submit_index].push_back(sem.binary_waits[i]);
-			wait_stages[submit_index].push_back(sem.binary_wait_stages[i]);
-			wait_counts[submit_index].push_back(0);
-		}
-	}
-
-	if (!sem.timeline_waits.empty())
-	{
-		// Split binary semaphore waits from timeline semaphore waits to work around driver bugs if needed.
-		if (split_binary_timeline_semaphores && has_binary_semaphore_in_batch(submit_index))
-			begin_batch();
-
-		for (size_t i = 0, n = sem.timeline_waits.size(); i < n; i++)
-		{
-			waits[submit_index].push_back(sem.timeline_waits[i]);
-			wait_stages[submit_index].push_back(sem.timeline_wait_stages[i]);
-			wait_counts[submit_index].push_back(sem.timeline_wait_counts[i]);
-		}
-	}
-}
-
-SmallVector<VkSubmitInfo, Helper::BatchComposer::MaxSubmissions> &
-Helper::BatchComposer::bake(int profiling_iteration)
-{
-	for (size_t i = 0, n = submits.size(); i < n; i++)
-	{
-		auto &submit = submits[i];
-		auto &timeline_submit = timeline_infos[i];
-
-		submit = { VK_STRUCTURE_TYPE_SUBMIT_INFO };
-
-		if (has_timeline_semaphore_in_batch(i))
-		{
-			timeline_submit = { VK_STRUCTURE_TYPE_TIMELINE_SEMAPHORE_SUBMIT_INFO_KHR };
-			submit.pNext = &timeline_submit;
-
-			if (split_binary_timeline_semaphores && has_binary_semaphore_in_batch(i))
-				LOGE("Using timeline semaphore info, but have binary semaphores as well.\n");
-
-			timeline_submit.waitSemaphoreValueCount = wait_counts[i].size();
-			timeline_submit.pWaitSemaphoreValues = wait_counts[i].data();
-			if (wait_counts[i].size() != waits[i].size())
-				LOGE("Mismatch in wait counts and number of waits!\n");
-
-			timeline_submit.signalSemaphoreValueCount = signal_counts[i].size();
-			timeline_submit.pSignalSemaphoreValues = signal_counts[i].data();
-			if (signal_counts[i].size() != signals[i].size())
-				LOGE("Mismatch in signal counts and number of signals!\n");
-		}
-
-		if (profiling_iteration >= 0)
-		{
-			profiling_infos[i] = { VK_STRUCTURE_TYPE_PERFORMANCE_QUERY_SUBMIT_INFO_KHR };
-			profiling_infos[i].counterPassIndex = uint32_t(profiling_iteration);
-
-			profiling_infos[i].pNext = submit.pNext;
-			submit.pNext = &profiling_infos[i];
-		}
-
-		submit.commandBufferCount = cmds[i].size();
-		submit.pCommandBuffers = cmds[i].data();
-
-		submit.waitSemaphoreCount = waits[i].size();
-		submit.pWaitSemaphores = waits[i].data();
-		submit.pWaitDstStageMask = wait_stages[i].data();
-
-		submit.signalSemaphoreCount = signals[i].size();
-		submit.pSignalSemaphores = signals[i].data();
-	}
-
-	// Compact the submission array to avoid empty submissions.
-	size_t submit_count = 0;
-	for (size_t i = 0, n = submits.size(); i < n; i++)
-	{
-		if (submits[i].waitSemaphoreCount || submits[i].signalSemaphoreCount || submits[i].commandBufferCount)
-		{
-			if (i != submit_count)
-				submits[submit_count] = submits[i];
-			submit_count++;
-		}
-	}
-
-	submits.resize(submit_count);
-	return submits;
-}
-
-void Helper::BatchComposer::add_command_buffer(VkCommandBuffer cmd)
-{
-	if (!signals[submit_index].empty())
-		begin_batch();
-	cmds[submit_index].push_back(cmd);
-}
-
-void Helper::BatchComposer::add_signal_semaphore(VkSemaphore sem, uint64_t timeline)
-{
-	if (split_binary_timeline_semaphores)
-	{
-		if ((timeline == 0 && has_timeline_semaphore_in_batch(submit_index)) ||
-		    (timeline != 0 && has_binary_semaphore_in_batch(submit_index)))
-			begin_batch();
-	}
-
-	signals[submit_index].push_back(sem);
-	signal_counts[submit_index].push_back(timeline);
-}
-
-void Helper::BatchComposer::add_wait_semaphore(SemaphoreHolder &sem, VkPipelineStageFlags stage)
-{
-	if (!cmds[submit_index].empty() || !signals[submit_index].empty())
-		begin_batch();
-
-	bool is_timeline = sem.get_semaphore_type() == VK_SEMAPHORE_TYPE_TIMELINE_KHR;
-
-	if (split_binary_timeline_semaphores)
-	{
-		if ((!is_timeline && has_timeline_semaphore_in_batch(submit_index)) ||
-		    (is_timeline && has_binary_semaphore_in_batch(submit_index)))
-			begin_batch();
-	}
-
-	waits[submit_index].push_back(sem.get_semaphore());
-	wait_stages[submit_index].push_back(stage);
-	wait_counts[submit_index].push_back(is_timeline ? sem.get_timeline_value() : 0);
-}
-
-void Device::emit_queue_signals(Helper::BatchComposer &composer,
-                                SemaphoreHolder *external_semaphore,
+void Device::emit_queue_signals(SemaphoreHolder *external_semaphore,
                                 VkSemaphore sem, uint64_t timeline, InternalFence *fence,
                                 unsigned semaphore_count, Semaphore *semaphores)
 {
@@ -1365,19 +1191,19 @@ void Device::emit_queue_signals(Helper::BatchComposer &composer,
 		VK_ASSERT(!external_semaphore->is_proxy_timeline());
 		VK_ASSERT(external_semaphore->get_semaphore());
 		external_semaphore->signal_external();
-		composer.add_signal_semaphore(external_semaphore->get_semaphore(),
-		                              external_semaphore->get_semaphore_type() == VK_SEMAPHORE_TYPE_TIMELINE_KHR ?
-		                              external_semaphore->get_timeline_value() : 0);
+		granite_submit_composer_add_signal(&composer, external_semaphore->get_semaphore(),
+		                                   external_semaphore->get_semaphore_type() == VK_SEMAPHORE_TYPE_TIMELINE_KHR ?
+		                                   external_semaphore->get_timeline_value() : 0);
 
 		// Make sure we observe that the external semaphore is signalled before fences are signalled.
-		composer.begin_batch();
+		granite_submit_composer_begin_batch(&composer);
 	}
 
 	// Add external signal semaphores.
 	if (ext.timeline_semaphore_features.timelineSemaphore)
 	{
 		// Signal once and distribute the timeline value to all.
-		composer.add_signal_semaphore(sem, timeline);
+		granite_submit_composer_add_signal(&composer, sem, timeline);
 
 		if (fence)
 		{
@@ -1404,38 +1230,21 @@ void Device::emit_queue_signals(Helper::BatchComposer &composer,
 		for (unsigned i = 0; i < semaphore_count; i++)
 		{
 			VkSemaphore cleared_semaphore = granite_semaphore_pool_request(&managers.semaphore);
-			composer.add_signal_semaphore(cleared_semaphore, 0);
+			granite_submit_composer_add_signal(&composer, cleared_semaphore, 0);
 			VK_ASSERT(!semaphores[i]);
 			semaphores[i] = Semaphore(handle_pool.semaphores.allocate(this, cleared_semaphore, true, true));
 		}
 	}
 }
 
-VkResult Device::submit_batches(Helper::BatchComposer &composer, VkQueue queue, VkFence fence, int profiling_iteration)
+VkResult Device::submit_batches(VkQueue queue, VkFence fence, int profiling_iteration)
 {
-	auto &submits = composer.bake(profiling_iteration);
 	if (queue_lock_callback)
 		queue_lock_callback(queue_lock_userdata);
-
-	VkResult result = VK_SUCCESS;
-	if (get_workarounds().split_binary_timeline_semaphores)
-	{
-		for (auto &submit : submits)
-		{
-			bool last_submit = &submit == &submits.back();
-			result = table->vkQueueSubmit(queue, 1, &submit, last_submit ? fence : VK_NULL_HANDLE);
-			if (result != VK_SUCCESS)
-				break;
-		}
-	}
-	else
-		result = table->vkQueueSubmit(queue, submits.size(), submits.data(), fence);
-
-	if (ImplementationQuirks::get().queue_wait_on_submission)
-		table->vkQueueWaitIdle(queue);
+	VkResult result = granite_submit_composer_submit(&composer, table, queue, fence, profiling_iteration,
+	                                                 get_workarounds().split_binary_timeline_semaphores);
 	if (queue_unlock_callback)
 		queue_unlock_callback(queue_lock_userdata);
-
 	return result;
 }
 
@@ -1463,14 +1272,11 @@ void Device::submit_queue(QueueIndices physical_type, InternalFence *fence,
 	VkQueue queue = queue_info.queues[physical_type];
 	frame().timeline_fences[physical_type] = data.current_timeline;
 
-	Helper::BatchComposer composer(workarounds.split_binary_timeline_semaphores);
-	Helper::WaitSemaphores wait_semaphores;
-	collect_wait_semaphores(data, wait_semaphores);
-
-	composer.add_wait_submissions(wait_semaphores);
+	granite_submit_composer_begin(&composer, workarounds.split_binary_timeline_semaphores);
+	collect_wait_semaphores(data);
 
 	for (auto &cmd : submissions)
-		composer.add_command_buffer(cmd->get_command_buffer());
+		granite_submit_composer_add_command_buffer(&composer, cmd->get_command_buffer());
 
 	VkFence cleared_fence = fence && !ext.timeline_semaphore_features.timelineSemaphore ?
 	                        granite_fence_pool_request(&managers.fence) :
@@ -1479,11 +1285,11 @@ void Device::submit_queue(QueueIndices physical_type, InternalFence *fence,
 	if (fence)
 		fence->fence = cleared_fence;
 
-	emit_queue_signals(composer, external_semaphore, timeline_semaphore, timeline_value,
+	emit_queue_signals(external_semaphore, timeline_semaphore, timeline_value,
 	                   fence, semaphore_count, semaphores);
 
 	auto start_ts = write_calibrated_timestamp_nolock();
-	auto result = submit_batches(composer, queue, cleared_fence, profiling_iteration);
+	auto result = submit_batches(queue, cleared_fence, profiling_iteration);
 	auto end_ts = write_calibrated_timestamp_nolock();
 	register_time_interval_nolock("CPU", Util::move(start_ts), Util::move(end_ts), "submit");
 
@@ -1667,6 +1473,7 @@ Device::~Device()
 	pipeline_records = nullptr;
 
 	granite_framebuffer_allocator_free(&framebuffer_allocator);
+	granite_submit_composer_free(&composer);
 
 	deinit_timeline_semaphores();
 }

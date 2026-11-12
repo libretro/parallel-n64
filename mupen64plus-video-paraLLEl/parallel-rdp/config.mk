@@ -43,6 +43,7 @@ PARALLEL_RDP_SOURCES_C := \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/descriptor_set.c \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/memory_allocator.c \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/shader.c \
+        $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/submit_batch.c \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/sync_pools.c \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/texture_format.c \
         $(PARALLEL_RDP_IMPLEMENTATION)/util/aligned_alloc.c \
