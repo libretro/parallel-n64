@@ -43,6 +43,10 @@ void gli_tex_decode_tmem(const struct gli_tex *t, const gli_tex_format *f,
  * RDRAM at @address, reading only the rows it shows */
 void gli_tex_decode_bg(const struct gli_tex *t, const gli_tex_format *f,
 		int out32, u32 address, u32 bpl, void *dst);
+/* The same for @rows rows from row @y0 only, packed from @dst on: a big
+ * image goes up in strips through a buffer of a few rows */
+void gli_tex_decode_bg_rows(const struct gli_tex *t, const gli_tex_format *f,
+		int out32, u32 address, u32 bpl, u32 y0, u32 rows, void *dst);
 
 /* Turns @n N64 depth words at @buf into linear floats in place; @buf
  * must hold n floats */

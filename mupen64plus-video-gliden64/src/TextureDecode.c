@@ -375,6 +375,12 @@ static void bg_gather(u32 _address, u32 _offset, u32 _bytes)
 void gli_tex_decode_bg(const struct gli_tex *t, const gli_tex_format *f,
 		int out32, u32 address, u32 bpl, void *dst)
 {
+	gli_tex_decode_bg_rows(t, f, out32, address, bpl, 0, t->realHeight, dst);
+}
+
+void gli_tex_decode_bg_rows(const struct gli_tex *t, const gli_tex_format *f,
+		int out32, u32 address, u32 bpl, u32 y0, u32 rows, void *dst)
+{
 	const gli_tex_row_fn row = out32 ? f->row32 : f->row16;
 	const u32 clampS = (u16)(t->width - 1);
 	const u32 clampT = (u16)(t->height - 1);
@@ -387,7 +393,7 @@ void gli_tex_decode_bg(const struct gli_tex *t, const gli_tex_format *f,
 	rowBytes = ((maxTx + 1) << 2) + 4;
 	if (rowBytes > sizeof(s_bg_row))
 		rowBytes = sizeof(s_bg_row);
-	for (y = 0; y < t->realHeight; ++y, d += pitch) {
+	for (y = y0; y < y0 + rows; ++y, d += pitch) {
 		const u32 ty = y < clampT ? y : clampT;
 		/* the rows past the clamp repeat the last one */
 		if (ty != last) {

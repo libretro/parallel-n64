@@ -66,6 +66,8 @@ private:
 	void _load(u32 _tile, CachedTexture *_pTexture);
 	bool _loadHiresTexture(u32 _tile, CachedTexture *_pTexture, u64 & _ricecrc);
 	void _loadBackground(CachedTexture *pTexture);
+	void _loadBackgroundStrips(CachedTexture *pTexture, const struct gli_tex_format * _loadParams, bool _out32,
+		graphics::InternalColorFormatParam _internalFormat, graphics::DatatypeParam _type, u32 _bpl);
 	bool _loadHiresBackground(CachedTexture *_pTexture, u64 & _ricecrc);
 	void _loadDepthTexture(CachedTexture * _pTexture, u16* _pDest);
 	void _updateBackground();

@@ -351,7 +351,19 @@ void TextureCache::_loadBackground(CachedTexture *pTexture)
 	}
 
 	bpl = gSP.bgImage.width << gSP.bgImage.size >> 1;
-	pDest = _takeDecode(pTexture->textureBytes, !_decodedIsRead());
+	const bool lend = !_decodedIsRead();
+	if (lend && pTexture->textureBytes > DecodeScratchBytes && m_decodeScratch != nullptr) {
+		/* past the scratch, with nothing reading the image back: lent
+		 * memory, or else strips of rows through the scratch, never a
+		 * heap buffer */
+		pDest = (u32*)gfxContext.lendTextureData(pTexture->textureBytes);
+		if (pDest == nullptr) {
+			_loadBackgroundStrips(pTexture, loadParams, out32, glInternalFormat, glType, bpl);
+			return;
+		}
+	} else {
+		pDest = _takeDecode(pTexture->textureBytes, lend);
+	}
 	if (pDest == nullptr)
 		return;
 	/* read straight out of RDRAM, only the rows shown: no unswapped copy */
@@ -421,6 +433,50 @@ void TextureCache::_loadBackground(CachedTexture *pTexture)
 	if (m_curUnpackAlignment > 1)
 		gfxContext.setTextureUnpackAlignment(m_curUnpackAlignment);
 	_dropDecode(pDest);
+}
+
+void TextureCache::_loadBackgroundStrips(CachedTexture *pTexture, const gli_tex_format * _loadParams, bool _out32,
+	InternalColorFormatParam _internalFormat, DatatypeParam _type, u32 _bpl)
+{
+	const u32 pitch = (u32)pTexture->realWidth << (_out32 ? 2 : 1);
+	const u32 stripRows = pitch != 0 ? DecodeScratchBytes / pitch : 0;
+	if (stripRows == 0)
+		return;
+
+	if (pTexture->realWidth % 2 != 0 && _internalFormat != internalcolorFormat::RGBA8)
+		gfxContext.setTextureUnpackAlignment(2);
+
+	Context::InitTextureParams params;
+	params.handle = pTexture->name;
+	params.mipMapLevel = 0;
+	params.msaaLevel = 0;
+	params.width = pTexture->realWidth;
+	params.height = pTexture->realHeight;
+	params.format = colorFormat::RGBA;
+	params.internalFormat = gfxContext.convertInternalTextureFormat(u32(_internalFormat));
+	params.dataType = _type;
+	params.data = nullptr;
+	params.mutableStorage = true;
+	gfxContext.init2DTexture(params);
+
+	Context::UpdateTextureDataParams update;
+	update.handle = pTexture->name;
+	update.textureUnitIndex = textureIndices::Tex[0];
+	update.width = pTexture->realWidth;
+	update.format = colorFormat::RGBA;
+	update.internalFormat = params.internalFormat;
+	update.dataType = _type;
+	update.data = m_decodeScratch;
+	for (u32 y = 0; y < pTexture->realHeight; y += stripRows) {
+		const u32 rows = std::min(stripRows, (u32)pTexture->realHeight - y);
+		gli_tex_decode_bg_rows(pTexture, _loadParams, _out32, gSP.bgImage.address, _bpl, y, rows, m_decodeScratch);
+		update.y = y;
+		update.height = rows;
+		gfxContext.update2DTexture(update);
+	}
+
+	if (m_curUnpackAlignment > 1)
+		gfxContext.setTextureUnpackAlignment(m_curUnpackAlignment);
 }
 
 bool TextureCache::_loadHiresTexture(u32 _tile, CachedTexture *_pTexture, u64 & _ricecrc)
