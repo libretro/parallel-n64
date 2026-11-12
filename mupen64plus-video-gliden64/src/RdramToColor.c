@@ -7,11 +7,18 @@
 #include "GBI.h"
 #include "gli_rdram_to_color.h"
 
+/* 5 bits to 8, the top bits repeated in the low ones: 0 stays 0 and 31
+ * becomes 255. A plain shift left white at 248 */
+static INLINE u32 five_to_eight(u32 _c)
+{
+	return (_c << 3) | (_c >> 2);
+}
+
 static INLINE u32 rgba16_to_abgr32(u32 _col, int _fullAlpha)
 {
-	const u32 r = ((_col >> 11) & 31) << 3;
-	const u32 g = ((_col >> 6) & 31) << 3;
-	const u32 b = ((_col >> 1) & 31) << 3;
+	const u32 r = five_to_eight((_col >> 11) & 31);
+	const u32 g = five_to_eight((_col >> 6) & 31);
+	const u32 b = five_to_eight((_col >> 1) & 31);
 	const u32 a = (_fullAlpha || (_col & 1) != 0) ? 0xFF : 0U;
 	return (a << 24) | (b << 16) | (g << 8) | r;
 }
