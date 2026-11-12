@@ -241,6 +241,21 @@ int main(void)
       check_core_state("after the core sets it again");
    }
 
+#ifndef HAVE_OPENGLES
+   /* blending turned on for draw buffer 0 alone (GLideN64 does) is on
+    * again after the frontend's turn, and off again once turned off */
+   rglEnablei(SGL_BLEND, 0);
+   CHECK("blend, buffer 0", gl_enabled(GL_BLEND));
+   assert(glsm_ctl(GLSM_CTL_STATE_UNBIND, NULL));
+   CHECK("blend, buffer 0: the frontend's turn", !gl_enabled(GL_BLEND));
+   assert(glsm_ctl(GLSM_CTL_STATE_BIND, NULL));
+   CHECK("blend, buffer 0: after the bind", gl_enabled(GL_BLEND));
+   rglDisablei(SGL_BLEND, 0);
+   assert(glsm_ctl(GLSM_CTL_STATE_UNBIND, NULL));
+   assert(glsm_ctl(GLSM_CTL_STATE_BIND, NULL));
+   CHECK("blend, buffer 0: off after the bind", !gl_enabled(GL_BLEND));
+#endif
+
    /* the clear colour, set while another framebuffer is bound, is the
     * colour GL holds after */
    glGenFramebuffers(1, &offscreen);

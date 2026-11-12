@@ -314,6 +314,9 @@ GLint rglGetUniformLocation(GLuint program, const GLchar *name);
 void rglGenBuffers(GLsizei n, GLuint *buffers);
 void rglDisable(GLenum cap);
 void rglEnable(GLenum cap);
+/* cap as rglEnable takes it; the draw buffer's index */
+void rglEnablei(GLenum cap, GLuint index);
+void rglDisablei(GLenum cap, GLuint index);
 void rglUseProgram(GLuint program);
 void rglDepthMask(GLboolean flag);
 void rglStencilMask(GLenum mask);

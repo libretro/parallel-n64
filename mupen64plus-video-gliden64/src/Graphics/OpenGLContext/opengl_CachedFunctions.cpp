@@ -4,6 +4,12 @@
 #include "opengl_GLInfo.h"
 #include "opengl_CachedFunctions.h"
 
+extern "C" {
+/* glsm holds the state across frames (glsmsym.h) */
+void rglEnablei(GLenum cap, GLuint index);
+void rglDisablei(GLenum cap, GLuint index);
+}
+
 using namespace graphics;
 using namespace opengl;
 
@@ -25,8 +31,11 @@ void CachedEnable::enable(bool _enable)
 	if (_enable) {
 		switch(GLenum(m_parameter)) {
 			case GL_BLEND:
+				/* through glsm, which puts it back when the core's state is
+				 * bound again at the next frame: called straight, blending
+				 * stayed off while this cache held it on */
 				if(IS_GL_FUNCTION_VALID(glEnablei))
-					glEnablei(GL_BLEND, 0);
+					rglEnablei(SGL_BLEND, 0);
 				else
 					glEnable(GL_BLEND);
 				break;
@@ -56,7 +65,7 @@ void CachedEnable::enable(bool _enable)
 		switch(GLenum(m_parameter)) {
 			case GL_BLEND:
 				if(IS_GL_FUNCTION_VALID(glDisablei))
-					glDisablei(GL_BLEND, 0);
+					rglDisablei(SGL_BLEND, 0);
 				else
 					glDisable(GL_BLEND);
 				break;
@@ -244,7 +253,7 @@ CachedFunctions::~CachedFunctions()
 
 void CachedFunctions::reset()
 {
-	for (auto it : m_enables)
+	for (auto & it : m_enables)
 		it.second.reset();
 
 	m_texparams.clear();

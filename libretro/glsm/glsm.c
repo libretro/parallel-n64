@@ -177,6 +177,9 @@ struct gl_cached_state
    GLuint index_buffer;
    GLuint program;
    int cap_state[SGL_CAP_MAX];
+   /* blending on for draw buffer 0 alone (rglEnablei): not one of the
+    * capabilities above, which are for every buffer */
+   int blend_buffer0;
    int cap_translate[SGL_CAP_MAX]; /* 0: not a capability of this context */
 };
 
@@ -794,6 +797,40 @@ void rglBindTexture(GLenum target, GLuint texture)
  * Core in:
  * OpenGL    : 1.0
  */
+/* glEnablei and glDisablei, or their EXT names on GLES before 3.2; NULL
+ * where the context has neither */
+#ifdef GL_APIENTRY
+typedef void (GL_APIENTRY *glsm_enablei_t)(GLenum target, GLuint index);
+#else
+typedef void (APIENTRY *glsm_enablei_t)(GLenum target, GLuint index);
+#endif
+static glsm_enablei_t m_glEnablei, m_glDisablei;
+
+/* Blending for one draw buffer. Only buffer 0 is held: what the core asks
+ * for is put back when its state is bound again, as rglEnable's is.
+ *
+ * Core in:
+ * OpenGL    : 3.0
+ * OpenGLES  : 3.2
+ */
+void rglEnablei(GLenum cap, GLuint index)
+{
+   if (!m_glEnablei || !gl_state.cap_translate[cap])
+      return;
+   m_glEnablei(gl_state.cap_translate[cap], index);
+   if (cap == SGL_BLEND && index == 0)
+      gl_state.blend_buffer0 = 1;
+}
+
+void rglDisablei(GLenum cap, GLuint index)
+{
+   if (!m_glDisablei || !gl_state.cap_translate[cap])
+      return;
+   m_glDisablei(gl_state.cap_translate[cap], index);
+   if (cap == SGL_BLEND && index == 0)
+      gl_state.blend_buffer0 = 0;
+}
+
 void rglDisable(GLenum cap)
 {
    if (gl_state.cap_state[cap] != 0)
@@ -2677,6 +2714,7 @@ static void glsm_state_setup(void)
 #endif
 
    unsigned i;
+   glsm_enablei_t enablei, disablei;
 #ifdef HAVE_OPENGLES
    const bool core_or_es = true;
 #else
@@ -2686,6 +2724,16 @@ static void glsm_state_setup(void)
    /* the programs named were the old context's */
    for (i = 0; i < GLSM_UNIFORM_PROGRAMS; i++)
       glsm_uniforms_forget(i);
+
+   enablei  = (glsm_enablei_t)glsm_get_proc_address("glEnablei");
+   disablei = (glsm_enablei_t)glsm_get_proc_address("glDisablei");
+   if (!enablei || !disablei)
+   {
+      enablei  = (glsm_enablei_t)glsm_get_proc_address("glEnableiEXT");
+      disablei = (glsm_enablei_t)glsm_get_proc_address("glDisableiEXT");
+   }
+   m_glEnablei  = (enablei && disablei) ? enablei : NULL;
+   m_glDisablei = (enablei && disablei) ? disablei : NULL;
 
    /* GL's defaults: what a new context holds */
    memset(&gl_state, 0, sizeof(struct gl_cached_state));
@@ -3215,6 +3263,10 @@ static void glsm_state_bind(void)
 #endif
 
    glsm_apply_render_state(&gl_state);
+   /* (the capabilities just applied turned blending off for every buffer
+    * when the core has it on for the first alone) */
+   if (gl_state.blend_buffer0 && !gl_state.cap_state[SGL_BLEND] && m_glEnablei)
+      m_glEnablei(GL_BLEND, 0);
    glUseProgram(gl_state.program);
 
    glActiveTexture(GL_TEXTURE0 + active_texture);

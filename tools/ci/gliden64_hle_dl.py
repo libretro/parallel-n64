@@ -16,6 +16,14 @@ only to Super Mario 64 and the hacks made of it, so a third cartridge,
 named SUPER MARIO 64, must still show the old behaviour: that the test
 can tell.
 
+Each frame ends with a half-transparent quad across the first quad's edge,
+and the next begins with opaque draws that ask for blending too (their
+render mode forces it), so GLideN64's cache holds blending on from one
+frame to the next. It turned blending on for draw buffer 0 behind glsm,
+which put the state back without it at each frame: from the second frame
+on the quad was drawn unblended, as the clouds of Mario Kart 64 were, in
+black boxes. The quad must show what is under it.
+
   gliden64_hle_dl.py --core parallel_n64_libretro.so --gl ./lrhost_gl [--vk ./lrhost_vk]
 """
 import argparse, os, struct, subprocess, sys, tempfile
@@ -50,11 +58,14 @@ def display_list(toggle):
     cmd = lambda w0, w1=0: c.extend([w0 & 0xffffffff, w1 & 0xffffffff])
     cmd(0xFF000000 | (0 << 21) | (2 << 19) | (WIDTH - 1), FB)                # SETCIMG RGBA16
     cmd(0xED000000, ((WIDTH * 4) << 12) | (HEIGHT * 4))                     # SETSCISSOR
-    # clear: fill mode
+    # clear, as Mario Kart 64 does: a rectangle in one-cycle mode, opaque,
+    # the colour PRIMITIVE. Its render mode forces blending, as that of
+    # the quads after it does.
     cmd(0xE7000000)
-    cmd(0xEF000000 | (3 << 20), 0)
-    cmd(0xF7000000, 0x00010001)                                              # dark, opaque
-    cmd(0xF6000000 | (((WIDTH - 1) * 4) << 12) | ((HEIGHT - 1) * 4), 0)      # FILLRECT
+    cmd(0xEF000000 | (1 << 19) | (6 << 9), 0x0F0A4000)
+    cmd(0xFCFFFFFF, 0xFFFDF6FB)
+    cmd(0xFA000000, 0x000000FF)
+    cmd(0xF6000000 | ((WIDTH * 4) << 12) | (HEIGHT * 4), 0)                  # FILLRECT
     cmd(0xE7000000)
     # one cycle, perspective texturing, point sampled, texels filtered not
     # converted (G_TC_FILT); an opaque surface
@@ -83,6 +94,15 @@ def display_list(toggle):
     cmd(0x04300040, VTX + 64)
     cmd(0xBF000000, (0 << 16) | (10 << 8) | 20)
     cmd(0xBF000000, (0 << 16) | (20 << 8) | 30)
+    # the frame's last draw: a half-transparent green quad (G_RM_XLU_SURF,
+    # the colour PRIMITIVE) across the first quad's edge
+    cmd(0xE7000000)
+    cmd(0xEF000000 | (1 << 19) | (6 << 9), 0x00504240)
+    cmd(0xFCFFFFFF, 0xFFFDF6FB)
+    cmd(0xFA000000, 0x00FF0080)
+    cmd(0x04300040, VTX + 128)
+    cmd(0xBF000000, (0 << 16) | (10 << 8) | 20)
+    cmd(0xBF000000, (0 << 16) | (20 << 8) | 30)
     cmd(0xE9000000)                                                          # FULLSYNC
     cmd(0xB8000000)                                                          # ENDDL
     return struct.pack(">%dI" % len(c), *c)
@@ -103,6 +123,7 @@ def cartridge(path, toggle, name):
     area[VTX] = b"".join(vertex(x, y, s, t) for (x0, y0) in ((-120, -50), (20, -50))
                          for (x, y, s, t) in ((x0, y0, 0, 32), (x0 + 100, y0, 32, 32),
                                               (x0 + 100, y0 + 100, 32, 0), (x0, y0 + 100, 0, 0)))
+    area[VTX] += b"".join(vertex(x, y, 0, 0) for (x, y) in ((-60, -20), (60, -20), (60, 20), (-60, 20)))
     area[MTX] = (matrix([[1 / 160.0, 0, 0, 0], [0, 1 / 120.0, 0, 0], [0, 0, 0.5, 0], [0, 0, 0, 1]]) +
                  matrix([[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]]))
     area[VP] = struct.pack(">8h", WIDTH * 2, HEIGHT * 2, 0x1ff, 0, WIDTH * 2, HEIGHT * 2, 0x1ff, 0)
@@ -167,6 +188,11 @@ def run(host, core, rom, tmp, api):
         return f.read()
 
 
+def pixel(frame, x, y):
+    """a pixel of the 640x480 frame, as three bytes"""
+    return frame[(y * 640 + x) * 4:(y * 640 + x) * 4 + 3]
+
+
 def white_share(frame):
     """the share of pixels that are white, either channel order"""
     px = len(frame) // 4
@@ -194,7 +220,11 @@ def main():
             plain_white = white_share(frames["plain"])
             checks = (("textured", plain_white < 0.01, "%.1f%% white" % (100 * plain_white)),
                       ("texture off and on", frames["toggled"] == frames["plain"], "same as without"),
-                      ("SM64 editor hack, SM64 only", frames["sm64"] != frames["plain"], "differs on SUPER MARIO 64"))
+                      ("SM64 editor hack, SM64 only", frames["sm64"] != frames["plain"], "differs on SUPER MARIO 64"),
+                      # over the first quad and over the background beside it
+                      ("blended at the frame's end", pixel(frames["plain"], 240, 240) != pixel(frames["plain"], 320, 240),
+                       "%s over the quad, %s over the background" % (pixel(frames["plain"], 240, 240).hex(),
+                                                                     pixel(frames["plain"], 320, 240).hex())))
             for what, ok, detail in checks:
                 print("%-7s %-28s %s (%s)" % (api, what, "ok" if ok else "FAIL", detail))
                 failures += 0 if ok else 1
