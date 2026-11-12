@@ -49,8 +49,6 @@ private:
 		: m_pool(nullptr)
 		, m_pDummy(nullptr)
 		, m_pMSDummy(nullptr)
-		, m_hits(0)
-		, m_misses(0)
 		, m_curUnpackAlignment(4)
 		, m_decodeScratch(nullptr)
 		, m_lastHeapDecode(nullptr)
@@ -90,7 +88,6 @@ private:
 	void _resetFBTextureSlots();
 	CachedTexture * m_pDummy;
 	CachedTexture * m_pMSDummy;
-	u32 m_hits, m_misses;
 	s32 m_curUnpackAlignment;
 	u8 * m_decodeScratch;
 	u8 * m_lastHeapDecode;

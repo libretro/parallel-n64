@@ -82,6 +82,24 @@ int gli_tex_filter_skips(void);
 /* The cache key of texture tile @_t with @_sizes */
 u64 gli_tex_crc(u32 _t, const gli_tile_sizes *_sizes);
 
+/* The cache key of the background image, and the texture it makes */
+u64 gli_tex_bg_crc(void);
+void gli_tex_from_bg(struct gli_tex *_tex);
+
+/* How a texture is sampled */
+enum { GLI_TF_NEAREST, GLI_TF_LINEAR, GLI_TF_NEAREST_MIP_NEAREST, GLI_TF_LINEAR_MIP_NEAREST };
+enum { GLI_WRAP_REPEAT, GLI_WRAP_MIRRORED_REPEAT, GLI_WRAP_CLAMP_TO_EDGE };
+typedef struct gli_tex_sampler
+{
+	u8 minFilter, magFilter; /* GLI_TF_* */
+	u8 wrapS, wrapT;         /* GLI_WRAP_* */
+	u8 maxLevel;             /* the last mip level sampled */
+} gli_tex_sampler;
+
+/* The sampler of single-sample texture @_tex, as the combiner, using
+ * LOD or not, reads it */
+void gli_tex_sampler_get(const struct gli_tex *_tex, int _useLOD, gli_tex_sampler *_s);
+
 /* The texel line width of a block load from its dxt step */
 u32 gli_tex_reverse_dxt(u32 val, u32 lrs, u32 width, u32 size);
 

@@ -748,38 +748,19 @@ void TextureCache::activateTexture(u32 _t, CachedTexture *_pTexture)
 		params.target = textureTarget::TEXTURE_2D;
 		params.textureUnitIndex = textureIndices::Tex[_t];
 
-		const bool bUseBilinear = gDP.otherMode.textureFilter != G_TF_POINT && config.texture.bilinearMode != BILINEAR_3POINT;
-		const bool bUseLOD = currentCombiner()->usesLOD();
-		const s32 texLevel = bUseLOD ? _pTexture->max_level : 0;
-		params.maxMipmapLevel = Parameter(texLevel);
-
-		if (bUseLOD) {
-			if (bUseBilinear) {
-				// Apply standard bilinear to mipmap textures
-				if (texLevel > 0)
-					params.minFilter = textureParameters::FILTER_LINEAR_MIPMAP_NEAREST;
-				else
-					params.minFilter = textureParameters::FILTER_LINEAR;
-				params.magFilter = textureParameters::FILTER_LINEAR;
-			} else {
-				if (texLevel > 0)
-					params.minFilter = textureParameters::FILTER_NEAREST_MIPMAP_NEAREST;
-				else
-					params.minFilter = textureParameters::FILTER_NEAREST;
-				params.magFilter = textureParameters::FILTER_NEAREST;
-			}
-		} else { // Don't use texture filter. Texture will be filtered by filter shader
-			params.minFilter = textureParameters::FILTER_NEAREST;
-			params.magFilter = textureParameters::FILTER_NEAREST;
-		}
-
-		// Set clamping modes
-		params.wrapS = _pTexture->clampS ? textureParameters::WRAP_CLAMP_TO_EDGE :
-			_pTexture->mirrorS ? textureParameters::WRAP_MIRRORED_REPEAT
-			: textureParameters::WRAP_REPEAT;
-		params.wrapT = _pTexture->clampT ? textureParameters::WRAP_CLAMP_TO_EDGE :
-			_pTexture->mirrorT ? textureParameters::WRAP_MIRRORED_REPEAT
-			: textureParameters::WRAP_REPEAT;
+		const TextureParam filters[] = {
+			textureParameters::FILTER_NEAREST, textureParameters::FILTER_LINEAR,
+			textureParameters::FILTER_NEAREST_MIPMAP_NEAREST, textureParameters::FILTER_LINEAR_MIPMAP_NEAREST };
+		const TextureParam wraps[] = {
+			textureParameters::WRAP_REPEAT, textureParameters::WRAP_MIRRORED_REPEAT,
+			textureParameters::WRAP_CLAMP_TO_EDGE };
+		gli_tex_sampler sampler;
+		gli_tex_sampler_get(_pTexture, currentCombiner()->usesLOD(), &sampler);
+		params.maxMipmapLevel = Parameter(s32(sampler.maxLevel));
+		params.minFilter = filters[sampler.minFilter];
+		params.magFilter = filters[sampler.magFilter];
+		params.wrapS = wraps[sampler.wrapS];
+		params.wrapT = wraps[sampler.wrapT];
 
 		if (dwnd().getDrawer().getDrawingState() == DrawingState::Triangle && config.texture.maxAnisotropyF > 0.0f)
 			params.maxAnisotropy = Parameter(config.texture.maxAnisotropyF);
@@ -812,20 +793,7 @@ void TextureCache::activateMSDummy(u32 _t)
 
 void TextureCache::_updateBackground()
 {
-	u32 numBytes = gSP.bgImage.width * gSP.bgImage.height << gSP.bgImage.size >> 1;
-	u64 crc;
-
-	crc = CRC_Calculate( UINT64_MAX, &RDRAM[gSP.bgImage.address], numBytes );
-
-	if (gDP.otherMode.textureLUT != G_TT_NONE || gSP.bgImage.format == G_IM_FMT_CI) {
-		if (gSP.bgImage.size == G_IM_SIZ_4b)
-			crc = CRC_Calculate( crc, &gDP.paletteCRC16[gSP.bgImage.palette], sizeof(u64) );
-		else if (gSP.bgImage.size == G_IM_SIZ_8b)
-			crc = CRC_Calculate( crc, &gDP.paletteCRC256, sizeof(u64) );
-	}
-
-	u32 params[4] = {gSP.bgImage.width, gSP.bgImage.height, gSP.bgImage.format, gSP.bgImage.size};
-	crc = CRC_Calculate(crc, params, sizeof(u32)*4);
+	const u64 crc = gli_tex_bg_crc();
 
 	const u32 slot = gli_lru_find(&m_lru, crc);
 	if (slot != GLI_LRU_NONE) {
@@ -840,46 +808,11 @@ void TextureCache::_updateBackground()
 		currentTex.clampT = gSP.bgImage.clampT;
 
 		activateTexture(0, &currentTex);
-		m_hits++;
 		return;
 	}
 
-	m_misses++;
-
 	CachedTexture * pCurrent = _addTexture(crc);
-
-	pCurrent->address = gSP.bgImage.address;
-
-	pCurrent->format = gSP.bgImage.format;
-	pCurrent->size = gSP.bgImage.size;
-
-	pCurrent->width = gSP.bgImage.width;
-	pCurrent->height = gSP.bgImage.height;
-
-	pCurrent->clampWidth = gSP.bgImage.width;
-	pCurrent->clampHeight = gSP.bgImage.height;
-	pCurrent->palette = gSP.bgImage.palette;
-	pCurrent->maskS = 0;
-	pCurrent->maskT = 0;
-	pCurrent->mirrorS = 0;
-	pCurrent->mirrorT = 0;
-	pCurrent->clampS = gSP.bgImage.clampS;
-	pCurrent->clampT = gSP.bgImage.clampT;
-	pCurrent->line = 0;
-	pCurrent->tMem = 0;
-	pCurrent->frameBufferTexture = CachedTexture::fbNone;
-
-	pCurrent->realWidth = gSP.bgImage.width;
-	pCurrent->realHeight = gSP.bgImage.height;
-
-	pCurrent->scaleS = 1.0f / (f32)(pCurrent->realWidth);
-	pCurrent->scaleT = 1.0f / (f32)(pCurrent->realHeight);
-
-	pCurrent->shiftScaleS = 1.0f;
-	pCurrent->shiftScaleT = 1.0f;
-
-	pCurrent->offsetS = 0.5f;
-	pCurrent->offsetT = 0.5f;
+	gli_tex_from_bg(pCurrent);
 
 	_loadBackground(pCurrent);
 	activateTexture(0, pCurrent);
@@ -945,15 +878,12 @@ void TextureCache::update(u32 _t)
 			assert(currentTex.size == pTile->size);
 
 			activateTexture(_t, &currentTex);
-			m_hits++;
 			return;
 		}
 
 		/* the slot keeps its GPU texture for the next one */
 		gli_lru_remove(&m_lru, slot);
 	}
-
-	m_misses++;
 
 	CachedTexture * pCurrent = _addTexture(crc);
 

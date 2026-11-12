@@ -269,6 +269,84 @@ void gli_tex_from_tile(struct gli_tex *_tex, const struct gDPTile *_tile, const 
 	_tex->offsetT = 0.5f;
 }
 
+u64 gli_tex_bg_crc(void)
+{
+	u32 numBytes = gSP.bgImage.width * gSP.bgImage.height << gSP.bgImage.size >> 1;
+	u32 params[4];
+	u64 crc;
+
+	/* an image past the end of RDRAM is keyed on what RDRAM holds of it */
+	if (gSP.bgImage.address > RDRAMSize)
+		numBytes = 0;
+	else if (numBytes > RDRAMSize + 1 - gSP.bgImage.address)
+		numBytes = RDRAMSize + 1 - gSP.bgImage.address;
+	crc = CRC_Calculate(UINT64_MAX, &RDRAM[gSP.bgImage.address], numBytes);
+
+	if (gDP.otherMode.textureLUT != G_TT_NONE || gSP.bgImage.format == G_IM_FMT_CI) {
+		if (gSP.bgImage.size == G_IM_SIZ_4b)
+			crc = CRC_Calculate(crc, &gDP.paletteCRC16[gSP.bgImage.palette], sizeof(u64));
+		else if (gSP.bgImage.size == G_IM_SIZ_8b)
+			crc = CRC_Calculate(crc, &gDP.paletteCRC256, sizeof(u64));
+	}
+
+	params[0] = gSP.bgImage.width;
+	params[1] = gSP.bgImage.height;
+	params[2] = gSP.bgImage.format;
+	params[3] = gSP.bgImage.size;
+	return CRC_Calculate(crc, params, sizeof(params));
+}
+
+void gli_tex_from_bg(struct gli_tex *_tex)
+{
+	_tex->address = gSP.bgImage.address;
+	_tex->format = (u16)gSP.bgImage.format;
+	_tex->size = (u16)gSP.bgImage.size;
+	_tex->width = (u16)gSP.bgImage.width;
+	_tex->height = (u16)gSP.bgImage.height;
+	_tex->clampWidth = (u16)gSP.bgImage.width;
+	_tex->clampHeight = (u16)gSP.bgImage.height;
+	_tex->palette = gSP.bgImage.palette;
+	_tex->maskS = 0;
+	_tex->maskT = 0;
+	_tex->mirrorS = 0;
+	_tex->mirrorT = 0;
+	_tex->clampS = (u8)gSP.bgImage.clampS;
+	_tex->clampT = (u8)gSP.bgImage.clampT;
+	_tex->line = 0;
+	_tex->tMem = 0;
+	_tex->frameBufferTexture = GLI_TEX_FB_NONE;
+	_tex->realWidth = (u16)gSP.bgImage.width;
+	_tex->realHeight = (u16)gSP.bgImage.height;
+	_tex->scaleS = 1.0f / (f32)(_tex->realWidth);
+	_tex->scaleT = 1.0f / (f32)(_tex->realHeight);
+	_tex->shiftScaleS = 1.0f;
+	_tex->shiftScaleT = 1.0f;
+	_tex->offsetS = 0.5f;
+	_tex->offsetT = 0.5f;
+}
+
+void gli_tex_sampler_get(const struct gli_tex *_tex, int _useLOD, gli_tex_sampler *_s)
+{
+	const int bilinear = gDP.otherMode.textureFilter != G_TF_POINT &&
+		config.texture.bilinearMode != BILINEAR_3POINT;
+	const u8 level = _useLOD ? _tex->max_level : 0;
+	_s->maxLevel = level;
+	if (!_useLOD) {
+		/* the filter shader filters it */
+		_s->minFilter = _s->magFilter = GLI_TF_NEAREST;
+	} else if (bilinear) {
+		_s->minFilter = level > 0 ? GLI_TF_LINEAR_MIP_NEAREST : GLI_TF_LINEAR;
+		_s->magFilter = GLI_TF_LINEAR;
+	} else {
+		_s->minFilter = level > 0 ? GLI_TF_NEAREST_MIP_NEAREST : GLI_TF_NEAREST;
+		_s->magFilter = GLI_TF_NEAREST;
+	}
+	_s->wrapS = _tex->clampS ? GLI_WRAP_CLAMP_TO_EDGE :
+		_tex->mirrorS ? GLI_WRAP_MIRRORED_REPEAT : GLI_WRAP_REPEAT;
+	_s->wrapT = _tex->clampT ? GLI_WRAP_CLAMP_TO_EDGE :
+		_tex->mirrorT ? GLI_WRAP_MIRRORED_REPEAT : GLI_WRAP_REPEAT;
+}
+
 u8 gli_tex_max_level(const struct gli_tex *_tex, u32 _tile)
 {
 	u8 level;
