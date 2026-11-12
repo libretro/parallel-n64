@@ -225,10 +225,13 @@ grLfbWriteRegion( int32_t dst_buffer,
       {
          for (i=0; i<src_width; i++)
          {
+            /* five bits to eight, the top bits repeated in the low ones:
+             * shifted alone, white was 248 */
             const unsigned int col = frameBuffer[j*half_stride+i];
-            buf[j*src_width*4+i*4+0]=((col>>10)&0x1F)<<3;
-            buf[j*src_width*4+i*4+1]=((col>>5)&0x1F)<<3;
-            buf[j*src_width*4+i*4+2]=((col>>0)&0x1F)<<3;
+            const unsigned int r = (col>>10)&0x1F, g = (col>>5)&0x1F, b = col&0x1F;
+            buf[j*src_width*4+i*4+0]=(r<<3)|(r>>2);
+            buf[j*src_width*4+i*4+1]=(g<<3)|(g>>2);
+            buf[j*src_width*4+i*4+2]=(b<<3)|(b>>2);
             buf[j*src_width*4+i*4+3]=0xFF;
          }
       }

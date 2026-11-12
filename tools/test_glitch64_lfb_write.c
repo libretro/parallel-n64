@@ -182,9 +182,12 @@ static int run(unsigned dst_x, unsigned dst_y, unsigned w, unsigned h)
          if (x >= dst_x && x < dst_x + w && y >= dst_y && y < dst_y + h)
          {
             const uint16_t c = image[(y - dst_y) * w + (x - dst_x)];
-            want[0] = (uint8_t)(((c >> 10) & 0x1F) << 3);
-            want[1] = (uint8_t)(((c >> 5) & 0x1F) << 3);
-            want[2] = (uint8_t)((c & 0x1F) << 3);
+            /* five bits to eight, the top bits repeated in the low ones:
+             * 31 is white, 255, not 248 */
+            const unsigned r = (c >> 10) & 0x1F, g = (c >> 5) & 0x1F, b = c & 0x1F;
+            want[0] = (uint8_t)((r << 3) | (r >> 2));
+            want[1] = (uint8_t)((g << 3) | (g >> 2));
+            want[2] = (uint8_t)((b << 3) | (b >> 2));
          }
          if (p[0] != want[0] || p[1] != want[1] || p[2] != want[2])
          {
