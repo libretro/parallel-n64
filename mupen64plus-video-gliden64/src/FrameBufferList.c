@@ -1,3 +1,4 @@
+#include <stdlib.h>
 #include <string.h>
 
 #include "Types.h"
@@ -6,6 +7,38 @@
 void gli_fb_list_init(gli_fb_list *_l)
 {
 	memset(_l, 0, sizeof(*_l));
+}
+
+void gli_fb_list_free_copies(gli_fb_list *_l)
+{
+	u32 i;
+	for (i = 0; i < GLI_FB_MAX; ++i) {
+		free(_l->copy[i]);
+		_l->copy[i] = NULL;
+		_l->copyCapacity[i] = 0;
+	}
+}
+
+void gli_fb_list_lend_copy(gli_fb_list *_l, gli_fb *_fb, u32 _capacity)
+{
+	u32 i;
+	_fb->m_RdramCopy = NULL;
+	_fb->m_RdramCopyCapacity = 0;
+	_fb->m_RdramCopySize = 0;
+	for (i = 0; i < GLI_FB_MAX && _l->slot[i] != _fb; ++i)
+		;
+	if (i == GLI_FB_MAX || _capacity == 0)
+		return;
+	if (_l->copyCapacity[i] < _capacity) {
+		/* the old content is not needed: no realloc copy */
+		free(_l->copy[i]);
+		_l->copy[i] = (u8 *)malloc(_capacity);
+		_l->copyCapacity[i] = _l->copy[i] != NULL ? _capacity : 0;
+		if (_l->copy[i] == NULL)
+			return;
+	}
+	_fb->m_RdramCopy = _l->copy[i];
+	_fb->m_RdramCopyCapacity = _capacity;
 }
 
 u32 gli_fb_list_free_slot(const gli_fb_list *_l)

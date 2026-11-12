@@ -45,15 +45,14 @@ typedef struct gli_fb
 	} m_clearParams;
 	/* the swap the validity was last checked in */
 	u32 m_validityChecked;
-	/* RDRAM as the buffer left it, for the validity check: allocated with
-	 * the buffer for its tallest texture, never grown */
+	/* RDRAM as the buffer left it, for the validity check, as much as
+	 * its tallest texture holds: lent by the frame buffer list from its
+	 * slot's storage, which outlives the buffer */
 	u8 *m_RdramCopy;
 	u32 m_RdramCopySize;
 	u32 m_RdramCopyCapacity;
 } gli_fb;
 
-/* Allocates @_fb's RDRAM copy for @_capacity bytes; frees it with 0 */
-void gli_fb_rdram_copy_alloc(gli_fb *_fb, u32 _capacity);
 /* Copies, or for an auxiliary buffer marks, the RDRAM @_fb covers, up
  * to its copy's capacity */
 void gli_fb_save_rdram(gli_fb *_fb);

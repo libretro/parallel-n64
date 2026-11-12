@@ -18,9 +18,19 @@ typedef struct gli_fb_list
 	gli_fb *slot[GLI_FB_MAX]; /* the buffer living in each slot, or NULL */
 	u8 order[GLI_FB_MAX];     /* the slots in use, newest first */
 	u32 count;
+	/* each slot's RDRAM copy storage: it outlives the buffers built in
+	 * the slot and only grows, so a buffer coming and going mid-game
+	 * reuses it instead of allocating */
+	u8 *copy[GLI_FB_MAX];
+	u32 copyCapacity[GLI_FB_MAX];
 } gli_fb_list;
 
 void gli_fb_list_init(gli_fb_list *_l);
+/* Frees the slots' RDRAM copy storage; the slots must be empty */
+void gli_fb_list_free_copies(gli_fb_list *_l);
+/* Lends @_fb, already in the list, @_capacity bytes of its slot's RDRAM
+ * copy storage, growing it if it is short; none if that fails */
+void gli_fb_list_lend_copy(gli_fb_list *_l, gli_fb *_fb, u32 _capacity);
 /* A free slot, or GLI_FB_MAX when every slot is in use */
 u32 gli_fb_list_free_slot(const gli_fb_list *_l);
 /* Puts the buffer @_fb living in @_slot first */

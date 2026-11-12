@@ -196,14 +196,6 @@ int gli_fb_is_valid(gli_fb *_fb, int _force, u32 _swapCount)
 	return 1; /* no data to decide */
 }
 
-void gli_fb_rdram_copy_alloc(gli_fb *_fb, u32 _capacity)
-{
-	free(_fb->m_RdramCopy);
-	_fb->m_RdramCopy = _capacity != 0 ? (u8 *)malloc(_capacity) : NULL;
-	_fb->m_RdramCopyCapacity = _fb->m_RdramCopy != NULL ? _capacity : 0;
-	_fb->m_RdramCopySize = 0;
-}
-
 void gli_fb_save_rdram(gli_fb *_fb)
 {
 	const u32 stride = _fb->m_width << _fb->m_size >> 1;

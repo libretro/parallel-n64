@@ -65,6 +65,8 @@ class FrameBufferList
 public:
 	void init();
 	void destroy();
+	/* lends a buffer in the list RDRAM copy storage for @_capacity bytes */
+	void lendRdramCopy(FrameBuffer * _pBuffer, u32 _capacity) { gli_fb_list_lend_copy(&m_fbs, _pBuffer, _capacity); }
 	void saveBuffer(u32 _address, u16 _format, u16 _size, u16 _width, bool _cfb);
 	void removeAux();
 	void copyAux();

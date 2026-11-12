@@ -49,7 +49,6 @@ FrameBuffer::FrameBuffer()
 
 FrameBuffer::~FrameBuffer()
 {
-	gli_fb_rdram_copy_alloc(this, 0);
 	gfxContext.deleteFramebuffer(m_FBO);
 	gfxContext.deleteFramebuffer(m_resolveFBO);
 	gfxContext.deleteFramebuffer(m_SubFBO);
@@ -168,7 +167,7 @@ void FrameBuffer::init(u32 _address, u16 _format, u16 _size, u16 _width, bool _c
 
 	const u16 maxHeight = gli_VI_GetMaxBufferHeight(_width);
 	_initTexture(_width, maxHeight, _format, _size, m_pTexture);
-	gli_fb_rdram_copy_alloc(this, (_width * maxHeight) << _size >> 1);
+	frameBufferList().lendRdramCopy(this, (_width * maxHeight) << _size >> 1);
 
 	if (config.video.multisampling != 0) {
 		_setAndAttachTexture(m_FBO, m_pTexture, 0, true);
@@ -455,6 +454,7 @@ void FrameBufferList::destroy() {
 	gfxContext.bindFramebuffer(bufferTarget::FRAMEBUFFER, ObjectHandle::defaultFramebuffer);
 	while (m_fbs.count != 0)
 		_slot(gli_fb_list_remove_at(&m_fbs, 0))->~FrameBuffer();
+	gli_fb_list_free_copies(&m_fbs);
 	gli_StereoFrames_destroy();
 	m_pCurrent = nullptr;
 	m_pCopy = nullptr;
