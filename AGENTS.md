@@ -312,6 +312,29 @@ the device. Size barriers and flushes to the bytes concerned.
 - Timing and motion code goes by real time and gets smoother with refresh
   rate; nothing is tuned to 60 Hz.
 
+## Quantization
+
+Precision is lost only where the N64 lost it. Look out, in anything touched,
+for precision thrown away on the host side for no reason of accuracy: in
+audio, video, texture formats, colour and depth conversion, anywhere a value
+changes width or type.
+
+- A value is kept at the width the hardware gave it until the hardware itself
+  narrows it. 5-bit channels widen to 8 by replicating bits, not by shifting
+  (`x << 3` leaves white at 248).
+- No narrower host format than the source: no RGBA4444 or RGB565 upload of
+  texels that had more, no 16-bit target or depth where the guest's needs more,
+  no 8-bit intermediate between two wider stages.
+- No conversion there and back (float to integer to float, sRGB twice, a
+  resample undone later), and no rounding in the middle of a chain: round
+  once, at the end, the way the hardware does.
+- Audio stays at the guest's sample rate and width until the frontend; nothing
+  truncates where it should round or clips before the last mix.
+- Dithering and the VI's filters are emulation: keep them bit-exact. Anything
+  else that dithers, truncates or clamps needs a reason, in a comment.
+- A fix says what was lost and shows it: the values before and after, and a
+  test that fails on the narrower path.
+
 ## Measuring
 
 - Do the measuring yourself. Keep counters and timers in `tools/` or
