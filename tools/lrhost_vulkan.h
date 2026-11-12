@@ -77,6 +77,9 @@ static PFN_vkGetDeviceProcAddr vk_real_gdpa;
 static PFN_vkCreateComputePipelines vk_real_ccp;
 static PFN_vkCreateGraphicsPipelines vk_real_cgp;
 static long vk_built_frame, vk_built_worker, vk_cached_frame, vk_cached_worker;
+/* pipeline creations begun once context_destroy was called: content close
+ * may wait for one already in the driver, never start another */
+static long vk_closing, vk_begun_closing;
 
 static int vk_on_pipeline_worker(void)
 {
@@ -114,7 +117,9 @@ static void vk_count_created(VkResult res, uint32_t n, VkPipelineCreateFlags fla
 static VkResult VKAPI_CALL vk_count_ccp(VkDevice d, VkPipelineCache c, uint32_t n,
         const VkComputePipelineCreateInfo *info, const VkAllocationCallbacks *a, VkPipeline *out)
 {
-    VkResult res = vk_real_ccp(d, c, n, info, a, out);
+    VkResult res;
+    if (__sync_fetch_and_add(&vk_closing, 0)) __sync_fetch_and_add(&vk_begun_closing, (long)n);
+    res = vk_real_ccp(d, c, n, info, a, out);
     vk_count_created(res, n, n ? info[0].flags : 0);
     return res;
 }
@@ -122,7 +127,9 @@ static VkResult VKAPI_CALL vk_count_ccp(VkDevice d, VkPipelineCache c, uint32_t 
 static VkResult VKAPI_CALL vk_count_cgp(VkDevice d, VkPipelineCache c, uint32_t n,
         const VkGraphicsPipelineCreateInfo *info, const VkAllocationCallbacks *a, VkPipeline *out)
 {
-    VkResult res = vk_real_cgp(d, c, n, info, a, out);
+    VkResult res;
+    if (__sync_fetch_and_add(&vk_closing, 0)) __sync_fetch_and_add(&vk_begun_closing, (long)n);
+    res = vk_real_cgp(d, c, n, info, a, out);
     vk_count_created(res, n, n ? info[0].flags : 0);
     return res;
 }
@@ -480,7 +487,9 @@ static void vk_shutdown(void)
 {
     if (!vk_ready) return;
     p_vkDeviceWaitIdle(vk_ctx.device);
+    __sync_fetch_and_add(&vk_closing, 1);
     if (vk_hw.context_destroy) vk_hw.context_destroy();
+    if (vk_count) printf("pipelines begun after content close began: %ld\n", vk_begun_closing);
     if (vk_rb) { p_vkDestroyBuffer(vk_ctx.device, vk_rb, NULL); p_vkFreeMemory(vk_ctx.device, vk_rb_mem, NULL); }
     p_vkDestroyFence(vk_ctx.device, vk_fence, NULL);
     p_vkDestroyCommandPool(vk_ctx.device, vk_pool, NULL);

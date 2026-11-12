@@ -615,6 +615,7 @@ int main(int argc, char **argv)
                frames_presented, frames_duped, frame_crc);
         free(s);
     }
+    load_ms = now_ms();
 #ifdef LRHOST_GL
     gl_shutdown();
 #endif
@@ -624,6 +625,8 @@ int main(int argc, char **argv)
     vk_shutdown();
 #endif
     r_deinit();
+    /* what a frontend waits through at content close */
+    printf("context_destroy and retro_deinit: %.3f ms\n", now_ms() - load_ms);
     free(ft);
     free(saved);
     free(ra_buf);

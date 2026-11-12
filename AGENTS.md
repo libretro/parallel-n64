@@ -122,6 +122,10 @@ Know which layer you are changing. Having one does not give you the next.
   through the state setter its draw uses, so a cold run builds it at load too.
   `tools/ci/parallel_rdp_pipelines.py` holds a first run to none on the frame's
   threads. The other lanes skip this: it takes a software driver most of a minute.
+- Content close starts no compile: the worker drops what is still queued,
+  ahead or asked for by a draw, and only the compile already in the driver is
+  waited for. The frontend lane counts the pipelines begun after
+  `context_destroy`: none.
 - Nothing waits for the pipelines built ahead, at load or later, and the
   machine is never held back for them: a draw that gets to one before the
   worker builds its own. Only the test hosts wait, at load

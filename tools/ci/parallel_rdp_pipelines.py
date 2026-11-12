@@ -188,14 +188,20 @@ RUN_MAX = re.compile(r"per retro_run: .* max ([0-9.]+) ms \| presented (\d+) dup
 FRONTEND_LOAD_MS = 5000.0
 FRONTEND_RUN_MS = 5000.0
 FRONTEND_WHOLE_S = 60.0
+CLOSE = re.compile(r"context_destroy and retro_deinit: ([0-9.]+) ms")
+BEGUN_CLOSING = re.compile(r"pipelines begun after content close began: (\d+)")
+# Content close waits for the one compile already in the driver, which it
+# cannot abandon, and starts none: what is still queued is dropped.
+FRONTEND_CLOSE_MS = 20000.0
 
 
 def as_frontend(args):
     """The core as a frontend runs it, every known pipeline queued at load
     and nothing waiting for them. Load returns at once, the machine runs
     from the first retro_run (every frame presented, none shown twice),
-    the frames are those of a run that waited, and the session ends at
-    once with the worker still busy."""
+    the frames are those of a run that waited, and content close, with
+    the worker still busy and draws' requests queued behind it, starts no
+    compile."""
     rom = regress.fetch(args.roms, FULL_ROM)
     errors = []
     frames = {}
@@ -238,6 +244,14 @@ def as_frontend(args):
             errors.append("a retro_run took %s ms" % run_max.group(1))
         if int(run_max.group(2)) != FRAMES or int(run_max.group(3)) != 0:
             errors.append("%s frames presented and %s shown twice, of %d" % (run_max.group(2), run_max.group(3), FRAMES))
+        close, begun = CLOSE.search(log), BEGUN_CLOSING.search(log)
+        if not (close and begun):
+            errors.append("frontend: no close timings")
+        else:
+            if int(begun.group(1)) != 0:
+                errors.append("%s pipelines begun after content close began" % begun.group(1))
+            if float(close.group(1)) > FRONTEND_CLOSE_MS:
+                errors.append("content close took %s ms" % close.group(1))
         if whole > FRONTEND_WHOLE_S:
             errors.append("the session took %.0f s" % whole)
     if len(frames) == 2 and frames["frontend"] != frames["waited"]:
