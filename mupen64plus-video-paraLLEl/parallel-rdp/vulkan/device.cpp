@@ -273,18 +273,25 @@ PipelineLayout::PipelineLayout(Hash hash, Device *device, const CombinedResource
 {
 	VkDescriptorSetLayout layouts[VULKAN_NUM_DESCRIPTOR_SETS] = {};
 	auto &features = device->get_device_features();
-	push_set_mask = granite_combined_layout_push_set_mask(&layout, features.supports_push_descriptor,
-	                                                      features.push_descriptor_properties.maxPushDescriptors);
+	uint32_t push_set_mask = granite_combined_layout_push_set_mask(&layout, features.supports_push_descriptor,
+	                                                               features.push_descriptor_properties.maxPushDescriptors);
 
 	for (unsigned i = 0; i < VULKAN_NUM_DESCRIPTOR_SETS; i++)
 	{
-		set_allocators[i] = device->request_descriptor_set_allocator(layout.sets[i], layout.stages_for_bindings[i],
-		                                                             (push_set_mask & (1u << i)) != 0);
-		layouts[i] = set_allocators[i]->get_layout();
+		auto *allocator = device->request_descriptor_set_allocator(layout.sets[i], layout.stages_for_bindings[i],
+		                                                           (push_set_mask & (1u << i)) != 0);
+		layouts[i] = allocator->get_layout();
+		bind.allocators[i] = allocator->get_impl();
 	}
 
 	granite_pipeline_layout_init(&impl, device->get_device(), &device->get_device_table(), &layout, layouts,
 	                             push_set_mask, device->get_gpu_properties().limits.maxBoundDescriptorSets);
+
+	bind.hash = hash;
+	bind.layout = impl.layout;
+	bind.resource_layout = &layout;
+	bind.update_templates = impl.update_template;
+	bind.push_set_mask = push_set_mask;
 }
 
 Util::Hash Shader::hash(const uint32_t *data, size_t size)

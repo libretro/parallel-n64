@@ -25,6 +25,7 @@
 #include <string.h>
 #include "shader.h"
 #include "pipeline_map.h"
+#include "resource_bindings.h"
 #include "cookie.hpp"
 #include "descriptor_set.hpp"
 #include "hash.hpp"
@@ -73,35 +74,8 @@ struct CombinedResourceLayout : granite_combined_layout_t
 	}
 };
 
-// What the command buffer keeps of a binding; the update templates read
-// it as the C struct.
-struct ResourceBinding
-{
-	union {
-		VkDescriptorBufferInfo buffer;
-		struct
-		{
-			VkDescriptorImageInfo fp;
-			VkDescriptorImageInfo integer;
-		} image;
-		VkBufferView buffer_view;
-	};
-	VkDeviceSize dynamic_offset;
-};
-static_assert(sizeof(ResourceBinding) == sizeof(granite_resource_binding_t) &&
-              offsetof(ResourceBinding, buffer) == offsetof(granite_resource_binding_t, u.buffer) &&
-              offsetof(ResourceBinding, image.fp) == offsetof(granite_resource_binding_t, u.image.fp) &&
-              offsetof(ResourceBinding, image.integer) == offsetof(granite_resource_binding_t, u.image.integer) &&
-              offsetof(ResourceBinding, buffer_view) == offsetof(granite_resource_binding_t, u.buffer_view),
-              "The update templates read another binding.");
-
-struct ResourceBindings
-{
-	ResourceBinding bindings[VULKAN_NUM_DESCRIPTOR_SETS][VULKAN_NUM_BINDINGS];
-	uint64_t cookies[VULKAN_NUM_DESCRIPTOR_SETS][VULKAN_NUM_BINDINGS];
-	uint64_t secondary_cookies[VULKAN_NUM_DESCRIPTOR_SETS][VULKAN_NUM_BINDINGS];
-	uint8_t push_constant_data[VULKAN_PUSH_CONSTANT_SIZE];
-};
+static_assert(VULKAN_PUSH_CONSTANT_SIZE == GRANITE_PUSH_CONSTANT_SIZE, "The C bindings have other push constants.");
+using ResourceBindings = granite_resource_bindings_t;
 
 class PipelineLayout : public HashedObject<PipelineLayout>
 {
@@ -123,26 +97,16 @@ public:
 		return impl.layout;
 	}
 
-	DescriptorSetAllocator *get_allocator(unsigned set) const
+	// What descriptor sets are bound against (resource_bindings.h).
+	const granite_bind_layout_t &get_bind_layout() const
 	{
-		return set_allocators[set];
-	}
-
-	VkDescriptorUpdateTemplate get_update_template(unsigned set) const
-	{
-		return impl.update_template[set];
-	}
-
-	uint32_t get_push_set_mask() const
-	{
-		return push_set_mask;
+		return bind;
 	}
 
 private:
 	granite_pipeline_layout_t impl;
 	CombinedResourceLayout layout;
-	DescriptorSetAllocator *set_allocators[VULKAN_NUM_DESCRIPTOR_SETS] = {};
-	uint32_t push_set_mask = 0;
+	granite_bind_layout_t bind;
 };
 
 class Shader : public HashedObject<Shader>

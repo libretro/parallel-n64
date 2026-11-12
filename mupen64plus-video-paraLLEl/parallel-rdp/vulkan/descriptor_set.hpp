@@ -65,22 +65,14 @@ public:
 		granite_set_allocator_begin_frame(&impl);
 	}
 
-	struct Lookup
-	{
-		VkDescriptorSet set;
-		bool cached;
-	};
-
-	Lookup find(unsigned thread_index, Util::Hash hash)
-	{
-		Lookup lookup;
-		lookup.set = granite_set_allocator_find(&impl, thread_index, hash, &lookup.cached);
-		return lookup;
-	}
-
 	VkDescriptorSetLayout get_layout() const
 	{
 		return impl.set_layout;
+	}
+
+	granite_set_allocator_t *get_impl()
+	{
+		return &impl;
 	}
 
 	// Push sets are written into the command buffer directly: no pools,

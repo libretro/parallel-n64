@@ -94,32 +94,6 @@ struct VertexBindingState
 	VkDeviceSize offsets[VULKAN_NUM_VERTEX_BUFFERS];
 };
 
-enum CommandBufferSavedStateBits
-{
-	COMMAND_BUFFER_SAVED_BINDINGS_0_BIT = 1u << 0,
-	COMMAND_BUFFER_SAVED_BINDINGS_1_BIT = 1u << 1,
-	COMMAND_BUFFER_SAVED_BINDINGS_2_BIT = 1u << 2,
-	COMMAND_BUFFER_SAVED_BINDINGS_3_BIT = 1u << 3,
-	COMMAND_BUFFER_SAVED_VIEWPORT_BIT = 1u << 4,
-	COMMAND_BUFFER_SAVED_SCISSOR_BIT = 1u << 5,
-	COMMAND_BUFFER_SAVED_RENDER_STATE_BIT = 1u << 6,
-	COMMAND_BUFFER_SAVED_PUSH_CONSTANT_BIT = 1u << 7
-};
-static_assert(VULKAN_NUM_DESCRIPTOR_SETS == 4, "Number of descriptor sets != 4.");
-using CommandBufferSaveStateFlags = uint32_t;
-
-struct CommandBufferSavedState
-{
-	CommandBufferSaveStateFlags flags;
-	ResourceBindings bindings;
-	VkViewport viewport;
-	VkRect2D scissor;
-
-	PipelineState static_state;
-	PotentialState potential_static_state;
-	DynamicState dynamic_state;
-};
-
 struct DeferredPipelineCompile : granite_pipeline_compile_t
 {
 	Program *program;
@@ -587,7 +561,6 @@ private:
 	IndexState index_state = {};
 	VertexBindingState vbo = {};
 	ResourceBindings bindings;
-	VkDescriptorSet allocated_sets[VULKAN_NUM_DESCRIPTOR_SETS] = {};
 
 	Pipeline current_pipeline = {};
 	VkPipelineLayout current_pipeline_layout = VK_NULL_HANDLE;
@@ -599,8 +572,6 @@ private:
 	VkRect2D scissor = {};
 
 	CommandBufferDirtyFlags dirty = ~0u;
-	uint32_t dirty_sets = 0;
-	uint32_t dirty_sets_dynamic = 0;
 	uint32_t dirty_vbos = 0;
 	uint32_t active_vbos = 0;
 	VkPipelineStageFlags uses_swapchain_in_stages = 0;
@@ -635,9 +606,6 @@ private:
 	bool flush_compute_pipeline(bool synchronous);
 	void flush_descriptor_sets();
 	void begin_graphics();
-	void flush_descriptor_set(uint32_t set);
-	void rebind_descriptor_set(uint32_t set);
-	void push_descriptor_set(uint32_t set);
 	void begin_compute();
 	void begin_context();
 
@@ -649,7 +617,6 @@ private:
 	void set_texture(unsigned set, unsigned binding, VkImageView float_view, VkImageView integer_view,
 	                 VkImageLayout layout,
 	                 uint64_t cookie);
-	void set_buffer_view_common(unsigned set, unsigned binding, const BufferView &view);
 
 	void init_viewport_scissor(const RenderPassInfo &info, const Framebuffer *framebuffer);
 	void init_surface_transform(const RenderPassInfo &info);
