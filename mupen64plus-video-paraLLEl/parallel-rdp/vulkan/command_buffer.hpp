@@ -32,6 +32,7 @@
 #include "shader.hpp"
 #include "vulkan_common.hpp"
 #include "pipeline_compile.h"
+#include "command_state.h"
 #include <string.h>
 
 namespace Vulkan
@@ -68,12 +69,6 @@ using PipelineState = granite_pipeline_state_t;
 using PotentialState = granite_potential_state_t;
 
 using VertexAttribState = granite_vertex_attrib_state_t;
-
-struct VertexBindingState
-{
-	VkBuffer buffers[VULKAN_NUM_VERTEX_BUFFERS];
-	VkDeviceSize offsets[VULKAN_NUM_VERTEX_BUFFERS];
-};
 
 struct DeferredPipelineCompile : granite_pipeline_compile_t
 {
@@ -129,12 +124,12 @@ public:
 
 	void set_thread_index(unsigned index_)
 	{
-		thread_index = index_;
+		state.thread_index = index_;
 	}
 
 	unsigned get_thread_index() const
 	{
-		return thread_index;
+		return state.thread_index;
 	}
 
 	void clear_image(const Image &image, const VkClearValue &value);
@@ -376,34 +371,15 @@ private:
 	const RenderPass *actual_render_pass = nullptr;
 	const Vulkan::ImageView *framebuffer_attachments[VULKAN_NUM_ATTACHMENTS + 1] = {};
 
-	VertexBindingState vbo = {};
-	ResourceBindings bindings;
+	// What is set and what of it is dirty (command_state.h).
+	granite_command_state_t state;
 
-	Pipeline current_pipeline = {};
-	VkPipelineLayout current_pipeline_layout = VK_NULL_HANDLE;
-	PipelineLayout *current_layout = nullptr;
-	unsigned thread_index = 0;
-
-	VkViewport viewport = {};
-	VkRect2D scissor = {};
-
-	CommandBufferDirtyFlags dirty = ~0u;
-	uint32_t dirty_vbos = 0;
-	uint32_t active_vbos = 0;
 	VkPipelineStageFlags uses_swapchain_in_stages = 0;
-	bool is_compute = true;
 	bool is_ended = false;
 
 	void set_dirty(CommandBufferDirtyFlags flags)
 	{
-		dirty |= flags;
-	}
-
-	CommandBufferDirtyFlags get_and_clear(CommandBufferDirtyFlags flags)
-	{
-		auto mask = dirty & flags;
-		dirty &= ~flags;
-		return mask;
+		state.dirty |= flags;
 	}
 
 	DeferredPipelineCompile pipeline_state = {};
@@ -412,16 +388,12 @@ private:
 	              "Hashable pipeline state is not large enough!");
 #endif
 
-	bool flush_render_state(bool synchronous);
-	bool flush_compute_state(bool synchronous);
+	bool flush_state(bool synchronous);
 	void clear_render_state();
 
-	bool flush_graphics_pipeline(bool synchronous);
-	bool flush_compute_pipeline(bool synchronous);
-	void flush_descriptor_sets();
 	void begin_graphics();
 	void begin_compute();
-	void begin_context();
+	void begin_context(bool compute);
 
 	BufferBlock vbo_block;
 	BufferBlock ubo_block;
@@ -430,14 +402,12 @@ private:
 	                 VkImageLayout layout,
 	                 uint64_t cookie);
 
-	void init_viewport_scissor(const RenderPassInfo &info, const Framebuffer *framebuffer);
 
 	bool profiling = false;
 	char debug_channel_tag[32] = {};
 	Vulkan::BufferHandle debug_channel_buffer;
 	DebugChannelInterface *debug_channel_interface = nullptr;
 
-	void bind_pipeline(VkPipelineBindPoint bind_point, VkPipeline pipeline, uint32_t active_dynamic_state);
 
 };
 

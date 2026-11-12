@@ -31,24 +31,6 @@ using namespace Util;
 
 namespace Vulkan
 {
-static void rect2d_clip(VkRect2D &rect)
-{
-	if (rect.offset.x < 0)
-	{
-		rect.extent.width += rect.offset.x;
-		rect.offset.x = 0;
-	}
-
-	if (rect.offset.y < 0)
-	{
-		rect.extent.height += rect.offset.y;
-		rect.offset.y = 0;
-	}
-
-	rect.extent.width = Util::min_of(rect.extent.width, 0x7fffffffu - rect.offset.x);
-	rect.extent.height = Util::min_of(rect.extent.height, 0x7fffffffu - rect.offset.y);
-}
-
 static VkOffset3D add_offset(const VkOffset3D &a, const VkOffset3D &b)
 {
 	VkOffset3D o = { a.x + b.x, a.y + b.y, a.z + b.z };
@@ -62,12 +44,10 @@ CommandBuffer::CommandBuffer(Device *device_, VkCommandBuffer cmd_, VkPipelineCa
     , type(type_)
 {
 	pipeline_state.cache = cache;
+	// (begins as compute, with everything dirty)
+	granite_command_state_init(&state, device->get_device(), &table, cmd);
 	begin_compute();
-	set_opaque_state();
 	memset(&pipeline_state.static_state, 0, sizeof(pipeline_state.static_state));
-	// A zero cookie never matches a bound resource, so the descriptor
-	// payloads need no clearing: each is written before it is used.
-	granite_bindings_init(&bindings);
 
 	// Set up extra state which PSO creation depends on implicitly.
 	// This needs to affect hashing to make Fossilize path behave as expected.
@@ -429,18 +409,12 @@ void CommandBuffer::blit_image(const Image &dst, const Image &src,
 #endif
 }
 
-void CommandBuffer::begin_context()
+void CommandBuffer::begin_context(bool compute)
 {
-	dirty = ~0u;
-	dirty_vbos = ~0u;
-	current_pipeline = {};
-	current_pipeline_layout = VK_NULL_HANDLE;
-	current_layout = nullptr;
+	granite_command_state_begin(&state, compute);
 	pipeline_state.program = nullptr;
 	pipeline_state.potential_static_state.spec_constant_mask = 0;
 	pipeline_state.potential_static_state.internal_spec_constant_mask = 0;
-	granite_bindings_invalidate(&bindings);
-	memset(vbo.buffers, 0, sizeof(vbo.buffers));
 
 	if (debug_channel_buffer)
 		set_storage_buffer(VULKAN_NUM_DESCRIPTOR_SETS - 1, VULKAN_NUM_BINDINGS - 1, *debug_channel_buffer);
@@ -448,34 +422,12 @@ void CommandBuffer::begin_context()
 
 void CommandBuffer::begin_compute()
 {
-	is_compute = true;
-	begin_context();
+	begin_context(true);
 }
 
 void CommandBuffer::begin_graphics()
 {
-	is_compute = false;
-	begin_context();
-}
-
-void CommandBuffer::init_viewport_scissor(const RenderPassInfo &info, const Framebuffer *fb)
-{
-	VkRect2D rect = info.render_area;
-
-	uint32_t fb_width = fb->width;
-	uint32_t fb_height = fb->height;
-
-	rect.offset.x = Util::min_of(int32_t(fb_width), rect.offset.x);
-	rect.offset.y = Util::min_of(int32_t(fb_height), rect.offset.y);
-	rect.extent.width = Util::min_of(fb_width - rect.offset.x, rect.extent.width);
-	rect.extent.height = Util::min_of(fb_height - rect.offset.y, rect.extent.height);
-
-	viewport = {
-		float(rect.offset.x), float(rect.offset.y),
-		float(rect.extent.width), float(rect.extent.height),
-		0.0f, 1.0f
-	};
-	scissor = rect;
+	begin_context(false);
 }
 
 void CommandBuffer::begin_render_pass(const RenderPassInfo &info)
@@ -496,7 +448,8 @@ void CommandBuffer::begin_render_pass(const RenderPassInfo &info)
 	if (info.depth_stencil)
 		framebuffer_attachments[att++] = info.depth_stencil;
 
-	init_viewport_scissor(info, framebuffer);
+	VkRect2D render_area = granite_command_state_set_render_area(&state, &info.render_area, framebuffer->width,
+	                                                             framebuffer->height);
 
 	VkClearValue clear_values[VULKAN_NUM_ATTACHMENTS + 1];
 	unsigned num_clear_values = 0;
@@ -523,7 +476,7 @@ void CommandBuffer::begin_render_pass(const RenderPassInfo &info)
 	VkRenderPassBeginInfo begin_info = { VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO };
 	begin_info.renderPass = actual_render_pass->get_render_pass();
 	begin_info.framebuffer = framebuffer->framebuffer;
-	begin_info.renderArea = scissor;
+	begin_info.renderArea = render_area;
 	begin_info.clearValueCount = num_clear_values;
 	begin_info.pClearValues = clear_values;
 
@@ -673,7 +626,7 @@ void CommandBuffer::extract_pipeline_state(DeferredPipelineCompile &compile) con
 		return;
 	}
 
-	if (is_compute)
+	if (state.is_compute)
 		update_hash_compute_pipeline(compile);
 	else
 	{
@@ -701,19 +654,6 @@ Pipeline CommandBuffer::build_graphics_pipeline(Device *device, const DeferredPi
 	return keep_pipeline(device, compile, pipeline, dynamic_mask, PIPELINE_RECORD_GRAPHICS);
 }
 
-bool CommandBuffer::flush_compute_pipeline(bool synchronous)
-{
-	update_hash_compute_pipeline(pipeline_state);
-	current_pipeline = pipeline_state.program->get_pipeline(pipeline_state.hash);
-	if (current_pipeline.pipeline == VK_NULL_HANDLE)
-	{
-		current_pipeline = build_compute_pipeline(
-			device, pipeline_state,
-			synchronous ? CompileMode::Sync : CompileMode::FailOnCompileRequired);
-	}
-	return current_pipeline.pipeline != VK_NULL_HANDLE;
-}
-
 void CommandBuffer::update_hash_compute_pipeline(DeferredPipelineCompile &compile)
 {
 	auto program = pipeline_program(*compile.program);
@@ -727,153 +667,43 @@ void CommandBuffer::update_hash_graphics_pipeline(DeferredPipelineCompile &compi
 	                                              &active_vbos);
 }
 
-bool CommandBuffer::flush_graphics_pipeline(bool synchronous)
-{
-	update_hash_graphics_pipeline(pipeline_state, active_vbos);
-	current_pipeline = pipeline_state.program->get_pipeline(pipeline_state.hash);
-	if (current_pipeline.pipeline == VK_NULL_HANDLE)
-	{
-		current_pipeline = build_graphics_pipeline(
-			device, pipeline_state,
-			synchronous ? CompileMode::Sync : CompileMode::FailOnCompileRequired);
-	}
-	return current_pipeline.pipeline != VK_NULL_HANDLE;
-}
-
-void CommandBuffer::bind_pipeline(VkPipelineBindPoint bind_point, VkPipeline pipeline, uint32_t active_dynamic_state)
-{
-	table.vkCmdBindPipeline(cmd, bind_point, pipeline);
-
-	// If some dynamic state is static in the pipeline it clobbers the dynamic state.
-	// As a performance optimization don't clobber everything.
-	uint32_t static_state_clobber = ~active_dynamic_state & COMMAND_BUFFER_DYNAMIC_BITS;
-	set_dirty(static_state_clobber);
-}
-
-bool CommandBuffer::flush_compute_state(bool synchronous)
+// Brings the VkCommandBuffer up to the state set. The pipeline comes from
+// the program's map, or is compiled: at once when @synchronous, otherwise
+// only if the driver has it cached. False: nothing to draw with.
+bool CommandBuffer::flush_state(bool synchronous)
 {
 	if (!pipeline_state.program)
 		return false;
-	VK_ASSERT(current_layout);
 
-	if (current_pipeline.pipeline == VK_NULL_HANDLE)
-		set_dirty(COMMAND_BUFFER_DIRTY_PIPELINE_BIT);
-
-	if (get_and_clear(COMMAND_BUFFER_DIRTY_STATIC_STATE_BIT | COMMAND_BUFFER_DIRTY_PIPELINE_BIT))
+	if (granite_command_state_pipeline_dirty(&state))
 	{
-		VkPipeline old_pipe = current_pipeline.pipeline;
-		if (!flush_compute_pipeline(synchronous))
-			return false;
+		auto mode = synchronous ? CompileMode::Sync : CompileMode::FailOnCompileRequired;
+		if (state.is_compute)
+			update_hash_compute_pipeline(pipeline_state);
+		else
+			update_hash_graphics_pipeline(pipeline_state, state.active_vbos);
 
-		if (old_pipe != current_pipeline.pipeline)
-			bind_pipeline(VK_PIPELINE_BIND_POINT_COMPUTE, current_pipeline.pipeline, current_pipeline.dynamic_mask);
+		Pipeline pipeline = pipeline_state.program->get_pipeline(pipeline_state.hash);
+		if (pipeline.pipeline == VK_NULL_HANDLE)
+			pipeline = state.is_compute ? build_compute_pipeline(device, pipeline_state, mode)
+			                            : build_graphics_pipeline(device, pipeline_state, mode);
+		granite_command_state_set_pipeline(&state, &pipeline);
 	}
 
-	if (current_pipeline.pipeline == VK_NULL_HANDLE)
-		return false;
-
-	flush_descriptor_sets();
-
-	if (get_and_clear(COMMAND_BUFFER_DIRTY_PUSH_CONSTANTS_BIT))
-	{
-		auto &range = current_layout->get_resource_layout().push_constant_range;
-		if (range.stageFlags != 0)
-		{
-			VK_ASSERT(range.offset == 0);
-			table.vkCmdPushConstants(cmd, current_pipeline_layout, range.stageFlags,
-			                         0, range.size,
-			                         bindings.push_constant_data);
-		}
-	}
-
-	return true;
-}
-
-bool CommandBuffer::flush_render_state(bool synchronous)
-{
-	if (!pipeline_state.program)
-		return false;
-	VK_ASSERT(current_layout);
-
-	if (current_pipeline.pipeline == VK_NULL_HANDLE)
-		set_dirty(COMMAND_BUFFER_DIRTY_PIPELINE_BIT);
-
-	// We've invalidated pipeline state, update the VkPipeline.
-	if (get_and_clear(COMMAND_BUFFER_DIRTY_STATIC_STATE_BIT | COMMAND_BUFFER_DIRTY_PIPELINE_BIT |
-	                  COMMAND_BUFFER_DIRTY_STATIC_VERTEX_BIT))
-	{
-		VkPipeline old_pipe = current_pipeline.pipeline;
-		if (!flush_graphics_pipeline(synchronous))
-			return false;
-
-		if (old_pipe != current_pipeline.pipeline)
-			bind_pipeline(VK_PIPELINE_BIND_POINT_GRAPHICS, current_pipeline.pipeline, current_pipeline.dynamic_mask);
-	}
-
-	if (current_pipeline.pipeline == VK_NULL_HANDLE)
-		return false;
-
-	flush_descriptor_sets();
-
-	if (get_and_clear(COMMAND_BUFFER_DIRTY_PUSH_CONSTANTS_BIT))
-	{
-		auto &range = current_layout->get_resource_layout().push_constant_range;
-		if (range.stageFlags != 0)
-		{
-			VK_ASSERT(range.offset == 0);
-			table.vkCmdPushConstants(cmd, current_pipeline_layout, range.stageFlags,
-			                         0, range.size,
-			                         bindings.push_constant_data);
-		}
-	}
-
-	if (get_and_clear(COMMAND_BUFFER_DIRTY_VIEWPORT_BIT))
-		table.vkCmdSetViewport(cmd, 0, 1, &viewport);
-
-	if (get_and_clear(COMMAND_BUFFER_DIRTY_SCISSOR_BIT))
-	{
-		auto tmp_scissor = scissor;
-		rect2d_clip(tmp_scissor);
-		table.vkCmdSetScissor(cmd, 0, 1, &tmp_scissor);
-	}
-
-	uint32_t update_vbo_mask = dirty_vbos & active_vbos;
-	for (uint32_t binding_bits = update_vbo_mask, binding_base = 0, binding, binding_count; Util::next_bit_range(binding_bits, binding_base, binding, binding_count);)
-	{
-#ifdef VULKAN_DEBUG
-		for (unsigned i = binding; i < binding + binding_count; i++)
-			VK_ASSERT(vbo.buffers[i] != VK_NULL_HANDLE);
-#endif
-		table.vkCmdBindVertexBuffers(cmd, binding, binding_count, vbo.buffers + binding, vbo.offsets + binding);
-	}
-	dirty_vbos &= ~update_vbo_mask;
-
-	return true;
+	return granite_command_state_flush(&state);
 }
 
 bool CommandBuffer::flush_pipeline_state_without_blocking()
 {
-	if (is_compute)
-		return flush_compute_state(false);
-	else
-		return flush_render_state(false);
+	return flush_state(false);
 }
 
 void CommandBuffer::set_vertex_attrib(uint32_t attrib, uint32_t binding, VkFormat format, VkDeviceSize offset)
 {
 	VK_ASSERT(attrib < VULKAN_NUM_VERTEX_ATTRIBS);
-	VK_ASSERT(framebuffer);
-
-	auto &attr = pipeline_state.attribs[attrib];
-
-	if (attr.binding != binding || attr.format != format || attr.offset != offset)
-		set_dirty(COMMAND_BUFFER_DIRTY_STATIC_VERTEX_BIT);
-
 	VK_ASSERT(binding < VULKAN_NUM_VERTEX_BUFFERS);
-
-	attr.binding = binding;
-	attr.format = format;
-	attr.offset = offset;
+	VK_ASSERT(framebuffer);
+	granite_command_state_set_vertex_attrib(&state, &pipeline_state, attrib, binding, format, uint32_t(offset));
 }
 
 void CommandBuffer::set_vertex_binding(uint32_t binding, const Buffer &buffer, VkDeviceSize offset, VkDeviceSize stride,
@@ -881,17 +711,8 @@ void CommandBuffer::set_vertex_binding(uint32_t binding, const Buffer &buffer, V
 {
 	VK_ASSERT(binding < VULKAN_NUM_VERTEX_BUFFERS);
 	VK_ASSERT(framebuffer);
-
-	VkBuffer vkbuffer = buffer.get_buffer();
-	if (vbo.buffers[binding] != vkbuffer || vbo.offsets[binding] != offset)
-		dirty_vbos |= 1u << binding;
-	if (pipeline_state.strides[binding] != stride || pipeline_state.input_rates[binding] != step_rate)
-		set_dirty(COMMAND_BUFFER_DIRTY_STATIC_VERTEX_BIT);
-
-	vbo.buffers[binding] = vkbuffer;
-	vbo.offsets[binding] = offset;
-	pipeline_state.strides[binding] = stride;
-	pipeline_state.input_rates[binding] = step_rate;
+	granite_command_state_set_vertex_binding(&state, &pipeline_state, binding, buffer.get_buffer(), offset, stride,
+	                                         step_rate);
 }
 
 void CommandBuffer::set_scissor(const VkRect2D &rect)
@@ -899,17 +720,14 @@ void CommandBuffer::set_scissor(const VkRect2D &rect)
 	VK_ASSERT(framebuffer);
 	VK_ASSERT(rect.offset.x >= 0);
 	VK_ASSERT(rect.offset.y >= 0);
-	scissor = rect;
-	set_dirty(COMMAND_BUFFER_DIRTY_SCISSOR_BIT);
+	granite_command_state_set_scissor(&state, &rect);
 }
 
 void CommandBuffer::push_constants(const void *data, VkDeviceSize offset, VkDeviceSize range)
 {
 	VK_ASSERT(offset + range <= VULKAN_PUSH_CONSTANT_SIZE);
-	memcpy(bindings.push_constant_data + offset, data, range);
-	set_dirty(COMMAND_BUFFER_DIRTY_PUSH_CONSTANTS_BIT);
+	granite_command_state_push_constants(&state, data, size_t(offset), size_t(range));
 }
-
 
 void CommandBuffer::set_program(Program *program)
 {
@@ -917,21 +735,9 @@ void CommandBuffer::set_program(Program *program)
 		return;
 
 	pipeline_state.program = program;
-	current_pipeline = {};
-
-	set_dirty(COMMAND_BUFFER_DIRTY_PIPELINE_BIT);
-	if (!program)
-		return;
-
-	VK_ASSERT((framebuffer && pipeline_state.program->get_shader(ShaderStage::Vertex)) ||
-	          (!framebuffer && pipeline_state.program->get_shader(ShaderStage::Compute)));
-
-	auto *new_layout = program->get_pipeline_layout();
-	if (granite_bindings_set_layout(&bindings, current_layout ? &current_layout->get_bind_layout() : nullptr,
-	                                &new_layout->get_bind_layout()))
-		set_dirty(COMMAND_BUFFER_DIRTY_PUSH_CONSTANTS_BIT);
-	current_layout = new_layout;
-	current_pipeline_layout = current_layout->get_layout();
+	VK_ASSERT(!program || (framebuffer && program->get_shader(ShaderStage::Vertex)) ||
+	          (!framebuffer && program->get_shader(ShaderStage::Compute)));
+	granite_command_state_set_program(&state, program ? &program->get_pipeline_layout()->get_bind_layout() : nullptr);
 }
 
 void *CommandBuffer::allocate_constant_data(unsigned set, unsigned binding, VkDeviceSize size)
@@ -967,7 +773,7 @@ void CommandBuffer::set_uniform_buffer(unsigned set, unsigned binding, const Buf
 	VK_ASSERT(set < VULKAN_NUM_DESCRIPTOR_SETS);
 	VK_ASSERT(binding < VULKAN_NUM_BINDINGS);
 	VK_ASSERT(buffer.get_create_info().usage & VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
-	granite_bindings_set_uniform_buffer(&bindings, set, binding, buffer.get_buffer(), buffer.get_cookie(), offset, range);
+	granite_bindings_set_uniform_buffer(&state.bindings, set, binding, buffer.get_buffer(), buffer.get_cookie(), offset, range);
 }
 
 void CommandBuffer::set_storage_buffer(unsigned set, unsigned binding, const Buffer &buffer, VkDeviceSize offset,
@@ -976,7 +782,7 @@ void CommandBuffer::set_storage_buffer(unsigned set, unsigned binding, const Buf
 	VK_ASSERT(set < VULKAN_NUM_DESCRIPTOR_SETS);
 	VK_ASSERT(binding < VULKAN_NUM_BINDINGS);
 	VK_ASSERT(buffer.get_create_info().usage & VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
-	granite_bindings_set_storage_buffer(&bindings, set, binding, buffer.get_buffer(), buffer.get_cookie(), offset, range);
+	granite_bindings_set_storage_buffer(&state.bindings, set, binding, buffer.get_buffer(), buffer.get_cookie(), offset, range);
 }
 
 void CommandBuffer::set_uniform_buffer(unsigned set, unsigned binding, const Buffer &buffer)
@@ -993,7 +799,7 @@ void CommandBuffer::set_sampler(unsigned set, unsigned binding, const Sampler &s
 {
 	VK_ASSERT(set < VULKAN_NUM_DESCRIPTOR_SETS);
 	VK_ASSERT(binding < VULKAN_NUM_BINDINGS);
-	granite_bindings_set_sampler(&bindings, set, binding, sampler.get_sampler(), sampler.get_cookie());
+	granite_bindings_set_sampler(&state.bindings, set, binding, sampler.get_sampler(), sampler.get_cookie());
 }
 
 void CommandBuffer::set_buffer_view(unsigned set, unsigned binding, const BufferView &view)
@@ -1001,7 +807,7 @@ void CommandBuffer::set_buffer_view(unsigned set, unsigned binding, const Buffer
 	VK_ASSERT(set < VULKAN_NUM_DESCRIPTOR_SETS);
 	VK_ASSERT(binding < VULKAN_NUM_BINDINGS);
 	VK_ASSERT(view.get_buffer().get_create_info().usage & VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT);
-	granite_bindings_set_buffer_view(&bindings, set, binding, view.get_view(), view.get_cookie());
+	granite_bindings_set_buffer_view(&state.bindings, set, binding, view.get_view(), view.get_cookie());
 }
 
 void CommandBuffer::set_texture(unsigned set, unsigned binding,
@@ -1011,7 +817,7 @@ void CommandBuffer::set_texture(unsigned set, unsigned binding,
 {
 	VK_ASSERT(set < VULKAN_NUM_DESCRIPTOR_SETS);
 	VK_ASSERT(binding < VULKAN_NUM_BINDINGS);
-	granite_bindings_set_texture(&bindings, set, binding, float_view, integer_view, layout, cookie);
+	granite_bindings_set_texture(&state.bindings, set, binding, float_view, integer_view, layout, cookie);
 }
 
 void CommandBuffer::set_texture(unsigned set, unsigned binding, const ImageView &view)
@@ -1049,17 +855,10 @@ void CommandBuffer::set_storage_texture(unsigned set, unsigned binding, const Im
 	            view.get_image().get_layout(VK_IMAGE_LAYOUT_GENERAL), view.get_cookie());
 }
 
-void CommandBuffer::flush_descriptor_sets()
-{
-	granite_bindings_flush(&bindings, &current_layout->get_bind_layout(), device->get_device(), &table, cmd,
-	                       actual_render_pass ? VK_PIPELINE_BIND_POINT_GRAPHICS : VK_PIPELINE_BIND_POINT_COMPUTE,
-	                       thread_index);
-}
-
 void CommandBuffer::draw(uint32_t vertex_count, uint32_t instance_count, uint32_t first_vertex, uint32_t first_instance)
 {
-	VK_ASSERT(!is_compute);
-	if (flush_render_state(true))
+	VK_ASSERT(!state.is_compute);
+	if (flush_state(true))
 	{
 		table.vkCmdDraw(cmd, vertex_count, instance_count, first_vertex, first_instance);
 	}
@@ -1069,8 +868,8 @@ void CommandBuffer::draw(uint32_t vertex_count, uint32_t instance_count, uint32_
 
 void CommandBuffer::dispatch_indirect(const Buffer &buffer, uint32_t offset)
 {
-	VK_ASSERT(is_compute);
-	if (flush_compute_state(true))
+	VK_ASSERT(state.is_compute);
+	if (flush_state(true))
 	{
 		table.vkCmdDispatchIndirect(cmd, buffer.get_buffer(), offset);
 	}
@@ -1080,8 +879,8 @@ void CommandBuffer::dispatch_indirect(const Buffer &buffer, uint32_t offset)
 
 void CommandBuffer::dispatch(uint32_t groups_x, uint32_t groups_y, uint32_t groups_z)
 {
-	VK_ASSERT(is_compute);
-	if (flush_compute_state(true))
+	VK_ASSERT(state.is_compute);
+	if (flush_state(true))
 	{
 		table.vkCmdDispatch(cmd, groups_x, groups_y, groups_z);
 	}
@@ -1129,7 +928,7 @@ void CommandBuffer::end_threaded_recording()
 	is_ended = true;
 
 	// We must end a command buffer on the same thread index we started it on.
-	VK_ASSERT(granite_thread_index() == thread_index);
+	VK_ASSERT(granite_thread_index() == state.thread_index);
 
 	if (has_profiling())
 	{

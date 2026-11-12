@@ -38,6 +38,7 @@ PARALLEL_RDP_SOURCES_C := \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/render_pass.c \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/resource_bindings.c \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/command_pool.c \
+        $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/command_state.c \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/descriptor_set.c \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/memory_allocator.c \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/shader.c \
