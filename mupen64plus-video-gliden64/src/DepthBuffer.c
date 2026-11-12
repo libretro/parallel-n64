@@ -5,7 +5,7 @@
 #include "DepthBuffer.h"
 
 /* More than a game has at once: past that the oldest goes */
-#define MAX_DEPTH_BUFFERS 64
+#define MAX_DEPTH_BUFFERS GLI_DEPTH_MAX
 #define ZLUT_SIZE 0x40000
 
 static struct DepthBuffer * l_list[MAX_DEPTH_BUFFERS];

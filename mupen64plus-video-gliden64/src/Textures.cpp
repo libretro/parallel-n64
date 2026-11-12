@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <stdint.h>
 #include <memory.h>
 #include <algorithm>
 #include "Platform.h"
@@ -18,6 +19,8 @@
 #include "Graphics/Parameters.h"
 #include "DisplayWindow.h"
 #include "gli_textures.h"
+#include "gli_fb_list.h"
+#include "DepthBuffer.h"
 #include "gli_texdecode.h"
 
 using namespace std;
@@ -165,9 +168,26 @@ void TextureCache::destroy()
 	m_pool = nullptr;
 	gli_lru_deinit(&m_lru);
 
-	for (FBTextures::const_iterator cur = m_fbTextures.cbegin(); cur != m_fbTextures.cend(); ++cur)
-		gfxContext.deleteTexture(cur->second.name);
-	m_fbTextures.clear();
+	/* the slots in use: the free stack marks the others */
+	bool isFree[FBTextureSlots] = {};
+	for (u32 i = 0; i < m_fbFreeCount; ++i)
+		isFree[m_fbFree[i]] = true;
+	for (u32 i = 0; i < FBTextureSlots; ++i)
+		if (!isFree[i])
+			gfxContext.deleteTexture(m_fbTextures[i].name);
+	_resetFBTextureSlots();
+}
+
+void TextureCache::_resetFBTextureSlots()
+{
+	static_assert(FBTextureSlots >= 4 * GLI_FB_MAX + 5 * GLI_DEPTH_MAX + 16, "a frame buffer has four textures, a depth buffer five");
+	static_assert(FBTextureSlots <= 0x10000, "slots are u16");
+	for (u32 i = 0; i < FBTextureSlots; ++i) {
+		m_fbTextures[i] = CachedTexture();
+		/* taken from the top: slot 0 first */
+		m_fbFree[i] = (u16)(FBTextureSlots - 1 - i);
+	}
+	m_fbFreeCount = FBTextureSlots;
 }
 
 /* Deletes every pooled GPU texture, cached or kept for reuse */
@@ -201,17 +221,29 @@ void TextureCache::removeFrameBufferTexture(CachedTexture * _pTexture)
 {
 	if (_pTexture == nullptr)
 		return;
-	FBTextures::const_iterator iter = m_fbTextures.find(u32(_pTexture->name));
-	assert(iter != m_fbTextures.cend());
-	gfxContext.deleteTexture(ObjectHandle(iter->second.name));
-	m_fbTextures.erase(iter);
+	gfxContext.deleteTexture(_pTexture->name);
+	const uintptr_t offset = reinterpret_cast<uintptr_t>(_pTexture) - reinterpret_cast<uintptr_t>(m_fbTextures);
+	if (offset >= sizeof(m_fbTextures)) {
+		/* one past the slots, from the heap */
+		delete _pTexture;
+		return;
+	}
+	const u32 slot = (u32)(offset / sizeof(CachedTexture));
+	m_fbTextures[slot] = CachedTexture();
+	m_fbFree[m_fbFreeCount++] = (u16)slot;
 }
 
 CachedTexture * TextureCache::addFrameBufferTexture(graphics::Parameter _target)
 {
 	ObjectHandle texName(gfxContext.createTexture(_target));
-	m_fbTextures.emplace(u32(texName), texName);
-	return &m_fbTextures.at(u32(texName));
+	/* the slots cover every buffer alive at once; past them is a bug,
+	 * kept working from the heap */
+	assert(m_fbFreeCount != 0);
+	if (m_fbFreeCount == 0)
+		return new CachedTexture(texName);
+	CachedTexture * pTexture = &m_fbTextures[m_fbFree[--m_fbFreeCount]];
+	*pTexture = CachedTexture(texName);
+	return pTexture;
 }
 
 inline

@@ -1,4 +1,6 @@
 #include <assert.h>
+#include <new>
+#include <stdint.h>
 #include "Combiner.h"
 #include "FrameBuffer.h"
 #include "DepthBuffer.h"
@@ -368,9 +370,25 @@ void gli_depth_gpu_clear(void)
 	frameBufferList().setCurrentDrawBuffer();
 }
 
+/* The depth buffers live in fixed slots, built in place: nothing is
+ * allocated as they come and go. The list in DepthBuffer.c deletes its
+ * oldest before it adds past GLI_DEPTH_MAX, so a slot is always free. */
+alignas(DepthBuffer) static unsigned char s_depthStorage[GLI_DEPTH_MAX][sizeof(DepthBuffer)];
+static bool s_depthUsed[GLI_DEPTH_MAX];
+
 struct DepthBuffer * gli_depth_new(u32 _address, FrameBuffer * _pBuffer)
 {
-	DepthBuffer * pBuffer = new DepthBuffer();
+	u32 slot = 0;
+	while (slot < GLI_DEPTH_MAX && s_depthUsed[slot])
+		++slot;
+	DepthBuffer * pBuffer;
+	assert(slot < GLI_DEPTH_MAX);
+	if (slot < GLI_DEPTH_MAX) {
+		s_depthUsed[slot] = true;
+		pBuffer = new (s_depthStorage[slot]) DepthBuffer();
+	} else {
+		pBuffer = new DepthBuffer();
+	}
 	pBuffer->m_address = _address;
 	pBuffer->m_width = _pBuffer != nullptr ? _pBuffer->m_width : VI.width;
 	pBuffer->initDepthBufferTexture(_pBuffer);
@@ -379,7 +397,15 @@ struct DepthBuffer * gli_depth_new(u32 _address, FrameBuffer * _pBuffer)
 
 void gli_depth_delete(DepthBuffer * _pBuffer)
 {
-	delete _pBuffer;
+	if (_pBuffer == nullptr)
+		return;
+	const uintptr_t offset = reinterpret_cast<uintptr_t>(_pBuffer) - reinterpret_cast<uintptr_t>(s_depthStorage);
+	if (offset >= sizeof(s_depthStorage)) {
+		delete _pBuffer;
+		return;
+	}
+	_pBuffer->~DepthBuffer();
+	s_depthUsed[offset / sizeof(DepthBuffer)] = false;
 }
 
 u32 gli_depth_address(const DepthBuffer * _pBuffer)

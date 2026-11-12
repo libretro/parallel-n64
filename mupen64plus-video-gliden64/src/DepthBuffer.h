@@ -63,6 +63,9 @@ extern "C" {
 struct DepthBuffer;
 struct FrameBuffer;
 
+/* The most depth buffers alive at once; the oldest makes way past it */
+#define GLI_DEPTH_MAX 64
+
 /* DepthBuffer.c: the depth buffers the game has used, newest last */
 void gli_depth_list_init(void);
 void gli_depth_list_destroy(void);
