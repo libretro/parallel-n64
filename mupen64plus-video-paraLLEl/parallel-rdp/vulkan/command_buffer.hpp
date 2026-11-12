@@ -33,6 +33,7 @@
 #include "vulkan_common.hpp"
 #include "pipeline_compile.h"
 #include "command_state.h"
+#include "command_ops.h"
 #include <string.h>
 
 namespace Vulkan

@@ -31,10 +31,19 @@ using namespace Util;
 
 namespace Vulkan
 {
-static VkOffset3D add_offset(const VkOffset3D &a, const VkOffset3D &b)
+static granite_image_ref_t image_ref(const Image &image)
 {
-	VkOffset3D o = { a.x + b.x, a.y + b.y, a.z + b.z };
-	return o;
+	auto &info = image.get_create_info();
+	granite_image_ref_t ref;
+	ref.image = image.get_image();
+	ref.format = info.format;
+	ref.width = info.width;
+	ref.height = info.height;
+	ref.depth = info.depth;
+	ref.levels = info.levels;
+	ref.layers = info.layers;
+	ref.general = image.get_layout_type() != Layout::Optimal;
+	return ref;
 }
 
 CommandBuffer::CommandBuffer(Device *device_, VkCommandBuffer cmd_, VkPipelineCache cache, Type type_)
@@ -115,58 +124,24 @@ void CommandBuffer::copy_buffer_to_image(const Image &image, const Buffer &src, 
 
 void CommandBuffer::clear_image(const Image &image, const VkClearValue &value)
 {
-	auto aspect = format_to_aspect_mask(image.get_format());
-	clear_image(image, value, aspect);
+	clear_image(image, value, granite_format_aspect_mask(image.get_format()));
 }
 
 void CommandBuffer::clear_image(const Image &image, const VkClearValue &value, VkImageAspectFlags aspect)
 {
 	VK_ASSERT(!framebuffer);
 	VK_ASSERT(!actual_render_pass);
-
-	VkImageSubresourceRange range = {};
-	range.aspectMask = aspect;
-	range.baseArrayLayer = 0;
-	range.baseMipLevel = 0;
-	range.levelCount = image.get_create_info().levels;
-	range.layerCount = image.get_create_info().layers;
-	if (aspect & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT))
-	{
-		table.vkCmdClearDepthStencilImage(cmd, image.get_image(), image.get_layout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL),
-		                                  &value.depthStencil, 1, &range);
-	}
-	else
-	{
-		table.vkCmdClearColorImage(cmd, image.get_image(), image.get_layout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL),
-		                           &value.color, 1, &range);
-	}
-}
-
-static inline void fixup_src_stage(VkPipelineStageFlags &src_stages, bool fixup)
-{
-	// ALL_GRAPHICS_BIT waits for vertex as well which causes performance issues on some drivers.
-	// It shouldn't matter, but hey.
-	//
-	// We aren't using vertex with side-effects on relevant hardware so dropping VERTEX_SHADER_BIT is fine.
-	if ((src_stages & VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT) != 0 && fixup)
-	{
-		src_stages &= ~VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT;
-		src_stages |= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT |
-		              VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT |
-		              VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
-	}
+	auto ref = image_ref(image);
+	granite_cmd_clear_image(&table, cmd, &ref, &value, aspect);
 }
 
 void CommandBuffer::barrier(VkPipelineStageFlags src_stages, VkAccessFlags src_access, VkPipelineStageFlags dst_stages,
                             VkAccessFlags dst_access)
 {
-	VK_ASSERT(!actual_render_pass);
-	VK_ASSERT(!framebuffer);
 	VkMemoryBarrier barrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER };
 	barrier.srcAccessMask = src_access;
 	barrier.dstAccessMask = dst_access;
-	fixup_src_stage(src_stages, device->get_workarounds().optimize_all_graphics_barrier);
-	table.vkCmdPipelineBarrier(cmd, src_stages, dst_stages, 0, 1, &barrier, 0, nullptr, 0, nullptr);
+	this->barrier(src_stages, dst_stages, 1, &barrier, 0, nullptr, 0, nullptr);
 }
 
 void CommandBuffer::barrier(VkPipelineStageFlags src_stages, VkPipelineStageFlags dst_stages, unsigned barriers,
@@ -176,50 +151,25 @@ void CommandBuffer::barrier(VkPipelineStageFlags src_stages, VkPipelineStageFlag
 {
 	VK_ASSERT(!actual_render_pass);
 	VK_ASSERT(!framebuffer);
-	fixup_src_stage(src_stages, device->get_workarounds().optimize_all_graphics_barrier);
+	src_stages = granite_barrier_src_stages(src_stages, device->get_workarounds().optimize_all_graphics_barrier);
 	table.vkCmdPipelineBarrier(cmd, src_stages, dst_stages, 0, barriers, globals, buffer_barriers, buffers, image_barriers, images);
 }
 
-// Buffers are always CONCURRENT.
-static uint32_t deduce_acquire_release_family_index(Device &device)
+// The family to name when an image leaves the device or comes back.
+static uint32_t external_barrier_family(Device &device, const Image &image, CommandBuffer::Type type)
 {
-	uint32_t family = VK_QUEUE_FAMILY_IGNORED;
 	auto &queue_info = device.get_queue_info();
-	for (auto &i : queue_info.family_indices)
-	{
-		if (i != VK_QUEUE_FAMILY_IGNORED)
-		{
-			if (family == VK_QUEUE_FAMILY_IGNORED)
-				family = i;
-			else if (i != family)
-				return VK_QUEUE_FAMILY_IGNORED;
-		}
-	}
-
-	return family;
-}
-
-static uint32_t deduce_acquire_release_family_index(Device &device, const Image &image, uint32_t family_index)
-{
-	uint32_t family = family_index;
-	auto &queue_info = device.get_queue_info();
-
-	if (image.get_create_info().misc & IMAGE_MISC_CONCURRENT_QUEUE_GRAPHICS_BIT)
-		if (queue_info.family_indices[QUEUE_INDEX_GRAPHICS] != family)
-			return VK_QUEUE_FAMILY_IGNORED;
-
-	if (image.get_create_info().misc &
-	    (IMAGE_MISC_CONCURRENT_QUEUE_ASYNC_GRAPHICS_BIT | IMAGE_MISC_CONCURRENT_QUEUE_ASYNC_COMPUTE_BIT))
-	{
-		if (queue_info.family_indices[QUEUE_INDEX_COMPUTE] != family)
-			return VK_QUEUE_FAMILY_IGNORED;
-	}
-
-	if (image.get_create_info().misc & IMAGE_MISC_CONCURRENT_QUEUE_ASYNC_TRANSFER_BIT)
-		if (queue_info.family_indices[QUEUE_INDEX_COMPUTE] != family)
-			return VK_QUEUE_FAMILY_IGNORED;
-
-	return family;
+	const uint32_t families[3] = {
+		queue_info.family_indices[QUEUE_INDEX_GRAPHICS],
+		queue_info.family_indices[QUEUE_INDEX_COMPUTE],
+		queue_info.family_indices[QUEUE_INDEX_TRANSFER],
+	};
+	auto misc = image.get_create_info().misc;
+	return granite_image_owner_family(families, queue_info.family_indices[device.get_physical_queue_type(type)],
+	                                  (misc & IMAGE_MISC_CONCURRENT_QUEUE_GRAPHICS_BIT) != 0,
+	                                  (misc & (IMAGE_MISC_CONCURRENT_QUEUE_ASYNC_GRAPHICS_BIT |
+	                                           IMAGE_MISC_CONCURRENT_QUEUE_ASYNC_COMPUTE_BIT)) != 0,
+	                                  (misc & IMAGE_MISC_CONCURRENT_QUEUE_ASYNC_TRANSFER_BIT) != 0);
 }
 
 void CommandBuffer::release_external_image_barrier(
@@ -227,23 +177,9 @@ void CommandBuffer::release_external_image_barrier(
 		VkImageLayout old_layout, VkImageLayout new_layout,
 		VkPipelineStageFlags src_stage, VkAccessFlags src_access)
 {
-	VkImageMemoryBarrier barrier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER };
-	uint32_t family_index = device->get_queue_info().family_indices[device->get_physical_queue_type(type)];
-
-	barrier.image = image.get_image();
-	barrier.subresourceRange = {
-		format_to_aspect_mask(image.get_format()),
-		0, VK_REMAINING_MIP_LEVELS,
-		0, VK_REMAINING_ARRAY_LAYERS
-	};
-	barrier.oldLayout = old_layout;
-	barrier.newLayout = new_layout;
-	barrier.srcAccessMask = src_access;
-
-	barrier.srcQueueFamilyIndex = deduce_acquire_release_family_index(*device, image, family_index);
-	barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_EXTERNAL;
-	table.vkCmdPipelineBarrier(cmd, src_stage, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
-	                           0, 0, nullptr, 0, nullptr, 1, &barrier);
+	auto ref = image_ref(image);
+	granite_cmd_external_image_barrier(&table, cmd, &ref, true, old_layout, new_layout, src_stage, src_access,
+	                                   external_barrier_family(*device, image, type));
 }
 
 void CommandBuffer::acquire_external_image_barrier(
@@ -251,22 +187,9 @@ void CommandBuffer::acquire_external_image_barrier(
 		VkImageLayout old_layout, VkImageLayout new_layout,
 		VkPipelineStageFlags dst_stage, VkAccessFlags dst_access)
 {
-	VkImageMemoryBarrier barrier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER };
-	uint32_t family_index = device->get_queue_info().family_indices[device->get_physical_queue_type(type)];
-
-	barrier.image = image.get_image();
-	barrier.subresourceRange = {
-		format_to_aspect_mask(image.get_format()),
-		0, VK_REMAINING_MIP_LEVELS,
-		0, VK_REMAINING_ARRAY_LAYERS
-	};
-	barrier.oldLayout = old_layout;
-	barrier.newLayout = new_layout;
-	barrier.dstAccessMask = dst_access;
-	barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_EXTERNAL;
-	barrier.dstQueueFamilyIndex = deduce_acquire_release_family_index(*device, image, family_index);
-	table.vkCmdPipelineBarrier(cmd, dst_stage, dst_stage,
-	                           0, 0, nullptr, 0, nullptr, 1, &barrier);
+	auto ref = image_ref(image);
+	granite_cmd_external_image_barrier(&table, cmd, &ref, false, old_layout, new_layout, dst_stage, dst_access,
+	                                   external_barrier_family(*device, image, type));
 }
 
 void CommandBuffer::image_barrier(const Image &image, VkImageLayout old_layout, VkImageLayout new_layout,
@@ -276,100 +199,30 @@ void CommandBuffer::image_barrier(const Image &image, VkImageLayout old_layout, 
 	VK_ASSERT(!actual_render_pass);
 	VK_ASSERT(!framebuffer);
 	VK_ASSERT(image.get_create_info().domain != ImageDomain::Transient);
-
-	VkImageMemoryBarrier barrier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER };
-	barrier.srcAccessMask = src_access;
-	barrier.dstAccessMask = dst_access;
-	barrier.oldLayout = old_layout;
-	barrier.newLayout = new_layout;
-	barrier.image = image.get_image();
-	barrier.subresourceRange.aspectMask = format_to_aspect_mask(image.get_create_info().format);
-	barrier.subresourceRange.levelCount = image.get_create_info().levels;
-	barrier.subresourceRange.layerCount = image.get_create_info().layers;
-	barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-	barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-
-	fixup_src_stage(src_stages, device->get_workarounds().optimize_all_graphics_barrier);
-	table.vkCmdPipelineBarrier(cmd, src_stages, dst_stages, 0, 0, nullptr, 0, nullptr, 1, &barrier);
+	auto ref = image_ref(image);
+	granite_cmd_image_barrier(&table, cmd, &ref, old_layout, new_layout,
+	                          granite_barrier_src_stages(src_stages, device->get_workarounds().optimize_all_graphics_barrier),
+	                          src_access, dst_stages, dst_access);
 }
 
 void CommandBuffer::barrier_prepare_generate_mipmap(const Image &image, VkImageLayout base_level_layout,
                                                     VkPipelineStageFlags src_stage, VkAccessFlags src_access,
                                                     bool need_top_level_barrier)
 {
-	auto &create_info = image.get_create_info();
-	VkImageMemoryBarrier barriers[2] = {};
-	VK_ASSERT(create_info.levels > 1);
-	(void)create_info;
-
-	for (unsigned i = 0; i < 2; i++)
-	{
-		barriers[i].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-		barriers[i].image = image.get_image();
-		barriers[i].subresourceRange.aspectMask = format_to_aspect_mask(image.get_format());
-		barriers[i].subresourceRange.layerCount = image.get_create_info().layers;
-		barriers[i].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-		barriers[i].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-
-		if (i == 0)
-		{
-			barriers[i].oldLayout = base_level_layout;
-			barriers[i].newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-			barriers[i].srcAccessMask = src_access;
-			barriers[i].dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
-			barriers[i].subresourceRange.baseMipLevel = 0;
-			barriers[i].subresourceRange.levelCount = 1;
-		}
-		else
-		{
-			barriers[i].oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-			barriers[i].newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-			barriers[i].srcAccessMask = 0;
-			barriers[i].dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-			barriers[i].subresourceRange.baseMipLevel = 1;
-			barriers[i].subresourceRange.levelCount = image.get_create_info().levels - 1;
-		}
-	}
-
-	barrier(src_stage, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, nullptr, 0, nullptr,
-	        need_top_level_barrier ? 2 : 1,
-	        need_top_level_barrier ? barriers : barriers + 1);
+	VK_ASSERT(!actual_render_pass);
+	VK_ASSERT(image.get_create_info().levels > 1);
+	auto ref = image_ref(image);
+	granite_cmd_prepare_generate_mipmap(&table, cmd, &ref, base_level_layout,
+	                                    granite_barrier_src_stages(src_stage,
+	                                                               device->get_workarounds().optimize_all_graphics_barrier),
+	                                    src_access, need_top_level_barrier);
 }
 
 void CommandBuffer::generate_mipmap(const Image &image)
 {
-	auto &create_info = image.get_create_info();
-	VkOffset3D size = { int(create_info.width), int(create_info.height), int(create_info.depth) };
-	const VkOffset3D origin = { 0, 0, 0 };
-
 	VK_ASSERT(image.get_layout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL) == VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
-
-	VkImageMemoryBarrier b = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER };
-	b.image = image.get_image();
-	b.subresourceRange.levelCount = 1;
-	b.subresourceRange.layerCount = image.get_create_info().layers;
-	b.subresourceRange.aspectMask = format_to_aspect_mask(image.get_format());
-	b.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-	b.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-	b.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-	b.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
-	b.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-	b.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-
-	for (unsigned i = 1; i < create_info.levels; i++)
-	{
-		VkOffset3D src_size = size;
-		size.x = Util::max_of(size.x >> 1, 1);
-		size.y = Util::max_of(size.y >> 1, 1);
-		size.z = Util::max_of(size.z >> 1, 1);
-
-		blit_image(image, image,
-		           origin, size, origin, src_size, i, i - 1, 0, 0, create_info.layers, VK_FILTER_LINEAR);
-
-		b.subresourceRange.baseMipLevel = i;
-		barrier(VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
-		        0, nullptr, 0, nullptr, 1, &b);
-	}
+	auto ref = image_ref(image);
+	granite_cmd_generate_mipmap(&table, cmd, &ref);
 }
 
 void CommandBuffer::blit_image(const Image &dst, const Image &src,
@@ -378,35 +231,10 @@ void CommandBuffer::blit_image(const Image &dst, const Image &src,
                                unsigned dst_level, unsigned src_level, unsigned dst_base_layer, unsigned src_base_layer,
                                unsigned num_layers, VkFilter filter)
 {
-#if 0
-	const VkImageBlit blit = {
-		{ format_to_aspect_mask(src.get_create_info().format), src_level, src_base_layer, num_layers },
-		{ src_offset, add_offset(src_offset, src_extent) },
-		{ format_to_aspect_mask(dst.get_create_info().format), dst_level, dst_base_layer, num_layers },
-		{ dst_offset, add_offset(dst_offset, dst_extent) },
-	};
-
-	table.vkCmdBlitImage(cmd,
-	                     src.get_image(), src.get_layout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL),
-	                     dst.get_image(), dst.get_layout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL),
-	                     1, &blit, filter);
-#else
-	// RADV workaround.
-	for (unsigned i = 0; i < num_layers; i++)
-	{
-		const VkImageBlit blit = {
-				{ format_to_aspect_mask(src.get_create_info().format), src_level, src_base_layer + i, 1 },
-				{ src_offset,                                          add_offset(src_offset, src_extent) },
-				{ format_to_aspect_mask(dst.get_create_info().format), dst_level, dst_base_layer + i, 1 },
-				{ dst_offset,                                          add_offset(dst_offset, dst_extent) },
-		};
-
-		table.vkCmdBlitImage(cmd,
-		                     src.get_image(), src.get_layout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL),
-		                     dst.get_image(), dst.get_layout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL),
-		                     1, &blit, filter);
-	}
-#endif
+	auto dst_ref = image_ref(dst);
+	auto src_ref = image_ref(src);
+	granite_cmd_blit_image(&table, cmd, &dst_ref, &src_ref, &dst_offset, &dst_extent, &src_offset, &src_extent,
+	                       dst_level, src_level, dst_base_layer, src_base_layer, num_layers, filter);
 }
 
 void CommandBuffer::begin_context(bool compute)

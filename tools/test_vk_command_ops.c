@@ -1,0 +1,364 @@
+/* parallel-rdp's command buffer operations on images
+ * (vulkan/command_ops.c), through a stand-in device table.
+ *
+ * A format's aspects are colour, depth, stencil or depth and stencil.
+ * The stages a barrier waits for are narrowed only when asked and only
+ * for ALL_GRAPHICS. The family an external barrier names is the queue's
+ * own, or IGNORED for an image used on a queue of another family: the
+ * transfer queue's family counts for an image used on the transfer
+ * queue.
+ *
+ * An image barrier covers all levels and layers of the format's aspects.
+ * An external barrier hands the image out or takes it back, the other
+ * family being EXTERNAL. A clear goes to the colour or the depth and
+ * stencil call, in the layout the image is kept in. A blit is a call a
+ * layer. Preparing mipmaps moves level 0 to transfer source and
+ * discards the rest into transfer destination; generating them halves
+ * each level into the next, never below one texel, and leaves every
+ * level a transfer source. */
+#include <stdio.h>
+#include <string.h>
+#include <boolean.h>
+
+#include "command_ops.h"
+
+static unsigned failures;
+
+#define CHECK(cond, what) \
+	do \
+	{ \
+		if (!(cond)) \
+		{ \
+			fprintf(stderr, "test_vk_command_ops: FAIL (line %d): %s\n", __LINE__, what); \
+			failures++; \
+		} \
+	} while (0)
+
+#define H(x) ((size_t)(x))
+#define CMD  ((VkCommandBuffer)H(9))
+#define MAX_CALLS 64
+
+/* every barrier and blit, in the order made */
+static unsigned num_barrier_calls, num_blits, color_clears, depth_clears;
+static VkPipelineStageFlags barrier_src[MAX_CALLS], barrier_dst[MAX_CALLS];
+static uint32_t barrier_counts[MAX_CALLS];
+static VkImageMemoryBarrier barriers[MAX_CALLS][2];
+static VkImageBlit blits[MAX_CALLS];
+static VkImageLayout blit_src_layout, blit_dst_layout, clear_layout;
+static VkImage blit_src, blit_dst;
+static VkFilter blit_filter;
+static VkImageSubresourceRange clear_range;
+static VkClearValue clear_value;
+/* call sequence: 'b' a barrier, 'B' a blit */
+static char sequence[MAX_CALLS * 2 + 1];
+static unsigned sequence_len;
+
+static void VKAPI_CALL fake_barrier(VkCommandBuffer cmd, VkPipelineStageFlags src, VkPipelineStageFlags dst,
+		VkDependencyFlags flags, uint32_t memory_count, const VkMemoryBarrier *memory, uint32_t buffer_count,
+		const VkBufferMemoryBarrier *buffers, uint32_t image_count, const VkImageMemoryBarrier *images)
+{
+	uint32_t i;
+	(void)memory; (void)buffers;
+	CHECK(cmd == CMD && flags == 0 && memory_count == 0 && buffer_count == 0, "an image barrier and nothing else");
+	if (num_barrier_calls < MAX_CALLS)
+	{
+		barrier_src[num_barrier_calls] = src;
+		barrier_dst[num_barrier_calls] = dst;
+		barrier_counts[num_barrier_calls] = image_count;
+		for (i = 0; i < image_count && i < 2; i++)
+			barriers[num_barrier_calls][i] = images[i];
+	}
+	num_barrier_calls++;
+	if (sequence_len < MAX_CALLS * 2)
+		sequence[sequence_len++] = 'b';
+}
+
+static void VKAPI_CALL fake_blit(VkCommandBuffer cmd, VkImage src, VkImageLayout src_layout, VkImage dst,
+		VkImageLayout dst_layout, uint32_t count, const VkImageBlit *regions, VkFilter filter)
+{
+	CHECK(cmd == CMD && count == 1, "one region a blit");
+	if (num_blits < MAX_CALLS)
+		blits[num_blits] = regions[0];
+	num_blits++;
+	blit_src = src;
+	blit_dst = dst;
+	blit_src_layout = src_layout;
+	blit_dst_layout = dst_layout;
+	blit_filter = filter;
+	if (sequence_len < MAX_CALLS * 2)
+		sequence[sequence_len++] = 'B';
+}
+
+static void VKAPI_CALL fake_clear_color(VkCommandBuffer cmd, VkImage image, VkImageLayout layout,
+		const VkClearColorValue *value, uint32_t count, const VkImageSubresourceRange *ranges)
+{
+	(void)cmd; (void)image;
+	CHECK(count == 1, "one range");
+	color_clears++;
+	clear_layout = layout;
+	clear_range = ranges[0];
+	clear_value.color = *value;
+}
+
+static void VKAPI_CALL fake_clear_depth(VkCommandBuffer cmd, VkImage image, VkImageLayout layout,
+		const VkClearDepthStencilValue *value, uint32_t count, const VkImageSubresourceRange *ranges)
+{
+	(void)cmd; (void)image;
+	CHECK(count == 1, "one range");
+	depth_clears++;
+	clear_layout = layout;
+	clear_range = ranges[0];
+	clear_value.depthStencil = *value;
+}
+
+static struct VolkDeviceTable table;
+
+static void reset(void)
+{
+	num_barrier_calls = num_blits = color_clears = depth_clears = 0;
+	sequence_len = 0;
+	memset(sequence, 0, sizeof(sequence));
+}
+
+static granite_image_ref_t image(VkFormat format, uint32_t w, uint32_t h, uint32_t levels, uint32_t layers)
+{
+	granite_image_ref_t ref;
+	memset(&ref, 0, sizeof(ref));
+	ref.image = (VkImage)H(0x100 + w);
+	ref.format = format;
+	ref.width = w;
+	ref.height = h;
+	ref.depth = 1;
+	ref.levels = levels;
+	ref.layers = layers;
+	return ref;
+}
+
+static void test_helpers(void)
+{
+	const VkPipelineStageFlags narrowed = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT |
+		VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+	/* graphics, compute, transfer */
+	const uint32_t one_family[3] = { 0, 0, 0 };
+	const uint32_t own_transfer[3] = { 0, 0, 2 };
+	const uint32_t own_compute[3] = { 0, 1, 1 };
+
+	CHECK(granite_format_aspect_mask(VK_FORMAT_R8G8B8A8_UNORM) == VK_IMAGE_ASPECT_COLOR_BIT, "a colour format");
+	CHECK(granite_format_aspect_mask(VK_FORMAT_D32_SFLOAT) == VK_IMAGE_ASPECT_DEPTH_BIT &&
+			granite_format_aspect_mask(VK_FORMAT_D16_UNORM) == VK_IMAGE_ASPECT_DEPTH_BIT &&
+			granite_format_aspect_mask(VK_FORMAT_X8_D24_UNORM_PACK32) == VK_IMAGE_ASPECT_DEPTH_BIT, "depth formats");
+	CHECK(granite_format_aspect_mask(VK_FORMAT_S8_UINT) == VK_IMAGE_ASPECT_STENCIL_BIT, "a stencil format");
+	CHECK(granite_format_aspect_mask(VK_FORMAT_D24_UNORM_S8_UINT) ==
+			(VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT) &&
+			granite_format_aspect_mask(VK_FORMAT_D32_SFLOAT_S8_UINT) ==
+			(VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT), "depth and stencil formats");
+	CHECK(granite_format_aspect_mask(VK_FORMAT_UNDEFINED) == 0, "no format, no aspect");
+
+	CHECK(granite_barrier_src_stages(VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT, false) == VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT,
+			"stages are left alone unless asked");
+	CHECK(granite_barrier_src_stages(VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, true) ==
+			(narrowed | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT), "ALL_GRAPHICS is narrowed to the fragment stages");
+	CHECK(granite_barrier_src_stages(VK_PIPELINE_STAGE_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_TRANSFER_BIT, true) ==
+			(VK_PIPELINE_STAGE_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_TRANSFER_BIT), "other stages are not");
+
+	CHECK(granite_image_owner_family(one_family, 0, true, true, true) == 0, "one family for all queues: it owns the image");
+	CHECK(granite_image_owner_family(own_transfer, 0, true, true, false) == 0,
+			"an image not used on the transfer queue is not shared with it");
+	CHECK(granite_image_owner_family(own_transfer, 0, false, false, true) == VK_QUEUE_FAMILY_IGNORED,
+			"one used on a transfer queue of another family is shared");
+	CHECK(granite_image_owner_family(own_transfer, 2, false, false, true) == 2,
+			"but not as seen from the transfer queue alone");
+	CHECK(granite_image_owner_family(own_compute, 0, true, true, false) == VK_QUEUE_FAMILY_IGNORED,
+			"one used on a compute queue of another family is shared");
+	CHECK(granite_image_owner_family(own_compute, 1, true, false, false) == VK_QUEUE_FAMILY_IGNORED,
+			"so is one used on the graphics queue, seen from compute");
+	CHECK(granite_image_owner_family(own_compute, 1, false, true, true) == 1, "compute and transfer of one family share nothing");
+	CHECK(granite_image_owner_family(own_compute, 0, false, false, false) == 0, "an image of one queue is that queue's");
+}
+
+static void test_barriers(void)
+{
+	granite_image_ref_t color = image(VK_FORMAT_R8G8B8A8_UNORM, 64, 32, 3, 2);
+	granite_image_ref_t depth = image(VK_FORMAT_D24_UNORM_S8_UINT, 64, 32, 1, 1);
+	const VkImageMemoryBarrier *b;
+
+	reset();
+	granite_cmd_image_barrier(&table, CMD, &color, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+			VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, 0, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_TRANSFER_WRITE_BIT);
+	b = &barriers[0][0];
+	CHECK(num_barrier_calls == 1 && barrier_counts[0] == 1 && barrier_src[0] == VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT &&
+			barrier_dst[0] == VK_PIPELINE_STAGE_TRANSFER_BIT, "an image barrier, with its stages");
+	CHECK(b->sType == VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER && b->image == color.image &&
+			b->oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && b->newLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL &&
+			b->srcAccessMask == 0 && b->dstAccessMask == VK_ACCESS_TRANSFER_WRITE_BIT, "its layouts and access");
+	CHECK(b->subresourceRange.aspectMask == VK_IMAGE_ASPECT_COLOR_BIT && b->subresourceRange.baseMipLevel == 0 &&
+			b->subresourceRange.levelCount == 3 && b->subresourceRange.baseArrayLayer == 0 &&
+			b->subresourceRange.layerCount == 2, "all levels and layers");
+	CHECK(b->srcQueueFamilyIndex == VK_QUEUE_FAMILY_IGNORED && b->dstQueueFamilyIndex == VK_QUEUE_FAMILY_IGNORED,
+			"no change of owner");
+	granite_cmd_image_barrier(&table, CMD, &depth, VK_IMAGE_LAYOUT_UNDEFINED,
+			VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, 0,
+			VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT, VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT);
+	CHECK(barriers[1][0].subresourceRange.aspectMask == (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT),
+			"a depth and stencil image: both aspects");
+
+	/* out of the device and back */
+	reset();
+	granite_cmd_external_image_barrier(&table, CMD, &color, true, VK_IMAGE_LAYOUT_GENERAL,
+			VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_WRITE_BIT, 3);
+	b = &barriers[0][0];
+	CHECK(num_barrier_calls == 1 && barrier_src[0] == VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT &&
+			barrier_dst[0] == VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, "a release waits for the stages given");
+	CHECK(b->srcQueueFamilyIndex == 3 && b->dstQueueFamilyIndex == VK_QUEUE_FAMILY_EXTERNAL &&
+			b->srcAccessMask == VK_ACCESS_SHADER_WRITE_BIT && b->dstAccessMask == 0 &&
+			b->oldLayout == VK_IMAGE_LAYOUT_GENERAL && b->newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+			"and hands the image from the family to outside");
+	CHECK(b->subresourceRange.levelCount == VK_REMAINING_MIP_LEVELS &&
+			b->subresourceRange.layerCount == VK_REMAINING_ARRAY_LAYERS, "all of it");
+	granite_cmd_external_image_barrier(&table, CMD, &color, false, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+			VK_IMAGE_LAYOUT_GENERAL, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_READ_BIT,
+			VK_QUEUE_FAMILY_IGNORED);
+	b = &barriers[1][0];
+	CHECK(barrier_src[1] == VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT && barrier_dst[1] == VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+			"an acquire makes it available to the stages given");
+	CHECK(b->srcQueueFamilyIndex == VK_QUEUE_FAMILY_EXTERNAL && b->dstQueueFamilyIndex == VK_QUEUE_FAMILY_IGNORED &&
+			b->dstAccessMask == VK_ACCESS_SHADER_READ_BIT && b->srcAccessMask == 0, "taking it from outside");
+}
+
+static void test_clear_blit(void)
+{
+	granite_image_ref_t color = image(VK_FORMAT_R8G8B8A8_UNORM, 64, 32, 3, 2);
+	granite_image_ref_t depth = image(VK_FORMAT_D32_SFLOAT, 16, 16, 1, 1);
+	granite_image_ref_t dst = image(VK_FORMAT_R8G8B8A8_UNORM, 128, 64, 1, 4);
+	VkOffset3D src_offset, src_extent, dst_offset, dst_extent;
+	VkClearValue value;
+
+	reset();
+	memset(&value, 0, sizeof(value));
+	value.color.float32[1] = 0.5f;
+	granite_cmd_clear_image(&table, CMD, &color, &value, VK_IMAGE_ASPECT_COLOR_BIT);
+	CHECK(color_clears == 1 && depth_clears == 0 && clear_value.color.float32[1] == 0.5f &&
+			clear_layout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, "a colour image is cleared as colour");
+	CHECK(clear_range.aspectMask == VK_IMAGE_ASPECT_COLOR_BIT && clear_range.levelCount == 3 &&
+			clear_range.layerCount == 2 && clear_range.baseMipLevel == 0, "all its levels and layers");
+	value.depthStencil.depth = 0.25f;
+	value.depthStencil.stencil = 7;
+	depth.general = true;
+	granite_cmd_clear_image(&table, CMD, &depth, &value, VK_IMAGE_ASPECT_DEPTH_BIT);
+	CHECK(depth_clears == 1 && color_clears == 1 && clear_value.depthStencil.depth == 0.25f &&
+			clear_layout == VK_IMAGE_LAYOUT_GENERAL, "a depth image as depth, in the general layout it is kept in");
+
+	/* three layers, from layer 1 of a general image to layer 0 */
+	reset();
+	color.general = true;
+	src_offset.x = 4; src_offset.y = 2; src_offset.z = 0;
+	src_extent.x = 32; src_extent.y = 16; src_extent.z = 1;
+	dst_offset.x = 0; dst_offset.y = 8; dst_offset.z = 0;
+	dst_extent.x = 128; dst_extent.y = 48; dst_extent.z = 1;
+	granite_cmd_blit_image(&table, CMD, &dst, &color, &dst_offset, &dst_extent, &src_offset, &src_extent, 0, 1, 0, 1, 3,
+			VK_FILTER_NEAREST);
+	CHECK(num_blits == 3, "a blit a layer");
+	CHECK(blit_src == color.image && blit_dst == dst.image && blit_src_layout == VK_IMAGE_LAYOUT_GENERAL &&
+			blit_dst_layout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && blit_filter == VK_FILTER_NEAREST,
+			"between the images, each in the layout it is kept in");
+	CHECK(blits[0].srcSubresource.mipLevel == 1 && blits[0].srcSubresource.baseArrayLayer == 1 &&
+			blits[0].srcSubresource.layerCount == 1 && blits[0].dstSubresource.mipLevel == 0 &&
+			blits[0].dstSubresource.baseArrayLayer == 0 && blits[2].srcSubresource.baseArrayLayer == 3 &&
+			blits[2].dstSubresource.baseArrayLayer == 2, "from and to the layers asked for");
+	CHECK(blits[1].srcOffsets[0].x == 4 && blits[1].srcOffsets[1].x == 36 && blits[1].srcOffsets[1].y == 18 &&
+			blits[1].srcOffsets[1].z == 1 && blits[1].dstOffsets[0].y == 8 && blits[1].dstOffsets[1].x == 128 &&
+			blits[1].dstOffsets[1].y == 56, "the extents are sizes from the offsets");
+	CHECK(blits[0].srcSubresource.aspectMask == VK_IMAGE_ASPECT_COLOR_BIT &&
+			blits[0].dstSubresource.aspectMask == VK_IMAGE_ASPECT_COLOR_BIT, "colour to colour");
+}
+
+static void test_mipmaps(void)
+{
+	/* 8x2: levels 8x2, 4x1, 2x1, 1x1 */
+	granite_image_ref_t tex = image(VK_FORMAT_R8G8B8A8_UNORM, 8, 2, 4, 2);
+	granite_image_ref_t single = image(VK_FORMAT_R8G8B8A8_UNORM, 8, 2, 1, 1);
+	const VkImageMemoryBarrier *b;
+
+	reset();
+	granite_cmd_prepare_generate_mipmap(&table, CMD, &tex, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+			VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_TRANSFER_WRITE_BIT, true);
+	CHECK(num_barrier_calls == 1 && barrier_counts[0] == 2 && barrier_src[0] == VK_PIPELINE_STAGE_TRANSFER_BIT &&
+			barrier_dst[0] == VK_PIPELINE_STAGE_TRANSFER_BIT, "preparing is one call of two barriers");
+	b = &barriers[0][0];
+	CHECK(b->oldLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && b->newLayout == VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL &&
+			b->srcAccessMask == VK_ACCESS_TRANSFER_WRITE_BIT && b->dstAccessMask == VK_ACCESS_TRANSFER_READ_BIT &&
+			b->subresourceRange.baseMipLevel == 0 && b->subresourceRange.levelCount == 1 &&
+			b->subresourceRange.layerCount == 2, "level 0 becomes the source");
+	b = &barriers[0][1];
+	CHECK(b->oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && b->newLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL &&
+			b->srcAccessMask == 0 && b->dstAccessMask == VK_ACCESS_TRANSFER_WRITE_BIT &&
+			b->subresourceRange.baseMipLevel == 1 && b->subresourceRange.levelCount == 3 &&
+			b->subresourceRange.layerCount == 2, "the levels under it are discarded into the destination layout");
+
+	reset();
+	granite_cmd_prepare_generate_mipmap(&table, CMD, &tex, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+			VK_PIPELINE_STAGE_TRANSFER_BIT, 0, false);
+	CHECK(num_barrier_calls == 1 && barrier_counts[0] == 1 && barriers[0][0].subresourceRange.baseMipLevel == 1 &&
+			barriers[0][0].newLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+			"with level 0 a source already, only the rest is prepared");
+
+	/* an image of one level has no rest */
+	reset();
+	granite_cmd_prepare_generate_mipmap(&table, CMD, &single, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+			VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_TRANSFER_WRITE_BIT, false);
+	CHECK(num_barrier_calls == 0, "one level and nothing to do for it: no barrier");
+	granite_cmd_prepare_generate_mipmap(&table, CMD, &single, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+			VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_TRANSFER_WRITE_BIT, true);
+	CHECK(num_barrier_calls == 1 && barrier_counts[0] == 1 && barriers[0][0].subresourceRange.baseMipLevel == 0 &&
+			barriers[0][0].subresourceRange.levelCount == 1, "one level: level 0 alone, no barrier over zero levels");
+
+	reset();
+	granite_cmd_generate_mipmap(&table, CMD, &tex);
+	CHECK(num_blits == 6 && num_barrier_calls == 3, "three levels of two layers: six blits, three barriers");
+	CHECK(strcmp(sequence, "BBbBBbBBb") == 0, "each level is blitted, then made the source of the next");
+	CHECK(blit_src == tex.image && blit_dst == tex.image && blit_src_layout == VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL &&
+			blit_dst_layout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && blit_filter == VK_FILTER_LINEAR,
+			"within the image, filtered");
+	CHECK(blits[0].srcSubresource.mipLevel == 0 && blits[0].dstSubresource.mipLevel == 1 &&
+			blits[0].srcOffsets[1].x == 8 && blits[0].srcOffsets[1].y == 2 && blits[0].srcOffsets[1].z == 1 &&
+			blits[0].dstOffsets[1].x == 4 && blits[0].dstOffsets[1].y == 1 && blits[0].dstOffsets[1].z == 1,
+			"level 1 is half of level 0");
+	CHECK(blits[0].srcSubresource.baseArrayLayer == 0 && blits[1].srcSubresource.baseArrayLayer == 1 &&
+			blits[1].dstSubresource.baseArrayLayer == 1 && blits[1].dstSubresource.mipLevel == 1, "each layer its own");
+	CHECK(blits[2].srcOffsets[1].x == 4 && blits[2].srcOffsets[1].y == 1 && blits[2].dstOffsets[1].x == 2 &&
+			blits[2].dstOffsets[1].y == 1 && blits[2].srcSubresource.mipLevel == 1 && blits[2].dstSubresource.mipLevel == 2,
+			"level 2 half of level 1, never under one texel");
+	CHECK(blits[4].srcOffsets[1].x == 2 && blits[4].dstOffsets[1].x == 1 && blits[4].dstOffsets[1].y == 1 &&
+			blits[4].dstSubresource.mipLevel == 3, "down to one texel");
+	CHECK(barriers[0][0].subresourceRange.baseMipLevel == 1 && barriers[2][0].subresourceRange.baseMipLevel == 3 &&
+			barriers[2][0].subresourceRange.levelCount == 1 && barriers[2][0].subresourceRange.layerCount == 2 &&
+			barriers[2][0].oldLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL &&
+			barriers[2][0].newLayout == VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL &&
+			barriers[2][0].srcAccessMask == VK_ACCESS_TRANSFER_WRITE_BIT &&
+			barriers[2][0].dstAccessMask == VK_ACCESS_TRANSFER_READ_BIT, "every level ends as a transfer source");
+
+	reset();
+	granite_cmd_generate_mipmap(&table, CMD, &single);
+	CHECK(num_blits == 0 && num_barrier_calls == 0, "one level: nothing to generate");
+}
+
+int main(void)
+{
+	table.vkCmdPipelineBarrier = fake_barrier;
+	table.vkCmdBlitImage = fake_blit;
+	table.vkCmdClearColorImage = fake_clear_color;
+	table.vkCmdClearDepthStencilImage = fake_clear_depth;
+
+	test_helpers();
+	test_barriers();
+	test_clear_blit();
+	test_mipmaps();
+
+	if (failures)
+	{
+		fprintf(stderr, "test_vk_command_ops: %u failure(s)\n", failures);
+		return 1;
+	}
+	printf("test_vk_command_ops: OK\n");
+	return 0;
+}
