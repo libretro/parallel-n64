@@ -112,17 +112,6 @@ public:
 		return *device;
 	}
 
-	VkPipelineStageFlags swapchain_touched_in_stages() const
-	{
-		return uses_swapchain_in_stages;
-	}
-
-	// Only used when using swapchain in non-obvious ways, like compute or transfer.
-	void swapchain_touch_in_stages(VkPipelineStageFlags stages)
-	{
-		uses_swapchain_in_stages |= stages;
-	}
-
 	void set_thread_index(unsigned index_)
 	{
 		state.thread_index = index_;
@@ -375,7 +364,6 @@ private:
 	// What is set and what of it is dirty (command_state.h).
 	granite_command_state_t state;
 
-	VkPipelineStageFlags uses_swapchain_in_stages = 0;
 	bool is_ended = false;
 
 	void set_dirty(CommandBufferDirtyFlags flags)

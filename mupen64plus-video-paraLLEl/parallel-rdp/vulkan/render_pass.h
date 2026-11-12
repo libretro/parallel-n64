@@ -52,9 +52,6 @@ typedef struct granite_attachment_desc
 	VkFormat format;
 	/* VkSampleCountFlagBits */
 	uint32_t samples;
-	/* The layout a swapchain image is presented in; VK_IMAGE_LAYOUT_UNDEFINED
-	 * for any other image */
-	VkImageLayout swapchain_layout;
 	/* its memory is lazily allocated and its contents last one pass */
 	bool transient;
 	/* it is kept in VK_IMAGE_LAYOUT_GENERAL, not the optimal layout of

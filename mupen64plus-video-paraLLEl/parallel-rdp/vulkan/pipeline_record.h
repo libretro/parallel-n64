@@ -44,8 +44,8 @@ typedef struct pipeline_record_pass
    uint32_t lazy;          /* transient attachments, depth after the colour ones */
    uint32_t op_flags;
    uint32_t num_subpasses; /* 0: the default one */
-   /* 0 when it cannot be made again from this: a swapchain image, more
-    * than one layer, more subpasses than are kept */
+   /* 0 when it cannot be made again from this (always 1 now: the passes
+    * that could not be are gone) */
    uint32_t recordable;
    pipeline_record_subpass_t subpasses[PIPELINE_RECORD_SUBPASSES];
 } pipeline_record_pass_t;

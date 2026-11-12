@@ -698,20 +698,13 @@ void Device::set_context(const Context &context)
 	granite_fence_pool_init(&managers.fence, device, table);
 	managers.vbo.init(this, 4 * 1024, 16, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
 	                  ImplementationQuirks::get().staging_need_device_local);
-	managers.ibo.init(this, 4 * 1024, 16, VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
-	                  ImplementationQuirks::get().staging_need_device_local);
 	managers.ubo.init(this, 256 * 1024, Util::max_of<VkDeviceSize>(16u, gpu_props.limits.minUniformBufferOffsetAlignment),
 	                  VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
 	                  ImplementationQuirks::get().staging_need_device_local);
 	managers.ubo.set_spill_region_size(VULKAN_MAX_UBO_SIZE);
-	managers.staging.init(this, 64 * 1024, Util::max_of<VkDeviceSize>(16u, gpu_props.limits.optimalBufferCopyOffsetAlignment),
-	                      VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-	                      false);
 
 	managers.vbo.set_max_retained_blocks(256);
-	managers.ibo.set_max_retained_blocks(256);
 	managers.ubo.set_max_retained_blocks(64);
-	managers.staging.set_max_retained_blocks(32);
 
 	for (int i = 0; i < QUEUE_INDEX_COUNT; i++)
 	{
@@ -898,11 +891,6 @@ void Device::request_vertex_block_nolock(BufferBlock &block, VkDeviceSize size)
 	request_block(*this, block, size, managers.vbo, &dma.vbo, frame().vbo_blocks);
 }
 
-void Device::request_index_block_nolock(BufferBlock &block, VkDeviceSize size)
-{
-	request_block(*this, block, size, managers.ibo, &dma.ibo, frame().ibo_blocks);
-}
-
 void Device::request_uniform_block(BufferBlock &block, VkDeviceSize size)
 {
 	LOCK();
@@ -912,11 +900,6 @@ void Device::request_uniform_block(BufferBlock &block, VkDeviceSize size)
 void Device::request_uniform_block_nolock(BufferBlock &block, VkDeviceSize size)
 {
 	request_block(*this, block, size, managers.ubo, &dma.ubo, frame().ubo_blocks);
-}
-
-void Device::request_staging_block_nolock(BufferBlock &block, VkDeviceSize size)
-{
-	request_block(*this, block, size, managers.staging, nullptr, frame().staging_blocks);
 }
 
 void Device::submit(CommandBufferHandle &cmd, Fence *fence, unsigned semaphore_count, Semaphore *semaphores)
@@ -1486,51 +1469,8 @@ void Device::submit_queue(QueueIndices physical_type, InternalFence *fence,
 
 	composer.add_wait_submissions(wait_semaphores);
 
-	// Find first command buffer which uses WSI, we'll need to emit WSI acquire wait before the first command buffer
-	// that uses WSI image.
-
-	for (size_t i = 0, submissions_size = submissions.size(); i < submissions_size; i++)
-	{
-		auto &cmd = submissions[i];
-		VkPipelineStageFlags wsi_stages = cmd->swapchain_touched_in_stages();
-
-		if (wsi_stages != 0 && !wsi.consumed)
-		{
-			if (!can_touch_swapchain_in_command_buffer(physical_type))
-				LOGE("Touched swapchain in unsupported command buffer type %u.\n", unsigned(physical_type));
-
-			if (wsi.acquire && wsi.acquire->get_semaphore() != VK_NULL_HANDLE)
-			{
-				VK_ASSERT(wsi.acquire->is_signalled());
-				composer.add_wait_semaphore(*wsi.acquire, wsi_stages);
-				if (wsi.acquire->get_semaphore_type() == VK_SEMAPHORE_TYPE_BINARY_KHR)
-				{
-					if (wsi.acquire->is_external_object_compatible())
-						granite_frame_garbage_push(&frame().garbage, GRANITE_GARBAGE_SEMAPHORE, GRANITE_VK_TO_BITS(wsi.acquire->get_semaphore()));
-					else
-						granite_frame_garbage_push(&frame().garbage, GRANITE_GARBAGE_RECYCLE_SEMAPHORE, GRANITE_VK_TO_BITS(wsi.acquire->get_semaphore()));
-				}
-				wsi.acquire->consume();
-				wsi.acquire.reset();
-			}
-
-			composer.add_command_buffer(cmd->get_command_buffer());
-
-			VkSemaphore release = granite_semaphore_pool_request(&managers.semaphore);
-			wsi.release = Semaphore(handle_pool.semaphores.allocate(this, release, true, true));
-			wsi.release->set_internal_sync_object();
-			composer.add_signal_semaphore(release, 0);
-			wsi.present_queue = queue;
-			wsi.consumed = true;
-		}
-		else
-		{
-			// After we have consumed WSI, we cannot keep using it, since we
-			// already signalled the semaphore.
-			VK_ASSERT(wsi_stages == 0);
-			composer.add_command_buffer(cmd->get_command_buffer());
-		}
-	}
+	for (auto &cmd : submissions)
+		composer.add_command_buffer(cmd->get_command_buffer());
 
 	VkFence cleared_fence = fence && !ext.timeline_semaphore_features.timelineSemaphore ?
 	                        granite_fence_pool_request(&managers.fence) :
@@ -1569,7 +1509,7 @@ void Device::flush_frame(QueueIndices physical_type)
 
 void Device::sync_buffer_blocks()
 {
-	if (dma.vbo.empty() && dma.ibo.empty() && dma.ubo.empty())
+	if (dma.vbo.empty() && dma.ubo.empty())
 		return;
 
 	VkBufferUsageFlags usage = 0;
@@ -1585,13 +1525,6 @@ void Device::sync_buffer_blocks()
 		usage |= VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
 	}
 
-	for (auto &block : dma.ibo)
-	{
-		VK_ASSERT(block.offset != 0);
-		cmd->copy_buffer(*block.gpu, 0, *block.cpu, 0, block.offset);
-		usage |= VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
-	}
-
 	for (auto &block : dma.ubo)
 	{
 		VK_ASSERT(block.offset != 0);
@@ -1600,7 +1533,6 @@ void Device::sync_buffer_blocks()
 	}
 
 	dma.vbo.clear();
-	dma.ibo.clear();
 	dma.ubo.clear();
 
 	cmd->end_region();
@@ -1723,10 +1655,6 @@ Device::~Device()
 
 	managers.timestamps.log_simple();
 
-	wsi.acquire.reset();
-	wsi.release.reset();
-	wsi.swapchain.clear();
-
 	if (pipeline_cache != VK_NULL_HANDLE)
 	{
 		flush_pipeline_cache();
@@ -1780,20 +1708,6 @@ void Device::init_frame_contexts(unsigned count)
 	if (frame_context_index >= per_frame.size())
 		frame_context_index = 0;
 	granite_release_queue_set_frame(&releases.q, frame_context_index);
-}
-
-bool Device::can_touch_swapchain_in_command_buffer(QueueIndices physical_type) const
-{
-	// If 0, we have virtual swap chain, so anything goes.
-	if (!wsi.queue_family_support_mask)
-		return true;
-
-	return (wsi.queue_family_support_mask & (1u << queue_info.family_indices[physical_type])) != 0;
-}
-
-bool Device::can_touch_swapchain_in_command_buffer(CommandBuffer::Type type) const
-{
-	return can_touch_swapchain_in_command_buffer(get_physical_queue_type(type));
 }
 
 Device::PerFrame::PerFrame(Device *device_, unsigned frame_index_)
@@ -1998,14 +1912,10 @@ void Device::wait_idle_nolock()
 	// Free memory for buffer pools.
 	managers.vbo.reset();
 	managers.ubo.reset();
-	managers.ibo.reset();
-	managers.staging.reset();
 	for (auto &frame : per_frame)
 	{
 		frame->vbo_blocks.clear();
-		frame->ibo_blocks.clear();
 		frame->ubo_blocks.clear();
-		frame->staging_blocks.clear();
 	}
 
 	granite_framebuffer_allocator_clear(&framebuffer_allocator);
@@ -2345,16 +2255,10 @@ void Device::PerFrame::begin()
 
 	for (auto &block : vbo_blocks)
 		managers.vbo.recycle_block(block);
-	for (auto &block : ibo_blocks)
-		managers.ibo.recycle_block(block);
 	for (auto &block : ubo_blocks)
 		managers.ubo.recycle_block(block);
-	for (auto &block : staging_blocks)
-		managers.staging.recycle_block(block);
 	vbo_blocks.clear();
-	ibo_blocks.clear();
 	ubo_blocks.clear();
-	staging_blocks.clear();
 
 	granite_frame_garbage_collect(&garbage, vkdevice, &table, &managers.semaphore, &managers.fence);
 
@@ -4057,7 +3961,6 @@ static granite_attachment_desc_t attachment_desc(const ImageView &view)
 	granite_attachment_desc_t desc;
 	desc.format = view.get_format();
 	desc.samples = image.get_create_info().samples;
-	desc.swapchain_layout = image.get_swapchain_layout();
 	desc.transient = image.get_create_info().domain == ImageDomain::Transient;
 	desc.general = image.get_layout_type() != Layout::Optimal;
 	return desc;

@@ -290,9 +290,6 @@ void CommandBuffer::begin_render_pass(const RenderPassInfo &info)
 			clear_values[i].color = info.clear_color[i];
 			num_clear_values = i + 1;
 		}
-
-		if (info.color_attachments[i]->get_image().is_swapchain_image())
-			swapchain_touch_in_stages(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
 	}
 
 	if (info.depth_stencil && (info.op_flags & RENDER_PASS_OP_CLEAR_DEPTH_STENCIL_BIT) != 0)

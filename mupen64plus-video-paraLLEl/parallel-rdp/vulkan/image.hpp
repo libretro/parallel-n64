@@ -511,21 +511,6 @@ public:
 		layout_type = layout;
 	}
 
-	bool is_swapchain_image() const
-	{
-		return swapchain_layout != VK_IMAGE_LAYOUT_UNDEFINED;
-	}
-
-	VkImageLayout get_swapchain_layout() const
-	{
-		return swapchain_layout;
-	}
-
-	void set_swapchain_layout(VkImageLayout layout)
-	{
-		swapchain_layout = layout;
-	}
-
 	void set_stage_flags(VkPipelineStageFlags flags)
 	{
 		stage_flags = flags;
@@ -568,7 +553,6 @@ private:
 	Layout layout_type = Layout::Optimal;
 	VkPipelineStageFlags stage_flags = 0;
 	VkAccessFlags access_flags = 0;
-	VkImageLayout swapchain_layout = VK_IMAGE_LAYOUT_UNDEFINED;
 	bool owns_image = true;
 	bool owns_memory_allocation = true;
 };

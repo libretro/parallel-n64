@@ -80,8 +80,8 @@ uint64_t granite_render_pass_hash(const granite_render_pass_desc_t *desc, bool c
 			lazy |= (uint32_t)1 << i;
 		if (!desc->color[i].general)
 			optimal |= (uint32_t)1 << i;
-		/* it changes the pass's dependencies */
-		h = hash_u32(h, (uint32_t)desc->color[i].swapchain_layout);
+		/* (the swapchain layout there once was: none) */
+		h = hash_u32(h, 0);
 	}
 
 	if (has_depth)
@@ -141,9 +141,6 @@ static void fill_signature(pipeline_record_pass_t *sig, const granite_render_pas
 		sig->samples[i] = desc->color[i].samples;
 		if (desc->color[i].transient)
 			sig->lazy |= (uint32_t)1 << i;
-		/* a swapchain's layout is not in the signature */
-		if (desc->color[i].swapchain_layout != VK_IMAGE_LAYOUT_UNDEFINED)
-			sig->recordable = 0;
 	}
 	if (desc->depth_stencil.format != VK_FORMAT_UNDEFINED)
 	{
@@ -170,14 +167,12 @@ bool granite_render_pass_desc_from_signature(granite_render_pass_desc_t *desc, c
 	{
 		desc->color[i].format = (VkFormat)sig->formats[i];
 		desc->color[i].samples = sig->samples[i] ? sig->samples[i] : 1;
-		desc->color[i].swapchain_layout = VK_IMAGE_LAYOUT_UNDEFINED;
 		desc->color[i].transient = ((sig->lazy >> i) & 1) != 0;
 	}
 	desc->depth_stencil.format = (VkFormat)sig->depth_format;
 	if (sig->depth_format != VK_FORMAT_UNDEFINED)
 	{
 		desc->depth_stencil.samples = sig->samples[GRANITE_NUM_ATTACHMENTS] ? sig->samples[GRANITE_NUM_ATTACHMENTS] : 1;
-		desc->depth_stencil.swapchain_layout = VK_IMAGE_LAYOUT_UNDEFINED;
 		desc->depth_stencil.transient = ((sig->lazy >> sig->num_color) & 1) != 0;
 	}
 	return true;
@@ -199,7 +194,6 @@ bool granite_render_pass_init(granite_render_pass_t *pass, VkDevice device, cons
 	 * comes before the pass must be done with it first */
 	bool external_color = false;
 	bool external_depth = false;
-	bool external_bottom_of_pipe = false;
 	unsigned i;
 
 	memset(pass, 0, sizeof(*pass));
@@ -239,8 +233,6 @@ bool granite_render_pass_init(granite_render_pass_t *pass, VkDevice device, cons
 			VK_ATTACHMENT_STORE_OP_STORE : VK_ATTACHMENT_STORE_OP_DONT_CARE;
 		att->stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 		att->stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-		att->finalLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-
 		if (image->transient)
 		{
 			if (transient_load)
@@ -257,21 +249,6 @@ bool granite_render_pass_init(granite_render_pass_t *pass, VkDevice device, cons
 				att->storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
 			implicit = true;
 		}
-		else if (image->swapchain_layout != VK_IMAGE_LAYOUT_UNDEFINED)
-		{
-			if (att->loadOp == VK_ATTACHMENT_LOAD_OP_LOAD)
-			{
-				att->initialLayout = image->swapchain_layout;
-				/* It was presented: that ends at the bottom of the
-				 * pipe, with nothing left to make available. */
-				external_bottom_of_pipe = true;
-			}
-			else
-				att->initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-
-			att->finalLayout = image->swapchain_layout;
-			implicit = true;
-		}
 		else
 			att->initialLayout = natural;
 
@@ -279,8 +256,7 @@ bool granite_render_pass_init(granite_render_pass_t *pass, VkDevice device, cons
 		layout = att->initialLayout == VK_IMAGE_LAYOUT_GENERAL ?
 			VK_IMAGE_LAYOUT_GENERAL : VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 		/* and left in it: no transition out */
-		if (att->finalLayout == VK_IMAGE_LAYOUT_UNDEFINED)
-			att->finalLayout = layout;
+		att->finalLayout = layout;
 
 		colors[i].attachment = i;
 		colors[i].layout = layout;
@@ -374,9 +350,6 @@ bool granite_render_pass_init(granite_render_pass_t *pass, VkDevice device, cons
 		memset(&dependency, 0, sizeof(dependency));
 		dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
 		dependency.dstSubpass = 0;
-
-		if (external_bottom_of_pipe)
-			dependency.srcStageMask |= VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
 
 		if (external_color)
 		{

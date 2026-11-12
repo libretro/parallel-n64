@@ -203,14 +203,11 @@ public:
 
 	// Only called by main thread, during setup phase.
 	void set_context(const Context &context);
-	bool can_touch_swapchain_in_command_buffer(CommandBuffer::Type type) const;
 	void init_frame_contexts(unsigned count);
 	const VolkDeviceTable &get_device_table() const;
 
 	// Profiling
 
-	ImageView &get_swapchain_view();
-	ImageView &get_swapchain_view(unsigned index);
 	unsigned get_num_frame_contexts() const;
 
 	size_t get_pipeline_cache_size();
@@ -331,7 +328,6 @@ public:
 	// For time being however, we'll support moving the payload over to the proxy object.
 
 	// For compat with existing code that uses this entry point.
-	inline Semaphore request_legacy_semaphore() { return request_semaphore(VK_SEMAPHORE_TYPE_BINARY_KHR); }
 
 	VkDevice get_device() const
 	{
@@ -486,7 +482,7 @@ private:
 		DeviceAllocator memory;
 		granite_fence_pool_t fence = {};
 		granite_semaphore_pool_t semaphore = {};
-		BufferPool vbo, ibo, ubo, staging;
+		BufferPool vbo, ubo;
 		TimestampIntervalManager timestamps;
 
 		~Managers()
@@ -527,9 +523,7 @@ private:
 		QueryPool query_pool;
 
 		Util::Vector<BufferBlock> vbo_blocks;
-		Util::Vector<BufferBlock> ibo_blocks;
 		Util::Vector<BufferBlock> ubo_blocks;
-		Util::Vector<BufferBlock> staging_blocks;
 
 		Util::Vector<VkFence> wait_fences;
 
@@ -562,18 +556,6 @@ private:
 	// the hashmap data structures below, so it must be declared before.
 	Util::OwnedPtrArray<PerFrame, MAX_DEFERRED_FRAMES> per_frame;
 
-	struct
-	{
-		Semaphore acquire;
-		Semaphore release;
-		Util::Vector<ImageHandle> swapchain;
-		VkQueue present_queue = VK_NULL_HANDLE;
-		uint32_t queue_family_support_mask = 0;
-		unsigned index = 0;
-		bool consumed = false;
-	} wsi;
-	bool can_touch_swapchain_in_command_buffer(QueueIndices physical_type) const;
-
 	struct QueueData
 	{
 		Util::SmallVector<Semaphore> wait_semaphores;
@@ -596,7 +578,6 @@ private:
 	struct
 	{
 		Util::Vector<BufferBlock> vbo;
-		Util::Vector<BufferBlock> ibo;
 		Util::Vector<BufferBlock> ubo;
 	} dma;
 
@@ -701,9 +682,7 @@ private:
 	                               bool flush);
 
 	void request_vertex_block_nolock(BufferBlock &block, VkDeviceSize size);
-	void request_index_block_nolock(BufferBlock &block, VkDeviceSize size);
 	void request_uniform_block_nolock(BufferBlock &block, VkDeviceSize size);
-	void request_staging_block_nolock(BufferBlock &block, VkDeviceSize size);
 	void add_frame_counter_nolock();
 	void decrement_frame_counter_nolock();
 	void wait_idle_nolock();

@@ -6,9 +6,8 @@
  * stored or discarded as its bits say, in the layout its image is kept
  * in; the depth one as the op flags say, its stencil with it when the
  * format has one, read-only when asked. A transient attachment is neither
- * loaded nor stored unless the flags allow it and comes in undefined; a
- * swapchain image comes in as it was presented when loaded and goes out
- * ready to present. A pass that changes a layout on the way in waits for
+ * loaded nor stored unless the flags allow it and comes in undefined.
+ * A pass that changes a layout on the way in waits for
  * what came before, and one that does not has no dependency.
  *
  * The hash is the one in the pipeline records on disk: it is checked
@@ -88,7 +87,6 @@ static granite_attachment_desc_t image(VkFormat format)
 	memset(&a, 0, sizeof(a));
 	a.format = format;
 	a.samples = 1;
-	a.swapchain_layout = VK_IMAGE_LAYOUT_UNDEFINED;
 	return a;
 }
 
@@ -196,7 +194,7 @@ static void test_color_depth(void)
 	granite_render_pass_free(&pass);
 }
 
-static void test_transient_swapchain(void)
+static void test_transient(void)
 {
 	granite_render_pass_desc_t desc;
 	granite_render_pass_t pass;
@@ -254,31 +252,6 @@ static void test_transient_swapchain(void)
 	CHECK(rp_att[0].loadOp == VK_ATTACHMENT_LOAD_OP_LOAD, "and loads its colour");
 	granite_render_pass_free(&pass);
 
-	/* a swapchain image, cleared */
-	memset(&desc, 0, sizeof(desc));
-	desc.num_color = 1;
-	desc.color[0] = image(VK_FORMAT_B8G8R8A8_SRGB);
-	desc.color[0].swapchain_layout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-	desc.clear_attachments = 1;
-	desc.store_attachments = 1;
-	CHECK(granite_render_pass_init(&pass, DEVICE, &table, &desc), "a pass to a swapchain image");
-	CHECK(rp_att[0].initialLayout == VK_IMAGE_LAYOUT_UNDEFINED && rp_att[0].finalLayout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR &&
-			rp_colors[0].layout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-			"takes it undefined and leaves it ready to present");
-	CHECK(rp_info.dependencyCount == 1 && rp_dep.srcStageMask == VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT &&
-			rp_dep.dstStageMask == VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, "waiting on colour");
-	CHECK(pass.signature.recordable == 0, "and is not one to record");
-	granite_render_pass_free(&pass);
-
-	/* loaded */
-	desc.clear_attachments = 0;
-	desc.load_attachments = 1;
-	CHECK(granite_render_pass_init(&pass, DEVICE, &table, &desc), "a pass that loads a swapchain image");
-	CHECK(rp_att[0].initialLayout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR && rp_att[0].finalLayout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
-			"takes it as it was presented");
-	CHECK(rp_dep.srcStageMask == (VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT),
-			"and waits for the bottom of the pipe too");
-	granite_render_pass_free(&pass);
 }
 
 static void test_hash(void)
@@ -330,9 +303,6 @@ static void test_hash(void)
 	c = b;
 	c.depth_stencil.transient = false;
 	CHECK(granite_render_pass_hash(&b, true) != granite_render_pass_hash(&c, true), "nor a depth that is not transient");
-	c = b;
-	c.color[0].swapchain_layout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-	CHECK(granite_render_pass_hash(&b, true) != granite_render_pass_hash(&c, true), "nor a swapchain image");
 	c = b;
 	c.color[0].samples = 4;
 	c.depth_stencil.samples = 4;
@@ -406,7 +376,7 @@ int main(void)
 	table.vkDestroyRenderPass = fake_destroy;
 
 	test_color_depth();
-	test_transient_swapchain();
+	test_transient();
 	test_hash();
 	test_failures();
 
