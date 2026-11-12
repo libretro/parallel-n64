@@ -22,72 +22,43 @@
 
 #pragma once
 
-#include "intrusive.hpp"
-#include "object_pool.hpp"
-#include "intrusive_list.hpp"
+#include <string.h>
+#include "memory_allocator.h"
 #include "vulkan_headers.hpp"
-#include "logging.h"
-#include "bitops.hpp"
-#include "enum_cast.hpp"
 #include "vulkan_common.hpp"
-#include "arena_allocator.hpp"
-#include <assert.h>
-#include <stddef.h>
-#include <stdint.h>
-#include "small_vector.hpp"
 
+// The allocator is C (memory_allocator.h). These give the rest of Granite
+// the names it had.
 namespace Vulkan
 {
-class Device;
-
-enum class MemoryClass : uint8_t
-{
-	Small = 0,
-	Medium,
-	Large,
-	Huge,
-	Count
-};
-
+// granite_allocation_mode_t
 enum class AllocationMode : uint8_t
 {
-	LinearHostMappable = 0,
-	LinearDevice,
-	LinearDeviceHighPriority,
-	OptimalResource,
-	OptimalRenderTarget,
-	External,
-	Count
+	LinearHostMappable = GRANITE_ALLOCATION_LINEAR_HOST_MAPPABLE,
+	LinearDevice = GRANITE_ALLOCATION_LINEAR_DEVICE,
+	LinearDeviceHighPriority = GRANITE_ALLOCATION_LINEAR_DEVICE_HIGH_PRIORITY,
+	OptimalResource = GRANITE_ALLOCATION_OPTIMAL_RESOURCE,
+	OptimalRenderTarget = GRANITE_ALLOCATION_OPTIMAL_RENDER_TARGET,
+	External = GRANITE_ALLOCATION_EXTERNAL,
+	Count = GRANITE_ALLOCATION_MODE_COUNT
 };
 
 enum MemoryAccessFlag : uint32_t
 {
-	MEMORY_ACCESS_WRITE_BIT = 1,
-	MEMORY_ACCESS_READ_BIT = 2,
+	MEMORY_ACCESS_WRITE_BIT = GRANITE_MEMORY_ACCESS_WRITE_BIT,
+	MEMORY_ACCESS_READ_BIT = GRANITE_MEMORY_ACCESS_READ_BIT,
 	MEMORY_ACCESS_READ_WRITE_BIT = MEMORY_ACCESS_WRITE_BIT | MEMORY_ACCESS_READ_BIT
 };
 using MemoryAccessFlags = uint32_t;
 
-struct DeviceAllocation;
-class DeviceAllocator;
-
-class ClassAllocator;
-class DeviceAllocator;
-class Allocator;
-class Device;
-
-using MiniHeap = Util::LegionHeap<DeviceAllocation>;
-
-struct DeviceAllocation
+struct DeviceAllocation : granite_allocation_t
 {
-	friend class Util::ArenaAllocator<ClassAllocator, DeviceAllocation>;
-	friend class ClassAllocator;
-	friend class Allocator;
-	friend class DeviceAllocator;
-	friend class Device;
-	friend class ImageResourceHolder;
+	DeviceAllocation()
+	{
+		memset(static_cast<granite_allocation_t *>(this), 0, sizeof(granite_allocation_t));
+		mode = uint8_t(AllocationMode::Count);
+	}
 
-public:
 	inline VkDeviceMemory get_memory() const
 	{
 		return base;
@@ -123,207 +94,90 @@ public:
 		return memory_type;
 	}
 
-	static DeviceAllocation make_imported_allocation(VkDeviceMemory memory, VkDeviceSize size, uint32_t memory_type);
-
-	ExternalHandle export_handle(Device &device);
-
-private:
-	VkDeviceMemory base = VK_NULL_HANDLE;
-	uint8_t *host_base = nullptr;
-	ClassAllocator *alloc = nullptr;
-	Util::IntrusiveList<MiniHeap>::Iterator heap = {};
-	uint32_t offset = 0;
-	uint32_t mask = 0;
-	uint32_t size = 0;
-	VkExternalMemoryHandleTypeFlags exportable_types = 0;
-
-	AllocationMode mode = AllocationMode::Count;
-	uint8_t memory_type = 0;
-
-	void free_global(DeviceAllocator &allocator, uint32_t size, uint32_t memory_type);
-	void free_immediate();
-	void free_immediate(DeviceAllocator &allocator);
-};
-
-class DeviceAllocationOwner;
-struct DeviceAllocationDeleter
-{
-	void operator()(DeviceAllocationOwner *owner);
-};
-
-class DeviceAllocationOwner : public Util::IntrusivePtrEnabled<DeviceAllocationOwner, DeviceAllocationDeleter, HandleCounter>
-{
-public:
-	friend class Util::ObjectPool<DeviceAllocationOwner>;
-	friend struct DeviceAllocationDeleter;
-
-	~DeviceAllocationOwner();
-	const DeviceAllocation &get_allocation() const;
-
-private:
-	DeviceAllocationOwner(Device *device, const DeviceAllocation &alloc);
-	Device *device;
-	DeviceAllocation alloc;
-};
-using DeviceAllocationOwnerHandle = Util::IntrusivePtr<DeviceAllocationOwner>;
-
-struct MemoryAllocateInfo
-{
-	VkMemoryRequirements requirements = {};
-	VkMemoryPropertyFlags required_properties = 0;
-	AllocationMode mode = {};
-};
-
-class ClassAllocator : public Util::ArenaAllocator<ClassAllocator, DeviceAllocation>
-{
-public:
-	friend class Util::ArenaAllocator<ClassAllocator, DeviceAllocation>;
-
-	inline void set_global_allocator(DeviceAllocator *allocator, AllocationMode mode, uint32_t memory_type_)
+	static inline DeviceAllocation make_imported_allocation(VkDeviceMemory memory, VkDeviceSize size,
+	                                                        uint32_t memory_type)
 	{
-		global_allocator = allocator;
-		global_allocator_mode = mode;
-		memory_type = memory_type_;
+		DeviceAllocation alloc;
+		alloc.base = memory;
+		alloc.size = uint32_t(size);
+		alloc.memory_type = uint8_t(memory_type);
+		return alloc;
 	}
 
-	inline void set_parent(ClassAllocator *allocator)
+	inline void free_immediate(granite_device_allocator_t &allocator)
 	{
-		parent = allocator;
+		granite_allocation_free(this, &allocator);
 	}
-
-private:
-	ClassAllocator *parent = nullptr;
-	uint32_t memory_type = 0;
-	DeviceAllocator *global_allocator = nullptr;
-	AllocationMode global_allocator_mode = AllocationMode::Count;
-
-	// Implements curious recurring template pattern calls.
-	bool allocate_backing_heap(DeviceAllocation *allocation);
-	void free_backing_heap(DeviceAllocation *allocation);
-	void prepare_allocation(DeviceAllocation *allocation, MiniHeap &heap, const SuballocationResult &suballoc);
 };
 
-class Allocator
+class Device;
+
+struct DeviceAllocator : granite_device_allocator_t
 {
-public:
-	explicit Allocator(Util::ObjectPool<MiniHeap> &object_pool);
-	void operator=(const Allocator &) = delete;
-	Allocator(const Allocator &) = delete;
-
-	bool allocate(uint32_t size, uint32_t alignment, AllocationMode mode, DeviceAllocation *alloc);
-	bool allocate_global(uint32_t size, AllocationMode mode, DeviceAllocation *alloc);
-	bool allocate_dedicated(uint32_t size, AllocationMode mode, DeviceAllocation *alloc,
-	                        VkObjectType object_type, uint64_t object, ExternalHandle *external);
-
-	inline ClassAllocator &get_class_allocator(MemoryClass clazz, AllocationMode mode)
+	DeviceAllocator()
 	{
-		return classes[unsigned(clazz)][unsigned(mode)];
+		memset(static_cast<granite_device_allocator_t *>(this), 0, sizeof(granite_device_allocator_t));
 	}
 
-	static void free(DeviceAllocation *alloc)
+	~DeviceAllocator()
 	{
-		alloc->free_immediate();
+		granite_device_allocator_free(this);
 	}
 
-	void set_global_allocator(DeviceAllocator *allocator, uint32_t memory_type_)
-	{
-		memory_type = memory_type_;
-		for (auto &sub : classes)
-			for (int i = 0; i < Util::ecast(AllocationMode::Count); i++)
-				sub[i].set_global_allocator(allocator, AllocationMode(i), memory_type);
-		global_allocator = allocator;
-	}
-
-private:
-	ClassAllocator classes[Util::ecast(MemoryClass::Count)][Util::ecast(AllocationMode::Count)];
-	DeviceAllocator *global_allocator = nullptr;
-	uint32_t memory_type = 0;
-};
-
-struct HeapBudget
-{
-	VkDeviceSize max_size;
-	VkDeviceSize budget_size;
-	VkDeviceSize tracked_usage;
-	VkDeviceSize device_usage;
-};
-
-// A freed vkAllocateMemory block kept for reuse.
-struct CachedAllocation
-{
-	VkDeviceMemory memory;
-	uint32_t size;
-	uint32_t type;
-	AllocationMode mode;
-};
-
-// After an allocation failed with res, frees cached blocks oldest first,
-// retrying after each, until it succeeds or the cache is empty. The freed
-// blocks leave the cache.
-static inline VkResult allocate_after_freeing_cached(const VolkDeviceTable &table, VkDevice device,
-                                                     Util::Vector<CachedAllocation> &blocks, uint64_t &heap_size,
-                                                     const VkMemoryAllocateInfo &info, VkDeviceMemory *memory,
-                                                     VkResult res)
-{
-	size_t freed = 0;
-	while (res != VK_SUCCESS && freed < blocks.size())
-	{
-		table.vkFreeMemory(device, blocks[freed].memory, nullptr);
-		heap_size -= blocks[freed].size;
-		freed++;
-		res = table.vkAllocateMemory(device, &info, nullptr, memory);
-	}
-	blocks.erase(blocks.begin(), blocks.begin() + freed);
-	return res;
-}
-
-class DeviceAllocator
-{
-public:
-	void init(Device *device);
-
-	DeviceAllocator() = default;
-	~DeviceAllocator();
 	DeviceAllocator(const DeviceAllocator &) = delete;
 	void operator=(const DeviceAllocator &) = delete;
 
-	bool allocate_generic_memory(uint32_t size, uint32_t alignment, AllocationMode mode, uint32_t memory_type,
-	                             DeviceAllocation *alloc);
-	bool allocate_buffer_memory(uint32_t size, uint32_t alignment, AllocationMode mode, uint32_t memory_type,
-	                            VkBuffer buffer, DeviceAllocation *alloc, ExternalHandle *external);
-	bool allocate_image_memory(uint32_t size, uint32_t alignment, AllocationMode mode, uint32_t memory_type,
-	                           VkImage image, bool force_no_dedicated, DeviceAllocation *alloc, ExternalHandle *external);
+	// device.cpp
+	void init(Device *device);
 
-	void garbage_collect();
-	void *map_memory(const DeviceAllocation &alloc, MemoryAccessFlags flags, VkDeviceSize offset, VkDeviceSize length);
-	void unmap_memory(const DeviceAllocation &alloc, MemoryAccessFlags flags, VkDeviceSize offset, VkDeviceSize length);
+	inline bool allocate_buffer_memory(uint32_t size, uint32_t alignment, AllocationMode mode, uint32_t memory_type,
+	                                   VkBuffer buffer, DeviceAllocation *alloc, const ExternalHandle *external)
+	{
+		granite_external_memory_t ext;
+		if (external)
+			ext = external_memory(*external);
+		return granite_device_allocator_allocate_buffer(this, size, alignment, granite_allocation_mode_t(mode),
+		                                                memory_type, buffer, alloc, external ? &ext : nullptr);
+	}
 
-	void get_memory_budget(HeapBudget *heaps);
+	inline bool allocate_image_memory(uint32_t size, uint32_t alignment, AllocationMode mode, uint32_t memory_type,
+	                                  VkImage image, bool force_no_dedicated, DeviceAllocation *alloc,
+	                                  const ExternalHandle *external)
+	{
+		granite_external_memory_t ext;
+		if (external)
+			ext = external_memory(*external);
+		return granite_device_allocator_allocate_image(this, size, alignment, granite_allocation_mode_t(mode),
+		                                               memory_type, image, force_no_dedicated, alloc,
+		                                               external ? &ext : nullptr);
+	}
 
-	bool internal_allocate(uint32_t size, uint32_t memory_type, AllocationMode mode,
-	                       VkDeviceMemory *memory, uint8_t **host_memory,
-	                       VkObjectType object_type, uint64_t dedicated_object, ExternalHandle *external);
-	void internal_free(uint32_t size, uint32_t memory_type, AllocationMode mode, VkDeviceMemory memory, bool is_mapped);
-	void internal_free_no_recycle(uint32_t size, uint32_t memory_type, VkDeviceMemory memory);
+	inline void garbage_collect()
+	{
+		granite_device_allocator_collect(this);
+	}
+
+	inline void *map_memory(const DeviceAllocation &alloc, MemoryAccessFlags flags, VkDeviceSize offset,
+	                        VkDeviceSize length)
+	{
+		return granite_device_allocator_map(this, &alloc, flags, offset, length);
+	}
+
+	inline void unmap_memory(const DeviceAllocation &alloc, MemoryAccessFlags flags, VkDeviceSize offset,
+	                         VkDeviceSize length)
+	{
+		granite_device_allocator_unmap(this, &alloc, flags, offset, length);
+	}
 
 private:
-	Util::ObjectPool<MiniHeap> object_pool;
-	Allocator *allocators[VK_MAX_MEMORY_TYPES] = {};
-	unsigned num_allocators = 0;
-	UTIL_NOINLINE void free_allocators();
-	Device *device = nullptr;
-	const VolkDeviceTable *table = nullptr;
-	VkPhysicalDeviceMemoryProperties mem_props;
-	VkDeviceSize atom_alignment = 1;
-	struct Heap
+	// A handle to import, or the type to make the memory exportable as.
+	static inline granite_external_memory_t external_memory(const ExternalHandle &handle)
 	{
-		uint64_t size = 0;
-		Util::Vector<CachedAllocation> blocks;
-		void garbage_collect(Device *device);
-	};
-
-	Util::Vector<Heap> heaps;
-	bool memory_heap_is_budget_critical[VK_MAX_MEMORY_HEAPS] = {};
-	void get_memory_budget_nolock(HeapBudget *heaps);
+		granite_external_memory_t external;
+		external.import = bool(handle);
+		external.handle = handle.handle;
+		external.handle_type = handle.memory_handle_type;
+		return external;
+	}
 };
 }

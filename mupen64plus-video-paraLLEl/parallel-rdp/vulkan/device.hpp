@@ -95,7 +95,6 @@ struct HandlePool
 	VulkanObjectPool<SemaphoreHolder> semaphores;
 	VulkanObjectPool<QueryPoolResult> query;
 	VulkanObjectPool<CommandBuffer> command_buffers;
-	VulkanObjectPool<DeviceAllocationOwner> allocations;
 	VulkanObjectPool<DeferredRelease> deferred;
 	VulkanObjectPool<DeferredInterval> deferred_intervals;
 };
@@ -196,8 +195,6 @@ public:
 	friend class DescriptorSetAllocator;
 	friend class Shader;
 	friend class ImageResourceHolder;
-	friend class DeviceAllocationOwner;
-	friend struct DeviceAllocationDeleter;
 
 	Device();
 	~Device();
@@ -360,7 +357,6 @@ public:
 		return gpu_props;
 	}
 
-	void get_memory_budget(HeapBudget *budget);
 
 	const Sampler &get_stock_sampler(StockSampler sampler) const;
 

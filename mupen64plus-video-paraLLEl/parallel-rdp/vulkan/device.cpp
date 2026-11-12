@@ -755,6 +755,16 @@ void Device::init_workarounds()
 	}
 }
 
+void DeviceAllocator::init(Device *device)
+{
+	const auto &features = device->get_device_features();
+	granite_device_allocator_init(this, device->get_device(), device->get_physical_device(),
+	                              &device->get_device_table(), &device->get_memory_properties(),
+	                              device->get_gpu_properties().limits.nonCoherentAtomSize,
+	                              features.supports_memory_budget,
+	                              features.memory_priority_features.memoryPriority != VK_FALSE);
+}
+
 void Device::set_context(const Context &context)
 {
 	table = &context.get_device_table();

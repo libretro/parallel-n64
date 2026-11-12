@@ -26,6 +26,8 @@
 #include "format.hpp"
 #include "vulkan_common.hpp"
 #include "memory_allocator.hpp"
+#include "bitops.hpp"
+#include "small_vector.hpp"
 #include "vulkan_headers.hpp"
 
 namespace Vulkan

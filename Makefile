@@ -1711,11 +1711,11 @@ test_granite_util$(EXE_EXT): tools/test_granite_util.cpp $(wildcard $(VIDEODIR_P
 		-I$(LIBRETRO_COMM_DIR)/include $< $(GRANITE_POOL_TEST_OBJS) tools/test_granite_util_rthreads.o \
 		-o $@ $(CHECK_LDFLAGS) $(CHECK_SANITIZE) -lpthread
 
-# Granite's allocation retry after freeing cached memory blocks
-test_vk_alloc_fallback$(EXE_EXT): tools/test_vk_alloc_fallback.cpp $(VIDEODIR_PARALLEL)/parallel-rdp/vulkan/memory_allocator.hpp \
-		$(GRANITE_POOL_TEST_OBJS)
-	$(CXX) -std=c++11 $(CHECK_CFLAGS) $(CHECK_SANITIZE) -DGRANITE_VULKAN_MT -DRETRO_ATOMIC_FORCE_GCC_NEW $(COMMAND_RING_TEST_INC) \
-		$< $(GRANITE_POOL_TEST_OBJS) -o $@ $(CHECK_LDFLAGS) $(CHECK_SANITIZE)
+# Granite's device memory allocator (tools/test_vk_memory_allocator.c)
+test_vk_memory_allocator$(EXE_EXT): tools/test_vk_memory_allocator.c $(VIDEODIR_PARALLEL)/parallel-rdp/vulkan/memory_allocator.c \
+		$(VIDEODIR_PARALLEL)/parallel-rdp/util/legion_allocator.c $(VIDEODIR_PARALLEL)/parallel-rdp/util/pool.c \
+		$(VIDEODIR_PARALLEL)/parallel-rdp/util/aligned_alloc.c
+	$(CC) $(CHECK_CFLAGS) $(CHECK_SANITIZE) -DRETRO_ATOMIC_FORCE_GCC_NEW $(COMMAND_RING_TEST_INC) $^ -o $@ $(CHECK_LDFLAGS) $(CHECK_SANITIZE) -lpthread
 
 # parallel-RDP's VI intermediate image reuse rules
 test_incoherent_pages$(EXE_EXT): tools/test_incoherent_pages.cpp $(VIDEODIR_PARALLEL)/parallel-rdp/parallel-rdp/incoherent_pages.hpp
@@ -1839,7 +1839,7 @@ CORE_CHECKS := test_rcp_bounds$(EXE_EXT) test_memory_map$(EXE_EXT) test_fb_write
 	test_mouse_accum$(EXE_EXT) test_hle_dram_wrap$(EXE_EXT) test_pif_write$(EXE_EXT) \
 	test_re2_fill$(EXE_EXT) test_temporal_upscaler$(EXE_EXT) test_pipeline_records$(EXE_EXT) test_pipeline_pending$(EXE_EXT) test_rdp_x_range$(EXE_EXT) \
 	test_command_ring$(EXE_EXT) test_vk_sync$(EXE_EXT) test_vk_command_pool$(EXE_EXT) test_vk_texture_format$(EXE_EXT) test_frame_garbage$(EXE_EXT) test_release_queue$(EXE_EXT) test_gb_cart_banks$(EXE_EXT) test_dynarec_cache_pages$(EXE_EXT) \
-	test_combiner_journal$(EXE_EXT) test_gliden64_write_rdram$(EXE_EXT) test_gliden64_rdram_to_color$(EXE_EXT) test_gliden64_window_scale$(EXE_EXT) test_gliden64_texture_formats$(EXE_EXT) test_glide64_texmod$(EXE_EXT) test_gliden64_deferred_readback$(EXE_EXT) test_gliden64_ring_segments$(EXE_EXT) test_glide64_fb_readback$(EXE_EXT) test_granite_util$(EXE_EXT) test_granite_pool$(EXE_EXT) test_vk_alloc_fallback$(EXE_EXT) \
+	test_combiner_journal$(EXE_EXT) test_gliden64_write_rdram$(EXE_EXT) test_gliden64_rdram_to_color$(EXE_EXT) test_gliden64_window_scale$(EXE_EXT) test_gliden64_texture_formats$(EXE_EXT) test_glide64_texmod$(EXE_EXT) test_gliden64_deferred_readback$(EXE_EXT) test_gliden64_ring_segments$(EXE_EXT) test_glide64_fb_readback$(EXE_EXT) test_granite_util$(EXE_EXT) test_granite_pool$(EXE_EXT) test_vk_memory_allocator$(EXE_EXT) \
 	test_vi_image_pool$(EXE_EXT) test_incoherent_pages$(EXE_EXT)
 
 ifeq ($(HAVE_PARALLEL_RSP), 1)
