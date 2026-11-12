@@ -1275,12 +1275,6 @@ static void emu_step_initialize(void)
    if (log_cb)
       log_cb(RETRO_LOG_INFO, "EmuThread: M64CMD_EXECUTE.\n");
 
-#ifdef HAVE_PARALLEL
-   /* The first frame waits, as every one does, for the pipelines built
-    * ahead (retro_run): set the machine up, run nothing yet */
-   if (gfx_plugin == GFX_PARALLEL && parallel_initialized && !parallel_pipelines_ready())
-      g_main_setup_only = 1;
-#endif
    CoreDoCommand(M64CMD_EXECUTE, 0, NULL);
 }
 
@@ -4055,13 +4049,6 @@ void retro_run (void)
       vr_aim_update();
 #endif
 
-#ifdef HAVE_PARALLEL
-      /* parallel-RDP builds the pipelines the first draws need on its
-       * worker, and nothing waits for them: until they are there the
-       * machine is held back a frame at a time, the previous frame shown
-       * again, so no draw builds one and no thread blocks. */
-      if (gfx_plugin != GFX_PARALLEL || !parallel_initialized || parallel_pipelines_ready())
-#endif
       EmuThreadStep();
 
       switch (gfx_plugin)

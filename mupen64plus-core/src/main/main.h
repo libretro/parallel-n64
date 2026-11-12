@@ -41,9 +41,6 @@ extern m64p_handle g_CoreConfig;
 
 extern int g_RomWordsLittleEndian;
 extern int g_EmulatorRunning;
-/* Set before the first main_run: it sets the machine up and returns
- * without running it, the first slice left to the next main_run */
-extern int g_main_setup_only;
 
 extern struct cheat_ctx g_cheat_ctx;
 

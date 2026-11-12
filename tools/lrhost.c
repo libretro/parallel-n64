@@ -46,6 +46,7 @@
 #endif
 #include <sys/stat.h>
 #include <stdio.h>
+#include <time.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
@@ -363,6 +364,17 @@ static bool env_cb(unsigned cmd, void *data)
     }
 }
 
+static void pace_sleep(unsigned ms)
+{
+#if defined(_WIN32)
+    Sleep(ms);
+#else
+    struct timespec ts;
+    ts.tv_sec = ms / 1000; ts.tv_nsec = (long)(ms % 1000) * 1000000L;
+    nanosleep(&ts, NULL);
+#endif
+}
+
 static double now_ms(void)
 {
     return (double)cpu_features_get_time_usec() / 1e3;
@@ -428,11 +440,10 @@ int main(int argc, char **argv)
     if (getenv("LRHOST_SYSTEM_DIR")) system_dir = getenv("LRHOST_SYSTEM_DIR");
     /* minutes of software compiling that only the pipelines lane is about */
     if (!getenv("LRHOST_KNOWN_PIPELINES")) putenv((char*)"PARALLEL_RDP_NO_KNOWN_PIPELINES=1");
-    /* parallel-RDP holds the machine back, showing the last frame again,
-     * until the worker has built what the first draws need; this host
-     * counts retro_runs, so it has the core wait instead, unless the run
-     * is about that hold (LRHOST_PIPELINE_HOLD=1) */
-    if (!getenv("LRHOST_PIPELINE_HOLD")) putenv((char*)"PARALLEL_RDP_TEST_WAIT_PIPELINES=1");
+    /* Counting what the frame's threads build needs the pipelines built
+     * ahead to be there first: the core waits for them at load. A frontend
+     * never does; LRHOST_AS_FRONTEND=1 runs the core that way */
+    if (!getenv("LRHOST_AS_FRONTEND")) putenv((char*)"PARALLEL_RDP_TEST_WAIT_PIPELINES=1");
     MKDIR(system_dir);
 
     h = lib_open(argv[1]);
@@ -546,6 +557,10 @@ int main(int argc, char **argv)
               && i % atoi(getenv("LRHOST_GL_SWITCH_EVERY")) == 0 && !gl_switch_context())
             return 1;
 #endif
+        /* LRHOST_PACE_MS=n sleeps n ms before each run, as a frontend
+         * paced by the display does: work on the core's own threads gets
+         * real time between runs */
+        if (getenv("LRHOST_PACE_MS")) pace_sleep((unsigned)atoi(getenv("LRHOST_PACE_MS")));
         run_frame = i; t0 = now_ms();
         if (getenv("LRHOST_RUNAHEAD") && i > 0)
         {

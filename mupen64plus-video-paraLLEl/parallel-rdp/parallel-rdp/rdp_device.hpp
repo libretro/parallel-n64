@@ -147,9 +147,8 @@ public:
 	// their first use, and returns without waiting for any. The thread that
 	// queues commands, before the first one.
 	void build_pipelines_ahead(const pipeline_record_t *records, size_t count, bool with_upscaler);
-	// Whether the worker has built those a draw cannot do without; never
-	// waits. Until it has, the caller holds back the commands that need them.
-	bool pipelines_ahead_ready() const;
+	// Sleeps until the worker has built them. Test hosts only: a frontend
+	// never waits, and a draw that gets to one first builds its own.
 	void wait_pipelines_ahead_for_test();
 
 	// Queues up state and drawing commands.

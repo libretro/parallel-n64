@@ -1459,11 +1459,6 @@ void CommandProcessor::build_pipelines_ahead(const pipeline_record_t *records, s
 	run_on_command_thread(build_pipelines_ahead_on_command_thread, &ahead);
 }
 
-bool CommandProcessor::pipelines_ahead_ready() const
-{
-	return renderer.pipelines_ahead_ready();
-}
-
 void CommandProcessor::wait_pipelines_ahead_for_test()
 {
 	renderer.wait_pipelines_ahead_for_test();

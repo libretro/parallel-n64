@@ -142,11 +142,6 @@ unsigned parallel_frame_height()
 	return RDP::height;
 }
 
-bool parallel_pipelines_ready()
-{
-	return RDP::pipelines_ready();
-}
-
 bool parallel_frame_is_valid()
 {
 	return true;

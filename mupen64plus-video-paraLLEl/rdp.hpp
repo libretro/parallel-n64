@@ -15,8 +15,6 @@ namespace RDP
 bool init();
 void deinit();
 void begin_frame();
-/* Whether the pipelines a draw cannot do without are built; never waits */
-bool pipelines_ready();
 
 void process_commands();
 /* Redirect command ingest to an HLE-synthesized host FIFO for the next

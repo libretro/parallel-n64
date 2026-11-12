@@ -23,10 +23,11 @@ own:
 Every run must present the same frames as the cold one. A list another
 ROM wrote serves the pipelines the two share (shared).
 
-The runs above have lrhost block until the pipelines built ahead are there
-(PARALLEL_RDP_TEST_WAIT_PIPELINES). A frontend never blocks: with every
-known pipeline queued at load, retro_load_game and each retro_run must
-return at once, the machine held until the worker is done (hold).
+For those runs lrhost has the core wait at load for the pipelines built
+ahead (PARALLEL_RDP_TEST_WAIT_PIPELINES), so that what the frame's threads
+build can be counted. A frontend is never kept waiting: with every known
+pipeline queued and no wait, load must return at once, every frame must be
+presented, and the frames must be the same (as a frontend).
 
 CI runs every case on one ROM and a cold and a warm session on the rest;
 --full runs every case on every ROM and mode (takes minutes, not seconds).
@@ -34,7 +35,7 @@ CI runs every case on one ROM and a cold and a warm session on the rest;
   parallel_rdp_pipelines.py --core parallel_n64_libretro.so --host ./lrhost_vk \\
                             [--roms dir] [--out dir] [--full]
 """
-import argparse, os, re, shutil, subprocess, sys
+import argparse, os, re, shutil, subprocess, sys, time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import parallel_rdp_regress as regress
@@ -180,45 +181,70 @@ def known_at_load(args):
 
 LOAD = re.compile(r"retro_load_game and context_reset: ([0-9.]+) ms")
 RUN_MAX = re.compile(r"per retro_run: .* max ([0-9.]+) ms \| presented (\d+) duped (\d+)")
-# No call may block on the pipelines built ahead: on a software driver
-# building every known one takes over a minute, and a call that waited for
-# them would take that long. The bounds leave room for a slow runner.
-HOLD_LOAD_MS = 2000.0
-HOLD_RUN_MS = 250.0
+# A frontend must never be kept waiting for the pipelines built ahead: on
+# a software driver building every known one takes over a minute, and a
+# load that waited for them took that long. The bounds leave room for a
+# slow runner and for a draw building its own pipeline.
+FRONTEND_LOAD_MS = 5000.0
+FRONTEND_RUN_MS = 5000.0
+FRONTEND_WHOLE_S = 60.0
 
 
-def hold_at_load(args):
-    """Every known pipeline queued at load, as a frontend runs the core:
-    retro_load_game, context_reset and each retro_run return at once, the machine held
-    (the last frame shown again) until the worker has built the urgent
-    ones, and nothing built on the frame's threads meanwhile."""
-    sysdir = os.path.abspath(os.path.join(args.out, "hold"))
-    shutil.rmtree(sysdir, ignore_errors=True)
-    os.makedirs(sysdir)
-    env = dict(os.environ, LRHOST_COUNT_PIPELINES="1", LRHOST_SYSTEM_DIR=sysdir,
-               LRHOST_KNOWN_PIPELINES="1", LRHOST_PIPELINE_HOLD="1")
-    p = subprocess.run([args.host, args.core, regress.fetch(args.roms, FULL_ROM), str(FRAMES)]
-                       + regress.OPTIONS, env=env, stdout=subprocess.PIPE,
-                       stderr=subprocess.STDOUT, timeout=600)
-    log = p.stdout.decode("utf-8", "replace")
-    with open(os.path.join(sysdir, "hold.log"), "w") as f:
-        f.write(log)
-    load, run_max, counts = LOAD.search(log), RUN_MAX.search(log), COUNTS.search(log)
+def as_frontend(args):
+    """The core as a frontend runs it, every known pipeline queued at load
+    and nothing waiting for them. Load returns at once, the machine runs
+    from the first retro_run (every frame presented, none shown twice),
+    the frames are those of a run that waited, and the session ends at
+    once with the worker still busy."""
+    rom = regress.fetch(args.roms, FULL_ROM)
     errors = []
-    if p.returncode != 0 or not (load and run_max and counts):
-        errors.append("exit %d, %s" % (p.returncode, "no timings" if p.returncode == 0 else ""))
-    else:
-        if float(load.group(1)) > HOLD_LOAD_MS:
+    frames = {}
+    load = run_max = None
+    whole = 0.0
+    for tag, extra in (("waited", {}), ("frontend", {"LRHOST_KNOWN_PIPELINES": "1", "LRHOST_AS_FRONTEND": "1"})):
+        sysdir = os.path.abspath(os.path.join(args.out, "as-frontend", tag))
+        shutil.rmtree(sysdir, ignore_errors=True)
+        os.makedirs(sysdir)
+        hashlog = os.path.join(sysdir, "hash")
+        env = dict(os.environ, LRHOST_COUNT_PIPELINES="1", LRHOST_SYSTEM_DIR=sysdir, LRHOST_HASHLOG=hashlog, **extra)
+        began = time.time()
+        try:
+            p = subprocess.run([args.host, args.core, rom, str(FRAMES)] + regress.OPTIONS, env=env,
+                               stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=600)
+        except subprocess.TimeoutExpired:
+            errors.append("%s: still running after 600 s" % tag)
+            continue
+        log = p.stdout.decode("utf-8", "replace")
+        with open(os.path.join(sysdir, "log"), "w") as f:
+            f.write(log)
+        if p.returncode != 0:
+            errors.append("%s: exit %d" % (tag, p.returncode))
+            continue
+        # (nothing presented, no log)
+        frames[tag] = ""
+        if os.path.exists(hashlog):
+            with open(hashlog) as f:
+                frames[tag] = f.read()
+        if tag != "frontend":
+            continue
+        whole = time.time() - began
+        load, run_max = LOAD.search(log), RUN_MAX.search(log)
+        if not (load and run_max):
+            errors.append("frontend: no timings")
+            continue
+        if float(load.group(1)) > FRONTEND_LOAD_MS:
             errors.append("retro_load_game and context_reset took %s ms" % load.group(1))
-        if float(run_max.group(1)) > HOLD_RUN_MS:
+        if float(run_max.group(1)) > FRONTEND_RUN_MS:
             errors.append("a retro_run took %s ms" % run_max.group(1))
-        if int(run_max.group(2)) + int(run_max.group(3)) != FRAMES:
-            errors.append("%s presented and %s duped of %d" % (run_max.group(2), run_max.group(3), FRAMES))
-        if int(counts.group(1)) != 0:
-            errors.append("%s built on the frame's threads" % counts.group(1))
-    print("hold at load: %s (load %s ms, longest retro_run %s ms, %s held)"
-          % ("FAIL" if errors else "ok", load.group(1) if load else "?",
-             run_max.group(1) if run_max else "?", run_max.group(3) if run_max else "?"))
+        if int(run_max.group(2)) != FRAMES or int(run_max.group(3)) != 0:
+            errors.append("%s frames presented and %s shown twice, of %d" % (run_max.group(2), run_max.group(3), FRAMES))
+        if whole > FRONTEND_WHOLE_S:
+            errors.append("the session took %.0f s" % whole)
+    if len(frames) == 2 and frames["frontend"] != frames["waited"]:
+        errors.append("frames differ from the run that waited")
+    print("as a frontend: %s (load %s ms, longest retro_run %s ms, %s of %d frames presented, %.1f s in all)"
+          % ("FAIL" if errors else "ok", load.group(1) if load else "?", run_max.group(1) if run_max else "?",
+             run_max.group(2) if run_max else "?", FRAMES, whole))
     for e in errors:
         print("  FAIL: " + e)
     return 1 if errors else 0
@@ -251,7 +277,7 @@ def main():
                 print("  FAIL: " + e)
             failed += bool(errors)
     failed += known_at_load(args)
-    failed += hold_at_load(args)
+    failed += as_frontend(args)
     line, errors = shared(args, "tlut16", "pal8")
     print("shared: %s\n%s" % ("FAIL" if errors else "ok", line))
     for e in errors:

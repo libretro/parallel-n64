@@ -125,8 +125,8 @@ public:
 	/* Whether the worker has built the first kind, without waiting; any
 	 * thread, after build_pipelines_ahead returned. */
 	bool pipelines_ahead_ready() const;
-	/* Sleeps until they are: for test hosts that count retro_runs, never
-	 * on a frontend's path */
+	/* Sleeps until they are: for test hosts that count what the frame's
+	 * threads build, never on a frontend's path */
 	void wait_pipelines_ahead_for_test();
 
 	// setup may be mutated to apply various fixups to triangle setup.

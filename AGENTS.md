@@ -27,6 +27,10 @@ Not there yet, most urgent first. These are debts, not precedent:
    parallel compile to stand in, so a cold first session cannot avoid it.
 3. paraLLEl-RDP needs the pipeline worker, which needs the device's pipeline cache
    control: a device without it builds on the frame's threads.
+4. paraLLEl-RDP does not wait at load for the pipelines built ahead (on a cold
+   driver cache that took minutes and looked like a hang), and a compute or VI
+   stage has nothing else that renders the same: until the worker has built
+   one, a draw that needs it builds its own. Cold cache only.
 
 ## Second rule: no allocation mid-game
 
@@ -82,8 +86,9 @@ thread, the RSP JIT and the angrylion workers (`parallel_al.c`). On it:
 Required waits are the ones a guest or an API contract demands: the
 `synchronous` RDP option at `SyncFull`, CPU reads of GPU-written RDRAM,
 savestates, teardown, `wait_sync_index`. Name the producer and the consumer of
-any wait before keeping or adding one. Only `build_pipelines_ahead` may wait
-on the pipeline worker, and only at content load.
+any wait before keeping or adding one. Nothing waits on the pipeline worker,
+at content load either: a load that did took minutes on a cold driver cache.
+The machine is never held back for it either.
 
 These also still break the rules: the pipeline compiles listed under the first
 rule, and the paraLLEl RSP JIT, which compiles blocks on first use and allocates
@@ -117,12 +122,13 @@ Know which layer you are changing. Having one does not give you the next.
   through the state setter its draw uses, so a cold run builds it at load too.
   `tools/ci/parallel_rdp_pipelines.py` holds a first run to none on the frame's
   threads. The other lanes skip this: it takes a software driver most of a minute.
-- Nothing blocks on the pipelines built ahead, at load or later, and nothing
-  spins. Until the worker has built the urgent ones, `retro_run` presents the
-  last frame again and does not step the machine; the test hosts block on an
-  eventcount instead (`PARALLEL_RDP_TEST_WAIT_PIPELINES`). Specialised
-  rasterizer variants are never urgent: the generic variant covers them.
-  `tools/ci/parallel_rdp_pipelines.py` (hold at load) bounds each `retro_run`.
+- Nothing waits for the pipelines built ahead, at load or later, and the
+  machine is never held back for them: a draw that gets to one before the
+  worker builds its own. Only the test hosts wait, at load
+  (`PARALLEL_RDP_TEST_WAIT_PIPELINES`). Specialised rasterizer variants are
+  never urgent: the generic variant covers them.
+  `tools/ci/parallel_rdp_pipelines.py` (as a frontend) runs without that wait:
+  load must return at once and every frame must be presented.
 - Each bit in the specialization constants multiplies the variants. Fewer
   permutations beat compiling them faster. Prefer state read from buffers
   unless a specialisation is a measured win.

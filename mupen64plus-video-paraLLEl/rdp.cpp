@@ -74,8 +74,9 @@ static struct retro_hw_upscaler_inputs upscaler_inputs;
 /* Per sync index: motion vectors, depth, then the translucency mask */
 static Util::HeldHandle<Vulkan::Image> upscaler_handles[3 * RDP_MAX_SYNC_FRAMES];
 static bool upscaler_on;
-/* test hosts count retro_runs, and would count held frames: they block
- * on the worker instead (read at init) */
+/* test hosts that count what the frame's threads build have load wait for
+ * the worker (PARALLEL_RDP_TEST_WAIT_PIPELINES, read at init); nothing
+ * else does */
 static bool test_wait_pipelines;
 
 /* The frames released past n, as a shrinking vector did. */
@@ -298,15 +299,6 @@ void profile_refresh_end()
 	}
 }
 
-bool pipelines_ready()
-{
-	if (!frontend)
-		return true;
-	if (test_wait_pipelines)
-		frontend->wait_pipelines_ahead_for_test();
-	return frontend->pipelines_ahead_ready();
-}
-
 void begin_frame()
 {
 	if (!device_supported)
@@ -336,6 +328,16 @@ void begin_frame()
  * into, and to leave the files alone when nothing changed. */
 static pipeline_record_t *pipeline_list;
 static size_t pipeline_list_count;
+
+/* The pipelines the list and the renderer's options name are built on the
+ * worker, and nothing waits for them: a draw that gets to one first builds
+ * its own, as on a first run it always did. */
+static void build_pipelines_ahead()
+{
+	frontend->build_pipelines_ahead(pipeline_list, pipeline_list_count, upscaler_iface != nullptr);
+	if (test_wait_pipelines)
+		frontend->wait_pipelines_ahead_for_test();
+}
 static uint32_t pipeline_cache_loaded_crc;
 static int64_t pipeline_cache_loaded_size;
 
@@ -602,7 +604,7 @@ static void upscaler_poll()
 			device_supported = false;
 		/* (only what this factor adds is new) */
 		if (device_supported)
-			frontend->build_pipelines_ahead(pipeline_list, pipeline_list_count, upscaler_iface != nullptr);
+			build_pipelines_ahead();
 		upscaler_reset_pending = true;
 	}
 	if (upscaler_iface)
@@ -714,7 +716,7 @@ bool init()
 	upscaler_reset_pending = true;
 	if (!create_processor(upscaling))
 		return false;
-	frontend->build_pipelines_ahead(pipeline_list, pipeline_list_count, upscaler_iface != nullptr);
+	build_pipelines_ahead();
 
 	timeline_value = 0;
 	pending_timeline_value = 0;
