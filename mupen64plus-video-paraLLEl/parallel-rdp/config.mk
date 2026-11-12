@@ -15,7 +15,6 @@ PARALLEL_RDP_SOURCES_CXX := \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/buffer_pool.cpp \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/command_buffer.cpp \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/context.cpp \
-        $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/descriptor_set.cpp \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/device.cpp \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/fence.cpp \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/image.cpp \
@@ -36,6 +35,7 @@ PARALLEL_RDP_SOURCES_C := \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/pipeline_record_list.c \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/release_queue.c \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/command_pool.c \
+        $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/descriptor_set.c \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/memory_allocator.c \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/sync_pools.c \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/texture_format.c \

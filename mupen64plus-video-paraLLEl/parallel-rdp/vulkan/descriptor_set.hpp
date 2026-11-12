@@ -22,99 +22,89 @@
 
 #pragma once
 
+#include <string.h>
+#include "descriptor_set.h"
 #include "hash.hpp"
 #include "object_pool.hpp"
-#include "temporary_hashmap.hpp"
 #include "vulkan_headers.hpp"
 #include "sampler.hpp"
 #include "limits.hpp"
 #include "small_vector.hpp"
 #include "cookie.hpp"
 
+// The allocator is C (descriptor_set.h). These give the rest of Granite
+// the names it had.
 namespace Vulkan
 {
 class Device;
-struct DescriptorSetLayout
+
+static_assert(VULKAN_NUM_BINDINGS == GRANITE_NUM_BINDINGS, "The C allocator has other bindings.");
+
+struct DescriptorSetLayout : granite_descriptor_set_layout_t
 {
-	uint32_t sampled_image_mask = 0;
-	uint32_t storage_image_mask = 0;
-	uint32_t uniform_buffer_mask = 0;
-	uint32_t storage_buffer_mask = 0;
-	uint32_t sampled_texel_buffer_mask = 0;
-	uint32_t storage_texel_buffer_mask = 0;
-	uint32_t input_attachment_mask = 0;
-	uint32_t sampler_mask = 0;
-	uint32_t separate_image_mask = 0;
-	uint32_t fp_mask = 0;
-	uint32_t immutable_sampler_mask = 0;
-	uint8_t array_size[VULKAN_NUM_BINDINGS] = {};
-	uint32_t padding = 0;
+	DescriptorSetLayout()
+	{
+		memset(static_cast<granite_descriptor_set_layout_t *>(this), 0, sizeof(granite_descriptor_set_layout_t));
+	}
 };
 
-// Avoid -Wclass-memaccess warnings since we hash DescriptorSetLayout.
+static const unsigned VULKAN_NUM_SETS_PER_POOL = GRANITE_NUM_SETS_PER_POOL;
+static const unsigned VULKAN_DESCRIPTOR_RING_SIZE = GRANITE_DESCRIPTOR_RING_SIZE;
 
-static const unsigned VULKAN_NUM_SETS_PER_POOL = 16;
-static const unsigned VULKAN_DESCRIPTOR_RING_SIZE = 8;
-
-class DescriptorSetAllocator;
 class ImageView;
 
 class DescriptorSetAllocator : public HashedObject<DescriptorSetAllocator>
 {
 public:
+	// device.cpp
 	DescriptorSetAllocator(Util::Hash hash, Device *device, const DescriptorSetLayout &layout,
 	                       const uint32_t *stages_for_bindings,
 	                       const ImmutableSampler * const *immutable_samplers, bool push);
-	~DescriptorSetAllocator();
+
+	~DescriptorSetAllocator()
+	{
+		granite_set_allocator_free(&impl);
+	}
+
 	void operator=(const DescriptorSetAllocator &) = delete;
 	DescriptorSetAllocator(const DescriptorSetAllocator &) = delete;
 
-	void begin_frame();
+	void begin_frame()
+	{
+		granite_set_allocator_begin_frame(&impl);
+	}
+
 	struct Lookup
 	{
 		VkDescriptorSet set;
 		bool cached;
 	};
-	Lookup find(unsigned thread_index, Util::Hash hash);
+
+	Lookup find(unsigned thread_index, Util::Hash hash)
+	{
+		Lookup lookup;
+		lookup.set = granite_set_allocator_find(&impl, thread_index, hash, &lookup.cached);
+		return lookup;
+	}
 
 	VkDescriptorSetLayout get_layout() const
 	{
-		return set_layout;
+		return impl.set_layout;
 	}
 
 	// Push sets are written into the command buffer directly: no pools,
 	// no hashing, no cache.
 	bool is_push() const
 	{
-		return push;
+		return impl.push;
 	}
 
-	void clear();
+	void clear()
+	{
+		granite_set_allocator_clear(&impl);
+	}
 
 private:
-	struct DescriptorSetNode : Util::TemporaryHashmapEnabled<DescriptorSetNode>, Util::IntrusiveListEnabled<DescriptorSetNode>
-	{
-		explicit DescriptorSetNode(VkDescriptorSet set_)
-		    : set(set_)
-		{
-		}
-
-		VkDescriptorSet set;
-	};
-
-	Device *device;
-	const VolkDeviceTable &table;
-	VkDescriptorSetLayout set_layout = VK_NULL_HANDLE;
-
-	struct PerThread
-	{
-		Util::TemporaryHashmap<DescriptorSetNode, VULKAN_DESCRIPTOR_RING_SIZE, true> set_nodes;
-		Util::Vector<VkDescriptorPool> pools;
-		bool should_begin = true;
-	};
-	PerThread *per_thread = nullptr;
-	unsigned num_per_thread = 0;
-	bool push;
-	Util::Vector<VkDescriptorPoolSize> pool_size;
+	granite_set_allocator_t impl;
 };
 }

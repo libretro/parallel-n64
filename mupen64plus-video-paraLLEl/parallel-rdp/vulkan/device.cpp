@@ -249,6 +249,20 @@ PipelineLayout *Device::request_pipeline_layout(const CombinedResourceLayout &la
 	return ret;
 }
 
+DescriptorSetAllocator::DescriptorSetAllocator(Hash hash, Device *device, const DescriptorSetLayout &layout,
+                                               const uint32_t *stages_for_bindings,
+                                               const ImmutableSampler * const *immutable_samplers, bool push)
+	: IntrusiveHashMapEnabled<DescriptorSetAllocator>(hash)
+{
+	VkSampler samplers[VULKAN_NUM_BINDINGS] = {};
+	for (uint32_t bit_bits = immutable_samplers ? layout.immutable_sampler_mask : 0, bit;
+	     Util::next_bit(bit_bits, bit);)
+		if (immutable_samplers[bit])
+			samplers[bit] = immutable_samplers[bit]->get_sampler().get_sampler();
+	granite_set_allocator_init(&impl, device->get_device(), &device->get_device_table(), &layout,
+	                           stages_for_bindings, samplers, push, device->num_thread_indices);
+}
+
 DescriptorSetAllocator *Device::request_descriptor_set_allocator(const DescriptorSetLayout &layout, const uint32_t *stages_for_bindings,
                                                                  const ImmutableSampler * const *immutable_samplers_,
                                                                  bool push)
