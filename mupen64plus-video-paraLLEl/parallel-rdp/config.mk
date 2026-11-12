@@ -21,8 +21,7 @@ PARALLEL_RDP_SOURCES_CXX := \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/query_pool.cpp \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/render_pass.cpp \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/sampler.cpp \
-        $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/semaphore.cpp \
-        $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/shader.cpp
+        $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/semaphore.cpp
 
 PARALLEL_RDP_SOURCES_C := \
         $(PARALLEL_RDP_IMPLEMENTATION)/volk/volk.c \
@@ -37,6 +36,7 @@ PARALLEL_RDP_SOURCES_C := \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/command_pool.c \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/descriptor_set.c \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/memory_allocator.c \
+        $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/shader.c \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/sync_pools.c \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/texture_format.c \
         $(PARALLEL_RDP_IMPLEMENTATION)/util/aligned_alloc.c \

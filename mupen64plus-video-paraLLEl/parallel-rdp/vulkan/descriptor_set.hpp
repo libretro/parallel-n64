@@ -40,14 +40,6 @@ class Device;
 
 static_assert(VULKAN_NUM_BINDINGS == GRANITE_NUM_BINDINGS, "The C allocator has other bindings.");
 
-struct DescriptorSetLayout : granite_descriptor_set_layout_t
-{
-	DescriptorSetLayout()
-	{
-		memset(static_cast<granite_descriptor_set_layout_t *>(this), 0, sizeof(granite_descriptor_set_layout_t));
-	}
-};
-
 static const unsigned VULKAN_NUM_SETS_PER_POOL = GRANITE_NUM_SETS_PER_POOL;
 static const unsigned VULKAN_DESCRIPTOR_RING_SIZE = GRANITE_DESCRIPTOR_RING_SIZE;
 
@@ -57,9 +49,8 @@ class DescriptorSetAllocator : public HashedObject<DescriptorSetAllocator>
 {
 public:
 	// device.cpp
-	DescriptorSetAllocator(Util::Hash hash, Device *device, const DescriptorSetLayout &layout,
-	                       const uint32_t *stages_for_bindings,
-	                       const ImmutableSampler * const *immutable_samplers, bool push);
+	DescriptorSetAllocator(Util::Hash hash, Device *device, const granite_descriptor_set_layout_t &layout,
+	                       const uint32_t *stages_for_bindings, bool push);
 
 	~DescriptorSetAllocator()
 	{

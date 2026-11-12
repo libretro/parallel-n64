@@ -156,14 +156,12 @@ void Device::unmap_host_buffer(const Buffer &buffer, MemoryAccessFlags access, V
 	managers.memory.unmap_memory(buffer.get_allocation(), access, offset, length);
 }
 
-Shader *Device::request_shader(const uint32_t *data, size_t size,
-                               const ResourceLayout *layout,
-                               const ImmutableSamplerBank *sampler_bank)
+Shader *Device::request_shader(const uint32_t *data, size_t size, const ResourceLayout *layout)
 {
-	auto hash = Shader::hash(data, size, sampler_bank);
+	auto hash = Shader::hash(data, size);
 	auto *ret = shaders.find(hash);
 	if (!ret)
-		ret = shaders.emplace_yield(hash, hash, this, data, size, layout, sampler_bank);
+		ret = shaders.emplace_yield(hash, hash, this, data, size, layout);
 	return ret;
 }
 
@@ -183,13 +181,12 @@ Program *Device::request_program(Vulkan::Shader *compute_shader)
 }
 
 Program *Device::request_program(const uint32_t *compute_data, size_t compute_size,
-                                 const ResourceLayout *layout,
-                                 const ImmutableSamplerBank *sampler_bank)
+                                 const ResourceLayout *layout)
 {
 	if (!compute_size)
 		return nullptr;
 
-	auto *compute_shader = request_shader(compute_data, compute_size, layout, sampler_bank);
+	auto *compute_shader = request_shader(compute_data, compute_size, layout);
 	return request_program(compute_shader);
 }
 
@@ -222,193 +219,156 @@ Program *Device::request_program(const uint32_t *vertex_data, size_t vertex_size
 	return request_program(vertex, fragment);
 }
 
-PipelineLayout *Device::request_pipeline_layout(const CombinedResourceLayout &layout,
-                                                const ImmutableSamplerBank *sampler_bank)
+PipelineLayout *Device::request_pipeline_layout(const CombinedResourceLayout &layout)
 {
-	Hasher h;
-	h.data(reinterpret_cast<const uint32_t *>(layout.sets), sizeof(layout.sets));
-	h.data(&layout.stages_for_bindings[0][0], sizeof(layout.stages_for_bindings));
-	h.u32(layout.push_constant_range.stageFlags);
-	h.u32(layout.push_constant_range.size);
-	h.data(layout.spec_constant_mask, sizeof(layout.spec_constant_mask));
-	h.u32(layout.attribute_mask);
-	h.u32(layout.render_target_mask);
-	for (unsigned set = 0; set < VULKAN_NUM_DESCRIPTOR_SETS; set++)
-	{
-		for (uint32_t bit_bits = layout.sets[set].immutable_sampler_mask, bit; Util::next_bit(bit_bits, bit);)
-		{
-			VK_ASSERT(sampler_bank && sampler_bank->samplers[set][bit]);
-			h.u64(sampler_bank->samplers[set][bit]->get_hash());
-		}
-	}
-
-	auto hash = h.get();
+	auto hash = granite_combined_layout_hash(&layout);
 	auto *ret = pipeline_layouts.find(hash);
 	if (!ret)
-		ret = pipeline_layouts.emplace_yield(hash, hash, this, layout, sampler_bank);
+		ret = pipeline_layouts.emplace_yield(hash, hash, this, layout);
 	return ret;
 }
 
-DescriptorSetAllocator::DescriptorSetAllocator(Hash hash, Device *device, const DescriptorSetLayout &layout,
-                                               const uint32_t *stages_for_bindings,
-                                               const ImmutableSampler * const *immutable_samplers, bool push)
+DescriptorSetAllocator::DescriptorSetAllocator(Hash hash, Device *device, const granite_descriptor_set_layout_t &layout,
+                                               const uint32_t *stages_for_bindings, bool push)
 	: IntrusiveHashMapEnabled<DescriptorSetAllocator>(hash)
 {
-	VkSampler samplers[VULKAN_NUM_BINDINGS] = {};
-	for (uint32_t bit_bits = immutable_samplers ? layout.immutable_sampler_mask : 0, bit;
-	     Util::next_bit(bit_bits, bit);)
-		if (immutable_samplers[bit])
-			samplers[bit] = immutable_samplers[bit]->get_sampler().get_sampler();
 	granite_set_allocator_init(&impl, device->get_device(), &device->get_device_table(), &layout,
-	                           stages_for_bindings, samplers, push, device->num_thread_indices);
+	                           stages_for_bindings, nullptr, push, device->num_thread_indices);
 }
 
-DescriptorSetAllocator *Device::request_descriptor_set_allocator(const DescriptorSetLayout &layout, const uint32_t *stages_for_bindings,
-                                                                 const ImmutableSampler * const *immutable_samplers_,
-                                                                 bool push)
+DescriptorSetAllocator *Device::request_descriptor_set_allocator(const granite_descriptor_set_layout_t &layout,
+                                                                 const uint32_t *stages_for_bindings, bool push)
 {
 	Hasher h;
 	h.u32(push);
 	h.data(reinterpret_cast<const uint32_t *>(&layout), sizeof(layout));
 	h.data(stages_for_bindings, sizeof(uint32_t) * VULKAN_NUM_BINDINGS);
-	for (uint32_t bit_bits = layout.immutable_sampler_mask, bit; Util::next_bit(bit_bits, bit);)
-	{
-		VK_ASSERT(immutable_samplers_ && immutable_samplers_[bit]);
-		h.u64(immutable_samplers_[bit]->get_hash());
-	}
 	auto hash = h.get();
 
 	auto *ret = descriptor_set_allocators.find(hash);
 	if (!ret)
-		ret = descriptor_set_allocators.emplace_yield(hash, hash, this, layout, stages_for_bindings, immutable_samplers_, push);
+		ret = descriptor_set_allocators.emplace_yield(hash, hash, this, layout, stages_for_bindings, push);
 	return ret;
 }
 
 void Device::bake_program(Program &program)
 {
 	CombinedResourceLayout layout;
-	if (program.get_shader(ShaderStage::Vertex))
-		layout.attribute_mask = program.get_shader(ShaderStage::Vertex)->get_layout().input_mask;
-	if (program.get_shader(ShaderStage::Fragment))
-		layout.render_target_mask = program.get_shader(ShaderStage::Fragment)->get_layout().output_mask;
-
-	ImmutableSamplerBank ext_immutable_samplers = {};
-	layout.descriptor_set_mask = 0;
-
 	for (unsigned i = 0; i < static_cast<unsigned>(ShaderStage::Count); i++)
 	{
 		auto *shader = program.get_shader(static_cast<ShaderStage>(i));
-		if (!shader)
-			continue;
-
-		uint32_t stage_mask = 1u << i;
-
-		auto &shader_layout = shader->get_layout();
-		auto &immutable_bank = shader->get_immutable_sampler_bank();
-
-		for (unsigned set = 0; set < VULKAN_NUM_DESCRIPTOR_SETS; set++)
-		{
-			layout.sets[set].sampled_image_mask |= shader_layout.sets[set].sampled_image_mask;
-			layout.sets[set].storage_image_mask |= shader_layout.sets[set].storage_image_mask;
-			layout.sets[set].uniform_buffer_mask |= shader_layout.sets[set].uniform_buffer_mask;
-			layout.sets[set].storage_buffer_mask |= shader_layout.sets[set].storage_buffer_mask;
-			layout.sets[set].sampled_texel_buffer_mask |= shader_layout.sets[set].sampled_texel_buffer_mask;
-			layout.sets[set].storage_texel_buffer_mask |= shader_layout.sets[set].storage_texel_buffer_mask;
-			layout.sets[set].input_attachment_mask |= shader_layout.sets[set].input_attachment_mask;
-			layout.sets[set].sampler_mask |= shader_layout.sets[set].sampler_mask;
-			layout.sets[set].separate_image_mask |= shader_layout.sets[set].separate_image_mask;
-			layout.sets[set].fp_mask |= shader_layout.sets[set].fp_mask;
-
-			auto immutable_mask = shader_layout.sets[set].immutable_sampler_mask;
-			layout.sets[set].immutable_sampler_mask |= immutable_mask;
-
-			for (uint32_t binding_bits = immutable_mask, binding; Util::next_bit(binding_bits, binding);)
-			{
-				if (ext_immutable_samplers.samplers[set][binding] &&
-				    immutable_bank.samplers[set][binding] != ext_immutable_samplers.samplers[set][binding])
-				{
-					LOGE("Immutable sampler mismatch detected!\n");
-				}
-				else
-				{
-					VK_ASSERT(immutable_bank.samplers[set][binding]);
-					ext_immutable_samplers.samplers[set][binding] = immutable_bank.samplers[set][binding];
-				}
-			}
-
-			uint32_t active_binds =
-					shader_layout.sets[set].sampled_image_mask |
-					shader_layout.sets[set].storage_image_mask |
-					shader_layout.sets[set].uniform_buffer_mask|
-					shader_layout.sets[set].storage_buffer_mask |
-					shader_layout.sets[set].sampled_texel_buffer_mask |
-					shader_layout.sets[set].storage_texel_buffer_mask |
-					shader_layout.sets[set].input_attachment_mask |
-					shader_layout.sets[set].sampler_mask |
-					shader_layout.sets[set].separate_image_mask;
-
-			if (active_binds)
-				layout.stages_for_sets[set] |= stage_mask;
-
-			for (uint32_t bit_bits = active_binds, bit; Util::next_bit(bit_bits, bit);)
-			{
-				layout.stages_for_bindings[set][bit] |= stage_mask;
-
-				auto &combined_size = layout.sets[set].array_size[bit];
-				auto &shader_size = shader_layout.sets[set].array_size[bit];
-				if (combined_size && combined_size != shader_size)
-					LOGE("Mismatch between array sizes in different shaders.\n");
-				else
-					combined_size = shader_size;
-			}
-		}
-
-		// Merge push constant ranges into one range.
-		// Do not try to split into multiple ranges as it just complicates things for no obvious gain.
-		if (shader_layout.push_constant_size != 0)
-		{
-			layout.push_constant_range.stageFlags |= 1u << i;
-			layout.push_constant_range.size =
-					Util::max_of(layout.push_constant_range.size, shader_layout.push_constant_size);
-		}
-
-		layout.spec_constant_mask[i] = shader_layout.spec_constant_mask;
-		layout.combined_spec_constant_mask |= shader_layout.spec_constant_mask;
+		if (shader)
+			granite_combined_layout_add(&layout, i, &shader->get_layout());
 	}
+	granite_combined_layout_bake(&layout);
+	program.set_pipeline_layout(request_pipeline_layout(layout));
+}
 
-	for (unsigned set = 0; set < VULKAN_NUM_DESCRIPTOR_SETS; set++)
+// What is left of shader.cpp: the layouts are C (shader.c).
+PipelineLayout::PipelineLayout(Hash hash, Device *device, const CombinedResourceLayout &layout_)
+	: IntrusiveHashMapEnabled<PipelineLayout>(hash)
+	, layout(layout_)
+{
+	VkDescriptorSetLayout layouts[VULKAN_NUM_DESCRIPTOR_SETS] = {};
+	auto &features = device->get_device_features();
+	push_set_mask = granite_combined_layout_push_set_mask(&layout, features.supports_push_descriptor,
+	                                                      features.push_descriptor_properties.maxPushDescriptors);
+
+	for (unsigned i = 0; i < VULKAN_NUM_DESCRIPTOR_SETS; i++)
 	{
-		if (layout.stages_for_sets[set] != 0)
-		{
-			layout.descriptor_set_mask |= 1u << set;
-
-			for (unsigned binding = 0; binding < VULKAN_NUM_BINDINGS; binding++)
-			{
-				auto &array_size = layout.sets[set].array_size[binding];
-				if (array_size == 0)
-				{
-					array_size = 1;
-				}
-				else
-				{
-					for (unsigned i = 1; i < array_size; i++)
-					{
-						if (layout.stages_for_bindings[set][binding + i] != 0)
-						{
-							LOGE("Detected binding aliasing for (%u, %u). Binding array with %u elements starting at (%u, %u) overlaps.\n",
-							     set, binding + i, array_size, set, binding);
-						}
-					}
-				}
-			}
-		}
+		set_allocators[i] = device->request_descriptor_set_allocator(layout.sets[i], layout.stages_for_bindings[i],
+		                                                             (push_set_mask & (1u << i)) != 0);
+		layouts[i] = set_allocators[i]->get_layout();
 	}
 
-	Hasher h;
-	h.u32(layout.push_constant_range.stageFlags);
-	h.u32(layout.push_constant_range.size);
-	layout.push_constant_layout_hash = h.get();
-	program.set_pipeline_layout(request_pipeline_layout(layout, &ext_immutable_samplers));
+	granite_pipeline_layout_init(&impl, device->get_device(), &device->get_device_table(), &layout, layouts,
+	                             push_set_mask, device->get_gpu_properties().limits.maxBoundDescriptorSets);
+}
+
+Util::Hash Shader::hash(const uint32_t *data, size_t size)
+{
+	Util::Hasher hasher;
+	hasher.data(data, size);
+	return hasher.get();
+}
+
+Shader::Shader(Hash hash, Device *device_, const uint32_t *data, size_t size,
+               const ResourceLayout *resource_layout)
+	: IntrusiveHashMapEnabled<Shader>(hash)
+	, device(device_)
+{
+	VkShaderModuleCreateInfo info = { VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO };
+	info.codeSize = size;
+	info.pCode = data;
+
+#ifdef VULKAN_DEBUG
+	LOGI("Creating shader module.\n");
+#endif
+	auto &table = device->get_device_table();
+	if (table.vkCreateShaderModule(device->get_device(), &info, nullptr, &module) != VK_SUCCESS)
+		LOGE("Failed to create shader module.\n");
+
+	if (resource_layout)
+		layout = *resource_layout;
+}
+
+Shader::~Shader()
+{
+	auto &table = device->get_device_table();
+	if (module)
+		table.vkDestroyShaderModule(device->get_device(), module, nullptr);
+}
+
+void Program::set_shader(ShaderStage stage, Shader *handle)
+{
+	shaders[Util::ecast(stage)] = handle;
+}
+
+Program::Program(Device *device_, Shader *vertex, Shader *fragment)
+    : device(device_)
+{
+	set_shader(ShaderStage::Vertex, vertex);
+	set_shader(ShaderStage::Fragment, fragment);
+	device->bake_program(*this);
+}
+
+Program::Program(Device *device_, Shader *compute_shader)
+    : device(device_)
+{
+	set_shader(ShaderStage::Compute, compute_shader);
+	device->bake_program(*this);
+}
+
+Pipeline Program::get_pipeline(Hash hash) const
+{
+	auto *ret = pipelines.find(hash);
+	return ret ? ret->get() : Pipeline{};
+}
+
+Pipeline Program::add_pipeline(Hash hash, const Pipeline &pipeline)
+{
+	return pipelines.emplace_yield(hash, pipeline)->get();
+}
+
+void Program::destroy_pipeline(const Pipeline &pipeline)
+{
+	if (internal_sync)
+		device->destroy_pipeline_nolock(pipeline.pipeline);
+	else
+		device->destroy_pipeline(pipeline.pipeline);
+}
+
+Program::~Program()
+{
+#ifdef GRANITE_VULKAN_MT
+	for (auto &pipe : pipelines.get_read_only())
+		destroy_pipeline(pipe.get());
+	for (auto &pipe : pipelines.get_read_write())
+		destroy_pipeline(pipe.get());
+#else
+	for (auto &pipe : pipelines)
+		destroy_pipeline(pipe.get());
+#endif
 }
 
 bool Device::init_pipeline_cache(const uint8_t *data, size_t size)

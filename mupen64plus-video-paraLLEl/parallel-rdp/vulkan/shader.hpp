@@ -22,6 +22,8 @@
 
 #pragma once
 
+#include <string.h>
+#include "shader.h"
 #include "cookie.hpp"
 #include "descriptor_set.hpp"
 #include "hash.hpp"
@@ -30,55 +32,48 @@
 #include "vulkan_headers.hpp"
 #include "enum_cast.hpp"
 
-namespace spirv_cross
-{
-struct SPIRType;
-}
-
+// The layouts are C (shader.h). These give the rest of Granite the names
+// it had.
 namespace Vulkan
 {
 class Device;
 
+static_assert(VULKAN_NUM_DESCRIPTOR_SETS == GRANITE_NUM_DESCRIPTOR_SETS, "The C layouts have other sets.");
+
 enum class ShaderStage
 {
-	Vertex = 0,
-	TessControl = 1,
-	TessEvaluation = 2,
-	Geometry = 3,
-	Fragment = 4,
-	Compute = 5,
-	Count
+	Vertex = GRANITE_SHADER_STAGE_VERTEX,
+	TessControl = GRANITE_SHADER_STAGE_TESS_CONTROL,
+	TessEvaluation = GRANITE_SHADER_STAGE_TESS_EVALUATION,
+	Geometry = GRANITE_SHADER_STAGE_GEOMETRY,
+	Fragment = GRANITE_SHADER_STAGE_FRAGMENT,
+	Compute = GRANITE_SHADER_STAGE_COMPUTE,
+	Count = GRANITE_SHADER_STAGE_COUNT
 };
 
-struct ResourceLayout
+struct ResourceLayout : granite_resource_layout_t
 {
-	DescriptorSetLayout sets[VULKAN_NUM_DESCRIPTOR_SETS];
-	uint32_t input_mask = 0;
-	uint32_t output_mask = 0;
-	uint32_t push_constant_size = 0;
-	uint32_t spec_constant_mask = 0;
-	// Carried in the reflection the shader bank stores; never set.
-	uint32_t bindless_set_mask = 0;
-	enum { Version = 3 };
+	ResourceLayout()
+	{
+		memset(static_cast<granite_resource_layout_t *>(this), 0, sizeof(granite_resource_layout_t));
+	}
 
-	bool unserialize(const uint8_t *data, size_t size);
+	bool unserialize(const uint8_t *data, size_t size)
+	{
+		return granite_resource_layout_unserialize(this, data, size);
+	}
 };
-static_assert(sizeof(DescriptorSetLayout) % 8 == 0, "Size of DescriptorSetLayout does not align to 64 bits.");
 
-struct CombinedResourceLayout
+struct CombinedResourceLayout : granite_combined_layout_t
 {
-	uint32_t attribute_mask = 0;
-	uint32_t render_target_mask = 0;
-	DescriptorSetLayout sets[VULKAN_NUM_DESCRIPTOR_SETS] = {};
-	uint32_t stages_for_bindings[VULKAN_NUM_DESCRIPTOR_SETS][VULKAN_NUM_BINDINGS] = {};
-	uint32_t stages_for_sets[VULKAN_NUM_DESCRIPTOR_SETS] = {};
-	VkPushConstantRange push_constant_range = {};
-	uint32_t descriptor_set_mask = 0;
-	uint32_t spec_constant_mask[Util::ecast(ShaderStage::Count)] = {};
-	uint32_t combined_spec_constant_mask = 0;
-	Util::Hash push_constant_layout_hash = 0;
+	CombinedResourceLayout()
+	{
+		granite_combined_layout_init(this);
+	}
 };
 
+// What the command buffer keeps of a binding; the update templates read
+// it as the C struct.
 struct ResourceBinding
 {
 	union {
@@ -92,6 +87,12 @@ struct ResourceBinding
 	};
 	VkDeviceSize dynamic_offset;
 };
+static_assert(sizeof(ResourceBinding) == sizeof(granite_resource_binding_t) &&
+              offsetof(ResourceBinding, buffer) == offsetof(granite_resource_binding_t, u.buffer) &&
+              offsetof(ResourceBinding, image.fp) == offsetof(granite_resource_binding_t, u.image.fp) &&
+              offsetof(ResourceBinding, image.integer) == offsetof(granite_resource_binding_t, u.image.integer) &&
+              offsetof(ResourceBinding, buffer_view) == offsetof(granite_resource_binding_t, u.buffer_view),
+              "The update templates read another binding.");
 
 struct ResourceBindings
 {
@@ -101,18 +102,15 @@ struct ResourceBindings
 	uint8_t push_constant_data[VULKAN_PUSH_CONSTANT_SIZE];
 };
 
-struct ImmutableSamplerBank
-{
-	const ImmutableSampler *samplers[VULKAN_NUM_DESCRIPTOR_SETS][VULKAN_NUM_BINDINGS];
-	static void hash(Util::Hasher &h, const ImmutableSamplerBank *bank);
-};
-
 class PipelineLayout : public HashedObject<PipelineLayout>
 {
 public:
-	PipelineLayout(Util::Hash hash, Device *device, const CombinedResourceLayout &layout,
-	               const ImmutableSamplerBank *sampler_bank);
-	~PipelineLayout();
+	PipelineLayout(Util::Hash hash, Device *device, const CombinedResourceLayout &layout);
+
+	~PipelineLayout()
+	{
+		granite_pipeline_layout_free(&impl);
+	}
 
 	const CombinedResourceLayout &get_resource_layout() const
 	{
@@ -121,7 +119,7 @@ public:
 
 	VkPipelineLayout get_layout() const
 	{
-		return pipe_layout;
+		return impl.layout;
 	}
 
 	DescriptorSetAllocator *get_allocator(unsigned set) const
@@ -131,7 +129,7 @@ public:
 
 	VkDescriptorUpdateTemplate get_update_template(unsigned set) const
 	{
-		return update_template[set];
+		return impl.update_template[set];
 	}
 
 	uint32_t get_push_set_mask() const
@@ -140,21 +138,17 @@ public:
 	}
 
 private:
-	Device *device;
-	VkPipelineLayout pipe_layout = VK_NULL_HANDLE;
+	granite_pipeline_layout_t impl;
 	CombinedResourceLayout layout;
 	DescriptorSetAllocator *set_allocators[VULKAN_NUM_DESCRIPTOR_SETS] = {};
-	VkDescriptorUpdateTemplate update_template[VULKAN_NUM_DESCRIPTOR_SETS] = {};
 	uint32_t push_set_mask = 0;
-	void create_update_templates();
 };
 
 class Shader : public HashedObject<Shader>
 {
 public:
 	Shader(Util::Hash binding, Device *device, const uint32_t *data, size_t size,
-	       const ResourceLayout *layout = nullptr,
-	       const ImmutableSamplerBank *sampler_bank = nullptr);
+	       const ResourceLayout *layout = nullptr);
 	~Shader();
 
 	const ResourceLayout &get_layout() const
@@ -162,22 +156,16 @@ public:
 		return layout;
 	}
 
-	const ImmutableSamplerBank &get_immutable_sampler_bank() const
-	{
-		return immutable_sampler_bank;
-	}
-
 	VkShaderModule get_module() const
 	{
 		return module;
 	}
-	static Util::Hash hash(const uint32_t *data, size_t size, const ImmutableSamplerBank *sampler_bank);
+	static Util::Hash hash(const uint32_t *data, size_t size);
 
 private:
 	Device *device;
 	VkShaderModule module = VK_NULL_HANDLE;
 	ResourceLayout layout;
-	ImmutableSamplerBank immutable_sampler_bank;
 };
 
 struct Pipeline

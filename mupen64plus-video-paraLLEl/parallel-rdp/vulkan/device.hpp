@@ -263,15 +263,13 @@ public:
 
 	// Request shaders and programs. These objects are owned by the Device.
 	Shader *request_shader(const uint32_t *code, size_t size,
-	                       const ResourceLayout *layout = nullptr,
-	                       const ImmutableSamplerBank *sampler_bank = nullptr);
+	                       const ResourceLayout *layout = nullptr);
 	Program *request_program(const uint32_t *vertex_data, size_t vertex_size, const uint32_t *fragment_data,
 	                         size_t fragment_size,
 	                         const ResourceLayout *vertex_layout = nullptr,
 	                         const ResourceLayout *fragment_layout = nullptr);
 	Program *request_program(const uint32_t *compute_data, size_t compute_size,
-	                         const ResourceLayout *layout = nullptr,
-	                         const ImmutableSamplerBank *sampler_bank = nullptr);
+	                         const ResourceLayout *layout = nullptr);
 	Program *request_program(Shader *vertex, Shader *fragment);
 	Program *request_program(Shader *compute);
 	const ImmutableSampler *request_immutable_sampler(const SamplerCreateInfo &info, const ImmutableYcbcrConversion *ycbcr);
@@ -418,11 +416,9 @@ private:
 
 	QueryPoolHandle write_timestamp(VkCommandBuffer cmd, VkPipelineStageFlagBits stage);
 
-	PipelineLayout *request_pipeline_layout(const CombinedResourceLayout &layout,
-	                                        const ImmutableSamplerBank *immutable_samplers);
-	DescriptorSetAllocator *request_descriptor_set_allocator(const DescriptorSetLayout &layout,
+	PipelineLayout *request_pipeline_layout(const CombinedResourceLayout &layout);
+	DescriptorSetAllocator *request_descriptor_set_allocator(const granite_descriptor_set_layout_t &layout,
 	                                                         const uint32_t *stages_for_sets,
-	                                                         const ImmutableSampler * const *immutable_samplers,
 	                                                         bool push);
 	const Framebuffer &request_framebuffer(const RenderPassInfo &info);
 	const RenderPass &request_render_pass(const RenderPassInfo &info, bool compatible);
