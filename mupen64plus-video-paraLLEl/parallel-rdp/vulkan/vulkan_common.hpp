@@ -30,23 +30,12 @@
 
 namespace Vulkan
 {
-#ifdef GRANITE_VULKAN_MT
 using HandleCounter = Util::MultiThreadCounter;
-#else
-using HandleCounter = Util::SingleThreadCounter;
-#endif
 
-#ifdef GRANITE_VULKAN_MT
 template <typename T>
 using VulkanObjectPool = Util::ThreadSafeObjectPool<T>;
 template <typename T>
 using VulkanCache = Util::ThreadSafeIntrusiveHashMapReadCached<T>;
-#else
-template <typename T>
-using VulkanObjectPool = Util::ObjectPool<T>;
-template <typename T>
-using VulkanCache = Util::IntrusiveHashMap<T>;
-#endif
 
 // (context.h)
 enum QueueIndices

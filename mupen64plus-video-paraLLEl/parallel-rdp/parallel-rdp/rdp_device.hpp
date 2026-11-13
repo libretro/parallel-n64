@@ -33,9 +33,6 @@
 #include "upscaler_pass.hpp"
 #include "temporal_upscaler.h"
 
-#ifndef GRANITE_VULKAN_MT
-#error "Granite Vulkan backend must be built with multithreading support."
-#endif
 
 namespace RDP
 {

@@ -32,7 +32,6 @@
 #endif
 
 
-#ifdef GRANITE_VULKAN_MT
 #include "thread_id.h"
 static unsigned get_thread_index()
 {
@@ -47,18 +46,7 @@ static unsigned get_thread_index()
 // thread (scanout, frame switches, run_on_command_thread). Other threads
 // only release objects (lock-free per-frame stacks), wait on fences
 // (lock-free claim) and use the lock-free pools and caches.
-#define LOCK() ((void)0)
-#define LOCK_MEMORY() ((void)0)
 #define DRAIN_FRAME_LOCK() VK_ASSERT(lock.counter == 0)
-#else
-#define LOCK() ((void)0)
-#define LOCK_MEMORY() ((void)0)
-#define DRAIN_FRAME_LOCK() VK_ASSERT(lock.counter == 0)
-static unsigned get_thread_index()
-{
-	return 0;
-}
-#endif
 
 using namespace Util;
 
@@ -87,7 +75,6 @@ Device::Device()
 
 void Device::add_wait_semaphore(CommandBuffer::Type type, Semaphore semaphore, VkPipelineStageFlags stages, bool flush)
 {
-	LOCK();
 	add_wait_semaphore_nolock(QueueIndices(type), Util::move(semaphore), stages, flush);
 }
 
@@ -454,9 +441,7 @@ void Device::set_context(const Context &context)
 {
 	table = &context.get_device_table();
 
-#ifdef GRANITE_VULKAN_MT
 	granite_register_thread_index(0);
-#endif
 	instance = context.get_instance();
 	gpu = context.get_gpu();
 	device = context.get_device();
@@ -546,7 +531,6 @@ const granite_buffer_pool_ops_t Device::block_ops = { block_create, block_releas
 
 void Device::request_vertex_block(granite_buffer_block_t &block, VkDeviceSize size)
 {
-	LOCK();
 	request_vertex_block_nolock(block, size);
 }
 
@@ -557,7 +541,6 @@ void Device::request_vertex_block_nolock(granite_buffer_block_t &block, VkDevice
 
 void Device::request_uniform_block(granite_buffer_block_t &block, VkDeviceSize size)
 {
-	LOCK();
 	request_uniform_block_nolock(block, size);
 }
 
@@ -568,7 +551,6 @@ void Device::request_uniform_block_nolock(granite_buffer_block_t &block, VkDevic
 
 void Device::submit(CommandBufferHandle &cmd, Fence *fence, unsigned semaphore_count, Semaphore *semaphores)
 {
-	LOCK();
 	submit_nolock(Util::move(cmd), fence, semaphore_count, semaphores);
 }
 
@@ -605,7 +587,6 @@ void Device::submit_nolock(CommandBufferHandle cmd, Fence *fence, unsigned semap
 
 void Device::submit_empty(CommandBuffer::Type type, Fence *fence)
 {
-	LOCK();
 	submit_empty_nolock(QueueIndices(type), fence);
 }
 
@@ -624,7 +605,6 @@ void Device::submit_empty_nolock(QueueIndices physical_type, Fence *fence)
 
 void Device::submit_initialization(CommandBufferHandle &cmd, VkBufferUsageFlags usage)
 {
-	LOCK();
 	submit_staging(cmd, usage, true);
 }
 
@@ -788,7 +768,6 @@ void Device::end_frame_nolock()
 
 void Device::flush_frame()
 {
-	LOCK();
 	flush_frame_nolock();
 }
 
@@ -805,15 +784,11 @@ CommandBufferHandle Device::request_command_buffer(CommandBuffer::Type type)
 
 CommandBufferHandle Device::request_command_buffer_for_thread(unsigned thread_index, CommandBuffer::Type type)
 {
-	LOCK();
 	return request_command_buffer_nolock(thread_index, type);
 }
 
 CommandBufferHandle Device::request_command_buffer_nolock(unsigned thread_index, CommandBuffer::Type type)
 {
-#ifndef GRANITE_VULKAN_MT
-	VK_ASSERT(thread_index == 0);
-#endif
 	auto physical_type = QueueIndices(type);
 	auto cmd = granite_command_pool_request(&frame().cmd_pools[physical_type][thread_index]);
 	// Out of memory: nothing to record into.
@@ -1032,15 +1007,10 @@ void Device::wait_idle_nolock()
 
 	granite_framebuffer_allocator_clear(&framebuffer_allocator);
 
-#ifdef GRANITE_VULKAN_MT
 	for (auto &allocator : descriptor_set_allocators.get_read_only())
 		allocator.clear();
 	for (auto &allocator : descriptor_set_allocators.get_read_write())
 		allocator.clear();
-#else
-	for (auto &allocator : descriptor_set_allocators)
-		allocator.clear();
-#endif
 
 	for (auto &frame : per_frame)
 	{
@@ -1051,7 +1021,6 @@ void Device::wait_idle_nolock()
 	}
 
 	{
-		LOCK_MEMORY();
 		managers.memory.garbage_collect();
 	}
 }
@@ -1065,15 +1034,10 @@ void Device::next_frame_context()
 
 	granite_framebuffer_allocator_begin_frame(&framebuffer_allocator);
 
-#ifdef GRANITE_VULKAN_MT
 	for (auto &allocator : descriptor_set_allocators.get_read_only())
 		allocator.begin_frame();
 	for (auto &allocator : descriptor_set_allocators.get_read_write())
 		allocator.begin_frame();
-#else
-	for (auto &allocator : descriptor_set_allocators)
-		allocator.begin_frame();
-#endif
 
 	VK_ASSERT(!per_frame.empty());
 	frame_context_index++;
@@ -1283,7 +1247,6 @@ ImageHandle Device::create_image_from_staging_buffer(const ImageCreateInfo &crea
 	DeviceAllocation allocation;
 	VkImageCreateFlags flags;
 	{
-		LOCK_MEMORY();
 		if (!granite_image_create(&env, &desc, staging_buffer != nullptr, &image, &allocation, &usage, &flags))
 			return ImageHandle(nullptr);
 	}
@@ -1307,7 +1270,6 @@ ImageHandle Device::create_image_from_staging_buffer(const ImageCreateInfo &crea
 		if (!granite_image_views_create(device, table, &view_desc, &views))
 		{
 			table->vkDestroyImage(device, image, nullptr);
-			LOCK_MEMORY();
 			allocation.free_immediate(managers.memory);
 			return ImageHandle(nullptr);
 		}
@@ -1319,7 +1281,6 @@ ImageHandle Device::create_image_from_staging_buffer(const ImageCreateInfo &crea
 	{
 		granite_image_views_destroy(device, table, &views);
 		table->vkDestroyImage(device, image, nullptr);
-		LOCK_MEMORY();
 		allocation.free_immediate(managers.memory);
 		return ImageHandle(nullptr);
 	}
@@ -1407,7 +1368,6 @@ ImageHandle Device::create_image_from_staging_buffer(const ImageCreateInfo &crea
 	}
 	else
 	{
-		LOCK();
 		submit_nolock(graphics_cmd, nullptr, 0, nullptr);
 		if (plan.flush_graphics)
 			flush_frame(QUEUE_INDEX_GRAPHICS);
@@ -1433,7 +1393,6 @@ BufferHandle Device::create_imported_host_buffer(const BufferCreateInfo &create_
 	VkBuffer buffer;
 	DeviceAllocation allocation;
 	{
-		LOCK_MEMORY();
 		if (!granite_buffer_create_host_import(&env, create_info.domain, create_info.size, create_info.usage,
 		                                       ext.host_memory_properties.minImportedHostPointerAlignment,
 		                                       host_buffer, &buffer, &allocation))
@@ -1452,7 +1411,6 @@ BufferHandle Device::wrap_buffer(VkBuffer buffer, const DeviceAllocation &alloca
 	{
 		table->vkDestroyBuffer(device, buffer, nullptr);
 		granite_allocation_t alloc = allocation;
-		LOCK_MEMORY();
 		granite_allocation_free(&alloc, &managers.memory);
 	}
 	return BufferHandle(static_cast<Buffer *>(object));
@@ -1534,7 +1492,6 @@ BufferHandle Device::create_buffer(const BufferCreateInfo &create_info, const vo
 			cmd->fill_buffer(*handle, 0);
 		}
 
-		LOCK();
 		submit_staging(cmd, tmpinfo.usage, true);
 	}
 	else if (initial || zero_initialize)

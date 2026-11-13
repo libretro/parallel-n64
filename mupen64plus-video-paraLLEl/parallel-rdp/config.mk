@@ -1,7 +1,7 @@
 # For use in standalone implementations.
 
 PARALLEL_RDP_CFLAGS :=
-PARALLEL_RDP_CXXFLAGS := -DGRANITE_VULKAN_MT
+PARALLEL_RDP_CXXFLAGS :=
 # retro_atomic.h picks std::atomic in C++: the builtins instead
 ifneq (,$(findstring msvc,$(platform)))
 PARALLEL_RDP_CXXFLAGS += -DRETRO_ATOMIC_FORCE_MSVC

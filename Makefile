@@ -1723,7 +1723,7 @@ test_incoherent_pages$(EXE_EXT): tools/test_incoherent_pages.cpp $(VIDEODIR_PARA
 
 test_vi_image_pool$(EXE_EXT): tools/test_vi_image_pool.cpp $(VIDEODIR_PARALLEL)/parallel-rdp/parallel-rdp/vi_image_pool.hpp \
 		$(GRANITE_POOL_TEST_OBJS)
-	$(CXX) -std=c++11 $(CHECK_CFLAGS) $(CHECK_SANITIZE) -DGRANITE_VULKAN_MT -DRETRO_ATOMIC_FORCE_GCC_NEW $(COMMAND_RING_TEST_INC) \
+	$(CXX) -std=c++11 $(CHECK_CFLAGS) $(CHECK_SANITIZE) -DRETRO_ATOMIC_FORCE_GCC_NEW $(COMMAND_RING_TEST_INC) \
 		$< $(GRANITE_POOL_TEST_OBJS) -o $@ $(CHECK_LDFLAGS) $(CHECK_SANITIZE)
 
 COMMAND_RING_TEST_INC := -I$(VIDEODIR_PARALLEL)/parallel-rdp/parallel-rdp -I$(VIDEODIR_PARALLEL)/parallel-rdp/vulkan \

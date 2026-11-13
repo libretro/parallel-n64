@@ -46,11 +46,9 @@
 #include "small_vector.hpp"
 #include <stdio.h>
 
-#ifdef GRANITE_VULKAN_MT
 #include <rthreads/retro_eventcount.h>
 #include <queues/mpsc_stack.h>
 #include <retro_atomic.h>
-#endif
 
 #include "device_caps.h"
 
