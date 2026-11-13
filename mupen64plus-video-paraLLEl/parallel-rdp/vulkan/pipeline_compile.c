@@ -253,7 +253,6 @@ VkPipeline granite_pipeline_build_graphics(const granite_pipeline_device_t *devi
 	VkPipelineInputAssemblyStateCreateInfo ia;
 	VkPipelineMultisampleStateCreateInfo ms;
 	VkPipelineRasterizationStateCreateInfo raster;
-	VkPipelineRasterizationConservativeStateCreateInfoEXT conservative_raster;
 	VkPipelineShaderStageCreateInfo stages[GRANITE_SHADER_STAGE_COUNT];
 	VkSpecializationInfo spec_info[GRANITE_SHADER_STAGE_COUNT];
 	VkSpecializationMapEntry spec_entries[GRANITE_SHADER_STAGE_COUNT][GRANITE_NUM_TOTAL_SPEC_CONSTANTS];
@@ -412,20 +411,6 @@ VkPipeline granite_pipeline_build_graphics(const granite_pipeline_device_t *devi
 	raster.lineWidth = 1.0f;
 	raster.polygonMode = compile->static_state.state.wireframe ? VK_POLYGON_MODE_LINE : VK_POLYGON_MODE_FILL;
 	raster.depthBiasEnable = compile->static_state.state.depth_bias_enable != 0;
-
-	if (compile->static_state.state.conservative_raster)
-	{
-		if (!device->conservative_rasterization)
-		{
-			LOGE("Conservative rasterization is not supported on this device.\n");
-			return VK_NULL_HANDLE;
-		}
-
-		memset(&conservative_raster, 0, sizeof(conservative_raster));
-		conservative_raster.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_CONSERVATIVE_STATE_CREATE_INFO_EXT;
-		conservative_raster.conservativeRasterizationMode = VK_CONSERVATIVE_RASTERIZATION_MODE_OVERESTIMATE_EXT;
-		raster.pNext = &conservative_raster;
-	}
 
 	/* Stages */
 	for (i = 0; i < GRANITE_SHADER_STAGE_COUNT; i++)

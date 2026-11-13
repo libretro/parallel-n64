@@ -25,74 +25,15 @@
 #include "vulkan_headers.hpp"
 #include "logging.h"
 #include "vulkan_common.hpp"
+#include "context.h"
+#include <string.h>
 
 namespace Vulkan
 {
-struct DeviceFeatures
-{
-	bool supports_debug_utils = false;
-	bool supports_mirror_clamp_to_edge = false;
-	bool supports_push_descriptor = false;
-	bool supports_nv_device_diagnostic_checkpoints = false;
-	bool supports_external_memory_host = false;
-	bool supports_surface_capabilities2 = false;
-	bool supports_full_screen_exclusive = false;
-	bool supports_conservative_rasterization = false;
-	bool supports_draw_indirect_count = false;
-	bool supports_driver_properties = false;
-	bool supports_memory_budget = false;
-	bool supports_astc_decode_mode = false;
-	bool supports_sync2 = false;
-	bool supports_video_queue = false;
-	bool supports_video_decode_queue = false;
-	bool supports_video_decode_h264 = false;
-	bool supports_pipeline_creation_cache_control = false;
-	bool supports_format_feature_flags2 = false;
-	bool supports_external = false;
-	bool supports_image_format_list = false;
-	bool supports_shader_float_control = false;
-	bool supports_tooling_info = false;
-	bool supports_hdr_metadata = false;
-	bool supports_swapchain_colorspace = false;
-
-	// Vulkan 1.1 core
-	VkPhysicalDeviceFeatures enabled_features = {};
-	VkPhysicalDeviceMultiviewFeatures multiview_features = {};
-	VkPhysicalDeviceShaderDrawParametersFeatures shader_draw_parameters_features = {};
-	VkPhysicalDeviceSamplerYcbcrConversionFeatures sampler_ycbcr_conversion_features = {};
-	VkPhysicalDeviceMultiviewProperties multiview_properties = {};
-	VkPhysicalDeviceSubgroupProperties subgroup_properties = {};
-
-	// KHR
-	VkPhysicalDeviceTimelineSemaphoreFeaturesKHR timeline_semaphore_features = {};
-	VkPhysicalDeviceDriverPropertiesKHR driver_properties = {};
-	VkPhysicalDeviceSynchronization2FeaturesKHR sync2_features = {};
-	VkPhysicalDevicePresentIdFeaturesKHR present_id_features = {};
-	VkPhysicalDevicePresentWaitFeaturesKHR present_wait_features = {};
-	VkPhysicalDevice8BitStorageFeaturesKHR storage_8bit_features = {};
-	VkPhysicalDevice16BitStorageFeaturesKHR storage_16bit_features = {};
-	VkPhysicalDeviceFloat16Int8FeaturesKHR float16_int8_features = {};
-	VkPhysicalDeviceFloatControlsPropertiesKHR float_control_properties = {};
-	VkPhysicalDeviceIDProperties id_properties = {};
-	VkPhysicalDevicePushDescriptorPropertiesKHR push_descriptor_properties = {};
-
-	// EXT
-	VkPhysicalDeviceExternalMemoryHostPropertiesEXT host_memory_properties = {};
-	VkPhysicalDeviceSubgroupSizeControlFeaturesEXT subgroup_size_control_features = {};
-	VkPhysicalDeviceSubgroupSizeControlPropertiesEXT subgroup_size_control_properties = {};
-	VkPhysicalDeviceHostQueryResetFeaturesEXT host_query_reset_features = {};
-	VkPhysicalDeviceShaderDemoteToHelperInvocationFeaturesEXT demote_to_helper_invocation_features = {};
-	VkPhysicalDeviceScalarBlockLayoutFeaturesEXT scalar_block_features = {};
-	VkPhysicalDeviceUniformBufferStandardLayoutFeaturesKHR ubo_std430_features = {};
-	VkPhysicalDeviceConservativeRasterizationPropertiesEXT conservative_rasterization_properties = {};
-	VkPhysicalDeviceMemoryPriorityFeaturesEXT memory_priority_features = {};
-	VkPhysicalDeviceASTCDecodeFeaturesEXT astc_decode_features = {};
-	VkPhysicalDeviceTextureCompressionASTCHDRFeaturesEXT astc_hdr_features = {};
-	VkPhysicalDevicePipelineCreationCacheControlFeaturesEXT pipeline_creation_cache_control_features = {};
-
-	// Vendor
-	VkPhysicalDeviceComputeShaderDerivativesFeaturesNV compute_shader_derivative_features = {};
-};
+// The context is C (context.h). These give it the names the rest of
+// Granite uses.
+using DeviceFeatures = granite_device_features_t;
+using QueueInfo = granite_queue_info_t;
 
 enum VendorID
 {
@@ -103,24 +44,11 @@ enum VendorID
 	VENDOR_ID_QCOM = 0x5143
 };
 
-enum ContextCreationFlagBits
-{
-	CONTEXT_CREATION_ENABLE_ADVANCED_WSI_BIT = 1 << 1
-};
-using ContextCreationFlags = uint32_t;
-
-struct QueueInfo
-{
-	QueueInfo();
-	VkQueue queues[QUEUE_INDEX_COUNT] = {};
-	uint32_t family_indices[QUEUE_INDEX_COUNT];
-};
-
 // Creates the device in place of vkCreateDevice, e.g. through a
 // libretro frontend that adds what it needs to the create info.
 struct DeviceFactory
 {
-	VkDevice (*create_device)(void *user, VkPhysicalDevice gpu, const VkDeviceCreateInfo *info);
+	granite_create_device_t create_device;
 	void *user;
 };
 
@@ -128,124 +56,90 @@ class Context
 	: public Util::IntrusivePtrEnabled<Context, Util::DefaultDelete<Context>, HandleCounter>
 {
 public:
-	// Call before initializing instances. Pointer must remain valid until instance and device creation completes.
-	// API_VERSION must be at least 1.1.
-	// By default, a Vulkan 1.1 instance is created.
+	Context()
+	{
+		memset(&context, 0, sizeof(context));
+	}
+
+	Context(const Context &) = delete;
+	void operator=(const Context &) = delete;
+
+	~Context()
+	{
+		granite_context_destroy(&context);
+	}
+
+	static bool init_loader(PFN_vkGetInstanceProcAddr addr)
+	{
+		return granite_context_init_loader(addr);
+	}
 
 	// Call before init_device_from_instance(). Must outlive device creation.
 	void set_device_factory(DeviceFactory *factory)
 	{
 		device_factory = factory;
 	}
-	bool init_device_from_instance(VkInstance instance, VkPhysicalDevice gpu, VkSurfaceKHR surface, const char **required_device_extensions,
-	                               unsigned num_required_device_extensions, const VkPhysicalDeviceFeatures *required_features,
-	                               ContextCreationFlags flags = 0);
 
-	Context() = default;
-	Context(const Context &) = delete;
-	void operator=(const Context &) = delete;
-	static bool init_loader(PFN_vkGetInstanceProcAddr addr);
-	static PFN_vkGetInstanceProcAddr get_instance_proc_addr();
-
-	~Context();
+	bool init_device_from_instance(VkInstance instance, VkPhysicalDevice gpu, VkSurfaceKHR surface,
+	                               const char **required_device_extensions, unsigned num_required_device_extensions,
+	                               const VkPhysicalDeviceFeatures *required_features)
+	{
+		granite_context_destroy(&context);
+		return granite_context_init(&context, instance, gpu, surface, required_device_extensions,
+		                            num_required_device_extensions, required_features,
+		                            device_factory ? device_factory->create_device : nullptr,
+		                            device_factory ? device_factory->user : nullptr);
+	}
 
 	VkInstance get_instance() const
 	{
-		return instance;
+		return context.instance;
 	}
 
 	VkPhysicalDevice get_gpu() const
 	{
-		return gpu;
+		return context.gpu;
 	}
 
 	VkDevice get_device() const
 	{
-		return device;
+		return context.device;
 	}
 
 	const QueueInfo &get_queue_info() const
 	{
-		return queue_info;
+		return context.queue_info;
 	}
 
 	const VkPhysicalDeviceProperties &get_gpu_props() const
 	{
-		return gpu_props;
+		return context.gpu_props;
 	}
 
 	const VkPhysicalDeviceMemoryProperties &get_mem_props() const
 	{
-		return mem_props;
+		return context.mem_props;
 	}
 
-	void release_instance()
-	{
-		owned_instance = false;
-	}
-
+	// The device is someone else's to destroy.
 	void release_device()
 	{
-		owned_device = false;
+		context.owned_device = false;
 	}
 
 	const DeviceFeatures &get_enabled_device_features() const
 	{
-		return ext;
-	}
-
-	const VkApplicationInfo &get_application_info() const;
-
-	void notify_validation_error(const char *msg);
-	typedef void (*NotificationCallback)(void *userdata, const char *msg);
-
-	void set_num_thread_indices(unsigned indices)
-	{
-		num_thread_indices = indices;
-	}
-
-	unsigned get_num_thread_indices() const
-	{
-		return num_thread_indices;
+		return context.ext;
 	}
 
 	const VolkDeviceTable &get_device_table() const
 	{
-		return device_table;
+		return context.device_table;
 	}
 
 private:
-	VkDevice device = VK_NULL_HANDLE;
-	VkInstance instance = VK_NULL_HANDLE;
-	VkPhysicalDevice gpu = VK_NULL_HANDLE;
-	VolkDeviceTable device_table = {};
-
-	VkPhysicalDeviceProperties gpu_props = {};
-	VkPhysicalDeviceMemoryProperties mem_props = {};
-	const VkApplicationInfo *user_application_info = nullptr;
+	granite_context_t context;
 	DeviceFactory *device_factory = nullptr;
-
-	QueueInfo queue_info;
-	unsigned num_thread_indices = 1;
-
-	bool create_instance(const char **instance_ext, uint32_t instance_ext_count, ContextCreationFlags flags);
-	bool create_device(VkPhysicalDevice gpu, VkSurfaceKHR surface, const char **required_device_extensions,
-	                   unsigned num_required_device_extensions, const VkPhysicalDeviceFeatures *required_features,
-	                   ContextCreationFlags flags);
-
-	bool owned_instance = false;
-	bool owned_device = false;
-	DeviceFeatures ext;
-
-#ifdef VULKAN_DEBUG
-	VkDebugUtilsMessengerEXT debug_messenger = VK_NULL_HANDLE;
-	bool force_no_validation = false;
-#endif
-	NotificationCallback message_callback = nullptr;
-	void *message_userdata = nullptr;
-
-	void destroy();
-
 };
 
 using ContextHandle = Util::IntrusivePtr<Context>;

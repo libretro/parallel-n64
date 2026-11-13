@@ -65,16 +65,8 @@ using namespace Util;
 
 namespace Vulkan
 {
-static const char *queue_name_table[] = {
-	"Graphics",
-	"Compute",
-	"Transfer",
-	"Video decode"
-};
-
 static const QueueIndices queue_flush_order[] = {
 	QUEUE_INDEX_TRANSFER,
-	QUEUE_INDEX_VIDEO_DECODE,
 	QUEUE_INDEX_GRAPHICS,
 	QUEUE_INDEX_COMPUTE
 };
@@ -517,7 +509,6 @@ void Device::set_context(const Context &context)
 	instance = context.get_instance();
 	gpu = context.get_gpu();
 	device = context.get_device();
-	num_thread_indices = context.get_num_thread_indices();
 
 	queue_info = context.get_queue_info();
 
@@ -808,8 +799,6 @@ void Device::submit_queue(QueueIndices physical_type, InternalFence *fence,
 
 	if (result != VK_SUCCESS)
 		LOGE("vkQueueSubmit failed (code: %d).\n", int(result));
-	if (result == VK_ERROR_DEVICE_LOST)
-		report_checkpoints();
 	submissions.clear();
 
 	if (!ext.timeline_semaphore_features.timelineSemaphore)
@@ -1075,8 +1064,6 @@ void Device::wait_idle_nolock()
 		auto result = table->vkDeviceWaitIdle(device);
 		if (result != VK_SUCCESS)
 			LOGE("vkDeviceWaitIdle failed with code: %d\n", result);
-		if (result == VK_ERROR_DEVICE_LOST)
-			report_checkpoints();
 		if (queue_unlock_callback)
 			queue_unlock_callback(queue_lock_userdata);
 	}
@@ -1619,21 +1606,6 @@ bool Device::memory_type_is_host_visible(uint32_t type) const
 	return (mem_props.memoryTypes[type].propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) != 0;
 }
 
-static VkFormatFeatureFlags2KHR promote_storage_usage(const DeviceFeatures &features, VkFormat format,
-                                                      VkFormatFeatureFlags2KHR supported)
-{
-	if ((supported & VK_FORMAT_FEATURE_2_STORAGE_IMAGE_BIT_KHR) != 0 &&
-	    format_supports_storage_image_read_write_without_format(format))
-	{
-		if (features.enabled_features.shaderStorageImageReadWithoutFormat)
-			supported |= VK_FORMAT_FEATURE_2_STORAGE_READ_WITHOUT_FORMAT_BIT_KHR;
-		if (features.enabled_features.shaderStorageImageWriteWithoutFormat)
-			supported |= VK_FORMAT_FEATURE_2_STORAGE_WRITE_WITHOUT_FORMAT_BIT_KHR;
-	}
-
-	return supported;
-}
-
 void Device::get_format_properties(VkFormat format, VkFormatProperties3KHR *properties3) const
 {
 	VkFormatProperties2 properties2 = { VK_STRUCTURE_TYPE_FORMAT_PROPERTIES_2 };
@@ -1653,12 +1625,6 @@ void Device::get_format_properties(VkFormat format, VkFormatProperties3KHR *prop
 		properties3->optimalTilingFeatures = properties2.formatProperties.optimalTilingFeatures;
 		properties3->linearTilingFeatures = properties2.formatProperties.linearTilingFeatures;
 		properties3->bufferFeatures = properties2.formatProperties.bufferFeatures;
-
-		// Automatically promote for supported formats.
-		properties3->optimalTilingFeatures =
-				promote_storage_usage(ext, format, properties3->optimalTilingFeatures);
-		properties3->linearTilingFeatures =
-				promote_storage_usage(ext, format, properties3->linearTilingFeatures);
 	}
 }
 
@@ -1766,32 +1732,6 @@ void Device::set_queue_lock(QueueLockCallback lock_callback, QueueLockCallback u
 	queue_lock_callback = lock_callback;
 	queue_unlock_callback = unlock_callback;
 	queue_lock_userdata = userdata;
-}
-
-void Device::report_checkpoints()
-{
-	if (!ext.supports_nv_device_diagnostic_checkpoints)
-		return;
-
-	for (int i = 0; i < QUEUE_INDEX_COUNT; i++)
-	{
-		if (queue_info.queues[i] == VK_NULL_HANDLE)
-			continue;
-
-		uint32_t count;
-		table->vkGetQueueCheckpointDataNV(queue_info.queues[i], &count, nullptr);
-		Util::Vector<VkCheckpointDataNV> checkpoint_data(count);
-		for (auto &data : checkpoint_data)
-			data.sType = VK_STRUCTURE_TYPE_CHECKPOINT_DATA_NV;
-		table->vkGetQueueCheckpointDataNV(queue_info.queues[i], &count, checkpoint_data.data());
-
-		if (!checkpoint_data.empty())
-		{
-			LOGI("Checkpoints for %s queue:\n", queue_name_table[i]);
-			for (auto &d : checkpoint_data)
-				LOGI("Stage %u:\n%s\n", d.stage, static_cast<const char *>(d.pCheckpointMarker));
-		}
-	}
 }
 
 const VolkDeviceTable &Device::get_device_table() const

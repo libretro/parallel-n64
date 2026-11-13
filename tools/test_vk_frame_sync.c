@@ -98,10 +98,10 @@ int main(void)
 	CHECK(semaphore_waits == 0 && fence_waits == 0, "a frame that submitted nothing does not wait");
 
 	sync.timeline_values[0] = 12;
-	sync.timeline_values[2] = 7;
+	sync.timeline_values[GRANITE_FRAME_SYNC_QUEUES - 1] = 7;
 	granite_frame_sync_wait(&sync, DEV, &table, true);
 	CHECK(semaphore_waits == 1 && waited_count == 2 && waited_semaphores[0] == SEM(0) && waited_values[0] == 12
-			&& waited_semaphores[1] == SEM(2) && waited_values[1] == 7,
+			&& waited_semaphores[1] == SEM(GRANITE_FRAME_SYNC_QUEUES - 1) && waited_values[1] == 7,
 			"one wait for the queues it submitted to, each for its last value");
 	CHECK(waited_flags == 0 && waited_timeout == UINT64_MAX, "for all of them, however long it takes");
 	CHECK(fence_waits == 0, "and no fences");
@@ -109,10 +109,10 @@ int main(void)
 	/* a device without them, or a queue without one */
 	granite_frame_sync_wait(&sync, DEV, &table, false);
 	CHECK(semaphore_waits == 1, "without timeline semaphores none is waited for");
-	sync.timeline_semaphores[3] = VK_NULL_HANDLE;
+	sync.timeline_semaphores[1] = VK_NULL_HANDLE;
 	granite_frame_sync_wait(&sync, DEV, &table, true);
 	CHECK(semaphore_waits == 1, "nor when a queue has none");
-	sync.timeline_semaphores[3] = SEM(3);
+	sync.timeline_semaphores[1] = SEM(1);
 
 	/* ---- fences ---- */
 	CHECK(granite_frame_sync_add_fence(&sync, FENCE(1)) && granite_frame_sync_add_fence(&sync, FENCE(2))
@@ -149,7 +149,7 @@ int main(void)
 
 	/* ---- the semaphores gone ---- */
 	granite_frame_sync_forget_timelines(&sync);
-	CHECK(sync.timeline_values[0] == 0 && sync.timeline_values[2] == 0
+	CHECK(sync.timeline_values[0] == 0 && sync.timeline_values[GRANITE_FRAME_SYNC_QUEUES - 1] == 0
 			&& sync.timeline_semaphores[0] == VK_NULL_HANDLE
 			&& sync.timeline_semaphores[GRANITE_FRAME_SYNC_QUEUES - 1] == VK_NULL_HANDLE, "nothing of them is left");
 	granite_frame_sync_wait(&sync, DEV, &table, true);

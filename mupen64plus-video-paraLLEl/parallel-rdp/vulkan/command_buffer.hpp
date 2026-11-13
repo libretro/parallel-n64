@@ -90,8 +90,7 @@ public:
 	{
 		Generic = QUEUE_INDEX_GRAPHICS,
 		AsyncCompute = QUEUE_INDEX_COMPUTE,
-		AsyncTransfer = QUEUE_INDEX_TRANSFER,
-		VideoDecode = QUEUE_INDEX_VIDEO_DECODE
+		AsyncTransfer = QUEUE_INDEX_TRANSFER
 	};
 
 	~CommandBuffer();

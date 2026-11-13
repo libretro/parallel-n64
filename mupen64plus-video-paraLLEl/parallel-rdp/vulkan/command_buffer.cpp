@@ -319,7 +319,6 @@ static granite_pipeline_device_t pipeline_device(Device *device)
 	dev.table = &device->get_device_table();
 	dev.cache_control = !device->get_workarounds().broken_pipeline_cache_control &&
 	                    features.pipeline_creation_cache_control_features.pipelineCreationCacheControl;
-	dev.conservative_rasterization = features.supports_conservative_rasterization;
 	dev.min_subgroup_size = features.subgroup_size_control_properties.minSubgroupSize;
 	dev.max_subgroup_size = features.subgroup_size_control_properties.maxSubgroupSize;
 	return dev;

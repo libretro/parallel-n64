@@ -97,7 +97,9 @@ typedef union granite_pipeline_state
 		unsigned subgroup_full_group : 1;
 		unsigned subgroup_minimum_size_log2 : 3;
 		unsigned subgroup_maximum_size_log2 : 3;
-		unsigned conservative_raster : 1;
+		/* (was conservative rasterization: kept so that the words stay
+		 * as saved pipeline records have them) */
+		unsigned unused : 1;
 
 		/* four bits a colour attachment */
 		uint32_t write_mask;
@@ -155,7 +157,6 @@ typedef struct granite_pipeline_device
 	/* a pipeline can be asked for from the cache alone, failing when it
 	 * would have to be compiled */
 	bool cache_control;
-	bool conservative_rasterization;
 	/* the subgroup sizes it has */
 	uint32_t min_subgroup_size;
 	uint32_t max_subgroup_size;

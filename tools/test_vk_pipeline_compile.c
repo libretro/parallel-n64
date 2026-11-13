@@ -53,7 +53,6 @@ static VkPipelineInputAssemblyStateCreateInfo g_ia;
 static VkPipelineMultisampleStateCreateInfo g_ms;
 static VkPipelineRasterizationStateCreateInfo g_raster;
 static VkPipelineViewportStateCreateInfo g_vp;
-static bool g_conservative;
 static VkPipelineShaderStageCreateInfo g_stages[GRANITE_SHADER_STAGE_COUNT];
 static VkSpecializationInfo g_spec[GRANITE_SHADER_STAGE_COUNT];
 static VkSpecializationMapEntry g_spec_entries[GRANITE_SHADER_STAGE_COUNT][GRANITE_NUM_TOTAL_SPEC_CONSTANTS];
@@ -103,9 +102,6 @@ static VkResult VKAPI_CALL fake_create_graphics(VkDevice d, VkPipelineCache cach
 	g_ia = *info->pInputAssemblyState;
 	g_ms = *info->pMultisampleState;
 	g_raster = *info->pRasterizationState;
-	g_conservative = g_raster.pNext != NULL &&
-		((const VkPipelineRasterizationConservativeStateCreateInfoEXT *)g_raster.pNext)->conservativeRasterizationMode ==
-		VK_CONSERVATIVE_RASTERIZATION_MODE_OVERESTIMATE_EXT;
 	g_vp = *info->pViewportState;
 	for (i = 0; i < info->stageCount; i++)
 		copy_stage(i, &info->pStages[i]);
@@ -221,7 +217,7 @@ static void test_state_words(void)
 			"the write mask is the fourth");
 	memset(&s, 0, sizeof(s));
 	s.state.depth_write = 1;
-	s.state.conservative_raster = 1;
+	s.state.unused = 1;
 	CHECK(s.words[0] != 0 && s.words[2] != 0 && s.words[3] == 0, "the fields fill the first three");
 }
 
@@ -420,16 +416,6 @@ static void test_graphics(void)
 	granite_pipeline_build_graphics(&device, &c, &program, &pass, false, &dynamic, &vr);
 	CHECK(g_ms.rasterizationSamples == VK_SAMPLE_COUNT_4_BIT && g_ms.alphaToCoverageEnable && g_ms.sampleShadingEnable &&
 			!g_ms.alphaToOneEnable && g_ms.minSampleShading == 1.0f, "a multisampled pass gets the sample state");
-
-	/* conservative rasterization */
-	setup(&c);
-	c.static_state.state.conservative_raster = 1;
-	created = 0;
-	p = granite_pipeline_build_graphics(&device, &c, &program, &pass, false, &dynamic, &vr);
-	CHECK(p == VK_NULL_HANDLE && created == 0 && dynamic == 0, "conservative rasterization the device lacks: nothing made");
-	device.conservative_rasterization = true;
-	p = granite_pipeline_build_graphics(&device, &c, &program, &pass, false, &dynamic, &vr);
-	CHECK(p != VK_NULL_HANDLE && g_conservative, "with it, it is asked for");
 
 	/* from the cache alone */
 	setup(&c);

@@ -30,7 +30,7 @@
 
 RETRO_BEGIN_DECLS
 
-#define GRANITE_FRAME_SYNC_QUEUES 4
+#define GRANITE_FRAME_SYNC_QUEUES 3
 #define GRANITE_FRAME_SYNC_FENCES 8
 
 /* What a frame context waits for before it is used again: the last

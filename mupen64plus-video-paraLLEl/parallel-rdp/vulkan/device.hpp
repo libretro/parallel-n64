@@ -267,7 +267,7 @@ private:
 	VkPhysicalDevice gpu = VK_NULL_HANDLE;
 	VkDevice device = VK_NULL_HANDLE;
 	const VolkDeviceTable *table = nullptr;
-	QueueInfo queue_info;
+	QueueInfo queue_info = {};
 	unsigned num_thread_indices = 1;
 
 	void bake_program(Program &program);
@@ -490,7 +490,6 @@ private:
 
 	ImplementationWorkarounds workarounds;
 	void init_workarounds();
-	void report_checkpoints();
 
 
 };

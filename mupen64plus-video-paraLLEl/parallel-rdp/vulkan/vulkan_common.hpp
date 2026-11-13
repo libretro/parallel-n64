@@ -26,6 +26,7 @@
 #include "object_pool.hpp"
 #include "intrusive_hash_map.hpp"
 #include "vulkan_headers.hpp"
+#include "context.h"
 
 namespace Vulkan
 {
@@ -47,12 +48,12 @@ template <typename T>
 using VulkanCache = Util::IntrusiveHashMap<T>;
 #endif
 
+// (context.h)
 enum QueueIndices
 {
-	QUEUE_INDEX_GRAPHICS,
-	QUEUE_INDEX_COMPUTE,
-	QUEUE_INDEX_TRANSFER,
-	QUEUE_INDEX_VIDEO_DECODE,
-	QUEUE_INDEX_COUNT
+	QUEUE_INDEX_GRAPHICS = GRANITE_QUEUE_GRAPHICS,
+	QUEUE_INDEX_COMPUTE = GRANITE_QUEUE_COMPUTE,
+	QUEUE_INDEX_TRANSFER = GRANITE_QUEUE_TRANSFER,
+	QUEUE_INDEX_COUNT = GRANITE_QUEUE_COUNT
 };
 }
