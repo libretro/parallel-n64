@@ -52,19 +52,13 @@ using namespace Util;
 
 namespace Vulkan
 {
-static const QueueIndices queue_flush_order[] = {
-	QUEUE_INDEX_TRANSFER,
-	QUEUE_INDEX_GRAPHICS,
-	QUEUE_INDEX_COMPUTE
-};
-
 Device::Device()
 {
 	granite_framebuffer_allocator_init(&framebuffer_allocator, VK_NULL_HANDLE, nullptr,
 	                                   [](void *userdata, VkFramebuffer framebuffer) {
 		static_cast<Device *>(userdata)->destroy_framebuffer_nolock(framebuffer);
 	}, this);
-	granite_submit_composer_init(&composer);
+	granite_submission_init(&submission);
 	fence_wait_ec_live = retro_eventcount_init(&fence_wait_ec);
 	handle_owner.user = this;
 	handle_owner.destroy = handle_destroy;
@@ -75,28 +69,8 @@ Device::Device()
 
 void Device::add_wait_semaphore(CommandBuffer::Type type, Semaphore semaphore, VkPipelineStageFlags stages, bool flush)
 {
-	add_wait_semaphore_nolock(QueueIndices(type), Util::move(semaphore), stages, flush);
-}
-
-void Device::add_wait_semaphore_nolock(QueueIndices physical_type, Semaphore semaphore, VkPipelineStageFlags stages,
-                                       bool flush)
-{
 	VK_ASSERT(stages != 0);
-	if (flush)
-		flush_frame(physical_type);
-	auto &data = queue_data[physical_type];
-
-	// (there was no room for the semaphore's object: nothing to wait for)
-	if (!semaphore)
-		return;
-
-	if (!granite_queue_waits_add(&data.waits, semaphore.get(), stages))
-	{
-		// No room: an empty submission takes the ones waiting with it.
-		submit_queue(physical_type, nullptr, 0, nullptr, true);
-		granite_queue_waits_add(&data.waits, semaphore.get(), stages);
-	}
-	data.need_fence = true;
+	granite_submission_add_wait(&submission, &frame(), unsigned(QueueIndices(type)), semaphore.get(), stages, flush);
 }
 
 void *Device::map_host_buffer(const Buffer &buffer, MemoryAccessFlags access)
@@ -330,7 +304,20 @@ void Device::set_context(const Context &context)
 
 	init_stock_samplers();
 
-	init_timeline_semaphores();
+	// How command buffers get to the queues (submission.h).
+	submission.device = device;
+	submission.table = table;
+	submission.timeline = ext.timeline_semaphore_features.timelineSemaphore != VK_FALSE;
+	submission.split = workarounds.split_binary_timeline_semaphores;
+	for (int i = 0; i < QUEUE_INDEX_COUNT; i++)
+		submission.queues[i].queue = queue_info.queues[i];
+	submission.fences = &managers.fence;
+	submission.semaphores = &managers.semaphore;
+	submission.fence_objects = &handle_pool.fences;
+	submission.semaphore_objects = &handle_pool.semaphores;
+	submission.owner = &handle_owner;
+	submission.fence_wait_ec = fence_wait_ec_live ? &fence_wait_ec : nullptr;
+	granite_submission_init_timelines(&submission);
 
 	// What the frame contexts share (frame_context.h).
 	frame_env.device = device;
@@ -355,22 +342,6 @@ void Device::set_context(const Context &context)
 	                              Util::max_of<VkDeviceSize>(16u, gpu_props.limits.minUniformBufferOffsetAlignment),
 	                              VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VULKAN_MAX_UBO_SIZE, 64))
 		LOGE("Failed to set up the buffer pools.\n");
-}
-
-void Device::init_timeline_semaphores()
-{
-	if (!ext.timeline_semaphore_features.timelineSemaphore)
-		return;
-
-	VkSemaphoreTypeCreateInfoKHR type_info = { VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO_KHR };
-	VkSemaphoreCreateInfo info = { VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO };
-	info.pNext = &type_info;
-	type_info.semaphoreType = VK_SEMAPHORE_TYPE_TIMELINE_KHR;
-	type_info.initialValue = 0;
-
-	for (int i = 0; i < QUEUE_INDEX_COUNT; i++)
-		if (table->vkCreateSemaphore(device, &info, nullptr, &queue_data[i].timeline_semaphore) != VK_SUCCESS)
-			LOGE("Failed to create timeline semaphore.\n");
 }
 
 void Device::init_stock_samplers()
@@ -437,34 +408,25 @@ void Device::request_uniform_block_nolock(granite_buffer_block_t &block, VkDevic
 
 void Device::submit(CommandBufferHandle &cmd, Fence *fence, unsigned semaphore_count, Semaphore *semaphores)
 {
-	submit_nolock(Util::move(cmd), fence, semaphore_count, semaphores);
-}
+	granite_fence_t *signalled = nullptr;
+	granite_semaphore_t *signals[MAX_SUBMIT_SEMAPHORES] = {};
 
-void Device::submit_discard_nolock(CommandBufferHandle &cmd)
-{
+	VK_ASSERT(semaphore_count <= MAX_SUBMIT_SEMAPHORES);
+	if (semaphore_count > MAX_SUBMIT_SEMAPHORES)
+		semaphore_count = MAX_SUBMIT_SEMAPHORES;
+
+	granite_submission_submit(&submission, &frame(), cmd.get(), fence ? &signalled : nullptr, semaphore_count, signals);
 	cmd.reset();
-	decrement_frame_counter_nolock();
-}
-
-void Device::submit_nolock(CommandBufferHandle cmd, Fence *fence, unsigned semaphore_count, Semaphore *semaphores)
-{
-	auto physical_type = QueueIndices(cmd->get_command_buffer_type());
-	cmd->end();
-	granite_frame_context_submit(&frame(), physical_type, cmd.get());
-	cmd.reset();
-
-	InternalFence signalled_fence;
-
-	if (fence || semaphore_count)
-	{
-		submit_queue(physical_type, fence ? &signalled_fence : nullptr,
-		             semaphore_count, semaphores);
-	}
 
 	if (fence)
 	{
 		VK_ASSERT(!*fence);
-		*fence = wrap_fence(signalled_fence);
+		*fence = Fence(static_cast<FenceHolder *>(signalled));
+	}
+	for (unsigned i = 0; i < semaphore_count; i++)
+	{
+		VK_ASSERT(!semaphores[i]);
+		semaphores[i] = Semaphore(static_cast<SemaphoreHolder *>(signals[i]));
 	}
 
 	decrement_frame_counter_nolock();
@@ -472,20 +434,10 @@ void Device::submit_nolock(CommandBufferHandle cmd, Fence *fence, unsigned semap
 
 void Device::submit_empty(CommandBuffer::Type type, Fence *fence)
 {
-	submit_empty_nolock(QueueIndices(type), fence);
-}
-
-void Device::submit_empty_nolock(QueueIndices physical_type, Fence *fence)
-{
-	if (physical_type != QUEUE_INDEX_TRANSFER)
-		flush_frame(QUEUE_INDEX_TRANSFER);
-
-	InternalFence signalled_fence;
-
-	submit_queue(physical_type, fence ? &signalled_fence : nullptr, 0, nullptr);
-
+	granite_fence_t *signalled = nullptr;
+	granite_submission_submit_empty(&submission, &frame(), unsigned(QueueIndices(type)), fence ? &signalled : nullptr);
 	if (fence)
-		*fence = wrap_fence(signalled_fence);
+		*fence = Fence(static_cast<FenceHolder *>(signalled));
 }
 
 void Device::submit_initialization(CommandBufferHandle &cmd, VkBufferUsageFlags usage)
@@ -495,171 +447,18 @@ void Device::submit_initialization(CommandBufferHandle &cmd, VkBufferUsageFlags 
 
 void Device::submit_staging(CommandBufferHandle &cmd, VkBufferUsageFlags usage, bool flush)
 {
-	VkQueue src_queue = queue_info.queues[QueueIndices(cmd->get_command_buffer_type())];
-
-	granite_staging_plan_t plan;
-	granite_staging_plan(src_queue, queue_info.queues[QUEUE_INDEX_GRAPHICS], queue_info.queues[QUEUE_INDEX_COMPUTE],
-	                     buffer_usage_to_possible_stages(usage), buffer_usage_to_possible_access(usage), &plan);
-
-	if (plan.barrier_stages)
-		cmd->barrier(VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_TRANSFER_WRITE_BIT,
-		             plan.barrier_stages, plan.barrier_access);
-
-	// (graphics first, then compute)
-	Semaphore semaphores[2];
-	unsigned count = unsigned(plan.wait_graphics) + unsigned(plan.wait_compute);
-	submit_nolock(cmd, nullptr, count, semaphores);
-	if (plan.wait_graphics)
-		add_wait_semaphore_nolock(QUEUE_INDEX_GRAPHICS, semaphores[0], plan.graphics_stages, flush);
-	if (plan.wait_compute)
-		add_wait_semaphore_nolock(QUEUE_INDEX_COMPUTE, semaphores[plan.wait_graphics ? 1 : 0], plan.compute_stages, flush);
-}
-
-void Device::emit_queue_signals(VkSemaphore sem, uint64_t timeline, InternalFence *fence,
-                                unsigned semaphore_count, Semaphore *semaphores)
-{
-	// Add external signal semaphores.
-	if (ext.timeline_semaphore_features.timelineSemaphore)
-	{
-		// Signal once and distribute the timeline value to all.
-		granite_submit_composer_add_signal(&composer, sem, timeline);
-
-		if (fence)
-		{
-			fence->timeline = sem;
-			fence->value = timeline;
-			fence->fence = VK_NULL_HANDLE;
-		}
-
-		for (unsigned i = 0; i < semaphore_count; i++)
-		{
-			VK_ASSERT(!semaphores[i]);
-			semaphores[i] = Semaphore(static_cast<SemaphoreHolder *>(
-					granite_semaphore_new_timeline(&handle_pool.semaphores, &handle_owner, sem, timeline)));
-		}
-	}
-	else
-	{
-		if (fence)
-		{
-			fence->timeline = VK_NULL_HANDLE;
-			fence->value = 0;
-		}
-
-		for (unsigned i = 0; i < semaphore_count; i++)
-		{
-			VkSemaphore cleared_semaphore = granite_semaphore_pool_request(&managers.semaphore);
-			granite_submit_composer_add_signal(&composer, cleared_semaphore, 0);
-			VK_ASSERT(!semaphores[i]);
-			auto *object = granite_semaphore_new_binary(&handle_pool.semaphores, &handle_owner, cleared_semaphore);
-			// Without an object for it nothing will wait for it: it is
-			// signalled, and destroyed when this frame comes round.
-			if (!object)
-				granite_frame_garbage_push(&frame().garbage, GRANITE_GARBAGE_SEMAPHORE, GRANITE_VK_TO_BITS(cleared_semaphore));
-			semaphores[i] = Semaphore(static_cast<SemaphoreHolder *>(object));
-		}
-	}
-}
-
-VkResult Device::submit_batches(VkQueue queue, VkFence fence)
-{
-	if (queue_lock_callback)
-		queue_lock_callback(queue_lock_userdata);
-	VkResult result = granite_submit_composer_submit(&composer, table, queue, fence,
-	                                                 get_workarounds().split_binary_timeline_semaphores);
-	if (queue_unlock_callback)
-		queue_unlock_callback(queue_lock_userdata);
-	return result;
-}
-
-// Everything the frame has for the queue goes in one submission, which
-// waits for the queue's semaphores and signals the fence and semaphores
-// asked for. With nothing to submit and nothing to signal there is no
-// submission, unless @force asks for an empty one.
-void Device::submit_queue(QueueIndices physical_type, InternalFence *fence,
-                          unsigned semaphore_count, Semaphore *semaphores, bool force)
-{
-	// Always check if we need to flush pending transfers.
-	if (physical_type != QUEUE_INDEX_TRANSFER)
-		flush_frame(QUEUE_INDEX_TRANSFER);
-
-	auto &data = queue_data[physical_type];
-	auto &f = frame();
-
-	if (!f.num_submissions[physical_type] && !fence && !semaphore_count && !force)
-		return;
-
-	VkSemaphore timeline_semaphore = data.timeline_semaphore;
-	uint64_t timeline_value = ++data.current_timeline;
-
-	VkQueue queue = queue_info.queues[physical_type];
-	frame().sync.timeline_values[physical_type] = data.current_timeline;
-
-	granite_submit_composer_begin(&composer, workarounds.split_binary_timeline_semaphores);
-	granite_queue_waits_collect(&data.waits, &composer, &frame().garbage);
-
-	for (unsigned i = 0; i < f.num_submissions[physical_type]; i++)
-		granite_submit_composer_add_command_buffer(&composer, f.submissions[physical_type][i]->cmd);
-
-	VkFence cleared_fence = fence && !ext.timeline_semaphore_features.timelineSemaphore ?
-	                        granite_fence_pool_request(&managers.fence) :
-	                        VK_NULL_HANDLE;
-
-	if (fence)
-		fence->fence = cleared_fence;
-
-	emit_queue_signals(timeline_semaphore, timeline_value,
-	                   fence, semaphore_count, semaphores);
-
-	auto result = submit_batches(queue, cleared_fence);
-
-	if (result != VK_SUCCESS)
-		LOGE("vkQueueSubmit failed (code: %d).\n", int(result));
-	granite_frame_context_submitted(&f, physical_type);
-
-	if (!ext.timeline_semaphore_features.timelineSemaphore)
-		data.need_fence = true;
-}
-
-void Device::flush_frame(QueueIndices physical_type)
-{
-	if (queue_info.queues[physical_type] == VK_NULL_HANDLE)
-		return;
-
-	submit_queue(physical_type, nullptr);
+	granite_submission_submit_staging(&submission, &frame(), cmd.get(), usage, flush);
+	decrement_frame_counter_nolock();
 }
 
 void Device::end_frame_nolock()
 {
-	// Make sure we have a fence which covers all submissions in the frame.
-	InternalFence fence;
-
-	for (auto &i : queue_flush_order)
-	{
-		if (queue_data[i].need_fence || frame().num_submissions[i])
-		{
-			submit_queue(i, &fence);
-			if (fence.fence != VK_NULL_HANDLE)
-			{
-				// (no room: wait for it here and now)
-				if (!granite_frame_sync_add_fence(&frame().sync, fence.fence))
-					table->vkWaitForFences(device, 1, &fence.fence, VK_TRUE, UINT64_MAX);
-				granite_frame_garbage_push(&frame().garbage, GRANITE_GARBAGE_RECYCLE_FENCE, GRANITE_VK_TO_BITS(fence.fence));
-			}
-			queue_data[i].need_fence = false;
-		}
-	}
+	granite_submission_end_frame(&submission, &frame());
 }
 
 void Device::flush_frame()
 {
-	flush_frame_nolock();
-}
-
-void Device::flush_frame_nolock()
-{
-	for (auto &i : queue_flush_order)
-		flush_frame(i);
+	granite_submission_flush(&submission, &frame());
 }
 
 CommandBufferHandle Device::request_command_buffer(CommandBuffer::Type type)
@@ -733,19 +532,14 @@ Device::~Device()
 			static_cast<Device *>(userdata)->destroy_pipeline(pipeline->pipeline);
 		}, this);
 	}
-	granite_submit_composer_free(&composer);
+	granite_submission_free(&submission);
 
 	deinit_timeline_semaphores();
 }
 
 void Device::deinit_timeline_semaphores()
 {
-	for (auto &data : queue_data)
-	{
-		if (data.timeline_semaphore != VK_NULL_HANDLE)
-			table->vkDestroySemaphore(device, data.timeline_semaphore, nullptr);
-		data.timeline_semaphore = VK_NULL_HANDLE;
-	}
+	granite_submission_free_timelines(&submission);
 
 	// Make sure we don't accidentally try to wait for these after we destroy the semaphores.
 	for (unsigned i = 0; i < num_frames; i++)
@@ -765,7 +559,7 @@ void Device::init_frame_contexts(unsigned count)
 		count = MAX_DEFERRED_FRAMES;
 	VkSemaphore timelines[QUEUE_INDEX_COUNT];
 	for (int i = 0; i < QUEUE_INDEX_COUNT; i++)
-		timelines[i] = queue_data[i].timeline_semaphore;
+		timelines[i] = submission.queues[i].timeline_semaphore;
 	for (unsigned i = 0; i < count; i++)
 	{
 		if (!granite_frame_context_init(&per_frame[i], &frame_env, i, queue_info.family_indices,
@@ -796,20 +590,6 @@ void Device::free_memory_nolock(const DeviceAllocation &alloc)
 void Device::destroy_pipeline(VkPipeline pipeline)
 {
 	release_handle(GRANITE_GARBAGE_PIPELINE, GRANITE_VK_TO_BITS(pipeline));
-}
-
-// The counted object for what a submission is waited on by.
-Fence Device::wrap_fence(const InternalFence &fence)
-{
-	granite_fence_env_t env;
-	env.device = device;
-	env.table = table;
-	env.wait_ec = fence_wait_ec_live ? &fence_wait_ec : nullptr;
-	auto *object = granite_fence_new(&handle_pool.fences, &handle_owner, &env, fence.fence, fence.timeline, fence.value);
-	// Without one the fence still goes back when its frame comes round.
-	if (!object && !fence.value && fence.fence != VK_NULL_HANDLE)
-		reset_fence(fence.fence, false);
-	return Fence(static_cast<FenceHolder *>(object));
 }
 
 void Device::handle_recycle_fence(void *user, VkFence fence, bool seen, bool owner_thread)
@@ -851,13 +631,6 @@ void Device::destroy_framebuffer_nolock(VkFramebuffer framebuffer)
 	granite_frame_garbage_push(&frame().garbage, GRANITE_GARBAGE_FRAMEBUFFER, GRANITE_VK_TO_BITS(framebuffer));
 }
 
-void Device::clear_wait_semaphores()
-{
-	// (the device is idle: nothing will wait for them)
-	for (auto &data : queue_data)
-		granite_queue_waits_clear(&data.waits, device, table);
-}
-
 void Device::wait_idle()
 {
 	DRAIN_FRAME_LOCK();
@@ -869,18 +642,7 @@ void Device::wait_idle_nolock()
 	if (num_frames)
 		end_frame_nolock();
 
-	if (device != VK_NULL_HANDLE)
-	{
-		if (queue_lock_callback)
-			queue_lock_callback(queue_lock_userdata);
-		auto result = table->vkDeviceWaitIdle(device);
-		if (result != VK_SUCCESS)
-			LOGE("vkDeviceWaitIdle failed with code: %d\n", result);
-		if (queue_unlock_callback)
-			queue_unlock_callback(queue_lock_userdata);
-	}
-
-	clear_wait_semaphores();
+	granite_submission_wait_idle(&submission);
 
 	// Free memory for buffer pools.
 	granite_buffer_pool_reset(&managers.vbo);
@@ -1207,9 +969,9 @@ ImageHandle Device::create_image_from_staging_buffer(const ImageCreateInfo &crea
 	}
 	else
 	{
-		submit_nolock(graphics_cmd, nullptr, 0, nullptr);
+		submit(graphics_cmd);
 		if (plan.flush_graphics)
-			flush_frame(QUEUE_INDEX_GRAPHICS);
+			granite_submission_flush_queue(&submission, &frame(), QUEUE_INDEX_GRAPHICS);
 	}
 
 	return handle;
@@ -1391,9 +1153,9 @@ unsigned Device::get_num_frame_contexts() const
 
 void Device::set_queue_lock(QueueLockCallback lock_callback, QueueLockCallback unlock_callback, void *userdata)
 {
-	queue_lock_callback = lock_callback;
-	queue_unlock_callback = unlock_callback;
-	queue_lock_userdata = userdata;
+	submission.queue_lock = lock_callback;
+	submission.queue_unlock = unlock_callback;
+	submission.queue_user = userdata;
 }
 
 const VolkDeviceTable &Device::get_device_table() const

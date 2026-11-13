@@ -30,6 +30,7 @@ PARALLEL_RDP_SOURCES_C := \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/render_target.c \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/command_buffer.c \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/frame_context.c \
+        $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/submission.c \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/framebuffer.c \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/frame_garbage.c \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/pipeline_compile.c \

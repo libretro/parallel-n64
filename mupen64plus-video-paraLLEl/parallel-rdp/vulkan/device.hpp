@@ -43,6 +43,7 @@
 #include "queue_submit.h"
 #include "frame_sync.h"
 #include "frame_context.h"
+#include "submission.h"
 #include "memory_release.h"
 #include "small_vector.hpp"
 #include <stdio.h>
@@ -282,7 +283,6 @@ private:
 
 	DeviceFeatures ext;
 	void init_stock_samplers();
-	void init_timeline_semaphores();
 	void deinit_timeline_semaphores();
 
 
@@ -363,27 +363,9 @@ private:
 		~FrameContextsFree() { d->free_frame_contexts(); }
 	} frame_contexts_free{this};
 
-	struct QueueData
-	{
-		// what the queue's next submission waits for (queue_submit.c)
-		granite_queue_waits_t waits = {};
-		bool need_fence = false;
-
-		VkSemaphore timeline_semaphore = VK_NULL_HANDLE;
-		uint64_t current_timeline = 0;
-	} queue_data[QUEUE_INDEX_COUNT];
-
-	struct InternalFence
-	{
-		VkFence fence;
-		VkSemaphore timeline;
-		uint64_t value;
-	};
-	Fence wrap_fence(const InternalFence &fence);
-
-	void submit_queue(QueueIndices physical_type, InternalFence *fence,
-	                  unsigned semaphore_count = 0,
-	                  Semaphore *semaphore = nullptr, bool force = false);
+	// How command buffers get to the queues (submission.c).
+	granite_submission_t submission;
+	enum { MAX_SUBMIT_SEMAPHORES = 4 };
 
 	granite_frame_context_t &frame()
 	{
@@ -408,21 +390,9 @@ private:
 	granite_pipeline_record_table_t pipeline_records;
 
 
-	void clear_wait_semaphores();
 	void submit_staging(CommandBufferHandle &cmd, VkBufferUsageFlags usage, bool flush);
 
-	QueueLockCallback queue_lock_callback = nullptr;
-	QueueLockCallback queue_unlock_callback = nullptr;
-	void *queue_lock_userdata = nullptr;
-	void flush_frame(QueueIndices physical_type);
 	static const granite_buffer_pool_ops_t block_ops;
-
-	// What goes to a queue in one submission; reused, the owner thread's.
-	granite_submit_composer_t composer;
-	void emit_queue_signals(
-	                        VkSemaphore sem, uint64_t timeline, InternalFence *fence,
-	                        unsigned semaphore_count, Semaphore *semaphores);
-	VkResult submit_batches(VkQueue queue, VkFence fence);
 
 	void destroy_pipeline(VkPipeline pipeline);
 	void free_memory(const DeviceAllocation &alloc);
@@ -432,14 +402,7 @@ private:
 	void free_memory_nolock(const DeviceAllocation &alloc);
 	void reset_fence_nolock(VkFence fence, bool observed_wait);
 
-	void flush_frame_nolock();
 	CommandBufferHandle request_command_buffer_nolock(unsigned thread_index, CommandBuffer::Type type);
-	void submit_discard_nolock(CommandBufferHandle &cmd);
-	void submit_nolock(CommandBufferHandle cmd, Fence *fence,
-	                   unsigned semaphore_count, Semaphore *semaphore);
-	void submit_empty_nolock(QueueIndices physical_type, Fence *fence);
-	void add_wait_semaphore_nolock(QueueIndices type, Semaphore semaphore, VkPipelineStageFlags stages,
-	                               bool flush);
 
 	void request_vertex_block_nolock(granite_buffer_block_t &block, VkDeviceSize size);
 	void request_uniform_block_nolock(granite_buffer_block_t &block, VkDeviceSize size);
