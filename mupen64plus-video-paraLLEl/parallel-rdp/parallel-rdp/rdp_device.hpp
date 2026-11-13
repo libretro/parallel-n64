@@ -29,7 +29,7 @@
 #include "command_ring.h"
 #include "rdp_worker.h"
 #include <retro_atomic.h>
-#include "rdp_dump_write.hpp"
+#include "rdp_dump_write.h"
 #include "upscaler_pass.hpp"
 #include "temporal_upscaler.h"
 
@@ -338,7 +338,7 @@ private:
 	void upscaler_triangle(unsigned op, TriangleSetup &setup, AttributeSetup &attr);
 	void upscaler_scanout();
 
-	RDPDumpWriter *dump_writer = nullptr;
+	rdp_dump_writer_t *dump_writer = nullptr;
 #if defined(__GNUC__)
 	__attribute__((noinline, cold))
 #elif defined(_MSC_VER)

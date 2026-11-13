@@ -96,13 +96,9 @@ CommandProcessor::CommandProcessor(Vulkan::Device &device_, void *rdram_ptr,
 
 	if (const char *env = getenv("PARALLEL_RDP_DUMP_PATH"))
 	{
-		dump_writer = Util::create<RDPDumpWriter>();
-		if (!dump_writer->init(env, rdram_size, hidden_rdram_size))
-		{
+		dump_writer = rdp_dump_writer_new(env, rdram_size, hidden_rdram_size);
+		if (!dump_writer)
 			LOGE("Failed to init RDP dump: %s.\n", env);
-			Util::destroy(dump_writer);
-			dump_writer = nullptr;
-		}
 		else
 		{
 			LOGI("Dumping RDP commands to: %s.\n", env);
@@ -211,7 +207,7 @@ CommandProcessor::~CommandProcessor()
 	rdp_command_ring_free(ring);
 	ring = nullptr;
 	rdp_upscaler_free(upscaler);
-	Util::destroy(dump_writer);
+	rdp_dump_writer_free(dump_writer);
 }
 
 void CommandProcessor::begin_frame_context()
@@ -307,20 +303,9 @@ void CommandProcessor::flush_hidden_dram_to_dump()
 	size_t size = hidden_rdram->get_create_info().size;
 
 	if (no_storage_8bit)
-	{
-		const uint16_t *wide = static_cast<const uint16_t *>(hidden);
-		size_t count = size / 2;
-		uint8_t *narrow = static_cast<uint8_t *>(malloc(count));
-		size_t i;
-		if (!narrow)
-			return;
-		for (i = 0; i < count; i++)
-			narrow[i] = uint8_t(wide[i]);
-		dump_writer->flush_hidden_dram(narrow, uint32_t(count));
-		free(narrow);
-	}
+		rdp_dump_writer_flush_hidden_dram_wide(dump_writer, static_cast<const uint16_t *>(hidden), uint32_t(size / 2));
 	else
-		dump_writer->flush_hidden_dram(hidden, uint32_t(size));
+		rdp_dump_writer_flush_hidden_dram(dump_writer, hidden, uint32_t(size));
 }
 
 bool CommandProcessor::device_is_supported() const
@@ -1055,7 +1040,7 @@ void CommandProcessor::enqueue_command_dumped(unsigned num_words, const uint32_t
 	if (!dump_in_command_list)
 	{
 		wait_for_timeline(signal_timeline());
-		dump_writer->flush_dram(begin_read_rdram(), rdram_size);
+		rdp_dump_writer_flush_dram(dump_writer, begin_read_rdram(), rdram_size);
 		flush_hidden_dram_to_dump();
 		dump_in_command_list = true;
 	}
@@ -1064,11 +1049,11 @@ void CommandProcessor::enqueue_command_dumped(unsigned num_words, const uint32_t
 
 	if (Op(cmd_id) == Op::SyncFull)
 	{
-		dump_writer->signal_complete();
+		rdp_dump_writer_signal_complete(dump_writer);
 		dump_in_command_list = false;
 	}
 	else
-		dump_writer->emit_command(cmd_id, words, num_words);
+		rdp_dump_writer_emit_command(dump_writer, cmd_id, words, num_words);
 }
 
 // command_ring.c names the idle tick by number
@@ -1189,7 +1174,7 @@ void CommandProcessor::set_vi_register(VIRegister reg, uint32_t value)
 {
 	vi.set_vi_register(reg, value);
 	if (dump_writer)
-		dump_writer->set_vi_register(uint32_t(reg), value);
+		rdp_dump_writer_set_vi_register(dump_writer, uint32_t(reg), value);
 }
 
 void *CommandProcessor::begin_read_rdram()
@@ -1246,9 +1231,9 @@ Vulkan::ImageHandle CommandProcessor::scanout(const ScanoutOptions &opts, VkImag
 	if (dump_writer)
 	{
 		wait_for_timeline(signal_timeline());
-		dump_writer->flush_dram(begin_read_rdram(), rdram_size);
+		rdp_dump_writer_flush_dram(dump_writer, begin_read_rdram(), rdram_size);
 		flush_hidden_dram_to_dump();
-		dump_writer->end_frame();
+		rdp_dump_writer_end_frame(dump_writer);
 	}
 
 	// Flush, and resolve the scanout range on non-coherent hosts, on the
