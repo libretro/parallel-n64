@@ -34,8 +34,6 @@ using HandleCounter = Util::MultiThreadCounter;
 
 template <typename T>
 using VulkanObjectPool = Util::ThreadSafeObjectPool<T>;
-template <typename T>
-using VulkanCache = Util::ThreadSafeIntrusiveHashMapReadCached<T>;
 
 // (context.h)
 enum QueueIndices

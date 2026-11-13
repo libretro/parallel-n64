@@ -121,28 +121,16 @@ void Device::unmap_host_buffer(const Buffer &buffer, MemoryAccessFlags access, V
 	granite_device_allocator_unmap(&managers.memory, &buffer.alloc, access, offset, length);
 }
 
+// Shaders, programs, pipeline layouts and set allocators are made once
+// and kept (program_cache.c).
 Shader *Device::request_shader(const uint32_t *data, size_t size, const ResourceLayout *layout)
 {
-	auto hash = Shader::hash(data, size);
-	auto *ret = shaders.find(hash);
-	if (!ret)
-		ret = shaders.emplace_yield(hash, hash, this, data, size, layout);
-	return ret;
+	return static_cast<Shader *>(granite_program_cache_shader(&program_cache, data, size, layout));
 }
 
 Program *Device::request_program(Vulkan::Shader *compute_shader)
 {
-	if (!compute_shader)
-		return nullptr;
-
-	Util::Hasher hasher;
-	hasher.u64(compute_shader->get_hash());
-
-	auto hash = hasher.get();
-	auto *ret = programs.find(hash);
-	if (!ret)
-		ret = programs.emplace_yield(hash, this, compute_shader);
-	return ret;
+	return static_cast<Program *>(granite_program_cache_compute(&program_cache, compute_shader));
 }
 
 Program *Device::request_program(const uint32_t *compute_data, size_t compute_size,
@@ -157,19 +145,7 @@ Program *Device::request_program(const uint32_t *compute_data, size_t compute_si
 
 Program *Device::request_program(Shader *vertex, Shader *fragment)
 {
-	if (!vertex || !fragment)
-		return nullptr;
-
-	Util::Hasher hasher;
-	hasher.u64(vertex->get_hash());
-	hasher.u64(fragment->get_hash());
-
-	auto hash = hasher.get();
-	auto *ret = programs.find(hash);
-
-	if (!ret)
-		ret = programs.emplace_yield(hash, this, vertex, fragment);
-	return ret;
+	return static_cast<Program *>(granite_program_cache_graphics(&program_cache, vertex, fragment));
 }
 
 Program *Device::request_program(const uint32_t *vertex_data, size_t vertex_size, const uint32_t *fragment_data,
@@ -182,142 +158,6 @@ Program *Device::request_program(const uint32_t *vertex_data, size_t vertex_size
 	auto *vertex = request_shader(vertex_data, vertex_size, vertex_layout);
 	auto *fragment = request_shader(fragment_data, fragment_size, fragment_layout);
 	return request_program(vertex, fragment);
-}
-
-PipelineLayout *Device::request_pipeline_layout(const CombinedResourceLayout &layout)
-{
-	auto hash = granite_combined_layout_hash(&layout);
-	auto *ret = pipeline_layouts.find(hash);
-	if (!ret)
-		ret = pipeline_layouts.emplace_yield(hash, hash, this, layout);
-	return ret;
-}
-
-DescriptorSetAllocator::DescriptorSetAllocator(Hash hash, Device *device, const granite_descriptor_set_layout_t &layout,
-                                               const uint32_t *stages_for_bindings, bool push)
-	: IntrusiveHashMapEnabled<DescriptorSetAllocator>(hash)
-{
-	granite_set_allocator_init(&impl, device->get_device(), &device->get_device_table(), &layout,
-	                           stages_for_bindings, nullptr, push, device->num_thread_indices);
-}
-
-DescriptorSetAllocator *Device::request_descriptor_set_allocator(const granite_descriptor_set_layout_t &layout,
-                                                                 const uint32_t *stages_for_bindings, bool push)
-{
-	Hasher h;
-	h.u32(push);
-	h.data(reinterpret_cast<const uint32_t *>(&layout), sizeof(layout));
-	h.data(stages_for_bindings, sizeof(uint32_t) * VULKAN_NUM_BINDINGS);
-	auto hash = h.get();
-
-	auto *ret = descriptor_set_allocators.find(hash);
-	if (!ret)
-		ret = descriptor_set_allocators.emplace_yield(hash, hash, this, layout, stages_for_bindings, push);
-	return ret;
-}
-
-void Device::bake_program(Program &program)
-{
-	CombinedResourceLayout layout;
-	for (unsigned i = 0; i < static_cast<unsigned>(ShaderStage::Count); i++)
-	{
-		auto *shader = program.get_shader(static_cast<ShaderStage>(i));
-		if (shader)
-			granite_combined_layout_add(&layout, i, &shader->get_layout());
-	}
-	granite_combined_layout_bake(&layout);
-	program.set_pipeline_layout(request_pipeline_layout(layout));
-}
-
-// What is left of shader.cpp: the layouts are C (shader.c).
-PipelineLayout::PipelineLayout(Hash hash, Device *device, const CombinedResourceLayout &layout_)
-	: IntrusiveHashMapEnabled<PipelineLayout>(hash)
-	, layout(layout_)
-{
-	VkDescriptorSetLayout layouts[VULKAN_NUM_DESCRIPTOR_SETS] = {};
-	auto &features = device->get_device_features();
-	uint32_t push_set_mask = granite_combined_layout_push_set_mask(&layout, features.supports_push_descriptor,
-	                                                               features.push_descriptor_properties.maxPushDescriptors);
-
-	for (unsigned i = 0; i < VULKAN_NUM_DESCRIPTOR_SETS; i++)
-	{
-		auto *allocator = device->request_descriptor_set_allocator(layout.sets[i], layout.stages_for_bindings[i],
-		                                                           (push_set_mask & (1u << i)) != 0);
-		layouts[i] = allocator->get_layout();
-		bind.allocators[i] = allocator->get_impl();
-	}
-
-	granite_pipeline_layout_init(&impl, device->get_device(), &device->get_device_table(), &layout, layouts,
-	                             push_set_mask, device->get_gpu_properties().limits.maxBoundDescriptorSets);
-
-	bind.hash = hash;
-	bind.layout = impl.layout;
-	bind.resource_layout = &layout;
-	bind.update_templates = impl.update_template;
-	bind.push_set_mask = push_set_mask;
-}
-
-Util::Hash Shader::hash(const uint32_t *data, size_t size)
-{
-	Util::Hasher hasher;
-	hasher.data(data, size);
-	return hasher.get();
-}
-
-Shader::Shader(Hash hash, Device *device_, const uint32_t *data, size_t size,
-               const ResourceLayout *resource_layout)
-	: IntrusiveHashMapEnabled<Shader>(hash)
-	, device(device_)
-{
-	VkShaderModuleCreateInfo info = { VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO };
-	info.codeSize = size;
-	info.pCode = data;
-
-#ifdef VULKAN_DEBUG
-	LOGI("Creating shader module.\n");
-#endif
-	auto &table = device->get_device_table();
-	if (table.vkCreateShaderModule(device->get_device(), &info, nullptr, &module) != VK_SUCCESS)
-		LOGE("Failed to create shader module.\n");
-
-	if (resource_layout)
-		layout = *resource_layout;
-}
-
-Shader::~Shader()
-{
-	auto &table = device->get_device_table();
-	if (module)
-		table.vkDestroyShaderModule(device->get_device(), module, nullptr);
-}
-
-void Program::set_shader(ShaderStage stage, Shader *handle)
-{
-	shaders[Util::ecast(stage)] = handle;
-}
-
-Program::Program(Device *device_, Shader *vertex, Shader *fragment)
-    : device(device_)
-{
-	granite_pipeline_map_init(&pipelines);
-	set_shader(ShaderStage::Vertex, vertex);
-	set_shader(ShaderStage::Fragment, fragment);
-	device->bake_program(*this);
-}
-
-Program::Program(Device *device_, Shader *compute_shader)
-    : device(device_)
-{
-	granite_pipeline_map_init(&pipelines);
-	set_shader(ShaderStage::Compute, compute_shader);
-	device->bake_program(*this);
-}
-
-Program::~Program()
-{
-	granite_pipeline_map_free(&pipelines, [](void *userdata, const granite_pipeline_t *pipeline) {
-		static_cast<Device *>(userdata)->destroy_pipeline(pipeline->pipeline);
-	}, device);
 }
 
 // The driver's pipeline cache and the list of pipelines built are C
@@ -383,23 +223,26 @@ const RenderPass *Device::recreate_render_pass(const pipeline_record_pass_t &sig
 
 bool Device::resolve_pipeline_record(const pipeline_record_t &record, DeferredPipelineCompile &compile)
 {
-	Program *program = programs.find(record.program_hash);
+	Program *program = static_cast<Program *>(granite_program_cache_find_program(&program_cache, record.program_hash));
 	const RenderPass *pass = nullptr;
 	const bool graphics = record.kind == PIPELINE_RECORD_GRAPHICS;
 
 	/* A program is made on first use; one this device has not made yet is
 	 * made from the shaders it was made from, when those are here. */
 	if (!program && !graphics)
-		program = request_program(shaders.find(record.shader_hashes[0]));
+		program = request_program(static_cast<Shader *>(
+				granite_program_cache_find_shader(&program_cache, record.shader_hashes[0])));
 	else if (!program)
-		program = request_program(shaders.find(record.shader_hashes[0]),
-		                          shaders.find(record.shader_hashes[1]));
+		program = request_program(
+				static_cast<Shader *>(granite_program_cache_find_shader(&program_cache, record.shader_hashes[0])),
+				static_cast<Shader *>(granite_program_cache_find_shader(&program_cache, record.shader_hashes[1])));
 	if (!program || program->get_hash() != record.program_hash || !program->get_pipeline_layout()
 	    || (program->get_shader(ShaderStage::Compute) != nullptr) == graphics)
 		return false;
 	if (graphics)
 	{
-		pass = render_passes.find(record.render_pass_hash);
+		pass = static_cast<const RenderPass *>(
+				granite_program_cache_find_render_pass(&program_cache, record.render_pass_hash));
 		if (!pass)
 			pass = recreate_render_pass(record.pass);
 		if (!pass || pass->get_hash() != record.render_pass_hash
@@ -453,6 +296,11 @@ void Device::set_context(const Context &context)
 	ext = context.get_enabled_device_features();
 
 	init_workarounds();
+
+	granite_program_cache_init(&program_cache, device, table, ext.supports_push_descriptor,
+	                           ext.push_descriptor_properties.maxPushDescriptors,
+	                           gpu_props.limits.maxBoundDescriptorSets, num_thread_indices);
+	program_cache_live = true;
 
 	init_stock_samplers();
 
@@ -835,6 +683,12 @@ Device::~Device()
 	granite_pipeline_record_table_free(&pipeline_records);
 
 	granite_framebuffer_allocator_free(&framebuffer_allocator);
+	if (program_cache_live)
+	{
+		granite_program_cache_free(&program_cache, [](void *userdata, const granite_pipeline_t *pipeline) {
+			static_cast<Device *>(userdata)->destroy_pipeline(pipeline->pipeline);
+		}, this);
+	}
 	granite_submit_composer_free(&composer);
 
 	deinit_timeline_semaphores();
@@ -1007,10 +861,8 @@ void Device::wait_idle_nolock()
 
 	granite_framebuffer_allocator_clear(&framebuffer_allocator);
 
-	for (auto &allocator : descriptor_set_allocators.get_read_only())
-		allocator.clear();
-	for (auto &allocator : descriptor_set_allocators.get_read_write())
-		allocator.clear();
+	if (program_cache_live)
+		granite_program_cache_clear_sets(&program_cache);
 
 	for (auto &frame : per_frame)
 	{
@@ -1034,10 +886,7 @@ void Device::next_frame_context()
 
 	granite_framebuffer_allocator_begin_frame(&framebuffer_allocator);
 
-	for (auto &allocator : descriptor_set_allocators.get_read_only())
-		allocator.begin_frame();
-	for (auto &allocator : descriptor_set_allocators.get_read_write())
-		allocator.begin_frame();
+	granite_program_cache_begin_frame(&program_cache);
 
 	VK_ASSERT(!per_frame.empty());
 	frame_context_index++;
@@ -1552,17 +1401,11 @@ const RenderPass &Device::request_render_pass(const RenderPassInfo &info, bool c
 
 const RenderPass &Device::request_render_pass(const granite_render_pass_desc_t &desc, bool compatible)
 {
-	auto hash = granite_render_pass_hash(&desc, compatible);
-	auto *ret = render_passes.find(hash);
-	if (!ret)
-		ret = render_passes.emplace_yield(hash, hash, this, desc);
-	return *ret;
-}
-
-RenderPass::RenderPass(Hash hash, Device *device, const granite_render_pass_desc_t &desc)
-	: IntrusiveHashMapEnabled<RenderPass>(hash)
-{
-	granite_render_pass_init(&impl, device->get_device(), &device->get_device_table(), &desc);
+	// (out of memory leaves nothing to draw with)
+	auto *pass = granite_program_cache_render_pass(&program_cache, &desc, compatible);
+	if (!pass)
+		abort();
+	return *static_cast<const RenderPass *>(pass);
 }
 
 // The device's owner thread only: the allocator takes no lock.

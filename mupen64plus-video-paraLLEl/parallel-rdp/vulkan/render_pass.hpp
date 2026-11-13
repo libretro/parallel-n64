@@ -23,6 +23,7 @@
 #pragma once
 
 #include "render_pass.h"
+#include "program_cache.h"
 #include "framebuffer.h"
 #include "cookie.hpp"
 #include "hash.hpp"
@@ -68,15 +69,15 @@ struct RenderPassInfo
 	VkClearDepthStencilValue clear_depth_stencil = { 1.0f, 0 };
 };
 
-class RenderPass : public HashedObject<RenderPass>, public NoCopyNoMove
+// A render pass is C (program_cache.h). No members of its own.
+class RenderPass : public granite_cached_render_pass_t
 {
 public:
-	// device.cpp
-	RenderPass(Util::Hash hash, Device *device, const granite_render_pass_desc_t &desc);
+	RenderPass() = delete;
 
-	~RenderPass()
+	Util::Hash get_hash() const
 	{
-		granite_render_pass_free(&impl);
+		return node.hash;
 	}
 
 	VkRenderPass get_render_pass() const
@@ -114,9 +115,6 @@ public:
 	{
 		return granite_render_pass_has_stencil(&impl);
 	}
-
-private:
-	granite_render_pass_t impl;
 };
 
 // Its render_pass is the compatible RenderPass it was made with.

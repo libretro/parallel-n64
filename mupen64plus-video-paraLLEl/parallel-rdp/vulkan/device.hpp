@@ -110,14 +110,7 @@ public:
 	// Don't want to expose a lot of internal guts to make this work.
 	friend class CommandBuffer;
 	friend struct CommandBufferDeleter;
-	friend class Program;
-	friend class WSI;
 	friend class Cookie;
-	friend class PipelineLayout;
-	friend class RenderPass;
-	friend class Texture;
-	friend class DescriptorSetAllocator;
-	friend class Shader;
 
 	Device();
 	~Device();
@@ -267,15 +260,10 @@ private:
 	QueueInfo queue_info = {};
 	unsigned num_thread_indices = 1;
 
-	void bake_program(Program &program);
 
 	void request_vertex_block(granite_buffer_block_t &block, VkDeviceSize size);
 	void request_uniform_block(granite_buffer_block_t &block, VkDeviceSize size);
 
-	PipelineLayout *request_pipeline_layout(const CombinedResourceLayout &layout);
-	DescriptorSetAllocator *request_descriptor_set_allocator(const granite_descriptor_set_layout_t &layout,
-	                                                         const uint32_t *stages_for_sets,
-	                                                         bool push);
 	const Framebuffer &request_framebuffer(const RenderPassInfo &info);
 	const RenderPass &request_render_pass(const RenderPassInfo &info, bool compatible);
 	const RenderPass &request_render_pass(const granite_render_pass_desc_t &desc, bool compatible);
@@ -433,11 +421,10 @@ private:
 
 	Sampler samplers[static_cast<unsigned>(StockSampler::Count)] = {};
 
-	VulkanCache<PipelineLayout> pipeline_layouts;
-	VulkanCache<DescriptorSetAllocator> descriptor_set_allocators;
-	VulkanCache<RenderPass> render_passes;
-	VulkanCache<Shader> shaders;
-	VulkanCache<Program> programs;
+	// shaders, programs, pipeline layouts, set allocators and render passes
+	// (program_cache.h)
+	granite_program_cache_t program_cache;
+	bool program_cache_live = false;
 
 	granite_framebuffer_allocator_t framebuffer_allocator;
 	VkPipelineCache pipeline_cache = VK_NULL_HANDLE;

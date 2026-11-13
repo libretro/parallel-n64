@@ -48,9 +48,6 @@ private:
 	uint64_t cookie;
 };
 
-template <typename T>
-using HashedObject = Util::IntrusiveHashMapEnabled<T>;
-
 class InternalSyncEnabled
 {
 public:

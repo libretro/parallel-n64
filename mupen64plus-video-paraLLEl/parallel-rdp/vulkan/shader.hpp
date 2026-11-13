@@ -25,6 +25,7 @@
 #include <string.h>
 #include "shader.h"
 #include "pipeline_map.h"
+#include "program_cache.h"
 #include "resource_bindings.h"
 #include "cookie.hpp"
 #include "descriptor_set.hpp"
@@ -77,17 +78,14 @@ struct CombinedResourceLayout : granite_combined_layout_t
 static_assert(VULKAN_PUSH_CONSTANT_SIZE == GRANITE_PUSH_CONSTANT_SIZE, "The C bindings have other push constants.");
 using ResourceBindings = granite_resource_bindings_t;
 
-class PipelineLayout : public HashedObject<PipelineLayout>
+// Shaders, programs and pipeline layouts are C (program_cache.h). No
+// members of their own: the C structs by other names.
+class PipelineLayout : public granite_cached_pipeline_layout_t
 {
 public:
-	PipelineLayout(Util::Hash hash, Device *device, const CombinedResourceLayout &layout);
+	PipelineLayout() = delete;
 
-	~PipelineLayout()
-	{
-		granite_pipeline_layout_free(&impl);
-	}
-
-	const CombinedResourceLayout &get_resource_layout() const
+	const granite_combined_layout_t &get_resource_layout() const
 	{
 		return layout;
 	}
@@ -102,59 +100,44 @@ public:
 	{
 		return bind;
 	}
-
-private:
-	granite_pipeline_layout_t impl;
-	CombinedResourceLayout layout;
-	granite_bind_layout_t bind;
 };
 
-class Shader : public HashedObject<Shader>
+class Shader : public granite_shader_t
 {
 public:
-	Shader(Util::Hash binding, Device *device, const uint32_t *data, size_t size,
-	       const ResourceLayout *layout = nullptr);
-	~Shader();
-
-	const ResourceLayout &get_layout() const
-	{
-		return layout;
-	}
+	Shader() = delete;
 
 	VkShaderModule get_module() const
 	{
 		return module;
 	}
-	static Util::Hash hash(const uint32_t *data, size_t size);
 
-private:
-	Device *device;
-	VkShaderModule module = VK_NULL_HANDLE;
-	ResourceLayout layout;
+	Util::Hash get_hash() const
+	{
+		return node.hash;
+	}
 };
 
 using Pipeline = granite_pipeline_t;
 
-class Program : public HashedObject<Program>
+class Program : public granite_program_t
 {
 public:
-	Program(Device *device, Shader *vertex, Shader *fragment);
-	Program(Device *device, Shader *compute);
-	~Program();
+	Program() = delete;
+
+	Util::Hash get_hash() const
+	{
+		return node.hash;
+	}
 
 	inline const Shader *get_shader(ShaderStage stage) const
 	{
-		return shaders[Util::ecast(stage)];
-	}
-
-	void set_pipeline_layout(PipelineLayout *new_layout)
-	{
-		layout = new_layout;
+		return static_cast<const Shader *>(shaders[Util::ecast(stage)]);
 	}
 
 	PipelineLayout *get_pipeline_layout() const
 	{
-		return layout;
+		return static_cast<PipelineLayout *>(layout);
 	}
 
 	Pipeline get_pipeline(Util::Hash hash) const
@@ -169,12 +152,5 @@ public:
 	{
 		return granite_pipeline_map_add(&pipelines, hash, &pipeline);
 	}
-
-private:
-	void set_shader(ShaderStage stage, Shader *handle);
-	Device *device;
-	Shader *shaders[Util::ecast(ShaderStage::Count)] = {};
-	PipelineLayout *layout = nullptr;
-	granite_pipeline_map_t pipelines;
 };
 }
