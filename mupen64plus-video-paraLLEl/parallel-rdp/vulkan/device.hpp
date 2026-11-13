@@ -109,20 +109,6 @@ struct HandlePool
 	VulkanObjectPool<DeferredRelease> deferred;
 };
 
-// Where a debug channel's messages go: a function and what it is called on
-struct DebugChannelInterface
-{
-	union Word
-	{
-		uint32_t u32;
-		int32_t s32;
-		float f32;
-	};
-	void (*message)(void *user, const char *tag, uint32_t code, uint32_t x, uint32_t y, uint32_t z,
-	                uint32_t word_count, const Word *words);
-	void *user;
-};
-
 class Device
 	: public Util::IntrusivePtrEnabled<Device, Util::DefaultDelete<Device>, HandleCounter>
 {
@@ -408,14 +394,6 @@ private:
 		granite_frame_garbage_t garbage = {};
 		Util::Vector<ImageHandle> keep_alive_images;
 
-		struct DebugChannel
-		{
-			DebugChannelInterface *iface;
-			char tag[32];
-			BufferHandle buffer;
-		};
-		Util::Vector<DebugChannel> debug_channels;
-
 		bool in_destructor = false;
 	};
 	// The per frame structure must be destroyed after
@@ -516,8 +494,6 @@ private:
 	void wait_idle_nolock();
 	void end_frame_nolock();
 
-	void add_debug_channel_buffer(DebugChannelInterface *iface, const char *tag, BufferHandle buffer);
-	void parse_debug_channel(const PerFrame::DebugChannel &channel);
 
 	ImplementationWorkarounds workarounds;
 	void init_workarounds();

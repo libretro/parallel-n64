@@ -404,20 +404,6 @@ private:
 
 	DerivedSetup build_derived_attributes(const AttributeSetup &attr) const;
 	void build_combiner_constants(DerivedSetup &setup, unsigned cycle) const;
-	int filter_debug_channel_x = -1;
-	int filter_debug_channel_y = -1;
-	bool debug_channel = false;
-
-	void message(const char *tag, uint32_t code,
-	             uint32_t x, uint32_t y, uint32_t z,
-	             uint32_t num_words, const Vulkan::DebugChannelInterface::Word *words);
-	static void debug_channel_message(void *user, const char *tag, uint32_t code,
-	                                  uint32_t x, uint32_t y, uint32_t z,
-	                                  uint32_t num_words, const Vulkan::DebugChannelInterface::Word *words)
-	{
-		static_cast<Renderer *>(user)->message(tag, code, x, y, z, num_words, words);
-	}
-
 	bool can_support_minimum_subgroup_size(unsigned size) const;
 	bool supports_subgroup_size_control(uint32_t minimum_size, uint32_t maximum_size) const;
 
@@ -477,8 +463,5 @@ private:
 	retro_atomic_int_t active_submissions;
 	void enqueue_fence_wait(Vulkan::Fence fence);
 	uint64_t last_submit_ns = 0;
-
-	// last: it is read only with a debug channel on
-	Vulkan::DebugChannelInterface debug_channel_iface = { debug_channel_message, this };
 };
 }

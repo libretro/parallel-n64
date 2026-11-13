@@ -228,13 +228,6 @@ void VideoInterface::set_device(Vulkan::Device *device_)
 {
 	device = device_;
 	init_gamma_table();
-
-	if (const char *env = getenv("VI_DEBUG"))
-		debug_channel = strtol(env, nullptr, 0) != 0;
-	if (const char *env = getenv("VI_DEBUG_X"))
-		filter_debug_channel_x = strtol(env, nullptr, 0);
-	if (const char *env = getenv("VI_DEBUG_Y"))
-		filter_debug_channel_y = strtol(env, nullptr, 0);
 }
 
 void VideoInterface::set_renderer(Renderer *renderer_)
@@ -244,43 +237,7 @@ void VideoInterface::set_renderer(Renderer *renderer_)
 
 int VideoInterface::resolve_shader_define(const char *name, const char *define) const
 {
-	if (strcmp(define, "DEBUG_ENABLE") == 0)
-		return int(debug_channel);
-	else
-		return 0;
-}
-
-void VideoInterface::message(const char *tag, uint32_t code, uint32_t x, uint32_t y, uint32_t, uint32_t num_words,
-                             const Vulkan::DebugChannelInterface::Word *words)
-{
-	if (filter_debug_channel_x >= 0 && x != uint32_t(filter_debug_channel_x))
-		return;
-	if (filter_debug_channel_y >= 0 && y != uint32_t(filter_debug_channel_y))
-		return;
-
-	switch (num_words)
-	{
-	case 1:
-		LOGI("(%u, %u), line %d.\n", x, y, words[0].s32);
-		break;
-
-	case 2:
-		LOGI("(%u, %u), line %d: (%d).\n", x, y, words[0].s32, words[1].s32);
-		break;
-
-	case 3:
-		LOGI("(%u, %u), line %d: (%d, %d).\n", x, y, words[0].s32, words[1].s32, words[2].s32);
-		break;
-
-	case 4:
-		LOGI("(%u, %u), line %d: (%d, %d, %d).\n", x, y,
-		     words[0].s32, words[1].s32, words[2].s32, words[3].s32);
-		break;
-
-	default:
-		LOGE("Unknown number of generic parameters: %u\n", num_words);
-		break;
-	}
+	return 0;
 }
 
 void VideoInterface::init_gamma_table()
@@ -1585,9 +1542,6 @@ Vulkan::ImageHandle VideoInterface::scanout(VkImageLayout target_layout, const S
 		vram_image = vram_fetch_stage(regs, scaling_factor);
 
 	auto cmd = device->request_command_buffer();
-
-	if (debug_channel)
-		cmd->begin_debug_channel(&debug_channel_iface, "VI", 32 * 1024 * 1024);
 
 	// In the first pass, we need to read from VRAM and apply the fetch filter.
 	// This is either the AA filter if coverage < 7, or the dither reconstruction filter if coverage == 7 and enabled.

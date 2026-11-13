@@ -181,19 +181,6 @@ private:
 
 	void init_gamma_table();
 	bool previous_frame_blank = false;
-	bool debug_channel = false;
-	int filter_debug_channel_x = -1;
-	int filter_debug_channel_y = -1;
-
-	void message(const char *tag, uint32_t code,
-	             uint32_t x, uint32_t y, uint32_t z,
-	             uint32_t num_words, const Vulkan::DebugChannelInterface::Word *words);
-	static void debug_channel_message(void *user, const char *tag, uint32_t code,
-	                                  uint32_t x, uint32_t y, uint32_t z,
-	                                  uint32_t num_words, const Vulkan::DebugChannelInterface::Word *words)
-	{
-		static_cast<VideoInterface *>(user)->message(tag, code, x, y, z, num_words, words);
-	}
 
 	// Intermediate images, reused instead of created every frame.
 	mutable VIImagePool image_pool;
@@ -320,8 +307,5 @@ private:
 	                                        unsigned scaling_factor, bool field_select,
 	                                        const ScanoutOptions &options) const;
 	static bool need_fetch_bug_emulation(const Registers &reg, unsigned scaling_factor);
-
-	// last: it is read only with a debug channel on
-	Vulkan::DebugChannelInterface debug_channel_iface = { debug_channel_message, this };
 };
 }

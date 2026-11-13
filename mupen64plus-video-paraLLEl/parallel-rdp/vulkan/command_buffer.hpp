@@ -37,7 +37,6 @@
 
 namespace Vulkan
 {
-struct DebugChannelInterface;
 
 enum CommandBufferDirtyBits
 {
@@ -308,9 +307,6 @@ public:
 	// End is called automatically by Device in submission. Should not be called by application.
 	void end();
 
-	void begin_debug_channel(DebugChannelInterface *iface, const char *tag, VkDeviceSize size);
-	void end_debug_channel();
-
 	void extract_pipeline_state(DeferredPipelineCompile &compile) const;
 
 	enum class CompileMode
@@ -370,9 +366,6 @@ private:
 	                 uint64_t cookie);
 
 
-	char debug_channel_tag[32] = {};
-	Vulkan::BufferHandle debug_channel_buffer;
-	DebugChannelInterface *debug_channel_interface = nullptr;
 
 
 };

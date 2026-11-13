@@ -43,15 +43,6 @@ The VI filtering is always turned on if game requests it, but features can selec
 
 ## Environment variables for development / testing
 
-### `RDP_DEBUG` / `RDP_DEBUG_X` / `RDP_DEBUG_Y`
-
-Supports printf in shaders, which is extremely useful to drill down difficult bugs.
-Only printfs from certain pixels can be filtered through to avoid spam.
-
-### `VI_DEBUG` / `VI_DEBUG_X` / `VI_DEBUG_Y`
-
-Same as `RDP_DEBUG` but for the VI.
-
 ### `PARALLEL_RDP_SMALL_TYPES=0`
 
 Force-disables 8/16-bit arithmetic support. Useful when suspecting driver bugs.

@@ -178,13 +178,6 @@ bool Renderer::init_renderer(const RendererOptions &options)
 		buffer.init(*device);
 	bind_stream_instance();
 
-	if (const char *env = getenv("RDP_DEBUG"))
-		debug_channel = strtoul(env, nullptr, 0) != 0;
-	if (const char *env = getenv("RDP_DEBUG_X"))
-		filter_debug_channel_x = strtol(env, nullptr, 0);
-	if (const char *env = getenv("RDP_DEBUG_Y"))
-		filter_debug_channel_y = strtol(env, nullptr, 0);
-
 	{
 		Vulkan::BufferCreateInfo info = {};
 		info.size = Limits::MaxTMEMInstances * 0x1000;
@@ -348,7 +341,7 @@ bool Renderer::init_caps()
 int Renderer::resolve_shader_define(const char *name, const char *define) const
 {
 	if (strcmp(define, "DEBUG_ENABLE") == 0)
-		return int(debug_channel);
+		return 0;
 	else if (strcmp(define, "UBERSHADER") == 0)
 		return int(caps.ubershader);
 	else if (strcmp(define, "SMALL_TYPES") == 0)
@@ -446,104 +439,6 @@ void Renderer::init_blender_lut()
 	view.format = VK_FORMAT_R8_UINT;
 	view.range = info.size;
 	blender_divider_buffer = device->create_buffer_view(view);
-}
-
-void Renderer::message(const char *tag, uint32_t code, uint32_t x, uint32_t y, uint32_t, uint32_t num_words,
-                       const Vulkan::DebugChannelInterface::Word *words)
-{
-	if (filter_debug_channel_x >= 0 && x != uint32_t(filter_debug_channel_x))
-		return;
-	if (filter_debug_channel_y >= 0 && y != uint32_t(filter_debug_channel_y))
-		return;
-
-	enum Code
-	{
-		ASSERT_EQUAL = 0,
-		ASSERT_NOT_EQUAL = 1,
-		ASSERT_LESS_THAN = 2,
-		ASSERT_LESS_THAN_EQUAL = 3,
-		GENERIC = 4,
-		HEX = 5
-	};
-
-	switch (Code(code))
-	{
-	case ASSERT_EQUAL:
-		LOGE("ASSERT TRIPPED FOR (%u, %u), line %d, %d == %d failed.\n",
-		     x, y, words[0].s32, words[1].s32, words[2].s32);
-		break;
-
-	case ASSERT_NOT_EQUAL:
-		LOGE("ASSERT TRIPPED FOR (%u, %u), line %d, %d != %d failed.\n",
-		     x, y, words[0].s32, words[1].s32, words[2].s32);
-		break;
-
-	case ASSERT_LESS_THAN:
-		LOGE("ASSERT TRIPPED FOR (%u, %u), line %d, %d < %d failed.\n",
-		     x, y, words[0].s32, words[1].s32, words[2].s32);
-		break;
-
-	case ASSERT_LESS_THAN_EQUAL:
-		LOGE("ASSERT TRIPPED FOR (%u, %u), line %d, %d <= %d failed.\n",
-		     x, y, words[0].s32, words[1].s32, words[2].s32);
-		break;
-
-	case GENERIC:
-		switch (num_words)
-		{
-		case 1:
-			LOGI("(%u, %u), line %d.\n", x, y, words[0].s32);
-			break;
-
-		case 2:
-			LOGI("(%u, %u), line %d: (%d).\n", x, y, words[0].s32, words[1].s32);
-			break;
-
-		case 3:
-			LOGI("(%u, %u), line %d: (%d, %d).\n", x, y, words[0].s32, words[1].s32, words[2].s32);
-			break;
-
-		case 4:
-			LOGI("(%u, %u), line %d: (%d, %d, %d).\n", x, y,
-					words[0].s32, words[1].s32, words[2].s32, words[3].s32);
-			break;
-
-		default:
-			LOGE("Unknown number of generic parameters: %u\n", num_words);
-			break;
-		}
-		break;
-
-	case HEX:
-		switch (num_words)
-		{
-		case 1:
-			LOGI("(%u, %u), line %d.\n", x, y, words[0].s32);
-			break;
-
-		case 2:
-			LOGI("(%u, %u), line %d: (0x%x).\n", x, y, words[0].s32, words[1].s32);
-			break;
-
-		case 3:
-			LOGI("(%u, %u), line %d: (0x%x, 0x%x).\n", x, y, words[0].s32, words[1].s32, words[2].s32);
-			break;
-
-		case 4:
-			LOGI("(%u, %u), line %d: (0x%x, 0x%x, 0x%x).\n", x, y,
-			     words[0].s32, words[1].s32, words[2].s32, words[3].s32);
-			break;
-
-		default:
-			LOGE("Unknown number of generic parameters: %u\n", num_words);
-			break;
-		}
-		break;
-
-	default:
-		LOGE("Unexpected message code: %u\n", code);
-		break;
-	}
 }
 
 void Renderer::RenderBuffers::init(Vulkan::Device &device, granite_buffer_domain_t domain,
@@ -2268,9 +2163,6 @@ void Renderer::submit_render_pass(Vulkan::CommandBuffer &cmd)
 	bool need_submit = need_render_pass || need_tmem_upload;
 	if (!need_submit)
 		return;
-
-	if (debug_channel)
-		cmd.begin_debug_channel(&debug_channel_iface, "Debug", 16 * 1024 * 1024);
 
 	// Here we run 3 dispatches in parallel. Span setup and TMEM instances are low occupancy kind of jobs, but the binning
 	// pass should dominate here unless the workload is trivial.

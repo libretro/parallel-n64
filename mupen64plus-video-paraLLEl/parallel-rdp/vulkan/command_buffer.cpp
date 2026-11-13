@@ -185,9 +185,6 @@ void CommandBuffer::begin_context(bool compute)
 	pipeline_state.program = nullptr;
 	pipeline_state.potential_static_state.spec_constant_mask = 0;
 	pipeline_state.potential_static_state.internal_spec_constant_mask = 0;
-
-	if (debug_channel_buffer)
-		set_storage_buffer(VULKAN_NUM_DESCRIPTOR_SETS - 1, VULKAN_NUM_BINDINGS - 1, *debug_channel_buffer);
 }
 
 void CommandBuffer::begin_compute()
@@ -676,8 +673,6 @@ void CommandBuffer::set_opaque_state()
 
 void CommandBuffer::end_threaded_recording()
 {
-	VK_ASSERT(!debug_channel_buffer);
-
 	if (is_ended)
 		return;
 
@@ -730,52 +725,6 @@ void CommandBuffer::end_region()
 			vkCmdEndDebugUtilsLabelEXT(cmd);
 	}
 }
-
-void CommandBuffer::begin_debug_channel(DebugChannelInterface *iface, const char *tag, VkDeviceSize size)
-{
-	if (debug_channel_buffer)
-		end_debug_channel();
-
-	Util::copy_string(debug_channel_tag, sizeof(debug_channel_tag), tag);
-	debug_channel_interface = iface;
-
-	BufferCreateInfo info = {};
-	info.size = size;
-	info.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
-	info.domain = BufferDomain::Device;
-	debug_channel_buffer = device->create_buffer(info);
-
-	fill_buffer(*debug_channel_buffer, 0);
-	barrier(VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_TRANSFER_WRITE_BIT,
-	        VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
-	        VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT);
-
-	set_storage_buffer(VULKAN_NUM_DESCRIPTOR_SETS - 1, VULKAN_NUM_BINDINGS - 1, *debug_channel_buffer);
-}
-
-void CommandBuffer::end_debug_channel()
-{
-	if (!debug_channel_buffer)
-		return;
-
-	BufferCreateInfo info = {};
-	info.size = debug_channel_buffer->get_create_info().size;
-	info.usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-	info.domain = BufferDomain::CachedHost;
-	auto debug_channel_readback = device->create_buffer(info);
-	barrier(VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_ACCESS_SHADER_WRITE_BIT,
-	        VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_TRANSFER_READ_BIT);
-	copy_buffer(*debug_channel_readback, *debug_channel_buffer);
-	barrier(VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_TRANSFER_WRITE_BIT,
-	        VK_PIPELINE_STAGE_HOST_BIT, VK_ACCESS_HOST_READ_BIT);
-
-	debug_channel_buffer.reset();
-	device->add_debug_channel_buffer(debug_channel_interface, debug_channel_tag, Util::move(debug_channel_readback));
-	debug_channel_readback = {};
-	debug_channel_tag[0] = '\0';
-	debug_channel_interface = nullptr;
-}
-
 
 void CommandBufferDeleter::operator()(Vulkan::CommandBuffer *cmd)
 {

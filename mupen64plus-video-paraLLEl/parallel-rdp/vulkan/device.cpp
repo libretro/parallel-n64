@@ -628,8 +628,6 @@ void Device::request_uniform_block_nolock(granite_buffer_block_t &block, VkDevic
 
 void Device::submit(CommandBufferHandle &cmd, Fence *fence, unsigned semaphore_count, Semaphore *semaphores)
 {
-	cmd->end_debug_channel();
-
 	LOCK();
 	submit_nolock(Util::move(cmd), fence, semaphore_count, semaphores);
 }
@@ -1236,12 +1234,6 @@ void Device::PerFrame::begin()
 	for (auto &cmd_pool : cmd_pools)
 		for (auto &pool : cmd_pool)
 			granite_command_pool_begin(&pool);
-
-	for (auto &channel : debug_channels)
-		device.parse_debug_channel(channel);
-
-	// Free the debug channel buffers here, and they will immediately be recycled with the frame's garbage right below.
-	debug_channels.clear();
 
 	granite_buffer_block_list_recycle(&vbo_blocks, &managers.vbo);
 	granite_buffer_block_list_recycle(&ubo_blocks, &managers.ubo);
@@ -1910,58 +1902,6 @@ void Device::report_checkpoints()
 				LOGI("Stage %u:\n%s\n", d.stage, static_cast<const char *>(d.pCheckpointMarker));
 		}
 	}
-}
-
-void Device::add_debug_channel_buffer(DebugChannelInterface *iface, const char *tag, Vulkan::BufferHandle buffer)
-{
-	buffer->set_internal_sync_object();
-	LOCK();
-	frame().debug_channels.emplace_back();
-	auto &channel = frame().debug_channels.back();
-	channel.iface = iface;
-	Util::copy_string(channel.tag, sizeof(channel.tag), tag);
-	channel.buffer = Util::move(buffer);
-}
-
-void Device::parse_debug_channel(const PerFrame::DebugChannel &channel)
-{
-	if (!channel.iface)
-		return;
-
-	auto *words = static_cast<const DebugChannelInterface::Word *>(map_host_buffer(*channel.buffer, MEMORY_ACCESS_READ_BIT));
-
-	size_t size = channel.buffer->get_create_info().size;
-	if (size <= sizeof(uint32_t))
-	{
-		LOGE("Debug channel buffer is too small.\n");
-		return;
-	}
-
-	// Format for the debug channel.
-	// Word 0: Atomic counter used by shader.
-	// Word 1-*: [total message length, code, x, y, z, args]
-
-	size -= sizeof(uint32_t);
-	size /= sizeof(uint32_t);
-
-	if (words[0].u32 > size)
-	{
-		LOGW("Debug channel overflowed and messaged were dropped. Consider increasing debug channel size to at least %u bytes.\n",
-		     unsigned((words[0].u32 + 1) * sizeof(uint32_t)));
-	}
-
-	words++;
-
-	while (size != 0 && words[0].u32 >= 5 && words[0].u32 <= size)
-	{
-		channel.iface->message(channel.iface->user, channel.tag, words[1].u32,
-		                       words[2].u32, words[3].u32, words[4].u32,
-		                       words[0].u32 - 5, &words[5]);
-		size -= words[0].u32;
-		words += words[0].u32;
-	}
-
-	unmap_host_buffer(*channel.buffer, MEMORY_ACCESS_READ_BIT);
 }
 
 const VolkDeviceTable &Device::get_device_table() const
