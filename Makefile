@@ -2035,6 +2035,10 @@ test_gliden64_write_rdram$(EXE_EXT): tools/test_gliden64_write_rdram.c $(VIDEODI
 test_glide64_texmod$(EXE_EXT): tools/test_glide64_texmod.c $(VIDEODIR_GLIDE)/Glide64/TexMod.c $(VIDEODIR_GLIDE)/Glide64/TexMod.h
 	$(CC) -std=c89 -D_DEFAULT_SOURCE $(CHECK_CFLAGS) $(CHECK_SANITIZE) tools/test_glide64_texmod.c $(VIDEODIR_GLIDE)/Glide64/TexMod.c -o $@ $(CHECK_LDFLAGS) $(CHECK_SANITIZE)
 
+# Glide64's LoadBlock and LoadTile copies, where dxt wraps
+test_glide64_loadblock$(EXE_EXT): tools/test_glide64_loadblock.c $(VIDEODIR_GLIDE)/Glide64/TexLoadBlock.c $(VIDEODIR_GLIDE)/Glide64/TexLoadBlock.h
+	$(CC) -std=c89 -D_DEFAULT_SOURCE $(CHECK_CFLAGS) $(CHECK_SANITIZE) -I$(LIBRETRO_COMM_DIR)/include tools/test_glide64_loadblock.c $(VIDEODIR_GLIDE)/Glide64/TexLoadBlock.c -o $@ $(CHECK_LDFLAGS) $(CHECK_SANITIZE)
+
 # the host texture format holding every bit of the N64's texels
 test_gliden64_texture_formats$(EXE_EXT): tools/test_gliden64_texture_formats.c $(VIDEODIR_GLIDEN64)/src/TextureDecode.c $(VIDEODIR_GLIDEN64)/src/convert.c $(VIDEODIR_GLIDEN64)/src/gli_texdecode.h
 	$(CC) -std=c89 -D_DEFAULT_SOURCE $(CHECK_CFLAGS) $(CHECK_SANITIZE) -I$(VIDEODIR_GLIDEN64)/src -I$(LIBRETRO_COMM_DIR)/include tools/test_gliden64_texture_formats.c $(VIDEODIR_GLIDEN64)/src/TextureDecode.c $(VIDEODIR_GLIDEN64)/src/convert.c -o $@ $(CHECK_LDFLAGS) $(CHECK_SANITIZE)
@@ -2085,7 +2089,7 @@ CORE_CHECKS := test_rcp_bounds$(EXE_EXT) test_memory_map$(EXE_EXT) test_fb_write
 	test_mouse_accum$(EXE_EXT) test_hle_dram_wrap$(EXE_EXT) test_pif_write$(EXE_EXT) \
 	test_re2_fill$(EXE_EXT) test_temporal_upscaler$(EXE_EXT) test_pipeline_records$(EXE_EXT) test_rdp_dump_write$(EXE_EXT) test_vi_registers$(EXE_EXT) test_pipeline_pending$(EXE_EXT) test_rdp_x_range$(EXE_EXT) \
 	test_command_ring$(EXE_EXT) test_vk_sync$(EXE_EXT) test_vk_command_pool$(EXE_EXT) test_vk_texture_format$(EXE_EXT) test_vk_descriptor_set$(EXE_EXT) test_vk_shader$(EXE_EXT) test_vk_pipeline_map$(EXE_EXT) test_vk_render_pass$(EXE_EXT) test_vk_framebuffer$(EXE_EXT) test_vk_pipeline_compile$(EXE_EXT) test_vk_resource_bindings$(EXE_EXT) test_vk_command_state$(EXE_EXT) test_vk_command_ops$(EXE_EXT) test_vk_submit_batch$(EXE_EXT) test_vk_buffer_create$(EXE_EXT) test_vk_image_create$(EXE_EXT) test_vk_image_upload$(EXE_EXT) test_vk_buffer_pool$(EXE_EXT) test_vk_buffer$(EXE_EXT) test_vk_image$(EXE_EXT) test_vk_sampler$(EXE_EXT) test_vk_fence$(EXE_EXT) test_vk_semaphore$(EXE_EXT) test_vk_queue_submit$(EXE_EXT) test_vk_frame_sync$(EXE_EXT) test_vk_memory_release$(EXE_EXT) test_vk_context$(EXE_EXT) test_vk_device_caps$(EXE_EXT) test_vk_program_cache$(EXE_EXT) test_vk_render_target$(EXE_EXT) test_vk_command_buffer$(EXE_EXT) test_vk_frame_context$(EXE_EXT) test_vk_submission$(EXE_EXT) test_vk_device$(EXE_EXT) test_rdp_upscaler_pass$(EXE_EXT) test_vk_pipeline_cache$(EXE_EXT) test_frame_garbage$(EXE_EXT) test_release_queue$(EXE_EXT) test_gb_cart_banks$(EXE_EXT) test_dynarec_cache_pages$(EXE_EXT) \
-	test_combiner_journal$(EXE_EXT) test_gliden64_write_rdram$(EXE_EXT) test_gliden64_rdram_to_color$(EXE_EXT) test_gliden64_window_scale$(EXE_EXT) test_gliden64_texture_formats$(EXE_EXT) test_glide64_texmod$(EXE_EXT) test_gliden64_deferred_readback$(EXE_EXT) test_gliden64_ring_segments$(EXE_EXT) test_glide64_fb_readback$(EXE_EXT) test_granite_util$(EXE_EXT) test_granite_pool$(EXE_EXT) test_vk_memory_allocator$(EXE_EXT) \
+	test_combiner_journal$(EXE_EXT) test_gliden64_write_rdram$(EXE_EXT) test_gliden64_rdram_to_color$(EXE_EXT) test_gliden64_window_scale$(EXE_EXT) test_gliden64_texture_formats$(EXE_EXT) test_glide64_texmod$(EXE_EXT) test_glide64_loadblock$(EXE_EXT) test_gliden64_deferred_readback$(EXE_EXT) test_gliden64_ring_segments$(EXE_EXT) test_glide64_fb_readback$(EXE_EXT) test_granite_util$(EXE_EXT) test_granite_pool$(EXE_EXT) test_vk_memory_allocator$(EXE_EXT) \
 	test_vi_image_pool$(EXE_EXT) test_incoherent_pages$(EXE_EXT)
 
 ifeq ($(HAVE_PARALLEL_RSP), 1)

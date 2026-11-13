@@ -692,6 +692,7 @@
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='GlideN64release|x64'">CompileAsC</CompileAs>
     </ClCompile>
     <ClCompile Include="..\..\..\glide2gl\src\Glide64\TexLoad.c" />
+    <ClCompile Include="..\..\..\glide2gl\src\Glide64\TexLoadBlock.c" />
     <ClCompile Include="..\..\..\glide2gl\src\Glitch64\glitch64_combiner.c">
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">CompileAsC</CompileAs>
       <CompileAs Condition="'$(Configuration)|$(Platform)'=='GlideN64debug|Win32'">CompileAsC</CompileAs>
