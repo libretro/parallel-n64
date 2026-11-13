@@ -22,6 +22,9 @@
 
 #pragma once
 
+// The registers of the VI, its control bits and timing constants (C).
+#include "vi_registers.h"
+
 namespace Vulkan
 {
 class Program;
@@ -346,82 +349,22 @@ static_assert(sizeof(TileInfo) == 32, "TileInfo must be 32 bytes.");
 
 enum class VIRegister
 {
-	Control = 0,
-	Origin,
-	Width,
-	Intr,
-	VCurrentLine,
-	Timing,
-	VSync,
-	HSync,
-	Leap,
-	HStart,
-	VStart,
-	VBurst,
-	XScale,
-	YScale,
-	Count
+	Control = RDP_VI_REGISTER_CONTROL,
+	Origin = RDP_VI_REGISTER_ORIGIN,
+	Width = RDP_VI_REGISTER_WIDTH,
+	Intr = RDP_VI_REGISTER_INTR,
+	VCurrentLine = RDP_VI_REGISTER_V_CURRENT_LINE,
+	Timing = RDP_VI_REGISTER_TIMING,
+	VSync = RDP_VI_REGISTER_V_SYNC,
+	HSync = RDP_VI_REGISTER_H_SYNC,
+	Leap = RDP_VI_REGISTER_LEAP,
+	HStart = RDP_VI_REGISTER_H_START,
+	VStart = RDP_VI_REGISTER_V_START,
+	VBurst = RDP_VI_REGISTER_V_BURST,
+	XScale = RDP_VI_REGISTER_X_SCALE,
+	YScale = RDP_VI_REGISTER_Y_SCALE,
+	Count = RDP_VI_REGISTER_COUNT
 };
-
-enum VIControlFlagBits
-{
-	VI_CONTROL_TYPE_BLANK_BIT = 0 << 0,
-	VI_CONTROL_TYPE_RESERVED_BIT = 1 << 0,
-	VI_CONTROL_TYPE_RGBA5551_BIT = 2 << 0,
-	VI_CONTROL_TYPE_RGBA8888_BIT = 3 << 0,
-	VI_CONTROL_TYPE_MASK = 3 << 0,
-	VI_CONTROL_GAMMA_DITHER_ENABLE_BIT = 1 << 2,
-	VI_CONTROL_GAMMA_ENABLE_BIT = 1 << 3,
-	VI_CONTROL_DIVOT_ENABLE_BIT = 1 << 4,
-	VI_CONTROL_SERRATE_BIT = 1 << 6,
-	VI_CONTROL_AA_MODE_RESAMP_EXTRA_ALWAYS_BIT = 0 << 8,
-	VI_CONTROL_AA_MODE_RESAMP_EXTRA_BIT = 1 << 8,
-	VI_CONTROL_AA_MODE_RESAMP_ONLY_BIT = 2 << 8,
-	VI_CONTROL_AA_MODE_RESAMP_REPLICATE_BIT = 3 << 8,
-	VI_CONTROL_AA_MODE_MASK = 3 << 8,
-	VI_CONTROL_DITHER_FILTER_ENABLE_BIT = 1 << 16,
-	VI_CONTROL_META_AA_BIT = 1 << 17,
-	VI_CONTROL_META_SCALE_BIT = 1 << 18
-};
-using VIControlFlags = uint32_t;
-
-static inline uint32_t make_vi_start_register(uint32_t start_value, uint32_t end_value)
-{
-	return ((start_value & 0x3ff) << 16) | (end_value & 0x3ff);
-}
-
-static inline uint32_t make_vi_scale_register(uint32_t scale_factor, uint32_t bias)
-{
-	return ((bias & 0xfff) << 16) | (scale_factor & 0xfff);
-}
-
-constexpr uint32_t VI_V_SYNC_NTSC = 525;
-constexpr uint32_t VI_V_SYNC_PAL = 625;
-constexpr uint32_t VI_H_OFFSET_NTSC = 108;
-constexpr uint32_t VI_H_OFFSET_PAL = 128;
-constexpr uint32_t VI_V_OFFSET_NTSC = 34;
-constexpr uint32_t VI_V_OFFSET_PAL = 44;
-constexpr uint32_t VI_V_RES_NTSC = 480;
-constexpr uint32_t VI_V_RES_PAL = 576;
-constexpr int VI_SCANOUT_WIDTH = 640;
-
-constexpr uint32_t VI_V_RES_MAX = VI_V_RES_PAL > VI_V_RES_NTSC ? VI_V_RES_PAL : VI_V_RES_NTSC;
-// Handle odd v_start as well. Needed for rounding to work in our favor.
-constexpr uint32_t VI_V_END_PAL = (VI_V_OFFSET_PAL + VI_V_RES_PAL) | 1;
-constexpr uint32_t VI_V_END_NTSC = (VI_V_OFFSET_NTSC + VI_V_RES_NTSC) | 1;
-constexpr uint32_t VI_V_END_MAX = VI_V_END_PAL > VI_V_END_NTSC ? VI_V_END_PAL : VI_V_END_NTSC;
-
-constexpr uint32_t VI_MAX_OUTPUT_SCANLINES = (VI_V_RES_MAX >> 1);
-
-static inline uint32_t make_default_v_start()
-{
-	return make_vi_start_register(VI_V_OFFSET_NTSC, VI_V_OFFSET_NTSC + 224 * 2);
-}
-
-static inline uint32_t make_default_h_start()
-{
-	return make_vi_start_register(VI_H_OFFSET_NTSC, VI_H_OFFSET_NTSC + VI_SCANOUT_WIDTH);
-}
 
 template <int bits>
 static int32_t sext(int32_t v)

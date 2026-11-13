@@ -128,19 +128,6 @@ public:
 	Vulkan::ImageHandle upscaler_scanout(unsigned scale_factor,
 	                                     rdp_upscaler_framebuffer_t &fb, bool &repeat);
 
-	enum PerScanlineRegisterBits
-	{
-		// Currently supported bits.
-		PER_SCANLINE_HSTART_BIT = 1 << 0,
-		PER_SCANLINE_XSCALE_BIT = 1 << 1
-	};
-	using PerScanlineRegisterFlags = uint32_t;
-
-	void begin_vi_register_per_scanline(PerScanlineRegisterFlags flags);
-	void set_vi_register_for_scanline(PerScanlineRegisterBits reg, uint32_t value);
-	void latch_vi_register_for_scanline(unsigned vi_line);
-	void end_vi_register_per_scanline();
-
 private:
 	void set_extract_vram_pipeline(Vulkan::CommandBuffer &cmd, uint32_t status, unsigned scaling_factor) const;
 	void set_fetch_pipeline(Vulkan::CommandBuffer &cmd, uint32_t status, bool fetch_bug) const;
@@ -153,21 +140,6 @@ private:
 	Vulkan::Device *device = nullptr;
 	Renderer *renderer = nullptr;
 	uint32_t vi_registers[unsigned(VIRegister::Count)] = {};
-
-	struct PerScanlineRegisterState
-	{
-		uint32_t latched_state;
-		uint32_t line_state[VI_V_END_MAX];
-	};
-
-	struct
-	{
-		PerScanlineRegisterState h_start;
-		PerScanlineRegisterState x_scale;
-		PerScanlineRegisterFlags flags = 0;
-		unsigned line = 0;
-		bool ended = false;
-	} per_line_state;
 
 	const Vulkan::Buffer *rdram = nullptr;
 	const Vulkan::Buffer *hidden_rdram = nullptr;
@@ -213,62 +185,10 @@ private:
 	size_t rdram_offset = 0;
 	size_t rdram_size = 0;
 
-	struct HorizontalInfo
-	{
-		int32_t h_start;
-		int32_t h_start_clamp;
-		int32_t h_end_clamp;
-		int32_t x_start;
-		int32_t x_add;
-		int32_t y_start;
-		int32_t y_add;
-		int32_t y_base;
-	};
-
-	struct HorizontalInfoLines
-	{
-		HorizontalInfo lines[VI_MAX_OUTPUT_SCANLINES];
-	};
-
 	static void bind_horizontal_info_view(Vulkan::CommandBuffer &cmd, const HorizontalBuffer &buffer);
 
-	struct Registers
-	{
-		int vi_width;
-		int vi_offset;
-		int v_current_line;
-		bool is_pal;
-		uint32_t status;
-
-		int init_y_add;
-
-		// Global scale pass scissor box.
-		int h_start_clamp, h_res_clamp;
-		int h_start, h_res;
-		int v_start, v_res;
-
-		// For AA stages.
-		int max_x, max_y;
-		// The framebuffer pixels a line shows: from min_x, right of the
-		// guard band the scanout blanks, to the one at the right.
-		int min_x, max_x_clamp;
-	};
-
-	Registers decode_vi_registers(HorizontalInfoLines *lines) const;
-
-	// Horizontal bounding boxes gathered over the scanlines.
-	// Points at the caller's accumulators, as a by-reference capture
-	// would: separate scalars keep GCC from vectorizing four min/max.
-	struct HorizontalBounds
-	{
-		bool is_pal;
-		int y_start, y_add;
-		int *h_start_lo, *h_end_hi, *h_start_clamp_lo, *h_end_clamp_hi;
-		int *max_x, *min_x, *max_x_clamp;
-	};
-	static void analyze_line(const HorizontalBounds &b, int x_start, int x_add, int h_start, int h_end,
-	                         HorizontalInfo *line);
-	void clear_per_scanline_state();
+	// The VI registers as a scanout uses them (vi_registers.h).
+	typedef rdp_vi_decoded_t Registers;
 
 	Vulkan::ImageHandle vram_fetch_stage(const Registers &registers,
 	                                     unsigned scaling_factor) const;
@@ -307,6 +227,5 @@ private:
 	                                        Vulkan::Image &scale_image,
 	                                        unsigned scaling_factor, bool field_select,
 	                                        const ScanoutOptions &options) const;
-	static bool need_fetch_bug_emulation(const Registers &reg, unsigned scaling_factor);
 };
 }

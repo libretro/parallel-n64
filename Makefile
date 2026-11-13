@@ -1689,10 +1689,15 @@ test_rdp_dump_write$(EXE_EXT): tools/test_rdp_dump_write.c $(VIDEODIR_PARALLEL)/
 	$(CC) $(CHECK_CFLAGS) $(CHECK_SANITIZE) -I$(VIDEODIR_PARALLEL)/parallel-rdp/parallel-rdp \
 		-I$(LIBRETRO_COMM_DIR)/include $^ -o $@ $(CHECK_LDFLAGS) $(CHECK_SANITIZE)
 
+# parallel-RDP's VI register decoding (tools/test_vi_registers.c)
+test_vi_registers$(EXE_EXT): tools/test_vi_registers.c $(VIDEODIR_PARALLEL)/parallel-rdp/parallel-rdp/vi_registers.c
+	$(CC) $(CHECK_CFLAGS) $(CHECK_SANITIZE) -I$(VIDEODIR_PARALLEL)/parallel-rdp/parallel-rdp \
+		-I$(LIBRETRO_COMM_DIR)/include $^ -o $@ $(CHECK_LDFLAGS) $(CHECK_SANITIZE)
+
 # parallel-RDP's tile binning overflow test, at the int32 extremes
 test_rdp_x_range$(EXE_EXT): tools/test_rdp_x_range.cpp $(VIDEODIR_PARALLEL)/parallel-rdp/parallel-rdp/rdp_data_structures.hpp
 	$(CXX) -std=c++11 $(CHECK_CFLAGS) $(CHECK_SANITIZE) -I$(VIDEODIR_PARALLEL)/parallel-rdp/parallel-rdp \
-		-I$(VIDEODIR_PARALLEL)/parallel-rdp/util $< -o $@ $(CHECK_LDFLAGS) $(CHECK_SANITIZE)
+		-I$(VIDEODIR_PARALLEL)/parallel-rdp/util -I$(LIBRETRO_COMM_DIR)/include $< -o $@ $(CHECK_LDFLAGS) $(CHECK_SANITIZE)
 
 # Granite's object pools (util/pool.c) and aligned allocation, built as C
 # once for the tests that use them
@@ -2078,7 +2083,7 @@ CORE_CHECKS := test_rcp_bounds$(EXE_EXT) test_memory_map$(EXE_EXT) test_fb_write
 	test_cp0_exceptions$(EXE_EXT) test_r4300_interp$(EXE_EXT) test_fpu_compare$(EXE_EXT) test_pi_status$(EXE_EXT) \
 	test_musyx_bounds$(EXE_EXT) test_musyx_aux$(EXE_EXT) test_alist_ops$(EXE_EXT) test_alist_abi1$(EXE_EXT) test_hle_dispatch$(EXE_EXT) angrylion_zboss_audio_test$(EXE_EXT) \
 	test_mouse_accum$(EXE_EXT) test_hle_dram_wrap$(EXE_EXT) test_pif_write$(EXE_EXT) \
-	test_re2_fill$(EXE_EXT) test_temporal_upscaler$(EXE_EXT) test_pipeline_records$(EXE_EXT) test_rdp_dump_write$(EXE_EXT) test_pipeline_pending$(EXE_EXT) test_rdp_x_range$(EXE_EXT) \
+	test_re2_fill$(EXE_EXT) test_temporal_upscaler$(EXE_EXT) test_pipeline_records$(EXE_EXT) test_rdp_dump_write$(EXE_EXT) test_vi_registers$(EXE_EXT) test_pipeline_pending$(EXE_EXT) test_rdp_x_range$(EXE_EXT) \
 	test_command_ring$(EXE_EXT) test_vk_sync$(EXE_EXT) test_vk_command_pool$(EXE_EXT) test_vk_texture_format$(EXE_EXT) test_vk_descriptor_set$(EXE_EXT) test_vk_shader$(EXE_EXT) test_vk_pipeline_map$(EXE_EXT) test_vk_render_pass$(EXE_EXT) test_vk_framebuffer$(EXE_EXT) test_vk_pipeline_compile$(EXE_EXT) test_vk_resource_bindings$(EXE_EXT) test_vk_command_state$(EXE_EXT) test_vk_command_ops$(EXE_EXT) test_vk_submit_batch$(EXE_EXT) test_vk_buffer_create$(EXE_EXT) test_vk_image_create$(EXE_EXT) test_vk_image_upload$(EXE_EXT) test_vk_buffer_pool$(EXE_EXT) test_vk_buffer$(EXE_EXT) test_vk_image$(EXE_EXT) test_vk_sampler$(EXE_EXT) test_vk_fence$(EXE_EXT) test_vk_semaphore$(EXE_EXT) test_vk_queue_submit$(EXE_EXT) test_vk_frame_sync$(EXE_EXT) test_vk_memory_release$(EXE_EXT) test_vk_context$(EXE_EXT) test_vk_device_caps$(EXE_EXT) test_vk_program_cache$(EXE_EXT) test_vk_render_target$(EXE_EXT) test_vk_command_buffer$(EXE_EXT) test_vk_frame_context$(EXE_EXT) test_vk_submission$(EXE_EXT) test_vk_device$(EXE_EXT) test_rdp_upscaler_pass$(EXE_EXT) test_vk_pipeline_cache$(EXE_EXT) test_frame_garbage$(EXE_EXT) test_release_queue$(EXE_EXT) test_gb_cart_banks$(EXE_EXT) test_dynarec_cache_pages$(EXE_EXT) \
 	test_combiner_journal$(EXE_EXT) test_gliden64_write_rdram$(EXE_EXT) test_gliden64_rdram_to_color$(EXE_EXT) test_gliden64_window_scale$(EXE_EXT) test_gliden64_texture_formats$(EXE_EXT) test_glide64_texmod$(EXE_EXT) test_gliden64_deferred_readback$(EXE_EXT) test_gliden64_ring_segments$(EXE_EXT) test_glide64_fb_readback$(EXE_EXT) test_granite_util$(EXE_EXT) test_granite_pool$(EXE_EXT) test_vk_memory_allocator$(EXE_EXT) \
 	test_vi_image_pool$(EXE_EXT) test_incoherent_pages$(EXE_EXT)
