@@ -30,6 +30,13 @@
 
 RETRO_BEGIN_DECLS
 
+/* The samplers a device keeps */
+enum granite_stock_sampler
+{
+	GRANITE_STOCK_SAMPLER_LINEAR_CLAMP = 0,
+	GRANITE_STOCK_SAMPLER_COUNT
+};
+
 /* A sampler the device keeps for as long as it lives */
 typedef struct granite_sampler
 {

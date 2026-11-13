@@ -32,6 +32,12 @@ RETRO_BEGIN_DECLS
 struct granite_image;
 
 /* What an image was made as */
+/* granite_image_info_t.misc */
+#define GRANITE_IMAGE_MISC_FORCE_ARRAY_BIT (1u << 1)
+#define GRANITE_IMAGE_MISC_MUTABLE_SRGB_BIT (1u << 2)
+#define GRANITE_IMAGE_MISC_CONCURRENT_QUEUE_GRAPHICS_BIT (1u << 3)
+#define GRANITE_IMAGE_MISC_CONCURRENT_QUEUE_ASYNC_COMPUTE_BIT (1u << 4)
+
 typedef struct granite_image_info
 {
 	uint32_t width;

@@ -128,6 +128,12 @@ public:
 		return context.device_table;
 	}
 
+	// What the device is made from (device.h).
+	const granite_context_t &get_context() const
+	{
+		return context;
+	}
+
 private:
 	granite_context_t context;
 	DeviceFactory *device_factory = nullptr;

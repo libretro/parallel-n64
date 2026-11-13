@@ -30,8 +30,8 @@ namespace Vulkan
 // The samplers the device keeps (sampler.h)
 enum class StockSampler
 {
-	LinearClamp,
-	Count
+	LinearClamp = GRANITE_STOCK_SAMPLER_LINEAR_CLAMP,
+	Count = GRANITE_STOCK_SAMPLER_COUNT
 };
 
 using Sampler = granite_sampler_t;

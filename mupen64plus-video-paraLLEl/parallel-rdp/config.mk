@@ -10,8 +10,7 @@ PARALLEL_RDP_CXXFLAGS += -DRETRO_ATOMIC_FORCE_GCC_NEW
 endif
 
 PARALLEL_RDP_SOURCES_CXX := \
-        $(wildcard $(PARALLEL_RDP_IMPLEMENTATION)/parallel-rdp/*.cpp) \
-        $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/device.cpp
+        $(wildcard $(PARALLEL_RDP_IMPLEMENTATION)/parallel-rdp/*.cpp)
 
 PARALLEL_RDP_SOURCES_C := \
         $(PARALLEL_RDP_IMPLEMENTATION)/volk/volk.c \
@@ -31,6 +30,7 @@ PARALLEL_RDP_SOURCES_C := \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/command_buffer.c \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/frame_context.c \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/submission.c \
+        $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/device.c \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/framebuffer.c \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/frame_garbage.c \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/pipeline_compile.c \

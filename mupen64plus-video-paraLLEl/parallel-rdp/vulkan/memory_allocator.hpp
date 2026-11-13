@@ -99,41 +99,4 @@ struct DeviceAllocation : granite_allocation_t
 	}
 };
 
-class Device;
-
-struct DeviceAllocator : granite_device_allocator_t
-{
-	DeviceAllocator()
-	{
-		memset(static_cast<granite_device_allocator_t *>(this), 0, sizeof(granite_device_allocator_t));
-	}
-
-	~DeviceAllocator()
-	{
-		granite_device_allocator_free(this);
-	}
-
-	DeviceAllocator(const DeviceAllocator &) = delete;
-	void operator=(const DeviceAllocator &) = delete;
-
-	// device.cpp
-	void init(Device *device);
-
-	inline void garbage_collect()
-	{
-		granite_device_allocator_collect(this);
-	}
-
-	inline void *map_memory(const DeviceAllocation &alloc, MemoryAccessFlags flags, VkDeviceSize offset,
-	                        VkDeviceSize length)
-	{
-		return granite_device_allocator_map(this, &alloc, flags, offset, length);
-	}
-
-	inline void unmap_memory(const DeviceAllocation &alloc, MemoryAccessFlags flags, VkDeviceSize offset,
-	                         VkDeviceSize length)
-	{
-		granite_device_allocator_unmap(this, &alloc, flags, offset, length);
-	}
-};
 }
