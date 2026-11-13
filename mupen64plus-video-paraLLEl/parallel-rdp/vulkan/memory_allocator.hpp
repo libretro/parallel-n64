@@ -39,7 +39,6 @@ enum class AllocationMode : uint8_t
 	LinearDeviceHighPriority = GRANITE_ALLOCATION_LINEAR_DEVICE_HIGH_PRIORITY,
 	OptimalResource = GRANITE_ALLOCATION_OPTIMAL_RESOURCE,
 	OptimalRenderTarget = GRANITE_ALLOCATION_OPTIMAL_RENDER_TARGET,
-	External = GRANITE_ALLOCATION_EXTERNAL,
 	Count = GRANITE_ALLOCATION_MODE_COUNT
 };
 
@@ -134,7 +133,7 @@ struct DeviceAllocator : granite_device_allocator_t
 	                                  VkImage image, DeviceAllocation *alloc)
 	{
 		return granite_device_allocator_allocate_image(this, size, alignment, granite_allocation_mode_t(mode),
-		                                               memory_type, image, false, alloc, nullptr);
+		                                               memory_type, image, alloc);
 	}
 
 	inline void garbage_collect()

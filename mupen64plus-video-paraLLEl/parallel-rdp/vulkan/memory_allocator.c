@@ -24,13 +24,6 @@
 #include <string.h>
 #include <assert.h>
 
-#ifndef _WIN32
-#include <unistd.h>
-#else
-#define WIN32_LEAN_AND_MEAN
-#include <windows.h>
-#endif
-
 #if defined(_MSC_VER)
 #include <intrin.h>
 #endif
@@ -160,28 +153,21 @@ static bool mode_request_host_mapping(unsigned mode)
  * the image or buffer (@object_type) it is for alone, or 0. */
 static bool internal_allocate(granite_device_allocator_t *allocator, uint32_t size, uint32_t memory_type,
 		unsigned mode, VkDeviceMemory *memory, uint8_t **host_memory, VkObjectType object_type,
-		uint64_t dedicated_object, granite_external_memory_t *external)
+		uint64_t dedicated_object)
 {
 	uint32_t heap_index = allocator->mem_props.memoryTypes[memory_type].heapIndex;
 	granite_memory_heap_t *heap = &allocator->heaps[heap_index];
 	bool host_visible = (allocator->mem_props.memoryTypes[memory_type].propertyFlags
 			& VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) != 0 && host_memory != NULL;
-	bool importing = external && external->import;
 	VkMemoryAllocateInfo info;
 	VkMemoryDedicatedAllocateInfo dedicated;
-	VkExportMemoryAllocateInfo export_info;
 	VkMemoryPriorityAllocateInfoEXT priority_info;
-#ifdef _WIN32
-	VkImportMemoryWin32HandleInfoKHR import_info;
-#else
-	VkImportMemoryFdInfoKHR import_info;
-#endif
 	VkDeviceMemory device_memory = VK_NULL_HANDLE;
 	VkResult res;
 	size_t i;
 
 	/* (few and large: a search through them all is nothing) */
-	if (dedicated_object == 0 && !external)
+	if (dedicated_object == 0)
 	{
 		for (i = 0; i < heap->count; i++)
 		{
@@ -198,8 +184,6 @@ static bool internal_allocate(granite_device_allocator_t *allocator, uint32_t si
 		}
 	}
 
-	/* (the budget says little about memory shared with others) */
-	if (!external)
 	{
 		granite_heap_budget_t budgets[VK_MAX_MEMORY_HEAPS];
 		budget_now(allocator, budgets);
@@ -224,20 +208,12 @@ static bool internal_allocate(granite_device_allocator_t *allocator, uint32_t si
 
 	memset(&info, 0, sizeof(info));
 	memset(&dedicated, 0, sizeof(dedicated));
-	memset(&export_info, 0, sizeof(export_info));
 	memset(&priority_info, 0, sizeof(priority_info));
-	memset(&import_info, 0, sizeof(import_info));
 	info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
 	info.allocationSize = size;
 	info.memoryTypeIndex = memory_type;
 	dedicated.sType = VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO;
-	export_info.sType = VK_STRUCTURE_TYPE_EXPORT_MEMORY_ALLOCATE_INFO;
 	priority_info.sType = VK_STRUCTURE_TYPE_MEMORY_PRIORITY_ALLOCATE_INFO_EXT;
-#ifdef _WIN32
-	import_info.sType = VK_STRUCTURE_TYPE_IMPORT_MEMORY_WIN32_HANDLE_INFO_KHR;
-#else
-	import_info.sType = VK_STRUCTURE_TYPE_IMPORT_MEMORY_FD_INFO_KHR;
-#endif
 
 	if (dedicated_object != 0)
 	{
@@ -248,26 +224,7 @@ static bool internal_allocate(granite_device_allocator_t *allocator, uint32_t si
 		info.pNext = &dedicated;
 	}
 
-	if (importing)
-	{
-		import_info.handleType = external->handle_type;
-		import_info.pNext = info.pNext;
-		info.pNext = &import_info;
-#ifdef _WIN32
-		import_info.handle = external->handle;
-#else
-		import_info.fd = external->handle;
-#endif
-	}
-	else if (external)
-	{
-		export_info.handleTypes = external->handle_type;
-		export_info.pNext = info.pNext;
-		info.pNext = &export_info;
-	}
-
-	/* (nor does a priority, on those) */
-	if (allocator->memory_priority && !external)
+	if (allocator->memory_priority)
 	{
 		switch (mode)
 		{
@@ -289,21 +246,9 @@ static bool internal_allocate(granite_device_allocator_t *allocator, uint32_t si
 
 	res = allocator->table->vkAllocateMemory(allocator->device, &info, NULL, &device_memory);
 
-	/* An import by reference leaves the handle the caller's to close:
-	 * taken here. (An fd is the driver's from a successful import on.) */
-	if (importing && external->handle_type != VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT)
-	{
-#ifdef _WIN32
-		CloseHandle((HANDLE)external->handle);
-#else
-		close(external->handle);
-#endif
-	}
-
 	/* Out of memory: free cached blocks, of whatever kind, oldest first,
-	 * until it fits. Not for an import: freeing memory cannot help one,
-	 * and its handle may be closed by now. */
-	if (res != VK_SUCCESS && !importing)
+	 * until it fits. */
+	if (res != VK_SUCCESS)
 	{
 		size_t freed = 0;
 		while (res != VK_SUCCESS && freed < heap->count)
@@ -394,7 +339,7 @@ static bool class_allocate_backing(granite_class_allocator_t *c, granite_allocat
 	alloc->memory_type = (uint8_t)c->memory_type;
 	return internal_allocate(c->global_allocator, alloc_size, c->memory_type, c->global_allocator_mode,
 			&alloc->base, mode_request_host_mapping(c->global_allocator_mode) ? &alloc->host_base : NULL,
-			VK_OBJECT_TYPE_DEVICE, 0, NULL);
+			VK_OBJECT_TYPE_DEVICE, 0);
 }
 
 static void class_free_backing(granite_class_allocator_t *c, granite_allocation_t *alloc)
@@ -559,12 +504,11 @@ static void type_allocator_init(granite_type_allocator_t *t, granite_device_allo
 
 /* A block of its own, never kept for reuse */
 static bool type_allocate_dedicated(granite_type_allocator_t *t, uint32_t size, unsigned mode,
-		granite_allocation_t *alloc, VkObjectType object_type, uint64_t object,
-		granite_external_memory_t *external)
+		granite_allocation_t *alloc, VkObjectType object_type, uint64_t object)
 {
 	alloc->host_base = NULL;
 	if (!internal_allocate(t->global_allocator, size, t->memory_type, mode, &alloc->base,
-				mode_request_host_mapping(mode) ? &alloc->host_base : NULL, object_type, object, external))
+				mode_request_host_mapping(mode) ? &alloc->host_base : NULL, object_type, object))
 		return false;
 	alloc->mode = (uint8_t)mode;
 	alloc->alloc = NULL;
@@ -573,9 +517,6 @@ static bool type_allocate_dedicated(granite_type_allocator_t *t, uint32_t size, 
 	alloc->mask = 0;
 	alloc->memory_type = (uint8_t)t->memory_type;
 	alloc->size = size;
-	/* (what was imported is not ours to export) */
-	if (external && !external->import)
-		alloc->exportable_types = external->handle_type;
 	return true;
 }
 
@@ -612,7 +553,7 @@ static bool type_allocate(granite_type_allocator_t *t, uint32_t size, uint32_t a
 		return true;
 	}
 
-	return type_allocate_dedicated(t, size, mode, alloc, VK_OBJECT_TYPE_DEVICE, 0, NULL);
+	return type_allocate_dedicated(t, size, mode, alloc, VK_OBJECT_TYPE_DEVICE, 0);
 }
 
 /* ---- the device ---- */
@@ -734,21 +675,9 @@ bool granite_device_allocator_allocate(granite_device_allocator_t *allocator, ui
 	return type_allocate(allocator->allocators[memory_type], size, alignment, (unsigned)mode, alloc);
 }
 
-bool granite_device_allocator_allocate_buffer(granite_device_allocator_t *allocator, uint32_t size,
-		uint32_t alignment, granite_allocation_mode_t mode, uint32_t memory_type, VkBuffer buffer,
-		granite_allocation_t *alloc, granite_external_memory_t *external)
-{
-	if (memory_type >= allocator->num_allocators || (unsigned)mode >= GRANITE_ALLOCATION_MODE_COUNT)
-		return false;
-	if (mode == GRANITE_ALLOCATION_EXTERNAL)
-		return type_allocate_dedicated(allocator->allocators[memory_type], size, (unsigned)mode, alloc,
-				VK_OBJECT_TYPE_BUFFER, (uint64_t)buffer, external);
-	return type_allocate(allocator->allocators[memory_type], size, alignment, (unsigned)mode, alloc);
-}
-
 bool granite_device_allocator_allocate_image(granite_device_allocator_t *allocator, uint32_t size,
 		uint32_t alignment, granite_allocation_mode_t mode, uint32_t memory_type, VkImage image,
-		bool force_no_dedicated, granite_allocation_t *alloc, granite_external_memory_t *external)
+		granite_allocation_t *alloc)
 {
 	VkImageMemoryRequirementsInfo2 info;
 	VkMemoryDedicatedRequirements dedicated_req;
@@ -756,9 +685,6 @@ bool granite_device_allocator_allocate_image(granite_device_allocator_t *allocat
 
 	if (memory_type >= allocator->num_allocators || (unsigned)mode >= GRANITE_ALLOCATION_MODE_COUNT)
 		return false;
-	if (force_no_dedicated)
-		return type_allocate(allocator->allocators[memory_type], size, alignment, (unsigned)mode, alloc);
-
 	memset(&info, 0, sizeof(info));
 	memset(&dedicated_req, 0, sizeof(dedicated_req));
 	memset(&mem_req, 0, sizeof(mem_req));
@@ -769,10 +695,9 @@ bool granite_device_allocator_allocate_image(granite_device_allocator_t *allocat
 	mem_req.pNext = &dedicated_req;
 	allocator->table->vkGetImageMemoryRequirements2(allocator->device, &info, &mem_req);
 
-	if (     dedicated_req.prefersDedicatedAllocation || dedicated_req.requiresDedicatedAllocation
-			|| mode == GRANITE_ALLOCATION_EXTERNAL)
+	if (dedicated_req.prefersDedicatedAllocation || dedicated_req.requiresDedicatedAllocation)
 		return type_allocate_dedicated(allocator->allocators[memory_type], size, (unsigned)mode, alloc,
-				VK_OBJECT_TYPE_IMAGE, (uint64_t)image, external);
+				VK_OBJECT_TYPE_IMAGE, (uint64_t)image);
 	return type_allocate(allocator->allocators[memory_type], size, alignment, (unsigned)mode, alloc);
 }
 

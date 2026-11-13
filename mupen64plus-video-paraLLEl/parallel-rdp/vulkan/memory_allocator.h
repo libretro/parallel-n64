@@ -66,7 +66,6 @@ typedef enum granite_allocation_mode
 	GRANITE_ALLOCATION_LINEAR_DEVICE_HIGH_PRIORITY,
 	GRANITE_ALLOCATION_OPTIMAL_RESOURCE,
 	GRANITE_ALLOCATION_OPTIMAL_RENDER_TARGET,
-	GRANITE_ALLOCATION_EXTERNAL,
 	GRANITE_ALLOCATION_MODE_COUNT
 } granite_allocation_mode_t;
 
@@ -88,7 +87,6 @@ typedef struct granite_allocation
 	uint32_t offset;
 	uint32_t mask;
 	uint32_t size;
-	VkExternalMemoryHandleTypeFlags exportable_types;
 	/* granite_allocation_mode_t */
 	uint8_t mode;
 	uint8_t memory_type;
@@ -154,20 +152,6 @@ typedef struct granite_memory_heap
 	size_t capacity;
 } granite_memory_heap_t;
 
-/* Memory shared with another API or process */
-typedef struct granite_external_memory
-{
-	/* a handle to import: the allocation takes it. Otherwise the memory
-	 * is made exportable as @handle_type. */
-	bool import;
-#ifdef _WIN32
-	void *handle;
-#else
-	int handle;
-#endif
-	VkExternalMemoryHandleTypeFlagBits handle_type;
-} granite_external_memory_t;
-
 typedef struct granite_device_allocator
 {
 	granite_pool_t object_pool;
@@ -204,15 +188,10 @@ void granite_device_allocator_free(granite_device_allocator_t *allocator);
  * @alignment: a power of two. */
 bool granite_device_allocator_allocate(granite_device_allocator_t *allocator, uint32_t size, uint32_t alignment,
 		granite_allocation_mode_t mode, uint32_t memory_type, granite_allocation_t *alloc);
-/* For @buffer: its own block when the mode is external */
-bool granite_device_allocator_allocate_buffer(granite_device_allocator_t *allocator, uint32_t size,
-		uint32_t alignment, granite_allocation_mode_t mode, uint32_t memory_type, VkBuffer buffer,
-		granite_allocation_t *alloc, granite_external_memory_t *external);
-/* For @image: its own block when the driver prefers that, or the mode is
- * external, unless @force_no_dedicated */
+/* For @image: its own block when the driver prefers that */
 bool granite_device_allocator_allocate_image(granite_device_allocator_t *allocator, uint32_t size,
 		uint32_t alignment, granite_allocation_mode_t mode, uint32_t memory_type, VkImage image,
-		bool force_no_dedicated, granite_allocation_t *alloc, granite_external_memory_t *external);
+		granite_allocation_t *alloc);
 /* Gives @alloc's memory back: to the block it was cut from, or, a block
  * of its own, to the driver. */
 void granite_allocation_free(granite_allocation_t *alloc, granite_device_allocator_t *allocator);

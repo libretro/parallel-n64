@@ -241,8 +241,8 @@ bool granite_buffer_create(const granite_buffer_env_t *env, granite_buffer_domai
 	else
 		mode = GRANITE_ALLOCATION_LINEAR_HOST_MAPPABLE;
 
-	if (!granite_device_allocator_allocate_buffer(env->allocator, (uint32_t)reqs.memoryRequirements.size,
-				(uint32_t)reqs.memoryRequirements.alignment, mode, type, *buffer, allocation, NULL))
+	if (!granite_device_allocator_allocate(env->allocator, (uint32_t)reqs.memoryRequirements.size,
+				(uint32_t)reqs.memoryRequirements.alignment, mode, type, allocation))
 	{
 		/* device memory the host can map is scarce: do without one or
 		 * the other */
@@ -261,8 +261,8 @@ bool granite_buffer_create(const granite_buffer_env_t *env, granite_buffer_domai
 		type = granite_find_buffer_memory_type(env->memory, fallback, reqs.memoryRequirements.memoryTypeBits,
 				env->force_host_cached);
 		if (type == GRANITE_NO_MEMORY_TYPE ||
-				!granite_device_allocator_allocate_buffer(env->allocator, (uint32_t)reqs.memoryRequirements.size,
-					(uint32_t)reqs.memoryRequirements.alignment, mode, type, *buffer, allocation, NULL))
+				!granite_device_allocator_allocate(env->allocator, (uint32_t)reqs.memoryRequirements.size,
+					(uint32_t)reqs.memoryRequirements.alignment, mode, type, allocation))
 		{
 			LOGE("Failed to allocate fallback memory.\n");
 			goto fail;

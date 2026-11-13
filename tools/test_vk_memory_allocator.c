@@ -7,7 +7,7 @@
  * again for the next request like it, and freed by a collect. Memory of
  * one type or mode is never cut from a block of another. What is too
  * large to cut is a block of its own, as is an image the driver wants
- * one for and anything shared with another API, and those are freed at
+ * one for, and those are freed at
  * once. On a heap that must stay within its budget nothing is kept.
  *
  * When the driver is out of memory the blocks kept are freed, oldest
@@ -50,8 +50,6 @@ static struct
 	uint64_t size;
 	uint32_t type;
 	const void *dedicated_image;
-	const void *dedicated_buffer;
-	VkExternalMemoryHandleTypeFlags exported;
 	float priority;
 } blocks[MAX_BLOCKS + 1];
 static uint64_t capacity, used;
@@ -91,10 +89,7 @@ static VkResult VKAPI_CALL fake_allocate(VkDevice d, const VkMemoryAllocateInfo 
 		{
 			const VkMemoryDedicatedAllocateInfo *dedicated = (const VkMemoryDedicatedAllocateInfo *)next;
 			blocks[n].dedicated_image = (const void *)(size_t)GRANITE_VK_TO_BITS(dedicated->image);
-			blocks[n].dedicated_buffer = (const void *)(size_t)GRANITE_VK_TO_BITS(dedicated->buffer);
 		}
-		else if (next->sType == VK_STRUCTURE_TYPE_EXPORT_MEMORY_ALLOCATE_INFO)
-			blocks[n].exported = ((const VkExportMemoryAllocateInfo *)next)->handleTypes;
 		else if (next->sType == VK_STRUCTURE_TYPE_MEMORY_PRIORITY_ALLOCATE_INFO_EXT)
 			blocks[n].priority = ((const VkMemoryPriorityAllocateInfoEXT *)next)->priority;
 	}
@@ -227,7 +222,6 @@ int main(void)
 	static uint32_t many_align[MANY];
 	static uint32_t many_size[MANY];
 	granite_allocation_t a, b, c;
-	granite_external_memory_t external;
 	uint32_t seed = 12345;
 	unsigned i, j, before;
 	bool ok;
@@ -404,37 +398,21 @@ int main(void)
 	memset(&b, 0, sizeof(b));
 	prefer_dedicated = false;
 	CHECK(granite_device_allocator_allocate_image(&allocator, 4096, 4096, GRANITE_ALLOCATION_OPTIMAL_RESOURCE,
-				TYPE_DEVICE, (VkImage)GRANITE_VK_FROM_BITS(VkImage, 0x77), false, &a, NULL)
+				TYPE_DEVICE, (VkImage)GRANITE_VK_FROM_BITS(VkImage, 0x77), &a)
 			&& a.alloc != NULL && blocks[block_of(a.base)].dedicated_image == NULL,
 			"an image the driver wants no block for is cut from one");
 	prefer_dedicated = true;
 	CHECK(granite_device_allocator_allocate_image(&allocator, 4096, 4096, GRANITE_ALLOCATION_OPTIMAL_RESOURCE,
-				TYPE_DEVICE, (VkImage)GRANITE_VK_FROM_BITS(VkImage, 0x77), false, &b, NULL)
+				TYPE_DEVICE, (VkImage)GRANITE_VK_FROM_BITS(VkImage, 0x77), &b)
 			&& b.alloc == NULL && blocks[block_of(b.base)].dedicated_image == (const void *)(size_t)0x77
 			&& blocks[block_of(b.base)].size == 4096,
 			"one it prefers a block for gets a block of its own, made for it");
+	CHECK(blocks[block_of(b.base)].priority == 0.5f, "with the priority of its mode");
+	before = live_blocks();
 	granite_allocation_free(&b, &allocator);
-	CHECK(granite_device_allocator_allocate_image(&allocator, 4096, 4096, GRANITE_ALLOCATION_OPTIMAL_RESOURCE,
-				TYPE_DEVICE, (VkImage)GRANITE_VK_FROM_BITS(VkImage, 0x77), true, &b, NULL) && b.alloc != NULL,
-			"unless that is ruled out");
-	granite_allocation_free(&b, &allocator);
+	CHECK(live_blocks() == before - 1, "freed at once");
 	granite_allocation_free(&a, &allocator);
 	prefer_dedicated = false;
-
-	memset(&a, 0, sizeof(a));
-	memset(&external, 0, sizeof(external));
-	external.import = false;
-	external.handle_type = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT;
-	CHECK(granite_device_allocator_allocate_buffer(&allocator, 8192, 16, GRANITE_ALLOCATION_EXTERNAL, TYPE_DEVICE,
-				(VkBuffer)GRANITE_VK_FROM_BITS(VkBuffer, 0x99), &a, &external)
-			&& a.alloc == NULL && blocks[block_of(a.base)].dedicated_buffer == (const void *)(size_t)0x99
-			&& blocks[block_of(a.base)].exported == VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT
-			&& a.exportable_types == VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT
-			&& blocks[block_of(a.base)].priority == -1.0f,
-			"a buffer to share is a block of its own, exportable, without a priority");
-	before = live_blocks();
-	granite_allocation_free(&a, &allocator);
-	CHECK(live_blocks() == before - 1, "freed at once");
 	granite_device_allocator_collect(&allocator);
 	CHECK(live_blocks() == 0, "nothing left");
 
