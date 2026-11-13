@@ -99,31 +99,11 @@ private:
 };
 using SamplerHandle = Util::IntrusivePtr<Sampler>;
 
-class ImmutableYcbcrConversion : public HashedObject<ImmutableYcbcrConversion>
-{
-public:
-	ImmutableYcbcrConversion(Util::Hash hash, Device *device,
-	                         const VkSamplerYcbcrConversionCreateInfo &info);
-	~ImmutableYcbcrConversion();
-	void operator=(const ImmutableYcbcrConversion &) = delete;
-	ImmutableYcbcrConversion(const ImmutableYcbcrConversion &) = delete;
-
-	VkSamplerYcbcrConversion get_conversion() const
-	{
-		return conversion;
-	}
-
-private:
-	Device *device;
-	VkSamplerYcbcrConversion conversion = VK_NULL_HANDLE;
-};
-
 class ImmutableSampler : public HashedObject<ImmutableSampler>
 {
 public:
 	ImmutableSampler(Util::Hash hash, Device *device,
-	                 const SamplerCreateInfo &info,
-	                 const ImmutableYcbcrConversion *ycbcr);
+	                 const SamplerCreateInfo &info);
 	void operator=(const ImmutableSampler &) = delete;
 	ImmutableSampler(const ImmutableSampler &) = delete;
 
@@ -132,14 +112,8 @@ public:
 		return *sampler;
 	}
 
-	VkSamplerYcbcrConversion get_ycbcr_conversion() const
-	{
-		return ycbcr ? ycbcr->get_conversion() : VK_NULL_HANDLE;
-	}
-
 private:
 	Device *device;
-	const ImmutableYcbcrConversion *ycbcr;
 	SamplerHandle sampler;
 };
 }

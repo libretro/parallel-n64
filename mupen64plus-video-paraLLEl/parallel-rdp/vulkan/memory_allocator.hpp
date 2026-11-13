@@ -131,10 +131,10 @@ struct DeviceAllocator : granite_device_allocator_t
 	void init(Device *device);
 
 	inline bool allocate_image_memory(uint32_t size, uint32_t alignment, AllocationMode mode, uint32_t memory_type,
-	                                  VkImage image, bool force_no_dedicated, DeviceAllocation *alloc)
+	                                  VkImage image, DeviceAllocation *alloc)
 	{
 		return granite_device_allocator_allocate_image(this, size, alignment, granite_allocation_mode_t(mode),
-		                                               memory_type, image, force_no_dedicated, alloc, nullptr);
+		                                               memory_type, image, false, alloc, nullptr);
 	}
 
 	inline void garbage_collect()

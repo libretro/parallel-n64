@@ -70,16 +70,6 @@ void granite_cmd_blit_image(const struct VolkDeviceTable *table, VkCommandBuffer
 		const VkOffset3D *dst_extent, const VkOffset3D *src_offset, const VkOffset3D *src_extent,
 		unsigned dst_level, unsigned src_level, unsigned dst_base_layer, unsigned src_base_layer,
 		unsigned num_layers, VkFilter filter);
-/* Before granite_cmd_generate_mipmap: level 0 goes from @base_level_layout
- * to transfer source (unless @top_level is false: it is there already)
- * and the levels under it, whose contents go, to transfer destination */
-void granite_cmd_prepare_generate_mipmap(const struct VolkDeviceTable *table, VkCommandBuffer cmd,
-		const granite_image_ref_t *image, VkImageLayout base_level_layout, VkPipelineStageFlags src_stages,
-		VkAccessFlags src_access, bool top_level);
-/* Fills each level from the one above it. All of the image is in the
- * transfer source layout afterwards. */
-void granite_cmd_generate_mipmap(const struct VolkDeviceTable *table, VkCommandBuffer cmd,
-		const granite_image_ref_t *image);
 
 RETRO_END_DECLS
 

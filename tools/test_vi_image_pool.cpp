@@ -44,6 +44,8 @@ static Vulkan::ImageCreateInfo image(unsigned w, unsigned h, unsigned layers = 1
 	Vulkan::ImageCreateInfo info = Vulkan::ImageCreateInfo::render_target(w, h, VK_FORMAT_R8G8B8A8_UINT);
 	info.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
 	info.layers = layers;
+	/* (not part of what is compared: the tag below) */
+	info.initial_layout = VK_IMAGE_LAYOUT_UNDEFINED;
 	return info;
 }
 
@@ -59,9 +61,9 @@ static unsigned get(RDP::VIImagePool &pool, const Vulkan::ImageCreateInfo &info,
 		adds++;
 	}
 	/* Tag entries so reuse can be told apart from adds. */
-	if (!e->info.num_memory_aliases)
-		e->info.num_memory_aliases = adds;
-	return e->info.num_memory_aliases;
+	if (!e->info.initial_layout)
+		e->info.initial_layout = VkImageLayout(adds);
+	return unsigned(e->info.initial_layout);
 }
 
 int main()
@@ -85,11 +87,11 @@ int main()
 		/* Never back before its frame context comes round again. */
 		RDP::VIImagePool fresh;
 		RDP::VIImagePool::Entry *first = fresh.add(a, 10, contexts);
-		first->info.num_memory_aliases = 1;
+		first->info.initial_layout = VkImageLayout(1);
 		for (uint64_t s = 10; s < 10 + contexts; s++)
 			CHECK(fresh.reuse(a, false, s, contexts) == nullptr);
 		RDP::VIImagePool::Entry *back = fresh.reuse(a, false, 10 + contexts, contexts);
-		CHECK(back && back->info.num_memory_aliases == 1);
+		CHECK(back && back->info.initial_layout == VkImageLayout(1));
 		/* and busy again for the frame that took it */
 		CHECK(fresh.reuse(a, false, 10 + contexts, contexts) == nullptr);
 	}

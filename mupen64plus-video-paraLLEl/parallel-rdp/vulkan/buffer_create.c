@@ -114,36 +114,12 @@ uint32_t granite_find_buffer_memory_type(const VkPhysicalDeviceMemoryProperties 
 	return GRANITE_NO_MEMORY_TYPE;
 }
 
-uint32_t granite_find_image_memory_type(const VkPhysicalDeviceMemoryProperties *memory,
-		granite_image_domain_t domain, uint32_t mask)
+uint32_t granite_find_image_memory_type(const VkPhysicalDeviceMemoryProperties *memory, uint32_t mask)
 {
-	uint32_t desired = 0, fallback = 0;
-	uint32_t index;
+	uint32_t index = granite_find_memory_type(memory, DEVICE_LOCAL, mask);
 
-	switch (domain)
-	{
-		case GRANITE_IMAGE_DOMAIN_TRANSIENT:
-			desired = VK_MEMORY_PROPERTY_LAZILY_ALLOCATED_BIT;
-			fallback = DEVICE_LOCAL;
-			break;
-		case GRANITE_IMAGE_DOMAIN_LINEAR_HOST_CACHED:
-			desired = HOST_VISIBLE | HOST_CACHED;
-			fallback = HOST_VISIBLE;
-			break;
-		case GRANITE_IMAGE_DOMAIN_LINEAR_HOST:
-			desired = HOST_VISIBLE;
-			fallback = 0;
-			break;
-		case GRANITE_IMAGE_DOMAIN_PHYSICAL:
-		default:
-			desired = DEVICE_LOCAL;
-			fallback = 0;
-			break;
-	}
-
-	index = granite_find_memory_type(memory, desired, mask);
 	if (index == GRANITE_NO_MEMORY_TYPE)
-		index = granite_find_memory_type(memory, fallback, mask);
+		index = granite_find_memory_type(memory, 0, mask);
 	return index;
 }
 

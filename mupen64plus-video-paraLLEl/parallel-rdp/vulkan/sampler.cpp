@@ -74,18 +74,10 @@ VkSamplerCreateInfo Sampler::fill_vk_sampler_info(const SamplerCreateInfo &sampl
 	return info;
 }
 
-ImmutableSampler::ImmutableSampler(Util::Hash hash, Device *device_, const SamplerCreateInfo &sampler_info,
-                                   const ImmutableYcbcrConversion *ycbcr_)
-	: HashedObject<ImmutableSampler>(hash), device(device_), ycbcr(ycbcr_)
+ImmutableSampler::ImmutableSampler(Util::Hash hash, Device *device_, const SamplerCreateInfo &sampler_info)
+	: HashedObject<ImmutableSampler>(hash), device(device_)
 {
-	VkSamplerYcbcrConversionInfo conv_info = { VK_STRUCTURE_TYPE_SAMPLER_YCBCR_CONVERSION_INFO };
 	auto info = Sampler::fill_vk_sampler_info(sampler_info);
-
-	if (ycbcr)
-	{
-		conv_info.conversion = ycbcr->get_conversion();
-		info.pNext = &conv_info;
-	}
 
 #ifdef VULKAN_DEBUG
 	LOGI("Creating immutable sampler.\n");
@@ -97,27 +89,5 @@ ImmutableSampler::ImmutableSampler(Util::Hash hash, Device *device_, const Sampl
 
 
 	sampler = SamplerHandle(device->handle_pool.samplers.allocate(device, vk_sampler, sampler_info, true));
-}
-
-ImmutableYcbcrConversion::ImmutableYcbcrConversion(Util::Hash hash, Device *device_,
-                                                   const VkSamplerYcbcrConversionCreateInfo &info)
-	: HashedObject<ImmutableYcbcrConversion>(hash), device(device_)
-{
-	if (device->get_device_features().sampler_ycbcr_conversion_features.samplerYcbcrConversion)
-	{
-		if (device->get_device_table().vkCreateSamplerYcbcrConversion(device->get_device(), &info, nullptr,
-		                                                              &conversion) != VK_SUCCESS)
-		{
-			LOGE("Failed to create YCbCr conversion.\n");
-		}
-	}
-	else
-		LOGE("Ycbcr conversion is not supported on this device.\n");
-}
-
-ImmutableYcbcrConversion::~ImmutableYcbcrConversion()
-{
-	if (conversion)
-		device->get_device_table().vkDestroySamplerYcbcrConversion(device->get_device(), conversion, nullptr);
 }
 }

@@ -128,7 +128,7 @@ private:
 		return a.width == b.width && a.height == b.height && a.depth == b.depth &&
 		       a.levels == b.levels && a.layers == b.layers && a.format == b.format &&
 		       a.type == b.type && a.usage == b.usage && a.samples == b.samples &&
-		       a.flags == b.flags && a.misc == b.misc && a.domain == b.domain;
+		       a.flags == b.flags && a.misc == b.misc;
 	}
 };
 }

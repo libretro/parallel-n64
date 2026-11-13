@@ -8,10 +8,7 @@
  * An image barrier covers all levels and layers of the format's aspects.
  * A clear goes to the colour or the depth and
  * stencil call, in the layout the image is kept in. A blit is a call a
- * layer. Preparing mipmaps moves level 0 to transfer source and
- * discards the rest into transfer destination; generating them halves
- * each level into the next, never below one texel, and leaves every
- * level a transfer source. */
+ * layer. */
 #include <stdio.h>
 #include <string.h>
 #include <boolean.h>
@@ -229,76 +226,6 @@ static void test_clear_blit(void)
 			blits[0].dstSubresource.aspectMask == VK_IMAGE_ASPECT_COLOR_BIT, "colour to colour");
 }
 
-static void test_mipmaps(void)
-{
-	/* 8x2: levels 8x2, 4x1, 2x1, 1x1 */
-	granite_image_ref_t tex = image(VK_FORMAT_R8G8B8A8_UNORM, 8, 2, 4, 2);
-	granite_image_ref_t single = image(VK_FORMAT_R8G8B8A8_UNORM, 8, 2, 1, 1);
-	const VkImageMemoryBarrier *b;
-
-	reset();
-	granite_cmd_prepare_generate_mipmap(&table, CMD, &tex, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-			VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_TRANSFER_WRITE_BIT, true);
-	CHECK(num_barrier_calls == 1 && barrier_counts[0] == 2 && barrier_src[0] == VK_PIPELINE_STAGE_TRANSFER_BIT &&
-			barrier_dst[0] == VK_PIPELINE_STAGE_TRANSFER_BIT, "preparing is one call of two barriers");
-	b = &barriers[0][0];
-	CHECK(b->oldLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && b->newLayout == VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL &&
-			b->srcAccessMask == VK_ACCESS_TRANSFER_WRITE_BIT && b->dstAccessMask == VK_ACCESS_TRANSFER_READ_BIT &&
-			b->subresourceRange.baseMipLevel == 0 && b->subresourceRange.levelCount == 1 &&
-			b->subresourceRange.layerCount == 2, "level 0 becomes the source");
-	b = &barriers[0][1];
-	CHECK(b->oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && b->newLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL &&
-			b->srcAccessMask == 0 && b->dstAccessMask == VK_ACCESS_TRANSFER_WRITE_BIT &&
-			b->subresourceRange.baseMipLevel == 1 && b->subresourceRange.levelCount == 3 &&
-			b->subresourceRange.layerCount == 2, "the levels under it are discarded into the destination layout");
-
-	reset();
-	granite_cmd_prepare_generate_mipmap(&table, CMD, &tex, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-			VK_PIPELINE_STAGE_TRANSFER_BIT, 0, false);
-	CHECK(num_barrier_calls == 1 && barrier_counts[0] == 1 && barriers[0][0].subresourceRange.baseMipLevel == 1 &&
-			barriers[0][0].newLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-			"with level 0 a source already, only the rest is prepared");
-
-	/* an image of one level has no rest */
-	reset();
-	granite_cmd_prepare_generate_mipmap(&table, CMD, &single, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-			VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_TRANSFER_WRITE_BIT, false);
-	CHECK(num_barrier_calls == 0, "one level and nothing to do for it: no barrier");
-	granite_cmd_prepare_generate_mipmap(&table, CMD, &single, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-			VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_TRANSFER_WRITE_BIT, true);
-	CHECK(num_barrier_calls == 1 && barrier_counts[0] == 1 && barriers[0][0].subresourceRange.baseMipLevel == 0 &&
-			barriers[0][0].subresourceRange.levelCount == 1, "one level: level 0 alone, no barrier over zero levels");
-
-	reset();
-	granite_cmd_generate_mipmap(&table, CMD, &tex);
-	CHECK(num_blits == 6 && num_barrier_calls == 3, "three levels of two layers: six blits, three barriers");
-	CHECK(strcmp(sequence, "BBbBBbBBb") == 0, "each level is blitted, then made the source of the next");
-	CHECK(blit_src == tex.image && blit_dst == tex.image && blit_src_layout == VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL &&
-			blit_dst_layout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && blit_filter == VK_FILTER_LINEAR,
-			"within the image, filtered");
-	CHECK(blits[0].srcSubresource.mipLevel == 0 && blits[0].dstSubresource.mipLevel == 1 &&
-			blits[0].srcOffsets[1].x == 8 && blits[0].srcOffsets[1].y == 2 && blits[0].srcOffsets[1].z == 1 &&
-			blits[0].dstOffsets[1].x == 4 && blits[0].dstOffsets[1].y == 1 && blits[0].dstOffsets[1].z == 1,
-			"level 1 is half of level 0");
-	CHECK(blits[0].srcSubresource.baseArrayLayer == 0 && blits[1].srcSubresource.baseArrayLayer == 1 &&
-			blits[1].dstSubresource.baseArrayLayer == 1 && blits[1].dstSubresource.mipLevel == 1, "each layer its own");
-	CHECK(blits[2].srcOffsets[1].x == 4 && blits[2].srcOffsets[1].y == 1 && blits[2].dstOffsets[1].x == 2 &&
-			blits[2].dstOffsets[1].y == 1 && blits[2].srcSubresource.mipLevel == 1 && blits[2].dstSubresource.mipLevel == 2,
-			"level 2 half of level 1, never under one texel");
-	CHECK(blits[4].srcOffsets[1].x == 2 && blits[4].dstOffsets[1].x == 1 && blits[4].dstOffsets[1].y == 1 &&
-			blits[4].dstSubresource.mipLevel == 3, "down to one texel");
-	CHECK(barriers[0][0].subresourceRange.baseMipLevel == 1 && barriers[2][0].subresourceRange.baseMipLevel == 3 &&
-			barriers[2][0].subresourceRange.levelCount == 1 && barriers[2][0].subresourceRange.layerCount == 2 &&
-			barriers[2][0].oldLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL &&
-			barriers[2][0].newLayout == VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL &&
-			barriers[2][0].srcAccessMask == VK_ACCESS_TRANSFER_WRITE_BIT &&
-			barriers[2][0].dstAccessMask == VK_ACCESS_TRANSFER_READ_BIT, "every level ends as a transfer source");
-
-	reset();
-	granite_cmd_generate_mipmap(&table, CMD, &single);
-	CHECK(num_blits == 0 && num_barrier_calls == 0, "one level: nothing to generate");
-}
-
 int main(void)
 {
 	table.vkCmdPipelineBarrier = fake_barrier;
@@ -309,7 +236,6 @@ int main(void)
 	test_helpers();
 	test_barriers();
 	test_clear_blit();
-	test_mipmaps();
 
 	if (failures)
 	{

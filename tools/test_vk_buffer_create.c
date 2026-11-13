@@ -3,8 +3,8 @@
  *
  * A memory type is the first of those allowed that has what is asked
  * for. Each buffer domain takes its best type and settles for the next
- * best; a device that must hand out cached host memory does. Image
- * domains likewise. The queue families a buffer is shared between are
+ * best; a device that must hand out cached host memory does. An image
+ * is device local when it can be. The queue families a buffer is shared between are
  * the distinct ones the device has.
  *
  * A buffer is created for its usage plus transfers both ways, shared
@@ -202,21 +202,10 @@ static void test_memory_types(void)
 	CHECK(granite_find_buffer_memory_type(&props, GRANITE_BUFFER_DOMAIN_DEVICE, ALL_TYPES, true) == TYPE_DEVICE,
 			"a device buffer is not affected");
 
-	CHECK(granite_find_image_memory_type(&props, GRANITE_IMAGE_DOMAIN_PHYSICAL, ALL_TYPES) == TYPE_DEVICE,
-			"an image is device local");
-	CHECK(granite_find_image_memory_type(&props, GRANITE_IMAGE_DOMAIN_PHYSICAL, 1u << TYPE_HOST) == TYPE_HOST,
-			"or whatever it is allowed");
-	CHECK(granite_find_image_memory_type(&props, GRANITE_IMAGE_DOMAIN_TRANSIENT, ALL_TYPES) == TYPE_LAZY,
-			"a transient image is lazily allocated");
-	CHECK(granite_find_image_memory_type(&props, GRANITE_IMAGE_DOMAIN_TRANSIENT, ALL_TYPES & ~(1u << TYPE_LAZY)) ==
-			TYPE_DEVICE, "or device local");
-	CHECK(granite_find_image_memory_type(&props, GRANITE_IMAGE_DOMAIN_TRANSIENT, 1u << TYPE_HOST) == GRANITE_NO_MEMORY_TYPE,
-			"and nothing else");
-	CHECK(granite_find_image_memory_type(&props, GRANITE_IMAGE_DOMAIN_LINEAR_HOST_CACHED, ALL_TYPES) == TYPE_CACHED &&
-			granite_find_image_memory_type(&props, GRANITE_IMAGE_DOMAIN_LINEAR_HOST_CACHED, 1u << TYPE_HOST) == TYPE_HOST,
-			"a cached host image is cached, or visible");
-	CHECK(granite_find_image_memory_type(&props, GRANITE_IMAGE_DOMAIN_LINEAR_HOST, ALL_TYPES) == TYPE_HOST,
-			"a host image is visible");
+	CHECK(granite_find_image_memory_type(&props, ALL_TYPES) == TYPE_DEVICE, "an image is device local");
+	CHECK(granite_find_image_memory_type(&props, ALL_TYPES & ~(1u << TYPE_DEVICE)) == TYPE_BAR, "wherever that is");
+	CHECK(granite_find_image_memory_type(&props, 1u << TYPE_HOST) == TYPE_HOST, "or whatever it is allowed");
+	CHECK(granite_find_image_memory_type(&props, 0) == GRANITE_NO_MEMORY_TYPE, "allowed nothing: none");
 }
 
 static void test_helpers(void)

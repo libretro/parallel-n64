@@ -770,7 +770,7 @@ static void complete_frame_error()
 		"ooXXXXXoooXoooXoooXoooXoo"
 		"ooooooooooooooooooooooooo";
 
-	auto info = Vulkan::ImageCreateInfo::immutable_2d_image(50, 16, VK_FORMAT_R8G8B8A8_UNORM, false);
+	auto info = Vulkan::ImageCreateInfo::immutable_2d_image(50, 16, VK_FORMAT_R8G8B8A8_UNORM);
 	info.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
 	info.misc = IMAGE_MISC_MUTABLE_SRGB_BIT;
 

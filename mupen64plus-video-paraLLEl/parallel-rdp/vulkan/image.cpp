@@ -36,10 +36,6 @@ ImageView::ImageView(Device *device_, VkImageView view_, const ImageViewCreateIn
 
 VkImageView ImageView::get_render_target_view(unsigned layer) const
 {
-	// Transient images just have one layer.
-	if (info.image->get_create_info().domain == ImageDomain::Transient)
-		return view;
-
 	VK_ASSERT(layer < get_create_info().layers);
 
 	if (render_target_views.empty())
@@ -60,10 +56,6 @@ ImageView::~ImageView()
 			device->destroy_image_view_nolock(depth_view);
 		if (stencil_view != VK_NULL_HANDLE)
 			device->destroy_image_view_nolock(stencil_view);
-		if (unorm_view != VK_NULL_HANDLE)
-			device->destroy_image_view_nolock(unorm_view);
-		if (srgb_view != VK_NULL_HANDLE)
-			device->destroy_image_view_nolock(srgb_view);
 
 		for (auto &v : render_target_views)
 			device->destroy_image_view_nolock(v);
@@ -75,10 +67,6 @@ ImageView::~ImageView()
 			device->destroy_image_view(depth_view);
 		if (stencil_view != VK_NULL_HANDLE)
 			device->destroy_image_view(stencil_view);
-		if (unorm_view != VK_NULL_HANDLE)
-			device->destroy_image_view(unorm_view);
-		if (srgb_view != VK_NULL_HANDLE)
-			device->destroy_image_view(srgb_view);
 
 		for (auto &v : render_target_views)
 			device->destroy_image_view(v);
@@ -119,43 +107,17 @@ Image::Image(Device *device_, VkImage image_, VkImageView default_view, const De
 
 Image::~Image()
 {
-	if (owns_image)
-	{
-		if (internal_sync)
-			device->destroy_image_nolock(image);
-		else
-			device->destroy_image(image);
-	}
+	if (internal_sync)
+		device->destroy_image_nolock(image);
+	else
+		device->destroy_image(image);
 
-	if (alloc.get_memory() && owns_memory_allocation)
+	if (alloc.get_memory())
 	{
 		if (internal_sync)
 			device->free_memory_nolock(alloc);
 		else
 			device->free_memory(alloc);
-	}
-}
-
-LinearHostImage::LinearHostImage(Device *device_, ImageHandle gpu_image_, BufferHandle cpu_image_, VkPipelineStageFlags stages_)
-	: device(device_), gpu_image(Util::move(gpu_image_)), cpu_image(Util::move(cpu_image_)), stages(stages_)
-{
-	if (gpu_image->get_create_info().domain == ImageDomain::LinearHostCached ||
-	    gpu_image->get_create_info().domain == ImageDomain::LinearHost)
-	{
-		VkImageSubresource sub = {};
-		sub.aspectMask = format_to_aspect_mask(gpu_image->get_format());
-		VkSubresourceLayout layout;
-
-		auto &table = device_->get_device_table();
-		table.vkGetImageSubresourceLayout(device->get_device(), gpu_image->get_image(), &sub, &layout);
-		row_pitch = layout.rowPitch;
-		row_offset = layout.offset;
-	}
-	else
-	{
-		row_pitch = gpu_image->get_width() * granite_format_block_size(gpu_image->get_format(),
-		                                                                            format_to_aspect_mask(gpu_image->get_format()));
-		row_offset = 0;
 	}
 }
 

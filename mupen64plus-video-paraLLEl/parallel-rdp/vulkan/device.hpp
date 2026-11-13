@@ -88,7 +88,6 @@ struct HandlePool
 {
 	VulkanObjectPool<Buffer> buffers;
 	VulkanObjectPool<Image> images;
-	VulkanObjectPool<LinearHostImage> linear_images;
 	VulkanObjectPool<ImageView> image_views;
 	VulkanObjectPool<BufferView> buffer_views;
 	VulkanObjectPool<Sampler> samplers;
@@ -137,7 +136,6 @@ public:
 	friend struct ImageViewDeleter;
 	friend class Image;
 	friend struct ImageDeleter;
-	friend struct LinearHostImageDeleter;
 	friend class CommandBuffer;
 	friend struct CommandBufferDeleter;
 	friend class Program;
@@ -223,7 +221,7 @@ public:
 	                         const ResourceLayout *layout = nullptr);
 	Program *request_program(Shader *vertex, Shader *fragment);
 	Program *request_program(Shader *compute);
-	const ImmutableSampler *request_immutable_sampler(const SamplerCreateInfo &info, const ImmutableYcbcrConversion *ycbcr);
+	const ImmutableSampler *request_immutable_sampler(const SamplerCreateInfo &info);
 
 	// Map and unmap buffer objects.
 	void *map_host_buffer(const Buffer &buffer, MemoryAccessFlags access);
@@ -247,10 +245,6 @@ public:
 	// Render pass helpers.
 	bool image_format_is_supported(VkFormat format, VkFormatFeatureFlags2KHR required, VkImageTiling tiling = VK_IMAGE_TILING_OPTIMAL) const;
 	void get_format_properties(VkFormat format, VkFormatProperties3KHR *properties) const;
-	bool get_image_format_properties(VkFormat format, VkImageType type, VkImageTiling tiling,
-	                                 VkImageUsageFlags usage, VkImageCreateFlags flags,
-	                                 const void *pNext,
-	                                 VkImageFormatProperties2 *properties2) const;
 
 	// Semaphore API:
 	// Semaphores in Granite are abstracted to support both binary and timeline semaphores
@@ -560,7 +554,6 @@ private:
 	unsigned frame_context_index = 0;
 
 	uint32_t find_memory_type(BufferDomain domain, uint32_t mask) const;
-	uint32_t find_memory_type(ImageDomain domain, uint32_t mask) const;
 	bool memory_type_is_host_visible(uint32_t type) const;
 
 	const ImmutableSampler *samplers[static_cast<unsigned>(StockSampler::Count)] = {};
@@ -571,7 +564,6 @@ private:
 	VulkanCache<Shader> shaders;
 	VulkanCache<Program> programs;
 	VulkanCache<ImmutableSampler> immutable_samplers;
-	VulkanCache<ImmutableYcbcrConversion> immutable_ycbcr_conversions;
 
 	granite_framebuffer_allocator_t framebuffer_allocator;
 	VkPipelineCache pipeline_cache = VK_NULL_HANDLE;
@@ -652,8 +644,7 @@ private:
 	void report_checkpoints();
 
 
-	bool allocate_image_memory(DeviceAllocation *allocation, const ImageCreateInfo &info,
-	                           VkImage image, VkImageTiling tiling);
+	bool allocate_image_memory(DeviceAllocation *allocation, const ImageCreateInfo &info, VkImage image);
 };
 
 // A fairly complex helper used for async queue readbacks.

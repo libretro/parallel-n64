@@ -161,31 +161,10 @@ void CommandBuffer::image_barrier(const Image &image, VkImageLayout old_layout, 
 {
 	VK_ASSERT(!actual_render_pass);
 	VK_ASSERT(!framebuffer);
-	VK_ASSERT(image.get_create_info().domain != ImageDomain::Transient);
 	auto ref = image_ref(image);
 	granite_cmd_image_barrier(&table, cmd, &ref, old_layout, new_layout,
 	                          granite_barrier_src_stages(src_stages, device->get_workarounds().optimize_all_graphics_barrier),
 	                          src_access, dst_stages, dst_access);
-}
-
-void CommandBuffer::barrier_prepare_generate_mipmap(const Image &image, VkImageLayout base_level_layout,
-                                                    VkPipelineStageFlags src_stage, VkAccessFlags src_access,
-                                                    bool need_top_level_barrier)
-{
-	VK_ASSERT(!actual_render_pass);
-	VK_ASSERT(image.get_create_info().levels > 1);
-	auto ref = image_ref(image);
-	granite_cmd_prepare_generate_mipmap(&table, cmd, &ref, base_level_layout,
-	                                    granite_barrier_src_stages(src_stage,
-	                                                               device->get_workarounds().optimize_all_graphics_barrier),
-	                                    src_access, need_top_level_barrier);
-}
-
-void CommandBuffer::generate_mipmap(const Image &image)
-{
-	VK_ASSERT(image.get_layout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL) == VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
-	auto ref = image_ref(image);
-	granite_cmd_generate_mipmap(&table, cmd, &ref);
 }
 
 void CommandBuffer::blit_image(const Image &dst, const Image &src,

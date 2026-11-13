@@ -52,16 +52,6 @@ typedef enum granite_buffer_domain
 	GRANITE_BUFFER_DOMAIN_CACHED_COHERENT_HOST_PREFER_CACHED
 } granite_buffer_domain_t;
 
-/* Where an image's memory should be */
-typedef enum granite_image_domain
-{
-	GRANITE_IMAGE_DOMAIN_PHYSICAL = 0,
-	/* lazily allocated, for an attachment whose contents last one pass */
-	GRANITE_IMAGE_DOMAIN_TRANSIENT,
-	GRANITE_IMAGE_DOMAIN_LINEAR_HOST_CACHED,
-	GRANITE_IMAGE_DOMAIN_LINEAR_HOST
-} granite_image_domain_t;
-
 /* What creating a buffer needs of the device */
 typedef struct granite_buffer_env
 {
@@ -85,8 +75,9 @@ uint32_t granite_find_memory_type(const VkPhysicalDeviceMemoryProperties *memory
  * comes closest. GRANITE_NO_MEMORY_TYPE when none will do. */
 uint32_t granite_find_buffer_memory_type(const VkPhysicalDeviceMemoryProperties *memory,
 		granite_buffer_domain_t domain, uint32_t mask, bool force_host_cached);
-uint32_t granite_find_image_memory_type(const VkPhysicalDeviceMemoryProperties *memory,
-		granite_image_domain_t domain, uint32_t mask);
+/* The type for an image's memory: device local, or whatever it is
+ * allowed */
+uint32_t granite_find_image_memory_type(const VkPhysicalDeviceMemoryProperties *memory, uint32_t mask);
 
 /* The distinct families among @families, in @unique (room for @count);
  * returns how many. More than one: what is shared between the queues is
