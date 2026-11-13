@@ -27,7 +27,7 @@
 #include "rdp_common.hpp"
 #include "temporal_upscaler.h"
 #include "upscaler_pass.h"
-#include "vi_image_pool.hpp"
+#include "vi_image_pool.h"
 
 namespace RDP
 {
@@ -101,6 +101,11 @@ class Renderer;
 class VideoInterface
 {
 public:
+	VideoInterface() = default;
+	~VideoInterface();
+	VideoInterface(const VideoInterface &) = delete;
+	void operator=(const VideoInterface &) = delete;
+
 	/* Hands @add every pipeline a scanout can need. The thread that processes
 	 * commands, once, at load. */
 	void queue_known_pipelines(unsigned upscaling, bool with_upscaler,
@@ -156,7 +161,7 @@ private:
 	bool previous_frame_blank = false;
 
 	// Intermediate images, reused instead of created every frame.
-	mutable VIImagePool image_pool;
+	mutable rdp_vi_image_pool_t image_pool = {};
 
 	// The per-line horizontal state the scale pass reads, decoded straight
 	// into a persistently mapped buffer; one is reused once its frame
@@ -171,8 +176,8 @@ private:
 	HorizontalBuffer horizontal_buffers[MAX_HORIZONTAL_BUFFERS] = {};
 	HorizontalBuffer *acquire_horizontal_buffer();
 	uint64_t frame_serial = 0;
-	const VIImagePool::Entry &acquire_image(const Vulkan::ImageCreateInfo &info, bool layer_views) const;
-	const VIImagePool::Entry &create_pooled_image(const Vulkan::ImageCreateInfo &info, bool layer_views) const;
+	const rdp_vi_image_entry_t &acquire_image(const Vulkan::ImageCreateInfo &info, bool layer_views) const;
+	const rdp_vi_image_entry_t &create_pooled_image(const Vulkan::ImageCreateInfo &info, bool layer_views) const;
 
 	// Frame state.
 	uint32_t frame_count = 0;

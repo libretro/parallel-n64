@@ -352,37 +352,54 @@ void VideoInterface::scanout_memory_range(unsigned &offset, unsigned &length) co
 	rdp_vi_scanout_memory_range(vi_registers, &offset, &length);
 }
 
+VideoInterface::~VideoInterface()
+{
+	rdp_vi_image_pool_free(&image_pool);
+}
+
 void VideoInterface::begin_frame_context()
 {
 	frame_serial++;
 	if (device)
-		image_pool.trim(frame_serial, device->get_num_frame_contexts());
+		rdp_vi_image_pool_trim(&image_pool, frame_serial, device->get_num_frame_contexts());
 }
 
-const VIImagePool::Entry &VideoInterface::acquire_image(const Vulkan::ImageCreateInfo &info, bool layer_views) const
+// A handle of the caller's own to an entry's image (empty if it has none).
+static Vulkan::ImageHandle held_image(const rdp_vi_image_entry_t &e)
 {
-	VIImagePool::Entry *e = image_pool.reuse(info, layer_views, frame_serial, device->get_num_frame_contexts());
+	if (e.image)
+		granite_image_ref(e.image);
+	return Vulkan::ImageHandle(static_cast<Vulkan::Image *>(e.image));
+}
+
+const rdp_vi_image_entry_t &VideoInterface::acquire_image(const Vulkan::ImageCreateInfo &info, bool layer_views) const
+{
+	rdp_vi_image_entry_t *e = rdp_vi_image_pool_reuse(&image_pool, &info, layer_views, frame_serial,
+	                                                  device->get_num_frame_contexts());
 	if (e)
 		return *e;
 	return create_pooled_image(info, layer_views);
 }
 
 // Only when the size or format changes, or while the pool fills.
-UTIL_NOINLINE_COLD const VIImagePool::Entry &VideoInterface::create_pooled_image(
+UTIL_NOINLINE_COLD const rdp_vi_image_entry_t &VideoInterface::create_pooled_image(
 		const Vulkan::ImageCreateInfo &info, bool layer_views) const
 {
-	VIImagePool::Entry *e = image_pool.add(info, frame_serial, device->get_num_frame_contexts());
-	e->image = device->create_image(info);
+	rdp_vi_image_entry_t *e = rdp_vi_image_pool_add(&image_pool, &info, frame_serial,
+	                                                device->get_num_frame_contexts());
+	// (the entry takes the references)
+	e->image = granite_device_create_image(device, &info, nullptr);
 	if (layer_views && e->image)
 	{
-		Vulkan::ImageViewCreateInfo view_info = {};
-		view_info.image = e->image.get();
+		granite_image_view_info_t view_info = {};
+		view_info.image = e->image;
 		view_info.view_type = VK_IMAGE_VIEW_TYPE_2D;
+		view_info.levels = VK_REMAINING_MIP_LEVELS;
 		view_info.layers = 1;
 		for (unsigned layer = 0; layer < info.layers && layer < 2; layer++)
 		{
 			view_info.base_layer = layer;
-			e->layer_views[layer] = device->create_image_view(view_info);
+			e->layer_views[layer] = granite_device_create_image_view(device, &view_info);
 		}
 	}
 	return *e;
@@ -418,7 +435,7 @@ Vulkan::ImageHandle VideoInterface::vram_fetch_stage(const Registers &regs, unsi
 	rt_info.initial_layout = VK_IMAGE_LAYOUT_UNDEFINED;
 	rt_info.misc = Vulkan::IMAGE_MISC_CONCURRENT_QUEUE_GRAPHICS_BIT |
 	               Vulkan::IMAGE_MISC_CONCURRENT_QUEUE_ASYNC_COMPUTE_BIT;
-	vram_image = acquire_image(rt_info, false).image;
+	vram_image = held_image(acquire_image(rt_info, false));
 	vram_image->set_layout(Vulkan::Layout::General);
 
 	async_cmd->image_barrier(*vram_image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL,
@@ -495,10 +512,10 @@ Vulkan::ImageHandle VideoInterface::aa_fetch_stage(Vulkan::CommandBuffer &cmd, V
 	rt_info.initial_layout = VK_IMAGE_LAYOUT_UNDEFINED;
 	rt_info.layers = fetch_bug ? 2 : 1;
 	rt_info.misc = Vulkan::IMAGE_MISC_FORCE_ARRAY_BIT;
-	const VIImagePool::Entry &aa = acquire_image(rt_info, true);
-	aa_image = aa.image;
-	const Vulkan::ImageView *aa_primary = aa.layer_views[0].get();
-	const Vulkan::ImageView *aa_secondary = aa.layer_views[1].get();
+	const rdp_vi_image_entry_t &aa = acquire_image(rt_info, true);
+	aa_image = held_image(aa);
+	const Vulkan::ImageView *aa_primary = static_cast<const Vulkan::ImageView *>(aa.layer_views[0]);
+	const Vulkan::ImageView *aa_secondary = static_cast<const Vulkan::ImageView *>(aa.layer_views[1]);
 
 	Vulkan::RenderPassInfo rp;
 	rp.color_attachments[0] = aa_primary;
@@ -561,10 +578,10 @@ Vulkan::ImageHandle VideoInterface::divot_stage(Vulkan::CommandBuffer &cmd, Vulk
 	rt_info.initial_layout = VK_IMAGE_LAYOUT_UNDEFINED;
 	rt_info.layers = fetch_bug ? 2 : 1;
 	rt_info.misc = Vulkan::IMAGE_MISC_FORCE_ARRAY_BIT;
-	const VIImagePool::Entry &divot = acquire_image(rt_info, true);
-	divot_image = divot.image;
-	const Vulkan::ImageView *divot_primary = divot.layer_views[0].get();
-	const Vulkan::ImageView *divot_secondary = divot.layer_views[1].get();
+	const rdp_vi_image_entry_t &divot = acquire_image(rt_info, true);
+	divot_image = held_image(divot);
+	const Vulkan::ImageView *divot_primary = static_cast<const Vulkan::ImageView *>(divot.layer_views[0]);
+	const Vulkan::ImageView *divot_secondary = static_cast<const Vulkan::ImageView *>(divot.layer_views[1]);
 
 	Vulkan::RenderPassInfo rp;
 	rp.color_attachments[0] = divot_primary;
@@ -740,7 +757,7 @@ Vulkan::ImageHandle VideoInterface::scale_stage(Vulkan::CommandBuffer &cmd, cons
 	rt_info.initial_layout = VK_IMAGE_LAYOUT_UNDEFINED;
 	rt_info.misc = Vulkan::IMAGE_MISC_MUTABLE_SRGB_BIT;
 
-	scale_image = acquire_image(rt_info, false).image;
+	scale_image = held_image(acquire_image(rt_info, false));
 
 	if (!scale_image)
 	{
@@ -986,7 +1003,7 @@ Vulkan::ImageHandle VideoInterface::downscale_stage(Vulkan::CommandBuffer &cmd, 
 		downscale_steps--;
 		need_pass = scaling_factor > 1 && downscale_steps;
 
-		downscale_image = acquire_image(rt_info, false).image;
+		downscale_image = held_image(acquire_image(rt_info, false));
 
 		if (!downscale_image)
 		{
@@ -1025,7 +1042,7 @@ Vulkan::ImageHandle VideoInterface::upscale_deinterlace(Vulkan::CommandBuffer &c
 	rt_info.initial_layout = VK_IMAGE_LAYOUT_UNDEFINED;
 	rt_info.misc = Vulkan::IMAGE_MISC_MUTABLE_SRGB_BIT;
 
-	deinterlaced_image = acquire_image(rt_info, false).image;
+	deinterlaced_image = held_image(acquire_image(rt_info, false));
 
 	if (!deinterlaced_image)
 	{
@@ -1125,7 +1142,7 @@ Vulkan::ImageHandle VideoInterface::upscaler_scanout(unsigned scaling_factor,
 	info.initial_layout = VK_IMAGE_LAYOUT_UNDEFINED;
 	info.misc = Vulkan::IMAGE_MISC_CONCURRENT_QUEUE_GRAPHICS_BIT |
 	            Vulkan::IMAGE_MISC_CONCURRENT_QUEUE_ASYNC_COMPUTE_BIT;
-	image = acquire_image(info, false).image;
+	image = held_image(acquire_image(info, false));
 	if (!image)
 	{
 		device->submit(async_cmd);
