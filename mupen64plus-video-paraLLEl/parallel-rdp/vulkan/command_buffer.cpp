@@ -680,11 +680,6 @@ void CommandBuffer::set_opaque_state()
 	set_dirty(COMMAND_BUFFER_DIRTY_STATIC_STATE_BIT);
 }
 
-QueryPoolHandle CommandBuffer::write_timestamp(VkPipelineStageFlagBits stage)
-{
-	return device->write_timestamp(cmd, stage);
-}
-
 void CommandBuffer::end_threaded_recording()
 {
 	VK_ASSERT(!debug_channel_buffer);
@@ -696,12 +691,6 @@ void CommandBuffer::end_threaded_recording()
 
 	// We must end a command buffer on the same thread index we started it on.
 	VK_ASSERT(granite_thread_index() == state.thread_index);
-
-	if (has_profiling())
-	{
-		auto &query_pool = device->get_performance_query_pool(device->get_physical_queue_type(type));
-		query_pool.end_command_buffer(cmd);
-	}
 
 	if (table.vkEndCommandBuffer(cmd) != VK_SUCCESS)
 		LOGE("Failed to end command buffer.\n");
@@ -746,16 +735,6 @@ void CommandBuffer::end_region()
 		if (vkCmdEndDebugUtilsLabelEXT)
 			vkCmdEndDebugUtilsLabelEXT(cmd);
 	}
-}
-
-void CommandBuffer::enable_profiling()
-{
-	profiling = true;
-}
-
-bool CommandBuffer::has_profiling() const
-{
-	return profiling;
 }
 
 void CommandBuffer::begin_debug_channel(DebugChannelInterface *iface, const char *tag, VkDeviceSize size)

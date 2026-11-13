@@ -52,11 +52,6 @@ Only printfs from certain pixels can be filtered through to avoid spam.
 
 Same as `RDP_DEBUG` but for the VI.
 
-### `PARALLEL_RDP_MEASURE_SYNC_TIME`
-
-Measures time stalled in `CommandProcessor::wait_for_timeline`. Useful to measure
-CPU overhead in hard-synced emulator integrations.
-
 ### `PARALLEL_RDP_SMALL_TYPES=0`
 
 Force-disables 8/16-bit arithmetic support. Useful when suspecting driver bugs.
@@ -69,12 +64,6 @@ Forces the use of ubershaders. Can be extremely slow depending on the shader com
 
 Disabled async pipeline optimization, and blocks for every shader compiler.
 Only use if the ubershader crashes, since this adds the dreaded shader compilation stalls.
-
-### `PARALLEL_RDP_BENCH=1`
-
-Measures RDP rendering time spent on GPU using Vulkan timestamps.
-At end of a run, reports average time spent per render pass,
-and how many render passes are flushed per frame.
 
 ### `PARALLEL_RDP_SUBGROUP=0`
 

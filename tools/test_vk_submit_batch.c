@@ -9,7 +9,7 @@
  * last batch is carried on.
  *
  * A batch with a timeline semaphore carries the timeline values of all
- * its waits and signals; a profiling iteration is chained in front.
+ * its waits and signals.
  * Submitting is one call for all batches, or a call a batch with the
  * fence on the last; a failed call stops the rest.
  *
@@ -67,7 +67,7 @@ static void test_order(void)
 	unsigned n;
 
 	granite_submit_composer_init(&c);
-	n = granite_submit_composer_bake(&c, -1, &s);
+	n = granite_submit_composer_bake(&c, &s);
 	CHECK(n == 0, "nothing added, nothing to submit");
 
 	/* waits, command buffers, signals: one batch */
@@ -78,7 +78,7 @@ static void test_order(void)
 	granite_submit_composer_add_command_buffer(&c, CMDB(2));
 	granite_submit_composer_add_command_buffer(&c, CMDB(3));
 	granite_submit_composer_add_signal(&c, SEM(3), 0);
-	n = granite_submit_composer_bake(&c, -1, &s);
+	n = granite_submit_composer_bake(&c, &s);
 	CHECK(n == 1, "waits, command buffers and signals in order are one batch");
 	CHECK(s[0].sType == VK_STRUCTURE_TYPE_SUBMIT_INFO && s[0].pNext == NULL, "with no timeline info");
 	CHECK(s[0].waitSemaphoreCount == 2 && s[0].pWaitSemaphores[0] == SEM(1) && s[0].pWaitSemaphores[1] == SEM(2) &&
@@ -97,7 +97,7 @@ static void test_order(void)
 	granite_submit_composer_add_command_buffer(&c, CMDB(3));
 	granite_submit_composer_add_signal(&c, SEM(3), 0);
 	granite_submit_composer_add_signal(&c, SEM(4), 0);
-	n = granite_submit_composer_bake(&c, -1, &s);
+	n = granite_submit_composer_bake(&c, &s);
 	CHECK(n == 3, "a command buffer after a signal and a wait after a command buffer begin batches");
 	CHECK(s[0].commandBufferCount == 1 && s[0].pCommandBuffers[0] == CMDB(1) && s[0].signalSemaphoreCount == 1 &&
 			s[0].waitSemaphoreCount == 0, "the first: a command buffer and its signal");
@@ -116,10 +116,10 @@ static void test_order(void)
 	granite_submit_composer_begin_batch(&c);
 	granite_submit_composer_begin_batch(&c);
 	CHECK(c.num_batches == 2, "a break after something begins one batch");
-	n = granite_submit_composer_bake(&c, -1, &s);
+	n = granite_submit_composer_bake(&c, &s);
 	CHECK(n == 1 && s[0].signalSemaphoreCount == 1, "an empty last batch is not submitted");
 	granite_submit_composer_add_signal(&c, SEM(2), 0);
-	n = granite_submit_composer_bake(&c, -1, &s);
+	n = granite_submit_composer_bake(&c, &s);
 	CHECK(n == 2 && s[1].signalSemaphoreCount == 1 && s[1].pSignalSemaphores[0] == SEM(2),
 			"a signal after a break is a batch of its own");
 
@@ -131,7 +131,6 @@ static void test_timeline(void)
 	granite_submit_composer_t c;
 	const VkSubmitInfo *s;
 	const VkTimelineSemaphoreSubmitInfoKHR *t;
-	const VkPerformanceQuerySubmitInfoKHR *p;
 	unsigned n;
 
 	granite_submit_composer_init(&c);
@@ -143,7 +142,7 @@ static void test_timeline(void)
 	granite_submit_composer_add_command_buffer(&c, CMDB(1));
 	granite_submit_composer_add_signal(&c, SEM(3), 9);
 	granite_submit_composer_add_signal(&c, SEM(4), 0);
-	n = granite_submit_composer_bake(&c, -1, &s);
+	n = granite_submit_composer_bake(&c, &s);
 	CHECK(n == 1, "unsplit, binary and timeline semaphores share a batch");
 	t = (const VkTimelineSemaphoreSubmitInfoKHR *)s[0].pNext;
 	CHECK(t && t->sType == VK_STRUCTURE_TYPE_TIMELINE_SEMAPHORE_SUBMIT_INFO_KHR && t->pNext == NULL,
@@ -151,12 +150,6 @@ static void test_timeline(void)
 	CHECK(t && t->waitSemaphoreValueCount == 2 && t->pWaitSemaphoreValues[0] == 0 && t->pWaitSemaphoreValues[1] == 7 &&
 			t->signalSemaphoreValueCount == 2 && t->pSignalSemaphoreValues[0] == 9 && t->pSignalSemaphoreValues[1] == 0,
 			"with a value for every wait and signal");
-
-	/* profiling chained in front */
-	n = granite_submit_composer_bake(&c, 3, &s);
-	p = (const VkPerformanceQuerySubmitInfoKHR *)s[0].pNext;
-	CHECK(n == 1 && p && p->sType == VK_STRUCTURE_TYPE_PERFORMANCE_QUERY_SUBMIT_INFO_KHR && p->counterPassIndex == 3 &&
-			p->pNext == (const void *)&c.timeline_infos[0], "a profiling iteration is chained before it");
 
 	/* split */
 	granite_submit_composer_begin(&c, true);
@@ -167,7 +160,7 @@ static void test_timeline(void)
 	granite_submit_composer_add_signal(&c, SEM(4), 9);
 	granite_submit_composer_add_signal(&c, SEM(5), 0);
 	granite_submit_composer_add_signal(&c, SEM(6), 0);
-	n = granite_submit_composer_bake(&c, -1, &s);
+	n = granite_submit_composer_bake(&c, &s);
 	CHECK(n == 3, "split, the kinds do not share a batch");
 	CHECK(s[0].waitSemaphoreCount == 2 && s[0].pNext == NULL && s[0].commandBufferCount == 0,
 			"the binary waits, with no timeline info");
@@ -185,7 +178,7 @@ static void test_timeline(void)
 		granite_submit_composer_add_command_buffer(&c, CMDB(n));
 		granite_submit_composer_add_signal(&c, SEM(n), 0);
 	}
-	n = granite_submit_composer_bake(&c, -1, &s);
+	n = granite_submit_composer_bake(&c, &s);
 	CHECK(n == GRANITE_SUBMIT_MAX_BATCHES, "no more batches than the limit");
 	CHECK(s[GRANITE_SUBMIT_MAX_BATCHES - 1].commandBufferCount == 4 &&
 			s[GRANITE_SUBMIT_MAX_BATCHES - 1].signalSemaphoreCount == 4 &&
@@ -225,7 +218,7 @@ static void test_submit_and_storage(void)
 		}
 	}
 	CHECK(c.waits == waits && c.cmds == cmds && c.signals == signals, "composing the same again allocates nothing");
-	n = granite_submit_composer_bake(&c, -1, &s);
+	n = granite_submit_composer_bake(&c, &s);
 	CHECK(n == 2 && s[0].waitSemaphoreCount == 40 && s[0].commandBufferCount == 100 && s[0].signalSemaphoreCount == 40 &&
 			s[0].pWaitSemaphores[39] == SEM(39) && s[0].pCommandBuffers[99] == CMDB(99) &&
 			s[0].pSignalSemaphores[39] == SEM(139) && s[1].commandBufferCount == 1 && s[1].pCommandBuffers[0] == CMDB(100),
@@ -233,12 +226,12 @@ static void test_submit_and_storage(void)
 
 	/* all at once */
 	submit_calls = 0;
-	CHECK(granite_submit_composer_submit(&c, &table, QUEUE, FENCE, -1, false) == VK_SUCCESS, "submitted");
+	CHECK(granite_submit_composer_submit(&c, &table, QUEUE, FENCE, false) == VK_SUCCESS, "submitted");
 	CHECK(submit_calls == 1 && submit_counts[0] == 2 && submit_fences[0] == FENCE, "in one call, with the fence");
 
 	/* a batch a call */
 	submit_calls = 0;
-	CHECK(granite_submit_composer_submit(&c, &table, QUEUE, FENCE, -1, true) == VK_SUCCESS, "submitted one by one");
+	CHECK(granite_submit_composer_submit(&c, &table, QUEUE, FENCE, true) == VK_SUCCESS, "submitted one by one");
 	CHECK(submit_calls == 2 && submit_counts[0] == 1 && submit_counts[1] == 1 && submit_fences[0] == VK_NULL_HANDLE &&
 			submit_fences[1] == FENCE, "a call a batch, the fence on the last");
 
@@ -246,21 +239,21 @@ static void test_submit_and_storage(void)
 	submit_calls = 0;
 	fail_at_call = 0;
 	fail_at_call_result = VK_ERROR_DEVICE_LOST;
-	CHECK(granite_submit_composer_submit(&c, &table, QUEUE, FENCE, -1, true) == VK_ERROR_DEVICE_LOST, "a failed call is reported");
+	CHECK(granite_submit_composer_submit(&c, &table, QUEUE, FENCE, true) == VK_ERROR_DEVICE_LOST, "a failed call is reported");
 	CHECK(submit_calls == 1, "and stops the rest");
 	fail_at_call = ~0u;
 
 	/* a composer that could not hold something submits nothing */
 	submit_calls = 0;
 	c.failed = true;
-	CHECK(granite_submit_composer_submit(&c, &table, QUEUE, FENCE, -1, false) == VK_ERROR_OUT_OF_HOST_MEMORY &&
+	CHECK(granite_submit_composer_submit(&c, &table, QUEUE, FENCE, false) == VK_ERROR_OUT_OF_HOST_MEMORY &&
 			submit_calls == 0, "a composer that lost something submits nothing");
 	granite_submit_composer_begin(&c, false);
 	CHECK(!c.failed, "and starts afresh");
 
 	/* an empty submission still reaches the queue, for the fence */
 	submit_calls = 0;
-	CHECK(granite_submit_composer_submit(&c, &table, QUEUE, FENCE, -1, false) == VK_SUCCESS && submit_calls == 1 &&
+	CHECK(granite_submit_composer_submit(&c, &table, QUEUE, FENCE, false) == VK_SUCCESS && submit_calls == 1 &&
 			submit_counts[0] == 0 && submit_fences[0] == FENCE, "an empty submission is submitted for its fence");
 
 	granite_submit_composer_free(&c);

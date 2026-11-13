@@ -40,9 +40,6 @@ void parallel_set_upscaler_interface(const struct retro_hw_render_upscaler_inter
 bool parallel_upscaler_active(void);
 void parallel_upscaler_reset(void);
 
-void parallel_profile_video_refresh_begin(void);
-void parallel_profile_video_refresh_end(void);
-
 const VkApplicationInfo *parallel_get_application_info(void);
 bool parallel_create_device(struct retro_vulkan_context *context,
       VkInstance instance,

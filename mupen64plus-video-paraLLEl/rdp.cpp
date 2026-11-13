@@ -1,5 +1,4 @@
 #include "rdp.hpp"
-#include "timeline_trace_file.h"
 #include "Gfx #1.3.h"
 #include "parallel.h"
 #include "z64.h"
@@ -38,12 +37,9 @@ static const uint8_t *hle_cmd_buf = nullptr;
 static uint32_t hle_cmd_base = 0;
 static uint32_t hle_cmd_len = 0;
 
-static granite_trace_file_t *timeline_trace_file;
 static CommandProcessor *frontend;
 static Device *device;
 static Context *context;
-/* (held without destructors: dropped by hand while the device is up) */
-static Util::HeldHandle<Vulkan::QueryPoolResult> begin_ts, end_ts;
 
 /* Set true only when init() fully succeeds (including the device meeting
  * parallel-RDP's feature requirements). The frame-driving entry points
@@ -282,23 +278,6 @@ void process_commands()
 	*GET_GFX_INFO(DPC_CURRENT_REG) = *GET_GFX_INFO(DPC_END_REG);
 }
 
-static Util::HeldHandle<Vulkan::QueryPoolResult> refresh_begin_ts;
-
-void profile_refresh_begin()
-{
-	if (device)
-		refresh_begin_ts = device->write_calibrated_timestamp();
-}
-
-void profile_refresh_end()
-{
-	if (device)
-	{
-		device->register_time_interval("Emulation", refresh_begin_ts, device->write_calibrated_timestamp(), "refresh");
-		refresh_begin_ts.reset();
-	}
-}
-
 void begin_frame()
 {
 	if (!device_supported)
@@ -313,8 +292,6 @@ void begin_frame()
 	set_num_sync_frames(num_frames);
 
 	vulkan->wait_sync_index(vulkan->handle);
-	if (!begin_ts)
-		begin_ts = device->write_calibrated_timestamp();
 
 	upscaler_poll();
 
@@ -741,8 +718,6 @@ bool init()
 void deinit()
 {
 	device_supported = false;
-	begin_ts.reset();
-	end_ts.reset();
 	set_num_sync_frames(0);
 	upscaler_iface = nullptr;
 	upscaler_on = false;
@@ -754,8 +729,6 @@ void deinit()
 	device = nullptr;
 	Util::destroy(context);
 	context = nullptr;
-	granite_trace_file_free(timeline_trace_file);
-	timeline_trace_file = nullptr;
 }
 
 static void complete_frame_error()
@@ -945,10 +918,6 @@ void complete_frame()
 	height = image->get_height();
 	retro_image_handles[index] = image;
 
-	end_ts = device->write_calibrated_timestamp();
-	device->register_time_interval("Emulation", begin_ts, end_ts, "frame");
-	begin_ts.reset();
-	end_ts.reset();
 
 	RDP::Quirks quirks;
 	quirks.set_native_texture_lod(native_texture_lod);
@@ -986,16 +955,6 @@ static bool create_device(struct retro_vulkan_context *frontend_context, VkInsta
 	Util::destroy(::RDP::context);
 	::RDP::context = Util::create<Vulkan::Context>();
 
-	::Vulkan::Context::SystemHandles handles;
-
-	if (const char *env = getenv("PARALLEL_RDP_TIMELINE_TRACE"))
-	{
-		granite_trace_file_free(::RDP::timeline_trace_file);
-		::RDP::timeline_trace_file = granite_trace_file_new(env);
-		handles.timeline_trace_file = ::RDP::timeline_trace_file;
-	}
-
-	::RDP::context->set_system_handles(handles);
 	::RDP::context->set_device_factory(factory);
 
 	bool ok = ::RDP::context->init_device_from_instance(

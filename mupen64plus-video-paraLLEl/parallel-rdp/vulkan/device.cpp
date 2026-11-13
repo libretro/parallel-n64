@@ -22,10 +22,8 @@
 
 #include "device.hpp"
 #include "format.hpp"
-#include "timeline_trace_file.h"
 #include "type_to_string.hpp"
 #include "quirks.hpp"
-#include "timer.h"
 #include <string.h>
 #include <stdlib.h>
 
@@ -90,8 +88,6 @@ Device::Device()
 	granite_submit_composer_init(&composer);
 	fence_wait_ec_live = retro_eventcount_init(&fence_wait_ec);
 	for (auto &stack : deferred_releases)
-		mpsc_stack_init(&stack);
-	for (auto &stack : deferred_intervals)
 		mpsc_stack_init(&stack);
 	pipeline_records = static_cast<pipeline_record_t *>(
 			calloc(PIPELINE_RECORDS, sizeof(pipeline_record_t)));
@@ -675,7 +671,6 @@ void Device::set_context(const Context &context)
 	mem_props = context.get_mem_props();
 	gpu_props = context.get_gpu_props();
 	ext = context.get_enabled_device_features();
-	system_handles = context.get_system_handles();
 
 	init_workarounds();
 
@@ -698,30 +693,6 @@ void Device::set_context(const Context &context)
 
 	managers.vbo.set_max_retained_blocks(256);
 	managers.ubo.set_max_retained_blocks(64);
-
-	for (int i = 0; i < QUEUE_INDEX_COUNT; i++)
-	{
-		if (queue_info.family_indices[i] == VK_QUEUE_FAMILY_IGNORED)
-			continue;
-
-		bool alias_pool = false;
-		for (int j = 0; j < i; j++)
-		{
-			if (queue_info.family_indices[i] == queue_info.family_indices[j])
-			{
-				alias_pool = true;
-				break;
-			}
-		}
-
-		if (!alias_pool)
-			queue_data[i].performance_query_pool.init_device(this, queue_info.family_indices[i]);
-	}
-
-
-
-	if (system_handles.timeline_trace_file)
-		init_calibrated_timestamps();
 }
 
 void Device::init_timeline_semaphores()
@@ -935,16 +906,6 @@ void Device::submit_nolock(CommandBufferHandle cmd, Fence *fence, unsigned semap
 	auto type = cmd->get_command_buffer_type();
 	auto physical_type = get_physical_queue_type(type);
 	auto &submissions = frame().submissions[physical_type];
-	bool profiled_submit = cmd->has_profiling();
-
-	if (profiled_submit)
-	{
-		LOGI("Submitting profiled command buffer, draining GPU.\n");
-		Fence drain_fence;
-		submit_empty_nolock(physical_type, &drain_fence, nullptr, -1);
-		drain_fence->wait();
-		drain_fence->set_internal_sync_object();
-	}
 
 	cmd->end();
 	submissions.push_back(Util::move(cmd));
@@ -955,8 +916,7 @@ void Device::submit_nolock(CommandBufferHandle cmd, Fence *fence, unsigned semap
 	{
 		submit_queue(physical_type, fence ? &signalled_fence : nullptr,
 		             nullptr,
-		             semaphore_count, semaphores,
-		             profiled_submit ? 0 : -1);
+		             semaphore_count, semaphores);
 	}
 
 	if (fence)
@@ -968,18 +928,6 @@ void Device::submit_nolock(CommandBufferHandle cmd, Fence *fence, unsigned semap
 			*fence = Fence(handle_pool.fences.allocate(this, signalled_fence.fence));
 	}
 
-	if (profiled_submit)
-	{
-		// Drain queue again and report results.
-		LOGI("Submitted profiled command buffer, draining GPU and report ...\n");
-		auto &query_pool = get_performance_query_pool(physical_type);
-		Fence drain_fence;
-		submit_empty_nolock(physical_type, &drain_fence, nullptr, fence || semaphore_count ? -1 : 0);
-		drain_fence->wait();
-		drain_fence->set_internal_sync_object();
-		query_pool.report();
-	}
-
 	decrement_frame_counter_nolock();
 }
 
@@ -987,11 +935,11 @@ void Device::submit_empty(CommandBuffer::Type type, Fence *fence, SemaphoreHolde
 {
 	VK_ASSERT(!semaphore || !semaphore->is_proxy_timeline());
 	LOCK();
-	submit_empty_nolock(get_physical_queue_type(type), fence, semaphore, -1);
+	submit_empty_nolock(get_physical_queue_type(type), fence, semaphore);
 }
 
 void Device::submit_empty_nolock(QueueIndices physical_type, Fence *fence,
-                                 SemaphoreHolder *semaphore, int profiling_iteration)
+                                 SemaphoreHolder *semaphore)
 {
 	if (physical_type != QUEUE_INDEX_TRANSFER)
 		flush_frame(QUEUE_INDEX_TRANSFER);
@@ -999,7 +947,7 @@ void Device::submit_empty_nolock(QueueIndices physical_type, Fence *fence,
 	InternalFence signalled_fence;
 
 	submit_queue(physical_type, fence ? &signalled_fence : nullptr, semaphore,
-	             0, nullptr, profiling_iteration);
+	             0, nullptr);
 
 	if (fence)
 	{
@@ -1034,10 +982,7 @@ void Device::submit_empty_inner(QueueIndices physical_type, InternalFence *fence
 	if (fence)
 		fence->fence = cleared_fence;
 
-	auto start_ts = write_calibrated_timestamp_nolock();
 	auto result = submit_batches(queue, cleared_fence);
-	auto end_ts = write_calibrated_timestamp_nolock();
-	register_time_interval_nolock("CPU", Util::move(start_ts), Util::move(end_ts), "submit");
 
 	if (result != VK_SUCCESS)
 		LOGE("vkQueueSubmit failed (code: %d).\n", int(result));
@@ -1229,11 +1174,11 @@ void Device::emit_queue_signals(SemaphoreHolder *external_semaphore,
 	}
 }
 
-VkResult Device::submit_batches(VkQueue queue, VkFence fence, int profiling_iteration)
+VkResult Device::submit_batches(VkQueue queue, VkFence fence)
 {
 	if (queue_lock_callback)
 		queue_lock_callback(queue_lock_userdata);
-	VkResult result = granite_submit_composer_submit(&composer, table, queue, fence, profiling_iteration,
+	VkResult result = granite_submit_composer_submit(&composer, table, queue, fence,
 	                                                 get_workarounds().split_binary_timeline_semaphores);
 	if (queue_unlock_callback)
 		queue_unlock_callback(queue_lock_userdata);
@@ -1242,7 +1187,7 @@ VkResult Device::submit_batches(VkQueue queue, VkFence fence, int profiling_iter
 
 void Device::submit_queue(QueueIndices physical_type, InternalFence *fence,
                           SemaphoreHolder *external_semaphore,
-                          unsigned semaphore_count, Semaphore *semaphores, int profiling_iteration)
+                          unsigned semaphore_count, Semaphore *semaphores)
 {
 	// Always check if we need to flush pending transfers.
 	if (physical_type != QUEUE_INDEX_TRANSFER)
@@ -1280,10 +1225,7 @@ void Device::submit_queue(QueueIndices physical_type, InternalFence *fence,
 	emit_queue_signals(external_semaphore, timeline_semaphore, timeline_value,
 	                   fence, semaphore_count, semaphores);
 
-	auto start_ts = write_calibrated_timestamp_nolock();
-	auto result = submit_batches(queue, cleared_fence, profiling_iteration);
-	auto end_ts = write_calibrated_timestamp_nolock();
-	register_time_interval_nolock("CPU", Util::move(start_ts), Util::move(end_ts), "submit");
+	auto result = submit_batches(queue, cleared_fence);
 
 	if (result != VK_SUCCESS)
 		LOGE("vkQueueSubmit failed (code: %d).\n", int(result));
@@ -1312,7 +1254,7 @@ void Device::sync_buffer_blocks()
 
 	VkBufferUsageFlags usage = 0;
 
-	auto cmd = request_command_buffer_nolock(get_thread_index(), CommandBuffer::Type::AsyncTransfer, false);
+	auto cmd = request_command_buffer_nolock(get_thread_index(), CommandBuffer::Type::AsyncTransfer);
 
 	cmd->begin_region("buffer-block-sync");
 
@@ -1380,14 +1322,6 @@ void Device::flush_frame_nolock()
 		flush_frame(i);
 }
 
-PerformanceQueryPool &Device::get_performance_query_pool(QueueIndices physical_index)
-{
-	for (int i = 0; i < physical_index; i++)
-		if (queue_info.family_indices[i] == queue_info.family_indices[physical_index])
-			return queue_data[i].performance_query_pool;
-	return queue_data[physical_index].performance_query_pool;
-}
-
 CommandBufferHandle Device::request_command_buffer(CommandBuffer::Type type)
 {
 	return request_command_buffer_for_thread(get_thread_index(), type);
@@ -1396,10 +1330,10 @@ CommandBufferHandle Device::request_command_buffer(CommandBuffer::Type type)
 CommandBufferHandle Device::request_command_buffer_for_thread(unsigned thread_index, CommandBuffer::Type type)
 {
 	LOCK();
-	return request_command_buffer_nolock(thread_index, type, false);
+	return request_command_buffer_nolock(thread_index, type);
 }
 
-CommandBufferHandle Device::request_command_buffer_nolock(unsigned thread_index, CommandBuffer::Type type, bool profiled)
+CommandBufferHandle Device::request_command_buffer_nolock(unsigned thread_index, CommandBuffer::Type type)
 {
 #ifndef GRANITE_VULKAN_MT
 	VK_ASSERT(thread_index == 0);
@@ -1410,25 +1344,12 @@ CommandBufferHandle Device::request_command_buffer_nolock(unsigned thread_index,
 	if (cmd == VK_NULL_HANDLE)
 		return {};
 
-	if (profiled && !ext.performance_query_features.performanceCounterQueryPools)
-	{
-		LOGW("Profiling is not supported on this device.\n");
-		profiled = false;
-	}
-
 	VkCommandBufferBeginInfo info = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
 	info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 	table->vkBeginCommandBuffer(cmd, &info);
 	add_frame_counter_nolock();
 	CommandBufferHandle handle(handle_pool.command_buffers.allocate(this, cmd, pipeline_cache, type));
 	handle->set_thread_index(thread_index);
-
-	if (profiled)
-	{
-		auto &query_pool = get_performance_query_pool(physical_type);
-		handle->enable_profiling();
-		query_pool.begin_command_buffer(handle->get_command_buffer());
-	}
 
 	return handle;
 }
@@ -1450,8 +1371,6 @@ Device::~Device()
 				retro_eventcount_free(&d->fence_wait_ec);
 		}
 	} fence_ec_free{this};
-
-	managers.timestamps.log_simple();
 
 	if (pipeline_cache != VK_NULL_HANDLE)
 	{
@@ -1514,7 +1433,6 @@ Device::PerFrame::PerFrame(Device *device_, unsigned frame_index_)
     , frame_index(frame_index_)
     , table(device_->get_device_table())
     , managers(device_->managers)
-    , query_pool(device_)
 {
 	unsigned count = device_->num_thread_indices;
 	for (int i = 0; i < QUEUE_INDEX_COUNT; i++)
@@ -1540,15 +1458,6 @@ void Device::drain_deferred_releases(PerFrame &f)
 		f.allocations.push_back(node->alloc);
 		handle_pool.deferred.free(node);
 		node = next;
-	}
-	auto *iv = static_cast<DeferredInterval *>(
-			mpsc_stack_drain(&deferred_intervals[f.frame_index % MAX_DEFERRED_FRAMES]));
-	while (iv)
-	{
-		auto *next = static_cast<DeferredInterval *>(iv->next);
-		register_time_interval_nolock(iv->tid, Util::move(iv->start_ts), Util::move(iv->end_ts), iv->tag);
-		handle_pool.deferred_intervals.free(iv);
-		iv = next;
 	}
 }
 
@@ -1747,13 +1656,6 @@ void Device::next_frame_context()
 {
 	DRAIN_FRAME_LOCK();
 
-	if (frame_context_begin_ts)
-	{
-		auto frame_context_end_ts = write_calibrated_timestamp_nolock();
-		register_time_interval_nolock("CPU", Util::move(frame_context_begin_ts), Util::move(frame_context_end_ts), "command submissions");
-		frame_context_begin_ts = {};
-	}
-
 	// Flush the frame here as we might have pending staging command buffers from init stage.
 	end_frame_nolock();
 
@@ -1776,199 +1678,6 @@ void Device::next_frame_context()
 
 	frame().begin();
 	granite_release_queue_set_frame(&releases.q, frame_context_index);
-	recalibrate_timestamps();
-	frame_context_begin_ts = write_calibrated_timestamp_nolock();
-}
-
-QueryPoolHandle Device::write_timestamp(VkCommandBuffer cmd, VkPipelineStageFlagBits stage)
-{
-	LOCK();
-	return write_timestamp_nolock(cmd, stage);
-}
-
-QueryPoolHandle Device::write_timestamp_nolock(VkCommandBuffer cmd, VkPipelineStageFlagBits stage)
-{
-	return frame().query_pool.write_timestamp(cmd, stage);
-}
-
-QueryPoolHandle Device::write_calibrated_timestamp()
-{
-	// Touches only the (lock-free) handle pool, and is a no-op unless a
-	// timeline trace is being written.
-	return write_calibrated_timestamp_nolock();
-}
-
-QueryPoolHandle Device::write_calibrated_timestamp_nolock()
-{
-	if (!system_handles.timeline_trace_file)
-		return {};
-
-	auto handle = QueryPoolHandle(handle_pool.query.allocate(this, false));
-	handle->signal_timestamp_ticks(granite_time_nsecs());
-	return handle;
-}
-
-UTIL_NOINLINE_COLD void Device::recalibrate_timestamps_fallback()
-{
-	wait_idle_nolock();
-	auto cmd = request_command_buffer_nolock(0, CommandBuffer::Type::Generic, false);
-	auto ts = write_timestamp_nolock(cmd->get_command_buffer(), VK_PIPELINE_STAGE_ALL_COMMANDS_BIT);
-	if (!ts)
-	{
-		submit_discard_nolock(cmd);
-		return;
-	}
-	auto start_ts = granite_time_nsecs();
-	submit_nolock(cmd, nullptr, 0, nullptr);
-	wait_idle_nolock();
-	auto end_ts = granite_time_nsecs();
-	auto host_ts = (start_ts + end_ts) / 2;
-
-	LOGI("Calibrated timestamps with a fallback method. Uncertainty: %.3f us.\n", 1e-3 * (end_ts - start_ts));
-
-	calibrated_timestamp_host = host_ts;
-	VK_ASSERT(ts->is_signalled());
-	calibrated_timestamp_device = ts->get_timestamp_ticks();
-	calibrated_timestamp_device_accum = calibrated_timestamp_device;
-}
-
-void Device::init_calibrated_timestamps()
-{
-	if (!get_device_features().supports_calibrated_timestamps)
-	{
-		recalibrate_timestamps_fallback();
-		return;
-	}
-
-	uint32_t count;
-	vkGetPhysicalDeviceCalibrateableTimeDomainsEXT(gpu, &count, nullptr);
-	Util::Vector<VkTimeDomainEXT> domains(count);
-	if (vkGetPhysicalDeviceCalibrateableTimeDomainsEXT(gpu, &count, domains.data()) != VK_SUCCESS)
-		return;
-
-	bool supports_device_domain = false;
-	for (auto &domain : domains)
-	{
-		if (domain == VK_TIME_DOMAIN_DEVICE_EXT)
-		{
-			supports_device_domain = true;
-			break;
-		}
-	}
-
-	if (!supports_device_domain)
-		return;
-
-	for (auto &domain : domains)
-	{
-#ifdef _WIN32
-		const auto supported_domain = VK_TIME_DOMAIN_QUERY_PERFORMANCE_COUNTER_EXT;
-#elif defined(ANDROID)
-		const auto supported_domain = VK_TIME_DOMAIN_CLOCK_MONOTONIC_EXT;
-#else
-		const auto supported_domain = VK_TIME_DOMAIN_CLOCK_MONOTONIC_RAW_EXT;
-#endif
-		if (domain == supported_domain)
-		{
-			calibrated_time_domain = domain;
-			break;
-		}
-	}
-
-	if (calibrated_time_domain == VK_TIME_DOMAIN_DEVICE_EXT)
-	{
-		LOGE("Could not find a suitable time domain for calibrated timestamps.\n");
-		return;
-	}
-
-	if (!resample_calibrated_timestamps())
-	{
-		LOGE("Failed to get calibrated timestamps.\n");
-		calibrated_time_domain = VK_TIME_DOMAIN_DEVICE_EXT;
-		return;
-	}
-}
-
-UTIL_NOINLINE_COLD bool Device::resample_calibrated_timestamps()
-{
-	VkCalibratedTimestampInfoEXT infos[2] = {};
-	infos[0].sType = VK_STRUCTURE_TYPE_CALIBRATED_TIMESTAMP_INFO_EXT;
-	infos[1].sType = VK_STRUCTURE_TYPE_CALIBRATED_TIMESTAMP_INFO_EXT;
-	infos[0].timeDomain = calibrated_time_domain;
-	infos[1].timeDomain = VK_TIME_DOMAIN_DEVICE_EXT;
-	uint64_t timestamps[2] = {};
-	uint64_t max_deviation;
-
-	if (table->vkGetCalibratedTimestampsEXT(device, 2, infos, timestamps, &max_deviation) != VK_SUCCESS)
-	{
-		LOGE("Failed to get calibrated timestamps.\n");
-		calibrated_time_domain = VK_TIME_DOMAIN_DEVICE_EXT;
-		return false;
-	}
-
-	calibrated_timestamp_host = timestamps[0];
-	calibrated_timestamp_device = timestamps[1];
-	calibrated_timestamp_device_accum = calibrated_timestamp_device;
-
-#ifdef _WIN32
-	LARGE_INTEGER freq;
-	QueryPerformanceFrequency(&freq);
-	calibrated_timestamp_host = int64_t(1e9 * calibrated_timestamp_host / double(freq.QuadPart));
-#endif
-	return true;
-}
-
-void Device::recalibrate_timestamps()
-{
-	// Don't bother recalibrating timestamps if we're not tracing.
-	if (!system_handles.timeline_trace_file)
-		return;
-
-	// Recalibrate every once in a while ...
-	timestamp_calibration_counter++;
-	if (timestamp_calibration_counter < 1000)
-		return;
-	timestamp_calibration_counter = 0;
-
-	if (calibrated_time_domain == VK_TIME_DOMAIN_DEVICE_EXT)
-		recalibrate_timestamps_fallback();
-	else
-		resample_calibrated_timestamps();
-}
-
-void Device::register_time_interval(const char *tid, QueryPoolHandle start_ts, QueryPoolHandle end_ts, const char *tag, const char *)
-{
-	// Without a timeline trace the timestamps are empty and there is
-	// nothing to record.
-	if (!start_ts || !end_ts)
-		return;
-	// May come from any thread (profiling); handed to the owner like a
-	// release, recorded when its frame begins.
-	auto *node = handle_pool.deferred_intervals.allocate();
-	Util::copy_string(node->tid, sizeof(node->tid), tid);
-	Util::copy_string(node->tag, sizeof(node->tag), tag);
-	node->start_ts = Util::move(start_ts);
-	node->end_ts = Util::move(end_ts);
-	mpsc_stack_push(&deferred_intervals[granite_release_queue_frame(&releases.q) % MAX_DEFERRED_FRAMES], node);
-}
-
-void Device::register_time_interval_nolock(const char *tid, QueryPoolHandle start_ts, QueryPoolHandle end_ts,
-                                           const char *tag)
-{
-	if (start_ts && end_ts)
-	{
-		TimestampInterval *timestamp_tag = managers.timestamps.get_timestamp_tag(tag);
-#ifdef VULKAN_DEBUG
-		if (start_ts->is_signalled() && end_ts->is_signalled())
-			VK_ASSERT(end_ts->get_timestamp_ticks() >= start_ts->get_timestamp_ticks());
-#endif
-		frame().timestamp_intervals.emplace_back();
-		auto &ts = frame().timestamp_intervals.back();
-		Util::copy_string(ts.tid, sizeof(ts.tid), tid);
-		ts.start_ts = Util::move(start_ts);
-		ts.end_ts = Util::move(end_ts);
-		ts.timestamp_tag = timestamp_tag;
-	}
 }
 
 void Device::add_frame_counter_nolock()
@@ -1992,10 +1701,6 @@ void Device::PerFrame::trim_command_pools()
 void Device::PerFrame::begin()
 {
 	VkDevice vkdevice = device.get_device();
-
-	Vulkan::QueryPoolHandle wait_fence_ts;
-	if (!in_destructor)
-		wait_fence_ts = device.write_calibrated_timestamp_nolock();
 
 	bool has_timeline = true;
 	for (auto &sem : timeline_semaphores)
@@ -2044,8 +1749,6 @@ void Device::PerFrame::begin()
 		for (auto &pool : cmd_pool)
 			granite_command_pool_begin(&pool);
 
-	query_pool.begin();
-
 	for (auto &channel : debug_channels)
 		device.parse_debug_channel(channel);
 
@@ -2068,47 +1771,6 @@ void Device::PerFrame::begin()
 	}
 
 	allocations.clear();
-
-	if (!in_destructor)
-		device.register_time_interval_nolock("CPU", Util::move(wait_fence_ts), device.write_calibrated_timestamp_nolock(), "fence + recycle");
-
-	int64_t min_timestamp_us = INT64_MAX;
-	int64_t max_timestamp_us = 0;
-
-	for (auto &ts : timestamp_intervals)
-	{
-		if (ts.end_ts->is_signalled() && ts.start_ts->is_signalled())
-		{
-			VK_ASSERT(ts.start_ts->is_device_timebase() == ts.end_ts->is_device_timebase());
-
-			int64_t start_ts = ts.start_ts->get_timestamp_ticks();
-			int64_t end_ts = ts.end_ts->get_timestamp_ticks();
-			if (ts.start_ts->is_device_timebase())
-				ts.timestamp_tag->accumulate_time(device.convert_device_timestamp_delta(start_ts, end_ts));
-			else
-				ts.timestamp_tag->accumulate_time(1e-9 * double(end_ts - start_ts));
-
-			if (device.system_handles.timeline_trace_file)
-			{
-				start_ts = device.convert_timestamp_to_absolute_nsec(*ts.start_ts);
-				end_ts = device.convert_timestamp_to_absolute_nsec(*ts.end_ts);
-				min_timestamp_us = Util::min_of(min_timestamp_us, start_ts);
-				max_timestamp_us = Util::max_of(max_timestamp_us, end_ts);
-
-				granite_trace_file_record(device.system_handles.timeline_trace_file,
-						ts.timestamp_tag->get_tag(), ts.tid, frame_index + 1, start_ts, end_ts);
-			}
-		}
-	}
-
-	if (device.system_handles.timeline_trace_file && min_timestamp_us <= max_timestamp_us)
-	{
-		granite_trace_file_record(device.system_handles.timeline_trace_file,
-				"CPU + GPU full frame", "Frame context", frame_index + 1, min_timestamp_us, max_timestamp_us);
-	}
-
-	managers.timestamps.mark_end_of_frame_context();
-	timestamp_intervals.clear();
 }
 
 Device::PerFrame::~PerFrame()
@@ -3310,47 +2972,6 @@ void Device::parse_debug_channel(const PerFrame::DebugChannel &channel)
 
 	unmap_host_buffer(*channel.buffer, MEMORY_ACCESS_READ_BIT);
 }
-
-static int64_t convert_to_signed_delta(uint64_t start_ticks, uint64_t end_ticks, unsigned valid_bits)
-{
-	unsigned shamt = 64 - valid_bits;
-	start_ticks <<= shamt;
-	end_ticks <<= shamt;
-	auto ticks_delta = int64_t(end_ticks - start_ticks);
-	ticks_delta >>= shamt;
-	return ticks_delta;
-}
-
-double Device::convert_device_timestamp_delta(uint64_t start_ticks, uint64_t end_ticks) const
-{
-	int64_t ticks_delta = convert_to_signed_delta(start_ticks, end_ticks, queue_info.timestamp_valid_bits);
-	return double(int64_t(ticks_delta)) * gpu_props.limits.timestampPeriod * 1e-9;
-}
-
-uint64_t Device::update_wrapped_device_timestamp(uint64_t ts)
-{
-	calibrated_timestamp_device_accum +=
-			convert_to_signed_delta(calibrated_timestamp_device_accum,
-			                        ts,
-			                        queue_info.timestamp_valid_bits);
-	return calibrated_timestamp_device_accum;
-}
-
-int64_t Device::convert_timestamp_to_absolute_nsec(const QueryPoolResult &handle)
-{
-	auto ts = int64_t(handle.get_timestamp_ticks());
-	if (handle.is_device_timebase())
-	{
-		// Ensure that we deal with timestamp wraparound correctly.
-		// On some hardware, we have < 64 valid bits and the timestamp counters will wrap around at some interval.
-		// As long as timestamps come in at a reasonably steady pace, we can deal with wraparound cleanly.
-		ts = update_wrapped_device_timestamp(ts);
-		ts = calibrated_timestamp_host + int64_t(double(ts - calibrated_timestamp_device) * gpu_props.limits.timestampPeriod);
-	}
-	return ts;
-}
-
-
 
 const VolkDeviceTable &Device::get_device_table() const
 {

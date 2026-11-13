@@ -569,10 +569,6 @@ bool Context::create_device(VkPhysicalDevice gpu_, VkSurfaceKHR surface, const c
 		return false;
 	}
 
-	// XXX: This assumes timestamp valid bits is the same for all queue types.
-	queue_info.timestamp_valid_bits =
-			queue_props[queue_info.family_indices[QUEUE_INDEX_GRAPHICS]].queueFamilyProperties.timestampValidBits;
-
 	// Driver ends up interleaving GPU work in very bizarre ways, causing horrible GPU
 	// bubbles and completely broken pacing. Single queue works around it.
 	bool broken_async_queues =
@@ -709,12 +705,6 @@ bool Context::create_device(VkPhysicalDevice gpu_, VkSurfaceKHR surface, const c
 		enabled_extensions.push_back(VK_KHR_DRAW_INDIRECT_COUNT_EXTENSION_NAME);
 	}
 
-	if (has_extension_property(queried_extensions, VK_EXT_CALIBRATED_TIMESTAMPS_EXTENSION_NAME))
-	{
-		ext.supports_calibrated_timestamps = true;
-		enabled_extensions.push_back(VK_EXT_CALIBRATED_TIMESTAMPS_EXTENSION_NAME);
-	}
-
 	if (has_extension_property(queried_extensions, VK_EXT_CONSERVATIVE_RASTERIZATION_EXTENSION_NAME))
 	{
 		enabled_extensions.push_back(VK_EXT_CONSERVATIVE_RASTERIZATION_EXTENSION_NAME);
@@ -776,7 +766,6 @@ bool Context::create_device(VkPhysicalDevice gpu_, VkSurfaceKHR surface, const c
 	ext.sync2_features = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES_KHR };
 	ext.present_id_features = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_ID_FEATURES_KHR };
 	ext.present_wait_features = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_WAIT_FEATURES_KHR };
-	ext.performance_query_features = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PERFORMANCE_QUERY_FEATURES_KHR };
 
 	ext.subgroup_size_control_features = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_SIZE_CONTROL_FEATURES_EXT };
 	ext.host_query_reset_features = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_QUERY_RESET_FEATURES_EXT };
@@ -866,14 +855,6 @@ bool Context::create_device(VkPhysicalDevice gpu_, VkSurfaceKHR surface, const c
 		enabled_extensions.push_back(VK_KHR_TIMELINE_SEMAPHORE_EXTENSION_NAME);
 		*ppNext = &ext.timeline_semaphore_features;
 		ppNext = &ext.timeline_semaphore_features.pNext;
-	}
-
-
-	if (has_extension_property(queried_extensions, VK_KHR_PERFORMANCE_QUERY_EXTENSION_NAME))
-	{
-		enabled_extensions.push_back(VK_KHR_PERFORMANCE_QUERY_EXTENSION_NAME);
-		*ppNext = &ext.performance_query_features;
-		ppNext = &ext.performance_query_features.pNext;
 	}
 
 	if (has_extension_property(queried_extensions, VK_EXT_MEMORY_PRIORITY_EXTENSION_NAME))

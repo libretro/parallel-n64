@@ -192,8 +192,7 @@ void granite_submit_composer_add_signal(granite_submit_composer_t *composer, VkS
 		current(composer)->has_binary = true;
 }
 
-unsigned granite_submit_composer_bake(granite_submit_composer_t *composer, int profiling_iteration,
-		const VkSubmitInfo **submits)
+unsigned granite_submit_composer_bake(granite_submit_composer_t *composer, const VkSubmitInfo **submits)
 {
 	unsigned count = 0;
 	unsigned i;
@@ -231,17 +230,6 @@ unsigned granite_submit_composer_bake(granite_submit_composer_t *composer, int p
 			submit->pNext = timeline;
 		}
 
-		if (profiling_iteration >= 0)
-		{
-			VkPerformanceQuerySubmitInfoKHR *profiling = &composer->profiling_infos[count];
-
-			memset(profiling, 0, sizeof(*profiling));
-			profiling->sType = VK_STRUCTURE_TYPE_PERFORMANCE_QUERY_SUBMIT_INFO_KHR;
-			profiling->counterPassIndex = (uint32_t)profiling_iteration;
-			profiling->pNext = submit->pNext;
-			submit->pNext = profiling;
-		}
-
 		submit->commandBufferCount = (uint32_t)num_cmds;
 		submit->pCommandBuffers = composer->cmds + batch->first_cmd;
 		submit->waitSemaphoreCount = (uint32_t)num_waits;
@@ -257,8 +245,7 @@ unsigned granite_submit_composer_bake(granite_submit_composer_t *composer, int p
 }
 
 VkResult granite_submit_composer_submit(granite_submit_composer_t *composer,
-		const struct VolkDeviceTable *table, VkQueue queue, VkFence fence, int profiling_iteration,
-		bool one_by_one)
+		const struct VolkDeviceTable *table, VkQueue queue, VkFence fence, bool one_by_one)
 {
 	const VkSubmitInfo *submits;
 	VkResult result = VK_SUCCESS;
@@ -267,7 +254,7 @@ VkResult granite_submit_composer_submit(granite_submit_composer_t *composer,
 	if (composer->failed)
 		return VK_ERROR_OUT_OF_HOST_MEMORY;
 
-	count = granite_submit_composer_bake(composer, profiling_iteration, &submits);
+	count = granite_submit_composer_bake(composer, &submits);
 	if (!one_by_one)
 		return table->vkQueueSubmit(queue, count, submits, fence);
 

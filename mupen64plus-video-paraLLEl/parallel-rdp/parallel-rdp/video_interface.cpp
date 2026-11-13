@@ -235,9 +235,6 @@ void VideoInterface::set_device(Vulkan::Device *device_)
 		filter_debug_channel_x = strtol(env, nullptr, 0);
 	if (const char *env = getenv("VI_DEBUG_Y"))
 		filter_debug_channel_y = strtol(env, nullptr, 0);
-
-	if (const char *timestamp_env = getenv("PARALLEL_RDP_BENCH"))
-		timestamp = strtol(timestamp_env, nullptr, 0) > 0;
 }
 
 void VideoInterface::set_renderer(Renderer *renderer_)
@@ -673,7 +670,6 @@ Vulkan::ImageHandle VideoInterface::vram_fetch_stage(const Registers &regs, unsi
 {
 	auto async_cmd = device->request_command_buffer(Vulkan::CommandBuffer::Type::AsyncCompute);
 	Vulkan::ImageHandle vram_image;
-	Vulkan::QueryPoolHandle start_ts, end_ts;
 	bool divot = (regs.status & VI_CONTROL_DIVOT_ENABLE_BIT) != 0;
 
 	if (scaling_factor > 1)
@@ -685,9 +681,6 @@ Vulkan::ImageHandle VideoInterface::vram_fetch_stage(const Registers &regs, unsi
 		async_cmd->barrier(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_WRITE_BIT,
 		                   VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_READ_BIT);
 	}
-
-	if (timestamp)
-		start_ts = async_cmd->write_timestamp(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
 
 	// Need to sample a 2-pixel border to have room for AA filter and divot.
 	int extract_width = regs.max_x + 2 + 4 + int(divot) * 2;
@@ -755,12 +748,6 @@ Vulkan::ImageHandle VideoInterface::vram_fetch_stage(const Registers &regs, unsi
 	async_cmd->barrier(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0,
 	                   VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0);
 
-	if (timestamp)
-	{
-		end_ts = async_cmd->write_timestamp(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
-		device->register_time_interval("VI GPU", rdp_move(start_ts), rdp_move(end_ts), "extract-vram");
-	}
-
 	Vulkan::Semaphore sem;
 	device->submit(async_cmd, nullptr, 1, &sem);
 	device->add_wait_semaphore(Vulkan::CommandBuffer::Type::Generic, rdp_move(sem),
@@ -773,7 +760,6 @@ Vulkan::ImageHandle VideoInterface::aa_fetch_stage(Vulkan::CommandBuffer &cmd, V
                                                    const Registers &regs, unsigned scaling_factor) const
 {
 	Vulkan::ImageHandle aa_image;
-	Vulkan::QueryPoolHandle start_ts, end_ts;
 	bool fetch_bug = need_fetch_bug_emulation(regs, scaling_factor);
 	bool divot = (regs.status & VI_CONTROL_DIVOT_ENABLE_BIT) != 0;
 
@@ -812,9 +798,6 @@ Vulkan::ImageHandle VideoInterface::aa_fetch_stage(Vulkan::CommandBuffer &cmd, V
 	                  VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, 0,
 	                  VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT);
 
-	if (timestamp)
-		start_ts = cmd.write_timestamp(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
-
 	cmd.begin_render_pass(rp);
 	set_fetch_pipeline(cmd, regs.status, fetch_bug);
 
@@ -833,12 +816,6 @@ Vulkan::ImageHandle VideoInterface::aa_fetch_stage(Vulkan::CommandBuffer &cmd, V
 	cmd.draw(3);
 	cmd.end_render_pass();
 
-	if (timestamp)
-	{
-		end_ts = cmd.write_timestamp(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
-		device->register_time_interval("VI GPU", rdp_move(start_ts), rdp_move(end_ts), "vi-fetch");
-	}
-
 	cmd.image_barrier(*aa_image, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
 	                  VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
 	                  VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_ACCESS_SHADER_READ_BIT);
@@ -850,7 +827,6 @@ Vulkan::ImageHandle VideoInterface::divot_stage(Vulkan::CommandBuffer &cmd, Vulk
                                                 const Registers &regs, unsigned scaling_factor) const
 {
 	Vulkan::ImageHandle divot_image;
-	Vulkan::QueryPoolHandle start_ts, end_ts;
 	bool fetch_bug = need_fetch_bug_emulation(regs, scaling_factor);
 
 	// For the divot pass, we need to figure out how many pixels we might need to read.
@@ -888,21 +864,12 @@ Vulkan::ImageHandle VideoInterface::divot_stage(Vulkan::CommandBuffer &cmd, Vulk
 	                  VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, 0,
 	                  VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT);
 
-	if (timestamp)
-		start_ts = cmd.write_timestamp(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
-
 	cmd.begin_render_pass(rp);
 	set_divot_pipeline(cmd, fetch_bug);
 
 	cmd.set_texture(0, 0, aa_image.get_view());
 	cmd.draw(3);
 	cmd.end_render_pass();
-
-	if (timestamp)
-	{
-		end_ts = cmd.write_timestamp(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
-		device->register_time_interval("VI GPU", rdp_move(start_ts), rdp_move(end_ts), "vi-divot");
-	}
 
 	cmd.image_barrier(*divot_image, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
 	                  VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
@@ -967,7 +934,6 @@ Vulkan::ImageHandle VideoInterface::scale_stage(Vulkan::CommandBuffer &cmd, cons
                                                 const ScaleFold *fold) const
 {
 	Vulkan::ImageHandle scale_image;
-	Vulkan::QueryPoolHandle start_ts, end_ts;
 	bool fetch_bug = need_fetch_bug_emulation(regs, scaling_factor);
 	bool serrate = (regs.status & VI_CONTROL_SERRATE_BIT) != 0 && !options.upscale_deinterlacing;
 
@@ -1081,9 +1047,6 @@ Vulkan::ImageHandle VideoInterface::scale_stage(Vulkan::CommandBuffer &cmd, cons
 			                  VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_ACCESS_SHADER_READ_BIT);
 		}
 	}
-
-	if (timestamp)
-		start_ts = cmd.write_timestamp(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
 
 	cmd.begin_render_pass(rp);
 
@@ -1261,12 +1224,6 @@ Vulkan::ImageHandle VideoInterface::scale_stage(Vulkan::CommandBuffer &cmd, cons
 	}
 
 	cmd.end_render_pass();
-
-	if (timestamp)
-	{
-		end_ts = cmd.write_timestamp(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
-		device->register_time_interval("VI GPU", rdp_move(start_ts), rdp_move(end_ts), "vi-scale");
-	}
 
 	return scale_image;
 }

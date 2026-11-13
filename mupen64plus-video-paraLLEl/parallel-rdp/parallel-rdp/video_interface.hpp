@@ -224,7 +224,6 @@ private:
 
 	size_t rdram_offset = 0;
 	size_t rdram_size = 0;
-	bool timestamp = false;
 
 	struct HorizontalInfo
 	{

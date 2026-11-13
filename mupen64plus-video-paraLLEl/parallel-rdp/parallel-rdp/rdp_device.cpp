@@ -181,13 +181,6 @@ CommandProcessor::CommandProcessor(Vulkan::Device &device_, void *rdram_ptr,
 	clear_tmem();
 	init_renderer();
 
-	if (const char *env = getenv("PARALLEL_RDP_BENCH"))
-	{
-		measure_stall_time = strtol(env, nullptr, 0) > 0;
-		if (measure_stall_time)
-			LOGI("Will measure stall timings.\n");
-	}
-
 	if (const char *env = getenv("PARALLEL_RDP_SINGLE_THREADED_COMMAND"))
 	{
 		single_threaded_processing = strtol(env, nullptr, 0) > 0;
@@ -201,9 +194,6 @@ CommandProcessor::CommandProcessor(Vulkan::Device &device_, void *rdram_ptr,
 		if (!ring)
 			single_threaded_processing = true;
 	}
-
-	if (const char *env = getenv("PARALLEL_RDP_BENCH"))
-		timestamp = strtol(env, nullptr, 0) > 0;
 }
 
 // Here, where ShaderBank is complete.
@@ -1245,21 +1235,12 @@ uint64_t CommandProcessor::signal_timeline()
 
 void CommandProcessor::wait_for_timeline(uint64_t index)
 {
-	Vulkan::QueryPoolHandle start_ts, end_ts;
-	if (measure_stall_time)
-		start_ts = device.write_calibrated_timestamp();
 	TimelineWait ctx = { this, size_t(index) };
 	rdp_worker_wait(timeline_worker.worker, timeline_reached, &ctx);
-	if (measure_stall_time)
-	{
-		end_ts = device.write_calibrated_timestamp();
-		device.register_time_interval("RDP CPU", rdp_move(start_ts), rdp_move(end_ts), "wait-for-timeline");
-	}
 }
 
 Vulkan::ImageHandle CommandProcessor::scanout(const ScanoutOptions &opts, VkImageLayout target_layout)
 {
-	Vulkan::QueryPoolHandle start_ts, end_ts;
 	drain_command_ring();
 
 	if (dump_writer)
@@ -1471,16 +1452,8 @@ Vulkan::ImageHandle CommandProcessor::scanout(const ScanoutOptions &opts)
 
 void CommandProcessor::drain_command_ring()
 {
-	Vulkan::QueryPoolHandle start_ts, end_ts;
-	if (timestamp)
-		start_ts = device.write_calibrated_timestamp();
 	if (ring)
 		rdp_command_ring_drain(ring);
-	if (timestamp)
-	{
-		end_ts = device.write_calibrated_timestamp();
-		device.register_time_interval("RDP CPU", rdp_move(start_ts), rdp_move(end_ts), "drain-command-ring");
-	}
 }
 
 void CommandProcessor::timeline_work(void *user, mpsc_stack_node_t *item)

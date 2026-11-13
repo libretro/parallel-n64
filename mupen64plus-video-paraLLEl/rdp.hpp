@@ -42,9 +42,6 @@ void set_upscaler_interface(const struct retro_hw_render_upscaler_interface *ifa
 bool upscaler_active();
 /* The next frame does not follow the last one */
 void upscaler_reset();
-
-void profile_refresh_begin();
-void profile_refresh_end();
 }
 
 #endif

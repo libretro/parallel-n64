@@ -24,14 +24,7 @@
 
 #include "vulkan_headers.hpp"
 #include "logging.h"
-#include "timeline_trace_file.h"
 #include "vulkan_common.hpp"
-
-namespace Granite
-{
-class Filesystem;
-class ThreadGroup;
-}
 
 namespace Vulkan
 {
@@ -47,7 +40,6 @@ struct DeviceFeatures
 	bool supports_conservative_rasterization = false;
 	bool supports_draw_indirect_count = false;
 	bool supports_driver_properties = false;
-	bool supports_calibrated_timestamps = false;
 	bool supports_memory_budget = false;
 	bool supports_astc_decode_mode = false;
 	bool supports_sync2 = false;
@@ -73,7 +65,6 @@ struct DeviceFeatures
 
 	// KHR
 	VkPhysicalDeviceTimelineSemaphoreFeaturesKHR timeline_semaphore_features = {};
-	VkPhysicalDevicePerformanceQueryFeaturesKHR performance_query_features = {};
 	VkPhysicalDeviceDriverPropertiesKHR driver_properties = {};
 	VkPhysicalDeviceSynchronization2FeaturesKHR sync2_features = {};
 	VkPhysicalDevicePresentIdFeaturesKHR present_id_features = {};
@@ -123,7 +114,6 @@ struct QueueInfo
 	QueueInfo();
 	VkQueue queues[QUEUE_INDEX_COUNT] = {};
 	uint32_t family_indices[QUEUE_INDEX_COUNT];
-	uint32_t timestamp_valid_bits = 0;
 };
 
 // Creates the device in place of vkCreateDevice, e.g. through a
@@ -224,29 +214,11 @@ public:
 		return device_table;
 	}
 
-	struct SystemHandles
-	{
-		granite_trace_file_t *timeline_trace_file = nullptr;
-		Granite::Filesystem *filesystem = nullptr;
-		Granite::ThreadGroup *thread_group = nullptr;
-	};
-
-	void set_system_handles(const SystemHandles &handles_)
-	{
-		handles = handles_;
-	}
-
-	const SystemHandles &get_system_handles() const
-	{
-		return handles;
-	}
-
 private:
 	VkDevice device = VK_NULL_HANDLE;
 	VkInstance instance = VK_NULL_HANDLE;
 	VkPhysicalDevice gpu = VK_NULL_HANDLE;
 	VolkDeviceTable device_table = {};
-	SystemHandles handles;
 
 	VkPhysicalDeviceProperties gpu_props = {};
 	VkPhysicalDeviceMemoryProperties mem_props = {};

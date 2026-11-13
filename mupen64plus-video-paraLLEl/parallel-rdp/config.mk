@@ -18,7 +18,6 @@ PARALLEL_RDP_SOURCES_CXX := \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/device.cpp \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/fence.cpp \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/image.cpp \
-        $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/query_pool.cpp \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/sampler.cpp \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/semaphore.cpp
 
@@ -53,7 +52,6 @@ PARALLEL_RDP_SOURCES_C := \
         $(PARALLEL_RDP_IMPLEMENTATION)/util/pool.c \
         $(PARALLEL_RDP_IMPLEMENTATION)/util/thread_id.c \
         $(PARALLEL_RDP_IMPLEMENTATION)/util/thread_name.c \
-        $(PARALLEL_RDP_IMPLEMENTATION)/util/timeline_trace_file.c \
         $(PARALLEL_RDP_IMPLEMENTATION)/util/timer.c
 
 PARALLEL_RDP_INCLUDE_DIRS := \

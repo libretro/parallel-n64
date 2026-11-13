@@ -26,7 +26,6 @@
 #include "buffer_pool.hpp"
 #include "vulkan_headers.hpp"
 #include "image.hpp"
-#include "query_pool.hpp"
 #include "render_pass.hpp"
 #include "sampler.hpp"
 #include "shader.hpp"
@@ -306,15 +305,12 @@ public:
 		return type;
 	}
 
-	QueryPoolHandle write_timestamp(VkPipelineStageFlagBits stage);
 
 	// Used when recording command buffers in a thread, and submitting them in a different thread.
 	// Need to make sure that no further commands on the VkCommandBuffer happen.
 	void end_threaded_recording();
 	// End is called automatically by Device in submission. Should not be called by application.
 	void end();
-	void enable_profiling();
-	bool has_profiling() const;
 
 	void begin_debug_channel(DebugChannelInterface *iface, const char *tag, VkDeviceSize size);
 	void end_debug_channel();
@@ -377,7 +373,6 @@ private:
 	                 uint64_t cookie);
 
 
-	bool profiling = false;
 	char debug_channel_tag[32] = {};
 	Vulkan::BufferHandle debug_channel_buffer;
 	DebugChannelInterface *debug_channel_interface = nullptr;

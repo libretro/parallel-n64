@@ -1070,10 +1070,8 @@ static void present_frame(void)
 
          case GFX_PARALLEL:
 #if defined(HAVE_PARALLEL)
-            parallel_profile_video_refresh_begin();
             video_cb(parallel_frame_is_valid() ? RETRO_HW_FRAME_BUFFER_VALID : NULL,
                     parallel_frame_width(), parallel_frame_height(), 0);
-            parallel_profile_video_refresh_end();
 #endif
             break;
 

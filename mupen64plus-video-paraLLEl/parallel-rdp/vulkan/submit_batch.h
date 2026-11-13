@@ -85,7 +85,6 @@ typedef struct granite_submit_composer
 
 	VkSubmitInfo submits[GRANITE_SUBMIT_MAX_BATCHES];
 	VkTimelineSemaphoreSubmitInfoKHR timeline_infos[GRANITE_SUBMIT_MAX_BATCHES];
-	VkPerformanceQuerySubmitInfoKHR profiling_infos[GRANITE_SUBMIT_MAX_BATCHES];
 } granite_submit_composer_t;
 
 void granite_submit_composer_init(granite_submit_composer_t *composer);
@@ -105,17 +104,14 @@ void granite_submit_composer_add_signal(granite_submit_composer_t *composer, VkS
 		uint64_t value);
 
 /* The VkSubmitInfos of the batches that have something in them, in
- * @submits; returns how many. @profiling_iteration: the counter pass of
- * a performance query, or negative. Valid until the next begin. */
-unsigned granite_submit_composer_bake(granite_submit_composer_t *composer, int profiling_iteration,
-		const VkSubmitInfo **submits);
+ * @submits; returns how many. Valid until the next begin. */
+unsigned granite_submit_composer_bake(granite_submit_composer_t *composer, const VkSubmitInfo **submits);
 /* Bakes and submits to @queue, with @fence on the last batch. With
  * @one_by_one each batch is its own vkQueueSubmit, for the drivers that
  * @split is for. VK_ERROR_OUT_OF_HOST_MEMORY, and nothing submitted,
  * when something could not be added. */
 VkResult granite_submit_composer_submit(granite_submit_composer_t *composer,
-		const struct VolkDeviceTable *table, VkQueue queue, VkFence fence, int profiling_iteration,
-		bool one_by_one);
+		const struct VolkDeviceTable *table, VkQueue queue, VkFence fence, bool one_by_one);
 
 RETRO_END_DECLS
 
