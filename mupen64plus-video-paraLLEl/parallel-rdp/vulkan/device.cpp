@@ -709,108 +709,9 @@ void Device::init_timeline_semaphores()
 			LOGE("Failed to create timeline semaphore.\n");
 }
 
-void Device::init_stock_sampler(StockSampler mode, float max_aniso, float lod_bias)
-{
-	SamplerCreateInfo info = {};
-	info.max_lod = VK_LOD_CLAMP_NONE;
-	info.max_anisotropy = 1.0f;
-
-	switch (mode)
-	{
-	case StockSampler::NearestShadow:
-	case StockSampler::LinearShadow:
-		info.compare_enable = true;
-		info.compare_op = VK_COMPARE_OP_LESS_OR_EQUAL;
-		break;
-
-	default:
-		info.compare_enable = false;
-		break;
-	}
-
-	switch (mode)
-	{
-	case StockSampler::TrilinearClamp:
-	case StockSampler::TrilinearWrap:
-	case StockSampler::DefaultGeometryFilterWrap:
-	case StockSampler::DefaultGeometryFilterClamp:
-		info.mipmap_mode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-		break;
-
-	default:
-		info.mipmap_mode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
-		break;
-	}
-
-	switch (mode)
-	{
-	case StockSampler::DefaultGeometryFilterClamp:
-	case StockSampler::DefaultGeometryFilterWrap:
-	case StockSampler::LinearClamp:
-	case StockSampler::LinearWrap:
-	case StockSampler::TrilinearClamp:
-	case StockSampler::TrilinearWrap:
-	case StockSampler::LinearShadow:
-		info.mag_filter = VK_FILTER_LINEAR;
-		info.min_filter = VK_FILTER_LINEAR;
-		break;
-
-	default:
-		info.mag_filter = VK_FILTER_NEAREST;
-		info.min_filter = VK_FILTER_NEAREST;
-		break;
-	}
-
-	switch (mode)
-	{
-	default:
-	case StockSampler::DefaultGeometryFilterWrap:
-	case StockSampler::LinearWrap:
-	case StockSampler::NearestWrap:
-	case StockSampler::TrilinearWrap:
-		info.address_mode_u = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-		info.address_mode_v = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-		info.address_mode_w = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-		break;
-
-	case StockSampler::DefaultGeometryFilterClamp:
-	case StockSampler::LinearClamp:
-	case StockSampler::NearestClamp:
-	case StockSampler::TrilinearClamp:
-	case StockSampler::NearestShadow:
-	case StockSampler::LinearShadow:
-		info.address_mode_u = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-		info.address_mode_v = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-		info.address_mode_w = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-		break;
-	}
-
-	switch (mode)
-	{
-	case StockSampler::DefaultGeometryFilterWrap:
-	case StockSampler::DefaultGeometryFilterClamp:
-		if (get_device_features().enabled_features.samplerAnisotropy)
-		{
-			info.anisotropy_enable = true;
-			info.max_anisotropy = Util::min_of(max_aniso, get_gpu_properties().limits.maxSamplerAnisotropy);
-		}
-		info.mip_lod_bias = lod_bias;
-		break;
-
-	default:
-		break;
-	}
-
-	samplers[unsigned(mode)] = request_immutable_sampler(info);
-}
-
 void Device::init_stock_samplers()
 {
-	for (unsigned i = 0; i < static_cast<unsigned>(StockSampler::Count); i++)
-	{
-		auto mode = static_cast<StockSampler>(i);
-		init_stock_sampler(mode, 8.0f, 0.0f);
-	}
+	granite_sampler_init_linear_clamp(&samplers[unsigned(StockSampler::LinearClamp)], device, table);
 }
 
 // The buffers behind the vertex and uniform blocks (buffer_pool.h): memory
@@ -1326,7 +1227,7 @@ CommandBufferHandle Device::request_command_buffer_nolock(unsigned thread_index,
 
 const Sampler &Device::get_stock_sampler(StockSampler sampler) const
 {
-	return samplers[static_cast<unsigned>(sampler)]->get_sampler();
+	return samplers[static_cast<unsigned>(sampler)];
 }
 
 Device::~Device()
@@ -1348,6 +1249,8 @@ Device::~Device()
 		table->vkDestroyPipelineCache(device, pipeline_cache, nullptr);
 	}
 
+	for (auto &sampler : samplers)
+		granite_sampler_free(&sampler, device, table);
 
 
 	free(pipeline_records);
@@ -1466,11 +1369,6 @@ void Device::free_memory(const DeviceAllocation &alloc)
 	mpsc_stack_push(&deferred_releases[granite_release_queue_frame(&releases.q) % MAX_DEFERRED_FRAMES], node);
 }
 
-void Device::destroy_sampler(VkSampler sampler)
-{
-	release_handle(GRANITE_GARBAGE_SAMPLER, GRANITE_VK_TO_BITS(sampler));
-}
-
 void Device::destroy_semaphore_nolock(VkSemaphore semaphore)
 {
 	VK_ASSERT(!granite_frame_garbage_has(&frame().garbage, GRANITE_GARBAGE_SEMAPHORE, GRANITE_VK_TO_BITS(semaphore)));
@@ -1492,12 +1390,6 @@ void Device::reset_fence_nolock(VkFence fence, bool observed_wait)
 	}
 	else
 		granite_frame_garbage_push(&frame().garbage, GRANITE_GARBAGE_RECYCLE_FENCE, GRANITE_VK_TO_BITS(fence));
-}
-
-void Device::destroy_sampler_nolock(VkSampler sampler)
-{
-	VK_ASSERT(!granite_frame_garbage_has(&frame().garbage, GRANITE_GARBAGE_SAMPLER, GRANITE_VK_TO_BITS(sampler)));
-	granite_frame_garbage_push(&frame().garbage, GRANITE_GARBAGE_SAMPLER, GRANITE_VK_TO_BITS(sampler));
 }
 
 void Device::destroy_framebuffer_nolock(VkFramebuffer framebuffer)
@@ -2050,35 +1942,6 @@ ImageHandle Device::create_image_from_staging_buffer(const ImageCreateInfo &crea
 	}
 
 	return handle;
-}
-
-const ImmutableSampler *Device::request_immutable_sampler(const SamplerCreateInfo &sampler_info)
-{
-	auto info = Sampler::fill_vk_sampler_info(sampler_info);
-	Util::Hasher h;
-
-	h.u32(info.flags);
-	h.u32(info.addressModeU);
-	h.u32(info.addressModeV);
-	h.u32(info.addressModeW);
-	h.u32(info.minFilter);
-	h.u32(info.magFilter);
-	h.u32(info.mipmapMode);
-	h.f32(info.minLod);
-	h.f32(info.maxLod);
-	h.f32(info.mipLodBias);
-	h.u32(info.compareEnable);
-	h.u32(info.compareOp);
-	h.u32(info.anisotropyEnable);
-	h.f32(info.maxAnisotropy);
-	h.u32(info.borderColor);
-	h.u32(info.unnormalizedCoordinates);
-	h.u32(0);
-
-	auto *sampler = immutable_samplers.find(h.get());
-	if (!sampler)
-		sampler = immutable_samplers.emplace_yield(h.get(), h.get(), this, sampler_info);
-	return sampler;
 }
 
 BufferHandle Device::create_imported_host_buffer(const BufferCreateInfo &create_info, VkExternalMemoryHandleTypeFlagBits type, void *host_buffer)

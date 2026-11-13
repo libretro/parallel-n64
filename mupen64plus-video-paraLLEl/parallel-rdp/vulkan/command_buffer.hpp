@@ -162,11 +162,9 @@ public:
 
 	void set_buffer_view(unsigned set, unsigned binding, const BufferView &view);
 	void set_texture(unsigned set, unsigned binding, const ImageView &view);
-	void set_texture(unsigned set, unsigned binding, const ImageView &view, const Sampler &sampler);
 	void set_texture(unsigned set, unsigned binding, const ImageView &view, StockSampler sampler);
 	void set_storage_texture(unsigned set, unsigned binding, const ImageView &view);
 	void set_sampler(unsigned set, unsigned binding, const Sampler &sampler);
-	void set_sampler(unsigned set, unsigned binding, StockSampler sampler);
 	void set_uniform_buffer(unsigned set, unsigned binding, const Buffer &buffer);
 	void set_uniform_buffer(unsigned set, unsigned binding, const Buffer &buffer, VkDeviceSize offset,
 	                        VkDeviceSize range);

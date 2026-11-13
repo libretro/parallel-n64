@@ -22,98 +22,17 @@
 
 #pragma once
 
-#include "cookie.hpp"
-#include "vulkan_common.hpp"
 #include "vulkan_headers.hpp"
-#include "object_pool.hpp"
+#include "sampler.h"
 
 namespace Vulkan
 {
+// The samplers the device keeps (sampler.h)
 enum class StockSampler
 {
-	NearestClamp,
 	LinearClamp,
-	TrilinearClamp,
-	NearestWrap,
-	LinearWrap,
-	TrilinearWrap,
-	NearestShadow,
-	LinearShadow,
-	DefaultGeometryFilterClamp,
-	DefaultGeometryFilterWrap,
 	Count
 };
 
-struct SamplerCreateInfo
-{
-	VkFilter mag_filter;
-	VkFilter min_filter;
-	VkSamplerMipmapMode mipmap_mode;
-	VkSamplerAddressMode address_mode_u;
-	VkSamplerAddressMode address_mode_v;
-	VkSamplerAddressMode address_mode_w;
-	float mip_lod_bias;
-	VkBool32 anisotropy_enable;
-	float max_anisotropy;
-	VkBool32 compare_enable;
-	VkCompareOp compare_op;
-	float min_lod;
-	float max_lod;
-	VkBorderColor border_color;
-	VkBool32 unnormalized_coordinates;
-};
-
-class Sampler;
-struct SamplerDeleter
-{
-	void operator()(Sampler *sampler);
-};
-
-class Sampler : public Util::IntrusivePtrEnabled<Sampler, SamplerDeleter, HandleCounter>,
-                public Cookie, public InternalSyncEnabled
-{
-public:
-	friend struct SamplerDeleter;
-	~Sampler();
-
-	VkSampler get_sampler() const
-	{
-		return sampler;
-	}
-
-	const SamplerCreateInfo &get_create_info() const
-	{
-		return create_info;
-	}
-
-	static VkSamplerCreateInfo fill_vk_sampler_info(const SamplerCreateInfo &sampler_info);
-
-private:
-	friend class Util::ObjectPool<Sampler>;
-	Sampler(Device *device, VkSampler sampler, const SamplerCreateInfo &info, bool immutable);
-
-	Device *device;
-	VkSampler sampler;
-	SamplerCreateInfo create_info;
-	bool immutable;
-};
-using SamplerHandle = Util::IntrusivePtr<Sampler>;
-
-class ImmutableSampler : public HashedObject<ImmutableSampler>
-{
-public:
-	ImmutableSampler(Util::Hash hash, Device *device,
-	                 const SamplerCreateInfo &info);
-	void operator=(const ImmutableSampler &) = delete;
-	ImmutableSampler(const ImmutableSampler &) = delete;
-
-	const Sampler &get_sampler() const
-	{
-		return *sampler;
-	}
-
-private:
-	Device *device;
-	SamplerHandle sampler;
-};
+using Sampler = granite_sampler_t;
 }

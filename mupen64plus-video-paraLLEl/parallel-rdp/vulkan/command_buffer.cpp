@@ -572,7 +572,7 @@ void CommandBuffer::set_sampler(unsigned set, unsigned binding, const Sampler &s
 {
 	VK_ASSERT(set < VULKAN_NUM_DESCRIPTOR_SETS);
 	VK_ASSERT(binding < VULKAN_NUM_BINDINGS);
-	granite_bindings_set_sampler(&state.bindings, set, binding, sampler.get_sampler(), sampler.get_cookie());
+	granite_bindings_set_sampler(&state.bindings, set, binding, sampler.sampler, sampler.cookie);
 }
 
 void CommandBuffer::set_buffer_view(unsigned set, unsigned binding, const BufferView &view)
@@ -600,25 +600,13 @@ void CommandBuffer::set_texture(unsigned set, unsigned binding, const ImageView 
 	            view.get_image().get_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL), view.get_cookie());
 }
 
-void CommandBuffer::set_texture(unsigned set, unsigned binding, const ImageView &view, const Sampler &sampler)
-{
-	set_sampler(set, binding, sampler);
-	set_texture(set, binding, view);
-}
-
 void CommandBuffer::set_texture(unsigned set, unsigned binding, const ImageView &view, StockSampler stock)
 {
 	VK_ASSERT(set < VULKAN_NUM_DESCRIPTOR_SETS);
 	VK_ASSERT(binding < VULKAN_NUM_BINDINGS);
 	VK_ASSERT(view.get_image().get_create_info().usage & VK_IMAGE_USAGE_SAMPLED_BIT);
-	const auto &sampler = device->get_stock_sampler(stock);
-	set_texture(set, binding, view, sampler);
-}
-
-void CommandBuffer::set_sampler(unsigned set, unsigned binding, StockSampler stock)
-{
-	const auto &sampler = device->get_stock_sampler(stock);
-	set_sampler(set, binding, sampler);
+	set_sampler(set, binding, device->get_stock_sampler(stock));
+	set_texture(set, binding, view);
 }
 
 void CommandBuffer::set_storage_texture(unsigned set, unsigned binding, const ImageView &view)

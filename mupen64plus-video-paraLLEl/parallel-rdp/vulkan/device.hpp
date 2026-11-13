@@ -93,7 +93,6 @@ struct HandlePool
 	granite_buffer_pools_t buffers;
 	// images and their views (image.h)
 	granite_image_pools_t images;
-	VulkanObjectPool<Sampler> samplers;
 	VulkanObjectPool<FenceHolder> fences;
 	VulkanObjectPool<SemaphoreHolder> semaphores;
 	VulkanObjectPool<CommandBuffer> command_buffers;
@@ -124,17 +123,6 @@ public:
 	friend struct SemaphoreHolderDeleter;
 	friend class FenceHolder;
 	friend struct FenceHolderDeleter;
-	friend class Sampler;
-	friend struct SamplerDeleter;
-	friend class ImmutableSampler;
-	friend class Buffer;
-	friend struct BufferDeleter;
-	friend class BufferView;
-	friend struct BufferViewDeleter;
-	friend class ImageView;
-	friend struct ImageViewDeleter;
-	friend class Image;
-	friend struct ImageDeleter;
 	friend class CommandBuffer;
 	friend struct CommandBufferDeleter;
 	friend class Program;
@@ -213,7 +201,6 @@ public:
 	                         const ResourceLayout *layout = nullptr);
 	Program *request_program(Shader *vertex, Shader *fragment);
 	Program *request_program(Shader *compute);
-	const ImmutableSampler *request_immutable_sampler(const SamplerCreateInfo &info);
 
 	// Map and unmap buffer objects.
 	void *map_host_buffer(const Buffer &buffer, MemoryAccessFlags access);
@@ -354,7 +341,6 @@ private:
 
 	DeviceFeatures ext;
 	void init_stock_samplers();
-	void init_stock_sampler(StockSampler sampler, float max_aniso, float lod_bias);
 	void init_timeline_semaphores();
 	void deinit_timeline_semaphores();
 
@@ -503,14 +489,13 @@ private:
 	uint32_t find_memory_type(granite_buffer_domain_t domain, uint32_t mask) const;
 	bool memory_type_is_host_visible(uint32_t type) const;
 
-	const ImmutableSampler *samplers[static_cast<unsigned>(StockSampler::Count)] = {};
+	Sampler samplers[static_cast<unsigned>(StockSampler::Count)] = {};
 
 	VulkanCache<PipelineLayout> pipeline_layouts;
 	VulkanCache<DescriptorSetAllocator> descriptor_set_allocators;
 	VulkanCache<RenderPass> render_passes;
 	VulkanCache<Shader> shaders;
 	VulkanCache<Program> programs;
-	VulkanCache<ImmutableSampler> immutable_samplers;
 
 	granite_framebuffer_allocator_t framebuffer_allocator;
 	VkPipelineCache pipeline_cache = VK_NULL_HANDLE;
@@ -544,13 +529,11 @@ private:
 	VkResult submit_batches(VkQueue queue, VkFence fence);
 
 	void destroy_pipeline(VkPipeline pipeline);
-	void destroy_sampler(VkSampler sampler);
 	void destroy_semaphore(VkSemaphore semaphore);
 	void recycle_semaphore(VkSemaphore semaphore);
 	void free_memory(const DeviceAllocation &alloc);
 	void reset_fence(VkFence fence, bool observed_wait);
 
-	void destroy_sampler_nolock(VkSampler sampler);
 	void destroy_framebuffer_nolock(VkFramebuffer framebuffer);
 	void destroy_semaphore_nolock(VkSemaphore semaphore);
 	void recycle_semaphore_nolock(VkSemaphore semaphore);
