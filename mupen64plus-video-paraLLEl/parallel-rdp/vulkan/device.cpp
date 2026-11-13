@@ -1449,11 +1449,6 @@ void Device::reset_fence(VkFence fence, bool observed_wait)
 	release_handle(GRANITE_GARBAGE_RECYCLE_FENCE, GRANITE_VK_TO_BITS(fence));
 }
 
-void Device::destroy_image(VkImage image)
-{
-	release_handle(GRANITE_GARBAGE_IMAGE, GRANITE_VK_TO_BITS(image));
-}
-
 void Device::destroy_semaphore(VkSemaphore semaphore)
 {
 	release_handle(GRANITE_GARBAGE_SEMAPHORE, GRANITE_VK_TO_BITS(semaphore));
@@ -1474,17 +1469,6 @@ void Device::free_memory(const DeviceAllocation &alloc)
 void Device::destroy_sampler(VkSampler sampler)
 {
 	release_handle(GRANITE_GARBAGE_SAMPLER, GRANITE_VK_TO_BITS(sampler));
-}
-
-void Device::destroy_image_view(VkImageView view)
-{
-	release_handle(GRANITE_GARBAGE_IMAGE_VIEW, GRANITE_VK_TO_BITS(view));
-}
-
-void Device::destroy_image_view_nolock(VkImageView view)
-{
-	VK_ASSERT(!granite_frame_garbage_has(&frame().garbage, GRANITE_GARBAGE_IMAGE_VIEW, GRANITE_VK_TO_BITS(view)));
-	granite_frame_garbage_push(&frame().garbage, GRANITE_GARBAGE_IMAGE_VIEW, GRANITE_VK_TO_BITS(view));
 }
 
 void Device::destroy_semaphore_nolock(VkSemaphore semaphore)
@@ -1508,12 +1492,6 @@ void Device::reset_fence_nolock(VkFence fence, bool observed_wait)
 	}
 	else
 		granite_frame_garbage_push(&frame().garbage, GRANITE_GARBAGE_RECYCLE_FENCE, GRANITE_VK_TO_BITS(fence));
-}
-
-void Device::destroy_image_nolock(VkImage image)
-{
-	VK_ASSERT(!granite_frame_garbage_has(&frame().garbage, GRANITE_GARBAGE_IMAGE, GRANITE_VK_TO_BITS(image)));
-	granite_frame_garbage_push(&frame().garbage, GRANITE_GARBAGE_IMAGE, GRANITE_VK_TO_BITS(image));
 }
 
 void Device::destroy_sampler_nolock(VkSampler sampler)
@@ -1762,10 +1740,10 @@ BufferViewHandle Device::create_buffer_view(const BufferViewCreateInfo &view_inf
 
 ImageViewHandle Device::create_image_view(const ImageViewCreateInfo &create_info)
 {
-	auto &image_create_info = create_info.image->get_create_info();
+	auto &image_create_info = create_info.image->info;
 
 	granite_image_view_desc_t desc = {};
-	desc.image = create_info.image->get_image();
+	desc.image = create_info.image->image;
 	desc.format = create_info.format != VK_FORMAT_UNDEFINED ? create_info.format : image_create_info.format;
 	desc.type = create_info.view_type;
 	desc.base_level = create_info.base_level;
@@ -1780,16 +1758,12 @@ ImageViewHandle Device::create_image_view(const ImageViewCreateInfo &create_info
 	if (!granite_image_views_create(device, table, &desc, &views))
 		return ImageViewHandle(nullptr);
 
-	ImageViewCreateInfo tmp = create_info;
-	tmp.format = desc.format;
-	ImageViewHandle ret(handle_pool.image_views.allocate(this, views.view, tmp));
-	if (!ret)
-	{
+	granite_image_view_info_t object_info = create_info;
+	object_info.format = desc.format;
+	auto *object = granite_image_view_new(&handle_pool.images, &handle_owner, &views, &object_info);
+	if (!object)
 		granite_image_views_destroy(device, table, &views);
-		return ImageViewHandle(nullptr);
-	}
-	ret->set_views(views);
-	return ret;
+	return ImageViewHandle(static_cast<ImageView *>(object));
 }
 
 InitialImageBuffer Device::create_image_staging_buffer(const ImageCreateInfo &info, const ImageInitialData *initial)
@@ -1937,7 +1911,8 @@ ImageHandle Device::create_image_from_staging_buffer(const ImageCreateInfo &crea
 		}
 	}
 
-	ImageHandle handle(handle_pool.images.allocate(this, image, views.view, allocation, tmpinfo, view_type));
+	ImageHandle handle(static_cast<Image *>(granite_image_new(&handle_pool.images, &handle_owner, image, &allocation,
+	                                                           &tmpinfo, has_view ? &views : nullptr, view_type)));
 	if (!handle)
 	{
 		granite_image_views_destroy(device, table, &views);
@@ -1946,9 +1921,6 @@ ImageHandle Device::create_image_from_staging_buffer(const ImageCreateInfo &crea
 		allocation.free_immediate(managers.memory);
 		return ImageHandle(nullptr);
 	}
-
-	if (has_view)
-		handle->get_view().set_views(views);
 
 	// Set possible dstStage and dstAccess.
 	handle->set_stage_flags(granite_image_usage_stages(usage));

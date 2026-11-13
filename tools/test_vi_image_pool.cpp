@@ -21,8 +21,8 @@
 
 /* Entries here hold no images: handles stay null, so nothing is ever
  * deleted. The deleters only need to link. */
-void Vulkan::ImageDeleter::operator()(Vulkan::Image *) { abort(); }
-void Vulkan::ImageViewDeleter::operator()(Vulkan::ImageView *) { abort(); }
+extern "C" void granite_image_dispose(granite_image_t *) { abort(); }
+extern "C" void granite_image_view_dispose(granite_image_view_t *) { abort(); }
 
 /* An image with a reference count and nothing else: no device; the
  * test keeps it from being destroyed. */

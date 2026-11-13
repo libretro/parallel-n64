@@ -22,9 +22,8 @@
 
 #pragma once
 
-#include "cookie.hpp"
 #include "format.hpp"
-#include "image_create.h"
+#include "image.h"
 #include "vulkan_common.hpp"
 #include "memory_allocator.hpp"
 #include "bitops.hpp"
@@ -35,6 +34,8 @@ namespace Vulkan
 {
 class Device;
 
+// Images are C (image.h, image_create.h). These give them the names and
+// accessors the rest of Granite uses.
 struct ImageInitialData
 {
 	const void *data;
@@ -53,60 +54,65 @@ using ImageMiscFlags = uint32_t;
 
 class Image;
 
-struct ImageViewCreateInfo
+// All of an image, as a 2D view, in its own format unless said otherwise.
+struct ImageViewCreateInfo : granite_image_view_info_t
 {
-	const Image *image = nullptr;
-	VkFormat format = VK_FORMAT_UNDEFINED;
-	unsigned base_level = 0;
-	unsigned levels = VK_REMAINING_MIP_LEVELS;
-	unsigned base_layer = 0;
-	unsigned layers = VK_REMAINING_ARRAY_LAYERS;
-	VkImageViewType view_type = VK_IMAGE_VIEW_TYPE_2D;
+	ImageViewCreateInfo()
+	{
+		image = nullptr;
+		format = VK_FORMAT_UNDEFINED;
+		base_level = 0;
+		levels = VK_REMAINING_MIP_LEVELS;
+		base_layer = 0;
+		layers = VK_REMAINING_ARRAY_LAYERS;
+		view_type = VK_IMAGE_VIEW_TYPE_2D;
+	}
 };
 
-class ImageView;
-
-struct ImageViewDeleter
-{
-	void operator()(ImageView *view);
-};
-
-class ImageView : public Util::IntrusivePtrEnabled<ImageView, ImageViewDeleter, HandleCounter>,
-                  public Cookie, public InternalSyncEnabled
+// No members of its own: a granite_image_view_t by another name.
+class ImageView : public granite_image_view_t
 {
 public:
-	friend struct ImageViewDeleter;
+	ImageView() = delete;
 
-	ImageView(Device *device, VkImageView view, const ImageViewCreateInfo &info);
-
-	~ImageView();
-
-	// The views that go with this one (image_create.h); views.view is
-	// this view.
-	void set_views(const granite_image_views_t &views)
+	void add_reference()
 	{
-		depth_view = views.depth;
-		stencil_view = views.stencil;
-		num_render_target_views = views.num_layer_views;
-		for (unsigned i = 0; i < views.num_layer_views; i++)
-			render_target_views[i] = views.layer_views[i];
+		granite_image_view_ref(this);
+	}
+
+	void release_reference()
+	{
+		granite_image_view_unref(this);
+	}
+
+	uint64_t get_cookie() const
+	{
+		return cookie;
+	}
+
+	void set_internal_sync_object()
+	{
+		internal_sync = true;
 	}
 
 	// By default, gets a combined view which includes all aspects in the image.
 	// This would be used mostly for render targets.
 	VkImageView get_view() const
 	{
-		return view;
+		return views.view;
 	}
 
-	VkImageView get_render_target_view(unsigned layer) const;
+	VkImageView get_render_target_view(unsigned layer) const
+	{
+		return granite_image_view_render_target(this, layer);
+	}
 
 	// Gets an image view which only includes floating point domains.
 	// Takes effect when we want to sample from an image which is Depth/Stencil,
 	// but we only want to sample depth.
 	VkImageView get_float_view() const
 	{
-		return depth_view != VK_NULL_HANDLE ? depth_view : view;
+		return granite_image_view_depth(this);
 	}
 
 	// Gets an image view which only includes integer domains.
@@ -114,7 +120,7 @@ public:
 	// but we only want to sample stencil.
 	VkImageView get_integer_view() const
 	{
-		return stencil_view != VK_NULL_HANDLE ? stencil_view : view;
+		return granite_image_view_stencil(this);
 	}
 
 	VkFormat get_format() const
@@ -122,60 +128,52 @@ public:
 		return info.format;
 	}
 
-	const Image &get_image() const
-	{
-		return *info.image;
-	}
+	inline const Image &get_image() const;
 
-	const ImageViewCreateInfo &get_create_info() const
+	const granite_image_view_info_t &get_create_info() const
 	{
 		return info;
 	}
 
-	unsigned get_view_width() const;
-	unsigned get_view_height() const;
+	unsigned get_view_width() const
+	{
+		return granite_image_width(info.image, info.base_level);
+	}
 
-private:
-	Device *device;
-	VkImageView view;
-	VkImageView render_target_views[GRANITE_IMAGE_MAX_LAYER_VIEWS] = {};
-	unsigned num_render_target_views = 0;
-	VkImageView depth_view = VK_NULL_HANDLE;
-	VkImageView stencil_view = VK_NULL_HANDLE;
-	ImageViewCreateInfo info;
+	unsigned get_view_height() const
+	{
+		return granite_image_height(info.image, info.base_level);
+	}
 };
 
 using ImageViewHandle = Util::IntrusivePtr<ImageView>;
 
-struct ImageCreateInfo
+// A 2D image of one level and layer unless said otherwise.
+struct ImageCreateInfo : granite_image_info_t
 {
-	unsigned width = 0;
-	unsigned height = 0;
-	unsigned depth = 1;
-	unsigned levels = 1;
-	VkFormat format = VK_FORMAT_UNDEFINED;
-	VkImageType type = VK_IMAGE_TYPE_2D;
-	unsigned layers = 1;
-	VkImageUsageFlags usage = 0;
-	VkSampleCountFlagBits samples = VK_SAMPLE_COUNT_1_BIT;
-	VkImageCreateFlags flags = 0;
-	ImageMiscFlags misc = 0;
-	VkImageLayout initial_layout = VK_IMAGE_LAYOUT_GENERAL;
+	ImageCreateInfo()
+	{
+		width = 0;
+		height = 0;
+		depth = 1;
+		levels = 1;
+		format = VK_FORMAT_UNDEFINED;
+		type = VK_IMAGE_TYPE_2D;
+		layers = 1;
+		usage = 0;
+		samples = VK_SAMPLE_COUNT_1_BIT;
+		flags = 0;
+		misc = 0;
+		initial_layout = VK_IMAGE_LAYOUT_GENERAL;
+	}
 
 	static ImageCreateInfo immutable_2d_image(unsigned width, unsigned height, VkFormat format)
 	{
 		ImageCreateInfo info;
 		info.width = width;
 		info.height = height;
-		info.depth = 1;
-		info.levels = 1;
 		info.format = format;
-		info.type = VK_IMAGE_TYPE_2D;
-		info.layers = 1;
 		info.usage = VK_IMAGE_USAGE_SAMPLED_BIT;
-		info.samples = VK_SAMPLE_COUNT_1_BIT;
-		info.flags = 0;
-		info.misc = 0;
 		info.initial_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 		return info;
 	}
@@ -185,31 +183,15 @@ struct ImageCreateInfo
 		ImageCreateInfo info;
 		info.width = width;
 		info.height = height;
-		info.depth = 1;
-		info.levels = 1;
 		info.format = format;
-		info.type = VK_IMAGE_TYPE_2D;
-		info.layers = 1;
 		info.usage = (format_has_depth_or_stencil_aspect(format) ? VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT :
 		              VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) |
 		             VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
-
-		info.samples = VK_SAMPLE_COUNT_1_BIT;
-		info.flags = 0;
-		info.misc = 0;
 		info.initial_layout = format_has_depth_or_stencil_aspect(format) ?
 		                      VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL :
 		                      VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 		return info;
 	}
-
-};
-
-class Image;
-
-struct ImageDeleter
-{
-	void operator()(Image *image);
 };
 
 enum class Layout
@@ -218,28 +200,48 @@ enum class Layout
 	General
 };
 
-class Image : public Util::IntrusivePtrEnabled<Image, ImageDeleter, HandleCounter>,
-              public Cookie, public InternalSyncEnabled
+// No members of its own: a granite_image_t by another name.
+class Image : public granite_image_t
 {
 public:
-	friend struct ImageDeleter;
+	Image() = delete;
 
-	~Image();
+	void add_reference()
+	{
+		granite_image_ref(this);
+	}
 
-	Image(Image &&) = delete;
+	void release_reference()
+	{
+		granite_image_unref(this);
+	}
 
-	Image &operator=(Image &&) = delete;
+	/* No other handle to it: none could be in use, or start to be. */
+	bool only_reference() const
+	{
+		return granite_refs_only(const_cast<retro_atomic_int_t *>(&refs));
+	}
+
+	uint64_t get_cookie() const
+	{
+		return cookie;
+	}
+
+	void set_internal_sync_object()
+	{
+		internal_sync = true;
+	}
 
 	const ImageView &get_view() const
 	{
 		VK_ASSERT(view);
-		return *view;
+		return *static_cast<const ImageView *>(view);
 	}
 
 	ImageView &get_view()
 	{
 		VK_ASSERT(view);
-		return *view;
+		return *static_cast<ImageView *>(view);
 	}
 
 	VkImage get_image() const
@@ -249,42 +251,37 @@ public:
 
 	VkFormat get_format() const
 	{
-		return create_info.format;
+		return info.format;
 	}
 
 	uint32_t get_width(uint32_t lod = 0) const
 	{
-		return Util::max_of(1u, create_info.width >> lod);
+		return granite_image_width(this, lod);
 	}
 
 	uint32_t get_height(uint32_t lod = 0) const
 	{
-		return Util::max_of(1u, create_info.height >> lod);
+		return granite_image_height(this, lod);
 	}
 
-	uint32_t get_depth(uint32_t lod = 0) const
+	const granite_image_info_t &get_create_info() const
 	{
-		return Util::max_of(1u, create_info.depth >> lod);
-	}
-
-	const ImageCreateInfo &get_create_info() const
-	{
-		return create_info;
+		return info;
 	}
 
 	VkImageLayout get_layout(VkImageLayout optimal) const
 	{
-		return layout_type == Layout::Optimal ? optimal : VK_IMAGE_LAYOUT_GENERAL;
+		return granite_image_layout(this, optimal);
 	}
 
 	Layout get_layout_type() const
 	{
-		return layout_type;
+		return general_layout ? Layout::General : Layout::Optimal;
 	}
 
 	void set_layout(Layout layout)
 	{
-		layout_type = layout;
+		general_layout = layout == Layout::General;
 	}
 
 	void set_stage_flags(VkPipelineStageFlags flags)
@@ -306,28 +303,12 @@ public:
 	{
 		return access_flags;
 	}
-
-	const DeviceAllocation &get_allocation() const
-	{
-		return alloc;
-	}
-
-private:
-	friend class Util::ObjectPool<Image>;
-
-	Image(Device *device, VkImage image, VkImageView default_view, const DeviceAllocation &alloc,
-	      const ImageCreateInfo &info, VkImageViewType view_type);
-
-	Device *device;
-	VkImage image;
-	ImageViewHandle view;
-	DeviceAllocation alloc;
-	ImageCreateInfo create_info;
-
-	Layout layout_type = Layout::Optimal;
-	VkPipelineStageFlags stage_flags = 0;
-	VkAccessFlags access_flags = 0;
 };
+
+inline const Image &ImageView::get_image() const
+{
+	return *static_cast<const Image *>(info.image);
+}
 
 using ImageHandle = Util::IntrusivePtr<Image>;
 }

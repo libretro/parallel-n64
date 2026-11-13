@@ -80,17 +80,19 @@ struct HandlePool
 	HandlePool()
 	{
 		granite_buffer_pools_init(&buffers);
+		granite_image_pools_init(&images);
 	}
 
 	~HandlePool()
 	{
 		granite_buffer_pools_free(&buffers);
+		granite_image_pools_free(&images);
 	}
 
 	// buffers and their views (buffer.h)
 	granite_buffer_pools_t buffers;
-	VulkanObjectPool<Image> images;
-	VulkanObjectPool<ImageView> image_views;
+	// images and their views (image.h)
+	granite_image_pools_t images;
 	VulkanObjectPool<Sampler> samplers;
 	VulkanObjectPool<FenceHolder> fences;
 	VulkanObjectPool<SemaphoreHolder> semaphores;
@@ -541,8 +543,6 @@ private:
 	                        unsigned semaphore_count, Semaphore *semaphores);
 	VkResult submit_batches(VkQueue queue, VkFence fence);
 
-	void destroy_image(VkImage image);
-	void destroy_image_view(VkImageView view);
 	void destroy_pipeline(VkPipeline pipeline);
 	void destroy_sampler(VkSampler sampler);
 	void destroy_semaphore(VkSemaphore semaphore);
@@ -550,8 +550,6 @@ private:
 	void free_memory(const DeviceAllocation &alloc);
 	void reset_fence(VkFence fence, bool observed_wait);
 
-	void destroy_image_nolock(VkImage image);
-	void destroy_image_view_nolock(VkImageView view);
 	void destroy_sampler_nolock(VkSampler sampler);
 	void destroy_framebuffer_nolock(VkFramebuffer framebuffer);
 	void destroy_semaphore_nolock(VkSemaphore semaphore);
