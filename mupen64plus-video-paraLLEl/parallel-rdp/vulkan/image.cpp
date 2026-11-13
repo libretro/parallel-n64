@@ -38,11 +38,11 @@ VkImageView ImageView::get_render_target_view(unsigned layer) const
 {
 	VK_ASSERT(layer < get_create_info().layers);
 
-	if (render_target_views.empty())
+	if (num_render_target_views == 0)
 		return view;
 	else
 	{
-		VK_ASSERT(layer < render_target_views.size());
+		VK_ASSERT(layer < num_render_target_views);
 		return render_target_views[layer];
 	}
 }
@@ -57,8 +57,8 @@ ImageView::~ImageView()
 		if (stencil_view != VK_NULL_HANDLE)
 			device->destroy_image_view_nolock(stencil_view);
 
-		for (auto &v : render_target_views)
-			device->destroy_image_view_nolock(v);
+		for (unsigned i = 0; i < num_render_target_views; i++)
+			device->destroy_image_view_nolock(render_target_views[i]);
 	}
 	else
 	{
@@ -68,8 +68,8 @@ ImageView::~ImageView()
 		if (stencil_view != VK_NULL_HANDLE)
 			device->destroy_image_view(stencil_view);
 
-		for (auto &v : render_target_views)
-			device->destroy_image_view(v);
+		for (unsigned i = 0; i < num_render_target_views; i++)
+			device->destroy_image_view(render_target_views[i]);
 	}
 }
 

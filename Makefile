@@ -1803,6 +1803,13 @@ test_vk_buffer_create$(EXE_EXT): tools/test_vk_buffer_create.c $(VIDEODIR_PARALL
 		$(VIDEODIR_PARALLEL)/parallel-rdp/util/pool.c $(VIDEODIR_PARALLEL)/parallel-rdp/util/aligned_alloc.c
 	$(CC) $(CHECK_CFLAGS) $(CHECK_SANITIZE) -DRETRO_ATOMIC_FORCE_GCC_NEW $(COMMAND_RING_TEST_INC) $^ -o $@ $(CHECK_LDFLAGS) $(CHECK_SANITIZE) -lpthread
 
+# Granite's image and image view creation (tools/test_vk_image_create.c)
+test_vk_image_create$(EXE_EXT): tools/test_vk_image_create.c $(VIDEODIR_PARALLEL)/parallel-rdp/vulkan/image_create.c \
+		$(VIDEODIR_PARALLEL)/parallel-rdp/vulkan/buffer_create.c $(VIDEODIR_PARALLEL)/parallel-rdp/vulkan/command_ops.c \
+		$(VIDEODIR_PARALLEL)/parallel-rdp/vulkan/memory_allocator.c $(VIDEODIR_PARALLEL)/parallel-rdp/util/legion_allocator.c \
+		$(VIDEODIR_PARALLEL)/parallel-rdp/util/pool.c $(VIDEODIR_PARALLEL)/parallel-rdp/util/aligned_alloc.c
+	$(CC) $(CHECK_CFLAGS) $(CHECK_SANITIZE) -DRETRO_ATOMIC_FORCE_GCC_NEW $(COMMAND_RING_TEST_INC) $^ -o $@ $(CHECK_LDFLAGS) $(CHECK_SANITIZE) -lpthread
+
 # Granite's per-frame garbage lists (tools/test_frame_garbage.c)
 test_frame_garbage$(EXE_EXT): tools/test_frame_garbage.c $(VIDEODIR_PARALLEL)/parallel-rdp/vulkan/frame_garbage.c \
 		$(VIDEODIR_PARALLEL)/parallel-rdp/vulkan/sync_pools.c
@@ -1889,7 +1896,7 @@ CORE_CHECKS := test_rcp_bounds$(EXE_EXT) test_memory_map$(EXE_EXT) test_fb_write
 	test_musyx_bounds$(EXE_EXT) test_musyx_aux$(EXE_EXT) test_alist_ops$(EXE_EXT) test_alist_abi1$(EXE_EXT) test_hle_dispatch$(EXE_EXT) angrylion_zboss_audio_test$(EXE_EXT) \
 	test_mouse_accum$(EXE_EXT) test_hle_dram_wrap$(EXE_EXT) test_pif_write$(EXE_EXT) \
 	test_re2_fill$(EXE_EXT) test_temporal_upscaler$(EXE_EXT) test_pipeline_records$(EXE_EXT) test_pipeline_pending$(EXE_EXT) test_rdp_x_range$(EXE_EXT) \
-	test_command_ring$(EXE_EXT) test_vk_sync$(EXE_EXT) test_vk_command_pool$(EXE_EXT) test_vk_texture_format$(EXE_EXT) test_vk_descriptor_set$(EXE_EXT) test_vk_shader$(EXE_EXT) test_vk_pipeline_map$(EXE_EXT) test_vk_render_pass$(EXE_EXT) test_vk_framebuffer$(EXE_EXT) test_vk_pipeline_compile$(EXE_EXT) test_vk_resource_bindings$(EXE_EXT) test_vk_command_state$(EXE_EXT) test_vk_command_ops$(EXE_EXT) test_vk_submit_batch$(EXE_EXT) test_vk_buffer_create$(EXE_EXT) test_frame_garbage$(EXE_EXT) test_release_queue$(EXE_EXT) test_gb_cart_banks$(EXE_EXT) test_dynarec_cache_pages$(EXE_EXT) \
+	test_command_ring$(EXE_EXT) test_vk_sync$(EXE_EXT) test_vk_command_pool$(EXE_EXT) test_vk_texture_format$(EXE_EXT) test_vk_descriptor_set$(EXE_EXT) test_vk_shader$(EXE_EXT) test_vk_pipeline_map$(EXE_EXT) test_vk_render_pass$(EXE_EXT) test_vk_framebuffer$(EXE_EXT) test_vk_pipeline_compile$(EXE_EXT) test_vk_resource_bindings$(EXE_EXT) test_vk_command_state$(EXE_EXT) test_vk_command_ops$(EXE_EXT) test_vk_submit_batch$(EXE_EXT) test_vk_buffer_create$(EXE_EXT) test_vk_image_create$(EXE_EXT) test_frame_garbage$(EXE_EXT) test_release_queue$(EXE_EXT) test_gb_cart_banks$(EXE_EXT) test_dynarec_cache_pages$(EXE_EXT) \
 	test_combiner_journal$(EXE_EXT) test_gliden64_write_rdram$(EXE_EXT) test_gliden64_rdram_to_color$(EXE_EXT) test_gliden64_window_scale$(EXE_EXT) test_gliden64_texture_formats$(EXE_EXT) test_glide64_texmod$(EXE_EXT) test_gliden64_deferred_readback$(EXE_EXT) test_gliden64_ring_segments$(EXE_EXT) test_glide64_fb_readback$(EXE_EXT) test_granite_util$(EXE_EXT) test_granite_pool$(EXE_EXT) test_vk_memory_allocator$(EXE_EXT) \
 	test_vi_image_pool$(EXE_EXT) test_incoherent_pages$(EXE_EXT)
 

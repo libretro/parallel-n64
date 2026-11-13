@@ -1789,58 +1789,6 @@ uint32_t Device::find_memory_type(BufferDomain domain, uint32_t mask) const
 	                                       workarounds.force_host_cached);
 }
 
-static inline VkImageViewType get_image_view_type(const ImageCreateInfo &create_info)
-{
-	unsigned layers = create_info.layers;
-	bool force_array = (create_info.misc & IMAGE_MISC_FORCE_ARRAY_BIT) != 0;
-
-	switch (create_info.type)
-	{
-	case VK_IMAGE_TYPE_1D:
-		VK_ASSERT(create_info.width >= 1);
-		VK_ASSERT(create_info.height == 1);
-		VK_ASSERT(create_info.depth == 1);
-		VK_ASSERT(create_info.samples == VK_SAMPLE_COUNT_1_BIT);
-
-		if (layers > 1 || force_array)
-			return VK_IMAGE_VIEW_TYPE_1D_ARRAY;
-		else
-			return VK_IMAGE_VIEW_TYPE_1D;
-
-	case VK_IMAGE_TYPE_2D:
-		VK_ASSERT(create_info.width >= 1);
-		VK_ASSERT(create_info.height >= 1);
-		VK_ASSERT(create_info.depth == 1);
-
-		if ((create_info.flags & VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT) && (layers % 6) == 0)
-		{
-			VK_ASSERT(create_info.width == create_info.height);
-
-			if (layers > 6 || force_array)
-				return VK_IMAGE_VIEW_TYPE_CUBE_ARRAY;
-			else
-				return VK_IMAGE_VIEW_TYPE_CUBE;
-		}
-		else
-		{
-			if (layers > 1 || force_array)
-				return VK_IMAGE_VIEW_TYPE_2D_ARRAY;
-			else
-				return VK_IMAGE_VIEW_TYPE_2D;
-		}
-
-	case VK_IMAGE_TYPE_3D:
-		VK_ASSERT(create_info.width >= 1);
-		VK_ASSERT(create_info.height >= 1);
-		VK_ASSERT(create_info.depth >= 1);
-		return VK_IMAGE_VIEW_TYPE_3D;
-
-	default:
-		VK_ASSERT(0 && "bogus");
-		return VK_IMAGE_VIEW_TYPE_MAX_ENUM;
-	}
-}
-
 BufferViewHandle Device::create_buffer_view(const BufferViewCreateInfo &view_info)
 {
 	VkBufferViewCreateInfo info = { VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO };
@@ -1857,244 +1805,36 @@ BufferViewHandle Device::create_buffer_view(const BufferViewCreateInfo &view_inf
 	return BufferViewHandle(handle_pool.buffer_views.allocate(this, view, view_info));
 }
 
-class ImageResourceHolder
-{
-public:
-	explicit ImageResourceHolder(Device *device_)
-		: device(device_)
-		, table(device_->get_device_table())
-	{
-	}
-
-	~ImageResourceHolder()
-	{
-		if (owned)
-			cleanup();
-	}
-
-	Device *device;
-	const VolkDeviceTable &table;
-
-	VkImage image = VK_NULL_HANDLE;
-	VkImageView image_view = VK_NULL_HANDLE;
-	VkImageView depth_view = VK_NULL_HANDLE;
-	VkImageView stencil_view = VK_NULL_HANDLE;
-	VkImageViewType default_view_type = VK_IMAGE_VIEW_TYPE_MAX_ENUM;
-	Util::Vector<VkImageView> rt_views;
-	DeviceAllocation allocation;
-	DeviceAllocator *allocator = nullptr;
-	bool owned = true;
-
-	VkImageViewType get_default_view_type() const
-	{
-		return default_view_type;
-	}
-
-	bool setup_view_usage_info(VkImageViewCreateInfo &create_info, VkImageUsageFlags usage,
-	                           VkImageViewUsageCreateInfo &usage_info) const
-	{
-		usage_info.usage = usage;
-		usage_info.usage &= VK_IMAGE_USAGE_SAMPLED_BIT |
-		                    VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT |
-		                    VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT |
-		                    VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT;
-
-		if (format_is_srgb(create_info.format))
-			usage_info.usage &= ~VK_IMAGE_USAGE_STORAGE_BIT;
-
-		usage_info.pNext = create_info.pNext;
-		create_info.pNext = &usage_info;
-
-		return true;
-	}
-
-	bool create_default_views(const ImageCreateInfo &create_info, const VkImageViewCreateInfo *view_info)
-	{
-		if ((create_info.usage & (VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
-		                          VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT)) == 0)
-		{
-			LOGE("Cannot create image view unless certain usage flags are present.\n");
-			return false;
-		}
-
-		VkImageViewCreateInfo default_view_info = { VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
-		VkImageViewUsageCreateInfo view_usage_info = { VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO };
-
-		if (!view_info)
-		{
-			default_view_info.image = image;
-			default_view_info.format = create_info.format;
-			default_view_info.subresourceRange.aspectMask = format_to_aspect_mask(default_view_info.format);
-			default_view_info.viewType = get_image_view_type(create_info);
-			default_view_info.subresourceRange.baseMipLevel = 0;
-			default_view_info.subresourceRange.baseArrayLayer = 0;
-			default_view_info.subresourceRange.levelCount = create_info.levels;
-			default_view_info.subresourceRange.layerCount = create_info.layers;
-
-			default_view_type = default_view_info.viewType;
-		}
-		else
-			default_view_info = *view_info;
-
-		view_info = &default_view_info;
-		if (!setup_view_usage_info(default_view_info, create_info.usage, view_usage_info))
-			return false;
-
-		if (!create_alt_views(create_info, *view_info))
-			return false;
-
-		if (!create_render_target_views(create_info, *view_info))
-			return false;
-
-		if (!create_default_view(*view_info))
-			return false;
-
-		return true;
-	}
-
-private:
-	bool create_render_target_views(const ImageCreateInfo &image_create_info, const VkImageViewCreateInfo &info)
-	{
-		if (info.viewType == VK_IMAGE_VIEW_TYPE_3D)
-			return true;
-
-		rt_views.reserve(info.subresourceRange.layerCount);
-
-		// If we have a render target, and non-trivial case (layers = 1, levels = 1),
-		// create an array of render targets which correspond to each layer (mip 0).
-		if ((image_create_info.usage & (VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)) != 0 &&
-		    ((info.subresourceRange.levelCount > 1) || (info.subresourceRange.layerCount > 1)))
-		{
-			auto view_info = info;
-			view_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
-			view_info.subresourceRange.baseMipLevel = info.subresourceRange.baseMipLevel;
-			for (uint32_t layer = 0; layer < info.subresourceRange.layerCount; layer++)
-			{
-				view_info.subresourceRange.levelCount = 1;
-				view_info.subresourceRange.layerCount = 1;
-				view_info.subresourceRange.baseArrayLayer = layer + info.subresourceRange.baseArrayLayer;
-
-				VkImageView rt_view;
-				if (table.vkCreateImageView(device->get_device(), &view_info, nullptr, &rt_view) != VK_SUCCESS)
-					return false;
-
-				rt_views.push_back(rt_view);
-			}
-		}
-
-		return true;
-	}
-
-	bool create_alt_views(const ImageCreateInfo &image_create_info, const VkImageViewCreateInfo &info)
-	{
-		if (info.viewType == VK_IMAGE_VIEW_TYPE_CUBE ||
-		    info.viewType == VK_IMAGE_VIEW_TYPE_CUBE_ARRAY ||
-		    info.viewType == VK_IMAGE_VIEW_TYPE_3D)
-		{
-			return true;
-		}
-
-		VkDevice vkdevice = device->get_device();
-
-		if (info.subresourceRange.aspectMask == (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT))
-		{
-			if ((image_create_info.usage & ~VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) != 0)
-			{
-				auto view_info = info;
-
-				// We need this to be able to sample the texture, or otherwise use it as a non-pure DS attachment.
-				view_info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
-				if (table.vkCreateImageView(vkdevice, &view_info, nullptr, &depth_view) != VK_SUCCESS)
-					return false;
-
-				view_info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_STENCIL_BIT;
-				if (table.vkCreateImageView(vkdevice, &view_info, nullptr, &stencil_view) != VK_SUCCESS)
-					return false;
-			}
-		}
-
-		return true;
-	}
-
-	bool create_default_view(const VkImageViewCreateInfo &info)
-	{
-		VkDevice vkdevice = device->get_device();
-
-		// Create the normal image view. This one contains every subresource.
-		if (table.vkCreateImageView(vkdevice, &info, nullptr, &image_view) != VK_SUCCESS)
-			return false;
-
-		return true;
-	}
-
-	void cleanup()
-	{
-		VkDevice vkdevice = device->get_device();
-
-		if (image_view)
-			table.vkDestroyImageView(vkdevice, image_view, nullptr);
-		if (depth_view)
-			table.vkDestroyImageView(vkdevice, depth_view, nullptr);
-		if (stencil_view)
-			table.vkDestroyImageView(vkdevice, stencil_view, nullptr);
-		for (auto &view : rt_views)
-			table.vkDestroyImageView(vkdevice, view, nullptr);
-
-		if (image)
-			table.vkDestroyImage(vkdevice, image, nullptr);
-		if (allocator)
-			allocation.free_immediate(*allocator);
-	}
-};
-
 ImageViewHandle Device::create_image_view(const ImageViewCreateInfo &create_info)
 {
-	ImageResourceHolder holder(this);
 	auto &image_create_info = create_info.image->get_create_info();
 
-	VkFormat format = create_info.format != VK_FORMAT_UNDEFINED ? create_info.format : image_create_info.format;
+	granite_image_view_desc_t desc = {};
+	desc.image = create_info.image->get_image();
+	desc.format = create_info.format != VK_FORMAT_UNDEFINED ? create_info.format : image_create_info.format;
+	desc.type = create_info.view_type;
+	desc.base_level = create_info.base_level;
+	desc.base_layer = create_info.base_layer;
+	desc.levels = create_info.levels == VK_REMAINING_MIP_LEVELS ?
+	              image_create_info.levels - create_info.base_level : create_info.levels;
+	desc.layers = create_info.layers == VK_REMAINING_ARRAY_LAYERS ?
+	              image_create_info.layers - create_info.base_layer : create_info.layers;
+	desc.usage = image_create_info.usage;
 
-	VkImageViewCreateInfo view_info = { VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
-	view_info.image = create_info.image->get_image();
-	view_info.format = format;
-	view_info.subresourceRange.aspectMask = format_to_aspect_mask(format);
-	view_info.subresourceRange.baseMipLevel = create_info.base_level;
-	view_info.subresourceRange.baseArrayLayer = create_info.base_layer;
-	view_info.subresourceRange.levelCount = create_info.levels;
-	view_info.subresourceRange.layerCount = create_info.layers;
-
-	view_info.viewType = create_info.view_type;
-
-	unsigned num_levels;
-	if (view_info.subresourceRange.levelCount == VK_REMAINING_MIP_LEVELS)
-		num_levels = create_info.image->get_create_info().levels - view_info.subresourceRange.baseMipLevel;
-	else
-		num_levels = view_info.subresourceRange.levelCount;
-
-	unsigned num_layers;
-	if (view_info.subresourceRange.layerCount == VK_REMAINING_ARRAY_LAYERS)
-		num_layers = create_info.image->get_create_info().layers - view_info.subresourceRange.baseArrayLayer;
-	else
-		num_layers = view_info.subresourceRange.layerCount;
-
-	view_info.subresourceRange.levelCount = num_levels;
-	view_info.subresourceRange.layerCount = num_layers;
-
-	if (!holder.create_default_views(image_create_info, &view_info))
+	granite_image_views_t views;
+	if (!granite_image_views_create(device, table, &desc, &views))
 		return ImageViewHandle(nullptr);
 
 	ImageViewCreateInfo tmp = create_info;
-	tmp.format = format;
-	ImageViewHandle ret(handle_pool.image_views.allocate(this, holder.image_view, tmp));
-	if (ret)
+	tmp.format = desc.format;
+	ImageViewHandle ret(handle_pool.image_views.allocate(this, views.view, tmp));
+	if (!ret)
 	{
-		holder.owned = false;
-		ret->set_alt_views(holder.depth_view, holder.stencil_view);
-		ret->set_render_target_views(Util::move(holder.rt_views));
-		return ret;
-	}
-	else
+		granite_image_views_destroy(device, table, &views);
 		return ImageViewHandle(nullptr);
+	}
+	ret->set_views(views);
+	return ret;
 }
 
 InitialImageBuffer Device::create_image_staging_buffer(const ImageCreateInfo &info, const ImageInitialData *initial)
@@ -2166,188 +1906,100 @@ ImageHandle Device::create_image(const ImageCreateInfo &create_info, const Image
 		return create_image_from_staging_buffer(create_info, nullptr);
 }
 
-bool Device::allocate_image_memory(DeviceAllocation *allocation, const ImageCreateInfo &info, VkImage image)
-{
-	VkMemoryRequirements reqs;
-	table->vkGetImageMemoryRequirements(device, image, &reqs);
-
-	uint32_t memory_type = granite_find_image_memory_type(&mem_props, reqs.memoryTypeBits);
-	if (memory_type == UINT32_MAX)
-	{
-		LOGE("Failed to find memory type.\n");
-		return false;
-	}
-
-	AllocationMode mode;
-	if ((info.usage & (VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_STORAGE_BIT)) != 0)
-		mode = AllocationMode::OptimalRenderTarget;
-	else
-		mode = AllocationMode::OptimalResource;
-
-	{
-		LOCK_MEMORY();
-		if (!managers.memory.allocate_image_memory(reqs.size, reqs.alignment, mode, memory_type, image, allocation))
-		{
-			LOGE("Failed to allocate image memory (type %u, size: %u).\n",
-			     unsigned(memory_type), unsigned(reqs.size));
-			return false;
-		}
-	}
-
-	if (table->vkBindImageMemory(device, image, allocation->get_memory(),
-	                             allocation->get_offset()) != VK_SUCCESS)
-	{
-		LOGE("Failed to bind image memory.\n");
-		return false;
-	}
-
-	return true;
-}
-
-static void add_unique_family(uint32_t *sharing_indices, uint32_t &count, uint32_t family)
-{
-	for (uint32_t i = 0; i < count; i++)
-	{
-		if (sharing_indices[i] == family)
-			return;
-	}
-	sharing_indices[count++] = family;
-}
-
 ImageHandle Device::create_image_from_staging_buffer(const ImageCreateInfo &create_info,
                                                      const InitialImageBuffer *staging_buffer)
 {
-	ImageResourceHolder holder(this);
+	if (create_info.type != VK_IMAGE_TYPE_2D || create_info.depth != 1)
+		return ImageHandle(nullptr);
 
-	VkImageCreateInfo info = { VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO };
-	info.format = create_info.format;
-	info.extent.width = create_info.width;
-	info.extent.height = create_info.height;
-	info.extent.depth = create_info.depth;
-	info.imageType = create_info.type;
-	info.mipLevels = create_info.levels;
-	info.arrayLayers = create_info.layers;
-	info.samples = create_info.samples;
-	info.tiling = VK_IMAGE_TILING_OPTIMAL;
-	info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	granite_image_desc_t desc = {};
+	desc.format = create_info.format;
+	desc.width = create_info.width;
+	desc.height = create_info.height;
+	desc.levels = create_info.levels;
+	desc.layers = create_info.layers;
+	desc.samples = create_info.samples;
+	desc.usage = create_info.usage;
+	desc.flags = create_info.flags;
+	desc.force_array = (create_info.misc & IMAGE_MISC_FORCE_ARRAY_BIT) != 0;
+	desc.mutable_srgb = (create_info.misc & IMAGE_MISC_MUTABLE_SRGB_BIT) != 0;
+	desc.on_graphics = (create_info.misc & IMAGE_MISC_CONCURRENT_QUEUE_GRAPHICS_BIT) != 0;
+	desc.on_compute = (create_info.misc & IMAGE_MISC_CONCURRENT_QUEUE_ASYNC_COMPUTE_BIT) != 0;
+	bool concurrent_queue = desc.on_graphics || desc.on_compute;
 
-	info.usage = create_info.usage;
-	info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+	VkImageUsageFlags usage = create_info.usage;
 	if (staging_buffer)
-		info.usage |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
-
-	info.flags = create_info.flags;
-
-	VkImageFormatListCreateInfoKHR format_info = { VK_STRUCTURE_TYPE_IMAGE_FORMAT_LIST_CREATE_INFO_KHR };
-	VkFormat view_formats[2];
-	format_info.pViewFormats = view_formats;
-	format_info.viewFormatCount = 2;
-
-	if (create_info.misc & IMAGE_MISC_MUTABLE_SRGB_BIT)
-	{
-		format_info.viewFormatCount = ImageCreateInfo::compute_view_formats(create_info, view_formats);
-		if (format_info.viewFormatCount != 0 && ext.supports_image_format_list)
-			info.pNext = &format_info;
-	}
-
-	if ((create_info.usage & VK_IMAGE_USAGE_STORAGE_BIT) ||
-	    (create_info.misc & IMAGE_MISC_MUTABLE_SRGB_BIT))
-	{
-		info.flags |= VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT;
-	}
-
-	// Only do this conditionally.
-	// On AMD, using CONCURRENT with async compute disables compression.
-	uint32_t sharing_indices[QUEUE_INDEX_COUNT];
-
-	uint32_t queue_flags = create_info.misc & (IMAGE_MISC_CONCURRENT_QUEUE_GRAPHICS_BIT |
-	                                           IMAGE_MISC_CONCURRENT_QUEUE_ASYNC_COMPUTE_BIT);
-	bool concurrent_queue = queue_flags != 0;
-	if (concurrent_queue)
-	{
-		info.sharingMode = VK_SHARING_MODE_CONCURRENT;
-
-		if (queue_flags & IMAGE_MISC_CONCURRENT_QUEUE_GRAPHICS_BIT)
-		{
-			add_unique_family(sharing_indices, info.queueFamilyIndexCount,
-			                  queue_info.family_indices[QUEUE_INDEX_GRAPHICS]);
-		}
-
-		if (queue_flags & IMAGE_MISC_CONCURRENT_QUEUE_ASYNC_COMPUTE_BIT)
-		{
-			add_unique_family(sharing_indices, info.queueFamilyIndexCount,
-			                  queue_info.family_indices[QUEUE_INDEX_COMPUTE]);
-		}
-
-		if (staging_buffer)
-		{
-			add_unique_family(sharing_indices, info.queueFamilyIndexCount,
-			                  queue_info.family_indices[QUEUE_INDEX_TRANSFER]);
-			add_unique_family(sharing_indices, info.queueFamilyIndexCount,
-			                  queue_info.family_indices[QUEUE_INDEX_GRAPHICS]);
-		}
-
-		if (info.queueFamilyIndexCount > 1)
-			info.pQueueFamilyIndices = sharing_indices;
-		else
-		{
-			info.pQueueFamilyIndices = nullptr;
-			info.queueFamilyIndexCount = 0;
-			info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-		}
-	}
+		usage |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
 
 	if ((create_info.flags & VK_IMAGE_CREATE_EXTENDED_USAGE_BIT) == 0 &&
-	    (!image_format_is_supported(create_info.format, image_usage_to_features(info.usage), info.tiling)))
+	    !image_format_is_supported(create_info.format, granite_image_usage_features(usage)))
 	{
 		LOGE("Format %u is not supported for usage flags!\n", unsigned(create_info.format));
 		return ImageHandle(nullptr);
 	}
 
-	if (table->vkCreateImage(device, &info, nullptr, &holder.image) != VK_SUCCESS)
-	{
-		LOGE("Failed to create image in vkCreateImage.\n");
-		return ImageHandle(nullptr);
-	}
+	granite_image_env_t env = {};
+	env.device = device;
+	env.table = table;
+	env.allocator = &managers.memory;
+	env.memory = &mem_props;
+	env.graphics_family = queue_info.family_indices[QUEUE_INDEX_GRAPHICS];
+	env.compute_family = queue_info.family_indices[QUEUE_INDEX_COMPUTE];
+	env.transfer_family = queue_info.family_indices[QUEUE_INDEX_TRANSFER];
+	env.format_list = ext.supports_image_format_list;
 
-	if (!allocate_image_memory(&holder.allocation, create_info, holder.image))
+	VkImage image;
+	DeviceAllocation allocation;
+	VkImageCreateFlags flags;
 	{
-		LOGE("Failed to allocate memory for image.\n");
-		return ImageHandle(nullptr);
+		LOCK_MEMORY();
+		if (!granite_image_create(&env, &desc, staging_buffer != nullptr, &image, &allocation, &usage, &flags))
+			return ImageHandle(nullptr);
 	}
 
 	auto tmpinfo = create_info;
-	tmpinfo.usage = info.usage;
-	tmpinfo.flags = info.flags;
-	tmpinfo.levels = info.mipLevels;
+	tmpinfo.usage = usage;
+	tmpinfo.flags = flags;
 
-	bool has_view = (info.usage & (VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
-	                               VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT)) != 0;
-
+	bool has_view = granite_image_usage_has_view(usage);
 	VkImageViewType view_type = VK_IMAGE_VIEW_TYPE_MAX_ENUM;
+	granite_image_views_t views = {};
 	if (has_view)
 	{
-		if (!holder.create_default_views(tmpinfo, nullptr))
-			return ImageHandle(nullptr);
-		view_type = holder.get_default_view_type();
-	}
-
-	ImageHandle handle(handle_pool.images.allocate(this, holder.image, holder.image_view, holder.allocation, tmpinfo, view_type));
-	if (handle)
-	{
-		holder.owned = false;
-		if (has_view)
+		granite_image_view_desc_t view_desc = {};
+		view_desc.image = image;
+		view_desc.format = create_info.format;
+		view_desc.type = view_type = granite_image_view_type(&desc);
+		view_desc.levels = create_info.levels;
+		view_desc.layers = create_info.layers;
+		view_desc.usage = usage;
+		if (!granite_image_views_create(device, table, &view_desc, &views))
 		{
-			handle->get_view().set_alt_views(holder.depth_view, holder.stencil_view);
-			handle->get_view().set_render_target_views(Util::move(holder.rt_views));
+			table->vkDestroyImage(device, image, nullptr);
+			LOCK_MEMORY();
+			allocation.free_immediate(managers.memory);
+			return ImageHandle(nullptr);
 		}
-
-		// Set possible dstStage and dstAccess.
-		handle->set_stage_flags(image_usage_to_possible_stages(info.usage));
-		handle->set_access_flags(image_usage_to_possible_access(info.usage));
 	}
 
-	bool share_compute = (queue_flags & IMAGE_MISC_CONCURRENT_QUEUE_ASYNC_COMPUTE_BIT) != 0 &&
+	ImageHandle handle(handle_pool.images.allocate(this, image, views.view, allocation, tmpinfo, view_type));
+	if (!handle)
+	{
+		granite_image_views_destroy(device, table, &views);
+		table->vkDestroyImage(device, image, nullptr);
+		LOCK_MEMORY();
+		allocation.free_immediate(managers.memory);
+		return ImageHandle(nullptr);
+	}
+
+	if (has_view)
+		handle->get_view().set_views(views);
+
+	// Set possible dstStage and dstAccess.
+	handle->set_stage_flags(granite_image_usage_stages(usage));
+	handle->set_access_flags(granite_image_usage_access(usage));
+
+	bool share_compute = desc.on_compute &&
 	                     queue_info.queues[QUEUE_INDEX_GRAPHICS] != queue_info.queues[QUEUE_INDEX_COMPUTE];
 
 	CommandBufferHandle transition_cmd;
@@ -2401,16 +2053,16 @@ ImageHandle Device::create_image_from_staging_buffer(const ImageCreateInfo &crea
 				release.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
 
 				release.newLayout = create_info.initial_layout;
-				release.subresourceRange.levelCount = info.mipLevels;
+				release.subresourceRange.levelCount = create_info.levels;
 				need_initial_barrier = false;
 
-				release.subresourceRange.aspectMask = format_to_aspect_mask(info.format);
-				release.subresourceRange.layerCount = info.arrayLayers;
+				release.subresourceRange.aspectMask = format_to_aspect_mask(create_info.format);
+				release.subresourceRange.layerCount = create_info.layers;
 
 				VkImageMemoryBarrier acquire = release;
 				acquire.srcAccessMask = 0;
 
-				acquire.dstAccessMask = handle->get_access_flags() & image_layout_to_possible_access(create_info.initial_layout);
+				acquire.dstAccessMask = handle->get_access_flags() & granite_image_layout_access(create_info.initial_layout);
 
 				transfer_cmd->barrier(VK_PIPELINE_STAGE_TRANSFER_BIT,
 				                      VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
@@ -2433,7 +2085,7 @@ ImageHandle Device::create_image_from_staging_buffer(const ImageCreateInfo &crea
 					create_info.initial_layout,
 					VK_PIPELINE_STAGE_TRANSFER_BIT, final_transition_src_access,
 					handle->get_stage_flags(),
-					handle->get_access_flags() & image_layout_to_possible_access(create_info.initial_layout));
+					handle->get_access_flags() & granite_image_layout_access(create_info.initial_layout));
 		}
 
 		transition_cmd = Util::move(graphics_cmd);
@@ -2441,10 +2093,10 @@ ImageHandle Device::create_image_from_staging_buffer(const ImageCreateInfo &crea
 	else if (create_info.initial_layout != VK_IMAGE_LAYOUT_UNDEFINED)
 	{
 		auto cmd = request_command_buffer(CommandBuffer::Type::Generic);
-		cmd->image_barrier(*handle, info.initialLayout, create_info.initial_layout,
+		cmd->image_barrier(*handle, VK_IMAGE_LAYOUT_UNDEFINED, create_info.initial_layout,
 		                   VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, 0, handle->get_stage_flags(),
 		                   handle->get_access_flags() &
-		                   image_layout_to_possible_access(create_info.initial_layout));
+		                   granite_image_layout_access(create_info.initial_layout));
 		transition_cmd = Util::move(cmd);
 	}
 

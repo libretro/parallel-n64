@@ -133,7 +133,6 @@ public:
 	friend class Texture;
 	friend class DescriptorSetAllocator;
 	friend class Shader;
-	friend class ImageResourceHolder;
 
 	Device();
 	~Device();
@@ -579,7 +578,6 @@ private:
 	void report_checkpoints();
 
 
-	bool allocate_image_memory(DeviceAllocation *allocation, const ImageCreateInfo &info, VkImage image);
 };
 
 // A fairly complex helper used for async queue readbacks.
