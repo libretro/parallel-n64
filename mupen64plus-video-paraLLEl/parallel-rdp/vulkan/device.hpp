@@ -81,19 +81,22 @@ struct HandlePool
 	{
 		granite_buffer_pools_init(&buffers);
 		granite_image_pools_init(&images);
+		granite_fence_pool_slots_init(&fences);
 	}
 
 	~HandlePool()
 	{
 		granite_buffer_pools_free(&buffers);
 		granite_image_pools_free(&images);
+		granite_lf_pool_clear(&fences);
 	}
 
 	// buffers and their views (buffer.h)
 	granite_buffer_pools_t buffers;
 	// images and their views (image.h)
 	granite_image_pools_t images;
-	VulkanObjectPool<FenceHolder> fences;
+	// fence.h
+	granite_lf_pool_t fences;
 	VulkanObjectPool<SemaphoreHolder> semaphores;
 	VulkanObjectPool<CommandBuffer> command_buffers;
 	VulkanObjectPool<DeferredRelease> deferred;
@@ -121,8 +124,6 @@ public:
 	// Don't want to expose a lot of internal guts to make this work.
 	friend class SemaphoreHolder;
 	friend struct SemaphoreHolderDeleter;
-	friend class FenceHolder;
-	friend struct FenceHolderDeleter;
 	friend class CommandBuffer;
 	friend struct CommandBufferDeleter;
 	friend class Program;
@@ -350,6 +351,7 @@ private:
 	granite_handle_owner_t handle_owner;
 	static void handle_destroy(void *user, unsigned kind, uint64_t handle, bool owner_thread);
 	static void handle_free_memory(void *user, const granite_allocation_t *alloc, bool owner_thread);
+	static void handle_recycle_fence(void *user, VkFence fence, bool seen, bool owner_thread);
 	BufferHandle wrap_buffer(VkBuffer buffer, const DeviceAllocation &allocation, const granite_buffer_info_t &info);
 
 	// Released from any thread without a lock: Vulkan objects through
@@ -464,6 +466,7 @@ private:
 		VkSemaphore timeline;
 		uint64_t value;
 	};
+	Fence wrap_fence(const InternalFence &fence);
 
 	void submit_queue(QueueIndices physical_type, InternalFence *fence,
 	                  SemaphoreHolder *external_semaphore = nullptr,

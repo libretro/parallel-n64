@@ -24,55 +24,36 @@
 
 #include "vulkan_common.hpp"
 #include "vulkan_headers.hpp"
-#include "object_pool.hpp"
-#include "cookie.hpp"
-#include "fence_wait.h"
+#include "fence.h"
 
 namespace Vulkan
 {
-class Device;
-
-class FenceHolder;
-struct FenceHolderDeleter
-{
-	void operator()(FenceHolder *fence);
-};
-
-class FenceHolder : public Util::IntrusivePtrEnabled<FenceHolder, FenceHolderDeleter, HandleCounter>, public InternalSyncEnabled
+// Fences are C (fence.h). No members of its own: a granite_fence_t by
+// another name.
+class FenceHolder : public granite_fence_t
 {
 public:
-	friend struct FenceHolderDeleter;
-	friend class WSI;
+	FenceHolder() = delete;
 
-	~FenceHolder();
-	void wait();
-
-private:
-	friend class Util::ObjectPool<FenceHolder>;
-	FenceHolder(Device *device_, VkFence fence_)
-		: device(device_),
-		  fence(fence_),
-		  timeline_semaphore(VK_NULL_HANDLE),
-		  timeline_value(0)
+	void add_reference()
 	{
+		granite_fence_ref(this);
 	}
 
-	FenceHolder(Device *device_, uint64_t value, VkSemaphore timeline_semaphore_)
-		: device(device_),
-		  fence(VK_NULL_HANDLE),
-		  timeline_semaphore(timeline_semaphore_),
-		  timeline_value(value)
+	void release_reference()
 	{
-		VK_ASSERT(value > 0);
+		granite_fence_unref(this);
 	}
 
-	Device *device;
-	VkFence fence;
-	VkSemaphore timeline_semaphore;
-	uint64_t timeline_value;
-	// fence_wait.c
-	retro_atomic_int_t wait_state{GRANITE_FENCE_UNWAITED};
-	static bool vk_wait(void *self);
+	void set_internal_sync_object()
+	{
+		internal_sync = true;
+	}
+
+	void wait()
+	{
+		granite_fence_wait_for(this);
+	}
 };
 
 using Fence = Util::IntrusivePtr<FenceHolder>;

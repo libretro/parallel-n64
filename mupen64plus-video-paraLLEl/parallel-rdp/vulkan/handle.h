@@ -47,6 +47,9 @@ typedef struct granite_handle_owner
 	 * needs no hand-over; otherwise from any thread. */
 	void (*destroy)(void *user, unsigned kind, uint64_t handle, bool owner_thread);
 	void (*free_memory)(void *user, const granite_allocation_t *alloc, bool owner_thread);
+	/* A fence nothing waits on any more. @seen: a wait saw it signalled,
+	 * so it can be reset and used again without waiting for its frame. */
+	void (*recycle_fence)(void *user, VkFence fence, bool seen, bool owner_thread);
 } granite_handle_owner_t;
 
 /* A count of references, from any thread. An object starts with one. */

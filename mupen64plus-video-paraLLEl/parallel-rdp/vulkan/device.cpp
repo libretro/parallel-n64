@@ -90,6 +90,7 @@ Device::Device()
 	handle_owner.user = this;
 	handle_owner.destroy = handle_destroy;
 	handle_owner.free_memory = handle_free_memory;
+	handle_owner.recycle_fence = handle_recycle_fence;
 	for (auto &stack : deferred_releases)
 		mpsc_stack_init(&stack);
 	pipeline_records = static_cast<pipeline_record_t *>(
@@ -830,10 +831,7 @@ void Device::submit_nolock(CommandBufferHandle cmd, Fence *fence, unsigned semap
 	if (fence)
 	{
 		VK_ASSERT(!*fence);
-		if (signalled_fence.value)
-			*fence = Fence(handle_pool.fences.allocate(this, signalled_fence.value, signalled_fence.timeline));
-		else
-			*fence = Fence(handle_pool.fences.allocate(this, signalled_fence.fence));
+		*fence = wrap_fence(signalled_fence);
 	}
 
 	decrement_frame_counter_nolock();
@@ -858,12 +856,7 @@ void Device::submit_empty_nolock(QueueIndices physical_type, Fence *fence,
 	             0, nullptr);
 
 	if (fence)
-	{
-		if (signalled_fence.value)
-			*fence = Fence(handle_pool.fences.allocate(this, signalled_fence.value, signalled_fence.timeline));
-		else
-			*fence = Fence(handle_pool.fences.allocate(this, signalled_fence.fence));
-	}
+		*fence = wrap_fence(signalled_fence);
 }
 
 void Device::submit_empty_inner(QueueIndices physical_type, InternalFence *fence,
@@ -1342,6 +1335,29 @@ void Device::free_memory_nolock(const DeviceAllocation &alloc)
 void Device::destroy_pipeline(VkPipeline pipeline)
 {
 	release_handle(GRANITE_GARBAGE_PIPELINE, GRANITE_VK_TO_BITS(pipeline));
+}
+
+// The counted object for what a submission is waited on by.
+Fence Device::wrap_fence(const InternalFence &fence)
+{
+	granite_fence_env_t env;
+	env.device = device;
+	env.table = table;
+	env.wait_ec = fence_wait_ec_live ? &fence_wait_ec : nullptr;
+	auto *object = granite_fence_new(&handle_pool.fences, &handle_owner, &env, fence.fence, fence.timeline, fence.value);
+	// Without one the fence still goes back when its frame comes round.
+	if (!object && !fence.value && fence.fence != VK_NULL_HANDLE)
+		reset_fence(fence.fence, false);
+	return Fence(static_cast<FenceHolder *>(object));
+}
+
+void Device::handle_recycle_fence(void *user, VkFence fence, bool seen, bool owner_thread)
+{
+	auto *self = static_cast<Device *>(user);
+	if (owner_thread)
+		self->reset_fence_nolock(fence, seen);
+	else
+		self->reset_fence(fence, seen);
 }
 
 void Device::reset_fence(VkFence fence, bool observed_wait)
