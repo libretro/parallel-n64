@@ -48,7 +48,9 @@ static INLINE float DotProduct(const float *v0, const float *v1)
 
 static INLINE float GetFloatMatrixElement(s16 _int, u16 _fract)
 {
-	const s32 element = (_int << 16) | _fract;
+	/* (shifted as unsigned: a negative integer part is not a defined left
+	 * shift) */
+	const s32 element = (s32)(((u32)(u16)_int << 16) | _fract);
 	return (float)element * 1.52587890625e-05f;
 }
 
