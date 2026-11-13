@@ -24,171 +24,31 @@
 
 #include "vulkan_common.hpp"
 #include "vulkan_headers.hpp"
-#include "cookie.hpp"
-#include "object_pool.hpp"
+#include "semaphore.h"
 
 namespace Vulkan
 {
-class Device;
-
-class SemaphoreHolder;
-struct SemaphoreHolderDeleter
-{
-	void operator()(SemaphoreHolder *semaphore);
-};
-
-class SemaphoreHolder : public Util::IntrusivePtrEnabled<SemaphoreHolder, SemaphoreHolderDeleter, HandleCounter>,
-                        public InternalSyncEnabled
+// Semaphores are C (semaphore.h). No members of its own: a
+// granite_semaphore_t by another name.
+class SemaphoreHolder : public granite_semaphore_t
 {
 public:
-	friend struct SemaphoreHolderDeleter;
+	SemaphoreHolder() = delete;
 
-	~SemaphoreHolder();
-
-	const VkSemaphore &get_semaphore() const
+	void add_reference()
 	{
-		return semaphore;
+		granite_semaphore_ref(this);
 	}
 
-	bool is_signalled() const
+	void release_reference()
 	{
-		return signalled;
+		granite_semaphore_unref(this);
 	}
 
-	uint64_t get_timeline_value() const
+	void set_internal_sync_object()
 	{
-		VK_ASSERT(!owned && semaphore_type == VK_SEMAPHORE_TYPE_TIMELINE_KHR);
-		return timeline;
+		internal_sync = true;
 	}
-
-	VkSemaphore consume()
-	{
-		auto ret = semaphore;
-		VK_ASSERT(semaphore);
-		VK_ASSERT(signalled);
-		semaphore = VK_NULL_HANDLE;
-		signalled = false;
-		owned = false;
-		return ret;
-	}
-
-	VkSemaphore release_semaphore()
-	{
-		auto ret = semaphore;
-		semaphore = VK_NULL_HANDLE;
-		signalled = false;
-		owned = false;
-		return ret;
-	}
-
-	void wait_external()
-	{
-		VK_ASSERT(semaphore);
-		VK_ASSERT(signalled);
-		signalled = false;
-	}
-
-	void signal_external()
-	{
-		VK_ASSERT(!signalled);
-		VK_ASSERT(semaphore);
-		signalled = true;
-	}
-
-	void set_pending_wait()
-	{
-		pending_wait = true;
-	}
-
-	bool is_pending_wait() const
-	{
-		return pending_wait;
-	}
-
-	void set_external_object_compatible(VkExternalSemaphoreHandleTypeFlagBits handle_type,
-	                                    VkExternalSemaphoreFeatureFlags features)
-	{
-		external_compatible_handle_type = handle_type;
-		external_compatible_features = features;
-	}
-
-	bool is_external_object_compatible() const
-	{
-		return external_compatible_features != 0;
-	}
-
-	VkSemaphoreTypeKHR get_semaphore_type() const
-	{
-		return semaphore_type;
-	}
-
-	bool is_proxy_timeline() const
-	{
-		return proxy_timeline;
-	}
-
-	void set_proxy_timeline()
-	{
-		proxy_timeline = true;
-		signalled = false;
-	}
-
-	// If successful, importing takes ownership of the handle/fd.
-	// Application can use dup() / DuplicateHandle() to keep a reference.
-	// Imported semaphores are assumed to be signalled, or pending to be signalled.
-	// All imports are performed with TEMPORARY permanence.
-
-	VkExternalSemaphoreFeatureFlags get_external_features() const
-	{
-		return external_compatible_features;
-	}
-
-	VkExternalSemaphoreHandleTypeFlagBits get_external_handle_type() const
-	{
-		return external_compatible_handle_type;
-	}
-
-	SemaphoreHolder &operator=(SemaphoreHolder &&other) noexcept;
-
-private:
-	friend class Util::ObjectPool<SemaphoreHolder>;
-	SemaphoreHolder(Device *device_, VkSemaphore semaphore_, bool signalled_, bool owned_)
-		: device(device_)
-		, semaphore(semaphore_)
-		, timeline(0)
-		, semaphore_type(VK_SEMAPHORE_TYPE_BINARY_KHR)
-		, signalled(signalled_)
-		, owned(owned_)
-	{
-	}
-
-	SemaphoreHolder(Device *device_, uint64_t timeline_, VkSemaphore semaphore_, bool owned_)
-		: device(device_)
-		, semaphore(semaphore_)
-		, timeline(timeline_)
-		, semaphore_type(VK_SEMAPHORE_TYPE_TIMELINE_KHR)
-		, owned(owned_)
-	{
-		VK_ASSERT((owned && timeline == 0) || (!owned && timeline != 0));
-	}
-
-	explicit SemaphoreHolder(Device *device_)
-		: device(device_)
-	{
-	}
-
-	void recycle_semaphore();
-
-	Device *device;
-	VkSemaphore semaphore = VK_NULL_HANDLE;
-	uint64_t timeline = 0;
-	VkSemaphoreTypeKHR semaphore_type = VK_SEMAPHORE_TYPE_BINARY_KHR;
-	bool signalled = false;
-	bool pending_wait = false;
-	bool owned = false;
-	bool proxy_timeline = false;
-	VkExternalSemaphoreHandleTypeFlagBits external_compatible_handle_type = {};
-	VkExternalSemaphoreFeatureFlags external_compatible_features = 0;
 };
 
 using Semaphore = Util::IntrusivePtr<SemaphoreHolder>;

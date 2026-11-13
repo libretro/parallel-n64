@@ -82,6 +82,7 @@ struct HandlePool
 		granite_buffer_pools_init(&buffers);
 		granite_image_pools_init(&images);
 		granite_fence_pool_slots_init(&fences);
+		granite_semaphore_pool_slots_init(&semaphores);
 	}
 
 	~HandlePool()
@@ -89,6 +90,7 @@ struct HandlePool
 		granite_buffer_pools_free(&buffers);
 		granite_image_pools_free(&images);
 		granite_lf_pool_clear(&fences);
+		granite_lf_pool_clear(&semaphores);
 	}
 
 	// buffers and their views (buffer.h)
@@ -97,7 +99,8 @@ struct HandlePool
 	granite_image_pools_t images;
 	// fence.h
 	granite_lf_pool_t fences;
-	VulkanObjectPool<SemaphoreHolder> semaphores;
+	// semaphore.h
+	granite_lf_pool_t semaphores;
 	VulkanObjectPool<CommandBuffer> command_buffers;
 	VulkanObjectPool<DeferredRelease> deferred;
 };
@@ -122,8 +125,6 @@ class Device
 public:
 	// Device-based objects which need to poke at internal data structures when their lifetimes end.
 	// Don't want to expose a lot of internal guts to make this work.
-	friend class SemaphoreHolder;
-	friend struct SemaphoreHolderDeleter;
 	friend class CommandBuffer;
 	friend struct CommandBufferDeleter;
 	friend class Program;
@@ -186,9 +187,7 @@ public:
 
 	void submit(CommandBufferHandle &cmd, Fence *fence = nullptr,
 	            unsigned semaphore_count = 0, Semaphore *semaphore = nullptr);
-	void submit_empty(CommandBuffer::Type type,
-	                  Fence *fence = nullptr,
-	                  SemaphoreHolder *semaphore = nullptr);
+	void submit_empty(CommandBuffer::Type type, Fence *fence = nullptr);
 	void add_wait_semaphore(CommandBuffer::Type type, Semaphore semaphore, VkPipelineStageFlags stages, bool flush);
 	QueueIndices get_physical_queue_type(CommandBuffer::Type queue_type) const;
 	// Request shaders and programs. These objects are owned by the Device.
@@ -226,38 +225,8 @@ public:
 	bool image_format_is_supported(VkFormat format, VkFormatFeatureFlags2KHR required, VkImageTiling tiling = VK_IMAGE_TILING_OPTIMAL) const;
 	void get_format_properties(VkFormat format, VkFormatProperties3KHR *properties) const;
 
-	// Semaphore API:
-	// Semaphores in Granite are abstracted to support both binary and timeline semaphores
-	// internally.
-	// In practice this means that semaphores behave like single-use binary semaphores,
-	// with one signal and one wait.
-	// A single semaphore handle is not reused for multiple submissions, and they must be recycled through
-	// the device. The intended use is device.submit(&sem), device.add_wait_semaphore(sem); dispose(sem);
-	// For timeline semaphores, the semaphore is just a proxy object which
-	// holds the internally owned VkSemaphore + timeline value and is otherwise lightweight.
-	//
-	// However, there are various use cases where we explicitly need semaphore objects:
-	// - Interoperate with other code that only accepts VkSemaphore.
-	// - Interoperate with external objects. We need to know whether to use binary or timeline.
-	//   For timelines, we need to know which handle type to use (OPAQUE or ID3D12Fence).
-	//   Binary external semaphore is always opaque with TEMPORARY semantics.
-
-	// If transfer_ownership is set, Semaphore owns the VkSemaphore. Otherwise, application must
-	// free the semaphore when GPU usage of it is complete.
-	Semaphore request_semaphore(VkSemaphoreTypeKHR type, VkSemaphore handle = VK_NULL_HANDLE, bool transfer_ownership = false);
-
-	// Requests a binary or timeline semaphore that can be used to import/export.
-	// These semaphores cannot be used directly by add_wait_semaphore() and submit_empty().
-	// See request_timeline_semaphore_as_binary() for how to use timelines.
-	// The created semaphore does not hold ownership of the VkSemaphore object.
-	Semaphore request_timeline_semaphore_as_binary(const SemaphoreHolder &holder, uint64_t value);
-
-	// A proxy semaphore which lets us grab a semaphore handle before we signal it.
-	// Move assignment can be used to move a payload.
-	// Mostly useful to deal better with render graph implementation.
-	// For time being however, we'll support moving the payload over to the proxy object.
-
-	// For compat with existing code that uses this entry point.
+	// Semaphores (semaphore.h) are single-use: submit(&sem) signals one,
+	// add_wait_semaphore(sem) has the next submission of a queue wait for it.
 
 	VkDevice get_device() const
 	{
@@ -469,7 +438,6 @@ private:
 	Fence wrap_fence(const InternalFence &fence);
 
 	void submit_queue(QueueIndices physical_type, InternalFence *fence,
-	                  SemaphoreHolder *external_semaphore = nullptr,
 	                  unsigned semaphore_count = 0,
 	                  Semaphore *semaphore = nullptr);
 
@@ -518,7 +486,6 @@ private:
 	void flush_frame(QueueIndices physical_type);
 	static const granite_buffer_pool_ops_t block_ops;
 	void submit_empty_inner(QueueIndices type, InternalFence *fence,
-	                        SemaphoreHolder *external_semaphore,
 	                        unsigned semaphore_count,
 	                        Semaphore *semaphore);
 
@@ -526,20 +493,15 @@ private:
 	granite_submit_composer_t composer;
 	void collect_wait_semaphores(QueueData &data);
 	void emit_queue_signals(
-	                        SemaphoreHolder *external_semaphore,
 	                        VkSemaphore sem, uint64_t timeline, InternalFence *fence,
 	                        unsigned semaphore_count, Semaphore *semaphores);
 	VkResult submit_batches(VkQueue queue, VkFence fence);
 
 	void destroy_pipeline(VkPipeline pipeline);
-	void destroy_semaphore(VkSemaphore semaphore);
-	void recycle_semaphore(VkSemaphore semaphore);
 	void free_memory(const DeviceAllocation &alloc);
 	void reset_fence(VkFence fence, bool observed_wait);
 
 	void destroy_framebuffer_nolock(VkFramebuffer framebuffer);
-	void destroy_semaphore_nolock(VkSemaphore semaphore);
-	void recycle_semaphore_nolock(VkSemaphore semaphore);
 	void free_memory_nolock(const DeviceAllocation &alloc);
 	void reset_fence_nolock(VkFence fence, bool observed_wait);
 
@@ -548,8 +510,7 @@ private:
 	void submit_discard_nolock(CommandBufferHandle &cmd);
 	void submit_nolock(CommandBufferHandle cmd, Fence *fence,
 	                   unsigned semaphore_count, Semaphore *semaphore);
-	void submit_empty_nolock(QueueIndices physical_type, Fence *fence,
-	                         SemaphoreHolder *semaphore);
+	void submit_empty_nolock(QueueIndices physical_type, Fence *fence);
 	void add_wait_semaphore_nolock(QueueIndices type, Semaphore semaphore, VkPipelineStageFlags stages,
 	                               bool flush);
 
