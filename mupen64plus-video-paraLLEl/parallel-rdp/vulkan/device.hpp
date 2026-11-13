@@ -37,7 +37,7 @@
 #include "semaphore.hpp"
 #include "shader.hpp"
 #include "context.hpp"
-#include "buffer_pool.hpp"
+#include "buffer_pool.h"
 #include "small_vector.hpp"
 #include <stdio.h>
 
@@ -326,8 +326,8 @@ private:
 
 	void bake_program(Program &program);
 
-	void request_vertex_block(BufferBlock &block, VkDeviceSize size);
-	void request_uniform_block(BufferBlock &block, VkDeviceSize size);
+	void request_vertex_block(granite_buffer_block_t &block, VkDeviceSize size);
+	void request_uniform_block(granite_buffer_block_t &block, VkDeviceSize size);
 
 	PipelineLayout *request_pipeline_layout(const CombinedResourceLayout &layout);
 	DescriptorSetAllocator *request_descriptor_set_allocator(const granite_descriptor_set_layout_t &layout,
@@ -381,10 +381,12 @@ private:
 		DeviceAllocator memory;
 		granite_fence_pool_t fence = {};
 		granite_semaphore_pool_t semaphore = {};
-		BufferPool vbo, ubo;
+		granite_buffer_pool_t vbo = {}, ubo = {};
 
 		~Managers()
 		{
+			granite_buffer_pool_free(&vbo);
+			granite_buffer_pool_free(&ubo);
 			granite_semaphore_pool_free(&semaphore);
 			granite_fence_pool_free(&fence);
 		}
@@ -418,8 +420,9 @@ private:
 		VkSemaphore timeline_semaphores[QUEUE_INDEX_COUNT] = {};
 		uint64_t timeline_fences[QUEUE_INDEX_COUNT] = {};
 
-		Util::Vector<BufferBlock> vbo_blocks;
-		Util::Vector<BufferBlock> ubo_blocks;
+		// used this frame; back to their pools by begin()
+		granite_buffer_block_list_t vbo_blocks = {};
+		granite_buffer_block_list_t ubo_blocks = {};
 
 		Util::Vector<VkFence> wait_fences;
 
@@ -459,13 +462,6 @@ private:
 		VkSemaphore timeline;
 		uint64_t value;
 	};
-
-	// Pending buffers which need to be copied from CPU to GPU before submitting graphics or compute work.
-	struct
-	{
-		Util::Vector<BufferBlock> vbo;
-		Util::Vector<BufferBlock> ubo;
-	} dma;
 
 	void submit_queue(QueueIndices physical_type, InternalFence *fence,
 	                  SemaphoreHolder *external_semaphore = nullptr,
@@ -516,7 +512,7 @@ private:
 	QueueLockCallback queue_unlock_callback = nullptr;
 	void *queue_lock_userdata = nullptr;
 	void flush_frame(QueueIndices physical_type);
-	void sync_buffer_blocks();
+	static const granite_buffer_pool_ops_t block_ops;
 	void submit_empty_inner(QueueIndices type, InternalFence *fence,
 	                        SemaphoreHolder *external_semaphore,
 	                        unsigned semaphore_count,
@@ -563,8 +559,8 @@ private:
 	void add_wait_semaphore_nolock(QueueIndices type, Semaphore semaphore, VkPipelineStageFlags stages,
 	                               bool flush);
 
-	void request_vertex_block_nolock(BufferBlock &block, VkDeviceSize size);
-	void request_uniform_block_nolock(BufferBlock &block, VkDeviceSize size);
+	void request_vertex_block_nolock(granite_buffer_block_t &block, VkDeviceSize size);
+	void request_uniform_block_nolock(granite_buffer_block_t &block, VkDeviceSize size);
 	void add_frame_counter_nolock();
 	void decrement_frame_counter_nolock();
 	void wait_idle_nolock();

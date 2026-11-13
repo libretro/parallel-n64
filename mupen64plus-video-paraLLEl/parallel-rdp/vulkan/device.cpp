@@ -684,15 +684,12 @@ void Device::set_context(const Context &context)
 	managers.memory.init(this);
 	granite_semaphore_pool_init(&managers.semaphore, device, table);
 	granite_fence_pool_init(&managers.fence, device, table);
-	managers.vbo.init(this, 4 * 1024, 16, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-	                  ImplementationQuirks::get().staging_need_device_local);
-	managers.ubo.init(this, 256 * 1024, Util::max_of<VkDeviceSize>(16u, gpu_props.limits.minUniformBufferOffsetAlignment),
-	                  VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-	                  ImplementationQuirks::get().staging_need_device_local);
-	managers.ubo.set_spill_region_size(VULKAN_MAX_UBO_SIZE);
-
-	managers.vbo.set_max_retained_blocks(256);
-	managers.ubo.set_max_retained_blocks(64);
+	if (!granite_buffer_pool_init(&managers.vbo, &block_ops, this, 4 * 1024, 16,
+	                              VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, 0, 256) ||
+	    !granite_buffer_pool_init(&managers.ubo, &block_ops, this, 256 * 1024,
+	                              Util::max_of<VkDeviceSize>(16u, gpu_props.limits.minUniformBufferOffsetAlignment),
+	                              VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VULKAN_MAX_UBO_SIZE, 64))
+		LOGE("Failed to set up the buffer pools.\n");
 }
 
 void Device::init_timeline_semaphores()
@@ -815,55 +812,64 @@ void Device::init_stock_samplers()
 	}
 }
 
-static void request_block(Device &device, BufferBlock &block, VkDeviceSize size,
-                          BufferPool &pool, Util::Vector<BufferBlock> *dma, Util::Vector<BufferBlock> &recycle)
+// The buffers behind the vertex and uniform blocks (buffer_pool.h): memory
+// the host writes and the device reads in place.
+static void *block_create(void *user, VkDeviceSize size, VkBufferUsageFlags usage, uint8_t **mapped)
 {
-	if (block.mapped)
-		device.unmap_host_buffer(*block.cpu, MEMORY_ACCESS_WRITE_BIT);
+	auto *device = static_cast<Device *>(user);
+	BufferCreateInfo info;
+	info.domain = BufferDomain::LinkedDeviceHost;
+	info.size = size;
+	info.usage = usage;
 
-	if (block.offset == 0)
-	{
-		if (block.size == pool.get_block_size())
-			pool.recycle_block(block);
-	}
-	else
-	{
-		if (block.cpu != block.gpu)
-		{
-			VK_ASSERT(dma);
-			dma->push_back(block);
-		}
-
-		if (block.size == pool.get_block_size())
-			recycle.push_back(block);
-	}
-
-	if (size)
-		block = pool.request_block(size);
-	else
-		block = {};
+	auto buffer = device->create_buffer(info, nullptr);
+	if (!buffer)
+		return nullptr;
+	device->set_name(*buffer, "chain-allocated-block");
+	buffer->set_internal_sync_object();
+	*mapped = static_cast<uint8_t *>(device->map_host_buffer(*buffer, MEMORY_ACCESS_WRITE_BIT));
+	// The block owns the reference from here on.
+	return buffer.release();
 }
 
-void Device::request_vertex_block(BufferBlock &block, VkDeviceSize size)
+static void block_release(void *, void *handle)
+{
+	static_cast<Buffer *>(handle)->release_reference();
+}
+
+static uint8_t *block_map(void *user, void *handle)
+{
+	return static_cast<uint8_t *>(static_cast<Device *>(user)->map_host_buffer(*static_cast<Buffer *>(handle),
+	                                                                             MEMORY_ACCESS_WRITE_BIT));
+}
+
+static void block_unmap(void *user, void *handle)
+{
+	static_cast<Device *>(user)->unmap_host_buffer(*static_cast<Buffer *>(handle), MEMORY_ACCESS_WRITE_BIT);
+}
+
+const granite_buffer_pool_ops_t Device::block_ops = { block_create, block_release, block_map, block_unmap };
+
+void Device::request_vertex_block(granite_buffer_block_t &block, VkDeviceSize size)
 {
 	LOCK();
 	request_vertex_block_nolock(block, size);
 }
 
-void Device::request_vertex_block_nolock(BufferBlock &block, VkDeviceSize size)
+void Device::request_vertex_block_nolock(granite_buffer_block_t &block, VkDeviceSize size)
 {
-	request_block(*this, block, size, managers.vbo, &dma.vbo, frame().vbo_blocks);
+	granite_buffer_pool_exchange(&managers.vbo, &block, size, &frame().vbo_blocks);
 }
 
-void Device::request_uniform_block(BufferBlock &block, VkDeviceSize size)
+void Device::request_uniform_block(granite_buffer_block_t &block, VkDeviceSize size)
 {
 	LOCK();
 	request_uniform_block_nolock(block, size);
 }
 
-void Device::request_uniform_block_nolock(BufferBlock &block, VkDeviceSize size)
+void Device::request_uniform_block_nolock(granite_buffer_block_t &block, VkDeviceSize size)
 {
-	request_block(*this, block, size, managers.ubo, &dma.ubo, frame().ubo_blocks);
+	granite_buffer_pool_exchange(&managers.ubo, &block, size, &frame().ubo_blocks);
 }
 
 void Device::submit(CommandBufferHandle &cmd, Fence *fence, unsigned semaphore_count, Semaphore *semaphores)
@@ -1242,44 +1248,7 @@ void Device::flush_frame(QueueIndices physical_type)
 	if (queue_info.queues[physical_type] == VK_NULL_HANDLE)
 		return;
 
-	if (physical_type == QUEUE_INDEX_TRANSFER)
-		sync_buffer_blocks();
 	submit_queue(physical_type, nullptr);
-}
-
-void Device::sync_buffer_blocks()
-{
-	if (dma.vbo.empty() && dma.ubo.empty())
-		return;
-
-	VkBufferUsageFlags usage = 0;
-
-	auto cmd = request_command_buffer_nolock(get_thread_index(), CommandBuffer::Type::AsyncTransfer);
-
-	cmd->begin_region("buffer-block-sync");
-
-	for (auto &block : dma.vbo)
-	{
-		VK_ASSERT(block.offset != 0);
-		cmd->copy_buffer(*block.gpu, 0, *block.cpu, 0, block.offset);
-		usage |= VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
-	}
-
-	for (auto &block : dma.ubo)
-	{
-		VK_ASSERT(block.offset != 0);
-		cmd->copy_buffer(*block.gpu, 0, *block.cpu, 0, block.offset);
-		usage |= VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
-	}
-
-	dma.vbo.clear();
-	dma.ubo.clear();
-
-	cmd->end_region();
-
-	// Do not flush graphics or compute in this context.
-	// We must be able to inject semaphores into all currently enqueued graphics / compute.
-	submit_staging(cmd, usage, false);
 }
 
 void Device::end_frame_nolock()
@@ -1618,12 +1587,12 @@ void Device::wait_idle_nolock()
 	clear_wait_semaphores();
 
 	// Free memory for buffer pools.
-	managers.vbo.reset();
-	managers.ubo.reset();
+	granite_buffer_pool_reset(&managers.vbo);
+	granite_buffer_pool_reset(&managers.ubo);
 	for (auto &frame : per_frame)
 	{
-		frame->vbo_blocks.clear();
-		frame->ubo_blocks.clear();
+		granite_buffer_block_list_release(&frame->vbo_blocks, &managers.vbo);
+		granite_buffer_block_list_release(&frame->ubo_blocks, &managers.ubo);
 	}
 
 	granite_framebuffer_allocator_clear(&framebuffer_allocator);
@@ -1755,12 +1724,8 @@ void Device::PerFrame::begin()
 	// Free the debug channel buffers here, and they will immediately be recycled with the frame's garbage right below.
 	debug_channels.clear();
 
-	for (auto &block : vbo_blocks)
-		managers.vbo.recycle_block(block);
-	for (auto &block : ubo_blocks)
-		managers.ubo.recycle_block(block);
-	vbo_blocks.clear();
-	ubo_blocks.clear();
+	granite_buffer_block_list_recycle(&vbo_blocks, &managers.vbo);
+	granite_buffer_block_list_recycle(&ubo_blocks, &managers.ubo);
 
 	granite_frame_garbage_collect(&garbage, vkdevice, &table, &managers.semaphore, &managers.fence);
 
@@ -1777,6 +1742,9 @@ Device::PerFrame::~PerFrame()
 {
 	in_destructor = true;
 	begin();
+	// (begin() gave the blocks back to their pools)
+	granite_buffer_block_list_free(&vbo_blocks);
+	granite_buffer_block_list_free(&ubo_blocks);
 	for (auto &cmd_pool : cmd_pools)
 		for (auto &pool : cmd_pool)
 			granite_command_pool_free(&pool);

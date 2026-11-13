@@ -510,27 +510,33 @@ void CommandBuffer::set_program(Program *program)
 void *CommandBuffer::allocate_constant_data(unsigned set, unsigned binding, VkDeviceSize size)
 {
 	VK_ASSERT(size <= VULKAN_MAX_UBO_SIZE);
-	auto data = ubo_block.allocate(size);
+	auto data = granite_buffer_block_allocate(&ubo_block, size);
 	if (!data.host)
 	{
 		device->request_uniform_block(ubo_block, size);
-		data = ubo_block.allocate(size);
+		data = granite_buffer_block_allocate(&ubo_block, size);
+		// Out of memory: nothing to write to or bind.
+		if (!data.host)
+			return nullptr;
 	}
-	set_uniform_buffer(set, binding, *ubo_block.gpu, data.offset, data.padded_size);
+	set_uniform_buffer(set, binding, *static_cast<Buffer *>(ubo_block.handle), data.offset, data.padded_size);
 	return data.host;
 }
 
 void *CommandBuffer::allocate_vertex_data(unsigned binding, VkDeviceSize size, VkDeviceSize stride,
                                           VkVertexInputRate step_rate)
 {
-	auto data = vbo_block.allocate(size);
+	auto data = granite_buffer_block_allocate(&vbo_block, size);
 	if (!data.host)
 	{
 		device->request_vertex_block(vbo_block, size);
-		data = vbo_block.allocate(size);
+		data = granite_buffer_block_allocate(&vbo_block, size);
+		// Out of memory: nothing to write to or bind.
+		if (!data.host)
+			return nullptr;
 	}
 
-	set_vertex_binding(binding, *vbo_block.gpu, data.offset, stride, step_rate);
+	set_vertex_binding(binding, *static_cast<Buffer *>(vbo_block.handle), data.offset, stride, step_rate);
 	return data.host;
 }
 

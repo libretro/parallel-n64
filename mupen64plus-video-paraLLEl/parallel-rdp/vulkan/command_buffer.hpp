@@ -23,7 +23,7 @@
 #pragma once
 
 #include "buffer.hpp"
-#include "buffer_pool.hpp"
+#include "buffer_pool.h"
 #include "vulkan_headers.hpp"
 #include "image.hpp"
 #include "render_pass.hpp"
@@ -365,8 +365,9 @@ private:
 	void begin_compute();
 	void begin_context(bool compute);
 
-	BufferBlock vbo_block;
-	BufferBlock ubo_block;
+	// (buffer_pool.h; given back by end())
+	granite_buffer_block_t vbo_block = {};
+	granite_buffer_block_t ubo_block = {};
 
 	void set_texture(unsigned set, unsigned binding, VkImageView float_view, VkImageView integer_view,
 	                 VkImageLayout layout,
