@@ -52,7 +52,7 @@
 #include <retro_atomic.h>
 #endif
 
-#include "quirks.hpp"
+#include "device_caps.h"
 
 namespace Granite
 {
@@ -200,7 +200,6 @@ public:
 
 	// Render pass helpers.
 	bool image_format_is_supported(VkFormat format, VkFormatFeatureFlags2KHR required, VkImageTiling tiling = VK_IMAGE_TILING_OPTIMAL) const;
-	void get_format_properties(VkFormat format, VkFormatProperties3KHR *properties) const;
 
 	// Semaphores (semaphore.h) are single-use: submit(&sem) signals one,
 	// add_wait_semaphore(sem) has the next submission of a queue wait for it.
@@ -237,7 +236,7 @@ public:
 	// buffers are: ordered before later work on every queue that may use it.
 	void submit_initialization(CommandBufferHandle &cmd, VkBufferUsageFlags usage);
 
-	const ImplementationWorkarounds &get_workarounds() const
+	const granite_workarounds_t &get_workarounds() const
 	{
 		return workarounds;
 	}
@@ -488,7 +487,7 @@ private:
 	void end_frame_nolock();
 
 
-	ImplementationWorkarounds workarounds;
+	granite_workarounds_t workarounds = {};
 	void init_workarounds();
 
 

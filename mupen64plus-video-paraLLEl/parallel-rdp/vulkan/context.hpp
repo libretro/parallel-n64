@@ -35,15 +35,6 @@ namespace Vulkan
 using DeviceFeatures = granite_device_features_t;
 using QueueInfo = granite_queue_info_t;
 
-enum VendorID
-{
-	VENDOR_ID_AMD = 0x1002,
-	VENDOR_ID_NVIDIA = 0x10de,
-	VENDOR_ID_INTEL = 0x8086,
-	VENDOR_ID_ARM = 0x13b5,
-	VENDOR_ID_QCOM = 0x5143
-};
-
 // Creates the device in place of vkCreateDevice, e.g. through a
 // libretro frontend that adds what it needs to the create info.
 struct DeviceFactory

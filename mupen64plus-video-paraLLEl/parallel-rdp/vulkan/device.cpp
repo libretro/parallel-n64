@@ -23,7 +23,6 @@
 #include "device.hpp"
 #include "format.hpp"
 #include "type_to_string.hpp"
-#include "quirks.hpp"
 #include <string.h>
 #include <stdlib.h>
 
@@ -436,57 +435,9 @@ bool Device::resolve_pipeline_record(const pipeline_record_t &record, DeferredPi
 
 void Device::init_workarounds()
 {
-	workarounds = {};
-
-#ifdef __APPLE__
-	// Events are not supported in MoltenVK.
-	// TODO: Use VK_KHR_portability_subset to determine this.
-	workarounds.emulate_event_as_pipeline_barrier = true;
-	LOGW("Emulating events as pipeline barriers on Metal emulation.\n");
-#else
-	if (gpu_props.vendorID == VENDOR_ID_ARM)
-	{
-		LOGW("Workaround applied: Emulating events as pipeline barriers.\n");
-		LOGW("Workaround applied: Optimize ALL_GRAPHICS_BIT barriers.\n");
-
-		// Both are performance related workarounds.
-		workarounds.emulate_event_as_pipeline_barrier = true;
-		workarounds.optimize_all_graphics_barrier = true;
-
-		if (ext.timeline_semaphore_features.timelineSemaphore)
-		{
-			LOGW("Workaround applied: Split binary timeline semaphores.\n");
-			workarounds.split_binary_timeline_semaphores = true;
-		}
-	}
-	else if (ext.driver_properties.driverID == VK_DRIVER_ID_NVIDIA_PROPRIETARY)
-	{
-		LOGW("Disabling pipeline cache control.\n");
-		workarounds.broken_pipeline_cache_control = true;
-	}
-#endif
-
-	if (ext.supports_tooling_info && vkGetPhysicalDeviceToolPropertiesEXT)
-	{
-		uint32_t count = 0;
-		vkGetPhysicalDeviceToolPropertiesEXT(gpu, &count, nullptr);
-		Util::SmallVector<VkPhysicalDeviceToolPropertiesEXT> tool_props(count);
-		for (auto &t : tool_props)
-			t = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TOOL_PROPERTIES_EXT };
-		vkGetPhysicalDeviceToolPropertiesEXT(gpu, &count, tool_props.data());
-		for (auto &t : tool_props)
-		{
-			LOGI("  Detected attached tool:\n");
-			LOGI("    Name: %s\n", t.name);
-			LOGI("    Description: %s\n", t.description);
-			LOGI("    Version: %s\n", t.version);
-			if ((t.purposes & VK_TOOL_PURPOSE_TRACING_BIT_EXT) != 0)
-			{
-				LOGI("Detected tracing tool, forcing host cached memory types for performance.\n");
-				workarounds.force_host_cached = true;
-			}
-		}
-	}
+	granite_workarounds_init(&workarounds, gpu_props.vendorID, ext.driver_properties.driverID,
+	                         ext.timeline_semaphore_features.timelineSemaphore != VK_FALSE,
+	                         ext.supports_tooling_info && granite_device_tracing_tool_attached(gpu));
 }
 
 void DeviceAllocator::init(Device *device)
@@ -1606,34 +1557,9 @@ bool Device::memory_type_is_host_visible(uint32_t type) const
 	return (mem_props.memoryTypes[type].propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) != 0;
 }
 
-void Device::get_format_properties(VkFormat format, VkFormatProperties3KHR *properties3) const
-{
-	VkFormatProperties2 properties2 = { VK_STRUCTURE_TYPE_FORMAT_PROPERTIES_2 };
-	VK_ASSERT(properties3->sType == VK_STRUCTURE_TYPE_FORMAT_PROPERTIES_3_KHR);
-
-	if (ext.supports_format_feature_flags2)
-	{
-		properties2.pNext = properties3;
-		vkGetPhysicalDeviceFormatProperties2(gpu, format, &properties2);
-	}
-	else
-	{
-		// Skip properties3 and synthesize the results instead.
-		properties2.pNext = properties3->pNext;
-		vkGetPhysicalDeviceFormatProperties2(gpu, format, &properties2);
-
-		properties3->optimalTilingFeatures = properties2.formatProperties.optimalTilingFeatures;
-		properties3->linearTilingFeatures = properties2.formatProperties.linearTilingFeatures;
-		properties3->bufferFeatures = properties2.formatProperties.bufferFeatures;
-	}
-}
-
 bool Device::image_format_is_supported(VkFormat format, VkFormatFeatureFlags2KHR required, VkImageTiling tiling) const
 {
-	VkFormatProperties3KHR props3 = { VK_STRUCTURE_TYPE_FORMAT_PROPERTIES_3_KHR };
-	get_format_properties(format, &props3);
-	auto flags = tiling == VK_IMAGE_TILING_OPTIMAL ? props3.optimalTilingFeatures : props3.linearTilingFeatures;
-	return (flags & required) == required;
+	return granite_image_format_is_supported(gpu, format, required, tiling, ext.supports_format_feature_flags2);
 }
 
 static granite_attachment_desc_t attachment_desc(const ImageView &view)
@@ -1742,42 +1668,13 @@ const VolkDeviceTable &Device::get_device_table() const
 bool Device::supports_subgroup_size_log2(bool subgroup_full_group, uint8_t subgroup_minimum_size_log2,
                                          uint8_t subgroup_maximum_size_log2) const
 {
-	if (ImplementationQuirks::get().force_no_subgroup_size_control)
-		return false;
-
-	if (!ext.subgroup_size_control_features.subgroupSizeControl)
-		return false;
-	if (subgroup_full_group && !ext.subgroup_size_control_features.computeFullSubgroups)
-		return false;
-
-	uint32_t min_subgroups = 1u << subgroup_minimum_size_log2;
-	uint32_t max_subgroups = 1u << subgroup_maximum_size_log2;
-
-	bool full_range = min_subgroups <= ext.subgroup_size_control_properties.minSubgroupSize &&
-	                  max_subgroups >= ext.subgroup_size_control_properties.maxSubgroupSize;
-
-	// We can use VARYING size.
-	if (full_range)
-		return true;
-
-	if (min_subgroups > ext.subgroup_size_control_properties.maxSubgroupSize ||
-	    max_subgroups < ext.subgroup_size_control_properties.minSubgroupSize)
-	{
-		// No overlap in requested subgroup size and available subgroup size.
-		return false;
-	}
-
-	// We need requiredSubgroupSizeStages support here.
-	return (ext.subgroup_size_control_properties.requiredSubgroupSizeStages & VK_SHADER_STAGE_COMPUTE_BIT) != 0;
+	return granite_subgroup_size_supported(&ext.subgroup_size_control_features, &ext.subgroup_size_control_properties,
+	                                       subgroup_full_group, subgroup_minimum_size_log2,
+	                                       subgroup_maximum_size_log2);
 }
 
 const QueueInfo &Device::get_queue_info() const
 {
 	return queue_info;
-}
-static ImplementationQuirks implementation_quirks;
-ImplementationQuirks &ImplementationQuirks::get()
-{
-	return implementation_quirks;
 }
 }
