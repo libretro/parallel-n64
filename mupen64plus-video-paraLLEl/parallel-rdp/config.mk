@@ -28,6 +28,7 @@ PARALLEL_RDP_SOURCES_C := \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/context.c \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/device_caps.c \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/program_cache.c \
+        $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/render_target.c \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/framebuffer.c \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/frame_garbage.c \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/pipeline_compile.c \

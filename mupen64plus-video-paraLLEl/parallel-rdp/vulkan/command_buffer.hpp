@@ -328,7 +328,6 @@ private:
 
 	const Framebuffer *framebuffer = nullptr;
 	const RenderPass *actual_render_pass = nullptr;
-	const Vulkan::ImageView *framebuffer_attachments[VULKAN_NUM_ATTACHMENTS + 1] = {};
 
 	// What is set and what of it is dirty (command_state.h).
 	granite_command_state_t state;

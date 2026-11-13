@@ -24,6 +24,7 @@
 
 #include "render_pass.h"
 #include "program_cache.h"
+#include "render_target.h"
 #include "framebuffer.h"
 #include "cookie.hpp"
 #include "hash.hpp"
@@ -50,23 +51,13 @@ enum RenderPassOp
 };
 using RenderPassOpFlags = uint32_t;
 
-class ImageView;
-// A pass of one subpass that draws to all of these.
-struct RenderPassInfo
+// A pass of one subpass and what it draws to (render_target.h).
+struct RenderPassInfo : granite_render_pass_info_t
 {
-	const ImageView *color_attachments[VULKAN_NUM_ATTACHMENTS];
-	const ImageView *depth_stencil = nullptr;
-	unsigned num_color_attachments = 0;
-	RenderPassOpFlags op_flags = 0;
-	uint32_t clear_attachments = 0;
-	uint32_t load_attachments = 0;
-	uint32_t store_attachments = 0;
-
-	// Render area will be clipped to the actual framebuffer.
-	VkRect2D render_area = { { 0, 0 }, { UINT32_MAX, UINT32_MAX } };
-
-	VkClearColorValue clear_color[VULKAN_NUM_ATTACHMENTS] = {};
-	VkClearDepthStencilValue clear_depth_stencil = { 1.0f, 0 };
+	RenderPassInfo()
+	{
+		granite_render_pass_info_init(this);
+	}
 };
 
 // A render pass is C (program_cache.h). No members of its own.

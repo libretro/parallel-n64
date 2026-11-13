@@ -297,6 +297,10 @@ void Device::set_context(const Context &context)
 
 	init_workarounds();
 
+	// (the allocator is made before the device has its handles)
+	framebuffer_allocator.device = device;
+	framebuffer_allocator.table = table;
+
 	granite_program_cache_init(&program_cache, device, table, ext.supports_push_descriptor,
 	                           ext.push_descriptor_properties.maxPushDescriptors,
 	                           gpu_props.limits.maxBoundDescriptorSets, num_thread_indices);
@@ -1368,34 +1372,10 @@ bool Device::image_format_is_supported(VkFormat format, VkFormatFeatureFlags2KHR
 	return granite_image_format_is_supported(gpu, format, required, tiling, ext.supports_format_feature_flags2);
 }
 
-static granite_attachment_desc_t attachment_desc(const ImageView &view)
-{
-	const Image &image = view.get_image();
-	granite_attachment_desc_t desc;
-	desc.format = view.get_format();
-	desc.samples = image.get_create_info().samples;
-	// (no image is lazily allocated)
-	desc.transient = false;
-	desc.general = image.get_layout_type() != Layout::Optimal;
-	return desc;
-}
-
 const RenderPass &Device::request_render_pass(const RenderPassInfo &info, bool compatible)
 {
 	granite_render_pass_desc_t desc;
-	memset(&desc, 0, sizeof(desc));
-	desc.num_color = info.num_color_attachments;
-	for (unsigned i = 0; i < info.num_color_attachments; i++)
-	{
-		VK_ASSERT(info.color_attachments[i]);
-		desc.color[i] = attachment_desc(*info.color_attachments[i]);
-	}
-	if (info.depth_stencil)
-		desc.depth_stencil = attachment_desc(*info.depth_stencil);
-	desc.op_flags = info.op_flags;
-	desc.clear_attachments = info.clear_attachments;
-	desc.load_attachments = info.load_attachments;
-	desc.store_attachments = info.store_attachments;
+	granite_render_pass_info_desc(&info, &desc);
 	return request_render_pass(desc, compatible);
 }
 
@@ -1411,41 +1391,11 @@ const RenderPass &Device::request_render_pass(const granite_render_pass_desc_t &
 // The device's owner thread only: the allocator takes no lock.
 const Framebuffer &Device::request_framebuffer(const RenderPassInfo &info)
 {
-	auto &rp = request_render_pass(info, true);
-	VkImageView views[VULKAN_NUM_ATTACHMENTS + 1];
-	unsigned num_views = 0;
-	uint32_t width = UINT32_MAX;
-	uint32_t height = UINT32_MAX;
-
-	Hasher h;
-	h.u64(rp.get_hash());
-	for (unsigned i = 0; i < info.num_color_attachments; i++)
-		h.u64(info.color_attachments[i]->get_cookie());
-	if (info.depth_stencil)
-		h.u64(info.depth_stencil->get_cookie());
-	// (the base layer, when there were layers)
-	h.u32(0);
-
-	auto hash = h.get();
-	auto *node = granite_framebuffer_allocator_find(&framebuffer_allocator, hash);
-	if (node)
-		return *node;
-
-	for (unsigned i = 0; i <= info.num_color_attachments; i++)
-	{
-		auto *view = i < info.num_color_attachments ? info.color_attachments[i] : info.depth_stencil;
-		if (!view)
-			continue;
-		views[num_views++] = view->get_render_target_view(0);
-		width = Util::min_of(width, view->get_view_width());
-		height = Util::min_of(height, view->get_view_height());
-	}
-
-	// (the allocator is made before the device has its handles)
-	framebuffer_allocator.device = device;
-	framebuffer_allocator.table = table;
-	return *granite_framebuffer_allocator_create(&framebuffer_allocator, hash, rp.get_render_pass(), &rp,
-	                                             views, num_views, width, height);
+	// (out of memory leaves nothing to draw to)
+	auto *framebuffer = granite_render_target_framebuffer(&framebuffer_allocator, &program_cache, &info);
+	if (!framebuffer)
+		abort();
+	return *framebuffer;
 }
 
 unsigned Device::get_num_frame_contexts() const

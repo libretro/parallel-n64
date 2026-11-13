@@ -24,7 +24,6 @@
 #include "device.hpp"
 #include "format.hpp"
 #include "thread_id.h"
-#include "timer.h"
 #include <string.h>
 
 using namespace Util;
@@ -208,34 +207,11 @@ void CommandBuffer::begin_render_pass(const RenderPassInfo &info)
 	actual_render_pass = &device->request_render_pass(info, false);
 	pipeline_state.subpass_index = 0;
 
-	memset(framebuffer_attachments, 0, sizeof(framebuffer_attachments));
-	unsigned att;
-	for (att = 0; att < info.num_color_attachments; att++)
-		framebuffer_attachments[att] = info.color_attachments[att];
-	if (info.depth_stencil)
-		framebuffer_attachments[att++] = info.depth_stencil;
-
 	VkRect2D render_area = granite_command_state_set_render_area(&state, &info.render_area, framebuffer->width,
 	                                                             framebuffer->height);
 
 	VkClearValue clear_values[VULKAN_NUM_ATTACHMENTS + 1];
-	unsigned num_clear_values = 0;
-
-	for (unsigned i = 0; i < info.num_color_attachments; i++)
-	{
-		VK_ASSERT(info.color_attachments[i]);
-		if (info.clear_attachments & (1u << i))
-		{
-			clear_values[i].color = info.clear_color[i];
-			num_clear_values = i + 1;
-		}
-	}
-
-	if (info.depth_stencil && (info.op_flags & RENDER_PASS_OP_CLEAR_DEPTH_STENCIL_BIT) != 0)
-	{
-		clear_values[info.num_color_attachments].depthStencil = info.clear_depth_stencil;
-		num_clear_values = info.num_color_attachments + 1;
-	}
+	unsigned num_clear_values = granite_render_pass_info_clear_values(&info, clear_values);
 
 	VkRenderPassBeginInfo begin_info = { VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO };
 	begin_info.renderPass = actual_render_pass->get_render_pass();
@@ -261,54 +237,6 @@ void CommandBuffer::end_render_pass()
 	actual_render_pass = nullptr;
 	pipeline_state.compatible_render_pass = nullptr;
 	begin_compute();
-}
-
-static UTIL_NOINLINE void log_compile_time(const char *tag, Hash hash,
-                             int64_t time_ns, VkResult result,
-                             CommandBuffer::CompileMode mode)
-{
-	bool stall = time_ns >= 5 * 1000 * 1000 && mode != CommandBuffer::CompileMode::AsyncThread;
-#ifndef VULKAN_DEBUG
-	// If a compile takes more than 5 ms and it's not happening on an async thread,
-	// we consider it a stall.
-	if (stall)
-#endif
-	{
-		double time_us = 1e-3 * double(time_ns);
-		const char *mode_str;
-
-		switch (mode)
-		{
-		case CommandBuffer::CompileMode::Sync:
-			mode_str = "sync";
-			break;
-
-		case CommandBuffer::CompileMode::FailOnCompileRequired:
-			mode_str = "fail-on-compile-required";
-			break;
-
-		default:
-			mode_str = "async-thread";
-			break;
-		}
-
-#ifdef VULKAN_DEBUG
-		if (!stall)
-		{
-			LOGI("Compile (%s, %016llx): thread %u - %.3f us (mode: %s, success: %s).\n",
-			     tag, static_cast<unsigned long long>(hash),
-			     granite_thread_index(),
-			     time_us, mode_str, result == VK_SUCCESS ? "yes" : "no");
-		}
-		else
-#endif
-		{
-			LOGW("Stalled compile (%s, %016llx): thread %u - %.3f us (mode: %s, success: %s).\n",
-			     tag, static_cast<unsigned long long>(hash),
-			     granite_thread_index(),
-			     time_us, mode_str, result == VK_SUCCESS ? "yes" : "no");
-		}
-	}
 }
 
 static granite_pipeline_device_t pipeline_device(Device *device)
@@ -370,11 +298,8 @@ Pipeline CommandBuffer::build_compute_pipeline(Device *device, const DeferredPip
 	auto program = pipeline_program(*compile.program);
 	VkResult vr = VK_SUCCESS;
 
-	auto start_ts = granite_time_nsecs();
 	VkPipeline pipeline = granite_pipeline_build_compute(&dev, &compile, &program,
 	                                                     mode == CompileMode::FailOnCompileRequired, &vr);
-	auto end_ts = granite_time_nsecs();
-	log_compile_time("compute", compile.hash, end_ts - start_ts, vr, mode);
 
 	return keep_pipeline(device, compile, pipeline, 0, PIPELINE_RECORD_COMPUTE);
 }
@@ -406,13 +331,10 @@ Pipeline CommandBuffer::build_graphics_pipeline(Device *device, const DeferredPi
 	uint32_t dynamic_mask = 0;
 	VkResult vr = VK_SUCCESS;
 
-	auto start_ts = granite_time_nsecs();
 	VkPipeline pipeline = granite_pipeline_build_graphics(&dev, &compile, &program,
 	                                                      &compile.compatible_render_pass->get_impl(),
 	                                                      mode == CompileMode::FailOnCompileRequired,
 	                                                      &dynamic_mask, &vr);
-	auto end_ts = granite_time_nsecs();
-	log_compile_time("graphics", compile.hash, end_ts - start_ts, vr, mode);
 
 	return keep_pipeline(device, compile, pipeline, dynamic_mask, PIPELINE_RECORD_GRAPHICS);
 }
