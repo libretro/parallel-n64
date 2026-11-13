@@ -701,6 +701,46 @@ bool granite_device_allocator_allocate_image(granite_device_allocator_t *allocat
 	return type_allocate(allocator->allocators[memory_type], size, alignment, (unsigned)mode, alloc);
 }
 
+bool granite_device_allocator_import_host(granite_device_allocator_t *allocator, uint32_t size,
+		uint32_t memory_type, void *host_pointer, granite_allocation_t *alloc)
+{
+	VkMemoryAllocateInfo info;
+	VkImportMemoryHostPointerInfoEXT import;
+	granite_memory_heap_t *heap;
+	VkDeviceMemory memory = VK_NULL_HANDLE;
+	void *mapped = NULL;
+
+	if (memory_type >= allocator->num_allocators)
+		return false;
+	heap = &allocator->heaps[allocator->mem_props.memoryTypes[memory_type].heapIndex];
+
+	memset(&info, 0, sizeof(info));
+	memset(&import, 0, sizeof(import));
+	info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+	info.allocationSize = size;
+	info.memoryTypeIndex = memory_type;
+	info.pNext = &import;
+	import.sType = VK_STRUCTURE_TYPE_IMPORT_MEMORY_HOST_POINTER_INFO_EXT;
+	import.handleType = VK_EXTERNAL_MEMORY_HANDLE_TYPE_HOST_ALLOCATION_BIT_EXT;
+	import.pHostPointer = host_pointer;
+	if (allocator->table->vkAllocateMemory(allocator->device, &info, NULL, &memory) != VK_SUCCESS)
+		return false;
+	if (allocator->table->vkMapMemory(allocator->device, memory, 0, VK_WHOLE_SIZE, 0, &mapped) != VK_SUCCESS)
+	{
+		allocator->table->vkFreeMemory(allocator->device, memory, NULL);
+		return false;
+	}
+
+	/* counted like any block of its own: freeing it takes it off again */
+	heap->size += size;
+	memset(alloc, 0, sizeof(*alloc));
+	alloc->base = memory;
+	alloc->host_base = (uint8_t*)mapped;
+	alloc->size = size;
+	alloc->memory_type = (uint8_t)memory_type;
+	return true;
+}
+
 void granite_allocation_free(granite_allocation_t *alloc, granite_device_allocator_t *allocator)
 {
 	if (alloc->alloc)

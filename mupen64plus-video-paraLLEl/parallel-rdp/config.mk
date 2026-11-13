@@ -37,6 +37,7 @@ PARALLEL_RDP_SOURCES_C := \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/buffer.c \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/buffer_pool.c \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/image_create.c \
+        $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/image_upload.c \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/image.c \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/sampler.c \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/command_ops.c \

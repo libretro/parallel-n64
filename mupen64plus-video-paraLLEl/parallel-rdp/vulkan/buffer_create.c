@@ -283,3 +283,115 @@ fail:
 	*buffer = VK_NULL_HANDLE;
 	return false;
 }
+
+bool granite_buffer_create_host_import(const granite_buffer_env_t *env, granite_buffer_domain_t domain,
+		VkDeviceSize size, VkBufferUsageFlags usage, VkDeviceSize host_alignment, void *host_pointer,
+		VkBuffer *buffer, granite_allocation_t *allocation)
+{
+	const struct VolkDeviceTable *table = env->table;
+	const VkExternalMemoryHandleTypeFlagBits handle_type = VK_EXTERNAL_MEMORY_HANDLE_TYPE_HOST_ALLOCATION_BIT_EXT;
+	VkExternalMemoryBufferCreateInfo external_info;
+	VkMemoryHostPointerPropertiesEXT host_props;
+	VkBufferCreateInfo info;
+	VkMemoryRequirements2 reqs;
+	VkBufferMemoryRequirementsInfo2 req_info;
+	uint32_t sharing_indices[8];
+	uint32_t allowed, type;
+
+	*buffer = VK_NULL_HANDLE;
+	if (env->num_queue_families > 8)
+		return false;
+	if (     domain != GRANITE_BUFFER_DOMAIN_HOST
+			&& domain != GRANITE_BUFFER_DOMAIN_CACHED_HOST
+			&& domain != GRANITE_BUFFER_DOMAIN_CACHED_COHERENT_HOST_PREFER_CACHED
+			&& domain != GRANITE_BUFFER_DOMAIN_CACHED_COHERENT_HOST_PREFER_COHERENT)
+		return false;
+	if (!host_alignment || (host_alignment & (host_alignment - 1)))
+		return false;
+	if (((size_t)host_pointer & (size_t)(host_alignment - 1)) != 0)
+	{
+		LOGE("Host buffer is not aligned appropriately.\n");
+		return false;
+	}
+
+	memset(&host_props, 0, sizeof(host_props));
+	host_props.sType = VK_STRUCTURE_TYPE_MEMORY_HOST_POINTER_PROPERTIES_EXT;
+	if (table->vkGetMemoryHostPointerPropertiesEXT(env->device, handle_type, host_pointer, &host_props) != VK_SUCCESS)
+	{
+		LOGE("Host pointer is not importable.\n");
+		return false;
+	}
+
+	memset(&external_info, 0, sizeof(external_info));
+	external_info.sType = VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_BUFFER_CREATE_INFO;
+	external_info.handleTypes = handle_type;
+
+	memset(&info, 0, sizeof(info));
+	info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+	info.pNext = &external_info;
+	info.size = size;
+	info.usage = usage;
+	info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+	info.queueFamilyIndexCount = granite_unique_queue_families(env->queue_families, env->num_queue_families,
+			sharing_indices);
+	if (info.queueFamilyIndexCount > 1)
+	{
+		info.sharingMode = VK_SHARING_MODE_CONCURRENT;
+		info.pQueueFamilyIndices = sharing_indices;
+	}
+	else
+		info.queueFamilyIndexCount = 0;
+
+	if (table->vkCreateBuffer(env->device, &info, NULL, buffer) != VK_SUCCESS)
+	{
+		*buffer = VK_NULL_HANDLE;
+		return false;
+	}
+
+	memset(&reqs, 0, sizeof(reqs));
+	reqs.sType = VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2;
+	memset(&req_info, 0, sizeof(req_info));
+	req_info.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_REQUIREMENTS_INFO_2;
+	req_info.buffer = *buffer;
+	table->vkGetBufferMemoryRequirements2(env->device, &req_info, &reqs);
+
+	/* (AMD on Windows has reported no types at all for an external
+	 * handle type) */
+	allowed = reqs.memoryRequirements.memoryTypeBits;
+	if (!allowed)
+		allowed = ~0u;
+
+	if (!(allowed & host_props.memoryTypeBits))
+	{
+		LOGE("No compatible host pointer types are available.\n");
+		goto fail;
+	}
+
+	type = granite_find_buffer_memory_type(env->memory, domain, allowed & host_props.memoryTypeBits,
+			env->force_host_cached);
+	/* (Intel on Windows has offered only a type that is not host
+	 * visible for the pointer, and worked with the buffer's others) */
+	if (type == GRANITE_NO_MEMORY_TYPE)
+		type = granite_find_buffer_memory_type(env->memory, domain, allowed, env->force_host_cached);
+	if (type == GRANITE_NO_MEMORY_TYPE)
+	{
+		LOGE("Failed to find memory type.\n");
+		goto fail;
+	}
+
+	if (!granite_device_allocator_import_host(env->allocator,
+				(uint32_t)((size + host_alignment - 1) & ~(host_alignment - 1)), type, host_pointer, allocation))
+		goto fail;
+
+	if (table->vkBindBufferMemory(env->device, *buffer, allocation->base, 0) != VK_SUCCESS)
+	{
+		granite_allocation_free(allocation, env->allocator);
+		goto fail;
+	}
+	return true;
+
+fail:
+	table->vkDestroyBuffer(env->device, *buffer, NULL);
+	*buffer = VK_NULL_HANDLE;
+	return false;
+}

@@ -52,6 +52,12 @@ static uint32_t allocated_type[64];
 static uint32_t allowed_types = ALL_TYPES;
 static uint32_t fail_type = ~0u;
 static bool fail_create, fail_bind;
+static uint32_t host_pointer_types = ALL_TYPES;
+static bool fail_host_props;
+static unsigned host_props_calls;
+static const void *host_props_pointer, *imported_pointer;
+static VkDeviceSize imported_size;
+static bool created_external;
 
 static VkResult VKAPI_CALL fake_create_buffer(VkDevice d, const VkBufferCreateInfo *info,
 		const VkAllocationCallbacks *a, VkBuffer *buffer)
@@ -61,6 +67,13 @@ static VkResult VKAPI_CALL fake_create_buffer(VkDevice d, const VkBufferCreateIn
 	if (fail_create)
 		return VK_ERROR_OUT_OF_HOST_MEMORY;
 	created_info = *info;
+	created_external = false;
+	if (info->pNext)
+	{
+		const VkExternalMemoryBufferCreateInfo *external = (const VkExternalMemoryBufferCreateInfo *)info->pNext;
+		created_external = external->sType == VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_BUFFER_CREATE_INFO
+			&& external->handleTypes == VK_EXTERNAL_MEMORY_HANDLE_TYPE_HOST_ALLOCATION_BIT_EXT && !external->pNext;
+	}
 	for (i = 0; i < info->queueFamilyIndexCount && i < 8; i++)
 		created_families[i] = info->pQueueFamilyIndices[i];
 	buffers_created++;
@@ -103,6 +116,17 @@ static VkResult VKAPI_CALL fake_allocate(VkDevice d, const VkMemoryAllocateInfo 
 		return VK_ERROR_OUT_OF_DEVICE_MEMORY;
 	if (memory_allocated < 64)
 		allocated_type[memory_allocated] = info->memoryTypeIndex;
+	imported_pointer = NULL;
+	if (info->pNext)
+	{
+		const VkImportMemoryHostPointerInfoEXT *import = (const VkImportMemoryHostPointerInfoEXT *)info->pNext;
+		if (import->sType == VK_STRUCTURE_TYPE_IMPORT_MEMORY_HOST_POINTER_INFO_EXT
+				&& import->handleType == VK_EXTERNAL_MEMORY_HANDLE_TYPE_HOST_ALLOCATION_BIT_EXT)
+		{
+			imported_pointer = import->pHostPointer;
+			imported_size = info->allocationSize;
+		}
+	}
 	memory_allocated++;
 	*memory = GRANITE_VK_FROM_BITS(VkDeviceMemory, 0x2000 + memory_allocated);
 	return VK_SUCCESS;
@@ -126,6 +150,20 @@ static VkResult VKAPI_CALL fake_map(VkDevice d, VkDeviceMemory memory, VkDeviceS
 static void VKAPI_CALL fake_unmap(VkDevice d, VkDeviceMemory memory)
 {
 	(void)d; (void)memory;
+}
+
+static VkResult VKAPI_CALL fake_host_pointer_props(VkDevice d, VkExternalMemoryHandleTypeFlagBits type,
+		const void *pointer, VkMemoryHostPointerPropertiesEXT *out)
+{
+	(void)d;
+	host_props_calls++;
+	CHECK(type == VK_EXTERNAL_MEMORY_HANDLE_TYPE_HOST_ALLOCATION_BIT_EXT
+			&& out->sType == VK_STRUCTURE_TYPE_MEMORY_HOST_POINTER_PROPERTIES_EXT, "asked as a host allocation");
+	host_props_pointer = pointer;
+	if (fail_host_props)
+		return VK_ERROR_INVALID_EXTERNAL_HANDLE;
+	out->memoryTypeBits = host_pointer_types;
+	return VK_SUCCESS;
 }
 
 static void VKAPI_CALL fake_memory_properties2(VkPhysicalDevice gpu, VkPhysicalDeviceMemoryProperties2 *props)
@@ -330,6 +368,140 @@ static void test_create(void)
 	fail_bind = false;
 }
 
+/* The emulated machine's memory as a buffer, with no copy */
+static void test_host_import(void)
+{
+	static uint8_t storage[3 * 4096];
+	/* (on 4096 whatever the array is on) */
+	uint8_t *host = (uint8_t *)(((size_t)storage + 4095) & ~(size_t)4095);
+	granite_heap_budget_t budgets[VK_MAX_MEMORY_HEAPS];
+	granite_allocation_t alloc;
+	VkBuffer buffer;
+	uint64_t tracked;
+	unsigned created, destroyed;
+
+	families[0] = families[1] = families[2] = 0;
+	families[3] = VK_QUEUE_FAMILY_IGNORED;
+	granite_device_allocator_budget(&allocator, budgets);
+	tracked = budgets[0].tracked_usage;
+
+	memory_allocated = memory_freed = binds = 0;
+	created = buffers_created;
+	destroyed = buffers_destroyed;
+	CHECK(granite_buffer_create_host_import(&env, GRANITE_BUFFER_DOMAIN_CACHED_COHERENT_HOST_PREFER_COHERENT, 5000,
+				VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, 4096, host, &buffer, &alloc), "the host's memory becomes a buffer");
+	CHECK(buffer != VK_NULL_HANDLE && buffers_created == created + 1 && created_external
+			&& created_info.size == 5000 && created_info.usage == VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+			&& created_info.sharingMode == VK_SHARING_MODE_EXCLUSIVE && created_info.queueFamilyIndexCount == 0,
+			"a buffer for external host memory, with the usage asked for and no more");
+	CHECK(host_props_pointer == host && imported_pointer == host && imported_size == 8192 && memory_allocated == 1,
+			"over the pointer given, in whole units of the alignment");
+	CHECK(alloc.memory_type == TYPE_CACHED && allocated_type[0] == TYPE_CACHED, "of the type its domain prefers");
+	CHECK(binds == 1 && bound_memory == alloc.base && bound_offset == 0 && alloc.host_base != NULL,
+			"bound from its start, and mapped");
+	granite_device_allocator_budget(&allocator, budgets);
+	CHECK(budgets[0].tracked_usage == tracked + 8192, "and counted");
+	granite_allocation_free(&alloc, &allocator);
+	granite_device_allocator_budget(&allocator, budgets);
+	CHECK(memory_freed == 1 && budgets[0].tracked_usage == tracked, "freed, it is off the count again");
+
+	/* shared between families like any buffer */
+	families[1] = 2;
+	CHECK(granite_buffer_create_host_import(&env, GRANITE_BUFFER_DOMAIN_HOST, 4096, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+				4096, host, &buffer, &alloc)
+			&& created_info.sharingMode == VK_SHARING_MODE_CONCURRENT && created_info.queueFamilyIndexCount == 2
+			&& created_families[0] == 0 && created_families[1] == 2, "two families share it");
+	granite_allocation_free(&alloc, &allocator);
+	families[1] = 0;
+
+	/* only the types the pointer can be */
+	host_pointer_types = 1u << TYPE_COHERENT;
+	CHECK(granite_buffer_create_host_import(&env, GRANITE_BUFFER_DOMAIN_CACHED_COHERENT_HOST_PREFER_COHERENT, 4096,
+				VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, 4096, host, &buffer, &alloc) && alloc.memory_type == TYPE_COHERENT,
+			"the type is one the pointer can be imported as");
+	granite_allocation_free(&alloc, &allocator);
+
+	/* a driver that reports no types for the buffer */
+	allowed_types = 0;
+	CHECK(granite_buffer_create_host_import(&env, GRANITE_BUFFER_DOMAIN_HOST, 4096, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+				4096, host, &buffer, &alloc) && alloc.memory_type == TYPE_COHERENT,
+			"a buffer with no types reported takes the pointer's");
+	granite_allocation_free(&alloc, &allocator);
+	allowed_types = ALL_TYPES;
+
+	/* a pointer said to be device local only: the buffer's own types */
+	host_pointer_types = 1u << TYPE_DEVICE;
+	CHECK(granite_buffer_create_host_import(&env, GRANITE_BUFFER_DOMAIN_CACHED_HOST, 4096,
+				VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, 4096, host, &buffer, &alloc) && alloc.memory_type == TYPE_CACHED,
+			"with no host type for the pointer, one of the buffer's is tried");
+	granite_allocation_free(&alloc, &allocator);
+
+	/* nothing in common */
+	host_pointer_types = 1u << TYPE_COHERENT;
+	allowed_types = (1u << TYPE_DEVICE) | (1u << TYPE_CACHED);
+	created = buffers_created;
+	destroyed = buffers_destroyed;
+	memory_allocated = 0;
+	CHECK(!granite_buffer_create_host_import(&env, GRANITE_BUFFER_DOMAIN_HOST, 4096, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+				4096, host, &buffer, &alloc) && buffer == VK_NULL_HANDLE && buffers_created == created + 1
+			&& buffers_destroyed == destroyed + 1 && memory_allocated == 0,
+			"no type both the buffer and the pointer allow: the buffer is destroyed");
+	/* no host type at all */
+	host_pointer_types = allowed_types = 1u << TYPE_DEVICE;
+	destroyed = buffers_destroyed;
+	CHECK(!granite_buffer_create_host_import(&env, GRANITE_BUFFER_DOMAIN_HOST, 4096, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+				4096, host, &buffer, &alloc) && buffer == VK_NULL_HANDLE && buffers_destroyed == destroyed + 1
+			&& memory_allocated == 0, "no host memory type: not made");
+	host_pointer_types = allowed_types = ALL_TYPES;
+
+	/* what is refused before anything is made */
+	created = buffers_created;
+	host_props_calls = 0;
+	CHECK(!granite_buffer_create_host_import(&env, GRANITE_BUFFER_DOMAIN_HOST, 4096, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+				4096, host + 64, &buffer, &alloc) && buffer == VK_NULL_HANDLE && host_props_calls == 0,
+			"a pointer off the alignment");
+	CHECK(!granite_buffer_create_host_import(&env, GRANITE_BUFFER_DOMAIN_HOST, 4096, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+				0, NULL, &buffer, &alloc) && host_props_calls == 0, "no alignment");
+	CHECK(!granite_buffer_create_host_import(&env, GRANITE_BUFFER_DOMAIN_HOST, 4096, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+				4096 + 512, host, &buffer, &alloc) && host_props_calls == 0, "an alignment that is no power of two");
+	CHECK(!granite_buffer_create_host_import(&env, GRANITE_BUFFER_DOMAIN_DEVICE, 4096, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+				4096, host, &buffer, &alloc)
+			&& !granite_buffer_create_host_import(&env, GRANITE_BUFFER_DOMAIN_LINKED_DEVICE_HOST, 4096,
+				VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, 4096, host, &buffer, &alloc) && host_props_calls == 0,
+			"a domain that is not the host's");
+	fail_host_props = true;
+	CHECK(!granite_buffer_create_host_import(&env, GRANITE_BUFFER_DOMAIN_HOST, 4096, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+				4096, host, &buffer, &alloc) && buffer == VK_NULL_HANDLE && host_props_calls == 1,
+			"a pointer the driver cannot import");
+	fail_host_props = false;
+	CHECK(buffers_created == created, "none of them made a buffer");
+
+	/* what fails after */
+	fail_create = true;
+	destroyed = buffers_destroyed;
+	CHECK(!granite_buffer_create_host_import(&env, GRANITE_BUFFER_DOMAIN_HOST, 4096, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+				4096, host, &buffer, &alloc) && buffer == VK_NULL_HANDLE && buffers_destroyed == destroyed,
+			"a buffer the driver refuses: nothing to destroy");
+	fail_create = false;
+
+	fail_type = TYPE_COHERENT;
+	destroyed = buffers_destroyed;
+	CHECK(!granite_buffer_create_host_import(&env, GRANITE_BUFFER_DOMAIN_HOST, 4096, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+				4096, host, &buffer, &alloc) && buffer == VK_NULL_HANDLE && buffers_destroyed == destroyed + 1,
+			"memory the driver refuses: the buffer is destroyed");
+	fail_type = ~0u;
+
+	fail_bind = true;
+	destroyed = buffers_destroyed;
+	memory_allocated = memory_freed = 0;
+	CHECK(!granite_buffer_create_host_import(&env, GRANITE_BUFFER_DOMAIN_HOST, 4096, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+				4096, host, &buffer, &alloc) && buffer == VK_NULL_HANDLE && buffers_destroyed == destroyed + 1
+			&& memory_allocated == 1 && memory_freed == 1, "memory that cannot be bound: both are given back");
+	fail_bind = false;
+	granite_device_allocator_budget(&allocator, budgets);
+	CHECK(budgets[0].tracked_usage == tracked, "nothing that failed is left counted");
+}
+
 int main(void)
 {
 	memset(&table, 0, sizeof(table));
@@ -341,6 +513,7 @@ int main(void)
 	table.vkFreeMemory = fake_free;
 	table.vkMapMemory = fake_map;
 	table.vkUnmapMemory = fake_unmap;
+	table.vkGetMemoryHostPointerPropertiesEXT = fake_host_pointer_props;
 
 	memset(&props, 0, sizeof(props));
 	props.memoryHeapCount = 1;
@@ -370,6 +543,7 @@ int main(void)
 	test_memory_types();
 	test_helpers();
 	test_create();
+	test_host_import();
 
 	granite_device_allocator_free(&allocator);
 

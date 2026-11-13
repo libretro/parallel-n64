@@ -1479,69 +1479,43 @@ ImageViewHandle Device::create_image_view(const ImageViewCreateInfo &create_info
 	return ImageViewHandle(static_cast<ImageView *>(object));
 }
 
-InitialImageBuffer Device::create_image_staging_buffer(const ImageCreateInfo &info, const ImageInitialData *initial)
+bool Device::create_image_staging_buffer(const ImageCreateInfo &info, const ImageInitialData *initial,
+                                         InitialImageBuffer &result)
 {
-	InitialImageBuffer result;
-
 	granite_texture_layout_t layout;
-	unsigned copy_levels = info.levels;
 
-	if (info.type != VK_IMAGE_TYPE_1D && info.type != VK_IMAGE_TYPE_2D && info.type != VK_IMAGE_TYPE_3D)
-		return {};
+	if (info.type != VK_IMAGE_TYPE_2D)
+		return false;
 	granite_texture_layout_set(&layout, info.type, info.format, info.width, info.height, info.depth,
-	                           info.layers, copy_levels);
-	// (no more levels than a layout has)
-	copy_levels = layout.mip_levels;
+	                           info.layers, info.levels);
 
 	BufferCreateInfo buffer_info = {};
 	buffer_info.domain = BufferDomain::Host;
 	buffer_info.size = layout.required_size;
 	buffer_info.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
 	result.buffer = create_buffer(buffer_info, nullptr);
+	if (!result.buffer)
+		return false;
 	set_name(*result.buffer, "image-upload-staging-buffer");
 
-	// And now, do the actual copy.
-	auto *mapped = static_cast<uint8_t *>(map_host_buffer(*result.buffer, MEMORY_ACCESS_WRITE_BIT));
-	unsigned index = 0;
-
-	layout.buffer = mapped;
-
-	for (unsigned level = 0; level < copy_levels; level++)
-	{
-		const auto &mip_info = layout.mips[level];
-		uint32_t dst_height_stride = granite_texture_layout_layer_size(&layout, level);
-		size_t row_size = granite_texture_layout_row_size(&layout, level);
-
-		for (unsigned layer = 0; layer < info.layers; layer++, index++)
-		{
-			uint32_t src_row_length =
-					initial[index].row_length ? initial[index].row_length : mip_info.row_length;
-			uint32_t src_array_height =
-					initial[index].image_height ? initial[index].image_height : mip_info.image_height;
-
-			uint32_t src_row_stride = granite_texture_layout_row_stride(&layout, src_row_length);
-			uint32_t src_height_stride = granite_texture_layout_layer_stride(&layout, src_array_height, src_row_stride);
-
-			uint8_t *dst = granite_texture_layout_data(&layout, layer, level);
-			const uint8_t *src = static_cast<const uint8_t *>(initial[index].data);
-
-			for (uint32_t z = 0; z < mip_info.depth; z++)
-				for (uint32_t y = 0; y < mip_info.block_image_height; y++)
-					memcpy(dst + z * dst_height_stride + y * row_size, src + z * src_height_stride + y * src_row_stride, row_size);
-		}
-	}
-
+	layout.buffer = static_cast<uint8_t *>(map_host_buffer(*result.buffer, MEMORY_ACCESS_WRITE_BIT));
+	if (!layout.buffer)
+		return false;
+	granite_image_upload_fill(&layout, initial);
 	unmap_host_buffer(*result.buffer, MEMORY_ACCESS_WRITE_BIT);
-	result.blits.resize(layout.mip_levels);
-	granite_texture_layout_copies(&layout, format_to_aspect_mask(info.format), result.blits.data());
-	return result;
+
+	result.num_blits = layout.mip_levels;
+	granite_texture_layout_copies(&layout, format_to_aspect_mask(info.format), result.blits);
+	return true;
 }
 
 ImageHandle Device::create_image(const ImageCreateInfo &create_info, const ImageInitialData *initial)
 {
 	if (initial)
 	{
-		auto staging_buffer = create_image_staging_buffer(create_info, initial);
+		InitialImageBuffer staging_buffer;
+		if (!create_image_staging_buffer(create_info, initial, staging_buffer))
+			return ImageHandle(nullptr);
 		return create_image_from_staging_buffer(create_info, &staging_buffer);
 	}
 	else
@@ -1639,31 +1613,41 @@ ImageHandle Device::create_image_from_staging_buffer(const ImageCreateInfo &crea
 	handle->set_stage_flags(granite_image_usage_stages(usage));
 	handle->set_access_flags(granite_image_usage_access(usage));
 
-	bool share_compute = desc.on_compute &&
-	                     queue_info.queues[QUEUE_INDEX_GRAPHICS] != queue_info.queues[QUEUE_INDEX_COMPUTE];
+	granite_image_upload_queues_t queues;
+	queues.graphics = queue_info.queues[QUEUE_INDEX_GRAPHICS];
+	queues.compute = queue_info.queues[QUEUE_INDEX_COMPUTE];
+	queues.transfer = queue_info.queues[QUEUE_INDEX_TRANSFER];
+	queues.graphics_family = queue_info.family_indices[QUEUE_INDEX_GRAPHICS];
+	queues.compute_family = queue_info.family_indices[QUEUE_INDEX_COMPUTE];
+	queues.transfer_family = queue_info.family_indices[QUEUE_INDEX_TRANSFER];
 
-	CommandBufferHandle transition_cmd;
+	granite_image_upload_desc_t upload = {};
+	upload.image = image;
+	upload.format = create_info.format;
+	upload.levels = create_info.levels;
+	upload.layers = create_info.layers;
+	upload.initial_layout = create_info.initial_layout;
+	upload.stages = handle->get_stage_flags();
+	upload.access = handle->get_access_flags();
+	upload.concurrent = concurrent_queue;
+	upload.on_compute = desc.on_compute;
+	upload.has_data = staging_buffer != nullptr;
+
+	granite_image_upload_plan_t plan;
+	granite_image_upload_plan(&queues, &upload, &plan);
+	if (!plan.transition)
+		return handle;
+
+	auto graphics_cmd = request_command_buffer(CommandBuffer::Type::Generic);
 
 	// Copy initial data to texture.
 	if (staging_buffer)
 	{
 		VK_ASSERT(create_info.initial_layout != VK_IMAGE_LAYOUT_UNDEFINED);
 
-		// If queue_info.graphics != queue_info.transfer, we will use a semaphore, so no srcAccess mask is necessary.
-		VkAccessFlags final_transition_src_access = 0;
-		if (queue_info.queues[QUEUE_INDEX_GRAPHICS] == queue_info.queues[QUEUE_INDEX_TRANSFER])
-			final_transition_src_access = VK_ACCESS_TRANSFER_WRITE_BIT;
-
-		bool need_initial_barrier = true;
-
-		// For concurrent queue mode, we just need to inject a semaphore.
-		// For non-concurrent queue mode, we will have to inject ownership transfer barrier if the queue families do not match.
-
-		auto graphics_cmd = request_command_buffer(CommandBuffer::Type::Generic);
-		CommandBufferHandle transfer_cmd;
-
 		// Don't split the upload into multiple command buffers unless we have to.
-		if (queue_info.queues[QUEUE_INDEX_TRANSFER] != queue_info.queues[QUEUE_INDEX_GRAPHICS])
+		CommandBufferHandle transfer_cmd;
+		if (plan.split_transfer)
 			transfer_cmd = request_command_buffer(CommandBuffer::Type::AsyncTransfer);
 		else
 			transfer_cmd = graphics_cmd;
@@ -1673,222 +1657,74 @@ ImageHandle Device::create_image_from_staging_buffer(const ImageCreateInfo &crea
 		                            VK_ACCESS_TRANSFER_WRITE_BIT);
 
 		transfer_cmd->begin_region("copy-image-to-gpu");
-		transfer_cmd->copy_buffer_to_image(*handle, *staging_buffer->buffer, staging_buffer->blits.size(), staging_buffer->blits.data());
+		transfer_cmd->copy_buffer_to_image(*handle, *staging_buffer->buffer, staging_buffer->num_blits, staging_buffer->blits);
 		transfer_cmd->end_region();
 
-		if (queue_info.queues[QUEUE_INDEX_TRANSFER] != queue_info.queues[QUEUE_INDEX_GRAPHICS])
+		if (plan.split_transfer)
 		{
-			VkPipelineStageFlags dst_stages = handle->get_stage_flags();
-
-			// We can't just use semaphores, we will also need a release + acquire barrier to marshal ownership from
-			// transfer queue over to graphics ...
-			if (!concurrent_queue && queue_info.family_indices[QUEUE_INDEX_TRANSFER] != queue_info.family_indices[QUEUE_INDEX_GRAPHICS])
+			if (plan.hand_over)
 			{
-				VkImageMemoryBarrier release = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER };
-				release.image = handle->get_image();
-				release.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-				release.dstAccessMask = 0;
-				release.srcQueueFamilyIndex = queue_info.family_indices[QUEUE_INDEX_TRANSFER];
-				release.dstQueueFamilyIndex = queue_info.family_indices[QUEUE_INDEX_GRAPHICS];
-				release.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-
-				release.newLayout = create_info.initial_layout;
-				release.subresourceRange.levelCount = create_info.levels;
-				need_initial_barrier = false;
-
-				release.subresourceRange.aspectMask = format_to_aspect_mask(create_info.format);
-				release.subresourceRange.layerCount = create_info.layers;
-
-				VkImageMemoryBarrier acquire = release;
-				acquire.srcAccessMask = 0;
-
-				acquire.dstAccessMask = handle->get_access_flags() & granite_image_layout_access(create_info.initial_layout);
-
 				transfer_cmd->barrier(VK_PIPELINE_STAGE_TRANSFER_BIT,
 				                      VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
-				                      0, nullptr, 0, nullptr, 1, &release);
+				                      0, nullptr, 0, nullptr, 1, &plan.release);
 
-				graphics_cmd->barrier(dst_stages,
-				                      dst_stages,
-				                      0, nullptr, 0, nullptr, 1, &acquire);
+				graphics_cmd->barrier(plan.wait_stages, plan.wait_stages,
+				                      0, nullptr, 0, nullptr, 1, &plan.acquire);
 			}
 
 			Semaphore sem;
 			submit(transfer_cmd, nullptr, 1, &sem);
-			add_wait_semaphore(CommandBuffer::Type::Generic, sem, dst_stages, true);
+			add_wait_semaphore(CommandBuffer::Type::Generic, sem, plan.wait_stages, true);
 		}
-
-		if (need_initial_barrier)
-		{
-			graphics_cmd->image_barrier(
-					*handle, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-					create_info.initial_layout,
-					VK_PIPELINE_STAGE_TRANSFER_BIT, final_transition_src_access,
-					handle->get_stage_flags(),
-					handle->get_access_flags() & granite_image_layout_access(create_info.initial_layout));
-		}
-
-		transition_cmd = Util::move(graphics_cmd);
 	}
-	else if (create_info.initial_layout != VK_IMAGE_LAYOUT_UNDEFINED)
+
+	if (plan.final_barrier)
 	{
-		auto cmd = request_command_buffer(CommandBuffer::Type::Generic);
-		cmd->image_barrier(*handle, VK_IMAGE_LAYOUT_UNDEFINED, create_info.initial_layout,
-		                   VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, 0, handle->get_stage_flags(),
-		                   handle->get_access_flags() &
-		                   granite_image_layout_access(create_info.initial_layout));
-		transition_cmd = Util::move(cmd);
+		graphics_cmd->image_barrier(*handle, plan.old_layout, create_info.initial_layout,
+		                            plan.src_stage, plan.src_access,
+		                            handle->get_stage_flags(), plan.dst_access);
 	}
 
 	// For concurrent queue, make sure that compute can see the final image as well.
-	// Also add semaphore if the compute queue can be used for async graphics as well.
-	if (transition_cmd)
+	if (plan.share_compute)
 	{
-		if (share_compute)
-		{
-			Semaphore sem;
-			submit(transition_cmd, nullptr, 1, &sem);
-			VkPipelineStageFlags dst_stages = handle->get_stage_flags();
-			if (queue_info.family_indices[QUEUE_INDEX_GRAPHICS] != queue_info.family_indices[QUEUE_INDEX_COMPUTE])
-				dst_stages &= VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_TRANSFER_BIT;
-			add_wait_semaphore(CommandBuffer::Type::AsyncCompute, sem, dst_stages, true);
-		}
-		else
-		{
-			LOCK();
-			submit_nolock(transition_cmd, nullptr, 0, nullptr);
-			if (concurrent_queue)
-				flush_frame(QUEUE_INDEX_GRAPHICS);
-		}
+		Semaphore sem;
+		submit(graphics_cmd, nullptr, 1, &sem);
+		add_wait_semaphore(CommandBuffer::Type::AsyncCompute, sem, plan.compute_stages, true);
+	}
+	else
+	{
+		LOCK();
+		submit_nolock(graphics_cmd, nullptr, 0, nullptr);
+		if (plan.flush_graphics)
+			flush_frame(QUEUE_INDEX_GRAPHICS);
 	}
 
 	return handle;
 }
 
-BufferHandle Device::create_imported_host_buffer(const BufferCreateInfo &create_info, VkExternalMemoryHandleTypeFlagBits type, void *host_buffer)
+BufferHandle Device::create_imported_host_buffer(const BufferCreateInfo &create_info, void *host_buffer)
 {
-	if (create_info.domain != BufferDomain::Host &&
-	    create_info.domain != BufferDomain::CachedHost &&
-	    create_info.domain != BufferDomain::CachedCoherentHostPreferCached &&
-	    create_info.domain != BufferDomain::CachedCoherentHostPreferCoherent)
-	{
-		return BufferHandle{};
-	}
-
 	if (!ext.supports_external_memory_host)
 		return BufferHandle{};
 
-	if ((reinterpret_cast<uintptr_t>(host_buffer) & (ext.host_memory_properties.minImportedHostPointerAlignment - 1)) != 0)
-	{
-		LOGE("Host buffer is not aligned appropriately.\n");
-		return BufferHandle{};
-	}
-
-	VkExternalMemoryBufferCreateInfo external_info = { VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_BUFFER_CREATE_INFO };
-	external_info.handleTypes = type;
-
-	VkMemoryHostPointerPropertiesEXT host_pointer_props = { VK_STRUCTURE_TYPE_MEMORY_HOST_POINTER_PROPERTIES_EXT };
-	if (table->vkGetMemoryHostPointerPropertiesEXT(device, type, host_buffer, &host_pointer_props) != VK_SUCCESS)
-	{
-		LOGE("Host pointer is not importable.\n");
-		return BufferHandle{};
-	}
-
-	VkBufferCreateInfo info = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
-	info.size = create_info.size;
-	info.usage = create_info.usage;
-	info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-	info.pNext = &external_info;
-
-	uint32_t sharing_indices[QUEUE_INDEX_COUNT];
-	info.queueFamilyIndexCount = granite_unique_queue_families(queue_info.family_indices, QUEUE_INDEX_COUNT,
-	                                                           sharing_indices);
-	if (info.queueFamilyIndexCount > 1)
-	{
-		info.sharingMode = VK_SHARING_MODE_CONCURRENT;
-		info.pQueueFamilyIndices = sharing_indices;
-	}
-	else
-		info.queueFamilyIndexCount = 0;
+	granite_buffer_env_t env;
+	env.device = device;
+	env.table = table;
+	env.allocator = &managers.memory;
+	env.memory = &mem_props;
+	env.queue_families = queue_info.family_indices;
+	env.num_queue_families = QUEUE_INDEX_COUNT;
+	env.force_host_cached = workarounds.force_host_cached;
 
 	VkBuffer buffer;
-	VkMemoryRequirements reqs;
-	if (table->vkCreateBuffer(device, &info, nullptr, &buffer) != VK_SUCCESS)
-		return BufferHandle{};
-
-	table->vkGetBufferMemoryRequirements(device, buffer, &reqs);
-
-	// Weird workaround for latest AMD Windows drivers which sets memoryTypeBits to 0 when using the external handle type.
-	if (!reqs.memoryTypeBits)
-		reqs.memoryTypeBits = ~0u;
-
-	auto plain_reqs = reqs;
-	reqs.memoryTypeBits &= host_pointer_props.memoryTypeBits;
-
-	if (reqs.memoryTypeBits == 0)
+	DeviceAllocation allocation;
 	{
-		LOGE("No compatible host pointer types are available.\n");
-		table->vkDestroyBuffer(device, buffer, nullptr);
-		return BufferHandle{};
-	}
-
-	uint32_t memory_type = find_memory_type(create_info.domain, reqs.memoryTypeBits);
-
-	if (memory_type == UINT32_MAX)
-	{
-		// Weird workaround for Intel Windows where the only memory type is DEVICE_LOCAL
-		// with no HOST_VISIBLE (!?!?!).
-		// However, it appears to work just fine to allocate with other memory types as well ...
-		// Oh well.
-
-		// Ignore host_pointer_props.
-		reqs = plain_reqs;
-		memory_type = find_memory_type(create_info.domain, reqs.memoryTypeBits);
-	}
-
-	if (memory_type == UINT32_MAX)
-	{
-		LOGE("Failed to find memory type.\n");
-		table->vkDestroyBuffer(device, buffer, nullptr);
-		return BufferHandle{};
-	}
-
-	VkMemoryAllocateInfo alloc_info = { VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO };
-	alloc_info.allocationSize = (create_info.size + ext.host_memory_properties.minImportedHostPointerAlignment - 1) &
-	                            ~(ext.host_memory_properties.minImportedHostPointerAlignment - 1);
-	alloc_info.memoryTypeIndex = memory_type;
-
-	VkImportMemoryHostPointerInfoEXT import = { VK_STRUCTURE_TYPE_IMPORT_MEMORY_HOST_POINTER_INFO_EXT };
-	import.handleType = type;
-	import.pHostPointer = host_buffer;
-	alloc_info.pNext = &import;
-
-	VkDeviceMemory memory;
-	if (table->vkAllocateMemory(device, &alloc_info, nullptr, &memory) != VK_SUCCESS)
-	{
-		table->vkDestroyBuffer(device, buffer, nullptr);
-		return BufferHandle{};
-	}
-
-	auto allocation = DeviceAllocation::make_imported_allocation(memory, info.size, memory_type);
-	if (table->vkMapMemory(device, memory, 0, VK_WHOLE_SIZE, 0, reinterpret_cast<void **>(&allocation.host_base)) != VK_SUCCESS)
-	{
-		{
-			LOCK_MEMORY();
-			allocation.free_immediate(managers.memory);
-		}
-		table->vkDestroyBuffer(device, buffer, nullptr);
-		return BufferHandle{};
-	}
-
-	if (table->vkBindBufferMemory(device, buffer, memory, 0) != VK_SUCCESS)
-	{
-		{
-			LOCK_MEMORY();
-			allocation.free_immediate(managers.memory);
-		}
-		table->vkDestroyBuffer(device, buffer, nullptr);
-		return BufferHandle{};
+		LOCK_MEMORY();
+		if (!granite_buffer_create_host_import(&env, create_info.domain, create_info.size, create_info.usage,
+		                                       ext.host_memory_properties.minImportedHostPointerAlignment,
+		                                       host_buffer, &buffer, &allocation))
+			return BufferHandle{};
 	}
 
 	return wrap_buffer(buffer, allocation, create_info);

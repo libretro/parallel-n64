@@ -93,16 +93,6 @@ struct DeviceAllocation : granite_allocation_t
 		return memory_type;
 	}
 
-	static inline DeviceAllocation make_imported_allocation(VkDeviceMemory memory, VkDeviceSize size,
-	                                                        uint32_t memory_type)
-	{
-		DeviceAllocation alloc;
-		alloc.base = memory;
-		alloc.size = uint32_t(size);
-		alloc.memory_type = uint8_t(memory_type);
-		return alloc;
-	}
-
 	inline void free_immediate(granite_device_allocator_t &allocator)
 	{
 		granite_allocation_free(this, &allocator);

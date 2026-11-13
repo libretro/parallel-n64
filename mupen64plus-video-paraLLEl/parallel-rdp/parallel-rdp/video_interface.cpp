@@ -340,7 +340,7 @@ void VideoInterface::set_shader_bank(const ShaderBank *bank)
 	                                       sizeof(UpscalerShaders::vi_scale_fold_frag), &layout);
 
 	static const uint32_t black = 0;
-	Vulkan::ImageInitialData initial = { &black, 1, 1 };
+	Vulkan::ImageInitialData initial = { &black, 1 };
 	no_previous_frame = device->create_image(
 			Vulkan::ImageCreateInfo::immutable_2d_image(1, 1, VK_FORMAT_R8G8B8A8_UNORM), &initial);
 

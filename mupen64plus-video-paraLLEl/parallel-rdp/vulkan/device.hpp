@@ -39,6 +39,7 @@
 #include "context.hpp"
 #include "buffer_pool.h"
 #include "pipeline_cache.h"
+#include "image_upload.h"
 #include "small_vector.hpp"
 #include <stdio.h>
 
@@ -67,7 +68,8 @@ enum class SwapchainRenderPass
 struct InitialImageBuffer
 {
 	BufferHandle buffer;
-	Util::SmallVector<VkBufferImageCopy, 32> blits;
+	VkBufferImageCopy blits[GRANITE_TEXTURE_MAX_LEVELS];
+	unsigned num_blits = 0;
 };
 
 // Memory handed to the Device to free once the GPU is done with the
@@ -210,12 +212,13 @@ public:
 
 	// Create buffers and images.
 	BufferHandle create_buffer(const BufferCreateInfo &info, const void *initial = nullptr);
-	BufferHandle create_imported_host_buffer(const BufferCreateInfo &info, VkExternalMemoryHandleTypeFlagBits type, void *host_buffer);
+	BufferHandle create_imported_host_buffer(const BufferCreateInfo &info, void *host_buffer);
 	ImageHandle create_image(const ImageCreateInfo &info, const ImageInitialData *initial = nullptr);
 	ImageHandle create_image_from_staging_buffer(const ImageCreateInfo &info, const InitialImageBuffer *buffer);
 
 	// Create staging buffers for images.
-	InitialImageBuffer create_image_staging_buffer(const ImageCreateInfo &info, const ImageInitialData *initial);
+	bool create_image_staging_buffer(const ImageCreateInfo &info, const ImageInitialData *initial,
+	                                 InitialImageBuffer &result);
 
 	// Create image view, buffer views and samplers.
 	ImageViewHandle create_image_view(const ImageViewCreateInfo &view_info);

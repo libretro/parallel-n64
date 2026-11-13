@@ -192,6 +192,11 @@ bool granite_device_allocator_allocate(granite_device_allocator_t *allocator, ui
 bool granite_device_allocator_allocate_image(granite_device_allocator_t *allocator, uint32_t size,
 		uint32_t alignment, granite_allocation_mode_t mode, uint32_t memory_type, VkImage image,
 		granite_allocation_t *alloc);
+/* The host's own memory at @host_pointer as device memory of
+ * @memory_type (VK_EXT_external_memory_host), mapped. @host_pointer and
+ * @size are on the device's minImportedHostPointerAlignment. */
+bool granite_device_allocator_import_host(granite_device_allocator_t *allocator, uint32_t size,
+		uint32_t memory_type, void *host_pointer, granite_allocation_t *alloc);
 /* Gives @alloc's memory back: to the block it was cut from, or, a block
  * of its own, to the driver. */
 void granite_allocation_free(granite_allocation_t *alloc, granite_device_allocator_t *allocator);

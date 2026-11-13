@@ -24,6 +24,7 @@
 
 #include "format.hpp"
 #include "image.h"
+#include "image_upload.h"
 #include "vulkan_common.hpp"
 #include "memory_allocator.hpp"
 #include "bitops.hpp"
@@ -36,12 +37,7 @@ class Device;
 
 // Images are C (image.h, image_create.h). These give them the names and
 // accessors the rest of Granite uses.
-struct ImageInitialData
-{
-	const void *data;
-	unsigned row_length;
-	unsigned image_height;
-};
+using ImageInitialData = granite_image_initial_data_t;
 
 enum ImageMiscFlagBits
 {

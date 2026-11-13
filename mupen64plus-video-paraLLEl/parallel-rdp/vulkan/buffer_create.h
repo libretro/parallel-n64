@@ -96,6 +96,17 @@ VkAccessFlags granite_buffer_usage_access(VkBufferUsageFlags usage);
 bool granite_buffer_create(const granite_buffer_env_t *env, granite_buffer_domain_t domain, VkDeviceSize size,
 		VkBufferUsageFlags usage, VkBuffer *buffer, granite_allocation_t *allocation, uint32_t *memory_type);
 
+/* A buffer of @size for @usage over the host's own memory at
+ * @host_pointer (VK_EXT_external_memory_host), which stays the host's:
+ * what the device writes there the host reads, with no copy.
+ * @host_alignment is the device's minImportedHostPointerAlignment.
+ * @domain is a host one. False, and nothing left behind, when the
+ * pointer is not aligned, the driver cannot import it, or it cannot be
+ * made. */
+bool granite_buffer_create_host_import(const granite_buffer_env_t *env, granite_buffer_domain_t domain,
+		VkDeviceSize size, VkBufferUsageFlags usage, VkDeviceSize host_alignment, void *host_pointer,
+		VkBuffer *buffer, granite_allocation_t *allocation);
+
 RETRO_END_DECLS
 
 #endif

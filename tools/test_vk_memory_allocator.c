@@ -17,7 +17,12 @@
  * nothing behind.
  *
  * Reading memory that is not coherent brings it in from the device first,
- * writing sends it after, in whole atoms. */
+ * writing sends it after, in whole atoms.
+ *
+ * The host's own memory imported as device memory is counted in its
+ * heap while it lives: it once was not, and freeing it took its size off
+ * a count it had never been added to, which wrapped the heap's usage
+ * around and made every later allocation look over budget. */
 #include <stdio.h>
 #include <string.h>
 #include <boolean.h>
@@ -50,6 +55,7 @@ static struct
 	uint64_t size;
 	uint32_t type;
 	const void *dedicated_image;
+	const void *host_pointer;
 	float priority;
 } blocks[MAX_BLOCKS + 1];
 static uint64_t capacity, used;
@@ -92,6 +98,13 @@ static VkResult VKAPI_CALL fake_allocate(VkDevice d, const VkMemoryAllocateInfo 
 		}
 		else if (next->sType == VK_STRUCTURE_TYPE_MEMORY_PRIORITY_ALLOCATE_INFO_EXT)
 			blocks[n].priority = ((const VkMemoryPriorityAllocateInfoEXT *)next)->priority;
+		else if (next->sType == VK_STRUCTURE_TYPE_IMPORT_MEMORY_HOST_POINTER_INFO_EXT)
+		{
+			const VkImportMemoryHostPointerInfoEXT *import = (const VkImportMemoryHostPointerInfoEXT *)next;
+			CHECK(import->handleType == VK_EXTERNAL_MEMORY_HANDLE_TYPE_HOST_ALLOCATION_BIT_EXT,
+					"host memory is imported as a host allocation");
+			blocks[n].host_pointer = import->pHostPointer;
+		}
 	}
 	used += info->allocationSize;
 	*memory = GRANITE_VK_FROM_BITS(VkDeviceMemory, n);
@@ -425,6 +438,51 @@ int main(void)
 	memset(&a, 0, sizeof(a));
 	CHECK(!granite_device_allocator_allocate(&allocator, (uint32_t)(200 * MIB), 1, GRANITE_ALLOCATION_LINEAR_HOST_MAPPABLE,
 				TYPE_BAR, &a) && live_blocks() == 0, "and one over its budget is refused");
+
+	/* ---- the host's own memory ---- */
+	{
+		static uint8_t host_memory[8192];
+		granite_heap_budget_t budgets[VK_MAX_MEMORY_HEAPS];
+		uint64_t tracked;
+		unsigned live = live_blocks();
+		unsigned n;
+
+		granite_device_allocator_budget(&allocator, budgets);
+		tracked = budgets[1].tracked_usage;
+		memset(&a, 0xff, sizeof(a));
+		before = free_calls;
+		CHECK(granite_device_allocator_import_host(&allocator, 8192, TYPE_HOST, host_memory, &a),
+				"the host's memory is imported");
+		n = (unsigned)block_of(a.base);
+		CHECK(live_blocks() == live + 1 && blocks[n].host_pointer == host_memory && blocks[n].size == 8192
+				&& blocks[n].type == TYPE_HOST, "as a block of its own over the pointer given");
+		CHECK(blocks[n].mapped && a.host_base == MAP_BASE(n) && a.alloc == NULL && a.heap == NULL && a.offset == 0
+				&& a.size == 8192 && a.memory_type == TYPE_HOST, "mapped, and whole");
+		granite_device_allocator_budget(&allocator, budgets);
+		CHECK(budgets[1].tracked_usage == tracked + 8192, "it counts in its heap");
+		granite_allocation_free(&a, &allocator);
+		granite_device_allocator_budget(&allocator, budgets);
+		CHECK(budgets[1].tracked_usage == tracked && live_blocks() == live && free_calls == before + 1
+				&& a.base == VK_NULL_HANDLE, "freed, it goes back to the driver and off the count");
+
+		fail_map = true;
+		before = free_calls;
+		CHECK(!granite_device_allocator_import_host(&allocator, 8192, TYPE_HOST, host_memory, &a)
+				&& live_blocks() == live && free_calls == before + 1, "one that cannot be mapped is freed again");
+		granite_device_allocator_budget(&allocator, budgets);
+		CHECK(budgets[1].tracked_usage == tracked, "and was never counted");
+		fail_map = false;
+
+		capacity = used;
+		CHECK(!granite_device_allocator_import_host(&allocator, 8192, TYPE_HOST, host_memory, &a)
+				&& live_blocks() == live, "one the driver refuses leaves nothing");
+		granite_device_allocator_budget(&allocator, budgets);
+		CHECK(budgets[1].tracked_usage == tracked, "and counts nothing");
+		capacity = 1024 * 1024 * MIB;
+
+		CHECK(!granite_device_allocator_import_host(&allocator, 8192, 9, host_memory, &a),
+				"nor one of a memory type the device does not have");
+	}
 
 	/* ---- what the allocator cannot take ---- */
 	CHECK(!granite_device_allocator_allocate(&allocator, 100, 1, GRANITE_ALLOCATION_LINEAR_DEVICE, 9, &a),
