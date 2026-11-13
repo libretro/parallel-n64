@@ -578,7 +578,6 @@ static void *block_create(void *user, VkDeviceSize size, VkBufferUsageFlags usag
 	auto buffer = device->create_buffer(info, nullptr);
 	if (!buffer)
 		return nullptr;
-	device->set_name(*buffer, "chain-allocated-block");
 	buffer->set_internal_sync_object();
 	*mapped = static_cast<uint8_t *>(device->map_host_buffer(*buffer, MEMORY_ACCESS_WRITE_BIT));
 	// The block owns the reference from here on.
@@ -1275,7 +1274,6 @@ bool Device::create_image_staging_buffer(const ImageCreateInfo &info, const Imag
 	result.buffer = create_buffer(buffer_info, nullptr);
 	if (!result.buffer)
 		return false;
-	set_name(*result.buffer, "image-upload-staging-buffer");
 
 	layout.buffer = static_cast<uint8_t *>(map_host_buffer(*result.buffer, MEMORY_ACCESS_WRITE_BIT));
 	if (!layout.buffer)
@@ -1435,9 +1433,7 @@ ImageHandle Device::create_image_from_staging_buffer(const ImageCreateInfo &crea
 		                            VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, 0, VK_PIPELINE_STAGE_TRANSFER_BIT,
 		                            VK_ACCESS_TRANSFER_WRITE_BIT);
 
-		transfer_cmd->begin_region("copy-image-to-gpu");
 		transfer_cmd->copy_buffer_to_image(*handle, *staging_buffer->buffer, staging_buffer->num_blits, staging_buffer->blits);
-		transfer_cmd->end_region();
 
 		if (plan.split_transfer)
 		{
@@ -1590,19 +1586,14 @@ BufferHandle Device::create_buffer(const BufferCreateInfo &create_info, const vo
 			auto staging_info = create_info;
 			staging_info.domain = BufferDomain::Host;
 			auto staging_buffer = create_buffer(staging_info, initial);
-			set_name(*staging_buffer, "buffer-upload-staging-buffer");
 
 			cmd = request_command_buffer(CommandBuffer::Type::AsyncTransfer);
-			cmd->begin_region("copy-buffer-staging");
 			cmd->copy_buffer(*handle, *staging_buffer);
-			cmd->end_region();
 		}
 		else
 		{
 			cmd = request_command_buffer(CommandBuffer::Type::AsyncCompute);
-			cmd->begin_region("fill-buffer-staging");
 			cmd->fill_buffer(*handle, 0);
-			cmd->end_region();
 		}
 
 		LOCK();
@@ -1775,45 +1766,6 @@ void Device::set_queue_lock(QueueLockCallback lock_callback, QueueLockCallback u
 	queue_lock_callback = lock_callback;
 	queue_unlock_callback = unlock_callback;
 	queue_lock_userdata = userdata;
-}
-
-void Device::set_name(const Buffer &buffer, const char *name)
-{
-	if (ext.supports_debug_utils)
-	{
-		VkDebugUtilsObjectNameInfoEXT info = { VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT };
-		info.objectType = VK_OBJECT_TYPE_BUFFER;
-		info.objectHandle = (uint64_t)buffer.get_buffer();
-		info.pObjectName = name;
-		if (vkSetDebugUtilsObjectNameEXT)
-			vkSetDebugUtilsObjectNameEXT(device, &info);
-	}
-}
-
-void Device::set_name(const Image &image, const char *name)
-{
-	if (ext.supports_debug_utils)
-	{
-		VkDebugUtilsObjectNameInfoEXT info = { VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT };
-		info.objectType = VK_OBJECT_TYPE_IMAGE;
-		info.objectHandle = (uint64_t)image.get_image();
-		info.pObjectName = name;
-		if (vkSetDebugUtilsObjectNameEXT)
-			vkSetDebugUtilsObjectNameEXT(device, &info);
-	}
-}
-
-void Device::set_name(const CommandBuffer &cmd, const char *name)
-{
-	if (ext.supports_debug_utils)
-	{
-		VkDebugUtilsObjectNameInfoEXT info = { VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT };
-		info.objectType = VK_OBJECT_TYPE_COMMAND_BUFFER;
-		info.objectHandle = (uint64_t)cmd.get_command_buffer();
-		info.pObjectName = name;
-		if (vkSetDebugUtilsObjectNameEXT)
-			vkSetDebugUtilsObjectNameEXT(device, &info);
-	}
 }
 
 void Device::report_checkpoints()

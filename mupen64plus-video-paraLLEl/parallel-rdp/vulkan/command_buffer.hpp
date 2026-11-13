@@ -100,9 +100,6 @@ public:
 		return cmd;
 	}
 
-	void begin_region(const char *name, const float *color = nullptr);
-	void end_region();
-
 	Device &get_device()
 	{
 		return *device;

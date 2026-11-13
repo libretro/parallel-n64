@@ -185,7 +185,6 @@ bool Renderer::init_renderer(const RendererOptions &options)
 		info.domain = Vulkan::BufferDomain::Device;
 		info.misc = Vulkan::BUFFER_MISC_ZERO_INITIALIZE_BIT;
 		tmem_instances = device->create_buffer(info);
-		device->set_name(*tmem_instances, "tmem-instances");
 	}
 
 	{
@@ -195,7 +194,6 @@ bool Renderer::init_renderer(const RendererOptions &options)
 		info.domain = Vulkan::BufferDomain::Device;
 		info.misc = Vulkan::BUFFER_MISC_ZERO_INITIALIZE_BIT;
 		span_setups = device->create_buffer(info);
-		device->set_name(*span_setups, "span-setups");
 	}
 
 	init_blender_lut();
@@ -377,14 +375,12 @@ void Renderer::init_buffers(const RendererOptions &options)
 	            (caps.max_height / ImplementationConstants::TileHeight);
 
 	tile_binning_buffer = device->create_buffer(info);
-	device->set_name(*tile_binning_buffer, "tile-binning-buffer");
 
 	info.size = sizeof(uint32_t) *
 	            (caps.max_width / ImplementationConstants::TileWidth) *
 	            (caps.max_height / ImplementationConstants::TileHeight);
 
 	tile_binning_buffer_coarse = device->create_buffer(info);
-	device->set_name(*tile_binning_buffer_coarse, "tile-binning-buffer-coarse");
 
 	if (!caps.ubershader)
 	{
@@ -394,20 +390,16 @@ void Renderer::init_buffers(const RendererOptions &options)
 		            (caps.max_height / ImplementationConstants::TileHeight);
 
 		per_tile_offsets = device->create_buffer(info);
-		device->set_name(*per_tile_offsets, "per-tile-offsets");
 
 		info.size = sizeof(TileRasterWork) * caps.max_static_raster_states * caps.max_num_tile_instances;
 		tile_work_list = device->create_buffer(info);
-		device->set_name(*tile_work_list, "tile-work-list");
 
 		info.size = sizeof(uint32_t) *
 		            caps.max_num_tile_instances *
 		            ImplementationConstants::TileWidth *
 		            ImplementationConstants::TileHeight;
 		per_tile_shaded_color = device->create_buffer(info);
-		device->set_name(*per_tile_shaded_color, "per-tile-shaded-color");
 		per_tile_shaded_depth = device->create_buffer(info);
-		device->set_name(*per_tile_shaded_depth, "per-tile-shaded-depth");
 
 		info.size = sizeof(uint8_t) *
 		            caps.max_num_tile_instances *
@@ -419,8 +411,6 @@ void Renderer::init_buffers(const RendererOptions &options)
 		if (caps.no_storage_8bit)
 			info.size *= sizeof(uint16_t);
 		per_tile_shaded_coverage = device->create_buffer(info);
-		device->set_name(*per_tile_shaded_coverage, "per-tile-shaded-coverage");
-		device->set_name(*per_tile_shaded_shaded_alpha, "per-tile-shaded-shaded-alpha");
 	}
 }
 
@@ -432,7 +422,6 @@ void Renderer::init_blender_lut()
 	info.usage = VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT;
 
 	blender_divider_lut_buffer = device->create_buffer(info, blender_lut);
-	device->set_name(*blender_divider_lut_buffer, "blender-divider-lut-buffer");
 
 	Vulkan::BufferViewCreateInfo view = {};
 	view.buffer = blender_divider_lut_buffer.get();
@@ -447,52 +436,42 @@ void Renderer::RenderBuffers::init(Vulkan::Device &device, granite_buffer_domain
 	triangle_setup = create_buffer(device, domain,
 	                               sizeof(TriangleSetup) * Limits::MaxPrimitives,
 	                               borrow ? &borrow->triangle_setup : nullptr);
-	device.set_name(*triangle_setup.buffer, "triangle-setup");
 
 	attribute_setup = create_buffer(device, domain,
 	                                sizeof(AttributeSetup) * Limits::MaxPrimitives,
 	                                borrow ? &borrow->attribute_setup: nullptr);
-	device.set_name(*attribute_setup.buffer, "attribute-setup");
 
 	derived_setup = create_buffer(device, domain,
 	                              sizeof(DerivedSetup) * Limits::MaxPrimitives,
 	                              borrow ? &borrow->derived_setup : nullptr);
-	device.set_name(*derived_setup.buffer, "derived-setup");
 
 	scissor_setup = create_buffer(device, domain,
 	                              sizeof(ScissorState) * Limits::MaxPrimitives,
 	                              borrow ? &borrow->scissor_setup : nullptr);
-	device.set_name(*scissor_setup.buffer, "scissor-state");
 
 	static_raster_state = create_buffer(device, domain,
 	                                    sizeof(StaticRasterizationState) * Limits::MaxStaticRasterizationStates,
 	                                    borrow ? &borrow->static_raster_state : nullptr);
-	device.set_name(*static_raster_state.buffer, "static-raster-state");
 
 	depth_blend_state = create_buffer(device, domain,
 	                                  sizeof(DepthBlendState) * Limits::MaxDepthBlendStates,
 	                                  borrow ? &borrow->depth_blend_state : nullptr);
-	device.set_name(*depth_blend_state.buffer, "depth-blend-state");
 
 	tile_info_state = create_buffer(device, domain,
 	                                sizeof(TileInfo) * Limits::MaxTileInfoStates,
 	                                borrow ? &borrow->tile_info_state : nullptr);
-	device.set_name(*tile_info_state.buffer, "tile-info-state");
 
 	state_indices = create_buffer(device, domain,
 	                              sizeof(InstanceIndices) * Limits::MaxPrimitives,
 	                              borrow ? &borrow->state_indices : nullptr);
-	device.set_name(*state_indices.buffer, "state-indices");
 
 	span_info_offsets = create_buffer(device, domain,
 	                                  sizeof(SpanInfoOffsets) * Limits::MaxPrimitives,
 	                                  borrow ? &borrow->span_info_offsets : nullptr);
-	device.set_name(*span_info_offsets.buffer, "span-info-offsets");
 
 	span_info_jobs = create_buffer(device, domain,
 	                               sizeof(SpanInterpolationJob) * Limits::MaxSpanSetups,
 	                               borrow ? &borrow->span_info_jobs : nullptr);
-	device.set_name(*span_info_jobs.buffer, "span-info-jobs");
 
 	if (!borrow)
 	{
@@ -568,7 +547,6 @@ bool Renderer::init_internal_upscaling_factor(const RendererOptions &options)
 
 	info.size = rdram_size;
 	upscaling_reference_rdram = device->create_buffer(info);
-	device->set_name(*upscaling_reference_rdram, "reference-rdram");
 
 	info.size = rdram_size * factor * factor;
 	// If we're super-sampling we'll need to carry forward a u8 writemask per unscaled pixel.
@@ -580,11 +558,9 @@ bool Renderer::init_internal_upscaling_factor(const RendererOptions &options)
 		info.size += 2 * Limits::MaxWidth * Limits::MaxHeight / 8;
 
 	upscaling_multisampled_rdram = device->create_buffer(info);
-	device->set_name(*upscaling_multisampled_rdram, "multisampled-rdram");
 
 	info.size = hidden_rdram->get_create_info().size * factor * factor;
 	upscaling_multisampled_hidden_rdram = device->create_buffer(info);
-	device->set_name(*upscaling_multisampled_hidden_rdram, "multisampled-hidden-rdram");
 
 	{
 		// On the queue the renderer and VI use, and ordered before them on
@@ -604,7 +580,6 @@ void Renderer::set_rdram(Vulkan::Buffer *buffer, uint8_t *host_rdram, size_t off
 	rdram_offset = offset;
 	rdram_size = size;
 	is_host_coherent = coherent;
-	device->set_name(*rdram, "rdram");
 
 	if (!is_host_coherent)
 	{
@@ -619,7 +594,6 @@ void Renderer::set_rdram(Vulkan::Buffer *buffer, uint8_t *host_rdram, size_t off
 		info.domain = Vulkan::BufferDomain::Host;
 		info.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
 		incoherent.staging_rdram = device->create_buffer(info);
-		device->set_name(*incoherent.staging_rdram, "staging-rdram");
 
 		if (!rdram->get_allocation().host_base)
 		{
@@ -629,7 +603,6 @@ void Renderer::set_rdram(Vulkan::Buffer *buffer, uint8_t *host_rdram, size_t off
 			readback_info.size = rdram_size * Limits::NumSyncStates;
 			readback_info.usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT;
 			incoherent.staging_readback = device->create_buffer(readback_info);
-			device->set_name(*incoherent.staging_readback, "staging-readback");
 			incoherent.staging_readback_pages = div_round_up(readback_info.size, ImplementationConstants::IncoherentPageSize);
 		}
 
@@ -681,13 +654,11 @@ void Renderer::set_rdram(Vulkan::Buffer *buffer, uint8_t *host_rdram, size_t off
 void Renderer::set_hidden_rdram(Vulkan::Buffer *buffer)
 {
 	hidden_rdram = buffer;
-	device->set_name(*hidden_rdram, "hidden-rdram");
 }
 
 void Renderer::set_tmem(Vulkan::Buffer *buffer)
 {
 	tmem = buffer;
-	device->set_name(*tmem, "tmem");
 }
 
 void Renderer::flush_and_signal()
@@ -1670,7 +1641,6 @@ void Renderer::RenderBuffersUpdater::upload(Vulkan::Device &device, const Render
 
 void Renderer::update_tmem_instances(Vulkan::CommandBuffer &cmd)
 {
-	cmd.begin_region("tmem-update");
 	cmd.set_storage_buffer(0, 0, *rdram, rdram_offset, rdram_size);
 	cmd.set_storage_buffer(0, 1, *tmem);
 	cmd.set_storage_buffer(0, 2, *tmem_instances);
@@ -1688,7 +1658,6 @@ void Renderer::update_tmem_instances(Vulkan::CommandBuffer &cmd)
 	cmd.set_specialization_constant(0, ImplementationConstants::DefaultWorkgroupSize);
 
 	cmd.dispatch(2048 / ImplementationConstants::DefaultWorkgroupSize, 1, 1);
-	cmd.end_region();
 }
 
 void Renderer::set_span_setup_pipeline(Vulkan::CommandBuffer &cmd, bool upscale)
@@ -1701,7 +1670,6 @@ void Renderer::set_span_setup_pipeline(Vulkan::CommandBuffer &cmd, bool upscale)
 
 void Renderer::submit_span_setup_jobs(Vulkan::CommandBuffer &cmd, bool upscale)
 {
-	cmd.begin_region("span-setup");
 	auto &instance = buffer_instances[buffer_instance];
 	cmd.set_storage_buffer(0, 0, *instance.gpu.triangle_setup.buffer);
 	cmd.set_storage_buffer(0, 1, *instance.gpu.attribute_setup.buffer);
@@ -1712,12 +1680,10 @@ void Renderer::submit_span_setup_jobs(Vulkan::CommandBuffer &cmd, bool upscale)
 	set_span_setup_pipeline(cmd, upscale);
 
 	cmd.dispatch(stream.span_info_jobs.size(), 1, 1);
-	cmd.end_region();
 }
 
 void Renderer::clear_indirect_buffer(Vulkan::CommandBuffer &cmd)
 {
-	cmd.begin_region("clear-indirect-buffer");
 
 	cmd.set_program(shader_bank->clear_indirect_buffer);
 
@@ -1727,12 +1693,10 @@ void Renderer::clear_indirect_buffer(Vulkan::CommandBuffer &cmd)
 	cmd.set_specialization_constant_mask(1);
 	cmd.set_specialization_constant(0, ImplementationConstants::DefaultWorkgroupSize);
 	cmd.dispatch(Limits::MaxStaticRasterizationStates / ImplementationConstants::DefaultWorkgroupSize, 1, 1);
-	cmd.end_region();
 }
 
 void Renderer::submit_rasterization(Vulkan::CommandBuffer &cmd, Vulkan::Buffer &tmem, bool upscaling)
 {
-	cmd.begin_region("rasterization");
 	auto &instance = buffer_instances[buffer_instance];
 
 	cmd.set_storage_buffer(0, 0, *instance.gpu.triangle_setup.buffer);
@@ -1832,7 +1796,6 @@ void Renderer::submit_rasterization(Vulkan::CommandBuffer &cmd, Vulkan::Buffer &
 		cmd.dispatch_indirect(*indirect_dispatch_buffer, 4 * sizeof(uint32_t) * i);
 	}
 
-	cmd.end_region();
 }
 
 uint32_t Renderer::set_tile_binning_pipeline(Vulkan::CommandBuffer &cmd, bool upscale)
@@ -1865,7 +1828,6 @@ uint32_t Renderer::set_tile_binning_pipeline(Vulkan::CommandBuffer &cmd, bool up
 
 void Renderer::submit_tile_binning_combined(Vulkan::CommandBuffer &cmd, bool upscale)
 {
-	cmd.begin_region("tile-binning-combined");
 	auto &instance = buffer_instances[buffer_instance];
 	cmd.set_storage_buffer(0, 0, *instance.gpu.triangle_setup.buffer);
 	cmd.set_storage_buffer(0, 1, *instance.gpu.scissor_setup.buffer);
@@ -1910,7 +1872,6 @@ void Renderer::submit_tile_binning_combined(Vulkan::CommandBuffer &cmd, bool ups
 	cmd.dispatch(num_primitives_32, num_meta_tiles_x, num_meta_tiles_y);
 
 	cmd.enable_subgroup_size_control(false);
-	cmd.end_region();
 }
 
 void Renderer::submit_update_upscaled_domain_external(Vulkan::CommandBuffer &cmd,
@@ -2065,7 +2026,6 @@ void Renderer::set_depth_blend_pipeline(Vulkan::CommandBuffer &cmd, uint32_t fmt
 
 void Renderer::submit_depth_blend(Vulkan::CommandBuffer &cmd, Vulkan::Buffer &tmem, bool upscaled, bool force_write_mask)
 {
-	cmd.begin_region("render-pass");
 	auto &instance = buffer_instances[buffer_instance];
 
 	set_depth_blend_pipeline(cmd, uint32_t(fb.fmt), fb.addr == fb.depth_addr, upscaled, force_write_mask);
@@ -2153,7 +2113,6 @@ void Renderer::submit_depth_blend(Vulkan::CommandBuffer &cmd, Vulkan::Buffer &tm
 
 	cmd.dispatch((push.fb_width + 7) / 8, (push.fb_height + 7) / 8, 1);
 
-	cmd.end_region();
 }
 
 void Renderer::submit_render_pass(Vulkan::CommandBuffer &cmd)
@@ -2209,7 +2168,6 @@ void Renderer::submit_render_pass(Vulkan::CommandBuffer &cmd)
 
 void Renderer::submit_render_pass_upscaled(Vulkan::CommandBuffer &cmd)
 {
-	cmd.begin_region("render-pass-upscaled");
 
 	bool need_tmem_upload = stream.num_tmem_uploads != 0;
 
@@ -2244,16 +2202,13 @@ void Renderer::submit_render_pass_upscaled(Vulkan::CommandBuffer &cmd)
 
 	if (caps.super_sample_readback)
 	{
-		cmd.begin_region("ssaa-resolve");
 		cmd.barrier(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_WRITE_BIT,
 		            VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
 		            VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT);
 
 		submit_update_upscaled_domain(cmd, ResolveStage::SSAAResolve);
-		cmd.end_region();
 	}
 
-	cmd.end_region();
 }
 
 void Renderer::submit_render_pass_end(Vulkan::CommandBuffer &cmd)
@@ -2490,7 +2445,6 @@ void Renderer::lock_pages_for_gpu_write(uint32_t base_addr, uint32_t byte_count)
 
 void Renderer::resolve_coherency_gpu_to_host(CoherencyOperation &op, Vulkan::CommandBuffer &cmd)
 {
-	cmd.begin_region("resolve-coherency-gpu-to-host");
 	op.copies = incoherent.copies;
 	op.num_copies = 0;
 	if (!incoherent.staging_readback)
@@ -2605,7 +2559,6 @@ void Renderer::resolve_coherency_gpu_to_host(CoherencyOperation &op, Vulkan::Com
 			            VK_ACCESS_HOST_READ_BIT);
 		}
 	}
-	cmd.end_region();
 }
 
 void Renderer::resolve_coherency_external(unsigned offset, unsigned length)
@@ -2688,7 +2641,6 @@ void Renderer::resolve_coherency_host_to_gpu(Vulkan::CommandBuffer &cmd)
 	// "win" over writes made by CPU, since CPU is not allowed to meaningfully overwrite data which the GPU
 	// is going to touch.
 
-	cmd.begin_region("resolve-coherency-host-to-gpu");
 
 	retro_atomic_thread_fence_acquire();
 
@@ -2851,7 +2803,6 @@ void Renderer::resolve_coherency_host_to_gpu(Vulkan::CommandBuffer &cmd)
 		            VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_READ_BIT);
 	}
 
-	cmd.end_region();
 }
 
 void Renderer::flush_queues()
@@ -2888,9 +2839,7 @@ void Renderer::flush_queues()
 
 	if (has_single_sampled_render_pass)
 	{
-		stream.cmd->begin_region("render-pass-1x");
 		submit_render_pass(*stream.cmd);
-		stream.cmd->end_region();
 		pending_render_passes++;
 	}
 
@@ -2953,7 +2902,6 @@ void Renderer::ensure_command_buffer()
 		indirect_info.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT;
 
 		indirect_dispatch_buffer = device->create_buffer(indirect_info);
-		device->set_name(*indirect_dispatch_buffer, "indirect-dispatch-buffer");
 
 		clear_indirect_buffer(*stream.cmd);
 		stream.cmd->barrier(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_WRITE_BIT,

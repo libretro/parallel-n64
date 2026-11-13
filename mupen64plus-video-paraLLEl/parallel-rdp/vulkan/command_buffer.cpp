@@ -695,37 +695,6 @@ void CommandBuffer::end()
 		device->request_uniform_block_nolock(ubo_block, 0);
 }
 
-void CommandBuffer::begin_region(const char *name, const float *color)
-{
-	if (device->ext.supports_debug_utils)
-	{
-		VkDebugUtilsLabelEXT info = { VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT };
-		if (color)
-		{
-			for (unsigned i = 0; i < 4; i++)
-				info.color[i] = color[i];
-		}
-		else
-		{
-			for (unsigned i = 0; i < 4; i++)
-				info.color[i] = 1.0f;
-		}
-
-		info.pLabelName = name;
-		if (vkCmdBeginDebugUtilsLabelEXT)
-			vkCmdBeginDebugUtilsLabelEXT(cmd, &info);
-	}
-}
-
-void CommandBuffer::end_region()
-{
-	if (device->ext.supports_debug_utils)
-	{
-		if (vkCmdEndDebugUtilsLabelEXT)
-			vkCmdEndDebugUtilsLabelEXT(cmd);
-	}
-}
-
 void CommandBufferDeleter::operator()(Vulkan::CommandBuffer *cmd)
 {
 	cmd->device->handle_pool.command_buffers.free(cmd);
