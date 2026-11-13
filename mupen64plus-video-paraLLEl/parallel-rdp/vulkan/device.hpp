@@ -42,6 +42,7 @@
 #include "image_upload.h"
 #include "queue_submit.h"
 #include "frame_sync.h"
+#include "frame_context.h"
 #include "memory_release.h"
 #include "small_vector.hpp"
 #include <stdio.h>
@@ -124,6 +125,7 @@ public:
 	// Only called by main thread, during setup phase.
 	void set_context(const Context &context);
 	void init_frame_contexts(unsigned count);
+	void free_frame_contexts();
 	const VolkDeviceTable &get_device_table() const;
 
 	unsigned get_num_frame_contexts() const;
@@ -294,11 +296,10 @@ private:
 
 	// Released from any thread without a lock: Vulkan objects through
 	// release_queue.c, memory and timeline intervals on these stacks. Each
-	// frame context drains its own in PerFrame::begin(), after waiting for
+	// frame context drains its own in granite_frame_context_begin(), after waiting for
 	// that frame's GPU work. Fixed arrays, so recreating the frame
 	// contexts never moves what a releasing thread is pushing onto. The
 	// queue's frame index says where all of them go.
-	struct PerFrame;
 	enum { MAX_DEFERRED_FRAMES = GRANITE_RELEASE_FRAMES };
 	struct ReleaseQueue
 	{
@@ -320,7 +321,6 @@ private:
 	{
 		granite_release_queue_push(&releases.q, kind, handle);
 	}
-	void drain_deferred_releases(PerFrame &frame);
 
 	// Threads that find another thread already waiting on a FenceHolder
 	// park here until it is done (see FenceHolder::wait).
@@ -351,39 +351,17 @@ private:
 		unsigned counter = 0;
 	} lock;
 
-	struct PerFrame
+	// The frame contexts (frame_context.c) and what they share.
+	granite_frame_env_t frame_env = {};
+	granite_frame_context_t per_frame[MAX_DEFERRED_FRAMES] = {};
+	unsigned num_frames = 0;
+	// Freed here, as the members after this one go: before the managers
+	// and the release queues they give things back to.
+	struct FrameContextsFree
 	{
-		PerFrame(Device *device, unsigned index);
-		~PerFrame();
-		void operator=(const PerFrame &) = delete;
-		PerFrame(const PerFrame &) = delete;
-
-		void begin();
-		void trim_command_pools();
-
-		Device &device;
-		unsigned frame_index;
-		const VolkDeviceTable &table;
-		Managers &managers;
-
-		// One per thread index, of each queue.
-		Util::Vector<granite_command_pool_t> cmd_pools[QUEUE_INDEX_COUNT];
-		// what the frame waits for before it is used again (frame_sync.c)
-		granite_frame_sync_t sync = {};
-
-		// used this frame; back to their pools by begin()
-		granite_buffer_block_list_t vbo_blocks = {};
-		granite_buffer_block_list_t ubo_blocks = {};
-
-		// device memory freed by begin() (memory_release.c)
-		granite_memory_garbage_t memory = {};
-		Util::SmallVector<CommandBufferHandle> submissions[QUEUE_INDEX_COUNT];
-		// destroyed, or recycled, by begin() (frame_garbage.c)
-		granite_frame_garbage_t garbage = {};
-	};
-	// The per frame structure must be destroyed after
-	// the hashmap data structures below, so it must be declared before.
-	Util::OwnedPtrArray<PerFrame, MAX_DEFERRED_FRAMES> per_frame;
+		Device *d;
+		~FrameContextsFree() { d->free_frame_contexts(); }
+	} frame_contexts_free{this};
 
 	struct QueueData
 	{
@@ -407,18 +385,10 @@ private:
 	                  unsigned semaphore_count = 0,
 	                  Semaphore *semaphore = nullptr, bool force = false);
 
-	PerFrame &frame()
+	granite_frame_context_t &frame()
 	{
-		VK_ASSERT(frame_context_index < per_frame.size());
-		VK_ASSERT(per_frame[frame_context_index]);
-		return *per_frame[frame_context_index];
-	}
-
-	const PerFrame &frame() const
-	{
-		VK_ASSERT(frame_context_index < per_frame.size());
-		VK_ASSERT(per_frame[frame_context_index]);
-		return *per_frame[frame_context_index];
+		VK_ASSERT(frame_context_index < num_frames);
+		return per_frame[frame_context_index];
 	}
 
 	unsigned frame_context_index = 0;

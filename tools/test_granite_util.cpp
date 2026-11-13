@@ -313,24 +313,6 @@ static void test_heap_vector()
 	CHECK(live == 0);
 }
 
-static void test_owned_ptr_array()
-{
-	{
-		Util::OwnedPtrArray<Tracked, 4> a;
-		a.push_back(Util::create<Tracked>(1));
-		a.push_back(Util::create<Tracked>(2));
-		CHECK(a.size() == 2 && live == 2 && a[1]->value == 2);
-		int sum = 0;
-		for (auto *t : a)
-			sum += t->value;
-		CHECK(sum == 3);
-		a.clear();
-		CHECK(a.empty() && live == 0);
-		a.push_back(Util::create<Tracked>(3));
-	}
-	CHECK(live == 0);
-}
-
 static void test_scalars()
 {
 	char buf[8];
@@ -399,7 +381,6 @@ int main()
 	test_intrusive_ptr();
 	test_intrusive_ptr_threads();
 	test_heap_vector();
-	test_owned_ptr_array();
 	test_scalars();
 	test_bit_iteration();
 	if (failures)

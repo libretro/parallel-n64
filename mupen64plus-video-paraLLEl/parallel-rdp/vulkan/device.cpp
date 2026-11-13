@@ -332,6 +332,18 @@ void Device::set_context(const Context &context)
 
 	init_timeline_semaphores();
 
+	// What the frame contexts share (frame_context.h).
+	frame_env.device = device;
+	frame_env.table = table;
+	frame_env.timeline = ext.timeline_semaphore_features.timelineSemaphore != VK_FALSE;
+	frame_env.memory = &managers.memory;
+	frame_env.fences = &managers.fence;
+	frame_env.semaphores = &managers.semaphore;
+	frame_env.vbo = &managers.vbo;
+	frame_env.ubo = &managers.ubo;
+	frame_env.releases = &releases.q;
+	frame_env.memory_releases = &releases.memory;
+
 	init_frame_contexts(2); // By default, regular double buffer between CPU and GPU.
 
 	managers.memory.init(this);
@@ -437,10 +449,9 @@ void Device::submit_discard_nolock(CommandBufferHandle &cmd)
 void Device::submit_nolock(CommandBufferHandle cmd, Fence *fence, unsigned semaphore_count, Semaphore *semaphores)
 {
 	auto physical_type = QueueIndices(cmd->get_command_buffer_type());
-	auto &submissions = frame().submissions[physical_type];
-
 	cmd->end();
-	submissions.push_back(Util::move(cmd));
+	granite_frame_context_submit(&frame(), physical_type, cmd.get());
+	cmd.reset();
 
 	InternalFence signalled_fence;
 
@@ -573,9 +584,9 @@ void Device::submit_queue(QueueIndices physical_type, InternalFence *fence,
 		flush_frame(QUEUE_INDEX_TRANSFER);
 
 	auto &data = queue_data[physical_type];
-	auto &submissions = frame().submissions[physical_type];
+	auto &f = frame();
 
-	if (submissions.empty() && !fence && !semaphore_count && !force)
+	if (!f.num_submissions[physical_type] && !fence && !semaphore_count && !force)
 		return;
 
 	VkSemaphore timeline_semaphore = data.timeline_semaphore;
@@ -587,8 +598,8 @@ void Device::submit_queue(QueueIndices physical_type, InternalFence *fence,
 	granite_submit_composer_begin(&composer, workarounds.split_binary_timeline_semaphores);
 	granite_queue_waits_collect(&data.waits, &composer, &frame().garbage);
 
-	for (auto &cmd : submissions)
-		granite_submit_composer_add_command_buffer(&composer, cmd->get_command_buffer());
+	for (unsigned i = 0; i < f.num_submissions[physical_type]; i++)
+		granite_submit_composer_add_command_buffer(&composer, f.submissions[physical_type][i]->cmd);
 
 	VkFence cleared_fence = fence && !ext.timeline_semaphore_features.timelineSemaphore ?
 	                        granite_fence_pool_request(&managers.fence) :
@@ -604,7 +615,7 @@ void Device::submit_queue(QueueIndices physical_type, InternalFence *fence,
 
 	if (result != VK_SUCCESS)
 		LOGE("vkQueueSubmit failed (code: %d).\n", int(result));
-	submissions.clear();
+	granite_frame_context_submitted(&f, physical_type);
 
 	if (!ext.timeline_semaphore_features.timelineSemaphore)
 		data.need_fence = true;
@@ -625,7 +636,7 @@ void Device::end_frame_nolock()
 
 	for (auto &i : queue_flush_order)
 	{
-		if (queue_data[i].need_fence || !frame().submissions[i].empty())
+		if (queue_data[i].need_fence || frame().num_submissions[i])
 		{
 			submit_queue(i, &fence);
 			if (fence.fence != VK_NULL_HANDLE)
@@ -664,7 +675,7 @@ CommandBufferHandle Device::request_command_buffer_for_thread(unsigned thread_in
 CommandBufferHandle Device::request_command_buffer_nolock(unsigned thread_index, CommandBuffer::Type type)
 {
 	auto physical_type = QueueIndices(type);
-	auto cmd = granite_command_pool_request(&frame().cmd_pools[physical_type][thread_index]);
+	auto cmd = granite_frame_context_request(&frame(), physical_type, thread_index);
 	// Out of memory: nothing to record into.
 	if (cmd == VK_NULL_HANDLE)
 		return {};
@@ -737,8 +748,8 @@ void Device::deinit_timeline_semaphores()
 	}
 
 	// Make sure we don't accidentally try to wait for these after we destroy the semaphores.
-	for (auto &frame : per_frame)
-		granite_frame_sync_forget_timelines(&frame->sync);
+	for (unsigned i = 0; i < num_frames; i++)
+		granite_frame_sync_forget_timelines(&per_frame[i].sync);
 }
 
 void Device::init_frame_contexts(unsigned count)
@@ -748,45 +759,33 @@ void Device::init_frame_contexts(unsigned count)
 
 	// Clear out caches which might contain stale data from now on.
 	granite_framebuffer_allocator_clear(&framebuffer_allocator);
-	per_frame.clear();
+	free_frame_contexts();
 
 	if (count > MAX_DEFERRED_FRAMES)
 		count = MAX_DEFERRED_FRAMES;
+	VkSemaphore timelines[QUEUE_INDEX_COUNT];
+	for (int i = 0; i < QUEUE_INDEX_COUNT; i++)
+		timelines[i] = queue_data[i].timeline_semaphore;
 	for (unsigned i = 0; i < count; i++)
 	{
-		per_frame.push_back(Util::create<PerFrame>(this, i));
+		if (!granite_frame_context_init(&per_frame[i], &frame_env, i, queue_info.family_indices,
+		                                timelines, num_thread_indices))
+			break;
+		num_frames++;
 	}
-	if (frame_context_index >= per_frame.size())
+	// Nothing can be recorded without one.
+	if (!num_frames)
+		abort();
+	if (frame_context_index >= num_frames)
 		frame_context_index = 0;
 	granite_release_queue_set_frame(&releases.q, frame_context_index);
 }
 
-Device::PerFrame::PerFrame(Device *device_, unsigned frame_index_)
-    : device(*device_)
-    , frame_index(frame_index_)
-    , table(device_->get_device_table())
-    , managers(device_->managers)
+void Device::free_frame_contexts()
 {
-	unsigned count = device_->num_thread_indices;
-	VkSemaphore timelines[QUEUE_INDEX_COUNT];
-	for (int i = 0; i < QUEUE_INDEX_COUNT; i++)
-		timelines[i] = device.queue_data[i].timeline_semaphore;
-	granite_frame_sync_init(&sync, timelines);
-	for (int i = 0; i < QUEUE_INDEX_COUNT; i++)
-	{
-		cmd_pools[i].resize(count);
-		for (unsigned j = 0; j < count; j++)
-			granite_command_pool_init(&cmd_pools[i][j], device_->get_device(), &table,
-			                          device_->queue_info.family_indices[i]);
-	}
-}
-
-// Moves everything released to this frame into its lists, which begin()
-// then processes. Called after the frame's GPU work has been waited for.
-void Device::drain_deferred_releases(PerFrame &f)
-{
-	granite_release_queue_drain(&releases.q, f.frame_index, &f.garbage);
-	granite_memory_release_queue_drain(&releases.memory, f.frame_index, &f.memory);
+	for (unsigned i = 0; i < num_frames; i++)
+		granite_frame_context_free(&per_frame[i]);
+	num_frames = 0;
 }
 
 void Device::free_memory_nolock(const DeviceAllocation &alloc)
@@ -867,7 +866,7 @@ void Device::wait_idle()
 
 void Device::wait_idle_nolock()
 {
-	if (!per_frame.empty())
+	if (num_frames)
 		end_frame_nolock();
 
 	if (device != VK_NULL_HANDLE)
@@ -886,10 +885,10 @@ void Device::wait_idle_nolock()
 	// Free memory for buffer pools.
 	granite_buffer_pool_reset(&managers.vbo);
 	granite_buffer_pool_reset(&managers.ubo);
-	for (auto &frame : per_frame)
+	for (unsigned i = 0; i < num_frames; i++)
 	{
-		granite_buffer_block_list_release(&frame->vbo_blocks, &managers.vbo);
-		granite_buffer_block_list_release(&frame->ubo_blocks, &managers.ubo);
+		granite_buffer_block_list_release(&per_frame[i].vbo_blocks, &managers.vbo);
+		granite_buffer_block_list_release(&per_frame[i].ubo_blocks, &managers.ubo);
 	}
 
 	granite_framebuffer_allocator_clear(&framebuffer_allocator);
@@ -897,12 +896,12 @@ void Device::wait_idle_nolock()
 	if (program_cache_live)
 		granite_program_cache_clear_sets(&program_cache);
 
-	for (auto &frame : per_frame)
+	for (unsigned i = 0; i < num_frames; i++)
 	{
 		// We have done WaitIdle, no need to wait for extra fences, it's also not safe.
-		granite_frame_sync_forget_fences(&frame->sync);
-		frame->begin();
-		frame->trim_command_pools();
+		granite_frame_sync_forget_fences(&per_frame[i].sync);
+		granite_frame_context_begin(&per_frame[i]);
+		granite_frame_context_trim(&per_frame[i]);
 	}
 
 	{
@@ -921,12 +920,12 @@ void Device::next_frame_context()
 
 	granite_program_cache_begin_frame(&program_cache);
 
-	VK_ASSERT(!per_frame.empty());
+	VK_ASSERT(num_frames);
 	frame_context_index++;
-	if (frame_context_index >= per_frame.size())
+	if (frame_context_index >= num_frames)
 		frame_context_index = 0;
 
-	frame().begin();
+	granite_frame_context_begin(&frame());
 	granite_release_queue_set_frame(&releases.q, frame_context_index);
 }
 
@@ -939,48 +938,6 @@ void Device::decrement_frame_counter_nolock()
 {
 	VK_ASSERT(lock.counter > 0);
 	lock.counter--;
-}
-
-void Device::PerFrame::trim_command_pools()
-{
-	for (auto &cmd_pool : cmd_pools)
-		for (auto &pool : cmd_pool)
-			granite_command_pool_trim(&pool);
-}
-
-void Device::PerFrame::begin()
-{
-	VkDevice vkdevice = device.get_device();
-
-	granite_frame_sync_wait(&sync, vkdevice, &table,
-	                        device.get_device_features().timeline_semaphore_features.timelineSemaphore != VK_FALSE);
-
-	// This frame's GPU work is done: take what other threads released to it.
-	device.drain_deferred_releases(*this);
-
-	for (auto &cmd_pool : cmd_pools)
-		for (auto &pool : cmd_pool)
-			granite_command_pool_begin(&pool);
-
-	granite_buffer_block_list_recycle(&vbo_blocks, &managers.vbo);
-	granite_buffer_block_list_recycle(&ubo_blocks, &managers.ubo);
-
-	granite_frame_garbage_collect(&garbage, vkdevice, &table, &managers.semaphore, &managers.fence);
-
-	granite_memory_garbage_collect(&memory, &managers.memory);
-}
-
-Device::PerFrame::~PerFrame()
-{
-	begin();
-	// (begin() gave the blocks back to their pools)
-	granite_buffer_block_list_free(&vbo_blocks);
-	granite_buffer_block_list_free(&ubo_blocks);
-	for (auto &cmd_pool : cmd_pools)
-		for (auto &pool : cmd_pool)
-			granite_command_pool_free(&pool);
-	granite_frame_garbage_free(&garbage);
-	granite_memory_garbage_free(&memory);
 }
 
 uint32_t Device::find_memory_type(granite_buffer_domain_t domain, uint32_t mask) const
@@ -1429,7 +1386,7 @@ const Framebuffer &Device::request_framebuffer(const RenderPassInfo &info)
 
 unsigned Device::get_num_frame_contexts() const
 {
-	return unsigned(per_frame.size());
+	return num_frames;
 }
 
 void Device::set_queue_lock(QueueLockCallback lock_callback, QueueLockCallback unlock_callback, void *userdata)
