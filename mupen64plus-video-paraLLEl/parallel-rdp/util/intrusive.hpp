@@ -23,6 +23,7 @@
 #pragma once
 
 #include <stddef.h>
+#include <retro_atomic.h>
 #include "util_lite.hpp"
 
 namespace Util
@@ -54,26 +55,28 @@ class MultiThreadCounter
 public:
 	MultiThreadCounter()
 	{
-		count.init(1);
+		retro_atomic_int_init(&count, 1);
 	}
 
 	inline void add_ref()
 	{
-		count.add();
+		retro_atomic_fetch_add_int(&count, 1);
 	}
 
+	/* True for the last one */
 	inline bool release()
 	{
-		return count.sub_is_last();
+		return retro_atomic_fetch_sub_int(&count, 1) == 1;
 	}
 
+	/* acquire: what the last other owner did happens before */
 	inline bool is_one() const
 	{
-		return count.is_one();
+		return retro_atomic_load_acquire_int(const_cast<retro_atomic_int_t *>(&count)) == 1;
 	}
 
 private:
-	AtomicCount count;
+	retro_atomic_int_t count;
 };
 
 template <typename T>

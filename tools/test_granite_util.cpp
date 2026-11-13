@@ -235,6 +235,47 @@ static void test_intrusive_ptr()
 		CHECK(!b && a.get() == c.get() && live == 1);
 		a.reset();
 		CHECK(live == 1);
+		CHECK(c->only_reference());
+	}
+	CHECK(live == 0);
+}
+
+/* Four threads take and drop references on one object: with a count
+   that is not atomic the total comes out wrong, and the object dies
+   early or never. */
+static void shared_refs_thread(void *data)
+{
+	Shared *shared = static_cast<Shared *>(data);
+	int i;
+	for (i = 0; i < 200000; i++)
+	{
+		shared->add_reference();
+		shared->add_reference();
+		shared->release_reference();
+		shared->release_reference();
+	}
+}
+
+static void test_intrusive_ptr_threads()
+{
+	{
+		sthread_t *threads[4];
+		Util::IntrusivePtr<Shared> a = Util::make_handle<Shared>();
+		int i;
+		for (i = 0; i < 4; i++)
+		{
+			threads[i] = sthread_create(shared_refs_thread, a.get());
+			CHECK(threads[i] != nullptr);
+		}
+		for (i = 0; i < 4; i++)
+			sthread_join(threads[i]);
+		CHECK(live == 1);
+		CHECK(a->only_reference());
+		{
+			Util::IntrusivePtr<Shared> b = a;
+			CHECK(!a->only_reference());
+		}
+		CHECK(a->only_reference() && live == 1);
 	}
 	CHECK(live == 0);
 }
@@ -356,6 +397,7 @@ int main()
 	test_small_vector();
 	test_intrusive_hash_map();
 	test_intrusive_ptr();
+	test_intrusive_ptr_threads();
 	test_heap_vector();
 	test_owned_ptr_array();
 	test_scalars();
