@@ -87,6 +87,9 @@ Device::Device()
 	}, this);
 	granite_submit_composer_init(&composer);
 	fence_wait_ec_live = retro_eventcount_init(&fence_wait_ec);
+	handle_owner.user = this;
+	handle_owner.destroy = handle_destroy;
+	handle_owner.free_memory = handle_free_memory;
 	for (auto &stack : deferred_releases)
 		mpsc_stack_init(&stack);
 	pipeline_records = static_cast<pipeline_record_t *>(
@@ -125,26 +128,24 @@ void Device::add_wait_semaphore_nolock(QueueIndices physical_type, Semaphore sem
 
 void *Device::map_host_buffer(const Buffer &buffer, MemoryAccessFlags access)
 {
-	void *host = managers.memory.map_memory(buffer.get_allocation(), access, 0, buffer.get_create_info().size);
-	return host;
+	return granite_device_allocator_map(&managers.memory, &buffer.alloc, access, 0, buffer.info.size);
 }
 
 void Device::unmap_host_buffer(const Buffer &buffer, MemoryAccessFlags access)
 {
-	managers.memory.unmap_memory(buffer.get_allocation(), access, 0, buffer.get_create_info().size);
+	granite_device_allocator_unmap(&managers.memory, &buffer.alloc, access, 0, buffer.info.size);
 }
 
 void *Device::map_host_buffer(const Buffer &buffer, MemoryAccessFlags access, VkDeviceSize offset, VkDeviceSize length)
 {
 	VK_ASSERT(offset + length <= buffer.get_create_info().size);
-	void *host = managers.memory.map_memory(buffer.get_allocation(), access, offset, length);
-	return host;
+	return granite_device_allocator_map(&managers.memory, &buffer.alloc, access, offset, length);
 }
 
 void Device::unmap_host_buffer(const Buffer &buffer, MemoryAccessFlags access, VkDeviceSize offset, VkDeviceSize length)
 {
 	VK_ASSERT(offset + length <= buffer.get_create_info().size);
-	managers.memory.unmap_memory(buffer.get_allocation(), access, offset, length);
+	granite_device_allocator_unmap(&managers.memory, &buffer.alloc, access, offset, length);
 }
 
 Shader *Device::request_shader(const uint32_t *data, size_t size, const ResourceLayout *layout)
@@ -1448,16 +1449,6 @@ void Device::reset_fence(VkFence fence, bool observed_wait)
 	release_handle(GRANITE_GARBAGE_RECYCLE_FENCE, GRANITE_VK_TO_BITS(fence));
 }
 
-void Device::destroy_buffer(VkBuffer buffer)
-{
-	release_handle(GRANITE_GARBAGE_BUFFER, GRANITE_VK_TO_BITS(buffer));
-}
-
-void Device::destroy_buffer_view(VkBufferView view)
-{
-	release_handle(GRANITE_GARBAGE_BUFFER_VIEW, GRANITE_VK_TO_BITS(view));
-}
-
 void Device::destroy_image(VkImage image)
 {
 	release_handle(GRANITE_GARBAGE_IMAGE, GRANITE_VK_TO_BITS(image));
@@ -1496,12 +1487,6 @@ void Device::destroy_image_view_nolock(VkImageView view)
 	granite_frame_garbage_push(&frame().garbage, GRANITE_GARBAGE_IMAGE_VIEW, GRANITE_VK_TO_BITS(view));
 }
 
-void Device::destroy_buffer_view_nolock(VkBufferView view)
-{
-	VK_ASSERT(!granite_frame_garbage_has(&frame().garbage, GRANITE_GARBAGE_BUFFER_VIEW, GRANITE_VK_TO_BITS(view)));
-	granite_frame_garbage_push(&frame().garbage, GRANITE_GARBAGE_BUFFER_VIEW, GRANITE_VK_TO_BITS(view));
-}
-
 void Device::destroy_semaphore_nolock(VkSemaphore semaphore)
 {
 	VK_ASSERT(!granite_frame_garbage_has(&frame().garbage, GRANITE_GARBAGE_SEMAPHORE, GRANITE_VK_TO_BITS(semaphore)));
@@ -1529,12 +1514,6 @@ void Device::destroy_image_nolock(VkImage image)
 {
 	VK_ASSERT(!granite_frame_garbage_has(&frame().garbage, GRANITE_GARBAGE_IMAGE, GRANITE_VK_TO_BITS(image)));
 	granite_frame_garbage_push(&frame().garbage, GRANITE_GARBAGE_IMAGE, GRANITE_VK_TO_BITS(image));
-}
-
-void Device::destroy_buffer_nolock(VkBuffer buffer)
-{
-	VK_ASSERT(!granite_frame_garbage_has(&frame().garbage, GRANITE_GARBAGE_BUFFER, GRANITE_VK_TO_BITS(buffer)));
-	granite_frame_garbage_push(&frame().garbage, GRANITE_GARBAGE_BUFFER, GRANITE_VK_TO_BITS(buffer));
 }
 
 void Device::destroy_sampler_nolock(VkSampler sampler)
@@ -1751,7 +1730,7 @@ Device::PerFrame::~PerFrame()
 	granite_frame_garbage_free(&garbage);
 }
 
-uint32_t Device::find_memory_type(BufferDomain domain, uint32_t mask) const
+uint32_t Device::find_memory_type(granite_buffer_domain_t domain, uint32_t mask) const
 {
 	return granite_find_buffer_memory_type(&mem_props, granite_buffer_domain_t(domain), mask,
 	                                       workarounds.force_host_cached);
@@ -1770,7 +1749,15 @@ BufferViewHandle Device::create_buffer_view(const BufferViewCreateInfo &view_inf
 	if (res != VK_SUCCESS)
 		return BufferViewHandle(nullptr);
 
-	return BufferViewHandle(handle_pool.buffer_views.allocate(this, view, view_info));
+	granite_buffer_view_info_t object_info;
+	object_info.buffer = view_info.buffer;
+	object_info.format = view_info.format;
+	object_info.offset = view_info.offset;
+	object_info.range = view_info.range;
+	auto *object = granite_buffer_view_new(&handle_pool.buffers, &handle_owner, view, &object_info);
+	if (!object)
+		table->vkDestroyBufferView(device, view, nullptr);
+	return BufferViewHandle(static_cast<BufferView *>(object));
 }
 
 ImageViewHandle Device::create_image_view(const ImageViewCreateInfo &create_info)
@@ -2248,8 +2235,49 @@ BufferHandle Device::create_imported_host_buffer(const BufferCreateInfo &create_
 		return BufferHandle{};
 	}
 
-	BufferHandle handle(handle_pool.buffers.allocate(this, buffer, allocation, create_info));
-	return handle;
+	return wrap_buffer(buffer, allocation, create_info);
+}
+
+// The counted object for a buffer and its memory; without room for one,
+// neither is kept.
+BufferHandle Device::wrap_buffer(VkBuffer buffer, const DeviceAllocation &allocation, const granite_buffer_info_t &info)
+{
+	auto *object = granite_buffer_new(&handle_pool.buffers, &handle_owner, buffer, &allocation, &info);
+	if (!object)
+	{
+		table->vkDestroyBuffer(device, buffer, nullptr);
+		granite_allocation_t alloc = allocation;
+		LOCK_MEMORY();
+		granite_allocation_free(&alloc, &managers.memory);
+	}
+	return BufferHandle(static_cast<Buffer *>(object));
+}
+
+// What the device's objects hand back when their last reference goes
+// (handle.h): to this frame's garbage on the owner thread, through the
+// release queue from any other.
+void Device::handle_destroy(void *user, unsigned kind, uint64_t handle, bool owner_thread)
+{
+	auto *self = static_cast<Device *>(user);
+	auto garbage_kind = granite_garbage_kind(kind);
+	if (owner_thread)
+	{
+		VK_ASSERT(!granite_frame_garbage_has(&self->frame().garbage, garbage_kind, handle));
+		granite_frame_garbage_push(&self->frame().garbage, garbage_kind, handle);
+	}
+	else
+		self->release_handle(garbage_kind, handle);
+}
+
+void Device::handle_free_memory(void *user, const granite_allocation_t *alloc, bool owner_thread)
+{
+	auto *self = static_cast<Device *>(user);
+	DeviceAllocation allocation;
+	static_cast<granite_allocation_t &>(allocation) = *alloc;
+	if (owner_thread)
+		self->free_memory_nolock(allocation);
+	else
+		self->free_memory(allocation);
 }
 
 BufferHandle Device::create_buffer(const BufferCreateInfo &create_info, const void *initial)
@@ -2273,13 +2301,15 @@ BufferHandle Device::create_buffer(const BufferCreateInfo &create_info, const vo
 	env.queue_families = queue_info.family_indices;
 	env.num_queue_families = QUEUE_INDEX_COUNT;
 	env.force_host_cached = workarounds.force_host_cached;
-	if (!granite_buffer_create(&env, granite_buffer_domain_t(create_info.domain), create_info.size, create_info.usage,
+	if (!granite_buffer_create(&env, create_info.domain, create_info.size, create_info.usage,
 	                           &buffer, &allocation, &memory_type))
 		return BufferHandle(nullptr);
 
 	auto tmpinfo = create_info;
 	tmpinfo.usage |= VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-	BufferHandle handle(handle_pool.buffers.allocate(this, buffer, allocation, tmpinfo));
+	BufferHandle handle = wrap_buffer(buffer, allocation, tmpinfo);
+	if (!handle)
+		return handle;
 
 	if (create_info.domain == BufferDomain::Device && (initial || zero_initialize) && !memory_type_is_host_visible(memory_type))
 	{

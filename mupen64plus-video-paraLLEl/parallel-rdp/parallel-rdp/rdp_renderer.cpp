@@ -546,7 +546,7 @@ void Renderer::message(const char *tag, uint32_t code, uint32_t x, uint32_t y, u
 	}
 }
 
-void Renderer::RenderBuffers::init(Vulkan::Device &device, Vulkan::BufferDomain domain,
+void Renderer::RenderBuffers::init(Vulkan::Device &device, granite_buffer_domain_t domain,
                                    RenderBuffers *borrow)
 {
 	triangle_setup = create_buffer(device, domain,
@@ -610,7 +610,7 @@ void Renderer::RenderBuffers::init(Vulkan::Device &device, Vulkan::BufferDomain 
 }
 
 Renderer::MappedBuffer Renderer::RenderBuffers::create_buffer(
-		Vulkan::Device &device, Vulkan::BufferDomain domain, VkDeviceSize size,
+		Vulkan::Device &device, granite_buffer_domain_t domain, VkDeviceSize size,
 		Renderer::MappedBuffer *borrow)
 {
 	Vulkan::BufferCreateInfo info = {};
@@ -726,7 +726,7 @@ void Renderer::set_rdram(Vulkan::Buffer *buffer, uint8_t *host_rdram, size_t off
 		incoherent.staging_rdram = device->create_buffer(info);
 		device->set_name(*incoherent.staging_rdram, "staging-rdram");
 
-		if (!rdram->get_allocation().is_host_allocation())
+		if (!rdram->get_allocation().host_base)
 		{
 			// If we cannot map RDRAM, we need a staging readback buffer.
 			Vulkan::BufferCreateInfo readback_info = {};
@@ -742,8 +742,8 @@ void Renderer::set_rdram(Vulkan::Buffer *buffer, uint8_t *host_rdram, size_t off
 			const VkMemoryPropertyFlags cached_coherent =
 					VK_MEMORY_PROPERTY_HOST_CACHED_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
 			const auto &allocation = rdram->get_allocation();
-			incoherent.compare_before_upload = allocation.is_host_allocation() &&
-					(device->get_memory_properties().memoryTypes[allocation.get_memory_type()].propertyFlags &
+			incoherent.compare_before_upload = allocation.host_base &&
+					(device->get_memory_properties().memoryTypes[allocation.memory_type].propertyFlags &
 					 cached_coherent) == cached_coherent;
 			// (every page uploaded whole, to compare against)
 			if (const char *env = getenv("PARALLEL_RDP_FULL_RDRAM_UPLOAD"))
@@ -2806,7 +2806,7 @@ void Renderer::resolve_coherency_host_to_gpu(Vulkan::CommandBuffer &cmd)
 
 	// If we're able to map RDRAM directly, we can just memcpy straight into RDRAM if we have an unmasked copy.
 	// Important for iGPU.
-	if (rdram->get_allocation().is_host_allocation())
+	if (rdram->get_allocation().host_base)
 	{
 		unsigned word;
 		for (word = 0; word < incoherent.packed_pages; word++)

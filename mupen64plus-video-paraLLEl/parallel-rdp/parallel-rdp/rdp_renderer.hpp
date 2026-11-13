@@ -286,8 +286,8 @@ private:
 
 	struct RenderBuffers
 	{
-		void init(Vulkan::Device &device, Vulkan::BufferDomain domain, RenderBuffers *borrow);
-		static MappedBuffer create_buffer(Vulkan::Device &device, Vulkan::BufferDomain domain, VkDeviceSize size, MappedBuffer *borrow);
+		void init(Vulkan::Device &device, granite_buffer_domain_t domain, RenderBuffers *borrow);
+		static MappedBuffer create_buffer(Vulkan::Device &device, granite_buffer_domain_t domain, VkDeviceSize size, MappedBuffer *borrow);
 
 		MappedBuffer triangle_setup;
 		MappedBuffer attribute_setup;

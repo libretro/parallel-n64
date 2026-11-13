@@ -77,10 +77,20 @@ struct DeferredRelease : mpsc_stack_node_t
 };
 struct HandlePool
 {
-	VulkanObjectPool<Buffer> buffers;
+	HandlePool()
+	{
+		granite_buffer_pools_init(&buffers);
+	}
+
+	~HandlePool()
+	{
+		granite_buffer_pools_free(&buffers);
+	}
+
+	// buffers and their views (buffer.h)
+	granite_buffer_pools_t buffers;
 	VulkanObjectPool<Image> images;
 	VulkanObjectPool<ImageView> image_views;
-	VulkanObjectPool<BufferView> buffer_views;
 	VulkanObjectPool<Sampler> samplers;
 	VulkanObjectPool<FenceHolder> fences;
 	VulkanObjectPool<SemaphoreHolder> semaphores;
@@ -349,6 +359,10 @@ private:
 
 	// Make sure this is deleted last.
 	HandlePool handle_pool;
+	granite_handle_owner_t handle_owner;
+	static void handle_destroy(void *user, unsigned kind, uint64_t handle, bool owner_thread);
+	static void handle_free_memory(void *user, const granite_allocation_t *alloc, bool owner_thread);
+	BufferHandle wrap_buffer(VkBuffer buffer, const DeviceAllocation &allocation, const granite_buffer_info_t &info);
 
 	// Released from any thread without a lock: Vulkan objects through
 	// release_queue.c, memory and timeline intervals on these stacks. Each
@@ -484,7 +498,7 @@ private:
 
 	unsigned frame_context_index = 0;
 
-	uint32_t find_memory_type(BufferDomain domain, uint32_t mask) const;
+	uint32_t find_memory_type(granite_buffer_domain_t domain, uint32_t mask) const;
 	bool memory_type_is_host_visible(uint32_t type) const;
 
 	const ImmutableSampler *samplers[static_cast<unsigned>(StockSampler::Count)] = {};
@@ -527,10 +541,8 @@ private:
 	                        unsigned semaphore_count, Semaphore *semaphores);
 	VkResult submit_batches(VkQueue queue, VkFence fence);
 
-	void destroy_buffer(VkBuffer buffer);
 	void destroy_image(VkImage image);
 	void destroy_image_view(VkImageView view);
-	void destroy_buffer_view(VkBufferView view);
 	void destroy_pipeline(VkPipeline pipeline);
 	void destroy_sampler(VkSampler sampler);
 	void destroy_semaphore(VkSemaphore semaphore);
@@ -538,10 +550,8 @@ private:
 	void free_memory(const DeviceAllocation &alloc);
 	void reset_fence(VkFence fence, bool observed_wait);
 
-	void destroy_buffer_nolock(VkBuffer buffer);
 	void destroy_image_nolock(VkImage image);
 	void destroy_image_view_nolock(VkImageView view);
-	void destroy_buffer_view_nolock(VkBufferView view);
 	void destroy_sampler_nolock(VkSampler sampler);
 	void destroy_framebuffer_nolock(VkFramebuffer framebuffer);
 	void destroy_semaphore_nolock(VkSemaphore semaphore);

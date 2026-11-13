@@ -179,15 +179,10 @@ public:
 
 	void reset()
 	{
-		using ReferenceBase = IntrusivePtrEnabled<
-				typename T::EnabledBase,
-				typename T::EnabledDeleter,
-				typename T::EnabledReferenceOp>;
-
-		// Static up-cast here to avoid potential issues with multiple intrusive inheritance.
-		// Also makes sure that the pointer type actually inherits from this type.
+		// The object counts its own references: an IntrusivePtrEnabled, or
+		// a C object behind add_reference() and release_reference().
 		if (data)
-			static_cast<ReferenceBase *>(data)->release_reference();
+			data->release_reference();
 		data = nullptr;
 	}
 
@@ -197,34 +192,22 @@ public:
 		static_assert(UTIL_IS_BASE_OF(T, U),
 		              "Cannot safely assign downcasted intrusive pointers.");
 
-		using ReferenceBase = IntrusivePtrEnabled<
-				typename T::EnabledBase,
-				typename T::EnabledDeleter,
-				typename T::EnabledReferenceOp>;
-
 		reset();
 		data = static_cast<T *>(other.data);
 
-		// Static up-cast here to avoid potential issues with multiple intrusive inheritance.
-		// Also makes sure that the pointer type actually inherits from this type.
 		if (data)
-			static_cast<ReferenceBase *>(data)->add_reference();
+			data->add_reference();
 		return *this;
 	}
 
 	IntrusivePtr &operator=(const IntrusivePtr &other)
 	{
-		using ReferenceBase = IntrusivePtrEnabled<
-				typename T::EnabledBase,
-				typename T::EnabledDeleter,
-				typename T::EnabledReferenceOp>;
-
 		if (this != &other)
 		{
 			reset();
 			data = other.data;
 			if (data)
-				static_cast<ReferenceBase *>(data)->add_reference();
+				data->add_reference();
 		}
 		return *this;
 	}

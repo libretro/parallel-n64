@@ -22,16 +22,16 @@
 
 #pragma once
 
-#include "cookie.hpp"
 #include "vulkan_common.hpp"
 #include "memory_allocator.hpp"
-#include "buffer_create.h"
+#include "buffer.h"
 
 namespace Vulkan
 {
 class Device;
 
-// Creating a buffer is C (buffer_create.h).
+// Buffers are C (buffer.h, buffer_create.h). These give them the names
+// and accessors the rest of Granite uses.
 static inline VkPipelineStageFlags buffer_usage_to_possible_stages(VkBufferUsageFlags usage)
 {
 	return granite_buffer_usage_stages(usage);
@@ -42,80 +42,77 @@ static inline VkAccessFlags buffer_usage_to_possible_access(VkBufferUsageFlags u
 	return granite_buffer_usage_access(usage);
 }
 
-enum class BufferDomain
+// granite_buffer_domain_t
+namespace BufferDomain
 {
-	Device = GRANITE_BUFFER_DOMAIN_DEVICE, // Device local. Probably not visible from CPU.
-	LinkedDeviceHost = GRANITE_BUFFER_DOMAIN_LINKED_DEVICE_HOST, // On desktop, directly mapped VRAM over PCI.
-	LinkedDeviceHostPreferDevice = GRANITE_BUFFER_DOMAIN_LINKED_DEVICE_HOST_PREFER_DEVICE, // Prefer device local of host visible.
-	Host = GRANITE_BUFFER_DOMAIN_HOST, // Host-only, needs to be synced to GPU. Might be device local as well on iGPUs.
-	CachedHost = GRANITE_BUFFER_DOMAIN_CACHED_HOST,
-	CachedCoherentHostPreferCoherent = GRANITE_BUFFER_DOMAIN_CACHED_COHERENT_HOST_PREFER_COHERENT, // Aim for both cached and coherent, but prefer COHERENT
-	CachedCoherentHostPreferCached = GRANITE_BUFFER_DOMAIN_CACHED_COHERENT_HOST_PREFER_CACHED, // Aim for both cached and coherent, but prefer CACHED
-};
+static const granite_buffer_domain_t Device = GRANITE_BUFFER_DOMAIN_DEVICE;
+static const granite_buffer_domain_t LinkedDeviceHost = GRANITE_BUFFER_DOMAIN_LINKED_DEVICE_HOST;
+static const granite_buffer_domain_t LinkedDeviceHostPreferDevice = GRANITE_BUFFER_DOMAIN_LINKED_DEVICE_HOST_PREFER_DEVICE;
+static const granite_buffer_domain_t Host = GRANITE_BUFFER_DOMAIN_HOST;
+static const granite_buffer_domain_t CachedHost = GRANITE_BUFFER_DOMAIN_CACHED_HOST;
+static const granite_buffer_domain_t CachedCoherentHostPreferCoherent = GRANITE_BUFFER_DOMAIN_CACHED_COHERENT_HOST_PREFER_COHERENT;
+static const granite_buffer_domain_t CachedCoherentHostPreferCached = GRANITE_BUFFER_DOMAIN_CACHED_COHERENT_HOST_PREFER_CACHED;
+}
 
 enum BufferMiscFlagBits
 {
-	BUFFER_MISC_ZERO_INITIALIZE_BIT = 1 << 0
+	BUFFER_MISC_ZERO_INITIALIZE_BIT = GRANITE_BUFFER_MISC_ZERO_INITIALIZE_BIT
 };
 
 using BufferMiscFlags = uint32_t;
 
-struct BufferCreateInfo
+// A device buffer of no size unless said otherwise.
+struct BufferCreateInfo : granite_buffer_info_t
 {
-	BufferDomain domain = BufferDomain::Device;
-	VkDeviceSize size = 0;
-	VkBufferUsageFlags usage = 0;
-	BufferMiscFlags misc = 0;
+	BufferCreateInfo()
+	{
+		domain = GRANITE_BUFFER_DOMAIN_DEVICE;
+		size = 0;
+		usage = 0;
+		misc = 0;
+	}
 };
 
-class Buffer;
-struct BufferDeleter
-{
-	void operator()(Buffer *buffer);
-};
-
-class BufferView;
-struct BufferViewDeleter
-{
-	void operator()(BufferView *view);
-};
-
-class Buffer : public Util::IntrusivePtrEnabled<Buffer, BufferDeleter, HandleCounter>,
-               public Cookie, public InternalSyncEnabled
+// No members of its own: a granite_buffer_t by another name.
+class Buffer : public granite_buffer_t
 {
 public:
-	friend struct BufferDeleter;
-	~Buffer();
+	Buffer() = delete;
+
+	void add_reference()
+	{
+		granite_buffer_ref(this);
+	}
+
+	void release_reference()
+	{
+		granite_buffer_unref(this);
+	}
+
+	uint64_t get_cookie() const
+	{
+		return cookie;
+	}
+
+	void set_internal_sync_object()
+	{
+		internal_sync = true;
+	}
 
 	VkBuffer get_buffer() const
 	{
 		return buffer;
 	}
 
-	const BufferCreateInfo &get_create_info() const
+	const granite_buffer_info_t &get_create_info() const
 	{
 		return info;
 	}
 
-	DeviceAllocation &get_allocation()
+	const granite_allocation_t &get_allocation() const
 	{
 		return alloc;
 	}
-
-	const DeviceAllocation &get_allocation() const
-	{
-		return alloc;
-	}
-
-
-private:
-	friend class Util::ObjectPool<Buffer>;
-	Buffer(Device *device, VkBuffer buffer, const DeviceAllocation &alloc, const BufferCreateInfo &info);
-
-	Device *device;
-	VkBuffer buffer;
-	DeviceAllocation alloc;
-	BufferCreateInfo info;
 };
 using BufferHandle = Util::IntrusivePtr<Buffer>;
 
@@ -127,35 +124,45 @@ struct BufferViewCreateInfo
 	VkDeviceSize range;
 };
 
-class BufferView : public Util::IntrusivePtrEnabled<BufferView, BufferViewDeleter, HandleCounter>,
-                   public Cookie, public InternalSyncEnabled
+class BufferView : public granite_buffer_view_t
 {
 public:
-	friend struct BufferViewDeleter;
-	~BufferView();
+	BufferView() = delete;
+
+	void add_reference()
+	{
+		granite_buffer_view_ref(this);
+	}
+
+	void release_reference()
+	{
+		granite_buffer_view_unref(this);
+	}
+
+	uint64_t get_cookie() const
+	{
+		return cookie;
+	}
+
+	void set_internal_sync_object()
+	{
+		internal_sync = true;
+	}
 
 	VkBufferView get_view() const
 	{
 		return view;
 	}
 
-	const BufferViewCreateInfo &get_create_info()
+	const granite_buffer_view_info_t &get_create_info() const
 	{
 		return info;
 	}
 
 	const Buffer &get_buffer() const
 	{
-		return *info.buffer;
+		return *static_cast<const Buffer *>(info.buffer);
 	}
-
-private:
-	friend class Util::ObjectPool<BufferView>;
-	BufferView(Device *device, VkBufferView view, const BufferViewCreateInfo &info);
-
-	Device *device;
-	VkBufferView view;
-	BufferViewCreateInfo info;
 };
 using BufferViewHandle = Util::IntrusivePtr<BufferView>;
 }
