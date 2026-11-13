@@ -41,6 +41,7 @@
 #include "pipeline_cache.h"
 #include "image_upload.h"
 #include "queue_submit.h"
+#include "frame_sync.h"
 #include "small_vector.hpp"
 #include <stdio.h>
 
@@ -379,22 +380,18 @@ private:
 
 		// One per thread index, of each queue.
 		Util::Vector<granite_command_pool_t> cmd_pools[QUEUE_INDEX_COUNT];
-		VkSemaphore timeline_semaphores[QUEUE_INDEX_COUNT] = {};
-		uint64_t timeline_fences[QUEUE_INDEX_COUNT] = {};
+		// what the frame waits for before it is used again (frame_sync.c)
+		granite_frame_sync_t sync = {};
 
 		// used this frame; back to their pools by begin()
 		granite_buffer_block_list_t vbo_blocks = {};
 		granite_buffer_block_list_t ubo_blocks = {};
-
-		Util::Vector<VkFence> wait_fences;
 
 		Util::Vector<DeviceAllocation> allocations;
 		Util::SmallVector<CommandBufferHandle> submissions[QUEUE_INDEX_COUNT];
 		// destroyed, or recycled, by begin() (frame_garbage.c)
 		granite_frame_garbage_t garbage = {};
 		Util::Vector<ImageHandle> keep_alive_images;
-
-		bool in_destructor = false;
 	};
 	// The per frame structure must be destroyed after
 	// the hashmap data structures below, so it must be declared before.
