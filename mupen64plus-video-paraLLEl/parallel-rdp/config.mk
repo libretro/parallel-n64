@@ -11,7 +11,6 @@ endif
 
 PARALLEL_RDP_SOURCES_CXX := \
         $(wildcard $(PARALLEL_RDP_IMPLEMENTATION)/parallel-rdp/*.cpp) \
-        $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/command_buffer.cpp \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/device.cpp
 
 PARALLEL_RDP_SOURCES_C := \
@@ -29,6 +28,7 @@ PARALLEL_RDP_SOURCES_C := \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/device_caps.c \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/program_cache.c \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/render_target.c \
+        $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/command_buffer.c \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/framebuffer.c \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/frame_garbage.c \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/pipeline_compile.c \

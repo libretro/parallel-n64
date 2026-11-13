@@ -185,19 +185,21 @@ void Device::record_pipeline(const DeferredPipelineCompile &compile, uint32_t ki
 	const bool graphics = kind == PIPELINE_RECORD_GRAPHICS;
 
 	/* A pass that cannot be made again is not one to build ahead for. */
-	if (graphics && !compile.compatible_render_pass->get_signature().recordable)
+	const auto *pass = static_cast<const RenderPass *>(compile.compatible_render_pass);
+	const auto *program = static_cast<const Program *>(compile.program);
+	if (graphics && !pass->get_signature().recordable)
 		return;
 
 	granite_pipeline_record_ids_t ids = {};
-	ids.program_hash = compile.program->get_hash();
-	const Shader *shader = compile.program->get_shader(graphics ? ShaderStage::Vertex : ShaderStage::Compute);
+	ids.program_hash = program->get_hash();
+	const Shader *shader = program->get_shader(graphics ? ShaderStage::Vertex : ShaderStage::Compute);
 	ids.shader_hashes[0] = shader ? shader->get_hash() : 0;
 	if (graphics)
 	{
-		shader = compile.program->get_shader(ShaderStage::Fragment);
+		shader = program->get_shader(ShaderStage::Fragment);
 		ids.shader_hashes[1] = shader ? shader->get_hash() : 0;
-		ids.render_pass_hash = compile.compatible_render_pass->get_hash();
-		ids.pass = &compile.compatible_render_pass->get_signature();
+		ids.render_pass_hash = pass->get_hash();
+		ids.pass = &pass->get_signature();
 	}
 
 	pipeline_record_t *record = granite_pipeline_record_table_claim(&pipeline_records);
@@ -256,10 +258,10 @@ bool Device::resolve_pipeline_record(const pipeline_record_t &record, DeferredPi
 	if (graphics)
 	{
 		uint32_t active_vbos;
-		CommandBuffer::update_hash_graphics_pipeline(compile, active_vbos);
+		granite_pipeline_compile_update_hash_graphics(&compile, &active_vbos);
 	}
 	else
-		CommandBuffer::update_hash_compute_pipeline(compile);
+		granite_pipeline_compile_update_hash_compute(&compile);
 	return compile.hash == record.pipeline_hash;
 }
 
@@ -296,6 +298,26 @@ void Device::set_context(const Context &context)
 	ext = context.get_enabled_device_features();
 
 	init_workarounds();
+
+	// What command buffers need of the device (command_buffer.h).
+	cmd_device.device = device;
+	cmd_device.table = table;
+	cmd_device.workarounds = &workarounds;
+	cmd_device.features = &ext;
+	cmd_device.programs = &program_cache;
+	cmd_device.framebuffers = &framebuffer_allocator;
+	cmd_device.stock_samplers = samplers;
+	cmd_device.user = this;
+	cmd_device.request_block = [](void *user, bool vertex, granite_buffer_block_t *block, VkDeviceSize size) {
+		auto *self = static_cast<Device *>(user);
+		if (vertex)
+			self->request_vertex_block_nolock(*block, size);
+		else
+			self->request_uniform_block_nolock(*block, size);
+	};
+	cmd_device.record_pipeline = [](void *user, const granite_pipeline_compile_t *compile, uint32_t kind) {
+		static_cast<Device *>(user)->record_pipeline(*compile, kind);
+	};
 
 	// (the allocator is made before the device has its handles)
 	framebuffer_allocator.device = device;
@@ -651,7 +673,14 @@ CommandBufferHandle Device::request_command_buffer_nolock(unsigned thread_index,
 	info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 	table->vkBeginCommandBuffer(cmd, &info);
 	add_frame_counter_nolock();
-	CommandBufferHandle handle(handle_pool.command_buffers.allocate(this, cmd, pipeline_cache, type));
+	auto *object = granite_cb_new(&handle_pool.command_buffers, &cmd_device, cmd, pipeline_cache, unsigned(type));
+	// Without one the VkCommandBuffer goes back with its pool's frame.
+	if (!object)
+	{
+		decrement_frame_counter_nolock();
+		return {};
+	}
+	CommandBufferHandle handle(static_cast<CommandBuffer *>(object));
 	handle->set_thread_index(thread_index);
 
 	return handle;

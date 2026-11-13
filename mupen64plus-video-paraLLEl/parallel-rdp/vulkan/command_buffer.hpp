@@ -33,6 +33,8 @@
 #include "pipeline_compile.h"
 #include "command_state.h"
 #include "command_ops.h"
+#include "command_buffer.h"
+#include <stdlib.h>
 #include <string.h>
 
 namespace Vulkan
@@ -69,23 +71,17 @@ using PotentialState = granite_potential_state_t;
 
 using VertexAttribState = granite_vertex_attrib_state_t;
 
-struct DeferredPipelineCompile : granite_pipeline_compile_t
-{
-	Program *program;
-	const RenderPass *compatible_render_pass;
-};
-
-class CommandBuffer;
-struct CommandBufferDeleter
-{
-	void operator()(CommandBuffer *cmd);
-};
+using DeferredPipelineCompile = granite_pipeline_compile_t;
 
 class Device;
-class CommandBuffer : public Util::IntrusivePtrEnabled<CommandBuffer, CommandBufferDeleter, HandleCounter>
+
+// The command buffer is C (command_buffer.h). No members of its own:
+// these are the names and defaults the rest of Granite uses.
+class CommandBuffer : public granite_command_buffer_t
 {
 public:
-	friend struct CommandBufferDeleter;
+	CommandBuffer() = delete;
+
 	enum class Type
 	{
 		Generic = QUEUE_INDEX_GRAPHICS,
@@ -93,16 +89,30 @@ public:
 		AsyncTransfer = QUEUE_INDEX_TRANSFER
 	};
 
-	~CommandBuffer();
+	enum class CompileMode
+	{
+		Sync = GRANITE_COMPILE_SYNC,
+		FailOnCompileRequired = GRANITE_COMPILE_FAIL_ON_COMPILE_REQUIRED,
+		AsyncThread = GRANITE_COMPILE_ASYNC_THREAD
+	};
+
+	void add_reference()
+	{
+		granite_cb_ref(this);
+	}
+
+	void release_reference()
+	{
+		granite_cb_unref(this);
+	}
+
 	VkCommandBuffer get_command_buffer() const
 	{
 		return cmd;
 	}
 
-	Device &get_device()
-	{
-		return *device;
-	}
+	// device.hpp
+	inline Device &get_device();
 
 	void set_thread_index(unsigned index_)
 	{
@@ -114,60 +124,170 @@ public:
 		return state.thread_index;
 	}
 
-	void clear_image(const Image &image, const VkClearValue &value);
-	void clear_image(const Image &image, const VkClearValue &value, VkImageAspectFlags aspect);
+	inline Type get_command_buffer_type() const
+	{
+		return Type(type);
+	}
 
-	void fill_buffer(const Buffer &dst, uint32_t value);
-	void fill_buffer(const Buffer &dst, uint32_t value, VkDeviceSize offset, VkDeviceSize size);
+	void clear_image(const Image &image, const VkClearValue &value)
+	{
+		granite_cb_clear_image(this, &image, &value, granite_format_aspect_mask(image.get_format()));
+	}
+
+	void clear_image(const Image &image, const VkClearValue &value, VkImageAspectFlags aspect)
+	{
+		granite_cb_clear_image(this, &image, &value, aspect);
+	}
+
+	void fill_buffer(const Buffer &dst, uint32_t value)
+	{
+		granite_cb_fill_buffer(this, &dst, value, 0, VK_WHOLE_SIZE);
+	}
+
+	void fill_buffer(const Buffer &dst, uint32_t value, VkDeviceSize offset, VkDeviceSize size)
+	{
+		granite_cb_fill_buffer(this, &dst, value, offset, size);
+	}
+
 	void copy_buffer(const Buffer &dst, VkDeviceSize dst_offset, const Buffer &src, VkDeviceSize src_offset,
-	                 VkDeviceSize size);
-	void copy_buffer(const Buffer &dst, const Buffer &src);
-	void copy_buffer(const Buffer &dst, const Buffer &src, const VkBufferCopy *copies, size_t count);
+	                 VkDeviceSize size)
+	{
+		const VkBufferCopy region = { src_offset, dst_offset, size };
+		granite_cb_copy_buffer(this, &dst, &src, &region, 1);
+	}
+
+	void copy_buffer(const Buffer &dst, const Buffer &src)
+	{
+		copy_buffer(dst, 0, src, 0, dst.get_create_info().size);
+	}
+
+	void copy_buffer(const Buffer &dst, const Buffer &src, const VkBufferCopy *copies, size_t count)
+	{
+		granite_cb_copy_buffer(this, &dst, &src, copies, count);
+	}
 
 	void copy_buffer_to_image(const Image &image, const Buffer &buffer, VkDeviceSize buffer_offset,
 	                          const VkOffset3D &offset, const VkExtent3D &extent, unsigned row_length,
-	                          unsigned slice_height, const VkImageSubresourceLayers &subresrouce);
-	void copy_buffer_to_image(const Image &image, const Buffer &buffer, unsigned num_blits, const VkBufferImageCopy *blits);
+	                          unsigned slice_height, const VkImageSubresourceLayers &subresource)
+	{
+		const VkBufferImageCopy region = { buffer_offset, row_length, slice_height, subresource, offset, extent };
+		granite_cb_copy_buffer_to_image(this, &image, &buffer, 1, &region);
+	}
+
+	void copy_buffer_to_image(const Image &image, const Buffer &buffer, unsigned num_blits, const VkBufferImageCopy *blits)
+	{
+		granite_cb_copy_buffer_to_image(this, &image, &buffer, num_blits, blits);
+	}
 
 	void barrier(VkPipelineStageFlags src_stage, VkAccessFlags src_access, VkPipelineStageFlags dst_stage,
-	             VkAccessFlags dst_access);
+	             VkAccessFlags dst_access)
+	{
+		VkMemoryBarrier global = { VK_STRUCTURE_TYPE_MEMORY_BARRIER };
+		global.srcAccessMask = src_access;
+		global.dstAccessMask = dst_access;
+		granite_cb_barrier(this, src_stage, dst_stage, 1, &global, 0, nullptr, 0, nullptr);
+	}
 
 	void barrier(VkPipelineStageFlags src_stages, VkPipelineStageFlags dst_stages,
 	             unsigned barriers, const VkMemoryBarrier *globals,
 	             unsigned buffer_barriers, const VkBufferMemoryBarrier *buffers,
-	             unsigned image_barriers, const VkImageMemoryBarrier *images);
+	             unsigned image_barriers, const VkImageMemoryBarrier *images)
+	{
+		granite_cb_barrier(this, src_stages, dst_stages, barriers, globals, buffer_barriers, buffers, image_barriers,
+		                   images);
+	}
 
 	void image_barrier(const Image &image, VkImageLayout old_layout, VkImageLayout new_layout,
 	                   VkPipelineStageFlags src_stage, VkAccessFlags src_access, VkPipelineStageFlags dst_stage,
-	                   VkAccessFlags dst_access);
+	                   VkAccessFlags dst_access)
+	{
+		granite_cb_image_barrier(this, &image, old_layout, new_layout, src_stage, src_access, dst_stage, dst_access);
+	}
 
 	void blit_image(const Image &dst,
 	                const Image &src,
 	                const VkOffset3D &dst_offset0, const VkOffset3D &dst_extent,
 	                const VkOffset3D &src_offset0, const VkOffset3D &src_extent, unsigned dst_level, unsigned src_level,
 	                unsigned dst_base_layer = 0, uint32_t src_base_layer = 0, unsigned num_layers = 1,
-	                VkFilter filter = VK_FILTER_LINEAR);
+	                VkFilter filter = VK_FILTER_LINEAR)
+	{
+		granite_cb_blit_image(this, &dst, &src, &dst_offset0, &dst_extent, &src_offset0, &src_extent, dst_level,
+		                      src_level, dst_base_layer, src_base_layer, num_layers, filter);
+	}
 
-	void begin_render_pass(const RenderPassInfo &info);
-	void end_render_pass();
+	// (out of memory leaves nothing to draw to)
+	void begin_render_pass(const RenderPassInfo &info)
+	{
+		if (!granite_cb_begin_render_pass(this, &info))
+			abort();
+	}
 
-	void set_program(Program *program);
+	void end_render_pass()
+	{
+		granite_cb_end_render_pass(this);
+	}
 
-	void set_buffer_view(unsigned set, unsigned binding, const BufferView &view);
-	void set_texture(unsigned set, unsigned binding, const ImageView &view);
-	void set_texture(unsigned set, unsigned binding, const ImageView &view, StockSampler sampler);
-	void set_storage_texture(unsigned set, unsigned binding, const ImageView &view);
-	void set_sampler(unsigned set, unsigned binding, const Sampler &sampler);
-	void set_uniform_buffer(unsigned set, unsigned binding, const Buffer &buffer);
+	void set_program(Program *program)
+	{
+		granite_cb_set_program(this, program);
+	}
+
+	void set_buffer_view(unsigned set, unsigned binding, const BufferView &view)
+	{
+		granite_cb_set_buffer_view(this, set, binding, &view);
+	}
+
+	void set_texture(unsigned set, unsigned binding, const ImageView &view)
+	{
+		granite_cb_set_texture(this, set, binding, &view, -1);
+	}
+
+	void set_texture(unsigned set, unsigned binding, const ImageView &view, StockSampler sampler)
+	{
+		granite_cb_set_texture(this, set, binding, &view, int(sampler));
+	}
+
+	void set_storage_texture(unsigned set, unsigned binding, const ImageView &view)
+	{
+		granite_cb_set_storage_texture(this, set, binding, &view);
+	}
+
+	void set_sampler(unsigned set, unsigned binding, const Sampler &sampler)
+	{
+		granite_cb_set_sampler(this, set, binding, &sampler);
+	}
+
+	void set_uniform_buffer(unsigned set, unsigned binding, const Buffer &buffer)
+	{
+		granite_cb_set_uniform_buffer(this, set, binding, &buffer, 0, buffer.get_create_info().size);
+	}
+
 	void set_uniform_buffer(unsigned set, unsigned binding, const Buffer &buffer, VkDeviceSize offset,
-	                        VkDeviceSize range);
-	void set_storage_buffer(unsigned set, unsigned binding, const Buffer &buffer);
+	                        VkDeviceSize range)
+	{
+		granite_cb_set_uniform_buffer(this, set, binding, &buffer, offset, range);
+	}
+
+	void set_storage_buffer(unsigned set, unsigned binding, const Buffer &buffer)
+	{
+		granite_cb_set_storage_buffer(this, set, binding, &buffer, 0, buffer.get_create_info().size);
+	}
+
 	void set_storage_buffer(unsigned set, unsigned binding, const Buffer &buffer, VkDeviceSize offset,
-	                        VkDeviceSize range);
+	                        VkDeviceSize range)
+	{
+		granite_cb_set_storage_buffer(this, set, binding, &buffer, offset, range);
+	}
 
-	void push_constants(const void *data, VkDeviceSize offset, VkDeviceSize range);
+	void push_constants(const void *data, VkDeviceSize offset, VkDeviceSize range)
+	{
+		granite_cb_push_constants(this, data, offset, range);
+	}
 
-	void *allocate_constant_data(unsigned set, unsigned binding, VkDeviceSize size);
+	void *allocate_constant_data(unsigned set, unsigned binding, VkDeviceSize size)
+	{
+		return granite_cb_allocate_constant_data(this, set, binding, size);
+	}
 
 	template <typename T>
 	T *allocate_typed_constant_data(unsigned set, unsigned binding, unsigned count)
@@ -176,20 +296,47 @@ public:
 	}
 
 	void *allocate_vertex_data(unsigned binding, VkDeviceSize size, VkDeviceSize stride,
-	                           VkVertexInputRate step_rate = VK_VERTEX_INPUT_RATE_VERTEX);
-	void set_scissor(const VkRect2D &rect);
+	                           VkVertexInputRate step_rate = VK_VERTEX_INPUT_RATE_VERTEX)
+	{
+		return granite_cb_allocate_vertex_data(this, binding, size, stride, step_rate);
+	}
 
-	void set_vertex_attrib(uint32_t attrib, uint32_t binding, VkFormat format, VkDeviceSize offset);
+	void set_scissor(const VkRect2D &rect)
+	{
+		granite_cb_set_scissor(this, &rect);
+	}
+
+	void set_vertex_attrib(uint32_t attrib, uint32_t binding, VkFormat format, VkDeviceSize offset)
+	{
+		granite_cb_set_vertex_attrib(this, attrib, binding, format, offset);
+	}
+
 	void set_vertex_binding(uint32_t binding, const Buffer &buffer, VkDeviceSize offset, VkDeviceSize stride,
-	                        VkVertexInputRate step_rate = VK_VERTEX_INPUT_RATE_VERTEX);
+	                        VkVertexInputRate step_rate = VK_VERTEX_INPUT_RATE_VERTEX)
+	{
+		granite_cb_set_vertex_binding(this, binding, &buffer, offset, stride, step_rate);
+	}
 
 	void draw(uint32_t vertex_count, uint32_t instance_count = 1, uint32_t first_vertex = 0,
-	          uint32_t first_instance = 0);
+	          uint32_t first_instance = 0)
+	{
+		granite_cb_draw(this, vertex_count, instance_count, first_vertex, first_instance);
+	}
 
-	void dispatch(uint32_t groups_x, uint32_t groups_y, uint32_t groups_z);
-	void dispatch_indirect(const Buffer &buffer, uint32_t offset);
+	void dispatch(uint32_t groups_x, uint32_t groups_y, uint32_t groups_z)
+	{
+		granite_cb_dispatch(this, groups_x, groups_y, groups_z);
+	}
 
-	void set_opaque_state();
+	void dispatch_indirect(const Buffer &buffer, uint32_t offset)
+	{
+		granite_cb_dispatch_indirect(this, &buffer, offset);
+	}
+
+	void set_opaque_state()
+	{
+		granite_cb_set_opaque_state(this);
+	}
 
 #define SET_STATIC_STATE(value)                               \
 	do                                                        \
@@ -253,14 +400,12 @@ public:
 
 	inline void set_specialization_constant_mask(uint32_t spec_constant_mask)
 	{
-		VK_ASSERT((spec_constant_mask & ~((1u << VULKAN_NUM_USER_SPEC_CONSTANTS) - 1u)) == 0u);
 		SET_POTENTIALLY_STATIC_STATE(spec_constant_mask);
 	}
 
 	template <typename T>
 	inline void set_specialization_constant(unsigned index, const T &value)
 	{
-		VK_ASSERT(index < VULKAN_NUM_USER_SPEC_CONSTANTS);
 		static_assert(sizeof(value) == sizeof(uint32_t), "Spec constant data must be 32-bit.");
 		if (memcmp(&pipeline_state.potential_static_state.spec_constants[index], &value, sizeof(value)))
 		{
@@ -284,85 +429,43 @@ public:
 	                                   uint8_t subgroup_minimum_size_log2,
 	                                   uint8_t subgroup_maximum_size_log2)
 	{
-		VK_ASSERT(subgroup_minimum_size_log2 < 8);
-		VK_ASSERT(subgroup_maximum_size_log2 < 8);
 		SET_STATIC_STATE(subgroup_full_group);
 		SET_STATIC_STATE(subgroup_minimum_size_log2);
 		SET_STATIC_STATE(subgroup_maximum_size_log2);
 	}
 
-	inline Type get_command_buffer_type() const
-	{
-		return type;
-	}
-
-
 	// Used when recording command buffers in a thread, and submitting them in a different thread.
 	// Need to make sure that no further commands on the VkCommandBuffer happen.
-	void end_threaded_recording();
-	// End is called automatically by Device in submission. Should not be called by application.
-	void end();
-
-	void extract_pipeline_state(DeferredPipelineCompile &compile) const;
-
-	enum class CompileMode
+	void end_threaded_recording()
 	{
-		Sync,
-		FailOnCompileRequired,
-		AsyncThread
-	};
-	static Pipeline build_graphics_pipeline(Device *device, const DeferredPipelineCompile &compile, CompileMode mode);
-	static Pipeline build_compute_pipeline(Device *device, const DeferredPipelineCompile &compile, CompileMode mode);
-	static void update_hash_graphics_pipeline(DeferredPipelineCompile &compile, uint32_t &active_vbos);
-	static void update_hash_compute_pipeline(DeferredPipelineCompile &compile);
-	bool flush_pipeline_state_without_blocking();
-
-private:
-	friend class Util::ObjectPool<CommandBuffer>;
-	CommandBuffer(Device *device, VkCommandBuffer cmd, VkPipelineCache cache, Type type);
-
-	Device *device;
-	const VolkDeviceTable &table;
-	VkCommandBuffer cmd;
-	Type type;
-
-	const Framebuffer *framebuffer = nullptr;
-	const RenderPass *actual_render_pass = nullptr;
-
-	// What is set and what of it is dirty (command_state.h).
-	granite_command_state_t state;
-
-	bool is_ended = false;
-
-	void set_dirty(CommandBufferDirtyFlags flags)
-	{
-		state.dirty |= flags;
+		granite_cb_end_recording(this);
 	}
 
-	DeferredPipelineCompile pipeline_state = {};
-#ifndef _MSC_VER
-	static_assert(sizeof(pipeline_state.static_state.words) >= sizeof(pipeline_state.static_state.state),
-	              "Hashable pipeline state is not large enough!");
-#endif
+	// End is called automatically by Device in submission. Should not be called by application.
+	void end()
+	{
+		granite_cb_end(this);
+	}
 
-	bool flush_state(bool synchronous);
-	void clear_render_state();
+	void extract_pipeline_state(DeferredPipelineCompile &compile) const
+	{
+		granite_cb_extract_pipeline_state(this, &compile);
+	}
 
-	void begin_graphics();
-	void begin_compute();
-	void begin_context(bool compute);
+	// device.hpp
+	static inline Pipeline build_graphics_pipeline(Device *device, const DeferredPipelineCompile &compile, CompileMode mode);
+	static inline Pipeline build_compute_pipeline(Device *device, const DeferredPipelineCompile &compile, CompileMode mode);
 
-	// (buffer_pool.h; given back by end())
-	granite_buffer_block_t vbo_block = {};
-	granite_buffer_block_t ubo_block = {};
+	bool flush_pipeline_state_without_blocking()
+	{
+		return granite_cb_flush_state(this, false);
+	}
 
-	void set_texture(unsigned set, unsigned binding, VkImageView float_view, VkImageView integer_view,
-	                 VkImageLayout layout,
-	                 uint64_t cookie);
-
-
-
-
+private:
+	void set_dirty(CommandBufferDirtyFlags flags)
+	{
+		granite_cb_set_dirty(this, flags);
+	}
 };
 
 using CommandBufferHandle = Util::IntrusivePtr<CommandBuffer>;

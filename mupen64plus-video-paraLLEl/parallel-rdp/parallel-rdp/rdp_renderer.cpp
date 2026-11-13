@@ -3457,7 +3457,7 @@ void Renderer::pipeline_work(void *user, mpsc_stack_node_t *item)
 	/* Not one built meanwhile (ahead, or by a draw), and none past
 	 * teardown: content close does not wait for the queue. */
 	if (!retro_atomic_load_acquire_int(&renderer->pipeline_ahead_stop) &&
-	    node->compile.program->get_pipeline(node->compile.hash).pipeline == VK_NULL_HANDLE)
+	    granite_pipeline_map_find(&node->compile.program->pipelines, node->compile.hash).pipeline == VK_NULL_HANDLE)
 	{
 		if (node->kind == PIPELINE_RECORD_GRAPHICS)
 			Vulkan::CommandBuffer::build_graphics_pipeline(device, node->compile,
@@ -3486,7 +3486,7 @@ void Renderer::add_known_pipeline(void *list_, Vulkan::CommandBuffer &cmd, uint3
 	if (list->n >= list->limit)
 		return;
 	cmd.extract_pipeline_state(node->compile);
-	if (node->compile.program->get_pipeline(node->compile.hash).pipeline != VK_NULL_HANDLE)
+	if (granite_pipeline_map_find(&node->compile.program->pipelines, node->compile.hash).pipeline != VK_NULL_HANDLE)
 		return;
 	for (i = 0; i < list->n; i++)
 		if (nodes[i].kind == kind && nodes[i].compile.hash == node->compile.hash)
@@ -3607,7 +3607,7 @@ void Renderer::build_pipelines_ahead(const pipeline_record_t *records, size_t co
 		PipelineNode *node = &nodes[n];
 		/* (what a record names is gone, or is not the same any more) */
 		if (!device->resolve_pipeline_record(records[i], node->compile)
-		    || node->compile.program->get_pipeline(node->compile.hash).pipeline != VK_NULL_HANDLE)
+		    || granite_pipeline_map_find(&node->compile.program->pipelines, node->compile.hash).pipeline != VK_NULL_HANDLE)
 			continue;
 		node->kind   = records[i].kind;
 		node->ahead  = 1;

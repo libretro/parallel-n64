@@ -137,6 +137,10 @@ typedef struct granite_pipeline_compile
 	uint64_t hash;
 	VkPipelineCache cache;
 	uint32_t subgroup_size_tag;
+	/* what it is compiled from (program_cache.h): the device's, and no
+	 * part of the hashes */
+	struct granite_program *program;
+	const struct granite_cached_render_pass *compatible_render_pass;
 } granite_pipeline_compile_t;
 
 /* The program a pipeline is compiled for */

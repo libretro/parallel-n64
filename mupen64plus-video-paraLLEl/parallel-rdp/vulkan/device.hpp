@@ -81,6 +81,7 @@ struct HandlePool
 		granite_image_pools_init(&images);
 		granite_fence_pool_slots_init(&fences);
 		granite_semaphore_pool_slots_init(&semaphores);
+		granite_cb_pool_slots_init(&command_buffers);
 	}
 
 	~HandlePool()
@@ -89,6 +90,7 @@ struct HandlePool
 		granite_image_pools_free(&images);
 		granite_lf_pool_clear(&fences);
 		granite_lf_pool_clear(&semaphores);
+		granite_lf_pool_clear(&command_buffers);
 	}
 
 	// buffers and their views (buffer.h)
@@ -99,7 +101,8 @@ struct HandlePool
 	granite_lf_pool_t fences;
 	// semaphore.h
 	granite_lf_pool_t semaphores;
-	VulkanObjectPool<CommandBuffer> command_buffers;
+	// command_buffer.h
+	granite_lf_pool_t command_buffers;
 };
 
 class Device
@@ -109,7 +112,6 @@ public:
 	// Device-based objects which need to poke at internal data structures when their lifetimes end.
 	// Don't want to expose a lot of internal guts to make this work.
 	friend class CommandBuffer;
-	friend struct CommandBufferDeleter;
 	friend class Cookie;
 
 	Device();
@@ -226,6 +228,11 @@ public:
 	// Submits one-off initialisation of a resource the way zero-initialised
 	// buffers are: ordered before later work on every queue that may use it.
 	void submit_initialization(CommandBufferHandle &cmd, VkBufferUsageFlags usage);
+
+	const granite_cmd_device_t &get_command_device() const
+	{
+		return cmd_device;
+	}
 
 	const granite_workarounds_t &get_workarounds() const
 	{
@@ -473,6 +480,7 @@ private:
 
 
 	granite_workarounds_t workarounds = {};
+	granite_cmd_device_t cmd_device = {};
 	void init_workarounds();
 
 
@@ -500,4 +508,22 @@ struct OwnershipTransferInfo
 // If the image uses CONCURRENT sharing mode, acquire/release barriers are skipped.
 
 using DeviceHandle = Util::IntrusivePtr<Device>;
+inline Device &CommandBuffer::get_device()
+{
+	return *static_cast<Device *>(dev->user);
+}
+
+inline Pipeline CommandBuffer::build_graphics_pipeline(Device *device, const DeferredPipelineCompile &compile,
+                                                       CompileMode mode)
+{
+	return granite_pipeline_compile_build_graphics(&device->get_command_device(), &compile,
+	                                               granite_compile_mode(mode));
+}
+
+inline Pipeline CommandBuffer::build_compute_pipeline(Device *device, const DeferredPipelineCompile &compile,
+                                                      CompileMode mode)
+{
+	return granite_pipeline_compile_build_compute(&device->get_command_device(), &compile,
+	                                              granite_compile_mode(mode));
+}
 }
