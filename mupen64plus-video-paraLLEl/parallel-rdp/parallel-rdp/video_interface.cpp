@@ -67,7 +67,7 @@ void VideoInterface::set_extract_vram_pipeline(Vulkan::CommandBuffer &cmd, uint3
 
 void VideoInterface::set_upscaler_color_pipeline(Vulkan::CommandBuffer &cmd, bool rgba32, unsigned scaling_factor, bool gamma) const
 {
-	cmd.set_program(upscaler_color_program(*device));
+	cmd.set_program(static_cast<Vulkan::Program *>(rdp_upscaler_color_program(device)));
 	cmd.set_specialization_constant_mask(0xf);
 	cmd.set_specialization_constant(0, uint32_t(rdram_size));
 	cmd.set_specialization_constant(1, uint32_t(rgba32));
@@ -135,7 +135,7 @@ static void each_status(uint32_t mask, const F &fn)
 }
 
 void VideoInterface::queue_known_pipelines(unsigned upscaling, bool with_upscaler,
-                                           void (*add)(void *, Vulkan::CommandBuffer &, uint32_t), void *ctx)
+                                           rdp_known_pipeline_fn add, void *ctx)
 {
 	auto cmd_handle = device->request_command_buffer();
 	auto &cmd = *cmd_handle;
@@ -169,10 +169,10 @@ void VideoInterface::queue_known_pipelines(unsigned upscaling, bool with_upscale
 		cmd.begin_render_pass(rp);
 		each_status(VI_CONTROL_META_AA_BIT | VI_CONTROL_DITHER_FILTER_ENABLE_BIT, [&](uint32_t status) {
 			set_fetch_pipeline(cmd, status, bug != 0);
-			add(ctx, cmd, PIPELINE_RECORD_GRAPHICS);
+			add(ctx, &cmd, PIPELINE_RECORD_GRAPHICS);
 		});
 		set_divot_pipeline(cmd, bug != 0);
-		add(ctx, cmd, PIPELINE_RECORD_GRAPHICS);
+		add(ctx, &cmd, PIPELINE_RECORD_GRAPHICS);
 		cmd.end_render_pass();
 	}
 
@@ -188,15 +188,15 @@ void VideoInterface::queue_known_pipelines(unsigned upscaling, bool with_upscale
 				each_status(VI_CONTROL_GAMMA_ENABLE_BIT | VI_CONTROL_GAMMA_DITHER_ENABLE_BIT |
 				            VI_CONTROL_META_SCALE_BIT | VI_CONTROL_META_AA_BIT, [&](uint32_t status) {
 					set_scale_pipeline(cmd, status, bug != 0, fold != 0);
-					add(ctx, cmd, PIPELINE_RECORD_GRAPHICS);
+					add(ctx, &cmd, PIPELINE_RECORD_GRAPHICS);
 				});
 
 		cmd.set_opaque_state();
 		set_blend_fields_pipeline(cmd);
-		add(ctx, cmd, PIPELINE_RECORD_GRAPHICS);
+		add(ctx, &cmd, PIPELINE_RECORD_GRAPHICS);
 
 		set_deinterlace_pipeline(cmd);
-		add(ctx, cmd, PIPELINE_RECORD_GRAPHICS);
+		add(ctx, &cmd, PIPELINE_RECORD_GRAPHICS);
 		cmd.end_render_pass();
 	}
 
@@ -206,7 +206,7 @@ void VideoInterface::queue_known_pipelines(unsigned upscaling, bool with_upscale
 			if ((status & VI_CONTROL_TYPE_RGBA5551_BIT) == 0)
 				return;
 			set_extract_vram_pipeline(cmd, status, scale);
-			add(ctx, cmd, PIPELINE_RECORD_COMPUTE);
+			add(ctx, &cmd, PIPELINE_RECORD_COMPUTE);
 		});
 
 	if (with_upscaler)
@@ -216,9 +216,9 @@ void VideoInterface::queue_known_pipelines(unsigned upscaling, bool with_upscale
 				for (unsigned gamma = 0; gamma < 2; gamma++)
 				{
 					set_upscaler_color_pipeline(cmd, rgba32 != 0, scale, gamma != 0);
-					add(ctx, cmd, PIPELINE_RECORD_COMPUTE);
+					add(ctx, &cmd, PIPELINE_RECORD_COMPUTE);
 				}
-		upscaler_queue_known_pipelines(*device, cmd, add, ctx);
+		rdp_upscaler_queue_known_pipelines(device, &cmd, add, ctx);
 	}
 
 	device->submit(cmd_handle);

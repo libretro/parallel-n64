@@ -26,6 +26,7 @@
 #include "device.hpp"
 #include "rdp_common.hpp"
 #include "temporal_upscaler.h"
+#include "upscaler_pass.h"
 #include "vi_image_pool.hpp"
 
 namespace RDP
@@ -103,7 +104,7 @@ public:
 	/* Hands @add every pipeline a scanout can need. The thread that processes
 	 * commands, once, at load. */
 	void queue_known_pipelines(unsigned upscaling, bool with_upscaler,
-	                           void (*add)(void *, Vulkan::CommandBuffer &, uint32_t), void *ctx);
+	                           rdp_known_pipeline_fn add, void *ctx);
 
 	void set_device(Vulkan::Device *device);
 	void set_renderer(Renderer *renderer);

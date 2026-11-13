@@ -23,20 +23,16 @@
 #pragma once
 
 #include "device.hpp"
-#include "temporal_upscaler.h"
+#include "upscaler_pass.h"
 
 namespace RDP
 {
-/* What a frame scanned out for a temporal upscaler brings beside its
- * color, all of the color's size, in SHADER_READ_ONLY_OPTIMAL */
+/* rdp_upscaler_targets_t (upscaler_pass.h), with the images held by
+ * handles */
 struct UpscalerFrame
 {
-	/* R16G16_SFLOAT render pixels, from where a surface is to where it was */
 	Vulkan::ImageHandle motion_vectors;
-	/* D32_SFLOAT (D16_UNORM without it), 0 near */
 	Vulkan::ImageHandle depth;
-	/* R8_UNORM, 1 where a translucent primitive (RDP_UPSCALER_TRANSLUCENT)
-	 * is the last drawn */
 	Vulkan::ImageHandle translucent;
 	float jitter_x;
 	float jitter_y;
@@ -52,19 +48,16 @@ struct UpscalerFrame
 		jitter_y = 0.0f;
 		reset = false;
 	}
+
+	/* takes the references @targets holds */
+	void take(const rdp_upscaler_targets_t &targets)
+	{
+		motion_vectors = Vulkan::ImageHandle(static_cast<Vulkan::Image *>(targets.motion_vectors));
+		depth = Vulkan::ImageHandle(static_cast<Vulkan::Image *>(targets.depth));
+		translucent = Vulkan::ImageHandle(static_cast<Vulkan::Image *>(targets.translucent));
+		jitter_x = targets.jitter_x;
+		jitter_y = targets.jitter_y;
+		reset = targets.reset;
+	}
 };
-
-/* upscaler_color.comp: the framebuffer the VI shows, upscaled RDRAM read
- * into an RGBA8 storage image */
-Vulkan::Program *upscaler_color_program(Vulkan::Device &device);
-
-/* Hands @add the motion pass's pipelines, on 1x1 targets. At load. */
-void upscaler_queue_known_pipelines(Vulkan::Device &device, Vulkan::CommandBuffer &cmd,
-                                    void (*add)(void *, Vulkan::CommandBuffer &, uint32_t), void *ctx);
-
-/* Draws @geometry's motion vectors and depth into new images of
- * @width x @height, recorded into @cmd */
-void upscaler_motion_pass(Vulkan::Device &device, Vulkan::CommandBuffer &cmd,
-                          const rdp_upscaler_geometry_t &geometry,
-                          unsigned width, unsigned height, UpscalerFrame &frame);
 }

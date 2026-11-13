@@ -3476,8 +3476,9 @@ void Renderer::pipeline_work(void *user, mpsc_stack_node_t *item)
  * the renderer's own options: no draw has to build one, even on a first run.
  * The specialised rasterizer variants are not here: the generic one covers
  * them. Each uses the state setter its draw uses, so the two cannot differ. */
-void Renderer::add_known_pipeline(void *list_, Vulkan::CommandBuffer &cmd, uint32_t kind)
+void Renderer::add_known_pipeline(void *list_, granite_command_buffer_t *cb, uint32_t kind)
 {
+	auto &cmd = *static_cast<Vulkan::CommandBuffer *>(cb);
 	auto *list = static_cast<KnownPipelines *>(list_);
 	auto *nodes = static_cast<PipelineNode *>(list->nodes);
 	PipelineNode *node = &nodes[list->n];
@@ -3510,7 +3511,7 @@ size_t Renderer::queue_known_pipelines(void *nodes_, size_t n, VideoInterface *v
 	list.limit    = n + MaxKnownPipelines;
 	list.renderer = this;
 
-	const auto add = [&]() { add_known_pipeline(&list, cmd, PIPELINE_RECORD_COMPUTE); };
+	const auto add = [&]() { add_known_pipeline(&list, &cmd, PIPELINE_RECORD_COMPUTE); };
 
 	cmd.set_program(shader_bank->tmem_update);
 	cmd.set_specialization_constant_mask(1);

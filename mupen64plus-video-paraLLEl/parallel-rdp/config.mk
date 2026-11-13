@@ -17,6 +17,7 @@ PARALLEL_RDP_SOURCES_C := \
         $(PARALLEL_RDP_IMPLEMENTATION)/parallel-rdp/command_ring.c \
         $(PARALLEL_RDP_IMPLEMENTATION)/parallel-rdp/rdp_worker.c \
         $(PARALLEL_RDP_IMPLEMENTATION)/parallel-rdp/rdp_dump_write.c \
+        $(PARALLEL_RDP_IMPLEMENTATION)/parallel-rdp/upscaler_pass.c \
         $(PARALLEL_RDP_IMPLEMENTATION)/parallel-rdp/temporal_upscaler.c \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/cookie.c \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/fence_wait.c \

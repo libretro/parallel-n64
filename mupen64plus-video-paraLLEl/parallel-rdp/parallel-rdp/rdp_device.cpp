@@ -1375,7 +1375,9 @@ void CommandProcessor::upscaler_scanout()
 	else
 	{
 		rdp_upscaler_resolve(upscaler, &fb, scale, &geometry);
-		upscaler_motion_pass(device, *cmd, geometry, fb.width * scale, fb.height * scale, upscaler_frame);
+		rdp_upscaler_targets_t targets;
+		rdp_upscaler_motion_pass(&device, cmd.get(), &geometry, fb.width * scale, fb.height * scale, &targets);
+		upscaler_frame.take(targets);
 	}
 	device.submit(cmd);
 }

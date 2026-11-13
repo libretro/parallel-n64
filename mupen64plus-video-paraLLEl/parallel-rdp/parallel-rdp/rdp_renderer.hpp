@@ -381,7 +381,7 @@ private:
 		size_t n, limit;
 		Renderer *renderer;
 	};
-	static void add_known_pipeline(void *list, Vulkan::CommandBuffer &cmd, uint32_t kind);
+	static void add_known_pipeline(void *list, granite_command_buffer_t *cb, uint32_t kind);
 	size_t queue_known_pipelines(void *nodes, size_t n, VideoInterface *vi, bool with_upscaler);
 	void set_span_setup_pipeline(Vulkan::CommandBuffer &cmd, bool upscale);
 	uint32_t set_tile_binning_pipeline(Vulkan::CommandBuffer &cmd, bool upscale);
