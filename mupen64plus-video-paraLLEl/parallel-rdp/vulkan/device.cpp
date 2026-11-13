@@ -93,8 +93,7 @@ Device::Device()
 	handle_owner.recycle_fence = handle_recycle_fence;
 	for (auto &stack : deferred_releases)
 		mpsc_stack_init(&stack);
-	pipeline_records = static_cast<pipeline_record_t *>(
-			calloc(PIPELINE_RECORDS, sizeof(pipeline_record_t)));
+	granite_pipeline_record_table_init(&pipeline_records);
 }
 
 void Device::add_wait_semaphore(CommandBuffer::Type type, Semaphore semaphore, VkPipelineStageFlags stages, bool flush)
@@ -349,169 +348,55 @@ Program::~Program()
 	}, device);
 }
 
+// The driver's pipeline cache and the list of pipelines built are C
+// (pipeline_cache.h).
 bool Device::init_pipeline_cache(const uint8_t *data, size_t size)
 {
-	static const auto uuid_size = sizeof(gpu_props.pipelineCacheUUID);
-	static const auto hash_size = sizeof(Util::Hash);
-
-	VkPipelineCacheCreateInfo info = { VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO };
-	if (!data || size < uuid_size + hash_size)
-	{
-		LOGI("Creating a fresh pipeline cache.\n");
-	}
-	else if (memcmp(data, gpu_props.pipelineCacheUUID, uuid_size) != 0)
-	{
-		LOGI("Pipeline cache UUID changed.\n");
-	}
-	else
-	{
-		Util::Hash reference_hash;
-		memcpy(&reference_hash, data + uuid_size, sizeof(reference_hash));
-
-		info.initialDataSize = size - uuid_size - hash_size;
-		data += uuid_size + hash_size;
-		info.pInitialData = data;
-
-		Util::Hasher h;
-		h.data(data, info.initialDataSize);
-
-		if (h.get() == reference_hash)
-			LOGI("Initializing pipeline cache.\n");
-		else
-		{
-			LOGW("Pipeline cache is corrupt, creating a fresh cache.\n");
-			info.pInitialData = nullptr;
-			info.initialDataSize = 0;
-		}
-	}
-
-	if (pipeline_cache != VK_NULL_HANDLE)
-		table->vkDestroyPipelineCache(device, pipeline_cache, nullptr);
-	pipeline_cache = VK_NULL_HANDLE;
-	return table->vkCreatePipelineCache(device, &info, nullptr, &pipeline_cache) == VK_SUCCESS;
-}
-
-void Device::init_pipeline_cache()
-{
+	return granite_pipeline_cache_init(device, table, gpu_props.pipelineCacheUUID, data, size, &pipeline_cache);
 }
 
 size_t Device::get_pipeline_cache_size()
 {
-	if (pipeline_cache == VK_NULL_HANDLE)
-		return 0;
-
-	static const auto uuid_size = sizeof(gpu_props.pipelineCacheUUID);
-	static const auto hash_size = sizeof(Util::Hash);
-	size_t size = 0;
-	if (table->vkGetPipelineCacheData(device, pipeline_cache, &size, nullptr) != VK_SUCCESS)
-	{
-		LOGE("Failed to get pipeline cache data.\n");
-		return 0;
-	}
-
-	return size + uuid_size + hash_size;
+	return granite_pipeline_cache_blob_size(device, table, pipeline_cache);
 }
 
 bool Device::get_pipeline_cache_data(uint8_t *data, size_t size)
 {
-	if (pipeline_cache == VK_NULL_HANDLE)
-		return false;
-
-	static const auto uuid_size = sizeof(gpu_props.pipelineCacheUUID);
-	static const auto hash_size = sizeof(Util::Hash);
-	if (size < uuid_size + hash_size)
-		return false;
-
-	auto *hash_data = data + uuid_size;
-
-	size -= uuid_size + hash_size;
-	memcpy(data, gpu_props.pipelineCacheUUID, uuid_size);
-	data = hash_data + hash_size;
-
-	if (table->vkGetPipelineCacheData(device, pipeline_cache, &size, data) != VK_SUCCESS)
-	{
-		LOGE("Failed to get pipeline cache data.\n");
-		return false;
-	}
-
-	Util::Hasher h;
-	h.data(data, size);
-	auto blob_hash = h.get();
-	memcpy(hash_data, &blob_hash, sizeof(blob_hash));
-
-	return true;
+	return granite_pipeline_cache_blob(device, table, pipeline_cache, gpu_props.pipelineCacheUUID, data, size);
 }
 
 static_assert(PIPELINE_RECORD_ATTACHMENTS == VULKAN_NUM_ATTACHMENTS, "record attachments");
-static_assert(PIPELINE_RECORD_SPEC_CONSTANTS == VULKAN_NUM_TOTAL_SPEC_CONSTANTS, "record spec constants");
-static_assert(PIPELINE_RECORD_VERTEX_ATTRIBS == VULKAN_NUM_VERTEX_ATTRIBS, "record vertex attributes");
-static_assert(PIPELINE_RECORD_VERTEX_BUFFERS == VULKAN_NUM_VERTEX_BUFFERS, "record vertex buffers");
 
 void Device::record_pipeline(const DeferredPipelineCompile &compile, uint32_t kind)
 {
-	pipeline_record_t *r;
-	const Shader *shader;
-	unsigned i;
-	int slot;
+	const bool graphics = kind == PIPELINE_RECORD_GRAPHICS;
 
 	/* A pass that cannot be made again is not one to build ahead for. */
-	if (kind == PIPELINE_RECORD_GRAPHICS && !compile.compatible_render_pass->get_signature().recordable)
+	if (graphics && !compile.compatible_render_pass->get_signature().recordable)
 		return;
-	slot = retro_atomic_fetch_add_int(&pipeline_records_claimed, 1);
-	if (!pipeline_records || slot < 0 || slot >= int(PIPELINE_RECORDS))
-		return;
-	r = &pipeline_records[slot];
-	r->kind          = kind;
-	r->pipeline_hash = compile.hash;
-	r->program_hash  = compile.program->get_hash();
-	if (kind == PIPELINE_RECORD_COMPUTE)
+
+	granite_pipeline_record_ids_t ids = {};
+	ids.program_hash = compile.program->get_hash();
+	const Shader *shader = compile.program->get_shader(graphics ? ShaderStage::Vertex : ShaderStage::Compute);
+	ids.shader_hashes[0] = shader ? shader->get_hash() : 0;
+	if (graphics)
 	{
-		shader = compile.program->get_shader(ShaderStage::Compute);
-		r->shader_hashes[0] = shader ? shader->get_hash() : 0;
-	}
-	else
-	{
-		shader = compile.program->get_shader(ShaderStage::Vertex);
-		r->shader_hashes[0] = shader ? shader->get_hash() : 0;
 		shader = compile.program->get_shader(ShaderStage::Fragment);
-		r->shader_hashes[1] = shader ? shader->get_hash() : 0;
+		ids.shader_hashes[1] = shader ? shader->get_hash() : 0;
+		ids.render_pass_hash = compile.compatible_render_pass->get_hash();
+		ids.pass = &compile.compatible_render_pass->get_signature();
 	}
-	for (i = 0; i < 4; i++)
-		r->static_words[i] = compile.static_state.words[i];
-	for (i = 0; i < VULKAN_NUM_TOTAL_SPEC_CONSTANTS; i++)
-		r->spec_constants[i] = compile.potential_static_state.spec_constants[i];
-	r->spec_masks        = compile.potential_static_state.spec_constant_mask |
-	                       (uint32_t(compile.potential_static_state.internal_spec_constant_mask) << 8);
-	r->subgroup_size_tag = compile.subgroup_size_tag;
-	if (kind == PIPELINE_RECORD_GRAPHICS)
-	{
-		r->render_pass_hash = compile.compatible_render_pass->get_hash();
-		r->subpass_index    = compile.subpass_index;
-		memcpy(r->blend_constants, compile.potential_static_state.blend_constants,
-		       sizeof(r->blend_constants));
-		for (i = 0; i < VULKAN_NUM_VERTEX_ATTRIBS; i++)
-		{
-			r->attribs[i][0] = compile.attribs[i].binding;
-			r->attribs[i][1] = uint32_t(compile.attribs[i].format);
-			r->attribs[i][2] = compile.attribs[i].offset;
-		}
-		for (i = 0; i < VULKAN_NUM_VERTEX_BUFFERS; i++)
-		{
-			r->strides[i]     = uint32_t(compile.strides[i]);
-			r->input_rates[i] = uint32_t(compile.input_rates[i]);
-		}
-		r->pass = compile.compatible_render_pass->get_signature();
-	}
-	retro_atomic_fetch_add_int(&pipeline_records_written, 1);
+
+	pipeline_record_t *record = granite_pipeline_record_table_claim(&pipeline_records);
+	if (!record)
+		return;
+	granite_pipeline_record_fill(record, kind, &compile, &ids);
+	granite_pipeline_record_table_commit(&pipeline_records);
 }
 
-size_t Device::get_pipeline_records(const pipeline_record_t **records) const
+size_t Device::get_pipeline_records(const pipeline_record_t **records)
 {
-	int n = retro_atomic_load_acquire_int(&pipeline_records_written);
-	*records = pipeline_records;
-	if (!pipeline_records || n <= 0)
-		return 0;
-	return n < int(PIPELINE_RECORDS) ? size_t(n) : size_t(PIPELINE_RECORDS);
+	return granite_pipeline_record_table_get(&pipeline_records, records);
 }
 
 /* A 1x1 attachment of @format: what a listed pass is made from again. */
@@ -525,7 +410,6 @@ const RenderPass *Device::recreate_render_pass(const pipeline_record_pass_t &sig
 
 bool Device::resolve_pipeline_record(const pipeline_record_t &record, DeferredPipelineCompile &compile)
 {
-	unsigned i;
 	Program *program = programs.find(record.program_hash);
 	const RenderPass *pass = nullptr;
 	const bool graphics = record.kind == PIPELINE_RECORD_GRAPHICS;
@@ -550,46 +434,17 @@ bool Device::resolve_pipeline_record(const pipeline_record_t &record, DeferredPi
 			return false;
 	}
 
-	memset(&compile, 0, sizeof(compile));
+	granite_pipeline_record_apply(&record, &compile, pipeline_cache);
 	compile.program = program;
-	for (i = 0; i < 4; i++)
-		compile.static_state.words[i] = record.static_words[i];
-	for (i = 0; i < VULKAN_NUM_TOTAL_SPEC_CONSTANTS; i++)
-		compile.potential_static_state.spec_constants[i] = record.spec_constants[i];
-	compile.potential_static_state.spec_constant_mask          = uint8_t(record.spec_masks & 0xff);
-	compile.potential_static_state.internal_spec_constant_mask = uint8_t((record.spec_masks >> 8) & 0xff);
-	compile.subgroup_size_tag = record.subgroup_size_tag;
-	compile.cache             = pipeline_cache;
-	if (!graphics)
-	{
-		CommandBuffer::update_hash_compute_pipeline(compile);
-		return compile.hash == record.pipeline_hash;
-	}
-
 	compile.compatible_render_pass = pass;
-	compile.subpass_index          = record.subpass_index;
-	memcpy(compile.potential_static_state.blend_constants, record.blend_constants,
-	       sizeof(compile.potential_static_state.blend_constants));
-	for (i = 0; i < VULKAN_NUM_VERTEX_ATTRIBS; i++)
-	{
-		compile.attribs[i].binding = record.attribs[i][0];
-		compile.attribs[i].format  = VkFormat(record.attribs[i][1]);
-		compile.attribs[i].offset  = record.attribs[i][2];
-	}
-	for (i = 0; i < VULKAN_NUM_VERTEX_BUFFERS; i++)
-	{
-		compile.strides[i]     = record.strides[i];
-		compile.input_rates[i] = VkVertexInputRate(record.input_rates[i]);
-	}
+	if (graphics)
 	{
 		uint32_t active_vbos;
 		CommandBuffer::update_hash_graphics_pipeline(compile, active_vbos);
 	}
+	else
+		CommandBuffer::update_hash_compute_pipeline(compile);
 	return compile.hash == record.pipeline_hash;
-}
-
-void Device::flush_pipeline_cache()
-{
 }
 
 void Device::init_workarounds()
@@ -678,7 +533,6 @@ void Device::set_context(const Context &context)
 	init_workarounds();
 
 	init_stock_samplers();
-	init_pipeline_cache();
 
 	init_timeline_semaphores();
 
@@ -1205,7 +1059,6 @@ Device::~Device()
 
 	if (pipeline_cache != VK_NULL_HANDLE)
 	{
-		flush_pipeline_cache();
 		table->vkDestroyPipelineCache(device, pipeline_cache, nullptr);
 	}
 
@@ -1213,8 +1066,7 @@ Device::~Device()
 		granite_sampler_free(&sampler, device, table);
 
 
-	free(pipeline_records);
-	pipeline_records = nullptr;
+	granite_pipeline_record_table_free(&pipeline_records);
 
 	granite_framebuffer_allocator_free(&framebuffer_allocator);
 	granite_submit_composer_free(&composer);

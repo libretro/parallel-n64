@@ -38,6 +38,7 @@
 #include "shader.hpp"
 #include "context.hpp"
 #include "buffer_pool.h"
+#include "pipeline_cache.h"
 #include "small_vector.hpp"
 #include <stdio.h>
 
@@ -157,9 +158,8 @@ public:
 	/* The pipelines this device built, as records the next device can
 	 * build again ahead of their first use. Recorded by the thread that
 	 * built each one, without a lock; read once no thread builds any more. */
-	enum { PIPELINE_RECORDS = 4096 };
 	void record_pipeline(const DeferredPipelineCompile &compile, uint32_t kind);
-	size_t get_pipeline_records(const pipeline_record_t **records) const;
+	size_t get_pipeline_records(const pipeline_record_t **records);
 	/* The compatible render pass a signature describes, made again from
 	 * 1x1 stand-ins when there is none yet. */
 	const RenderPass *recreate_render_pass(const pipeline_record_pass_t &signature);
@@ -470,12 +470,8 @@ private:
 
 	granite_framebuffer_allocator_t framebuffer_allocator;
 	VkPipelineCache pipeline_cache = VK_NULL_HANDLE;
-	pipeline_record_t *pipeline_records = nullptr;
-	retro_atomic_int_t pipeline_records_claimed{0};
-	retro_atomic_int_t pipeline_records_written{0};
+	granite_pipeline_record_table_t pipeline_records;
 
-	void init_pipeline_cache();
-	void flush_pipeline_cache();
 
 	void clear_wait_semaphores();
 	void submit_staging(CommandBufferHandle &cmd, VkBufferUsageFlags usage, bool flush);
