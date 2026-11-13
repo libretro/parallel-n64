@@ -40,6 +40,7 @@
 #include "buffer_pool.h"
 #include "pipeline_cache.h"
 #include "image_upload.h"
+#include "queue_submit.h"
 #include "small_vector.hpp"
 #include <stdio.h>
 
@@ -191,7 +192,6 @@ public:
 	            unsigned semaphore_count = 0, Semaphore *semaphore = nullptr);
 	void submit_empty(CommandBuffer::Type type, Fence *fence = nullptr);
 	void add_wait_semaphore(CommandBuffer::Type type, Semaphore semaphore, VkPipelineStageFlags stages, bool flush);
-	QueueIndices get_physical_queue_type(CommandBuffer::Type queue_type) const;
 	// Request shaders and programs. These objects are owned by the Device.
 	Shader *request_shader(const uint32_t *code, size_t size,
 	                       const ResourceLayout *layout = nullptr);
@@ -424,8 +424,8 @@ private:
 
 	struct QueueData
 	{
-		Util::SmallVector<Semaphore> wait_semaphores;
-		Util::SmallVector<VkPipelineStageFlags> wait_stages;
+		// what the queue's next submission waits for (queue_submit.c)
+		granite_queue_waits_t waits = {};
 		bool need_fence = false;
 
 		VkSemaphore timeline_semaphore = VK_NULL_HANDLE;
@@ -442,7 +442,7 @@ private:
 
 	void submit_queue(QueueIndices physical_type, InternalFence *fence,
 	                  unsigned semaphore_count = 0,
-	                  Semaphore *semaphore = nullptr);
+	                  Semaphore *semaphore = nullptr, bool force = false);
 
 	PerFrame &frame()
 	{
@@ -484,13 +484,9 @@ private:
 	void *queue_lock_userdata = nullptr;
 	void flush_frame(QueueIndices physical_type);
 	static const granite_buffer_pool_ops_t block_ops;
-	void submit_empty_inner(QueueIndices type, InternalFence *fence,
-	                        unsigned semaphore_count,
-	                        Semaphore *semaphore);
 
 	// What goes to a queue in one submission; reused, the owner thread's.
 	granite_submit_composer_t composer;
-	void collect_wait_semaphores(QueueData &data);
 	void emit_queue_signals(
 	                        VkSemaphore sem, uint64_t timeline, InternalFence *fence,
 	                        unsigned semaphore_count, Semaphore *semaphores);

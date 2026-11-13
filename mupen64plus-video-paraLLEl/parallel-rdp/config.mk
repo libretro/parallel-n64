@@ -24,6 +24,7 @@ PARALLEL_RDP_SOURCES_C := \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/fence_wait.c \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/fence.c \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/semaphore.c \
+        $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/queue_submit.c \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/framebuffer.c \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/frame_garbage.c \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/pipeline_compile.c \
