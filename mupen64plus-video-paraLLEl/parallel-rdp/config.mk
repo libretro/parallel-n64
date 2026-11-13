@@ -33,6 +33,7 @@ PARALLEL_RDP_SOURCES_C := \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/pipeline_map.c \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/pipeline_record_list.c \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/release_queue.c \
+        $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/memory_release.c \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/render_pass.c \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/resource_bindings.c \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/buffer_create.c \

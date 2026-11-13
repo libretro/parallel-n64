@@ -91,8 +91,6 @@ Device::Device()
 	handle_owner.destroy = handle_destroy;
 	handle_owner.free_memory = handle_free_memory;
 	handle_owner.recycle_fence = handle_recycle_fence;
-	for (auto &stack : deferred_releases)
-		mpsc_stack_init(&stack);
 	granite_pipeline_record_table_init(&pipeline_records);
 }
 
@@ -829,14 +827,6 @@ void Device::flush_frame(QueueIndices physical_type)
 
 void Device::end_frame_nolock()
 {
-	// Kept handles alive until end-of-frame, free now if appropriate.
-	for (auto &image : frame().keep_alive_images)
-	{
-		image->set_internal_sync_object();
-		image->get_view().set_internal_sync_object();
-	}
-	frame().keep_alive_images.clear();
-
 	// Make sure we have a fence which covers all submissions in the frame.
 	InternalFence fence;
 
@@ -995,20 +985,12 @@ Device::PerFrame::PerFrame(Device *device_, unsigned frame_index_)
 void Device::drain_deferred_releases(PerFrame &f)
 {
 	granite_release_queue_drain(&releases.q, f.frame_index, &f.garbage);
-	auto *node = static_cast<DeferredRelease *>(
-			mpsc_stack_drain(&deferred_releases[f.frame_index % MAX_DEFERRED_FRAMES]));
-	while (node)
-	{
-		auto *next = static_cast<DeferredRelease *>(node->next);
-		f.allocations.push_back(node->alloc);
-		handle_pool.deferred.free(node);
-		node = next;
-	}
+	granite_memory_release_queue_drain(&releases.memory, f.frame_index, &f.memory);
 }
 
 void Device::free_memory_nolock(const DeviceAllocation &alloc)
 {
-	frame().allocations.push_back(alloc);
+	granite_memory_garbage_push(&frame().memory, &alloc);
 }
 
 void Device::destroy_pipeline(VkPipeline pipeline)
@@ -1049,9 +1031,7 @@ void Device::reset_fence(VkFence fence, bool observed_wait)
 
 void Device::free_memory(const DeviceAllocation &alloc)
 {
-	auto *node = handle_pool.deferred.allocate();
-	node->alloc = alloc;
-	mpsc_stack_push(&deferred_releases[granite_release_queue_frame(&releases.q) % MAX_DEFERRED_FRAMES], node);
+	granite_memory_release_queue_push(&releases.memory, granite_release_queue_frame(&releases.q), &alloc);
 }
 
 void Device::reset_fence_nolock(VkFence fence, bool observed_wait)
@@ -1204,13 +1184,7 @@ void Device::PerFrame::begin()
 
 	granite_frame_garbage_collect(&garbage, vkdevice, &table, &managers.semaphore, &managers.fence);
 
-	if (!allocations.empty())
-	{
-		for (auto &alloc : allocations)
-			alloc.free_immediate(managers.memory);
-	}
-
-	allocations.clear();
+	granite_memory_garbage_collect(&memory, &managers.memory);
 }
 
 Device::PerFrame::~PerFrame()
@@ -1223,6 +1197,7 @@ Device::PerFrame::~PerFrame()
 		for (auto &pool : cmd_pool)
 			granite_command_pool_free(&pool);
 	granite_frame_garbage_free(&garbage);
+	granite_memory_garbage_free(&memory);
 }
 
 uint32_t Device::find_memory_type(granite_buffer_domain_t domain, uint32_t mask) const

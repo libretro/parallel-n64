@@ -42,6 +42,7 @@
 #include "image_upload.h"
 #include "queue_submit.h"
 #include "frame_sync.h"
+#include "memory_release.h"
 #include "small_vector.hpp"
 #include <stdio.h>
 
@@ -74,12 +75,6 @@ struct InitialImageBuffer
 	unsigned num_blits = 0;
 };
 
-// Memory handed to the Device to free once the GPU is done with the
-// frame it was last used in. Vulkan objects go through release_queue.c.
-struct DeferredRelease : mpsc_stack_node_t
-{
-	DeviceAllocation alloc = {};
-};
 struct HandlePool
 {
 	HandlePool()
@@ -107,7 +102,6 @@ struct HandlePool
 	// semaphore.h
 	granite_lf_pool_t semaphores;
 	VulkanObjectPool<CommandBuffer> command_buffers;
-	VulkanObjectPool<DeferredRelease> deferred;
 };
 
 class Device
@@ -323,11 +317,20 @@ private:
 	enum { MAX_DEFERRED_FRAMES = GRANITE_RELEASE_FRAMES };
 	struct ReleaseQueue
 	{
+		// Vulkan objects, and device memory (memory_release.h)
 		granite_release_queue_t q;
-		ReleaseQueue() { granite_release_queue_init(&q); }
-		~ReleaseQueue() { granite_release_queue_free(&q); }
+		granite_memory_release_queue_t memory;
+		ReleaseQueue()
+		{
+			granite_release_queue_init(&q);
+			granite_memory_release_queue_init(&memory);
+		}
+		~ReleaseQueue()
+		{
+			granite_release_queue_free(&q);
+			granite_memory_release_queue_free(&memory);
+		}
 	} releases;
-	mpsc_stack_t deferred_releases[MAX_DEFERRED_FRAMES];
 	void release_handle(granite_garbage_kind kind, uint64_t handle)
 	{
 		granite_release_queue_push(&releases.q, kind, handle);
@@ -387,11 +390,11 @@ private:
 		granite_buffer_block_list_t vbo_blocks = {};
 		granite_buffer_block_list_t ubo_blocks = {};
 
-		Util::Vector<DeviceAllocation> allocations;
+		// device memory freed by begin() (memory_release.c)
+		granite_memory_garbage_t memory = {};
 		Util::SmallVector<CommandBufferHandle> submissions[QUEUE_INDEX_COUNT];
 		// destroyed, or recycled, by begin() (frame_garbage.c)
 		granite_frame_garbage_t garbage = {};
-		Util::Vector<ImageHandle> keep_alive_images;
 	};
 	// The per frame structure must be destroyed after
 	// the hashmap data structures below, so it must be declared before.
