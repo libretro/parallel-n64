@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 """parallel-RDP shader variants for devices without 8-bit SSBO storage.
 
-The vendored slangmosh.hpp holds upstream's shaders, which need
-storageBuffer8BitAccess. This tool appends a NO_STORAGE_8BIT build of the
+slangmosh's header holds upstream's shaders, which need
+storageBuffer8BitAccess. The core keeps that header as C (shaders/slangmosh.h
+and shader_bank.[ch], see tools/slangmosh_to_c.py); this tool reads and
+writes it through that. It appends a NO_STORAGE_8BIT build of the
 shaders that use it, leaving every original SPIR-V word and reflection byte
 where it was, so devices that have the feature run exactly the old binaries.
 
@@ -24,9 +26,11 @@ reads.
 """
 import argparse, json, os, re, shutil, struct, subprocess, sys, tempfile
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import slangmosh_to_c
+
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
 SHADERS = os.path.join(ROOT, "mupen64plus-video-paraLLEl", "parallel-rdp", "parallel-rdp", "shaders")
-HEADER = os.path.join(SHADERS, "slangmosh.hpp")
 DEFINE = "NO_STORAGE_8BIT"
 # OpCapability values that need 8-bit storage or arithmetic
 CAPS_8BIT = {39: "Int8", 4448: "StorageBuffer8BitAccess", 4449: "UniformAndStorageBuffer8BitAccess",
@@ -209,7 +213,7 @@ def check(src):
             if complaint:
                 errors.append("%s fails spirv-val: %s" % (what, complaint))
     if emit(with_fallback(base, bank["spirv"], fallback)) != src:
-        errors.append("unmerging and merging again does not give back slangmosh.hpp")
+        errors.append("unmerging and merging again does not give back slangmosh's header")
     if not validate:
         print("spirv-val not found, the fallback binaries were not validated")
     return errors, len(set(needs_8bit(base))), count
@@ -228,7 +232,7 @@ def compile_variant(tmp, path, defines):
 
 
 def regenerate():
-    base, _ = unmerge(parse(open(HEADER).read()))
+    base, _ = unmerge(parse(slangmosh_to_c.read_hpp()))
     refl_of = {}
     for name, cond, refl, _ in entries(base, base["body"]):
         if cond.pop("SMALL_TYPES", 0) == 0:
@@ -267,8 +271,8 @@ def regenerate():
             fallback[s["name"]] = text
     finally:
         shutil.rmtree(tmp)
-    open(HEADER, "w").write(emit(with_fallback(base, spirv, fallback)))
-    print("wrote", HEADER)
+    slangmosh_to_c.write(emit(with_fallback(base, spirv, fallback)))
+    print("wrote", slangmosh_to_c.TABLES, slangmosh_to_c.BANK_H, slangmosh_to_c.BANK_C)
 
 
 def main():
@@ -278,7 +282,7 @@ def main():
     if not args.check:
         regenerate()
         return 0
-    errors, needs, variants = check(open(HEADER).read())
+    errors, needs, variants = check(slangmosh_to_c.read_hpp())
     print("%d shaders need 8-bit storage, %d %s binaries" % (needs, variants, DEFINE))
     if errors:
         print("\n".join(errors))

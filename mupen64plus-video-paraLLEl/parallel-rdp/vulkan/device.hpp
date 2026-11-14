@@ -182,12 +182,12 @@ public:
 		return static_cast<Shader *>(granite_program_cache_shader(&program_cache, code, size, layout));
 	}
 
-	Program *request_program(Shader *compute)
+	Program *request_program(const granite_shader_t *compute)
 	{
 		return static_cast<Program *>(granite_program_cache_compute(&program_cache, compute));
 	}
 
-	Program *request_program(Shader *vertex, Shader *fragment)
+	Program *request_program(const granite_shader_t *vertex, const granite_shader_t *fragment)
 	{
 		return static_cast<Program *>(granite_program_cache_graphics(&program_cache, vertex, fragment));
 	}

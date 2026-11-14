@@ -20,6 +20,7 @@ PARALLEL_RDP_SOURCES_C := \
         $(PARALLEL_RDP_IMPLEMENTATION)/parallel-rdp/upscaler_pass.c \
         $(PARALLEL_RDP_IMPLEMENTATION)/parallel-rdp/vi_registers.c \
         $(PARALLEL_RDP_IMPLEMENTATION)/parallel-rdp/vi_image_pool.c \
+        $(PARALLEL_RDP_IMPLEMENTATION)/parallel-rdp/shader_bank.c \
         $(PARALLEL_RDP_IMPLEMENTATION)/parallel-rdp/temporal_upscaler.c \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/cookie.c \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/fence_wait.c \

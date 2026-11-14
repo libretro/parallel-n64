@@ -26,6 +26,7 @@
 #include "device.hpp"
 #include "rdp_common.hpp"
 #include "rdp_worker.h"
+#include "shader_bank.h"
 #include "pipeline_pending.h"
 #include <retro_atomic.h>
 

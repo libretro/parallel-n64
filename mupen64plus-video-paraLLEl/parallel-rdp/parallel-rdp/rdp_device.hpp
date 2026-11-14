@@ -187,11 +187,7 @@ private:
 	size_t rdram_size;
 	CommandProcessorFlags flags;
 	// Outlives the renderer below, whose pipeline worker reads it.
-	struct ShaderBankOwner
-	{
-		ShaderBank *bank = nullptr;
-		~ShaderBankOwner();
-	} shader_bank;
+	rdp_shader_bank_t shader_bank = {};
 
 	// Tear-down order is important here.
 	Renderer renderer;

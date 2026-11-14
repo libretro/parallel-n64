@@ -51,10 +51,12 @@ static inline const T &rdp_max(const T &a, const T &b)
 	return a < b ? b : a;
 }
 
+// The shaders (shader_bank.h).
+struct rdp_shader_bank;
+
 namespace RDP
 {
-template <typename Program, typename Shader> struct Shaders;
-using ShaderBank = Shaders<Vulkan::Program *, Vulkan::Shader *>;
+using ShaderBank = ::rdp_shader_bank;
 
 // list of command IDs
 enum class Op

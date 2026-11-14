@@ -28,7 +28,6 @@
 #include "upscaler_shaders.hpp"
 #include <math.h>
 
-#include "shaders/slangmosh.hpp"
 
 namespace RDP
 {

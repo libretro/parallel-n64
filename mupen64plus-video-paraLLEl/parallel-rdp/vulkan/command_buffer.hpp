@@ -227,7 +227,7 @@ public:
 		granite_cb_end_render_pass(this);
 	}
 
-	void set_program(Program *program)
+	void set_program(granite_program_t *program)
 	{
 		granite_cb_set_program(this, program);
 	}

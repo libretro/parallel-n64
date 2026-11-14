@@ -232,6 +232,9 @@ Build slangmosh from Granite, and then run:
 slangmosh parallel-rdp/shaders/slangmosh.json --output slangmosh.hpp --vk11 --strip -O --namespace RDP
 ```
 
+This core builds that header as C: `tools/slangmosh_to_c.py slangmosh.hpp` writes `shaders/slangmosh.h` (the tables)
+and `shader_bank.c` / `shader_bank.h` (which variant each shader is made in).
+
 ### Generating a standalone code base for emulator integration
 
 Run the `generate_standalone_codebase.sh $OUTDIR` script with an output directory `$OUTDIR/` as argument to generate a standalone code base which can be built without any special build system support.

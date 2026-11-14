@@ -100,7 +100,7 @@ Know which layer you are changing. Having one does not give you the next.
 
 | Layer | Where | Scope |
 | --- | --- | --- |
-| Prebuilt SPIR-V | `shaders/slangmosh.hpp`, `upscaler_shaders.hpp` | every device |
+| Prebuilt SPIR-V | `shaders/slangmosh.h` (picked by `shader_bank.c`), `upscaler_shaders.hpp` | every device |
 | Recipes (what to build) | `<system>/ParallelN64/parallel_rdp_pipelines.bin`, `pipeline_record.h` | portable |
 | Driver blob | `<system>/ParallelN64/parallel_rdp_pipeline_cache.bin` | one device and driver |
 | Live `VkPipeline` | `Program::get_pipeline` | this device |
@@ -110,7 +110,9 @@ Know which layer you are changing. Having one does not give you the next.
 
 - Shaders stay prebuilt SPIR-V. No runtime GLSL compiler, ever. After a
   shader change regenerate `slangmosh.hpp` (see the parallel-rdp README),
-  run `tools/rdp_no_storage_8bit_bank.py` and then its `--check`.
+  turn it into the C the core builds with `tools/slangmosh_to_c.py slangmosh.hpp`,
+  run `tools/rdp_no_storage_8bit_bank.py` and then its `--check` and
+  `tools/slangmosh_to_c.py --check`.
 - A draw never waits for a variant. Specialised rasterizer variant ready:
   use it. Missing: `flush_pipeline_state_without_blocking` fails, the variant
   goes to the "RDP Pipelines" worker, and this dispatch runs the generic

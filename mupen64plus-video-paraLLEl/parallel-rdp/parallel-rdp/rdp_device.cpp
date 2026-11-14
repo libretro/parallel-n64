@@ -28,7 +28,6 @@
 #include <emmintrin.h>
 #endif
 
-#include "shaders/slangmosh.hpp"
 
 using namespace Vulkan;
 
@@ -39,28 +38,19 @@ using namespace Vulkan;
 
 namespace RDP
 {
-// The generated shader bank asks each shader's owner for its defines.
+// The shader bank asks each shader's owner for its defines.
 struct ShaderDefineResolver
 {
 	const VideoInterface *vi;
 	const Renderer *renderer;
-	int operator()(const char *name, const char *define) const
-	{
-		if (strncmp(name, "vi_", 3) == 0)
-			return vi->resolve_shader_define(name, define);
-		return renderer->resolve_shader_define(name, define);
-	}
 };
 
-// Flattened so each shader's name folds into a direct call to its owner.
-#if defined(__GNUC__) || defined(__clang__)
-__attribute__((flatten))
-#endif
-static ShaderBank *create_shader_bank(Vulkan::Device &device, Vulkan::ResourceLayout &layout,
-                                      const VideoInterface &vi, const Renderer &renderer)
+static int resolve_shader_define(void *user, const char *name, const char *define)
 {
-	ShaderDefineResolver resolver = { &vi, &renderer };
-	return Util::create<ShaderBank>(device, layout, resolver);
+	const ShaderDefineResolver *resolver = static_cast<const ShaderDefineResolver *>(user);
+	if (strncmp(name, "vi_", 3) == 0)
+		return resolver->vi->resolve_shader_define(name, define);
+	return resolver->renderer->resolve_shader_define(name, define);
 }
 
 namespace
@@ -192,12 +182,6 @@ CommandProcessor::CommandProcessor(Vulkan::Device &device_, void *rdram_ptr,
 	}
 }
 
-// Here, where ShaderBank is complete.
-CommandProcessor::ShaderBankOwner::~ShaderBankOwner()
-{
-	Util::destroy(bank);
-}
-
 CommandProcessor::~CommandProcessor()
 {
 	idle();
@@ -290,10 +274,10 @@ void CommandProcessor::init_renderer()
 	vi.set_hidden_rdram(hidden_rdram.get());
 	vi.set_renderer(&renderer);
 
-	Vulkan::ResourceLayout layout;
-	shader_bank.bank = create_shader_bank(device, layout, vi, renderer);
-	renderer.set_shader_bank(shader_bank.bank);
-	vi.set_shader_bank(shader_bank.bank);
+	ShaderDefineResolver resolver = { &vi, &renderer };
+	rdp_shader_bank_init(&shader_bank, &device, resolve_shader_define, &resolver);
+	renderer.set_shader_bank(&shader_bank);
+	vi.set_shader_bank(&shader_bank);
 }
 
 // Dumps keep one byte per hidden RDRAM entry in either layout.

@@ -28,6 +28,7 @@
 #include "temporal_upscaler.h"
 #include "upscaler_pass.h"
 #include "vi_image_pool.h"
+#include "shader_bank.h"
 
 namespace RDP
 {

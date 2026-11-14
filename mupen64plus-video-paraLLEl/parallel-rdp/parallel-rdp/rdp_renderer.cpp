@@ -31,7 +31,6 @@
 #include "pipeline_record_list.h"
 #include "timer.h"
 #include "thread_name.h"
-#include "shaders/slangmosh.hpp"
 
 namespace RDP
 {
