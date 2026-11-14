@@ -32,6 +32,7 @@
 #include "rdp_pipelines.h"
 #include "renderer_buffers.h"
 #include "rdp_passes.h"
+#include "rdp_queue.h"
 #include <retro_atomic.h>
 
 namespace RDP
@@ -196,33 +197,14 @@ private:
 		uint32_t addr = 0;
 		uint32_t depth_addr = 0;
 		uint32_t width = 0;
-		uint32_t deduced_height = 0;
 		FBFormat fmt = FBFormat::I8;
-		bool depth_write_pending = false;
-		bool color_write_pending = false;
 	} fb;
 
-	struct StreamCaches
+	// The flush being queued (rdp_queue.c)
+	rdp_queue_t queue;
+
+	struct
 	{
-		ScissorState scissor_state = {};
-		StaticRasterizationState static_raster_state = {};
-		DepthBlendState depth_blend_state = {};
-
-		StateCache<StaticRasterizationState, Limits::MaxStaticRasterizationStates> static_raster_state_cache;
-		StateCache<DepthBlendState, Limits::MaxDepthBlendStates> depth_blend_state_cache;
-		StateCache<TileInfo, Limits::MaxTileInfoStates> tile_info_state_cache;
-
-		StreamCache<TriangleSetup, Limits::MaxPrimitives> triangle_setup;
-		StreamCache<ScissorState, Limits::MaxPrimitives> scissor_setup;
-		StreamCache<AttributeSetup, Limits::MaxPrimitives> attribute_setup;
-		StreamCache<DerivedSetup, Limits::MaxPrimitives> derived_setup;
-		StreamCache<InstanceIndices, Limits::MaxPrimitives> state_indices;
-		StreamCache<SpanInfoOffsets, Limits::MaxPrimitives> span_info_offsets;
-		StreamCache<SpanInterpolationJob, Limits::MaxSpanSetups> span_info_jobs;
-
-		UploadInfo tmem_upload_infos[Limits::MaxTMEMInstances];
-		unsigned num_tmem_uploads = 0;
-		unsigned max_shaded_tiles = 0;
 		Vulkan::CommandBufferHandle cmd;
 	} stream;
 
@@ -260,10 +242,8 @@ private:
 	void submit_to_queue();
 	void begin_new_context();
 	void reset_context();
-	bool need_flush() const;
 	void maintain_queues();
 	void maintain_queues_idle();
-	void update_deduced_height(const TriangleSetup &setup);
 	void clear_indirect_buffer(Vulkan::CommandBuffer &cmd);
 
 	rdp_pipeline_setup_t pipeline_setup() const;
@@ -276,7 +256,6 @@ private:
 	                                   unsigned width, unsigned height,
 	                                   unsigned pixel_size_log2);
 
-	SpanInfoOffsets allocate_span_jobs(const TriangleSetup &setup);
 
 
 	rdp_renderer_caps_t caps;

@@ -53,16 +53,6 @@ static_assert(sizeof(StaticRasterizationState) == 32, "StaticRasterizationState 
 using DepthBlendState = ::rdp_depth_blend_state_t;
 static_assert(sizeof(DepthBlendState) == 16, "DepthBlendState must be 16 bytes.");
 
-struct InstanceIndices
-{
-	uint8_t static_index;
-	uint8_t depth_blend_index;
-	uint8_t tile_instance_index;
-	uint8_t padding[5];
-	uint8_t tile_indices[8];
-};
-static_assert((sizeof(InstanceIndices) & 15) == 0, "InstanceIndices must be aligned to 16 bytes.");
-
 using UploadInfo = ::rdp_upload_info_t;
 static_assert(sizeof(UploadInfo) == 64, "UploadInfo must be 64 bytes.");
 
@@ -82,19 +72,6 @@ struct SpanSetup
 };
 static_assert((sizeof(SpanSetup) & 15) == 0, "SpanSetup is not aligned to 16 bytes.");
 
-struct SpanInfoOffsets
-{
-	int32_t offset, ylo, yhi, padding;
-};
-static_assert((sizeof(SpanInfoOffsets) == 16), "SpanInfoOffsets is not 16 bytes.");
-
-struct SpanInterpolationJob
-{
-	uint16_t primitive_index, base_y, max_y, padding;
-};
-static_assert((sizeof(SpanInterpolationJob) == 8), "SpanInterpolationJob is not 8 bytes.");
-
-
 struct TileRasterWork
 {
 	uint32_t tile_x, tile_y;
@@ -102,121 +79,6 @@ struct TileRasterWork
 	uint32_t primitive;
 };
 static_assert((sizeof(TileRasterWork) == 16), "TileRasterWork is not 16 bytes.");
-
-
-template <typename T, unsigned N>
-class StateCache
-{
-public:
-	unsigned add(const T &t)
-	{
-		if (cached_index >= 0)
-			if (memcmp(&elements[cached_index], &t, sizeof(T)) == 0)
-				return unsigned(cached_index);
-
-		for (int i = int(count) - 1; i >= 0; i--)
-		{
-			if (memcmp(&elements[i], &t, sizeof(T)) == 0)
-			{
-				cached_index = i;
-				return unsigned(i);
-			}
-		}
-
-		assert(count < N);
-		memcpy(elements + count, &t, sizeof(T));
-		unsigned ret = count++;
-		cached_index = int(ret);
-		return ret;
-	}
-
-	bool full() const
-	{
-		return count == N;
-	}
-
-	unsigned size() const
-	{
-		return count;
-	}
-
-	unsigned byte_size() const
-	{
-		return size() * sizeof(T);
-	}
-
-	const T *data() const
-	{
-		return elements;
-	}
-
-	void reset()
-	{
-		count = 0;
-		cached_index = -1;
-	}
-
-	bool empty() const
-	{
-		return count == 0;
-	}
-
-private:
-	unsigned count = 0;
-	int cached_index = -1;
-	T elements[N];
-};
-
-template <typename T, unsigned N>
-class StreamCache
-{
-public:
-	// Built where it is uploaded from: storage is the mapped buffer, N long.
-	void bind(void *storage)
-	{
-		elements = static_cast<T *>(storage);
-	}
-
-	void add(const T &t)
-	{
-		assert(count < N);
-		memcpy(&elements[count++], &t, sizeof(T));
-	}
-
-	bool full() const
-	{
-		return count == N;
-	}
-
-	unsigned size() const
-	{
-		return count;
-	}
-
-	unsigned byte_size() const
-	{
-		return size() * sizeof(T);
-	}
-
-	const T *data() const
-	{
-		return elements;
-	}
-
-	void reset()
-	{
-		count = 0;
-	}
-
-	bool empty() const
-	{
-		return count == 0;
-	}
-
-private:
-	unsigned count = 0;
-	T *elements = nullptr;
-};
 
 namespace Limits
 {

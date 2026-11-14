@@ -43,6 +43,17 @@ static inline Vulkan::BufferView &view(granite_buffer_view_t *view)
 	return *static_cast<Vulkan::BufferView *>(view);
 }
 
+static_assert(RDP_QUEUE_MAX_PRIMITIVES == Limits::MaxPrimitives &&
+              RDP_QUEUE_MAX_STATIC_STATES == Limits::MaxStaticRasterizationStates &&
+              RDP_QUEUE_MAX_DEPTH_BLEND_STATES == Limits::MaxDepthBlendStates &&
+              RDP_QUEUE_MAX_TILE_INFOS == Limits::MaxTileInfoStates &&
+              RDP_QUEUE_MAX_UPLOADS == Limits::MaxTMEMInstances &&
+              RDP_QUEUE_MAX_SPAN_SETUPS == Limits::MaxSpanSetups &&
+              RDP_QUEUE_SPAN_JOB_LINES == ImplementationConstants::DefaultWorkgroupSize,
+              "rdp_queue.h queues for other limits.");
+static_assert((sizeof(rdp_instance_indices_t) & 15) == 0 && sizeof(rdp_span_info_offsets_t) == 16 &&
+              sizeof(rdp_span_job_t) == 8, "The shaders read other layouts.");
+
 static_assert(RDP_CAPS_MAX_WIDTH == Limits::MaxWidth && RDP_CAPS_MAX_HEIGHT == Limits::MaxHeight &&
               RDP_CAPS_TILE_WIDTH == ImplementationConstants::TileWidth &&
               RDP_CAPS_TILE_HEIGHT == ImplementationConstants::TileHeight &&
@@ -65,6 +76,7 @@ Renderer::Renderer(CommandProcessor &processor_)
 {
 	retro_atomic_int_init(&active_submissions, 0);
 	rdp_caps_init(&caps);
+	rdp_queue_init(&queue);
 	rdp_pipeline_builder_clear(&pipelines);
 	// (a tile not set yet is 16 bits)
 	memset(tiles, 0, sizeof(tiles));
@@ -124,9 +136,9 @@ bool Renderer::init_renderer(const RendererOptions &options)
 			sizeof(StaticRasterizationState) * Limits::MaxStaticRasterizationStates,
 			sizeof(DepthBlendState) * Limits::MaxDepthBlendStates,
 			sizeof(TileInfo) * Limits::MaxTileInfoStates,
-			sizeof(InstanceIndices) * Limits::MaxPrimitives,
-			sizeof(SpanInfoOffsets) * Limits::MaxPrimitives,
-			sizeof(SpanInterpolationJob) * Limits::MaxSpanSetups,
+			sizeof(rdp_instance_indices_t) * Limits::MaxPrimitives,
+			sizeof(rdp_span_info_offsets_t) * Limits::MaxPrimitives,
+			sizeof(rdp_span_job_t) * Limits::MaxSpanSetups,
 		};
 		for (auto &instance : buffer_instances)
 			if (!rdp_stream_instance_init(&instance, device, stream_sizes))
@@ -230,23 +242,27 @@ void Renderer::set_depth_framebuffer(uint32_t addr)
 
 void Renderer::set_scissor_state(const ScissorState &state)
 {
-	stream.scissor_state = state;
+	queue.scissor = state;
 }
 
 void Renderer::set_static_rasterization_state(const StaticRasterizationState &state)
 {
-	stream.static_raster_state = state;
+	queue.static_state = state;
 }
 
 void Renderer::set_depth_blend_state(const DepthBlendState &state)
 {
-	stream.depth_blend_state = state;
+	queue.depth_blend = state;
 }
 
 void Renderer::draw_flat_primitive(TriangleSetup &setup)
 {
-	AttributeSetup attr = {};
-	draw_shaded_primitive(setup, attr);
+	if (validation_iface)
+		validate_draw_state();
+	rdp_queue_add_primitive(&queue, &caps, &constants, tiles, &setup, nullptr);
+	pending_primitives++;
+	if (rdp_queue_full(&queue, &caps))
+		flush_queues();
 }
 
 // Out of line and cold: draws and loads pay only the test of validation_iface.
@@ -260,7 +276,7 @@ void Renderer::report_rdp_crash(ValidationError err, const char *msg) const
 
 void Renderer::validate_draw_state() const
 {
-	if ((stream.static_raster_state.flags & RASTERIZATION_FILL_BIT) != 0)
+	if ((queue.static_state.flags & RASTERIZATION_FILL_BIT) != 0)
 	{
 		if (fb.fmt == FBFormat::I4)
 		{
@@ -268,26 +284,26 @@ void Renderer::validate_draw_state() const
 			                                   "Attempted to use Fill mode on 4bpp surface.");
 		}
 
-		if ((stream.depth_blend_state.flags & DEPTH_BLEND_DEPTH_TEST_BIT) != 0)
+		if ((queue.depth_blend.flags & DEPTH_BLEND_DEPTH_TEST_BIT) != 0)
 		{
 			report_rdp_crash(ValidationError::FillDepthTest,
 			                                   "Attempted to use Fill mode with depth test.");
 		}
 
-		if ((stream.depth_blend_state.flags & DEPTH_BLEND_IMAGE_READ_ENABLE_BIT) != 0)
+		if ((queue.depth_blend.flags & DEPTH_BLEND_IMAGE_READ_ENABLE_BIT) != 0)
 		{
 			report_rdp_crash(ValidationError::FillImageReadEnable,
 			                                   "Attempted to use Fill mode with image read enable.");
 		}
 
-		if ((stream.depth_blend_state.flags & DEPTH_BLEND_DEPTH_UPDATE_BIT) != 0 &&
+		if ((queue.depth_blend.flags & DEPTH_BLEND_DEPTH_UPDATE_BIT) != 0 &&
 		    !constants.use_prim_depth)
 		{
 			report_rdp_crash(ValidationError::FillDepthWrite,
 			                                   "Attempted to use Fill mode with depth write enabled.");
 		}
 	}
-	else if ((stream.static_raster_state.flags & RASTERIZATION_COPY_BIT) != 0)
+	else if ((queue.static_state.flags & RASTERIZATION_COPY_BIT) != 0)
 	{
 		if (fb.fmt == FBFormat::RGBA8888)
 		{
@@ -301,148 +317,17 @@ void Renderer::draw_shaded_primitive(TriangleSetup &setup, const AttributeSetup 
 {
 	if (validation_iface)
 		validate_draw_state();
-
-	rdp_fixup_triangle_setup(&setup, stream.static_raster_state.flags);
-
-	unsigned num_tiles = rdp_conservative_tile_count(&setup, &stream.scissor_state, caps.upscaling);
-
-#if 0
-	// Don't exit early, throws off seeding of noise channels.
-	if (!num_tiles)
-		return;
-#endif
-
-	if (!caps.ubershader)
-		stream.max_shaded_tiles += num_tiles;
-
-	update_deduced_height(setup);
-	stream.span_info_offsets.add(allocate_span_jobs(setup));
-	stream.triangle_setup.add(setup);
-
-	if (constants.use_prim_depth)
-	{
-		auto tmp_attr = attr;
-		tmp_attr.z = constants.prim_depth;
-		tmp_attr.dzdx = 0;
-		tmp_attr.dzde = 0;
-		tmp_attr.dzdy = 0;
-		stream.attribute_setup.add(tmp_attr);
-	}
-	else
-	{
-		stream.attribute_setup.add(attr);
-	}
-
-	DerivedSetup derived;
-	rdp_derived_setup(&constants, &stream.static_raster_state, &attr, &derived);
-	stream.derived_setup.add(derived);
-	stream.scissor_setup.add(stream.scissor_state);
-
-	rdp_deduce_static_texture_state(&stream.static_raster_state, tiles, setup.tile & 7, setup.tile >> 3);
-	rdp_deduce_noise_state(&stream.static_raster_state);
-
-	InstanceIndices indices = {};
-	StaticRasterizationState normalized = stream.static_raster_state;
-	rdp_normalize_static_state(&normalized);
-	indices.static_index = stream.static_raster_state_cache.add(normalized);
-	indices.depth_blend_index = stream.depth_blend_state_cache.add(stream.depth_blend_state);
-	indices.tile_instance_index = uint8_t(stream.num_tmem_uploads);
-	for (unsigned i = 0; i < 8; i++)
-		indices.tile_indices[i] = stream.tile_info_state_cache.add(tiles[i]);
-	stream.state_indices.add(indices);
-
-	fb.color_write_pending = true;
-	if (stream.depth_blend_state.flags & DEPTH_BLEND_DEPTH_UPDATE_BIT)
-		fb.depth_write_pending = true;
+	rdp_queue_add_primitive(&queue, &caps, &constants, tiles, &setup, &attr);
 	pending_primitives++;
-
-	if (need_flush())
+	if (rdp_queue_full(&queue, &caps))
 		flush_queues();
-}
-
-SpanInfoOffsets Renderer::allocate_span_jobs(const TriangleSetup &setup)
-{
-	int min_active_sub_scanline = rdp_max(int(setup.yh), int(stream.scissor_state.ylo));
-	int min_active_line = min_active_sub_scanline >> 2;
-
-	int max_active_sub_scanline = rdp_min(setup.yl - 1, int(stream.scissor_state.yhi) - 1);
-	int max_active_line = max_active_sub_scanline >> 2;
-
-	if (max_active_line < min_active_line)
-		return { 0, 0, -1, 0 };
-
-	// Need to poke into next scanline validation for certain workarounds.
-	int height = rdp_max(max_active_line - min_active_line + 2, 0);
-	height = rdp_min(height, 1024);
-
-	int num_jobs = (height + ImplementationConstants::DefaultWorkgroupSize - 1) / ImplementationConstants::DefaultWorkgroupSize;
-
-	SpanInfoOffsets offsets = {};
-	offsets.offset = uint32_t(stream.span_info_jobs.size()) * ImplementationConstants::DefaultWorkgroupSize;
-	offsets.ylo = min_active_line;
-	offsets.yhi = max_active_line;
-
-	for (int i = 0; i < num_jobs; i++)
-	{
-		SpanInterpolationJob interpolation_job = {};
-		interpolation_job.primitive_index = uint32_t(stream.triangle_setup.size());
-		interpolation_job.base_y = min_active_line + ImplementationConstants::DefaultWorkgroupSize * i;
-		interpolation_job.max_y = max_active_line + 1;
-		stream.span_info_jobs.add(interpolation_job);
-	}
-	return offsets;
-}
-
-void Renderer::update_deduced_height(const TriangleSetup &setup)
-{
-	int max_active_sub_scanline = rdp_min(setup.yl - 1, int(stream.scissor_state.yhi) - 1);
-	int max_active_line = max_active_sub_scanline >> 2;
-	int height = rdp_max(max_active_line + 1, 0);
-	fb.deduced_height = rdp_max(fb.deduced_height, uint32_t(height));
-}
-
-bool Renderer::need_flush() const
-{
-	bool cache_full =
-			stream.static_raster_state_cache.size() >= caps.max_static_raster_states ||
-			stream.depth_blend_state_cache.full() ||
-			(stream.tile_info_state_cache.size() + 8 > Limits::MaxTileInfoStates);
-
-	bool triangle_full =
-			stream.triangle_setup.full();
-	bool span_info_full =
-			(stream.span_info_jobs.size() * ImplementationConstants::DefaultWorkgroupSize + Limits::MaxHeight > Limits::MaxSpanSetups);
-	bool max_shaded_tiles =
-			(stream.max_shaded_tiles + caps.max_tiles_x * caps.max_tiles_y > caps.max_num_tile_instances);
-
-#ifdef VULKAN_DEBUG
-	if (cache_full)
-		LOGI("Cache is full.\n");
-	if (triangle_full)
-		LOGI("Triangle is full.\n");
-	if (span_info_full)
-		LOGI("Span info is full.\n");
-	if (max_shaded_tiles)
-		LOGI("Shaded tiles is full.\n");
-#endif
-
-	return cache_full || triangle_full || span_info_full || max_shaded_tiles;
 }
 
 void Renderer::upload_streams(Vulkan::CommandBuffer &cmd)
 {
-	const void *const data[RDP_STREAM_BUFFERS] = {
-		stream.triangle_setup.data(), stream.attribute_setup.data(), stream.derived_setup.data(),
-		stream.scissor_setup.data(), stream.static_raster_state_cache.data(),
-		stream.depth_blend_state_cache.data(), stream.tile_info_state_cache.data(),
-		stream.state_indices.data(), stream.span_info_offsets.data(), stream.span_info_jobs.data(),
-	};
-	const VkDeviceSize bytes[RDP_STREAM_BUFFERS] = {
-		stream.triangle_setup.byte_size(), stream.attribute_setup.byte_size(), stream.derived_setup.byte_size(),
-		stream.scissor_setup.byte_size(), stream.static_raster_state_cache.byte_size(),
-		stream.depth_blend_state_cache.byte_size(), stream.tile_info_state_cache.byte_size(),
-		stream.state_indices.byte_size(), stream.span_info_offsets.byte_size(), stream.span_info_jobs.byte_size(),
-	};
+	const void *data[RDP_STREAM_BUFFERS];
+	VkDeviceSize bytes[RDP_STREAM_BUFFERS];
+	rdp_queue_upload_data(&queue, data, bytes);
 	rdp_stream_instance_upload(&buffer_instances[buffer_instance], device, &cmd, data, bytes);
 }
 
@@ -465,11 +350,11 @@ rdp_pass_flush_t Renderer::pass_flush() const
 {
 	rdp_pass_flush_t f;
 	f.target = pass_target();
-	f.uploads = stream.tmem_upload_infos;
-	f.num_uploads = stream.num_tmem_uploads;
-	f.num_span_jobs = uint32_t(stream.span_info_jobs.size());
-	f.states = stream.static_raster_state_cache.data();
-	f.num_states = uint32_t(stream.static_raster_state_cache.size());
+	f.uploads = queue.uploads;
+	f.num_uploads = queue.num_uploads;
+	f.num_span_jobs = queue.num_span_jobs;
+	f.states = queue.static_states;
+	f.num_states = queue.num_static_states;
 	return f;
 }
 
@@ -479,10 +364,10 @@ rdp_pass_target_t Renderer::pass_target() const
 	t.addr = fb.addr;
 	t.depth_addr = fb.depth_addr;
 	t.width = fb.width;
-	t.height = fb.deduced_height;
+	t.height = queue.height;
 	t.fmt = uint32_t(fb.fmt);
 	t.base_primitive_index = base_primitive_index;
-	t.num_primitives = uint32_t(stream.triangle_setup.size());
+	t.num_primitives = queue.num_primitives;
 	return t;
 }
 
@@ -619,23 +504,7 @@ void Renderer::submit_to_queue()
 
 void Renderer::reset_context()
 {
-	stream.scissor_setup.reset();
-	stream.static_raster_state_cache.reset();
-	stream.depth_blend_state_cache.reset();
-	stream.tile_info_state_cache.reset();
-	stream.triangle_setup.reset();
-	stream.attribute_setup.reset();
-	stream.derived_setup.reset();
-	stream.state_indices.reset();
-	stream.span_info_offsets.reset();
-	stream.span_info_jobs.reset();
-	stream.max_shaded_tiles = 0;
-
-	fb.deduced_height = 0;
-	fb.color_write_pending = false;
-	fb.depth_write_pending = false;
-
-	stream.num_tmem_uploads = 0;
+	rdp_queue_reset(&queue);
 }
 
 void Renderer::begin_new_context()
@@ -663,19 +532,21 @@ void Renderer::bind_stream_instance()
 	}
 
 	// The upload buffers are host-visible, so they always map.
-	const Vulkan::MemoryAccessFlags w = Vulkan::MEMORY_ACCESS_WRITE_BIT;
-	stream.triangle_setup.bind(device->map_host_buffer(buf(instance.cpu.buffers[RDP_STREAM_TRIANGLE_SETUP]), w));
-	stream.scissor_setup.bind(device->map_host_buffer(buf(instance.cpu.buffers[RDP_STREAM_SCISSOR_SETUP]), w));
-	stream.attribute_setup.bind(device->map_host_buffer(buf(instance.cpu.buffers[RDP_STREAM_ATTRIBUTE_SETUP]), w));
-	stream.derived_setup.bind(device->map_host_buffer(buf(instance.cpu.buffers[RDP_STREAM_DERIVED_SETUP]), w));
-	stream.state_indices.bind(device->map_host_buffer(buf(instance.cpu.buffers[RDP_STREAM_STATE_INDICES]), w));
-	stream.span_info_offsets.bind(device->map_host_buffer(buf(instance.cpu.buffers[RDP_STREAM_SPAN_INFO_OFFSETS]), w));
-	stream.span_info_jobs.bind(device->map_host_buffer(buf(instance.cpu.buffers[RDP_STREAM_SPAN_INFO_JOBS]), w));
+	// (the state caches are copied in at the flush, so only the streams)
+	static const rdp_stream_buffer streams[] = {
+		RDP_STREAM_TRIANGLE_SETUP, RDP_STREAM_ATTRIBUTE_SETUP, RDP_STREAM_DERIVED_SETUP,
+		RDP_STREAM_SCISSOR_SETUP, RDP_STREAM_STATE_INDICES, RDP_STREAM_SPAN_INFO_OFFSETS,
+		RDP_STREAM_SPAN_INFO_JOBS,
+	};
+	void *mapped[RDP_STREAM_BUFFERS] = {};
+	for (auto i : streams)
+		mapped[i] = device->map_host_buffer(buf(instance.cpu.buffers[i]), Vulkan::MEMORY_ACCESS_WRITE_BIT);
+	rdp_queue_bind(&queue, mapped);
 }
 
 uint32_t Renderer::get_byte_size_for_bound_color_framebuffer() const
 {
-	unsigned pixel_count = fb.width * fb.deduced_height;
+	unsigned pixel_count = fb.width * queue.height;
 	unsigned byte_count;
 	switch (fb.fmt)
 	{
@@ -698,7 +569,7 @@ uint32_t Renderer::get_byte_size_for_bound_color_framebuffer() const
 
 uint32_t Renderer::get_byte_size_for_bound_depth_framebuffer() const
 {
-	return fb.width * fb.deduced_height * 2;
+	return fb.width * queue.height * 2;
 }
 
 void Renderer::mark_pages_for_gpu_read(uint32_t base_addr, uint32_t byte_count)
@@ -752,9 +623,9 @@ void Renderer::resolve_coherency_host_to_gpu(Vulkan::CommandBuffer &cmd)
 
 void Renderer::flush_queues()
 {
-	if (stream.num_tmem_uploads == 0 && stream.span_info_jobs.empty())
+	if (queue.num_uploads == 0 && queue.num_span_jobs == 0)
 	{
-		base_primitive_index += stream.triangle_setup.size();
+		base_primitive_index += queue.num_primitives;
 		reset_context();
 		return;
 	}
@@ -806,10 +677,10 @@ void Renderer::flush_queues()
 		const rdp_pass_resources_t r = pass_resources(setup);
 		rdp_pass_record_upscaled(&r, &*stream.cmd, &flush);
 		pending_render_passes_upscaled++;
-		pending_primitives_upscaled += uint32_t(stream.triangle_setup.size());
+		pending_primitives_upscaled += queue.num_primitives;
 	}
 
-	base_primitive_index += uint32_t(stream.triangle_setup.size());
+	base_primitive_index += queue.num_primitives;
 	rdp_pass_record_end(&*stream.cmd);
 
 	begin_new_context();
@@ -850,50 +721,12 @@ void Renderer::notify_idle_command_thread()
 
 bool Renderer::tmem_upload_needs_flush(uint32_t addr) const
 {
-	// Not perfect, since TMEM upload could slice into framebuffer,
-	// but I doubt this will be an issue (famous last words ...)
-
-	if (fb.color_write_pending)
-	{
-		uint32_t offset = (addr - fb.addr) & (rdram_size - 1);
-		uint32_t pending_pixels = fb.deduced_height * fb.width;
-
-		switch (fb.fmt)
-		{
-		case FBFormat::RGBA5551:
-		case FBFormat::I8:
-			offset >>= 1;
-			break;
-
-		case FBFormat::RGBA8888:
-			offset >>= 2;
-			break;
-
-		default:
-			break;
-		}
-
-		if (offset < pending_pixels)
-		{
-			//LOGI("Flushing render pass due to coherent TMEM fetch from color buffer.\n");
-			return true;
-		}
-	}
-
-	if (fb.depth_write_pending)
-	{
-		uint32_t offset = (addr - fb.depth_addr) & (rdram_size - 1);
-		uint32_t pending_pixels = fb.deduced_height * fb.width;
-		offset >>= 1;
-
-		if (offset < pending_pixels)
-		{
-			//LOGI("Flushing render pass due to coherent TMEM fetch from depth buffer.\n");
-			return true;
-		}
-	}
-
-	return false;
+	rdp_queue_fb_t qfb;
+	qfb.addr = fb.addr;
+	qfb.depth_addr = fb.depth_addr;
+	qfb.width = fb.width;
+	qfb.fmt = uint32_t(fb.fmt);
+	return rdp_queue_upload_reads_pending(&queue, &qfb, uint32_t(rdram_size), addr);
 }
 
 void Renderer::load_tile(uint32_t tile, const LoadTileInfo &info)
@@ -965,8 +798,7 @@ void Renderer::load_tile_iteration(uint32_t tile, const LoadTileInfo &info, uint
 		return;
 	}
 
-	stream.tmem_upload_infos[stream.num_tmem_uploads++] = upload;
-	if (stream.num_tmem_uploads + 1 >= Limits::MaxTMEMInstances)
+	if (rdp_queue_add_upload(&queue, &upload))
 		flush_queues();
 }
 
