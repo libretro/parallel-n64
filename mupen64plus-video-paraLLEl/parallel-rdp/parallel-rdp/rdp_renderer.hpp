@@ -61,8 +61,8 @@ struct LoadTileInfo
 	uint32_t tex_addr;
 	uint32_t tex_width;
 	uint16_t slo, tlo, shi, thi;
-	TextureFormat fmt;
-	TextureSize size;
+	uint8_t fmt;  /* enum rdp_texture_format */
+	uint8_t size; /* enum rdp_texture_size */
 	UploadMode mode;
 };
 
@@ -323,25 +323,7 @@ private:
 		Vulkan::Fence fence;
 	};
 
-	struct Constants
-	{
-		uint32_t blend_color = 0;
-		uint32_t fog_color = 0;
-		uint32_t env_color = 0;
-		uint32_t primitive_color = 0;
-		uint32_t fill_color = 0;
-		uint8_t min_level = 0;
-		uint8_t prim_lod_frac = 0;
-		int32_t prim_depth = 0;
-		uint16_t prim_dz = 0;
-		uint16_t convert[6] = {};
-
-		uint16_t key_width[3] = {};
-		uint8_t key_center[3] = {};
-		uint8_t key_scale[3] = {};
-
-		bool use_prim_depth = false;
-	} constants;
+	rdp_constants_t constants = {};
 
 	RenderBuffersUpdater buffer_instances[Limits::NumSyncStates];
 	InternalSynchronization internal_sync[Limits::NumSyncStates];
@@ -403,8 +385,6 @@ private:
 
 	SpanInfoOffsets allocate_span_jobs(const TriangleSetup &setup);
 
-	DerivedSetup build_derived_attributes(const AttributeSetup &attr) const;
-	void build_combiner_constants(DerivedSetup &setup, unsigned cycle) const;
 	bool can_support_minimum_subgroup_size(unsigned size) const;
 	bool supports_subgroup_size_control(uint32_t minimum_size, uint32_t maximum_size) const;
 
@@ -414,12 +394,6 @@ private:
 	rdp_node_pool_t pipeline_node_pool;
 	void *pipeline_nodes = nullptr;
 
-	unsigned compute_conservative_max_num_tiles(const TriangleSetup &setup) const;
-
-	void deduce_static_texture_state(unsigned tile, unsigned max_lod_level);
-	void deduce_noise_state();
-	static StaticRasterizationState normalize_static_state(StaticRasterizationState state);
-	void fixup_triangle_setup(TriangleSetup &setup) const;
 
 	struct Caps
 	{

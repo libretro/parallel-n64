@@ -36,106 +36,20 @@ using TriangleSetupFlags = uint8_t;
 using TriangleSetup = ::rdp_triangle_setup_t;
 using AttributeSetup = ::rdp_attribute_setup_t;
 
-enum StaticRasterizationFlagBits
-{
-	RASTERIZATION_INTERLACE_FIELD_BIT = 1 << 0,
-	RASTERIZATION_INTERLACE_KEEP_ODD_BIT = 1 << 1,
-	RASTERIZATION_AA_BIT = 1 << 2,
-	RASTERIZATION_PERSPECTIVE_CORRECT_BIT = 1 << 3,
-	RASTERIZATION_TLUT_BIT = 1 << 4,
-	RASTERIZATION_TLUT_TYPE_BIT = 1 << 5,
-	RASTERIZATION_CVG_TIMES_ALPHA_BIT = 1 << 6,
-	RASTERIZATION_ALPHA_CVG_SELECT_BIT = 1 << 7,
-	RASTERIZATION_MULTI_CYCLE_BIT = 1 << 8,
-	RASTERIZATION_TEX_LOD_ENABLE_BIT = 1 << 9,
-	RASTERIZATION_SHARPEN_LOD_ENABLE_BIT = 1 << 10,
-	RASTERIZATION_DETAIL_LOD_ENABLE_BIT = 1 << 11,
-	RASTERIZATION_FILL_BIT = 1 << 12,
-	RASTERIZATION_COPY_BIT = 1 << 13,
-	RASTERIZATION_SAMPLE_MODE_BIT = 1 << 14,
-	RASTERIZATION_ALPHA_TEST_BIT = 1 << 15,
-	RASTERIZATION_ALPHA_TEST_DITHER_BIT = 1 << 16,
-	RASTERIZATION_SAMPLE_MID_TEXEL_BIT = 1 << 17,
-	RASTERIZATION_USES_TEXEL0_BIT = 1 << 18,
-	RASTERIZATION_USES_TEXEL1_BIT = 1 << 19,
-	RASTERIZATION_USES_LOD_BIT = 1 << 20,
-	RASTERIZATION_USES_PIPELINED_TEXEL1_BIT = 1 << 21,
-	RASTERIZATION_CONVERT_ONE_BIT = 1 << 22,
-	RASTERIZATION_BILERP_0_BIT = 1 << 23,
-	RASTERIZATION_BILERP_1_BIT = 1 << 24,
-	RASTERIZATION_NEED_NOISE_DUAL_BIT = 1 << 25,
-	RASTERIZATION_UPSCALING_LOG2_BIT_OFFSET = 26,
-	// Bit 26 and 27 holds upscaling factor in LOG2.
-	RASTERIZATION_NEED_NOISE_BIT = 1 << 28,
-	RASTERIZATION_USE_STATIC_TEXTURE_SIZE_FORMAT_BIT = 1 << 29,
-	RASTERIZATION_USE_SPECIALIZATION_CONSTANT_BIT = 1 << 30
-};
 using StaticRasterizationFlags = uint32_t;
-
-enum DepthBlendFlagBits
-{
-	DEPTH_BLEND_DEPTH_TEST_BIT = 1 << 0,
-	DEPTH_BLEND_DEPTH_UPDATE_BIT = 1 << 1,
-	DEPTH_BLEND_FORCE_BLEND_BIT = 1 << 3,
-	DEPTH_BLEND_IMAGE_READ_ENABLE_BIT = 1 << 4,
-	DEPTH_BLEND_COLOR_ON_COVERAGE_BIT = 1 << 5,
-	DEPTH_BLEND_MULTI_CYCLE_BIT = 1 << 6,
-	DEPTH_BLEND_AA_BIT = 1 << 7,
-	DEPTH_BLEND_DITHER_ENABLE_BIT = 1 << 8
-};
 using DepthBlendFlags = uint32_t;
 
-struct ConstantCombinerInputs
-{
-	uint8_t muladd[4];
-	uint8_t mulsub[4];
-	uint8_t mul[4];
-	uint8_t add[4];
-};
-
-// Per-primitive state which is very dynamic in nature and does not change anything about the shader itself.
-struct DerivedSetup
-{
-	ConstantCombinerInputs constants[2];
-	uint8_t fog_color[4];
-	uint8_t blend_color[4];
-	uint32_t fill_color;
-	uint16_t dz;
-	uint8_t dz_compressed;
-	uint8_t min_lod;
-	int16_t convert_factors[4];
-};
+using ConstantCombinerInputs = ::rdp_constant_combiner_inputs_t;
+using DerivedSetup = ::rdp_derived_setup_t;
 
 static_assert((sizeof(TriangleSetup) & 15) == 0, "TriangleSetup must be aligned to 16 bytes.");
 static_assert((sizeof(AttributeSetup) & 15) == 0, "AttributeSetup must be aligned to 16 bytes.");
 static_assert(sizeof(DerivedSetup) == 56, "DerivedSetup is not 56 bytes.");
 
-struct ScissorState
-{
-	uint32_t xlo;
-	uint32_t ylo;
-	uint32_t xhi;
-	uint32_t yhi;
-};
-
-struct StaticRasterizationState
-{
-	CombinerInputs combiner[2];
-	StaticRasterizationFlags flags;
-	uint32_t dither;
-	uint32_t texture_size;
-	uint32_t texture_fmt;
-};
+using ScissorState = ::rdp_scissor_state_t;
+using StaticRasterizationState = ::rdp_static_state_t;
 static_assert(sizeof(StaticRasterizationState) == 32, "StaticRasterizationState must be 32 bytes.");
-
-struct DepthBlendState
-{
-	BlendModes blend_cycles[2];
-	DepthBlendFlags flags;
-	CoverageMode coverage_mode;
-	ZMode z_mode;
-	uint8_t padding[2];
-};
+using DepthBlendState = ::rdp_depth_blend_state_t;
 static_assert(sizeof(DepthBlendState) == 16, "DepthBlendState must be 16 bytes.");
 
 struct InstanceIndices
@@ -368,10 +282,4 @@ constexpr unsigned MinimumRenderPassesForIdleFlush = 2;
 // Whether an interpolated X span reaches past +-limit. Interpolation
 // clamps to int32, and std::abs of INT_MIN is not representable, so the
 // magnitudes are taken in 64 bits.
-static inline bool x_range_exceeds(int32_t start_x, int32_t end_x, int32_t limit)
-{
-	int64_t a = start_x < 0 ? -int64_t(start_x) : int64_t(start_x);
-	int64_t b = end_x < 0 ? -int64_t(end_x) : int64_t(end_x);
-	return (a > b ? a : b) > int64_t(limit);
-}
 }

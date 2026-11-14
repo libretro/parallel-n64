@@ -454,27 +454,27 @@ void CommandProcessor::op_set_other_modes(const uint32_t *words)
 	STATE_MASK(static_state.flags, bool(words[1] & (1 << 1)), RASTERIZATION_ALPHA_TEST_DITHER_BIT);
 	STATE_MASK(static_state.flags, bool(words[1] & (1 << 0)), RASTERIZATION_ALPHA_TEST_BIT);
 	static_state.dither = (words[0] >> 4) & 0x0f;
-	STATE_MASK(depth_blend.flags, RGBDitherMode(static_state.dither >> 2) != RGBDitherMode::Off, DEPTH_BLEND_DITHER_ENABLE_BIT);
-	depth_blend.coverage_mode = static_cast<CoverageMode>((words[1] >> 8) & 3);
-	depth_blend.z_mode = static_cast<ZMode>((words[1] >> 10) & 3);
+	STATE_MASK(depth_blend.flags, (static_state.dither >> 2) != RDP_RGB_DITHER_OFF, DEPTH_BLEND_DITHER_ENABLE_BIT);
+	depth_blend.coverage_mode = uint8_t((words[1] >> 8) & 3);
+	depth_blend.z_mode = uint8_t((words[1] >> 10) & 3);
 
 	static_state.flags &= ~(RASTERIZATION_MULTI_CYCLE_BIT |
 	                        RASTERIZATION_FILL_BIT |
 	                        RASTERIZATION_COPY_BIT);
 	depth_blend.flags &= ~DEPTH_BLEND_MULTI_CYCLE_BIT;
 
-	switch (CycleType((words[0] >> 20) & 3))
+	switch ((words[0] >> 20) & 3)
 	{
-	case CycleType::Cycle2:
+	case RDP_CYCLE_2:
 		static_state.flags |= RASTERIZATION_MULTI_CYCLE_BIT;
 		depth_blend.flags |= DEPTH_BLEND_MULTI_CYCLE_BIT;
 		break;
 
-	case CycleType::Fill:
+	case RDP_CYCLE_FILL:
 		static_state.flags |= RASTERIZATION_FILL_BIT;
 		break;
 
-	case CycleType::Copy:
+	case RDP_CYCLE_COPY:
 		static_state.flags |= RASTERIZATION_COPY_BIT;
 		break;
 
@@ -482,14 +482,14 @@ void CommandProcessor::op_set_other_modes(const uint32_t *words)
 		break;
 	}
 
-	depth_blend.blend_cycles[0].blend_1a = static_cast<BlendMode1A>((words[1] >> 30) & 3);
-	depth_blend.blend_cycles[1].blend_1a = static_cast<BlendMode1A>((words[1] >> 28) & 3);
-	depth_blend.blend_cycles[0].blend_1b = static_cast<BlendMode1B>((words[1] >> 26) & 3);
-	depth_blend.blend_cycles[1].blend_1b = static_cast<BlendMode1B>((words[1] >> 24) & 3);
-	depth_blend.blend_cycles[0].blend_2a = static_cast<BlendMode2A>((words[1] >> 22) & 3);
-	depth_blend.blend_cycles[1].blend_2a = static_cast<BlendMode2A>((words[1] >> 20) & 3);
-	depth_blend.blend_cycles[0].blend_2b = static_cast<BlendMode2B>((words[1] >> 18) & 3);
-	depth_blend.blend_cycles[1].blend_2b = static_cast<BlendMode2B>((words[1] >> 16) & 3);
+	depth_blend.blend_cycles[0].blend_1a = uint8_t((words[1] >> 30) & 3);
+	depth_blend.blend_cycles[1].blend_1a = uint8_t((words[1] >> 28) & 3);
+	depth_blend.blend_cycles[0].blend_1b = uint8_t((words[1] >> 26) & 3);
+	depth_blend.blend_cycles[1].blend_1b = uint8_t((words[1] >> 24) & 3);
+	depth_blend.blend_cycles[0].blend_2a = uint8_t((words[1] >> 22) & 3);
+	depth_blend.blend_cycles[1].blend_2a = uint8_t((words[1] >> 20) & 3);
+	depth_blend.blend_cycles[0].blend_2b = uint8_t((words[1] >> 18) & 3);
+	depth_blend.blend_cycles[1].blend_2b = uint8_t((words[1] >> 16) & 3);
 
 	renderer.set_static_rasterization_state(static_state);
 	renderer.set_depth_blend_state(depth_blend);
@@ -501,8 +501,8 @@ void CommandProcessor::op_set_other_modes(const uint32_t *words)
 
 void CommandProcessor::op_set_texture_image(const uint32_t *words)
 {
-	auto fmt = TextureFormat((words[0] >> 21) & 7);
-	auto size = TextureSize((words[0] >> 19) & 3);
+	auto fmt = uint8_t((words[0] >> 21) & 7);
+	auto size = uint8_t((words[0] >> 19) & 3);
 	uint32_t width = (words[0] & 0x3ff) + 1;
 	uint32_t addr = words[1] & 0x00ffffffu;
 
@@ -519,8 +519,8 @@ void CommandProcessor::op_set_tile(const uint32_t *words)
 	TileMeta info = {};
 	info.offset = ((words[0] >> 0) & 511) << 3;
 	info.stride = ((words[0] >> 9) & 511) << 3;
-	info.size = TextureSize((words[0] >> 19) & 3);
-	info.fmt = TextureFormat((words[0] >> 21) & 7);
+	info.size = uint8_t((words[0] >> 19) & 3);
+	info.fmt = uint8_t((words[0] >> 21) & 7);
 
 	info.palette = (words[1] >> 20) & 15;
 
@@ -625,25 +625,25 @@ void CommandProcessor::op_set_tile_size(const uint32_t *words)
 
 void CommandProcessor::op_set_combine(const uint32_t *words)
 {
-	static_state.combiner[0].rgb.muladd = static_cast<RGBMulAdd>((words[0] >> 20) & 0xf);
-	static_state.combiner[0].rgb.mul = static_cast<RGBMul>((words[0] >> 15) & 0x1f);
-	static_state.combiner[0].rgb.mulsub = static_cast<RGBMulSub>((words[1] >> 28) & 0xf);
-	static_state.combiner[0].rgb.add = static_cast<RGBAdd>(words[1] >> 15 & 0x7);
+	static_state.combiner[0].rgb.muladd = uint8_t((words[0] >> 20) & 0xf);
+	static_state.combiner[0].rgb.mul = uint8_t((words[0] >> 15) & 0x1f);
+	static_state.combiner[0].rgb.mulsub = uint8_t((words[1] >> 28) & 0xf);
+	static_state.combiner[0].rgb.add = uint8_t(words[1] >> 15 & 0x7);
 
-	static_state.combiner[0].alpha.muladd = static_cast<AlphaAddSub>((words[0] >> 12) & 0x7);
-	static_state.combiner[0].alpha.mulsub = static_cast<AlphaAddSub>((words[1] >> 12) & 0x7);
-	static_state.combiner[0].alpha.mul = static_cast<AlphaMul>((words[0] >> 9) & 0x7);
-	static_state.combiner[0].alpha.add = static_cast<AlphaAddSub>((words[1] >> 9) & 0x7);
+	static_state.combiner[0].alpha.muladd = uint8_t((words[0] >> 12) & 0x7);
+	static_state.combiner[0].alpha.mulsub = uint8_t((words[1] >> 12) & 0x7);
+	static_state.combiner[0].alpha.mul = uint8_t((words[0] >> 9) & 0x7);
+	static_state.combiner[0].alpha.add = uint8_t((words[1] >> 9) & 0x7);
 
-	static_state.combiner[1].rgb.muladd = static_cast<RGBMulAdd>((words[0] >> 5) & 0xf);
-	static_state.combiner[1].rgb.mul = static_cast<RGBMul>((words[0] >> 0) & 0x1f);
-	static_state.combiner[1].rgb.mulsub = static_cast<RGBMulSub>((words[1] >> 24) & 0xf);
-	static_state.combiner[1].rgb.add = static_cast<RGBAdd>(words[1] >> 6 & 0x7);
+	static_state.combiner[1].rgb.muladd = uint8_t((words[0] >> 5) & 0xf);
+	static_state.combiner[1].rgb.mul = uint8_t((words[0] >> 0) & 0x1f);
+	static_state.combiner[1].rgb.mulsub = uint8_t((words[1] >> 24) & 0xf);
+	static_state.combiner[1].rgb.add = uint8_t(words[1] >> 6 & 0x7);
 
-	static_state.combiner[1].alpha.muladd = static_cast<AlphaAddSub>((words[1] >> 21) & 0x7);
-	static_state.combiner[1].alpha.mulsub = static_cast<AlphaAddSub>((words[1] >> 3) & 0x7);
-	static_state.combiner[1].alpha.mul = static_cast<AlphaMul>((words[1] >> 18) & 0x7);
-	static_state.combiner[1].alpha.add = static_cast<AlphaAddSub>((words[1] >> 0) & 0x7);
+	static_state.combiner[1].alpha.muladd = uint8_t((words[1] >> 21) & 0x7);
+	static_state.combiner[1].alpha.mulsub = uint8_t((words[1] >> 3) & 0x7);
+	static_state.combiner[1].alpha.mul = uint8_t((words[1] >> 18) & 0x7);
+	static_state.combiner[1].alpha.add = uint8_t((words[1] >> 0) & 0x7);
 	combine_words[0] = words[0];
 	combine_words[1] = words[1];
 
@@ -1063,7 +1063,7 @@ void CommandProcessor::upscaler_triangle(unsigned op, TriangleSetup &setup, Attr
 		if (depth_blend.flags & DEPTH_BLEND_DEPTH_UPDATE_BIT)
 			flags |= RDP_UPSCALER_DEPTH_WRITE;
 		/* (a decal moves with the surface it lies on) */
-		else if ((depth_blend.flags & DEPTH_BLEND_FORCE_BLEND_BIT) && depth_blend.z_mode != ZMode::Decal)
+		else if ((depth_blend.flags & DEPTH_BLEND_FORCE_BLEND_BIT) && depth_blend.z_mode != RDP_Z_MODE_DECAL)
 			flags |= RDP_UPSCALER_TRANSLUCENT;
 	}
 	if (prim_depth)

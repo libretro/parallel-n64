@@ -62,6 +62,10 @@ Renderer::Renderer(CommandProcessor &processor_)
 	: processor(processor_)
 {
 	retro_atomic_int_init(&active_submissions, 0);
+	// (a tile not set yet is 16 bits)
+	memset(tiles, 0, sizeof(tiles));
+	for (auto &tile : tiles)
+		tile.meta.size = RDP_TEXTURE_SIZE_16;
 }
 
 Renderer::~Renderer()
@@ -702,719 +706,8 @@ void Renderer::set_depth_blend_state(const DepthBlendState &state)
 
 void Renderer::draw_flat_primitive(TriangleSetup &setup)
 {
-	draw_shaded_primitive(setup, {});
-}
-
-static int normalize_dzpix(int dz)
-{
-	if (dz >= 0x8000)
-		return 0x8000;
-	else if (dz == 0)
-		return 1;
-
-	unsigned bit = 31 - leading_zeroes(dz);
-	return 1 << (bit + 1);
-}
-
-static uint16_t dz_compress(int dz)
-{
-	int val = 0;
-	if (dz & 0xff00)
-		val |= 8;
-	if (dz & 0xf0f0)
-		val |= 4;
-	if (dz & 0xcccc)
-		val |= 2;
-	if (dz & 0xaaaa)
-		val |= 1;
-	return uint16_t(val);
-}
-
-static void encode_rgb(uint8_t *rgba, uint32_t color)
-{
-	rgba[0] = uint8_t(color >> 24);
-	rgba[1] = uint8_t(color >> 16);
-	rgba[2] = uint8_t(color >> 8);
-}
-
-static void encode_alpha(uint8_t *rgba, uint32_t color)
-{
-	rgba[3] = uint8_t(color);
-}
-
-void Renderer::build_combiner_constants(DerivedSetup &setup, unsigned cycle) const
-{
-	auto &comb = stream.static_raster_state.combiner[cycle];
-	auto &output = setup.constants[cycle];
-
-	switch (comb.rgb.muladd)
-	{
-	case RGBMulAdd::Env:
-		encode_rgb(output.muladd, constants.env_color);
-		break;
-
-	case RGBMulAdd::Primitive:
-		encode_rgb(output.muladd, constants.primitive_color);
-		break;
-
-	default:
-		break;
-	}
-
-	switch (comb.rgb.mulsub)
-	{
-	case RGBMulSub::Env:
-		encode_rgb(output.mulsub, constants.env_color);
-		break;
-
-	case RGBMulSub::Primitive:
-		encode_rgb(output.mulsub, constants.primitive_color);
-		break;
-
-	case RGBMulSub::ConvertK4:
-		// Need to decode this specially since it's a 9-bit value.
-		encode_rgb(output.mulsub, uint32_t(constants.convert[4]) << 8);
-		break;
-
-	case RGBMulSub::KeyCenter:
-		output.mulsub[0] = constants.key_center[0];
-		output.mulsub[1] = constants.key_center[1];
-		output.mulsub[2] = constants.key_center[2];
-		break;
-
-	default:
-		break;
-	}
-
-	switch (comb.rgb.mul)
-	{
-	case RGBMul::Primitive:
-		encode_rgb(output.mul, constants.primitive_color);
-		break;
-
-	case RGBMul::Env:
-		encode_rgb(output.mul, constants.env_color);
-		break;
-
-	case RGBMul::PrimitiveAlpha:
-		encode_rgb(output.mul, 0x01010101 * ((constants.primitive_color) & 0xff));
-		break;
-
-	case RGBMul::EnvAlpha:
-		encode_rgb(output.mul, 0x01010101 * ((constants.env_color) & 0xff));
-		break;
-
-	case RGBMul::PrimLODFrac:
-		encode_rgb(output.mul, 0x01010101 * constants.prim_lod_frac);
-		break;
-
-	case RGBMul::ConvertK5:
-		// Need to decode this specially since it's a 9-bit value.
-		encode_rgb(output.mul, uint32_t(constants.convert[5]) << 8);
-		break;
-
-	case RGBMul::KeyScale:
-		output.mul[0] = constants.key_scale[0];
-		output.mul[1] = constants.key_scale[1];
-		output.mul[2] = constants.key_scale[2];
-		break;
-
-	default:
-		break;
-	}
-
-	switch (comb.rgb.add)
-	{
-	case RGBAdd::Primitive:
-		encode_rgb(output.add, constants.primitive_color);
-		break;
-
-	case RGBAdd::Env:
-		encode_rgb(output.add, constants.env_color);
-		break;
-
-	default:
-		break;
-	}
-
-	switch (comb.alpha.muladd)
-	{
-	case AlphaAddSub::PrimitiveAlpha:
-		encode_alpha(output.muladd, constants.primitive_color);
-		break;
-
-	case AlphaAddSub::EnvAlpha:
-		encode_alpha(output.muladd, constants.env_color);
-		break;
-
-	default:
-		break;
-	}
-
-	switch (comb.alpha.mulsub)
-	{
-	case AlphaAddSub::PrimitiveAlpha:
-		encode_alpha(output.mulsub, constants.primitive_color);
-		break;
-
-	case AlphaAddSub::EnvAlpha:
-		encode_alpha(output.mulsub, constants.env_color);
-		break;
-
-	default:
-		break;
-	}
-
-	switch (comb.alpha.mul)
-	{
-	case AlphaMul::PrimitiveAlpha:
-		encode_alpha(output.mul, constants.primitive_color);
-		break;
-
-	case AlphaMul::EnvAlpha:
-		encode_alpha(output.mul, constants.env_color);
-		break;
-
-	case AlphaMul::PrimLODFrac:
-		encode_alpha(output.mul, constants.prim_lod_frac);
-		break;
-
-	default:
-		break;
-	}
-
-	switch (comb.alpha.add)
-	{
-	case AlphaAddSub::PrimitiveAlpha:
-		encode_alpha(output.add, constants.primitive_color);
-		break;
-
-	case AlphaAddSub::EnvAlpha:
-		encode_alpha(output.add, constants.env_color);
-		break;
-
-	default:
-		break;
-	}
-}
-
-DerivedSetup Renderer::build_derived_attributes(const AttributeSetup &attr) const
-{
-	DerivedSetup setup = {};
-	if (constants.use_prim_depth)
-	{
-		setup.dz = constants.prim_dz;
-		setup.dz_compressed = dz_compress(setup.dz);
-	}
-	else
-	{
-		int dzdx = attr.dzdx >> 16;
-		int dzdy = attr.dzdy >> 16;
-		int dzpix = (dzdx < 0 ? (~dzdx & 0x7fff) : dzdx) + (dzdy < 0 ? (~dzdy & 0x7fff) : dzdy);
-		dzpix = normalize_dzpix(dzpix);
-		setup.dz = dzpix;
-		setup.dz_compressed = dz_compress(dzpix);
-	}
-
-	build_combiner_constants(setup, 0);
-	build_combiner_constants(setup, 1);
-
-	setup.fog_color[0] = uint8_t(constants.fog_color >> 24);
-	setup.fog_color[1] = uint8_t(constants.fog_color >> 16);
-	setup.fog_color[2] = uint8_t(constants.fog_color >> 8);
-	setup.fog_color[3] = uint8_t(constants.fog_color >> 0);
-
-	setup.blend_color[0] = uint8_t(constants.blend_color >> 24);
-	setup.blend_color[1] = uint8_t(constants.blend_color >> 16);
-	setup.blend_color[2] = uint8_t(constants.blend_color >> 8);
-	setup.blend_color[3] = uint8_t(constants.blend_color >> 0);
-
-	setup.fill_color = constants.fill_color;
-	setup.min_lod = constants.min_level;
-
-	for (unsigned i = 0; i < 4; i++)
-		setup.convert_factors[i] = int16_t(constants.convert[i]);
-
-	return setup;
-}
-
-static constexpr unsigned SUBPIXELS_Y = 4;
-
-static int32_t clamp_int32(int64_t v)
-{
-	if (v < INT32_MIN)
-		return INT32_MIN;
-	else if (v > INT32_MAX)
-		return INT32_MAX;
-	else
-		return int32_t(v);
-}
-
-struct XSpan
-{
-	int32_t first, second;
-};
-
-static XSpan interpolate_x(const TriangleSetup &setup, int y, bool flip, int scaling)
-{
-	// Interpolate in 64-bit so we are guaranteed to catch any overflow scenario.
-	int64_t yh_interpolation_base = setup.yh & ~(SUBPIXELS_Y - 1);
-	int64_t ym_interpolation_base = setup.ym;
-	yh_interpolation_base *= scaling;
-	ym_interpolation_base *= scaling;
-
-	int64_t xh = scaling * setup.xh + int64_t(y - yh_interpolation_base) * setup.dxhdy;
-	int64_t xm = scaling * setup.xm + int64_t(y - yh_interpolation_base) * setup.dxmdy;
-	int64_t xl = scaling * setup.xl + int64_t(y - ym_interpolation_base) * setup.dxldy;
-	if (y < scaling * setup.ym)
-		xl = xm;
-
-	int64_t xh_shifted = xh >> 15;
-	int64_t xl_shifted = xl >> 15;
-
-	int64_t xleft, xright;
-	if (flip)
-	{
-		xleft = xh_shifted;
-		xright = xl_shifted;
-	}
-	else
-	{
-		xleft = xl_shifted;
-		xright = xh_shifted;
-	}
-
-	return { clamp_int32(xleft), clamp_int32(xright) };
-}
-
-unsigned Renderer::compute_conservative_max_num_tiles(const TriangleSetup &setup) const
-{
-	if (setup.yl <= setup.yh)
-		return 0;
-
-	int scaling = int(caps.upscaling);
-	int start_y = setup.yh & ~(SUBPIXELS_Y - 1);
-	int end_y = (setup.yl - 1) | (SUBPIXELS_Y - 1);
-
-	start_y = rdp_max(int(stream.scissor_state.ylo), start_y);
-	end_y = rdp_min(int(stream.scissor_state.yhi) - 1, end_y);
-	start_y *= scaling;
-	end_y *= scaling;
-
-	// Y is clipped out, exit early.
-	if (end_y < start_y)
-		return 0;
-
-	bool flip = (setup.flags & TRIANGLE_SETUP_FLIP_BIT) != 0;
-
-	auto upper = interpolate_x(setup, start_y, flip, scaling);
-	auto lower = interpolate_x(setup, end_y, flip, scaling);
-	auto mid = upper;
-	auto mid1 = upper;
-
-	int ym = scaling * setup.ym;
-	if (ym > start_y && ym < end_y)
-	{
-		mid = interpolate_x(setup, ym, flip, scaling);
-		mid1 = interpolate_x(setup, ym - 1, flip, scaling);
-	}
-
-	// Robustness, check if we overflow the X rasterizer precision.
-	// After shifting down, we should have 12 bits signed.
-	// If we detect any overflow here we need to assume X range is scissor rect.
-	// This really should never happen, but it's possible to write tests that intentionally trigger weird
-	// overflow behavior that needs to be specially handled.
-	// There might be freak scenarios where we cannot detect overflow since we're only sampling at 4 scanlines
-	// and we have ~32 overflows happening at once,
-	// So we need to interpolate in 64-bit to make this work.
-
-	auto start_x = rdp_min(rdp_min(upper.first, lower.first), rdp_min(mid.first, mid1.first));
-	auto end_x = rdp_max(rdp_max(upper.second, lower.second), rdp_max(mid.second, mid1.second));
-
-	// Effective X range is [-2048, 2047], but just make it [-2047, 2047] to match binning shader.
-	// If we interpolate X to something outside that range,
-	// we must assume the entire X range will be covered.
-	if (x_range_exceeds(start_x, end_x, 2047 * scaling))
-	{
-		start_x = 0;
-		end_x = 0x7fffffff;
-	}
-
-	start_x = rdp_max(start_x, scaling * (int(stream.scissor_state.xlo) >> 2));
-	end_x = rdp_min(end_x, scaling * ((int(stream.scissor_state.xhi) + 3) >> 2) - 1);
-
-	if (end_x < start_x)
-		return 0;
-
-	start_x /= ImplementationConstants::TileWidth;
-	end_x /= ImplementationConstants::TileWidth;
-	start_y /= (SUBPIXELS_Y * ImplementationConstants::TileHeight);
-	end_y /= (SUBPIXELS_Y * ImplementationConstants::TileHeight);
-
-	return (end_x - start_x + 1) * (end_y - start_y + 1);
-}
-
-static bool combiner_accesses_texel0(const CombinerInputs &inputs)
-{
-	return inputs.rgb.muladd == RGBMulAdd::Texel0 ||
-	       inputs.rgb.mulsub == RGBMulSub::Texel0 ||
-	       inputs.rgb.mul == RGBMul::Texel0 ||
-	       inputs.rgb.add == RGBAdd::Texel0 ||
-	       inputs.rgb.mul == RGBMul::Texel0Alpha ||
-	       inputs.alpha.muladd == AlphaAddSub::Texel0Alpha ||
-	       inputs.alpha.mulsub == AlphaAddSub::Texel0Alpha ||
-	       inputs.alpha.mul == AlphaMul::Texel0Alpha ||
-	       inputs.alpha.add == AlphaAddSub::Texel0Alpha;
-}
-
-static bool combiner_accesses_lod_frac(const CombinerInputs &inputs)
-{
-	return inputs.rgb.mul == RGBMul::LODFrac || inputs.alpha.mul == AlphaMul::LODFrac;
-}
-
-static bool combiner_accesses_texel1(const CombinerInputs &inputs)
-{
-	return inputs.rgb.muladd == RGBMulAdd::Texel1 ||
-	       inputs.rgb.mulsub == RGBMulSub::Texel1 ||
-	       inputs.rgb.mul == RGBMul::Texel1 ||
-	       inputs.rgb.add == RGBAdd::Texel1 ||
-	       inputs.rgb.mul == RGBMul::Texel1Alpha ||
-	       inputs.alpha.muladd == AlphaAddSub::Texel1Alpha ||
-	       inputs.alpha.mulsub == AlphaAddSub::Texel1Alpha ||
-	       inputs.alpha.mul == AlphaMul::Texel1Alpha ||
-	       inputs.alpha.add == AlphaAddSub::Texel1Alpha;
-}
-
-static bool combiner_uses_texel0(const StaticRasterizationState &state)
-{
-	// Texel0 can be safely used in cycle0 of CYCLE2 mode, or in cycle1 (only cycle) of CYCLE1 mode.
-	if ((state.flags & RASTERIZATION_MULTI_CYCLE_BIT) != 0)
-	{
-		// In second cycle, Texel0 and Texel1 swap around ...
-		return combiner_accesses_texel0(state.combiner[0]) ||
-		       combiner_accesses_texel1(state.combiner[1]);
-	}
-	else
-		return combiner_accesses_texel0(state.combiner[1]);
-}
-
-static bool combiner_uses_texel1(const StaticRasterizationState &state)
-{
-	// Texel1 can be safely used in cycle0 of CYCLE2 mode, and never in cycle1 mode.
-	// Texel0 can be safely accessed in cycle1, which is an alias due to pipelining.
-	if ((state.flags & RASTERIZATION_MULTI_CYCLE_BIT) != 0)
-	{
-		return combiner_accesses_texel1(state.combiner[0]) ||
-		       combiner_accesses_texel0(state.combiner[1]);
-	}
-	else
-		return false;
-}
-
-static bool combiner_uses_pipelined_texel1(const StaticRasterizationState &state)
-{
-	// If you access Texel1 in cycle1 mode, you end up reading the next pixel's color for whatever reason.
-	if ((state.flags & RASTERIZATION_MULTI_CYCLE_BIT) == 0)
-		return combiner_accesses_texel1(state.combiner[1]);
-	else
-		return false;
-}
-
-static bool combiner_uses_lod_frac(const StaticRasterizationState &state)
-{
-	if ((state.flags & RASTERIZATION_MULTI_CYCLE_BIT) != 0)
-		return combiner_accesses_lod_frac(state.combiner[0]) || combiner_accesses_lod_frac(state.combiner[1]);
-	else
-		return false;
-}
-
-void Renderer::deduce_noise_state()
-{
-	auto &state = stream.static_raster_state;
-	state.flags &= ~(RASTERIZATION_NEED_NOISE_BIT | RASTERIZATION_NEED_NOISE_DUAL_BIT);
-
-	// Figure out if we need to seed noise variable for this primitive.
-	if ((state.dither & 3) == 2 || ((state.dither >> 2) & 3) == 2)
-	{
-		state.flags |= RASTERIZATION_NEED_NOISE_BIT;
-		return;
-	}
-
-	if ((state.flags & (RASTERIZATION_COPY_BIT | RASTERIZATION_FILL_BIT)) != 0)
-		return;
-
-	if ((state.flags & RASTERIZATION_MULTI_CYCLE_BIT) != 0)
-		if (state.combiner[0].rgb.muladd == RGBMulAdd::Noise)
-			state.flags |= RASTERIZATION_NEED_NOISE_BIT;
-
-	if (state.combiner[1].rgb.muladd == RGBMulAdd::Noise)
-		state.flags |= RASTERIZATION_NEED_NOISE_BIT;
-
-	// If both cycles use noise, they need to observe different values.
-	if ((state.flags & RASTERIZATION_MULTI_CYCLE_BIT) != 0 &&
-	    state.combiner[0].rgb.muladd == RGBMulAdd::Noise &&
-	    state.combiner[1].rgb.muladd == RGBMulAdd::Noise)
-		state.flags |= RASTERIZATION_NEED_NOISE_DUAL_BIT;
-
-	if ((state.flags & (RASTERIZATION_ALPHA_TEST_BIT | RASTERIZATION_ALPHA_TEST_DITHER_BIT)) ==
-	    (RASTERIZATION_ALPHA_TEST_BIT | RASTERIZATION_ALPHA_TEST_DITHER_BIT))
-	{
-		state.flags |= RASTERIZATION_NEED_NOISE_BIT;
-	}
-}
-
-static RGBMulAdd normalize_combiner(RGBMulAdd muladd)
-{
-	switch (muladd)
-	{
-	case RGBMulAdd::Noise:
-	case RGBMulAdd::Texel0:
-	case RGBMulAdd::Texel1:
-	case RGBMulAdd::Combined:
-	case RGBMulAdd::One:
-	case RGBMulAdd::Shade:
-		return muladd;
-
-	default:
-		return RGBMulAdd::Zero;
-	}
-}
-
-static RGBMulSub normalize_combiner(RGBMulSub mulsub)
-{
-	switch (mulsub)
-	{
-	case RGBMulSub::Combined:
-	case RGBMulSub::Texel0:
-	case RGBMulSub::Texel1:
-	case RGBMulSub::Shade:
-	case RGBMulSub::ConvertK4:
-		return mulsub;
-
-	default:
-		return RGBMulSub::Zero;
-	}
-}
-
-static RGBMul normalize_combiner(RGBMul mul)
-{
-	switch (mul)
-	{
-	case RGBMul::Combined:
-	case RGBMul::CombinedAlpha:
-	case RGBMul::Texel0:
-	case RGBMul::Texel1:
-	case RGBMul::Texel0Alpha:
-	case RGBMul::Texel1Alpha:
-	case RGBMul::Shade:
-	case RGBMul::ShadeAlpha:
-	case RGBMul::LODFrac:
-	case RGBMul::ConvertK5:
-		return mul;
-
-	default:
-		return RGBMul::Zero;
-	}
-}
-
-static RGBAdd normalize_combiner(RGBAdd add)
-{
-	switch (add)
-	{
-	case RGBAdd::Texel0:
-	case RGBAdd::Texel1:
-	case RGBAdd::Combined:
-	case RGBAdd::One:
-	case RGBAdd::Shade:
-		return add;
-
-	default:
-		return RGBAdd::Zero;
-	}
-}
-
-static AlphaAddSub normalize_combiner(AlphaAddSub addsub)
-{
-	switch (addsub)
-	{
-	case AlphaAddSub::CombinedAlpha:
-	case AlphaAddSub::Texel0Alpha:
-	case AlphaAddSub::Texel1Alpha:
-	case AlphaAddSub::ShadeAlpha:
-	case AlphaAddSub::One:
-		return addsub;
-
-	default:
-		return AlphaAddSub::Zero;
-	}
-}
-
-static AlphaMul normalize_combiner(AlphaMul mul)
-{
-	switch (mul)
-	{
-	case AlphaMul::LODFrac:
-	case AlphaMul::Texel0Alpha:
-	case AlphaMul::Texel1Alpha:
-	case AlphaMul::ShadeAlpha:
-		return mul;
-
-	default:
-		return AlphaMul::Zero;
-	}
-}
-
-static void normalize_combiner(CombinerInputsRGB &comb)
-{
-	comb.muladd = normalize_combiner(comb.muladd);
-	comb.mulsub = normalize_combiner(comb.mulsub);
-	comb.mul = normalize_combiner(comb.mul);
-	comb.add = normalize_combiner(comb.add);
-}
-
-static void normalize_combiner(CombinerInputsAlpha &comb)
-{
-	comb.muladd = normalize_combiner(comb.muladd);
-	comb.mulsub = normalize_combiner(comb.mulsub);
-	comb.mul = normalize_combiner(comb.mul);
-	comb.add = normalize_combiner(comb.add);
-}
-
-static void normalize_combiner(CombinerInputs &comb)
-{
-	normalize_combiner(comb.rgb);
-	normalize_combiner(comb.alpha);
-}
-
-StaticRasterizationState Renderer::normalize_static_state(StaticRasterizationState state)
-{
-	if ((state.flags & RASTERIZATION_FILL_BIT) != 0)
-	{
-		state = {};
-		state.flags = RASTERIZATION_FILL_BIT;
-		return state;
-	}
-
-	if ((state.flags & RASTERIZATION_COPY_BIT) != 0)
-	{
-		auto flags = state.flags &
-		             (RASTERIZATION_COPY_BIT |
-		              RASTERIZATION_TLUT_BIT |
-		              RASTERIZATION_TLUT_TYPE_BIT |
-		              RASTERIZATION_USES_TEXEL0_BIT |
-		              RASTERIZATION_USE_STATIC_TEXTURE_SIZE_FORMAT_BIT |
-		              RASTERIZATION_TEX_LOD_ENABLE_BIT |
-		              RASTERIZATION_DETAIL_LOD_ENABLE_BIT |
-		              RASTERIZATION_PERSPECTIVE_CORRECT_BIT |
-		              RASTERIZATION_ALPHA_TEST_BIT);
-
-		auto fmt = state.texture_fmt;
-		auto siz = state.texture_size;
-		state = {};
-		state.flags = flags;
-		state.texture_fmt = fmt;
-		state.texture_size = siz;
-		return state;
-	}
-
-	if ((state.flags & (RASTERIZATION_MULTI_CYCLE_BIT | RASTERIZATION_USES_PIPELINED_TEXEL1_BIT)) == 0)
-		state.flags &= ~(RASTERIZATION_BILERP_1_BIT | RASTERIZATION_CONVERT_ONE_BIT);
-
-	normalize_combiner(state.combiner[0]);
-	normalize_combiner(state.combiner[1]);
-	return state;
-}
-
-void Renderer::deduce_static_texture_state(unsigned tile, unsigned max_lod_level)
-{
-	auto &state = stream.static_raster_state;
-	state.flags &= ~RASTERIZATION_USE_STATIC_TEXTURE_SIZE_FORMAT_BIT;
-	state.texture_size = 0;
-	state.texture_fmt = 0;
-
-	if ((state.flags & RASTERIZATION_FILL_BIT) != 0)
-		return;
-
-	auto fmt = tiles[tile].meta.fmt;
-	auto siz = tiles[tile].meta.size;
-
-	if ((state.flags & RASTERIZATION_COPY_BIT) == 0)
-	{
-		// If all tiles we sample have the same fmt and size (common case), we can use a static variant.
-		bool uses_texel0 = combiner_uses_texel0(state);
-		bool uses_texel1 = combiner_uses_texel1(state);
-		bool uses_pipelined_texel1 = combiner_uses_pipelined_texel1(state);
-		bool uses_lod_frac = combiner_uses_lod_frac(state);
-
-		if (uses_texel1 && (state.flags & RASTERIZATION_CONVERT_ONE_BIT) != 0)
-			uses_texel0 = true;
-
-		state.flags &= ~(RASTERIZATION_USES_TEXEL0_BIT |
-		                 RASTERIZATION_USES_TEXEL1_BIT |
-		                 RASTERIZATION_USES_PIPELINED_TEXEL1_BIT |
-		                 RASTERIZATION_USES_LOD_BIT);
-		if (uses_texel0)
-			state.flags |= RASTERIZATION_USES_TEXEL0_BIT;
-		if (uses_texel1)
-			state.flags |= RASTERIZATION_USES_TEXEL1_BIT;
-		if (uses_pipelined_texel1)
-			state.flags |= RASTERIZATION_USES_PIPELINED_TEXEL1_BIT;
-		if (uses_lod_frac || (state.flags & RASTERIZATION_TEX_LOD_ENABLE_BIT) != 0)
-			state.flags |= RASTERIZATION_USES_LOD_BIT;
-
-		if (!uses_texel0 && !uses_texel1 && !uses_pipelined_texel1)
-			return;
-
-		bool use_lod = (state.flags & RASTERIZATION_TEX_LOD_ENABLE_BIT) != 0;
-		bool use_detail = (state.flags & RASTERIZATION_DETAIL_LOD_ENABLE_BIT) != 0;
-
-		bool uses_physical_texel1 = uses_texel1 &&
-		                            ((state.flags & RASTERIZATION_CONVERT_ONE_BIT) == 0 ||
-		                             (state.flags & RASTERIZATION_BILERP_1_BIT) != 0);
-
-		if (!use_lod)
-			max_lod_level = uses_physical_texel1 ? 1 : 0;
-		if (use_detail)
-			max_lod_level++;
-		max_lod_level = rdp_min(max_lod_level, 7u);
-
-		for (unsigned i = 1; i <= max_lod_level; i++)
-		{
-			auto &t = tiles[(tile + i) & 7].meta;
-			if (t.fmt != fmt)
-				return;
-			if (t.size != siz)
-				return;
-		}
-	}
-
-	// We have a static format.
-	state.flags |= RASTERIZATION_USE_STATIC_TEXTURE_SIZE_FORMAT_BIT;
-	state.texture_fmt = uint32_t(fmt);
-	state.texture_size = uint32_t(siz);
-}
-
-void Renderer::fixup_triangle_setup(TriangleSetup &setup) const
-{
-	// If YM is lower than the first sub-scanline we rasterize, we will never observe YM at all.
-	// To account for this, fixup here so that YM is out of range.
-	// No known content actually triggers this, but some public tests triggered it.
-	int start_y = setup.yh & ~(SUBPIXELS_Y - 1);
-	if (setup.ym < start_y)
-		setup.ym = INT16_MAX;
-
-	if ((stream.static_raster_state.flags & RASTERIZATION_INTERLACE_FIELD_BIT) != 0)
-	{
-		setup.flags |= (stream.static_raster_state.flags & RASTERIZATION_INTERLACE_FIELD_BIT) ?
-		               TRIANGLE_SETUP_INTERLACE_FIELD_BIT : 0;
-		setup.flags |= (stream.static_raster_state.flags & RASTERIZATION_INTERLACE_KEEP_ODD_BIT) ?
-		               TRIANGLE_SETUP_INTERLACE_KEEP_ODD_BIT : 0;
-	}
-
-	// Span size is inclusive, not exclusive.
-	// Rasterization is based on X range directly.
-	if ((stream.static_raster_state.flags & (RASTERIZATION_COPY_BIT | RASTERIZATION_FILL_BIT)) != 0)
-		setup.flags |= TRIANGLE_SETUP_FILL_COPY_RASTER_BIT;
+	AttributeSetup attr = {};
+	draw_shaded_primitive(setup, attr);
 }
 
 // Out of line and cold: draws and loads pay only the test of validation_iface.
@@ -1470,9 +763,9 @@ void Renderer::draw_shaded_primitive(TriangleSetup &setup, const AttributeSetup 
 	if (validation_iface)
 		validate_draw_state();
 
-	fixup_triangle_setup(setup);
+	rdp_fixup_triangle_setup(&setup, stream.static_raster_state.flags);
 
-	unsigned num_tiles = compute_conservative_max_num_tiles(setup);
+	unsigned num_tiles = rdp_conservative_tile_count(&setup, &stream.scissor_state, caps.upscaling);
 
 #if 0
 	// Don't exit early, throws off seeding of noise channels.
@@ -1501,14 +794,18 @@ void Renderer::draw_shaded_primitive(TriangleSetup &setup, const AttributeSetup 
 		stream.attribute_setup.add(attr);
 	}
 
-	stream.derived_setup.add(build_derived_attributes(attr));
+	DerivedSetup derived;
+	rdp_derived_setup(&constants, &stream.static_raster_state, &attr, &derived);
+	stream.derived_setup.add(derived);
 	stream.scissor_setup.add(stream.scissor_state);
 
-	deduce_static_texture_state(setup.tile & 7, setup.tile >> 3);
-	deduce_noise_state();
+	rdp_deduce_static_texture_state(&stream.static_raster_state, tiles, setup.tile & 7, setup.tile >> 3);
+	rdp_deduce_noise_state(&stream.static_raster_state);
 
 	InstanceIndices indices = {};
-	indices.static_index = stream.static_raster_state_cache.add(normalize_static_state(stream.static_raster_state));
+	StaticRasterizationState normalized = stream.static_raster_state;
+	rdp_normalize_static_state(&normalized);
+	indices.static_index = stream.static_raster_state_cache.add(normalized);
 	indices.depth_blend_index = stream.depth_blend_state_cache.add(stream.depth_blend_state);
 	indices.tile_instance_index = uint8_t(stream.num_tmem_uploads);
 	for (unsigned i = 0; i < 8; i++)
@@ -3051,7 +2348,7 @@ void Renderer::load_tile(uint32_t tile, const LoadTileInfo &info)
 		unsigned max_bytes_per_line = 0x1000;
 		// We need to write lower and upper halves at once,
 		// so we need to wrap around at 2k boundary.
-		if (meta.fmt == TextureFormat::YUV)
+		if (meta.fmt == RDP_TEXTURE_FORMAT_YUV)
 			max_bytes_per_line /= 2;
 
 		unsigned num_lines = ((info.thi >> 2) - (info.tlo >> 2)) + 1;
@@ -3106,14 +2403,14 @@ void Renderer::load_tile_iteration(uint32_t tile, const LoadTileInfo &info, uint
 	size.tlo = info.tlo;
 	size.thi = info.thi;
 
-	if (meta.fmt == TextureFormat::YUV && ((meta.size != TextureSize::Bpp16) || (info.size != TextureSize::Bpp16)))
+	if (meta.fmt == RDP_TEXTURE_FORMAT_YUV && ((meta.size != RDP_TEXTURE_SIZE_16) || (info.size != RDP_TEXTURE_SIZE_16)))
 	{
 		LOGE("Only 16bpp is supported for YUV uploads.\n");
 		return;
 	}
 
 	// This case does not appear to be supported.
-	if (info.size == TextureSize::Bpp4)
+	if (info.size == RDP_TEXTURE_SIZE_4)
 	{
 		LOGE("4-bit VRAM pointer crashes the RDP.\n");
 		if (validation_iface)
@@ -3121,13 +2418,13 @@ void Renderer::load_tile_iteration(uint32_t tile, const LoadTileInfo &info, uint
 		return;
 	}
 
-	if (meta.size == TextureSize::Bpp32 && meta.fmt != TextureFormat::RGBA)
+	if (meta.size == RDP_TEXTURE_SIZE_32 && meta.fmt != RDP_TEXTURE_FORMAT_RGBA)
 	{
 		LOGE("32bpp tile uploads must using RGBA texture format, unsupported otherwise.\n");
 		return;
 	}
 
-	if (info.mode == UploadMode::TLUT && meta.size == TextureSize::Bpp32)
+	if (info.mode == UploadMode::TLUT && meta.size == RDP_TEXTURE_SIZE_32)
 	{
 		LOGE("TLUT uploads with 32bpp tiles are unsupported.\n");
 		return;
@@ -3135,17 +2432,17 @@ void Renderer::load_tile_iteration(uint32_t tile, const LoadTileInfo &info, uint
 
 	if (info.mode != UploadMode::TLUT)
 	{
-		if (info.size == TextureSize::Bpp32 && meta.size == TextureSize::Bpp8)
+		if (info.size == RDP_TEXTURE_SIZE_32 && meta.size == RDP_TEXTURE_SIZE_8)
 		{
 			LOGE("FIXME: Loading tile with Texture 32-bit and Tile 8-bit. This creates insane results, unsupported.\n");
 			return;
 		}
-		else if (info.size == TextureSize::Bpp16 && meta.size == TextureSize::Bpp4)
+		else if (info.size == RDP_TEXTURE_SIZE_16 && meta.size == RDP_TEXTURE_SIZE_4)
 		{
 			LOGE("FIXME: Loading tile with Texture 16-bit and Tile 4-bit. This creates insane results, unsupported.\n");
 			return;
 		}
-		else if (info.size == TextureSize::Bpp32 && meta.size == TextureSize::Bpp4)
+		else if (info.size == RDP_TEXTURE_SIZE_32 && meta.size == RDP_TEXTURE_SIZE_4)
 		{
 			LOGE("FIXME: Loading tile with Texture 32-bit and Tile 4-bit. This creates insane results, unsupported.\n");
 			return;
@@ -3225,7 +2522,7 @@ void Renderer::load_tile_iteration(uint32_t tile, const LoadTileInfo &info, uint
 			// Also makes the right shift nicer (16 vs 11).
 			upload.dxt = dt << 5;
 
-			if (meta.size == TextureSize::Bpp32 || meta.fmt == TextureFormat::YUV)
+			if (meta.size == RDP_TEXTURE_SIZE_32 || meta.fmt == RDP_TEXTURE_FORMAT_YUV)
 			{
 				// We iterate twice for Bpp32 and YUV to complete a 64bpp word.
 				upload.tmem_stride_words <<= 1;
@@ -3292,11 +2589,11 @@ void Renderer::load_tile_iteration(uint32_t tile, const LoadTileInfo &info, uint
 
 	switch (info.size)
 	{
-	case TextureSize::Bpp8:
+	case RDP_TEXTURE_SIZE_8:
 		upload.vram_effective_width = (upload.width + 7) & ~7;
 		break;
 
-	case TextureSize::Bpp16:
+	case RDP_TEXTURE_SIZE_16:
 		// In 16-bit VRAM pointer with TLUT, we iterate one texel at a time, not 4.
 		if (upload_mode == UploadMode::TLUT)
 			upload.vram_effective_width = upload.width;
@@ -3304,7 +2601,7 @@ void Renderer::load_tile_iteration(uint32_t tile, const LoadTileInfo &info, uint
 			upload.vram_effective_width = (upload.width + 3) & ~3;
 		break;
 
-	case TextureSize::Bpp32:
+	case RDP_TEXTURE_SIZE_32:
 		upload.vram_effective_width = (upload.width + 1) & ~1;
 		break;
 
@@ -3315,24 +2612,24 @@ void Renderer::load_tile_iteration(uint32_t tile, const LoadTileInfo &info, uint
 	// Uploads happen in chunks of 8 bytes in groups of 4x16-bits.
 	switch (meta.size)
 	{
-	case TextureSize::Bpp4:
+	case RDP_TEXTURE_SIZE_4:
 		upload.width = (upload.width + 15) & ~15;
 		upload.width >>= 2;
 		break;
 
-	case TextureSize::Bpp8:
+	case RDP_TEXTURE_SIZE_8:
 		upload.width = (upload.width + 7) & ~7;
 		upload.width >>= 1;
 		break;
 
-	case TextureSize::Bpp16:
+	case RDP_TEXTURE_SIZE_16:
 		upload.width = (upload.width + 3) & ~3;
 		// Consider YUV uploads to be 32bpp since that's kinda what they are.
-		if (meta.fmt == TextureFormat::YUV)
+		if (meta.fmt == RDP_TEXTURE_FORMAT_YUV)
 			upload.width >>= 1;
 		break;
 
-	case TextureSize::Bpp32:
+	case RDP_TEXTURE_SIZE_32:
 		upload.width = (upload.width + 1) & ~1;
 		break;
 

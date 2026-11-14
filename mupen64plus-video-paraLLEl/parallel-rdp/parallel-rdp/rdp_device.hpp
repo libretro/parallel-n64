@@ -229,8 +229,8 @@ private:
 	{
 		uint32_t addr;
 		uint32_t width;
-		TextureFormat fmt;
-		TextureSize size;
+		uint8_t fmt;  /* enum rdp_texture_format */
+		uint8_t size; /* enum rdp_texture_size */
 	} texture_image = {};
 
 	uint64_t timeline_value = 0;
