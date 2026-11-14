@@ -58,10 +58,10 @@ public:
 	VideoInterface(const VideoInterface &) = delete;
 	void operator=(const VideoInterface &) = delete;
 
-	void queue_known_pipelines(unsigned upscaling, bool with_upscaler,
-	                           rdp_known_pipeline_fn add, void *ctx)
+	// The C video interface itself
+	rdp_vi_t *get_vi()
 	{
-		rdp_vi_queue_known_pipelines(&vi, upscaling, with_upscaler, add, ctx);
+		return &vi;
 	}
 
 	void set_device(Vulkan::Device *device)

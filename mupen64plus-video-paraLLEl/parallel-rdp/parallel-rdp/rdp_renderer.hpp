@@ -28,8 +28,8 @@
 #include "rdp_worker.h"
 #include "shader_bank.h"
 #include "rdram_coherency.h"
-#include "pipeline_pending.h"
 #include "renderer_caps.h"
+#include "rdp_pipelines.h"
 #include <retro_atomic.h>
 
 namespace RDP
@@ -114,7 +114,7 @@ public:
 	void build_pipelines_ahead(const pipeline_record_t *records, size_t count, VideoInterface *vi, bool with_upscaler);
 	/* Whether the worker has built the first kind, without waiting; any
 	 * thread, after build_pipelines_ahead returned. */
-	bool pipelines_ahead_ready() const;
+	bool pipelines_ahead_ready();
 	/* Sleeps until they are: for test hosts that count what the frame's
 	 * threads build, never on a frontend's path */
 	void wait_pipelines_ahead_for_test();
@@ -326,27 +326,12 @@ private:
 	void submit_tile_binning_combined(Vulkan::CommandBuffer &cmd, bool upscaled);
 	void clear_indirect_buffer(Vulkan::CommandBuffer &cmd);
 
-	enum { MaxKnownPipelines = 256 };
-	struct KnownPipelines
-	{
-		void *nodes;
-		size_t n, limit;
-		Renderer *renderer;
-	};
-	static void add_known_pipeline(void *list, granite_command_buffer_t *cb, uint32_t kind);
-	size_t queue_known_pipelines(void *nodes, size_t n, VideoInterface *vi, bool with_upscaler);
-	void set_span_setup_pipeline(Vulkan::CommandBuffer &cmd, bool upscale);
-	uint32_t set_tile_binning_pipeline(Vulkan::CommandBuffer &cmd, bool upscale);
-	void set_depth_blend_pipeline(Vulkan::CommandBuffer &cmd, uint32_t fmt, bool same_addr,
-	                              bool upscaled, bool force_write_mask);
+	rdp_pipeline_setup_t pipeline_setup() const;
 	void submit_rasterization(Vulkan::CommandBuffer &cmd, Vulkan::Buffer &tmem, bool upscaled);
 	void submit_depth_blend(Vulkan::CommandBuffer &cmd, Vulkan::Buffer &tmem, bool upscaled, bool force_write_mask);
 
-	enum class ResolveStage { Pre, Post, SSAAResolve };
-	void set_upscaled_domain_pipeline(Vulkan::CommandBuffer &cmd, ResolveStage stage,
-	                                  unsigned pixel_size_log2, bool same_addr);
-	void submit_update_upscaled_domain(Vulkan::CommandBuffer &cmd, ResolveStage stage);
-	void submit_update_upscaled_domain(Vulkan::CommandBuffer &cmd, ResolveStage stage,
+	void submit_update_upscaled_domain(Vulkan::CommandBuffer &cmd, rdp_resolve_stage stage);
+	void submit_update_upscaled_domain(Vulkan::CommandBuffer &cmd, rdp_resolve_stage stage,
 	                                   unsigned addr, unsigned depth_addr,
 	                                   unsigned width, unsigned height,
 	                                   unsigned pixel_size_log2);
@@ -355,26 +340,10 @@ private:
 	SpanInfoOffsets allocate_span_jobs(const TriangleSetup &setup);
 
 
-	// The compute pipelines queued to the worker, and the jobs carrying
-	// them (pipeline_nodes): both allocated before the first frame.
-	rdp_hash_set_t pending_async_pipelines = {};
-	rdp_node_pool_t pipeline_node_pool;
-	void *pipeline_nodes = nullptr;
-
-
 	rdp_renderer_caps_t caps;
 
-	// Background compute pipeline compiles (rdp_worker.c).
-	rdp_worker_t *pipeline_worker = nullptr;
-	static void pipeline_work(void *user, mpsc_stack_node_t *item);
-	/* build_pipelines_ahead's nodes, one block freed once the worker is
-	 * gone; the worker counts the urgent ones it is done with, and builds
-	 * none past teardown. */
-	void *pipeline_ahead_nodes = nullptr;
-	int pipeline_ahead_urgent = 0;
-	retro_atomic_int_t pipeline_ahead_urgent_done{0};
-	retro_atomic_int_t pipeline_ahead_stop{0};
-	static bool pipeline_ahead_urgent_built(void *ctx);
+	// The compute pipelines built on a thread of their own
+	rdp_pipeline_builder_t pipelines;
 
 	void resolve_coherency_host_to_gpu(Vulkan::CommandBuffer &cmd);
 	void resolve_coherency_gpu_to_host(CoherencyOperation &op, Vulkan::CommandBuffer &cmd);
