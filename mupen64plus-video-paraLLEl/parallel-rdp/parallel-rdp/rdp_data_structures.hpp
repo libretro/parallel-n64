@@ -255,7 +255,6 @@ constexpr unsigned TileWidth = 8;
 constexpr unsigned TileHeight = 8;
 constexpr unsigned MaxTilesX = Limits::MaxWidth / TileWidth;
 constexpr unsigned MaxTilesY = Limits::MaxHeight / TileHeight;
-constexpr unsigned IncoherentPageSize = 1024;
 constexpr unsigned MaxPendingRenderPassesBeforeFlush = 8;
 constexpr unsigned MinimumPrimitivesForIdleFlush = 32;
 constexpr unsigned MinimumRenderPassesForIdleFlush = 2;

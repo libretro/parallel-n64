@@ -152,44 +152,25 @@ static void unref_image(granite_image_t **image)
 }
 
 /* ---- pipeline state ---- */
-static void set_spec_mask(granite_command_buffer_t *cb, uint32_t mask)
-{
-	if (cb->pipeline_state.potential_static_state.spec_constant_mask != mask)
-	{
-		cb->pipeline_state.potential_static_state.spec_constant_mask = (uint8_t)mask;
-		granite_cb_set_dirty(cb, GRANITE_COMMAND_BUFFER_DIRTY_STATIC_STATE_BIT);
-	}
-}
-
-static void set_spec(granite_command_buffer_t *cb, unsigned index, uint32_t value)
-{
-	if (cb->pipeline_state.potential_static_state.spec_constants[index] != value)
-	{
-		cb->pipeline_state.potential_static_state.spec_constants[index] = value;
-		if (cb->pipeline_state.potential_static_state.spec_constant_mask & (1u << index))
-			granite_cb_set_dirty(cb, GRANITE_COMMAND_BUFFER_DIRTY_STATIC_STATE_BIT);
-	}
-}
-
 static void set_extract_vram_pipeline(const rdp_vi_t *vi, granite_command_buffer_t *cb, uint32_t status,
 		unsigned scaling_factor)
 {
 	granite_cb_set_program(cb, vi->shader_bank->extract_vram);
-	set_spec_mask(cb, 7);
-	set_spec(cb, 0, (uint32_t)vi->rdram_size);
-	set_spec(cb, 1, status & (VI_CONTROL_TYPE_MASK | VI_CONTROL_META_AA_BIT));
-	set_spec(cb, 2, trailing_zeroes(scaling_factor));
+	granite_cb_set_spec_constant_mask(cb, 7);
+	granite_cb_set_spec_constant(cb, 0, (uint32_t)vi->rdram_size);
+	granite_cb_set_spec_constant(cb, 1, status & (VI_CONTROL_TYPE_MASK | VI_CONTROL_META_AA_BIT));
+	granite_cb_set_spec_constant(cb, 2, trailing_zeroes(scaling_factor));
 }
 
 static void set_upscaler_color_pipeline(const rdp_vi_t *vi, granite_command_buffer_t *cb, bool rgba32,
 		unsigned scaling_factor, bool gamma)
 {
 	granite_cb_set_program(cb, rdp_upscaler_color_program(vi->device));
-	set_spec_mask(cb, 0xf);
-	set_spec(cb, 0, (uint32_t)vi->rdram_size);
-	set_spec(cb, 1, (uint32_t)rgba32);
-	set_spec(cb, 2, trailing_zeroes(scaling_factor));
-	set_spec(cb, 3, (uint32_t)gamma);
+	granite_cb_set_spec_constant_mask(cb, 0xf);
+	granite_cb_set_spec_constant(cb, 0, (uint32_t)vi->rdram_size);
+	granite_cb_set_spec_constant(cb, 1, (uint32_t)rgba32);
+	granite_cb_set_spec_constant(cb, 2, trailing_zeroes(scaling_factor));
+	granite_cb_set_spec_constant(cb, 3, (uint32_t)gamma);
 }
 
 static granite_program_t *graphics_program(const rdp_vi_t *vi, const granite_shader_t *vertex,
@@ -203,9 +184,9 @@ static void set_fetch_pipeline(const rdp_vi_t *vi, granite_command_buffer_t *cb,
 	granite_cb_set_opaque_state(cb);
 	granite_cb_set_program(cb, graphics_program(vi, vi->shader_bank->fullscreen,
 				vi->shader_bank->vi_fetch[fetch_bug ? 1 : 0]));
-	set_spec_mask(cb, 3);
-	set_spec(cb, 0, (uint32_t)vi->rdram_size);
-	set_spec(cb, 1, status & (VI_CONTROL_META_AA_BIT | VI_CONTROL_DITHER_FILTER_ENABLE_BIT));
+	granite_cb_set_spec_constant_mask(cb, 3);
+	granite_cb_set_spec_constant(cb, 0, (uint32_t)vi->rdram_size);
+	granite_cb_set_spec_constant(cb, 1, status & (VI_CONTROL_META_AA_BIT | VI_CONTROL_DITHER_FILTER_ENABLE_BIT));
 }
 
 static void set_divot_pipeline(const rdp_vi_t *vi, granite_command_buffer_t *cb, bool fetch_bug)
@@ -218,10 +199,10 @@ static void set_divot_pipeline(const rdp_vi_t *vi, granite_command_buffer_t *cb,
 static void set_scale_pipeline(const rdp_vi_t *vi, granite_command_buffer_t *cb, uint32_t status, bool fetch_bug,
 		bool fold)
 {
-	set_spec_mask(cb, (1 << 1) | (1 << 2));
-	set_spec(cb, 1, status & (VI_CONTROL_GAMMA_ENABLE_BIT | VI_CONTROL_GAMMA_DITHER_ENABLE_BIT |
+	granite_cb_set_spec_constant_mask(cb, (1 << 1) | (1 << 2));
+	granite_cb_set_spec_constant(cb, 1, status & (VI_CONTROL_GAMMA_ENABLE_BIT | VI_CONTROL_GAMMA_DITHER_ENABLE_BIT |
 				VI_CONTROL_META_SCALE_BIT | VI_CONTROL_META_AA_BIT));
-	set_spec(cb, 2, (uint32_t)fetch_bug);
+	granite_cb_set_spec_constant(cb, 2, (uint32_t)fetch_bug);
 	granite_cb_set_opaque_state(cb);
 	granite_cb_set_program(cb, graphics_program(vi, vi->shader_bank->fullscreen,
 				fold ? vi->vi_scale_fold : vi->shader_bank->vi_scale));
@@ -239,7 +220,7 @@ static void set_blend_fields_pipeline(const rdp_vi_t *vi, granite_command_buffer
 	/* Don't overwrite alpha, it's already zero. */
 	state->state.write_mask = 0x7;
 	granite_cb_set_dirty(cb, GRANITE_COMMAND_BUFFER_DIRTY_STATIC_STATE_BIT);
-	set_spec_mask(cb, 0);
+	granite_cb_set_spec_constant_mask(cb, 0);
 	granite_cb_set_program(cb, graphics_program(vi, vi->shader_bank->fullscreen,
 				vi->shader_bank->vi_blend_fields));
 }

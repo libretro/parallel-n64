@@ -239,7 +239,11 @@ void CommandProcessor::init_renderer()
 	}
 
 	renderer.set_device(&device);
-	renderer.set_rdram(rdram.get(), host_rdram, rdram_offset, rdram_size, is_host_coherent);
+	if (!renderer.set_rdram(rdram.get(), host_rdram, rdram_offset, rdram_size, is_host_coherent))
+	{
+		is_supported = false;
+		return;
+	}
 	renderer.set_hidden_rdram(hidden_rdram.get());
 	renderer.set_tmem(tmem.get());
 

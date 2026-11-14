@@ -27,13 +27,14 @@
 #include "rdp_common.hpp"
 #include "rdp_worker.h"
 #include "shader_bank.h"
+#include "rdram_coherency.h"
 #include "pipeline_pending.h"
 #include <retro_atomic.h>
 
 namespace RDP
 {
 struct CoherencyOperation;
-struct CoherencyCopy;
+using CoherencyCopy = ::rdp_coherency_copy_t;
 
 struct SyncObject
 {
@@ -98,7 +99,8 @@ public:
 
 	// If coherent is false, RDRAM is a buffer split into data in lower half and writemask state in upper half, each part being size large.
 	// offset must be 0 in this case.
-	void set_rdram(Vulkan::Buffer *buffer, uint8_t *host_rdram, size_t offset, size_t size, bool coherent);
+	// False when out of memory
+	bool set_rdram(Vulkan::Buffer *buffer, uint8_t *host_rdram, size_t offset, size_t size, bool coherent);
 	void set_hidden_rdram(Vulkan::Buffer *buffer);
 	void set_tmem(Vulkan::Buffer *buffer);
 	void set_shader_bank(const ShaderBank *bank);
@@ -176,28 +178,9 @@ private:
 
 	void validate_draw_state() const;
 
-	struct
-	{
-		uint8_t *host_rdram = nullptr;
-		Vulkan::BufferHandle staging_rdram;
-		Vulkan::BufferHandle staging_readback;
-		// One block: the page counters, the three page bitmaps of
-		// packed_pages words each, and room for a copy per page.
-		void *arena = nullptr;
-		retro_atomic_int_t *pending_writes_for_page = nullptr;
-		uint32_t *page_to_direct_copy = nullptr;
-		uint32_t *page_to_masked_copy = nullptr;
-		uint32_t *page_to_pending_readback = nullptr;
-		CoherencyCopy *copies = nullptr;
-		unsigned packed_pages = 0;
-		unsigned num_pages = 0;
-		unsigned staging_readback_pages = 0;
-		unsigned staging_readback_index = 0; // Ringbuffer the readbacks.
-		// RDRAM is mapped, cached and coherent: an upload reads the GPU's
-		// copy first and leaves alone what is the same.
-		bool compare_before_upload = false;
-	} incoherent;
-	void upload_pages_compared(unsigned index, unsigned count);
+	// The GPU's RDRAM kept in step with the host's, without
+	// VK_EXT_external_memory_host (rdram_coherency.h)
+	rdp_rdram_coherency_t incoherent = {};
 
 	size_t rdram_offset = 0;
 	size_t rdram_size = 0;

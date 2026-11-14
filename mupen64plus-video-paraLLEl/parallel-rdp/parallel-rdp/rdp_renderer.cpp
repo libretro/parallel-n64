@@ -27,7 +27,6 @@
 #include "logging.h"
 #include "bitops.hpp"
 #include "luts.hpp"
-#include "incoherent_pages.hpp"
 #include "pipeline_record_list.h"
 #include "timer.h"
 #include "thread_name.h"
@@ -79,7 +78,7 @@ Renderer::~Renderer()
 	free(pipeline_ahead_nodes);
 	free(pipeline_nodes);
 	rdp_hash_set_free(&pending_async_pipelines);
-	free(incoherent.arena);
+	rdp_coherency_free(&incoherent);
 }
 
 // maxStorageBufferRange; PARALLEL_RDP_MAX_STORAGE_BUFFER_RANGE=bytes lowers
@@ -577,7 +576,7 @@ bool Renderer::init_internal_upscaling_factor(const RendererOptions &options)
 	return true;
 }
 
-void Renderer::set_rdram(Vulkan::Buffer *buffer, uint8_t *host_rdram, size_t offset, size_t size, bool coherent)
+bool Renderer::set_rdram(Vulkan::Buffer *buffer, uint8_t *host_rdram, size_t offset, size_t size, bool coherent)
 {
 	rdram = buffer;
 	rdram_offset = offset;
@@ -586,72 +585,17 @@ void Renderer::set_rdram(Vulkan::Buffer *buffer, uint8_t *host_rdram, size_t off
 
 	if (!is_host_coherent)
 	{
-		assert(rdram_offset == 0);
-		incoherent.host_rdram = host_rdram;
-
 		// If we're not host coherent (missing VK_EXT_external_memory_host),
-		// we need to create a staging RDRAM buffer which is used for the real RDRAM uploads.
-		// RDRAM may be uploaded in a masked way (if GPU has pending writes), or direct copy (if no pending writes are outstanding).
-		Vulkan::BufferCreateInfo info = {};
-		info.size = size;
-		info.domain = Vulkan::BufferDomain::Host;
-		info.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-		incoherent.staging_rdram = device->create_buffer(info);
-
-		if (!rdram->get_allocation().host_base)
-		{
-			// If we cannot map RDRAM, we need a staging readback buffer.
-			Vulkan::BufferCreateInfo readback_info = {};
-			readback_info.domain = Vulkan::BufferDomain::CachedCoherentHostPreferCached;
-			readback_info.size = rdram_size * Limits::NumSyncStates;
-			readback_info.usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-			incoherent.staging_readback = device->create_buffer(readback_info);
-			incoherent.staging_readback_pages = div_round_up(readback_info.size, ImplementationConstants::IncoherentPageSize);
-		}
-
-		{
-			const VkMemoryPropertyFlags cached_coherent =
-					VK_MEMORY_PROPERTY_HOST_CACHED_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
-			const auto &allocation = rdram->get_allocation();
-			incoherent.compare_before_upload = allocation.host_base &&
-					(device->get_memory_properties().memoryTypes[allocation.memory_type].propertyFlags &
-					 cached_coherent) == cached_coherent;
-			// (every page uploaded whole, to compare against)
-			if (const char *env = getenv("PARALLEL_RDP_FULL_RDRAM_UPLOAD"))
-				if (strtol(env, nullptr, 0) > 0)
-					incoherent.compare_before_upload = false;
-		}
-
-		auto packed_pages = div_round_up(size, ImplementationConstants::IncoherentPageSize * 32);
-		incoherent.num_pages = div_round_up(size, ImplementationConstants::IncoherentPageSize);
-
-		{
-			size_t counters = sizeof(retro_atomic_int_t) * incoherent.num_pages;
-			size_t bitmaps = sizeof(uint32_t) * packed_pages;
-			size_t copies = sizeof(CoherencyCopy) * incoherent.num_pages;
-			uint8_t *arena;
-			unsigned i;
-
-			counters = (counters + 7) & ~size_t(7);
-			bitmaps = (bitmaps + 7) & ~size_t(7);
-			free(incoherent.arena);
-			arena = static_cast<uint8_t *>(calloc(1, counters + 3 * bitmaps + copies));
-			incoherent.arena = arena;
-			incoherent.packed_pages = unsigned(packed_pages);
-			incoherent.pending_writes_for_page = reinterpret_cast<retro_atomic_int_t *>(arena);
-			incoherent.page_to_direct_copy = reinterpret_cast<uint32_t *>(arena + counters);
-			incoherent.page_to_masked_copy = reinterpret_cast<uint32_t *>(arena + counters + bitmaps);
-			incoherent.page_to_pending_readback = reinterpret_cast<uint32_t *>(arena + counters + 2 * bitmaps);
-			incoherent.copies = reinterpret_cast<CoherencyCopy *>(arena + counters + 3 * bitmaps);
-			for (i = 0; i < incoherent.num_pages; i++)
-				retro_atomic_int_init(&incoherent.pending_writes_for_page[i], 0);
-		}
+		// the GPU has its own RDRAM, kept in step with the host's page by page.
+		assert(rdram_offset == 0);
+		bool full_upload = false;
+		// (every page uploaded whole, to compare against)
+		if (const char *env = getenv("PARALLEL_RDP_FULL_RDRAM_UPLOAD"))
+			full_upload = strtol(env, nullptr, 0) > 0;
+		return rdp_coherency_init(&incoherent, device, rdram, host_rdram, size, full_upload);
 	}
-	else
-	{
-		free(incoherent.arena);
-		incoherent = {};
-	}
+	rdp_coherency_free(&incoherent);
+	return true;
 }
 
 void Renderer::set_hidden_rdram(Vulkan::Buffer *buffer)
@@ -1707,154 +1651,22 @@ uint32_t Renderer::get_byte_size_for_bound_depth_framebuffer() const
 
 void Renderer::mark_pages_for_gpu_read(uint32_t base_addr, uint32_t byte_count)
 {
-	if (byte_count == 0)
-		return;
-
-	uint32_t start_page = base_addr / ImplementationConstants::IncoherentPageSize;
-	uint32_t end_page = (base_addr + byte_count - 1) / ImplementationConstants::IncoherentPageSize + 1;
-	retro_atomic_int_t *pending = incoherent.pending_writes_for_page;
-
-	// A page whose write-backs are all done is read straight from host
-	// memory: the acquire load pairs with the timeline worker's decrement
-	// after its copy, so the copy is seen (as a relaxed load and the fence
-	// before the reads would be too, but thread sanitizers see no fences).
-	mark_incoherent_pages_for_read(start_page, end_page - start_page, incoherent.num_pages,
-	                               incoherent.page_to_pending_readback,
-	                               [pending](uint32_t page) { return retro_atomic_load_acquire_int(&pending[page]) != 0; },
-	                               incoherent.page_to_masked_copy, incoherent.page_to_direct_copy);
+	rdp_coherency_mark_read(&incoherent, base_addr, byte_count);
 }
 
 void Renderer::lock_pages_for_gpu_write(uint32_t base_addr, uint32_t byte_count)
 {
-	if (byte_count == 0)
-		return;
-
-	uint32_t start_page = base_addr / ImplementationConstants::IncoherentPageSize;
-	uint32_t end_page = (base_addr + byte_count - 1) / ImplementationConstants::IncoherentPageSize + 1;
-
-	for (uint32_t page = start_page; page < end_page; page++)
-	{
-		uint32_t wrapped_page = page & (incoherent.num_pages - 1);
-		incoherent.page_to_pending_readback[wrapped_page / 32] |= 1u << (wrapped_page & 31);
-	}
+	rdp_coherency_lock_write(&incoherent, base_addr, byte_count);
 }
 
 void Renderer::resolve_coherency_gpu_to_host(CoherencyOperation &op, Vulkan::CommandBuffer &cmd)
 {
+	const granite_buffer_t *src;
 	op.copies = incoherent.copies;
-	op.num_copies = 0;
-	if (!incoherent.staging_readback)
-	{
-		// iGPU path.
-		op.src = rdram;
-		op.dst = incoherent.host_rdram;
-		op.timeline_value = 0;
-
-		unsigned word;
-		for (word = 0; word < incoherent.packed_pages; word++)
-		{
-			uint32_t &readback = incoherent.page_to_pending_readback[word];
-			uint32_t base_index = 32 * word;
-
-			for (uint32_t index_bits = readback, index_base = 0, index, count; Util::next_bit_range(index_bits, index_base, index, count);)
-			{
-				index += base_index;
-
-				for (unsigned i = 0; i < count; i++)
-					retro_atomic_fetch_add_int(&incoherent.pending_writes_for_page[index + i], 1);
-
-				CoherencyCopy coherent_copy = {};
-				coherent_copy.counter_base = &incoherent.pending_writes_for_page[index];
-				coherent_copy.counters = count;
-				coherent_copy.src_offset = index * ImplementationConstants::IncoherentPageSize;
-				coherent_copy.mask_offset = coherent_copy.src_offset + rdram_size;
-				coherent_copy.dst_offset = index * ImplementationConstants::IncoherentPageSize;
-				coherent_copy.size = ImplementationConstants::IncoherentPageSize * count;
-				op.copies[op.num_copies++] = coherent_copy;
-			}
-
-			readback = 0;
-		}
-	}
-	else
-	{
-		// Discrete GPU path.
-		Util::SmallVector<VkBufferCopy, 1024> copies;
-		op.src = incoherent.staging_readback.get();
-		op.dst = incoherent.host_rdram;
-		op.timeline_value = 0;
-
-		unsigned word;
-		for (word = 0; word < incoherent.packed_pages; word++)
-		{
-			uint32_t &readback = incoherent.page_to_pending_readback[word];
-			uint32_t base_index = 32 * word;
-
-			for (uint32_t index_bits = readback, index_base = 0, index, count; Util::next_bit_range(index_bits, index_base, index, count);)
-			{
-				index += base_index;
-
-				for (unsigned i = 0; i < count; i++)
-					retro_atomic_fetch_add_int(&incoherent.pending_writes_for_page[index + i], 1);
-
-				VkBufferCopy copy = {};
-				copy.srcOffset = index * ImplementationConstants::IncoherentPageSize;
-
-				unsigned dst_page_index = incoherent.staging_readback_index;
-				copy.dstOffset = dst_page_index * ImplementationConstants::IncoherentPageSize;
-
-				incoherent.staging_readback_index += count;
-				incoherent.staging_readback_index &= (incoherent.staging_readback_pages - 1);
-				// Unclean wraparound check.
-				if (incoherent.staging_readback_index != 0 && incoherent.staging_readback_index < dst_page_index)
-				{
-					copy.dstOffset = 0;
-					incoherent.staging_readback_index = count;
-				}
-
-				copy.size = ImplementationConstants::IncoherentPageSize * count;
-				copies.push_back(copy);
-
-				CoherencyCopy coherent_copy = {};
-				coherent_copy.counter_base = &incoherent.pending_writes_for_page[index];
-				coherent_copy.counters = count;
-				coherent_copy.src_offset = copy.dstOffset;
-				coherent_copy.dst_offset = index * ImplementationConstants::IncoherentPageSize;
-				coherent_copy.size = ImplementationConstants::IncoherentPageSize * count;
-
-				VkBufferCopy mask_copy = {};
-				mask_copy.srcOffset = index * ImplementationConstants::IncoherentPageSize + rdram_size;
-
-				dst_page_index = incoherent.staging_readback_index;
-				mask_copy.dstOffset = dst_page_index * ImplementationConstants::IncoherentPageSize;
-
-				incoherent.staging_readback_index += count;
-				incoherent.staging_readback_index &= (incoherent.staging_readback_pages - 1);
-				// Unclean wraparound check.
-				if (incoherent.staging_readback_index != 0 && incoherent.staging_readback_index < dst_page_index)
-				{
-					mask_copy.dstOffset = 0;
-					incoherent.staging_readback_index = count;
-				}
-
-				mask_copy.size = ImplementationConstants::IncoherentPageSize * count;
-				copies.push_back(mask_copy);
-				coherent_copy.mask_offset = mask_copy.dstOffset;
-
-				op.copies[op.num_copies++] = coherent_copy;
-			}
-
-			readback = 0;
-		}
-
-		if (!copies.empty())
-		{
-			cmd.copy_buffer(*incoherent.staging_readback, *rdram, copies.data(), copies.size());
-			cmd.barrier(VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_TRANSFER_WRITE_BIT,
-			            VK_PIPELINE_STAGE_HOST_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-			            VK_ACCESS_HOST_READ_BIT);
-		}
-	}
+	op.num_copies = rdp_coherency_read_back(&incoherent, &cmd, &src);
+	op.src = static_cast<const Vulkan::Buffer *>(src);
+	op.dst = incoherent.host_rdram;
+	op.timeline_value = 0;
 }
 
 void Renderer::resolve_coherency_external(unsigned offset, unsigned length)
@@ -1881,224 +1693,9 @@ const Vulkan::Buffer *Renderer::get_upscaled_hidden_rdram_buffer() const
 	return upscaling_multisampled_hidden_rdram.get();
 }
 
-/* The direct upload of @count pages from @index, of only what differs: a
- * page the same as the GPU's copy is not written, and its write mask is
- * cleared only when it holds a bit. RDRAM ends up as a full upload leaves
- * it, whatever wrote the guest's pages; no page here has a GPU write
- * pending. */
-void Renderer::upload_pages_compared(unsigned index, unsigned count)
-{
-	static const uint8_t zero_page[ImplementationConstants::IncoherentPageSize] = {};
-	const size_t page_size = ImplementationConstants::IncoherentPageSize;
-	const size_t offset = page_size * index;
-	const size_t size = page_size * count;
-	const Vulkan::MemoryAccessFlags access = Vulkan::MEMORY_ACCESS_READ_BIT | Vulkan::MEMORY_ACCESS_WRITE_BIT;
-	const uint8_t *host = incoherent.host_rdram + offset;
-#ifdef PARALLEL_RDP_VERIFY_UPLOADS
-	// The guest's pages as this upload reads them, which another thread
-	// may be writing meanwhile: what a full upload of them would leave.
-	static uint8_t seen[32 * ImplementationConstants::IncoherentPageSize];
-	memcpy(seen, host, size);
-	host = seen;
-#endif
-	uint8_t *data = static_cast<uint8_t *>(device->map_host_buffer(*rdram, access, offset, size));
-	uint8_t *mask = static_cast<uint8_t *>(device->map_host_buffer(*rdram, access, offset + rdram_size, size));
-	size_t i;
-
-	for (i = 0; i < size; i += page_size)
-	{
-		if (memcmp(data + i, host + i, page_size))
-		{
-			memcpy(data + i, host + i, page_size);
-			memset(mask + i, 0, page_size);
-		}
-		else if (memcmp(mask + i, zero_page, page_size))
-			memset(mask + i, 0, page_size);
-	}
-
-#ifdef PARALLEL_RDP_VERIFY_UPLOADS
-	for (i = 0; i < size; i += page_size)
-		if (memcmp(data + i, host + i, page_size) || memcmp(mask + i, zero_page, page_size))
-		{
-			fprintf(stderr, "parallel-rdp: RDRAM page %u is not as a full upload leaves it\n",
-			        unsigned(index + i / page_size));
-			abort();
-		}
-#endif
-
-	device->unmap_host_buffer(*rdram, access, offset + rdram_size, size);
-	device->unmap_host_buffer(*rdram, access, offset, size);
-}
-
 void Renderer::resolve_coherency_host_to_gpu(Vulkan::CommandBuffer &cmd)
 {
-	// Now, ensure that the GPU sees a coherent view of the CPU memory writes up until now.
-	// Writes made by the GPU which are not known to be resolved on the timeline waiter thread will always
-	// "win" over writes made by CPU, since CPU is not allowed to meaningfully overwrite data which the GPU
-	// is going to touch.
-
-
-	retro_atomic_thread_fence_acquire();
-
-	Util::SmallVector<VkBufferCopy, 1024> buffer_copies;
-	Util::SmallVector<uint32_t, 1024> masked_page_copies;
-	Util::SmallVector<uint32_t, 1024> to_clear_write_mask;
-
-	// If we're able to map RDRAM directly, we can just memcpy straight into RDRAM if we have an unmasked copy.
-	// Important for iGPU.
-	if (rdram->get_allocation().host_base)
-	{
-		unsigned word;
-		for (word = 0; word < incoherent.packed_pages; word++)
-		{
-			uint32_t &direct = incoherent.page_to_direct_copy[word];
-			uint32_t base_index = 32 * word;
-			for (uint32_t index_bits = direct, index_base = 0, index, count; Util::next_bit_range(index_bits, index_base, index, count);)
-			{
-				index += base_index;
-				if (incoherent.compare_before_upload)
-				{
-					upload_pages_compared(index, count);
-					continue;
-				}
-				auto *mapped_rdram = device->map_host_buffer(*rdram, Vulkan::MEMORY_ACCESS_WRITE_BIT,
-				                                             ImplementationConstants::IncoherentPageSize * index,
-				                                             ImplementationConstants::IncoherentPageSize * count);
-				memcpy(mapped_rdram,
-				       incoherent.host_rdram + ImplementationConstants::IncoherentPageSize * index,
-				       ImplementationConstants::IncoherentPageSize * count);
-
-				device->unmap_host_buffer(*rdram, Vulkan::MEMORY_ACCESS_WRITE_BIT,
-				                          ImplementationConstants::IncoherentPageSize * index,
-				                          ImplementationConstants::IncoherentPageSize * count);
-
-				mapped_rdram = device->map_host_buffer(*rdram, Vulkan::MEMORY_ACCESS_WRITE_BIT,
-				                                       ImplementationConstants::IncoherentPageSize * index + rdram_size,
-				                                       ImplementationConstants::IncoherentPageSize * count);
-
-				memset(mapped_rdram, 0, ImplementationConstants::IncoherentPageSize * count);
-
-				device->unmap_host_buffer(*rdram, Vulkan::MEMORY_ACCESS_WRITE_BIT,
-				                          ImplementationConstants::IncoherentPageSize * index + rdram_size,
-				                          ImplementationConstants::IncoherentPageSize * count);
-			}
-			direct = 0;
-		}
-
-		auto *mapped_staging = static_cast<uint8_t *>(device->map_host_buffer(*incoherent.staging_rdram,
-		                                                                      Vulkan::MEMORY_ACCESS_WRITE_BIT));
-
-		for (word = 0; word < incoherent.packed_pages; word++)
-		{
-			uint32_t &indirect = incoherent.page_to_masked_copy[word];
-			uint32_t base_index = 32 * word;
-			for (uint32_t index_bits = indirect, index; Util::next_bit(index_bits, index);)
-			{
-				index += base_index;
-				masked_page_copies.push_back(index);
-				memcpy(mapped_staging + ImplementationConstants::IncoherentPageSize * index,
-				       incoherent.host_rdram + ImplementationConstants::IncoherentPageSize * index,
-				       ImplementationConstants::IncoherentPageSize);
-			}
-			indirect = 0;
-		}
-
-		device->unmap_host_buffer(*incoherent.staging_rdram, Vulkan::MEMORY_ACCESS_WRITE_BIT);
-	}
-	else
-	{
-		auto *mapped_rdram = static_cast<uint8_t *>(device->map_host_buffer(*incoherent.staging_rdram, Vulkan::MEMORY_ACCESS_WRITE_BIT));
-
-		size_t num_packed_pages = incoherent.packed_pages;
-		for (size_t i = 0; i < num_packed_pages; i++)
-		{
-			uint32_t base_index = 32 * i;
-			uint32_t tmp = incoherent.page_to_masked_copy[i] | incoherent.page_to_direct_copy[i];
-			for (uint32_t index_bits = tmp, index; Util::next_bit(index_bits, index);)
-			{
-				unsigned bit = index;
-				index += base_index;
-
-				if ((1u << bit) & incoherent.page_to_masked_copy[i])
-					masked_page_copies.push_back(index);
-				else
-				{
-					VkBufferCopy copy = {};
-					copy.size = ImplementationConstants::IncoherentPageSize;
-					copy.dstOffset = copy.srcOffset = index * ImplementationConstants::IncoherentPageSize;
-					buffer_copies.push_back(copy);
-					to_clear_write_mask.push_back(index);
-				}
-
-				memcpy(mapped_rdram + ImplementationConstants::IncoherentPageSize * index,
-				       incoherent.host_rdram + ImplementationConstants::IncoherentPageSize * index,
-				       ImplementationConstants::IncoherentPageSize);
-			}
-
-			incoherent.page_to_masked_copy[i] = 0;
-			incoherent.page_to_direct_copy[i] = 0;
-		}
-
-		device->unmap_host_buffer(*incoherent.staging_rdram, Vulkan::MEMORY_ACCESS_WRITE_BIT);
-	}
-
-	if (!masked_page_copies.empty())
-	{
-		cmd.set_program(shader_bank->masked_rdram_resolve);
-		cmd.set_specialization_constant_mask(3);
-		cmd.set_specialization_constant(0, ImplementationConstants::IncoherentPageSize / 4);
-		cmd.set_specialization_constant(1, ImplementationConstants::IncoherentPageSize / 4);
-
-		cmd.set_storage_buffer(0, 0, *rdram, rdram_offset, rdram_size);
-		cmd.set_storage_buffer(0, 1, *incoherent.staging_rdram);
-		cmd.set_storage_buffer(0, 2, *rdram, rdram_offset + rdram_size, rdram_size);
-
-		for (size_t i = 0; i < masked_page_copies.size(); i += 4096)
-		{
-			size_t to_copy = rdp_min(masked_page_copies.size() - i, size_t(4096));
-			memcpy(cmd.allocate_typed_constant_data<uint32_t>(1, 0, to_copy),
-				   masked_page_copies.data() + i,
-				   to_copy * sizeof(uint32_t));
-			cmd.dispatch(to_copy, 1, 1);
-		}
-	}
-
-	// Could use FillBuffer here, but would need to use TRANSFER stage, and introduce more barriers than needed.
-	if (!to_clear_write_mask.empty())
-	{
-		cmd.set_program(shader_bank->clear_write_mask);
-		cmd.set_specialization_constant_mask(3);
-		cmd.set_specialization_constant(0, ImplementationConstants::IncoherentPageSize / 4);
-		cmd.set_specialization_constant(1, ImplementationConstants::IncoherentPageSize / 4);
-		cmd.set_storage_buffer(0, 0, *rdram, rdram_offset + rdram_size, rdram_size);
-		for (size_t i = 0; i < to_clear_write_mask.size(); i += 4096)
-		{
-			size_t to_copy = rdp_min(to_clear_write_mask.size() - i, size_t(4096));
-			memcpy(cmd.allocate_typed_constant_data<uint32_t>(1, 0, to_copy),
-				   to_clear_write_mask.data() + i,
-				   to_copy * sizeof(uint32_t));
-			cmd.dispatch(to_copy, 1, 1);
-		}
-	}
-
-	if (!to_clear_write_mask.empty() || !masked_page_copies.empty())
-	{
-		cmd.barrier(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_WRITE_BIT,
-		            VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_READ_BIT);
-	}
-
-	// If we cannot map the device memory, copy. We're latency sensitive, so don't use DMA queue.
-	if (!buffer_copies.empty())
-	{
-		cmd.barrier(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0,
-		            VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_TRANSFER_WRITE_BIT);
-
-		cmd.copy_buffer(*rdram, *incoherent.staging_rdram, buffer_copies.data(), buffer_copies.size());
-
-		cmd.barrier(VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_TRANSFER_WRITE_BIT,
-		            VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_READ_BIT);
-	}
-
+	rdp_coherency_upload(&incoherent, &cmd, shader_bank);
 }
 
 void Renderer::flush_queues()
@@ -2554,14 +2151,14 @@ size_t Renderer::queue_known_pipelines(void *nodes_, size_t n, VideoInterface *v
 	{
 		cmd.set_program(shader_bank->masked_rdram_resolve);
 		cmd.set_specialization_constant_mask(3);
-		cmd.set_specialization_constant(0, ImplementationConstants::IncoherentPageSize / 4);
-		cmd.set_specialization_constant(1, ImplementationConstants::IncoherentPageSize / 4);
+		cmd.set_specialization_constant(0, RDP_RDRAM_PAGE_SIZE / 4);
+		cmd.set_specialization_constant(1, RDP_RDRAM_PAGE_SIZE / 4);
 		add();
 
 		cmd.set_program(shader_bank->clear_write_mask);
 		cmd.set_specialization_constant_mask(3);
-		cmd.set_specialization_constant(0, ImplementationConstants::IncoherentPageSize / 4);
-		cmd.set_specialization_constant(1, ImplementationConstants::IncoherentPageSize / 4);
+		cmd.set_specialization_constant(0, RDP_RDRAM_PAGE_SIZE / 4);
+		cmd.set_specialization_constant(1, RDP_RDRAM_PAGE_SIZE / 4);
 		add();
 	}
 

@@ -348,16 +348,6 @@ public:
 		}                                                     \
 	} while (0)
 
-#define SET_POTENTIALLY_STATIC_STATE(value)                       \
-	do                                                            \
-	{                                                             \
-		if (pipeline_state.potential_static_state.value != value) \
-		{                                                         \
-			pipeline_state.potential_static_state.value = value;  \
-			set_dirty(COMMAND_BUFFER_DIRTY_STATIC_STATE_BIT);     \
-		}                                                         \
-	} while (0)
-
 	inline void set_depth_test(bool depth_test, bool depth_write)
 	{
 		SET_STATIC_STATE(depth_test);
@@ -400,19 +390,16 @@ public:
 
 	inline void set_specialization_constant_mask(uint32_t spec_constant_mask)
 	{
-		SET_POTENTIALLY_STATIC_STATE(spec_constant_mask);
+		granite_cb_set_spec_constant_mask(this, spec_constant_mask);
 	}
 
 	template <typename T>
 	inline void set_specialization_constant(unsigned index, const T &value)
 	{
 		static_assert(sizeof(value) == sizeof(uint32_t), "Spec constant data must be 32-bit.");
-		if (memcmp(&pipeline_state.potential_static_state.spec_constants[index], &value, sizeof(value)))
-		{
-			memcpy(&pipeline_state.potential_static_state.spec_constants[index], &value, sizeof(value));
-			if (pipeline_state.potential_static_state.spec_constant_mask & (1u << index))
-				set_dirty(COMMAND_BUFFER_DIRTY_STATIC_STATE_BIT);
-		}
+		uint32_t word;
+		memcpy(&word, &value, sizeof(word));
+		granite_cb_set_spec_constant(this, index, word);
 	}
 
 	inline void set_specialization_constant(unsigned index, bool value)

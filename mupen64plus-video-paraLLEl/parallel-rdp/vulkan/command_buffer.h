@@ -186,6 +186,26 @@ static INLINE void granite_cb_set_dirty(granite_command_buffer_t *cb, uint32_t f
 	cb->state.dirty |= flags;
 }
 
+/* The specialization constants the program is built with: a bit each */
+static INLINE void granite_cb_set_spec_constant_mask(granite_command_buffer_t *cb, uint32_t mask)
+{
+	if (cb->pipeline_state.potential_static_state.spec_constant_mask != mask)
+	{
+		cb->pipeline_state.potential_static_state.spec_constant_mask = (uint8_t)mask;
+		granite_cb_set_dirty(cb, GRANITE_COMMAND_BUFFER_DIRTY_STATIC_STATE_BIT);
+	}
+}
+
+static INLINE void granite_cb_set_spec_constant(granite_command_buffer_t *cb, unsigned index, uint32_t value)
+{
+	if (cb->pipeline_state.potential_static_state.spec_constants[index] != value)
+	{
+		cb->pipeline_state.potential_static_state.spec_constants[index] = value;
+		if (cb->pipeline_state.potential_static_state.spec_constant_mask & (1u << index))
+			granite_cb_set_dirty(cb, GRANITE_COMMAND_BUFFER_DIRTY_STATIC_STATE_BIT);
+	}
+}
+
 /* ---- drawing ---- */
 /* Brings the VkCommandBuffer up to the state set. The pipeline comes
  * from the program's map or is built: now when @synchronous, otherwise
