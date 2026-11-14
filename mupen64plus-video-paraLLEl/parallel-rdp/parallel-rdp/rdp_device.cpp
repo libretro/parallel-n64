@@ -45,6 +45,24 @@ struct ShaderDefineResolver
 	const Renderer *renderer;
 };
 
+// Where the VI reads an upscaled frame from
+static void vi_update_upscaled(void *user, granite_command_buffer_t *cb, unsigned addr, unsigned pixels,
+                               unsigned pixel_size_log2)
+{
+	static_cast<Renderer *>(user)->submit_update_upscaled_domain_external(
+			*static_cast<Vulkan::CommandBuffer *>(cb), addr, pixels, pixel_size_log2);
+}
+
+static const granite_buffer_t *vi_upscaled_rdram(void *user)
+{
+	return static_cast<Renderer *>(user)->get_upscaled_rdram_buffer();
+}
+
+static const granite_buffer_t *vi_upscaled_hidden_rdram(void *user)
+{
+	return static_cast<Renderer *>(user)->get_upscaled_hidden_rdram_buffer();
+}
+
 static int resolve_shader_define(void *user, const char *name, const char *define)
 {
 	const ShaderDefineResolver *resolver = static_cast<const ShaderDefineResolver *>(user);
@@ -272,7 +290,10 @@ void CommandProcessor::init_renderer()
 	vi.set_device(&device);
 	vi.set_rdram(rdram.get(), rdram_offset, rdram_size);
 	vi.set_hidden_rdram(hidden_rdram.get());
-	vi.set_renderer(&renderer);
+	{
+		rdp_vi_upscaled_source_t source = { &renderer, vi_update_upscaled, vi_upscaled_rdram, vi_upscaled_hidden_rdram };
+		vi.set_upscaled_source(source);
+	}
 
 	ShaderDefineResolver resolver = { &vi, &renderer };
 	rdp_shader_bank_init(&shader_bank, &device, resolve_shader_define, &resolver);
