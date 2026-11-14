@@ -29,10 +29,6 @@
 
 using namespace Vulkan;
 
-#define STATE_MASK(flag, cond, mask) do { \
-    (flag) &= ~(mask); \
-    if (cond) (flag) |= (mask); \
-} while(0)
 
 namespace RDP
 {
@@ -380,37 +376,11 @@ void CommandProcessor::op_triangle(const uint32_t *words)
 
 void CommandProcessor::op_set_color_image(const uint32_t *words)
 {
-	unsigned fmt = (words[0] >> 21) & 7;
-	unsigned size = (words[0] >> 19) & 3;
-	unsigned width = (words[0] & 1023) + 1;
-	unsigned addr = words[1] & 0xffffff;
-
-	FBFormat fbfmt;
-	switch (size)
-	{
-	case 0:
-		fbfmt = FBFormat::I4;
-		break;
-
-	case 1:
-		fbfmt = FBFormat::I8;
-		break;
-
-	case 2:
-		fbfmt = fmt ? FBFormat::IA88 : FBFormat::RGBA5551;
-		break;
-
-	case 3:
-		fbfmt = FBFormat::RGBA8888;
-		break;
-
-	default:
-		LOGE("Invalid pixel size %u.\n", size);
-		return;
-	}
-
+	uint32_t addr, width, fmt;
+	unsigned size;
+	rdp_decode_color_image(words, &addr, &width, &fmt, &size);
 	rdp_upscaler_set_color_image(upscaler, addr, width, size == 3 ? 2 : size == 2 ? 1 : -1);
-	renderer.set_color_framebuffer(addr, width, fbfmt);
+	renderer.set_color_framebuffer(addr, width, FBFormat(fmt));
 }
 
 void CommandProcessor::op_set_mask_image(const uint32_t *words)
@@ -421,137 +391,30 @@ void CommandProcessor::op_set_mask_image(const uint32_t *words)
 
 void CommandProcessor::op_set_scissor(const uint32_t *words)
 {
-	scissor_state.xlo = (words[0] >> 12) & 0xfff;
-	scissor_state.xhi = (words[1] >> 12) & 0xfff;
-	scissor_state.ylo = (words[0] >> 0) & 0xfff;
-	scissor_state.yhi = (words[1] >> 0) & 0xfff;
-
-	STATE_MASK(static_state.flags, bool(words[1] & (1 << 25)), RASTERIZATION_INTERLACE_FIELD_BIT);
-	STATE_MASK(static_state.flags, bool(words[1] & (1 << 24)), RASTERIZATION_INTERLACE_KEEP_ODD_BIT);
+	rdp_decode_scissor(words, &scissor_state, &static_state.flags);
 	renderer.set_scissor_state(scissor_state);
 	renderer.set_static_rasterization_state(static_state);
 }
 
 void CommandProcessor::op_set_other_modes(const uint32_t *words)
 {
-	STATE_MASK(static_state.flags, bool(words[0] & (1 << 19)), RASTERIZATION_PERSPECTIVE_CORRECT_BIT);
-	STATE_MASK(static_state.flags, bool(words[0] & (1 << 18)), RASTERIZATION_DETAIL_LOD_ENABLE_BIT);
-	STATE_MASK(static_state.flags, bool(words[0] & (1 << 17)), RASTERIZATION_SHARPEN_LOD_ENABLE_BIT);
-	STATE_MASK(static_state.flags, bool(words[0] & (1 << 16)), RASTERIZATION_TEX_LOD_ENABLE_BIT);
-	STATE_MASK(static_state.flags, bool(words[0] & (1 << 15)), RASTERIZATION_TLUT_BIT);
-	STATE_MASK(static_state.flags, bool(words[0] & (1 << 14)), RASTERIZATION_TLUT_TYPE_BIT);
-	STATE_MASK(static_state.flags, bool(words[0] & (1 << 13)), RASTERIZATION_SAMPLE_MODE_BIT);
-	STATE_MASK(static_state.flags, bool(words[0] & (1 << 12)), RASTERIZATION_SAMPLE_MID_TEXEL_BIT);
-	STATE_MASK(static_state.flags, bool(words[0] & (1 << 11)), RASTERIZATION_BILERP_0_BIT);
-	STATE_MASK(static_state.flags, bool(words[0] & (1 << 10)), RASTERIZATION_BILERP_1_BIT);
-	STATE_MASK(static_state.flags, bool(words[0] & (1 << 9)), RASTERIZATION_CONVERT_ONE_BIT);
-	STATE_MASK(depth_blend.flags, bool(words[1] & (1 << 14)), DEPTH_BLEND_FORCE_BLEND_BIT);
-	STATE_MASK(static_state.flags, bool(words[1] & (1 << 13)), RASTERIZATION_ALPHA_CVG_SELECT_BIT);
-	STATE_MASK(static_state.flags, bool(words[1] & (1 << 12)), RASTERIZATION_CVG_TIMES_ALPHA_BIT);
-	STATE_MASK(depth_blend.flags, bool(words[1] & (1 << 7)), DEPTH_BLEND_COLOR_ON_COVERAGE_BIT);
-	STATE_MASK(depth_blend.flags, bool(words[1] & (1 << 6)), DEPTH_BLEND_IMAGE_READ_ENABLE_BIT);
-	STATE_MASK(depth_blend.flags, bool(words[1] & (1 << 5)), DEPTH_BLEND_DEPTH_UPDATE_BIT);
-	STATE_MASK(depth_blend.flags, bool(words[1] & (1 << 4)), DEPTH_BLEND_DEPTH_TEST_BIT);
-	STATE_MASK(static_state.flags, bool(words[1] & (1 << 3)), RASTERIZATION_AA_BIT);
-	STATE_MASK(depth_blend.flags, bool(words[1] & (1 << 3)), DEPTH_BLEND_AA_BIT);
-
-	STATE_MASK(static_state.flags, bool(words[1] & (1 << 1)), RASTERIZATION_ALPHA_TEST_DITHER_BIT);
-	STATE_MASK(static_state.flags, bool(words[1] & (1 << 0)), RASTERIZATION_ALPHA_TEST_BIT);
-	static_state.dither = (words[0] >> 4) & 0x0f;
-	STATE_MASK(depth_blend.flags, (static_state.dither >> 2) != RDP_RGB_DITHER_OFF, DEPTH_BLEND_DITHER_ENABLE_BIT);
-	depth_blend.coverage_mode = uint8_t((words[1] >> 8) & 3);
-	depth_blend.z_mode = uint8_t((words[1] >> 10) & 3);
-
-	static_state.flags &= ~(RASTERIZATION_MULTI_CYCLE_BIT |
-	                        RASTERIZATION_FILL_BIT |
-	                        RASTERIZATION_COPY_BIT);
-	depth_blend.flags &= ~DEPTH_BLEND_MULTI_CYCLE_BIT;
-
-	switch ((words[0] >> 20) & 3)
-	{
-	case RDP_CYCLE_2:
-		static_state.flags |= RASTERIZATION_MULTI_CYCLE_BIT;
-		depth_blend.flags |= DEPTH_BLEND_MULTI_CYCLE_BIT;
-		break;
-
-	case RDP_CYCLE_FILL:
-		static_state.flags |= RASTERIZATION_FILL_BIT;
-		break;
-
-	case RDP_CYCLE_COPY:
-		static_state.flags |= RASTERIZATION_COPY_BIT;
-		break;
-
-	default:
-		break;
-	}
-
-	depth_blend.blend_cycles[0].blend_1a = uint8_t((words[1] >> 30) & 3);
-	depth_blend.blend_cycles[1].blend_1a = uint8_t((words[1] >> 28) & 3);
-	depth_blend.blend_cycles[0].blend_1b = uint8_t((words[1] >> 26) & 3);
-	depth_blend.blend_cycles[1].blend_1b = uint8_t((words[1] >> 24) & 3);
-	depth_blend.blend_cycles[0].blend_2a = uint8_t((words[1] >> 22) & 3);
-	depth_blend.blend_cycles[1].blend_2a = uint8_t((words[1] >> 20) & 3);
-	depth_blend.blend_cycles[0].blend_2b = uint8_t((words[1] >> 18) & 3);
-	depth_blend.blend_cycles[1].blend_2b = uint8_t((words[1] >> 16) & 3);
-
+	prim_depth = rdp_decode_other_modes(words, &static_state, &depth_blend);
 	renderer.set_static_rasterization_state(static_state);
 	renderer.set_depth_blend_state(depth_blend);
-	renderer.set_enable_primitive_depth(bool(words[1] & (1 << 2)));
+	renderer.set_enable_primitive_depth(prim_depth);
 	other_modes_words[0] = words[0];
 	other_modes_words[1] = words[1];
-	prim_depth = (words[1] & (1 << 2)) != 0;
 }
 
 void CommandProcessor::op_set_texture_image(const uint32_t *words)
 {
-	auto fmt = uint8_t((words[0] >> 21) & 7);
-	auto size = uint8_t((words[0] >> 19) & 3);
-	uint32_t width = (words[0] & 0x3ff) + 1;
-	uint32_t addr = words[1] & 0x00ffffffu;
-
-	texture_image.addr = addr;
-	texture_image.width = width;
-	texture_image.size = size;
-	texture_image.fmt = fmt;
+	rdp_decode_texture_image(words, &texture_image);
 }
 
 void CommandProcessor::op_set_tile(const uint32_t *words)
 {
-	uint32_t tile = (words[1] >> 24) & 7;
-
-	TileMeta info = {};
-	info.offset = ((words[0] >> 0) & 511) << 3;
-	info.stride = ((words[0] >> 9) & 511) << 3;
-	info.size = uint8_t((words[0] >> 19) & 3);
-	info.fmt = uint8_t((words[0] >> 21) & 7);
-
-	info.palette = (words[1] >> 20) & 15;
-
-	info.shift_s = (words[1] >> 0) & 15;
-	info.mask_s = (words[1] >> 4) & 15;
-	info.shift_t = (words[1] >> 10) & 15;
-	info.mask_t = (words[1] >> 14) & 15;
-
-	if (words[1] & (1 << 8))
-		info.flags |= TILE_INFO_MIRROR_S_BIT;
-	if (words[1] & (1 << 9))
-		info.flags |= TILE_INFO_CLAMP_S_BIT;
-	if (words[1] & (1 << 18))
-		info.flags |= TILE_INFO_MIRROR_T_BIT;
-	if (words[1] & (1 << 19))
-		info.flags |= TILE_INFO_CLAMP_T_BIT;
-
-	if (info.mask_s > 10)
-		info.mask_s = 10;
-	else if (info.mask_s == 0)
-		info.flags |= TILE_INFO_CLAMP_S_BIT;
-
-	if (info.mask_t > 10)
-		info.mask_t = 10;
-	else if (info.mask_t == 0)
-		info.flags |= TILE_INFO_CLAMP_T_BIT;
-
+	TileMeta info;
+	uint32_t tile = rdp_decode_tile(words, &info);
 	tile_words[tile][0] = words[0];
 	tile_words[tile][1] = words[1];
 	renderer.set_tile(tile, info);
@@ -586,38 +449,16 @@ void CommandProcessor::op_load_block(const uint32_t *words)
 
 void CommandProcessor::op_set_tile_size(const uint32_t *words)
 {
-	uint32_t tile = (words[1] >> 24) & 7;
-	auto slo = (words[0] >> 12) & 0xfff;
-	auto shi = (words[1] >> 12) & 0xfff;
-	auto tlo = (words[0] >> 0) & 0xfff;
-	auto thi = (words[1] >> 0) & 0xfff;
-	renderer.set_tile_size(tile, slo, shi, tlo, thi);
+	rdp_tile_size_t size;
+	uint32_t tile = rdp_decode_tile_size(words, &size);
+	renderer.set_tile_size(tile, size.slo, size.shi, size.tlo, size.thi);
 }
 
 void CommandProcessor::op_set_combine(const uint32_t *words)
 {
-	static_state.combiner[0].rgb.muladd = uint8_t((words[0] >> 20) & 0xf);
-	static_state.combiner[0].rgb.mul = uint8_t((words[0] >> 15) & 0x1f);
-	static_state.combiner[0].rgb.mulsub = uint8_t((words[1] >> 28) & 0xf);
-	static_state.combiner[0].rgb.add = uint8_t(words[1] >> 15 & 0x7);
-
-	static_state.combiner[0].alpha.muladd = uint8_t((words[0] >> 12) & 0x7);
-	static_state.combiner[0].alpha.mulsub = uint8_t((words[1] >> 12) & 0x7);
-	static_state.combiner[0].alpha.mul = uint8_t((words[0] >> 9) & 0x7);
-	static_state.combiner[0].alpha.add = uint8_t((words[1] >> 9) & 0x7);
-
-	static_state.combiner[1].rgb.muladd = uint8_t((words[0] >> 5) & 0xf);
-	static_state.combiner[1].rgb.mul = uint8_t((words[0] >> 0) & 0x1f);
-	static_state.combiner[1].rgb.mulsub = uint8_t((words[1] >> 24) & 0xf);
-	static_state.combiner[1].rgb.add = uint8_t(words[1] >> 6 & 0x7);
-
-	static_state.combiner[1].alpha.muladd = uint8_t((words[1] >> 21) & 0x7);
-	static_state.combiner[1].alpha.mulsub = uint8_t((words[1] >> 3) & 0x7);
-	static_state.combiner[1].alpha.mul = uint8_t((words[1] >> 18) & 0x7);
-	static_state.combiner[1].alpha.add = uint8_t((words[1] >> 0) & 0x7);
+	rdp_decode_combine(words, &static_state);
 	combine_words[0] = words[0];
 	combine_words[1] = words[1];
-
 	renderer.set_static_rasterization_state(static_state);
 }
 
@@ -638,9 +479,10 @@ void CommandProcessor::op_set_fog_color(const uint32_t *words)
 
 void CommandProcessor::op_set_prim_color(const uint32_t *words)
 {
-	uint8_t prim_min_level = (words[0] >> 8) & 31;
-	uint8_t prim_level_frac = (words[0] >> 0) & 0xff;
-	renderer.set_primitive_color(prim_min_level, prim_level_frac, words[1]);
+	uint8_t min_level, lod_frac;
+	uint32_t color;
+	rdp_decode_prim_color(words, &min_level, &lod_frac, &color);
+	renderer.set_primitive_color(min_level, lod_frac, color);
 }
 
 void CommandProcessor::op_set_fill_color(const uint32_t *words)
@@ -685,35 +527,24 @@ void CommandProcessor::op_set_prim_depth(const uint32_t *words)
 
 void CommandProcessor::op_set_convert(const uint32_t *words)
 {
-	uint64_t merged = (uint64_t(words[0]) << 32) | words[1];
-
-	uint16_t k5 = (merged >> 0) & 0x1ff;
-	uint16_t k4 = (merged >> 9) & 0x1ff;
-	uint16_t k3 = (merged >> 18) & 0x1ff;
-	uint16_t k2 = (merged >> 27) & 0x1ff;
-	uint16_t k1 = (merged >> 36) & 0x1ff;
-	uint16_t k0 = (merged >> 45) & 0x1ff;
-	renderer.set_convert(k0, k1, k2, k3, k4, k5);
+	uint16_t k[6];
+	rdp_decode_convert(words, k);
+	renderer.set_convert(k[0], k[1], k[2], k[3], k[4], k[5]);
 }
 
 void CommandProcessor::op_set_key_gb(const uint32_t *words)
 {
-	uint32_t g_width = (words[0] >> 12) & 0xfff;
-	uint32_t b_width = (words[0] >> 0) & 0xfff;
-	uint32_t g_center = (words[1] >> 24) & 0xff;
-	uint32_t g_scale = (words[1] >> 16) & 0xff;
-	uint32_t b_center = (words[1] >> 8) & 0xff;
-	uint32_t b_scale = (words[1] >> 0) & 0xff;
-	renderer.set_color_key(1, g_width, g_center, g_scale);
-	renderer.set_color_key(2, b_width, b_center, b_scale);
+	rdp_color_key_t g, b;
+	rdp_decode_key_gb(words, &g, &b);
+	renderer.set_color_key(1, g.width, g.center, g.scale);
+	renderer.set_color_key(2, b.width, b.center, b.scale);
 }
 
 void CommandProcessor::op_set_key_r(const uint32_t *words)
 {
-	uint32_t r_width = (words[1] >> 16) & 0xfff;
-	uint32_t r_center = (words[1] >> 8) & 0xff;
-	uint32_t r_scale = (words[1] >> 0) & 0xff;
-	renderer.set_color_key(0, r_width, r_center, r_scale);
+	rdp_color_key_t r;
+	rdp_decode_key_r(words, &r);
+	renderer.set_color_key(0, r.width, r.center, r.scale);
 }
 
 #define OP(x) void CommandProcessor::op_##x(const uint32_t *) {}

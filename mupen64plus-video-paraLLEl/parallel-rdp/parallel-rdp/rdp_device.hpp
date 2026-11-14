@@ -25,6 +25,7 @@
 #include "device.hpp"
 #include "video_interface.hpp"
 #include "rdp_renderer.hpp"
+#include "rdp_command_decode.h"
 #include "rdp_common.hpp"
 #include "command_ring.h"
 #include "rdp_worker.h"
@@ -215,13 +216,7 @@ private:
 	StaticRasterizationState static_state = {};
 	DepthBlendState depth_blend = {};
 
-	struct
-	{
-		uint32_t addr;
-		uint32_t width;
-		uint8_t fmt;  /* enum rdp_texture_format */
-		uint8_t size; /* enum rdp_texture_size */
-	} texture_image = {};
+	rdp_texture_image_t texture_image = {};
 
 	uint64_t timeline_value = 0;
 	// Last timeline value the timeline worker has passed. Free-running
