@@ -2273,387 +2273,72 @@ bool Renderer::tmem_upload_needs_flush(uint32_t addr) const
 
 void Renderer::load_tile(uint32_t tile, const LoadTileInfo &info)
 {
-	if (validation_iface && info.mode == UploadMode::TLUT)
-	{
-		if ((info.thi >> 2) > (info.tlo >> 2))
-		{
-			report_rdp_crash(ValidationError::InvalidMultilineLoadTlut,
-			                                   "Attempting to load multiple lines in TLUT.");
-		}
-	}
+	if (validation_iface && info.mode == RDP_UPLOAD_TLUT && (info.thi >> 2) > (info.tlo >> 2))
+		report_rdp_crash(ValidationError::InvalidMultilineLoadTlut, "Attempting to load multiple lines in TLUT.");
 
 	if (tmem_upload_needs_flush(info.tex_addr))
 		flush_queues();
 
-	// Detect noop cases.
-	if (info.mode != UploadMode::Block)
-	{
-		if ((info.thi >> 2) < (info.tlo >> 2))
-			return;
-
-		unsigned pixel_count = (((info.shi >> 2) - (info.slo >> 2)) + 1) & 0xfff;
-		if (!pixel_count)
-			return;
-	}
-	else
-	{
-		unsigned pixel_count = ((info.shi - info.slo) + 1) & 0xfff;
-		if (!pixel_count || pixel_count > 2048)
-			return;
-	}
+	if (rdp_load_is_empty(&info))
+		return;
 
 	if (!is_host_coherent)
 	{
-		unsigned pixel_count;
-		unsigned offset_pixels;
-		unsigned base_addr = info.tex_addr;
-
-		if (info.mode == UploadMode::Block)
-		{
-			pixel_count = (info.shi - info.slo + 1) & 0xfff;
-			offset_pixels = info.slo + info.tex_width * info.tlo;
-		}
-		else
-		{
-			unsigned max_x = ((info.shi >> 2) - (info.slo >> 2)) & 0xfff;
-			unsigned max_y = (info.thi >> 2) - (info.tlo >> 2);
-			pixel_count = max_y * info.tex_width + max_x + 1;
-			offset_pixels = (info.slo >> 2) + info.tex_width * (info.tlo >> 2);
-		}
-
-		unsigned byte_size = pixel_count << (unsigned(info.size) - 1);
-		byte_size = (byte_size + 7) & ~7;
-		base_addr += offset_pixels << (unsigned(info.size) - 1);
-		mark_pages_for_gpu_read(base_addr, byte_size);
+		uint32_t addr, size;
+		rdp_load_rdram_range(&info, &addr, &size);
+		mark_pages_for_gpu_read(addr, size);
 	}
 
-	if (info.mode == UploadMode::Tile)
+	unsigned lines_per_part = rdp_load_lines_per_part(&info, &tiles[tile].meta);
+	if (lines_per_part == RDP_LOAD_TOO_WIDE)
+		return;
+
+	if (lines_per_part == RDP_LOAD_WHOLE)
 	{
-		auto &meta = tiles[tile].meta;
-		unsigned pixels_coverered_per_line = (((info.shi >> 2) - (info.slo >> 2)) + 1) & 0xfff;
-
-		// Technically, 32-bpp TMEM upload and YUV upload will work like 16bpp, just split into two halves, but that also means
-		// we get 2kB wraparound instead of 4kB wraparound, so this works out just fine for our purposes.
-		unsigned quad_words_covered_per_line = ((pixels_coverered_per_line << unsigned(meta.size)) + 15) >> 4;
-
-		// Deal with mismatch in state, there is no reasonable scenarios where this should even matter, but you never know ...
-		if (unsigned(meta.size) > unsigned(info.size))
-			quad_words_covered_per_line <<= unsigned(meta.size) - unsigned(info.size);
-		else if (unsigned(meta.size) < unsigned(info.size))
-			quad_words_covered_per_line >>= unsigned(info.size) - unsigned(meta.size);
-
-		// Compute a conservative estimate for how many bytes we're going to splat down into TMEM.
-		unsigned bytes_covered_per_line = rdp_max<unsigned>(quad_words_covered_per_line * 8, meta.stride);
-
-		unsigned max_bytes_per_line = 0x1000;
-		// We need to write lower and upper halves at once,
-		// so we need to wrap around at 2k boundary.
-		if (meta.fmt == RDP_TEXTURE_FORMAT_YUV)
-			max_bytes_per_line /= 2;
-
-		unsigned num_lines = ((info.thi >> 2) - (info.tlo >> 2)) + 1;
-		unsigned total_bytes_covered = bytes_covered_per_line * num_lines;
-
-		if (total_bytes_covered > max_bytes_per_line)
-		{
-			// Welp, for whatever reason, the game wants to write more than 4k of texture data to TMEM in one go.
-			// We can only handle 4kB in one go due to wrap-around effects,
-			// so split up the upload in multiple chunks.
-
-			unsigned max_lines_per_iteration = max_bytes_per_line / bytes_covered_per_line;
-			// Align T-state.
-			max_lines_per_iteration &= ~1u;
-
-			if (max_lines_per_iteration == 0)
-			{
-				LOGE("Pure insanity where content is attempting to load more than 2kB of TMEM data in one single line ...\n");
-				// Could be supported if we start splitting up horizonal direction as well, but seriously ...
-				return;
-			}
-
-			for (unsigned line = 0; line < num_lines; line += max_lines_per_iteration)
-			{
-				unsigned to_copy_lines = rdp_min(num_lines - line, max_lines_per_iteration);
-
-				LoadTileInfo tmp_info = info;
-				tmp_info.tlo = info.tlo + (line << 2);
-				tmp_info.thi = tmp_info.tlo + ((to_copy_lines - 1) << 2);
-				load_tile_iteration(tile, tmp_info, line * meta.stride);
-			}
-
-			auto &size = tiles[tile].size;
-			size.slo = info.slo;
-			size.shi = info.shi;
-			size.tlo = info.tlo;
-			size.thi = info.thi;
-		}
-		else
-			load_tile_iteration(tile, info, 0);
-	}
-	else
 		load_tile_iteration(tile, info, 0);
+		return;
+	}
+
+	unsigned num_lines = ((info.thi >> 2) - (info.tlo >> 2)) + 1;
+	for (unsigned line = 0; line < num_lines; line += lines_per_part)
+	{
+		unsigned to_copy_lines = rdp_min(num_lines - line, lines_per_part);
+		LoadTileInfo part = info;
+		part.tlo = uint16_t(info.tlo + (line << 2));
+		part.thi = uint16_t(part.tlo + ((to_copy_lines - 1) << 2));
+		load_tile_iteration(tile, part, line * tiles[tile].meta.stride);
+	}
+
+	// The tile's size is the whole load's.
+	auto &size = tiles[tile].size;
+	size.slo = info.slo;
+	size.shi = info.shi;
+	size.tlo = info.tlo;
+	size.thi = info.thi;
 }
 
 void Renderer::load_tile_iteration(uint32_t tile, const LoadTileInfo &info, uint32_t tmem_offset)
 {
 	auto &size = tiles[tile].size;
-	auto &meta = tiles[tile].meta;
 	size.slo = info.slo;
 	size.shi = info.shi;
 	size.tlo = info.tlo;
 	size.thi = info.thi;
 
-	if (meta.fmt == RDP_TEXTURE_FORMAT_YUV && ((meta.size != RDP_TEXTURE_SIZE_16) || (info.size != RDP_TEXTURE_SIZE_16)))
+	UploadInfo upload;
+	switch (rdp_load_upload_info(&info, &tiles[tile].meta, tmem_offset, &upload))
 	{
-		LOGE("Only 16bpp is supported for YUV uploads.\n");
-		return;
-	}
+	case RDP_LOAD_OK:
+		break;
 
-	// This case does not appear to be supported.
-	if (info.size == RDP_TEXTURE_SIZE_4)
-	{
-		LOGE("4-bit VRAM pointer crashes the RDP.\n");
+	case RDP_LOAD_CRASHES:
 		if (validation_iface)
 			report_rdp_crash(ValidationError::LoadTile4bpp, "4-bit VRAM pointer crashes the RDP.");
 		return;
-	}
-
-	if (meta.size == RDP_TEXTURE_SIZE_32 && meta.fmt != RDP_TEXTURE_FORMAT_RGBA)
-	{
-		LOGE("32bpp tile uploads must using RGBA texture format, unsupported otherwise.\n");
-		return;
-	}
-
-	if (info.mode == UploadMode::TLUT && meta.size == RDP_TEXTURE_SIZE_32)
-	{
-		LOGE("TLUT uploads with 32bpp tiles are unsupported.\n");
-		return;
-	}
-
-	if (info.mode != UploadMode::TLUT)
-	{
-		if (info.size == RDP_TEXTURE_SIZE_32 && meta.size == RDP_TEXTURE_SIZE_8)
-		{
-			LOGE("FIXME: Loading tile with Texture 32-bit and Tile 8-bit. This creates insane results, unsupported.\n");
-			return;
-		}
-		else if (info.size == RDP_TEXTURE_SIZE_16 && meta.size == RDP_TEXTURE_SIZE_4)
-		{
-			LOGE("FIXME: Loading tile with Texture 16-bit and Tile 4-bit. This creates insane results, unsupported.\n");
-			return;
-		}
-		else if (info.size == RDP_TEXTURE_SIZE_32 && meta.size == RDP_TEXTURE_SIZE_4)
-		{
-			LOGE("FIXME: Loading tile with Texture 32-bit and Tile 4-bit. This creates insane results, unsupported.\n");
-			return;
-		}
-	}
-
-	UploadInfo upload = {};
-	upload.tmem_stride_words = meta.stride >> 1;
-
-	uint32_t upload_x = 0;
-	uint32_t upload_y = 0;
-
-	auto upload_mode = info.mode;
-
-	if (upload_mode == UploadMode::Block)
-	{
-		upload_x = info.slo;
-		upload_y = info.tlo;
-
-		// LoadBlock is kinda awkward. Rather than specifying width and height, we get width and dTdx.
-		// dTdx will increment and generate a T coordinate based on S coordinate (T = (S_64bpp_word * dTdx) >> 11).
-		// The stride is added on top of this, so effective stride is stride(T) + stride(tile).
-		// Usually it makes sense for stride(tile) to be 0, but it doesn't have to be ...
-		// The only reasonable solution is to try to decompose this mess into a normal width/height/stride.
-		// In the general dTdx case, we don't have to deduce a stable value for stride.
-		// If dTdx is very weird, we might get variable stride, which is near-impossible to deal with.
-		// However, it makes zero sense for content to actually rely on this behavior.
-		// Even if there are inaccuracies in the fraction, we always floor it to get T, and thus we'll have to run
-		// for quite some time to observe the fractional error accumulate.
-
-		unsigned pixel_count = (info.shi - info.slo + 1) & 0xfff;
-
-		unsigned dt = info.thi;
-
-		unsigned max_tmem_iteration = (pixel_count - 1) >> (4u - unsigned(info.size));
-		unsigned max_t = (max_tmem_iteration * dt) >> 11;
-
-		if (max_t != 0)
-		{
-			// dT is an inverse which is not necessarily accurate, we can end up with an uneven amount of
-			// texels per "line". If we have stride == 0, this is fairly easy to deal with,
-			// but for the case where stride != 0, it is very difficult to implement it correctly.
-			// We will need to solve this kind of equation for X:
-
-			// TMEM word = floor((x * dt) / 2048) * stride + x
-			// This equation has no solutions for cases where we stride over TMEM words.
-			// The only way I can think of is to test all candidates for the floor() expression, and see if that is a valid solution.
-			// We can find an conservative estimate for floor() by:
-			// t_min = TMEM word / (max_num_64bpp_elements + stride)
-			// t_max = TMEM word / (min_num_64bpp_elements + stride)
-			unsigned max_num_64bpp_elements_before_wrap = ((1u << 11u) + dt - 1u) / dt;
-			unsigned min_num_64bpp_elements_before_wrap = (1u << 11u) / dt;
-
-			bool uneven_dt = max_num_64bpp_elements_before_wrap != min_num_64bpp_elements_before_wrap;
-
-			if (uneven_dt)
-			{
-				// If we never get rounding errors, we can handwave this issue away and pretend that min == max iterations.
-				// This is by far the common case.
-
-				// Each overflow into next T adds a certain amount of error.
-				unsigned overflow_amt = dt * max_num_64bpp_elements_before_wrap - (1 << 11);
-
-				// Multiply this by maximum value of T we can observe, and we have a conservative estimate for our T error.
-				overflow_amt *= max_t;
-
-				// If this error is less than 1 step of dt, we can be certain that we will get max_num iterations every time,
-				// and we can ignore the worst edge cases.
-				if (overflow_amt < dt)
-				{
-					min_num_64bpp_elements_before_wrap = max_num_64bpp_elements_before_wrap;
-					uneven_dt = false;
-				}
-			}
-
-			// Add more precision bits to DXT. We might have to shift it down if we have a meta.size fixup down below.
-			// Also makes the right shift nicer (16 vs 11).
-			upload.dxt = dt << 5;
-
-			if (meta.size == RDP_TEXTURE_SIZE_32 || meta.fmt == RDP_TEXTURE_FORMAT_YUV)
-			{
-				// We iterate twice for Bpp32 and YUV to complete a 64bpp word.
-				upload.tmem_stride_words <<= 1;
-
-				// Pure, utter insanity, but no content should *ever* hit this ...
-				if (uneven_dt && meta.size != info.size)
-				{
-					LOGE("Got uneven_dt, and texture size != tile size.\n");
-					return;
-				}
-			}
-
-			// If TMEM and VRAM bpp misalign, we need to fixup this since we step too fast or slow.
-			if (unsigned(meta.size) > unsigned(info.size))
-			{
-				unsigned shamt = unsigned(meta.size) - unsigned(info.size);
-				max_num_64bpp_elements_before_wrap <<= shamt;
-				min_num_64bpp_elements_before_wrap <<= shamt;
-				// Need to step slower so we can handle the added striding.
-				upload.dxt >>= shamt;
-			}
-			else if (unsigned(info.size) > unsigned(meta.size))
-			{
-				// Here we step multiple times over the same pixel, but potentially with different T state,
-				// since dTdx applies between the iterations.
-				// Horrible, horrible mess ...
-				LOGE("LoadBlock: VRAM bpp size is larger than tile bpp. This is unsupported.\n");
-				return;
-			}
-
-			unsigned max_line_stride_64bpp = max_num_64bpp_elements_before_wrap + (upload.tmem_stride_words >> 2);
-			unsigned min_line_stride_64bpp = min_num_64bpp_elements_before_wrap + (upload.tmem_stride_words >> 2);
-
-			// Multiplying 64bpp TMEM word by these gives us lower and upper bounds for T.
-			// These serve as candidate expressions for floor().
-			float min_t_mod = 1.0f / float(max_line_stride_64bpp);
-			float max_t_mod = 1.0f / float(min_line_stride_64bpp);
-			upload.min_t_mod = min_t_mod;
-			upload.max_t_mod = max_t_mod;
-
-			upload.width = pixel_count;
-			upload.height = 1;
-			upload.tmem_stride_words >>= 2; // Stride in 64bpp instead of 16bpp.
-		}
-		else
-		{
-			// We never trigger a case where T is non-zero, so this is equivalent to a Tile upload.
-			upload.width = pixel_count;
-			upload.height = 1;
-			upload.tmem_stride_words = 0;
-			upload_mode = UploadMode::Tile;
-		}
-	}
-	else
-	{
-		upload_x = info.slo >> 2;
-		upload_y = info.tlo >> 2;
-		upload.width = (((info.shi >> 2) - (info.slo >> 2)) + 1) & 0xfff;
-		upload.height = ((info.thi >> 2) - (info.tlo >> 2)) + 1;
-	}
-
-	if (!upload.width)
-		return;
-
-	switch (info.size)
-	{
-	case RDP_TEXTURE_SIZE_8:
-		upload.vram_effective_width = (upload.width + 7) & ~7;
-		break;
-
-	case RDP_TEXTURE_SIZE_16:
-		// In 16-bit VRAM pointer with TLUT, we iterate one texel at a time, not 4.
-		if (upload_mode == UploadMode::TLUT)
-			upload.vram_effective_width = upload.width;
-		else
-			upload.vram_effective_width = (upload.width + 3) & ~3;
-		break;
-
-	case RDP_TEXTURE_SIZE_32:
-		upload.vram_effective_width = (upload.width + 1) & ~1;
-		break;
 
 	default:
-		break;
-	}
-
-	// Uploads happen in chunks of 8 bytes in groups of 4x16-bits.
-	switch (meta.size)
-	{
-	case RDP_TEXTURE_SIZE_4:
-		upload.width = (upload.width + 15) & ~15;
-		upload.width >>= 2;
-		break;
-
-	case RDP_TEXTURE_SIZE_8:
-		upload.width = (upload.width + 7) & ~7;
-		upload.width >>= 1;
-		break;
-
-	case RDP_TEXTURE_SIZE_16:
-		upload.width = (upload.width + 3) & ~3;
-		// Consider YUV uploads to be 32bpp since that's kinda what they are.
-		if (meta.fmt == RDP_TEXTURE_FORMAT_YUV)
-			upload.width >>= 1;
-		break;
-
-	case RDP_TEXTURE_SIZE_32:
-		upload.width = (upload.width + 1) & ~1;
-		break;
-
-	default:
-		LOGE("Unimplemented!\n");
-		break;
-	}
-
-	if (upload.height > 1 && upload_mode == UploadMode::TLUT)
-	{
-		LOGE("Load TLUT with height > 1 is not supported.\n");
 		return;
 	}
-
-	upload.vram_addr = info.tex_addr + ((info.tex_width * upload_y + upload_x) << (unsigned(info.size) - 1));
-	upload.vram_width = upload_mode == UploadMode::Block ? upload.vram_effective_width : info.tex_width;
-	upload.vram_size = int32_t(info.size);
-
-	upload.tmem_offset = (meta.offset + tmem_offset) & 0xfff;
-	upload.tmem_size = int32_t(meta.size);
-	upload.tmem_fmt = int32_t(meta.fmt);
-	upload.mode = int32_t(upload_mode);
-
-	upload.inv_tmem_stride_words = 1.0f / float(upload.tmem_stride_words);
 
 	stream.tmem_upload_infos[stream.num_tmem_uploads++] = upload;
 	if (stream.num_tmem_uploads + 1 >= Limits::MaxTMEMInstances)

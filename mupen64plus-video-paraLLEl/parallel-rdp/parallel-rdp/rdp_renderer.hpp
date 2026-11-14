@@ -49,22 +49,8 @@ enum class FBFormat : uint32_t
 	RGBA8888 = 4
 };
 
-enum class UploadMode : uint32_t
-{
-	Tile = 0,
-	TLUT = 1,
-	Block = 2
-};
-
-struct LoadTileInfo
-{
-	uint32_t tex_addr;
-	uint32_t tex_width;
-	uint16_t slo, tlo, shi, thi;
-	uint8_t fmt;  /* enum rdp_texture_format */
-	uint8_t size; /* enum rdp_texture_size */
-	UploadMode mode;
-};
+// A load command (tmem_load.h)
+using LoadTileInfo = ::rdp_load_tile_info_t;
 
 class CommandProcessor;
 

@@ -28,6 +28,7 @@
 #include <string.h>
 #include "rdp_common.hpp"
 #include "primitive_decode.h"
+#include "tmem_load.h"
 
 namespace RDP
 {
@@ -62,27 +63,8 @@ struct InstanceIndices
 };
 static_assert((sizeof(InstanceIndices) & 15) == 0, "InstanceIndices must be aligned to 16 bytes.");
 
-struct UploadInfo
-{
-	int32_t width, height;
-	float min_t_mod, max_t_mod;
-
-	int32_t vram_addr;
-	int32_t vram_width;
-	int32_t vram_size;
-	int32_t vram_effective_width;
-
-	int32_t tmem_offset;
-	int32_t tmem_stride_words;
-	int32_t tmem_size;
-	int32_t tmem_fmt;
-
-	int32_t mode;
-	float inv_tmem_stride_words;
-	int32_t dxt;
-	int32_t padding;
-};
-static_assert((sizeof(UploadInfo) & 15) == 0, "UploadInfo must be aligned to 16 bytes.");
+using UploadInfo = ::rdp_upload_info_t;
+static_assert(sizeof(UploadInfo) == 64, "UploadInfo must be 64 bytes.");
 
 struct SpanSetup
 {

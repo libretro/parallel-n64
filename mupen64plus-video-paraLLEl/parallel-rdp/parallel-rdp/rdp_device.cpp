@@ -555,62 +555,29 @@ void CommandProcessor::op_set_tile(const uint32_t *words)
 
 void CommandProcessor::op_load_tile(const uint32_t *words)
 {
-	uint32_t tile = (words[1] >> 24) & 7;
-
-	LoadTileInfo info = {};
-
-	info.tex_addr = texture_image.addr;
-	info.tex_width = texture_image.width;
-	info.fmt = texture_image.fmt;
-	info.size = texture_image.size;
-	info.slo = (words[0] >> 12) & 0xfff;
-	info.shi = (words[1] >> 12) & 0xfff;
-	info.tlo = (words[0] >> 0) & 0xfff;
-	info.thi = (words[1] >> 0) & 0xfff;
-	info.mode = UploadMode::Tile;
-
+	LoadTileInfo info;
+	rdp_decode_load(words, texture_image.addr, texture_image.width, texture_image.fmt, texture_image.size,
+	                RDP_UPLOAD_TILE, &info);
 	load_addr = texture_image.addr;
-	renderer.load_tile(tile, info);
+	renderer.load_tile((words[1] >> 24) & 7, info);
 }
 
 void CommandProcessor::op_load_tlut(const uint32_t *words)
 {
-	uint32_t tile = (words[1] >> 24) & 7;
-
-	LoadTileInfo info = {};
-
-	info.tex_addr = texture_image.addr;
-	info.tex_width = texture_image.width;
-	info.fmt = texture_image.fmt;
-	info.size = texture_image.size;
-	info.slo = (words[0] >> 12) & 0xfff;
-	info.shi = (words[1] >> 12) & 0xfff;
-	info.tlo = (words[0] >> 0) & 0xfff;
-	info.thi = (words[1] >> 0) & 0xfff;
-	info.mode = UploadMode::TLUT;
-
+	LoadTileInfo info;
+	rdp_decode_load(words, texture_image.addr, texture_image.width, texture_image.fmt, texture_image.size,
+	                RDP_UPLOAD_TLUT, &info);
 	load_addr = texture_image.addr;
-	renderer.load_tile(tile, info);
+	renderer.load_tile((words[1] >> 24) & 7, info);
 }
 
 void CommandProcessor::op_load_block(const uint32_t *words)
 {
-	uint32_t tile = (words[1] >> 24) & 7;
-
-	LoadTileInfo info = {};
-
-	info.tex_addr = texture_image.addr;
-	info.tex_width = texture_image.width;
-	info.fmt = texture_image.fmt;
-	info.size = texture_image.size;
-	info.slo = (words[0] >> 12) & 0xfff;
-	info.shi = (words[1] >> 12) & 0xfff;
-	info.tlo = (words[0] >> 0) & 0xfff;
-	info.thi = (words[1] >> 0) & 0xfff;
-	info.mode = UploadMode::Block;
-
+	LoadTileInfo info;
+	rdp_decode_load(words, texture_image.addr, texture_image.width, texture_image.fmt, texture_image.size,
+	                RDP_UPLOAD_BLOCK, &info);
 	load_addr = texture_image.addr;
-	renderer.load_tile(tile, info);
+	renderer.load_tile((words[1] >> 24) & 7, info);
 }
 
 void CommandProcessor::op_set_tile_size(const uint32_t *words)
