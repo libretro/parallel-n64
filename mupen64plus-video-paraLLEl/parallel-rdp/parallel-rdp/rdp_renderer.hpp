@@ -35,11 +35,12 @@
 #include "rdp_queue.h"
 #include "rdp_submit.h"
 #include "rdp_sync_ring.h"
+#include "rdp_timeline.h"
 #include <retro_atomic.h>
 
 namespace RDP
 {
-struct CoherencyOperation;
+using CoherencyOperation = ::rdp_timeline_op_t;
 using CoherencyCopy = ::rdp_coherency_copy_t;
 
 struct SyncObject

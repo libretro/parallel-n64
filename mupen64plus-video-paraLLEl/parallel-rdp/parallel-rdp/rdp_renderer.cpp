@@ -418,11 +418,11 @@ void Renderer::maintain_queues_idle()
 
 void Renderer::enqueue_fence_wait(Vulkan::Fence fence)
 {
-	CoherencyOperation op;
-	op.fence = rdp_move(fence);
+	CoherencyOperation op = {};
+	op.fence = fence.release();
 	op.unlock_cookie = &active_submissions;
 	retro_atomic_fetch_add_int(&active_submissions, 1);
-	processor.enqueue_coherency_operation(rdp_move(op));
+	processor.enqueue_coherency_operation(op);
 	last_submit_ns = granite_time_nsecs();
 }
 
@@ -454,7 +454,7 @@ void Renderer::submit_to_queue()
 	}
 	else
 	{
-		CoherencyOperation op;
+		CoherencyOperation op = {};
 		if (pending_host_visible_render_passes)
 			resolve_coherency_gpu_to_host(op, *stream.cmd);
 
@@ -463,9 +463,14 @@ void Renderer::submit_to_queue()
 		if (pending_host_visible_render_passes)
 		{
 			enqueue_fence_wait(fence);
-			op.fence = fence;
 			if (op.num_copies)
-				processor.enqueue_coherency_operation(rdp_move(op));
+			{
+				// the worker's own reference
+				if (fence)
+					granite_fence_ref(fence.get());
+				op.fence = fence.get();
+				processor.enqueue_coherency_operation(op);
+			}
 		}
 	}
 

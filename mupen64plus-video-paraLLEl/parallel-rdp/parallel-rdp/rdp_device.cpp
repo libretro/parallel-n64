@@ -65,29 +65,13 @@ static int resolve_shader_define(void *user, const char *name, const char *defin
 	return resolver->renderer->resolve_shader_define(name, define);
 }
 
-namespace
-{
-struct CoherencyNode : mpsc_stack_node_t
-{
-	CoherencyOperation op;
-	// copies the node has room for, after it
-	unsigned capacity;
-};
-
-struct TimelineWait
-{
-	CommandProcessor *self;
-	size_t index;
-};
-}
-
 CommandProcessor::CommandProcessor(Vulkan::Device &device_, void *rdram_ptr,
                                    size_t rdram_offset_, size_t rdram_size_, size_t hidden_rdram_size,
                                    CommandProcessorFlags flags_)
 	: device(device_), rdram_offset(rdram_offset_), rdram_size(rdram_size_), flags(flags_), renderer(*this)
 {
-	// NULL only if the allocation failed; init_renderer reports that.
-	timeline_worker.worker = rdp_worker_new(nullptr, timeline_work, this);
+	// Not started only if an allocation failed; init_renderer reports that.
+	rdp_timeline_init(&timeline, &device);
 	upscaler = rdp_upscaler_new();
 
 	BufferCreateInfo info = {};
@@ -202,6 +186,7 @@ CommandProcessor::~CommandProcessor()
 	// destroyed before the ring would otherwise be.
 	rdp_command_ring_free(ring);
 	ring = nullptr;
+	rdp_timeline_free(&timeline);
 	rdp_upscaler_free(upscaler);
 	rdp_dump_writer_free(dump_writer);
 }
@@ -228,7 +213,7 @@ bool CommandProcessor::get_super_sampled_readback() const
 
 void CommandProcessor::init_renderer()
 {
-	if (!rdram || !timeline_worker.worker)
+	if (!rdram || !timeline.worker)
 	{
 		is_supported = false;
 		return;
@@ -644,9 +629,9 @@ UTIL_NOINLINE void CommandProcessor::enqueue_command_direct(unsigned, const uint
 	{
 		renderer.flush_and_signal();
 		uint64_t val = words[1] | (uint64_t(words[2]) << 32);
-		CoherencyOperation signal_op;
+		CoherencyOperation signal_op = {};
 		signal_op.timeline_value = val;
-		enqueue_coherency_operation(rdp_move(signal_op));
+		enqueue_coherency_operation(signal_op);
 		break;
 	}
 
@@ -769,8 +754,7 @@ uint64_t CommandProcessor::signal_timeline()
 
 void CommandProcessor::wait_for_timeline(uint64_t index)
 {
-	TimelineWait ctx = { this, size_t(index) };
-	rdp_worker_wait(timeline_worker.worker, timeline_reached, &ctx);
+	rdp_timeline_wait(&timeline, index);
 }
 
 Vulkan::ImageHandle CommandProcessor::scanout(const ScanoutOptions &opts, VkImageLayout target_layout)
@@ -992,126 +976,8 @@ void CommandProcessor::drain_command_ring()
 		rdp_command_ring_drain(ring);
 }
 
-void CommandProcessor::timeline_work(void *user, mpsc_stack_node_t *item)
+void CommandProcessor::enqueue_coherency_operation(const CoherencyOperation &op)
 {
-	auto *self = static_cast<CommandProcessor *>(user);
-	auto *node = static_cast<CoherencyNode *>(item);
-	self->perform_coherency(node->op);
-	if (node->op.timeline_value)
-		retro_atomic_store_release_size(&self->thread_timeline_value, size_t(node->op.timeline_value));
-	node->op.fence.reset();
-	mpsc_stack_push(&self->coherency_nodes.returned, node);
-}
-
-CommandProcessor::CoherencyNodePool::~CoherencyNodePool()
-{
-	mpsc_stack_node_t *lists[2] = { spare, mpsc_stack_drain(&returned) };
-	unsigned i;
-
-	for (i = 0; i < 2; i++)
-		while (lists[i])
-		{
-			auto *node = static_cast<CoherencyNode *>(lists[i]);
-			lists[i] = node->next;
-			node->~CoherencyNode();
-			free(node);
-		}
-}
-
-bool CommandProcessor::timeline_reached(void *ctx)
-{
-	auto *wait = static_cast<TimelineWait *>(ctx);
-	size_t done = retro_atomic_load_acquire_size(&wait->self->thread_timeline_value);
-	// done >= index, modulo wrap
-	return size_t(done - wait->index) <= (SIZE_MAX >> 1);
-}
-
-void CommandProcessor::perform_coherency(CoherencyOperation &work)
-{
-	if (work.fence)
-		work.fence->wait();
-
-	if (work.unlock_cookie)
-		retro_atomic_fetch_sub_int(work.unlock_cookie, 1);
-
-	if (work.src)
-	{
-		unsigned c;
-		for (c = 0; c < work.num_copies; c++)
-		{
-			const CoherencyCopy &copy = work.copies[c];
-			auto *mapped_data = static_cast<uint8_t *>(device.map_host_buffer(*work.src, MEMORY_ACCESS_READ_BIT, copy.src_offset, copy.size));
-			auto *mapped_mask = static_cast<uint8_t *>(device.map_host_buffer(*work.src, MEMORY_ACCESS_READ_BIT, copy.mask_offset, copy.size));
-#ifdef PARALLEL_RDP_VERIFY_UPLOADS
-			rdp_masked_copy_verify(work.dst + copy.dst_offset, mapped_data, mapped_mask, copy.size);
-#endif
-			rdp_masked_copy(work.dst + copy.dst_offset, mapped_data, mapped_mask, copy.size);
-
-			for (unsigned i = 0; i < copy.counters; i++)
-			{
-				int val = retro_atomic_fetch_sub_int(&copy.counter_base[i], 1);
-				(void)val;
-				assert(val > 0);
-			}
-		}
-
-		rdp_masked_copy_end();
-	}
-}
-
-// A node with room for n copies: one the worker has handed back, or
-// failing that a new one, with its copies after it.
-static CoherencyNode *take_coherency_node(mpsc_stack_node_t **spare, mpsc_stack_t *returned, unsigned n)
-{
-	unsigned pass;
-
-	for (pass = 0; pass < 2; pass++)
-	{
-		mpsc_stack_node_t **link = spare;
-		for (; *link; link = &(*link)->next)
-		{
-			auto *node = static_cast<CoherencyNode *>(*link);
-			if (node->capacity >= n)
-			{
-				*link = node->next;
-				return node;
-			}
-		}
-		// what came back since: put in front of the rest
-		mpsc_stack_node_t *back = mpsc_stack_drain(returned);
-		if (!back)
-			break;
-		mpsc_stack_node_t *tail = back;
-		while (tail->next)
-			tail = tail->next;
-		tail->next = *spare;
-		*spare = back;
-	}
-
-	unsigned capacity = 8;
-	while (capacity < n)
-		capacity <<= 1;
-	void *mem = granite_heap_new(sizeof(CoherencyNode) + capacity * sizeof(CoherencyCopy));
-	auto *node = UTIL_PLACEMENT_NEW(mem) CoherencyNode;
-	node->capacity = capacity;
-	return node;
-}
-
-void CommandProcessor::enqueue_coherency_operation(CoherencyOperation &&op)
-{
-	auto *node = take_coherency_node(&coherency_nodes.spare, &coherency_nodes.returned, op.num_copies);
-	auto *copies = reinterpret_cast<CoherencyCopy *>(node + 1);
-	unsigned i;
-
-	for (i = 0; i < op.num_copies; i++)
-		copies[i] = op.copies[i];
-	node->op.fence = static_cast<Vulkan::Fence &&>(op.fence);
-	node->op.timeline_value = op.timeline_value;
-	node->op.dst = op.dst;
-	node->op.src = op.src;
-	node->op.copies = copies;
-	node->op.num_copies = op.num_copies;
-	node->op.unlock_cookie = op.unlock_cookie;
-	rdp_worker_push(timeline_worker.worker, node);
+	rdp_timeline_enqueue(&timeline, &op);
 }
 }

@@ -26,6 +26,7 @@
 #include "video_interface.hpp"
 #include "rdp_renderer.hpp"
 #include "rdp_command_decode.h"
+#include "rdp_timeline.h"
 #include "rdp_common.hpp"
 #include "command_ring.h"
 #include "rdp_worker.h"
@@ -54,18 +55,6 @@ enum CommandProcessorFlagBits
 };
 using CommandProcessorFlags = uint32_t;
 
-struct CoherencyOperation
-{
-	Vulkan::Fence fence;
-	uint64_t timeline_value = 0;
-
-	uint8_t *dst = nullptr;
-	const Vulkan::Buffer *src = nullptr;
-	// num_copies of them, in storage of the producer's until enqueued
-	CoherencyCopy *copies = nullptr;
-	unsigned num_copies = 0;
-	retro_atomic_int_t *unlock_cookie = nullptr;
-};
 
 // These options control various behavior when upscaling to workaround glitches which arise naturally as part of upscaling.
 struct Quirks
@@ -219,33 +208,9 @@ private:
 	rdp_texture_image_t texture_image = {};
 
 	uint64_t timeline_value = 0;
-	// Last timeline value the timeline worker has passed. Free-running
-	// size_t, compared by difference, so it may wrap on 32-bit hosts.
-	retro_atomic_size_t thread_timeline_value{0};
-
-	// The nodes of the timeline worker's work, handed back by it once done
-	// and reused by the thread that queues them: no allocation per
-	// operation once enough are about. Destroyed after the worker below.
-	struct CoherencyNodePool
-	{
-		mpsc_stack_t returned;
-		// the queuing thread's own, taken from returned
-		mpsc_stack_node_t *spare = nullptr;
-		CoherencyNodePool() { mpsc_stack_init(&returned); }
-		~CoherencyNodePool();
-	} coherency_nodes;
-
-	// The timeline worker (rdp_worker.c): waits on fences, copies GPU
-	// writes back to RDRAM and publishes timeline values. Owned so that
-	// it is freed here, at the same point the member was destroyed.
-	struct TimelineWorker
-	{
-		rdp_worker_t *worker = nullptr;
-		~TimelineWorker() { rdp_worker_free(worker); }
-	} timeline_worker;
-	static void timeline_work(void *user, mpsc_stack_node_t *item);
-	static bool timeline_reached(void *ctx);
-	void perform_coherency(CoherencyOperation &work);
+	// The timeline worker (rdp_timeline.c): waits on fences, copies GPU
+	// writes back to RDRAM and publishes timeline values
+	rdp_timeline_t timeline;
 
 	uint8_t *host_rdram = nullptr;
 	bool single_threaded_processing = false;
@@ -258,7 +223,7 @@ private:
 
 	friend class Renderer;
 
-	void enqueue_coherency_operation(CoherencyOperation &&op);
+	void enqueue_coherency_operation(const CoherencyOperation &op);
 	void drain_command_ring();
 	unsigned decode_flags() const;
 	void texture_rectangle(const uint32_t *words, bool flip);
