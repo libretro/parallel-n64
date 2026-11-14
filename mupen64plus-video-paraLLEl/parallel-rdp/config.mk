@@ -22,6 +22,8 @@ PARALLEL_RDP_SOURCES_C := \
         $(PARALLEL_RDP_IMPLEMENTATION)/parallel-rdp/vi_image_pool.c \
         $(PARALLEL_RDP_IMPLEMENTATION)/parallel-rdp/shader_bank.c \
         $(PARALLEL_RDP_IMPLEMENTATION)/parallel-rdp/video_interface.c \
+        $(PARALLEL_RDP_IMPLEMENTATION)/parallel-rdp/primitive_decode.c \
+        $(PARALLEL_RDP_IMPLEMENTATION)/parallel-rdp/masked_copy.c \
         $(PARALLEL_RDP_IMPLEMENTATION)/parallel-rdp/temporal_upscaler.c \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/cookie.c \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/fence_wait.c \

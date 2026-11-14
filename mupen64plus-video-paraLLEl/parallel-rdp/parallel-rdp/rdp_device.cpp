@@ -23,10 +23,8 @@
 #include "rdp_device.hpp"
 #include <stdint.h>
 #include "rdp_common.hpp"
+#include "masked_copy.h"
 
-#ifdef __SSE2__
-#include <emmintrin.h>
-#endif
 
 
 using namespace Vulkan;
@@ -351,199 +349,27 @@ void CommandProcessor::op_sync_full(const uint32_t *)
 	renderer.flush_and_signal();
 }
 
-void CommandProcessor::decode_triangle_setup(TriangleSetup &setup, const uint32_t *words) const
+// What of the state a primitive's decoding depends on (primitive_decode.h)
+unsigned CommandProcessor::decode_flags() const
 {
-	bool copy_cycle = (static_state.flags & RASTERIZATION_COPY_BIT) != 0;
-	bool flip = (words[0] & 0x800000u) != 0;
-	bool sign_dxhdy = (words[5] & 0x80000000u) != 0;
-	bool do_offset = flip == sign_dxhdy;
-
-	setup.flags |= flip ? TRIANGLE_SETUP_FLIP_BIT : 0;
-	setup.flags |= do_offset ? TRIANGLE_SETUP_DO_OFFSET_BIT : 0;
-	setup.flags |= copy_cycle ? TRIANGLE_SETUP_SKIP_XFRAC_BIT : 0;
-	setup.flags |= quirks.u.options.native_texture_lod ? TRIANGLE_SETUP_NATIVE_LOD_BIT : 0;
-
-	setup.tile = (words[0] >> 16) & 63;
-
-	setup.yl = sext<14>(words[0]);
-	setup.ym = sext<14>(words[1] >> 16);
-	setup.yh = sext<14>(words[1]);
-
-	// The lower bit is ignored, so shift here to obtain an extra bit of subpixel precision.
-	// This is very useful for upscaling, since we can obtain 8x before we overflow instead of 4x.
-	setup.xl = sext<28>(words[2]) >> 1;
-	setup.xh = sext<28>(words[4]) >> 1;
-	setup.xm = sext<28>(words[6]) >> 1;
-	setup.dxldy = sext<28>(words[3] >> 2) >> 1;
-	setup.dxhdy = sext<28>(words[5] >> 2) >> 1;
-	setup.dxmdy = sext<28>(words[7] >> 2) >> 1;
+	unsigned flags = 0;
+	if (static_state.flags & RASTERIZATION_COPY_BIT)
+		flags |= RDP_DECODE_COPY_CYCLE;
+	if (static_state.flags & RASTERIZATION_FILL_BIT)
+		flags |= RDP_DECODE_FILL_CYCLE;
+	if (quirks.u.options.native_texture_lod)
+		flags |= RDP_DECODE_NATIVE_TEXTURE_LOD;
+	if (quirks.u.options.native_resolution_tex_rect)
+		flags |= RDP_DECODE_NATIVE_TEX_RECT;
+	return flags;
 }
 
-static void decode_tex_setup(AttributeSetup &attr, const uint32_t *words)
+// The eight triangle commands, 0x08 to 0x0f
+void CommandProcessor::op_triangle(const uint32_t *words)
 {
-	attr.s = (words[0] & 0xffff0000u) | ((words[4] >> 16) & 0x0000ffffu);
-	attr.t = ((words[0] << 16) & 0xffff0000u) | (words[4] & 0x0000ffffu);
-	attr.w = (words[1] & 0xffff0000u) | ((words[5] >> 16) & 0x0000ffffu);
-
-	attr.dsdx = (words[2] & 0xffff0000u) | ((words[6] >> 16) & 0x0000ffffu);
-	attr.dtdx = ((words[2] << 16) & 0xffff0000u) | (words[6] & 0x0000ffffu);
-	attr.dwdx = (words[3] & 0xffff0000u) | ((words[7] >> 16) & 0x0000ffffu);
-
-	attr.dsde = (words[8] & 0xffff0000u) | ((words[12] >> 16) & 0x0000ffffu);
-	attr.dtde = ((words[8] << 16) & 0xffff0000u) | (words[12] & 0x0000ffffu);
-	attr.dwde = (words[9] & 0xffff0000u) | ((words[13] >> 16) & 0x0000ffffu);
-
-	attr.dsdy = (words[10] & 0xffff0000u) | ((words[14] >> 16) & 0x0000ffffu);
-	attr.dtdy = ((words[10] << 16) & 0xffff0000u) | (words[14] & 0x0000ffffu);
-	attr.dwdy = (words[11] & 0xffff0000u) | ((words[15] >> 16) & 0x0000ffffu);
-}
-
-static void decode_rgba_setup(AttributeSetup &attr, const uint32_t *words)
-{
-	attr.r = (words[0] & 0xffff0000u) | ((words[4] >> 16) & 0xffff);
-	attr.g = (words[0] << 16) | (words[4] & 0xffff);
-	attr.b = (words[1] & 0xffff0000u) | ((words[5] >> 16) & 0xffff);
-	attr.a = (words[1] << 16) | (words[5] & 0xffff);
-
-	attr.drdx = (words[2] & 0xffff0000u) | ((words[6] >> 16) & 0xffff);
-	attr.dgdx = (words[2] << 16) | (words[6] & 0xffff);
-	attr.dbdx = (words[3] & 0xffff0000u) | ((words[7] >> 16) & 0xffff);
-	attr.dadx = (words[3] << 16) | (words[7] & 0xffff);
-
-	attr.drde = (words[8] & 0xffff0000u) | ((words[12] >> 16) & 0xffff);
-	attr.dgde = (words[8] << 16) | (words[12] & 0xffff);
-	attr.dbde = (words[9] & 0xffff0000u) | ((words[13] >> 16) & 0xffff);
-	attr.dade = (words[9] << 16) | (words[13] & 0xffff);
-
-	attr.drdy = (words[10] & 0xffff0000u) | ((words[14] >> 16) & 0xffff);
-	attr.dgdy = (words[10] << 16) | (words[14] & 0xffff);
-	attr.dbdy = (words[11] & 0xffff0000u) | ((words[15] >> 16) & 0xffff);
-	attr.dady = (words[11] << 16) | (words[15] & 0xffff);
-}
-
-static void decode_z_setup(AttributeSetup &attr, const uint32_t *words)
-{
-	attr.z = words[0];
-	attr.dzdx = words[1];
-	attr.dzde = words[2];
-	attr.dzdy = words[3];
-}
-
-// A triangle without a Z block still runs the Z pipe if the other modes enable it.
-// Hardware neither zeroes the Z coefficients nor keeps the previous primitive's,
-// it latches the triangle's own header doubleword into both Z block slots.
-// Hardware verified, diagnostic cartridge case 9:21
-// (carmiker/n64docs RDP_TESTCART_HARDWARE.txt, section 3.2).
-static void decode_z_setup_from_header(AttributeSetup &attr, const uint32_t *words)
-{
-	attr.z = words[0];
-	attr.dzdx = words[1];
-	attr.dzde = words[0];
-	attr.dzdy = words[1];
-}
-
-// The shade block behaves the same way. A triangle without one still feeds the shade registers
-// to the combiner, and the loader latches the header doubleword into all eight slots of the block.
-// Hardware verified, snapper64 "RDP Undefined Shade 1C", 64 of 64 hardware snapshots.
-static void decode_rgba_setup_from_header(AttributeSetup &attr, const uint32_t *words)
-{
-	uint32_t block[16];
-	for (unsigned i = 0; i < 16; i += 2)
-	{
-		block[i] = words[0];
-		block[i + 1] = words[1];
-	}
-	decode_rgba_setup(attr, block);
-}
-
-void CommandProcessor::op_fill_triangle(const uint32_t *words)
-{
-	TriangleSetup setup = {};
-	AttributeSetup attr = {};
-	decode_triangle_setup(setup, words);
-	decode_rgba_setup_from_header(attr, words);
-	decode_z_setup_from_header(attr, words);
-	upscaler_triangle((words[0] >> 24) & 63, setup, attr);
-	renderer.draw_shaded_primitive(setup, attr);
-}
-
-void CommandProcessor::op_shade_triangle(const uint32_t *words)
-{
-	TriangleSetup setup = {};
-	AttributeSetup attr = {};
-	decode_triangle_setup(setup, words);
-	decode_rgba_setup(attr, words + 8);
-	decode_z_setup_from_header(attr, words);
-	upscaler_triangle((words[0] >> 24) & 63, setup, attr);
-	renderer.draw_shaded_primitive(setup, attr);
-}
-
-void CommandProcessor::op_shade_z_buffer_triangle(const uint32_t *words)
-{
-	TriangleSetup setup = {};
-	AttributeSetup attr = {};
-	decode_triangle_setup(setup, words);
-	decode_rgba_setup(attr, words + 8);
-	decode_z_setup(attr, words + 24);
-	upscaler_triangle((words[0] >> 24) & 63, setup, attr);
-	renderer.draw_shaded_primitive(setup, attr);
-}
-
-void CommandProcessor::op_shade_texture_z_buffer_triangle(const uint32_t *words)
-{
-	TriangleSetup setup = {};
-	AttributeSetup attr = {};
-	decode_triangle_setup(setup, words);
-	decode_rgba_setup(attr, words + 8);
-	decode_tex_setup(attr, words + 24);
-	decode_z_setup(attr, words + 40);
-	upscaler_triangle((words[0] >> 24) & 63, setup, attr);
-	renderer.draw_shaded_primitive(setup, attr);
-}
-
-void CommandProcessor::op_fill_z_buffer_triangle(const uint32_t *words)
-{
-	TriangleSetup setup = {};
-	AttributeSetup attr = {};
-	decode_triangle_setup(setup, words);
-	decode_rgba_setup_from_header(attr, words);
-	decode_z_setup(attr, words + 8);
-	upscaler_triangle((words[0] >> 24) & 63, setup, attr);
-	renderer.draw_shaded_primitive(setup, attr);
-}
-
-void CommandProcessor::op_texture_triangle(const uint32_t *words)
-{
-	TriangleSetup setup = {};
-	AttributeSetup attr = {};
-	decode_triangle_setup(setup, words);
-	decode_rgba_setup_from_header(attr, words);
-	decode_tex_setup(attr, words + 8);
-	decode_z_setup_from_header(attr, words);
-	upscaler_triangle((words[0] >> 24) & 63, setup, attr);
-	renderer.draw_shaded_primitive(setup, attr);
-}
-
-void CommandProcessor::op_texture_z_buffer_triangle(const uint32_t *words)
-{
-	TriangleSetup setup = {};
-	AttributeSetup attr = {};
-	decode_triangle_setup(setup, words);
-	decode_rgba_setup_from_header(attr, words);
-	decode_tex_setup(attr, words + 8);
-	decode_z_setup(attr, words + 24);
-	upscaler_triangle((words[0] >> 24) & 63, setup, attr);
-	renderer.draw_shaded_primitive(setup, attr);
-}
-
-void CommandProcessor::op_shade_texture_triangle(const uint32_t *words)
-{
-	TriangleSetup setup = {};
-	AttributeSetup attr = {};
-	decode_triangle_setup(setup, words);
-	decode_rgba_setup(attr, words + 8);
-	decode_tex_setup(attr, words + 24);
-	decode_z_setup_from_header(attr, words);
+	TriangleSetup setup;
+	AttributeSetup attr;
+	rdp_decode_triangle(words, decode_flags(), &setup, &attr);
 	upscaler_triangle((words[0] >> 24) & 63, setup, attr);
 	renderer.draw_shaded_primitive(setup, attr);
 }
@@ -853,115 +679,31 @@ void CommandProcessor::op_set_fill_color(const uint32_t *words)
 
 void CommandProcessor::op_fill_rectangle(const uint32_t *words)
 {
-	uint32_t xl = (words[0] >> 12) & 0xfff;
-	uint32_t yl = (words[0] >> 0) & 0xfff;
-	uint32_t xh = (words[1] >> 12) & 0xfff;
-	uint32_t yh = (words[1] >> 0) & 0xfff;
-
-	if ((static_state.flags & (RASTERIZATION_COPY_BIT | RASTERIZATION_FILL_BIT)) != 0)
-		yl |= 3;
-
-	TriangleSetup setup = {};
-	setup.xh = xh << 13;
-	setup.xl = xl << 13;
-	setup.xm = xl << 13;
-	setup.ym = yl;
-	setup.yl = yl;
-	setup.yh = yh;
-	setup.flags = TRIANGLE_SETUP_FLIP_BIT | TRIANGLE_SETUP_DISABLE_UPSCALING_BIT;
-
-	rdp_upscaler_rectangle(upscaler, xh, yh, xl, yl);
+	TriangleSetup setup;
+	rdp_decode_fill_rectangle(words, decode_flags(), &setup);
+	rdp_upscaler_rectangle(upscaler, uint32_t(setup.xh) >> 13, uint32_t(setup.yh), uint32_t(setup.xl) >> 13,
+	                       uint32_t(setup.yl));
 	renderer.draw_flat_primitive(setup);
+}
+
+void CommandProcessor::texture_rectangle(const uint32_t *words, bool flip)
+{
+	TriangleSetup setup;
+	AttributeSetup attr;
+	rdp_decode_texture_rectangle(words, flip, decode_flags(), &setup, &attr);
+	rdp_upscaler_rectangle(upscaler, uint32_t(setup.xh) >> 13, uint32_t(setup.yh), uint32_t(setup.xl) >> 13,
+	                       uint32_t(setup.yl));
+	renderer.draw_shaded_primitive(setup, attr);
 }
 
 void CommandProcessor::op_texture_rectangle(const uint32_t *words)
 {
-	uint32_t xl = (words[0] >> 12) & 0xfff;
-	uint32_t yl = (words[0] >> 0) & 0xfff;
-	uint32_t xh = (words[1] >> 12) & 0xfff;
-	uint32_t yh = (words[1] >> 0) & 0xfff;
-	uint32_t tile = (words[1] >> 24) & 0x7;
-
-	int32_t s = (words[2] >> 16) & 0xffff;
-	int32_t t = (words[2] >> 0) & 0xffff;
-	int32_t dsdx = (words[3] >> 16) & 0xffff;
-	int32_t dtdy = (words[3] >> 0) & 0xffff;
-	dsdx = sext<16>(dsdx);
-	dtdy = sext<16>(dtdy);
-
-	if ((static_state.flags & (RASTERIZATION_COPY_BIT | RASTERIZATION_FILL_BIT)) != 0)
-		yl |= 3;
-
-	TriangleSetup setup = {};
-	AttributeSetup attr = {};
-
-	setup.xh = xh << 13;
-	setup.xl = xl << 13;
-	setup.xm = xl << 13;
-	setup.ym = yl;
-	setup.yl = yl;
-	setup.yh = yh;
-	setup.flags = TRIANGLE_SETUP_FLIP_BIT |
-	              (quirks.u.options.native_resolution_tex_rect ? TRIANGLE_SETUP_DISABLE_UPSCALING_BIT : 0) |
-	              (quirks.u.options.native_texture_lod ? TRIANGLE_SETUP_NATIVE_LOD_BIT : 0);
-	setup.tile = tile;
-
-	attr.s = s << 16;
-	attr.t = t << 16;
-	attr.dsdx = dsdx << 11;
-	attr.dtde = dtdy << 11;
-	attr.dtdy = dtdy << 11;
-
-	if ((static_state.flags & RASTERIZATION_COPY_BIT) != 0)
-		setup.flags |= TRIANGLE_SETUP_SKIP_XFRAC_BIT;
-
-	rdp_upscaler_rectangle(upscaler, xh, yh, xl, yl);
-	renderer.draw_shaded_primitive(setup, attr);
+	texture_rectangle(words, false);
 }
 
 void CommandProcessor::op_texture_rectangle_flip(const uint32_t *words)
 {
-	uint32_t xl = (words[0] >> 12) & 0xfff;
-	uint32_t yl = (words[0] >> 0) & 0xfff;
-	uint32_t xh = (words[1] >> 12) & 0xfff;
-	uint32_t yh = (words[1] >> 0) & 0xfff;
-	uint32_t tile = (words[1] >> 24) & 0x7;
-
-	int32_t s = (words[2] >> 16) & 0xffff;
-	int32_t t = (words[2] >> 0) & 0xffff;
-	int32_t dsdx = (words[3] >> 16) & 0xffff;
-	int32_t dtdy = (words[3] >> 0) & 0xffff;
-	dsdx = sext<16>(dsdx);
-	dtdy = sext<16>(dtdy);
-
-	if ((static_state.flags & (RASTERIZATION_COPY_BIT | RASTERIZATION_FILL_BIT)) != 0)
-		yl |= 3;
-
-	TriangleSetup setup = {};
-	AttributeSetup attr = {};
-
-	setup.xh = xh << 13;
-	setup.xl = xl << 13;
-	setup.xm = xl << 13;
-	setup.ym = yl;
-	setup.yl = yl;
-	setup.yh = yh;
-	setup.flags = TRIANGLE_SETUP_FLIP_BIT | TRIANGLE_SETUP_DISABLE_UPSCALING_BIT |
-	              (quirks.u.options.native_resolution_tex_rect ? TRIANGLE_SETUP_DISABLE_UPSCALING_BIT : 0) |
-	              (quirks.u.options.native_texture_lod ? TRIANGLE_SETUP_NATIVE_LOD_BIT : 0);
-	setup.tile = tile;
-
-	attr.s = s << 16;
-	attr.t = t << 16;
-	attr.dtdx = dtdy << 11;
-	attr.dsde = dsdx << 11;
-	attr.dsdy = dsdx << 11;
-
-	if ((static_state.flags & RASTERIZATION_COPY_BIT) != 0)
-		setup.flags |= TRIANGLE_SETUP_SKIP_XFRAC_BIT;
-
-	rdp_upscaler_rectangle(upscaler, xh, yh, xl, yl);
-	renderer.draw_shaded_primitive(setup, attr);
+	texture_rectangle(words, true);
 }
 
 void CommandProcessor::op_set_prim_depth(const uint32_t *words)
@@ -1076,8 +818,8 @@ UTIL_NOINLINE void CommandProcessor::enqueue_command_direct(unsigned, const uint
 	static const CommandFunc funcs[64] = {
 		/* 0x00 */ nullptr, nullptr, nullptr, nullptr,
 		/* 0x04 */ nullptr, nullptr, nullptr, nullptr,
-		/* 0x08 */ OP(fill_triangle), OP(fill_z_buffer_triangle), OP(texture_triangle), OP(texture_z_buffer_triangle),
-		/* 0x0c */ OP(shade_triangle), OP(shade_z_buffer_triangle), OP(shade_texture_triangle), OP(shade_texture_z_buffer_triangle),
+		/* 0x08 */ OP(triangle), OP(triangle), OP(triangle), OP(triangle),
+		/* 0x0c */ OP(triangle), OP(triangle), OP(triangle), OP(triangle),
 		/* 0x10 */ nullptr, nullptr, nullptr, nullptr,
 		/* 0x14 */ nullptr, nullptr, nullptr, nullptr,
 		/* 0x18 */ nullptr, nullptr, nullptr, nullptr,
@@ -1482,89 +1224,6 @@ bool CommandProcessor::timeline_reached(void *ctx)
 	return size_t(done - wait->index) <= (SIZE_MAX >> 1);
 }
 
-static void masked_memcpy(uint8_t * __restrict dst,
-                          const uint8_t * __restrict data_src,
-                          const uint8_t * __restrict masked_src,
-                          size_t size)
-{
-#if defined(__SSE2__)
-	for (size_t i = 0; i < size; i += 16)
-	{
-		// What the masked store would do, without it where it is all or
-		// nothing: the GPU wrote none of most chunks, or all of them.
-		__m128i mask = _mm_loadu_si128(reinterpret_cast<const __m128i *>(masked_src + i));
-		int bits = _mm_movemask_epi8(mask);
-		if (!bits)
-			continue;
-		__m128i data = _mm_loadu_si128(reinterpret_cast<const __m128i *>(data_src + i));
-		if (bits == 0xffff)
-			_mm_storeu_si128(reinterpret_cast<__m128i *>(dst + i), data);
-		else
-			_mm_maskmoveu_si128(data, mask, reinterpret_cast<char *>(dst + i));
-	}
-#else
-	auto * __restrict data32 = reinterpret_cast<const uint32_t *>(data_src);
-	auto * __restrict mask32 = reinterpret_cast<const uint32_t *>(masked_src);
-	auto * __restrict dst32 = reinterpret_cast<uint32_t *>(dst);
-	auto size32 = size >> 2;
-
-	for (size_t i = 0; i < size32; i++)
-	{
-		auto mask = mask32[i];
-		if (mask == ~0u)
-		{
-			dst32[i] = data32[i];
-		}
-		else if (mask)
-		{
-			// Fairly rare path.
-			for (unsigned j = 0; j < 4; j++)
-				if (masked_src[4 * i + j])
-					dst[4 * i + j] = data_src[4 * i + j];
-		}
-	}
-#endif
-}
-
-#if defined(PARALLEL_RDP_VERIFY_UPLOADS) && defined(__SSE2__)
-/* The readback above against the masked store of every chunk, on copies
- * of what it reads and what it reads back over, which other threads (the
- * GPU's next work, the emulation) may be writing: the same bytes, or the
- * build stops here. */
-static void verify_masked_memcpy(const uint8_t *dst, const uint8_t *data_src,
-                                 const uint8_t *masked_src, size_t size)
-{
-	uint8_t *buf = static_cast<uint8_t *>(malloc(4 * size));
-	uint8_t *got, *want, *data, *mask;
-	size_t i;
-
-	if (!buf)
-		abort();
-	got  = buf;
-	want = buf + size;
-	data = buf + 2 * size;
-	mask = buf + 3 * size;
-	memcpy(got, dst, size);
-	memcpy(want, got, size);
-	memcpy(data, data_src, size);
-	memcpy(mask, masked_src, size);
-	masked_memcpy(got, data, mask, size);
-	for (i = 0; i < size; i += 16)
-		_mm_maskmoveu_si128(_mm_loadu_si128(reinterpret_cast<const __m128i *>(data + i)),
-		                    _mm_loadu_si128(reinterpret_cast<const __m128i *>(mask + i)),
-		                    reinterpret_cast<char *>(want + i));
-	_mm_mfence();
-	for (i = 0; i < size; i++)
-		if (got[i] != want[i])
-		{
-			fprintf(stderr, "parallel-rdp: RDRAM byte 0x%x of a readback is not as the masked store leaves it\n",
-			        unsigned(i));
-			abort();
-		}
-	free(buf);
-}
-#endif
-
 void CommandProcessor::perform_coherency(CoherencyOperation &work)
 {
 	if (work.fence)
@@ -1581,10 +1240,10 @@ void CommandProcessor::perform_coherency(CoherencyOperation &work)
 			const CoherencyCopy &copy = work.copies[c];
 			auto *mapped_data = static_cast<uint8_t *>(device.map_host_buffer(*work.src, MEMORY_ACCESS_READ_BIT, copy.src_offset, copy.size));
 			auto *mapped_mask = static_cast<uint8_t *>(device.map_host_buffer(*work.src, MEMORY_ACCESS_READ_BIT, copy.mask_offset, copy.size));
-#if defined(PARALLEL_RDP_VERIFY_UPLOADS) && defined(__SSE2__)
-			verify_masked_memcpy(work.dst + copy.dst_offset, mapped_data, mapped_mask, copy.size);
+#ifdef PARALLEL_RDP_VERIFY_UPLOADS
+			rdp_masked_copy_verify(work.dst + copy.dst_offset, mapped_data, mapped_mask, copy.size);
 #endif
-			masked_memcpy(work.dst + copy.dst_offset, mapped_data, mapped_mask, copy.size);
+			rdp_masked_copy(work.dst + copy.dst_offset, mapped_data, mapped_mask, copy.size);
 
 			for (unsigned i = 0; i < copy.counters; i++)
 			{
@@ -1594,9 +1253,7 @@ void CommandProcessor::perform_coherency(CoherencyOperation &work)
 			}
 		}
 
-#ifdef __SSE2__
-		_mm_mfence();
-#endif
+		rdp_masked_copy_end();
 	}
 }
 

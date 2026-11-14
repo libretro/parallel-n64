@@ -660,6 +660,7 @@ ifeq ($(HAVE_PARALLEL),1)
 	# a build that checks every RDRAM upload and readback against a full
 	# one, and stops at the first difference (tools/ci/parallel_rdp_rdram.py)
 	ifeq ($(PARALLEL_RDP_VERIFY_UPLOADS),1)
+		CFLAGS   += -DPARALLEL_RDP_VERIFY_UPLOADS
 		CXXFLAGS += -DPARALLEL_RDP_VERIFY_UPLOADS
 	endif
 	INCFLAGS += $(PARALLEL_RDP_INCLUDE_DIRS)

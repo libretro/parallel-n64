@@ -211,8 +211,7 @@ private:
 	Vulkan::ImageHandle scanout(const ScanoutOptions &opts, VkImageLayout target_layout);
 
 #define OP(x) void op_##x(const uint32_t *words)
-	OP(fill_triangle); OP(fill_z_buffer_triangle); OP(texture_triangle); OP(texture_z_buffer_triangle);
-	OP(shade_triangle); OP(shade_z_buffer_triangle); OP(shade_texture_triangle); OP(shade_texture_z_buffer_triangle);
+	OP(triangle);
 	OP(texture_rectangle); OP(texture_rectangle_flip); OP(sync_load); OP(sync_pipe);
 	OP(sync_tile); OP(sync_full); OP(set_key_gb); OP(set_key_r);
 	OP(set_convert); OP(set_scissor); OP(set_prim_depth); OP(set_other_modes);
@@ -276,7 +275,8 @@ private:
 
 	void enqueue_coherency_operation(CoherencyOperation &&op);
 	void drain_command_ring();
-	void decode_triangle_setup(TriangleSetup &setup, const uint32_t *words) const;
+	unsigned decode_flags() const;
+	void texture_rectangle(const uint32_t *words, bool flip);
 
 	Quirks quirks;
 

@@ -27,21 +27,14 @@
 #include <stdint.h>
 #include <string.h>
 #include "rdp_common.hpp"
+#include "primitive_decode.h"
 
 namespace RDP
 {
-enum TriangleSetupFlagBits
-{
-	TRIANGLE_SETUP_FLIP_BIT = 1 << 0,
-	TRIANGLE_SETUP_DO_OFFSET_BIT = 1 << 1,
-	TRIANGLE_SETUP_SKIP_XFRAC_BIT = 1 << 2,
-	TRIANGLE_SETUP_INTERLACE_FIELD_BIT = 1 << 3,
-	TRIANGLE_SETUP_INTERLACE_KEEP_ODD_BIT = 1 << 4,
-	TRIANGLE_SETUP_DISABLE_UPSCALING_BIT = 1 << 5,
-	TRIANGLE_SETUP_NATIVE_LOD_BIT = 1 << 6,
-	TRIANGLE_SETUP_FILL_COPY_RASTER_BIT = 1 << 7
-};
+// A primitive's edges and coefficients, and the edges' flags (primitive_decode.h)
 using TriangleSetupFlags = uint8_t;
+using TriangleSetup = ::rdp_triangle_setup_t;
+using AttributeSetup = ::rdp_attribute_setup_t;
 
 enum StaticRasterizationFlagBits
 {
@@ -91,30 +84,6 @@ enum DepthBlendFlagBits
 	DEPTH_BLEND_DITHER_ENABLE_BIT = 1 << 8
 };
 using DepthBlendFlags = uint32_t;
-
-struct TriangleSetup
-{
-	int32_t xh, xm, xl;
-	int16_t yh, ym;
-
-	int32_t dxhdy, dxmdy, dxldy;
-	int16_t yl;
-	TriangleSetupFlags flags;
-	uint8_t tile;
-};
-
-struct AttributeSetup
-{
-	int32_t r, g, b, a;
-	int32_t drdx, dgdx, dbdx, dadx;
-	int32_t drde, dgde, dbde, dade;
-	int32_t drdy, dgdy, dbdy, dady;
-
-	int32_t s, t, z, w;
-	int32_t dsdx, dtdx, dzdx, dwdx;
-	int32_t dsde, dtde, dzde, dwde;
-	int32_t dsdy, dtdy, dzdy, dwdy;
-};
 
 struct ConstantCombinerInputs
 {
