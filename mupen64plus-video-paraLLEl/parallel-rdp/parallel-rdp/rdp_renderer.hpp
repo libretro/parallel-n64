@@ -31,6 +31,7 @@
 #include "renderer_caps.h"
 #include "rdp_pipelines.h"
 #include "renderer_buffers.h"
+#include "rdp_passes.h"
 #include <retro_atomic.h>
 
 namespace RDP
@@ -274,6 +275,8 @@ private:
 	void clear_indirect_buffer(Vulkan::CommandBuffer &cmd);
 
 	rdp_pipeline_setup_t pipeline_setup() const;
+	rdp_pass_resources_t pass_resources(const rdp_pipeline_setup_t &setup);
+	rdp_pass_target_t pass_target() const;
 	void submit_rasterization(Vulkan::CommandBuffer &cmd, Vulkan::Buffer &tmem, bool upscaled);
 	void submit_depth_blend(Vulkan::CommandBuffer &cmd, Vulkan::Buffer &tmem, bool upscaled, bool force_write_mask);
 

@@ -87,6 +87,9 @@ void rdp_pipeline_span_setup(const rdp_pipeline_setup_t *setup, granite_command_
  * size control on for the dispatch; turn it off after. */
 uint32_t rdp_pipeline_tile_binning(const rdp_pipeline_setup_t *setup, granite_command_buffer_t *cb, bool upscale);
 
+/* Subgroup size control off again, after tile binning's dispatch */
+void rdp_pipeline_end_tile_binning(granite_command_buffer_t *cb);
+
 /* rasterizer.comp's generic variant: the one a draw falls back on while
  * its specialised one is built */
 void rdp_pipeline_rasterizer(const rdp_pipeline_setup_t *setup, granite_command_buffer_t *cb, bool upscale);

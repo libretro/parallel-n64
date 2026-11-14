@@ -94,13 +94,6 @@ struct SpanInterpolationJob
 };
 static_assert((sizeof(SpanInterpolationJob) == 8), "SpanInterpolationJob is not 8 bytes.");
 
-struct GlobalState
-{
-	uint32_t addr_index;
-	uint32_t depth_addr_index;
-	uint32_t fb_width, fb_height;
-	uint32_t group_mask;
-};
 
 struct TileRasterWork
 {
@@ -110,13 +103,6 @@ struct TileRasterWork
 };
 static_assert((sizeof(TileRasterWork) == 16), "TileRasterWork is not 16 bytes.");
 
-struct GlobalFBInfo
-{
-	uint32_t dx_shift;
-	uint32_t dx_mask;
-	uint32_t fb_size;
-	uint32_t base_primitive_index;
-};
 
 template <typename T, unsigned N>
 class StateCache

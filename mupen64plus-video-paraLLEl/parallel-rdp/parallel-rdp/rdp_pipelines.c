@@ -98,6 +98,11 @@ uint32_t rdp_pipeline_tile_binning(const rdp_pipeline_setup_t *setup, granite_co
 	return subgroup_size;
 }
 
+void rdp_pipeline_end_tile_binning(granite_command_buffer_t *cb)
+{
+	set_subgroup_size_control(cb, false, 0);
+}
+
 void rdp_pipeline_rasterizer(const rdp_pipeline_setup_t *setup, granite_command_buffer_t *cb, bool upscale)
 {
 	granite_cb_set_program(cb, setup->bank->rasterizer);
@@ -311,7 +316,7 @@ static void add_known_pipelines(known_list_t *list, const rdp_pipeline_setup_t *
 
 			rdp_pipeline_tile_binning(setup, cb, upscaled != 0);
 			add_known(list, cb, PIPELINE_RECORD_COMPUTE);
-			set_subgroup_size_control(cb, false, 0);
+			rdp_pipeline_end_tile_binning(cb);
 
 			if (!caps->ubershader)
 			{

@@ -446,189 +446,72 @@ void Renderer::upload_streams(Vulkan::CommandBuffer &cmd)
 	rdp_stream_instance_upload(&buffer_instances[buffer_instance], device, &cmd, data, bytes);
 }
 
+rdp_pass_resources_t Renderer::pass_resources(const rdp_pipeline_setup_t &setup)
+{
+	rdp_pass_resources_t r;
+	r.setup = &setup;
+	r.pipelines = &pipelines;
+	r.buffers = &buffers;
+	r.streams = &buffer_instances[buffer_instance].gpu;
+	r.rdram = rdram;
+	r.rdram_offset = rdram_offset;
+	r.rdram_size = rdram_size;
+	r.hidden_rdram = hidden_rdram;
+	r.tmem = tmem;
+	return r;
+}
+
+rdp_pass_target_t Renderer::pass_target() const
+{
+	rdp_pass_target_t t;
+	t.addr = fb.addr;
+	t.depth_addr = fb.depth_addr;
+	t.width = fb.width;
+	t.height = fb.deduced_height;
+	t.fmt = uint32_t(fb.fmt);
+	t.base_primitive_index = base_primitive_index;
+	t.num_primitives = uint32_t(stream.triangle_setup.size());
+	return t;
+}
+
 void Renderer::update_tmem_instances(Vulkan::CommandBuffer &cmd)
 {
-	cmd.set_storage_buffer(0, 0, *rdram, rdram_offset, rdram_size);
-	cmd.set_storage_buffer(0, 1, *tmem);
-	cmd.set_storage_buffer(0, 2, buf(buffers.tmem_instances));
-
-	memcpy(cmd.allocate_typed_constant_data<UploadInfo>(1, 0, stream.num_tmem_uploads),
-	       stream.tmem_upload_infos,
-	       stream.num_tmem_uploads * sizeof(UploadInfo));
-
-	auto count = uint32_t(stream.num_tmem_uploads);
-
-	cmd.set_program(shader_bank->tmem_update);
-
-	cmd.push_constants(&count, 0, sizeof(count));
-	cmd.set_specialization_constant_mask(1);
-	cmd.set_specialization_constant(0, ImplementationConstants::DefaultWorkgroupSize);
-
-	cmd.dispatch(2048 / ImplementationConstants::DefaultWorkgroupSize, 1, 1);
+	const rdp_pipeline_setup_t setup = pipeline_setup();
+	const rdp_pass_resources_t r = pass_resources(setup);
+	rdp_pass_tmem_update(&r, &cmd, stream.tmem_upload_infos, stream.num_tmem_uploads);
 }
 
 void Renderer::submit_span_setup_jobs(Vulkan::CommandBuffer &cmd, bool upscale)
 {
-	auto &instance = buffer_instances[buffer_instance];
-	cmd.set_storage_buffer(0, 0, buf(instance.gpu.buffers[RDP_STREAM_TRIANGLE_SETUP]));
-	cmd.set_storage_buffer(0, 1, buf(instance.gpu.buffers[RDP_STREAM_ATTRIBUTE_SETUP]));
-	cmd.set_storage_buffer(0, 2, buf(instance.gpu.buffers[RDP_STREAM_SCISSOR_SETUP]));
-	cmd.set_storage_buffer(0, 3, buf(buffers.span_setups));
-
-	cmd.set_buffer_view(1, 0, view(instance.gpu.span_info_jobs_view));
 	const rdp_pipeline_setup_t setup = pipeline_setup();
-	rdp_pipeline_span_setup(&setup, &cmd, upscale);
-
-	cmd.dispatch(stream.span_info_jobs.size(), 1, 1);
+	const rdp_pass_resources_t r = pass_resources(setup);
+	rdp_pass_span_setup(&r, &cmd, upscale, uint32_t(stream.span_info_jobs.size()));
 }
 
 void Renderer::clear_indirect_buffer(Vulkan::CommandBuffer &cmd)
 {
-
-	cmd.set_program(shader_bank->clear_indirect_buffer);
-
-	cmd.set_storage_buffer(0, 0, buf(buffers.indirect_dispatch));
-
-	static_assert((Limits::MaxStaticRasterizationStates % ImplementationConstants::DefaultWorkgroupSize) == 0, "MaxStaticRasterizationStates does not align.");
-	cmd.set_specialization_constant_mask(1);
-	cmd.set_specialization_constant(0, ImplementationConstants::DefaultWorkgroupSize);
-	cmd.dispatch(Limits::MaxStaticRasterizationStates / ImplementationConstants::DefaultWorkgroupSize, 1, 1);
+	static_assert((Limits::MaxStaticRasterizationStates % ImplementationConstants::DefaultWorkgroupSize) == 0,
+	              "MaxStaticRasterizationStates does not align.");
+	const rdp_pipeline_setup_t setup = pipeline_setup();
+	const rdp_pass_resources_t r = pass_resources(setup);
+	rdp_pass_clear_indirect(&r, &cmd);
 }
 
-void Renderer::submit_rasterization(Vulkan::CommandBuffer &cmd, Vulkan::Buffer &tmem, bool upscaling)
+void Renderer::submit_rasterization(Vulkan::CommandBuffer &cmd, Vulkan::Buffer &tmem_, bool upscaling)
 {
-	auto &instance = buffer_instances[buffer_instance];
-
-	cmd.set_storage_buffer(0, 0, buf(instance.gpu.buffers[RDP_STREAM_TRIANGLE_SETUP]));
-	cmd.set_storage_buffer(0, 1, buf(instance.gpu.buffers[RDP_STREAM_ATTRIBUTE_SETUP]));
-	cmd.set_storage_buffer(0, 2, buf(instance.gpu.buffers[RDP_STREAM_DERIVED_SETUP]));
-	cmd.set_storage_buffer(0, 3, buf(instance.gpu.buffers[RDP_STREAM_STATIC_RASTER_STATE]));
-	cmd.set_storage_buffer(0, 4, buf(instance.gpu.buffers[RDP_STREAM_STATE_INDICES]));
-	cmd.set_storage_buffer(0, 5, buf(instance.gpu.buffers[RDP_STREAM_SPAN_INFO_OFFSETS]));
-	cmd.set_storage_buffer(0, 6, buf(buffers.span_setups));
-	cmd.set_storage_buffer(0, 7, tmem);
-	cmd.set_storage_buffer(0, 8, buf(instance.gpu.buffers[RDP_STREAM_TILE_INFO_STATE]));
-
-	cmd.set_storage_buffer(0, 9, buf(buffers.per_tile_shaded_color));
-	cmd.set_storage_buffer(0, 10, buf(buffers.per_tile_shaded_depth));
-	cmd.set_storage_buffer(0, 11, buf(buffers.per_tile_shaded_alpha));
-	cmd.set_storage_buffer(0, 12, buf(buffers.per_tile_shaded_coverage));
-
-	auto *global_fb_info = cmd.allocate_typed_constant_data<GlobalFBInfo>(2, 0, 1);
-	switch (fb.fmt)
-	{
-	case FBFormat::I4:
-		global_fb_info->fb_size = 0;
-		global_fb_info->dx_mask = 0;
-		global_fb_info->dx_shift = 0;
-		break;
-
-	case FBFormat::I8:
-		global_fb_info->fb_size = 1;
-		global_fb_info->dx_mask = ~7u;
-		global_fb_info->dx_shift = 3;
-		break;
-
-	case FBFormat::RGBA5551:
-	case FBFormat::IA88:
-		global_fb_info->fb_size = 2;
-		global_fb_info->dx_mask = ~3u;
-		global_fb_info->dx_shift = 2;
-		break;
-
-	case FBFormat::RGBA8888:
-		global_fb_info->fb_size = 4;
-		global_fb_info->dx_shift = ~1u;
-		global_fb_info->dx_shift = 1;
-		break;
-	}
-
-	global_fb_info->base_primitive_index = base_primitive_index;
-
-	cmd.set_program(shader_bank->rasterizer);
-
-	cmd.set_specialization_constant(0, ImplementationConstants::TileWidth);
-	cmd.set_specialization_constant(1, ImplementationConstants::TileHeight);
-
-	uint32_t scale_log2_bit = (upscaling ? trailing_zeroes(caps.upscaling) : 0u) << RASTERIZATION_UPSCALING_LOG2_BIT_OFFSET;
-
-	for (size_t i = 0; i < stream.static_raster_state_cache.size(); i++)
-	{
-		cmd.set_storage_buffer(1, 0, buf(buffers.tile_work_list),
-		                       i * sizeof(TileRasterWork) * caps.max_num_tile_instances,
-		                       sizeof(TileRasterWork) * caps.max_num_tile_instances);
-
-		auto &state = stream.static_raster_state_cache.data()[i];
-		cmd.set_specialization_constant(2, state.flags | RASTERIZATION_USE_SPECIALIZATION_CONSTANT_BIT | scale_log2_bit);
-		cmd.set_specialization_constant(3, state.combiner[0].rgb);
-		cmd.set_specialization_constant(4, state.combiner[0].alpha);
-		cmd.set_specialization_constant(5, state.combiner[1].rgb);
-		cmd.set_specialization_constant(6, state.combiner[1].alpha);
-
-		cmd.set_specialization_constant(7, state.dither |
-		                                   (state.texture_size << 8u) |
-		                                   (state.texture_fmt << 16u));
-		cmd.set_specialization_constant_mask(0xff);
-
-		if (!caps.force_sync && !cmd.flush_pipeline_state_without_blocking())
-		{
-			rdp_pipeline_builder_miss(&pipelines, &cmd);
-			cmd.set_specialization_constant_mask(7);
-			cmd.set_specialization_constant(2, scale_log2_bit);
-		}
-
-		cmd.dispatch_indirect(buf(buffers.indirect_dispatch), 4 * sizeof(uint32_t) * i);
-	}
-
+	const rdp_pipeline_setup_t setup = pipeline_setup();
+	const rdp_pass_resources_t r = pass_resources(setup);
+	const rdp_pass_target_t t = pass_target();
+	rdp_pass_rasterize(&r, &cmd, &t, &tmem_, upscaling, stream.static_raster_state_cache.data(),
+	                   uint32_t(stream.static_raster_state_cache.size()));
 }
 
 void Renderer::submit_tile_binning_combined(Vulkan::CommandBuffer &cmd, bool upscale)
 {
-	auto &instance = buffer_instances[buffer_instance];
-	cmd.set_storage_buffer(0, 0, buf(instance.gpu.buffers[RDP_STREAM_TRIANGLE_SETUP]));
-	cmd.set_storage_buffer(0, 1, buf(instance.gpu.buffers[RDP_STREAM_SCISSOR_SETUP]));
-	cmd.set_storage_buffer(0, 2, buf(instance.gpu.buffers[RDP_STREAM_STATE_INDICES]));
-	cmd.set_storage_buffer(0, 3, buf(buffers.tile_binning));
-	cmd.set_storage_buffer(0, 4, buf(buffers.tile_binning_coarse));
-
-	if (!caps.ubershader)
-	{
-		cmd.set_storage_buffer(0, 5, buf(buffers.per_tile_offsets));
-		cmd.set_storage_buffer(0, 6, buf(buffers.indirect_dispatch));
-		cmd.set_storage_buffer(0, 7, buf(buffers.tile_work_list));
-	}
-
-	struct PushData
-	{
-		uint32_t width, height;
-		uint32_t num_primitives;
-	} push = {};
-	push.width = fb.width;
-	push.height = fb.deduced_height;
-
-	if (upscale)
-	{
-		push.width *= caps.upscaling;
-		push.height *= caps.upscaling;
-	}
-
-	push.num_primitives = uint32_t(stream.triangle_setup.size());
-	unsigned num_primitives_32 = (push.num_primitives + 31) / 32;
-
-	cmd.push_constants(&push, 0, sizeof(push));
-
 	const rdp_pipeline_setup_t setup = pipeline_setup();
-	uint32_t subgroup_size = rdp_pipeline_tile_binning(&setup, &cmd, upscale);
-
-	unsigned meta_tiles_x = 8;
-	unsigned meta_tiles_y = subgroup_size / meta_tiles_x;
-	unsigned num_tiles_x = (push.width + ImplementationConstants::TileWidth - 1) / ImplementationConstants::TileWidth;
-	unsigned num_tiles_y = (push.height + ImplementationConstants::TileHeight - 1) / ImplementationConstants::TileHeight;
-	unsigned num_meta_tiles_x = (num_tiles_x + meta_tiles_x - 1) / meta_tiles_x;
-	unsigned num_meta_tiles_y = (num_tiles_y + meta_tiles_y - 1) / meta_tiles_y;
-	cmd.dispatch(num_primitives_32, num_meta_tiles_x, num_meta_tiles_y);
-
-	cmd.enable_subgroup_size_control(false);
+	const rdp_pass_resources_t r = pass_resources(setup);
+	const rdp_pass_target_t t = pass_target();
+	rdp_pass_tile_binning(&r, &cmd, &t, upscale);
 }
 
 void Renderer::submit_update_upscaled_domain_external(Vulkan::CommandBuffer &cmd,
@@ -642,197 +525,30 @@ void Renderer::submit_update_upscaled_domain(Vulkan::CommandBuffer &cmd, rdp_res
                                              unsigned width, unsigned height,
                                              unsigned pixel_size_log2)
 {
-	unsigned num_pixels = width * height;
-
-	if (stage != RDP_RESOLVE_SSAA)
-	{
-		// Ensure that we always process entire words, thus we avoid having to do weird swizzles,
-		// and memory access patterns are linear with gl_GlobalInvocationID.x.
-		addr &= ~3u;
-		depth_addr &= ~3u;
-		unsigned align_pixels = 4u >> pixel_size_log2;
-		num_pixels = (num_pixels + align_pixels - 1u) & ~(align_pixels - 1u);
-	}
-
-	cmd.set_storage_buffer(0, 0, *rdram, rdram_offset,
-	                       (stage == RDP_RESOLVE_SSAA && !is_host_coherent ? 2 : 1) * rdram_size);
-	cmd.set_storage_buffer(0, 1, *hidden_rdram);
-	cmd.set_storage_buffer(0, 2, buf(buffers.upscaling_reference_rdram));
-	cmd.set_storage_buffer(0, 3, buf(buffers.upscaling_multisampled_rdram));
-	cmd.set_storage_buffer(0, 4, buf(buffers.upscaling_multisampled_hidden_rdram));
-
 	const rdp_pipeline_setup_t setup = pipeline_setup();
-	rdp_pipeline_upscaled_domain(&setup, &cmd, stage, pixel_size_log2, addr == depth_addr);
-
-	uint32_t num_workgroups_x, num_workgroups_y;
-
-	if (stage == RDP_RESOLVE_SSAA)
-	{
-		num_workgroups_x =
-				(width + ImplementationConstants::DefaultWorkgroupSize - 1) /
-				ImplementationConstants::DefaultWorkgroupSize;
-		num_workgroups_y = height;
-	}
-	else
-	{
-		num_workgroups_x =
-				(num_pixels + ImplementationConstants::DefaultWorkgroupSize - 1) /
-				ImplementationConstants::DefaultWorkgroupSize;
-		num_workgroups_y = 1;
-	}
-
-	struct Push
-	{
-		uint32_t pixels;
-		uint32_t fb_addr, fb_depth_addr;
-		uint32_t width, height;
-	} push = {};
-	push.pixels = num_pixels;
-	push.fb_addr = addr >> pixel_size_log2;
-	push.fb_depth_addr = depth_addr >> 1;
-	push.width = width;
-	push.height = height;
-
-	cmd.push_constants(&push, 0, sizeof(push));
-
-	cmd.dispatch(num_workgroups_x, num_workgroups_y, 1);
+	const rdp_pass_resources_t r = pass_resources(setup);
+	rdp_pass_update_upscaled_domain(&r, &cmd, stage, addr, depth_addr, width, height, pixel_size_log2);
 }
 
 void Renderer::submit_clear_super_sample_write_mask(Vulkan::CommandBuffer &cmd, unsigned width, unsigned height)
 {
-	// Pack 4x4 block of pixel's writemasks in one u32. Allows for one depth_blend workgroup to target a single u32
-	// in all cases, which is nice :)
-	unsigned blocks_x = (width + 3) / 4;
-	unsigned blocks_y = (height + 3) / 4;
-	unsigned num_words = blocks_x * blocks_y;
-	unsigned num_workgroups = (num_words + ImplementationConstants::DefaultWorkgroupSize - 1) /
-	                          ImplementationConstants::DefaultWorkgroupSize;
-
-	cmd.set_program(shader_bank->clear_super_sampled_write_mask);
-
-	cmd.set_storage_buffer(0, 0, buf(buffers.upscaling_multisampled_rdram), rdram_size * caps.upscaling * caps.upscaling,
-	                       2 * Limits::MaxWidth * Limits::MaxHeight / 8);
-
-	cmd.set_specialization_constant_mask(1);
-	cmd.set_specialization_constant(0, ImplementationConstants::DefaultWorkgroupSize);
-	cmd.dispatch(num_workgroups, 1, 1);
-	cmd.set_specialization_constant_mask(0);
+	const rdp_pipeline_setup_t setup = pipeline_setup();
+	const rdp_pass_resources_t r = pass_resources(setup);
+	rdp_pass_clear_super_sample_write_mask(&r, &cmd, width, height);
 }
 
 void Renderer::submit_update_upscaled_domain(Vulkan::CommandBuffer &cmd, rdp_resolve_stage stage)
 {
-	unsigned pixel_size_log2;
-
-	switch (fb.fmt)
-	{
-	case FBFormat::RGBA8888:
-		pixel_size_log2 = 2;
-		break;
-
-	case FBFormat::RGBA5551:
-	case FBFormat::IA88:
-		pixel_size_log2 = 1;
-		break;
-
-	default:
-		pixel_size_log2 = 0;
-		break;
-	}
-
 	submit_update_upscaled_domain(cmd, stage, fb.addr, fb.depth_addr,
-	                              fb.width, fb.deduced_height, pixel_size_log2);
+	                              fb.width, fb.deduced_height, rdp_pass_pixel_size_log2(uint32_t(fb.fmt)));
 }
 
-void Renderer::submit_depth_blend(Vulkan::CommandBuffer &cmd, Vulkan::Buffer &tmem, bool upscaled, bool force_write_mask)
+void Renderer::submit_depth_blend(Vulkan::CommandBuffer &cmd, Vulkan::Buffer &tmem_, bool upscaled, bool force_write_mask)
 {
-	auto &instance = buffer_instances[buffer_instance];
-
 	const rdp_pipeline_setup_t setup = pipeline_setup();
-	rdp_pipeline_depth_blend(&setup, &cmd, uint32_t(fb.fmt), fb.addr == fb.depth_addr, upscaled, force_write_mask);
-
-	if (upscaled)
-		cmd.set_storage_buffer(0, 0, buf(buffers.upscaling_multisampled_rdram));
-	else
-		cmd.set_storage_buffer(0, 0, *rdram, rdram_offset, rdram_size * (is_host_coherent ? 1 : 2));
-	cmd.set_storage_buffer(0, 1, upscaled ? buf(buffers.upscaling_multisampled_hidden_rdram) : *hidden_rdram);
-	cmd.set_storage_buffer(0, 2, tmem);
-
-	if (!caps.ubershader)
-	{
-		cmd.set_storage_buffer(0, 3, buf(buffers.per_tile_shaded_color));
-		cmd.set_storage_buffer(0, 4, buf(buffers.per_tile_shaded_depth));
-		cmd.set_storage_buffer(0, 5, buf(buffers.per_tile_shaded_alpha));
-		cmd.set_storage_buffer(0, 6, buf(buffers.per_tile_shaded_coverage));
-		cmd.set_storage_buffer(0, 7, buf(buffers.per_tile_offsets));
-	}
-
-	cmd.set_storage_buffer(1, 0, buf(instance.gpu.buffers[RDP_STREAM_TRIANGLE_SETUP]));
-	cmd.set_storage_buffer(1, 1, buf(instance.gpu.buffers[RDP_STREAM_ATTRIBUTE_SETUP]));
-	cmd.set_storage_buffer(1, 2, buf(instance.gpu.buffers[RDP_STREAM_DERIVED_SETUP]));
-	cmd.set_storage_buffer(1, 3, buf(instance.gpu.buffers[RDP_STREAM_SCISSOR_SETUP]));
-	cmd.set_storage_buffer(1, 4, buf(instance.gpu.buffers[RDP_STREAM_STATIC_RASTER_STATE]));
-	cmd.set_storage_buffer(1, 5, buf(instance.gpu.buffers[RDP_STREAM_DEPTH_BLEND_STATE]));
-	cmd.set_storage_buffer(1, 6, buf(instance.gpu.buffers[RDP_STREAM_STATE_INDICES]));
-	cmd.set_storage_buffer(1, 7, buf(instance.gpu.buffers[RDP_STREAM_TILE_INFO_STATE]));
-	cmd.set_storage_buffer(1, 8, buf(buffers.span_setups));
-	cmd.set_storage_buffer(1, 9, buf(instance.gpu.buffers[RDP_STREAM_SPAN_INFO_OFFSETS]));
-	cmd.set_buffer_view(1, 10, view(buffers.blender_divider));
-	cmd.set_storage_buffer(1, 11, buf(buffers.tile_binning));
-	cmd.set_storage_buffer(1, 12, buf(buffers.tile_binning_coarse));
-
-	auto *global_fb_info = cmd.allocate_typed_constant_data<GlobalFBInfo>(2, 0, 1);
-
-	GlobalState push = {};
-	push.fb_width = fb.width;
-	push.fb_height = fb.deduced_height;
-
-	if (upscaled)
-	{
-		push.fb_width *= caps.upscaling;
-		push.fb_height *= caps.upscaling;
-	}
-
-	switch (fb.fmt)
-	{
-	case FBFormat::I4:
-		push.addr_index = fb.addr;
-		global_fb_info->fb_size = 0;
-		global_fb_info->dx_mask = 0;
-		global_fb_info->dx_shift = 0;
-		break;
-
-	case FBFormat::I8:
-		push.addr_index = fb.addr;
-		global_fb_info->fb_size = 1;
-		global_fb_info->dx_mask = ~7u;
-		global_fb_info->dx_shift = 3;
-		break;
-
-	case FBFormat::RGBA5551:
-	case FBFormat::IA88:
-		push.addr_index = fb.addr >> 1u;
-		global_fb_info->fb_size = 2;
-		global_fb_info->dx_mask = ~3u;
-		global_fb_info->dx_shift = 2;
-		break;
-
-	case FBFormat::RGBA8888:
-		push.addr_index = fb.addr >> 2u;
-		global_fb_info->fb_size = 4;
-		global_fb_info->dx_mask = ~1u;
-		global_fb_info->dx_shift = 1;
-		break;
-	}
-
-	global_fb_info->base_primitive_index = base_primitive_index;
-
-	push.depth_addr_index = fb.depth_addr >> 1;
-	unsigned num_primitives_32 = (stream.triangle_setup.size() + 31) / 32;
-	push.group_mask = (1u << num_primitives_32) - 1;
-	cmd.push_constants(&push, 0, sizeof(push));
-
-	cmd.dispatch((push.fb_width + 7) / 8, (push.fb_height + 7) / 8, 1);
-
+	const rdp_pass_resources_t r = pass_resources(setup);
+	const rdp_pass_target_t t = pass_target();
+	rdp_pass_depth_blend(&r, &cmd, &t, &tmem_, upscaled, force_write_mask);
 }
 
 void Renderer::submit_render_pass(Vulkan::CommandBuffer &cmd)

@@ -344,7 +344,8 @@ static struct
 {
 	int type;
 	/* EV_BARRIER: image, new layout. EV_PASS: attachments, first image,
-	 * clears. EV_DRAW: pipeline, scissor. EV_DISPATCH: groups.
+	 * clears. EV_DRAW: pipeline, scissor. EV_DISPATCH: groups (an
+	 * indirect one: -1, its offset).
 	 * EV_BLIT: destination and source images. */
 	int a, b, c;
 	/* EV_PASS: its two attachments are the two layers of one image */
@@ -529,6 +530,13 @@ static void VKAPI_CALL cmd_dispatch(VkCommandBuffer cmd, uint32_t x, uint32_t y,
 	events[num_events - 1].b = (int)y;
 	if (num_events <= MAX_EVENTS)
 		events[num_events - 1].c = (int)(GRANITE_VK_TO_BITS(bound_pipeline) - 0x9000) * 16 + (int)z;
+}
+
+/* EV_DISPATCH too: -1 groups across, the offset into the buffer down */
+static void VKAPI_CALL cmd_dispatch_indirect(VkCommandBuffer cmd, VkBuffer buffer, VkDeviceSize offset)
+{
+	(void)cmd; (void)buffer;
+	event(EV_DISPATCH, -1, (int)offset, 0);
 }
 
 static void VKAPI_CALL cmd_blit(VkCommandBuffer cmd, VkImage src, VkImageLayout src_layout, VkImage dst,
@@ -749,6 +757,7 @@ static void fill_context(void)
 	t->vkCmdPushConstants = cmd_push;
 	t->vkCmdDraw = cmd_draw;
 	t->vkCmdDispatch = cmd_dispatch;
+	t->vkCmdDispatchIndirect = cmd_dispatch_indirect;
 	t->vkCmdBlitImage = cmd_blit;
 	t->vkAllocateDescriptorSets = allocate_sets;
 	t->vkCmdCopyBufferToImage = cmd_copy_to_image;
