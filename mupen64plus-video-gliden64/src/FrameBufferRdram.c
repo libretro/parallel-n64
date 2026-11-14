@@ -122,6 +122,20 @@ void gli_fb_rdram_fill(s32 _ulx, s32 _uly, s32 _lrx, s32 _lry, s32 *_rect)
 	_rect[3] = _lry;
 }
 
+int gli_fb_rdram_fill_buffer(gli_fb *_fb, s32 _ulx, s32 _uly, s32 _lrx, s32 _lry)
+{
+	s32 rect[4];
+	/* Perfect Dark blurs the frame it just drew into its pause screen,
+	 * reading it back before that frame's copy lands: the fill would
+	 * leave it the cleared screen to blur */
+	if (config.frameBufferEmulation.copyToRDRAM >= ctDoubleBuffer &&
+		!_fb->m_isDepthBuffer && !gli_fb_is_auxiliary(_fb) && _fb->m_copiedToRdram)
+		return 0;
+	gli_fb_rdram_fill(_ulx, _uly, _lrx, _lry, rect);
+	gli_fb_set_clear_params(_fb, gDP.fillColor.color, rect[0], rect[1], rect[2], rect[3]);
+	return 1;
+}
+
 int gli_fb_overlapping(const gli_fb *_fb1, const gli_fb *_fb2)
 {
 	u32 diff, stride;

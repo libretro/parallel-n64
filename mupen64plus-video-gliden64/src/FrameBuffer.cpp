@@ -1244,9 +1244,7 @@ void FrameBufferList::fillRDRAM(s32 ulx, s32 uly, s32 lrx, s32 lry)
 		// Do not write to RDRAM color buffer if copyFromRDRAM enabled.
 		return;
 
-	s32 rect[4];
-	gli_fb_rdram_fill(ulx, uly, lrx, lry, rect);
-	m_pCurrent->setBufferClearParams(gDP.fillColor.color, rect[0], rect[1], rect[2], rect[3]);
+	gli_fb_rdram_fill_buffer(m_pCurrent, ulx, uly, lrx, lry);
 }
 
 void FrameBuffer_ActivateBufferTexture(u32 t, u32 _frameBufferAddress)

@@ -86,6 +86,13 @@ int gli_fb_rdram_copy_valid(u32 _startAddress, const u8 *_copy, u32 _size);
  * the scissor; @_rect gets the dword rectangle filled (ulx, uly, lrx, lry) */
 void gli_fb_rdram_fill(s32 _ulx, s32 _uly, s32 _lrx, s32 _lry, s32 *_rect);
 
+/* A fill of @_fb, the color image: into RDRAM, noted for the validity
+ * check. Not where @_fb's last asynchronous colour copy is in RDRAM and
+ * nothing has been drawn since: the copy of what is drawn now replaces
+ * it whole, and until then a game reading the buffer back gets the last
+ * picture rather than the fill. Returns whether it filled. */
+int gli_fb_rdram_fill_buffer(gli_fb *_fb, s32 _ulx, s32 _uly, s32 _lrx, s32 _lry);
+
 /* Whether buffer 1, ending inside buffer 2, only runs a few lines into it */
 int gli_fb_overlapping(const gli_fb *_fb1, const gli_fb *_fb2);
 
