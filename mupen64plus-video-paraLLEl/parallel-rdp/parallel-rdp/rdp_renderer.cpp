@@ -260,7 +260,7 @@ void Renderer::draw_flat_primitive(TriangleSetup &setup)
 	if (validation_iface)
 		validate_draw_state();
 	rdp_queue_add_primitive(&queue, &caps, &constants, tiles, &setup, nullptr);
-	pending_primitives++;
+	submits.primitives++;
 	if (rdp_queue_full(&queue, &caps))
 		flush_queues();
 }
@@ -318,7 +318,7 @@ void Renderer::draw_shaded_primitive(TriangleSetup &setup, const AttributeSetup 
 	if (validation_iface)
 		validate_draw_state();
 	rdp_queue_add_primitive(&queue, &caps, &constants, tiles, &setup, &attr);
-	pending_primitives++;
+	submits.primitives++;
 	if (rdp_queue_full(&queue, &caps))
 		flush_queues();
 }
@@ -398,29 +398,14 @@ void Renderer::submit_update_upscaled_domain(Vulkan::CommandBuffer &cmd, rdp_res
 
 void Renderer::maintain_queues()
 {
-	// Some conditions dictate if we should flush a render pass.
-	// These heuristics ensures we don't wait too long to flush render passes,
-	// and also ensure that we don't spam submissions too often, causing massive bubbles on GPU.
-
-	// If we get a lot of small render passes in a row, it makes sense to batch them up, e.g. 8 at a time.
-	// If we get 2 full render passes of ~256 primitives, that's also a good indication we should flush since we're getting spammed.
-	// If we have no pending submissions, the GPU is idle and there is no reason not to submit.
-	// If we haven't submitted anything in a while (1.0 ms), it's probably fine to submit again.
-	if (pending_render_passes >= ImplementationConstants::MaxPendingRenderPassesBeforeFlush ||
-	    (caps.super_sample_readback && pending_render_passes_upscaled >= ImplementationConstants::MaxPendingRenderPassesBeforeFlush) ||
-	    pending_primitives >= Limits::MaxPrimitives ||
-	    pending_primitives_upscaled >= Limits::MaxPrimitives ||
-	    retro_atomic_load_relaxed_int(&active_submissions) == 0 ||
-	    int64_t(granite_time_nsecs() - last_submit_ns) > 1000000)
-	{
+	if (rdp_submit_due(&submits, caps.super_sample_readback, retro_atomic_load_relaxed_int(&active_submissions) == 0,
+	                   granite_time_nsecs() - last_submit_ns))
 		submit_to_queue();
-	}
 }
 
 void Renderer::maintain_queues_idle()
 {
-	if (pending_primitives >= ImplementationConstants::MinimumPrimitivesForIdleFlush ||
-	    pending_render_passes >= ImplementationConstants::MinimumRenderPassesForIdleFlush)
+	if (rdp_submit_idle_due(&submits))
 	{
 		flush_queues();
 		submit_to_queue();
@@ -439,13 +424,8 @@ void Renderer::enqueue_fence_wait(Vulkan::Fence fence)
 
 void Renderer::submit_to_queue()
 {
-	bool pending_host_visible_render_passes =
-			(caps.super_sample_readback ? pending_render_passes_upscaled : pending_render_passes) != 0;
-	bool pending_upscaled_passes = pending_render_passes_upscaled != 0;
-	pending_render_passes = 0;
-	pending_render_passes_upscaled = 0;
-	pending_primitives = 0;
-	pending_primitives_upscaled = 0;
+	const rdp_submit_taken_t taken = rdp_submit_take(&submits, caps.super_sample_readback);
+	const bool pending_host_visible_render_passes = taken.host_visible;
 
 	if (!stream.cmd)
 	{
@@ -458,15 +438,7 @@ void Renderer::submit_to_queue()
 		return;
 	}
 
-	bool need_host_barrier = is_host_coherent || !incoherent.staging_readback;
-
-	// If we maintain queues in-between doing 1x render pass and upscaled render pass,
-	// we haven't flushed memory yet.
-	bool need_memory_flush = pending_host_visible_render_passes && !pending_upscaled_passes;
-	stream.cmd->barrier(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-	                    need_memory_flush ? VK_ACCESS_MEMORY_WRITE_BIT : 0,
-	                    (need_host_barrier ? VK_PIPELINE_STAGE_HOST_BIT : VK_PIPELINE_STAGE_TRANSFER_BIT),
-	                    (need_host_barrier ? VK_ACCESS_HOST_READ_BIT : VK_ACCESS_TRANSFER_READ_BIT));
+	rdp_submit_end_barrier(&*stream.cmd, &taken, is_host_coherent || !incoherent.staging_readback);
 
 	Vulkan::Fence fence;
 
@@ -659,7 +631,7 @@ void Renderer::flush_queues()
 	{
 		const rdp_pass_resources_t r = pass_resources(setup);
 		rdp_pass_record_native(&r, &*stream.cmd, &flush);
-		pending_render_passes++;
+		submits.passes++;
 	}
 
 	if (rdp_pass_flush_upscaled(&caps, &flush))
@@ -676,8 +648,8 @@ void Renderer::flush_queues()
 
 		const rdp_pass_resources_t r = pass_resources(setup);
 		rdp_pass_record_upscaled(&r, &*stream.cmd, &flush);
-		pending_render_passes_upscaled++;
-		pending_primitives_upscaled += queue.num_primitives;
+		submits.passes_upscaled++;
+		submits.primitives_upscaled += queue.num_primitives;
 	}
 
 	base_primitive_index += queue.num_primitives;
@@ -747,59 +719,15 @@ void Renderer::load_tile(uint32_t tile, const LoadTileInfo &info)
 		mark_pages_for_gpu_read(addr, size);
 	}
 
-	unsigned lines_per_part = rdp_load_lines_per_part(&info, &tiles[tile].meta);
-	if (lines_per_part == RDP_LOAD_TOO_WIDE)
-		return;
-
-	if (lines_per_part == RDP_LOAD_WHOLE)
-	{
-		load_tile_iteration(tile, info, 0);
-		return;
-	}
-
-	unsigned num_lines = ((info.thi >> 2) - (info.tlo >> 2)) + 1;
-	for (unsigned line = 0; line < num_lines; line += lines_per_part)
-	{
-		unsigned to_copy_lines = rdp_min(num_lines - line, lines_per_part);
-		LoadTileInfo part = info;
-		part.tlo = uint16_t(info.tlo + (line << 2));
-		part.thi = uint16_t(part.tlo + ((to_copy_lines - 1) << 2));
-		load_tile_iteration(tile, part, line * tiles[tile].meta.stride);
-	}
-
-	// The tile's size is the whole load's.
-	auto &size = tiles[tile].size;
-	size.slo = info.slo;
-	size.shi = info.shi;
-	size.tlo = info.tlo;
-	size.thi = info.thi;
+	unsigned crashes = rdp_queue_load_tile(&queue, tiles, tile, &info, flush_for_queue, this);
+	if (validation_iface)
+		while (crashes--)
+			report_rdp_crash(ValidationError::LoadTile4bpp, "4-bit VRAM pointer crashes the RDP.");
 }
 
-void Renderer::load_tile_iteration(uint32_t tile, const LoadTileInfo &info, uint32_t tmem_offset)
+void Renderer::flush_for_queue(void *renderer)
 {
-	auto &size = tiles[tile].size;
-	size.slo = info.slo;
-	size.shi = info.shi;
-	size.tlo = info.tlo;
-	size.thi = info.thi;
-
-	UploadInfo upload;
-	switch (rdp_load_upload_info(&info, &tiles[tile].meta, tmem_offset, &upload))
-	{
-	case RDP_LOAD_OK:
-		break;
-
-	case RDP_LOAD_CRASHES:
-		if (validation_iface)
-			report_rdp_crash(ValidationError::LoadTile4bpp, "4-bit VRAM pointer crashes the RDP.");
-		return;
-
-	default:
-		return;
-	}
-
-	if (rdp_queue_add_upload(&queue, &upload))
-		flush_queues();
+	static_cast<Renderer *>(renderer)->flush_queues();
 }
 
 void Renderer::set_blend_color(uint32_t color)

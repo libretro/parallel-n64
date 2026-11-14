@@ -216,6 +216,62 @@ bool rdp_queue_add_upload(rdp_queue_t *q, const rdp_upload_info_t *upload)
 	return q->num_uploads + 1 >= RDP_QUEUE_MAX_UPLOADS;
 }
 
+static void set_tile_size(rdp_tile_info_t *tile, const rdp_load_tile_info_t *info)
+{
+	tile->size.slo = info->slo;
+	tile->size.shi = info->shi;
+	tile->size.tlo = info->tlo;
+	tile->size.thi = info->thi;
+}
+
+/* One part: false when it would crash the RDP */
+static bool load_part(rdp_queue_t *q, rdp_tile_info_t *tile, const rdp_load_tile_info_t *info,
+		uint32_t tmem_offset, rdp_queue_flush_fn flush, void *ctx)
+{
+	rdp_upload_info_t upload;
+
+	set_tile_size(tile, info);
+	switch (rdp_load_upload_info(info, &tile->meta, tmem_offset, &upload))
+	{
+		case RDP_LOAD_OK:
+			break;
+		case RDP_LOAD_CRASHES:
+			return false;
+		default:
+			return true;
+	}
+	if (rdp_queue_add_upload(q, &upload))
+		flush(ctx);
+	return true;
+}
+
+unsigned rdp_queue_load_tile(rdp_queue_t *q, rdp_tile_info_t *tiles, unsigned tile,
+		const rdp_load_tile_info_t *info, rdp_queue_flush_fn flush, void *ctx)
+{
+	rdp_tile_info_t *t = &tiles[tile];
+	const unsigned lines_per_part = rdp_load_lines_per_part(info, &t->meta);
+	unsigned crashes = 0, lines, line;
+
+	if (lines_per_part == RDP_LOAD_TOO_WIDE)
+		return 0;
+	if (lines_per_part == RDP_LOAD_WHOLE)
+		return load_part(q, t, info, 0, flush, ctx) ? 0 : 1;
+
+	lines = ((info->thi >> 2) - (info->tlo >> 2)) + 1u;
+	for (line = 0; line < lines; line += lines_per_part)
+	{
+		const unsigned part_lines = lines - line < lines_per_part ? lines - line : lines_per_part;
+		rdp_load_tile_info_t part = *info;
+		part.tlo = (uint16_t)(info->tlo + (line << 2));
+		part.thi = (uint16_t)(part.tlo + ((part_lines - 1) << 2));
+		if (!load_part(q, t, &part, line * t->meta.stride, flush, ctx))
+			crashes++;
+	}
+	/* the tile's size is the whole load's */
+	set_tile_size(t, info);
+	return crashes;
+}
+
 bool rdp_queue_upload_reads_pending(const rdp_queue_t *q, const rdp_queue_fb_t *fb, uint32_t rdram_size,
 		uint32_t addr)
 {

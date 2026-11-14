@@ -31,6 +31,7 @@ PARALLEL_RDP_SOURCES_C := \
         $(PARALLEL_RDP_IMPLEMENTATION)/parallel-rdp/renderer_buffers.c \
         $(PARALLEL_RDP_IMPLEMENTATION)/parallel-rdp/rdp_passes.c \
         $(PARALLEL_RDP_IMPLEMENTATION)/parallel-rdp/rdp_queue.c \
+        $(PARALLEL_RDP_IMPLEMENTATION)/parallel-rdp/rdp_submit.c \
         $(PARALLEL_RDP_IMPLEMENTATION)/parallel-rdp/rdram_coherency.c \
         $(PARALLEL_RDP_IMPLEMENTATION)/parallel-rdp/temporal_upscaler.c \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/cookie.c \

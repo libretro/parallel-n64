@@ -33,6 +33,7 @@
 #include "renderer_buffers.h"
 #include "rdp_passes.h"
 #include "rdp_queue.h"
+#include "rdp_submit.h"
 #include <retro_atomic.h>
 
 namespace RDP
@@ -136,7 +137,7 @@ public:
 	void set_tile(uint32_t tile, const TileMeta &info);
 	void set_tile_size(uint32_t tile, uint32_t slo, uint32_t shi, uint32_t tlo, uint32_t thi);
 	void load_tile(uint32_t tile, const LoadTileInfo &info);
-	void load_tile_iteration(uint32_t tile, const LoadTileInfo &info, uint32_t tmem_offset);
+	static void flush_for_queue(void *renderer);
 
 	void set_blend_color(uint32_t color);
 	void set_fog_color(uint32_t color);
@@ -230,10 +231,8 @@ private:
 	unsigned buffer_instance = 0;
 	void bind_stream_instance();
 	uint32_t base_primitive_index = 0;
-	unsigned pending_render_passes = 0;
-	unsigned pending_render_passes_upscaled = 0;
-	unsigned pending_primitives = 0;
-	unsigned pending_primitives_upscaled = 0;
+	// What was recorded since the last submission (rdp_submit.c)
+	rdp_submit_counts_t submits = {};
 
 	bool tmem_upload_needs_flush(uint32_t addr) const;
 

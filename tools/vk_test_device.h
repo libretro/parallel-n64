@@ -347,7 +347,8 @@ static struct
 	 * clears. EV_DRAW: pipeline, scissor. EV_DISPATCH: groups (an
 	 * indirect one: -1, its offset).
 	 * EV_BLIT: destination and source images. EV_MEMORY_BARRIER: a
-	 * global barrier's destination stages and accesses. */
+	 * global barrier's destination stages and accesses, and its source
+	 * accesses. */
 	int a, b, c;
 	/* EV_PASS: its two attachments are the two layers of one image */
 	bool two_layers;
@@ -388,7 +389,7 @@ static void VKAPI_CALL cmd_barrier(VkCommandBuffer cmd, VkPipelineStageFlags src
 	CHECK(!in_pass, "no barrier inside a pass");
 	num_memory_barriers += memory_count;
 	for (i = 0; i < memory_count; i++)
-		event(EV_MEMORY_BARRIER, (int)dst, (int)memory[i].dstAccessMask, 0);
+		event(EV_MEMORY_BARRIER, (int)dst, (int)memory[i].dstAccessMask, (int)memory[i].srcAccessMask);
 	for (i = 0; i < image_count; i++)
 	{
 		int n = image_index(images[i].image);

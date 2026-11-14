@@ -144,6 +144,17 @@ bool rdp_queue_full(const rdp_queue_t *q, const rdp_renderer_caps_t *caps);
 /* A tile load. Whether the flush has to go before another. */
 bool rdp_queue_add_upload(rdp_queue_t *q, const rdp_upload_info_t *upload);
 
+/* Sends the flush on its way, for rdp_queue_load_tile */
+typedef void (*rdp_queue_flush_fn)(void *ctx);
+
+/* The load @info into tile @tile of @tiles: in parts, where TMEM's
+ * update takes it in parts, each a load of its own (@flush called when
+ * the loads one flush holds are reached). The tile's size becomes the
+ * whole load's. Returns how many parts would crash the RDP (a 4-bit
+ * RDRAM pointer); those load nothing. */
+unsigned rdp_queue_load_tile(rdp_queue_t *q, rdp_tile_info_t *tiles, unsigned tile,
+		const rdp_load_tile_info_t *info, rdp_queue_flush_fn flush, void *ctx);
+
 /* Whether a tile load from RDRAM @addr may read pixels the queued
  * primitives write to @fb, in an RDRAM of @rdram_size bytes (a power of
  * two): the flush has to go first */

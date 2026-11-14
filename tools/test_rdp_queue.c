@@ -314,6 +314,92 @@ static void test_upload_reads_pending(void)
 	CHECK(rdp_queue_upload_reads_pending(&q, &fb, rdram, 50), "around the end of RDRAM");
 }
 
+/* ---- tile loads ---- */
+static unsigned flushes;
+
+static void flush_queue(void *ctx)
+{
+	flushes++;
+	rdp_queue_reset((rdp_queue_t *)ctx);
+}
+
+/* A 16-bit RGBA load of @width x @height texels */
+static rdp_load_tile_info_t load_of(unsigned width, unsigned height, unsigned size)
+{
+	rdp_load_tile_info_t info;
+	memset(&info, 0, sizeof(info));
+	info.tex_addr = 0x10000;
+	info.tex_width = width;
+	info.slo = 0;
+	info.tlo = 0;
+	info.shi = (uint16_t)((width - 1) << 2);
+	info.thi = (uint16_t)((height - 1) << 2);
+	info.fmt = RDP_TEXTURE_FORMAT_RGBA;
+	info.size = (uint8_t)size;
+	info.mode = RDP_UPLOAD_TILE;
+	return info;
+}
+
+static void test_load_tile(void)
+{
+	rdp_load_tile_info_t info;
+
+	fresh();
+	tiles[2].meta.fmt = RDP_TEXTURE_FORMAT_RGBA;
+	tiles[2].meta.size = RDP_TEXTURE_SIZE_16;
+	tiles[2].meta.stride = 64;
+	tiles[2].meta.offset = 0x100;
+
+	/* 32x16, 1 KiB: in one */
+	info = load_of(32, 16, RDP_TEXTURE_SIZE_16);
+	CHECK(rdp_queue_load_tile(&q, tiles, 2, &info, flush_queue, &q) == 0, "no crash");
+	CHECK(q.num_uploads == 1 && q.uploads[0].height == 16 && q.uploads[0].tmem_offset == 0x100, "one load");
+	CHECK(tiles[2].size.thi == info.thi && tiles[2].size.shi == info.shi, "the tile's size");
+
+	/* 64x64, 8 KiB: two parts of 32 lines, TMEM wrapping each */
+	fresh();
+	tiles[2].meta.fmt = RDP_TEXTURE_FORMAT_RGBA;
+	tiles[2].meta.size = RDP_TEXTURE_SIZE_16;
+	tiles[2].meta.stride = 64;
+	info = load_of(64, 64, RDP_TEXTURE_SIZE_16);
+	info.tlo = 4 << 2;
+	info.thi = (uint16_t)(info.tlo + (63 << 2));
+	CHECK(rdp_queue_load_tile(&q, tiles, 2, &info, flush_queue, &q) == 0, "no crash");
+	CHECK(q.num_uploads == 2, "two parts");
+	CHECK(q.uploads[0].height == 32 && q.uploads[1].height == 32, "32 lines each");
+	CHECK(q.uploads[0].tmem_offset == 0 && q.uploads[1].tmem_offset == 32 * 64, "the second part on in TMEM");
+	CHECK(q.uploads[0].vram_addr == 0x10000 + 4 * 64 * 2 && q.uploads[1].vram_addr == 0x10000 + 36 * 64 * 2,
+	      "each part from its own lines");
+	CHECK(tiles[2].size.tlo == info.tlo && tiles[2].size.thi == info.thi, "the tile's size is the whole load's");
+
+	/* 4-bit: the RDP crashes, nothing loaded */
+	fresh();
+	tiles[1].meta.size = RDP_TEXTURE_SIZE_16;
+	tiles[1].meta.stride = 64;
+	info = load_of(32, 16, 0);
+	CHECK(rdp_queue_load_tile(&q, tiles, 1, &info, flush_queue, &q) == 1 && q.num_uploads == 0, "a crash");
+
+	/* a line wider than TMEM: nothing */
+	fresh();
+	tiles[1].meta.size = RDP_TEXTURE_SIZE_16;
+	tiles[1].meta.stride = 64;
+	info = load_of(3000, 4, RDP_TEXTURE_SIZE_16);
+	CHECK(rdp_queue_load_tile(&q, tiles, 1, &info, flush_queue, &q) == 0 && q.num_uploads == 0, "too wide");
+	CHECK(tiles[1].size.shi == 0, "the tile as it was");
+
+	/* the loads one flush holds: it goes */
+	fresh();
+	tiles[2].meta.size = RDP_TEXTURE_SIZE_16;
+	tiles[2].meta.stride = 64;
+	flushes = 0;
+	q.num_uploads = RDP_QUEUE_MAX_UPLOADS - 3;
+	info = load_of(32, 16, RDP_TEXTURE_SIZE_16);
+	rdp_queue_load_tile(&q, tiles, 2, &info, flush_queue, &q);
+	CHECK(flushes == 0 && q.num_uploads == RDP_QUEUE_MAX_UPLOADS - 2, "room for one more");
+	rdp_queue_load_tile(&q, tiles, 2, &info, flush_queue, &q);
+	CHECK(flushes == 1 && q.num_uploads == 0, "flushed");
+}
+
 int main(void)
 {
 	test_spans();
@@ -321,6 +407,7 @@ int main(void)
 	test_state_caches();
 	test_full();
 	test_upload_reads_pending();
+	test_load_tile();
 	if (failures)
 	{
 		fprintf(stderr, "test_rdp_queue: %u failure(s)\n", failures);
