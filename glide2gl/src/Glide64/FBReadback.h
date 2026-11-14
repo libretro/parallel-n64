@@ -76,4 +76,25 @@ static INLINE void fb_readback_sampled(const uint8_t *rows, uint32_t stride,
    }
 }
 
+/* Scaled on the GPU first: N64 pixel (x, y) is pixel (x, y) of the rh
+ * rows read back, the bottom row first. */
+static INLINE void fb_readback_scaled(const uint8_t *rows, uint32_t stride, uint32_t rh,
+      int x_start, int y_start, int x_end, int y_end,
+      uint32_t width, int read_alpha, int size16, uint8_t *dst)
+{
+   int y, x;
+   for (y = y_start; y < y_end; y++)
+   {
+      const uint8_t *row = rows + (size_t)(rh - 1 - (uint32_t)y) * stride;
+      for (x = x_start; x < x_end; x++)
+      {
+         const uint8_t *p = row + (size_t)x * 4;
+         uint16_t c = (uint16_t)(((p[0] >> 3) << 11) | ((p[1] >> 3) << 6) | ((p[2] >> 3) << 1) | 1);
+         if (read_alpha && c == 1)
+            c = 0;
+         fb_store(dst, size16, width, (uint32_t)x, (uint32_t)y, c);
+      }
+   }
+}
+
 #endif

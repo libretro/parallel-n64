@@ -1280,6 +1280,9 @@ test_glitch64_lfb_write$(EXE_EXT): tools/test_glitch64_lfb_write.c $(GLITCH64_TE
 test_glitch64_draw$(EXE_EXT): tools/test_glitch64_draw.c $(GLITCH64_TEST_SRCS)
 	$(CC) $(GLITCH64_TEST_FLAGS) $(GLITCH64_GL_FLAGS) $< $(GLITCH64_TEST_SRCS) $(LIBRETRO_COMM_DIR)/glsym/glsym_gl.c \
 		-o $@ $(filter -fsanitize=%,$(LDFLAGS)) -lEGL -lGL -lm
+test_glitch64_readback$(EXE_EXT): tools/test_glitch64_readback.c $(GLITCH64_TEST_SRCS)
+	$(CC) $(GLITCH64_TEST_FLAGS) $(GLITCH64_GL_FLAGS) $< $(GLITCH64_TEST_SRCS) $(LIBRETRO_COMM_DIR)/glsym/glsym_gl.c \
+		-o $@ $(filter -fsanitize=%,$(LDFLAGS)) -lEGL -lGL -lm
 test_glitch64_textures$(EXE_EXT): tools/test_glitch64_textures.c $(GLITCH64_TEST_SRCS)
 	$(CC) $(GLITCH64_TEST_FLAGS) $(GLITCH64_GL_FLAGS) $< $(GLITCH64_TEST_SRCS) $(LIBRETRO_COMM_DIR)/glsym/glsym_gl.c \
 		-o $@ $(filter -fsanitize=%,$(LDFLAGS)) -lEGL -lGL -lm
@@ -1306,7 +1309,7 @@ test_glsm_state_gles$(EXE_EXT): tools/test_glsm_state.c $(GLSM_TEST_SRCS)
 	$(CC) $(GLSM_TEST_FLAGS) -DHAVE_OPENGLES -DHAVE_OPENGLES2 $< $(GLSM_TEST_SRCS) $(LIBRETRO_COMM_DIR)/glsym/glsym_es2.c \
 		-o $@ $(filter -fsanitize=%,$(LDFLAGS)) -lEGL -lGLESv2 -lm
 
-GLITCH64_TESTS := test_glitch64_lfb_write$(EXE_EXT) test_glitch64_draw$(EXE_EXT) test_glitch64_textures$(EXE_EXT) test_glitch64_textures_gles$(EXE_EXT) \
+GLITCH64_TESTS := test_glitch64_lfb_write$(EXE_EXT) test_glitch64_draw$(EXE_EXT) test_glitch64_readback$(EXE_EXT) test_glitch64_textures$(EXE_EXT) test_glitch64_textures_gles$(EXE_EXT) \
 	test_glsm_draw_target$(EXE_EXT) test_glsm_draw_target_gles$(EXE_EXT) test_glsm_state$(EXE_EXT) test_glsm_state_gles$(EXE_EXT)
 
 angrylion_replay$(EXE_EXT): tools/angrylion_replay.c $(ANGRYLION_TOOL_OBJS)

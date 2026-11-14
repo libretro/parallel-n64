@@ -216,7 +216,8 @@ test-parallel-rdp-tsan-linux-x64:
 # segment). .github/workflows/gl-renderers.yml runs the same lane. check_vtables.py fails on a class that declares a
 # virtual function nobody defines (GCC 16's MinGW link failed on two such
 # Rice classes). test_glitch64_lfb_write holds Glide64's LFB write to
-# the image it was given, test_glitch64_draw each draw to its own state, and test_glitch64_textures(_gles) its texture
+# the image it was given, test_glitch64_draw each draw to its own state,
+# test_glitch64_readback its frame copies scaled down on the GPU, and test_glitch64_textures(_gles) its texture
 # uploads, on GL and on GLES 2, to what each Glide format means.
 # test_glsm_draw_target(_gles) holds the frame Glide64, Rice and glN64
 # swap to the one the frontend presents, through the blit and through
@@ -241,8 +242,8 @@ test-gl-renderers-linux-x64:
     - apt-get update -qq && apt-get install -y -qq build-essential nasm git ca-certificates curl python3 libgl-dev libegl-dev libgles-dev libegl-mesa0 libgl1-mesa-dri mesa-vulkan-drivers libvulkan1 spirv-tools
     - make -j$(nproc) platform=unix WITH_DYNAREC=$WITH_DYNAREC HAVE_THR_AL=$HAVE_THR_AL HAVE_PARALLEL=$HAVE_PARALLEL HAVE_PARALLEL_RSP=$HAVE_PARALLEL_RSP
     - python3 tools/ci/check_vtables.py
-    - make platform=unix lrhost_gl lrhost test_glitch64_lfb_write test_glitch64_draw test_glitch64_textures test_glitch64_textures_gles test_glsm_draw_target test_glsm_draw_target_gles test_glsm_state test_glsm_state_gles
-    - for t in test_glitch64_lfb_write test_glitch64_draw test_glitch64_textures test_glitch64_textures_gles test_glsm_draw_target test_glsm_draw_target_gles test_glsm_state test_glsm_state_gles; do EGL_PLATFORM=surfaceless ./$t || exit 1; done
+    - make platform=unix lrhost_gl lrhost test_glitch64_lfb_write test_glitch64_draw test_glitch64_readback test_glitch64_textures test_glitch64_textures_gles test_glsm_draw_target test_glsm_draw_target_gles test_glsm_state test_glsm_state_gles
+    - for t in test_glitch64_lfb_write test_glitch64_draw test_glitch64_readback test_glitch64_textures test_glitch64_textures_gles test_glsm_draw_target test_glsm_draw_target_gles test_glsm_state test_glsm_state_gles; do EGL_PLATFORM=surfaceless ./$t || exit 1; done
     - python3 tools/test_glsm_frame_boundary.py
     - python3 tools/ci/gl_renderers.py --core ./parallel_n64_libretro.so --host ./lrhost_gl
     - python3 tools/ci/gliden64_keys_journal.py --core ./parallel_n64_libretro.so --host ./lrhost_gl
@@ -255,8 +256,8 @@ test-gl-renderers-linux-x64:
     - make platform=unix clean
     - make -j$(nproc) platform=unix WITH_DYNAREC=$WITH_DYNAREC HAVE_THR_AL=$HAVE_THR_AL HAVE_PARALLEL=$HAVE_PARALLEL HAVE_PARALLEL_RSP=$HAVE_PARALLEL_RSP SANITIZER=address,undefined
     - make platform=unix HAVE_PARALLEL=1 SANITIZER=address,undefined lrhost_vk
-    - make platform=unix SANITIZER=address,undefined lrhost_gl lrhost test_glitch64_lfb_write test_glitch64_draw test_glitch64_textures test_glitch64_textures_gles test_glsm_draw_target test_glsm_draw_target_gles test_glsm_state test_glsm_state_gles
-    - for t in test_glitch64_lfb_write test_glitch64_draw test_glitch64_textures test_glitch64_textures_gles test_glsm_draw_target test_glsm_draw_target_gles test_glsm_state test_glsm_state_gles; do EGL_PLATFORM=surfaceless ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1 ./$t || exit 1; done
+    - make platform=unix SANITIZER=address,undefined lrhost_gl lrhost test_glitch64_lfb_write test_glitch64_draw test_glitch64_readback test_glitch64_textures test_glitch64_textures_gles test_glsm_draw_target test_glsm_draw_target_gles test_glsm_state test_glsm_state_gles
+    - for t in test_glitch64_lfb_write test_glitch64_draw test_glitch64_readback test_glitch64_textures test_glitch64_textures_gles test_glsm_draw_target test_glsm_draw_target_gles test_glsm_state test_glsm_state_gles; do EGL_PLATFORM=surfaceless ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1 ./$t || exit 1; done
     - ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=print_stacktrace=1 python3 tools/ci/gl_renderers.py --core ./parallel_n64_libretro.so --host ./lrhost_gl
     - ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=print_stacktrace=1 python3 tools/ci/gliden64_keys_journal.py --core ./parallel_n64_libretro.so --host ./lrhost_gl
     - ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=print_stacktrace=1 python3 tools/ci/gliden64_ubershader.py --core ./parallel_n64_libretro.so --host ./lrhost_gl

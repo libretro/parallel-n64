@@ -436,6 +436,8 @@ void ReadSpecialSettings (const char * name)
       settings.filtering = 1;
       //depthmode = 1
       smart_read = 1;
+      /* the pause screen blurs the last frame, read by the CPU from RDRAM */
+      read_always = 1;
 #ifdef HAVE_HWFBE
       optimize_texrect = 0;
       hires = 1;

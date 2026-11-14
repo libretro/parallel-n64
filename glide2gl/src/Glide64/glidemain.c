@@ -251,6 +251,10 @@ int glide64InitGfx(void)
       return false;
    }
 
+   /* frame buffer copies to RDRAM scale down on the GPU */
+   if (settings.frame_buffer & (fb_emulation | fb_ref))
+      grLfbReadScaledInit();
+
    // get the # of TMUs available
    voodoo.tex_max_addr = grTexMaxAddress(GR_TMU0);
 

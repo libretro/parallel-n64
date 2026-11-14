@@ -524,6 +524,15 @@ grLfbWriteRegion( int32_t dst_buffer,
  * as RGBA8 rows *stride bytes apart, the bottom row first; the rect is
  * clipped to the window (*w, *h). Valid until the next read. */
 const uint8_t *grLfbReadRect(int32_t *x, int32_t *y, int32_t *w, int32_t *h, uint32_t *stride);
+/* GL with framebuffer blits: the scaled read below can be used; made at
+ * load. */
+int grLfbReadScaledInit(void);
+/* The window's rect (x, y, w, h), top row first in window terms, scaled
+ * on the GPU to dw x dh and read back as RGBA8 rows *stride bytes apart,
+ * the bottom row first: dw x dh pixels read instead of the window's.
+ * NULL where it cannot be done. Valid until the next read. */
+const uint8_t *grLfbReadScaled(int32_t x, int32_t y, int32_t w, int32_t h,
+      uint32_t dw, uint32_t dh, uint32_t *stride);
 
 
 #define guFogGenerateLinear(nearZ, farZ) \

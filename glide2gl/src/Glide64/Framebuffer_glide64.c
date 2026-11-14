@@ -1073,6 +1073,27 @@ void CopyFrameBuffer(int32_t buffer)
 
       if (x_end > x_start && y_end > y_start)
       {
+         /* Scaled down on the GPU to the N64's pixels and those read
+          * back: the window is not read at all */
+         const uint32_t n64w = (uint32_t)(MAX(width, rdp.vi_width) + 0.5f);
+         const uint32_t n64h = (uint32_t)(MAX(height, rdp.vi_height) + 0.5f);
+         uint32_t stride;
+         const uint8_t *rows = (uint32_t)y_end <= n64h && (uint32_t)x_end <= n64w
+            ? grLfbReadScaled((int32_t)rdp.offset_x, (int32_t)rdp.offset_y,
+                  (int32_t)(settings.scr_res_x - rdp.offset_x*2.0f),
+                  (int32_t)(settings.scr_res_y - rdp.offset_y*2.0f), n64w, n64h, &stride)
+            : NULL;
+         if (rows)
+         {
+            fb_readback_scaled(rows, stride, n64h, x_start, y_start, x_end, y_end,
+                  width, read_alpha, g_gdp.fb_size <= G_IM_SIZ_16b,
+                  gfx_info.RDRAM + gDP.colorImage.address);
+            return;
+         }
+      }
+
+      if (x_end > x_start && y_end > y_start)
+      {
          /* Only the window rows and columns the N64 pixels sample are
           * read back, and only those pixels converted. */
          int32_t sx0 = (int)(x_start*scale_x + rdp.offset_x);

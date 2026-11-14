@@ -44,6 +44,12 @@ int glsl_support = 1;
 extern uint16_t *glide64_frameBuffer;
 static uint8_t  *buf;
 
+#ifndef HAVE_OPENGLES2
+/* the window scaled down on the GPU before it is read back */
+static GLuint lfb_fbo, lfb_rbo;
+#endif
+#define LFB_SCALED_MAX 1024
+
 static int isExtensionSupported(const char *extension)
 {
    const char *str = (const char*)glGetString(GL_EXTENSIONS);
@@ -125,6 +131,14 @@ int32_t grSstWinClose(uint32_t context)
    glide64_frameBuffer = NULL;
    buf         = NULL;
 
+#ifndef HAVE_OPENGLES2
+   if (lfb_fbo)
+      glDeleteFramebuffers(1, &lfb_fbo);
+   if (lfb_rbo)
+      glDeleteRenderbuffers(1, &lfb_rbo);
+   lfb_fbo = lfb_rbo = 0;
+#endif
+
    free_geometry();
    free_combiners();
    free_textures();
@@ -161,6 +175,71 @@ int32_t grLfbLock( int32_t type, int32_t buffer, int32_t writeMode,
    }
 
    return FXTRUE;
+}
+
+int grLfbReadScaledInit(void)
+{
+#ifndef HAVE_OPENGLES2
+   const char *version = (const char*)glGetString(GL_VERSION);
+   int major = 0;
+   if (lfb_fbo)
+      return 1;
+   if (!version)
+      return 0;
+   if (strstr(version, "OpenGL ES "))
+      version += 10;
+   major = atoi(version);
+   /* blits came with GL 3.0, GLES 3.0 and ARB_framebuffer_object */
+   if (major < 3 && !isExtensionSupported("GL_ARB_framebuffer_object"))
+      return 0;
+   glGenRenderbuffers(1, &lfb_rbo);
+   glBindRenderbuffer(GL_RENDERBUFFER, lfb_rbo);
+   glRenderbufferStorage(GL_RENDERBUFFER, GL_RGBA8, LFB_SCALED_MAX, LFB_SCALED_MAX);
+   glGenFramebuffers(1, &lfb_fbo);
+   glBindFramebuffer(GL_FRAMEBUFFER, lfb_fbo);
+   glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER, lfb_rbo);
+   if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+   {
+      glBindFramebuffer(GL_FRAMEBUFFER, 0);
+      glDeleteFramebuffers(1, &lfb_fbo);
+      glDeleteRenderbuffers(1, &lfb_rbo);
+      lfb_fbo = lfb_rbo = 0;
+      return 0;
+   }
+   glBindFramebuffer(GL_FRAMEBUFFER, 0);
+   return 1;
+#else
+   return 0;
+#endif
+}
+
+const uint8_t *grLfbReadScaled(int32_t x, int32_t y, int32_t w, int32_t h,
+      uint32_t dw, uint32_t dh, uint32_t *stride)
+{
+#ifndef HAVE_OPENGLES2
+   GLboolean scissor;
+   if (!lfb_fbo || !buf || w <= 0 || h <= 0 || dw == 0 || dh == 0
+         || dw > LFB_SCALED_MAX || dh > LFB_SCALED_MAX
+         || (size_t)dw * dh > (size_t)width * height)
+      return NULL;
+   /* the window's rect, rows bottom up, to dw x dh: each pixel the
+    * window's at its centre */
+   scissor = glIsEnabled(GL_SCISSOR_TEST);
+   if (scissor)
+      glDisable(GL_SCISSOR_TEST);
+   glBindFramebuffer(GL_DRAW_FRAMEBUFFER, lfb_fbo);
+   glBlitFramebuffer(x, height - (y + h), x + w, height - y,
+         0, 0, (GLint)dw, (GLint)dh, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+   glBindFramebuffer(GL_READ_FRAMEBUFFER, lfb_fbo);
+   glReadPixels(0, 0, (GLsizei)dw, (GLsizei)dh, GL_RGBA, GL_UNSIGNED_BYTE, buf);
+   glBindFramebuffer(GL_FRAMEBUFFER, 0);
+   if (scissor)
+      glEnable(GL_SCISSOR_TEST);
+   *stride = dw * 4;
+   return buf;
+#else
+   return NULL;
+#endif
 }
 
 const uint8_t *grLfbReadRect(int32_t *x, int32_t *y, int32_t *w, int32_t *h, uint32_t *stride)
