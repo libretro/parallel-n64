@@ -1277,6 +1277,9 @@ GLITCH64_GLES_FLAGS := -DHAVE_OPENGLES -DHAVE_OPENGLES2 -DDISABLE_3POINT
 test_glitch64_lfb_write$(EXE_EXT): tools/test_glitch64_lfb_write.c $(GLITCH64_TEST_SRCS)
 	$(CC) $(GLITCH64_TEST_FLAGS) $(GLITCH64_GL_FLAGS) $< $(GLITCH64_TEST_SRCS) $(LIBRETRO_COMM_DIR)/glsym/glsym_gl.c \
 		-o $@ $(filter -fsanitize=%,$(LDFLAGS)) -lEGL -lGL -lm
+test_glitch64_draw$(EXE_EXT): tools/test_glitch64_draw.c $(GLITCH64_TEST_SRCS)
+	$(CC) $(GLITCH64_TEST_FLAGS) $(GLITCH64_GL_FLAGS) $< $(GLITCH64_TEST_SRCS) $(LIBRETRO_COMM_DIR)/glsym/glsym_gl.c \
+		-o $@ $(filter -fsanitize=%,$(LDFLAGS)) -lEGL -lGL -lm
 test_glitch64_textures$(EXE_EXT): tools/test_glitch64_textures.c $(GLITCH64_TEST_SRCS)
 	$(CC) $(GLITCH64_TEST_FLAGS) $(GLITCH64_GL_FLAGS) $< $(GLITCH64_TEST_SRCS) $(LIBRETRO_COMM_DIR)/glsym/glsym_gl.c \
 		-o $@ $(filter -fsanitize=%,$(LDFLAGS)) -lEGL -lGL -lm
@@ -1303,7 +1306,7 @@ test_glsm_state_gles$(EXE_EXT): tools/test_glsm_state.c $(GLSM_TEST_SRCS)
 	$(CC) $(GLSM_TEST_FLAGS) -DHAVE_OPENGLES -DHAVE_OPENGLES2 $< $(GLSM_TEST_SRCS) $(LIBRETRO_COMM_DIR)/glsym/glsym_es2.c \
 		-o $@ $(filter -fsanitize=%,$(LDFLAGS)) -lEGL -lGLESv2 -lm
 
-GLITCH64_TESTS := test_glitch64_lfb_write$(EXE_EXT) test_glitch64_textures$(EXE_EXT) test_glitch64_textures_gles$(EXE_EXT) \
+GLITCH64_TESTS := test_glitch64_lfb_write$(EXE_EXT) test_glitch64_draw$(EXE_EXT) test_glitch64_textures$(EXE_EXT) test_glitch64_textures_gles$(EXE_EXT) \
 	test_glsm_draw_target$(EXE_EXT) test_glsm_draw_target_gles$(EXE_EXT) test_glsm_state$(EXE_EXT) test_glsm_state_gles$(EXE_EXT)
 
 angrylion_replay$(EXE_EXT): tools/angrylion_replay.c $(ANGRYLION_TOOL_OBJS)
@@ -2079,6 +2082,10 @@ test_gliden64_fill_rdram$(EXE_EXT): tools/test_gliden64_fill_rdram.c $(VIDEODIR_
 test_gliden64_lle_tri$(EXE_EXT): tools/test_gliden64_lle_tri.c $(VIDEODIR_GLIDEN64)/src/LleTriangle.c $(VIDEODIR_GLIDEN64)/src/gli_lle_tri.h
 	$(CC) -std=c89 -D_DEFAULT_SOURCE $(CHECK_CFLAGS) $(CHECK_SANITIZE) -I$(VIDEODIR_GLIDEN64)/src -I$(LIBRETRO_COMM_DIR)/include tools/test_gliden64_lle_tri.c $(VIDEODIR_GLIDEN64)/src/LleTriangle.c -o $@ $(CHECK_LDFLAGS) $(CHECK_SANITIZE) -lm
 
+# Glide64 drawing RDP triangles with W at or below zero (tools/test_glide64_lle_tri.c)
+test_glide64_lle_tri$(EXE_EXT): tools/test_glide64_lle_tri.c $(VIDEODIR_GLIDE)/Glide64/glide64_lle_tri.c $(VIDEODIR_GLIDE)/Glide64/glide64_lle_tri.h
+	$(CC) -std=c89 -D_DEFAULT_SOURCE $(CHECK_CFLAGS) $(CHECK_SANITIZE) tools/test_glide64_lle_tri.c $(VIDEODIR_GLIDE)/Glide64/glide64_lle_tri.c -o $@ $(CHECK_LDFLAGS) $(CHECK_SANITIZE) -lm
+
 # GLideN64 clipping triangles as the RSP does (tools/test_gliden64_tri_clip.c)
 test_gliden64_tri_clip$(EXE_EXT): tools/test_gliden64_tri_clip.c $(VIDEODIR_GLIDEN64)/src/TriangleClip.c $(VIDEODIR_GLIDEN64)/src/gli_tri_clip.h
 	$(CC) -std=c89 -D_DEFAULT_SOURCE $(CHECK_CFLAGS) $(CHECK_SANITIZE) -I$(VIDEODIR_GLIDEN64)/src -I$(LIBRETRO_COMM_DIR)/include tools/test_gliden64_tri_clip.c $(VIDEODIR_GLIDEN64)/src/TriangleClip.c -o $@ $(CHECK_LDFLAGS) $(CHECK_SANITIZE) -lm
@@ -2146,7 +2153,7 @@ CORE_CHECKS := test_rcp_bounds$(EXE_EXT) test_memory_map$(EXE_EXT) test_fb_write
 	test_mouse_accum$(EXE_EXT) test_hle_dram_wrap$(EXE_EXT) test_pif_write$(EXE_EXT) \
 	test_re2_fill$(EXE_EXT) test_temporal_upscaler$(EXE_EXT) test_pipeline_records$(EXE_EXT) test_rdp_dump_write$(EXE_EXT) test_vi_registers$(EXE_EXT) test_shader_bank$(EXE_EXT) test_primitive_decode$(EXE_EXT) test_masked_copy$(EXE_EXT) test_masked_copy_scalar$(EXE_EXT) test_pipeline_pending$(EXE_EXT) test_rdp_state$(EXE_EXT) test_tmem_load$(EXE_EXT) \
 	test_command_ring$(EXE_EXT) test_vk_sync$(EXE_EXT) test_vk_command_pool$(EXE_EXT) test_vk_texture_format$(EXE_EXT) test_vk_descriptor_set$(EXE_EXT) test_vk_shader$(EXE_EXT) test_vk_pipeline_map$(EXE_EXT) test_vk_render_pass$(EXE_EXT) test_vk_framebuffer$(EXE_EXT) test_vk_pipeline_compile$(EXE_EXT) test_vk_resource_bindings$(EXE_EXT) test_vk_command_state$(EXE_EXT) test_vk_command_ops$(EXE_EXT) test_vk_submit_batch$(EXE_EXT) test_vk_buffer_create$(EXE_EXT) test_vk_image_create$(EXE_EXT) test_vk_image_upload$(EXE_EXT) test_vk_buffer_pool$(EXE_EXT) test_vk_buffer$(EXE_EXT) test_vk_image$(EXE_EXT) test_vk_sampler$(EXE_EXT) test_vk_fence$(EXE_EXT) test_vk_semaphore$(EXE_EXT) test_vk_queue_submit$(EXE_EXT) test_vk_frame_sync$(EXE_EXT) test_vk_memory_release$(EXE_EXT) test_vk_context$(EXE_EXT) test_vk_device_caps$(EXE_EXT) test_vk_program_cache$(EXE_EXT) test_vk_render_target$(EXE_EXT) test_vk_command_buffer$(EXE_EXT) test_vk_frame_context$(EXE_EXT) test_vk_submission$(EXE_EXT) test_vk_device$(EXE_EXT) test_rdp_upscaler_pass$(EXE_EXT) test_rdp_video_interface$(EXE_EXT) test_rdram_coherency$(EXE_EXT) test_vk_pipeline_cache$(EXE_EXT) test_frame_garbage$(EXE_EXT) test_release_queue$(EXE_EXT) test_gb_cart_banks$(EXE_EXT) test_dynarec_cache_pages$(EXE_EXT) \
-	test_combiner_journal$(EXE_EXT) test_gliden64_write_rdram$(EXE_EXT) test_gliden64_fill_rdram$(EXE_EXT) test_gliden64_tri_clip$(EXE_EXT) test_gliden64_lle_tri$(EXE_EXT) test_gliden64_rdram_to_color$(EXE_EXT) test_gliden64_window_scale$(EXE_EXT) test_gliden64_texture_formats$(EXE_EXT) test_glide64_texmod$(EXE_EXT) test_glide64_loadblock$(EXE_EXT) test_gliden64_matrix_element$(EXE_EXT) test_gliden64_deferred_readback$(EXE_EXT) test_gliden64_ring_segments$(EXE_EXT) test_glide64_fb_readback$(EXE_EXT) test_granite_util$(EXE_EXT) test_granite_pool$(EXE_EXT) test_vk_memory_allocator$(EXE_EXT) \
+	test_combiner_journal$(EXE_EXT) test_gliden64_write_rdram$(EXE_EXT) test_gliden64_fill_rdram$(EXE_EXT) test_gliden64_tri_clip$(EXE_EXT) test_gliden64_lle_tri$(EXE_EXT) test_glide64_lle_tri$(EXE_EXT) test_gliden64_rdram_to_color$(EXE_EXT) test_gliden64_window_scale$(EXE_EXT) test_gliden64_texture_formats$(EXE_EXT) test_glide64_texmod$(EXE_EXT) test_glide64_loadblock$(EXE_EXT) test_gliden64_matrix_element$(EXE_EXT) test_gliden64_deferred_readback$(EXE_EXT) test_gliden64_ring_segments$(EXE_EXT) test_glide64_fb_readback$(EXE_EXT) test_granite_util$(EXE_EXT) test_granite_pool$(EXE_EXT) test_vk_memory_allocator$(EXE_EXT) \
 	test_vi_image_pool$(EXE_EXT)
 
 ifeq ($(HAVE_PARALLEL_RSP), 1)

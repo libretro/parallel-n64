@@ -594,6 +594,7 @@ SOURCES_C += $(VIDEODIR_GLIDE)/Glide64/glide64_3dmath.c \
 				$(VIDEODIR_GLIDE)/Glide64/Glide64_UCode.c \
             $(VIDEODIR_GLIDE)/Glide64/glide64_gSP.c \
             $(VIDEODIR_GLIDE)/Glide64/glide64_gDP.c \
+            $(VIDEODIR_GLIDE)/Glide64/glide64_lle_tri.c \
             $(VIDEODIR_GLIDE)/Glide64/Combine.c \
             $(VIDEODIR_GLIDE)/Glide64/TexCache.c \
             $(VIDEODIR_GLIDE)/Glide64/TexMod.c \

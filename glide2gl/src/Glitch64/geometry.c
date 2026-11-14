@@ -150,13 +150,8 @@ void vbo_draw(void)
 
 static void vbo_append(GLenum mode, GLsizei count, void *pointers)
 {
-   if (vbuf_length + count > VERTEX_BUFFER_SIZE)
-     vbo_draw();
-
-   /* keep caching triangles as much as possible. */
-   if (count == 3 && vbuf_primitive == GL_TRIANGLES)
-      mode = GL_TRIANGLES;
-
+   /* Drawn at once: the state each draw sets is only right for it, and
+    * triangles kept for the next draw took that draw's state instead */
    while (count--)
    {
       memcpy(&vbuf_data[vbuf_length++], pointers, sizeof(VBufVertex));
@@ -164,10 +159,7 @@ static void vbo_append(GLenum mode, GLsizei count, void *pointers)
    }
 
    vbuf_primitive = mode;
-
-   /* we can't handle anything but triangles so flush it */
-   if (mode != GL_TRIANGLES)
-      vbo_draw();
+   vbo_draw();
 }
 
 void vbo_enable(void)
