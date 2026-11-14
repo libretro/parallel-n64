@@ -8,6 +8,11 @@
  * S/W, T/W and W to interpolate with perspective: with W at or below zero
  * at a corner that is no longer what the RDP has inside the triangle, and
  * the texture warped across the water, split along the strip's diagonal.
+ * The GPU's perspective only gives the RDP's S/W between corners when
+ * each vertex W is the RDP's own: GLideN64 added 1.0 to it, which bent the
+ * texture most where W is small, and left a seam on the strip's diagonal.
+ * The corners' values came from an edge walk that dropped two bits of
+ * every step; they are now the RDP's planes at each corner.
  *
  * Now such a strip is cut, each value along screen space as the RDP steps
  * it, to where W is at least GLI_LLE_MIN_W. Held here: a strip with W
@@ -41,16 +46,6 @@ static void check(int _cond, const char *_fmt, ...)
 	vprintf(_fmt, ap);
 	va_end(ap);
 	printf("\n");
-}
-
-static gli_lle_corner corner(f32 x, f32 y, s32 c, u32 z, s32 s, s32 t, s32 w)
-{
-	gli_lle_corner k;
-	k.x = x; k.y = y;
-	k.r = c; k.g = c / 2; k.b = 0x3ff0000 - c; k.a = 0x3fc0000;
-	k.z = z;
-	k.s = s; k.t = t; k.w = w;
-	return k;
 }
 
 /* The weights of the corners @_a @_b @_c of a strip triangle at screen
@@ -147,8 +142,8 @@ static void check_cut(const char *_name, const gli_lle_corner *_c, u32 _n, const
 			else
 				check(near_value(v[j].z, z / Z_SCALE, 1e-5), "%s: vertex %u depth %g, the RDP has %g", _name, i + j, v[j].z, z / Z_SCALE);
 			if (_m->shade)
-				check(fabs(v[j].r - floor(r / 262144.0) / 255.0) < 1e-5 && v[j].a > 0.99f,
-					"%s: vertex %u shade %g, the RDP has %g", _name, i + j, v[j].r, floor(r / 262144.0) / 255.0);
+				check(fabs(v[j].r - floor(r / 65536.0) / 255.0) < 1e-5 && v[j].a > 0.99f,
+					"%s: vertex %u shade %g, the RDP has %g", _name, i + j, v[j].r, floor(r / 65536.0) / 255.0);
 		}
 	}
 	for (k = 0; k + 2 < _n; ++k)
@@ -160,15 +155,35 @@ int main(void)
 {
 	/* GoldenEye's water: W falls through zero towards the horizon */
 	gli_lle_corner water[4], ahead[4], flat[4];
+	gli_lle_plane plane;
 	SPVertex out[GLI_LLE_MAX_VERTICES(8)];
 	gli_lle_mode mode;
 	u32 n, i;
 	int list;
 
-	water[0] = corner(10.0f, 120.0f, 0x2000000, 0xfff00000u, 0x400000, 0x200000, 0x30000);
-	water[1] = corner(300.0f, 120.0f, 0x1000000, 0xfff80000u, 0x1800000, 0x200000, 0x28000);
-	water[2] = corner(10.0f, 239.0f, 0x3000000, 0x80000000u, -0x200000, 0x800000, -0x12000);
-	water[3] = corner(300.0f, 239.0f, 0x0400000, 0x80100000u, 0x900000, -0x400000, -0x8000);
+	/* the corners from the triangle's planes, W falling across it */
+	memset(&plane, 0, sizeof(plane));
+	plane.x0 = 10.0; plane.y0 = 120.0; plane.dxhdy = 0.0;
+	plane.v[0] = 0x800000; plane.dvdx[0] = -0x4000; plane.dvde[0] = 0x6000;
+	plane.v[1] = 0x400000; plane.v[2] = 0x7f0000; plane.v[3] = 0xff0000;
+	plane.v[4] = 4293918720.0; plane.dvdx[4] = 0x2000; plane.dvde[4] = -0x1000000;
+	plane.v[5] = 0x400000; plane.dvdx[5] = 0x10000; plane.dvde[5] = -0x5000;
+	plane.v[6] = 0x200000; plane.dvdx[6] = 0x800; plane.dvde[6] = 0x9000;
+	plane.v[7] = 0x30000; plane.dvdx[7] = -0x60; plane.dvde[7] = -0x600;
+	gli_lle_corner_at(&plane, 10.0, 120.0, &water[0]);
+	gli_lle_corner_at(&plane, 300.0, 120.0, &water[1]);
+	gli_lle_corner_at(&plane, 10.0, 239.0, &water[2]);
+	gli_lle_corner_at(&plane, 300.0, 239.0, &water[3]);
+	check(water[0].w > GLI_LLE_MIN_W && water[3].w < 0.0, "water: W does not fall through zero");
+	/* the planes give each value at the major edge, stepped along it and
+	 * along x */
+	plane.dxhdy = 0.5;
+	gli_lle_corner_at(&plane, 15.0, 130.0, &flat[0]);
+	check(flat[0].s == (f64)0x400000 - 10.0 * 0x5000 && flat[0].w == (f64)0x30000 - 10.0 * 0x600,
+		"plane: the major edge's values wrong");
+	gli_lle_corner_at(&plane, 25.0, 130.0, &flat[1]);
+	check(flat[1].s == flat[0].s + 10.0 * 0x10000 && flat[1].w == flat[0].w - 10.0 * 0x60,
+		"plane: the step along x wrong");
 	memcpy(ahead, water, sizeof(ahead));
 	for (i = 0; i < 4; ++i)
 		ahead[i].w = 0x8000 + (s32)i * 0x1000;
@@ -178,16 +193,16 @@ int main(void)
 	mode.texture = 1;
 	mode.persp = 1;
 
-	/* W positive throughout: the strip as it always was */
+	/* W positive throughout: a strip, each vertex W the RDP's own */
 	memset(out, 0, sizeof(out));
 	n = gli_lle_vertices(ahead, 4, &mode, out, &list);
 	check(n == 4 && !list, "ahead: %u vertices, list %d", n, list);
 	for (i = 0; i < 4 && n == 4; ++i) {
-		const f32 s = (f32)((((s64)ahead[i].s) << 20) / ahead[i].w) / 1024.0f;
-		const f32 w = 1.0f / (f32)((f64)(u32)((u32)ahead[i].w + 0x10000u) / Z_SCALE);
-		check(out[i].x == ahead[i].x && out[i].y == ahead[i].y && out[i].s == s && out[i].w == w,
-			"ahead: vertex %u changed (s %g want %g, w %g want %g)", i, out[i].s, s, out[i].w, w);
-		check(out[i].r == _FIXED2FLOATCOLOR(ahead[i].r >> 18, 8), "ahead: vertex %u shade changed", i);
+		const f32 s = (f32)(ahead[i].s / ahead[i].w * 1024.0);
+		const f32 w = (f32)(Z_SCALE / ahead[i].w);
+		check(out[i].x == (f32)ahead[i].x && out[i].y == (f32)ahead[i].y && out[i].s == s && out[i].w == w,
+			"ahead: vertex %u (s %g want %g, w %g want %g)", i, out[i].s, s, out[i].w, w);
+		check(out[i].r == (f32)floor(ahead[i].r / 65536.0) * FIXED2FLOATRECIPCOLOR8, "ahead: vertex %u shade", i);
 	}
 
 	/* W through zero: cut where it falls below the least */
@@ -204,7 +219,7 @@ int main(void)
 	n = gli_lle_vertices(water, 4, &mode, out, &list);
 	check(n == 4 && !list, "no perspective: cut (%u vertices)", n);
 	for (i = 0; i < 4 && n == 4; ++i)
-		check(out[i].s == (f32)water[i].s / (1 << 21) && out[i].w == 1.0f, "no perspective: vertex %u changed", i);
+		check(out[i].s == (f32)(water[i].s / 2097152.0) && out[i].w == 1.0f, "no perspective: vertex %u changed", i);
 	/* nor without texture */
 	mode.persp = 1;
 	mode.texture = 0;

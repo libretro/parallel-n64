@@ -9,15 +9,26 @@ extern "C" {
 
 struct SPVertex;
 
-/* A corner of an RDP triangle as its edge walker has it: screen position
- * and the raw fixed point shade, depth, S, T and W there. */
+/* A corner of an RDP triangle: screen position and the shade, depth, S,
+ * T and W there, in the units of the RDP's fixed point values */
 typedef struct gli_lle_corner
 {
-	f32 x, y;
-	s32 r, g, b, a;
-	u32 z;
-	s32 s, t, w;
+	f64 x, y;
+	f64 r, g, b, a, z, s, t, w;
 } gli_lle_corner;
+
+/* The RDP triangle's values as planes in screen space: each is given at
+ * the major edge's x (@x0) on the triangle's first scanline (@y0), with
+ * its step per pixel along x and per scanline along the major edge, whose
+ * x moves @dxhdy per scanline. In the order r, g, b, a, z, s, t, w. */
+typedef struct gli_lle_plane
+{
+	f64 x0, y0, dxhdy;
+	f64 v[8], dvdx[8], dvde[8];
+} gli_lle_plane;
+
+/* @_c at screen point @_x, @_y, every value from @_p's planes */
+void gli_lle_corner_at(const gli_lle_plane *_p, f64 _x, f64 _y, gli_lle_corner *_c);
 
 /* How the corners turn into vertices */
 typedef struct gli_lle_mode
@@ -36,7 +47,9 @@ typedef struct gli_lle_mode
 #define GLI_LLE_MAX_VERTICES(_n) (((_n) < 3 ? 0 : (_n) - 2) * 6)
 
 /* The strip of @_n corners as vertices in @_out. The GPU interpolates
- * texture coordinates by perspective, from each vertex's W; where W
+ * texture coordinates by perspective, from each vertex's W, which is the
+ * RDP's own S/W and T/W across the triangle only when the vertex W is
+ * exactly the RDP's, nothing added to it. Where W
  * reaches zero or below inside the triangle, near the horizon, that is
  * no longer the RDP's S/W and T/W interpolated in screen space and the
  * texture warps across the whole triangle. Such a strip is cut, every

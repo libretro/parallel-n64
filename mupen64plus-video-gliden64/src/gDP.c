@@ -828,7 +828,7 @@ static void gDPLLETriangle(u32 _w1, u32 _w2, int _shade, int _texture, int _zbuf
 	gDPTile *textureTileOrg[2];
 	/* an RDP triangle is at most eight corners as a strip */
 	gli_lle_corner corners[8];
-	gli_lle_corner * corner;
+	gli_lle_plane plane;
 	u32 numCorners = 0;
 	gli_lle_mode mode;
 	SPVertex * vtx;
@@ -977,11 +977,18 @@ static void gDPLLETriangle(u32 _w1, u32 _w2, int _shade, int _texture, int _zbuf
 		dzde = zbuffer_base[2];
 	}
 
+	/* every value as the RDP has it, a plane over the screen */
+	plane.x0 = (f64)xh / 65536.0;
+	plane.y0 = (f64)yh / 4.0;
+	plane.dxhdy = (f64)dxhdy / 65536.0;
+	plane.v[0] = r; plane.v[1] = g; plane.v[2] = b; plane.v[3] = a;
+	plane.v[4] = (f64)(u32)z; plane.v[5] = s; plane.v[6] = t; plane.v[7] = w;
+	plane.dvdx[0] = drdx; plane.dvdx[1] = dgdx; plane.dvdx[2] = dbdx; plane.dvdx[3] = dadx;
+	plane.dvdx[4] = dzdx; plane.dvdx[5] = dsdx; plane.dvdx[6] = dtdx; plane.dvdx[7] = dwdx;
+	plane.dvde[0] = drde; plane.dvde[1] = dgde; plane.dvde[2] = dbde; plane.dvde[3] = dade;
+	plane.dvde[4] = dzde; plane.dvde[5] = dsde; plane.dvde[6] = dtde; plane.dvde[7] = dwde;
+
 	xh <<= 2;  xm <<= 2;  xl <<= 2;
-	r <<= 2;  g <<= 2;  b <<= 2;  a <<= 2;
-	dsde >>= 2;  dtde >>= 2;  dsdx >>= 2;  dtdx >>= 2;
-	dzdx >>= 2;  dzde >>= 2;
-	dwdx >>= 2;  dwde >>= 2;
 
 #define XSCALE(x) ((float)(x)/(1<<18))
 #define YSCALE(y) ((float)(y)/(1<<2))
@@ -997,49 +1004,20 @@ static void gDPLLETriangle(u32 _w1, u32 _w2, int _shade, int _texture, int _zbuf
 		 (flip && xleft > xright-0x10000))) {
 		xleft += xleft_inc;
 		xright += xright_inc;
-		s += dsde;    t += dtde;    w += dwde;
-		r += drde;    g += dgde;    b += dbde;    a += dade;
-		z += dzde;
 		yh++;
 	}
 
 	j = ym-yh;
 	if (j > 0) {
-		int dx = (xleft-xright)>>16;
 		if ((!flip && xleft < xright) || (flip/* && xleft > xright*/))
 		{
-			corner = &corners[numCorners++];
-			corner->r = r+drdx*dx;
-			corner->g = g+dgdx*dx;
-			corner->b = b+dbdx*dx;
-			corner->a = a+dadx*dx;
-			corner->s = s+dsdx*dx;
-			corner->t = t+dtdx*dx;
-			corner->w = w+dwdx*dx;
-			corner->x = XSCALE(xleft);
-			corner->y = YSCALE(yh);
-			corner->z = (u32)(z+dzdx*dx);
+			gli_lle_corner_at(&plane, XSCALE(xleft), YSCALE(yh), &corners[numCorners++]);
 		}
 		if ((!flip/* && xleft < xright*/) || (/*flip &&*/ xleft > xright))
 		{
-			corner = &corners[numCorners++];
-			corner->r = r;
-			corner->g = g;
-			corner->b = b;
-			corner->a = a;
-			corner->s = s;
-			corner->t = t;
-			corner->w = w;
-			corner->x = XSCALE(xright);
-			corner->y = YSCALE(yh);
-			corner->z = (u32)(z);
+			gli_lle_corner_at(&plane, XSCALE(xright), YSCALE(yh), &corners[numCorners++]);
 		}
 		xleft += xleft_inc*j;  xright += xright_inc*j;
-		s += dsde*j;  t += dtde*j;
-		if (w + dwde*j != 0) w += dwde*j;
-		else w += dwde*(j-1);
-		r += drde*j;  g += dgde*j;  b += dbde*j;  a += dade*j;
-		z += dzde*j;
 		/* render ... */
 	}
 
@@ -1048,36 +1026,15 @@ static void gDPLLETriangle(u32 _w1, u32 _w2, int _shade, int _texture, int _zbuf
 
 	/* if (yl-ym > 0) */
 	{
-		int dx = (xleft-xright)>>16;
 		if ((!flip && xleft <= xright) ||
 				(flip/* && xleft >= xright*/))
 		{
-			corner = &corners[numCorners++];
-			corner->r = r+drdx*dx;
-			corner->g = g+dgdx*dx;
-			corner->b = b+dbdx*dx;
-			corner->a = a+dadx*dx;
-			corner->s = s+dsdx*dx;
-			corner->t = t+dtdx*dx;
-			corner->w = w+dwdx*dx;
-			corner->x = XSCALE(xleft);
-			corner->y = YSCALE(ym);
-			corner->z = (u32)(z+dzdx*dx);
+			gli_lle_corner_at(&plane, XSCALE(xleft), YSCALE(ym), &corners[numCorners++]);
 		}
 		if ((!flip/* && xleft <= xright*/) ||
 				(/*flip && */xleft >= xright))
 		{
-			corner = &corners[numCorners++];
-			corner->r = r;
-			corner->g = g;
-			corner->b = b;
-			corner->a = a;
-			corner->s = s;
-			corner->t = t;
-			corner->w = w;
-			corner->x = XSCALE(xright);
-			corner->y = YSCALE(ym);
-			corner->z = (u32)(z);
+			gli_lle_corner_at(&plane, XSCALE(xright), YSCALE(ym), &corners[numCorners++]);
 		}
 	}
 	xleft_inc = dxldy;
@@ -1086,53 +1043,26 @@ static void gDPLLETriangle(u32 _w1, u32 _w2, int _shade, int _texture, int _zbuf
 	j = yl-ym;
 	/* j--; ? */
 	xleft += xleft_inc*j;  xright += xright_inc*j;
-	s += dsde*j;  t += dtde*j;  w += dwde*j;
-	r += drde*j;  g += dgde*j;  b += dbde*j;  a += dade*j;
-	z += dzde*j;
 
 	while (yl>ym &&
 		   !((!flip && xleft < xright+0x10000) ||
 			 (flip && xleft > xright-0x10000))) {
 		xleft -= xleft_inc;    xright -= xright_inc;
-		s -= dsde;    t -= dtde;    w -= dwde;
-		r -= drde;    g -= dgde;    b -= dbde;    a -= dade;
-		z -= dzde;
 		--j;
 		--yl;
 	}
 
 	/* render ... */
 	if (j >= 0) {
-		int dx = (xleft-xright)>>16;
 		if ((!flip && xleft <= xright) ||
 				(flip/* && xleft >= xright*/))
 		{
-			corner = &corners[numCorners++];
-			corner->r = r+drdx*dx;
-			corner->g = g+dgdx*dx;
-			corner->b = b+dbdx*dx;
-			corner->a = a+dadx*dx;
-			corner->s = s+dsdx*dx;
-			corner->t = t+dtdx*dx;
-			corner->w = w+dwdx*dx;
-			corner->x = XSCALE(xleft);
-			corner->y = YSCALE(yl);
-			corner->z = (u32)(z+dzdx*dx);
+			gli_lle_corner_at(&plane, XSCALE(xleft), YSCALE(yl), &corners[numCorners++]);
 		}
 		if ((!flip/* && xleft <= xright*/) ||
 				(/*flip &&*/ xleft >= xright))
 		{
-			corner = &corners[numCorners++];
-			corner->r = r;
-			corner->g = g;
-			corner->b = b;
-			corner->a = a;
-			corner->s = s;
-			corner->t = t;
-			corner->w = w;
-			corner->x = XSCALE(xright);
-			corner->y = YSCALE(yl);
-			corner->z = (u32)(z);
+			gli_lle_corner_at(&plane, XSCALE(xright), YSCALE(yl), &corners[numCorners++]);
 		}
 	}
 
