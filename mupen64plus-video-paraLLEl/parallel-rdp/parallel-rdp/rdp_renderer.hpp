@@ -34,6 +34,7 @@
 #include "rdp_passes.h"
 #include "rdp_queue.h"
 #include "rdp_submit.h"
+#include "rdp_sync_ring.h"
 #include <retro_atomic.h>
 
 namespace RDP
@@ -217,18 +218,13 @@ private:
 	// Whether the first flush cleared the indirect dispatch buffer
 	bool indirect_cleared = false;
 
-	struct InternalSynchronization
-	{
-		Vulkan::Fence fence;
-	};
-
 	rdp_constants_t constants = {};
 
 	rdp_stream_instance_t buffer_instances[Limits::NumSyncStates] = {};
 	void upload_streams(Vulkan::CommandBuffer &cmd);
-	InternalSynchronization internal_sync[Limits::NumSyncStates];
-	uint32_t sync_indices_needs_flush = 0;
-	unsigned buffer_instance = 0;
+	// Which of them the flush writes, and when the GPU is done with each
+	// (rdp_sync_ring.c)
+	rdp_sync_ring_t sync_ring;
 	void bind_stream_instance();
 	uint32_t base_primitive_index = 0;
 	// What was recorded since the last submission (rdp_submit.c)

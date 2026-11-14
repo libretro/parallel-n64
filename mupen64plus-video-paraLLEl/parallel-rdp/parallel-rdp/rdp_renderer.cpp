@@ -54,6 +54,8 @@ static_assert(RDP_QUEUE_MAX_PRIMITIVES == Limits::MaxPrimitives &&
 static_assert((sizeof(rdp_instance_indices_t) & 15) == 0 && sizeof(rdp_span_info_offsets_t) == 16 &&
               sizeof(rdp_span_job_t) == 8, "The shaders read other layouts.");
 
+static_assert(RDP_SYNC_RING_SIZE == Limits::NumSyncStates, "rdp_sync_ring.h rotates another number of slots.");
+
 static_assert(RDP_CAPS_MAX_WIDTH == Limits::MaxWidth && RDP_CAPS_MAX_HEIGHT == Limits::MaxHeight &&
               RDP_CAPS_TILE_WIDTH == ImplementationConstants::TileWidth &&
               RDP_CAPS_TILE_HEIGHT == ImplementationConstants::TileHeight &&
@@ -77,6 +79,7 @@ Renderer::Renderer(CommandProcessor &processor_)
 	retro_atomic_int_init(&active_submissions, 0);
 	rdp_caps_init(&caps);
 	rdp_queue_init(&queue);
+	rdp_sync_ring_init(&sync_ring);
 	rdp_pipeline_builder_clear(&pipelines);
 	// (a tile not set yet is 16 bits)
 	memset(tiles, 0, sizeof(tiles));
@@ -91,6 +94,7 @@ Renderer::~Renderer()
 	for (auto &instance : buffer_instances)
 		rdp_stream_instance_free(&instance);
 	rdp_renderer_buffers_free(&buffers);
+	rdp_sync_ring_free(&sync_ring);
 }
 
 unsigned Renderer::fitting_upscaling_factor(const Vulkan::Device &device, unsigned factor,
@@ -328,7 +332,7 @@ void Renderer::upload_streams(Vulkan::CommandBuffer &cmd)
 	const void *data[RDP_STREAM_BUFFERS];
 	VkDeviceSize bytes[RDP_STREAM_BUFFERS];
 	rdp_queue_upload_data(&queue, data, bytes);
-	rdp_stream_instance_upload(&buffer_instances[buffer_instance], device, &cmd, data, bytes);
+	rdp_stream_instance_upload(&buffer_instances[sync_ring.current], device, &cmd, data, bytes);
 }
 
 rdp_pass_resources_t Renderer::pass_resources(const rdp_pipeline_setup_t &setup)
@@ -337,7 +341,7 @@ rdp_pass_resources_t Renderer::pass_resources(const rdp_pipeline_setup_t &setup)
 	r.setup = &setup;
 	r.pipelines = &pipelines;
 	r.buffers = &buffers;
-	r.streams = &buffer_instances[buffer_instance].gpu;
+	r.streams = &buffer_instances[sync_ring.current].gpu;
 	r.rdram = rdram;
 	r.rdram_offset = rdram_offset;
 	r.rdram_size = rdram_size;
@@ -465,12 +469,7 @@ void Renderer::submit_to_queue()
 		}
 	}
 
-	for (uint32_t bit_bits = sync_indices_needs_flush, bit; Util::next_bit(bit_bits, bit);)
-	{
-		auto &sync = internal_sync[bit];
-		sync.fence = fence;
-	}
-	sync_indices_needs_flush = 0;
+	rdp_sync_ring_submitted(&sync_ring, fence.get());
 	stream.cmd.reset();
 }
 
@@ -481,7 +480,7 @@ void Renderer::reset_context()
 
 void Renderer::begin_new_context()
 {
-	buffer_instance = (buffer_instance + 1) % Limits::NumSyncStates;
+	rdp_sync_ring_advance(&sync_ring);
 	reset_context();
 	bind_stream_instance();
 }
@@ -491,17 +490,11 @@ void Renderer::begin_new_context()
 // read from them before the first primitive is added, not at the flush.
 void Renderer::bind_stream_instance()
 {
-	auto &instance = buffer_instances[buffer_instance];
-	auto &sync = internal_sync[buffer_instance];
+	auto &instance = buffer_instances[sync_ring.current];
 
-	if (sync_indices_needs_flush & (1u << buffer_instance))
+	if (rdp_sync_ring_unsubmitted(&sync_ring, sync_ring.current))
 		submit_to_queue();
-
-	if (sync.fence)
-	{
-		sync.fence->wait();
-		sync.fence.reset();
-	}
+	rdp_sync_ring_wait(&sync_ring, sync_ring.current);
 
 	// The upload buffers are host-visible, so they always map.
 	// (the state caches are copied in at the flush, so only the streams)
@@ -613,7 +606,7 @@ void Renderer::flush_queues()
 	}
 
 	// bind_stream_instance waited for this instance's last use
-	sync_indices_needs_flush |= 1u << buffer_instance;
+	rdp_sync_ring_use(&sync_ring);
 
 	ensure_command_buffer();
 
@@ -643,7 +636,7 @@ void Renderer::flush_queues()
 
 			// We're going to keep reading the same data structures, so make sure
 			// we signal fence after upscaled render pass is submitted.
-			sync_indices_needs_flush |= 1u << buffer_instance;
+			rdp_sync_ring_use(&sync_ring);
 		}
 
 		const rdp_pass_resources_t r = pass_resources(setup);

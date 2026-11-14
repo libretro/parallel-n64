@@ -271,9 +271,13 @@ static VkResult VKAPI_CALL wait_idle(VkDevice d)
 	return VK_SUCCESS;
 }
 
+/* the waits for timeline values: every one is signalled at once */
+static unsigned num_semaphore_waits;
+
 static VkResult VKAPI_CALL wait_semaphores(VkDevice d, const VkSemaphoreWaitInfo *info, uint64_t timeout)
 {
 	(void)d; (void)info; (void)timeout;
+	num_semaphore_waits++;
 	return VK_SUCCESS;
 }
 
