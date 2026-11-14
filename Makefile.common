@@ -398,6 +398,7 @@ SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/RdramWrite.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/RdramToColor.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/TriangleList.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/TriangleClip.c
+SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/LleTriangle.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/DrawerViewport.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/DrawerStates.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/DrawerRect.c

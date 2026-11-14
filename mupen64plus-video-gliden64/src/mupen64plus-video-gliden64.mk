@@ -30,6 +30,7 @@ MY_LOCAL_SRC_FILES :=                                                           
     $(SRCDIR)/RdramToColor.c                                                        \
     $(SRCDIR)/TriangleList.c                                                       \
     $(SRCDIR)/TriangleClip.c                                                       \
+    $(SRCDIR)/LleTriangle.c                                                       \
     $(SRCDIR)/DrawerViewport.c                                                     \
     $(SRCDIR)/DrawerStates.c                                                       \
     $(SRCDIR)/DrawerRect.c                                                         \

@@ -13,6 +13,7 @@
 #include "StereoFrames.h"
 #include "StereoJournal.h"
 #include "gSP.h"
+#include "gli_tri_clip.h"
 #include "gDP.h"
 #include "gli_framebuffer.h"
 
@@ -165,6 +166,8 @@ void _runDisplayList(void)
 
 		if ((uc_start != RSP.uc_start) || (uc_dstart != RSP.uc_dstart))
 			gli_gSPLoadUcodeEx(uc_start, uc_dstart, uc_dsize);
+		/* the microcode's data segment, the clip ratio in it, comes with every task */
+		gSP.clipRatio = gli_tri_clip_default_ratio(gli_GBI->type);
 
 		gli_depth_set_cleared(false);
 

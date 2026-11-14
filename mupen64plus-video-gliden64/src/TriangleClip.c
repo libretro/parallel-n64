@@ -6,10 +6,10 @@
 #include "gli_tri_clip.h"
 
 /* What the RSP clips a triangle against: the near plane, z >= -w, unless
- * the microcode has no near clipping (NoN), and the four sides of the
- * guard band, the screen scaled by the clip ratio, which also keep every
- * vertex in front of the eye */
-#define NUM_PLANES 5
+ * the microcode has no near clipping (NoN); the far plane, z <= w; and the
+ * four sides of the guard band, the screen scaled by the clip ratio, which
+ * also keep every vertex in front of the eye */
+#define NUM_PLANES 6
 
 /* x to t: every attribute of a vertex is a float ahead of modify */
 #define NUM_FLOATS (offsetof(SPVertex, modify) / sizeof(f32))
@@ -23,9 +23,10 @@ static f32 plane_distance(const SPVertex *_v, u32 _plane, f32 _ratio)
 {
 	switch (_plane) {
 	case 0: return gli_GBI->NoN ? 1.0f : _v->z + _v->w;
-	case 1: return _ratio * _v->w - _v->x;
-	case 2: return _ratio * _v->w + _v->x;
-	case 3: return _ratio * _v->w - _v->y;
+	case 1: return _v->w - _v->z;
+	case 2: return _ratio * _v->w - _v->x;
+	case 3: return _ratio * _v->w + _v->x;
+	case 4: return _ratio * _v->w - _v->y;
 	default: return _ratio * _v->w + _v->y;
 	}
 }
@@ -55,9 +56,15 @@ u32 gli_tri_clip_vertex_outside(const SPVertex *_v)
 	return 0;
 }
 
+u32 gli_tri_clip_default_ratio(u32 _type)
+{
+	/* F3D builds load 1, the later microcodes 2; the game may set its own */
+	return _type == F3D || _type == F3DGOLDEN ? 1 : 2;
+}
+
 u32 gli_tri_clip(const SPVertex *_vertices, const u16 *_elements, u32 _count, SPVertex *_out)
 {
-	/* a triangle against five planes has at most eight corners */
+	/* a triangle against six planes has at most nine corners */
 	SPVertex poly[2][3 + NUM_PLANES];
 	const f32 r = guard_ratio();
 	u32 written = 0;

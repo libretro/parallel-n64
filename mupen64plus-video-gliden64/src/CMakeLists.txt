@@ -27,6 +27,7 @@ set(GLideN64_SOURCES
   RdramToColor.c
   TriangleList.c
   TriangleClip.c
+  LleTriangle.c
   DrawerViewport.c
   DrawerStates.c
   DrawerRect.c

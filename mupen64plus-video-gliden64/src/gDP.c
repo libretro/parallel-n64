@@ -14,6 +14,7 @@
 #include "Config.h"
 #include "TextureFilterHandler.h"
 #include "gli_drawer.h"
+#include "gli_lle_tri.h"
 #include "gli_framebuffer.h"
 
 /* b only if it is strictly less/greater, as std::min and std::max choose */
@@ -825,8 +826,14 @@ static void gDPLLETriangle(u32 _w1, u32 _w2, int _shade, int _texture, int _zbuf
 {
 	u32 tile;
 	gDPTile *textureTileOrg[2];
-	SPVertex * vtx0;
+	/* an RDP triangle is at most eight corners as a strip */
+	gli_lle_corner corners[8];
+	gli_lle_corner * corner;
+	u32 numCorners = 0;
+	gli_lle_mode mode;
 	SPVertex * vtx;
+	u32 numVtx;
+	int list;
 	int j;
 	int xleft;
 	int xright;
@@ -978,17 +985,7 @@ static void gDPLLETriangle(u32 _w1, u32 _w2, int _shade, int _texture, int _zbuf
 
 #define XSCALE(x) ((float)(x)/(1<<18))
 #define YSCALE(y) ((float)(y)/(1<<2))
-#define ZSCALE(z) ((gDP.otherMode.depthSource == G_ZS_PRIM)? gDP.primDepth.z : (float)((u32)(z))/0xffff0000)
 #define PERSP_EN (gDP.otherMode.texturePersp != 0)
-#define WSCALE(z) 1.0f/(PERSP_EN? ((float)((u32)(z) + 0x10000)/0xffff0000) : 1.0f)
-#define CSCALE(c) _FIXED2FLOATCOLOR((((c)>0x3ff0000? 0x3ff0000:((c)<0? 0 : (c)))>>18), 8)
-#define _PERSP(w) ( w )
-#define PERSP(s, w) ( ((s64)(s) << 20) / (_PERSP(w)? _PERSP(w):1) )
-#define SSCALE(s, _w) (PERSP_EN? (float)(PERSP(s, _w))/(1 << 10) : (float)(s)/(1<<21))
-#define TSCALE(s, w) (PERSP_EN? (float)(PERSP(s, w))/(1 << 10) : (float)(s)/(1<<21))
-
-	vtx0 = gli_drawer_dma_vertices(16);
-	vtx = vtx0;
 
 	xleft = xm;
 	xright = xh;
@@ -1011,39 +1008,31 @@ static void gDPLLETriangle(u32 _w1, u32 _w2, int _shade, int _texture, int _zbuf
 		int dx = (xleft-xright)>>16;
 		if ((!flip && xleft < xright) || (flip/* && xleft > xright*/))
 		{
-			if (_shade != 0) {
-				vtx->r = CSCALE(r+drdx*dx);
-				vtx->g = CSCALE(g+dgdx*dx);
-				vtx->b = CSCALE(b+dbdx*dx);
-				vtx->a = CSCALE(a+dadx*dx);
-			}
-			if (_texture != 0) {
-				vtx->s = SSCALE(s+dsdx*dx, w+dwdx*dx);
-				vtx->t = TSCALE(t+dtdx*dx, w+dwdx*dx);
-			}
-			vtx->x = XSCALE(xleft);
-			vtx->y = YSCALE(yh);
-			vtx->z = ZSCALE(z+dzdx*dx);
-			vtx->w = WSCALE(w+dwdx*dx);
-			++vtx;
+			corner = &corners[numCorners++];
+			corner->r = r+drdx*dx;
+			corner->g = g+dgdx*dx;
+			corner->b = b+dbdx*dx;
+			corner->a = a+dadx*dx;
+			corner->s = s+dsdx*dx;
+			corner->t = t+dtdx*dx;
+			corner->w = w+dwdx*dx;
+			corner->x = XSCALE(xleft);
+			corner->y = YSCALE(yh);
+			corner->z = (u32)(z+dzdx*dx);
 		}
 		if ((!flip/* && xleft < xright*/) || (/*flip &&*/ xleft > xright))
 		{
-			if (_shade != 0) {
-				vtx->r = CSCALE(r);
-				vtx->g = CSCALE(g);
-				vtx->b = CSCALE(b);
-				vtx->a = CSCALE(a);
-			}
-			if (_texture != 0) {
-				vtx->s = SSCALE(s, w);
-				vtx->t = TSCALE(t, w);
-			}
-			vtx->x = XSCALE(xright);
-			vtx->y = YSCALE(yh);
-			vtx->z = ZSCALE(z);
-			vtx->w = WSCALE(w);
-			++vtx;
+			corner = &corners[numCorners++];
+			corner->r = r;
+			corner->g = g;
+			corner->b = b;
+			corner->a = a;
+			corner->s = s;
+			corner->t = t;
+			corner->w = w;
+			corner->x = XSCALE(xright);
+			corner->y = YSCALE(yh);
+			corner->z = (u32)(z);
 		}
 		xleft += xleft_inc*j;  xright += xright_inc*j;
 		s += dsde*j;  t += dtde*j;
@@ -1063,40 +1052,32 @@ static void gDPLLETriangle(u32 _w1, u32 _w2, int _shade, int _texture, int _zbuf
 		if ((!flip && xleft <= xright) ||
 				(flip/* && xleft >= xright*/))
 		{
-			if (_shade != 0) {
-				vtx->r = CSCALE(r+drdx*dx);
-				vtx->g = CSCALE(g+dgdx*dx);
-				vtx->b = CSCALE(b+dbdx*dx);
-				vtx->a = CSCALE(a+dadx*dx);
-			}
-			if (_texture != 0) {
-				vtx->s = SSCALE(s+dsdx*dx, w+dwdx*dx);
-				vtx->t = TSCALE(t+dtdx*dx, w+dwdx*dx);
-			}
-			vtx->x = XSCALE(xleft);
-			vtx->y = YSCALE(ym);
-			vtx->z = ZSCALE(z+dzdx*dx);
-			vtx->w = WSCALE(w+dwdx*dx);
-			++vtx;
+			corner = &corners[numCorners++];
+			corner->r = r+drdx*dx;
+			corner->g = g+dgdx*dx;
+			corner->b = b+dbdx*dx;
+			corner->a = a+dadx*dx;
+			corner->s = s+dsdx*dx;
+			corner->t = t+dtdx*dx;
+			corner->w = w+dwdx*dx;
+			corner->x = XSCALE(xleft);
+			corner->y = YSCALE(ym);
+			corner->z = (u32)(z+dzdx*dx);
 		}
 		if ((!flip/* && xleft <= xright*/) ||
 				(/*flip && */xleft >= xright))
 		{
-			if (_shade != 0) {
-				vtx->r = CSCALE(r);
-				vtx->g = CSCALE(g);
-				vtx->b = CSCALE(b);
-				vtx->a = CSCALE(a);
-			}
-			if (_texture != 0) {
-				vtx->s = SSCALE(s, w);
-				vtx->t = TSCALE(t, w);
-			}
-			vtx->x = XSCALE(xright);
-			vtx->y = YSCALE(ym);
-			vtx->z = ZSCALE(z);
-			vtx->w = WSCALE(w);
-			++vtx;
+			corner = &corners[numCorners++];
+			corner->r = r;
+			corner->g = g;
+			corner->b = b;
+			corner->a = a;
+			corner->s = s;
+			corner->t = t;
+			corner->w = w;
+			corner->x = XSCALE(xright);
+			corner->y = YSCALE(ym);
+			corner->z = (u32)(z);
 		}
 	}
 	xleft_inc = dxldy;
@@ -1126,40 +1107,32 @@ static void gDPLLETriangle(u32 _w1, u32 _w2, int _shade, int _texture, int _zbuf
 		if ((!flip && xleft <= xright) ||
 				(flip/* && xleft >= xright*/))
 		{
-			if (_shade != 0) {
-				vtx->r = CSCALE(r+drdx*dx);
-				vtx->g = CSCALE(g+dgdx*dx);
-				vtx->b = CSCALE(b+dbdx*dx);
-				vtx->a = CSCALE(a+dadx*dx);
-			}
-			if (_texture != 0) {
-				vtx->s = SSCALE(s+dsdx*dx, w+dwdx*dx);
-				vtx->t = TSCALE(t+dtdx*dx, w+dwdx*dx);
-			}
-			vtx->x = XSCALE(xleft);
-			vtx->y = YSCALE(yl);
-			vtx->z = ZSCALE(z+dzdx*dx);
-			vtx->w = WSCALE(w+dwdx*dx);
-			++vtx;
+			corner = &corners[numCorners++];
+			corner->r = r+drdx*dx;
+			corner->g = g+dgdx*dx;
+			corner->b = b+dbdx*dx;
+			corner->a = a+dadx*dx;
+			corner->s = s+dsdx*dx;
+			corner->t = t+dtdx*dx;
+			corner->w = w+dwdx*dx;
+			corner->x = XSCALE(xleft);
+			corner->y = YSCALE(yl);
+			corner->z = (u32)(z+dzdx*dx);
 		}
 		if ((!flip/* && xleft <= xright*/) ||
 				(/*flip &&*/ xleft >= xright))
 		{
-			if (_shade != 0) {
-				vtx->r = CSCALE(r);
-				vtx->g = CSCALE(g);
-				vtx->b = CSCALE(b);
-				vtx->a = CSCALE(a);
-			}
-			if (_texture != 0) {
-				vtx->s = SSCALE(s, w);
-				vtx->t = TSCALE(t, w);
-			}
-			vtx->x = XSCALE(xright);
-			vtx->y = YSCALE(yl);
-			vtx->z = ZSCALE(z);
-			vtx->w = WSCALE(w);
-			++vtx;
+			corner = &corners[numCorners++];
+			corner->r = r;
+			corner->g = g;
+			corner->b = b;
+			corner->a = a;
+			corner->s = s;
+			corner->t = t;
+			corner->w = w;
+			corner->x = XSCALE(xright);
+			corner->y = YSCALE(yl);
+			corner->z = (u32)(z);
 		}
 	}
 
@@ -1168,7 +1141,17 @@ static void gDPLLETriangle(u32 _w1, u32 _w2, int _shade, int _texture, int _zbuf
 	if (_zbuffer != 0)
 		gSP.geometryMode |= G_ZBUFFER;
 
-	gli_drawer_draw_screen_strip((u32)(vtx - vtx0));
+	mode.shade = _shade != 0;
+	mode.texture = _texture != 0;
+	mode.persp = PERSP_EN;
+	mode.zprim = gDP.otherMode.depthSource == G_ZS_PRIM;
+	mode.primZ = gDP.primDepth.z;
+	vtx = gli_drawer_dma_vertices(GLI_LLE_MAX_VERTICES(8));
+	numVtx = gli_lle_vertices(corners, numCorners, &mode, vtx, &list);
+	if (list)
+		gli_drawer_draw_screen_triangles(numVtx);
+	else
+		gli_drawer_draw_screen_strip(numVtx);
 	gSP.textureTile[0] = textureTileOrg[0];
 	gSP.textureTile[1] = textureTileOrg[1];
 

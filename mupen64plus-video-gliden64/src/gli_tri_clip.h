@@ -9,17 +9,21 @@ extern "C" {
 
 struct SPVertex;
 
-/* The RSP clips a triangle reaching past the near plane or the guard band
- * into a polygon of new vertices, and the RDP interpolates its shade in
- * screen space. Clipped by the GPU instead, shade interpolated in screen
- * space comes out differently: across a vertex behind the eye it has no
- * screen position at all. */
+/* The RSP clips a triangle reaching past the near or far plane or the
+ * guard band into a polygon of new vertices, and the RDP interpolates its
+ * shade in screen space. Clipped by the GPU instead, shade interpolated in
+ * screen space comes out differently: across a vertex behind the eye it
+ * has no screen position at all. */
 
 /* Whether vertex @_v, in clip space, is outside what the RSP clips to */
 u32 gli_tri_clip_vertex_outside(const struct SPVertex *_v);
 
+/* The clip ratio a task of microcode @_type starts with: the microcode's
+ * data segment, which holds it, is loaded with every task */
+u32 gli_tri_clip_default_ratio(u32 _type);
+
 /* The most triangles one triangle is clipped into */
-#define GLI_TRI_CLIP_MAX 6
+#define GLI_TRI_CLIP_MAX 7
 
 /* @_count indices (@_elements, or NULL for vertices in order) into
  * @_vertices, as triangles, clipped as the RSP clips them into @_out as a

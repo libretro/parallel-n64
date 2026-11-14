@@ -11,11 +11,18 @@
  * vertex behind the eye it has no screen position at all.
  *
  * gli_tri_clip is held to that: every vertex it writes is inside the near
- * plane, in front of the eye and inside the guard band, with every
- * attribute what the triangle has at that point of clip space; triangles
- * inside pass as they are, wound as before; a microcode without near
- * clipping is not clipped there; screen space vertices pass untouched.
- * The triangles are GoldenEye's, as the frigate level loads them.
+ * and far planes, in front of the eye and inside the guard band, with
+ * every attribute what the triangle has at that point of clip space;
+ * triangles inside pass as they are, wound as before; a microcode without
+ * near clipping is not clipped there; screen space vertices pass
+ * untouched. The triangles are GoldenEye's, as the frigate level loads
+ * them.
+ *
+ * The far plane, z <= w, is one of the RSP's too: a hull triangle reaching
+ * past it at the horizon was left whole. And each task loads the
+ * microcode's data segment, the clip ratio in it: 1 for F3D, 2 for the
+ * later microcodes, until the game sets its own. GLideN64 kept the last
+ * ratio set across tasks.
  */
 #include <math.h>
 #include <stdarg.h>
@@ -137,7 +144,7 @@ static void check_clipped(const char *name, const SPVertex *tri, u32 near)
 
 int main(void)
 {
-	SPVertex hull[3], side[3], boat[3], wide[3], inside[3], nearTri[3], eyeTri[3];
+	SPVertex hull[3], side[3], boat[3], wide[3], inside[3], nearTri[3], eyeTri[3], farTri[3], frigate[3];
 	SPVertex out[3 * GLI_TRI_CLIP_MAX];
 	static const u16 elements[6] = { 2, 1, 0, 0, 1, 2 };
 	u32 n, i;
@@ -168,6 +175,14 @@ int main(void)
 	eyeTri[0] = vtx(0.5f, 0.5f, 10.0f, -2.0f, 1.0f, 0.0f, 0.0f);
 	eyeTri[1] = nearTri[1];
 	eyeTri[2] = nearTri[2];
+	/* past the far plane only */
+	farTri[0] = vtx(1.0f, 1.0f, 30.0f, 12.0f, 1.0f, 0.0f, 0.0f);
+	farTri[1] = nearTri[1];
+	farTri[2] = nearTri[2];
+	/* GoldenEye's hull at the horizon, past the guard band only */
+	frigate[0] = vtx(1643.79f, 2595.94f, 2787.04f, 2808.63f, 0.88f, 75.5625f, 31.875f);
+	frigate[1] = vtx(471.742f, -150.748f, 493.952f, 522.478f, 0.88f, 131.25f, -0.625f);
+	frigate[2] = vtx(471.001f, 836.18f, 263.465f, 292.633f, 0.88f, 131.312f, 30.9688f);
 
 	gSP.clipRatio = 2;
 	ucode.NoN = false;
@@ -176,9 +191,19 @@ int main(void)
 	check_clipped("side", side, 1);
 	check_clipped("boat", boat, 1);
 	check_clipped("wide", wide, 1);
+	check_clipped("frigate", frigate, 1);
+	check(gli_tri_clip_vertex_outside(&farTri[0]), "far: vertex past the far plane called inside");
+	check_clipped("far", farTri, 1);
 	gSP.clipRatio = 1;
 	check_clipped("wide, clip ratio 1", wide, 1);
+	check_clipped("frigate, clip ratio 1", frigate, 1);
 	gSP.clipRatio = 2;
+
+	/* the ratio each task starts with */
+	check(gli_tri_clip_default_ratio(F3D) == 1 && gli_tri_clip_default_ratio(F3DGOLDEN) == 1,
+		"F3D tasks start with a clip ratio other than 1");
+	check(gli_tri_clip_default_ratio(F3DEX) == 2 && gli_tri_clip_default_ratio(F3DEX2) == 2,
+		"F3DEX tasks start with a clip ratio other than 2");
 
 	/* inside: as it is, in order, through the indices too */
 	n = gli_tri_clip(inside, elements, 6, out);
@@ -200,6 +225,7 @@ int main(void)
 	check(n == 3 && memcmp(out, nearTri, sizeof(nearTri)) == 0, "NoN: clipped (%u vertices)", n);
 	check_clipped("NoN hull", hull, 0);
 	check_clipped("NoN behind the eye", eyeTri, 0);
+	check_clipped("NoN far", farTri, 0);
 	ucode.NoN = false;
 
 	/* screen space vertices pass as they are */
