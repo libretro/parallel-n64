@@ -137,6 +137,14 @@ CommandProcessor::CommandProcessor(Vulkan::Device &device_, void *rdram_ptr,
 	if (!rdram)
 		LOGE("Failed to allocate RDRAM.\n");
 
+	// The timeline worker's nodes, so that none is made mid-game: the waits
+	// and timeline values of the submissions in flight, and where the GPU's
+	// writes are read back, a few readbacks of the most copies one can have
+	// (a run of pages each, so half the pages, rounded up).
+	if (!rdp_timeline_reserve(&timeline, 64, is_host_coherent ? 0 : 4,
+	                          unsigned((rdram_size / RDP_RDRAM_PAGE_SIZE + 1) / 2 + 1)))
+		LOGE("Failed to reserve the timeline worker's nodes.\n");
+
 	// Without 8-bit SSBO access the shaders keep hidden RDRAM as one 16-bit
 	// element per entry, so neighbouring pixels never share a word.
 	no_storage_8bit = !device.get_device_features().storage_8bit_features.storageBuffer8BitAccess;

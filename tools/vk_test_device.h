@@ -8,6 +8,8 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <retro_atomic.h>
+#include <retro_timers.h>
 #include "device.h"
 
 #define DEV ((VkDevice)(size_t)1)
@@ -271,12 +273,16 @@ static VkResult VKAPI_CALL wait_idle(VkDevice d)
 	return VK_SUCCESS;
 }
 
-/* the waits for timeline values: every one is signalled at once */
+/* the waits for timeline values: every one is signalled at once, or once
+ * a test lets go of @hold_semaphore_waits */
 static unsigned num_semaphore_waits;
+static retro_atomic_int_t hold_semaphore_waits;
 
 static VkResult VKAPI_CALL wait_semaphores(VkDevice d, const VkSemaphoreWaitInfo *info, uint64_t timeout)
 {
 	(void)d; (void)info; (void)timeout;
+	while (retro_atomic_load_acquire_int(&hold_semaphore_waits))
+		retro_sleep(1);
 	num_semaphore_waits++;
 	return VK_SUCCESS;
 }

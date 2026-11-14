@@ -113,34 +113,72 @@ void rdp_timeline_free(rdp_timeline_t *t)
 	t->spare = NULL;
 }
 
-/* A node with room for @n copies: one handed back, or failing that a new
- * one */
-static timeline_node_t *take_node(rdp_timeline_t *t, unsigned n)
+static timeline_node_t *new_node(unsigned capacity)
 {
-	unsigned pass, capacity;
+	timeline_node_t *node = (timeline_node_t *)malloc(sizeof(*node) + capacity * sizeof(rdp_coherency_copy_t));
+	if (node)
+	{
+		memset(node, 0, sizeof(*node));
+		node->capacity = capacity;
+	}
+	return node;
+}
+
+bool rdp_timeline_reserve(rdp_timeline_t *t, unsigned small, unsigned big, unsigned big_copies)
+{
+	unsigned i;
+	for (i = 0; i < small + big; i++)
+	{
+		timeline_node_t *node = new_node(i < small ? 8 : big_copies);
+		if (!node)
+			return false;
+		node->node.next = t->spare;
+		t->spare = &node->node;
+	}
+	return true;
+}
+
+/* The smallest node handed back with room for @n copies, unlinked */
+static timeline_node_t *best_fit(rdp_timeline_t *t, unsigned n)
+{
+	mpsc_stack_node_t **link, **best = NULL;
 	timeline_node_t *node;
 
-	for (pass = 0; pass < 2; pass++)
+	for (link = &t->spare; *link; link = &(*link)->next)
 	{
-		mpsc_stack_node_t **link, *back, *tail;
-		for (link = &t->spare; *link; link = &(*link)->next)
-		{
-			node = (timeline_node_t *)*link;
-			if (node->capacity >= n)
-			{
-				*link = node->node.next;
-				return node;
-			}
-		}
-		/* what came back since, in front of the rest */
-		if (!(back = mpsc_stack_drain(&t->returned)))
-			break;
+		node = (timeline_node_t *)*link;
+		if (node->capacity >= n && (!best || node->capacity < ((timeline_node_t *)*best)->capacity))
+			best = link;
+	}
+	if (!best)
+		return NULL;
+	node = (timeline_node_t *)*best;
+	*best = node->node.next;
+	return node;
+}
+
+/* A node with room for @n copies: one handed back, or failing that (more
+ * in flight than reserved) a new one */
+static timeline_node_t *take_node(rdp_timeline_t *t, unsigned n)
+{
+	mpsc_stack_node_t *back, *tail;
+	timeline_node_t *node;
+	unsigned capacity;
+
+	if ((node = best_fit(t, n)))
+		return node;
+	/* what came back since */
+	if ((back = mpsc_stack_drain(&t->returned)))
+	{
 		for (tail = back; tail->next; tail = tail->next)
 			;
 		tail->next = t->spare;
 		t->spare = back;
+		if ((node = best_fit(t, n)))
+			return node;
 	}
 
+	t->grown++;
 	for (capacity = 8; capacity < n; capacity <<= 1)
 		;
 	node = (timeline_node_t *)granite_heap_new(sizeof(*node) + capacity * sizeof(rdp_coherency_copy_t));

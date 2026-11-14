@@ -6,8 +6,9 @@
  * mask (dropping each page's pending write counts) and publishes its
  * timeline value; the fence is let go after. A timeline value is reached
  * once passed, modulo wrap. The copies are the worker's own once queued:
- * the producer may reuse its storage at once. Nodes come back and are
- * used again; one too small for an op's copies is not. */
+ * the producer may reuse its storage at once. The nodes reserved at load
+ * are used again, the smallest that fits first, and none is made while
+ * they last; past them one is, never a wait. */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -45,6 +46,28 @@ static unsigned list_length(mpsc_stack_node_t *n)
 	return count;
 }
 
+/* The worker hands a node back just after publishing its value: until
+ * @total are back, what came back is taken into the spare list (as an
+ * enqueue would) */
+static void all_back(rdp_timeline_t *t, unsigned total)
+{
+	unsigned tries;
+	for (tries = 0; tries < 10000000; tries++)
+	{
+		mpsc_stack_node_t *back = mpsc_stack_drain(&t->returned), *tail;
+		if (back)
+		{
+			for (tail = back; tail->next; tail = tail->next)
+				;
+			tail->next = t->spare;
+			t->spare = back;
+		}
+		if (list_length(t->spare) == total)
+			return;
+	}
+	CHECK(0, "the nodes came back");
+}
+
 int main(void)
 {
 	static uint8_t rdram[4096];
@@ -62,6 +85,7 @@ int main(void)
 	granite_device_init(&dev);
 	granite_device_set_context(&dev, &context);
 	CHECK(rdp_timeline_init(&t, &dev), "started");
+	CHECK(rdp_timeline_reserve(&t, 2, 1, 32), "reserved");
 
 	/* a value */
 	memset(&op, 0, sizeof(op));
@@ -133,19 +157,29 @@ int main(void)
 	      retro_atomic_load_acquire_int(&counters[2]) == 1 && retro_atomic_load_acquire_int(&counters[3]) == 2,
 	      "each page's pending writes dropped");
 
-	/* nodes come back and are used again: the worker hands a node back
-	 * just after publishing its value, so the next op may find it not
-	 * back yet, but never more than one besides */
+	/* the waits on small nodes, the readback of 20 copies on the big one:
+	 * none made */
+	all_back(&t, 3);
+	CHECK(t.grown == 0, "the reserved so far");
 	for (i = 0; i < 10; i++)
 	{
 		memset(&op, 0, sizeof(op));
 		op.timeline_value = 8 + i;
 		rdp_timeline_enqueue(&t, &op);
 		rdp_timeline_wait(&t, 8 + i);
+		all_back(&t, 3);
 	}
-	CHECK(list_length(t.spare) + list_length((mpsc_stack_node_t *)retro_atomic_load_acquire_ptr(&t.returned.head)) <= 2,
-	      "nodes used again");
-	/* 20 copies: a new node, the others too small */
+	/* two waits in flight at once: both small nodes, the big one left */
+	memset(&op, 0, sizeof(op));
+	fence = submit();
+	op.fence = fence;
+	op.timeline_value = 50;
+	rdp_timeline_enqueue(&t, &op);
+	memset(&op, 0, sizeof(op));
+	op.timeline_value = 51;
+	rdp_timeline_enqueue(&t, &op);
+	rdp_timeline_wait(&t, 51);
+	all_back(&t, 3);
 	memset(copies, 0, sizeof(copies));
 	memset(&op, 0, sizeof(op));
 	op.copies = copies;
@@ -153,6 +187,62 @@ int main(void)
 	op.timeline_value = 100;
 	rdp_timeline_enqueue(&t, &op);
 	rdp_timeline_wait(&t, 100);
+	CHECK(t.grown == 0, "none made while the reserved last");
+	all_back(&t, 3);
+	/* With the worker held in a wait: a wait, a timeline value and a
+	 * readback queued behind it take the two small nodes and the big one,
+	 * the smallest that fits each. And what came back is taken again:
+	 * the worker hands the three back, and three more need them. */
+	retro_atomic_store_release_int(&hold_semaphore_waits, 1);
+	memset(&op, 0, sizeof(op));
+	op.fence = submit();
+	op.timeline_value = 200;
+	rdp_timeline_enqueue(&t, &op);
+	memset(&op, 0, sizeof(op));
+	op.timeline_value = 201;
+	rdp_timeline_enqueue(&t, &op);
+	memset(&op, 0, sizeof(op));
+	op.copies = copies;
+	op.num_copies = 20;
+	op.timeline_value = 202;
+	rdp_timeline_enqueue(&t, &op);
+	retro_atomic_store_release_int(&hold_semaphore_waits, 0);
+	rdp_timeline_wait(&t, 202);
+	CHECK(t.grown == 0, "the smallest node that fits");
+	while (list_length(t.spare) + list_length((mpsc_stack_node_t *)retro_atomic_load_acquire_ptr(&t.returned.head)) < 3)
+		retro_sleep(1);
+	CHECK(t.spare == NULL, "all three handed back, none spare");
+	retro_atomic_store_release_int(&hold_semaphore_waits, 1);
+	memset(&op, 0, sizeof(op));
+	op.fence = submit();
+	op.timeline_value = 203;
+	rdp_timeline_enqueue(&t, &op);
+	memset(&op, 0, sizeof(op));
+	op.timeline_value = 204;
+	rdp_timeline_enqueue(&t, &op);
+	memset(&op, 0, sizeof(op));
+	op.copies = copies;
+	op.num_copies = 20;
+	op.timeline_value = 205;
+	rdp_timeline_enqueue(&t, &op);
+	retro_atomic_store_release_int(&hold_semaphore_waits, 0);
+	rdp_timeline_wait(&t, 205);
+	CHECK(t.grown == 0, "what came back taken again");
+	all_back(&t, 3);
+
+	/* 40 copies: more than any reserved holds */
+	memset(&op, 0, sizeof(op));
+	op.copies = copies;
+	op.num_copies = 20;
+	op.timeline_value = 101;
+	{
+		static rdp_coherency_copy_t many[40];
+		op.copies = many;
+		op.num_copies = 40;
+		rdp_timeline_enqueue(&t, &op);
+	}
+	rdp_timeline_wait(&t, 101);
+	CHECK(t.grown == 1, "one made, past them");
 
 	/* wrap */
 	retro_atomic_store_release_size(&t.done, (size_t)-2);

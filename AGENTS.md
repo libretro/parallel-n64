@@ -51,6 +51,13 @@ Not there yet, in GLideN64. These are debts, not precedent:
 2. The texture cache allocates a new entry and GPU texture on each miss, and a
    decode too big for its scratch buffer uses the heap (`Textures.cpp`).
 
+In paraLLEl-RDP, one fallback stays, by choice: the timeline worker's nodes are
+reserved at load (`rdp_timeline_reserve`: 64 for waits and timeline values, 4
+for readbacks of the most copies one can have), and only with more in flight
+than that is one made (`rdp_timeline_t.grown`). What would bound it is the RDP
+thread waiting for the worker, which the frame path forbids; a node made is
+the lesser cost. Raise the reservation rather than add a wait.
+
 ## Method: the speed of light
 
 Compare a path with what the hardware must physically do, not with the last
@@ -80,6 +87,10 @@ thread, the RSP JIT and the angrylion workers (`parallel_al.c`). On it:
 - No file I/O, no logging, no profiling counters in release builds.
 - No lock of any kind, no sleep, no device or queue idle.
 - No wall-clock reads to decide anything. Host time never drives guest time.
+  One host-side exception, named: paraLLEl-RDP submits recorded work to the GPU
+  1 ms after the last submission (`rdp_submit_due`), so the GPU is not left idle
+  between batches. It decides only when work reaches the GPU, never what is
+  drawn, and the frames are the same without it.
 - The emulation thread never waits on a worker. The exceptions are the guest
   dependencies below, and they are named, not added to.
 

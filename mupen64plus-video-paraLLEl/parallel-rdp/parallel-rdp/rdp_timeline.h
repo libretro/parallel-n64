@@ -69,6 +69,8 @@ typedef struct rdp_timeline
 	 * from them */
 	mpsc_stack_t returned;
 	mpsc_stack_node_t *spare;
+	/* nodes made after load, with more in flight than reserved */
+	unsigned grown;
 } rdp_timeline_t;
 
 /* Starts the worker. False when it does not start. */
@@ -77,9 +79,14 @@ bool rdp_timeline_init(rdp_timeline_t *t, granite_device_t *device);
 /* Finishes what is queued, stops the worker and frees its nodes */
 void rdp_timeline_free(rdp_timeline_t *t);
 
-/* Queues @op; the worker takes over its fence reference. A node with room
- * for its copies is one handed back, or a new one the first time that
- * many copies are queued at once. One thread only. */
+/* The nodes made at load: @small of room for 8 copies, for the waits and
+ * timeline values, and @big of room for @big_copies, a readback's most
+ * (one copy per run of pages). False when out of memory. */
+bool rdp_timeline_reserve(rdp_timeline_t *t, unsigned small, unsigned big, unsigned big_copies);
+
+/* Queues @op; the worker takes over its fence reference. Its node is the
+ * smallest handed back with room for its copies. Only with more ops in
+ * flight than the nodes reserved is one made. One thread only. */
 void rdp_timeline_enqueue(rdp_timeline_t *t, const rdp_timeline_op_t *op);
 
 /* Whether the worker has passed timeline value @value */
