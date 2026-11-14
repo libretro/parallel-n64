@@ -29,6 +29,7 @@
 #include "shader_bank.h"
 #include "rdram_coherency.h"
 #include "pipeline_pending.h"
+#include "renderer_caps.h"
 #include <retro_atomic.h>
 
 namespace RDP
@@ -189,7 +190,6 @@ private:
 	Vulkan::Buffer *tmem = nullptr;
 	const ShaderBank *shader_bank = nullptr;
 
-	bool init_caps();
 	void init_blender_lut();
 	void init_buffers(const RendererOptions &options);
 	bool init_internal_upscaling_factor(const RendererOptions &options);
@@ -354,8 +354,6 @@ private:
 
 	SpanInfoOffsets allocate_span_jobs(const TriangleSetup &setup);
 
-	bool can_support_minimum_subgroup_size(unsigned size) const;
-	bool supports_subgroup_size_control(uint32_t minimum_size, uint32_t maximum_size) const;
 
 	// The compute pipelines queued to the worker, and the jobs carrying
 	// them (pipeline_nodes): both allocated before the first frame.
@@ -364,26 +362,7 @@ private:
 	void *pipeline_nodes = nullptr;
 
 
-	struct Caps
-	{
-		bool force_sync = false;
-		bool ubershader = false;
-		bool supports_small_integer_arithmetic = false;
-		bool no_storage_8bit = false;
-		bool subgroup_tile_binning = false;
-		bool subgroup_depth_blend = false;
-		bool super_sample_readback = false;
-		bool super_sample_readback_dither = false;
-		unsigned upscaling = 1;
-		unsigned max_num_tile_instances = Limits::MaxTileInstances;
-		// static raster states per flush: as many as the work list's
-		// per-state slices that fit in one storage buffer binding
-		unsigned max_static_raster_states = Limits::MaxStaticRasterizationStates;
-		unsigned max_tiles_x = ImplementationConstants::MaxTilesX;
-		unsigned max_tiles_y = ImplementationConstants::MaxTilesY;
-		unsigned max_width = Limits::MaxWidth;
-		unsigned max_height = Limits::MaxHeight;
-	} caps;
+	rdp_renderer_caps_t caps;
 
 	// Background compute pipeline compiles (rdp_worker.c).
 	rdp_worker_t *pipeline_worker = nullptr;

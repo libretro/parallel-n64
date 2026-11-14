@@ -33,6 +33,15 @@
 
 namespace RDP
 {
+static_assert(RDP_CAPS_MAX_WIDTH == Limits::MaxWidth && RDP_CAPS_MAX_HEIGHT == Limits::MaxHeight &&
+              RDP_CAPS_TILE_WIDTH == ImplementationConstants::TileWidth &&
+              RDP_CAPS_TILE_HEIGHT == ImplementationConstants::TileHeight &&
+              RDP_CAPS_MAX_PRIMITIVES == Limits::MaxPrimitives &&
+              RDP_CAPS_MAX_STATIC_RASTER_STATES == Limits::MaxStaticRasterizationStates &&
+              RDP_CAPS_MAX_TILE_INSTANCES == Limits::MaxTileInstances &&
+              RDP_CAPS_TILE_RASTER_WORK_SIZE == sizeof(TileRasterWork),
+              "renderer_caps.h sizes buffers for other limits.");
+
 static size_t div_round_up(size_t a, size_t b)
 {
 	return (a + b - 1) / b;
@@ -61,6 +70,7 @@ Renderer::Renderer(CommandProcessor &processor_)
 	: processor(processor_)
 {
 	retro_atomic_int_init(&active_submissions, 0);
+	rdp_caps_init(&caps);
 	// (a tile not set yet is 16 bits)
 	memset(tiles, 0, sizeof(tiles));
 	for (auto &tile : tiles)
@@ -81,49 +91,13 @@ Renderer::~Renderer()
 	rdp_coherency_free(&incoherent);
 }
 
-// maxStorageBufferRange; PARALLEL_RDP_MAX_STORAGE_BUFFER_RANGE=bytes lowers
-// it, to run what a device with a smaller one gets.
-static VkDeviceSize storage_buffer_range(const Vulkan::Device &device)
-{
-	VkDeviceSize range = device.get_gpu_properties().limits.maxStorageBufferRange;
-	if (const char *env = getenv("PARALLEL_RDP_MAX_STORAGE_BUFFER_RANGE"))
-	{
-		VkDeviceSize cap = strtoull(env, nullptr, 0);
-		if (cap && cap < range)
-			range = cap;
-	}
-	return range;
-}
-
 unsigned Renderer::fitting_upscaling_factor(const Vulkan::Device &device, unsigned factor,
                                             VkDeviceSize rdram_size, VkDeviceSize hidden_rdram_bytes,
                                             bool super_sampled_readback)
 {
-	const VkDeviceSize range = storage_buffer_range(device);
-
-	for (; factor > 1; factor /= 2)
-	{
-		const VkDeviceSize f2 = VkDeviceSize(factor) * factor;
-		const VkDeviceSize instances = f2 * Limits::MaxTileInstances;
-		const VkDeviceSize tiles = f2 * ImplementationConstants::MaxTilesX * ImplementationConstants::MaxTilesY;
-		const VkDeviceSize sizes[] = {
-			// multisampled RDRAM, with the super-sampled write mask after it
-			rdram_size * f2 + (super_sampled_readback ? 2 * Limits::MaxWidth * Limits::MaxHeight / 8 : 0),
-			hidden_rdram_bytes * f2,
-			// per-tile shaded colour and depth
-			sizeof(uint32_t) * instances * ImplementationConstants::TileWidth * ImplementationConstants::TileHeight,
-			// tile binning and per-tile offsets
-			sizeof(uint32_t) * (Limits::MaxPrimitives / 32) * tiles,
-			// one static raster state's slice of the work list
-			sizeof(TileRasterWork) * instances,
-		};
-		bool fits = true;
-		for (VkDeviceSize size : sizes)
-			fits = fits && size <= range;
-		if (fits)
-			break;
-	}
-	return factor;
+	return rdp_caps_fitting_upscaling_factor(
+			rdp_caps_storage_buffer_range(device.get_gpu_properties().limits.maxStorageBufferRange),
+			factor, rdram_size, hidden_rdram_bytes, super_sampled_readback);
 }
 
 void Renderer::set_shader_bank(const ShaderBank *bank)
@@ -138,27 +112,15 @@ bool Renderer::init_renderer(const RendererOptions &options)
 	if (options.upscaling_factor == 1 && options.super_sampled_readback)
 		return false;
 
-	// Buffers are sized for it below, before init_caps.
-	caps.no_storage_8bit = options.no_storage_8bit;
-
-	caps.max_width = options.upscaling_factor * Limits::MaxWidth;
-	caps.max_height = options.upscaling_factor * Limits::MaxHeight;
-	caps.max_tiles_x = options.upscaling_factor * ImplementationConstants::MaxTilesX;
-	caps.max_tiles_y = options.upscaling_factor * ImplementationConstants::MaxTilesY;
-	caps.max_num_tile_instances = options.upscaling_factor * options.upscaling_factor * Limits::MaxTileInstances;
-	{
-		// The work list holds a slice of max_num_tile_instances entries per
-		// static raster state, and tile binning binds all of them at once.
-		VkDeviceSize range = storage_buffer_range(*device);
-		VkDeviceSize slice = sizeof(TileRasterWork) * VkDeviceSize(caps.max_num_tile_instances);
-		VkDeviceSize states = range / slice;
-		caps.max_static_raster_states = unsigned(rdp_min(VkDeviceSize(Limits::MaxStaticRasterizationStates), states));
-		if (caps.max_static_raster_states == 0)
-			return false;
-		if (caps.max_static_raster_states < Limits::MaxStaticRasterizationStates)
-			LOGI("Flushing every %u static raster states: the work list's binding is limited to %llu bytes.\n",
-			     caps.max_static_raster_states, (unsigned long long)range);
-	}
+	// The buffers below are sized for the caps, and those only the split
+	// rasterizer uses are not made for the ubershader.
+	caps.super_sample_readback = options.super_sampled_readback;
+	caps.super_sample_readback_dither = options.super_sampled_readback_dither;
+	if (!rdp_caps_init_limits(&caps, options.upscaling_factor, options.no_storage_8bit,
+	                          rdp_caps_storage_buffer_range(device->get_gpu_properties().limits.maxStorageBufferRange)))
+		return false;
+	if (!rdp_caps_init_features(&caps, &device->get_device_features()))
+		return false;
 
 	rdp_worker_free(pipeline_worker);
 	pipeline_worker = rdp_worker_new(pipeline_worker_start, pipeline_work, this);
@@ -202,7 +164,7 @@ bool Renderer::init_renderer(const RendererOptions &options)
 	init_buffers(options);
 	if (options.upscaling_factor > 1 && !init_internal_upscaling_factor(options))
 		return false;
-	return init_caps();
+	return true;
 }
 
 void Renderer::set_device(Vulkan::Device *device_)
@@ -210,155 +172,9 @@ void Renderer::set_device(Vulkan::Device *device_)
 	device = device_;
 }
 
-bool Renderer::init_caps()
-{
-	auto &features = device->get_device_features();
-
-	// The split rasterizer / depth-blend path misrenders textured primitives
-	// on the proprietary Intel Windows driver, unoptimized shaders included.
-	// Keep shading and blending in one pass there. PARALLEL_RDP_UBERSHADER
-	// below still overrides it for comparisons.
-	if (features.driver_properties.driverID == VK_DRIVER_ID_INTEL_PROPRIETARY_WINDOWS_KHR)
-		caps.ubershader = true;
-
-	if (const char *ubershader = getenv("PARALLEL_RDP_UBERSHADER"))
-	{
-		caps.ubershader = strtol(ubershader, nullptr, 0) > 0;
-		LOGI("Overriding ubershader = %d\n", int(caps.ubershader));
-	}
-
-	if (const char *force_sync = getenv("PARALLEL_RDP_FORCE_SYNC_SHADER"))
-	{
-		caps.force_sync = strtol(force_sync, nullptr, 0) > 0;
-		LOGI("Overriding force sync shader = %d\n", int(caps.force_sync));
-	}
-
-	bool allow_subgroup = true;
-	if (const char *subgroup = getenv("PARALLEL_RDP_SUBGROUP"))
-	{
-		allow_subgroup = strtol(subgroup, nullptr, 0) > 0;
-		LOGI("Allow subgroups = %d\n", int(allow_subgroup));
-	}
-
-	bool allow_small_types = true;
-	bool forces_small_types = false;
-	if (const char *small = getenv("PARALLEL_RDP_SMALL_TYPES"))
-	{
-		allow_small_types = strtol(small, nullptr, 0) > 0;
-		forces_small_types = true;
-		LOGI("Allow small types = %d.\n", int(allow_small_types));
-	}
-
-	if (!features.storage_16bit_features.storageBuffer16BitAccess)
-	{
-		LOGE("VK_KHR_16bit_storage for SSBOs is not supported! This is a minimum requirement for paraLLEl-RDP.\n");
-		return false;
-	}
-
-	if (caps.no_storage_8bit)
-	{
-		LOGI("VK_KHR_8bit_storage for SSBOs is not used, falling back to 16/32-bit storage.\n");
-		allow_small_types = false;
-		forces_small_types = true;
-	}
-	else if (!features.storage_8bit_features.storageBuffer8BitAccess)
-	{
-		LOGE("VK_KHR_8bit_storage for SSBOs is not supported! This is a minimum requirement for paraLLEl-RDP.\n");
-		return false;
-	}
-
-	// Driver workarounds here for 8/16-bit integer support.
-	if (features.supports_driver_properties && !forces_small_types)
-	{
-		if (features.driver_properties.driverID == VK_DRIVER_ID_AMD_PROPRIETARY_KHR)
-		{
-			LOGW("Current proprietary AMD driver is known to be buggy with 8/16-bit integer arithmetic, disabling support for time being.\n");
-			allow_small_types = false;
-		}
-		else if (features.driver_properties.driverID == VK_DRIVER_ID_AMD_OPEN_SOURCE_KHR ||
-		         features.driver_properties.driverID == VK_DRIVER_ID_MESA_RADV_KHR)
-		{
-			LOGW("Current open-source AMD drivers are known to be slightly faster without 8/16-bit integer arithmetic.\n");
-			allow_small_types = false;
-		}
-		else if (features.driver_properties.driverID == VK_DRIVER_ID_NVIDIA_PROPRIETARY_KHR)
-		{
-			LOGW("Current NVIDIA driver is known to be slightly faster without 8/16-bit integer arithmetic.\n");
-			allow_small_types = false;
-		}
-		else if (features.driver_properties.driverID == VK_DRIVER_ID_INTEL_PROPRIETARY_WINDOWS_KHR)
-		{
-			LOGW("Current proprietary Intel Windows driver is tested to perform much better without 8/16-bit integer support.\n");
-			allow_small_types = false;
-		}
-		else if (features.driver_properties.driverID == VK_DRIVER_ID_QUALCOMM_PROPRIETARY_KHR)
-		{
-			LOGW("Current proprietary Qcom driver is known to be buggy with 8/16-bit integer arithmetic, disabling support for time being.\n");
-			allow_small_types = false;
-		}
-
-		// Intel ANV *must* use small integer arithmetic, or it doesn't pass test suite.
-	}
-
-	if (!allow_small_types)
-	{
-		caps.supports_small_integer_arithmetic = false;
-	}
-	else if (features.enabled_features.shaderInt16 && features.float16_int8_features.shaderInt8)
-	{
-		LOGI("Enabling 8 and 16-bit integer arithmetic support for more efficient shaders!\n");
-		caps.supports_small_integer_arithmetic = true;
-	}
-	else
-	{
-		LOGW("Device does not support 8 and 16-bit integer arithmetic support. Falling back to 32-bit arithmetic everywhere.\n");
-		caps.supports_small_integer_arithmetic = false;
-	}
-
-	uint32_t subgroup_size = features.subgroup_properties.subgroupSize;
-
-	const VkSubgroupFeatureFlags required =
-			VK_SUBGROUP_FEATURE_BALLOT_BIT |
-			VK_SUBGROUP_FEATURE_BASIC_BIT |
-			VK_SUBGROUP_FEATURE_VOTE_BIT |
-			VK_SUBGROUP_FEATURE_ARITHMETIC_BIT;
-
-	caps.subgroup_tile_binning =
-			allow_subgroup &&
-			(features.subgroup_properties.supportedOperations & required) == required &&
-			(features.subgroup_properties.supportedStages & VK_SHADER_STAGE_COMPUTE_BIT) != 0 &&
-			can_support_minimum_subgroup_size(32) && subgroup_size <= 64;
-
-	caps.subgroup_depth_blend =
-			caps.super_sample_readback &&
-			allow_subgroup &&
-			(features.subgroup_properties.supportedOperations & required) == required &&
-			(features.subgroup_properties.supportedStages & VK_SHADER_STAGE_COMPUTE_BIT) != 0;
-
-	return true;
-}
-
 int Renderer::resolve_shader_define(const char *name, const char *define) const
 {
-	if (strcmp(define, "DEBUG_ENABLE") == 0)
-		return 0;
-	else if (strcmp(define, "UBERSHADER") == 0)
-		return int(caps.ubershader);
-	else if (strcmp(define, "SMALL_TYPES") == 0)
-		return int(caps.supports_small_integer_arithmetic);
-	else if (strcmp(define, "NO_STORAGE_8BIT") == 0)
-		return int(caps.no_storage_8bit);
-	else if (strcmp(define, "SUBGROUP") == 0)
-	{
-		if (strcmp(name, "tile_binning_combined") == 0)
-			return int(caps.subgroup_tile_binning);
-		else if (strcmp(name, "depth_blend") == 0 || strcmp(name, "ubershader") == 0)
-			return int(caps.subgroup_depth_blend);
-		else
-			return 0;
-	}
-	else
-		return 0;
+	return rdp_caps_resolve_shader_define(&caps, name, define);
 }
 
 void Renderer::init_buffers(const RendererOptions &options)
@@ -1053,11 +869,9 @@ uint32_t Renderer::set_tile_binning_pipeline(Vulkan::CommandBuffer &cmd, bool up
 	cmd.set_program(shader_bank->tile_binning_combined);
 	if (caps.subgroup_tile_binning)
 	{
-		if (supports_subgroup_size_control(32, subgroup_size))
-		{
-			cmd.enable_subgroup_size_control(true);
-			cmd.set_subgroup_size_log2(true, 5, trailing_zeroes(subgroup_size));
-		}
+		// (only where rdp_caps_tile_binning_size_control says it can)
+		cmd.enable_subgroup_size_control(true);
+		cmd.set_subgroup_size_log2(true, 5, trailing_zeroes(subgroup_size));
 	}
 	else
 		subgroup_size = 32;
@@ -1995,35 +1809,6 @@ void Renderer::set_primitive_color(uint8_t min_level, uint8_t prim_lod_frac, uin
 	constants.primitive_color = color;
 	constants.min_level = min_level;
 	constants.prim_lod_frac = prim_lod_frac;
-}
-
-bool Renderer::can_support_minimum_subgroup_size(unsigned size) const
-{
-	return supports_subgroup_size_control(size, device->get_device_features().subgroup_properties.subgroupSize);
-}
-
-bool Renderer::supports_subgroup_size_control(uint32_t minimum_size, uint32_t maximum_size) const
-{
-	auto &features = device->get_device_features();
-
-	if (!features.subgroup_size_control_features.computeFullSubgroups)
-		return false;
-
-	bool use_varying = minimum_size <= features.subgroup_size_control_properties.minSubgroupSize &&
-	                   maximum_size >= features.subgroup_size_control_properties.maxSubgroupSize;
-
-	if (!use_varying)
-	{
-		bool outside_range = minimum_size > features.subgroup_size_control_properties.maxSubgroupSize ||
-		                     maximum_size < features.subgroup_size_control_properties.minSubgroupSize;
-		if (outside_range)
-			return false;
-
-		if ((features.subgroup_size_control_properties.requiredSubgroupSizeStages & VK_SHADER_STAGE_COMPUTE_BIT) == 0)
-			return false;
-	}
-
-	return true;
 }
 
 void Renderer::pipeline_work(void *user, mpsc_stack_node_t *item)

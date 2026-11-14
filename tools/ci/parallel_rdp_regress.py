@@ -69,7 +69,10 @@ MODES = {"threaded": {}, "single-threaded": {"PARALLEL_RDP_SINGLE_THREADED_COMMA
          "no-8bit-storage": {"PARALLEL_RDP_NO_STORAGE_8BIT": "1"},
          # a device whose storage buffer bindings hold two static raster
          # states' work lists: the renderer flushes every two
-         "two-states-per-flush": {"PARALLEL_RDP_MAX_STORAGE_BUFFER_RANGE": str(1 << 20)}}
+         "two-states-per-flush": {"PARALLEL_RDP_MAX_STORAGE_BUFFER_RANGE": str(1 << 20)},
+         # shading and blending in one pass, as on Intel's Windows driver,
+         # without the split rasterizer's buffers
+         "ubershader": {"PARALLEL_RDP_UBERSHADER": "1"}}
 # Rendered at 2x, which adds the upscaling domain passes: both must agree and
 # match the "<rom>@2x" expectations.
 UPSCALED_OPTIONS = ["parallel-n64-upscaling=2x"]

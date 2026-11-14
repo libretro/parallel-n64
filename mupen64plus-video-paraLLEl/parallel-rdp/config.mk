@@ -26,6 +26,7 @@ PARALLEL_RDP_SOURCES_C := \
         $(PARALLEL_RDP_IMPLEMENTATION)/parallel-rdp/masked_copy.c \
         $(PARALLEL_RDP_IMPLEMENTATION)/parallel-rdp/rdp_state.c \
         $(PARALLEL_RDP_IMPLEMENTATION)/parallel-rdp/tmem_load.c \
+        $(PARALLEL_RDP_IMPLEMENTATION)/parallel-rdp/renderer_caps.c \
         $(PARALLEL_RDP_IMPLEMENTATION)/parallel-rdp/rdram_coherency.c \
         $(PARALLEL_RDP_IMPLEMENTATION)/parallel-rdp/temporal_upscaler.c \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/cookie.c \
