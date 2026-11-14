@@ -30,6 +30,7 @@
 #include "rdram_coherency.h"
 #include "renderer_caps.h"
 #include "rdp_pipelines.h"
+#include "renderer_buffers.h"
 #include <retro_atomic.h>
 
 namespace RDP
@@ -173,9 +174,6 @@ private:
 	ValidationInterface *validation_iface = nullptr;
 	void report_rdp_crash(ValidationError err, const char *msg) const;
 
-	Vulkan::BufferHandle upscaling_reference_rdram;
-	Vulkan::BufferHandle upscaling_multisampled_rdram;
-	Vulkan::BufferHandle upscaling_multisampled_hidden_rdram;
 
 	void validate_draw_state() const;
 
@@ -190,8 +188,6 @@ private:
 	Vulkan::Buffer *tmem = nullptr;
 	const ShaderBank *shader_bank = nullptr;
 
-	void init_blender_lut();
-	void init_buffers(const RendererOptions &options);
 	bool init_internal_upscaling_factor(const RendererOptions &options);
 
 	struct
@@ -232,60 +228,10 @@ private:
 	void ensure_command_buffer();
 
 	TileInfo tiles[Limits::MaxNumTiles];
-	Vulkan::BufferHandle tmem_instances;
-	Vulkan::BufferHandle span_setups;
-	Vulkan::BufferHandle blender_divider_lut_buffer;
-	Vulkan::BufferViewHandle blender_divider_buffer;
-
-	Vulkan::BufferHandle tile_binning_buffer;
-	Vulkan::BufferHandle tile_binning_buffer_coarse;
-
-	Vulkan::BufferHandle indirect_dispatch_buffer;
-	Vulkan::BufferHandle tile_work_list;
-	Vulkan::BufferHandle per_tile_offsets;
-	Vulkan::BufferHandle per_tile_shaded_color;
-	Vulkan::BufferHandle per_tile_shaded_depth;
-	Vulkan::BufferHandle per_tile_shaded_shaded_alpha;
-	Vulkan::BufferHandle per_tile_shaded_coverage;
-
-	struct MappedBuffer
-	{
-		Vulkan::BufferHandle buffer;
-		bool is_host = false;
-	};
-
-	struct RenderBuffers
-	{
-		void init(Vulkan::Device &device, granite_buffer_domain_t domain, RenderBuffers *borrow);
-		static MappedBuffer create_buffer(Vulkan::Device &device, granite_buffer_domain_t domain, VkDeviceSize size, MappedBuffer *borrow);
-
-		MappedBuffer triangle_setup;
-		MappedBuffer attribute_setup;
-		MappedBuffer derived_setup;
-		MappedBuffer scissor_setup;
-
-		MappedBuffer static_raster_state;
-		MappedBuffer depth_blend_state;
-		MappedBuffer tile_info_state;
-
-		MappedBuffer state_indices;
-		MappedBuffer span_info_offsets;
-
-		MappedBuffer span_info_jobs;
-		Vulkan::BufferViewHandle span_info_jobs_view;
-	};
-
-	struct RenderBuffersUpdater
-	{
-		void init(Vulkan::Device &device);
-		void upload(Vulkan::Device &device, const StreamCaches &caches, Vulkan::CommandBuffer &cmd);
-
-		template <typename Cache>
-		void upload(Vulkan::CommandBuffer &cmd, Vulkan::Device &device,
-		            const MappedBuffer &gpu, const MappedBuffer &cpu, const Cache &cache, bool &did_upload);
-
-		RenderBuffers cpu, gpu;
-	};
+	// The fixed buffers and the upscaled RDRAM (renderer_buffers.c)
+	rdp_renderer_buffers_t buffers = {};
+	// Whether the first flush cleared the indirect dispatch buffer
+	bool indirect_cleared = false;
 
 	struct InternalSynchronization
 	{
@@ -294,7 +240,8 @@ private:
 
 	rdp_constants_t constants = {};
 
-	RenderBuffersUpdater buffer_instances[Limits::NumSyncStates];
+	rdp_stream_instance_t buffer_instances[Limits::NumSyncStates] = {};
+	void upload_streams(Vulkan::CommandBuffer &cmd);
 	InternalSynchronization internal_sync[Limits::NumSyncStates];
 	uint32_t sync_indices_needs_flush = 0;
 	unsigned buffer_instance = 0;

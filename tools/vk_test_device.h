@@ -89,7 +89,7 @@ static VkResult VKAPI_CALL create_view(VkDevice d, const VkImageViewCreateInfo *
 }
 
 /* the buffers made, and their sizes */
-#define MAX_BUFFERS 64
+#define MAX_BUFFERS 256
 static unsigned num_buffers;
 static VkBuffer buffer_handles[MAX_BUFFERS];
 static VkDeviceSize buffer_sizes[MAX_BUFFERS];
@@ -118,13 +118,17 @@ static VkDeviceSize buffer_size(VkBuffer buffer)
 	return 1 << 20;
 }
 
+/* the memory types a buffer may take: a test with more than the one
+ * context.mem_props has sets more */
+static uint32_t buffer_memory_types = 1;
+
 static void VKAPI_CALL buffer_requirements(VkDevice d, const VkBufferMemoryRequirementsInfo2 *info,
 		VkMemoryRequirements2 *reqs)
 {
 	(void)d;
 	reqs->memoryRequirements.size = (buffer_size(info->buffer) + 255) & ~(VkDeviceSize)255;
 	reqs->memoryRequirements.alignment = 16;
-	reqs->memoryRequirements.memoryTypeBits = 1;
+	reqs->memoryRequirements.memoryTypeBits = buffer_memory_types;
 }
 
 static void VKAPI_CALL image_requirements(VkDevice d, VkImage image, VkMemoryRequirements *reqs)
@@ -370,6 +374,9 @@ static void event(int type, int a, int b, int c)
 	num_events++;
 }
 
+/* the global memory barriers recorded */
+static unsigned num_memory_barriers;
+
 static void VKAPI_CALL cmd_barrier(VkCommandBuffer cmd, VkPipelineStageFlags src, VkPipelineStageFlags dst,
 		VkDependencyFlags flags, uint32_t memory_count, const VkMemoryBarrier *memory, uint32_t buffer_count,
 		const VkBufferMemoryBarrier *buffers, uint32_t image_count, const VkImageMemoryBarrier *images)
@@ -377,6 +384,7 @@ static void VKAPI_CALL cmd_barrier(VkCommandBuffer cmd, VkPipelineStageFlags src
 	uint32_t i;
 	(void)cmd; (void)src; (void)dst; (void)flags; (void)memory_count; (void)memory; (void)buffer_count; (void)buffers;
 	CHECK(!in_pass, "no barrier inside a pass");
+	num_memory_barriers += memory_count;
 	for (i = 0; i < image_count; i++)
 	{
 		int n = image_index(images[i].image);
@@ -621,10 +629,18 @@ static void VKAPI_CALL cmd_copy_buffer(VkCommandBuffer cmd, VkBuffer src, VkBuff
 		}
 }
 
+/* the last buffer fill recorded */
+static unsigned num_buffer_fills;
+static VkBuffer last_fill_buffer;
+static uint32_t last_fill_value;
+
 static void VKAPI_CALL cmd_fill_buffer(VkCommandBuffer cmd, VkBuffer dst, VkDeviceSize offset, VkDeviceSize size,
 		uint32_t data)
 {
-	(void)cmd; (void)dst; (void)offset; (void)size; (void)data;
+	(void)cmd; (void)offset; (void)size;
+	num_buffer_fills++;
+	last_fill_buffer = dst;
+	last_fill_value = data;
 }
 
 /* how many events of @type the frame recorded */
