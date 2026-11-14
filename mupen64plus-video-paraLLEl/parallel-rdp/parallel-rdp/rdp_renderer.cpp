@@ -461,6 +461,18 @@ rdp_pass_resources_t Renderer::pass_resources(const rdp_pipeline_setup_t &setup)
 	return r;
 }
 
+rdp_pass_flush_t Renderer::pass_flush() const
+{
+	rdp_pass_flush_t f;
+	f.target = pass_target();
+	f.uploads = stream.tmem_upload_infos;
+	f.num_uploads = stream.num_tmem_uploads;
+	f.num_span_jobs = uint32_t(stream.span_info_jobs.size());
+	f.states = stream.static_raster_state_cache.data();
+	f.num_states = uint32_t(stream.static_raster_state_cache.size());
+	return f;
+}
+
 rdp_pass_target_t Renderer::pass_target() const
 {
 	rdp_pass_target_t t;
@@ -474,20 +486,6 @@ rdp_pass_target_t Renderer::pass_target() const
 	return t;
 }
 
-void Renderer::update_tmem_instances(Vulkan::CommandBuffer &cmd)
-{
-	const rdp_pipeline_setup_t setup = pipeline_setup();
-	const rdp_pass_resources_t r = pass_resources(setup);
-	rdp_pass_tmem_update(&r, &cmd, stream.tmem_upload_infos, stream.num_tmem_uploads);
-}
-
-void Renderer::submit_span_setup_jobs(Vulkan::CommandBuffer &cmd, bool upscale)
-{
-	const rdp_pipeline_setup_t setup = pipeline_setup();
-	const rdp_pass_resources_t r = pass_resources(setup);
-	rdp_pass_span_setup(&r, &cmd, upscale, uint32_t(stream.span_info_jobs.size()));
-}
-
 void Renderer::clear_indirect_buffer(Vulkan::CommandBuffer &cmd)
 {
 	static_assert((Limits::MaxStaticRasterizationStates % ImplementationConstants::DefaultWorkgroupSize) == 0,
@@ -495,23 +493,6 @@ void Renderer::clear_indirect_buffer(Vulkan::CommandBuffer &cmd)
 	const rdp_pipeline_setup_t setup = pipeline_setup();
 	const rdp_pass_resources_t r = pass_resources(setup);
 	rdp_pass_clear_indirect(&r, &cmd);
-}
-
-void Renderer::submit_rasterization(Vulkan::CommandBuffer &cmd, Vulkan::Buffer &tmem_, bool upscaling)
-{
-	const rdp_pipeline_setup_t setup = pipeline_setup();
-	const rdp_pass_resources_t r = pass_resources(setup);
-	const rdp_pass_target_t t = pass_target();
-	rdp_pass_rasterize(&r, &cmd, &t, &tmem_, upscaling, stream.static_raster_state_cache.data(),
-	                   uint32_t(stream.static_raster_state_cache.size()));
-}
-
-void Renderer::submit_tile_binning_combined(Vulkan::CommandBuffer &cmd, bool upscale)
-{
-	const rdp_pipeline_setup_t setup = pipeline_setup();
-	const rdp_pass_resources_t r = pass_resources(setup);
-	const rdp_pass_target_t t = pass_target();
-	rdp_pass_tile_binning(&r, &cmd, &t, upscale);
 }
 
 void Renderer::submit_update_upscaled_domain_external(Vulkan::CommandBuffer &cmd,
@@ -528,131 +509,6 @@ void Renderer::submit_update_upscaled_domain(Vulkan::CommandBuffer &cmd, rdp_res
 	const rdp_pipeline_setup_t setup = pipeline_setup();
 	const rdp_pass_resources_t r = pass_resources(setup);
 	rdp_pass_update_upscaled_domain(&r, &cmd, stage, addr, depth_addr, width, height, pixel_size_log2);
-}
-
-void Renderer::submit_clear_super_sample_write_mask(Vulkan::CommandBuffer &cmd, unsigned width, unsigned height)
-{
-	const rdp_pipeline_setup_t setup = pipeline_setup();
-	const rdp_pass_resources_t r = pass_resources(setup);
-	rdp_pass_clear_super_sample_write_mask(&r, &cmd, width, height);
-}
-
-void Renderer::submit_update_upscaled_domain(Vulkan::CommandBuffer &cmd, rdp_resolve_stage stage)
-{
-	submit_update_upscaled_domain(cmd, stage, fb.addr, fb.depth_addr,
-	                              fb.width, fb.deduced_height, rdp_pass_pixel_size_log2(uint32_t(fb.fmt)));
-}
-
-void Renderer::submit_depth_blend(Vulkan::CommandBuffer &cmd, Vulkan::Buffer &tmem_, bool upscaled, bool force_write_mask)
-{
-	const rdp_pipeline_setup_t setup = pipeline_setup();
-	const rdp_pass_resources_t r = pass_resources(setup);
-	const rdp_pass_target_t t = pass_target();
-	rdp_pass_depth_blend(&r, &cmd, &t, &tmem_, upscaled, force_write_mask);
-}
-
-void Renderer::submit_render_pass(Vulkan::CommandBuffer &cmd)
-{
-	bool need_render_pass = fb.width != 0 && fb.deduced_height != 0 && !stream.span_info_jobs.empty();
-	bool need_tmem_upload = stream.num_tmem_uploads != 0;
-	bool need_submit = need_render_pass || need_tmem_upload;
-	if (!need_submit)
-		return;
-
-	// Here we run 3 dispatches in parallel. Span setup and TMEM instances are low occupancy kind of jobs, but the binning
-	// pass should dominate here unless the workload is trivial.
-	if (need_render_pass)
-	{
-		submit_span_setup_jobs(cmd, false);
-		submit_tile_binning_combined(cmd, false);
-		if (caps.upscaling > 1)
-			submit_update_upscaled_domain(cmd, RDP_RESOLVE_PRE);
-	}
-
-	if (need_tmem_upload)
-		update_tmem_instances(cmd);
-
-	cmd.barrier(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_WRITE_BIT,
-	            VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | (!caps.ubershader ? VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT : 0),
-	            VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT |
-	            (!caps.ubershader ? VK_ACCESS_INDIRECT_COMMAND_READ_BIT : 0));
-
-	if (need_render_pass && !caps.ubershader)
-	{
-		submit_rasterization(cmd, need_tmem_upload ? buf(buffers.tmem_instances) : *tmem, false);
-		cmd.barrier(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_WRITE_BIT,
-		            VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_READ_BIT);
-	}
-
-	if (need_render_pass)
-		submit_depth_blend(cmd, need_tmem_upload ? buf(buffers.tmem_instances) : *tmem, false, false);
-
-	if (!caps.ubershader)
-		clear_indirect_buffer(cmd);
-
-	if (render_pass_is_upscaled())
-	{
-		cmd.barrier(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_WRITE_BIT,
-		            VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-		            VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT);
-
-		// TODO: Could probably do this reference update in the render pass itself,
-		// just write output to two buffers ... This is more composable for now.
-		submit_update_upscaled_domain(cmd, RDP_RESOLVE_POST);
-	}
-}
-
-void Renderer::submit_render_pass_upscaled(Vulkan::CommandBuffer &cmd)
-{
-
-	bool need_tmem_upload = stream.num_tmem_uploads != 0;
-
-	submit_span_setup_jobs(cmd, true);
-	submit_tile_binning_combined(cmd, true);
-	if (caps.super_sample_readback)
-	{
-		submit_update_upscaled_domain(cmd, RDP_RESOLVE_PRE);
-		submit_clear_super_sample_write_mask(cmd, fb.width, fb.deduced_height);
-		if (need_tmem_upload)
-			update_tmem_instances(cmd);
-	}
-
-	cmd.barrier(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_WRITE_BIT,
-	            VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT |
-	            (!caps.ubershader ? VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT : 0),
-	            VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT |
-	            (!caps.ubershader ? VK_ACCESS_INDIRECT_COMMAND_READ_BIT : 0));
-
-	if (!caps.ubershader)
-	{
-		submit_rasterization(cmd, need_tmem_upload ? buf(buffers.tmem_instances) : *tmem, true);
-		cmd.barrier(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-		            VK_ACCESS_SHADER_WRITE_BIT,
-		            VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-		            VK_ACCESS_SHADER_READ_BIT);
-	}
-
-	submit_depth_blend(cmd, need_tmem_upload ? buf(buffers.tmem_instances) : *tmem, true, caps.super_sample_readback);
-	if (!caps.ubershader)
-		clear_indirect_buffer(cmd);
-
-	if (caps.super_sample_readback)
-	{
-		cmd.barrier(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_WRITE_BIT,
-		            VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-		            VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT);
-
-		submit_update_upscaled_domain(cmd, RDP_RESOLVE_SSAA);
-	}
-
-}
-
-void Renderer::submit_render_pass_end(Vulkan::CommandBuffer &cmd)
-{
-	base_primitive_index += uint32_t(stream.triangle_setup.size());
-	cmd.barrier(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_WRITE_BIT,
-	            VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-	            VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT);
 }
 
 void Renderer::maintain_queues()
@@ -914,7 +770,6 @@ void Renderer::flush_queues()
 	}
 
 	// bind_stream_instance waited for this instance's last use
-	auto &instance = buffer_instances[buffer_instance];
 	sync_indices_needs_flush |= 1u << buffer_instance;
 
 	ensure_command_buffer();
@@ -923,16 +778,20 @@ void Renderer::flush_queues()
 		resolve_coherency_host_to_gpu(*stream.cmd);
 	upload_streams(*stream.cmd);
 
-	// If we have super-sampled readback, then this is meaningless.
+	const rdp_pipeline_setup_t setup = pipeline_setup();
+	const rdp_pass_flush_t flush = pass_flush();
+
+	// With the super-sampled read-back only the upscaled passes run.
 	bool has_single_sampled_render_pass = !caps.super_sample_readback;
 
 	if (has_single_sampled_render_pass)
 	{
-		submit_render_pass(*stream.cmd);
+		const rdp_pass_resources_t r = pass_resources(setup);
+		rdp_pass_record_native(&r, &*stream.cmd, &flush);
 		pending_render_passes++;
 	}
 
-	if (render_pass_is_upscaled())
+	if (rdp_pass_flush_upscaled(&caps, &flush))
 	{
 		if (has_single_sampled_render_pass)
 		{
@@ -944,38 +803,17 @@ void Renderer::flush_queues()
 			sync_indices_needs_flush |= 1u << buffer_instance;
 		}
 
-		submit_render_pass_upscaled(*stream.cmd);
+		const rdp_pass_resources_t r = pass_resources(setup);
+		rdp_pass_record_upscaled(&r, &*stream.cmd, &flush);
 		pending_render_passes_upscaled++;
 		pending_primitives_upscaled += uint32_t(stream.triangle_setup.size());
 	}
 
-	submit_render_pass_end(*stream.cmd);
+	base_primitive_index += uint32_t(stream.triangle_setup.size());
+	rdp_pass_record_end(&*stream.cmd);
 
 	begin_new_context();
 	maintain_queues();
-}
-
-bool Renderer::render_pass_is_upscaled() const
-{
-	if (caps.super_sample_readback)
-		return true;
-
-	bool need_render_pass = fb.width != 0 && fb.deduced_height != 0 && !stream.span_info_jobs.empty();
-	return need_render_pass && should_render_upscaled();
-}
-
-bool Renderer::should_render_upscaled() const
-{
-	if (caps.upscaling > 1)
-	{
-		// A heuristic. There is no point to render upscaled for purely off-screen passes.
-		// We should ideally only upscale the final pass which hits screen.
-		// From a heuristic point-of-view we expect only 16-bit/32-bit frame buffers to be relevant,
-		// and only frame buffers with at least 256 pixels.
-		return (fb.fmt == FBFormat::RGBA5551 || fb.fmt == FBFormat::RGBA8888) && fb.width >= 256;
-	}
-	else
-		return false;
 }
 
 void Renderer::ensure_command_buffer()

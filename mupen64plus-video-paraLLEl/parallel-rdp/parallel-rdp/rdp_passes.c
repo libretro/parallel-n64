@@ -388,3 +388,146 @@ void rdp_pass_clear_super_sample_write_mask(const rdp_pass_resources_t *r, grani
 	granite_cb_dispatch(cb, (words + WORKGROUP_SIZE - 1) / WORKGROUP_SIZE, 1, 1);
 	granite_cb_set_spec_constant_mask(cb, 0);
 }
+
+/* ---- a flush's passes, in order ---- */
+
+static void barrier(granite_command_buffer_t *cb, VkPipelineStageFlags src_stages, VkAccessFlags src_access,
+		VkPipelineStageFlags dst_stages, VkAccessFlags dst_access)
+{
+	VkMemoryBarrier global;
+	memset(&global, 0, sizeof(global));
+	global.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
+	global.srcAccessMask = src_access;
+	global.dstAccessMask = dst_access;
+	granite_cb_barrier(cb, src_stages, dst_stages, 1, &global, 0, NULL, 0, NULL);
+}
+
+/* After the passes the rasterizer's indirect dispatches come from */
+static void barrier_before_raster(const rdp_renderer_caps_t *caps, granite_command_buffer_t *cb)
+{
+	barrier(cb, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_WRITE_BIT,
+			VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | (!caps->ubershader ? VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT : 0),
+			VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT |
+			(!caps->ubershader ? VK_ACCESS_INDIRECT_COMMAND_READ_BIT : 0));
+}
+
+static void barrier_read(granite_command_buffer_t *cb)
+{
+	barrier(cb, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_WRITE_BIT,
+			VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_READ_BIT);
+}
+
+static void barrier_read_write(granite_command_buffer_t *cb)
+{
+	barrier(cb, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_WRITE_BIT,
+			VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT);
+}
+
+/* The TMEM the primitives read: this flush's loads, or as it was */
+static const granite_buffer_t *flush_tmem(const rdp_pass_resources_t *r, const rdp_pass_flush_t *f)
+{
+	return f->num_uploads ? r->buffers->tmem_instances : r->tmem;
+}
+
+static void update_upscaled_domain(const rdp_pass_resources_t *r, granite_command_buffer_t *cb,
+		const rdp_pass_target_t *t, enum rdp_resolve_stage stage)
+{
+	rdp_pass_update_upscaled_domain(r, cb, stage, t->addr, t->depth_addr, t->width, t->height,
+			rdp_pass_pixel_size_log2(t->fmt));
+}
+
+bool rdp_pass_flush_draws(const rdp_pass_flush_t *f)
+{
+	return f->target.width != 0 && f->target.height != 0 && f->num_span_jobs != 0;
+}
+
+bool rdp_pass_flush_upscaled(const rdp_renderer_caps_t *caps, const rdp_pass_flush_t *f)
+{
+	if (caps->super_sample_readback)
+		return true;
+	/* No point upscaling off-screen passes: ideally only the last pass,
+	 * to the screen. By heuristic only 16 and 32-bit framebuffers of at
+	 * least 256 pixels across are. */
+	return caps->upscaling > 1 && rdp_pass_flush_draws(f) &&
+			(f->target.fmt == FB_RGBA5551 || f->target.fmt == FB_RGBA8888) && f->target.width >= 256;
+}
+
+void rdp_pass_record_native(const rdp_pass_resources_t *r, granite_command_buffer_t *cb, const rdp_pass_flush_t *f)
+{
+	const rdp_renderer_caps_t *caps = r->setup->caps;
+	const bool draws = rdp_pass_flush_draws(f);
+	const rdp_pass_target_t *t = &f->target;
+
+	if (!draws && !f->num_uploads)
+		return;
+
+	/* Three dispatches side by side: span setup and the TMEM update are
+	 * light; binning should dominate unless the work is trivial. */
+	if (draws)
+	{
+		rdp_pass_span_setup(r, cb, false, f->num_span_jobs);
+		rdp_pass_tile_binning(r, cb, t, false);
+		if (caps->upscaling > 1)
+			update_upscaled_domain(r, cb, t, RDP_RESOLVE_PRE);
+	}
+	if (f->num_uploads)
+		rdp_pass_tmem_update(r, cb, f->uploads, f->num_uploads);
+
+	barrier_before_raster(caps, cb);
+
+	if (draws && !caps->ubershader)
+	{
+		rdp_pass_rasterize(r, cb, t, flush_tmem(r, f), false, f->states, f->num_states);
+		barrier_read(cb);
+	}
+	if (draws)
+		rdp_pass_depth_blend(r, cb, t, flush_tmem(r, f), false, false);
+	if (!caps->ubershader)
+		rdp_pass_clear_indirect(r, cb);
+
+	if (rdp_pass_flush_upscaled(caps, f))
+	{
+		/* (the reference could be written by the passes themselves, to
+		 * two buffers; this composes better for now) */
+		barrier_read_write(cb);
+		update_upscaled_domain(r, cb, t, RDP_RESOLVE_POST);
+	}
+}
+
+void rdp_pass_record_upscaled(const rdp_pass_resources_t *r, granite_command_buffer_t *cb, const rdp_pass_flush_t *f)
+{
+	const rdp_renderer_caps_t *caps = r->setup->caps;
+	const rdp_pass_target_t *t = &f->target;
+
+	rdp_pass_span_setup(r, cb, true, f->num_span_jobs);
+	rdp_pass_tile_binning(r, cb, t, true);
+	if (caps->super_sample_readback)
+	{
+		update_upscaled_domain(r, cb, t, RDP_RESOLVE_PRE);
+		rdp_pass_clear_super_sample_write_mask(r, cb, t->width, t->height);
+		if (f->num_uploads)
+			rdp_pass_tmem_update(r, cb, f->uploads, f->num_uploads);
+	}
+
+	barrier_before_raster(caps, cb);
+
+	if (!caps->ubershader)
+	{
+		rdp_pass_rasterize(r, cb, t, flush_tmem(r, f), true, f->states, f->num_states);
+		barrier_read(cb);
+	}
+	rdp_pass_depth_blend(r, cb, t, flush_tmem(r, f), true, caps->super_sample_readback);
+	if (!caps->ubershader)
+		rdp_pass_clear_indirect(r, cb);
+
+	if (caps->super_sample_readback)
+	{
+		barrier_read_write(cb);
+		update_upscaled_domain(r, cb, t, RDP_RESOLVE_SSAA);
+	}
+}
+
+void rdp_pass_record_end(granite_command_buffer_t *cb)
+{
+	barrier_read_write(cb);
+}

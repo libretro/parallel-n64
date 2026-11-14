@@ -255,37 +255,26 @@ private:
 
 	bool tmem_upload_needs_flush(uint32_t addr) const;
 
-	bool render_pass_is_upscaled() const;
-	bool should_render_upscaled() const;
 
 	void flush_queues();
-	void submit_render_pass(Vulkan::CommandBuffer &cmd);
-	void submit_render_pass_upscaled(Vulkan::CommandBuffer &cmd);
-	void submit_render_pass_end(Vulkan::CommandBuffer &cmd);
 	void submit_to_queue();
 	void begin_new_context();
 	void reset_context();
 	bool need_flush() const;
 	void maintain_queues();
 	void maintain_queues_idle();
-	void update_tmem_instances(Vulkan::CommandBuffer &cmd);
-	void submit_span_setup_jobs(Vulkan::CommandBuffer &cmd, bool upscaled);
 	void update_deduced_height(const TriangleSetup &setup);
-	void submit_tile_binning_combined(Vulkan::CommandBuffer &cmd, bool upscaled);
 	void clear_indirect_buffer(Vulkan::CommandBuffer &cmd);
 
 	rdp_pipeline_setup_t pipeline_setup() const;
 	rdp_pass_resources_t pass_resources(const rdp_pipeline_setup_t &setup);
 	rdp_pass_target_t pass_target() const;
-	void submit_rasterization(Vulkan::CommandBuffer &cmd, Vulkan::Buffer &tmem, bool upscaled);
-	void submit_depth_blend(Vulkan::CommandBuffer &cmd, Vulkan::Buffer &tmem, bool upscaled, bool force_write_mask);
+	rdp_pass_flush_t pass_flush() const;
 
-	void submit_update_upscaled_domain(Vulkan::CommandBuffer &cmd, rdp_resolve_stage stage);
 	void submit_update_upscaled_domain(Vulkan::CommandBuffer &cmd, rdp_resolve_stage stage,
 	                                   unsigned addr, unsigned depth_addr,
 	                                   unsigned width, unsigned height,
 	                                   unsigned pixel_size_log2);
-	void submit_clear_super_sample_write_mask(Vulkan::CommandBuffer &cmd, unsigned width, unsigned height);
 
 	SpanInfoOffsets allocate_span_jobs(const TriangleSetup &setup);
 

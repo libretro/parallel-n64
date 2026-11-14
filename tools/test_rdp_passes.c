@@ -326,6 +326,164 @@ static void test_rasterize(void)
 	close_device();
 }
 
+/* ---- a flush's passes, in order ---- */
+
+/* The command buffer's passes as letters, by their groups: S span setup
+ * (77 jobs), T tile binning (70 primitives), M the TMEM update, Z depth
+ * and blending, C clearing the indirect dispatches, U the upscaled
+ * domain's update before or after, R its resolve, K clearing the
+ * super-sampled write mask, I the rasterizer's indirect dispatch, B a
+ * memory barrier */
+static const char *recorded(void)
+{
+	static char s[64];
+	unsigned i, n = 0;
+	for (i = 0; i < num_events && i < MAX_EVENTS && n + 1 < sizeof(s); i++)
+	{
+		char c = '?';
+		if (events[i].type == EV_MEMORY_BARRIER)
+			c = 'B';
+		else if (events[i].type != EV_DISPATCH)
+			continue;
+		else if (events[i].a == -1)
+			c = 'I';
+		else if (events[i].a == 77)
+			c = 'S';
+		else if (events[i].a == 3)
+			c = 'T';
+		else if (events[i].a == 32)
+			c = 'M';
+		else if (events[i].a == 40 || events[i].a == 80)
+			c = 'Z';
+		else if (events[i].a == 1)
+			c = 'C';
+		else if (events[i].a == 1185)
+			c = 'U';
+		else if (events[i].a == 5 && events[i].b == 237)
+			c = 'R';
+		else if (events[i].a == 75)
+			c = 'K';
+		s[n++] = c;
+	}
+	s[n] = '\0';
+	return s;
+}
+
+static rdp_upload_info_t flush_uploads[2];
+static rdp_static_state_t flush_states[2];
+
+static void flush_of(rdp_pass_flush_t *f, uint32_t fmt, bool draws, bool uploads)
+{
+	target(&f->target, fmt);
+	if (!draws)
+		f->target.width = 0;
+	f->uploads = flush_uploads;
+	f->num_uploads = uploads ? 2 : 0;
+	f->num_span_jobs = 77;
+	f->states = flush_states;
+	f->num_states = 2;
+}
+
+static void expect_native(const rdp_pass_flush_t *f, const char *want, const char *what)
+{
+	granite_command_buffer_t *cb = begin();
+	rdp_pass_record_native(&res, cb, f);
+	if (strcmp(recorded(), want) != 0)
+		fprintf(stderr, "test_rdp_passes: %s: %s, not %s\n", what, recorded(), want);
+	CHECK(strcmp(recorded(), want) == 0, what);
+	end(cb);
+}
+
+static void expect_upscaled(const rdp_pass_flush_t *f, const char *want, const char *what)
+{
+	granite_command_buffer_t *cb = begin();
+	rdp_pass_record_upscaled(&res, cb, f);
+	if (strcmp(recorded(), want) != 0)
+		fprintf(stderr, "test_rdp_passes: %s: %s, not %s\n", what, recorded(), want);
+	CHECK(strcmp(recorded(), want) == 0, what);
+	end(cb);
+}
+
+static void test_flush_order(void)
+{
+	rdp_pass_flush_t f;
+	granite_command_buffer_t *cb;
+	int ev;
+
+	/* native: binning, span setup and the TMEM update side by side,
+	 * then the rasterizer, depth and blending, and the indirect
+	 * dispatches cleared for the next */
+	open_device(1, 32);
+	flush_of(&f, 2, true, true);
+	expect_native(&f, "STMBIIBZC", "native");
+	/* the primitives read this flush's tile loads, or TMEM as it was */
+	cb = begin();
+	rdp_pass_record_native(&res, cb, &f);
+	CHECK(cb->state.bindings.cookies[0][2] == buffers.tmem_instances->cookie, "the flush's loads");
+	end(cb);
+	flush_of(&f, 2, true, false);
+	cb = begin();
+	rdp_pass_record_native(&res, cb, &f);
+	CHECK(cb->state.bindings.cookies[0][2] == tmem->cookie, "TMEM as it was");
+	end(cb);
+	flush_of(&f, 2, true, true);
+	ev = find_event(EV_MEMORY_BARRIER, 0);
+	CHECK((events[ev].a & VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT) &&
+	      (events[ev].b & VK_ACCESS_INDIRECT_COMMAND_READ_BIT), "the rasterizer's dispatches wait for binning");
+	flush_of(&f, 2, false, true);
+	expect_native(&f, "MBC", "tile loads only");
+	flush_of(&f, 2, false, false);
+	expect_native(&f, "", "nothing");
+	CHECK(!rdp_pass_flush_upscaled(&caps, &f), "not upscaled at 1x");
+	cb = begin();
+	rdp_pass_record_end(cb);
+	CHECK(strcmp(recorded(), "B") == 0, "a barrier at the end");
+	end(cb);
+	close_device();
+
+	/* 2x: the domain updated before; the reference after, for a
+	 * framebuffer drawn upscaled too */
+	open_device(2, 32);
+	flush_of(&f, 2, true, true);
+	CHECK(rdp_pass_flush_upscaled(&caps, &f), "16-bit, 320 wide: upscaled");
+	expect_native(&f, "STUMBIIBZCBU", "native, 2x");
+	expect_upscaled(&f, "STBIIBZC", "upscaled, the loads already done");
+	flush_of(&f, 1, true, true);
+	CHECK(!rdp_pass_flush_upscaled(&caps, &f), "8-bit: off-screen");
+	expect_native(&f, "STUMBIIBZC", "native, 2x, off-screen");
+	flush_of(&f, 4, true, true);
+	f.target.width = 255;
+	CHECK(!rdp_pass_flush_upscaled(&caps, &f), "narrower than 256: off-screen");
+	f.target.width = 256;
+	CHECK(rdp_pass_flush_upscaled(&caps, &f), "32-bit, 256 wide: upscaled");
+	flush_of(&f, 2, false, true);
+	CHECK(!rdp_pass_flush_upscaled(&caps, &f), "nothing drawn: not upscaled");
+
+	/* super-sampled read-back: always upscaled, its own loads, resolved */
+	caps.super_sample_readback = true;
+	flush_of(&f, 0, false, false);
+	CHECK(rdp_pass_flush_upscaled(&caps, &f), "super-sampled: always");
+	flush_of(&f, 2, true, true);
+	expect_upscaled(&f, "STUKMBIIBZCBR", "super-sampled");
+	caps.super_sample_readback = false;
+	close_device();
+
+	/* the ubershader: no rasterizer, nothing indirect */
+	open_device(2, 32);
+	caps.ubershader = true;
+	flush_of(&f, 2, true, false);
+	expect_native(&f, "STUBZBU", "ubershader, native");
+	ev = find_event(EV_MEMORY_BARRIER, 0);
+	CHECK(!(events[ev].a & VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT), "nothing indirect to wait for");
+	caps.super_sample_readback = true;
+	flush_of(&f, 2, true, true);
+	expect_upscaled(&f, "STUKMBZBR", "ubershader, super-sampled");
+	caps.super_sample_readback = false;
+	flush_of(&f, 2, false, true);
+	expect_native(&f, "MB", "ubershader, tile loads only");
+	close_device();
+}
+
 int main(void)
 {
 	unsetenv("PARALLEL_RDP_NO_KNOWN_PIPELINES");
@@ -335,6 +493,7 @@ int main(void)
 	test_upscaled_domain();
 	test_simple();
 	test_rasterize();
+	test_flush_order();
 
 	if (failures)
 	{

@@ -124,6 +124,38 @@ void rdp_pass_update_upscaled_domain(const rdp_pass_resources_t *r, granite_comm
 void rdp_pass_clear_super_sample_write_mask(const rdp_pass_resources_t *r, granite_command_buffer_t *cb,
 		unsigned width, unsigned height);
 
+/* ---- a flush's passes, in order ---- */
+typedef struct rdp_pass_flush
+{
+	rdp_pass_target_t target;
+	/* the tile loads, to run before the primitives that read them */
+	const rdp_upload_info_t *uploads;
+	uint32_t num_uploads;
+	uint32_t num_span_jobs;
+	const rdp_static_state_t *states;
+	uint32_t num_states;
+} rdp_pass_flush_t;
+
+/* Whether the flush draws primitives at all (not just tile loads) */
+bool rdp_pass_flush_draws(const rdp_pass_flush_t *f);
+
+/* Whether the flush is drawn upscaled too: always with the
+ * super-sampled read-back, else only a framebuffer that likely reaches
+ * the screen (16 or 32-bit RGBA, at least 256 wide) */
+bool rdp_pass_flush_upscaled(const rdp_renderer_caps_t *caps, const rdp_pass_flush_t *f);
+
+/* The flush at native resolution, then the upscaled RDRAM's reference
+ * updated from it when it is drawn upscaled too. Never with the
+ * super-sampled read-back. */
+void rdp_pass_record_native(const rdp_pass_resources_t *r, granite_command_buffer_t *cb, const rdp_pass_flush_t *f);
+
+/* The flush upscaled, and with the super-sampled read-back resolved
+ * down to RDRAM */
+void rdp_pass_record_upscaled(const rdp_pass_resources_t *r, granite_command_buffer_t *cb, const rdp_pass_flush_t *f);
+
+/* After the flush's passes: what they wrote is there for the next */
+void rdp_pass_record_end(granite_command_buffer_t *cb);
+
 RETRO_END_DECLS
 
 #endif

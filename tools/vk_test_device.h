@@ -336,7 +336,7 @@ static VkResult VKAPI_CALL create_framebuffer(VkDevice d, const VkFramebufferCre
 /* everything a frame records, in order */
 enum
 {
-	EV_BARRIER, EV_PASS, EV_END_PASS, EV_DRAW, EV_DISPATCH, EV_BLIT, EV_SUBMIT
+	EV_BARRIER, EV_PASS, EV_END_PASS, EV_DRAW, EV_DISPATCH, EV_BLIT, EV_SUBMIT, EV_MEMORY_BARRIER
 };
 #define MAX_EVENTS 256
 static unsigned num_events, bad_layouts, in_pass;
@@ -346,7 +346,8 @@ static struct
 	/* EV_BARRIER: image, new layout. EV_PASS: attachments, first image,
 	 * clears. EV_DRAW: pipeline, scissor. EV_DISPATCH: groups (an
 	 * indirect one: -1, its offset).
-	 * EV_BLIT: destination and source images. */
+	 * EV_BLIT: destination and source images. EV_MEMORY_BARRIER: a
+	 * global barrier's destination stages and accesses. */
 	int a, b, c;
 	/* EV_PASS: its two attachments are the two layers of one image */
 	bool two_layers;
@@ -386,6 +387,8 @@ static void VKAPI_CALL cmd_barrier(VkCommandBuffer cmd, VkPipelineStageFlags src
 	(void)cmd; (void)src; (void)dst; (void)flags; (void)memory_count; (void)memory; (void)buffer_count; (void)buffers;
 	CHECK(!in_pass, "no barrier inside a pass");
 	num_memory_barriers += memory_count;
+	for (i = 0; i < memory_count; i++)
+		event(EV_MEMORY_BARRIER, (int)dst, (int)memory[i].dstAccessMask, 0);
 	for (i = 0; i < image_count; i++)
 	{
 		int n = image_index(images[i].image);
