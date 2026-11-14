@@ -162,7 +162,13 @@ private:
 		std::array<u16, ELEMBUFF_SIZE> elements;
 		u32 num = 0;
 		int maxElement = 0;
+		/* a vertex is outside what the RSP clips to */
+		u32 clip = 0;
 	} triangles;
+
+	/* triangles clipped as the RSP clips them */
+	std::array<SPVertex, ELEMBUFF_SIZE * 3> m_clipped;
+	void _drawClipped(const SPVertex * _vertices, const u16 * _elements, u32 _count);
 
 	std::vector<SPVertex> m_dmaVertices;
 	u32 m_dmaVerticesNum;

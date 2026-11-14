@@ -171,6 +171,16 @@ CombinerInputs _compileCombiner(const CombinerStage & _stage, const char** _Inpu
 
 /*---------------ShaderParts-------------*/
 
+/* The RDP interpolates shade, fog included, in screen space, not with
+ * perspective like the texture coordinates: where the language has no
+ * noperspective it stays with perspective */
+static const char * shadeInterpolation(const opengl::GLInfo & _glinfo)
+{
+	if (_glinfo.isGLES2 || (_glinfo.isGLESX && !_glinfo.noPerspective))
+		return "# define SHADE\n";
+	return "# define SHADE noperspective\n";
+}
+
 class VertexShaderHeader : public ShaderPart
 {
 public:
@@ -204,6 +214,7 @@ public:
 			ss << "# define IN in" << std::endl << "# define OUT out" << std::endl;
 			m_part = ss.str();
 		}
+		m_part += shadeInterpolation(_glinfo);
 	}
 };
 
@@ -231,7 +242,7 @@ public:
 			"uniform mediump vec2 uCacheOffset[2];				\n"
 			"uniform mediump vec2 uCacheShiftScale[2];			\n"
 			"uniform lowp ivec2 uCacheFrameBuffer;				\n"
-			"OUT lowp vec4 vShadeColor;							\n"
+			"SHADE OUT lowp vec4 vShadeColor;							\n"
 			"OUT highp vec2 vTexCoord0;						\n"
 			"OUT highp vec2 vTexCoord1;						\n"
 			"OUT mediump vec2 vLodTexCoord;						\n"
@@ -297,7 +308,7 @@ public:
 			"uniform mediump vec2 uFogScale;	\n"
 			"uniform mediump vec2 uScreenCoordsScale;\n"
 			"									\n"
-			"OUT lowp vec4 vShadeColor;			\n"
+			"SHADE OUT lowp vec4 vShadeColor;			\n"
 			"OUT lowp float vNumLights;			\n"
 			"																\n"
 			"void main()													\n"
@@ -342,7 +353,7 @@ public:
 			"IN highp vec2 aTexCoord0;							\n"
 			"IN highp vec2 aTexCoord1;							\n"
 			"													\n"
-			"OUT lowp vec4 vShadeColor;							\n"
+			"SHADE OUT lowp vec4 vShadeColor;							\n"
 			"OUT highp vec2 vTexCoord0;						\n"
 			"OUT highp vec2 vTexCoord1;						\n"
 			"uniform lowp vec4 uRectColor;						\n"
@@ -364,7 +375,7 @@ public:
 		m_part =
 			"IN highp vec4 aRectPosition;						\n"
 			"													\n"
-			"OUT lowp vec4 vShadeColor;							\n"
+			"SHADE OUT lowp vec4 vShadeColor;							\n"
 			"uniform lowp vec4 uRectColor;						\n"
 			"void main()										\n"
 			"{													\n"
@@ -462,6 +473,7 @@ public:
 				<< "# define texture2D texture" << std::endl;
 			m_part = ss.str();
 		}
+		m_part += shadeInterpolation(_glinfo);
 	}
 };
 
@@ -727,7 +739,7 @@ public:
 		}
 
 		m_part +=
-			"IN lowp vec4 vShadeColor;	\n"
+			"SHADE IN lowp vec4 vShadeColor;	\n"
 			"IN highp vec2 vTexCoord0;\n"
 			"IN highp vec2 vTexCoord1;\n"
 			"IN mediump vec2 vLodTexCoord;\n"
@@ -806,7 +818,7 @@ public:
 		}
 
 		m_part +=
-			"IN lowp vec4 vShadeColor;	\n"
+			"SHADE IN lowp vec4 vShadeColor;	\n"
 			"IN lowp float vNumLights;	\n"
 			;
 

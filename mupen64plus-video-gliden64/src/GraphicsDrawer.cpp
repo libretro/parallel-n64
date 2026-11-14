@@ -21,6 +21,7 @@
 #include "RSP.h"
 #include "RDP.h"
 #include "VI.h"
+#include "gli_tri_clip.h"
 
 using namespace graphics;
 
@@ -35,7 +36,7 @@ GraphicsDrawer::GraphicsDrawer()
 	memset(m_rect, 0, sizeof(m_rect));
 	memset(m_texrectRect, 0, sizeof(m_texrectRect));
 	gli_drawer_bind_triangles(triangles.vertices.data(), triangles.elements.data(), &triangles.num,
-		&triangles.maxElement, &m_modifyVertices, &Context::ClipControl);
+		&triangles.maxElement, &m_modifyVertices, &triangles.clip, &Context::ClipControl);
 }
 
 GraphicsDrawer::~GraphicsDrawer()
@@ -378,21 +379,26 @@ void GraphicsDrawer::drawTriangles()
 	if (triangles.num == 0 || !_canDraw()) {
 		triangles.num = 0;
 		triangles.maxElement = 0;
+		triangles.clip = 0;
 		return;
 	}
 
 	_prepareDrawTriangle();
 
-	Context::DrawTriangleParameters triParams;
-	triParams.mode = drawmode::TRIANGLES;
-	triParams.flatColors = m_bFlatColors;
-	triParams.elementsType = datatype::UNSIGNED_BYTE;
-	triParams.verticesCount = static_cast<u32>(triangles.maxElement) + 1;
-	triParams.elementsCount = triangles.num;
-	triParams.vertices = triangles.vertices.data();
-	triParams.elements = triangles.elements.data();
-	triParams.combiner = currentCombiner();
-	gfxContext.drawTriangles(triParams);
+	if (triangles.clip != 0) {
+		_drawClipped(triangles.vertices.data(), triangles.elements.data(), triangles.num);
+	} else {
+		Context::DrawTriangleParameters triParams;
+		triParams.mode = drawmode::TRIANGLES;
+		triParams.flatColors = m_bFlatColors;
+		triParams.elementsType = datatype::UNSIGNED_BYTE;
+		triParams.verticesCount = static_cast<u32>(triangles.maxElement) + 1;
+		triParams.elementsCount = triangles.num;
+		triParams.vertices = triangles.vertices.data();
+		triParams.elements = triangles.elements.data();
+		triParams.combiner = currentCombiner();
+		gfxContext.drawTriangles(triParams);
+	}
 
 	if (config.frameBufferEmulation.enable != 0) {
 		const f32 maxY = gli_renderTriangles(triangles.vertices.data(), triangles.elements.data(), triangles.num);
@@ -407,6 +413,30 @@ void GraphicsDrawer::drawTriangles()
 
 	triangles.num = 0;
 	triangles.maxElement = 0;
+	triangles.clip = 0;
+}
+
+/* Triangles of which a vertex is outside what the RSP clips to, clipped as
+ * the RSP clips them, in order, a run at a time */
+void GraphicsDrawer::_drawClipped(const SPVertex * _vertices, const u16 * _elements, u32 _count)
+{
+	const u32 run = (u32)m_clipped.size() / GLI_TRI_CLIP_MAX / 3 * 3;
+	u32 first;
+	for (first = 0; first < _count; first += run) {
+		const u32 count = std::min(run, _count - first);
+		Context::DrawTriangleParameters triParams;
+		triParams.mode = drawmode::TRIANGLES;
+		triParams.flatColors = m_bFlatColors;
+		if (_elements != nullptr)
+			triParams.verticesCount = gli_tri_clip(_vertices, _elements + first, count, m_clipped.data());
+		else
+			triParams.verticesCount = gli_tri_clip(_vertices + first, nullptr, count, m_clipped.data());
+		if (triParams.verticesCount == 0)
+			continue;
+		triParams.vertices = m_clipped.data();
+		triParams.combiner = currentCombiner();
+		gfxContext.drawTriangles(triParams);
+	}
 }
 
 void GraphicsDrawer::drawScreenSpaceTriangle(u32 _numVtx, graphics::DrawModeParam _mode)
@@ -449,13 +479,20 @@ void GraphicsDrawer::drawDMATriangles(u32 _numVtx)
 	_prepareDrawTriangle();
 
 
-	Context::DrawTriangleParameters triParams;
-	triParams.mode = drawmode::TRIANGLES;
-	triParams.flatColors = m_bFlatColors;
-	triParams.verticesCount = _numVtx;
-	triParams.vertices = m_dmaVertices.data();
-	triParams.combiner = currentCombiner();
-	gfxContext.drawTriangles(triParams);
+	bool clip = false;
+	for (u32 i = 0; i < _numVtx && !clip; ++i)
+		clip = gli_tri_clip_vertex_outside(&m_dmaVertices[i]) != 0;
+	if (clip) {
+		_drawClipped(m_dmaVertices.data(), nullptr, _numVtx);
+	} else {
+		Context::DrawTriangleParameters triParams;
+		triParams.mode = drawmode::TRIANGLES;
+		triParams.flatColors = m_bFlatColors;
+		triParams.verticesCount = _numVtx;
+		triParams.vertices = m_dmaVertices.data();
+		triParams.combiner = currentCombiner();
+		gfxContext.drawTriangles(triParams);
+	}
 	m_dmaVerticesNum = 0;
 
 	if (config.frameBufferEmulation.enable != 0) {
@@ -926,6 +963,7 @@ void GraphicsDrawer::_initData()
 	for (auto vtx : triangles.vertices)
 		vtx.w = 1.0f;
 	triangles.num = 0;
+	triangles.clip = 0;
 	m_dmaVerticesNum = 0;
 }
 

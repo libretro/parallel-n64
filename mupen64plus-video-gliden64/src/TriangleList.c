@@ -7,6 +7,7 @@
 #include "gDP.h"
 #include "gSP.h"
 #include "gli_drawer.h"
+#include "gli_tri_clip.h"
 
 /* The drawer's triangle list, bound once at its construction */
 static struct
@@ -16,17 +17,19 @@ static struct
 	u32 *num;
 	s32 *maxElement;
 	u32 *modify;
+	u32 *clip;
 	const bool *clipControl;
 } g_tris;
 
 void gli_drawer_bind_triangles(SPVertex *_vertices, u16 *_elements, u32 *_num,
-		s32 *_maxElement, u32 *_modify, const bool *_clipControl)
+		s32 *_maxElement, u32 *_modify, u32 *_clip, const bool *_clipControl)
 {
 	g_tris.vertices = _vertices;
 	g_tris.elements = _elements;
 	g_tris.num = _num;
 	g_tris.maxElement = _maxElement;
 	g_tris.modify = _modify;
+	g_tris.clip = _clip;
 	g_tris.clipControl = _clipControl;
 }
 
@@ -88,6 +91,9 @@ void gli_drawer_add_triangle(s32 _v0, s32 _v1, s32 _v2)
 				vertices[elements[i]].z = 0.0f;
 		}
 	}
+
+	for (i = firstIndex; i < num; ++i)
+		*g_tris.clip |= gli_tri_clip_vertex_outside(&vertices[elements[i]]);
 }
 
 bool gli_drawer_is_rejected(s32 _v0, s32 _v1, s32 _v2)

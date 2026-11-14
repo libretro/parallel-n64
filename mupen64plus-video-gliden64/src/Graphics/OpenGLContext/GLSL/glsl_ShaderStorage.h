@@ -22,7 +22,7 @@ namespace glsl {
 		bool _saveCombinerKeys(const graphics::Combiners & _combiners) const;
 		bool _loadFromCombinerKeys(graphics::Combiners & _combiners);
 
-		const u32 m_formatVersion = 0x3DU;
+		const u32 m_formatVersion = 0x3EU;
 		const u32 m_keysFormatVersion = 0x05;
 		const opengl::GLInfo & m_glinfo;
 		opengl::CachedUseProgram * m_useProgram;

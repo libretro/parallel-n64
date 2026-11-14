@@ -1146,6 +1146,8 @@ const uint32_t *vkr_write_combiner(spv_module *m, const vkr_shader_config *cfg,
 
    e->frag_coord = spv_builtin_in(m, T_F4, SPV_BUILTIN_FRAGCOORD);
    e->shade      = spv_input(m, T_F4, 0);
+   /* the RDP interpolates shade in screen space */
+   spv_decorate(m, e->shade.id, SPV_DEC_NOPERSPECTIVE);
    e->tc[0]      = spv_input(m, T_F2, 1);
    e->tc[1]      = spv_input(m, T_F2, 2);
    e->lod_tc     = spv_input(m, T_F2, 3);

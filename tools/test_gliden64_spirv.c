@@ -1,6 +1,9 @@
 /* Every shader the Vulkan backend writes is valid SPIR-V: the generic
  * combiner and the special shaders under every setting that shapes them,
- * and random combiners. Each module goes through spirv-val. C89. */
+ * and random combiners. Each module goes through spirv-val. C89.
+ *
+ * The combiners also take shade, the input at location 0, in screen
+ * space (NoPerspective), as the RDP interpolates it. */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -10,6 +13,39 @@
 
 static spv_module module_;
 static unsigned   checked, failures;
+
+/* Whether the Input variable at location 0 is decorated NoPerspective */
+static int shade_noperspective(const uint32_t *words, unsigned count)
+{
+   unsigned i, j;
+   for (i = 5; i < count; i += words[i] >> 16)
+   {
+      uint32_t id;
+      int input = 0, noperspective = 0;
+      if ((words[i] & 0xffff) != 71 || words[i + 2] != 30 || words[i + 3] != 0)
+         continue; /* OpDecorate id Location 0 */
+      id = words[i + 1];
+      for (j = 5; j < count; j += words[j] >> 16)
+      {
+         if ((words[j] & 0xffff) == 59 && words[j + 2] == id && words[j + 3] == 1)
+            input = 1; /* OpVariable, Input */
+         if ((words[j] & 0xffff) == 71 && words[j + 1] == id && words[j + 2] == 13)
+            noperspective = 1;
+      }
+      if (input)
+         return noperspective;
+   }
+   return 0;
+}
+
+static void check_shade(const uint32_t *words, unsigned count, const char *what)
+{
+   if (words && !shade_noperspective(words, count))
+   {
+      printf("FAIL %s: shade interpolated with perspective\n", what);
+      failures++;
+   }
+}
 
 static void validate(const uint32_t *words, unsigned count, const char *what)
 {
@@ -100,6 +136,7 @@ int main(int argc, char **argv)
             sprintf(what, "generic bits %u filter %d msaa %d", bits, filter, msaa);
             words = vkr_write_combiner(&module_, &cfg, &desc, 1, &count);
             validate(words, count, what);
+            check_shade(words, count, what);
          }
       }
    }
@@ -126,6 +163,7 @@ int main(int argc, char **argv)
       sprintf(what, "combiner %d", i);
       words = vkr_write_combiner(&module_, &cfg, &desc, 0, &count);
             validate(words, count, what);
+            check_shade(words, count, what);
    }
 
    for (k = 0; k < VKR_VS_COUNT; k++)
