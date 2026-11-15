@@ -11,6 +11,7 @@
 #include <retro_miscellaneous.h>
 #include <encodings/crc32.h>
 #include "pipeline_record_list.h"
+#include "rdp_intake.h"
 
 using namespace Vulkan;
 
@@ -21,21 +22,7 @@ namespace RDP
 {
 const struct retro_hw_render_interface_vulkan *vulkan;
 
-static int cmd_cur;
-static int cmd_ptr;
-static uint32_t cmd_data[0x00040000 >> 2];
 static uint64_t pending_timeline_value, timeline_value;
-
-/* HLE command-FIFO redirect.  The HLE emitter synthesizes an RDP command list
- * into a host buffer (out of guest RDRAM, so Expansion Pak games are not
- * corrupted) and reports it as occupying [hle_cmd_base, hle_cmd_base+len).
- * When active, process_commands() ingests the command words from this host
- * buffer instead of guest DRAM; the address range is otherwise identical, so
- * texture/image reads still hit real RDRAM.  Cleared after each submit, so the
- * LLE path (real games feeding the RDP) is completely unaffected. */
-static const uint8_t *hle_cmd_buf = nullptr;
-static uint32_t hle_cmd_base = 0;
-static uint32_t hle_cmd_len = 0;
 
 static CommandProcessor *frontend;
 static Device *device;
@@ -99,13 +86,6 @@ static unsigned upscaler_native_height = 240;
 static unsigned upscaler_picked_width;
 static unsigned upscaler_picked_height;
 
-/* The last of each state command, to give a command processor made anew
- * the state the RDP had: set_tile and set_tile_size per tile */
-static uint32_t state_words[64][2];
-static bool state_valid[64];
-static uint32_t tile_state_words[2][8][2];
-static bool tile_state_valid[2][8];
-
 static void upscaler_poll();
 unsigned width, height;
 unsigned overscan;
@@ -119,163 +99,45 @@ bool synchronous = true, divot_filter = true, gamma_dither = true;
 bool vi_aa = true, vi_scale = true, dither_filter = true;
 bool interlacing = true;
 
-static const unsigned cmd_len_lut[64] = {
-	1, 1, 1, 1, 1, 1, 1, 1, 4, 6, 12, 14, 12, 14, 20, 22,
-	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,  1,  1,  1,  1,  1,
-	1, 1, 1, 1, 2, 2, 1, 1, 1, 1, 1,  1,  1,  1,  1,  1,
-	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,  1,  1,  1,  1,  1,
-};
+/* The command list, where the DPC registers point (rdp_intake.c) */
+static rdp_intake_t intake;
 
-void set_hle_cmd_buffer(const uint8_t *buf, uint32_t base_byte_addr, uint32_t len_bytes)
+static void intake_enqueue(void *user, unsigned num_words, const uint32_t *words)
 {
-	hle_cmd_buf = buf;
-	hle_cmd_base = base_byte_addr;
-	hle_cmd_len = len_bytes;
+	(void)user;
+	if (frontend)
+		frontend->enqueue_command(num_words, words);
 }
 
-/* Runs the whole commands at the start of @words, @count 64-bit words,
- * and returns how many words they took: a command cut short at the end
- * is left for when the rest of it comes. */
-static int run_commands(const uint32_t *words, int count)
+static void intake_sync_full(void *user)
 {
-	int cur = 0;
-	while (cur < count)
-	{
-		const uint32_t *w = words + 2 * cur;
-		uint32_t w1 = w[0];
-		uint32_t command = (w1 >> 24) & 63;
-		int cmd_length = cmd_len_lut[command];
+	(void)user;
+	// For synchronous RDP:
+	if (synchronous && frontend)
+		frontend->wait_for_timeline(frontend->signal_timeline());
+	*gfx_info.MI_INTR_REG |= DP_INTERRUPT;
+	gfx_info.CheckInterrupts();
+}
 
-		if (count - cur < cmd_length)
-			break;
-
-		if (command >= 8 && frontend)
-			frontend->enqueue_command(cmd_length * 2, w);
-
-		if (command == 0x35 || command == 0x32)
-		{
-			unsigned set = command == 0x35 ? 0 : 1;
-			unsigned tile = (w[1] >> 24) & 7;
-			tile_state_words[set][tile][0] = w[0];
-			tile_state_words[set][tile][1] = w[1];
-			tile_state_valid[set][tile] = true;
-		}
-		else if (command >= 0x2a && command != 0x30 && command != 0x33 && command != 0x34 && command != 0x36)
-		{
-			state_words[command][0] = w[0];
-			state_words[command][1] = w[1];
-			state_valid[command] = true;
-		}
-
-		if (RDP::Op(command) == RDP::Op::SyncFull)
-		{
-			// For synchronous RDP:
-			if (synchronous && frontend)
-				frontend->wait_for_timeline(frontend->signal_timeline());
-			*gfx_info.MI_INTR_REG |= DP_INTERRUPT;
-			gfx_info.CheckInterrupts();
-		}
-
-		cur += cmd_length;
-	}
-	return cur;
+/* HLE command-FIFO redirect.  The HLE emitter synthesizes an RDP command list
+ * into a host buffer (out of guest RDRAM, so Expansion Pak games are not
+ * corrupted) and reports it as occupying [base, base+len). When active,
+ * process_commands() ingests the command words from this host buffer
+ * instead of guest DRAM; the address range is otherwise identical, so
+ * texture/image reads still hit real RDRAM.  Cleared after each submit, so the
+ * LLE path (real games feeding the RDP) is completely unaffected. */
+void set_hle_cmd_buffer(const uint8_t *buf, uint32_t base_byte_addr, uint32_t len_bytes)
+{
+	rdp_intake_set_hle_buffer(&intake, buf, base_byte_addr, len_bytes);
 }
 
 void process_commands()
 {
 	if (!device_supported)
 		return;
-
-	const uint32_t DP_CURRENT = *GET_GFX_INFO(DPC_CURRENT_REG) & 0x00FFFFF8;
-	const uint32_t DP_END = *GET_GFX_INFO(DPC_END_REG) & 0x00FFFFF8;
-
-	int length = DP_END - DP_CURRENT;
-	if (length <= 0)
-		return;
-
-	length = unsigned(length) >> 3;
-	if ((cmd_ptr + length) & ~(0x0003FFFF >> 3))
-		return;
-
-	uint32_t offset = DP_CURRENT;
-	const bool xbus = (*GET_GFX_INFO(DPC_STATUS_REG) & DP_STATUS_XBUS_DMA) != 0;
-	if (!xbus && (DP_END > 0x7ffffff || DP_CURRENT > 0x7ffffff))
-		return;
-
-	/* Source the command words from the HLE host buffer when a
-	 * synthesized FIFO is active, else from guest RDRAM. */
-	const bool from_hle = !xbus && hle_cmd_buf != nullptr
-	                      && DP_CURRENT >= hle_cmd_base
-	                      && (DP_CURRENT - hle_cmd_base) < hle_cmd_len;
-
-	/* A list in one piece of memory, with nothing left over from the last
-	 * one, is run where it is; only a command it cuts short is kept. */
-	if (!xbus && cmd_ptr == 0)
-	{
-		const uint8_t *direct = nullptr;
-		if (from_hle)
-		{
-			if ((DP_CURRENT - hle_cmd_base) + uint32_t(length) * 8u <= hle_cmd_len)
-				direct = hle_cmd_buf + (DP_CURRENT - hle_cmd_base);
-		}
-		else if (DP_CURRENT + uint32_t(length) * 8u <= 0x1000000u)
-			direct = DRAM + DP_CURRENT;
-
-		if (direct)
-		{
-			const uint32_t *words = reinterpret_cast<const uint32_t *>(direct);
-			int done = run_commands(words, length);
-			if (done < length)
-				memcpy(cmd_data, words + 2 * done, size_t(length - done) * 8);
-			cmd_ptr = length - done;
-			cmd_cur = 0;
-			*GET_GFX_INFO(DPC_CURRENT_REG) = *GET_GFX_INFO(DPC_END_REG);
-			return;
-		}
-	}
-
-	if (xbus)
-	{
-		do
-		{
-			offset &= 0xFF8;
-			cmd_data[2 * cmd_ptr + 0] = *reinterpret_cast<const uint32_t *>(SP_DMEM + offset);
-			cmd_data[2 * cmd_ptr + 1] = *reinterpret_cast<const uint32_t *>(SP_DMEM + offset + 4);
-			offset += sizeof(uint64_t);
-			cmd_ptr++;
-		} while (--length > 0);
-	}
-	else
-	{
-		do
-		{
-			const uint8_t *p;
-			if (from_hle)
-			{
-				uint32_t rel = offset - hle_cmd_base;
-				if (rel + 8 > hle_cmd_len)
-					break;
-				p = hle_cmd_buf + rel;
-			}
-			else
-			{
-				offset &= 0xFFFFF8;
-				p = DRAM + offset;
-			}
-			cmd_data[2 * cmd_ptr + 0] = *reinterpret_cast<const uint32_t *>(p);
-			cmd_data[2 * cmd_ptr + 1] = *reinterpret_cast<const uint32_t *>(p + 4);
-			offset += sizeof(uint64_t);
-			cmd_ptr++;
-		} while (--length > 0);
-	}
-
-	cmd_cur += run_commands(&cmd_data[2 * cmd_cur], cmd_ptr - cmd_cur);
-	if (cmd_cur == cmd_ptr)
-	{
-		cmd_ptr = 0;
-		cmd_cur = 0;
-	}
-	*GET_GFX_INFO(DPC_CURRENT_REG) = *GET_GFX_INFO(DPC_END_REG);
+	if (rdp_intake_process(&intake, *GET_GFX_INFO(DPC_CURRENT_REG), *GET_GFX_INFO(DPC_END_REG),
+	                       *GET_GFX_INFO(DPC_STATUS_REG), DRAM, SP_DMEM))
+		*GET_GFX_INFO(DPC_CURRENT_REG) = *GET_GFX_INFO(DPC_END_REG);
 }
 
 void begin_frame()
@@ -488,25 +350,6 @@ static bool create_processor(unsigned factor)
 	return true;
 }
 
-/* A command processor made while the game runs starts from the state the
- * last one had; what TMEM held is lost */
-static void replay_state()
-{
-	static const unsigned char order[] = {
-		0x3f, 0x3e, 0x3d, 0x2f, 0x3c, 0x2d, 0x2c, 0x2a, 0x2b,
-		0x37, 0x38, 0x39, 0x3a, 0x3b, 0x2e
-	};
-	unsigned i, set, tile;
-
-	for (i = 0; i < sizeof(order); i++)
-		if (state_valid[order[i]])
-			frontend->enqueue_command(2, state_words[order[i]]);
-	for (set = 0; set < 2; set++)
-		for (tile = 0; tile < 8; tile++)
-			if (tile_state_valid[set][tile])
-				frontend->enqueue_command(2, tile_state_words[set][tile]);
-}
-
 /* The factor for the frames shown, rdp_upscaler_factor(): the one
  * chosen stands while the frames stay the size it was chosen for */
 static unsigned upscaler_pick_factor(const struct retro_hw_upscaler_request *req)
@@ -588,7 +431,7 @@ static void upscaler_poll()
 		if (frontend)
 			frontend->idle();
 		if (create_processor(factor))
-			replay_state();
+			rdp_intake_replay_state(&intake);
 		else if (!create_processor(1))
 			device_supported = false;
 		/* (only what this factor adds is new) */
@@ -699,8 +542,14 @@ bool init()
 
 	rdram_base = aligned_rdram;
 	rdram_offset = offset;
-	memset(state_valid, 0, sizeof(state_valid));
-	memset(tile_state_valid, 0, sizeof(tile_state_valid));
+	{
+		/* (nothing of an earlier session's list or state) */
+		rdp_intake_callbacks_t cb;
+		cb.enqueue = intake_enqueue;
+		cb.sync_full = intake_sync_full;
+		cb.user = NULL;
+		rdp_intake_init(&intake, &cb);
+	}
 	upscaler_on = false;
 	upscaler_reset_pending = true;
 	if (!create_processor(upscaling))
