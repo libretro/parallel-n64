@@ -35,7 +35,7 @@ DEFINE = "NO_STORAGE_8BIT"
 # OpCapability values that need 8-bit storage or arithmetic
 CAPS_8BIT = {39: "Int8", 4448: "StorageBuffer8BitAccess", 4449: "UniformAndStorageBuffer8BitAccess",
              4450: "StoragePushConstant8"}
-# ResourceLayout version 3 (vulkan/shader.hpp): 8-byte magic, then four
+# ResourceLayout version 3 (GRANITE_RESOURCE_LAYOUT_VERSION, vulkan/shader.h): 8-byte magic, then four
 # DescriptorSetLayouts of 80 bytes whose first nine words are binding masks.
 REFL_SETS, REFL_SET_SIZE, REFL_MASKS = 4, 80, 9
 

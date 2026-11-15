@@ -28,7 +28,7 @@
 #include "fence.h"
 #include "logging.h"
 #include "timer.h"
-#include "luts.hpp"
+#include "luts.h"
 
 /* Never more than this many misses queued to the pipeline thread */
 #define RDP_RENDERER_MAX_QUEUED_PIPELINES (4u * RDP_QUEUE_MAX_STATIC_STATES)

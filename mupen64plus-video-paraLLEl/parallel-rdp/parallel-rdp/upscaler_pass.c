@@ -25,7 +25,7 @@
 #include "upscaler_pass.h"
 #include "command_ops.h"
 #include "pipeline_record.h"
-#include "upscaler_shaders.hpp"
+#include "upscaler_shaders.h"
 
 /* Granite is built without SPIR-V reflection: the layouts are spelt out */
 granite_program_t *rdp_upscaler_color_program(granite_device_t *device)

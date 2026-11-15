@@ -25,8 +25,8 @@
 #include <string.h>
 #include "video_interface.h"
 #include "pipeline_record.h"
-#include "luts.hpp"
-#include "upscaler_shaders.hpp"
+#include "luts.h"
+#include "upscaler_shaders.h"
 
 /* ---- small things ---- */
 static unsigned trailing_zeroes(unsigned v)

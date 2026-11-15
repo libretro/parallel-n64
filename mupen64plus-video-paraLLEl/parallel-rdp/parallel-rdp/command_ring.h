@@ -37,7 +37,7 @@ RETRO_BEGIN_DECLS
 typedef struct rdp_command_ring rdp_command_ring_t;
 
 /* Runs one command on the command thread. Without commands for a while
- * it is also called with the single word MetaIdle << 24. */
+ * it is also called with the single word RDP_PROCESSOR_IDLE << 24. */
 typedef void (*rdp_command_ring_run_t)(void *user, unsigned num_words, const uint32_t *words);
 
 /* words: a power of two. NULL if the thread cannot start; the caller then

@@ -16,7 +16,7 @@
 #include "vk_device.h"
 #include "vk_renderer.h"
 #define UPSCALER_SHADERS_MOTION_ONLY
-#include <upscaler_shaders.hpp>
+#include <upscaler_shaders.h>
 
 /* ---- capacity: every pool is fixed at creation, exhaustion is defined ---- */
 #define MAX_IMAGES      8192

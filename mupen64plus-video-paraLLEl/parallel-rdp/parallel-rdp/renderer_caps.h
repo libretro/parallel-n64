@@ -37,7 +37,7 @@
 RETRO_BEGIN_DECLS
 
 /* The N64's limits as the renderer sizes its buffers for them
- * (Limits and ImplementationConstants in rdp_data_structures.hpp) */
+ * (from parallel-RDP's Limits and ImplementationConstants) */
 #define RDP_CAPS_MAX_WIDTH 1024u
 #define RDP_CAPS_MAX_HEIGHT 1024u
 #define RDP_CAPS_TILE_WIDTH 8u

@@ -30,7 +30,7 @@
 #include "command_ring.h"
 #include "thread_id.h"
 
-/* Op::MetaIdle, rdp_common.hpp */
+/* RDP_PROCESSOR_IDLE, rdp_processor.h */
 #define RDP_COMMAND_RING_IDLE_OP 3u
 
 struct rdp_command_ring

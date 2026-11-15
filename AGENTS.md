@@ -111,7 +111,7 @@ Know which layer you are changing. Having one does not give you the next.
 
 | Layer | Where | Scope |
 | --- | --- | --- |
-| Prebuilt SPIR-V | `shaders/slangmosh.h` (picked by `shader_bank.c`), `upscaler_shaders.hpp` | every device |
+| Prebuilt SPIR-V | `shaders/slangmosh.h` (picked by `shader_bank.c`), `upscaler_shaders.h` | every device |
 | Recipes (what to build) | `<system>/ParallelN64/parallel_rdp_pipelines.bin`, `pipeline_record.h` | portable |
 | Driver blob | `<system>/ParallelN64/parallel_rdp_pipeline_cache.bin` | one device and driver |
 | Live `VkPipeline` | `Program::get_pipeline` | this device |
