@@ -1266,7 +1266,7 @@ lrhost_gl$(EXE_EXT): tools/lrhost.c tools/lrhost_gl.h $(LIBRETRO_COMM_DIR)/featu
 # built from the renderer's own sources, with glsm, as the core is: its LFB
 # write, and its texture uploads for desktop GL and for GLES 2
 GLITCH64_TEST_SRCS := $(VIDEODIR_GLIDE)/Glitch64/glitchmain.c $(VIDEODIR_GLIDE)/Glitch64/glitch64_combiner.c $(VIDEODIR_GLIDE)/Glitch64/glitch64_n64_combiner.c \
-	$(VIDEODIR_GLIDE)/Glitch64/geometry.c $(VIDEODIR_GLIDE)/Glitch64/glitch64_textures.c \
+	$(VIDEODIR_GLIDE)/Glitch64/geometry.c $(VIDEODIR_GLIDE)/Glitch64/glitch64_textures.c $(VIDEODIR_GLIDE)/Glitch64/glitch64_vk.c \
 	$(ROOT_DIR)/libretro/glsm/glsm.c $(LIBRETRO_COMM_DIR)/gfx/gl_capabilities.c $(LIBRETRO_COMM_DIR)/glsym/rglgen.c \
 	tools/glitch64_test_stubs.c
 GLITCH64_TEST_FLAGS := -D__LIBRETRO__ -DINLINE=inline -DM64P_PLUGIN_API -DM64P_CORE_PROTOTYPES -DHAVE_GLIDE64 \
@@ -2315,7 +2315,8 @@ check_gliden64_c89:
 		-I$(VIDEODIR_PARALLEL)/parallel-rdp/parallel-rdp -I$(VIDEODIR_GLIDEN64)/src -I$(VIDEODIR_GLIDEN64)/src/uCodes -I$(VIDEODIR_GLIDEN64)/src/Graphics/VulkanContext \
 		-fsyntax-only $(VIDEODIR_GLIDEN64)/src/$$f || exit 1; done
 
-GLIDEN64_SPIRV_SRC := $(VIDEODIR_GLIDEN64)/src/Graphics/VulkanContext/vk_spirv.c $(VIDEODIR_GLIDEN64)/src/Graphics/VulkanContext/vk_shaders.c
+GLIDEN64_SPIRV_SRC := $(VIDEODIR_GLIDEN64)/src/Graphics/VulkanContext/vk_spirv.c $(VIDEODIR_GLIDEN64)/src/Graphics/VulkanContext/vk_shaders.c \
+	$(VIDEODIR_GLIDE)/Glitch64/glitch64_vk_shaders.c
 test_gliden64_spirv$(EXE_EXT): tools/test_gliden64_spirv.c $(GLIDEN64_SPIRV_SRC)
 	$(CC) $(CHECK_CFLAGS) $(CHECK_SANITIZE) -I$(VIDEODIR_GLIDEN64)/src/Graphics/VulkanContext $< $(GLIDEN64_SPIRV_SRC) -o $@ $(CHECK_LDFLAGS) $(CHECK_SANITIZE)
 

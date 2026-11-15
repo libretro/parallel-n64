@@ -33,6 +33,7 @@
 #include "../../../mupen64plus-core/src/plugin/plugin.h"
 #include "glide.h"
 #include "glitchmain.h"
+#include "glitch64_vk.h"
 #include "../../libretro/libretro_private.h"
 
 #include "../../Graphics/RDP/RDP_state.h"
@@ -799,6 +800,7 @@ static void init_depth_shader(void)
 
 void grN64Combine(const glitch64_n64_combiner *c)
 {
+   GLITCH64_VK(vk_grN64Combine(c));
    glitch64_n64_combiner m = *c;
    uint32_t key[2];
    if (!n64_derivatives)
@@ -816,6 +818,7 @@ void grN64Combine(const glitch64_n64_combiner *c)
 void grN64Constants(const float prim[4], const float env[4], const float consts[4],
       const float level[4], const float key_center[3], const float key_scale[3])
 {
+   GLITCH64_VK(vk_grN64Constants(prim, env, consts, level, key_center, key_scale));
    if (!memcmp(n64_values[0], prim, sizeof(n64_values[0]))
          && !memcmp(n64_values[1], env, sizeof(n64_values[1]))
          && !memcmp(n64_values[2], consts, sizeof(n64_values[2]))
@@ -840,6 +843,7 @@ void grN64Constants(const float prim[4], const float env[4], const float consts[
  * (need_to_compile finds the program and updates its uniforms) */
 void grAlphaTestReferenceValue(uint8_t value)
 {
+   GLITCH64_VK(vk_grAlphaTestReferenceValue(value));
    if (alpha_ref != value)
    {
       glitch64_flush();
@@ -850,6 +854,7 @@ void grAlphaTestReferenceValue(uint8_t value)
 
 void grAlphaTestFunction( int32_t function, uint8_t value, int set_alpha_ref)
 {
+   GLITCH64_VK(vk_grAlphaTestFunction(function, value, set_alpha_ref));
    const bool test = (function == GR_CMP_ALWAYS) ? false : true;
    const int ref = (set_alpha_ref) ? value : alpha_ref;
    if (alpha_func == function && alpha_test == test && alpha_ref == ref)
@@ -863,6 +868,7 @@ void grAlphaTestFunction( int32_t function, uint8_t value, int set_alpha_ref)
 
 void grFogMode( int32_t mode, uint32_t fogcolor)
 {
+   GLITCH64_VK(vk_grFogMode(mode));
    if (fog_enabled == mode)
       return;
    glitch64_flush();
@@ -876,6 +882,7 @@ void grStipplePattern(uint32_t stipple)
 
 void grStippleMode( int32_t mode )
 {
+   GLITCH64_VK(vk_grStippleMode(mode));
    const int dither = mode != GR_STIPPLE_DISABLE;
    if (dither == dither_enabled)
       return;
@@ -886,6 +893,7 @@ void grStippleMode( int32_t mode )
 
 void grAlphaBlendFunction(GLenum rgb_sf, GLenum rgb_df, GLenum alpha_sf, GLenum alpha_df)
 {
+   GLITCH64_VK(vk_grAlphaBlendFunction(rgb_sf, rgb_df, alpha_sf, alpha_df));
    static GLenum last[4];
    if (last[0] == rgb_sf && last[1] == rgb_df && last[2] == alpha_sf && last[3] == alpha_df
          && glIsEnabled(GL_BLEND))

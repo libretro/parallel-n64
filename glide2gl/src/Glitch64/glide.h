@@ -425,14 +425,7 @@ void grDepthBiasLevel( int32_t level );
 
 void grDepthBufferFunction(GLenum func);
 
-#define grDepthBufferMode(mode) \
-{ \
-   glitch64_flush(); \
-   if (mode == GR_DEPTHBUFFER_DISABLE) \
-      glDisable(GL_DEPTH_TEST); \
-   else \
-      glEnable(GL_DEPTH_TEST); \
-}
+void grDepthBufferMode(int32_t mode);
 
 void grDepthMask(bool mask);
 

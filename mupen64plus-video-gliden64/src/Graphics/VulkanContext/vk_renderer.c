@@ -159,6 +159,10 @@ struct vkr_program
    int  rect;
    int  vs_kind, fs_kind;
    int  is_special;
+   /* the user's own shaders and vertices (vkr_client_new) */
+   int  is_client;
+   VkShaderModule client_vs;
+   vkr_client_layout layout;
    uint32_t id;
    float special[4];
    /* only the worker reads and writes this once it is queued */
@@ -207,6 +211,8 @@ typedef struct pipe_state
    unsigned rect : 1, kind : 3;
    unsigned depth_clamp : 1, lines : 1;
    unsigned cull : 2, depth_test : 1, depth_write : 1, depth_cmp : 2, strip : 1;
+   /* the colour or the alpha not written (vkr_color_mask) */
+   unsigned no_rgb : 1, no_alpha : 1;
 } pipe_state;
 
 struct vkr_renderer
@@ -1654,12 +1660,25 @@ static uint64_t state_key(const vkr_renderer *r, int rect, int lines, int strip)
       s.depth_write = r->depth_write_on && !r->depth_ro ? 1 : 0;
       s.depth_cmp   = (unsigned)r->depth_cmp;
       s.strip       = strip ? 1 : 0;
+      /* no test, no write: one pipeline whatever they were set to */
+      if (!s.depth_test)
+         s.depth_write = s.depth_cmp = 0;
    }
    memcpy(&k, &s, sizeof(s) < sizeof(k) ? sizeof(s) : sizeof(k));
    return k;
 }
 
+static VkPipeline build_pipeline_for(vkr_renderer *r, VkShaderModule vs, VkShaderModule fs, uint64_t key,
+      const vkr_client_layout *layout);
+
 static VkPipeline build_pipeline(vkr_renderer *r, VkShaderModule vs, VkShaderModule fs, uint64_t key)
+{
+   return build_pipeline_for(r, vs, fs, key, NULL);
+}
+
+/* @layout: a client program's vertices, else the renderer's own */
+static VkPipeline build_pipeline_for(vkr_renderer *r, VkShaderModule vs, VkShaderModule fs, uint64_t key,
+      const vkr_client_layout *layout)
 {
    static const VkCullModeFlags cull[4] = { VK_CULL_MODE_NONE, VK_CULL_MODE_FRONT_BIT, VK_CULL_MODE_BACK_BIT, VK_CULL_MODE_FRONT_AND_BACK };
    static const VkCompareOp cmp[3] = { VK_COMPARE_OP_LESS_OR_EQUAL, VK_COMPARE_OP_LESS, VK_COMPARE_OP_ALWAYS };
@@ -1675,7 +1694,7 @@ static VkPipeline build_pipeline(vkr_renderer *r, VkShaderModule vs, VkShaderMod
    pipe_state s;
    VkPipelineShaderStageCreateInfo stages[2];
    VkVertexInputBindingDescription vb;
-   VkVertexInputAttributeDescription va[5];
+   VkVertexInputAttributeDescription va[VKR_CLIENT_ATTRS];
    VkPipelineVertexInputStateCreateInfo vi;
    VkPipelineInputAssemblyStateCreateInfo ia;
    VkPipelineViewportStateCreateInfo vp;
@@ -1719,7 +1738,18 @@ static VkPipeline build_pipeline(vkr_renderer *r, VkShaderModule vs, VkShaderMod
    vi.vertexBindingDescriptionCount = 1;
    vi.pVertexBindingDescriptions = &vb;
    vi.pVertexAttributeDescriptions = va;
-   if (s.rect)
+   if (layout)
+   {
+      vb.stride = layout->stride;
+      for (i = 0; i < layout->count; i++)
+      {
+         va[i].location = layout->attrs[i].location;
+         va[i].format = (VkFormat)layout->attrs[i].format;
+         va[i].offset = layout->attrs[i].offset;
+      }
+      vi.vertexAttributeDescriptionCount = layout->count;
+   }
+   else if (s.rect)
    {
       vb.stride = sizeof(vkr_rect_vertex);
       va[0].location = 0; va[0].format = VK_FORMAT_R32G32B32A32_SFLOAT; va[0].offset = offsetof(vkr_rect_vertex, x);
@@ -1775,7 +1805,8 @@ static VkPipeline build_pipeline(vkr_renderer *r, VkShaderModule vs, VkShaderMod
    cba.srcAlphaBlendFactor = blend_factors[s.src_a];
    cba.dstAlphaBlendFactor = blend_factors[s.dst_a];
    cba.alphaBlendOp = VK_BLEND_OP_ADD;
-   cba.colorWriteMask = 0xf;
+   cba.colorWriteMask = (s.no_rgb ? 0u : (VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT))
+      | (s.no_alpha ? 0u : VK_COLOR_COMPONENT_A_BIT);
 
    memset(&cb, 0, sizeof(cb));
    cb.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
@@ -1836,6 +1867,8 @@ static void pipeline_work(void *user, mpsc_stack_node_t *node)
 
    if (!p)
       pipe = build_pipeline(r, job->vs, job->fs, job->key);
+   else if (p->is_client)
+      pipe = build_pipeline_for(r, p->client_vs, p->fs, job->key, &p->layout);
    else
    {
       if (p->fs == VK_NULL_HANDLE)
@@ -1944,6 +1977,24 @@ static int bind_for_draw(vkr_renderer *r, int rect, int lines, int strip)
 
    if (p->is_special)
       pipe = fixed_pipeline(r, special_id(p->vs_kind, p->fs_kind), r->vs[p->vs_kind], r->special_fs[p->fs_kind], key);
+   else if (p->is_client)
+   {
+      /* vkr_client_prewarm built every state the client can ask for;
+       * should one be missed, the draw is left out and the worker builds
+       * it for the next: the draw thread never compiles */
+      pipe_entry *e = pipe_lookup(r, p->id, key);
+      int status = e ? retro_atomic_load_acquire_int(&e->status) : PS_FAILED;
+      if (status != PS_READY)
+      {
+         if (r->strict)
+            abort(); /* tools/ci: the client's prewarm does not cover what it draws */
+         if (status == PS_EMPTY)
+            pipe_queue(r, e, p, VK_NULL_HANDLE, VK_NULL_HANDLE, key);
+         return 0;
+      }
+      pipe = e->pipeline;
+      generic = 1; /* its ops are pushed, as the generic shader's are */
+   }
    else
    {
       pipe_entry *e = pipe_lookup(r, p->id, key);
@@ -1973,6 +2024,12 @@ static int bind_for_draw(vkr_renderer *r, int rect, int lines, int strip)
       push.clip_enable = r->clip;
       F(CmdPushConstants)(r->cmd, r->layout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
             0, 72, &push);
+      if (p->is_client)
+      {
+         memcpy(push.special, p->special, sizeof(push.special));
+         F(CmdPushConstants)(r->cmd, r->layout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+               (uint32_t)offsetof(vkr_push, special), sizeof(push.special), push.special);
+      }
       r->push_clip_sent = r->clip;
    }
    else if (p->is_special)
@@ -2201,6 +2258,16 @@ vkr_tri_vertex *vkr_tri_reserve(vkr_renderer *r, unsigned count)
    return v;
 }
 
+void *vkr_vertex_reserve(vkr_renderer *r, size_t bytes)
+{
+   VkDeviceSize offset;
+   void *v = ring_reserve(r, bytes, sizeof(float), &offset);
+   r->vb_offset = offset;
+   r->vb_valid = 1;
+   F(CmdBindVertexBuffers)(r->cmd, 0, 1, &r->f->ring, &r->vb_offset);
+   return v;
+}
+
 vkr_rect_vertex *vkr_rect_reserve(vkr_renderer *r, unsigned count)
 {
    VkDeviceSize offset;
@@ -2377,6 +2444,12 @@ void vkr_blend(vkr_renderer *r, int src, int dst, int src_a, int dst_a)
    r->st.dst_a = (unsigned)dst_a;
 }
 
+void vkr_color_mask(vkr_renderer *r, int rgb, int alpha)
+{
+   r->st.no_rgb = rgb ? 0 : 1;
+   r->st.no_alpha = alpha ? 0 : 1;
+}
+
 void vkr_blend_color(vkr_renderer *r, float cr, float g, float b, float a)
 {
    r->blend_color[0] = cr;
@@ -2477,6 +2550,74 @@ void vkr_clear_depth(vkr_renderer *r)
    v.depthStencil.stencil = 0;
    target_size(r, &w, &h);
    clear_attachment(r, VK_IMAGE_ASPECT_DEPTH_BIT, &v, w, h);
+}
+
+/* As glClear: inside the scissor while it is on, and only what the colour
+ * mask writes. */
+void vkr_clear_masked(vkr_renderer *r, const float *rgba, int depth, float z)
+{
+   VkClearAttachment a[2];
+   VkClearRect rect;
+   unsigned w, h, n = 0;
+   int x0 = 0, y0 = 0, x1, y1;
+
+   frame_begin(r);
+   if (!r->draw_fbo)
+      return;
+   if (!rgba || (r->st.no_rgb && r->st.no_alpha) || !r->fbos[r->draw_fbo].color)
+      rgba = NULL;
+   if (!r->fbos[r->draw_fbo].depth)
+      depth = 0;
+   if (!rgba && !depth)
+      return;
+   want_depth_ro(r, 0);
+   if (!begin_pass(r))
+      return;
+   target_size(r, &w, &h);
+   x1 = (int)w;
+   y1 = (int)h;
+   if (r->enable[VKR_CAP_SCISSOR])
+   {
+      if (r->scissor.offset.x > x0) x0 = r->scissor.offset.x;
+      if (r->scissor.offset.y > y0) y0 = r->scissor.offset.y;
+      if (r->scissor.offset.x + (int)r->scissor.extent.width < x1) x1 = r->scissor.offset.x + (int)r->scissor.extent.width;
+      if (r->scissor.offset.y + (int)r->scissor.extent.height < y1) y1 = r->scissor.offset.y + (int)r->scissor.extent.height;
+   }
+   if (x1 <= x0 || y1 <= y0)
+      return;
+   memset(a, 0, sizeof(a));
+   memset(&rect, 0, sizeof(rect));
+   if (rgba)
+   {
+      if (r->st.no_rgb || r->st.no_alpha)
+      {
+         /* a partly masked colour: a clear attachment writes it all */
+         rgba = NULL;
+         if (!depth)
+            return;
+      }
+      else
+      {
+         a[n].aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+         a[n].clearValue.color.float32[0] = rgba[0];
+         a[n].clearValue.color.float32[1] = rgba[1];
+         a[n].clearValue.color.float32[2] = rgba[2];
+         a[n].clearValue.color.float32[3] = rgba[3];
+         n++;
+      }
+   }
+   if (depth)
+   {
+      a[n].aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+      a[n].clearValue.depthStencil.depth = z;
+      n++;
+   }
+   rect.rect.offset.x = x0;
+   rect.rect.offset.y = y0;
+   rect.rect.extent.width = (uint32_t)(x1 - x0);
+   rect.rect.extent.height = (uint32_t)(y1 - y0);
+   rect.layerCount = 1;
+   F(CmdClearAttachments)(r->cmd, n, a, 1, &rect);
 }
 
 /* ---- blit ---- */
@@ -2792,6 +2933,65 @@ vkr_program *vkr_special_new(vkr_renderer *r, int vs_kind, int fs_kind)
    return p;
 }
 
+vkr_program *vkr_client_new(vkr_renderer *r, const vkr_client_desc *desc)
+{
+   vkr_program *p;
+   if (desc->layout.count > VKR_CLIENT_ATTRS)
+      return NULL;
+   p = program_new(r);
+   if (!p)
+      return NULL;
+   p->is_client = 1;
+   p->layout = desc->layout;
+   p->client_vs = make_module(r, desc->vs, desc->vs_words);
+   p->fs = make_module(r, desc->fs, desc->fs_words);
+   if (p->client_vs == VK_NULL_HANDLE || p->fs == VK_NULL_HANDLE)
+   {
+      vkr_program_delete(r, p);
+      return NULL;
+   }
+   return p;
+}
+
+/* The pipeline of the state set now, built by the worker */
+void vkr_client_prewarm(vkr_renderer *r, vkr_program *p)
+{
+   const vkr_fbo *o = &r->fbos[r->draw_fbo];
+   const vkr_image *c = o->color ? &r->images[o->color] : NULL;
+   const vkr_image *d = o->depth ? &r->images[o->depth] : NULL;
+   pipe_entry *e;
+   uint64_t key;
+   int rp;
+
+   if (!r->draw_fbo || (!c && !d))
+      return;
+   rp = get_render_pass(r, c ? c->format : VK_FORMAT_UNDEFINED, d ? d->format : VK_FORMAT_UNDEFINED,
+         c ? c->samples : d->samples);
+   if (rp < 0)
+      return;
+   r->st.rp = (unsigned)rp;
+   key = state_key(r, 0, 0, 0);
+   e = pipe_lookup(r, p->id, key);
+   if (!e || retro_atomic_load_acquire_int(&e->status) != PS_EMPTY)
+      return;
+   while (!pipe_queue(r, e, p, VK_NULL_HANDLE, VK_NULL_HANDLE, key))
+      rdp_worker_wait(r->worker, jobs_done, r);
+}
+
+/* At load: what vkr_client_prewarm asked for, built */
+void vkr_client_prewarm_wait(vkr_renderer *r)
+{
+   rdp_worker_wait(r->worker, jobs_done, r);
+}
+
+void vkr_client_push(vkr_renderer *r, vkr_program *p, const int ops[16], int flags, const float special[4])
+{
+   (void)r;
+   memcpy(p->desc.ops, ops, sizeof(p->desc.ops));
+   p->desc.flags = flags;
+   memcpy(p->special, special, sizeof(p->special));
+}
+
 void vkr_program_delete(vkr_renderer *r, vkr_program *p)
 {
    if (!p)
@@ -2803,6 +3003,8 @@ void vkr_program_delete(vkr_renderer *r, vkr_program *p)
       r->current = NULL;
    if (p->fs != VK_NULL_HANDLE)
       F(DestroyShaderModule)(r->device, p->fs, NULL);
+   if (p->client_vs != VK_NULL_HANDLE)
+      F(DestroyShaderModule)(r->device, p->client_vs, NULL);
    if (p < r->programs || p >= r->programs + MAX_PROGRAMS)
       free(p);
 }
@@ -2828,6 +3030,29 @@ void vkr_values(vkr_renderer *r, vkr_program *p, const CombinerValues *v)
    }
    dst = ring_reserve(r, sizeof(*v), r->props.limits.minUniformBufferOffsetAlignment, &offset);
    memcpy(dst, v, sizeof(*v));
+   p->slot = (const CombinerValues*)dst;
+   p->slot_offset = (uint32_t)offset;
+   p->slot_stamp = r->desc_stamp;
+   p->has_slot = 1;
+   r->values_offset = (uint32_t)offset;
+}
+
+void vkr_values_raw(vkr_renderer *r, vkr_program *p, const void *v, size_t bytes)
+{
+   VkDeviceSize offset;
+   void *dst;
+
+   if (bytes > sizeof(CombinerValues))
+      return;
+   frame_begin(r);
+   if (p->has_slot && p->slot_stamp == r->desc_stamp && memcmp(p->slot, v, bytes) == 0)
+   {
+      r->values_offset = p->slot_offset;
+      return;
+   }
+   /* the block's whole range, as the descriptor has it */
+   dst = ring_reserve(r, sizeof(CombinerValues), r->props.limits.minUniformBufferOffsetAlignment, &offset);
+   memcpy(dst, v, bytes);
    p->slot = (const CombinerValues*)dst;
    p->slot_offset = (uint32_t)offset;
    p->slot_stamp = r->desc_stamp;

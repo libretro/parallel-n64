@@ -606,7 +606,12 @@ SOURCES_C += $(VIDEODIR_GLIDE)/Glide64/glide64_3dmath.c \
 SOURCES_C   += $(VIDEODIR_GLIDE)/Glitch64/glitch64_combiner.c $(VIDEODIR_GLIDE)/Glitch64/glitch64_n64_combiner.c \
             $(VIDEODIR_GLIDE)/Glitch64/geometry.c \
             $(VIDEODIR_GLIDE)/Glitch64/glitchmain.c \
-            $(VIDEODIR_GLIDE)/Glitch64/glitch64_textures.c
+            $(VIDEODIR_GLIDE)/Glitch64/glitch64_textures.c \
+            $(VIDEODIR_GLIDE)/Glitch64/glitch64_vk.c
+ifeq ($(HAVE_GLIDEN64),1)
+# its Vulkan shaders, written with GLideN64's SPIR-V writer
+SOURCES_C   += $(VIDEODIR_GLIDE)/Glitch64/glitch64_vk_shaders.c
+endif
 endif
 
 ### Shared HLE command emitter (backend-agnostic) ###

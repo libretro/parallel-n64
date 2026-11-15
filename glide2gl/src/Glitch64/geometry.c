@@ -23,6 +23,7 @@
 #include <stddef.h>
 #include "glide.h"
 #include "glitchmain.h"
+#include "glitch64_vk.h"
 #include "../Glide64/rdp.h"
 
 /* TODO: get rid of glitch_vbo */
@@ -192,6 +193,7 @@ static void vbo_append(GLenum mode, GLsizei count, void *pointers)
 
 void glitch64_flush(void)
 {
+   GLITCH64_VK(vk_flush());
    vbo_draw();
 }
 
@@ -266,6 +268,7 @@ static int32_t depth_bias_set = -1;
 
 void grCullMode( int32_t mode )
 {
+   GLITCH64_VK(vk_grCullMode(mode));
    if (mode == cull_set)
       return;
    cull_set = mode;
@@ -290,6 +293,7 @@ void grCullMode( int32_t mode )
 
 void grDepthBufferFunction(GLenum func)
 {
+   GLITCH64_VK(vk_grDepthBufferFunction(func));
    if (func == depth_func_set)
       return;
    glitch64_flush();
@@ -297,8 +301,19 @@ void grDepthBufferFunction(GLenum func)
    glDepthFunc(func);
 }
 
+void grDepthBufferMode(int32_t mode)
+{
+   GLITCH64_VK(vk_grDepthBufferMode(mode));
+   glitch64_flush();
+   if (mode == GR_DEPTHBUFFER_DISABLE)
+      glDisable(GL_DEPTH_TEST);
+   else
+      glEnable(GL_DEPTH_TEST);
+}
+
 void grDepthMask(bool mask)
 {
+   GLITCH64_VK(vk_grDepthMask(mask));
    if ((int)mask == depth_mask_set)
       return;
    glitch64_flush();
@@ -311,6 +326,7 @@ extern float polygonOffsetUnits;
 
 void grDepthBiasLevel( int32_t level )
 {
+   GLITCH64_VK(vk_grDepthBiasLevel(level));
    if (level == depth_bias_set)
       return;
    depth_bias_set = level;
@@ -329,6 +345,7 @@ void grDepthBiasLevel( int32_t level )
 
 void grDrawVertexArrayContiguous(uint32_t mode, uint32_t count, void *pointers)
 {
+   GLITCH64_VK(vk_grDrawVertexArrayContiguous(mode, count, pointers));
    if(need_to_compile)
    {
       glitch64_flush();

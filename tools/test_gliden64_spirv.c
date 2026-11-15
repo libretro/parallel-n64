@@ -10,6 +10,7 @@
 
 #include <vk_spirv.h>
 #include <vk_shaders.h>
+#include "../glide2gl/src/Glitch64/glitch64_vk_shaders.h"
 
 static spv_module module_;
 static unsigned   checked, failures;
@@ -114,6 +115,15 @@ int main(int argc, char **argv)
    memset(&cfg, 0, sizeof(cfg));
    cfg.noise_width  = 640;
    cfg.noise_height = 580;
+
+   /* Glide64's: its vertex shader, its combiner and its depth image's */
+   words = glitch64_vk_vertex(&module_, &count);
+   validate(words, count, "glitch64 vertex");
+   words = glitch64_vk_fragment(&module_, 0, &count);
+   validate(words, count, "glitch64 combiner");
+   check_shade(words, count, "glitch64 combiner");
+   words = glitch64_vk_fragment(&module_, 1, &count);
+   validate(words, count, "glitch64 depth image");
 
    for (bits = 0; bits < 32; bits++)
    {

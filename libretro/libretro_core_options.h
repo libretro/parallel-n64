@@ -1145,6 +1145,21 @@ struct retro_core_option_v2_definition option_defs_us[] = {
         "auto"
     },
     {
+        CORE_NAME "-glide64-API",
+        "Glide64: Graphics API (Restart)",
+        NULL,
+        "Vulkan draws Glide64 through GLideN64's Vulkan renderer. Automatic follows the frontend's video driver.",
+        NULL,
+        "video",
+        {
+            {"opengl", "OpenGL"},
+            {"vulkan", "Vulkan"},
+            {"auto", "Automatic"},
+            {NULL, NULL},
+        },
+        "opengl"
+    },
+    {
         CORE_NAME "-gliden64-EnableN64DepthCompare",
         "GLideN64: N64 Depth Compare",
         NULL,

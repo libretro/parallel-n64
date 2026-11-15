@@ -26,6 +26,7 @@
 #include <math.h>
 #include "glide.h"
 #include "glitchmain.h"
+#include "glitch64_vk.h"
 #include "../Glide64/rdp.h"
 #include "../../libretro/libretro_private.h"
 
@@ -85,6 +86,12 @@ uint32_t grSstWinOpen(void)
       height =480;
    }
 
+   if (glitch64_vulkan)
+   {
+      glide64_frameBuffer = (uint16_t*)malloc(width * height * sizeof(uint16_t));
+      return vk_grSstWinOpen();
+   }
+
    // ZIGGY
    // allocate static texture names
    // the initial value should be big enough to support the maximal resolution
@@ -125,6 +132,14 @@ uint32_t grSstWinOpen(void)
 
 int32_t grSstWinClose(uint32_t context)
 {
+   if (glitch64_vulkan)
+   {
+      vk_grSstWinClose();
+      if (glide64_frameBuffer)
+         free(glide64_frameBuffer);
+      glide64_frameBuffer = NULL;
+      return FXTRUE;
+   }
    glitch64_flush();
    if (glide64_frameBuffer)
       free(glide64_frameBuffer);
@@ -165,6 +180,7 @@ int32_t grLfbLock( int32_t type, int32_t buffer, int32_t writeMode,
    info->strideInBytes = width * ((writeMode == GR_LFBWRITEMODE_888) ? 4 : 2);
    info->lfbPtr        = glide64_frameBuffer;
    info->writeMode     = writeMode;
+   GLITCH64_VK_RETURN(vk_grLfbLock(writeMode, info));
 
    if (writeMode == GR_LFBWRITEMODE_565)
    {
@@ -188,6 +204,7 @@ int32_t grLfbLock( int32_t type, int32_t buffer, int32_t writeMode,
 
 int grLfbReadScaledInit(void)
 {
+   GLITCH64_VK_RETURN(vk_grLfbReadScaledInit());
 #ifndef HAVE_OPENGLES2
    const char *version = (const char*)glGetString(GL_VERSION);
    int major = 0;
@@ -225,6 +242,7 @@ int grLfbReadScaledInit(void)
 const uint8_t *grLfbReadScaled(int32_t x, int32_t y, int32_t w, int32_t h,
       uint32_t dw, uint32_t dh, uint32_t *stride)
 {
+   GLITCH64_VK_RETURN(vk_grLfbReadScaled(x, y, w, h, dw, dh, stride));
    glitch64_flush();
 #ifndef HAVE_OPENGLES2
    GLboolean scissor;
@@ -267,6 +285,7 @@ const uint8_t *grLfbReadRect(int32_t *x, int32_t *y, int32_t *w, int32_t *h, uin
    *w = x1 - x0;
    *h = y1 - y0;
    *stride = (uint32_t)*w * 4;
+   GLITCH64_VK_RETURN(vk_grLfbReadRect(x0, y0, *w, *h));
    glReadPixels(x0, height - y1, *w, *h, GL_RGBA, GL_UNSIGNED_BYTE, buf);
    return buf;
 }
@@ -283,6 +302,12 @@ grLfbWriteRegion( int32_t dst_buffer,
    uint16_t *frameBuffer = (uint16_t*)src_data;
 
    /* (depth images go through grDepthImageWrite) */
+   if (glitch64_vulkan)
+   {
+      if (dst_buffer != GR_BUFFER_AUXBUFFER)
+         vk_grLfbWriteRegion(dst_x, dst_y, src_width, src_height, src_stride, src_data);
+      return FXTRUE;
+   }
    if(dst_buffer != GR_BUFFER_AUXBUFFER)
    {
       /* An LFB write bypasses the pixel pipeline: the frame's clip window,
@@ -380,6 +405,7 @@ grLfbWriteRegion( int32_t dst_buffer,
 void grDepthImageWrite(const void *words, uint32_t w, uint32_t h,
       float x0, float y0, float x1, float y1)
 {
+   GLITCH64_VK(vk_grDepthImageWrite(words, w, h, x0, y0, x1, y1));
    const GLboolean scissor = glIsEnabled(GL_SCISSOR_TEST);
    const GLboolean cull    = glIsEnabled(GL_CULL_FACE);
    const GLboolean blend   = glIsEnabled(GL_BLEND);
@@ -478,12 +504,19 @@ void grDepthImageWrite(const void *words, uint32_t w, uint32_t h,
 
 void grBufferSwap(uint32_t swap_interval)
 {
+   if (glitch64_vulkan)
+   {
+      vk_grBufferSwap();
+      retro_return(true);
+      return;
+   }
    glitch64_flush();
    retro_return(true);
 }
 
 void grClipWindow(uint32_t minx, uint32_t miny, uint32_t maxx, uint32_t maxy)
 {
+   GLITCH64_VK(vk_grClipWindow(minx, miny, maxx, maxy));
    static uint32_t last[4] = { ~0u, ~0u, ~0u, ~0u };
    if (minx == last[0] && miny == last[1] && maxx == last[2] && maxy == last[3]
          && glIsEnabled(GL_SCISSOR_TEST))
@@ -496,6 +529,7 @@ void grClipWindow(uint32_t minx, uint32_t miny, uint32_t maxx, uint32_t maxy)
 
 void grBufferClear(uint32_t color, uint32_t alpha, uint32_t depth)
 {
+   GLITCH64_VK(vk_grBufferClear(color, alpha, depth));
    glitch64_flush();
    glClearColor(((color >> 24) & 0xFF) / 255.0f,
          ((color >> 16) & 0xFF) / 255.0f,
@@ -507,6 +541,7 @@ void grBufferClear(uint32_t color, uint32_t alpha, uint32_t depth)
 
 void grColorMask(bool rgb, bool a)
 {
+   GLITCH64_VK(vk_grColorMask(rgb, a));
    glitch64_flush();
    glColorMask(rgb, rgb, rgb, a);
 }

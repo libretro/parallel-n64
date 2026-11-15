@@ -16,6 +16,7 @@
 #include "../Graphics/plugin.h"
 static int g_real_stop;
 static int gliden64_on_vulkan = 0;
+static int glide64_on_vulkan = 0;
 static unsigned screen_width = 16, screen_height = 16;
 enum gfx_plugin_type gfx_plugin = GFX_GLIDEN64;
 #include GLSM_FRAME_BOUNDARY_SOURCE

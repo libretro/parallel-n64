@@ -143,6 +143,7 @@ spv_v spv_bor(spv_module *m, spv_v a, spv_v b);
 spv_v spv_shr(spv_module *m, spv_v a, spv_v b);
 spv_v spv_dot(spv_module *m, spv_v a, spv_v b);
 spv_v spv_dfdx(spv_module *m, spv_v a);
+spv_v spv_dfdy(spv_module *m, spv_v a);
 spv_v spv_fwidth(spv_module *m, spv_v a);
 spv_v spv_clamp(spv_module *m, spv_v a, float lo, float hi);
 spv_v spv_mix(spv_module *m, spv_v a, spv_v b, spv_v t);
@@ -155,6 +156,7 @@ spv_v spv_min(spv_module *m, spv_v a, spv_v b);
 spv_v spv_max(spv_module *m, spv_v a, spv_v b);
 spv_v spv_pow(spv_module *m, spv_v a, spv_v b);
 spv_v spv_log2(spv_module *m, spv_v a);
+spv_v spv_sin(spv_module *m, spv_v a);
 
 spv_v spv_spread(spv_module *m, spv_v a, int n);
 spv_v spv_x(spv_module *m, spv_v a, uint32_t i);

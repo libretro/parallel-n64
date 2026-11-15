@@ -71,6 +71,29 @@ typedef struct vkr_caps
    int interlock;
 } vkr_caps;
 
+/* ---- a client's own programs: its vertices, its SPIR-V ---- */
+#define VKR_CLIENT_ATTRS 6
+typedef struct vkr_client_attr
+{
+   uint32_t location, format, offset; /* format: a VkFormat */
+} vkr_client_attr;
+
+typedef struct vkr_client_layout
+{
+   uint32_t stride, count;
+   vkr_client_attr attrs[VKR_CLIENT_ATTRS];
+} vkr_client_layout;
+
+/* The shaders read the renderer's descriptor set and push block (vk_shaders.h):
+ * the values from VKR_BIND_VALUES, the textures bound, and the ops, flags
+ * and special words vkr_client_push gives. */
+typedef struct vkr_client_desc
+{
+   const uint32_t *vs, *fs;
+   unsigned vs_words, fs_words;
+   vkr_client_layout layout;
+} vkr_client_desc;
+
 /* NULL on a device that cannot do it, or out of memory. */
 /* @cache_path may be NULL. */
 vkr_renderer *vkr_create(const struct retro_hw_render_interface_vulkan *vk,
@@ -131,6 +154,11 @@ void vkr_blend_color(vkr_renderer *r, float cr, float g, float b, float a);
 void vkr_polygon_offset(vkr_renderer *r, float factor, float units);
 void vkr_clear_color(vkr_renderer *r, float cr, float g, float b, float a);
 void vkr_clear_depth(vkr_renderer *r);
+/* GL's glClear on a framebuffer of its own: the scissor and the colour mask
+ * hold; @rgba NULL leaves the colour, @depth clears depth to @z. */
+void vkr_clear_masked(vkr_renderer *r, const float *rgba, int depth, float z);
+/* The next draws write the colour, the alpha. */
+void vkr_color_mask(vkr_renderer *r, int rgb, int alpha);
 
 /* ---- textures: handles, 0 is none ---- */
 unsigned vkr_texture_new(vkr_renderer *r);
@@ -175,11 +203,24 @@ void vkr_use(vkr_renderer *r, vkr_program *p);
 /* The final values of the program's uniform block. */
 void vkr_values(vkr_renderer *r, vkr_program *p, const CombinerValues *v);
 void vkr_special_params(vkr_renderer *r, vkr_program *p, float a, float b, float c, float d);
+/* A client's program: its pipelines are built when a state first draws. */
+vkr_program *vkr_client_new(vkr_renderer *r, const vkr_client_desc *desc);
+/* At load, the pipeline of each state the client can draw with: set the
+ * state (the framebuffer bound to draw into among it), then ask. A state
+ * it draws with that none of these were for leaves the draw out. */
+void vkr_client_prewarm(vkr_renderer *r, vkr_program *p);
+void vkr_client_prewarm_wait(vkr_renderer *r);
+/* What its next draws push. */
+void vkr_client_push(vkr_renderer *r, vkr_program *p, const int ops[16], int flags, const float special[4]);
+/* Its uniform block: @bytes of it, at most a CombinerValues. */
+void vkr_values_raw(vkr_renderer *r, vkr_program *p, const void *v, size_t bytes);
 
 /* ---- drawing: write the vertices where they will be read ---- */
 vkr_tri_vertex  *vkr_tri_reserve(vkr_renderer *r, unsigned count);
 vkr_rect_vertex *vkr_rect_reserve(vkr_renderer *r, unsigned count);
 uint16_t        *vkr_index_reserve(vkr_renderer *r, unsigned count);
+/* a client's vertices, drawn by vkr_draw_tris */
+void            *vkr_vertex_reserve(vkr_renderer *r, size_t bytes);
 void vkr_draw_tris(vkr_renderer *r, int topology, unsigned vertices, unsigned indices);
 void vkr_draw_rects(vkr_renderer *r, int topology, unsigned vertices);
 void vkr_draw_line(vkr_renderer *r, unsigned vertices, float width);

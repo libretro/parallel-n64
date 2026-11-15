@@ -33,6 +33,13 @@ The same cartridge with a microcode Glide64 does not know must still
 run to its end: Glide64 read such a list with another microcode's table,
 never met its end, and went round RDRAM for ever.
 
+With --glide64 and --vk, Glide64 on Vulkan must draw what it draws on GL,
+within a step: these cartridges, one culling the second quad's back faces
+and one changing the primitive colour between the quads and nothing else.
+Every pipeline it draws with must have been built at load (strict: a draw
+without one aborts), with blending as dynamic state where the device has
+it, and in the pipelines.
+
   gliden64_hle_dl.py --core parallel_n64_libretro.so --gl ./lrhost_gl [--vk ./lrhost_vk] [--glide64]
 """
 import argparse, os, struct, subprocess, sys, tempfile
@@ -68,7 +75,7 @@ def vertex(x, y, s, t):
     return struct.pack(">hhhHhhBBBB", x, y, 0, 0, s << 5, t << 5, 255, 255, 255, 255)
 
 
-def display_list(toggle, inter=False):
+def display_list(toggle, inter=False, cull=False, prim=False):
     c = []
     cmd = lambda w0, w1=0: c.extend([w0 & 0xffffffff, w1 & 0xffffffff])
     # Glide64 presents a frame when the colour image changes: another
@@ -94,10 +101,17 @@ def display_list(toggle, inter=False):
         cmd(0xFC557EAA, 0x11FCFC7E)
         cmd(0xFB000000, (INTER_ENV[0] << 24) | (INTER_ENV[1] << 16) | (INTER_ENV[2] << 8) | 0xFF)
         cmd(0xFA000000, INTER_SHARE)
+    elif prim:
+        # TEXEL0 * PRIMITIVE, the second quad with another primitive colour
+        # and nothing else changed
+        cmd(0xFC000000 | 0x119823, 0xFF33FFFF)
+        cmd(0xFA000000, 0xFFFFFFFF)
     else:
         cmd(0xFC000000 | 0x121824, 0xFF33FFFF)                               # TEXEL0 * SHADE
     cmd(0xB6000000, 0xFFFFFFFF)                                              # clear geometry mode
-    cmd(0xB7000000, 0x00000204)                                              # SHADE | SMOOTH
+    # SHADE | SMOOTH, and with @cull CULL_BACK: the second quad is then
+    # wound the other way and only the first is drawn
+    cmd(0xB7000000, 0x00002204 if cull else 0x00000204)
     cmd(0x03800010, VP)                                                      # viewport
     cmd(0x01030040, MTX)                                                     # projection, load
     cmd(0x01020040, MTX + 64)                                                # modelview, load
@@ -116,9 +130,15 @@ def display_list(toggle, inter=False):
     if toggle:
         cmd(0xBB000000, 0xFFFFFFFF)                                          # texture off
         cmd(0xBB000001, 0xFFFFFFFF)                                          # and on again
+    if prim:
+        cmd(0xFA000000, 0x8040FFFF)
     cmd(0x04300040, VTX + 64)
-    cmd(0xBF000000, (0 << 16) | (10 << 8) | 20)
-    cmd(0xBF000000, (0 << 16) | (20 << 8) | 30)
+    if cull:
+        cmd(0xBF000000, (0 << 16) | (20 << 8) | 10)
+        cmd(0xBF000000, (0 << 16) | (30 << 8) | 20)
+    else:
+        cmd(0xBF000000, (0 << 16) | (10 << 8) | 20)
+        cmd(0xBF000000, (0 << 16) | (20 << 8) | 30)
     # the frame's last draw: a half-transparent green quad (G_RM_XLU_SURF,
     # the colour PRIMITIVE) across the first quad's edge
     cmd(0xE7000000)
@@ -133,7 +153,7 @@ def display_list(toggle, inter=False):
     return struct.pack(">%dI" % len(c), *c)
 
 
-def cartridge(path, toggle, name, inter=False, known=True, areas=None, step=None):
+def cartridge(path, toggle, name, inter=False, known=True, areas=None, step=None, cull=False, prim=False):
     """@areas: what to put in RDRAM in place of this file's own, by address.
     @step: (address, value), the value added to the word there before each
     frame's task."""
@@ -147,7 +167,7 @@ def cartridge(path, toggle, name, inter=False, known=True, areas=None, step=None
     li = lambda rt, v: [lui(rt, (v >> 16) & 0xffff), ori(rt, rt, v & 0xffff)]
 
     area = {}
-    area[DL] = display_list(toggle, inter)
+    area[DL] = display_list(toggle, inter, cull, prim)
     area[VTX] = b"".join(vertex(x, y, s, t) for (x0, y0) in ((-120, -50), (20, -50))
                          for (x, y, s, t) in ((x0, y0, 0, 32), (x0 + 100, y0, 32, 32),
                                               (x0 + 100, y0 + 100, 32, 0), (x0, y0 + 100, 0, 0)))
@@ -208,11 +228,13 @@ def cartridge(path, toggle, name, inter=False, known=True, areas=None, step=None
         f.write(image)
 
 
-def run(host, core, rom, tmp, api, plugin="gliden64"):
+def run(host, core, rom, tmp, api, plugin="gliden64", glide64_api="opengl", env_extra=None):
     dump = tempfile.mkdtemp(dir=tmp)
     env = dict(os.environ, EGL_PLATFORM="surfaceless", LRHOST_SYSTEM_DIR=os.path.join(tmp, "sys"),
                LRHOST_DUMPDIR=dump, LRHOST_DUMP_FROM=str(FRAMES - 4), LRHOST_DUMP_TO=str(FRAMES - 4))
+    env.update(env_extra or {})
     p = subprocess.run([host, core, rom, str(FRAMES)] + OPTIONS + ["parallel-n64-gliden64-API=" + api,
+                                                                    "parallel-n64-glide64-API=" + glide64_api,
                                                                     "parallel-n64-gfxplugin=" + plugin],
                        env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=60)
     if p.returncode != 0:
@@ -249,6 +271,21 @@ def modified_exactly(frame):
                 worst = max(worst, min(off))
                 seen[c].add(off.index(min(off)))
     return worst <= 1.0 and all(len(s) == 2 for s in seen), worst
+
+
+def same_frame(gl, vk):
+    """GL's BGRA frame and Vulkan's RGBA one: every channel within a step,
+    and something drawn"""
+    if len(gl) != len(vk):
+        return False, "sizes %d and %d" % (len(gl), len(vk))
+    worst, colours = 0, set()
+    for i in range(0, len(gl), 4):
+        g = (gl[i + 2], gl[i + 1], gl[i])
+        v = (vk[i], vk[i + 1], vk[i + 2])
+        worst = max(worst, abs(g[0] - v[0]), abs(g[1] - v[1]), abs(g[2] - v[2]))
+        if len(colours) < 16:
+            colours.add(v)
+    return worst <= 1 and len(colours) > 4, "%d of 255 off at most, %d colours" % (worst, len(colours))
 
 
 def white_share(frame):
@@ -307,6 +344,33 @@ def main():
             ok, worst = modified_exactly(run(os.path.abspath(a.gl), a.core, rom, tmp, "opengl", "glide64"))
             print("glide64 %-28s %s (%.1f of 255 off at most)" % ("texture modified at 8 bits", "ok" if ok else "FAIL", worst))
             failures += 0 if ok else 1
+            if a.vk:
+                # Glide64 on Vulkan draws what it draws on GL
+                # and back faces culled: the second quad's
+                culling = os.path.join(tmp, "culling.z64")
+                cartridge(culling, False, "GLIDEN64 HLE DL", cull=True)
+                prims = os.path.join(tmp, "prim.z64")
+                cartridge(prims, False, "GLIDEN64 HLE DL", prim=True)
+                # strict: a draw whose pipeline was not built at load aborts;
+                # blending as dynamic state where the device has it, and not
+                strict = {"GLIDEN64_VULKAN_STRICT": "1"}
+                no_eds3 = {"GLIDEN64_VULKAN_STRICT": "1", "GLIDEN64_VULKAN_NO_EDS3": "1"}
+                for label, path, extra in (("plain", roms["plain"], strict), ("toggled", roms["toggled"], strict),
+                                           ("inter", rom, strict), ("culling", culling, strict),
+                                           ("primitive colour", prims, strict), ("blending in pipelines", roms["plain"], no_eds3)):
+                    gl = run(os.path.abspath(a.gl), a.core, path, tmp, "opengl", "glide64")
+                    vk = run(os.path.abspath(a.vk), a.core, path, tmp, "opengl", "glide64", "vulkan", extra)
+                    ok, detail = same_frame(gl, vk)
+                    if label == "culling" and ok:
+                        # the second quad's middle as the background, the first quad's not
+                        ok = pixel(vk, 400, 300) == pixel(vk, 600, 50) and pixel(vk, 200, 300) != pixel(vk, 600, 50)
+                        detail += ", second quad culled" if ok else ", the wrong quad culled"
+                    if label == "primitive colour" and ok:
+                        # each quad with its own
+                        ok = pixel(vk, 200, 300) != pixel(vk, 400, 300)
+                        detail += ", the quads differ" if ok else ", the quads the same"
+                    print("glide64 %-28s %s (%s)" % ("on Vulkan, " + label, "ok" if ok else "FAIL", detail))
+                    failures += 0 if ok else 1
     print("%d failed" % failures)
     return 1 if failures else 0
 

@@ -19,14 +19,14 @@ enum
    OP_DOT = 148, OP_ALL = 155, OP_LOGICAL_OR = 166, OP_LOGICAL_AND = 167, OP_LOGICAL_NOT = 168, OP_SELECT = 169,
    OP_IEQ = 170, OP_INE = 171, OP_SGT = 173, OP_SGE = 175, OP_SLT = 177, OP_SLE = 179,
    OP_FEQ = 180, OP_FNE = 183, OP_FLT = 184, OP_FGT = 186, OP_FLE = 188, OP_FGE = 190,
-   OP_SHR = 195, OP_BOR = 197, OP_BAND = 199, OP_DPDX = 207, OP_FWIDTH = 209,
+   OP_SHR = 195, OP_BOR = 197, OP_BAND = 199, OP_DPDX = 207, OP_DPDY = 208, OP_FWIDTH = 209,
    OP_SELECTION_MERGE = 247, OP_LABEL = 248, OP_BRANCH = 249, OP_BRANCH_CONDITIONAL = 250, OP_KILL = 252,
    OP_RETURN = 253, OP_BEGIN_INTERLOCK = 5364, OP_END_INTERLOCK = 5365
 };
 
 enum
 {
-   GL_FABS = 4, GL_FSIGN = 6, GL_FLOOR = 8, GL_FRACT = 10, GL_POW = 26, GL_LOG2 = 30,
+   GL_FABS = 4, GL_FSIGN = 6, GL_FLOOR = 8, GL_FRACT = 10, GL_SIN = 13, GL_POW = 26, GL_LOG2 = 30,
    GL_FMIN = 37, GL_FMAX = 40, GL_FCLAMP = 43, GL_FMIX = 46, GL_STEP = 48
 };
 
@@ -738,6 +738,7 @@ static spv_v ext3(spv_module *m, uint32_t inst, spv_v a, spv_v b, spv_v c)
 }
 
 spv_v spv_dfdx(spv_module *m, spv_v a) { return mk(unary(m, OP_DPDX, spv_type(m, a.t), a.id), a.t); }
+spv_v spv_dfdy(spv_module *m, spv_v a) { return mk(unary(m, OP_DPDY, spv_type(m, a.t), a.id), a.t); }
 spv_v spv_fwidth(spv_module *m, spv_v a) { return mk(unary(m, OP_FWIDTH, spv_type(m, a.t), a.id), a.t); }
 spv_v spv_clamp(spv_module *m, spv_v a, float lo, float hi) { return ext3(m, GL_FCLAMP, a, spv_f(m, lo), spv_f(m, hi)); }
 spv_v spv_mix(spv_module *m, spv_v a, spv_v b, spv_v t) { return ext3(m, GL_FMIX, a, b, t); }
@@ -750,6 +751,7 @@ spv_v spv_min(spv_module *m, spv_v a, spv_v b) { return ext2(m, GL_FMIN, a, b); 
 spv_v spv_max(spv_module *m, spv_v a, spv_v b) { return ext2(m, GL_FMAX, a, b); }
 spv_v spv_pow(spv_module *m, spv_v a, spv_v b) { return ext2(m, GL_POW, a, b); }
 spv_v spv_log2(spv_module *m, spv_v a) { return ext1(m, GL_LOG2, a); }
+spv_v spv_sin(spv_module *m, spv_v a) { return ext1(m, GL_SIN, a); }
 
 spv_v spv_spread(spv_module *m, spv_v a, int n)
 {

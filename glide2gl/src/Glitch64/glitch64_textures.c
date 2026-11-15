@@ -22,6 +22,7 @@
 #include <stdlib.h>
 #include "glide.h"
 #include "glitchmain.h"
+#include "glitch64_vk.h"
 #include "uthash.h"
 
 #ifdef __APPLE__
@@ -356,6 +357,7 @@ void grTexSource( int32_t tmu,
       GrTexInfo  *info,
       int do_download)
 {
+   GLITCH64_VK(vk_grTexSource(tmu, startAddress, info, do_download));
    glitch64_flush();
    int width, height;
    int factor;
@@ -417,6 +419,7 @@ void grTexFilterClampMode(
       int32_t magfilter_mode
       )
 {
+   GLITCH64_VK(vk_grTexFilterClampMode(tmu, s_clampmode, t_clampmode, minfilter_mode, magfilter_mode));
    glitch64_flush();
    unsigned active_texindex = GL_TEXTURE1;
    unsigned index = 1;
