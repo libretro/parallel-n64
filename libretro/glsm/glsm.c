@@ -1802,7 +1802,7 @@ void rglUniform1f(GLint location, GLfloat v0)
 void rglUniform1fv(GLint location,  GLsizei count,  const GLfloat *value)
 {
    struct gl_program_uniforms *u = glsm_uniform_slot(location);
-   if (!u || (u->uniform1f != value[0])) {
+   if (!u || count != 1 || (u->uniform1f != value[0])) {
       glUniform1fv(location, count, value);
       if (u) u->uniform1f = value[0];
    }
@@ -1817,7 +1817,7 @@ void rglUniform1fv(GLint location,  GLsizei count,  const GLfloat *value)
 void rglUniform1iv(GLint location,  GLsizei count,  const GLint *value)
 {
    struct gl_program_uniforms *u = glsm_uniform_slot(location);
-   if (!u || (u->uniform1i != value[0])) {
+   if (!u || count != 1 || (u->uniform1i != value[0])) {
       glUniform1iv(location, count, value);
       if (u) u->uniform1i = value[0];
    }
@@ -1942,7 +1942,7 @@ void rglUniform2i(GLint location, GLint v0, GLint v1)
 void rglUniform2fv(GLint location, GLsizei count, const GLfloat *value)
 {
    struct gl_program_uniforms *u = glsm_uniform_slot(location);
-   if (!u || (u->uniform2f[0] != value[0] || u->uniform2f[1] != value[1])) {
+   if (!u || count != 1 || (u->uniform2f[0] != value[0] || u->uniform2f[1] != value[1])) {
       glUniform2fv(location, count, value);
       if (u) {
          u->uniform2f[0] = value[0];
@@ -1979,7 +1979,7 @@ void rglUniform3f(GLint location, GLfloat v0, GLfloat v1, GLfloat v2)
 void rglUniform3fv(GLint location, GLsizei count, const GLfloat *value)
 {
    struct gl_program_uniforms *u = glsm_uniform_slot(location);
-   if (!u || (u->uniform3f[0] != value[0] || u->uniform3f[1] != value[1] || u->uniform3f[2] != value[2])) {
+   if (!u || count != 1 || (u->uniform3f[0] != value[0] || u->uniform3f[1] != value[1] || u->uniform3f[2] != value[2])) {
       glUniform3fv(location, count, value);
       if (u) {
          u->uniform3f[0] = value[0];
@@ -2038,7 +2038,7 @@ void rglUniform4f(GLint location, GLfloat v0, GLfloat v1, GLfloat v2, GLfloat v3
 void rglUniform4fv(GLint location, GLsizei count, const GLfloat *value)
 {
    struct gl_program_uniforms *u = glsm_uniform_slot(location);
-   if (!u || (u->uniform4f[0] != value[0] || u->uniform4f[1] != value[1] || u->uniform4f[2] != value[2] || u->uniform4f[3] != value[3])) {
+   if (!u || count != 1 || (u->uniform4f[0] != value[0] || u->uniform4f[1] != value[1] || u->uniform4f[2] != value[2] || u->uniform4f[3] != value[3])) {
       glUniform4fv(location, count, value);
       if (u) {
          u->uniform4f[0] = value[0];

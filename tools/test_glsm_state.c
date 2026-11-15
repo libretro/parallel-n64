@@ -13,7 +13,8 @@
  * deleted on another unit, or a deleted buffer, stayed cached as bound,
  * so the name GL gave again was never bound; a vertex array's element
  * buffer was cached across vertex arrays; glDrawBuffers was set once per
- * framebuffer and ignored after. Each made the core draw with state it
+ * framebuffer and ignored after; an array uniform was cached by its first
+ * element, the call dropped when that one was the same. Each made the core draw with state it
  * had not asked for: the frames of Glide64, Rice and glN64 blended into
  * the ones before them.
  *
@@ -326,6 +327,39 @@ int main(void)
       rglBindFramebuffer(GL_FRAMEBUFFER, 0);
    }
 #endif
+   {
+      /* an array uniform set again with its first element the same: glsm
+       * cached a whole array by its first element and dropped the call */
+      static const char *vs = "attribute vec4 p; void main() { gl_Position = p; }";
+      static const char *fs = "#ifdef GL_ES\nprecision mediump float;\n#endif\n"
+         "uniform vec4 v[2]; uniform int u[4]; \n"
+         "void main() { gl_FragColor = v[0] + v[1] + vec4(float(u[0] + u[1] + u[2] + u[3])); }";
+      static const GLint u0[4] = { 1, 2, 3, 4 }, u1[4] = { 1, 5, 6, 7 };
+      static const GLfloat v0[8] = { 1, 2, 3, 4, 5, 6, 7, 8 }, v1[8] = { 1, 2, 3, 4, 9, 10, 11, 12 };
+      GLuint prog = rglCreateProgram(), s1 = rglCreateShader(GL_VERTEX_SHADER), s2 = rglCreateShader(GL_FRAGMENT_SHADER);
+      GLint got[4] = { 0, 0, 0, 0 };
+      GLfloat gotf[4] = { 0, 0, 0, 0 };
+      rglShaderSource(s1, 1, &vs, NULL);
+      rglShaderSource(s2, 1, &fs, NULL);
+      rglCompileShader(s1);
+      rglCompileShader(s2);
+      rglAttachShader(prog, s1);
+      rglAttachShader(prog, s2);
+      rglLinkProgram(prog);
+      rglUseProgram(prog);
+      rglUniform1iv(rglGetUniformLocation(prog, "u"), 4, u0);
+      rglUniform1iv(rglGetUniformLocation(prog, "u"), 4, u1);
+      glGetUniformiv(prog, rglGetUniformLocation(prog, "u[1]"), got);
+      CHECK("an int array set again, its first element the same", got[0] == 5);
+      rglUniform4fv(rglGetUniformLocation(prog, "v"), 2, v0);
+      rglUniform4fv(rglGetUniformLocation(prog, "v"), 2, v1);
+      glGetUniformfv(prog, rglGetUniformLocation(prog, "v[1]"), gotf);
+      CHECK("a vec4 array set again, its first element the same", gotf[0] == 9.0f);
+      rglUseProgram(0);
+      rglDeleteProgram(prog);
+      rglDeleteShader(s1);
+      rglDeleteShader(s2);
+   }
    CHECK("no GL error", glGetError() == GL_NO_ERROR);
 
    if (failures)
