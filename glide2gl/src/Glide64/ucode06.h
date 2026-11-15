@@ -62,20 +62,23 @@ typedef struct DRAWIMAGE_t
 } DRAWIMAGE;
 
 /* The depth image is not drawn, only the depth buffer cleared for it. */
+/* A background drawn into the depth buffer (Resident Evil 2): the depth of
+ * the pre-rendered scene, which the characters drawn after it go behind.
+ * It goes in as it lies in RDRAM, scaled to the window on the GPU. */
 static void DrawDepthImage (const DRAWIMAGE *d)
 {
+   const uint32_t bytes = (uint32_t)d->imageW * d->imageH * 2;
+   float x0, y0;
+
    if (!fb_depth_render_enabled || d->imageH > d->imageW)
       return;
+   if (d->imagePtr > BMASK || bytes > BMASK + 1 - d->imagePtr)
+      return;
 
-   grLfbWriteRegion(GR_BUFFER_AUXBUFFER,
-         0,
-         0,
-         GR_LFB_SRC_FMT_ZA16,
-         0,
-         0,
-         FXFALSE,
-         0,
-         NULL);
+   x0 = rdp.offset_x;
+   y0 = rdp.offset_y;
+   grDepthImageWrite(gfx_info.RDRAM + d->imagePtr, d->imageW, d->imageH,
+         x0, y0, x0 + d->imageW * rdp.scale_x, y0 + d->imageH * rdp.scale_y);
 }
 
 static void DrawImage (DRAWIMAGE *d)

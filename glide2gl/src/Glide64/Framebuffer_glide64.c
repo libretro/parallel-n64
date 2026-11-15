@@ -1139,10 +1139,12 @@ float ScaleZ(float z)
 void DrawDepthBuffer(VERTEX * vtx, int n)
 {
    unsigned i     = 0;
-   if ( gfx_plugin_accuracy < 3)
-       return;
 
-   if (fb_depth_render_enabled && dzdx && (rdp.flags & ZBUF_UPDATE))
+   /* only the depth buffer kept in RDRAM goes with the accuracy: the
+    * vertices' z is scaled to what the depth buffer holds at every one, or
+    * a game drawing its depth into it (Resident Evil 2) drew it at depths
+    * the triangles do not have */
+   if (gfx_plugin_accuracy >= 3 && fb_depth_render_enabled && dzdx && (rdp.flags & ZBUF_UPDATE))
    {
       struct vertexi v[12];
       int index = 0;

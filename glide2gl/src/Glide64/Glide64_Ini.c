@@ -449,6 +449,10 @@ void ReadSpecialSettings (const char * name)
       cpu_write_hack = 1;
       settings.adjust_aspect = 0;
       settings.n64_z_scale = 1;
+      /* The depth of the scene is drawn into the depth buffer at the end of
+       * a frame, for the next one: clearing it at the swap left the
+       * characters nothing to go behind */
+      settings.buff_clear = 0;
       //fix_tex_coord = 128
       //depthmode = 0
       settings.swapmode = 2;

@@ -38,6 +38,9 @@ int bgra8888_support;
 static int npot_support;
 // ZIGGY
 static GLuint default_texture;
+/* the N64 depth image, and the size it was made at */
+static GLuint depth_image_texture;
+static uint32_t depth_image_w, depth_image_h;
 int glsl_support = 1;
 //Gonetz
 
@@ -86,6 +89,8 @@ uint32_t grSstWinOpen(void)
    // allocate static texture names
    // the initial value should be big enough to support the maximal resolution
    glGenTextures(1, &default_texture);
+   glGenTextures(1, &depth_image_texture);
+   depth_image_w = depth_image_h = 0;
    glide64_frameBuffer = (uint16_t*)malloc(width * height * sizeof(uint16_t));
    buf = (uint8_t*)malloc(width * height * 4 * sizeof(uint8_t));
    glViewport(0, 0, width, height);
@@ -127,6 +132,8 @@ int32_t grSstWinClose(uint32_t context)
       free(buf);
 
    glDeleteTextures(1, &default_texture);
+   glDeleteTextures(1, &depth_image_texture);
+   depth_image_w = depth_image_h = 0;
 
    glide64_frameBuffer = NULL;
    buf         = NULL;
@@ -297,6 +304,9 @@ grLfbWriteRegion( int32_t dst_buffer,
       const float y0 = (float)dst_y, y1 = (float)(dst_y + src_height);
       const float u1 = (float)src_width, v1 = (float)src_height;
 
+      /* the triangles' vertex arrays are pointed elsewhere below: draw
+       * what they hold, and have the next triangles point them back */
+      vbo_disable();
       glActiveTexture(GL_TEXTURE0);
 
       /* src_format is GR_LFBWRITEMODE_555 */
@@ -371,6 +381,105 @@ grLfbWriteRegion( int32_t dst_buffer,
    }
 
    return FXTRUE;
+}
+
+void grDepthImageWrite(const void *words, uint32_t w, uint32_t h,
+      float x0, float y0, float x1, float y1)
+{
+   const GLboolean scissor = glIsEnabled(GL_SCISSOR_TEST);
+   const GLboolean cull    = glIsEnabled(GL_CULL_FACE);
+   const GLboolean blend   = glIsEnabled(GL_BLEND);
+   const GLboolean depth   = glIsEnabled(GL_DEPTH_TEST);
+   GLint func = GL_LESS, mask = 1;
+   float data[16];
+
+   /* Glide64 sets the depth test again only when the game changes it: what
+    * the triangles after this were drawn with is put back */
+   glGetIntegerv(GL_DEPTH_FUNC, &func);
+   glGetIntegerv(GL_DEPTH_WRITEMASK, &mask);
+   glDepthMask(1);
+
+   if (!program_object_depth)
+   {
+      /* no fragment depth: everything drawn over it is in front */
+      glClear(GL_DEPTH_BUFFER_BIT);
+      glDepthMask(mask != 0);
+      return;
+   }
+   glEnable(GL_DEPTH_TEST);
+   glDepthFunc(GL_ALWAYS);
+
+   /* as for an LFB write: the vertex arrays are pointed elsewhere */
+   vbo_disable();
+
+   /* the words as they lie in RDRAM, two bytes a texel: no conversion */
+   glActiveTexture(GL_TEXTURE0);
+   glBindTexture(GL_TEXTURE_2D, depth_image_texture);
+   glPixelStorei(GL_UNPACK_ALIGNMENT, 2);
+   if (w != depth_image_w || h != depth_image_h)
+   {
+      glTexImage2D(GL_TEXTURE_2D, 0, GL_LUMINANCE_ALPHA, w, h, 0,
+            GL_LUMINANCE_ALPHA, GL_UNSIGNED_BYTE, words);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+      depth_image_w = w;
+      depth_image_h = h;
+   }
+   else
+      glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, w, h,
+            GL_LUMINANCE_ALPHA, GL_UNSIGNED_BYTE, words);
+   glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+
+   set_depth_shader();
+   glUniform3f(depth_vertexOffset_location, (float)width / 2.0f, (float)height / 2.0f, 1.0f);
+#ifdef MSB_FIRST
+   /* halfwords in order, the high byte first */
+   glUniform4f(depth_exactSizes_location, (float)w, (float)h, 0.0f, 1.0f);
+#else
+   glUniform4f(depth_exactSizes_location, (float)w, (float)h, 1.0f, 0.0f);
+#endif
+
+   glDisable(GL_SCISSOR_TEST);
+   glDisable(GL_CULL_FACE);
+   glDisable(GL_BLEND);
+   glColorMask(0, 0, 0, 0);
+
+   /* a strip: top left, bottom left, top right, bottom right; texture
+    * coordinates in texels of the image */
+   data[ 0] = x0; data[ 1] = y0; data[ 2] = 0.0f;     data[ 3] = 0.0f;
+   data[ 4] = x0; data[ 5] = y1; data[ 6] = 0.0f;     data[ 7] = (float)h;
+   data[ 8] = x1; data[ 9] = y0; data[10] = (float)w; data[11] = 0.0f;
+   data[12] = x1; data[13] = y1; data[14] = (float)w; data[15] = (float)h;
+
+   glDisableVertexAttribArray(COLOUR_ATTR);
+   glDisableVertexAttribArray(TEXCOORD_1_ATTR);
+   glDisableVertexAttribArray(FOG_ATTR);
+   glVertexAttribPointer(POSITION_ATTR, 2, GL_FLOAT, false, 4 * sizeof(float), &data[0]);
+   glVertexAttribPointer(TEXCOORD_0_ATTR, 2, GL_FLOAT, false, 4 * sizeof(float), &data[2]);
+   glEnableVertexAttribArray(POSITION_ATTR);
+   glEnableVertexAttribArray(TEXCOORD_0_ATTR);
+
+   glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+
+   glEnableVertexAttribArray(COLOUR_ATTR);
+   glEnableVertexAttribArray(TEXCOORD_1_ATTR);
+   glEnableVertexAttribArray(FOG_ATTR);
+
+   /* Glide64 only ever masks colour around a fill: it is on here */
+   glColorMask(1, 1, 1, 1);
+   compile_shader();
+   if (scissor)
+      glEnable(GL_SCISSOR_TEST);
+   if (cull)
+      glEnable(GL_CULL_FACE);
+   if (blend)
+      glEnable(GL_BLEND);
+   if (!depth)
+      glDisable(GL_DEPTH_TEST);
+   glDepthFunc((GLenum)func);
+   glDepthMask(mask != 0);
 }
 
 void grBufferSwap(uint32_t swap_interval)

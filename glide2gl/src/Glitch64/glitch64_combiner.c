@@ -116,6 +116,8 @@ static int tex1_combiner_ext = 0;
 static int c_combiner_ext = 0;
 static int a_combiner_ext = 0;
 
+static void init_depth_shader(void);
+
 #if defined(HAVE_OPENGLES) // Desktop GL fix
 #define GLSL_VERSION "100"
 #else
@@ -697,6 +699,8 @@ void init_combiner(void)
    finish_shader_program_setup(&shader);
    program_object_default = shader.program_object;
 
+   init_depth_shader();
+
    use_shader_program(&shader);
 
    glUniform1i(shader.texture0_location, 0);
@@ -939,8 +943,105 @@ void set_copy_shader(void)
       glUniform1f(alphaRef_location,alpha_test ? alpha_ref/255.0f : -1.0f);
 }
 
+/* The program grDepthImageWrite draws with: the game's vertex shader, and
+ * a fragment shader turning an N64 depth image into window depth. 0 where
+ * the fragment depth cannot be written (GLSL ES 1.00 without
+ * GL_EXT_frag_depth). */
+GLuint program_object_depth;
+/* its uniforms' locations, found at link */
+GLint depth_vertexOffset_location, depth_textureSizes_location, depth_exactSizes_location;
+
+/* The depth image is uploaded as it lies in RDRAM, two bytes a texel of
+ * luminance (low byte) and alpha (high byte) on a little endian host, and
+ * each pair of words swapped: the word for pixel i, counted along the rows,
+ * is texel i ^ 1; a pair straddles two rows of odd length. A vertex
+ * z of w lands at w / 65536 in clip space, (w / 65536 + 1) / 2 in the
+ * window: the image's words go to the same depths. */
+static const char *fragment_shader_depth_image =
+SHADER_HEADER
+#if defined(HAVE_OPENGLES)
+"#extension GL_EXT_frag_depth : enable \n"
+"#ifdef GL_FRAGMENT_PRECISION_HIGH     \n"
+"precision highp float;                \n"
+"#else                                 \n"
+"precision mediump float;              \n"
+"#endif                                \n"
+"#define DEPTH_OUT gl_FragDepthEXT     \n"
+#else
+"#define highp                         \n"
+"#define DEPTH_OUT gl_FragDepth        \n"
+#endif
+"uniform sampler2D texture0;           \n"
+"uniform vec4 exactSizes;              \n" /* width, height, pairs swapped, high byte first */
+SHADER_VARYING
+"void main()                           \n"
+"{                                     \n"
+"  vec2 t = floor(vTexCoord[0].xy);    \n"
+"  float i = t.y * exactSizes.x + t.x; \n"
+"  float y; \n"
+"  i += exactSizes.z * (1.0 - 2.0 * mod(i, 2.0)); \n"
+"  y = floor((i + 0.5) / exactSizes.x); \n"
+"  vec4 c = texture2D(texture0, (vec2(i - y * exactSizes.x, y) + 0.5) / exactSizes.xy); \n"
+"  vec2 b = floor(c.ra * 255.0 + 0.5); \n"
+"  float w = mix(b.y * 256.0 + b.x, b.x * 256.0 + b.y, exactSizes.w); \n"
+"  DEPTH_OUT = w / 131072.0 + 0.5;     \n"
+"  gl_FragColor = vec4(0.0);           \n"
+"}                                     \n"
+;
+
 void set_depth_shader(void)
 {
+   glUseProgram(program_object_depth);
+}
+
+static void init_depth_shader(void)
+{
+   GLuint fragshader;
+   GLint ok = 0;
+
+   program_object_depth = 0;
+#if defined(HAVE_OPENGLES2)
+   {
+      const char *ext = (const char*)glGetString(GL_EXTENSIONS);
+      if (!ext || !strstr(ext, "GL_EXT_frag_depth"))
+         return;
+   }
+#endif
+   fragshader = glCreateShader(GL_FRAGMENT_SHADER);
+   glShaderSource(fragshader, 1, (const GLchar**)&fragment_shader_depth_image, NULL);
+   glCompileShader(fragshader);
+   glGetShaderiv(fragshader, GL_COMPILE_STATUS, &ok);
+   if (!ok)
+   {
+      check_compile(fragshader);
+      glDeleteShader(fragshader);
+      return;
+   }
+   program_object_depth = glCreateProgram();
+   glAttachShader(program_object_depth, vertex_shader_object);
+   glAttachShader(program_object_depth, fragshader);
+   glBindAttribLocation(program_object_depth, POSITION_ATTR,   "aPosition");
+   glBindAttribLocation(program_object_depth, COLOUR_ATTR,     "aColor");
+   glBindAttribLocation(program_object_depth, TEXCOORD_0_ATTR, "aMultiTexCoord0");
+   glBindAttribLocation(program_object_depth, TEXCOORD_1_ATTR, "aMultiTexCoord1");
+   glBindAttribLocation(program_object_depth, FOG_ATTR,        "aFog");
+   glLinkProgram(program_object_depth);
+   glDeleteShader(fragshader);
+   glGetProgramiv(program_object_depth, GL_LINK_STATUS, &ok);
+   if (!ok)
+   {
+      check_link(program_object_depth);
+      glDeleteProgram(program_object_depth);
+      program_object_depth = 0;
+      return;
+   }
+   depth_vertexOffset_location = glGetUniformLocation(program_object_depth, "vertexOffset");
+   depth_textureSizes_location = glGetUniformLocation(program_object_depth, "textureSizes");
+   depth_exactSizes_location   = glGetUniformLocation(program_object_depth, "exactSizes");
+   glUseProgram(program_object_depth);
+   glUniform1i(glGetUniformLocation(program_object_depth, "texture0"), 0);
+   /* texels of the image */
+   glUniform4f(depth_textureSizes_location, 1.0f, 1.0f, 1.0f, 1.0f);
 }
 
 void set_lambda(void)

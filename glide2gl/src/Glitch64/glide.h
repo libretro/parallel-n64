@@ -520,6 +520,14 @@ grLfbWriteRegion( int32_t dst_buffer,
                   int32_t pixelPipeline,
                   int32_t src_stride, void *src_data );
 
+/* An N64 depth image into the depth buffer, colour untouched: @words its
+ * w x h 16-bit depth words as they lie in RDRAM, drawn over the window's
+ * [x0, x1) x [y0, y1), upper-left origin, at the depths the game's
+ * vertices with those words as z would have. Without fragment depth
+ * (GLSL ES 1.00 lacking GL_EXT_frag_depth) the depth buffer is cleared. */
+void grDepthImageWrite(const void *words, uint32_t w, uint32_t h,
+      float x0, float y0, float x1, float y1);
+
 /* The window's pixels in [x, x + w) x [y, y + h), upper-left origin,
  * as RGBA8 rows *stride bytes apart, the bottom row first; the rect is
  * clipped to the window (*w, *h). Valid until the next read. */
