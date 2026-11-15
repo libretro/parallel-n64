@@ -292,30 +292,30 @@ void ReleaseGfx(void)
 
 void glide64ReadScreen2(void *dest, int *width, int *height, int front)
 {
-   GrLfbInfo_t info;
+   int32_t x = 0, y = 0, w = settings.res_x, h = settings.res_y;
+   uint32_t stride;
+   const uint8_t *rows;
    uint8_t *line = (uint8_t*)dest;
 
    *width = settings.res_x;
    *height = settings.res_y;
-
    if (!line)
       return;
-
-   if (grLfbLock(GR_LFBWRITEMODE_888, &info))
+   /* RGBA8 rows, the bottom one first: RGB rows, top down */
+   rows = grLfbReadRect(&x, &y, &w, &h, &stride);
+   if (rows)
    {
-      uint32_t y, x;
-      // Copy the screen, let's hope this works.
-      for (y = 0; y < settings.res_y; y++)
+      int32_t r, c;
+      for (r = 0; r < h; r++)
       {
-         uint8_t *ptr = (uint8_t*) info.lfbPtr + (info.strideInBytes * y);
-         for (x = 0; x < settings.res_x; x++)
+         const uint8_t *p = rows + (size_t)(h - 1 - r) * stride;
+         uint8_t *d = line + (size_t)(y + r) * settings.res_x * 3 + (size_t)x * 3;
+         for (c = 0; c < w; c++)
          {
-            line[x*3]   = ptr[2];  // red
-            line[x*3+1] = ptr[1];  // green
-            line[x*3+2] = ptr[0];  // blue
-            ptr += 4;
+            d[c * 3]     = p[c * 4];
+            d[c * 3 + 1] = p[c * 4 + 1];
+            d[c * 3 + 2] = p[c * 4 + 2];
          }
-         line += settings.res_x * 3;
       }
    }
 }

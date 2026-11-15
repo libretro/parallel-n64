@@ -26,7 +26,6 @@ int glitch64_vulkan = 0;
 #endif
 
 extern int width, height;
-extern uint16_t *glide64_frameBuffer;
 extern float fogStart, fogEnd;
 extern float polygonOffsetFactor;
 extern float polygonOffsetUnits;
@@ -1017,30 +1016,6 @@ static const uint8_t *read_rect(unsigned fbo, int x, int y, unsigned w, unsigned
       return NULL;
    memcpy(vk.buf, src, (size_t)w * h * 4);
    return vk.buf;
-}
-
-bool vk_grLfbLock(int32_t writeMode, void *info_)
-{
-   GrLfbInfo_t *info = (GrLfbInfo_t*)info_;
-   vk_flush();
-   info->strideInBytes = width * ((writeMode == GR_LFBWRITEMODE_888) ? 4 : 2);
-   info->lfbPtr = glide64_frameBuffer;
-   info->writeMode = writeMode;
-   if (writeMode == GR_LFBWRITEMODE_565)
-   {
-      const uint8_t *b = read_rect(vk.fbo, 0, 0, (unsigned)width, (unsigned)height);
-      int i, j;
-      if (!b)
-         return true;
-      for (j = 0; j < height; j++)
-         for (i = 0; i < width; i++)
-         {
-            const uint8_t *p = &b[(j * width + i) * 4];
-            glide64_frameBuffer[(height - j - 1) * width + i] =
-               (uint16_t)(((p[0] >> 3) << 11) | ((p[1] >> 2) << 5) | (p[2] >> 3));
-         }
-   }
-   return true;
 }
 
 int vk_grLfbReadScaledInit(void)

@@ -48,16 +48,6 @@ extern "C" {
 #define GR_FOG_DISABLE                     0x0
 #define GR_FOG_WITH_TABLE_ON_FOGCOORD_EXT  0x2
 
-#define GR_LFBWRITEMODE_565        0x0 /* RGB:RGB */
-#define GR_LFBWRITEMODE_555        0x1 /* RGB:RGB */
-#define GR_LFBWRITEMODE_888        0x4 /* RGB */
-
-/* what grLfbLock gives: the frame, upper-left origin, in writeMode */
-typedef struct {
-    void               *lfbPtr;
-    uint32_t              strideInBytes;
-    int32_t   writeMode;
-} GrLfbInfo_t;
 
 #define GR_TEXTURECLAMP_WRAP        GL_REPEAT
 #define GR_TEXTURECLAMP_CLAMP       GL_CLAMP_TO_EDGE
@@ -185,9 +175,6 @@ void grTexFilterClampMode(
 /*
 ** linear frame buffer functions
 */
-
-/* the frame, read back in @writeMode (565, or 888 for screenshots) */
-bool grLfbLock(int32_t writeMode, GrLfbInfo_t *info);
 
 /* a 16-bit colour image as it lies in RDRAM (5551, each word's two
  * halves swapped, as the host holds RDRAM), @src_stride bytes a row, put

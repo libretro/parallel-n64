@@ -61,7 +61,6 @@ void vk_grN64Constants(const float prim[4], const float env[4], const float cons
       const float level[4], const float key_center[3], const float key_scale[3]);
 void vk_grTexSource(int32_t tmu, uint32_t start, void *info, int do_download);
 void vk_grTexFilterClampMode(int32_t tmu, int32_t s_clamp, int32_t t_clamp, int32_t minf, int32_t magf);
-bool vk_grLfbLock(int32_t writeMode, void *info);
 int vk_grLfbReadScaledInit(void);
 const uint8_t *vk_grLfbReadScaled(int32_t x, int32_t y, int32_t w, int32_t h,
       uint32_t dw, uint32_t dh, uint32_t *stride);

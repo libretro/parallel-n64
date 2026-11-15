@@ -45,7 +45,6 @@ static uint32_t depth_image_w, depth_image_h;
 int glsl_support = 1;
 //Gonetz
 
-extern uint16_t *glide64_frameBuffer;
 static uint8_t  *buf;
 
 #ifndef HAVE_OPENGLES2
@@ -62,13 +61,17 @@ static int isExtensionSupported(const char *extension)
    return 0;
 }
 
+/* the window is open: grSstWinOpen closes it first */
+static int win_open;
+
 uint32_t grSstWinOpen(void)
 {
    bool ret;
    struct retro_variable var = { "parallel-n64-screensize", 0 };
 
-   if (glide64_frameBuffer)
+   if (win_open)
       grSstWinClose();
+   win_open = 1;
 
    ret = environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var);
 
@@ -87,10 +90,7 @@ uint32_t grSstWinOpen(void)
    }
 
    if (glitch64_vulkan)
-   {
-      glide64_frameBuffer = (uint16_t*)malloc(width * height * sizeof(uint16_t));
       return vk_grSstWinOpen();
-   }
 
    // ZIGGY
    // allocate static texture names
@@ -98,7 +98,6 @@ uint32_t grSstWinOpen(void)
    glGenTextures(1, &default_texture);
    glGenTextures(1, &depth_image_texture);
    depth_image_w = depth_image_h = 0;
-   glide64_frameBuffer = (uint16_t*)malloc(width * height * sizeof(uint16_t));
    buf = (uint8_t*)malloc(width * height * 4 * sizeof(uint8_t));
    glViewport(0, 0, width, height);
 
@@ -132,18 +131,13 @@ uint32_t grSstWinOpen(void)
 
 void grSstWinClose(void)
 {
+   win_open = 0;
    if (glitch64_vulkan)
    {
       vk_grSstWinClose();
-      if (glide64_frameBuffer)
-         free(glide64_frameBuffer);
-      glide64_frameBuffer = NULL;
       return;
    }
    glitch64_flush();
-   if (glide64_frameBuffer)
-      free(glide64_frameBuffer);
-
    if (buf)
       free(buf);
 
@@ -151,7 +145,6 @@ void grSstWinClose(void)
    glDeleteTextures(1, &depth_image_texture);
    depth_image_w = depth_image_h = 0;
 
-   glide64_frameBuffer = NULL;
    buf         = NULL;
 
 #ifndef HAVE_OPENGLES2
@@ -168,34 +161,6 @@ void grSstWinClose(void)
 }
 
 // frame buffer
-
-bool grLfbLock(int32_t writeMode, GrLfbInfo_t *info)
-{
-   glitch64_flush();
-   info->strideInBytes = width * ((writeMode == GR_LFBWRITEMODE_888) ? 4 : 2);
-   info->lfbPtr        = glide64_frameBuffer;
-   info->writeMode     = writeMode;
-   GLITCH64_VK_RETURN(vk_grLfbLock(writeMode, info));
-
-   if (writeMode == GR_LFBWRITEMODE_565)
-   {
-      signed i, j;
-
-      glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, buf);
-      for (j=0; j < height; j++)
-      {
-         for (i=0; i < width; i++)
-         {
-            glide64_frameBuffer[(height-j-1)*width+i] =
-               ((buf[j*width*4+i*4+0] >> 3) << 11) |
-               ((buf[j*width*4+i*4+1] >> 2) <<  5) |
-               (buf[j*width*4+i*4+2] >> 3);
-         }
-      }
-   }
-
-   return true;
-}
 
 int grLfbReadScaledInit(void)
 {

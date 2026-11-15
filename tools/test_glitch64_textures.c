@@ -185,7 +185,6 @@ retro_log_printf_t log_cb;
 SETTINGS settings;
 struct gdp_global g_gdp;
 float polygonOffsetFactor;
-uint16_t *glide64_frameBuffer;
 void retro_return(bool just_flipping) { (void)just_flipping; }
 
 static void log_stub(enum retro_log_level level, const char *fmt, ...)
