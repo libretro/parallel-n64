@@ -127,8 +127,12 @@ static void init_depth_shader(void);
 #define SHADER_HEADER \
 "#version " GLSL_VERSION          "\n"
 
+/* The shade, and the clip W it is multiplied by: the RDP steps the shade
+ * evenly across the screen, so the GPU's perspective correction is undone
+ * (vFrontColor, below). */
 #define SHADER_VARYING \
-"varying highp vec4 vFrontColor;  \n" \
+"varying highp vec4 vFrontColorW; \n" \
+"varying highp float vColorW;     \n" \
 "varying highp vec4 vTexCoord[4]; \n"
 
 static const char* fragment_shader_header =
@@ -198,6 +202,7 @@ SHADER_HEADER
 "// END JINC2 CONSTANTS AND FUNCTIONS // \n"
 
 SHADER_VARYING
+"#define vFrontColor (vFrontColorW / vColorW) \n"
 "\n"
 "void test_chroma(vec4 ctexture1); \n"
 "\n"
@@ -390,7 +395,8 @@ SHADER_VARYING
 "  gl_Position.z = aPosition.z / Z_MAX;                                       \n"
 "  gl_Position.w = 1.0;                                                     \n"
 "  gl_Position /= q;                                                        \n"
-"  vFrontColor = aColor.bgra;                                             \n"
+"  vColorW = 1.0 / q;                                                     \n"
+"  vFrontColorW = aColor.bgra * vColorW;                                  \n"
 "\n"
 "  vTexCoord[0] = vec4(aMultiTexCoord0.xy / q / textureSizes.xy,0,1);     \n"
 "  vTexCoord[1] = vec4(aMultiTexCoord1.xy / q / textureSizes.zw,0,1);     \n"

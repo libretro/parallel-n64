@@ -11,6 +11,14 @@
  * This draws a red triangle and a green square beside it as a fan, and
  * holds the window to them: each where it was drawn, nothing between.
  *
+ * The RDP steps the shade evenly across the screen, whatever the depth.
+ * Glitch64 let the GPU correct the shade for perspective, so a polygon
+ * reaching into the distance took its near corners' colour across most of
+ * it: GoldenEye's sea, one polygon from the boat to the horizon, came out
+ * teal instead of dark blue. This then draws a triangle whose corners lie
+ * at very different depths and holds pixels inside it to the shade stepped
+ * evenly between its corners.
+ *
  *   EGL_PLATFORM=surfaceless ./test_glitch64_draw
  */
 #include <assert.h>
@@ -148,6 +156,55 @@ static uint32_t at(const uint8_t *window, unsigned x, unsigned y)
    return ((uint32_t)p[0] << 16) | ((uint32_t)p[1] << 8) | p[2];
 }
 
+/* A triangle red at one corner, green at another, blue at the third,
+ * the blue corner forty times as deep as the others: each pixel's shade is
+ * its barycentric weights on the screen, within rounding. */
+static int check_shade_screen_linear(uint8_t *window)
+{
+   static const float px[3] = { 40.0f, 600.0f, 320.0f }, py[3] = { 40.0f, 40.0f, 440.0f };
+   static const float q[3] = { 1.0f, 1.0f, 0.025f };
+   static const unsigned probes[][2] = { { 320, 180 }, { 200, 100 }, { 440, 100 }, { 320, 380 }, { 250, 250 } };
+   VERTEX tri[3];
+   unsigned i, bad = 0;
+   const float area = (px[1] - px[0]) * (py[2] - py[0]) - (px[2] - px[0]) * (py[1] - py[0]);
+
+   for (i = 0; i < 3; i++)
+   {
+      vtx(&tri[i], px[i], py[i], i == 0 ? 0xFF : 0, i == 1 ? 0xFF : 0);
+      tri[i].b = i == 2 ? 0xFF : 0;
+      tri[i].q = q[i];
+   }
+   glDisable(GL_SCISSOR_TEST);
+   glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+   glEnable(GL_SCISSOR_TEST);
+   grDrawVertexArrayContiguous(GR_TRIANGLES, 3, tri);
+   read_window(window);
+
+   for (i = 0; i < sizeof(probes) / sizeof(probes[0]); i++)
+   {
+      /* the pixel's centre */
+      const float x = (float)probes[i][0] + 0.5f, y = (float)probes[i][1] + 0.5f;
+      const float l1 = ((x - px[0]) * (py[2] - py[0]) - (px[2] - px[0]) * (y - py[0])) / area;
+      const float l2 = ((px[1] - px[0]) * (y - py[0]) - (x - px[0]) * (py[1] - py[0])) / area;
+      const float l0 = 1.0f - l1 - l2;
+      const int want[3] = { (int)(l0 * 255.0f + 0.5f), (int)(l1 * 255.0f + 0.5f), (int)(l2 * 255.0f + 0.5f) };
+      const uint32_t c = at(window, probes[i][0], probes[i][1]);
+      const int got[3] = { (int)(c >> 16), (int)((c >> 8) & 0xFF), (int)(c & 0xFF) };
+      unsigned k;
+      for (k = 0; k < 3; k++)
+         if (got[k] - want[k] > 2 || want[k] - got[k] > 2)
+            break;
+      if (k < 3)
+      {
+         fprintf(stderr, "shade at %u,%u is %d,%d,%d, stepped evenly %d,%d,%d\n", probes[i][0], probes[i][1],
+               got[0], got[1], got[2], want[0], want[1], want[2]);
+         bad++;
+      }
+   }
+   return bad != 0;
+}
+
 int main(void)
 {
    VERTEX tri[3], fan[4];
@@ -204,6 +261,8 @@ int main(void)
       fprintf(stderr, "between them is %06x, not the clear colour\n", (unsigned)at(window, 320, 400));
       failures++;
    }
+
+   failures += check_shade_screen_linear(window);
 
    grSstWinClose(0);
    free(window);
