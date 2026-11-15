@@ -21,6 +21,9 @@ extern "C" {
 
 /* Glide64 runs on Vulkan: set before its window opens */
 extern int glitch64_vulkan;
+/* on GL, the shared combiner program built at load and drawing each
+ * combiner until its own program is ready: set before the window opens */
+extern int glitch64_shared_shader;
 
 #ifdef HAVE_GLIDEN64
 #define GLITCH64_VK(call) do { if (glitch64_vulkan) { call; return; } } while (0)

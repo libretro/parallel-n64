@@ -9,6 +9,7 @@
 
 #include <stdint.h>
 #include "vk_spirv.h"
+#include "glitch64_n64_combiner.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -30,15 +31,6 @@ typedef struct glitch64_vk_values
    float fog[4];         /* by the vertex's fog (1) or its q (0), fog end, scale, the alpha test's reference */
 } glitch64_vk_values;
 
-/* the inputs ops index: rgb from .xyz, alpha from .w */
-enum
-{
-   G64VK_IN_COMBINED = 0, G64VK_IN_TEXEL0, G64VK_IN_TEXEL1, G64VK_IN_PRIM, G64VK_IN_SHADE,
-   G64VK_IN_ENV, G64VK_IN_ONE, G64VK_IN_ZERO, G64VK_IN_NOISE, G64VK_IN_CENTER, G64VK_IN_SCALE,
-   G64VK_IN_K4, G64VK_IN_K5, G64VK_IN_COMBINED_A, G64VK_IN_TEXEL0_A, G64VK_IN_TEXEL1_A,
-   G64VK_IN_PRIM_A, G64VK_IN_SHADE_A, G64VK_IN_ENV_A, G64VK_IN_LOD, G64VK_IN_PRIM_LOD,
-   G64VK_IN_COUNT
-};
 
 /* ops[8 * cycle + slot]: slots 0-3 the colour's a, b, c, d, 4-7 the alpha's */
 enum

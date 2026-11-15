@@ -2621,6 +2621,14 @@ void update_variables(bool startup)
       screen_height = 480;
    }
 
+#ifdef HAVE_GLIDE64
+   /* read at Glide64's window opening: a restart applies it */
+   var.key = CORE_NAME "-glide64-shared-shader";
+   var.value = NULL;
+   glitch64_shared_shader = environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value
+      && !strcmp(var.value, "enabled");
+#endif
+
    if (startup)
    {
       var.key = "parallel-n64-gfxplugin";

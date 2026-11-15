@@ -130,7 +130,7 @@ int main(int argc, char **argv)
       int key[G64VK_KEY_WORDS];
       char what[64];
       for (k = 0; k < 16; k++)
-         key[k] = rnd(G64VK_IN_COUNT);
+         key[k] = rnd(GLITCH64_IN_COUNT);
       key[16] = rnd(1 << 10) & ~G64VK_COPY;
       sprintf(what, "glitch64 own combiner %d", i);
       words = glitch64_vk_fragment(&module_, 0, key, &count);

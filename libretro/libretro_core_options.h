@@ -1160,6 +1160,20 @@ struct retro_core_option_v2_definition option_defs_us[] = {
         "opengl"
     },
     {
+        CORE_NAME "-glide64-shared-shader",
+        "Glide64: OpenGL Shared Shader (Restart)",
+        NULL,
+        "On OpenGL, one shader for every colour combiner is built when the game loads and draws each new combiner until its own shader is ready: compiled in the background where the driver can, else at the next load. Avoids stutter when a game first uses a combiner. Disabled compiles each combiner's own shader when it is first met, as before.",
+        NULL,
+        "video",
+        {
+            {"disabled", NULL},
+            {"enabled", NULL},
+            {NULL, NULL},
+        },
+        "disabled"
+    },
+    {
         CORE_NAME "-gliden64-EnableN64DepthCompare",
         "GLideN64: N64 Depth Compare",
         NULL,

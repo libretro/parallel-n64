@@ -121,6 +121,7 @@ static void core_context(void)
 
 #include "../glide2gl/src/Glitch64/glide.h"
 #include "../glide2gl/src/Glide64/rdp.h"
+#include "../glide2gl/src/Glitch64/glitch64_vk.h"
 
 #ifndef GR_TEXFMT_ARGB_8888
 #define GR_TEXFMT_ARGB_8888 0x12
@@ -266,6 +267,9 @@ static void vtx(VERTEX *v, float x, float y)
 }
 
 static int failures, draws;
+/* the programs the checks drew with, this window */
+static GLint programs[64];
+static int n_programs;
 
 static void check(const glitch64_n64_combiner *m, const char *what)
 {
@@ -289,6 +293,14 @@ static void check(const glitch64_n64_combiner *m, const char *what)
    glitch64_flush();
    glReadPixels(WIN_W / 2, WIN_H / 2, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, px);
    draws++;
+   {
+      GLint prog = 0;
+      int i;
+      glGetIntegerv(GL_CURRENT_PROGRAM, &prog);
+      for (i = 0; i < n_programs && programs[i] != prog; i++) {}
+      if (i == n_programs && n_programs < 64)
+         programs[n_programs++] = prog;
+   }
    for (k = 0; k < 4; k++)
    {
       const int w = (int)(want.c[k] * 255.0f + 0.5f);
@@ -437,20 +449,13 @@ static int check_batches(float *prim, float *env, float *consts, const float *le
    return bad;
 }
 
-int main(void)
+/* every check, on the window open now */
+static void run(const float *level)
 {
    static const unsigned span[4] = { 16, 16, 32, 8 };
-   const float level[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
    float prim[4], env[4], consts[4], center[3], scale[3];
    glitch64_n64_combiner m;
    unsigned two, cyc, slot, v, k, n, seed = 1;
-
-   environ_cb = environment;
-   log_cb = log_stub;
-   frontend();
-   core_context();
-   assert(grSstWinOpen());
-   while (glGetError() != GL_NO_ERROR) {}
 
    check_keys();
 
@@ -548,9 +553,39 @@ int main(void)
    }
 
    failures += check_batches(prim, env, consts, level, center, scale);
+}
 
-   assert(glGetError() == GL_NO_ERROR);
-   grSstWinClose(0);
+int main(void)
+{
+   const float level[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
+   int mode;
+
+   environ_cb = environment;
+   log_cb = log_stub;
+   frontend();
+   core_context();
+   for (mode = 0; mode < 3; mode++)
+   {
+      /* 0: the shared program on, each combiner through it until its own
+       * has linked; 1: on, everything through it (GLITCH64_COMBINER=uber);
+       * 2: off (the default), each combiner through its own */
+      static const char *modes[3] = { "", "uber", "" };
+      glitch64_shared_shader = mode < 2;
+      setenv("GLITCH64_COMBINER", modes[mode], 1);
+      assert(grSstWinOpen());
+      while (glGetError() != GL_NO_ERROR) {}
+      n_programs = 0;
+      run(level);
+      assert(glGetError() == GL_NO_ERROR);
+      /* the option does what it says: everything through the one shared
+       * program, or each combiner through its own */
+      if ((mode == 1 && n_programs != 1) || (mode == 2 && n_programs < 8))
+      {
+         fprintf(stderr, "mode %d: the checks drew with %d programs\n", mode, n_programs);
+         failures++;
+      }
+      grSstWinClose(0);
+   }
    if (failures)
    {
       fprintf(stderr, "%d of %d draws wrong\n", failures, draws);

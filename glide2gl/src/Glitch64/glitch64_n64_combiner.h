@@ -33,6 +33,23 @@ typedef struct glitch64_n64_combiner
    uint8_t flags;
 } glitch64_n64_combiner;
 
+/* The inputs a shader reading them by index (glitch64_n64_inputs) has:
+ * the colour from .rgb, the alpha from .a */
+enum
+{
+   GLITCH64_IN_COMBINED = 0, GLITCH64_IN_TEXEL0, GLITCH64_IN_TEXEL1, GLITCH64_IN_PRIM, GLITCH64_IN_SHADE,
+   GLITCH64_IN_ENV, GLITCH64_IN_ONE, GLITCH64_IN_ZERO, GLITCH64_IN_NOISE, GLITCH64_IN_CENTER, GLITCH64_IN_SCALE,
+   GLITCH64_IN_K4, GLITCH64_IN_K5, GLITCH64_IN_COMBINED_A, GLITCH64_IN_TEXEL0_A, GLITCH64_IN_TEXEL1_A,
+   GLITCH64_IN_PRIM_A, GLITCH64_IN_SHADE_A, GLITCH64_IN_ENV_A, GLITCH64_IN_LOD, GLITCH64_IN_PRIM_LOD,
+   GLITCH64_IN_COUNT
+};
+
+/* The combiner as the inputs each cycle reads, by those indices:
+ * ops[8 * cycle + slot], slots 0-3 the colour's a, b, c, d, 4-7 the
+ * alpha's; the second cycle's texels swapped in two-cycle mode, as on the
+ * RDP. In one-cycle mode the second cycle's settings are the ones run. */
+void glitch64_n64_inputs(const glitch64_n64_combiner *c, int ops[16]);
+
 /* The combiner in two words, for a shader's key: equal words, equal GLSL. */
 void glitch64_n64_key(const glitch64_n64_combiner *c, uint32_t key[2]);
 void glitch64_n64_from_key(const uint32_t key[2], glitch64_n64_combiner *c);

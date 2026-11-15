@@ -133,92 +133,14 @@ static struct
    char journal[PATH_MAX_LENGTH];
 } vk;
 
-/* ---- the combiner's inputs, as the shader indexes them ---- */
-
-static int texel_in(int second, unsigned which, int alpha)
-{
-   if ((which ^ (unsigned)second) & 1)
-      return alpha ? G64VK_IN_TEXEL1_A : G64VK_IN_TEXEL1;
-   return alpha ? G64VK_IN_TEXEL0_A : G64VK_IN_TEXEL0;
-}
-
-static int rgb_in(int second, int slot, unsigned v)
-{
-   if (v <= 5)
-   {
-      static const int common[6] = { G64VK_IN_COMBINED, -1, -1, G64VK_IN_PRIM, G64VK_IN_SHADE, G64VK_IN_ENV };
-      if (v == 1 || v == 2)
-         return texel_in(second, v - 1, 0);
-      return common[v];
-   }
-   switch (slot)
-   {
-      case 0:
-         return v == 6 ? G64VK_IN_ONE : v == 7 ? G64VK_IN_NOISE : G64VK_IN_ZERO;
-      case 1:
-         return v == 6 ? G64VK_IN_CENTER : v == 7 ? G64VK_IN_K4 : G64VK_IN_ZERO;
-      case 2:
-         switch (v)
-         {
-            case 6:  return G64VK_IN_SCALE;
-            case 7:  return G64VK_IN_COMBINED_A;
-            case 8:  case 9: return texel_in(second, v - 8, 1);
-            case 10: return G64VK_IN_PRIM_A;
-            case 11: return G64VK_IN_SHADE_A;
-            case 12: return G64VK_IN_ENV_A;
-            case 13: return G64VK_IN_LOD;
-            case 14: return G64VK_IN_PRIM_LOD;
-            case 15: return G64VK_IN_K5;
-         }
-         return G64VK_IN_ZERO;
-      default:
-         return v == 6 ? G64VK_IN_ONE : G64VK_IN_ZERO;
-   }
-}
-
-/* the alpha's: the shader takes .w, where the colour inputs have it */
-static int alpha_in(int second, int slot, unsigned v)
-{
-   if (slot == 2)
-   {
-      switch (v)
-      {
-         case 0: return G64VK_IN_LOD;
-         case 1: case 2: return texel_in(second, v - 1, 0);
-         case 3: return G64VK_IN_PRIM;
-         case 4: return G64VK_IN_SHADE;
-         case 5: return G64VK_IN_ENV;
-         case 6: return G64VK_IN_PRIM_LOD;
-      }
-      return G64VK_IN_ZERO;
-   }
-   switch (v)
-   {
-      case 0: return G64VK_IN_COMBINED;
-      case 1: case 2: return texel_in(second, v - 1, 0);
-      case 3: return G64VK_IN_PRIM;
-      case 4: return G64VK_IN_SHADE;
-      case 5: return G64VK_IN_ENV;
-      case 6: return G64VK_IN_ONE;
-   }
-   return G64VK_IN_ZERO;
-}
-
 static void set_combiner(const glitch64_n64_combiner *c)
 {
-   int i, k;
+   int i;
    vk.flags &= ~(G64VK_TWO_CYCLE | G64VK_FOG_RGB | G64VK_FOG_ALPHA | G64VK_LOD_PIXEL | G64VK_NOISE);
+   glitch64_n64_inputs(c, vk.ops);
    for (i = 0; i < 2; i++)
-   {
-      const int second = c->two_cycle && i == 1;
-      for (k = 0; k < 4; k++)
-      {
-         vk.ops[8 * i + k] = rgb_in(second, k, c->rgb[i][k]);
-         vk.ops[8 * i + 4 + k] = alpha_in(second, k, c->alpha[i][k]);
-      }
       if ((c->two_cycle || i == 1) && c->rgb[i][0] == 7)
          vk.flags |= G64VK_NOISE;
-   }
    if (c->two_cycle)
       vk.flags |= G64VK_TWO_CYCLE;
    if (c->flags & GLITCH64_N64_FOG_RGB)
@@ -868,7 +790,7 @@ static void journal_load(void)
             key[k] = (int)rec[k];
          if (key[16] & G64VK_COPY)
             continue;
-         for (k = 0; k < 16 && key[k] >= 0 && key[k] < G64VK_IN_COUNT; k++)
+         for (k = 0; k < 16 && key[k] >= 0 && key[k] < GLITCH64_IN_COUNT; k++)
             ;
          if (k < 16 || !(o = own_find(key)))
             continue;

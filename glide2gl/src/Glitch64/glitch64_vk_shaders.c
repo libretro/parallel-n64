@@ -221,7 +221,7 @@ const uint32_t *glitch64_vk_fragment(spv_module *m, int depth, const int *key, u
 
    spv_begin_main(m);
    {
-      spv_var in = spv_local_array(m, T_F4, G64VK_IN_COUNT);
+      spv_var in = spv_local_array(m, T_F4, GLITCH64_IN_COUNT);
       spv_var out = spv_local(m, T_F4);
       spv_v tc0 = load_in(m, v_tc0), tc1 = load_in(m, v_tc1);
       spv_v exact = u(&e, U_EXACT_SIZES);
@@ -305,27 +305,27 @@ const uint32_t *glitch64_vk_fragment(spv_module *m, int depth, const int *key, u
          {
             spv_v lf = spv_load(m, lod);
             spv_v center = u(&e, U_KEY_CENTER), scale = u(&e, U_KEY_SCALE);
-            spv_store_at(m, in, G64VK_IN_COMBINED, spv_zero(m, T_F4));
-            spv_store_at(m, in, G64VK_IN_TEXEL0, t0);
-            spv_store_at(m, in, G64VK_IN_TEXEL1, t1);
-            spv_store_at(m, in, G64VK_IN_PRIM, prim);
-            spv_store_at(m, in, G64VK_IN_SHADE, shade);
-            spv_store_at(m, in, G64VK_IN_ENV, env);
-            spv_store_at(m, in, G64VK_IN_ONE, spv_vec(m, T_F4, 1.f, 1.f, 1.f, 1.f));
-            spv_store_at(m, in, G64VK_IN_ZERO, spv_zero(m, T_F4));
-            spv_store_at(m, in, G64VK_IN_NOISE, splat4(m, spv_load(m, noise)));
-            spv_store_at(m, in, G64VK_IN_CENTER, spv_vec3_1(m, spv_xyz(m, center), spv_f(m, 0.f)));
-            spv_store_at(m, in, G64VK_IN_SCALE, spv_vec3_1(m, spv_xyz(m, scale), spv_f(m, 0.f)));
-            spv_store_at(m, in, G64VK_IN_K4, splat4(m, spv_x(m, consts, 0)));
-            spv_store_at(m, in, G64VK_IN_K5, splat4(m, spv_x(m, consts, 1)));
-            spv_store_at(m, in, G64VK_IN_COMBINED_A, spv_zero(m, T_F4));
-            spv_store_at(m, in, G64VK_IN_TEXEL0_A, splat4(m, spv_x(m, t0, 3)));
-            spv_store_at(m, in, G64VK_IN_TEXEL1_A, splat4(m, spv_x(m, t1, 3)));
-            spv_store_at(m, in, G64VK_IN_PRIM_A, splat4(m, spv_x(m, prim, 3)));
-            spv_store_at(m, in, G64VK_IN_SHADE_A, splat4(m, spv_x(m, shade, 3)));
-            spv_store_at(m, in, G64VK_IN_ENV_A, splat4(m, spv_x(m, env, 3)));
-            spv_store_at(m, in, G64VK_IN_LOD, splat4(m, lf));
-            spv_store_at(m, in, G64VK_IN_PRIM_LOD, splat4(m, spv_x(m, consts, 2)));
+            spv_store_at(m, in, GLITCH64_IN_COMBINED, spv_zero(m, T_F4));
+            spv_store_at(m, in, GLITCH64_IN_TEXEL0, t0);
+            spv_store_at(m, in, GLITCH64_IN_TEXEL1, t1);
+            spv_store_at(m, in, GLITCH64_IN_PRIM, prim);
+            spv_store_at(m, in, GLITCH64_IN_SHADE, shade);
+            spv_store_at(m, in, GLITCH64_IN_ENV, env);
+            spv_store_at(m, in, GLITCH64_IN_ONE, spv_vec(m, T_F4, 1.f, 1.f, 1.f, 1.f));
+            spv_store_at(m, in, GLITCH64_IN_ZERO, spv_zero(m, T_F4));
+            spv_store_at(m, in, GLITCH64_IN_NOISE, splat4(m, spv_load(m, noise)));
+            spv_store_at(m, in, GLITCH64_IN_CENTER, spv_vec3_1(m, spv_xyz(m, center), spv_f(m, 0.f)));
+            spv_store_at(m, in, GLITCH64_IN_SCALE, spv_vec3_1(m, spv_xyz(m, scale), spv_f(m, 0.f)));
+            spv_store_at(m, in, GLITCH64_IN_K4, splat4(m, spv_x(m, consts, 0)));
+            spv_store_at(m, in, GLITCH64_IN_K5, splat4(m, spv_x(m, consts, 1)));
+            spv_store_at(m, in, GLITCH64_IN_COMBINED_A, spv_zero(m, T_F4));
+            spv_store_at(m, in, GLITCH64_IN_TEXEL0_A, splat4(m, spv_x(m, t0, 3)));
+            spv_store_at(m, in, GLITCH64_IN_TEXEL1_A, splat4(m, spv_x(m, t1, 3)));
+            spv_store_at(m, in, GLITCH64_IN_PRIM_A, splat4(m, spv_x(m, prim, 3)));
+            spv_store_at(m, in, GLITCH64_IN_SHADE_A, splat4(m, spv_x(m, shade, 3)));
+            spv_store_at(m, in, GLITCH64_IN_ENV_A, splat4(m, spv_x(m, env, 3)));
+            spv_store_at(m, in, GLITCH64_IN_LOD, splat4(m, lf));
+            spv_store_at(m, in, GLITCH64_IN_PRIM_LOD, splat4(m, spv_x(m, consts, 2)));
          }
 
          /* the cycles: one-cycle mode runs the second cycle's settings */
@@ -347,8 +347,8 @@ const uint32_t *glitch64_vk_fragment(spv_module *m, int depth, const int *key, u
                spv_v al = spv_add(m, spv_mul(m, spv_sub(m, aa, ab), ac), ad);
                spv_v comb = spv_vec3_1(m, rgb, al);
                spv_store(m, out, comb);
-               spv_store_at(m, in, G64VK_IN_COMBINED, comb);
-               spv_store_at(m, in, G64VK_IN_COMBINED_A, splat4(m, al));
+               spv_store_at(m, in, GLITCH64_IN_COMBINED, comb);
+               spv_store_at(m, in, GLITCH64_IN_COMBINED_A, splat4(m, al));
             }
             spv_endif(m, &run);
          }

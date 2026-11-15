@@ -68,6 +68,14 @@ typedef struct _shader_program_key
    int n64KeyCenter_location;
    int n64KeyScale_location;
    int fogAlpha_location;
+   /* the shared program's own: the inputs and options it reads */
+   int n64Ops_location;
+   int n64Flags0_location;
+   int n64Flags1_location;
+   int n64Flags2_location;
+   /* its program still linking (1), or left for the next session (2):
+    * the shared program draws for it until then */
+   int pending;
 } shader_program_key;
 
 static int alpha_ref, alpha_func;
@@ -75,6 +83,20 @@ bool alpha_test = 0;
 
 static shader_program_key *shader_programs = NULL;
 static shader_program_key *current_shader  = NULL;
+/* The shared program: every combiner and option read from uniforms, built
+ * at load. A combiner's own program is never compiled on the draw path:
+ * with parallel shader compiles one is started and the shared program
+ * draws until it has linked; without, the key is kept for the next
+ * session to build at load (AGENTS.md). */
+static shader_program_key uber_program;
+static int parallel_compile;
+/* the core option: the shared program built and drawing while combiners'
+ * own programs are not ready; off, every combiner's own program is
+ * compiled when met, as ever. Read at the window's opening. */
+int glitch64_shared_shader = 0;
+/* 1: everything through the shared program (tools: GLITCH64_COMBINER=uber,
+ * with the option on); 2: the option off */
+static int combiner_mode;
 
 static int number_of_programs = 0;
 
@@ -203,6 +225,135 @@ static const char* fragment_shader_end =
 "}\n"
 ;
 
+/* The shared program's: glitch64_n64_inputs' indices read through
+ * n64In, the options from n64Flags0 (two cycles, fog colour, fog alpha,
+ * per-pixel LOD), n64Flags1 (fog, dither, the 3-point filter on unit 0
+ * and on unit 1) and n64Flags2 (noise read). Goes between the header's declarations and main(). */
+static const char *uber_inputs =
+"uniform int n64Ops[16];        \n"
+"uniform vec4 n64Flags0;        \n"
+"uniform vec4 n64Flags1;        \n"
+"uniform vec4 n64Flags2;        \n"
+"vec4 n64In(int i, vec4 C, vec4 T0, vec4 T1, vec4 sh, float lod, float noise) \n"
+"{ \n"
+"  if (i < 8) { \n"
+"    if (i == 0) return C; if (i == 1) return T0; if (i == 2) return T1; \n"
+"    if (i == 3) return n64Prim; if (i == 4) return sh; if (i == 5) return n64Env; \n"
+"    if (i == 6) return vec4(1.0); return vec4(0.0); \n"
+"  } \n"
+"  if (i < 13) { \n"
+"    if (i == 8) return vec4(noise); if (i == 9) return vec4(n64KeyCenter, 0.0); \n"
+"    if (i == 10) return vec4(n64KeyScale, 0.0); if (i == 11) return vec4(n64Const.x); \n"
+"    return vec4(n64Const.y); \n"
+"  } \n"
+"  if (i == 13) return vec4(C.a); if (i == 14) return vec4(T0.a); if (i == 15) return vec4(T1.a); \n"
+"  if (i == 16) return vec4(n64Prim.a); if (i == 17) return vec4(sh.a); if (i == 18) return vec4(n64Env.a); \n"
+"  if (i == 19) return vec4(lod); return vec4(n64Const.z); \n"
+"} \n"
+;
+
+#if defined(HAVE_OPENGLES2)
+/* GLSL ES 1.00 need not index a fragment shader's arrays by a uniform: the
+ * inputs are picked by n64In */
+#define UBER_INPUTS ""
+#define UBER_CYCLE(k) \
+"    { vec4 a = n64In(n64Ops[" #k " * 8 + 0], n64C, n64T0, n64T1, sh, n64LodFrac, n64Noise); \n" \
+"      vec4 b = n64In(n64Ops[" #k " * 8 + 1], n64C, n64T0, n64T1, sh, n64LodFrac, n64Noise); \n" \
+"      vec4 c = n64In(n64Ops[" #k " * 8 + 2], n64C, n64T0, n64T1, sh, n64LodFrac, n64Noise); \n" \
+"      vec4 d = n64In(n64Ops[" #k " * 8 + 3], n64C, n64T0, n64T1, sh, n64LodFrac, n64Noise); \n" \
+"      vec4 aa = n64In(n64Ops[" #k " * 8 + 4], n64C, n64T0, n64T1, sh, n64LodFrac, n64Noise); \n" \
+"      vec4 ab = n64In(n64Ops[" #k " * 8 + 5], n64C, n64T0, n64T1, sh, n64LodFrac, n64Noise); \n" \
+"      vec4 ac = n64In(n64Ops[" #k " * 8 + 6], n64C, n64T0, n64T1, sh, n64LodFrac, n64Noise); \n" \
+"      vec4 ad = n64In(n64Ops[" #k " * 8 + 7], n64C, n64T0, n64T1, sh, n64LodFrac, n64Noise); \n" \
+"      n64C = vec4((a.rgb - b.rgb) * c.rgb + d.rgb, (aa.a - ab.a) * ac.a + ad.a); } \n"
+#else
+/* the inputs in an array, indexed: far less code than picking each of the
+ * sixteen through n64In, which a driver building a shader's code at its
+ * first draw takes a long time over */
+#define UBER_INPUTS \
+"  vec4 n64Inp[21]; \n" \
+"  n64Inp[1] = n64T0; n64Inp[2] = n64T1; n64Inp[3] = n64Prim; n64Inp[4] = sh; \n" \
+"  n64Inp[5] = n64Env; n64Inp[6] = vec4(1.0); n64Inp[7] = vec4(0.0); n64Inp[8] = vec4(n64Noise); \n" \
+"  n64Inp[9] = vec4(n64KeyCenter, 0.0); n64Inp[10] = vec4(n64KeyScale, 0.0); \n" \
+"  n64Inp[11] = vec4(n64Const.x); n64Inp[12] = vec4(n64Const.y); n64Inp[14] = vec4(n64T0.a); \n" \
+"  n64Inp[15] = vec4(n64T1.a); n64Inp[16] = vec4(n64Prim.a); n64Inp[17] = vec4(sh.a); \n" \
+"  n64Inp[18] = vec4(n64Env.a); n64Inp[19] = vec4(n64LodFrac); n64Inp[20] = vec4(n64Const.z); \n"
+#define UBER_CYCLE(k) \
+"    { n64Inp[0] = n64C; n64Inp[13] = vec4(n64C.a); \n" \
+"      vec4 a = n64Inp[n64Ops[" #k " * 8 + 0]]; vec4 b = n64Inp[n64Ops[" #k " * 8 + 1]]; \n" \
+"      vec4 c = n64Inp[n64Ops[" #k " * 8 + 2]]; vec4 d = n64Inp[n64Ops[" #k " * 8 + 3]]; \n" \
+"      vec4 aa = n64Inp[n64Ops[" #k " * 8 + 4]]; vec4 ab = n64Inp[n64Ops[" #k " * 8 + 5]]; \n" \
+"      vec4 ac = n64Inp[n64Ops[" #k " * 8 + 6]]; vec4 ad = n64Inp[n64Ops[" #k " * 8 + 7]]; \n" \
+"      n64C = vec4((a.rgb - b.rgb) * c.rgb + d.rgb, (aa.a - ab.a) * ac.a + ad.a); } \n"
+#endif
+
+/* main()'s body, after the header's own first lines */
+static const char *uber_body_a =
+"  if (n64Flags1.y > 0.5) { \n"
+"    highp float temp=abs(sin((vTexCoord[2].a)+sin((vTexCoord[2].a)+(vTexCoord[2].b))))*170.0; \n"
+"    if ((fract(temp)+fract(temp/2.0)+fract(temp/4.0))>1.5) discard; \n"
+"  } \n"
+"  vec4 readtex0; \n"
+"  vec4 readtex1; \n"
+#ifndef DISABLE_3POINT
+"  if (n64Flags1.z > 0.5) { \n"
+"    offset=fract(vTexCoord[0].xy*exactSizes.xy-vec2(0.5,0.5)); \n"
+"    offset-=step(1.0,offset.x+offset.y); \n"
+"    c0=TEX0_OFFSET(offset); \n"
+"    c1=TEX0_OFFSET(vec2(offset.x-sign(offset.x),offset.y)); \n"
+"    c2=TEX0_OFFSET(vec2(offset.x,offset.y-sign(offset.y))); \n"
+"    readtex0 =c0+abs(offset.x)*(c1-c0)+abs(offset.y)*(c2-c0); \n"
+"  } else \n"
+#endif
+"    readtex0 = TEX0; \n"
+#ifndef DISABLE_3POINT
+"  if (n64Flags1.w > 0.5) { \n"
+"    offset=fract(vTexCoord[1].xy*exactSizes.zw-vec2(0.5,0.5)); \n"
+"    offset-=step(1.0,offset.x+offset.y); \n"
+"    c0=TEX1_OFFSET(offset); \n"
+"    c1=TEX1_OFFSET(vec2(offset.x-sign(offset.x),offset.y)); \n"
+"    c2=TEX1_OFFSET(vec2(offset.x,offset.y-sign(offset.y))); \n"
+"    readtex1 =c0+abs(offset.x)*(c1-c0)+abs(offset.y)*(c2-c0); \n"
+"  } else \n"
+#endif
+"    readtex1 = TEX1; \n"
+"  vec4 n64T0 = readtex1; \n"
+"  vec4 n64T1 = readtex0; \n"
+"  vec4 sh = vFrontColor; \n"
+"  float n64LodFrac = n64Const.w; \n"
+;
+
+/* and the rest, after the LOD from the derivatives where the shader has them */
+static const char *uber_body_b =
+"  float n64Noise = 0.0; \n"
+"  if (n64Flags2.x > 0.5) \n"
+"    n64Noise = fract(sin(dot(gl_FragCoord.xy + n64Level.w, vec2(12.9898, 78.233))) * 43758.5453); \n"
+"  vec4 n64C = vec4(0.0); \n"
+UBER_INPUTS
+"  if (n64Flags0.x > 0.5) \n"
+UBER_CYCLE(0)
+UBER_CYCLE(1)
+"  if (n64Flags0.y > 0.5) n64C.rgb = fogColor; \n"
+"  if (n64Flags0.z > 0.5) n64C.a = fogAlpha; \n"
+"  gl_FragColor = clamp(n64C, 0.0, 1.0); \n"
+"  if (n64Flags1.x > 0.5) \n"
+"    gl_FragColor.rgb = mix(fogColor, gl_FragColor.rgb, vTexCoord[0].b / vColorW); \n"
+;
+
+static const char *uber_lod =
+"  if (n64Flags0.w > 0.5) { \n"
+"    vec2 n64St = vTexCoord[1].xy * exactSizes.zw; \n"
+"    vec2 n64Dx = abs(dFdx(n64St)), n64Dy = abs(dFdy(n64St)); \n"
+"    float n64Lod = max(max(n64Dx.x, n64Dx.y), max(n64Dy.x, n64Dy.y)); \n"
+"    if (n64Lod < 1.0) \n"
+"      n64LodFrac = n64Level.z > 0.5 ? max(n64Lod, n64Level.x) : (n64Level.y < 0.5 ? 1.0 : 0.0); \n"
+"    else { \n"
+"      float n64Tile = floor(log2(n64Lod)); \n"
+"      n64LodFrac = (n64Tile >= n64Level.y && n64Level.z < 0.5) ? 1.0 : n64Lod / exp2(n64Tile) - 1.0; \n"
+"    } \n"
+"  } \n"
+;
+
 static const char* vertex_shader =
 SHADER_HEADER
 #if !defined(HAVE_OPENGLES) // Desktop GL fix
@@ -282,10 +433,10 @@ static int shader_programs_capacity = 0;
 
 static void append_shader_program(shader_program_key *shader)
 {
-   int curr_index;
+   int curr_index = -1;
    int                   index = number_of_programs;
 
-   if (current_shader)
+   if (current_shader && current_shader != &uber_program)
       curr_index = current_shader->index;
 
    shader->index = index;
@@ -303,7 +454,7 @@ static void append_shader_program(shader_program_key *shader)
       shader_programs_capacity = capacity;
    }
 
-   if (current_shader)
+   if (curr_index >= 0)
       current_shader = &shader_programs[curr_index];
 
    shader_programs[index] = *shader;
@@ -350,15 +501,20 @@ static void shader_find_uniforms(shader_program_key *shader)
    shader->n64KeyCenter_location   = glGetUniformLocation(prog, "n64KeyCenter");
    shader->n64KeyScale_location    = glGetUniformLocation(prog, "n64KeyScale");
    shader->fogAlpha_location       = glGetUniformLocation(prog, "fogAlpha");
+   shader->n64Ops_location         = glGetUniformLocation(prog, "n64Ops");
+   shader->n64Flags0_location      = glGetUniformLocation(prog, "n64Flags0");
+   shader->n64Flags1_location      = glGetUniformLocation(prog, "n64Flags1");
+   shader->n64Flags2_location      = glGetUniformLocation(prog, "n64Flags2");
 }
 
-static void finish_shader_program_setup(shader_program_key *shader)
+/* fragment_shader compiled and linked with the vertex shader; with parallel
+ * shader compiles this returns before either is done */
+static void start_shader_program(shader_program_key *shader)
 {
    GLuint fragshader = glCreateShader(GL_FRAGMENT_SHADER);
 
    glShaderSource(fragshader, 1, (const GLchar**)&fragment_shader, NULL);
    glCompileShader(fragshader);
-   check_compile(fragshader);
 
    shader->program_object = glCreateProgram();
    glAttachShader(shader->program_object, vertex_shader_object);
@@ -367,10 +523,22 @@ static void finish_shader_program_setup(shader_program_key *shader)
    shader_bind_attributes(shader);
 
    glLinkProgram(shader->program_object);
+   /* it goes with the program */
+   glDeleteShader(fragshader);
+}
+
+/* the program linked: bound, and its uniforms found */
+static void complete_shader_program(shader_program_key *shader)
+{
    check_link(shader->program_object);
    glUseProgram(shader->program_object);
-
    shader_find_uniforms(shader);
+}
+
+static void finish_shader_program_setup(shader_program_key *shader)
+{
+   start_shader_program(shader);
+   complete_shader_program(shader);
    append_shader_program(shader);
    /* the program bound now: the uniforms set until the next switch go to
     * it (they went to the program before, and GL refused them) */
@@ -499,6 +667,81 @@ static void combiner_cache_save(void)
    cache_dirty = 0;
 }
 
+/* Built at load; without it (it did not link) a miss compiles as before */
+static void init_uber_program(void)
+{
+   const char *main_at = strstr(fragment_shader_header, "void main()");
+   const char *ext = (const char*)glGetString(GL_EXTENSIONS);
+   size_t head;
+
+   memset(&uber_program, 0, sizeof(uber_program));
+   uber_program.index = -1;
+   {
+      const char *mode = getenv("GLITCH64_COMBINER");
+      combiner_mode = !glitch64_shared_shader ? 2 : mode && !strcmp(mode, "uber") ? 1 : 0;
+   }
+   if (combiner_mode == 2)
+      return;
+   parallel_compile = ext && (strstr(ext, "GL_KHR_parallel_shader_compile")
+         || strstr(ext, "GL_ARB_parallel_shader_compile"));
+   if (!main_at)
+      return;
+   fragment_shader[0] = '\0';
+#if defined(HAVE_OPENGLES)
+   if (n64_derivatives)
+   {
+      strcpy(fragment_shader, SHADER_HEADER);
+      strcat(fragment_shader, "#extension GL_OES_standard_derivatives : enable\n");
+      head = (size_t)(main_at - fragment_shader_header) - strlen(SHADER_HEADER);
+      strncat(fragment_shader, fragment_shader_header + strlen(SHADER_HEADER), head);
+   }
+   else
+#endif
+   {
+      head = (size_t)(main_at - fragment_shader_header);
+      strncat(fragment_shader, fragment_shader_header, head);
+   }
+   strcat(fragment_shader, uber_inputs);
+   strcat(fragment_shader, main_at);
+   strcat(fragment_shader, uber_body_a);
+   if (n64_derivatives)
+      strcat(fragment_shader, uber_lod);
+   strcat(fragment_shader, uber_body_b);
+   strcat(fragment_shader, fragment_shader_end);
+
+   start_shader_program(&uber_program);
+   {
+      GLint ok = 0;
+      glGetProgramiv(uber_program.program_object, GL_LINK_STATUS, &ok);
+      if (!ok)
+      {
+         check_link(uber_program.program_object);
+         glDeleteProgram(uber_program.program_object);
+         uber_program.program_object = 0;
+         return;
+      }
+   }
+   complete_shader_program(&uber_program);
+
+   /* one draw, writing nothing, so that a driver that builds a shader's
+    * code at its first draw does that here, at load */
+   {
+      static const float tri[12] = { 0.0f, 0.0f, 1.0f, 1.0f,  1.0f, 0.0f, 1.0f, 1.0f,  0.0f, 1.0f, 1.0f, 1.0f };
+      const GLboolean depth = glIsEnabled(GL_DEPTH_TEST);
+      glUniform1i(uber_program.texture0_location, 0);
+      glUniform1i(uber_program.texture1_location, 1);
+      glColorMask(0, 0, 0, 0);
+      glDisable(GL_DEPTH_TEST);
+      glVertexAttribPointer(POSITION_ATTR, 4, GL_FLOAT, false, 4 * sizeof(float), tri);
+      glEnableVertexAttribArray(POSITION_ATTR);
+      glDrawArrays(GL_TRIANGLES, 0, 3);
+      glDisableVertexAttribArray(POSITION_ATTR);
+      glColorMask(1, 1, 1, 1);
+      if (depth)
+         glEnable(GL_DEPTH_TEST);
+   }
+}
+
 void init_combiner(void)
 {
    shader_program_key shader;
@@ -545,6 +788,7 @@ void init_combiner(void)
    program_object_default = shader.program_object;
 
    init_depth_shader();
+   init_uber_program();
 
    use_shader_program(&shader);
 
@@ -587,6 +831,36 @@ static void update_uniforms(const shader_program_key *prog)
    n64_upload(prog);
 }
 
+#ifndef GL_COMPLETION_STATUS_KHR
+#define GL_COMPLETION_STATUS_KHR 0x91B1
+#endif
+
+/* the shared program, reading the combiner and the options as now */
+static void use_uber_program(void)
+{
+   glitch64_n64_combiner n64;
+   GLint ops[16];
+   int k[16], i;
+
+   glitch64_n64_from_key(n64_key, &n64);
+   glitch64_n64_inputs(&n64, k);
+   for (i = 0; i < 16; i++)
+      ops[i] = k[i];
+   current_shader = &uber_program;
+   glUseProgram(uber_program.program_object);
+   glUniform1iv(uber_program.n64Ops_location, 16, ops);
+   glUniform4f(uber_program.n64Flags0_location, n64.two_cycle ? 1.0f : 0.0f,
+         (n64.flags & GLITCH64_N64_FOG_RGB) ? 1.0f : 0.0f, (n64.flags & GLITCH64_N64_FOG_ALPHA) ? 1.0f : 0.0f,
+         (n64.flags & GLITCH64_N64_LOD) ? 1.0f : 0.0f);
+   glUniform4f(uber_program.n64Flags1_location, fog_enabled ? 1.0f : 0.0f, dither_enabled ? 1.0f : 0.0f,
+         three_point_filter[0] ? 1.0f : 0.0f, three_point_filter[1] ? 1.0f : 0.0f);
+   /* computed only where read: the hash costs, and lowp llvmpipe fell
+    * over it in a shader this size */
+   glUniform4f(uber_program.n64Flags2_location,
+         ((n64.two_cycle && n64.rgb[0][0] == 7) || n64.rgb[1][0] == 7) ? 1.0f : 0.0f, 0.0f, 0.0f, 0.0f);
+   update_uniforms(&uber_program);
+}
+
 void compile_shader(void)
 {
    shader_program_key shader;
@@ -605,6 +879,21 @@ void compile_shader(void)
             program->three_point_filter0 == three_point_filter[0] &&
             program->three_point_filter1 == three_point_filter[1])
       {
+         if (program->pending == 1)
+         {
+            GLint done = 0;
+            glGetProgramiv(program->program_object, GL_COMPLETION_STATUS_KHR, &done);
+            if (done)
+            {
+               complete_shader_program(program);
+               program->pending = 0;
+            }
+         }
+         if (program->pending || combiner_mode == 1)
+         {
+            use_uber_program();
+            return;
+         }
          use_shader_program(program);
          update_uniforms(program);
          return;
@@ -648,7 +937,23 @@ void compile_shader(void)
       strcat(fragment_shader, fragment_shader_fog);
    strcat(fragment_shader, fragment_shader_end);
 
+   /* kept for the next session's load either way */
    combiner_cache_record(&shader);
+   if (uber_program.program_object)
+   {
+      /* never compiled here: started where the driver compiles behind,
+       * else left for the next load; the shared program draws for it */
+      if (parallel_compile && combiner_mode != 1)
+      {
+         start_shader_program(&shader);
+         shader.pending = 1;
+      }
+      else
+         shader.pending = 2;
+      append_shader_program(&shader);
+      use_uber_program();
+      return;
+   }
    finish_shader_program_setup(&shader);
 
    update_uniforms(&shader);
@@ -679,6 +984,9 @@ void free_combiners(void)
    shader_programs_capacity = 0;
    current_shader  = NULL;
    fragment_shader = NULL;
+   if (uber_program.program_object && glIsProgram(uber_program.program_object))
+      glDeleteProgram(uber_program.program_object);
+   uber_program.program_object = 0;
 
    number_of_programs = 0;
 }

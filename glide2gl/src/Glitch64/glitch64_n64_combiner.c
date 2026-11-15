@@ -133,6 +133,89 @@ void glitch64_n64_from_key(const uint32_t key[2], glitch64_n64_combiner *c)
    c->flags = (uint8_t)((key[1] >> 25) & 7);
 }
 
+static int texel_in(int second, unsigned which, int alpha)
+{
+   if ((which ^ (unsigned)second) & 1)
+      return alpha ? GLITCH64_IN_TEXEL1_A : GLITCH64_IN_TEXEL1;
+   return alpha ? GLITCH64_IN_TEXEL0_A : GLITCH64_IN_TEXEL0;
+}
+
+static int rgb_in(int second, int slot, unsigned v)
+{
+   if (v <= 5)
+   {
+      static const int common[6] = { GLITCH64_IN_COMBINED, -1, -1, GLITCH64_IN_PRIM, GLITCH64_IN_SHADE, GLITCH64_IN_ENV };
+      if (v == 1 || v == 2)
+         return texel_in(second, v - 1, 0);
+      return common[v];
+   }
+   switch (slot)
+   {
+      case 0:
+         return v == 6 ? GLITCH64_IN_ONE : v == 7 ? GLITCH64_IN_NOISE : GLITCH64_IN_ZERO;
+      case 1:
+         return v == 6 ? GLITCH64_IN_CENTER : v == 7 ? GLITCH64_IN_K4 : GLITCH64_IN_ZERO;
+      case 2:
+         switch (v)
+         {
+            case 6:  return GLITCH64_IN_SCALE;
+            case 7:  return GLITCH64_IN_COMBINED_A;
+            case 8:  case 9: return texel_in(second, v - 8, 1);
+            case 10: return GLITCH64_IN_PRIM_A;
+            case 11: return GLITCH64_IN_SHADE_A;
+            case 12: return GLITCH64_IN_ENV_A;
+            case 13: return GLITCH64_IN_LOD;
+            case 14: return GLITCH64_IN_PRIM_LOD;
+            case 15: return GLITCH64_IN_K5;
+         }
+         return GLITCH64_IN_ZERO;
+      default:
+         return v == 6 ? GLITCH64_IN_ONE : GLITCH64_IN_ZERO;
+   }
+}
+
+/* the alpha's: the shader takes .w, where the colour inputs have it */
+static int alpha_in(int second, int slot, unsigned v)
+{
+   if (slot == 2)
+   {
+      switch (v)
+      {
+         case 0: return GLITCH64_IN_LOD;
+         case 1: case 2: return texel_in(second, v - 1, 0);
+         case 3: return GLITCH64_IN_PRIM;
+         case 4: return GLITCH64_IN_SHADE;
+         case 5: return GLITCH64_IN_ENV;
+         case 6: return GLITCH64_IN_PRIM_LOD;
+      }
+      return GLITCH64_IN_ZERO;
+   }
+   switch (v)
+   {
+      case 0: return GLITCH64_IN_COMBINED;
+      case 1: case 2: return texel_in(second, v - 1, 0);
+      case 3: return GLITCH64_IN_PRIM;
+      case 4: return GLITCH64_IN_SHADE;
+      case 5: return GLITCH64_IN_ENV;
+      case 6: return GLITCH64_IN_ONE;
+   }
+   return GLITCH64_IN_ZERO;
+}
+
+void glitch64_n64_inputs(const glitch64_n64_combiner *c, int ops[16])
+{
+   int i, k;
+   for (i = 0; i < 2; i++)
+   {
+      const int second = c->two_cycle && i == 1;
+      for (k = 0; k < 4; k++)
+      {
+         ops[8 * i + k] = rgb_in(second, k, c->rgb[i][k]);
+         ops[8 * i + 4 + k] = alpha_in(second, k, c->alpha[i][k]);
+      }
+   }
+}
+
 /* appends @s; nonzero while it fits */
 static int put(char *out, size_t cap, size_t *len, const char *s)
 {
