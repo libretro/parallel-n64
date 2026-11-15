@@ -13,6 +13,7 @@ int glitch64_vulkan = 0;
 #include "vk_device.h"
 #include "vk_renderer.h"
 #include "glitch64_vk_shaders.h"
+#include "glitch64_vk_textures.h"
 #include "../../../Graphics/RDP/RDP_state.h"
 #include "../Glide64/rdp.h"
 #include <streams/file_stream.h>
@@ -86,14 +87,6 @@ static const unsigned char vk_blends[VK_BLENDS][4] = {
  * functions it drew with */
 #define VK_JOURNAL_MAGIC   0x47364b4au
 #define VK_JOURNAL_VERSION 1u
-
-typedef struct vk_tex
-{
-   unsigned id;
-   unsigned handle;
-   int fmt;
-   uint16_t w, h;
-} vk_tex;
 
 static struct
 {
@@ -570,11 +563,7 @@ void vk_grN64Constants(const float prim[4], const float env[4], const float cons
 
 static vk_tex *tex_find(unsigned id)
 {
-   unsigned i;
-   for (i = 0; i < vk.n_textures; i++)
-      if (vk.textures[i].id == id)
-         return &vk.textures[i];
-   return NULL;
+   return vk_tex_find(vk.textures, vk.n_textures, id);
 }
 
 /* A texture of TMU memory written over: its image kept, as long as there
@@ -602,25 +591,23 @@ static unsigned tex_image(int fmt, unsigned w, unsigned h)
    return vkr_texture_new(vk.r);
 }
 
-/* TMU memory written over: the textures it held are gone */
-static void tex_remove(unsigned lo, unsigned hi)
+/* TMU memory written over: the textures it held are gone; where a texture
+ * at @lo now goes */
+static unsigned tex_remove(unsigned lo, unsigned hi)
 {
-   unsigned i = 0;
-   while (i < vk.n_textures)
+   unsigned a, b, i;
+   vk_tex_range(vk.textures, vk.n_textures, lo, hi, &a, &b);
+   for (i = a; i < b; i++)
    {
-      vk_tex *t = &vk.textures[i];
-      if (t->id >= lo && t->id < hi)
-      {
-         if (vk.bound[0] == t->handle)
-            vk.bound[0] = 0;
-         if (vk.bound[1] == t->handle)
-            vk.bound[1] = 0;
-         tex_retire(t);
-         *t = vk.textures[--vk.n_textures];
-      }
-      else
-         i++;
+      const vk_tex *t = &vk.textures[i];
+      if (vk.bound[0] == t->handle)
+         vk.bound[0] = 0;
+      if (vk.bound[1] == t->handle)
+         vk.bound[1] = 0;
+      tex_retire(t);
    }
+   vk_tex_close(vk.textures, &vk.n_textures, a, b);
+   return a;
 }
 
 /* The renderer's format for Glide's texels as they lie: nothing is
@@ -682,10 +669,10 @@ void vk_grTexSource(int32_t tmu, uint32_t start, void *info_, int do_download)
       const int fmt = vk_format(info->format, &bpp);
       const unsigned n = (unsigned)(w * h);
       const size_t bytes = (size_t)n * bpp;
-      tex_remove(id, id + (unsigned)(w * h * (int)grTexCalcMemRequired(0, 0, info->format)));
+      unsigned at = tex_remove(id, id + (unsigned)(w * h * (int)grTexCalcMemRequired(0, 0, info->format)));
       if (vk.n_textures >= VK_TEXTURES)
-         tex_remove(0, ~0u);
-      t = &vk.textures[vk.n_textures++];
+         at = tex_remove(0, ~0u);
+      t = vk_tex_open(vk.textures, &vk.n_textures, at);
       t->id = id;
       t->fmt = fmt;
       t->w = (uint16_t)w;
