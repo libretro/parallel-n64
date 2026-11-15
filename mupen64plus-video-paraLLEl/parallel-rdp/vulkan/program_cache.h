@@ -28,7 +28,7 @@
 #include <boolean.h>
 #include <retro_common_api.h>
 #include <retro_atomic.h>
-#include "volk.h"
+#include "granite_vk.h"
 #include "shader.h"
 #include "pipeline_map.h"
 #include "resource_bindings.h"
@@ -138,7 +138,7 @@ typedef struct granite_cached_render_pass
 typedef struct granite_program_cache
 {
 	VkDevice device;
-	const struct VolkDeviceTable *table;
+	const struct granite_vk_device_table *table;
 	/* the device pushes descriptors, and how many */
 	bool push_descriptors;
 	uint32_t max_push_descriptors;
@@ -153,7 +153,7 @@ typedef struct granite_program_cache
 } granite_program_cache_t;
 
 void granite_program_cache_init(granite_program_cache_t *cache, VkDevice device,
-		const struct VolkDeviceTable *table, bool push_descriptors, uint32_t max_push_descriptors,
+		const struct granite_vk_device_table *table, bool push_descriptors, uint32_t max_push_descriptors,
 		uint32_t max_bound_sets, unsigned num_threads);
 /* Destroys everything in it; each pipeline goes to @destroy_pipeline.
  * No other thread may be using it. */

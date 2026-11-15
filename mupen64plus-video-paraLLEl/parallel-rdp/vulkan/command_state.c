@@ -32,7 +32,7 @@ static uint32_t get_and_clear(granite_command_state_t *state, uint32_t flags)
 }
 
 void granite_command_state_init(granite_command_state_t *state, VkDevice device,
-		const struct VolkDeviceTable *table, VkCommandBuffer cmd)
+		const struct granite_vk_device_table *table, VkCommandBuffer cmd)
 {
 	state->device = device;
 	state->table = table;
@@ -174,7 +174,7 @@ void granite_command_state_set_pipeline(granite_command_state_t *state, const gr
 
 bool granite_command_state_flush(granite_command_state_t *state)
 {
-	const struct VolkDeviceTable *table = state->table;
+	const struct granite_vk_device_table *table = state->table;
 	uint32_t update_vbos;
 	unsigned binding;
 

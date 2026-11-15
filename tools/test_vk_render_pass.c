@@ -78,7 +78,7 @@ static void VKAPI_CALL fake_destroy(VkDevice d, VkRenderPass pass, const VkAlloc
 	destroyed++;
 }
 
-static struct VolkDeviceTable table;
+static struct granite_vk_device_table table;
 #define DEVICE ((VkDevice)(size_t)1)
 
 static granite_attachment_desc_t image(VkFormat format)

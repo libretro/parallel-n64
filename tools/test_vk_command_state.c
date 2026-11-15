@@ -107,7 +107,7 @@ static void VKAPI_CALL fake_bind_vbos(VkCommandBuffer cmd, uint32_t first, uint3
 	}
 }
 
-static struct VolkDeviceTable table;
+static struct granite_vk_device_table table;
 static granite_combined_layout_t resources, resources_b;
 static granite_bind_layout_t layout, layout_b;
 static granite_command_state_t s;

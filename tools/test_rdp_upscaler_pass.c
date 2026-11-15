@@ -447,7 +447,7 @@ static granite_device_t dev;
 
 static void fill_context(void)
 {
-	struct VolkDeviceTable *t = &context.device_table;
+	struct granite_vk_device_table *t = &context.device_table;
 	unsigned i;
 
 	memset(&context, 0, sizeof(context));

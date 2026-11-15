@@ -129,7 +129,7 @@ static void *new_object(size_t size, uint64_t hash)
 }
 
 void granite_program_cache_init(granite_program_cache_t *cache, VkDevice device,
-		const struct VolkDeviceTable *table, bool push_descriptors, uint32_t max_push_descriptors,
+		const struct granite_vk_device_table *table, bool push_descriptors, uint32_t max_push_descriptors,
 		uint32_t max_bound_sets, unsigned num_threads)
 {
 	cache->device = device;

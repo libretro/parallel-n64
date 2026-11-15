@@ -27,7 +27,7 @@
 #include <stdint.h>
 #include <boolean.h>
 #include <retro_common_api.h>
-#include "volk.h"
+#include "granite_vk.h"
 
 RETRO_BEGIN_DECLS
 
@@ -111,7 +111,7 @@ unsigned granite_submit_composer_bake(granite_submit_composer_t *composer, const
  * @split is for. VK_ERROR_OUT_OF_HOST_MEMORY, and nothing submitted,
  * when something could not be added. */
 VkResult granite_submit_composer_submit(granite_submit_composer_t *composer,
-		const struct VolkDeviceTable *table, VkQueue queue, VkFence fence, bool one_by_one);
+		const struct granite_vk_device_table *table, VkQueue queue, VkFence fence, bool one_by_one);
 
 RETRO_END_DECLS
 

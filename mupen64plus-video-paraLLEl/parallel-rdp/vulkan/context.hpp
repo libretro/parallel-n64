@@ -123,7 +123,7 @@ public:
 		return context.ext;
 	}
 
-	const VolkDeviceTable &get_device_table() const
+	const granite_vk_device_table &get_device_table() const
 	{
 		return context.device_table;
 	}

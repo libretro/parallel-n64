@@ -245,7 +245,7 @@ unsigned granite_submit_composer_bake(granite_submit_composer_t *composer, const
 }
 
 VkResult granite_submit_composer_submit(granite_submit_composer_t *composer,
-		const struct VolkDeviceTable *table, VkQueue queue, VkFence fence, bool one_by_one)
+		const struct granite_vk_device_table *table, VkQueue queue, VkFence fence, bool one_by_one)
 {
 	const VkSubmitInfo *submits;
 	VkResult result = VK_SUCCESS;

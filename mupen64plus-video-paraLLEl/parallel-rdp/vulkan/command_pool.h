@@ -24,7 +24,7 @@
 #define GRANITE_COMMAND_POOL_H
 
 #include <retro_common_api.h>
-#include "volk.h"
+#include "granite_vk.h"
 
 RETRO_BEGIN_DECLS
 
@@ -36,7 +36,7 @@ RETRO_BEGIN_DECLS
 typedef struct granite_command_pool
 {
 	VkDevice device;
-	const struct VolkDeviceTable *table;
+	const struct granite_vk_device_table *table;
 	VkCommandPool pool;
 	VkCommandBuffer *buffers;
 	unsigned count;
@@ -48,7 +48,7 @@ typedef struct granite_command_pool
 /* queue_family_index: VK_QUEUE_FAMILY_IGNORED for a queue the device does
  * not have; the pool then stays empty and is never asked. */
 void granite_command_pool_init(granite_command_pool_t *pool, VkDevice device,
-		const struct VolkDeviceTable *table, uint32_t queue_family_index);
+		const struct granite_vk_device_table *table, uint32_t queue_family_index);
 /* Frees its command buffers and the pool */
 void granite_command_pool_free(granite_command_pool_t *pool);
 /* The frame's GPU work is done: every command buffer is free again */

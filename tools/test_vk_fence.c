@@ -86,7 +86,7 @@ static void fake_free_memory(void *user, const granite_allocation_t *alloc, bool
 
 int main(void)
 {
-	struct VolkDeviceTable table;
+	struct granite_vk_device_table table;
 	granite_handle_owner_t owner;
 	granite_fence_env_t env;
 	granite_lf_pool_t pool;

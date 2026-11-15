@@ -29,7 +29,7 @@
 #include <retro_common_api.h>
 #include <retro_inline.h>
 #include <retro_atomic.h>
-#include "volk.h"
+#include "granite_vk.h"
 #include "memory_allocator.h"
 #include "frame_garbage.h"
 

@@ -13,7 +13,7 @@ PARALLEL_RDP_SOURCES_CXX := \
         $(wildcard $(PARALLEL_RDP_IMPLEMENTATION)/parallel-rdp/*.cpp)
 
 PARALLEL_RDP_SOURCES_C := \
-        $(PARALLEL_RDP_IMPLEMENTATION)/volk/volk.c \
+        $(PARALLEL_RDP_IMPLEMENTATION)/vulkan-loader/granite_vk.c \
         $(PARALLEL_RDP_IMPLEMENTATION)/parallel-rdp/command_ring.c \
         $(PARALLEL_RDP_IMPLEMENTATION)/parallel-rdp/rdp_worker.c \
         $(PARALLEL_RDP_IMPLEMENTATION)/parallel-rdp/rdp_dump_write.c \
@@ -91,16 +91,13 @@ PARALLEL_RDP_SOURCES_C := \
 
 PARALLEL_RDP_INCLUDE_DIRS := \
         -I$(PARALLEL_RDP_IMPLEMENTATION)/parallel-rdp \
-        -I$(PARALLEL_RDP_IMPLEMENTATION)/volk \
+        -I$(PARALLEL_RDP_IMPLEMENTATION)/vulkan-loader \
         -I$(PARALLEL_RDP_IMPLEMENTATION)/vulkan \
         -I$(PARALLEL_RDP_IMPLEMENTATION)/vulkan-headers/include \
         -I$(PARALLEL_RDP_IMPLEMENTATION)/util
 
 PARALLEL_RDP_LDFLAGS := -pthread
-ifeq (,$(findstring win,$(platform)))
-    PARALLEL_RDP_LDFLAGS += -ldl
-else
-    PARALLEL_RDP_CFLAGS += -DVK_USE_PLATFORM_WIN32_KHR
+ifneq (,$(findstring win,$(platform)))
     PARALLEL_RDP_LDFLAGS += -lwinmm
 endif
 

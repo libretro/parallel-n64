@@ -91,7 +91,7 @@ static void make_view(granite_image_t *image, granite_image_view_t *view, unsign
 
 int main(void)
 {
-	struct VolkDeviceTable table;
+	struct granite_vk_device_table table;
 	granite_program_cache_t cache;
 	granite_framebuffer_allocator_t allocator;
 	granite_image_t color_image, color2_image, depth_image, small_image;

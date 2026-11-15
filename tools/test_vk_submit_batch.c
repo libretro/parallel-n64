@@ -58,7 +58,7 @@ static VkResult VKAPI_CALL fake_submit(VkQueue queue, uint32_t count, const VkSu
 	return VK_SUCCESS;
 }
 
-static struct VolkDeviceTable table;
+static struct granite_vk_device_table table;
 
 static void test_order(void)
 {

@@ -61,7 +61,7 @@ static VkImageLayout layout_of(const granite_image_ref_t *image, VkImageLayout o
 	return image->general ? VK_IMAGE_LAYOUT_GENERAL : optimal;
 }
 
-void granite_cmd_image_barrier(const struct VolkDeviceTable *table, VkCommandBuffer cmd,
+void granite_cmd_image_barrier(const struct granite_vk_device_table *table, VkCommandBuffer cmd,
 		const granite_image_ref_t *image, VkImageLayout old_layout, VkImageLayout new_layout,
 		VkPipelineStageFlags src_stages, VkAccessFlags src_access, VkPipelineStageFlags dst_stages,
 		VkAccessFlags dst_access)
@@ -84,7 +84,7 @@ void granite_cmd_image_barrier(const struct VolkDeviceTable *table, VkCommandBuf
 	table->vkCmdPipelineBarrier(cmd, src_stages, dst_stages, 0, 0, NULL, 0, NULL, 1, &barrier);
 }
 
-void granite_cmd_clear_image(const struct VolkDeviceTable *table, VkCommandBuffer cmd,
+void granite_cmd_clear_image(const struct granite_vk_device_table *table, VkCommandBuffer cmd,
 		const granite_image_ref_t *image, const VkClearValue *value, VkImageAspectFlags aspect)
 {
 	VkImageLayout layout = layout_of(image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
@@ -101,7 +101,7 @@ void granite_cmd_clear_image(const struct VolkDeviceTable *table, VkCommandBuffe
 		table->vkCmdClearColorImage(cmd, image->image, layout, &value->color, 1, &range);
 }
 
-void granite_cmd_blit_image(const struct VolkDeviceTable *table, VkCommandBuffer cmd,
+void granite_cmd_blit_image(const struct granite_vk_device_table *table, VkCommandBuffer cmd,
 		const granite_image_ref_t *dst, const granite_image_ref_t *src, const VkOffset3D *dst_offset,
 		const VkOffset3D *dst_extent, const VkOffset3D *src_offset, const VkOffset3D *src_extent,
 		unsigned dst_level, unsigned src_level, unsigned dst_base_layer, unsigned src_base_layer,

@@ -599,7 +599,7 @@ void granite_device_allocator_free(granite_device_allocator_t *allocator)
 }
 
 bool granite_device_allocator_init(granite_device_allocator_t *allocator, VkDevice device,
-		VkPhysicalDevice gpu, const struct VolkDeviceTable *table,
+		VkPhysicalDevice gpu, const struct granite_vk_device_table *table,
 		const VkPhysicalDeviceMemoryProperties *mem_props, VkDeviceSize atom_alignment,
 		bool supports_memory_budget, bool memory_priority)
 {

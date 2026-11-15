@@ -25,7 +25,7 @@
 
 #include <stddef.h>
 #include <retro_common_api.h>
-#include "volk.h"
+#include "granite_vk.h"
 
 RETRO_BEGIN_DECLS
 
@@ -35,7 +35,7 @@ RETRO_BEGIN_DECLS
 typedef struct granite_fence_pool
 {
 	VkDevice device;
-	const struct VolkDeviceTable *table;
+	const struct granite_vk_device_table *table;
 	VkFence *items;
 	size_t count;
 	size_t capacity;
@@ -44,14 +44,14 @@ typedef struct granite_fence_pool
 typedef struct granite_semaphore_pool
 {
 	VkDevice device;
-	const struct VolkDeviceTable *table;
+	const struct granite_vk_device_table *table;
 	VkSemaphore *items;
 	size_t count;
 	size_t capacity;
 } granite_semaphore_pool_t;
 
 void granite_fence_pool_init(granite_fence_pool_t *pool, VkDevice device,
-		const struct VolkDeviceTable *table);
+		const struct granite_vk_device_table *table);
 /* Destroys what it holds */
 void granite_fence_pool_free(granite_fence_pool_t *pool);
 /* An unsignalled fence; VK_NULL_HANDLE if one cannot be made */
@@ -60,7 +60,7 @@ VkFence granite_fence_pool_request(granite_fence_pool_t *pool);
 void granite_fence_pool_recycle(granite_fence_pool_t *pool, VkFence fence);
 
 void granite_semaphore_pool_init(granite_semaphore_pool_t *pool, VkDevice device,
-		const struct VolkDeviceTable *table);
+		const struct granite_vk_device_table *table);
 void granite_semaphore_pool_free(granite_semaphore_pool_t *pool);
 /* An unsignalled binary semaphore; VK_NULL_HANDLE if one cannot be made */
 VkSemaphore granite_semaphore_pool_request(granite_semaphore_pool_t *pool);

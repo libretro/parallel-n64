@@ -229,7 +229,7 @@ uint32_t granite_combined_layout_push_set_mask(const granite_combined_layout_t *
 }
 
 bool granite_pipeline_layout_init(granite_pipeline_layout_t *pipeline_layout, VkDevice device,
-		const struct VolkDeviceTable *table, const granite_combined_layout_t *combined,
+		const struct granite_vk_device_table *table, const granite_combined_layout_t *combined,
 		const VkDescriptorSetLayout *set_layouts, uint32_t push_set_mask, uint32_t max_bound_sets)
 {
 	/* where a template finds each kind of descriptor in a

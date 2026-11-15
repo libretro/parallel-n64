@@ -28,7 +28,7 @@
 #include <boolean.h>
 #include <retro_common_api.h>
 #include <retro_inline.h>
-#include "volk.h"
+#include "granite_vk.h"
 #include "legion_allocator.h"
 #include "pool.h"
 
@@ -159,7 +159,7 @@ typedef struct granite_device_allocator
 	unsigned num_allocators;
 	VkDevice device;
 	VkPhysicalDevice gpu;
-	const struct VolkDeviceTable *table;
+	const struct granite_vk_device_table *table;
 	VkPhysicalDeviceMemoryProperties mem_props;
 	VkDeviceSize atom_alignment;
 	/* VK_EXT_memory_budget, VK_EXT_memory_priority */
@@ -177,7 +177,7 @@ typedef struct granite_device_allocator
  * @atom_alignment: the device's nonCoherentAtomSize. False when out of
  * memory. */
 bool granite_device_allocator_init(granite_device_allocator_t *allocator, VkDevice device,
-		VkPhysicalDevice gpu, const struct VolkDeviceTable *table,
+		VkPhysicalDevice gpu, const struct granite_vk_device_table *table,
 		const VkPhysicalDeviceMemoryProperties *mem_props, VkDeviceSize atom_alignment,
 		bool supports_memory_budget, bool memory_priority);
 /* Frees the cached blocks and the allocator's own memory. Every

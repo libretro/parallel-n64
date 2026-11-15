@@ -183,7 +183,7 @@ VkAccessFlags granite_buffer_usage_access(VkBufferUsageFlags usage)
 bool granite_buffer_create(const granite_buffer_env_t *env, granite_buffer_domain_t domain, VkDeviceSize size,
 		VkBufferUsageFlags usage, VkBuffer *buffer, granite_allocation_t *allocation, uint32_t *memory_type)
 {
-	const struct VolkDeviceTable *table = env->table;
+	const struct granite_vk_device_table *table = env->table;
 	VkBufferCreateInfo info;
 	VkMemoryRequirements2 reqs;
 	VkBufferMemoryRequirementsInfo2 req_info;
@@ -288,7 +288,7 @@ bool granite_buffer_create_host_import(const granite_buffer_env_t *env, granite_
 		VkDeviceSize size, VkBufferUsageFlags usage, VkDeviceSize host_alignment, void *host_pointer,
 		VkBuffer *buffer, granite_allocation_t *allocation)
 {
-	const struct VolkDeviceTable *table = env->table;
+	const struct granite_vk_device_table *table = env->table;
 	const VkExternalMemoryHandleTypeFlagBits handle_type = VK_EXTERNAL_MEMORY_HANDLE_TYPE_HOST_ALLOCATION_BIT_EXT;
 	VkExternalMemoryBufferCreateInfo external_info;
 	VkMemoryHostPointerPropertiesEXT host_props;

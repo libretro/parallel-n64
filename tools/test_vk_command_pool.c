@@ -111,7 +111,7 @@ static void VKAPI_CALL fake_free(VkDevice d, VkCommandPool pool, uint32_t count,
 
 int main(void)
 {
-	struct VolkDeviceTable table;
+	struct granite_vk_device_table table;
 	granite_command_pool_t pool;
 	VkCommandBuffer first[20], again;
 	unsigned i, j;

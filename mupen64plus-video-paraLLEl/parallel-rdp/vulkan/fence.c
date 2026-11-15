@@ -56,7 +56,7 @@ granite_fence_t *granite_fence_new(granite_lf_pool_t *pool, const granite_handle
 static bool fence_vk_wait(void *ctx)
 {
 	granite_fence_t *fence = (granite_fence_t *)ctx;
-	const struct VolkDeviceTable *table = fence->env.table;
+	const struct granite_vk_device_table *table = fence->env.table;
 
 	if (fence->value != 0)
 	{

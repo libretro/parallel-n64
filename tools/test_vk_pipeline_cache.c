@@ -89,7 +89,7 @@ static VkResult VKAPI_CALL fake_get_data(VkDevice d, VkPipelineCache cache, size
 	return VK_SUCCESS;
 }
 
-static struct VolkDeviceTable table;
+static struct granite_vk_device_table table;
 static const uint8_t uuid[VK_UUID_SIZE] = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 };
 
 static void test_blob(void)

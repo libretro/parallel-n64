@@ -26,7 +26,7 @@
 #include <stdint.h>
 #include <boolean.h>
 #include <retro_common_api.h>
-#include "volk.h"
+#include "granite_vk.h"
 
 RETRO_BEGIN_DECLS
 
@@ -52,9 +52,9 @@ void granite_sampler_linear_clamp_info(VkSamplerCreateInfo *info);
 
 /* Creates that sampler. False, and no sampler, when the driver will not. */
 bool granite_sampler_init_linear_clamp(granite_sampler_t *sampler, VkDevice device,
-		const struct VolkDeviceTable *table);
+		const struct granite_vk_device_table *table);
 /* Destroys it at once: nothing may be using it */
-void granite_sampler_free(granite_sampler_t *sampler, VkDevice device, const struct VolkDeviceTable *table);
+void granite_sampler_free(granite_sampler_t *sampler, VkDevice device, const struct granite_vk_device_table *table);
 
 RETRO_END_DECLS
 

@@ -27,7 +27,7 @@
 #include <stdint.h>
 #include <boolean.h>
 #include <retro_common_api.h>
-#include "volk.h"
+#include "granite_vk.h"
 
 RETRO_BEGIN_DECLS
 
@@ -73,7 +73,7 @@ typedef struct granite_framebuffer_block
 typedef struct granite_framebuffer_allocator
 {
 	VkDevice device;
-	const struct VolkDeviceTable *table;
+	const struct granite_vk_device_table *table;
 	void (*destroy)(void *userdata, VkFramebuffer framebuffer);
 	void *userdata;
 	/* those asked for in each of the last frames, the current at @index */
@@ -87,7 +87,7 @@ typedef struct granite_framebuffer_allocator
 } granite_framebuffer_allocator_t;
 
 void granite_framebuffer_allocator_init(granite_framebuffer_allocator_t *allocator, VkDevice device,
-		const struct VolkDeviceTable *table, void (*destroy)(void *userdata, VkFramebuffer framebuffer),
+		const struct granite_vk_device_table *table, void (*destroy)(void *userdata, VkFramebuffer framebuffer),
 		void *userdata);
 /* Gives every framebuffer to destroy and frees the nodes */
 void granite_framebuffer_allocator_free(granite_framebuffer_allocator_t *allocator);

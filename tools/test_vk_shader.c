@@ -340,7 +340,7 @@ static void test_push_set(void)
 
 static void test_pipeline_layout(void)
 {
-	static struct VolkDeviceTable table;
+	static struct granite_vk_device_table table;
 	const size_t stride = sizeof(granite_resource_binding_t);
 	const size_t fp = offsetof(granite_resource_binding_t, u.image.fp);
 	const size_t integer = offsetof(granite_resource_binding_t, u.image.integer);

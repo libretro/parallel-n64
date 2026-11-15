@@ -27,7 +27,7 @@
 #include <stdint.h>
 #include <boolean.h>
 #include <retro_common_api.h>
-#include "volk.h"
+#include "granite_vk.h"
 #include "shader.h"
 #include "descriptor_set.h"
 
@@ -108,7 +108,7 @@ uint64_t granite_bindings_hash_set(const granite_resource_bindings_t *bindings,
  * one written now; a push set is pushed. A set that cannot be had stays
  * dirty. */
 void granite_bindings_flush(granite_resource_bindings_t *bindings, const granite_bind_layout_t *layout,
-		VkDevice device, const struct VolkDeviceTable *table, VkCommandBuffer cmd, VkPipelineBindPoint bind_point,
+		VkDevice device, const struct granite_vk_device_table *table, VkCommandBuffer cmd, VkPipelineBindPoint bind_point,
 		unsigned thread_index);
 
 RETRO_END_DECLS

@@ -28,7 +28,7 @@
 #include <boolean.h>
 #include <retro_common_api.h>
 #include <retro_atomic.h>
-#include "volk.h"
+#include "granite_vk.h"
 
 RETRO_BEGIN_DECLS
 

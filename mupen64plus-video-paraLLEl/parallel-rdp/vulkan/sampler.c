@@ -40,7 +40,7 @@ void granite_sampler_linear_clamp_info(VkSamplerCreateInfo *info)
 }
 
 bool granite_sampler_init_linear_clamp(granite_sampler_t *sampler, VkDevice device,
-		const struct VolkDeviceTable *table)
+		const struct granite_vk_device_table *table)
 {
 	VkSamplerCreateInfo info;
 
@@ -57,7 +57,7 @@ bool granite_sampler_init_linear_clamp(granite_sampler_t *sampler, VkDevice devi
 	return true;
 }
 
-void granite_sampler_free(granite_sampler_t *sampler, VkDevice device, const struct VolkDeviceTable *table)
+void granite_sampler_free(granite_sampler_t *sampler, VkDevice device, const struct granite_vk_device_table *table)
 {
 	if (sampler->sampler != VK_NULL_HANDLE)
 		table->vkDestroySampler(device, sampler->sampler, NULL);

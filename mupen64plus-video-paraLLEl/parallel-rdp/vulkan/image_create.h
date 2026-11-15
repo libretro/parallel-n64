@@ -27,7 +27,7 @@
 #include <stdint.h>
 #include <boolean.h>
 #include <retro_common_api.h>
-#include "volk.h"
+#include "granite_vk.h"
 #include "memory_allocator.h"
 
 RETRO_BEGIN_DECLS
@@ -60,7 +60,7 @@ typedef struct granite_image_desc
 typedef struct granite_image_env
 {
 	VkDevice device;
-	const struct VolkDeviceTable *table;
+	const struct granite_vk_device_table *table;
 	granite_device_allocator_t *allocator;
 	const VkPhysicalDeviceMemoryProperties *memory;
 	uint32_t graphics_family;
@@ -127,9 +127,9 @@ bool granite_image_create(const granite_image_env_t *env, const granite_image_de
 		VkImage *image, granite_allocation_t *allocation, VkImageUsageFlags *usage, VkImageCreateFlags *flags);
 
 /* Creates the view and those that go with it. On failure none is left. */
-bool granite_image_views_create(VkDevice device, const struct VolkDeviceTable *table,
+bool granite_image_views_create(VkDevice device, const struct granite_vk_device_table *table,
 		const granite_image_view_desc_t *desc, granite_image_views_t *views);
-void granite_image_views_destroy(VkDevice device, const struct VolkDeviceTable *table,
+void granite_image_views_destroy(VkDevice device, const struct granite_vk_device_table *table,
 		granite_image_views_t *views);
 
 RETRO_END_DECLS

@@ -135,7 +135,7 @@ static void VKAPI_CALL fake_destroy_render_pass(VkDevice d, VkRenderPass pass, c
 	render_passes_destroyed++;
 }
 
-static struct VolkDeviceTable table;
+static struct granite_vk_device_table table;
 
 /* ---- the object cache alone ---- */
 

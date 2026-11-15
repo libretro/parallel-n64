@@ -27,7 +27,7 @@
 #include <stdint.h>
 #include <boolean.h>
 #include <retro_common_api.h>
-#include "volk.h"
+#include "granite_vk.h"
 #include "shader.h"
 #include "render_pass.h"
 
@@ -157,7 +157,7 @@ typedef struct granite_pipeline_program
 typedef struct granite_pipeline_device
 {
 	VkDevice device;
-	const struct VolkDeviceTable *table;
+	const struct granite_vk_device_table *table;
 	/* a pipeline can be asked for from the cache alone, failing when it
 	 * would have to be compiled */
 	bool cache_control;

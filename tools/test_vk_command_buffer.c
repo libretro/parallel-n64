@@ -246,7 +246,7 @@ int main(void)
 	static const uint32_t code_compute[] = { 0x07230203u, 1, 1, 1 };
 	static const uint32_t code_vertex[] = { 0x07230203u, 2, 2, 2 };
 	static const uint32_t code_fragment[] = { 0x07230203u, 3, 3, 3 };
-	struct VolkDeviceTable table;
+	struct granite_vk_device_table table;
 	granite_workarounds_t workarounds;
 	granite_device_features_t features;
 	granite_program_cache_t programs;

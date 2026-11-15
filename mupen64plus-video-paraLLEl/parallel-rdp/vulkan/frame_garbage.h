@@ -28,7 +28,7 @@
 #include <boolean.h>
 #include <retro_common_api.h>
 #include <retro_inline.h>
-#include "volk.h"
+#include "granite_vk.h"
 #include "sync_pools.h"
 
 RETRO_BEGIN_DECLS
@@ -96,7 +96,7 @@ bool granite_frame_garbage_has(const granite_frame_garbage_t *garbage,
 
 /* Destroys (or recycles) everything held, and empties the lists */
 void granite_frame_garbage_collect(granite_frame_garbage_t *garbage,
-		VkDevice device, const struct VolkDeviceTable *table,
+		VkDevice device, const struct granite_vk_device_table *table,
 		granite_semaphore_pool_t *semaphores, granite_fence_pool_t *fences);
 
 /* Frees the lists; collect first */

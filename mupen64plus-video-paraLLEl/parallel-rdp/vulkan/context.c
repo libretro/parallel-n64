@@ -29,7 +29,7 @@ bool granite_context_init_loader(PFN_vkGetInstanceProcAddr addr)
 {
 	if (!addr)
 		return false;
-	volkInitializeCustom(addr);
+	granite_vk_init_loader(addr);
 	return true;
 }
 
@@ -213,14 +213,14 @@ bool granite_context_init(granite_context_t *context, VkInstance instance, VkPhy
 	enabled.names = NULL;
 	enabled.count = 0;
 
-	if (volkGetInstanceVersion() < VK_API_VERSION_1_1)
+	if (granite_vk_instance_version() < VK_API_VERSION_1_1)
 	{
 		LOGE("Vulkan loader does not support Vulkan 1.1.\n");
 		return false;
 	}
 
 	context->instance = instance;
-	volkLoadInstance(instance);
+	granite_vk_load_instance(instance);
 
 	if (gpu == VK_NULL_HANDLE)
 		gpu = pick_gpu(instance);
@@ -460,7 +460,7 @@ bool granite_context_init(granite_context_t *context, VkInstance instance, VkPhy
 		goto done;
 	context->owned_device = true;
 
-	volkLoadDeviceTable(&context->device_table, context->device);
+	granite_vk_load_device_table(&context->device_table, context->device);
 
 	for (i = 0; i < GRANITE_QUEUE_COUNT; i++)
 	{

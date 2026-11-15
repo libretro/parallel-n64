@@ -191,7 +191,7 @@ static void VKAPI_CALL fake_destroy_semaphore(VkDevice d, VkSemaphore semaphore,
 
 static void test_pools(void)
 {
-	static struct VolkDeviceTable table;
+	static struct granite_vk_device_table table;
 	granite_fence_pool_t fences;
 	granite_semaphore_pool_t semaphores;
 	VkFence f[40];

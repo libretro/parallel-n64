@@ -28,7 +28,7 @@
 #include <boolean.h>
 #include <retro_common_api.h>
 #include <rthreads/retro_eventcount.h>
-#include "volk.h"
+#include "granite_vk.h"
 #include "context.h"
 #include "device_caps.h"
 #include "handle.h"
@@ -76,7 +76,7 @@ typedef struct granite_device
 	VkInstance instance;
 	VkPhysicalDevice gpu;
 	VkDevice device;
-	const struct VolkDeviceTable *table;
+	const struct granite_vk_device_table *table;
 	granite_queue_info_t queue_info;
 	unsigned num_thread_indices;
 

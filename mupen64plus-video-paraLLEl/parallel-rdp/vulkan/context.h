@@ -26,7 +26,7 @@
 #include <stdint.h>
 #include <boolean.h>
 #include <retro_common_api.h>
-#include "volk.h"
+#include "granite_vk.h"
 
 RETRO_BEGIN_DECLS
 
@@ -87,7 +87,7 @@ typedef struct granite_context
 	VkInstance instance;
 	VkPhysicalDevice gpu;
 	VkDevice device;
-	struct VolkDeviceTable device_table;
+	struct granite_vk_device_table device_table;
 	VkPhysicalDeviceProperties gpu_props;
 	VkPhysicalDeviceMemoryProperties mem_props;
 	granite_queue_info_t queue_info;

@@ -185,7 +185,7 @@ static void check_round(granite_frame_garbage_t *g, granite_semaphore_pool_t *po
 
 int main(void)
 {
-	static struct VolkDeviceTable table;
+	static struct granite_vk_device_table table;
 	static granite_frame_garbage_t g;
 	granite_semaphore_pool_t pool;
 	granite_fence_pool_t fpool;

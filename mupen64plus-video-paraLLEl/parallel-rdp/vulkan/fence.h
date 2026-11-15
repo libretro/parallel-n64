@@ -33,7 +33,7 @@ RETRO_BEGIN_DECLS
 typedef struct granite_fence_env
 {
 	VkDevice device;
-	const struct VolkDeviceTable *table;
+	const struct granite_vk_device_table *table;
 	/* where the threads that find another already waiting park; or NULL */
 	retro_eventcount_t *wait_ec;
 } granite_fence_env_t;

@@ -129,7 +129,7 @@ static VkSampler sampler_of(uint32_t n)
 
 int main(void)
 {
-	struct VolkDeviceTable table;
+	struct granite_vk_device_table table;
 	granite_set_allocator_t allocator;
 	granite_descriptor_set_layout_t layout;
 	uint32_t stages[GRANITE_NUM_BINDINGS];

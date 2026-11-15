@@ -27,7 +27,7 @@
 #include <stdint.h>
 #include <boolean.h>
 #include <retro_common_api.h>
-#include "volk.h"
+#include "granite_vk.h"
 #include "pipeline_record.h"
 
 RETRO_BEGIN_DECLS
@@ -78,7 +78,7 @@ typedef struct granite_render_pass_desc
 typedef struct granite_render_pass
 {
 	VkDevice device;
-	const struct VolkDeviceTable *table;
+	const struct granite_vk_device_table *table;
 	VkRenderPass render_pass;
 	VkFormat color_formats[GRANITE_NUM_ATTACHMENTS];
 	VkFormat depth_stencil_format;
@@ -99,7 +99,7 @@ uint64_t granite_render_pass_hash(const granite_render_pass_desc_t *desc, bool c
 bool granite_render_pass_desc_from_signature(granite_render_pass_desc_t *desc, const pipeline_record_pass_t *signature);
 /* False for a description without attachments, or when the driver
  * refuses the pass: render_pass is VK_NULL_HANDLE then. */
-bool granite_render_pass_init(granite_render_pass_t *pass, VkDevice device, const struct VolkDeviceTable *table,
+bool granite_render_pass_init(granite_render_pass_t *pass, VkDevice device, const struct granite_vk_device_table *table,
 		const granite_render_pass_desc_t *desc);
 void granite_render_pass_free(granite_render_pass_t *pass);
 bool granite_render_pass_has_depth(const granite_render_pass_t *pass);

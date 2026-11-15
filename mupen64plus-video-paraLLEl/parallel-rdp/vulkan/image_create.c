@@ -181,7 +181,7 @@ VkImageViewType granite_image_view_type(const granite_image_desc_t *desc)
 bool granite_image_create(const granite_image_env_t *env, const granite_image_desc_t *desc, bool upload,
 		VkImage *image, granite_allocation_t *allocation, VkImageUsageFlags *usage, VkImageCreateFlags *flags)
 {
-	const struct VolkDeviceTable *table = env->table;
+	const struct granite_vk_device_table *table = env->table;
 	VkImageCreateInfo info;
 	VkImageFormatListCreateInfoKHR format_info;
 	VkFormat view_formats[2];
@@ -295,7 +295,7 @@ fail:
 	return false;
 }
 
-void granite_image_views_destroy(VkDevice device, const struct VolkDeviceTable *table, granite_image_views_t *views)
+void granite_image_views_destroy(VkDevice device, const struct granite_vk_device_table *table, granite_image_views_t *views)
 {
 	unsigned i;
 
@@ -310,7 +310,7 @@ void granite_image_views_destroy(VkDevice device, const struct VolkDeviceTable *
 	memset(views, 0, sizeof(*views));
 }
 
-bool granite_image_views_create(VkDevice device, const struct VolkDeviceTable *table,
+bool granite_image_views_create(VkDevice device, const struct granite_vk_device_table *table,
 		const granite_image_view_desc_t *desc, granite_image_views_t *views)
 {
 	VkImageViewCreateInfo info;

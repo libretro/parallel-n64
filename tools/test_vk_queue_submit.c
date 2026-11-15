@@ -149,7 +149,7 @@ static void test_waits(void)
 static void test_clear(void)
 {
 	static granite_queue_waits_t waits;
-	struct VolkDeviceTable table;
+	struct granite_vk_device_table table;
 	granite_semaphore_t *binary, *timeline, *kept;
 	unsigned before = owner_destroys;
 

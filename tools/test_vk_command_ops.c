@@ -104,7 +104,7 @@ static void VKAPI_CALL fake_clear_depth(VkCommandBuffer cmd, VkImage image, VkIm
 	clear_value.depthStencil = *value;
 }
 
-static struct VolkDeviceTable table;
+static struct granite_vk_device_table table;
 
 static void reset(void)
 {

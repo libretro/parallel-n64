@@ -26,7 +26,7 @@
 #include "logging.h"
 
 bool granite_set_allocator_init(granite_set_allocator_t *allocator, VkDevice device,
-		const struct VolkDeviceTable *table, const granite_descriptor_set_layout_t *layout,
+		const struct granite_vk_device_table *table, const granite_descriptor_set_layout_t *layout,
 		const uint32_t *stages_for_bindings, const VkSampler *immutable_samplers, bool push,
 		unsigned num_threads)
 {

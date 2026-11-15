@@ -28,7 +28,7 @@
 #include <boolean.h>
 #include <retro_common_api.h>
 #include <retro_atomic.h>
-#include "volk.h"
+#include "granite_vk.h"
 #include "pipeline_compile.h"
 #include "pipeline_record.h"
 
@@ -50,14 +50,14 @@ const uint8_t *granite_pipeline_cache_payload(const uint8_t *uuid, const uint8_t
 /* Makes the pipeline cache, from @blob where that can be used, in place
  * of the one in @cache (which may be VK_NULL_HANDLE). False, and no
  * cache, when the driver makes none. */
-bool granite_pipeline_cache_init(VkDevice device, const struct VolkDeviceTable *table, const uint8_t *uuid,
+bool granite_pipeline_cache_init(VkDevice device, const struct granite_vk_device_table *table, const uint8_t *uuid,
 		const uint8_t *blob, size_t size, VkPipelineCache *cache);
 
 /* The size of the blob to keep for @cache; 0 when there is none */
-size_t granite_pipeline_cache_blob_size(VkDevice device, const struct VolkDeviceTable *table, VkPipelineCache cache);
+size_t granite_pipeline_cache_blob_size(VkDevice device, const struct granite_vk_device_table *table, VkPipelineCache cache);
 /* Writes that blob into @size bytes at @data. False when it does not
  * fit or the driver gives nothing. */
-bool granite_pipeline_cache_blob(VkDevice device, const struct VolkDeviceTable *table, VkPipelineCache cache,
+bool granite_pipeline_cache_blob(VkDevice device, const struct granite_vk_device_table *table, VkPipelineCache cache,
 		const uint8_t *uuid, uint8_t *data, size_t size);
 
 /* ---- the pipelines built in a session ----

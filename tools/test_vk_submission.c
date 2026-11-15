@@ -260,7 +260,7 @@ static void owner_recycle_fence(void *user, VkFence fence, bool seen, bool owner
 }
 
 /* ---- the fixture ---- */
-static struct VolkDeviceTable table;
+static struct granite_vk_device_table table;
 static granite_handle_owner_t owner;
 static granite_fence_pool_t fence_pool;
 static granite_semaphore_pool_t semaphore_pool;

@@ -67,7 +67,7 @@ const uint8_t *granite_pipeline_cache_payload(const uint8_t *uuid, const uint8_t
 	return payload;
 }
 
-bool granite_pipeline_cache_init(VkDevice device, const struct VolkDeviceTable *table, const uint8_t *uuid,
+bool granite_pipeline_cache_init(VkDevice device, const struct granite_vk_device_table *table, const uint8_t *uuid,
 		const uint8_t *blob, size_t size, VkPipelineCache *cache)
 {
 	VkPipelineCacheCreateInfo info;
@@ -87,7 +87,7 @@ bool granite_pipeline_cache_init(VkDevice device, const struct VolkDeviceTable *
 	return true;
 }
 
-size_t granite_pipeline_cache_blob_size(VkDevice device, const struct VolkDeviceTable *table, VkPipelineCache cache)
+size_t granite_pipeline_cache_blob_size(VkDevice device, const struct granite_vk_device_table *table, VkPipelineCache cache)
 {
 	size_t size = 0;
 
@@ -101,7 +101,7 @@ size_t granite_pipeline_cache_blob_size(VkDevice device, const struct VolkDevice
 	return size + GRANITE_PIPELINE_CACHE_HEADER_SIZE;
 }
 
-bool granite_pipeline_cache_blob(VkDevice device, const struct VolkDeviceTable *table, VkPipelineCache cache,
+bool granite_pipeline_cache_blob(VkDevice device, const struct granite_vk_device_table *table, VkPipelineCache cache,
 		const uint8_t *uuid, uint8_t *data, size_t size)
 {
 	uint8_t *payload = data + GRANITE_PIPELINE_CACHE_HEADER_SIZE;

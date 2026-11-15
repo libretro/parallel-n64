@@ -28,7 +28,7 @@
 #include <boolean.h>
 #include <retro_common_api.h>
 #include <retro_atomic.h>
-#include "volk.h"
+#include "granite_vk.h"
 #include "pool.h"
 #include "handle.h"
 #include "context.h"
@@ -60,7 +60,7 @@ enum granite_compile_mode
 typedef struct granite_cmd_device
 {
 	VkDevice device;
-	const struct VolkDeviceTable *table;
+	const struct granite_vk_device_table *table;
 	const granite_workarounds_t *workarounds;
 	const granite_device_features_t *features;
 	granite_program_cache_t *programs;
@@ -85,7 +85,7 @@ typedef struct granite_command_buffer
 	retro_atomic_int_t refs;
 	granite_lf_pool_t *pool;
 	const granite_cmd_device_t *dev;
-	const struct VolkDeviceTable *table;
+	const struct granite_vk_device_table *table;
 	VkCommandBuffer cmd;
 	/* enum granite_queue_index: the queue it is submitted to */
 	unsigned type;

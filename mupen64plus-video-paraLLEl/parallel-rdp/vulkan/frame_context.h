@@ -26,7 +26,7 @@
 #include <stddef.h>
 #include <boolean.h>
 #include <retro_common_api.h>
-#include "volk.h"
+#include "granite_vk.h"
 #include "command_pool.h"
 #include "command_buffer.h"
 #include "frame_sync.h"
@@ -47,7 +47,7 @@ RETRO_BEGIN_DECLS
 typedef struct granite_frame_env
 {
 	VkDevice device;
-	const struct VolkDeviceTable *table;
+	const struct granite_vk_device_table *table;
 	/* the device has timeline semaphores */
 	bool timeline;
 	granite_device_allocator_t *memory;

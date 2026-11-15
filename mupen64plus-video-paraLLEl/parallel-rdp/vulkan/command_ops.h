@@ -27,7 +27,7 @@
 #include <stdint.h>
 #include <boolean.h>
 #include <retro_common_api.h>
-#include "volk.h"
+#include "granite_vk.h"
 
 RETRO_BEGIN_DECLS
 
@@ -55,17 +55,17 @@ VkImageAspectFlags granite_format_aspect_mask(VkFormat format);
 VkPipelineStageFlags granite_barrier_src_stages(VkPipelineStageFlags src_stages, bool narrow);
 
 /* Every level and layer of @image moves from @old_layout to @new_layout */
-void granite_cmd_image_barrier(const struct VolkDeviceTable *table, VkCommandBuffer cmd,
+void granite_cmd_image_barrier(const struct granite_vk_device_table *table, VkCommandBuffer cmd,
 		const granite_image_ref_t *image, VkImageLayout old_layout, VkImageLayout new_layout,
 		VkPipelineStageFlags src_stages, VkAccessFlags src_access, VkPipelineStageFlags dst_stages,
 		VkAccessFlags dst_access);
 /* Clears every level and layer of @aspect of @image, which is in its
  * transfer destination layout */
-void granite_cmd_clear_image(const struct VolkDeviceTable *table, VkCommandBuffer cmd,
+void granite_cmd_clear_image(const struct granite_vk_device_table *table, VkCommandBuffer cmd,
 		const granite_image_ref_t *image, const VkClearValue *value, VkImageAspectFlags aspect);
 /* Blits @num_layers layers, a layer a call (one call for all of them
  * goes wrong on RADV). The extents are sizes, from the offsets. */
-void granite_cmd_blit_image(const struct VolkDeviceTable *table, VkCommandBuffer cmd,
+void granite_cmd_blit_image(const struct granite_vk_device_table *table, VkCommandBuffer cmd,
 		const granite_image_ref_t *dst, const granite_image_ref_t *src, const VkOffset3D *dst_offset,
 		const VkOffset3D *dst_extent, const VkOffset3D *src_offset, const VkOffset3D *src_extent,
 		unsigned dst_level, unsigned src_level, unsigned dst_base_layer, unsigned src_base_layer,

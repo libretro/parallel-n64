@@ -50,7 +50,7 @@ void granite_queue_waits_collect(granite_queue_waits_t *waits, granite_submit_co
 	waits->count = 0;
 }
 
-void granite_queue_waits_clear(granite_queue_waits_t *waits, VkDevice device, const struct VolkDeviceTable *table)
+void granite_queue_waits_clear(granite_queue_waits_t *waits, VkDevice device, const struct granite_vk_device_table *table)
 {
 	unsigned i;
 

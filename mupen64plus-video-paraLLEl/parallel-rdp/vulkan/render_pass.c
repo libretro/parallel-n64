@@ -178,7 +178,7 @@ bool granite_render_pass_desc_from_signature(granite_render_pass_desc_t *desc, c
 	return true;
 }
 
-bool granite_render_pass_init(granite_render_pass_t *pass, VkDevice device, const struct VolkDeviceTable *table,
+bool granite_render_pass_init(granite_render_pass_t *pass, VkDevice device, const struct granite_vk_device_table *table,
 		const granite_render_pass_desc_t *desc)
 {
 	bool has_depth = desc->depth_stencil.format != VK_FORMAT_UNDEFINED;

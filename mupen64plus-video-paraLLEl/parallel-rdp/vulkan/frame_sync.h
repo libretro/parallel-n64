@@ -26,7 +26,7 @@
 #include <stdint.h>
 #include <boolean.h>
 #include <retro_common_api.h>
-#include "volk.h"
+#include "granite_vk.h"
 
 RETRO_BEGIN_DECLS
 
@@ -53,7 +53,7 @@ bool granite_frame_sync_add_fence(granite_frame_sync_t *sync, VkFence fence);
 /* Blocks until the frame's work is done, and forgets the fences.
  * @timeline: the device has timeline semaphores. They are only waited
  * for when every queue has one. */
-void granite_frame_sync_wait(granite_frame_sync_t *sync, VkDevice device, const struct VolkDeviceTable *table,
+void granite_frame_sync_wait(granite_frame_sync_t *sync, VkDevice device, const struct granite_vk_device_table *table,
 		bool timeline);
 /* The device is idle: there is nothing to wait for (and waiting for a
  * fence that was never submitted would not end) */

@@ -74,7 +74,7 @@ static void VKAPI_CALL fake_memory_properties2(VkPhysicalDevice gpu, VkPhysicalD
 }
 PFN_vkGetPhysicalDeviceMemoryProperties2 vkGetPhysicalDeviceMemoryProperties2 = fake_memory_properties2;
 
-static struct VolkDeviceTable table;
+static struct granite_vk_device_table table;
 static granite_device_allocator_t allocator;
 static uint8_t host_memory[4096];
 

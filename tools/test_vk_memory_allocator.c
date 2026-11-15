@@ -203,7 +203,7 @@ static unsigned live_blocks(void)
 #define TYPE_HOST   1 /* host visible, not coherent */
 #define TYPE_BAR    2 /* both, on a small heap of its own */
 
-static struct VolkDeviceTable table;
+static struct granite_vk_device_table table;
 static granite_device_allocator_t allocator;
 
 static void device_init(bool budget)

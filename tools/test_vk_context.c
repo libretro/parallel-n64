@@ -80,18 +80,18 @@ static VkStructureType created_chain[32];
 static unsigned num_created_chain;
 static VkBool32 created_timeline, created_8bit, created_scalar;
 
-void volkInitializeCustom(PFN_vkGetInstanceProcAddr handler)
+void granite_vk_init_loader(PFN_vkGetInstanceProcAddr handler)
 {
 	(void)handler;
 	loader_inits++;
 }
 
-uint32_t volkGetInstanceVersion(void)
+uint32_t granite_vk_instance_version(void)
 {
 	return instance_version;
 }
 
-void volkLoadInstance(VkInstance instance)
+void granite_vk_load_instance(VkInstance instance)
 {
 	loaded_instance = instance;
 }
@@ -116,7 +116,7 @@ static void VKAPI_CALL fake_destroy_device(VkDevice d, const VkAllocationCallbac
 	devices_destroyed++;
 }
 
-void volkLoadDeviceTable(struct VolkDeviceTable *table, VkDevice device)
+void granite_vk_load_device_table(struct granite_vk_device_table *table, VkDevice device)
 {
 	CHECK(device == DEVICE, "the table of the device created");
 	memset(table, 0, sizeof(*table));

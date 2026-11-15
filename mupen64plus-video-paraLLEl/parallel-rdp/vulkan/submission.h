@@ -27,7 +27,7 @@
 #include <boolean.h>
 #include <retro_common_api.h>
 #include <rthreads/retro_eventcount.h>
-#include "volk.h"
+#include "granite_vk.h"
 #include "submit_batch.h"
 #include "queue_submit.h"
 #include "frame_context.h"
@@ -59,7 +59,7 @@ typedef struct granite_submit_queue
 typedef struct granite_submission
 {
 	VkDevice device;
-	const struct VolkDeviceTable *table;
+	const struct granite_vk_device_table *table;
 	/* the device has timeline semaphores */
 	bool timeline;
 	/* binary and timeline semaphores go in submissions of their own */

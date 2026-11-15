@@ -39,7 +39,7 @@ bool granite_frame_sync_add_fence(granite_frame_sync_t *sync, VkFence fence)
 	return true;
 }
 
-void granite_frame_sync_wait(granite_frame_sync_t *sync, VkDevice device, const struct VolkDeviceTable *table,
+void granite_frame_sync_wait(granite_frame_sync_t *sync, VkDevice device, const struct granite_vk_device_table *table,
 		bool timeline)
 {
 	unsigned i;

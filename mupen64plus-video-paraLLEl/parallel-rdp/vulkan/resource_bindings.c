@@ -309,7 +309,7 @@ static uint32_t dynamic_offsets_of(const granite_resource_bindings_t *bindings,
  * descriptor for the push. The stored offset stays zero, for layouts
  * that bind the same state as a dynamic uniform buffer. */
 static void push_set(granite_resource_bindings_t *bindings, const granite_bind_layout_t *layout,
-		const struct VolkDeviceTable *table, VkCommandBuffer cmd, unsigned set)
+		const struct granite_vk_device_table *table, VkCommandBuffer cmd, unsigned set)
 {
 	const granite_descriptor_set_layout_t *set_layout = &layout->resource_layout->sets[set];
 	granite_resource_binding_t *b = bindings->bindings[set];
@@ -337,7 +337,7 @@ static void push_set(granite_resource_bindings_t *bindings, const granite_bind_l
 }
 
 void granite_bindings_flush(granite_resource_bindings_t *bindings, const granite_bind_layout_t *layout,
-		VkDevice device, const struct VolkDeviceTable *table, VkCommandBuffer cmd, VkPipelineBindPoint bind_point,
+		VkDevice device, const struct granite_vk_device_table *table, VkCommandBuffer cmd, VkPipelineBindPoint bind_point,
 		unsigned thread_index)
 {
 	uint32_t used = layout->resource_layout->descriptor_set_mask;

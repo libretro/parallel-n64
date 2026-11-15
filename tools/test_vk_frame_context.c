@@ -241,7 +241,7 @@ static void block_unmap(void *user, void *handle)
 static const granite_buffer_pool_ops_t block_ops = { block_create, block_release, block_map, block_unmap };
 
 /* ---- what the frames share ---- */
-static struct VolkDeviceTable table;
+static struct granite_vk_device_table table;
 static granite_device_allocator_t allocator;
 static granite_fence_pool_t fence_pool;
 static granite_semaphore_pool_t semaphore_pool;

@@ -27,7 +27,7 @@
 #include <stdint.h>
 #include <boolean.h>
 #include <retro_common_api.h>
-#include "volk.h"
+#include "granite_vk.h"
 #include "descriptor_set.h"
 
 RETRO_BEGIN_DECLS
@@ -100,7 +100,7 @@ typedef struct granite_resource_binding
 typedef struct granite_pipeline_layout
 {
 	VkDevice device;
-	const struct VolkDeviceTable *table;
+	const struct granite_vk_device_table *table;
 	VkPipelineLayout layout;
 	VkDescriptorUpdateTemplate update_template[GRANITE_NUM_DESCRIPTOR_SETS];
 } granite_pipeline_layout_t;
@@ -132,7 +132,7 @@ uint32_t granite_combined_layout_push_set_mask(const granite_combined_layout_t *
  * False when the driver refuses the layout or a template: what it did
  * make is kept, the rest VK_NULL_HANDLE. */
 bool granite_pipeline_layout_init(granite_pipeline_layout_t *pipeline_layout, VkDevice device,
-		const struct VolkDeviceTable *table, const granite_combined_layout_t *combined,
+		const struct granite_vk_device_table *table, const granite_combined_layout_t *combined,
 		const VkDescriptorSetLayout *set_layouts, uint32_t push_set_mask, uint32_t max_bound_sets);
 void granite_pipeline_layout_free(granite_pipeline_layout_t *pipeline_layout);
 

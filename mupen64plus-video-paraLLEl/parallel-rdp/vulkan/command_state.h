@@ -27,7 +27,7 @@
 #include <stdint.h>
 #include <boolean.h>
 #include <retro_common_api.h>
-#include "volk.h"
+#include "granite_vk.h"
 #include "resource_bindings.h"
 #include "pipeline_compile.h"
 #include "pipeline_map.h"
@@ -49,7 +49,7 @@ RETRO_BEGIN_DECLS
 typedef struct granite_command_state
 {
 	VkDevice device;
-	const struct VolkDeviceTable *table;
+	const struct granite_vk_device_table *table;
 	VkCommandBuffer cmd;
 	/* whose descriptor sets it takes */
 	unsigned thread_index;
@@ -75,7 +75,7 @@ typedef struct granite_command_state
 } granite_command_state_t;
 
 void granite_command_state_init(granite_command_state_t *state, VkDevice device,
-		const struct VolkDeviceTable *table, VkCommandBuffer cmd);
+		const struct granite_vk_device_table *table, VkCommandBuffer cmd);
 /* A render pass (or, @compute, the time outside one) begins: nothing is
  * bound in the VkCommandBuffer any more, so everything is dirty and no
  * program, pipeline or vertex buffer is set. The push constants stay. */

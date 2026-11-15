@@ -63,7 +63,7 @@ static void on_destroy(void *userdata, VkFramebuffer fb)
 
 int main(void)
 {
-	static struct VolkDeviceTable table;
+	static struct granite_vk_device_table table;
 	static int owner_a, owner_b;
 	granite_framebuffer_allocator_t alloc;
 	granite_framebuffer_t *a, *b, *n, *first_nodes[40];

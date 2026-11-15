@@ -134,7 +134,7 @@ static void VKAPI_CALL fake_push(VkCommandBuffer cmd, VkDescriptorUpdateTemplate
 #define CMD    ((VkCommandBuffer)(size_t)5)
 #define H(x)   ((size_t)(x))
 
-static struct VolkDeviceTable table;
+static struct granite_vk_device_table table;
 static granite_combined_layout_t combined;
 static granite_set_allocator_t allocators[GRANITE_NUM_DESCRIPTOR_SETS];
 static VkDescriptorUpdateTemplate templates[GRANITE_NUM_DESCRIPTOR_SETS];

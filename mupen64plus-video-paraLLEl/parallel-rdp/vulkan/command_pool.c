@@ -25,7 +25,7 @@
 #include "logging.h"
 
 void granite_command_pool_init(granite_command_pool_t *pool, VkDevice device,
-		const struct VolkDeviceTable *table, uint32_t queue_family_index)
+		const struct granite_vk_device_table *table, uint32_t queue_family_index)
 {
 	VkCommandPoolCreateInfo info;
 	pool->device = device;

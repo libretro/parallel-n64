@@ -26,7 +26,7 @@
 #include <stdint.h>
 #include <boolean.h>
 #include <retro_common_api.h>
-#include "volk.h"
+#include "granite_vk.h"
 #include "semaphore.h"
 
 RETRO_BEGIN_DECLS
@@ -53,7 +53,7 @@ void granite_queue_waits_collect(granite_queue_waits_t *waits, granite_submit_co
 		granite_frame_garbage_t *garbage);
 /* The device is idle and nothing will wait for them: a binary semaphore
  * of its object's own is destroyed at once, and the list is empty. */
-void granite_queue_waits_clear(granite_queue_waits_t *waits, VkDevice device, const struct VolkDeviceTable *table);
+void granite_queue_waits_clear(granite_queue_waits_t *waits, VkDevice device, const struct granite_vk_device_table *table);
 
 /* How a buffer filled on one queue gets to the others */
 typedef struct granite_staging_plan

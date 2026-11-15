@@ -27,7 +27,7 @@
 #include <stdint.h>
 #include <boolean.h>
 #include <retro_common_api.h>
-#include "volk.h"
+#include "granite_vk.h"
 
 RETRO_BEGIN_DECLS
 
@@ -109,7 +109,7 @@ typedef struct granite_set_thread
 typedef struct granite_set_allocator
 {
 	VkDevice device;
-	const struct VolkDeviceTable *table;
+	const struct granite_vk_device_table *table;
 	VkDescriptorSetLayout set_layout;
 	granite_set_thread_t *per_thread;
 	unsigned num_per_thread;
@@ -124,7 +124,7 @@ typedef struct granite_set_allocator
  * @num_threads: the thread indices that will ask. False when out of
  * memory; a layout the driver refuses leaves set_layout VK_NULL_HANDLE. */
 bool granite_set_allocator_init(granite_set_allocator_t *allocator, VkDevice device,
-		const struct VolkDeviceTable *table, const granite_descriptor_set_layout_t *layout,
+		const struct granite_vk_device_table *table, const granite_descriptor_set_layout_t *layout,
 		const uint32_t *stages_for_bindings, const VkSampler *immutable_samplers, bool push,
 		unsigned num_threads);
 /* Destroys the layout, the pools and with them the sets */

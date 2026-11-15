@@ -59,7 +59,7 @@ static void VKAPI_CALL fake_destroy(VkDevice d, VkSampler sampler, const VkAlloc
 
 int main(void)
 {
-	struct VolkDeviceTable table;
+	struct granite_vk_device_table table;
 	VkSamplerCreateInfo info;
 	granite_sampler_t a, b;
 

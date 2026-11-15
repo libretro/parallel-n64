@@ -41,7 +41,7 @@ static void *sync_pool_room(void *items, size_t *capacity, size_t count, size_t 
 }
 
 void granite_fence_pool_init(granite_fence_pool_t *pool, VkDevice device,
-		const struct VolkDeviceTable *table)
+		const struct granite_vk_device_table *table)
 {
 	pool->device = device;
 	pool->table = table;
@@ -94,7 +94,7 @@ void granite_fence_pool_recycle(granite_fence_pool_t *pool, VkFence fence)
 }
 
 void granite_semaphore_pool_init(granite_semaphore_pool_t *pool, VkDevice device,
-		const struct VolkDeviceTable *table)
+		const struct granite_vk_device_table *table)
 {
 	pool->device = device;
 	pool->table = table;

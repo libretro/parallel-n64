@@ -75,7 +75,7 @@ static VkResult VKAPI_CALL fake_wait_fences(VkDevice d, uint32_t count, const Vk
 
 int main(void)
 {
-	struct VolkDeviceTable table;
+	struct granite_vk_device_table table;
 	granite_frame_sync_t sync;
 	VkSemaphore timelines[GRANITE_FRAME_SYNC_QUEUES];
 	unsigned i;

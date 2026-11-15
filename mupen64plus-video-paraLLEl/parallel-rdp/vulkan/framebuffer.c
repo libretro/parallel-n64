@@ -81,7 +81,7 @@ static void ring_retire(granite_framebuffer_allocator_t *allocator, unsigned ind
 }
 
 void granite_framebuffer_allocator_init(granite_framebuffer_allocator_t *allocator, VkDevice device,
-		const struct VolkDeviceTable *table, void (*destroy)(void *userdata, VkFramebuffer framebuffer),
+		const struct granite_vk_device_table *table, void (*destroy)(void *userdata, VkFramebuffer framebuffer),
 		void *userdata)
 {
 	memset(allocator, 0, sizeof(*allocator));

@@ -24,7 +24,7 @@
 #include "frame_garbage.h"
 
 static void garbage_release(enum granite_garbage_kind kind, uint64_t h,
-		VkDevice device, const struct VolkDeviceTable *t,
+		VkDevice device, const struct granite_vk_device_table *t,
 		granite_semaphore_pool_t *semaphores)
 {
 	switch (kind)
@@ -87,7 +87,7 @@ bool granite_frame_garbage_has(const granite_frame_garbage_t *garbage,
 
 /* in one vkResetFences call per batch, then back to the pool */
 static void garbage_recycle_fences(granite_garbage_list_t *list,
-		VkDevice device, const struct VolkDeviceTable *t, granite_fence_pool_t *fences)
+		VkDevice device, const struct granite_vk_device_table *t, granite_fence_pool_t *fences)
 {
 	VkFence batch[32];
 	size_t i = 0;
@@ -104,7 +104,7 @@ static void garbage_recycle_fences(granite_garbage_list_t *list,
 }
 
 void granite_frame_garbage_collect(granite_frame_garbage_t *garbage,
-		VkDevice device, const struct VolkDeviceTable *table,
+		VkDevice device, const struct granite_vk_device_table *table,
 		granite_semaphore_pool_t *semaphores, granite_fence_pool_t *fences)
 {
 	unsigned kind;

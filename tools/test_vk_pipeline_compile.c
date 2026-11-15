@@ -135,7 +135,7 @@ static VkResult VKAPI_CALL fake_create_compute(VkDevice d, VkPipelineCache cache
 	return VK_SUCCESS;
 }
 
-static struct VolkDeviceTable table;
+static struct granite_vk_device_table table;
 static granite_combined_layout_t layout;
 static granite_pipeline_program_t program;
 static granite_pipeline_device_t device;
