@@ -129,7 +129,8 @@ static void init_depth_shader(void);
 
 /* The shade, and the clip W it is multiplied by: the RDP steps the shade
  * evenly across the screen, so the GPU's perspective correction is undone
- * (vFrontColor, below). */
+ * (vFrontColor, below). The fog, the shade's alpha to the RDP, likewise:
+ * vTexCoord[0].b is it times W. */
 #define SHADER_VARYING \
 "varying highp vec4 vFrontColorW; \n" \
 "varying highp float vColorW;     \n" \
@@ -361,7 +362,7 @@ static const char* fragment_shader_readtex1color_jinc2 =
 
 static const char* fragment_shader_fog =
 "  float fog;  \n"
-"  fog = vTexCoord[0].b;  \n"
+"  fog = vTexCoord[0].b / vColorW;  \n"
 "  gl_FragColor.rgb = mix(fogColor, gl_FragColor.rgb, fog); \n"
 ;
 
@@ -408,7 +409,7 @@ SHADER_VARYING
 "\n"
 "  float f = (fogModeEndScale[1] - fogV) * fogModeEndScale[2];              \n"
 "  f = clamp(f, 0.0, 1.0);                                                  \n"
-"  vTexCoord[0].b = f;                                                    \n"
+"  vTexCoord[0].b = f * vColorW;                                         \n"
 "  vTexCoord[2].b = aPosition.x;                                            \n"
 "  vTexCoord[2].a = aPosition.y;                                            \n"
 "}                                                                          \n"
