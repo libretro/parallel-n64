@@ -69,6 +69,9 @@ void init_textures(void);
 void free_textures(void);
 
 void init_geometry(void);
+/* draws what is batched, and points the vertex arrays away from it: the
+ * next triangles point them back */
+void vbo_disable(void);
 void free_geometry(void);
 
 

@@ -891,7 +891,7 @@ void grStippleMode( int32_t mode )
    need_to_compile = 1;
 }
 
-void grAlphaBlendFunction(GLenum rgb_sf, GLenum rgb_df, GLenum alpha_sf, GLenum alpha_df)
+void grAlphaBlendFunction(uint32_t rgb_sf, uint32_t rgb_df, uint32_t alpha_sf, uint32_t alpha_df)
 {
    GLITCH64_VK(vk_grAlphaBlendFunction(rgb_sf, rgb_df, alpha_sf, alpha_df));
    static GLenum last[4];

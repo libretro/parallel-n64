@@ -97,19 +97,7 @@ void vbo_free(void)
    vbuf_drawing = false;
 }
 
-void vbo_bind()
-{
-   if (vbuf_vbo)
-      glBindBuffer(GL_ARRAY_BUFFER, vbuf_vbo);
-}
-
-void vbo_unbind()
-{
-   if (vbuf_vbo)
-      glBindBuffer(GL_ARRAY_BUFFER, 0);
-}
-
-void vbo_buffer_data(void *data, size_t size)
+static void vbo_buffer_data(void *data, size_t size)
 {
    if (vbuf_vbo)
    {
@@ -127,7 +115,7 @@ void vbo_buffer_data(void *data, size_t size)
    }
 }
 
-void vbo_draw(void)
+static void vbo_draw(void)
 {
    if (!vbuf_length || vbuf_drawing)
       return;
@@ -197,7 +185,7 @@ void glitch64_flush(void)
    vbo_draw();
 }
 
-void vbo_enable(void)
+static void vbo_enable(void)
 {
    const void *vp   = NULL;
    const void *vc   = NULL;
@@ -291,7 +279,7 @@ void grCullMode( int32_t mode )
 
 // Depth buffer
 
-void grDepthBufferFunction(GLenum func)
+void grDepthBufferFunction(uint32_t func)
 {
    GLITCH64_VK(vk_grDepthBufferFunction(func));
    if (func == depth_func_set)
