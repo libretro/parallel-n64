@@ -38,7 +38,8 @@ within a step: these cartridges, one culling the second quad's back faces
 and one changing the primitive colour between the quads and nothing else.
 Every pipeline it draws with must have been built at load (strict: a draw
 without one aborts), with blending as dynamic state where the device has
-it, and in the pipelines.
+it, and in the pipelines; each combiner through its own shader, and
+through the shared one.
 
   gliden64_hle_dl.py --core parallel_n64_libretro.so --gl ./lrhost_gl [--vk ./lrhost_vk] [--glide64]
 """
@@ -75,7 +76,7 @@ def vertex(x, y, s, t):
     return struct.pack(">hhhHhhBBBB", x, y, 0, 0, s << 5, t << 5, 255, 255, 255, 255)
 
 
-def display_list(toggle, inter=False, cull=False, prim=False):
+def display_list(toggle, inter=False, cull=False, prim=False, two=False):
     c = []
     cmd = lambda w0, w1=0: c.extend([w0 & 0xffffffff, w1 & 0xffffffff])
     # Glide64 presents a frame when the colour image changes: another
@@ -92,10 +93,14 @@ def display_list(toggle, inter=False, cull=False, prim=False):
     cmd(0xFA000000, 0x000000FF)
     cmd(0xF6000000 | ((WIDTH * 4) << 12) | (HEIGHT * 4), 0)                  # FILLRECT
     cmd(0xE7000000)
-    # one cycle, perspective texturing, point sampled, texels filtered not
-    # converted (G_TC_FILT); an opaque surface
-    cmd(0xEF000000 | (1 << 19) | (6 << 9), 0x0F0A4000)
-    if inter:
+    # one cycle (with @two, two), perspective texturing, point sampled,
+    # texels filtered not converted (G_TC_FILT); an opaque surface
+    cmd(0xEF000000 | (1 << 20 if two else 0) | (1 << 19) | (6 << 9), 0x0F0A4000)
+    if two:
+        # TEXEL0 * SHADE, then COMBINED * PRIMITIVE, the alpha likewise
+        cmd(0xFC000000 | 0x121803, 0xFF0FFFFF)
+        cmd(0xFA000000, 0xC080FFFF)
+    elif inter:
         # TEXEL0 a share of the way to ENVIRONMENT, the share PRIMITIVE's
         # alpha: Glide64 works this one into the texture itself
         cmd(0xFC557EAA, 0x11FCFC7E)
@@ -153,7 +158,7 @@ def display_list(toggle, inter=False, cull=False, prim=False):
     return struct.pack(">%dI" % len(c), *c)
 
 
-def cartridge(path, toggle, name, inter=False, known=True, areas=None, step=None, cull=False, prim=False):
+def cartridge(path, toggle, name, inter=False, known=True, areas=None, step=None, cull=False, prim=False, two=False):
     """@areas: what to put in RDRAM in place of this file's own, by address.
     @step: (address, value), the value added to the word there before each
     frame's task."""
@@ -167,7 +172,7 @@ def cartridge(path, toggle, name, inter=False, known=True, areas=None, step=None
     li = lambda rt, v: [lui(rt, (v >> 16) & 0xffff), ori(rt, rt, v & 0xffff)]
 
     area = {}
-    area[DL] = display_list(toggle, inter, cull, prim)
+    area[DL] = display_list(toggle, inter, cull, prim, two)
     area[VTX] = b"".join(vertex(x, y, s, t) for (x0, y0) in ((-120, -50), (20, -50))
                          for (x, y, s, t) in ((x0, y0, 0, 32), (x0 + 100, y0, 32, 32),
                                               (x0 + 100, y0 + 100, 32, 0), (x0, y0 + 100, 0, 0)))
@@ -351,13 +356,21 @@ def main():
                 cartridge(culling, False, "GLIDEN64 HLE DL", cull=True)
                 prims = os.path.join(tmp, "prim.z64")
                 cartridge(prims, False, "GLIDEN64 HLE DL", prim=True)
+                twos = os.path.join(tmp, "two.z64")
+                cartridge(twos, False, "GLIDEN64 HLE DL", two=True)
                 # strict: a draw whose pipeline was not built at load aborts;
                 # blending as dynamic state where the device has it, and not
                 strict = {"GLIDEN64_VULKAN_STRICT": "1"}
                 no_eds3 = {"GLIDEN64_VULKAN_STRICT": "1", "GLIDEN64_VULKAN_NO_EDS3": "1"}
+                # every combiner through the shared shader (by default each
+                # draws through its own, waited for under lrhost)
+                generic = {"GLIDEN64_VULKAN_STRICT": "1", "GLIDEN64_VULKAN": "generic"}
                 for label, path, extra in (("plain", roms["plain"], strict), ("toggled", roms["toggled"], strict),
                                            ("inter", rom, strict), ("culling", culling, strict),
-                                           ("primitive colour", prims, strict), ("blending in pipelines", roms["plain"], no_eds3)):
+                                           ("primitive colour", prims, strict), ("blending in pipelines", roms["plain"], no_eds3),
+                                           ("two cycles", twos, strict),
+                                           ("shared shader", roms["plain"], generic), ("shared shader, inter", rom, generic),
+                                           ("shared shader, two cycles", twos, generic)):
                     gl = run(os.path.abspath(a.gl), a.core, path, tmp, "opengl", "glide64")
                     vk = run(os.path.abspath(a.vk), a.core, path, tmp, "opengl", "glide64", "vulkan", extra)
                     ok, detail = same_frame(gl, vk)

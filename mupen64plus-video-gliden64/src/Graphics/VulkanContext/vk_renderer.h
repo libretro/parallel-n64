@@ -84,6 +84,10 @@ typedef struct vkr_client_layout
    vkr_client_attr attrs[VKR_CLIENT_ATTRS];
 } vkr_client_layout;
 
+#define VKR_CLIENT_KEY 20
+/* Writes a client's fragment shader from its key, on the worker. */
+typedef const uint32_t *(*vkr_client_writer)(spv_module *m, const int *key, unsigned *count);
+
 /* The shaders read the renderer's descriptor set and push block (vk_shaders.h):
  * the values from VKR_BIND_VALUES, the textures bound, and the ops, flags
  * and special words vkr_client_push gives. */
@@ -92,6 +96,13 @@ typedef struct vkr_client_desc
    const uint32_t *vs, *fs;
    unsigned vs_words, fs_words;
    vkr_client_layout layout;
+   /* Or, with no fs: the fragment shader @write_fs writes from @key on the
+    * worker, the pipelines built behind the draws while @fallback (a
+    * prewarmed program of the same layout and values) draws in its place.
+    * No vs: the fallback's. */
+   vkr_program *fallback;
+   vkr_client_writer write_fs;
+   int key[VKR_CLIENT_KEY];
 } vkr_client_desc;
 
 /* NULL on a device that cannot do it, or out of memory. */

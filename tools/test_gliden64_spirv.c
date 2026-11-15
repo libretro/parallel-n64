@@ -119,11 +119,24 @@ int main(int argc, char **argv)
    /* Glide64's: its vertex shader, its combiner and its depth image's */
    words = glitch64_vk_vertex(&module_, &count);
    validate(words, count, "glitch64 vertex");
-   words = glitch64_vk_fragment(&module_, 0, &count);
+   words = glitch64_vk_fragment(&module_, 0, NULL, &count);
    validate(words, count, "glitch64 combiner");
    check_shade(words, count, "glitch64 combiner");
-   words = glitch64_vk_fragment(&module_, 1, &count);
+   words = glitch64_vk_fragment(&module_, 1, NULL, &count);
    validate(words, count, "glitch64 depth image");
+   /* combiners' own: random inputs, every flag on and off */
+   for (i = 0; i < randoms; i++)
+   {
+      int key[G64VK_KEY_WORDS];
+      char what[64];
+      for (k = 0; k < 16; k++)
+         key[k] = rnd(G64VK_IN_COUNT);
+      key[16] = rnd(1 << 10) & ~G64VK_COPY;
+      sprintf(what, "glitch64 own combiner %d", i);
+      words = glitch64_vk_fragment(&module_, 0, key, &count);
+      validate(words, count, what);
+      check_shade(words, count, what);
+   }
 
    for (bits = 0; bits < 32; bits++)
    {

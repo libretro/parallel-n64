@@ -162,7 +162,13 @@ struct vkr_program
    /* the user's own shaders and vertices (vkr_client_new) */
    int  is_client;
    VkShaderModule client_vs;
+   int  owns_vs;
    vkr_client_layout layout;
+   /* a client's own shader, written by the worker from its key; until its
+    * pipeline is built the fallback (prewarmed) draws in its place */
+   vkr_client_writer write_fs;
+   int  client_key[VKR_CLIENT_KEY];
+   vkr_program *fallback;
    uint32_t id;
    float special[4];
    /* only the worker reads and writes this once it is queued */
@@ -309,6 +315,7 @@ struct vkr_renderer
    int cur_rect;
    int force_generic;
    int strict; /* tools/ci: a pipeline prewarm did not build is a failure */
+   int wait_client; /* tools: a client's own pipelines waited for */
    int prewarmed;
    char cache_path[1024];
    VkDeviceSize vb_offset, ib_offset;
@@ -1868,7 +1875,17 @@ static void pipeline_work(void *user, mpsc_stack_node_t *node)
    if (!p)
       pipe = build_pipeline(r, job->vs, job->fs, job->key);
    else if (p->is_client)
-      pipe = build_pipeline_for(r, p->client_vs, p->fs, job->key, &p->layout);
+   {
+      if (p->fs == VK_NULL_HANDLE && p->write_fs)
+      {
+         unsigned count = 0;
+         const uint32_t *words = p->write_fs(&r->worker_spv, p->client_key, &count);
+         if (words)
+            p->fs = make_module(r, words, count);
+      }
+      if (p->fs != VK_NULL_HANDLE)
+         pipe = build_pipeline_for(r, p->client_vs, p->fs, job->key, &p->layout);
+   }
    else
    {
       if (p->fs == VK_NULL_HANDLE)
@@ -1963,6 +1980,8 @@ static VkPipeline fixed_pipeline(vkr_renderer *r, uint32_t prog, VkShaderModule 
    return VK_NULL_HANDLE;
 }
 
+static bool jobs_done(void *ctx);
+
 static int bind_for_draw(vkr_renderer *r, int rect, int lines, int strip)
 {
    vkr_program *p = r->current;
@@ -1984,12 +2003,29 @@ static int bind_for_draw(vkr_renderer *r, int rect, int lines, int strip)
        * it for the next: the draw thread never compiles */
       pipe_entry *e = pipe_lookup(r, p->id, key);
       int status = e ? retro_atomic_load_acquire_int(&e->status) : PS_FAILED;
+      if (status != PS_READY && p->fallback && !r->force_generic)
+      {
+         /* its own pipeline, built behind; the fallback draws the same */
+         if (status == PS_EMPTY)
+            pipe_queue(r, e, p, VK_NULL_HANDLE, VK_NULL_HANDLE, key);
+         if (r->wait_client)
+         {
+            /* tools: each draw through the program's own pipeline */
+            rdp_worker_wait(r->worker, jobs_done, r);
+            status = retro_atomic_load_acquire_int(&e->status);
+         }
+      }
+      if (status != PS_READY && p->fallback)
+      {
+         e = pipe_lookup(r, p->fallback->id, key);
+         status = e ? retro_atomic_load_acquire_int(&e->status) : PS_FAILED;
+      }
       if (status != PS_READY)
       {
          if (r->strict)
             abort(); /* tools/ci: the client's prewarm does not cover what it draws */
          if (status == PS_EMPTY)
-            pipe_queue(r, e, p, VK_NULL_HANDLE, VK_NULL_HANDLE, key);
+            pipe_queue(r, e, p->fallback ? p->fallback : p, VK_NULL_HANDLE, VK_NULL_HANDLE, key);
          return 0;
       }
       pipe = e->pipeline;
@@ -2943,9 +2979,23 @@ vkr_program *vkr_client_new(vkr_renderer *r, const vkr_client_desc *desc)
       return NULL;
    p->is_client = 1;
    p->layout = desc->layout;
-   p->client_vs = make_module(r, desc->vs, desc->vs_words);
-   p->fs = make_module(r, desc->fs, desc->fs_words);
-   if (p->client_vs == VK_NULL_HANDLE || p->fs == VK_NULL_HANDLE)
+   p->fallback = desc->fallback;
+   if (desc->fallback && !desc->vs)
+      p->client_vs = desc->fallback->client_vs; /* its vertex shader is the fallback's */
+   else
+   {
+      p->client_vs = make_module(r, desc->vs, desc->vs_words);
+      p->owns_vs = 1;
+   }
+   if (desc->fs)
+      p->fs = make_module(r, desc->fs, desc->fs_words);
+   else
+   {
+      /* written by the worker with its first pipeline */
+      p->write_fs = desc->write_fs;
+      memcpy(p->client_key, desc->key, sizeof(p->client_key));
+   }
+   if (p->client_vs == VK_NULL_HANDLE || (p->fs == VK_NULL_HANDLE && !p->write_fs))
    {
       vkr_program_delete(r, p);
       return NULL;
@@ -3003,7 +3053,7 @@ void vkr_program_delete(vkr_renderer *r, vkr_program *p)
       r->current = NULL;
    if (p->fs != VK_NULL_HANDLE)
       F(DestroyShaderModule)(r->device, p->fs, NULL);
-   if (p->client_vs != VK_NULL_HANDLE)
+   if (p->client_vs != VK_NULL_HANDLE && p->owns_vs)
       F(DestroyShaderModule)(r->device, p->client_vs, NULL);
    if (p < r->programs || p >= r->programs + MAX_PROGRAMS)
       free(p);
@@ -4044,6 +4094,7 @@ vkr_renderer *vkr_create(const struct retro_hw_render_interface_vulkan *vk, cons
    /* for tools/ci: every combiner through the generic shader */
    r->force_generic = getenv("GLIDEN64_VULKAN") != NULL && strcmp(getenv("GLIDEN64_VULKAN"), "generic") == 0;
    r->strict = getenv("GLIDEN64_VULKAN_STRICT") != NULL;
+   r->wait_client = getenv("PARALLEL_RDP_TEST_WAIT_PIPELINES") != NULL;
    /* tools/ci: GPUs without it take the other path, and it stays tested */
    r->eds3 = r->eds && r->fn.CmdSetColorBlendEnableEXT != NULL && gliden64_vulkan_has_dynamic_blend()
          && getenv("GLIDEN64_VULKAN_NO_EDS3") == NULL;

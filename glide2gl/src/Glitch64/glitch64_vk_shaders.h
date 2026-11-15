@@ -66,8 +66,13 @@ enum
 /* NULL if it did not fit. Valid until the next call on @m. */
 const uint32_t *glitch64_vk_vertex(spv_module *m, unsigned *count);
 /* @depth: the depth image's shader, writing the depth tile 0 holds at
- * each texel, else the combiner's */
-const uint32_t *glitch64_vk_fragment(spv_module *m, int depth, unsigned *count);
+ * each texel, else the combiner's: with @key (ops[16], then the flags)
+ * that one combiner's own, its choices made while writing; NULL reads
+ * them as pushed. */
+#define G64VK_KEY_WORDS 17
+const uint32_t *glitch64_vk_fragment(spv_module *m, int depth, const int *key, unsigned *count);
+/* the combiner's own shader, as the renderer's worker writes it */
+const uint32_t *glitch64_vk_write_own(spv_module *m, const int *key, unsigned *count);
 
 #ifdef __cplusplus
 }

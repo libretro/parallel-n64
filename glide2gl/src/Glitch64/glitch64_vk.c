@@ -29,6 +29,9 @@ extern float polygonOffsetUnits;
 
 #define VK_VERTICES  (3 * 4096)
 #define VK_TEXTURES  4096
+/* the combiners with a shader of their own; past that, the shared one */
+#define VK_OWN       2048
+#define VK_OWN_SLOTS 4096
 #define LFB_SCALED_MAX 1024
 /* no depth bias level set yet */
 #define NO_BIAS 0x7fffffff
@@ -43,6 +46,13 @@ typedef struct vk_vertex
 } vk_vertex;
 
 /* a texture of TMU memory: Glide64's address, plus one */
+/* a combiner's own program: its ops and flags */
+typedef struct vk_own
+{
+   int key[G64VK_KEY_WORDS];
+   vkr_program *p;
+} vk_own;
+
 typedef struct vk_tex
 {
    unsigned id;
@@ -84,6 +94,10 @@ static struct
    unsigned n_textures;
    unsigned bound[2];
    int wrap_s[2], wrap_t[2], min_f[2], mag_f[2];
+
+   vk_own own[VK_OWN_SLOTS];
+   unsigned n_own;
+   vkr_client_layout layout;
 } vk;
 
 /* ---- the combiner's inputs, as the shader indexes them ---- */
@@ -184,15 +198,58 @@ static void set_combiner(const glitch64_n64_combiner *c)
 
 /* ---- drawing ---- */
 
+/* The program of these ops and flags: its own, written and built by the
+ * renderer's worker while the shared one draws for it; nothing compiles
+ * here. A table of fixed size, made at load. */
+static vkr_program *own_program(int flags)
+{
+   int key[G64VK_KEY_WORDS];
+   uint32_t h = 2166136261u;
+   unsigned i, at;
+
+   if (flags & G64VK_COPY)
+      return vk.combiner;
+   memcpy(key, vk.ops, sizeof(vk.ops));
+   key[16] = flags;
+   for (i = 0; i < G64VK_KEY_WORDS; i++)
+      h = (h ^ (uint32_t)key[i]) * 16777619u;
+   for (i = 0; i < VK_OWN_SLOTS; i++)
+   {
+      vk_own *o = &vk.own[(h + i) & (VK_OWN_SLOTS - 1)];
+      if (!o->p)
+      {
+         vkr_client_desc d;
+         if (vk.n_own >= VK_OWN)
+            return vk.combiner;
+         memset(&d, 0, sizeof(d));
+         d.layout = vk.layout;
+         d.fallback = vk.combiner;
+         d.write_fs = glitch64_vk_write_own;
+         memcpy(d.key, key, sizeof(key));
+         o->p = vkr_client_new(vk.r, &d);
+         if (!o->p)
+            return vk.combiner;
+         memcpy(o->key, key, sizeof(key));
+         vk.n_own++;
+         return o->p;
+      }
+      if (!memcmp(o->key, key, sizeof(key)))
+         return o->p;
+   }
+   return vk.combiner;
+}
+
 static void draw_vertices(const void *data, unsigned n, int flags)
 {
    static const float none[4] = { 0.f, 0.f, 0.f, 0.f };
+   vkr_program *p;
    void *dst;
    if (!n)
       return;
-   vkr_use(vk.r, vk.combiner);
-   vkr_values_raw(vk.r, vk.combiner, &vk.values, sizeof(vk.values));
-   vkr_client_push(vk.r, vk.combiner, vk.ops, flags, none);
+   p = own_program(flags);
+   vkr_use(vk.r, p);
+   vkr_values_raw(vk.r, p, &vk.values, sizeof(vk.values));
+   vkr_client_push(vk.r, p, vk.ops, flags, none);
    dst = vkr_vertex_reserve(vk.r, n * sizeof(vk_vertex));
    if (!dst)
       return;
@@ -685,7 +742,7 @@ static vkr_program *make_program(int depth)
    memcpy(vs, words, n * sizeof(uint32_t));
    d.vs = vs;
    d.vs_words = n;
-   d.fs = glitch64_vk_fragment(&vk.spv, depth, &d.fs_words);
+   d.fs = glitch64_vk_fragment(&vk.spv, depth, NULL, &d.fs_words);
    d.layout.stride = G64VK_VERTEX_STRIDE;
    d.layout.count = 5;
    for (i = 0; i < 5; i++)
@@ -694,6 +751,7 @@ static vkr_program *make_program(int depth)
       d.layout.attrs[i].format = formats[i];
       d.layout.attrs[i].offset = offsets[i];
    }
+   vk.layout = d.layout;
    p = d.fs ? vkr_client_new(vk.r, &d) : NULL;
    free(vs);
    return p;
@@ -810,6 +868,13 @@ void vk_grSstWinClose(void)
    for (i = 0; i < vk.n_textures; i++)
       vkr_texture_delete(vk.r, vk.textures[i].handle);
    vk.n_textures = 0;
+   for (i = 0; i < VK_OWN_SLOTS; i++)
+      if (vk.own[i].p)
+      {
+         vkr_program_delete(vk.r, vk.own[i].p);
+         vk.own[i].p = NULL;
+      }
+   vk.n_own = 0;
    if (vk.combiner)
       vkr_program_delete(vk.r, vk.combiner);
    if (vk.depth)

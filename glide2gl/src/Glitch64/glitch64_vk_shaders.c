@@ -17,6 +17,8 @@ typedef struct g64_emit
 {
    spv_module *m;
    uint32_t ubo, pc;
+   /* a combiner's own shader: its ops and flags known, else read as pushed */
+   const int *key;
 } g64_emit;
 
 static void declare_values(g64_emit *e)
@@ -74,7 +76,10 @@ static spv_v load_in(spv_module *m, spv_v in)
 static spv_c flag(g64_emit *e, int bit)
 {
    spv_module *m = e->m;
-   spv_v f = spv_load_member(m, e->pc, SPV_PUSH_CONSTANT, PC_FLAGS, T_I1);
+   spv_v f;
+   if (e->key)
+      return spv_known((e->key[16] & bit) != 0);
+   f = spv_load_member(m, e->pc, SPV_PUSH_CONSTANT, PC_FLAGS, T_I1);
    return spv_cond(spv_ne(m, spv_band(m, f, spv_i(m, bit)), spv_i(m, 0)));
 }
 
@@ -88,6 +93,7 @@ const uint32_t *glitch64_vk_vertex(spv_module *m, unsigned *count)
    spv_var pos, v_shade, v_tc0, v_tc1, v_fog, v_xy;
 
    e.m = m;
+   e.key = NULL;
    spv_begin(m, SPV_STAGE_VERTEX);
    declare_values(&e);
    pos     = spv_builtin_out(m, T_F4, SPV_BUILTIN_POSITION);
@@ -166,10 +172,12 @@ static spv_v splat4(spv_module *m, spv_v a) { return spv_spread(m, a, 4); }
 
 static spv_v op_at(g64_emit *e, int i)
 {
+   if (e->key)
+      return spv_i(e->m, e->key[i]);
    return spv_load_member_at(e->m, e->pc, SPV_PUSH_CONSTANT, PC_OPS, spv_i(e->m, i), T_I1);
 }
 
-const uint32_t *glitch64_vk_fragment(spv_module *m, int depth, unsigned *count)
+const uint32_t *glitch64_vk_fragment(spv_module *m, int depth, const int *key, unsigned *count)
 {
    g64_emit e;
    spv_v v_shade, v_tc0, v_tc1, v_fog, v_xy, frag;
@@ -177,6 +185,7 @@ const uint32_t *glitch64_vk_fragment(spv_module *m, int depth, unsigned *count)
    uint32_t tex0, tex1;
 
    e.m = m;
+   e.key = depth ? NULL : key;
    spv_begin(m, SPV_STAGE_FRAGMENT);
    declare_values(&e);
    declare_push(&e);
@@ -376,4 +385,9 @@ const uint32_t *glitch64_vk_fragment(spv_module *m, int depth, unsigned *count)
    }
    spv_end_main(m);
    return spv_finish(m, count);
+}
+
+const uint32_t *glitch64_vk_write_own(spv_module *m, const int *key, unsigned *count)
+{
+   return glitch64_vk_fragment(m, 0, key, count);
 }
