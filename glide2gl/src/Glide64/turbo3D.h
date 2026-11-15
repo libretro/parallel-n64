@@ -123,7 +123,6 @@ static void t3d_vertex(uint32_t addr, uint32_t v0, uint32_t n)
 
       v->uv_calculated     = 0xFFFFFFFF;
       v->screen_translated = 0;
-      v->shade_mod         = 0;
 
       v->scr_off = 0;
       if (v->x < -v->w)

@@ -490,7 +490,6 @@ void glide64gSPVertex(uint32_t v, uint32_t n, uint32_t v0)
 
       vtx->uv_calculated = 0xFFFFFFFF;
       vtx->screen_translated = 0;
-      vtx->shade_mod = 0;
 
       if (fabs(vtx->w) < 0.001)
          vtx->w = 0.001f;
@@ -636,7 +635,6 @@ void glide64gSPModifyVertex( uint32_t vtx, uint32_t where, uint32_t val )
          v->g = (uint8_t)((val >> 16) & 0xFF);
          v->b = (uint8_t)((val >> 8) & 0xFF);
          v->a = (uint8_t)(val & 0xFF);
-         v->shade_mod = 0;
          break;
 
       case G_MWO_POINT_ST:
@@ -852,7 +850,6 @@ void glide64gSPCBFDVertex(uint32_t a, uint32_t n, uint32_t v0)
 
       vert->uv_calculated     = 0xFFFFFFFF;
       vert->screen_translated = 0;
-      vert->shade_mod         = 0;
 
       if (fabs(vert->w) < 0.001)
          vert->w = 0.001f;
@@ -1100,7 +1097,6 @@ void glide64gSPDMAVertex(uint32_t v, uint32_t n, uint32_t v0)
 
       v->uv_calculated = 0xFFFFFFFF;
       v->screen_translated = 0;
-      v->shade_mod = 0;
 
       v->scr_off = 0;
       if (v->x < -v->w)

@@ -81,117 +81,6 @@ static INLINE void glideSetVertexFlatShading(VERTEX *v, VERTEX **vtx, uint32_t w
    v->r = vtx[flag]->r;
 }
 
-void apply_shade_modulation(VERTEX *v)
-{
-   if (rdp.cmb_flags)
-   {
-      if (v->shade_mod == 0)
-         v->color_backup = *(uint32_t*)(&(v->b));
-      else
-         *(uint32_t*)(&(v->b)) = v->color_backup;
-
-      if (rdp.cmb_flags & CMB_SET)
-      {
-         v->r = (uint8_t)(255.0f * clamp_float(rdp.col[0], 0.0, 1.0));
-         v->g = (uint8_t)(255.0f * clamp_float(rdp.col[1], 0.0, 1.0));
-         v->b = (uint8_t)(255.0f * clamp_float(rdp.col[2], 0.0, 1.0));
-      }
-
-      if (rdp.cmb_flags & CMB_A_SET)
-         v->a = (uint8_t)(255.0f * clamp_float(rdp.col[3], 0.0, 1.0));
-
-      if (rdp.cmb_flags & CMB_SETSHADE_SHADEALPHA)
-         v->r = v->g = v->b = v->a;
-
-      if (rdp.cmb_flags & CMB_MULT_OWN_ALPHA)
-      {
-         float percent = v->a / 255.0f;
-         v->r = (uint8_t)(v->r * percent);
-         v->g = (uint8_t)(v->g * percent);
-         v->b = (uint8_t)(v->b * percent);
-      }
-
-      if (rdp.cmb_flags & CMB_MULT)
-      {
-         v->r = (uint8_t)(v->r * clamp_float(rdp.col[0], 0.0, 1.0));
-         v->g = (uint8_t)(v->g * clamp_float(rdp.col[1], 0.0, 1.0));
-         v->b = (uint8_t)(v->b * clamp_float(rdp.col[2], 0.0, 1.0));
-      }
-
-      if (rdp.cmb_flags & CMB_A_MULT)
-         v->a = (uint8_t)(v->a * clamp_float(rdp.col[3], 0.0, 1.0));
-      if (rdp.cmb_flags & CMB_SUB)
-      {
-         int r = v->r - (int)(255.0f * rdp.coladd[0]);
-         int g = v->g - (int)(255.0f * rdp.coladd[1]);
-         int b = v->b - (int)(255.0f * rdp.coladd[2]);
-         if (r < 0) r = 0;
-         if (g < 0) g = 0;
-         if (b < 0) b = 0;
-         v->r = (uint8_t)r;
-         v->g = (uint8_t)g;
-         v->b = (uint8_t)b;
-      }
-      if (rdp.cmb_flags & CMB_A_SUB)
-      {
-         int a = v->a - (int)(255.0f * rdp.coladd[3]);
-         if (a < 0) a = 0;
-         v->a = (uint8_t)a;
-      }
-      if (rdp.cmb_flags & CMB_ADD)
-      {
-         int r = v->r + (int)(255.0f * rdp.coladd[0]);
-         int g = v->g + (int)(255.0f * rdp.coladd[1]);
-         int b = v->b + (int)(255.0f * rdp.coladd[2]);
-         if (r > 255) r = 255;
-         if (g > 255) g = 255;
-         if (b > 255) b = 255;
-         v->r = (uint8_t)r;
-         v->g = (uint8_t)g;
-         v->b = (uint8_t)b;
-      }
-      if (rdp.cmb_flags & CMB_A_ADD)
-      {
-         int a = v->a + (int)(255.0f * rdp.coladd[3]);
-         if (a > 255) a = 255;
-         v->a = (uint8_t)a;
-      }
-      if (rdp.cmb_flags & CMB_COL_SUB_OWN)
-      {
-         int r = (uint8_t)(255.0f * rdp.coladd[0]) - v->r;
-         int g = (uint8_t)(255.0f * rdp.coladd[1]) - v->g;
-         int b = (uint8_t)(255.0f * rdp.coladd[2]) - v->b;
-         if (r < 0) r = 0;
-         if (g < 0) g = 0;
-         if (b < 0) b = 0;
-         v->r = (uint8_t)r;
-         v->g = (uint8_t)g;
-         v->b = (uint8_t)b;
-      }
-      v->shade_mod = cmb.shade_mod_hash;
-   }
-
-   if (rdp.cmb_flags_2 & CMB_INTER)
-   {
-      v->r = (uint8_t)(rdp.col_2[0] * rdp.shade_factor * 255.0f + v->r * (1.0f - rdp.shade_factor));
-      v->g = (uint8_t)(rdp.col_2[1] * rdp.shade_factor * 255.0f + v->g * (1.0f - rdp.shade_factor));
-      v->b = (uint8_t)(rdp.col_2[2] * rdp.shade_factor * 255.0f + v->b * (1.0f - rdp.shade_factor));
-      v->shade_mod = cmb.shade_mod_hash;
-   }
-}
-
-void apply_shading(void *data)
-{
-   int i;
-   VERTEX *vptr = (VERTEX*)data;
-
-   for (i = 0; i < 4; i++)
-   {
-      vptr[i].shade_mod = 0;
-      apply_shade_modulation(&vptr[i]);
-   }
-}
-
 static void Create1LineEquation(LineEquationType *l, VERTEX *v1, VERTEX *v2, VERTEX *v3)
 {
    float x = v3->sx;
@@ -272,58 +161,6 @@ static void InterpolateColors3(VERTEX *v1, VERTEX *v2, VERTEX *v3, VERTEX *out)
    out->f = interp3p(v1->f*v1->oow,v2->f*v2->oow,v3->f*v3->oow,s1,s2) * w;
 }
 
-
-static INLINE void CalculateLODValues(VERTEX *v, int32_t i, int32_t j, float *lodFactor, float s_scale, float t_scale)
-{
-   float deltaS      = (v[j].u[0]/v[j].q - v[i].u[0]/v[i].q) * s_scale;
-   float deltaT      = (v[j].v[0]/v[j].q - v[i].v[0]/v[i].q) * t_scale;
-   float deltaTexels = sqrtf( deltaS * deltaS + deltaT * deltaT );
-
-   float deltaX      = (v[j].x - v[i].x)/rdp.scale_x;
-   float deltaY      = (v[j].y - v[i].y)/rdp.scale_y;
-   float deltaPixels = sqrtf( deltaX * deltaX + deltaY * deltaY );
-
-   *lodFactor       += deltaTexels / deltaPixels;
-}
-
-static void CalculateLOD(VERTEX *v, int n, uint32_t lodmode)
-{
-   float intptr, lod_fraction, detailmax;
-   int i, j, ilod, lod_tile;
-   float s_scale   = gDP.tiles[rdp.cur_tile].width / 255.0f;
-   float t_scale   = gDP.tiles[rdp.cur_tile].height / 255.0f;
-   float lodFactor = 0;
-
-   if (lodmode == G_TL_LOD)
-   {
-      n = 1;
-      j = 1;
-   }
-
-   for (i = 0; i < n; i++)
-   {
-      if (lodmode == G_TL_TILE)
-         j = (i < n-1) ? (i + 1) : 0;
-      CalculateLODValues(v, i, j, &lodFactor, s_scale, t_scale);
-   }
-
-   if (lodmode == G_TL_TILE)
-      lodFactor = lodFactor / n; /* Divide by n (n edges) to find average */
-
-   ilod         = (int)lodFactor;
-   lod_tile     = MIN((int)(log10f((float)ilod)/log10f(2.0f)), rdp.cur_tile + gDP.otherMode.textureDetail);
-   lod_fraction = 1.0f;
-   detailmax    = 1.0f - lod_fraction;
-
-   if (lod_tile < rdp.cur_tile + gDP.otherMode.textureDetail)
-      lod_fraction = MAX((float)modff(lodFactor / pow(2.,lod_tile),&intptr), g_gdp.primitive_lod_min / 255.0f);
-
-   if (cmb.dc0_detailmax < 0.5f)
-      detailmax = lod_fraction;
-
-   grTexDetailControl (GR_TMU0, cmb.dc0_lodbias, cmb.dc0_detailscale, detailmax);
-   grTexDetailControl (GR_TMU1, cmb.dc1_lodbias, cmb.dc1_detailscale, detailmax);
-}
 
 static void clip_tri(int interpolate_colors)
 {
@@ -826,10 +663,7 @@ static void render_tri (uint16_t linew, int old_interpolate)
          break;
    }
 
-   if (settings.lodmode && rdp.cur_tile < gDP.otherMode.textureDetail)
-      CalculateLOD(rdp.vtxbuf, n, settings.lodmode);
 
-   cmb.cmb_ext_use = cmb.tex_cmb_ext_use = 0;
 
    if (linew > 0)
    {
@@ -1137,8 +971,7 @@ void update(void)
          rdp.tex_ctr = 0;
 
       TexCache ();
-      if (rdp.noise == NOISE_MODE_NONE)
-         g_gdp.flags ^= UPDATE_TEXTURE;
+      g_gdp.flags ^= UPDATE_TEXTURE;
    }
 
    if (g_gdp.flags & UPDATE_ZBUF_ENABLED)
@@ -1486,8 +1319,6 @@ static void draw_tri (VERTEX **vtx, uint16_t linew)
 
       if (v->uv_calculated != rdp.tex_ctr)
          draw_tri_uv_calculation(vtx, v);
-      if (v->shade_mod != cmb.shade_mod_hash)
-         apply_shade_modulation(v);
    }
 
    rdp.clip = 0;

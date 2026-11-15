@@ -882,8 +882,6 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
    vstd[0].screen_translated = 0;
    vstd[0].uv_scaled         = 0;
    vstd[0].uv_calculated     = 0;
-   vstd[0].shade_mod         = 0;
-   vstd[0].color_backup      = 0;
    vstd[0].ou                = 0.0f;
    vstd[0].ov                = 0.0f;
    vstd[0].number            = 0;
@@ -927,8 +925,6 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
    vstd[1].screen_translated = 0;
    vstd[1].uv_scaled         = 0;
    vstd[1].uv_calculated     = 0;
-   vstd[1].shade_mod         = 0;
-   vstd[1].color_backup      = 0;
    vstd[1].ou                = 0.0f;
    vstd[1].ov                = 0.0f;
    vstd[1].number            = 0;
@@ -972,8 +968,6 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
    vstd[2].screen_translated = 0;
    vstd[2].uv_scaled         = 0;
    vstd[2].uv_calculated     = 0;
-   vstd[2].shade_mod         = 0;
-   vstd[2].color_backup      = 0;
    vstd[2].ou                = 0.0f;
    vstd[2].ov                = 0.0f;
    vstd[2].number            = 0;
@@ -1017,8 +1011,6 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
    vstd[3].screen_translated = 0;
    vstd[3].uv_scaled         = 0;
    vstd[3].uv_calculated     = 0;
-   vstd[3].shade_mod         = 0;
-   vstd[3].color_backup      = 0;
    vstd[3].ou                = 0.0f;
    vstd[3].ov                = 0.0f;
    vstd[3].number            = 0;
@@ -1040,8 +1032,6 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
 
 
    vptr = (VERTEX*)vstd;
-
-   apply_shading(vptr);
 
 #if 0
    if (fullscreen)

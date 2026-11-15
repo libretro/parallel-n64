@@ -385,7 +385,6 @@ static void DrawImage (DRAWIMAGE *d)
             v[3].u[0] = flr_u;
             v[3].v[0] = flr_v;
 
-            apply_shading(v);
             ConvertCoordsConvert (v, 4);
             grDrawVertexArrayContiguous (GR_TRIANGLE_STRIP, 4, v);
          }
@@ -650,7 +649,6 @@ static void draw_split_triangle(VERTEX **vtx)
 
 static void uc6_draw_polygons (VERTEX v[4])
 {
-   apply_shading(v);
 
    {
       rdp.vtxbuf = rdp.vtx1; // copy from v to rdp.vtx1
@@ -1323,7 +1321,6 @@ static void uc6_sprite2d(uint32_t w0, uint32_t w1)
             v[i].y = (v[i].y * rdp.scale_y) + rdp.offset_y;
          }
 
-         apply_shading(v);
 
 #if 0
          // Set vertex buffers

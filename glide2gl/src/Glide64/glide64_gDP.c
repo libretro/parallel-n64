@@ -7,7 +7,6 @@
 
 #include "../../Graphics/RDP/gDP_state.h"
 
-void apply_shading(void *data);
 
 // STANDARD DRAWIMAGE - draws a 2d image based on the following structure
 
@@ -16,19 +15,8 @@ float set_sprite_combine_mode(void)
   float Z;
   if (((gDP.otherMode.h & RDP_CYCLE_TYPE) >> 20) == G_CYC_COPY)
   {
-    int32_t color_source;
-
     rdp.tex           = 1;
     rdp.allow_combine = 0;
-
-    /* Now actually combine ! */
-    color_source      = GR_COMBINE_FUNCTION_LOCAL;
-    cmb.tmu1_func     = cmb.tmu0_func = color_source;
-    cmb.tmu1_fac      = cmb.tmu0_fac = GR_COMBINE_FACTOR_NONE;
-    cmb.tmu1_a_func   = cmb.tmu0_a_func = GR_COMBINE_FUNCTION_LOCAL;
-    cmb.tmu1_a_fac    = cmb.tmu0_a_fac = GR_COMBINE_FACTOR_NONE;
-    cmb.tmu1_invert   = cmb.tmu0_invert = FXFALSE;
-    cmb.tmu1_a_invert = cmb.tmu0_a_invert = FXFALSE;
   }
 
   g_gdp.flags |= UPDATE_COMBINE;
@@ -339,7 +327,6 @@ static void glide64gDPLLETriangle(uint32_t w0, uint32_t w1, int shade, int textu
          v->u[1] /= v->w;
          v->v[1] /= v->w;
       }
-      apply_shade_modulation(v);
    }
    grCullMode(GR_CULL_DISABLE);
    ConvertCoordsConvert (vtxbuf, vn);
@@ -685,8 +672,6 @@ void glide64gDPFillRectangle(uint32_t ul_x, uint32_t ul_y, uint32_t lr_x, uint32
       v[0].screen_translated = 0;
       v[0].uv_scaled         = 0;
       v[0].uv_calculated     = 0;
-      v[0].shade_mod         = 0;
-      v[0].color_backup      = 0;
       v[0].ou                = 0.0f;
       v[0].ov                = 0.0f;
       v[0].number            = 0;
@@ -730,8 +715,6 @@ void glide64gDPFillRectangle(uint32_t ul_x, uint32_t ul_y, uint32_t lr_x, uint32
       v[1].screen_translated = 0;
       v[1].uv_scaled         = 0;
       v[1].uv_calculated     = 0;
-      v[1].shade_mod         = 0;
-      v[1].color_backup      = 0;
       v[1].ou                = 0.0f;
       v[1].ov                = 0.0f;
       v[1].number            = 0;
@@ -775,8 +758,6 @@ void glide64gDPFillRectangle(uint32_t ul_x, uint32_t ul_y, uint32_t lr_x, uint32
       v[2].screen_translated = 0;
       v[2].uv_scaled         = 0;
       v[2].uv_calculated     = 0;
-      v[2].shade_mod         = 0;
-      v[2].color_backup      = 0;
       v[2].ou                = 0.0f;
       v[2].ov                = 0.0f;
       v[2].number            = 0;
@@ -820,8 +801,6 @@ void glide64gDPFillRectangle(uint32_t ul_x, uint32_t ul_y, uint32_t lr_x, uint32
       v[3].screen_translated = 0;
       v[3].uv_scaled         = 0;
       v[3].uv_calculated     = 0;
-      v[3].shade_mod         = 0;
-      v[3].color_backup      = 0;
       v[3].ou                = 0.0f;
       v[3].ov                = 0.0f;
       v[3].number            = 0;
@@ -874,23 +853,7 @@ void glide64gDPFillRectangle(uint32_t ul_x, uint32_t ul_y, uint32_t lr_x, uint32
       }
       else
       {
-         uint32_t cmb_mode_c = (rdp.cycle1 << 16) | (rdp.cycle2 & 0xFFFF);
-         uint32_t cmb_mode_a = (rdp.cycle1 & 0x0FFF0000) | ((rdp.cycle2 >> 16) & 0x00000FFF);
-
-         if (cmb_mode_c == 0x9fff9fff || cmb_mode_a == 0x09ff09ff) //shade
-            apply_shading(v);
-
-         /* special blender mode for Bomberman64 */
-         if (gDP.otherMode.forceBlender && ((gDP.otherMode.l >> 16) == 0x0550))
-         {
-            grAlphaCombine (GR_COMBINE_FUNCTION_LOCAL,
-                  GR_COMBINE_FACTOR_NONE,
-                  GR_COMBINE_LOCAL_CONSTANT,
-                  GR_COMBINE_OTHER_NONE,
-                  FXFALSE);
-            grConstantColorValue((cmb.ccolor & 0xFFFFFF00) | g_gdp.fog_color.a);
-            g_gdp.flags |= UPDATE_COMBINE;
-         }
+         /* (Bomberman 64's blend mode by the fog alpha: CombineBlender) */
       }
 
       vout[0] = v[0];

@@ -591,8 +591,6 @@ typedef struct
   uint8_t  screen_translated;
   uint8_t  uv_scaled;
   uint32_t uv_calculated;  // like crc
-  uint32_t shade_mod;
-  uint32_t color_backup;
 
   float ou, ov;
 

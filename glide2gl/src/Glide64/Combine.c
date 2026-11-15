@@ -107,10 +107,6 @@ void Combine(void)
    for (i = two ? 0 : 1; i < 2; i++)
       cmb.tex |= n64_tiles(&c, i, two && i == 1);
 
-   /* nothing to bake into textures or vertices: the shader has every input */
-   cmb.mod_0 = cmb.mod_1 = 0;
-   rdp.cmb_flags = rdp.cmb_flags_2 = 0;
-   rdp.noise = NOISE_MODE_NONE;
 
    cmb.abf1 = GR_BLEND_SRC_ALPHA;
    cmb.abf2 = GR_BLEND_ONE_MINUS_SRC_ALPHA;
@@ -142,7 +138,6 @@ void Combine(void)
    grN64Constants(prim, env, consts, level, center, scale);
 
    grChromakeyMode(GR_CHROMAKEY_DISABLE);
-   cmb.shade_mod_hash = 0;
 }
 
 void CombineBlender(void)
@@ -217,6 +212,11 @@ void CombineBlender(void)
 			case 0x0051: // Standard interpolated blend
 			case 0x0055: // Used for antialiasing
             A_BLEND (GR_BLEND_SRC_ALPHA, GR_BLEND_ONE_MINUS_SRC_ALPHA);
+            break;
+
+         case 0x0550: /* Bomberman 64: In * AFog + Mem * (1-AFog) */
+            A_BLEND (GR_BLEND_SRC_ALPHA, GR_BLEND_ONE_MINUS_SRC_ALPHA);
+            n64_blender_flags |= GLITCH64_N64_FOG_ALPHA;
             break;
 
          case 0x5000: /* V8 explosions */

@@ -94,18 +94,6 @@ extern uint32_t gfx_plugin_accuracy;
 
 #define CULLSHIFT   12
 
-#define CMB_MULT    0x00000001
-#define CMB_SET     0x00000002
-#define CMB_SUB     0x00000004
-#define CMB_ADD     0x00000008
-#define CMB_A_MULT  0x00000010
-#define CMB_A_SET   0x00000020
-#define CMB_A_SUB   0x00000040
-#define CMB_A_ADD   0x00000080
-#define CMB_SETSHADE_SHADEALPHA 0x00000100
-#define CMB_INTER   0x00000200
-#define CMB_MULT_OWN_ALPHA  0x00000400
-#define CMB_COL_SUB_OWN  0x00000800
 
 #define G_ACCLAIM_LIGHTING		0x00000080
 
@@ -288,7 +276,6 @@ typedef struct {
   float c_scl_x;        // scale to lower-right center-texel x
   float c_scl_y;        // scale to lower-right center-texel y
 
-  uint32_t mod, mod_color, mod_color1, mod_color2, mod_factor;
 } CACHE_LUT;
 
 typedef struct
@@ -334,9 +321,6 @@ typedef struct
 #define FOG_MODE_BLEND          2
 #define FOG_MODE_BLEND_INVERSE  3
 
-#define NOISE_MODE_NONE         0
-#define NOISE_MODE_COMBINE      1
-#define NOISE_MODE_TEXTURE      2
 
 struct RDP
 {
@@ -357,17 +341,6 @@ struct RDP
    // Clipping
    SCISSOR scissor;
    int scissor_set;
-
-   // Colors
-   unsigned noise;
-
-   float col[4];   // color multiplier
-   float coladd[4];  // color add/subtract
-   float shade_factor;
-
-   float col_2[4];
-
-   uint32_t cmb_flags, cmb_flags_2;
 
    // Matrices
    DECLAREALIGN16VAR(model[4][4]);

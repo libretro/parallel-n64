@@ -69,7 +69,6 @@ extern "C" {
 
 void do_triangle_stuff(uint16_t linew, int old_interpolate);
 void do_triangle_stuff_2(uint16_t linew, uint8_t no_clip, int old_interpolate);
-void apply_shade_modulation(VERTEX *v);
 
 void update(void);
 void update_scissor(bool set_scissor);
@@ -125,7 +124,6 @@ static INLINE uint16_t ror16(uint16_t value, uint16_t amount)
     return (value << (-(int16_t)amount & 15)) | (value >> amount);
 }
 
-void apply_shading(void *data);
 
 #ifdef __cplusplus
 }

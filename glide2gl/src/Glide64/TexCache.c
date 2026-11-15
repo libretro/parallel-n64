@@ -41,7 +41,6 @@
 #include "TexCache.h"
 #include "TexLoad.h"
 #include "Combine.h"
-#include "TexMod.h"
 #include "Util.h"
 #include "libretro.h"
 #include "GlideExtensions.h"
@@ -58,7 +57,6 @@ int GetTexAddrUMA(int tmu, int texsize);
 static void LoadTex (int id, int tmu);
 
 uint32_t tex1[2048*2048];		// temporary texture
-uint32_t tex2[2048*2048];
 uint8_t *texture;
 uint8_t *texture_buffer = (uint8_t *)tex1;
 
@@ -153,7 +151,7 @@ static void GetTexInfo (int id, int tile)
 {
    int t, tile_width, tile_height, mask_width, mask_height, width, height, wid_64, line;
    int real_image_width, real_image_height, crc_height;
-   uint32_t crc, flags, mod, modcolor, modcolor1, modcolor2, modfactor, mod_mask;
+   uint32_t crc, flags;
    NODE *node;
    CACHE_LUT *cache;
    TEXINFO *info;
@@ -340,28 +338,7 @@ static void GetTexInfo (int id, int tile)
    // Search the texture cache for this texture
    LRDP(" | | |-+ Checking cache...\n");
 
-   if (rdp.noise == NOISE_MODE_TEXTURE)
-      return;
-
-   if (id == 0)
-   {
-      mod = cmb.mod_0;
-      modcolor = cmb.modcolor_0;
-      modcolor1 = cmb.modcolor1_0;
-      modcolor2 = cmb.modcolor2_0;
-      modfactor = cmb.modfactor_0;
-   }
-   else
-   {
-      mod = cmb.mod_1;
-      modcolor = cmb.modcolor_1;
-      modcolor1 = cmb.modcolor1_1;
-      modcolor2 = cmb.modcolor2_1;
-      modfactor = cmb.modfactor_1;
-   }
-
    node = (NODE*)cachelut[crc>>16];
-   mod_mask = (g_gdp.tile[tile].format == G_IM_FMT_CI) ? 0xFFFFFFFF : 0xF0F0F0F0;
    while (node)
    {
       if (node->crc == crc)
@@ -375,17 +352,10 @@ static void GetTexInfo (int id, int tile)
                gDP.tiles[tile].height == cache->height &&
                flags == cache->flags)
          {
-            if (!(mod+cache->mod) || (cache->mod == mod &&
-                     (cache->mod_color&mod_mask) == (modcolor&mod_mask) &&
-                     (cache->mod_color1&mod_mask) == (modcolor1&mod_mask) &&
-                     (cache->mod_color2&mod_mask) == (modcolor2&mod_mask) &&
-                     abs((int)(cache->mod_factor - modfactor)) < 8))
-            {
-               FRDP (" | | | |- Texture found in cache (tmu=%d).\n", node->tmu);
-               tex_found[id][node->tmu] = node->number;
-               tex_found[id][node->tmu^1] = node->number;
-               return;
-            }
+            FRDP (" | | | |- Texture found in cache (tmu=%d).\n", node->tmu);
+            tex_found[id][node->tmu] = node->number;
+            tex_found[id][node->tmu^1] = node->number;
+            return;
          }
       }
       node = node->pNext;
@@ -526,7 +496,6 @@ static void LoadTex(int id, int tmu)
 {
    int lod, aspect, shift, size_max, wid, hei;
    uint32_t size_x, size_y, real_x, real_y, result;
-   uint32_t mod, modcolor, modcolor1, modcolor2, modfactor;
    CACHE_LUT *cache;
    int td = rdp.cur_tile + id;
 
@@ -714,33 +683,6 @@ static void LoadTex(int id, int tmu)
    if (hei != 1) cache->c_scl_y = cache->scale;
    else cache->c_scl_y = 0.0f;
 
-   if (id == 0)
-   {
-      mod = cmb.mod_0;
-      modcolor = cmb.modcolor_0;
-      modcolor1 = cmb.modcolor1_0;
-      modcolor2 = cmb.modcolor2_0;
-      modfactor = cmb.modfactor_0;
-   }
-   else
-   {
-      mod = cmb.mod_1;
-      modcolor = cmb.modcolor_1;
-      modcolor1 = cmb.modcolor1_1;
-      modcolor2 = cmb.modcolor2_1;
-      modfactor = cmb.modfactor_1;
-   }
-
-   /* (A paletted texture is modified as any other, once loaded, at eight
-    * bits a channel. Its palette used to be modified instead, five bits a
-    * channel, and put back before the texture was loaded from it: such
-    * textures were not modified at all.) */
-
-   cache->mod        = mod;
-   cache->mod_color  = modcolor;
-   cache->mod_color1 = modcolor1;
-   cache->mod_factor = modfactor;
-
    result = 0;	// keep =0 so it doesn't mess up on the first split
 
    texture = (uint8_t *)tex1;
@@ -864,25 +806,6 @@ static void LoadTex(int id, int tmu)
                dst += line_full;
             }
          }
-      }
-   }
-
-
-   if (mod)
-   {
-      /* The modifications work on eight bits a channel, whatever the
-       * texture came as, and the texture goes up as ARGB 8888: nothing
-       * is cut to four bits on the way (TexMod.c). A 32-bit texture is
-       * modified where it is. */
-      const int count        = real_x * real_y;
-      const unsigned texfmt  = LOWORD(result);
-      uint32_t *mod_tex      = (texfmt == GR_TEXFMT_ARGB_8888) ? (uint32_t*)texture : tex2;
-
-      if (glide64_tex_to_8888(texfmt, texture, mod_tex, count))
-      {
-         glide64_tex_mod_8888(mod_tex, count, mod, modcolor, modcolor1, modcolor2, modfactor);
-         texture = (uint8_t*)mod_tex;
-         result  = (2 << 16) | GR_TEXFMT_ARGB_8888;
       }
    }
 
