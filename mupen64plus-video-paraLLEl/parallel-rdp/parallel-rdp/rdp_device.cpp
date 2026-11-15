@@ -363,7 +363,8 @@ void CommandProcessor::op_triangle(const uint32_t *words)
 	TriangleSetup setup;
 	AttributeSetup attr;
 	rdp_decode_triangle(words, decode_flags(), &setup, &attr);
-	upscaler_triangle((words[0] >> 24) & 63, setup, attr);
+	rdp_upscaler_view_triangle(upscaler, &upscaler_view, (words[0] >> 24) & 63, &static_state, &depth_blend,
+	                           renderer.get_scaling_factor(), &setup, &attr);
 	renderer.draw_shaded_primitive(setup, attr);
 }
 
@@ -391,12 +392,12 @@ void CommandProcessor::op_set_scissor(const uint32_t *words)
 
 void CommandProcessor::op_set_other_modes(const uint32_t *words)
 {
-	prim_depth = rdp_decode_other_modes(words, &static_state, &depth_blend);
+	upscaler_view.prim_depth = rdp_decode_other_modes(words, &static_state, &depth_blend);
 	renderer.set_static_rasterization_state(static_state);
 	renderer.set_depth_blend_state(depth_blend);
-	renderer.set_enable_primitive_depth(prim_depth);
-	other_modes_words[0] = words[0];
-	other_modes_words[1] = words[1];
+	renderer.set_enable_primitive_depth(upscaler_view.prim_depth);
+	upscaler_view.other_modes[0] = words[0];
+	upscaler_view.other_modes[1] = words[1];
 }
 
 void CommandProcessor::op_set_texture_image(const uint32_t *words)
@@ -408,8 +409,8 @@ void CommandProcessor::op_set_tile(const uint32_t *words)
 {
 	TileMeta info;
 	uint32_t tile = rdp_decode_tile(words, &info);
-	tile_words[tile][0] = words[0];
-	tile_words[tile][1] = words[1];
+	upscaler_view.tile[tile][0] = words[0];
+	upscaler_view.tile[tile][1] = words[1];
 	renderer.set_tile(tile, info);
 }
 
@@ -418,7 +419,7 @@ void CommandProcessor::op_load_tile(const uint32_t *words)
 	LoadTileInfo info;
 	rdp_decode_load(words, texture_image.addr, texture_image.width, texture_image.fmt, texture_image.size,
 	                RDP_UPLOAD_TILE, &info);
-	load_addr = texture_image.addr;
+	upscaler_view.load_addr = texture_image.addr;
 	renderer.load_tile((words[1] >> 24) & 7, info);
 }
 
@@ -427,7 +428,7 @@ void CommandProcessor::op_load_tlut(const uint32_t *words)
 	LoadTileInfo info;
 	rdp_decode_load(words, texture_image.addr, texture_image.width, texture_image.fmt, texture_image.size,
 	                RDP_UPLOAD_TLUT, &info);
-	load_addr = texture_image.addr;
+	upscaler_view.load_addr = texture_image.addr;
 	renderer.load_tile((words[1] >> 24) & 7, info);
 }
 
@@ -436,7 +437,7 @@ void CommandProcessor::op_load_block(const uint32_t *words)
 	LoadTileInfo info;
 	rdp_decode_load(words, texture_image.addr, texture_image.width, texture_image.fmt, texture_image.size,
 	                RDP_UPLOAD_BLOCK, &info);
-	load_addr = texture_image.addr;
+	upscaler_view.load_addr = texture_image.addr;
 	renderer.load_tile((words[1] >> 24) & 7, info);
 }
 
@@ -450,8 +451,8 @@ void CommandProcessor::op_set_tile_size(const uint32_t *words)
 void CommandProcessor::op_set_combine(const uint32_t *words)
 {
 	rdp_decode_combine(words, &static_state);
-	combine_words[0] = words[0];
-	combine_words[1] = words[1];
+	upscaler_view.combine[0] = words[0];
+	upscaler_view.combine[1] = words[1];
 	renderer.set_static_rasterization_state(static_state);
 }
 
@@ -515,7 +516,7 @@ void CommandProcessor::op_texture_rectangle_flip(const uint32_t *words)
 void CommandProcessor::op_set_prim_depth(const uint32_t *words)
 {
 	renderer.set_primitive_depth((words[1] >> 16) & 0xffff, words[1] & 0xffff);
-	prim_z = int32_t(((words[1] >> 16) & 0x7fff) << 16);
+	upscaler_view.prim_z = int32_t(((words[1] >> 16) & 0x7fff) << 16);
 }
 
 void CommandProcessor::op_set_convert(const uint32_t *words)
@@ -805,122 +806,20 @@ void CommandProcessor::get_upscaler_frame(UpscalerFrame &frame)
 	frame = upscaler_frame;
 }
 
-void CommandProcessor::upscaler_triangle(unsigned op, TriangleSetup &setup, AttributeSetup &attr)
-{
-	rdp_upscaler_triangle_t tri;
-	uint64_t signature;
-	unsigned flags = 0;
-	unsigned tile;
-
-	if (!upscaler || !rdp_upscaler_is_active(upscaler))
-		return;
-
-	tri.xh = setup.xh;
-	tri.xm = setup.xm;
-	tri.xl = setup.xl;
-	tri.dxhdy = setup.dxhdy;
-	tri.dxmdy = setup.dxmdy;
-	tri.dxldy = setup.dxldy;
-	tri.yh = setup.yh;
-	tri.ym = setup.ym;
-	tri.yl = setup.yl;
-	tri.attr[0] = attr.r;
-	tri.attr[1] = attr.g;
-	tri.attr[2] = attr.b;
-	tri.attr[3] = attr.a;
-	tri.attr[4] = attr.s;
-	tri.attr[5] = attr.t;
-	tri.attr[6] = attr.w;
-	tri.attr[7] = attr.z;
-	tri.attr_de[0] = attr.drde;
-	tri.attr_de[1] = attr.dgde;
-	tri.attr_de[2] = attr.dbde;
-	tri.attr_de[3] = attr.dade;
-	tri.attr_de[4] = attr.dsde;
-	tri.attr_de[5] = attr.dtde;
-	tri.attr_de[6] = attr.dwde;
-	tri.attr_de[7] = attr.dzde;
-	tri.attr_dx[0] = attr.drdx;
-	tri.attr_dx[1] = attr.dgdx;
-	tri.attr_dx[2] = attr.dbdx;
-	tri.attr_dx[3] = attr.dadx;
-	tri.attr_dx[4] = attr.dsdx;
-	tri.attr_dx[5] = attr.dtdx;
-	tri.attr_dx[6] = attr.dwdx;
-	tri.attr_dx[7] = attr.dzdx;
-
-	/* Fill and copy cycles leave the depth buffer alone */
-	if ((static_state.flags & (RASTERIZATION_FILL_BIT | RASTERIZATION_COPY_BIT)) == 0)
-	{
-		if (depth_blend.flags & DEPTH_BLEND_DEPTH_TEST_BIT)
-			flags |= RDP_UPSCALER_DEPTH_TEST;
-		if (depth_blend.flags & DEPTH_BLEND_DEPTH_UPDATE_BIT)
-			flags |= RDP_UPSCALER_DEPTH_WRITE;
-		/* (a decal moves with the surface it lies on) */
-		else if ((depth_blend.flags & DEPTH_BLEND_FORCE_BLEND_BIT) && depth_blend.z_mode != RDP_Z_MODE_DECAL)
-			flags |= RDP_UPSCALER_TRANSLUCENT;
-	}
-	if (prim_depth)
-		flags |= RDP_UPSCALER_DEPTH_CONSTANT;
-	if (static_state.flags & (RASTERIZATION_AA_BIT | RASTERIZATION_FILL_BIT | RASTERIZATION_COPY_BIT))
-		flags |= RDP_UPSCALER_ANY_COVERAGE;
-	if (op & 2)
-		flags |= RDP_UPSCALER_TEXTURED;
-	if (op & 4)
-		flags |= RDP_UPSCALER_SHADED;
-	if (static_state.flags & RASTERIZATION_PERSPECTIVE_CORRECT_BIT)
-		flags |= RDP_UPSCALER_PERSPECTIVE;
-
-	tile = setup.tile & 7;
-	signature = rdp_upscaler_hash_init();
-	signature = rdp_upscaler_hash(signature, op);
-	signature = rdp_upscaler_hash(signature, other_modes_words[0]);
-	signature = rdp_upscaler_hash(signature, other_modes_words[1]);
-	signature = rdp_upscaler_hash(signature, combine_words[0]);
-	signature = rdp_upscaler_hash(signature, combine_words[1]);
-	signature = rdp_upscaler_hash(signature, tile_words[tile][0]);
-	signature = rdp_upscaler_hash(signature, tile_words[tile][1]);
-	signature = rdp_upscaler_hash(signature, load_addr);
-
-	rdp_upscaler_triangle(upscaler, &tri, signature, flags, prim_z, renderer.get_scaling_factor());
-
-	setup.xh = tri.xh;
-	setup.xm = tri.xm;
-	setup.xl = tri.xl;
-	attr.r = tri.attr[0];
-	attr.g = tri.attr[1];
-	attr.b = tri.attr[2];
-	attr.a = tri.attr[3];
-	attr.s = tri.attr[4];
-	attr.t = tri.attr[5];
-	attr.w = tri.attr[6];
-	attr.z = tri.attr[7];
-}
-
 void CommandProcessor::upscaler_scanout()
 {
-	Vulkan::CommandBufferHandle cmd;
-	rdp_upscaler_framebuffer_t fb;
-	rdp_upscaler_geometry_t geometry;
-	unsigned scale = renderer.get_scaling_factor();
-	bool repeat = false;
+	rdp_upscaler_targets_t targets = {};
+	enum rdp_upscaler_frame frame;
 
-	rdp_upscaler_configure(upscaler, true, scanout_opts.upscaler.jitter_phase, scanout_opts.upscaler.reset);
-
-	cmd = device.request_command_buffer();
-	scanout_result = vi.upscaler_scanout(scale, fb, repeat);
-	if (!scanout_result)
+	scanout_result = Vulkan::ImageHandle(static_cast<Vulkan::Image *>(rdp_upscaler_view_scanout(
+			upscaler, vi.get_vi(), &device, renderer.get_scaling_factor(), scanout_opts.upscaler.jitter_phase,
+			scanout_opts.upscaler.reset, &targets, &frame)));
+	if (frame == RDP_UPSCALER_FRAME_NONE)
 		upscaler_frame.clear();
-	else if (repeat)
+	else if (frame == RDP_UPSCALER_FRAME_REPEAT)
 		upscaler_frame.reset = false;
 	else
-	{
-		rdp_upscaler_resolve(upscaler, &fb, scale, &geometry);
-		rdp_upscaler_targets_t targets;
-		rdp_upscaler_motion_pass(&device, cmd.get(), &geometry, fb.width * scale, fb.height * scale, &targets);
 		upscaler_frame.take(targets);
-	}
-	device.submit(cmd);
 }
 
 void CommandProcessor::run_on_command_thread(void (*fn)(void *), void *ctx)

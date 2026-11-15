@@ -34,6 +34,7 @@
 #include "rdp_dump_write.h"
 #include "upscaler_pass.hpp"
 #include "temporal_upscaler.h"
+#include "rdp_upscaler_view.h"
 
 
 namespace RDP
@@ -232,13 +233,7 @@ private:
 
 	/* The temporal upscaler's view of the state triangles are drawn under */
 	rdp_upscaler_t *upscaler = nullptr;
-	uint32_t other_modes_words[2] = {};
-	uint32_t combine_words[2] = {};
-	uint32_t tile_words[8][2] = {};
-	uint32_t load_addr = 0;
-	int32_t prim_z = 0;
-	bool prim_depth = false;
-	void upscaler_triangle(unsigned op, TriangleSetup &setup, AttributeSetup &attr);
+	rdp_upscaler_view_t upscaler_view = {};
 	void upscaler_scanout();
 
 	rdp_dump_writer_t *dump_writer = nullptr;
