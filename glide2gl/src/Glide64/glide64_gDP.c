@@ -43,16 +43,7 @@ float set_sprite_combine_mode(void)
 
   if (((gDP.otherMode.h & RDP_CYCLE_TYPE) >> 20) == G_CYC_COPY)
   {
-    grColorCombine (GR_COMBINE_FUNCTION_SCALE_OTHER,
-      GR_COMBINE_FACTOR_ONE,
-      GR_COMBINE_LOCAL_NONE,
-      GR_COMBINE_OTHER_TEXTURE,
-      FXFALSE);
-    grAlphaCombine (GR_COMBINE_FUNCTION_SCALE_OTHER,
-      GR_COMBINE_FACTOR_ONE,
-      GR_COMBINE_LOCAL_NONE,
-      GR_COMBINE_OTHER_TEXTURE,
-      FXFALSE);
+    glide64_combine_texel(GR_TMU0, 0);
     grAlphaBlendFunction (GR_BLEND_ONE,
       GR_BLEND_ZERO,
       GR_BLEND_ZERO,
@@ -825,19 +816,7 @@ void glide64gDPFillRectangle(uint32_t ul_x, uint32_t ul_y, uint32_t lr_x, uint32
                ((uint32_t)((float)((color&0x003E) >> 1) / 31.0f * 255.0f) << 8);
          }
 
-         grConstantColorValue (color);
-
-         grColorCombine (GR_COMBINE_FUNCTION_LOCAL,
-               GR_COMBINE_FACTOR_NONE,
-               GR_COMBINE_LOCAL_CONSTANT,
-               GR_COMBINE_OTHER_NONE,
-               FXFALSE);
-
-         grAlphaCombine (GR_COMBINE_FUNCTION_LOCAL,
-               GR_COMBINE_FACTOR_NONE,
-               GR_COMBINE_LOCAL_CONSTANT,
-               GR_COMBINE_OTHER_NONE,
-               FXFALSE);
+         glide64_combine_constant(color);
 
          grAlphaBlendFunction (GR_BLEND_ONE, GR_BLEND_ZERO, GR_BLEND_ONE, GR_BLEND_ZERO);
 

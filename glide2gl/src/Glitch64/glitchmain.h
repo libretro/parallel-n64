@@ -71,7 +71,6 @@ void free_textures(void);
 void init_geometry(void);
 void free_geometry(void);
 
-void set_lambda(void);
 
 void init_combiner(void);
 void updateCombiner(int i);
@@ -92,11 +91,7 @@ void set_copy_shader(void);
 extern int width, height;
 extern int tex_width[2], tex_height[2];
 extern int tex_exactWidth[2], tex_exactHeight[2];
-extern float texture_env_color[4];
 extern int fog_enabled;
-extern float lambda;
-extern int need_lambda[2];
-extern float lambda_color[2][4];
 extern int culling_mode;
 extern int need_to_compile;
 extern int three_point_filter[2];

@@ -394,35 +394,23 @@ grSstWinClose( uint32_t context );
 
 void grAlphaBlendFunction(GLenum rgb_sf, GLenum rgb_df, GLenum alpha_sf, GLenum alpha_df);
 
-void grAlphaCombine(
-               int32_t function, int32_t factor,
-               int32_t local, int32_t other,
-               int32_t invert
-               );
 
 void  grAlphaTestFunction( int32_t function, uint8_t value, int set_alpha_ref);
 
 void  grAlphaTestReferenceValue( uint8_t value );
 
-void  grChromakeyMode( int32_t mode );
 
-void grChromakeyValue( uint32_t value );
 
 void grClipWindow(uint32_t minx, uint32_t miny, uint32_t maxx, uint32_t maxy);
 
-void grColorCombine(
-               int32_t function, int32_t factor,
-               int32_t local, int32_t other,
-               int32_t invert );
 
 void grColorMask(bool rgb, bool a);
 
 void grCullMode( int32_t mode );
 
-void grConstantColorValue( uint32_t value );
 
-/* The N64's combiner itself for the draws that follow, until a Glide
- * combine call (glitch64_n64_combiner.h); and its inputs, each 0 to 1:
+/* The N64's combiner for the draws that follow (glitch64_n64_combiner.h);
+ * and its inputs, each 0 to 1:
  * prim and env colours, K4 K5 PRIM_LOD_FRAC and the CPU's LOD_FRACTION,
  * the minimum and maximum levels with detail or sharpen and the noise
  * seed, the key's centre and scale. */
@@ -482,22 +470,7 @@ void grTexFilterClampMode(
                int32_t magfilter_mode
                );
 
-void grTexCombine(
-             int32_t tmu,
-             int32_t rgb_function,
-             int32_t rgb_factor, 
-             int32_t alpha_function,
-             int32_t alpha_factor,
-             int32_t rgb_invert,
-             int32_t alpha_invert
-             );
 
-void grTexDetailControl(
-                   int32_t tmu,
-                   int lod_bias,
-                   uint8_t detail_scale,
-                   float detail_max
-                   );
 
 void grTexMipMapMode( int32_t     tmu, 
                  int32_t mode,
@@ -633,53 +606,12 @@ typedef struct
 #define GR_CMBX_TMU_CCOLOR                0x11
 
 
-void grColorCombineExt(uint32_t a, uint32_t a_mode,
-				  uint32_t b, uint32_t b_mode,
-                  uint32_t c, int32_t c_invert,
-				  uint32_t d, int32_t d_invert,
-				  uint32_t shift, int32_t invert);
 
-void grAlphaCombineExt(uint32_t a, uint32_t a_mode,
-				  uint32_t b, uint32_t b_mode,
-				  uint32_t c, int32_t c_invert,
-				  uint32_t d, int32_t d_invert,
-				  uint32_t shift, int32_t invert);
 
-void 
-grTexColorCombineExt(int32_t       tmu,
-                     uint32_t a, uint32_t a_mode,
-                     uint32_t b, uint32_t b_mode,
-                     uint32_t c, int32_t c_invert,
-                     uint32_t d, int32_t d_invert,
-                     uint32_t shift, int32_t invert);
 
-void 
-grTexAlphaCombineExt(int32_t       tmu,
-                     uint32_t a, uint32_t a_mode,
-                     uint32_t b, uint32_t b_mode,
-                     uint32_t c, int32_t c_invert,
-                     uint32_t d, int32_t d_invert,
-                     uint32_t shift, int32_t invert,
-                     uint32_t ccolor_value);
 
-void  
-grColorCombineExt(uint32_t a, uint32_t a_mode,
-                  uint32_t b, uint32_t b_mode,
-                  uint32_t c, int32_t c_invert,
-                  uint32_t d, int32_t d_invert,
-                  uint32_t shift, int32_t invert);
 
- void 
-grAlphaCombineExt(uint32_t a, uint32_t a_mode,
-                  uint32_t b, uint32_t b_mode,
-                  uint32_t c, int32_t c_invert,
-                  uint32_t d, int32_t d_invert,
-                  uint32_t shift, int32_t invert);
 
-extern void grChromaRangeExt(uint32_t color0, uint32_t color1, uint32_t mode);
-extern void grChromaRangeModeExt(int32_t mode);
-extern void grTexChromaRangeExt(int32_t tmu, uint32_t color0, uint32_t color1, int32_t mode);
-extern void grTexChromaModeExt(int32_t tmu, int32_t mode);
 
 extern int width, height;
 extern float fogStart, fogEnd;

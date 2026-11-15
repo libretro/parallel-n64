@@ -52,5 +52,10 @@ extern COMBINE cmb;
 void Combine(void);
 void CombineBlender(void);
 void InitCombine(void);
+/* Glide64's own draws: the texel of the tile in @tmu (with the fog colour
+ * in place of its colour), or a constant RGBA. The next Combine puts the
+ * game's combiner back. */
+void glide64_combine_texel(int tmu, int fog_rgb);
+void glide64_combine_constant(uint32_t rgba);
 
 #endif //COMBINE _H

@@ -382,13 +382,6 @@ void TexCache(void)
    rdp.t0 = tmu_0;
    rdp.t1 = tmu_1;
 
-   /* Glide64's own draws (copy mode, the frame buffer) run the Glide
-    * combiner: TEXTURE there is TMU 0's texel, tile 0 */
-   grTexCombine (GR_TMU1, GR_COMBINE_FUNCTION_LOCAL, GR_COMBINE_FACTOR_NONE,
-         GR_COMBINE_FUNCTION_LOCAL, GR_COMBINE_FACTOR_NONE, FXFALSE, FXFALSE);
-   grTexCombine (GR_TMU0, GR_COMBINE_FUNCTION_LOCAL, GR_COMBINE_FACTOR_NONE,
-         GR_COMBINE_FUNCTION_LOCAL, GR_COMBINE_FACTOR_NONE, FXFALSE, FXFALSE);
-
    if (rdp.allow_combine)
    {
       grAlphaBlendFunction (cmb.abf1, cmb.abf2, GR_BLEND_ZERO, GR_BLEND_ZERO);

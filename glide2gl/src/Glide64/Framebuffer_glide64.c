@@ -53,6 +53,7 @@
 #include "Framebuffer_glide64.h"
 #include "FBReadback.h"
 #include "TexCache.h"
+#include "Combine.h"
 #include "../Glitch64/glide.h"
 #include "GlideExtensions.h"
 #include "rdp.h"
@@ -437,42 +438,12 @@ static int SetupFBtoScreenCombiner(uint32_t texture_size, uint32_t opaque)
    int tmu, filter;
 
    if (voodoo.tmem_ptr[GR_TMU0]+texture_size < voodoo.tex_max_addr)
-   {
       tmu = GR_TMU0;
-      grTexCombine( GR_TMU1,
-            GR_COMBINE_FUNCTION_NONE,
-            GR_COMBINE_FACTOR_NONE,
-            GR_COMBINE_FUNCTION_NONE,
-            GR_COMBINE_FACTOR_NONE,
-            FXFALSE,
-            FXFALSE );
-      grTexCombine( GR_TMU0,
-            GR_COMBINE_FUNCTION_LOCAL,
-            GR_COMBINE_FACTOR_NONE,
-            GR_COMBINE_FUNCTION_LOCAL,
-            GR_COMBINE_FACTOR_NONE,
-            FXFALSE,
-            FXFALSE );
-   }
    else
    {
       if (voodoo.tmem_ptr[GR_TMU1]+texture_size >= voodoo.tex_max_addr)
          ClearCache ();
       tmu = GR_TMU1;
-      grTexCombine( GR_TMU1,
-            GR_COMBINE_FUNCTION_LOCAL,
-            GR_COMBINE_FACTOR_NONE,
-            GR_COMBINE_FUNCTION_LOCAL,
-            GR_COMBINE_FACTOR_NONE,
-            FXFALSE,
-            FXFALSE );
-      grTexCombine( GR_TMU0,
-            GR_COMBINE_FUNCTION_SCALE_OTHER,
-            GR_COMBINE_FACTOR_ONE,
-            GR_COMBINE_FUNCTION_SCALE_OTHER,
-            GR_COMBINE_FACTOR_ONE,
-            FXFALSE,
-            FXFALSE );
    }
    filter = (gDP.otherMode.textureFilter == 2) ? GR_TEXTUREFILTER_BILINEAR : GR_TEXTUREFILTER_POINT_SAMPLED;
 
@@ -481,17 +452,7 @@ static int SetupFBtoScreenCombiner(uint32_t texture_size, uint32_t opaque)
          GR_TEXTURECLAMP_CLAMP,
          filter,
          filter);
-   grColorCombine (GR_COMBINE_FUNCTION_SCALE_OTHER,
-         GR_COMBINE_FACTOR_ONE,
-         GR_COMBINE_LOCAL_NONE,
-         GR_COMBINE_OTHER_TEXTURE,
-         //    GR_COMBINE_OTHER_CONSTANT,
-         FXFALSE);
-   grAlphaCombine (GR_COMBINE_FUNCTION_SCALE_OTHER,
-         GR_COMBINE_FACTOR_ONE,
-         GR_COMBINE_LOCAL_NONE,
-         GR_COMBINE_OTHER_TEXTURE,
-         FXFALSE);
+   glide64_combine_texel(tmu, 0);
    if (opaque)
    {
       grAlphaTestFunction (GR_CMP_ALWAYS, 0x00, 0);
@@ -536,12 +497,8 @@ static void DrawDepthBufferToScreen256(FB_TO_SCREEN_INFO *fb_info)
    tex_size               = grTexCalcMemRequired(t_info.largeLodLog2, t_info.aspectRatioLog2, t_info.format);
    tmu                    = SetupFBtoScreenCombiner(tex_size*width256*height256, fb_info->opaque);
 
-   grConstantColorValue (g_gdp.fog_color.total);
-   grColorCombine (GR_COMBINE_FUNCTION_SCALE_OTHER,
-         GR_COMBINE_FACTOR_ONE,
-         GR_COMBINE_LOCAL_NONE,
-         GR_COMBINE_OTHER_CONSTANT,
-         FXFALSE);
+   /* the fog colour, the image's alpha */
+   glide64_combine_texel(tmu, 1);
    w_tail                 = width % 256;
    h_tail                 = height % 256;
    tex_adr                = voodoo.tmem_ptr[tmu];
@@ -625,12 +582,8 @@ static void DrawDepthBufferToScreen(FB_TO_SCREEN_INFO *fb_info)
    t_info.data = tex;
 
    tmu = SetupFBtoScreenCombiner(grTexCalcMemRequired(t_info.largeLodLog2, t_info.aspectRatioLog2, t_info.format), fb_info->opaque);
-   grConstantColorValue (g_gdp.fog_color.total);
-   grColorCombine (GR_COMBINE_FUNCTION_SCALE_OTHER,
-         GR_COMBINE_FACTOR_ONE,
-         GR_COMBINE_LOCAL_NONE,
-         GR_COMBINE_OTHER_CONSTANT,
-         FXFALSE);
+   /* the fog colour, the image's alpha */
+   glide64_combine_texel(tmu, 1);
    grTexSource (tmu,
          voodoo.tmem_ptr[tmu],
          GR_MIPMAPLEVELMASK_BOTH,

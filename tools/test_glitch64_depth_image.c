@@ -285,10 +285,14 @@ int main(void)
       for (x = 0; x < IMG_W; x++)
          rdram[(y * IMG_W + x) ^ 1] = word_at(x, y);
 
-   grColorCombine(GR_COMBINE_FUNCTION_LOCAL, GR_COMBINE_FACTOR_NONE,
-         GR_COMBINE_LOCAL_ITERATED, GR_COMBINE_OTHER_NONE, FXFALSE);
-   grAlphaCombine(GR_COMBINE_FUNCTION_LOCAL, GR_COMBINE_FACTOR_NONE,
-         GR_COMBINE_LOCAL_CONSTANT, GR_COMBINE_OTHER_NONE, FXFALSE);
+   {
+      /* the shade: (0 - 0) * 0 + SHADE, alpha 1 */
+      glitch64_n64_combiner c;
+      memset(&c, 0, sizeof(c));
+      c.rgb[1][0] = 15; c.rgb[1][1] = 15; c.rgb[1][2] = 31; c.rgb[1][3] = 4;
+      c.alpha[1][0] = 7; c.alpha[1][1] = 7; c.alpha[1][2] = 7; c.alpha[1][3] = 6;
+      grN64Combine(&c);
+   }
    clear();
 
    /* what a frame leaves behind: the game's own depth test, a clip window

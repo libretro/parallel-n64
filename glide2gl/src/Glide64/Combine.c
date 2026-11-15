@@ -137,7 +137,6 @@ void Combine(void)
    scale[2] = g_gdp.key_scale.b / 255.0f;
    grN64Constants(prim, env, consts, level, center, scale);
 
-   grChromakeyMode(GR_CHROMAKEY_DISABLE);
 }
 
 void CombineBlender(void)
@@ -280,6 +279,38 @@ void CombineBlender(void)
       }
    }
    //*/
+}
+
+/* Glide64's own draws, as N64 combiners: (0 - 0) * 0 + IN */
+static void glide64_combine_pass(unsigned rgb_in, unsigned alpha_in, unsigned flags, const float prim[4])
+{
+   static const float zero[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
+   glitch64_n64_combiner c;
+   memset(&c, 0, sizeof(c));
+   c.rgb[1][0] = 15; c.rgb[1][1] = 15; c.rgb[1][2] = 31; c.rgb[1][3] = (uint8_t)rgb_in;
+   c.alpha[1][0] = 7; c.alpha[1][1] = 7; c.alpha[1][2] = 7; c.alpha[1][3] = (uint8_t)alpha_in;
+   c.flags = (uint8_t)flags;
+   grN64Combine(&c);
+   grN64Constants(prim ? prim : zero, zero, zero, zero, zero, zero);
+}
+
+void glide64_combine_texel(int tmu, int fog_rgb)
+{
+   /* tile 0 sits in TMU 0, tile 1 in TMU 1 */
+   const unsigned t = tmu == GR_TMU0 ? 1 : 2;
+   glide64_combine_pass(t, t, fog_rgb ? GLITCH64_N64_FOG_RGB : 0, NULL);
+   g_gdp.flags |= UPDATE_COMBINE;
+}
+
+void glide64_combine_constant(uint32_t rgba)
+{
+   float c[4];
+   c[0] = ((rgba >> 24) & 0xFF) / 255.0f;
+   c[1] = ((rgba >> 16) & 0xFF) / 255.0f;
+   c[2] = ((rgba >> 8) & 0xFF) / 255.0f;
+   c[3] = (rgba & 0xFF) / 255.0f;
+   glide64_combine_pass(3, 3, 0, c);
+   g_gdp.flags |= UPDATE_COMBINE;
 }
 
 void InitCombine(void)

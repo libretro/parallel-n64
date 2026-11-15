@@ -47,7 +47,6 @@ int packed_pixels_support = -1;
 int tex_width[2], tex_height[2];
 int tex_exactWidth[2],tex_exactHeight[2];
 int three_point_filter[2];
-float lambda;
 
 static int min_filter[2] = { GL_NEAREST, GL_NEAREST },
 mag_filter[2] = { GL_NEAREST, GL_NEAREST },
@@ -406,25 +405,6 @@ grtexsource:
    tex_exactHeight[index] = info->height;
 }
 
-
-void grTexDetailControl(
-      int32_t tmu,
-      int lod_bias,
-      uint8_t detail_scale,
-      float detail_max
-      )
-{
-   if (lod_bias != 31 && detail_scale != 7)
-   {
-      if (!lod_bias && !detail_scale && !detail_max)
-         return;
-   }
-   lambda = detail_max;
-   if(lambda > 1.0f)
-      lambda = 1.0f - (255.0f - lambda);
-
-   set_lambda();
-}
 
 void grTexFilterClampMode(
       int32_t tmu,
