@@ -6,12 +6,11 @@
 #include <math.h>
 #include <string.h>
 #include <stdlib.h>
-#include <streams/file_stream.h>
-#include <file/file_path.h>
 #include <retro_miscellaneous.h>
-#include <encodings/crc32.h>
 #include "pipeline_record_list.h"
 #include "rdp_intake.h"
+#include "rdp_pipeline_files.h"
+#include "rdp_upscaler_policy.h"
 
 using namespace Vulkan;
 
@@ -56,7 +55,8 @@ static struct retro_hw_upscaler_request upscaler_request;
 static struct retro_hw_upscaler_inputs upscaler_inputs;
 /* Per sync index: motion vectors, depth, then the translucency mask */
 static Util::HeldHandle<Vulkan::Image> upscaler_handles[3 * RDP_MAX_SYNC_FRAMES];
-static bool upscaler_on;
+/* What the upscaler is given (rdp_upscaler_policy.c) */
+static rdp_upscaler_policy_t upscaler_policy = { false, true, 320, 240, 0, 0, ~0u };
 /* test hosts that count what the frame's threads build have load wait for
  * the worker (PARALLEL_RDP_TEST_WAIT_PIPELINES, read at init); nothing
  * else does */
@@ -78,13 +78,6 @@ static void set_num_sync_frames(unsigned n)
 	}
 	num_retro_images = n;
 }
-static bool upscaler_reset_pending = true;
-/* The size of the framebuffer last shown, in native pixels, and the
- * size the factor was chosen for */
-static unsigned upscaler_native_width = 320;
-static unsigned upscaler_native_height = 240;
-static unsigned upscaler_picked_width;
-static unsigned upscaler_picked_height;
 
 static void upscaler_poll();
 unsigned width, height;
@@ -161,109 +154,46 @@ void begin_frame()
 	//pending_timeline_value = timeline_value;
 }
 
-/* The driver's pipeline cache and the list of the pipelines built, kept
- * in the system folder from one session to the next: the list outlives a
- * cache another driver no longer takes. What was loaded is kept to merge
- * into, and to leave the files alone when nothing changed. */
-static pipeline_record_t *pipeline_list;
-static size_t pipeline_list_count;
+/* The driver's pipeline cache and the list of the pipelines built
+ * (rdp_pipeline_files.c) */
+static rdp_pipeline_files_t pipeline_files;
 
 /* The pipelines the list and the renderer's options name are built on the
  * worker, and nothing waits for them: a draw that gets to one first builds
  * its own, as on a first run it always did. */
 static void build_pipelines_ahead()
 {
-	frontend->build_pipelines_ahead(pipeline_list, pipeline_list_count, upscaler_iface != nullptr);
+	frontend->build_pipelines_ahead(pipeline_files.list, pipeline_files.list_count, upscaler_iface != nullptr);
 	if (test_wait_pipelines)
 		frontend->wait_pipelines_ahead_for_test();
-}
-static uint32_t pipeline_cache_loaded_crc;
-static int64_t pipeline_cache_loaded_size;
-
-/* <system>/ParallelN64/<name>, the folder GLideN64 keeps its files in,
- * made if it is not there. A file an earlier build left in <system> itself
- * is moved over first, so that what it holds is not built again. Content
- * load and close only. */
-static bool pipeline_file_path(char *s, size_t len, const char *name)
-{
-	char folder[PATH_MAX_LENGTH];
-	char old[PATH_MAX_LENGTH];
-	const char *dir = NULL;
-	if (!environ_cb(RETRO_ENVIRONMENT_GET_SYSTEM_DIRECTORY, &dir) || !dir || !*dir)
-		return false;
-	fill_pathname_join_special(folder, dir, "ParallelN64", sizeof(folder));
-	if (!path_mkdir(folder))
-		return false;
-	fill_pathname_join_special(s, folder, name, len);
-	fill_pathname_join_special(old, dir, name, sizeof(old));
-	if (!filestream_exists(s) && filestream_exists(old))
-		filestream_rename(old, s);
-	return true;
 }
 
 static void pipeline_files_load(void)
 {
-	char path[PATH_MAX_LENGTH];
-	void *blob = NULL;
-	int64_t size = 0;
-
-	pipeline_cache_loaded_crc  = 0;
-	pipeline_cache_loaded_size = -1;
-	if (pipeline_file_path(path, sizeof(path), "parallel_rdp_pipeline_cache.bin")
-	    && filestream_read_file(path, &blob, &size) && blob)
-	{
-		pipeline_cache_loaded_crc  = encoding_crc32(0, (const uint8_t *)blob, (size_t)size);
-		pipeline_cache_loaded_size = size;
-	}
+	const char *dir = NULL;
+	void *blob;
+	size_t size;
+	if (!environ_cb(RETRO_ENVIRONMENT_GET_SYSTEM_DIRECTORY, &dir))
+		dir = NULL;
+	rdp_pipeline_files_load(&pipeline_files, dir, &blob, &size);
 	/* (one the device does not take is replaced by an empty one) */
-	device->init_pipeline_cache((const uint8_t *)blob, blob ? (size_t)size : 0);
+	device->init_pipeline_cache((const uint8_t *)blob, size);
 	free(blob);
-
-	free(pipeline_list);
-	pipeline_list       = NULL;
-	pipeline_list_count = 0;
-	if (pipeline_file_path(path, sizeof(path), "parallel_rdp_pipelines.bin"))
-		pipeline_list = pipeline_record_list_load(path, &pipeline_list_count);
 }
 
 /* Once no thread builds pipelines any more and the device is still there. */
 static void pipeline_files_save(void)
 {
-	char path[PATH_MAX_LENGTH];
 	const pipeline_record_t *built = NULL;
-	pipeline_record_t *merged;
 	size_t num_built = device->get_pipeline_records(&built);
-	size_t count, size;
-	uint8_t *blob;
-
-	/* this session's first, so what is past the cap is the oldest */
-	merged = (pipeline_record_t *)malloc((num_built + pipeline_list_count + 1) * sizeof(*merged));
-	if (merged)
+	size_t size = device->get_pipeline_cache_size();
+	uint8_t *blob = size ? (uint8_t *)malloc(size) : NULL;
+	if (blob && !device->get_pipeline_cache_data(blob, size))
 	{
-		if (num_built)
-			memcpy(merged, built, num_built * sizeof(*merged));
-		if (pipeline_list_count)
-			memcpy(merged + num_built, pipeline_list, pipeline_list_count * sizeof(*merged));
-		count = pipeline_record_list_unique(merged, num_built + pipeline_list_count,
-		                                    PIPELINE_RECORD_LIST_MAX);
-		if ((count != pipeline_list_count
-		     || (count && memcmp(merged, pipeline_list, count * sizeof(*merged))))
-		    && pipeline_file_path(path, sizeof(path), "parallel_rdp_pipelines.bin"))
-			pipeline_record_list_save(path, merged, count);
-		free(merged);
+		free(blob);
+		blob = NULL;
 	}
-	free(pipeline_list);
-	pipeline_list       = NULL;
-	pipeline_list_count = 0;
-
-	size = device->get_pipeline_cache_size();
-	if (!size || !(blob = (uint8_t *)malloc(size)))
-		return;
-	if (device->get_pipeline_cache_data(blob, size)
-	    && ((int64_t)size != pipeline_cache_loaded_size
-	        || encoding_crc32(0, blob, size) != pipeline_cache_loaded_crc)
-	    && pipeline_file_path(path, sizeof(path), "parallel_rdp_pipeline_cache.bin"))
-		filestream_write_file_atomic(path, blob, (int64_t)size);
+	rdp_pipeline_files_save(&pipeline_files, built, num_built, blob, blob ? size : 0);
 	free(blob);
 }
 
@@ -295,7 +225,7 @@ static bool create_processor(unsigned factor)
 	 * dither the result), which some framebuffer effects benefit from.
 	 * They change guest-visible RDRAM, so both default to off. The
 	 * temporal upscaler takes the frame as drawn, without them. */
-	if (factor > 1 && super_sampled_read_back && !upscaler_on)
+	if (factor > 1 && super_sampled_read_back && !upscaler_policy.on)
 	{
 		flags |= COMMAND_PROCESSOR_FLAG_SUPER_SAMPLED_READ_BACK_BIT;
 		if (super_sampled_dither)
@@ -350,97 +280,36 @@ static bool create_processor(unsigned factor)
 	return true;
 }
 
-/* The factor for the frames shown, rdp_upscaler_factor(): the one
- * chosen stands while the frames stay the size it was chosen for */
-static unsigned upscaler_pick_factor(const struct retro_hw_upscaler_request *req)
-{
-	rdp_upscaler_range_t range;
-	unsigned pick;
-	range.want_width = req->render_width;
-	range.min_width = req->min_render_width;
-	range.min_height = req->min_render_height;
-	range.max_width = req->max_render_width;
-	range.max_height = req->max_render_height;
-	pick = rdp_upscaler_factor(&range, upscaler_native_width, upscaler_native_height,
-			upscaler_on ? processor_factor : 0, upscaler_picked_width, upscaler_picked_height);
-	if (pick)
-	{
-		upscaler_picked_width = upscaler_native_width;
-		upscaler_picked_height = upscaler_native_height;
-	}
-	return pick;
-}
-
 /* Once a frame, before it runs: whether it is drawn for the upscaler and
- * at which factor. The factor stays while its frames still fit. */
-/* Says what the upscaler asked for and what came of it, when that
- * changes: the frontend can only tell that frames came without inputs */
-static void upscaler_log(bool requested, bool on, unsigned factor)
-{
-	static unsigned said = ~0u;
-	unsigned now = unsigned(requested) | (unsigned(on) << 1) | (factor << 2);
-	const struct retro_hw_upscaler_request *r = &upscaler_request;
-
-	if (now == said)
-		return;
-	said = now;
-	if (!requested)
-		log_cb(RETRO_LOG_INFO, "Temporal upscaler: no request, rendering as usual.\n");
-	else if (!on)
-		log_cb(RETRO_LOG_WARN, "Temporal upscaler: asks for %ux%u (%ux%u to %ux%u) for %ux%u; "
-				"no factor of %ux%u fits, rendering as usual.\n",
-				r->render_width, r->render_height, r->min_render_width, r->min_render_height,
-				r->max_render_width, r->max_render_height, r->output_width, r->output_height,
-				upscaler_native_width, upscaler_native_height);
-	else
-		log_cb(RETRO_LOG_INFO, "Temporal upscaler: drawing at %ux, %ux%u, for %ux%u "
-				"(asks for %ux%u, %ux%u to %ux%u).\n",
-				factor, upscaler_native_width * factor, upscaler_native_height * factor,
-				r->output_width, r->output_height, r->render_width, r->render_height,
-				r->min_render_width, r->min_render_height,
-				r->max_render_width, r->max_render_height);
-}
-
+ * at which factor */
 static void upscaler_poll()
 {
-	unsigned factor = upscaling;
-	bool on = false;
-	bool requested = false;
-	bool remake;
+	const bool requested = upscaler_iface && upscaler_iface->get_request(upscaler_iface->handle, &upscaler_request);
+	const rdp_upscaler_decision_t d = rdp_upscaler_policy_poll(&upscaler_policy, requested ? &upscaler_request : NULL,
+			upscaling, processor_requested, processor_factor, super_sampled_read_back);
 
-	if (upscaler_iface && upscaler_iface->get_request(upscaler_iface->handle, &upscaler_request))
-	{
-		unsigned pick = upscaler_pick_factor(&upscaler_request);
-		requested = true;
-		if (pick)
-		{
-			factor = pick;
-			on = true;
-		}
-	}
-
-	/* (super-sampled read-back is off while the upscaler is on) */
-	remake = factor != processor_requested
-		|| (on != upscaler_on && super_sampled_read_back && factor > 1);
-	if (on != upscaler_on)
-		upscaler_reset_pending = true;
-	upscaler_on = on;
-
-	if (remake)
+	if (d.remake)
 	{
 		if (frontend)
 			frontend->idle();
-		if (create_processor(factor))
+		if (create_processor(d.factor))
 			rdp_intake_replay_state(&intake);
 		else if (!create_processor(1))
 			device_supported = false;
 		/* (only what this factor adds is new) */
 		if (device_supported)
 			build_pipelines_ahead();
-		upscaler_reset_pending = true;
 	}
 	if (upscaler_iface)
-		upscaler_log(requested, on, processor_factor);
+	{
+		/* (when it changes: the frontend can only tell that frames came
+		 * without inputs) */
+		char msg[512];
+		enum retro_log_level level;
+		if (rdp_upscaler_policy_message(&upscaler_policy, requested, upscaler_policy.on, processor_factor,
+		                                &upscaler_request, msg, sizeof(msg), &level))
+			log_cb(level, "%s", msg);
+	}
 }
 
 /* Before init: init builds this upscaler's pipelines at load. */
@@ -452,7 +321,7 @@ void offer_upscaler_interface(const struct retro_hw_render_upscaler_interface *i
 void set_upscaler_interface(const struct retro_hw_render_upscaler_interface *iface)
 {
 	upscaler_iface = iface;
-	upscaler_reset_pending = true;
+	upscaler_policy.reset_pending = true;
 	/* before the first frame: what it draws at boot is drawn for it */
 	if (device_supported)
 		upscaler_poll();
@@ -460,25 +329,12 @@ void set_upscaler_interface(const struct retro_hw_render_upscaler_interface *ifa
 
 bool upscaler_active()
 {
-	return upscaler_on;
+	return upscaler_policy.on;
 }
 
 void upscaler_reset()
 {
-	upscaler_reset_pending = true;
-}
-
-/* Halton (2, 3) over the frames the ratio of the sizes wants: at least
- * 8, at most 64 */
-static unsigned upscaler_jitter_phase()
-{
-	float ratio;
-	unsigned phase;
-	if (!upscaler_native_width || !processor_factor)
-		return 8;
-	ratio = float(upscaler_request.output_width) / float(upscaler_native_width * processor_factor);
-	phase = unsigned(ceilf(8.0f * ratio * ratio));
-	return phase < 8 ? 8 : phase > 64 ? 64 : phase;
+	upscaler_policy.reset_pending = true;
 }
 
 static uint64_t vk_handle(const void *handle, size_t size)
@@ -550,8 +406,8 @@ bool init()
 		cb.user = NULL;
 		rdp_intake_init(&intake, &cb);
 	}
-	upscaler_on = false;
-	upscaler_reset_pending = true;
+	upscaler_policy.on = false;
+	upscaler_policy.reset_pending = true;
 	if (!create_processor(upscaling))
 		return false;
 	build_pipelines_ahead();
@@ -569,7 +425,7 @@ void deinit()
 	device_supported = false;
 	set_num_sync_frames(0);
 	upscaler_iface = nullptr;
-	upscaler_on = false;
+	upscaler_policy.on = false;
 	Util::destroy(frontend);
 	frontend = nullptr;
 	if (device)
@@ -697,15 +553,16 @@ void complete_frame()
 	opts.upscale_deinterlacing = !interlacing;
 	opts.downscale_steps = downscaling_steps;
 	opts.crop_overscan_pixels = overscan;
-	opts.upscaler.enable = upscaler_on;
-	opts.upscaler.jitter_phase = upscaler_jitter_phase();
-	opts.upscaler.reset = upscaler_reset_pending;
-	upscaler_reset_pending = false;
+	opts.upscaler.enable = upscaler_policy.on;
+	opts.upscaler.jitter_phase = rdp_upscaler_policy_jitter_phase(&upscaler_policy, upscaler_request.output_width,
+	                                                              processor_factor);
+	opts.upscaler.reset = upscaler_policy.reset_pending;
+	upscaler_policy.reset_pending = false;
 	auto image = frontend->scanout(opts);
 	unsigned index = vulkan->get_sync_index(vulkan->handle);
 	UpscalerFrame upscaler_frame = {};
 
-	if (upscaler_on)
+	if (upscaler_policy.on)
 		frontend->get_upscaler_frame(upscaler_frame);
 
 	if (!image)
@@ -734,11 +591,11 @@ void complete_frame()
 	retro_images[index].create_info.components.b = VK_COMPONENT_SWIZZLE_B;
 	retro_images[index].create_info.components.a = VK_COMPONENT_SWIZZLE_A;
 
-	if (upscaler_on && upscaler_frame.motion_vectors && upscaler_frame.depth && upscaler_frame.translucent)
+	if (upscaler_policy.on && upscaler_frame.motion_vectors && upscaler_frame.depth && upscaler_frame.translucent)
 	{
 		/* (the frame's images live as long as its color) */
-		upscaler_native_width = image->get_width() / processor_factor;
-		upscaler_native_height = image->get_height() / processor_factor;
+		upscaler_policy.native_width = image->get_width() / processor_factor;
+		upscaler_policy.native_height = image->get_height() / processor_factor;
 		memset(&upscaler_inputs, 0, sizeof(upscaler_inputs));
 		upscaler_inputs.flags = upscaler_frame.reset ? RETRO_HW_UPSCALER_RESET : 0;
 		upscaler_image(upscaler_inputs.motion_vectors, *upscaler_frame.motion_vectors);

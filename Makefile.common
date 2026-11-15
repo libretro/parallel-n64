@@ -671,7 +671,8 @@ ifeq ($(HAVE_PARALLEL),1)
 	# Nothing there throws, catches or uses the standard library
 	PARALLEL_RDP_NOEXCEPT_OBJECTS := $(PARALLEL_RDP_SOURCES_CXX:.cpp=.o) $(VIDEODIR_PARALLEL)/rdp.o \
 		$(VIDEODIR_PARALLEL)/parallel.o $(VIDEODIR_PARALLEL)/parallel_hle.o
-	SOURCES_C += $(PARALLEL_RDP_SOURCES_C) $(VIDEODIR_PARALLEL)/rdp_intake.c
+	SOURCES_C += $(PARALLEL_RDP_SOURCES_C) $(VIDEODIR_PARALLEL)/rdp_intake.c \
+		$(VIDEODIR_PARALLEL)/rdp_pipeline_files.c $(VIDEODIR_PARALLEL)/rdp_upscaler_policy.c
 	LDFLAGS += $(PARALLEL_RDP_LDFLAGS)
 	HAVE_RDP_EMIT := 1
 endif
