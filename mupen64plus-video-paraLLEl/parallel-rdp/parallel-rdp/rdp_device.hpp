@@ -222,8 +222,6 @@ private:
 	void flush_hidden_dram_to_dump();
 	bool is_host_coherent = true;
 
-	friend class Renderer;
-
 	void enqueue_coherency_operation(const CoherencyOperation &op);
 	void drain_command_ring();
 	unsigned decode_flags() const;

@@ -43,8 +43,7 @@ struct ShaderDefineResolver
 static void vi_update_upscaled(void *user, granite_command_buffer_t *cb, unsigned addr, unsigned pixels,
                                unsigned pixel_size_log2)
 {
-	static_cast<Renderer *>(user)->submit_update_upscaled_domain_external(
-			*static_cast<Vulkan::CommandBuffer *>(cb), addr, pixels, pixel_size_log2);
+	static_cast<Renderer *>(user)->submit_update_upscaled_domain_external(cb, addr, pixels, pixel_size_log2);
 }
 
 static const granite_buffer_t *vi_upscaled_rdram(void *user)
@@ -68,7 +67,7 @@ static int resolve_shader_define(void *user, const char *name, const char *defin
 CommandProcessor::CommandProcessor(Vulkan::Device &device_, void *rdram_ptr,
                                    size_t rdram_offset_, size_t rdram_size_, size_t hidden_rdram_size,
                                    CommandProcessorFlags flags_)
-	: device(device_), rdram_offset(rdram_offset_), rdram_size(rdram_size_), flags(flags_), renderer(*this)
+	: device(device_), rdram_offset(rdram_offset_), rdram_size(rdram_size_), flags(flags_), renderer(&timeline)
 {
 	// Not started only if an allocation failed; init_renderer reports that.
 	rdp_timeline_init(&timeline, &device);
@@ -849,7 +848,8 @@ struct PipelinesAhead
 void build_pipelines_ahead_on_command_thread(void *ctx)
 {
 	auto *ahead = static_cast<PipelinesAhead *>(ctx);
-	ahead->renderer->build_pipelines_ahead(ahead->records, ahead->count, ahead->vi, ahead->with_upscaler);
+	ahead->renderer->build_pipelines_ahead(ahead->records, ahead->count, ahead->vi ? ahead->vi->get_vi() : nullptr,
+	                                      ahead->with_upscaler);
 }
 }
 
@@ -865,6 +865,28 @@ void CommandProcessor::build_pipelines_ahead(const pipeline_record_t *records, s
 	 * a minute on a software driver and long enough on a real one to look
 	 * like a hang, with load (or an upscale change mid-game) blocked on it */
 	run_on_command_thread(build_pipelines_ahead_on_command_thread, &ahead);
+}
+
+namespace
+{
+struct ValidationSet
+{
+	Renderer *renderer;
+	ValidationInterface *iface;
+};
+
+void set_validation_on_command_thread(void *ctx)
+{
+	auto *set = static_cast<ValidationSet *>(ctx);
+	set->renderer->set_validation_interface(set->iface);
+}
+}
+
+void CommandProcessor::set_validation_interface(ValidationInterface *iface)
+{
+	// (where the renderer reads it)
+	ValidationSet set = { &renderer, iface };
+	run_on_command_thread(set_validation_on_command_thread, &set);
 }
 
 void CommandProcessor::wait_pipelines_ahead_for_test()

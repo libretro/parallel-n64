@@ -22,45 +22,53 @@
 
 #pragma once
 
+/* The renderer (rdp_renderer.c), for the command processor */
+
 #include "rdp_data_structures.hpp"
 #include "device.hpp"
 #include "rdp_common.hpp"
-#include "rdp_worker.h"
-#include "shader_bank.h"
-#include "rdram_coherency.h"
-#include "renderer_caps.h"
-#include "rdp_pipelines.h"
-#include "renderer_buffers.h"
-#include "rdp_passes.h"
-#include "rdp_queue.h"
-#include "rdp_submit.h"
-#include "rdp_sync_ring.h"
-#include "rdp_timeline.h"
-#include <retro_atomic.h>
+#include "rdp_renderer.h"
 
 namespace RDP
 {
 using CoherencyOperation = ::rdp_timeline_op_t;
 using CoherencyCopy = ::rdp_coherency_copy_t;
-
-struct SyncObject
-{
-	Vulkan::Fence fence;
-};
-
-enum class FBFormat : uint32_t
-{
-	I4 = 0,
-	I8 = 1,
-	RGBA5551 = 2,
-	IA88 = 3,
-	RGBA8888 = 4
-};
-
 // A load command (tmem_load.h)
 using LoadTileInfo = ::rdp_load_tile_info_t;
 
-class CommandProcessor;
+static_assert(RDP_QUEUE_MAX_PRIMITIVES == Limits::MaxPrimitives &&
+              RDP_QUEUE_MAX_STATIC_STATES == Limits::MaxStaticRasterizationStates &&
+              RDP_QUEUE_MAX_DEPTH_BLEND_STATES == Limits::MaxDepthBlendStates &&
+              RDP_QUEUE_MAX_TILE_INFOS == Limits::MaxTileInfoStates &&
+              RDP_QUEUE_MAX_UPLOADS == Limits::MaxTMEMInstances &&
+              RDP_QUEUE_MAX_SPAN_SETUPS == Limits::MaxSpanSetups &&
+              RDP_QUEUE_SPAN_JOB_LINES == ImplementationConstants::DefaultWorkgroupSize,
+              "rdp_queue.h queues for other limits.");
+static_assert((sizeof(rdp_instance_indices_t) & 15) == 0 && sizeof(rdp_span_info_offsets_t) == 16 &&
+              sizeof(rdp_span_job_t) == 8, "The shaders read other layouts.");
+static_assert(RDP_SYNC_RING_SIZE == Limits::NumSyncStates, "rdp_sync_ring.h rotates another number of slots.");
+static_assert(RDP_RENDERER_SPAN_SETUP_SIZE == sizeof(SpanSetup), "rdp_renderer.c sizes span setups otherwise.");
+static_assert((Limits::MaxStaticRasterizationStates % ImplementationConstants::DefaultWorkgroupSize) == 0,
+              "MaxStaticRasterizationStates does not align.");
+static_assert((Limits::MaxPrimitives % 32) == 0 && Limits::MaxPrimitives <= 32 * 32,
+              "MaxPrimitives must be a multiple of 32, at most 1024.");
+static_assert(RDP_CAPS_MAX_WIDTH == Limits::MaxWidth && RDP_CAPS_MAX_HEIGHT == Limits::MaxHeight &&
+              RDP_CAPS_TILE_WIDTH == ImplementationConstants::TileWidth &&
+              RDP_CAPS_TILE_HEIGHT == ImplementationConstants::TileHeight &&
+              RDP_CAPS_MAX_PRIMITIVES == Limits::MaxPrimitives &&
+              RDP_CAPS_MAX_STATIC_RASTER_STATES == Limits::MaxStaticRasterizationStates &&
+              RDP_CAPS_MAX_TILE_INSTANCES == Limits::MaxTileInstances &&
+              RDP_CAPS_TILE_RASTER_WORK_SIZE == sizeof(TileRasterWork),
+              "renderer_caps.h sizes buffers for other limits.");
+
+enum class FBFormat : uint32_t
+{
+	I4 = RDP_FB_I4,
+	I8 = RDP_FB_I8,
+	RGBA5551 = RDP_FB_RGBA5551,
+	IA88 = RDP_FB_IA88,
+	RGBA8888 = RDP_FB_RGBA8888
+};
 
 struct RendererOptions
 {
@@ -74,21 +82,20 @@ struct RendererOptions
 
 enum class ValidationError
 {
-	Fill4bpp,
-	LoadTile4bpp,
-	InvalidMultilineLoadTlut,
-	FillDepthTest,
-	FillDepthWrite,
-	FillImageReadEnable,
-	Copy32bpp
+	Fill4bpp = RDP_VALIDATION_FILL_4BPP,
+	LoadTile4bpp = RDP_VALIDATION_LOAD_TILE_4BPP,
+	InvalidMultilineLoadTlut = RDP_VALIDATION_INVALID_MULTILINE_LOAD_TLUT,
+	FillDepthTest = RDP_VALIDATION_FILL_DEPTH_TEST,
+	FillDepthWrite = RDP_VALIDATION_FILL_DEPTH_WRITE,
+	FillImageReadEnable = RDP_VALIDATION_FILL_IMAGE_READ_ENABLE,
+	Copy32bpp = RDP_VALIDATION_COPY_32BPP
 };
 
 struct ValidationInterface
 {
-	// Validation errors may be called from a thread as errors are encountered.
-	// Reports situations that would cause fatal error on a real RDP.
-	// We only opt to report these situations rather than deliberately crashing the renderer.
-	// Handling crashes is only relevant during development of N64 homebrew.
+	// Reports, on the thread that processes commands, what would crash a
+	// real RDP; it is drawn as well as it can be. Only of use while
+	// developing N64 homebrew.
 	void (*report_rdp_crash)(void *user, ValidationError err, const char *msg);
 	void *user;
 };
@@ -98,176 +105,216 @@ class VideoInterface;
 class Renderer
 {
 public:
-	explicit Renderer(CommandProcessor &processor);
-	~Renderer();
-	void set_device(Vulkan::Device *device);
+	explicit Renderer(rdp_timeline_t *timeline)
+	{
+		rdp_renderer_init(&r, timeline);
+	}
 
-	void set_validation_interface(ValidationInterface *iface);
+	~Renderer()
+	{
+		rdp_renderer_free(&r);
+	}
 
-	// If coherent is false, RDRAM is a buffer split into data in lower half and writemask state in upper half, each part being size large.
-	// offset must be 0 in this case.
-	// False when out of memory
-	bool set_rdram(Vulkan::Buffer *buffer, uint8_t *host_rdram, size_t offset, size_t size, bool coherent);
-	void set_hidden_rdram(Vulkan::Buffer *buffer);
-	void set_tmem(Vulkan::Buffer *buffer);
-	void set_shader_bank(const ShaderBank *bank);
+	Renderer(const Renderer &) = delete;
+	void operator=(const Renderer &) = delete;
 
-	bool init_renderer(const RendererOptions &options);
+	void set_device(Vulkan::Device *device)
+	{
+		rdp_renderer_set_device(&r, device);
+	}
 
-	/* Hands the pipelines @records lists to the pipeline worker: those a
-	 * draw cannot do without first, then those it has a fallback for. The
-	 * thread that processes commands, once, after init_renderer. */
-	void build_pipelines_ahead(const pipeline_record_t *records, size_t count, VideoInterface *vi, bool with_upscaler);
-	/* Whether the worker has built the first kind, without waiting; any
-	 * thread, after build_pipelines_ahead returned. */
-	bool pipelines_ahead_ready();
-	/* Sleeps until they are: for test hosts that count what the frame's
-	 * threads build, never on a frontend's path */
-	void wait_pipelines_ahead_for_test();
+	void set_validation_interface(ValidationInterface *iface)
+	{
+		rdp_renderer_set_validation(&r, iface ? report_rdp_crash : nullptr, iface);
+	}
 
-	// setup may be mutated to apply various fixups to triangle setup.
-	void draw_flat_primitive(TriangleSetup &setup);
-	void draw_shaded_primitive(TriangleSetup &setup, const AttributeSetup &attr);
+	// If coherent is false, RDRAM is a buffer split into data in lower half and writemask state in upper half,
+	// each part being size large. offset must be 0 in this case. False when out of memory.
+	bool set_rdram(Vulkan::Buffer *buffer, uint8_t *host_rdram, size_t offset, size_t size, bool coherent)
+	{
+		return rdp_renderer_set_rdram(&r, buffer, host_rdram, offset, size, coherent);
+	}
 
-	void set_color_framebuffer(uint32_t addr, uint32_t width, FBFormat fmt);
-	void set_depth_framebuffer(uint32_t addr);
+	void set_hidden_rdram(Vulkan::Buffer *buffer)
+	{
+		rdp_renderer_set_hidden_rdram(&r, buffer);
+	}
 
-	void set_scissor_state(const ScissorState &state);
-	void set_static_rasterization_state(const StaticRasterizationState &state);
-	void set_depth_blend_state(const DepthBlendState &state);
+	void set_tmem(Vulkan::Buffer *buffer)
+	{
+		rdp_renderer_set_tmem(&r, buffer);
+	}
 
-	void set_tile(uint32_t tile, const TileMeta &info);
-	void set_tile_size(uint32_t tile, uint32_t slo, uint32_t shi, uint32_t tlo, uint32_t thi);
-	void load_tile(uint32_t tile, const LoadTileInfo &info);
-	static void flush_for_queue(void *renderer);
+	void set_shader_bank(const ShaderBank *bank)
+	{
+		rdp_renderer_set_shader_bank(&r, bank);
+	}
 
-	void set_blend_color(uint32_t color);
-	void set_fog_color(uint32_t color);
-	void set_env_color(uint32_t color);
-	void set_primitive_color(uint8_t min_level, uint8_t prim_lod_frac, uint32_t color);
-	void set_fill_color(uint32_t color);
-	void set_primitive_depth(uint16_t prim_depth, uint16_t prim_dz);
-	void set_enable_primitive_depth(bool enable);
-	void set_convert(uint16_t k0, uint16_t k1, uint16_t k2, uint16_t k3, uint16_t k4, uint16_t k5);
-	void set_color_key(unsigned component, uint32_t width, uint32_t center, uint32_t scale);
+	bool init_renderer(const RendererOptions &options)
+	{
+		rdp_renderer_options_t o;
+		o.upscaling_factor = options.upscaling_factor;
+		o.super_sampled_readback = options.super_sampled_readback;
+		o.super_sampled_readback_dither = options.super_sampled_readback_dither;
+		o.no_storage_8bit = options.no_storage_8bit;
+		return rdp_renderer_init_renderer(&r, &o);
+	}
 
-	// Called when the command thread has not seen any activity in a given period of time.
-	// This is useful so we don't needlessly queue up work when we might as well kick it to the GPU.
-	void notify_idle_command_thread();
-	void flush_and_signal();
+	void build_pipelines_ahead(const pipeline_record_t *records, size_t count, rdp_vi_t *vi, bool with_upscaler)
+	{
+		rdp_renderer_build_pipelines_ahead(&r, records, count, vi, with_upscaler);
+	}
 
-	int resolve_shader_define(const char *name, const char *define) const;
+	bool pipelines_ahead_ready()
+	{
+		return rdp_renderer_pipelines_ahead_ready(&r);
+	}
 
-	void resolve_coherency_external(unsigned offset, unsigned length);
-	void submit_update_upscaled_domain_external(Vulkan::CommandBuffer &cmd,
-	                                            unsigned addr, unsigned pixels, unsigned pixel_size_log2);
-	unsigned get_scaling_factor() const;
+	void wait_pipelines_ahead_for_test()
+	{
+		rdp_renderer_wait_pipelines_ahead_for_test(&r);
+	}
+
+	void draw_flat_primitive(const TriangleSetup &setup)
+	{
+		rdp_renderer_draw(&r, &setup, nullptr);
+	}
+
+	void draw_shaded_primitive(const TriangleSetup &setup, const AttributeSetup &attr)
+	{
+		rdp_renderer_draw(&r, &setup, &attr);
+	}
+
+	void set_color_framebuffer(uint32_t addr, uint32_t width, FBFormat fmt)
+	{
+		rdp_renderer_set_color_framebuffer(&r, addr, width, uint32_t(fmt));
+	}
+
+	void set_depth_framebuffer(uint32_t addr)
+	{
+		rdp_renderer_set_depth_framebuffer(&r, addr);
+	}
+
+	void set_scissor_state(const ScissorState &state)
+	{
+		rdp_renderer_set_scissor_state(&r, &state);
+	}
+
+	void set_static_rasterization_state(const StaticRasterizationState &state)
+	{
+		rdp_renderer_set_static_state(&r, &state);
+	}
+
+	void set_depth_blend_state(const DepthBlendState &state)
+	{
+		rdp_renderer_set_depth_blend_state(&r, &state);
+	}
+
+	void set_tile(uint32_t tile, const TileMeta &meta)
+	{
+		rdp_renderer_set_tile(&r, tile, &meta);
+	}
+
+	void set_tile_size(uint32_t tile, uint32_t slo, uint32_t shi, uint32_t tlo, uint32_t thi)
+	{
+		rdp_renderer_set_tile_size(&r, tile, slo, shi, tlo, thi);
+	}
+
+	void load_tile(uint32_t tile, const LoadTileInfo &info)
+	{
+		rdp_renderer_load_tile(&r, tile, &info);
+	}
+
+	void set_blend_color(uint32_t color) { rdp_renderer_set_blend_color(&r, color); }
+	void set_fog_color(uint32_t color) { rdp_renderer_set_fog_color(&r, color); }
+	void set_env_color(uint32_t color) { rdp_renderer_set_env_color(&r, color); }
+	void set_fill_color(uint32_t color) { rdp_renderer_set_fill_color(&r, color); }
+
+	void set_primitive_color(uint8_t min_level, uint8_t prim_lod_frac, uint32_t color)
+	{
+		rdp_renderer_set_primitive_color(&r, min_level, prim_lod_frac, color);
+	}
+
+	void set_primitive_depth(uint16_t prim_depth, uint16_t prim_dz)
+	{
+		rdp_renderer_set_primitive_depth(&r, prim_depth, prim_dz);
+	}
+
+	void set_enable_primitive_depth(bool enable)
+	{
+		rdp_renderer_set_enable_primitive_depth(&r, enable);
+	}
+
+	void set_convert(uint16_t k0, uint16_t k1, uint16_t k2, uint16_t k3, uint16_t k4, uint16_t k5)
+	{
+		rdp_renderer_set_convert(&r, k0, k1, k2, k3, k4, k5);
+	}
+
+	void set_color_key(unsigned component, uint32_t width, uint32_t center, uint32_t scale)
+	{
+		rdp_renderer_set_color_key(&r, component, width, center, scale);
+	}
+
+	// The command thread saw no activity for a while: what is queued goes
+	// to the GPU rather than wait for more.
+	void notify_idle_command_thread()
+	{
+		rdp_renderer_notify_idle(&r);
+	}
+
+	void flush_and_signal()
+	{
+		rdp_renderer_flush_and_signal(&r);
+	}
+
+	int resolve_shader_define(const char *name, const char *define) const
+	{
+		return rdp_renderer_resolve_shader_define(&r, name, define);
+	}
+
+	void resolve_coherency_external(unsigned offset, unsigned length)
+	{
+		rdp_renderer_resolve_coherency_external(&r, offset, length);
+	}
+
+	void submit_update_upscaled_domain_external(granite_command_buffer_t *cmd, unsigned addr, unsigned pixels,
+	                                            unsigned pixel_size_log2)
+	{
+		rdp_renderer_update_upscaled_domain(&r, cmd, addr, pixels, pixel_size_log2);
+	}
+
+	unsigned get_scaling_factor() const
+	{
+		return rdp_renderer_scaling_factor(&r);
+	}
+
 	// The largest factor up to 'factor' whose buffers each fit in one
 	// storage buffer binding (maxStorageBufferRange).
 	static unsigned fitting_upscaling_factor(const Vulkan::Device &device, unsigned factor,
 	                                         VkDeviceSize rdram_size, VkDeviceSize hidden_rdram_bytes,
-	                                         bool super_sampled_readback);
+	                                         bool super_sampled_readback)
+	{
+		return rdp_renderer_fitting_upscaling_factor(&device, factor, rdram_size, hidden_rdram_bytes,
+		                                             super_sampled_readback);
+	}
 
-	const Vulkan::Buffer *get_upscaled_rdram_buffer() const;
-	const Vulkan::Buffer *get_upscaled_hidden_rdram_buffer() const;
+	const granite_buffer_t *get_upscaled_rdram_buffer() const
+	{
+		return rdp_renderer_upscaled_rdram(&r);
+	}
 
+	const granite_buffer_t *get_upscaled_hidden_rdram_buffer() const
+	{
+		return rdp_renderer_upscaled_hidden_rdram(&r);
+	}
 
 private:
-	CommandProcessor &processor;
-	Vulkan::Device *device = nullptr;
-	Vulkan::Buffer *rdram = nullptr;
-	ValidationInterface *validation_iface = nullptr;
-	void report_rdp_crash(ValidationError err, const char *msg) const;
+	rdp_renderer_t r;
 
-
-	void validate_draw_state() const;
-
-	// The GPU's RDRAM kept in step with the host's, without
-	// VK_EXT_external_memory_host (rdram_coherency.h)
-	rdp_rdram_coherency_t incoherent = {};
-
-	size_t rdram_offset = 0;
-	size_t rdram_size = 0;
-	bool is_host_coherent = false;
-	Vulkan::Buffer *hidden_rdram = nullptr;
-	Vulkan::Buffer *tmem = nullptr;
-	const ShaderBank *shader_bank = nullptr;
-
-	bool init_internal_upscaling_factor(const RendererOptions &options);
-
-	struct
+	static void report_rdp_crash(void *user, rdp_validation_error err, const char *msg)
 	{
-		uint32_t addr = 0;
-		uint32_t depth_addr = 0;
-		uint32_t width = 0;
-		FBFormat fmt = FBFormat::I8;
-	} fb;
-
-	// The flush being queued (rdp_queue.c)
-	rdp_queue_t queue;
-
-	struct
-	{
-		Vulkan::CommandBufferHandle cmd;
-	} stream;
-
-	void ensure_command_buffer();
-
-	TileInfo tiles[Limits::MaxNumTiles];
-	// The fixed buffers and the upscaled RDRAM (renderer_buffers.c)
-	rdp_renderer_buffers_t buffers = {};
-	// Whether the first flush cleared the indirect dispatch buffer
-	bool indirect_cleared = false;
-
-	rdp_constants_t constants = {};
-
-	rdp_stream_instance_t buffer_instances[Limits::NumSyncStates] = {};
-	void upload_streams(Vulkan::CommandBuffer &cmd);
-	// Which of them the flush writes, and when the GPU is done with each
-	// (rdp_sync_ring.c)
-	rdp_sync_ring_t sync_ring;
-	void bind_stream_instance();
-	uint32_t base_primitive_index = 0;
-	// What was recorded since the last submission (rdp_submit.c)
-	rdp_submit_counts_t submits = {};
-
-	bool tmem_upload_needs_flush(uint32_t addr) const;
-
-
-	void flush_queues();
-	void submit_to_queue();
-	void begin_new_context();
-	void reset_context();
-	void maintain_queues();
-	void maintain_queues_idle();
-	void clear_indirect_buffer(Vulkan::CommandBuffer &cmd);
-
-	rdp_pipeline_setup_t pipeline_setup() const;
-	rdp_pass_resources_t pass_resources(const rdp_pipeline_setup_t &setup);
-	rdp_pass_target_t pass_target() const;
-	rdp_pass_flush_t pass_flush() const;
-
-	void submit_update_upscaled_domain(Vulkan::CommandBuffer &cmd, rdp_resolve_stage stage,
-	                                   unsigned addr, unsigned depth_addr,
-	                                   unsigned width, unsigned height,
-	                                   unsigned pixel_size_log2);
-
-
-
-	rdp_renderer_caps_t caps;
-
-	// The compute pipelines built on a thread of their own
-	rdp_pipeline_builder_t pipelines;
-
-	void resolve_coherency_host_to_gpu(Vulkan::CommandBuffer &cmd);
-	void resolve_coherency_gpu_to_host(CoherencyOperation &op, Vulkan::CommandBuffer &cmd);
-	uint32_t get_byte_size_for_bound_color_framebuffer() const;
-	uint32_t get_byte_size_for_bound_depth_framebuffer() const;
-	void mark_pages_for_gpu_read(uint32_t base_addr, uint32_t byte_count);
-	void lock_pages_for_gpu_write(uint32_t base_addr, uint32_t byte_count);
-
-	retro_atomic_int_t active_submissions;
-	void enqueue_fence_wait(Vulkan::Fence fence);
-	uint64_t last_submit_ns = 0;
+		auto *iface = static_cast<ValidationInterface *>(user);
+		iface->report_rdp_crash(iface->user, ValidationError(err), msg);
+	}
 };
 }

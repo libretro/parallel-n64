@@ -90,8 +90,10 @@ static VkResult VKAPI_CALL create_view(VkDevice d, const VkImageViewCreateInfo *
 	return VK_SUCCESS;
 }
 
-/* the buffers made, and their sizes */
+/* the buffers made, and their sizes: a test that makes more sets more */
+#ifndef MAX_BUFFERS
 #define MAX_BUFFERS 256
+#endif
 static unsigned num_buffers;
 static VkBuffer buffer_handles[MAX_BUFFERS];
 static VkDeviceSize buffer_sizes[MAX_BUFFERS];
