@@ -8,7 +8,8 @@
  * RGBA8 rows. This holds the RDRAM the copy writes to what the two-pass
  * copy wrote, at 1:1 and scaled, over window sizes, scales, offsets,
  * colour image sizes, 16- and 32-bit images and the transparent-black
- * rule, with the rows read back exactly as long as they are so a read
+ * rule (the GPU-scaled copy, two pixels a store, against one at a time
+ * over odd and even starts, ends and widths, on a word and off it), with the rows read back exactly as long as they are so a read
  * past them shows under the address sanitizer.
  */
 #include <stdio.h>
@@ -109,6 +110,70 @@ static void compare(const char *what, const uint8_t *a, const uint8_t *b, size_t
    }
 }
 
+/* fb_readback_scaled as it was: a pixel at a time, through fb_store */
+static void old_scaled(const uint8_t *rows, uint32_t stride, uint32_t rh,
+      int x_start, int y_start, int x_end, int y_end,
+      uint32_t width, int read_alpha, int size16, uint8_t *dst)
+{
+   int y, x;
+   for (y = y_start; y < y_end; y++)
+   {
+      const uint8_t *row = rows + (size_t)(rh - 1 - (uint32_t)y) * stride;
+      for (x = x_start; x < x_end; x++)
+      {
+         const uint8_t *p = row + (size_t)x * 4;
+         uint16_t c = (uint16_t)(((p[0] >> 3) << 11) | ((p[1] >> 3) << 6) | ((p[2] >> 3) << 1) | 1);
+         if (read_alpha && c == 1)
+            c = 0;
+         fb_store(dst, size16, width, (uint32_t)x, (uint32_t)y, c);
+      }
+   }
+}
+
+/* the GPU-scaled rows to RDRAM: odd and even starts, widths and ends,
+ * the image on a word and off it */
+static unsigned check_scaled(void)
+{
+   static const uint32_t widths[] = { 320, 321, 256, 33, 2, 1 };
+   unsigned runs = 0, wi, k;
+   for (wi = 0; wi < sizeof(widths) / sizeof(widths[0]); wi++)
+   {
+      const uint32_t width = widths[wi], height = 9;
+      const uint32_t stride = width * 4 + 8;
+      uint8_t *rows = (uint8_t*)malloc((size_t)stride * height);
+      unsigned seed = wi + 3;
+      for (k = 0; k < stride * height; k++)
+      {
+         seed = seed * 1103515245u + 12345u;
+         rows[k] = (seed >> 9) % 5 == 0 ? 0 : (uint8_t)(seed >> 16);
+      }
+      /* white (5551 0xFFFF) and black among them */
+      for (k = 0; k + 4 <= stride * height; k += 44)
+         rows[k] = rows[k + 1] = rows[k + 2] = (k / 44) & 1 ? 255 : 0;
+      for (k = 0; k < 2 * 2 * 2 * 3; k++)
+      {
+         const int size16 = k & 1, read_alpha = (k >> 1) & 1, off = size16 ? (int)((k >> 2) & 1) * 2 : 0;
+         const int x_start = (int)(k >> 3) == 0 ? 0 : (int)(k >> 3) == 1 ? 1 : (int)(width / 3);
+         const int x_end = (int)width - ((k >> 3) == 2 ? 1 : 0), y_start = 1, y_end = (int)height - 1;
+         const size_t bytes = (size_t)width * height * (size16 ? 2 : 4) + 8;
+         uint8_t *a = (uint8_t*)malloc(bytes), *b = (uint8_t*)malloc(bytes);
+         if (x_end > x_start)
+         {
+            memset(a, 0x5A, bytes);
+            memset(b, 0x5A, bytes);
+            old_scaled(rows, stride, height, x_start, y_start, x_end, y_end, width, read_alpha, size16, a + off);
+            fb_readback_scaled(rows, stride, height, x_start, y_start, x_end, y_end, width, read_alpha, size16, b + off);
+            compare("GPU-scaled", a, b, bytes, (int)width, (int)height, width, height, size16, read_alpha);
+            runs++;
+         }
+         free(a);
+         free(b);
+      }
+      free(rows);
+   }
+   return runs;
+}
+
 int main(void)
 {
    static const int wins[][2] = { { 320, 240 }, { 640, 480 }, { 1280, 960 }, { 960, 720 }, { 1600, 1200 } };
@@ -184,6 +249,8 @@ int main(void)
       }
       free(window);
    }
+
+   runs += check_scaled();
 
    if (failures)
    {
