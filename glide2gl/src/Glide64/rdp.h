@@ -255,8 +255,6 @@ typedef struct {
 
   uint32_t realwidth;   // width of actual texture
   uint32_t realheight;  // height of actual texture
-  uint32_t lod;
-  uint32_t aspect;
 
   uint8_t set_by;
   uint8_t texrecting;

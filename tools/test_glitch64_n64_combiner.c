@@ -154,8 +154,9 @@ static void texture(int tmu, const unsigned char *c, unsigned addr)
    GrTexInfo info;
    memset(&info, 0, sizeof(info));
    info.format = GR_TEXFMT_ARGB_8888;
+   info.width = info.height = 1;
    info.data = &texel;
-   grTexSource(tmu, addr, GR_MIPMAPLEVELMASK_BOTH, &info, 1);
+   grTexSource(tmu, addr, &info, 1);
 }
 
 /* one input of a cycle, as a colour (or alpha) 0 to 1 */

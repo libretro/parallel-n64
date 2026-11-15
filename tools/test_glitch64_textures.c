@@ -290,14 +290,12 @@ static int run(int f, int large_log2, int aspect_log2)
    }
 
    memset(&info, 0, sizeof(info));
-   info.smallLodLog2 = large_log2;
-   info.largeLodLog2 = large_log2;
-   info.aspectRatioLog2 = aspect_log2;
+   info.width = w;
+   info.height = h;
    info.format = fmt;
    info.data = data;
-   grTexSource(GR_TMU1, 0x1000 * (unsigned)(f + 1), GR_MIPMAPLEVELMASK_BOTH, &info, 1);
+   grTexSource(GR_TMU1, 0x1000 * (unsigned)(f + 1), &info, 1);
    assert(glGetError() == GL_NO_ERROR);
-   assert(info.width == w && info.height == h);
 
    blit(w, h, out);
    for (y = 0; y < h; y++)
@@ -328,7 +326,7 @@ static int run(int f, int large_log2, int aspect_log2)
 
 int main(void)
 {
-   /* (largeLodLog2, aspectRatioLog2): 1x1, 2x1, 8x8, 32x4, 2x16 */
+   /* (log2 of the longer side, log2 of width over height): 1x1, 2x1, 8x8, 32x4, 2x16 */
    static const int sizes[][2] = { { 0, 0 }, { 1, 1 }, { 3, 0 }, { 5, 3 }, { 4, -3 } };
    unsigned f, s;
    int failures = 0;

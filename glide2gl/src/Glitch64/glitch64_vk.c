@@ -656,12 +656,8 @@ void vk_grTexSource(int32_t tmu, uint32_t start, void *info_, int do_download)
    vk_tex *t;
 
    vk_flush();
-   h = 1 << info->largeLodLog2;
-   w = 1 << info->largeLodLog2;
-   if (info->aspectRatioLog2 < 0)
-      w = h >> -info->aspectRatioLog2;
-   else
-      h = w >> info->aspectRatioLog2;
+   w = info->width;
+   h = info->height;
 
    if (do_download)
    {
@@ -669,7 +665,7 @@ void vk_grTexSource(int32_t tmu, uint32_t start, void *info_, int do_download)
       const int fmt = vk_format(info->format, &bpp);
       const unsigned n = (unsigned)(w * h);
       const size_t bytes = (size_t)n * bpp;
-      unsigned at = tex_remove(id, id + (unsigned)(w * h * (int)grTexCalcMemRequired(0, 0, info->format)));
+      unsigned at = tex_remove(id, id + (unsigned)(w * h * (int)grTexCalcMemRequired(1, 1, info->format)));
       if (vk.n_textures >= VK_TEXTURES)
          at = tex_remove(0, ~0u);
       t = vk_tex_open(vk.textures, &vk.n_textures, at);
@@ -701,8 +697,6 @@ void vk_grTexSource(int32_t tmu, uint32_t start, void *info_, int do_download)
          /* the texels as Glide64 decoded them: the one copy is into the
           * ring, from where the GPU takes them */
          vkr_texture_init(vk.r, t->handle, fmt, 1, (unsigned)w, (unsigned)h, 0, 1, info->data, bytes);
-      info->width = w;
-      info->height = h;
    }
    else
       t = tex_find(id);
@@ -712,11 +706,9 @@ void vk_grTexSource(int32_t tmu, uint32_t start, void *info_, int do_download)
    tex_params(index);
 
    {
-      int sw = 256, sh = 256;
-      if (info->aspectRatioLog2 < 0)
-         sw = sh >> -info->aspectRatioLog2;
-      else
-         sh = sw >> info->aspectRatioLog2;
+      /* the coordinates run to 256 along the longer side */
+      const int sw = w >= h ? 256 : 256 * w / h;
+      const int sh = h >= w ? 256 : 256 * h / w;
       vk.values.tex_sizes[2 * index] = (float)sw;
       vk.values.tex_sizes[2 * index + 1] = (float)sh;
       vk.values.exact_sizes[2 * index] = (float)info->width;

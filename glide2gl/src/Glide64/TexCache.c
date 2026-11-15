@@ -401,7 +401,6 @@ void TexCache(void)
          rdp.cur_cache[0]->uses = 0;
          grTexSource (tmu_0,
                cache->tmem_addr,
-               GR_MIPMAPLEVELMASK_BOTH,
                &cache->t_info,
                false);
       }
@@ -420,7 +419,6 @@ void TexCache(void)
          rdp.cur_cache[1]->uses = 0;
          grTexSource (tmu_1,
                cache->tmem_addr,
-               GR_MIPMAPLEVELMASK_BOTH,
                &cache->t_info,
                false);
       }
@@ -487,7 +485,7 @@ void TexCache(void)
 // Does the actual texture loading after everything is prepared
 static void LoadTex(int id, int tmu)
 {
-   int lod, aspect, shift, size_max, wid, hei;
+   int shift, size_max, wid, hei;
    uint32_t size_x, size_y, real_x, real_y, result;
    CACHE_LUT *cache;
    int td = rdp.cur_tile + id;
@@ -538,7 +536,7 @@ static void LoadTex(int id, int tmu)
    // temporary
    cache->t_info.format = GR_TEXFMT_ARGB_1555;
 
-   // Calculate lod and aspect
+   // the tile's size, up to powers of two
    size_x = gDP.tiles[td].width;
    size_y = gDP.tiles[td].height;
 
@@ -551,109 +549,24 @@ static void LoadTex(int id, int tmu)
    size_max = MAX(size_x, size_y);
    real_x = size_max;
    real_y = size_max;
-   switch (size_max)
-   {
-      case 1:
-         lod = GR_LOD_LOG2_1;
-         cache->scale = 256.0f;
-         break;
-      case 2:
-         lod = GR_LOD_LOG2_2;
-         cache->scale = 128.0f;
-         break;
-      case 4:
-         lod = GR_LOD_LOG2_4;
-         cache->scale = 64.0f;
-         break;
-      case 8:
-         lod = GR_LOD_LOG2_8;
-         cache->scale = 32.0f;
-         break;
-      case 16:
-         lod = GR_LOD_LOG2_16;
-         cache->scale = 16.0f;
-         break;
-      case 32:
-         lod = GR_LOD_LOG2_32;
-         cache->scale = 8.0f;
-         break;
-      case 64:
-         lod = GR_LOD_LOG2_64;
-         cache->scale = 4.0f;
-         break;
-      case 128:
-         lod = GR_LOD_LOG2_128;
-         cache->scale = 2.0f;
-         break;
-      case 256:
-         lod = GR_LOD_LOG2_256;
-         cache->scale = 1.0f;
-         break;
-      case 512:
-         lod = GR_LOD_LOG2_512;
-         cache->scale = 0.5f;
-         break;
-      default:
-         lod = GR_LOD_LOG2_1024;
-         cache->scale = 0.25f;
-         break;
-   }
+   /* the coordinates run to 256 along the longer side, up to 1024 texels */
+   cache->scale = 256.0f / (float)MIN(size_max, 1024);
 
-   // Calculate the aspect ratio
+   /* the shorter side at least an eighth of the longer: the texture is
+    * made that high (or wide), what the tile has repeated into the rest */
+   cache->scale_x = 1.0f;
+   cache->scale_y = 1.0f;
    if (size_x >= size_y)
    {
-      int ratio = size_x / size_y;
-      switch (ratio)
-      {
-         case 1:
-            aspect = GR_ASPECT_LOG2_1x1;
-            cache->scale_x = 1.0f;
-            cache->scale_y = 1.0f;
-            break;
-         case 2:
-            aspect = GR_ASPECT_LOG2_2x1;
-            cache->scale_x = 1.0f;
-            cache->scale_y = 0.5f;
-            real_y >>= 1;
-            break;
-         case 4:
-            aspect = GR_ASPECT_LOG2_4x1;
-            cache->scale_x = 1.0f;
-            cache->scale_y = 0.25f;
-            real_y >>= 2;
-            break;
-         default:
-            aspect = GR_ASPECT_LOG2_8x1;
-            cache->scale_x = 1.0f;
-            cache->scale_y = 0.125f;
-            real_y >>= 3;
-            break;
-      }
+      const int ratio = MIN((int)(size_x / size_y), 8);
+      cache->scale_y = 1.0f / (float)ratio;
+      real_y /= ratio;
    }
    else
    {
-      int ratio = size_y / size_x;
-      switch (ratio)
-      {
-         case 2:
-            aspect = GR_ASPECT_LOG2_1x2;
-            cache->scale_x = 0.5f;
-            cache->scale_y = 1.0f;
-            real_x >>= 1;
-            break;
-         case 4:
-            aspect = GR_ASPECT_LOG2_1x4;
-            cache->scale_x = 0.25f;
-            cache->scale_y = 1.0f;
-            real_x >>= 2;
-            break;
-         default:
-            aspect = GR_ASPECT_LOG2_1x8;
-            cache->scale_x = 0.125f;
-            cache->scale_y = 1.0f;
-            real_x >>= 3;
-            break;
-      }
+      const int ratio = MIN((int)(size_y / size_x), 8);
+      cache->scale_x = 1.0f / (float)ratio;
+      real_x /= ratio;
    }
 
    if (real_x != cache->width || real_y != cache->height)
@@ -806,8 +719,6 @@ static void LoadTex(int id, int tmu)
    cache->t_info.format = LOWORD(result);
    cache->realwidth     = real_x;
    cache->realheight    = real_y;
-   cache->lod           = lod;
-   cache->aspect        = aspect;
 
    {
 	   uint32_t texture_size, tex_addr;
@@ -816,11 +727,10 @@ static void LoadTex(int id, int tmu)
       /* Load the texture into texture memory */
       t_info                  = (GrTexInfo*)&cache->t_info;
       t_info->data            = texture;
-      t_info->smallLodLog2    = lod;
-      t_info->largeLodLog2    = lod;
-      t_info->aspectRatioLog2 = aspect;
+      t_info->width           = (int)real_x;
+      t_info->height          = (int)real_y;
 
-      texture_size            = grTexCalcMemRequired (t_info->largeLodLog2, t_info->aspectRatioLog2, t_info->format);
+      texture_size            = grTexCalcMemRequired (t_info->width, t_info->height, t_info->format);
 
       /* Check for end of memory (too many textures to fit, clear cache) */
       if (voodoo.tmem_ptr[tmu]+texture_size >= voodoo.tex_max_addr)
@@ -840,7 +750,6 @@ static void LoadTex(int id, int tmu)
       tex_addr = GetTexAddrUMA(tmu, texture_size);
       grTexSource (tmu,
             tex_addr,
-            GR_MIPMAPLEVELMASK_BOTH,
             t_info,
             true);
    }

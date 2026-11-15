@@ -489,12 +489,11 @@ static void DrawDepthBufferToScreen256(FB_TO_SCREEN_INFO *fb_info)
    uint16_t *tex          = (uint16_t*)texture_buffer;
    uint16_t *src          = (uint16_t*)(image + fb_info->ul_x + fb_info->ul_y * fb_info->width);
 
-   t_info.smallLodLog2    = t_info.largeLodLog2 = GR_LOD_LOG2_256;
-   t_info.aspectRatioLog2 = GR_ASPECT_LOG2_1x1;
+   t_info.width           = t_info.height = 256;
    t_info.format          = GR_TEXFMT_ALPHA_INTENSITY_88;
    t_info.data            = tex;
 
-   tex_size               = grTexCalcMemRequired(t_info.largeLodLog2, t_info.aspectRatioLog2, t_info.format);
+   tex_size               = grTexCalcMemRequired(t_info.width, t_info.height, t_info.format);
    tmu                    = SetupFBtoScreenCombiner(tex_size*width256*height256, fb_info->opaque);
 
    /* the fog colour, the image's alpha */
@@ -520,7 +519,7 @@ static void DrawDepthBufferToScreen256(FB_TO_SCREEN_INFO *fb_info)
                *(dst++) = rdp.pal_8[src[(x + 256 * w + (y + 256 * h) * fb_info->width) ^ 1]>>8];
             dst += cur_tail;
          }
-         grTexSource (tmu, tex_adr, GR_MIPMAPLEVELMASK_BOTH, &t_info, true);
+         grTexSource (tmu, tex_adr, &t_info, true);
          tex_adr += tex_size;
          ul_x     = (float)(fb_info->ul_x + 256 * w);
          ul_y     = (float)(fb_info->ul_y + 256 * h);
@@ -558,18 +557,14 @@ static void DrawDepthBufferToScreen(FB_TO_SCREEN_INFO *fb_info)
       return;
    }
 
-   t_info.smallLodLog2 = t_info.largeLodLog2 = GR_LOD_LOG2_512;
-   t_info.aspectRatioLog2 = GR_ASPECT_LOG2_1x1;
-
    if (width <= 256)
    {
       texwidth = 256;
       scale = 1.0f;
-      t_info.smallLodLog2 = t_info.largeLodLog2 = GR_LOD_LOG2_256;
    }
-
-   if (height <= (texwidth>>1))
-      t_info.aspectRatioLog2 = GR_ASPECT_LOG2_2x1;
+   /* texwidth across, half as high if that holds the image */
+   t_info.width  = texwidth;
+   t_info.height = height <= (texwidth>>1) ? texwidth >> 1 : texwidth;
 
 
    for (y=0; y < height; y++)
@@ -581,12 +576,11 @@ static void DrawDepthBufferToScreen(FB_TO_SCREEN_INFO *fb_info)
    t_info.format = GR_TEXFMT_ALPHA_INTENSITY_88;
    t_info.data = tex;
 
-   tmu = SetupFBtoScreenCombiner(grTexCalcMemRequired(t_info.largeLodLog2, t_info.aspectRatioLog2, t_info.format), fb_info->opaque);
+   tmu = SetupFBtoScreenCombiner(grTexCalcMemRequired(t_info.width, t_info.height, t_info.format), fb_info->opaque);
    /* the fog colour, the image's alpha */
    glide64_combine_texel(tmu, 1);
    grTexSource (tmu,
          voodoo.tmem_ptr[tmu],
-         GR_MIPMAPLEVELMASK_BOTH,
          &t_info, true);
    ul_x = fb_info->ul_x * rdp.scale_x + rdp.offset_x;
    ul_y = fb_info->ul_y * rdp.scale_y + rdp.offset_y;
@@ -626,9 +620,7 @@ static void DrawRE2Video256(FB_TO_SCREEN_INFO *fb_info)
    uint16_t *tex          = (uint16_t*)texture_buffer;
    uint16_t *dst          = (uint16_t*)tex;
 
-   t_info.smallLodLog2    = GR_LOD_LOG2_256;
-   t_info.largeLodLog2    = GR_LOD_LOG2_256;
-   t_info.aspectRatioLog2 = GR_ASPECT_LOG2_1x1;
+   t_info.width           = t_info.height = 256;
 
    fb_info->height        = MIN(256, fb_info->height);
 
@@ -651,11 +643,10 @@ static void DrawRE2Video256(FB_TO_SCREEN_INFO *fb_info)
    t_info.format = GR_TEXFMT_RGB_565;
    t_info.data   = tex;
    tmu           = SetupFBtoScreenCombiner(
-         grTexCalcMemRequired(t_info.largeLodLog2, t_info.aspectRatioLog2, t_info.format), fb_info->opaque);
+         grTexCalcMemRequired(t_info.width, t_info.height, t_info.format), fb_info->opaque);
 
    grTexSource (tmu,
          voodoo.tmem_ptr[tmu],
-         GR_MIPMAPLEVELMASK_BOTH,
          &t_info, 
          true);
    DrawRE2Video(fb_info, 1.0f);
@@ -682,13 +673,12 @@ static void DrawFrameBufferToScreen256(FB_TO_SCREEN_INFO *fb_info)
   image                  = (uint8_t*)(gfx_info.RDRAM + fb_info->addr);
   width256               = ((width - 1) >> 8) + 1;
   height256              = ((height - 1) >> 8) + 1;
-  t_info.smallLodLog2    = t_info.largeLodLog2 = GR_LOD_LOG2_256;
-  t_info.aspectRatioLog2 = GR_ASPECT_LOG2_1x1;
+  t_info.width          = t_info.height = 256;
   t_info.format          = GR_TEXFMT_ARGB_1555;
 
   tex                    = (uint16_t*)texture_buffer;
   t_info.data            = tex;
-  tex_size               = grTexCalcMemRequired(t_info.largeLodLog2, t_info.aspectRatioLog2, t_info.format);
+  tex_size               = grTexCalcMemRequired(t_info.width, t_info.height, t_info.format);
   tmu                    = SetupFBtoScreenCombiner(tex_size * width256 * height256, fb_info->opaque);
   src                    = (uint16_t*)(image + fb_info->ul_x + fb_info->ul_y * fb_info->width);
   src32                  = (uint32_t*)(image + fb_info->ul_x + fb_info->ul_y * fb_info->width);
@@ -744,7 +734,7 @@ static void DrawFrameBufferToScreen256(FB_TO_SCREEN_INFO *fb_info)
           dst_ptr += cur_tail;
         }
       }
-      grTexSource (tmu, tex_adr, GR_MIPMAPLEVELMASK_BOTH, &t_info, true);
+      grTexSource (tmu, tex_adr, &t_info, true);
       tex_adr += tex_size;
 
       ul_x     = (fb_info->ul_x + 256 * w)    * rdp.scale_x + rdp.offset_x;
@@ -784,19 +774,14 @@ static bool DrawFrameBufferToScreen(FB_TO_SCREEN_INFO *fb_info)
 
    texwidth               = 512;
    scale                  = 0.5f;
-   t_info.smallLodLog2    = GR_LOD_LOG2_512;
-   t_info.largeLodLog2    = GR_LOD_LOG2_512;
-   t_info.aspectRatioLog2 = GR_ASPECT_LOG2_1x1;
-
    if (width <= 256)
    {
       texwidth = 256;
       scale = 1.0f;
-      t_info.smallLodLog2 = t_info.largeLodLog2 = GR_LOD_LOG2_256;
    }
-
-   if (height <= (texwidth>>1))
-      t_info.aspectRatioLog2 = GR_ASPECT_LOG2_2x1;
+   /* texwidth across, half as high if that holds the image */
+   t_info.width  = texwidth;
+   t_info.height = height <= (texwidth>>1) ? texwidth >> 1 : texwidth;
 
    if (fb_info->size == 2)
    {
@@ -854,14 +839,11 @@ static bool DrawFrameBufferToScreen(FB_TO_SCREEN_INFO *fb_info)
    }
 
    tmu = SetupFBtoScreenCombiner(
-         grTexCalcMemRequired(t_info.largeLodLog2,
-            t_info.aspectRatioLog2,
-            t_info.format),
+         grTexCalcMemRequired(t_info.width, t_info.height, t_info.format),
          fb_info->opaque);
 
    grTexSource (tmu,
          voodoo.tmem_ptr[tmu],
-         GR_MIPMAPLEVELMASK_BOTH,
          &t_info, true);
 
    if (settings.hacks&hack_RE2)

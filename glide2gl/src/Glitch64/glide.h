@@ -32,10 +32,6 @@ extern "C" {
 ** CONSTANTS AND TYPES
 ** -----------------------------------------------------------------------
 */
-#define GR_MIPMAPLEVELMASK_EVEN  FXBIT(0)
-#define GR_MIPMAPLEVELMASK_ODD  FXBIT(1)
-#define GR_MIPMAPLEVELMASK_BOTH (GR_MIPMAPLEVELMASK_EVEN | GR_MIPMAPLEVELMASK_ODD )
-
 #define GR_TMU0         0x0
 #define GR_TMU1         0x1
 
@@ -43,14 +39,6 @@ extern "C" {
 #define GR_BLEND_SRC_ALPHA GL_SRC_ALPHA
 #define GR_BLEND_ONE GL_ONE
 #define GR_BLEND_ONE_MINUS_SRC_ALPHA GL_ONE_MINUS_SRC_ALPHA
-
-#define GR_ASPECT_LOG2_8x1        3       /* 8W x 1H */
-#define GR_ASPECT_LOG2_4x1        2       /* 4W x 1H */
-#define GR_ASPECT_LOG2_2x1        1       /* 2W x 1H */
-#define GR_ASPECT_LOG2_1x1        0       /* 1W x 1H */
-#define GR_ASPECT_LOG2_1x2       -1       /* 1W x 2H */
-#define GR_ASPECT_LOG2_1x4       -2       /* 1W x 4H */
-#define GR_ASPECT_LOG2_1x8       -3       /* 1W x 8H */
 
 #define GR_BUFFER_FRONTBUFFER   0x0
 #define GR_BUFFER_BACKBUFFER    0x1
@@ -90,16 +78,6 @@ typedef struct {
     int32_t origin;
 } GrLfbInfo_t;
 
-#define GR_LOD_LOG2_256         0x8
-#define GR_LOD_LOG2_128         0x7
-#define GR_LOD_LOG2_64          0x6
-#define GR_LOD_LOG2_32          0x5
-#define GR_LOD_LOG2_16          0x4
-#define GR_LOD_LOG2_8           0x3
-#define GR_LOD_LOG2_4           0x2
-#define GR_LOD_LOG2_2           0x1
-#define GR_LOD_LOG2_1           0x0
-
 #define GR_TEXTURECLAMP_WRAP        GL_REPEAT
 #define GR_TEXTURECLAMP_CLAMP       GL_CLAMP_TO_EDGE
 #define GR_TEXTURECLAMP_MIRROR_EXT  GL_MIRRORED_REPEAT
@@ -129,10 +107,8 @@ typedef struct {
 ** -----------------------------------------------------------------------
 */
 
+/* a texture: its texels, width x height of them, both powers of two */
 typedef struct {
-    int32_t           smallLodLog2;
-    int32_t           largeLodLog2;
-    int32_t   aspectRatioLog2;
     int32_t format;
     int               width;
     int               height;
@@ -210,10 +186,8 @@ void grStipplePattern( uint32_t mode );
 /*
 ** texture mapping control functions
 */
- uint32_t  
-grTexCalcMemRequired(
-                    int32_t lodmax,
-                     int32_t aspect, int32_t fmt);
+/* the bytes a width x height texture of @fmt takes */
+uint32_t grTexCalcMemRequired(int width, int height, int32_t fmt);
 
 #define TMU_SIZE (8 * 2048 * 2048)
 
@@ -221,7 +195,6 @@ grTexCalcMemRequired(
 
 void grTexSource( int32_t tmu,
              uint32_t      startAddress,
-             uint32_t      evenOdd,
              GrTexInfo  *info,
              int do_download);
 

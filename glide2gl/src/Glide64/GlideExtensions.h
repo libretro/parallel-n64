@@ -26,7 +26,4 @@
 
 #define GR_TEXFMT_ARGB_8888               0x12
 
-#define GR_LOD_LOG2_2048                  0xb
-#define GR_LOD_LOG2_1024                  0xa
-#define GR_LOD_LOG2_512                   0x9
 

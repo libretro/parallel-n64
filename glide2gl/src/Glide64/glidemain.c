@@ -235,8 +235,7 @@ void guLoadTextures(void)
 
    bool log2_2048 = (settings.scr_res_x > 1024) ? true : false;
 
-   tbuf_size = grTexCalcMemRequired(log2_2048 ? GR_LOD_LOG2_2048 : GR_LOD_LOG2_1024,
-         GR_ASPECT_LOG2_1x1, GR_TEXFMT_RGB_565);
+   tbuf_size = grTexCalcMemRequired(log2_2048 ? 2048 : 1024, log2_2048 ? 2048 : 1024, GR_TEXFMT_RGB_565);
 
    offset_textures = tbuf_size + 16;
 }

@@ -145,17 +145,8 @@ void free_textures(void)
   remove_tex(0x00000000, 0xFFFFFFFF);
 }
 
-uint32_t grTexCalcMemRequired(int32_t lodmax,
-      int32_t aspect, int32_t fmt)
+uint32_t grTexCalcMemRequired(int width, int height, int32_t fmt)
 {
-   int width  = 1 << lodmax;
-   int height = 1 << lodmax;
-
-   if (aspect < 0)
-      width = height >> -aspect;
-   else
-      height = width >> aspect;
-
    switch(fmt)
    {
       case GR_TEXFMT_ALPHA_8:
@@ -353,7 +344,6 @@ static int grTexFormat2GLPackedFmt(GrTexInfo *info, int fmt, unsigned tex_w, uns
 
 void grTexSource( int32_t tmu,
       uint32_t      startAddress,
-      uint32_t      evenOdd,
       GrTexInfo  *info,
       int do_download)
 {
@@ -368,12 +358,8 @@ void grTexSource( int32_t tmu,
    if (!do_download)
       goto grtexsource;
 
-   height = 1 << info->largeLodLog2;
-   width = 1 << info->largeLodLog2;
-   if (info->aspectRatioLog2 < 0)
-      width = height >> -info->aspectRatioLog2;
-   else
-      height = width >> info->aspectRatioLog2;
+   width = info->width;
+   height = info->height;
 
    factor = grTexFormat2GLPackedFmt(info, info->format, (unsigned)width, (unsigned)height,
          &gltexfmt, &glpixfmt, &glpackfmt);
@@ -387,16 +373,11 @@ void grTexSource( int32_t tmu,
    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
    glTexImage2D(GL_TEXTURE_2D, 0, gltexfmt, width, height, 0, glpixfmt, glpackfmt, info->data);
    glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
-   info->width = width;
-   info->height = height;
 
 grtexsource:
-   tex_height[index] = 256;
-   tex_width[index] = 256;
-   if (info->aspectRatioLog2 < 0)
-      tex_width[index] = tex_height[index] >> -info->aspectRatioLog2;
-   else
-      tex_height[index] = tex_width[index] >> info->aspectRatioLog2;
+   /* the coordinates run to 256 along the longer side */
+   tex_width[index] = info->width >= info->height ? 256 : 256 * info->width / info->height;
+   tex_height[index] = info->height >= info->width ? 256 : 256 * info->height / info->width;
 
    if (!do_download)
       glBindTexture(GL_TEXTURE_2D, get_tex_id(startAddress+1));
