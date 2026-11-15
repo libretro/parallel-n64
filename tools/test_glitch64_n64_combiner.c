@@ -14,6 +14,12 @@
  * It also holds the shader key to a round trip, and checks the blender's
  * fog colour and alpha standing in for the combiner's.
  *
+ * Glitch64 batches triangles while the state stays the same; a change of
+ * the combiner's inputs, of the depth test, the cull mode, the blend or
+ * the alpha test has to draw the triangles before it first. This draws
+ * pairs of quads with each changed between them, and holds each quad to
+ * its own state.
+ *
  *   EGL_PLATFORM=surfaceless ./test_glitch64_n64_combiner
  */
 #include <assert.h>
@@ -27,6 +33,10 @@
 #include <glsm/glsm.h>
 /* the frontend's half calls GL directly, so it comes before glsmsym.h
  * (through glide.h) turns the GL calls that follow into glsm's */
+
+/* Glitch64 batches triangles until a change of state, or the frame is read
+ * or shown: what reads the frame here past Glitch64 draws them first */
+void glitch64_flush(void);
 
 #define WIN_W 64
 #define WIN_H 64
@@ -272,8 +282,10 @@ static void check(const glitch64_n64_combiner *m, const char *what)
    vtx(&quad[3], 0.0f, 480.0f);
    glDisable(GL_SCISSOR_TEST);
    glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+   glitch64_flush();
    glClear(GL_COLOR_BUFFER_BIT);
    grDrawVertexArrayContiguous(GR_TRIANGLE_FAN, 4, quad);
+   glitch64_flush();
    glReadPixels(WIN_W / 2, WIN_H / 2, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, px);
    draws++;
    for (k = 0; k < 4; k++)
@@ -337,6 +349,91 @@ static void check_keys(void)
          return;
       }
    }
+}
+
+static void quad_at(float x0, float x1, float z)
+{
+   VERTEX quad[4];
+   vtx(&quad[0], x0, 0.0f);
+   vtx(&quad[1], x1, 0.0f);
+   vtx(&quad[2], x1, 480.0f);
+   vtx(&quad[3], x0, 480.0f);
+   quad[0].z = quad[1].z = quad[2].z = quad[3].z = z;
+   grDrawVertexArrayContiguous(GR_TRIANGLE_FAN, 4, quad);
+}
+
+/* the window pixel at Glitch64's (x, 240): the framebuffer is its 64x64
+ * bottom left corner, Glitch64's y down from the top */
+static uint32_t pixel_at(unsigned x)
+{
+   unsigned char px[4];
+   glitch64_flush();
+   glReadPixels((GLint)x, WIN_H / 2, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, px);
+   return ((uint32_t)px[0] << 16) | ((uint32_t)px[1] << 8) | px[2];
+}
+
+static int check_batches(float *prim, float *env, float *consts, const float *level,
+      const float *center, const float *scale)
+{
+   glitch64_n64_combiner m;
+   int bad = 0;
+   /* PRIM, alpha 1 */
+   memset(&m, 0, sizeof(m));
+   m.rgb[1][0] = 15; m.rgb[1][1] = 15; m.rgb[1][2] = 31; m.rgb[1][3] = 3;
+   m.alpha[1][0] = 7; m.alpha[1][1] = 7; m.alpha[1][2] = 7; m.alpha[1][3] = 6;
+   grN64Combine(&m);
+   glDisable(GL_SCISSOR_TEST);
+   glitch64_flush();
+   glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+   glClear(GL_COLOR_BUFFER_BIT);
+
+   /* the combiner's inputs: red, then green */
+   prim[0] = 1.0f; prim[1] = 0.0f; prim[2] = 0.0f; prim[3] = 1.0f;
+   grN64Constants(prim, env, consts, level, center, scale);
+   quad_at(0.0f, 32.0f, 1.0f);
+   prim[0] = 0.0f; prim[1] = 1.0f;
+   grN64Constants(prim, env, consts, level, center, scale);
+   quad_at(32.0f, 64.0f, 1.0f);
+   if (pixel_at(16) != 0xFF0000 || pixel_at(48) != 0x00FF00)
+   {
+      fprintf(stderr, "quads either side of a change of prim: %06x %06x\n",
+            (unsigned)pixel_at(16), (unsigned)pixel_at(48));
+      bad++;
+   }
+
+   /* the blend: the second quad adds, the first replaces */
+   grAlphaBlendFunction(GR_BLEND_ONE, GR_BLEND_ZERO, GR_BLEND_ONE, GR_BLEND_ZERO);
+   prim[0] = 0.0f; prim[1] = 0.0f; prim[2] = 1.0f;
+   grN64Constants(prim, env, consts, level, center, scale);
+   quad_at(0.0f, 32.0f, 1.0f);
+   grAlphaBlendFunction(GR_BLEND_ONE, GR_BLEND_ONE, GR_BLEND_ONE, GR_BLEND_ZERO);
+   quad_at(32.0f, 64.0f, 1.0f);
+   if (pixel_at(16) != 0x0000FF || pixel_at(48) != 0x00FFFF)
+   {
+      fprintf(stderr, "quads either side of a change of blend: %06x %06x\n",
+            (unsigned)pixel_at(16), (unsigned)pixel_at(48));
+      bad++;
+   }
+   grAlphaBlendFunction(GR_BLEND_ONE, GR_BLEND_ZERO, GR_BLEND_ONE, GR_BLEND_ZERO);
+
+   /* the alpha test: the second quad's alpha 0.5 fails a reference of 0.75 */
+   prim[0] = 1.0f; prim[1] = 1.0f; prim[2] = 1.0f; prim[3] = 0.5f;
+   m.alpha[1][3] = 3;
+   grN64Combine(&m);
+   grN64Constants(prim, env, consts, level, center, scale);
+   grAlphaTestFunction(GR_CMP_ALWAYS, 0, 0);
+   quad_at(0.0f, 32.0f, 1.0f);
+   grAlphaTestFunction(GR_CMP_GEQUAL, 192, 1);
+   quad_at(32.0f, 64.0f, 1.0f);
+   if (pixel_at(16) != 0xFFFFFF || pixel_at(48) != 0x00FFFF)
+   {
+      fprintf(stderr, "quads either side of a change of alpha test: %06x %06x\n",
+            (unsigned)pixel_at(16), (unsigned)pixel_at(48));
+      bad++;
+   }
+   grAlphaTestFunction(GR_CMP_ALWAYS, 0, 0);
+   glDisable(GL_BLEND);
+   return bad;
 }
 
 int main(void)
@@ -437,8 +534,10 @@ int main(void)
       vtx(&quad[1], 640.0f, 0.0f);
       vtx(&quad[2], 640.0f, 480.0f);
       vtx(&quad[3], 0.0f, 480.0f);
+      glitch64_flush();
       glClear(GL_COLOR_BUFFER_BIT);
       grDrawVertexArrayContiguous(GR_TRIANGLE_FAN, 4, quad);
+      glitch64_flush();
       glReadPixels(WIN_W / 2, WIN_H / 2, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, px);
       if (px[0] != 11 || px[1] != 22 || px[2] != 33 || px[3] != 44)
       {
@@ -446,6 +545,8 @@ int main(void)
          failures++;
       }
    }
+
+   failures += check_batches(prim, env, consts, level, center, scale);
 
    assert(glGetError() == GL_NO_ERROR);
    grSstWinClose(0);

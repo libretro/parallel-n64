@@ -37,6 +37,10 @@
 /* the frontend's half calls GL directly, so it comes before glsmsym.h
  * (through glide.h) turns the GL calls that follow into glsm's */
 
+/* Glitch64 batches triangles until a change of state, or the frame is read
+ * or shown: what reads the frame here past Glitch64 draws them first */
+void glitch64_flush(void);
+
 #define WIN_W 640
 #define WIN_H 480
 
@@ -149,6 +153,7 @@ static void core_context(void)
 /* the window as it stands, read past glsm, bottom row first */
 static void read_window(uint8_t *window)
 {
+   glitch64_flush();
    GLboolean scissor = glIsEnabled(GL_SCISSOR_TEST);
    glDisable(GL_SCISSOR_TEST);
    glReadPixels(0, 0, WIN_W, WIN_H, GL_RGBA, GL_UNSIGNED_BYTE, window);
@@ -228,9 +233,11 @@ static uint32_t at(const uint8_t *window, unsigned x, unsigned y)
 /* a colour, the depth buffer at its farthest */
 static void clear(void)
 {
+   glitch64_flush();
    glDisable(GL_SCISSOR_TEST);
    glClearColor(64.0f / 255.0f, 128.0f / 255.0f, 192.0f / 255.0f, 1.0f);
-   glDepthMask(GL_TRUE);
+   /* through Glitch64, which keeps what it last set */
+   grDepthMask(FXTRUE);
    glClearDepth(1.0);
    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 }
@@ -240,6 +247,7 @@ static int check_depths(void)
 {
    float *depth = (float*)malloc(WIN_W * WIN_H * sizeof(float));
    unsigned x, y, ix, iy, bad = 0;
+   glitch64_flush();
    glDisable(GL_SCISSOR_TEST);
    glReadPixels(0, 0, WIN_W, WIN_H, GL_DEPTH_COMPONENT, GL_FLOAT, depth);
    glEnable(GL_SCISSOR_TEST);

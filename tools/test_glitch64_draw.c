@@ -34,6 +34,10 @@
 /* the frontend's half calls GL directly, so it comes before glsmsym.h
  * (through glide.h) turns the GL calls that follow into glsm's */
 
+/* Glitch64 batches triangles until a change of state, or the frame is read
+ * or shown: what reads the frame here past Glitch64 draws them first */
+void glitch64_flush(void);
+
 #define WIN_W 640
 #define WIN_H 480
 
@@ -113,6 +117,7 @@ static void core_context(void)
 /* the window as it stands, read past glsm, bottom row first */
 static void read_window(uint8_t *window)
 {
+   glitch64_flush();
    GLboolean scissor = glIsEnabled(GL_SCISSOR_TEST);
    glDisable(GL_SCISSOR_TEST);
    glReadPixels(0, 0, WIN_W, WIN_H, GL_RGBA, GL_UNSIGNED_BYTE, window);

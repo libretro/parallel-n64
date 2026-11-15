@@ -45,7 +45,9 @@ typedef struct
   float    fog;
 } VBufVertex;
 
-#define VERTEX_BUFFER_SIZE 1500
+/* triangles, batched while the state stays: a state change, a read of
+ * the frame or a full buffer draws them (glitch64_flush) */
+#define VERTEX_BUFFER_SIZE (3 * 4096)
 
 static VBufVertex vbuf_data[VERTEX_BUFFER_SIZE];
 static GLenum     vbuf_primitive = GL_TRIANGLES;
@@ -148,17 +150,48 @@ void vbo_draw(void)
    vbuf_drawing = false;
 }
 
+#define VBUF_VERTEX(i) ((const char*)pointers + (size_t)(i) * sizeof(VERTEX))
+
+/* @count vertices of @mode as triangles: a fan from its first vertex, a
+ * strip with every other triangle turned back so all face as drawn */
 static void vbo_append(GLenum mode, GLsizei count, void *pointers)
 {
-   /* Drawn at once: the state each draw sets is only right for it, and
-    * triangles kept for the next draw took that draw's state instead */
-   while (count--)
-   {
-      memcpy(&vbuf_data[vbuf_length++], pointers, sizeof(VBufVertex));
-      pointers = (char*)pointers + sizeof(VERTEX);
-   }
+   const unsigned tris = count < 3 ? 0 : (mode == GL_TRIANGLES ? (unsigned)count / 3 : (unsigned)count - 2);
+   unsigned i;
 
-   vbuf_primitive = mode;
+   if (vbuf_length + tris * 3 > VERTEX_BUFFER_SIZE)
+      vbo_draw();
+   if (tris * 3 > VERTEX_BUFFER_SIZE)
+      return;
+
+   vbuf_primitive = GL_TRIANGLES;
+   for (i = 0; i < tris; i++)
+   {
+      unsigned a, b, c;
+      if (mode == GL_TRIANGLES)
+      {
+         a = 3 * i; b = a + 1; c = a + 2;
+      }
+      else if (mode == GL_TRIANGLE_FAN)
+      {
+         a = 0; b = i + 1; c = i + 2;
+      }
+      else if (i & 1)
+      {
+         a = i + 1; b = i; c = i + 2;
+      }
+      else
+      {
+         a = i; b = i + 1; c = i + 2;
+      }
+      memcpy(&vbuf_data[vbuf_length++], VBUF_VERTEX(a), sizeof(VBufVertex));
+      memcpy(&vbuf_data[vbuf_length++], VBUF_VERTEX(b), sizeof(VBufVertex));
+      memcpy(&vbuf_data[vbuf_length++], VBUF_VERTEX(c), sizeof(VBufVertex));
+   }
+}
+
+void glitch64_flush(void)
+{
    vbo_draw();
 }
 
@@ -222,8 +255,21 @@ void vbo_disable(void)
    vbuf_enabled = false;
 }
 
+/* What GL holds, so a call that changes nothing keeps the batch going.
+ * Glitch64's own draws (the LFB and depth image writes) set GL behind
+ * these and put it back as it was; a new context starts them over
+ * (init_geometry). */
+static int32_t cull_set = -1;
+static GLenum depth_func_set = GL_LESS;
+static int depth_mask_set = -1;
+static int32_t depth_bias_set = -1;
+
 void grCullMode( int32_t mode )
 {
+   if (mode == cull_set)
+      return;
+   cull_set = mode;
+   glitch64_flush();
    switch(mode)
    {
       case GR_CULL_DISABLE:
@@ -244,11 +290,19 @@ void grCullMode( int32_t mode )
 
 void grDepthBufferFunction(GLenum func)
 {
+   if (func == depth_func_set)
+      return;
+   glitch64_flush();
+   depth_func_set = func;
    glDepthFunc(func);
 }
 
 void grDepthMask(bool mask)
 {
+   if ((int)mask == depth_mask_set)
+      return;
+   glitch64_flush();
+   depth_mask_set = mask;
    glDepthMask(mask);
 }
 
@@ -257,6 +311,10 @@ extern float polygonOffsetUnits;
 
 void grDepthBiasLevel( int32_t level )
 {
+   if (level == depth_bias_set)
+      return;
+   depth_bias_set = level;
+   glitch64_flush();
    if (level)
    {
       glPolygonOffset(polygonOffsetFactor, (float)level * settings.depth_bias * 0.01f);
@@ -272,7 +330,10 @@ void grDepthBiasLevel( int32_t level )
 void grDrawVertexArrayContiguous(uint32_t mode, uint32_t count, void *pointers)
 {
    if(need_to_compile)
+   {
+      glitch64_flush();
       compile_shader();
+   }
 
    vbo_enable();
    vbo_append(mode, count, pointers);
@@ -280,6 +341,11 @@ void grDrawVertexArrayContiguous(uint32_t mode, uint32_t count, void *pointers)
 
 void init_geometry()
 {
+   /* GL's own defaults */
+   cull_set = -1;
+   depth_func_set = GL_LESS;
+   depth_mask_set = -1;
+   depth_bias_set = -1;
    vbo_init();
 }
 

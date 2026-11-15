@@ -85,6 +85,8 @@ static int dither_enabled;
 static uint32_t n64_key[2];
 static float n64_values[4][4];
 static float n64_key_values[2][3];
+/* the fog colour the uniforms have */
+static uint32_t n64_fog_rgba;
 /* dFdx and dFdy, for LOD_FRACTION per pixel */
 static int n64_derivatives;
 
@@ -369,6 +371,9 @@ static void finish_shader_program_setup(shader_program_key *shader)
 
    shader_find_uniforms(shader);
    append_shader_program(shader);
+   /* the program bound now: the uniforms set until the next switch go to
+    * it (they went to the program before, and GL refused them) */
+   current_shader = &shader_programs[shader->index];
 }
 
 /* What a game compiled, keyed as compile_shader looks it up and kept as
@@ -801,6 +806,7 @@ void grN64Combine(const glitch64_n64_combiner *c)
    glitch64_n64_key(&m, key);
    if (key[0] != n64_key[0] || key[1] != n64_key[1])
    {
+      glitch64_flush();
       n64_key[0] = key[0];
       n64_key[1] = key[1];
       need_to_compile = 1;
@@ -810,6 +816,16 @@ void grN64Combine(const glitch64_n64_combiner *c)
 void grN64Constants(const float prim[4], const float env[4], const float consts[4],
       const float level[4], const float key_center[3], const float key_scale[3])
 {
+   if (!memcmp(n64_values[0], prim, sizeof(n64_values[0]))
+         && !memcmp(n64_values[1], env, sizeof(n64_values[1]))
+         && !memcmp(n64_values[2], consts, sizeof(n64_values[2]))
+         && !memcmp(n64_values[3], level, sizeof(n64_values[3]))
+         && !memcmp(n64_key_values[0], key_center, sizeof(n64_key_values[0]))
+         && !memcmp(n64_key_values[1], key_scale, sizeof(n64_key_values[1]))
+         && n64_fog_rgba == g_gdp.fog_color.total)
+      return;
+   glitch64_flush();
+   n64_fog_rgba = g_gdp.fog_color.total;
    memcpy(n64_values[0], prim, sizeof(n64_values[0]));
    memcpy(n64_values[1], env, sizeof(n64_values[1]));
    memcpy(n64_values[2], consts, sizeof(n64_values[2]));
@@ -820,22 +836,37 @@ void grN64Constants(const float prim[4], const float env[4], const float consts[
       n64_upload(current_shader);
 }
 
+/* the alpha test's reference is a uniform: a change sends it up again
+ * (need_to_compile finds the program and updates its uniforms) */
 void grAlphaTestReferenceValue(uint8_t value)
 {
-   alpha_ref = value;
+   if (alpha_ref != value)
+   {
+      glitch64_flush();
+      alpha_ref = value;
+      need_to_compile = 1;
+   }
 }
 
 void grAlphaTestFunction( int32_t function, uint8_t value, int set_alpha_ref)
 {
+   const bool test = (function == GR_CMP_ALWAYS) ? false : true;
+   const int ref = (set_alpha_ref) ? value : alpha_ref;
+   if (alpha_func == function && alpha_test == test && alpha_ref == ref)
+      return;
+   glitch64_flush();
    alpha_func = function;
-   alpha_test = (function == GR_CMP_ALWAYS) ? false : true;
-   alpha_ref = (set_alpha_ref) ? value : alpha_ref;
+   alpha_test = test;
+   alpha_ref = ref;
+   need_to_compile = 1;
 }
 
 void grFogMode( int32_t mode, uint32_t fogcolor)
 {
+   if (fog_enabled == mode)
+      return;
+   glitch64_flush();
    fog_enabled = mode;
-
    need_to_compile = 1;
 }
 
@@ -845,21 +876,22 @@ void grStipplePattern(uint32_t stipple)
 
 void grStippleMode( int32_t mode )
 {
-   switch(mode)
-   {
-      case GR_STIPPLE_DISABLE:
-         dither_enabled = 0;
-         break;
-      case GR_STIPPLE_PATTERN:
-      case GR_STIPPLE_ROTATE:
-         dither_enabled = 1;
-         break;
-   }
+   const int dither = mode != GR_STIPPLE_DISABLE;
+   if (dither == dither_enabled)
+      return;
+   glitch64_flush();
+   dither_enabled = dither;
    need_to_compile = 1;
 }
 
 void grAlphaBlendFunction(GLenum rgb_sf, GLenum rgb_df, GLenum alpha_sf, GLenum alpha_df)
 {
+   static GLenum last[4];
+   if (last[0] == rgb_sf && last[1] == rgb_df && last[2] == alpha_sf && last[3] == alpha_df
+         && glIsEnabled(GL_BLEND))
+      return;
+   last[0] = rgb_sf; last[1] = rgb_df; last[2] = alpha_sf; last[3] = alpha_df;
+   glitch64_flush();
    glEnable(GL_BLEND);
    glBlendFuncSeparate(rgb_sf, rgb_df, alpha_sf, alpha_df);
 }

@@ -356,6 +356,7 @@ void grTexSource( int32_t tmu,
       GrTexInfo  *info,
       int do_download)
 {
+   glitch64_flush();
    int width, height;
    int factor;
    int gltexfmt, glpixfmt, glpackfmt;
@@ -403,6 +404,8 @@ grtexsource:
    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrap_t[index]);
    tex_exactWidth[index] = info->width;
    tex_exactHeight[index] = info->height;
+   /* the sizes are uniforms: update them for the next draw */
+   need_to_compile = 1;
 }
 
 
@@ -414,6 +417,7 @@ void grTexFilterClampMode(
       int32_t magfilter_mode
       )
 {
+   glitch64_flush();
    unsigned active_texindex = GL_TEXTURE1;
    unsigned index = 1;
 

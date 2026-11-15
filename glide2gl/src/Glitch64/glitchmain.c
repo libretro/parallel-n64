@@ -125,6 +125,7 @@ uint32_t grSstWinOpen(void)
 
 int32_t grSstWinClose(uint32_t context)
 {
+   glitch64_flush();
    if (glide64_frameBuffer)
       free(glide64_frameBuffer);
 
@@ -159,6 +160,7 @@ int32_t grLfbLock( int32_t type, int32_t buffer, int32_t writeMode,
           int32_t origin, int32_t pixelPipeline,
           GrLfbInfo_t *info )
 {
+   glitch64_flush();
    info->origin        = origin;
    info->strideInBytes = width * ((writeMode == GR_LFBWRITEMODE_888) ? 4 : 2);
    info->lfbPtr        = glide64_frameBuffer;
@@ -223,6 +225,7 @@ int grLfbReadScaledInit(void)
 const uint8_t *grLfbReadScaled(int32_t x, int32_t y, int32_t w, int32_t h,
       uint32_t dw, uint32_t dh, uint32_t *stride)
 {
+   glitch64_flush();
 #ifndef HAVE_OPENGLES2
    GLboolean scissor;
    if (!lfb_fbo || !buf || w <= 0 || h <= 0 || dw == 0 || dh == 0
@@ -251,6 +254,7 @@ const uint8_t *grLfbReadScaled(int32_t x, int32_t y, int32_t w, int32_t h,
 
 const uint8_t *grLfbReadRect(int32_t *x, int32_t *y, int32_t *w, int32_t *h, uint32_t *stride)
 {
+   glitch64_flush();
    int32_t x0 = *x < 0 ? 0 : *x;
    int32_t y0 = *y < 0 ? 0 : *y;
    int32_t x1 = *x + *w > width  ? width  : *x + *w;
@@ -278,18 +282,8 @@ grLfbWriteRegion( int32_t dst_buffer,
    unsigned int i,j;
    uint16_t *frameBuffer = (uint16_t*)src_data;
 
-   if(dst_buffer == GR_BUFFER_AUXBUFFER)
-   {
-      /* depth images are not drawn: the depth buffer is cleared */
-      glEnable(GL_DEPTH_TEST);
-      glDepthFunc(GL_ALWAYS);
-
-      //glDrawBuffer(GL_BACK);
-      glClear( GL_DEPTH_BUFFER_BIT );
-      glDepthMask(1);
-      //glDrawPixels(src_width, src_height, GL_DEPTH_COMPONENT, GL_FLOAT, buf);
-   }
-   else
+   /* (depth images go through grDepthImageWrite) */
+   if(dst_buffer != GR_BUFFER_AUXBUFFER)
    {
       /* An LFB write bypasses the pixel pipeline: the frame's clip window,
        * cull mode, depth test and blending do not apply to it. */
@@ -484,17 +478,25 @@ void grDepthImageWrite(const void *words, uint32_t w, uint32_t h,
 
 void grBufferSwap(uint32_t swap_interval)
 {
+   glitch64_flush();
    retro_return(true);
 }
 
 void grClipWindow(uint32_t minx, uint32_t miny, uint32_t maxx, uint32_t maxy)
 {
+   static uint32_t last[4] = { ~0u, ~0u, ~0u, ~0u };
+   if (minx == last[0] && miny == last[1] && maxx == last[2] && maxy == last[3]
+         && glIsEnabled(GL_SCISSOR_TEST))
+      return;
+   last[0] = minx; last[1] = miny; last[2] = maxx; last[3] = maxy;
+   glitch64_flush();
    glScissor(minx, height - maxy, maxx - minx, maxy - miny);
    glEnable(GL_SCISSOR_TEST);
 }
 
 void grBufferClear(uint32_t color, uint32_t alpha, uint32_t depth)
 {
+   glitch64_flush();
    glClearColor(((color >> 24) & 0xFF) / 255.0f,
          ((color >> 16) & 0xFF) / 255.0f,
          (color         & 0xFF) / 255.0f,
@@ -505,5 +507,6 @@ void grBufferClear(uint32_t color, uint32_t alpha, uint32_t depth)
 
 void grColorMask(bool rgb, bool a)
 {
+   glitch64_flush();
    glColorMask(rgb, rgb, rgb, a);
 }
