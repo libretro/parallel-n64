@@ -474,7 +474,7 @@ static void run(const float *level)
       scale[k] = SCALE[k] / 255.0f;
    }
    grN64Constants(prim, env, consts, level, center, scale);
-   grFogMode(GR_FOG_DISABLE, 0);
+   grFogMode(GR_FOG_DISABLE);
    lod_frac = LOD;
 
    /* every input in every slot of the cycle run; the other slots of it
@@ -584,7 +584,7 @@ int main(void)
          fprintf(stderr, "mode %d: the checks drew with %d programs\n", mode, n_programs);
          failures++;
       }
-      grSstWinClose(0);
+      grSstWinClose();
    }
    if (failures)
    {

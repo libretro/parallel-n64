@@ -254,10 +254,7 @@ int glide64InitGfx(void)
    if (settings.frame_buffer & (fb_emulation | fb_ref))
       grLfbReadScaledInit();
 
-   // get the # of TMUs available
-   voodoo.tex_max_addr = grTexMaxAddress(GR_TMU0);
-
-   grStipplePattern(settings.stipple_pattern);
+   voodoo.tex_max_addr = TMU_SIZE * 2 - 1;
 
    InitCombine();
 
@@ -270,7 +267,7 @@ int glide64InitGfx(void)
 
    grDepthBufferMode (GR_DEPTHBUFFER_ZBUFFER);
    grDepthBufferFunction(GR_CMP_LESS);
-   grDepthMask(FXTRUE);
+   grDepthMask(true);
 
    settings.res_x = settings.scr_res_x;
    settings.res_y = settings.scr_res_y;
@@ -286,7 +283,7 @@ void ReleaseGfx(void)
 {
    VLOG("ReleaseGfx ()\n");
 
-   grSstWinClose (0);
+   grSstWinClose();
 
    rdp_free();
 }
@@ -304,13 +301,7 @@ void glide64ReadScreen2(void *dest, int *width, int *height, int front)
    if (!line)
       return;
 
-   info.size = sizeof(GrLfbInfo_t);
-   if (grLfbLock (GR_LFB_READ_ONLY,
-            GR_BUFFER_FRONTBUFFER,
-            GR_LFBWRITEMODE_888,
-            GR_ORIGIN_UPPER_LEFT,
-            FXFALSE,
-            &info))
+   if (grLfbLock(GR_LFBWRITEMODE_888, &info))
    {
       uint32_t y, x;
       // Copy the screen, let's hope this works.
@@ -326,9 +317,6 @@ void glide64ReadScreen2(void *dest, int *width, int *height, int front)
          }
          line += settings.res_x * 3;
       }
-
-      // Unlock the frontbuffer
-      grLfbUnlock (GR_LFB_READ_ONLY, GR_BUFFER_FRONTBUFFER);
    }
 }
 
@@ -683,17 +671,17 @@ void newSwapBuffers(void)
    g_gdp.flags |= UPDATE_SCISSOR | UPDATE_COMBINE | UPDATE_ZBUF_ENABLED | UPDATE_CULL_MODE;
    grClipWindow (0, 0, settings.scr_res_x, settings.scr_res_y);
    grDepthBufferFunction (GR_CMP_ALWAYS);
-   grDepthMask (FXFALSE);
+   grDepthMask (false);
 
    if (settings.frame_buffer & fb_read_back_to_screen)
       DrawWholeFrameBufferToScreen();
 
    {
-      grBufferSwap (settings.vsync);
+      grBufferSwap();
 
       if  (settings.buff_clear || (settings.hacks & hack_PPL && settings.ucode == 6))
       {
-         grDepthMask (FXTRUE);
+         grDepthMask (true);
          grBufferClear (0, 0, 0xFFFF);
       }
    }

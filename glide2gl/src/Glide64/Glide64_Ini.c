@@ -93,7 +93,6 @@ void ReadSpecialSettings (const char * name)
       settings.increase_texrect_edge = 0;
       settings.decrease_fillrect_edge = 0;
       settings.stipple_mode = 2;
-      settings.stipple_pattern = 0x3E0F83E0;
       settings.clip_zmin = 0;
       settings.adjust_aspect = 1;
       settings.correct_viewport = 0;
@@ -1708,7 +1707,6 @@ void ReadSpecialSettings (const char * name)
    {
       settings.depth_bias = 30;
       settings.stipple_mode = 1;
-      settings.stipple_pattern = (uint32_t)4286595040UL;
       //depthmode = 1
 #ifndef HAVE_HWFBE
       read_always = 1;

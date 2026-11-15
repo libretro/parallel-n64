@@ -17,17 +17,6 @@ extern "C" {
 */
 
 /*
-** fundamental types
-*/
-#define FXTRUE    1
-#define FXFALSE   0
-
-/*
-** helper macros
-*/
-#define FXBIT( i )    ( 1L << (i) )
-
-/*
 ** -----------------------------------------------------------------------
 ** CONSTANTS AND TYPES
 ** -----------------------------------------------------------------------
@@ -40,9 +29,6 @@ extern "C" {
 #define GR_BLEND_ONE GL_ONE
 #define GR_BLEND_ONE_MINUS_SRC_ALPHA GL_ONE_MINUS_SRC_ALPHA
 
-#define GR_BUFFER_FRONTBUFFER   0x0
-#define GR_BUFFER_BACKBUFFER    0x1
-#define GR_BUFFER_AUXBUFFER     0x2
 
 #define GR_CMP_LESS     GL_LESS
 #define GR_CMP_LEQUAL   GL_LEQUAL
@@ -62,20 +48,15 @@ extern "C" {
 #define GR_FOG_DISABLE                     0x0
 #define GR_FOG_WITH_TABLE_ON_FOGCOORD_EXT  0x2
 
-#define GR_LFB_READ_ONLY  0x00
-
 #define GR_LFBWRITEMODE_565        0x0 /* RGB:RGB */
 #define GR_LFBWRITEMODE_555        0x1 /* RGB:RGB */
 #define GR_LFBWRITEMODE_888        0x4 /* RGB */
 
-#define GR_ORIGIN_UPPER_LEFT    0x0
-
+/* what grLfbLock gives: the frame, upper-left origin, in writeMode */
 typedef struct {
-    int                size;
     void               *lfbPtr;
-    uint32_t              strideInBytes;        
+    uint32_t              strideInBytes;
     int32_t   writeMode;
-    int32_t origin;
 } GrLfbInfo_t;
 
 #define GR_TEXTURECLAMP_WRAP        GL_REPEAT
@@ -115,7 +96,6 @@ typedef struct {
     void              *data;
 } GrTexInfo;
 
-#define GR_LFB_SRC_FMT_555          0x01
 
 /*
 ** -----------------------------------------------------------------------
@@ -131,15 +111,14 @@ void grDrawVertexArrayContiguous(uint32_t mode, uint32_t Count, void *pointers);
 
 void grBufferClear(uint32_t color, uint32_t alpha, uint32_t depth);
 
-void grBufferSwap(uint32_t swap_interval);
+void grBufferSwap(void);
 
 /*
 ** SST routines
 */
 uint32_t grSstWinOpen(void);
 
- int32_t 
-grSstWinClose( uint32_t context );
+void grSstWinClose(void);
 
 /*
 ** Glide configuration and special effect maintenance functions
@@ -177,11 +156,9 @@ void grDepthBufferMode(int32_t mode);
 
 void grDepthMask(bool mask);
 
-void grFogMode( int32_t mode, uint32_t fogcolor );
+void grFogMode( int32_t mode );
 
 void grStippleMode( int32_t mode );
-
-void grStipplePattern( uint32_t mode );
 
 /*
 ** texture mapping control functions
@@ -191,7 +168,6 @@ uint32_t grTexCalcMemRequired(int width, int height, int32_t fmt);
 
 #define TMU_SIZE (8 * 2048 * 2048)
 
-#define grTexMaxAddress(tmu) ((TMU_SIZE * 2) - 1)
 
 void grTexSource( int32_t tmu,
              uint32_t      startAddress,
@@ -210,20 +186,14 @@ void grTexFilterClampMode(
 ** linear frame buffer functions
 */
 
- int32_t 
-grLfbLock( int32_t type, int32_t buffer, int32_t writeMode,
-           int32_t origin, int32_t pixelPipeline, 
-           GrLfbInfo_t *info );
+/* the frame, read back in @writeMode (565, or 888 for screenshots) */
+bool grLfbLock(int32_t writeMode, GrLfbInfo_t *info);
 
-#define grLfbUnlock(type, buffer) (true)
-
- int32_t 
-grLfbWriteRegion( int32_t dst_buffer, 
-                  uint32_t dst_x, uint32_t dst_y, 
-                  uint32_t src_format, 
-                  uint32_t src_width, uint32_t src_height, 
-                  int32_t pixelPipeline,
-                  int32_t src_stride, void *src_data );
+/* a 555 image the CPU made, @src_stride bytes a row, put on the frame at
+ * (dst_x, dst_y) as it is: past the pixel pipeline */
+void grLfbWriteRegion(uint32_t dst_x, uint32_t dst_y,
+                  uint32_t src_width, uint32_t src_height,
+                  int32_t src_stride, void *src_data);
 
 /* An N64 depth image into the depth buffer, colour untouched: @words its
  * w x h 16-bit depth words as they lie in RDRAM, drawn over the window's

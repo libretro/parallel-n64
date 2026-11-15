@@ -855,7 +855,7 @@ static void glide64_z_compare(void)
 {
    int depthbias_level = 0;
    int depthbuf_func   = GR_CMP_ALWAYS;
-   int depthmask_val   = FXFALSE;
+   int depthmask_val   = false;
    g_gdp.flags ^= UPDATE_ZBUF_ENABLED;
 
    if (((rdp.flags & ZBUF_ENABLED) || ((g_gdp.other_modes.z_source_sel == G_ZS_PRIM) && (((gDP.otherMode.h & RDP_CYCLE_TYPE) >> 20) < G_CYC_COPY))))
@@ -885,7 +885,7 @@ static void glide64_z_compare(void)
       }
 
       if (rdp.flags & ZBUF_UPDATE)
-         depthmask_val = FXTRUE;
+         depthmask_val = true;
    }
 
    grDepthBiasLevel(depthbias_level);
@@ -1052,7 +1052,7 @@ void update(void)
       {
          if((gSP.fog.multiplier > 0) && (gDP.otherMode.c1_m1a==3 || gDP.otherMode.c1_m2a == 3 || gDP.otherMode.c2_m1a == 3 || gDP.otherMode.c2_m2a == 3))
          {
-            grFogMode (GR_FOG_WITH_TABLE_ON_FOGCOORD_EXT, g_gdp.fog_color.total);
+            grFogMode(GR_FOG_WITH_TABLE_ON_FOGCOORD_EXT);
             rdp.fog_mode = FOG_MODE_ENABLED;
             LRDP("fog enabled \n");
          }
@@ -1060,18 +1060,18 @@ void update(void)
          {
             LRDP("fog disabled in blender\n");
             rdp.fog_mode = FOG_MODE_DISABLED;
-            grFogMode (GR_FOG_DISABLE, g_gdp.fog_color.total);
+            grFogMode(GR_FOG_DISABLE);
          }
       }
       else if (blender == 0xc410 || blender == 0xc411 || blender == 0xf500)
       {
-         grFogMode (GR_FOG_WITH_TABLE_ON_FOGCOORD_EXT, g_gdp.fog_color.total);
+         grFogMode(GR_FOG_WITH_TABLE_ON_FOGCOORD_EXT);
          rdp.fog_mode = FOG_MODE_BLEND;
          LRDP("fog blend \n");
       }
       else if (blender == 0x04d1)
       {
-         grFogMode (GR_FOG_WITH_TABLE_ON_FOGCOORD_EXT, g_gdp.fog_color.total);
+         grFogMode(GR_FOG_WITH_TABLE_ON_FOGCOORD_EXT);
          rdp.fog_mode = FOG_MODE_BLEND_INVERSE;
          LRDP("fog blend \n");
       }
@@ -1079,7 +1079,7 @@ void update(void)
       {
          LRDP("fog disabled\n");
          rdp.fog_mode = FOG_MODE_DISABLED;
-         grFogMode (GR_FOG_DISABLE, g_gdp.fog_color.total);
+         grFogMode(GR_FOG_DISABLE);
       }
    }
 

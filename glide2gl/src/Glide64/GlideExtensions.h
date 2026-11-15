@@ -18,7 +18,6 @@
 * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
-#define GR_BUFFER_TEXTUREBUFFER_EXT       0x6
 
 #ifndef GR_PIXFMT_RGB_565
 #define GR_PIXFMT_RGB_565                 0x03

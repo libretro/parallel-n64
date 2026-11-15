@@ -204,7 +204,6 @@ typedef struct
    int increase_texrect_edge; // add 1 to lower right corner coordinates of texrect
    int decrease_fillrect_edge; // sub 1 from lower right corner coordinates of fillrect
    int stipple_mode;  //used for dithered alpha emulation
-   uint32_t stipple_pattern; //used for dithered alpha emulation
    int force_microcheck; //check microcode each frame, for mixed F3DEX-S2DEX games
    int force_quad3d; //force 0xb5 command to be quad, not line 3d
    int clip_zmin; //enable near z clipping

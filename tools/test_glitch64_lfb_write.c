@@ -164,8 +164,7 @@ static int run(unsigned dst_x, unsigned dst_y, unsigned w, unsigned h)
    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
    glEnable(GL_SCISSOR_TEST);
 
-   grLfbWriteRegion(GR_BUFFER_BACKBUFFER, dst_x, dst_y, GR_LFB_SRC_FMT_555,
-         w, h, FXFALSE, (int32_t)(w * 2), image);
+   grLfbWriteRegion(dst_x, dst_y, w, h, (int32_t)(w * 2), image);
 
    /* the clip window is the frame's again */
    assert(scissor_is(8, 8));
@@ -219,7 +218,7 @@ int main(void)
    failures += run(101, 57, 37, 23);
    failures += run(600, 470, 40, 10);
 
-   grSstWinClose(0);
+   grSstWinClose();
    if (failures)
    {
       fprintf(stderr, "%d of 3 writes wrong\n", failures);

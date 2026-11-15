@@ -343,7 +343,7 @@ int main(void)
       for (s = 0; s < sizeof(sizes) / sizeof(sizes[0]); s++)
          failures += run((int)f, sizes[s][0], sizes[s][1]);
 
-   grSstWinClose(0);
+   grSstWinClose();
    if (failures)
    {
       fprintf(stderr, "%d uploads read back wrong\n", failures);

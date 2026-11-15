@@ -68,7 +68,7 @@ uint32_t grSstWinOpen(void)
    struct retro_variable var = { "parallel-n64-screensize", 0 };
 
    if (glide64_frameBuffer)
-      grSstWinClose(0);
+      grSstWinClose();
 
    ret = environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var);
 
@@ -130,7 +130,7 @@ uint32_t grSstWinOpen(void)
    return 1;
 }
 
-int32_t grSstWinClose(uint32_t context)
+void grSstWinClose(void)
 {
    if (glitch64_vulkan)
    {
@@ -138,7 +138,7 @@ int32_t grSstWinClose(uint32_t context)
       if (glide64_frameBuffer)
          free(glide64_frameBuffer);
       glide64_frameBuffer = NULL;
-      return FXTRUE;
+      return;
    }
    glitch64_flush();
    if (glide64_frameBuffer)
@@ -165,18 +165,13 @@ int32_t grSstWinClose(uint32_t context)
    free_geometry();
    free_combiners();
    free_textures();
-
-   return FXTRUE;
 }
 
 // frame buffer
 
-int32_t grLfbLock( int32_t type, int32_t buffer, int32_t writeMode,
-          int32_t origin, int32_t pixelPipeline,
-          GrLfbInfo_t *info )
+bool grLfbLock(int32_t writeMode, GrLfbInfo_t *info)
 {
    glitch64_flush();
-   info->origin        = origin;
    info->strideInBytes = width * ((writeMode == GR_LFBWRITEMODE_888) ? 4 : 2);
    info->lfbPtr        = glide64_frameBuffer;
    info->writeMode     = writeMode;
@@ -199,7 +194,7 @@ int32_t grLfbLock( int32_t type, int32_t buffer, int32_t writeMode,
       }
    }
 
-   return FXTRUE;
+   return true;
 }
 
 int grLfbReadScaledInit(void)
@@ -290,13 +285,9 @@ const uint8_t *grLfbReadRect(int32_t *x, int32_t *y, int32_t *w, int32_t *h, uin
    return buf;
 }
 
-int32_t
-grLfbWriteRegion( int32_t dst_buffer,
-      uint32_t dst_x, uint32_t dst_y,
-      uint32_t src_format,
+void grLfbWriteRegion(uint32_t dst_x, uint32_t dst_y,
       uint32_t src_width, uint32_t src_height,
-      int32_t pixelPipeline,
-      int32_t src_stride, void *src_data )
+      int32_t src_stride, void *src_data)
 {
    unsigned int i,j;
    uint16_t *frameBuffer = (uint16_t*)src_data;
@@ -304,11 +295,9 @@ grLfbWriteRegion( int32_t dst_buffer,
    /* (depth images go through grDepthImageWrite) */
    if (glitch64_vulkan)
    {
-      if (dst_buffer != GR_BUFFER_AUXBUFFER)
-         vk_grLfbWriteRegion(dst_x, dst_y, src_width, src_height, src_stride, src_data);
-      return FXTRUE;
+      vk_grLfbWriteRegion(dst_x, dst_y, src_width, src_height, src_stride, src_data);
+      return;
    }
-   if(dst_buffer != GR_BUFFER_AUXBUFFER)
    {
       /* An LFB write bypasses the pixel pipeline: the frame's clip window,
        * cull mode, depth test and blending do not apply to it. */
@@ -328,7 +317,7 @@ grLfbWriteRegion( int32_t dst_buffer,
       vbo_disable();
       glActiveTexture(GL_TEXTURE0);
 
-      /* src_format is GR_LFBWRITEMODE_555 */
+      /* the image is 555 */
       for (j=0; j<src_height; j++)
       {
          for (i=0; i<src_width; i++)
@@ -398,8 +387,6 @@ grLfbWriteRegion( int32_t dst_buffer,
       if (blend)
          glEnable(GL_BLEND);
    }
-
-   return FXTRUE;
 }
 
 void grDepthImageWrite(const void *words, uint32_t w, uint32_t h,
@@ -502,7 +489,7 @@ void grDepthImageWrite(const void *words, uint32_t w, uint32_t h,
    glDepthMask(mask != 0);
 }
 
-void grBufferSwap(uint32_t swap_interval)
+void grBufferSwap(void)
 {
    if (glitch64_vulkan)
    {

@@ -1019,7 +1019,7 @@ static const uint8_t *read_rect(unsigned fbo, int x, int y, unsigned w, unsigned
    return vk.buf;
 }
 
-int32_t vk_grLfbLock(int32_t writeMode, void *info_)
+bool vk_grLfbLock(int32_t writeMode, void *info_)
 {
    GrLfbInfo_t *info = (GrLfbInfo_t*)info_;
    vk_flush();
@@ -1031,7 +1031,7 @@ int32_t vk_grLfbLock(int32_t writeMode, void *info_)
       const uint8_t *b = read_rect(vk.fbo, 0, 0, (unsigned)width, (unsigned)height);
       int i, j;
       if (!b)
-         return FXTRUE;
+         return true;
       for (j = 0; j < height; j++)
          for (i = 0; i < width; i++)
          {
@@ -1040,7 +1040,7 @@ int32_t vk_grLfbLock(int32_t writeMode, void *info_)
                (uint16_t)(((p[0] >> 3) << 11) | ((p[1] >> 2) << 5) | (p[2] >> 3));
          }
    }
-   return FXTRUE;
+   return true;
 }
 
 int vk_grLfbReadScaledInit(void)

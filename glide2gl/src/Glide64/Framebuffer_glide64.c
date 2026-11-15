@@ -470,7 +470,7 @@ static int SetupFBtoScreenCombiner(uint32_t texture_size, uint32_t opaque)
    }
    grDepthBufferFunction (GR_CMP_ALWAYS);
    grCullMode(GR_CULL_DISABLE);
-   grDepthMask (FXFALSE);
+   grDepthMask (false);
    g_gdp.flags |= UPDATE_COMBINE | UPDATE_ZBUF_ENABLED | UPDATE_CULL_MODE;
    return tmu;
 }
@@ -919,7 +919,7 @@ void DrawWholeFrameBufferToScreen(void)
           (gDP.colorImage.width * gDP.colorImage.height) << g_gdp.fb_size >> 1);
 }
 
-void CopyFrameBuffer(int32_t buffer)
+void CopyFrameBuffer(void)
 {
    uint32_t height = 0;
    uint32_t width  = gDP.colorImage.width;//*gfx_info.VI_WIDTH_REG;

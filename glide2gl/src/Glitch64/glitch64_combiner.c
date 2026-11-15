@@ -1174,7 +1174,7 @@ void grAlphaTestFunction( int32_t function, uint8_t value, int set_alpha_ref)
    need_to_compile = 1;
 }
 
-void grFogMode( int32_t mode, uint32_t fogcolor)
+void grFogMode( int32_t mode )
 {
    GLITCH64_VK(vk_grFogMode(mode));
    if (fog_enabled == mode)
@@ -1182,10 +1182,6 @@ void grFogMode( int32_t mode, uint32_t fogcolor)
    glitch64_flush();
    fog_enabled = mode;
    need_to_compile = 1;
-}
-
-void grStipplePattern(uint32_t stipple)
-{
 }
 
 void grStippleMode( int32_t mode )

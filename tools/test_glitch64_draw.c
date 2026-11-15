@@ -233,13 +233,13 @@ static int check_fog_screen_linear(uint8_t *window)
    }
    g_gdp.fog_color.r = g_gdp.fog_color.g = g_gdp.fog_color.b = 0;
    guFogGenerateLinear(0.0f, 255.0f);
-   grFogMode(GR_FOG_WITH_TABLE_ON_FOGCOORD_EXT, 0);
+   grFogMode(GR_FOG_WITH_TABLE_ON_FOGCOORD_EXT);
    glDisable(GL_SCISSOR_TEST);
    glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
    glEnable(GL_SCISSOR_TEST);
    grDrawVertexArrayContiguous(GR_TRIANGLES, 3, tri);
-   grFogMode(GR_FOG_DISABLE, 0);
+   grFogMode(GR_FOG_DISABLE);
    read_window(window);
 
    for (i = 0; i < sizeof(probes) / sizeof(probes[0]); i++)
@@ -278,7 +278,7 @@ int main(void)
    grClipWindow(0, 0, WIN_W, WIN_H);
    grCullMode(GR_CULL_DISABLE);
    grDepthBufferFunction(GR_CMP_ALWAYS);
-   grDepthMask(FXFALSE);
+   grDepthMask(false);
    {
       /* the shade: (0 - 0) * 0 + SHADE, alpha 1 */
       glitch64_n64_combiner c;
@@ -325,7 +325,7 @@ int main(void)
    failures += check_shade_screen_linear(window);
    failures += check_fog_screen_linear(window);
 
-   grSstWinClose(0);
+   grSstWinClose();
    free(window);
    if (failures)
       return 1;

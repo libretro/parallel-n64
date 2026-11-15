@@ -237,7 +237,7 @@ static void clear(void)
    glDisable(GL_SCISSOR_TEST);
    glClearColor(64.0f / 255.0f, 128.0f / 255.0f, 192.0f / 255.0f, 1.0f);
    /* through Glitch64, which keeps what it last set */
-   grDepthMask(FXTRUE);
+   grDepthMask(true);
    glClearDepth(1.0);
    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 }
@@ -309,12 +309,12 @@ int main(void)
    grClipWindow(0, 0, WIN_W, WIN_H);
    grCullMode(GR_CULL_DISABLE);
    grDepthBufferFunction(GR_CMP_ALWAYS);
-   grDepthMask(FXFALSE);
+   grDepthMask(false);
    fan(0.0f);
    clear();
    grClipWindow(0, 0, WIN_W, WIN_H);
    grDepthBufferFunction(GR_CMP_LESS);
-   grDepthMask(FXFALSE);
+   grDepthMask(false);
    glEnable(GL_DEPTH_TEST);
    glCullFace(GL_FRONT);
    glEnable(GL_CULL_FACE);
@@ -387,7 +387,7 @@ int main(void)
    grDepthBufferFunction(GR_CMP_ALWAYS);
    for (x = 0; x < 16 * 16; x++)
       lfb[x] = 0x001F;
-   grLfbWriteRegion(GR_BUFFER_BACKBUFFER, 0, 0, GR_LFB_SRC_FMT_555, 16, 16, FXFALSE, 32, lfb);
+   grLfbWriteRegion(0, 0, 16, 16, 32, lfb);
    fan(0.0f);
    read_window(window);
    if (at(window, 8, 8) != 0xFF0000 || at(window, 320, 240) != 0xFF0000)
@@ -397,7 +397,7 @@ int main(void)
       failures++;
    }
 
-   grSstWinClose(0);
+   grSstWinClose();
    free(window);
    free(rdram);
    if (failures)

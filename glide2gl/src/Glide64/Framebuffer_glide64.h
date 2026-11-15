@@ -91,7 +91,7 @@ void copyWhiteToRDRAM(void);
 
 void DrawPartFrameBufferToScreen(void);
 void DrawWholeFrameBufferToScreen(void);
-void CopyFrameBuffer (int32_t buffer);
+void CopyFrameBuffer(void);
 
 void drawViRegBG(void);
 

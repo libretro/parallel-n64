@@ -220,7 +220,7 @@ int main(void)
    }
    assert(glGetError() == GL_NO_ERROR);
 
-   grSstWinClose(0);
+   grSstWinClose();
    if (failures)
       return 1;
    printf("test_glitch64_readback: ok\n");

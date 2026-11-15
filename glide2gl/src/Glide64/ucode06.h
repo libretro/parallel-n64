@@ -668,7 +668,7 @@ static void uc6_draw_polygons (VERTEX v[4])
    g_gdp.flags |= UPDATE_ZBUF_ENABLED | UPDATE_VIEWPORT;
 
    if (settings.fog && (rdp.flags & FOG_ENABLED))
-      grFogMode (GR_FOG_WITH_TABLE_ON_FOGCOORD_EXT, g_gdp.fog_color.total);
+      grFogMode(GR_FOG_WITH_TABLE_ON_FOGCOORD_EXT);
 }
 
 static void uc6_read_object_data (DRAWOBJECT *d)
@@ -1355,7 +1355,7 @@ static void uc6_sprite2d(uint32_t w0, uint32_t w1)
          g_gdp.flags |= UPDATE_ZBUF_ENABLED | UPDATE_VIEWPORT;
 
          if (settings.fog && (rdp.flags & FOG_ENABLED))
-            grFogMode (GR_FOG_WITH_TABLE_ON_FOGCOORD_EXT, g_gdp.fog_color.total);
+            grFogMode(GR_FOG_WITH_TABLE_ON_FOGCOORD_EXT);
 
       }
       a    = __RSP.PC[__RSP.PCi] & BMASK;
