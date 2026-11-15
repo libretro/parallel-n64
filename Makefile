@@ -1265,7 +1265,7 @@ lrhost_gl$(EXE_EXT): tools/lrhost.c tools/lrhost_gl.h $(LIBRETRO_COMM_DIR)/featu
 # Glitch64 run on the GL the host gives it (headless EGL in the GL lane),
 # built from the renderer's own sources, with glsm, as the core is: its LFB
 # write, and its texture uploads for desktop GL and for GLES 2
-GLITCH64_TEST_SRCS := $(VIDEODIR_GLIDE)/Glitch64/glitchmain.c $(VIDEODIR_GLIDE)/Glitch64/glitch64_combiner.c \
+GLITCH64_TEST_SRCS := $(VIDEODIR_GLIDE)/Glitch64/glitchmain.c $(VIDEODIR_GLIDE)/Glitch64/glitch64_combiner.c $(VIDEODIR_GLIDE)/Glitch64/glitch64_n64_combiner.c \
 	$(VIDEODIR_GLIDE)/Glitch64/geometry.c $(VIDEODIR_GLIDE)/Glitch64/glitch64_textures.c \
 	$(ROOT_DIR)/libretro/glsm/glsm.c $(LIBRETRO_COMM_DIR)/gfx/gl_capabilities.c $(LIBRETRO_COMM_DIR)/glsym/rglgen.c \
 	tools/glitch64_test_stubs.c
@@ -1280,6 +1280,12 @@ test_glitch64_lfb_write$(EXE_EXT): tools/test_glitch64_lfb_write.c $(GLITCH64_TE
 test_glitch64_draw$(EXE_EXT): tools/test_glitch64_draw.c $(GLITCH64_TEST_SRCS)
 	$(CC) $(GLITCH64_TEST_FLAGS) $(GLITCH64_GL_FLAGS) $< $(GLITCH64_TEST_SRCS) $(LIBRETRO_COMM_DIR)/glsym/glsym_gl.c \
 		-o $@ $(filter -fsanitize=%,$(LDFLAGS)) -lEGL -lGL -lm
+test_glitch64_n64_combiner$(EXE_EXT): tools/test_glitch64_n64_combiner.c $(GLITCH64_TEST_SRCS)
+	$(CC) $(GLITCH64_TEST_FLAGS) $(GLITCH64_GL_FLAGS) $< $(GLITCH64_TEST_SRCS) $(LIBRETRO_COMM_DIR)/glsym/glsym_gl.c \
+		-o $@ $(filter -fsanitize=%,$(LDFLAGS)) -lEGL -lGL -lm
+test_glitch64_n64_combiner_gles$(EXE_EXT): tools/test_glitch64_n64_combiner.c $(GLITCH64_TEST_SRCS)
+	$(CC) $(GLITCH64_TEST_FLAGS) $(GLITCH64_GLES_FLAGS) $< $(GLITCH64_TEST_SRCS) $(LIBRETRO_COMM_DIR)/glsym/glsym_es2.c \
+		-o $@ $(filter -fsanitize=%,$(LDFLAGS)) -lEGL -lGLESv2 -lm
 test_glitch64_depth_image$(EXE_EXT): tools/test_glitch64_depth_image.c $(GLITCH64_TEST_SRCS)
 	$(CC) $(GLITCH64_TEST_FLAGS) $(GLITCH64_GL_FLAGS) $< $(GLITCH64_TEST_SRCS) $(LIBRETRO_COMM_DIR)/glsym/glsym_gl.c \
 		-o $@ $(filter -fsanitize=%,$(LDFLAGS)) -lEGL -lGL -lm
@@ -1317,6 +1323,7 @@ test_glsm_state_gles$(EXE_EXT): tools/test_glsm_state.c $(GLSM_TEST_SRCS)
 
 GLITCH64_TESTS := test_glitch64_lfb_write$(EXE_EXT) test_glitch64_draw$(EXE_EXT) test_glitch64_readback$(EXE_EXT) test_glitch64_textures$(EXE_EXT) test_glitch64_textures_gles$(EXE_EXT) \
 	test_glitch64_depth_image$(EXE_EXT) test_glitch64_depth_image_gles$(EXE_EXT) \
+	test_glitch64_n64_combiner$(EXE_EXT) test_glitch64_n64_combiner_gles$(EXE_EXT) \
 	test_glsm_draw_target$(EXE_EXT) test_glsm_draw_target_gles$(EXE_EXT) test_glsm_state$(EXE_EXT) test_glsm_state_gles$(EXE_EXT)
 
 angrylion_replay$(EXE_EXT): tools/angrylion_replay.c $(ANGRYLION_TOOL_OBJS)

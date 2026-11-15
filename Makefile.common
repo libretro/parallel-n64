@@ -604,7 +604,7 @@ SOURCES_C += $(VIDEODIR_GLIDE)/Glide64/glide64_3dmath.c \
 				$(VIDEODIR_GLIDE)/Glide64/glide64_rdp.c
 
 # Glitch64
-SOURCES_C   += $(VIDEODIR_GLIDE)/Glitch64/glitch64_combiner.c \
+SOURCES_C   += $(VIDEODIR_GLIDE)/Glitch64/glitch64_combiner.c $(VIDEODIR_GLIDE)/Glitch64/glitch64_n64_combiner.c \
             $(VIDEODIR_GLIDE)/Glitch64/geometry.c \
             $(VIDEODIR_GLIDE)/Glitch64/glitchmain.c \
             $(VIDEODIR_GLIDE)/Glitch64/glitch64_textures.c

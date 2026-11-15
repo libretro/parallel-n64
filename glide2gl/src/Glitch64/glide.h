@@ -2,6 +2,7 @@
 #define __GLIDE_H__
 
 #define GL_GLEXT_PROTOTYPES
+#include "glitch64_n64_combiner.h"
 #include <boolean.h>
 #include <glsm/glsmsym.h>
 
@@ -419,6 +420,15 @@ void grColorMask(bool rgb, bool a);
 void grCullMode( int32_t mode );
 
 void grConstantColorValue( uint32_t value );
+
+/* The N64's combiner itself for the draws that follow, until a Glide
+ * combine call (glitch64_n64_combiner.h); and its inputs, each 0 to 1:
+ * prim and env colours, K4 K5 PRIM_LOD_FRAC and the CPU's LOD_FRACTION,
+ * the minimum and maximum levels with detail or sharpen and the noise
+ * seed, the key's centre and scale. */
+void grN64Combine(const glitch64_n64_combiner *c);
+void grN64Constants(const float prim[4], const float env[4], const float consts[4],
+      const float level[4], const float key_center[3], const float key_scale[3]);
 
 void grDepthBiasLevel( int32_t level );
 

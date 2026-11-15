@@ -461,7 +461,6 @@ int glide64InitiateGFX (GFX_INFO Gfx_Info)
 
    math_init ();
    TexCacheInit ();
-   CountCombine();
    if (fb_depth_render_enabled)
       ZLUT_init();
 

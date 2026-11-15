@@ -54,6 +54,9 @@ typedef struct _shader_program_key
    int dither_enabled;
    int three_point_filter0;
    int three_point_filter1;
+   /* the N64 combiner (glitch64_n64_key), or 0 for the Glide one */
+   uint32_t n64_key0;
+   uint32_t n64_key1;
    GLuint program_object;
    int texture0_location;
    int texture1_location;
@@ -69,6 +72,14 @@ typedef struct _shader_program_key
    int constant_color_location;
    int ccolor0_location;
    int ccolor1_location;
+
+   int n64Prim_location;
+   int n64Env_location;
+   int n64Const_location;
+   int n64Level_location;
+   int n64KeyCenter_location;
+   int n64KeyScale_location;
+   int fogAlpha_location;
 } shader_program_key;
 
 static int fct[4], source0[4], operand0[4], source1[4], operand1[4], source2[4], operand2[4];
@@ -96,6 +107,14 @@ static int chroma_other_color;
 static int chroma_other_alpha;
 static int dither_enabled;
 
+/* the N64 combiner the next draws run, 0 0 for the Glide one, and its
+ * inputs: prim, env, K4 K5 PRIM_LOD_FRAC LOD_FRACTION, the levels */
+static uint32_t n64_key[2];
+static float n64_values[4][4];
+static float n64_key_values[2][3];
+/* dFdx and dFdy, for LOD_FRACTION per pixel */
+static int n64_derivatives;
+
 float fogStart,fogEnd;
 
 int need_lambda[2];
@@ -117,6 +136,8 @@ static int c_combiner_ext = 0;
 static int a_combiner_ext = 0;
 
 static void init_depth_shader(void);
+static void n64_upload(const shader_program_key *prog);
+static void n64_leave(void);
 
 #if defined(HAVE_OPENGLES) // Desktop GL fix
 #define GLSL_VERSION "100"
@@ -153,6 +174,13 @@ SHADER_HEADER
 "uniform float lambda;          \n"
 "uniform vec3 fogColor;         \n"
 "uniform float alphaRef;        \n"
+"uniform vec4 n64Prim;          \n"
+"uniform vec4 n64Env;           \n"
+"uniform vec4 n64Const;         \n"
+"uniform vec4 n64Level;         \n"
+"uniform vec3 n64KeyCenter;     \n"
+"uniform vec3 n64KeyScale;      \n"
+"uniform float fogAlpha;        \n"
 "#define TEX0             texture2D(texture0, vTexCoord[0].xy) \n" \
 "#define TEX0_OFFSET(off) texture2D(texture0, vTexCoord[0].xy - off/exactSizes.xy) \n" \
 "#define TEX1             texture2D(texture1, vTexCoord[1].xy) \n" \
@@ -521,6 +549,13 @@ static void shader_find_uniforms(shader_program_key *shader)
    shader->lambda_location         = glGetUniformLocation(prog, "lambda");
    shader->fogColor_location       = glGetUniformLocation(prog, "fogColor");
    shader->alphaRef_location       = glGetUniformLocation(prog, "alphaRef");
+   shader->n64Prim_location        = glGetUniformLocation(prog, "n64Prim");
+   shader->n64Env_location         = glGetUniformLocation(prog, "n64Env");
+   shader->n64Const_location       = glGetUniformLocation(prog, "n64Const");
+   shader->n64Level_location       = glGetUniformLocation(prog, "n64Level");
+   shader->n64KeyCenter_location   = glGetUniformLocation(prog, "n64KeyCenter");
+   shader->n64KeyScale_location    = glGetUniformLocation(prog, "n64KeyScale");
+   shader->fogAlpha_location       = glGetUniformLocation(prog, "fogAlpha");
 }
 
 static void finish_shader_program_setup(shader_program_key *shader)
@@ -550,8 +585,8 @@ static void finish_shader_program_setup(shader_program_key *shader)
  * cannot be turned back into it. Written at the end of a session. */
 #define FRAGMENT_SHADER_SIZE (4096 * 2)
 #define SHADER_CACHE_SIZE    (4u * 1024u * 1024u)
-#define SHADER_CACHE_MAGIC   0x47324c47u
-#define SHADER_CACHE_FIELDS  11
+#define SHADER_CACHE_MAGIC   0x47324c48u
+#define SHADER_CACHE_FIELDS  13
 #define SHADER_CACHE_RECORD  ((SHADER_CACHE_FIELDS + 1) * sizeof(int32_t))
 
 static char   *cache_arena = NULL;
@@ -578,6 +613,8 @@ static void combiner_cache_key(const shader_program_key *shader, int32_t *fields
    fields[8]  = shader->dither_enabled;
    fields[9]  = shader->three_point_filter0;
    fields[10] = shader->three_point_filter1;
+   fields[11] = (int32_t)shader->n64_key0;
+   fields[12] = (int32_t)shader->n64_key1;
 }
 
 static void combiner_cache_record(const shader_program_key *shader)
@@ -642,6 +679,8 @@ static void combiner_cache_load(void)
          shader.dither_enabled      = fields[8];
          shader.three_point_filter0 = fields[9];
          shader.three_point_filter1 = fields[10];
+         shader.n64_key0            = (uint32_t)fields[11];
+         shader.n64_key1            = (uint32_t)fields[12];
 
          memcpy(fragment_shader, p + pos + SHADER_CACHE_RECORD, len);
          fragment_shader[len] = '\0';
@@ -690,6 +729,15 @@ void init_combiner(void)
    current_shader     = NULL;
    fragment_shader    = (char*)malloc(FRAGMENT_SHADER_SIZE);
    need_to_compile    = true;
+   n64_key[0] = n64_key[1] = 0;
+#if defined(HAVE_OPENGLES)
+   {
+      const char *ext = (const char*)glGetString(GL_EXTENSIONS);
+      n64_derivatives = ext && strstr(ext, "GL_OES_standard_derivatives") != NULL;
+   }
+#else
+   n64_derivatives = 1;
+#endif
 
    /* default shader */
    memset(&shader, 0, sizeof(shader));
@@ -765,6 +813,17 @@ static void compile_chroma_shader(void)
 }
 
 
+static void n64_upload(const shader_program_key *prog)
+{
+   glUniform4fv(prog->n64Prim_location, 1, n64_values[0]);
+   glUniform4fv(prog->n64Env_location, 1, n64_values[1]);
+   glUniform4fv(prog->n64Const_location, 1, n64_values[2]);
+   glUniform4fv(prog->n64Level_location, 1, n64_values[3]);
+   glUniform3fv(prog->n64KeyCenter_location, 1, n64_key_values[0]);
+   glUniform3fv(prog->n64KeyScale_location, 1, n64_key_values[1]);
+   glUniform1f(prog->fogAlpha_location, g_gdp.fog_color.a / 255.0f);
+}
+
 static void update_uniforms(const shader_program_key *prog)
 {
    GLfloat v0, v2;
@@ -812,6 +871,9 @@ static void update_uniforms(const shader_program_key *prog)
    glUniform4f(prog->chroma_color_location, chroma_color[0], chroma_color[1],
          chroma_color[2], chroma_color[3]);
 
+   if (prog->n64_key1)
+      n64_upload(prog);
+
    set_lambda();
 }
 
@@ -835,7 +897,9 @@ void compile_shader(void)
             program->chroma_enabled == chroma_enabled &&
             program->dither_enabled == dither_enabled &&
             program->three_point_filter0 == three_point_filter[0] &&
-            program->three_point_filter1 == three_point_filter[1])
+            program->three_point_filter1 == three_point_filter[1] &&
+            program->n64_key0 == n64_key[0] &&
+            program->n64_key1 == n64_key[1])
       {
          use_shader_program(program);
          update_uniforms(program);
@@ -862,6 +926,8 @@ void compile_shader(void)
    shader.dither_enabled        = dither_enabled;
    shader.three_point_filter0   = three_point_filter[0];
    shader.three_point_filter1   = three_point_filter[1];
+   shader.n64_key0              = n64_key[0];
+   shader.n64_key1              = n64_key[1];
    shader.program_object        = 0;
    shader.texture0_location     = 0;
    shader.texture1_location     = 0;
@@ -877,6 +943,29 @@ void compile_shader(void)
    shader.ccolor0_location      = 0;
    shader.ccolor1_location      = 0;
 
+   if (n64_key[1])
+   {
+      glitch64_n64_combiner n64;
+      glitch64_n64_from_key(n64_key, &n64);
+#if defined(HAVE_OPENGLES)
+      if (n64.flags & GLITCH64_N64_LOD)
+      {
+         /* the extension goes straight after #version */
+         strcpy(fragment_shader, SHADER_HEADER);
+         strcat(fragment_shader, "#extension GL_OES_standard_derivatives : enable\n");
+         strcat(fragment_shader, fragment_shader_header + strlen(SHADER_HEADER));
+      }
+      else
+#endif
+         strcpy(fragment_shader, fragment_shader_header);
+      if (dither_enabled)
+         strcat(fragment_shader, fragment_shader_dither);
+      strcat(fragment_shader, three_point_filter[0] ? fragment_shader_readtex0color_3point : fragment_shader_readtex0color);
+      strcat(fragment_shader, three_point_filter[1] ? fragment_shader_readtex1color_3point : fragment_shader_readtex1color);
+      glitch64_n64_fragment(&n64, fragment_shader, FRAGMENT_SHADER_SIZE);
+   }
+   else
+   {
    strcpy(fragment_shader, fragment_shader_header);
 
    if (dither_enabled)
@@ -888,6 +977,7 @@ void compile_shader(void)
    strcat(fragment_shader, fragment_shader_texture1);
    strcat(fragment_shader, fragment_shader_color_combiner);
    strcat(fragment_shader, fragment_shader_alpha_combiner);
+   }
 
    if (fog_enabled)
       strcat(fragment_shader, fragment_shader_fog);
@@ -1056,6 +1146,44 @@ void set_lambda(void)
    glUniform1f(current_shader->lambda_location, lambda);
 }
 
+/* back to the Glide combiner, for a draw of Glide64's own */
+static void n64_leave(void)
+{
+   if (n64_key[1])
+   {
+      n64_key[0] = n64_key[1] = 0;
+      need_to_compile = 1;
+   }
+}
+
+void grN64Combine(const glitch64_n64_combiner *c)
+{
+   glitch64_n64_combiner m = *c;
+   uint32_t key[2];
+   if (!n64_derivatives)
+      m.flags &= ~GLITCH64_N64_LOD;
+   glitch64_n64_key(&m, key);
+   if (key[0] != n64_key[0] || key[1] != n64_key[1])
+   {
+      n64_key[0] = key[0];
+      n64_key[1] = key[1];
+      need_to_compile = 1;
+   }
+}
+
+void grN64Constants(const float prim[4], const float env[4], const float consts[4],
+      const float level[4], const float key_center[3], const float key_scale[3])
+{
+   memcpy(n64_values[0], prim, sizeof(n64_values[0]));
+   memcpy(n64_values[1], env, sizeof(n64_values[1]));
+   memcpy(n64_values[2], consts, sizeof(n64_values[2]));
+   memcpy(n64_values[3], level, sizeof(n64_values[3]));
+   memcpy(n64_key_values[0], key_center, sizeof(n64_key_values[0]));
+   memcpy(n64_key_values[1], key_scale, sizeof(n64_key_values[1]));
+   if (!need_to_compile && current_shader && current_shader->n64_key1)
+      n64_upload(current_shader);
+}
+
 void grConstantColorValue( uint32_t value )
 {
    texture_env_color[0] = ((value >> 24) & 0xFF) / 255.0f;
@@ -1147,6 +1275,7 @@ void grColorCombine(
       int32_t local, int32_t other,
       int32_t invert )
 {
+   n64_leave();
    static int last_function = 0;
    static int last_factor = 0;
    static int last_local = 0;
@@ -1310,6 +1439,7 @@ void grAlphaCombine(
       int32_t invert
       )
 {
+   n64_leave();
    static int last_function = 0;
    static int last_factor = 0;
    static int last_local = 0;
@@ -1889,6 +2019,7 @@ void  grColorCombineExt(uint32_t a, uint32_t a_mode,
       uint32_t d, int32_t d_invert,
       uint32_t shift, int32_t invert)
 {
+   n64_leave();
    color_combiner_key = 0x80000000 | (a & 0x1F) | ((a_mode & 3) << 5) |
       ((b & 0x1F) << 7) | ((b_mode & 3) << 12) |
       ((c & 0x1F) << 14) | ((c_invert & 1) << 19) |
@@ -2060,6 +2191,7 @@ void grAlphaCombineExt(uint32_t a, uint32_t a_mode,
       uint32_t d, int32_t d_invert,
       uint32_t shift, int32_t invert)
 {
+   n64_leave();
    alpha_combiner_key = 0x80000000 | (a & 0x1F) | ((a_mode & 3) << 5) |
       ((b & 0x1F) << 7) | ((b_mode & 3) << 12) |
       ((c & 0x1F) << 14) | ((c_invert & 1) << 19) |

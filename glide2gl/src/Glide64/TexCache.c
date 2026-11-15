@@ -392,244 +392,38 @@ static void GetTexInfo (int id, int tile)
    }
 }
 
-#define TMUMODE_NORMAL		0
-#define TMUMODE_PASSTHRU	1
-#define TMUMODE_NONE		2
 
 int SwapTextureBuffer(void); //forward decl
 
 // Does texture loading after combiner is set
 void TexCache(void)
 {
-   int i, tmu_0_mode, tmu_1_mode, tmu_0, tmu_1;
+   int i, tmu_0, tmu_1;
 
    if (rdp.tex & 1)
       GetTexInfo (0, rdp.cur_tile);
    if (rdp.tex & 2)
       GetTexInfo (1, rdp.cur_tile+1);
 
-   tmu_0_mode = 0;
-   tmu_1_mode = 0;
-
-   // Select the best TMUs to use (removed 3 tmu support, unnecessary)
-   if (rdp.tex == 3)	// T0 and T1
-   {
-      tmu_0 = 0;
-      tmu_1 = 1;
-   }
-   else if (rdp.tex == 2)	// T1
-   {
-      if (tex_found[1][0] != -1)	// T1 found in tmu 0
-         tmu_1 = 0;
-      else if (tex_found[1][1] != -1)	// T1 found in tmu 1
-         tmu_1 = 1;
-      else	// T1 not found
-         tmu_1 = 0;
-
-      tmu_0 = !tmu_1;
-      tmu_0_mode = (tmu_0==1)?TMUMODE_NONE:TMUMODE_PASSTHRU;
-   }
-   else if (rdp.tex == 1)	// T0
-   {
-      if (tex_found[0][0] != -1)	// T0 found in tmu 0
-         tmu_0 = 0;
-      else if (tex_found[0][1] != -1)	// T0 found in tmu 1
-         tmu_0 = 1;
-      else	// T0 not found
-         tmu_0 = 0;
-
-      tmu_1 = !tmu_0;
-      tmu_1_mode = (tmu_1==1)?TMUMODE_NONE:TMUMODE_PASSTHRU;
-   }
-   else	// no texture
-   {
-      tmu_0 = 0;
-      tmu_0_mode = TMUMODE_NONE;
-      tmu_1 = 0;
-      tmu_1_mode = TMUMODE_NONE;
-   }
-
-   FRDP (" | |-+ Modes set:\n | | |- tmu_0 = %d\n | | |- tmu_1 = %d\n",
-         tmu_0, tmu_1);
-   FRDP (" | | |- tmu_0_mode = %d\n | | |- tmu_1_mode = %d\n",
-         tmu_0_mode, tmu_1_mode);
-
-   if (tmu_0_mode == TMUMODE_PASSTHRU)
-   {
-      cmb.tmu0_func = cmb.tmu0_a_func = GR_COMBINE_FUNCTION_SCALE_OTHER;
-      cmb.tmu0_fac = cmb.tmu0_a_fac = GR_COMBINE_FACTOR_ONE;
-      if (cmb.tex_cmb_ext_use)
-      {
-         cmb.t0c_ext_a = GR_CMBX_OTHER_TEXTURE_RGB;
-         cmb.t0c_ext_a_mode = GR_FUNC_MODE_X;
-         cmb.t0c_ext_b = GR_CMBX_LOCAL_TEXTURE_RGB;
-         cmb.t0c_ext_b_mode = GR_FUNC_MODE_ZERO;
-         cmb.t0c_ext_c = GR_CMBX_ZERO;
-         cmb.t0c_ext_c_invert = 1;
-         cmb.t0c_ext_d = GR_CMBX_ZERO;
-         cmb.t0c_ext_d_invert = 0;
-         cmb.t0a_ext_a = GR_CMBX_OTHER_TEXTURE_ALPHA;
-         cmb.t0a_ext_a_mode = GR_FUNC_MODE_X;
-         cmb.t0a_ext_b = GR_CMBX_LOCAL_TEXTURE_ALPHA;
-         cmb.t0a_ext_b_mode = GR_FUNC_MODE_ZERO;
-         cmb.t0a_ext_c = GR_CMBX_ZERO;
-         cmb.t0a_ext_c_invert = 1;
-         cmb.t0a_ext_d = GR_CMBX_ZERO;
-         cmb.t0a_ext_d_invert = 0;
-      }
-   }
-   else if (tmu_0_mode == TMUMODE_NONE)
-   {
-      cmb.tmu0_func = cmb.tmu0_a_func = GR_COMBINE_FUNCTION_NONE;
-      cmb.tmu0_fac = cmb.tmu0_a_fac = GR_COMBINE_FACTOR_NONE;
-      if (cmb.tex_cmb_ext_use)
-      {
-         cmb.t0c_ext_a = GR_CMBX_LOCAL_TEXTURE_RGB;
-         cmb.t0c_ext_a_mode = GR_FUNC_MODE_ZERO;
-         cmb.t0c_ext_b = GR_CMBX_LOCAL_TEXTURE_RGB;
-         cmb.t0c_ext_b_mode = GR_FUNC_MODE_ZERO;
-         cmb.t0c_ext_c = GR_CMBX_ZERO;
-         cmb.t0c_ext_c_invert = 0;
-         cmb.t0c_ext_d = GR_CMBX_ZERO;
-         cmb.t0c_ext_d_invert = 0;
-         cmb.t0a_ext_a = GR_CMBX_LOCAL_TEXTURE_ALPHA;
-         cmb.t0a_ext_a_mode = GR_FUNC_MODE_ZERO;
-         cmb.t0a_ext_b = GR_CMBX_LOCAL_TEXTURE_ALPHA;
-         cmb.t0a_ext_b_mode = GR_FUNC_MODE_ZERO;
-         cmb.t0a_ext_c = GR_CMBX_ZERO;
-         cmb.t0a_ext_c_invert = 0;
-         cmb.t0a_ext_d = GR_CMBX_ZERO;
-         cmb.t0a_ext_d_invert = 0;
-      }
-   }
-   if (tmu_1_mode == TMUMODE_PASSTHRU)
-   {
-      cmb.tmu1_func = cmb.tmu1_a_func = GR_COMBINE_FUNCTION_SCALE_OTHER;
-      cmb.tmu1_fac = cmb.tmu1_a_fac = GR_COMBINE_FACTOR_ONE;
-      if (cmb.tex_cmb_ext_use)
-      {
-         cmb.t1c_ext_a = GR_CMBX_OTHER_TEXTURE_RGB;
-         cmb.t1c_ext_a_mode = GR_FUNC_MODE_X;
-         cmb.t1c_ext_b = GR_CMBX_LOCAL_TEXTURE_RGB;
-         cmb.t1c_ext_b_mode = GR_FUNC_MODE_ZERO;
-         cmb.t1c_ext_c = GR_CMBX_ZERO;
-         cmb.t1c_ext_c_invert = 1;
-         cmb.t1c_ext_d = GR_CMBX_ZERO;
-         cmb.t1c_ext_d_invert = 0;
-         cmb.t1a_ext_a = GR_CMBX_OTHER_TEXTURE_ALPHA;
-         cmb.t1a_ext_a_mode = GR_FUNC_MODE_X;
-         cmb.t1a_ext_b = GR_CMBX_LOCAL_TEXTURE_ALPHA;
-         cmb.t1a_ext_b_mode = GR_FUNC_MODE_ZERO;
-         cmb.t1a_ext_c = GR_CMBX_ZERO;
-         cmb.t1a_ext_c_invert = 1;
-         cmb.t1a_ext_d = GR_CMBX_ZERO;
-         cmb.t1a_ext_d_invert = 0;
-      }
-   }
-   else if (tmu_1_mode == TMUMODE_NONE)
-   {
-      cmb.tmu1_func = cmb.tmu1_a_func = GR_COMBINE_FUNCTION_NONE;
-      cmb.tmu1_fac = cmb.tmu1_a_fac = GR_COMBINE_FACTOR_NONE;
-      if (cmb.tex_cmb_ext_use)
-      {
-         cmb.t1c_ext_a = GR_CMBX_LOCAL_TEXTURE_RGB;
-         cmb.t1c_ext_a_mode = GR_FUNC_MODE_ZERO;
-         cmb.t1c_ext_b = GR_CMBX_LOCAL_TEXTURE_RGB;
-         cmb.t1c_ext_b_mode = GR_FUNC_MODE_ZERO;
-         cmb.t1c_ext_c = GR_CMBX_ZERO;
-         cmb.t1c_ext_c_invert = 0;
-         cmb.t1c_ext_d = GR_CMBX_ZERO;
-         cmb.t1c_ext_d_invert = 0;
-         cmb.t1a_ext_a = GR_CMBX_LOCAL_TEXTURE_ALPHA;
-         cmb.t1a_ext_a_mode = GR_FUNC_MODE_ZERO;
-         cmb.t1a_ext_b = GR_CMBX_LOCAL_TEXTURE_ALPHA;
-         cmb.t1a_ext_b_mode = GR_FUNC_MODE_ZERO;
-         cmb.t1a_ext_c = GR_CMBX_ZERO;
-         cmb.t1a_ext_c_invert = 0;
-         cmb.t1a_ext_d = GR_CMBX_ZERO;
-         cmb.t1a_ext_d_invert = 0;
-      }
-   }
-
+   /* tile 0 in TMU 0, tile 1 in TMU 1: the shader runs the N64's
+    * combiner itself (Combine.c), and reads both */
+   tmu_0 = 0;
+   tmu_1 = 1;
    rdp.t0 = tmu_0;
    rdp.t1 = tmu_1;
 
-   // SET the combiner
-   {
-      if (rdp.allow_combine)
-      {
-         // Now actually combine
-         if (cmb.cmb_ext_use)
-         {
-            LRDP(" | | | |- combiner extension\n");
-            if (!(cmb.cmb_ext_use & COMBINE_EXT_COLOR))
-               ColorCombinerToExtension ();
-            if (!(cmb.cmb_ext_use & COMBINE_EXT_ALPHA))
-               AlphaCombinerToExtension ();
-            grColorCombineExt(cmb.c_ext_a, cmb.c_ext_a_mode,
-                  cmb.c_ext_b, cmb.c_ext_b_mode,
-                  cmb.c_ext_c, cmb.c_ext_c_invert,
-                  cmb.c_ext_d, cmb.c_ext_d_invert, 0, 0);
-            grAlphaCombineExt(cmb.a_ext_a, cmb.a_ext_a_mode,
-                  cmb.a_ext_b, cmb.a_ext_b_mode,
-                  cmb.a_ext_c, cmb.a_ext_c_invert,
-                  cmb.a_ext_d, cmb.a_ext_d_invert, 0, 0);
-         }
-         else
-         {
-            grColorCombine (cmb.c_fnc, cmb.c_fac, cmb.c_loc, cmb.c_oth, FXFALSE);
-            grAlphaCombine (cmb.a_fnc, cmb.a_fac, cmb.a_loc, cmb.a_oth, FXFALSE);
-         }
-         grConstantColorValue (cmb.ccolor);
-         grAlphaBlendFunction (cmb.abf1, cmb.abf2, GR_BLEND_ZERO, GR_BLEND_ZERO);
-         if (!rdp.tex) //nothing more to do
-            return;
-      }
+   /* Glide64's own draws (copy mode, the frame buffer) run the Glide
+    * combiner: TEXTURE there is TMU 0's texel, tile 0 */
+   grTexCombine (GR_TMU1, GR_COMBINE_FUNCTION_LOCAL, GR_COMBINE_FACTOR_NONE,
+         GR_COMBINE_FUNCTION_LOCAL, GR_COMBINE_FACTOR_NONE, FXFALSE, FXFALSE);
+   grTexCombine (GR_TMU0, GR_COMBINE_FUNCTION_LOCAL, GR_COMBINE_FACTOR_NONE,
+         GR_COMBINE_FUNCTION_LOCAL, GR_COMBINE_FACTOR_NONE, FXFALSE, FXFALSE);
 
-      if (tmu_1 < NUM_TMU)
-      {
-         if (cmb.tex_cmb_ext_use)
-         {
-            LRDP(" | | | |- combiner extension tmu1\n");
-            if (!(cmb.tex_cmb_ext_use & TEX_COMBINE_EXT_COLOR))
-               TexColorCombinerToExtension (GR_TMU1);
-            if (!(cmb.tex_cmb_ext_use & TEX_COMBINE_EXT_ALPHA))
-               TexAlphaCombinerToExtension (GR_TMU1);
-            grTexColorCombineExt(tmu_1, cmb.t1c_ext_a, cmb.t1c_ext_a_mode,
-                  cmb.t1c_ext_b, cmb.t1c_ext_b_mode,
-                  cmb.t1c_ext_c, cmb.t1c_ext_c_invert,
-                  cmb.t1c_ext_d, cmb.t1c_ext_d_invert, 0, 0);
-            grTexAlphaCombineExt(tmu_1, cmb.t1a_ext_a, cmb.t1a_ext_a_mode,
-                  cmb.t1a_ext_b, cmb.t1a_ext_b_mode,
-                  cmb.t1a_ext_c, cmb.t1a_ext_c_invert,
-                  cmb.t1a_ext_d, cmb.t1a_ext_d_invert, 0, 0, cmb.tex_ccolor);
-         }
-         else
-            grTexCombine (tmu_1, cmb.tmu1_func, cmb.tmu1_fac, cmb.tmu1_a_func, cmb.tmu1_a_fac, cmb.tmu1_invert, cmb.tmu1_a_invert);
-         grTexDetailControl (tmu_1, cmb.dc1_lodbias, cmb.dc1_detailscale, cmb.dc1_detailmax);
-      }
-      if (tmu_0 < NUM_TMU)
-      {
-         if (cmb.tex_cmb_ext_use)
-         {
-            LRDP(" | | | |- combiner extension tmu0\n");
-            if (!(cmb.tex_cmb_ext_use & TEX_COMBINE_EXT_COLOR))
-               TexColorCombinerToExtension (GR_TMU0);
-            if (!(cmb.tex_cmb_ext_use & TEX_COMBINE_EXT_ALPHA))
-               TexAlphaCombinerToExtension (GR_TMU0);
-            grTexColorCombineExt(tmu_0, cmb.t0c_ext_a, cmb.t0c_ext_a_mode,
-                  cmb.t0c_ext_b, cmb.t0c_ext_b_mode,
-                  cmb.t0c_ext_c, cmb.t0c_ext_c_invert,
-                  cmb.t0c_ext_d, cmb.t0c_ext_d_invert, 0, 0);
-            grTexAlphaCombineExt(tmu_0, cmb.t0a_ext_a, cmb.t0a_ext_a_mode,
-                  cmb.t0a_ext_b, cmb.t0a_ext_b_mode,
-                  cmb.t0a_ext_c, cmb.t0a_ext_c_invert,
-                  cmb.t0a_ext_d, cmb.t0a_ext_d_invert, 0, 0, cmb.tex_ccolor);
-         }
-         else
-            grTexCombine (tmu_0, cmb.tmu0_func, cmb.tmu0_fac, cmb.tmu0_a_func, cmb.tmu0_a_fac, cmb.tmu0_invert, cmb.tmu0_a_invert);
-         grTexDetailControl (tmu_0, cmb.dc0_lodbias, cmb.dc0_detailscale, cmb.dc0_detailmax);
-      }
+   if (rdp.allow_combine)
+   {
+      grAlphaBlendFunction (cmb.abf1, cmb.abf2, GR_BLEND_ZERO, GR_BLEND_ZERO);
+      if (!rdp.tex) //nothing more to do
+         return;
    }
 
    if ((rdp.tex & 1) && tmu_0 < NUM_TMU)
