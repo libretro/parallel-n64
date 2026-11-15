@@ -32,6 +32,8 @@ extern float polygonOffsetUnits;
 
 #define VK_VERTICES  (3 * 4096)
 #define VK_TEXTURES  4096
+/* textures written over, kept to take the next of their format and size */
+#define VK_SPARE     1024
 /* the combiners with a shader of their own; past that, the shared one */
 #define VK_OWN       2048
 #define VK_OWN_SLOTS 4096
@@ -86,7 +88,8 @@ typedef struct vk_tex
 {
    unsigned id;
    unsigned handle;
-   unsigned bytes;
+   int fmt;
+   uint16_t w, h;
 } vk_tex;
 
 static struct
@@ -121,6 +124,8 @@ static struct
 
    vk_tex textures[VK_TEXTURES];
    unsigned n_textures;
+   vk_tex spare[VK_SPARE];
+   unsigned n_spare;
    unsigned bound[2];
    int wrap_s[2], wrap_t[2], min_f[2], mag_f[2];
 
@@ -553,6 +558,31 @@ static vk_tex *tex_find(unsigned id)
    return NULL;
 }
 
+/* A texture of TMU memory written over: its image kept, as long as there
+ * is room, for the next of its format and size, which then takes it with
+ * no new image made (the renderer orders the new texels after what read
+ * the old) */
+static void tex_retire(const vk_tex *t)
+{
+   if (vk.n_spare < VK_SPARE)
+      vk.spare[vk.n_spare++] = *t;
+   else
+      vkr_texture_delete(vk.r, t->handle);
+}
+
+static unsigned tex_image(int fmt, unsigned w, unsigned h)
+{
+   unsigned i = vk.n_spare;
+   while (i--)
+      if (vk.spare[i].fmt == fmt && vk.spare[i].w == w && vk.spare[i].h == h)
+      {
+         const unsigned handle = vk.spare[i].handle;
+         vk.spare[i] = vk.spare[--vk.n_spare];
+         return handle;
+      }
+   return vkr_texture_new(vk.r);
+}
+
 /* TMU memory written over: the textures it held are gone */
 static void tex_remove(unsigned lo, unsigned hi)
 {
@@ -566,7 +596,7 @@ static void tex_remove(unsigned lo, unsigned hi)
             vk.bound[0] = 0;
          if (vk.bound[1] == t->handle)
             vk.bound[1] = 0;
-         vkr_texture_delete(vk.r, t->handle);
+         tex_retire(t);
          *t = vk.textures[--vk.n_textures];
       }
       else
@@ -638,7 +668,10 @@ void vk_grTexSource(int32_t tmu, uint32_t start, void *info_, int do_download)
          tex_remove(0, ~0u);
       t = &vk.textures[vk.n_textures++];
       t->id = id;
-      t->handle = vkr_texture_new(vk.r);
+      t->fmt = fmt;
+      t->w = (uint16_t)w;
+      t->h = (uint16_t)h;
+      t->handle = tex_image(fmt, (unsigned)w, (unsigned)h);
       if (info->format == GR_TEXFMT_ALPHA_INTENSITY_44)
       {
          /* a nibble each to a byte each, as GL's LUMINANCE_ALPHA had them:
@@ -965,6 +998,7 @@ uint32_t vk_grSstWinOpen(void)
    vk.lfb_tex = vkr_texture_new(vk.r);
    vk.depth_tex = vkr_texture_new(vk.r);
    vk.n_textures = 0;
+   vk.n_spare = 0;
 
    prewarm();
    reset_state();
@@ -983,6 +1017,9 @@ void vk_grSstWinClose(void)
    for (i = 0; i < vk.n_textures; i++)
       vkr_texture_delete(vk.r, vk.textures[i].handle);
    vk.n_textures = 0;
+   for (i = 0; i < vk.n_spare; i++)
+      vkr_texture_delete(vk.r, vk.spare[i].handle);
+   vk.n_spare = 0;
    journal_save();
    for (i = 0; i < VK_OWN_SLOTS; i++)
       if (vk.own[i].p)
