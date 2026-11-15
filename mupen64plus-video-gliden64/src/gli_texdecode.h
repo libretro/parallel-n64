@@ -48,9 +48,9 @@ void gli_tex_decode_bg(const struct gli_tex *t, const gli_tex_format *f,
 void gli_tex_decode_bg_rows(const struct gli_tex *t, const gli_tex_format *f,
 		int out32, u32 address, u32 bpl, u32 y0, u32 rows, void *dst);
 
-/* Turns @n N64 depth words at @buf into linear floats in place; @buf
- * must hold n floats */
-f32 *gli_tex_depth_to_float(void *buf, u32 n);
+/* Turns @n N64 depth words at @buf into linear IEEE halves in place,
+ * the nearest to each value, ties to even: what an R16F texture holds */
+u16 *gli_tex_depth_to_half(u16 *buf, u32 n);
 
 /* The sizes of tile @_t, as the RDP will sample it */
 typedef struct gli_tile_sizes

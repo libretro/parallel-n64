@@ -7,6 +7,11 @@
  * three bits of intensity do not fit four evenly, and the shades came out
  * up to 7/255 off what the RDP makes of them (the bits repeated to 8).
  * Their decoder must give exactly that.
+ *
+ * Depth maps (hack_LoadDepthTextures, Resident Evil 2) are R16F: their
+ * words must become the halves nearest their linear depth, two bytes a
+ * texel. Floats went into the Vulkan map raw, and its characters came out
+ * as stripes.
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -20,6 +25,74 @@ u8 *RDRAM;
 u32 RDRAMSize;
 
 static int failures;
+
+/* An IEEE half, finite, as a double */
+static double half_value(u32 h)
+{
+	u32 e = (h >> 10) & 0x1f;
+	double v = (double)(h & 0x3ff);
+	int scale;
+	if (e != 0)
+		v += 1024.0;
+	else
+		e = 1;
+	/* v * 2^(e - 25) */
+	for (scale = (int)e - 25; scale < 0; ++scale)
+		v *= 0.5;
+	for (; scale > 0; --scale)
+		v *= 2.0;
+	if (h & 0x8000)
+		v = -v;
+	return v;
+}
+
+/* The linear depth of an N64 depth word */
+static double depth_value(u32 w)
+{
+	static const u32 shift[8] = { 6, 5, 4, 3, 2, 1, 0, 0 };
+	static const u32 add[8] = { 0x00000, 0x20000, 0x30000, 0x38000, 0x3c000, 0x3e000, 0x3f000, 0x3f800 };
+	const u32 e = (w >> 13) & 7;
+	return (double)((((w >> 2) & 0x7ff) << shift[e]) + add[e]) / 262143.0;
+}
+
+static void check_depth(void)
+{
+	static u16 words[65536];
+	u32 w, prev = 0;
+	for (w = 0; w < 65536; ++w)
+		words[w] = (u16)w;
+	if (gli_tex_depth_to_half(words, 65536) != words) {
+		fprintf(stderr, "depth: not decoded in place\n");
+		failures++;
+	}
+	for (w = 0; w < 65536; ++w) {
+		const u32 h = words[w];
+		const double x = depth_value(w), d = half_value(h) - x;
+		const double below = h > 0 ? x - half_value(h - 1) : 1.0;
+		const double above = half_value(h + 1) - x;
+		const double ad = d < 0 ? -d : d;
+		/* the nearest half; at a tie, the even one */
+		if (h > 0x3c00 || ad > below || ad > above ||
+				((ad == below || ad == above) && (h & 1))) {
+			fprintf(stderr, "depth word %04x: half %04x (%.9g) for %.9g\n",
+					(unsigned)w, (unsigned)h, half_value(h), x);
+			failures++;
+			return;
+		}
+		/* nearer is never deeper */
+		if (h < prev) {
+			fprintf(stderr, "depth word %04x: half %04x below %04x\n", (unsigned)w, (unsigned)h, (unsigned)prev);
+			failures++;
+			return;
+		}
+		prev = h;
+	}
+	if (words[0] != 0 || words[0xfffc] != 0x3c00 || words[0x2000] != 0x3800) {
+		fprintf(stderr, "depth: 0, far and the second exponent are %04x %04x %04x\n",
+				(unsigned)words[0], (unsigned)words[0xfffc], (unsigned)words[0x2000]);
+		failures++;
+	}
+}
 
 /* size 0..3 (4, 8, 16, 32 bits), format 0..4 (RGBA, YUV, CI, IA, I) */
 static int exact_in_16(u32 tlut, u32 size, u32 format, u32 host)
@@ -81,6 +154,8 @@ int main(void)
 			failures++;
 		}
 	}
+
+	check_depth();
 
 	if (failures) {
 		fprintf(stderr, "test_gliden64_texture_formats: %d failures\n", failures);

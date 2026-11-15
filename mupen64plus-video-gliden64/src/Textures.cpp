@@ -582,19 +582,12 @@ void TextureCache::_loadDepthTexture(CachedTexture * _pTexture, u16* _pDest)
 	 * agreed at the extremes.
 	 *
 	 * Decoding here rather than converting the fragment depth through the ZLUT
-	 * costs one pass per map instead of one lookup per fragment. The floats
-	 * replace the words in the decode scratch, so nothing is allocated. */
+	 * costs one pass per map instead of one lookup per fragment. Each word
+	 * becomes the half float the R16F map holds, in its place, so nothing is
+	 * allocated or copied, and the upload is the texels as they are: floats
+	 * went into the Vulkan map two bytes a texel, as stripes. */
 	const u32 size = _pTexture->realWidth * _pTexture->realHeight;
-	void * buf = _pDest;
-	void * heap = nullptr;
-	if ((u8*)_pDest != m_decodeScratch || size * sizeof(f32) > DecodeScratchBytes) {
-		heap = malloc(size * sizeof(f32));
-		if (heap == nullptr)
-			return;
-		memcpy(heap, _pDest, size * sizeof(u16));
-		buf = heap;
-	}
-	const f32 * pDestFloat = gli_tex_depth_to_float(buf, size);
+	gli_tex_depth_to_half(_pDest, size);
 
 	Context::InitTextureParams params;
 	params.handle = _pTexture->name;
@@ -604,11 +597,10 @@ void TextureCache::_loadDepthTexture(CachedTexture * _pTexture, u16* _pDest)
 	params.height = _pTexture->realHeight;
 	params.internalFormat = internalcolorFormat::R16F;
 	params.format = colorFormat::RED;
-	params.dataType = datatype::FLOAT;
-	params.data = pDestFloat;
+	params.dataType = datatype::HALF_FLOAT;
+	params.data = _pDest;
 	params.mutableStorage = true;
 	gfxContext.init2DTexture(params);
-	free(heap);
 }
 
 /*

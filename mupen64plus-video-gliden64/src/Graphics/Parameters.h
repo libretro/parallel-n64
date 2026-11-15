@@ -31,6 +31,7 @@ namespace graphics {
 		extern DatatypeParam UNSIGNED_SHORT;
 		extern DatatypeParam UNSIGNED_INT;
 		extern DatatypeParam FLOAT;
+		extern DatatypeParam HALF_FLOAT;
 		extern DatatypeParam UNSIGNED_SHORT_5_6_5;
 		extern DatatypeParam UNSIGNED_SHORT_5_5_5_1;
 		extern DatatypeParam UNSIGNED_SHORT_4_4_4_4;

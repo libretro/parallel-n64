@@ -31,6 +31,10 @@ namespace graphics {
 		DatatypeParam UNSIGNED_SHORT(GL_UNSIGNED_SHORT);
 		DatatypeParam UNSIGNED_INT(GL_UNSIGNED_INT);
 		DatatypeParam FLOAT(GL_FLOAT);
+#ifndef GL_HALF_FLOAT
+#define GL_HALF_FLOAT 0x140B
+#endif
+		DatatypeParam HALF_FLOAT(GL_HALF_FLOAT);
 		DatatypeParam UNSIGNED_SHORT_5_6_5(GL_UNSIGNED_SHORT_5_6_5);
 		DatatypeParam UNSIGNED_SHORT_5_5_5_1(GL_UNSIGNED_SHORT_5_5_5_1);
 		DatatypeParam UNSIGNED_SHORT_4_4_4_4(GL_UNSIGNED_SHORT_4_4_4_4);

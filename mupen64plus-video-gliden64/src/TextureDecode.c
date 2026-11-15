@@ -405,22 +405,40 @@ void gli_tex_decode_bg_rows(const struct gli_tex *t, const gli_tex_format *f,
 	}
 }
 
+/* @x, 0 or in [2^-14, 1], to the nearest IEEE half. Every step is exact in a
+ * double: x is scaled by twos and rounded once. A float between would round
+ * twice, and a depth just short of halfway between two halves would land on
+ * the far one. None is ever halfway: 262143 is odd. */
+static u16 gli_half(double x)
+{
+	u32 e = 15, r;
+	if (x <= 0.0)
+		return 0;
+	/* x to [1, 2) and its exponent; the smallest depth past zero,
+	 * 64 / 262143, is well above the subnormals */
+	while (x < 1.0) {
+		x *= 2.0;
+		e--;
+	}
+	r = (u32)(x * 1024.0 + 0.5);
+	/* 2048, rounded up, carries into the exponent */
+	return (u16)((e << 10) + (r - 1024));
+}
+
 /* N64 depth words, exponent in bits 15..13 and mantissa in 12..2, to
- * linear floats, in place: float i lands at or after word i, so working
- * back from the end never overwrites a word still to be read */
-f32 *gli_tex_depth_to_float(void *buf, u32 n)
+ * linear halves, in place */
+u16 *gli_tex_depth_to_half(u16 *buf, u32 n)
 {
 	static const struct { u32 shift; u32 add; } zFormat[8] = {
 		{ 6, 0x00000 }, { 5, 0x20000 }, { 4, 0x30000 }, { 3, 0x38000 },
 		{ 2, 0x3c000 }, { 1, 0x3e000 }, { 0, 0x3f000 }, { 0, 0x3f800 }
 	};
-	const u16 *w = (const u16*)buf;
-	f32 *d = (f32*)buf;
-	while (n--) {
-		const u16 v = w[n];
+	u32 i;
+	for (i = 0; i < n; ++i) {
+		const u16 v = buf[i];
 		const u32 e = (v >> 13) & 7;
 		const u32 m = (v >> 2) & 0x7ff;
-		d[n] = (f32)((m << zFormat[e].shift) + zFormat[e].add) / 262143.0f;
+		buf[i] = gli_half((double)((m << zFormat[e].shift) + zFormat[e].add) / 262143.0);
 	}
-	return d;
+	return buf;
 }
