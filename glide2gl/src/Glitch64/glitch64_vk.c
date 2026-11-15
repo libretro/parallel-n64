@@ -1148,12 +1148,13 @@ void vk_grLfbWriteRegion(uint32_t dst_x, uint32_t dst_y, uint32_t src_width, uin
       dst = bytes <= 2048u * 2048u * 4u ? vk.staging : NULL;
    if (!dst)
       return;
-   /* 555: five bits to eight, the top bits repeated in the low ones */
+   /* RDRAM's 5551: five bits to eight, the top bits repeated in the
+    * low ones */
    for (j = 0; j < src_height; j++)
       for (i = 0; i < src_width; i++)
       {
-         const unsigned col = fb[j * half + i];
-         const unsigned r = (col >> 10) & 0x1F, g = (col >> 5) & 0x1F, b = col & 0x1F;
+         const unsigned col = fb[(j * half + i) ^ 1];
+         const unsigned r = (col >> 11) & 0x1F, g = (col >> 6) & 0x1F, b = (col >> 1) & 0x1F;
          uint8_t *p = &dst[(j * src_width + i) * 4];
          p[0] = (uint8_t)((r << 3) | (r >> 2));
          p[1] = (uint8_t)((g << 3) | (g >> 2));

@@ -189,11 +189,13 @@ void grTexFilterClampMode(
 /* the frame, read back in @writeMode (565, or 888 for screenshots) */
 bool grLfbLock(int32_t writeMode, GrLfbInfo_t *info);
 
-/* a 555 image the CPU made, @src_stride bytes a row, put on the frame at
- * (dst_x, dst_y) as it is: past the pixel pipeline */
+/* a 16-bit colour image as it lies in RDRAM (5551, each word's two
+ * halves swapped, as the host holds RDRAM), @src_stride bytes a row, put
+ * on the frame at (dst_x, dst_y) as it is: past the pixel pipeline. Read
+ * where it is: nothing is copied out first. */
 void grLfbWriteRegion(uint32_t dst_x, uint32_t dst_y,
                   uint32_t src_width, uint32_t src_height,
-                  int32_t src_stride, void *src_data);
+                  int32_t src_stride, const void *src_data);
 
 /* An N64 depth image into the depth buffer, colour untouched: @words its
  * w x h 16-bit depth words as they lie in RDRAM, drawn over the window's

@@ -386,7 +386,7 @@ int main(void)
    glEnable(GL_SCISSOR_TEST);
    grDepthBufferFunction(GR_CMP_ALWAYS);
    for (x = 0; x < 16 * 16; x++)
-      lfb[x] = 0x001F;
+      lfb[x] = 0x003F;
    grLfbWriteRegion(0, 0, 16, 16, 32, lfb);
    fan(0.0f);
    read_window(window);

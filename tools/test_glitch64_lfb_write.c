@@ -1,7 +1,8 @@
 /* test_glitch64_lfb_write -- Glide64's linear frame buffer write.
  *
- * grLfbWriteRegion puts a 555 image the CPU made back on screen (the
- * Pokemon Puzzle League hack). It used to draw nothing: it gave
+ * grLfbWriteRegion puts a colour image from RDRAM back on screen (the
+ * Pokemon Puzzle League hack), read where it lies: 5551, each word's two
+ * halves swapped. It used to draw nothing: it gave
  * glTexSubImage2D the argument list of glTexImage2D, into a texture with
  * no storage; it drew with the default program, whose vertexOffset is
  * never set, so every vertex divided by zero; it addressed the texture
@@ -147,13 +148,15 @@ static uint16_t pixel_at(unsigned x, unsigned y)
 
 static int run(unsigned dst_x, unsigned dst_y, unsigned w, unsigned h)
 {
-   uint16_t *image = (uint16_t*)malloc(w * h * 2);
+   /* the image as RDRAM holds it: one pixel more, for an odd count's
+    * swapped last pair */
+   uint16_t *image = (uint16_t*)malloc((w * h + 1) * 2);
    uint8_t *window = (uint8_t*)malloc(WIN_W * WIN_H * 4);
    unsigned x, y, bad = 0;
 
    for (y = 0; y < h; y++)
       for (x = 0; x < w; x++)
-         image[y * w + x] = pixel_at(x, y);
+         image[(y * w + x) ^ 1] = (uint16_t)((pixel_at(x, y) << 1) | 1);
 
    /* what a frame leaves behind */
    grClipWindow(0, 0, 8, 8);
@@ -180,7 +183,7 @@ static int run(unsigned dst_x, unsigned dst_y, unsigned w, unsigned h)
          uint8_t want[3] = { 0, 0, 0 };
          if (x >= dst_x && x < dst_x + w && y >= dst_y && y < dst_y + h)
          {
-            const uint16_t c = image[(y - dst_y) * w + (x - dst_x)];
+            const uint16_t c = pixel_at(x - dst_x, y - dst_y);
             /* five bits to eight, the top bits repeated in the low ones:
              * 31 is white, 255, not 248 */
             const unsigned r = (c >> 10) & 0x1F, g = (c >> 5) & 0x1F, b = c & 0x1F;

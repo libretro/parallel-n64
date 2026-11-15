@@ -287,10 +287,10 @@ const uint8_t *grLfbReadRect(int32_t *x, int32_t *y, int32_t *w, int32_t *h, uin
 
 void grLfbWriteRegion(uint32_t dst_x, uint32_t dst_y,
       uint32_t src_width, uint32_t src_height,
-      int32_t src_stride, void *src_data)
+      int32_t src_stride, const void *src_data)
 {
    unsigned int i,j;
-   uint16_t *frameBuffer = (uint16_t*)src_data;
+   const uint16_t *frameBuffer = (const uint16_t*)src_data;
 
    /* (depth images go through grDepthImageWrite) */
    if (glitch64_vulkan)
@@ -317,15 +317,15 @@ void grLfbWriteRegion(uint32_t dst_x, uint32_t dst_y,
       vbo_disable();
       glActiveTexture(GL_TEXTURE0);
 
-      /* the image is 555 */
+      /* the image is RDRAM's 5551 */
       for (j=0; j<src_height; j++)
       {
          for (i=0; i<src_width; i++)
          {
             /* five bits to eight, the top bits repeated in the low ones:
              * shifted alone, white was 248 */
-            const unsigned int col = frameBuffer[j*half_stride+i];
-            const unsigned int r = (col>>10)&0x1F, g = (col>>5)&0x1F, b = col&0x1F;
+            const unsigned int col = frameBuffer[(j*half_stride+i)^1];
+            const unsigned int r = (col>>11)&0x1F, g = (col>>6)&0x1F, b = (col>>1)&0x1F;
             buf[j*src_width*4+i*4+0]=(r<<3)|(r>>2);
             buf[j*src_width*4+i*4+1]=(g<<3)|(g>>2);
             buf[j*src_width*4+i*4+2]=(b<<3)|(b>>2);
