@@ -316,6 +316,7 @@ struct vkr_renderer
    int force_generic;
    int strict; /* tools/ci: a pipeline prewarm did not build is a failure */
    int wait_client; /* tools: a client's own pipelines waited for */
+   int strict_own;  /* tools/ci: a client's own pipeline not built ahead is a failure */
    int prewarmed;
    char cache_path[1024];
    VkDeviceSize vb_offset, ib_offset;
@@ -2005,6 +2006,8 @@ static int bind_for_draw(vkr_renderer *r, int rect, int lines, int strip)
       int status = e ? retro_atomic_load_acquire_int(&e->status) : PS_FAILED;
       if (status != PS_READY && p->fallback && !r->force_generic)
       {
+         if (r->strict_own)
+            abort(); /* tools/ci: what an earlier session met was not built at load */
          /* its own pipeline, built behind; the fallback draws the same */
          if (status == PS_EMPTY)
             pipe_queue(r, e, p, VK_NULL_HANDLE, VK_NULL_HANDLE, key);
@@ -4095,6 +4098,7 @@ vkr_renderer *vkr_create(const struct retro_hw_render_interface_vulkan *vk, cons
    r->force_generic = getenv("GLIDEN64_VULKAN") != NULL && strcmp(getenv("GLIDEN64_VULKAN"), "generic") == 0;
    r->strict = getenv("GLIDEN64_VULKAN_STRICT") != NULL;
    r->wait_client = getenv("PARALLEL_RDP_TEST_WAIT_PIPELINES") != NULL;
+   r->strict_own = r->strict && strcmp(getenv("GLIDEN64_VULKAN_STRICT"), "own") == 0;
    /* tools/ci: GPUs without it take the other path, and it stays tested */
    r->eds3 = r->eds && r->fn.CmdSetColorBlendEnableEXT != NULL && gliden64_vulkan_has_dynamic_blend()
          && getenv("GLIDEN64_VULKAN_NO_EDS3") == NULL;

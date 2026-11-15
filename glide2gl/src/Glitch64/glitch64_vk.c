@@ -15,6 +15,9 @@ int glitch64_vulkan = 0;
 #include "glitch64_vk_shaders.h"
 #include "../../../Graphics/RDP/RDP_state.h"
 #include "../Glide64/rdp.h"
+#include <streams/file_stream.h>
+#include "../../../mupen64plus-core/src/plugin/plugin.h"
+#include "../../../mupen64plus-video-gliden64/src/CombinerKeyPath.h"
 
 /* Napalm's, as glitch64_textures.c has it */
 #ifndef GR_TEXFMT_ARGB_8888
@@ -51,7 +54,33 @@ typedef struct vk_own
 {
    int key[G64VK_KEY_WORDS];
    vkr_program *p;
+   /* the blend functions it drew with (vk_blends' places) */
+   uint32_t blends;
 } vk_own;
+
+/* Every blend function Glide64 sets, as the renderer has them: the colour's
+ * and the alpha's. They are those of Combine.c's A_BLEND and the blend
+ * functions of glide64_gDP.c, TexCache.c and Framebuffer_glide64.c; the
+ * first is blending off. */
+#define VK_BLENDS 11
+static const unsigned char vk_blends[VK_BLENDS][4] = {
+   { 0, 0, 0, 0 },
+   { VKR_BLEND_ONE, VKR_BLEND_ZERO, VKR_BLEND_ZERO, VKR_BLEND_ZERO },
+   { VKR_BLEND_ONE, VKR_BLEND_ONE, VKR_BLEND_ZERO, VKR_BLEND_ZERO },
+   { VKR_BLEND_ZERO, VKR_BLEND_ONE, VKR_BLEND_ZERO, VKR_BLEND_ZERO },
+   { VKR_BLEND_ZERO, VKR_BLEND_INV_SRC_ALPHA, VKR_BLEND_ZERO, VKR_BLEND_ZERO },
+   { VKR_BLEND_SRC_ALPHA, VKR_BLEND_INV_SRC_ALPHA, VKR_BLEND_ZERO, VKR_BLEND_ZERO },
+   { VKR_BLEND_SRC_ALPHA, VKR_BLEND_ONE, VKR_BLEND_ZERO, VKR_BLEND_ZERO },
+   { VKR_BLEND_INV_SRC_ALPHA, VKR_BLEND_SRC_ALPHA, VKR_BLEND_ZERO, VKR_BLEND_ZERO },
+   { VKR_BLEND_ZERO, VKR_BLEND_SRC_ALPHA, VKR_BLEND_ZERO, VKR_BLEND_ZERO },
+   { VKR_BLEND_ONE, VKR_BLEND_ZERO, VKR_BLEND_ONE, VKR_BLEND_ZERO },
+   { VKR_BLEND_SRC_ALPHA, VKR_BLEND_INV_SRC_ALPHA, VKR_BLEND_ONE, VKR_BLEND_ZERO }
+};
+
+/* the combiners a game met, kept for its next session: each with the blend
+ * functions it drew with */
+#define VK_JOURNAL_MAGIC   0x47364b4au
+#define VK_JOURNAL_VERSION 1u
 
 typedef struct vk_tex
 {
@@ -97,7 +126,10 @@ static struct
 
    vk_own own[VK_OWN_SLOTS];
    unsigned n_own;
+   int own_dirty;
    vkr_client_layout layout;
+   int blend_index;       /* vk_blends' place of the blend set now, -1 none */
+   char journal[PATH_MAX_LENGTH];
 } vk;
 
 /* ---- the combiner's inputs, as the shader indexes them ---- */
@@ -201,16 +233,11 @@ static void set_combiner(const glitch64_n64_combiner *c)
 /* The program of these ops and flags: its own, written and built by the
  * renderer's worker while the shared one draws for it; nothing compiles
  * here. A table of fixed size, made at load. */
-static vkr_program *own_program(int flags)
+static vk_own *own_find(const int *key)
 {
-   int key[G64VK_KEY_WORDS];
    uint32_t h = 2166136261u;
-   unsigned i, at;
+   unsigned i;
 
-   if (flags & G64VK_COPY)
-      return vk.combiner;
-   memcpy(key, vk.ops, sizeof(vk.ops));
-   key[16] = flags;
    for (i = 0; i < G64VK_KEY_WORDS; i++)
       h = (h ^ (uint32_t)key[i]) * 16777619u;
    for (i = 0; i < VK_OWN_SLOTS; i++)
@@ -220,23 +247,44 @@ static vkr_program *own_program(int flags)
       {
          vkr_client_desc d;
          if (vk.n_own >= VK_OWN)
-            return vk.combiner;
+            return NULL;
          memset(&d, 0, sizeof(d));
          d.layout = vk.layout;
          d.fallback = vk.combiner;
          d.write_fs = glitch64_vk_write_own;
-         memcpy(d.key, key, sizeof(key));
+         memcpy(d.key, key, G64VK_KEY_WORDS * sizeof(int));
          o->p = vkr_client_new(vk.r, &d);
          if (!o->p)
-            return vk.combiner;
-         memcpy(o->key, key, sizeof(key));
+            return NULL;
+         memcpy(o->key, key, G64VK_KEY_WORDS * sizeof(int));
+         o->blends = 0;
          vk.n_own++;
-         return o->p;
+         return o;
       }
-      if (!memcmp(o->key, key, sizeof(key)))
-         return o->p;
+      if (!memcmp(o->key, key, G64VK_KEY_WORDS * sizeof(int)))
+         return o;
    }
-   return vk.combiner;
+   return NULL;
+}
+
+static vkr_program *own_program(int flags)
+{
+   int key[G64VK_KEY_WORDS];
+   vk_own *o;
+
+   if (flags & G64VK_COPY)
+      return vk.combiner;
+   memcpy(key, vk.ops, sizeof(vk.ops));
+   key[16] = flags;
+   o = own_find(key);
+   if (!o)
+      return vk.combiner;
+   if (vk.blend_index >= 0 && !(o->blends & (1u << vk.blend_index)))
+   {
+      o->blends |= 1u << vk.blend_index;
+      vk.own_dirty = 1;
+   }
+   return o->p;
 }
 
 static void draw_vertices(const void *data, unsigned n, int flags)
@@ -413,6 +461,14 @@ void vk_grAlphaBlendFunction(unsigned rgb_sf, unsigned rgb_df, unsigned alpha_sf
    vk.blend[0] = rgb_sf; vk.blend[1] = rgb_df; vk.blend[2] = alpha_sf; vk.blend[3] = alpha_df;
    vkr_enable(vk.r, VKR_CAP_BLEND, 1);
    vkr_blend(vk.r, vk_blend(rgb_sf), vk_blend(rgb_df), vk_blend(alpha_sf), vk_blend(alpha_df));
+   {
+      unsigned b;
+      vk.blend_index = -1;
+      for (b = 1; b < VK_BLENDS; b++)
+         if (vk_blends[b][0] == vk_blend(rgb_sf) && vk_blends[b][1] == vk_blend(rgb_df)
+               && vk_blends[b][2] == vk_blend(alpha_sf) && vk_blends[b][3] == vk_blend(alpha_df))
+            vk.blend_index = (int)b;
+   }
 }
 
 void vk_grAlphaTestReferenceValue(uint8_t value)
@@ -670,6 +726,7 @@ static void reset_state(void)
    vk.depth_mask = -1;
    vk.depth_on = -1;
    vk.bias = NO_BIAS;
+   vk.blend_index = 0;
    vk.fog_rgba = ~g_gdp.fog_color.total;
    for (i = 0; i < 4; i++)
    {
@@ -761,29 +818,94 @@ static vkr_program *make_program(int depth)
  * the draw path). The blend pairs are those of Combine.c's A_BLEND and the
  * blend functions of glide64_gDP.c, TexCache.c and Framebuffer_glide64.c:
  * the colour's, and the alpha's. */
+/* The combiners an earlier session met, with their own pipelines built at
+ * load for the blend functions they drew with (their depth and cull state
+ * is dynamic where the device has it, the shared shader stands in where
+ * not): what a game draws again starts on its own shaders. */
+static void journal_load(void)
+{
+   void *data = NULL;
+   int64_t size = 0;
+   const uint32_t *w;
+   size_t n, i;
+
+   if (!vk.journal[0] || !filestream_exists(vk.journal)
+         || !filestream_read_file(vk.journal, &data, &size) || !data)
+      return;
+   w = (const uint32_t*)data;
+   n = size >= 8 ? (size_t)(size - 8) / ((G64VK_KEY_WORDS + 1) * 4) : 0;
+   if (size >= 8 && w[0] == VK_JOURNAL_MAGIC && w[1] == VK_JOURNAL_VERSION)
+   {
+      vkr_enable(vk.r, VKR_CAP_DEPTH_TEST, 1);
+      vkr_depth_write(vk.r, 1);
+      vkr_depth_compare(vk.r, VKR_CMP_LEQUAL);
+      vkr_enable(vk.r, VKR_CAP_CULL, 0);
+      for (i = 0; i < n; i++)
+      {
+         const uint32_t *rec = w + 2 + i * (G64VK_KEY_WORDS + 1);
+         int key[G64VK_KEY_WORDS];
+         unsigned b, k;
+         vk_own *o;
+         for (k = 0; k < G64VK_KEY_WORDS; k++)
+            key[k] = (int)rec[k];
+         if (key[16] & G64VK_COPY)
+            continue;
+         for (k = 0; k < 16 && key[k] >= 0 && key[k] < G64VK_IN_COUNT; k++)
+            ;
+         if (k < 16 || !(o = own_find(key)))
+            continue;
+         o->blends |= rec[G64VK_KEY_WORDS] & ((1u << VK_BLENDS) - 1);
+         for (b = 0; b < VK_BLENDS; b++)
+            if (o->blends & (1u << b))
+            {
+               vkr_enable(vk.r, VKR_CAP_BLEND, b != 0);
+               vkr_blend(vk.r, vk_blends[b][0], vk_blends[b][1], vk_blends[b][2], vk_blends[b][3]);
+               vkr_client_prewarm(vk.r, o->p);
+            }
+      }
+   }
+   free(data);
+   vk.own_dirty = 0;
+}
+
+/* At close, when this session met a combiner or a blend function more */
+static void journal_save(void)
+{
+   RFILE *f;
+   uint32_t head[2];
+   unsigned i, k;
+
+   if (!vk.journal[0] || !vk.own_dirty)
+      return;
+   f = filestream_open(vk.journal, RETRO_VFS_FILE_ACCESS_WRITE, RETRO_VFS_FILE_ACCESS_HINT_NONE);
+   if (!f)
+      return;
+   head[0] = VK_JOURNAL_MAGIC;
+   head[1] = VK_JOURNAL_VERSION;
+   filestream_write(f, head, sizeof(head));
+   for (i = 0; i < VK_OWN_SLOTS; i++)
+      if (vk.own[i].p)
+      {
+         uint32_t rec[G64VK_KEY_WORDS + 1];
+         for (k = 0; k < G64VK_KEY_WORDS; k++)
+            rec[k] = (uint32_t)vk.own[i].key[k];
+         rec[G64VK_KEY_WORDS] = vk.own[i].blends;
+         filestream_write(f, rec, sizeof(rec));
+      }
+   filestream_close(f);
+   vk.own_dirty = 0;
+}
+
 static void prewarm(void)
 {
-   static const unsigned char blends[11][4] = {
-      { 0, 0, 0, 0 }, /* blending off: LFB writes, and before the first */
-      { VKR_BLEND_ONE, VKR_BLEND_ZERO, VKR_BLEND_ZERO, VKR_BLEND_ZERO },
-      { VKR_BLEND_ONE, VKR_BLEND_ONE, VKR_BLEND_ZERO, VKR_BLEND_ZERO },
-      { VKR_BLEND_ZERO, VKR_BLEND_ONE, VKR_BLEND_ZERO, VKR_BLEND_ZERO },
-      { VKR_BLEND_ZERO, VKR_BLEND_INV_SRC_ALPHA, VKR_BLEND_ZERO, VKR_BLEND_ZERO },
-      { VKR_BLEND_SRC_ALPHA, VKR_BLEND_INV_SRC_ALPHA, VKR_BLEND_ZERO, VKR_BLEND_ZERO },
-      { VKR_BLEND_SRC_ALPHA, VKR_BLEND_ONE, VKR_BLEND_ZERO, VKR_BLEND_ZERO },
-      { VKR_BLEND_INV_SRC_ALPHA, VKR_BLEND_SRC_ALPHA, VKR_BLEND_ZERO, VKR_BLEND_ZERO },
-      { VKR_BLEND_ZERO, VKR_BLEND_SRC_ALPHA, VKR_BLEND_ZERO, VKR_BLEND_ZERO },
-      { VKR_BLEND_ONE, VKR_BLEND_ZERO, VKR_BLEND_ONE, VKR_BLEND_ZERO },
-      { VKR_BLEND_SRC_ALPHA, VKR_BLEND_INV_SRC_ALPHA, VKR_BLEND_ONE, VKR_BLEND_ZERO }
-   };
    static const int cmps[3] = { VKR_CMP_LESS, VKR_CMP_LEQUAL, VKR_CMP_ALWAYS };
    unsigned b, d, c;
 
    vkr_color_mask(vk.r, 1, 1);
-   for (b = 0; b < 11; b++)
+   for (b = 0; b < VK_BLENDS; b++)
    {
       vkr_enable(vk.r, VKR_CAP_BLEND, b != 0);
-      vkr_blend(vk.r, blends[b][0], blends[b][1], blends[b][2], blends[b][3]);
+      vkr_blend(vk.r, vk_blends[b][0], vk_blends[b][1], vk_blends[b][2], vk_blends[b][3]);
       /* depth off, or on with each write and test */
       for (d = 0; d < 7; d++)
       {
@@ -807,6 +929,7 @@ static void prewarm(void)
    vkr_color_mask(vk.r, 0, 0);
    vkr_client_prewarm(vk.r, vk.depth);
    vkr_color_mask(vk.r, 1, 1);
+   journal_load();
    vkr_client_prewarm_wait(vk.r);
 }
 
@@ -823,7 +946,13 @@ uint32_t vk_grSstWinOpen(void)
       vk.spv_ready = 1;
    }
    memset(&cfg, 0, sizeof(cfg));
-   vk.r = vkr_create(gliden64_vulkan_interface(), &cfg, NULL);
+   /* the game's combiners, and the driver's pipeline cache beside them */
+   combiner_key_path(vk.journal, sizeof(vk.journal), "glide64-vulkan", gfx_info.HEADER);
+   {
+      char cache[PATH_MAX_LENGTH + 16];
+      snprintf(cache, sizeof(cache), "%s.pipelines", vk.journal);
+      vk.r = vkr_create(gliden64_vulkan_interface(), &cfg, cache);
+   }
    if (!vk.r)
       return 0;
    vkr_set_window(vk.r, (unsigned)width, (unsigned)height);
@@ -868,6 +997,7 @@ void vk_grSstWinClose(void)
    for (i = 0; i < vk.n_textures; i++)
       vkr_texture_delete(vk.r, vk.textures[i].handle);
    vk.n_textures = 0;
+   journal_save();
    for (i = 0; i < VK_OWN_SLOTS; i++)
       if (vk.own[i].p)
       {

@@ -39,7 +39,8 @@ and one changing the primitive colour between the quads and nothing else.
 Every pipeline it draws with must have been built at load (strict: a draw
 without one aborts), with blending as dynamic state where the device has
 it, and in the pipelines; each combiner through its own shader, and
-through the shared one.
+through the shared one. The combiners a session met must be built at the
+next session's load, its draws through their own shaders from the first.
 
   gliden64_hle_dl.py --core parallel_n64_libretro.so --gl ./lrhost_gl [--vk ./lrhost_vk] [--glide64]
 """
@@ -233,7 +234,7 @@ def cartridge(path, toggle, name, inter=False, known=True, areas=None, step=None
         f.write(image)
 
 
-def run(host, core, rom, tmp, api, plugin="gliden64", glide64_api="opengl", env_extra=None):
+def run(host, core, rom, tmp, api, plugin="gliden64", glide64_api="opengl", env_extra=None, quiet=False):
     dump = tempfile.mkdtemp(dir=tmp)
     env = dict(os.environ, EGL_PLATFORM="surfaceless", LRHOST_SYSTEM_DIR=os.path.join(tmp, "sys"),
                LRHOST_DUMPDIR=dump, LRHOST_DUMP_FROM=str(FRAMES - 4), LRHOST_DUMP_TO=str(FRAMES - 4))
@@ -243,7 +244,8 @@ def run(host, core, rom, tmp, api, plugin="gliden64", glide64_api="opengl", env_
                                                                     "parallel-n64-gfxplugin=" + plugin],
                        env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=60)
     if p.returncode != 0:
-        sys.stdout.write(p.stdout.decode("utf-8", "replace")[-2000:])
+        if not quiet:
+            sys.stdout.write(p.stdout.decode("utf-8", "replace")[-2000:])
         raise RuntimeError("exit %d" % p.returncode)
     raws = sorted(f for f in os.listdir(dump) if f.endswith(".raw"))
     if not raws:
@@ -383,6 +385,24 @@ def main():
                         ok = pixel(vk, 200, 300) != pixel(vk, 400, 300)
                         detail += ", the quads differ" if ok else ", the quads the same"
                     print("glide64 %-28s %s (%s)" % ("on Vulkan, " + label, "ok" if ok else "FAIL", detail))
+                    failures += 0 if ok else 1
+                # the combiners a session met are built at the next one's load:
+                # its second run, as a frontend runs it (nothing waited for),
+                # must draw every one through its own pipeline from the first
+                # frame (strict "own" aborts otherwise), and a first run must not
+                for label, sysdir, runs in (("next session's own shaders", "journal", (("1", True), ("own", True))),
+                                            ("first session's, for contrast", "fresh", (("own", False),))):
+                    ok = True
+                    for mode, want in runs:
+                        extra = {"LRHOST_SYSTEM_DIR": os.path.join(tmp, sysdir), "LRHOST_AS_FRONTEND": "1",
+                                 "GLIDEN64_VULKAN_STRICT": mode}
+                        try:
+                            run(os.path.abspath(a.vk), a.core, twos, tmp, "opengl", "glide64", "vulkan", extra, not want)
+                            ran = True
+                        except RuntimeError:
+                            ran = False
+                        ok = ok and ran == want
+                    print("glide64 %-28s %s" % ("on Vulkan, " + label, "ok" if ok else "FAIL"))
                     failures += 0 if ok else 1
     print("%d failed" % failures)
     return 1 if failures else 0
