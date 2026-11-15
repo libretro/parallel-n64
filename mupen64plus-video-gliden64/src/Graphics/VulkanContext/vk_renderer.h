@@ -29,7 +29,13 @@ typedef struct vkr_readback vkr_readback;
 enum vkr_format
 {
    VKR_FMT_NONE = 0, VKR_FMT_RGBA8, VKR_FMT_RGB8, VKR_FMT_RGBA4, VKR_FMT_RGB5A1,
-   VKR_FMT_R8, VKR_FMT_R16F, VKR_FMT_R32F, VKR_FMT_R32UI, VKR_FMT_DEPTH, VKR_FMT_R16UI, VKR_FMT_COUNT
+   VKR_FMT_R8, VKR_FMT_R16F, VKR_FMT_R32F, VKR_FMT_R32UI, VKR_FMT_DEPTH, VKR_FMT_R16UI,
+   /* Glide's texel formats, taken as they lie in memory (16-bit ones native
+    * endian), each read as GL reads its own: luminance (L 1), intensity
+    * (I I I I), luminance and alpha in two bytes, 565, 1555 and 4444 with
+    * the alpha at the top, and BGRA */
+   VKR_FMT_L8, VKR_FMT_I8, VKR_FMT_LA8, VKR_FMT_RGB565, VKR_FMT_ARGB1555, VKR_FMT_ARGB4444, VKR_FMT_BGRA8,
+   VKR_FMT_COUNT
 };
 
 enum { VKR_BLEND_ZERO = 0, VKR_BLEND_ONE, VKR_BLEND_SRC_ALPHA, VKR_BLEND_DST_ALPHA,

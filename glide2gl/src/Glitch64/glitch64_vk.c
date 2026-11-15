@@ -574,55 +574,24 @@ static void tex_remove(unsigned lo, unsigned hi)
    }
 }
 
-/* Glide's texels as RGBA8, as GL's formats give them to a shader */
-static void to_rgba8(const void *src, int fmt, unsigned n, uint8_t *dst)
+/* The renderer's format for Glide's texels as they lie: nothing is
+ * converted but AI44, widened to a byte each; 0 for a format Glide64 never
+ * gives */
+static int vk_format(int fmt, unsigned *bpp)
 {
-   const uint8_t *s8 = (const uint8_t*)src;
-   const uint16_t *s16 = (const uint16_t*)src;
-   const uint32_t *s32 = (const uint32_t*)src;
-   unsigned i;
-   for (i = 0; i < n; i++, dst += 4)
+   *bpp = 2;
+   switch (fmt)
    {
-      unsigned t, r, g, b, a;
-      switch (fmt)
-      {
-         case GR_TEXFMT_ALPHA_8:
-            r = g = b = a = s8[i];
-            break;
-         case GR_TEXFMT_INTENSITY_8:
-            r = g = b = s8[i]; a = 255;
-            break;
-         case GR_TEXFMT_ALPHA_INTENSITY_44:
-            r = g = b = (s8[i] & 15) * 17u; a = (s8[i] >> 4) * 17u;
-            break;
-         case GR_TEXFMT_RGB_565:
-            t = s16[i];
-            r = (t >> 11) & 31; g = (t >> 5) & 63; b = t & 31;
-            r = (r << 3) | (r >> 2); g = (g << 2) | (g >> 4); b = (b << 3) | (b >> 2); a = 255;
-            break;
-         case GR_TEXFMT_ARGB_1555:
-            t = s16[i];
-            r = (t >> 10) & 31; g = (t >> 5) & 31; b = t & 31;
-            r = (r << 3) | (r >> 2); g = (g << 3) | (g >> 2); b = (b << 3) | (b >> 2);
-            a = (t & 0x8000) ? 255 : 0;
-            break;
-         case GR_TEXFMT_ALPHA_INTENSITY_88:
-            t = s16[i];
-            r = g = b = t & 255; a = t >> 8;
-            break;
-         case GR_TEXFMT_ARGB_4444:
-            t = s16[i];
-            a = ((t >> 12) & 15) * 17u; r = ((t >> 8) & 15) * 17u; g = ((t >> 4) & 15) * 17u; b = (t & 15) * 17u;
-            break;
-         case GR_TEXFMT_ARGB_8888:
-            t = s32[i];
-            a = t >> 24; r = (t >> 16) & 255; g = (t >> 8) & 255; b = t & 255;
-            break;
-         default:
-            r = g = b = a = 0;
-      }
-      dst[0] = (uint8_t)r; dst[1] = (uint8_t)g; dst[2] = (uint8_t)b; dst[3] = (uint8_t)a;
+      case GR_TEXFMT_ALPHA_8:            *bpp = 1; return VKR_FMT_I8; /* GL's INTENSITY8 */
+      case GR_TEXFMT_INTENSITY_8:        *bpp = 1; return VKR_FMT_L8;
+      case GR_TEXFMT_ALPHA_INTENSITY_44: return VKR_FMT_LA8;
+      case GR_TEXFMT_ALPHA_INTENSITY_88: return VKR_FMT_LA8;
+      case GR_TEXFMT_RGB_565:            return VKR_FMT_RGB565;
+      case GR_TEXFMT_ARGB_1555:          return VKR_FMT_ARGB1555;
+      case GR_TEXFMT_ARGB_4444:          return VKR_FMT_ARGB4444;
+      case GR_TEXFMT_ARGB_8888:          *bpp = 4; return VKR_FMT_BGRA8;
    }
+   return 0;
 }
 
 static int vk_wrap(int gl)
@@ -660,22 +629,39 @@ void vk_grTexSource(int32_t tmu, uint32_t start, void *info_, int do_download)
 
    if (do_download)
    {
-      size_t bytes = (size_t)w * (size_t)h * 4;
-      uint8_t *dst;
+      unsigned bpp;
+      const int fmt = vk_format(info->format, &bpp);
+      const unsigned n = (unsigned)(w * h);
+      const size_t bytes = (size_t)n * bpp;
       tex_remove(id, id + (unsigned)(w * h * (int)grTexCalcMemRequired(0, 0, info->format)));
       if (vk.n_textures >= VK_TEXTURES)
          tex_remove(0, ~0u);
       t = &vk.textures[vk.n_textures++];
       t->id = id;
       t->handle = vkr_texture_new(vk.r);
-      dst = (uint8_t*)vkr_texture_lend(vk.r, bytes);
-      if (!dst)
-         dst = bytes <= 2048u * 2048u * 4u ? vk.staging : NULL;
-      if (dst)
+      if (info->format == GR_TEXFMT_ALPHA_INTENSITY_44)
       {
-         to_rgba8(info->data, info->format, (unsigned)(w * h), dst);
-         vkr_texture_init(vk.r, t->handle, VKR_FMT_RGBA8, 1, (unsigned)w, (unsigned)h, 0, 1, dst, bytes);
+         /* a nibble each to a byte each, as GL's LUMINANCE_ALPHA had them:
+          * written straight where the GPU reads them */
+         const uint8_t *src = (const uint8_t*)info->data;
+         uint8_t *dst = (uint8_t*)vkr_texture_lend(vk.r, bytes);
+         unsigned k;
+         if (!dst)
+            dst = bytes <= 2048u * 2048u * 4u ? vk.staging : NULL;
+         if (dst)
+         {
+            for (k = 0; k < n; k++)
+            {
+               dst[2 * k]     = (uint8_t)((src[k] & 15) * 17);
+               dst[2 * k + 1] = (uint8_t)((src[k] >> 4) * 17);
+            }
+            vkr_texture_init(vk.r, t->handle, fmt, 1, (unsigned)w, (unsigned)h, 0, 1, dst, bytes);
+         }
       }
+      else if (fmt)
+         /* the texels as Glide64 decoded them: the one copy is into the
+          * ring, from where the GPU takes them */
+         vkr_texture_init(vk.r, t->handle, fmt, 1, (unsigned)w, (unsigned)h, 0, 1, info->data, bytes);
       info->width = w;
       info->height = h;
    }

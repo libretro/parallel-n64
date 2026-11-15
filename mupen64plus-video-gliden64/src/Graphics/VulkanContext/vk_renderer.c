@@ -351,6 +351,14 @@ static VkFormat to_vk_format(vkr_renderer *r, int fmt)
       case VKR_FMT_R32UI:  return VK_FORMAT_R32_UINT;
       case VKR_FMT_R16UI:  return VK_FORMAT_R16_UINT;
       case VKR_FMT_DEPTH:  return r->depth_format;
+      /* all of these sampled and filtered on every device */
+      case VKR_FMT_L8:
+      case VKR_FMT_I8:     return VK_FORMAT_R8_UNORM;
+      case VKR_FMT_LA8:    return VK_FORMAT_R8G8_UNORM;
+      case VKR_FMT_RGB565: return VK_FORMAT_R5G6B5_UNORM_PACK16;
+      case VKR_FMT_ARGB1555: return VK_FORMAT_A1R5G5B5_UNORM_PACK16;
+      case VKR_FMT_ARGB4444: return VK_FORMAT_B4G4R4A4_UNORM_PACK16;
+      case VKR_FMT_BGRA8:  return VK_FORMAT_B8G8R8A8_UNORM;
       default: break;
    }
    return VK_FORMAT_R8G8B8A8_UNORM;
@@ -858,6 +866,29 @@ static int image_create(vkr_renderer *r, vkr_image *i, int fmt, unsigned samples
        * the same bits */
       view.components.r = VK_COMPONENT_SWIZZLE_B;
       view.components.b = VK_COMPONENT_SWIZZLE_R;
+   }
+   switch (fmt)
+   {
+      case VKR_FMT_L8:
+         view.components.g = view.components.b = VK_COMPONENT_SWIZZLE_R;
+         view.components.a = VK_COMPONENT_SWIZZLE_ONE;
+         break;
+      case VKR_FMT_I8:
+         view.components.g = view.components.b = view.components.a = VK_COMPONENT_SWIZZLE_R;
+         break;
+      case VKR_FMT_LA8:
+         view.components.g = view.components.b = VK_COMPONENT_SWIZZLE_R;
+         view.components.a = VK_COMPONENT_SWIZZLE_G;
+         break;
+      case VKR_FMT_ARGB4444:
+         /* A R G B from the top nibble down: the format's B G R A */
+         view.components.r = VK_COMPONENT_SWIZZLE_G;
+         view.components.g = VK_COMPONENT_SWIZZLE_R;
+         view.components.b = VK_COMPONENT_SWIZZLE_A;
+         view.components.a = VK_COMPONENT_SWIZZLE_B;
+         break;
+      default:
+         break;
    }
    view.subresourceRange.aspectMask = depth ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT;
    view.subresourceRange.levelCount = levels;

@@ -39,7 +39,8 @@ and one changing the primitive colour between the quads and nothing else.
 Every pipeline it draws with must have been built at load (strict: a draw
 without one aborts), with blending as dynamic state where the device has
 it, and in the pipelines; each combiner through its own shader, and
-through the shared one. The combiners a session met must be built at the
+through the shared one; an IA16 texture too (Glide's AI88, taken as it
+lies). The combiners a session met must be built at the
 next session's load, its draws through their own shaders from the first.
 
   gliden64_hle_dl.py --core parallel_n64_libretro.so --gl ./lrhost_gl [--vk ./lrhost_vk] [--glide64]
@@ -77,7 +78,7 @@ def vertex(x, y, s, t):
     return struct.pack(">hhhHhhBBBB", x, y, 0, 0, s << 5, t << 5, 255, 255, 255, 255)
 
 
-def display_list(toggle, inter=False, cull=False, prim=False, two=False):
+def display_list(toggle, inter=False, cull=False, prim=False, two=False, ia=False):
     c = []
     cmd = lambda w0, w1=0: c.extend([w0 & 0xffffffff, w1 & 0xffffffff])
     # Glide64 presents a frame when the colour image changes: another
@@ -123,12 +124,14 @@ def display_list(toggle, inter=False, cull=False, prim=False, two=False):
     cmd(0x01020040, MTX + 64)                                                # modelview, load
     cmd(0xBB000001, 0xFFFFFFFF)                                              # texture on, tile 0
     # the texture: 32x32 RGBA16, one block
-    cmd(0xFD000000 | (0 << 21) | (2 << 19), TEX)
-    cmd(0xF5000000 | (0 << 21) | (2 << 19), 7 << 24)
+    # with @ia an IA16 texture (format 3) in place of the RGBA16 one
+    tfmt = 3 if ia else 0
+    cmd(0xFD000000 | (tfmt << 21) | (2 << 19), TEX)
+    cmd(0xF5000000 | (tfmt << 21) | (2 << 19), 7 << 24)
     cmd(0xE6000000)
     cmd(0xF3000000, (7 << 24) | (1023 << 12) | 256)
     cmd(0xE7000000)
-    cmd(0xF5000000 | (0 << 21) | (2 << 19) | (8 << 9), (5 << 14) | (5 << 4))
+    cmd(0xF5000000 | (tfmt << 21) | (2 << 19) | (8 << 9), (5 << 14) | (5 << 4))
     cmd(0xF2000000, (0 << 24) | ((31 * 4) << 12) | (31 * 4))
     cmd(0x04300040, VTX)                                                     # four vertices
     cmd(0xBF000000, (0 << 16) | (10 << 8) | 20)
@@ -159,7 +162,8 @@ def display_list(toggle, inter=False, cull=False, prim=False, two=False):
     return struct.pack(">%dI" % len(c), *c)
 
 
-def cartridge(path, toggle, name, inter=False, known=True, areas=None, step=None, cull=False, prim=False, two=False):
+def cartridge(path, toggle, name, inter=False, known=True, areas=None, step=None, cull=False, prim=False, two=False,
+              ia=False):
     """@areas: what to put in RDRAM in place of this file's own, by address.
     @step: (address, value), the value added to the word there before each
     frame's task."""
@@ -173,7 +177,7 @@ def cartridge(path, toggle, name, inter=False, known=True, areas=None, step=None
     li = lambda rt, v: [lui(rt, (v >> 16) & 0xffff), ori(rt, rt, v & 0xffff)]
 
     area = {}
-    area[DL] = display_list(toggle, inter, cull, prim, two)
+    area[DL] = display_list(toggle, inter, cull, prim, two, ia)
     area[VTX] = b"".join(vertex(x, y, s, t) for (x0, y0) in ((-120, -50), (20, -50))
                          for (x, y, s, t) in ((x0, y0, 0, 32), (x0 + 100, y0, 32, 32),
                                               (x0 + 100, y0 + 100, 32, 0), (x0, y0 + 100, 0, 0)))
@@ -185,6 +189,11 @@ def cartridge(path, toggle, name, inter=False, known=True, areas=None, step=None
     area[TEX] = b"".join(struct.pack(">H", ((0x1f if (u ^ v) & 8 else 0x08) << 11) |
                                      ((0x14 if u & 16 else 0x04) << 6) | ((0x0c if v & 16 else 0x02) << 1) | 1)
                          for v in range(32) for u in range(32))
+    if ia:
+        # intensity in the high byte, alpha in the low: a checker of four
+        # intensities, the alpha a gradient across
+        area[TEX] = b"".join(struct.pack(">BB", (0xe0 if (u ^ v) & 8 else 0x30) | (0x18 if u & 16 else 0), 8 * u + 4)
+                             for v in range(32) for u in range(32))
     # Glide64 tells the microcode by the sum of its first 3072 bytes as
     # words: this is Fast3D's (Super Mario 64)
     area[UCODE] = struct.pack(">I", 0x006bd77f if known else 0).ljust(0x1000, b"\0")
@@ -360,6 +369,8 @@ def main():
                 cartridge(prims, False, "GLIDEN64 HLE DL", prim=True)
                 twos = os.path.join(tmp, "two.z64")
                 cartridge(twos, False, "GLIDEN64 HLE DL", two=True)
+                ias = os.path.join(tmp, "ia.z64")
+                cartridge(ias, False, "GLIDEN64 HLE DL", ia=True)
                 # strict: a draw whose pipeline was not built at load aborts;
                 # blending as dynamic state where the device has it, and not
                 strict = {"GLIDEN64_VULKAN_STRICT": "1"}
@@ -370,7 +381,7 @@ def main():
                 for label, path, extra in (("plain", roms["plain"], strict), ("toggled", roms["toggled"], strict),
                                            ("inter", rom, strict), ("culling", culling, strict),
                                            ("primitive colour", prims, strict), ("blending in pipelines", roms["plain"], no_eds3),
-                                           ("two cycles", twos, strict),
+                                           ("two cycles", twos, strict), ("IA texture", ias, strict),
                                            ("shared shader", roms["plain"], generic), ("shared shader, inter", rom, generic),
                                            ("shared shader, two cycles", twos, generic)):
                     gl = run(os.path.abspath(a.gl), a.core, path, tmp, "opengl", "glide64")
