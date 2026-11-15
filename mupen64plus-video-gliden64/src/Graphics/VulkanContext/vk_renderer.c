@@ -321,6 +321,9 @@ struct vkr_renderer
    char cache_path[1024];
    VkDeviceSize vb_offset, ib_offset;
    int vb_valid, ib_valid;
+   /* vkr_vertex_open's room: where it ends, in which frame's ring */
+   VkDeviceSize open_at, open_end;
+   const void *open_frame;
 
    /* the temporal upscaler's motion pass */
    VkRenderPass up_rp;
@@ -2338,6 +2341,23 @@ void *vkr_vertex_reserve(vkr_renderer *r, size_t bytes)
    return v;
 }
 
+void *vkr_vertex_open(vkr_renderer *r, size_t bytes)
+{
+   void *v = vkr_vertex_reserve(r, bytes);
+   r->open_at = r->vb_offset;
+   r->open_end = r->vb_offset + bytes;
+   r->open_frame = r->f;
+   return v;
+}
+
+void vkr_vertex_close(vkr_renderer *r, size_t used)
+{
+   /* the rest given back while nothing was reserved after it */
+   if (r->open_frame == r->f && r->f->ring_at == r->open_end && used <= r->open_end - r->open_at)
+      r->f->ring_at = r->open_at + used;
+   r->open_frame = NULL;
+}
+
 vkr_rect_vertex *vkr_rect_reserve(vkr_renderer *r, unsigned count)
 {
    VkDeviceSize offset;
@@ -3578,6 +3598,11 @@ void vkr_present_upscaled(vkr_renderer *r, const vkr_upscaler_frame *u)
    vkr_frame *f;
    struct retro_vulkan_image image;
    int inputs = 0;
+
+   /* tools/ci: a client's open vertices are this frame's ring's: drawn
+    * after the frame is gone, they would be read from the next one's */
+   if (r->strict && r->open_frame)
+      abort();
 
    frame_begin(r);
    f = r->f;

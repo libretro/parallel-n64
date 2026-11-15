@@ -30,6 +30,9 @@ extern float fogStart, fogEnd;
 extern float polygonOffsetFactor;
 extern float polygonOffsetUnits;
 
+/* the vertices of a batch, written straight into the renderer's ring: room
+ * for this many is opened at its first triangle, what is unused given
+ * back when it is drawn */
 #define VK_VERTICES  (3 * 4096)
 #define VK_TEXTURES  4096
 /* textures written over, kept to take the next of their format and size */
@@ -105,7 +108,7 @@ static struct
    uint8_t *buf;          /* the window's size in RGBA8 */
    uint8_t *staging;      /* a texture's texels, when the ring lends none */
 
-   vk_vertex verts[VK_VERTICES];
+   vk_vertex *verts;
    unsigned n_verts;
 
    glitch64_vk_values values;
@@ -292,31 +295,41 @@ static vkr_program *own_program(int flags)
    return o->p;
 }
 
-static void draw_vertices(const void *data, unsigned n, int flags)
+/* @n vertices bound already: the program, its values, the draw */
+static void draw_bound(unsigned n, int flags)
 {
    static const float none[4] = { 0.f, 0.f, 0.f, 0.f };
-   vkr_program *p;
-   void *dst;
-   if (!n)
-      return;
-   p = own_program(flags);
+   vkr_program *p = own_program(flags);
    vkr_use(vk.r, p);
    vkr_values_raw(vk.r, p, &vk.values, sizeof(vk.values));
    vkr_client_push(vk.r, p, vk.ops, flags, none);
+   vkr_draw_tris(vk.r, VKR_TOPO_TRIANGLES, n, 0);
+}
+
+/* Glitch64's own few vertices */
+static void draw_vertices(const void *data, unsigned n, int flags)
+{
+   void *dst;
+   if (!n)
+      return;
    dst = vkr_vertex_reserve(vk.r, n * sizeof(vk_vertex));
    if (!dst)
       return;
    memcpy(dst, data, n * sizeof(vk_vertex));
-   vkr_draw_tris(vk.r, VKR_TOPO_TRIANGLES, n, 0);
+   draw_bound(n, flags);
 }
 
 void vk_flush(void)
 {
    unsigned n = vk.n_verts;
    int flags = vk.flags;
-   if (!n || !vk.r)
+   if (!vk.verts || !vk.r)
       return;
+   vkr_vertex_close(vk.r, n * sizeof(vk_vertex));
+   vk.verts = NULL;
    vk.n_verts = 0;
+   if (!n)
+      return;
    if (vk.fog_mode)
       flags |= G64VK_FOG;
    if (vk.dither)
@@ -329,7 +342,7 @@ void vk_flush(void)
    vk.values.fog[1] = fogEnd;
    vk.values.fog[2] = 1.f / (fogEnd - fogStart);
    vk.values.fog[3] = vk.alpha_test ? vk.alpha_ref / 255.f : -1.f;
-   draw_vertices(vk.verts, n, flags);
+   draw_bound(n, flags);
 }
 
 #define VK_VERTEX(i) ((const char*)pointers + (size_t)(i) * sizeof(VERTEX))
@@ -341,8 +354,14 @@ void vk_grDrawVertexArrayContiguous(uint32_t mode, uint32_t count, void *pointer
 
    if (vk.n_verts + tris * 3 > VK_VERTICES)
       vk_flush();
-   if (tris * 3 > VK_VERTICES)
+   if (!tris || tris * 3 > VK_VERTICES || !vk.r)
       return;
+   if (!vk.verts)
+   {
+      vk.verts = (vk_vertex*)vkr_vertex_open(vk.r, VK_VERTICES * sizeof(vk_vertex));
+      if (!vk.verts)
+         return;
+   }
    for (i = 0; i < tris; i++)
    {
       unsigned a, b, c;
@@ -740,6 +759,7 @@ static void reset_state(void)
 {
    unsigned i;
    vk.n_verts = 0;
+   vk.verts = NULL;
    vk.cull = -1;
    vk.depth_func = -1;
    vk.depth_mask = -1;
@@ -1036,6 +1056,8 @@ void vk_grSstWinClose(void)
       vkr_readback_delete(vk.r, vk.rb);
    vkr_destroy(vk.r);
    vk.r = NULL;
+   vk.verts = NULL;
+   vk.n_verts = 0;
    vk.combiner = vk.depth = NULL;
    vk.rb = NULL;
    vk.color = vk.zbuf = vk.fbo = vk.lfb_color = vk.lfb_fbo = vk.lfb_tex = vk.depth_tex = 0;
@@ -1072,8 +1094,12 @@ void vk_grBufferSwap(void)
 
 void glitch64_vk_present(void)
 {
-   if (vk.r)
-      vkr_present(vk.r);
+   if (!vk.r)
+      return;
+   /* what the next frame drew since the swap goes in this frame's commands:
+    * its vertices are in this frame's ring */
+   vk_flush();
+   vkr_present(vk.r);
 }
 
 /* ---- the frame read back ---- */

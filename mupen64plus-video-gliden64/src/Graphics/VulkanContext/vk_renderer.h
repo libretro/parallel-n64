@@ -238,6 +238,12 @@ vkr_rect_vertex *vkr_rect_reserve(vkr_renderer *r, unsigned count);
 uint16_t        *vkr_index_reserve(vkr_renderer *r, unsigned count);
 /* a client's vertices, drawn by vkr_draw_tris */
 void            *vkr_vertex_reserve(vkr_renderer *r, size_t bytes);
+/* Room for up to @bytes of a client's vertices, written straight into it as
+ * they come, bound for vkr_draw_tris; vkr_vertex_close says how much was
+ * used, and the rest is given back if nothing was reserved since. Closed
+ * and drawn before the frame is presented: the room is that frame's. */
+void            *vkr_vertex_open(vkr_renderer *r, size_t bytes);
+void             vkr_vertex_close(vkr_renderer *r, size_t used);
 void vkr_draw_tris(vkr_renderer *r, int topology, unsigned vertices, unsigned indices);
 void vkr_draw_rects(vkr_renderer *r, int topology, unsigned vertices);
 void vkr_draw_line(vkr_renderer *r, unsigned vertices, float width);
