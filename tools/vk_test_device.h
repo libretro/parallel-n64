@@ -156,6 +156,8 @@ static VkResult VKAPI_CALL bind_any(VkDevice d, uint64_t object, VkDeviceMemory 
 }
 
 #define MAX_MEMORY 64
+/* what new memory holds: a test that checks what is cleared sets another */
+static uint8_t memory_fill_byte;
 static uint8_t *memory_data[MAX_MEMORY];
 static size_t memory_sizes[MAX_MEMORY];
 static unsigned num_memory, memory_freed;
@@ -167,7 +169,9 @@ static VkResult VKAPI_CALL allocate_memory(VkDevice d, const VkMemoryAllocateInf
 	if (num_memory == MAX_MEMORY)
 		return VK_ERROR_OUT_OF_DEVICE_MEMORY;
 	memory_sizes[num_memory] = (size_t)info->allocationSize;
-	memory_data[num_memory] = (uint8_t *)calloc(1, memory_sizes[num_memory]);
+	memory_data[num_memory] = (uint8_t *)malloc(memory_sizes[num_memory]);
+	if (memory_data[num_memory])
+		memset(memory_data[num_memory], memory_fill_byte, memory_sizes[num_memory]);
 	*memory = GRANITE_VK_FROM_BITS(VkDeviceMemory, ++num_memory);
 	return VK_SUCCESS;
 }

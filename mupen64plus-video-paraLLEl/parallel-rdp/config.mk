@@ -38,6 +38,7 @@ PARALLEL_RDP_SOURCES_C := \
         $(PARALLEL_RDP_IMPLEMENTATION)/parallel-rdp/rdp_upscaler_view.c \
         $(PARALLEL_RDP_IMPLEMENTATION)/parallel-rdp/rdp_renderer.c \
         $(PARALLEL_RDP_IMPLEMENTATION)/parallel-rdp/rdp_commands.c \
+        $(PARALLEL_RDP_IMPLEMENTATION)/parallel-rdp/rdp_processor.c \
         $(PARALLEL_RDP_IMPLEMENTATION)/parallel-rdp/rdram_coherency.c \
         $(PARALLEL_RDP_IMPLEMENTATION)/parallel-rdp/temporal_upscaler.c \
         $(PARALLEL_RDP_IMPLEMENTATION)/vulkan/cookie.c \
