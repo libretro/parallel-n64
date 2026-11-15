@@ -308,6 +308,11 @@ public:
 		return rdp_renderer_upscaled_hidden_rdram(&r);
 	}
 
+	rdp_renderer_t *get()
+	{
+		return &r;
+	}
+
 private:
 	rdp_renderer_t r;
 

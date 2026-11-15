@@ -35,6 +35,7 @@
 #include "upscaler_pass.hpp"
 #include "temporal_upscaler.h"
 #include "rdp_upscaler_view.h"
+#include "rdp_commands.h"
 
 
 namespace RDP
@@ -60,36 +61,22 @@ using CommandProcessorFlags = uint32_t;
 // These options control various behavior when upscaling to workaround glitches which arise naturally as part of upscaling.
 struct Quirks
 {
-	inline Quirks()
-	{
-		u.options.native_resolution_tex_rect = true;
-		u.options.native_texture_lod = false;
-	}
+	// RDP_DECODE_* (primitive_decode.h): as rdp_commands.c decodes by them
+	uint32_t flags = RDP_DECODE_NATIVE_TEX_RECT;
 
+	// If true, force TEX_RECT and TEX_RECT_FLIP to render without upscaling.
+	// Works around bilinear filtering bugs in Cycle1/Cycle2 mode where game assumed 1:1 pixel transfer.
 	inline void set_native_resolution_tex_rect(bool enable)
 	{
-		u.options.native_resolution_tex_rect = enable;
+		flags = enable ? (flags | RDP_DECODE_NATIVE_TEX_RECT) : (flags & ~uint32_t(RDP_DECODE_NATIVE_TEX_RECT));
 	}
 
+	// Forces LOD to be computed as 1x upscale.
+	// Fixes content which relies on LOD computation to select textures in clever ways.
 	inline void set_native_texture_lod(bool enable)
 	{
-		u.options.native_texture_lod = enable;
+		flags = enable ? (flags | RDP_DECODE_NATIVE_TEXTURE_LOD) : (flags & ~uint32_t(RDP_DECODE_NATIVE_TEXTURE_LOD));
 	}
-
-	union
-	{
-		struct Opts
-		{
-			// If true, force TEX_RECT and TEX_RECT_FLIP to render without upscaling.
-			// Works around bilinear filtering bugs in Cycle1/Cycle2 mode where game assumed 1:1 pixel transfer.
-			bool native_resolution_tex_rect;
-
-			// Forces LOD to be computed as 1x upscale.
-			// Fixes content which relies on LOD computation to select textures in clever ways.
-			bool native_texture_lod;
-		} options;
-		uint32_t words[1];
-	} u;
 };
 
 class CommandProcessor
@@ -191,22 +178,8 @@ private:
 
 	Vulkan::ImageHandle scanout(const ScanoutOptions &opts, VkImageLayout target_layout);
 
-#define OP(x) void op_##x(const uint32_t *words)
-	OP(triangle);
-	OP(texture_rectangle); OP(texture_rectangle_flip); OP(sync_load); OP(sync_pipe);
-	OP(sync_tile); OP(sync_full); OP(set_key_gb); OP(set_key_r);
-	OP(set_convert); OP(set_scissor); OP(set_prim_depth); OP(set_other_modes);
-	OP(load_tlut); OP(set_tile_size); OP(load_block);
-	OP(load_tile); OP(set_tile); OP(fill_rectangle); OP(set_fill_color);
-	OP(set_fog_color); OP(set_blend_color); OP(set_prim_color); OP(set_env_color);
-	OP(set_combine); OP(set_texture_image); OP(set_mask_image); OP(set_color_image);
-#undef OP
 
-	ScissorState scissor_state = {};
-	StaticRasterizationState static_state = {};
-	DepthBlendState depth_blend = {};
 
-	rdp_texture_image_t texture_image = {};
 
 	uint64_t timeline_value = 0;
 	// The timeline worker (rdp_timeline.c): waits on fences, copies GPU
@@ -224,14 +197,12 @@ private:
 
 	void enqueue_coherency_operation(const CoherencyOperation &op);
 	void drain_command_ring();
-	unsigned decode_flags() const;
-	void texture_rectangle(const uint32_t *words, bool flip);
 
-	Quirks quirks;
 
 	/* The temporal upscaler's view of the state triangles are drawn under */
 	rdp_upscaler_t *upscaler = nullptr;
-	rdp_upscaler_view_t upscaler_view = {};
+	// The RDP's commands, run (rdp_commands.c)
+	rdp_commands_t commands;
 	void upscaler_scanout();
 
 	rdp_dump_writer_t *dump_writer = nullptr;

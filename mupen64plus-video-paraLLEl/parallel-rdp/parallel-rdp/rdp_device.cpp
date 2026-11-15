@@ -72,6 +72,7 @@ CommandProcessor::CommandProcessor(Vulkan::Device &device_, void *rdram_ptr,
 	// Not started only if an allocation failed; init_renderer reports that.
 	rdp_timeline_init(&timeline, &device);
 	upscaler = rdp_upscaler_new();
+	rdp_commands_init(&commands, renderer.get(), upscaler);
 
 	BufferCreateInfo info = {};
 	info.size = rdram_size;
@@ -336,215 +337,6 @@ void CommandProcessor::clear_buffer(Vulkan::Buffer &buffer, uint32_t value)
 	}
 }
 
-void CommandProcessor::op_sync_full(const uint32_t *)
-{
-	renderer.flush_and_signal();
-}
-
-// What of the state a primitive's decoding depends on (primitive_decode.h)
-unsigned CommandProcessor::decode_flags() const
-{
-	unsigned flags = 0;
-	if (static_state.flags & RASTERIZATION_COPY_BIT)
-		flags |= RDP_DECODE_COPY_CYCLE;
-	if (static_state.flags & RASTERIZATION_FILL_BIT)
-		flags |= RDP_DECODE_FILL_CYCLE;
-	if (quirks.u.options.native_texture_lod)
-		flags |= RDP_DECODE_NATIVE_TEXTURE_LOD;
-	if (quirks.u.options.native_resolution_tex_rect)
-		flags |= RDP_DECODE_NATIVE_TEX_RECT;
-	return flags;
-}
-
-// The eight triangle commands, 0x08 to 0x0f
-void CommandProcessor::op_triangle(const uint32_t *words)
-{
-	TriangleSetup setup;
-	AttributeSetup attr;
-	rdp_decode_triangle(words, decode_flags(), &setup, &attr);
-	rdp_upscaler_view_triangle(upscaler, &upscaler_view, (words[0] >> 24) & 63, &static_state, &depth_blend,
-	                           renderer.get_scaling_factor(), &setup, &attr);
-	renderer.draw_shaded_primitive(setup, attr);
-}
-
-void CommandProcessor::op_set_color_image(const uint32_t *words)
-{
-	uint32_t addr, width, fmt;
-	unsigned size;
-	rdp_decode_color_image(words, &addr, &width, &fmt, &size);
-	rdp_upscaler_set_color_image(upscaler, addr, width, size == 3 ? 2 : size == 2 ? 1 : -1);
-	renderer.set_color_framebuffer(addr, width, FBFormat(fmt));
-}
-
-void CommandProcessor::op_set_mask_image(const uint32_t *words)
-{
-	unsigned addr = words[1] & 0xffffff;
-	renderer.set_depth_framebuffer(addr);
-}
-
-void CommandProcessor::op_set_scissor(const uint32_t *words)
-{
-	rdp_decode_scissor(words, &scissor_state, &static_state.flags);
-	renderer.set_scissor_state(scissor_state);
-	renderer.set_static_rasterization_state(static_state);
-}
-
-void CommandProcessor::op_set_other_modes(const uint32_t *words)
-{
-	upscaler_view.prim_depth = rdp_decode_other_modes(words, &static_state, &depth_blend);
-	renderer.set_static_rasterization_state(static_state);
-	renderer.set_depth_blend_state(depth_blend);
-	renderer.set_enable_primitive_depth(upscaler_view.prim_depth);
-	upscaler_view.other_modes[0] = words[0];
-	upscaler_view.other_modes[1] = words[1];
-}
-
-void CommandProcessor::op_set_texture_image(const uint32_t *words)
-{
-	rdp_decode_texture_image(words, &texture_image);
-}
-
-void CommandProcessor::op_set_tile(const uint32_t *words)
-{
-	TileMeta info;
-	uint32_t tile = rdp_decode_tile(words, &info);
-	upscaler_view.tile[tile][0] = words[0];
-	upscaler_view.tile[tile][1] = words[1];
-	renderer.set_tile(tile, info);
-}
-
-void CommandProcessor::op_load_tile(const uint32_t *words)
-{
-	LoadTileInfo info;
-	rdp_decode_load(words, texture_image.addr, texture_image.width, texture_image.fmt, texture_image.size,
-	                RDP_UPLOAD_TILE, &info);
-	upscaler_view.load_addr = texture_image.addr;
-	renderer.load_tile((words[1] >> 24) & 7, info);
-}
-
-void CommandProcessor::op_load_tlut(const uint32_t *words)
-{
-	LoadTileInfo info;
-	rdp_decode_load(words, texture_image.addr, texture_image.width, texture_image.fmt, texture_image.size,
-	                RDP_UPLOAD_TLUT, &info);
-	upscaler_view.load_addr = texture_image.addr;
-	renderer.load_tile((words[1] >> 24) & 7, info);
-}
-
-void CommandProcessor::op_load_block(const uint32_t *words)
-{
-	LoadTileInfo info;
-	rdp_decode_load(words, texture_image.addr, texture_image.width, texture_image.fmt, texture_image.size,
-	                RDP_UPLOAD_BLOCK, &info);
-	upscaler_view.load_addr = texture_image.addr;
-	renderer.load_tile((words[1] >> 24) & 7, info);
-}
-
-void CommandProcessor::op_set_tile_size(const uint32_t *words)
-{
-	rdp_tile_size_t size;
-	uint32_t tile = rdp_decode_tile_size(words, &size);
-	renderer.set_tile_size(tile, size.slo, size.shi, size.tlo, size.thi);
-}
-
-void CommandProcessor::op_set_combine(const uint32_t *words)
-{
-	rdp_decode_combine(words, &static_state);
-	upscaler_view.combine[0] = words[0];
-	upscaler_view.combine[1] = words[1];
-	renderer.set_static_rasterization_state(static_state);
-}
-
-void CommandProcessor::op_set_blend_color(const uint32_t *words)
-{
-	renderer.set_blend_color(words[1]);
-}
-
-void CommandProcessor::op_set_env_color(const uint32_t *words)
-{
-	renderer.set_env_color(words[1]);
-}
-
-void CommandProcessor::op_set_fog_color(const uint32_t *words)
-{
-	renderer.set_fog_color(words[1]);
-}
-
-void CommandProcessor::op_set_prim_color(const uint32_t *words)
-{
-	uint8_t min_level, lod_frac;
-	uint32_t color;
-	rdp_decode_prim_color(words, &min_level, &lod_frac, &color);
-	renderer.set_primitive_color(min_level, lod_frac, color);
-}
-
-void CommandProcessor::op_set_fill_color(const uint32_t *words)
-{
-	renderer.set_fill_color(words[1]);
-}
-
-void CommandProcessor::op_fill_rectangle(const uint32_t *words)
-{
-	TriangleSetup setup;
-	rdp_decode_fill_rectangle(words, decode_flags(), &setup);
-	rdp_upscaler_rectangle(upscaler, uint32_t(setup.xh) >> 13, uint32_t(setup.yh), uint32_t(setup.xl) >> 13,
-	                       uint32_t(setup.yl));
-	renderer.draw_flat_primitive(setup);
-}
-
-void CommandProcessor::texture_rectangle(const uint32_t *words, bool flip)
-{
-	TriangleSetup setup;
-	AttributeSetup attr;
-	rdp_decode_texture_rectangle(words, flip, decode_flags(), &setup, &attr);
-	rdp_upscaler_rectangle(upscaler, uint32_t(setup.xh) >> 13, uint32_t(setup.yh), uint32_t(setup.xl) >> 13,
-	                       uint32_t(setup.yl));
-	renderer.draw_shaded_primitive(setup, attr);
-}
-
-void CommandProcessor::op_texture_rectangle(const uint32_t *words)
-{
-	texture_rectangle(words, false);
-}
-
-void CommandProcessor::op_texture_rectangle_flip(const uint32_t *words)
-{
-	texture_rectangle(words, true);
-}
-
-void CommandProcessor::op_set_prim_depth(const uint32_t *words)
-{
-	renderer.set_primitive_depth((words[1] >> 16) & 0xffff, words[1] & 0xffff);
-	upscaler_view.prim_z = int32_t(((words[1] >> 16) & 0x7fff) << 16);
-}
-
-void CommandProcessor::op_set_convert(const uint32_t *words)
-{
-	uint16_t k[6];
-	rdp_decode_convert(words, k);
-	renderer.set_convert(k[0], k[1], k[2], k[3], k[4], k[5]);
-}
-
-void CommandProcessor::op_set_key_gb(const uint32_t *words)
-{
-	rdp_color_key_t g, b;
-	rdp_decode_key_gb(words, &g, &b);
-	renderer.set_color_key(1, g.width, g.center, g.scale);
-	renderer.set_color_key(2, b.width, b.center, b.scale);
-}
-
-void CommandProcessor::op_set_key_r(const uint32_t *words)
-{
-	rdp_color_key_t r;
-	rdp_decode_key_r(words, &r);
-	renderer.set_color_key(0, r.width, r.center, r.scale);
-}
-
-#define OP(x) void CommandProcessor::op_##x(const uint32_t *) {}
-OP(sync_load) OP(sync_pipe)
-OP(sync_tile)
-#undef OP
-
 void CommandProcessor::enqueue_command_inner(unsigned num_words, const uint32_t *words)
 {
 	if (single_threaded_processing)
@@ -608,28 +400,6 @@ void CommandProcessor::run_ring_command(void *self, unsigned num_words, const ui
 
 UTIL_NOINLINE void CommandProcessor::enqueue_command_direct(unsigned, const uint32_t *words)
 {
-#define OP(x) &CommandProcessor::op_##x
-	using CommandFunc = void (CommandProcessor::*)(const uint32_t *words);
-	static const CommandFunc funcs[64] = {
-		/* 0x00 */ nullptr, nullptr, nullptr, nullptr,
-		/* 0x04 */ nullptr, nullptr, nullptr, nullptr,
-		/* 0x08 */ OP(triangle), OP(triangle), OP(triangle), OP(triangle),
-		/* 0x0c */ OP(triangle), OP(triangle), OP(triangle), OP(triangle),
-		/* 0x10 */ nullptr, nullptr, nullptr, nullptr,
-		/* 0x14 */ nullptr, nullptr, nullptr, nullptr,
-		/* 0x18 */ nullptr, nullptr, nullptr, nullptr,
-		/* 0x1c */ nullptr, nullptr, nullptr, nullptr,
-		/* 0x20 */ nullptr, nullptr, nullptr, nullptr,
-		/* 0x24 */ OP(texture_rectangle), OP(texture_rectangle_flip), OP(sync_load), OP(sync_pipe),
-		/* 0x28 */ OP(sync_tile), OP(sync_full), OP(set_key_gb), OP(set_key_r),
-		/* 0x2c */ OP(set_convert), OP(set_scissor), OP(set_prim_depth), OP(set_other_modes),
-		/* 0x30 */ OP(load_tlut), nullptr, OP(set_tile_size), OP(load_block),
-		/* 0x34 */ OP(load_tile), OP(set_tile), OP(fill_rectangle), OP(set_fill_color),
-		/* 0x38 */ OP(set_fog_color), OP(set_blend_color), OP(set_prim_color), OP(set_env_color),
-		/* 0x3c */ OP(set_combine), OP(set_texture_image), OP(set_mask_image), OP(set_color_image),
-	};
-#undef OP
-
 	unsigned op = (words[0] >> 24) & 63;
 	switch (Op(op))
 	{
@@ -657,7 +427,7 @@ UTIL_NOINLINE void CommandProcessor::enqueue_command_direct(unsigned, const uint
 
 	case Op::MetaSetQuirks:
 	{
-		quirks.u.words[0] = words[1];
+		rdp_commands_set_quirks(&commands, words[1]);
 		break;
 	}
 
@@ -697,8 +467,7 @@ UTIL_NOINLINE void CommandProcessor::enqueue_command_direct(unsigned, const uint
 	}
 
 	default:
-		if (funcs[op])
-			(this->*funcs[op])(words);
+		rdp_commands_run(&commands, words);
 		break;
 	}
 }
@@ -707,7 +476,7 @@ void CommandProcessor::set_quirks(const Quirks &quirks_)
 {
 	const uint32_t words[2] = {
 		uint32_t(Op::MetaSetQuirks) << 24u,
-		quirks_.u.words[0],
+		quirks_.flags,
 	};
 	enqueue_command_inner(2, words);
 }
