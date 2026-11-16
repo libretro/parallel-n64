@@ -340,37 +340,6 @@ m64p_error ricePluginShutdown(void)
     return M64ERR_SUCCESS;
 }
 
-m64p_error ricePluginGetVersion(m64p_plugin_type *PluginType, int *PluginVersion, int *APIVersion, const char **PluginNamePtr, int *Capabilities)
-{
-    /* set version info */
-    if (PluginType != NULL)
-        *PluginType = M64PLUGIN_GFX;
-
-    if (PluginVersion != NULL)
-        *PluginVersion = PLUGIN_VERSION;
-
-    if (APIVersion != NULL)
-        *APIVersion = VIDEO_PLUGIN_API_VERSION;
-    
-    if (PluginNamePtr != NULL)
-        *PluginNamePtr = PLUGIN_NAME;
-
-    if (Capabilities != NULL)
-    {
-        *Capabilities = 0;
-    }
-                    
-    return M64ERR_SUCCESS;
-}
-
-void riceChangeWindow (void)
-{
-}
-
-void riceMoveScreen (int xpos, int ypos)
-{ 
-}
-
 void riceRomClosed(void)
 {
     TRACE0("To stop video");
@@ -545,14 +514,6 @@ int riceInitiateGFX(GFX_INFO Gfx_Info)
     CGraphicsContext::InitDeviceParameters();
 
     return true;
-}
-
-void riceResizeVideoOutput(int width, int height)
-{
-    // save the new window resolution.  actual resizing operation is asynchronous (it happens later)
-    status.gNewResizeWidth = width;
-    status.gNewResizeHeight = height;
-    status.ToResize = true;
 }
 
 void riceProcessRDPList(void)

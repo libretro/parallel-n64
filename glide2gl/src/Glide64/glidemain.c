@@ -305,87 +305,6 @@ m64p_error glide64PluginShutdown(void)
    return M64ERR_SUCCESS;
 }
 
-m64p_error glide64PluginGetVersion(m64p_plugin_type *PluginType,
-      int *PluginVersion, int *APIVersion, const char **PluginNamePtr, int *Capabilities)
-{
-   /* set version info */
-   if (PluginType != NULL)
-      *PluginType = M64PLUGIN_GFX;
-
-   if (PluginVersion != NULL)
-      *PluginVersion = 0x016304;
-
-   if (APIVersion != NULL)
-      *APIVersion = VIDEO_PLUGIN_API_VERSION;
-
-   if (PluginNamePtr != NULL)
-      *PluginNamePtr = "Glide64mk2 Video Plugin";
-
-   if (Capabilities != NULL)
-      *Capabilities = 0;
-
-   return M64ERR_SUCCESS;
-}
-
-/******************************************************************
-Function: ChangeWindow
-Purpose:  to change the window between fullscreen and window
-mode. If the window was in fullscreen this should
-change the screen to window mode and vice vesa.
-input:    none
-output:   none
-*******************************************************************/
-//#warning ChangeWindow unimplemented
-void glide64ChangeWindow (void)
-{
-}
-
-/******************************************************************
-Function: CloseDLL
-Purpose:  This function is called when the emulator is closing
-down allowing the dll to de-initialise.
-input:    none
-output:   none
-*******************************************************************/
-void glide64CloseDLL (void)
-{
-   ZLUT_release();
-   ClearCache ();
-}
-
-/******************************************************************
-Function: DrawScreen
-Purpose:  This function is called when the emulator receives a
-WM_PAINT message. This allows the gfx to fit in when
-it is being used in the desktop.
-input:    none
-output:   none
-*******************************************************************/
-void glide64DrawScreen (void)
-{
-}
-
-/******************************************************************
-Function: GetDllInfo
-Purpose:  This function allows the emulator to gather information
-about the dll by filling in the PluginInfo structure.
-input:    a pointer to a PLUGIN_INFO stucture that needs to be
-filled by the function. (see def above)
-output:   none
-*******************************************************************/
-void glide64GetDllInfo ( PLUGIN_INFO * PluginInfo )
-{
-   PluginInfo->Version = 0x0103;     // Set to 0x0103
-   PluginInfo->Type  = PLUGIN_TYPE_GFX;  // Set to PLUGIN_TYPE_GFX
-   sprintf (PluginInfo->Name, "Glide64mk2 "G64_VERSION RELTIME);  // Name of the DLL
-
-   // If DLL supports memory these memory options then set them to TRUE or FALSE
-   //  if it does not support it
-   PluginInfo->NormalMemory = true;  // a normal uint8_t array
-   PluginInfo->MemoryBswaped = true; // a normal uint8_t array where the memory has been pre
-   // bswap on a dword (32 bits) boundry
-}
-
 /******************************************************************
 Function: InitiateGFX
 Purpose:  This function is called when the DLL is started to give
@@ -422,21 +341,6 @@ int glide64InitiateGFX (GFX_INFO Gfx_Info)
       ZLUT_init();
 
    return true;
-}
-
-/******************************************************************
-Function: MoveScreen
-Purpose:  This function is called in response to the emulator
-receiving a WM_MOVE passing the xpos and ypos passed
-from that message.
-input:    xpos - the x-coordinate of the upper-left corner of the
-client area of the window.
-ypos - y-coordinate of the upper-left corner of the
-client area of the window.
-output:   none
-*******************************************************************/
-void glide64MoveScreen (int xpos, int ypos)
-{
 }
 
 /******************************************************************

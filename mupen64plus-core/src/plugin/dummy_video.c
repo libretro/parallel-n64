@@ -26,39 +26,9 @@
 #include "dummy_video.h"
 #include "plugin.h"
 
-m64p_error dummyvideo_PluginGetVersion(m64p_plugin_type *PluginType, int *PluginVersion,
-                                       int *APIVersion, const char **PluginNamePtr, int *Capabilities)
-{
-    if (PluginType != NULL)
-        *PluginType = M64PLUGIN_GFX;
-
-    if (PluginVersion != NULL)
-        *PluginVersion = 0x00010000;
-
-    if (APIVersion != NULL)
-        *APIVersion = GFX_API_VERSION;
-
-    if (PluginNamePtr != NULL)
-        *PluginNamePtr = "Mupen64Plus-NoVideo";
-
-    if (Capabilities != NULL)
-        *Capabilities = 0;
-
-    return M64ERR_SUCCESS;
-}
-
-void dummyvideo_ChangeWindow (void)
-{
-
-}
-
 int dummyvideo_InitiateGFX (GFX_INFO Gfx_Info)
 {
     return 1;
-}
-
-void dummyvideo_MoveScreen (int xpos, int ypos)
-{
 }
 
 void dummyvideo_ProcessDList(void)
@@ -115,10 +85,6 @@ void dummyvideo_FBWrite(unsigned int addr, unsigned int size)
 }
 
 void dummyvideo_FBGetFrameBufferInfo(void *p)
-{
-}
-
-void dummyvideo_ResizeVideoOutput(int width, int height)
 {
 }
 

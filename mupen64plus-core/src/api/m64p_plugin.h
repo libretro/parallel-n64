@@ -240,9 +240,7 @@ EXPORT void CALL RomClosed(void);
 #endif
 
 /* video plugin function pointer types */
-typedef void (*ptr_ChangeWindow)(void);
 typedef int  (*ptr_InitiateGFX)(GFX_INFO Gfx_Info);
-typedef void (*ptr_MoveScreen)(int x, int y);
 typedef void (*ptr_ProcessDList)(void);
 typedef void (*ptr_ProcessRDPList)(void);
 typedef void (*ptr_ShowCFB)(void);
@@ -250,11 +248,8 @@ typedef void (*ptr_UpdateScreen)(void);
 typedef void (*ptr_ViStatusChanged)(void);
 typedef void (*ptr_ViWidthChanged)(void);
 typedef void (*ptr_SetRenderingCallback)(void (*callback)(int));
-typedef void (*ptr_ResizeVideoOutput)(int width, int height);
 #if defined(M64P_PLUGIN_PROTOTYPES)
-EXPORT void CALL ChangeWindow(void);
 EXPORT int  CALL InitiateGFX(GFX_INFO Gfx_Info);
-EXPORT void CALL MoveScreen(int x, int y);
 EXPORT void CALL ProcessDList(void);
 EXPORT void CALL ProcessRDPList(void);
 EXPORT void CALL ShowCFB(void);
@@ -262,7 +257,6 @@ EXPORT void CALL UpdateScreen(void);
 EXPORT void CALL ViStatusChanged(void);
 EXPORT void CALL ViWidthChanged(void);
 EXPORT void CALL SetRenderingCallback(void (*callback)(int));
-EXPORT void CALL ResizeVideoOutput(int width, int height);
 #endif
 
 /* frame buffer plugin spec extension */

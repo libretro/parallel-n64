@@ -11,7 +11,6 @@ extern "C" {
 /* The output window: its size, the image's size in it and the scales */
 typedef struct gli_window
 {
-	bool toggleFullscreen;
 	bool resizeWindow;
 	bool fullscreen;
 	bool adjustScreen;

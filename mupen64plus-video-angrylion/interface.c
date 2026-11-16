@@ -403,22 +403,7 @@ void angrylion_set_dithering(unsigned dither_type)
    config.dithering    = dither_type;
 }
 
-void angrylionChangeWindow (void) { }
-
  
-void angrylionDrawScreen (void) { }
-
-void angrylionGetDllInfo(PLUGIN_INFO* PluginInfo)
-{
-    PluginInfo -> Version = 0x0103;
-    PluginInfo -> Type  = 2;
-    strcpy(
-    PluginInfo -> Name, "angrylion's RDP"
-    );
-    PluginInfo -> NormalMemory = true;
-    PluginInfo -> MemoryBswaped = true;
-}
-
 void angrylionSetRenderingCallback(void (*callback)(int)) { }
 
 int angrylionInitiateGFX (GFX_INFO Gfx_Info)
@@ -431,8 +416,6 @@ int angrylionInitiateGFX (GFX_INFO Gfx_Info)
    rdp_emit_set_backend(&al_hle_backend);
    return 1;
 }
- 
-void angrylionMoveScreen (int xpos, int ypos) { }
  
 void angrylionProcessDList(void)
 {
@@ -517,27 +500,6 @@ void angrylionFBWrite(unsigned int addr, unsigned int size) { }
 void angrylionFBRead(unsigned int addr) { }
 
 void angrylionFBGetFrameBufferInfo(void *pinfo) { }
-
-m64p_error angrylionPluginGetVersion(m64p_plugin_type *PluginType, int *PluginVersion, int *APIVersion, const char **PluginNamePtr, int *Capabilities)
-{
-   /* set version info */
-   if (PluginType != NULL)
-      *PluginType = M64PLUGIN_GFX;
-
-   if (PluginVersion != NULL)
-      *PluginVersion = 0x016304;
-
-   if (APIVersion != NULL)
-      *APIVersion = 0x020100;
-
-   if (PluginNamePtr != NULL)
-      *PluginNamePtr = "MAME/Angrylion/HatCat/ata4 video Plugin";
-
-   if (Capabilities != NULL)
-      *Capabilities = 0;
-
-   return M64ERR_SUCCESS;
-}
 
 #define MSG_BUFFER_LEN 256
 void msg_error(const char * err, ...)

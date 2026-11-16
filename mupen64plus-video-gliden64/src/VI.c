@@ -100,8 +100,6 @@ void gli_VI_UpdateScreen(void)
 	if (ConfigOpen)
 		return;
 
-	if (gli_window_change())
-		return;
 	if (gli_window_resize())
 		return;
 	bVIUpdated = false;

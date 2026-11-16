@@ -25,11 +25,7 @@
 #include "api/m64p_plugin.h"
 #include "api/m64p_types.h"
 
-extern m64p_error dummyvideo_PluginGetVersion(m64p_plugin_type *PluginType, int *PluginVersion,
-                                              int *APIVersion, const char **PluginNamePtr, int *Capabilities);
-extern void dummyvideo_ChangeWindow(void);
 extern int dummyvideo_InitiateGFX(GFX_INFO Gfx_Info);
-extern void dummyvideo_MoveScreen(int xpos, int ypos);
 extern void dummyvideo_ProcessDList(void);
 extern void dummyvideo_ProcessRDPList(void);
 extern void dummyvideo_RomClosed(void);
@@ -39,7 +35,6 @@ extern void dummyvideo_UpdateScreen(void);
 extern void dummyvideo_ViStatusChanged(void);
 extern void dummyvideo_ViWidthChanged(void);
 extern void dummyvideo_SetRenderingCallback(void (*callback)(int));
-extern void dummyvideo_ResizeVideoOutput(int width, int height);
 
 extern void dummyvideo_FBRead(unsigned int addr);
 extern void dummyvideo_FBWrite(unsigned int addr, unsigned int size);

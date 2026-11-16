@@ -114,31 +114,6 @@ void gli_window_swap_buffers(void)
 	++g_window.buffersSwapCount;
 }
 
-bool gli_window_change(void)
-{
-	if (!g_window.toggleFullscreen)
-		return false;
-	gli_drawer_destroy_data();
-	_updateScale();
-	gli_drawer_init_data();
-	g_window.toggleFullscreen = false;
-	return true;
-}
-
-void gli_window_close(void)
-{
-	if (!g_window.toggleFullscreen || !g_window.fullscreen)
-		return;
-	if (gli_drawer_is_drawing())
-		gli_drawer_destroy_data();
-	g_window.toggleFullscreen = false;
-}
-
-void gli_window_set_toggle_fullscreen(void)
-{
-	g_window.toggleFullscreen = true;
-}
-
 void gli_window_set_size(u32 _width, u32 _height)
 {
 	if (g_window.width != _width || g_window.height != _height) {

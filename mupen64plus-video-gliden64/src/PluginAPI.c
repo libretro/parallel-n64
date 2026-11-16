@@ -19,7 +19,6 @@
 
 extern retro_environment_t environ_cb;
 
-static char pluginNameWithRevision[] = "GLideN64 rev.LINK";
 
 void (*renderCallback)(int) = NULL;
 
@@ -95,12 +94,6 @@ EXPORT int CALL gliden64InitiateGFX(GFX_INFO _gfxInfo)
 	return 1;
 }
 
-EXPORT void CALL gliden64MoveScreen(int xpos, int ypos)
-{
-	(void)xpos;
-	(void)ypos;
-}
-
 EXPORT void CALL gliden64ProcessDList(void)
 {
 	gli_RSP_ProcessDList();
@@ -156,13 +149,6 @@ EXPORT void CALL gliden64ViWidthChanged(void)
 {
 }
 
-EXPORT void CALL gliden64ChangeWindow(void)
-{
-	gli_window_set_toggle_fullscreen();
-	if (!l_bRomOpen)
-		gli_window_close();
-}
-
 EXPORT void CALL gliden64FBWrite(unsigned int addr, unsigned int size)
 {
 	gli_fbinfo_write(addr, size);
@@ -188,22 +174,6 @@ EXPORT void CALL gliden64ReinitGfxContext(void)
 	gli_window_reinit_gfx_context();
 }
 
-EXPORT m64p_error CALL gliden64PluginGetVersion(m64p_plugin_type * _PluginType,
-	int * _PluginVersion, int * _APIVersion, const char ** _PluginNamePtr, int * _Capabilities)
-{
-	if (_PluginType != NULL)
-		*_PluginType = M64PLUGIN_GFX;
-	if (_PluginVersion != NULL)
-		*_PluginVersion = PLUGIN_VERSION;
-	if (_APIVersion != NULL)
-		*_APIVersion = VIDEO_PLUGIN_API_VERSION;
-	if (_PluginNamePtr != NULL)
-		*_PluginNamePtr = pluginNameWithRevision;
-	if (_Capabilities != NULL)
-		*_Capabilities = 0;
-	return M64ERR_SUCCESS;
-}
-
 EXPORT m64p_error CALL gliden64PluginStartup(m64p_dynlib_handle CoreLibHandle,
 	void *Context, void (*DebugCallback)(void *, int, const char *))
 {
@@ -224,13 +194,3 @@ EXPORT void CALL gliden64SetRenderingCallback(void (*callback)(int))
 	renderCallback = callback;
 }
 
-EXPORT void CALL gliden64ResizeVideoOutput(int width, int height)
-{
-	gli_window_set_size((u32)width, (u32)height);
-}
-
-void retroChangeWindow(void)
-{
-	gli_window_set_toggle_fullscreen();
-	gli_window_change();
-}

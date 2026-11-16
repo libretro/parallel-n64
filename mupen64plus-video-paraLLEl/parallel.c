@@ -844,23 +844,6 @@ void parallel_set_super_sampled_dither(bool enable) { super_sampled_dither = ena
 void parallel_set_overscan_crop(unsigned pixels) { overscan = pixels; }
 
 /* ---- the graphics plugin's entry points ---- */
-void parallelChangeWindow(void)
-{
-}
-
-void parallelDrawScreen(void)
-{
-}
-
-void parallelGetDllInfo(PLUGIN_INFO *PluginInfo)
-{
-	PluginInfo->Version = 0x0001;
-	PluginInfo->Type = 2;
-	strcpy(PluginInfo->Name, "paraLLEl-RDP");
-	PluginInfo->NormalMemory = true;
-	PluginInfo->MemoryBswaped = true;
-}
-
 void parallelSetRenderingCallback(void (*callback)(int))
 {
 }
@@ -868,10 +851,6 @@ void parallelSetRenderingCallback(void (*callback)(int))
 int parallelInitiateGFX(GFX_INFO Gfx_Info)
 {
 	return true;
-}
-
-void parallelMoveScreen(int xpos, int ypos)
-{
 }
 
 void parallelProcessDList(void)
@@ -926,24 +905,3 @@ void parallelFBGetFrameBufferInfo(void *pinfo)
 {
 }
 
-m64p_error parallelPluginGetVersion(m64p_plugin_type *PluginType, int *PluginVersion, int *APIVersion,
-		const char **PluginNamePtr, int *Capabilities)
-{
-	/* set version info */
-	if (PluginType != NULL)
-		*PluginType = M64PLUGIN_GFX;
-
-	if (PluginVersion != NULL)
-		*PluginVersion = 0x016304;
-
-	if (APIVersion != NULL)
-		*APIVersion = 0x020100;
-
-	if (PluginNamePtr != NULL)
-		*PluginNamePtr = "paraLLEl-RDP";
-
-	if (Capabilities != NULL)
-		*Capabilities = 0;
-
-	return M64ERR_SUCCESS;
-}

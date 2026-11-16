@@ -36,39 +36,6 @@ m64p_error gln64PluginShutdown(void)
    return M64ERR_SUCCESS;
 }
 
-m64p_error gln64PluginGetVersion(m64p_plugin_type *PluginType,
-        int *PluginVersion, int *APIVersion, const char **PluginNamePtr,
-        int *Capabilities)
-{
-   /* set version info */
-   if (PluginType != NULL)
-      *PluginType = M64PLUGIN_GFX;
-
-   if (PluginVersion != NULL)
-      *PluginVersion = PLUGIN_VERSION;
-
-   if (APIVersion != NULL)
-      *APIVersion = PLUGIN_API_VERSION;
-
-   if (PluginNamePtr != NULL)
-      *PluginNamePtr = PLUGIN_NAME;
-
-   if (Capabilities != NULL)
-   {
-      *Capabilities = 0;
-   }
-
-   return M64ERR_SUCCESS;
-}
-
-void gln64ChangeWindow (void)
-{
-}
-
-void gln64MoveScreen (int xpos, int ypos)
-{
-}
-
 int gln64InitiateGFX (GFX_INFO Gfx_Info)
 {
     Config_gln64_LoadConfig();
@@ -85,10 +52,6 @@ void gln64ProcessDList(void)
 
     RSP_ProcessDList();
     OGL.mustRenderDlist = true;
-}
-
-void gln64ResizeVideoOutput(int Width, int Height)
-{
 }
 
 void gln64RomClosed (void)

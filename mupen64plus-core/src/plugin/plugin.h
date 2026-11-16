@@ -49,10 +49,7 @@ extern CONTROL Controls[NUM_CONTROLLER];
 /* video plugin function pointers */
 typedef struct _gfx_plugin_functions
 {
-	ptr_PluginGetVersion getVersion;
-	ptr_ChangeWindow     changeWindow;
 	ptr_InitiateGFX      initiateGFX;
-	ptr_MoveScreen       moveScreen;
 	ptr_ProcessDList     processDList;
 	ptr_ProcessRDPList   processRDPList;
 	ptr_RomClosed        romClosed;
@@ -62,7 +59,6 @@ typedef struct _gfx_plugin_functions
 	ptr_ViStatusChanged  viStatusChanged;
 	ptr_ViWidthChanged   viWidthChanged;
 	ptr_SetRenderingCallback setRenderingCallback;
-    ptr_ResizeVideoOutput    resizeVideoOutput;
 
 	/* frame buffer plugin spec extension */
 	ptr_FBRead          fBRead;

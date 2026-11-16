@@ -47,15 +47,9 @@
 #include <stdio.h>
 
 CONTROL Controls[4];
-void ResizeVideoOutput(int width, int height){
-
-}
 /* local data structures and functions */
 #define DEFINE_GFX(X) \
-    EXPORT m64p_error CALL X##PluginGetVersion(m64p_plugin_type *, int *, int *, const char **, int *); \
-    EXPORT void CALL X##ChangeWindow(void); \
     EXPORT int  CALL X##InitiateGFX(GFX_INFO Gfx_Info); \
-    EXPORT void CALL X##MoveScreen(int x, int y); \
     EXPORT void CALL X##ProcessDList(void); \
     EXPORT void CALL X##ProcessRDPList(void); \
     EXPORT void CALL X##RomClosed(void); \
@@ -65,16 +59,12 @@ void ResizeVideoOutput(int width, int height){
     EXPORT void CALL X##ViStatusChanged(void); \
     EXPORT void CALL X##ViWidthChanged(void); \
     EXPORT void CALL X##SetRenderingCallback(void (*callback)(int)); \
-    EXPORT void CALL X##ResizeVideoOutput(int width, int height); \
     EXPORT void CALL X##FBRead(unsigned int addr); \
     EXPORT void CALL X##FBWrite(unsigned int addr, unsigned int size); \
     EXPORT void CALL X##FBGetFrameBufferInfo(void *p); \
     \
     gfx_plugin_functions gfx_##X = { \
-        X##PluginGetVersion, \
-        X##ChangeWindow, \
         X##InitiateGFX, \
-        X##MoveScreen, \
         X##ProcessDList, \
         X##ProcessRDPList, \
         X##RomClosed, \
@@ -84,7 +74,6 @@ void ResizeVideoOutput(int width, int height){
         X##ViStatusChanged, \
         X##ViWidthChanged, \
         X##SetRenderingCallback, \
-        ResizeVideoOutput, \
         X##FBRead, \
         X##FBWrite, \
         X##FBGetFrameBufferInfo \
