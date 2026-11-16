@@ -65,19 +65,23 @@ class TxMemBuf
 private:
 	uint8 *_tex[2];
 	uint32 _size[2];
-	std::vector< std::vector<uint32> > _bufs;
+	/* deposterize's scratch, a texture's texels each: the threads filtering
+	 * a texture each use their own rows of them */
+	uint32 *_scratch[2];
 	TxMemBuf();
 public:
 	static TxMemBuf* getInstance() {
 		static TxMemBuf txMemBuf;
 		return &txMemBuf;
 	}
-	~TxMemBuf();
+	/* no destructor: TxFilter's clear() frees the buffers, and at exit
+	 * this singleton must still be there for it (a destructor ran first,
+	 * freeing them, and left the freed pointers for clear() to free again) */
 	boolean init(int maxwidth, int maxheight);
 	void shutdown();
 	uint8 *get(uint32 num);
 	uint32 size_of(uint32 num);
-	uint32 *getThreadBuf(uint32 threadIdx, uint32 num, uint32 size);
+	uint32 *scratch(uint32 num) { return _scratch[num]; }
 };
 
 void setTextureFormat(ColorFormat internalFormat, GHQTexInfo * info);

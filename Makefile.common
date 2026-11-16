@@ -494,11 +494,13 @@ SOURCES_CXX   += \
     $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/GLSL/glsl_Utils.cpp                           \
     $(VIDEODIR_GLIDEN64)/src/uCodes/S2DEX_gfx.cpp
 
+# GLideNHQ's texture filters (C89)
+SOURCES_C += $(VIDEODIR_GLIDEN64)/src/GLideNHQ/TextureFilters.c \
+	$(VIDEODIR_GLIDEN64)/src/GLideNHQ/TextureFilters_2xsai.c \
+	$(VIDEODIR_GLIDEN64)/src/GLideNHQ/TextureFilters_hq2x.c \
+	$(VIDEODIR_GLIDEN64)/src/GLideNHQ/TextureFilters_hq4x.c
+
 SOURCES_CXX   += \
-	$(VIDEODIR_GLIDEN64)/src/GLideNHQ/TextureFilters.cpp \
-	$(VIDEODIR_GLIDEN64)/src/GLideNHQ/TextureFilters_2xsai.cpp \
-	$(VIDEODIR_GLIDEN64)/src/GLideNHQ/TextureFilters_hq2x.cpp \
-	$(VIDEODIR_GLIDEN64)/src/GLideNHQ/TextureFilters_hq4x.cpp \
 	$(VIDEODIR_GLIDEN64)/src/GLideNHQ/TextureFilters_xbrz.cpp \
 	$(VIDEODIR_GLIDEN64)/src/GLideNHQ/TxCache.cpp \
 	$(VIDEODIR_GLIDEN64)/src/GLideNHQ/TxFilter.cpp \

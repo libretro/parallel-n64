@@ -44,10 +44,10 @@
     }
 
     for (x = 0; x < width; x++) {
-//--------------------------------------- B0 B1 B2 B3
-//                                         4  5  6 S2
-//                                         1  2  3 S1
-//                                        A0 A1 A2 A3
+/* --------------------------------------- B0 B1 B2 B3 */
+/* 4  5  6 S2 */
+/* 1  2  3 S1 */
+/* A0 A1 A2 A3 */
       if ((x > 0) && (x < width - 1)) {
         col0 = -1;
         col1 = 0;
@@ -80,7 +80,7 @@
       colorA2 = *(srcPtr + col2 + row3);
       colorA3 = *(srcPtr + col3 + row3);
 
-//--------------------------------------
+/* -------------------------------------- */
       if (color2 == color6 && color5 != color3)
         product2b = product1b = color2;
       else if (color5 == color3 && color2 != color6)

@@ -295,7 +295,7 @@ def cartridge(path, toggle, name, inter=False, known=True, areas=None, step=None
         f.write(image)
 
 
-def run(host, core, rom, tmp, api, plugin="gliden64", glide64_api="opengl", env_extra=None, quiet=False):
+def run(host, core, rom, tmp, api, plugin="gliden64", glide64_api="opengl", env_extra=None, quiet=False, options=()):
     dump = tempfile.mkdtemp(dir=tmp)
     env = dict(os.environ, EGL_PLATFORM="surfaceless", LRHOST_SYSTEM_DIR=os.path.join(tmp, "sys"),
                LRHOST_DUMPDIR=dump, LRHOST_DUMP_FROM=str(FRAMES - 4), LRHOST_DUMP_TO=str(FRAMES - 4))
@@ -303,7 +303,7 @@ def run(host, core, rom, tmp, api, plugin="gliden64", glide64_api="opengl", env_
     # @glide64_api None: the option left out, as a frontend that never set it
     p = subprocess.run([host, core, rom, str(FRAMES)] + OPTIONS + ["parallel-n64-gliden64-API=" + api] +
                        (["parallel-n64-glide64-API=" + glide64_api] if glide64_api else []) +
-                       ["parallel-n64-gfxplugin=" + plugin],
+                       ["parallel-n64-gfxplugin=" + plugin] + list(options),
                        env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=60)
     if p.returncode != 0:
         if not quiet:
@@ -430,6 +430,18 @@ def main():
                                                                      pixel(frames["plain"], 320, 240).hex())))
             for what, ok, detail in checks:
                 print("%-7s %-28s %s (%s)" % (api, what, "ok" if ok else "FAIL", detail))
+                failures += 0 if ok else 1
+            # texture enhancement (GLideNHQ, its filters on threads), and an
+            # exit that frees its buffers once: each must draw and exit 0
+            for enh in ("HQ2X", "4xBRZ"):
+                try:
+                    f = run(os.path.abspath(host), a.core, roms["plain"], tmp, api, quiet=True,
+                            options=("parallel-n64-gliden64-txEnhancementMode=" + enh,
+                                     "parallel-n64-gliden64-txFilterMode=Smooth filtering 1"))
+                    ok, detail = f != frames["plain"], "drawn enhanced, exited 0" if f != frames["plain"] else "not enhanced"
+                except RuntimeError as e:
+                    ok, detail = False, str(e)
+                print("%-7s %-28s %s (%s)" % (api, enh + " textures", "ok" if ok else "FAIL", detail))
                 failures += 0 if ok else 1
         if a.glide64:
             # a microcode Glide64 does not know: it reads the list with

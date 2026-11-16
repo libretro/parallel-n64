@@ -14,6 +14,7 @@
 // ****************************************************************************
 
 #include "TextureFilters_xbrz.h"
+#include "TextureFilters.h"
 #include <cassert>
 #include <algorithm>
 #include <vector>
@@ -1218,4 +1219,15 @@ void xbrz::nearestNeighborScale(const uint32_t* src, int srcWidth, int srcHeight
 		}
 		break;
 	}
+}
+
+/* the C filters' way in (TextureFilters.h) */
+extern "C" void xbrz_init(void)
+{
+	xbrz::init();
+}
+
+extern "C" void xbrz_scale_abgr(unsigned factor, const uint32 *src, uint32 *dst, int width, int height)
+{
+	xbrz::scale(factor, (const uint32_t *)src, (uint32_t *)dst, width, height, xbrz::ColorFormat::ABGR);
 }

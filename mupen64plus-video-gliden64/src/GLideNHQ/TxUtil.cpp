@@ -524,12 +524,8 @@ TxMemBuf::TxMemBuf()
 	for (uint32 i = 0; i < 2; i++) {
 		_tex[i] = nullptr;
 		_size[i] = 0;
+		_scratch[i] = nullptr;
 	}
-}
-
-TxMemBuf::~TxMemBuf()
-{
-	shutdown();
 }
 
 boolean
@@ -546,12 +542,13 @@ TxMemBuf::init(int maxwidth, int maxheight)
 				shutdown();
 				return 0;
 			}
-		}
 
-		if (_bufs.empty()) {
-			const int numcore = TxUtil::getNumberofProcessors();
-			const size_t numBuffers = numcore*2;
-			_bufs.resize(numBuffers);
+			if (_scratch[i] == nullptr)
+				_scratch[i] = (uint32 *)malloc((size_t)maxwidth * maxheight * sizeof(uint32));
+			if (_scratch[i] == nullptr) {
+				shutdown();
+				return 0;
+			}
 		}
 	} catch(std::bad_alloc) {
 		shutdown();
@@ -569,9 +566,9 @@ TxMemBuf::shutdown()
 			free(_tex[i]);
 		_tex[i] = nullptr;
 		_size[i] = 0;
+		free(_scratch[i]);
+		_scratch[i] = nullptr;
 	}
-
-	_bufs.clear();
 }
 
 uint8*
@@ -586,24 +583,6 @@ TxMemBuf::size_of(uint32 num)
 {
 	assert(num < 2);
 	return _size[num];
-}
-
-uint32*
-TxMemBuf::getThreadBuf(uint32 threadIdx, uint32 num, uint32 size)
-{
-	assert(num < 2);
-	const auto idx = threadIdx * 2 + num;
-	auto& buf = _bufs[idx];
-
-	if (buf.size() < size) {
-		try {
-			buf.resize(size, 0);
-		} catch(std::bad_alloc) {
-			return nullptr;
-		}
-	}
-
-	return buf.data();
 }
 
 void setTextureFormat(ColorFormat internalFormat, GHQTexInfo * info)

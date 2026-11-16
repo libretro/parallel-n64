@@ -55,8 +55,12 @@ static void filter_lane(void *ctx, unsigned lane)
 	const uint32 height = (lane == job->numcore - 1)
 		? job->srcheight - job->blkheight * lane
 		: job->blkheight;
+	/* the lane's rows of deposterize's scratch: where its rows lie in the
+	 * texture (srcStride bytes of texels a lane) */
+	const size_t at = (size_t)lane * (job->srcStride >> 2);
 	filter_8888((uint32*)(job->src + lane * job->srcStride), job->srcwidth, height,
-				(uint32*)(job->dst + lane * job->destStride), job->filter, lane);
+				(uint32*)(job->dst + lane * job->destStride), job->filter,
+				TxMemBuf::getInstance()->scratch(0) + at, TxMemBuf::getInstance()->scratch(1) + at);
 }
 
 void TxFilter::clear()
@@ -225,7 +229,7 @@ TxFilter::filter(uint8 *src, int srcwidth, int srcheight, ColorFormat srcformat,
 				}
 			break;
 			case BRZ3X_ENHANCEMENT:
-				xbrz::init();
+				xbrz_init();
 				if (srcwidth  <= (_maxwidth / 3) && srcheight <= (_maxheight / 3)) {
 					filter |= BRZ3X_ENHANCEMENT;
 					scale = 3;
@@ -237,7 +241,7 @@ TxFilter::filter(uint8 *src, int srcwidth, int srcheight, ColorFormat srcformat,
 				}
 			break;
 			case BRZ4X_ENHANCEMENT:
-				xbrz::init();
+				xbrz_init();
 				if (srcwidth <= (_maxwidth >> 2) && srcheight <= (_maxheight >> 2)) {
 					filter |= BRZ4X_ENHANCEMENT;
 					scale = 4;
@@ -249,7 +253,7 @@ TxFilter::filter(uint8 *src, int srcwidth, int srcheight, ColorFormat srcformat,
 				}
 			break;
 			case BRZ5X_ENHANCEMENT:
-				xbrz::init();
+				xbrz_init();
 				if (srcwidth <= (_maxwidth / 5) && srcheight <= (_maxheight / 5)) {
 					filter |= BRZ5X_ENHANCEMENT;
 					scale = 5;
@@ -261,7 +265,7 @@ TxFilter::filter(uint8 *src, int srcwidth, int srcheight, ColorFormat srcformat,
 				}
 			break;
 			case BRZ6X_ENHANCEMENT:
-				xbrz::init();
+				xbrz_init();
 				if (srcwidth <= (_maxwidth / 6) && srcheight <= (_maxheight / 6)) {
 					filter |= BRZ6X_ENHANCEMENT;
 					scale = 6;
@@ -319,7 +323,8 @@ TxFilter::filter(uint8 *src, int srcwidth, int srcheight, ColorFormat srcformat,
 					job.destStride = job.srcStride * scale * scale;
 					txpool_run(TxUtil::pool(), filter_lane, &job, numcore);
 				} else {
-					filter_8888((uint32*)_texture, srcwidth, srcheight, (uint32*)_tmptex, filter, 0);
+					filter_8888((uint32*)_texture, srcwidth, srcheight, (uint32*)_tmptex, filter,
+								TxMemBuf::getInstance()->scratch(0), TxMemBuf::getInstance()->scratch(1));
 				}
 
 				if (filter & ENHANCEMENT_MASK) {

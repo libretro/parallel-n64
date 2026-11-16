@@ -31,8 +31,11 @@
  * (1:enable hack, 0:disable hack) */
 #define _16BPP_HACK 1
 
-#include "TxInternal.h"
-#include "TextureFilters_xbrz.h"
+#include "Ext_TxFilter.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /* enhancers */
 void hq4x_8888(unsigned char * pIn, unsigned char * pOut, int Xres, int Yres, int SrcPPL, int BpL);
@@ -52,31 +55,20 @@ void SharpFilter_8888(uint32 *src, uint32 srcwidth, uint32 srcheight, uint32 *de
 
 void SmoothFilter_8888(uint32 *src, uint32 srcwidth, uint32 srcheight, uint32 *dest, uint32 filter);
 
-/* helper */
-void filter_8888(uint32 *src, uint32 srcwidth, uint32 srcheight, uint32 *dest, uint32 filter, uint32 threadId);
+/* xBRZ (TextureFilters_xbrz.cpp): its tables made, and @factor (2 to 6)
+ * times the texture, its texels ABGR */
+void xbrz_init(void);
+void xbrz_scale_abgr(unsigned factor, const uint32 *src, uint32 *dst, int width, int height);
 
-#if !_16BPP_HACK
-void hq4x_init(void);
-void hq4x_4444(unsigned char * pIn, unsigned char * pOut, int Xres, int Yres, int SrcPPL, int BpL);
-void hq4x_1555(unsigned char * pIn, unsigned char * pOut, int Xres, int Yres, int SrcPPL, int BpL);
-void hq4x_565 (unsigned char * pIn, unsigned char * pOut, int Xres, int Yres, int SrcPPL, int BpL);
+/* @filter's enhancement, then its sharp or smooth filter, @src to @dest;
+ * with DEPOSTERIZE, @src deposterized first, @scratch0 and @scratch1 each
+ * holding srcwidth x srcheight texels for it */
+void filter_8888(uint32 *src, uint32 srcwidth, uint32 srcheight, uint32 *dest, uint32 filter,
+      uint32 *scratch0, uint32 *scratch1);
 
-void hq2x_16(uint8 *srcPtr, uint32 srcPitch, uint8 *dstPtr, uint32 dstPitch, int width, int height);
-void hq2xS_16(uint8 *srcPtr, uint32 srcPitch, uint8 *dstPtr, uint32 dstPitch, int width, int height);
 
-void lq2x_16(uint8 *srcPtr, uint32 srcPitch, uint8 *dstPtr, uint32 dstPitch, int width, int height);
-void lq2xS_16(uint8 *srcPtr, uint32 srcPitch, uint8 *dstPtr, uint32 dstPitch, int width, int height);
-
-void Super2xSaI_4444(uint16 *srcPtr, uint16 *destPtr, uint32 width, uint32 height, uint32 pitch);
-void Super2xSaI_1555(uint16 *srcPtr, uint16 *destPtr, uint32 width, uint32 height, uint32 pitch);
-void Super2xSaI_565 (uint16 *srcPtr, uint16 *destPtr, uint32 width, uint32 height, uint32 pitch);
-void Super2xSaI_8   (uint8  *srcPtr, uint8  *destPtr, uint32 width, uint32 height, uint32 pitch);
-
-void Texture2x_16(uint8 *srcPtr, uint32 srcPitch, uint8 *dstPtr, uint32 dstPitch, int width, int height);
-
-void SharpFilter_4444(uint16 *src, uint32 srcwidth, uint32 srcheight, uint16 *dest, uint32 filter);
-
-void SmoothFilter_4444(uint16 *src, uint32 srcwidth, uint32 srcheight, uint16 *dest, uint32 filter);
+#ifdef __cplusplus
+}
 #endif
 
 #endif /* __TEXTUREFILTERS_H__ */
