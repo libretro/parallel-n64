@@ -24,45 +24,39 @@
 #ifndef __TXQUANTIZE_H__
 #define __TXQUANTIZE_H__
 
-#include "TxInternal.h"
-#include "TxUtil.h"
+/* Converting textures between 32-bit RGBA and the 16-bit formats. C89. */
 
-class TxQuantize
+#include "Ext_TxFilter.h"
+#include "txpool.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/* the formats: 8888 RGBA (in memory R, G, B, A), and 1555, 4444 and 565
+ * as 16-bit words */
+enum
 {
-private:
-  int _numcore;
-
-  /* fast optimized... well, sort of. */
-  void ARGB1555_ARGB8888(uint32* src, uint32* dst, int width, int height);
-  void ARGB4444_ARGB8888(uint32* src, uint32* dst, int width, int height);
-  void RGB565_ARGB8888(uint32* src, uint32* dst, int width, int height);
-  void A8_ARGB8888(uint32* src, uint32* dst, int width, int height);
-  void AI44_ARGB8888(uint32* src, uint32* dst, int width, int height);
-  void AI88_ARGB8888(uint32* src, uint32* dst, int width, int height);
-
-  void ARGB8888_ARGB1555(uint32* src, uint32* dst, int width, int height);
-  void ARGB8888_ARGB4444(uint32* src, uint32* dst, int width, int height);
-  void ARGB8888_RGB565(uint32* src, uint32* dst, int width, int height);
-  void ARGB8888_A8(uint32* src, uint32* dst, int width, int height);
-  void ARGB8888_AI44(uint32* src, uint32* dst, int width, int height);
-  void ARGB8888_AI88(uint32* src, uint32* dst, int width, int height);
-
-  /* quality */
-  void ARGB8888_RGB565_ErrD(uint32* src, uint32* dst, int width, int height);
-  void ARGB8888_ARGB1555_ErrD(uint32* src, uint32* dst, int width, int height);
-  void ARGB8888_ARGB4444_ErrD(uint32* src, uint32* dst, int width, int height);
-  void ARGB8888_AI44_ErrD(uint32* src, uint32* dst, int width, int height);
-  void ARGB8888_AI88_Slow(uint32* src, uint32* dst, int width, int height);
-  void ARGB8888_I8_Slow(uint32* src, uint32* dst, int width, int height);
-
-public:
-  TxQuantize();
-  ~TxQuantize();
-
-  /* others */
-  void P8_16BPP(uint32* src, uint32* dst, int width, int height, uint32* palette);
-
-  boolean quantize(uint8* src, uint8* dest, int width, int height, ColorFormat srcformat, ColorFormat destformat, boolean fastQuantizer = 1);
+	TXQ_RGBA8 = 0,
+	TXQ_RGB5_A1,
+	TXQ_RGBA4,
+	TXQ_RGB565
 };
+
+/* @src in @srcformat to @dest in @destformat, one of the two RGBA8 and the
+ * other 16-bit; 0 for any other pair. To 16 bits @fast rounds each texel,
+ * else the errors diffuse (Floyd-Steinberg). The rows are split into
+ * @lanes blocks run on @pool (on the caller with none), each block
+ * diffusing on its own; width * height must be at least 4. */
+boolean txquantize(uint8 *src, uint8 *dest, int width, int height, int srcformat, int destformat,
+		boolean fast, txpool_t *pool, unsigned lanes);
+
+/* 8-bit indices to 16-bit texels: each through @palette, RGBA5551 words,
+ * turned to ARGB1555 */
+void txquantize_p8_16bpp(const uint8 *src, uint16 *dest, int width, int height, const uint16 *palette);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* __TXQUANTIZE_H__ */

@@ -32,6 +32,16 @@
 
 typedef graphics::InternalColorFormatParam ColorFormat;
 
+/* the format as TxQuantize's C has it (TXQ_*), -1 for one it has not */
+static inline int txq_format(ColorFormat format)
+{
+	if (format == graphics::internalcolorFormat::RGBA8)   return 0; /* TXQ_RGBA8 */
+	if (format == graphics::internalcolorFormat::RGB5_A1) return 1; /* TXQ_RGB5_A1 */
+	if (format == graphics::internalcolorFormat::RGBA4)   return 2; /* TXQ_RGBA4 */
+	if (format == graphics::internalcolorFormat::RGB8)    return 3; /* TXQ_RGB565 */
+	return -1;
+}
+
 /* in-memory zlib texture compression */
 #define GL_TEXFMT_GZ 0x80000000
 

@@ -45,7 +45,6 @@ private:
   int _cacheSize;
   std::string _ident;    /* UTF-8 */
   std::string _dumpPath; /* UTF-8 */
-  TxQuantize *_txQuantize;
   TxTexCache *_txTexCache;
   TxHiResCache *_txHiResCache;
   TxImage *_txImage;

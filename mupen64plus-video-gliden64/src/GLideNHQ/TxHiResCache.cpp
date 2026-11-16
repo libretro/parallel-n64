@@ -44,7 +44,6 @@
 TxHiResCache::~TxHiResCache()
 {
   delete _txImage;
-  delete _txQuantize;
 }
 
 TxHiResCache::TxHiResCache(int maxwidth,
@@ -57,7 +56,7 @@ TxHiResCache::TxHiResCache(int maxwidth,
 	: TxCache((options & ~GZ_TEXCACHE), 0, cachePath, ident)
 {
   _txImage = new TxImage();
-  _txQuantize  = new TxQuantize();
+  _numcore    = TxUtil::getNumberofProcessors();
 
   _maxwidth  = maxwidth;
   _maxheight = maxheight;
@@ -563,7 +562,7 @@ TxHiResCache::loadHiResTextures(const std::string & dir_path, boolean replace)
 			if (_maxbpp < 32 || _options & FORCE16BPP_HIRESTEX)
 				destformat = graphics::internalcolorFormat::RGB5_A1;
 		}
-		if (_txQuantize->quantize(tex, tmptex, width, height, graphics::internalcolorFormat::RGBA8, destformat, 0)) {
+		if (txquantize(tex, tmptex, width, height, TXQ_RGBA8, txq_format(destformat), 0, TxUtil::pool(), _numcore)) {
 			format = destformat;
 			free(tex);
 			tex = tmptex;

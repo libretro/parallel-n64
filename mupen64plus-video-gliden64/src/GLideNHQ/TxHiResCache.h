@@ -43,7 +43,7 @@ private:
   int _maxbpp;
   boolean _cacheDumped;
   TxImage *_txImage;
-  TxQuantize *_txQuantize;
+  unsigned _numcore;     /* the quantizer's lanes */
   std::string _texPackPath; /* UTF-8 */
   enum LoadResult {
 	  resOk,

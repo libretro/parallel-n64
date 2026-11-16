@@ -76,7 +76,6 @@ void TxFilter::clear()
 
 	/* clear other stuff */
 	delete _txImage;
-	delete _txQuantize;
 }
 
 TxFilter::~TxFilter()
@@ -96,7 +95,6 @@ TxFilter::TxFilter(int maxwidth,
 				   const char * ident)
 	: _tex1(nullptr)
 	, _tex2(nullptr)
-	, _txQuantize(nullptr)
 	, _txTexCache(nullptr)
 	, _txHiResCache(nullptr)
 	, _txImage(nullptr)
@@ -108,7 +106,6 @@ TxFilter::TxFilter(int maxwidth,
 	_options = options;
 
 	_txImage      = new TxImage();
-	_txQuantize   = new TxQuantize();
 
 	/* get number of CPU cores. */
 	_numcore = TxUtil::getNumberofProcessors();
@@ -197,7 +194,7 @@ TxFilter::filter(uint8 *src, int srcwidth, int srcheight, ColorFormat srcformat,
 			 (srcformat == graphics::internalcolorFormat::RGBA8 && (_maxbpp < 32 || _options & FORCE16BPP_TEX)))) {
 
 		if (srcformat != graphics::internalcolorFormat::RGBA8) {
-			if (!_txQuantize->quantize(texture, tmptex, srcwidth, srcheight, srcformat, graphics::internalcolorFormat::RGBA8)) {
+			if (!txquantize(texture, tmptex, srcwidth, srcheight, txq_format(srcformat), TXQ_RGBA8, 1, TxUtil::pool(), _numcore)) {
 				return 0;
 			}
 			texture = tmptex;
@@ -346,7 +343,7 @@ TxFilter::filter(uint8 *src, int srcwidth, int srcheight, ColorFormat srcformat,
 					srcformat = graphics::internalcolorFormat::RGBA4;
 				if (srcformat != graphics::internalcolorFormat::RGBA8) {
 					tmptex = (texture == _tex1) ? _tex2 : _tex1;
-					if (!_txQuantize->quantize(texture, tmptex, srcwidth, srcheight, graphics::internalcolorFormat::RGBA8, srcformat)) {
+					if (!txquantize(texture, tmptex, srcwidth, srcheight, TXQ_RGBA8, txq_format(srcformat), 1, TxUtil::pool(), _numcore)) {
 						return 0;
 					}
 					texture = tmptex;
@@ -505,7 +502,7 @@ TxFilter::hirestex(uint64 g64crc, uint64 r_crc64, uint16 *palette, GHQTexInfo *i
 				uint8 *tmptex = (texture == _tex1) ? _tex2 : _tex1;
 
 				/* use palette and convert to 16bit format */
-				_txQuantize->P8_16BPP((uint32*)texture, (uint32*)tmptex, info->width, info->height, (uint32*)palette);
+				txquantize_p8_16bpp(texture, (uint16*)tmptex, info->width, info->height, palette);
 				texture = tmptex;
 				format = graphics::internalcolorFormat::RGB5_A1;
 
@@ -558,7 +555,7 @@ TxFilter::dmptx(uint8 *src, int width, int height, int rowStridePixel, ColorForm
 
 
 	if (gfmt != graphics::internalcolorFormat::RGBA8) {
-		if (!_txQuantize->quantize(src, _tex1, rowStridePixel, height, gfmt, graphics::internalcolorFormat::RGBA8))
+		if (!txquantize(src, _tex1, rowStridePixel, height, txq_format(gfmt), TXQ_RGBA8, 1, TxUtil::pool(), _numcore))
 			return 0;
 		src = _tex1;
 	}
