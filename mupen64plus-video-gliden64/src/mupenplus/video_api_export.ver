@@ -1,6 +1,4 @@
 { global:
-PluginStartup;
-PluginShutdown;
 InitiateGFX;
 ProcessDList;
 ProcessRDPList;

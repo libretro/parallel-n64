@@ -29,7 +29,6 @@ extern "C" {
 #include <stdbool.h>
 #include <libretro.h>
 
-#include "api/m64p_common.h"
 #include "api/m64p_plugin.h"
 #include "api/m64p_types.h"
 

@@ -91,7 +91,6 @@ endif
 # Core
 SOURCES_C += \
 	$(CORE_DIR)/src/api/callbacks.c \
-	$(CORE_DIR)/src/api/common.c \
 	$(CORE_DIR)/src/api/config.c \
 	$(CORE_DIR)/src/api/frontend.c \
 	$(CORE_DIR)/src/main/cheat.c \

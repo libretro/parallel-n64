@@ -119,25 +119,6 @@ extern "C"
 		return cycles;
 	}
 
-	EXPORT m64p_error CALL parallelRSPPluginGetVersion(m64p_plugin_type *PluginType, int *PluginVersion,
-	                                                   int *APIVersion, const char **PluginNamePtr, int *Capabilities)
-	{
-		/* set version info */
-		if (PluginType != NULL)
-			*PluginType = M64PLUGIN_RSP;
-
-		if (PluginVersion != NULL)
-			*PluginVersion = RSP_PARALLEL_VERSION;
-
-		if (APIVersion != NULL)
-			*APIVersion = RSP_PLUGIN_API_VERSION;
-
-		if (Capabilities != NULL)
-			*Capabilities = 0;
-
-		return M64ERR_SUCCESS;
-	}
-
 	EXPORT void CALL parallelRSPRomClosed(void)
 	{
 		*RSP::rsp.SP_PC_REG = 0x00000000;

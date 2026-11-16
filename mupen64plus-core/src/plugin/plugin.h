@@ -23,7 +23,6 @@
 #ifndef PLUGIN_H
 #define PLUGIN_H
 
-#include "api/m64p_common.h"
 #include "api/m64p_plugin.h"
 #include "api/m64p_types.h"
 #include "mupen64plus-next_common.h"
@@ -88,7 +87,6 @@ extern void inputRomClosed(void);
 /* RSP plugin function pointers */
 typedef struct _rsp_plugin_functions
 {
-	ptr_PluginGetVersion    getVersion;
 	ptr_DoRspCycles         doRspCycles;
 	ptr_InitiateRSP         initiateRSP;
 	ptr_RomClosed           romClosed;

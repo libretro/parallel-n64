@@ -25,7 +25,6 @@
 #include <string.h>
 
 #include "api/callbacks.h"
-#include "api/m64p_common.h"
 #include "api/m64p_plugin.h"
 #include "api/m64p_types.h"
 #include "device/device.h"
@@ -180,13 +179,11 @@ static void gfx_plugin_check_interrupts(void)
 
 /* RSP */
 #define DEFINE_RSP(X) \
-    EXPORT m64p_error CALL X##PluginGetVersion(m64p_plugin_type *, int *, int *, const char **, int *); \
     EXPORT unsigned int CALL X##DoRspCycles(unsigned int Cycles); \
     EXPORT void CALL X##InitiateRSP(RSP_INFO Rsp_Info, unsigned int *CycleCount); \
     EXPORT void CALL X##RomClosed(void); \
     \
     const rsp_plugin_functions rsp_##X = { \
-        X##PluginGetVersion, \
         X##DoRspCycles, \
         X##InitiateRSP, \
         X##RomClosed \

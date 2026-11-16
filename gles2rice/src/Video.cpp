@@ -27,7 +27,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #define M64P_PLUGIN_PROTOTYPES 1
 #include "m64p_types.h"
-#include "m64p_common.h"
 #include "m64p_plugin.h"
 
 #include "Config.h"
@@ -46,7 +45,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 static void (*l_DebugCallback)(void *, int, const char *) = NULL;
 static void *l_DebugCallContext = NULL;
-static int l_PluginInit = 0;
 
 //=======================================================
 // global variables
@@ -297,49 +295,6 @@ extern "C" {
 #endif
 
 /* Mupen64Plus plugin functions */
-m64p_error ricePluginStartup(m64p_dynlib_handle CoreLibHandle, void *Context,
-                                   void (*DebugCallback)(void *, int, const char *))
-{
-    if (l_PluginInit)
-        return M64ERR_ALREADY_INIT;
-
-    /* first thing is to set the callback function for debug info */
-    l_DebugCallback = DebugCallback;
-    l_DebugCallContext = Context;
-
-    /* open config section handles and set parameter default values */
-    if (!InitConfiguration())
-        return M64ERR_INTERNAL;
-
-    l_PluginInit = 1;
-    return M64ERR_SUCCESS;
-}
-
-m64p_error ricePluginShutdown(void)
-{
-    if (!l_PluginInit)
-        return M64ERR_NOT_INIT;
-
-    if( status.bGameIsRunning )
-    {
-        riceRomClosed();
-    }
-#if 0
-    if (bIniIsChanged)
-    {
-        WriteIniFile();
-        TRACE0("Write back INI file");
-    }
-#endif
-
-    /* reset some local variables */
-    l_DebugCallback = NULL;
-    l_DebugCallContext = NULL;
-
-    l_PluginInit = 0;
-    return M64ERR_SUCCESS;
-}
-
 void riceRomClosed(void)
 {
     TRACE0("To stop video");

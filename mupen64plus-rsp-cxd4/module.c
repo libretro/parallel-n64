@@ -37,7 +37,6 @@ RSP_INFO RSP_INFO_NAME;
 
 static void (*l_DebugCallback)(void *, int, const char *) = NULL;
 static void *l_DebugCallContext = NULL;
-static int l_PluginInit = 0;
 static m64p_handle l_ConfigRsp;
 
 #define VERSION_PRINTF_SPLIT(x) (((x) >> 16) & 0xffff), (((x) >> 8) & 0xff), ((x) & 0xff)
@@ -183,29 +182,6 @@ EXPORT void CALL API_PREFIX(GetDllInfo)(PLUGIN_INFO *PluginInfo)
     PluginInfo -> MemoryBswaped = 1;
 #endif
     return;
-}
-
-EXPORT m64p_error CALL API_PREFIX(PluginGetVersion)(m64p_plugin_type *PluginType, int *PluginVersion, int *APIVersion, const char **PluginNamePtr, int *Capabilities)
-{
-    /* set version info */
-    if (PluginType != NULL)
-        *PluginType = M64PLUGIN_RSP;
-
-    if (PluginVersion != NULL)
-        *PluginVersion = RSP_CXD4_VERSION;
-
-    if (APIVersion != NULL)
-        *APIVersion = RSP_PLUGIN_API_VERSION;
-
-    if (PluginNamePtr != NULL)
-        *PluginNamePtr = "Static Interpreter";
-
-    if (Capabilities != NULL)
-    {
-        *Capabilities = 0;
-    }
-
-    return M64ERR_SUCCESS;
 }
 
 

@@ -290,21 +290,6 @@ void ReleaseGfx(void)
 
 // new API code begins here!
 
-m64p_error glide64PluginStartup(m64p_dynlib_handle CoreLibHandle, void *Context,
-                                   void (*DebugCallback)(void *, int, const char *))
-{
-   l_DebugCallback = DebugCallback;
-   l_DebugCallContext = Context;
-
-   ReadSettings();
-   return M64ERR_SUCCESS;
-}
-
-m64p_error glide64PluginShutdown(void)
-{
-   return M64ERR_SUCCESS;
-}
-
 /******************************************************************
 Function: InitiateGFX
 Purpose:  This function is called when the DLL is started to give

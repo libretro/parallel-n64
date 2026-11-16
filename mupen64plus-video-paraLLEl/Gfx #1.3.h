@@ -41,7 +41,6 @@ extern GFX_INFO gfx_info;
 extern "C" {
 #endif
 
-EXPORT m64p_error CALL PluginGetVersionVideo(m64p_plugin_type *PluginType, int *PluginVersion, int *APIVersion, const char **PluginNamePtr, int *Capabilities);
 
 #ifdef __cplusplus
 }

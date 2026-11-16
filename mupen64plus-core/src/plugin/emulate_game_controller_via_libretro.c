@@ -193,29 +193,6 @@ void inputGetKeys_default_descriptor(void)
 }
 
 /* Mupen64Plus plugin functions */
-EXPORT m64p_error CALL inputPluginStartup(m64p_dynlib_handle CoreLibHandle, void *Context,
-                                   void (*DebugCallback)(void *, int, const char *))
-{
-   if (environ_cb(RETRO_ENVIRONMENT_GET_INPUT_BITMASKS, NULL))
-      libretro_supports_bitmasks = true;
-   getKeys = inputGetKeys_default;
-   inputGetKeys_default_descriptor();
-   return M64ERR_SUCCESS;
-}
-
-EXPORT m64p_error CALL inputPluginShutdown(void)
-{
-   libretro_supports_bitmasks = false;
-   abort();
-   return 0;
-}
-
-EXPORT m64p_error CALL inputPluginGetVersion(m64p_plugin_type *PluginType, int *PluginVersion, int *APIVersion, const char **PluginNamePtr, int *Capabilities)
-{
-    // This function should never be called in libretro version
-    return M64ERR_SUCCESS;
-}
-
 static unsigned char DataCRC( unsigned char *Data, int iLenght )
 {
     unsigned char Remainder = Data[0];

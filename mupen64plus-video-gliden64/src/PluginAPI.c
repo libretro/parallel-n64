@@ -174,21 +174,6 @@ EXPORT void CALL gliden64ReinitGfxContext(void)
 	gli_window_reinit_gfx_context();
 }
 
-EXPORT m64p_error CALL gliden64PluginStartup(m64p_dynlib_handle CoreLibHandle,
-	void *Context, void (*DebugCallback)(void *, int, const char *))
-{
-	(void)CoreLibHandle;
-	(void)Context;
-	(void)DebugCallback;
-	return M64ERR_SUCCESS;
-}
-
-EXPORT m64p_error CALL gliden64PluginShutdown(void)
-{
-	gliden64RomClosed();
-	return M64ERR_SUCCESS;
-}
-
 EXPORT void CALL gliden64SetRenderingCallback(void (*callback)(int))
 {
 	renderCallback = callback;

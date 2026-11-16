@@ -24,18 +24,6 @@
 uint32_t    last_good_ucode     = (uint32_t) -1;
 void        (*renderCallback)() = NULL;
 
-m64p_error gln64PluginStartup(m64p_dynlib_handle CoreLibHandle,
-        void *Context, void (*DebugCallback)(void *, int, const char *))
-{
-   return M64ERR_SUCCESS;
-}
-
-m64p_error gln64PluginShutdown(void)
-{
-   OGL_Stop();  // paulscode, OGL_Stop missing from Yongzh's code
-   return M64ERR_SUCCESS;
-}
-
 int gln64InitiateGFX (GFX_INFO Gfx_Info)
 {
     Config_gln64_LoadConfig();

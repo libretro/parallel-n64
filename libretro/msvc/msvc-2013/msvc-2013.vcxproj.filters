@@ -180,9 +180,6 @@
     <ClCompile Include="..\..\..\mupen64plus-core\src\api\callbacks.c">
       <Filter>Source Files\mupen64plus-core\src\api</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\mupen64plus-core\src\api\common.c">
-      <Filter>Source Files\mupen64plus-core\src\api</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\mupen64plus-core\src\api\frontend.c">
       <Filter>Source Files\mupen64plus-core\src\api</Filter>
     </ClCompile>

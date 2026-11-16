@@ -31,7 +31,6 @@
 #include "hle_external.h"
 
 #define M64P_PLUGIN_PROTOTYPES 1
-#include "m64p_common.h"
 #include "m64p_config.h"
 #include "m64p_frontend.h"
 #include "m64p_plugin.h"
@@ -53,7 +52,6 @@ static void (*l_ProcessRdpList)(void) = NULL;
 static void (*l_ShowCFB)(void) = NULL;
 static void (*l_DebugCallback)(void *, int, const char *) = NULL;
 static void *l_DebugCallContext = NULL;
-static int l_PluginInit = 0;
 
 #ifdef HAVE_LLE
 /* LLE RSP fallback for tasks the HLE plugin does not recognize. The
@@ -70,27 +68,6 @@ static RSP_INFO l_ForwardRspInfo;
 static int l_ForwardInfoValid = 0;
 static int l_ForwardLleReady = 0;
 #endif
-
-EXPORT m64p_error CALL hlePluginGetVersion(m64p_plugin_type *PluginType, int *PluginVersion, int *APIVersion, const char **PluginNamePtr, int *Capabilities)
-{
-    /* set version info */
-    if (PluginType != NULL)
-        *PluginType = M64PLUGIN_RSP;
-
-    if (PluginVersion != NULL)
-        *PluginVersion = RSP_HLE_VERSION;
-
-    if (APIVersion != NULL)
-        *APIVersion = RSP_PLUGIN_API_VERSION;
-
-    if (PluginNamePtr != NULL)
-        *PluginNamePtr = "Hacktarux/Azimer High-Level Emulation RSP Plugin";
-
-    if (Capabilities != NULL)
-        *Capabilities = 0;
-
-    return M64ERR_SUCCESS;
-}
 
 /* local function */
 static void DebugMessage(int level, const char *message, va_list args)
@@ -187,35 +164,6 @@ int HleForwardTask(void* user_defined)
 }
 
 /* DLL-exported functions */
-EXPORT m64p_error CALL hlePluginStartup(m64p_dynlib_handle CoreLibHandle, void *Context,
-                                     void (*DebugCallback)(void *, int, const char *))
-{
-    if (l_PluginInit)
-        return M64ERR_ALREADY_INIT;
-
-    /* first thing is to set the callback function for debug info */
-    l_DebugCallback = DebugCallback;
-    l_DebugCallContext = Context;
-
-    /* this plugin doesn't use any Core library functions (ex for Configuration), so no need to keep the CoreLibHandle */
-
-    l_PluginInit = 1;
-    return M64ERR_SUCCESS;
-}
-
-EXPORT m64p_error CALL hlePluginShutdown(void)
-{
-    if (!l_PluginInit)
-        return M64ERR_NOT_INIT;
-
-    /* reset some local variable */
-    l_DebugCallback = NULL;
-    l_DebugCallContext = NULL;
-
-    l_PluginInit = 0;
-    return M64ERR_SUCCESS;
-}
-
 EXPORT unsigned int CALL hleDoRspCycles(unsigned int Cycles)
 {
     hle_execute(&g_hle);
