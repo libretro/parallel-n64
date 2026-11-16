@@ -43,7 +43,6 @@
 
 TxHiResCache::~TxHiResCache()
 {
-  delete _txImage;
 }
 
 TxHiResCache::TxHiResCache(int maxwidth,
@@ -55,7 +54,6 @@ TxHiResCache::TxHiResCache(int maxwidth,
 						   const char *ident)
 	: TxCache((options & ~GZ_TEXCACHE), 0, cachePath, ident)
 {
-  _txImage = new TxImage();
   _numcore    = TxUtil::getNumberofProcessors();
 
   _maxwidth  = maxwidth;
@@ -180,6 +178,7 @@ TxHiResCache::loadHiResTextures(const std::string & dir_path, boolean replace)
 	uint8 *tex = nullptr;
 	int tmpwidth = 0, tmpheight = 0;
 	ColorFormat tmpformat = graphics::internalcolorFormat::NOCOLOR;
+	int txi = TXI_NONE; /* the format TxImage read in */
 	uint8 *tmptex= nullptr;
 	ColorFormat destformat = graphics::internalcolorFormat::NOCOLOR;
 
@@ -276,12 +275,13 @@ TxHiResCache::loadHiResTextures(const std::string & dir_path, boolean replace)
 	   * _rgb.*, which the old order paid for before discovering the pair
 	   * was unusable. */
 	  strcpy(pfname, "_rgb.png");
-	  tex = _txImage->readPNG((dir_prefix + fname).c_str(), &width, &height, &format);
+	  tex = tximage_read_png((dir_prefix + fname).c_str(), &width, &height, &txi);
 	  if (!tex) {
 		/* _rgb.bmp */
 		strcpy(pfname, "_rgb.bmp");
-		tex = _txImage->readBMP((dir_prefix + fname).c_str(), &width, &height, &format);
+		tex = tximage_read_bmp((dir_prefix + fname).c_str(), &width, &height, &txi);
 	  }
+	  format = txi_format(txi);
 	  if (!tex) {
 #if !DEBUG
 #endif
@@ -289,12 +289,13 @@ TxHiResCache::loadHiResTextures(const std::string & dir_path, boolean replace)
 	  }
 	  /* _a.png */
 	  strcpy(pfname, "_a.png");
-	  tmptex = _txImage->readPNG((dir_prefix + fname).c_str(), &tmpwidth, &tmpheight, &tmpformat);
+	  tmptex = tximage_read_png((dir_prefix + fname).c_str(), &tmpwidth, &tmpheight, &txi);
 	  if (!tmptex) {
 		/* _a.bmp */
 		strcpy(pfname, "_a.bmp");
-		tmptex = _txImage->readBMP((dir_prefix + fname).c_str(), &tmpwidth, &tmpheight, &tmpformat);
+		tmptex = tximage_read_bmp((dir_prefix + fname).c_str(), &tmpwidth, &tmpheight, &txi);
 	  }
+	  tmpformat = txi_format(txi);
 	  if (tmptex) {
 		/* check if _rgb.* and _a.* have matching size and format. */
 		if (!tex || width != tmpwidth || height != tmpheight ||
@@ -367,8 +368,9 @@ TxHiResCache::loadHiResTextures(const std::string & dir_path, boolean replace)
 #endif
 		pfname == strstr(fname, "_ci.bmp")) {
 	  path = dir_prefix + fname;
-	  if      (strstr(fname, ".png")) tex = _txImage->readPNG(path.c_str(), &width, &height, &format);
-	  else                            tex = _txImage->readBMP(path.c_str(), &width, &height, &format);
+	  if      (strstr(fname, ".png")) tex = tximage_read_png(path.c_str(), &width, &height, &txi);
+	  else                            tex = tximage_read_bmp(path.c_str(), &width, &height, &txi);
+	  format = txi_format(txi);
 	}
 
 	/* if we do not have a texture at this point we are screwed */

@@ -21,20 +21,16 @@
  * the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-/* use power of 2 texture size
- * (0:disable, 1:enable, 2:3dfx) */
-#define POW2_TEXTURES 0
+/* C89: GLideNHQ's hi-res texture files, PNG and BMP, read and written. */
 
 #include <stdlib.h>
 #include <string.h>
-#include <assert.h>
 
 #include <formats/image.h>
 #include <formats/rpng.h>
 #include <streams/file_stream.h>
 
 #include "TxImage.h"
-#include "TxReSample.h"
 
 /* Decode a PNG into a 32-bit RGBA8888 surface.
  *
@@ -47,38 +43,37 @@
  * supports_rgba selects R,G,B,A byte order, which is what this function has
  * always returned (note the disabled png_set_bgr call in the original: "OpenGL
  * does not need it") and what the texture upload path expects. */
-uint8*
-TxImage::readPNG(const char *path, int* width, int* height, ColorFormat *format)
+uint8 *tximage_read_png(const char *path, int *width, int *height, int *format)
 {
-	void     *filebuf = nullptr;
+	void     *filebuf = NULL;
 	int64_t   filelen = 0;
-	rpng_t   *rpng    = nullptr;
-	uint32   *data    = nullptr;
+	rpng_t   *rpng    = NULL;
+	uint32   *data    = NULL;
 	unsigned  o_width = 0, o_height = 0;
 	int       ret     = 0;
 
 	/* initialize */
 	*width  = 0;
 	*height = 0;
-	*format = graphics::internalcolorFormat::NOCOLOR;
+	*format = TXI_NONE;
 
 	/* rpng decodes from a resident buffer, so the file is pulled in with
 	 * one sized read. Texture packs are tens of thousands of small PNGs
 	 * and this is the hot path when one is first scanned. */
 	if (!path || !filestream_read_file(path, &filebuf, &filelen) || filelen <= 0) {
 		free(filebuf);
-		return nullptr;
+		return NULL;
 	}
 
 	if (!(rpng = rpng_alloc())) {
 		free(filebuf);
-		return nullptr;
+		return NULL;
 	}
 
 	if (!rpng_set_buf_ptr(rpng, filebuf, (size_t)filelen) || !rpng_start(rpng)) {
 		rpng_free(rpng);
 		free(filebuf);
-		return nullptr;
+		return NULL;
 	}
 
 	while (rpng_iterate_image(rpng))
@@ -94,32 +89,14 @@ TxImage::readPNG(const char *path, int* width, int* height, ColorFormat *format)
 	if (ret != IMAGE_PROCESS_END || !data) {
 		if (data)
 			free(data);
-		return nullptr;
+		return NULL;
 	}
 
 
 	*width  = (int)o_width;
 	*height = (int)o_height;
-	*format = graphics::internalcolorFormat::RGBA8;
+	*format = TXI_RGBA8;
 
-#if POW2_TEXTURES
-	/* next power of 2 size conversions */
-	{
-#if (POW2_TEXTURES == 2)
-		if (!txresample_next_pow2((uint8**)&data, width, height, 32, 1)) {
-#else
-		if (!txresample_next_pow2((uint8**)&data, width, height, 32, 0)) {
-#endif
-			if (data) {
-				free(data);
-				data = nullptr;
-			}
-			*width = 0;
-			*height = 0;
-			*format = graphics::internalcolorFormat::NOCOLOR;
-		}
-	}
-#endif /* POW2_TEXTURES */
 
 	return (uint8*)data;
 }
@@ -134,10 +111,8 @@ TxImage::readPNG(const char *path, int* width, int* height, ColorFormat *format)
  *
  * Takes a path rather than a FILE*: rpng opens the file itself through the
  * VFS, so the caller no longer needs its own fopen/fclose pair. */
-boolean
-TxImage::writePNG(uint8* src, const char *path, int width, int height, int rowStride, ColorFormat format)
+boolean tximage_write_png(const uint8 *src, const char *path, int width, int height, int rowStride)
 {
-	assert(format == graphics::internalcolorFormat::RGBA8);
 
 	if (!src || !path)
 		return 0;
@@ -167,7 +142,7 @@ static uint16 bmp_u16(const uint8 *p)
  *       4, 8bit palette bmp -> COLOR_INDEX8
  *       24, 32bit bmp -> RGBA8
  */
-static uint8 *decodeBMP(const uint8 *file, size_t filelen, int *width, int *height, ColorFormat *format)
+static uint8 *decodeBMP(const uint8 *file, size_t filelen, int *width, int *height, int *format)
 {
 	/* BITMAPFILEHEADER is 14 bytes; BITMAPINFOHEADER follows */
 	enum { FILE_HEADER = 14, INFO_HEADER = 40, MAX_SIDE = 16384 };
@@ -177,10 +152,10 @@ static uint8 *decodeBMP(const uint8 *file, size_t filelen, int *width, int *heig
 	size_t row_bytes;
 
 	if (filelen < FILE_HEADER + INFO_HEADER || memcmp(file, "BM", 2) != 0)
-		return nullptr;
+		return NULL;
 	/* is this a Windows BMP? */
 	if (bmp_u32(file + 14) != INFO_HEADER)
-		return nullptr;
+		return NULL;
 	offBits = bmp_u32(file + 10);
 	biWidth = (int)bmp_u32(file + 18);
 	biHeight = (int)bmp_u32(file + 22);
@@ -189,16 +164,16 @@ static uint8 *decodeBMP(const uint8 *file, size_t filelen, int *width, int *heig
 
 	/* Rice hi-res textures */
 	if (!(bitCount == 8 || bitCount == 4 || bitCount == 32 || bitCount == 24) || compression != 0)
-		return nullptr;
+		return NULL;
 	/* bottom-up rows only; a top-down (negative height) bitmap never loaded */
 	if (biWidth <= 0 || biHeight <= 0 || biWidth > MAX_SIDE || biHeight > MAX_SIDE)
-		return nullptr;
+		return NULL;
 
 	/* rowStride in bytes, aligned to 4 bytes */
 	row_bytes = (((size_t)biWidth * bitCount >> 3) + 3) & ~(size_t)3;
 	rows = (uint32)biHeight;
 	if (offBits > filelen || (filelen - offBits) / row_bytes < rows)
-		return nullptr;
+		return NULL;
 
 	switch (bitCount) {
 	case 8:
@@ -240,52 +215,31 @@ static uint8 *decodeBMP(const uint8 *file, size_t filelen, int *width, int *heig
 	}
 
 	if (image) {
-		*width = (int)((row_bytes << 3) / bitCount);
+		/* the indices keep the padded row, so are as wide as it; 24 bits
+		 * are made 32 a texel, the padding left out: as wide as the
+		 * bitmap (the padded row's width was read past the image) */
+		*width = (bitCount == 24) ? biWidth : (int)((row_bytes << 3) / bitCount);
 		*height = biHeight;
-		*format = (bitCount <= 8) ? graphics::internalcolorFormat::COLOR_INDEX8 : graphics::internalcolorFormat::RGBA8;
+		*format = (bitCount <= 8) ? TXI_COLOR_INDEX8 : TXI_RGBA8;
 	}
 	return image;
 }
 
-uint8*
-TxImage::readBMP(const char *path, int* width, int* height, ColorFormat *format)
+uint8 *tximage_read_bmp(const char *path, int *width, int *height, int *format)
 {
-	void *file = nullptr;
+	void *file = NULL;
 	int64_t filelen = 0;
-	uint8 *image = nullptr;
+	uint8 *image = NULL;
 
 	/* initialize */
 	*width  = 0;
 	*height = 0;
-	*format = graphics::internalcolorFormat::NOCOLOR;
+	*format = TXI_NONE;
 
 	if (path && filestream_read_file(path, &file, &filelen) && filelen > 0)
 		image = decodeBMP((const uint8*)file, (size_t)filelen, width, height, format);
 	free(file);
 
-#if POW2_TEXTURES
-	/* next power of 2 size conversions */
-	/* NOTE: I can do this in the above loop for faster operations, but some
-	 * texture packs require a workaround. see HACKALERT in nextPow2().
-	 */
-	if (image) {
-
-#if (POW2_TEXTURES == 2)
-		if (!txresample_next_pow2(&image, width, height, 8, 1)) {
-#else
-		if (!txresample_next_pow2(&image, width, height, 8, 0)) {
-#endif
-			if (image) {
-				free(image);
-				image = nullptr;
-			}
-			*width = 0;
-			*height = 0;
-			*format = graphics::internalcolorFormat::NOCOLOR;
-		}
-
-	}
-#endif /* POW2_TEXTURES */
 
 	return image;
 }

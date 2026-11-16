@@ -24,17 +24,34 @@
 #ifndef __TXIMAGE_H__
 #define __TXIMAGE_H__
 
-#include "TxInternal.h"
+/* GLideNHQ's hi-res texture files, PNG and BMP. C89. Paths are UTF-8,
+ * read and written through the VFS. */
 
-class TxImage
+#include "Ext_TxFilter.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/* the formats an image is read in: none (not read), RGBA8 (R, G, B, A in
+ * memory), 8-bit palette indices */
+enum
 {
-public:
-  TxImage() {}
-  ~TxImage() {}
-  /* UTF-8 paths, read through the VFS */
-  uint8* readPNG(const char *path, int* width, int* height, ColorFormat* format);
-  boolean writePNG(uint8* src, const char *path, int width, int height, int rowStride, ColorFormat format/*, uint8 *palette*/);
-  uint8* readBMP(const char *path, int* width, int* height, ColorFormat* format);
+	TXI_NONE = 0,
+	TXI_RGBA8,
+	TXI_COLOR_INDEX8
 };
+
+/* The image, malloc'd, its size and format set; NULL (TXI_NONE, 0 x 0)
+ * if it cannot be read. A PNG is always RGBA8; a BMP of 4 or 8 bits a
+ * pixel indices (4 bits stuffed into 8), of 24 or 32 RGBA8. */
+uint8 *tximage_read_png(const char *path, int *width, int *height, int *format);
+uint8 *tximage_read_bmp(const char *path, int *width, int *height, int *format);
+/* @src, RGBA8 rows @rowStride bytes apart, as a PNG */
+boolean tximage_write_png(const uint8 *src, const char *path, int width, int height, int rowStride);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* __TXIMAGE_H__ */

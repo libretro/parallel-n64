@@ -47,7 +47,6 @@ private:
   std::string _dumpPath; /* UTF-8 */
   TxTexCache *_txTexCache;
   TxHiResCache *_txHiResCache;
-  TxImage *_txImage;
   boolean _initialized;
   void clear();
 public:

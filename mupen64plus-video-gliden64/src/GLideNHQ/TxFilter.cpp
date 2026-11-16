@@ -75,7 +75,6 @@ void TxFilter::clear()
 	TxMemBuf::getInstance()->shutdown();
 
 	/* clear other stuff */
-	delete _txImage;
 }
 
 TxFilter::~TxFilter()
@@ -97,7 +96,6 @@ TxFilter::TxFilter(int maxwidth,
 	, _tex2(nullptr)
 	, _txTexCache(nullptr)
 	, _txHiResCache(nullptr)
-	, _txImage(nullptr)
 {
 	TxUtil::poolAcquire();
 	if (texCachePath == nullptr || texDumpPath == nullptr || texPackPath == nullptr)
@@ -105,7 +103,6 @@ TxFilter::TxFilter(int maxwidth,
 
 	_options = options;
 
-	_txImage      = new TxImage();
 
 	/* get number of CPU cores. */
 	_numcore = TxUtil::getNumberofProcessors();
@@ -581,7 +578,7 @@ TxFilter::dmptx(uint8 *src, int width, int height, int rowStridePixel, ColorForm
 		path += name;
 
 		/* rpng opens the UTF-8 path itself through the VFS */
-		_txImage->writePNG(src, path.c_str(), width, height, (rowStridePixel << 2), graphics::internalcolorFormat::RGBA8);
+		tximage_write_png(src, path.c_str(), width, height, (rowStridePixel << 2));
 		return 1;
 	}
 

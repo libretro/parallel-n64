@@ -42,7 +42,6 @@ private:
   int _maxheight;
   int _maxbpp;
   boolean _cacheDumped;
-  TxImage *_txImage;
   unsigned _numcore;     /* the quantizer's lanes */
   std::string _texPackPath; /* UTF-8 */
   enum LoadResult {

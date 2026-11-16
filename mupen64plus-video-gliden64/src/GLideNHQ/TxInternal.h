@@ -32,6 +32,14 @@
 
 typedef graphics::InternalColorFormatParam ColorFormat;
 
+/* an image's format as TxImage's C reads it (TXI_*) */
+static inline ColorFormat txi_format(int format)
+{
+	if (format == 1) return graphics::internalcolorFormat::RGBA8;        /* TXI_RGBA8 */
+	if (format == 2) return graphics::internalcolorFormat::COLOR_INDEX8; /* TXI_COLOR_INDEX8 */
+	return graphics::internalcolorFormat::NOCOLOR;                       /* TXI_NONE */
+}
+
 /* the format as TxQuantize's C has it (TXQ_*), -1 for one it has not */
 static inline int txq_format(ColorFormat format)
 {
