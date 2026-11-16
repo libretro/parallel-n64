@@ -1226,7 +1226,8 @@ clean: clean-tools
 
 clean-tools:
 	rm -f test_gliden64_spirv$(EXE_EXT) $(ANGRYLION_TOOLS) lrhost$(EXE_EXT) lrhost_vk$(EXE_EXT) lrhost_gl$(EXE_EXT) $(GLITCH64_TESTS) angrylion_replay$(EXE_EXT) $(ANGRYLION_CHECKS) dd_ipl_hle_test$(EXE_EXT) \
-		$(CORE_CHECKS) dynarec_long_block_test$(EXE_EXT) savestate_latch_test$(EXE_EXT) savestate_code_test$(EXE_EXT) cpu_fallback_test$(EXE_EXT) tools/test_prsp_dmem_wrap.o $(GRANITE_POOL_TEST_OBJS)
+		$(CORE_CHECKS) dynarec_long_block_test$(EXE_EXT) savestate_latch_test$(EXE_EXT) savestate_code_test$(EXE_EXT) cpu_fallback_test$(EXE_EXT) tools/test_prsp_dmem_wrap.o $(GRANITE_POOL_TEST_OBJS) \
+		tools/test_gliden64_xbrz.o $(TXCACHE_TEST_OBJ)
 
 # Angrylion benchmark and bit-exactness harnesses (tools/angrylion_*.c),
 # linked against the core's own angrylion objects: `make tools` after a
@@ -1710,6 +1711,23 @@ TXIMAGE_TEST_SRC := $(VIDEODIR_GLIDEN64)/src/GLideNHQ/TxImage.c \
 test_gliden64_tximage$(EXE_EXT): tools/test_gliden64_tximage.c $(TXIMAGE_TEST_SRC)
 	$(CC) $(CHECK_CFLAGS) $(CHECK_SANITIZE) -I$(VIDEODIR_GLIDEN64)/src -I$(LIBRETRO_COMM_DIR)/include $^ \
 		-o $@ $(CHECK_LDFLAGS) $(CHECK_SANITIZE) -lm
+
+# GLideNHQ whole, through its C API: its C++ classes (and the parameters
+# they compare formats with) built for the test, its C beside them
+TXCACHE_TEST_INC := -I$(VIDEODIR_GLIDEN64)/src -I$(VIDEODIR_GLIDEN64)/src/GLideNHQ -I$(VIDEODIR_GLIDEN64)/include \
+	-I$(LIBRETRO_COMM_DIR)/include -I$(ROOT_DIR)/libretro -I$(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext
+TXCACHE_TEST_OBJ := $(addprefix tools/test_gliden64_txcache_,TxFilter.o TxCache.o TxTexCache.o TxHiResCache.o \
+	TxFilterExport.o TextureFilters_xbrz.o opengl_Parameters.o)
+tools/test_gliden64_txcache_%.o: $(VIDEODIR_GLIDEN64)/src/GLideNHQ/%.cpp
+	$(CXX) -std=c++11 $(CHECK_CFLAGS) $(CHECK_SANITIZE) $(TXCACHE_TEST_INC) -c $< -o $@
+tools/test_gliden64_txcache_opengl_Parameters.o: $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/opengl_Parameters.cpp
+	$(CXX) -std=c++11 $(CHECK_CFLAGS) $(CHECK_SANITIZE) -DHAVE_OPENGL -DCORE $(TXCACHE_TEST_INC) -c $< -o $@
+test_gliden64_txcache$(EXE_EXT): tools/test_gliden64_txcache.c $(TXCACHE_TEST_OBJ) $(TXIMAGE_TEST_SRC) \
+		$(addprefix $(VIDEODIR_GLIDEN64)/src/GLideNHQ/,TxQuantize.c TxUtil.c TxReSample.c TxGz.c TextureFilters.c \
+		TextureFilters_2xsai.c TextureFilters_hq2x.c TextureFilters_hq4x.c txpool.c) \
+		$(addprefix $(LIBRETRO_COMM_DIR)/,rthreads/retro_eventcount.c rthreads/rthreads.c file/retro_dirent.c)
+	$(CC) $(CHECK_CFLAGS) $(CHECK_SANITIZE) -I$(VIDEODIR_GLIDEN64)/src -I$(LIBRETRO_COMM_DIR)/include $(filter %.c,$^) \
+		$(TXCACHE_TEST_OBJ) -o $@ $(CHECK_LDFLAGS) $(CHECK_SANITIZE) -lstdc++ -lpthread -lm
 
 GLIDENHQ_FILTERS := $(addprefix $(VIDEODIR_GLIDEN64)/src/GLideNHQ/,TextureFilters.c TextureFilters_2xsai.c TextureFilters_hq2x.c TextureFilters_hq4x.c)
 test_gliden64_txfilters$(EXE_EXT): tools/test_gliden64_txfilters.c $(GLIDENHQ_FILTERS) $(VIDEODIR_GLIDEN64)/src/GLideNHQ/TextureFilters_xbrz.cpp
@@ -2366,7 +2384,7 @@ CORE_CHECKS := test_rcp_bounds$(EXE_EXT) test_memory_map$(EXE_EXT) test_fb_write
 	test_mouse_accum$(EXE_EXT) test_input_bitmasks$(EXE_EXT) test_hle_dram_wrap$(EXE_EXT) test_pif_write$(EXE_EXT) \
 	test_re2_fill$(EXE_EXT) test_temporal_upscaler$(EXE_EXT) test_pipeline_records$(EXE_EXT) test_rdp_dump_write$(EXE_EXT) test_vi_registers$(EXE_EXT) test_shader_bank$(EXE_EXT) test_primitive_decode$(EXE_EXT) test_masked_copy$(EXE_EXT) test_masked_copy_scalar$(EXE_EXT) test_pipeline_pending$(EXE_EXT) test_rdp_state$(EXE_EXT) test_tmem_load$(EXE_EXT) test_renderer_caps$(EXE_EXT) test_rdp_pipelines$(EXE_EXT) test_renderer_buffers$(EXE_EXT) test_rdp_passes$(EXE_EXT) test_rdp_queue$(EXE_EXT) test_rdp_submit$(EXE_EXT) test_rdp_sync_ring$(EXE_EXT) test_rdp_command_decode$(EXE_EXT) test_rdp_timeline$(EXE_EXT) test_rdp_upscaler_view$(EXE_EXT) test_rdp_renderer$(EXE_EXT) test_rdp_commands$(EXE_EXT) test_rdp_processor$(EXE_EXT) test_rdp_intake$(EXE_EXT) test_rdp_pipeline_files$(EXE_EXT) test_rdp_upscaler_policy$(EXE_EXT) test_granite_vk$(EXE_EXT) test_parallel_frontend$(EXE_EXT) \
 	test_command_ring$(EXE_EXT) test_vk_sync$(EXE_EXT) test_vk_command_pool$(EXE_EXT) test_vk_texture_format$(EXE_EXT) test_vk_descriptor_set$(EXE_EXT) test_vk_shader$(EXE_EXT) test_vk_pipeline_map$(EXE_EXT) test_vk_render_pass$(EXE_EXT) test_vk_framebuffer$(EXE_EXT) test_vk_pipeline_compile$(EXE_EXT) test_vk_resource_bindings$(EXE_EXT) test_vk_command_state$(EXE_EXT) test_vk_command_ops$(EXE_EXT) test_vk_submit_batch$(EXE_EXT) test_vk_buffer_create$(EXE_EXT) test_vk_image_create$(EXE_EXT) test_vk_image_upload$(EXE_EXT) test_vk_buffer_pool$(EXE_EXT) test_vk_buffer$(EXE_EXT) test_vk_image$(EXE_EXT) test_vk_sampler$(EXE_EXT) test_vk_fence$(EXE_EXT) test_vk_semaphore$(EXE_EXT) test_vk_queue_submit$(EXE_EXT) test_vk_frame_sync$(EXE_EXT) test_vk_memory_release$(EXE_EXT) test_vk_context$(EXE_EXT) test_vk_device_caps$(EXE_EXT) test_vk_program_cache$(EXE_EXT) test_vk_render_target$(EXE_EXT) test_vk_command_buffer$(EXE_EXT) test_vk_frame_context$(EXE_EXT) test_vk_submission$(EXE_EXT) test_vk_device$(EXE_EXT) test_rdp_upscaler_pass$(EXE_EXT) test_rdp_video_interface$(EXE_EXT) test_rdram_coherency$(EXE_EXT) test_vk_pipeline_cache$(EXE_EXT) test_frame_garbage$(EXE_EXT) test_release_queue$(EXE_EXT) test_gb_cart_banks$(EXE_EXT) test_dynarec_cache_pages$(EXE_EXT) \
-	test_combiner_journal$(EXE_EXT) test_gliden64_txfilters$(EXE_EXT) test_gliden64_txresample$(EXE_EXT) test_gliden64_txquantize$(EXE_EXT) test_gliden64_tximage$(EXE_EXT) test_gliden64_txutil$(EXE_EXT) test_gliden64_write_rdram$(EXE_EXT) test_gliden64_fill_rdram$(EXE_EXT) test_gliden64_tri_clip$(EXE_EXT) test_gliden64_lle_tri$(EXE_EXT) test_glide64_lle_tri$(EXE_EXT) test_gliden64_rdram_to_color$(EXE_EXT) test_gliden64_window_scale$(EXE_EXT) test_gliden64_texture_formats$(EXE_EXT) test_glide64_loadblock$(EXE_EXT) test_gliden64_matrix_element$(EXE_EXT) test_gliden64_deferred_readback$(EXE_EXT) test_gliden64_ring_segments$(EXE_EXT) test_glide64_fb_readback$(EXE_EXT) test_granite_pool$(EXE_EXT) test_vk_memory_allocator$(EXE_EXT) \
+	test_combiner_journal$(EXE_EXT) test_gliden64_txfilters$(EXE_EXT) test_gliden64_txresample$(EXE_EXT) test_gliden64_txquantize$(EXE_EXT) test_gliden64_tximage$(EXE_EXT) test_gliden64_txutil$(EXE_EXT) test_gliden64_txcache$(EXE_EXT) test_gliden64_write_rdram$(EXE_EXT) test_gliden64_fill_rdram$(EXE_EXT) test_gliden64_tri_clip$(EXE_EXT) test_gliden64_lle_tri$(EXE_EXT) test_glide64_lle_tri$(EXE_EXT) test_gliden64_rdram_to_color$(EXE_EXT) test_gliden64_window_scale$(EXE_EXT) test_gliden64_texture_formats$(EXE_EXT) test_glide64_loadblock$(EXE_EXT) test_gliden64_matrix_element$(EXE_EXT) test_gliden64_deferred_readback$(EXE_EXT) test_gliden64_ring_segments$(EXE_EXT) test_glide64_fb_readback$(EXE_EXT) test_granite_pool$(EXE_EXT) test_vk_memory_allocator$(EXE_EXT) \
 	test_vi_image_pool$(EXE_EXT)
 
 ifeq ($(HAVE_PARALLEL_RSP), 1)

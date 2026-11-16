@@ -145,7 +145,7 @@ TxCache::TxCache(int options, int cachesize, const char *cachePath, const char *
 }
 
 boolean
-TxCache::add(uint64 checksum, GHQTexInfo *info, int dataSize)
+TxCache::add(uint64 checksum, GHQTexInfo *info, int dataSize, boolean owned)
 {
 	/* NOTE: dataSize must be provided if info->data is zlib compressed. */
 
@@ -225,16 +225,21 @@ TxCache::add(uint64 checksum, GHQTexInfo *info, int dataSize)
 		_totalSize -= dataSize;
 	}
 
-	/* cache it */
-	uint8 *tmpdata = (uint8*)malloc(dataSize);
-	if (tmpdata == nullptr)
-		return 0;
+	/* cache it: a buffer given it as it is, else a copy (of what was
+	 * compressed, if it was) */
+	uint8 *tmpdata;
+	if (owned && dest == info->data) {
+		tmpdata = info->data;
+	} else {
+		tmpdata = (uint8*)malloc(dataSize);
+		if (tmpdata == nullptr)
+			return 0;
+		memcpy(tmpdata, dest, dataSize);
+		if (owned)
+			free(info->data);
+	}
 
 	TXCACHE *txCache = new TXCACHE;
-	/* we can directly write as we filter, but for now we get away
-	* with doing memcpy after all the filtering is done.
-	*/
-	memcpy(tmpdata, dest, dataSize);
 
 	/* copy it */
 	memcpy(&txCache->info, info, sizeof(GHQTexInfo));

@@ -37,8 +37,9 @@ private:
 public:
   ~TxTexCache();
   TxTexCache(int options, int cachesize, const char *cachePath, const char *ident);
+  /* @owned as TxCache::add has it */
   boolean add(uint64 checksum, /* checksum hi:palette low:texture */
-              GHQTexInfo *info);
+              GHQTexInfo *info, boolean owned = 0);
   void dump();
 };
 

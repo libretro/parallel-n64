@@ -603,10 +603,10 @@ TxHiResCache::loadHiResTextures(const std::string & dir_path, boolean replace)
 	  if (replace)
 		TxCache::del(chksum64);
 
-	  /* add to cache */
-	  const boolean added = TxCache::add(chksum64, &tmpInfo);
-	  free(tex);
+	  /* add to cache: it takes the texture as it is */
+	  const boolean added = TxCache::add(chksum64, &tmpInfo, 0, 1);
 	  if (!added) {
+		  free(tex);
 		  result = resError;
 		  break;
 	  }

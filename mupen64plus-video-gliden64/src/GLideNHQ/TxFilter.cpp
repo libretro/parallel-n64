@@ -163,6 +163,12 @@ TxFilter::filter(uint8 *src, int srcwidth, int srcheight, ColorFormat srcformat,
 	uint8 *tmptex = _tex1;
 	assert(srcformat != graphics::colorFormat::RGBA);
 	ColorFormat destformat = srcformat;
+	/* The last step writes into a buffer the texture cache keeps as it is
+	 * (it copied each filtered texture into one of its own before): when
+	 * there is a cache, and it keeps textures uncompressed. */
+	const boolean adopt = _cacheSize && !(_options & (GZ_TEXCACHE|GZ_HIRESTEXCACHE));
+	uint8 *owned = nullptr;
+	size_t owned_size = 0;
 
 	/* We need to be initialized first! */
 	if (!_initialized) return 0;
@@ -288,12 +294,24 @@ TxFilter::filter(uint8 *src, int srcwidth, int srcheight, ColorFormat srcformat,
 			}
 
 			filter |= _options & DEPOSTERIZE;
+
+			/* the steps left: the filters, and a conversion to 16 bits */
+			const boolean to16 = _maxbpp < 32 || (_options & FORCE16BPP_TEX);
+			int steps = num_filters + (to16 ? 1 : 0);
+
 			/*
 	   * execute texture enhancements and filters
 	   */
 			while (num_filters > 0) {
 
 				tmptex = (texture == _tex1) ? _tex2 : _tex1;
+				if (adopt && steps == 1) {
+					owned_size = ((size_t)srcwidth * scale) * ((size_t)srcheight * scale) * 4;
+					owned = (uint8 *)malloc(owned_size);
+					if (owned)
+						tmptex = owned;
+				}
+				steps--;
 
 				uint8 *_texture = texture;
 				uint8 *_tmptex  = tmptex;
@@ -340,7 +358,14 @@ TxFilter::filter(uint8 *src, int srcwidth, int srcheight, ColorFormat srcformat,
 					srcformat = graphics::internalcolorFormat::RGBA4;
 				if (srcformat != graphics::internalcolorFormat::RGBA8) {
 					tmptex = (texture == _tex1) ? _tex2 : _tex1;
+					if (adopt && steps == 1) {
+						owned_size = (size_t)srcwidth * srcheight * 2;
+						owned = (uint8 *)malloc(owned_size);
+						if (owned)
+							tmptex = owned;
+					}
 					if (!txquantize(texture, tmptex, srcwidth, srcheight, TXQ_RGBA8, txq_format(srcformat), 1, txutil_pool(), _numcore)) {
+						free(owned);
 						return 0;
 					}
 					texture = tmptex;
@@ -426,8 +451,15 @@ TxFilter::filter(uint8 *src, int srcwidth, int srcheight, ColorFormat srcformat,
 	info->is_hires_tex = 0;
 	setTextureFormat(destformat, info);
 
-	/* cache the texture. */
-	if (_cacheSize)
+	/* cache the texture: the buffer the last step wrote is the cache's;
+	 * if it does not take it, the texels go to one of ours for the caller */
+	if (owned && texture == owned) {
+		if (!_txTexCache->add(g64crc, info, 1)) {
+			memcpy(_tex1, owned, owned_size);
+			free(owned);
+			info->data = _tex1;
+		}
+	} else if (_cacheSize)
 		_txTexCache->add(g64crc, info);
 
 

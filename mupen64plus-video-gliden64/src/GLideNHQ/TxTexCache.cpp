@@ -47,12 +47,12 @@ TxTexCache::TxTexCache(int options, int cachesize, const char *cachePath, const 
 }
 
 boolean
-TxTexCache::add(uint64 checksum, GHQTexInfo *info)
+TxTexCache::add(uint64 checksum, GHQTexInfo *info, boolean owned)
 {
 	if (_cacheSize <= 0)
 		return 0;
 
-	const boolean res = TxCache::add(checksum, info);
+	const boolean res = TxCache::add(checksum, info, 0, owned);
 	if (res)
 		_cacheDumped = 0;
 	return res;

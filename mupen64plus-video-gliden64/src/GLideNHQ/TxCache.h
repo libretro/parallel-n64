@@ -56,8 +56,11 @@ protected:
 public:
   ~TxCache();
   TxCache(int options, int cachesize, const char *cachePath, const char *ident);
+  /* With @owned, info->data is a malloc'd buffer the cache takes on
+   * success, kept as it is (or freed once a compressed copy is kept);
+   * on failure it is still the caller's. Else the texels are copied. */
   boolean add(uint64 checksum, /* checksum hi:palette low:texture */
-              GHQTexInfo *info, int dataSize = 0);
+              GHQTexInfo *info, int dataSize = 0, boolean owned = 0);
   boolean get(uint64 checksum, /* checksum hi:palette low:texture */
               GHQTexInfo *info);
 };
