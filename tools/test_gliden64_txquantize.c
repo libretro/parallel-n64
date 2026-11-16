@@ -9,6 +9,11 @@
  * own values; they are run on four threads and again with no pool, on
  * the caller, and must match either way.
  *
+ * An odd count of texels: the conversions went two texels at a time and
+ * left the last one as it was (whatever an earlier texture had left
+ * there). Its last texel must now be what the same texel converted as
+ * the first of a pair is, and nothing past it written.
+ *
  *   ./test_gliden64_txquantize
  */
 #include <stdio.h>
@@ -163,6 +168,38 @@ int main(void)
       }
       free(src);
       free(dst);
+   }
+
+   /* an odd count of texels: 47 x 15, on one lane and on four (the last
+    * block odd) */
+   {
+      static const int fmts[3] = { TXQ_RGB5_A1, TXQ_RGBA4, TXQ_RGB565 };
+      const int w = 47, h = 15, n = 47 * 15;
+      static uint8 src[47 * 15 * 4 + 8], dst[47 * 15 * 4 + 8], pair_src[8], pair_dst[8];
+      unsigned f, dir, lanes;
+      for (f = 0; f < 3; f++)
+         for (dir = 0; dir < 2; dir++)
+            for (lanes = 1; lanes <= 4; lanes += 3)
+            {
+               /* dir 0: 16 bits to RGBA8, 1: RGBA8 to 16 bits, rounded */
+               const int sb = dir ? 4 : 2, db = dir ? 2 : 4;
+               const int sf = dir ? TXQ_RGBA8 : fmts[f], df = dir ? fmts[f] : TXQ_RGBA8;
+               fill(src, n * sb, 300u + f * 2 + dir);
+               memset(dst, 0xcd, sizeof(dst));
+               memset(pair_src, 0, sizeof(pair_src));
+               memcpy(pair_src, src + (n - 1) * sb, sb);
+               if (!txquantize(src, dst, w, h, sf, df, 1, lanes > 1 ? pool : NULL, lanes)
+                     || !txquantize(pair_src, pair_dst, 2, 1, sf, df, 1, NULL, 1)
+                     || memcmp(dst + (n - 1) * db, pair_dst, db) || dst[n * db] != 0xcd)
+               {
+                  printf("FAIL: an odd count, %s %s, %u lanes: the last texel %02x%02x%02x%02x, not %02x%02x%02x%02x\n",
+                        dir ? "to 16 bits" : "to RGBA8", f == 0 ? "1555" : f == 1 ? "4444" : "565", lanes,
+                        dst[(n - 1) * db], dst[(n - 1) * db + 1], db > 2 ? dst[(n - 1) * db + 2] : 0,
+                        db > 2 ? dst[(n - 1) * db + 3] : 0, pair_dst[0], pair_dst[1], db > 2 ? pair_dst[2] : 0,
+                        db > 2 ? pair_dst[3] : 0);
+                  failures++;
+               }
+            }
    }
 
    /* pairs it does not convert */

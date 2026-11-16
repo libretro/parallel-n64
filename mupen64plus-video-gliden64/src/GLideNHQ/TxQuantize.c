@@ -93,6 +93,15 @@ ARGB1555_ARGB8888(uint32* src, uint32* dest, int width, int height)
 		++dest;
 		++src;
 	}
+	/* an odd count's last texel, the low half of a pair */
+	if ((width * height) & 1) {
+		color = *(const uint16 *)src;
+		r = Five2Eight[color >> 11];
+		g = Five2Eight[(color >> 6) & 0x001f];
+		b = Five2Eight[(color >> 1) & 0x001f];
+		a = One2Eight [(color     ) & 0x0001];
+		*dest = ((uint32)a << 24) | ((uint32)b << 16) | ((uint32)g << 8) | r;
+	}
 }
 
 static void
@@ -115,6 +124,14 @@ ARGB4444_ARGB8888(uint32* src, uint32* dest, int width, int height)
 		dest++;
 		src++;
 	}
+	if ((width * height) & 1) {
+		const uint32 s = *(const uint16 *)src;
+		*dest = ((s & 0x0000f000) >> 8 ) |
+				((s & 0x00000f00) << 4 ) |
+				((s & 0x000000f0) << 16) |
+				((s & 0x0000000f) << 28);
+		*dest |= (*dest >> 4);
+	}
 }
 
 static void
@@ -134,6 +151,13 @@ RGB565_ARGB8888(uint32* src, uint32* dest, int width, int height)
 				 ((*src & 0x001f0000) >> 13) | ((*src & 0x001c0000) >> 18));
 		dest++;
 		src++;
+	}
+	if ((width * height) & 1) {
+		const uint32 s = *(const uint16 *)src;
+		*dest = (0xff000000 |
+				 ((s & 0x0000f800) << 8) | ((s & 0x0000e000) << 3) |
+				 ((s & 0x000007e0) << 5) | ((s & 0x00000600) >> 1) |
+				 ((s & 0x0000001f) << 3) | ((s & 0x0000001c) >> 2));
 	}
 }
 
@@ -161,6 +185,13 @@ ARGB8888_ARGB1555(uint32* src, uint32* dest, int width, int height)
 		src++;
 		dest++;
 	}
+	if ((width * height) & 1) {
+		color = *src;
+		r = (color & 0x000000FF) >> 3;
+		g = (color & 0x0000FF00) >> 11;
+		b = (color & 0x00FF0000) >> 19;
+		*(uint16 *)dest = (uint16)(((color & 0xff000000) ? 0x0001 : 0x0000) | (r<<11)|(g<<6)|(b<<1));
+	}
 }
 
 static void
@@ -181,6 +212,11 @@ ARGB8888_ARGB4444(uint32* src, uint32* dest, int width, int height)
 		src++;
 		dest++;
 	}
+	if ((width * height) & 1)
+		*(uint16 *)dest = (uint16)(((*src & 0xf0000000) >> 28) |
+				 ((*src & 0x00f00000) >> 16) |
+				 ((*src & 0x0000f000) >> 4)  |
+				 ((*src & 0x000000f0) << 8));
 }
 
 static void
@@ -199,6 +235,10 @@ ARGB8888_RGB565(uint32* src, uint32* dest, int width, int height)
 		src++;
 		dest++;
 	}
+	if ((width * height) & 1)
+		*(uint16 *)dest = (uint16)(((*src & 0x000000f8) >> 3) |
+				 ((*src & 0x0000fc00) >> 5) |
+				 ((*src & 0x00f80000) >> 8));
 }
 
 static void
