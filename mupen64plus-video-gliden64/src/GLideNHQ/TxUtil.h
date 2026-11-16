@@ -46,6 +46,19 @@ uint32 txutil_checksum(const uint8 *src, int width, int height, int size, int ro
  * as far as the indices reach, in the high word */
 uint64 txutil_checksum64(const uint8 *src, int width, int height, int size, int rowStride, const uint8 *palette);
 
+/* GHQTexInfo's formats: graphics::internalcolorFormat's values
+ * (opengl_Parameters.cpp, for GL and Vulkan alike), and the flag of a
+ * texture the cache keeps compressed */
+#define TXFMT_RGB8         0x8051 /* 565 */
+#define TXFMT_RGBA4        0x8056
+#define TXFMT_RGB5_A1      0x8057
+#define TXFMT_RGBA8        0x8058
+#define TXFMT_COLOR_INDEX8 0x80E5
+#define TXFMT_GZ           0x80000000u
+
+/* the bytes a texture of @format takes, 0 for a format GLideNHQ has not */
+int txutil_texture_bytes(int width, int height, uint32 format);
+
 /* the physical cores, at most MAX_NUMCORE */
 uint32 txutil_cores(void);
 

@@ -210,6 +210,21 @@ static boolean rice_crc32_ci8(const uint8* src, int width, int height, int rowSt
 	return 1;
 }
 
+int txutil_texture_bytes(int width, int height, uint32 format)
+{
+	switch (format) {
+	case TXFMT_COLOR_INDEX8:
+		return width * height;
+	case TXFMT_RGBA4:
+	case TXFMT_RGB5_A1:
+	case TXFMT_RGB8:
+		return (width * height) << 1;
+	case TXFMT_RGBA8:
+		return (width * height) << 2;
+	}
+	return 0;
+}
+
 uint32 txutil_cores(void)
 {
 	/* Physical cores, not logical: an SMT sibling is a poor lane next to

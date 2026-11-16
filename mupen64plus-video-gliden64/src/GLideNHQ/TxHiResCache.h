@@ -30,14 +30,18 @@
  */
 #define HIRES_TEXTURE 1
 
+#include "TxInternal.h"
 #include "TxCache.h"
 #include "TxQuantize.h"
 #include "TxImage.h"
 #include "TxReSample.h"
 
-class TxHiResCache : public TxCache
+class TxHiResCache
 {
 private:
+  txcache *_cache;          /* the textures, kept whole (no size) */
+  std::string _ident;       /* UTF-8, as the cache has them */
+  std::string _cachePath;   /* UTF-8 */
   int _maxwidth;
   int _maxheight;
   int _maxbpp;
@@ -64,6 +68,8 @@ public:
 			   const char *texPackPath,
 			   const char *ident);
   boolean empty();
+  boolean get(uint64 checksum, GHQTexInfo *info) { return _cache ? txcache_get(_cache, checksum, info) : 0; }
+  boolean add(uint64 checksum, GHQTexInfo *info) { return _cache ? txcache_add(_cache, checksum, info, 0, 0) : 0; }
   boolean load(boolean replace);
   void dump();
 };

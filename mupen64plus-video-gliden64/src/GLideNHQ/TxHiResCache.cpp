@@ -43,6 +43,7 @@
 
 TxHiResCache::~TxHiResCache()
 {
+  txcache_free(_cache);
 }
 
 TxHiResCache::TxHiResCache(int maxwidth,
@@ -52,9 +53,14 @@ TxHiResCache::TxHiResCache(int maxwidth,
 						   const char *cachePath,
 						   const char *texPackPath,
 						   const char *ident)
-	: TxCache((options & ~GZ_TEXCACHE), 0, cachePath, ident)
+	: _cache(txcache_new(options & ~GZ_TEXCACHE, 0, cachePath, ident))
+	, _ident(ident ? ident : "")
+	, _cachePath(cachePath ? cachePath : "")
 {
   _numcore    = txutil_cores();
+  _cacheDumped = 0;
+  if (!_cache)
+	return;
 
   _maxwidth  = maxwidth;
   _maxheight = maxheight;
@@ -65,28 +71,28 @@ TxHiResCache::TxHiResCache(int maxwidth,
 	  _texPackPath.assign(texPackPath);
 
   if (_cachePath.empty() || _ident.empty()) {
-	_options &= ~DUMP_HIRESTEXCACHE;
+	_cache->options &= ~DUMP_HIRESTEXCACHE;
 	return;
   }
 
   /* read in hires texture cache */
-  if (_options & DUMP_HIRESTEXCACHE) {
+  if (_cache->options & DUMP_HIRESTEXCACHE) {
 	/* find it on disk */
-	_cacheDumped = TxCache::load(_cachePath.c_str(), _getFileName().c_str(), _getConfig(), !_HiResTexPackPathExists());
+	_cacheDumped = txcache_load(_cache, _cachePath.c_str(), _getFileName().c_str(), _getConfig(), !_HiResTexPackPathExists());
   }
 
 /* read in hires textures */
   if (!_cacheDumped) {
-	  if (TxHiResCache::load(0) && (_options & DUMP_HIRESTEXCACHE) != 0)
-		  _cacheDumped = TxCache::save(_cachePath.c_str(), _getFileName().c_str(), _getConfig());
+	  if (TxHiResCache::load(0) && (_cache->options & DUMP_HIRESTEXCACHE) != 0)
+		  _cacheDumped = txcache_save(_cache, _cachePath.c_str(), _getFileName().c_str(), _getConfig());
   }
 }
 
 void TxHiResCache::dump()
 {
-	if ((_options & DUMP_HIRESTEXCACHE) && !_cacheDumped && !empty()) {
+	if (!empty() && (_cache->options & DUMP_HIRESTEXCACHE) && !_cacheDumped) {
 	  /* dump cache to disk */
-	  _cacheDumped = TxCache::save(_cachePath.c_str(), _getFileName().c_str(), _getConfig());
+	  _cacheDumped = txcache_save(_cache, _cachePath.c_str(), _getFileName().c_str(), _getConfig());
 	}
 }
 
@@ -99,7 +105,7 @@ std::string TxHiResCache::_getFileName() const
 
 int TxHiResCache::_getConfig() const
 {
-	return _options & (HIRESTEXTURES_MASK | TILE_HIRESTEX | FORCE16BPP_HIRESTEX | GZ_HIRESTEXCACHE | LET_TEXARTISTS_FLY);
+	return _cache->options & (HIRESTEXTURES_MASK | TILE_HIRESTEX | FORCE16BPP_HIRESTEX | GZ_HIRESTEXCACHE | LET_TEXARTISTS_FLY);
 }
 
 boolean TxHiResCache::_HiResTexPackPathExists() const
@@ -110,22 +116,23 @@ boolean TxHiResCache::_HiResTexPackPathExists() const
 
 boolean TxHiResCache::empty()
 {
-  return _cache.empty();
+  return !_cache || txcache_empty(_cache);
 }
 
 boolean TxHiResCache::load(boolean replace) /* 0 : reload, 1 : replace partial */
 {
-	if (_texPackPath.empty() || _ident.empty())
+	if (!_cache || _texPackPath.empty() || _ident.empty())
 		return 0;
 
-	if (!replace) TxCache::clear();
+	if (!replace) txcache_clear(_cache);
 
-	switch (_options & HIRESTEXTURES_MASK) {
+	switch (_cache->options & HIRESTEXTURES_MASK) {
 	case RICE_HIRESTEXTURES:
 	{
 		const LoadResult res = loadHiResTextures(_texPackPath + "/" + _ident, replace);
+		/* what was loaded before the error is given up, freed */
 		if (res == resError)
-			_cache.clear();
+			txcache_clear(_cache);
 		return res == resOk ? 1 : 0;
 	}
 	}
@@ -236,7 +243,7 @@ TxHiResCache::loadHiResTextures(const std::string & dir_path, boolean replace)
 	  uint64 chksum64 = (uint64)palchksum;
 	  chksum64 <<= 32;
 	  chksum64 |= (uint64)chksum;
-	  if (TxCache::is_cached(chksum64)) {
+	  if (txcache_is_cached(_cache, chksum64)) {
 #if !DEBUG
 #endif
 		continue;
@@ -397,7 +404,7 @@ TxHiResCache::loadHiResTextures(const std::string & dir_path, boolean replace)
 	  int fullalpha = 0;
 	  boolean intensity = 1;
 
-	  if (!(_options & LET_TEXARTISTS_FLY)) {
+	  if (!(_cache->options & LET_TEXARTISTS_FLY)) {
 		/* HACK ALERT! */
 		/* Account for Rice's weirdness with fmt:0 siz:2 textures.
 		 * Although the conditions are relaxed with other formats,
@@ -491,7 +498,7 @@ TxHiResCache::loadHiResTextures(const std::string & dir_path, boolean replace)
 	  }
 
 	  /* preparations based on above analysis */
-	  if (_maxbpp < 32 || _options & FORCE16BPP_HIRESTEX) {
+	  if (_maxbpp < 32 || _cache->options & FORCE16BPP_HIRESTEX) {
 		if      (alphabits == 0) destformat = graphics::internalcolorFormat::RGB8;
 		else if (alphabits == 1) destformat = graphics::internalcolorFormat::RGB5_A1;
 		else                     destformat = graphics::internalcolorFormat::RGBA8;
@@ -558,10 +565,10 @@ TxHiResCache::loadHiResTextures(const std::string & dir_path, boolean replace)
 		}
 		if (destformat == graphics::internalcolorFormat::RGBA8 ||
 			destformat == graphics::internalcolorFormat::RGBA4) {
-			if (_maxbpp < 32 || _options & FORCE16BPP_HIRESTEX)
+			if (_maxbpp < 32 || _cache->options & FORCE16BPP_HIRESTEX)
 				destformat = graphics::internalcolorFormat::RGBA4;
 		} else if (destformat == graphics::internalcolorFormat::RGB5_A1) {
-			if (_maxbpp < 32 || _options & FORCE16BPP_HIRESTEX)
+			if (_maxbpp < 32 || _cache->options & FORCE16BPP_HIRESTEX)
 				destformat = graphics::internalcolorFormat::RGB5_A1;
 		}
 		if (txquantize(tex, tmptex, width, height, TXQ_RGBA8, txq_format(destformat), 0, txutil_pool(), _numcore)) {
@@ -601,10 +608,10 @@ TxHiResCache::loadHiResTextures(const std::string & dir_path, boolean replace)
 
 	  /* remove redundant in cache */
 	  if (replace)
-		TxCache::del(chksum64);
+		txcache_del(_cache, chksum64);
 
 	  /* add to cache: it takes the texture as it is */
-	  const boolean added = TxCache::add(chksum64, &tmpInfo, 0, 1);
+	  const boolean added = txcache_add(_cache, chksum64, &tmpInfo, 0, 1);
 	  if (!added) {
 		  free(tex);
 		  result = resError;

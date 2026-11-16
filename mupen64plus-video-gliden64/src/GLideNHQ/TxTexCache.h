@@ -24,23 +24,31 @@
 #ifndef __TXTEXCACHE_H__
 #define __TXTEXCACHE_H__
 
+/* GLideNHQ's cache of the textures it filtered, kept to a size, saved as
+ * <ROM>_MEMORYCACHE.htc with DUMP_TEXCACHE. C89. */
+
 #include "TxCache.h"
 
-class TxTexCache : public TxCache
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+typedef struct txtexcache
 {
-private:
-	boolean _cacheDumped;
+	txcache *cache;
+	boolean dumped;    /* what is on disk is what it holds */
+} txtexcache;
 
-	std::string _getFileName() const;
-	int _getConfig() const;
+txtexcache *txtexcache_new(int options, int cachesize, const char *cachePath, const char *ident);
+void txtexcache_free(txtexcache *t);
+/* @owned as txcache_add has it; 0 with no size to keep textures in */
+boolean txtexcache_add(txtexcache *t, uint64 checksum, GHQTexInfo *info, boolean owned);
+#define txtexcache_get(t, checksum, info) txcache_get((t)->cache, (checksum), (info))
+/* saved, with DUMP_TEXCACHE, if it changed since */
+void txtexcache_dump(txtexcache *t);
 
-public:
-  ~TxTexCache();
-  TxTexCache(int options, int cachesize, const char *cachePath, const char *ident);
-  /* @owned as TxCache::add has it */
-  boolean add(uint64 checksum, /* checksum hi:palette low:texture */
-              GHQTexInfo *info, boolean owned = 0);
-  void dump();
-};
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* __TXTEXCACHE_H__ */

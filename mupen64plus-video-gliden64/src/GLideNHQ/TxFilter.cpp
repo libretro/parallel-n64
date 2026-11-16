@@ -69,7 +69,7 @@ void TxFilter::clear()
 	delete _txHiResCache;
 
 	/* clear texture cache */
-	delete _txTexCache;
+	txtexcache_free(_txTexCache);
 
 	/* free memory */
 	txmembuf_shutdown();
@@ -142,7 +142,7 @@ TxFilter::TxFilter(int maxwidth,
 #endif
 
 	/* initialize texture cache in bytes. 128Mb will do nicely in most cases */
-	_txTexCache = new TxTexCache(_options, _cacheSize, texCachePath, _ident.c_str());
+	_txTexCache = txtexcache_new(_options, _cacheSize, texCachePath, _ident.c_str());
 
 	/* hires texture */
 #if HIRES_TEXTURE
@@ -183,7 +183,7 @@ TxFilter::filter(uint8 *src, int srcwidth, int srcheight, ColorFormat srcformat,
 
 		/* check if we have it in cache */
 		if ((g64crc & 0xffffffff00000000) == 0 && /* we reach here only when there is no hires texture for this crc */
-				_txTexCache->get(g64crc, info)) {
+				_txTexCache && txtexcache_get(_txTexCache, g64crc, info)) {
 			return 1; /* yep, we've got it */
 		}
 	}
@@ -454,13 +454,13 @@ TxFilter::filter(uint8 *src, int srcwidth, int srcheight, ColorFormat srcformat,
 	/* cache the texture: the buffer the last step wrote is the cache's;
 	 * if it does not take it, the texels go to one of ours for the caller */
 	if (owned && texture == owned) {
-		if (!_txTexCache->add(g64crc, info, 1)) {
+		if (!_txTexCache || !txtexcache_add(_txTexCache, g64crc, info, 1)) {
 			memcpy(_tex1, owned, owned_size);
 			free(owned);
 			info->data = _tex1;
 		}
-	} else if (_cacheSize)
-		_txTexCache->add(g64crc, info);
+	} else if (_cacheSize && _txTexCache)
+		txtexcache_add(_txTexCache, g64crc, info, 0);
 
 
 	return 1;
@@ -554,7 +554,7 @@ TxFilter::hirestex(uint64 g64crc, uint64 r_crc64, uint16 *palette, GHQTexInfo *i
 
 	/* check if we have it in memory cache */
 	if (_cacheSize && g64crc) {
-		if (_txTexCache->get(g64crc, info)) {
+		if (_txTexCache && txtexcache_get(_txTexCache, g64crc, info)) {
 			return 1; /* yep, we've got it */
 		}
 	}
@@ -633,7 +633,8 @@ TxFilter::reloadhirestex()
 void
 TxFilter::dumpcache()
 {
-	_txTexCache->dump();
+	if (_txTexCache)
+		txtexcache_dump(_txTexCache);
 
 	/* hires texture */
 #if HIRES_TEXTURE

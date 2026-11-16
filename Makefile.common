@@ -495,7 +495,8 @@ SOURCES_CXX   += \
     $(VIDEODIR_GLIDEN64)/src/uCodes/S2DEX_gfx.cpp
 
 # GLideNHQ's texture filters, its gzip files, its resampler, its quantizer,
-# its image files and its checksums, pool and buffers (C89)
+# its image files, its checksums, pool and buffers, and its texture caches
+# (C89)
 SOURCES_C += $(VIDEODIR_GLIDEN64)/src/GLideNHQ/TextureFilters.c \
 	$(VIDEODIR_GLIDEN64)/src/GLideNHQ/TextureFilters_2xsai.c \
 	$(VIDEODIR_GLIDEN64)/src/GLideNHQ/TextureFilters_hq2x.c \
@@ -504,15 +505,15 @@ SOURCES_C += $(VIDEODIR_GLIDEN64)/src/GLideNHQ/TextureFilters.c \
 	$(VIDEODIR_GLIDEN64)/src/GLideNHQ/TxReSample.c \
 	$(VIDEODIR_GLIDEN64)/src/GLideNHQ/TxQuantize.c \
 	$(VIDEODIR_GLIDEN64)/src/GLideNHQ/TxImage.c \
-	$(VIDEODIR_GLIDEN64)/src/GLideNHQ/TxUtil.c
+	$(VIDEODIR_GLIDEN64)/src/GLideNHQ/TxUtil.c \
+	$(VIDEODIR_GLIDEN64)/src/GLideNHQ/TxCache.c \
+	$(VIDEODIR_GLIDEN64)/src/GLideNHQ/TxTexCache.c
 
 SOURCES_CXX   += \
 	$(VIDEODIR_GLIDEN64)/src/GLideNHQ/TextureFilters_xbrz.cpp \
-	$(VIDEODIR_GLIDEN64)/src/GLideNHQ/TxCache.cpp \
 	$(VIDEODIR_GLIDEN64)/src/GLideNHQ/TxFilter.cpp \
 	$(VIDEODIR_GLIDEN64)/src/GLideNHQ/TxFilterExport.cpp \
-	$(VIDEODIR_GLIDEN64)/src/GLideNHQ/TxHiResCache.cpp \
-	$(VIDEODIR_GLIDEN64)/src/GLideNHQ/TxTexCache.cpp
+	$(VIDEODIR_GLIDEN64)/src/GLideNHQ/TxHiResCache.cpp
 
 # GLideNHQ's persistent filter/quantize pool (C89)
 SOURCES_C += $(VIDEODIR_GLIDEN64)/src/GLideNHQ/txpool.c

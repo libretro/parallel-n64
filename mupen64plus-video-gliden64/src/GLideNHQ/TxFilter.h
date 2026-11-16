@@ -45,7 +45,7 @@ private:
   int _cacheSize;
   std::string _ident;    /* UTF-8 */
   std::string _dumpPath; /* UTF-8 */
-  TxTexCache *_txTexCache;
+  txtexcache *_txTexCache;
   TxHiResCache *_txHiResCache;
   boolean _initialized;
   void clear();
