@@ -2,7 +2,6 @@
 #define GLIDEN64_MUPENPLUS_H
 
 #include "m64p_config.h"
-#include "m64p_vidext.h"
 
 #define PLUGIN_VERSION              0x020000
 #define VIDEO_PLUGIN_API_VERSION	0x020200

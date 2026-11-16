@@ -84,7 +84,6 @@ static void _updateScale(void)
 
 void gli_window_start(void)
 {
-	g_window.fullscreen = false;
 	/* Both eyes side by side: GLideN64 draws for one eye's half */
 	g_window.screenWidth = config.stereo.mode == stereoBothEyes ? screen_width / 2 : screen_width;
 	g_window.screenHeight = screen_height;
@@ -136,7 +135,6 @@ bool gli_window_resize(void)
 	if (!g_window.resizeWindow)
 		return false;
 	gli_drawer_destroy_data();
-	g_window.fullscreen = true;
 	g_window.width = g_window.screenWidth = g_window.resizeWidth;
 	g_window.height = g_window.screenHeight = g_window.resizeHeight;
 	gli_gl_reset_error();

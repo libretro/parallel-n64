@@ -20,7 +20,6 @@
 
 #define M64P_PLUGIN_PROTOTYPES 1
 #include "m64p_plugin.h"
-#include "m64p_vidext.h"
 
 #include "FrameBuffer.h"
 #include "OGLGraphicsContext.h"

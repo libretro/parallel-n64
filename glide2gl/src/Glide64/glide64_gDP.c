@@ -552,7 +552,6 @@ void glide64gDPFillRectangle(uint32_t ul_x, uint32_t ul_y, uint32_t lr_x, uint32
    {
       /* FillRect - cleared the depth buffer */
 
-      //if (fullscreen)
       {
          /* do not clear main depth buffer for aux depth buffers */
          if (!(settings.hacks&hack_Hyperbike) || gDP.colorImage.width > 64) 
@@ -592,7 +591,6 @@ void glide64gDPFillRectangle(uint32_t ul_x, uint32_t ul_y, uint32_t lr_x, uint32
       return;
 
    /* Update scissor */
-   //if (fullscreen)
    update_scissor(false);
 
    if (settings.decrease_fillrect_edge && ((gDP.otherMode.h & RDP_CYCLE_TYPE) >> 20) == 0)

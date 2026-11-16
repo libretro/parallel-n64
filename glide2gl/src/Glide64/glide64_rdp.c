@@ -1033,9 +1033,6 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
 
    vptr = (VERTEX*)vstd;
 
-#if 0
-   if (fullscreen)
-#endif
    {
       if (rdp.fog_mode >= FOG_MODE_BLEND)
       {

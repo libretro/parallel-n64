@@ -1234,8 +1234,6 @@ EXPORT int CALL ConfigGetParamBool(m64p_handle ConfigSectionHandle, const char *
    }
 #endif
 
-   if (!strcmp(ParamName, "Fullscreen"))
-      return true;
    if (!strcmp(ParamName, "VerticalSync"))
       return false;
    if (!strcmp(ParamName, "FBO"))

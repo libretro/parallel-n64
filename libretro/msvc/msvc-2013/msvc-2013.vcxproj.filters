@@ -411,9 +411,6 @@
     <ClCompile Include="..\..\..\mupen64plus-core\src\plugin\audio_libretro\drivers_resampler\nearest.c">
       <Filter>Source Files\mupen64plus-core\src\plugin\audio_libretro\drivers_resampler</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\mupen64plus-core\src\api\vidext_libretro.c">
-      <Filter>Source Files\mupen64plus-core\src\api</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\mupen64plus-core\src\ai\ai_controller.c">
       <Filter>Source Files\mupen64plus-core\src\ai</Filter>
     </ClCompile>

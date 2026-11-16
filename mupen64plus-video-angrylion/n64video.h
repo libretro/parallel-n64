@@ -81,7 +81,6 @@ struct n64video_config
         bool widescreen;            // force 16:9 aspect ratio if true
         bool hide_overscan;         // crop to visible area if true
         bool vsync;                 // enable vsync if true
-        bool exclusive;             // run in exclusive mode when in fullscreen if true
         bool vi_dedither;           // enable dedithering if true
         bool vi_blur;               // enable bilateral blur if true
         bool bob_deinterlace;       // line-double the current field instead of weaving

@@ -12,7 +12,6 @@ extern "C" {
 typedef struct gli_window
 {
 	bool resizeWindow;
-	bool fullscreen;
 	bool adjustScreen;
 
 	u32 buffersSwapCount;
@@ -61,7 +60,6 @@ public:
 	u32 getScreenWidth() const { return g_window.screenWidth; }
 	u32 getScreenHeight() const { return g_window.screenHeight; }
 	u32 getHeightOffset() const { return g_window.heightOffset; }
-	bool isFullscreen() const { return g_window.fullscreen; }
 	bool isAdjustScreen() const { return g_window.adjustScreen; }
 
 	GraphicsDrawer & getDrawer() { return m_drawer; }

@@ -41,8 +41,6 @@
 #include "api/debugger.h"
 #include "api/m64p_config.h"
 #include "api/m64p_types.h"
-#include "api/m64p_vidext.h"
-#include "api/vidext.h"
 #include "backends/api/clock_backend.h"
 #include "backends/api/controller_input_backend.h"
 #include "backends/api/joybus.h"

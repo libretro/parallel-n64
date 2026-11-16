@@ -4,22 +4,11 @@
 #include "GBI.h"
 #include "gli_framebuffer.h"
 
-extern u32 screen_width;
-extern u32 screen_height;
 
 void gli_config_reset_defaults(Config * _config)
 {
 	_config->version = CONFIG_VERSION_CURRENT;
 
-#if defined(PANDORA) || defined(VC)
-	_config->video.fullscreen = 1;
-	_config->video.fullscreenWidth = _config->video.windowedWidth = 800;
-#else
-	_config->video.fullscreen = 0;
-	_config->video.fullscreenWidth = _config->video.windowedWidth = screen_width;
-#endif
-	_config->video.fullscreenHeight = _config->video.windowedHeight = screen_height;
-	_config->video.fullscreenRefresh = 60;
 	_config->video.fxaa = 0;
 	_config->video.multisampling = 0;
 	_config->video.maxMultiSampling = 0;
@@ -27,11 +16,6 @@ void gli_config_reset_defaults(Config * _config)
 	_config->video.threadedVideo = 0;
 	_config->video.verticalSync = 0;
 
-	config.video.fullscreenHeight = screen_height;
-	config.video.fullscreenWidth = screen_width;
-	config.video.windowedHeight = screen_height;
-	config.video.windowedWidth = screen_width;
-	
 	_config->texture.maxAnisotropy = 0;
 	_config->texture.anisotropy = 0;
 	_config->texture.bilinearMode = BILINEAR_STANDARD;

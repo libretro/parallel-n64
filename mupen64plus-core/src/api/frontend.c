@@ -44,7 +44,6 @@
 #include "main/cheat.h"
 #include "main/workqueue.h"
 #include "plugin/plugin.h"
-#include "vidext.h"
 
 /* some local state variables */
 static int l_CoreInit = 0;
@@ -212,14 +211,6 @@ EXPORT m64p_error CALL CoreDoCommand(m64p_command Command, int ParamInt, void *P
     }
 
     return M64ERR_INTERNAL;
-}
-
-EXPORT m64p_error CALL CoreOverrideVidExt(m64p_video_extension_functions *VideoFunctionStruct)
-{
-    if (!l_CoreInit)
-        return M64ERR_NOT_INIT;
-
-    return OverrideVideoFunctions(VideoFunctionStruct); /* in vidext.c */
 }
 
 EXPORT m64p_error CALL CoreAddCheat(const char *CheatName, m64p_cheat_code *CodeList, int NumCodes)
