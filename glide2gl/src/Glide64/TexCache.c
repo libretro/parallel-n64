@@ -100,8 +100,63 @@ static void AddToList (NODE **list, uint32_t crc, uintptr_t data, int tmu, int n
    node->number = number;
    node->pNext = *list;
    *list = node;
-   rdp.n_cached[tmu] ++;
-   rdp.n_cached[tmu^1] = rdp.n_cached[tmu];
+}
+
+/* Entries are taken in order until all MAX_CACHE have been; then a full
+ * cache, or one past its budget, gives up the entries the clock hand
+ * comes to first that no draw has used this frame (so neither texture of
+ * the draw being set up), and their slots are taken again. Only when
+ * every entry has been used this frame is the whole cache cleared. */
+static int free_slots[MAX_CACHE];
+static int n_free;
+static int clock_hand;
+
+/* the entry at @slot out of its lookup list and the budget */
+static void evict(int slot)
+{
+   CACHE_LUT *cache = &rdp.cache[0][slot];
+   NODE **link = &cachelut[node_pool[slot].crc >> 16];
+   while (*link && *link != &node_pool[slot])
+      link = &(*link)->pNext;
+   if (*link)
+      *link = node_pool[slot].pNext;
+   voodoo.tex_bytes -= cache->bytes;
+   cache->bytes = 0;
+   free_slots[n_free++] = slot;
+}
+
+/* an entry no draw has used this frame given up; false if there is none */
+static bool evict_one(void)
+{
+   int k;
+   for (k = 0; k < rdp.n_cached[0]; k++)
+   {
+      const int slot = clock_hand;
+      CACHE_LUT *cache = &rdp.cache[0][slot];
+      if (++clock_hand == rdp.n_cached[0])
+         clock_hand = 0;
+      if (cache->bytes && cache->last_used != frame_count)
+      {
+         evict(slot);
+         return true;
+      }
+   }
+   return false;
+}
+
+/* the slot for a new entry, or -1 when the cache had to be cleared */
+static int take_slot(void)
+{
+   if (n_free)
+      return free_slots[--n_free];
+   if (rdp.n_cached[0] < MAX_CACHE)
+   {
+      rdp.n_cached[1] = ++rdp.n_cached[0];
+      return rdp.n_cached[0] - 1;
+   }
+   if (evict_one())
+      return free_slots[--n_free];
+   return -1;
 }
 
 void TexCacheInit(void)
@@ -118,10 +173,15 @@ void ClearCache(void)
    int i;
    /* only the lists the entries went into */
    for (i = 0; i < rdp.n_cached[0]; i++)
+   {
       cachelut[node_pool[i].crc >> 16] = NULL;
+      rdp.cache[0][i].bytes = 0;
+   }
    voodoo.tex_bytes = 0;
    rdp.n_cached[0] = 0;
    rdp.n_cached[1] = 0;
+   n_free = 0;
+   clock_hand = 0;
 }
 
 static uint32_t textureCRC(uint32_t crc, uint8_t *addr, int width, int height, int line)
@@ -476,7 +536,7 @@ void TexCache(void)
 // Does the actual texture loading after everything is prepared
 static void LoadTex(int id, int tmu)
 {
-   int shift, size_max, wid, hei;
+   int shift, size_max, wid, hei, slot;
    uint32_t size_x, size_y, real_x, real_y, result;
    CACHE_LUT *cache;
    int td = rdp.cur_tile + id;
@@ -484,17 +544,17 @@ static void LoadTex(int id, int tmu)
    if (texinfo[id].width < 0 || texinfo[id].height < 0)
       return;
 
-   // Clear the cache if it's full
-   if (rdp.n_cached[tmu] >= MAX_CACHE)
+   /* an entry for it: a free one, or one given up */
+   slot = take_slot();
+   if (slot < 0)
    {
       LRDP("Cache count reached, clearing...\n");
       ClearCache ();
       if (id == 1 && rdp.tex == 3)
          LoadTex (0, rdp.t0);
+      slot = take_slot();
    }
-
-   // Get this cache object
-   cache = &rdp.cache[0][rdp.n_cached[0]];
+   cache = &rdp.cache[0][slot];
    rdp.cur_cache[id] = cache;
 
    //!Hackalert
@@ -514,7 +574,7 @@ static void LoadTex(int id, int tmu)
    cache->height     = gDP.tiles[td].height;
    cache->format     = g_gdp.tile[td].format;
    cache->size       = g_gdp.tile[td].size;
-   cache->tex_slot   = (uint32_t)(cache - rdp.cache[0]);
+   cache->tex_slot   = (uint32_t)slot;
    cache->set_by     = rdp.timg.set_by;
    cache->texrecting = rdp.texrecting;
    cache->last_used  = frame_count;
@@ -522,7 +582,7 @@ static void LoadTex(int id, int tmu)
    cache->flags = texinfo[id].flags;
 
    // Add this cache to the list
-   AddToList (&cachelut[cache->crc>>16], cache->crc, (uintptr_t)(cache), tmu, rdp.n_cached[tmu]);
+   AddToList (&cachelut[cache->crc>>16], cache->crc, (uintptr_t)(cache), tmu, slot);
 
    // temporary
    cache->t_info.format = GR_TEXFMT_ARGB_1555;
@@ -723,7 +783,10 @@ static void LoadTex(int id, int tmu)
 
       texture_size            = grTexCalcMemRequired (t_info->width, t_info->height, t_info->format);
 
-      /* past the budget, the cache is cleared */
+      /* past the budget, entries no draw has used this frame are given
+       * up; if that is not enough, the cache is cleared */
+      while (voodoo.tex_bytes + texture_size >= GLIDE64_TEX_BUDGET && evict_one())
+         ;
       if (voodoo.tex_bytes + texture_size >= GLIDE64_TEX_BUDGET)
       {
          LRDP("Cache size reached, clearing...\n");
@@ -739,6 +802,7 @@ static void LoadTex(int id, int tmu)
       }
 
       voodoo.tex_bytes += texture_size;
+      cache->bytes = texture_size;
       grTexSource (tmu,
             cache->tex_slot,
             t_info,

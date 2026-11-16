@@ -249,6 +249,7 @@ typedef struct {
   uint32_t format;      // format
   uint32_t size;        // size
   uint32_t last_used;   // what frame # was this texture last used (used for replacing)
+  uint32_t bytes;       // its texture's, against the cache's budget; 0 while the slot is free
 
   uint32_t line;
 
