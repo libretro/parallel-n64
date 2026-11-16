@@ -79,7 +79,7 @@ struct RDP rdp;
 
 SETTINGS settings = { false, 640, 480, 0, 0 };
 
-VOODOO voodoo = {0, 0};
+VOODOO voodoo = {0};
 
 
 // SOME FUNCTION DEFINITIONS
