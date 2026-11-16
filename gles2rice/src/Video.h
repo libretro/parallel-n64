@@ -163,7 +163,8 @@ extern uint32_t   g_dwRamSize;
 /* global functions provided by Video.cpp */
 extern char generalText[];
 extern void (*renderCallback)(int);
-void DebugMessage(int level, const char *message, ...);
+/* the frontend gave no debug callback: nothing is said */
+#define DebugMessage(...) do { } while (0)
 
 void SetVIScales();
 extern void _VIDEO_DisplayTemporaryMessage2(const char *msg, ...);

@@ -50,8 +50,6 @@ static void (*l_ProcessDlistList)(void) = NULL;
 static void (*l_ProcessAlistList)(void) = NULL;
 static void (*l_ProcessRdpList)(void) = NULL;
 static void (*l_ShowCFB)(void) = NULL;
-static void (*l_DebugCallback)(void *, int, const char *) = NULL;
-static void *l_DebugCallContext = NULL;
 
 #ifdef HAVE_LLE
 /* LLE RSP fallback for tasks the HLE plugin does not recognize. The
@@ -68,19 +66,6 @@ static RSP_INFO l_ForwardRspInfo;
 static int l_ForwardInfoValid = 0;
 static int l_ForwardLleReady = 0;
 #endif
-
-/* local function */
-static void DebugMessage(int level, const char *message, va_list args)
-{
-    char msgbuf[1024];
-
-    if (l_DebugCallback == NULL)
-        return;
-
-    vsprintf(msgbuf, message, args);
-
-    (*l_DebugCallback)(l_DebugCallContext, level, msgbuf);
-}
 
 /* Global functions needed by HLE core */
 void HleVerboseMessage(void* UNUSED(user_defined), const char *message, ...)

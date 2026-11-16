@@ -87,8 +87,6 @@ uint32_t   offset_textures = 0;
 
 void glide_set_filtering(unsigned value);
 
-static void (*l_DebugCallback)(void *, int, const char *) = NULL;
-static void *l_DebugCallContext = NULL;
 
 static void _ChangeSize(void)
 {
@@ -210,12 +208,7 @@ void WriteLog(m64p_msg_level level, const char *msg, ...)
    vsnprintf(buf, 1023, msg, args);
    buf[1023]='\0';
    va_end(args);
-   if (l_DebugCallback)
-   {
-      l_DebugCallback(l_DebugCallContext, level, buf);
-   }
-   else
-      fprintf(stdout, buf);
+   fputs(buf, stderr);
 #endif
 }
 

@@ -43,8 +43,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 //=======================================================
 // local variables
 
-static void (*l_DebugCallback)(void *, int, const char *) = NULL;
-static void *l_DebugCallContext = NULL;
 
 //=======================================================
 // global variables
@@ -268,22 +266,6 @@ void TriggerSPInterrupt(void)
 
 void _VIDEO_DisplayTemporaryMessage(const char *Message)
 {
-}
-
-void DebugMessage(int level, const char *message, ...)
-{
-  char msgbuf[1024];
-  va_list args;
-
-  if (l_DebugCallback == NULL)
-      return;
-
-  va_start(args, message);
-  vsprintf(msgbuf, message, args);
-
-  (*l_DebugCallback)(l_DebugCallContext, level, msgbuf);
-
-  va_end(args);
 }
 
 //---------------------------------------------------------------------------------------
