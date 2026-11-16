@@ -81,7 +81,6 @@ SETTINGS settings = { false, 640, 480, 0, 0 };
 
 VOODOO voodoo = {0, 0};
 
-uint32_t   offset_textures = 0;
 
 // SOME FUNCTION DEFINITIONS
 
@@ -212,27 +211,6 @@ void WriteLog(m64p_msg_level level, const char *msg, ...)
 #endif
 }
 
-int GetTexAddrUMA(int tmu, int texsize)
-{
-   int addr;
-
-   addr = voodoo.tmem_ptr[0];
-   voodoo.tmem_ptr[0] += texsize;
-   voodoo.tmem_ptr[1] = voodoo.tmem_ptr[0];
-   return addr;
-}
-
-void guLoadTextures(void)
-{
-   int tbuf_size = 0;
-
-   bool log2_2048 = (settings.scr_res_x > 1024) ? true : false;
-
-   tbuf_size = grTexCalcMemRequired(log2_2048 ? 2048 : 1024, log2_2048 ? 2048 : 1024, GR_TEXFMT_RGB_565);
-
-   offset_textures = tbuf_size + 16;
-}
-
 int glide64InitGfx(void)
 {
    rdp_reset ();
@@ -246,8 +224,6 @@ int glide64InitGfx(void)
    /* frame buffer copies to RDRAM scale down on the GPU */
    if (settings.frame_buffer & (fb_emulation | fb_ref))
       grLfbReadScaledInit();
-
-   voodoo.tex_max_addr = TMU_SIZE * 2 - 1;
 
    InitCombine();
 
@@ -266,7 +242,6 @@ int glide64InitGfx(void)
    settings.res_y = settings.scr_res_y;
    ChangeSize();
 
-   guLoadTextures ();
    ClearCache ();
 
    return true;

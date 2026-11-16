@@ -156,11 +156,16 @@ void grStippleMode( int32_t mode );
 /* the bytes a width x height texture of @fmt takes */
 uint32_t grTexCalcMemRequired(int width, int height, int32_t fmt);
 
-#define TMU_SIZE (8 * 2048 * 2048)
+/* The textures Glitch64 holds, by slot: the cache's entries, then the
+ * slots the framebuffer's images are drawn through */
+#define GLITCH64_TEX_CACHE_SLOTS 4096
+#define GLITCH64_TEX_FB_SLOTS    16
+#define GLITCH64_TEX_SLOTS       (GLITCH64_TEX_CACHE_SLOTS + GLITCH64_TEX_FB_SLOTS)
 
-
+/* binds texture @slot to @tmu; with @do_download, @info's texels are put
+ * in it first, in place of what it held */
 void grTexSource( int32_t tmu,
-             uint32_t      startAddress,
+             uint32_t      slot,
              GrTexInfo  *info,
              int do_download);
 

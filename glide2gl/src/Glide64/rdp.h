@@ -58,7 +58,7 @@ extern uint32_t gfx_plugin_accuracy;
  * add to it. */
 #define RSP_SegmentToPhysical(so) (((gSP.segment[((so) >> 24) & 0x0f] + ((so) & BMASK)) & BMASK) & 0x00ffffff)
 
-#define MAX_CACHE   1024*4
+#define MAX_CACHE   GLITCH64_TEX_CACHE_SLOTS
 #define MAX_TRI_CACHE 768 // this is actually # of vertices, not triangles
 #define MAX_VTX     256
 
@@ -225,10 +225,12 @@ typedef struct
    uint8_t hk_filtering;
 } HOTKEY_INFO;
 
+/* the bytes of texture the cache holds, against what it may: past that
+ * it is cleared */
+#define GLIDE64_TEX_BUDGET (64u << 20)
 typedef struct
 {
-   uint32_t tmem_ptr[MAX_TMU];
-   uint32_t tex_max_addr;
+   uint32_t tex_bytes;
 } VOODOO;
 
 // This structure is what is passed in by rdp:settextureimage
@@ -263,7 +265,7 @@ typedef struct {
   float scale;          // general scale to 256
 
   GrTexInfo t_info;     // texture info (glide)
-  uint32_t tmem_addr;   // addres in texture memory (glide)
+  uint32_t tex_slot;    // its texture's slot (grTexSource)
 
   int uses;             // 1 triangle that uses this texture
 
@@ -430,7 +432,6 @@ extern struct RDP rdp;
 extern SETTINGS settings;
 extern VOODOO voodoo;
 
-extern uint32_t   offset_textures;
 
 extern int	ucode_error_report;
 

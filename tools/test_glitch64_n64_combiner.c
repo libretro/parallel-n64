@@ -148,7 +148,7 @@ static const unsigned char CENTER[3] = { 70, 90, 140 }, SCALE[3] = { 160, 30, 25
 static const float K4 = 50.0f / 255.0f, K5 = 170.0f / 255.0f;
 static const float PRIM_LOD = 90.0f / 255.0f, LOD = 35.0f / 255.0f;
 
-static void texture(int tmu, const unsigned char *c, unsigned addr)
+static void texture(int tmu, const unsigned char *c, unsigned slot)
 {
    uint32_t texel = ((uint32_t)c[3] << 24) | ((uint32_t)c[0] << 16) | ((uint32_t)c[1] << 8) | c[2];
    GrTexInfo info;
@@ -156,7 +156,7 @@ static void texture(int tmu, const unsigned char *c, unsigned addr)
    info.format = GR_TEXFMT_ARGB_8888;
    info.width = info.height = 1;
    info.data = &texel;
-   grTexSource(tmu, addr, &info, 1);
+   grTexSource(tmu, slot, &info, 1);
 }
 
 /* one input of a cycle, as a colour (or alpha) 0 to 1 */
@@ -459,8 +459,8 @@ static void run(const float *level)
    check_keys();
 
    /* tile 0 in TMU 0, tile 1 in TMU 1, as TexCache puts them */
-   texture(GR_TMU0, T0, 0x1000);
-   texture(GR_TMU1, T1, 0x2000);
+   texture(GR_TMU0, T0, 0);
+   texture(GR_TMU1, T1, 1);
    for (k = 0; k < 4; k++)
    {
       prim[k] = PRIM[k] / 255.0f;

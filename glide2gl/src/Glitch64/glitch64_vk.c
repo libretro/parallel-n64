@@ -13,7 +13,6 @@ int glitch64_vulkan = 0;
 #include "vk_device.h"
 #include "vk_renderer.h"
 #include "glitch64_vk_shaders.h"
-#include "glitch64_vk_textures.h"
 #include "../../../Graphics/RDP/RDP_state.h"
 #include "../Glide64/rdp.h"
 #include <streams/file_stream.h>
@@ -34,7 +33,14 @@ extern float polygonOffsetUnits;
  * for this many is opened at its first triangle, what is unused given
  * back when it is drawn */
 #define VK_VERTICES  (3 * 4096)
-#define VK_TEXTURES  4096
+/* a texture: its image, and the format and size it was made with */
+typedef struct vk_tex
+{
+   unsigned handle;
+   int fmt;
+   uint16_t w, h;
+} vk_tex;
+
 /* textures written over, kept to take the next of their format and size */
 #define VK_SPARE     1024
 /* the combiners with a shader of their own; past that, the shared one */
@@ -117,8 +123,8 @@ static struct
    uint32_t clip[4];
    unsigned blend[4];
 
-   vk_tex textures[VK_TEXTURES];
-   unsigned n_textures;
+   /* the texture in each slot (glide.h), 0 for none */
+   vk_tex textures[GLITCH64_TEX_SLOTS];
    vk_tex spare[VK_SPARE];
    unsigned n_spare;
    unsigned bound[2];
@@ -482,12 +488,7 @@ void vk_grN64Constants(const float prim[4], const float env[4], const float cons
 
 /* ---- textures ---- */
 
-static vk_tex *tex_find(unsigned id)
-{
-   return vk_tex_find(vk.textures, vk.n_textures, id);
-}
-
-/* A texture of TMU memory written over: its image kept, as long as there
+/* A texture written over: its image kept, as long as there
  * is room, for the next of its format and size, which then takes it with
  * no new image made (the renderer orders the new texels after what read
  * the old) */
@@ -510,25 +511,6 @@ static unsigned tex_image(int fmt, unsigned w, unsigned h)
          return handle;
       }
    return vkr_texture_new(vk.r);
-}
-
-/* TMU memory written over: the textures it held are gone; where a texture
- * at @lo now goes */
-static unsigned tex_remove(unsigned lo, unsigned hi)
-{
-   unsigned a, b, i;
-   vk_tex_range(vk.textures, vk.n_textures, lo, hi, &a, &b);
-   for (i = a; i < b; i++)
-   {
-      const vk_tex *t = &vk.textures[i];
-      if (vk.bound[0] == t->handle)
-         vk.bound[0] = 0;
-      if (vk.bound[1] == t->handle)
-         vk.bound[1] = 0;
-      tex_retire(t);
-   }
-   vk_tex_close(vk.textures, &vk.n_textures, a, b);
-   return a;
 }
 
 /* The renderer's format for Glide's texels as they lie: nothing is
@@ -567,30 +549,32 @@ static void tex_params(unsigned index)
             vk.wrap_s[index], vk.wrap_t[index], 0.f, 1.f);
 }
 
-void vk_grTexSource(int32_t tmu, uint32_t start, void *info_, int do_download)
+void vk_grTexSource(int32_t tmu, uint32_t slot, void *info_, int do_download)
 {
    GrTexInfo *info = (GrTexInfo*)info_;
    /* GR_TMU0 holds tile 0 */
    const unsigned index = tmu == GR_TMU1 ? 1 : 0;
-   const unsigned id = start + 1;
    int w, h;
-   vk_tex *t;
+   vk_tex *t = slot < GLITCH64_TEX_SLOTS ? &vk.textures[slot] : NULL;
 
    vk_flush();
    w = info->width;
    h = info->height;
 
-   if (do_download)
+   if (do_download && t)
    {
       unsigned bpp;
       const int fmt = vk_format(info->format, &bpp);
       const unsigned n = (unsigned)(w * h);
       const size_t bytes = (size_t)n * bpp;
-      unsigned at = tex_remove(id, id + (unsigned)(w * h * (int)grTexCalcMemRequired(1, 1, info->format)));
-      if (vk.n_textures >= VK_TEXTURES)
-         at = tex_remove(0, ~0u);
-      t = vk_tex_open(vk.textures, &vk.n_textures, at);
-      t->id = id;
+      if (t->handle)
+      {
+         /* what the slot held is written over: unbound, and kept for the
+          * next of its format and size */
+         if (vk.bound[index ^ 1] == t->handle)
+            vk.bound[index ^ 1] = 0;
+         tex_retire(t);
+      }
       t->fmt = fmt;
       t->w = (uint16_t)w;
       t->h = (uint16_t)h;
@@ -619,8 +603,6 @@ void vk_grTexSource(int32_t tmu, uint32_t start, void *info_, int do_download)
           * ring, from where the GPU takes them */
          vkr_texture_init(vk.r, t->handle, fmt, 1, (unsigned)w, (unsigned)h, 0, 1, info->data, bytes);
    }
-   else
-      t = tex_find(id);
 
    vk.bound[index] = t ? t->handle : 0;
    vkr_bind(vk.r, index ? VKR_BIND_TEX1 : VKR_BIND_TEX0, vk.bound[index]);
@@ -917,7 +899,7 @@ uint32_t vk_grSstWinOpen(void)
    vkr_fbo_bind(vk.r, 1, 1, vk.fbo);
    vk.lfb_tex = vkr_texture_new(vk.r);
    vk.depth_tex = vkr_texture_new(vk.r);
-   vk.n_textures = 0;
+   memset(vk.textures, 0, sizeof(vk.textures));
    vk.n_spare = 0;
 
    prewarm();
@@ -934,9 +916,10 @@ void vk_grSstWinClose(void)
    unsigned i;
    if (!vk.r)
       return;
-   for (i = 0; i < vk.n_textures; i++)
-      vkr_texture_delete(vk.r, vk.textures[i].handle);
-   vk.n_textures = 0;
+   for (i = 0; i < GLITCH64_TEX_SLOTS; i++)
+      if (vk.textures[i].handle)
+         vkr_texture_delete(vk.r, vk.textures[i].handle);
+   memset(vk.textures, 0, sizeof(vk.textures));
    for (i = 0; i < vk.n_spare; i++)
       vkr_texture_delete(vk.r, vk.spare[i].handle);
    vk.n_spare = 0;

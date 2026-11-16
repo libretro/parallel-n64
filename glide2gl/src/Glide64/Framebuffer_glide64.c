@@ -436,12 +436,12 @@ static int SetupFBtoScreenCombiner(uint32_t texture_size, uint32_t opaque)
 {
    int tmu, filter;
 
-   if (voodoo.tmem_ptr[GR_TMU0]+texture_size < voodoo.tex_max_addr)
+   /* past the cache's budget, it is cleared */
+   if (voodoo.tex_bytes + texture_size < GLIDE64_TEX_BUDGET)
       tmu = GR_TMU0;
    else
    {
-      if (voodoo.tmem_ptr[GR_TMU1]+texture_size >= voodoo.tex_max_addr)
-         ClearCache ();
+      ClearCache ();
       tmu = GR_TMU1;
    }
    filter = (gDP.otherMode.textureFilter == 2) ? GR_TEXTUREFILTER_BILINEAR : GR_TEXTUREFILTER_POINT_SAMPLED;
@@ -477,7 +477,7 @@ static int SetupFBtoScreenCombiner(uint32_t texture_size, uint32_t opaque)
 static void DrawDepthBufferToScreen256(FB_TO_SCREEN_INFO *fb_info)
 {
    uint32_t h, w, x, y, tex_size;
-   uint32_t w_tail, h_tail, tex_adr;
+   uint32_t w_tail, h_tail, tex_slot;
    int tmu;
    GrTexInfo t_info;
    uint32_t width         = fb_info->lr_x - fb_info->ul_x + 1;
@@ -499,7 +499,7 @@ static void DrawDepthBufferToScreen256(FB_TO_SCREEN_INFO *fb_info)
    glide64_combine_texel(tmu, 1);
    w_tail                 = width % 256;
    h_tail                 = height % 256;
-   tex_adr                = voodoo.tmem_ptr[tmu];
+   tex_slot               = GLITCH64_TEX_CACHE_SLOTS;
 
    for (h = 0; h < height256; h++)
    {
@@ -518,8 +518,10 @@ static void DrawDepthBufferToScreen256(FB_TO_SCREEN_INFO *fb_info)
                *(dst++) = rdp.pal_8[src[(x + 256 * w + (y + 256 * h) * fb_info->width) ^ 1]>>8];
             dst += cur_tail;
          }
-         grTexSource (tmu, tex_adr, &t_info, true);
-         tex_adr += tex_size;
+         grTexSource (tmu, tex_slot, &t_info, true);
+         /* the framebuffer's slots, again from the first past the last */
+         if (++tex_slot == GLITCH64_TEX_SLOTS)
+            tex_slot = GLITCH64_TEX_CACHE_SLOTS;
          ul_x     = (float)(fb_info->ul_x + 256 * w);
          ul_y     = (float)(fb_info->ul_y + 256 * h);
          lr_x     = (ul_x + (float)(cur_width)) * rdp.scale_x + rdp.offset_x;
@@ -579,7 +581,7 @@ static void DrawDepthBufferToScreen(FB_TO_SCREEN_INFO *fb_info)
    /* the fog colour, the image's alpha */
    glide64_combine_texel(tmu, 1);
    grTexSource (tmu,
-         voodoo.tmem_ptr[tmu],
+         GLITCH64_TEX_CACHE_SLOTS,
          &t_info, true);
    ul_x = fb_info->ul_x * rdp.scale_x + rdp.offset_x;
    ul_y = fb_info->ul_y * rdp.scale_y + rdp.offset_y;
@@ -645,7 +647,7 @@ static void DrawRE2Video256(FB_TO_SCREEN_INFO *fb_info)
          grTexCalcMemRequired(t_info.width, t_info.height, t_info.format), fb_info->opaque);
 
    grTexSource (tmu,
-         voodoo.tmem_ptr[tmu],
+         GLITCH64_TEX_CACHE_SLOTS,
          &t_info, 
          true);
    DrawRE2Video(fb_info, 1.0f);
@@ -654,7 +656,7 @@ static void DrawRE2Video256(FB_TO_SCREEN_INFO *fb_info)
 static void DrawFrameBufferToScreen256(FB_TO_SCREEN_INFO *fb_info)
 {
   uint32_t w, h, x, y, width, height, width256, height256, tex_size, *src32;
-  uint32_t tex_adr, w_tail, h_tail, bound, c32, idx;
+  uint32_t tex_slot, w_tail, h_tail, bound, c32, idx;
   uint8_t r, g, b, a, *image;
   uint16_t *tex, *src, c;
   float ul_x, ul_y, lr_x, lr_y, lr_u, lr_v;
@@ -685,7 +687,7 @@ static void DrawFrameBufferToScreen256(FB_TO_SCREEN_INFO *fb_info)
   h_tail                 = height % 256;
   bound                  = (BMASK + 1) - fb_info->addr;
   bound                  = fb_info->size == 2 ? (bound >> 1) : (bound >> 2);
-  tex_adr                = voodoo.tmem_ptr[tmu];
+  tex_slot               = GLITCH64_TEX_CACHE_SLOTS;
 
   for (h = 0; h < height256; h++)
   {
@@ -733,8 +735,9 @@ static void DrawFrameBufferToScreen256(FB_TO_SCREEN_INFO *fb_info)
           dst_ptr += cur_tail;
         }
       }
-      grTexSource (tmu, tex_adr, &t_info, true);
-      tex_adr += tex_size;
+      grTexSource (tmu, tex_slot, &t_info, true);
+      if (++tex_slot == GLITCH64_TEX_SLOTS)
+         tex_slot = GLITCH64_TEX_CACHE_SLOTS;
 
       ul_x     = (fb_info->ul_x + 256 * w)    * rdp.scale_x + rdp.offset_x;
       ul_y     = (fb_info->ul_y + 256 * h)    * rdp.scale_y + rdp.offset_y;
@@ -842,7 +845,7 @@ static bool DrawFrameBufferToScreen(FB_TO_SCREEN_INFO *fb_info)
          fb_info->opaque);
 
    grTexSource (tmu,
-         voodoo.tmem_ptr[tmu],
+         GLITCH64_TEX_CACHE_SLOTS,
          &t_info, true);
 
    if (settings.hacks&hack_RE2)

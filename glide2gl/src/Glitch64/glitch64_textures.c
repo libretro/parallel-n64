@@ -20,10 +20,10 @@
 
 #include <stdint.h>
 #include <stdlib.h>
+#include <string.h>
 #include "glide.h"
 #include "glitchmain.h"
 #include "glitch64_vk.h"
-#include "uthash.h"
 
 #ifdef __APPLE__
 #define GL_LUMINANCE8 0x8040
@@ -56,93 +56,19 @@ wrap_t[2] = { GL_REPEAT, GL_REPEAT };
 
 unsigned char *filter(unsigned char *source, int width, int height, int *width2, int *height2);
 
-typedef struct _texlist
-{
-   unsigned int id;
-   GLuint tex_id;
-   UT_hash_handle hh;
-} texlist;
-
-static texlist *list = NULL;
-
-//#define LOG_TEXTUREMEM 1
-
-static void remove_tex(unsigned int idmin, unsigned int idmax)
-{
-   GLuint *t;
-   unsigned int n = 0;
-   texlist *current, *tmp;
-
-   unsigned count = HASH_COUNT(list);
-
-   if (!count)
-       return;
-
-   t = (GLuint*)malloc(count * sizeof(GLuint));
-   HASH_ITER(hh, list, current, tmp)
-   {
-      if (current->id >= idmin && current->id < idmax)
-      {
-         t[n++] = current->tex_id;
-         HASH_DEL(list, current);
-         free(current);
-      }
-   }
-   glDeleteTextures(n, t);
-   free(t);
-#ifdef LOG_TEXTUREMEM
-   if (log_cb)
-      log_cb(RETRO_LOG_DEBUG, "RMVTEX nbtex is now %d (%06x - %06x)\n", HASH_COUNT(list), idmin, idmax);
-#endif
-}
-
-
-static void add_tex(unsigned int id)
-{
-   texlist *entry;
-   
-   HASH_FIND_INT(list, &id, entry);
-
-   if (!entry)
-   {
-      entry = malloc(sizeof(texlist));
-      entry->id = id;
-      glGenTextures(1, &entry->tex_id);
-      HASH_ADD_INT(list, id, entry);
-   }
-
-#ifdef LOG_TEXTUREMEM
-  if (log_cb)
-     log_cb(RETRO_LOG_DEBUG, "ADDTEX nbtex is now %d (%06x)\n", HASH_COUNT(list), id);
-#endif
-}
-
-static GLuint get_tex_id(unsigned int id)
-{
-   texlist *entry;
-
-   HASH_FIND_INT(list, &id, entry);
-
-   if (!entry)
-   {
-#ifdef LOG_TEXTUREMEM
-      if (log_cb)
-         log_cb(RETRO_LOG_ERROR, "get_tex_id for %08x failed!\n", id);
-#endif
-      return 0;
-   }
-
-   return entry->tex_id;
-}
+/* a texture name for each slot, made with the window: a download
+ * respecifies the slot's texture, nothing is made or deleted mid-game */
+static GLuint tex_names[GLITCH64_TEX_SLOTS];
 
 void init_textures(void)
 {
-   list = NULL;
+   glGenTextures(GLITCH64_TEX_SLOTS, tex_names);
 }
 
 void free_textures(void)
 {
-  remove_tex(0x00000000, 0xFFFFFFFF);
+   glDeleteTextures(GLITCH64_TEX_SLOTS, tex_names);
+   memset(tex_names, 0, sizeof(tex_names));
 }
 
 uint32_t grTexCalcMemRequired(int width, int height, int32_t fmt)
@@ -343,14 +269,13 @@ static int grTexFormat2GLPackedFmt(GrTexInfo *info, int fmt, unsigned tex_w, uns
 }
 
 void grTexSource( int32_t tmu,
-      uint32_t      startAddress,
+      uint32_t      slot,
       GrTexInfo  *info,
       int do_download)
 {
-   GLITCH64_VK(vk_grTexSource(tmu, startAddress, info, do_download));
+   GLITCH64_VK(vk_grTexSource(tmu, slot, info, do_download));
    glitch64_flush();
    int width, height;
-   int factor;
    int gltexfmt, glpixfmt, glpackfmt;
    unsigned index = (tmu == GR_TMU1) ? 0 : 1;
 
@@ -361,13 +286,10 @@ void grTexSource( int32_t tmu,
    width = info->width;
    height = info->height;
 
-   factor = grTexFormat2GLPackedFmt(info, info->format, (unsigned)width, (unsigned)height,
+   grTexFormat2GLPackedFmt(info, info->format, (unsigned)width, (unsigned)height,
          &gltexfmt, &glpixfmt, &glpackfmt);
 
-   remove_tex(startAddress+1, startAddress+1+(width * height * factor));
-
-   add_tex(startAddress+1);
-   glBindTexture(GL_TEXTURE_2D, get_tex_id(startAddress+1));
+   glBindTexture(GL_TEXTURE_2D, slot < GLITCH64_TEX_SLOTS ? tex_names[slot] : 0);
 
    /* the texels are packed: a row of a narrow texture is not 4-aligned */
    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
@@ -380,7 +302,7 @@ grtexsource:
    tex_height[index] = info->height >= info->width ? 256 : 256 * info->height / info->width;
 
    if (!do_download)
-      glBindTexture(GL_TEXTURE_2D, get_tex_id(startAddress+1));
+      glBindTexture(GL_TEXTURE_2D, slot < GLITCH64_TEX_SLOTS ? tex_names[slot] : 0);
    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, min_filter[index]);
    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, mag_filter[index]);
    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrap_s[index]);

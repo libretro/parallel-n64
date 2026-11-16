@@ -53,7 +53,6 @@
 #include "../../../Graphics/RDP/gDP_state.h"
 #include "../../../Graphics/image_convert.h"
 
-int GetTexAddrUMA(int tmu, int texsize);
 static void LoadTex (int id, int tmu);
 
 uint32_t tex1[2048*2048];		// temporary texture
@@ -120,9 +119,8 @@ void ClearCache(void)
    /* only the lists the entries went into */
    for (i = 0; i < rdp.n_cached[0]; i++)
       cachelut[node_pool[i].crc >> 16] = NULL;
-   voodoo.tmem_ptr[0] = offset_textures;
+   voodoo.tex_bytes = 0;
    rdp.n_cached[0] = 0;
-   voodoo.tmem_ptr[1] = offset_textures;
    rdp.n_cached[1] = 0;
 }
 
@@ -393,7 +391,7 @@ void TexCache(void)
          rdp.cur_cache[0]->last_used = frame_count;
          rdp.cur_cache[0]->uses = 0;
          grTexSource (tmu_0,
-               cache->tmem_addr,
+               cache->tex_slot,
                &cache->t_info,
                false);
       }
@@ -411,7 +409,7 @@ void TexCache(void)
          rdp.cur_cache[1]->last_used = frame_count;
          rdp.cur_cache[1]->uses = 0;
          grTexSource (tmu_1,
-               cache->tmem_addr,
+               cache->tex_slot,
                &cache->t_info,
                false);
       }
@@ -516,7 +514,7 @@ static void LoadTex(int id, int tmu)
    cache->height     = gDP.tiles[td].height;
    cache->format     = g_gdp.tile[td].format;
    cache->size       = g_gdp.tile[td].size;
-   cache->tmem_addr  = voodoo.tmem_ptr[tmu];
+   cache->tex_slot   = (uint32_t)(cache - rdp.cache[0]);
    cache->set_by     = rdp.timg.set_by;
    cache->texrecting = rdp.texrecting;
    cache->last_used  = frame_count;
@@ -714,7 +712,7 @@ static void LoadTex(int id, int tmu)
    cache->realheight    = real_y;
 
    {
-	   uint32_t texture_size, tex_addr;
+	   uint32_t texture_size;
 	   GrTexInfo *t_info;
 
       /* Load the texture into texture memory */
@@ -725,8 +723,8 @@ static void LoadTex(int id, int tmu)
 
       texture_size            = grTexCalcMemRequired (t_info->width, t_info->height, t_info->format);
 
-      /* Check for end of memory (too many textures to fit, clear cache) */
-      if (voodoo.tmem_ptr[tmu]+texture_size >= voodoo.tex_max_addr)
+      /* past the budget, the cache is cleared */
+      if (voodoo.tex_bytes + texture_size >= GLIDE64_TEX_BUDGET)
       {
          LRDP("Cache size reached, clearing...\n");
          ClearCache ();
@@ -740,9 +738,9 @@ static void LoadTex(int id, int tmu)
 
       }
 
-      tex_addr = GetTexAddrUMA(tmu, texture_size);
+      voodoo.tex_bytes += texture_size;
       grTexSource (tmu,
-            tex_addr,
+            cache->tex_slot,
             t_info,
             true);
    }

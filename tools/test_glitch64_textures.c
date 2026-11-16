@@ -293,7 +293,7 @@ static int run(int f, int large_log2, int aspect_log2)
    info.height = h;
    info.format = fmt;
    info.data = data;
-   grTexSource(GR_TMU1, 0x1000 * (unsigned)(f + 1), &info, 1);
+   grTexSource(GR_TMU1, (unsigned)f, &info, 1);
    assert(glGetError() == GL_NO_ERROR);
 
    blit(w, h, out);
