@@ -3064,8 +3064,8 @@ void update_variables(bool startup)
        * 'alternate_mapping' value and pushes a fresh
        * RETRO_ENVIRONMENT_SET_INPUT_DESCRIPTORS array. Skip the
        * resubmit when nothing changed - including on the startup
-       * pass, where inputPluginStartup() will set the descriptors
-       * shortly anyway via its own call. */
+       * pass, where inputInitiateControllers() sets the descriptors
+       * when the ROM opens. */
       if (!startup && alternate_mapping != prev_alternate_mapping)
          inputGetKeys_default_descriptor();
    }

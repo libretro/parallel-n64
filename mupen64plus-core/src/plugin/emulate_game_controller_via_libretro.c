@@ -103,8 +103,27 @@ void inputInitiateCallback(const char *headername);
 /* Entry point for the core's controller input backend: polls through the
  * currently selected control profile (default, or a per-game alternate
  * layout chosen by inputInitiateCallback). */
+/* the pad's buttons this poll, RETRO_DEVICE_ID_JOYPAD_* bits: read once,
+ * in one call where the frontend has bitmasks, and what each control
+ * profile reads its buttons from */
+static uint16_t pad_bits;
+#define PAD_HELD(id) ((int16_t)((pad_bits >> (id)) & 1))
+
+static uint16_t read_pad_bits(int Control)
+{
+   uint16_t bits = 0;
+   unsigned i;
+   if (libretro_supports_bitmasks)
+      return (uint16_t)input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_MASK);
+   for (i = 0; i <= RETRO_DEVICE_ID_JOYPAD_R3; i++)
+      if (input_cb(Control, RETRO_DEVICE_JOYPAD, 0, i))
+         bits |= (uint16_t)(1 << i);
+   return bits;
+}
+
 void inputGetKeys(int Control, BUTTONS *Keys)
 {
+   pad_bits = controller[Control].control->Present == CONT_MOUSE ? 0 : read_pad_bits(Control);
    getKeys(Control, Keys);
 }
 
@@ -619,8 +638,8 @@ void inputPollMouse(void)
 static void inputGetKeys_reuse(int16_t analogX, int16_t analogY, int Control, BUTTONS* Keys)
 {
    int32_t sx, sy;
-   //  Keys->Value |= input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_XX)    ? 0x4000 : 0; // Mempak switch
-   //  Keys->Value |= input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_XX)    ? 0x8000 : 0; // Rumblepak switch
+   //  Keys->Value |= PAD_HELD(RETRO_DEVICE_ID_JOYPAD_XX)    ? 0x4000 : 0; // Mempak switch
+   //  Keys->Value |= PAD_HELD(RETRO_DEVICE_ID_JOYPAD_XX)    ? 0x8000 : 0; // Rumblepak switch
 
    analogX = input_cb(Control, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_LEFT, RETRO_DEVICE_ID_ANALOG_X);
    analogY = input_cb(Control, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_LEFT, RETRO_DEVICE_ID_ANALOG_Y);
@@ -687,10 +706,10 @@ static void inputGetKeys_reuse(int16_t analogX, int16_t analogY, int Control, BU
          apply_mouse_button(Keys, mouse_wheel_down_btn);
    }
 
-   Keys->R_DPAD = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_RIGHT);
-   Keys->L_DPAD = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_LEFT);
-   Keys->D_DPAD = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_DOWN);
-   Keys->U_DPAD = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_UP);
+   Keys->R_DPAD = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_RIGHT);
+   Keys->L_DPAD = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_LEFT);
+   Keys->D_DPAD = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_DOWN);
+   Keys->U_DPAD = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_UP);
 
    /* Some Aleck64 games (Eleven Beat) probe the pad's d-pad to detect the
     * cabinet joystick type and error out unless all four bits read held,
@@ -703,7 +722,7 @@ static void inputGetKeys_reuse(int16_t analogX, int16_t analogY, int Control, BU
       Keys->U_DPAD = 1;
    }
 
-   Keys->START_BUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_START);
+   Keys->START_BUTTON = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_START);
 
    /* VR laser pointer in Four Buttons mode, on the pad chosen by the VR Laser
     * Pointer Output option. Applied after the d-pad and Start are read so it
@@ -719,7 +738,7 @@ static void inputGetKeys_reuse(int16_t analogX, int16_t analogY, int Control, BU
    /* SELECT toggles between the default and the per-game alternate
     * control profile (only meaningful when a game has one). In the
     * independent-C-button layout SELECT is L, so leave it alone there. */
-   if (!alternate_mapping && input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_SELECT) && --timeout <= 0)
+   if (!alternate_mapping && PAD_HELD(RETRO_DEVICE_ID_JOYPAD_SELECT) && --timeout <= 0)
       inputInitiateCallback((const char*)ROM_HEADER.Name);
 }
 
@@ -729,14 +748,14 @@ static void inputGetKeys_6ButtonFighters(int Control, BUTTONS *Keys)
    int16_t analogY = 0;
    Keys->Value = 0;
 
-   Keys->A_BUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_B);
-   Keys->B_BUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_Y);
-   Keys->D_CBUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_A);
-   Keys->L_CBUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_X);
-   Keys->R_CBUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_R);
-   Keys->U_CBUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_L);
-   Keys->R_TRIG = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_R2);
-   Keys->Z_TRIG = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_L2);
+   Keys->A_BUTTON = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_B);
+   Keys->B_BUTTON = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_Y);
+   Keys->D_CBUTTON = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_A);
+   Keys->L_CBUTTON = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_X);
+   Keys->R_CBUTTON = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_R);
+   Keys->U_CBUTTON = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_L);
+   Keys->R_TRIG = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_R2);
+   Keys->Z_TRIG = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_L2);
 
    inputGetKeys_reuse(analogX, analogY, Control, Keys);
 }
@@ -747,14 +766,14 @@ static void inputGetKeys_XENA(int Control, BUTTONS *Keys)
    int16_t analogY = 0;
    Keys->Value = 0;
 
-   Keys->A_BUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_R2);
-   Keys->B_BUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_L2);
-   Keys->D_CBUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_B);
-   Keys->L_CBUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_Y);
-   Keys->R_CBUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_A);
-   Keys->U_CBUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_X);
-   Keys->R_TRIG = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_R);
-   Keys->Z_TRIG = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_L);
+   Keys->A_BUTTON = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_R2);
+   Keys->B_BUTTON = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_L2);
+   Keys->D_CBUTTON = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_B);
+   Keys->L_CBUTTON = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_Y);
+   Keys->R_CBUTTON = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_A);
+   Keys->U_CBUTTON = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_X);
+   Keys->R_TRIG = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_R);
+   Keys->Z_TRIG = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_L);
 
    inputGetKeys_reuse(analogX, analogY, Control, Keys);
 }
@@ -765,14 +784,14 @@ static void inputGetKeys_Biofreaks(int Control, BUTTONS *Keys)
    int16_t analogY = 0;
    Keys->Value = 0;
 
-   Keys->A_BUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_R);
-   Keys->B_BUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_L);
-   Keys->D_CBUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_B);
-   Keys->L_CBUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_Y);
-   Keys->R_CBUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_A);
-   Keys->U_CBUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_X);
-   Keys->L_TRIG = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_L2);
-   Keys->R_TRIG = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_R2);
+   Keys->A_BUTTON = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_R);
+   Keys->B_BUTTON = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_L);
+   Keys->D_CBUTTON = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_B);
+   Keys->L_CBUTTON = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_Y);
+   Keys->R_CBUTTON = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_A);
+   Keys->U_CBUTTON = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_X);
+   Keys->L_TRIG = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_L2);
+   Keys->R_TRIG = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_R2);
 
    inputGetKeys_reuse(analogX, analogY, Control, Keys);
 }
@@ -783,14 +802,14 @@ static void inputGetKeys_DarkRift(int Control, BUTTONS *Keys)
    int16_t analogY = 0;
    Keys->Value = 0;
 
-   Keys->A_BUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_R);
-   Keys->B_BUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_L);
-   Keys->D_CBUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_B);
-   Keys->L_CBUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_Y);
-   Keys->R_CBUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_A);
-   Keys->U_CBUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_X);
-   Keys->L_TRIG = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_L2);
-   Keys->R_TRIG = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_R2);
+   Keys->A_BUTTON = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_R);
+   Keys->B_BUTTON = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_L);
+   Keys->D_CBUTTON = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_B);
+   Keys->L_CBUTTON = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_Y);
+   Keys->R_CBUTTON = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_A);
+   Keys->U_CBUTTON = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_X);
+   Keys->L_TRIG = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_L2);
+   Keys->R_TRIG = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_R2);
 
    inputGetKeys_reuse(analogX, analogY, Control, Keys);
 }
@@ -801,14 +820,14 @@ static void inputGetKeys_ISS(int Control, BUTTONS *Keys)
    int16_t analogY = 0;
    Keys->Value = 0;
 
-   Keys->A_BUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_B);
-   Keys->B_BUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_Y);
-   Keys->D_CBUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_A);
-   Keys->L_CBUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_X);
-   Keys->R_CBUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_R);
-   Keys->U_CBUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_L);
-   Keys->Z_TRIG = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_L2);
-   Keys->R_TRIG = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_R2);
+   Keys->A_BUTTON = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_B);
+   Keys->B_BUTTON = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_Y);
+   Keys->D_CBUTTON = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_A);
+   Keys->L_CBUTTON = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_X);
+   Keys->R_CBUTTON = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_R);
+   Keys->U_CBUTTON = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_L);
+   Keys->Z_TRIG = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_L2);
+   Keys->R_TRIG = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_R2);
 
    inputGetKeys_reuse(analogX, analogY, Control, Keys);
 }
@@ -819,12 +838,12 @@ static void inputGetKeys_Mace(int Control, BUTTONS *Keys)
    int16_t analogY = 0;
    Keys->Value = 0;
 
-   Keys->A_BUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_B);
-   Keys->B_BUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_Y);
-   Keys->D_CBUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_A);
-   Keys->R_CBUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_X);
-   Keys->L_TRIG = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_L);
-   Keys->R_TRIG = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_R);
+   Keys->A_BUTTON = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_B);
+   Keys->B_BUTTON = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_Y);
+   Keys->D_CBUTTON = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_A);
+   Keys->R_CBUTTON = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_X);
+   Keys->L_TRIG = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_L);
+   Keys->R_TRIG = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_R);
 
    inputGetKeys_reuse(analogX, analogY, Control, Keys);
 }
@@ -835,14 +854,14 @@ static void inputGetKeys_MischiefMakers(int Control, BUTTONS *Keys)
    int16_t analogY = 0;
    Keys->Value = 0;
 
-   Keys->A_BUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_B);
-   Keys->B_BUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_Y);
-   Keys->D_CBUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_L);
-   Keys->L_CBUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_X);
-   Keys->R_CBUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_A);
-   Keys->U_CBUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_R);
-   Keys->Z_TRIG = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_L2);
-   Keys->R_TRIG = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_R2);
+   Keys->A_BUTTON = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_B);
+   Keys->B_BUTTON = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_Y);
+   Keys->D_CBUTTON = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_L);
+   Keys->L_CBUTTON = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_X);
+   Keys->R_CBUTTON = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_A);
+   Keys->U_CBUTTON = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_R);
+   Keys->Z_TRIG = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_L2);
+   Keys->R_TRIG = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_R2);
 
    inputGetKeys_reuse(analogX, analogY, Control, Keys);
 }
@@ -853,12 +872,12 @@ static void inputGetKeys_MKTrilogy(int Control, BUTTONS *Keys)
    int16_t analogY = 0;
    Keys->Value = 0;
 
-   Keys->A_BUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_B);
-   Keys->B_BUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_Y);
-   Keys->R_CBUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_A);
-   Keys->U_CBUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_X);
-   Keys->L_TRIG = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_L);
-   Keys->R_TRIG = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_R);
+   Keys->A_BUTTON = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_B);
+   Keys->B_BUTTON = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_Y);
+   Keys->R_CBUTTON = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_A);
+   Keys->U_CBUTTON = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_X);
+   Keys->L_TRIG = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_L);
+   Keys->R_TRIG = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_R);
 
    inputGetKeys_reuse(analogX, analogY, Control, Keys);
 }
@@ -869,14 +888,14 @@ static void inputGetKeys_MK4(int Control, BUTTONS *Keys)
    int16_t analogY = 0;
    Keys->Value = 0;
 
-   Keys->A_BUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_B);
-   Keys->B_BUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_Y);
-   Keys->D_CBUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_R);
-   Keys->R_CBUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_A);
-   Keys->U_CBUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_X);
-   Keys->L_TRIG = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_R2);
-   Keys->R_TRIG = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_L2);
-   Keys->Z_TRIG = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_L);
+   Keys->A_BUTTON = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_B);
+   Keys->B_BUTTON = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_Y);
+   Keys->D_CBUTTON = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_R);
+   Keys->R_CBUTTON = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_A);
+   Keys->U_CBUTTON = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_X);
+   Keys->L_TRIG = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_R2);
+   Keys->R_TRIG = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_L2);
+   Keys->Z_TRIG = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_L);
 
    inputGetKeys_reuse(analogX, analogY, Control, Keys);
 }
@@ -887,14 +906,14 @@ static void inputGetKeys_MKMythologies(int Control, BUTTONS *Keys)
    int16_t analogY = 0;
    Keys->Value = 0;
 
-   Keys->A_BUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_R2);
-   Keys->B_BUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_L2);
-   Keys->D_CBUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_B);
-   Keys->L_CBUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_Y);
-   Keys->R_CBUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_A);
-   Keys->U_CBUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_X);
-   Keys->L_TRIG = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_L);
-   Keys->R_TRIG = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_R);
+   Keys->A_BUTTON = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_R2);
+   Keys->B_BUTTON = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_L2);
+   Keys->D_CBUTTON = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_B);
+   Keys->L_CBUTTON = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_Y);
+   Keys->R_CBUTTON = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_A);
+   Keys->U_CBUTTON = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_X);
+   Keys->L_TRIG = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_L);
+   Keys->R_TRIG = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_R);
 
    inputGetKeys_reuse(analogX, analogY, Control, Keys);
 }
@@ -905,10 +924,10 @@ static void inputGetKeys_Rampage(int Control, BUTTONS *Keys)
    int16_t analogY = 0;
    Keys->Value = 0;
 
-   Keys->A_BUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_B);
-   Keys->B_BUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_Y);
-   Keys->D_CBUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_A);
-   Keys->R_TRIG = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_R);
+   Keys->A_BUTTON = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_B);
+   Keys->B_BUTTON = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_Y);
+   Keys->D_CBUTTON = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_A);
+   Keys->R_TRIG = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_R);
 
    inputGetKeys_reuse(analogX, analogY, Control, Keys);
 }
@@ -919,12 +938,12 @@ static void inputGetKeys_Ready2Rumble(int Control, BUTTONS *Keys)
    int16_t analogY = 0;
    Keys->Value = 0;
 
-   Keys->A_BUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_L);
-   Keys->B_BUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_R);
-   Keys->D_CBUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_B);
-   Keys->L_CBUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_Y);
-   Keys->R_CBUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_A);
-   Keys->U_CBUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_X);
+   Keys->A_BUTTON = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_L);
+   Keys->B_BUTTON = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_R);
+   Keys->D_CBUTTON = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_B);
+   Keys->L_CBUTTON = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_Y);
+   Keys->R_CBUTTON = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_A);
+   Keys->U_CBUTTON = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_X);
 
    inputGetKeys_reuse(analogX, analogY, Control, Keys);
 }
@@ -935,12 +954,12 @@ static void inputGetKeys_Wipeout64(int Control, BUTTONS *Keys)
    int16_t analogY = 0;
    Keys->Value = 0;
 
-   Keys->A_BUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_B);
-   Keys->B_BUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_Y);
-   Keys->D_CBUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_A);
-   Keys->U_CBUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_X);
-   Keys->R_TRIG = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_R);
-   Keys->Z_TRIG = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_L);
+   Keys->A_BUTTON = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_B);
+   Keys->B_BUTTON = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_Y);
+   Keys->D_CBUTTON = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_A);
+   Keys->U_CBUTTON = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_X);
+   Keys->R_TRIG = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_R);
+   Keys->Z_TRIG = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_L);
 
    inputGetKeys_reuse(analogX, analogY, Control, Keys);
 }
@@ -951,14 +970,14 @@ static void inputGetKeys_WWF(int Control, BUTTONS *Keys)
    int16_t analogY = 0;
    Keys->Value = 0;
 
-   Keys->A_BUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_B);
-   Keys->B_BUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_Y);
-   Keys->D_CBUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_A);
-   Keys->L_CBUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_X);
-   Keys->R_CBUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_R2);
-   Keys->U_CBUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_L2);
-   Keys->L_TRIG = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_L);
-   Keys->R_TRIG = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_R);
+   Keys->A_BUTTON = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_B);
+   Keys->B_BUTTON = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_Y);
+   Keys->D_CBUTTON = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_A);
+   Keys->L_CBUTTON = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_X);
+   Keys->R_CBUTTON = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_R2);
+   Keys->U_CBUTTON = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_L2);
+   Keys->L_TRIG = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_L);
+   Keys->R_TRIG = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_R);
 
    inputGetKeys_reuse(analogX, analogY, Control, Keys);
 }
@@ -969,16 +988,16 @@ static void inputGetKeys_RR64( int Control, BUTTONS *Keys )
    int16_t analogY = 0;
    Keys->Value = 0;
 
-   Keys->L_TRIG = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_L);
-   Keys->R_TRIG = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_R);
+   Keys->L_TRIG = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_L);
+   Keys->R_TRIG = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_R);
 
-   Keys->B_BUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_Y);
-   Keys->A_BUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_B);
+   Keys->B_BUTTON = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_Y);
+   Keys->A_BUTTON = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_B);
 
-   //Keys->D_CBUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_A);
-   //Keys->L_CBUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_X);
-   //Keys->R_CBUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_R);
-   Keys->U_CBUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_X);
+   //Keys->D_CBUTTON = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_A);
+   //Keys->L_CBUTTON = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_X);
+   //Keys->R_CBUTTON = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_R);
+   Keys->U_CBUTTON = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_X);
 
 
    inputGetKeys_reuse(analogX, analogY, Control, Keys);
@@ -1008,7 +1027,6 @@ static void inputGetKeys_mouse( int Control, BUTTONS *Keys )
 
 static void inputGetKeys_default( int Control, BUTTONS *Keys )
 {
-   unsigned i;
    bool cbuttons_mode = false;
    int16_t ret        = 0;
    int16_t analogX    = 0;
@@ -1021,17 +1039,7 @@ static void inputGetKeys_default( int Control, BUTTONS *Keys )
       return;
    }
 
-   if (libretro_supports_bitmasks)
-      ret = input_cb(Control, RETRO_DEVICE_JOYPAD,
-            0, RETRO_DEVICE_ID_JOYPAD_MASK);
-   else
-   {
-      for (i = 0; i <= RETRO_DEVICE_ID_JOYPAD_R3; i++)
-      {
-         if (input_cb(Control, RETRO_DEVICE_JOYPAD, 0, i))
-            ret |= (1 << i);
-      }
-   }
+   ret = (int16_t)pad_bits;
 
    Keys->Z_TRIG       = !!((ret & (1 << RETRO_DEVICE_ID_JOYPAD_L2)));
 
@@ -1107,6 +1115,7 @@ void inputGetKeysGCN(int Control, int analogMode, BUTTONS_GCN *Keys)
    int32_t scaledX, scaledY;
    int32_t trigL, trigR;
    memset(Keys, 0, sizeof(*Keys));
+   pad_bits = read_pad_bits(Control);
 
    // Assumes alternate_mapping is set
    
@@ -1122,13 +1131,13 @@ void inputGetKeysGCN(int Control, int analogMode, BUTTONS_GCN *Keys)
       // Check for keyboard input
       
       analogX = 0x7FFF * (
-         input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_R) - 
-         input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_L)
+         PAD_HELD(RETRO_DEVICE_ID_JOYPAD_R) - 
+         PAD_HELD(RETRO_DEVICE_ID_JOYPAD_L)
       );
       
       analogY = 0x7FFF * (
-         input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_A) -
-         input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_X)
+         PAD_HELD(RETRO_DEVICE_ID_JOYPAD_A) -
+         PAD_HELD(RETRO_DEVICE_ID_JOYPAD_X)
       );
    }
       
@@ -1137,19 +1146,19 @@ void inputGetKeysGCN(int Control, int analogMode, BUTTONS_GCN *Keys)
    cstickX += 128;
    cstickY += 128;
 
-   Keys->A_BUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_B);
-   Keys->B_BUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_Y);
-   Keys->X_BUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_L3);
-   Keys->Y_BUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_R3);
-   Keys->Z_TRIG = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_L2);
+   Keys->A_BUTTON = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_B);
+   Keys->B_BUTTON = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_Y);
+   Keys->X_BUTTON = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_L3);
+   Keys->Y_BUTTON = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_R3);
+   Keys->Z_TRIG = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_L2);
 
    trigL = input_cb(Control, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_BUTTON, RETRO_DEVICE_ID_JOYPAD_SELECT) / (SHRT_MAX / UCHAR_MAX);
    if (trigL == 0) {
-      trigL = 255 * input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_SELECT);
+      trigL = 255 * PAD_HELD(RETRO_DEVICE_ID_JOYPAD_SELECT);
    }
    trigR = input_cb(Control, RETRO_DEVICE_ANALOG, RETRO_DEVICE_INDEX_ANALOG_BUTTON, RETRO_DEVICE_ID_JOYPAD_R2) / (SHRT_MAX / UCHAR_MAX);
    if (trigR == 0) {
-      trigR = 255 * input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_R2);
+      trigR = 255 * PAD_HELD(RETRO_DEVICE_ID_JOYPAD_R2);
    }
 
    switch (analogMode) {
@@ -1197,12 +1206,12 @@ void inputGetKeysGCN(int Control, int analogMode, BUTTONS_GCN *Keys)
    Keys->X_AXIS = scaledX + 128;
    Keys->Y_AXIS = scaledY + 128;
 
-   Keys->R_DPAD = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_RIGHT);
-   Keys->L_DPAD = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_LEFT);
-   Keys->D_DPAD = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_DOWN);
-   Keys->U_DPAD = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_UP);
+   Keys->R_DPAD = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_RIGHT);
+   Keys->L_DPAD = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_LEFT);
+   Keys->D_DPAD = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_DOWN);
+   Keys->U_DPAD = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_UP);
 
-   Keys->START_BUTTON = input_cb(Control, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_START);
+   Keys->START_BUTTON = PAD_HELD(RETRO_DEVICE_ID_JOYPAD_START);
 }
 
 void inputInitiateCallback(const char *headername)
@@ -1361,6 +1370,8 @@ EXPORT void CALL inputInitiateControllers(CONTROL_INFO ControlInfo)
           controller[i].control->Plugin = PLUGIN_NONE;
     }
 
+   /* the frontend reads the whole pad in one call */
+   libretro_supports_bitmasks = environ_cb && environ_cb(RETRO_ENVIRONMENT_GET_INPUT_BITMASKS, NULL);
    getKeys = inputGetKeys_default;
    inputGetKeys_default_descriptor();
 }
