@@ -1801,8 +1801,6 @@ void ReadSpecialSettings (const char * name)
       settings.hacks |= hack_Megaman;
    else if (strstr(name, (const char *)"MISCHIEF MAKERS") || strstr(name, (const char *)"TROUBLE MAKERS"))
       settings.hacks |= hack_Makers;
-   else if (strstr(name, (const char *)"GOLDENEYE"))
-      settings.hacks |= hack_GoldenEye;
    else if (strstr(name, (const char *)"Blast Corps") || strstr(name, (const char *)"Blastdozer"))
       settings.hacks |= hack_Blastcorps;
    else if (strstr(name, (const char *)"PUZZLE LEAGUE"))

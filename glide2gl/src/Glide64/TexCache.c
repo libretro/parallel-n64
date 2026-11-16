@@ -350,6 +350,9 @@ static void GetTexInfo (int id, int tile)
       else
          crc = gDP.paletteCRC256;
    }
+   /* 16-bit texels through the TLUT: the whole palette, and which kind */
+   else if (g_gdp.tile[tile].size == G_IM_SIZ_16b && rdp.tlut_mode)
+      crc = gDP.paletteCRC256 ^ rdp.tlut_mode;
 
    {
       uint8_t *addr;
@@ -562,14 +565,6 @@ static void LoadTex(int id, int tmu)
    }
    cache = &rdp.cache[0][slot];
    rdp.cur_cache[id] = cache;
-
-   //!Hackalert
-   //GoldenEye water texture. It has CI format in fact, but the game set it to RGBA
-   if ((settings.hacks&hack_GoldenEye) && g_gdp.tile[td].format == G_IM_FMT_RGBA && rdp.tlut_mode == 2 && g_gdp.tile[td].size == G_IM_SIZ_16b)
-   {
-      g_gdp.tile[td].format = G_IM_FMT_CI;
-      g_gdp.tile[td].size = G_IM_SIZ_8b;
-   }
 
    // Set the data
    cache->line       = g_gdp.tile[td].line;

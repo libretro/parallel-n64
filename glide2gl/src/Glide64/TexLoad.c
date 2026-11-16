@@ -389,6 +389,40 @@ static INLINE void load16bRGBA(uint8_t *src, uint8_t *dst, int wid_64, int heigh
     }
 }
 
+/* 16-bit texels through the TLUT, as the RDP reads them with it on: each
+ * texel's upper byte the palette index; @rot turns the palette's entries
+ * into ARGB1555 (1) or IA88 (8) */
+static INLINE void load16bTLUT(uint8_t *src, uint8_t *dst, int wid_64, int height, int line, int ext,
+      const uint16_t *palette, unsigned rot)
+{
+    uint32_t *src32 =(uint32_t*)src;
+    uint16_t *dst16 =(uint16_t*)dst;
+    unsigned odd = 0;
+
+    while (height--)
+    {
+        int width = wid_64;
+
+        while (width--)
+        {
+            uint32_t ab = m64p_swap32(src32[odd]);
+            uint32_t cd = m64p_swap32(src32[!odd]);
+
+            *dst16++ = ror16(palette[ab >> 24], rot);
+            *dst16++ = ror16(palette[(ab >> 8) & 0xff], rot);
+            *dst16++ = ror16(palette[cd >> 24], rot);
+            *dst16++ = ror16(palette[(cd >> 8) & 0xff], rot);
+
+            src32 += 2;
+        }
+
+        src32 =(uint32_t*)&src[(line +(uintptr_t)src32 -(uintptr_t)src) & 0xFFF];
+        dst16 =(uint16_t*)((uint8_t*)dst16 + ext);
+
+        odd ^= 1;
+    }
+}
+
 static INLINE void load16bIA(uint8_t *src, uint8_t *dst, int wid_64, int height, int line, int ext)
 {
     uint32_t *src32 =(uint32_t *)src;
@@ -590,6 +624,18 @@ static uint32_t Load8bI(uintptr_t dst, uintptr_t src, int wid_64, int height, in
 // Size: 2, Format: 0
 //
 
+/* size 2 with the TLUT on: an RGBA16 palette (TT_RGBA16), else IA16 */
+static uint32_t Load16bTLUT(uintptr_t dst, uintptr_t src, int wid_64, int height, int line, int ext)
+{
+    if (rdp.tlut_mode == 2)
+    {
+        load16bTLUT((uint8_t *)src, (uint8_t *)dst, wid_64, height, line, ext, rdp.pal_8, 1);
+        return (1 << 16) | GR_TEXFMT_ARGB_1555;
+    }
+    load16bTLUT((uint8_t *)src, (uint8_t *)dst, wid_64, height, line, ext, rdp.pal_8, 8);
+    return (1 << 16) | GR_TEXFMT_ALPHA_INTENSITY_88;
+}
+
 static uint32_t Load16bRGBA(uintptr_t dst, uintptr_t src, int wid_64, int height, int line, int real_width, int tile)
 {
     int ext;
@@ -598,6 +644,9 @@ static uint32_t Load16bRGBA(uintptr_t dst, uintptr_t src, int wid_64, int height
     if (height < 1)
         height = 1;
     ext = (real_width - (wid_64 << 2)) * 2;
+
+    if (rdp.tlut_mode)
+        return Load16bTLUT(dst, src, wid_64, height, line, ext);
 
     load16bRGBA((uint8_t *)src,(uint8_t *)dst, wid_64, height, line, ext);
 
@@ -617,6 +666,9 @@ static uint32_t Load16bIA(uintptr_t dst, uintptr_t src, int wid_64, int height, 
     if (height < 1)
         height = 1;
     ext = (real_width - (wid_64 << 2)) * 2;
+
+    if (rdp.tlut_mode)
+        return Load16bTLUT(dst, src, wid_64, height, line, ext);
 
     load16bIA((uint8_t *)src,(uint8_t *)dst, wid_64, height, line, ext);
 

@@ -131,7 +131,6 @@ extern uint32_t gfx_plugin_accuracy;
 #define  hack_Diddy       (1<<4)   //diddy kong racing
 #define  hack_Fifa98      (1<<5)   //FIFA - Road to World Cup 98
 #define  hack_Fzero       (1<<6)   //F-Zero
-#define  hack_GoldenEye   (1<<7)   //Golden Eye
 #define  hack_Hyperbike   (1<<8)   //Top Gear Hyper Bike
 #define  hack_ISS64       (1<<9)   //International Superstar Soccer 64
 #define  hack_KI          (1<<10)  //Killer Instinct

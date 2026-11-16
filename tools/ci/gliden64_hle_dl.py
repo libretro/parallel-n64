@@ -32,7 +32,10 @@ must hold what the combine gives at eight.
 Glide64 must also put each texel where the quad's coordinates put it, on
 GL and on Vulkan, with textures that are not square: 32x16, 8x32, and
 64x4, wider than the eighth Glide's textures went to (Glide64 makes that
-one 64x8, the tile repeated into the rest).
+one 64x8, the tile repeated into the rest). And 16-bit texels through
+the palette, RGBA16 and IA16 colours: each texel's high byte picks its
+colour, and the second quad, the same texture with another palette
+loaded, must show that palette's colours, not the cached first's.
 
 The same cartridge with a microcode Glide64 does not know must still
 run to its end: Glide64 read such a list with another microcode's table,
@@ -60,6 +63,7 @@ OPTIONS = ["parallel-n64-rspplugin=hle",
            "parallel-n64-gliden64-LegacySm64ToolsHacks=enabled"]
 FB, DL, VTX, MTX, VP, TEX, UCODE, UDATA = (0x100000, 0x200000, 0x201000, 0x202000, 0x203000,
                                            0x204000, 0x205000, 0x206000)
+PAL = 0x204C00  # two palettes, after the largest texture (2 KB)
 WIDTH, HEIGHT = 320, 240
 PAYLOAD = 0x4000
 FRAMES = 12
@@ -83,7 +87,17 @@ def vertex(x, y, s, t):
     return struct.pack(">hhhHhhBBBB", x, y, 0, 0, s << 5, t << 5, 255, 255, 255, 255)
 
 
-def display_list(toggle, inter=False, cull=False, prim=False, two=False, ia=False, shape=None):
+def load_palette(cmd, k):
+    """palette @k, 256 RGBA16 colours, into the upper half of TMEM"""
+    cmd(0xFD000000 | (2 << 19), PAL + 512 * k)                               # SETTIMG RGBA16
+    cmd(0xE8000000)
+    cmd(0xF5000000 | 256, 7 << 24)                                           # tile 7 at TMEM 0x800
+    cmd(0xE6000000)
+    cmd(0xF0000000, (7 << 24) | (255 << 14))                                 # LOADTLUT, 256
+    cmd(0xE7000000)
+
+
+def display_list(toggle, inter=False, cull=False, prim=False, two=False, ia=False, shape=None, tlut=False):
     c = []
     cmd = lambda w0, w1=0: c.extend([w0 & 0xffffffff, w1 & 0xffffffff])
     # Glide64 presents a frame when the colour image changes: another
@@ -101,8 +115,10 @@ def display_list(toggle, inter=False, cull=False, prim=False, two=False, ia=Fals
     cmd(0xF6000000 | ((WIDTH * 4) << 12) | (HEIGHT * 4), 0)                  # FILLRECT
     cmd(0xE7000000)
     # one cycle (with @two, two), perspective texturing, point sampled,
-    # texels filtered not converted (G_TC_FILT); an opaque surface
-    cmd(0xEF000000 | (1 << 20 if two else 0) | (1 << 19) | (6 << 9), 0x0F0A4000)
+    # texels filtered not converted (G_TC_FILT); an opaque surface. With
+    # @tlut the texels look their colours up: 2 RGBA16 ones (G_TT_RGBA16),
+    # 3 IA16 ones (G_TT_IA16).
+    cmd(0xEF000000 | (1 << 20 if two else 0) | (1 << 19) | (int(tlut) << 14) | (6 << 9), 0x0F0A4000)
     if two:
         # TEXEL0 * SHADE, then COMBINED * PRIMITIVE, the alpha likewise
         cmd(0xFC000000 | 0x121803, 0xFF0FFFFF)
@@ -141,9 +157,14 @@ def display_list(toggle, inter=False, cull=False, prim=False, two=False, ia=Fals
     cmd(0xF5000000 | (tfmt << 21) | (2 << 19) | (words << 9),
         ((th.bit_length() - 1) << 14) | ((tw.bit_length() - 1) << 4))
     cmd(0xF2000000, (0 << 24) | (((tw - 1) * 4) << 12) | ((th - 1) * 4))
+    if tlut:
+        load_palette(cmd, 0)
     cmd(0x04300040, VTX)                                                     # four vertices
     cmd(0xBF000000, (0 << 16) | (10 << 8) | 20)
     cmd(0xBF000000, (0 << 16) | (20 << 8) | 30)
+    if tlut:
+        # the same texture, the other palette: the second quad its colours
+        load_palette(cmd, 1)
     if toggle:
         cmd(0xBB000000, 0xFFFFFFFF)                                          # texture off
         cmd(0xBB000001, 0xFFFFFFFF)                                          # and on again
@@ -175,8 +196,19 @@ def shaped_texel(u, v):
     return (((u * 7) & 31) << 11) | (((v * 5) & 31) << 6) | ((((u + v) * 3 + 4) & 31) << 1) | 1
 
 
+def tlut_texel(u, v):
+    """the 16-bit texel at (u, v) of the TLUT texture: the high byte the
+    palette index, the low byte one that read as a colour gives another"""
+    return (((u * 7 + v * 13) & 255) << 8) | 0x5a
+
+
+def palette_colour(i, k):
+    """colour @i of palette @k, RGBA5551, none dark, the palettes apart"""
+    return ((16 | ((i + 5 * k) & 15)) << 11) | (((i * 5 + 7 * k) & 31) << 6) | ((((i >> 4) * 3 + 11 * k) & 31) << 1) | 1
+
+
 def cartridge(path, toggle, name, inter=False, known=True, areas=None, step=None, cull=False, prim=False, two=False,
-              ia=False, shape=None):
+              ia=False, shape=None, tlut=False):
     """@areas: what to put in RDRAM in place of this file's own, by address.
     @step: (address, value), the value added to the word there before each
     frame's task. @shape: (w, h), a texture of that size, its texels each
@@ -191,7 +223,7 @@ def cartridge(path, toggle, name, inter=False, known=True, areas=None, step=None
     li = lambda rt, v: [lui(rt, (v >> 16) & 0xffff), ori(rt, rt, v & 0xffff)]
 
     area = {}
-    area[DL] = display_list(toggle, inter, cull, prim, two, ia, shape)
+    area[DL] = display_list(toggle, inter, cull, prim, two, ia, shape, tlut)
     tw, th = shape or (32, 32)
     area[VTX] = b"".join(vertex(x, y, s, t) for (x0, y0) in ((-120, -50), (20, -50))
                          for (x, y, s, t) in ((x0, y0, 0, th), (x0 + 100, y0, tw, th),
@@ -210,7 +242,10 @@ def cartridge(path, toggle, name, inter=False, known=True, areas=None, step=None
         area[TEX] = b"".join(struct.pack(">BB", (0xe0 if (u ^ v) & 8 else 0x30) | (0x18 if u & 16 else 0), 8 * u + 4)
                              for v in range(32) for u in range(32))
     if shape:
-        area[TEX] = b"".join(struct.pack(">H", shaped_texel(u, v)) for v in range(th) for u in range(tw))
+        area[TEX] = b"".join(struct.pack(">H", (tlut_texel if tlut else shaped_texel)(u, v))
+                             for v in range(th) for u in range(tw))
+    if tlut:
+        area[PAL] = b"".join(struct.pack(">H", palette_colour(i, k)) for k in (0, 1) for i in range(256))
     # Glide64 tells the microcode by the sum of its first 3072 bytes as
     # words: this is Fast3D's (Super Mario 64)
     area[UCODE] = struct.pack(">I", 0x006bd77f if known else 0).ljust(0x1000, b"\0")
@@ -306,16 +341,17 @@ def modified_exactly(frame):
     return worst <= 1.0 and all(len(s) == 2 for s in seen), worst
 
 
-def sampled_exactly(frame, shape, bgra):
-    """The first quad, its edges found in the frame (the background is
-    black, no texel is), clear of the quad drawn over its middle and of
-    texel edges: each pixel the texel the quad's coordinates put there,
-    within two steps. A texture made at another size, or its coordinates
-    scaled for another, puts other texels there."""
+def sampled_exactly(frame, shape, bgra, colour=shaped_texel, second=False):
+    """The first quad (with @second, the second), its edges found in the
+    frame (the background is black, no texel is), clear of the quad drawn
+    over its middle and of texel edges: each pixel the colour (@colour of
+    the texel's u, v) the quad's coordinates put there, within two steps.
+    A texture made at another size, or its coordinates scaled for another,
+    puts other texels there."""
     tw, th = shape
     dark = lambda x, y: max(pixel(frame, x, y)) < 8
-    row, col = 160, 150
-    left = next((x for x in range(0, 320) if not dark(x, row)), None)
+    row, col = 160, (450 if second else 150)
+    left = next((x for x in range(320 if second else 0, 640 if second else 320) if not dark(x, row)), None)
     top = next((y for y in range(0, 480) if not dark(col, y)), None)
     if left is None or top is None:
         return False, "no quad"
@@ -333,8 +369,9 @@ def sampled_exactly(frame, shape, bgra):
             fu = (x - left + 0.5) * tw / float(right - left) + 0.5
             if fu % 1 < 0.25 or fu % 1 > 0.75:
                 continue
-            t = shaped_texel(int(fu) % tw, int(fv) % th)
-            want = [((t >> sh) & 31) << 3 | ((t >> sh) & 31) >> 2 for sh in (11, 6, 1)]
+            t = colour(int(fu) % tw, int(fv) % th)
+            # an RGBA5551 texel, or (an IA one) the three channels as they are
+            want = t if isinstance(t, tuple) else [((t >> sh) & 31) << 3 | ((t >> sh) & 31) >> 2 for sh in (11, 6, 1)]
             px = pixel(frame, x, y)
             got = (px[2], px[1], px[0]) if bgra else (px[0], px[1], px[2])
             worst = max(worst, max(abs(g - w) for g, w in zip(got, want)))
@@ -426,6 +463,25 @@ def main():
                     ok, detail = sampled_exactly(frame, shape, api == "GL")
                     print("glide64 %-28s %s (%s)" % ("%s, a %dx%d texture" % ((api,) + shape), "ok" if ok else "FAIL", detail))
                     failures += 0 if ok else 1
+            # 16-bit texels through the palette (G_TT_RGBA16): each texel's
+            # high byte picks the colour. The same texture again with
+            # another palette must be looked up afresh, not taken from the
+            # cache as the first quad's.
+            # With IA16 colours (G_TT_IA16) the intensity is the palette
+            # entry's high byte.
+            looks = {2: lambda u, v, k: palette_colour(tlut_texel(u, v) >> 8, k),
+                     3: lambda u, v, k: (palette_colour(tlut_texel(u, v) >> 8, k) >> 8,) * 3}
+            for mode, kind in ((2, "RGBA16"), (3, "IA16")):
+                trom = os.path.join(tmp, "tlut16_%d.z64" % mode)
+                cartridge(trom, False, "GLIDEN64 HLE DL", shape=(32, 16), tlut=mode)
+                for api, host, extra in (("GL", a.gl, None),) + ((("Vulkan", a.vk, {"GLIDEN64_VULKAN_STRICT": "1"}),) if a.vk else ()):
+                    frame = run(os.path.abspath(host), a.core, trom, tmp, "opengl", "glide64",
+                                "vulkan" if api == "Vulkan" else "opengl", extra)
+                    for k in (0, 1):
+                        look = lambda u, v, k=k, mode=mode: looks[mode](u, v, k)
+                        ok, detail = sampled_exactly(frame, (32, 16), api == "GL", look, k == 1)
+                        print("glide64 %-28s %s (%s)" % ("%s, %s TLUT, palette %d" % (api, kind, k), "ok" if ok else "FAIL", detail))
+                        failures += 0 if ok else 1
             if a.vk:
                 # Glide64 on Vulkan draws what it draws on GL
                 # and back faces culled: the second quad's
