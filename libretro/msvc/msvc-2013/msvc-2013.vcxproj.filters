@@ -834,7 +834,7 @@
     <ClCompile Include="..\..\..\mupen64plus-video-gliden64\src\Turbo3D.cpp">
       <Filter>Source Files\mupen64plus-video-gliden64</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\mupen64plus-video-gliden64\src\TxFilterStub.cpp">
+    <ClCompile Include="..\..\..\mupen64plus-video-gliden64\src\TxFilterStub.c">
       <Filter>Source Files\mupen64plus-video-gliden64</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\mupen64plus-video-gliden64\src\VI.cpp">
