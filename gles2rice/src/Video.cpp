@@ -681,17 +681,6 @@ void riceShowCFB(void)
     status.toShowCFB = true;
 }
 
-void riceReadScreen2(void *dest, int *width, int *height, int bFront)
-{
-    if (width == NULL || height == NULL)
-        return;
-
-    *width = windowSetting.uDisplayWidth;
-    *height = windowSetting.uDisplayHeight;
-
-    if (dest == NULL)
-        return;
-}
     
 
 void riceSetRenderingCallback(void (*callback)(int))

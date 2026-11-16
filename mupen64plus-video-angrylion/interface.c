@@ -405,7 +405,6 @@ void angrylion_set_dithering(unsigned dither_type)
 
 void angrylionChangeWindow (void) { }
 
-void angrylionReadScreen2(void *dest, int *width, int *height, int front) { }
  
 void angrylionDrawScreen (void) { }
 

@@ -72,7 +72,6 @@ void gli_window_stop(void);
 void gli_window_close(void);
 void gli_window_set_toggle_fullscreen(void);
 void gli_window_set_size(u32 _width, u32 _height);
-void gli_window_read_screen2(void *_dest, int *_width, int *_height, int _front);
 void gli_window_destroy_gfx_context(void);
 void gli_window_reinit_gfx_context(void);
 bool gli_window_resize(void);

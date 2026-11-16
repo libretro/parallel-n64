@@ -219,11 +219,6 @@ EXPORT m64p_error CALL gliden64PluginShutdown(void)
 	return M64ERR_SUCCESS;
 }
 
-EXPORT void CALL gliden64ReadScreen2(void *dest, int *width, int *height, int front)
-{
-	gli_window_read_screen2(dest, width, height, front);
-}
-
 EXPORT void CALL gliden64SetRenderingCallback(void (*callback)(int))
 {
 	renderCallback = callback;

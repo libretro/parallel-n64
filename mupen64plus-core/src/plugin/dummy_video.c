@@ -101,11 +101,6 @@ void dummyvideo_ViWidthChanged (void)
 
 }
 
-void dummyvideo_ReadScreen2 (void *dest, int *width, int *height, int front)
-{
-
-}
-
 void dummyvideo_SetRenderingCallback(void (*callback)(int))
 {
 

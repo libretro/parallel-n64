@@ -848,10 +848,6 @@ void parallelChangeWindow(void)
 {
 }
 
-void parallelReadScreen2(void *dest, int *width, int *height, int front)
-{
-}
-
 void parallelDrawScreen(void)
 {
 }

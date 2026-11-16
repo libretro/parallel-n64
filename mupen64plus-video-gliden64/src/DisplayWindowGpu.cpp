@@ -76,50 +76,6 @@ void gli_gl_reset_error(void)
 		opengl::Utils::isGLError();
 }
 
-void gli_window_read_screen2(void * _dest, int * _width, int * _height, int _front)
-{
-	if (_width == nullptr || _height == nullptr)
-		return;
-
-	*_width = g_window.screenWidth;
-	*_height = g_window.screenHeight;
-
-	if (_dest == nullptr)
-		return;
-
-	u8 *pBufferData = (u8*)malloc((*_width)*(*_height) * 4);
-	if (pBufferData == nullptr)
-		return;
-	u8 *pDest = (u8*)_dest;
-
-#if !defined(OS_ANDROID) && !defined(OS_IOS)
-	GLint oldMode;
-	glGetIntegerv(GL_READ_BUFFER, &oldMode);
-	if (_front != 0)
-		glReadBuffer(GL_FRONT);
-	else
-		glReadBuffer(GL_BACK);
-	glReadPixels(0, g_window.heightOffset, g_window.screenWidth, g_window.screenHeight, GL_RGBA, GL_UNSIGNED_BYTE, pBufferData);
-	glReadBuffer(oldMode);
-#else
-	glReadPixels(0, g_window.heightOffset, g_window.screenWidth, g_window.screenHeight, GL_RGBA, GL_UNSIGNED_BYTE, pBufferData);
-#endif
-
-	//Convert RGBA to RGB
-	for (s32 y = 0; y < *_height; ++y) {
-		u8 *ptr = pBufferData + ((*_width) * 4 * y);
-		for (s32 x = 0; x < *_width; ++x) {
-			pDest[x * 3] = ptr[0]; // red
-			pDest[x * 3 + 1] = ptr[1]; // green
-			pDest[x * 3 + 2] = ptr[2]; // blue
-			ptr += 4;
-		}
-		pDest += (*_width) * 3;
-	}
-
-	free(pBufferData);
-}
-
 s32 gli_gfx_max_texture_size(void)
 {
 	return gfxContext.getMaxTextureSize();

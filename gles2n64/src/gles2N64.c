@@ -204,13 +204,6 @@ void gln64FBGetFrameBufferInfo(void *p)
 {
 }
 
-// paulscode, API changed this to "ReadScreen2" in Mupen64Plus 1.99.4
-void gln64ReadScreen2(void *dest, int *width, int *height, int front)
-{
-   /* TODO: 'int front' was added in 1.99.4.  What to do with this here? */
-   OGL_ReadScreen(dest, width, height);
-}
-
 void gln64SetRenderingCallback(void (*callback)())
 {
    renderCallback = callback;
