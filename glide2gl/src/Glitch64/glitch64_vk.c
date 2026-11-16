@@ -102,7 +102,6 @@ static struct
    unsigned lfb_color, lfb_fbo;
    unsigned lfb_tex, depth_tex;
    vkr_readback *rb;
-   uint8_t *buf;          /* the window's size in RGBA8 */
    uint8_t *staging;      /* a texture's texels, when the ring lends none */
 
    vk_vertex *verts;
@@ -879,12 +878,11 @@ uint32_t vk_grSstWinOpen(void)
       return 0;
    vkr_set_window(vk.r, (unsigned)width, (unsigned)height);
 
-   vk.buf = (uint8_t*)malloc((size_t)width * height * 4);
    vk.staging = (uint8_t*)malloc(2048u * 2048u * 4u);
    vk.rb = vkr_readback_new(vk.r, (size_t)width * height * 4);
    vk.combiner = make_program(0);
    vk.depth = make_program(1);
-   if (!vk.buf || !vk.staging || !vk.rb || !vk.combiner || !vk.depth)
+   if (!vk.staging || !vk.rb || !vk.combiner || !vk.depth)
    {
       vk_grSstWinClose();
       return 0;
@@ -945,9 +943,8 @@ void vk_grSstWinClose(void)
    vk.combiner = vk.depth = NULL;
    vk.rb = NULL;
    vk.color = vk.zbuf = vk.fbo = vk.lfb_color = vk.lfb_fbo = vk.lfb_tex = vk.depth_tex = 0;
-   free(vk.buf);
    free(vk.staging);
-   vk.buf = vk.staging = NULL;
+   vk.staging = NULL;
 }
 
 void glitch64_vk_context_destroy(void)
@@ -988,18 +985,15 @@ void glitch64_vk_present(void)
 
 /* ---- the frame read back ---- */
 
+/* The rows where the GPU put them: the readback's memory, lent until the
+ * next read (as the reads promise), not copied out */
 static const uint8_t *read_rect(unsigned fbo, int x, int y, unsigned w, unsigned h)
 {
-   const uint8_t *src;
    vkr_fbo_bind(vk.r, 1, 0, fbo);
    vkr_readback_fbo(vk.r, vk.rb, x, y, w, h, 0);
    vkr_fbo_bind(vk.r, 1, 0, vk.fbo);
    vkr_readback_ready(vk.r, vk.rb, 1);
-   src = (const uint8_t*)vkr_readback_data(vk.rb);
-   if (!src)
-      return NULL;
-   memcpy(vk.buf, src, (size_t)w * h * 4);
-   return vk.buf;
+   return (const uint8_t*)vkr_readback_data(vk.rb);
 }
 
 int vk_grLfbReadScaledInit(void)
@@ -1021,7 +1015,7 @@ const uint8_t *vk_grLfbReadScaled(int32_t x, int32_t y, int32_t w, int32_t h,
       uint32_t dw, uint32_t dh, uint32_t *stride)
 {
    vk_flush();
-   if (!vk.lfb_fbo || !vk.buf || w <= 0 || h <= 0 || dw == 0 || dh == 0
+   if (!vk.lfb_fbo || !vk.rb || w <= 0 || h <= 0 || dw == 0 || dh == 0
          || dw > LFB_SCALED_MAX || dh > LFB_SCALED_MAX
          || (size_t)dw * dh > (size_t)width * height)
       return NULL;

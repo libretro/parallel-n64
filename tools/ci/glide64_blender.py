@@ -110,9 +110,11 @@ def rdp_list():
     return c
 
 
-def cartridge(path, name=b"GLIDE64 BLENDER", cmds=None, extra=b""):
+def cartridge(path, name=b"GLIDE64 BLENDER", cmds=None, extra=b"", read_fb=False):
     """a cartridge handing the RDP @cmds (rdp_list()'s by default) at each
-    vertical blank; @extra lands in RDRAM straight after them"""
+    vertical blank; @extra lands in RDRAM straight after them. With
+    @read_fb the CPU reads the colour image once the RDP is done, as a
+    game reading its frame back does"""
     t0, t1, t2, t3 = 8, 9, 10, 11
     lui = lambda rt, imm: mips(0x0f, 0, rt, imm)
     ori = lambda rt, rs, imm: mips(0x0d, rs, rt, imm)
@@ -142,6 +144,8 @@ def cartridge(path, name=b"GLIDE64 BLENDER", cmds=None, extra=b""):
     prog += li(t1, LIST) + [sw(t1, 0, t0)]
     prog += li(t1, LIST + listed) + [sw(t1, 4, t0)]
     prog += [lw(t1, 0, t2), ori(t3, 0, 0x200), beq(t1, t3, -3), 0]
+    if read_fb:
+        prog += [lui(t3, 0xA000 | (FB >> 16)), lw(t1, 0, t3)]
     prog += [beq(0, 0, start - len(prog) - 1), 0]
 
     image = bytearray(max(0x100000, PAYLOAD + len(payload)))
