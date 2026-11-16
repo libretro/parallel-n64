@@ -51,6 +51,7 @@ typedef struct _shader_program_key
    /* the N64 combiner (glitch64_n64_key), or 0 for the Glide one */
    uint32_t n64_key0;
    uint32_t n64_key1;
+   uint32_t n64_key2;
    GLuint program_object;
    int texture0_location;
    int texture1_location;
@@ -68,11 +69,14 @@ typedef struct _shader_program_key
    int n64KeyCenter_location;
    int n64KeyScale_location;
    int fogAlpha_location;
+   int n64Blend_location;
    /* the shared program's own: the inputs and options it reads */
    int n64Ops_location;
    int n64Flags0_location;
    int n64Flags1_location;
    int n64Flags2_location;
+   int n64Blend0_location;
+   int n64Blend1_location;
    /* its program still linking (1), or left for the next session (2):
     * the shared program draws for it until then */
    int pending;
@@ -105,11 +109,12 @@ static int dither_enabled;
 
 /* the N64 combiner the next draws run, and its
  * inputs: prim, env, K4 K5 PRIM_LOD_FRAC LOD_FRACTION, the levels */
-static uint32_t n64_key[2];
+static uint32_t n64_key[GLITCH64_N64_KEY_WORDS];
 static float n64_values[4][4];
 static float n64_key_values[2][3];
 /* the fog colour the uniforms have */
 static uint32_t n64_fog_rgba;
+static uint32_t n64_blend_rgba;
 /* dFdx and dFdy, for LOD_FRACTION per pixel */
 static int n64_derivatives;
 
@@ -162,6 +167,7 @@ SHADER_HEADER
 "uniform vec3 n64KeyCenter;     \n"
 "uniform vec3 n64KeyScale;      \n"
 "uniform float fogAlpha;        \n"
+"uniform vec3 n64Blend;         \n"
 "#define TEX0             texture2D(texture0, vTexCoord[0].xy) \n" \
 "#define TEX0_OFFSET(off) texture2D(texture0, vTexCoord[0].xy - off/exactSizes.xy) \n" \
 "#define TEX1             texture2D(texture1, vTexCoord[1].xy) \n" \
@@ -225,15 +231,30 @@ static const char* fragment_shader_end =
 "}\n"
 ;
 
+/* an N64 program's: its alpha test is on the combiner's alpha, before the
+ * blender (glitch64_n64_fragment) */
+static const char* fragment_shader_close =
+"}\n"
+;
+
 /* The shared program's: glitch64_n64_inputs' indices read through
- * n64In, the options from n64Flags0 (two cycles, fog colour, fog alpha,
- * per-pixel LOD), n64Flags1 (fog, dither, the 3-point filter on unit 0
- * and on unit 1) and n64Flags2 (noise read). Goes between the header's declarations and main(). */
+ * n64In, the options from n64Flags0 (two cycles, the blender's first
+ * cycle run, its second run whole, per-pixel LOD), n64Flags1 (fog,
+ * dither, the 3-point filter on unit 0 and on unit 1) and n64Flags2
+ * (noise read, the pixel's alpha into the blender its full coverage);
+ * the blender's cycles as P, A, M, B in n64Blend0 and n64Blend1. Goes
+ * between the header's declarations and main(). */
 static const char *uber_inputs =
 "uniform int n64Ops[16];        \n"
 "uniform vec4 n64Flags0;        \n"
 "uniform vec4 n64Flags1;        \n"
 "uniform vec4 n64Flags2;        \n"
+"uniform vec4 n64Blend0;        \n"
+"uniform vec4 n64Blend1;        \n"
+"vec3 n64BlC(float s, vec3 C) { return s < 1.5 ? C : (s < 2.5 ? n64Blend : fogColor); } \n"
+"float n64BlAl(float s, float a, float sh) \n"
+"{ return s < 0.5 ? a : (s < 1.5 ? fogAlpha : (s < 2.5 ? clamp(sh, 0.0, 1.0) : 0.0)); } \n"
+"float n64BlB(float s, float a) { return s < 0.5 ? 1.0 - a : (s < 2.5 ? 1.0 : 0.0); } \n"
 "vec4 n64In(int i, vec4 C, vec4 T0, vec4 T1, vec4 sh, float lod, float noise) \n"
 "{ \n"
 "  if (i < 8) { \n"
@@ -333,9 +354,19 @@ UBER_INPUTS
 "  if (n64Flags0.x > 0.5) \n"
 UBER_CYCLE(0)
 UBER_CYCLE(1)
-"  if (n64Flags0.y > 0.5) n64C.rgb = fogColor; \n"
-"  if (n64Flags0.z > 0.5) n64C.a = fogAlpha; \n"
-"  gl_FragColor = clamp(n64C, 0.0, 1.0); \n"
+"  n64C = clamp(n64C, 0.0, 1.0); \n"
+"  if (n64C.a <= alphaRef) discard; \n"
+"  float n64InA = n64Flags2.y > 0.5 ? 1.0 : n64C.a; \n"
+"  if (n64Flags0.y > 0.5) { \n"
+"    float a = n64BlAl(n64Blend0.y, n64InA, sh.a); \n"
+"    n64C.rgb = clamp(n64BlC(n64Blend0.x, n64C.rgb) * a + n64BlC(n64Blend0.z, n64C.rgb) * n64BlB(n64Blend0.w, a), 0.0, 1.0); \n"
+"  } \n"
+"  float n64A = n64BlAl(n64Blend1.y, n64InA, sh.a); \n"
+"  if (n64Flags0.z > 0.5) \n"
+"    n64C.rgb = clamp(n64BlC(n64Blend1.x, n64C.rgb) * n64A + n64BlC(n64Blend1.z, n64C.rgb) * n64BlB(n64Blend1.w, n64A), 0.0, 1.0); \n"
+"  else \n"
+"    n64C.rgb = n64BlC(n64Blend1.x, n64C.rgb); \n"
+"  gl_FragColor = vec4(n64C.rgb, n64A); \n"
 "  if (n64Flags1.x > 0.5) \n"
 "    gl_FragColor.rgb = mix(fogColor, gl_FragColor.rgb, vTexCoord[0].b / vColorW); \n"
 ;
@@ -501,6 +532,9 @@ static void shader_find_uniforms(shader_program_key *shader)
    shader->n64KeyCenter_location   = glGetUniformLocation(prog, "n64KeyCenter");
    shader->n64KeyScale_location    = glGetUniformLocation(prog, "n64KeyScale");
    shader->fogAlpha_location       = glGetUniformLocation(prog, "fogAlpha");
+   shader->n64Blend_location       = glGetUniformLocation(prog, "n64Blend");
+   shader->n64Blend0_location      = glGetUniformLocation(prog, "n64Blend0");
+   shader->n64Blend1_location      = glGetUniformLocation(prog, "n64Blend1");
    shader->n64Ops_location         = glGetUniformLocation(prog, "n64Ops");
    shader->n64Flags0_location      = glGetUniformLocation(prog, "n64Flags0");
    shader->n64Flags1_location      = glGetUniformLocation(prog, "n64Flags1");
@@ -551,7 +585,7 @@ static void finish_shader_program_setup(shader_program_key *shader)
 #define FRAGMENT_SHADER_SIZE (4096 * 2)
 #define SHADER_CACHE_SIZE    (4u * 1024u * 1024u)
 #define SHADER_CACHE_MAGIC   0x47324c49u
-#define SHADER_CACHE_FIELDS  6
+#define SHADER_CACHE_FIELDS  7
 #define SHADER_CACHE_RECORD  ((SHADER_CACHE_FIELDS + 1) * sizeof(int32_t))
 
 static char   *cache_arena = NULL;
@@ -573,6 +607,7 @@ static void combiner_cache_key(const shader_program_key *shader, int32_t *fields
    fields[3] = shader->three_point_filter1;
    fields[4] = (int32_t)shader->n64_key0;
    fields[5] = (int32_t)shader->n64_key1;
+   fields[6] = (int32_t)shader->n64_key2;
 }
 
 static void combiner_cache_record(const shader_program_key *shader)
@@ -632,6 +667,7 @@ static void combiner_cache_load(void)
          shader.three_point_filter1 = fields[3];
          shader.n64_key0            = (uint32_t)fields[4];
          shader.n64_key1            = (uint32_t)fields[5];
+         shader.n64_key2            = (uint32_t)fields[6];
 
          memcpy(fragment_shader, p + pos + SHADER_CACHE_RECORD, len);
          fragment_shader[len] = '\0';
@@ -707,7 +743,7 @@ static void init_uber_program(void)
    if (n64_derivatives)
       strcat(fragment_shader, uber_lod);
    strcat(fragment_shader, uber_body_b);
-   strcat(fragment_shader, fragment_shader_end);
+   strcat(fragment_shader, fragment_shader_close);
 
    start_shader_program(&uber_program);
    {
@@ -813,6 +849,8 @@ static void n64_upload(const shader_program_key *prog)
    glUniform3f(prog->fogColor_location, g_gdp.fog_color.r / 255.0f, g_gdp.fog_color.g / 255.0f,
          g_gdp.fog_color.b / 255.0f);
    glUniform1f(prog->fogAlpha_location, g_gdp.fog_color.a / 255.0f);
+   glUniform3f(prog->n64Blend_location, g_gdp.blend_color.r / 255.0f, g_gdp.blend_color.g / 255.0f,
+         g_gdp.blend_color.b / 255.0f);
 }
 
 static void update_uniforms(const shader_program_key *prog)
@@ -850,14 +888,19 @@ static void use_uber_program(void)
    glUseProgram(uber_program.program_object);
    glUniform1iv(uber_program.n64Ops_location, 16, ops);
    glUniform4f(uber_program.n64Flags0_location, n64.two_cycle ? 1.0f : 0.0f,
-         (n64.flags & GLITCH64_N64_FOG_RGB) ? 1.0f : 0.0f, (n64.flags & GLITCH64_N64_FOG_ALPHA) ? 1.0f : 0.0f,
+         (n64.flags & GLITCH64_N64_BLEND0) ? 1.0f : 0.0f, (n64.flags & GLITCH64_N64_BLEND1) ? 1.0f : 0.0f,
          (n64.flags & GLITCH64_N64_LOD) ? 1.0f : 0.0f);
+   for (i = 0; i < 2; i++)
+      glUniform4f(i ? uber_program.n64Blend1_location : uber_program.n64Blend0_location,
+            (float)GLITCH64_BL_P(n64.blend[i]), (float)GLITCH64_BL_A(n64.blend[i]),
+            (float)GLITCH64_BL_M(n64.blend[i]), (float)GLITCH64_BL_B(n64.blend[i]));
    glUniform4f(uber_program.n64Flags1_location, fog_enabled ? 1.0f : 0.0f, dither_enabled ? 1.0f : 0.0f,
          three_point_filter[0] ? 1.0f : 0.0f, three_point_filter[1] ? 1.0f : 0.0f);
    /* computed only where read: the hash costs, and lowp llvmpipe fell
     * over it in a shader this size */
    glUniform4f(uber_program.n64Flags2_location,
-         ((n64.two_cycle && n64.rgb[0][0] == 7) || n64.rgb[1][0] == 7) ? 1.0f : 0.0f, 0.0f, 0.0f, 0.0f);
+         ((n64.two_cycle && n64.rgb[0][0] == 7) || n64.rgb[1][0] == 7) ? 1.0f : 0.0f,
+         (n64.flags & GLITCH64_N64_CVG_ALPHA) ? 1.0f : 0.0f, 0.0f, 0.0f);
    update_uniforms(&uber_program);
 }
 
@@ -874,6 +917,7 @@ void compile_shader(void)
       shader_program_key *program = &shader_programs[i];
       if (program->n64_key0 == n64_key[0] &&
             program->n64_key1 == n64_key[1] &&
+            program->n64_key2 == n64_key[2] &&
             program->fog_enabled == fog_enabled &&
             program->dither_enabled == dither_enabled &&
             program->three_point_filter0 == three_point_filter[0] &&
@@ -915,6 +959,7 @@ void compile_shader(void)
    shader.three_point_filter1   = three_point_filter[1];
    shader.n64_key0              = n64_key[0];
    shader.n64_key1              = n64_key[1];
+   shader.n64_key2              = n64_key[2];
 
    glitch64_n64_from_key(n64_key, &n64);
 #if defined(HAVE_OPENGLES)
@@ -935,7 +980,7 @@ void compile_shader(void)
    glitch64_n64_fragment(&n64, fragment_shader, FRAGMENT_SHADER_SIZE);
    if (fog_enabled)
       strcat(fragment_shader, fragment_shader_fog);
-   strcat(fragment_shader, fragment_shader_end);
+   strcat(fragment_shader, fragment_shader_close);
 
    /* kept for the next session's load either way */
    combiner_cache_record(&shader);
@@ -1110,15 +1155,14 @@ void grN64Combine(const glitch64_n64_combiner *c)
 {
    GLITCH64_VK(vk_grN64Combine(c));
    glitch64_n64_combiner m = *c;
-   uint32_t key[2];
+   uint32_t key[GLITCH64_N64_KEY_WORDS];
    if (!n64_derivatives)
       m.flags &= ~GLITCH64_N64_LOD;
    glitch64_n64_key(&m, key);
-   if (key[0] != n64_key[0] || key[1] != n64_key[1])
+   if (memcmp(key, n64_key, sizeof(key)))
    {
       glitch64_flush();
-      n64_key[0] = key[0];
-      n64_key[1] = key[1];
+      memcpy(n64_key, key, sizeof(key));
       need_to_compile = 1;
    }
 }
@@ -1133,10 +1177,12 @@ void grN64Constants(const float prim[4], const float env[4], const float consts[
          && !memcmp(n64_values[3], level, sizeof(n64_values[3]))
          && !memcmp(n64_key_values[0], key_center, sizeof(n64_key_values[0]))
          && !memcmp(n64_key_values[1], key_scale, sizeof(n64_key_values[1]))
-         && n64_fog_rgba == g_gdp.fog_color.total)
+         && n64_fog_rgba == g_gdp.fog_color.total
+         && n64_blend_rgba == g_gdp.blend_color.total)
       return;
    glitch64_flush();
    n64_fog_rgba = g_gdp.fog_color.total;
+   n64_blend_rgba = g_gdp.blend_color.total;
    memcpy(n64_values[0], prim, sizeof(n64_values[0]));
    memcpy(n64_values[1], env, sizeof(n64_values[1]));
    memcpy(n64_values[2], consts, sizeof(n64_values[2]));

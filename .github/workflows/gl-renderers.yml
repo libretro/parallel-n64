@@ -107,5 +107,8 @@ jobs:
       - name: Glide64 RDP trapezoids
         run: env ${{ matrix.sanitizer_env }} python3 tools/ci/glide64_lle_trapezoid.py --core ./parallel_n64_libretro.so --gl ./lrhost_gl --vk ./lrhost_vk
 
+      - name: Glide64's blender against angrylion's
+        run: env ${{ matrix.sanitizer_env }} python3 tools/ci/glide64_blender.py --core ./parallel_n64_libretro.so --gl ./lrhost_gl --vk ./lrhost_vk
+
       - name: GLideN64 on Vulkan for the frontend's temporal upscaler
         run: env ${{ matrix.sanitizer_env }} python3 tools/ci/gliden64_upscaler.py --core ./parallel_n64_libretro.so --vk ./lrhost_vk

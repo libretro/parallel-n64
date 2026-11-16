@@ -1042,45 +1042,12 @@ void update(void)
       }
    }
 
-   //Added by Gonetz.
-   if (settings.fog && (g_gdp.flags & UPDATE_FOG_ENABLED))
+   /* fog is the blender's (Combine.c): Glide's table fog stays off */
+   if (g_gdp.flags & UPDATE_FOG_ENABLED)
    {
-      uint16_t blender = (uint16_t)(gDP.otherMode.l >> 16);
       g_gdp.flags ^= UPDATE_FOG_ENABLED;
-
-      if (rdp.flags & FOG_ENABLED)
-      {
-         if((gSP.fog.multiplier > 0) && (gDP.otherMode.c1_m1a==3 || gDP.otherMode.c1_m2a == 3 || gDP.otherMode.c2_m1a == 3 || gDP.otherMode.c2_m2a == 3))
-         {
-            grFogMode(GR_FOG_WITH_TABLE_ON_FOGCOORD_EXT);
-            rdp.fog_mode = FOG_MODE_ENABLED;
-            LRDP("fog enabled \n");
-         }
-         else
-         {
-            LRDP("fog disabled in blender\n");
-            rdp.fog_mode = FOG_MODE_DISABLED;
-            grFogMode(GR_FOG_DISABLE);
-         }
-      }
-      else if (blender == 0xc410 || blender == 0xc411 || blender == 0xf500)
-      {
-         grFogMode(GR_FOG_WITH_TABLE_ON_FOGCOORD_EXT);
-         rdp.fog_mode = FOG_MODE_BLEND;
-         LRDP("fog blend \n");
-      }
-      else if (blender == 0x04d1)
-      {
-         grFogMode(GR_FOG_WITH_TABLE_ON_FOGCOORD_EXT);
-         rdp.fog_mode = FOG_MODE_BLEND_INVERSE;
-         LRDP("fog blend \n");
-      }
-      else
-      {
-         LRDP("fog disabled\n");
-         rdp.fog_mode = FOG_MODE_DISABLED;
-         grFogMode(GR_FOG_DISABLE);
-      }
+      rdp.fog_mode = FOG_MODE_DISABLED;
+      grFogMode(GR_FOG_DISABLE);
    }
 
    if (g_gdp.flags & UPDATE_VIEWPORT)

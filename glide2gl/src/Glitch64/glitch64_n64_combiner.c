@@ -96,7 +96,7 @@ static const char *alpha_input(int second, int slot, unsigned v, char *buf)
    return "0.0";
 }
 
-void glitch64_n64_key(const glitch64_n64_combiner *c, uint32_t key[2])
+void glitch64_n64_key(const glitch64_n64_combiner *c, uint32_t key[GLITCH64_N64_KEY_WORDS])
 {
    unsigned i;
    key[0] = 0;
@@ -109,12 +109,12 @@ void glitch64_n64_key(const glitch64_n64_combiner *c, uint32_t key[2])
             | ((c->alpha[i][2] & 7) << 6) | ((c->alpha[i][3] & 7) << 9)) << (12 * i);
    }
    key[1] |= (uint32_t)(c->two_cycle ? 1 : 0) << 24;
-   key[1] |= (uint32_t)(c->flags & 7) << 25;
    /* a key is never 0: 0 is no N64 combiner */
    key[1] |= 1u << 31;
+   key[2] = (uint32_t)c->flags | ((uint32_t)c->blend[0] << 8) | ((uint32_t)c->blend[1] << 16);
 }
 
-void glitch64_n64_from_key(const uint32_t key[2], glitch64_n64_combiner *c)
+void glitch64_n64_from_key(const uint32_t key[GLITCH64_N64_KEY_WORDS], glitch64_n64_combiner *c)
 {
    unsigned i;
    for (i = 0; i < 2; i++)
@@ -130,7 +130,9 @@ void glitch64_n64_from_key(const uint32_t key[2], glitch64_n64_combiner *c)
       c->alpha[i][3] = (uint8_t)((a >> 9) & 7);
    }
    c->two_cycle = (uint8_t)((key[1] >> 24) & 1);
-   c->flags = (uint8_t)((key[1] >> 25) & 7);
+   c->flags = (uint8_t)(key[2] & 0xff);
+   c->blend[0] = (uint8_t)((key[2] >> 8) & 0xff);
+   c->blend[1] = (uint8_t)((key[2] >> 16) & 0xff);
 }
 
 static int texel_in(int second, unsigned which, int alpha)
@@ -268,6 +270,60 @@ static int cycle(const glitch64_n64_combiner *c, unsigned i, int second, char *o
    return ok;
 }
 
+/* the blender's colour P or M selects (never the memory colour here) */
+static const char *bl_colour(unsigned s)
+{
+   switch (s)
+   {
+      case GLITCH64_BL_BLEND: return "n64Blend";
+      case GLITCH64_BL_FOG:   return "fogColor";
+   }
+   return "n64C.rgb";
+}
+
+/* the alpha A selects */
+static const char *bl_alpha(const glitch64_n64_combiner *c, unsigned s)
+{
+   switch (s)
+   {
+      case GLITCH64_BL_A_IN:    return (c->flags & GLITCH64_N64_CVG_ALPHA) ? "1.0" : "n64C.a";
+      case GLITCH64_BL_A_FOG:   return "fogAlpha";
+      case GLITCH64_BL_A_SHADE: return "clamp(vFrontColor.a, 0.0, 1.0)";
+   }
+   return "0.0";
+}
+
+/* A blender cycle: with @whole, P*A + M*B, the pixel's colour then;
+ * else the colour P selects and the alpha A selects, gl_FragColor, for
+ * the GPU to blend with memory. The last one sets gl_FragColor. */
+static int blend_cycle(const glitch64_n64_combiner *c, unsigned x, int whole, char *out, size_t cap, size_t *len)
+{
+   int ok = 1;
+   const char *a = bl_alpha(c, GLITCH64_BL_A(x));
+   ok &= put(out, cap, len, "  { float n64BlA = ");
+   ok &= put(out, cap, len, a);
+   ok &= put(out, cap, len, "; \n");
+   if (whole)
+   {
+      static const char *const b[4] = { "(1.0 - n64BlA)", "1.0", "1.0", "0.0" };
+      ok &= put(out, cap, len, "    n64C.rgb = clamp(");
+      ok &= put(out, cap, len, bl_colour(GLITCH64_BL_P(x)));
+      ok &= put(out, cap, len, " * n64BlA + ");
+      ok &= put(out, cap, len, bl_colour(GLITCH64_BL_M(x)));
+      ok &= put(out, cap, len, " * ");
+      ok &= put(out, cap, len, b[GLITCH64_BL_B(x)]);
+      ok &= put(out, cap, len, ", 0.0, 1.0); \n");
+   }
+   else
+   {
+      ok &= put(out, cap, len, "    n64C.rgb = ");
+      ok &= put(out, cap, len, bl_colour(GLITCH64_BL_P(x)));
+      ok &= put(out, cap, len, "; \n");
+   }
+   ok &= put(out, cap, len, "    gl_FragColor = vec4(n64C.rgb, n64BlA); } \n");
+   return ok;
+}
+
 size_t glitch64_n64_fragment(const glitch64_n64_combiner *c, char *out, size_t cap)
 {
    size_t len = strlen(out);
@@ -315,11 +371,11 @@ size_t glitch64_n64_fragment(const glitch64_n64_combiner *c, char *out, size_t c
    for (i = first; i < 2; i++)
       ok &= cycle(c, i, c->two_cycle && i == 1, out, cap, &len);
 
-   if (c->flags & GLITCH64_N64_FOG_RGB)
-      ok &= put(out, cap, &len, "  n64C.rgb = fogColor; \n");
-   if (c->flags & GLITCH64_N64_FOG_ALPHA)
-      ok &= put(out, cap, &len, "  n64C.a = fogAlpha; \n");
-   ok &= put(out, cap, &len, "  gl_FragColor = clamp(n64C, 0.0, 1.0); \n");
+   /* the alpha test, on the combiner's alpha, before the blender */
+   ok &= put(out, cap, &len, "  n64C = clamp(n64C, 0.0, 1.0); \n  if (n64C.a <= alphaRef) discard; \n");
+   if (c->flags & GLITCH64_N64_BLEND0)
+      ok &= blend_cycle(c, c->blend[0], 1, out, cap, &len);
+   ok &= blend_cycle(c, c->blend[1], (c->flags & GLITCH64_N64_BLEND1) != 0, out, cap, &len);
 
    if (!ok)
    {

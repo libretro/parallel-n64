@@ -43,14 +43,13 @@ typedef struct
 {
    /* the tiles the combiner reads: bit 0 tile 0, bit 1 tile 1 */
    uint32_t tex;
-   /* the blend factors CombineBlender picks */
+   /* the blend factors the blender picks (Combine.c) */
    uint32_t abf1, abf2;
 } COMBINE;
 
 extern COMBINE cmb;
 
 void Combine(void);
-void CombineBlender(void);
 void InitCombine(void);
 /* Glide64's own draws: the texel of the tile in @tmu (with the fog colour
  * in place of its colour), or a constant RGBA. The next Combine puts the

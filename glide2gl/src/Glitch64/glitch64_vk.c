@@ -70,10 +70,10 @@ typedef struct vk_own
 } vk_own;
 
 /* Every blend function Glide64 sets, as the renderer has them: the colour's
- * and the alpha's. They are those of Combine.c's A_BLEND and the blend
+ * and the alpha's. They are those the blender of Combine.c gives and the blend
  * functions of glide64_gDP.c, TexCache.c and Framebuffer_glide64.c; the
  * first is blending off. */
-#define VK_BLENDS 11
+#define VK_BLENDS 12
 static const unsigned char vk_blends[VK_BLENDS][4] = {
    { 0, 0, 0, 0 },
    { VKR_BLEND_ONE, VKR_BLEND_ZERO, VKR_BLEND_ZERO, VKR_BLEND_ZERO },
@@ -85,13 +85,14 @@ static const unsigned char vk_blends[VK_BLENDS][4] = {
    { VKR_BLEND_INV_SRC_ALPHA, VKR_BLEND_SRC_ALPHA, VKR_BLEND_ZERO, VKR_BLEND_ZERO },
    { VKR_BLEND_ZERO, VKR_BLEND_SRC_ALPHA, VKR_BLEND_ZERO, VKR_BLEND_ZERO },
    { VKR_BLEND_ONE, VKR_BLEND_ZERO, VKR_BLEND_ONE, VKR_BLEND_ZERO },
-   { VKR_BLEND_SRC_ALPHA, VKR_BLEND_INV_SRC_ALPHA, VKR_BLEND_ONE, VKR_BLEND_ZERO }
+   { VKR_BLEND_SRC_ALPHA, VKR_BLEND_INV_SRC_ALPHA, VKR_BLEND_ONE, VKR_BLEND_ZERO },
+   { VKR_BLEND_ONE, VKR_BLEND_SRC_ALPHA, VKR_BLEND_ZERO, VKR_BLEND_ZERO }
 };
 
 /* the combiners a game met, kept for its next session: each with the blend
  * functions it drew with */
 #define VK_JOURNAL_MAGIC   0x47364b4au
-#define VK_JOURNAL_VERSION 1u
+#define VK_JOURNAL_VERSION 2u
 
 static struct
 {
@@ -112,8 +113,9 @@ static struct
    glitch64_vk_values values;
    int ops[16];
    int flags;
-   uint32_t key[2];
+   uint32_t key[GLITCH64_N64_KEY_WORDS];
    uint32_t fog_rgba;
+   uint32_t blend_rgba;
 
    int alpha_test, alpha_ref, alpha_func;
    int fog_mode;
@@ -141,17 +143,21 @@ static struct
 static void set_combiner(const glitch64_n64_combiner *c)
 {
    int i;
-   vk.flags &= ~(G64VK_TWO_CYCLE | G64VK_FOG_RGB | G64VK_FOG_ALPHA | G64VK_LOD_PIXEL | G64VK_NOISE);
+   vk.flags &= ~(G64VK_TWO_CYCLE | G64VK_BLEND0 | G64VK_BLEND1 | G64VK_LOD_PIXEL | G64VK_NOISE | G64VK_CVG_ALPHA
+         | (int)G64VK_BLEND_BYTES);
    glitch64_n64_inputs(c, vk.ops);
    for (i = 0; i < 2; i++)
       if ((c->two_cycle || i == 1) && c->rgb[i][0] == 7)
          vk.flags |= G64VK_NOISE;
    if (c->two_cycle)
       vk.flags |= G64VK_TWO_CYCLE;
-   if (c->flags & GLITCH64_N64_FOG_RGB)
-      vk.flags |= G64VK_FOG_RGB;
-   if (c->flags & GLITCH64_N64_FOG_ALPHA)
-      vk.flags |= G64VK_FOG_ALPHA;
+   if (c->flags & GLITCH64_N64_BLEND0)
+      vk.flags |= G64VK_BLEND0;
+   if (c->flags & GLITCH64_N64_BLEND1)
+      vk.flags |= G64VK_BLEND1;
+   if (c->flags & GLITCH64_N64_CVG_ALPHA)
+      vk.flags |= G64VK_CVG_ALPHA;
+   vk.flags |= (int)(((uint32_t)c->blend[0] << G64VK_BLEND0_SHIFT) | ((uint32_t)c->blend[1] << G64VK_BLEND1_SHIFT));
    if (c->flags & GLITCH64_N64_LOD)
       vk.flags |= G64VK_LOD_PIXEL;
 }
@@ -454,13 +460,12 @@ void vk_grStippleMode(int32_t mode)
 
 void vk_grN64Combine(const glitch64_n64_combiner *c)
 {
-   uint32_t key[2];
+   uint32_t key[GLITCH64_N64_KEY_WORDS];
    glitch64_n64_key(c, key);
-   if (key[0] == vk.key[0] && key[1] == vk.key[1])
+   if (!memcmp(key, vk.key, sizeof(key)))
       return;
    vk_flush();
-   vk.key[0] = key[0];
-   vk.key[1] = key[1];
+   memcpy(vk.key, key, sizeof(key));
    set_combiner(c);
 }
 
@@ -470,10 +475,15 @@ void vk_grN64Constants(const float prim[4], const float env[4], const float cons
    if (!memcmp(vk.values.prim, prim, 16) && !memcmp(vk.values.env, env, 16)
          && !memcmp(vk.values.consts, consts, 16) && !memcmp(vk.values.level, level, 16)
          && !memcmp(vk.values.key_center, key_center, 12) && !memcmp(vk.values.key_scale, key_scale, 12)
-         && vk.fog_rgba == g_gdp.fog_color.total)
+         && vk.fog_rgba == g_gdp.fog_color.total && vk.blend_rgba == g_gdp.blend_color.total)
       return;
    vk_flush();
    vk.fog_rgba = g_gdp.fog_color.total;
+   vk.blend_rgba = g_gdp.blend_color.total;
+   vk.values.blend_color[0] = g_gdp.blend_color.r / 255.f;
+   vk.values.blend_color[1] = g_gdp.blend_color.g / 255.f;
+   vk.values.blend_color[2] = g_gdp.blend_color.b / 255.f;
+   vk.values.blend_color[3] = g_gdp.blend_color.a / 255.f;
    vk.values.fog_color[0] = g_gdp.fog_color.r / 255.f;
    vk.values.fog_color[1] = g_gdp.fog_color.g / 255.f;
    vk.values.fog_color[2] = g_gdp.fog_color.b / 255.f;
@@ -649,12 +659,13 @@ static void reset_state(void)
    vk.bias = NO_BIAS;
    vk.blend_index = 0;
    vk.fog_rgba = ~g_gdp.fog_color.total;
+   vk.blend_rgba = ~g_gdp.blend_color.total;
    for (i = 0; i < 4; i++)
    {
       vk.clip[i] = ~0u;
       vk.blend[i] = ~0u;
    }
-   vk.key[0] = vk.key[1] = 0;
+   memset(vk.key, 0, sizeof(vk.key));
    vk.alpha_test = 0;
    vk.alpha_func = GR_CMP_ALWAYS;
    vk.fog_mode = 0;

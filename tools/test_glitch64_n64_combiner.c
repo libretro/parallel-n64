@@ -340,7 +340,7 @@ static void check_keys(void)
    for (n = 0; n < 5000; n++)
    {
       glitch64_n64_combiner a, b;
-      uint32_t key[2];
+      uint32_t key[GLITCH64_N64_KEY_WORDS];
       unsigned i, k;
       for (i = 0; i < 2; i++)
          for (k = 0; k < 4; k++)
@@ -350,7 +350,10 @@ static void check_keys(void)
             a.alpha[i][k] = (uint8_t)((seed >> 24) & 7);
          }
       a.two_cycle = (uint8_t)(n & 1);
-      a.flags = (uint8_t)((n >> 1) & 7);
+      a.flags = (uint8_t)((n >> 1) & 15);
+      seed = seed * 1103515245u + 12345u;
+      a.blend[0] = (uint8_t)(seed >> 16);
+      a.blend[1] = (uint8_t)(seed >> 24);
       glitch64_n64_key(&a, key);
       memset(&b, 0xA5, sizeof(b));
       glitch64_n64_from_key(key, &b);
@@ -526,28 +529,85 @@ static void run(const float *level)
    check(&m, "LOD_FRACTION per pixel");
    lod_frac = LOD;
 
-   /* the blender's fog colour and alpha in place of the combiner's */
+   /* the blender: the colour P selects, P*A + M*B whole, the first cycle
+    * of two, the alpha test on the combiner's alpha before it, coverage as
+    * the pixel's alpha */
    {
-      unsigned char px[4];
-      VERTEX quad[4];
-      base(&m, 0);
-      m.flags = GLITCH64_N64_FOG_RGB | GLITCH64_N64_FOG_ALPHA;
-      g_gdp.fog_color.r = 11; g_gdp.fog_color.g = 22; g_gdp.fog_color.b = 33; g_gdp.fog_color.a = 44;
-      grN64Combine(&m);
-      grN64Constants(prim, env, consts, level, center, scale);
-      vtx(&quad[0], 0.0f, 0.0f);
-      vtx(&quad[1], 640.0f, 0.0f);
-      vtx(&quad[2], 640.0f, 480.0f);
-      vtx(&quad[3], 0.0f, 480.0f);
-      glitch64_flush();
-      glClear(GL_COLOR_BUFFER_BIT);
-      grDrawVertexArrayContiguous(GR_TRIANGLE_FAN, 4, quad);
-      glitch64_flush();
-      glReadPixels(WIN_W / 2, WIN_H / 2, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, px);
-      if (px[0] != 11 || px[1] != 22 || px[2] != 33 || px[3] != 44)
+      static const struct
       {
-         fprintf(stderr, "fog in the combiner's place: %u %u %u %u\n", px[0], px[1], px[2], px[3]);
-         failures++;
+         const char *what;
+         int two;
+         unsigned flags, blend0, blend1;
+         float prim_a;
+         int test;              /* the alpha test's reference, or -1 */
+         int want[4];           /* -1: discarded */
+      } cases[] = {
+         { "P the fog colour, A the fog alpha", 0, 0, 0,
+            GLITCH64_BL(GLITCH64_BL_FOG, GLITCH64_BL_A_FOG, 0, 0), 1.0f, -1, { 11, 22, 33, 44 } },
+         { "fog * fog alpha + blend * (1 - A), whole", 0, GLITCH64_N64_BLEND1, 0,
+            GLITCH64_BL(GLITCH64_BL_FOG, GLITCH64_BL_A_FOG, GLITCH64_BL_BLEND, GLITCH64_BL_B_1MA), 1.0f, -1,
+            { 167, 87, 47, 44 } },
+         { "the first cycle: fog by the shade alpha", 1, GLITCH64_N64_BLEND0,
+            GLITCH64_BL(GLITCH64_BL_FOG, GLITCH64_BL_A_SHADE, GLITCH64_BL_IN, GLITCH64_BL_B_1MA), 0, 1.0f, -1,
+            { 18, 36, 54, 255 } },
+         { "the alpha test on the combiner's alpha, failing", 0, 0, 0,
+            GLITCH64_BL(GLITCH64_BL_IN, GLITCH64_BL_A_FOG, 0, 0), 0.5f, 192, { -1, -1, -1, -1 } },
+         { "the alpha test on the combiner's alpha, passing", 0, 0, 0,
+            GLITCH64_BL(GLITCH64_BL_IN, GLITCH64_BL_A_FOG, 0, 0), 1.0f, 192, { 51, 102, 153, 44 } },
+         { "coverage as the pixel's alpha", 0, GLITCH64_N64_CVG_ALPHA, 0,
+            GLITCH64_BL(GLITCH64_BL_IN, GLITCH64_BL_A_IN, 0, 0), 0.5f, -1, { 51, 102, 153, 255 } }
+      };
+      unsigned k;
+      g_gdp.fog_color.r = 11; g_gdp.fog_color.g = 22; g_gdp.fog_color.b = 33; g_gdp.fog_color.a = 44;
+      g_gdp.fog_color.total = 0x0b16212cu;
+      g_gdp.blend_color.r = 200; g_gdp.blend_color.g = 100; g_gdp.blend_color.b = 50; g_gdp.blend_color.a = 0;
+      g_gdp.blend_color.total = 0xc8643200u;
+      for (k = 0; k < sizeof(cases) / sizeof(cases[0]); k++)
+      {
+         unsigned char px[4];
+         VERTEX quad[4];
+         float p[4];
+         unsigned i;
+         int bad = 0;
+         memset(&m, 0, sizeof(m));
+         for (i = 0; i < 2; i++)
+         {
+            /* (0 - 0) * 0 + PRIM, the colour and the alpha */
+            m.rgb[i][0] = 15; m.rgb[i][1] = 15; m.rgb[i][2] = 31; m.rgb[i][3] = 3;
+            m.alpha[i][0] = 7; m.alpha[i][1] = 7; m.alpha[i][2] = 7; m.alpha[i][3] = 3;
+         }
+         m.two_cycle = (uint8_t)cases[k].two;
+         m.flags = (uint8_t)cases[k].flags;
+         m.blend[0] = (uint8_t)cases[k].blend0;
+         m.blend[1] = (uint8_t)cases[k].blend1;
+         p[0] = 0.2f; p[1] = 0.4f; p[2] = 0.6f; p[3] = cases[k].prim_a;
+         grN64Combine(&m);
+         grN64Constants(p, env, consts, level, center, scale);
+         if (cases[k].test >= 0)
+            grAlphaTestFunction(GR_CMP_GEQUAL, (uint8_t)cases[k].test, 1);
+         vtx(&quad[0], 0.0f, 0.0f);
+         vtx(&quad[1], 640.0f, 0.0f);
+         vtx(&quad[2], 640.0f, 480.0f);
+         vtx(&quad[3], 0.0f, 480.0f);
+         glitch64_flush();
+         glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+         glClear(GL_COLOR_BUFFER_BIT);
+         grDrawVertexArrayContiguous(GR_TRIANGLE_FAN, 4, quad);
+         glitch64_flush();
+         glReadPixels(WIN_W / 2, WIN_H / 2, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, px);
+         grAlphaTestFunction(GR_CMP_ALWAYS, 0, 0);
+         for (i = 0; i < 4; i++)
+         {
+            const int want = cases[k].want[0] < 0 ? 0 : cases[k].want[i];
+            if (px[i] > want + 2 || px[i] + 2 < want)
+               bad = 1;
+         }
+         if (bad)
+         {
+            fprintf(stderr, "blender, %s: %u %u %u %u, not %d %d %d %d\n", cases[k].what, px[0], px[1], px[2], px[3],
+                  cases[k].want[0], cases[k].want[1], cases[k].want[2], cases[k].want[3]);
+            failures++;
+         }
       }
    }
 

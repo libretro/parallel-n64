@@ -7,7 +7,7 @@
 enum
 {
    U_PRIM = 0, U_ENV, U_CONSTS, U_LEVEL, U_KEY_CENTER, U_KEY_SCALE, U_FOG_COLOR,
-   U_TEX_SIZES, U_EXACT_SIZES, U_WINDOW, U_FOG, U_COUNT
+   U_TEX_SIZES, U_EXACT_SIZES, U_WINDOW, U_FOG, U_BLEND_COLOR, U_COUNT
 };
 
 /* the push block's, as vk_shaders.h has it */
@@ -81,6 +81,17 @@ static spv_c flag(g64_emit *e, int bit)
       return spv_known((e->key[16] & bit) != 0);
    f = spv_load_member(m, e->pc, SPV_PUSH_CONSTANT, PC_FLAGS, T_I1);
    return spv_cond(spv_ne(m, spv_band(m, f, spv_i(m, bit)), spv_i(m, 0)));
+}
+
+/* a flag as 1.0 or 0.0 */
+static spv_v flag_f(g64_emit *e, int bit)
+{
+   spv_module *m = e->m;
+   spv_v f;
+   if (e->key)
+      return spv_f(m, (e->key[16] & bit) ? 1.f : 0.f);
+   f = spv_load_member(m, e->pc, SPV_PUSH_CONSTANT, PC_FLAGS, T_I1);
+   return spv_bool_to_float(m, spv_ne(m, spv_band(m, f, spv_i(m, bit)), spv_i(m, 0)));
 }
 
 static spv_v xy_(spv_module *m, spv_v v) { return spv_xy(m, v); }
@@ -177,6 +188,68 @@ static spv_v op_at(g64_emit *e, int i)
    return spv_load_member_at(e->m, e->pc, SPV_PUSH_CONSTANT, PC_OPS, spv_i(e->m, i), T_I1);
 }
 
+/* a field of the blender's cycles in the flags: 0..3 */
+static spv_v bl_field(g64_emit *e, int shift)
+{
+   spv_module *m = e->m;
+   spv_v f;
+   if (e->key)
+      return spv_i(m, (int)(((uint32_t)e->key[16] >> shift) & 3u));
+   f = spv_load_member(m, e->pc, SPV_PUSH_CONSTANT, PC_FLAGS, T_I1);
+   return spv_band(m, spv_shr(m, f, spv_i(m, shift)), spv_i(m, 3));
+}
+
+/* 1.0 where @sel is @v, else 0.0 */
+static spv_v is_(spv_module *m, spv_v sel, int v)
+{
+   return spv_bool_to_float(m, spv_eq(m, sel, spv_i(m, v)));
+}
+
+/* P or M: the pixel, the blend colour, the fog colour (never memory here) */
+static spv_v bl_colour(spv_module *m, spv_v sel, spv_v in, spv_v blend, spv_v fog)
+{
+   spv_v c = spv_mix(m, in, blend, spv_spread(m, is_(m, sel, GLITCH64_BL_BLEND), 3));
+   return spv_mix(m, c, fog, spv_spread(m, is_(m, sel, GLITCH64_BL_FOG), 3));
+}
+
+/* A: the pixel's alpha, the fog alpha, the shade alpha, 0 */
+static spv_v bl_alpha(spv_module *m, spv_v sel, spv_v in, spv_v fog, spv_v shade)
+{
+   spv_v a = spv_mul(m, in, is_(m, sel, GLITCH64_BL_A_IN));
+   a = spv_add(m, a, spv_mul(m, fog, is_(m, sel, GLITCH64_BL_A_FOG)));
+   return spv_add(m, a, spv_mul(m, shade, is_(m, sel, GLITCH64_BL_A_SHADE)));
+}
+
+/* B: 1 - A, the memory alpha (full), 1, 0 */
+static spv_v bl_b(spv_module *m, spv_v sel, spv_v a)
+{
+   spv_v one = spv_sub(m, spv_f(m, 1.f), is_(m, sel, GLITCH64_BL_B_ZERO));
+   return spv_sub(m, one, spv_mul(m, a, is_(m, sel, GLITCH64_BL_B_1MA)));
+}
+
+/* a blender cycle on @rgb: with @whole, P*A + M*B; else the colour P
+ * selects. Its A in @a. */
+static spv_v bl_cycle(g64_emit *e, int shift, spv_c whole, spv_v rgb, spv_v in_a, spv_v fogc, spv_v blendc,
+      spv_v shade_a, spv_var *a_out)
+{
+   spv_module *m = e->m;
+   spv_var res = spv_local(m, T_F3);
+   spv_v a = bl_alpha(m, bl_field(e, shift + 4), in_a, spv_x(m, fogc, 3), shade_a);
+   spv_v p = bl_colour(m, bl_field(e, shift + 6), rgb, spv_xyz(m, blendc), spv_xyz(m, fogc));
+   spv_if_t w;
+   spv_store(m, *a_out, a);
+   spv_store(m, res, p);
+   if (spv_if(m, &w, whole))
+   {
+      spv_v mm = bl_colour(m, bl_field(e, shift + 2), rgb, spv_xyz(m, blendc), spv_xyz(m, fogc));
+      spv_v b = bl_b(m, bl_field(e, shift), a);
+      spv_store(m, res, spv_clamp(m, spv_add(m, spv_mul(m, p, spv_spread(m, a, 3)),
+               spv_mul(m, mm, spv_spread(m, b, 3))), 0.f, 1.f));
+   }
+   spv_endif(m, &w);
+   return spv_load(m, res);
+}
+
 const uint32_t *glitch64_vk_fragment(spv_module *m, int depth, const int *key, unsigned *count)
 {
    g64_emit e;
@@ -245,7 +318,12 @@ const uint32_t *glitch64_vk_fragment(spv_module *m, int depth, const int *key, u
       if (spv_if(m, &b, flag(&e, G64VK_COPY)))
       {
          uint32_t s = spv_load_sampler(m, tex0, spv_sampled_image(m, 0, 0));
+         spv_if_t k;
          spv_store(m, out, spv_sample(m, s, tc0));
+         /* the alpha test: -1 is none */
+         if (spv_if(m, &k, spv_cond(spv_le(m, spv_x(m, spv_load(m, out), 3), spv_x(m, fogu, 3)))))
+            spv_kill(m);
+         spv_endif(m, &k);
       }
       if (spv_else(m, &b))
       {
@@ -353,15 +431,28 @@ const uint32_t *glitch64_vk_fragment(spv_module *m, int depth, const int *key, u
             spv_endif(m, &run);
          }
          {
-            spv_v fc = u(&e, U_FOG_COLOR);
+            spv_v fc = u(&e, U_FOG_COLOR), bc = u(&e, U_BLEND_COLOR);
+            spv_var rgb = spv_local(m, T_F3), bl_a = spv_local(m, T_F1);
+            spv_v comb, in_a, sh_a;
             spv_if_t k;
-            if (spv_if(m, &k, flag(&e, G64VK_FOG_RGB)))
-               spv_store(m, out, spv_vec3_1(m, spv_xyz(m, fc), spv_x(m, spv_load(m, out), 3)));
-            spv_endif(m, &k);
-            if (spv_if(m, &k, flag(&e, G64VK_FOG_ALPHA)))
-               spv_store(m, out, spv_vec3_1(m, spv_xyz(m, spv_load(m, out)), spv_x(m, fc, 3)));
-            spv_endif(m, &k);
             spv_store(m, out, spv_clamp(m, spv_load(m, out), 0.f, 1.f));
+            comb = spv_load(m, out);
+            /* the alpha test, on the combiner's alpha, before the blender: -1 is none */
+            if (spv_if(m, &k, spv_cond(spv_le(m, spv_x(m, comb, 3), spv_x(m, fogu, 3)))))
+               spv_kill(m);
+            spv_endif(m, &k);
+            in_a = spv_x(m, comb, 3);
+            in_a = spv_add(m, in_a, spv_mul(m, spv_sub(m, spv_f(m, 1.f), in_a),
+                     flag_f(&e, G64VK_CVG_ALPHA)));
+            sh_a = spv_clamp(m, spv_x(m, shade, 3), 0.f, 1.f);
+            spv_store(m, rgb, spv_xyz(m, comb));
+            if (spv_if(m, &k, flag(&e, G64VK_BLEND0)))
+               spv_store(m, rgb, bl_cycle(&e, G64VK_BLEND0_SHIFT, spv_known(1), spv_load(m, rgb), in_a, fc, bc,
+                        sh_a, &bl_a));
+            spv_endif(m, &k);
+            spv_store(m, rgb, bl_cycle(&e, G64VK_BLEND1_SHIFT, flag(&e, G64VK_BLEND1), spv_load(m, rgb), in_a, fc, bc,
+                     sh_a, &bl_a));
+            spv_store(m, out, spv_vec3_1(m, spv_load(m, rgb), spv_load(m, bl_a)));
             if (spv_if(m, &k, flag(&e, G64VK_FOG)))
             {
                spv_v o = spv_load(m, out);
@@ -372,16 +463,7 @@ const uint32_t *glitch64_vk_fragment(spv_module *m, int depth, const int *key, u
          }
       }
       spv_endif(m, &b);
-
-      /* the alpha test: -1 is none */
-      {
-         spv_v o = spv_load(m, out);
-         spv_if_t k;
-         if (spv_if(m, &k, spv_cond(spv_le(m, spv_x(m, o, 3), spv_x(m, fogu, 3)))))
-            spv_kill(m);
-         spv_endif(m, &k);
-         spv_store(m, color, spv_load(m, out));
-      }
+      spv_store(m, color, spv_load(m, out));
    }
    spv_end_main(m);
    return spv_finish(m, count);

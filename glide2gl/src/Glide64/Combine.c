@@ -52,8 +52,6 @@ COMBINE cmb;
 
 #define A_BLEND(f1,f2) cmb.abf1=f1,cmb.abf2=f2
 
-/* GLITCH64_N64_FOG_*: the blender modes that read the fog colour */
-static unsigned n64_blender_flags;
 
 /* the tiles a cycle's inputs read, bit 0 tile 0, bit 1 tile 1: the
  * second cycle of two swaps the texels */
@@ -76,6 +74,9 @@ static unsigned n64_tiles(const glitch64_n64_combiner *c, unsigned i, int second
       t |= 1;
    return t;
 }
+
+static void n64_blender(glitch64_n64_combiner *c);
+static void n64_blender_hacks(glitch64_n64_combiner *c);
 
 void Combine(void)
 {
@@ -108,11 +109,8 @@ void Combine(void)
       cmb.tex |= n64_tiles(&c, i, two && i == 1);
 
 
-   cmb.abf1 = GR_BLEND_SRC_ALPHA;
-   cmb.abf2 = GR_BLEND_ONE_MINUS_SRC_ALPHA;
-   n64_blender_flags = 0;
-   CombineBlender();
-   c.flags |= (uint8_t)n64_blender_flags;
+   n64_blender(&c);
+   n64_blender_hacks(&c);
 
    rdp.tex = cmb.tex;
    grN64Combine(&c);
@@ -139,151 +137,156 @@ void Combine(void)
 
 }
 
-void CombineBlender(void)
+/* the blender's cycle @i as the other modes hold it (GLITCH64_BL) */
+static unsigned n64_blender_cycle(int i)
 {
-   uint32_t blendmode = gDP.otherMode.l >> 16;
-   // Check force-blending
-   if (gDP.otherMode.forceBlender && (gDP.otherMode.cycleType < G_CYC_COPY))
+   if (i == 0)
+      return GLITCH64_BL(gDP.otherMode.c1_m1a, gDP.otherMode.c1_m1b, gDP.otherMode.c1_m2a, gDP.otherMode.c1_m2b);
+   return GLITCH64_BL(gDP.otherMode.c2_m1a, gDP.otherMode.c2_m1b, gDP.otherMode.c2_m2a, gDP.otherMode.c2_m2b);
+}
+
+/* The blender as the RDP has it: P*A + M*B, its inputs as the other modes
+ * select them. A cycle reading no memory colour runs in the shader; one
+ * that does, the shader gives the colour and the alpha the GPU blends
+ * with the framebuffer. Coverage is not kept: a pixel blends where
+ * FORCE_BL says (the RDP blends edges too), else it is P. */
+static void n64_blender(glitch64_n64_combiner *c)
+{
+   const int two = gDP.otherMode.cycleType == G_CYC_2CYCLE;
+   unsigned last  = n64_blender_cycle(two ? 1 : 0);
+   unsigned first = n64_blender_cycle(0);
+   int force      = gDP.otherMode.forceBlender;
+   unsigned p, a, mm, b;
+
+   c->blend[0] = c->blend[1] = 0;
+   if (gDP.otherMode.cycleType >= G_CYC_COPY)
    {
-      switch (blendmode)
-      {
-         case 0x0382:            /* Mace objects */
-         case 0x0091:            /* Mace special blend mode */
-         case 0x0c08:            /* 1080 Snowboarding - sky */
-         case 0x0f0a:            /* Mario Kart 64 - player select
-                                  * In * 0 + In * 1
-                                  * - or just clr_in, no matter what alpha
-                                  */
-         case 0x0302:            /* Donkey Kong 64 blue prints */
-         case 0xA500:            /* Bomberman 2 special blend mode */
-         case 0xcb02:            /* Sin and Punishment */
-         case BLEND_FOG_ASHADE:  /* Battlezone
-                                  * In * a + In * (1-A) */
-         case 0x07C2:            /* Conker BFD */
-         case 0x00c0:            /* Conker BFD */
-         case 0xc302:            /* ISS64 */
-         case 0xC702:            /* Donald Duck */
-            A_BLEND (GR_BLEND_ONE, GR_BLEND_ZERO);
-            break;
-
-            //Space Invaders
-         case 0x0448:
-         case 0x055a:
-            A_BLEND (GR_BLEND_ONE, GR_BLEND_ONE);
-            break;
-
-
-         case 0xc712:   /* Pokemon Stadium? */
-         case 0xaf50:   /* LOT in Zelda: Majora's Mask */
-         case 0x0FA5:   /* LOT in Zelda: Majora's Mask */
-         case 0x0f5a:   /* Seems to be doing just blend color - maybe combiner can be used for this? */
-         case 0x5055:   /* Used in Paper Mario intro, I'm not sure if this is right... */
-            /* In * 0 + Mem * 1 */
-            A_BLEND (GR_BLEND_ZERO, GR_BLEND_ONE);
-            break;
-
-         case 0x5f50: /* Mem * 0 + Mem * (1-A) */
-            A_BLEND (GR_BLEND_ZERO, GR_BLEND_ONE_MINUS_SRC_ALPHA);
-            break;
-         case 0xf550: /* Fog * AFog + Mem * (1-A): the fog colour and alpha out of the combiner */
-			case 0x0D18: /* In  * AFog + Mem * (1-A) */
-            A_BLEND (GR_BLEND_SRC_ALPHA, GR_BLEND_ONE_MINUS_SRC_ALPHA);
-            n64_blender_flags |= GLITCH64_N64_FOG_RGB | GLITCH64_N64_FOG_ALPHA;
-            break;
-
-         case 0x0150: //spiderman
-            A_BLEND (GR_BLEND_SRC_ALPHA, GR_BLEND_ONE_MINUS_SRC_ALPHA);
-            if (gDP.otherMode.cycleType == G_CYC_2CYCLE && rdp.cycle2 != 0x01ff1fff)
-               n64_blender_flags |= GLITCH64_N64_FOG_ALPHA;
-            break;
-
-         case 0xc912: //40 winks, clr_in * a_fog + clr_mem * 1
-            n64_blender_flags |= GLITCH64_N64_FOG_ALPHA;
-            A_BLEND (GR_BLEND_SRC_ALPHA, GR_BLEND_ONE);
-            break;
-
-			case 0x0040: // Fzero
-			case 0xC810: // Blends fog
-			case 0xC811: // Blends fog
-			case 0x0C18: // Standard interpolated blend
-			case 0x0C19: // Used for antialiasing
-			case 0x0050: // Standard interpolated blend
-			case 0x0051: // Standard interpolated blend
-			case 0x0055: // Used for antialiasing
-            A_BLEND (GR_BLEND_SRC_ALPHA, GR_BLEND_ONE_MINUS_SRC_ALPHA);
-            break;
-
-         case 0x0550: /* Bomberman 64: In * AFog + Mem * (1-AFog) */
-            A_BLEND (GR_BLEND_SRC_ALPHA, GR_BLEND_ONE_MINUS_SRC_ALPHA);
-            n64_blender_flags |= GLITCH64_N64_FOG_ALPHA;
-            break;
-
-         case 0x5000: /* V8 explosions */
-            A_BLEND (GR_BLEND_ONE_MINUS_SRC_ALPHA, GR_BLEND_SRC_ALPHA);
-            break;
-
-         case 0xFA00: /* Bomberman second attack */
-            A_BLEND(GR_BLEND_ONE, GR_BLEND_ZERO);
-            break;
-
-         default:
-            A_BLEND (GR_BLEND_SRC_ALPHA, GR_BLEND_ONE_MINUS_SRC_ALPHA);
-      }
-   }
-   else if (blendmode == BLEND_XLU) // Mia Soccer Lights
-      A_BLEND (GR_BLEND_SRC_ALPHA, GR_BLEND_ONE_MINUS_SRC_ALPHA);
-   else if ((settings.hacks&hack_Pilotwings) && gDP.otherMode.clearOnCvg) //RDP_COLOR_ON_CVG without FORCE_BL
-      A_BLEND (GR_BLEND_ZERO, GR_BLEND_ONE);
-   else
       A_BLEND (GR_BLEND_ONE, GR_BLEND_ZERO);
+      return;
+   }
+   if (gDP.otherMode.alphaCvgSel)
+      c->flags |= GLITCH64_N64_CVG_ALPHA;
 
-   // RDP_ALPHA_CVG_SELECT means full alpha
-   // The reason it wasn't working before was because I wasn't handling rdp:setothermode
-   if (gDP.otherMode.alphaCvgSel && ((gDP.otherMode.l & 0x7000) != 0x7000))
+   if (two)
    {
-      switch (blendmode)
+      /* the first cycle always blends, into the second's pixel */
+      if (GLITCH64_BL_P(first) != GLITCH64_BL_MEM && GLITCH64_BL_M(first) != GLITCH64_BL_MEM)
       {
-         case 0x4055:      /* Mario Golf */
-         case 0x5055:      /* Paper Mario intro
-                              Mem * AIn + Mem * AMem */
-            A_BLEND (GR_BLEND_ZERO, GR_BLEND_ONE);
-            break;
-         default:
-            A_BLEND (GR_BLEND_ONE, GR_BLEND_ZERO);
-            break;
+         /* fog off for this game (Glide64_Ini.c): a cycle reading the fog
+          * colour left out */
+         if (settings.fog || (GLITCH64_BL_P(first) != GLITCH64_BL_FOG && GLITCH64_BL_M(first) != GLITCH64_BL_FOG))
+         {
+            c->flags |= GLITCH64_N64_BLEND0;
+            c->blend[0] = (uint8_t)first;
+         }
+      }
+      else
+      {
+         /* it reads memory: the GPU blends it, the second cycle left out */
+         last  = first;
+         force = 1;
       }
    }
 
+   p  = GLITCH64_BL_P(last);
+   a  = GLITCH64_BL_A(last);
+   mm = GLITCH64_BL_M(last);
+   b  = GLITCH64_BL_B(last);
+
+   if (!force)
+   {
+      /* not blended: P */
+      if (p == GLITCH64_BL_MEM)
+         A_BLEND (GR_BLEND_ZERO, GR_BLEND_ONE);
+      else
+      {
+         c->blend[1] = GLITCH64_BL(p, GLITCH64_BL_A_IN, 0, 0);
+         A_BLEND (GR_BLEND_ONE, GR_BLEND_ZERO);
+      }
+      return;
+   }
+
+   if (p != GLITCH64_BL_MEM && mm != GLITCH64_BL_MEM)
+   {
+      c->flags |= GLITCH64_N64_BLEND1;
+      c->blend[1] = (uint8_t)last;
+      A_BLEND (GR_BLEND_ONE, GR_BLEND_ZERO);
+   }
+   else if (p != GLITCH64_BL_MEM)
+   {
+      /* P*A + memory*B */
+      if (b == GLITCH64_BL_B_ZERO)
+      {
+         c->flags |= GLITCH64_N64_BLEND1;
+         c->blend[1] = GLITCH64_BL(p, a, 0, GLITCH64_BL_B_ZERO);
+         A_BLEND (GR_BLEND_ONE, GR_BLEND_ZERO);
+      }
+      else
+      {
+         c->blend[1] = GLITCH64_BL(p, a, 0, 0);
+         A_BLEND (GR_BLEND_SRC_ALPHA, b == GLITCH64_BL_B_1MA ? GR_BLEND_ONE_MINUS_SRC_ALPHA : GR_BLEND_ONE);
+      }
+   }
+   else if (mm != GLITCH64_BL_MEM)
+   {
+      /* memory*A + M*B */
+      c->blend[1] = GLITCH64_BL(mm, a, 0, 0);
+      A_BLEND (b == GLITCH64_BL_B_1MA ? GR_BLEND_ONE_MINUS_SRC_ALPHA :
+            (b == GLITCH64_BL_B_ZERO ? GR_BLEND_ZERO : GR_BLEND_ONE), GR_BLEND_SRC_ALPHA);
+   }
+   else
+   {
+      /* memory*(A + B) */
+      c->blend[1] = GLITCH64_BL(0, a, 0, 0);
+      A_BLEND (GR_BLEND_ZERO, b == GLITCH64_BL_B_ZERO ? GR_BLEND_SRC_ALPHA : GR_BLEND_ONE);
+   }
+}
+
+/* the games' own blends, kept: the pixel as the combiner gives it, and
+ * the GPU blend these set */
+static void n64_blender_hacks(glitch64_n64_combiner *c)
+{
+   int hit = 0;
+   if ((settings.hacks&hack_Pilotwings) && gDP.otherMode.clearOnCvg && !gDP.otherMode.forceBlender) //RDP_COLOR_ON_CVG without FORCE_BL
+   {
+      A_BLEND (GR_BLEND_ZERO, GR_BLEND_ONE);
+      hit = 1;
+   }
    if (settings.hacks&hack_ISS64)
    {
       if (gDP.otherMode.l == 0xff5a6379)
       {
          A_BLEND (GR_BLEND_ZERO, GR_BLEND_SRC_ALPHA);
+         hit = 1;
       }
       else if (gDP.otherMode.l == 0x00504dd9) //players shadows. CVG_DST_WRAP
       {
          A_BLEND (GR_BLEND_ZERO, GR_BLEND_ONE);
+         hit = 1;
       }
    }
-   else if (settings.hacks&hack_TGR)
+   else if ((settings.hacks&hack_TGR) && gDP.otherMode.l == 0x0f0a0235)
    {
-      if (gDP.otherMode.l == 0x0f0a0235)
-      {
-         A_BLEND (GR_BLEND_SRC_ALPHA, GR_BLEND_ONE_MINUS_SRC_ALPHA);
-      }
+      A_BLEND (GR_BLEND_SRC_ALPHA, GR_BLEND_ONE_MINUS_SRC_ALPHA);
+      hit = 1;
    }
-   //*/
+   if (hit)
+   {
+      c->flags &= (uint8_t)~(GLITCH64_N64_BLEND1 | GLITCH64_N64_CVG_ALPHA);
+      c->blend[1] = 0;
+   }
 }
 
-/* Glide64's own draws, as N64 combiners: (0 - 0) * 0 + IN */
-static void glide64_combine_pass(unsigned rgb_in, unsigned alpha_in, unsigned flags, const float prim[4])
+/* Glide64's own draws, as N64 combiners: (0 - 0) * 0 + IN, the blender
+ * giving the colour its P selects (@blend_p) and the pixel's alpha */
+static void glide64_combine_pass(unsigned rgb_in, unsigned alpha_in, unsigned blend_p, const float prim[4])
 {
    static const float zero[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
    glitch64_n64_combiner c;
    memset(&c, 0, sizeof(c));
    c.rgb[1][0] = 15; c.rgb[1][1] = 15; c.rgb[1][2] = 31; c.rgb[1][3] = (uint8_t)rgb_in;
    c.alpha[1][0] = 7; c.alpha[1][1] = 7; c.alpha[1][2] = 7; c.alpha[1][3] = (uint8_t)alpha_in;
-   c.flags = (uint8_t)flags;
+   c.blend[1] = GLITCH64_BL(blend_p, GLITCH64_BL_A_IN, 0, 0);
    grN64Combine(&c);
    grN64Constants(prim ? prim : zero, zero, zero, zero, zero, zero);
 }
@@ -292,7 +295,7 @@ void glide64_combine_texel(int tmu, int fog_rgb)
 {
    /* tile 0 sits in TMU 0, tile 1 in TMU 1 */
    const unsigned t = tmu == GR_TMU0 ? 1 : 2;
-   glide64_combine_pass(t, t, fog_rgb ? GLITCH64_N64_FOG_RGB : 0, NULL);
+   glide64_combine_pass(t, t, fog_rgb ? GLITCH64_BL_FOG : GLITCH64_BL_IN, NULL);
    g_gdp.flags |= UPDATE_COMBINE;
 }
 
@@ -303,7 +306,7 @@ void glide64_combine_constant(uint32_t rgba)
    c[1] = ((rgba >> 16) & 0xFF) / 255.0f;
    c[2] = ((rgba >> 8) & 0xFF) / 255.0f;
    c[3] = (rgba & 0xFF) / 255.0f;
-   glide64_combine_pass(3, 3, 0, c);
+   glide64_combine_pass(3, 3, GLITCH64_BL_IN, c);
    g_gdp.flags |= UPDATE_COMBINE;
 }
 

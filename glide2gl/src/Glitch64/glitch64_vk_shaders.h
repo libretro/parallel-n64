@@ -29,6 +29,7 @@ typedef struct glitch64_vk_values
    float exact_sizes[4]; /* the textures' sizes in texels: tile 0, tile 1 */
    float window[4];      /* half the window's width and height, y's sign */
    float fog[4];         /* by the vertex's fog (1) or its q (0), fog end, scale, the alpha test's reference */
+   float blend_color[4]; /* the blender's blend colour */
 } glitch64_vk_values;
 
 
@@ -36,16 +37,21 @@ typedef struct glitch64_vk_values
 enum
 {
    G64VK_TWO_CYCLE = 1 << 0,
-   G64VK_FOG_RGB   = 1 << 1,  /* the combined colour is the fog colour */
-   G64VK_FOG_ALPHA = 1 << 2,  /* the combined alpha is the fog alpha */
+   G64VK_BLEND0    = 1 << 1,  /* the blender's first cycle in the shader */
+   G64VK_BLEND1    = 1 << 2,  /* its last cycle whole in the shader */
    G64VK_LOD_PIXEL = 1 << 3,  /* LOD_FRACTION from the derivatives */
    G64VK_FOG       = 1 << 4,  /* fog blended in */
    G64VK_DITHER    = 1 << 5,
    G64VK_3POINT0   = 1 << 6,
    G64VK_3POINT1   = 1 << 7,
    G64VK_COPY      = 1 << 8,  /* tile 0's texel as it is: an LFB write */
-   G64VK_NOISE     = 1 << 9
+   G64VK_NOISE     = 1 << 9,
+   G64VK_CVG_ALPHA = 1 << 10  /* the pixel's alpha into the blender is 1 */
 };
+/* the blender's cycles (GLITCH64_BL) in the flags' top half */
+#define G64VK_BLEND0_SHIFT 16
+#define G64VK_BLEND1_SHIFT 24
+#define G64VK_BLEND_BYTES  0xffff0000u
 
 /* the vertex: Glitch64's VBufVertex */
 #define G64VK_VERTEX_STRIDE 40
