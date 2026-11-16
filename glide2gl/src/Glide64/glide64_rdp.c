@@ -298,7 +298,6 @@ void rdp_reset(void)
    rdp.lookat[0][0]     = rdp.lookat[1][1] = 1.0f;
    rdp.allow_combine    = 1;
    g_gdp.flags          = UPDATE_SCISSOR | UPDATE_COMBINE | UPDATE_ZBUF_ENABLED | UPDATE_CULL_MODE;
-   rdp.fog_mode         = FOG_MODE_ENABLED;
    rdp.maincimg[0].addr = rdp.maincimg[1].addr = rdp.last_drawn_ci_addr = 0x7FFFFFFF;
 }
 
@@ -1032,17 +1031,6 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
    vptr = (VERTEX*)vstd;
 
    {
-      if (rdp.fog_mode >= FOG_MODE_BLEND)
-      {
-         float fog = 1.0f/ g_gdp.fog_color.a;
-         if (rdp.fog_mode != FOG_MODE_BLEND)
-            fog = 1.0f / ((~g_gdp.fog_color.total)&0xFF);
-
-         for (i = 0; i < 4; i++)
-            vptr[i].f = fog;
-         grFogMode(GR_FOG_WITH_TABLE_ON_FOGCOORD_EXT);
-      }
-
       ConvertCoordsConvert (vptr, 4);
       grDrawVertexArrayContiguous (GR_TRIANGLE_STRIP, 4, vptr);
    }

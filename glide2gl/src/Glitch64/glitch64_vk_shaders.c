@@ -7,7 +7,7 @@
 enum
 {
    U_PRIM = 0, U_ENV, U_CONSTS, U_LEVEL, U_KEY_CENTER, U_KEY_SCALE, U_FOG_COLOR,
-   U_TEX_SIZES, U_EXACT_SIZES, U_WINDOW, U_FOG, U_BLEND_COLOR, U_COUNT
+   U_TEX_SIZES, U_EXACT_SIZES, U_WINDOW, U_TEST, U_BLEND_COLOR, U_COUNT
 };
 
 /* the push block's, as vk_shaders.h has it */
@@ -100,8 +100,8 @@ static spv_v zw_(spv_module *m, spv_v v) { return spv_vec2(m, spv_x(m, v, 2), sp
 const uint32_t *glitch64_vk_vertex(spv_module *m, unsigned *count)
 {
    g64_emit e;
-   spv_v a_pos, a_col, a_tc0, a_tc1, a_fog;
-   spv_var pos, v_shade, v_tc0, v_tc1, v_fog, v_xy;
+   spv_v a_pos, a_col, a_tc0, a_tc1;
+   spv_var pos, v_shade, v_tc0, v_tc1, v_xy;
 
    e.m = m;
    e.key = NULL;
@@ -112,15 +112,12 @@ const uint32_t *glitch64_vk_vertex(spv_module *m, unsigned *count)
    a_col   = spv_input(m, T_F4, 1);
    a_tc0   = spv_input(m, T_F2, 2);
    a_tc1   = spv_input(m, T_F2, 3);
-   a_fog   = spv_input(m, T_F1, 4);
    v_shade = spv_output(m, T_F4, 0);
    v_tc0   = spv_output(m, T_F2, 1);
    v_tc1   = spv_output(m, T_F2, 2);
-   v_fog   = spv_output(m, T_F1, 3);
    v_xy    = spv_output(m, T_F2, 4);
-   /* the RDP steps the shade, and the fog, evenly across the screen */
+   /* the RDP steps the shade evenly across the screen */
    spv_decorate(m, v_shade.id, SPV_DEC_NOPERSPECTIVE);
-   spv_decorate(m, v_fog.id, SPV_DEC_NOPERSPECTIVE);
 
    spv_begin_main(m);
    {
@@ -133,8 +130,6 @@ const uint32_t *glitch64_vk_vertex(spv_module *m, unsigned *count)
       spv_v z    = spv_div(m, spv_x(m, p, 2), spv_f(m, 65536.f));
       spv_v inv  = spv_div(m, spv_f(m, 1.f), q);
       spv_v sizes = u(&e, U_TEX_SIZES);
-      spv_v fogu = u(&e, U_FOG);
-      spv_v fogv, f;
 
       /* GL's clip space over q, its depth's -1..1 as Vulkan's 0..1 */
       spv_store(m, pos, spv_vec4(m, spv_mul(m, x, inv), spv_mul(m, y, inv),
@@ -142,10 +137,6 @@ const uint32_t *glitch64_vk_vertex(spv_module *m, unsigned *count)
       spv_store(m, v_shade, load_in(m, a_col));
       spv_store(m, v_tc0, spv_div(m, spv_div(m, load_in(m, a_tc0), q), xy_(m, sizes)));
       spv_store(m, v_tc1, spv_div(m, spv_div(m, load_in(m, a_tc1), q), zw_(m, sizes)));
-      fogv = spv_div(m, spv_div(m, spv_f(m, 1.f), spv_mix(m, q, load_in(m, a_fog), spv_x(m, fogu, 0))),
-            spv_f(m, 255.f));
-      f = spv_mul(m, spv_sub(m, spv_x(m, fogu, 1), fogv), spv_x(m, fogu, 2));
-      spv_store(m, v_fog, spv_clamp(m, f, 0.f, 1.f));
       spv_store(m, v_xy, spv_xy(m, p));
    }
    spv_end_main(m);
@@ -253,7 +244,7 @@ static spv_v bl_cycle(g64_emit *e, int shift, spv_c whole, spv_v rgb, spv_v in_a
 const uint32_t *glitch64_vk_fragment(spv_module *m, int depth, const int *key, unsigned *count)
 {
    g64_emit e;
-   spv_v v_shade, v_tc0, v_tc1, v_fog, v_xy, frag;
+   spv_v v_shade, v_tc0, v_tc1, v_xy, frag;
    spv_var color, depth_out;
    uint32_t tex0, tex1;
 
@@ -286,11 +277,9 @@ const uint32_t *glitch64_vk_fragment(spv_module *m, int depth, const int *key, u
    v_shade = spv_input(m, T_F4, 0);
    v_tc0   = spv_input(m, T_F2, 1);
    v_tc1   = spv_input(m, T_F2, 2);
-   v_fog   = spv_input(m, T_F1, 3);
    v_xy    = spv_input(m, T_F2, 4);
    frag    = spv_builtin_in(m, T_F4, SPV_BUILTIN_FRAGCOORD);
    spv_decorate(m, v_shade.id, SPV_DEC_NOPERSPECTIVE);
-   spv_decorate(m, v_fog.id, SPV_DEC_NOPERSPECTIVE);
 
    spv_begin_main(m);
    {
@@ -298,7 +287,7 @@ const uint32_t *glitch64_vk_fragment(spv_module *m, int depth, const int *key, u
       spv_var out = spv_local(m, T_F4);
       spv_v tc0 = load_in(m, v_tc0), tc1 = load_in(m, v_tc1);
       spv_v exact = u(&e, U_EXACT_SIZES);
-      spv_v fogu = u(&e, U_FOG);
+      spv_v testu = u(&e, U_TEST);
       spv_if_t b;
 
       if (spv_if(m, &b, flag(&e, G64VK_DITHER)))
@@ -321,7 +310,7 @@ const uint32_t *glitch64_vk_fragment(spv_module *m, int depth, const int *key, u
          spv_if_t k;
          spv_store(m, out, spv_sample(m, s, tc0));
          /* the alpha test: -1 is none */
-         if (spv_if(m, &k, spv_cond(spv_le(m, spv_x(m, spv_load(m, out), 3), spv_x(m, fogu, 3)))))
+         if (spv_if(m, &k, spv_cond(spv_le(m, spv_x(m, spv_load(m, out), 3), spv_x(m, testu, 3)))))
             spv_kill(m);
          spv_endif(m, &k);
       }
@@ -438,7 +427,7 @@ const uint32_t *glitch64_vk_fragment(spv_module *m, int depth, const int *key, u
             spv_store(m, out, spv_clamp(m, spv_load(m, out), 0.f, 1.f));
             comb = spv_load(m, out);
             /* the alpha test, on the combiner's alpha, before the blender: -1 is none */
-            if (spv_if(m, &k, spv_cond(spv_le(m, spv_x(m, comb, 3), spv_x(m, fogu, 3)))))
+            if (spv_if(m, &k, spv_cond(spv_le(m, spv_x(m, comb, 3), spv_x(m, testu, 3)))))
                spv_kill(m);
             spv_endif(m, &k);
             in_a = spv_x(m, comb, 3);
@@ -453,13 +442,6 @@ const uint32_t *glitch64_vk_fragment(spv_module *m, int depth, const int *key, u
             spv_store(m, rgb, bl_cycle(&e, G64VK_BLEND1_SHIFT, flag(&e, G64VK_BLEND1), spv_load(m, rgb), in_a, fc, bc,
                      sh_a, &bl_a));
             spv_store(m, out, spv_vec3_1(m, spv_load(m, rgb), spv_load(m, bl_a)));
-            if (spv_if(m, &k, flag(&e, G64VK_FOG)))
-            {
-               spv_v o = spv_load(m, out);
-               spv_store(m, out, spv_vec3_1(m, spv_mix(m, spv_xyz(m, fc), spv_xyz(m, o), spv_spread(m, load_in(m, v_fog), 3)),
-                        spv_x(m, o, 3)));
-            }
-            spv_endif(m, &k);
          }
       }
       spv_endif(m, &b);

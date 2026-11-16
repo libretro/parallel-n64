@@ -476,7 +476,6 @@ static void run(const float *level)
       scale[k] = SCALE[k] / 255.0f;
    }
    grN64Constants(prim, env, consts, level, center, scale);
-   grFogMode(GR_FOG_DISABLE);
    lod_frac = LOD;
 
    /* every input in every slot of the cycle run; the other slots of it

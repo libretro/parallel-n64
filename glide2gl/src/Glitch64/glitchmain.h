@@ -89,12 +89,10 @@ void set_copy_shader(void);
 #define COLOUR_ATTR 1
 #define TEXCOORD_0_ATTR 2
 #define TEXCOORD_1_ATTR 3
-#define FOG_ATTR 4
 
 extern int width, height;
 extern int tex_width[2], tex_height[2];
 extern int tex_exactWidth[2], tex_exactHeight[2];
-extern int fog_enabled;
 extern int culling_mode;
 extern int need_to_compile;
 extern int three_point_filter[2];

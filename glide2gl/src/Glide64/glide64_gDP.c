@@ -38,8 +38,7 @@ float set_sprite_combine_mode(void)
   }
 
   grCullMode (GR_CULL_DISABLE);
-  grFogMode(GR_FOG_DISABLE);
-  g_gdp.flags |= UPDATE_CULL_MODE | UPDATE_FOG_ENABLED;
+  g_gdp.flags |= UPDATE_CULL_MODE;
 
   if (((gDP.otherMode.h & RDP_CYCLE_TYPE) >> 20) == G_CYC_COPY)
   {
@@ -627,8 +626,6 @@ void glide64gDPFillRectangle(uint32_t ul_x, uint32_t ul_y, uint32_t lr_x, uint32
       VERTEX v[4], vout[4];
       float Z = 0;
 
-      grFogMode(GR_FOG_DISABLE);
-
       if (((gDP.otherMode.h & RDP_CYCLE_TYPE) >> 20) != G_CYC_FILL)
          Z = set_sprite_combine_mode();
 
@@ -831,11 +828,10 @@ void glide64gDPFillRectangle(uint32_t ul_x, uint32_t ul_y, uint32_t lr_x, uint32
          grStippleMode(GR_STIPPLE_DISABLE);
 
          grCullMode(GR_CULL_DISABLE);
-         grFogMode(GR_FOG_DISABLE);
          grDepthBufferFunction (GR_CMP_ALWAYS);
          grDepthMask (false);
 
-         g_gdp.flags |= UPDATE_COMBINE | UPDATE_CULL_MODE | UPDATE_FOG_ENABLED | UPDATE_ZBUF_ENABLED;
+         g_gdp.flags |= UPDATE_COMBINE | UPDATE_CULL_MODE | UPDATE_ZBUF_ENABLED;
       }
       else
       {

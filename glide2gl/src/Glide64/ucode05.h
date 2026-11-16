@@ -131,7 +131,6 @@ static void uc5_setgeometrymode(uint32_t w0, uint32_t w1)
       if (!(rdp.flags & FOG_ENABLED))
       {
          rdp.flags |= FOG_ENABLED;
-         g_gdp.flags |= UPDATE_FOG_ENABLED;
       }
    }
 }
@@ -154,7 +153,6 @@ static void uc5_cleargeometrymode(uint32_t w0, uint32_t w1)
       if (rdp.flags & FOG_ENABLED)
       {
          rdp.flags ^= FOG_ENABLED;
-         g_gdp.flags |= UPDATE_FOG_ENABLED;
       }
    }
 }

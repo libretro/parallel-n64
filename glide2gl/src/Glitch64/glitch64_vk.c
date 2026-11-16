@@ -25,7 +25,6 @@ int glitch64_vulkan = 0;
 #endif
 
 extern int width, height;
-extern float fogStart, fogEnd;
 extern float polygonOffsetFactor;
 extern float polygonOffsetUnits;
 
@@ -56,7 +55,6 @@ typedef struct vk_vertex
    float x, y, z, q;
    uint8_t b, g, r, a;
    float coord[4];
-   float fog;
 } vk_vertex;
 
 /* a texture of TMU memory: Glide64's address, plus one */
@@ -118,7 +116,6 @@ static struct
    uint32_t blend_rgba;
 
    int alpha_test, alpha_ref, alpha_func;
-   int fog_mode;
    int dither;
    int three_point[2];
    int cull, depth_func, depth_mask, depth_on, bias;
@@ -256,18 +253,13 @@ void vk_flush(void)
    vk.n_verts = 0;
    if (!n)
       return;
-   if (vk.fog_mode)
-      flags |= G64VK_FOG;
    if (vk.dither)
       flags |= G64VK_DITHER;
    if (vk.three_point[0])
       flags |= G64VK_3POINT0;
    if (vk.three_point[1])
       flags |= G64VK_3POINT1;
-   vk.values.fog[0] = vk.fog_mode != 2 ? 0.f : 1.f;
-   vk.values.fog[1] = fogEnd;
-   vk.values.fog[2] = 1.f / (fogEnd - fogStart);
-   vk.values.fog[3] = vk.alpha_test ? vk.alpha_ref / 255.f : -1.f;
+   vk.values.test[3] = vk.alpha_test ? vk.alpha_ref / 255.f : -1.f;
    draw_bound(n, flags);
 }
 
@@ -439,14 +431,6 @@ void vk_grAlphaTestFunction(int32_t function, uint8_t value, int set_alpha_ref)
    vk.alpha_func = function;
    vk.alpha_test = test;
    vk.alpha_ref = ref;
-}
-
-void vk_grFogMode(int32_t mode)
-{
-   if (vk.fog_mode == mode)
-      return;
-   vk_flush();
-   vk.fog_mode = mode;
 }
 
 void vk_grStippleMode(int32_t mode)
@@ -668,7 +652,6 @@ static void reset_state(void)
    memset(vk.key, 0, sizeof(vk.key));
    vk.alpha_test = 0;
    vk.alpha_func = GR_CMP_ALWAYS;
-   vk.fog_mode = 0;
    vk.dither = 0;
    for (i = 0; i < 2; i++)
    {
@@ -709,11 +692,11 @@ static void reset_state(void)
 
 static vkr_program *make_program(int depth)
 {
-   static const uint32_t formats[5] = {
+   static const uint32_t formats[4] = {
       VK_FORMAT_R32G32B32A32_SFLOAT, VK_FORMAT_B8G8R8A8_UNORM, VK_FORMAT_R32G32_SFLOAT,
-      VK_FORMAT_R32G32_SFLOAT, VK_FORMAT_R32_SFLOAT
+      VK_FORMAT_R32G32_SFLOAT
    };
-   static const uint32_t offsets[5] = { G64VK_OFF_POS, G64VK_OFF_COLOR, G64VK_OFF_TC0, G64VK_OFF_TC1, G64VK_OFF_FOG };
+   static const uint32_t offsets[4] = { G64VK_OFF_POS, G64VK_OFF_COLOR, G64VK_OFF_TC0, G64VK_OFF_TC1 };
    vkr_client_desc d;
    uint32_t *vs;
    const uint32_t *words;
@@ -733,8 +716,8 @@ static vkr_program *make_program(int depth)
    d.vs_words = n;
    d.fs = glitch64_vk_fragment(&vk.spv, depth, NULL, &d.fs_words);
    d.layout.stride = G64VK_VERTEX_STRIDE;
-   d.layout.count = 5;
-   for (i = 0; i < 5; i++)
+   d.layout.count = 4;
+   for (i = 0; i < 4; i++)
    {
       d.layout.attrs[i].location = i;
       d.layout.attrs[i].format = formats[i];
@@ -1140,7 +1123,7 @@ void vk_grLfbWriteRegion(uint32_t dst_x, uint32_t dst_y, uint32_t src_width, uin
    vk.values.tex_sizes[0] = (float)src_width;
    vk.values.tex_sizes[1] = (float)src_height;
    /* the alpha test holds, as the GL copy shader has it */
-   vk.values.fog[3] = vk.alpha_test ? vk.alpha_ref / 255.f : -1.f;
+   vk.values.test[3] = vk.alpha_test ? vk.alpha_ref / 255.f : -1.f;
    own_draw_begin(0);
    quad(v, (float)dst_x, (float)dst_y, (float)(dst_x + src_width), (float)(dst_y + src_height),
          (float)src_width, (float)src_height);

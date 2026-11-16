@@ -328,7 +328,6 @@ void grLfbWriteRegion(uint32_t dst_x, uint32_t dst_y,
 
       glDisableVertexAttribArray(COLOUR_ATTR);
       glDisableVertexAttribArray(TEXCOORD_1_ATTR);
-      glDisableVertexAttribArray(FOG_ATTR);
 
       glVertexAttribPointer(POSITION_ATTR,2,GL_FLOAT,false,4 * sizeof(float), &data[0]); //Position
       glVertexAttribPointer(TEXCOORD_0_ATTR,2,GL_FLOAT,false,4 * sizeof(float), &data[2]); //Tex
@@ -339,7 +338,6 @@ void grLfbWriteRegion(uint32_t dst_x, uint32_t dst_y,
 
       glEnableVertexAttribArray(COLOUR_ATTR);
       glEnableVertexAttribArray(TEXCOORD_1_ATTR);
-      glEnableVertexAttribArray(FOG_ATTR);
 
       compile_shader();
 
@@ -427,7 +425,6 @@ void grDepthImageWrite(const void *words, uint32_t w, uint32_t h,
 
    glDisableVertexAttribArray(COLOUR_ATTR);
    glDisableVertexAttribArray(TEXCOORD_1_ATTR);
-   glDisableVertexAttribArray(FOG_ATTR);
    glVertexAttribPointer(POSITION_ATTR, 2, GL_FLOAT, false, 4 * sizeof(float), &data[0]);
    glVertexAttribPointer(TEXCOORD_0_ATTR, 2, GL_FLOAT, false, 4 * sizeof(float), &data[2]);
    glEnableVertexAttribArray(POSITION_ATTR);
@@ -437,7 +434,6 @@ void grDepthImageWrite(const void *words, uint32_t w, uint32_t h,
 
    glEnableVertexAttribArray(COLOUR_ATTR);
    glEnableVertexAttribArray(TEXCOORD_1_ATTR);
-   glEnableVertexAttribArray(FOG_ATTR);
 
    /* Glide64 only ever masks colour around a fill: it is on here */
    glColorMask(1, 1, 1, 1);

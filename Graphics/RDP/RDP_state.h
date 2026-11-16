@@ -75,7 +75,6 @@ extern RDPInfo __RDP;
 #define UPDATE_VIEWPORT       0x00000080
 #define UPDATE_MULT_MAT       0x00000100
 #define UPDATE_SCISSOR        0x00000200
-#define UPDATE_FOG_ENABLED    0x00010000
 
 typedef struct
 {

@@ -54,7 +54,6 @@ void vk_grDepthBiasLevel(int32_t level);
 void vk_grAlphaBlendFunction(unsigned rgb_sf, unsigned rgb_df, unsigned alpha_sf, unsigned alpha_df);
 void vk_grAlphaTestFunction(int32_t function, uint8_t value, int set_alpha_ref);
 void vk_grAlphaTestReferenceValue(uint8_t value);
-void vk_grFogMode(int32_t mode);
 void vk_grStippleMode(int32_t mode);
 void vk_grN64Combine(const glitch64_n64_combiner *c);
 void vk_grN64Constants(const float prim[4], const float env[4], const float consts[4],

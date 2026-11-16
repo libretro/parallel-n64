@@ -309,10 +309,6 @@ typedef struct
 
 #define NUMTEXBUF 92
 
-#define FOG_MODE_DISABLED       0
-#define FOG_MODE_ENABLED        1
-#define FOG_MODE_BLEND          2
-#define FOG_MODE_BLEND_INVERSE  3
 
 
 struct RDP
@@ -399,7 +395,6 @@ struct RDP
    int skip_drawing; //rendering is not required. used for frame buffer emulation
 
    //fog related slots. Added by Gonetz
-   unsigned fog_mode;
    // Clipping
    int clip;     // clipping flags
    VERTEX *vtx1; //[256] copy vertex buffer #1 (used for clipping)

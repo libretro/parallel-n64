@@ -562,7 +562,6 @@ static void clip_tri(int interpolate_colors)
 static void render_tri (uint16_t linew, int old_interpolate)
 {
    int i, n;
-   float fog;
 
    if (rdp.clip)
       clip_tri(old_interpolate);
@@ -644,24 +643,6 @@ static void render_tri (uint16_t linew, int old_interpolate)
    }
 
    ConvertCoordsConvert (rdp.vtxbuf, n);
-
-   switch (rdp.fog_mode)
-   {
-      case FOG_MODE_ENABLED:
-         for (i = 0; i < n; i++)
-            rdp.vtxbuf[i].f = 1.0f/MAX(4.0f, rdp.vtxbuf[i].f);
-         break;
-      case FOG_MODE_BLEND:
-         fog = 1.0f/MAX(1, g_gdp.fog_color.a);
-         for (i = 0; i < n; i++)
-            rdp.vtxbuf[i].f = fog;
-         break;
-      case FOG_MODE_BLEND_INVERSE:
-         fog = 1.0f/MAX(1, (~g_gdp.fog_color.total) & 0xFF);
-         for (i = 0; i < n; i++)
-            rdp.vtxbuf[i].f = fog;
-         break;
-   }
 
 
 
@@ -1040,14 +1021,6 @@ void update(void)
             grCullMode (GR_CULL_POSITIVE);
             break;
       }
-   }
-
-   /* fog is the blender's (Combine.c): Glide's table fog stays off */
-   if (g_gdp.flags & UPDATE_FOG_ENABLED)
-   {
-      g_gdp.flags ^= UPDATE_FOG_ENABLED;
-      rdp.fog_mode = FOG_MODE_DISABLED;
-      grFogMode(GR_FOG_DISABLE);
    }
 
    if (g_gdp.flags & UPDATE_VIEWPORT)

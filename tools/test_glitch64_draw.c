@@ -18,7 +18,8 @@
  * teal instead of dark blue. This then draws a triangle whose corners lie
  * at very different depths and holds pixels inside it to the shade stepped
  * evenly between its corners, and the same for the fog, the shade's
- * alpha to the RDP, which was corrected for perspective too.
+ * alpha to the RDP, which the blender's first cycle mixes the fog colour
+ * in by.
  *
  *   EGL_PLATFORM=surfaceless ./test_glitch64_draw
  */
@@ -210,35 +211,48 @@ static int check_shade_screen_linear(uint8_t *window)
    return bad != 0;
 }
 
-/* The same triangle white, fogged to black by a fog alpha of 0 at one
- * corner, 255 at the far one: each pixel is white less the far corner's
- * barycentric weight on the screen, within rounding. */
+/* The same triangle white, fogged to black as the RDP's blender does it:
+ * the first cycle of two the fog colour by the shade alpha, which the
+ * RSP sets to the fog, 0 at two corners and 255 at the far one. Each
+ * pixel is white less the far corner's barycentric weight on the screen,
+ * within rounding. */
 static int check_fog_screen_linear(uint8_t *window)
 {
    static const float px[3] = { 40.0f, 600.0f, 320.0f }, py[3] = { 40.0f, 40.0f, 440.0f };
-   static const float q[3] = { 1.0f, 1.0f, 0.025f }, fog[3] = { 0.0f, 0.0f, 255.0f };
+   static const float q[3] = { 1.0f, 1.0f, 0.025f };
+   static const uint8_t fog[3] = { 0, 0, 255 };
    static const unsigned probes[][2] = { { 320, 180 }, { 200, 100 }, { 320, 380 }, { 250, 250 } };
    VERTEX tri[3];
    unsigned i, bad = 0;
    const float area = (px[1] - px[0]) * (py[2] - py[0]) - (px[2] - px[0]) * (py[1] - py[0]);
+   glitch64_n64_combiner c;
 
    for (i = 0; i < 3; i++)
    {
       vtx(&tri[i], px[i], py[i], 0xFF, 0xFF);
       tri[i].b = 0xFF;
       tri[i].q = q[i];
-      /* what Glide64 hands over for FOG_MODE_ENABLED */
-      tri[i].f = 1.0f / (fog[i] > 4.0f ? fog[i] : 4.0f);
+      tri[i].a = fog[i];
    }
+   /* (0 - 0) * 0 + SHADE in both cycles; the blender's first cycle
+    * FOG * SHADE_ALPHA + IN * (1 - A) */
+   memset(&c, 0, sizeof(c));
+   for (i = 0; i < 2; i++)
+   {
+      c.rgb[i][0] = 15; c.rgb[i][1] = 15; c.rgb[i][2] = 31; c.rgb[i][3] = 4;
+      c.alpha[i][0] = 7; c.alpha[i][1] = 7; c.alpha[i][2] = 7; c.alpha[i][3] = 6;
+   }
+   c.two_cycle = 1;
+   c.flags = GLITCH64_N64_BLEND0;
+   c.blend[0] = GLITCH64_BL(GLITCH64_BL_FOG, GLITCH64_BL_A_SHADE, GLITCH64_BL_IN, GLITCH64_BL_B_1MA);
+   grN64Combine(&c);
    g_gdp.fog_color.r = g_gdp.fog_color.g = g_gdp.fog_color.b = 0;
-   guFogGenerateLinear(0.0f, 255.0f);
-   grFogMode(GR_FOG_WITH_TABLE_ON_FOGCOORD_EXT);
+   g_gdp.fog_color.total = 0;
    glDisable(GL_SCISSOR_TEST);
    glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
    glEnable(GL_SCISSOR_TEST);
    grDrawVertexArrayContiguous(GR_TRIANGLES, 3, tri);
-   grFogMode(GR_FOG_DISABLE);
    read_window(window);
 
    for (i = 0; i < sizeof(probes) / sizeof(probes[0]); i++)
@@ -247,8 +261,8 @@ static int check_fog_screen_linear(uint8_t *window)
       const float l1 = ((x - px[0]) * (py[2] - py[0]) - (px[2] - px[0]) * (y - py[0])) / area;
       const float l2 = ((px[1] - px[0]) * (y - py[0]) - (x - px[0]) * (py[1] - py[0])) / area;
       const float l0 = 1.0f - l1 - l2;
-      /* the fog alpha stepped evenly, 4 its least */
-      const float a = (l0 * 4.0f + l1 * 4.0f + l2 * 255.0f) / 255.0f;
+      /* the fog alpha stepped evenly */
+      const float a = (l0 * fog[0] + l1 * fog[1] + l2 * fog[2]) / 255.0f;
       const int want = (int)((1.0f - a) * 255.0f + 0.5f);
       const int got = (int)(at(window, probes[i][0], probes[i][1]) >> 16);
       if (got - want > 2 || want - got > 2)

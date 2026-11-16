@@ -43,7 +43,6 @@ typedef struct
   uint8_t  r;
   uint8_t  a;
   float    coord[4];
-  float    fog;
 } VBufVertex;
 
 /* triangles, batched while the state stays: a state change, a read of
@@ -191,7 +190,6 @@ static void vbo_enable(void)
    const void *vc   = NULL;
    const void *tc0  = NULL;
    const void *tc1  = NULL;
-   const void *fog  = NULL;
    bool was_drawing = vbuf_drawing;
 
    if (vbuf_enabled)
@@ -209,7 +207,6 @@ static void vbo_enable(void)
       vc  = (void*)offsetof(VBufVertex, b);
       tc0 = (void*)offsetof(VBufVertex, coord[2]);
       tc1 = (void*)offsetof(VBufVertex, coord[0]);
-      fog = (void*)offsetof(VBufVertex, fog);
    }
    else
    {
@@ -217,19 +214,16 @@ static void vbo_enable(void)
       vc  = &vbuf_data->b;
       tc0 = &vbuf_data->coord[2];
       tc1 = &vbuf_data->coord[0];
-      fog = &vbuf_data->fog;
    }
 
    glEnableVertexAttribArray(POSITION_ATTR);
    glEnableVertexAttribArray(COLOUR_ATTR);
    glEnableVertexAttribArray(TEXCOORD_0_ATTR);
    glEnableVertexAttribArray(TEXCOORD_1_ATTR);
-   glEnableVertexAttribArray(FOG_ATTR);
    glVertexAttribPointer(POSITION_ATTR,   4, GL_FLOAT,         false,  sizeof(VBufVertex), (void*)vp);
    glVertexAttribPointer(COLOUR_ATTR,     4, GL_UNSIGNED_BYTE, true,   sizeof(VBufVertex), (void*)vc);
    glVertexAttribPointer(TEXCOORD_0_ATTR, 2, GL_FLOAT,         false, sizeof(VBufVertex), (void*)tc0);
    glVertexAttribPointer(TEXCOORD_1_ATTR, 2, GL_FLOAT,         false, sizeof(VBufVertex), (void*)tc1);
-   glVertexAttribPointer(FOG_ATTR,        1, GL_FLOAT,         false, sizeof(VBufVertex), (void*)fog);
 
    if (vbuf_vbo)
       glBindBuffer(GL_ARRAY_BUFFER, 0);

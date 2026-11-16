@@ -45,8 +45,6 @@ extern "C" {
 
 #define GR_STIPPLE_DISABLE	0x0
 
-#define GR_FOG_DISABLE                     0x0
-#define GR_FOG_WITH_TABLE_ON_FOGCOORD_EXT  0x2
 
 
 #define GR_TEXTURECLAMP_WRAP        GL_REPEAT
@@ -146,8 +144,6 @@ void grDepthBufferMode(int32_t mode);
 
 void grDepthMask(bool mask);
 
-void grFogMode( int32_t mode );
-
 void grStippleMode( int32_t mode );
 
 /*
@@ -211,12 +207,6 @@ int grLfbReadScaledInit(void);
 const uint8_t *grLfbReadScaled(int32_t x, int32_t y, int32_t w, int32_t h,
       uint32_t dw, uint32_t dh, uint32_t *stride);
 
-#define guFogGenerateLinear(nearZ, farZ) \
-{ \
-   fogStart = (nearZ) / 255.0f; \
-   fogEnd = (farZ) / 255.0f; \
-}
-
 #define NUM_TMU 2
 
 // Vertex structure
@@ -256,7 +246,6 @@ typedef struct
 } VERTEX;
 
 extern int width, height;
-extern float fogStart, fogEnd;
 
 #ifdef __cplusplus
 }

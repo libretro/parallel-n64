@@ -227,12 +227,6 @@ int glide64InitGfx(void)
 
    InitCombine();
 
-   if (settings.fog)
-   {
-      guFogGenerateLinear(0.0f, 255.0f);
-   }
-   else
-      settings.fog = false;
 
    grDepthBufferMode (GR_DEPTHBUFFER_ZBUFFER);
    grDepthBufferFunction(GR_CMP_LESS);

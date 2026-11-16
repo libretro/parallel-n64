@@ -28,7 +28,7 @@ typedef struct glitch64_vk_values
    float tex_sizes[4];   /* what the texture coordinates are divided by: tile 0, tile 1 */
    float exact_sizes[4]; /* the textures' sizes in texels: tile 0, tile 1 */
    float window[4];      /* half the window's width and height, y's sign */
-   float fog[4];         /* by the vertex's fog (1) or its q (0), fog end, scale, the alpha test's reference */
+   float test[4];        /* w: the alpha test's reference, -1 none */
    float blend_color[4]; /* the blender's blend colour */
 } glitch64_vk_values;
 
@@ -40,7 +40,6 @@ enum
    G64VK_BLEND0    = 1 << 1,  /* the blender's first cycle in the shader */
    G64VK_BLEND1    = 1 << 2,  /* its last cycle whole in the shader */
    G64VK_LOD_PIXEL = 1 << 3,  /* LOD_FRACTION from the derivatives */
-   G64VK_FOG       = 1 << 4,  /* fog blended in */
    G64VK_DITHER    = 1 << 5,
    G64VK_3POINT0   = 1 << 6,
    G64VK_3POINT1   = 1 << 7,
@@ -54,12 +53,11 @@ enum
 #define G64VK_BLEND_BYTES  0xffff0000u
 
 /* the vertex: Glitch64's VBufVertex */
-#define G64VK_VERTEX_STRIDE 40
+#define G64VK_VERTEX_STRIDE 36
 #define G64VK_OFF_POS    0
 #define G64VK_OFF_COLOR  16  /* b, g, r, a bytes */
 #define G64VK_OFF_TC0    20  /* tile 0's coordinates */
 #define G64VK_OFF_TC1    28  /* tile 1's */
-#define G64VK_OFF_FOG    36
 
 /* NULL if it did not fit. Valid until the next call on @m. */
 const uint32_t *glitch64_vk_vertex(spv_module *m, unsigned *count);

@@ -256,7 +256,6 @@ static void uc0_setothermode_l(uint32_t w0, uint32_t w1)
 
    if (mask & 0xFFFFFFF8) // rendermode / blender bits
    {
-      g_gdp.flags |= UPDATE_FOG_ENABLED; //if blender has no fog bits, fog must be set off
       rdp.render_mode_changed |= rdp.rm ^ gDP.otherMode.l;
       rdp.rm = gDP.otherMode.l;
       if (settings.flame_corona && (rdp.rm == 0x00504341)) //hack for flame's corona
@@ -300,7 +299,6 @@ static void uc0_setgeometrymode(uint32_t w0, uint32_t w1)
       if (!(rdp.flags & FOG_ENABLED))
       {
          rdp.flags |= FOG_ENABLED;
-         g_gdp.flags |= UPDATE_FOG_ENABLED;
       }
    }
 }
@@ -342,7 +340,6 @@ static void uc0_cleargeometrymode(uint32_t w0, uint32_t w1)
       if (rdp.flags & FOG_ENABLED)
       {
          rdp.flags ^= FOG_ENABLED;
-         g_gdp.flags |= UPDATE_FOG_ENABLED;
       }
    }
 }

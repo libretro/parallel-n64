@@ -228,7 +228,6 @@ static void uc2_geom_mode(uint32_t w0, uint32_t w1)
       if (!(rdp.flags & FOG_ENABLED))
       {
          rdp.flags |= FOG_ENABLED;
-         g_gdp.flags |= UPDATE_FOG_ENABLED;
       }
    }
    else
@@ -236,7 +235,6 @@ static void uc2_geom_mode(uint32_t w0, uint32_t w1)
       if (rdp.flags & FOG_ENABLED)
       {
          rdp.flags ^= FOG_ENABLED;
-         g_gdp.flags |= UPDATE_FOG_ENABLED;
       }
    }
 }

@@ -44,7 +44,6 @@ typedef struct _shader_program_key
 {
    int index;
 
-   int fog_enabled;
    int dither_enabled;
    int three_point_filter0;
    int three_point_filter1;
@@ -58,7 +57,6 @@ typedef struct _shader_program_key
    int vertexOffset_location;
    int textureSizes_location;
    int exactSizes_location;
-   int fogModeEndScale_location;
    int fogColor_location;
    int alphaRef_location;
 
@@ -104,7 +102,6 @@ static int combiner_mode;
 
 static int number_of_programs = 0;
 
-int fog_enabled;
 static int dither_enabled;
 
 /* the N64 combiner the next draws run, and its
@@ -118,7 +115,6 @@ static uint32_t n64_blend_rgba;
 /* dFdx and dFdy, for LOD_FRACTION per pixel */
 static int n64_derivatives;
 
-float fogStart,fogEnd;
 
 // shaders variables
 int need_to_compile;
@@ -141,8 +137,7 @@ static void n64_upload(const shader_program_key *prog);
 
 /* The shade, and the clip W it is multiplied by: the RDP steps the shade
  * evenly across the screen, so the GPU's perspective correction is undone
- * (vFrontColor, below). The fog, the shade's alpha to the RDP, likewise:
- * vTexCoord[0].b is it times W. */
+ * (vFrontColor, below). */
 #define SHADER_VARYING \
 "varying highp vec4 vFrontColorW; \n" \
 "varying highp float vColorW;     \n" \
@@ -220,11 +215,6 @@ static const char* fragment_shader_readtex1color_3point =
 "  c2=TEX1_OFFSET(vec2(offset.x,offset.y-sign(offset.y))); \n"
 "  vec4 readtex1 =c0+abs(offset.x)*(c1-c0)+abs(offset.y)*(c2-c0); \n";
 
-static const char* fragment_shader_fog =
-"  float fog;  \n"
-"  fog = vTexCoord[0].b / vColorW;  \n"
-"  gl_FragColor.rgb = mix(fogColor, gl_FragColor.rgb, fog); \n"
-;
 
 static const char* fragment_shader_end =
 "if(gl_FragColor.a <= alphaRef) {discard;}   \n"
@@ -239,7 +229,7 @@ static const char* fragment_shader_close =
 
 /* The shared program's: glitch64_n64_inputs' indices read through
  * n64In, the options from n64Flags0 (two cycles, the blender's first
- * cycle run, its second run whole, per-pixel LOD), n64Flags1 (fog,
+ * cycle run, its second run whole, per-pixel LOD), n64Flags1 (unused,
  * dither, the 3-point filter on unit 0 and on unit 1) and n64Flags2
  * (noise read, the pixel's alpha into the blender its full coverage);
  * the blender's cycles as P, A, M, B in n64Blend0 and n64Blend1. Goes
@@ -367,8 +357,6 @@ UBER_CYCLE(1)
 "  else \n"
 "    n64C.rgb = n64BlC(n64Blend1.x, n64C.rgb); \n"
 "  gl_FragColor = vec4(n64C.rgb, n64A); \n"
-"  if (n64Flags1.x > 0.5) \n"
-"    gl_FragColor.rgb = mix(fogColor, gl_FragColor.rgb, vTexCoord[0].b / vColorW); \n"
 ;
 
 static const char *uber_lod =
@@ -395,10 +383,8 @@ SHADER_HEADER
 "attribute highp vec4 aColor;          \n"
 "attribute highp vec4 aMultiTexCoord0; \n"
 "attribute highp vec4 aMultiTexCoord1; \n"
-"attribute float aFog;                 \n"
 "uniform vec3 vertexOffset;            \n" //Moved some calculations from grDrawXXX to shader
 "uniform vec4 textureSizes;            \n"
-"uniform vec3 fogModeEndScale;         \n" //0 = Mode, 1 = gl_Fog.end, 2 = gl_Fog.scale
 SHADER_VARYING
 "\n"
 "void main()\n"
@@ -416,14 +402,6 @@ SHADER_VARYING
 "  vTexCoord[0] = vec4(aMultiTexCoord0.xy / q / textureSizes.xy,0,1);     \n"
 "  vTexCoord[1] = vec4(aMultiTexCoord1.xy / q / textureSizes.zw,0,1);     \n"
 "\n"
-"  float fogV = (1.0 / mix(q,aFog,fogModeEndScale[0])) / 255.0;             \n"
-//"  //if(fogMode == 2) {                                                     \n"
-//"  //  fogV = 1.0 / aFog / 255                                              \n"
-//"  //}                                                                      \n"
-"\n"
-"  float f = (fogModeEndScale[1] - fogV) * fogModeEndScale[2];              \n"
-"  f = clamp(f, 0.0, 1.0);                                                  \n"
-"  vTexCoord[0].b = f * vColorW;                                         \n"
 "  vTexCoord[2].b = aPosition.x;                                            \n"
 "  vTexCoord[2].a = aPosition.y;                                            \n"
 "}                                                                          \n"
@@ -501,7 +479,6 @@ static void shader_bind_attributes(shader_program_key *shader)
    glBindAttribLocation(prog, COLOUR_ATTR,     "aColor");
    glBindAttribLocation(prog, TEXCOORD_0_ATTR, "aMultiTexCoord0");
    glBindAttribLocation(prog, TEXCOORD_1_ATTR, "aMultiTexCoord1");
-   glBindAttribLocation(prog, FOG_ATTR,        "aFog");
 }
 
 static void use_shader_program(shader_program_key *shader)
@@ -517,7 +494,6 @@ static void shader_find_uniforms(shader_program_key *shader)
    /* vertex shader uniforms */
    shader->vertexOffset_location    = glGetUniformLocation(prog, "vertexOffset");
    shader->textureSizes_location    = glGetUniformLocation(prog, "textureSizes");
-   shader->fogModeEndScale_location = glGetUniformLocation(prog, "fogModeEndScale");
 
    /* fragment shader uniforms */
    shader->texture0_location       = glGetUniformLocation(prog, "texture0");
@@ -585,7 +561,7 @@ static void finish_shader_program_setup(shader_program_key *shader)
 #define FRAGMENT_SHADER_SIZE (4096 * 2)
 #define SHADER_CACHE_SIZE    (4u * 1024u * 1024u)
 #define SHADER_CACHE_MAGIC   0x47324c49u
-#define SHADER_CACHE_FIELDS  7
+#define SHADER_CACHE_FIELDS  6
 #define SHADER_CACHE_RECORD  ((SHADER_CACHE_FIELDS + 1) * sizeof(int32_t))
 
 static char   *cache_arena = NULL;
@@ -601,13 +577,12 @@ static uint32_t combiner_cache_version(void)
 
 static void combiner_cache_key(const shader_program_key *shader, int32_t *fields)
 {
-   fields[0] = shader->fog_enabled;
-   fields[1] = shader->dither_enabled;
-   fields[2] = shader->three_point_filter0;
-   fields[3] = shader->three_point_filter1;
-   fields[4] = (int32_t)shader->n64_key0;
-   fields[5] = (int32_t)shader->n64_key1;
-   fields[6] = (int32_t)shader->n64_key2;
+   fields[0] = shader->dither_enabled;
+   fields[1] = shader->three_point_filter0;
+   fields[2] = shader->three_point_filter1;
+   fields[3] = (int32_t)shader->n64_key0;
+   fields[4] = (int32_t)shader->n64_key1;
+   fields[5] = (int32_t)shader->n64_key2;
 }
 
 static void combiner_cache_record(const shader_program_key *shader)
@@ -661,13 +636,12 @@ static void combiner_cache_load(void)
             break;
 
          memset(&shader, 0, sizeof(shader));
-         shader.fog_enabled         = fields[0];
-         shader.dither_enabled      = fields[1];
-         shader.three_point_filter0 = fields[2];
-         shader.three_point_filter1 = fields[3];
-         shader.n64_key0            = (uint32_t)fields[4];
-         shader.n64_key1            = (uint32_t)fields[5];
-         shader.n64_key2            = (uint32_t)fields[6];
+         shader.dither_enabled      = fields[0];
+         shader.three_point_filter0 = fields[1];
+         shader.three_point_filter1 = fields[2];
+         shader.n64_key0            = (uint32_t)fields[3];
+         shader.n64_key1            = (uint32_t)fields[4];
+         shader.n64_key2            = (uint32_t)fields[5];
 
          memcpy(fragment_shader, p + pos + SHADER_CACHE_RECORD, len);
          fragment_shader[len] = '\0';
@@ -832,7 +806,6 @@ void init_combiner(void)
    glUniform1i(shader.texture1_location, 1);
 
    need_to_compile = 1;
-   fog_enabled = 0;
    dither_enabled = 0;
 
    combiner_cache_load();
@@ -863,8 +836,6 @@ static void update_uniforms(const shader_program_key *prog)
    glUniform4f(prog->exactSizes_location,
          (float)tex_exactWidth[0], (float)tex_exactHeight[0],
          (float)tex_exactWidth[1], (float)tex_exactHeight[1]);
-   glUniform3f(prog->fogModeEndScale_location, fog_enabled != 2 ? 0.0f : 1.0f, fogEnd,
-         1.0f / (fogEnd - fogStart));
    glUniform1f(prog->alphaRef_location, alpha_test ? alpha_ref/255.0f : -1.0f);
    n64_upload(prog);
 }
@@ -894,7 +865,7 @@ static void use_uber_program(void)
       glUniform4f(i ? uber_program.n64Blend1_location : uber_program.n64Blend0_location,
             (float)GLITCH64_BL_P(n64.blend[i]), (float)GLITCH64_BL_A(n64.blend[i]),
             (float)GLITCH64_BL_M(n64.blend[i]), (float)GLITCH64_BL_B(n64.blend[i]));
-   glUniform4f(uber_program.n64Flags1_location, fog_enabled ? 1.0f : 0.0f, dither_enabled ? 1.0f : 0.0f,
+   glUniform4f(uber_program.n64Flags1_location, 0.0f, dither_enabled ? 1.0f : 0.0f,
          three_point_filter[0] ? 1.0f : 0.0f, three_point_filter[1] ? 1.0f : 0.0f);
    /* computed only where read: the hash costs, and lowp llvmpipe fell
     * over it in a shader this size */
@@ -918,7 +889,6 @@ void compile_shader(void)
       if (program->n64_key0 == n64_key[0] &&
             program->n64_key1 == n64_key[1] &&
             program->n64_key2 == n64_key[2] &&
-            program->fog_enabled == fog_enabled &&
             program->dither_enabled == dither_enabled &&
             program->three_point_filter0 == three_point_filter[0] &&
             program->three_point_filter1 == three_point_filter[1])
@@ -953,7 +923,6 @@ void compile_shader(void)
    }
 
    memset(&shader, 0, sizeof(shader));
-   shader.fog_enabled           = fog_enabled;
    shader.dither_enabled        = dither_enabled;
    shader.three_point_filter0   = three_point_filter[0];
    shader.three_point_filter1   = three_point_filter[1];
@@ -978,8 +947,6 @@ void compile_shader(void)
    strcat(fragment_shader, three_point_filter[0] ? fragment_shader_readtex0color_3point : fragment_shader_readtex0color);
    strcat(fragment_shader, three_point_filter[1] ? fragment_shader_readtex1color_3point : fragment_shader_readtex1color);
    glitch64_n64_fragment(&n64, fragment_shader, FRAGMENT_SHADER_SIZE);
-   if (fog_enabled)
-      strcat(fragment_shader, fragment_shader_fog);
    strcat(fragment_shader, fragment_shader_close);
 
    /* kept for the next session's load either way */
@@ -1131,7 +1098,6 @@ static void init_depth_shader(void)
    glBindAttribLocation(program_object_depth, COLOUR_ATTR,     "aColor");
    glBindAttribLocation(program_object_depth, TEXCOORD_0_ATTR, "aMultiTexCoord0");
    glBindAttribLocation(program_object_depth, TEXCOORD_1_ATTR, "aMultiTexCoord1");
-   glBindAttribLocation(program_object_depth, FOG_ATTR,        "aFog");
    glLinkProgram(program_object_depth);
    glDeleteShader(fragshader);
    glGetProgramiv(program_object_depth, GL_LINK_STATUS, &ok);
@@ -1217,16 +1183,6 @@ void grAlphaTestFunction( int32_t function, uint8_t value, int set_alpha_ref)
    alpha_func = function;
    alpha_test = test;
    alpha_ref = ref;
-   need_to_compile = 1;
-}
-
-void grFogMode( int32_t mode )
-{
-   GLITCH64_VK(vk_grFogMode(mode));
-   if (fog_enabled == mode)
-      return;
-   glitch64_flush();
-   fog_enabled = mode;
    need_to_compile = 1;
 }
 
