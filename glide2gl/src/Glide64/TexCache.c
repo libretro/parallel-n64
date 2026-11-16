@@ -88,10 +88,13 @@ typedef struct NODE_t
 } NODE;
 
 NODE *cachelut[65536];
+/* the nodes: the one for cache entry n is node_pool[n], so the cache
+ * allocates nothing as it fills, and clearing it frees nothing */
+static NODE node_pool[MAX_CACHE];
 
 static void AddToList (NODE **list, uint32_t crc, uintptr_t data, int tmu, int number)
 {
-   NODE *node = (NODE*)malloc(sizeof(NODE));
+   NODE *node = &node_pool[number];
    node->crc = crc;
    node->data = data;
    node->tmu = tmu;
@@ -100,16 +103,6 @@ static void AddToList (NODE **list, uint32_t crc, uintptr_t data, int tmu, int n
    *list = node;
    rdp.n_cached[tmu] ++;
    rdp.n_cached[tmu^1] = rdp.n_cached[tmu];
-}
-
-static void DeleteList (NODE **list)
-{
-   while (*list)
-   {
-      NODE *next = (*list)->pNext;
-      free(*list);
-      *list = next;
-   }
 }
 
 void TexCacheInit(void)
@@ -124,13 +117,13 @@ void TexCacheInit(void)
 void ClearCache(void)
 {
    int i;
+   /* only the lists the entries went into */
+   for (i = 0; i < rdp.n_cached[0]; i++)
+      cachelut[node_pool[i].crc >> 16] = NULL;
    voodoo.tmem_ptr[0] = offset_textures;
    rdp.n_cached[0] = 0;
    voodoo.tmem_ptr[1] = offset_textures;
    rdp.n_cached[1] = 0;
-
-   for (i = 0; i < 65536; i++)
-      DeleteList(&cachelut[i]);
 }
 
 static uint32_t textureCRC(uint32_t crc, uint8_t *addr, int width, int height, int line)
