@@ -60,7 +60,7 @@ static void filter_lane(void *ctx, unsigned lane)
 	const size_t at = (size_t)lane * (job->srcStride >> 2);
 	filter_8888((uint32*)(job->src + lane * job->srcStride), job->srcwidth, height,
 				(uint32*)(job->dst + lane * job->destStride), job->filter,
-				TxMemBuf::getInstance()->scratch(0) + at, TxMemBuf::getInstance()->scratch(1) + at);
+				txmembuf_scratch(0) + at, txmembuf_scratch(1) + at);
 }
 
 void TxFilter::clear()
@@ -72,7 +72,7 @@ void TxFilter::clear()
 	delete _txTexCache;
 
 	/* free memory */
-	TxMemBuf::getInstance()->shutdown();
+	txmembuf_shutdown();
 
 	/* clear other stuff */
 }
@@ -80,7 +80,7 @@ void TxFilter::clear()
 TxFilter::~TxFilter()
 {
 	clear();
-	TxUtil::poolRelease();
+	txutil_pool_release();
 }
 
 TxFilter::TxFilter(int maxwidth,
@@ -97,7 +97,7 @@ TxFilter::TxFilter(int maxwidth,
 	, _txTexCache(nullptr)
 	, _txHiResCache(nullptr)
 {
-	TxUtil::poolAcquire();
+	txutil_pool_acquire();
 	if (texCachePath == nullptr || texDumpPath == nullptr || texPackPath == nullptr)
 		return;
 
@@ -105,7 +105,7 @@ TxFilter::TxFilter(int maxwidth,
 
 
 	/* get number of CPU cores. */
-	_numcore = TxUtil::getNumberofProcessors();
+	_numcore = txutil_cores();
 
 	_initialized = 0;
 
@@ -128,12 +128,12 @@ TxFilter::TxFilter(int maxwidth,
 	if (ident && strcmp(ident, "DEFAULT") != 0)
 		_ident.assign(ident);
 
-	if (TxMemBuf::getInstance()->init(_maxwidth, _maxheight)) {
+	if (txmembuf_init(_maxwidth, _maxheight)) {
 		if (!_tex1)
-			_tex1 = TxMemBuf::getInstance()->get(0);
+			_tex1 = txmembuf_get(0);
 
 		if (!_tex2)
-			_tex2 = TxMemBuf::getInstance()->get(1);
+			_tex2 = txmembuf_get(1);
 	}
 
 #if !_16BPP_HACK
@@ -172,7 +172,7 @@ TxFilter::filter(uint8 *src, int srcwidth, int srcheight, ColorFormat srcformat,
 
 		/* calculate checksum of source texture */
 		if (!g64crc)
-			g64crc = (uint64)(TxUtil::checksumTx(texture, srcwidth, srcheight, srcformat));
+			g64crc = (uint64)(txutil_checksum_tx(texture, srcwidth, srcheight, srcformat));
 
 
 		/* check if we have it in cache */
@@ -191,7 +191,7 @@ TxFilter::filter(uint8 *src, int srcwidth, int srcheight, ColorFormat srcformat,
 			 (srcformat == graphics::internalcolorFormat::RGBA8 && (_maxbpp < 32 || _options & FORCE16BPP_TEX)))) {
 
 		if (srcformat != graphics::internalcolorFormat::RGBA8) {
-			if (!txquantize(texture, tmptex, srcwidth, srcheight, txq_format(srcformat), TXQ_RGBA8, 1, TxUtil::pool(), _numcore)) {
+			if (!txquantize(texture, tmptex, srcwidth, srcheight, txq_format(srcformat), TXQ_RGBA8, 1, txutil_pool(), _numcore)) {
 				return 0;
 			}
 			texture = tmptex;
@@ -315,10 +315,10 @@ TxFilter::filter(uint8 *src, int srcwidth, int srcheight, ColorFormat srcformat,
 					job.filter     = filter;
 					job.srcStride  = (srcwidth * job.blkheight) << 2;
 					job.destStride = job.srcStride * scale * scale;
-					txpool_run(TxUtil::pool(), filter_lane, &job, numcore);
+					txpool_run(txutil_pool(), filter_lane, &job, numcore);
 				} else {
 					filter_8888((uint32*)_texture, srcwidth, srcheight, (uint32*)_tmptex, filter,
-								TxMemBuf::getInstance()->scratch(0), TxMemBuf::getInstance()->scratch(1));
+								txmembuf_scratch(0), txmembuf_scratch(1));
 				}
 
 				if (filter & ENHANCEMENT_MASK) {
@@ -340,7 +340,7 @@ TxFilter::filter(uint8 *src, int srcwidth, int srcheight, ColorFormat srcformat,
 					srcformat = graphics::internalcolorFormat::RGBA4;
 				if (srcformat != graphics::internalcolorFormat::RGBA8) {
 					tmptex = (texture == _tex1) ? _tex2 : _tex1;
-					if (!txquantize(texture, tmptex, srcwidth, srcheight, TXQ_RGBA8, txq_format(srcformat), 1, TxUtil::pool(), _numcore)) {
+					if (!txquantize(texture, tmptex, srcwidth, srcheight, TXQ_RGBA8, txq_format(srcformat), 1, txutil_pool(), _numcore)) {
 						return 0;
 					}
 					texture = tmptex;
@@ -535,7 +535,7 @@ uint64
 TxFilter::checksum64(uint8 *src, int width, int height, int size, int rowStride, uint8 *palette)
 {
 	if (_options & (HIRESTEXTURES_MASK|DUMP_TEX))
-		return TxUtil::checksum64(src, width, height, size, rowStride, palette);
+		return txutil_checksum64(src, width, height, size, rowStride, palette);
 
 	return 0;
 }
@@ -552,7 +552,7 @@ TxFilter::dmptx(uint8 *src, int width, int height, int rowStridePixel, ColorForm
 
 
 	if (gfmt != graphics::internalcolorFormat::RGBA8) {
-		if (!txquantize(src, _tex1, rowStridePixel, height, txq_format(gfmt), TXQ_RGBA8, 1, TxUtil::pool(), _numcore))
+		if (!txquantize(src, _tex1, rowStridePixel, height, txq_format(gfmt), TXQ_RGBA8, 1, txutil_pool(), _numcore))
 			return 0;
 		src = _tex1;
 	}

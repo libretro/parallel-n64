@@ -24,66 +24,49 @@
 #ifndef __TXUTIL_H__
 #define __TXUTIL_H__
 
+/* GLideNHQ's checksums, its worker pool and its texture buffers. C89. */
+
+#include "Ext_TxFilter.h"
+#include "txpool.h"
+
 /* maximum number of CPU cores allowed */
 #define MAX_NUMCORE 8
-
-#include "TxInternal.h"
 
 /* extension for cache files */
 #define TEXCACHE_EXT "htc"
 
-#include <vector>
-
-class TxUtil
-{
-private:
-	static uint32 RiceCRC32(const uint8* src, int width, int height, int size, int rowStride);
-	static boolean RiceCRC32_CI4(const uint8* src, int width, int height, int rowStride,
-						  uint32* crc32, uint32* cimax);
-	static boolean RiceCRC32_CI8(const uint8* src, int width, int height, int rowStride,
-						  uint32* crc32, uint32* cimax);
-public:
-	static int sizeofTx(int width, int height, ColorFormat format);
-	static uint32 checksumTx(uint8 *data, int width, int height, ColorFormat format);
-#if 0 /* unused */
-	static uint32 chkAlpha(uint32* src, int width, int height);
+#ifdef __cplusplus
+extern "C" {
 #endif
-	static uint32 checksum(uint8 *src, int width, int height, int size, int rowStride);
-	static uint64 checksum64(uint8 *src, int width, int height, int size, int rowStride, uint8 *palette);
-	static uint32 getNumberofProcessors();
 
-	/* The worker pool the filters and quantizers split textures across
-	 * (txpool.c). TxFilter holds it for its lifetime; acquire and release
-	 * are called on the drawing thread only. */
-	static struct txpool *pool();
-	static void poolAcquire();
-	static void poolRelease();
-};
+/* Rice's CRC32 of a texture, as hi-res texture packs are named by it:
+ * @size the N64's texel size (0 4-bit .. 3 32-bit) in its low byte */
+uint32 txutil_checksum(const uint8 *src, int width, int height, int size, int rowStride);
+/* the same, with @palette for a 4- or 8-bit texture: the palette's CRC32,
+ * as far as the indices reach, in the high word */
+uint64 txutil_checksum64(const uint8 *src, int width, int height, int size, int rowStride, const uint8 *palette);
 
-class TxMemBuf
-{
-private:
-	uint8 *_tex[2];
-	uint32 _size[2];
-	/* deposterize's scratch, a texture's texels each: the threads filtering
-	 * a texture each use their own rows of them */
-	uint32 *_scratch[2];
-	TxMemBuf();
-public:
-	static TxMemBuf* getInstance() {
-		static TxMemBuf txMemBuf;
-		return &txMemBuf;
-	}
-	/* no destructor: TxFilter's clear() frees the buffers, and at exit
-	 * this singleton must still be there for it (a destructor ran first,
-	 * freeing them, and left the freed pointers for clear() to free again) */
-	boolean init(int maxwidth, int maxheight);
-	void shutdown();
-	uint8 *get(uint32 num);
-	uint32 size_of(uint32 num);
-	uint32 *scratch(uint32 num) { return _scratch[num]; }
-};
+/* the physical cores, at most MAX_NUMCORE */
+uint32 txutil_cores(void);
 
-void setTextureFormat(ColorFormat internalFormat, GHQTexInfo * info);
+/* The worker pool the filters and quantizers split textures across
+ * (txpool.c), NULL until acquired. TxFilter holds it for its lifetime;
+ * acquire and release are called on the drawing thread only. */
+txpool_t *txutil_pool(void);
+void txutil_pool_acquire(void);
+void txutil_pool_release(void);
+
+/* Two buffers of maxwidth x maxheight RGBA8 texels for textures on their
+ * way through the filters, and two of deposterize's scratch: made by
+ * init, freed by shutdown. */
+boolean txmembuf_init(int maxwidth, int maxheight);
+void txmembuf_shutdown(void);
+uint8 *txmembuf_get(uint32 num);
+uint32 txmembuf_size(uint32 num);
+uint32 *txmembuf_scratch(uint32 num);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* __TXUTIL_H__ */

@@ -29,8 +29,50 @@
 #include <algorithm>
 
 #include <Graphics/Parameters.h>
+#include <encodings/crc32.h>
 
 typedef graphics::InternalColorFormatParam ColorFormat;
+
+/* the bytes a texture of @format takes, 0 for a format GLideNHQ has not */
+static inline int txutil_sizeof_tx(int width, int height, ColorFormat format)
+{
+	if (format == graphics::internalcolorFormat::COLOR_INDEX8)
+		return width * height;
+	if (format == graphics::internalcolorFormat::RGBA4 ||
+			format == graphics::internalcolorFormat::RGB5_A1 ||
+			format == graphics::internalcolorFormat::RGB8)
+		return (width * height) << 1;
+	if (format == graphics::internalcolorFormat::RGBA8)
+		return (width * height) << 2;
+	return 0;
+}
+
+/* the texture's CRC-32/ISO-HDLC, 0 for a format GLideNHQ has not */
+static inline uint32 txutil_checksum_tx(const uint8 *src, int width, int height, ColorFormat format)
+{
+	const int dataSize = txutil_sizeof_tx(width, height, format);
+	return dataSize ? encoding_crc32(0, src, dataSize) : 0;
+}
+
+/* @info's format, texture format and pixel type for @internalFormat */
+static inline void setTextureFormat(ColorFormat internalFormat, GHQTexInfo *info)
+{
+	info->format = u32(internalFormat);
+	if (internalFormat == graphics::internalcolorFormat::RGB8) {
+		info->texture_format = static_cast<unsigned short>(u32(graphics::colorFormat::RED_GREEN_BLUE));
+		info->pixel_type = static_cast<unsigned short>(u32(graphics::datatype::UNSIGNED_SHORT_5_6_5));
+	} else if (internalFormat == graphics::internalcolorFormat::RGBA4) {
+		info->texture_format = static_cast<unsigned short>(u32(graphics::colorFormat::RGBA));
+		info->pixel_type = static_cast<unsigned short>(u32(graphics::datatype::UNSIGNED_SHORT_4_4_4_4));
+	} else if (internalFormat == graphics::internalcolorFormat::RGB5_A1) {
+		info->texture_format = static_cast<unsigned short>(u32(graphics::colorFormat::RGBA));
+		info->pixel_type = static_cast<unsigned short>(u32(graphics::datatype::UNSIGNED_SHORT_5_5_5_1));
+	} else {
+		/* RGBA8, and what GLideNHQ has not */
+		info->texture_format = static_cast<unsigned short>(u32(graphics::colorFormat::RGBA));
+		info->pixel_type = static_cast<unsigned short>(u32(graphics::datatype::UNSIGNED_BYTE));
+	}
+}
 
 /* an image's format as TxImage's C reads it (TXI_*) */
 static inline ColorFormat txi_format(int format)

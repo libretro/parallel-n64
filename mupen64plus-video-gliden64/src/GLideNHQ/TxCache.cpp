@@ -130,10 +130,10 @@ TxCache::TxCache(int options, int cachesize, const char *cachePath, const char *
 
 	/* zlib memory buffers to (de)compress hires textures */
 	if (_options & (GZ_TEXCACHE|GZ_HIRESTEXCACHE)) {
-		_gzdest0   = TxMemBuf::getInstance()->get(0);
-		_gzdest1   = TxMemBuf::getInstance()->get(1);
-		_gzdestLen = (TxMemBuf::getInstance()->size_of(0) < TxMemBuf::getInstance()->size_of(1)) ?
-					TxMemBuf::getInstance()->size_of(0) : TxMemBuf::getInstance()->size_of(1);
+		_gzdest0   = txmembuf_get(0);
+		_gzdest1   = txmembuf_get(1);
+		_gzdestLen = (txmembuf_size(0) < txmembuf_size(1)) ?
+					txmembuf_size(0) : txmembuf_size(1);
 
 		if (!_gzdest0 || !_gzdest1 || !_gzdestLen) {
 			_options &= ~(GZ_TEXCACHE|GZ_HIRESTEXCACHE);
@@ -156,7 +156,7 @@ TxCache::add(uint64 checksum, GHQTexInfo *info, int dataSize)
 	uint32 format = info->format;
 
 	if (dataSize == 0) {
-		dataSize = TxUtil::sizeofTx(info->width, info->height, info->format);
+		dataSize = txutil_sizeof_tx(info->width, info->height, info->format);
 
 		if (!dataSize)
 			return 0;

@@ -54,7 +54,7 @@ TxHiResCache::TxHiResCache(int maxwidth,
 						   const char *ident)
 	: TxCache((options & ~GZ_TEXCACHE), 0, cachePath, ident)
 {
-  _numcore    = TxUtil::getNumberofProcessors();
+  _numcore    = txutil_cores();
 
   _maxwidth  = maxwidth;
   _maxheight = maxheight;
@@ -549,7 +549,7 @@ TxHiResCache::loadHiResTextures(const std::string & dir_path, boolean replace)
 
 	  /* quantize */
 	  {
-		tmptex = (uint8 *)malloc(TxUtil::sizeofTx(width, height, destformat));
+		tmptex = (uint8 *)malloc(txutil_sizeof_tx(width, height, destformat));
 		if (tmptex == nullptr) {
 			free(tex);
 			tex = nullptr;
@@ -564,7 +564,7 @@ TxHiResCache::loadHiResTextures(const std::string & dir_path, boolean replace)
 			if (_maxbpp < 32 || _options & FORCE16BPP_HIRESTEX)
 				destformat = graphics::internalcolorFormat::RGB5_A1;
 		}
-		if (txquantize(tex, tmptex, width, height, TXQ_RGBA8, txq_format(destformat), 0, TxUtil::pool(), _numcore)) {
+		if (txquantize(tex, tmptex, width, height, TXQ_RGBA8, txq_format(destformat), 0, txutil_pool(), _numcore)) {
 			format = destformat;
 			free(tex);
 			tex = tmptex;
