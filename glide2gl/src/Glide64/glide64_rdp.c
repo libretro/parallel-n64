@@ -646,9 +646,7 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
       if (!depth_buffer_fog)
          return;
       depth_buffer_fog = false;
-
-      if (settings.fog)
-         DrawDepthBufferFog();
+      DrawDepthBufferFog();
 
       return;
    }

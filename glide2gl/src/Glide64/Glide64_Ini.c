@@ -40,7 +40,6 @@ void ReadSettings(void)
 
    settings.autodetect_ucode = true;
    settings.ucode = 2;
-   settings.fog = 1;
    settings.buff_clear = 1;
    settings.unk_as_red = true;
    settings.unk_clear = false;
@@ -252,7 +251,6 @@ void ReadSpecialSettings (const char * name)
       //fix_tex_coord = 1
       settings.filtering = 2;
       //depthmode = 1
-      settings.fog = 0;
    }
    else if (strstr(name, (const char *)"CARMAGEDDON64"))
    {
@@ -314,7 +312,6 @@ void ReadSpecialSettings (const char * name)
       //tex_wrap_hack = 0
       //depthmode = 1
       settings.filtering = 1;
-      settings.fog = 0;
    }
       else if (strstr(name, (const char *)"Sin and Punishment"))
    {
@@ -573,7 +570,6 @@ void ReadSpecialSettings (const char * name)
       settings.adjust_aspect = 2;
       settings.filtering = 1;
       //depthmode = 1
-      settings.fog = 0;
    }
    else if (strstr(name, (const char *)"CONKER BFD"))
    {
@@ -762,7 +758,6 @@ void ReadSpecialSettings (const char * name)
       //;Bokujou Monogatari 2
       settings.zmode_compare_less = 1;
       //depthmode = 0
-      settings.fog = 0;
    }
    else if (strstr(name, (const char*)"MGAH VOL1"))
    {
@@ -827,7 +822,6 @@ void ReadSpecialSettings (const char * name)
       //fix_tex_coord = 1
       settings.increase_texrect_edge = 1;
       //depthmode = 0
-      settings.fog = 0;
    }
    else if (strstr(name, (const char*)"MLB FEATURING K G JR"))
    {
@@ -922,7 +916,6 @@ void ReadSpecialSettings (const char * name)
    {
       //;Heiwa Pachinko World 64
       //depthmode = 0
-      settings.fog = 0;
       settings.swapmode = 2;
       smart_read = 1;
 #ifdef HAVE_HWFBE
@@ -960,14 +953,12 @@ void ReadSpecialSettings (const char * name)
       //;Susume! Taisen Puzzle Dama
       settings.force_microcheck = 1;
       //depthmode = 1
-      settings.fog = 0;
       settings.swapmode = 0;
    }
    else if (strstr(name, (const char*)"\xD0\xDD\xC5\xC3\xDE\xC0\xCF\xBA\xDE\xAF\xC1\xDC\xB0\xD9\xC4\xDE")) // ﾐﾝﾅﾃﾞﾀﾏｺﾞｯﾁﾜｰﾙﾄﾞ
    {
       //;Minna de Tamagocchi World / Tamagotchi World 64 (J)
       //depthmode = 0
-      settings.fog = 0;
    }
    else if (strstr(name, (const char*)"Taz Express"))
    {
@@ -1127,7 +1118,6 @@ void ReadSpecialSettings (const char * name)
       //fix_tex_coord = 1
       settings.filtering = 2;
       //depthmode = 1
-      settings.fog = 0;
       settings.buff_clear = 0;
       smart_read = 1;
 #ifdef HAVE_HWFBE
@@ -1631,7 +1621,6 @@ void ReadSpecialSettings (const char * name)
       //fix_tex_coord = 4
       settings.filtering = 1;
       //depthmode = 1
-      settings.fog = 0;
       settings.buff_clear = 0;
    }
    else if (strstr(name, (const char*)"LAMBORGHINI"))
@@ -1641,7 +1630,6 @@ void ReadSpecialSettings (const char * name)
    {
       settings.force_microcheck = 1;
       //depthmode = 1
-      settings.fog = 0;
    }
    else if (strstr(name, (const char *)"MarioParty"))
    {
@@ -1716,7 +1704,6 @@ void ReadSpecialSettings (const char * name)
       //fix_tex_coord = 32
       //depthmode = 1
       settings.filtering = 1;
-      settings.fog = 0;
    }
    else if (strstr(name, (const char *)"STARFOX64"))
    {

@@ -174,7 +174,6 @@ typedef struct
    int vsync;
 
    int filtering;
-   int fog;
    int buff_clear;
    int swapmode;
    int lodmode;

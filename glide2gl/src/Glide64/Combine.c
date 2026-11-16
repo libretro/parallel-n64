@@ -172,13 +172,8 @@ static void n64_blender(glitch64_n64_combiner *c)
       /* the first cycle always blends, into the second's pixel */
       if (GLITCH64_BL_P(first) != GLITCH64_BL_MEM && GLITCH64_BL_M(first) != GLITCH64_BL_MEM)
       {
-         /* fog off for this game (Glide64_Ini.c): a cycle reading the fog
-          * colour left out */
-         if (settings.fog || (GLITCH64_BL_P(first) != GLITCH64_BL_FOG && GLITCH64_BL_M(first) != GLITCH64_BL_FOG))
-         {
-            c->flags |= GLITCH64_N64_BLEND0;
-            c->blend[0] = (uint8_t)first;
-         }
+         c->flags |= GLITCH64_N64_BLEND0;
+         c->blend[0] = (uint8_t)first;
       }
       else
       {

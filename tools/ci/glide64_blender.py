@@ -17,6 +17,9 @@ of two. Each cell's middle must be the colour angrylion gives there,
 within a few steps (angrylion blends at 5 bits a factor), on GL and on
 Vulkan.
 
+Fog is part of the RDP's blender, for every game: the same cartridge named
+YOSHI STORY, a game Glide64 once turned fog off for, must match too.
+
 Left out, as Glide64 keeps no coverage: B the memory alpha (the
 coverage's), and memory * (A + 1). The colours keep every sum under 256,
 where angrylion's blender wraps and a GPU's clamps.
@@ -107,7 +110,7 @@ def rdp_list():
     return c
 
 
-def cartridge(path):
+def cartridge(path, name=b"GLIDE64 BLENDER"):
     t0, t1, t2, t3 = 8, 9, 10, 11
     lui = lambda rt, imm: mips(0x0f, 0, rt, imm)
     ori = lambda rt, rs, imm: mips(0x0d, rs, rt, imm)
@@ -140,7 +143,7 @@ def cartridge(path):
     image = bytearray(max(0x100000, PAYLOAD + len(payload)))
     image[0:4] = (0x80371240).to_bytes(4, "big")
     image[8:12] = (0x80000400).to_bytes(4, "big")
-    image[0x20:0x34] = b"GLIDE64 BLENDER     "
+    image[0x20:0x34] = name.ljust(20)
     assert 0x40 + 4 * len(prog) <= 0x1000
     for k, word in enumerate(prog):
         image[0x40 + 4 * k:0x40 + 4 * k + 4] = (word & 0xffffffff).to_bytes(4, "big")
@@ -200,6 +203,13 @@ def main():
             for k, r, g in (bad if a.v else bad[:6]):
                 print("   %-40s angrylion %s, glide64 %s" % (describe(cells()[k]), r, g))
             failures += 0 if ok else 1
+        # fog in a game Glide64 turned it off for
+        named = os.path.join(tmp, "yoshi.z64")
+        cartridge(named, b"YOSHI STORY")
+        got = middles(run(os.path.abspath(a.gl), core, named, tmp, "opengl", "glide64", "opengl"), True)
+        bad = [k for k, (r, g) in enumerate(zip(ref, got)) if max(abs(x - y) for x, y in zip(r, g)) > TOL]
+        print("glide64 GL      fog in YOSHI STORY too %s (%d of %d cells off)" % ("FAIL" if bad else "ok", len(bad), len(ref)))
+        failures += 1 if bad else 0
     print("%d failed" % failures)
     return 1 if failures else 0
 
