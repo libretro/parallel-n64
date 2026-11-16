@@ -300,9 +300,10 @@ def run(host, core, rom, tmp, api, plugin="gliden64", glide64_api="opengl", env_
     env = dict(os.environ, EGL_PLATFORM="surfaceless", LRHOST_SYSTEM_DIR=os.path.join(tmp, "sys"),
                LRHOST_DUMPDIR=dump, LRHOST_DUMP_FROM=str(FRAMES - 4), LRHOST_DUMP_TO=str(FRAMES - 4))
     env.update(env_extra or {})
-    p = subprocess.run([host, core, rom, str(FRAMES)] + OPTIONS + ["parallel-n64-gliden64-API=" + api,
-                                                                    "parallel-n64-glide64-API=" + glide64_api,
-                                                                    "parallel-n64-gfxplugin=" + plugin],
+    # @glide64_api None: the option left out, as a frontend that never set it
+    p = subprocess.run([host, core, rom, str(FRAMES)] + OPTIONS + ["parallel-n64-gliden64-API=" + api] +
+                       (["parallel-n64-glide64-API=" + glide64_api] if glide64_api else []) +
+                       ["parallel-n64-gfxplugin=" + plugin],
                        env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=60)
     if p.returncode != 0:
         if not quiet:
@@ -518,6 +519,18 @@ def main():
                         ok = pixel(vk, 200, 300) != pixel(vk, 400, 300)
                         detail += ", the quads differ" if ok else ", the quads the same"
                     print("glide64 %-28s %s (%s)" % ("on Vulkan, " + label, "ok" if ok else "FAIL", detail))
+                    failures += 0 if ok else 1
+                # a frontend on Vulkan refuses OpenGL: Glide64 with the API
+                # option left out (Automatic), and even set to OpenGL, must
+                # still load, on Vulkan, and draw what it draws asked for it
+                want = run(os.path.abspath(a.vk), a.core, roms["plain"], tmp, "opengl", "glide64", "vulkan")
+                for label, opt in (("API option left out", None), ("API option OpenGL", "opengl")):
+                    try:
+                        got = run(os.path.abspath(a.vk), a.core, roms["plain"], tmp, "opengl", "glide64", opt, None, True)
+                        ok, detail = got == want, "the frame Vulkan asked for gives" if got == want else "another frame"
+                    except RuntimeError as e:
+                        ok, detail = False, str(e)
+                    print("glide64 %-28s %s (%s)" % ("Vulkan frontend, " + label, "ok" if ok else "FAIL", detail))
                     failures += 0 if ok else 1
                 # the combiners a session met are built at the next one's load:
                 # its second run, as a frontend runs it (nothing waited for),

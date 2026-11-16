@@ -1157,7 +1157,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
             {"auto", "Automatic"},
             {NULL, NULL},
         },
-        "opengl"
+        "auto"
     },
     {
         CORE_NAME "-glide64-shared-shader",

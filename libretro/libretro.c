@@ -1686,7 +1686,8 @@ static bool gliden64_wants_vulkan(void)
    return preferred == RETRO_HW_CONTEXT_VULKAN;
 }
 
-/* Glide64 on Vulkan: only when the option asks, for now */
+/* Glide64 on Vulkan: when the option asks, or (automatic) when the
+ * frontend's driver is Vulkan */
 static bool glide64_wants_vulkan(void)
 {
    struct retro_variable var;
@@ -1695,8 +1696,10 @@ static bool glide64_wants_vulkan(void)
    var.key = CORE_NAME "-glide64-API";
    var.value = NULL;
    environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var);
-   if (!var.value || !strcmp(var.value, "opengl"))
+   if (var.value && !strcmp(var.value, "opengl"))
       return false;
+   if (!var.value)
+      var.value = "auto";
    if (!strcmp(var.value, "vulkan"))
       return true;
    if (!environ_cb(RETRO_ENVIRONMENT_GET_PREFERRED_HW_RENDER, &preferred))
@@ -3693,6 +3696,9 @@ bool retro_load_game(const struct retro_game_info *game)
 #ifdef HAVE_GLIDEN64
    bool tried_vulkan = false;
 #endif
+#ifdef HAVE_GLIDE64
+   bool glide64_tried_vulkan = false;
+#endif
    format_saved_memory();
 
    if (!transfer_pak_from_subsystem)
@@ -3735,10 +3741,14 @@ bool retro_load_game(const struct retro_game_info *game)
             }
          }
 #ifdef HAVE_GLIDE64
-         if (gfx_plugin == GFX_GLIDE64 && glide64_wants_vulkan() && retro_init_gliden64_vulkan())
+         if (gfx_plugin == GFX_GLIDE64 && glide64_wants_vulkan())
          {
-            glide64_on_vulkan = true;
-            glitch64_vulkan = 1;
+            glide64_tried_vulkan = true;
+            if (retro_init_gliden64_vulkan())
+            {
+               glide64_on_vulkan = true;
+               glitch64_vulkan = 1;
+            }
          }
 #endif
 #endif
@@ -3755,6 +3765,14 @@ bool retro_load_game(const struct retro_game_info *game)
             gliden64_on_vulkan = true;
             gliden64_vulkan_enable(1);
          }
+#ifdef HAVE_GLIDE64
+         /* a frontend refusing OpenGL (its driver Vulkan): Glide64 on Vulkan */
+         else if (gfx_plugin == GFX_GLIDE64 && !glide64_tried_vulkan && retro_init_gliden64_vulkan())
+         {
+            glide64_on_vulkan = true;
+            glitch64_vulkan = 1;
+         }
+#endif
 #endif
          else
          {
