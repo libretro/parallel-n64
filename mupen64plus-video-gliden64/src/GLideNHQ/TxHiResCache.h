@@ -44,7 +44,6 @@ private:
   boolean _cacheDumped;
   TxImage *_txImage;
   TxQuantize *_txQuantize;
-  TxReSample *_txReSample;
   std::string _texPackPath; /* UTF-8 */
   enum LoadResult {
 	  resOk,

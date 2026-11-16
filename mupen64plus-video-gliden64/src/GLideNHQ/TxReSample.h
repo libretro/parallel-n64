@@ -24,22 +24,24 @@
 #ifndef __TXRESAMPLE_H__
 #define __TXRESAMPLE_H__
 
-#include "TxInternal.h"
+#include "Ext_TxFilter.h"
 
-class TxReSample
-{
-private:
-  double tent(double x);
-  double gaussian(double x);
-  double sinc(double x);
-  double lanczos3(double x);
-  double mitchell(double x);
-  double besselI0(double x);
-  double kaiser(double x);
-public:
-  boolean minify(uint8 **src, int *width, int *height, int ratio);
-  boolean nextPow2(uint8** image, int* width, int* height, int bpp, boolean use_3dfx);
-  int nextPow2(int num);
-};
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/* the power of two at or above @num */
+int txresample_pow2(int num);
+/* @image (@bpp bits a texel) padded out to powers of two by replicating
+ * its last column and row, (with @use_3dfx) its aspect kept within 8:1;
+ * a new allocation in place of the old, *image, *width and *height set */
+boolean txresample_next_pow2(uint8 **image, int *width, int *height, int bpp, boolean use_3dfx);
+/* ARGB8888 @src shrunk by @ratio (2 or more) with a Kaiser-Bessel window,
+ * a new allocation in place of the old */
+boolean txresample_minify(uint8 **src, int *width, int *height, int ratio);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* __TXRESAMPLE_H__ */

@@ -45,7 +45,6 @@ TxHiResCache::~TxHiResCache()
 {
   delete _txImage;
   delete _txQuantize;
-  delete _txReSample;
 }
 
 TxHiResCache::TxHiResCache(int maxwidth,
@@ -59,7 +58,6 @@ TxHiResCache::TxHiResCache(int maxwidth,
 {
   _txImage = new TxImage();
   _txQuantize  = new TxQuantize();
-  _txReSample = new TxReSample();
 
   _maxwidth  = maxwidth;
   _maxheight = maxheight;
@@ -527,7 +525,7 @@ TxHiResCache::loadHiResTextures(const std::string & dir_path, boolean replace)
 		} else {
 		  ratio = (int)ceil((double)height / _maxheight);
 		}
-		if (!_txReSample->minify(&tex, &width, &height, ratio)) {
+		if (!txresample_minify(&tex, &width, &height, ratio)) {
 		  free(tex);
 		  tex = nullptr;
 		  continue;
@@ -537,10 +535,10 @@ TxHiResCache::loadHiResTextures(const std::string & dir_path, boolean replace)
 #if POW2_TEXTURES
 #if (POW2_TEXTURES == 2)
 		/* 3dfx Glide3x aspect ratio (8:1 - 1:8) */
-		if (!_txReSample->nextPow2(&tex, &width , &height, 32, 1)) {
+		if (!txresample_next_pow2(&tex, &width , &height, 32, 1)) {
 #else
 		/* normal pow2 expansion */
-		if (!_txReSample->nextPow2(&tex, &width , &height, 32, 0)) {
+		if (!txresample_next_pow2(&tex, &width , &height, 32, 0)) {
 #endif
 		  free(tex);
 		  tex = nullptr;

@@ -23,7 +23,7 @@
 
 #include "TxReSample.h"
 #include <stdlib.h>
-#include <memory.h>
+#include <string.h>
 
 #define _USE_MATH_DEFINES
 #include <math.h>
@@ -32,8 +32,7 @@
 #define M_PI 3.14159265358979323846
 #endif
 
-int
-TxReSample::nextPow2(int num)
+int txresample_pow2(int num)
 {
 	num = num - 1;
 	num = num | (num >> 1);
@@ -41,32 +40,32 @@ TxReSample::nextPow2(int num)
 	num = num | (num >> 4);
 	num = num | (num >> 8);
 	num = num | (num >> 16);
-	/*num = num | (num >> 32);*//* for 64bit architecture */
 	num = num + 1;
 
 	return num;
 }
 
-boolean
-TxReSample::nextPow2(uint8** image, int* width, int* height, int bpp, boolean use_3dfx = 0)
+boolean txresample_next_pow2(uint8 **image, int *width, int *height, int bpp, boolean use_3dfx)
 {
 	/* NOTE: bpp must be one of the follwing: 8, 16, 24, 32 bits per pixel */
+	int row_bytes, o_row_bytes, o_width, n_width, o_height, n_height;
+	uint8 *pow2image;
 
 	if (!*image || !*width || !*height || !bpp)
 		return 0;
 
-	int row_bytes = ((*width * bpp) >> 3);
-	int o_row_bytes = row_bytes;
-	int o_width = *width;
-	int n_width = *width;
-	int o_height = *height;
-	int n_height = *height;
+	row_bytes = ((*width * bpp) >> 3);
+	o_row_bytes = row_bytes;
+	o_width = *width;
+	n_width = *width;
+	o_height = *height;
+	n_height = *height;
 
 	/* HACKALERT: I have explicitly subtracted (n) from width/height to
-   * adjust textures that have (n) pixel larger width/height than
-   * power of 2 size. This is a dirty hack for textures that have
-   * munged aspect ratio by (n) pixel to the original.
-   */
+	 * adjust textures that have (n) pixel larger width/height than
+	 * power of 2 size. This is a dirty hack for textures that have
+	 * munged aspect ratio by (n) pixel to the original.
+	 */
 	if      (n_width  > 64) n_width  -= 4;
 	else if (n_width  > 16) n_width  -= 2;
 	else if (n_width  >  4) n_width  -= 1;
@@ -75,8 +74,8 @@ TxReSample::nextPow2(uint8** image, int* width, int* height, int bpp, boolean us
 	else if (n_height > 16) n_height -= 2;
 	else if (n_height >  4) n_height -= 1;
 
-	n_width = nextPow2(n_width);
-	n_height = nextPow2(n_height);
+	n_width = txresample_pow2(n_width);
+	n_height = txresample_pow2(n_height);
 	row_bytes = (n_width * bpp) >> 3;
 
 	/* 3dfx Glide3 format, W:H aspect ratio range (8:1 - 1:8) */
@@ -96,7 +95,6 @@ TxReSample::nextPow2(uint8** image, int* width, int* height, int bpp, boolean us
 	if (o_width == n_width && o_height == n_height)
 		return 1; /* nope */
 
-
 	if (o_width > n_width)
 		o_width = n_width;
 
@@ -104,7 +102,7 @@ TxReSample::nextPow2(uint8** image, int* width, int* height, int bpp, boolean us
 		o_height = n_height;
 
 	/* allocate memory to read in image */
-	uint8 *pow2image = (uint8*)malloc(row_bytes * n_height);
+	pow2image = (uint8*)malloc(row_bytes * n_height);
 
 	/* read in image */
 	if (pow2image) {
@@ -116,7 +114,7 @@ TxReSample::nextPow2(uint8** image, int* width, int* height, int bpp, boolean us
 			memcpy(tmppow2image, tmpimage, ((o_width * bpp) >> 3));
 
 			/* expand to pow2 size by replication */
-			for(j = ((o_width * bpp) >> 3); j < row_bytes; j++)
+			for (j = ((o_width * bpp) >> 3); j < row_bytes; j++)
 				tmppow2image[j] = tmppow2image[j - (bpp >> 3)];
 
 			tmppow2image += row_bytes;
@@ -142,92 +140,37 @@ TxReSample::nextPow2(uint8** image, int* width, int* height, int bpp, boolean us
  * Filters for Common Resampling Tasks
  * Apple Computer 1990
  */
-double
-TxReSample::tent(double x)
-{
-	if (x < 0.0) x = -x;
-	if (x < 1.0) return (1.0 - x);
-	return 0.0;
-}
-
-double
-TxReSample::gaussian(double x)
-{
-	if (x < 0) x = -x;
-	if (x < 2.0) return pow(2.0, -2.0 * x * x);
-	return 0.0;
-}
-
-double
-TxReSample::sinc(double x)
+static double sinc(double x)
 {
 	if (x == 0) return 1.0;
 	x *= M_PI;
 	return (sin(x) / x);
 }
 
-double
-TxReSample::lanczos3(double x)
-{
-	if (x < 0) x = -x;
-	if (x < 3.0) return (sinc(x) * sinc(x/3.0));
-	return 0.0;
-}
-
-/* Don P. Mitchell and Arun N. Netravali
- * Reconstruction Filters in Computer Graphics
- * SIGGRAPH '88
- * Proceedings of the 15th annual conference on Computer
- * graphics and interactive techniques, pp221-228, 1988
- */
-double
-TxReSample::mitchell(double x)
-{
-	if (x < 0) x = -x;
-	if (x < 2.0) {
-		const double B = 1.0 / 3.0;
-		const double C = 1.0 / 3.0;
-		if (x < 1.0) {
-			x = (((12.0 - 9.0 * B - 6.0 * C) * (x * x * x))
-				 + ((-18.0 + 12.0 * B + 6.0 * C) * (x * x))
-				 + (6.0 - 2.0 * B));
-		} else {
-			x = (((-1.0 * B - 6.0 * C) * (x * x * x))
-				 + ((6.0 * B + 30.0 * C) * (x * x))
-				 + ((-12.0 * B - 48.0 * C) * x)
-				 + (8.0 * B + 24.0 * C));
-		}
-		return (x / 6.0);
-	}
-	return 0.0;
-}
-
 /* J. F. Kaiser and W. A. Reed
  * Data smoothing using low-pass digital filters
  * Rev. Sci. instrum. 48 (11), pp1447-1457, 1977
  */
-double
-TxReSample::besselI0(double x)
+static double besselI0(double x)
 {
 	/* zero-order modified bessel function of the first kind */
 	const double eps_coeff = 1E-16; /* small enough */
-	double xh, sum, pow, ds;
+	double xh, sum, pw, ds;
+	int k = 0;
 	xh = 0.5 * x;
 	sum = 1.0;
-	pow = 1.0;
+	pw = 1.0;
 	ds = 1.0;
-	int k = 0;
 	while (ds > sum * eps_coeff) {
 		k++;
-		pow *= (xh / k);
-		ds = pow * pow;
+		pw *= (xh / k);
+		ds = pw * pw;
 		sum = sum + ds;
 	}
 	return sum;
 }
 
-double
-TxReSample::kaiser(double x)
+static double kaiser(double x)
 {
 	const double alpha = 4.0;
 	const double half_window = 5.0;
@@ -235,54 +178,45 @@ TxReSample::kaiser(double x)
 	return sinc(x) * besselI0(alpha * sqrt(1 - ratio * ratio)) / besselI0(alpha);
 }
 
-boolean
-TxReSample::minify(uint8 **src, int *width, int *height, int ratio)
+boolean txresample_minify(uint8 **src, int *width, int *height, int ratio)
 {
 	/* NOTE: src must be ARGB8888, ratio is the inverse representation */
 
-	if (!*src || ratio < 2) return 0;
-
-	/* Image Resampling */
-
-	/* half width of filter window.
-   * NOTE: must be 1.0 or larger.
-   *
-   * kaiser-bessel 5, lanczos3 3, mitchell 2, gaussian 1.5, tent 1
-   */
-	double half_window = 5.0;
+	/* half width of filter window, the Kaiser-Bessel window's: 5 */
+	const double half_window = 5.0;
 
 	int x, y, x2, y2, z;
 	double A, R, G, B;
 	uint32 texel;
+	int tmpwidth, tmpheight;
+	uint8 *tmptex, *workbuf;
+	double *weight;
 
-	int tmpwidth = *width / ratio;
-	int tmpheight = *height / ratio;
+	if (!*src || ratio < 2) return 0;
+
+	tmpwidth = *width / ratio;
+	tmpheight = *height / ratio;
 
 	/* resampled destination */
-	uint8 *tmptex = (uint8*)malloc((tmpwidth * tmpheight) << 2);
+	tmptex = (uint8*)malloc((tmpwidth * tmpheight) << 2);
 	if (!tmptex) return 0;
 
 	/* work buffer. single row */
-	uint8 *workbuf = (uint8*)malloc(*width << 2);
+	workbuf = (uint8*)malloc(*width << 2);
 	if (!workbuf) {
 		free(tmptex);
 		return 0;
 	}
 
 	/* prepare filter lookup table. only half width required for symetric filters. */
-	double *weight = (double*)malloc((int)((half_window * ratio) * sizeof(double)));
+	weight = (double*)malloc((int)((half_window * ratio) * sizeof(double)));
 	if (!weight) {
 		free(tmptex);
 		free(workbuf);
 		return 0;
 	}
-	for (x = 0; x < half_window * ratio; x++) {
-		//weight[x] = tent((double)x / ratio) / ratio;
-		//weight[x] = gaussian((double)x / ratio) / ratio;
-		//weight[x] = lanczos3((double)x / ratio) / ratio;
-		//weight[x] = mitchell((double)x / ratio) / ratio;
+	for (x = 0; x < half_window * ratio; x++)
 		weight[x] = kaiser((double)x / ratio) / ratio;
-	}
 
 	/* linear convolution */
 	for (y = 0; y < tmpheight; y++) {

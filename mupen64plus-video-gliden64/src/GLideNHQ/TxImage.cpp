@@ -105,11 +105,10 @@ TxImage::readPNG(const char *path, int* width, int* height, ColorFormat *format)
 #if POW2_TEXTURES
 	/* next power of 2 size conversions */
 	{
-		TxReSample *txReSample = new TxReSample;
 #if (POW2_TEXTURES == 2)
-		if (!txReSample->nextPow2((uint8**)&data, width, height, 32, 1)) {
+		if (!txresample_next_pow2((uint8**)&data, width, height, 32, 1)) {
 #else
-		if (!txReSample->nextPow2((uint8**)&data, width, height, 32, 0)) {
+		if (!txresample_next_pow2((uint8**)&data, width, height, 32, 0)) {
 #endif
 			if (data) {
 				free(data);
@@ -119,7 +118,6 @@ TxImage::readPNG(const char *path, int* width, int* height, ColorFormat *format)
 			*height = 0;
 			*format = graphics::internalcolorFormat::NOCOLOR;
 		}
-		delete txReSample;
 	}
 #endif /* POW2_TEXTURES */
 
@@ -271,12 +269,11 @@ TxImage::readBMP(const char *path, int* width, int* height, ColorFormat *format)
 	 * texture packs require a workaround. see HACKALERT in nextPow2().
 	 */
 	if (image) {
-		TxReSample *txReSample = new TxReSample; // XXX: temporary. move to a better place.
 
 #if (POW2_TEXTURES == 2)
-		if (!txReSample->nextPow2(&image, width, height, 8, 1)) {
+		if (!txresample_next_pow2(&image, width, height, 8, 1)) {
 #else
-		if (!txReSample->nextPow2(&image, width, height, 8, 0)) {
+		if (!txresample_next_pow2(&image, width, height, 8, 0)) {
 #endif
 			if (image) {
 				free(image);
@@ -287,7 +284,6 @@ TxImage::readBMP(const char *path, int* width, int* height, ColorFormat *format)
 			*format = graphics::internalcolorFormat::NOCOLOR;
 		}
 
-		delete txReSample;
 	}
 #endif /* POW2_TEXTURES */
 
