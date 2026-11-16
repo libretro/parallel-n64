@@ -211,11 +211,20 @@ static void glide64gDPLLETriangle(uint32_t w0, uint32_t w1, int shade, int textu
       }
       xleft += xleft_inc*j;
       xright += xright_inc*j;
-      // render ...
+
+      /* the M edge ends here and the L edge starts at XL: a trapezoid's
+       * step where they part (by more than a quarter pixel), the M
+       * edge's end a corner of its own, as the RDP draws it */
+      if ((xleft - xl > 0x10000 || xl - xleft > 0x10000) &&
+            ((!flip && xleft < xright) || (flip && xleft > xright)))
+      {
+         glide64_lle_point_at(&plane, XSCALE(xleft), YSCALE(ym), &corners[numCorners++]);
+         glide64_lle_point_at(&plane, XSCALE(xright), YSCALE(ym), &corners[numCorners++]);
+      }
    }
 
-   if (xl != xh)
-      xleft = xl;
+   /* below YM the left edge is L, from XL, whatever the M edge did */
+   xleft = xl;
 
    //if (yl-ym > 0)
    {
