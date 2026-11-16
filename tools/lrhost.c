@@ -404,7 +404,7 @@ int main(int argc, char **argv)
     void (*set_audio_batch)(retro_audio_sample_batch_t);
     void (*set_input_poll)(retro_input_poll_t);
     void (*set_input_state)(retro_input_state_t);
-    void (*r_init)(void); void (*r_deinit)(void);
+    void (*r_init)(void); void (*r_deinit)(void); void (*r_unload)(void);
     bool (*r_load)(const struct retro_game_info*);
     void (*r_run)(void);
     void (*r_get_av)(struct retro_system_av_info*);
@@ -452,7 +452,7 @@ int main(int argc, char **argv)
     SYM(set_env, "retro_set_environment"); SYM(set_video, "retro_set_video_refresh");
     SYM(set_audio, "retro_set_audio_sample"); SYM(set_audio_batch, "retro_set_audio_sample_batch");
     SYM(set_input_poll, "retro_set_input_poll"); SYM(set_input_state, "retro_set_input_state");
-    SYM(r_init, "retro_init"); SYM(r_deinit, "retro_deinit"); SYM(r_load, "retro_load_game");
+    SYM(r_init, "retro_init"); SYM(r_deinit, "retro_deinit"); SYM(r_unload, "retro_unload_game"); SYM(r_load, "retro_load_game");
     SYM(r_run, "retro_run"); SYM(r_get_av, "retro_get_system_av_info");
     SYM(r_unserialize, "retro_unserialize");
     SYM(r_serialize_size, "retro_serialize_size");
@@ -624,6 +624,9 @@ int main(int argc, char **argv)
         printf("upscaler: asked for in retro_load_game %d, frames with inputs %ld\n", vk_up_announced, vk_up_frames);
     vk_shutdown();
 #endif
+    /* as RetroArch closes content: the context goes first, then the game
+     * is unloaded (the core runs on to a stop: past its context) */
+    r_unload();
     r_deinit();
     /* what a frontend waits through at content close */
     printf("context_destroy and retro_deinit: %.3f ms\n", now_ms() - load_ms);

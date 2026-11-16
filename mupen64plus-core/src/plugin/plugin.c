@@ -139,6 +139,25 @@ static void EmptyFunc(void)
  * ends up parked in osRecvMesg while the idle loop spins. Evaluate the
  * MI interrupt lines against the mask exactly the way
  * signal_rcp_interrupt does after its own register write. */
+/* The RSP plugins call the video plugin through these, not through
+ * pointers copied from gfx when they started: the frontend may change
+ * what gfx holds (the libretro core parks the drawing while it has no
+ * context), and they go where gfx goes. */
+static void rsp_plugin_process_dlist(void)
+{
+    gfx.processDList();
+}
+
+static void rsp_plugin_process_rdp(void)
+{
+    gfx.processRDPList();
+}
+
+static void rsp_plugin_show_cfb(void)
+{
+    gfx.showCFB();
+}
+
 static void rsp_plugin_check_interrupts(void)
 {
     struct mi_controller* mi = &g_dev.mi;
@@ -305,10 +324,10 @@ static m64p_error plugin_start_rsp(void)
     rsp_info.DPC_PIPEBUSY_REG = &g_dev.dp.dpc_regs[DPC_PIPEBUSY_REG];
     rsp_info.DPC_TMEM_REG = &g_dev.dp.dpc_regs[DPC_TMEM_REG];
     rsp_info.CheckInterrupts = rsp_plugin_check_interrupts;
-    rsp_info.ProcessDlistList = gfx.processDList;
+    rsp_info.ProcessDlistList = rsp_plugin_process_dlist;
     rsp_info.ProcessAlistList = NULL; /* no audio-plugin AList handler; audio type-2 tasks run on the HLE RSP (rsp_audio) */
-    rsp_info.ProcessRdpList = gfx.processRDPList;
-    rsp_info.ShowCFB = gfx.showCFB;
+    rsp_info.ProcessRdpList = rsp_plugin_process_rdp;
+    rsp_info.ShowCFB = rsp_plugin_show_cfb;
 
     /* call the RSP plugin  */
     rsp.initiateRSP(rsp_info, NULL);

@@ -24,6 +24,7 @@ bool glsm_ctl(enum glsm_state_ctl state, void *data) { return false; }
 #include <mupen64plus-next_common.h>
 #include "api/m64p_frontend.h"
 #include "plugin/plugin.h"
+#include "plugin/dummy_video.h"
 #include "api/m64p_types.h"
 /* region 14 / Phase 2d (increment 9): mupencorestop is aliased to
  * g_dev.r4300.new_dynarec_hot_state.stop on x64 (see r4300.h); this TU uses it,
@@ -300,6 +301,41 @@ static bool     reinit_screen       = false;
 static bool     first_context_reset = false;
 static bool     context_setup_first_init = false;
 static bool     emu_initialized     = false;
+
+/* The video plugin's drawing parked while the frontend has no context
+ * for it: RetroArch closing content destroys the context first, then
+ * unloads the game, and retro_unload_game() runs the CPU on to a stop,
+ * which can hand the RDP another list. A renderer drawing then wrote
+ * through what the context had held (Glide64 on Vulkan, GLideN64 on GL
+ * without buffer storage) and the frontend crashed at exit. Parked, the
+ * dummy plugin takes the lists and the screen updates; the real ones
+ * come back with the next context. The software renderer needs none. */
+static gfx_plugin_functions gfx_live;
+static bool     gfx_parked          = false;
+
+static void gfx_park(void)
+{
+   if (gfx_parked || gfx_plugin == GFX_ANGRYLION)
+      return;
+   gfx_live            = gfx;
+   gfx.processDList    = dummyvideo_ProcessDList;
+   gfx.processRDPList  = dummyvideo_ProcessRDPList;
+   gfx.showCFB         = dummyvideo_ShowCFB;
+   gfx.updateScreen    = dummyvideo_UpdateScreen;
+   gfx.viStatusChanged = dummyvideo_ViStatusChanged;
+   gfx.viWidthChanged  = dummyvideo_ViWidthChanged;
+   gfx.fBRead          = dummyvideo_FBRead;
+   gfx.fBWrite         = dummyvideo_FBWrite;
+   gfx_parked          = true;
+}
+
+static void gfx_unpark(void)
+{
+   if (!gfx_parked)
+      return;
+   gfx        = gfx_live;
+   gfx_parked = false;
+}
 
 /* Set per retro_run from RETRO_ENVIRONMENT_GET_AUDIO_VIDEO_ENABLE: nonzero
  * means the frontend will discard this frame's video (a run-ahead "future"
@@ -1319,6 +1355,7 @@ static void emu_step_initialize(void)
       case RSP_PARALLEL: current_rsp_type = RSP_PLUGIN_PARALLEL; break;
       default:           current_rsp_type = RSP_PLUGIN_HLE;      break;
    }
+   gfx_parked = false;
    plugin_connect_all();
 
 #ifdef HAVE_PARALLEL
@@ -1587,6 +1624,7 @@ extern void gliden64ReinitGfxContext(void);
 
 static void context_reset(void)
 {
+   gfx_unpark();
 #if defined(HAVE_GLIDEN64) && defined(HAVE_GLIDE64)
    if (glide64_on_vulkan)
    {
@@ -1657,6 +1695,7 @@ static void context_reset(void)
 
 static void context_destroy(void)
 {
+   gfx_park();
 #ifdef HAVE_GLIDE64
    if (glide64_on_vulkan)
       glitch64_vk_context_destroy();
