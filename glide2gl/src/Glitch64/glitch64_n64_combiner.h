@@ -29,6 +29,15 @@ extern "C" {
 /* the pixel's alpha into the blender is its coverage (ALPHA_CVG_SEL):
  * full, so 1 */
 #define GLITCH64_N64_CVG_ALPHA  8u
+/* two-cycle mode with the texture unit's second cycle converting
+ * (CONVERT_ONE): TEXEL1 is no tile's, it is TEXEL0 through the YUV
+ * matrix, K0 to K3 (n64Convert: each as the RDP takes it, 2k + 1, over
+ * 256), blue as the luma:
+ *   r = b + K0 g, g = b + K1 r + K2 g, b = b + K3 r, a = b */
+#define GLITCH64_N64_CONVERT1   16u
+/* the same with the second cycle filtering too: TEXEL1 is TEXEL0's blue,
+ * in all four */
+#define GLITCH64_N64_CONVERT1_Y 32u
 
 /* a blender cycle, as the RDP's other modes hold it: P, A, M, B */
 #define GLITCH64_BL(p, a, m, b) ((uint8_t)(((p) << 6) | ((a) << 4) | ((m) << 2) | (b)))
@@ -79,12 +88,20 @@ void glitch64_n64_inputs(const glitch64_n64_combiner *c, int ops[16]);
 void glitch64_n64_key(const glitch64_n64_combiner *c, uint32_t key[GLITCH64_N64_KEY_WORDS]);
 void glitch64_n64_from_key(const uint32_t key[GLITCH64_N64_KEY_WORDS], glitch64_n64_combiner *c);
 
+/* TEXEL1 from TEXEL0 through the YUV matrix, as GLSL: the RDP's 8-bit
+ * steps, rounded as it rounds them, and not wrapped at 9 bits */
+#define GLITCH64_N64_CONVERT_GLSL \
+   "  { vec3 n64Y = floor(n64T0.rgb * 255.0 + 0.5); \n" \
+   "    n64T1 = vec4(n64Y.b + floor(n64Convert.x * n64Y.g + 0.5), \n" \
+   "        n64Y.b + floor(n64Convert.y * n64Y.r + n64Convert.z * n64Y.g + 0.5), \n" \
+   "        n64Y.b + floor(n64Convert.w * n64Y.r + 0.5), n64Y.b) / 255.0; } \n"
+
 /* GLSL statements for main(): from the two tiles' texels (tile 0 in
  * readtex1, tile 1 in readtex0, Glitch64's units), vFrontColor and the
  * uniforms the shader header declares (n64Prim, n64Env, n64Const = K4, K5,
  * PRIM_LOD_FRAC and the CPU's LOD_FRACTION, n64Level = the minimum
  * level, the maximum level, detail or sharpen on, the noise seed;
- * n64KeyCenter, n64KeyScale; fogColor, fogAlpha, n64Blend, alphaRef),
+ * n64KeyCenter, n64KeyScale, n64Convert; fogColor, fogAlpha, n64Blend, alphaRef),
  * sets gl_FragColor: the alpha test on the combiner's alpha, then the
  * blender as the flags say. Appended to @out, which holds @cap bytes with
  * its terminator; 0 if it does not fit, else the length written. */

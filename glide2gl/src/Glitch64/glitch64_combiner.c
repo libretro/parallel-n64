@@ -66,6 +66,7 @@ typedef struct _shader_program_key
    int n64Level_location;
    int n64KeyCenter_location;
    int n64KeyScale_location;
+   int n64Convert_location;
    int fogAlpha_location;
    int n64Blend_location;
    /* the shared program's own: the inputs and options it reads */
@@ -109,6 +110,8 @@ static int dither_enabled;
 static uint32_t n64_key[GLITCH64_N64_KEY_WORDS];
 static float n64_values[4][4];
 static float n64_key_values[2][3];
+/* K0 to K3, for a second texel converted from the first */
+static float n64_convert[4];
 /* the fog colour the uniforms have */
 static uint32_t n64_fog_rgba;
 static uint32_t n64_blend_rgba;
@@ -161,6 +164,7 @@ SHADER_HEADER
 "uniform vec4 n64Level;         \n"
 "uniform vec3 n64KeyCenter;     \n"
 "uniform vec3 n64KeyScale;      \n"
+"uniform vec4 n64Convert;       \n"
 "uniform float fogAlpha;        \n"
 "uniform vec3 n64Blend;         \n"
 "#define TEX0             texture2D(texture0, vTexCoord[0].xy) \n" \
@@ -231,7 +235,8 @@ static const char* fragment_shader_close =
  * n64In, the options from n64Flags0 (two cycles, the blender's first
  * cycle run, its second run whole, per-pixel LOD), n64Flags1 (unused,
  * dither, the 3-point filter on unit 0 and on unit 1) and n64Flags2
- * (noise read, the pixel's alpha into the blender its full coverage);
+ * (noise read, the pixel's alpha into the blender its full coverage, the
+ * second texel converted from the first: 1 through K0-K3, 2 its blue);
  * the blender's cycles as P, A, M, B in n64Blend0 and n64Blend1. Goes
  * between the header's declarations and main(). */
 static const char *uber_inputs =
@@ -330,6 +335,10 @@ static const char *uber_body_a =
 "    readtex1 = TEX1; \n"
 "  vec4 n64T0 = readtex1; \n"
 "  vec4 n64T1 = readtex0; \n"
+"  if (n64Flags2.z > 1.5) \n"
+"    n64T1 = vec4(n64T0.b); \n"
+"  else if (n64Flags2.z > 0.5) \n"
+GLITCH64_N64_CONVERT_GLSL
 "  vec4 sh = vFrontColor; \n"
 "  float n64LodFrac = n64Const.w; \n"
 ;
@@ -507,6 +516,7 @@ static void shader_find_uniforms(shader_program_key *shader)
    shader->n64Level_location       = glGetUniformLocation(prog, "n64Level");
    shader->n64KeyCenter_location   = glGetUniformLocation(prog, "n64KeyCenter");
    shader->n64KeyScale_location    = glGetUniformLocation(prog, "n64KeyScale");
+   shader->n64Convert_location     = glGetUniformLocation(prog, "n64Convert");
    shader->fogAlpha_location       = glGetUniformLocation(prog, "fogAlpha");
    shader->n64Blend_location       = glGetUniformLocation(prog, "n64Blend");
    shader->n64Blend0_location      = glGetUniformLocation(prog, "n64Blend0");
@@ -819,6 +829,7 @@ static void n64_upload(const shader_program_key *prog)
    glUniform4fv(prog->n64Level_location, 1, n64_values[3]);
    glUniform3fv(prog->n64KeyCenter_location, 1, n64_key_values[0]);
    glUniform3fv(prog->n64KeyScale_location, 1, n64_key_values[1]);
+   glUniform4fv(prog->n64Convert_location, 1, n64_convert);
    glUniform3f(prog->fogColor_location, g_gdp.fog_color.r / 255.0f, g_gdp.fog_color.g / 255.0f,
          g_gdp.fog_color.b / 255.0f);
    glUniform1f(prog->fogAlpha_location, g_gdp.fog_color.a / 255.0f);
@@ -871,7 +882,8 @@ static void use_uber_program(void)
     * over it in a shader this size */
    glUniform4f(uber_program.n64Flags2_location,
          ((n64.two_cycle && n64.rgb[0][0] == 7) || n64.rgb[1][0] == 7) ? 1.0f : 0.0f,
-         (n64.flags & GLITCH64_N64_CVG_ALPHA) ? 1.0f : 0.0f, 0.0f, 0.0f);
+         (n64.flags & GLITCH64_N64_CVG_ALPHA) ? 1.0f : 0.0f,
+         (n64.flags & GLITCH64_N64_CONVERT1_Y) ? 2.0f : (n64.flags & GLITCH64_N64_CONVERT1) ? 1.0f : 0.0f, 0.0f);
    update_uniforms(&uber_program);
 }
 
@@ -1134,15 +1146,16 @@ void grN64Combine(const glitch64_n64_combiner *c)
 }
 
 void grN64Constants(const float prim[4], const float env[4], const float consts[4],
-      const float level[4], const float key_center[3], const float key_scale[3])
+      const float level[4], const float key_center[3], const float key_scale[3], const float convert[4])
 {
-   GLITCH64_VK(vk_grN64Constants(prim, env, consts, level, key_center, key_scale));
+   GLITCH64_VK(vk_grN64Constants(prim, env, consts, level, key_center, key_scale, convert));
    if (!memcmp(n64_values[0], prim, sizeof(n64_values[0]))
          && !memcmp(n64_values[1], env, sizeof(n64_values[1]))
          && !memcmp(n64_values[2], consts, sizeof(n64_values[2]))
          && !memcmp(n64_values[3], level, sizeof(n64_values[3]))
          && !memcmp(n64_key_values[0], key_center, sizeof(n64_key_values[0]))
          && !memcmp(n64_key_values[1], key_scale, sizeof(n64_key_values[1]))
+         && !memcmp(n64_convert, convert, sizeof(n64_convert))
          && n64_fog_rgba == g_gdp.fog_color.total
          && n64_blend_rgba == g_gdp.blend_color.total)
       return;
@@ -1155,6 +1168,7 @@ void grN64Constants(const float prim[4], const float env[4], const float consts[
    memcpy(n64_values[3], level, sizeof(n64_values[3]));
    memcpy(n64_key_values[0], key_center, sizeof(n64_key_values[0]));
    memcpy(n64_key_values[1], key_scale, sizeof(n64_key_values[1]));
+   memcpy(n64_convert, convert, sizeof(n64_convert));
    if (!need_to_compile && current_shader)
       n64_upload(current_shader);
 }

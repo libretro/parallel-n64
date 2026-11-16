@@ -110,7 +110,9 @@ def rdp_list():
     return c
 
 
-def cartridge(path, name=b"GLIDE64 BLENDER"):
+def cartridge(path, name=b"GLIDE64 BLENDER", cmds=None, extra=b""):
+    """a cartridge handing the RDP @cmds (rdp_list()'s by default) at each
+    vertical blank; @extra lands in RDRAM straight after them"""
     t0, t1, t2, t3 = 8, 9, 10, 11
     lui = lambda rt, imm: mips(0x0f, 0, rt, imm)
     ori = lambda rt, rs, imm: mips(0x0d, rs, rt, imm)
@@ -120,8 +122,10 @@ def cartridge(path, name=b"GLIDE64 BLENDER"):
     beq = lambda rs, rt, off: mips(0x04, rs, rt, off)
     li = lambda rt, v: [lui(rt, (v >> 16) & 0xffff), ori(rt, rt, v & 0xffff)]
 
-    cmds = rdp_list()
+    cmds = rdp_list() if cmds is None else cmds
     payload = struct.pack(">%dI" % len(cmds), *[w & 0xffffffff for w in cmds])
+    listed = len(payload)
+    payload += extra
     prog = []
     prog += li(t0, 0xA4600000) + li(t1, LIST) + [sw(t1, 0, t0)]
     prog += li(t1, 0x10000000 + PAYLOAD) + [sw(t1, 4, t0)]
@@ -136,7 +140,7 @@ def cartridge(path, name=b"GLIDE64 BLENDER"):
     start = len(prog)
     prog += [lw(t1, 0, t2), ori(t3, 0, 0x200), bne(t1, t3, -3), 0]
     prog += li(t1, LIST) + [sw(t1, 0, t0)]
-    prog += li(t1, LIST + len(payload)) + [sw(t1, 4, t0)]
+    prog += li(t1, LIST + listed) + [sw(t1, 4, t0)]
     prog += [lw(t1, 0, t2), ori(t3, 0, 0x200), beq(t1, t3, -3), 0]
     prog += [beq(0, 0, start - len(prog) - 1), 0]
 

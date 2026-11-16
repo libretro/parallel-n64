@@ -141,6 +141,7 @@ static void set_combiner(const glitch64_n64_combiner *c)
 {
    int i;
    vk.flags &= ~(G64VK_TWO_CYCLE | G64VK_BLEND0 | G64VK_BLEND1 | G64VK_LOD_PIXEL | G64VK_NOISE | G64VK_CVG_ALPHA
+         | G64VK_CONVERT1 | G64VK_CONVERT1_Y
          | (int)G64VK_BLEND_BYTES);
    glitch64_n64_inputs(c, vk.ops);
    for (i = 0; i < 2; i++)
@@ -157,6 +158,10 @@ static void set_combiner(const glitch64_n64_combiner *c)
    vk.flags |= (int)(((uint32_t)c->blend[0] << G64VK_BLEND0_SHIFT) | ((uint32_t)c->blend[1] << G64VK_BLEND1_SHIFT));
    if (c->flags & GLITCH64_N64_LOD)
       vk.flags |= G64VK_LOD_PIXEL;
+   if (c->flags & GLITCH64_N64_CONVERT1_Y)
+      vk.flags |= G64VK_CONVERT1_Y;
+   else if (c->flags & GLITCH64_N64_CONVERT1)
+      vk.flags |= G64VK_CONVERT1;
 }
 
 /* ---- drawing ---- */
@@ -454,11 +459,12 @@ void vk_grN64Combine(const glitch64_n64_combiner *c)
 }
 
 void vk_grN64Constants(const float prim[4], const float env[4], const float consts[4],
-      const float level[4], const float key_center[3], const float key_scale[3])
+      const float level[4], const float key_center[3], const float key_scale[3], const float convert[4])
 {
    if (!memcmp(vk.values.prim, prim, 16) && !memcmp(vk.values.env, env, 16)
          && !memcmp(vk.values.consts, consts, 16) && !memcmp(vk.values.level, level, 16)
          && !memcmp(vk.values.key_center, key_center, 12) && !memcmp(vk.values.key_scale, key_scale, 12)
+         && !memcmp(vk.values.convert, convert, 16)
          && vk.fog_rgba == g_gdp.fog_color.total && vk.blend_rgba == g_gdp.blend_color.total)
       return;
    vk_flush();
@@ -478,6 +484,7 @@ void vk_grN64Constants(const float prim[4], const float env[4], const float cons
    memcpy(vk.values.level, level, 16);
    memcpy(vk.values.key_center, key_center, 12);
    memcpy(vk.values.key_scale, key_scale, 12);
+   memcpy(vk.values.convert, convert, 16);
 }
 
 /* ---- textures ---- */

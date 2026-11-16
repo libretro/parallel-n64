@@ -128,13 +128,14 @@ void grCullMode( int32_t mode );
  * and its inputs, each 0 to 1:
  * prim and env colours, K4 K5 PRIM_LOD_FRAC and the CPU's LOD_FRACTION,
  * the minimum and maximum levels with detail or sharpen and the noise
- * seed, the key's centre and scale. */
+ * seed, the key's centre and scale; and K0 to K3 for a second texel
+ * converted from the first (GLITCH64_N64_CONVERT1), each 2k + 1 over 256. */
 /* draws the triangles batched so far (Glitch64 does, at every change of
  * state and before the frame is read) */
 void glitch64_flush(void);
 void grN64Combine(const glitch64_n64_combiner *c);
 void grN64Constants(const float prim[4], const float env[4], const float consts[4],
-      const float level[4], const float key_center[3], const float key_scale[3]);
+      const float level[4], const float key_center[3], const float key_scale[3], const float convert[4]);
 
 void grDepthBiasLevel( int32_t level );
 

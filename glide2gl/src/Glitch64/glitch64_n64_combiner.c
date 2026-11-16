@@ -342,6 +342,10 @@ size_t glitch64_n64_fragment(const glitch64_n64_combiner *c, char *out, size_t c
    /* COMBINED in the first cycle run is the previous pixel's result on
     * the RDP: nothing a shader has, so 0 */
    ok &= put(out, cap, &len, "  vec4 n64T0 = readtex1; \n  vec4 n64T1 = readtex0; \n  vec4 n64C = vec4(0.0); \n");
+   if (c->flags & GLITCH64_N64_CONVERT1_Y)
+      ok &= put(out, cap, &len, "  n64T1 = vec4(n64T0.b); \n");
+   else if (c->flags & GLITCH64_N64_CONVERT1)
+      ok &= put(out, cap, &len, GLITCH64_N64_CONVERT_GLSL);
    if (lod)
    {
       if (c->flags & GLITCH64_N64_LOD)

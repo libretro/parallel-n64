@@ -82,8 +82,12 @@ void Combine(void)
 {
    const gdp_combine_modes *m = &g_gdp.combine;
    glitch64_n64_combiner c;
-   float prim[4], env[4], consts[4], level[4], center[3], scale[3];
+   float prim[4], env[4], consts[4], level[4], center[3], scale[3], convert[4];
    const int two = gDP.otherMode.cycleType == G_CYC_2CYCLE;
+   /* the texture unit's second cycle converting (TEXTCONV's CONVERT_ONE):
+    * its texel is the first's through K0-K3, or with BI_LERP1 too, the
+    * first's blue. Only two-cycle mode runs a second cycle. */
+   const int convert_one = two && (gDP.otherMode.h & (1u << 9));
    unsigned i;
 
    c.rgb[0][0] = (uint8_t)m->sub_a_rgb0; c.rgb[0][1] = (uint8_t)m->sub_b_rgb0;
@@ -103,10 +107,15 @@ void Combine(void)
       c.alpha[1][0] = 7; c.alpha[1][1] = 7; c.alpha[1][2] = 7; c.alpha[1][3] = 1;
    }
    c.flags = gDP.otherMode.textureLOD ? GLITCH64_N64_LOD : 0;
+   if (convert_one)
+      c.flags |= (gDP.otherMode.h & (1u << 10)) ? GLITCH64_N64_CONVERT1_Y : GLITCH64_N64_CONVERT1;
 
    cmb.tex = 0;
    for (i = two ? 0 : 1; i < 2; i++)
       cmb.tex |= n64_tiles(&c, i, two && i == 1);
+   /* the second texel read from the first's tile: tile 1 is not loaded */
+   if (convert_one && (cmb.tex & 2))
+      cmb.tex = 1;
 
 
    n64_blender(&c);
@@ -133,7 +142,10 @@ void Combine(void)
    center[2] = g_gdp.key_center.b / 255.0f;
    scale[0] = g_gdp.key_scale.r / 255.0f;   scale[1] = g_gdp.key_scale.g / 255.0f;
    scale[2] = g_gdp.key_scale.b / 255.0f;
-   grN64Constants(prim, env, consts, level, center, scale);
+   /* as the RDP takes them: 2k + 1, over the 256 of its 8-bit steps */
+   convert[0] = (2 * g_gdp.k0 + 1) / 256.0f; convert[1] = (2 * g_gdp.k1 + 1) / 256.0f;
+   convert[2] = (2 * g_gdp.k2 + 1) / 256.0f; convert[3] = (2 * g_gdp.k3 + 1) / 256.0f;
+   grN64Constants(prim, env, consts, level, center, scale, convert);
 
 }
 
@@ -283,7 +295,7 @@ static void glide64_combine_pass(unsigned rgb_in, unsigned alpha_in, unsigned bl
    c.alpha[1][0] = 7; c.alpha[1][1] = 7; c.alpha[1][2] = 7; c.alpha[1][3] = (uint8_t)alpha_in;
    c.blend[1] = GLITCH64_BL(blend_p, GLITCH64_BL_A_IN, 0, 0);
    grN64Combine(&c);
-   grN64Constants(prim ? prim : zero, zero, zero, zero, zero, zero);
+   grN64Constants(prim ? prim : zero, zero, zero, zero, zero, zero, zero);
 }
 
 void glide64_combine_texel(int tmu, int fog_rgb)

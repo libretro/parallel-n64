@@ -7,7 +7,7 @@
 enum
 {
    U_PRIM = 0, U_ENV, U_CONSTS, U_LEVEL, U_KEY_CENTER, U_KEY_SCALE, U_FOG_COLOR,
-   U_TEX_SIZES, U_EXACT_SIZES, U_WINDOW, U_TEST, U_BLEND_COLOR, U_COUNT
+   U_TEX_SIZES, U_EXACT_SIZES, U_WINDOW, U_TEST, U_BLEND_COLOR, U_CONVERT, U_COUNT
 };
 
 /* the push block's, as vk_shaders.h has it */
@@ -172,6 +172,33 @@ static spv_v read_texel(g64_emit *e, uint32_t var, spv_v tc, spv_v size, int bit
 
 static spv_v splat4(spv_module *m, spv_v a) { return spv_spread(m, a, 4); }
 
+/* tile 1's texel, or tile 0's converted (GLITCH64_N64_CONVERT1): through
+ * K0-K3 at the RDP's 8-bit steps, or its blue */
+static spv_v convert_texel(g64_emit *e, spv_v t0, spv_v t1)
+{
+   spv_module *m = e->m;
+   spv_var out = spv_local(m, T_F4);
+   spv_if_t b;
+   spv_store(m, out, t1);
+   if (spv_if(m, &b, flag(e, G64VK_CONVERT1)))
+   {
+      spv_v k = u(e, U_CONVERT);
+      spv_v y = spv_floor(m, spv_add(m, spv_mul(m, spv_xyz(m, t0), spv_f(m, 255.f)), spv_spread(m, spv_f(m, 0.5f), 3)));
+      spv_v yr = spv_x(m, y, 0), yg = spv_x(m, y, 1), yb = spv_x(m, y, 2);
+      spv_v half = spv_f(m, 0.5f);
+      spv_v r = spv_add(m, yb, spv_floor(m, spv_add(m, spv_mul(m, spv_x(m, k, 0), yg), half)));
+      spv_v g = spv_add(m, yb, spv_floor(m, spv_add(m, spv_add(m, spv_mul(m, spv_x(m, k, 1), yr),
+                        spv_mul(m, spv_x(m, k, 2), yg)), half)));
+      spv_v bl = spv_add(m, yb, spv_floor(m, spv_add(m, spv_mul(m, spv_x(m, k, 3), yr), half)));
+      spv_store(m, out, spv_div(m, spv_vec4(m, r, g, bl, yb), spv_spread(m, spv_f(m, 255.f), 4)));
+   }
+   spv_endif(m, &b);
+   if (spv_if(m, &b, flag(e, G64VK_CONVERT1_Y)))
+      spv_store(m, out, splat4(m, spv_x(m, t0, 2)));
+   spv_endif(m, &b);
+   return spv_load(m, out);
+}
+
 static spv_v op_at(g64_emit *e, int i)
 {
    if (e->key)
@@ -317,7 +344,7 @@ const uint32_t *glitch64_vk_fragment(spv_module *m, int depth, const int *key, u
       if (spv_else(m, &b))
       {
          spv_v t0 = read_texel(&e, tex0, tc0, xy_(m, exact), G64VK_3POINT0);
-         spv_v t1 = read_texel(&e, tex1, tc1, zw_(m, exact), G64VK_3POINT1);
+         spv_v t1 = convert_texel(&e, t0, read_texel(&e, tex1, tc1, zw_(m, exact), G64VK_3POINT1));
          spv_v prim = u(&e, U_PRIM), env = u(&e, U_ENV), consts = u(&e, U_CONSTS);
          spv_v level = u(&e, U_LEVEL);
          spv_v shade = load_in(m, v_shade);

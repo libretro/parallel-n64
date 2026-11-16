@@ -30,6 +30,7 @@ typedef struct glitch64_vk_values
    float window[4];      /* half the window's width and height, y's sign */
    float test[4];        /* w: the alpha test's reference, -1 none */
    float blend_color[4]; /* the blender's blend colour */
+   float convert[4];     /* K0 to K3, 2k + 1 over 256 (GLITCH64_N64_CONVERT1) */
 } glitch64_vk_values;
 
 
@@ -40,12 +41,14 @@ enum
    G64VK_BLEND0    = 1 << 1,  /* the blender's first cycle in the shader */
    G64VK_BLEND1    = 1 << 2,  /* its last cycle whole in the shader */
    G64VK_LOD_PIXEL = 1 << 3,  /* LOD_FRACTION from the derivatives */
+   G64VK_CONVERT1  = 1 << 4,  /* tile 1's texel is tile 0's through K0-K3 */
    G64VK_DITHER    = 1 << 5,
    G64VK_3POINT0   = 1 << 6,
    G64VK_3POINT1   = 1 << 7,
    G64VK_COPY      = 1 << 8,  /* tile 0's texel as it is: an LFB write */
    G64VK_NOISE     = 1 << 9,
-   G64VK_CVG_ALPHA = 1 << 10  /* the pixel's alpha into the blender is 1 */
+   G64VK_CVG_ALPHA = 1 << 10, /* the pixel's alpha into the blender is 1 */
+   G64VK_CONVERT1_Y = 1 << 11 /* tile 1's texel is tile 0's blue */
 };
 /* the blender's cycles (GLITCH64_BL) in the flags' top half */
 #define G64VK_BLEND0_SHIFT 16

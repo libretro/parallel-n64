@@ -11,6 +11,8 @@
  * different, and holds each pixel to the combiner worked out here in C:
  * one-cycle mode runs the second cycle's settings, and the second cycle of
  * two takes the first's result as COMBINED and reads the tiles swapped.
+ * With the texture unit's second cycle converting (CONVERT_ONE), the
+ * second texel is the first through K0 to K3, or its blue, and no tile's.
  * It also holds the shader key to a round trip, and checks the blender's
  * fog colour and alpha standing in for the combiner's.
  *
@@ -147,6 +149,10 @@ static const unsigned char PRIM[4] = { 240, 80, 20, 110 }, ENV[4] = { 60, 130, 1
 static const unsigned char CENTER[3] = { 70, 90, 140 }, SCALE[3] = { 160, 30, 250 };
 static const float K4 = 50.0f / 255.0f, K5 = 170.0f / 255.0f;
 static const float PRIM_LOD = 90.0f / 255.0f, LOD = 35.0f / 255.0f;
+/* K0 to K3, BT.601's YUV to RGB as games set it, as the RDP takes them:
+ * 2k + 1 */
+static const int KTF[4] = { 2 * 175 + 1, 2 * -43 + 1, 2 * -89 + 1, 2 * 222 + 1 };
+static float convert[4];
 
 static void texture(int tmu, const unsigned char *c, unsigned slot)
 {
@@ -229,14 +235,31 @@ static float alpha_in(unsigned slot, unsigned v, col comb, col t0, col t1)
    return v == 6 ? 1.0f : 0.0f;
 }
 
+/* the second texel: tile 1's, or tile 0's converted, at the RDP's 8-bit
+ * steps (an arithmetic shift right, rounding at 0x80) */
+static col second_texel(const glitch64_n64_combiner *m)
+{
+   col r;
+   if (m->flags & GLITCH64_N64_CONVERT1_Y)
+      return all(T0[2] / 255.0f);
+   if (!(m->flags & GLITCH64_N64_CONVERT1))
+      return rgba(T1);
+   r.c[0] = (T0[2] + ((KTF[0] * T0[1] + 0x80) >> 8)) / 255.0f;
+   r.c[1] = (T0[2] + ((KTF[1] * T0[0] + KTF[2] * T0[1] + 0x80) >> 8)) / 255.0f;
+   r.c[2] = (T0[2] + ((KTF[3] * T0[0] + 0x80) >> 8)) / 255.0f;
+   r.c[3] = T0[2] / 255.0f;
+   return r;
+}
+
 static col reference(const glitch64_n64_combiner *m)
 {
    col comb = all(0.0f), out;
+   const col tex1 = second_texel(m);
    unsigned i, k;
    for (i = m->two_cycle ? 0 : 1; i < 2; i++)
    {
       const int second = m->two_cycle && i == 1;
-      const col t0 = second ? rgba(T1) : rgba(T0), t1 = second ? rgba(T0) : rgba(T1);
+      const col t0 = second ? tex1 : rgba(T0), t1 = second ? rgba(T0) : tex1;
       col in[4];
       float a[4];
       for (k = 0; k < 4; k++)
@@ -404,10 +427,10 @@ static int check_batches(float *prim, float *env, float *consts, const float *le
 
    /* the combiner's inputs: red, then green */
    prim[0] = 1.0f; prim[1] = 0.0f; prim[2] = 0.0f; prim[3] = 1.0f;
-   grN64Constants(prim, env, consts, level, center, scale);
+   grN64Constants(prim, env, consts, level, center, scale, convert);
    quad_at(0.0f, 32.0f, 1.0f);
    prim[0] = 0.0f; prim[1] = 1.0f;
-   grN64Constants(prim, env, consts, level, center, scale);
+   grN64Constants(prim, env, consts, level, center, scale, convert);
    quad_at(32.0f, 64.0f, 1.0f);
    if (pixel_at(16) != 0xFF0000 || pixel_at(48) != 0x00FF00)
    {
@@ -419,7 +442,7 @@ static int check_batches(float *prim, float *env, float *consts, const float *le
    /* the blend: the second quad adds, the first replaces */
    grAlphaBlendFunction(GR_BLEND_ONE, GR_BLEND_ZERO, GR_BLEND_ONE, GR_BLEND_ZERO);
    prim[0] = 0.0f; prim[1] = 0.0f; prim[2] = 1.0f;
-   grN64Constants(prim, env, consts, level, center, scale);
+   grN64Constants(prim, env, consts, level, center, scale, convert);
    quad_at(0.0f, 32.0f, 1.0f);
    grAlphaBlendFunction(GR_BLEND_ONE, GR_BLEND_ONE, GR_BLEND_ONE, GR_BLEND_ZERO);
    quad_at(32.0f, 64.0f, 1.0f);
@@ -435,7 +458,7 @@ static int check_batches(float *prim, float *env, float *consts, const float *le
    prim[0] = 1.0f; prim[1] = 1.0f; prim[2] = 1.0f; prim[3] = 0.5f;
    m.alpha[1][3] = 3;
    grN64Combine(&m);
-   grN64Constants(prim, env, consts, level, center, scale);
+   grN64Constants(prim, env, consts, level, center, scale, convert);
    grAlphaTestFunction(GR_CMP_ALWAYS, 0, 0);
    quad_at(0.0f, 32.0f, 1.0f);
    grAlphaTestFunction(GR_CMP_GEQUAL, 192, 1);
@@ -470,12 +493,14 @@ static void run(const float *level)
       env[k] = ENV[k] / 255.0f;
    }
    consts[0] = K4; consts[1] = K5; consts[2] = PRIM_LOD; consts[3] = LOD;
+   for (k = 0; k < 4; k++)
+      convert[k] = KTF[k] / 256.0f;
    for (k = 0; k < 3; k++)
    {
       center[k] = CENTER[k] / 255.0f;
       scale[k] = SCALE[k] / 255.0f;
    }
-   grN64Constants(prim, env, consts, level, center, scale);
+   grN64Constants(prim, env, consts, level, center, scale, convert);
    lod_frac = LOD;
 
    /* every input in every slot of the cycle run; the other slots of it
@@ -516,7 +541,20 @@ static void run(const float *level)
          }
       m.two_cycle = (uint8_t)(n & 1);
       check(&m, "mixed");
+      /* and in two cycles, the second texel converted from the first */
+      m.two_cycle = 1;
+      m.flags = (n % 3) ? GLITCH64_N64_CONVERT1 : GLITCH64_N64_CONVERT1_Y;
+      check(&m, "mixed, the second texel converted");
    }
+
+   /* Killer Instinct Gold's hit sparks: (PRIM - ENV) * TEXEL1 + ENV of an
+    * intensity texture converted, its green over 1 */
+   base(&m, 1);
+   m.rgb[0][0] = 3; m.rgb[0][1] = 5; m.rgb[0][2] = 2; m.rgb[0][3] = 5;
+   m.rgb[1][0] = 15; m.rgb[1][1] = 15; m.rgb[1][2] = 31; m.rgb[1][3] = 0;
+   m.alpha[1][0] = 7; m.alpha[1][1] = 7; m.alpha[1][2] = 7; m.alpha[1][3] = 0;
+   m.flags = GLITCH64_N64_CONVERT1;
+   check(&m, "a hit spark's converted second texel");
 
    /* LOD_FRACTION from the derivatives: the tiles' one texel is magnified,
     * and with no level past the first the RDP gives 1 */
@@ -581,7 +619,7 @@ static void run(const float *level)
          m.blend[1] = (uint8_t)cases[k].blend1;
          p[0] = 0.2f; p[1] = 0.4f; p[2] = 0.6f; p[3] = cases[k].prim_a;
          grN64Combine(&m);
-         grN64Constants(p, env, consts, level, center, scale);
+         grN64Constants(p, env, consts, level, center, scale, convert);
          if (cases[k].test >= 0)
             grAlphaTestFunction(GR_CMP_GEQUAL, (uint8_t)cases[k].test, 1);
          vtx(&quad[0], 0.0f, 0.0f);

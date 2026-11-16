@@ -57,7 +57,7 @@ void vk_grAlphaTestReferenceValue(uint8_t value);
 void vk_grStippleMode(int32_t mode);
 void vk_grN64Combine(const glitch64_n64_combiner *c);
 void vk_grN64Constants(const float prim[4], const float env[4], const float consts[4],
-      const float level[4], const float key_center[3], const float key_scale[3]);
+      const float level[4], const float key_center[3], const float key_scale[3], const float convert[4]);
 void vk_grTexSource(int32_t tmu, uint32_t slot, void *info, int do_download);
 void vk_grTexFilterClampMode(int32_t tmu, int32_t s_clamp, int32_t t_clamp, int32_t minf, int32_t magf);
 int vk_grLfbReadScaledInit(void);
