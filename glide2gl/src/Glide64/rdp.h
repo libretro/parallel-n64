@@ -129,15 +129,12 @@ extern uint32_t gfx_plugin_accuracy;
 #define  hack_BAR         (1<<2)   //Beetle Adventure Racing
 #define  hack_Chopper     (1<<3)   //Chopper Attack
 #define  hack_Diddy       (1<<4)   //diddy kong racing
-#define  hack_Fifa98      (1<<5)   //FIFA - Road to World Cup 98
 #define  hack_Fzero       (1<<6)   //F-Zero
 #define  hack_Hyperbike   (1<<8)   //Top Gear Hyper Bike
 #define  hack_ISS64       (1<<9)   //International Superstar Soccer 64
-#define  hack_KI          (1<<10)  //Killer Instinct
 #define  hack_Knockout    (1<<11)  //Knockout Kings 2000
 #define  hack_Lego        (1<<12)  //LEGO Racers
 #define  hack_MK64        (1<<13)  //Mario Kart
-#define  hack_Megaman     (1<<14)  //Megaman64
 #define  hack_Makers      (1<<15)  //Mischief-makers
 #define  hack_WCWnitro    (1<<16)  //WCW Nitro
 #define  hack_Ogre64      (1<<17)  //Ogre Battle 64
@@ -152,8 +149,6 @@ extern uint32_t gfx_plugin_accuracy;
 #define  hack_Tonic       (1<<26)  //tonic trouble
 #define  hack_Yoshi       (1<<27)  //Yoshi Story
 #define  hack_Zelda       (1<<28)  //zeldas hacks
-#define  hack_Blastcorps  (1<<29)  /* Blast Corps */
-#define  hack_OOT         (1<<30)  /* Zelda OOT hacks */
 #define  hack_Winback     (1<<31)  //WinBack - Covert Operations
 
 #define FBCRCMODE_NONE  0

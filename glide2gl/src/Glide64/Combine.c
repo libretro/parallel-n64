@@ -234,12 +234,6 @@ void CombineBlender(void)
       A_BLEND (GR_BLEND_SRC_ALPHA, GR_BLEND_ONE_MINUS_SRC_ALPHA);
    else if ((settings.hacks&hack_Pilotwings) && gDP.otherMode.clearOnCvg) //RDP_COLOR_ON_CVG without FORCE_BL
       A_BLEND (GR_BLEND_ZERO, GR_BLEND_ONE);
-#if 0
-   else if ((settings.hacks & hack_Blastcorps))
-   {
-      A_BLEND (GR_BLEND_ZERO, GR_BLEND_ONE);
-   }
-#endif
    else
       A_BLEND (GR_BLEND_ONE, GR_BLEND_ZERO);
 

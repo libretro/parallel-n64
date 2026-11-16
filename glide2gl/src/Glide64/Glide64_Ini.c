@@ -1488,7 +1488,6 @@ void ReadSpecialSettings (const char * name)
 #endif
       //fb_clear = 1
       //
-      settings.hacks |= hack_OOT;
    }
    else if (strstr(name, (const char*)"Re-Volt"))
    {
@@ -1779,8 +1778,6 @@ void ReadSpecialSettings (const char * name)
       settings.hacks |= hack_TGR;
    else if (strstr(name, (const char *)"Top Gear Hyper Bike"))
       settings.hacks |= hack_Hyperbike;
-   else if (strstr(name, (const char *)"Killer Instinct Gold") || strstr(name, (const char *)"KILLER INSTINCT GOLD"))
-      settings.hacks |= hack_KI;
    else if (strstr(name, (const char *)"Knockout Kings 2000"))
       settings.hacks |= hack_Knockout;
    else if (strstr(name, (const char *)"LEGORacers"))
@@ -1795,14 +1792,8 @@ void ReadSpecialSettings (const char * name)
       settings.hacks |= hack_Starcraft;
    else if (strstr(name, (const char *)"BANJO KAZOOIE 2") || strstr(name, (const char *)"BANJO TOOIE"))
       settings.hacks |= hack_Banjo2;
-   else if (strstr(name, (const char *)"FIFA: RTWC 98") || strstr(name, (const char *)"RoadToWorldCup98"))
-      settings.hacks |= hack_Fifa98;
-   else if (strstr(name, (const char *)"Mega Man 64") || strstr(name, (const char *)"RockMan Dash"))
-      settings.hacks |= hack_Megaman;
    else if (strstr(name, (const char *)"MISCHIEF MAKERS") || strstr(name, (const char *)"TROUBLE MAKERS"))
       settings.hacks |= hack_Makers;
-   else if (strstr(name, (const char *)"Blast Corps") || strstr(name, (const char *)"Blastdozer"))
-      settings.hacks |= hack_Blastcorps;
    else if (strstr(name, (const char *)"PUZZLE LEAGUE"))
       settings.hacks |= hack_PPL;
    else if (strstr(name, (const char *)"WIN BACK") || strstr(name, (const char *)"OPERATION WINBACK"))
