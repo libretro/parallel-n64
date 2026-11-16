@@ -188,6 +188,12 @@ static uint32_t textureCRC(uint32_t crc, uint8_t *addr, int width, int height, i
 {
    const size_t len = sizeof(uint32_t) * 2 * width;
 
+   /* rows one after the other: one run, long enough for the carry-less
+    * multiply path where row by row they were not (the CRC of the run is
+    * that of its rows in turn) */
+   if (line == 0)
+      return encoding_crc32(crc, addr, len * (size_t)height);
+
    while (height--)
    {
       crc = encoding_crc32(crc, addr, len);
