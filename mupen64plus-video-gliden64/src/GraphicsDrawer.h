@@ -52,8 +52,8 @@ public:
 		const FrameBuffer * pBuffer;
 		TexturedRectParams(float _ulx, float _uly, float _lrx, float _lry,
 			float _dsdx, float _dtdy,
-			s16 _s, s16 _t,
-			bool _flip, bool _forceAjustScale, bool _texrectCmd,
+			s32 _s, s32 _t,
+			int _flip, bool _forceAjustScale, bool _texrectCmd,
 			const FrameBuffer * _pBuffer
 			) :
 			pBuffer(_pBuffer)

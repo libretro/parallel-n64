@@ -55,6 +55,70 @@
 #include "../../Graphics/RDP/RDP_state.h"
 #include "../../Graphics/RDP/gDP_state.h"
 #include "../../Graphics/RSP/RSP_state.h"
+#include "../../Graphics/rdp_coverage.h"
+
+/* ---- coverage the game reads back (Graphics/rdp_coverage.h) ---- */
+
+/* a 16-bit texel of tile @_ctx from TMEM, which holds RDRAM's bytes in
+ * order: rows the tile's line of 64-bit words apart, odd rows with their
+ * 32-bit words swapped */
+static uint16_t tmem_texel16(const void *_ctx, uint32_t _s, uint32_t _t)
+{
+   const int32_t tile = *(const int32_t*)_ctx;
+   const uint8_t *tmem = (const uint8_t*)g_gdp.tmem;
+   const uint32_t row  = (uint32_t)(g_gdp.tile[tile].tmem + g_gdp.tile[tile].line * (int32_t)_t) << 3;
+   const uint32_t addr = (row + ((_s << 1) ^ ((_t & 1) << 2))) & 0xFFE;
+   return (uint16_t)((tmem[addr] << 8) | tmem[addr + 1]);
+}
+
+static void clip_to_scissor(int32_t *_ulx, int32_t *_uly, int32_t *_lrx, int32_t *_lry)
+{
+   if (*_ulx < g_gdp.__clip.xh) *_ulx = g_gdp.__clip.xh;
+   if (*_uly < g_gdp.__clip.yh) *_uly = g_gdp.__clip.yh;
+   if (*_lrx > g_gdp.__clip.xl) *_lrx = g_gdp.__clip.xl;
+   if (*_lry > g_gdp.__clip.yl) *_lry = g_gdp.__clip.yl;
+}
+
+/* A rectangle drawing memory coverage writes it, as full coverage, in
+ * RDRAM: the GPU's image of it keeps none, and a game can read it.
+ * (@_lrx, @_lry) is the command's, not through it in one cycle. */
+static void coverage_fill(int32_t _ulx, int32_t _uly, int32_t _lrx, int32_t _lry)
+{
+   if (gDP.otherMode.cycleType != G_CYC_1CYCLE || !rdpcvg_draws_coverage(gDP.otherMode.l))
+      return;
+   clip_to_scissor(&_ulx, &_uly, &_lrx, &_lry);
+   rdpcvg_fill((uint8_t*)gfx_info.RDRAM, BMASK + 1, g_gdp.fb_address, (uint32_t)g_gdp.fb_width,
+         (uint32_t)g_gdp.fb_size, _ulx, _uly, _lrx, _lry,
+         ((uint32_t)g_gdp.blend_color.r << 16) | ((uint32_t)g_gdp.blend_color.g << 8) | (uint32_t)g_gdp.blend_color.b);
+}
+
+/* A texture rectangle copying a 16-bit tile's texels into an 8-bit image,
+ * such as that coverage, writes them in RDRAM too */
+static RDPCVG_COLD void coverage_texrect(uint32_t _w0, uint32_t _w1, uint32_t _w2, uint32_t _w3)
+{
+   const int32_t tile = (int32_t)((_w1 >> 24) & 7);
+   const double dsdx  = (int16_t)(_w3 >> 16) / 1024.0;
+   const double dtdy  = (int16_t)(_w3 & 0xFFFF) / 1024.0;
+   const int flip     = ((_w0 >> 24) & 0x3F) == 0x25;
+   int32_t ulx = (int32_t)((_w1 >> 14) & 0x3FF), uly = (int32_t)((_w1 >> 2) & 0x3FF);
+   int32_t lrx = (int32_t)((_w0 >> 14) & 0x3FF), lry = (int32_t)((_w0 >> 2) & 0x3FF);
+   int32_t s, t;
+   if (!rdpcvg_is_texel_copy(gDP.otherMode.cycleType, gDP.otherMode.l, (uint32_t)g_gdp.combine.mul_rgb1,
+            (uint32_t)g_gdp.combine.add_rgb1, (uint32_t)g_gdp.fb_size, (uint32_t)g_gdp.tile[tile].size,
+            (uint32_t)g_gdp.tile[tile].format, dsdx, dtdy, flip))
+      return;
+   s = ((int16_t)(_w2 >> 16) >> 5) - g_gdp.tile[tile].sh;
+   t = ((int16_t)(_w2 & 0xFFFF) >> 5) - g_gdp.tile[tile].th;
+   {
+      const int32_t ulx0 = ulx, uly0 = uly;
+      clip_to_scissor(&ulx, &uly, &lrx, &lry);
+      rdpcvg_texrect_8((uint8_t*)gfx_info.RDRAM, BMASK + 1, g_gdp.fb_address, (uint32_t)g_gdp.fb_width,
+            ulx, uly, lrx, lry, s + (ulx - ulx0), t + (uly - uly0),
+            (uint32_t)(g_gdp.tile[tile].sl - g_gdp.tile[tile].sh + 1),
+            (uint32_t)(g_gdp.tile[tile].tl - g_gdp.tile[tile].th + 1),
+            g_gdp.tile[tile].format == G_IM_FMT_IA, tmem_texel16, &tile);
+   }
+}
 
 /* angrylion's macro, helps to cut overflowed values. */
 #define SIGN16(x) (int16_t)(x)
@@ -610,6 +674,8 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
    VERTEX *vptr = NULL, vstd[4];
    
    rdp_getTexRectParams(&__RDP.w2, &__RDP.w3);
+   if (g_gdp.fb_size == G_IM_SIZ_8b)
+      coverage_texrect(w0, w1, __RDP.w2, __RDP.w3);
 
    if ((settings.hacks&hack_Yoshi) && settings.ucode == ucode_S2DEX)
    {
@@ -743,15 +809,10 @@ static void rdp_texrect(uint32_t w0, uint32_t w1)
    //
    //integer representation of texture coordinate.
    //needed to detect and avoid overflow after shifting
-   off_x_i = (__RDP.w2 >> 16) & 0xFFFF;
-   off_y_i = __RDP.w2 & 0xFFFF;
+   off_x_i = (int16_t)(__RDP.w2 >> 16);   /* signed */
+   off_y_i = (int16_t)(__RDP.w2 & 0xFFFF);
    dsdx    = _FIXED2FLOAT((int16_t)((__RDP.w3 & 0xFFFF0000) >> 16), 10);
    dtdy    = _FIXED2FLOAT(((int16_t)(__RDP.w3 & 0x0000FFFF)), 10);
-   if (off_x_i & 0x8000) //check for sign bit
-      off_x_i |= ~0xffff; //make it negative
-   //the same as for off_x_i
-   if (off_y_i & 0x8000)
-      off_y_i |= ~0xffff;
 
    if (gDP.otherMode.cycleType == G_CYC_COPY)
       dsdx /= 4.0f;
@@ -1187,6 +1248,13 @@ static void rdp_settile(uint32_t w0, uint32_t w1)
    rdp.last_tile = gdp_set_tile(w0, w1);
 }
 
+/* a rectangle in a mode that may draw coverage: its coverage, then it */
+static RDPCVG_COLD void rdp_fillrect_coverage(uint32_t ul_x, uint32_t ul_y, uint32_t lr_x, uint32_t lr_y)
+{
+   coverage_fill((int32_t)ul_x, (int32_t)ul_y, (int32_t)lr_x - 1, (int32_t)lr_y - 1);
+   glide64gDPFillRectangle(ul_x, ul_y, lr_x, lr_y);
+}
+
 static void rdp_fillrect(uint32_t w0, uint32_t w1)
 {
 	const uint32_t ul_x = _SHIFTR(w1, 14, 10);
@@ -1198,7 +1266,10 @@ static void rdp_fillrect(uint32_t w0, uint32_t w1)
    if (lr_x < ul_x || lr_y < ul_y)
       return;
 
-   glide64gDPFillRectangle(ul_x, ul_y, lr_x, lr_y);
+   if (gDP.otherMode.cycleType == G_CYC_1CYCLE && RDPCVG_MAY_DRAW_COVERAGE(gDP.otherMode.l))
+      rdp_fillrect_coverage(ul_x, ul_y, lr_x, lr_y);
+   else
+      glide64gDPFillRectangle(ul_x, ul_y, lr_x, lr_y);
 }
 
 static void rdp_setprimcolor(uint32_t w0, uint32_t w1)

@@ -298,7 +298,8 @@ void gli_gDPFillRectangle( s32 ulx, s32 uly, s32 lrx, s32 lry );
 void gli_gDPSetConvert( s32 k0, s32 k1, s32 k2, s32 k3, s32 k4, s32 k5 );
 void gli_gDPSetKeyR( u32 cR, u32 sR, u32 wR );
 void gli_gDPSetKeyGB(u32 cG, u32 sG, u32 wG, u32 cB, u32 sB, u32 wB );
-void gli_gDPTextureRectangle( f32 ulx, f32 uly, f32 lrx, f32 lry, s32 tile, s16 s, s16 t, f32 dsdx, f32 dtdy, bool flip );
+/* @s and @t are s16 values and @flip a bool, passed widened */
+void gli_gDPTextureRectangle( f32 ulx, f32 uly, f32 lrx, f32 lry, s32 tile, s32 s, s32 t, f32 dsdx, f32 dtdy, int flip );
 void gli_gDPFullSync(void);
 void gli_gDPTileSync(void);
 void gli_gDPPipeSync(void);

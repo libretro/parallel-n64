@@ -16,6 +16,63 @@
 #include "gli_drawer.h"
 #include "gli_lle_tri.h"
 #include "gli_framebuffer.h"
+#include "../../Graphics/rdp_coverage.h"
+
+/* ---- coverage the game reads back (Graphics/rdp_coverage.h) ---- */
+
+/* a 16-bit texel of tile @_ctx from TMEM: its rows are the tile's line of
+ * 64-bit words apart, and odd rows have their 32-bit words swapped */
+static u16 tmem_texel16(const void *_ctx, u32 _s, u32 _t)
+{
+	const gDPTile *tile = (const gDPTile*)_ctx;
+	const u8 *tmem = (const u8*)TMEM;
+	const u32 addr = (((tile->tmem + tile->line * _t) << 3) + ((_s ^ ((_t & 1) << 1)) << 1)) & 0xFFF;
+	u16 v;
+	memcpy(&v, tmem + addr, 2);
+	return v;
+}
+
+static u32 blend_rgb(void)
+{
+	const u32 r = (u32)(gDP.blendColor.r * 255.0f + 0.5f);
+	const u32 g = (u32)(gDP.blendColor.g * 255.0f + 0.5f);
+	const u32 b = (u32)(gDP.blendColor.b * 255.0f + 0.5f);
+	return (r << 16) | (g << 8) | b;
+}
+
+/* A rectangle drawing memory coverage writes it, as full coverage, in
+ * RDRAM: the GPU's image of it keeps none, and a game can read it */
+static RDPCVG_COLD void coverage_fill(s32 _ulx, s32 _uly, s32 _lrx, s32 _lry)
+{
+	if (gDP.otherMode.cycleType != G_CYC_1CYCLE || !rdpcvg_draws_coverage(gDP.otherMode.l))
+		return;
+	if (_ulx < (s32)gDP.scissor.ulx) _ulx = (s32)gDP.scissor.ulx;
+	if (_uly < (s32)gDP.scissor.uly) _uly = (s32)gDP.scissor.uly;
+	if (_lrx > (s32)gDP.scissor.lrx) _lrx = (s32)gDP.scissor.lrx;
+	if (_lry > (s32)gDP.scissor.lry) _lry = (s32)gDP.scissor.lry;
+	rdpcvg_fill(RDRAM, RDRAMSize, gDP.colorImage.address, gDP.colorImage.width, gDP.colorImage.size,
+		_ulx, _uly, _lrx, _lry, blend_rgb());
+}
+
+/* A texture rectangle copying a 16-bit tile's texels into an 8-bit image,
+ * such as that coverage, writes them in RDRAM too */
+static RDPCVG_COLD void coverage_texrect(f32 _ulx, f32 _uly, f32 _lrx, f32 _lry, s32 _tile, s16 _s, s16 _t,
+	f32 _dsdx, f32 _dtdy, bool _flip)
+{
+	const gDPTile *tile = &gDP.tiles[_tile & 7];
+	s32 ulx = (s32)_ulx, uly = (s32)_uly, lrx = (s32)_lrx, lry = (s32)_lry;
+	if (!rdpcvg_is_texel_copy(gDP.otherMode.cycleType, gDP.otherMode.l,
+			(u32)(gDP.combine.mux >> 32) & 0x1f, (u32)(gDP.combine.mux >> 6) & 7,
+			gDP.colorImage.size, tile->size, tile->format, _dsdx, _dtdy, _flip))
+		return;
+	if (ulx < (s32)gDP.scissor.ulx) ulx = (s32)gDP.scissor.ulx;
+	if (uly < (s32)gDP.scissor.uly) uly = (s32)gDP.scissor.uly;
+	if (lrx > (s32)gDP.scissor.lrx) lrx = (s32)gDP.scissor.lrx;
+	if (lry > (s32)gDP.scissor.lry) lry = (s32)gDP.scissor.lry;
+	rdpcvg_texrect_8(RDRAM, RDRAMSize, gDP.colorImage.address, gDP.colorImage.width, ulx, uly, lrx, lry,
+		(s32)(_s >> 5) - (s32)tile->uls + (ulx - (s32)_ulx), (s32)(_t >> 5) - (s32)tile->ult + (uly - (s32)_uly),
+		tile->lrs - tile->uls + 1, tile->lrt - tile->ult + 1, tile->format == G_IM_FMT_IA, tmem_texel16, tile);
+}
 
 /* b only if it is strictly less/greater, as std::min and std::max choose */
 static u32 gdp_min(u32 _a, u32 _b)
@@ -659,7 +716,13 @@ void gli_gDPSetScissor(u32 mode, s16 xh, s16 yh, s16 xl, s16 yl)
 
 }
 
-void gli_gDPFillRectangle( s32 ulx, s32 uly, s32 lrx, s32 lry )
+/* the rectangle filled, apart from its hook (gli_gDPTextureRectangle) */
+#if defined(__GNUC__)
+__attribute__((noinline))
+#elif defined(_MSC_VER)
+__declspec(noinline)
+#endif
+static void gdp_fill_rectangle(s32 ulx, s32 uly, s32 lrx, s32 lry)
 {
 	enum {
 		dbNone,
@@ -716,6 +779,21 @@ void gli_gDPFillRectangle( s32 ulx, s32 uly, s32 lrx, s32 lry )
 	gSP.tri_num += 2;
 }
 
+/* in a mode that may draw coverage: its coverage, then the rectangle */
+static RDPCVG_COLD void gdp_fill_rectangle_coverage(s32 ulx, s32 uly, s32 lrx, s32 lry)
+{
+	coverage_fill(ulx, uly, lrx, lry);
+	gdp_fill_rectangle(ulx, uly, lrx, lry);
+}
+
+void gli_gDPFillRectangle( s32 ulx, s32 uly, s32 lrx, s32 lry )
+{
+	if (gDP.otherMode.cycleType == G_CYC_1CYCLE && RDPCVG_MAY_DRAW_COVERAGE(gDP.otherMode.l))
+		gdp_fill_rectangle_coverage(ulx, uly, lrx, lry);
+	else
+		gdp_fill_rectangle(ulx, uly, lrx, lry);
+}
+
 void gli_gDPSetConvert( s32 k0, s32 k1, s32 k2, s32 k3, s32 k4, s32 k5 )
 {
 /* angrylion's macro */
@@ -747,10 +825,19 @@ void gli_gDPSetKeyGB(u32 cG, u32 sG, u32 wG, u32 cB, u32 sB, u32 wB )
 	gDP.key.width.b = 	_FIXED2FLOATCOLOR( wB, 8 );
 }
 
-void gli_gDPTextureRectangle(f32 ulx, f32 uly, f32 lrx, f32 lry, s32 tile, s16 s, s16 t, f32 dsdx, f32 dtdy , bool flip)
+/* the rectangle drawn, apart from its hook: called last, so the hook's
+ * test is all an ordinary rectangle pays. @s, @t and @flip come widened;
+ * the cycle type is read once, as the stores between do not change it. */
+#if defined(__GNUC__)
+__attribute__((noinline))
+#elif defined(_MSC_VER)
+__declspec(noinline)
+#endif
+static void gdp_texture_rectangle(f32 ulx, f32 uly, f32 lrx, f32 lry, s32 tile, s32 s, s32 t, f32 dsdx, f32 dtdy, int flip)
 {
 	gDPTile *textureTileOrg[2];
-	if (gDP.otherMode.cycleType == G_CYC_COPY) {
+	const u32 cycleType = gDP.otherMode.cycleType;
+	if (cycleType == G_CYC_COPY) {
 		dsdx /= 4.0f;
 		lrx += 1.0f;
 		lry += 1.0f;
@@ -760,15 +847,19 @@ void gli_gDPTextureRectangle(f32 ulx, f32 uly, f32 lrx, f32 lry, s32 tile, s16 s
 
 	textureTileOrg[0] = gSP.textureTile[0];
 	textureTileOrg[1] = gSP.textureTile[1];
-	gSP.textureTile[0] = &gDP.tiles[tile];
-	gSP.textureTile[1] = &gDP.tiles[(tile + 1) & 7];
+	{
+		/* the next tile, the first after the last */
+		gDPTile *const tile0 = &gDP.tiles[tile];
+		gSP.textureTile[0] = tile0;
+		gSP.textureTile[1] = tile == 7 ? &gDP.tiles[0] : tile0 + 1;
+	}
 
 	/* HACK ALERT! */
 	if (s == 0x4000 && (gDP.colorImage.width + gSP.textureTile[0]->uls < 512))
 		s = 0;
 
 	gdp_clear_rect_color();
-	if (gDP.otherMode.cycleType < G_CYC_COPY) {
+	if (cycleType < G_CYC_COPY) {
 		if ((config.generalEmulation.hacks & hack_texrect_shade_alpha) != 0 &&
 			gDP.combine.mA0 == G_ACMUX_0 && gDP.combine.aA0 == G_ACMUX_SHADE)
 			gDP.rectColor.a = 1.0f;
@@ -782,6 +873,21 @@ void gli_gDPTextureRectangle(f32 ulx, f32 uly, f32 lrx, f32 lry, s32 tile, s16 s
 	gli_fb_set_changed(lry);
 
 	gSP.tri_num += 2;
+}
+
+/* into an 8-bit image: the hook, then the rectangle */
+static RDPCVG_COLD void gdp_texture_rectangle_8(f32 ulx, f32 uly, f32 lrx, f32 lry, s32 tile, s32 s, s32 t, f32 dsdx, f32 dtdy, int flip)
+{
+	coverage_texrect(ulx, uly, lrx, lry, tile, (s16)s, (s16)t, dsdx, dtdy, flip != 0);
+	gdp_texture_rectangle(ulx, uly, lrx, lry, tile, s, t, dsdx, dtdy, flip);
+}
+
+void gli_gDPTextureRectangle(f32 ulx, f32 uly, f32 lrx, f32 lry, s32 tile, s32 s, s32 t, f32 dsdx, f32 dtdy, int flip)
+{
+	if (gDP.colorImage.size == G_IM_SIZ_8b)
+		gdp_texture_rectangle_8(ulx, uly, lrx, lry, tile, s, t, dsdx, dtdy, flip);
+	else
+		gdp_texture_rectangle(ulx, uly, lrx, lry, tile, s, t, dsdx, dtdy, flip);
 }
 
 void gli_gDPFullSync(void)

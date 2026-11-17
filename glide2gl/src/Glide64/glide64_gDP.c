@@ -6,6 +6,7 @@
 #include "Util.h"
 
 #include "../../Graphics/RDP/gDP_state.h"
+#include "../../Graphics/rdp_coverage.h"
 
 
 // STANDARD DRAWIMAGE - draws a 2d image based on the following structure
@@ -470,6 +471,54 @@ void glide64gDPLoadBlock( uint32_t tile, uint32_t ul_s, uint32_t ul_t,
    g_gdp.flags |= UPDATE_TEXTURE;
 }
 
+/* The texels of a tile load copied into TMEM */
+static void load_tile_tmem(uint32_t tile, uint32_t ul_s, uint32_t ul_t, uint32_t width, uint32_t height)
+{
+   uint32_t offs;
+   int line_n   = g_gdp.ti_width << g_gdp.tile[tile].size >> 1;
+   offs   = ul_t * line_n;
+   offs  += ul_s << g_gdp.tile[tile].size >> 1;
+   offs  += g_gdp.ti_address;
+   if (offs >= BMASK)
+      return;
+
+   if (g_gdp.ti_size == G_IM_SIZ_32b)
+   {
+      LoadTile32b(tile, ul_s, ul_t, width, height);
+   }
+   else
+   {
+      uint8_t *dst, *end;
+      uint32_t wid_64;
+
+      // check if points to bad location
+      if (offs + line_n*height > BMASK)
+         height = (BMASK - offs) / line_n;
+      if (height == 0)
+         return;
+
+      wid_64 = g_gdp.tile[tile].line;
+      dst    = ((uint8_t*)g_gdp.tmem) + (g_gdp.tile[tile].tmem << 3);
+      end    = ((uint8_t*)g_gdp.tmem) + 4096 - (wid_64<<3);
+      loadTile((uint32_t *)gfx_info.RDRAM, (uint32_t *)dst, wid_64, height, line_n, offs, (uint32_t *)end);
+   }
+}
+
+/* A load into a buffer drawn to nothing still fills TMEM: a texture
+ * rectangle after it can copy the texels into RDRAM, which a game reads
+ * (rdp_coverage.h) */
+#if defined(__GNUC__)
+__attribute__((noinline))
+#elif defined(_MSC_VER)
+__declspec(noinline)
+#endif
+static void load_tile_skipped(uint32_t tile, uint32_t ul_s, uint32_t ul_t,
+      uint32_t lr_s, uint32_t lr_t)
+{
+   if (lr_s >= ul_s && lr_t >= ul_t)
+      load_tile_tmem(tile, ul_s, ul_t, lr_s - ul_s + 1, lr_t - ul_t + 1);
+}
+
 void glide64gDPLoadTile(uint32_t tile, uint32_t ul_s, uint32_t ul_t,
       uint32_t lr_s, uint32_t lr_t)
 {
@@ -477,7 +526,10 @@ void glide64gDPLoadTile(uint32_t tile, uint32_t ul_s, uint32_t ul_t,
    int line_n;
 
    if (rdp.skip_drawing)
+   {
+      load_tile_skipped(tile, ul_s, ul_t, lr_s, lr_t);
       return;
+   }
 
    rdp.timg.set_by                 = 1; /* load tile */
 

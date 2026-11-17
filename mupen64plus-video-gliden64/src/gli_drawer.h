@@ -45,7 +45,8 @@ void gli_drawer_bind_triangles(SPVertex *_vertices, u16 *_elements, u32 *_num,
 		s32 *_maxElement, u32 *_modify, u32 *_clip, const bool *_clipControl);
 void gli_drawer_draw_line(u32 _v0, u32 _v1, f32 _width, u32 _flag);
 void gli_drawer_draw_rect(s32 _ulx, s32 _uly, s32 _lrx, s32 _lry);
-void gli_drawer_textured_rect(f32 _ulx, f32 _uly, f32 _lrx, f32 _lry, f32 _dsdx, f32 _dtdy, s16 _s, s16 _t, bool _flip);
+/* @_s and @_t are s16 values and @_flip 0 or 1, passed widened */
+void gli_drawer_textured_rect(f32 _ulx, f32 _uly, f32 _lrx, f32 _lry, f32 _dsdx, f32 _dtdy, s32 _s, s32 _t, int _flip);
 
 /* The cull face for the current geometry mode */
 enum { GLI_CULL_NONE, GLI_CULL_FRONT, GLI_CULL_BACK, GLI_CULL_FRONT_AND_BACK };
