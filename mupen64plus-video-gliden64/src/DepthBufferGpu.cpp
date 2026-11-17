@@ -192,7 +192,7 @@ void DepthBuffer::setDepthAttachment(ObjectHandle _fbo, BufferTargetParam _targe
 	params.attachment = bufferAttachment::DEPTH_ATTACHMENT;
 	params.bufferHandle = _fbo;
 	params.bufferTarget = _target;
-	if (Context::DepthFramebufferTextures) {
+	if (gli_ctx.depthFramebufferTextures) {
 		params.textureHandle = m_pDepthBufferTexture->name;
 		params.textureTarget = config.video.multisampling != 0 ? textureTarget::TEXTURE_2D_MULTISAMPLE : textureTarget::TEXTURE_2D;
 	} else {
@@ -207,7 +207,7 @@ void DepthBuffer::setDepthAttachment(ObjectHandle _fbo, BufferTargetParam _targe
 
 void DepthBuffer::initDepthBufferTexture(FrameBuffer * _pBuffer)
 {
-	if (Context::DepthFramebufferTextures) {
+	if (gli_ctx.depthFramebufferTextures) {
 		if (m_pDepthBufferTexture == nullptr) {
 			m_pDepthBufferTexture = textureCache().addFrameBufferTexture(config.video.multisampling != 0 ?
 				textureTarget::TEXTURE_2D_MULTISAMPLE : textureTarget::TEXTURE_2D);
@@ -321,7 +321,7 @@ void DepthBuffer::activateDepthBufferTexture(FrameBuffer * _pBuffer)
 
 void DepthBuffer::bindDepthImageTexture(ObjectHandle _fbo)
 {
-	if (Context::ImageTextures) {
+	if (gli_ctx.imageTextures) {
 		Context::BindImageTextureParameters bindParams;
 		bindParams.imageUnit = textureImageUnits::DepthZ;
 		bindParams.texture = m_pDepthImageZTexture->name;
@@ -332,7 +332,7 @@ void DepthBuffer::bindDepthImageTexture(ObjectHandle _fbo)
 		bindParams.imageUnit = textureImageUnits::DepthDeltaZ;
 		bindParams.texture = m_pDepthImageDeltaZTexture->name;
 		gfxContext.bindImageTexture(bindParams);
-	} else if (Context::FramebufferFetch) {
+	} else if (gli_ctx.framebufferFetch) {
 		Context::FrameBufferRenderTarget targetParams;
 		targetParams.bufferHandle = _fbo;
 		targetParams.bufferTarget = bufferTarget::DRAW_FRAMEBUFFER;

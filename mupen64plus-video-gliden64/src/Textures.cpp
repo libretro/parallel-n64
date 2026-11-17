@@ -103,7 +103,7 @@ void TextureCache::init()
 
 
 	m_pMSDummy = nullptr;
-	if (config.video.multisampling != 0 && Context::Multisampling) {
+	if (config.video.multisampling != 0 && gli_ctx.multisampling) {
 		m_pMSDummy = addFrameBufferTexture(textureTarget::TEXTURE_2D_MULTISAMPLE); // we don't want to remove dummy texture
 		_initDummyTexture(m_pMSDummy);
 
@@ -896,7 +896,7 @@ void gli_textures_current(const gli_tex *_cur[2])
 
 bool gli_tex_integer_supported(void)
 {
-	return Context::IntegerTextures;
+	return gli_ctx.integerTextures;
 }
 
 static CachedTexture * _createFrameBufferTexture(u16 _format, u32 _width, u32 _height, u32 _bytes)

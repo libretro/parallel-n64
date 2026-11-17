@@ -136,7 +136,7 @@ ShaderProgram * CombinerInfo::getTexrectCopyProgram()
 
 bool CombinerInfo::isShaderCacheSupported() const
 {
-	return config.generalEmulation.enableShadersStorage != 0 && Context::ShaderProgramBinary;
+	return config.generalEmulation.enableShadersStorage != 0 && gli_ctx.shaderProgramBinary;
 }
 
 void CombinerInfo::setPolygonMode(DrawingState _drawingState)

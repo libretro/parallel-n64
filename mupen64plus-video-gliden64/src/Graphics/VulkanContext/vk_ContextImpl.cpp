@@ -1,3 +1,4 @@
+#include <Graphics/ContextOps.h>
 #include <string>
 #include <string.h>
 #include <stdlib.h>
@@ -712,10 +713,14 @@ private:
 
 }
 
-namespace vulkan {
+const gli_context_ops * gli_vk_context_ops(void)
+{
+	return &graphics::ContextOps<VkContextImpl>::table;
+}
 
-ContextImpl * createContextImpl() { return new VkContextImpl; }
-
+void * gli_vk_context_new(void)
+{
+	return new VkContextImpl;
 }
 
 /* What framebuffer 0 holds goes to the frontend, as this frame's image. */

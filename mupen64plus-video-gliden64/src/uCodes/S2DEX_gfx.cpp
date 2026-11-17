@@ -73,7 +73,7 @@ void gli_s2dex_copy_depth_buffer(void)
 	if (!config.frameBufferEmulation.enable)
 		return;
 
-	if (!Context::BlitFramebuffer)
+	if (!gli_ctx.blitFramebuffer)
 		return;
 
 	// The game copies content of depth buffer into current color buffer

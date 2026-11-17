@@ -12,6 +12,10 @@
 
 using namespace opengl;
 
+/* the C++ face of the graphics context (Graphics/Context.h); what it
+ * holds is gli_ctx's */
+graphics::Context gfxContext;
+
 /* the drawer's data, made and dropped with the context */
 struct WindowGpu
 {

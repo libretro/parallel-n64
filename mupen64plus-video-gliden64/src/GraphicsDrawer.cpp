@@ -36,7 +36,7 @@ GraphicsDrawer::GraphicsDrawer()
 	memset(m_rect, 0, sizeof(m_rect));
 	memset(m_texrectRect, 0, sizeof(m_texrectRect));
 	gli_drawer_bind_triangles(triangles.vertices.data(), triangles.elements.data(), &triangles.num,
-		&triangles.maxElement, &m_modifyVertices, &triangles.clip, &Context::ClipControl);
+		&triangles.maxElement, &m_modifyVertices, &triangles.clip, &gli_ctx.clipControl);
 }
 
 GraphicsDrawer::~GraphicsDrawer()
@@ -585,7 +585,7 @@ bool texturedRectShadowMap(const GraphicsDrawer::TexturedRectParams &)
 		if (gDP.textureImage.size == 2 && gDP.textureImage.address >= gDP.depthImageAddress &&
 			gDP.textureImage.address < (gDP.depthImageAddress + gDP.colorImage.width*gDP.colorImage.width * 6 / 4)) {
 
-			if (!Context::IntegerTextures)
+			if (!gli_ctx.integerTextures)
 				return true;
 
 			pCurrentBuffer->m_pDepthBuffer->activateDepthBufferTexture(pCurrentBuffer);

@@ -3,6 +3,7 @@
 #include <Config.h>
 #include <Graphics/Parameters.h>
 #include "opengl_ContextImpl.h"
+#include <Graphics/ContextOps.h>
 #include "opengl_BufferedDrawer.h"
 #include "opengl_UnbufferedDrawer.h"
 #include "opengl_ColorBufferReaderWithPixelBuffer.h"
@@ -540,4 +541,14 @@ bool ContextImpl::isError() const
 bool ContextImpl::isFramebufferError() const
 {
 	return Utils::isFramebufferError();
+}
+
+const gli_context_ops * gli_gl_context_ops(void)
+{
+	return &graphics::ContextOps<opengl::ContextImpl>::table;
+}
+
+void * gli_gl_context_new(void)
+{
+	return new opengl::ContextImpl;
 }

@@ -216,7 +216,7 @@ bool FrameBuffer::isValid(bool _forceCheck) const
 
 void FrameBuffer::resolveMultisampledTexture(bool _bForce)
 {
-	if (!Context::Multisampling)
+	if (!gli_ctx.multisampling)
 		return;
 
 	if (m_resolved && !_bForce)
@@ -279,7 +279,7 @@ bool FrameBuffer::_initSubTexture(u32 _t)
 
 CachedTexture * FrameBuffer::_getSubTexture(u32 _t)
 {
-	if (!Context::BlitFramebuffer)
+	if (!gli_ctx.blitFramebuffer)
 		return m_pTexture;
 
 	if (!_initSubTexture(_t))
@@ -295,7 +295,7 @@ CachedTexture * FrameBuffer::_getSubTexture(u32 _t)
 		copyHeight = m_pTexture->realHeight - y0;
 
 	ObjectHandle readFBO = m_FBO;
-	if (Context::WeakBlitFramebuffer &&
+	if (gli_ctx.weakBlitFramebuffer &&
 			m_pTexture->frameBufferTexture == CachedTexture::fbMultiSample) {
 		resolveMultisampledTexture(true);
 		readFBO = m_resolveFBO;
@@ -375,9 +375,9 @@ CachedTexture * FrameBuffer::getTexture(u32 _t)
 	CachedTexture *pTexture = getDepthTexture ? m_pDepthBuffer->m_pDepthBufferTexture : m_pTexture;
 
 	if (this == frameBufferList().getCurrent()) {
-		if (Context::TextureBarrier)
+		if (gli_ctx.textureBarrier)
 			gfxContext.textureBarrier();
-		else if (Context::BlitFramebuffer)
+		else if (gli_ctx.blitFramebuffer)
 			pTexture = getDepthTexture ? m_pDepthBuffer->copyDepthBufferTexture(this) : _copyFrameBufferTexture();
 	}
 
@@ -419,9 +419,9 @@ CachedTexture * FrameBuffer::getTextureBG(u32 _t)
 	CachedTexture *pTexture = m_pTexture;
 
 	if (this == frameBufferList().getCurrent()) {
-		if (Context::TextureBarrier)
+		if (gli_ctx.textureBarrier)
 			gfxContext.textureBarrier();
-		else if (Context::BlitFramebuffer)
+		else if (gli_ctx.blitFramebuffer)
 			pTexture = _copyFrameBufferTexture();
 	}
 
@@ -778,8 +778,8 @@ void FrameBufferList::attachDepthBuffer()
 		pDepthBuffer->initDepthBufferTexture(pCurrent);
 
 		bool goodDepthBufferTexture = false;
-		if (Context::DepthFramebufferTextures) {
-			if (Context::WeakBlitFramebuffer)
+		if (gli_ctx.depthFramebufferTextures) {
+			if (gli_ctx.weakBlitFramebuffer)
 				goodDepthBufferTexture = pDepthBuffer->m_pDepthBufferTexture->width == pCurrent->m_pTexture->realWidth;
 			else
 				goodDepthBufferTexture = pDepthBuffer->m_pDepthBufferTexture->width >= pCurrent->m_pTexture->realWidth ||

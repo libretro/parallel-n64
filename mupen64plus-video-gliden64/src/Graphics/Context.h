@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include <string>
 #include <Combiner.h>
 #include "ObjectHandle.h"
 #include "Parameter.h"
@@ -10,6 +11,8 @@
 #include "FramebufferTextureFormats.h"
 
 #define GRAPHICS_CONTEXT
+
+#include "gli_context.h"
 
 struct CachedTexture;
 
@@ -41,48 +44,49 @@ namespace graphics {
 	class Context
 	{
 	public:
-		Context();
-		~Context();
 
-		void init();
+		static void init() { gli_context_init(); }
 
-		void destroy();
+		static void destroy() { gli_context_destroy(); }
 
-		void setClampMode(ClampMode _mode);
+		static void setClampMode(ClampMode _mode) { gli_ctx.ops->setClampMode(gli_ctx.impl, u32(_mode)); }
 
-		ClampMode getClampMode();
+		static ClampMode getClampMode() { return ClampMode(gli_ctx.ops->getClampMode(gli_ctx.impl)); }
 
-		void enable(EnableParam _parameter, bool _enable);
+		static void enable(EnableParam _parameter, bool _enable) { gli_ctx.ops->enable(gli_ctx.impl, u32(_parameter), _enable); }
 
-		u32 isEnabled(EnableParam _parameter);
+		static u32 isEnabled(EnableParam _parameter) { return gli_ctx.ops->isEnabled(gli_ctx.impl, u32(_parameter)); }
 
-		void cullFace(CullModeParam _mode);
+		static void cullFace(CullModeParam _mode) { gli_ctx.ops->cullFace(gli_ctx.impl, u32(_mode)); }
 
-		void enableDepthWrite(bool _enable);
+		static void enableDepthWrite(bool _enable) { gli_ctx.ops->enableDepthWrite(gli_ctx.impl, _enable); }
 
-		void setDepthCompare(CompareParam _mode);
+		static void setDepthCompare(CompareParam _mode) { gli_ctx.ops->setDepthCompare(gli_ctx.impl, u32(_mode)); }
 
-		void setViewport(s32 _x, s32 _y, s32 _width, s32 _height);
+		static void setViewport(s32 _x, s32 _y, s32 _width, s32 _height) { gli_ctx.ops->setViewport(gli_ctx.impl, _x, _y, _width, _height); }
 
-		void setScissor(s32 _x, s32 _y, s32 _width, s32 _height);
+		static void setScissor(s32 _x, s32 _y, s32 _width, s32 _height) { gli_ctx.ops->setScissor(gli_ctx.impl, _x, _y, _width, _height); }
 
-		void setBlending(BlendParam _sfactor, BlendParam _dfactor);
+		static void setBlending(BlendParam _sfactor, BlendParam _dfactor) { gli_ctx.ops->setBlending(gli_ctx.impl, u32(_sfactor), u32(_dfactor)); }
 
-		void setBlendingSeparate(BlendParam _sfactorcolor, BlendParam _dfactorcolor, BlendParam _sfactoralpha, BlendParam _dfactoralpha);
+		static void setBlendingSeparate(BlendParam _sfactorcolor, BlendParam _dfactorcolor, BlendParam _sfactoralpha, BlendParam _dfactoralpha)
+		{
+			gli_ctx.ops->setBlendingSeparate(gli_ctx.impl, u32(_sfactorcolor), u32(_dfactorcolor), u32(_sfactoralpha), u32(_dfactoralpha));
+		}
 
-		void setBlendColor(f32 _red, f32 _green, f32 _blue, f32 _alpha);
+		static void setBlendColor(f32 _red, f32 _green, f32 _blue, f32 _alpha) { gli_ctx.ops->setBlendColor(gli_ctx.impl, _red, _green, _blue, _alpha); }
 
-		void clearColorBuffer(f32 _red, f32 _green, f32 _blue, f32 _alpha);
+		static void clearColorBuffer(f32 _red, f32 _green, f32 _blue, f32 _alpha) { gli_ctx.ops->clearColorBuffer(gli_ctx.impl, _red, _green, _blue, _alpha); }
 
-		void clearDepthBuffer();
+		static void clearDepthBuffer() { gli_ctx.ops->clearDepthBuffer(gli_ctx.impl); }
 
-		void setPolygonOffset(f32 _factor, f32 _units);
+		static void setPolygonOffset(f32 _factor, f32 _units) { gli_ctx.ops->setPolygonOffset(gli_ctx.impl, _factor, _units); }
 
 		/*---------------Texture-------------*/
 
-		ObjectHandle createTexture(Parameter _target);
+		static ObjectHandle createTexture(Parameter _target) { return ObjectHandle(gli_ctx.ops->createTexture(gli_ctx.impl, u32(_target))); }
 
-		void deleteTexture(ObjectHandle _name);
+		static void deleteTexture(ObjectHandle _name) { gli_ctx.ops->deleteTexture(gli_ctx.impl, u32(_name)); }
 
 		struct InitTextureParams {
 			ObjectHandle handle;
@@ -102,7 +106,7 @@ namespace graphics {
 			bool mutableStorage = false;
 		};
 
-		void init2DTexture(const InitTextureParams & _params);
+		static void init2DTexture(const InitTextureParams & _params) { gli_ctx.ops->init2DTexture(gli_ctx.impl, &_params); }
 
 		struct UpdateTextureDataParams {
 			ObjectHandle handle;
@@ -118,9 +122,9 @@ namespace graphics {
 			const void * data = nullptr;
 		};
 
-		void update2DTexture(const UpdateTextureDataParams & _params);
+		static void update2DTexture(const UpdateTextureDataParams & _params) { gli_ctx.ops->update2DTexture(gli_ctx.impl, &_params); }
 
-		void * lendTextureData(size_t _bytes);
+		static void * lendTextureData(size_t _bytes) { return gli_ctx.ops->lendTextureData(gli_ctx.impl, _bytes); }
 
 		struct TexParameters {
 			ObjectHandle handle;
@@ -134,7 +138,7 @@ namespace graphics {
 			Parameter maxAnisotropy;
 		};
 
-		void setTextureParameters(const TexParameters & _parameters);
+		static void setTextureParameters(const TexParameters & _parameters) { gli_ctx.ops->setTextureParameters(gli_ctx.impl, &_parameters); }
 
 		struct BindTextureParameters {
 			ObjectHandle texture;
@@ -142,15 +146,15 @@ namespace graphics {
 			TextureTargetParam target;
 		};
 
-		void bindTexture(const BindTextureParameters & _params);
+		static void bindTexture(const BindTextureParameters & _params) { gli_ctx.ops->bindTexture(gli_ctx.impl, &_params); }
 
-		void setTextureUnpackAlignment(s32 _param);
+		static void setTextureUnpackAlignment(s32 _param) { gli_ctx.ops->setTextureUnpackAlignment(gli_ctx.impl, _param); }
 
-		s32 getTextureUnpackAlignment() const;
+		static s32 getTextureUnpackAlignment() { return gli_ctx.ops->getTextureUnpackAlignment(gli_ctx.impl); }
 
-		s32 getMaxTextureSize() const;
+		static s32 getMaxTextureSize() { return gli_ctx.ops->getMaxTextureSize(gli_ctx.impl); }
 
-		f32 getMaxAnisotropy() const;
+		static f32 getMaxAnisotropy() { return gli_ctx.ops->getMaxAnisotropy(gli_ctx.impl); }
 
 		struct BindImageTextureParameters {
 			ImageUnitParam imageUnit;
@@ -159,23 +163,26 @@ namespace graphics {
 			InternalColorFormatParam textureFormat;
 		};
 
-		void bindImageTexture(const BindImageTextureParameters & _params);
+		static void bindImageTexture(const BindImageTextureParameters & _params) { gli_ctx.ops->bindImageTexture(gli_ctx.impl, &_params); }
 
-		u32 convertInternalTextureFormat(u32 _format) const;
+		static u32 convertInternalTextureFormat(u32 _format) { return gli_ctx.ops->convertInternalTextureFormat(gli_ctx.impl, _format); }
 
-		void textureBarrier();
+		static void textureBarrier() { gli_ctx.ops->textureBarrier(gli_ctx.impl); }
 
 		/*---------------Framebuffer-------------*/
 
-		const FramebufferTextureFormats & getFramebufferTextureFormats();
+		static const FramebufferTextureFormats & getFramebufferTextureFormats()
+		{
+			return *static_cast<const FramebufferTextureFormats *>(gli_ctx.formats);
+		}
 
-		ObjectHandle createFramebuffer();
+		static ObjectHandle createFramebuffer() { return ObjectHandle(gli_ctx.ops->createFramebuffer(gli_ctx.impl)); }
 
-		void deleteFramebuffer(ObjectHandle _name);
+		static void deleteFramebuffer(ObjectHandle _name) { gli_ctx.ops->deleteFramebuffer(gli_ctx.impl, u32(_name)); }
 
-		void bindFramebuffer(BufferTargetParam _target, ObjectHandle _name);
+		static void bindFramebuffer(BufferTargetParam _target, ObjectHandle _name) { gli_ctx.ops->bindFramebuffer(gli_ctx.impl, u32(_target), u32(_name)); }
 
-		ObjectHandle createRenderbuffer();
+		static ObjectHandle createRenderbuffer() { return ObjectHandle(gli_ctx.ops->createRenderbuffer(gli_ctx.impl)); }
 
 		struct InitRenderbufferParams {
 			ObjectHandle handle;
@@ -185,7 +192,7 @@ namespace graphics {
 			u32 height = 0;
 		};
 
-		void initRenderbuffer(const InitRenderbufferParams & _params);
+		static void initRenderbuffer(const InitRenderbufferParams & _params) { gli_ctx.ops->initRenderbuffer(gli_ctx.impl, &_params); }
 
 		struct FrameBufferRenderTarget {
 			ObjectHandle bufferHandle;
@@ -195,7 +202,7 @@ namespace graphics {
 			ObjectHandle textureHandle;
 		};
 
-		void addFrameBufferRenderTarget(const FrameBufferRenderTarget & _params);
+		static void addFrameBufferRenderTarget(const FrameBufferRenderTarget & _params) { gli_ctx.ops->addFrameBufferRenderTarget(gli_ctx.impl, &_params); }
 
 		struct BlitFramebuffersParams
 		{
@@ -213,50 +220,70 @@ namespace graphics {
 			Parameter filter;
 		};
 
-		bool blitFramebuffers(const BlitFramebuffersParams & _params);
+		static bool blitFramebuffers(const BlitFramebuffersParams & _params) { return gli_ctx.ops->blitFramebuffers(gli_ctx.impl, &_params); }
 
-		void setDrawBuffers(u32 _num);
+		static void setDrawBuffers(u32 _num) { gli_ctx.ops->setDrawBuffers(gli_ctx.impl, _num); }
 
 		/*---------------Pixelbuffer-------------*/
 
-		PixelReadBuffer * createPixelReadBuffer(size_t _sizeInBytes);
+		static PixelReadBuffer * createPixelReadBuffer(size_t _sizeInBytes)
+		{
+			return static_cast<PixelReadBuffer *>(gli_ctx.ops->createPixelReadBuffer(gli_ctx.impl, _sizeInBytes));
+		}
 
-		ColorBufferReader * createColorBufferReader(CachedTexture * _pTexture);
+		static ColorBufferReader * createColorBufferReader(CachedTexture * _pTexture)
+		{
+			return static_cast<ColorBufferReader *>(gli_ctx.ops->createColorBufferReader(gli_ctx.impl, _pTexture));
+		}
 
 		/*---------------Shaders-------------*/
 
-		bool isCombinerProgramBuilderObsolete();
+		static bool isCombinerProgramBuilderObsolete() { return gli_ctx.ops->isCombinerProgramBuilderObsolete(gli_ctx.impl); }
 
-		bool isCombinerUberOnly();
+		static bool isCombinerUberOnly() { return gli_ctx.ops->isCombinerUberOnly(gli_ctx.impl); }
 
-		void resetCombinerProgramBuilder();
+		static void resetCombinerProgramBuilder() { gli_ctx.ops->resetCombinerProgramBuilder(gli_ctx.impl); }
 
-		CombinerProgram * createCombinerProgram(Combiner & _color, Combiner & _alpha, const CombinerKey & _key);
+		static CombinerProgram * createCombinerProgram(Combiner & _color, Combiner & _alpha, const CombinerKey & _key)
+		{
+			return static_cast<CombinerProgram *>(gli_ctx.ops->createCombinerProgram(gli_ctx.impl, &_color, &_alpha, &_key));
+		}
 
 		/* nullptr when it cannot be done without waiting */
-		CombinerProgram * createCombinerProgramAsync(Combiner & _color, Combiner & _alpha, const CombinerKey & _key);
+		static CombinerProgram * createCombinerProgramAsync(Combiner & _color, Combiner & _alpha, const CombinerKey & _key)
+		{
+			return static_cast<CombinerProgram *>(gli_ctx.ops->createCombinerProgramAsync(gli_ctx.impl, &_color, &_alpha, &_key));
+		}
 
-		bool saveShadersStorage(const Combiners & _combiners);
+		static bool saveShadersStorage(const Combiners & _combiners) { return gli_ctx.ops->saveShadersStorage(gli_ctx.impl, &_combiners); }
 
-		bool loadShadersStorage(Combiners & _combiners);
+		static bool loadShadersStorage(Combiners & _combiners) { return gli_ctx.ops->loadShadersStorage(gli_ctx.impl, &_combiners); }
 
 		/* where the keys met this session go, and their format's version */
-		std::string getCombinerJournalPath(u32 & _version);
+		static std::string getCombinerJournalPath(u32 & _version)
+		{
+			std::string path;
+			gli_ctx.ops->getCombinerJournalPath(gli_ctx.impl, &path, &_version);
+			return path;
+		}
 
-		ShaderProgram * createDepthFogShader();
+		static ShaderProgram * createDepthFogShader() { return static_cast<ShaderProgram *>(gli_ctx.ops->createDepthFogShader(gli_ctx.impl)); }
 
-		TexrectDrawerShaderProgram * createTexrectDrawerDrawShader();
+		static TexrectDrawerShaderProgram * createTexrectDrawerDrawShader()
+		{
+			return static_cast<TexrectDrawerShaderProgram *>(gli_ctx.ops->createTexrectDrawerDrawShader(gli_ctx.impl));
+		}
 
-		ShaderProgram * createTexrectDrawerClearShader();
+		static ShaderProgram * createTexrectDrawerClearShader() { return static_cast<ShaderProgram *>(gli_ctx.ops->createTexrectDrawerClearShader(gli_ctx.impl)); }
 
-		ShaderProgram * createTexrectCopyShader();
+		static ShaderProgram * createTexrectCopyShader() { return static_cast<ShaderProgram *>(gli_ctx.ops->createTexrectCopyShader(gli_ctx.impl)); }
 
-		ShaderProgram * createGammaCorrectionShader();
+		static ShaderProgram * createGammaCorrectionShader() { return static_cast<ShaderProgram *>(gli_ctx.ops->createGammaCorrectionShader(gli_ctx.impl)); }
 
-		ShaderProgram * createFXAAShader();
+		static ShaderProgram * createFXAAShader() { return static_cast<ShaderProgram *>(gli_ctx.ops->createFXAAShader(gli_ctx.impl)); }
 
 
-		void resetShaderProgram();
+		static void resetShaderProgram() { gli_ctx.ops->resetShaderProgram(gli_ctx.impl); }
 
 		/*---------------Draw-------------*/
 
@@ -272,7 +299,7 @@ namespace graphics {
 			const CombinerProgram * combiner = nullptr;
 		};
 
-		void drawTriangles(const DrawTriangleParameters & _params);
+		static void drawTriangles(const DrawTriangleParameters & _params) { gli_ctx.ops->drawTriangles(gli_ctx.impl, &_params); }
 
 		struct DrawRectParameters
 		{
@@ -283,34 +310,19 @@ namespace graphics {
 			const CombinerProgram * combiner = nullptr;
 		};
 
-		void drawRects(const DrawRectParameters & _params);
+		static void drawRects(const DrawRectParameters & _params) { gli_ctx.ops->drawRects(gli_ctx.impl, &_params); }
 
-		void drawLine(f32 _width, SPVertex * _vertices);
+		static void drawLine(f32 _width, SPVertex * _vertices) { gli_ctx.ops->drawLine(gli_ctx.impl, _width, _vertices); }
 
-		f32 getMaxLineWidth();
+		static f32 getMaxLineWidth() { return gli_ctx.ops->getMaxLineWidth(gli_ctx.impl); }
 
 		/*---------------Misc-------------*/
-		s32 getMaxMSAALevel();
+		static s32 getMaxMSAALevel() { return gli_ctx.ops->getMaxMSAALevel(gli_ctx.impl); }
 
-		bool isError() const;
+		static bool isError() { return gli_ctx.ops->isError(gli_ctx.impl); }
 
-		bool isFramebufferError() const;
+		static bool isFramebufferError() { return gli_ctx.ops->isFramebufferError(gli_ctx.impl); }
 
-		static bool Multisampling;
-		static bool BlitFramebuffer;
-		static bool WeakBlitFramebuffer;
-		static bool DepthFramebufferTextures;
-		static bool ShaderProgramBinary;
-		static bool ImageTextures;
-		static bool IntegerTextures;
-		static bool ClipControl;
-		static bool FramebufferFetch;
-		static bool TextureBarrier;
-		static bool DualSourceBlending;
-
-	private:
-		std::unique_ptr<ContextImpl> m_impl;
-		std::unique_ptr<FramebufferTextureFormats> m_fbTexFormats;
 	};
 
 }
