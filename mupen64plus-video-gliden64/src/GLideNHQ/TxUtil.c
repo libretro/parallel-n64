@@ -227,15 +227,13 @@ int txutil_texture_bytes(int width, int height, uint32 format)
 
 void txutil_set_format(GHQTexInfo *info, uint32 format)
 {
-	/* GL_RGB, GL_RGBA; GL_UNSIGNED_SHORT_5_6_5, _4_4_4_4, _5_5_5_1, GL_UNSIGNED_BYTE
-	 * (opengl_Parameters.cpp) */
 	info->format = format;
-	info->texture_format = format == TXFMT_RGB8 ? 0x1907 : 0x1908;
+	info->texture_format = format == TXFMT_RGB8 ? GLI_CF_RED_GREEN_BLUE : GLI_CF_RGBA;
 	switch (format) {
-	case TXFMT_RGB8:    info->pixel_type = 0x8363; break;
-	case TXFMT_RGBA4:   info->pixel_type = 0x8033; break;
-	case TXFMT_RGB5_A1: info->pixel_type = 0x8034; break;
-	default:            info->pixel_type = 0x1401; break; /* RGBA8, and what GLideNHQ has not */
+	case TXFMT_RGB8:    info->pixel_type = GLI_DT_UNSIGNED_SHORT_5_6_5; break;
+	case TXFMT_RGBA4:   info->pixel_type = GLI_DT_UNSIGNED_SHORT_4_4_4_4; break;
+	case TXFMT_RGB5_A1: info->pixel_type = GLI_DT_UNSIGNED_SHORT_5_5_5_1; break;
+	default:            info->pixel_type = GLI_DT_UNSIGNED_BYTE; break; /* RGBA8, and what GLideNHQ has not */
 	}
 }
 

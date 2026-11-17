@@ -8,10 +8,10 @@ namespace graphics {
 	class Parameter
 	{
 	public:
-		Parameter() : m_iparameter(INVALID_PARAMETER) {}
-		Parameter(u32 _parameter) : m_iparameter(_parameter) {}
-		Parameter(s32 _parameter) : m_iparameter(static_cast<u32>(_parameter)) {}
-		Parameter(f32 _parameter) : m_fparameter(_parameter) {}
+		constexpr Parameter() : m_iparameter(INVALID_PARAMETER) {}
+		constexpr Parameter(u32 _parameter) : m_iparameter(_parameter) {}
+		constexpr Parameter(s32 _parameter) : m_iparameter(static_cast<u32>(_parameter)) {}
+		constexpr Parameter(f32 _parameter) : m_fparameter(_parameter) {}
 
 		explicit operator u32() const { return m_iparameter; }
 		explicit operator s32() const { return static_cast<s32>(m_iparameter); }
@@ -35,8 +35,8 @@ namespace graphics {
 	class A : public Parameter							\
 	{													\
 	public:												\
-		A() : Parameter() {}							\
-		A(u32 _parameter) : Parameter(_parameter) {}	\
+		constexpr A() : Parameter() {}					\
+		constexpr A(u32 _parameter) : Parameter(_parameter) {}	\
 	}
 
 	SpecialParameterClass(ImageUnitParam);

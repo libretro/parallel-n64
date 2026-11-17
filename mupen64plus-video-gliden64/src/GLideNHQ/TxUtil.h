@@ -26,6 +26,7 @@
 
 /* GLideNHQ's checksums, its worker pool and its texture buffers. C89. */
 
+#include "../Graphics/gli_params.h"
 #include "Ext_TxFilter.h"
 #include "txpool.h"
 
@@ -46,14 +47,14 @@ uint32 txutil_checksum(const uint8 *src, int width, int height, int size, int ro
  * as far as the indices reach, in the high word */
 uint64 txutil_checksum64(const uint8 *src, int width, int height, int size, int rowStride, const uint8 *palette);
 
-/* GHQTexInfo's formats: graphics::internalcolorFormat's values
- * (opengl_Parameters.cpp, for GL and Vulkan alike), and the flag of a
- * texture the cache keeps compressed */
-#define TXFMT_RGB8         0x8051 /* 565 */
-#define TXFMT_RGBA4        0x8056
-#define TXFMT_RGB5_A1      0x8057
-#define TXFMT_RGBA8        0x8058
-#define TXFMT_COLOR_INDEX8 0x80E5
+/* GHQTexInfo's formats: GLideN64's internal color formats (gli_params.h,
+ * for GL and Vulkan alike), and the flag of a texture the cache keeps
+ * compressed */
+#define TXFMT_RGB8         GLI_ICF_RGB8 /* 565 */
+#define TXFMT_RGBA4        GLI_ICF_RGBA4
+#define TXFMT_RGB5_A1      GLI_ICF_RGB5_A1
+#define TXFMT_RGBA8        GLI_ICF_RGBA8
+#define TXFMT_COLOR_INDEX8 GLI_ICF_COLOR_INDEX8
 #define TXFMT_GZ           0x80000000u
 
 /* the bytes a texture of @format takes, 0 for a format GLideNHQ has not */

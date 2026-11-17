@@ -482,7 +482,6 @@ SOURCES_CXX   += \
     $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/opengl_ColorBufferReaderWithReadPixels.cpp    \
     $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/opengl_ContextImpl.cpp                        \
     $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/opengl_GLInfo.cpp                             \
-    $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/opengl_Parameters.cpp                         \
     $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/opengl_TextureManipulationObjectFactory.cpp   \
     $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/opengl_UnbufferedDrawer.cpp                   \
     $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/opengl_Utils.cpp                              \
