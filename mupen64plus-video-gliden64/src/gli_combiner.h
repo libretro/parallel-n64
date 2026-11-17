@@ -20,6 +20,14 @@ typedef struct gli_cprog_ops
 	void (*update)(void *_program, bool _force);
 	bool (*usesLOD)(const void *_program);
 	void (*free_program)(void *_program);
+	/* what a draw with the program reads */
+	bool (*usesTexture)(const void *_program);
+	bool (*usesTile)(const void *_program, u32 _tile);
+	bool (*usesShade)(const void *_program);
+	bool (*usesHwLighting)(const void *_program);
+	/* the texrect drawer's draw shader's alone; NULL for the others */
+	void (*setTextureSize)(void *_program, u32 _width, u32 _height);
+	void (*setEnableAlphaTest)(void *_program, int _enable);
 } gli_cprog_ops;
 
 /* the C face of a CombinerProgram: what its class does, and its key (0 for

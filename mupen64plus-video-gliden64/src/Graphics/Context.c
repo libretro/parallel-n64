@@ -33,6 +33,8 @@ void gli_context_init(void)
 		gli_ctx.ops = gli_gl_context_ops();
 		gli_ctx.impl = gli_gl_context_new();
 	}
+	gli_ctx.drawFramebuffer = GLI_BT_DRAW_FRAMEBUFFER;
+	gli_ctx.readFramebuffer = GLI_BT_READ_FRAMEBUFFER;
 	gli_ctx.ops->init(gli_ctx.impl);
 
 	{

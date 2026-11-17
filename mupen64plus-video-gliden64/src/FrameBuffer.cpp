@@ -1716,7 +1716,12 @@ FrameBuffer * gli_fb_pp_create(const FrameBuffer * _pMainBuffer)
 	return pResultBuffer;
 }
 
-void gli_fb_pp_draw(FrameBuffer * _pBuffer, FrameBuffer * _pResult, gli_shader * _pShader)
+void gli_fb_coords_scales(const FrameBuffer * _pBuffer, f32 * _x, f32 * _y)
+{
+	calcCoordsScales(_pBuffer, *_x, *_y);
+}
+
+void gli_fb_pp_draw(FrameBuffer * _pBuffer, FrameBuffer * _pResult, gli_cprog * _pShader)
 {
 	CachedTexture * pTextureOriginal;
 	if (_pBuffer->m_pTexture->frameBufferTexture == GLI_TEX_FB_MULTI_SAMPLE) {
@@ -1747,7 +1752,7 @@ void gli_fb_pp_draw(FrameBuffer * _pBuffer, FrameBuffer * _pResult, gli_shader *
 	copyParams.dstHeight = pDstTex->realHeight;
 	copyParams.tex[0] = pTextureOriginal;
 	copyParams.filter = textureParameters::FILTER_NEAREST;
-	copyParams.combiner = reinterpret_cast<ShaderProgram*>(_pShader);
+	copyParams.combiner = combinerProgram(_pShader);
 
 	dwnd().getDrawer().copyTexturedRect(copyParams);
 
@@ -1761,21 +1766,6 @@ void gli_fb_pp_draw(FrameBuffer * _pBuffer, FrameBuffer * _pResult, gli_shader *
 void gli_fb_delete(FrameBuffer * _pBuffer)
 {
 	delete _pBuffer;
-}
-
-gli_shader * gli_gfx_create_gamma_shader(void)
-{
-	return reinterpret_cast<gli_shader*>(gfxContext.createGammaCorrectionShader());
-}
-
-gli_shader * gli_gfx_create_fxaa_shader(void)
-{
-	return reinterpret_cast<gli_shader*>(gfxContext.createFXAAShader());
-}
-
-void gli_gfx_delete_shader(gli_shader * _pShader)
-{
-	delete reinterpret_cast<ShaderProgram*>(_pShader);
 }
 
 void gli_fb_clear_depth_buffer(DepthBuffer * _pDepthBuffer)

@@ -259,11 +259,11 @@ typedef struct gli_context_ops
 	/* into @_path, @_size bytes at most */
 	void (*getCombinerJournalPath)(void *_impl, char *_path, size_t _size, u32 *_version);
 	struct gli_cprog *(*createDepthFogShader)(void *_impl);
-	void *(*createTexrectDrawerDrawShader)(void *_impl);
-	void *(*createTexrectDrawerClearShader)(void *_impl);
+	struct gli_cprog *(*createTexrectDrawerDrawShader)(void *_impl);
+	struct gli_cprog *(*createTexrectDrawerClearShader)(void *_impl);
 	struct gli_cprog *(*createTexrectCopyShader)(void *_impl);
-	void *(*createGammaCorrectionShader)(void *_impl);
-	void *(*createFXAAShader)(void *_impl);
+	struct gli_cprog *(*createGammaCorrectionShader)(void *_impl);
+	struct gli_cprog *(*createFXAAShader)(void *_impl);
 	void (*resetShaderProgram)(void *_impl);
 	/* drawing */
 	void (*drawTriangles)(void *_impl, const gli_draw_triangles_params *_params);
@@ -289,6 +289,10 @@ typedef struct gli_context
 	bool shaderProgramBinary;
 	bool imageTextures;
 	bool integerTextures;
+	/* the targets to bind a frame buffer to draw and to read: on GLES2,
+	 * which has one, both GLI_BT_FRAMEBUFFER */
+	u32 drawFramebuffer;
+	u32 readFramebuffer;
 	bool clipControl;
 	bool framebufferFetch;
 	bool textureBarrier;

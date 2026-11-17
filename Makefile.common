@@ -465,7 +465,6 @@ SOURCES_CXX   += \
     $(VIDEODIR_GLIDEN64)/src/DepthBufferGpu.cpp                                                   \
     $(VIDEODIR_GLIDEN64)/src/DisplayWindowGpu.cpp                                                 \
     $(VIDEODIR_GLIDEN64)/src/FrameBuffer.cpp                                                      \
-    $(VIDEODIR_GLIDEN64)/src/TexrectDrawerGpu.cpp                                                    \
     $(VIDEODIR_GLIDEN64)/src/BufferCopy/ColorBufferToRDRAM.cpp                                    \
     $(VIDEODIR_GLIDEN64)/src/BufferCopy/DepthBufferToRDRAM.cpp                                    \
     $(VIDEODIR_GLIDEN64)/src/BufferCopy/RDRAMtoColorBuffer.cpp                                    \

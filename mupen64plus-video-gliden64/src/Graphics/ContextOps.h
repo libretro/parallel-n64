@@ -129,11 +129,11 @@ namespace graphics {
 			snprintf(_path, _size, "%s", I(_p)->T::getCombinerJournalPath(*_version).c_str());
 		}
 		static gli_cprog * createDepthFogShader(void * _p) { return I(_p)->T::createDepthFogShader(); }
-		static void * createTexrectDrawerDrawShader(void * _p) { return I(_p)->T::createTexrectDrawerDrawShader(); }
-		static void * createTexrectDrawerClearShader(void * _p) { return I(_p)->T::createTexrectDrawerClearShader(); }
+		static gli_cprog * createTexrectDrawerDrawShader(void * _p) { return I(_p)->T::createTexrectDrawerDrawShader(); }
+		static gli_cprog * createTexrectDrawerClearShader(void * _p) { return I(_p)->T::createTexrectDrawerClearShader(); }
 		static gli_cprog * createTexrectCopyShader(void * _p) { return I(_p)->T::createTexrectCopyShader(); }
-		static void * createGammaCorrectionShader(void * _p) { return I(_p)->T::createGammaCorrectionShader(); }
-		static void * createFXAAShader(void * _p) { return I(_p)->T::createFXAAShader(); }
+		static gli_cprog * createGammaCorrectionShader(void * _p) { return I(_p)->T::createGammaCorrectionShader(); }
+		static gli_cprog * createFXAAShader(void * _p) { return I(_p)->T::createFXAAShader(); }
 		static void resetShaderProgram(void * _p) { I(_p)->T::resetShaderProgram(); }
 
 		static void drawTriangles(void * _p, const gli_draw_triangles_params * _params)

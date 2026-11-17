@@ -196,19 +196,6 @@ namespace graphics {
 		/* where the keys met this session go, and their format's version */
 
 
-		static TexrectDrawerShaderProgram * createTexrectDrawerDrawShader()
-		{
-			return static_cast<TexrectDrawerShaderProgram *>(gli_ctx.ops->createTexrectDrawerDrawShader(gli_ctx.impl));
-		}
-
-		static ShaderProgram * createTexrectDrawerClearShader() { return static_cast<ShaderProgram *>(gli_ctx.ops->createTexrectDrawerClearShader(gli_ctx.impl)); }
-
-
-		static ShaderProgram * createGammaCorrectionShader() { return static_cast<ShaderProgram *>(gli_ctx.ops->createGammaCorrectionShader(gli_ctx.impl)); }
-
-		static ShaderProgram * createFXAAShader() { return static_cast<ShaderProgram *>(gli_ctx.ops->createFXAAShader(gli_ctx.impl)); }
-
-
 		static void resetShaderProgram() { gli_ctx.ops->resetShaderProgram(gli_ctx.impl); }
 
 		/*---------------Draw-------------*/

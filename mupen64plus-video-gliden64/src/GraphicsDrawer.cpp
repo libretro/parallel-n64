@@ -131,6 +131,24 @@ void gli_drawer_clear_depth(void)
 	dwnd().getDrawer().clearDepthBuffer();
 }
 
+/* The drawer's private state, for the texrect drawer alone */
+struct TexrectGpu
+{
+	static RectVertex * rect() { return dwnd().getDrawer().m_rect; }
+	static void restart() { dwnd().getDrawer()._updateStates(DrawingState::TexRect); gfxContext.enable(enable::CULL_FACE, false); }
+	static void setBlend() { dwnd().getDrawer()._setBlendMode(); }
+	static void depthCompare() { dwnd().getDrawer()._updateDepthCompare(); }
+	static void screenViewport(const FrameBuffer * _p) { dwnd().getDrawer()._updateScreenCoordsViewport(_p); }
+	static void updateScissor(FrameBuffer * _p) { dwnd().getDrawer().updateScissor(_p); }
+};
+
+RectVertex * gli_drawer_rect(void) { return TexrectGpu::rect(); }
+void gli_drawer_texrect_states(void) { TexrectGpu::restart(); }
+void gli_drawer_set_blend_mode(void) { TexrectGpu::setBlend(); }
+void gli_drawer_update_depth_compare(void) { TexrectGpu::depthCompare(); }
+void gli_drawer_screen_viewport(const FrameBuffer * _pBuffer) { TexrectGpu::screenViewport(_pBuffer); }
+void gli_drawer_update_scissor(FrameBuffer * _pBuffer) { TexrectGpu::updateScissor(_pBuffer); }
+
 void gli_drawer_draw_rect(s32 _ulx, s32 _uly, s32 _lrx, s32 _lry)
 {
 	dwnd().getDrawer().drawRect(_ulx, _uly, _lrx, _lry);

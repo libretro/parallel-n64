@@ -19,6 +19,15 @@ SPVertex *gli_drawer_take_dma_vertices(u32 _n);
 void gli_drawer_draw_dma_pending(void);
 void gli_drawer_draw_screen_strip(u32 _numVtx);
 void gli_drawer_clear_depth(void);
+/* for the texrect drawer: the drawer's rect, its states for texrects, its
+ * blend and depth compare, and its viewport and scissor for @_pBuffer */
+struct FrameBuffer;
+RectVertex *gli_drawer_rect(void);
+void gli_drawer_texrect_states(void);
+void gli_drawer_set_blend_mode(void);
+void gli_drawer_update_depth_compare(void);
+void gli_drawer_screen_viewport(const struct FrameBuffer *_pBuffer);
+void gli_drawer_update_scissor(struct FrameBuffer *_pBuffer);
 bool gli_drawer_is_rejected(s32 _v0, s32 _v1, s32 _v2);
 void gli_drawer_add_triangle(s32 _v0, s32 _v1, s32 _v2);
 /* Whether the window's adjust-screen setting applies to the current image */

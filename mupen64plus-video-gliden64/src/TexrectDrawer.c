@@ -6,7 +6,13 @@
 #include "VI.h"
 #include "gDP.h"
 #include "gSP.h"
+#include <assert.h>
 #include "gli_framebuffer.h"
+#include "gli_combiner.h"
+#include "gli_drawer.h"
+#include "gli_tex.h"
+#include "gli_textures.h"
+#include "Graphics/gli_context.h"
 #include "TexrectDrawer.h"
 
 #define TEXRECT_WIDTH 640.0f
@@ -40,14 +46,152 @@ static f32 trd_minf(f32 _a, f32 _b)
 	return _b < _a ? _b : _a;
 }
 
+/* the GPU side: a texture the rects are drawn into, its frame buffer, and
+ * the shaders that composite it and clear it */
+static u32 l_FBO;
+static gli_tex * l_pTexture;
+static gli_cprog * l_programTex;
+static gli_cprog * l_programClear;
+
+static void gpu_init(void)
+{
+	const gli_fb_formats * f = &gli_ctx.formats;
+	gli_init_texture_params initParams = GLI_INIT_TEXTURE_PARAMS_DEFAULT;
+	gli_tex_parameters texParams = GLI_TEX_PARAMETERS_DEFAULT;
+	gli_fb_render_target bufTarget = GLI_FB_RENDER_TARGET_DEFAULT;
+
+	l_FBO = gli_ctx.ops->createFramebuffer(gli_ctx.impl);
+
+	l_pTexture = gli_textures_add_fb(GLI_TT_TEXTURE_2D);
+	l_pTexture->format = G_IM_FMT_RGBA;
+	l_pTexture->clampS = 1;
+	l_pTexture->clampT = 1;
+	l_pTexture->frameBufferTexture = GLI_TEX_FB_ONE_SAMPLE;
+	l_pTexture->maskS = 0;
+	l_pTexture->maskT = 0;
+	l_pTexture->mirrorS = 0;
+	l_pTexture->mirrorT = 0;
+	l_pTexture->realWidth = 640;
+	l_pTexture->realHeight = 580;
+	l_pTexture->textureBytes = (u32)l_pTexture->realWidth * l_pTexture->realHeight * f->colorFormatBytes;
+
+	initParams.handle = l_pTexture->name;
+	initParams.textureUnitIndex = GLI_TU_TEX0;
+	initParams.width = l_pTexture->realWidth;
+	initParams.height = l_pTexture->realHeight;
+	initParams.internalFormat = f->colorInternalFormat;
+	initParams.format = f->colorFormat;
+	initParams.dataType = f->colorType;
+	gli_ctx.ops->init2DTexture(gli_ctx.impl, &initParams);
+
+	texParams.handle = l_pTexture->name;
+	texParams.target = GLI_TT_TEXTURE_2D;
+	texParams.textureUnitIndex = GLI_TU_TEX0;
+	texParams.minFilter = GLI_TP_FILTER_LINEAR;
+	texParams.magFilter = GLI_TP_FILTER_LINEAR;
+	gli_ctx.ops->setTextureParameters(gli_ctx.impl, &texParams);
+
+	bufTarget.bufferHandle = l_FBO;
+	bufTarget.bufferTarget = gli_ctx.drawFramebuffer;
+	bufTarget.attachment = GLI_BA_COLOR_ATTACHMENT0;
+	bufTarget.textureTarget = GLI_TT_TEXTURE_2D;
+	bufTarget.textureHandle = l_pTexture->name;
+	gli_ctx.ops->addFrameBufferRenderTarget(gli_ctx.impl, &bufTarget);
+
+	/* check if everything is OK */
+	assert(!gli_ctx.ops->isFramebufferError(gli_ctx.impl));
+	gli_ctx.ops->bindFramebuffer(gli_ctx.impl, gli_ctx.drawFramebuffer, 0);
+
+	l_programTex = gli_ctx.ops->createTexrectDrawerDrawShader(gli_ctx.impl);
+	l_programClear = gli_ctx.ops->createTexrectDrawerClearShader(gli_ctx.impl);
+	l_programTex->ops->setTextureSize(l_programTex, l_pTexture->realWidth, l_pTexture->realHeight);
+}
+
+static void gpu_destroy(void)
+{
+	gli_ctx.ops->deleteFramebuffer(gli_ctx.impl, l_FBO);
+	l_FBO = 0;
+	if (l_pTexture != NULL) {
+		gli_textures_remove_fb(l_pTexture);
+		l_pTexture = NULL;
+	}
+	if (l_programTex != NULL)
+		l_programTex->ops->free_program(l_programTex);
+	l_programTex = NULL;
+	if (l_programClear != NULL)
+		l_programClear->ops->free_program(l_programClear);
+	l_programClear = NULL;
+}
+
+static void gpu_begin(u32 _width, u32 _height, s32 _sx, s32 _sy, s32 _sw, s32 _sh)
+{
+	gli_combiner_update();
+	gli_combiner_update_parameters();
+	gli_ctx.ops->enableDepthWrite(gli_ctx.impl, 0);
+	gli_ctx.ops->enable(gli_ctx.impl, GLI_EN_DEPTH_TEST, 0);
+	gli_ctx.ops->enable(gli_ctx.impl, GLI_EN_BLEND, 0);
+
+	gli_ctx.ops->setViewport(gli_ctx.impl, 0, 0, (s32)_width, (s32)_height);
+
+	gli_ctx.ops->setScissor(gli_ctx.impl, _sx, _sy, _sw, _sh);
+
+	gli_ctx.ops->bindFramebuffer(gli_ctx.impl, gli_ctx.drawFramebuffer, l_FBO);
+}
+
+static void gpu_draw(RectVertex * _rect, const gli_cprog * _program)
+{
+	gli_draw_rects_params rectParams = GLI_DRAW_RECTS_PARAMS_DEFAULT;
+	rectParams.mode = GLI_DM_TRIANGLE_STRIP;
+	rectParams.verticesCount = 4;
+	rectParams.vertices = _rect;
+	rectParams.combiner = _program;
+	gli_ctx.ops->drawRects(gli_ctx.impl, &rectParams);
+}
+
+static void gpu_begin_composite(const struct FrameBuffer * _pBuffer, int _alphaTest)
+{
+	gli_tex_parameters texParams = GLI_TEX_PARAMETERS_DEFAULT;
+	gli_drawer_screen_viewport(_pBuffer);
+
+	gli_textures_activate(0, l_pTexture);
+	/* Disable filtering to avoid black outlines */
+	texParams.handle = l_pTexture->name;
+	texParams.target = GLI_TT_TEXTURE_2D;
+	texParams.textureUnitIndex = GLI_TU_TEX0;
+	texParams.minFilter = GLI_TP_FILTER_NEAREST;
+	texParams.magFilter = GLI_TP_FILTER_NEAREST;
+	gli_ctx.ops->setTextureParameters(gli_ctx.impl, &texParams);
+
+	l_programTex->ops->activate(l_programTex);
+	l_programTex->ops->setEnableAlphaTest(l_programTex, _alphaTest);
+}
+
+static void gpu_composite(RectVertex * _rect)
+{
+	gpu_draw(_rect, l_programTex);
+
+	gli_ctx.ops->bindFramebuffer(gli_ctx.impl, gli_ctx.drawFramebuffer, l_FBO);
+	l_programClear->ops->activate(l_programClear);
+}
+
+static void gpu_clear(RectVertex * _rect, u32 _width, u32 _height)
+{
+	gli_ctx.ops->setViewport(gli_ctx.impl, 0, 0, (s32)_width, (s32)_height);
+
+	gli_ctx.ops->enable(gli_ctx.impl, GLI_EN_BLEND, 0);
+	gli_ctx.ops->enable(gli_ctx.impl, GLI_EN_SCISSOR_TEST, 0);
+	gpu_draw(_rect, l_programClear);
+	gli_ctx.ops->enable(gli_ctx.impl, GLI_EN_SCISSOR_TEST, 1);
+}
+
 void gli_texrect_init(void)
 {
-	gli_texrect_gpu_init();
+	gpu_init();
 }
 
 void gli_texrect_destroy(void)
 {
-	gli_texrect_gpu_destroy();
+	gpu_destroy();
 }
 
 static void _setDrawBuffer(void)
@@ -148,14 +292,14 @@ static void _startBatch(const RectVertex * _pRect, f32 _z)
 static void _startDrawing(void)
 {
 	const u32 bufferWidth = l_pBuffer == NULL ? VI.width : gli_fb_width(l_pBuffer);
-	gli_texrect_gpu_begin(bufferWidth, gli_VI_GetMaxBufferHeight((u16)bufferWidth),
+	gpu_begin(bufferWidth, gli_VI_GetMaxBufferHeight((u16)bufferWidth),
 		(s32)gDP.scissor.ulx, (s32)gDP.scissor.uly,
 		(s32)(gDP.scissor.lrx - gDP.scissor.ulx), (s32)(gDP.scissor.lry - gDP.scissor.uly));
 }
 
 bool gli_texrect_add_rect(void)
 {
-	RectVertex * pRect = gli_texrect_gpu_rect();
+	RectVertex * pRect = gli_drawer_rect();
 	bool bDownUp = false;
 
 	/* flush rather than grow */
@@ -185,7 +329,7 @@ bool gli_texrect_add_rect(void)
 		}
 		if (!bContinue) {
 			gli_texrect_draw();
-			gli_texrect_gpu_restart();
+			gli_drawer_texrect_states();
 		}
 	}
 
@@ -222,7 +366,7 @@ bool gli_texrect_add_rect(void)
 	l_rectCoords[l_numRectCoords].y = l_curRect.lry;
 	++l_numRectCoords;
 
-	gli_texrect_gpu_draw_rect(pRect);
+	gpu_draw(pRect, gli_cmb.current);
 
 	if (l_numRects > 1 && !_lookAhead(false))
 		gli_texrect_draw();
@@ -232,7 +376,7 @@ bool gli_texrect_add_rect(void)
 
 void gli_texrect_add_background_rect(void)
 {
-	RectVertex * pRect = gli_texrect_gpu_rect();
+	RectVertex * pRect = gli_drawer_rect();
 
 	if (l_numRects == 0) {
 		_startBatch(pRect, (gDP.otherMode.depthSource == G_ZS_PRIM) ? gDP.primDepth.z : gSP.viewport.nearz);
@@ -246,7 +390,7 @@ void gli_texrect_add_background_rect(void)
 	l_max_lrx = trd_maxf(l_max_lrx, l_lrx);
 	l_max_lry = trd_maxf(l_max_lry, l_lry);
 
-	gli_texrect_gpu_draw_rect(pRect);
+	gpu_draw(pRect, gli_cmb.current);
 }
 
 bool gli_texrect_draw(void)
@@ -269,9 +413,9 @@ bool gli_texrect_draw(void)
 	gDP.otherMode._u64 = l_otherMode;
 	gDP.scissor = l_scissor;
 
-	gli_texrect_gpu_set_blend();
+	gli_drawer_set_blend_mode();
 	gDP.changed |= CHANGED_RENDERMODE;  /* Force update of depth compare parameters */
-	gli_texrect_gpu_update_depth_compare();
+	gli_drawer_update_depth_compare();
 
 	switch (gDP.otherMode.cycleType) {
 	case G_CYC_COPY:
@@ -292,7 +436,7 @@ bool gli_texrect_draw(void)
 	l_lrx = l_max_lrx;
 	l_lry = l_max_lry;
 
-	gli_texrect_gpu_scales(l_pBuffer, &scaleX, &scaleY);
+	gli_fb_coords_scales(l_pBuffer, &scaleX, &scaleY);
 	scaleX *= 2.0f;
 	scaleY *= 2.0f;
 
@@ -301,7 +445,7 @@ bool gli_texrect_draw(void)
 	s1 = (l_lrx + 1.0f) / scaleX / TEXRECT_WIDTH;
 	t1 = (l_uly + 1.0f) / scaleY / TEXRECT_HEIGHT;
 
-	gli_texrect_gpu_begin_composite(l_pBuffer, enableAlphaTest);
+	gpu_begin_composite(l_pBuffer, enableAlphaTest);
 
 	rect[0].x = l_ulx;
 	rect[0].y = l_lry;
@@ -328,9 +472,9 @@ bool gli_texrect_draw(void)
 	rect[3].s0 = s1;
 	rect[3].t0 = t1;
 
-	gli_texrect_gpu_update_scissor(l_pBuffer);
+	gli_drawer_update_scissor(l_pBuffer);
 	_setDrawBuffer();
-	gli_texrect_gpu_composite(rect);
+	gpu_composite(rect);
 
 	ulx = trd_maxf(-1.0f, l_ulx - l_stepX);
 	lrx = trd_minf( 1.0f, l_lrx + l_stepX);
@@ -347,7 +491,7 @@ bool gli_texrect_draw(void)
 	rect[3].y = lry;
 
 	bufferWidth = l_pBuffer == NULL ? VI.width : gli_fb_width(l_pBuffer);
-	gli_texrect_gpu_clear(rect, bufferWidth, gli_VI_GetMaxBufferHeight((u16)bufferWidth));
+	gpu_clear(rect, bufferWidth, gli_VI_GetMaxBufferHeight((u16)bufferWidth));
 
 	l_pBuffer = gli_fb_current();
 	_setDrawBuffer();
