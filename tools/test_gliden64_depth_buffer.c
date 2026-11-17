@@ -72,6 +72,7 @@ void gli_textures_remove_fb(gli_tex *_tex) { if (_tex != NULL) texRemoved++; }
 /* ---- the backend ---- */
 
 static gli_context_ops ops;
+static u32 rbDeleted, fbDeletedName[16], numFbDeleted;
 static u32 fbos, fbosDeleted, renderbuffers, blits, clears, barriers, images, drawBuffers;
 static gli_init_texture_params lastInit;
 static gli_tex_parameters lastParams;
@@ -82,7 +83,8 @@ static gli_init_renderbuffer_params lastRb;
 static u32 lastBindTarget, lastBindName;
 
 static u32 c_fb(void *_i) { (void)_i; return 200 + ++fbos; }
-static void d_fb(void *_i, u32 _n) { (void)_i; if (_n != 0) fbosDeleted++; }
+static void d_fb(void *_i, u32 _n) { (void)_i; if (numFbDeleted < 16) fbDeletedName[numFbDeleted++] = _n; if (_n != 0) fbosDeleted++; }
+static void d_rb(void *_i, u32 _n) { (void)_i; if (_n != 0) rbDeleted = _n; }
 static void b_fb(void *_i, u32 _t, u32 _n) { (void)_i; lastBindTarget = _t; lastBindName = _n; }
 static void t_fb(void *_i, const gli_fb_render_target *_p) { (void)_i; if (numTargets < 8) targets[numTargets] = *_p; numTargets++; }
 static u32 c_rb(void *_i) { (void)_i; return 300 + ++renderbuffers; }
@@ -106,6 +108,7 @@ static void reset(int _depthTextures, int _msaa)
 	ops.addFrameBufferRenderTarget = t_fb;
 	ops.createRenderbuffer = c_rb;
 	ops.initRenderbuffer = i_rb;
+	ops.deleteRenderbuffer = d_rb;
 	ops.blitFramebuffers = blit;
 	ops.init2DTexture = init;
 	ops.setTextureParameters = setp;
@@ -131,6 +134,7 @@ static void reset(int _depthTextures, int _msaa)
 	VI.width = 320;
 	fbos = fbosDeleted = renderbuffers = blits = clears = barriers = images = drawBuffers = 0;
 	texUsed = texRemoved = activated = numTargets = 0;
+	rbDeleted = numFbDeleted = 0;
 
 	memset(&fb, 0, sizeof(fb));
 	memset(&fbTex, 0, sizeof(fbTex));
@@ -221,7 +225,15 @@ static void test_screen_and_renderbuffer(void)
 	gli_depth_set_attachment(d, 21, GLI_BT_READ_FRAMEBUFFER);
 	check(targets[0].textureHandle == d->m_depthRenderbuffer && targets[0].textureTarget == GLI_TT_RENDERBUFFER &&
 		targets[0].bufferTarget == GLI_BT_READ_FRAMEBUFFER, "attached as a renderbuffer, to the target asked");
-	gli_depth_delete(d);
+	{
+		const u32 rb = d->m_depthRenderbuffer;
+		u32 i, asFramebuffer = 0;
+		gli_depth_delete(d);
+		for (i = 0; i < numFbDeleted; ++i)
+			asFramebuffer += fbDeletedName[i] == rb;
+		check(rbDeleted == rb, "deleting gives back the renderbuffer as a renderbuffer");
+		check(asFramebuffer == 0, "and never deletes a frame buffer of its number");
+	}
 }
 
 static void test_multisampled(void)

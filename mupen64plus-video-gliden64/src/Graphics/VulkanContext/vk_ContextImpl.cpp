@@ -485,6 +485,7 @@ public:
 			vkr_fbo_depth(g_r, u32(_p.bufferHandle), u32(_p.textureHandle));
 	}
 	ObjectHandle createRenderbuffer() override { return ObjectHandle(vkr_texture_new(g_r)); }
+	void deleteRenderbuffer(ObjectHandle _h) override { vkr_texture_delete(g_r, u32(_h)); }
 	void initRenderbuffer(const gli_init_renderbuffer_params & _p) override {
 		vkr_texture_init(g_r, u32(_p.handle), toFormat(u32(_p.format)), 1, _p.width, _p.height, 0, 1, nullptr, 0);
 	}

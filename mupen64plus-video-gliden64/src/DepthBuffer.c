@@ -514,9 +514,10 @@ void gli_depth_delete(DepthBuffer *_pDepth)
 {
 	if (_pDepth == NULL)
 		return;
-	/* the renderbuffer went to deleteFramebuffer in the C++ too: the
-	 * context has no call to delete one */
-	CTX->deleteFramebuffer(IMPL, _pDepth->m_depthRenderbuffer);
+	/* a renderbuffer, not a frame buffer: deleting it as a frame buffer
+	 * left it and deleted any frame buffer of its number */
+	if (_pDepth->m_depthRenderbuffer != 0)
+		CTX->deleteRenderbuffer(IMPL, _pDepth->m_depthRenderbuffer);
 	CTX->deleteFramebuffer(IMPL, _pDepth->m_copyFBO);
 	CTX->deleteFramebuffer(IMPL, _pDepth->m_ZTextureClearFBO);
 	CTX->deleteFramebuffer(IMPL, _pDepth->m_DeltaZTextureClearFBO);

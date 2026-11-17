@@ -242,6 +242,7 @@ typedef struct gli_context_ops
 	void (*bindFramebuffer)(void *_impl, u32 _target, u32 _name);
 	void (*addFrameBufferRenderTarget)(void *_impl, const gli_fb_render_target *_params);
 	u32 (*createRenderbuffer)(void *_impl);
+	void (*deleteRenderbuffer)(void *_impl, u32 _name);
 	void (*initRenderbuffer)(void *_impl, const gli_init_renderbuffer_params *_params);
 	bool (*blitFramebuffers)(void *_impl, const gli_blit_params *_params);
 	void (*setDrawBuffers)(void *_impl, u32 _num);

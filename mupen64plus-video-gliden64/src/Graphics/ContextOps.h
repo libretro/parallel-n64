@@ -90,6 +90,7 @@ namespace graphics {
 			I(_p)->T::addFrameBufferRenderTarget(*_params);
 		}
 		static u32 createRenderbuffer(void * _p) { return u32(I(_p)->T::createRenderbuffer()); }
+		static void deleteRenderbuffer(void * _p, u32 _name) { I(_p)->T::deleteRenderbuffer(ObjectHandle(_name)); }
 		static void initRenderbuffer(void * _p, const gli_init_renderbuffer_params * _params)
 		{
 			I(_p)->T::initRenderbuffer(*_params);
@@ -164,7 +165,7 @@ namespace graphics {
 		&setTextureParameters, &bindTexture, &setTextureUnpackAlignment, &getTextureUnpackAlignment,
 		&getMaxTextureSize, &getMaxAnisotropy, &bindImageTexture, &convertInternalTextureFormat, &textureBarrier,
 		&getFramebufferTextureFormats, &createFramebuffer, &deleteFramebuffer, &bindFramebuffer,
-		&addFrameBufferRenderTarget, &createRenderbuffer, &initRenderbuffer, &blitFramebuffers, &setDrawBuffers,
+		&addFrameBufferRenderTarget, &createRenderbuffer, &deleteRenderbuffer, &initRenderbuffer, &blitFramebuffers, &setDrawBuffers,
 		&createPixelReadBuffer, &createColorBufferReader,
 		&isCombinerProgramBuilderObsolete, &isCombinerUberOnly, &resetCombinerProgramBuilder,
 		&createCombinerProgram, &createCombinerProgramAsync, &saveShadersStorage, &loadShadersStorage,

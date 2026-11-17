@@ -443,6 +443,15 @@ void ContextImpl::bindFramebuffer(graphics::BufferTargetParam _target, graphics:
 	m_cachedFunctions->getCachedBindFramebuffer()->bind(_target, _name);
 }
 
+void ContextImpl::deleteRenderbuffer(graphics::ObjectHandle _name)
+{
+	u32 rbo(_name);
+	if (rbo != 0) {
+		glDeleteRenderbuffers(1, &rbo);
+		m_cachedFunctions->getCachedBindRenderbuffer()->reset();
+	}
+}
+
 graphics::ObjectHandle ContextImpl::createRenderbuffer()
 {
 	return m_createRenderbuffer->createRenderbuffer();

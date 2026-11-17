@@ -48,6 +48,7 @@ namespace graphics {
 		virtual void bindFramebuffer(BufferTargetParam _target, ObjectHandle _name) = 0;
 		virtual void addFrameBufferRenderTarget(const gli_fb_render_target & _params) = 0;
 		virtual ObjectHandle createRenderbuffer() = 0;
+		virtual void deleteRenderbuffer(ObjectHandle _name) = 0;
 		virtual void initRenderbuffer(const gli_init_renderbuffer_params & _params) = 0;
 		virtual bool blitFramebuffers(const gli_blit_params & _params) = 0;
 		virtual void setDrawBuffers(u32 _num) = 0;

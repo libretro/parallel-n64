@@ -94,6 +94,8 @@ namespace opengl {
 
 		graphics::ObjectHandle createRenderbuffer() override;
 
+		void deleteRenderbuffer(graphics::ObjectHandle _name) override;
+
 		void initRenderbuffer(const gli_init_renderbuffer_params & _params) override;
 
 		void addFrameBufferRenderTarget(const gli_fb_render_target & _params) override;
