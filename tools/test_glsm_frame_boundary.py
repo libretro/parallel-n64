@@ -31,13 +31,14 @@ def main():
         header.write_text(functions)
         binary = directory / "regression"
         subprocess.run([
-            os.environ.get("CC", "cc"), "-std=c99", "-DHAVE_OPENGLES",
+            os.environ.get("CC", "cc"), "-std=c99", "-D_DEFAULT_SOURCE", "-DHAVE_OPENGLES",
             "-DHAVE_OPENGLES3", "-DHAVE_THR_AL", "-DHAVE_PARALLEL",
             f'-DGLSM_FRAME_BOUNDARY_SOURCE="{header}"',
             "-I" + str(root / "libretro-common/include"),
             "-I" + str(root / "libretro"),
+            "-I" + str(root / "libretro/glsym"),
             str(root / "tools/test_glsm_gles3.c"),
-            str(root / "libretro-common/glsym/glsym_es3.c"),
+            str(root / "libretro/glsym/glsym_es3.c"),
             str(root / "libretro-common/glsym/rglgen.c"),
             str(root / "libretro-common/gfx/gl_capabilities.c"),
             "-lEGL", "-lGLESv2", "-o", str(binary),
