@@ -36,25 +36,20 @@ using namespace std;
 using namespace graphics;
 
 FrameBuffer::FrameBuffer()
-	: m_pDepthBuffer(nullptr)
-	, m_pResolveTexture(nullptr)
-	, m_pSubTexture(nullptr)
-	, m_pFrameBufferCopyTexture(nullptr)
-	, m_copyFBO(ObjectHandle::defaultFramebuffer)
 {
 	memset(static_cast<gli_fb *>(this), 0, sizeof(gli_fb));
 	m_loadType = LOADTYPE_BLOCK;
 	m_pTexture = gli_textures_add_fb(u32(config.video.multisampling != 0 ?
 		textureTarget::TEXTURE_2D_MULTISAMPLE : textureTarget::TEXTURE_2D));
-	m_FBO = gfxContext.createFramebuffer();
+	m_FBO = u32(gfxContext.createFramebuffer());
 }
 
 FrameBuffer::~FrameBuffer()
 {
-	gfxContext.deleteFramebuffer(m_FBO);
-	gfxContext.deleteFramebuffer(m_resolveFBO);
-	gfxContext.deleteFramebuffer(m_SubFBO);
-	gfxContext.deleteFramebuffer(m_copyFBO);
+	gfxContext.deleteFramebuffer(ObjectHandle(m_FBO));
+	gfxContext.deleteFramebuffer(ObjectHandle(m_resolveFBO));
+	gfxContext.deleteFramebuffer(ObjectHandle(m_SubFBO));
+	gfxContext.deleteFramebuffer(ObjectHandle(m_copyFBO));
 
 	gli_textures_remove_fb(m_pTexture);
 	gli_textures_remove_fb(m_pResolveTexture);
@@ -172,18 +167,18 @@ void FrameBuffer::init(u32 _address, u16 _format, u16 _size, u16 _width, bool _c
 	frameBufferList().lendRdramCopy(this, (_width * maxHeight) << _size >> 1);
 
 	if (config.video.multisampling != 0) {
-		_setAndAttachTexture(m_FBO, m_pTexture, 0, true);
+		_setAndAttachTexture(ObjectHandle(m_FBO), m_pTexture, 0, true);
 		m_pTexture->frameBufferTexture = GLI_TEX_FB_MULTI_SAMPLE;
 
 		m_pResolveTexture = gli_textures_add_fb(u32(textureTarget::TEXTURE_2D));
 		_initTexture(_width, maxHeight, _format, _size, m_pResolveTexture);
-		m_resolveFBO = gfxContext.createFramebuffer();
-		_setAndAttachTexture(m_resolveFBO, m_pResolveTexture, 0, false);
+		m_resolveFBO = u32(gfxContext.createFramebuffer());
+		_setAndAttachTexture(ObjectHandle(m_resolveFBO), m_pResolveTexture, 0, false);
 		assert(!gfxContext.isFramebufferError());
 
-		gfxContext.bindFramebuffer(bufferTarget::FRAMEBUFFER, m_FBO);
+		gfxContext.bindFramebuffer(bufferTarget::FRAMEBUFFER, ObjectHandle(m_FBO));
 	} else
-		_setAndAttachTexture(m_FBO, m_pTexture, 0, false);
+		_setAndAttachTexture(ObjectHandle(m_FBO), m_pTexture, 0, false);
 
 //	gfxContext.clearColorBuffer(0.0f, 0.0f, 0.0f, 0.0f);
 }
@@ -246,8 +241,8 @@ void FrameBuffer::resolveMultisampledTexture(bool _bForce)
 
 bool FrameBuffer::_initSubTexture(u32 _t)
 {
-	if (!m_SubFBO.isNotNull())
-		m_SubFBO = gfxContext.createFramebuffer();
+	if (m_SubFBO == 0)
+		m_SubFBO = u32(gfxContext.createFramebuffer());
 
 	gDPTile * pTile = gSP.textureTile[_t];
 	if (pTile->lrs < pTile->uls || pTile->lrt < pTile->ult)
@@ -272,7 +267,7 @@ bool FrameBuffer::_initSubTexture(u32 _t)
 	m_pSubTexture->offsetT = 0.0f;
 
 
-	_setAndAttachTexture(m_SubFBO, m_pSubTexture, _t, false);
+	_setAndAttachTexture(ObjectHandle(m_SubFBO), m_pSubTexture, _t, false);
 
 	return true;
 }
@@ -294,11 +289,11 @@ CachedTexture * FrameBuffer::_getSubTexture(u32 _t)
 	if (y0 + copyHeight > m_pTexture->realHeight)
 		copyHeight = m_pTexture->realHeight - y0;
 
-	ObjectHandle readFBO = m_FBO;
+	ObjectHandle readFBO(m_FBO);
 	if (gli_ctx.weakBlitFramebuffer &&
 			m_pTexture->frameBufferTexture == GLI_TEX_FB_MULTI_SAMPLE) {
 		resolveMultisampledTexture(true);
-		readFBO = m_resolveFBO;
+		readFBO = ObjectHandle(m_resolveFBO);
 	}
 
 	Context::BlitFramebuffersParams blitParams;
@@ -326,11 +321,11 @@ CachedTexture * FrameBuffer::_getSubTexture(u32 _t)
 
 void FrameBuffer::_initCopyTexture()
 {
-	m_copyFBO = gfxContext.createFramebuffer();
+	m_copyFBO = u32(gfxContext.createFramebuffer());
 	m_pFrameBufferCopyTexture = gli_textures_add_fb(u32(config.video.multisampling != 0 ?
 		textureTarget::TEXTURE_2D_MULTISAMPLE : textureTarget::TEXTURE_2D));
 	_initTexture(m_width, gli_VI_GetMaxBufferHeight(m_width), m_pTexture->format, m_pTexture->size, m_pFrameBufferCopyTexture);
-	_setAndAttachTexture(m_copyFBO, m_pFrameBufferCopyTexture, 0, config.video.multisampling != 0);
+	_setAndAttachTexture(ObjectHandle(m_copyFBO), m_pFrameBufferCopyTexture, 0, config.video.multisampling != 0);
 	if (config.video.multisampling != 0)
 		m_pFrameBufferCopyTexture->frameBufferTexture = GLI_TEX_FB_MULTI_SAMPLE;
 }
@@ -378,7 +373,7 @@ CachedTexture * FrameBuffer::getTexture(u32 _t)
 		if (gli_ctx.textureBarrier)
 			gfxContext.textureBarrier();
 		else if (gli_ctx.blitFramebuffer)
-			pTexture = getDepthTexture ? m_pDepthBuffer->copyDepthBufferTexture(this) : _copyFrameBufferTexture();
+			pTexture = getDepthTexture ? gli_depth_copy_texture(m_pDepthBuffer, this) : _copyFrameBufferTexture();
 	}
 
 	const u32 shift = (gSP.textureTile[_t]->imageAddress - m_startAddress) >> (m_size - 1);
@@ -487,9 +482,9 @@ void FrameBufferList::clearBuffersChanged()
 void FrameBufferList::setCurrentDrawBuffer() const
 {
 	if (m_pCurrent != nullptr)
-		gfxContext.bindFramebuffer(bufferTarget::DRAW_FRAMEBUFFER, m_pCurrent->m_FBO);
+		gfxContext.bindFramebuffer(bufferTarget::DRAW_FRAMEBUFFER, ObjectHandle(m_pCurrent->m_FBO));
 	else if (m_fbs.count != 0)
-		gfxContext.bindFramebuffer(bufferTarget::DRAW_FRAMEBUFFER, const_cast<FrameBufferList *>(this)->_at(m_fbs.count - 1)->m_FBO);
+		gfxContext.bindFramebuffer(bufferTarget::DRAW_FRAMEBUFFER, ObjectHandle(const_cast<FrameBufferList *>(this)->_at(m_fbs.count - 1)->m_FBO));
 }
 
 FrameBuffer * FrameBufferList::findBuffer(u32 _startAddress)
@@ -595,7 +590,7 @@ void FrameBufferList::saveBuffer(u32 _address, u16 _format, u16 _size, u16 _widt
 		gli_StereoFrames_wasEntered(m_pCurrent->m_startAddress)) {
 		gli_StereoFrames_captureLeftEye(m_pCurrent);
 		// The copy binds the screen; leave the state as the walk had it
-		gfxContext.bindFramebuffer(bufferTarget::DRAW_FRAMEBUFFER, m_pCurrent->m_FBO);
+		gfxContext.bindFramebuffer(bufferTarget::DRAW_FRAMEBUFFER, ObjectHandle(m_pCurrent->m_FBO));
 	}
 
 	if (m_pCurrent != nullptr &&
@@ -649,7 +644,7 @@ void FrameBufferList::saveBuffer(u32 _address, u16 _format, u16 _size, u16 _widt
 			break;
 		default:
 			m_pCurrent->m_resolved = false;
-			gfxContext.bindFramebuffer(bufferTarget::FRAMEBUFFER, m_pCurrent->m_FBO);
+			gfxContext.bindFramebuffer(bufferTarget::FRAMEBUFFER, ObjectHandle(m_pCurrent->m_FBO));
 			if (m_pCurrent->m_size != _size) {
 				f32 fillColor[4];
 				gli_gDPGetFillColor(fillColor);
@@ -697,7 +692,7 @@ void FrameBufferList::saveBuffer(u32 _address, u16 _format, u16 _size, u16 _widt
 	// Immersive mode
 	if (gli_gSPImmersiveClearsShownBuffers() && !m_pCurrent->m_isDepthBuffer && !m_pCurrent->isAuxiliary() &&
 		m_pCurrent->m_swapCount != wnd.getBuffersSwapCount()) {
-		gfxContext.bindFramebuffer(bufferTarget::FRAMEBUFFER, m_pCurrent->m_FBO);
+		gfxContext.bindFramebuffer(bufferTarget::FRAMEBUFFER, ObjectHandle(m_pCurrent->m_FBO));
 		gfxContext.clearColorBuffer(0.0f, 0.0f, 0.0f, 0.0f);
 	}
 	if (config.stereo.mode == stereoBothEyes)
@@ -773,9 +768,9 @@ void FrameBufferList::attachDepthBuffer()
 
 	DepthBuffer * pDepthBuffer = gli_depth_current_buffer();
 
-	if (pCurrent->m_FBO.isNotNull() && pDepthBuffer != nullptr) {
-		pDepthBuffer->initDepthImageTexture(pCurrent);
-		pDepthBuffer->initDepthBufferTexture(pCurrent);
+	if (pCurrent->m_FBO != 0 && pDepthBuffer != nullptr) {
+		gli_depth_init_image_texture(pDepthBuffer, pCurrent);
+		gli_depth_init_texture(pDepthBuffer, pCurrent);
 
 		bool goodDepthBufferTexture = false;
 		if (gli_ctx.depthFramebufferTextures) {
@@ -790,9 +785,9 @@ void FrameBufferList::attachDepthBuffer()
 
 		if (goodDepthBufferTexture) {
 			pCurrent->m_pDepthBuffer = pDepthBuffer;
-			pDepthBuffer->setDepthAttachment(pCurrent->m_FBO, bufferTarget::DRAW_FRAMEBUFFER);
+			gli_depth_set_attachment(pDepthBuffer, pCurrent->m_FBO, u32(bufferTarget::DRAW_FRAMEBUFFER));
 			if (config.frameBufferEmulation.N64DepthCompare != 0)
-				pDepthBuffer->bindDepthImageTexture(pCurrent->m_FBO);
+				gli_depth_bind_image_texture(pDepthBuffer, pCurrent->m_FBO);
 		} else
 			pCurrent->m_pDepthBuffer = nullptr;
 	} else
@@ -876,7 +871,7 @@ void FrameBufferList::_renderScreenSizeBuffer()
 	blitParams.mask = blitMask::COLOR_BUFFER;
 	blitParams.tex[0] = pBufferTexture;
 	blitParams.combiner = combinerTexrectCopyProgram();
-	blitParams.readBuffer = pFilteredBuffer->m_FBO;
+	blitParams.readBuffer = ObjectHandle(pFilteredBuffer->m_FBO);
 
 	drawer.blitOrCopyTexturedRect(blitParams);
 
@@ -885,7 +880,7 @@ void FrameBufferList::_renderScreenSizeBuffer()
 	if (config.stereo.mode != stereoOff)
 		gli_gSPStereoEndFrame();
 	wnd.swapBuffers();
-	gfxContext.bindFramebuffer(bufferTarget::DRAW_FRAMEBUFFER, pBuffer->m_FBO);
+	gfxContext.bindFramebuffer(bufferTarget::DRAW_FRAMEBUFFER, ObjectHandle(pBuffer->m_FBO));
 	if (config.frameBufferEmulation.forceDepthBufferClear != 0) {
 		drawer.clearDepthBuffer();
 	}
@@ -1038,7 +1033,7 @@ void FrameBufferList::renderBuffer()
 		gfxContext.clearColorBuffer(0.0f, 0.0f, 0.0f, 0.0f);
 		dwnd().swapBuffers();
 		if (m_pCurrent != nullptr)
-			gfxContext.bindFramebuffer(bufferTarget::DRAW_FRAMEBUFFER, m_pCurrent->m_FBO);
+			gfxContext.bindFramebuffer(bufferTarget::DRAW_FRAMEBUFFER, ObjectHandle(m_pCurrent->m_FBO));
 		return;
 	}
 
@@ -1130,10 +1125,10 @@ void FrameBufferList::renderBuffer()
 		pEyeBuffer = gli_pp_run(pSource);
 		if (pEyeBuffer->m_pTexture->frameBufferTexture == GLI_TEX_FB_MULTI_SAMPLE) {
 			pEyeBuffer->resolveMultisampledTexture(true);
-			readBuffer = pEyeBuffer->m_resolveFBO;
+			readBuffer = ObjectHandle(pEyeBuffer->m_resolveFBO);
 			pEyeTexture = pEyeBuffer->m_pResolveTexture;
 		} else {
-			readBuffer = pEyeBuffer->m_FBO;
+			readBuffer = ObjectHandle(pEyeBuffer->m_FBO);
 			pEyeTexture = pEyeBuffer->m_pTexture;
 		}
 
@@ -1175,10 +1170,10 @@ void FrameBufferList::renderBuffer()
 			pEyeBuffer = gli_pp_run(pSource);
 			if (pEyeBuffer->m_pTexture->frameBufferTexture == GLI_TEX_FB_MULTI_SAMPLE) {
 				pEyeBuffer->resolveMultisampledTexture();
-				readBuffer = pEyeBuffer->m_resolveFBO;
+				readBuffer = ObjectHandle(pEyeBuffer->m_resolveFBO);
 				pEyeTexture = pEyeBuffer->m_pResolveTexture;
 			} else {
-				readBuffer = pEyeBuffer->m_FBO;
+				readBuffer = ObjectHandle(pEyeBuffer->m_FBO);
 				pEyeTexture = pEyeBuffer->m_pTexture;
 			}
 			// The post-processors draw into their own buffer
@@ -1206,7 +1201,7 @@ void FrameBufferList::renderBuffer()
 	gli_gSPImmersivePresent(pBuffer->m_startAddress);
 	wnd.swapBuffers();
 	if (m_pCurrent != nullptr) {
-		gfxContext.bindFramebuffer(bufferTarget::DRAW_FRAMEBUFFER, m_pCurrent->m_FBO);
+		gfxContext.bindFramebuffer(bufferTarget::DRAW_FRAMEBUFFER, ObjectHandle(m_pCurrent->m_FBO));
 	}
 	/* Resident Evil 2 draws its characters with the depth test on and never
 	 * clears the depth buffer, so from the second frame on every character
@@ -1463,6 +1458,11 @@ FrameBuffer * gli_fb_current(void)
 	return frameBufferList().getCurrent();
 }
 
+gli_fb * gli_fb_of(FrameBuffer * _pBuffer)
+{
+	return _pBuffer;
+}
+
 const gli_fb * gli_fb_current_info(void)
 {
 	return frameBufferList().getCurrent();
@@ -1510,7 +1510,7 @@ void gli_fb_remove(u32 _address)
 
 void gli_fb_bind_draw(const FrameBuffer * _pBuffer)
 {
-	gfxContext.bindFramebuffer(bufferTarget::DRAW_FRAMEBUFFER, _pBuffer->m_FBO);
+	gfxContext.bindFramebuffer(bufferTarget::DRAW_FRAMEBUFFER, ObjectHandle(_pBuffer->m_FBO));
 }
 
 void gli_fb_set_current_draw_buffer(void)
@@ -1632,10 +1632,10 @@ bool gli_fb_stereo_copy(FrameBuffer * _pBuffer, FrameBuffer ** _ppLeftEye)
 		*_ppLeftEye = pLeftEye;
 	}
 
-	readBuffer = _pBuffer->m_FBO;
+	readBuffer = ObjectHandle(_pBuffer->m_FBO);
 	if (pSource->frameBufferTexture == GLI_TEX_FB_MULTI_SAMPLE) {
 		_pBuffer->resolveMultisampledTexture(true);
-		readBuffer = _pBuffer->m_resolveFBO;
+		readBuffer = ObjectHandle(_pBuffer->m_resolveFBO);
 	}
 
 	params.readBuffer = u32(readBuffer);

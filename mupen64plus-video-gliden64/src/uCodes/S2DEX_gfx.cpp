@@ -89,7 +89,7 @@ void gli_s2dex_copy_depth_buffer(void)
 	DepthBuffer * pCopyBufferDepth = gli_depth_find(gSP.bgImage.address);
 	if (pCopyBufferDepth == nullptr)
 		return;
-	pCopyBufferDepth->setDepthAttachment(pTmpBuffer->m_FBO, bufferTarget::READ_FRAMEBUFFER);
+	gli_depth_set_attachment(pCopyBufferDepth, pTmpBuffer->m_FBO, u32(bufferTarget::READ_FRAMEBUFFER));
 
 	DisplayWindow & wnd = dwnd();
 	Context::BlitFramebuffersParams blitParams;
@@ -110,7 +110,7 @@ void gli_s2dex_copy_depth_buffer(void)
 
 	// Restore objects
 	if (pTmpBuffer->m_pDepthBuffer != nullptr)
-		pTmpBuffer->m_pDepthBuffer->setDepthAttachment(fbList.getCurrent()->m_FBO, bufferTarget::READ_FRAMEBUFFER);
+		gli_depth_set_attachment(pTmpBuffer->m_pDepthBuffer, fbList.getCurrent()->m_FBO, u32(bufferTarget::READ_FRAMEBUFFER));
 	gfxContext.bindFramebuffer(bufferTarget::READ_FRAMEBUFFER, ObjectHandle::defaultFramebuffer);
 
 	// Set back current depth buffer

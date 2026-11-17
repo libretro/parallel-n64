@@ -194,10 +194,10 @@ bool DepthBufferToRDRAM::_prepareCopy(u32& _startAddress, bool _copyChunk)
 	if (_startAddress < bufferOrigin)
 		_startAddress = bufferOrigin;
 
-	ObjectHandle readBuffer = pBuffer->m_FBO;
+	ObjectHandle readBuffer(pBuffer->m_FBO);
 	if (config.video.multisampling != 0) {
-		m_pCurFrameBuffer->m_pDepthBuffer->resolveDepthBufferTexture(m_pCurFrameBuffer);
-		readBuffer = m_pCurFrameBuffer->m_resolveFBO;
+		gli_depth_resolve_texture(m_pCurFrameBuffer->m_pDepthBuffer, m_pCurFrameBuffer);
+		readBuffer = ObjectHandle(m_pCurFrameBuffer->m_resolveFBO);
 	}
 
 	Context::BlitFramebuffersParams blitParams;

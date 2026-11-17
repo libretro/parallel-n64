@@ -338,7 +338,7 @@ void GraphicsDrawer::_updateStates(DrawingState _drawingState) const
 			// Render to depth buffer with depth compare. Need to get copy of current depth buffer.
 			FrameBuffer * pCurBuf = frameBufferList().getCurrent();
 			if (pCurBuf != nullptr && pCurBuf->m_pDepthBuffer != nullptr) {
-				CachedTexture * pDepthTexture = pCurBuf->m_pDepthBuffer->copyDepthBufferTexture(pCurBuf);
+				CachedTexture * pDepthTexture = gli_depth_copy_texture(pCurBuf->m_pDepthBuffer, pCurBuf);
 				if (pDepthTexture == nullptr)
 					return;
 				Context::TexParameters params;
@@ -604,7 +604,7 @@ bool texturedRectShadowMap(const GraphicsDrawer::TexturedRectParams &)
 			if (!gli_ctx.integerTextures)
 				return true;
 
-			pCurrentBuffer->m_pDepthBuffer->activateDepthBufferTexture(pCurrentBuffer);
+			gli_depth_activate_texture(pCurrentBuffer->m_pDepthBuffer, pCurrentBuffer);
 			gli_combiner_set_depth_fog();
 			// DepthFogCombiner does not support shader blending.
 			_applyBlendMode(true);

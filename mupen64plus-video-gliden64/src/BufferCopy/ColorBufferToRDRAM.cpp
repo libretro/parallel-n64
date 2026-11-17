@@ -188,9 +188,9 @@ bool ColorBufferToRDRAM::_prepareCopy(u32& _startAddress)
 
 	if (config.video.multisampling != 0) {
 		m_pCurFrameBuffer->resolveMultisampledTexture();
-		readBuffer = m_pCurFrameBuffer->m_resolveFBO;
+		readBuffer = ObjectHandle(m_pCurFrameBuffer->m_resolveFBO);
 	} else {
-		readBuffer = m_pCurFrameBuffer->m_FBO;
+		readBuffer = ObjectHandle(m_pCurFrameBuffer->m_FBO);
 	}
 
 	if (m_pCurFrameBuffer->m_scale != 1.0f) {

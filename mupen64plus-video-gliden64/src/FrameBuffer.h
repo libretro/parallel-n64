@@ -33,22 +33,6 @@ struct FrameBuffer : gli_fb
 	bool isValid(bool _forceCheck) const;
 	bool isAuxiliary() const;
 
-	graphics::ObjectHandle m_FBO;
-	CachedTexture *m_pTexture;
-	DepthBuffer *m_pDepthBuffer;
-
-	// multisampling
-	graphics::ObjectHandle m_resolveFBO;
-	CachedTexture *m_pResolveTexture;
-
-	// subtexture
-	graphics::ObjectHandle m_SubFBO;
-	CachedTexture *m_pSubTexture;
-
-	// copy FBO
-	graphics::ObjectHandle m_copyFBO;
-	CachedTexture * m_pFrameBufferCopyTexture;
-
 
 private:
 	void _initTexture(u16 _width, u16 _height, u16 _format, u16 _size, CachedTexture *_pTexture);

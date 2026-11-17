@@ -7,10 +7,26 @@
 extern "C" {
 #endif
 
+struct gli_tex;
+struct DepthBuffer;
+
 /* A frame buffer's plain state; FrameBuffer derives from it, so the C
  * side reads a buffer in place */
 typedef struct gli_fb
 {
+	/* the GPU objects: the frame buffer and its texture, the depth buffer
+	 * attached, the multisampled one's resolve, the part a tile reads, and
+	 * the copy read while it is drawn to */
+	u32 m_FBO;
+	struct gli_tex *m_pTexture;
+	struct DepthBuffer *m_pDepthBuffer;
+	u32 m_resolveFBO;
+	struct gli_tex *m_pResolveTexture;
+	u32 m_SubFBO;
+	struct gli_tex *m_pSubTexture;
+	u32 m_copyFBO;
+	struct gli_tex *m_pFrameBufferCopyTexture;
+
 	u32 m_startAddress;
 	u32 m_endAddress;
 	u32 m_size;
