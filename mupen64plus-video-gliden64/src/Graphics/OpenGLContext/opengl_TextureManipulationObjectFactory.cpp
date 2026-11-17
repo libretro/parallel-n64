@@ -1,5 +1,4 @@
 #include <assert.h>
-#include <unordered_map>
 #include <Graphics/Parameters.h>
 #include "opengl_GLInfo.h"
 #include "opengl_CachedFunctions.h"
@@ -54,10 +53,10 @@ namespace opengl {
 	public:
 		Init2DTexImage(CachedBindTexture* _bind) : m_bind(_bind) {}
 
-		void init2DTexture(const graphics::Context::InitTextureParams & _params) override
+		void init2DTexture(const gli_init_texture_params & _params) override
 		{
 			if (_params.msaaLevel == 0) {
-				m_bind->bind(_params.textureUnitIndex, graphics::textureTarget::TEXTURE_2D, _params.handle);
+				m_bind->bind(_params.textureUnitIndex, graphics::textureTarget::TEXTURE_2D, graphics::ObjectHandle(_params.handle));
 				glTexImage2D(GL_TEXTURE_2D,
 							 _params.mipMapLevel,
 							 GLuint(_params.internalFormat),
@@ -68,7 +67,7 @@ namespace opengl {
 							 GLenum(_params.dataType),
 							 _params.data);
 			} else {
-				m_bind->bind(_params.textureUnitIndex, graphics::textureTarget::TEXTURE_2D_MULTISAMPLE, _params.handle);
+				m_bind->bind(_params.textureUnitIndex, graphics::textureTarget::TEXTURE_2D_MULTISAMPLE, graphics::ObjectHandle(_params.handle));
 				glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE,
 										_params.msaaLevel,
 										GLenum(_params.internalFormat),
@@ -100,10 +99,10 @@ namespace opengl {
 		Init2DTexStorage(CachedBindTexture* _bind)
 			: m_bind(_bind) {}
 
-		void init2DTexture(const graphics::Context::InitTextureParams & _params) override
+		void init2DTexture(const gli_init_texture_params & _params) override
 		{
 			if (_params.msaaLevel == 0) {
-				m_bind->bind(_params.textureUnitIndex, graphics::textureTarget::TEXTURE_2D, _params.handle);
+				m_bind->bind(_params.textureUnitIndex, graphics::textureTarget::TEXTURE_2D, graphics::ObjectHandle(_params.handle));
 				if (_params.mutableStorage) {
 					glTexImage2D(GL_TEXTURE_2D,
 								 _params.mipMapLevel,
@@ -137,7 +136,7 @@ namespace opengl {
 				}
 			}
 			else {
-				m_bind->bind(_params.textureUnitIndex, graphics::textureTarget::TEXTURE_2D_MULTISAMPLE, _params.handle);
+				m_bind->bind(_params.textureUnitIndex, graphics::textureTarget::TEXTURE_2D_MULTISAMPLE, graphics::ObjectHandle(_params.handle));
 				glTexStorage2DMultisample(
 							GL_TEXTURE_2D_MULTISAMPLE,
 							_params.msaaLevel,
@@ -152,13 +151,13 @@ namespace opengl {
 		void reset(graphics::ObjectHandle _deleted) override
 		{
 			m_bind->reset();
-			if (m_handle == _deleted)
-				m_handle = graphics::ObjectHandle(0);
+			if (m_handle == u32(_deleted))
+				m_handle = 0;
 		}
 
 	private:
 		CachedBindTexture* m_bind;
-		graphics::ObjectHandle m_handle;
+		u32 m_handle = 0;
 	};
 
 	class Init2DTextureStorage : public Init2DTexture
@@ -171,7 +170,7 @@ namespace opengl {
 			return false;
 #endif
 		}
-		void init2DTexture(const graphics::Context::InitTextureParams & _params) override
+		void init2DTexture(const gli_init_texture_params & _params) override
 		{
 
 			if (_params.msaaLevel == 0) {
@@ -207,12 +206,12 @@ namespace opengl {
 
 		void reset(graphics::ObjectHandle _deleted) override
 		{
-			if (m_handle == _deleted)
-				m_handle = graphics::ObjectHandle(0);
+			if (m_handle == u32(_deleted))
+				m_handle = 0;
 		}
 
 	private:
-		graphics::ObjectHandle m_handle;
+		u32 m_handle = 0;
 	};
 
 	/*---------------Update2DTexture-------------*/
@@ -223,9 +222,9 @@ namespace opengl {
 		Update2DTexSubImage(CachedBindTexture* _bind)
 			: m_bind(_bind) {}
 
-		void update2DTexture(const graphics::Context::UpdateTextureDataParams & _params) override
+		void update2DTexture(const gli_update_texture_params & _params) override
 		{
-			m_bind->bind(_params.textureUnitIndex, GL_TEXTURE_2D, _params.handle);
+			m_bind->bind(_params.textureUnitIndex, GL_TEXTURE_2D, graphics::ObjectHandle(_params.handle));
 
 			glTexSubImage2D(GL_TEXTURE_2D,
 				_params.mipMapLevel,
@@ -253,7 +252,7 @@ namespace opengl {
 #endif
 		}
 
-		void update2DTexture(const graphics::Context::UpdateTextureDataParams & _params) override
+		void update2DTexture(const gli_update_texture_params & _params) override
 		{
 			glTextureSubImage2D(GLuint(_params.handle),
 				_params.mipMapLevel,
@@ -278,34 +277,34 @@ namespace opengl {
 			, m_supportMipmapLevel(_supportMipmapLevel) {
 		}
 
-		void setTextureParameters(const graphics::Context::TexParameters & _parameters) override
+		void setTextureParameters(const gli_tex_parameters & _parameters) override
 		{
 			TextureParams::const_iterator iter = m_texparams->find(u32(_parameters.handle));
-			m_bind->bind(_parameters.textureUnitIndex, _parameters.target, _parameters.handle);
+			m_bind->bind(_parameters.textureUnitIndex, _parameters.target, graphics::ObjectHandle(_parameters.handle));
 
 			const bool iterValid = iter != m_texparams->end();
 			const GLenum target(_parameters.target);
-			if (_parameters.magFilter.isValid() && !(iterValid && iter->second.magFilter == GLint(_parameters.magFilter))) {
+			if (_parameters.magFilter != GLI_PARAM_INVALID && !(iterValid && iter->second.magFilter == GLint(_parameters.magFilter))) {
 				glTexParameteri(target, GL_TEXTURE_MAG_FILTER, GLint(_parameters.magFilter));
 				(*m_texparams)[u32(_parameters.handle)].magFilter = GLint(_parameters.magFilter);
 			}
-			if (_parameters.minFilter.isValid() && !(iterValid && iter->second.minFilter == GLint(_parameters.minFilter))) {
+			if (_parameters.minFilter != GLI_PARAM_INVALID && !(iterValid && iter->second.minFilter == GLint(_parameters.minFilter))) {
 				glTexParameteri(target, GL_TEXTURE_MIN_FILTER, GLint(_parameters.minFilter));
 				(*m_texparams)[u32(_parameters.handle)].minFilter = GLint(_parameters.minFilter);
 			}
-			if (_parameters.wrapS.isValid() && !(iterValid && iter->second.wrapS == GLint(_parameters.wrapS))) {
+			if (_parameters.wrapS != GLI_PARAM_INVALID && !(iterValid && iter->second.wrapS == GLint(_parameters.wrapS))) {
 				glTexParameteri(target, GL_TEXTURE_WRAP_S, GLint(_parameters.wrapS));
 				(*m_texparams)[u32(_parameters.handle)].wrapS = GLint(_parameters.wrapS);
 			}
-			if (_parameters.wrapT.isValid() && !(iterValid && iter->second.wrapT == GLint(_parameters.wrapT))) {
+			if (_parameters.wrapT != GLI_PARAM_INVALID && !(iterValid && iter->second.wrapT == GLint(_parameters.wrapT))) {
 				glTexParameteri(target, GL_TEXTURE_WRAP_T, GLint(_parameters.wrapT));
 				(*m_texparams)[u32(_parameters.handle)].wrapT = GLint(_parameters.wrapT);
 			}
-			if (m_supportMipmapLevel && _parameters.maxMipmapLevel.isValid() && !(iterValid && iter->second.maxMipmapLevel == GLint(_parameters.maxMipmapLevel))) {
+			if (m_supportMipmapLevel && _parameters.maxMipmapLevel != GLI_PARAM_INVALID && !(iterValid && iter->second.maxMipmapLevel == GLint(_parameters.maxMipmapLevel))) {
 				glTexParameteri(target, GL_TEXTURE_MAX_LEVEL, GLint(_parameters.maxMipmapLevel));
 				(*m_texparams)[u32(_parameters.handle)].maxMipmapLevel = GLint(_parameters.maxMipmapLevel);
 			}
-			if (_parameters.maxAnisotropy.isValid() && !(iterValid && iter->second.maxAnisotropy == GLfloat(_parameters.maxAnisotropy))) {
+			if (_parameters.maxAnisotropy > 0.0f && !(iterValid && iter->second.maxAnisotropy == GLfloat(_parameters.maxAnisotropy))) {
 				glTexParameterf(target, GL_TEXTURE_MAX_ANISOTROPY_EXT, GLfloat(_parameters.maxAnisotropy));
 				(*m_texparams)[u32(_parameters.handle)].maxAnisotropy = GLfloat(_parameters.maxAnisotropy);
 			}
@@ -331,34 +330,24 @@ namespace opengl {
 
 		SetTextureParameters() {}
 
-		void setTextureParameters(const graphics::Context::TexParameters & _parameters) override
+		void setTextureParameters(const gli_tex_parameters & _parameters) override
 		{
+			/* Each texture's parameters were also kept in a map here, by
+			 * handle, that nothing read: a node allocated for every new texture. */
 			const u32 handle(_parameters.handle);
-			auto it = m_parameters.find(handle);
-			// TODO make cacheable
-			if (it == m_parameters.end()) {
-				auto res = m_parameters.emplace(handle, _parameters);
-				if (res.second)
-					it = res.first;
-			}
-
-			if (_parameters.magFilter.isValid())
+			if (_parameters.magFilter != GLI_PARAM_INVALID)
 				glTextureParameteri(handle, GL_TEXTURE_MAG_FILTER, GLint(_parameters.magFilter));
-			if (_parameters.minFilter.isValid())
+			if (_parameters.minFilter != GLI_PARAM_INVALID)
 				glTextureParameteri(handle, GL_TEXTURE_MIN_FILTER, GLint(_parameters.minFilter));
-			if (_parameters.wrapS.isValid())
+			if (_parameters.wrapS != GLI_PARAM_INVALID)
 				glTextureParameteri(handle, GL_TEXTURE_WRAP_S, GLint(_parameters.wrapS));
-			if (_parameters.wrapT.isValid())
+			if (_parameters.wrapT != GLI_PARAM_INVALID)
 				glTextureParameteri(handle, GL_TEXTURE_WRAP_T, GLint(_parameters.wrapT));
-			if (_parameters.maxMipmapLevel.isValid())
+			if (_parameters.maxMipmapLevel != GLI_PARAM_INVALID)
 				glTextureParameteri(handle, GL_TEXTURE_MAX_LEVEL, GLint(_parameters.maxMipmapLevel));
-			if (_parameters.maxAnisotropy.isValid())
+			if (_parameters.maxAnisotropy > 0.0f)
 				glTextureParameterf(handle, GL_TEXTURE_MAX_ANISOTROPY_EXT, GLfloat(_parameters.maxAnisotropy));
 		}
-
-	private:
-		typedef std::unordered_map<u32, graphics::Context::TexParameters> TextureParameters;
-		TextureParameters m_parameters;
 	};
 
 	/*---------------TextureManipulationObjectFactory-------------*/

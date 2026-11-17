@@ -60,13 +60,13 @@ namespace opengl {
 
 		void deleteTexture(graphics::ObjectHandle _name) override;
 
-		void init2DTexture(const graphics::Context::InitTextureParams & _params) override;
+		void init2DTexture(const gli_init_texture_params & _params) override;
 
-		void update2DTexture(const graphics::Context::UpdateTextureDataParams & _params) override;
+		void update2DTexture(const gli_update_texture_params & _params) override;
 
-		void setTextureParameters(const graphics::Context::TexParameters & _parameters) override;
+		void setTextureParameters(const gli_tex_parameters & _parameters) override;
 
-		void bindTexture(const graphics::Context::BindTextureParameters & _params) override;
+		void bindTexture(const gli_bind_texture_params & _params) override;
 
 		void setTextureUnpackAlignment(s32 _param) override;
 

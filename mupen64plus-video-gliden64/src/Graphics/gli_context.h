@@ -12,6 +12,7 @@
 #include <stddef.h>
 #include <boolean.h>
 #include "Types.h"
+#include "gli_params.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -20,6 +21,73 @@ extern "C" {
 struct Combiner;
 struct gli_cprog;
 struct gli_combiner_table;
+
+/* a parameter left unset: the backend leaves that state as it is */
+#define GLI_PARAM_INVALID 0xFFFFFFFFu
+
+/* The texture blocks the backends take. Each is made from its _DEFAULT
+ * (Graphics/Context.h's C++ blocks are these, made the same way); fields
+ * hold handles and the numbers of gli_params.h. */
+typedef struct gli_init_texture_params
+{
+	u32 handle;
+	u32 textureUnitIndex;
+	u32 target;
+	u32 msaaLevel;
+	u32 width;
+	u32 height;
+	u32 mipMapLevel;
+	u32 mipMapLevels;
+	u32 format;
+	u32 internalFormat;
+	u32 dataType;
+	const void *data;
+	/* The texture cache reuses the objects it evicts, so its storage
+	 * has to stay respecifiable: immutable storage cannot be. */
+	bool mutableStorage;
+} gli_init_texture_params;
+#define GLI_INIT_TEXTURE_PARAMS_DEFAULT { 0, 0, GLI_TT_TEXTURE_2D, 0, 0, 0, 0, 1, \
+	GLI_PARAM_INVALID, GLI_PARAM_INVALID, GLI_PARAM_INVALID, NULL, 0 }
+
+typedef struct gli_update_texture_params
+{
+	u32 handle;
+	u32 textureUnitIndex;
+	u32 x;
+	u32 y;
+	u32 width;
+	u32 height;
+	u32 mipMapLevel;
+	u32 format;
+	u32 internalFormat;
+	u32 dataType;
+	const void *data;
+} gli_update_texture_params;
+#define GLI_UPDATE_TEXTURE_PARAMS_DEFAULT { 0, 0, 0, 0, 0, 0, 0, \
+	GLI_PARAM_INVALID, GLI_PARAM_INVALID, GLI_PARAM_INVALID, NULL }
+
+typedef struct gli_tex_parameters
+{
+	u32 handle;
+	u32 textureUnitIndex;
+	u32 target;
+	u32 magFilter;
+	u32 minFilter;
+	u32 wrapS;
+	u32 wrapT;
+	u32 maxMipmapLevel;
+	f32 maxAnisotropy;  /* left as it is unless above 0 */
+} gli_tex_parameters;
+#define GLI_TEX_PARAMETERS_DEFAULT { 0, 0, GLI_PARAM_INVALID, GLI_PARAM_INVALID, GLI_PARAM_INVALID, \
+	GLI_PARAM_INVALID, GLI_PARAM_INVALID, GLI_PARAM_INVALID, 0.0f }
+
+typedef struct gli_bind_texture_params
+{
+	u32 texture;
+	u32 textureUnitIndex;
+	u32 target;
+} gli_bind_texture_params;
+#define GLI_BIND_TEXTURE_PARAMS_DEFAULT { 0, GLI_PARAM_INVALID, GLI_PARAM_INVALID }
 
 /* what a backend may support, in the order isSupported is asked */
 enum {
@@ -60,11 +128,11 @@ typedef struct gli_context_ops
 	/* textures */
 	u32 (*createTexture)(void *_impl, u32 _target);
 	void (*deleteTexture)(void *_impl, u32 _name);
-	void (*init2DTexture)(void *_impl, const void *_params);
-	void (*update2DTexture)(void *_impl, const void *_params);
+	void (*init2DTexture)(void *_impl, const gli_init_texture_params *_params);
+	void (*update2DTexture)(void *_impl, const gli_update_texture_params *_params);
 	void *(*lendTextureData)(void *_impl, size_t _bytes);
-	void (*setTextureParameters)(void *_impl, const void *_params);
-	void (*bindTexture)(void *_impl, const void *_params);
+	void (*setTextureParameters)(void *_impl, const gli_tex_parameters *_params);
+	void (*bindTexture)(void *_impl, const gli_bind_texture_params *_params);
 	void (*setTextureUnpackAlignment)(void *_impl, s32 _param);
 	s32 (*getTextureUnpackAlignment)(const void *_impl);
 	s32 (*getMaxTextureSize)(const void *_impl);

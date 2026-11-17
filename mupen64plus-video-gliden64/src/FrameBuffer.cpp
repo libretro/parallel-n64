@@ -100,30 +100,30 @@ void _setAndAttachBufferTexture(ObjectHandle _fbo, CachedTexture *_pTexture, u32
 {
 	const FramebufferTextureFormats & fbTexFormat = gfxContext.getFramebufferTextureFormats();
 	Context::InitTextureParams initParams;
-	initParams.handle = _pTexture->name;
-	initParams.textureUnitIndex = textureIndices::Tex[_t];
+	initParams.handle = u32(_pTexture->name);
+	initParams.textureUnitIndex = u32(textureIndices::Tex[_t]);
 	if (_multisampling)
 		initParams.msaaLevel = config.video.multisampling;
 	initParams.width = _pTexture->realWidth;
 	initParams.height = _pTexture->realHeight;
 	if (_pTexture->size > G_IM_SIZ_8b) {
-		initParams.internalFormat = fbTexFormat.colorInternalFormat;
-		initParams.format = fbTexFormat.colorFormat;
-		initParams.dataType = fbTexFormat.colorType;
+		initParams.internalFormat = u32(fbTexFormat.colorInternalFormat);
+		initParams.format = u32(fbTexFormat.colorFormat);
+		initParams.dataType = u32(fbTexFormat.colorType);
 	} else {
-		initParams.internalFormat = fbTexFormat.monochromeInternalFormat;
-		initParams.format = fbTexFormat.monochromeFormat;
-		initParams.dataType = fbTexFormat.monochromeType;
+		initParams.internalFormat = u32(fbTexFormat.monochromeInternalFormat);
+		initParams.format = u32(fbTexFormat.monochromeFormat);
+		initParams.dataType = u32(fbTexFormat.monochromeType);
 	}
 	gfxContext.init2DTexture(initParams);
 
 	if (!_multisampling) {
 		Context::TexParameters texParams;
-		texParams.handle = _pTexture->name;
-		texParams.target = textureTarget::TEXTURE_2D;
-		texParams.textureUnitIndex = textureIndices::Tex[_t];
-		texParams.minFilter = textureParameters::FILTER_NEAREST;
-		texParams.magFilter = textureParameters::FILTER_NEAREST;
+		texParams.handle = u32(_pTexture->name);
+		texParams.target = u32(textureTarget::TEXTURE_2D);
+		texParams.textureUnitIndex = u32(textureIndices::Tex[_t]);
+		texParams.minFilter = u32(textureParameters::FILTER_NEAREST);
+		texParams.magFilter = u32(textureParameters::FILTER_NEAREST);
 		gfxContext.setTextureParameters(texParams);
 	}
 
@@ -1593,18 +1593,18 @@ FrameBuffer * _createStereoBuffer(const FrameBuffer * _pMainBuffer)
 	pTexture->realHeight = pMainTexture->realHeight;
 	pTexture->textureBytes = pTexture->realWidth * pTexture->realHeight * 4;
 
-	initParams.handle = pTexture->name;
+	initParams.handle = u32(pTexture->name);
 	initParams.width = pTexture->realWidth;
 	initParams.height = pTexture->realHeight;
 	initParams.internalFormat = gfxContext.convertInternalTextureFormat(u32(internalcolorFormat::RGBA8));
-	initParams.format = colorFormat::RGBA;
-	initParams.dataType = datatype::UNSIGNED_BYTE;
+	initParams.format = u32(colorFormat::RGBA);
+	initParams.dataType = u32(datatype::UNSIGNED_BYTE);
 	gfxContext.init2DTexture(initParams);
 
-	setParams.handle = pTexture->name;
-	setParams.target = textureTarget::TEXTURE_2D;
-	setParams.minFilter = textureParameters::FILTER_LINEAR;
-	setParams.magFilter = textureParameters::FILTER_LINEAR;
+	setParams.handle = u32(pTexture->name);
+	setParams.target = u32(textureTarget::TEXTURE_2D);
+	setParams.minFilter = u32(textureParameters::FILTER_LINEAR);
+	setParams.magFilter = u32(textureParameters::FILTER_LINEAR);
 	gfxContext.setTextureParameters(setParams);
 
 	bufTarget.bufferHandle = pLeftEye->m_FBO;
@@ -1690,19 +1690,19 @@ FrameBuffer * gli_fb_pp_create(const FrameBuffer * _pMainBuffer)
 	pTexture->textureBytes = pTexture->realWidth * pTexture->realHeight * 4;
 
 	Context::InitTextureParams initParams;
-	initParams.handle = pTexture->name;
+	initParams.handle = u32(pTexture->name);
 	initParams.width = pTexture->realWidth;
 	initParams.height = pTexture->realHeight;
 	initParams.internalFormat = gfxContext.convertInternalTextureFormat(u32(internalcolorFormat::RGBA8));
-	initParams.format = colorFormat::RGBA;
-	initParams.dataType = datatype::UNSIGNED_BYTE;
+	initParams.format = u32(colorFormat::RGBA);
+	initParams.dataType = u32(datatype::UNSIGNED_BYTE);
 	gfxContext.init2DTexture(initParams);
 
 	Context::TexParameters setParams;
-	setParams.handle = pTexture->name;
-	setParams.target = textureTarget::TEXTURE_2D;
-	setParams.minFilter = textureParameters::FILTER_NEAREST;
-	setParams.magFilter = textureParameters::FILTER_NEAREST;
+	setParams.handle = u32(pTexture->name);
+	setParams.target = u32(textureTarget::TEXTURE_2D);
+	setParams.minFilter = u32(textureParameters::FILTER_NEAREST);
+	setParams.magFilter = u32(textureParameters::FILTER_NEAREST);
 	gfxContext.setTextureParameters(setParams);
 
 	Context::FrameBufferRenderTarget bufTarget;

@@ -446,34 +446,34 @@ public:
 
 	ObjectHandle createTexture(Parameter) override { return ObjectHandle(vkr_texture_new(g_r)); }
 	void deleteTexture(ObjectHandle _h) override { vkr_texture_delete(g_r, u32(_h)); }
-	void init2DTexture(const Context::InitTextureParams & _p) override {
+	void init2DTexture(const gli_init_texture_params & _p) override {
 		const int fmt = toFormat(u32(_p.internalFormat));
 		const u32 samples = _p.msaaLevel > 0 ? _p.msaaLevel : 1;
 		vkr_texture_init(g_r, u32(_p.handle), fmt, samples, _p.width, _p.height, _p.mipMapLevel,
 			_p.mipMapLevels, _p.data, _p.data ? size_t(_p.width) * _p.height * formatBytes(fmt) : 0);
-		if (_p.textureUnitIndex.isValid())
-			bindUnit(_p.textureUnitIndex, _p.handle);
+		if (_p.textureUnitIndex != GLI_PARAM_INVALID)
+			bindUnit(_p.textureUnitIndex, ObjectHandle(_p.handle));
 	}
-	void update2DTexture(const Context::UpdateTextureDataParams & _p) override {
+	void update2DTexture(const gli_update_texture_params & _p) override {
 		const int fmt = toFormat(u32(_p.internalFormat));
 		vkr_texture_update(g_r, u32(_p.handle), _p.mipMapLevel, _p.x, _p.y, _p.width, _p.height, _p.data,
 			size_t(_p.width) * _p.height * formatBytes(fmt));
 	}
 	void * lendTextureData(size_t _bytes) override { return vkr_texture_lend(g_r, _bytes); }
-	void setTextureParameters(const Context::TexParameters & _p) override {
-		const int mag = _p.magFilter.isValid() ? (_p.magFilter == textureParameters::FILTER_LINEAR ? 1 : 0) : VKR_KEEP;
+	void setTextureParameters(const gli_tex_parameters & _p) override {
+		const int mag = _p.magFilter != GLI_PARAM_INVALID ? (_p.magFilter == GLI_TP_FILTER_LINEAR ? 1 : 0) : VKR_KEEP;
 		int min = VKR_KEEP;
-		if (_p.minFilter.isValid())
-			min = (_p.minFilter == textureParameters::FILTER_LINEAR || _p.minFilter == textureParameters::FILTER_LINEAR_MIPMAP_NEAREST) ? 1 : 0;
-		const int wrapS = _p.wrapS.isValid() ? toWrap(_p.wrapS) : VKR_KEEP;
-		const int wrapT = _p.wrapT.isValid() ? toWrap(_p.wrapT) : VKR_KEEP;
-		const f32 maxLod = _p.maxMipmapLevel.isValid() ? f32(s32(_p.maxMipmapLevel)) : -1.f;
-		const f32 aniso = _p.maxAnisotropy.isValid() ? f32(_p.maxAnisotropy) : -1.f;
+		if (_p.minFilter != GLI_PARAM_INVALID)
+			min = (_p.minFilter == GLI_TP_FILTER_LINEAR || _p.minFilter == GLI_TP_FILTER_LINEAR_MIPMAP_NEAREST) ? 1 : 0;
+		const int wrapS = _p.wrapS != GLI_PARAM_INVALID ? toWrap(_p.wrapS) : VKR_KEEP;
+		const int wrapT = _p.wrapT != GLI_PARAM_INVALID ? toWrap(_p.wrapT) : VKR_KEEP;
+		const f32 maxLod = _p.maxMipmapLevel != GLI_PARAM_INVALID ? f32(s32(_p.maxMipmapLevel)) : -1.f;
+		const f32 aniso = _p.maxAnisotropy > 0.0f ? _p.maxAnisotropy : -1.f;
 		vkr_texture_params(g_r, u32(_p.handle), mag, min, VKR_KEEP, wrapS, wrapT, maxLod, aniso);
-		if (_p.textureUnitIndex.isValid())
-			bindUnit(_p.textureUnitIndex, _p.handle);
+		if (_p.textureUnitIndex != GLI_PARAM_INVALID)
+			bindUnit(_p.textureUnitIndex, ObjectHandle(_p.handle));
 	}
-	void bindTexture(const Context::BindTextureParameters & _p) override { bindUnit(_p.textureUnitIndex, _p.texture); }
+	void bindTexture(const gli_bind_texture_params & _p) override { bindUnit(_p.textureUnitIndex, ObjectHandle(_p.texture)); }
 	void setTextureUnpackAlignment(s32 _a) override { m_unpack = _a; }
 	s32 getTextureUnpackAlignment() const override { return m_unpack; }
 	s32 getMaxTextureSize() const override { return vkr_get_caps(g_r)->max_texture_size; }

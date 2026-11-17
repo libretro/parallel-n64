@@ -19,7 +19,7 @@ namespace opengl {
 	{
 	public:
 		virtual ~Init2DTexture() {};
-		virtual void init2DTexture(const graphics::Context::InitTextureParams & _params) = 0;
+		virtual void init2DTexture(const gli_init_texture_params & _params) = 0;
 		virtual void reset(graphics::ObjectHandle _deleted) = 0;
 	};
 
@@ -27,14 +27,14 @@ namespace opengl {
 	{
 	public:
 		virtual ~Update2DTexture() {};
-		virtual void update2DTexture(const graphics::Context::UpdateTextureDataParams & _params) = 0;
+		virtual void update2DTexture(const gli_update_texture_params & _params) = 0;
 	};
 
 	class Set2DTextureParameters
 	{
 	public:
 		virtual ~Set2DTextureParameters() {}
-		virtual void setTextureParameters(const graphics::Context::TexParameters & _parameters) = 0;
+		virtual void setTextureParameters(const gli_tex_parameters & _parameters) = 0;
 	};
 
 	class TextureManipulationObjectFactory

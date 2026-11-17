@@ -47,21 +47,21 @@ void gli_texrect_gpu_init(void)
 	l_pTexture->textureBytes = l_pTexture->realWidth * l_pTexture->realHeight * fbTexFormats.colorFormatBytes;
 
 	Context::InitTextureParams initParams;
-	initParams.handle = l_pTexture->name;
-	initParams.textureUnitIndex = textureIndices::Tex[0];
+	initParams.handle = u32(l_pTexture->name);
+	initParams.textureUnitIndex = u32(textureIndices::Tex[0]);
 	initParams.width = l_pTexture->realWidth;
 	initParams.height = l_pTexture->realHeight;
-	initParams.internalFormat = fbTexFormats.colorInternalFormat;
-	initParams.format = fbTexFormats.colorFormat;
-	initParams.dataType = fbTexFormats.colorType;
+	initParams.internalFormat = u32(fbTexFormats.colorInternalFormat);
+	initParams.format = u32(fbTexFormats.colorFormat);
+	initParams.dataType = u32(fbTexFormats.colorType);
 	gfxContext.init2DTexture(initParams);
 
 	Context::TexParameters texParams;
-	texParams.handle = l_pTexture->name;
-	texParams.target = textureTarget::TEXTURE_2D;
-	texParams.textureUnitIndex = textureIndices::Tex[0];
-	texParams.minFilter = textureParameters::FILTER_LINEAR;
-	texParams.magFilter = textureParameters::FILTER_LINEAR;
+	texParams.handle = u32(l_pTexture->name);
+	texParams.target = u32(textureTarget::TEXTURE_2D);
+	texParams.textureUnitIndex = u32(textureIndices::Tex[0]);
+	texParams.minFilter = u32(textureParameters::FILTER_LINEAR);
+	texParams.magFilter = u32(textureParameters::FILTER_LINEAR);
 	gfxContext.setTextureParameters(texParams);
 
 	Context::FrameBufferRenderTarget bufTarget;
@@ -151,11 +151,11 @@ void gli_texrect_gpu_begin_composite(const FrameBuffer * _pBuffer, int _alphaTes
 	textureCache().activateTexture(0, l_pTexture);
 	/* Disable filtering to avoid black outlines */
 	Context::TexParameters texParams;
-	texParams.handle = l_pTexture->name;
-	texParams.target = textureTarget::TEXTURE_2D;
-	texParams.textureUnitIndex = textureIndices::Tex[0];
-	texParams.minFilter = textureParameters::FILTER_NEAREST;
-	texParams.magFilter = textureParameters::FILTER_NEAREST;
+	texParams.handle = u32(l_pTexture->name);
+	texParams.target = u32(textureTarget::TEXTURE_2D);
+	texParams.textureUnitIndex = u32(textureIndices::Tex[0]);
+	texParams.minFilter = u32(textureParameters::FILTER_NEAREST);
+	texParams.magFilter = u32(textureParameters::FILTER_NEAREST);
 	gfxContext.setTextureParameters(texParams);
 
 	l_programTex->activate();

@@ -322,23 +322,23 @@ void ContextImpl::deleteTexture(graphics::ObjectHandle _name)
 	m_cachedFunctions->getTexParams()->erase(u32(_name));
 }
 
-void ContextImpl::init2DTexture(const graphics::Context::InitTextureParams & _params)
+void ContextImpl::init2DTexture(const gli_init_texture_params & _params)
 {
 	m_init2DTexture->init2DTexture(_params);
 }
 
-void ContextImpl::update2DTexture(const graphics::Context::UpdateTextureDataParams & _params)
+void ContextImpl::update2DTexture(const gli_update_texture_params & _params)
 {
 	m_update2DTexture->update2DTexture(_params);
 }
 
-void ContextImpl::setTextureParameters(const graphics::Context::TexParameters & _parameters)
+void ContextImpl::setTextureParameters(const gli_tex_parameters & _parameters)
 {
 	m_set2DTextureParameters->setTextureParameters(_parameters);
 }
 
-void ContextImpl::bindTexture(const graphics::Context::BindTextureParameters & _params) {
-	m_cachedFunctions->getCachedBindTexture()->bind(_params.textureUnitIndex, _params.target, _params.texture);
+void ContextImpl::bindTexture(const gli_bind_texture_params & _params) {
+	m_cachedFunctions->getCachedBindTexture()->bind(_params.textureUnitIndex, _params.target, graphics::ObjectHandle(_params.texture));
 }
 
 void ContextImpl::setTextureUnpackAlignment(s32 _param)

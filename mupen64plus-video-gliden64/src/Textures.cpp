@@ -86,14 +86,14 @@ void TextureCache::init()
 	_initDummyTexture(m_pDummy);
 
 	Context::InitTextureParams params;
-	params.handle = m_pDummy->name;
+	params.handle = u32(m_pDummy->name);
 	params.mipMapLevel = 0;
 	params.msaaLevel = 0;
 	params.width = m_pDummy->realWidth;
 	params.height = m_pDummy->realHeight;
-	params.format = colorFormat::RGBA;
+	params.format = u32(colorFormat::RGBA);
 	params.internalFormat = gfxContext.convertInternalTextureFormat(u32(internalcolorFormat::RGBA8));
-	params.dataType = datatype::UNSIGNED_BYTE;
+	params.dataType = u32(datatype::UNSIGNED_BYTE);
 	params.data = dummyTexture;
 	gfxContext.init2DTexture(params);
 
@@ -108,14 +108,14 @@ void TextureCache::init()
 		_initDummyTexture(m_pMSDummy);
 
 		Context::InitTextureParams msParams;
-		msParams.handle = m_pMSDummy->name;
+		msParams.handle = u32(m_pMSDummy->name);
 		msParams.mipMapLevel = 0;
 		msParams.msaaLevel = config.video.multisampling;
 		msParams.width = m_pMSDummy->realWidth;
 		msParams.height = m_pMSDummy->realHeight;
-		msParams.format = colorFormat::RGBA;
+		msParams.format = u32(colorFormat::RGBA);
 		msParams.internalFormat = gfxContext.convertInternalTextureFormat(u32(internalcolorFormat::RGBA8));
-		msParams.dataType = datatype::UNSIGNED_BYTE;
+		msParams.dataType = u32(datatype::UNSIGNED_BYTE);
 		gfxContext.init2DTexture(msParams);
 
 		activateMSDummy(0);
@@ -306,14 +306,14 @@ bool TextureCache::_loadHiresBackground(CachedTexture *_pTexture, u64 & _ricecrc
 			ghqTexInfo.width != 0 && ghqTexInfo.height != 0) {
 		ghqTexInfo.format = gfxContext.convertInternalTextureFormat(ghqTexInfo.format);
 		Context::InitTextureParams params;
-		params.handle = _pTexture->name;
+		params.handle = u32(_pTexture->name);
 		params.mipMapLevel = 0;
 		params.msaaLevel = 0;
 		params.width = ghqTexInfo.width;
 		params.height = ghqTexInfo.height;
-		params.format = ColorFormatParam(ghqTexInfo.texture_format);
-		params.internalFormat = InternalColorFormatParam(ghqTexInfo.format);
-		params.dataType = DatatypeParam(ghqTexInfo.pixel_type);
+		params.format = u32(ColorFormatParam(ghqTexInfo.texture_format));
+		params.internalFormat = u32(InternalColorFormatParam(ghqTexInfo.format));
+		params.dataType = u32(DatatypeParam(ghqTexInfo.pixel_type));
 		params.data = ghqTexInfo.data;
 		params.mutableStorage = true;
 		gfxContext.init2DTexture(params);
@@ -399,14 +399,14 @@ void TextureCache::_loadBackground(CachedTexture *pTexture)
 
 			ghqTexInfo.format = gfxContext.convertInternalTextureFormat(ghqTexInfo.format);
 			Context::InitTextureParams params;
-			params.handle = pTexture->name;
+			params.handle = u32(pTexture->name);
 			params.mipMapLevel = 0;
 			params.msaaLevel = 0;
 			params.width = ghqTexInfo.width;
 			params.height = ghqTexInfo.height;
-			params.format = ColorFormatParam(ghqTexInfo.texture_format);
-			params.internalFormat = InternalColorFormatParam(ghqTexInfo.format);
-			params.dataType = DatatypeParam(ghqTexInfo.pixel_type);
+			params.format = u32(ColorFormatParam(ghqTexInfo.texture_format));
+			params.internalFormat = u32(InternalColorFormatParam(ghqTexInfo.format));
+			params.dataType = u32(DatatypeParam(ghqTexInfo.pixel_type));
 			params.data = ghqTexInfo.data;
 			params.mutableStorage = true;
 			gfxContext.init2DTexture(params);
@@ -418,14 +418,14 @@ void TextureCache::_loadBackground(CachedTexture *pTexture)
 		if (pTexture->realWidth % 2 != 0 && glInternalFormat != internalcolorFormat::RGBA8)
 			gfxContext.setTextureUnpackAlignment(2);
 		Context::InitTextureParams params;
-		params.handle = pTexture->name;
+		params.handle = u32(pTexture->name);
 		params.mipMapLevel = 0;
 		params.msaaLevel = 0;
 		params.width = pTexture->realWidth;
 		params.height = pTexture->realHeight;
-		params.format = colorFormat::RGBA;
+		params.format = u32(colorFormat::RGBA);
 		params.internalFormat = gfxContext.convertInternalTextureFormat(u32(glInternalFormat));
-		params.dataType = glType;
+		params.dataType = u32(glType);
 		params.data = pDest;
 		params.mutableStorage = true;
 		gfxContext.init2DTexture(params);
@@ -447,25 +447,25 @@ void TextureCache::_loadBackgroundStrips(CachedTexture *pTexture, const gli_tex_
 		gfxContext.setTextureUnpackAlignment(2);
 
 	Context::InitTextureParams params;
-	params.handle = pTexture->name;
+	params.handle = u32(pTexture->name);
 	params.mipMapLevel = 0;
 	params.msaaLevel = 0;
 	params.width = pTexture->realWidth;
 	params.height = pTexture->realHeight;
-	params.format = colorFormat::RGBA;
+	params.format = u32(colorFormat::RGBA);
 	params.internalFormat = gfxContext.convertInternalTextureFormat(u32(_internalFormat));
-	params.dataType = _type;
+	params.dataType = u32(_type);
 	params.data = nullptr;
 	params.mutableStorage = true;
 	gfxContext.init2DTexture(params);
 
 	Context::UpdateTextureDataParams update;
-	update.handle = pTexture->name;
-	update.textureUnitIndex = textureIndices::Tex[0];
+	update.handle = u32(pTexture->name);
+	update.textureUnitIndex = u32(textureIndices::Tex[0]);
 	update.width = pTexture->realWidth;
-	update.format = colorFormat::RGBA;
+	update.format = u32(colorFormat::RGBA);
 	update.internalFormat = params.internalFormat;
-	update.dataType = _type;
+	update.dataType = u32(_type);
 	update.data = m_decodeScratch;
 	for (u32 y = 0; y < pTexture->realHeight; y += stripRows) {
 		const u32 rows = std::min(stripRows, (u32)pTexture->realHeight - y);
@@ -549,16 +549,16 @@ bool TextureCache::_loadHiresTexture(u32 _tile, CachedTexture *_pTexture, u64 & 
 		ghqTexInfo.width != 0 && ghqTexInfo.height != 0) {
 		ghqTexInfo.format = gfxContext.convertInternalTextureFormat(ghqTexInfo.format);
 		Context::InitTextureParams params;
-		params.handle = _pTexture->name;
+		params.handle = u32(_pTexture->name);
 		params.mipMapLevel = 0;
 		params.msaaLevel = 0;
 		params.width = ghqTexInfo.width;
 		params.height = ghqTexInfo.height;
-		params.internalFormat = InternalColorFormatParam(ghqTexInfo.format);
-		params.format = ColorFormatParam(ghqTexInfo.texture_format);
-		params.dataType = DatatypeParam(ghqTexInfo.pixel_type);
+		params.internalFormat = u32(InternalColorFormatParam(ghqTexInfo.format));
+		params.format = u32(ColorFormatParam(ghqTexInfo.texture_format));
+		params.dataType = u32(DatatypeParam(ghqTexInfo.pixel_type));
 		params.data = ghqTexInfo.data;
-		params.textureUnitIndex = textureIndices::Tex[_tile];
+		params.textureUnitIndex = u32(textureIndices::Tex[_tile]);
 		params.mutableStorage = true;
 		gfxContext.init2DTexture(params);
 		assert(!gfxContext.isError());
@@ -590,14 +590,14 @@ void TextureCache::_loadDepthTexture(CachedTexture * _pTexture, u16* _pDest)
 	gli_tex_depth_to_half(_pDest, size);
 
 	Context::InitTextureParams params;
-	params.handle = _pTexture->name;
+	params.handle = u32(_pTexture->name);
 	params.mipMapLevel = 0;
 	params.msaaLevel = 0;
 	params.width = _pTexture->realWidth;
 	params.height = _pTexture->realHeight;
-	params.internalFormat = internalcolorFormat::R16F;
-	params.format = colorFormat::RED;
-	params.dataType = datatype::HALF_FLOAT;
+	params.internalFormat = u32(internalcolorFormat::R16F);
+	params.format = u32(colorFormat::RED);
+	params.dataType = u32(datatype::HALF_FLOAT);
 	params.data = _pDest;
 	params.mutableStorage = true;
 	gfxContext.init2DTexture(params);
@@ -682,15 +682,15 @@ void TextureCache::_load(u32 _tile, CachedTexture *_pTexture)
 					gfxContext.setTextureUnpackAlignment(2);
 				ghqTexInfo.format = gfxContext.convertInternalTextureFormat(ghqTexInfo.format);
 				Context::InitTextureParams params;
-				params.handle = _pTexture->name;
-				params.textureUnitIndex = textureIndices::Tex[_tile];
+				params.handle = u32(_pTexture->name);
+				params.textureUnitIndex = u32(textureIndices::Tex[_tile]);
 				params.mipMapLevel = 0;
 				params.msaaLevel = 0;
 				params.width = ghqTexInfo.width;
 				params.height = ghqTexInfo.height;
-				params.internalFormat = InternalColorFormatParam(ghqTexInfo.format);
-				params.format = ColorFormatParam(ghqTexInfo.texture_format);
-				params.dataType = DatatypeParam(ghqTexInfo.pixel_type);
+				params.internalFormat = u32(InternalColorFormatParam(ghqTexInfo.format));
+				params.format = u32(ColorFormatParam(ghqTexInfo.texture_format));
+				params.dataType = u32(DatatypeParam(ghqTexInfo.pixel_type));
 				params.data = ghqTexInfo.data;
 				params.mutableStorage = true;
 				gfxContext.init2DTexture(params);
@@ -704,16 +704,16 @@ void TextureCache::_load(u32 _tile, CachedTexture *_pTexture)
 				m_curUnpackAlignment > 1)
 				gfxContext.setTextureUnpackAlignment(2);
 			Context::InitTextureParams params;
-			params.handle = _pTexture->name;
-			params.textureUnitIndex = textureIndices::Tex[_tile];
+			params.handle = u32(_pTexture->name);
+			params.textureUnitIndex = u32(textureIndices::Tex[_tile]);
 			params.mipMapLevel = mipLevel;
 			params.mipMapLevels = _pTexture->max_level + 1;
 			params.msaaLevel = 0;
 			params.width = tmptex.realWidth;
 			params.height = tmptex.realHeight;
 			params.internalFormat = gfxContext.convertInternalTextureFormat(u32(glInternalFormat));
-			params.format = colorFormat::RGBA;
-			params.dataType = glType;
+			params.format = u32(colorFormat::RGBA);
+			params.dataType = u32(glType);
 			params.data = pDest;
 			params.mutableStorage = true;
 			gfxContext.init2DTexture(params);
@@ -732,13 +732,13 @@ void TextureCache::activateTexture(u32 _t, CachedTexture *_pTexture)
 {
 
 	Context::TexParameters params;
-	params.handle = _pTexture->name;
+	params.handle = u32(_pTexture->name);
 	if (config.video.multisampling > 0 && _pTexture->frameBufferTexture == CachedTexture::fbMultiSample) {
-		params.target = textureTarget::TEXTURE_2D_MULTISAMPLE;
-		params.textureUnitIndex = textureIndices::MSTex[_t];
+		params.target = u32(textureTarget::TEXTURE_2D_MULTISAMPLE);
+		params.textureUnitIndex = u32(textureIndices::MSTex[_t]);
 	} else {
-		params.target = textureTarget::TEXTURE_2D;
-		params.textureUnitIndex = textureIndices::Tex[_t];
+		params.target = u32(textureTarget::TEXTURE_2D);
+		params.textureUnitIndex = u32(textureIndices::Tex[_t]);
 
 		const TextureParam filters[] = {
 			textureParameters::FILTER_NEAREST, textureParameters::FILTER_LINEAR,
@@ -748,14 +748,14 @@ void TextureCache::activateTexture(u32 _t, CachedTexture *_pTexture)
 			textureParameters::WRAP_CLAMP_TO_EDGE };
 		gli_tex_sampler sampler;
 		gli_tex_sampler_get(_pTexture, currentCombiner()->usesLOD(), &sampler);
-		params.maxMipmapLevel = Parameter(s32(sampler.maxLevel));
-		params.minFilter = filters[sampler.minFilter];
-		params.magFilter = filters[sampler.magFilter];
-		params.wrapS = wraps[sampler.wrapS];
-		params.wrapT = wraps[sampler.wrapT];
+		params.maxMipmapLevel = u32(sampler.maxLevel);
+		params.minFilter = u32(filters[sampler.minFilter]);
+		params.magFilter = u32(filters[sampler.magFilter]);
+		params.wrapS = u32(wraps[sampler.wrapS]);
+		params.wrapT = u32(wraps[sampler.wrapT]);
 
 		if (dwnd().getDrawer().getDrawingState() == DrawingState::Triangle && config.texture.maxAnisotropyF > 0.0f)
-			params.maxAnisotropy = Parameter(config.texture.maxAnisotropyF);
+			params.maxAnisotropy = config.texture.maxAnisotropyF;
 	}
 
 	gfxContext.setTextureParameters(params);
@@ -766,20 +766,20 @@ void TextureCache::activateTexture(u32 _t, CachedTexture *_pTexture)
 void TextureCache::activateDummy(u32 _t)
 {
 	Context::TexParameters params;
-	params.handle = m_pDummy->name;
-	params.target = textureTarget::TEXTURE_2D;
-	params.textureUnitIndex = textureIndices::Tex[_t];
-	params.minFilter = textureParameters::FILTER_NEAREST;
-	params.magFilter = textureParameters::FILTER_NEAREST;
+	params.handle = u32(m_pDummy->name);
+	params.target = u32(textureTarget::TEXTURE_2D);
+	params.textureUnitIndex = u32(textureIndices::Tex[_t]);
+	params.minFilter = u32(textureParameters::FILTER_NEAREST);
+	params.magFilter = u32(textureParameters::FILTER_NEAREST);
 	gfxContext.setTextureParameters(params);
 }
 
 void TextureCache::activateMSDummy(u32 _t)
 {
 	Context::TexParameters params;
-	params.handle = m_pMSDummy->name;
-	params.target = textureTarget::TEXTURE_2D_MULTISAMPLE;
-	params.textureUnitIndex = textureIndices::MSTex[_t];
+	params.handle = u32(m_pMSDummy->name);
+	params.target = u32(textureTarget::TEXTURE_2D_MULTISAMPLE);
+	params.textureUnitIndex = u32(textureIndices::MSTex[_t]);
 	gfxContext.setTextureParameters(params);
 }
 
@@ -927,23 +927,23 @@ CachedTexture * gli_tex_lut_create(u32 _width, u32 _height, u32 _unit, const voi
 	CachedTexture * pTexture = _createFrameBufferTexture(G_IM_FMT_IA, _width, _height, fbTexFormats.lutFormatBytes);
 
 	Context::InitTextureParams initParams;
-	initParams.handle = pTexture->name;
+	initParams.handle = u32(pTexture->name);
 	initParams.width = pTexture->width;
 	initParams.height = pTexture->height;
-	initParams.internalFormat = fbTexFormats.lutInternalFormat;
-	initParams.format = fbTexFormats.lutFormat;
-	initParams.dataType = fbTexFormats.lutType;
+	initParams.internalFormat = u32(fbTexFormats.lutInternalFormat);
+	initParams.format = u32(fbTexFormats.lutFormat);
+	initParams.dataType = u32(fbTexFormats.lutType);
 	initParams.data = _data;
 	gfxContext.init2DTexture(initParams);
 
 	Context::TexParameters setParams;
-	setParams.handle = pTexture->name;
-	setParams.target = textureTarget::TEXTURE_2D;
-	setParams.textureUnitIndex = _lutUnit(_unit);
-	setParams.minFilter = textureParameters::FILTER_NEAREST;
-	setParams.magFilter = textureParameters::FILTER_NEAREST;
-	setParams.wrapS = textureParameters::WRAP_CLAMP_TO_EDGE;
-	setParams.wrapT = textureParameters::WRAP_CLAMP_TO_EDGE;
+	setParams.handle = u32(pTexture->name);
+	setParams.target = u32(textureTarget::TEXTURE_2D);
+	setParams.textureUnitIndex = u32(_lutUnit(_unit));
+	setParams.minFilter = u32(textureParameters::FILTER_NEAREST);
+	setParams.magFilter = u32(textureParameters::FILTER_NEAREST);
+	setParams.wrapS = u32(textureParameters::WRAP_CLAMP_TO_EDGE);
+	setParams.wrapT = u32(textureParameters::WRAP_CLAMP_TO_EDGE);
 	gfxContext.setTextureParameters(setParams);
 	return pTexture;
 }
@@ -952,13 +952,13 @@ void gli_tex_lut_update(CachedTexture * _pTexture, u32 _unit, const void * _data
 {
 	const FramebufferTextureFormats & fbTexFormats = gfxContext.getFramebufferTextureFormats();
 	Context::UpdateTextureDataParams params;
-	params.handle = _pTexture->name;
-	params.textureUnitIndex = _lutUnit(_unit);
+	params.handle = u32(_pTexture->name);
+	params.textureUnitIndex = u32(_lutUnit(_unit));
 	params.width = _pTexture->width;
 	params.height = _pTexture->height;
-	params.format = fbTexFormats.lutFormat;
-	params.internalFormat = fbTexFormats.lutInternalFormat;
-	params.dataType = fbTexFormats.lutType;
+	params.format = u32(fbTexFormats.lutFormat);
+	params.internalFormat = u32(fbTexFormats.lutInternalFormat);
+	params.dataType = u32(fbTexFormats.lutType);
 	params.data = _data;
 	gfxContext.update2DTexture(params);
 }
@@ -969,23 +969,23 @@ CachedTexture * gli_tex_noise_create(u32 _width, u32 _height, const void * _data
 	const FramebufferTextureFormats & fbTexFormats = gfxContext.getFramebufferTextureFormats();
 	{
 		Context::InitTextureParams params;
-		params.handle = pTexture->name;
-		params.textureUnitIndex = textureIndices::NoiseTex;
+		params.handle = u32(pTexture->name);
+		params.textureUnitIndex = u32(textureIndices::NoiseTex);
 		params.width = pTexture->width;
 		params.height = pTexture->height;
-		params.internalFormat = fbTexFormats.noiseInternalFormat;
-		params.format = fbTexFormats.noiseFormat;
-		params.dataType = fbTexFormats.noiseType;
+		params.internalFormat = u32(fbTexFormats.noiseInternalFormat);
+		params.format = u32(fbTexFormats.noiseFormat);
+		params.dataType = u32(fbTexFormats.noiseType);
 		params.data = _data;
 		gfxContext.init2DTexture(params);
 	}
 	{
 		Context::TexParameters params;
-		params.handle = pTexture->name;
-		params.target = textureTarget::TEXTURE_2D;
-		params.textureUnitIndex = textureIndices::NoiseTex;
-		params.minFilter = textureParameters::FILTER_NEAREST;
-		params.magFilter = textureParameters::FILTER_NEAREST;
+		params.handle = u32(pTexture->name);
+		params.target = u32(textureTarget::TEXTURE_2D);
+		params.textureUnitIndex = u32(textureIndices::NoiseTex);
+		params.minFilter = u32(textureParameters::FILTER_NEAREST);
+		params.magFilter = u32(textureParameters::FILTER_NEAREST);
 		gfxContext.setTextureParameters(params);
 	}
 	return pTexture;
@@ -994,9 +994,9 @@ CachedTexture * gli_tex_noise_create(u32 _width, u32 _height, const void * _data
 void gli_tex_noise_bind(CachedTexture * _pTexture)
 {
 	Context::BindTextureParameters params;
-	params.texture = _pTexture->name;
-	params.textureUnitIndex = textureIndices::NoiseTex;
-	params.target = textureTarget::TEXTURE_2D;
+	params.texture = u32(_pTexture->name);
+	params.textureUnitIndex = u32(textureIndices::NoiseTex);
+	params.target = u32(textureTarget::TEXTURE_2D);
 	gfxContext.bindTexture(params);
 }
 

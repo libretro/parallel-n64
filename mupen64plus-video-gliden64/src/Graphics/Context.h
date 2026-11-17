@@ -88,65 +88,34 @@ namespace graphics {
 
 		static void deleteTexture(ObjectHandle _name) { gli_ctx.ops->deleteTexture(gli_ctx.impl, u32(_name)); }
 
-		struct InitTextureParams {
-			ObjectHandle handle;
-			TextureUnitParam textureUnitIndex{0};
-			TextureTargetParam target = textureTarget::TEXTURE_2D;
-			u32 msaaLevel = 0;
-			u32 width = 0;
-			u32 height = 0;
-			u32 mipMapLevel = 0;
-			u32 mipMapLevels = 1;
-			ColorFormatParam format;
-			InternalColorFormatParam internalFormat;
-			DatatypeParam dataType;
-			const void * data = nullptr;
-			/* The texture cache reuses the objects it evicts, so its storage
-			 * has to stay respecifiable: immutable storage cannot be. */
-			bool mutableStorage = false;
+		struct InitTextureParams : gli_init_texture_params {
+			InitTextureParams() : gli_init_texture_params GLI_INIT_TEXTURE_PARAMS_DEFAULT {}
 		};
 
 		static void init2DTexture(const InitTextureParams & _params) { gli_ctx.ops->init2DTexture(gli_ctx.impl, &_params); }
 
-		struct UpdateTextureDataParams {
-			ObjectHandle handle;
-			TextureUnitParam textureUnitIndex{0};
-			u32 x = 0;
-			u32 y = 0;
-			u32 width = 0;
-			u32 height = 0;
-			u32 mipMapLevel = 0;
-			ColorFormatParam format;
-			InternalColorFormatParam internalFormat;
-			DatatypeParam dataType;
-			const void * data = nullptr;
+		struct UpdateTextureDataParams : gli_update_texture_params {
+			UpdateTextureDataParams() : gli_update_texture_params GLI_UPDATE_TEXTURE_PARAMS_DEFAULT {}
 		};
 
 		static void update2DTexture(const UpdateTextureDataParams & _params) { gli_ctx.ops->update2DTexture(gli_ctx.impl, &_params); }
 
 		static void * lendTextureData(size_t _bytes) { return gli_ctx.ops->lendTextureData(gli_ctx.impl, _bytes); }
 
-		struct TexParameters {
-			ObjectHandle handle;
-			TextureUnitParam textureUnitIndex{0};
-			TextureTargetParam target;
-			TextureParam magFilter;
-			TextureParam minFilter;
-			TextureParam wrapS;
-			TextureParam wrapT;
-			Parameter maxMipmapLevel;
-			Parameter maxAnisotropy;
+		struct TexParameters : gli_tex_parameters {
+			TexParameters() : gli_tex_parameters GLI_TEX_PARAMETERS_DEFAULT {}
 		};
 
 		static void setTextureParameters(const TexParameters & _parameters) { gli_ctx.ops->setTextureParameters(gli_ctx.impl, &_parameters); }
 
-		struct BindTextureParameters {
-			ObjectHandle texture;
-			TextureUnitParam textureUnitIndex;
-			TextureTargetParam target;
+		struct BindTextureParameters : gli_bind_texture_params {
+			BindTextureParameters() : gli_bind_texture_params GLI_BIND_TEXTURE_PARAMS_DEFAULT {}
 		};
 
 		static void bindTexture(const BindTextureParameters & _params) { gli_ctx.ops->bindTexture(gli_ctx.impl, &_params); }
+		static_assert(GLI_PARAM_INVALID == INVALID_PARAMETER, "an unset Parameter is unset in C");
+		static_assert(sizeof(InitTextureParams) == sizeof(gli_init_texture_params) && sizeof(UpdateTextureDataParams) == sizeof(gli_update_texture_params)
+			&& sizeof(TexParameters) == sizeof(gli_tex_parameters) && sizeof(BindTextureParameters) == sizeof(gli_bind_texture_params), "the C++ blocks are the C structs");
 
 		static void setTextureUnpackAlignment(s32 _param) { gli_ctx.ops->setTextureUnpackAlignment(gli_ctx.impl, _param); }
 

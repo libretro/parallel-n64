@@ -49,20 +49,20 @@ void RDRAMtoColorBuffer::init()
 	m_pTexture->textureBytes = m_pTexture->realWidth * m_pTexture->realHeight * fbTexFormats.colorFormatBytes;
 
 	Context::InitTextureParams initParams;
-	initParams.handle = m_pTexture->name;
+	initParams.handle = u32(m_pTexture->name);
 	initParams.width = m_pTexture->realWidth;
 	initParams.height = m_pTexture->realHeight;
-	initParams.internalFormat = fbTexFormats.colorInternalFormat;
-	initParams.format = fbTexFormats.colorFormat;
-	initParams.dataType = fbTexFormats.colorType;
+	initParams.internalFormat = u32(fbTexFormats.colorInternalFormat);
+	initParams.format = u32(fbTexFormats.colorFormat);
+	initParams.dataType = u32(fbTexFormats.colorType);
 	gfxContext.init2DTexture(initParams);
 
 	Context::TexParameters setParams;
-	setParams.handle = m_pTexture->name;
-	setParams.target = textureTarget::TEXTURE_2D;
-	setParams.textureUnitIndex = textureIndices::Tex[0];
-	setParams.minFilter = textureParameters::FILTER_LINEAR;
-	setParams.magFilter = textureParameters::FILTER_LINEAR;
+	setParams.handle = u32(m_pTexture->name);
+	setParams.target = u32(textureTarget::TEXTURE_2D);
+	setParams.textureUnitIndex = u32(textureIndices::Tex[0]);
+	setParams.minFilter = u32(textureParameters::FILTER_LINEAR);
+	setParams.magFilter = u32(textureParameters::FILTER_LINEAR);
 	gfxContext.setTextureParameters(setParams);
 
 	/* the pixels are converted to ABGR8888 here first, then narrowed or
@@ -150,12 +150,12 @@ void RDRAMtoColorBuffer::_copyFromRDRAM(u32 _height, bool _fullAlpha)
 	gli_combiner_update();
 
 	Context::UpdateTextureDataParams updateParams;
-	updateParams.handle = m_pTexture->name;
-	updateParams.textureUnitIndex = textureIndices::Tex[0];
+	updateParams.handle = u32(m_pTexture->name);
+	updateParams.textureUnitIndex = u32(textureIndices::Tex[0]);
 	updateParams.width = width;
 	updateParams.height = height;
-	updateParams.format = fbTexFormats.colorFormat;
-	updateParams.dataType = fbTexFormats.colorType;
+	updateParams.format = u32(fbTexFormats.colorFormat);
+	updateParams.dataType = u32(fbTexFormats.colorType);
 	updateParams.data = m_pbuf;
 	gfxContext.update2DTexture(updateParams);
 

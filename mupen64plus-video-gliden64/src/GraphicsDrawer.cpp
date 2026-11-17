@@ -324,12 +324,12 @@ void GraphicsDrawer::_updateStates(DrawingState _drawingState) const
 				if (pDepthTexture == nullptr)
 					return;
 				Context::TexParameters params;
-				params.handle = pDepthTexture->name;
-				params.target = textureTarget::TEXTURE_2D;
-				params.textureUnitIndex = textureIndices::DepthTex;
+				params.handle = u32(pDepthTexture->name);
+				params.target = u32(textureTarget::TEXTURE_2D);
+				params.textureUnitIndex = u32(textureIndices::DepthTex);
 				params.maxMipmapLevel = 0;
-				params.minFilter = textureParameters::FILTER_NEAREST;
-				params.magFilter = textureParameters::FILTER_NEAREST;
+				params.minFilter = u32(textureParameters::FILTER_NEAREST);
+				params.magFilter = u32(textureParameters::FILTER_NEAREST);
 				gfxContext.setTextureParameters(params);
 			}
 		} else if (frameBufferList().getCurrent() == nullptr) {
@@ -739,22 +739,22 @@ void GraphicsDrawer::drawTexturedRect(const TexturedRectParams & _params)
 			continue;
 		Context::TexParameters texParams;
 		if (c & 1)
-			texParams.wrapS = textureParameters::WRAP_CLAMP_TO_EDGE;
+			texParams.wrapS = u32(textureParameters::WRAP_CLAMP_TO_EDGE);
 		if (c & 2)
-			texParams.wrapT = textureParameters::WRAP_CLAMP_TO_EDGE;
-		texParams.handle = cache.current[t]->name;
-		texParams.target = textureTarget::TEXTURE_2D;
-		texParams.textureUnitIndex = textureIndices::Tex[t];
+			texParams.wrapT = u32(textureParameters::WRAP_CLAMP_TO_EDGE);
+		texParams.handle = u32(cache.current[t]->name);
+		texParams.target = u32(textureTarget::TEXTURE_2D);
+		texParams.textureUnitIndex = u32(textureIndices::Tex[t]);
 		gfxContext.setTextureParameters(texParams);
 	}
 
 	if (gDP.otherMode.cycleType == G_CYC_COPY && cache.current[0]->frameBufferTexture != CachedTexture::fbMultiSample) {
 		Context::TexParameters texParams;
-		texParams.handle = cache.current[0]->name;
-		texParams.target = textureTarget::TEXTURE_2D;
-		texParams.textureUnitIndex = textureIndices::Tex[0];
-		texParams.minFilter = textureParameters::FILTER_NEAREST;
-		texParams.magFilter = textureParameters::FILTER_NEAREST;
+		texParams.handle = u32(cache.current[0]->name);
+		texParams.target = u32(textureTarget::TEXTURE_2D);
+		texParams.textureUnitIndex = u32(textureIndices::Tex[0]);
+		texParams.minFilter = u32(textureParameters::FILTER_NEAREST);
+		texParams.magFilter = u32(textureParameters::FILTER_NEAREST);
 		gfxContext.setTextureParameters(texParams);
 	}
 
@@ -816,16 +816,16 @@ void GraphicsDrawer::copyTexturedRect(const CopyRectParams & _params)
 			continue;
 
 		Context::TexParameters texParams;
-		texParams.handle = tex->name;
-		texParams.textureUnitIndex = textureIndices::Tex[i];
+		texParams.handle = u32(tex->name);
+		texParams.textureUnitIndex = u32(textureIndices::Tex[i]);
 		if (tex->frameBufferTexture == CachedTexture::fbMultiSample)
-			texParams.target = textureTarget::TEXTURE_2D_MULTISAMPLE;
+			texParams.target = u32(textureTarget::TEXTURE_2D_MULTISAMPLE);
 		else {
-			texParams.target = textureTarget::TEXTURE_2D;
-			texParams.minFilter = _params.filter;
-			texParams.magFilter = _params.filter;
-			texParams.wrapS = textureParameters::WRAP_CLAMP_TO_EDGE;
-			texParams.wrapT = textureParameters::WRAP_CLAMP_TO_EDGE;
+			texParams.target = u32(textureTarget::TEXTURE_2D);
+			texParams.minFilter = u32(_params.filter);
+			texParams.magFilter = u32(_params.filter);
+			texParams.wrapS = u32(textureParameters::WRAP_CLAMP_TO_EDGE);
+			texParams.wrapT = u32(textureParameters::WRAP_CLAMP_TO_EDGE);
 		}
 		gfxContext.setTextureParameters(texParams);
 	}

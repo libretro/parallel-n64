@@ -29,12 +29,12 @@ namespace graphics {
 		virtual void setPolygonOffset(f32 _factor, f32 _units) = 0;
 		virtual ObjectHandle createTexture(Parameter _target) = 0;
 		virtual void deleteTexture(ObjectHandle _name) = 0;
-		virtual void init2DTexture(const Context::InitTextureParams & _params) = 0;
-		virtual void update2DTexture(const Context::UpdateTextureDataParams & _params) = 0;
+		virtual void init2DTexture(const gli_init_texture_params & _params) = 0;
+		virtual void update2DTexture(const gli_update_texture_params & _params) = 0;
 		/* Memory to decode a texture straight into, handed back as its data. */
 		virtual void * lendTextureData(size_t) { return nullptr; }
-		virtual void setTextureParameters(const Context::TexParameters & _parameters) = 0;
-		virtual void bindTexture(const Context::BindTextureParameters & _params) = 0;
+		virtual void setTextureParameters(const gli_tex_parameters & _parameters) = 0;
+		virtual void bindTexture(const gli_bind_texture_params & _params) = 0;
 		virtual void setTextureUnpackAlignment(s32 _param) = 0;
 		virtual s32 getTextureUnpackAlignment() const = 0;
 		virtual s32 getMaxTextureSize() const = 0;

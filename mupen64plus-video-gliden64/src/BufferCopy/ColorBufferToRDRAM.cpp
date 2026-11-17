@@ -91,21 +91,21 @@ void ColorBufferToRDRAM::_initFBTexture(void)
 
 	{
 		Context::InitTextureParams params;
-		params.handle = m_pTexture->name;
+		params.handle = u32(m_pTexture->name);
 		params.width = m_pTexture->realWidth;
 		params.height = m_pTexture->realHeight;
-		params.internalFormat = fbTexFormat.colorInternalFormat;
-		params.format = fbTexFormat.colorFormat;
-		params.dataType = fbTexFormat.colorType;
+		params.internalFormat = u32(fbTexFormat.colorInternalFormat);
+		params.format = u32(fbTexFormat.colorFormat);
+		params.dataType = u32(fbTexFormat.colorType);
 		gfxContext.init2DTexture(params);
 	}
 	{
 		Context::TexParameters params;
-		params.handle = m_pTexture->name;
-		params.target = textureTarget::TEXTURE_2D;
-		params.textureUnitIndex = textureIndices::Tex[0];
-		params.minFilter = textureParameters::FILTER_LINEAR;
-		params.magFilter = textureParameters::FILTER_LINEAR;
+		params.handle = u32(m_pTexture->name);
+		params.target = u32(textureTarget::TEXTURE_2D);
+		params.textureUnitIndex = u32(textureIndices::Tex[0]);
+		params.minFilter = u32(textureParameters::FILTER_LINEAR);
+		params.magFilter = u32(textureParameters::FILTER_LINEAR);
 		gfxContext.setTextureParameters(params);
 	}
 	{

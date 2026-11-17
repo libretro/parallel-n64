@@ -56,21 +56,21 @@ void DepthBuffer::_initDepthImageTexture(FrameBuffer * _pBuffer, CachedTexture& 
 
 	{
 		Context::InitTextureParams params;
-		params.handle = _cachedTexture.name;
+		params.handle = u32(_cachedTexture.name);
 		params.width = _cachedTexture.width;
 		params.height = _cachedTexture.height;
-		params.internalFormat = fbTexFormat.depthImageInternalFormat;
-		params.format = fbTexFormat.depthImageFormat;
-		params.dataType = fbTexFormat.depthImageType;
+		params.internalFormat = u32(fbTexFormat.depthImageInternalFormat);
+		params.format = u32(fbTexFormat.depthImageFormat);
+		params.dataType = u32(fbTexFormat.depthImageType);
 		gfxContext.init2DTexture(params);
 	}
 	{
 		Context::TexParameters params;
-		params.handle = _cachedTexture.name;
-		params.target = textureTarget::TEXTURE_2D;
-		params.textureUnitIndex = textureIndices::Tex[0];
-		params.minFilter = textureParameters::FILTER_NEAREST;
-		params.magFilter = textureParameters::FILTER_NEAREST;
+		params.handle = u32(_cachedTexture.name);
+		params.target = u32(textureTarget::TEXTURE_2D);
+		params.textureUnitIndex = u32(textureIndices::Tex[0]);
+		params.minFilter = u32(textureParameters::FILTER_NEAREST);
+		params.magFilter = u32(textureParameters::FILTER_NEAREST);
 		gfxContext.setTextureParameters(params);
 	}
 	{
@@ -135,23 +135,23 @@ void DepthBuffer::_initDepthBufferTexture(FrameBuffer * _pBuffer, CachedTexture 
 	_pTexture->textureBytes = _pTexture->width * _pTexture->height * fbTexFormat.depthFormatBytes;
 
 	Context::InitTextureParams initParams;
-	initParams.handle = _pTexture->name;
+	initParams.handle = u32(_pTexture->name);
 	initParams.msaaLevel = _multisample ? config.video.multisampling : 0U;
 	initParams.width = _pTexture->width;
 	initParams.height = _pTexture->height;
-	initParams.internalFormat = fbTexFormat.depthInternalFormat;
-	initParams.format = fbTexFormat.depthFormat;
-	initParams.dataType = fbTexFormat.depthType;
+	initParams.internalFormat = u32(fbTexFormat.depthInternalFormat);
+	initParams.format = u32(fbTexFormat.depthFormat);
+	initParams.dataType = u32(fbTexFormat.depthType);
 	gfxContext.init2DTexture(initParams);
 
 	if (!_multisample) {
 		_pTexture->frameBufferTexture = CachedTexture::fbOneSample;
 		Context::TexParameters texParams;
-		texParams.handle = _pTexture->name;
-		texParams.target = textureTarget::TEXTURE_2D;
-		texParams.textureUnitIndex = textureIndices::Tex[0];
-		texParams.minFilter = textureParameters::FILTER_NEAREST;
-		texParams.magFilter = textureParameters::FILTER_NEAREST;
+		texParams.handle = u32(_pTexture->name);
+		texParams.target = u32(textureTarget::TEXTURE_2D);
+		texParams.textureUnitIndex = u32(textureIndices::Tex[0]);
+		texParams.minFilter = u32(textureParameters::FILTER_NEAREST);
+		texParams.magFilter = u32(textureParameters::FILTER_NEAREST);
 		gfxContext.setTextureParameters(texParams);
 	} else {
 		_pTexture->frameBufferTexture = CachedTexture::fbMultiSample;

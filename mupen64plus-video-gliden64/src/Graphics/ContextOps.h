@@ -62,23 +62,11 @@ namespace graphics {
 
 		static u32 createTexture(void * _p, u32 _target) { return u32(I(_p)->T::createTexture(Parameter(_target))); }
 		static void deleteTexture(void * _p, u32 _name) { I(_p)->T::deleteTexture(ObjectHandle(_name)); }
-		static void init2DTexture(void * _p, const void * _params)
-		{
-			I(_p)->T::init2DTexture(*static_cast<const Context::InitTextureParams *>(_params));
-		}
-		static void update2DTexture(void * _p, const void * _params)
-		{
-			I(_p)->T::update2DTexture(*static_cast<const Context::UpdateTextureDataParams *>(_params));
-		}
+		static void init2DTexture(void * _p, const gli_init_texture_params * _params) { I(_p)->T::init2DTexture(*_params); }
+		static void update2DTexture(void * _p, const gli_update_texture_params * _params) { I(_p)->T::update2DTexture(*_params); }
 		static void * lendTextureData(void * _p, size_t _bytes) { return I(_p)->T::lendTextureData(_bytes); }
-		static void setTextureParameters(void * _p, const void * _params)
-		{
-			I(_p)->T::setTextureParameters(*static_cast<const Context::TexParameters *>(_params));
-		}
-		static void bindTexture(void * _p, const void * _params)
-		{
-			I(_p)->T::bindTexture(*static_cast<const Context::BindTextureParameters *>(_params));
-		}
+		static void setTextureParameters(void * _p, const gli_tex_parameters * _params) { I(_p)->T::setTextureParameters(*_params); }
+		static void bindTexture(void * _p, const gli_bind_texture_params * _params) { I(_p)->T::bindTexture(*_params); }
 		static void setTextureUnpackAlignment(void * _p, s32 _param) { I(_p)->T::setTextureUnpackAlignment(_param); }
 		static s32 getTextureUnpackAlignment(const void * _p) { return C(_p)->T::getTextureUnpackAlignment(); }
 		static s32 getMaxTextureSize(const void * _p) { return C(_p)->T::getMaxTextureSize(); }

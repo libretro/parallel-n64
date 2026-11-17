@@ -91,32 +91,32 @@ void DepthBufferToRDRAM::init()
 
 	const FramebufferTextureFormats & fbTexFormats = gfxContext.getFramebufferTextureFormats();
 	Context::InitTextureParams initParams;
-	initParams.handle = m_pColorTexture->name;
-	initParams.textureUnitIndex = textureIndices::Tex[0];
+	initParams.handle = u32(m_pColorTexture->name);
+	initParams.textureUnitIndex = u32(textureIndices::Tex[0]);
 	initParams.width = m_pColorTexture->width;
 	initParams.height = m_pColorTexture->height;
-	initParams.internalFormat = fbTexFormats.monochromeInternalFormat;
-	initParams.format = fbTexFormats.monochromeFormat;
-	initParams.dataType = fbTexFormats.monochromeType;
+	initParams.internalFormat = u32(fbTexFormats.monochromeInternalFormat);
+	initParams.format = u32(fbTexFormats.monochromeFormat);
+	initParams.dataType = u32(fbTexFormats.monochromeType);
 	gfxContext.init2DTexture(initParams);
 
 	Context::TexParameters setParams;
-	setParams.handle = m_pColorTexture->name;
-	setParams.target = textureTarget::TEXTURE_2D;
-	setParams.textureUnitIndex = textureIndices::Tex[0];
-	setParams.minFilter = textureParameters::FILTER_NEAREST;
-	setParams.magFilter = textureParameters::FILTER_NEAREST;
+	setParams.handle = u32(m_pColorTexture->name);
+	setParams.target = u32(textureTarget::TEXTURE_2D);
+	setParams.textureUnitIndex = u32(textureIndices::Tex[0]);
+	setParams.minFilter = u32(textureParameters::FILTER_NEAREST);
+	setParams.magFilter = u32(textureParameters::FILTER_NEAREST);
 	gfxContext.setTextureParameters(setParams);
 
-	initParams.handle = m_pDepthTexture->name;
+	initParams.handle = u32(m_pDepthTexture->name);
 	initParams.width = m_pDepthTexture->width;
 	initParams.height = m_pDepthTexture->height;
-	initParams.internalFormat = fbTexFormats.depthInternalFormat;
-	initParams.format = fbTexFormats.depthFormat;
-	initParams.dataType = fbTexFormats.depthType;
+	initParams.internalFormat = u32(fbTexFormats.depthInternalFormat);
+	initParams.format = u32(fbTexFormats.depthFormat);
+	initParams.dataType = u32(fbTexFormats.depthType);
 	gfxContext.init2DTexture(initParams);
 
-	setParams.handle = m_pDepthTexture->name;
+	setParams.handle = u32(m_pDepthTexture->name);
 	gfxContext.setTextureParameters(setParams);
 
 	m_FBO = gfxContext.createFramebuffer();
