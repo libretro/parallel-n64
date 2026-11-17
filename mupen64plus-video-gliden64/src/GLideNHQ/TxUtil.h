@@ -58,6 +58,9 @@ uint64 txutil_checksum64(const uint8 *src, int width, int height, int size, int 
 
 /* the bytes a texture of @format takes, 0 for a format GLideNHQ has not */
 int txutil_texture_bytes(int width, int height, uint32 format);
+/* @info's format, and the texture format and pixel type GL and Vulkan
+ * upload it with */
+void txutil_set_format(GHQTexInfo *info, uint32 format);
 
 /* the physical cores, at most MAX_NUMCORE */
 uint32 txutil_cores(void);

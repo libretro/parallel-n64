@@ -66,7 +66,7 @@ static void filter_lane(void *ctx, unsigned lane)
 void TxFilter::clear()
 {
 	/* clear hires texture cache */
-	delete _txHiResCache;
+	txhirescache_free(_txHiResCache);
 
 	/* clear texture cache */
 	txtexcache_free(_txTexCache);
@@ -146,9 +146,9 @@ TxFilter::TxFilter(int maxwidth,
 
 	/* hires texture */
 #if HIRES_TEXTURE
-	_txHiResCache = new TxHiResCache(_maxwidth, _maxheight, _maxbpp, _options, texCachePath, texPackPath, _ident.c_str());
+	_txHiResCache = txhirescache_new(_maxwidth, _maxheight, _maxbpp, _options, texCachePath, texPackPath, _ident.c_str());
 
-	if (_txHiResCache->empty())
+	if (txhirescache_empty(_txHiResCache))
 		_options &= ~HIRESTEXTURES_MASK;
 #endif
 
@@ -483,7 +483,7 @@ TxFilter::hirestex(uint64 g64crc, uint64 r_crc64, uint16 *palette, GHQTexInfo *i
 #if HIRES_TEXTURE
 	/* check if we have it in hires memory cache. */
 	if ((_options & HIRESTEXTURES_MASK) && r_crc64) {
-		if (_txHiResCache->get(r_crc64, info)) {
+		if (txhirescache_get(_txHiResCache, r_crc64, info)) {
 
 			/* TODO: Enable emulation for special N64 combiner modes. There are few ways
 	   * to get this done. Also applies for CI textures below.
@@ -509,7 +509,7 @@ TxFilter::hirestex(uint64 g64crc, uint64 r_crc64, uint16 *palette, GHQTexInfo *i
 
 			return 1; /* yep, got it */
 		}
-		if (_txHiResCache->get((r_crc64 & 0xffffffff), info)) {
+		if (txhirescache_get(_txHiResCache, (r_crc64 & 0xffffffff), info)) {
 
 			/* for true CI textures, we use the passed in palette to convert to
 	   * ARGB1555 and add it to memory cache.
@@ -543,7 +543,7 @@ TxFilter::hirestex(uint64 g64crc, uint64 r_crc64, uint16 *palette, GHQTexInfo *i
 				setTextureFormat(format, info);
 
 				/* XXX: add to hires texture cache!!! */
-				_txHiResCache->add(r_crc64, info);
+				txhirescache_add(_txHiResCache, r_crc64, info);
 
 			}
 
@@ -621,7 +621,7 @@ boolean
 TxFilter::reloadhirestex()
 {
 
-	if (_txHiResCache->load(0) && !_txHiResCache->empty()) {
+	if (txhirescache_load(_txHiResCache, 0) && !txhirescache_empty(_txHiResCache)) {
 		_options |= HIRESTEXTURES_MASK;
 		return 1;
 	}
@@ -638,6 +638,6 @@ TxFilter::dumpcache()
 
 	/* hires texture */
 #if HIRES_TEXTURE
-	_txHiResCache->dump();
+	txhirescache_dump(_txHiResCache);
 #endif
 }

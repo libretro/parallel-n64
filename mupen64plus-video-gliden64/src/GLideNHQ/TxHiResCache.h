@@ -24,54 +24,51 @@
 #ifndef __TXHIRESCACHE_H__
 #define __TXHIRESCACHE_H__
 
+/* GLideNHQ's hi-res textures, read from a Rice texture pack
+ * (<pack>/<ROM>/..., sub-directories too) and kept whole; saved as
+ * <ROM>_HIRESTEXTURES.htc with DUMP_HIRESTEXCACHE, and read from there
+ * the next time. C89. */
+
 /* support hires textures
  *   0: disable
  *   1: enable
  */
 #define HIRES_TEXTURE 1
 
-#include "TxInternal.h"
 #include "TxCache.h"
-#include "TxQuantize.h"
-#include "TxImage.h"
-#include "TxReSample.h"
 
-class TxHiResCache
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+typedef struct txhirescache
 {
-private:
-  txcache *_cache;          /* the textures, kept whole (no size) */
-  std::string _ident;       /* UTF-8, as the cache has them */
-  std::string _cachePath;   /* UTF-8 */
-  int _maxwidth;
-  int _maxheight;
-  int _maxbpp;
-  boolean _cacheDumped;
-  unsigned _numcore;     /* the quantizer's lanes */
-  std::string _texPackPath; /* UTF-8 */
-  enum LoadResult {
-	  resOk,
-	  resNotFound,
-	  resError
-  };
-  LoadResult loadHiResTextures(const std::string & dir_path, boolean replace);
-  std::string _getFileName() const;
-  int _getConfig() const;
-  boolean _HiResTexPackPathExists() const;
+	txcache *cache;      /* the textures, kept whole (no size); NULL if not made */
+	char *tex_pack_path; /* UTF-8, "" for none */
+	int maxwidth;
+	int maxheight;
+	int maxbpp;
+	boolean dumped;      /* what is on disk is what it holds */
+	unsigned numcore;    /* the quantizer's lanes */
+} txhirescache;
 
-public:
-  ~TxHiResCache();
-  TxHiResCache(int maxwidth,
-			   int maxheight,
-			   int maxbpp,
-			   int options,
-			   const char *cachePath,
-			   const char *texPackPath,
-			   const char *ident);
-  boolean empty();
-  boolean get(uint64 checksum, GHQTexInfo *info) { return _cache ? txcache_get(_cache, checksum, info) : 0; }
-  boolean add(uint64 checksum, GHQTexInfo *info) { return _cache ? txcache_add(_cache, checksum, info, 0, 0) : 0; }
-  boolean load(boolean replace);
-  void dump();
-};
+/* the textures read in, or read from the file saved before; NULL only
+ * out of memory */
+txhirescache *txhirescache_new(int maxwidth, int maxheight, int maxbpp, int options,
+		const char *cachePath, const char *texPackPath, const char *ident);
+void txhirescache_free(txhirescache *h);
+boolean txhirescache_empty(const txhirescache *h);
+boolean txhirescache_get(txhirescache *h, uint64 checksum, GHQTexInfo *info);
+/* a copy of @info's texture */
+boolean txhirescache_add(txhirescache *h, uint64 checksum, GHQTexInfo *info);
+/* the pack read in again (@replace 0: the textures held before given up;
+ * 1: those of the same checksum replaced); 0 if none could be */
+boolean txhirescache_load(txhirescache *h, boolean replace);
+/* saved, with DUMP_HIRESTEXCACHE, if not saved since */
+void txhirescache_dump(txhirescache *h);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* __TXHIRESCACHE_H__ */

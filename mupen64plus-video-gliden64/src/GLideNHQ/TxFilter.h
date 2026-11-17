@@ -30,6 +30,7 @@
 #include "TxTexCache.h"
 #include "TxUtil.h"
 #include "TxImage.h"
+#include "TxReSample.h"
 
 class TxFilter
 {
@@ -46,7 +47,7 @@ private:
   std::string _ident;    /* UTF-8 */
   std::string _dumpPath; /* UTF-8 */
   txtexcache *_txTexCache;
-  TxHiResCache *_txHiResCache;
+  txhirescache *_txHiResCache;
   boolean _initialized;
   void clear();
 public:

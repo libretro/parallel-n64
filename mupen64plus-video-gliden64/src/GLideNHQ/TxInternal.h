@@ -25,6 +25,7 @@
 #define __INTERNAL_H__
 
 #include "Ext_TxFilter.h"
+#include "TxUtil.h"
 #include <string>
 #include <algorithm>
 
@@ -57,29 +58,7 @@ static inline uint32 txutil_checksum_tx(const uint8 *src, int width, int height,
 /* @info's format, texture format and pixel type for @internalFormat */
 static inline void setTextureFormat(ColorFormat internalFormat, GHQTexInfo *info)
 {
-	info->format = u32(internalFormat);
-	if (internalFormat == graphics::internalcolorFormat::RGB8) {
-		info->texture_format = static_cast<unsigned short>(u32(graphics::colorFormat::RED_GREEN_BLUE));
-		info->pixel_type = static_cast<unsigned short>(u32(graphics::datatype::UNSIGNED_SHORT_5_6_5));
-	} else if (internalFormat == graphics::internalcolorFormat::RGBA4) {
-		info->texture_format = static_cast<unsigned short>(u32(graphics::colorFormat::RGBA));
-		info->pixel_type = static_cast<unsigned short>(u32(graphics::datatype::UNSIGNED_SHORT_4_4_4_4));
-	} else if (internalFormat == graphics::internalcolorFormat::RGB5_A1) {
-		info->texture_format = static_cast<unsigned short>(u32(graphics::colorFormat::RGBA));
-		info->pixel_type = static_cast<unsigned short>(u32(graphics::datatype::UNSIGNED_SHORT_5_5_5_1));
-	} else {
-		/* RGBA8, and what GLideNHQ has not */
-		info->texture_format = static_cast<unsigned short>(u32(graphics::colorFormat::RGBA));
-		info->pixel_type = static_cast<unsigned short>(u32(graphics::datatype::UNSIGNED_BYTE));
-	}
-}
-
-/* an image's format as TxImage's C reads it (TXI_*) */
-static inline ColorFormat txi_format(int format)
-{
-	if (format == 1) return graphics::internalcolorFormat::RGBA8;        /* TXI_RGBA8 */
-	if (format == 2) return graphics::internalcolorFormat::COLOR_INDEX8; /* TXI_COLOR_INDEX8 */
-	return graphics::internalcolorFormat::NOCOLOR;                       /* TXI_NONE */
+	txutil_set_format(info, u32(internalFormat));
 }
 
 /* the format as TxQuantize's C has it (TXQ_*), -1 for one it has not */

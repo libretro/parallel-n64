@@ -507,13 +507,13 @@ SOURCES_C += $(VIDEODIR_GLIDEN64)/src/GLideNHQ/TextureFilters.c \
 	$(VIDEODIR_GLIDEN64)/src/GLideNHQ/TxImage.c \
 	$(VIDEODIR_GLIDEN64)/src/GLideNHQ/TxUtil.c \
 	$(VIDEODIR_GLIDEN64)/src/GLideNHQ/TxCache.c \
-	$(VIDEODIR_GLIDEN64)/src/GLideNHQ/TxTexCache.c
+	$(VIDEODIR_GLIDEN64)/src/GLideNHQ/TxTexCache.c \
+	$(VIDEODIR_GLIDEN64)/src/GLideNHQ/TxHiResCache.c
 
 SOURCES_CXX   += \
 	$(VIDEODIR_GLIDEN64)/src/GLideNHQ/TextureFilters_xbrz.cpp \
 	$(VIDEODIR_GLIDEN64)/src/GLideNHQ/TxFilter.cpp \
-	$(VIDEODIR_GLIDEN64)/src/GLideNHQ/TxFilterExport.cpp \
-	$(VIDEODIR_GLIDEN64)/src/GLideNHQ/TxHiResCache.cpp
+	$(VIDEODIR_GLIDEN64)/src/GLideNHQ/TxFilterExport.cpp
 
 # GLideNHQ's persistent filter/quantize pool (C89)
 SOURCES_C += $(VIDEODIR_GLIDEN64)/src/GLideNHQ/txpool.c

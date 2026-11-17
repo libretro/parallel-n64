@@ -225,6 +225,20 @@ int txutil_texture_bytes(int width, int height, uint32 format)
 	return 0;
 }
 
+void txutil_set_format(GHQTexInfo *info, uint32 format)
+{
+	/* GL_RGB, GL_RGBA; GL_UNSIGNED_SHORT_5_6_5, _4_4_4_4, _5_5_5_1, GL_UNSIGNED_BYTE
+	 * (opengl_Parameters.cpp) */
+	info->format = format;
+	info->texture_format = format == TXFMT_RGB8 ? 0x1907 : 0x1908;
+	switch (format) {
+	case TXFMT_RGB8:    info->pixel_type = 0x8363; break;
+	case TXFMT_RGBA4:   info->pixel_type = 0x8033; break;
+	case TXFMT_RGB5_A1: info->pixel_type = 0x8034; break;
+	default:            info->pixel_type = 0x1401; break; /* RGBA8, and what GLideNHQ has not */
+	}
+}
+
 uint32 txutil_cores(void)
 {
 	/* Physical cores, not logical: an SMT sibling is a poor lane next to
