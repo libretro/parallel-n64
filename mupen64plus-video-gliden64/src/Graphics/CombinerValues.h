@@ -126,6 +126,16 @@ extern "C" {
 
 	unsigned combinerValueGroups(const CombinerNeeds * _needs);
 
+	/* Twice 1 over a buffer's size, as a float quotient would give it. In
+	 * double: -Ofast takes float quotients worked out side by side as one
+	 * approximate reciprocal, a bit off; a double quotient is exact, and
+	 * rounds to the float's for every 16-bit size. */
+#define GLI_COORDS_SCALE(_size) ((float)(2.0 / (double)(_size)))
+	/* a tile's shift as a scale: 1 to 10 divides by 2^shift, 11 to 15
+	 * multiplies by 2^(16 - shift); exact, without a divide */
+#define GLI_SHIFT_SCALE(_shift) ((_shift) > 10 ? (float)(1 << (16 - (_shift))) : \
+	(_shift) > 0 ? (float)(1 << (16 - (_shift))) * (1.0f / 65536.0f) : 1.0f)
+
 	/* Writes the groups' members; what a group does not write stays. */
 	void updateCombinerValues(CombinerValues * _values, unsigned _groups);
 

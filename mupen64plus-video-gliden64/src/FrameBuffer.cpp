@@ -1463,6 +1463,22 @@ FrameBuffer * gli_fb_current(void)
 	return frameBufferList().getCurrent();
 }
 
+const gli_fb * gli_fb_current_info(void)
+{
+	return frameBufferList().getCurrent();
+}
+
+bool gli_fb_current_has_depth(void)
+{
+	const FrameBuffer * pBuffer = frameBufferList().getCurrent();
+	return pBuffer != nullptr && pBuffer->m_pDepthBuffer != nullptr;
+}
+
+bool gli_fb_is_at(u32 _address)
+{
+	return frameBufferList().getBuffer(_address) != nullptr;
+}
+
 u32 gli_fb_start_address(const FrameBuffer * _pBuffer)
 {
 	return _pBuffer->m_startAddress;

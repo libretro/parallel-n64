@@ -17,6 +17,8 @@ bool gli_combiner_key_hwl(u64 _key);
 
 /* Combiner.cpp */
 bool gli_combiner_is_rect_mode(void);
+/* whether the current combiner reads the LOD */
+bool gli_combiner_uses_lod(void);
 
 #ifdef __cplusplus
 }

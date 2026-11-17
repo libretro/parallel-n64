@@ -103,7 +103,6 @@ private:
 #endif
 };
 
-void getTextureShiftScale(u32 tile, const TextureCache & cache, f32 & shiftScaleS, f32 & shiftScaleT);
 
 inline TextureCache & textureCache()
 {

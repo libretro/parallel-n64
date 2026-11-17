@@ -30,6 +30,11 @@ void gli_fb_set_is_depth(struct FrameBuffer *_pBuffer);
 void gli_depth_set_cleared(bool _cleared);
 struct FrameBuffer *gli_fb_find(u32 _address);
 struct FrameBuffer *gli_fb_current(void);
+/* the current buffer as C reads it, NULL for none; whether it has a depth
+ * buffer; whether a buffer starts at @_address */
+const struct gli_fb *gli_fb_current_info(void);
+bool gli_fb_current_has_depth(void);
+bool gli_fb_is_at(u32 _address);
 bool gli_fb_is_cpu(const struct FrameBuffer *_pBuffer);
 void gli_fb_remove(u32 _address);
 u32 gli_fb_start_address(const struct FrameBuffer *_pBuffer);
@@ -80,6 +85,10 @@ s32 gli_gfx_max_texture_size(void);
 void gli_gfx_touch_error(void);
 void gli_gfx_clear_color(void);
 void gli_gfx_set_no_near_clip(bool _noNearClip);
+/* the clamp mode: 0 clipping, 1 no near plane clipping, 2 no clipping;
+ * whether polygon offset fill is on */
+u32 gli_gfx_clamp_mode(void);
+bool gli_gfx_polygon_offset_fill(void);
 
 #ifdef __cplusplus
 }

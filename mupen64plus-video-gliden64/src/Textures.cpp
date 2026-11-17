@@ -887,26 +887,11 @@ void TextureCache::update(u32 _t)
 	current[_t] = pCurrent;
 }
 
-void getTextureShiftScale(u32 t, const TextureCache & cache, f32 & shiftScaleS, f32 & shiftScaleT)
+void gli_textures_current(const gli_tex *_cur[2])
 {
-	if (gSP.textureTile[t]->textureMode != TEXTUREMODE_NORMAL) {
-		shiftScaleS = cache.current[t]->shiftScaleS;
-		shiftScaleT = cache.current[t]->shiftScaleT;
-		return;
-	}
-
-	if (gDP.otherMode.textureLOD == G_TL_LOD && gSP.texture.level == 0 && !currentCombiner()->usesLOD())
-		t = 0;
-
-	if (gSP.textureTile[t]->shifts > 10)
-		shiftScaleS = (f32)(1 << (16 - gSP.textureTile[t]->shifts));
-	else if (gSP.textureTile[t]->shifts > 0)
-		shiftScaleS /= (f32)(1 << gSP.textureTile[t]->shifts);
-
-	if (gSP.textureTile[t]->shiftt > 10)
-		shiftScaleT = (f32)(1 << (16 - gSP.textureTile[t]->shiftt));
-	else if (gSP.textureTile[t]->shiftt > 0)
-		shiftScaleT /= (f32)(1 << gSP.textureTile[t]->shiftt);
+	const TextureCache & cache = textureCache();
+	_cur[0] = cache.current[0];
+	_cur[1] = cache.current[1];
 }
 
 bool gli_tex_integer_supported(void)

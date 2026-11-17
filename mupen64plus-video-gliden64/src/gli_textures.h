@@ -9,6 +9,10 @@ extern "C" {
 #endif
 
 struct CachedTexture;
+struct gli_tex;
+
+/* the textures the two tiles read, NULL where there is none */
+void gli_textures_current(const struct gli_tex *_cur[2]);
 
 #define GLI_TEX_UNIT_ZLUT    0
 #define GLI_TEX_UNIT_PALETTE 1

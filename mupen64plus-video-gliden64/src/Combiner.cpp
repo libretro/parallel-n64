@@ -238,3 +238,8 @@ bool gli_combiner_is_rect_mode(void)
 {
 	return CombinerInfo::get().isRectMode();
 }
+
+bool gli_combiner_uses_lod(void)
+{
+	return currentCombiner()->usesLOD();
+}

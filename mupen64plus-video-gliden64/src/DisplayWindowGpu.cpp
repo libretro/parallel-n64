@@ -91,6 +91,23 @@ void gli_gfx_clear_color(void)
 	gfxContext.clearColorBuffer(0.0f, 0.0f, 0.0f, 0.0f);
 }
 
+u32 gli_gfx_clamp_mode(void)
+{
+	switch (gfxContext.getClampMode()) {
+	case graphics::ClampMode::NoNearPlaneClipping:
+		return 1;
+	case graphics::ClampMode::NoClipping:
+		return 2;
+	default:
+		return 0;
+	}
+}
+
+bool gli_gfx_polygon_offset_fill(void)
+{
+	return gfxContext.isEnabled(graphics::enable::POLYGON_OFFSET_FILL);
+}
+
 void gli_gfx_set_no_near_clip(bool _noNearClip)
 {
 	gfxContext.setClampMode(_noNearClip ? graphics::ClampMode::NoNearPlaneClipping : graphics::ClampMode::ClippingEnabled);
