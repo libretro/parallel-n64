@@ -381,7 +381,7 @@ f32 ContextImpl::getMaxAnisotropy() const
 	return maxAniso;
 }
 
-void ContextImpl::bindImageTexture(const graphics::Context::BindImageTextureParameters & _params)
+void ContextImpl::bindImageTexture(const gli_bind_image_texture_params & _params)
 {
 	glBindImageTexture(GLuint(_params.imageUnit), GLuint(_params.texture), 0, GL_FALSE, 0, GLenum(_params.accessMode), GLenum(_params.textureFormat));
 }
@@ -447,17 +447,17 @@ graphics::ObjectHandle ContextImpl::createRenderbuffer()
 	return m_createRenderbuffer->createRenderbuffer();
 }
 
-void ContextImpl::initRenderbuffer(const graphics::Context::InitRenderbufferParams & _params)
+void ContextImpl::initRenderbuffer(const gli_init_renderbuffer_params & _params)
 {
 	m_initRenderbuffer->initRenderbuffer(_params);
 }
 
-void ContextImpl::addFrameBufferRenderTarget(const graphics::Context::FrameBufferRenderTarget & _params)
+void ContextImpl::addFrameBufferRenderTarget(const gli_fb_render_target & _params)
 {
 	m_addFramebufferRenderTarget->addFrameBufferRenderTarget(_params);
 }
 
-bool ContextImpl::blitFramebuffers(const graphics::Context::BlitFramebuffersParams & _params)
+bool ContextImpl::blitFramebuffers(const gli_blit_params & _params)
 {
 	return m_blitFramebuffers->blitFramebuffers(_params);
 }
@@ -575,12 +575,12 @@ void ContextImpl::resetShaderProgram()
 	m_cachedFunctions->getCachedUseProgram()->useProgram(graphics::ObjectHandle::null);
 }
 
-void ContextImpl::drawTriangles(const graphics::Context::DrawTriangleParameters & _params)
+void ContextImpl::drawTriangles(const gli_draw_triangles_params & _params)
 {
 	m_graphicsDrawer->drawTriangles(_params);
 }
 
-void ContextImpl::drawRects(const graphics::Context::DrawRectParameters & _params)
+void ContextImpl::drawRects(const gli_draw_rects_params & _params)
 {
 	m_graphicsDrawer->drawRects(_params);
 }

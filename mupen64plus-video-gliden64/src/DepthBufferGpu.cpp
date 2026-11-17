@@ -75,11 +75,11 @@ void DepthBuffer::_initDepthImageTexture(FrameBuffer * _pBuffer, CachedTexture& 
 	}
 	{
 		Context::FrameBufferRenderTarget targetParams;
-		targetParams.bufferHandle = _clearFBO;
-		targetParams.bufferTarget = bufferTarget::DRAW_FRAMEBUFFER;
-		targetParams.attachment = bufferAttachment::COLOR_ATTACHMENT0;
-		targetParams.textureHandle = graphics::ObjectHandle(_cachedTexture.name);
-		targetParams.textureTarget = textureTarget::TEXTURE_2D;
+		targetParams.bufferHandle = u32(_clearFBO);
+		targetParams.bufferTarget = u32(bufferTarget::DRAW_FRAMEBUFFER);
+		targetParams.attachment = u32(bufferAttachment::COLOR_ATTACHMENT0);
+		targetParams.textureHandle = _cachedTexture.name;
+		targetParams.textureTarget = u32(textureTarget::TEXTURE_2D);
 		gfxContext.addFrameBufferRenderTarget(targetParams);
 	}
 }
@@ -178,8 +178,8 @@ void DepthBuffer::_initDepthBufferRenderbuffer(FrameBuffer * _pBuffer)
 
 	m_depthRenderbuffer = gfxContext.createRenderbuffer();
 	Context::InitRenderbufferParams params;
-	params.handle = m_depthRenderbuffer;
-	params.target = textureTarget::RENDERBUFFER;
+	params.handle = u32(m_depthRenderbuffer);
+	params.target = u32(textureTarget::RENDERBUFFER);
 	params.format = gfxContext.getFramebufferTextureFormats().depthInternalFormat;
 	params.width = m_depthRenderbufferWidth;
 	params.height = height;
@@ -189,15 +189,15 @@ void DepthBuffer::_initDepthBufferRenderbuffer(FrameBuffer * _pBuffer)
 void DepthBuffer::setDepthAttachment(ObjectHandle _fbo, BufferTargetParam _target)
 {
 	Context::FrameBufferRenderTarget params;
-	params.attachment = bufferAttachment::DEPTH_ATTACHMENT;
-	params.bufferHandle = _fbo;
-	params.bufferTarget = _target;
+	params.attachment = u32(bufferAttachment::DEPTH_ATTACHMENT);
+	params.bufferHandle = u32(_fbo);
+	params.bufferTarget = u32(_target);
 	if (gli_ctx.depthFramebufferTextures) {
-		params.textureHandle = graphics::ObjectHandle(m_pDepthBufferTexture->name);
-		params.textureTarget = config.video.multisampling != 0 ? textureTarget::TEXTURE_2D_MULTISAMPLE : textureTarget::TEXTURE_2D;
+		params.textureHandle = m_pDepthBufferTexture->name;
+		params.textureTarget = u32(config.video.multisampling != 0 ? textureTarget::TEXTURE_2D_MULTISAMPLE : textureTarget::TEXTURE_2D);
 	} else {
-		params.textureHandle = m_depthRenderbuffer;
-		params.textureTarget = textureTarget::RENDERBUFFER;
+		params.textureHandle = u32(m_depthRenderbuffer);
+		params.textureTarget = u32(textureTarget::RENDERBUFFER);
 	}
 	gfxContext.addFrameBufferRenderTarget(params);
 
@@ -232,16 +232,16 @@ CachedTexture * DepthBuffer::resolveDepthBufferTexture(FrameBuffer * _pBuffer)
 		return m_pResolveDepthBufferTexture;
 
 	Context::FrameBufferRenderTarget targetParams;
-	targetParams.attachment = bufferAttachment::DEPTH_ATTACHMENT;
-	targetParams.bufferHandle = _pBuffer->m_resolveFBO;
-	targetParams.bufferTarget = bufferTarget::DRAW_FRAMEBUFFER;
-	targetParams.textureHandle = graphics::ObjectHandle(m_pResolveDepthBufferTexture->name);
-	targetParams.textureTarget = textureTarget::TEXTURE_2D;
+	targetParams.attachment = u32(bufferAttachment::DEPTH_ATTACHMENT);
+	targetParams.bufferHandle = u32(_pBuffer->m_resolveFBO);
+	targetParams.bufferTarget = u32(bufferTarget::DRAW_FRAMEBUFFER);
+	targetParams.textureHandle = m_pResolveDepthBufferTexture->name;
+	targetParams.textureTarget = u32(textureTarget::TEXTURE_2D);
 	gfxContext.addFrameBufferRenderTarget(targetParams);
 
 	Context::BlitFramebuffersParams blitParams;
-	blitParams.readBuffer = _pBuffer->m_FBO;
-	blitParams.drawBuffer = _pBuffer->m_resolveFBO;
+	blitParams.readBuffer = u32(_pBuffer->m_FBO);
+	blitParams.drawBuffer = u32(_pBuffer->m_resolveFBO);
 	blitParams.srcX0 = 0;
 	blitParams.srcY0 = 0;
 	blitParams.srcX1 = m_pDepthBufferTexture->width;
@@ -250,8 +250,8 @@ CachedTexture * DepthBuffer::resolveDepthBufferTexture(FrameBuffer * _pBuffer)
 	blitParams.dstY0 = 0;
 	blitParams.dstX1 = m_pResolveDepthBufferTexture->width;
 	blitParams.dstY1 = m_pResolveDepthBufferTexture->height;
-	blitParams.mask = blitMask::DEPTH_BUFFER;
-	blitParams.filter = textureParameters::FILTER_NEAREST;
+	blitParams.mask = u32(blitMask::DEPTH_BUFFER);
+	blitParams.filter = u32(textureParameters::FILTER_NEAREST);
 
 	gfxContext.blitFramebuffers(blitParams);
 
@@ -274,25 +274,25 @@ CachedTexture * DepthBuffer::copyDepthBufferTexture(FrameBuffer * _pBuffer)
 
 
 	Context::FrameBufferRenderTarget targetParams;
-	targetParams.bufferHandle = m_copyFBO;
-	targetParams.bufferTarget = bufferTarget::DRAW_FRAMEBUFFER;
-	targetParams.attachment = bufferAttachment::COLOR_ATTACHMENT0;
-	targetParams.textureHandle = graphics::ObjectHandle(_pBuffer->m_pTexture->frameBufferTexture == GLI_TEX_FB_MULTI_SAMPLE ?
+	targetParams.bufferHandle = u32(m_copyFBO);
+	targetParams.bufferTarget = u32(bufferTarget::DRAW_FRAMEBUFFER);
+	targetParams.attachment = u32(bufferAttachment::COLOR_ATTACHMENT0);
+	targetParams.textureHandle = (_pBuffer->m_pTexture->frameBufferTexture == GLI_TEX_FB_MULTI_SAMPLE ?
 		_pBuffer->m_pResolveTexture->name :
 		_pBuffer->m_pTexture->name);
-	targetParams.textureTarget = textureTarget::TEXTURE_2D;
+	targetParams.textureTarget = u32(textureTarget::TEXTURE_2D);
 
 	gfxContext.addFrameBufferRenderTarget(targetParams);
 
-	targetParams.attachment = bufferAttachment::DEPTH_ATTACHMENT;
-	targetParams.textureHandle = graphics::ObjectHandle(m_pDepthBufferCopyTexture->name);
+	targetParams.attachment = u32(bufferAttachment::DEPTH_ATTACHMENT);
+	targetParams.textureHandle = m_pDepthBufferCopyTexture->name;
 
 	gfxContext.addFrameBufferRenderTarget(targetParams);
 
 
 	Context::BlitFramebuffersParams blitParams;
-	blitParams.readBuffer = _pBuffer->m_FBO;
-	blitParams.drawBuffer = m_copyFBO;
+	blitParams.readBuffer = u32(_pBuffer->m_FBO);
+	blitParams.drawBuffer = u32(m_copyFBO);
 	blitParams.srcX0 = 0;
 	blitParams.srcY0 = 0;
 	blitParams.srcX1 = m_pDepthBufferTexture->width;
@@ -301,8 +301,8 @@ CachedTexture * DepthBuffer::copyDepthBufferTexture(FrameBuffer * _pBuffer)
 	blitParams.dstY0 = 0;
 	blitParams.dstX1 = m_pDepthBufferTexture->width;
 	blitParams.dstY1 = m_pDepthBufferTexture->height;
-	blitParams.mask = blitMask::DEPTH_BUFFER;
-	blitParams.filter = textureParameters::FILTER_NEAREST;
+	blitParams.mask = u32(blitMask::DEPTH_BUFFER);
+	blitParams.filter = u32(textureParameters::FILTER_NEAREST);
 
 	gfxContext.blitFramebuffers(blitParams);
 
@@ -323,26 +323,26 @@ void DepthBuffer::bindDepthImageTexture(ObjectHandle _fbo)
 {
 	if (gli_ctx.imageTextures) {
 		Context::BindImageTextureParameters bindParams;
-		bindParams.imageUnit = textureImageUnits::DepthZ;
-		bindParams.texture = graphics::ObjectHandle(m_pDepthImageZTexture->name);
-		bindParams.accessMode = textureImageAccessMode::READ_WRITE;
+		bindParams.imageUnit = u32(textureImageUnits::DepthZ);
+		bindParams.texture = m_pDepthImageZTexture->name;
+		bindParams.accessMode = u32(textureImageAccessMode::READ_WRITE);
 		bindParams.textureFormat = gfxContext.getFramebufferTextureFormats().depthImageInternalFormat;
 		gfxContext.bindImageTexture(bindParams);
 
-		bindParams.imageUnit = textureImageUnits::DepthDeltaZ;
-		bindParams.texture = graphics::ObjectHandle(m_pDepthImageDeltaZTexture->name);
+		bindParams.imageUnit = u32(textureImageUnits::DepthDeltaZ);
+		bindParams.texture = m_pDepthImageDeltaZTexture->name;
 		gfxContext.bindImageTexture(bindParams);
 	} else if (gli_ctx.framebufferFetch) {
 		Context::FrameBufferRenderTarget targetParams;
-		targetParams.bufferHandle = _fbo;
-		targetParams.bufferTarget = bufferTarget::DRAW_FRAMEBUFFER;
-		targetParams.attachment = bufferAttachment::COLOR_ATTACHMENT1;
-		targetParams.textureHandle = graphics::ObjectHandle(m_pDepthImageZTexture->name);
-		targetParams.textureTarget = textureTarget::TEXTURE_2D;
+		targetParams.bufferHandle = u32(_fbo);
+		targetParams.bufferTarget = u32(bufferTarget::DRAW_FRAMEBUFFER);
+		targetParams.attachment = u32(bufferAttachment::COLOR_ATTACHMENT1);
+		targetParams.textureHandle = m_pDepthImageZTexture->name;
+		targetParams.textureTarget = u32(textureTarget::TEXTURE_2D);
 		gfxContext.addFrameBufferRenderTarget(targetParams);
 
-		targetParams.attachment = bufferAttachment::COLOR_ATTACHMENT2;
-		targetParams.textureHandle = graphics::ObjectHandle(m_pDepthImageDeltaZTexture->name);
+		targetParams.attachment = u32(bufferAttachment::COLOR_ATTACHMENT2);
+		targetParams.textureHandle = m_pDepthImageDeltaZTexture->name;
 		gfxContext.addFrameBufferRenderTarget(targetParams);
 
 		gfxContext.setDrawBuffers(3);

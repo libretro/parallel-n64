@@ -1,5 +1,6 @@
 /* test_gliden64_texture_params -- the blocks GLideN64 hands its backends
- * to make, fill, sample and bind a texture.
+ * to make, fill, sample and bind a texture, to make and blit frame
+ * buffers, and to draw.
  *
  * They were C++ classes whose fields defaulted to "unset", which each
  * backend read to leave that state as it was. They are C structs now
@@ -7,7 +8,8 @@
  * read GLI_PARAM_INVALID (or an anisotropy of 0) as unset. A default that
  * moved would change every texture made without naming it: a 2D texture
  * of one level, on unit 0 (Vulkan binds it there), with no format given;
- * sampler parameters all left as they are; nothing bound.
+ * sampler parameters all left as they are; nothing bound; a frame
+ * buffer block naming nothing; a rect textured unless it says not.
  *
  *   ./test_gliden64_texture_params
  */
@@ -73,6 +75,30 @@ int main(void)
    check(bind.texture == 0, "bind: no texture");
    check(bind.textureUnitIndex == GLI_PARAM_INVALID, "bind: no unit");
    check(bind.target == GLI_PARAM_INVALID, "bind: no target");
+
+   {
+      const gli_bind_image_texture_params image = GLI_BIND_IMAGE_TEXTURE_PARAMS_DEFAULT;
+      const gli_init_renderbuffer_params rb = GLI_INIT_RENDERBUFFER_PARAMS_DEFAULT;
+      const gli_fb_render_target target = GLI_FB_RENDER_TARGET_DEFAULT;
+      const gli_blit_params blit = GLI_BLIT_PARAMS_DEFAULT;
+      const gli_draw_triangles_params tri = GLI_DRAW_TRIANGLES_PARAMS_DEFAULT;
+      const gli_draw_rects_params rect = GLI_DRAW_RECTS_PARAMS_DEFAULT;
+
+      check(image.imageUnit == GLI_PARAM_INVALID && image.texture == 0 &&
+         image.accessMode == GLI_PARAM_INVALID && image.textureFormat == GLI_PARAM_INVALID, "image: nothing given");
+      check(rb.handle == 0 && rb.target == GLI_PARAM_INVALID && rb.format == GLI_PARAM_INVALID &&
+         rb.width == 0 && rb.height == 0, "renderbuffer: nothing given");
+      check(target.bufferHandle == 0 && target.bufferTarget == GLI_PARAM_INVALID && target.attachment == GLI_PARAM_INVALID &&
+         target.textureTarget == GLI_PARAM_INVALID && target.textureHandle == 0, "render target: nothing given");
+      check(blit.readBuffer == 0 && blit.drawBuffer == 0 && blit.mask == GLI_PARAM_INVALID &&
+         blit.filter == GLI_PARAM_INVALID, "blit: no buffers, mask or filter");
+      check(blit.srcX0 == 0 && blit.srcY1 == 0 && blit.dstX0 == 0 && blit.dstY1 == 0, "blit: empty rectangles");
+      check(tri.mode == GLI_PARAM_INVALID && tri.elementsType == GLI_PARAM_INVALID && tri.verticesCount == 0 &&
+         tri.elementsCount == 0 && !tri.flatColors && tri.vertices == NULL && tri.elements == NULL &&
+         tri.combiner == NULL, "triangles: nothing to draw, smooth colors");
+      check(rect.mode == GLI_PARAM_INVALID && rect.texrect && rect.verticesCount == 0 && rect.vertices == NULL &&
+         rect.combiner == NULL, "rects: textured, nothing to draw");
+   }
 
    /* the fields the backends take as numbers are 32 bits, as the
     * Parameters they were */

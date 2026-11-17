@@ -387,9 +387,9 @@ void GraphicsDrawer::drawTriangles()
 		_drawClipped(triangles.vertices.data(), triangles.elements.data(), triangles.num);
 	} else {
 		Context::DrawTriangleParameters triParams;
-		triParams.mode = drawmode::TRIANGLES;
+		triParams.mode = u32(drawmode::TRIANGLES);
 		triParams.flatColors = m_bFlatColors;
-		triParams.elementsType = datatype::UNSIGNED_BYTE;
+		triParams.elementsType = u32(datatype::UNSIGNED_BYTE);
 		triParams.verticesCount = static_cast<u32>(triangles.maxElement) + 1;
 		triParams.elementsCount = triangles.num;
 		triParams.vertices = triangles.vertices.data();
@@ -423,7 +423,7 @@ void GraphicsDrawer::_drawClipped(const SPVertex * _vertices, const u16 * _eleme
 	for (first = 0; first < _count; first += run) {
 		const u32 count = std::min(run, _count - first);
 		Context::DrawTriangleParameters triParams;
-		triParams.mode = drawmode::TRIANGLES;
+		triParams.mode = u32(drawmode::TRIANGLES);
 		triParams.flatColors = m_bFlatColors;
 		if (_elements != nullptr)
 			triParams.verticesCount = gli_tri_clip(_vertices, _elements + first, count, m_clipped.data());
@@ -458,7 +458,7 @@ void GraphicsDrawer::drawScreenSpaceTriangle(u32 _numVtx, graphics::DrawModePara
 	gfxContext.enable(enable::CULL_FACE, false);
 
 	Context::DrawTriangleParameters triParams;
-	triParams.mode = _mode;
+	triParams.mode = u32(_mode);
 	triParams.flatColors = m_bFlatColors;
 	triParams.verticesCount = _numVtx;
 	triParams.vertices = m_dmaVertices.data();
@@ -484,7 +484,7 @@ void GraphicsDrawer::drawDMATriangles(u32 _numVtx)
 		_drawClipped(m_dmaVertices.data(), nullptr, _numVtx);
 	} else {
 		Context::DrawTriangleParameters triParams;
-		triParams.mode = drawmode::TRIANGLES;
+		triParams.mode = u32(drawmode::TRIANGLES);
 		triParams.flatColors = m_bFlatColors;
 		triParams.verticesCount = _numVtx;
 		triParams.vertices = m_dmaVertices.data();
@@ -566,7 +566,7 @@ void GraphicsDrawer::drawRect(int _ulx, int _uly, int _lrx, int _lry)
 	}
 
 	Context::DrawRectParameters rectParams;
-	rectParams.mode = drawmode::TRIANGLE_STRIP;
+	rectParams.mode = u32(drawmode::TRIANGLE_STRIP);
 	rectParams.texrect = false;
 	rectParams.verticesCount = 4;
 	rectParams.vertices = m_rect;
@@ -772,7 +772,7 @@ void GraphicsDrawer::drawTexturedRect(const TexturedRectParams & _params)
 
 	_updateScreenCoordsViewport(_params.pBuffer);
 	Context::DrawRectParameters rectParams;
-	rectParams.mode = drawmode::TRIANGLE_STRIP;
+	rectParams.mode = u32(drawmode::TRIANGLE_STRIP);
 	rectParams.verticesCount = 4;
 	rectParams.vertices = m_rect;
 	rectParams.combiner = currentCombiner();
@@ -837,7 +837,7 @@ void GraphicsDrawer::copyTexturedRect(const CopyRectParams & _params)
 	gfxContext.enableDepthWrite(false);
 
 	Context::DrawRectParameters rectParams;
-	rectParams.mode = drawmode::TRIANGLE_STRIP;
+	rectParams.mode = u32(drawmode::TRIANGLE_STRIP);
 	rectParams.verticesCount = 4;
 	rectParams.vertices = m_rect;
 	rectParams.combiner = _params.combiner;
@@ -853,8 +853,8 @@ void GraphicsDrawer::copyTexturedRect(const CopyRectParams & _params)
 void GraphicsDrawer::blitOrCopyTexturedRect(const BlitOrCopyRectParams & _params)
 {
 	Context::BlitFramebuffersParams blitParams;
-	blitParams.readBuffer = _params.readBuffer;
-	blitParams.drawBuffer = _params.drawBuffer;
+	blitParams.readBuffer = u32(_params.readBuffer);
+	blitParams.drawBuffer = u32(_params.drawBuffer);
 	blitParams.srcX0 = _params.srcX0;
 	blitParams.srcX1 = _params.srcX1;
 	blitParams.dstX0 = _params.dstX0;
@@ -863,8 +863,8 @@ void GraphicsDrawer::blitOrCopyTexturedRect(const BlitOrCopyRectParams & _params
 	blitParams.srcY1 = _params.srcY1;
 	blitParams.dstY0 = _params.dstY0;
 	blitParams.dstY1 = _params.dstY1;
-	blitParams.mask = _params.mask;
-	blitParams.filter = _params.filter;
+	blitParams.mask = u32(_params.mask);
+	blitParams.filter = u32(_params.filter);
 	if (_params.invertX) {
 		std::swap(blitParams.srcX0, blitParams.srcX1);
 	}

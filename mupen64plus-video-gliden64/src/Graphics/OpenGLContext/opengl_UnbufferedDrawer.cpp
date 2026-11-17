@@ -36,7 +36,7 @@ bool UnbufferedDrawer::_updateAttribPointer(u32 _index, const void * _ptr)
 	return true;
 }
 
-void UnbufferedDrawer::drawTriangles(const graphics::Context::DrawTriangleParameters & _params)
+void UnbufferedDrawer::drawTriangles(const gli_draw_triangles_params & _params)
 {
 	{
 		m_cachedAttribArray->enableVertexAttribArray(triangleAttrib::position, true);
@@ -45,7 +45,7 @@ void UnbufferedDrawer::drawTriangles(const graphics::Context::DrawTriangleParame
 			glVertexAttribPointer(triangleAttrib::position, 4, GL_FLOAT, GL_FALSE, sizeof(SPVertex), ptr);
 	}
 
-	if (_params.combiner->usesShade()) {
+	if (static_cast<const graphics::CombinerProgram *>(_params.combiner)->usesShade()) {
 		m_cachedAttribArray->enableVertexAttribArray(triangleAttrib::color, true);
 		const void * ptr = _params.flatColors ? &_params.vertices->flat_r : &_params.vertices->r;
 		if (_updateAttribPointer(triangleAttrib::color, ptr))
@@ -54,7 +54,7 @@ void UnbufferedDrawer::drawTriangles(const graphics::Context::DrawTriangleParame
 	else
 		m_cachedAttribArray->enableVertexAttribArray(triangleAttrib::color, false);
 
-	if (_params.combiner->usesTexture()) {
+	if (static_cast<const graphics::CombinerProgram *>(_params.combiner)->usesTexture()) {
 		m_cachedAttribArray->enableVertexAttribArray(triangleAttrib::texcoord, true);
 		const void * ptr = &_params.vertices->s;
 		if (_updateAttribPointer(triangleAttrib::texcoord, ptr))
@@ -84,7 +84,7 @@ void UnbufferedDrawer::drawTriangles(const graphics::Context::DrawTriangleParame
 	glDrawElements(GLenum(_params.mode), _params.elementsCount, GL_UNSIGNED_SHORT, _params.elements);
 }
 
-void UnbufferedDrawer::drawRects(const graphics::Context::DrawRectParameters & _params)
+void UnbufferedDrawer::drawRects(const gli_draw_rects_params & _params)
 {
 	{
 		m_cachedAttribArray->enableVertexAttribArray(rectAttrib::position, true);
@@ -93,7 +93,7 @@ void UnbufferedDrawer::drawRects(const graphics::Context::DrawRectParameters & _
 			glVertexAttribPointer(rectAttrib::position, 4, GL_FLOAT, GL_FALSE, sizeof(RectVertex), ptr);
 	}
 
-	if (_params.texrect && _params.combiner->usesTile(0)) {
+	if (_params.texrect && static_cast<const graphics::CombinerProgram *>(_params.combiner)->usesTile(0)) {
 		m_cachedAttribArray->enableVertexAttribArray(rectAttrib::texcoord0, true);
 		const void * ptr = &_params.vertices->s0;
 		if (_updateAttribPointer(rectAttrib::texcoord0, ptr))
@@ -101,7 +101,7 @@ void UnbufferedDrawer::drawRects(const graphics::Context::DrawRectParameters & _
 	} else
 		m_cachedAttribArray->enableVertexAttribArray(rectAttrib::texcoord0, false);
 
-	if (_params.texrect && _params.combiner->usesTile(1)) {
+	if (_params.texrect && static_cast<const graphics::CombinerProgram *>(_params.combiner)->usesTile(1)) {
 		m_cachedAttribArray->enableVertexAttribArray(rectAttrib::texcoord1, true);
 		const void * ptr = &_params.vertices->s1;
 		if (_updateAttribPointer(rectAttrib::texcoord1, ptr))

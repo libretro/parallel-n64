@@ -28,14 +28,14 @@ namespace opengl {
 	{
 	public:
 		virtual ~InitRenderbuffer() {}
-		virtual void initRenderbuffer(const graphics::Context::InitRenderbufferParams & _params) = 0;
+		virtual void initRenderbuffer(const gli_init_renderbuffer_params & _params) = 0;
 	};
 
 	class AddFramebufferRenderTarget
 	{
 	public:
 		virtual ~AddFramebufferRenderTarget() {}
-		virtual void addFrameBufferRenderTarget(const graphics::Context::FrameBufferRenderTarget & _params) = 0;
+		virtual void addFrameBufferRenderTarget(const gli_fb_render_target & _params) = 0;
 	};
 
 	class CreatePixelReadBuffer
@@ -49,7 +49,7 @@ namespace opengl {
 	{
 	public:
 		virtual ~BlitFramebuffers() {}
-		virtual bool blitFramebuffers(const graphics::Context::BlitFramebuffersParams & _params) = 0;
+		virtual bool blitFramebuffers(const gli_blit_params & _params) = 0;
 	};
 
 	class BufferManipulationObjectFactory

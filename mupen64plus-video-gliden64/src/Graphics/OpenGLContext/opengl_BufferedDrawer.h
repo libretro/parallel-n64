@@ -15,15 +15,15 @@ namespace opengl {
 			CachedBindBuffer * _bindBuffer);
 		~BufferedDrawer();
 
-		void drawTriangles(const graphics::Context::DrawTriangleParameters & _params) override;
+		void drawTriangles(const gli_draw_triangles_params & _params) override;
 
-		void drawRects(const graphics::Context::DrawRectParameters & _params) override;
+		void drawRects(const gli_draw_rects_params & _params) override;
 
 		void drawLine(f32 _width, SPVertex * _vertices) override;
 
 	private:
-		void _updateRectBuffer(const graphics::Context::DrawRectParameters & _params);
-		void _updateTrianglesBuffers(const graphics::Context::DrawTriangleParameters & _params);
+		void _updateRectBuffer(const gli_draw_rects_params & _params);
+		void _updateTrianglesBuffers(const gli_draw_triangles_params & _params);
 
 		enum class BuffersType {
 			none,

@@ -64,9 +64,9 @@ class RenderbufferStorage : public InitRenderbuffer
 {
 public:
 	RenderbufferStorage(CachedBindRenderbuffer * _bind) : m_bind(_bind) {}
-	void initRenderbuffer(const graphics::Context::InitRenderbufferParams & _params) override
+	void initRenderbuffer(const gli_init_renderbuffer_params & _params) override
 	{
-		m_bind->bind(_params.target, _params.handle);
+		m_bind->bind(_params.target, graphics::ObjectHandle(_params.handle));
 		glRenderbufferStorage(GLenum(_params.target), GLenum(_params.format), _params.width, _params.height);
 	}
 
@@ -82,10 +82,10 @@ class AddFramebufferTexture2D : public AddFramebufferRenderTarget
 public:
 	AddFramebufferTexture2D(CachedBindFramebuffer * _bind) : m_bind(_bind) {}
 
-	void addFrameBufferRenderTarget(const graphics::Context::FrameBufferRenderTarget & _params) override
+	void addFrameBufferRenderTarget(const gli_fb_render_target & _params) override
 	{
-		m_bind->bind(_params.bufferTarget, _params.bufferHandle);
-		if (_params.textureTarget == graphics::textureTarget::RENDERBUFFER) {
+		m_bind->bind(_params.bufferTarget, graphics::ObjectHandle(_params.bufferHandle));
+		if (_params.textureTarget == GLI_TT_RENDERBUFFER) {
 			glFramebufferRenderbuffer(GLenum(_params.bufferTarget),
 				GLenum(_params.attachment),
 				GLenum(_params.textureTarget),
@@ -114,7 +114,7 @@ public:
 #endif
 	}
 
-	void addFrameBufferRenderTarget(const graphics::Context::FrameBufferRenderTarget & _params) override
+	void addFrameBufferRenderTarget(const gli_fb_render_target & _params) override
 	{
 		glNamedFramebufferTexture(GLuint(_params.bufferHandle),
 			GLenum(_params.attachment),
@@ -229,10 +229,10 @@ public:
 		, m_renderer(_renderer) {
 	}
 
-	bool blitFramebuffers(const graphics::Context::BlitFramebuffersParams & _params) override
+	bool blitFramebuffers(const gli_blit_params & _params) override
 	{
-		m_bind->bind(graphics::bufferTarget::READ_FRAMEBUFFER, _params.readBuffer);
-		m_bind->bind(graphics::bufferTarget::DRAW_FRAMEBUFFER, _params.drawBuffer);
+		m_bind->bind(graphics::bufferTarget::READ_FRAMEBUFFER, graphics::ObjectHandle(_params.readBuffer));
+		m_bind->bind(graphics::bufferTarget::DRAW_FRAMEBUFFER, graphics::ObjectHandle(_params.drawBuffer));
 
 		const s32 adrenoCoordFix = (m_renderer == Renderer::Adreno) ? 1 : 0;
 
@@ -257,7 +257,7 @@ private:
 class DummyBlitFramebuffers: public BlitFramebuffers
 {
 public:
-	bool blitFramebuffers(const graphics::Context::BlitFramebuffersParams & _params) override
+	bool blitFramebuffers(const gli_blit_params & _params) override
 	{
 		return false;
 	}

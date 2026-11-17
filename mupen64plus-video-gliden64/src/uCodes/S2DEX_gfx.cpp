@@ -93,8 +93,8 @@ void gli_s2dex_copy_depth_buffer(void)
 
 	DisplayWindow & wnd = dwnd();
 	Context::BlitFramebuffersParams blitParams;
-	blitParams.readBuffer = pTmpBuffer->m_FBO;
-	blitParams.drawBuffer = fbList.getCurrent()->m_FBO;
+	blitParams.readBuffer = u32(pTmpBuffer->m_FBO);
+	blitParams.drawBuffer = u32(fbList.getCurrent()->m_FBO);
 	blitParams.srcX0 = 0;
 	blitParams.srcY0 = 0;
 	blitParams.srcX1 = wnd.getWidth();
@@ -103,8 +103,8 @@ void gli_s2dex_copy_depth_buffer(void)
 	blitParams.dstY0 = 0;
 	blitParams.dstX1 = wnd.getWidth();
 	blitParams.dstY1 = wnd.getHeight();
-	blitParams.mask = blitMask::DEPTH_BUFFER;
-	blitParams.filter = textureParameters::FILTER_NEAREST;
+	blitParams.mask = u32(blitMask::DEPTH_BUFFER);
+	blitParams.filter = u32(textureParameters::FILTER_NEAREST);
 
 	gfxContext.blitFramebuffers(blitParams);
 

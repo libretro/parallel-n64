@@ -8,9 +8,9 @@ namespace opengl {
 	public:
 		virtual ~GraphicsDrawer() {}
 
-		virtual void drawTriangles(const graphics::Context::DrawTriangleParameters & _params) = 0;
+		virtual void drawTriangles(const gli_draw_triangles_params & _params) = 0;
 
-		virtual void drawRects(const graphics::Context::DrawRectParameters & _params) = 0;
+		virtual void drawRects(const gli_draw_rects_params & _params) = 0;
 
 		virtual void drawLine(f32 _width, SPVertex * _vertices) = 0;
 	};

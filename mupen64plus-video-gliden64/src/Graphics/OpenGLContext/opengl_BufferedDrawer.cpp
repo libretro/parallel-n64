@@ -161,7 +161,7 @@ void BufferedDrawer::_updateBuffer(Buffer & _buffer, u32 _count, u32 _dataSize, 
 	_commit(_buffer, _count, _dataSize);
 }
 
-void BufferedDrawer::_updateRectBuffer(const graphics::Context::DrawRectParameters & _params)
+void BufferedDrawer::_updateRectBuffer(const gli_draw_rects_params & _params)
 {
 	const BuffersType type = BuffersType::rects;
 	if (m_type != type) {
@@ -194,7 +194,7 @@ void BufferedDrawer::_updateRectBuffer(const graphics::Context::DrawRectParamete
 }
 
 
-void BufferedDrawer::drawRects(const graphics::Context::DrawRectParameters & _params)
+void BufferedDrawer::drawRects(const gli_draw_rects_params & _params)
 {
 	_updateRectBuffer(_params);
 
@@ -247,7 +247,7 @@ void BufferedDrawer::_updateVertices(bool _flatColors, u32 _count, const SPVerte
 	_updateBuffer(vboBuffer, _count, vboDataSize, m_vertices.data());
 }
 
-void BufferedDrawer::_updateTrianglesBuffers(const graphics::Context::DrawTriangleParameters & _params)
+void BufferedDrawer::_updateTrianglesBuffers(const gli_draw_triangles_params & _params)
 {
 	const BuffersType type = BuffersType::triangles;
 
@@ -266,7 +266,7 @@ void BufferedDrawer::_updateTrianglesBuffers(const graphics::Context::DrawTriang
 	_updateBuffer(eboBuffer, _params.elementsCount, eboDataSize, _params.elements);
 }
 
-void BufferedDrawer::drawTriangles(const graphics::Context::DrawTriangleParameters & _params)
+void BufferedDrawer::drawTriangles(const gli_draw_triangles_params & _params)
 {
 	_updateTrianglesBuffers(_params);
 

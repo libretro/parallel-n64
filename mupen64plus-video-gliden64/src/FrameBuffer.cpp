@@ -128,11 +128,11 @@ void _setAndAttachBufferTexture(ObjectHandle _fbo, CachedTexture *_pTexture, u32
 	}
 
 	Context::FrameBufferRenderTarget bufTarget;
-	bufTarget.bufferHandle = _fbo;
-	bufTarget.bufferTarget = bufferTarget::FRAMEBUFFER;
-	bufTarget.attachment = bufferAttachment::COLOR_ATTACHMENT0;
-	bufTarget.textureTarget = _multisampling ? textureTarget::TEXTURE_2D_MULTISAMPLE : textureTarget::TEXTURE_2D;
-	bufTarget.textureHandle = graphics::ObjectHandle(_pTexture->name);
+	bufTarget.bufferHandle = u32(_fbo);
+	bufTarget.bufferTarget = u32(bufferTarget::FRAMEBUFFER);
+	bufTarget.attachment = u32(bufferAttachment::COLOR_ATTACHMENT0);
+	bufTarget.textureTarget = u32(_multisampling ? textureTarget::TEXTURE_2D_MULTISAMPLE : textureTarget::TEXTURE_2D);
+	bufTarget.textureHandle = _pTexture->name;
 	gfxContext.addFrameBufferRenderTarget(bufTarget);
 	assert(!gfxContext.isFramebufferError());
 }
@@ -223,8 +223,8 @@ void FrameBuffer::resolveMultisampledTexture(bool _bForce)
 		return;
 
 	Context::BlitFramebuffersParams blitParams;
-	blitParams.readBuffer = m_FBO;
-	blitParams.drawBuffer = m_resolveFBO;
+	blitParams.readBuffer = u32(m_FBO);
+	blitParams.drawBuffer = u32(m_resolveFBO);
 	blitParams.srcX0 = 0;
 	blitParams.srcY0 = 0;
 	blitParams.srcX1 = m_pTexture->realWidth;
@@ -233,8 +233,8 @@ void FrameBuffer::resolveMultisampledTexture(bool _bForce)
 	blitParams.dstY0 = 0;
 	blitParams.dstX1 = m_pResolveTexture->realWidth;
 	blitParams.dstY1 = m_pResolveTexture->realHeight;
-	blitParams.mask = blitMask::COLOR_BUFFER;
-	blitParams.filter = textureParameters::FILTER_NEAREST;
+	blitParams.mask = u32(blitMask::COLOR_BUFFER);
+	blitParams.filter = u32(textureParameters::FILTER_NEAREST);
 
 	gfxContext.blitFramebuffers(blitParams);
 
@@ -302,8 +302,8 @@ CachedTexture * FrameBuffer::_getSubTexture(u32 _t)
 	}
 
 	Context::BlitFramebuffersParams blitParams;
-	blitParams.readBuffer = readFBO;
-	blitParams.drawBuffer = m_SubFBO;
+	blitParams.readBuffer = u32(readFBO);
+	blitParams.drawBuffer = u32(m_SubFBO);
 	blitParams.srcX0 = x0;
 	blitParams.srcY0 = y0;
 	blitParams.srcX1 = x0 + copyWidth;
@@ -312,8 +312,8 @@ CachedTexture * FrameBuffer::_getSubTexture(u32 _t)
 	blitParams.dstY0 = 0;
 	blitParams.dstX1 = copyWidth;
 	blitParams.dstY1 = copyHeight;
-	blitParams.mask = blitMask::COLOR_BUFFER;
-	blitParams.filter = textureParameters::FILTER_NEAREST;
+	blitParams.mask = u32(blitMask::COLOR_BUFFER);
+	blitParams.filter = u32(textureParameters::FILTER_NEAREST);
 
 	gfxContext.blitFramebuffers(blitParams);
 
@@ -344,8 +344,8 @@ CachedTexture * FrameBuffer::_copyFrameBufferTexture()
 		_initCopyTexture();
 
 	Context::BlitFramebuffersParams blitParams;
-	blitParams.readBuffer = m_FBO;
-	blitParams.drawBuffer = m_copyFBO;
+	blitParams.readBuffer = u32(m_FBO);
+	blitParams.drawBuffer = u32(m_copyFBO);
 	blitParams.srcX0 = 0;
 	blitParams.srcY0 = 0;
 	blitParams.srcX1 = m_pTexture->realWidth;
@@ -354,8 +354,8 @@ CachedTexture * FrameBuffer::_copyFrameBufferTexture()
 	blitParams.dstY0 = 0;
 	blitParams.dstX1 = m_pTexture->realWidth;
 	blitParams.dstY1 = m_pTexture->realHeight;
-	blitParams.mask = blitMask::COLOR_BUFFER;
-	blitParams.filter = textureParameters::FILTER_NEAREST;
+	blitParams.mask = u32(blitMask::COLOR_BUFFER);
+	blitParams.filter = u32(textureParameters::FILTER_NEAREST);
 
 	gfxContext.blitFramebuffers(blitParams);
 
@@ -1607,11 +1607,11 @@ FrameBuffer * _createStereoBuffer(const FrameBuffer * _pMainBuffer)
 	setParams.magFilter = u32(textureParameters::FILTER_LINEAR);
 	gfxContext.setTextureParameters(setParams);
 
-	bufTarget.bufferHandle = pLeftEye->m_FBO;
-	bufTarget.bufferTarget = bufferTarget::DRAW_FRAMEBUFFER;
-	bufTarget.attachment = bufferAttachment::COLOR_ATTACHMENT0;
-	bufTarget.textureTarget = textureTarget::TEXTURE_2D;
-	bufTarget.textureHandle = graphics::ObjectHandle(pTexture->name);
+	bufTarget.bufferHandle = u32(pLeftEye->m_FBO);
+	bufTarget.bufferTarget = u32(bufferTarget::DRAW_FRAMEBUFFER);
+	bufTarget.attachment = u32(bufferAttachment::COLOR_ATTACHMENT0);
+	bufTarget.textureTarget = u32(textureTarget::TEXTURE_2D);
+	bufTarget.textureHandle = pTexture->name;
 	gfxContext.addFrameBufferRenderTarget(bufTarget);
 	return pLeftEye;
 }
@@ -1638,8 +1638,8 @@ bool gli_fb_stereo_copy(FrameBuffer * _pBuffer, FrameBuffer ** _ppLeftEye)
 		readBuffer = _pBuffer->m_resolveFBO;
 	}
 
-	params.readBuffer = readBuffer;
-	params.drawBuffer = pLeftEye->m_FBO;
+	params.readBuffer = u32(readBuffer);
+	params.drawBuffer = u32(pLeftEye->m_FBO);
 	params.srcX0 = 0;
 	params.srcY0 = 0;
 	params.srcX1 = pSource->realWidth;
@@ -1648,8 +1648,8 @@ bool gli_fb_stereo_copy(FrameBuffer * _pBuffer, FrameBuffer ** _ppLeftEye)
 	params.dstY0 = 0;
 	params.dstX1 = pLeftEye->m_pTexture->realWidth;
 	params.dstY1 = pLeftEye->m_pTexture->realHeight;
-	params.mask = blitMask::COLOR_BUFFER;
-	params.filter = textureParameters::FILTER_NEAREST;
+	params.mask = u32(blitMask::COLOR_BUFFER);
+	params.filter = u32(textureParameters::FILTER_NEAREST);
 
 	copied = gfxContext.blitFramebuffers(params);
 
@@ -1706,11 +1706,11 @@ FrameBuffer * gli_fb_pp_create(const FrameBuffer * _pMainBuffer)
 	gfxContext.setTextureParameters(setParams);
 
 	Context::FrameBufferRenderTarget bufTarget;
-	bufTarget.bufferHandle = pResultBuffer->m_FBO;
-	bufTarget.bufferTarget = bufferTarget::DRAW_FRAMEBUFFER;
-	bufTarget.attachment = bufferAttachment::COLOR_ATTACHMENT0;
-	bufTarget.textureTarget = textureTarget::TEXTURE_2D;
-	bufTarget.textureHandle = graphics::ObjectHandle(pTexture->name);
+	bufTarget.bufferHandle = u32(pResultBuffer->m_FBO);
+	bufTarget.bufferTarget = u32(bufferTarget::DRAW_FRAMEBUFFER);
+	bufTarget.attachment = u32(bufferAttachment::COLOR_ATTACHMENT0);
+	bufTarget.textureTarget = u32(textureTarget::TEXTURE_2D);
+	bufTarget.textureHandle = pTexture->name;
 	gfxContext.addFrameBufferRenderTarget(bufTarget);
 	assert(!gfxContext.isFramebufferError());
 	return pResultBuffer;

@@ -460,8 +460,8 @@ public:
 	s32 getTextureUnpackAlignment() const override { return m_unpack; }
 	s32 getMaxTextureSize() const override { return vkr_get_caps(g_r)->max_texture_size; }
 	f32 getMaxAnisotropy() const override { return vkr_get_caps(g_r)->max_anisotropy; }
-	void bindImageTexture(const Context::BindImageTextureParameters & _p) override {
-		vkr_bind_image(g_r, _p.imageUnit == textureImageUnits::DepthZ ? VKR_BIND_DEPTH_Z : VKR_BIND_DEPTH_DZ, u32(_p.texture));
+	void bindImageTexture(const gli_bind_image_texture_params & _p) override {
+		vkr_bind_image(g_r, _p.imageUnit == u32(textureImageUnits::DepthZ) ? VKR_BIND_DEPTH_Z : VKR_BIND_DEPTH_DZ, _p.texture);
 	}
 	u32 convertInternalTextureFormat(u32 _f) const override { return _f; }
 	void textureBarrier() override {}
@@ -476,26 +476,26 @@ public:
 		else if (_t == bufferTarget::DRAW_FRAMEBUFFER) vkr_fbo_bind(g_r, 0, 1, u32(_h));
 		else vkr_fbo_bind(g_r, 1, 1, u32(_h));
 	}
-	void addFrameBufferRenderTarget(const Context::FrameBufferRenderTarget & _p) override {
+	void addFrameBufferRenderTarget(const gli_fb_render_target & _p) override {
 		/* attaching binds, as it does in GL: a new buffer is drawn to without another bind */
-		bindFramebuffer(_p.bufferTarget, _p.bufferHandle);
-		if (_p.attachment == bufferAttachment::COLOR_ATTACHMENT0)
+		bindFramebuffer(_p.bufferTarget, ObjectHandle(_p.bufferHandle));
+		if (_p.attachment == u32(bufferAttachment::COLOR_ATTACHMENT0))
 			vkr_fbo_color(g_r, u32(_p.bufferHandle), u32(_p.textureHandle));
-		else if (_p.attachment == bufferAttachment::DEPTH_ATTACHMENT)
+		else if (_p.attachment == u32(bufferAttachment::DEPTH_ATTACHMENT))
 			vkr_fbo_depth(g_r, u32(_p.bufferHandle), u32(_p.textureHandle));
 	}
 	ObjectHandle createRenderbuffer() override { return ObjectHandle(vkr_texture_new(g_r)); }
-	void initRenderbuffer(const Context::InitRenderbufferParams & _p) override {
+	void initRenderbuffer(const gli_init_renderbuffer_params & _p) override {
 		vkr_texture_init(g_r, u32(_p.handle), toFormat(u32(_p.format)), 1, _p.width, _p.height, 0, 1, nullptr, 0);
 	}
-	bool blitFramebuffers(const Context::BlitFramebuffersParams & _p) override {
+	bool blitFramebuffers(const gli_blit_params & _p) override {
 		_windowSize();
 		const u32 mask(_p.mask);
 		const int color = (mask & u32(blitMask::COLOR_BUFFER)) != 0;
 		const int depth = (mask & u32(blitMask::DEPTH_BUFFER)) != 0;
 		return vkr_blit(g_r, u32(_p.readBuffer), u32(_p.drawBuffer), _p.srcX0, _p.srcY0, _p.srcX1, _p.srcY1,
 			_p.dstX0, _p.dstY0, _p.dstX1, _p.dstY1, color, depth,
-			_p.filter == Parameter(textureParameters::FILTER_LINEAR) ? 1 : 0) != 0;
+			_p.filter == GLI_TP_FILTER_LINEAR ? 1 : 0) != 0;
 	}
 	void setDrawBuffers(u32) override {}
 	PixelReadBuffer * createPixelReadBuffer(size_t _bytes) override { return new VkPixelReadBuffer(_bytes); }
@@ -576,7 +576,7 @@ public:
 		vkr_jitter(g_r, jitter[0], jitter[1]);
 	}
 
-	void drawTriangles(const Context::DrawTriangleParameters & _p) override {
+	void drawTriangles(const gli_draw_triangles_params & _p) override {
 		/* converted straight into the ring the GPU reads */
 		vkr_tri_vertex * dst = vkr_tri_reserve(g_r, _p.verticesCount);
 		const f32 lights = gli_isHWLightingAllowed() ? f32(_p.vertices[0].HWLight) : 0.f;
@@ -603,7 +603,7 @@ public:
 		vkr_draw_tris(g_r, topology, _p.verticesCount, _p.elements != nullptr ? _p.elementsCount : 0);
 		vkr_jitter(g_r, 0.0f, 0.0f);
 	}
-	void drawRects(const Context::DrawRectParameters & _p) override {
+	void drawRects(const gli_draw_rects_params & _p) override {
 		vkr_rect_vertex * dst = vkr_rect_reserve(g_r, _p.verticesCount);
 		memcpy(dst, _p.vertices, _p.verticesCount * sizeof(RectVertex));
 		if (!_p.texrect) {

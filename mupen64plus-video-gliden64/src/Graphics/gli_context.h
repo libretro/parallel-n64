@@ -89,6 +89,75 @@ typedef struct gli_bind_texture_params
 } gli_bind_texture_params;
 #define GLI_BIND_TEXTURE_PARAMS_DEFAULT { 0, GLI_PARAM_INVALID, GLI_PARAM_INVALID }
 
+typedef struct gli_bind_image_texture_params
+{
+	u32 imageUnit;
+	u32 texture;
+	u32 accessMode;
+	u32 textureFormat;
+} gli_bind_image_texture_params;
+#define GLI_BIND_IMAGE_TEXTURE_PARAMS_DEFAULT { GLI_PARAM_INVALID, 0, GLI_PARAM_INVALID, GLI_PARAM_INVALID }
+
+/* The frame buffer blocks */
+typedef struct gli_init_renderbuffer_params
+{
+	u32 handle;
+	u32 target;
+	u32 format;
+	u32 width;
+	u32 height;
+} gli_init_renderbuffer_params;
+#define GLI_INIT_RENDERBUFFER_PARAMS_DEFAULT { 0, GLI_PARAM_INVALID, GLI_PARAM_INVALID, 0, 0 }
+
+typedef struct gli_fb_render_target
+{
+	u32 bufferHandle;
+	u32 bufferTarget;
+	u32 attachment;
+	u32 textureTarget;
+	u32 textureHandle;
+} gli_fb_render_target;
+#define GLI_FB_RENDER_TARGET_DEFAULT { 0, GLI_PARAM_INVALID, GLI_PARAM_INVALID, GLI_PARAM_INVALID, 0 }
+
+typedef struct gli_blit_params
+{
+	u32 readBuffer;
+	u32 drawBuffer;
+	s32 srcX0, srcY0, srcX1, srcY1;
+	s32 dstX0, dstY0, dstX1, dstY1;
+	u32 mask;
+	u32 filter;
+} gli_blit_params;
+#define GLI_BLIT_PARAMS_DEFAULT { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, GLI_PARAM_INVALID, GLI_PARAM_INVALID }
+
+/* The draw blocks; the program drawn with is a combiner's or a shader's,
+ * by its C face */
+struct SPVertex;
+struct RectVertex;
+struct gli_cprog;
+typedef struct gli_draw_triangles_params
+{
+	u32 mode;
+	u32 elementsType;
+	u32 verticesCount;
+	u32 elementsCount;
+	bool flatColors;
+	struct SPVertex *vertices;
+	void *elements;
+	const struct gli_cprog *combiner;
+} gli_draw_triangles_params;
+#define GLI_DRAW_TRIANGLES_PARAMS_DEFAULT { GLI_PARAM_INVALID, GLI_PARAM_INVALID, 0, 0, 0, NULL, NULL, NULL }
+
+typedef struct gli_draw_rects_params
+{
+	u32 mode;
+	bool texrect;
+	u32 verticesCount;
+	struct RectVertex *vertices;
+	const struct gli_cprog *combiner;
+} gli_draw_rects_params;
+#define GLI_DRAW_RECTS_PARAMS_DEFAULT { GLI_PARAM_INVALID, 1, 0, NULL, NULL }
+
 /* The formats of the textures a frame buffer is made of, by what each is
  * for: internal format, format, data type (gli_params.h numbers) and bytes
  * a texel. A backend sets what it has; the rest stay GLI_PARAM_INVALID (bytes 0). */
@@ -163,7 +232,7 @@ typedef struct gli_context_ops
 	s32 (*getTextureUnpackAlignment)(const void *_impl);
 	s32 (*getMaxTextureSize)(const void *_impl);
 	f32 (*getMaxAnisotropy)(const void *_impl);
-	void (*bindImageTexture)(void *_impl, const void *_params);
+	void (*bindImageTexture)(void *_impl, const gli_bind_image_texture_params *_params);
 	u32 (*convertInternalTextureFormat)(const void *_impl, u32 _format);
 	void (*textureBarrier)(void *_impl);
 	/* frame buffers: the backend sets the formats it has in @_formats */
@@ -171,10 +240,10 @@ typedef struct gli_context_ops
 	u32 (*createFramebuffer)(void *_impl);
 	void (*deleteFramebuffer)(void *_impl, u32 _name);
 	void (*bindFramebuffer)(void *_impl, u32 _target, u32 _name);
-	void (*addFrameBufferRenderTarget)(void *_impl, const void *_params);
+	void (*addFrameBufferRenderTarget)(void *_impl, const gli_fb_render_target *_params);
 	u32 (*createRenderbuffer)(void *_impl);
-	void (*initRenderbuffer)(void *_impl, const void *_params);
-	bool (*blitFramebuffers)(void *_impl, const void *_params);
+	void (*initRenderbuffer)(void *_impl, const gli_init_renderbuffer_params *_params);
+	bool (*blitFramebuffers)(void *_impl, const gli_blit_params *_params);
 	void (*setDrawBuffers)(void *_impl, u32 _num);
 	void *(*createPixelReadBuffer)(void *_impl, size_t _sizeInBytes);
 	void *(*createColorBufferReader)(void *_impl, void *_texture);
@@ -197,8 +266,8 @@ typedef struct gli_context_ops
 	void *(*createFXAAShader)(void *_impl);
 	void (*resetShaderProgram)(void *_impl);
 	/* drawing */
-	void (*drawTriangles)(void *_impl, const void *_params);
-	void (*drawRects)(void *_impl, const void *_params);
+	void (*drawTriangles)(void *_impl, const gli_draw_triangles_params *_params);
+	void (*drawRects)(void *_impl, const gli_draw_rects_params *_params);
 	void (*drawLine)(void *_impl, f32 _width, void *_vertices);
 	f32 (*getMaxLineWidth)(void *_impl);
 	s32 (*getMaxMSAALevel)(void *_impl);

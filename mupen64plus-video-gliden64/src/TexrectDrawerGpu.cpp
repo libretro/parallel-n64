@@ -65,11 +65,11 @@ void gli_texrect_gpu_init(void)
 	gfxContext.setTextureParameters(texParams);
 
 	Context::FrameBufferRenderTarget bufTarget;
-	bufTarget.bufferHandle = l_FBO;
-	bufTarget.bufferTarget = bufferTarget::DRAW_FRAMEBUFFER;
-	bufTarget.attachment = bufferAttachment::COLOR_ATTACHMENT0;
-	bufTarget.textureTarget = textureTarget::TEXTURE_2D;
-	bufTarget.textureHandle = graphics::ObjectHandle(l_pTexture->name);
+	bufTarget.bufferHandle = u32(l_FBO);
+	bufTarget.bufferTarget = u32(bufferTarget::DRAW_FRAMEBUFFER);
+	bufTarget.attachment = u32(bufferAttachment::COLOR_ATTACHMENT0);
+	bufTarget.textureTarget = u32(textureTarget::TEXTURE_2D);
+	bufTarget.textureHandle = l_pTexture->name;
 	gfxContext.addFrameBufferRenderTarget(bufTarget);
 
 	/* check if everything is OK */
@@ -122,7 +122,7 @@ void gli_texrect_gpu_restart(void)
 void gli_texrect_gpu_draw_rect(RectVertex * _pRect)
 {
 	Context::DrawRectParameters rectParams;
-	rectParams.mode = drawmode::TRIANGLE_STRIP;
+	rectParams.mode = u32(drawmode::TRIANGLE_STRIP);
 	rectParams.verticesCount = 4;
 	rectParams.vertices = _pRect;
 	rectParams.combiner = currentCombiner();
@@ -170,7 +170,7 @@ void gli_texrect_gpu_update_scissor(FrameBuffer * _pBuffer)
 void gli_texrect_gpu_composite(RectVertex * _rect)
 {
 	Context::DrawRectParameters rectParams;
-	rectParams.mode = drawmode::TRIANGLE_STRIP;
+	rectParams.mode = u32(drawmode::TRIANGLE_STRIP);
 	rectParams.verticesCount = 4;
 	rectParams.vertices = _rect;
 	rectParams.combiner = l_programTex;
@@ -188,7 +188,7 @@ void gli_texrect_gpu_clear(RectVertex * _rect, u32 _width, u32 _height)
 
 	gfxContext.enable(enable::BLEND, false);
 	gfxContext.enable(enable::SCISSOR_TEST, false);
-	rectParams.mode = drawmode::TRIANGLE_STRIP;
+	rectParams.mode = u32(drawmode::TRIANGLE_STRIP);
 	rectParams.verticesCount = 4;
 	rectParams.vertices = _rect;
 	rectParams.combiner = l_programClear;

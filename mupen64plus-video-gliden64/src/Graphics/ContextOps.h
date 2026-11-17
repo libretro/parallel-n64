@@ -71,9 +71,9 @@ namespace graphics {
 		static s32 getTextureUnpackAlignment(const void * _p) { return C(_p)->T::getTextureUnpackAlignment(); }
 		static s32 getMaxTextureSize(const void * _p) { return C(_p)->T::getMaxTextureSize(); }
 		static f32 getMaxAnisotropy(const void * _p) { return C(_p)->T::getMaxAnisotropy(); }
-		static void bindImageTexture(void * _p, const void * _params)
+		static void bindImageTexture(void * _p, const gli_bind_image_texture_params * _params)
 		{
-			I(_p)->T::bindImageTexture(*static_cast<const Context::BindImageTextureParameters *>(_params));
+			I(_p)->T::bindImageTexture(*_params);
 		}
 		static u32 convertInternalTextureFormat(const void * _p, u32 _format) { return C(_p)->T::convertInternalTextureFormat(_format); }
 		static void textureBarrier(void * _p) { I(_p)->T::textureBarrier(); }
@@ -85,18 +85,18 @@ namespace graphics {
 		{
 			I(_p)->T::bindFramebuffer(BufferTargetParam(_target), ObjectHandle(_name));
 		}
-		static void addFrameBufferRenderTarget(void * _p, const void * _params)
+		static void addFrameBufferRenderTarget(void * _p, const gli_fb_render_target * _params)
 		{
-			I(_p)->T::addFrameBufferRenderTarget(*static_cast<const Context::FrameBufferRenderTarget *>(_params));
+			I(_p)->T::addFrameBufferRenderTarget(*_params);
 		}
 		static u32 createRenderbuffer(void * _p) { return u32(I(_p)->T::createRenderbuffer()); }
-		static void initRenderbuffer(void * _p, const void * _params)
+		static void initRenderbuffer(void * _p, const gli_init_renderbuffer_params * _params)
 		{
-			I(_p)->T::initRenderbuffer(*static_cast<const Context::InitRenderbufferParams *>(_params));
+			I(_p)->T::initRenderbuffer(*_params);
 		}
-		static bool blitFramebuffers(void * _p, const void * _params)
+		static bool blitFramebuffers(void * _p, const gli_blit_params * _params)
 		{
-			return I(_p)->T::blitFramebuffers(*static_cast<const Context::BlitFramebuffersParams *>(_params));
+			return I(_p)->T::blitFramebuffers(*_params);
 		}
 		static void setDrawBuffers(void * _p, u32 _num) { I(_p)->T::setDrawBuffers(_num); }
 		static void * createPixelReadBuffer(void * _p, size_t _bytes) { return I(_p)->T::createPixelReadBuffer(_bytes); }
@@ -136,13 +136,13 @@ namespace graphics {
 		static void * createFXAAShader(void * _p) { return I(_p)->T::createFXAAShader(); }
 		static void resetShaderProgram(void * _p) { I(_p)->T::resetShaderProgram(); }
 
-		static void drawTriangles(void * _p, const void * _params)
+		static void drawTriangles(void * _p, const gli_draw_triangles_params * _params)
 		{
-			I(_p)->T::drawTriangles(*static_cast<const Context::DrawTriangleParameters *>(_params));
+			I(_p)->T::drawTriangles(*_params);
 		}
-		static void drawRects(void * _p, const void * _params)
+		static void drawRects(void * _p, const gli_draw_rects_params * _params)
 		{
-			I(_p)->T::drawRects(*static_cast<const Context::DrawRectParameters *>(_params));
+			I(_p)->T::drawRects(*_params);
 		}
 		static void drawLine(void * _p, f32 _width, void * _vertices) { I(_p)->T::drawLine(_width, static_cast<SPVertex *>(_vertices)); }
 		static f32 getMaxLineWidth(void * _p) { return I(_p)->T::getMaxLineWidth(); }

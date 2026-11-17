@@ -121,15 +121,15 @@ void DepthBufferToRDRAM::init()
 
 	m_FBO = gfxContext.createFramebuffer();
 	Context::FrameBufferRenderTarget bufTarget;
-	bufTarget.bufferHandle = m_FBO;
-	bufTarget.bufferTarget = bufferTarget::DRAW_FRAMEBUFFER;
-	bufTarget.attachment = bufferAttachment::COLOR_ATTACHMENT0;
-	bufTarget.textureTarget = textureTarget::TEXTURE_2D;
-	bufTarget.textureHandle = graphics::ObjectHandle(m_pColorTexture->name);
+	bufTarget.bufferHandle = u32(m_FBO);
+	bufTarget.bufferTarget = u32(bufferTarget::DRAW_FRAMEBUFFER);
+	bufTarget.attachment = u32(bufferAttachment::COLOR_ATTACHMENT0);
+	bufTarget.textureTarget = u32(textureTarget::TEXTURE_2D);
+	bufTarget.textureHandle = m_pColorTexture->name;
 	gfxContext.addFrameBufferRenderTarget(bufTarget);
 
-	bufTarget.attachment = bufferAttachment::DEPTH_ATTACHMENT;
-	bufTarget.textureHandle = graphics::ObjectHandle(m_pDepthTexture->name);
+	bufTarget.attachment = u32(bufferAttachment::DEPTH_ATTACHMENT);
+	bufTarget.textureHandle = m_pDepthTexture->name;
 	gfxContext.addFrameBufferRenderTarget(bufTarget);
 
 	// check if everything is OK
@@ -201,8 +201,8 @@ bool DepthBufferToRDRAM::_prepareCopy(u32& _startAddress, bool _copyChunk)
 	}
 
 	Context::BlitFramebuffersParams blitParams;
-	blitParams.readBuffer = readBuffer;
-	blitParams.drawBuffer = m_FBO;
+	blitParams.readBuffer = u32(readBuffer);
+	blitParams.drawBuffer = u32(m_FBO);
 	blitParams.srcX0 = 0;
 	blitParams.srcY0 = 0;
 	blitParams.srcX1 = m_pCurFrameBuffer->m_pTexture->realWidth;
@@ -211,8 +211,8 @@ bool DepthBufferToRDRAM::_prepareCopy(u32& _startAddress, bool _copyChunk)
 	blitParams.dstY0 = 0;
 	blitParams.dstX1 = m_pCurFrameBuffer->m_width;
 	blitParams.dstY1 = m_pCurFrameBuffer->m_height;
-	blitParams.mask = blitMask::DEPTH_BUFFER;
-	blitParams.filter = textureParameters::FILTER_NEAREST;
+	blitParams.mask = u32(blitMask::DEPTH_BUFFER);
+	blitParams.filter = u32(textureParameters::FILTER_NEAREST);
 
 	gfxContext.blitFramebuffers(blitParams);
 

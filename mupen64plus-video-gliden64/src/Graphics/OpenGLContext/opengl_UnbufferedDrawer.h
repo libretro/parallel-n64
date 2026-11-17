@@ -12,9 +12,9 @@ namespace opengl {
 		UnbufferedDrawer(const GLInfo & _glinfo, CachedVertexAttribArray * _cachedAttribArray);
 		~UnbufferedDrawer();
 
-		void drawTriangles(const graphics::Context::DrawTriangleParameters & _params) override;
+		void drawTriangles(const gli_draw_triangles_params & _params) override;
 
-		void drawRects(const graphics::Context::DrawRectParameters & _params) override;
+		void drawRects(const gli_draw_rects_params & _params) override;
 
 		void drawLine(f32 _width, SPVertex * _vertices) override;
 

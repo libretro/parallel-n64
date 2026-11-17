@@ -76,7 +76,7 @@ namespace opengl {
 
 		f32 getMaxAnisotropy() const override;
 
-		void bindImageTexture(const graphics::Context::BindImageTextureParameters & _params) override;
+		void bindImageTexture(const gli_bind_image_texture_params & _params) override;
 
 		u32 convertInternalTextureFormat(u32 _format) const override;
 
@@ -94,11 +94,11 @@ namespace opengl {
 
 		graphics::ObjectHandle createRenderbuffer() override;
 
-		void initRenderbuffer(const graphics::Context::InitRenderbufferParams & _params) override;
+		void initRenderbuffer(const gli_init_renderbuffer_params & _params) override;
 
-		void addFrameBufferRenderTarget(const graphics::Context::FrameBufferRenderTarget & _params) override;
+		void addFrameBufferRenderTarget(const gli_fb_render_target & _params) override;
 
-		bool blitFramebuffers(const graphics::Context::BlitFramebuffersParams & _params) override;
+		bool blitFramebuffers(const gli_blit_params & _params) override;
 
 		void setDrawBuffers(u32 _num) override;
 
@@ -140,9 +140,9 @@ namespace opengl {
 
 		void resetShaderProgram() override;
 
-		void drawTriangles(const graphics::Context::DrawTriangleParameters & _params) override;
+		void drawTriangles(const gli_draw_triangles_params & _params) override;
 
-		void drawRects(const graphics::Context::DrawRectParameters & _params) override;
+		void drawRects(const gli_draw_rects_params & _params) override;
 
 		void drawLine(f32 _width, SPVertex * _vertices) override;
 

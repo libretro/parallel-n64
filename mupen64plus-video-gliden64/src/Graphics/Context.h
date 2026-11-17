@@ -126,11 +126,8 @@ namespace graphics {
 
 		static f32 getMaxAnisotropy() { return gli_ctx.ops->getMaxAnisotropy(gli_ctx.impl); }
 
-		struct BindImageTextureParameters {
-			ImageUnitParam imageUnit;
-			ObjectHandle texture;
-			ImageAccessModeParam accessMode;
-			InternalColorFormatParam textureFormat;
+		struct BindImageTextureParameters : gli_bind_image_texture_params {
+			BindImageTextureParameters() : gli_bind_image_texture_params GLI_BIND_IMAGE_TEXTURE_PARAMS_DEFAULT {}
 		};
 
 		static void bindImageTexture(const BindImageTextureParameters & _params) { gli_ctx.ops->bindImageTexture(gli_ctx.impl, &_params); }
@@ -151,40 +148,20 @@ namespace graphics {
 
 		static ObjectHandle createRenderbuffer() { return ObjectHandle(gli_ctx.ops->createRenderbuffer(gli_ctx.impl)); }
 
-		struct InitRenderbufferParams {
-			ObjectHandle handle;
-			TextureTargetParam target;
-			InternalColorFormatParam format;
-			u32 width = 0;
-			u32 height = 0;
+		struct InitRenderbufferParams : gli_init_renderbuffer_params {
+			InitRenderbufferParams() : gli_init_renderbuffer_params GLI_INIT_RENDERBUFFER_PARAMS_DEFAULT {}
 		};
 
 		static void initRenderbuffer(const InitRenderbufferParams & _params) { gli_ctx.ops->initRenderbuffer(gli_ctx.impl, &_params); }
 
-		struct FrameBufferRenderTarget {
-			ObjectHandle bufferHandle;
-			BufferTargetParam bufferTarget;
-			BufferAttachmentParam attachment;
-			Parameter textureTarget;
-			ObjectHandle textureHandle;
+		struct FrameBufferRenderTarget : gli_fb_render_target {
+			FrameBufferRenderTarget() : gli_fb_render_target GLI_FB_RENDER_TARGET_DEFAULT {}
 		};
 
 		static void addFrameBufferRenderTarget(const FrameBufferRenderTarget & _params) { gli_ctx.ops->addFrameBufferRenderTarget(gli_ctx.impl, &_params); }
 
-		struct BlitFramebuffersParams
-		{
-			ObjectHandle readBuffer;
-			ObjectHandle drawBuffer;
-			s32 srcX0;
-			s32 srcY0;
-			s32 srcX1;
-			s32 srcY1;
-			s32 dstX0;
-			s32 dstY0;
-			s32 dstX1;
-			s32 dstY1;
-			Parameter mask;
-			Parameter filter;
+		struct BlitFramebuffersParams : gli_blit_params {
+			BlitFramebuffersParams() : gli_blit_params GLI_BLIT_PARAMS_DEFAULT {}
 		};
 
 		static bool blitFramebuffers(const BlitFramebuffersParams & _params) { return gli_ctx.ops->blitFramebuffers(gli_ctx.impl, &_params); }
@@ -236,28 +213,19 @@ namespace graphics {
 
 		/*---------------Draw-------------*/
 
-		struct DrawTriangleParameters
-		{
-			DrawModeParam mode;
-			Parameter elementsType;
-			u32 verticesCount = 0;
-			u32 elementsCount = 0;
-			bool flatColors = false;
-			SPVertex * vertices = nullptr;
-			void * elements = nullptr;
-			const CombinerProgram * combiner = nullptr;
+		struct DrawTriangleParameters : gli_draw_triangles_params {
+			DrawTriangleParameters() : gli_draw_triangles_params GLI_DRAW_TRIANGLES_PARAMS_DEFAULT {}
 		};
 
 		static void drawTriangles(const DrawTriangleParameters & _params) { gli_ctx.ops->drawTriangles(gli_ctx.impl, &_params); }
 
-		struct DrawRectParameters
-		{
-			DrawModeParam mode;
-			bool texrect = true;
-			u32 verticesCount = 0;
-			RectVertex * vertices = nullptr;
-			const CombinerProgram * combiner = nullptr;
+		struct DrawRectParameters : gli_draw_rects_params {
+			DrawRectParameters() : gli_draw_rects_params GLI_DRAW_RECTS_PARAMS_DEFAULT {}
 		};
+
+		static_assert(sizeof(DrawRectParameters) == sizeof(gli_draw_rects_params) && sizeof(DrawTriangleParameters) == sizeof(gli_draw_triangles_params)
+			&& sizeof(BlitFramebuffersParams) == sizeof(gli_blit_params) && sizeof(FrameBufferRenderTarget) == sizeof(gli_fb_render_target)
+			&& sizeof(InitRenderbufferParams) == sizeof(gli_init_renderbuffer_params) && sizeof(BindImageTextureParameters) == sizeof(gli_bind_image_texture_params), "the C++ blocks are the C structs");
 
 		static void drawRects(const DrawRectParameters & _params) { gli_ctx.ops->drawRects(gli_ctx.impl, &_params); }
 
