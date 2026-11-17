@@ -10,7 +10,8 @@ namespace graphics {
 	class PixelReadBuffer;
 }
 
-struct CachedTexture;
+struct gli_tex;
+typedef struct gli_tex CachedTexture;
 struct FrameBuffer;
 
 /* A full copy at the default Async or TripleBuffer colour copy setting is

@@ -38,6 +38,8 @@ void gli_window_gpu_stop(void);
 void gli_drawer_init_data(void);
 void gli_drawer_destroy_data(void);
 bool gli_drawer_is_drawing(void);
+/* whether the drawer draws triangles (not rects or lines) */
+bool gli_drawer_is_triangle(void);
 void gli_gl_reset_error(void);
 
 #ifdef __cplusplus

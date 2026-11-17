@@ -64,12 +64,12 @@ void ColorBufferToRDRAM::_initFBTexture(void)
 {
 	const FramebufferTextureFormats & fbTexFormat = gfxContext.getFramebufferTextureFormats();
 
-	m_pTexture = textureCache().addFrameBufferTexture(textureTarget::TEXTURE_2D);
+	m_pTexture = gli_textures_add_fb(u32(textureTarget::TEXTURE_2D));
 	m_pTexture->format = G_IM_FMT_RGBA;
 	m_pTexture->size = 2;
 	m_pTexture->clampS = 1;
 	m_pTexture->clampT = 1;
-	m_pTexture->frameBufferTexture = CachedTexture::fbOneSample;
+	m_pTexture->frameBufferTexture = GLI_TEX_FB_ONE_SAMPLE;
 	m_pTexture->maskS = 0;
 	m_pTexture->maskT = 0;
 	m_pTexture->mirrorS = 0;
@@ -114,7 +114,7 @@ void ColorBufferToRDRAM::_initFBTexture(void)
 		bufTarget.bufferTarget = bufferTarget::DRAW_FRAMEBUFFER;
 		bufTarget.attachment = bufferAttachment::COLOR_ATTACHMENT0;
 		bufTarget.textureTarget = textureTarget::TEXTURE_2D;
-		bufTarget.textureHandle = m_pTexture->name;
+		bufTarget.textureHandle = graphics::ObjectHandle(m_pTexture->name);
 		gfxContext.addFrameBufferRenderTarget(bufTarget);
 	}
 
@@ -134,7 +134,7 @@ void ColorBufferToRDRAM::_destroyFBTexure(void)
 	m_readback.reset(1);
 
 	if (m_pTexture != nullptr) {
-		textureCache().removeFrameBufferTexture(m_pTexture);
+		gli_textures_remove_fb(m_pTexture);
 		m_pTexture = nullptr;
 	}
 }

@@ -395,6 +395,7 @@ SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/DepthBuffer.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/CombinerDecode.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/TextureDecode.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/TextureSizes.c
+SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/Textures.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/TextureLRU.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/VIUpdate.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/FrameBufferRdram.c
@@ -465,7 +466,6 @@ SOURCES_CXX   += \
     $(VIDEODIR_GLIDEN64)/src/DisplayWindowGpu.cpp                                                 \
     $(VIDEODIR_GLIDEN64)/src/FrameBuffer.cpp                                                      \
     $(VIDEODIR_GLIDEN64)/src/TexrectDrawerGpu.cpp                                                    \
-    $(VIDEODIR_GLIDEN64)/src/Textures.cpp                                                         \
     $(VIDEODIR_GLIDEN64)/src/BufferCopy/ColorBufferToRDRAM.cpp                                    \
     $(VIDEODIR_GLIDEN64)/src/BufferCopy/DepthBufferToRDRAM.cpp                                    \
     $(VIDEODIR_GLIDEN64)/src/BufferCopy/RDRAMtoColorBuffer.cpp                                    \

@@ -15,7 +15,8 @@ namespace graphics {
 	class CombinerProgram;
 }
 
-struct CachedTexture;
+struct gli_tex;
+typedef struct gli_tex CachedTexture;
 struct FrameBuffer;
 
 #define VERTBUFF_SIZE 256U

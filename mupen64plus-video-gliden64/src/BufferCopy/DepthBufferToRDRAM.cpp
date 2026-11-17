@@ -61,12 +61,12 @@ void DepthBufferToRDRAM::init()
 	if (m_numSlots == 0)
 		return;
 
-	m_pColorTexture = textureCache().addFrameBufferTexture(textureTarget::TEXTURE_2D);
+	m_pColorTexture = gli_textures_add_fb(u32(textureTarget::TEXTURE_2D));
 	m_pColorTexture->format = G_IM_FMT_I;
 	m_pColorTexture->size = 2;
 	m_pColorTexture->clampS = 1;
 	m_pColorTexture->clampT = 1;
-	m_pColorTexture->frameBufferTexture = CachedTexture::fbOneSample;
+	m_pColorTexture->frameBufferTexture = GLI_TEX_FB_ONE_SAMPLE;
 	m_pColorTexture->maskS = 0;
 	m_pColorTexture->maskT = 0;
 	m_pColorTexture->mirrorS = 0;
@@ -75,12 +75,12 @@ void DepthBufferToRDRAM::init()
 	m_pColorTexture->height = DEPTH_TEX_HEIGHT;
 	m_pColorTexture->textureBytes = m_pColorTexture->width * m_pColorTexture->height;
 
-	m_pDepthTexture = textureCache().addFrameBufferTexture(textureTarget::TEXTURE_2D);
+	m_pDepthTexture = gli_textures_add_fb(u32(textureTarget::TEXTURE_2D));
 	m_pDepthTexture->format = G_IM_FMT_I;
 	m_pDepthTexture->size = 2;
 	m_pDepthTexture->clampS = 1;
 	m_pDepthTexture->clampT = 1;
-	m_pDepthTexture->frameBufferTexture = CachedTexture::fbOneSample;
+	m_pDepthTexture->frameBufferTexture = GLI_TEX_FB_ONE_SAMPLE;
 	m_pDepthTexture->maskS = 0;
 	m_pDepthTexture->maskT = 0;
 	m_pDepthTexture->mirrorS = 0;
@@ -125,11 +125,11 @@ void DepthBufferToRDRAM::init()
 	bufTarget.bufferTarget = bufferTarget::DRAW_FRAMEBUFFER;
 	bufTarget.attachment = bufferAttachment::COLOR_ATTACHMENT0;
 	bufTarget.textureTarget = textureTarget::TEXTURE_2D;
-	bufTarget.textureHandle = m_pColorTexture->name;
+	bufTarget.textureHandle = graphics::ObjectHandle(m_pColorTexture->name);
 	gfxContext.addFrameBufferRenderTarget(bufTarget);
 
 	bufTarget.attachment = bufferAttachment::DEPTH_ATTACHMENT;
-	bufTarget.textureHandle = m_pDepthTexture->name;
+	bufTarget.textureHandle = graphics::ObjectHandle(m_pDepthTexture->name);
 	gfxContext.addFrameBufferRenderTarget(bufTarget);
 
 	// check if everything is OK
@@ -147,11 +147,11 @@ void DepthBufferToRDRAM::destroy() {
 	gfxContext.deleteFramebuffer(m_FBO);
 	m_FBO.reset();
 	if (m_pColorTexture != nullptr) {
-		textureCache().removeFrameBufferTexture(m_pColorTexture);
+		gli_textures_remove_fb(m_pColorTexture);
 		m_pColorTexture = nullptr;
 	}
 	if (m_pDepthTexture != nullptr) {
-		textureCache().removeFrameBufferTexture(m_pDepthTexture);
+		gli_textures_remove_fb(m_pDepthTexture);
 		m_pDepthTexture = nullptr;
 	}
 	for (u32 i = 0; i < MaxSlots; ++i)

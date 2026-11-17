@@ -2,7 +2,7 @@
 #include "gli_textures.h"
 #include "ZlutTexture.h"
 
-static struct CachedTexture * l_pTexture;
+static struct gli_tex * l_pTexture;
 
 void gli_zlut_init(void)
 {

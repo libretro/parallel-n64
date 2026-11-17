@@ -11,7 +11,8 @@ namespace graphics {
 	class ColorBufferReader;
 }
 
-struct CachedTexture;
+struct gli_tex;
+typedef struct gli_tex CachedTexture;
 struct FrameBuffer;
 
 /* What a colour copy to RDRAM was read for. */

@@ -14,7 +14,8 @@
 
 #include "gli_context.h"
 
-struct CachedTexture;
+struct gli_tex;
+typedef struct gli_tex CachedTexture;
 
 namespace graphics {
 

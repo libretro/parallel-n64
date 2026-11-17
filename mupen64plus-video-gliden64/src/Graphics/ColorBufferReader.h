@@ -2,6 +2,7 @@
 #include <vector>
 #include <Types.h>
 #include <Textures.h>
+#include "Parameter.h"
 
 namespace graphics {
 

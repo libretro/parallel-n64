@@ -10,11 +10,12 @@ extern "C" {
 /* Whether a texture is a frame buffer's, and how it is sampled */
 enum { GLI_TEX_FB_NONE, GLI_TEX_FB_ONE_SAMPLE, GLI_TEX_FB_MULTI_SAMPLE };
 
-/* A cached texture's plain state; CachedTexture derives from it, so the
- * C side reads a texture in place */
+/* A texture: the GPU texture and what it holds. CachedTexture is its C++
+ * name. */
 typedef struct gli_tex
 {
 	u64 crc;
+	u32 name;                     /* the GPU texture, 0 for none */
 	f32 offsetS, offsetT;
 	u8 maskS, maskT;
 	u8 clampS, clampT;

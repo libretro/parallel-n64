@@ -5,7 +5,7 @@
 #include "gli_textures.h"
 #include "PaletteTexture.h"
 
-static struct CachedTexture * l_pTexture;
+static struct gli_tex * l_pTexture;
 static u16 l_palette[256];
 static u64 l_paletteCRC256;
 

@@ -74,6 +74,11 @@ bool gli_drawer_is_drawing(void)
 	return dwnd().getDrawer().getDrawingState() != DrawingState::Non;
 }
 
+bool gli_drawer_is_triangle(void)
+{
+	return dwnd().getDrawer().getDrawingState() == DrawingState::Triangle;
+}
+
 void gli_gl_reset_error(void)
 {
 	if (!gliden64_vulkan_enabled())

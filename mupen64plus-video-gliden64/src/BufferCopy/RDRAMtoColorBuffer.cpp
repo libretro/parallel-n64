@@ -34,12 +34,12 @@ void RDRAMtoColorBuffer::init()
 {
 	const FramebufferTextureFormats & fbTexFormats = gfxContext.getFramebufferTextureFormats();
 
-	m_pTexture = textureCache().addFrameBufferTexture(textureTarget::TEXTURE_2D);
+	m_pTexture = gli_textures_add_fb(u32(textureTarget::TEXTURE_2D));
 	m_pTexture->format = G_IM_FMT_RGBA;
 	m_pTexture->size = 2;
 	m_pTexture->clampS = 1;
 	m_pTexture->clampT = 1;
-	m_pTexture->frameBufferTexture = CachedTexture::fbOneSample;
+	m_pTexture->frameBufferTexture = GLI_TEX_FB_ONE_SAMPLE;
 	m_pTexture->maskS = 0;
 	m_pTexture->maskT = 0;
 	m_pTexture->mirrorS = 0;
@@ -74,7 +74,7 @@ void RDRAMtoColorBuffer::init()
 void RDRAMtoColorBuffer::destroy()
 {
 	if (m_pTexture != nullptr) {
-		textureCache().removeFrameBufferTexture(m_pTexture);
+		gli_textures_remove_fb(m_pTexture);
 		m_pTexture = nullptr;
 	}
 	free(m_pbuf);
@@ -165,7 +165,7 @@ void RDRAMtoColorBuffer::_copyFromRDRAM(u32 _height, bool _fullAlpha)
 	m_pTexture->shiftScaleT = 1.0f;
 	m_pTexture->offsetS = 0.0f;
 	m_pTexture->offsetT = 0.0f;
-	textureCache().activateTexture(0, m_pTexture);
+	gli_textures_activate(0, m_pTexture);
 
 	gDPTile tile0 = {0};
 	gDPTile * pTile0 = gSP.textureTile[0];

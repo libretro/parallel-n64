@@ -7,7 +7,7 @@
 
 #define NOISE_TEX_SIZE (NOISE_TEX_WIDTH * NOISE_TEX_HEIGHT)
 
-static struct CachedTexture * l_pTexture;
+static struct gli_tex * l_pTexture;
 static u32 l_DList;
 static u32 l_offsetX, l_offsetY;
 

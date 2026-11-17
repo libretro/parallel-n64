@@ -266,9 +266,9 @@ void GraphicsDrawer::_updateTextures() const
 	if (pCurrentCombiner != nullptr) {
 		for (u32 t = 0; t < 2; ++t) {
 			if (pCurrentCombiner->usesTile(t))
-				textureCache().update(t);
+				gli_textures_update(t);
 			else
-				textureCache().activateDummy(t);
+				gli_textures_activate_dummy(t);
 		}
 	}
 	gDP.changed &= ~(CHANGED_TILE | CHANGED_TMEM);
@@ -662,7 +662,7 @@ bool texturedRectPaletteMod(const GraphicsDrawer::TexturedRectParams & _params)
 			gDPTile & curTile = gDP.tiles[0];
 			curTile.frameBufferAddress = 0;
 			curTile.textureMode = TEXTUREMODE_NORMAL;
-			textureCache().update(0);
+			gli_textures_update(0);
 			currentCombiner()->update(false);
 		}
 		return false;
@@ -707,7 +707,7 @@ void GraphicsDrawer::drawTexturedRect(const TexturedRectParams & _params)
 	CombinerProgram * pCurrentCombiner = currentCombiner();
 	const FrameBuffer * pCurrentBuffer = _params.pBuffer;
 	DisplayWindow & wnd = dwnd();
-	TextureCache & cache = textureCache();
+	gli_tex * const * const current = gli_texture_current;
 	const bool bUseBilinear = gDP.otherMode.textureFilter != 0;
 	int immersiveFullScreen = 0;
 	const bool immersiveRect = _params.texrectCmd &&
@@ -716,10 +716,10 @@ void GraphicsDrawer::drawTexturedRect(const TexturedRectParams & _params)
 		&& bUseBilinear
 		&& pCurrentCombiner->usesTexture()
 		&& (pCurrentBuffer == nullptr || !pCurrentBuffer->m_cfb)
-		&& (cache.current[0] != nullptr)
-		//		&& (cache.current[0] == nullptr || cache.current[0]->format == G_IM_FMT_RGBA || cache.current[0]->format == G_IM_FMT_CI)
-		&& ((cache.current[0]->frameBufferTexture == CachedTexture::fbNone && !cache.current[0]->bHDTexture))
-		&& (cache.current[1] == nullptr || (cache.current[1]->frameBufferTexture == CachedTexture::fbNone && !cache.current[1]->bHDTexture))));
+		&& (current[0] != nullptr)
+		//		&& (current[0] == nullptr || current[0]->format == G_IM_FMT_RGBA || current[0]->format == G_IM_FMT_CI)
+		&& ((current[0]->frameBufferTexture == GLI_TEX_FB_NONE && !current[0]->bHDTexture))
+		&& (current[1] == nullptr || (current[1]->frameBufferTexture == GLI_TEX_FB_NONE && !current[1]->bHDTexture))));
 
 	f32 scale[2];
 	calcCoordsScales(pCurrentBuffer, scale[0], scale[1]);
@@ -727,8 +727,8 @@ void GraphicsDrawer::drawTexturedRect(const TexturedRectParams & _params)
 	/* the cached textures the combiner samples, read in place */
 	const gli_tex * tex[2] = { nullptr, nullptr };
 	for (u32 t = 0; t < 2; ++t) {
-		if (pCurrentCombiner->usesTile(t) && cache.current[t] != nullptr && gSP.textureTile[t] != nullptr)
-			tex[t] = cache.current[t];
+		if (pCurrentCombiner->usesTile(t) && current[t] != nullptr && gSP.textureTile[t] != nullptr)
+			tex[t] = current[t];
 	}
 
 	const u32 clamp = gli_drawer_texrect_vertices(m_rect, &_params, tex, scale,
@@ -742,15 +742,15 @@ void GraphicsDrawer::drawTexturedRect(const TexturedRectParams & _params)
 			texParams.wrapS = u32(textureParameters::WRAP_CLAMP_TO_EDGE);
 		if (c & 2)
 			texParams.wrapT = u32(textureParameters::WRAP_CLAMP_TO_EDGE);
-		texParams.handle = u32(cache.current[t]->name);
+		texParams.handle = u32(current[t]->name);
 		texParams.target = u32(textureTarget::TEXTURE_2D);
 		texParams.textureUnitIndex = u32(textureIndices::Tex[t]);
 		gfxContext.setTextureParameters(texParams);
 	}
 
-	if (gDP.otherMode.cycleType == G_CYC_COPY && cache.current[0]->frameBufferTexture != CachedTexture::fbMultiSample) {
+	if (gDP.otherMode.cycleType == G_CYC_COPY && current[0]->frameBufferTexture != GLI_TEX_FB_MULTI_SAMPLE) {
 		Context::TexParameters texParams;
-		texParams.handle = u32(cache.current[0]->name);
+		texParams.handle = u32(current[0]->name);
 		texParams.target = u32(textureTarget::TEXTURE_2D);
 		texParams.textureUnitIndex = u32(textureIndices::Tex[0]);
 		texParams.minFilter = u32(textureParameters::FILTER_NEAREST);
@@ -818,7 +818,7 @@ void GraphicsDrawer::copyTexturedRect(const CopyRectParams & _params)
 		Context::TexParameters texParams;
 		texParams.handle = u32(tex->name);
 		texParams.textureUnitIndex = u32(textureIndices::Tex[i]);
-		if (tex->frameBufferTexture == CachedTexture::fbMultiSample)
+		if (tex->frameBufferTexture == GLI_TEX_FB_MULTI_SAMPLE)
 			texParams.target = u32(textureTarget::TEXTURE_2D_MULTISAMPLE);
 		else {
 			texParams.target = u32(textureTarget::TEXTURE_2D);
@@ -939,7 +939,7 @@ void GraphicsDrawer::_initData()
 	_initStates();
 	_setSpecialTexrect();
 
-	textureCache().init();
+	gli_textures_init();
 	gli_depth_list_init();
 	FrameBuffer_Init();
 	gli_combiner_init();
@@ -977,5 +977,5 @@ void GraphicsDrawer::_destroyData()
 	gli_combiner_destroy();
 	FrameBuffer_Destroy();
 	gli_depth_list_destroy();
-	textureCache().destroy();
+	gli_textures_destroy();
 }

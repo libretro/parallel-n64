@@ -33,11 +33,11 @@ void gli_texrect_gpu_init(void)
 
 	l_FBO = gfxContext.createFramebuffer();
 
-	l_pTexture = textureCache().addFrameBufferTexture(textureTarget::TEXTURE_2D);
+	l_pTexture = gli_textures_add_fb(u32(textureTarget::TEXTURE_2D));
 	l_pTexture->format = G_IM_FMT_RGBA;
 	l_pTexture->clampS = 1;
 	l_pTexture->clampT = 1;
-	l_pTexture->frameBufferTexture = CachedTexture::fbOneSample;
+	l_pTexture->frameBufferTexture = GLI_TEX_FB_ONE_SAMPLE;
 	l_pTexture->maskS = 0;
 	l_pTexture->maskT = 0;
 	l_pTexture->mirrorS = 0;
@@ -69,7 +69,7 @@ void gli_texrect_gpu_init(void)
 	bufTarget.bufferTarget = bufferTarget::DRAW_FRAMEBUFFER;
 	bufTarget.attachment = bufferAttachment::COLOR_ATTACHMENT0;
 	bufTarget.textureTarget = textureTarget::TEXTURE_2D;
-	bufTarget.textureHandle = l_pTexture->name;
+	bufTarget.textureHandle = graphics::ObjectHandle(l_pTexture->name);
 	gfxContext.addFrameBufferRenderTarget(bufTarget);
 
 	/* check if everything is OK */
@@ -85,7 +85,7 @@ void gli_texrect_gpu_destroy(void)
 {
 	gfxContext.deleteFramebuffer(l_FBO);
 	if (l_pTexture != nullptr) {
-		textureCache().removeFrameBufferTexture(l_pTexture);
+		gli_textures_remove_fb(l_pTexture);
 		l_pTexture = nullptr;
 	}
 	delete l_programTex;
@@ -148,7 +148,7 @@ void gli_texrect_gpu_begin_composite(const FrameBuffer * _pBuffer, int _alphaTes
 {
 	TexrectGpu::screenViewport(_pBuffer);
 
-	textureCache().activateTexture(0, l_pTexture);
+	gli_textures_activate(0, l_pTexture);
 	/* Disable filtering to avoid black outlines */
 	Context::TexParameters texParams;
 	texParams.handle = u32(l_pTexture->name);

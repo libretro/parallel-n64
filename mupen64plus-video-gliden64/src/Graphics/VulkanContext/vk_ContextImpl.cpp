@@ -566,7 +566,7 @@ public:
 		signature = rdp_upscaler_hash(signature, u32(gDP.combine.mux >> 32));
 		signature = rdp_upscaler_hash(signature, u32(gDP.otherMode._u64));
 		signature = rdp_upscaler_hash(signature, u32(gDP.otherMode._u64 >> 32));
-		const CachedTexture * pTexture = textureCache().current[0];
+		const CachedTexture * pTexture = gli_texture_current[0];
 		if (pTexture != nullptr && currentCombiner() != nullptr && currentCombiner()->usesTile(0)) {
 			signature = rdp_upscaler_hash(signature, u32(pTexture->crc));
 			signature = rdp_upscaler_hash(signature, u32(pTexture->crc >> 32));

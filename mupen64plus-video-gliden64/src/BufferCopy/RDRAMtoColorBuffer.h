@@ -5,7 +5,8 @@
 #include <FrameBuffer.h>
 #include <gli_rdram_to_color.h>
 
-struct CachedTexture;
+struct gli_tex;
+typedef struct gli_tex CachedTexture;
 struct FrameBuffer;
 
 class RDRAMtoColorBuffer
