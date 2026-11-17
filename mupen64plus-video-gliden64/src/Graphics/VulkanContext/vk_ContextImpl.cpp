@@ -1,4 +1,5 @@
 #include <Graphics/ContextOps.h>
+#include <Graphics/FixedCellPool.h>
 #include <string>
 #include <string.h>
 #include <stdlib.h>
@@ -111,7 +112,8 @@ class VkCombinerProgram : public CombinerProgram
 {
 public:
 	VkCombinerProgram(const CombinerKey & _key, vkr_program * _p, glsl::CombinerInputs _inputs, unsigned _groups)
-		: m_key(_key), m_p(_p), m_inputs(_inputs), m_groups(_groups), m_values() {}
+		: CombinerProgram(&CombinerProgramOps<VkCombinerProgram>::table, _key.getMux())
+		, m_key(_key), m_p(_p), m_inputs(_inputs), m_groups(_groups), m_values() {}
 	~VkCombinerProgram() { vkr_program_delete(g_r, m_p); }
 
 	static void * operator new(size_t);
@@ -525,8 +527,8 @@ public:
 	}
 	CombinerProgram * createCombinerProgram(Combiner & _c, Combiner & _a, const CombinerKey & _k) override { return buildCombiner(_c, _a, _k); }
 	CombinerProgram * createCombinerProgramAsync(Combiner & _c, Combiner & _a, const CombinerKey & _k) override { return buildCombiner(_c, _a, _k); }
-	bool saveShadersStorage(const Combiners &) override { return false; }
-	bool loadShadersStorage(Combiners &) override { return false; }
+	bool saveShadersStorage(const gli_combiner_table *) override { return false; }
+	bool loadShadersStorage(gli_combiner_table *) override { return false; }
 	std::string getCombinerJournalPath(u32 & _version) override {
 		_version = 1;
 		char path[PLUGIN_PATH_SIZE];

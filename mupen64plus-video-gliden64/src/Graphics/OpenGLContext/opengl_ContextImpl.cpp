@@ -420,7 +420,7 @@ graphics::CombinerProgram * ContextImpl::createCombinerProgram(Combiner & _color
 	return m_combinerProgramBuilder->buildCombinerProgram(_color, _alpha, _key);
 }
 
-bool ContextImpl::saveShadersStorage(const graphics::Combiners & _combiners)
+bool ContextImpl::saveShadersStorage(const gli_combiner_table * _combiners)
 {
 	glsl::ShaderStorage storage(m_glInfo, m_cachedFunctions->getCachedUseProgram());
 	return storage.saveShadersStorage(_combiners);
@@ -432,7 +432,7 @@ std::string ContextImpl::getCombinerJournalPath(u32 & _version)
 	return storage.getKeysJournalPath(_version);
 }
 
-bool ContextImpl::loadShadersStorage(graphics::Combiners & _combiners)
+bool ContextImpl::loadShadersStorage(gli_combiner_table * _combiners)
 {
 	glsl::ShaderStorage storage(m_glInfo, m_cachedFunctions->getCachedUseProgram());
 	return storage.loadShadersStorage(_combiners);

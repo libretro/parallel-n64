@@ -17,6 +17,10 @@
 extern "C" {
 #endif
 
+struct Combiner;
+struct gli_cprog;
+struct gli_combiner_table;
+
 /* what a backend may support, in the order isSupported is asked */
 enum {
 	GLI_FEATURE_MULTISAMPLING,
@@ -85,16 +89,17 @@ typedef struct gli_context_ops
 	bool (*isCombinerProgramBuilderObsolete)(void *_impl);
 	bool (*isCombinerUberOnly)(void *_impl);
 	void (*resetCombinerProgramBuilder)(void *_impl);
-	void *(*createCombinerProgram)(void *_impl, void *_color, void *_alpha, const void *_key);
-	void *(*createCombinerProgramAsync)(void *_impl, void *_color, void *_alpha, const void *_key);
-	bool (*saveShadersStorage)(void *_impl, const void *_combiners);
-	bool (*loadShadersStorage)(void *_impl, void *_combiners);
-	/* into the std::string at @_path */
-	void (*getCombinerJournalPath)(void *_impl, void *_path, u32 *_version);
-	void *(*createDepthFogShader)(void *_impl);
+	/* a program for @_key; the async one NULL where it cannot defer */
+	struct gli_cprog *(*createCombinerProgram)(void *_impl, struct Combiner *_color, struct Combiner *_alpha, u64 _key);
+	struct gli_cprog *(*createCombinerProgramAsync)(void *_impl, struct Combiner *_color, struct Combiner *_alpha, u64 _key);
+	bool (*saveShadersStorage)(void *_impl, const struct gli_combiner_table *_combiners);
+	bool (*loadShadersStorage)(void *_impl, struct gli_combiner_table *_combiners);
+	/* into @_path, @_size bytes at most */
+	void (*getCombinerJournalPath)(void *_impl, char *_path, size_t _size, u32 *_version);
+	struct gli_cprog *(*createDepthFogShader)(void *_impl);
 	void *(*createTexrectDrawerDrawShader)(void *_impl);
 	void *(*createTexrectDrawerClearShader)(void *_impl);
-	void *(*createTexrectCopyShader)(void *_impl);
+	struct gli_cprog *(*createTexrectCopyShader)(void *_impl);
 	void *(*createGammaCorrectionShader)(void *_impl);
 	void *(*createFXAAShader)(void *_impl);
 	void (*resetShaderProgram)(void *_impl);

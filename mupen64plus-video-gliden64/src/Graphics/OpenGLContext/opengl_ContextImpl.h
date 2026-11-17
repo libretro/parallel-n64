@@ -119,9 +119,9 @@ namespace opengl {
 
 		graphics::CombinerProgram * createCombinerProgramAsync(Combiner & _color, Combiner & _alpha, const CombinerKey & _key) override;
 
-		bool saveShadersStorage(const graphics::Combiners & _combiners) override;
+		bool saveShadersStorage(const gli_combiner_table * _combiners) override;
 
-		bool loadShadersStorage(graphics::Combiners & _combiners) override;
+		bool loadShadersStorage(gli_combiner_table * _combiners) override;
 
 		std::string getCombinerJournalPath(u32 & _version) override;
 

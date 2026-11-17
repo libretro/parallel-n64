@@ -12,15 +12,15 @@ namespace glsl {
 	public:
 		ShaderStorage(const opengl::GLInfo & _glinfo, opengl::CachedUseProgram * _useProgram);
 
-		bool saveShadersStorage(const graphics::Combiners & _combiners) const;
+		bool saveShadersStorage(const gli_combiner_table * _combiners) const;
 
-		bool loadShadersStorage(graphics::Combiners & _combiners);
+		bool loadShadersStorage(gli_combiner_table * _combiners);
 
 		std::string getKeysJournalPath(u32 & _version) const;
 
 	private:
-		bool _saveCombinerKeys(const graphics::Combiners & _combiners) const;
-		bool _loadFromCombinerKeys(graphics::Combiners & _combiners);
+		bool _saveCombinerKeys(const gli_combiner_table * _combiners) const;
+		bool _loadFromCombinerKeys(gli_combiner_table * _combiners);
 
 		const u32 m_formatVersion = 0x3EU;
 		const u32 m_keysFormatVersion = 0x05;

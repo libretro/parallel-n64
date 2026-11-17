@@ -875,7 +875,7 @@ void FrameBufferList::_renderScreenSizeBuffer()
 	blitParams.filter = filter;
 	blitParams.mask = blitMask::COLOR_BUFFER;
 	blitParams.tex[0] = pBufferTexture;
-	blitParams.combiner = CombinerInfo::get().getTexrectCopyProgram();
+	blitParams.combiner = combinerTexrectCopyProgram();
 	blitParams.readBuffer = pFilteredBuffer->m_FBO;
 
 	drawer.blitOrCopyTexturedRect(blitParams);
@@ -1015,7 +1015,7 @@ void FrameBufferList::OverscanBuffer::draw(u32 _fullHeight, bool _PAL, s32 _x, u
 	blitParams.filter = textureParameters::FILTER_LINEAR;
 	blitParams.mask = blitMask::COLOR_BUFFER;
 	blitParams.tex[0] = m_pTexture;
-	blitParams.combiner = CombinerInfo::get().getTexrectCopyProgram();
+	blitParams.combiner = combinerTexrectCopyProgram();
 	blitParams.readBuffer = m_FBO;
 	blitParams.invertY = false;
 
@@ -1158,7 +1158,7 @@ void FrameBufferList::renderBuffer()
 		blitParams.filter = textureParameters::FILTER_LINEAR;
 		blitParams.mask = blitMask::COLOR_BUFFER;
 		blitParams.tex[0] = pEyeTexture;
-		blitParams.combiner = CombinerInfo::get().getTexrectCopyProgram();
+		blitParams.combiner = combinerTexrectCopyProgram();
 		blitParams.readBuffer = readBuffer;
 		blitParams.invertY = !overscan;
 

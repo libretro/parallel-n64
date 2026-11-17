@@ -2363,7 +2363,7 @@ GLuint CombinerProgramBuilder::_startProgram(const std::string & _fragment, bool
 	else
 		glAttachShader(program, bUseTextures ? m_vertexShaderTexturedTriangle : m_vertexShaderTriangle);
 	glAttachShader(program, fragmentShader);
-	if (CombinerInfo::get().isShaderCacheSupported()) {
+	if (gli_combiner_shader_cache_supported()) {
 		if (IS_GL_FUNCTION_VALID(glProgramParameteri))
 			glProgramParameteri(program, GL_PROGRAM_BINARY_RETRIEVABLE_HINT, GL_TRUE);
 	}
@@ -2486,7 +2486,8 @@ public:
 	CombinerProgramAsync(const CombinerKey & _key, const CombinerInputs & _inputs,
 		CombinerProgramBuilder::UberVariant * _uber, const GLint * _ops, GLint _flags, GLuint _pending,
 		CombinerProgramUniformFactory * _factory, opengl::CachedUseProgram * _useProgram, int _delay)
-	: m_key(_key), m_inputs(_inputs), m_uber(_uber), m_flags(_flags), m_pending(_pending)
+	: graphics::CombinerProgram(&graphics::CombinerProgramOps<CombinerProgramAsync>::table, _key.getMux())
+	, m_key(_key), m_inputs(_inputs), m_uber(_uber), m_flags(_flags), m_pending(_pending)
 	, m_factory(_factory), m_useProgram(_useProgram), m_real(nullptr), m_delay(_delay)
 	{
 		std::copy_n(_ops, 16, m_ops);

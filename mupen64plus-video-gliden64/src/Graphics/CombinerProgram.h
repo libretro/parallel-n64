@@ -1,60 +1,76 @@
 #pragma once
-#include "FixedCellPool.h"
-#include <functional>
-#include <map>
 #include <vector>
 #include "CombinerKey.h"
+#include "gli_combiner.h"
 
 namespace graphics {
 
-	class CombinerProgram
+	template <class T> struct CombinerProgramOps;
+
+	/* A program, and its C face (gli_cprog, gli_combiner.h): its class's
+	 * table and its key. A class names its table and key at construction;
+	 * one that does not has its virtual functions called. */
+	class CombinerProgram : public gli_cprog
 	{
 	public:
+		explicit CombinerProgram(const gli_cprog_ops * _ops = nullptr, u64 _key = 0);
 		virtual ~CombinerProgram() {}
+
 		virtual void activate() = 0;
 		virtual void update(bool _force) = 0;
-
 		virtual const CombinerKey & getKey() const = 0;
-
 		virtual bool usesTexture() const = 0;
 		virtual bool usesTile(u32 _t) const = 0;
 		virtual bool usesShade() const = 0;
 		virtual bool usesLOD() const = 0;
 		virtual bool usesHwLighting() const = 0;
-
 		/* the program's stored form appended to @_buffer, which is left as it
 		 * was if it has none */
 		virtual bool getBinaryForm(std::vector<char> & _buffer) = 0;
 	};
 
-	/* map nodes come from a fixed pool: a new combiner mid-game allocates nothing */
+	/* a program from its C face */
+	inline CombinerProgram * combinerProgram(gli_cprog * _p) { return static_cast<CombinerProgram *>(_p); }
+
+	/* @T's table: its own functions called by name, no virtual call left */
 	template <class T>
-	struct CombinerNodeAllocator
+	struct CombinerProgramOps
 	{
-		typedef T value_type;
-		CombinerNodeAllocator() {}
-		template <class U> CombinerNodeAllocator(const CombinerNodeAllocator<U> &) {}
-		T * allocate(std::size_t _n)
+		static T * I(void * _p) { return static_cast<T *>(static_cast<CombinerProgram *>(static_cast<gli_cprog *>(_p))); }
+		static const T * C(const void * _p)
 		{
-			return _n == 1 ? static_cast<T*>(pool().take()) : static_cast<T*>(::operator new(_n * sizeof(T)));
+			return static_cast<const T *>(static_cast<const CombinerProgram *>(static_cast<const gli_cprog *>(_p)));
 		}
-		void deallocate(T * _p, std::size_t _n)
-		{
-			if (_n == 1)
-				pool().give(_p);
-			else
-				::operator delete(_p);
-		}
-		template <class U> bool operator==(const CombinerNodeAllocator<U> &) const { return true; }
-		template <class U> bool operator!=(const CombinerNodeAllocator<U> &) const { return false; }
-	private:
-		static FixedCellPool<sizeof(T), 8192> & pool()
-		{
-			static FixedCellPool<sizeof(T), 8192> p;
-			return p;
-		}
+		static void activate(void * _p) { I(_p)->T::activate(); }
+		static void update(void * _p, bool _force) { I(_p)->T::update(_force); }
+		static bool usesLOD(const void * _p) { return C(_p)->T::usesLOD(); }
+		static void free_program(void * _p) { delete I(_p); }
+		static const gli_cprog_ops table;
 	};
 
-	typedef std::map<CombinerKey, graphics::CombinerProgram *, std::less<CombinerKey>,
-		CombinerNodeAllocator<std::pair<const CombinerKey, graphics::CombinerProgram *> > > Combiners;
+	template <class T>
+	const gli_cprog_ops CombinerProgramOps<T>::table = { &activate, &update, &usesLOD, &free_program };
+
+	/* for a class without a table of its own: its virtual functions */
+	struct VirtualCombinerProgramOps
+	{
+		static CombinerProgram * I(void * _p) { return static_cast<CombinerProgram *>(static_cast<gli_cprog *>(_p)); }
+		static void activate(void * _p) { I(_p)->activate(); }
+		static void update(void * _p, bool _force) { I(_p)->update(_force); }
+		static bool usesLOD(const void * _p)
+		{
+			return static_cast<const CombinerProgram *>(static_cast<const gli_cprog *>(_p))->usesLOD();
+		}
+		static void free_program(void * _p) { delete I(_p); }
+	};
+
+	inline CombinerProgram::CombinerProgram(const gli_cprog_ops * _ops, u64 _key)
+	{
+		static const gli_cprog_ops virtualOps = {
+			&VirtualCombinerProgramOps::activate, &VirtualCombinerProgramOps::update,
+			&VirtualCombinerProgramOps::usesLOD, &VirtualCombinerProgramOps::free_program
+		};
+		ops = _ops != nullptr ? _ops : &virtualOps;
+		key = _key;
+	}
 }

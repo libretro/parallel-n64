@@ -244,30 +244,13 @@ namespace graphics {
 
 		static void resetCombinerProgramBuilder() { gli_ctx.ops->resetCombinerProgramBuilder(gli_ctx.impl); }
 
-		static CombinerProgram * createCombinerProgram(Combiner & _color, Combiner & _alpha, const CombinerKey & _key)
-		{
-			return static_cast<CombinerProgram *>(gli_ctx.ops->createCombinerProgram(gli_ctx.impl, &_color, &_alpha, &_key));
-		}
 
 		/* nullptr when it cannot be done without waiting */
-		static CombinerProgram * createCombinerProgramAsync(Combiner & _color, Combiner & _alpha, const CombinerKey & _key)
-		{
-			return static_cast<CombinerProgram *>(gli_ctx.ops->createCombinerProgramAsync(gli_ctx.impl, &_color, &_alpha, &_key));
-		}
 
-		static bool saveShadersStorage(const Combiners & _combiners) { return gli_ctx.ops->saveShadersStorage(gli_ctx.impl, &_combiners); }
 
-		static bool loadShadersStorage(Combiners & _combiners) { return gli_ctx.ops->loadShadersStorage(gli_ctx.impl, &_combiners); }
 
 		/* where the keys met this session go, and their format's version */
-		static std::string getCombinerJournalPath(u32 & _version)
-		{
-			std::string path;
-			gli_ctx.ops->getCombinerJournalPath(gli_ctx.impl, &path, &_version);
-			return path;
-		}
 
-		static ShaderProgram * createDepthFogShader() { return static_cast<ShaderProgram *>(gli_ctx.ops->createDepthFogShader(gli_ctx.impl)); }
 
 		static TexrectDrawerShaderProgram * createTexrectDrawerDrawShader()
 		{
@@ -276,7 +259,6 @@ namespace graphics {
 
 		static ShaderProgram * createTexrectDrawerClearShader() { return static_cast<ShaderProgram *>(gli_ctx.ops->createTexrectDrawerClearShader(gli_ctx.impl)); }
 
-		static ShaderProgram * createTexrectCopyShader() { return static_cast<ShaderProgram *>(gli_ctx.ops->createTexrectCopyShader(gli_ctx.impl)); }
 
 		static ShaderProgram * createGammaCorrectionShader() { return static_cast<ShaderProgram *>(gli_ctx.ops->createGammaCorrectionShader(gli_ctx.impl)); }
 

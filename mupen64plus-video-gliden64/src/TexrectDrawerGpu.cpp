@@ -101,9 +101,8 @@ RectVertex * gli_texrect_gpu_rect(void)
 
 void gli_texrect_gpu_begin(u32 _width, u32 _height, s32 _sx, s32 _sy, s32 _sw, s32 _sh)
 {
-	CombinerInfo & cmbInfo = CombinerInfo::get();
-	cmbInfo.update();
-	cmbInfo.updateParameters();
+	gli_combiner_update();
+	gli_combiner_update_parameters();
 	gfxContext.enableDepthWrite(false);
 	gfxContext.enable(enable::DEPTH_TEST, false);
 	gfxContext.enable(enable::BLEND, false);

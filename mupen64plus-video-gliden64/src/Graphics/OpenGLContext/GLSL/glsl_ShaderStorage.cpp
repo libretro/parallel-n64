@@ -125,15 +125,17 @@ line_2 Hardware per pixel lighting support flag
 line_3 Count - numbers of combiners keys in hex form
 line_4..line_Count+3  combiners keys in hex form, one key per line
 */
-bool ShaderStorage::_saveCombinerKeys(const graphics::Combiners & _combiners) const
+bool ShaderStorage::_saveCombinerKeys(const gli_combiner_table * _combiners) const
 {
 	const std::string keysFileName = getStorageFileName(m_glinfo, "keys");
 
+	/* by key, lowest first */
+	std::vector<gli_cprog *> programs(_combiners->count);
+	programs.resize(gli_combiners_sorted(_combiners, programs.data()));
 	std::vector<u64> keysData;
-	keysData.reserve(_combiners.size());
-	for (auto cur = _combiners.begin(); cur != _combiners.end(); ++cur)
-		keysData.push_back(cur->first.getMux());
-	std::sort(keysData.begin(), keysData.end());
+	keysData.reserve(programs.size());
+	for (gli_cprog * program : programs)
+		keysData.push_back(program->key);
 
 	std::string keysOut;
 	keysOut.reserve(3 * 11 + keysData.size() * 19);
@@ -157,7 +159,7 @@ char * - GL version string
 uint32 - number of shaders
 shaders in binary form
 */
-bool ShaderStorage::saveShadersStorage(const graphics::Combiners & _combiners) const
+bool ShaderStorage::saveShadersStorage(const gli_combiner_table * _combiners) const
 {
 	if (!_saveCombinerKeys(_combiners))
 		return false;
@@ -203,10 +205,13 @@ bool ShaderStorage::saveShadersStorage(const graphics::Combiners & _combiners) c
 	u32 totalWritten = 0;
 	put(&totalWritten, sizeof(totalWritten));
 
-	/* each program's binary written by GL straight into the file's buffer */
-	for (auto cur = _combiners.begin(); cur != _combiners.end(); ++cur)
+	/* each program's binary written by GL straight into the file's buffer,
+	 * by key, lowest first */
+	std::vector<gli_cprog *> programs(_combiners->count);
+	programs.resize(gli_combiners_sorted(_combiners, programs.data()));
+	for (gli_cprog * program : programs)
 	{
-		if (cur->second->getBinaryForm(shadersOut))
+		if (graphics::combinerProgram(program)->getBinaryForm(shadersOut))
 			++totalWritten;
 	}
 	memcpy(shadersOut.data() + countAt, &totalWritten, sizeof(totalWritten));
@@ -248,7 +253,7 @@ CombinerProgramImpl * _readCombinerProgram(StorageReader & _in,
 	return new CombinerProgramImpl(_cmbKey, program, _useProgram, cmbInputs, std::move(uniforms));
 }
 
-bool ShaderStorage::_loadFromCombinerKeys(graphics::Combiners & _combiners)
+bool ShaderStorage::_loadFromCombinerKeys(gli_combiner_table * _combiners)
 {
 	const std::string keysFileName = getStorageFileName(m_glinfo, "keys");
 	void * file = nullptr;
@@ -269,9 +274,9 @@ bool ShaderStorage::_loadFromCombinerKeys(graphics::Combiners & _combiners)
 	gli_GBI_hwlSupported = hwlSupport != 0;
 
 	for (u64 i = 0; i < szCombiners && _parseHex(p, end, key); ++i) {
-		graphics::CombinerProgram * pCombiner = Combiner_Compile(CombinerKey(key, false));
-		pCombiner->update(true);
-		_combiners[pCombiner->getKey()] = pCombiner;
+		gli_cprog * pCombiner = gli_combiner_compile(key, false);
+		graphics::combinerProgram(pCombiner)->update(true);
+		gli_combiners_put(_combiners, pCombiner);
 	}
 	free(file);
 
@@ -285,7 +290,7 @@ bool ShaderStorage::_loadFromCombinerKeys(graphics::Combiners & _combiners)
 	return true;
 }
 
-bool ShaderStorage::loadShadersStorage(graphics::Combiners & _combiners)
+bool ShaderStorage::loadShadersStorage(gli_combiner_table * _combiners)
 {
 	if (!gli_ctx.shaderProgramBinary)
 		// Shaders storage is not supported, load from combiners keys.
@@ -331,13 +336,13 @@ bool ShaderStorage::loadShadersStorage(graphics::Combiners & _combiners)
 
 		if (pCombiner != nullptr) {
 			pCombiner->update(true);
-			_combiners[pCombiner->getKey()] = pCombiner;
+			gli_combiners_put(_combiners, pCombiner);
 		} else {
 			if (!in.ok)
 				break;
-			graphics::CombinerProgram * pCombinerFromKey = Combiner_Compile(cmbKey);
-			pCombinerFromKey->update(true);
-			_combiners[cmbKey] = pCombinerFromKey;
+			gli_cprog * pCombinerFromKey = gli_combiner_compile(cmbKey.getMux(), false);
+			graphics::combinerProgram(pCombinerFromKey)->update(true);
+			gli_combiners_put(_combiners, pCombinerFromKey);
 		}
 	}
 

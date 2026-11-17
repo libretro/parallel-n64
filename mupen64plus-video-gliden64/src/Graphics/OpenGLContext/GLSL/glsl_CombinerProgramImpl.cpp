@@ -15,7 +15,8 @@ CombinerProgramImpl::CombinerProgramImpl(const CombinerKey & _key,
 	opengl::CachedUseProgram * _useProgram,
 	const CombinerInputs & _inputs,
 	CombinerUniforms && _uniforms)
-: m_bNeedUpdate(true)
+: graphics::CombinerProgram(&graphics::CombinerProgramOps<CombinerProgramImpl>::table, _key.getMux())
+, m_bNeedUpdate(true)
 , m_key(_key)
 , m_program(_program)
 , m_useProgram(_useProgram)

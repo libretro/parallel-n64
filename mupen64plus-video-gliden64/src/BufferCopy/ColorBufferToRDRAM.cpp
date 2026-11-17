@@ -224,7 +224,7 @@ bool ColorBufferToRDRAM::_prepareCopy(u32& _startAddress)
 		blitParams.dstHeight = m_pTexture->realHeight;
 		blitParams.filter = textureParameters::FILTER_NEAREST;
 		blitParams.tex[0] = pInputTexture;
-		blitParams.combiner = CombinerInfo::get().getTexrectCopyProgram();
+		blitParams.combiner = combinerTexrectCopyProgram();
 		blitParams.readBuffer = readBuffer;
 		blitParams.drawBuffer = m_FBO;
 		blitParams.mask = blitMask::COLOR_BUFFER;

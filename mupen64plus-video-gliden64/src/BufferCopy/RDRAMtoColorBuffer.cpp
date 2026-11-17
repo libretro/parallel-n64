@@ -146,8 +146,8 @@ void RDRAMtoColorBuffer::_copyFromRDRAM(u32 _height, bool _fullAlpha)
 
 	const u32 cycleType = gDP.otherMode.cycleType;
 	gDP.otherMode.cycleType = G_CYC_COPY;
-	CombinerInfo::get().setPolygonMode(DrawingState::TexRect);
-	CombinerInfo::get().update();
+	combinerSetPolygonMode(DrawingState::TexRect);
+	gli_combiner_update();
 
 	Context::UpdateTextureDataParams updateParams;
 	updateParams.handle = m_pTexture->name;
@@ -175,7 +175,7 @@ void RDRAMtoColorBuffer::_copyFromRDRAM(u32 _height, bool _fullAlpha)
 	gfxContext.setBlending(blend::SRC_ALPHA, blend::ONE_MINUS_SRC_ALPHA);
 	gfxContext.enable(enable::DEPTH_TEST, false);
 
-	CombinerInfo::get().updateParameters();
+	gli_combiner_update_parameters();
 
 	gfxContext.bindFramebuffer(bufferTarget::DRAW_FRAMEBUFFER, m_pCurBuffer->m_FBO);
 

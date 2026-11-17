@@ -262,8 +262,7 @@ void GraphicsDrawer::_setBlendMode() const
 void GraphicsDrawer::_updateTextures() const
 {
 	//For some reason updating the texture cache on the first frame of LOZ:OOT causes a nullptr Pointer exception...
-	CombinerInfo & cmbInfo = CombinerInfo::get();
-	CombinerProgram * pCurrentCombiner = cmbInfo.getCurrent();
+	CombinerProgram * pCurrentCombiner = currentCombiner();
 	if (pCurrentCombiner != nullptr) {
 		for (u32 t = 0; t < 2; ++t) {
 			if (pCurrentCombiner->usesTile(t))
@@ -278,9 +277,8 @@ void GraphicsDrawer::_updateTextures() const
 
 void GraphicsDrawer::_updateStates(DrawingState _drawingState) const
 {
-	CombinerInfo & cmbInfo = CombinerInfo::get();
-	cmbInfo.setPolygonMode(_drawingState);
-	cmbInfo.update();
+	combinerSetPolygonMode(_drawingState);
+	gli_combiner_update();
 
 	if (gSP.changed & CHANGED_GEOMETRYMODE) {
 		_updateCullFace();
@@ -297,7 +295,7 @@ void GraphicsDrawer::_updateStates(DrawingState _drawingState) const
 
 	if ((gSP.changed & CHANGED_TEXTURE) ||
 		(gDP.changed & (CHANGED_TILE | CHANGED_TMEM)) ||
-		cmbInfo.isChanged() ||
+		gli_cmb.changed ||
 		_drawingState == DrawingState::TexRect) {
 		_updateTextures();
 	}
@@ -307,7 +305,7 @@ void GraphicsDrawer::_updateStates(DrawingState _drawingState) const
 		gDP.changed &= ~(CHANGED_RENDERMODE | CHANGED_CYCLETYPE);
 	}
 
-	cmbInfo.updateParameters();
+	gli_combiner_update_parameters();
 
 	if (!config.generalEmulation.enableFragmentDepthWrite)
 		return;
@@ -589,7 +587,7 @@ bool texturedRectShadowMap(const GraphicsDrawer::TexturedRectParams &)
 				return true;
 
 			pCurrentBuffer->m_pDepthBuffer->activateDepthBufferTexture(pCurrentBuffer);
-			CombinerInfo::get().setDepthFogCombiner();
+			gli_combiner_set_depth_fog();
 			// DepthFogCombiner does not support shader blending.
 			_applyBlendMode(true);
 			return false;
@@ -684,11 +682,10 @@ void GraphicsDrawer::drawTexturedRect(const TexturedRectParams & _params)
 	m_drawingState = DrawingState::TexRect;
 
 	if (gli_texrect_can_continue()) {
-		CombinerInfo & cmbInfo = CombinerInfo::get();
-		cmbInfo.setPolygonMode(DrawingState::TexRect);
-		cmbInfo.update();
+		combinerSetPolygonMode(DrawingState::TexRect);
+		gli_combiner_update();
 		_updateTextures();
-		cmbInfo.updateParameters();
+		gli_combiner_update_parameters();
 	} else {
 		if (!gli_texrect_is_empty())
 			gli_texrect_draw();
@@ -945,7 +942,7 @@ void GraphicsDrawer::_initData()
 	textureCache().init();
 	gli_depth_list_init();
 	FrameBuffer_Init();
-	Combiner_Init();
+	gli_combiner_init();
 	gli_TFH_init();
 	gli_pp_init();
 	gli_zlut_init();
@@ -977,7 +974,7 @@ void GraphicsDrawer::_destroyData()
 	gli_pp_destroy();
 	if (gli_TFH_options_changed())
 		gli_TFH_shutdown();
-	Combiner_Destroy();
+	gli_combiner_destroy();
 	FrameBuffer_Destroy();
 	gli_depth_list_destroy();
 	textureCache().destroy();

@@ -8,7 +8,9 @@
  *   { return &graphics::ContextOps<opengl::ContextImpl>::table; } */
 
 #include <string>
+#include <stdio.h>
 #include "gli_context.h"
+#include "gli_combiner.h"
 #include "ContextImpl.h"
 
 namespace graphics {
@@ -119,32 +121,30 @@ namespace graphics {
 		static bool isCombinerProgramBuilderObsolete(void * _p) { return I(_p)->T::isCombinerProgramBuilderObsolete(); }
 		static bool isCombinerUberOnly(void * _p) { return I(_p)->T::isCombinerUberOnly(); }
 		static void resetCombinerProgramBuilder(void * _p) { I(_p)->T::resetCombinerProgramBuilder(); }
-		static void * createCombinerProgram(void * _p, void * _color, void * _alpha, const void * _key)
+		static gli_cprog * createCombinerProgram(void * _p, Combiner * _color, Combiner * _alpha, u64 _key)
 		{
-			return I(_p)->T::createCombinerProgram(*static_cast<Combiner *>(_color), *static_cast<Combiner *>(_alpha),
-				*static_cast<const CombinerKey *>(_key));
+			return I(_p)->T::createCombinerProgram(*_color, *_alpha, CombinerKey(_key, false));
 		}
-		static void * createCombinerProgramAsync(void * _p, void * _color, void * _alpha, const void * _key)
+		static gli_cprog * createCombinerProgramAsync(void * _p, Combiner * _color, Combiner * _alpha, u64 _key)
 		{
-			return I(_p)->T::createCombinerProgramAsync(*static_cast<Combiner *>(_color), *static_cast<Combiner *>(_alpha),
-				*static_cast<const CombinerKey *>(_key));
+			return I(_p)->T::createCombinerProgramAsync(*_color, *_alpha, CombinerKey(_key, false));
 		}
-		static bool saveShadersStorage(void * _p, const void * _combiners)
+		static bool saveShadersStorage(void * _p, const gli_combiner_table * _combiners)
 		{
-			return I(_p)->T::saveShadersStorage(*static_cast<const Combiners *>(_combiners));
+			return I(_p)->T::saveShadersStorage(_combiners);
 		}
-		static bool loadShadersStorage(void * _p, void * _combiners)
+		static bool loadShadersStorage(void * _p, gli_combiner_table * _combiners)
 		{
-			return I(_p)->T::loadShadersStorage(*static_cast<Combiners *>(_combiners));
+			return I(_p)->T::loadShadersStorage(_combiners);
 		}
-		static void getCombinerJournalPath(void * _p, void * _path, u32 * _version)
+		static void getCombinerJournalPath(void * _p, char * _path, size_t _size, u32 * _version)
 		{
-			*static_cast<std::string *>(_path) = I(_p)->T::getCombinerJournalPath(*_version);
+			snprintf(_path, _size, "%s", I(_p)->T::getCombinerJournalPath(*_version).c_str());
 		}
-		static void * createDepthFogShader(void * _p) { return I(_p)->T::createDepthFogShader(); }
+		static gli_cprog * createDepthFogShader(void * _p) { return I(_p)->T::createDepthFogShader(); }
 		static void * createTexrectDrawerDrawShader(void * _p) { return I(_p)->T::createTexrectDrawerDrawShader(); }
 		static void * createTexrectDrawerClearShader(void * _p) { return I(_p)->T::createTexrectDrawerClearShader(); }
-		static void * createTexrectCopyShader(void * _p) { return I(_p)->T::createTexrectCopyShader(); }
+		static gli_cprog * createTexrectCopyShader(void * _p) { return I(_p)->T::createTexrectCopyShader(); }
 		static void * createGammaCorrectionShader(void * _p) { return I(_p)->T::createGammaCorrectionShader(); }
 		static void * createFXAAShader(void * _p) { return I(_p)->T::createFXAAShader(); }
 		static void resetShaderProgram(void * _p) { I(_p)->T::resetShaderProgram(); }
