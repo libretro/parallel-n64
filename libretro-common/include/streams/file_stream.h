@@ -160,6 +160,47 @@ int64_t filestream_read(RFILE *stream, void *data, int64_t len);
 int64_t filestream_write(RFILE *stream, const void *data, int64_t len);
 
 /**
+ * Reads \c len bytes at \c offset without moving the stream's position
+ * or touching its read-ahead: any number of threads may call it on one
+ * stream at once, with no lock.  It reads the file as it is on disk;
+ * bytes written with \c filestream_write and not flushed are not seen.
+ *
+ * @return The number of bytes read, 0 at or past the end, or -1 on an
+ * error or where there is no positional I/O for this stream (the VFS in
+ * use is older than v6, a cdrom:// or network path, a platform without
+ * it): the caller then seeks and reads, under a lock of its own if it
+ * shares the stream.
+ * @see retro_vfs_read_at_t
+ */
+int64_t filestream_read_at(RFILE *stream, void *data, int64_t len,
+      int64_t offset);
+
+/**
+ * Writes \c len bytes at \c offset the same way.  With
+ * \c RETRO_VFS_WRITE_AT_APPEND for \c offset each call appends, whole
+ * and after the one before it, whichever thread it came from.
+ *
+ * @return The number of bytes written, or -1 as \c filestream_read_at.
+ * @see retro_vfs_write_at_t
+ */
+int64_t filestream_write_at(RFILE *stream, const void *data, int64_t len,
+      int64_t offset);
+
+/**
+ * Writes @count pieces of memory to the given file, in order, as if
+ * each were passed to \c filestream_write in turn.  A stream opened
+ * with \c RETRO_VFS_FILE_ACCESS_HINT_SEQUENTIAL_BULK hands them to the
+ * kernel in one gathered write where the platform has one, so pieces
+ * scattered through a buffer reach the file without being copied
+ * together first.
+ *
+ * @return The number of bytes written, short at the first piece not
+ * written in full, or -1 if nothing was written.
+ */
+int64_t filestream_writev(RFILE *stream,
+      const struct retro_vfs_span *spans, size_t count);
+
+/**
  * Returns the current position of the given file in bytes.
  *
  * @param stream The file to return the stream position for.
@@ -446,10 +487,10 @@ int filestream_rename(const char *old_path, const char *new_path);
  * Copies a regular file to a new location, replacing an existing one,
  * and does not return until it is done.
  *
- * Kept for callers that predate VFS API v5. It copies through
- * \c filestream_open/read/write and does not use the platform's copy
- * primitive; new code should use \c filestream_copy_begin, which does
- * and does not block.
+ * It runs the copy of \c filestream_copy_begin to the end, so it uses
+ * the platform's copy primitive where there is one, and falls back to
+ * \c filestream_open/read/write where that copy cannot start. Code
+ * that must not block should use \c filestream_copy_begin itself.
  *
  * @param src_path Path to the file to copy.
  * @param dst_path The target name and location of the file.
@@ -551,6 +592,29 @@ const uint8_t *filestream_get_mapped_ptr(RFILE *stream, int64_t *len);
  * written.
  */
 int64_t filestream_view(RFILE *stream, int64_t len, const uint8_t **ptr);
+
+/**
+ * The whole file mapped read-only, on demand: retro_vfs_map_t's contract,
+ * and its warning (map only a file nothing else changes, on a fixed
+ * drive). The stream owns the mapping; NULL where it can't be mapped,
+ * including under a frontend before VFS API v7: the caller then reads.
+ **/
+const uint8_t *filestream_map(RFILE *stream, int64_t *len);
+
+/* VFS API v7's file facts, by stream or by path: retro_vfs_identity_t,
+ * retro_vfs_stat_identity_t, retro_vfs_volume_t, retro_vfs_stat_volume_t,
+ * retro_vfs_verity_measure_t and retro_vfs_verity_enable_t, with their
+ * answers. Under a frontend before v7 each says it can't be told (false,
+ * -1, 0, 0). */
+bool filestream_identity(RFILE *stream, struct retro_vfs_file_identity *id);
+int filestream_stat_identity(const char *path,
+      struct retro_vfs_file_identity *id);
+bool filestream_volume(RFILE *stream, unsigned want,
+      struct retro_vfs_volume *vol);
+int filestream_stat_volume(const char *path, unsigned want,
+      struct retro_vfs_volume *vol);
+size_t filestream_verity_measure(RFILE *stream, uint8_t *digest, size_t cap);
+int filestream_verity_enable(RFILE *stream);
 
 typedef const uint8_t *(*filestream_mapped_ptr_cb_t)(void *hfile, int64_t *len);
 void filestream_set_mapped_ptr_cb(filestream_mapped_ptr_cb_t cb);

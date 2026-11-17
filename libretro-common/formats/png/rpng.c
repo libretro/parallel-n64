@@ -46,10 +46,45 @@
 #include <malloc.h>
 #endif
 
-/* SIMD acceleration: SSE2 on x86/x86-64, NEON on ARM */
+/* SIMD acceleration: SSE2 on x86/x86-64, NEON on ARM.  MSVC does not
+ * define __SSE2__ itself; retro_environment.h spells its x64 and
+ * /arch:SSE2 targets that way, as pixconv.c and the audio converters
+ * rely on.  Griffin includes it first, so this keeps the file compiled
+ * on its own on the same path as the unity build. */
+#include <retro_environment.h>
+
 #if defined(__SSE2__)
 #include <emmintrin.h>
 #define RPNG_SIMD_SSE2 1
+/* SSSE3's byte shuffle turns the 8-bit RGB and RGBA row conversions
+ * into one instruction per four pixels.  A stock x86-64 build has no
+ * flag enabling it, so where the toolchain can build a function for
+ * SSSE3 without one, the choice is made per decode at run time (see
+ * rpng_process_init).  Same predicate shape as the CRC32 hash in
+ * encoding_deflate.c, for the same reason: Clang reports itself as GCC
+ * 4.2 forever, so a bare version comparison would reject every Clang
+ * build. */
+#if defined(__SSSE3__)
+#include <tmmintrin.h>
+#define RPNG_SSSE3 1
+#define RPNG_SSSE3_TARGET
+#elif defined(__has_attribute) && defined(__has_include)
+#if __has_attribute(target) && __has_include(<tmmintrin.h>)
+#include <tmmintrin.h>
+#define RPNG_SSSE3 1
+#define RPNG_SSSE3_RUNTIME 1
+#define RPNG_SSSE3_TARGET __attribute__((target("ssse3")))
+#endif
+#elif !defined(__clang__) && defined(__GNUC__) \
+   && (__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 9))
+#include <tmmintrin.h>
+#define RPNG_SSSE3 1
+#define RPNG_SSSE3_RUNTIME 1
+#define RPNG_SSSE3_TARGET __attribute__((target("ssse3")))
+#endif
+#if defined(RPNG_SSSE3_RUNTIME)
+#include <features/features_cpu.h>
+#endif
 #elif defined(__ARM_NEON) || defined(__ARM_NEON__)
 #if !defined(VITA) && !defined(WEBOS) && !defined(HAVE_LIBNX)
 #include <arm_neon.h>
@@ -175,6 +210,10 @@ struct rpng_process
 {
    uint32_t *data;
    uint32_t *palette;
+#if defined(RPNG_SSSE3)
+   /* the row conversions may use SSSE3; settled in rpng_process_init */
+   bool ssse3;
+#endif
    void *stream;
    const struct trans_stream_backend *stream_backend;
    /* Unfiltering runs in place inside the inflate ring wherever a
@@ -212,6 +251,22 @@ struct rpng_process
     * Windows as STATUS_HEAP_CORRUPTION (c0000374) at a later free in
     * task_image_load_free.  The caller's pointer now never moves. */
    uint32_t *out_cursor;
+   size_t    out_stride;      /* pixels from one output row to the next:
+                               * the image's row stride, the pass width
+                               * into a pass buffer, or twice the image's
+                               * row stride for Adam7 pass 7, written in
+                               * place                                   */
+   size_t    image_stride;    /* pixels from one row of the image to the
+                               * next: its width, or what
+                               * rpng_set_output was given               */
+   /* Kept for the whole decode rather than per pass: the three scanline
+    * buffers (one block, lines_cap bytes apiece, at the image's full
+    * pitch, which no pass exceeds) and the Adam7 pass buffer (pass_cap
+    * pixels, the largest of passes 1-6; pass 7 needs none). */
+   uint8_t  *lines;
+   size_t    lines_cap;
+   uint32_t *pass_buf;
+   size_t    pass_cap;
    size_t inflate_buf_size;   /* expected total inflated bytes (geometry) */
    size_t ring_size;          /* allocation size of inflate_base.  Equal to
                                * inflate_buf_size for interlaced images and
@@ -239,6 +294,7 @@ struct rpng_process
    uint8_t flags;
    bool supports_rgba;
    bool want_10bit;
+   struct rpng_pool *pool;   /* the rpng's, if it has one              */
 };
 
 enum rpng_flags
@@ -268,6 +324,11 @@ struct rpng
     * resident) when never set. */
    uint8_t *avail_end;
    bool     need_more;   /* last iterate stopped at the resident wall */
+   /* What the IDAT spans' offsets are relative to: buff_start, unless
+    * rpng_add_idat_spans gave them a buffer of their own (an APNG
+    * frame's data, read where it lies in the animation file). */
+   const uint8_t *idat_base;
+   struct rpng_pool *pool;     /* rpng_set_pool; NULL: plain malloc/free */
    struct idat_spans idat_buf; /* ptr alignment */
    struct png_ihdr ihdr; /* uint32 alignment */
    uint32_t palette[256];
@@ -275,6 +336,10 @@ struct rpng
    struct rpng_hdr_metadata hdr;
    uint8_t flags;
    bool supports_rgba;
+   /* rpng_set_output: the caller's memory the image decodes into, and its
+    * row stride in pixels; NULL to allocate the image as usual. */
+   uint32_t *out_dst;
+   size_t    out_dst_stride;
    /* When set and the source is 16-bit, decode to packed XRGB2101010
     * (10-bit) instead of narrowing to 8-bit ARGB, so HDR PNGs can reach a
     * 10-bit display path. Ignored for 8-bit sources. */
@@ -633,24 +698,27 @@ static void rpng_filter_avg_simd(uint8_t *decoded,
  * predictor's is eleven.
  *
  * SSE2 lacks abs_epi16; max(x, -x) is the standard substitute. */
-static INLINE __m128i rpng_paeth_step_epi16(__m128i a, __m128i b,
-      __m128i c, __m128i r, __m128i sb, __m128i sc, __m128i mask)
-{
-   __m128i bc = _mm_sub_epi16(b, c);
-   __m128i ac = _mm_sub_epi16(a, c);
-   __m128i sm = _mm_add_epi16(bc, ac);
-   __m128i z  = _mm_setzero_si128();
-   __m128i pa = _mm_max_epi16(bc, _mm_sub_epi16(z, bc));
-   __m128i pb = _mm_max_epi16(ac, _mm_sub_epi16(z, ac));
-   __m128i pc = _mm_max_epi16(sm, _mm_sub_epi16(z, sm));
-   __m128i not_a  = _mm_cmpgt_epi16(pa, _mm_min_epi16(pb, pc));
-   __m128i pick_c = _mm_cmpgt_epi16(pb, pc);
-   __m128i sa     = _mm_and_si128(_mm_add_epi16(r, a), mask);
-   __m128i bc_sel = _mm_or_si128(_mm_andnot_si128(pick_c, sb),
-                                 _mm_and_si128(   pick_c, sc));
-   return            _mm_or_si128(_mm_andnot_si128(not_a, sa),
-                                  _mm_and_si128(   not_a, bc_sel));
-}
+/* A macro rather than a function: it takes seven vectors, and 32-bit
+ * MSVC - which griffin builds with this path on, retro_environment.h
+ * defining __SSE2__ for /arch:SSE2 - passes only three __m128i
+ * arguments by value and rejects the rest (C2719).  Every input is read
+ * into a temporary before `out` is assigned, so out may name a. */
+#define RPNG_PAETH_STEP_EPI16(out, a, b, c, r, sb, sc, mask) do { \
+   __m128i bc_     = _mm_sub_epi16((b), (c)); \
+   __m128i ac_     = _mm_sub_epi16((a), (c)); \
+   __m128i sm_     = _mm_add_epi16(bc_, ac_); \
+   __m128i z_      = _mm_setzero_si128(); \
+   __m128i pa_     = _mm_max_epi16(bc_, _mm_sub_epi16(z_, bc_)); \
+   __m128i pb_     = _mm_max_epi16(ac_, _mm_sub_epi16(z_, ac_)); \
+   __m128i pc_     = _mm_max_epi16(sm_, _mm_sub_epi16(z_, sm_)); \
+   __m128i not_a_  = _mm_cmpgt_epi16(pa_, _mm_min_epi16(pb_, pc_)); \
+   __m128i pick_c_ = _mm_cmpgt_epi16(pb_, pc_); \
+   __m128i sa_     = _mm_and_si128(_mm_add_epi16((r), (a)), (mask)); \
+   __m128i bc_sel_ = _mm_or_si128(_mm_andnot_si128(pick_c_, (sb)), \
+                                  _mm_and_si128(   pick_c_, (sc))); \
+   (out)           = _mm_or_si128(_mm_andnot_si128(not_a_, sa_), \
+                                  _mm_and_si128(   not_a_, bc_sel_)); \
+} while (0)
 
 /* Paeth reverse filter for any pixel stride from 1 to 8 bytes, i.e.
  * every bpp rpng can produce: 1 (gray/palette 8), 2 (gray+alpha 8,
@@ -693,7 +761,8 @@ static void rpng_filter_paeth_simd(uint8_t *decoded,
          __m128i sb   = _mm_and_si128(_mm_add_epi16(r, pv), mask);
          __m128i sc   = _mm_and_si128(_mm_add_epi16(r, prev_upper_left),
                mask);
-         __m128i out  = rpng_paeth_step_epi16(prev_pixel, pv,
+         __m128i out;
+         RPNG_PAETH_STEP_EPI16(out, prev_pixel, pv,
                prev_upper_left, r, sb, sc, mask);
          rpng_store4_u16_to_u8(decoded + i, out);
          prev_pixel      = out;
@@ -709,7 +778,8 @@ static void rpng_filter_paeth_simd(uint8_t *decoded,
          __m128i sb   = _mm_and_si128(_mm_add_epi16(r, pv), mask);
          __m128i sc   = _mm_and_si128(_mm_add_epi16(r, prev_upper_left),
                mask);
-         __m128i out  = rpng_paeth_step_epi16(prev_pixel, pv,
+         __m128i out;
+         RPNG_PAETH_STEP_EPI16(out, prev_pixel, pv,
                prev_upper_left, r, sb, sc, mask);
          rpng_store8_u16_to_u8(decoded + i, out);
          prev_pixel      = out;
@@ -768,7 +838,7 @@ static void rpng_filter_paeth_pair(uint8_t *dec0, uint8_t *dec1,
          __m128i r0 = rpng_load4_u8_to_u16(raw0);
          __m128i sb = _mm_and_si128(_mm_add_epi16(r0, b0), mask);
          __m128i sc = _mm_and_si128(_mm_add_epi16(r0, c0), mask);
-         a0  = rpng_paeth_step_epi16(a0, b0, c0, r0, sb, sc, mask);
+         RPNG_PAETH_STEP_EPI16(a0, a0, b0, c0, r0, sb, sc, mask);
          rpng_store4_u16_to_u8(dec0, a0);
          c0  = b0;
          a0p = a0;
@@ -779,13 +849,13 @@ static void rpng_filter_paeth_pair(uint8_t *dec0, uint8_t *dec1,
             r0 = rpng_load4_u8_to_u16(raw0 + i);
             sb = _mm_and_si128(_mm_add_epi16(r0, b0), mask);
             sc = _mm_and_si128(_mm_add_epi16(r0, c0), mask);
-            a0 = rpng_paeth_step_epi16(a0, b0, c0, r0, sb, sc, mask);
+            RPNG_PAETH_STEP_EPI16(a0, a0, b0, c0, r0, sb, sc, mask);
             rpng_store4_u16_to_u8(dec0 + i, a0);
             c0 = b0;
             r1 = rpng_load4_u8_to_u16(raw1 + i - bpp);
             sb = _mm_and_si128(_mm_add_epi16(r1, a0p), mask);
             sc = _mm_and_si128(_mm_add_epi16(r1, c1),  mask);
-            a1 = rpng_paeth_step_epi16(a1, a0p, c1, r1, sb, sc, mask);
+            RPNG_PAETH_STEP_EPI16(a1, a1, a0p, c1, r1, sb, sc, mask);
             rpng_store4_u16_to_u8(dec1 + i - bpp, a1);
             c1  = a0p;
             a0p = a0;
@@ -794,7 +864,7 @@ static void rpng_filter_paeth_pair(uint8_t *dec0, uint8_t *dec1,
             __m128i r1 = rpng_load4_u8_to_u16(raw1 + i - bpp);
             __m128i s1 = _mm_and_si128(_mm_add_epi16(r1, a0p), mask);
             __m128i s2 = _mm_and_si128(_mm_add_epi16(r1, c1),  mask);
-            a1 = rpng_paeth_step_epi16(a1, a0p, c1, r1, s1, s2, mask);
+            RPNG_PAETH_STEP_EPI16(a1, a1, a0p, c1, r1, s1, s2, mask);
             rpng_store4_u16_to_u8(dec1 + i - bpp, a1);
          }
       }
@@ -807,7 +877,7 @@ static void rpng_filter_paeth_pair(uint8_t *dec0, uint8_t *dec1,
          __m128i r0 = rpng_load8_u8_to_u16(raw0);
          __m128i sb = _mm_and_si128(_mm_add_epi16(r0, b0), mask);
          __m128i sc = _mm_and_si128(_mm_add_epi16(r0, c0), mask);
-         a0  = rpng_paeth_step_epi16(a0, b0, c0, r0, sb, sc, mask);
+         RPNG_PAETH_STEP_EPI16(a0, a0, b0, c0, r0, sb, sc, mask);
          rpng_store8_u16_to_u8(dec0, a0);
          c0  = b0;
          a0p = a0;
@@ -818,13 +888,13 @@ static void rpng_filter_paeth_pair(uint8_t *dec0, uint8_t *dec1,
             r0 = rpng_load8_u8_to_u16(raw0 + i);
             sb = _mm_and_si128(_mm_add_epi16(r0, b0), mask);
             sc = _mm_and_si128(_mm_add_epi16(r0, c0), mask);
-            a0 = rpng_paeth_step_epi16(a0, b0, c0, r0, sb, sc, mask);
+            RPNG_PAETH_STEP_EPI16(a0, a0, b0, c0, r0, sb, sc, mask);
             rpng_store8_u16_to_u8(dec0 + i, a0);
             c0 = b0;
             r1 = rpng_load8_u8_to_u16(raw1 + i - bpp);
             sb = _mm_and_si128(_mm_add_epi16(r1, a0p), mask);
             sc = _mm_and_si128(_mm_add_epi16(r1, c1),  mask);
-            a1 = rpng_paeth_step_epi16(a1, a0p, c1, r1, sb, sc, mask);
+            RPNG_PAETH_STEP_EPI16(a1, a1, a0p, c1, r1, sb, sc, mask);
             rpng_store8_u16_to_u8(dec1 + i - bpp, a1);
             c1  = a0p;
             a0p = a0;
@@ -833,7 +903,7 @@ static void rpng_filter_paeth_pair(uint8_t *dec0, uint8_t *dec1,
             __m128i r1 = rpng_load8_u8_to_u16(raw1 + i - bpp);
             __m128i s1 = _mm_and_si128(_mm_add_epi16(r1, a0p), mask);
             __m128i s2 = _mm_and_si128(_mm_add_epi16(r1, c1),  mask);
-            a1 = rpng_paeth_step_epi16(a1, a0p, c1, r1, s1, s2, mask);
+            RPNG_PAETH_STEP_EPI16(a1, a1, a0p, c1, r1, s1, s2, mask);
             rpng_store8_u16_to_u8(dec1 + i - bpp, a1);
          }
       }
@@ -1535,6 +1605,65 @@ static void rpng_copy_line_rgba_sse2(uint32_t *data,
 }
 #endif /* RPNG_SIMD_SSE2 */
 
+/* The same two conversions with SSSE3's byte shuffle: each output word
+ * is picked straight out of the 16-byte load, alpha ORed in for RGB -
+ * one shuffle per four pixels where SSE2 takes four shifts and masks
+ * plus a channel swap.  Bounds and scalar tails as the SSE2 versions,
+ * so the output is identical. */
+#if defined(RPNG_SSSE3)
+static RPNG_SSSE3_TARGET void rpng_copy_line_rgb_ssse3(uint32_t *data,
+      const uint8_t *src, unsigned width, bool supports_rgba)
+{
+   unsigned i = 0;
+   /* ABGR32 wants R,G,B in memory order, ARGB32 B,G,R; -1 zeroes */
+   const __m128i shuf = supports_rgba
+         ? _mm_setr_epi8(0, 1, 2, -1, 3, 4, 5, -1,
+                         6, 7, 8, -1, 9, 10, 11, -1)
+         : _mm_setr_epi8(2, 1, 0, -1, 5, 4, 3, -1,
+                         8, 7, 6, -1, 11, 10, 9, -1);
+   const __m128i ma   = _mm_set1_epi32((int)0xFF000000u);
+
+   /* the load reads 4 bytes past the 12 consumed */
+   for (; (int)(width - i) >= 6; i += 4)
+      _mm_storeu_si128((__m128i*)(data + i), _mm_or_si128(_mm_shuffle_epi8(
+            _mm_loadu_si128((const __m128i*)(src + (size_t)i * 3)), shuf),
+            ma));
+
+   if (supports_rgba)
+   {
+      for (; i < width; i++)
+         data[i] = 0xFF000000u
+                 | ((unsigned)src[i*3+2] << 16)
+                 | ((unsigned)src[i*3+1] <<  8)
+                 | ((unsigned)src[i*3+0]      );
+   }
+   else
+   {
+      for (; i < width; i++)
+         data[i] = 0xFF000000u
+                 | ((unsigned)src[i*3+0] << 16)
+                 | ((unsigned)src[i*3+1] <<  8)
+                 | ((unsigned)src[i*3+2]      );
+   }
+}
+
+/* RGBA -> ARGB32 (the supports_rgba case is a plain copy and never
+ * gets here): R and B trade places in every word. */
+static RPNG_SSSE3_TARGET void rpng_copy_line_rgba_argb_ssse3(uint32_t *data,
+      const uint8_t *src, unsigned width)
+{
+   unsigned i = 0;
+   const __m128i shuf = _mm_setr_epi8(2, 1, 0, 3, 6, 5, 4, 7,
+                                      10, 9, 8, 11, 14, 13, 12, 15);
+   for (; (int)(width - i) >= 4; i += 4)
+      _mm_storeu_si128((__m128i*)(data + i), _mm_shuffle_epi8(
+            _mm_loadu_si128((const __m128i*)(src + (size_t)i * 4)), shuf));
+   for (; i < width; i++)
+      data[i] = ((unsigned)src[i*4+3] << 24) | ((unsigned)src[i*4+0] << 16)
+              | ((unsigned)src[i*4+1] <<  8) | ((unsigned)src[i*4+2]);
+}
+#endif /* RPNG_SSSE3 */
+
 /* NEON RGBA → ARGB32/ABGR32 conversion: vld4_u8 de-interleaves all 4 channels. */
 #if defined(RPNG_SIMD_NEON)
 static void rpng_copy_line_rgba_neon(uint32_t *data,
@@ -2222,16 +2351,16 @@ static size_t rpng_adam7_buf_size(const struct png_ihdr *ihdr)
 }
 
 static void rpng_reverse_filter_adam7_deinterlace_pass(uint32_t *data,
-      const struct png_ihdr *ihdr,
+      size_t stride,
       const uint32_t *input, unsigned pass_width, unsigned pass_height,
       const struct adam7_pass *pass)
 {
    unsigned x, y;
 
-   data += pass->y * ihdr->width + pass->x;
+   data += pass->y * stride + pass->x;
 
    for (y = 0; y < pass_height;
-         y++, data += ihdr->width * pass->stride_y, input += pass_width)
+         y++, data += stride * pass->stride_y, input += pass_width)
    {
       uint32_t *out = data;
 
@@ -2240,16 +2369,104 @@ static void rpng_reverse_filter_adam7_deinterlace_pass(uint32_t *data,
    }
 }
 
+/* Buffer pool (rpng_internal.h).  take hands out the slot's buffer when
+ * it is at least size bytes and empties the slot, else NULL and the
+ * caller allocates as it always did; give keeps a released buffer for
+ * the next take, or frees it.  With no pool, give is free(). */
+void *rpng_pool_take(struct rpng_pool *pool, int slot, size_t size)
+{
+   void *p;
+   if (!pool || !pool->buf[slot] || pool->cap[slot] < size)
+      return NULL;
+   p               = pool->buf[slot];
+   pool->buf[slot] = NULL;
+   pool->cap[slot] = 0;
+   return p;
+}
+
+void rpng_pool_give(struct rpng_pool *pool, int slot, void *p, size_t size)
+{
+   if (!p)
+      return;
+   if (!pool)
+   {
+      free(p);
+      return;
+   }
+   if (pool->buf[slot])
+   {
+      if (pool->cap[slot] >= size)
+      {
+         free(p);
+         return;
+      }
+      free(pool->buf[slot]);
+   }
+   pool->buf[slot] = p;
+   pool->cap[slot] = size;
+}
+
+/* The inflate stream: kept only where its backend can reset it, and
+ * reset as it is taken, so a decode starts from exactly what
+ * stream_new would have given it. */
+static void *rpng_pool_take_stream(struct rpng_pool *pool,
+      const struct trans_stream_backend *backend)
+{
+   void *st;
+   if (   !pool || !pool->stream || pool->stream_backend != backend
+       || !backend->reset)
+      return NULL;
+   st           = pool->stream;
+   pool->stream = NULL;
+   backend->reset(st);
+   return st;
+}
+
+static void rpng_pool_give_stream(struct rpng_pool *pool,
+      const struct trans_stream_backend *backend, void *st)
+{
+   if (!st)
+      return;
+   if (!pool || !backend->reset)
+   {
+      backend->stream_free(st);
+      return;
+   }
+   if (pool->stream)
+      pool->stream_backend->stream_free(pool->stream);
+   pool->stream         = st;
+   pool->stream_backend = backend;
+}
+
+void rpng_pool_release(struct rpng_pool *pool)
+{
+   int i;
+   if (!pool)
+      return;
+   if (pool->stream)
+      pool->stream_backend->stream_free(pool->stream);
+   pool->stream         = NULL;
+   pool->stream_backend = NULL;
+   for (i = 0; i < RPNG_POOL_SLOTS; i++)
+   {
+      free(pool->buf[i]);
+      pool->buf[i] = NULL;
+      pool->cap[i] = 0;
+   }
+}
+
+void rpng_set_pool(rpng_t *rpng, struct rpng_pool *pool)
+{
+   if (rpng)
+      rpng->pool = pool;
+}
+
 static void rpng_reverse_filter_deinit(struct rpng_process *pngp)
 {
    if (!pngp)
       return;
-   if (pngp->scratch[0])
-      free(pngp->scratch[0]);
-   if (pngp->scratch[1])
-      free(pngp->scratch[1]);
-   if (pngp->scratch[2])
-      free(pngp->scratch[2]);
+   /* The scanline buffers are views of pngp->lines, which outlives the
+    * pass and goes back with the rest of the process. */
    pngp->scratch[0] = NULL;
    pngp->scratch[1] = NULL;
    pngp->scratch[2] = NULL;
@@ -2257,6 +2474,35 @@ static void rpng_reverse_filter_deinit(struct rpng_process *pngp)
 
    pngp->flags           &= ~RPNG_PROCESS_FLAG_PASS_INITIALIZED;
    pngp->h                = 0;
+}
+
+/* The three scanline buffers at pitch bytes apiece or more, made once. */
+static bool rpng_lines_reserve(struct rpng_process *pngp, size_t pitch)
+{
+   uint8_t *nb;
+   if (pngp->lines_cap >= pitch)
+      return true;
+   rpng_pool_give(pngp->pool, RPNG_POOL_LINES, pngp->lines,
+         3 * pngp->lines_cap);
+   pngp->lines     = NULL;
+   pngp->lines_cap = 0;
+   if (   !(nb = (uint8_t*)rpng_pool_take(pngp->pool, RPNG_POOL_LINES,
+               3 * pitch))
+       && !(nb = (uint8_t*)malloc(3 * pitch)))
+      return false;
+   pngp->lines     = nb;
+   pngp->lines_cap = pitch;
+   return true;
+}
+
+/* Pixels in Adam7 pass p of an image, 0 if the pass is empty. */
+static size_t rpng_adam7_pass_pixels(const struct png_ihdr *ihdr, unsigned p)
+{
+   const struct adam7_pass *ps = &rpng_passes[p];
+   if (ihdr->width <= ps->x || ihdr->height <= ps->y)
+      return 0;
+   return (size_t)((ihdr->width  - ps->x + ps->stride_x - 1) / ps->stride_x)
+        * (size_t)((ihdr->height - ps->y + ps->stride_y - 1) / ps->stride_y);
 }
 
 static int rpng_reverse_filter_init(const struct png_ihdr *ihdr,
@@ -2277,9 +2523,44 @@ static int rpng_reverse_filter_init(const struct png_ihdr *ihdr,
       pngp->pass_height = (ihdr->height - rpng_passes[pngp->pass_pos].y +
             rpng_passes[pngp->pass_pos].stride_y - 1) / rpng_passes[pngp->pass_pos].stride_y;
 
-      if (!(pngp->data = (uint32_t*)malloc(
-            (size_t)pngp->pass_width * (size_t)pngp->pass_height * sizeof(uint32_t))))
-         return -1;
+      /* Every pass's scanlines fit the image's own pitch: reserve the
+       * line buffers at that once, before the first and smallest pass,
+       * rather than regrowing them pass by pass. */
+      {
+         unsigned full_pitch = 0;
+         rpng_pass_geom(ihdr, ihdr->width, ihdr->height,
+               NULL, &full_pitch, NULL);
+         if (!rpng_lines_reserve(pngp, full_pitch))
+            return -1;
+      }
+      /* Pass 7 (x 0, stride 1) is whole image rows - every odd one - so
+       * it is unfiltered straight into them (adam7_iterate) and needs no
+       * buffer: that is half the image not written twice.  Passes 1-6
+       * share one buffer, sized once for the largest of them. */
+      if (pngp->pass_pos == ARRAY_SIZE(rpng_passes) - 1)
+         pngp->data = NULL;
+      else
+      {
+         if ((size_t)pngp->pass_width * pngp->pass_height > pngp->pass_cap)
+         {
+            size_t   need = 0, n;
+            unsigned p;
+            for (p = 0; p + 1 < ARRAY_SIZE(rpng_passes); p++)
+               if ((n = rpng_adam7_pass_pixels(ihdr, p)) > need)
+                  need = n;
+            rpng_pool_give(pngp->pool, RPNG_POOL_PASS, pngp->pass_buf,
+                  pngp->pass_cap * sizeof(uint32_t));
+            pngp->pass_buf = NULL;
+            pngp->pass_cap = 0;
+            if (   !(pngp->pass_buf = (uint32_t*)rpng_pool_take(pngp->pool,
+                        RPNG_POOL_PASS, need * sizeof(uint32_t)))
+                && !(pngp->pass_buf = (uint32_t*)malloc(
+                        need * sizeof(uint32_t))))
+               return -1;
+            pngp->pass_cap = need;
+         }
+         pngp->data = pngp->pass_buf;
+      }
 
       pngp->ihdr        = *ihdr;
       pngp->ihdr.width  = pngp->pass_width;
@@ -2295,8 +2576,7 @@ static int rpng_reverse_filter_init(const struct png_ihdr *ihdr,
           * has ended it is a truncation (and the inflate end path
           * has already refused an under-produced stream, so this
           * arm is belt and braces). */
-         free(pngp->data);
-         pngp->data = NULL;
+         pngp->data = NULL;   /* a view of pass_buf, kept */
          if (!(pngp->flags & RPNG_PROCESS_FLAG_INFLATE_INITIALIZED))
             return RPNG_FILTER_WAIT;
          return -1;
@@ -2326,13 +2606,13 @@ static int rpng_reverse_filter_init(const struct png_ihdr *ihdr,
    /* scratch[0] doubles as row 0's zero prev; scratch_cur starts at 0
     * so the first out-of-place line (cur ^= 1) lands in scratch[1],
     * leaving the zeroes intact while anything still points at them. */
-   pngp->scratch[0]            = (uint8_t*)calloc(1, pngp->pitch);
-   pngp->scratch[1]            = (uint8_t*)malloc(pngp->pitch);
-   pngp->scratch[2]            = (uint8_t*)malloc(pngp->pitch);
-   pngp->scratch_cur           = 0;
-
-   if (!pngp->scratch[0] || !pngp->scratch[1] || !pngp->scratch[2])
+   if (!rpng_lines_reserve(pngp, pngp->pitch))
       goto error;
+   pngp->scratch[0]            = pngp->lines;
+   pngp->scratch[1]            = pngp->lines + pngp->lines_cap;
+   pngp->scratch[2]            = pngp->lines + 2 * pngp->lines_cap;
+   memset(pngp->scratch[0], 0, pngp->pitch);
+   pngp->scratch_cur           = 0;
    pngp->prev_line             = pngp->scratch[0];
 
    pngp->h                    = 0;
@@ -2361,6 +2641,14 @@ static void rpng_reverse_filter_convert(uint32_t *data,
                ihdr->depth);
          break;
       case PNG_IHDR_COLOR_RGB:
+#if defined(RPNG_SSSE3)
+         if (pngp->ssse3 && ihdr->depth == 8)
+         {
+            rpng_copy_line_rgb_ssse3(data, decoded, ihdr->width,
+                  pngp->supports_rgba);
+            break;
+         }
+#endif
          rpng_reverse_filter_copy_line_rgb(data, decoded, ihdr->width,
                ihdr->depth, pngp->supports_rgba, pngp->want_10bit);
          break;
@@ -2373,11 +2661,39 @@ static void rpng_reverse_filter_convert(uint32_t *data,
                data, decoded, ihdr->width, ihdr->depth);
          break;
       case PNG_IHDR_COLOR_RGBA:
+#if defined(RPNG_SSSE3)
+         if (pngp->ssse3 && ihdr->depth == 8 && !pngp->supports_rgba)
+         {
+            rpng_copy_line_rgba_argb_ssse3(data, decoded, ihdr->width);
+            break;
+         }
+#endif
          rpng_reverse_filter_copy_line_rgba(
                data, decoded, ihdr->width, ihdr->depth,
                pngp->supports_rgba);
          break;
    }
+}
+
+/* Whether rows unfilter straight into the output: 8-bit RGBA wanted as
+ * R,G,B,A bytes on a little-endian host, where the conversion is the
+ * identity (rpng_reverse_filter_copy_line_rgba's memcpy).  Every
+ * kernel reads raw and writes the line it is given, so the output row
+ * is that line and the row above it the prev, and the copy out of the
+ * inflate ring is gone.  Interlaced images keep the ring path. */
+static INLINE int rpng_unfilter_direct(const struct png_ihdr *ihdr,
+      const struct rpng_process *pngp)
+{
+#if !defined(MSB_FIRST)
+   return    ihdr->color_type == PNG_IHDR_COLOR_RGBA
+          && ihdr->depth      == 8
+          && !ihdr->interlace
+          && pngp->supports_rgba;
+#else
+   (void)ihdr;
+   (void)pngp;
+   return 0;
+#endif
 }
 
 static int rpng_reverse_filter_copy_line(uint32_t *data,
@@ -2393,10 +2709,16 @@ static int rpng_reverse_filter_copy_line(uint32_t *data,
     * load stalls forwarding every pixel), so those combinations keep
     * their wide stores and decode into alternating scratch lines
     * instead. */
-   uint8_t       *dec = pngp->inflate_buf;
-   const uint8_t *raw = pngp->inflate_buf;
+   uint8_t       *dec    = pngp->inflate_buf;
+   const uint8_t *raw    = pngp->inflate_buf;
+   int            direct = rpng_unfilter_direct(ihdr, pngp);
+#if !defined(RPNG_SIMD_SSE2) && !defined(RPNG_SIMD_NEON)
+   unsigned i;
+#endif
+   if (direct)
+      dec = (uint8_t*)data;
 #if defined(RPNG_SIMD_SSE2) || defined(RPNG_SIMD_NEON)
-   if (!(   filter == PNG_FILTER_NONE
+   else if (!(   filter == PNG_FILTER_NONE
          || filter == PNG_FILTER_UP
          || (filter == PNG_FILTER_SUB
                && pngp->bpp != 3 && pngp->bpp != 6)
@@ -2405,14 +2727,19 @@ static int rpng_reverse_filter_copy_line(uint32_t *data,
       pngp->scratch_cur = (pngp->scratch_cur + 1) % 3;
       dec = pngp->scratch[pngp->scratch_cur];
    }
-#endif
-#if !defined(RPNG_SIMD_SSE2) && !defined(RPNG_SIMD_NEON)
-   unsigned i;
+#else
+   /* The scalar loops below unfilter in place */
+   if (dec != raw && filter != PNG_FILTER_UP)
+      memcpy(dec, raw, pngp->pitch);
 #endif
 
    switch (filter)
    {
       case PNG_FILTER_NONE:
+#if defined(RPNG_SIMD_SSE2) || defined(RPNG_SIMD_NEON)
+         if (dec != raw)
+            memcpy(dec, raw, pngp->pitch);
+#endif
          break;
       case PNG_FILTER_SUB:
 #if defined(RPNG_SIMD_SSE2) || defined(RPNG_SIMD_NEON)
@@ -2458,7 +2785,8 @@ static int rpng_reverse_filter_copy_line(uint32_t *data,
          return IMAGE_PROCESS_ERROR_END;
    }
 
-rpng_reverse_filter_convert(data, ihdr, pngp, dec);
+   if (!direct)
+      rpng_reverse_filter_convert(data, ihdr, pngp, dec);
 
    /* The line just unfiltered becomes the previous line; its ring
     * slot stays protected through pngp->held until the next line has
@@ -2503,8 +2831,15 @@ static int rpng_reverse_filter_regular_iterate(
             const uint8_t *raw1 = raw0 + line;
             uint8_t *dec0;
             uint8_t *dec1;
-            int in_place = (pngp->bpp == 4 || pngp->bpp == 8);
-            if (in_place)
+            int direct   = rpng_unfilter_direct(ihdr, pngp);
+            int in_place = !direct && (pngp->bpp == 4 || pngp->bpp == 8);
+            if (direct)
+            {
+               /* Straight into the two output rows */
+               dec0 = (uint8_t*)pngp->out_cursor;
+               dec1 = (uint8_t*)(pngp->out_cursor + pngp->out_stride);
+            }
+            else if (in_place)
             {
                /* Stride == window: the wide stores land exactly on
                 * their own next input, so decode in the ring. */
@@ -2527,10 +2862,13 @@ static int rpng_reverse_filter_regular_iterate(
             else
                rpng_filter_avg_pair(dec0, dec1, raw0, raw1,
                      pngp->prev_line, pngp->pitch, pngp->bpp);
-            rpng_reverse_filter_convert(pngp->out_cursor, ihdr, pngp,
-                  dec0);
-            rpng_reverse_filter_convert(pngp->out_cursor + ihdr->width,
-                  ihdr, pngp, dec1);
+            if (!direct)
+            {
+               rpng_reverse_filter_convert(pngp->out_cursor, ihdr, pngp,
+                     dec0);
+               rpng_reverse_filter_convert(pngp->out_cursor + pngp->out_stride,
+                     ihdr, pngp, dec1);
+            }
             if (in_place)
             {
                /* Release the line the pair's first row used as prev
@@ -2542,8 +2880,8 @@ static int rpng_reverse_filter_regular_iterate(
             }
             else
             {
-               /* Scratch lines need no ring protection: release both
-                * raw lines and anything held. */
+               /* Scratch or output lines need no ring protection:
+                * release both raw lines and anything held. */
                pngp->restore_buf_size += pngp->held + 2 * line;
                pngp->held              = 0;
             }
@@ -2553,7 +2891,7 @@ static int rpng_reverse_filter_regular_iterate(
             if (    pngp->ring_size < pngp->inflate_buf_size
                 &&  pngp->inflate_buf == pngp->inflate_base + pngp->ring_size)
                pngp->inflate_buf = pngp->inflate_base;
-            pngp->out_cursor    += 2 * (size_t)ihdr->width;
+            pngp->out_cursor    += 2 * pngp->out_stride;
             return IMAGE_PROCESS_NEXT;
          }
       }
@@ -2595,7 +2933,7 @@ static int rpng_reverse_filter_regular_iterate(
        &&  pngp->inflate_buf == pngp->inflate_base + pngp->ring_size)
       pngp->inflate_buf = pngp->inflate_base;
 
-   pngp->out_cursor            += ihdr->width;
+   pngp->out_cursor            += pngp->out_stride;
 
    return IMAGE_PROCESS_NEXT;
 
@@ -2635,7 +2973,17 @@ static int rpng_reverse_filter_adam7_iterate(uint32_t **data_,
    if (rpng_reverse_filter_init(&pngp->ihdr, pngp) == -1)
       return IMAGE_PROCESS_ERROR;
 
-   pngp->out_cursor = pngp->data;
+   if (pngp->data)
+   {
+      pngp->out_cursor = pngp->data;
+      pngp->out_stride = pngp->pass_width;
+   }
+   else
+   {
+      /* Pass 7: its rows are the image's odd rows, whole */
+      pngp->out_cursor = data + pngp->image_stride;
+      pngp->out_stride = 2 * pngp->image_stride;
+   }
 
    do
    {
@@ -2650,11 +2998,11 @@ static int rpng_reverse_filter_adam7_iterate(uint32_t **data_,
 
    pngp->total_out              -= pngp->pass_size;
 
-   rpng_reverse_filter_adam7_deinterlace_pass(data,
-         ihdr, pngp->data, pngp->pass_width, pngp->pass_height,
-         &rpng_passes[pngp->pass_pos]);
-
-   free(pngp->data);
+   if (pngp->data)
+      rpng_reverse_filter_adam7_deinterlace_pass(data,
+            pngp->image_stride, pngp->data, pngp->pass_width,
+            pngp->pass_height,
+            &rpng_passes[pngp->pass_pos]);
 
    pngp->data                   = NULL;
    pngp->pass_width             = 0;
@@ -2687,11 +3035,7 @@ static int rpng_reverse_filter_adam7(uint32_t **data_,
          pngp->pass_pos++;
          return 0;
       case IMAGE_PROCESS_ERROR:
-         if (pngp->data)
-         {
-            free(pngp->data);
-            pngp->data = NULL;
-         }
+         pngp->data = NULL;   /* a view of pass_buf, kept */
          pngp->inflate_buf -= pngp->adam7_restore_buf_size;
          pngp->adam7_restore_buf_size = 0;
          return -1;
@@ -2713,8 +3057,14 @@ static int rpng_reverse_filter_adam7(uint32_t **data_,
  * enough to sit in L1/L2 alongside the window.  64 KB does both.  This
  * also restores the incremental pacing the nbio callers were written
  * for: one bounded step per rpng_process_image call instead of one
- * unbounded one. */
-#define RPNG_INFLATE_SLICE 32768
+ * unbounded one.
+ *
+ * The slice also sets how much the inflate backend copies into its own
+ * 32 KB history window after each call - the last 32 KB of that call's
+ * output, so a later call's back-references still resolve.  At 32 KB,
+ * which this was, that was every decoded byte a second time; at 64 KB
+ * it is half of them. */
+#define RPNG_INFLATE_SLICE 65536
 
 static int rpng_load_image_argb_process_inflate_init(
       rpng_t *rpng, uint32_t **data)
@@ -2755,7 +3105,8 @@ static int rpng_load_image_argb_process_inflate_init(
    {
       const struct idat_span *sp = &rpng->idat_buf.v[process->span_idx];
       process->stream_backend->set_in(process->stream,
-            rpng->buff_start + sp->off + process->span_pos,
+            (rpng->idat_base ? rpng->idat_base : rpng->buff_start)
+            + sp->off + process->span_pos,
             sp->len - process->span_pos);
    }
    else
@@ -2804,6 +3155,43 @@ static int rpng_load_image_argb_process_inflate_init(
    process->total_out     += wn;
    process->inflated_total += wn;
 
+   /* The span ran out with room left in the slice and another span to
+    * come: hand that one over and carry on into the same output.  Going
+    * back round with a fresh set_out instead made the decoder treat
+    * everything before it as history, and the back-references that
+    * reach over the seam then came out of its window a byte at a time
+    * - several times the cost per byte, at every IDAT boundary, and
+    * libpng and most other writers split the data at 8 KB. */
+   {
+      uint32_t rd_all = rd, wn_all = wn;
+      while (   zstatus && err == TRANS_STREAM_ERROR_AGAIN
+             && wn_all < slice
+             && process->span_idx + 1 < rpng->idat_buf.n
+             && process->span_pos >= rpng->idat_buf.v[process->span_idx].len)
+      {
+         const struct idat_span *sp;
+         process->span_idx++;
+         process->span_pos = 0;
+         sp = &rpng->idat_buf.v[process->span_idx];
+         process->stream_backend->set_in(process->stream,
+               (rpng->idat_base ? rpng->idat_base : rpng->buff_start)
+               + sp->off, sp->len);
+         zstatus = process->stream_backend->trans(
+            process->stream, false, &rd, &wn, &err);
+         if (!zstatus && err != TRANS_STREAM_ERROR_BUFFER_FULL)
+            goto error;
+         process->avail_in      -= rd;
+         process->span_pos      += rd;
+         process->avail_out     -= wn;
+         process->total_out     += wn;
+         process->inflated_total += wn;
+         rd_all += rd;
+         wn_all += wn;
+      }
+      rd = rd_all;
+      wn = wn_all;
+   }
+
    /* No input taken and no output made means the backend cannot get any
     * further - a truncated or corrupt stream.  Without this the
     * avail_in > 0 condition above was doing double duty as the
@@ -2822,7 +3210,8 @@ end:
     * is finished. */
    if (process->avail_out > 0 && rpng->ihdr.interlace != 1)
       goto error;
-   process->stream_backend->stream_free(process->stream);
+   rpng_pool_give_stream(process->pool, process->stream_backend,
+         process->stream);
    process->stream = NULL;
 
    process->flags |=  RPNG_PROCESS_FLAG_INFLATE_INITIALIZED;
@@ -2844,6 +3233,13 @@ static int rpng_load_image_argb_process_output_init(
 {
    struct rpng_process *process = (struct rpng_process*)rpng->process;
 
+   /* The caller's own memory (rpng_set_output): nothing to allocate */
+   if (rpng->out_dst)
+      *data = rpng->out_dst;
+   /* A pool's buffer was allocated here too, so it is aligned alike. */
+   else if (!(*data = (uint32_t*)rpng_pool_take(rpng->pool, RPNG_POOL_OUT,
+               (size_t)rpng->ihdr.width * (size_t)rpng->ihdr.height
+               * sizeof(uint32_t))))
 #ifdef GEKKO
    /* We often use these in textures, make sure 
     * they're 32-byte aligned */
@@ -2864,7 +3260,10 @@ static int rpng_load_image_argb_process_output_init(
       if (rpng_reverse_filter_init(&rpng->ihdr, process) == -1)
          return -1;
 
-   process->out_cursor = *data;
+   process->image_stride = rpng->out_dst ? rpng->out_dst_stride
+                                         : rpng->ihdr.width;
+   process->out_cursor   = *data;
+   process->out_stride   = process->image_stride;
 
    process->flags |= RPNG_PROCESS_FLAG_OUTPUT_INITIALIZED;
    return 0;
@@ -2928,6 +3327,24 @@ static bool rpng_idat_append_span(struct idat_spans *sp,
    return true;
 }
 
+/* The process's buffers, back to the pool (or freed, without one):
+ * the per-pass output, the scanline buffers and the inflate window may
+ * all still be live when a decode is abandoned or fails. */
+static void rpng_process_give_back(struct rpng_process *p)
+{
+   rpng_pool_give(p->pool, RPNG_POOL_PASS, p->pass_buf,
+         p->pass_cap * sizeof(uint32_t));
+   rpng_pool_give(p->pool, RPNG_POOL_LINES, p->lines, 3 * p->lines_cap);
+   rpng_pool_give(p->pool, RPNG_POOL_RING, p->inflate_base, p->ring_size);
+   p->data       = NULL;   /* a view of pass_buf */
+   p->pass_buf   = NULL;
+   p->pass_cap   = 0;
+   p->lines      = NULL;
+   p->lines_cap  = 0;
+   p->scratch[0] = p->scratch[1] = p->scratch[2] = NULL;
+   p->inflate_base = NULL;
+}
+
 static struct rpng_process *rpng_process_init(rpng_t *rpng)
 {
    uint8_t *inflate_buf            = NULL;
@@ -2936,6 +3353,12 @@ static struct rpng_process *rpng_process_init(rpng_t *rpng)
 
    if (!process)
       return NULL;
+
+#if defined(RPNG_SSSE3_RUNTIME)
+   process->ssse3 = (cpu_features_get() & RETRO_SIMD_SSSE3) != 0;
+#elif defined(RPNG_SSSE3)
+   process->ssse3 = true;
+#endif
 
    process->stream_backend         = trans_stream_get_zlib_inflate_backend();
 
@@ -2983,7 +3406,9 @@ static struct rpng_process *rpng_process_init(rpng_t *rpng)
          process->ring_size = process->inflate_buf_size;
    }
 
-   process->stream = process->stream_backend->stream_new();
+   if (!(process->stream = rpng_pool_take_stream(rpng->pool,
+               process->stream_backend)))
+      process->stream = process->stream_backend->stream_new();
 
    if (!process->stream)
    {
@@ -2991,8 +3416,10 @@ static struct rpng_process *rpng_process_init(rpng_t *rpng)
       return NULL;
    }
 
-   inflate_buf = (uint8_t*)malloc(process->ring_size);
-   if (!inflate_buf)
+   process->pool = rpng->pool;
+   if (   !(inflate_buf = (uint8_t*)rpng_pool_take(process->pool,
+               RPNG_POOL_RING, process->ring_size))
+       && !(inflate_buf = (uint8_t*)malloc(process->ring_size)))
       goto error;
 
    process->inflate_buf  = inflate_buf;
@@ -3475,18 +3902,10 @@ error:
       /* An externally abandoned decode (cancelled task) can be torn
        * down at any machine state: the per-pass output, the scanline
        * buffers and the inflate window may all still be live here. */
-      if (rpng->process->data)
-         free(rpng->process->data);
-      if (rpng->process->scratch[0])
-         free(rpng->process->scratch[0]);
-      if (rpng->process->scratch[1])
-         free(rpng->process->scratch[1]);
-      if (rpng->process->scratch[2])
-         free(rpng->process->scratch[2]);
-      if (rpng->process->inflate_base)
-         free(rpng->process->inflate_base);
+      rpng_process_give_back(rpng->process);
       if (rpng->process->stream)
-         rpng->process->stream_backend->stream_free(rpng->process->stream);
+         rpng_pool_give_stream(rpng->process->pool,
+               rpng->process->stream_backend, rpng->process->stream);
       free(rpng->process);
       rpng->process = NULL;
    }
@@ -3506,21 +3925,13 @@ void rpng_free(rpng_t *rpng)
        * here at an arbitrary machine state: the per-pass output and
        * the scanline buffers may still be live alongside the inflate
        * window. */
-      if (rpng->process->data)
-         free(rpng->process->data);
-      if (rpng->process->scratch[0])
-         free(rpng->process->scratch[0]);
-      if (rpng->process->scratch[1])
-         free(rpng->process->scratch[1]);
-      if (rpng->process->scratch[2])
-         free(rpng->process->scratch[2]);
-      if (rpng->process->inflate_base)
-         free(rpng->process->inflate_base);
+      rpng_process_give_back(rpng->process);
       if (rpng->process->stream)
       {
          if (   rpng->process->stream_backend 
              && rpng->process->stream_backend->stream_free)
-            rpng->process->stream_backend->stream_free(rpng->process->stream);
+            rpng_pool_give_stream(rpng->process->pool,
+                  rpng->process->stream_backend, rpng->process->stream);
          else
             free(rpng->process->stream);
       }
@@ -3528,6 +3939,33 @@ void rpng_free(rpng_t *rpng)
    }
 
    free(rpng);
+}
+
+/* The compressed image data, given as payload spans of another buffer
+ * instead of IDAT chunks in this one.  For APNG: each frame is decoded
+ * as a PNG made of the file's IHDR (with the frame's size), PLTE and
+ * tRNS, an empty IDAT and an IEND, with the frame's IDAT/fdAT payloads
+ * added here where they lie in the animation, rather than copied into
+ * that PNG.  Called after the chunk walk has finished and before the
+ * first rpng_process_image; the buffer must outlive the decode.  The
+ * same span limits as file IDAT chunks apply. */
+bool rpng_add_idat_spans(rpng_t *rpng, const uint8_t *base,
+      const struct rpng_ext_span *v, int n)
+{
+   int i;
+   if (!rpng || !base || rpng->process
+         || (rpng->idat_buf.n && rpng->idat_base != base))
+      return false;
+   rpng->idat_base = base;
+   for (i = 0; i < n; i++)
+   {
+      if (v[i].len != (uint32_t)v[i].len)
+         return false;
+      if (v[i].len && !rpng_idat_append_span(&rpng->idat_buf,
+               v[i].off, (uint32_t)v[i].len))
+         return false;
+   }
+   return true;
 }
 
 bool rpng_start(rpng_t *rpng)
@@ -3678,6 +4116,30 @@ void rpng_set_avail(rpng_t *rpng, size_t avail)
 bool rpng_need_more(const rpng_t *rpng)
 {
    return rpng ? rpng->need_more : false;
+}
+
+bool rpng_get_info(const rpng_t *rpng, struct rpng_info *info)
+{
+   if (!rpng || !(rpng->flags & RPNG_FLAG_HAS_IHDR))
+      return false;
+   info->width      = rpng->ihdr.width;
+   info->height     = rpng->ihdr.height;
+   info->depth      = rpng->ihdr.depth;
+   info->color_type = rpng->ihdr.color_type;
+   info->interlace  = rpng->ihdr.interlace;
+   info->has_trns   = (rpng->flags & RPNG_FLAG_HAS_TRNS) ? 1 : 0;
+   return true;
+}
+
+bool rpng_set_output(rpng_t *rpng, uint32_t *dst, size_t stride)
+{
+   if (!rpng || rpng->process || !(rpng->flags & RPNG_FLAG_HAS_IHDR))
+      return false;
+   if (dst && stride < rpng->ihdr.width)
+      return false;
+   rpng->out_dst        = dst;
+   rpng->out_dst_stride = stride;
+   return true;
 }
 
 rpng_t *rpng_alloc(void)

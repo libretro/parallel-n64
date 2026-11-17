@@ -301,7 +301,9 @@ size_t fill_pathname(char *s, const char *in_path,
  * - Calls strlcpy
  *
  **/
+#ifndef RETRO_DISABLE_HOST_CLOCK
 size_t fill_dated_filename(char *s, const char *ext, size_t len);
+#endif
 
 /**
  * fill_str_dated_filename:
@@ -324,7 +326,9 @@ size_t fill_dated_filename(char *s, const char *ext, size_t len);
  *
  * @return Length of the string copied into @s
  **/
+#ifndef RETRO_DISABLE_HOST_CLOCK
 size_t fill_str_dated_filename(char *s, const char *in_str, const char *ext, size_t len);
+#endif
 
 /**
  * find_last_slash:
@@ -674,6 +678,35 @@ bool path_mkdir(const char *dir);
 bool path_rmdir(const char *dir);
 
 /**
+ * path_remove_tree:
+ * @path               : file or directory path.
+ *
+ * Removes @path: a file, or a directory with everything in it,
+ * hidden entries included.  A link is removed, not followed, where
+ * the platform tells a link from what it points to.
+ *
+ * @return true if nothing is left at @path, including when there
+ * was nothing there to begin with.
+ **/
+bool path_remove_tree(const char *path);
+
+/**
+ * path_copy_tree:
+ * @src                : file or directory to copy.
+ * @dst                : path of the copy.
+ *
+ * Copies the file @src to @dst, or the directory @src with
+ * everything in it into the directory @dst, which is made as needed.
+ * Files already at the destination are replaced; anything else
+ * there is left.  Each file is copied with the platform's own copy
+ * (a clone where the file system can make one).  @dst must not lie
+ * inside @src.
+ *
+ * @return true if everything was copied.
+ **/
+bool path_copy_tree(const char *src, const char *dst);
+
+/**
  * path_is_directory:
  * @path               : path
  *
@@ -682,6 +715,25 @@ bool path_rmdir(const char *dir);
  * @return true if path is a directory, otherwise false.
  */
 bool path_is_directory(const char *path);
+
+/**
+ * path_is_empty_directory:
+ * @dir                : path
+ *
+ * @return true if @dir is a directory holding nothing but "." and "..",
+ * false if it holds anything else or cannot be opened.
+ */
+bool path_is_empty_directory(const char *dir);
+
+/**
+ * path_get_free_space:
+ * @path               : an existing file or directory
+ *
+ * @return bytes available to the caller on the volume holding @path,
+ * or -1 when that cannot be determined (no such path, or a platform
+ * without a free-space query).
+ */
+int64_t path_get_free_space(const char *path);
 
 /* Time format strings with AM-PM designation require special
  * handling due to platform dependence

@@ -205,6 +205,12 @@ typedef struct retro_eventcount
  */
 bool retro_eventcount_init(retro_eventcount_t *ec);
 
+/* As init, but fail before allocating a mutex/condition-variable fallback.
+ * Required by owners whose threading contract permits lock-free parking only.
+ * On failure the object must not be used or passed to free. */
+bool retro_eventcount_init_lock_free(retro_eventcount_t *ec);
+
+
 /**
  * retro_eventcount_free:
  * @ec : object to release.
@@ -213,6 +219,16 @@ bool retro_eventcount_init(retro_eventcount_t *ec);
  * call on @ec.  Safe on a zeroed object and on one init failed for.
  */
 void retro_eventcount_free(retro_eventcount_t *ec);
+
+/**
+ * retro_eventcount_thread_cleanup:
+ *
+ * Releases this thread's cached backend event, timer or semaphore after its
+ * last wait returns. Call before an owning thread exits or its module unloads.
+ * Safe before init and on repeated calls; later waits may recreate the cache.
+ * Other threads' caches and eventcount objects are unchanged.
+ */
+void retro_eventcount_thread_cleanup(void);
 
 /**
  * retro_eventcount_notify:
@@ -275,18 +291,23 @@ void retro_eventcount_commit_wait(retro_eventcount_t *ec, int key);
  * spurious early return reports true, so the caller's loop still owns
  * the decision.
  */
+#ifndef RETRO_DISABLE_HOST_CLOCK
 bool retro_eventcount_commit_wait_timeout(retro_eventcount_t *ec,
       int key, int64_t timeout_us);
+#endif
 
 /**
  * retro_eventcount_spin_iters:
  *
- * @return how many times a waiter spins on its flag word before it
+ * @return how many times a waiter polls eventcount state before it
  * commits to the kernel, as this build resolved it.  Zero on a
  * uniprocessor, where the spin is skipped.  For logs and benchmarks;
  * on Windows it is only meaningful after the first
  * retro_eventcount_init().
  */
+/* RETRO_EVENTCOUNT_FIXED_SPIN selects an iteration-only default at build
+ * time. It bypasses host clock calibration; an explicit iteration-count
+ * environment override remains available. */
 unsigned retro_eventcount_spin_iters(void);
 
 /**

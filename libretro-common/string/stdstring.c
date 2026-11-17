@@ -486,7 +486,10 @@ size_t word_wrap_wideglyph(char *s, size_t len,
 
          if (max_lines != 0 && lines >= max_lines)
             continue;
-         else if (lastwideglyph 
+         /* Not before a glyph that starts its line: one wider than
+          * the line would be put on a line of its own for ever */
+         else if (lastwideglyph
+              && lastwideglyph != s_start && lastwideglyph[-1] != '\n'
               && (!lastspace || lastwideglyph > lastspace))
          {
             /* Insert newline character */
@@ -495,6 +498,8 @@ size_t word_wrap_wideglyph(char *s, size_t len,
             src           -= s - lastwideglyph;
             s              = lastwideglyph + 1;
             lastwideglyph  = NULL;
+            /* A space before it is on the line ended here */
+            lastspace      = NULL;
 
             /* Early return if remaining src string
              * length is less than line width */
@@ -543,6 +548,35 @@ size_t word_wrap_wideglyph(char *s, size_t len,
 
    *s = '\0';
    return (size_t)(s - s_start);
+}
+
+size_t word_wrap_offset(const char *src, size_t at,
+      const char *wrapped, size_t wrapped_len)
+{
+   size_t i = 0;
+   size_t d = 0;
+   while (i < at && d < wrapped_len)
+   {
+      char w = wrapped[d];
+      char c = src[i];
+      if (w == c)
+         i++;
+      else if (w == '\0' || w == '\n')
+      {
+         /* A line end the wrap made of a space or kept, or one it put
+          * before a wide glyph, which takes no byte of src */
+         if (c == ' ' || c == '\n')
+            i++;
+      }
+      else
+         break;
+      d++;
+   }
+   /* At a glyph a line end was put before: the glyph, not the end */
+   if (i == at && src[i] != ' ' && src[i] != '\n')
+      while (d < wrapped_len && (wrapped[d] == '\0' || wrapped[d] == '\n'))
+         d++;
+   return d;
 }
 
 /**

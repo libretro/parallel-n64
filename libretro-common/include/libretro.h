@@ -3182,13 +3182,13 @@ struct retro_vr_frame_state {
 #define RETRO_ENVIRONMENT_GET_VR_HEAD_POSE (98 | RETRO_ENVIRONMENT_EXPERIMENTAL)
 
 /* Frontend H.264 decoding to CPU-readable 8-bit YUV 4:2:0 planes.
- * Versions 1, 2 and 3 are supported. Initialize the version before querying.
+ * Versions 1 to 4 are supported. Initialize the version before querying.
  * Version 1 writes only the original prefix through close. Calls for each decoder
  * are serialized by the core; close all decoders before context teardown.
  * Unsupported frontends return false. Input is one Annex-B access unit.
  * Planes remain valid until decode, drain or close. */
 #define RETRO_ENVIRONMENT_GET_VIDEO_DECODE_INTERFACE (99 | RETRO_ENVIRONMENT_EXPERIMENTAL)
-#define RETRO_VIDEO_DECODE_INTERFACE_VERSION 3
+#define RETRO_VIDEO_DECODE_INTERFACE_VERSION 4
 #define RETRO_VIDEO_DECODE_DEFER_PLANES (1u << 0)
 
 struct retro_video_decode_frame
@@ -3249,6 +3249,11 @@ struct retro_video_decode_interface
     * 2 busy (retry later), -1 unavailable/error. CPU get_frame remains
     * valid until decode/drain. Failed calls acquire no lease. */
    int (*get_gpu_frame)(void *decoder, struct retro_video_decode_gpu_frame *frame);
+   /* Version 4: set_tag gives the picture the next decode/decode_ex opens
+    * a value, which get_tag returns once decode or drain hands that
+    * picture out: output is in display order, not the input's. */
+   void (*set_tag)(void *decoder, uint64_t tag);
+   uint64_t (*get_tag)(void *decoder);
 };
 
 
@@ -3611,6 +3616,65 @@ struct retro_hw_render_upscaler_interface
     * no inputs and is shown without upscaling.
     */
    void (*set_inputs)(void *handle, const struct retro_hw_upscaler_inputs *inputs);
+};
+
+/**
+ * Gets an interface with which an OpenGL or OpenGL ES hardware core makes
+ * contexts for threads of its own: each is in the share group of the
+ * core's context (RETRO_ENVIRONMENT_SET_HW_RENDER), of the same API,
+ * version and profile, so textures, buffers, shaders, programs and syncs
+ * made on one are seen on the others; framebuffers and vertex arrays are
+ * not shared, as in OpenGL. A core renders on another thread this way -
+ * into a texture of its own, with a fence the core's context waits on
+ * before using it in retro_run - and compiles shaders on threads of its
+ * own, with nothing of the window system in the core.
+ *
+ * Call it from context_reset or later; the interface is valid until
+ * context_destroy, before which the core destroys every context it
+ * made. Returns false when the frontend cannot make such contexts for
+ * the video driver it runs; a core then keeps its OpenGL work on the
+ * thread that calls retro_run, as it always could.
+ *
+ * @param[out] data <tt>const struct retro_hw_shared_context_interface **</tt>.
+ * @see retro_hw_shared_context_interface
+ */
+#define RETRO_ENVIRONMENT_GET_HW_SHARED_CONTEXT_INTERFACE (104 | RETRO_ENVIRONMENT_EXPERIMENTAL)
+
+#define RETRO_HW_SHARED_CONTEXT_INTERFACE_VERSION 1
+
+/** A context made with retro_hw_shared_context_interface; opaque. */
+struct retro_hw_shared_context;
+
+struct retro_hw_shared_context_interface
+{
+   /** RETRO_HW_SHARED_CONTEXT_INTERFACE_VERSION. */
+   unsigned interface_version;
+
+   /**
+    * A new context, current on no thread; NULL when one cannot be made.
+    * Call it on the thread that calls retro_run, in context_reset or
+    * retro_run. Each costs the driver a context: make them up front,
+    * one for each thread, not one per piece of work.
+    */
+   struct retro_hw_shared_context *(RETRO_CALLCONV *create)(void);
+
+   /**
+    * Makes @ctx current on the calling thread (@current true), or no
+    * context of these at all (false), and returns whether it could. A
+    * context is current on one thread at a time. It has no framebuffer
+    * of the window's: framebuffer 0 is not to be drawn to or read, and
+    * it draws into framebuffers of its own. Functions are looked up with
+    * the hardware render callback's get_proc_address, with this context
+    * current or the core's.
+    */
+   bool (RETRO_CALLCONV *make_current)(struct retro_hw_shared_context *ctx,
+         bool current);
+
+   /**
+    * Destroys @ctx, which is current on no thread. Call it on the thread
+    * that calls retro_run, in retro_run or context_destroy.
+    */
+   void (RETRO_CALLCONV *destroy)(struct retro_hw_shared_context *ctx);
 };
 
 /* Speaker positions, as bits of a layout mask; a frame's channels are
@@ -4282,6 +4346,230 @@ typedef int (RETRO_CALLCONV *retro_vfs_dirent_stat_t)(struct retro_vfs_dir_handl
 typedef int (RETRO_CALLCONV *retro_vfs_closedir_t)(struct retro_vfs_dir_handle *dirstream);
 
 /**
+ * Reads from a file at a given offset, without moving the position that
+ * \c retro_vfs_read_t, \c retro_vfs_seek_t and \c retro_vfs_tell_t share.
+ * Any number of threads may call it on one handle at once, with no lock
+ * of the core's: the frontend reads at the offset itself. Introduced in
+ * VFS API v6.
+ *
+ * It reads the file as it is on disk: bytes written with
+ * \c retro_vfs_write_t and not flushed yet may not be seen.
+ *
+ * @param stream The file to read from.
+ * @param s Where the bytes go.
+ * @param len How many to read.
+ * @param offset Where in the file, from its start; not negative.
+ * @return The number of bytes read, 0 at or past the end of the file, or
+ * -1 on an error or when the frontend has no positional I/O for this
+ * file (a cdrom:// or network path, a platform without it): the core
+ * then seeks and reads, under a lock of its own if it shares the handle.
+ */
+typedef int64_t (RETRO_CALLCONV *retro_vfs_read_at_t)(struct retro_vfs_file_handle *stream, void *s, uint64_t len, int64_t offset);
+
+/** \c offset of \c retro_vfs_write_at_t for an append. */
+#define RETRO_VFS_WRITE_AT_APPEND (-1)
+
+/**
+ * Writes to a file at a given offset, without moving the handle's
+ * position; callable from several threads at once as
+ * \c retro_vfs_read_at_t is. Introduced in VFS API v6.
+ *
+ * With \c RETRO_VFS_WRITE_AT_APPEND the bytes are appended: each append
+ * goes in whole, after the one before it, whichever thread it came from
+ * - a log or a cache several threads add records to needs no lock. The
+ * appends start at the end of the file as it was opened, so a handle
+ * that is appended to is written with this call only.
+ *
+ * @param stream The file to write to.
+ * @param s The bytes to write.
+ * @param len How many.
+ * @param offset Where in the file, or \c RETRO_VFS_WRITE_AT_APPEND.
+ * @return The number of bytes written, or -1 on an error or when the
+ * frontend has no positional I/O for this file.
+ */
+typedef int64_t (RETRO_CALLCONV *retro_vfs_write_at_t)(struct retro_vfs_file_handle *stream, const void *s, uint64_t len, int64_t offset);
+
+/**
+ * Lends the next bytes of a file instead of copying them: points \c *ptr
+ * at up to \c len of them at the handle's position, in the frontend's
+ * mapping of the file or its read-ahead, and moves the position past
+ * them. Introduced in VFS API v7.
+ *
+ * The bytes stay valid until the next call on \c stream. They are the
+ * frontend's: the core reads them and never writes or frees them.
+ *
+ * @param stream The file to read from.
+ * @param len The most bytes wanted.
+ * @param ptr Set to the lent bytes.
+ * @return How many were lent, 0 at the end of the file, or -1 where
+ * nothing can be lent (no mapping of this file): the core then reads
+ * with \c retro_vfs_read_t, which this never stands in for.
+ */
+typedef int64_t (RETRO_CALLCONV *retro_vfs_view_t)(struct retro_vfs_file_handle *stream, uint64_t len, const uint8_t **ptr);
+
+/**
+ * Maps the whole of a file read-only, on demand, and returns it.
+ * Introduced in VFS API v7.
+ *
+ * The handle owns the mapping and drops it when it is closed; a second
+ * call returns the same one. Reads, seeks and the position are not
+ * touched by it.
+ *
+ * Reading the mapping is reading the file: where something else can
+ * shorten the file while it is mapped, a read past its new end faults
+ * (SIGBUS on POSIX), and a removable or network drive can fail a read
+ * the same way. A core maps only files nothing else changes - its own
+ * content, opened read-only - and reads them with \c retro_vfs_read_t
+ * where \c retro_vfs_volume_t says the drive is not a fixed one.
+ *
+ * @param stream A file opened for reading.
+ * @param len Set to the mapping's size, 0 when there is none.
+ * @return The mapping, or NULL where the file can't be mapped (an empty
+ * file, one too big for the address space, a write mode, a cdrom:// or
+ * network path, a platform without mappings): the core then reads.
+ */
+typedef const uint8_t *(RETRO_CALLCONV *retro_vfs_map_t)(struct retro_vfs_file_handle *stream, int64_t *len);
+
+/**
+ * Which file an open handle is, read from the handle rather than by
+ * path, so it describes the file being read even once the path names
+ * another. Introduced in VFS API v7.
+ *
+ * A core compares two of them (\c dev and \c id) to tell whether two
+ * handles or paths are one file, and \c size, \c mtime and \c ctime to
+ * tell whether it changed since.
+ */
+struct retro_vfs_file_identity
+{
+   uint64_t dev;          /**< The volume. */
+   uint64_t size;
+   int64_t  mtime;        /**< Last write, seconds since 1970. */
+   int64_t  ctime;        /**< Last status change (Windows: ChangeTime),
+                           *   0 where the platform has none. */
+   uint32_t mtime_nsec;
+   uint32_t ctime_nsec;
+   uint8_t  id[16];       /**< The file on the volume: Windows' 128-bit
+                           *   id, else the inode, big-endian, in the
+                           *   last 8 bytes. */
+   uint32_t uid;          /**< Owner and group, where \c flags has
+                           *   \c RETRO_VFS_IDENTITY_HAS_OWNER (POSIX). */
+   uint32_t gid;
+   uint16_t perm;         /**< POSIX permission bits (07777), with owner. */
+   uint8_t  type;         /**< \c RETRO_VFS_IDENTITY_REGULAR, ... */
+   uint8_t  flags;        /**< \c RETRO_VFS_IDENTITY_HAS_OWNER */
+};
+
+#define RETRO_VFS_IDENTITY_REGULAR   1
+#define RETRO_VFS_IDENTITY_DIRECTORY 2
+#define RETRO_VFS_IDENTITY_OTHER     3 /**< A FIFO, device, socket... */
+
+#define RETRO_VFS_IDENTITY_HAS_OWNER (1 << 0)
+
+/**
+ * The identity of an open file. Introduced in VFS API v7.
+ *
+ * @param stream The file.
+ * @param id Filled with its identity.
+ * @return \c true with \c id filled; \c false where the handle can't
+ * tell (a cdrom:// or network path, one opened without a descriptor).
+ */
+typedef bool (RETRO_CALLCONV *retro_vfs_identity_t)(struct retro_vfs_file_handle *stream, struct retro_vfs_file_identity *id);
+
+/**
+ * The identity of what a path names now, following links, without
+ * opening it. Introduced in VFS API v7.
+ *
+ * @param path The file or folder.
+ * @param id Filled with its identity; zeroed unless 1 is returned.
+ * @return 1 with \c id filled; 0 where nothing is there; -1 where it
+ * can't be told (no permission to look, a part of the path is a file on
+ * POSIX, or the frontend can't).
+ */
+typedef int (RETRO_CALLCONV *retro_vfs_stat_identity_t)(const char *path, struct retro_vfs_file_identity *id);
+
+/**
+ * What a file's volume is: how it is mounted and what kind of drive.
+ * Introduced in VFS API v7.
+ */
+struct retro_vfs_volume
+{
+   uint64_t mount; /**< The mount's id, with \c RETRO_VFS_VOLUME_MOUNT
+                    *   (Linux). */
+   uint8_t  kind;  /**< \c RETRO_VFS_VOLUME_FIXED, ..., 0 when not known. */
+   uint8_t  flags; /**< \c RETRO_VFS_VOLUME_READ_ONLY, ... */
+};
+
+/** Mounted read-only. */
+#define RETRO_VFS_VOLUME_READ_ONLY  (1 << 0)
+/** A filesystem whose kernel alone sets change times, and that is not
+ *  stacked on another: no user can forge a file's ctime. */
+#define RETRO_VFS_VOLUME_CTIME_KEPT (1 << 1)
+/** \c mount holds the mount's id. */
+#define RETRO_VFS_VOLUME_MOUNT      (1 << 2)
+
+/* kind: the drive type (Windows); elsewhere 0, not known */
+#define RETRO_VFS_VOLUME_FIXED     1
+#define RETRO_VFS_VOLUME_REMOVABLE 2 /**< Removable or optical. */
+#define RETRO_VFS_VOLUME_REMOTE    3
+#define RETRO_VFS_VOLUME_RAM       4
+
+/* What to ask for: each part costs a query of its own on some platforms */
+#define RETRO_VFS_VOLUME_WANT_FLAGS (1 << 0) /**< READ_ONLY, CTIME_KEPT */
+#define RETRO_VFS_VOLUME_WANT_MOUNT (1 << 1)
+#define RETRO_VFS_VOLUME_WANT_KIND  (1 << 2)
+
+/**
+ * The volume of an open file. Introduced in VFS API v7.
+ *
+ * @param stream The file.
+ * @param want The \c RETRO_VFS_VOLUME_WANT_ parts to ask for.
+ * @param vol Filled; a flag not set is a no. Zeroed on \c false.
+ * @return \c true when every part in \c want was told (a kind never
+ * told is 0 and does not make it \c false); \c false where any part
+ * can't be.
+ */
+typedef bool (RETRO_CALLCONV *retro_vfs_volume_t)(struct retro_vfs_file_handle *stream, unsigned want, struct retro_vfs_volume *vol);
+
+/**
+ * The volume of what a path names, following links. Introduced in VFS
+ * API v7.
+ *
+ * @return 1 told, 0 nothing there, -1 can't be told, as
+ * \c retro_vfs_stat_identity_t.
+ */
+typedef int (RETRO_CALLCONV *retro_vfs_stat_volume_t)(const char *path, unsigned want, struct retro_vfs_volume *vol);
+
+/** The longest fs-verity digest \c retro_vfs_verity_measure_t gives. */
+#define RETRO_VFS_VERITY_MAX 64
+
+/**
+ * The digest fs-verity keeps for a sealed file (Linux 5.4 on, Android 11
+ * on): the kernel checks every read of the file against it, so a file
+ * whose digest is known is that file. Introduced in VFS API v7.
+ *
+ * @param stream The file.
+ * @param digest Where the digest goes.
+ * @param cap Its room, in bytes.
+ * @return The digest's length; 0 where the file isn't sealed, \c cap is
+ * too small, or it can't be told.
+ */
+typedef size_t (RETRO_CALLCONV *retro_vfs_verity_measure_t)(struct retro_vfs_file_handle *stream, uint8_t *digest, size_t cap);
+
+/**
+ * Seals a file with fs-verity (SHA-256, 4 KiB blocks): from then on it
+ * can't be written again, only removed, and the kernel checks every read
+ * of it. Introduced in VFS API v7.
+ *
+ * @param stream The file, opened for reading; nothing may have it open
+ * for writing.
+ * @return 1 sealed, now or before; 0 where it can't be here (a
+ * filesystem, mount or kernel without fs-verity, a file not the core's,
+ * one open for writing somewhere, any platform but Linux and Android);
+ * -1 on another error.
+ */
+typedef int (RETRO_CALLCONV *retro_vfs_verity_enable_t)(struct retro_vfs_file_handle *stream);
+
+/**
  * File system interface exposed by the frontend.
  *
  * @see dirent_vfs_init
@@ -4376,6 +4664,38 @@ struct retro_vfs_interface
 
    /** @copydoc retro_vfs_dirent_stat_t */
    retro_vfs_dirent_stat_t dirent_stat;
+
+   /* VFS API v6 */
+   /** @copydoc retro_vfs_read_at_t */
+   retro_vfs_read_at_t read_at;
+
+   /** @copydoc retro_vfs_write_at_t */
+   retro_vfs_write_at_t write_at;
+
+   /* VFS API v7 */
+   /** @copydoc retro_vfs_view_t */
+   retro_vfs_view_t view;
+
+   /** @copydoc retro_vfs_map_t */
+   retro_vfs_map_t map;
+
+   /** @copydoc retro_vfs_identity_t */
+   retro_vfs_identity_t identity;
+
+   /** @copydoc retro_vfs_stat_identity_t */
+   retro_vfs_stat_identity_t stat_identity;
+
+   /** @copydoc retro_vfs_volume_t */
+   retro_vfs_volume_t volume;
+
+   /** @copydoc retro_vfs_stat_volume_t */
+   retro_vfs_stat_volume_t stat_volume;
+
+   /** @copydoc retro_vfs_verity_measure_t */
+   retro_vfs_verity_measure_t verity_measure;
+
+   /** @copydoc retro_vfs_verity_enable_t */
+   retro_vfs_verity_enable_t verity_enable;
 };
 
 /**

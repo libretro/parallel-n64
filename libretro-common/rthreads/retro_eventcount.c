@@ -76,6 +76,10 @@ typedef char retro_eventcount_epoch_is_a_word_
  * while it still reads key, except at the one key whose successor does
  * not exist, which is answered as a spurious wake instead.
  *
+ * RETRO_EC_ADDR_GEKKO parks on os/gekko's futex, the GameCube and
+ * Wii's own system layer (GEKKO_NATIVE): the futex shape again, timed
+ * in time base ticks.  The libogc builds keep the condition variable.
+ *
  * RETRO_EC_SEM names the builds that park on a semaphore of the
  * waiting thread's own, listed on the object the way the Windows
  * backend lists its blocks: Darwin, where the semaphore is a Mach one
@@ -103,7 +107,8 @@ typedef char retro_eventcount_epoch_is_a_word_
  * exist for the same reason.  RETRO_EVENTCOUNT_FORCE_SWITCH likewise
  * builds the arbiter protocol on a host that supplies the two system
  * calls and the version query (the sample stands them in over futex),
- * and RETRO_EVENTCOUNT_FORCE_3DS the arbiter's less-than form.
+ * and RETRO_EVENTCOUNT_FORCE_3DS the arbiter's less-than form;
+ * RETRO_EVENTCOUNT_FORCE_GEKKO builds os/gekko's futex one.
  */
 #if defined(RETRO_ATOMIC_LOCK_FREE) && !defined(RETRO_EVENTCOUNT_FORCE_SCOND)
 #if defined(RETRO_EVENTCOUNT_FORCE_SEM) && defined(RETRO_ATOMIC_HAS_PTR)
@@ -115,6 +120,9 @@ typedef char retro_eventcount_epoch_is_a_word_
 #define RETRO_EC_ADDR_SWITCH 1
 #elif defined(RETRO_EVENTCOUNT_FORCE_3DS)
 #define RETRO_EC_ADDR_3DS 1
+#elif defined(RETRO_EVENTCOUNT_FORCE_GEKKO) \
+      || (defined(GEKKO) && defined(GEKKO_NATIVE))
+#define RETRO_EC_ADDR_GEKKO 1
 #elif defined(__linux__) && !defined(ANDROID_NO_FUTEX)
 #define RETRO_EC_ADDR_LINUX 1
 #elif defined(__SWITCH__)
@@ -249,6 +257,36 @@ static void ec_3ds_wake_all(retro_eventcount_t *ec)
 {
    ec_3ds_arbitrate((s32*)&ec->epoch, ARBITRATION_SIGNAL,
          ARBITRATION_SIGNAL_ALL, 0);
+}
+#endif
+
+#if defined(RETRO_EC_ADDR_GEKKO)
+#include <limits.h>
+#include <gekko/gekko.h>
+#include <gekko/thread.h>
+
+/* The epoch is the futex word: an int, as the array bound above says. */
+#define EC_GEKKO_WORD(ec) ((volatile uint32_t*)(void*)&(ec)->epoch)
+
+/* Waits while the epoch still reads @key, for @ticks (GK_WAIT_FOREVER:
+ * no bound).  GK_EAGAIN is the word having moved first, a wake. */
+static bool ec_gekko_park(retro_eventcount_t *ec, int key, uint64_t ticks)
+{
+   return gk_futex_wait(EC_GEKKO_WORD(ec), (uint32_t)key, ticks)
+      != GK_ETIMEDOUT;
+}
+
+static void ec_gekko_wake_all(retro_eventcount_t *ec)
+{
+   gk_futex_wake(EC_GEKKO_WORD(ec), INT_MAX);
+}
+
+/* A bound too long for the ticks is clamped, not wrapped. */
+static uint64_t ec_gekko_ticks(int64_t timeout_us)
+{
+   if ((uint64_t)timeout_us > (GK_WAIT_FOREVER - 1) / gk_tb_hz)
+      return GK_WAIT_FOREVER - 1;
+   return GK_US_TO_TICKS(timeout_us);
 }
 #endif
 
@@ -494,6 +532,11 @@ static struct
  * backend runs on. */
 static unsigned ec_spin_for_budget(unsigned budget_us)
 {
+#if defined(RETRO_EVENTCOUNT_FIXED_SPIN)
+   /* Frame-driven cores use a work count, never host-time calibration. */
+   return budget_us ? (RETRO_EVENTCOUNT_FIXED_SPIN > EC_SPIN_MAX ?
+         EC_SPIN_MAX : RETRO_EVENTCOUNT_FIXED_SPIN) : 0;
+#else
    const unsigned  samples = 3;
    const unsigned  iters   = 2048;
    LARGE_INTEGER   freq;
@@ -535,6 +578,7 @@ static unsigned ec_spin_for_budget(unsigned budget_us)
          return EC_SPIN_MAX;
       return (unsigned)n;
    }
+#endif
 }
 
 static void ec_win32_resolve(void)
@@ -596,6 +640,7 @@ static void ec_win32_resolve(void)
    ec_g.tls_timer = TLS_OUT_OF_INDEXES;
    /* RETRO_EVENTCOUNT_HIRES=0 keeps the kernel timeout alone, for
     * measuring against it */
+#ifndef RETRO_DISABLE_HOST_CLOCK
    if (     ec_g.sleep
          && !((force = getenv("RETRO_EVENTCOUNT_HIRES")) && !strcmp(force, "0")))
    {
@@ -622,6 +667,7 @@ static void ec_win32_resolve(void)
          }
       }
    }
+#endif
 
    /* Spinning before the kernel wait only pays where the thread being
     * waited for can run at the same time.  On one processor it is pure
@@ -791,7 +837,7 @@ static void ec_wake_one(struct ec_waiter *w)
    int    prev  = retro_atomic_fetch_or_int(&w->flags, EC_W_WOKEN);
 
    if (!(prev & EC_W_ASLEEP))
-      return;   /* still spinning: it sees the flag, no syscall */
+      return;   /* not committed: it sees the flag, no syscall */
 
    /* A waiter that sleeps on its event - every waiter on the event
     * tier, and bounded ones on the others - is woken through it */
@@ -1012,7 +1058,11 @@ static ec_sem_t *ec_sem_get(void)
       free(sem);
       return NULL;
    }
-   pthread_setspecific(ec_g.key, sem);
+   if (pthread_setspecific(ec_g.key, sem) != 0)
+   {
+      ec_sem_release(sem);
+      return NULL;
+   }
    return sem;
 }
 
@@ -1117,9 +1167,8 @@ static INLINE uintptr_t ec_head(retro_eventcount_t *ec)
    return (uintptr_t)retro_atomic_load_acquire_ptr(&ec->waitlist);
 }
 
-/* The bit is held across a few instructions - a swap of the head, an
- * unlink - so a spin is right, but a bounded one: with more runnable
- * threads than cores the holder may not be running, and a spin then
+/* Unlinkers hold the bit while inspecting or changing links. With more
+ * runnable threads than cores the holder may not be running, and a spin then
  * only keeps it from getting back on. */
 static void ec_list_lock(retro_eventcount_t *ec)
 {
@@ -1193,21 +1242,28 @@ static void ec_wake_all(retro_eventcount_t *ec)
 {
    struct ec_waiter *w;
    uintptr_t         old;
+   unsigned          spins = 0;
 
-   if (!(ec_head(ec) & EC_HEAD_MASK))
-      return;
-
-   ec_list_lock(ec);
-   /* Take the whole list, dropping the lock in the same swap.  A push
-    * does not take the list lock -- it only preserves the bit -- so
-    * reading the head and then storing over it would drop any block
-    * that landed in between, and that block would never be woken. */
-   do
+   /* Own the whole list in one CAS, but never overtake an unlinker.
+    * A concurrent push makes the CAS retry with the new head. */
+   for (;;)
    {
       old = ec_head(ec);
-   } while (!retro_atomic_cas_ptr(&ec->waitlist, (void*)old, NULL));
+      if (!(old & EC_HEAD_MASK))
+         return;
+      if (!(old & EC_HEAD_LOCK)
+            && retro_atomic_cas_ptr(&ec->waitlist, (void*)old, NULL))
+         break;
+      if (++spins < 64)
+         retro_cpu_relax();
+      else
+      {
+         sthread_yield();
+         spins = 0;
+      }
+   }
 
-   w = (struct ec_waiter*)(old & EC_HEAD_MASK);
+   w = (struct ec_waiter*)old;
    while (w)
    {
       struct ec_waiter *next = w->next;
@@ -1229,6 +1285,15 @@ static bool ec_win32_park(retro_eventcount_t *ec, int key, bool bounded,
    bool             woken = true;
    unsigned         i;
 
+   /* Short handoffs need no waiter publication or per-thread handles.
+    * Once listed, the epoch re-check below closes the park race. */
+   for (i = 0; i < ec_g.spin; i++)
+   {
+      if (retro_atomic_load_acquire_int(&ec->epoch) != key)
+         return true;
+      retro_cpu_relax();
+   }
+
    w.event = NULL;
    w.next  = NULL;
    w.tid   = GetCurrentThreadId();
@@ -1247,12 +1312,8 @@ static bool ec_win32_park(retro_eventcount_t *ec, int key, bool bounded,
 
    if (!w.event && ec_g.sleep == EC_SLEEP_EVENT)
    {
-      if (!(w.event = (HANDLE)TlsGetValue(ec_g.tls_event)))
-      {
-         if (!(w.event = CreateEvent(NULL, FALSE, FALSE, NULL)))
-            return true;   /* nothing to wait on: a spurious wake-up */
-         TlsSetValue(ec_g.tls_event, w.event);
-      }
+      if (!(w.event = ec_thread_event()))
+         return true;   /* nothing to wait on: a spurious wake-up */
    }
 
    ec_list_push(ec, &w);
@@ -1281,13 +1342,6 @@ static bool ec_win32_park(retro_eventcount_t *ec, int key, bool bounded,
             retro_cpu_relax();
       }
       return true;
-   }
-
-   for (i = 0; i < ec_g.spin; i++)
-   {
-      if (retro_atomic_load_acquire_int(&w.flags) & EC_W_WOKEN)
-         return true;
-      retro_cpu_relax();
    }
 
    /* commit: past this a waker that takes the block must wake us */
@@ -1397,7 +1451,7 @@ static bool ec_sem_park(retro_eventcount_t *ec, int key, bool bounded,
 }
 #endif
 
-bool retro_eventcount_init(retro_eventcount_t *ec)
+static bool ec_init(retro_eventcount_t *ec, bool require_lock_free)
 {
    int lockless = 0;
 
@@ -1416,6 +1470,8 @@ bool retro_eventcount_init(retro_eventcount_t *ec)
    if (ec_switch_has_arbiter())
       lockless = 1;
 #elif defined(RETRO_EC_ADDR_3DS)
+   lockless = 1;
+#elif defined(RETRO_EC_ADDR_GEKKO)
    lockless = 1;
 #elif defined(RETRO_EC_SEM)
    ec_sem_init();
@@ -1445,6 +1501,9 @@ bool retro_eventcount_init(retro_eventcount_t *ec)
    if (lockless)
       return true;
 
+   if (require_lock_free)
+      return false;
+
    if (!(ec->lock = slock_new()))
       return false;
 
@@ -1456,6 +1515,16 @@ bool retro_eventcount_init(retro_eventcount_t *ec)
    }
 
    return true;
+}
+
+bool retro_eventcount_init(retro_eventcount_t *ec)
+{
+   return ec_init(ec, false);
+}
+
+bool retro_eventcount_init_lock_free(retro_eventcount_t *ec)
+{
+   return ec_init(ec, true);
 }
 
 void retro_eventcount_free(retro_eventcount_t *ec)
@@ -1470,6 +1539,34 @@ void retro_eventcount_free(retro_eventcount_t *ec)
 
    ec->cond = NULL;
    ec->lock = NULL;
+}
+
+void retro_eventcount_thread_cleanup(void)
+{
+#if defined(RETRO_EC_ADDR_WIN32)
+   HANDLE handle;
+   if (retro_atomic_load_acquire_int(&ec_g.state) != 2)
+      return;
+   if (ec_g.tls_event != TLS_OUT_OF_INDEXES)
+   {
+      handle = (HANDLE)TlsGetValue(ec_g.tls_event);
+      if (handle && TlsSetValue(ec_g.tls_event, NULL))
+         CloseHandle(handle);
+   }
+   if (ec_g.tls_timer != TLS_OUT_OF_INDEXES)
+   {
+      handle = (HANDLE)TlsGetValue(ec_g.tls_timer);
+      if (handle && TlsSetValue(ec_g.tls_timer, NULL))
+         CloseHandle(handle);
+   }
+#elif defined(RETRO_EC_SEM) && !defined(RETRO_EC_SEM_POOL)
+   ec_sem_t *sem;
+   if (retro_atomic_load_acquire_int(&ec_g.state) != 2 || !ec_g.ready)
+      return;
+   sem = (ec_sem_t*)pthread_getspecific(ec_g.key);
+   if (sem && pthread_setspecific(ec_g.key, NULL) == 0)
+      ec_sem_release(sem);
+#endif
 }
 
 void retro_eventcount_notify(retro_eventcount_t *ec)
@@ -1519,6 +1616,10 @@ void retro_eventcount_notify(retro_eventcount_t *ec)
 #endif
 #if defined(RETRO_EC_ADDR_3DS)
    ec_3ds_wake_all(ec);
+   return;
+#endif
+#if defined(RETRO_EC_ADDR_GEKKO)
+   ec_gekko_wake_all(ec);
    return;
 #endif
 #if defined(RETRO_EC_WAITLIST)
@@ -1589,6 +1690,11 @@ void retro_eventcount_cancel_wait(retro_eventcount_t *ec)
  * times its own, on the monotonic clock. */
 static unsigned ec_linux_spin_for_budget(unsigned budget_us)
 {
+#if defined(RETRO_EVENTCOUNT_FIXED_SPIN)
+   /* Frame-driven cores use a work count, never host-time calibration. */
+   return budget_us ? (RETRO_EVENTCOUNT_FIXED_SPIN > EC_SPIN_MAX ?
+         EC_SPIN_MAX : RETRO_EVENTCOUNT_FIXED_SPIN) : 0;
+#else
    const unsigned  samples = 3;
    const unsigned  iters   = 2048;
    double          best    = 0.0;
@@ -1627,6 +1733,7 @@ static unsigned ec_linux_spin_for_budget(unsigned budget_us)
          return EC_SPIN_MAX;
       return (unsigned)n;
    }
+#endif
 }
 
 static void ec_linux_spin_init(void)
@@ -1748,6 +1855,12 @@ void retro_eventcount_commit_wait(retro_eventcount_t *ec, int key)
    retro_atomic_fetch_sub_int(&ec->waiters, 1);
    return;
 #endif
+#if defined(RETRO_EC_ADDR_GEKKO)
+   if (retro_atomic_load_acquire_int(&ec->epoch) == key)
+      ec_gekko_park(ec, key, GK_WAIT_FOREVER);
+   retro_atomic_fetch_sub_int(&ec->waiters, 1);
+   return;
+#endif
 #if defined(RETRO_EC_ADDR_WIN32)
    if (!ec->cond)
    {
@@ -1778,6 +1891,7 @@ void retro_eventcount_commit_wait(retro_eventcount_t *ec, int key)
 #endif
 }
 
+#ifndef RETRO_DISABLE_HOST_CLOCK
 bool retro_eventcount_commit_wait_timeout(retro_eventcount_t *ec,
       int key, int64_t timeout_us)
 {
@@ -1851,6 +1965,12 @@ bool retro_eventcount_commit_wait_timeout(retro_eventcount_t *ec,
    retro_atomic_fetch_sub_int(&ec->waiters, 1);
    return signalled;
 #endif
+#if defined(RETRO_EC_ADDR_GEKKO)
+   if (retro_atomic_load_acquire_int(&ec->epoch) == key)
+      signalled = ec_gekko_park(ec, key, ec_gekko_ticks(timeout_us));
+   retro_atomic_fetch_sub_int(&ec->waiters, 1);
+   return signalled;
+#endif
 #if defined(RETRO_EC_ADDR_WIN32)
    if (!ec->cond)
    {
@@ -1878,6 +1998,7 @@ bool retro_eventcount_commit_wait_timeout(retro_eventcount_t *ec,
 
    return signalled;
 }
+#endif /* RETRO_DISABLE_HOST_CLOCK */
 
 unsigned retro_eventcount_spin_iters(void)
 {
@@ -1903,6 +2024,8 @@ const char *retro_eventcount_backend_name(void)
       ? "horizon address arbiter" : "scond (firmware before 4.0.0)";
 #elif defined(RETRO_EC_ADDR_3DS)
    return "3ds address arbiter";
+#elif defined(RETRO_EC_ADDR_GEKKO)
+   return "gekko futex";
 #elif defined(RETRO_EC_SEM)
    ec_sem_init();
 #if defined(VITA)

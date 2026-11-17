@@ -52,7 +52,8 @@ INCFLAGS += \
 	-I$(ROOT_DIR)/include \
 	-I$(AUDIO_LIBRETRO_DIR) \
 	-I$(LIBRETRO_COMM_DIR)/include \
-	-I$(LIBRETRO_DIR)
+	-I$(LIBRETRO_DIR) \
+	-I$(LIBRETRO_DIR)/glsym
 
 
 SOURCES_C += $(RSPDIR)/src/alist.c \
@@ -735,16 +736,16 @@ ifeq ($(GLES3),1)
 	# GLES 3.x path. HAVE_OPENGLES3 makes glsm request a GLES3 context and
 	# enables the GLES3 wrappers in glsm.c; without it they compile to stubs.
 	GLFLAGS += -DHAVE_OPENGLES -DHAVE_OPENGLES3 -DDISABLE_3POINT
-	SOURCES_C += $(LIBRETRO_COMM_DIR)/glsym/glsym_es3.c
+	SOURCES_C += $(LIBRETRO_DIR)/glsym/glsym_es3.c
 else ifeq ($(GLES),1)
 	GLFLAGS += -DHAVE_OPENGLES -DHAVE_OPENGLES2 -DDISABLE_3POINT
-	SOURCES_C += $(LIBRETRO_COMM_DIR)/glsym/glsym_es2.c
+	SOURCES_C += $(LIBRETRO_DIR)/glsym/glsym_es2.c
 else
 	#Texture sampling enhancements.
 	GLFLAGS += -DENABLE_3POINT -DENABLE_TEXTURE_SAMPLING
 
 	GLFLAGS += -DHAVE_OPENGL
-	SOURCES_C += $(LIBRETRO_COMM_DIR)/glsym/glsym_gl.c
+	SOURCES_C += $(LIBRETRO_DIR)/glsym/glsym_gl.c
 endif
 SOURCES_C += $(LIBRETRO_COMM_DIR)/glsym/rglgen.c
 endif

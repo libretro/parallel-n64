@@ -55,8 +55,23 @@
 
 #ifdef _WIN32
 #include <direct.h>
+#if !defined(_XBOX)
+#include <windows.h>
+#endif
 #else
 #include <unistd.h> /* stat() is defined here */
+#endif
+
+/* Free-space query: only where the call is known to exist.  Everything
+ * else reports "unknown" (-1) rather than guessing at a header. */
+#if defined(__ANDROID__)
+#include <sys/vfs.h>          /* statfs: every API level, statvfs is 19+ */
+#define PATH_FREE_SPACE_STATFS
+#elif defined(__linux__) || defined(__APPLE__) || defined(__NetBSD__) \
+   || defined(__OpenBSD__) || defined(__DragonFly__) || defined(__HAIKU__) \
+   || defined(__EMSCRIPTEN__) || (defined(__FreeBSD__) && !defined(ORBIS))
+#include <sys/statvfs.h>
+#define PATH_FREE_SPACE_STATVFS
 #endif
 
 /* <direct.h> (MinGW, included just above) can re-establish the mkdir
@@ -165,6 +180,30 @@ bool path_is_directory(const char *path)
    return (path_stat32_cb(path, NULL) & RETRO_VFS_STAT_IS_DIRECTORY) != 0;
 }
 
+bool path_is_empty_directory(const char *dir)
+{
+   struct retro_vfs_dir_handle *d = retro_vfs_opendir_impl(dir, false);
+
+   if (!d)
+      return false;
+
+   while (retro_vfs_readdir_impl(d))
+   {
+      const char *name = retro_vfs_dirent_get_name_impl(d);
+
+      /* ".", ".." and dotfiles (.nomedia, .DS_Store) do not count:
+       * the open call does not filter them outside Windows */
+      if (name && name[0] != '.')
+      {
+         retro_vfs_closedir_impl(d);
+         return false;
+      }
+   }
+
+   retro_vfs_closedir_impl(d);
+   return true;
+}
+
 bool path_is_character_special(const char *path)
 {
    if (path_stat64_cb)
@@ -213,6 +252,174 @@ int64_t path_get_size(const char *path)
 bool path_rmdir(const char *dir)
 {
    return retro_vfs_rmdir_impl(dir) == 0;
+}
+
+static bool path_is_dot_entry(const char *name)
+{
+   return name[0] == '.'
+      && (name[1] == '\0' || (name[1] == '.' && name[2] == '\0'));
+}
+
+/* Appends the separator and @name to the @len characters of @path,
+ * a PATH_MAX_LENGTH buffer.  Returns the new length, or 0 if it
+ * does not fit. */
+static size_t path_tree_append(char *path, size_t len, const char *name)
+{
+   size_t name_len = strlen(name);
+   if (len + 1 + name_len >= PATH_MAX_LENGTH)
+      return 0;
+   path[len] = PATH_DEFAULT_SLASH_C();
+   memcpy(path + len + 1, name, name_len + 1);
+   return len + 1 + name_len;
+}
+
+/* Drops trailing separators, keeping a root's.  Returns the length. */
+static size_t path_tree_trim(char *path)
+{
+   size_t len = strlen(path);
+   while (len > 1 && (path[len - 1] == '/' || path[len - 1] == '\\')
+         && path[len - 2] != ':')
+      path[--len] = '\0';
+   return len;
+}
+
+/* Empties and removes the directory in the first @len characters of
+ * @path, which grows in place with each entry's name. */
+static bool path_remove_tree_dir(char *path, size_t len)
+{
+   bool ok = true;
+   libretro_vfs_implementation_dir *dir =
+      retro_vfs_opendir_impl(path, true);
+
+   if (!dir)
+      return false;
+
+   while (retro_vfs_readdir_impl(dir))
+   {
+      size_t      entry_len;
+      const char *name = retro_vfs_dirent_get_name_impl(dir);
+
+      if (!name || path_is_dot_entry(name))
+         continue;
+      if (!(entry_len = path_tree_append(path, len, name)))
+      {
+         ok = false;
+         continue;
+      }
+      if (retro_vfs_dirent_is_dir_impl(dir))
+      {
+         /* An empty directory goes at once, and so does a link to
+          * one (rmdir on Windows, unlink elsewhere): only a real
+          * directory with something in it is walked. */
+         if (     retro_vfs_rmdir_impl(path)       != 0
+               && retro_vfs_file_remove_impl(path) != 0
+               && !path_remove_tree_dir(path, entry_len))
+            ok = false;
+      }
+      else if (retro_vfs_file_remove_impl(path) != 0)
+         ok = false;
+   }
+
+   retro_vfs_closedir_impl(dir);
+   path[len] = '\0';
+   return retro_vfs_rmdir_impl(path) == 0 && ok;
+}
+
+bool path_remove_tree(const char *path)
+{
+   bool   ok;
+   size_t len;
+   char  *buf;
+
+   if (!path || !*path)
+      return false;
+   /* A file, a link or an empty directory: no walk */
+   if (     retro_vfs_rmdir_impl(path)       == 0
+         || retro_vfs_file_remove_impl(path) == 0
+         || !path_is_valid(path))
+      return true;
+   if (!path_is_directory(path))
+      return false;
+   if (!(buf = (char*)malloc(PATH_MAX_LENGTH)))
+      return false;
+   strlcpy(buf, path, PATH_MAX_LENGTH);
+   len = path_tree_trim(buf);
+   ok  = path_remove_tree_dir(buf, len);
+   free(buf);
+   return ok;
+}
+
+static bool path_copy_tree_file(const char *src, const char *dst)
+{
+   struct retro_vfs_copy_handle *copy =
+      retro_vfs_copy_begin_impl(src, dst, RETRO_VFS_COPY_OVERWRITE);
+
+   if (!copy)
+      return false;
+   /* The whole file in one step: the platform's copy primitive at
+    * full speed, no buffer of ours */
+   while (retro_vfs_copy_step_impl(copy, (int64_t)1 << 62, NULL, NULL)
+         == RETRO_VFS_COPY_RUNNING) { }
+   return retro_vfs_copy_close_impl(copy) == 0;
+}
+
+/* Copies the directory in the first @src_len characters of @src into
+ * the one in the first @dst_len of @dst; both grow in place. */
+static bool path_copy_tree_dir(char *src, size_t src_len,
+      char *dst, size_t dst_len)
+{
+   bool ok = true;
+   libretro_vfs_implementation_dir *dir;
+
+   if (!path_is_directory(dst) && !path_mkdir(dst))
+      return false;
+   if (!(dir = retro_vfs_opendir_impl(src, true)))
+      return false;
+
+   while (retro_vfs_readdir_impl(dir))
+   {
+      size_t      src_entry, dst_entry;
+      const char *name = retro_vfs_dirent_get_name_impl(dir);
+
+      if (!name || path_is_dot_entry(name))
+         continue;
+      if (     !(src_entry = path_tree_append(src, src_len, name))
+            || !(dst_entry = path_tree_append(dst, dst_len, name)))
+         ok = false;
+      else if (retro_vfs_dirent_is_dir_impl(dir))
+      {
+         if (!path_copy_tree_dir(src, src_entry, dst, dst_entry))
+            ok = false;
+      }
+      else if (!path_copy_tree_file(src, dst))
+         ok = false;
+      src[src_len] = '\0';
+      dst[dst_len] = '\0';
+   }
+
+   retro_vfs_closedir_impl(dir);
+   return ok;
+}
+
+bool path_copy_tree(const char *src, const char *dst)
+{
+   bool  ok;
+   char *src_buf;
+   char *dst_buf;
+
+   if (!src || !*src || !dst || !*dst)
+      return false;
+   if (!path_is_directory(src))
+      return path_copy_tree_file(src, dst);
+   if (!(src_buf = (char*)malloc(2 * PATH_MAX_LENGTH)))
+      return false;
+   dst_buf = src_buf + PATH_MAX_LENGTH;
+   strlcpy(src_buf, src, PATH_MAX_LENGTH);
+   strlcpy(dst_buf, dst, PATH_MAX_LENGTH);
+   ok = path_copy_tree_dir(src_buf, path_tree_trim(src_buf),
+         dst_buf, path_tree_trim(dst_buf));
+   free(src_buf);
+   return ok;
 }
 
 /**
@@ -318,4 +525,57 @@ bool path_mkdir(const char *dir)
          return true;
    }
    return false;
+}
+
+int64_t path_get_free_space(const char *path)
+{
+#if defined(_WIN32) && !defined(_XBOX)
+   ULARGE_INTEGER avail;
+#if defined(__WINRT__)
+   if (GetDiskFreeSpaceExA(path, &avail, NULL, NULL))
+      return (int64_t)avail.QuadPart;
+#else
+   /* GetDiskFreeSpaceEx is not in the first release of Windows 95, and
+    * a static import would stop the binary loading there.  The plain
+    * call is everywhere; it tops out at 2GB on old systems, which is
+    * still a correct lower bound. */
+   typedef BOOL (WINAPI *disk_free_ex_t)(LPCSTR, PULARGE_INTEGER,
+         PULARGE_INTEGER, PULARGE_INTEGER);
+   static disk_free_ex_t p_disk_free_ex = NULL;
+   static int            resolved       = 0;
+   DWORD spc, bps, free_clusters, total_clusters;
+
+   if (!resolved)
+   {
+      HMODULE k32 = GetModuleHandleA("kernel32.dll");
+      resolved    = 1;
+      if (k32)
+         p_disk_free_ex = (disk_free_ex_t)GetProcAddress(k32,
+               "GetDiskFreeSpaceExA");
+   }
+
+   if (p_disk_free_ex)
+   {
+      if (p_disk_free_ex(path, &avail, NULL, NULL))
+         return (int64_t)avail.QuadPart;
+   }
+   else if (GetDiskFreeSpaceA(path, &spc, &bps,
+            &free_clusters, &total_clusters))
+      return (int64_t)free_clusters * (int64_t)spc * (int64_t)bps;
+#endif
+   return -1;
+#elif defined(PATH_FREE_SPACE_STATFS)
+   struct statfs fs;
+   if (statfs(path, &fs) == 0)
+      return (int64_t)fs.f_bavail * (int64_t)fs.f_bsize;
+   return -1;
+#elif defined(PATH_FREE_SPACE_STATVFS)
+   struct statvfs fs;
+   if (statvfs(path, &fs) == 0)
+      return (int64_t)fs.f_bavail * (int64_t)fs.f_frsize;
+   return -1;
+#else
+   (void)path;
+   return -1;
+#endif
 }

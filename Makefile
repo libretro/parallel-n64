@@ -1271,55 +1271,55 @@ GLITCH64_TEST_SRCS := $(VIDEODIR_GLIDE)/Glitch64/glitchmain.c $(VIDEODIR_GLIDE)/
 	$(ROOT_DIR)/libretro/glsm/glsm.c $(LIBRETRO_COMM_DIR)/gfx/gl_capabilities.c $(LIBRETRO_COMM_DIR)/glsym/rglgen.c \
 	tools/glitch64_test_stubs.c
 GLITCH64_TEST_FLAGS := -D__LIBRETRO__ -DINLINE=inline -DM64P_PLUGIN_API -DM64P_CORE_PROTOTYPES -DHAVE_GLIDE64 \
-	-I$(VIDEODIR_GLIDE)/Glitch64/inc -I$(ROOT_DIR)/include -I$(ROOT_DIR)/libretro -I$(LIBRETRO_COMM_DIR)/include \
+	-I$(VIDEODIR_GLIDE)/Glitch64/inc -I$(ROOT_DIR)/include -I$(ROOT_DIR)/libretro -I$(ROOT_DIR)/libretro/glsym -I$(LIBRETRO_COMM_DIR)/include \
 	-I$(CORE_DIR)/src -I$(CORE_DIR)/src/api -I$(CORE_DIR)/custom $(filter -fsanitize=% -O% -g,$(CFLAGS)) -w
 GLITCH64_GL_FLAGS := -DHAVE_OPENGL -DENABLE_3POINT
 GLITCH64_GLES_FLAGS := -DHAVE_OPENGLES -DHAVE_OPENGLES2 -DDISABLE_3POINT
 test_glitch64_lfb_write$(EXE_EXT): tools/test_glitch64_lfb_write.c $(GLITCH64_TEST_SRCS)
-	$(CC) $(GLITCH64_TEST_FLAGS) $(GLITCH64_GL_FLAGS) $< $(GLITCH64_TEST_SRCS) $(LIBRETRO_COMM_DIR)/glsym/glsym_gl.c \
+	$(CC) $(GLITCH64_TEST_FLAGS) $(GLITCH64_GL_FLAGS) $< $(GLITCH64_TEST_SRCS) $(ROOT_DIR)/libretro/glsym/glsym_gl.c \
 		-o $@ $(filter -fsanitize=%,$(LDFLAGS)) -lEGL -lGL -lm
 test_glitch64_draw$(EXE_EXT): tools/test_glitch64_draw.c $(GLITCH64_TEST_SRCS)
-	$(CC) $(GLITCH64_TEST_FLAGS) $(GLITCH64_GL_FLAGS) $< $(GLITCH64_TEST_SRCS) $(LIBRETRO_COMM_DIR)/glsym/glsym_gl.c \
+	$(CC) $(GLITCH64_TEST_FLAGS) $(GLITCH64_GL_FLAGS) $< $(GLITCH64_TEST_SRCS) $(ROOT_DIR)/libretro/glsym/glsym_gl.c \
 		-o $@ $(filter -fsanitize=%,$(LDFLAGS)) -lEGL -lGL -lm
 test_glitch64_n64_combiner$(EXE_EXT): tools/test_glitch64_n64_combiner.c $(GLITCH64_TEST_SRCS)
-	$(CC) $(GLITCH64_TEST_FLAGS) $(GLITCH64_GL_FLAGS) $< $(GLITCH64_TEST_SRCS) $(LIBRETRO_COMM_DIR)/glsym/glsym_gl.c \
+	$(CC) $(GLITCH64_TEST_FLAGS) $(GLITCH64_GL_FLAGS) $< $(GLITCH64_TEST_SRCS) $(ROOT_DIR)/libretro/glsym/glsym_gl.c \
 		-o $@ $(filter -fsanitize=%,$(LDFLAGS)) -lEGL -lGL -lm
 test_glitch64_n64_combiner_gles$(EXE_EXT): tools/test_glitch64_n64_combiner.c $(GLITCH64_TEST_SRCS)
-	$(CC) $(GLITCH64_TEST_FLAGS) $(GLITCH64_GLES_FLAGS) $< $(GLITCH64_TEST_SRCS) $(LIBRETRO_COMM_DIR)/glsym/glsym_es2.c \
+	$(CC) $(GLITCH64_TEST_FLAGS) $(GLITCH64_GLES_FLAGS) $< $(GLITCH64_TEST_SRCS) $(ROOT_DIR)/libretro/glsym/glsym_es2.c \
 		-o $@ $(filter -fsanitize=%,$(LDFLAGS)) -lEGL -lGLESv2 -lm
 test_glitch64_depth_image$(EXE_EXT): tools/test_glitch64_depth_image.c $(GLITCH64_TEST_SRCS)
-	$(CC) $(GLITCH64_TEST_FLAGS) $(GLITCH64_GL_FLAGS) $< $(GLITCH64_TEST_SRCS) $(LIBRETRO_COMM_DIR)/glsym/glsym_gl.c \
+	$(CC) $(GLITCH64_TEST_FLAGS) $(GLITCH64_GL_FLAGS) $< $(GLITCH64_TEST_SRCS) $(ROOT_DIR)/libretro/glsym/glsym_gl.c \
 		-o $@ $(filter -fsanitize=%,$(LDFLAGS)) -lEGL -lGL -lm
 test_glitch64_depth_image_gles$(EXE_EXT): tools/test_glitch64_depth_image.c $(GLITCH64_TEST_SRCS)
-	$(CC) $(GLITCH64_TEST_FLAGS) $(GLITCH64_GLES_FLAGS) $< $(GLITCH64_TEST_SRCS) $(LIBRETRO_COMM_DIR)/glsym/glsym_es2.c \
+	$(CC) $(GLITCH64_TEST_FLAGS) $(GLITCH64_GLES_FLAGS) $< $(GLITCH64_TEST_SRCS) $(ROOT_DIR)/libretro/glsym/glsym_es2.c \
 		-o $@ $(filter -fsanitize=%,$(LDFLAGS)) -lEGL -lGLESv2 -lm
 test_glitch64_readback$(EXE_EXT): tools/test_glitch64_readback.c $(GLITCH64_TEST_SRCS)
-	$(CC) $(GLITCH64_TEST_FLAGS) $(GLITCH64_GL_FLAGS) $< $(GLITCH64_TEST_SRCS) $(LIBRETRO_COMM_DIR)/glsym/glsym_gl.c \
+	$(CC) $(GLITCH64_TEST_FLAGS) $(GLITCH64_GL_FLAGS) $< $(GLITCH64_TEST_SRCS) $(ROOT_DIR)/libretro/glsym/glsym_gl.c \
 		-o $@ $(filter -fsanitize=%,$(LDFLAGS)) -lEGL -lGL -lm
 test_glitch64_textures$(EXE_EXT): tools/test_glitch64_textures.c $(GLITCH64_TEST_SRCS)
-	$(CC) $(GLITCH64_TEST_FLAGS) $(GLITCH64_GL_FLAGS) $< $(GLITCH64_TEST_SRCS) $(LIBRETRO_COMM_DIR)/glsym/glsym_gl.c \
+	$(CC) $(GLITCH64_TEST_FLAGS) $(GLITCH64_GL_FLAGS) $< $(GLITCH64_TEST_SRCS) $(ROOT_DIR)/libretro/glsym/glsym_gl.c \
 		-o $@ $(filter -fsanitize=%,$(LDFLAGS)) -lEGL -lGL -lm
 test_glitch64_textures_gles$(EXE_EXT): tools/test_glitch64_textures.c $(GLITCH64_TEST_SRCS)
-	$(CC) $(GLITCH64_TEST_FLAGS) $(GLITCH64_GLES_FLAGS) $< $(GLITCH64_TEST_SRCS) $(LIBRETRO_COMM_DIR)/glsym/glsym_es2.c \
+	$(CC) $(GLITCH64_TEST_FLAGS) $(GLITCH64_GLES_FLAGS) $< $(GLITCH64_TEST_SRCS) $(ROOT_DIR)/libretro/glsym/glsym_es2.c \
 		-o $@ $(filter -fsanitize=%,$(LDFLAGS)) -lEGL -lGLESv2 -lm
 # glsm's draw target: the frontend presents the frame a renderer swapped,
 # through the blit (desktop GL) and the texture copy (GLES 2); and the
 # state glsm keeps is the state GL holds while the core draws
 GLSM_TEST_SRCS := $(ROOT_DIR)/libretro/glsm/glsm.c $(LIBRETRO_COMM_DIR)/gfx/gl_capabilities.c $(LIBRETRO_COMM_DIR)/glsym/rglgen.c
-GLSM_TEST_FLAGS := -D__LIBRETRO__ -I$(ROOT_DIR)/libretro -I$(LIBRETRO_COMM_DIR)/include \
+GLSM_TEST_FLAGS := -D__LIBRETRO__ -I$(ROOT_DIR)/libretro -I$(ROOT_DIR)/libretro/glsym -I$(LIBRETRO_COMM_DIR)/include \
 	$(filter -fsanitize=% -O% -g,$(CFLAGS)) -w
 test_glsm_draw_target$(EXE_EXT): tools/test_glsm_draw_target.c $(GLSM_TEST_SRCS)
-	$(CC) $(GLSM_TEST_FLAGS) -DHAVE_OPENGL $< $(GLSM_TEST_SRCS) $(LIBRETRO_COMM_DIR)/glsym/glsym_gl.c \
+	$(CC) $(GLSM_TEST_FLAGS) -DHAVE_OPENGL $< $(GLSM_TEST_SRCS) $(ROOT_DIR)/libretro/glsym/glsym_gl.c \
 		-o $@ $(filter -fsanitize=%,$(LDFLAGS)) -lEGL -lGL -lm
 test_glsm_draw_target_gles$(EXE_EXT): tools/test_glsm_draw_target.c $(GLSM_TEST_SRCS)
-	$(CC) $(GLSM_TEST_FLAGS) -DHAVE_OPENGLES -DHAVE_OPENGLES2 $< $(GLSM_TEST_SRCS) $(LIBRETRO_COMM_DIR)/glsym/glsym_es2.c \
+	$(CC) $(GLSM_TEST_FLAGS) -DHAVE_OPENGLES -DHAVE_OPENGLES2 $< $(GLSM_TEST_SRCS) $(ROOT_DIR)/libretro/glsym/glsym_es2.c \
 		-o $@ $(filter -fsanitize=%,$(LDFLAGS)) -lEGL -lGLESv2 -lm
 
 test_glsm_state$(EXE_EXT): tools/test_glsm_state.c $(GLSM_TEST_SRCS)
-	$(CC) $(GLSM_TEST_FLAGS) -DHAVE_OPENGL $< $(GLSM_TEST_SRCS) $(LIBRETRO_COMM_DIR)/glsym/glsym_gl.c \
+	$(CC) $(GLSM_TEST_FLAGS) -DHAVE_OPENGL $< $(GLSM_TEST_SRCS) $(ROOT_DIR)/libretro/glsym/glsym_gl.c \
 		-o $@ $(filter -fsanitize=%,$(LDFLAGS)) -lEGL -lGL -lm
 test_glsm_state_gles$(EXE_EXT): tools/test_glsm_state.c $(GLSM_TEST_SRCS)
-	$(CC) $(GLSM_TEST_FLAGS) -DHAVE_OPENGLES -DHAVE_OPENGLES2 $< $(GLSM_TEST_SRCS) $(LIBRETRO_COMM_DIR)/glsym/glsym_es2.c \
+	$(CC) $(GLSM_TEST_FLAGS) -DHAVE_OPENGLES -DHAVE_OPENGLES2 $< $(GLSM_TEST_SRCS) $(ROOT_DIR)/libretro/glsym/glsym_es2.c \
 		-o $@ $(filter -fsanitize=%,$(LDFLAGS)) -lEGL -lGLESv2 -lm
 
 GLITCH64_TESTS := test_glitch64_lfb_write$(EXE_EXT) test_glitch64_draw$(EXE_EXT) test_glitch64_readback$(EXE_EXT) test_glitch64_textures$(EXE_EXT) test_glitch64_textures_gles$(EXE_EXT) \

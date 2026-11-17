@@ -410,6 +410,8 @@ old code. Tests must build on Windows and Linux.
   self-contained modules are MSVC-compatible C89, like `rdp_worker.c`.
 - Use libretro-common and its VFS rather than shims. Its files stay identical
   to RetroArch's; what a core needs goes into RetroArch first.
+  Resync by copying, never merging. The generated GL tables
+  (`glsym_gl/es2/es3`) are this core's own and live in `libretro/glsym/`.
 - Keep comments short and commit messages concise.
 - Deliver `git format-patch` mailbox patches, cut after fetching upstream and
   checked with `git am` on a clean checkout. Author:
