@@ -1718,25 +1718,19 @@ test_gliden64_txcache_store$(EXE_EXT): tools/test_gliden64_txcache_store.c $(TXI
 	$(CC) $(CHECK_CFLAGS) $(CHECK_SANITIZE) -I$(VIDEODIR_GLIDEN64)/src -I$(LIBRETRO_COMM_DIR)/include \
 		$(filter-out %/TxImage.c,$(filter %.c,$^)) -o $@ $(CHECK_LDFLAGS) $(CHECK_SANITIZE) -lpthread -lm
 
-# GLideNHQ whole, through its C API: its C++ classes (and the parameters
-# they compare formats with) built for the test, its C beside them
-TXCACHE_TEST_INC := -I$(VIDEODIR_GLIDEN64)/src -I$(VIDEODIR_GLIDEN64)/src/GLideNHQ -I$(VIDEODIR_GLIDEN64)/include \
-	-I$(LIBRETRO_COMM_DIR)/include -I$(ROOT_DIR)/libretro -I$(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext
-TXCACHE_TEST_OBJ := $(addprefix tools/test_gliden64_txcache_,TxFilter.o \
-	TxFilterExport.o TextureFilters_xbrz.o opengl_Parameters.o)
+# GLideNHQ whole, through its C API: its C, and xBRZ, its one C++ file
+TXCACHE_TEST_OBJ := tools/test_gliden64_txcache_TextureFilters_xbrz.o
 tools/test_gliden64_txcache_%.o: $(VIDEODIR_GLIDEN64)/src/GLideNHQ/%.cpp
-	$(CXX) -std=c++11 $(CHECK_CFLAGS) $(CHECK_SANITIZE) $(TXCACHE_TEST_INC) -c $< -o $@
-tools/test_gliden64_txcache_opengl_Parameters.o: $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/opengl_Parameters.cpp
-	$(CXX) -std=c++11 $(CHECK_CFLAGS) $(CHECK_SANITIZE) -DHAVE_OPENGL -DCORE $(TXCACHE_TEST_INC) -c $< -o $@
+	$(CXX) -std=c++11 $(CHECK_CFLAGS) $(CHECK_SANITIZE) -c $< -o $@
 test_gliden64_txcache$(EXE_EXT): tools/test_gliden64_txcache.c $(TXCACHE_TEST_OBJ) $(TXIMAGE_TEST_SRC) \
-		$(addprefix $(VIDEODIR_GLIDEN64)/src/GLideNHQ/,TxQuantize.c TxUtil.c TxCache.c TxTexCache.c TxHiResCache.c TxReSample.c TxGz.c TextureFilters.c \
+		$(addprefix $(VIDEODIR_GLIDEN64)/src/GLideNHQ/,TxQuantize.c TxUtil.c TxCache.c TxTexCache.c TxHiResCache.c TxFilter.c TxReSample.c TxGz.c TextureFilters.c \
 		TextureFilters_2xsai.c TextureFilters_hq2x.c TextureFilters_hq4x.c txpool.c) \
 		$(addprefix $(LIBRETRO_COMM_DIR)/,rthreads/retro_eventcount.c rthreads/rthreads.c file/retro_dirent.c)
 	$(CC) $(CHECK_CFLAGS) $(CHECK_SANITIZE) -I$(VIDEODIR_GLIDEN64)/src -I$(LIBRETRO_COMM_DIR)/include $(filter %.c,$^) \
 		$(TXCACHE_TEST_OBJ) -o $@ $(CHECK_LDFLAGS) $(CHECK_SANITIZE) -lstdc++ -lpthread -lm
 
 test_gliden64_txhirescache$(EXE_EXT): tools/test_gliden64_txhirescache.c $(TXCACHE_TEST_OBJ) $(TXIMAGE_TEST_SRC) \
-		$(addprefix $(VIDEODIR_GLIDEN64)/src/GLideNHQ/,TxQuantize.c TxUtil.c TxCache.c TxTexCache.c TxHiResCache.c TxReSample.c TxGz.c TextureFilters.c \
+		$(addprefix $(VIDEODIR_GLIDEN64)/src/GLideNHQ/,TxQuantize.c TxUtil.c TxCache.c TxTexCache.c TxHiResCache.c TxFilter.c TxReSample.c TxGz.c TextureFilters.c \
 		TextureFilters_2xsai.c TextureFilters_hq2x.c TextureFilters_hq4x.c txpool.c) \
 		$(addprefix $(LIBRETRO_COMM_DIR)/,rthreads/retro_eventcount.c rthreads/rthreads.c file/retro_dirent.c)
 	$(CC) $(CHECK_CFLAGS) $(CHECK_SANITIZE) -I$(VIDEODIR_GLIDEN64)/src -I$(LIBRETRO_COMM_DIR)/include $(filter %.c,$^) \
@@ -2366,7 +2360,7 @@ test_glide64_fb_readback$(EXE_EXT): tools/test_glide64_fb_readback.c $(VIDEODIR_
 	$(CC) $(CHECK_CFLAGS) $(CHECK_SANITIZE) -I$(LIBRETRO_COMM_DIR)/include $< -o $@ $(CHECK_LDFLAGS) $(CHECK_SANITIZE)
 
 # GLideN64 is moving to C89 a file at a time: what has moved stays there
-GLIDEN64_C89 := N64.c TxFilterStub.c GLideNHQ/TextureFilters.c GLideNHQ/TextureFilters_2xsai.c GLideNHQ/TextureFilters_hq2x.c GLideNHQ/TextureFilters_hq4x.c GLideNHQ/TxGz.c GLideNHQ/TxReSample.c GLideNHQ/TxQuantize.c GLideNHQ/TxImage.c GLideNHQ/TxUtil.c GLideNHQ/TxCache.c GLideNHQ/TxTexCache.c GLideNHQ/TxHiResCache.c convert.c RSP_LoadMatrix.c 3DMath.c CRC32.c RDP.c CRC_OPT.c GLideN64.c SoftwareRender.c DepthBufferRender/ClipPolygon.c DepthBufferRender/DepthBufferRender.c \
+GLIDEN64_C89 := N64.c TxFilterStub.c GLideNHQ/TextureFilters.c GLideNHQ/TextureFilters_2xsai.c GLideNHQ/TextureFilters_hq2x.c GLideNHQ/TextureFilters_hq4x.c GLideNHQ/TxGz.c GLideNHQ/TxReSample.c GLideNHQ/TxQuantize.c GLideNHQ/TxImage.c GLideNHQ/TxUtil.c GLideNHQ/TxCache.c GLideNHQ/TxTexCache.c GLideNHQ/TxHiResCache.c GLideNHQ/TxFilter.c convert.c RSP_LoadMatrix.c 3DMath.c CRC32.c RDP.c CRC_OPT.c GLideN64.c SoftwareRender.c DepthBufferRender/ClipPolygon.c DepthBufferRender/DepthBufferRender.c \
 	gDP.c VI.c RSP.c GBI.c gSP.c TexrectDrawer.c FrameBufferInfo.c ZlutTexture.c PaletteTexture.c NoiseTexture.c StereoFrames.c TextureFilterHandler.c PostProcessor.c Config.c CombinerKey.c PluginAPI.c DisplayWindow.c DepthBuffer.c CombinerDecode.c TextureDecode.c TextureSizes.c TextureLRU.c VIUpdate.c FrameBufferRdram.c FrameBufferList.c RdramWrite.c RdramToColor.c TriangleList.c TriangleClip.c LleTriangle.c DrawerViewport.c DrawerStates.c DrawerRect.c TexrectSpecial.c BlendMode.c mupenplus/Config_mupenplus.c uCodes/F5Rogue.c uCodes/F5Indi_Naboo.c \
 	uCodes/S2DEX.c \
 	uCodes/ZSort.c uCodes/ZSortBOSS.c \

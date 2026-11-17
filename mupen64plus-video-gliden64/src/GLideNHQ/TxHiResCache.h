@@ -59,8 +59,8 @@ txhirescache *txhirescache_new(int maxwidth, int maxheight, int maxbpp, int opti
 void txhirescache_free(txhirescache *h);
 boolean txhirescache_empty(const txhirescache *h);
 boolean txhirescache_get(txhirescache *h, uint64 checksum, GHQTexInfo *info);
-/* a copy of @info's texture */
-boolean txhirescache_add(txhirescache *h, uint64 checksum, GHQTexInfo *info);
+/* @info's texture, @owned as txcache_add has it */
+boolean txhirescache_add(txhirescache *h, uint64 checksum, GHQTexInfo *info, boolean owned);
 /* the pack read in again (@replace 0: the textures held before given up;
  * 1: those of the same checksum replaced); 0 if none could be */
 boolean txhirescache_load(txhirescache *h, boolean replace);

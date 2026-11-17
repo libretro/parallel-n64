@@ -32,6 +32,7 @@
 
 #include "GLideNHQ/Ext_TxFilter.h"
 #include "GLideNHQ/TxImage.h"
+#include "GLideNHQ/TxQuantize.h"
 #include <encodings/crc32.h>
 
 #define IDENT "HIRES TEST"
@@ -262,6 +263,53 @@ static uint32 run(int maxbpp, int options, const char *what)
    return crc;
 }
 
+/* one texture dumped, 5 x 3 in rows of 7 texels, as GLideNHQ names it; what is
+ * read back must be its texels, made RGBA8 */
+static void dumped(uint16 gfmt, int n64fmt, uint64 crc, const char *name, const char *what)
+{
+   static uint32 tex[7 * 3], want[7 * 3];
+   char path[200], line[200];
+   unsigned i;
+   int w, h, fmt;
+   uint8 *img;
+   for (i = 0; i < 7 * 3; i++)
+      tex[i] = rnd() | (rnd() << 24);
+   if (gfmt == 0x8058)
+      memcpy(want, tex, sizeof(want));
+   else
+      txquantize((uint8 *)tex, (uint8 *)want, 7, 3, TXQ_RGB5_A1, TXQ_RGBA8, 1, NULL, 1);
+   sprintf(line, "%s: dumped", what);
+   check(txfilter_dmptx((uint8 *)tex, 5, 3, 7, gfmt, (uint16)n64fmt, crc) != 0, line);
+   sprintf(path, "dump/" IDENT "/GLideNHQ/" IDENT "%s", name);
+   img = tximage_read_png(at(path), &w, &h, &fmt);
+   sprintf(line, "%s: as %s", what, name);
+   check(img != NULL && w == 5 && h == 3, line);
+   if (img)
+   {
+      int ok = 1, y;
+      for (y = 0; y < 3; y++)
+         ok &= !memcmp(img + y * 20, want + y * 7, 20);
+      sprintf(line, "%s: its texels", what);
+      check(ok, line);
+   }
+   free(img);
+   remove(at(path));
+}
+
+static void dumps(void)
+{
+   char cache[600], dump[600];
+   sprintf(cache, "%s", at("cache"));
+   sprintf(dump, "%s", at("dump"));
+   check(txfilter_init(256, 256, 32, DUMP_TEX, 0, cache, dump, at(""), IDENT) != 0, "dumping: txfilter_init");
+   dumped(0x8058, 0x002, ((uint64)0xABCD << 32) | 0x1234, "#00001234#0#2_all.png", "RGBA8, fmt 0");
+   dumped(0x8057, 0x201, ((uint64)0xABCD << 32) | 0x5678, "#00005678#2#1#0000ABCD_ciByRGBA.png", "16 bits, fmt 2");
+   txfilter_shutdown();
+   rmdir_(at("dump/" IDENT "/GLideNHQ"));
+   rmdir_(at("dump/" IDENT));
+   rmdir_(at("dump"));
+}
+
 int main(int argc, char **argv)
 {
    uint32 crc = 0, plain, forced, dumped;
@@ -301,6 +349,7 @@ int main(int argc, char **argv)
    check(run(32, RICE_HIRESTEXTURES | DUMP_HIRESTEXCACHE, "read from disk") == plain,
          "read from disk, not the pack: the same textures");
 
+   dumps();
    remove_pack();
 
    if (crc != WANT)

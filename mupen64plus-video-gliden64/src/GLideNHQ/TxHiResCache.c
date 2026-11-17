@@ -171,9 +171,9 @@ boolean txhirescache_get(txhirescache *h, uint64 checksum, GHQTexInfo *info)
 	return h && h->cache ? txcache_get(h->cache, checksum, info) : 0;
 }
 
-boolean txhirescache_add(txhirescache *h, uint64 checksum, GHQTexInfo *info)
+boolean txhirescache_add(txhirescache *h, uint64 checksum, GHQTexInfo *info, boolean owned)
 {
-	return h && h->cache ? txcache_add(h->cache, checksum, info, 0, 0) : 0;
+	return h && h->cache ? txcache_add(h->cache, checksum, info, 0, owned) : 0;
 }
 
 void txhirescache_dump(txhirescache *h)

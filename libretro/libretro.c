@@ -1908,6 +1908,10 @@ void retro_init(void)
 
 }
 
+#ifdef HAVE_GLIDEN64
+extern void gli_TFH_shutdown(void);
+#endif
+
 void retro_deinit(void)
 {
    mupen_main_stop();
@@ -1932,6 +1936,8 @@ void retro_deinit(void)
    gliden64_vulkan_enable(0);
    gliden64_upscaler_close();
    update_gliden64_upscaler_options(false);
+   /* GLideNHQ's filter, its caches and buffers, freed with the core */
+   gli_TFH_shutdown();
 #endif
 
    CoreOptionCategoriesSupported = 0;
