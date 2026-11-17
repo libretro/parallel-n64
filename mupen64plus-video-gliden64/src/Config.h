@@ -254,6 +254,10 @@ extern u32 LegacySm64ToolsHacks;
 void Config_LoadConfig(void);
 void gli_config_reset_defaults(Config * _config);
 bool gli_isHWLightingAllowed(void);
+/* the options the generated combiner shaders depend on, a bit each
+ * (CombinerOptions.c); the shader storage's format version goes up with
+ * any change to them */
+u32 gli_combiner_options_bits(void);
 #ifdef __cplusplus
 }
 

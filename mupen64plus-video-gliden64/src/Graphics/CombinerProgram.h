@@ -22,9 +22,9 @@ namespace graphics {
 		virtual bool usesLOD() const = 0;
 		virtual bool usesHwLighting() const = 0;
 
+		/* the program's stored form appended to @_buffer, which is left as it
+		 * was if it has none */
 		virtual bool getBinaryForm(std::vector<char> & _buffer) = 0;
-
-		static u32 getShaderCombinerOptionsBits();
 	};
 
 	/* map nodes come from a fixed pool: a new combiner mid-game allocates nothing */

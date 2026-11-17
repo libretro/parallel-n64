@@ -382,6 +382,7 @@ SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/TextureFilterHandler.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/PostProcessor.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/Config.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/CombinerKey.c
+SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/CombinerOptions.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/PluginAPI.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/DisplayWindow.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/DepthBuffer.c
@@ -466,7 +467,6 @@ SOURCES_CXX   += \
     $(VIDEODIR_GLIDEN64)/src/GraphicsDrawer.cpp                                                   \
     $(VIDEODIR_GLIDEN64)/src/Graphics/Context.cpp                                                 \
     $(VIDEODIR_GLIDEN64)/src/Graphics/ColorBufferReader.cpp                                       \
-    $(VIDEODIR_GLIDEN64)/src/Graphics/CombinerProgram.cpp                                         \
     $(VIDEODIR_GLIDEN64)/src/Graphics/ObjectHandle.cpp                                            \
     $(VIDEODIR_GLIDEN64)/src/Graphics/CombinerValues.cpp                                          \
     $(VIDEODIR_GLIDEN64)/src/Graphics/VulkanContext/vk_ContextImpl.cpp                            \

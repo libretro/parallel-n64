@@ -9,6 +9,7 @@
 #include <Graphics/Context.h>
 #include <Graphics/OpenGLContext/opengl_Utils.h>
 #include <Types.h>
+#include <Config.h>
 #include <RSP.h>
 #include <PluginAPI.h>
 #include <Combiner.h>
@@ -184,7 +185,7 @@ bool ShaderStorage::saveShadersStorage(const graphics::Combiners & _combiners) c
 
 	put(&m_formatVersion, sizeof(m_formatVersion));
 
-	const u32 configOptionsBitSet = graphics::CombinerProgram::getShaderCombinerOptionsBits();
+	const u32 configOptionsBitSet = gli_combiner_options_bits();
 	put(&configOptionsBitSet, sizeof(configOptionsBitSet));
 
 	const char * strRenderer = reinterpret_cast<const char *>(glGetString(GL_RENDERER));
@@ -202,14 +203,11 @@ bool ShaderStorage::saveShadersStorage(const graphics::Combiners & _combiners) c
 	u32 totalWritten = 0;
 	put(&totalWritten, sizeof(totalWritten));
 
-	std::vector<char> data;
+	/* each program's binary written by GL straight into the file's buffer */
 	for (auto cur = _combiners.begin(); cur != _combiners.end(); ++cur)
 	{
-		if (cur->second->getBinaryForm(data))
-		{
-			put(data.data(), data.size());
+		if (cur->second->getBinaryForm(shadersOut))
 			++totalWritten;
-		}
 	}
 	memcpy(shadersOut.data() + countAt, &totalWritten, sizeof(totalWritten));
 
@@ -294,7 +292,7 @@ bool ShaderStorage::loadShadersStorage(graphics::Combiners & _combiners)
 		return _loadFromCombinerKeys(_combiners);
 
 	const std::string shadersFileName = getStorageFileName(m_glinfo, "shaders");
-	const u32 configOptionsBitSet = graphics::CombinerProgram::getShaderCombinerOptionsBits();
+	const u32 configOptionsBitSet = gli_combiner_options_bits();
 
 	void * file = nullptr;
 	int64_t size = 0;

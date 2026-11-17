@@ -2802,7 +2802,7 @@ CombinerProgramBuilder::CombinerProgramBuilder(const opengl::GLInfo & _glinfo, o
 , m_shaderN64DepthCompare(new ShaderN64DepthCompare(_glinfo))
 , m_shaderN64DepthRender(new ShaderN64DepthRender(_glinfo))
 , m_useProgram(_useProgram)
-, m_combinerOptionsBits(graphics::CombinerProgram::getShaderCombinerOptionsBits())
+, m_combinerOptionsBits(gli_combiner_options_bits())
 {
 	m_vertexShaderRect = _createVertexShader(m_vertexHeader.get(), m_vertexRect.get(), m_vertexEnd.get());
 	m_vertexShaderTriangle = _createVertexShader(m_vertexHeader.get(), m_vertexTriangle.get(), m_vertexEnd.get());
@@ -2849,5 +2849,5 @@ CombinerProgramBuilder::~CombinerProgramBuilder()
 
 bool CombinerProgramBuilder::isObsolete() const
 {
-	return m_combinerOptionsBits != graphics::CombinerProgram::getShaderCombinerOptionsBits();
+	return m_combinerOptionsBits != gli_combiner_options_bits();
 }

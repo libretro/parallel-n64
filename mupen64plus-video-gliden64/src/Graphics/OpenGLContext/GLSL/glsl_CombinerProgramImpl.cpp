@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <fstream>
 #include <assert.h>
+#include <string.h>
 #include <Combiner.h>
 #include <Graphics/OpenGLContext/opengl_CachedFunctions.h>
 #include <Graphics/OpenGLContext/opengl_Utils.h>
@@ -75,43 +76,37 @@ bool CombinerProgramImpl::usesHwLighting() const
 
 bool CombinerProgramImpl::getBinaryForm(std::vector<char> & _buffer)
 {
+	/* key, inputs, binary format and length, then the binary, appended to
+	 * @_buffer: GL writes the binary where it is kept */
+	const size_t head = sizeof(u64) + sizeof(int) + sizeof(GLenum) + sizeof(GLint);
+	const size_t at = _buffer.size();
 	GLint  binaryLength;
+	GLenum binaryFormat;
 	glGetProgramiv(GLuint(m_program), GL_PROGRAM_BINARY_LENGTH, &binaryLength);
 
 	if (binaryLength < 1)
 		return false;
 
-	std::vector<char> binary(binaryLength);
-
-	GLenum binaryFormat;
-	glGetProgramBinary(GLuint(m_program), binaryLength, &binaryLength, &binaryFormat, binary.data());
-	if (opengl::Utils::isGLError())
+	_buffer.resize(at + head + binaryLength);
+	glGetProgramBinary(GLuint(m_program), binaryLength, &binaryLength, &binaryFormat, _buffer.data() + at + head);
+	if (opengl::Utils::isGLError()) {
+		_buffer.resize(at);
 		return false;
+	}
+	_buffer.resize(at + head + binaryLength);
 
-	u64 key = m_key.getMux();
-	int inputs(m_inputs);
-
-	int totalSize = sizeof(key)+sizeof(inputs)+sizeof(binaryFormat)+
-		sizeof(binaryLength)+binaryLength;
-	_buffer.resize(totalSize);
-
-	char* keyData = reinterpret_cast<char*>(&key);
-	std::copy_n(keyData, sizeof(key), _buffer.data());
-	int offset = sizeof(key);
-
-	char* inputData = reinterpret_cast<char*>(&inputs);
-	std::copy_n(inputData, sizeof(inputs), _buffer.data() + offset);
-	offset += sizeof(inputs);
-
-	char* binaryFormatData = reinterpret_cast<char*>(&binaryFormat);
-	std::copy_n(binaryFormatData, sizeof(binaryFormat), _buffer.data() + offset);
-	offset += sizeof(binaryFormat);
-
-	char* binaryLengthData = reinterpret_cast<char*>(&binaryLength);
-	std::copy_n(binaryLengthData, sizeof(binaryLength), _buffer.data() + offset);
-	offset += sizeof(binaryLength);
-
-	std::copy_n(binary.data(), binaryLength, _buffer.data() + offset);
+	{
+		const u64 key = m_key.getMux();
+		const int inputs(m_inputs);
+		char * out = _buffer.data() + at;
+		memcpy(out, &key, sizeof(key));
+		out += sizeof(key);
+		memcpy(out, &inputs, sizeof(inputs));
+		out += sizeof(inputs);
+		memcpy(out, &binaryFormat, sizeof(binaryFormat));
+		out += sizeof(binaryFormat);
+		memcpy(out, &binaryLength, sizeof(binaryLength));
+	}
 
 	return true;
 }

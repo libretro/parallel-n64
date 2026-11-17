@@ -516,7 +516,7 @@ public:
 	PixelReadBuffer * createPixelReadBuffer(size_t _bytes) override { return new VkPixelReadBuffer(_bytes); }
 	ColorBufferReader * createColorBufferReader(CachedTexture * _t) override { return new VkColorBufferReader(_t); }
 
-	bool isCombinerProgramBuilderObsolete() override { return m_optionsBits != CombinerProgram::getShaderCombinerOptionsBits(); }
+	bool isCombinerProgramBuilderObsolete() override { return m_optionsBits != gli_combiner_options_bits(); }
 	void resetCombinerProgramBuilder() override {
 		if (!isCombinerProgramBuilderObsolete())
 			return;
@@ -675,7 +675,7 @@ private:
 	void _windowSize() { vkr_set_window(g_r, dwnd().getScreenWidth(), dwnd().getScreenHeight()); }
 
 	void _create() {
-		m_optionsBits = CombinerProgram::getShaderCombinerOptionsBits();
+		m_optionsBits = gli_combiner_options_bits();
 		vkr_shader_config cfg;
 		memset(&cfg, 0, sizeof(cfg));
 		cfg.legacy_blending = config.generalEmulation.enableLegacyBlending != 0;
