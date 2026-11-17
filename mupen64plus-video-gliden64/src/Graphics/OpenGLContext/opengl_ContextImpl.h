@@ -84,7 +84,7 @@ namespace opengl {
 
 		/*---------------Framebuffer-------------*/
 
-		graphics::FramebufferTextureFormats * getFramebufferTextureFormats() override;
+		void getFramebufferTextureFormats(gli_fb_formats & _formats) override;
 
 		graphics::ObjectHandle createFramebuffer() override;
 
@@ -169,7 +169,7 @@ namespace opengl {
 		std::unique_ptr<AddFramebufferRenderTarget> m_addFramebufferRenderTarget;
 		std::unique_ptr<CreatePixelReadBuffer> m_createPixelReadBuffer;
 		std::unique_ptr<BlitFramebuffers> m_blitFramebuffers;
-		std::unique_ptr<graphics::FramebufferTextureFormats> m_fbTexFormats;
+		gli_fb_formats m_fbTexFormats;
 
 		std::unique_ptr<GraphicsDrawer> m_graphicsDrawer;
 

@@ -42,7 +42,7 @@ namespace graphics {
 		virtual void bindImageTexture(const Context::BindImageTextureParameters & _params) = 0;
 		virtual u32 convertInternalTextureFormat(u32 _format) const = 0;
 		virtual void textureBarrier() = 0;
-		virtual FramebufferTextureFormats * getFramebufferTextureFormats() = 0;
+		virtual void getFramebufferTextureFormats(gli_fb_formats & _formats) = 0;
 		virtual ObjectHandle createFramebuffer() = 0;
 		virtual void deleteFramebuffer(ObjectHandle _name) = 0;
 		virtual void bindFramebuffer(BufferTargetParam _target, ObjectHandle _name) = 0;

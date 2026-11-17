@@ -386,6 +386,7 @@ SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/CombinerKey.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/CombinerOptions.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/Graphics/CombinerValues.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/Graphics/Context.c
+SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/Graphics/FramebufferFormats.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/Combiner.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/CombinerTable.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/PluginAPI.c

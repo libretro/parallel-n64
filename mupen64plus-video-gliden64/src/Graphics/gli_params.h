@@ -14,6 +14,7 @@
 #define GLI_CF_RED                         0x1903
 #define GLI_CF_DEPTH                       0x1902
 #define GLI_CF_LUMINANCE                   0x1909
+#define GLI_CF_RED_INTEGER                 0x8D94
 
 /* internalcolorFormat */
 #define GLI_ICF_NOCOLOR                    0
@@ -27,6 +28,15 @@
 #define GLI_ICF_RG32F                      0x8230
 #define GLI_ICF_LUMINANCE                  0x1909
 #define GLI_ICF_COLOR_INDEX8               0x80E5
+/* the internal formats only the frame buffer textures use */
+#define GLI_ICF_RGB                        0x1907
+#define GLI_ICF_RGBA                       0x1908
+#define GLI_ICF_R8                         0x8229
+#define GLI_ICF_R16UI                      0x8234
+#define GLI_ICF_R32F                       0x822E
+#define GLI_ICF_RGBA32F                    0x8814
+#define GLI_ICF_DEPTH_COMPONENT            0x1902
+#define GLI_ICF_DEPTH16                    0x81A5
 
 /* datatype */
 #define GLI_DT_UNSIGNED_BYTE               0x1401

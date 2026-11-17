@@ -35,11 +35,11 @@ void gli_context_init(void)
 	}
 	gli_ctx.ops->init(gli_ctx.impl);
 
-	/* the formats of the backend before are freed with its own function */
-	if (gli_ctx.formats != NULL)
-		gli_ctx.free_formats(gli_ctx.formats);
-	gli_ctx.formats = gli_ctx.ops->getFramebufferTextureFormats(gli_ctx.impl);
-	gli_ctx.free_formats = gli_ctx.ops->free_formats;
+	{
+		static const gli_fb_formats unset = GLI_FB_FORMATS_DEFAULT;
+		gli_ctx.formats = unset;
+		gli_ctx.ops->getFramebufferTextureFormats(gli_ctx.impl, &gli_ctx.formats);
+	}
 
 	for (i = 0; i < GLI_FEATURE_COUNT; i++)
 		*features[i] = gli_ctx.ops->isSupported(gli_ctx.impl, i);

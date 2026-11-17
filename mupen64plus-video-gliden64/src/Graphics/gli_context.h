@@ -89,6 +89,32 @@ typedef struct gli_bind_texture_params
 } gli_bind_texture_params;
 #define GLI_BIND_TEXTURE_PARAMS_DEFAULT { 0, GLI_PARAM_INVALID, GLI_PARAM_INVALID }
 
+/* The formats of the textures a frame buffer is made of, by what each is
+ * for: internal format, format, data type (gli_params.h numbers) and bytes
+ * a texel. A backend sets what it has; the rest stay GLI_PARAM_INVALID (bytes 0). */
+typedef struct gli_fb_formats
+{
+	u32 colorInternalFormat, colorFormat, colorType, colorFormatBytes;
+	u32 monochromeInternalFormat, monochromeFormat, monochromeType, monochromeFormatBytes;
+	u32 depthInternalFormat, depthFormat, depthType, depthFormatBytes;
+	u32 depthImageInternalFormat, depthImageFormat, depthImageType, depthImageFormatBytes;
+	u32 lutInternalFormat, lutFormat, lutType, lutFormatBytes;
+	u32 noiseInternalFormat, noiseFormat, noiseType, noiseFormatBytes;
+} gli_fb_formats;
+#define GLI_FB_FORMAT_UNSET GLI_PARAM_INVALID, GLI_PARAM_INVALID, GLI_PARAM_INVALID, 0
+#define GLI_FB_FORMATS_DEFAULT { GLI_FB_FORMAT_UNSET, GLI_FB_FORMAT_UNSET, GLI_FB_FORMAT_UNSET, \
+	GLI_FB_FORMAT_UNSET, GLI_FB_FORMAT_UNSET, GLI_FB_FORMAT_UNSET }
+
+/* Each backend's formats (Graphics/FramebufferFormats.c), over the unset ones */
+#define GLI_FB_GL     0  /* desktop GL */
+#define GLI_FB_GLES3  1  /* GLES 3 */
+#define GLI_FB_GLES2  2  /* GLES 2 */
+#define GLI_FB_ADRENO530   1u  /* GLES 3 on Adreno 530: float color */
+#define GLI_FB_OES_DEPTH   2u  /* GLES 2 GL_OES_depth_texture */
+#define GLI_FB_OES_RGBA8   4u  /* GLES 2 GL_OES_rgb8_rgba8 */
+void gli_fb_formats_gl(gli_fb_formats *_formats, u32 _api, u32 _flags);
+void gli_fb_formats_vk(gli_fb_formats *_formats);
+
 /* what a backend may support, in the order isSupported is asked */
 enum {
 	GLI_FEATURE_MULTISAMPLING,
@@ -140,9 +166,8 @@ typedef struct gli_context_ops
 	void (*bindImageTexture)(void *_impl, const void *_params);
 	u32 (*convertInternalTextureFormat)(const void *_impl, u32 _format);
 	void (*textureBarrier)(void *_impl);
-	/* frame buffers: the formats are made by the backend, freed by free_formats */
-	void *(*getFramebufferTextureFormats)(void *_impl);
-	void (*free_formats)(void *_formats);
+	/* frame buffers: the backend sets the formats it has in @_formats */
+	void (*getFramebufferTextureFormats)(void *_impl, gli_fb_formats *_formats);
 	u32 (*createFramebuffer)(void *_impl);
 	void (*deleteFramebuffer)(void *_impl, u32 _name);
 	void (*bindFramebuffer)(void *_impl, u32 _target, u32 _name);
@@ -186,8 +211,7 @@ typedef struct gli_context
 {
 	const gli_context_ops *ops; /* NULL until gli_context_init */
 	void *impl;
-	void *formats;              /* the frame buffer texture formats */
-	void (*free_formats)(void *_formats);
+	gli_fb_formats formats;     /* the frame buffer texture formats */
 	/* what the backend supports */
 	bool multisampling;
 	bool blitFramebuffer;

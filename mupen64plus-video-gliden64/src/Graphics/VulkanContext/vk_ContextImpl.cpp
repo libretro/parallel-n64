@@ -367,24 +367,6 @@ private:
 	vkr_readback * m_rb[MaxSlots];
 };
 
-/*---------------Formats-------------*/
-
-struct VkFramebufferFormats : public FramebufferTextureFormats
-{
-	VkFramebufferFormats() { init(); }
-protected:
-	void init() override {
-		enum { GLV_RGBA = 0x1908, GLV_RED = 0x1903, GLV_RED_INT = 0x8D94, GLV_DEPTHC = 0x1902,
-			GLV_UBYTE = 0x1401, GLV_USHORT = 0x1403, GLV_UINT = 0x1405, GLV_FLOAT = 0x1406 };
-		colorInternalFormat = GLV_RGBA8; colorFormat = GLV_RGBA; colorType = GLV_UBYTE; colorFormatBytes = 4;
-		monochromeInternalFormat = GLV_R8; monochromeFormat = GLV_RED; monochromeType = GLV_UBYTE; monochromeFormatBytes = 1;
-		depthInternalFormat = GLV_DEPTH; depthFormat = GLV_DEPTHC; depthType = GLV_FLOAT; depthFormatBytes = 4;
-		depthImageInternalFormat = GLV_R32F; depthImageFormat = GLV_RED; depthImageType = GLV_FLOAT; depthImageFormatBytes = 4;
-		lutInternalFormat = GLV_R16UI; lutFormat = GLV_RED_INT; lutType = GLV_USHORT; lutFormatBytes = 2;
-		noiseInternalFormat = GLV_R8; noiseFormat = GLV_RED; noiseType = GLV_UBYTE; noiseFormatBytes = 1;
-	}
-};
-
 /*---------------Context-------------*/
 
 class VkContextImpl : public ContextImpl
@@ -483,7 +465,7 @@ public:
 	}
 	u32 convertInternalTextureFormat(u32 _f) const override { return _f; }
 	void textureBarrier() override {}
-	FramebufferTextureFormats * getFramebufferTextureFormats() override { return new VkFramebufferFormats; }
+	void getFramebufferTextureFormats(gli_fb_formats & _f) override { gli_fb_formats_vk(&_f); }
 
 	ObjectHandle createFramebuffer() override { return ObjectHandle(vkr_fbo_new(g_r)); }
 	void deleteFramebuffer(ObjectHandle _h) override { vkr_fbo_delete(g_r, u32(_h)); }

@@ -263,164 +263,6 @@ public:
 	}
 };
 
-/*---------------FramebufferTextureFormats-------------*/
-
-struct FramebufferTextureFormatsGLES2 : public graphics::FramebufferTextureFormats
-{
-	static bool Check(const GLInfo & _glinfo) {
-		return _glinfo.isGLES2;
-	}
-
-	FramebufferTextureFormatsGLES2(const GLInfo & _glinfo):
-		m_glinfo(_glinfo)
-	{
-		init();
-	}
-
-protected:
-	void init() override
-	{
-		monochromeInternalFormat = GL_RGB;
-		monochromeFormat = GL_RGB;
-		monochromeType = GL_UNSIGNED_SHORT_5_6_5;
-		monochromeFormatBytes = 2;
-
-		if (Utils::isExtensionSupported(m_glinfo, "GL_OES_depth_texture")) {
-			depthInternalFormat = GL_DEPTH_COMPONENT;
-			depthFormatBytes = 4;
-		} else {
-			depthInternalFormat = GL_DEPTH_COMPONENT16;
-			depthFormatBytes = 2;
-		}
-
-		depthFormat = GL_DEPTH_COMPONENT;
-		depthType = GL_UNSIGNED_INT;
-
-		if (Utils::isExtensionSupported(m_glinfo, "GL_OES_rgb8_rgba8")) {
-			colorInternalFormat = GL_RGBA;
-			colorFormat = GL_RGBA;
-			colorType = GL_UNSIGNED_BYTE;
-			colorFormatBytes = 4;
-		}
-		else {
-			colorInternalFormat = GL_RGB;
-			colorFormat = GL_RGB;
-			colorType = GL_UNSIGNED_SHORT_5_6_5;
-			colorFormatBytes = 2;
-		}
-
-		noiseInternalFormat = graphics::internalcolorFormat::LUMINANCE;
-		noiseFormat = graphics::colorFormat::LUMINANCE;
-		noiseType = GL_UNSIGNED_BYTE;
-		noiseFormatBytes = 1;
-	}
-
-private:
-	const GLInfo & m_glinfo;
-};
-
-struct FramebufferTextureFormatsGLES3 : public graphics::FramebufferTextureFormats
-{
-	static bool Check(const GLInfo & _glinfo) {
-		return _glinfo.isGLESX && !_glinfo.isGLES2;
-	}
-
-	FramebufferTextureFormatsGLES3(const GLInfo & _glinfo):
-		m_glinfo(_glinfo)
-	{
-		init();
-	}
-
-protected:
-	void init() override
-	{
-		if (m_glinfo.renderer == Renderer::Adreno530) {
-			colorInternalFormat = GL_RGBA32F;
-			colorFormat = GL_RGBA;
-			colorType = GL_FLOAT;
-			colorFormatBytes = 16;
-		} else {
-			colorInternalFormat = GL_RGBA8;
-			colorFormat = GL_RGBA;
-			colorType = GL_UNSIGNED_BYTE;
-			colorFormatBytes = 4;
-		}
-
-		monochromeInternalFormat = GL_R8;
-		monochromeFormat = GL_RED;
-		monochromeType = GL_UNSIGNED_BYTE;
-		monochromeFormatBytes = 1;
-
-		depthInternalFormat = GL_DEPTH_COMPONENT24;
-		depthFormat = GL_DEPTH_COMPONENT;
-		depthType = GL_UNSIGNED_INT;
-		depthFormatBytes = 4;
-
-		depthImageInternalFormat = GL_R32F;
-		depthImageFormat = GL_RED;
-		depthImageType = GL_FLOAT;
-		depthImageFormatBytes = 4;
-
-		lutInternalFormat = GL_R16UI;
-		lutFormat = GL_RED_INTEGER;
-		lutType = GL_UNSIGNED_SHORT;
-		lutFormatBytes = 2;
-
-		noiseInternalFormat = GL_R8;
-		noiseFormat = GL_RED;
-		noiseType = GL_UNSIGNED_BYTE;
-		noiseFormatBytes = 1;
-	}
-
-	const GLInfo & m_glinfo;
-};
-
-struct FramebufferTextureFormatsOpenGL : public graphics::FramebufferTextureFormats
-{
-	static bool Check(const GLInfo & _glinfo) {
-		return !_glinfo.isGLESX;
-	}
-
-	FramebufferTextureFormatsOpenGL()
-	{
-		init();
-	}
-
-protected:
-	void init() override
-	{
-		colorInternalFormat = GL_RGBA8;
-		colorFormat = GL_RGBA;
-		colorType = GL_UNSIGNED_BYTE;
-		colorFormatBytes = 4;
-
-		monochromeInternalFormat = GL_R8;
-		monochromeFormat = GL_RED;
-		monochromeType = GL_UNSIGNED_BYTE;
-		monochromeFormatBytes = 1;
-
-		depthInternalFormat = GL_DEPTH_COMPONENT24;
-		depthFormat = GL_DEPTH_COMPONENT;
-		depthType = GL_FLOAT;
-		depthFormatBytes = 4;
-
-		depthImageInternalFormat = GL_R32F;
-		depthImageFormat = GL_RED;
-		depthImageType = GL_FLOAT;
-		depthImageFormatBytes = 4;
-
-		lutInternalFormat = GL_R16UI;
-		lutFormat = GL_RED_INTEGER;
-		lutType = GL_UNSIGNED_SHORT;
-		lutFormatBytes = 2;
-
-		noiseInternalFormat = GL_R8;
-		noiseFormat = GL_RED;
-		noiseType = GL_UNSIGNED_BYTE;
-		noiseFormatBytes = 1;
-	}
-};
-
 /*---------------BufferManipulationObjectFactory-------------*/
 
 BufferManipulationObjectFactory::BufferManipulationObjectFactory(const GLInfo & _info,
@@ -479,17 +321,14 @@ CreatePixelReadBuffer * BufferManipulationObjectFactory::createPixelReadBuffer()
 	return new CreatePixelReadBufferT<PBOReadBuffer>(m_cachedFunctions.getCachedBindBuffer());
 }
 
-graphics::FramebufferTextureFormats * BufferManipulationObjectFactory::getFramebufferTextureFormats() const
+void BufferManipulationObjectFactory::getFramebufferTextureFormats(gli_fb_formats & _formats) const
 {
-	if (FramebufferTextureFormatsOpenGL::Check(m_glInfo))
-		return new FramebufferTextureFormatsOpenGL;
-
-	if (FramebufferTextureFormatsGLES3::Check(m_glInfo))
-		return new FramebufferTextureFormatsGLES3(m_glInfo);
-
-	if (FramebufferTextureFormatsGLES2::Check(m_glInfo))
-		return new FramebufferTextureFormatsGLES2(m_glInfo);
-
-	assert(false);
-	return nullptr;
+	if (!m_glInfo.isGLESX)
+		gli_fb_formats_gl(&_formats, GLI_FB_GL, 0);
+	else if (!m_glInfo.isGLES2)
+		gli_fb_formats_gl(&_formats, GLI_FB_GLES3, m_glInfo.renderer == Renderer::Adreno530 ? GLI_FB_ADRENO530 : 0);
+	else
+		gli_fb_formats_gl(&_formats, GLI_FB_GLES2,
+			(Utils::isExtensionSupported(m_glInfo, "GL_OES_depth_texture") ? GLI_FB_OES_DEPTH : 0) |
+			(Utils::isExtensionSupported(m_glInfo, "GL_OES_rgb8_rgba8") ? GLI_FB_OES_RGBA8 : 0));
 }

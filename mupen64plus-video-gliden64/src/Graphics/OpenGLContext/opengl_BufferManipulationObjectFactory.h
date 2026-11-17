@@ -70,7 +70,7 @@ namespace opengl {
 
 		BlitFramebuffers * getBlitFramebuffers() const;
 
-		graphics::FramebufferTextureFormats * getFramebufferTextureFormats() const;
+		void getFramebufferTextureFormats(gli_fb_formats & _formats) const;
 
 	private:
 		const GLInfo & m_glInfo;

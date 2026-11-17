@@ -26,6 +26,15 @@ static_assert(GLI_ICF_RG == GL_RG8, "GLI_ICF_RG");
 static_assert(GLI_ICF_R16F == GL_R16F, "GLI_ICF_R16F");
 static_assert(GLI_ICF_DEPTH == GL_DEPTH_COMPONENT24, "GLI_ICF_DEPTH");
 static_assert(GLI_ICF_RG32F == GL_RG32F, "GLI_ICF_RG32F");
+static_assert(GLI_CF_RED_INTEGER == GL_RED_INTEGER, "GLI_CF_RED_INTEGER");
+static_assert(GLI_ICF_RGB == GL_RGB, "GLI_ICF_RGB");
+static_assert(GLI_ICF_RGBA == GL_RGBA, "GLI_ICF_RGBA");
+static_assert(GLI_ICF_R8 == GL_R8, "GLI_ICF_R8");
+static_assert(GLI_ICF_R16UI == GL_R16UI, "GLI_ICF_R16UI");
+static_assert(GLI_ICF_R32F == GL_R32F, "GLI_ICF_R32F");
+static_assert(GLI_ICF_RGBA32F == GL_RGBA32F, "GLI_ICF_RGBA32F");
+static_assert(GLI_ICF_DEPTH_COMPONENT == GL_DEPTH_COMPONENT, "GLI_ICF_DEPTH_COMPONENT");
+static_assert(GLI_ICF_DEPTH16 == GL_DEPTH_COMPONENT16, "GLI_ICF_DEPTH16");
 static_assert(GLI_DT_UNSIGNED_BYTE == GL_UNSIGNED_BYTE, "GLI_DT_UNSIGNED_BYTE");
 static_assert(GLI_DT_UNSIGNED_SHORT == GL_UNSIGNED_SHORT, "GLI_DT_UNSIGNED_SHORT");
 static_assert(GLI_DT_UNSIGNED_INT == GL_UNSIGNED_INT, "GLI_DT_UNSIGNED_INT");
@@ -157,7 +166,11 @@ void ContextImpl::init()
 
 	{
 		BufferManipulationObjectFactory bufferObjectFactory(m_glInfo, *m_cachedFunctions.get());
-		m_fbTexFormats.reset(bufferObjectFactory.getFramebufferTextureFormats());
+		{
+			static const gli_fb_formats unset = GLI_FB_FORMATS_DEFAULT;
+			m_fbTexFormats = unset;
+		}
+		bufferObjectFactory.getFramebufferTextureFormats(m_fbTexFormats);
 		m_createFramebuffer.reset(bufferObjectFactory.getCreateFramebufferObject());
 		m_createRenderbuffer.reset(bufferObjectFactory.getCreateRenderbuffer());
 		m_initRenderbuffer.reset(bufferObjectFactory.getInitRenderbuffer());
@@ -400,9 +413,9 @@ void ContextImpl::textureBarrier()
 
 /*---------------Framebuffer-------------*/
 
-graphics::FramebufferTextureFormats * ContextImpl::getFramebufferTextureFormats()
+void ContextImpl::getFramebufferTextureFormats(gli_fb_formats & _formats)
 {
-	return m_fbTexFormats.release();
+	_formats = m_fbTexFormats;
 }
 
 graphics::ObjectHandle ContextImpl::createFramebuffer()

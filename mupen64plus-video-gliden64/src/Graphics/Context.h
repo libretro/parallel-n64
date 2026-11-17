@@ -140,10 +140,7 @@ namespace graphics {
 
 		/*---------------Framebuffer-------------*/
 
-		static const FramebufferTextureFormats & getFramebufferTextureFormats()
-		{
-			return *static_cast<const FramebufferTextureFormats *>(gli_ctx.formats);
-		}
+		static const FramebufferTextureFormats & getFramebufferTextureFormats() { return gli_ctx.formats; }
 
 		static ObjectHandle createFramebuffer() { return ObjectHandle(gli_ctx.ops->createFramebuffer(gli_ctx.impl)); }
 

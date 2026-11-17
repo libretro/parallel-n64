@@ -78,8 +78,7 @@ namespace graphics {
 		static u32 convertInternalTextureFormat(const void * _p, u32 _format) { return C(_p)->T::convertInternalTextureFormat(_format); }
 		static void textureBarrier(void * _p) { I(_p)->T::textureBarrier(); }
 
-		static void * getFramebufferTextureFormats(void * _p) { return I(_p)->T::getFramebufferTextureFormats(); }
-		static void free_formats(void * _formats) { delete static_cast<FramebufferTextureFormats *>(_formats); }
+		static void getFramebufferTextureFormats(void * _p, gli_fb_formats * _formats) { I(_p)->T::getFramebufferTextureFormats(*_formats); }
 		static u32 createFramebuffer(void * _p) { return u32(I(_p)->T::createFramebuffer()); }
 		static void deleteFramebuffer(void * _p, u32 _name) { I(_p)->T::deleteFramebuffer(ObjectHandle(_name)); }
 		static void bindFramebuffer(void * _p, u32 _target, u32 _name)
@@ -164,7 +163,7 @@ namespace graphics {
 		&createTexture, &deleteTexture, &init2DTexture, &update2DTexture, &lendTextureData,
 		&setTextureParameters, &bindTexture, &setTextureUnpackAlignment, &getTextureUnpackAlignment,
 		&getMaxTextureSize, &getMaxAnisotropy, &bindImageTexture, &convertInternalTextureFormat, &textureBarrier,
-		&getFramebufferTextureFormats, &free_formats, &createFramebuffer, &deleteFramebuffer, &bindFramebuffer,
+		&getFramebufferTextureFormats, &createFramebuffer, &deleteFramebuffer, &bindFramebuffer,
 		&addFrameBufferRenderTarget, &createRenderbuffer, &initRenderbuffer, &blitFramebuffers, &setDrawBuffers,
 		&createPixelReadBuffer, &createColorBufferReader,
 		&isCombinerProgramBuilderObsolete, &isCombinerUberOnly, &resetCombinerProgramBuilder,

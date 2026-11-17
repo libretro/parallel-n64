@@ -126,9 +126,9 @@ void RDRAMtoColorBuffer::_copyFromRDRAM(u32 _height, bool _fullAlpha)
 		gli_r2c_copy_image(address, m_pCurBuffer->m_size, pDst, width, height, _fullAlpha) != 0 :
 		gli_r2c_copy_marked(&m_marks, address, m_pCurBuffer->m_size, pDst, width, height, _fullAlpha) != 0;
 
-	if (fbTexFormats.colorType == datatype::FLOAT)
+	if (fbTexFormats.colorType == GLI_DT_FLOAT)
 		gli_r2c_to_float(m_pbuf, width * height);
-	else if (fbTexFormats.colorType == datatype::UNSIGNED_SHORT_5_6_5)
+	else if (fbTexFormats.colorType == GLI_DT_UNSIGNED_SHORT_5_6_5)
 		gli_r2c_to_565(m_pbuf, width * height);
 
 	if (!gli_FBInfo_supported()) {
