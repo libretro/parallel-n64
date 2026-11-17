@@ -7,12 +7,10 @@
 extern "C" {
 #endif
 
-/* What the S2DEX microcode needs from the C++ frame buffer lists and config. */
-u32 gli_s2dex_hacks(void);
-int gli_s2dex_bg_one_piece(void);
-int gli_s2dex_native_res_texrects(void);
+/* What the S2DEX microcode does with the frame buffers, the depth buffers
+ * and the drawer (uCodes/S2DEX_gfx.c) */
 void gli_s2dex_mark_current_ob_screen(void);
-int gli_s2dex_depth_buffer_at(u32 _address);
+/* the depth buffer at gSP.bgImage copied into the current color buffer's */
 void gli_s2dex_copy_depth_buffer(void);
 void gli_s2dex_load_fb_image(void);
 int gli_s2dex_use_fb_image(u32 _imagePtr, u32 _imageSiz, u32 _imageFmt);

@@ -143,6 +143,7 @@ struct TexrectGpu
 };
 
 RectVertex * gli_drawer_rect(void) { return TexrectGpu::rect(); }
+void gli_drawer_set_background_mode(bool _on) { dwnd().getDrawer().setBackgroundDrawingMode(_on); }
 void gli_drawer_texrect_states(void) { TexrectGpu::restart(); }
 void gli_drawer_set_blend_mode(void) { TexrectGpu::setBlend(); }
 void gli_drawer_update_depth_compare(void) { TexrectGpu::depthCompare(); }

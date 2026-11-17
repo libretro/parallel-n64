@@ -12,6 +12,7 @@
 
 #include "Config.h"
 #include "gli_drawer.h"
+#include "DepthBuffer.h"
 #include "gli_s2dex.h"
 
 #define SWAP_F32(_a, _b) do { f32 _t = (_a); (_a) = (_b); (_b) = _t; } while (0)
@@ -513,7 +514,7 @@ static void objcoords_bg(ObjCoordinates * _o, const uObjScaleBg * _pObjScaleBg)
 		/*		const f32 imageW = (f32)gSP.bgImage.width; */
 		/*		const f32 imageH = (f32)gSP.bgImage.height; */
 
-		if ((u32)(imageW) == 512 && (gli_s2dex_hacks() & hack_RE2) != 0) {
+		if ((u32)(imageW) == 512 && (config.generalEmulation.hacks & hack_RE2) != 0) {
 			const f32 width = (f32)(*REG.VI_WIDTH);
 			const f32 scale = imageW / width;
 			imageW = width;
@@ -753,7 +754,7 @@ void gSPObjRectangleR(u32 _sp)
 	gSPSetSpriteTile(objSprite);
 	objcoords_sprite(&objCoords, objSprite, true);
 
-	if (objSprite->imageFmt == G_IM_FMT_YUV && (gli_s2dex_hacks()&hack_Ogre64)) /*Ogre Battle needs to copy YUV texture to frame buffer */
+	if (objSprite->imageFmt == G_IM_FMT_YUV && (config.generalEmulation.hacks&hack_Ogre64)) /*Ogre Battle needs to copy YUV texture to frame buffer */
 		_drawYUVImageToFrameBuffer(&objCoords);
 	gSPDrawObjRect(&objCoords);
 
@@ -884,7 +885,7 @@ void _loadBGImage(const uObjScaleBg * _pBgInfo, bool _loadScale, bool _fbImage)
 
 	imageW = _pBgInfo->imageW >> 2;
 	imageH = _pBgInfo->imageH >> 2;
-	if (imageW == 512 && (gli_s2dex_hacks() & hack_RE2) != 0) {
+	if (imageW == 512 && (config.generalEmulation.hacks & hack_RE2) != 0) {
 		gSP.bgImage.width = *REG.VI_WIDTH;
 		gSP.bgImage.height = (imageH * imageW) / gSP.bgImage.width;
 	}
@@ -917,10 +918,10 @@ bool _useOnePieceBgCode(u32 address, bool * fbImage)
 	*fbImage = gli_s2dex_use_fb_image(RSP_SegmentToPhysical(pObjScaleBg->imagePtr),
 			pObjScaleBg->imageSiz, pObjScaleBg->imageFmt) != 0;
 
-	if (gli_s2dex_bg_one_piece())
+	if ((config.graphics2D.bgMode == bgOnePiece))
 		return true;
 
-	if ((gli_s2dex_hacks() & hack_RE2) != 0)
+	if ((config.generalEmulation.hacks & hack_RE2) != 0)
 		return true;
 
 	return *fbImage;
@@ -936,8 +937,8 @@ void BgRect1CycOnePiece(u32 _bg, bool _fbImage)
 	/* Zelda MM uses depth buffer copy in LoT and in pause screen. */
 	/* In later case depth buffer is used as temporal color buffer, and usual rendering must be used. */
 	/* Since both situations are hard to distinguish, do the both depth buffer copy and bg rendering. */
-	if ((gli_s2dex_hacks() & hack_ZeldaMM) != 0 &&
-		(gSP.bgImage.address == gDP.depthImageAddress || gli_s2dex_depth_buffer_at(gSP.bgImage.address))
+	if ((config.generalEmulation.hacks & hack_ZeldaMM) != 0 &&
+		(gSP.bgImage.address == gDP.depthImageAddress || gli_depth_find(gSP.bgImage.address) != NULL)
 		)
 		gli_s2dex_copy_depth_buffer();
 
@@ -958,8 +959,8 @@ void BgRectCopyOnePiece(u32 _bg, bool _fbImage)
 	_loadBGImage(pObjBg, false, _fbImage);
 
 	/* See comment to BgRect1CycOnePiece */
-	if ((gli_s2dex_hacks() & hack_ZeldaMM) != 0 &&
-		(gSP.bgImage.address == gDP.depthImageAddress || gli_s2dex_depth_buffer_at(gSP.bgImage.address))
+	if ((config.generalEmulation.hacks & hack_ZeldaMM) != 0 &&
+		(gSP.bgImage.address == gDP.depthImageAddress || gli_depth_find(gSP.bgImage.address) != NULL)
 		)
 		gli_s2dex_copy_depth_buffer();
 
@@ -1191,7 +1192,7 @@ void BgRect1CycStripped(u32 _bgAddr)
 		runCommand((G_SETTILESIZE<<24), 0);
 	}
 
-	if (gli_s2dex_native_res_texrects())
+	if ((config.graphics2D.enableNativeResTexrects != 0))
 		gli_s2dex_background_drawing(1);
 
 	/*Part two */
@@ -1394,7 +1395,7 @@ void BgRect1CycStripped(u32 _bgAddr)
 	}
 	}
 
-	if (gli_s2dex_native_res_texrects())
+	if ((config.graphics2D.enableNativeResTexrects != 0))
 		gli_s2dex_background_drawing(0);
 	RSP.LLE = keepLLE;
 }
@@ -1527,7 +1528,7 @@ void BgRectCopyStripped(u32 _bgAddr)
 	AT = Ch;
 	U = A1 - A2;
 
-	if (gli_s2dex_native_res_texrects())
+	if ((config.graphics2D.enableNativeResTexrects != 0))
 		gli_s2dex_background_drawing(1);
 
 	step = 4;
@@ -1624,7 +1625,7 @@ void BgRectCopyStripped(u32 _bgAddr)
 		}
 	}
 
-	if (gli_s2dex_native_res_texrects())
+	if ((config.graphics2D.enableNativeResTexrects != 0))
 		gli_s2dex_background_drawing(0);
 	RSP.LLE = keepLLE;
 }

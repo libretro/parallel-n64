@@ -19,6 +19,8 @@ SPVertex *gli_drawer_take_dma_vertices(u32 _n);
 void gli_drawer_draw_dma_pending(void);
 void gli_drawer_draw_screen_strip(u32 _numVtx);
 void gli_drawer_clear_depth(void);
+/* drawing an S2DEX background, whose texrects are not to be merged */
+void gli_drawer_set_background_mode(bool _on);
 /* for the texrect drawer: the drawer's rect, its states for texrects, its
  * blend and depth compare, and its viewport and scissor for @_pBuffer */
 struct FrameBuffer;

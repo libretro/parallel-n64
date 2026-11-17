@@ -1508,6 +1508,16 @@ void gli_fb_remove(u32 _address)
 	frameBufferList().removeBuffer(_address);
 }
 
+void gli_fb_set_copy_buffer(FrameBuffer * _pBuffer)
+{
+	frameBufferList().setCopyBuffer(_pBuffer);
+}
+
+FrameBuffer * gli_fb_find_tmp(u32 _address)
+{
+	return frameBufferList().findTmpBuffer(_address);
+}
+
 void gli_fb_bind_draw(const FrameBuffer * _pBuffer)
 {
 	gfxContext.bindFramebuffer(bufferTarget::DRAW_FRAMEBUFFER, ObjectHandle(_pBuffer->m_FBO));

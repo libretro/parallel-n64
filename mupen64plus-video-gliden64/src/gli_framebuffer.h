@@ -39,6 +39,10 @@ bool gli_fb_current_has_depth(void);
 bool gli_fb_is_at(u32 _address);
 bool gli_fb_is_cpu(const struct FrameBuffer *_pBuffer);
 void gli_fb_remove(u32 _address);
+/* the buffer copied from while it is drawn to; NULL for none */
+void gli_fb_set_copy_buffer(struct FrameBuffer *_pBuffer);
+/* a buffer other than the current one to borrow, for a blit */
+struct FrameBuffer *gli_fb_find_tmp(u32 _address);
 u32 gli_fb_start_address(const struct FrameBuffer *_pBuffer);
 bool gli_fb_has_texture(const struct FrameBuffer *_pBuffer);
 /* copies the color image into *_ppLeftEye, made or remade to fit */
