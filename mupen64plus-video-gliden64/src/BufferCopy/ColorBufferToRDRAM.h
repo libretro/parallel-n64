@@ -6,10 +6,7 @@
 #include <vector>
 #include <Graphics/ObjectHandle.h>
 #include "DeferredReadback.h"
-
-namespace graphics {
-	class ColorBufferReader;
-}
+#include <Graphics/ColorBufferReader.h>
 
 struct gli_tex;
 typedef struct gli_tex CachedTexture;
@@ -68,7 +65,7 @@ private:
 	u32 m_lastBufferWidth;
 
 	std::array<u32, 3> m_allowedRealWidths;
-	std::unique_ptr<graphics::ColorBufferReader> m_bufferReader;
+	gli_cbr * m_bufferReader = nullptr;
 	DeferredReadback<ColorCopyGeometry> m_readback;
 };
 

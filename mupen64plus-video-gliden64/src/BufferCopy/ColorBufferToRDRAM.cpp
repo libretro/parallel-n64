@@ -44,6 +44,7 @@ ColorBufferToRDRAM::ColorBufferToRDRAM()
 
 ColorBufferToRDRAM::~ColorBufferToRDRAM()
 {
+	gli_cbr_delete(m_bufferReader);
 }
 
 void ColorBufferToRDRAM::init()
@@ -123,14 +124,15 @@ void ColorBufferToRDRAM::_initFBTexture(void)
 
 	gfxContext.bindFramebuffer(graphics::bufferTarget::DRAW_FRAMEBUFFER, graphics::ObjectHandle::defaultFramebuffer);
 
-	m_bufferReader.reset(gfxContext.createColorBufferReader(m_pTexture));
-	m_readback.reset(m_bufferReader->numSlots());
+	m_bufferReader = gfxContext.createColorBufferReader(m_pTexture);
+	m_readback.reset(m_bufferReader->numSlots);
 }
 
 void ColorBufferToRDRAM::_destroyFBTexure(void)
 {
 	/* reads still in flight die with the reader's buffers */
-	m_bufferReader.reset();
+	gli_cbr_delete(m_bufferReader);
+	m_bufferReader = nullptr;
 	m_readback.reset(1);
 
 	if (m_pTexture != nullptr) {
@@ -264,15 +266,15 @@ void ColorBufferToRDRAM::_copy(u32 _startAddress, u32 _endAddress, bool _sync)
 	g.width = width;
 	g.size = m_pCurFrameBuffer->m_size;
 
-	if (m_bufferReader->numSlots() == 0) {
+	if (m_bufferReader->numSlots == 0) {
 		u32 srcStride = width;
-		const u8* pPixels = m_bufferReader->readPixels(x0, y0, width, height, g.size, _sync, srcStride);
+		const u8* pPixels = gli_cbr_read_pixels(m_bufferReader, x0, y0, width, &height, g.size, _sync, &srcStride);
 		frameBufferList().setCurrentDrawBuffer();
 		if (pPixels == nullptr)
 			return;
 		g.height = height;
 		_write(pPixels, srcStride, g);
-		m_bufferReader->cleanUp();
+		m_bufferReader->ops->clean_up(m_bufferReader);
 		gDP.changed |= CHANGED_SCISSOR;
 		return;
 	}
@@ -283,10 +285,10 @@ void ColorBufferToRDRAM::_copy(u32 _startAddress, u32 _endAddress, bool _sync)
 	 * leaves this one in flight; a synchronous one writes those first,
 	 * waiting for them, then its own. */
 	const u32 slot = _sync ? m_readback.drain(*this) : m_readback.begin(*this);
-	m_bufferReader->readToSlot(slot, x0, y0, g.height, g.size);
+	m_bufferReader->ops->read_to_slot(m_bufferReader, slot, x0, y0, g.height, g.size);
 	frameBufferList().setCurrentDrawBuffer();
 	if (_sync) {
-		m_bufferReader->slotReady(slot, true);
+		m_bufferReader->ops->slot_ready(m_bufferReader, slot, 1);
 		write(slot, g);
 	} else {
 		m_readback.issued(g);
@@ -297,17 +299,17 @@ void ColorBufferToRDRAM::_copy(u32 _startAddress, u32 _endAddress, bool _sync)
 
 bool ColorBufferToRDRAM::ready(u32 _slot, bool _wait)
 {
-	return m_bufferReader->slotReady(_slot, _wait);
+	return m_bufferReader->ops->slot_ready(m_bufferReader, _slot, _wait ? 1 : 0) != 0;
 }
 
 void ColorBufferToRDRAM::write(u32 _slot, const ColorCopyGeometry & _g)
 {
 	u32 srcStride = 0;
 	ColorCopyGeometry g = _g;
-	const u8 * pPixels = m_bufferReader->slotPixels(_slot, g.width, g.height, g.size, srcStride);
+	const u8 * pPixels = gli_cbr_slot_pixels(m_bufferReader, _slot, g.width, &g.height, g.size, &srcStride);
 	if (pPixels != nullptr)
 		_write(pPixels, srcStride, g);
-	m_bufferReader->cleanUp();
+	m_bufferReader->ops->clean_up(m_bufferReader);
 }
 
 void ColorBufferToRDRAM::_write(const u8 * _pixels, u32 _stride, const ColorCopyGeometry & _g)

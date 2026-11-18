@@ -389,6 +389,9 @@ SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/Graphics/Context.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/Graphics/FramebufferFormats.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/GLFunctions.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/opengl_Utils.c
+SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/Graphics/ColorBufferReader.c
+SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/opengl_ColorBufferReader.c
+SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/Graphics/VulkanContext/vk_ColorBufferReader.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/Combiner.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/CombinerTable.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/PluginAPI.c
@@ -471,14 +474,10 @@ SOURCES_CXX   += \
     $(VIDEODIR_GLIDEN64)/src/BufferCopy/DepthBufferToRDRAM.cpp                                    \
     $(VIDEODIR_GLIDEN64)/src/BufferCopy/RDRAMtoColorBuffer.cpp                                    \
     $(VIDEODIR_GLIDEN64)/src/GraphicsDrawer.cpp                                                   \
-    $(VIDEODIR_GLIDEN64)/src/Graphics/ColorBufferReader.cpp                                       \
     $(VIDEODIR_GLIDEN64)/src/Graphics/VulkanContext/vk_ContextImpl.cpp                            \
     $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/opengl_BufferedDrawer.cpp                     \
     $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/opengl_BufferManipulationObjectFactory.cpp    \
     $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/opengl_CachedFunctions.cpp                    \
-    $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/opengl_ColorBufferReaderWithBufferStorage.cpp \
-    $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/opengl_ColorBufferReaderWithPixelBuffer.cpp   \
-    $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/opengl_ColorBufferReaderWithReadPixels.cpp    \
     $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/opengl_ContextImpl.cpp                        \
     $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/opengl_GLInfo.cpp                             \
     $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/opengl_TextureManipulationObjectFactory.cpp   \

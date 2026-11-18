@@ -53,7 +53,7 @@ namespace graphics {
 		virtual bool blitFramebuffers(const gli_blit_params & _params) = 0;
 		virtual void setDrawBuffers(u32 _num) = 0;
 		virtual PixelReadBuffer * createPixelReadBuffer(size_t _sizeInBytes) = 0;
-		virtual ColorBufferReader * createColorBufferReader(CachedTexture * _pTexture) = 0;
+		virtual gli_cbr * createColorBufferReader(CachedTexture * _pTexture) = 0;
 		virtual bool isCombinerProgramBuilderObsolete() = 0;
 		virtual bool isCombinerUberOnly() { return false; }
 		virtual void resetCombinerProgramBuilder() = 0;

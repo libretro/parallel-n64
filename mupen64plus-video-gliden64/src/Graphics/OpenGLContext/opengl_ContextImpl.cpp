@@ -104,11 +104,9 @@ namespace graphics {
 }
 #include "opengl_BufferedDrawer.h"
 #include "opengl_UnbufferedDrawer.h"
-#include "opengl_ColorBufferReaderWithPixelBuffer.h"
-#include "opengl_ColorBufferReaderWithBufferStorage.h"
+#include "opengl_ColorBufferReader.h"
 #ifdef OS_ANDROID
 #endif
-#include "opengl_ColorBufferReaderWithReadPixels.h"
 #include "opengl_Utils.h"
 #include "GLSL/glsl_CombinerProgramBuilder.h"
 #include "GLSL/glsl_SpecialShadersFactory.h"
@@ -485,15 +483,15 @@ graphics::PixelReadBuffer * ContextImpl::createPixelReadBuffer(size_t _sizeInByt
 	return nullptr;
 }
 
-graphics::ColorBufferReader * ContextImpl::createColorBufferReader(CachedTexture * _pTexture)
+gli_cbr * ContextImpl::createColorBufferReader(CachedTexture * _pTexture)
 {
 	if (m_glInfo.bufferStorage && m_glInfo.renderer != Renderer::Intel)
-		return new ColorBufferReaderWithBufferStorage(_pTexture, m_cachedFunctions->getCachedBindBuffer());
+		return gli_gl_cbr_new_buffer_storage(_pTexture, m_cachedFunctions->getCachedBindBuffer());
 
 	if (!m_glInfo.isGLES2)
-		return new ColorBufferReaderWithPixelBuffer(_pTexture, m_cachedFunctions->getCachedBindBuffer());
+		return gli_gl_cbr_new_pixel_buffer(_pTexture, m_cachedFunctions->getCachedBindBuffer());
 
-	return new ColorBufferReaderWithReadPixels(_pTexture);
+	return gli_gl_cbr_new_read_pixels(_pTexture);
 }
 
 /*---------------Shaders-------------*/

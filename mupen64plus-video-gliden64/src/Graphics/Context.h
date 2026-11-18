@@ -13,6 +13,7 @@
 #define GRAPHICS_CONTEXT
 
 #include "gli_context.h"
+#include "ColorBufferReader.h"
 
 struct gli_tex;
 typedef struct gli_tex CachedTexture;
@@ -40,7 +41,6 @@ namespace graphics {
 	};
 
 	class ContextImpl;
-	class ColorBufferReader;
 
 	class Context
 	{
@@ -175,9 +175,9 @@ namespace graphics {
 			return static_cast<PixelReadBuffer *>(gli_ctx.ops->createPixelReadBuffer(gli_ctx.impl, _sizeInBytes));
 		}
 
-		static ColorBufferReader * createColorBufferReader(CachedTexture * _pTexture)
+		static gli_cbr * createColorBufferReader(CachedTexture * _pTexture)
 		{
-			return static_cast<ColorBufferReader *>(gli_ctx.ops->createColorBufferReader(gli_ctx.impl, _pTexture));
+			return static_cast<gli_cbr *>(gli_ctx.ops->createColorBufferReader(gli_ctx.impl, _pTexture));
 		}
 
 		/*---------------Shaders-------------*/

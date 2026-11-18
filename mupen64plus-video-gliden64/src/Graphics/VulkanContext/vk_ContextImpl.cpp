@@ -17,7 +17,7 @@
 #include <Graphics/Context.h>
 #include <Graphics/ContextImpl.h>
 #include <Graphics/Parameters.h>
-#include <Graphics/ColorBufferReader.h>
+#include "vk_ColorBufferReader.h"
 #include <Graphics/PixelBuffer.h>
 #include <Graphics/CombinerStages.h>
 #include <Graphics/OpenGLContext/GLSL/glsl_CombinerInputs.h>
@@ -321,52 +321,6 @@ private:
 	vkr_readback * m_rb;
 };
 
-class VkColorBufferReader : public ColorBufferReader
-{
-public:
-	enum { MaxSlots = 8 };
-
-	VkColorBufferReader(CachedTexture * _pTexture) : ColorBufferReader(_pTexture), m_numSlots(1) {
-		m_numSlots = config.frameBufferEmulation.copyToRDRAM > 1 ? config.frameBufferEmulation.copyToRDRAM : 1;
-		if (m_numSlots > MaxSlots)
-			m_numSlots = MaxSlots;
-		for (u32 i = 0; i < m_numSlots; ++i)
-			m_rb[i] = vkr_readback_new(g_r, m_pTexture->textureBytes);
-	}
-	~VkColorBufferReader() {
-		for (u32 i = 0; i < m_numSlots; ++i)
-			vkr_readback_delete(g_r, m_rb[i]);
-	}
-
-	u32 numSlots() const override { return m_numSlots; }
-
-	void readToSlot(u32 _slot, s32 _x0, s32 _y0, u32 _height, u32) override {
-		vkr_readback_tex(g_r, m_rb[_slot], u32(m_pTexture->name), _x0, _y0, m_pTexture->width, _height);
-	}
-
-	bool slotReady(u32 _slot, bool _wait) override {
-		return vkr_readback_ready(g_r, m_rb[_slot], _wait ? 1 : 0) != 0;
-	}
-
-	void cleanUp() override {}
-
-private:
-	const u8 * _readPixels(const ReadColorBufferParams & _params, u32 & _heightOffset, u32 & _stride) override {
-		vkr_readback_tex(g_r, m_rb[0], u32(m_pTexture->name), _params.x0, _params.y0, m_pTexture->width, _params.height);
-		vkr_readback_ready(g_r, m_rb[0], 1);
-		_heightOffset = 0;
-		_stride = m_pTexture->width;
-		return static_cast<const u8*>(vkr_readback_data(m_rb[0]));
-	}
-	const u8 * _mapSlot(u32 _slot, u32, u32, u32 & _stride) override {
-		_stride = m_pTexture->width;
-		return static_cast<const u8*>(vkr_readback_data(m_rb[_slot]));
-	}
-
-	u32 m_numSlots;
-	vkr_readback * m_rb[MaxSlots];
-};
-
 /*---------------Context-------------*/
 
 class VkContextImpl : public ContextImpl
@@ -500,7 +454,7 @@ public:
 	}
 	void setDrawBuffers(u32) override {}
 	PixelReadBuffer * createPixelReadBuffer(size_t _bytes) override { return new VkPixelReadBuffer(_bytes); }
-	ColorBufferReader * createColorBufferReader(CachedTexture * _t) override { return new VkColorBufferReader(_t); }
+	gli_cbr * createColorBufferReader(CachedTexture * _t) override { return gli_vk_cbr_new(g_r, _t); }
 
 	bool isCombinerProgramBuilderObsolete() override { return m_optionsBits != gli_combiner_options_bits(); }
 	void resetCombinerProgramBuilder() override {

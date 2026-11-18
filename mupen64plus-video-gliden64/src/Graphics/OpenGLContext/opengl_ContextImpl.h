@@ -108,7 +108,7 @@ namespace opengl {
 
 		graphics::PixelReadBuffer * createPixelReadBuffer(size_t _sizeInBytes) override;
 
-		graphics::ColorBufferReader * createColorBufferReader(CachedTexture * _pTexture) override;
+		gli_cbr * createColorBufferReader(CachedTexture * _pTexture) override;
 
 		/*---------------Shaders-------------*/
 

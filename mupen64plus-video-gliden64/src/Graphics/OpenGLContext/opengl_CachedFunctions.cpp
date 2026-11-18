@@ -120,6 +120,12 @@ void CachedBindBuffer::bind(graphics::Parameter _target, graphics::ObjectHandle 
 		glBindBuffer(GLenum(_target), GLuint(_name));
 }
 
+/* for C: the color buffer readers (opengl_ColorBufferReader.h) */
+extern "C" void gli_gl_bind_buffer(void * _cache, u32 _target, u32 _name)
+{
+	static_cast<CachedBindBuffer *>(_cache)->bind(graphics::Parameter(_target), graphics::ObjectHandle(_name));
+}
+
 /*---------------CachedBindTexture-------------*/
 
 void CachedBindTexture::bind(Parameter _tmuIndex, Parameter _target, ObjectHandle _name)
