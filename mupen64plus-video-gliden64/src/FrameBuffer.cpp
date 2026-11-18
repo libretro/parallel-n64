@@ -655,7 +655,7 @@ void FrameBufferList::saveBuffer(u32 _address, u16 _format, u16 _size, u16 _widt
 			if (m_pCurrent->m_size != _size) {
 				f32 fillColor[4];
 				gli_gDPGetFillColor(fillColor);
-				wnd.getDrawer().clearColorBuffer(fillColor);
+				gli_drawer_clear_color(fillColor);
 				m_pCurrent->m_size = _size;
 				m_pCurrent->m_pTexture->format = _format;
 				m_pCurrent->m_pTexture->size = _size;
@@ -692,7 +692,7 @@ void FrameBufferList::saveBuffer(u32 _address, u16 _format, u16 _size, u16 _widt
 		(config.generalEmulation.hacks&hack_LoadDepthTextures) == 0) {
 		// N64 games may use partial depth buffer clear for aux buffers
 		// It will not work for GL, so we have to force clear depth buffer for aux buffer
-		wnd.getDrawer().clearDepthBuffer();
+		gli_drawer_clear_depth();
 	}
 
 	m_pCurrent->m_isDepthBuffer = _address == gDP.depthImageAddress;
@@ -812,6 +812,31 @@ void FrameBufferList::clearDepthBuffer(DepthBuffer * _pDepthBuffer)
 	}
 }
 
+/* the C++ face of the graphics context (Graphics/Context.h); what it
+ * holds is gli_ctx's */
+graphics::Context gfxContext;
+
+DisplayWindow & DisplayWindow::get()
+{
+	static DisplayWindow video;
+	return video;
+}
+
+void DisplayWindow::updateScale()
+{
+	gli_window_update_scale();
+}
+
+void gli_fb_emulation_init(void)
+{
+	FrameBuffer_Init();
+}
+
+void gli_fb_emulation_destroy(void)
+{
+	FrameBuffer_Destroy();
+}
+
 void FrameBuffer_Init()
 {
 	frameBufferList().init();
@@ -836,7 +861,6 @@ void FrameBufferList::_renderScreenSizeBuffer()
 		return;
 
 	DisplayWindow & wnd = dwnd();
-	GraphicsDrawer & drawer = wnd.getDrawer();
 	FrameBuffer *pBuffer = _at(m_fbs.count - 1);
 	FrameBuffer * pFilteredBuffer = gli_pp_run(pBuffer);
 	CachedTexture * pBufferTexture = pFilteredBuffer->m_pTexture;
@@ -861,26 +885,27 @@ void FrameBufferList::_renderScreenSizeBuffer()
 
 	TextureParam filter = textureParameters::FILTER_LINEAR;
 
-	GraphicsDrawer::BlitOrCopyRectParams blitParams;
-	blitParams.srcX0 = srcCoord[0];
-	blitParams.srcY0 = srcCoord[3];
-	blitParams.srcX1 = srcCoord[2];
-	blitParams.srcY1 = srcCoord[1];
-	blitParams.srcWidth = wndWidth;
-	blitParams.srcHeight = wndHeight;
-	blitParams.dstX0 = dstCoord[0];
-	blitParams.dstY0 = dstCoord[1];
-	blitParams.dstX1 = dstCoord[2];
-	blitParams.dstY1 = dstCoord[3];
-	blitParams.dstWidth = screenWidth;
-	blitParams.dstHeight = screenHeight + wndHeightOffset;
-	blitParams.filter = filter;
-	blitParams.mask = blitMask::COLOR_BUFFER;
-	blitParams.tex[0] = pBufferTexture;
-	blitParams.combiner = combinerTexrectCopyProgram();
-	blitParams.readBuffer = ObjectHandle(pFilteredBuffer->m_FBO);
+	gli_blit_copy_params blitParams;
+	memset(&blitParams, 0, sizeof(blitParams));
+	blitParams.copy.r.srcX0 = srcCoord[0];
+	blitParams.copy.r.srcY0 = srcCoord[3];
+	blitParams.copy.r.srcX1 = srcCoord[2];
+	blitParams.copy.r.srcY1 = srcCoord[1];
+	blitParams.copy.r.srcWidth = wndWidth;
+	blitParams.copy.r.srcHeight = wndHeight;
+	blitParams.copy.r.dstX0 = dstCoord[0];
+	blitParams.copy.r.dstY0 = dstCoord[1];
+	blitParams.copy.r.dstX1 = dstCoord[2];
+	blitParams.copy.r.dstY1 = dstCoord[3];
+	blitParams.copy.r.dstWidth = screenWidth;
+	blitParams.copy.r.dstHeight = screenHeight + wndHeightOffset;
+	blitParams.copy.filter = u32(filter);
+	blitParams.mask = u32(blitMask::COLOR_BUFFER);
+	blitParams.copy.tex[0] = pBufferTexture;
+	blitParams.copy.combiner = combinerTexrectCopyProgram();
+	blitParams.readBuffer = pFilteredBuffer->m_FBO;
 
-	drawer.blitOrCopyTexturedRect(blitParams);
+	gli_drawer_blit_or_copy(&blitParams);
 
 	gfxContext.bindFramebuffer(bufferTarget::READ_FRAMEBUFFER(), ObjectHandle::defaultFramebuffer);
 
@@ -889,7 +914,7 @@ void FrameBufferList::_renderScreenSizeBuffer()
 	wnd.swapBuffers();
 	gfxContext.bindFramebuffer(bufferTarget::DRAW_FRAMEBUFFER(), ObjectHandle(pBuffer->m_FBO));
 	if (config.frameBufferEmulation.forceDepthBufferClear != 0) {
-		drawer.clearDepthBuffer();
+		gli_drawer_clear_depth();
 	}
 	gDP.changed |= CHANGED_SCISSOR;
 }
@@ -993,37 +1018,37 @@ void FrameBufferList::OverscanBuffer::draw(u32 _fullHeight, bool _PAL, s32 _x, u
 		return;
 
 	DisplayWindow & wnd = dwnd();
-	GraphicsDrawer & drawer = wnd.getDrawer();
 
 	gfxContext.bindFramebuffer(bufferTarget::DRAW_FRAMEBUFFER(), ObjectHandle::defaultFramebuffer);
-	GraphicsDrawer::BlitOrCopyRectParams blitParams;
+	gli_blit_copy_params blitParams;
+	memset(&blitParams, 0, sizeof(blitParams));
 	const auto & overscan = _PAL ? config.frameBufferEmulation.overscanPAL : config.frameBufferEmulation.overscanNTSC;
 	const s32 left = static_cast<s32>(overscan.left * m_scale);
 	const s32 right = static_cast<s32>(overscan.right * m_scale);
 	const s32 top = static_cast<s32>(overscan.top * m_scale);
 	const s32 bottom = static_cast<s32>(overscan.bottom * m_scale);
-	blitParams.srcX0 = left;
-	blitParams.srcY0 = static_cast<s32>(_fullHeight * m_scale) - bottom;
-	blitParams.srcX1 = m_bufferWidth - right;
-	blitParams.srcY1 = top;
-	blitParams.srcWidth = m_pTexture->realWidth;
-	blitParams.srcHeight = m_pTexture->realHeight;
-	blitParams.dstX0 = _x + m_hOffset;
-	blitParams.dstY0 = m_vOffset + wnd.getHeightOffset();
-	blitParams.dstX1 = _x + m_hOffset + wnd.getWidth();
-	blitParams.dstY1 = m_vOffset + wnd.getHeight() + wnd.getHeightOffset();
-	blitParams.dstWidth = _windowWidth;
-	blitParams.dstHeight = wnd.getScreenHeight() + wnd.getHeightOffset();
-	blitParams.filter = textureParameters::FILTER_LINEAR;
-	blitParams.mask = blitMask::COLOR_BUFFER;
-	blitParams.tex[0] = m_pTexture;
-	blitParams.combiner = combinerTexrectCopyProgram();
-	blitParams.readBuffer = m_FBO;
-	blitParams.invertY = false;
+	blitParams.copy.r.srcX0 = left;
+	blitParams.copy.r.srcY0 = static_cast<s32>(_fullHeight * m_scale) - bottom;
+	blitParams.copy.r.srcX1 = m_bufferWidth - right;
+	blitParams.copy.r.srcY1 = top;
+	blitParams.copy.r.srcWidth = m_pTexture->realWidth;
+	blitParams.copy.r.srcHeight = m_pTexture->realHeight;
+	blitParams.copy.r.dstX0 = _x + m_hOffset;
+	blitParams.copy.r.dstY0 = m_vOffset + wnd.getHeightOffset();
+	blitParams.copy.r.dstX1 = _x + m_hOffset + wnd.getWidth();
+	blitParams.copy.r.dstY1 = m_vOffset + wnd.getHeight() + wnd.getHeightOffset();
+	blitParams.copy.r.dstWidth = _windowWidth;
+	blitParams.copy.r.dstHeight = wnd.getScreenHeight() + wnd.getHeightOffset();
+	blitParams.copy.filter = u32(textureParameters::FILTER_LINEAR);
+	blitParams.mask = u32(blitMask::COLOR_BUFFER);
+	blitParams.copy.tex[0] = m_pTexture;
+	blitParams.copy.combiner = combinerTexrectCopyProgram();
+	blitParams.readBuffer = u32(m_FBO);
+	blitParams.copy.r.invertY = false;
 
 	if (_clear)
 		gfxContext.clearColorBuffer(0.0f, 0.0f, 0.0f, 0.0f);
-	drawer.copyTexturedRect(blitParams);
+	gli_drawer_copy(&blitParams.copy);
 }
 
 extern "C" uint32_t RemoveFBBlackBars;
@@ -1059,7 +1084,6 @@ void FrameBufferList::renderBuffer()
 	m_overscan.setInputBuffer(pBuffer);
 
 	DisplayWindow & wnd = dwnd();
-	GraphicsDrawer & drawer = wnd.getDrawer();
 	const u32 vFullHeight = rdpRes.vi_ispal ? 288 : 240;
 
 	gli_vi_source_rect src;
@@ -1144,27 +1168,28 @@ void FrameBufferList::renderBuffer()
 		if (overscan || eye == 0)
 			gfxContext.clearColorBuffer(0.0f, 0.0f, 0.0f, 0.0f);
 
-		GraphicsDrawer::BlitOrCopyRectParams blitParams;
-		blitParams.srcX0 = srcCoord[0];
-		blitParams.srcY0 = srcCoord[1];
-		blitParams.srcX1 = srcCoord[2];
-		blitParams.srcY1 = srcCoord[3];
-		blitParams.srcWidth = pEyeTexture->realWidth;
-		blitParams.srcHeight = pEyeTexture->realHeight;
-		blitParams.dstX0 = dstCoord[0] + dstOffset;
-		blitParams.dstY0 = dstCoord[1];
-		blitParams.dstX1 = dstCoord[2] + dstOffset;
-		blitParams.dstY1 = dstCoord[3];
-		blitParams.dstWidth = dstWidth;
-		blitParams.dstHeight = m_overscan.getBufferHeight();
-		blitParams.filter = textureParameters::FILTER_LINEAR;
-		blitParams.mask = blitMask::COLOR_BUFFER;
-		blitParams.tex[0] = pEyeTexture;
-		blitParams.combiner = combinerTexrectCopyProgram();
-		blitParams.readBuffer = readBuffer;
-		blitParams.invertY = !overscan;
+		gli_blit_copy_params blitParams;
+		memset(&blitParams, 0, sizeof(blitParams));
+		blitParams.copy.r.srcX0 = srcCoord[0];
+		blitParams.copy.r.srcY0 = srcCoord[1];
+		blitParams.copy.r.srcX1 = srcCoord[2];
+		blitParams.copy.r.srcY1 = srcCoord[3];
+		blitParams.copy.r.srcWidth = pEyeTexture->realWidth;
+		blitParams.copy.r.srcHeight = pEyeTexture->realHeight;
+		blitParams.copy.r.dstX0 = dstCoord[0] + dstOffset;
+		blitParams.copy.r.dstY0 = dstCoord[1];
+		blitParams.copy.r.dstX1 = dstCoord[2] + dstOffset;
+		blitParams.copy.r.dstY1 = dstCoord[3];
+		blitParams.copy.r.dstWidth = dstWidth;
+		blitParams.copy.r.dstHeight = m_overscan.getBufferHeight();
+		blitParams.copy.filter = u32(textureParameters::FILTER_LINEAR);
+		blitParams.mask = u32(blitMask::COLOR_BUFFER);
+		blitParams.copy.tex[0] = pEyeTexture;
+		blitParams.copy.combiner = combinerTexrectCopyProgram();
+		blitParams.readBuffer = u32(readBuffer);
+		blitParams.copy.r.invertY = !overscan;
 
-		drawer.copyTexturedRect(blitParams);
+		gli_drawer_copy(&blitParams.copy);
 
 		if (pNextBuffer != nullptr) {
 			pNextBuffer->m_isMainBuffer = true;
@@ -1186,16 +1211,16 @@ void FrameBufferList::renderBuffer()
 			// The post-processors draw into their own buffer
 			m_overscan.activate();
 
-			blitParams.srcY0 = 0;
-			blitParams.srcY1 = min(rects.nextSrcY1, (s32)pEyeBuffer->m_pTexture->realHeight);
-			blitParams.srcWidth = pEyeTexture->realWidth;
-			blitParams.srcHeight = pEyeTexture->realHeight;
-			blitParams.dstY0 = rects.nextDstY[0];
-			blitParams.dstY1 = rects.nextDstY[1];
-			blitParams.tex[0] = pEyeTexture;
-			blitParams.readBuffer = readBuffer;
+			blitParams.copy.r.srcY0 = 0;
+			blitParams.copy.r.srcY1 = min(rects.nextSrcY1, (s32)pEyeBuffer->m_pTexture->realHeight);
+			blitParams.copy.r.srcWidth = pEyeTexture->realWidth;
+			blitParams.copy.r.srcHeight = pEyeTexture->realHeight;
+			blitParams.copy.r.dstY0 = rects.nextDstY[0];
+			blitParams.copy.r.dstY1 = rects.nextDstY[1];
+			blitParams.copy.tex[0] = pEyeTexture;
+			blitParams.readBuffer = u32(readBuffer);
 
-			drawer.copyTexturedRect(blitParams);
+			gli_drawer_copy(&blitParams.copy);
 		}
 
 		gfxContext.bindFramebuffer(bufferTarget::READ_FRAMEBUFFER(), ObjectHandle::defaultFramebuffer);
@@ -1225,7 +1250,7 @@ void FrameBufferList::renderBuffer()
 	    ((config.generalEmulation.hacks & hack_RE2) != 0 &&
 	     config.frameBufferEmulation.N64DepthCompare == 0 &&
 	     config.generalEmulation.enableFragmentDepthWrite == 0)) {
-		drawer.clearDepthBuffer();
+		gli_drawer_clear_depth();
 	}
 
 	const s32 X = hOffset;
@@ -1350,7 +1375,7 @@ void gli_fb_set_changed(f32 _maxY)
 
 void gli_fb_stereo_sync(void)
 {
-	dwnd().getDrawer().flush();
+	gli_texrect_draw();
 	frameBufferList().updateCurrentBufferEndAddress();
 }
 
@@ -1361,7 +1386,7 @@ void gli_fb_full_sync(bool _lle)
 		frameBufferList().removeAux();
 	}
 
-	dwnd().getDrawer().flush();
+	gli_texrect_draw();
 
 	frameBufferList().updateCurrentBufferEndAddress();
 
@@ -1764,24 +1789,25 @@ void gli_fb_pp_draw(FrameBuffer * _pBuffer, FrameBuffer * _pResult, gli_cprog * 
 		ObjectHandle(_pResult->m_FBO));
 
 	CachedTexture * pDstTex = _pResult->m_pTexture;
-	GraphicsDrawer::CopyRectParams copyParams;
-	copyParams.srcX0 = 0;
-	copyParams.srcY0 = 0;
-	copyParams.srcX1 = pTextureOriginal->realWidth;
-	copyParams.srcY1 = pTextureOriginal->realHeight;
-	copyParams.srcWidth = pTextureOriginal->realWidth;
-	copyParams.srcHeight = pTextureOriginal->realHeight;
-	copyParams.dstX0 = 0;
-	copyParams.dstY0 = 0;
-	copyParams.dstX1 = pDstTex->realWidth;
-	copyParams.dstY1 = pDstTex->realHeight;
-	copyParams.dstWidth = pDstTex->realWidth;
-	copyParams.dstHeight = pDstTex->realHeight;
+	gli_copy_params copyParams;
+	memset(&copyParams, 0, sizeof(copyParams));
+	copyParams.r.srcX0 = 0;
+	copyParams.r.srcY0 = 0;
+	copyParams.r.srcX1 = pTextureOriginal->realWidth;
+	copyParams.r.srcY1 = pTextureOriginal->realHeight;
+	copyParams.r.srcWidth = pTextureOriginal->realWidth;
+	copyParams.r.srcHeight = pTextureOriginal->realHeight;
+	copyParams.r.dstX0 = 0;
+	copyParams.r.dstY0 = 0;
+	copyParams.r.dstX1 = pDstTex->realWidth;
+	copyParams.r.dstY1 = pDstTex->realHeight;
+	copyParams.r.dstWidth = pDstTex->realWidth;
+	copyParams.r.dstHeight = pDstTex->realHeight;
 	copyParams.tex[0] = pTextureOriginal;
-	copyParams.filter = textureParameters::FILTER_NEAREST;
-	copyParams.combiner = combinerProgram(_pShader);
+	copyParams.filter = u32(textureParameters::FILTER_NEAREST);
+	copyParams.combiner = _pShader;
 
-	dwnd().getDrawer().copyTexturedRect(copyParams);
+	gli_drawer_copy(&copyParams);
 
 	gfxContext.bindFramebuffer(bufferTarget::DRAW_FRAMEBUFFER(),
 		ObjectHandle::defaultFramebuffer);

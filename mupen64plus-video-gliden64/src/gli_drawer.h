@@ -40,9 +40,22 @@ void gli_drawer_scissor_rect(f32 _scaleX, f32 _scaleY, f32 _offsetX, f32 _offset
 		int _adjust, f32 _adjustScale, int _immersive, s32 *_rect);
 void gli_drawer_viewport_rect(int _buffer, f32 _scaleX, f32 _scaleY, u32 _originX, u32 _originY,
 		int _adjust, f32 _adjustScale, s32 *_rect);
-/* Hands the drawer's triangle list to the C side, once */
-void gli_drawer_bind_triangles(SPVertex *_vertices, u16 *_elements, u32 *_num,
-		s32 *_maxElement, u32 *_modify, u32 *_clip, const bool *_clipControl);
+/* The triangles the microcodes add (TriangleList.c) and the drawer draws:
+ * the vertices, the elements of the triangles, how many elements, the
+ * largest, whether a vertex is outside what the RSP clips to, and what of
+ * the vertices was modified */
+#define VERTBUFF_SIZE 256U
+#define ELEMBUFF_SIZE 1024U
+typedef struct gli_triangles
+{
+	SPVertex vertices[VERTBUFF_SIZE];
+	u16 elements[ELEMBUFF_SIZE];
+	u32 num;
+	s32 maxElement;
+	u32 clip;
+	u32 modify;
+} gli_triangles;
+extern gli_triangles gli_tris;
 void gli_drawer_draw_line(u32 _v0, u32 _v1, f32 _width, u32 _flag);
 void gli_drawer_draw_rect(s32 _ulx, s32 _uly, s32 _lrx, s32 _lry);
 /* @_s and @_t are s16 values and @_flip 0 or 1, passed widened */
@@ -117,10 +130,37 @@ typedef struct gli_copy_rect
  * coordinates s0, t0 */
 void gli_drawer_copy_rect(RectVertex *_v, const gli_copy_rect *_p);
 
+/* A copy of textures @tex (NULL for none) drawn with program @combiner,
+ * sampled with @filter */
+struct gli_cprog;
+typedef struct gli_copy_params
+{
+	gli_copy_rect r;
+	struct gli_tex *tex[2];
+	const struct gli_cprog *combiner;
+	u32 filter;
+} gli_copy_params;
+
+/* The same, blitted from frame buffer @readBuffer to @drawBuffer, @mask,
+ * or where the context cannot blit, drawn there */
+typedef struct gli_blit_copy_params
+{
+	gli_copy_params copy;
+	u32 readBuffer;
+	u32 drawBuffer;
+	u32 mask;
+} gli_blit_copy_params;
+
+/* Draws copy @_p into the frame buffer bound to draw */
+void gli_drawer_copy(const gli_copy_params *_p);
+void gli_drawer_blit_or_copy(const gli_blit_copy_params *_p);
 /* Draws copy @_p of texture @_tex, with @_filter, into the frame buffer
- * bound to draw, with the texrect copy program: where the context cannot
- * blit (GraphicsDrawer.cpp) */
+ * bound to draw, with the texrect copy program */
 void gli_drawer_copy_texrect(const gli_copy_rect *_p, struct gli_tex *_tex, u32 _filter);
+/* Clears the frame buffer bound to @_pColor, rgba, or to 0 for NULL */
+void gli_drawer_clear_color(const f32 *_pColor);
+/* Forgets what was drawn last, so the next draw sets its states */
+void gli_drawer_drop_render_state(void);
 
 /* Texrects done on the CPU, straight into RDRAM */
 /* Whether tile 0 was block loaded from the depth image */

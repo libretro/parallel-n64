@@ -8,51 +8,28 @@
 #include "gSP.h"
 #include "gli_drawer.h"
 #include "gli_tri_clip.h"
-
-/* The drawer's triangle list, bound once at its construction */
-static struct
-{
-	SPVertex *vertices;
-	u16 *elements;
-	u32 *num;
-	s32 *maxElement;
-	u32 *modify;
-	u32 *clip;
-	const bool *clipControl;
-} g_tris;
-
-void gli_drawer_bind_triangles(SPVertex *_vertices, u16 *_elements, u32 *_num,
-		s32 *_maxElement, u32 *_modify, u32 *_clip, const bool *_clipControl)
-{
-	g_tris.vertices = _vertices;
-	g_tris.elements = _elements;
-	g_tris.num = _num;
-	g_tris.maxElement = _maxElement;
-	g_tris.modify = _modify;
-	g_tris.clip = _clip;
-	g_tris.clipControl = _clipControl;
-}
+#include "Graphics/gli_context.h"
 
 void gli_drawer_add_triangle(s32 _v0, s32 _v1, s32 _v2)
 {
-	SPVertex *vertices = g_tris.vertices;
-	u16 *elements = g_tris.elements;
-	const u32 firstIndex = *g_tris.num;
+	SPVertex *vertices = gli_tris.vertices;
+	u16 *elements = gli_tris.elements;
+	const u32 firstIndex = gli_tris.num;
 	u32 num = firstIndex;
 	u32 i;
 
 	elements[num++] = (u16)_v0;
 	elements[num++] = (u16)_v1;
 	elements[num++] = (u16)_v2;
-	*g_tris.num = num;
-	if (*g_tris.maxElement < _v0)
-		*g_tris.maxElement = _v0;
-	if (*g_tris.maxElement < _v1)
-		*g_tris.maxElement = _v1;
-	if (*g_tris.maxElement < _v2)
-		*g_tris.maxElement = _v2;
+	gli_tris.num = num;
+	if (gli_tris.maxElement < _v0)
+		gli_tris.maxElement = _v0;
+	if (gli_tris.maxElement < _v1)
+		gli_tris.maxElement = _v1;
+	if (gli_tris.maxElement < _v2)
+		gli_tris.maxElement = _v2;
 
-	*g_tris.modify |= vertices[_v0].modify | vertices[_v1].modify | vertices[_v2].modify;
+	gli_tris.modify |= vertices[_v0].modify | vertices[_v1].modify | vertices[_v2].modify;
 
 	if ((gSP.geometryMode & G_LIGHTING) == 0) {
 		if ((gSP.geometryMode & G_SHADE) == 0) {
@@ -85,7 +62,7 @@ void gli_drawer_add_triangle(s32 _v0, s32 _v1, s32 _v2)
 		}
 	}
 
-	if (!*g_tris.clipControl) {
+	if (!gli_ctx.clipControl) {
 		if (gli_GBI->NoN && gDP.otherMode.depthCompare == 0 && gDP.otherMode.depthUpdate == 0) {
 			for (i = firstIndex; i < num; ++i)
 				vertices[elements[i]].z = 0.0f;
@@ -93,7 +70,7 @@ void gli_drawer_add_triangle(s32 _v0, s32 _v1, s32 _v2)
 	}
 
 	for (i = firstIndex; i < num; ++i)
-		*g_tris.clip |= gli_tri_clip_vertex_outside(&vertices[elements[i]]);
+		gli_tris.clip |= gli_tri_clip_vertex_outside(&vertices[elements[i]]);
 }
 
 bool gli_drawer_is_rejected(s32 _v0, s32 _v1, s32 _v2)
@@ -120,7 +97,7 @@ bool gli_drawer_is_rejected(s32 _v0, s32 _v1, s32 _v2)
 	verts[2] = _v2;
 	ySign = gli_GBI->negativeY ? -1.0f : 1.0f;
 	for (i = 0; i < 3; ++i) {
-		const SPVertex *v = &g_tris.vertices[verts[i]];
+		const SPVertex *v = &gli_tris.vertices[verts[i]];
 		const f32 sx = gSP.viewport.vtrans[0] + (v->x / v->w) * gSP.viewport.vscale[0];
 		f32 sy;
 		if (sx < rejectBox.ulx)
@@ -147,7 +124,7 @@ static void line_end(SPVertex *_out, const SPVertex *_v, f32 _ySign)
 
 void gli_drawer_thick_line(SPVertex *_out, u32 _v0, u32 _v1, f32 _halfWidth, u32 _flag)
 {
-	SPVertex *vertices = g_tris.vertices;
+	SPVertex *vertices = gli_tris.vertices;
 	const f32 ySign = gli_GBI->negativeY ? -1.0f : 1.0f;
 
 	if ((gSP.geometryMode & G_LIGHTING) == 0) {

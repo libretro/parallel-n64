@@ -32,7 +32,7 @@ extern gli_window g_window;
 void gli_window_swap_buffers(void);
 void gli_window_set_size_now(u32 _width, u32 _height);
 
-/* DisplayWindowGpu.c; the drawer's in GraphicsDrawer.cpp */
+/* DisplayWindowGpu.c; the drawer's in GraphicsDrawer.c */
 void gli_window_gpu_start(void);
 void gli_window_gpu_stop(void);
 void gli_drawer_init_data(void);
@@ -64,12 +64,7 @@ public:
 	u32 getHeightOffset() const { return g_window.heightOffset; }
 	bool isAdjustScreen() const { return g_window.adjustScreen; }
 
-	GraphicsDrawer & getDrawer() { return m_drawer; }
-
 	static DisplayWindow & get();
-
-private:
-	GraphicsDrawer m_drawer;
 };
 
 inline

@@ -25,11 +25,10 @@ using namespace std;
 
 void gSPTransformVertex4NEON(u32 v, float mtx[4][4])
 {
-    GraphicsDrawer & drawer = dwnd().getDrawer();
-    SPVertex & vtx0 = drawer.getVertex(v);
-    SPVertex & vtx1 = drawer.getVertex(v + 1);
-    SPVertex & vtx2 = drawer.getVertex(v + 2);
-    SPVertex & vtx3 = drawer.getVertex(v + 3);
+    SPVertex & vtx0 = gli_tris.vertices[v];
+    SPVertex & vtx1 = gli_tris.vertices[v + 1];
+    SPVertex & vtx2 = gli_tris.vertices[v + 2];
+    SPVertex & vtx3 = gli_tris.vertices[v + 3];
     
     // Load vtx
     float32x4x4_t _vtx;
@@ -69,14 +68,13 @@ void gSPTransformVertex4NEON(u32 v, float mtx[4][4])
 
 void gSPBillboardVertex4NEON(u32 v)
 {
-    GraphicsDrawer & drawer = dwnd().getDrawer();
 
-    SPVertex & vtx = drawer.getVertex(0);
+    SPVertex & vtx = gli_tris.vertices[0];
 
-    SPVertex & vtx0 = drawer.getVertex(v);
-    SPVertex & vtx1 = drawer.getVertex(v+1);
-    SPVertex & vtx2 = drawer.getVertex(v+2);
-    SPVertex & vtx3 = drawer.getVertex(v+3);
+    SPVertex & vtx0 = gli_tris.vertices[v];
+    SPVertex & vtx1 = gli_tris.vertices[v+1];
+    SPVertex & vtx2 = gli_tris.vertices[v+2];
+    SPVertex & vtx3 = gli_tris.vertices[v+3];
 
     // Load vtx[0]
     float32x4_t _vtx = vld1q_f32(&vtx.x);

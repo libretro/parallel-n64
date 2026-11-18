@@ -26,10 +26,5 @@ inline graphics::ShaderProgram * combinerTexrectCopyProgram()
 	return static_cast<graphics::ShaderProgram *>(graphics::combinerProgram(gli_cmb.texrectCopy));
 }
 
-inline void combinerSetPolygonMode(DrawingState _drawingState)
-{
-	gli_combiner_set_rect_mode(_drawingState == DrawingState::Rect || _drawingState == DrawingState::TexRect);
-}
-
 #endif
 

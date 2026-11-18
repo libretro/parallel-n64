@@ -72,6 +72,9 @@ void gli_fb_copy_from_rdram(u32 _address, bool _useAlpha);
 void gli_fb_render(void);
 void gli_fb_clear_changed(void);
 bool gli_FBInfo_supported(void);
+/* the frame buffer list and the copies to and from RDRAM made and dropped */
+void gli_fb_emulation_init(void);
+void gli_fb_emulation_destroy(void);
 void gli_fb_add_address(u32 _address, u32 _size);
 bool gli_fb_is_depth(const struct FrameBuffer *_pBuffer);
 void gli_fb_copy_depth_chunk(u32 _address);
