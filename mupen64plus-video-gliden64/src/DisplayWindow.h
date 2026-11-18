@@ -46,32 +46,6 @@ void gli_gl_reset_error(void);
 }
 
 #include "GraphicsDrawer.h"
-
-class DisplayWindow
-{
-public:
-	void swapBuffers() { gli_window_swap_buffers(); }
-	void updateScale();
-
-	f32 getScaleX() const { return g_window.scaleX; }
-	f32 getScaleY() const { return g_window.scaleY; }
-	f32 getAdjustScale() const { return g_window.adjustScale; }
-	u32 getBuffersSwapCount() const { return g_window.buffersSwapCount; }
-	u32 getWidth() const { return g_window.width; }
-	u32 getHeight() const { return g_window.height; }
-	u32 getScreenWidth() const { return g_window.screenWidth; }
-	u32 getScreenHeight() const { return g_window.screenHeight; }
-	u32 getHeightOffset() const { return g_window.heightOffset; }
-	bool isAdjustScreen() const { return g_window.adjustScreen; }
-
-	static DisplayWindow & get();
-};
-
-inline
-DisplayWindow & dwnd()
-{
-	return DisplayWindow::get();
-}
 #endif
 
 #endif /* DISPLAYWINDOW_H */

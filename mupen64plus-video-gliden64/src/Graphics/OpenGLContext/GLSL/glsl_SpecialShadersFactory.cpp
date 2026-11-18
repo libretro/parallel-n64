@@ -511,11 +511,11 @@ namespace glsl {
 
 		void activate() override {
 			FXAAShaderBase::activate();
-			FrameBuffer * pBuffer = frameBufferList().findBuffer(*REG.VI_ORIGIN);
-			if (pBuffer != nullptr && pBuffer->m_pTexture != nullptr &&
-				(m_width != pBuffer->m_pTexture->realWidth || m_height != pBuffer->m_pTexture->realHeight)) {
-				m_width = pBuffer->m_pTexture->realWidth;
-				m_height = pBuffer->m_pTexture->realHeight;
+			const FrameBuffer * pBuffer = gli_fb_find(*REG.VI_ORIGIN);
+			if (pBuffer != nullptr && pBuffer->fb.m_pTexture != nullptr &&
+				(m_width != pBuffer->fb.m_pTexture->realWidth || m_height != pBuffer->fb.m_pTexture->realHeight)) {
+				m_width = pBuffer->fb.m_pTexture->realWidth;
+				m_height = pBuffer->fb.m_pTexture->realHeight;
 				glUniform2f(m_textureSizeLoc, GLfloat(m_width), GLfloat(m_height));
 			}
 		}

@@ -16,9 +16,6 @@ namespace graphics {
 		bool isNotNull() const { return m_name != 0; }
 
 		void reset() { m_name = 0; }
-
-		static ObjectHandle null;
-		static ObjectHandle defaultFramebuffer;
 	private:
 		u32 m_name;
 	};

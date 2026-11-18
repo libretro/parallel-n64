@@ -30,6 +30,9 @@ void gli_fb_set_is_depth(struct FrameBuffer *_pBuffer);
 void gli_depth_set_cleared(bool _cleared);
 struct FrameBuffer *gli_fb_find(u32 _address);
 struct FrameBuffer *gli_fb_current(void);
+/* what is drawn goes into this buffer: the current one, or, without frame
+ * buffer emulation, the one there is */
+struct FrameBuffer *gli_fb_drawn(void);
 void gli_fb_set_current(struct FrameBuffer *_pBuffer);
 /* a buffer's plain state, NULL for none */
 struct gli_fb *gli_fb_of(struct FrameBuffer *_pBuffer);

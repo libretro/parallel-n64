@@ -230,5 +230,3 @@ namespace graphics {
 	};
 
 }
-
-extern graphics::Context gfxContext;

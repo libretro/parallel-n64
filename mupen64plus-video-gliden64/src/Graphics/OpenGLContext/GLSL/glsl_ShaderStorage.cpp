@@ -164,7 +164,7 @@ bool ShaderStorage::saveShadersStorage(const gli_combiner_table * _combiners) co
 	if (!_saveCombinerKeys(_combiners))
 		return false;
 
-	if (gfxContext.isCombinerProgramBuilderObsolete())
+	if (graphics::Context::isCombinerProgramBuilderObsolete())
 		// Created shaders are obsolete due to changes in config, but we saved combiners keys.
 		return true;
 

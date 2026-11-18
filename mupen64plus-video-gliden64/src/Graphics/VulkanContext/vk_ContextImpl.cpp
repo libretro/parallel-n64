@@ -267,10 +267,10 @@ public:
 	VkFXAAShader() : VkShader(VKR_VS_FXAA, VKR_FS_FXAA), m_width(0), m_height(0) {}
 	void activate() override {
 		VkShader::activate();
-		FrameBuffer * pBuffer = frameBufferList().findBuffer(*REG.VI_ORIGIN);
-		if (pBuffer != nullptr && pBuffer->m_pTexture != nullptr) {
-			m_width = pBuffer->m_pTexture->realWidth;
-			m_height = pBuffer->m_pTexture->realHeight;
+		const FrameBuffer * pBuffer = gli_fb_find(*REG.VI_ORIGIN);
+		if (pBuffer != nullptr && pBuffer->fb.m_pTexture != nullptr) {
+			m_width = pBuffer->fb.m_pTexture->realWidth;
+			m_height = pBuffer->fb.m_pTexture->realHeight;
 		}
 		vkr_special_params(g_r, m_p, f32(m_width), f32(m_height), 0.f, 0.f);
 	}
@@ -463,12 +463,13 @@ public:
 	static bool upscalerView(gliden64_upscaler_view & _view, unsigned & _state) {
 		if (!gliden64_upscaler_active())
 			return false;
-		const FrameBuffer * pCurrent = frameBufferList().getDrawn();
-		if (pCurrent == nullptr || vkr_draw_fbo(g_r) != u32(pCurrent->m_FBO))
+		const FrameBuffer * pDrawn = gli_fb_drawn();
+		if (pDrawn == nullptr || vkr_draw_fbo(g_r) != pDrawn->fb.m_FBO)
 			return false;
+		const gli_fb * pCurrent = &pDrawn->fb;
 		gliden64_upscaler_color_image(pCurrent->m_startAddress, pCurrent->m_width, int(pCurrent->m_size) - 1);
 		f32 scaleX, scaleY;
-		calcCoordsScales(pCurrent, scaleX, scaleY);
+		gli_fb_coords_scales(pDrawn, &scaleX, &scaleY);
 		vkr_get_viewport(g_r, _view.viewport);
 		_view.screen_scale[0] = 2.0f * scaleX;
 		_view.screen_scale[1] = -2.0f * scaleY;
@@ -590,7 +591,7 @@ private:
 			vkr_bind(g_r, u, u32(_h));
 	}
 
-	void _windowSize() { vkr_set_window(g_r, dwnd().getScreenWidth(), dwnd().getScreenHeight()); }
+	void _windowSize() { vkr_set_window(g_r, g_window.screenWidth, g_window.screenHeight); }
 
 	void _create() {
 		m_optionsBits = gli_combiner_options_bits();
