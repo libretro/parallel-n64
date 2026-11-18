@@ -1,53 +1,32 @@
 #ifndef RDRAMtoColorBuffer_H
 #define RDRAMtoColorBuffer_H
 
-#include <Graphics/ObjectHandle.h>
-#include <FrameBuffer.h>
-#include <gli_rdram_to_color.h>
+/* The copy of what the CPU wrote to a frame buffer in RDRAM onto that
+ * buffer's texture, drawn over it as a textured rect. C89. */
 
-struct gli_tex;
-typedef struct gli_tex CachedTexture;
+#include <boolean.h>
+#include "Types.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct FrameBuffer;
 
-class RDRAMtoColorBuffer
-{
-public:
-	void init();
-	void destroy();
+/* the upload texture and buffer, made and dropped */
+void gli_r2cb_init(void);
+void gli_r2cb_destroy(void);
 
-	void addAddress(u32 _address, u32 _size);
+/* a pixel at @_address of @_size bytes the CPU wrote */
+void gli_r2cb_add_address(u32 _address, u32 _size);
 
-	void copyFromRDRAM(u32 _address, bool _bCFB);
-	void copyFromRDRAM(FrameBuffer * _pBuffer);
+/* the buffer at @_address, a colour frame buffer @_bCFB, copied from
+ * RDRAM; or @_pBuffer, up to the most the VI shows */
+void gli_r2cb_copy_from_rdram(u32 _address, bool _bCFB);
+void gli_r2cb_copy_buffer_from_rdram(struct FrameBuffer *_pBuffer);
 
-	static RDRAMtoColorBuffer & get();
+#ifdef __cplusplus
+}
+#endif
 
-private:
-	RDRAMtoColorBuffer();
-	RDRAMtoColorBuffer(const RDRAMtoColorBuffer &) = delete;
-
-	void _copyFromRDRAM(u32 _height, bool _fullAlpha);
-	void reset();
-
-	class Cleaner
-	{
-	public:
-		Cleaner(RDRAMtoColorBuffer * _p) : m_p(_p), m_pCurrentBuffer(frameBufferList().getCurrent()) {}
-		~Cleaner()
-		{
-			m_p->reset();
-			frameBufferList().setCurrent(m_pCurrentBuffer);
-		}
-	private:
-		RDRAMtoColorBuffer * m_p;
-		FrameBuffer * m_pCurrentBuffer;
-	};
-
-	FrameBuffer * m_pCurBuffer;
-	CachedTexture * m_pTexture;
-	/* the pixels the CPU wrote, when it wrote some rather than all */
-	gli_r2c_marks m_marks;
-	u8* m_pbuf;
-};
-
-#endif // RDRAMtoColorBuffer_H
+#endif

@@ -87,6 +87,10 @@ typedef struct gli_texrect_params
 	u8 flip, forceAjustScale, texrectCmd;
 } gli_texrect_params;
 
+/* Draws textured rect @_p into @_pBuffer's frame as the drawer does
+ * (GraphicsDrawer.cpp) */
+void gli_drawer_draw_textured_rect(const gli_texrect_params *_p, const struct FrameBuffer *_pBuffer);
+
 /* Fills the four vertices of textured rect @_p, positions and both tiles'
  * coordinates; @_tex[t] is NULL for a tile not sampled. Returns two bits per
  * tile, bit 2t to clamp S to the edge and bit 2t + 1 to clamp T */

@@ -210,6 +210,13 @@ void gli_drawer_textured_rect(f32 _ulx, f32 _uly, f32 _lrx, f32 _lry, f32 _dsdx,
 	drawer.drawTexturedRect(params);
 }
 
+void gli_drawer_draw_textured_rect(const gli_texrect_params * _p, const FrameBuffer * _pBuffer)
+{
+	GraphicsDrawer::TexturedRectParams params(_p->ulx, _p->uly, _p->lrx, _p->lry, _p->dsdx, _p->dtdy, _p->s, _p->t,
+		_p->flip, _p->forceAjustScale != 0, _p->texrectCmd != 0, _pBuffer);
+	dwnd().getDrawer().drawTexturedRect(params);
+}
+
 void gli_drawer_draw_line(u32 _v0, u32 _v1, f32 _width, u32 _flag)
 {
 	dwnd().getDrawer().drawLine(_v0, _v1, _width, _flag);

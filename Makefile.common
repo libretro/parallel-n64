@@ -399,6 +399,7 @@ SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/opengl_BufferMa
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/opengl_TextureManipulationObjectFactory.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/opengl_CachedFunctions.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/opengl_ContextImpl.c
+SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/BufferCopy/RDRAMtoColorBuffer.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/Graphics/VulkanContext/vk_ColorBufferReader.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/Combiner.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/CombinerTable.c
@@ -479,7 +480,6 @@ SOURCES_CXX   += \
     $(VIDEODIR_GLIDEN64)/src/FrameBuffer.cpp                                                      \
     $(VIDEODIR_GLIDEN64)/src/BufferCopy/ColorBufferToRDRAM.cpp                                    \
     $(VIDEODIR_GLIDEN64)/src/BufferCopy/DepthBufferToRDRAM.cpp                                    \
-    $(VIDEODIR_GLIDEN64)/src/BufferCopy/RDRAMtoColorBuffer.cpp                                    \
     $(VIDEODIR_GLIDEN64)/src/GraphicsDrawer.cpp                                                   \
     $(VIDEODIR_GLIDEN64)/src/Graphics/VulkanContext/vk_ContextImpl.cpp                            \
     $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/GLSL/glsl_CombinerInputs.cpp                  \

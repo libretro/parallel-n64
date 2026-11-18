@@ -675,7 +675,7 @@ void FrameBufferList::saveBuffer(u32 _address, u16 _format, u16 _size, u16 _widt
 		FrameBuffer & buffer = _addFront();
 		buffer.init(_address, _format, _size, _width, _cfb);
 		m_pCurrent = &buffer;
-		RDRAMtoColorBuffer::get().copyFromRDRAM(m_pCurrent);
+		gli_r2cb_copy_buffer_from_rdram(m_pCurrent);
 		if (_cfb)
 			m_pCurrent->copyRdram();
 	}
@@ -818,13 +818,13 @@ void FrameBuffer_Init()
 	if (config.frameBufferEmulation.enable != 0) {
 	ColorBufferToRDRAM::get().init();
 	DepthBufferToRDRAM::get().init();
-	RDRAMtoColorBuffer::get().init();
+	gli_r2cb_init();
 	}
 }
 
 void FrameBuffer_Destroy()
 {
-	RDRAMtoColorBuffer::get().destroy();
+	gli_r2cb_destroy();
 	DepthBufferToRDRAM::get().destroy();
 	ColorBufferToRDRAM::get().destroy();
 	frameBufferList().destroy();
@@ -1316,12 +1316,12 @@ bool FrameBuffer_CopyDepthBufferChunk(u32 address)
 
 void FrameBuffer_CopyFromRDRAM(u32 _address, bool _bCFB)
 {
-	RDRAMtoColorBuffer::get().copyFromRDRAM(_address, _bCFB);
+	gli_r2cb_copy_from_rdram(_address, _bCFB);
 }
 
 void FrameBuffer_AddAddress(u32 address, u32 _size)
 {
-	RDRAMtoColorBuffer::get().addAddress(address, _size);
+	gli_r2cb_add_address(address, _size);
 }
 
 void calcCoordsScales(const FrameBuffer * _pBuffer, f32 & _scaleX, f32 & _scaleY)
@@ -1463,6 +1463,11 @@ void gli_fb_clear_changed(void)
 FrameBuffer * gli_fb_current(void)
 {
 	return frameBufferList().getCurrent();
+}
+
+void gli_fb_set_current(FrameBuffer * _pBuffer)
+{
+	frameBufferList().setCurrent(_pBuffer);
 }
 
 gli_fb * gli_fb_of(FrameBuffer * _pBuffer)
