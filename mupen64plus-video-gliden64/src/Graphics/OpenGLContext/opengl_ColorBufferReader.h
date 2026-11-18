@@ -24,7 +24,7 @@ gli_cbr *gli_gl_cbr_new_read_pixels(struct gli_tex *_texture);
 gli_prb *gli_gl_prb_new(void *_bindCache, size_t _bytes);
 
 /* glBindBuffer(@_target, @_name) through the binding cache @_cache, which
- * skips the call when it is bound already (opengl_CachedFunctions.cpp) */
+ * skips the call when it is bound already (opengl_CachedFunctions.c) */
 void gli_gl_bind_buffer(void *_cache, u32 _target, u32 _name);
 
 #ifdef __cplusplus

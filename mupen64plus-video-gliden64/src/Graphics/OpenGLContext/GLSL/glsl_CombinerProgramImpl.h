@@ -7,9 +7,8 @@
 #include <Graphics/OpenGLContext/GLFunctions.h>
 #include "glsl_CombinerInputs.h"
 
-namespace opengl {
-	class CachedUseProgram;
-}
+/* the context's program cache (opengl_CachedFunctions.h) */
+struct gli_gl_cache1;
 
 namespace glsl {
 
@@ -45,7 +44,7 @@ namespace glsl {
 	public:
 		CombinerProgramImpl(const CombinerKey & _key,
 			GLuint _program,
-			opengl::CachedUseProgram * _useProgram,
+			gli_gl_cache1 * _useProgram,
 			const CombinerInputs & _inputs,
 			CombinerUniforms && _uniforms);
 		~CombinerProgramImpl();
@@ -66,7 +65,7 @@ namespace glsl {
 		bool m_bNeedUpdate;
 		CombinerKey m_key;
 		graphics::ObjectHandle m_program;
-		opengl::CachedUseProgram * m_useProgram;
+		gli_gl_cache1 * m_useProgram;
 		CombinerInputs m_inputs;
 		CombinerUniforms m_uniforms;
 	};

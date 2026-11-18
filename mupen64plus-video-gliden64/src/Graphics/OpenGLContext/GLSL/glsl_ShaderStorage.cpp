@@ -223,7 +223,7 @@ static
 CombinerProgramImpl * _readCombinerProgram(StorageReader & _in,
 	CombinerKey & _cmbKey,
 	CombinerProgramUniformFactory & _uniformFactory,
-	opengl::CachedUseProgram * _useProgram)
+	gli_gl_cache1 * _useProgram)
 {
 	int inputs = 0;
 	GLenum binaryFormat = 0;
@@ -357,7 +357,7 @@ std::string ShaderStorage::getKeysJournalPath(u32 & _version) const
 	return getStorageFileName(m_glinfo, "keys.journal");
 }
 
-ShaderStorage::ShaderStorage(const opengl::GLInfo & _glinfo, opengl::CachedUseProgram * _useProgram)
+ShaderStorage::ShaderStorage(const opengl::GLInfo & _glinfo, gli_gl_cache1 * _useProgram)
 : m_glinfo(_glinfo)
 , m_useProgram(_useProgram)
 {

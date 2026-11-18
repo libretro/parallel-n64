@@ -53,7 +53,7 @@ void gli_gl_set_texture_parameters(gli_gl_textures *_textures, const gli_tex_par
 
 /* glActiveTexture and glBindTexture through the context's cache, which
  * skips a bind that changes nothing; reset forgets what is bound
- * (opengl_CachedFunctions.cpp) */
+ * (opengl_CachedFunctions.c) */
 void gli_gl_bind_texture(void *_cache, u32 _unit, u32 _target, u32 _name);
 void gli_gl_bind_texture_reset(void *_cache);
 

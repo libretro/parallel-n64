@@ -5,9 +5,8 @@ namespace graphics {
 	class ShaderProgram;
 }
 
-namespace opengl {
-	class CachedUseProgram;
-}
+/* the context's program cache (opengl_CachedFunctions.h) */
+struct gli_gl_cache1;
 
 namespace glsl {
 
@@ -17,7 +16,7 @@ namespace glsl {
 	{
 	public:
 		SpecialShadersFactory(const opengl::GLInfo & _glinfo,
-			opengl::CachedUseProgram * _useProgram,
+			gli_gl_cache1 * _useProgram,
 			const ShaderPart * _vertexHeader,
 			const ShaderPart * _fragmentHeader,
 			const ShaderPart * _fragmentEnd);
@@ -40,7 +39,7 @@ namespace glsl {
 		const ShaderPart * m_vertexHeader;
 		const ShaderPart * m_fragmentHeader;
 		const ShaderPart * m_fragmentEnd;
-		opengl::CachedUseProgram * m_useProgram;
+		gli_gl_cache1 * m_useProgram;
 	};
 
 }

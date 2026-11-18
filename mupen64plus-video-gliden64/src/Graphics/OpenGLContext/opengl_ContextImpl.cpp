@@ -150,11 +150,13 @@ void ContextImpl::init()
 		gli_ctx.drawFramebuffer = gli_ctx.readFramebuffer = GLI_BT_FRAMEBUFFER;
 	}
 
-	if (!m_cachedFunctions)
-		m_cachedFunctions.reset(new CachedFunctions(m_glInfo));
+	if (!m_cacheMade) {
+		gli_gl_cache_init(&m_cache, &m_glInfo);
+		m_cacheMade = true;
+	}
 
 	{
-		gli_gl_textures_init(&m_textures, &m_glInfo, m_cachedFunctions->getCachedBindTexture());
+		gli_gl_textures_init(&m_textures, &m_glInfo, &m_cache.bindTexture);
 	}
 
 	{
@@ -164,16 +166,16 @@ void ContextImpl::init()
 		}
 		gli_gl_fb_formats(&m_glInfo, &m_fbTexFormats);
 		m_bufferObjects.info = &m_glInfo;
-		m_bufferObjects.bindFramebuffer = m_cachedFunctions->getCachedBindFramebuffer();
-		m_bufferObjects.bindRenderbuffer = m_cachedFunctions->getCachedBindRenderbuffer();
-		m_bufferObjects.enableScissor = m_cachedFunctions->getCachedEnable(graphics::enable::SCISSOR_TEST);
+		m_bufferObjects.bindFramebuffer = &m_cache.bindFramebuffer;
+		m_bufferObjects.bindRenderbuffer = &m_cache.bindRenderbuffer;
+		m_bufferObjects.enableScissor = &m_cache.enables[GLI_GL_ENABLE_SCISSOR_TEST];
 	}
 
 	{
 		if ((m_glInfo.isGLESX && (m_glInfo.bufferStorage && m_glInfo.majorVersion * 10 + m_glInfo.minorVersion >= 32)) || !m_glInfo.isGLESX)
-			m_graphicsDrawer = gli_gl_drawer_new_buffered(&m_glInfo, m_cachedFunctions->getCachedVertexAttribArray(), m_cachedFunctions->getCachedBindBuffer());
+			m_graphicsDrawer = gli_gl_drawer_new_buffered(&m_glInfo, &m_cache.attribs, &m_cache.bindBuffer);
 		else
-			m_graphicsDrawer = gli_gl_drawer_new_unbuffered(&m_glInfo, m_cachedFunctions->getCachedVertexAttribArray());
+			m_graphicsDrawer = gli_gl_drawer_new_unbuffered(&m_glInfo, &m_cache.attribs);
 	}
 
 	resetCombinerProgramBuilder();
@@ -188,7 +190,7 @@ void ContextImpl::destroy()
 	m_graphicsDrawer = nullptr;
 	m_combinerProgramBuilder.reset();
 
-	m_cachedFunctions.reset();
+	m_cacheMade = false;
 }
 
 void ContextImpl::setClampMode(graphics::ClampMode _mode)
@@ -196,16 +198,16 @@ void ContextImpl::setClampMode(graphics::ClampMode _mode)
 	if (!m_glInfo.isGLESX) {
 		switch (_mode) {
 		case graphics::ClampMode::ClippingEnabled:
-			m_cachedFunctions->getCachedEnable(graphics::enable::DEPTH_CLAMP)->enable(false);
-			m_cachedFunctions->getCachedEnable(graphics::enable::CLIP_DISTANCE0)->enable(false);
+			gli_gl_enable_set(&m_cache.enables[GLI_GL_ENABLE_DEPTH_CLAMP], 0);
+			gli_gl_enable_set(&m_cache.enables[GLI_GL_ENABLE_CLIP_DISTANCE0], 0);
 			break;
 		case graphics::ClampMode::NoNearPlaneClipping:
-			m_cachedFunctions->getCachedEnable(graphics::enable::DEPTH_CLAMP)->enable(true);
-			m_cachedFunctions->getCachedEnable(graphics::enable::CLIP_DISTANCE0)->enable(true);
+			gli_gl_enable_set(&m_cache.enables[GLI_GL_ENABLE_DEPTH_CLAMP], 1);
+			gli_gl_enable_set(&m_cache.enables[GLI_GL_ENABLE_CLIP_DISTANCE0], 1);
 			break;
 		case graphics::ClampMode::NoClipping:
-			m_cachedFunctions->getCachedEnable(graphics::enable::DEPTH_CLAMP)->enable(true);
-			m_cachedFunctions->getCachedEnable(graphics::enable::CLIP_DISTANCE0)->enable(false);
+			gli_gl_enable_set(&m_cache.enables[GLI_GL_ENABLE_DEPTH_CLAMP], 1);
+			gli_gl_enable_set(&m_cache.enables[GLI_GL_ENABLE_CLIP_DISTANCE0], 0);
 			break;
 		}
 	}
@@ -219,85 +221,84 @@ graphics::ClampMode ContextImpl::getClampMode()
 
 void ContextImpl::enable(graphics::EnableParam _parameter, bool _enable)
 {
-	m_cachedFunctions->getCachedEnable(_parameter)->enable(_enable);
+	gli_gl_enable_set(gli_gl_cache_enable_of(&m_cache, u32(_parameter)), _enable);
 }
 
 u32 ContextImpl::isEnabled(graphics::EnableParam _parameter)
 {
-	return m_cachedFunctions->getCachedEnable(_parameter)->get();
+	return gli_gl_cache_enable_of(&m_cache, u32(_parameter))->state;
 }
 
 void ContextImpl::cullFace(graphics::CullModeParam _mode)
 {
-	m_cachedFunctions->getCachedCullFace()->setCullFace(_mode);
+	gli_gl_cache_cull_face(&m_cache, u32(_mode));
 }
 
 void ContextImpl::enableDepthWrite(bool _enable)
 {
-	m_cachedFunctions->getCachedDepthMask()->setDepthMask(_enable);
+	gli_gl_cache_depth_mask(&m_cache, _enable);
 }
 
 void ContextImpl::setDepthCompare(graphics::CompareParam _mode)
 {
-	m_cachedFunctions->getCachedDepthCompare()->setDepthCompare(_mode);
+	gli_gl_cache_depth_compare(&m_cache, u32(_mode));
 }
 
 void ContextImpl::setViewport(s32 _x, s32 _y, s32 _width, s32 _height)
 {
-	m_cachedFunctions->getCachedViewport()->setViewport(_x, _y, _width, _height);
+	gli_gl_cache_viewport(&m_cache, _x, _y, _width, _height);
 }
 
 void ContextImpl::setScissor(s32 _x, s32 _y, s32 _width, s32 _height)
 {
-	m_cachedFunctions->getCachedScissor()->setScissor(_x, _y, _width, _height);
+	gli_gl_cache_scissor(&m_cache, _x, _y, _width, _height);
 }
 
 void ContextImpl::setBlending(graphics::BlendParam _sfactor, graphics::BlendParam _dfactor)
 {
-	m_cachedFunctions->getCachedBlending()->setBlending(_sfactor, _dfactor);
+	gli_gl_cache_blending(&m_cache, u32(_sfactor), u32(_dfactor));
 }
 
 void ContextImpl::setBlendingSeparate(graphics::BlendParam _sfactorcolor, graphics::BlendParam _dfactorcolor, graphics::BlendParam _sfactoralpha, graphics::BlendParam _dfactoralpha)
 {
-	m_cachedFunctions->getCachedBlendingSeparate()->setBlendingSeparate(_sfactorcolor, _dfactorcolor, _sfactoralpha, _dfactoralpha);
+	gli_gl_cache_blending_separate(&m_cache, u32(_sfactorcolor), u32(_dfactorcolor), u32(_sfactoralpha), u32(_dfactoralpha));
 }
 
 void ContextImpl::setBlendColor(f32 _red, f32 _green, f32 _blue, f32 _alpha)
 {
-	m_cachedFunctions->getCachedBlendColor()->setBlendColor(_red, _green, _blue, _alpha);
+	gli_gl_cache_blend_color(&m_cache, _red, _green, _blue, _alpha);
 }
 
 void ContextImpl::clearColorBuffer(f32 _red, f32 _green, f32 _blue, f32 _alpha)
 {
-	CachedEnable * enableScissor = m_cachedFunctions->getCachedEnable(graphics::enable::SCISSOR_TEST);
-	enableScissor->enable(false);
+	gli_gl_enable * enableScissor = &m_cache.enables[GLI_GL_ENABLE_SCISSOR_TEST];
+	gli_gl_enable_set(enableScissor, 0);
 
 	if (m_glInfo.isGLES2) {
-		m_cachedFunctions->getCachedClearColor()->setClearColor(_red, _green, _blue, _alpha);
+		gli_gl_cache_clear_color(&m_cache, _red, _green, _blue, _alpha);
 		glClear(GL_COLOR_BUFFER_BIT);
 	} else {
 		GLfloat values[4] = {_red, _green, _blue, _alpha};
 		glClearBufferfv(GL_COLOR, 0, values);
 	}
 
-	enableScissor->enable(true);
+	gli_gl_enable_set(enableScissor, 1);
 }
 
 void ContextImpl::clearDepthBuffer()
 {
-	CachedEnable * enableScissor = m_cachedFunctions->getCachedEnable(graphics::enable::SCISSOR_TEST);
-	CachedDepthMask * depthMask = m_cachedFunctions->getCachedDepthMask();
-	enableScissor->enable(false);
+	gli_gl_enable * enableScissor = &m_cache.enables[GLI_GL_ENABLE_SCISSOR_TEST];
+	gli_gl_enable_set(enableScissor, 0);
 
 	if (m_glInfo.renderer == GLI_GL_POWERVR) {
-		depthMask->setDepthMask(false);
+		gli_gl_cache_depth_mask(&m_cache, 0);
 		glClear(GL_DEPTH_BUFFER_BIT);
 	}
 
-	depthMask->setDepthMask(true);
+	gli_gl_cache_depth_mask(&m_cache, 1);
 	glClear(GL_DEPTH_BUFFER_BIT);
 
-	enableScissor->enable(true);
+	gli_gl_enable_set(enableScissor, 1);
 }
 
 void ContextImpl::setPolygonOffset(f32 _factor, f32 _units)
@@ -333,12 +334,12 @@ void ContextImpl::setTextureParameters(const gli_tex_parameters & _parameters)
 }
 
 void ContextImpl::bindTexture(const gli_bind_texture_params & _params) {
-	m_cachedFunctions->getCachedBindTexture()->bind(_params.textureUnitIndex, _params.target, graphics::ObjectHandle(_params.texture));
+	gli_gl_cache_bind_texture(&m_cache.bindTexture, _params.textureUnitIndex, _params.target, _params.texture);
 }
 
 void ContextImpl::setTextureUnpackAlignment(s32 _param)
 {
-	m_cachedFunctions->getCachedTextureUnpackAlignment()->setTextureUnpackAlignment(_param);
+	gli_gl_cache_unpack_alignment(&m_cache, _param);
 }
 
 s32 ContextImpl::getTextureUnpackAlignment() const
@@ -410,18 +411,17 @@ void ContextImpl::deleteFramebuffer(graphics::ObjectHandle _name)
 	u32 fbo(_name);
 	if (fbo != 0) {
 		glDeleteFramebuffers(1, &fbo);
-		m_cachedFunctions->getCachedBindFramebuffer()->reset();
+		gli_gl_cache2_reset_name(&m_cache.bindFramebuffer);
 	}
 }
 
 void ContextImpl::bindFramebuffer(graphics::BufferTargetParam _target, graphics::ObjectHandle _name)
 {
 	if (m_glInfo.renderer == GLI_GL_VIDEOCORE) {
-		CachedDepthMask * depthMask = m_cachedFunctions->getCachedDepthMask();
-		depthMask->setDepthMask(true);
+		gli_gl_cache_depth_mask(&m_cache, 1);
 		glClear(GL_DEPTH_BUFFER_BIT);
 	}
-	m_cachedFunctions->getCachedBindFramebuffer()->bind(_target, _name);
+	gli_gl_cache_bind_framebuffer(&m_cache.bindFramebuffer, u32(_target), u32(_name));
 }
 
 void ContextImpl::deleteRenderbuffer(graphics::ObjectHandle _name)
@@ -429,7 +429,7 @@ void ContextImpl::deleteRenderbuffer(graphics::ObjectHandle _name)
 	u32 rbo(_name);
 	if (rbo != 0) {
 		glDeleteRenderbuffers(1, &rbo);
-		m_cachedFunctions->getCachedBindRenderbuffer()->reset();
+		gli_gl_cache2_reset_name(&m_cache.bindRenderbuffer);
 	}
 }
 
@@ -463,16 +463,16 @@ gli_prb * ContextImpl::createPixelReadBuffer(size_t _sizeInBytes)
 {
 	if (m_glInfo.isGLES2)
 		return nullptr;
-	return gli_gl_prb_new(m_cachedFunctions->getCachedBindBuffer(), _sizeInBytes);
+	return gli_gl_prb_new(&m_cache.bindBuffer, _sizeInBytes);
 }
 
 gli_cbr * ContextImpl::createColorBufferReader(CachedTexture * _pTexture)
 {
 	if (m_glInfo.bufferStorage && m_glInfo.renderer != GLI_GL_INTEL)
-		return gli_gl_cbr_new_buffer_storage(_pTexture, m_cachedFunctions->getCachedBindBuffer());
+		return gli_gl_cbr_new_buffer_storage(_pTexture, &m_cache.bindBuffer);
 
 	if (!m_glInfo.isGLES2)
-		return gli_gl_cbr_new_pixel_buffer(_pTexture, m_cachedFunctions->getCachedBindBuffer());
+		return gli_gl_cbr_new_pixel_buffer(_pTexture, &m_cache.bindBuffer);
 
 	return gli_gl_cbr_new_read_pixels(_pTexture);
 }
@@ -495,9 +495,9 @@ void ContextImpl::resetCombinerProgramBuilder()
 {
 	if (!isCombinerProgramBuilderObsolete())
 		return;
-	m_combinerProgramBuilder.reset(new glsl::CombinerProgramBuilder(m_glInfo, m_cachedFunctions->getCachedUseProgram()));
+	m_combinerProgramBuilder.reset(new glsl::CombinerProgramBuilder(m_glInfo, &m_cache.useProgram));
 	m_specialShadersFactory.reset(new glsl::SpecialShadersFactory(m_glInfo,
-		m_cachedFunctions->getCachedUseProgram(),
+		&m_cache.useProgram,
 		m_combinerProgramBuilder->getVertexShaderHeader(),
 		m_combinerProgramBuilder->getFragmentShaderHeader(),
 		m_combinerProgramBuilder->getFragmentShaderEnd()));
@@ -515,19 +515,19 @@ graphics::CombinerProgram * ContextImpl::createCombinerProgram(Combiner & _color
 
 bool ContextImpl::saveShadersStorage(const gli_combiner_table * _combiners)
 {
-	glsl::ShaderStorage storage(m_glInfo, m_cachedFunctions->getCachedUseProgram());
+	glsl::ShaderStorage storage(m_glInfo, &m_cache.useProgram);
 	return storage.saveShadersStorage(_combiners);
 }
 
 std::string ContextImpl::getCombinerJournalPath(u32 & _version)
 {
-	glsl::ShaderStorage storage(m_glInfo, m_cachedFunctions->getCachedUseProgram());
+	glsl::ShaderStorage storage(m_glInfo, &m_cache.useProgram);
 	return storage.getKeysJournalPath(_version);
 }
 
 bool ContextImpl::loadShadersStorage(gli_combiner_table * _combiners)
 {
-	glsl::ShaderStorage storage(m_glInfo, m_cachedFunctions->getCachedUseProgram());
+	glsl::ShaderStorage storage(m_glInfo, &m_cache.useProgram);
 	return storage.loadShadersStorage(_combiners);
 }
 
@@ -563,7 +563,7 @@ graphics::ShaderProgram * ContextImpl::createFXAAShader()
 
 void ContextImpl::resetShaderProgram()
 {
-	m_cachedFunctions->getCachedUseProgram()->useProgram(graphics::ObjectHandle::null);
+	gli_gl_use_program(&m_cache.useProgram, 0);
 }
 
 void ContextImpl::drawTriangles(const gli_draw_triangles_params & _params)

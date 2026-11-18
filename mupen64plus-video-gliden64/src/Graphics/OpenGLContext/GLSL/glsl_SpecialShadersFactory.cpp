@@ -408,7 +408,7 @@ namespace glsl {
 	{
 	public:
 		SpecialShader(const opengl::GLInfo & _glinfo,
-			opengl::CachedUseProgram * _useProgram,
+			gli_gl_cache1 * _useProgram,
 			const ShaderPart * _vertexHeader,
 			const ShaderPart * _fragmentHeader,
 			const ShaderPart * _fragmentEnd = nullptr)
@@ -434,18 +434,18 @@ namespace glsl {
 
 		~SpecialShader()
 		{
-			m_useProgram->useProgram(graphics::ObjectHandle::null);
+			gli_gl_use_program(m_useProgram, 0);
 			glDeleteProgram(GLuint(m_program));
 		}
 
 		void activate() override {
-			m_useProgram->useProgram(m_program);
+			gli_gl_use_program(m_useProgram, u32(m_program));
 			gDP.changed |= CHANGED_COMBINE;
 		}
 
 	protected:
 		graphics::ObjectHandle m_program;
-		opengl::CachedUseProgram * m_useProgram;
+		gli_gl_cache1 * m_useProgram;
 	};
 
 	/*---------------ShadowMapShader-------------*/
@@ -456,7 +456,7 @@ namespace glsl {
 	{
 	public:
 		ShadowMapShader(const opengl::GLInfo & _glinfo,
-			opengl::CachedUseProgram * _useProgram,
+			gli_gl_cache1 * _useProgram,
 			const ShaderPart * _vertexHeader,
 			const ShaderPart * _fragmentHeader)
 			: ShadowMapShaderBase(_glinfo, _useProgram, _vertexHeader, _fragmentHeader)
@@ -465,12 +465,12 @@ namespace glsl {
 			, m_locTlut(-1)
 			, m_locDepthImage(-1)
 		{
-			m_useProgram->useProgram(m_program);
+			gli_gl_use_program(m_useProgram, u32(m_program));
 			m_locFog = glGetUniformLocation(GLuint(m_program), "uFogColor");
 			m_locZlut = glGetUniformLocation(GLuint(m_program), "uZlutImage");
 			m_locTlut = glGetUniformLocation(GLuint(m_program), "uTlutImage");
 			m_locDepthImage = glGetUniformLocation(GLuint(m_program), "uDepthImage");
-			m_useProgram->useProgram(graphics::ObjectHandle::null);
+			gli_gl_use_program(m_useProgram, 0);
 		}
 
 		void activate() override {
@@ -498,15 +498,15 @@ namespace glsl {
 	{
 	public:
 		FXAAShader(const opengl::GLInfo & _glinfo,
-			opengl::CachedUseProgram * _useProgram,
+			gli_gl_cache1 * _useProgram,
 			const ShaderPart * _vertexHeader,
 			const ShaderPart * _fragmentHeader,
 			const ShaderPart * _fragmentEnd)
 			: FXAAShaderBase(_glinfo, _useProgram, _vertexHeader, _fragmentHeader, _fragmentEnd)
 		{
-			m_useProgram->useProgram(m_program);
+			gli_gl_use_program(m_useProgram, u32(m_program));
 			m_textureSizeLoc = glGetUniformLocation(GLuint(m_program), "uTextureSize");
-			m_useProgram->useProgram(graphics::ObjectHandle::null);
+			gli_gl_use_program(m_useProgram, 0);
 		}
 
 		void activate() override {
@@ -532,7 +532,7 @@ namespace glsl {
 	{
 	public:
 		TexrectDrawerShaderDraw(const opengl::GLInfo & _glinfo,
-			opengl::CachedUseProgram * _useProgram,
+			gli_gl_cache1 * _useProgram,
 			const ShaderPart * _vertexHeader,
 			const ShaderPart * _fragmentHeader)
 			: m_program(0)
@@ -561,25 +561,25 @@ namespace glsl {
 			m_program =
 				graphics::ObjectHandle(Utils::createRectShaderProgram(ssVertexShader.str().data(), ssFragmentShader.str().data()));
 
-			m_useProgram->useProgram(m_program);
+			gli_gl_use_program(m_useProgram, u32(m_program));
 			GLint loc = glGetUniformLocation(GLuint(m_program), "uTex0");
 			assert(loc >= 0);
 			glUniform1i(loc, 0);
 			m_textureSizeLoc = glGetUniformLocation(GLuint(m_program), "uTextureSize");
 			m_enableAlphaTestLoc = glGetUniformLocation(GLuint(m_program), "uEnableAlphaTest");
 			m_primDepthLoc = glGetUniformLocation(GLuint(m_program), "uPrimDepth");
-			m_useProgram->useProgram(graphics::ObjectHandle::null);
+			gli_gl_use_program(m_useProgram, 0);
 		}
 
 		~TexrectDrawerShaderDraw()
 		{
-			m_useProgram->useProgram(graphics::ObjectHandle::null);
+			gli_gl_use_program(m_useProgram, 0);
 			glDeleteProgram(GLuint(m_program));
 		}
 
 		void activate() override
 		{
-			m_useProgram->useProgram(m_program);
+			gli_gl_use_program(m_useProgram, u32(m_program));
 			if (m_primDepthLoc >= 0) {
 				const GLfloat depth = gDP.otherMode.depthSource == G_ZS_PRIM ? gDP.primDepth.z : 0.0f;
 				if (depth != m_depth) {
@@ -594,21 +594,21 @@ namespace glsl {
 		{
 			if (m_textureSizeLoc < 0)
 				return;
-			m_useProgram->useProgram(m_program);
+			gli_gl_use_program(m_useProgram, u32(m_program));
 			glUniform2f(m_textureSizeLoc, (GLfloat)_width, (GLfloat)_height);
 			gDP.changed |= CHANGED_COMBINE;
 		}
 
 		void setEnableAlphaTest(int _enable) override
 		{
-			m_useProgram->useProgram(m_program);
+			gli_gl_use_program(m_useProgram, u32(m_program));
 			glUniform1i(m_enableAlphaTestLoc, _enable);
 			gDP.changed |= CHANGED_COMBINE;
 		}
 
 	protected:
 		graphics::ObjectHandle m_program;
-		opengl::CachedUseProgram * m_useProgram;
+		gli_gl_cache1 * m_useProgram;
 		GLint m_enableAlphaTestLoc;
 		GLint m_textureSizeLoc;
 		GLint m_primDepthLoc;
@@ -625,16 +625,16 @@ namespace glsl {
 	{
 	public:
 		TexrectCopyShader(const opengl::GLInfo & _glinfo,
-			opengl::CachedUseProgram * _useProgram,
+			gli_gl_cache1 * _useProgram,
 			const ShaderPart * _vertexHeader,
 			const ShaderPart * _fragmentHeader,
 			const ShaderPart * _fragmentEnd)
 			: TexrectCopyShaderBase(_glinfo, _useProgram, _vertexHeader, _fragmentHeader, _fragmentEnd)
 		{
-			m_useProgram->useProgram(m_program);
+			gli_gl_use_program(m_useProgram, u32(m_program));
 			const int texLoc = glGetUniformLocation(GLuint(m_program), "uTex0");
 			glUniform1i(texLoc, 0);
-			m_useProgram->useProgram(graphics::ObjectHandle::null);
+			gli_gl_use_program(m_useProgram, 0);
 		}
 	};
 
@@ -646,27 +646,27 @@ namespace glsl {
 	{
 	public:
 		GammaCorrectionShader(const opengl::GLInfo & _glinfo,
-			opengl::CachedUseProgram * _useProgram,
+			gli_gl_cache1 * _useProgram,
 			const ShaderPart * _vertexHeader,
 			const ShaderPart * _fragmentHeader,
 			const ShaderPart * _fragmentEnd)
 			: GammaCorrectionShaderBase(_glinfo, _useProgram, _vertexHeader, _fragmentHeader, _fragmentEnd)
 		{
-			m_useProgram->useProgram(m_program);
+			gli_gl_use_program(m_useProgram, u32(m_program));
 			const int texLoc = glGetUniformLocation(GLuint(m_program), "uTex0");
 			glUniform1i(texLoc, 0);
 			const int levelLoc = glGetUniformLocation(GLuint(m_program), "uGammaCorrectionLevel");
 			assert(levelLoc >= 0);
 			const f32 gammaLevel = (config.gammaCorrection.force != 0) ? config.gammaCorrection.level : 2.0f;
 			glUniform1f(levelLoc, gammaLevel);
-			m_useProgram->useProgram(graphics::ObjectHandle::null);
+			gli_gl_use_program(m_useProgram, 0);
 		}
 	};
 
 	/*---------------SpecialShadersFactory-------------*/
 
 	SpecialShadersFactory::SpecialShadersFactory(const opengl::GLInfo & _glinfo,
-												opengl::CachedUseProgram * _useProgram,
+												gli_gl_cache1 * _useProgram,
 												const ShaderPart * _vertexHeader,
 												const ShaderPart * _fragmentHeader,
 												const ShaderPart * _fragmentEnd)

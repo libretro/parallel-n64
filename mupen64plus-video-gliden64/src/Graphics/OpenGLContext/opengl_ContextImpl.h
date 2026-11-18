@@ -159,7 +159,8 @@ namespace opengl {
 		bool isFramebufferError() const override;
 
 	private:
-		std::unique_ptr<CachedFunctions> m_cachedFunctions;
+		gli_gl_cache m_cache;
+		bool m_cacheMade = false;
 		gli_gl_textures m_textures = {};
 
 		gli_gl_buffer_objects m_bufferObjects;

@@ -12,7 +12,7 @@ extern "C" {
 #endif
 
 /* the context's binding caches and scissor test the calls go through
- * (opengl_CachedFunctions.cpp) */
+ * (opengl_CachedFunctions.c) */
 typedef struct gli_gl_buffer_objects
 {
 	const gli_gl_info *info;

@@ -2485,7 +2485,7 @@ class glsl::CombinerProgramAsync : public graphics::CombinerProgram
 public:
 	CombinerProgramAsync(const CombinerKey & _key, const CombinerInputs & _inputs,
 		CombinerProgramBuilder::UberVariant * _uber, const GLint * _ops, GLint _flags, GLuint _pending,
-		CombinerProgramUniformFactory * _factory, opengl::CachedUseProgram * _useProgram, int _delay)
+		CombinerProgramUniformFactory * _factory, gli_gl_cache1 * _useProgram, int _delay)
 	: graphics::CombinerProgram(&graphics::CombinerProgramOps<CombinerProgramAsync>::table, _key.getMux())
 	, m_key(_key), m_inputs(_inputs), m_uber(_uber), m_flags(_flags), m_pending(_pending)
 	, m_factory(_factory), m_useProgram(_useProgram), m_real(nullptr), m_delay(_delay)
@@ -2496,7 +2496,7 @@ public:
 	~CombinerProgramAsync()
 	{
 		if (m_pending != 0) {
-			m_useProgram->useProgram(graphics::ObjectHandle::null);
+			gli_gl_use_program(m_useProgram, 0);
 			glDeleteProgram(m_pending);
 		}
 		if (m_uber->owner == this)
@@ -2584,7 +2584,7 @@ private:
 	GLint m_flags;
 	GLuint m_pending;
 	CombinerProgramUniformFactory * m_factory;
-	opengl::CachedUseProgram * m_useProgram;
+	gli_gl_cache1 * m_useProgram;
 	CombinerProgramImpl * m_real;
 	int m_delay;
 };
@@ -2754,7 +2754,7 @@ GLuint _createVertexShader(ShaderPart * _header, ShaderPart * _body, ShaderPart 
 	return shader_object;
 }
 
-CombinerProgramBuilder::CombinerProgramBuilder(const opengl::GLInfo & _glinfo, opengl::CachedUseProgram * _useProgram)
+CombinerProgramBuilder::CombinerProgramBuilder(const opengl::GLInfo & _glinfo, gli_gl_cache1 * _useProgram)
 : m_blender1(new ShaderBlender1)
 , m_blender2(new ShaderBlender2)
 , m_legacyBlender(new ShaderLegacyBlender)

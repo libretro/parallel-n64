@@ -35,7 +35,7 @@ gli_gl_drawer *gli_gl_drawer_new_buffered(const gli_gl_info *_info, gli_gl_attri
 /* A drawer pointing GL at the vertices where they lie. Either is dropped
  * by its ops->destroy. */
 gli_gl_drawer *gli_gl_drawer_new_unbuffered(const gli_gl_info *_info, gli_gl_attribs *_attribs);
-/* the binding cache's bind (opengl_CachedFunctions.cpp) */
+/* the binding cache's bind (opengl_CachedFunctions.c) */
 void gli_gl_bind_buffer(void *_cache, u32 _target, u32 _name);
 
 #ifdef __cplusplus

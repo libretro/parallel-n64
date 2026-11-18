@@ -9,9 +9,8 @@ namespace graphics {
 	class CombinerProgram;
 }
 
-namespace opengl {
-	class CachedUseProgram;
-}
+/* the context's program cache (opengl_CachedFunctions.h) */
+struct gli_gl_cache1;
 
 namespace glsl {
 
@@ -24,7 +23,7 @@ namespace glsl {
 	class CombinerProgramBuilder
 	{
 	public:
-		CombinerProgramBuilder(const opengl::GLInfo & _glinfo, opengl::CachedUseProgram * _useProgram);
+		CombinerProgramBuilder(const opengl::GLInfo & _glinfo, gli_gl_cache1 * _useProgram);
 		~CombinerProgramBuilder();
 
 		graphics::CombinerProgram * buildCombinerProgram(Combiner & _color, Combiner & _alpha, const CombinerKey & _key);
@@ -132,7 +131,7 @@ namespace glsl {
 		GLuint  m_vertexShaderTriangle;
 		GLuint  m_vertexShaderTexturedRect;
 		GLuint  m_vertexShaderTexturedTriangle;
-		opengl::CachedUseProgram * m_useProgram;
+		gli_gl_cache1 * m_useProgram;
 		u32 m_combinerOptionsBits;
 	};
 

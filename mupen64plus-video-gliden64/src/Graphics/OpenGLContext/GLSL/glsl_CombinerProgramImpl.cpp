@@ -12,7 +12,7 @@ using namespace glsl;
 
 CombinerProgramImpl::CombinerProgramImpl(const CombinerKey & _key,
 	GLuint _program,
-	opengl::CachedUseProgram * _useProgram,
+	gli_gl_cache1 * _useProgram,
 	const CombinerInputs & _inputs,
 	CombinerUniforms && _uniforms)
 : graphics::CombinerProgram(&graphics::CombinerProgramOps<CombinerProgramImpl>::table, _key.getMux())
@@ -28,20 +28,20 @@ CombinerProgramImpl::CombinerProgramImpl(const CombinerKey & _key,
 
 CombinerProgramImpl::~CombinerProgramImpl()
 {
-	m_useProgram->useProgram(graphics::ObjectHandle::null);
+	gli_gl_use_program(m_useProgram, 0);
 	glDeleteProgram(GLuint(m_program));
 }
 
 void CombinerProgramImpl::activate()
 {
-	m_useProgram->useProgram(m_program);
+	gli_gl_use_program(m_useProgram, u32(m_program));
 }
 
 void CombinerProgramImpl::update(bool _force)
 {
 	_force |= m_bNeedUpdate;
 	m_bNeedUpdate = false;
-	m_useProgram->useProgram(m_program);
+	gli_gl_use_program(m_useProgram, u32(m_program));
 	m_uniforms.update(_force);
 }
 
