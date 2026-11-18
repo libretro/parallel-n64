@@ -389,6 +389,7 @@ SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/Graphics/Context.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/Graphics/FramebufferFormats.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/GLFunctions.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/opengl_Utils.c
+SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/opengl_GLInfo.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/Graphics/ColorBufferReader.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/DisplayWindowGpu.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/opengl_ColorBufferReader.c
@@ -479,7 +480,6 @@ SOURCES_CXX   += \
     $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/opengl_BufferManipulationObjectFactory.cpp    \
     $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/opengl_CachedFunctions.cpp                    \
     $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/opengl_ContextImpl.cpp                        \
-    $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/opengl_GLInfo.cpp                             \
     $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/opengl_TextureManipulationObjectFactory.cpp   \
     $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/opengl_UnbufferedDrawer.cpp                   \
     $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/GLSL/glsl_CombinerInputs.cpp                  \

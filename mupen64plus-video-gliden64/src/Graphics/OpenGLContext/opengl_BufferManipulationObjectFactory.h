@@ -7,7 +7,6 @@
 
 namespace opengl {
 
-	struct GLInfo;
 	class CachedFunctions;
 
 	class CreateFramebufferObject

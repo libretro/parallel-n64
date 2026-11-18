@@ -2,10 +2,10 @@
 #include <Graphics/ObjectHandle.h>
 #include <Graphics/Parameter.h>
 #include <Graphics/Context.h>
+#include "opengl_GLInfo.h"
 
 namespace opengl {
 
-	struct GLInfo;
 	class CachedFunctions;
 
 	class Create2DTexture

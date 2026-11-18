@@ -143,7 +143,7 @@ ContextImpl::~ContextImpl()
 void ContextImpl::init()
 {
 	m_clampMode = graphics::ClampMode::ClippingEnabled;
-	m_glInfo.init();
+	gli_gl_info_init(&m_glInfo);
 
 	if (m_glInfo.isGLES2) {
 		// Correct buffer target parameters, since GLES2 knows only GL_FRAMEBUFFER
@@ -302,7 +302,7 @@ void ContextImpl::clearDepthBuffer()
 	CachedDepthMask * depthMask = m_cachedFunctions->getCachedDepthMask();
 	enableScissor->enable(false);
 
-	if (m_glInfo.renderer == Renderer::PowerVR) {
+	if (m_glInfo.renderer == GLI_GL_POWERVR) {
 		depthMask->setDepthMask(false);
 		glClear(GL_DEPTH_BUFFER_BIT);
 	}
@@ -433,7 +433,7 @@ void ContextImpl::deleteFramebuffer(graphics::ObjectHandle _name)
 
 void ContextImpl::bindFramebuffer(graphics::BufferTargetParam _target, graphics::ObjectHandle _name)
 {
-	if (m_glInfo.renderer == Renderer::VideoCore) {
+	if (m_glInfo.renderer == GLI_GL_VIDEOCORE) {
 		CachedDepthMask * depthMask = m_cachedFunctions->getCachedDepthMask();
 		depthMask->setDepthMask(true);
 		glClear(GL_DEPTH_BUFFER_BIT);
@@ -485,7 +485,7 @@ graphics::PixelReadBuffer * ContextImpl::createPixelReadBuffer(size_t _sizeInByt
 
 gli_cbr * ContextImpl::createColorBufferReader(CachedTexture * _pTexture)
 {
-	if (m_glInfo.bufferStorage && m_glInfo.renderer != Renderer::Intel)
+	if (m_glInfo.bufferStorage && m_glInfo.renderer != GLI_GL_INTEL)
 		return gli_gl_cbr_new_buffer_storage(_pTexture, m_cachedFunctions->getCachedBindBuffer());
 
 	if (!m_glInfo.isGLES2)

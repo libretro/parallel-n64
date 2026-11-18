@@ -223,7 +223,7 @@ public:
 
 	BlitFramebuffersImpl(CachedBindFramebuffer * _bind,
 		CachedEnable * _enableScissor,
-		Renderer _renderer)
+		enum gli_gl_renderer _renderer)
 		: m_bind(_bind)
 		, m_enableScissor(_enableScissor)
 		, m_renderer(_renderer) {
@@ -234,7 +234,7 @@ public:
 		m_bind->bind(graphics::bufferTarget::READ_FRAMEBUFFER, graphics::ObjectHandle(_params.readBuffer));
 		m_bind->bind(graphics::bufferTarget::DRAW_FRAMEBUFFER, graphics::ObjectHandle(_params.drawBuffer));
 
-		const s32 adrenoCoordFix = (m_renderer == Renderer::Adreno) ? 1 : 0;
+		const s32 adrenoCoordFix = (m_renderer == GLI_GL_ADRENO) ? 1 : 0;
 
 		m_enableScissor->enable(false);
 
@@ -251,7 +251,7 @@ public:
 private:
 	CachedBindFramebuffer * m_bind;
 	CachedEnable * m_enableScissor;
-	Renderer m_renderer;
+	enum gli_gl_renderer m_renderer;
 };
 
 class DummyBlitFramebuffers: public BlitFramebuffers
@@ -326,7 +326,7 @@ void BufferManipulationObjectFactory::getFramebufferTextureFormats(gli_fb_format
 	if (!m_glInfo.isGLESX)
 		gli_fb_formats_gl(&_formats, GLI_FB_GL, 0);
 	else if (!m_glInfo.isGLES2)
-		gli_fb_formats_gl(&_formats, GLI_FB_GLES3, m_glInfo.renderer == Renderer::Adreno530 ? GLI_FB_ADRENO530 : 0);
+		gli_fb_formats_gl(&_formats, GLI_FB_GLES3, m_glInfo.renderer == GLI_GL_ADRENO530 ? GLI_FB_ADRENO530 : 0);
 	else
 		gli_fb_formats_gl(&_formats, GLI_FB_GLES2,
 			(Utils::isExtensionSupported(m_glInfo, "GL_OES_depth_texture") ? GLI_FB_OES_DEPTH : 0) |
