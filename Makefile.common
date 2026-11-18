@@ -387,6 +387,8 @@ SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/CombinerOptions.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/Graphics/CombinerValues.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/Graphics/Context.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/Graphics/FramebufferFormats.c
+SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/GLFunctions.c
+SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/opengl_Utils.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/Combiner.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/CombinerTable.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/PluginAPI.c
@@ -470,10 +472,7 @@ SOURCES_CXX   += \
     $(VIDEODIR_GLIDEN64)/src/BufferCopy/RDRAMtoColorBuffer.cpp                                    \
     $(VIDEODIR_GLIDEN64)/src/GraphicsDrawer.cpp                                                   \
     $(VIDEODIR_GLIDEN64)/src/Graphics/ColorBufferReader.cpp                                       \
-    $(VIDEODIR_GLIDEN64)/src/Graphics/ObjectHandle.cpp                                            \
     $(VIDEODIR_GLIDEN64)/src/Graphics/VulkanContext/vk_ContextImpl.cpp                            \
-    $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/GLFunctions.cpp                               \
-    $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/opengl_Attributes.cpp                         \
     $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/opengl_BufferedDrawer.cpp                     \
     $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/opengl_BufferManipulationObjectFactory.cpp    \
     $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/opengl_CachedFunctions.cpp                    \
@@ -484,7 +483,6 @@ SOURCES_CXX   += \
     $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/opengl_GLInfo.cpp                             \
     $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/opengl_TextureManipulationObjectFactory.cpp   \
     $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/opengl_UnbufferedDrawer.cpp                   \
-    $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/opengl_Utils.cpp                              \
     $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/GLSL/glsl_CombinerInputs.cpp                  \
     $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/GLSL/glsl_CombinerProgramBuilder.cpp          \
     $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/GLSL/glsl_CombinerProgramImpl.cpp             \

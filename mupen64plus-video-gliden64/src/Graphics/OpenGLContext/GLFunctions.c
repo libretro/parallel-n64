@@ -1,3 +1,4 @@
+/* The GL entry points GLideN64 calls, loaded once (GLFunctions.h). C89. */
 #ifdef __LIBRETRO__
 #include <glsm/glsmsym.h>
 #define NO_GL_WRAP 1
@@ -6,19 +7,31 @@
 
 #include "GLFunctions.h"
 
+#include <string.h>
+
 #define ASSIGN_PROC_ADR(proc_type, proc_name) g_##proc_name = (proc_type) r##proc_name
 
+/* A loader's address into the function pointer at @_fn: copied, as C has
+ * no conversion from an object pointer to a function pointer, which is
+ * the size of one */
+typedef char gli_proc_size_check[sizeof(void *) == sizeof(PFNGLBLENDFUNCPROC) ? 1 : -1];
+
+static void set_proc(void *_fn, void *_address)
+{
+	memcpy(_fn, &_address, sizeof(_address));
+}
+
 #if defined(GL_USE_DLSYM)
-// Use dlsym() to load GL symbols from the default shared object search order
-#define GL_GET_PROC_ADR(proc_type, proc_name) g_##proc_name = (proc_type) dlsym(RTLD_DEFAULT, "gl"#proc_name)
+/* Use dlsym() to load GL symbols from the default shared object search order */
+#define GL_GET_PROC_ADR(proc_type, proc_name) set_proc(&g_##proc_name, dlsym(RTLD_DEFAULT, "gl"#proc_name))
 #else
-// Use libretro API to load GL/EGL symbols
-extern "C" void* glsm_get_proc_address(const char*);
+/* Use libretro API to load GL/EGL symbols */
+void* glsm_get_proc_address(const char*);
 #define glGetProcAddress glsm_get_proc_address
-#define GL_GET_PROC_ADR(proc_type, proc_name) g_##proc_name = (proc_type) glGetProcAddress(#proc_name)
+#define GL_GET_PROC_ADR(proc_type, proc_name) set_proc(&g_##proc_name, glGetProcAddress(#proc_name))
 #endif
 
-//GL Fucntions
+/* GL functions */
 
 PFNGLBLENDFUNCPROC g_glBlendFunc;
 PFNGLBLENDFUNCSEPARATEPROC g_glBlendFuncSeparate;
@@ -87,7 +100,7 @@ PFNGLVERTEXATTRIB1FPROC g_glVertexAttrib1f;
 PFNGLVERTEXATTRIB4FPROC g_glVertexAttrib4f;
 PFNGLVERTEXATTRIB4FVPROC g_glVertexAttrib4fv;
 
-// multitexture functions
+/* multitexture functions */
 PFNGLDEPTHRANGEFPROC g_glDepthRangef;
 PFNGLCLEARDEPTHFPROC g_glClearDepthf;
 
@@ -154,7 +167,7 @@ PFNGLCLEARBUFFERFVPROC g_glClearBufferfv;
 PFNGLENABLEIPROC g_glEnablei;
 PFNGLDISABLEIPROC g_glDisablei;
 
-void initGLFunctions()
+void initGLFunctions(void)
 {
 #ifdef VC
 	void *gles2so = dlopen("/opt/vc/lib/libbrcmGLESv2.so", RTLD_NOW);
@@ -197,7 +210,7 @@ void initGLFunctions()
 	GL_GET_PROC_ADR(PFNGLFINISHPROC, glFinish);
 #ifdef OS_ANDROID
 #endif
-	// GL_GET_PROC_ADR
+	/* GL_GET_PROC_ADR */
 	ASSIGN_PROC_ADR(PFNGLCREATESHADERPROC, glCreateShader);
 	ASSIGN_PROC_ADR(PFNGLCOMPILESHADERPROC, glCompileShader);
 	ASSIGN_PROC_ADR(PFNGLSHADERSOURCEPROC, glShaderSource);

@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <vector>
 #include "FrameBuffer.h"
+#include "Graphics/ObjectHandle.h"
 #include "StereoFrames.h"
 #include "gSP.h"
 #include "DepthBuffer.h"
@@ -31,6 +32,12 @@
 #include "DisplayWindow.h"
 #include "gli_framebuffer.h"
 #include "gli_drawer.h"
+
+/* ObjectHandle's two handles, which no file of their own needs to hold */
+namespace graphics {
+ObjectHandle ObjectHandle::null;
+ObjectHandle ObjectHandle::defaultFramebuffer;
+}
 
 using namespace std;
 using namespace graphics;

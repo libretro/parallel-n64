@@ -1,4 +1,5 @@
 #include <stddef.h>
+#include <stdio.h>
 #include <string.h>
 #include <Config.h>
 #include <Graphics/Parameters.h>
