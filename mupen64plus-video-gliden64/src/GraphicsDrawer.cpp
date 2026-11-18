@@ -8,6 +8,7 @@
 #include "SoftwareRender.h"
 #include "GraphicsDrawer.h"
 #include "gli_drawer.h"
+#include "gli_framebuffer.h"
 #include "gli_blend.h"
 #include "TextureFilterHandler.h"
 #include "PostProcessor.h"
@@ -149,6 +150,50 @@ void gli_drawer_set_blend_mode(void) { TexrectGpu::setBlend(); }
 void gli_drawer_update_depth_compare(void) { TexrectGpu::depthCompare(); }
 void gli_drawer_screen_viewport(const FrameBuffer * _pBuffer) { TexrectGpu::screenViewport(_pBuffer); }
 void gli_drawer_update_scissor(FrameBuffer * _pBuffer) { TexrectGpu::updateScissor(_pBuffer); }
+
+/* What of the window and the drawer only C++ holds, for C (DisplayWindow.h) */
+
+/* the C++ face of the graphics context (Graphics/Context.h); what it
+ * holds is gli_ctx's */
+graphics::Context gfxContext;
+
+DisplayWindow & DisplayWindow::get()
+{
+	static DisplayWindow video;
+	return video;
+}
+
+void DisplayWindow::updateScale()
+{
+	gli_window_update_scale();
+}
+
+/* the drawer's data, made and dropped with the context */
+struct WindowGpu
+{
+	static void init() { dwnd().getDrawer()._initData(); }
+	static void destroy() { dwnd().getDrawer()._destroyData(); }
+};
+
+void gli_drawer_init_data(void)
+{
+	WindowGpu::init();
+}
+
+void gli_drawer_destroy_data(void)
+{
+	WindowGpu::destroy();
+}
+
+bool gli_drawer_is_drawing(void)
+{
+	return dwnd().getDrawer().getDrawingState() != DrawingState::Non;
+}
+
+bool gli_drawer_is_triangle(void)
+{
+	return dwnd().getDrawer().getDrawingState() == DrawingState::Triangle;
+}
 
 void gli_drawer_draw_rect(s32 _ulx, s32 _uly, s32 _lrx, s32 _lry)
 {

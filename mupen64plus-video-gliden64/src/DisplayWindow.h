@@ -32,7 +32,7 @@ extern gli_window g_window;
 void gli_window_swap_buffers(void);
 void gli_window_set_size_now(u32 _width, u32 _height);
 
-/* DisplayWindowGpu.cpp */
+/* DisplayWindowGpu.c; the drawer's in GraphicsDrawer.cpp */
 void gli_window_gpu_start(void);
 void gli_window_gpu_stop(void);
 void gli_drawer_init_data(void);

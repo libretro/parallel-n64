@@ -390,6 +390,7 @@ SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/Graphics/FramebufferFormats.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/GLFunctions.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/opengl_Utils.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/Graphics/ColorBufferReader.c
+SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/DisplayWindowGpu.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/opengl_ColorBufferReader.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/Graphics/VulkanContext/vk_ColorBufferReader.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/Combiner.c
@@ -468,7 +469,6 @@ endif
 INCFLAGS      += -I$(VIDEODIR_PARALLEL)/parallel-rdp/vulkan-headers/include -I$(VIDEODIR_PARALLEL)/parallel-rdp/parallel-rdp -I$(CORE_DIR)/src/api -I$(VIDEODIR_GLIDEN64)/src/Graphics/VulkanContext
 
 SOURCES_CXX   += \
-    $(VIDEODIR_GLIDEN64)/src/DisplayWindowGpu.cpp                                                 \
     $(VIDEODIR_GLIDEN64)/src/FrameBuffer.cpp                                                      \
     $(VIDEODIR_GLIDEN64)/src/BufferCopy/ColorBufferToRDRAM.cpp                                    \
     $(VIDEODIR_GLIDEN64)/src/BufferCopy/DepthBufferToRDRAM.cpp                                    \
