@@ -23,7 +23,7 @@ struct ColorCopyGeometry
 	u32 size;
 };
 
-class ColorBufferToRDRAM : private DeferredReadback<ColorCopyGeometry>::Ops
+class ColorBufferToRDRAM
 {
 public:
 	void init();
@@ -50,8 +50,11 @@ private:
 	void _copy(u32 _startAddress, u32 _endAddress, bool _sync);
 	void _write(const u8 * _pixels, u32 _stride, const ColorCopyGeometry & _g);
 
-	bool ready(u32 _slot, bool _wait) override;
-	void write(u32 _slot, const ColorCopyGeometry & _g) override;
+	bool ready(u32 _slot, bool _wait);
+	void write(u32 _slot, const ColorCopyGeometry & _g);
+	/* the readback queue's ops (DeferredReadback.h) */
+	static int readyOp(void * _p, u32 _slot, int _wait);
+	static void writeOp(void * _p, u32 _slot);
 
 	u32 _getRealWidth(u32 _viWidth);
 
@@ -66,7 +69,9 @@ private:
 
 	std::array<u32, 3> m_allowedRealWidths;
 	gli_cbr * m_bufferReader = nullptr;
-	DeferredReadback<ColorCopyGeometry> m_readback;
+	gli_readback m_readback;
+	/* what each slot's read was for */
+	ColorCopyGeometry m_geometry[GLI_READBACK_MAX_SLOTS];
 };
 
 void copyWhiteToRDRAM(FrameBuffer * _pBuffer);

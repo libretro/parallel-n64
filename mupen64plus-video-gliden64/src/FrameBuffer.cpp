@@ -817,7 +817,7 @@ void FrameBuffer_Init()
 	frameBufferList().init();
 	if (config.frameBufferEmulation.enable != 0) {
 	ColorBufferToRDRAM::get().init();
-	DepthBufferToRDRAM::get().init();
+	gli_d2r_init();
 	gli_r2cb_init();
 	}
 }
@@ -825,7 +825,7 @@ void FrameBuffer_Init()
 void FrameBuffer_Destroy()
 {
 	gli_r2cb_destroy();
-	DepthBufferToRDRAM::get().destroy();
+	gli_d2r_destroy();
 	ColorBufferToRDRAM::get().destroy();
 	frameBufferList().destroy();
 }
@@ -1301,7 +1301,7 @@ bool FrameBuffer_CopyDepthBuffer( u32 address )
 		return true;
 	}
 
-	if (DepthBufferToRDRAM::get().copyToRDRAM(address)) {
+	if (gli_d2r_copy_to_rdram(address)) {
 		fblist.depthBufferCopyRdram();
 		return true;
 	}
@@ -1311,7 +1311,7 @@ bool FrameBuffer_CopyDepthBuffer( u32 address )
 
 bool FrameBuffer_CopyDepthBufferChunk(u32 address)
 {
-	return DepthBufferToRDRAM::get().copyChunkToRDRAM(address);
+	return gli_d2r_copy_chunk_to_rdram(address);
 }
 
 void FrameBuffer_CopyFromRDRAM(u32 _address, bool _bCFB)

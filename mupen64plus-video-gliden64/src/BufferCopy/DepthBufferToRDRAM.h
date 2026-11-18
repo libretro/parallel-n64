@@ -1,57 +1,30 @@
 #ifndef DepthBufferToRDRAM_H
 #define DepthBufferToRDRAM_H
 
-#include <memory>
-#include <Graphics/ObjectHandle.h>
-#include "DeferredReadback.h"
-#include "../gli_rdram_write.h"
+/* The copy of a frame buffer's depth to the depth image in RDRAM. A full
+ * copy at the default Async or TripleBuffer colour copy setting is left in
+ * flight and written to RDRAM once the GPU has finished it, at a later
+ * copy, like the colour copies; a chunk copy, which the CPU is waiting on,
+ * writes out what is in flight and then its own at once. C89. */
 
-struct gli_prb;
+#include <boolean.h>
+#include "../Types.h"
 
-struct gli_tex;
-typedef struct gli_tex CachedTexture;
-struct FrameBuffer;
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-/* A full copy at the default Async or TripleBuffer colour copy setting is
- * left in flight and written to RDRAM once the GPU has finished it, at a
- * later copy, like the colour copies; a chunk copy, which the CPU is
- * waiting on, writes out what is in flight and then its own at once */
-class DepthBufferToRDRAM : private DeferredReadback<gli_rdram_write>::Ops
-{
-public:
-	void init();
-	void destroy();
+/* its read-back buffers, textures and frame buffer, made and dropped */
+void gli_d2r_init(void);
+void gli_d2r_destroy(void);
 
-	bool copyToRDRAM(u32 _address);
-	bool copyChunkToRDRAM(u32 _startAddress);
+/* the depth buffer of the frame buffer at @_address, all of it, or the
+ * 4K chunk at @_startAddress; whether it was copied */
+bool gli_d2r_copy_to_rdram(u32 _address);
+bool gli_d2r_copy_chunk_to_rdram(u32 _startAddress);
 
-	static DepthBufferToRDRAM & get();
+#ifdef __cplusplus
+}
+#endif
 
-private:
-	DepthBufferToRDRAM();
-	~DepthBufferToRDRAM();
-
-	bool _prepareCopy(u32& _startAddress, bool _copyChunk);
-	bool _copy(u32 _startAddress, u32 _endAddress, bool _sync);
-
-	/* DeferredReadback::Ops */
-	bool ready(u32 _slot, bool _wait) override;
-	void write(u32 _slot, const gli_rdram_write & _w) override;
-
-	enum { MaxSlots = 3 };
-
-	// Convert pixel from video memory to N64 depth buffer format.
-
-	graphics::ObjectHandle m_FBO;
-	/* one read-back buffer per read in flight, all allocated at init */
-	struct gli_prb * m_pbuf[MaxSlots];
-	u32 m_numSlots;
-	bool m_written;
-	DeferredReadback<gli_rdram_write, MaxSlots> m_readback;
-	u32 m_frameCount;
-	CachedTexture * m_pColorTexture;
-	CachedTexture * m_pDepthTexture;
-	FrameBuffer * m_pCurFrameBuffer;
-};
-
-#endif // DepthBufferToRDRAM_H
+#endif

@@ -40,6 +40,7 @@ ColorBufferToRDRAM::ColorBufferToRDRAM()
 	m_allowedRealWidths[0] = 320;
 	m_allowedRealWidths[1] = 480;
 	m_allowedRealWidths[2] = 640;
+	gli_readback_reset(&m_readback, 1);
 }
 
 ColorBufferToRDRAM::~ColorBufferToRDRAM()
@@ -125,7 +126,7 @@ void ColorBufferToRDRAM::_initFBTexture(void)
 	gfxContext.bindFramebuffer(graphics::bufferTarget::DRAW_FRAMEBUFFER(), graphics::ObjectHandle::defaultFramebuffer);
 
 	m_bufferReader = gfxContext.createColorBufferReader(m_pTexture);
-	m_readback.reset(m_bufferReader->numSlots);
+	gli_readback_reset(&m_readback, m_bufferReader->numSlots);
 }
 
 void ColorBufferToRDRAM::_destroyFBTexure(void)
@@ -133,7 +134,7 @@ void ColorBufferToRDRAM::_destroyFBTexure(void)
 	/* reads still in flight die with the reader's buffers */
 	gli_cbr_delete(m_bufferReader);
 	m_bufferReader = nullptr;
-	m_readback.reset(1);
+	gli_readback_reset(&m_readback, 1);
 
 	if (m_pTexture != nullptr) {
 		gli_textures_remove_fb(m_pTexture);
@@ -284,17 +285,30 @@ void ColorBufferToRDRAM::_copy(u32 _startAddress, u32 _endAddress, bool _sync)
 	/* An asynchronous copy writes the reads the GPU has finished and
 	 * leaves this one in flight; a synchronous one writes those first,
 	 * waiting for them, then its own. */
-	const u32 slot = _sync ? m_readback.drain(*this) : m_readback.begin(*this);
+	const gli_readback_ops ops = { readyOp, writeOp, this };
+	const u32 slot = _sync ? gli_readback_drain(&m_readback, &ops) : gli_readback_begin(&m_readback, &ops);
 	m_bufferReader->ops->read_to_slot(m_bufferReader, slot, x0, y0, g.height, g.size);
 	frameBufferList().setCurrentDrawBuffer();
 	if (_sync) {
 		m_bufferReader->ops->slot_ready(m_bufferReader, slot, 1);
 		write(slot, g);
 	} else {
-		m_readback.issued(g);
+		m_geometry[slot] = g;
+		gli_readback_issued(&m_readback);
 	}
 
 	gDP.changed |= CHANGED_SCISSOR;
+}
+
+int ColorBufferToRDRAM::readyOp(void * _p, u32 _slot, int _wait)
+{
+	return static_cast<ColorBufferToRDRAM *>(_p)->ready(_slot, _wait != 0);
+}
+
+void ColorBufferToRDRAM::writeOp(void * _p, u32 _slot)
+{
+	ColorBufferToRDRAM * p = static_cast<ColorBufferToRDRAM *>(_p);
+	p->write(_slot, p->m_geometry[_slot]);
 }
 
 bool ColorBufferToRDRAM::ready(u32 _slot, bool _wait)
