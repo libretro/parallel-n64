@@ -4,6 +4,7 @@
 #include "opengl_GLInfo.h"
 #include "opengl_CachedFunctions.h"
 #include "opengl_BufferManipulationObjectFactory.h"
+#include "opengl_TextureManipulationObjectFactory.h"
 
 extern "C" {
 /* glsm holds the state across frames (glsmsym.h) */
@@ -144,6 +145,17 @@ extern "C" void gli_gl_enable_cached(void * _cache, int _enable)
 	static_cast<CachedEnable *>(_cache)->enable(_enable != 0);
 }
 
+/* for C: the textures (opengl_TextureManipulationObjectFactory.h) */
+extern "C" void gli_gl_bind_texture(void * _cache, u32 _unit, u32 _target, u32 _name)
+{
+	static_cast<CachedBindTexture *>(_cache)->bind(graphics::Parameter(_unit), graphics::Parameter(_target), graphics::ObjectHandle(_name));
+}
+
+extern "C" void gli_gl_bind_texture_reset(void * _cache)
+{
+	static_cast<CachedBindTexture *>(_cache)->reset();
+}
+
 /*---------------CachedBindTexture-------------*/
 
 void CachedBindTexture::bind(Parameter _tmuIndex, Parameter _target, ObjectHandle _name)
@@ -262,7 +274,6 @@ void CachedFunctions::reset()
 	for (auto & it : m_enables)
 		it.second.reset();
 
-	m_texparams.clear();
 	m_bindTexture.reset();
 	m_bindFramebuffer.reset();
 	m_bindRenderbuffer.reset();
@@ -372,7 +383,3 @@ CachedTextureUnpackAlignment * CachedFunctions::getCachedTextureUnpackAlignment(
 	return &m_unpackAlignment;
 }
 
-TextureParams * CachedFunctions::getTexParams()
-{
-	return &m_texparams;
-}

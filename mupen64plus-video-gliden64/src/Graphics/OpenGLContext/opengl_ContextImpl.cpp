@@ -113,7 +113,7 @@ namespace graphics {
 /* GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT is part of GL_EXT_texture_filter_
  * anisotropic. The per-texture parameter constant
  * GL_TEXTURE_MAX_ANISOTROPY_EXT (0x84FE) gets a similar fallback
- * #define in opengl_TextureManipulationObjectFactory.cpp; we need
+ * #define in opengl_TextureManipulationObjectFactory.c; we need
  * the maximum-supported-anisotropy query constant (0x84FF) here.
  */
 #ifndef GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT
@@ -154,11 +154,7 @@ void ContextImpl::init()
 		m_cachedFunctions.reset(new CachedFunctions(m_glInfo));
 
 	{
-		TextureManipulationObjectFactory textureObjectsFactory(m_glInfo, *m_cachedFunctions.get());
-		m_createTexture.reset(textureObjectsFactory.getCreate2DTexture());
-		m_init2DTexture.reset(textureObjectsFactory.getInit2DTexture());
-		m_update2DTexture.reset(textureObjectsFactory.getUpdate2DTexture());
-		m_set2DTextureParameters.reset(textureObjectsFactory.getSet2DTextureParameters());
+		gli_gl_textures_init(&m_textures, &m_glInfo, m_cachedFunctions->getCachedBindTexture());
 	}
 
 	{
@@ -185,9 +181,7 @@ void ContextImpl::init()
 
 void ContextImpl::destroy()
 {
-	m_createTexture.reset();
-	m_init2DTexture.reset();
-	m_set2DTextureParameters.reset();
+	gli_gl_textures_free(&m_textures);
 
 	if (m_graphicsDrawer != nullptr)
 		m_graphicsDrawer->ops->destroy(m_graphicsDrawer);
@@ -315,31 +309,27 @@ void ContextImpl::setPolygonOffset(f32 _factor, f32 _units)
 
 graphics::ObjectHandle ContextImpl::createTexture(graphics::Parameter _target)
 {
-	return m_createTexture->createTexture(_target);
+	return graphics::ObjectHandle(gli_gl_create_texture(&m_textures, u32(_target)));
 }
 
 void ContextImpl::deleteTexture(graphics::ObjectHandle _name)
 {
-	u32 glName(_name);
-	glDeleteTextures(1, &glName);
-	m_init2DTexture->reset(_name);
-
-	m_cachedFunctions->getTexParams()->erase(u32(_name));
+	gli_gl_delete_texture(&m_textures, u32(_name));
 }
 
 void ContextImpl::init2DTexture(const gli_init_texture_params & _params)
 {
-	m_init2DTexture->init2DTexture(_params);
+	gli_gl_init_texture(&m_textures, &_params);
 }
 
 void ContextImpl::update2DTexture(const gli_update_texture_params & _params)
 {
-	m_update2DTexture->update2DTexture(_params);
+	gli_gl_update_texture(&m_textures, &_params);
 }
 
 void ContextImpl::setTextureParameters(const gli_tex_parameters & _parameters)
 {
-	m_set2DTextureParameters->setTextureParameters(_parameters);
+	gli_gl_set_texture_parameters(&m_textures, &_parameters);
 }
 
 void ContextImpl::bindTexture(const gli_bind_texture_params & _params) {

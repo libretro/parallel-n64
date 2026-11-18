@@ -160,10 +160,7 @@ namespace opengl {
 
 	private:
 		std::unique_ptr<CachedFunctions> m_cachedFunctions;
-		std::unique_ptr<Create2DTexture> m_createTexture;
-		std::unique_ptr<Init2DTexture> m_init2DTexture;
-		std::unique_ptr<Update2DTexture> m_update2DTexture;
-		std::unique_ptr<Set2DTextureParameters> m_set2DTextureParameters;
+		gli_gl_textures m_textures = {};
 
 		gli_gl_buffer_objects m_bufferObjects;
 		gli_fb_formats m_fbTexFormats;
