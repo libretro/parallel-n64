@@ -102,8 +102,6 @@ namespace graphics {
 		BufferTargetParam READ_FRAMEBUFFER(GLI_BT_READ_FRAMEBUFFER);
 	}
 }
-#include "opengl_BufferedDrawer.h"
-#include "opengl_UnbufferedDrawer.h"
 #include "opengl_ColorBufferReader.h"
 #ifdef OS_ANDROID
 #endif
@@ -180,9 +178,9 @@ void ContextImpl::init()
 
 	{
 		if ((m_glInfo.isGLESX && (m_glInfo.bufferStorage && m_glInfo.majorVersion * 10 + m_glInfo.minorVersion >= 32)) || !m_glInfo.isGLESX)
-			m_graphicsDrawer.reset(new BufferedDrawer(m_glInfo, m_cachedFunctions->getCachedVertexAttribArray(), m_cachedFunctions->getCachedBindBuffer()));
+			m_graphicsDrawer = gli_gl_drawer_new_buffered(&m_glInfo, m_cachedFunctions->getCachedVertexAttribArray(), m_cachedFunctions->getCachedBindBuffer());
 		else
-			m_graphicsDrawer.reset(new UnbufferedDrawer(m_glInfo, m_cachedFunctions->getCachedVertexAttribArray()));
+			m_graphicsDrawer = gli_gl_drawer_new_unbuffered(&m_glInfo, m_cachedFunctions->getCachedVertexAttribArray());
 	}
 
 	resetCombinerProgramBuilder();
@@ -198,7 +196,9 @@ void ContextImpl::destroy()
 	m_createRenderbuffer.reset();
 	m_initRenderbuffer.reset();
 	m_addFramebufferRenderTarget.reset();
-	m_graphicsDrawer.reset();
+	if (m_graphicsDrawer != nullptr)
+		m_graphicsDrawer->ops->destroy(m_graphicsDrawer);
+	m_graphicsDrawer = nullptr;
 	m_combinerProgramBuilder.reset();
 
 	m_cachedFunctions.reset();
@@ -585,17 +585,17 @@ void ContextImpl::resetShaderProgram()
 
 void ContextImpl::drawTriangles(const gli_draw_triangles_params & _params)
 {
-	m_graphicsDrawer->drawTriangles(_params);
+	m_graphicsDrawer->ops->draw_triangles(m_graphicsDrawer, &_params);
 }
 
 void ContextImpl::drawRects(const gli_draw_rects_params & _params)
 {
-	m_graphicsDrawer->drawRects(_params);
+	m_graphicsDrawer->ops->draw_rects(m_graphicsDrawer, &_params);
 }
 
 void ContextImpl::drawLine(f32 _width, SPVertex * _vertices)
 {
-	m_graphicsDrawer->drawLine(_width, _vertices);
+	m_graphicsDrawer->ops->draw_line(m_graphicsDrawer, _width, _vertices);
 }
 
 

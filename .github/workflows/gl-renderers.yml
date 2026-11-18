@@ -11,7 +11,8 @@
 # geometry once its draws moved to the ring's second segment, and the
 # full ring never got there in CI. check-core holds the ring's placement
 # and the element the draws index from to what was written
-# (test_gliden64_ring_segments). test_glsm_draw_target(_gles) holds the
+# (test_gliden64_ring_segments), and the drawers' draws to what they
+# were given, on a GL stub (test_gliden64_gl_drawer). test_glsm_draw_target(_gles) holds the
 # frame Glide64, Rice and glN64 swap to the one the frontend presents,
 # not the next one they go on to draw over it, through the blit and
 # through GLES 2's texture copy; test_glsm_state(_gles) holds the GL
@@ -58,10 +59,11 @@ jobs:
           sudo apt-get install -y -qq build-essential nasm git ca-certificates curl python3 \
             libgl-dev libegl-dev libgles-dev libegl-mesa0 libgl1-mesa-dri mesa-vulkan-drivers libvulkan1 spirv-tools
 
-      - name: Ring unit test
+      - name: Ring and drawer unit tests
         run: |
-          make platform=unix test_gliden64_ring_segments
+          make platform=unix test_gliden64_ring_segments test_gliden64_gl_drawer
           ./test_gliden64_ring_segments
+          ./test_gliden64_gl_drawer
 
       - name: Build core and hosts
         run: |

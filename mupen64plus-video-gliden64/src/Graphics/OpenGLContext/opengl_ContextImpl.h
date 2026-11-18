@@ -5,7 +5,7 @@
 #include "opengl_BufferManipulationObjectFactory.h"
 #include "opengl_GLInfo.h"
 #include "opengl_CachedFunctions.h"
-#include "opengl_GraphicsDrawer.h"
+#include "opengl_Drawer.h"
 
 namespace glsl {
 	class CombinerProgramBuilder;
@@ -173,7 +173,7 @@ namespace opengl {
 		std::unique_ptr<BlitFramebuffers> m_blitFramebuffers;
 		gli_fb_formats m_fbTexFormats;
 
-		std::unique_ptr<GraphicsDrawer> m_graphicsDrawer;
+		gli_gl_drawer * m_graphicsDrawer = nullptr;
 
 		std::unique_ptr<glsl::CombinerProgramBuilder> m_combinerProgramBuilder;
 		std::unique_ptr<glsl::SpecialShadersFactory> m_specialShadersFactory;

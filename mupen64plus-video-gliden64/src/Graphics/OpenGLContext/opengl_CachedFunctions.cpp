@@ -120,7 +120,8 @@ void CachedBindBuffer::bind(graphics::Parameter _target, graphics::ObjectHandle 
 		glBindBuffer(GLenum(_target), GLuint(_name));
 }
 
-/* for C: the color buffer readers (opengl_ColorBufferReader.h) */
+/* for C: the color buffer readers and the drawers (opengl_ColorBufferReader.h,
+ * opengl_Drawer.h) */
 extern "C" void gli_gl_bind_buffer(void * _cache, u32 _target, u32 _name)
 {
 	static_cast<CachedBindBuffer *>(_cache)->bind(graphics::Parameter(_target), graphics::ObjectHandle(_name));
@@ -208,25 +209,6 @@ void CachedClearColor::setClearColor(f32 _red, f32 _green, f32 _blue, f32 _alpha
 		glClearColor(_red, _green, _blue, _alpha);
 }
 
-/*---------------CachedVertexAttribArray-------------*/
-
-void CachedVertexAttribArray::enableVertexAttribArray(u32 _index, bool _enable)
-{
-	if (m_attribs[_index] == Parameter(u32(_enable)))
-		return;
-	m_attribs[_index] = Parameter(u32(_enable));
-
-	if (_enable)
-		glEnableVertexAttribArray(_index);
-	else
-		glDisableVertexAttribArray(_index);
-}
-
-void CachedVertexAttribArray::reset()
-{
-	m_attribs.fill(Parameter());
-}
-
 /*---------------CachedUseProgram-------------*/
 
 void CachedUseProgram::useProgram(graphics::ObjectHandle _program)
@@ -247,6 +229,7 @@ void CachedTextureUnpackAlignment::setTextureUnpackAlignment(s32 _param)
 
 CachedFunctions::CachedFunctions(const GLInfo & _glinfo)
 {
+	gli_gl_attribs_reset(&m_attribArray);
 	if (_glinfo.isGLESX) {
 		// Disable parameters, not avalible for GLESX
 		m_enables.emplace(GL_DEPTH_CLAMP, Parameter());
@@ -275,7 +258,7 @@ void CachedFunctions::reset()
 	m_blending.reset();
 	m_blendColor.reset();
 	m_clearColor.reset();
-	m_attribArray.reset();
+	gli_gl_attribs_reset(&m_attribArray);
 	m_useProgram.reset();
 }
 
@@ -357,7 +340,7 @@ CachedClearColor * CachedFunctions::getCachedClearColor()
 	return &m_clearColor;
 }
 
-CachedVertexAttribArray * CachedFunctions::getCachedVertexAttribArray()
+gli_gl_attribs * CachedFunctions::getCachedVertexAttribArray()
 {
 	return &m_attribArray;
 }

@@ -5,6 +5,7 @@
 #include <Graphics/Parameter.h>
 #include "opengl_GLInfo.h"
 #include "opengl_Attributes.h"
+#include "opengl_AttribArrays.h"
 
 namespace opengl {
 
@@ -188,16 +189,6 @@ namespace opengl {
 		void setClearColor(f32 _red, f32 _green, f32 _blue, f32 _alpha);
 	};
 
-	class CachedVertexAttribArray {
-	public:
-		CachedVertexAttribArray() = default;
-		void enableVertexAttribArray(u32 _index, bool _enable);
-		void reset();
-
-	private:
-		std::array<graphics::Parameter, MaxAttribIndex> m_attribs;
-	};
-
 	class CachedUseProgram : public Cached1<graphics::ObjectHandle>
 	{
 	public:
@@ -258,7 +249,7 @@ namespace opengl {
 
 		CachedClearColor * getCachedClearColor();
 
-		CachedVertexAttribArray * getCachedVertexAttribArray();
+		gli_gl_attribs * getCachedVertexAttribArray();
 
 		CachedUseProgram * getCachedUseProgram();
 
@@ -284,7 +275,7 @@ namespace opengl {
 		CachedBlendColor m_blendColor;
 		CachedBlendingSeparate m_blendingSeparate;
 		CachedClearColor m_clearColor;
-		CachedVertexAttribArray m_attribArray;
+		gli_gl_attribs m_attribArray;
 		CachedUseProgram m_useProgram;
 		CachedTextureUnpackAlignment m_unpackAlignment;
 	};
