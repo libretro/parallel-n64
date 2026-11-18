@@ -1,5 +1,17 @@
 # parallel-RDP on Mesa's software Vulkan driver (lavapipe), no GPU.
 #
+# tools/lrhost_vk runs krom's RDP tests through the core and every dumped
+# frame is compared with tools/ci/parallel_rdp_expected.json, with
+# threaded and single-threaded command processing, for Vulkan negotiation
+# v2 (through the frontend's device wrapper) and v1, with the shader
+# variants for devices without 8-bit SSBO storage, at 2x, and for a
+# frontend temporal upscaler (jitter, motion vectors, depth); upscaled
+# and downscaled frames must be the upscaled ones halved as a blit halves
+# them, every byte; and with 128 MiB storage buffer bindings each
+# upscaling setting must render at the factor that fits. The shader bank
+# check needs no GPU: those variants must not use 8-bit storage; nor does
+# the upscaler shaders' check: the SPIR-V committed must be current.
+#
 # A second session must build ahead the pipelines the first one built:
 # none on the frame's threads, with the driver's cache there or gone, and
 # from a list that is damaged, cut short or another ROM's it must recover.
@@ -32,15 +44,40 @@ jobs:
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq build-essential nasm git ca-certificates curl python3 \
-            mesa-vulkan-drivers libvulkan1 libgl-dev
+            mesa-vulkan-drivers libvulkan1 libgl-dev spirv-tools vulkan-validationlayers
 
       - name: Build
         run: |
           make -j$(nproc) $CORE_FLAGS
           make platform=unix HAVE_PARALLEL=1 lrhost_vk
 
+      - name: Source checks
+        run: |
+          python3 tools/rdp_no_storage_8bit_bank.py --check
+          python3 tools/ci/check_cxx_runtime.py
+          python3 tools/ci/check_stale_deps.py
+          python3 tools/gen_upscaler_shaders.py --check
+
+      - name: krom frames
+        run: python3 tools/ci/parallel_rdp_regress.py --core ./parallel_n64_libretro.so --host ./lrhost_vk --out parallel-rdp-artifacts
+
+      - name: Synchronization validation
+        run: python3 tools/ci/parallel_rdp_syncval.py --core ./parallel_n64_libretro.so --host ./lrhost_vk
+
+      - name: Downscaled frames
+        run: python3 tools/ci/parallel_rdp_downscale.py --core ./parallel_n64_libretro.so --host ./lrhost_vk
+
+      - name: Storage binding fit
+        run: python3 tools/ci/parallel_rdp_binding_fit.py --core ./parallel_n64_libretro.so --host ./lrhost_vk
+
       - name: Pipelines built ahead
         run: python3 tools/ci/parallel_rdp_pipelines.py --core ./parallel_n64_libretro.so --host ./lrhost_vk --roms krom-roms
 
       - name: RDRAM uploads
         run: python3 tools/ci/parallel_rdp_rdram.py --core ./parallel_n64_libretro.so --host ./lrhost_vk --roms krom-roms
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: parallel-rdp-artifacts
+          path: parallel-rdp-artifacts

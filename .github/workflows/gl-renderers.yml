@@ -1,5 +1,10 @@
-# The OpenGL renderers on Mesa's llvmpipe through headless EGL, no GPU,
-# as the GitLab test-gl-renderers-linux-x64 job runs them.
+# The OpenGL renderers on Mesa's llvmpipe through headless EGL, no GPU.
+#
+# check_vtables.py fails on a class that declares a virtual function
+# nobody defines (GCC 16's MinGW link failed on two such Rice classes).
+# tools/lrhost runs krom's tests through angrylion with and without a lent
+# software framebuffer, for each VI output: the pictures must match, and
+# the modes that can draw into the lent buffer must.
 #
 # tools/lrhost_gl runs krom's RDP tests through Glide64, GLideN64, Rice
 # and glN64 (tools/ci/gl_renderers.py): each must run to the end and draw;
@@ -59,6 +64,10 @@ jobs:
           sudo apt-get install -y -qq build-essential nasm git ca-certificates curl python3 \
             libgl-dev libegl-dev libgles-dev libegl-mesa0 libgl1-mesa-dri mesa-vulkan-drivers libvulkan1 spirv-tools
 
+      - name: Virtual functions defined
+        if: matrix.sanitizer == ''
+        run: python3 tools/ci/check_vtables.py
+
       - name: Ring and drawer unit tests
         run: |
           make platform=unix test_gliden64_ring_segments test_gliden64_gl_drawer
@@ -68,7 +77,7 @@ jobs:
       - name: Build core and hosts
         run: |
           make -j$(nproc) $CORE_FLAGS SANITIZER=${{ matrix.sanitizer }}
-          make platform=unix SANITIZER=${{ matrix.sanitizer }} lrhost_gl $GL_TESTS
+          make platform=unix SANITIZER=${{ matrix.sanitizer }} lrhost_gl lrhost $GL_TESTS
 
       - name: GL unit tests
         run: |
@@ -120,3 +129,6 @@ jobs:
 
       - name: GLideN64 on Vulkan for the frontend's temporal upscaler
         run: env ${{ matrix.sanitizer_env }} python3 tools/ci/gliden64_upscaler.py --core ./parallel_n64_libretro.so --vk ./lrhost_vk
+
+      - name: angrylion into a lent framebuffer
+        run: env ${{ matrix.sanitizer_env }} python3 tools/ci/angrylion_lend.py --core ./parallel_n64_libretro.so --host ./lrhost

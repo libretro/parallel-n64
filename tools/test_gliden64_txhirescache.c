@@ -82,7 +82,13 @@ static void texels(unsigned char *t, unsigned n, int alpha, int grey)
       else if (alpha == -2)
          t[4 * i + 3] = (rnd() & 3) ? 255 : 0;
       else
-         t[4 * i + 3] = (unsigned char)((rnd() % 3) * 128 - ((rnd() % 3) == 2));
+      {
+         /* one draw after the other: C leaves the order of two calls in
+          * one expression to the compiler */
+         const unsigned level = rnd() % 3;
+         const unsigned dip = rnd() % 3;
+         t[4 * i + 3] = (unsigned char)(level * 128 - (dip == 2));
+      }
    }
 }
 
@@ -273,7 +279,11 @@ static void dumped(uint16 gfmt, int n64fmt, uint64 crc, const char *name, const 
    int w, h, fmt;
    uint8 *img;
    for (i = 0; i < 7 * 3; i++)
-      tex[i] = rnd() | (rnd() << 24);
+   {
+      /* the low bits drawn first, as above */
+      const uint32 lo = rnd();
+      tex[i] = lo | (rnd() << 24);
+   }
    if (gfmt == 0x8058)
       memcpy(want, tex, sizeof(want));
    else
@@ -356,6 +366,14 @@ int main(int argc, char **argv)
    {
       printf("FAIL: the textures as read: %08x, want %08x\n", (unsigned)crc, WANT);
       failures++;
+      /* each texture as read, to see which one differs */
+      if (!verbose)
+      {
+         verbose = 1;
+         write_pack();
+         run(32, RICE_HIRESTEXTURES, "32 bits");
+         remove_pack();
+      }
    }
    printf("test_gliden64_txhirescache: %s\n", failures ? "FAIL" : "ok");
    return failures != 0;
