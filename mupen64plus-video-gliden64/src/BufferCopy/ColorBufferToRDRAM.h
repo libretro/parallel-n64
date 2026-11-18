@@ -1,79 +1,30 @@
 #ifndef ColorBufferToRDRAM_H
 #define ColorBufferToRDRAM_H
 
-#include <memory>
-#include <array>
-#include <vector>
-#include <Graphics/ObjectHandle.h>
-#include "DeferredReadback.h"
-#include <Graphics/ColorBufferReader.h>
+/* The copy of a colour frame buffer to its image in RDRAM. With a reader
+ * that has a ring of buffers, an asynchronous copy is left in flight and
+ * written to RDRAM once the GPU has finished it, at a later copy; a
+ * synchronous one, or a chunk the CPU is waiting on, writes out what is in
+ * flight and then its own at once. C89. */
 
-struct gli_tex;
-typedef struct gli_tex CachedTexture;
-struct FrameBuffer;
+#include <boolean.h>
+#include "../Types.h"
 
-/* What a colour copy to RDRAM was read for. */
-struct ColorCopyGeometry
-{
-	u32 startAddress;
-	u32 numPixels;
-	u32 bufferAddress;
-	u32 width;
-	u32 height;
-	u32 size;
-};
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-class ColorBufferToRDRAM
-{
-public:
-	void init();
-	void destroy();
+/* its frame buffer made and, with its texture and reader, dropped */
+void gli_c2r_init(void);
+void gli_c2r_destroy(void);
 
-	void copyToRDRAM(u32 _address, bool _sync);
-	void copyChunkToRDRAM(u32 _startAddress);
+/* the frame buffer at @_address, all of it, or the 4K chunk at
+ * @_startAddress */
+void gli_c2r_copy_to_rdram(u32 _address, bool _sync);
+void gli_c2r_copy_chunk_to_rdram(u32 _startAddress);
 
-	static ColorBufferToRDRAM & get();
+#ifdef __cplusplus
+}
+#endif
 
-private:
-	ColorBufferToRDRAM();
-	ColorBufferToRDRAM(const ColorBufferToRDRAM &) = delete;
-	virtual ~ColorBufferToRDRAM();
-
-	CachedTexture * m_pTexture;
-
-	void _initFBTexture(void);
-
-	void _destroyFBTexure(void);
-
-	bool _prepareCopy(u32& _startAddress);
-
-	void _copy(u32 _startAddress, u32 _endAddress, bool _sync);
-	void _write(const u8 * _pixels, u32 _stride, const ColorCopyGeometry & _g);
-
-	bool ready(u32 _slot, bool _wait);
-	void write(u32 _slot, const ColorCopyGeometry & _g);
-	/* the readback queue's ops (DeferredReadback.h) */
-	static int readyOp(void * _p, u32 _slot, int _wait);
-	static void writeOp(void * _p, u32 _slot);
-
-	u32 _getRealWidth(u32 _viWidth);
-
-	// Convert pixel from video memory to N64 buffer format.
-
-	graphics::ObjectHandle m_FBO;
-	FrameBuffer * m_pCurFrameBuffer;
-	u32 m_frameCount;
-	u32 m_startAddress;
-
-	u32 m_lastBufferWidth;
-
-	std::array<u32, 3> m_allowedRealWidths;
-	gli_cbr * m_bufferReader = nullptr;
-	gli_readback m_readback;
-	/* what each slot's read was for */
-	ColorCopyGeometry m_geometry[GLI_READBACK_MAX_SLOTS];
-};
-
-void copyWhiteToRDRAM(FrameBuffer * _pBuffer);
-
-#endif // ColorBufferToRDRAM
+#endif

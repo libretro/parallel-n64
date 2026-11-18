@@ -816,7 +816,7 @@ void FrameBuffer_Init()
 {
 	frameBufferList().init();
 	if (config.frameBufferEmulation.enable != 0) {
-	ColorBufferToRDRAM::get().init();
+	gli_c2r_init();
 	gli_d2r_init();
 	gli_r2cb_init();
 	}
@@ -826,7 +826,7 @@ void FrameBuffer_Destroy()
 {
 	gli_r2cb_destroy();
 	gli_d2r_destroy();
-	ColorBufferToRDRAM::get().destroy();
+	gli_c2r_destroy();
 	frameBufferList().destroy();
 }
 
@@ -1281,12 +1281,12 @@ void gli_fb_activate_texture_bg(u32 t, u32 _frameBufferAddress)
 
 void FrameBuffer_CopyToRDRAM(u32 _address, bool _sync)
 {
-	ColorBufferToRDRAM::get().copyToRDRAM(_address, _sync);
+	gli_c2r_copy_to_rdram(_address, _sync);
 }
 
 void FrameBuffer_CopyChunkToRDRAM(u32 _address)
 {
-	ColorBufferToRDRAM::get().copyChunkToRDRAM(_address);
+	gli_c2r_copy_chunk_to_rdram(_address);
 }
 
 bool FrameBuffer_CopyDepthBuffer( u32 address )
@@ -1295,7 +1295,7 @@ bool FrameBuffer_CopyDepthBuffer( u32 address )
 	FrameBuffer * pCopyBuffer = fblist.getCopyBuffer();
 	if (pCopyBuffer != nullptr) {
 		// This code is mainly to emulate Zelda MM camera.
-		ColorBufferToRDRAM::get().copyToRDRAM(pCopyBuffer->m_startAddress, true);
+		gli_c2r_copy_to_rdram(pCopyBuffer->m_startAddress, true);
 		pCopyBuffer->m_RdramCopySize = 0; // To disable validity check by RDRAM content. CPU may change content of the buffer for some unknown reason.
 		fblist.setCopyBuffer(nullptr);
 		return true;
@@ -1423,6 +1423,11 @@ bool gli_fb_rendered_uncopied(const FrameBuffer * _pBuffer)
 void gli_fb_copy_rdram(FrameBuffer * _pBuffer)
 {
 	_pBuffer->copyRdram();
+}
+
+void gli_fb_resolve(FrameBuffer * _pBuffer)
+{
+	_pBuffer->resolveMultisampledTexture();
 }
 
 bool gli_fb_depth_width_differs(u32 _address, u32 _width)

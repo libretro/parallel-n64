@@ -63,6 +63,8 @@ u32 gli_fb_width(const struct FrameBuffer *_pBuffer);
 bool gli_fb_is_valid_scanout(struct FrameBuffer *_pBuffer);
 bool gli_fb_rendered_uncopied(const struct FrameBuffer *_pBuffer);
 void gli_fb_copy_rdram(struct FrameBuffer *_pBuffer);
+/* resolves a multisampled buffer's texture */
+void gli_fb_resolve(struct FrameBuffer *_pBuffer);
 bool gli_fb_depth_width_differs(u32 _address, u32 _width);
 void gli_fb_vi_resized(u32 _widthPrev, u32 _width);
 void gli_fb_save_cpu_buffer(u32 _address, u32 _size, u32 _width);
@@ -87,6 +89,7 @@ void gli_window_update_scale(void);
 bool gli_window_is_adjust_screen(void);
 f32 gli_window_adjust_scale(void);
 u32 gli_window_swap_count(void);
+u32 gli_window_width(void);
 s32 gli_gfx_max_texture_size(void);
 void gli_gfx_touch_error(void);
 void gli_gfx_clear_color(void);

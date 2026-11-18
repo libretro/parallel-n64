@@ -951,6 +951,16 @@ void GraphicsDrawer::blitOrCopyTexturedRect(const BlitOrCopyRectParams & _params
 	copyTexturedRect(_params);
 }
 
+void gli_drawer_copy_texrect(const gli_copy_rect * _p, CachedTexture * _tex, u32 _filter)
+{
+	GraphicsDrawer::CopyRectParams params;
+	static_cast<gli_copy_rect &>(params) = *_p;
+	params.tex[0] = _tex;
+	params.combiner = combinerTexrectCopyProgram();
+	params.filter = graphics::TextureParam(_filter);
+	dwnd().getDrawer().copyTexturedRect(params);
+}
+
 void GraphicsDrawer::_initStates()
 {
 	gfxContext.enable(enable::CULL_FACE, false);

@@ -117,6 +117,11 @@ typedef struct gli_copy_rect
  * coordinates s0, t0 */
 void gli_drawer_copy_rect(RectVertex *_v, const gli_copy_rect *_p);
 
+/* Draws copy @_p of texture @_tex, with @_filter, into the frame buffer
+ * bound to draw, with the texrect copy program: where the context cannot
+ * blit (GraphicsDrawer.cpp) */
+void gli_drawer_copy_texrect(const gli_copy_rect *_p, struct gli_tex *_tex, u32 _filter);
+
 /* Texrects done on the CPU, straight into RDRAM */
 /* Whether tile 0 was block loaded from the depth image */
 int gli_texrect_is_depth_copy(void);

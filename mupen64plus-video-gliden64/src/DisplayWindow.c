@@ -154,6 +154,11 @@ u32 gli_window_swap_count(void)
 	return g_window.buffersSwapCount;
 }
 
+u32 gli_window_width(void)
+{
+	return g_window.width;
+}
+
 bool gli_window_is_adjust_screen(void)
 {
 	return g_window.adjustScreen;
