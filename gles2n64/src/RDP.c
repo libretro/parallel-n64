@@ -14,6 +14,8 @@
 
 #include "../../Graphics/RSP/gSP_state.h"
 #include "../../Graphics/RDP/RDP_state.h"
+#include "../../Graphics/RDP/gDP_state.h"
+#include "../../Graphics/rdp_coverage.h"
 
 enum
 {
@@ -96,6 +98,83 @@ void RDP_SetFogColor( uint32_t w0, uint32_t w1 )
 void RDP_SetFillColor( uint32_t w0, uint32_t w1 )
 {
     gln64gDPSetFillColor( w1 );
+}
+
+/* ---- coverage the game reads back (Graphics/rdp_coverage.h) ---- */
+
+/* a 16-bit texel of tile @_ctx from TMEM: its rows are the tile's line of
+ * 64-bit words apart, and odd rows have their 32-bit words swapped */
+static uint16_t tmem_texel16(const void *_ctx, uint32_t _s, uint32_t _t)
+{
+   const struct gDPTile *tile = (const struct gDPTile*)_ctx;
+   const uint8_t *tmem = (const uint8_t*)TMEM;
+   const uint32_t addr = (((tile->tmem + tile->line * _t) << 3) + ((_s ^ ((_t & 1) << 1)) << 1)) & 0xFFF;
+   uint16_t v;
+   memcpy(&v, tmem + addr, 2);
+   return v;
+}
+
+static void clip_to_scissor(int32_t *_ulx, int32_t *_uly, int32_t *_lrx, int32_t *_lry)
+{
+   if (*_ulx < (int32_t)gDP.scissor.ulx) *_ulx = (int32_t)gDP.scissor.ulx;
+   if (*_uly < (int32_t)gDP.scissor.uly) *_uly = (int32_t)gDP.scissor.uly;
+   if (*_lrx > (int32_t)gDP.scissor.lrx) *_lrx = (int32_t)gDP.scissor.lrx;
+   if (*_lry > (int32_t)gDP.scissor.lry) *_lry = (int32_t)gDP.scissor.lry;
+}
+
+/* A fill rectangle in one cycle or two, in a mode that may draw coverage
+ * (gln64gDPFillRectangle): if it does, the coverage, as full coverage, in
+ * RDRAM (the GPU's image of it keeps none, and a game can read it) */
+RDPCVG_COLD void RDP_FillRectCoverage(int32_t _ulx, int32_t _uly, int32_t _lrx, int32_t _lry)
+{
+   uint32_t r, g, b;
+   if (gDP.otherMode.cycleType != G_CYC_1CYCLE || !rdpcvg_draws_coverage(gDP.otherMode.l))
+      return;
+   r = (uint32_t)(gDP.blendColor.r * 255.0f + 0.5f);
+   g = (uint32_t)(gDP.blendColor.g * 255.0f + 0.5f);
+   b = (uint32_t)(gDP.blendColor.b * 255.0f + 0.5f);
+   clip_to_scissor(&_ulx, &_uly, &_lrx, &_lry);
+   rdpcvg_fill((uint8_t*)gfx_info.RDRAM, RDRAMSize, gDP.colorImage.address, gDP.colorImage.width,
+         gDP.colorImage.size, _ulx, _uly, _lrx, _lry, (r << 16) | (g << 8) | b);
+}
+
+/* the rectangle drawn, from its command's words */
+static INLINE void tex_rect_draw(uint32_t _w0, uint32_t _w1, uint32_t _w2, uint32_t _w3)
+{
+	gln64gDPTextureRectangle(
+		_FIXED2FLOAT(_SHIFTR(_w1, 12, 12), 2),
+		_FIXED2FLOAT(_SHIFTR(_w1,  0, 12), 2),
+		_FIXED2FLOAT(_SHIFTR(_w0, 12, 12), 2),
+		_FIXED2FLOAT(_SHIFTR(_w0,  0, 12), 2),
+		_SHIFTR(_w1, 24, 3),							/* tile */
+		_FIXED2FLOAT((int16_t)_SHIFTR(_w2, 16, 16), 5),	/* s */
+		_FIXED2FLOAT((int16_t)_SHIFTR(_w2, 0, 16), 5),	/* t */
+		_FIXED2FLOAT((int16_t)_SHIFTR(_w3, 16, 16), 10),	/* dsdx */
+		_FIXED2FLOAT((int16_t)_SHIFTR(_w3, 0, 16), 10));	/* dtdy */
+}
+
+/* A texture rectangle into an 8-bit image: when it copies a 16-bit tile's
+ * texels, as into that coverage, it writes them in RDRAM too; then it is
+ * drawn */
+static RDPCVG_COLD void tex_rect_8(uint32_t _w0, uint32_t _w1, uint32_t _w2, uint32_t _w3)
+{
+   const struct gDPTile *tile = &gDP.tiles[(_w1 >> 24) & 7];
+   const double dsdx = (int16_t)(_w3 >> 16) / 1024.0;
+   const double dtdy = (int16_t)(_w3 & 0xFFFF) / 1024.0;
+   if (rdpcvg_is_texel_copy(gDP.otherMode.cycleType, gDP.otherMode.l, gDP.combine.mRGB1, gDP.combine.aRGB1,
+            gDP.colorImage.size, tile->size, tile->format, dsdx, dtdy, 0))
+   {
+      int32_t ulx = (int32_t)((_w1 >> 14) & 0x3FF), uly = (int32_t)((_w1 >> 2) & 0x3FF);
+      int32_t lrx = (int32_t)((_w0 >> 14) & 0x3FF), lry = (int32_t)((_w0 >> 2) & 0x3FF);
+      const int32_t ulx0 = ulx, uly0 = uly;
+      clip_to_scissor(&ulx, &uly, &lrx, &lry);
+      rdpcvg_texrect_8((uint8_t*)gfx_info.RDRAM, RDRAMSize, gDP.colorImage.address, gDP.colorImage.width,
+            ulx, uly, lrx, lry,
+            ((int16_t)(_w2 >> 16) >> 5) - (int32_t)tile->uls + (ulx - ulx0),
+            ((int16_t)(_w2 & 0xFFFF) >> 5) - (int32_t)tile->ult + (uly - uly0),
+            tile->lrs - tile->uls + 1, tile->lrt - tile->ult + 1, tile->format == G_IM_FMT_IA, tmem_texel16, tile);
+   }
+   tex_rect_draw(_w0, _w1, _w2, _w3);
 }
 
 void RDP_FillRect( uint32_t w0, uint32_t w1 )
@@ -307,7 +386,8 @@ void RDP_TexRectFlip( uint32_t w0, uint32_t w1 )
 	uly = _SHIFTR(w1, 0, 12);
 	lrx = _SHIFTR(w0, 12, 12);
 	lry = _SHIFTR(w0, 0, 12);
-	if ((lrx >> 2) < (ulx >> 2) || (lry >> 2) < (uly >> 2))
+	/* (lrx >> 2) < (ulx >> 2), with one operation fewer */
+	if (lrx < (ulx & ~3u) || lry < (uly & ~3u))
 		return;
 
 	gln64gDPTextureRectangleFlip(
@@ -331,19 +411,14 @@ void RDP_TexRect( uint32_t w0, uint32_t w1 )
 	uly = _SHIFTR(w1,  0, 12);
 	lrx = _SHIFTR(w0, 12, 12);
 	lry = _SHIFTR(w0,  0, 12);
-	if ((lrx >> 2) < (ulx >> 2) || (lry >> 2) < (uly >> 2))
+	/* (lrx >> 2) < (ulx >> 2), with one operation fewer */
+	if (lrx < (ulx & ~3u) || lry < (uly & ~3u))
 		return;
 
-	gln64gDPTextureRectangle(
-		_FIXED2FLOAT(ulx, 2),
-		_FIXED2FLOAT(uly, 2),
-		_FIXED2FLOAT(lrx, 2),
-		_FIXED2FLOAT(lry, 2),
-		_SHIFTR(w1, 24, 3),							// tile
-		_FIXED2FLOAT((int16_t)_SHIFTR(w2, 16, 16), 5),	// s
-		_FIXED2FLOAT((int16_t)_SHIFTR(w2, 0, 16), 5),	// t
-		_FIXED2FLOAT((int16_t)_SHIFTR(w3, 16, 16), 10),	// dsdx
-		_FIXED2FLOAT((int16_t)_SHIFTR(w3, 0, 16), 10));	// dsdy
+	if (gDP.colorImage.size == G_IM_SIZ_8b)
+		tex_rect_8(w0, w1, w2, w3);
+	else
+		tex_rect_draw(w0, w1, w2, w3);
 }
 
 

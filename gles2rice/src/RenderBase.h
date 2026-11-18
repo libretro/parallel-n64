@@ -213,6 +213,7 @@ typedef struct
 
     uint32_t  fillColor;
     uint32_t  originalFillColor;
+    uint32_t  blendColor;           /* 0xRRGGBBAA, as set_blend_color gives it */
 
     RDP_OtherMode otherMode;
 

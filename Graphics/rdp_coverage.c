@@ -76,6 +76,15 @@ void rdpcvg_fill(uint8_t *_rdram, uint32_t _rdramSize, uint32_t _address, uint32
 	}
 }
 
+uint16_t rdpcvg_rdram_texel16(const void *_ctx, uint32_t _s, uint32_t _t)
+{
+	const rdpcvg_rdram_tile *tile = (const rdpcvg_rdram_tile *)_ctx;
+	const uint32_t addr = tile->address + _t * tile->bpl + (_s << 1);
+	if (addr < tile->address || addr + 1 >= tile->size)
+		return 0;
+	return (uint16_t)((tile->rdram[addr ^ 3] << 8) | tile->rdram[(addr + 1) ^ 3]);
+}
+
 /* a 5-bit channel widened as the texture unit widens it */
 static uint32_t widen5(uint32_t _c)
 {

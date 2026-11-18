@@ -20,6 +20,7 @@
 #include "DepthBuffer.h"
 #include "VI.h"
 #include "Config.h"
+#include "../../Graphics/rdp_coverage.h"
 #include "ShaderCombiner.h"
 
 #include "../../Graphics/RDP/gDP_state.h"
@@ -774,14 +775,22 @@ void gln64gDPFillRectangle( int32_t ulx, int32_t uly, int32_t lrx, int32_t lry )
 {
    float fillColor[4];
    DepthBuffer *buffer = NULL;
+   /* read once: nothing called below sets the other modes */
+   const uint32_t cycleType = gDP.otherMode.cycleType;
    
-   if (gDP.otherMode.cycleType == G_CYC_FILL)
+   if (cycleType == G_CYC_FILL)
    {
       ++lrx;
       ++lry;
    }
-   else if (lry == uly)
-      ++lry;
+   else
+   {
+      /* one cycle or two: only such a rectangle can draw coverage */
+      if (RDPCVG_MAY_DRAW_COVERAGE(gDP.otherMode.l))
+         RDP_FillRectCoverage(ulx, uly, lrx, lry);
+      if (lry == uly)
+         ++lry;
+   }
 
    buffer = (DepthBuffer*)DepthBuffer_FindBuffer( gDP.colorImage.address );
    if (buffer)
@@ -799,7 +808,7 @@ void gln64gDPFillRectangle( int32_t ulx, int32_t uly, int32_t lrx, int32_t lry )
          return;
       }
    }
-   else if (gDP.fillColor.color == gles2n64_DepthClearColor && gDP.otherMode.cycleType == G_CYC_FILL)
+   else if (gDP.fillColor.color == gles2n64_DepthClearColor && cycleType == G_CYC_FILL)
    {
 #ifdef NEW
 		depthBufferList().saveBuffer(gDP.colorImage.address);
@@ -815,7 +824,7 @@ void gln64gDPFillRectangle( int32_t ulx, int32_t uly, int32_t lrx, int32_t lry )
 
    gln64gDPGetFillColor(fillColor);
 
-   if (gDP.otherMode.cycleType == G_CYC_FILL)
+   if (cycleType == G_CYC_FILL)
    {
       if ((ulx == 0) && (uly == 0) && (lrx == gDP.scissor.lrx) && (lry == gDP.scissor.lry))
       {
@@ -839,7 +848,7 @@ void gln64gDPFillRectangle( int32_t ulx, int32_t uly, int32_t lrx, int32_t lry )
    if (depthBuffer.current)
       depthBuffer.current->cleared = false;
 
-   if (gDP.otherMode.cycleType == G_CYC_FILL)
+   if (cycleType == G_CYC_FILL)
    {
       if (lry > (uint32_t)gDP.scissor.lry)
          gDP.colorImage.height = (uint32_t)MAX( gDP.colorImage.height, (unsigned int)gDP.scissor.lry );

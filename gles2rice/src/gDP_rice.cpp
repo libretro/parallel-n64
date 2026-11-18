@@ -13,6 +13,9 @@
 #include "../../Graphics/GBI.h"
 #include "../../Graphics/RDP/gDP_funcs_prot.h"
 #include "../../Graphics/image_convert.h"
+#include "../../Graphics/rdp_coverage.h"
+
+void rice_coverage_fill(int32_t _ulx, int32_t _uly, int32_t _lrx, int32_t _lry);
 
 extern TMEMLoadMapInfo g_tmemLoadAddrMap[0x200]; /* Totally 4KB TMEM */
 extern TMEMLoadMapInfo g_tmemInfo0;              /* Info for Tmem=0 */
@@ -206,6 +209,9 @@ void ricegDPFillRect(int32_t ulx, int32_t uly, int32_t lrx, int32_t lry )
       ++lrx;
       ++lry;
    }
+   /* one cycle or two: only such a rectangle can draw coverage */
+   else if (RDPCVG_MAY_DRAW_COVERAGE(gRDP.otherMode._u32[0]))
+      rice_coverage_fill(ulx, uly, lrx, lry);
 
    //TXTRBUF_DETAIL_DUMP(DebuggerAppendMsg("FillRect: X0=%d, Y0=%d, X1=%d, Y1=%d, Color=0x%08X", ulx, uly, lrx, lry, gRDP.originalFillColor););
 

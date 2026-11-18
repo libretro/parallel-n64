@@ -27,6 +27,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "../../Graphics/RDP/gDP_funcs_prot.h"
 #include "../../Graphics/RDP/gDP_state.h"
 #include "../../Graphics/RSP/RSP_state.h"
+#include "../../Graphics/rdp_coverage.h"
 
 #include "ConvertImage.h"
 #include "GraphicsContext.h"
@@ -266,6 +267,63 @@ const char *pszImgSize[4] = {"4", "8", "16", "32"};
 const char *textluttype[4] = {"RGB16", "I16?", "RGBA16", "IA16"};
 uint16_t  g_wRDPTlut[0x200];
 uint32_t  g_dwRDPPalCrc[16];
+
+/* ---- coverage the game reads back (Graphics/rdp_coverage.h) ---- */
+
+static void coverage_clip(int32_t *_ulx, int32_t *_uly, int32_t *_lrx, int32_t *_lry)
+{
+   if (*_ulx < gRDP.scissor.left)   *_ulx = gRDP.scissor.left;
+   if (*_uly < gRDP.scissor.top)    *_uly = gRDP.scissor.top;
+   if (*_lrx > gRDP.scissor.right)  *_lrx = gRDP.scissor.right;
+   if (*_lry > gRDP.scissor.bottom) *_lry = gRDP.scissor.bottom;
+}
+
+/* A fill rectangle in one cycle or two, in a mode that may draw memory
+ * coverage (ricegDPFillRect): if it does, the coverage, as full coverage,
+ * in RDRAM (Rice's image of it keeps none, and a game can read it) */
+RDPCVG_COLD void rice_coverage_fill(int32_t _ulx, int32_t _uly, int32_t _lrx, int32_t _lry)
+{
+   if (gRDP.otherMode.cycle_type != G_CYC_1CYCLE || !rdpcvg_draws_coverage(gRDP.otherMode._u32[0]))
+      return;
+   coverage_clip(&_ulx, &_uly, &_lrx, &_lry);
+   rdpcvg_fill((uint8_t*)gfx_info.RDRAM, g_dwRamSize, g_CI.dwAddr, g_CI.dwWidth, g_CI.dwSize,
+         _ulx, _uly, _lrx, _lry, gRDP.blendColor >> 8);
+}
+
+/* A texture rectangle copying a 16-bit tile's texels into an 8-bit image,
+ * such as that coverage, writes them in RDRAM too. Rice keeps no TMEM, so
+ * the texels are read where the load that filled the tile's TMEM read
+ * them, when the tile starts where that load did and has its rows. */
+static RDPCVG_COLD void coverage_texrect(uint32_t _w0, uint32_t _w1, uint32_t _w2, uint32_t _w3)
+{
+   const uint32_t tileno = (_w1 >> 24) & 7;
+   const gDPTile *tile = &gDP.tiles[tileno];
+   const TileAdditionalInfo *tileinfo = &gRDP.tilesinfo[tileno];
+   const TMEMLoadMapInfo *load = &g_tmemLoadAddrMap[tile->tmem];
+   const double dsdx = (int16_t)(_w3 >> 16) / 1024.0;
+   const double dtdy = (int16_t)(_w3 & 0xFFFF) / 1024.0;
+   const uint64_t mux = CRender::g_pRender->m_Mux;
+   int32_t ulx = (int32_t)((_w1 >> 14) & 0x3FF), uly = (int32_t)((_w1 >> 2) & 0x3FF);
+   int32_t lrx = (int32_t)((_w0 >> 14) & 0x3FF), lry = (int32_t)((_w0 >> 2) & 0x3FF);
+   const int32_t ulx0 = ulx, uly0 = uly;
+   rdpcvg_rdram_tile src;
+   if (!rdpcvg_is_texel_copy(gRDP.otherMode.cycle_type, gRDP.otherMode._u32[0], (uint32_t)(mux >> 32) & 0x1f,
+            (uint32_t)(mux >> 6) & 7, g_CI.dwSize, tile->size, tile->format, dsdx, dtdy, 0))
+      return;
+   if (load->bSetBy != CMD_LOADTILE || load->dwTmem != tile->tmem || load->dwSize != G_IM_SIZ_16b ||
+         load->dwLine != tile->line)
+      return;
+   src.rdram   = (const uint8_t*)gfx_info.RDRAM;
+   src.size    = g_dwRamSize;
+   src.bpl     = load->dwWidth << 1;
+   src.address = load->dwLoadAddress + (uint32_t)load->tl * src.bpl + ((uint32_t)load->sl << 1);
+   coverage_clip(&ulx, &uly, &lrx, &lry);
+   rdpcvg_texrect_8((uint8_t*)gfx_info.RDRAM, g_dwRamSize, g_CI.dwAddr, g_CI.dwWidth, ulx, uly, lrx, lry,
+         ((int16_t)(_w2 >> 16) >> 5) - tileinfo->hilite_sl + (ulx - ulx0),
+         ((int16_t)(_w2 & 0xFFFF) >> 5) - tileinfo->hilite_tl + (uly - uly0),
+         (uint32_t)(tileinfo->hilite_sh - tileinfo->hilite_sl + 1), (uint32_t)(tileinfo->hilite_th - tileinfo->hilite_tl + 1),
+         tile->format == G_IM_FMT_IA, rdpcvg_rdram_texel16, &src);
+}
 
 #include "FrameBuffer.h"
 #include "RSP_GBI0.h"
@@ -1247,6 +1305,7 @@ void DLParser_SetFogColor(Gfx *gfx)
 void DLParser_SetBlendColor(Gfx *gfx)
 {
     DP_Timing(DLParser_SetBlendColor);
+    gRDP.blendColor = gfx->words.w1;
     CRender::g_pRender->SetAlphaRef(gfx->setcolor.a);
 }
 

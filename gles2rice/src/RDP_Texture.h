@@ -939,8 +939,11 @@ void DLParser_TexRect(Gfx *gfx)
    uint32_t dwHalf1 = *(uint32_t *)(rdram_u8 + dwPC);
    uint32_t dwHalf2 = *(uint32_t *)(rdram_u8 + dwPC+8);
 
-   if( options.enableHackForGames == HACK_FOR_ALL_STAR_BASEBALL || options.enableHackForGames == HACK_FOR_MLB )
+   /* a switch: two compares and branches, where || compiled to a sete */
+   switch (options.enableHackForGames)
    {
+   case HACK_FOR_ALL_STAR_BASEBALL:
+   case HACK_FOR_MLB:
       if( ((dwHalf1>>24) == 0xb4 || (dwHalf1>>24) == 0xb3 || (dwHalf1>>24) == 0xb2 || (dwHalf1>>24) == 0xe1) && 
             ((dwHalf2>>24) == 0xb4 || (dwHalf2>>24) == 0xb3 || (dwHalf2>>24) == 0xb2 || (dwHalf2>>24) == 0xf1) )
       {
@@ -957,10 +960,15 @@ void DLParser_TexRect(Gfx *gfx)
 
          // fix me here
          dwCmd2 = (((dwHalf1>>12)&0x03FF)<<17) | (((dwHalf1)&0x03FF)<<1);
-      }   
-   }
-   else
+      }
+      break;
+   default:
       __RSP.PC[__RSP.PCi] += 16;
+      break;
+   }
+
+   if (g_CI.dwSize == G_IM_SIZ_8b)
+      coverage_texrect(gfx->words.w0, gfx->words.w1, dwCmd2, dwCmd3);
 
    // Hack for Mario Tennis
    if( !status.bHandleN64RenderTexture && g_CI.dwAddr == g_ZI.dwAddr )

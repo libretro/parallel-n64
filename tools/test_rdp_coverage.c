@@ -132,6 +132,42 @@ static void test_texrect(void)
 	check(rd8(0x100) == 0x55, "an empty tile copies nothing");
 }
 
+/* RDRAM as the CPU writes it: each 32-bit word in host order */
+static void wr16(uint32_t _a, uint16_t _v)
+{
+	rdram[_a ^ 3] = (uint8_t)(_v >> 8);
+	rdram[(_a + 1) ^ 3] = (uint8_t)_v;
+}
+
+static void test_rdram_tile(void)
+{
+	rdpcvg_rdram_tile src;
+	memset(rdram, 0, sizeof(rdram));
+	/* a 16-bit image 8 wide at 0x100; the tile from its texel (2, 1) */
+	wr16(0x100 + (1 * 8 + 2) * 2, 0x1234);
+	wr16(0x100 + (1 * 8 + 3) * 2, 0x5678);
+	wr16(0x100 + (2 * 8 + 2) * 2, 0x9abc);
+	src.rdram = rdram;
+	src.size = RDRAM_SIZE;
+	src.bpl = 16;
+	src.address = 0x100 + (1 * 8 + 2) * 2;
+	check(rdpcvg_rdram_texel16(&src, 0, 0) == 0x1234, "the tile's corner texel, as the RDP reads it");
+	check(rdpcvg_rdram_texel16(&src, 1, 0) == 0x5678, "the next texel along");
+	check(rdpcvg_rdram_texel16(&src, 0, 1) == 0x9abc, "the next row, a row's bytes on");
+	src.address = RDRAM_SIZE - 2;
+	wr16(RDRAM_SIZE - 2, 0x4321);
+	check(rdpcvg_rdram_texel16(&src, 0, 0) == 0x4321, "the last texel of RDRAM");
+	check(rdpcvg_rdram_texel16(&src, 1, 0) == 0 && rdpcvg_rdram_texel16(&src, 0, 1) == 0, "none past it");
+	src.address = RDRAM_SIZE - 1;
+	check(rdpcvg_rdram_texel16(&src, 0, 0) == 0, "nor one half in it");
+
+	/* the copy from it: IA, red and green the intensity */
+	memset(rdram + 0x800, 0x55, 16);
+	src.address = 0x100 + (1 * 8 + 2) * 2;
+	rdpcvg_texrect_8(rdram, RDRAM_SIZE, 0x800, 8, 0, 0, 2, 1, 0, 0, 2, 2, 1, rdpcvg_rdram_texel16, &src);
+	check(rd8(0x800) == 0x12 && rd8(0x801) == 0x56 && rd8(0x802) == 0x55, "copied from where the texels were loaded");
+}
+
 static void test_copy(void)
 {
 	/* Ocarina of Time's copy: 1 cycle, unblended, TEXEL0 */
@@ -160,6 +196,7 @@ int main(void)
 	test_modes();
 	test_fill();
 	test_texrect();
+	test_rdram_tile();
 	test_copy();
 	if (failures) {
 		printf("%d failed\n", failures);

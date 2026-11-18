@@ -1,7 +1,8 @@
 #ifndef RDP_COVERAGE_H
 #define RDP_COVERAGE_H
 
-/* The RDP's coverage, for the renderers that keep none (GLideN64, Glide64).
+/* The RDP's coverage, for the renderers that keep none (GLideN64, Glide64,
+ * Rice, gles2n64).
  * C89.
  *
  * A game can read the coverage back: Ocarina of Time and Majora's Mask, as
@@ -49,6 +50,18 @@ void rdpcvg_fill(uint8_t *_rdram, uint32_t _rdramSize, uint32_t _address, uint32
 /* A 16-bit texel of a tile from its renderer's TMEM: @_s and @_t from the
  * tile's corner */
 typedef uint16_t (*rdpcvg_texel_fn)(const void *_ctx, uint32_t _s, uint32_t _t);
+
+/* A 16-bit tile read where its texels were loaded from, for a renderer
+ * that keeps no TMEM (Rice): its corner texel at @address in RDRAM, rows
+ * @bpl bytes apart */
+typedef struct rdpcvg_rdram_tile
+{
+	const uint8_t *rdram;
+	uint32_t size, address, bpl;
+} rdpcvg_rdram_tile;
+
+/* rdpcvg_texel_fn for an rdpcvg_rdram_tile @_ctx: 0 past RDRAM's end */
+uint16_t rdpcvg_rdram_texel16(const void *_ctx, uint32_t _s, uint32_t _t);
 
 /* A texture rectangle, one texel a pixel, of a 16-bit tile whose texels
  * @_fetch gives (IA when @_ia, else RGBA), into an 8-bit color image at
