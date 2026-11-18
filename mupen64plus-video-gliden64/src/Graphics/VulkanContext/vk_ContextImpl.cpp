@@ -404,8 +404,8 @@ public:
 	void bindFramebuffer(BufferTargetParam _t, ObjectHandle _h) override {
 		if (u32(_h) == 0)
 			_windowSize();
-		if (_t == bufferTarget::READ_FRAMEBUFFER) vkr_fbo_bind(g_r, 1, 0, u32(_h));
-		else if (_t == bufferTarget::DRAW_FRAMEBUFFER) vkr_fbo_bind(g_r, 0, 1, u32(_h));
+		if (_t == bufferTarget::READ_FRAMEBUFFER()) vkr_fbo_bind(g_r, 1, 0, u32(_h));
+		else if (_t == bufferTarget::DRAW_FRAMEBUFFER()) vkr_fbo_bind(g_r, 0, 1, u32(_h));
 		else vkr_fbo_bind(g_r, 1, 1, u32(_h));
 	}
 	void addFrameBufferRenderTarget(const gli_fb_render_target & _p) override {

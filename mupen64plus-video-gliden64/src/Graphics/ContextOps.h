@@ -4,8 +4,8 @@
  * each entry calls the class's own function by name, so no virtual call
  * is left, and the compiler can take the function's body in place.
  * Included by the one file of each backend that names its class:
- *   const gli_context_ops *gli_gl_context_ops(void)
- *   { return &graphics::ContextOps<opengl::ContextImpl>::table; } */
+ *   const gli_context_ops *gli_vk_context_ops(void)
+ *   { return &graphics::ContextOps<VkContextImpl>::table; } */
 
 #include <string>
 #include <stdio.h>

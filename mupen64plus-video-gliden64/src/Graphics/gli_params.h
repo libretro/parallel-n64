@@ -3,7 +3,7 @@
 
 /* GLideN64's graphics parameters, the numbers GL has for them, which the
  * Vulkan backend takes too. C89; Graphics/Parameters.h names them for C++,
- * and opengl_ContextImpl.cpp holds each to its GL header's.
+ * and opengl_ContextImpl.c holds each to its GL header's.
  * GLES2 knows only GLI_BT_FRAMEBUFFER: C binds frame buffers to
  * gli_ctx.drawFramebuffer and readFramebuffer, which are that there. */
 

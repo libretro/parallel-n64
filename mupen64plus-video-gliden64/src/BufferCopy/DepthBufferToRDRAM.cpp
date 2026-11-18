@@ -124,7 +124,7 @@ void DepthBufferToRDRAM::init()
 	m_FBO = gfxContext.createFramebuffer();
 	Context::FrameBufferRenderTarget bufTarget;
 	bufTarget.bufferHandle = u32(m_FBO);
-	bufTarget.bufferTarget = u32(bufferTarget::DRAW_FRAMEBUFFER);
+	bufTarget.bufferTarget = u32(bufferTarget::DRAW_FRAMEBUFFER());
 	bufTarget.attachment = u32(bufferAttachment::COLOR_ATTACHMENT0);
 	bufTarget.textureTarget = u32(textureTarget::TEXTURE_2D);
 	bufTarget.textureHandle = m_pColorTexture->name;
@@ -137,7 +137,7 @@ void DepthBufferToRDRAM::init()
 	// check if everything is OK
 	assert(!gfxContext.isFramebufferError());
 	assert(!gfxContext.isError());
-	gfxContext.bindFramebuffer(bufferTarget::DRAW_FRAMEBUFFER, ObjectHandle::defaultFramebuffer);
+	gfxContext.bindFramebuffer(bufferTarget::DRAW_FRAMEBUFFER(), ObjectHandle::defaultFramebuffer);
 }
 
 void DepthBufferToRDRAM::destroy() {
@@ -276,7 +276,7 @@ bool DepthBufferToRDRAM::_copy(u32 _startAddress, u32 _endAddress, bool _sync)
 	/* an older read still in flight must land before this one */
 	const u32 slot = _sync ? m_readback.drain(*this) : m_readback.begin(*this);
 
-	gfxContext.bindFramebuffer(bufferTarget::READ_FRAMEBUFFER, m_FBO);
+	gfxContext.bindFramebuffer(bufferTarget::READ_FRAMEBUFFER(), m_FBO);
 	{
 		gli_prb * buffer = m_pbuf[slot];
 		const FramebufferTextureFormats & fbTexFormats = gfxContext.getFramebufferTextureFormats();

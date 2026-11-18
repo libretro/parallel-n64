@@ -1,6 +1,7 @@
 #pragma once
 #include "Parameter.h"
 #include "gli_params.h"
+#include "gli_context.h"
 
 namespace graphics {
 
@@ -47,10 +48,10 @@ namespace graphics {
 
 	namespace bufferTarget {
 		constexpr BufferTargetParam FRAMEBUFFER(GLI_BT_FRAMEBUFFER);
-		/* GLES2 knows only FRAMEBUFFER: the GL backend makes these that
-		 * (opengl_ContextImpl.cpp) */
-		extern BufferTargetParam DRAW_FRAMEBUFFER;
-		extern BufferTargetParam READ_FRAMEBUFFER;
+		/* the context's targets to draw and read: GLES2 knows only
+		 * FRAMEBUFFER, which the GL backend makes both (gli_context.h) */
+		inline BufferTargetParam DRAW_FRAMEBUFFER() { return BufferTargetParam(gli_ctx.drawFramebuffer); }
+		inline BufferTargetParam READ_FRAMEBUFFER() { return BufferTargetParam(gli_ctx.readFramebuffer); }
 	}
 
 	namespace bufferAttachment {

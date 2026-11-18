@@ -308,7 +308,7 @@ void gli_context_init(void);
 /* the backend stopped and freed */
 void gli_context_destroy(void);
 
-/* each backend's table and object (opengl_ContextImpl.cpp, vk_ContextImpl.cpp) */
+/* each backend's table and object (opengl_ContextImpl.c, vk_ContextImpl.cpp) */
 const gli_context_ops *gli_gl_context_ops(void);
 void *gli_gl_context_new(void);
 const gli_context_ops *gli_vk_context_ops(void);

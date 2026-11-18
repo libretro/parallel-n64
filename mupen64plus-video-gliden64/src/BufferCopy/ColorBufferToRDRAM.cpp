@@ -112,7 +112,7 @@ void ColorBufferToRDRAM::_initFBTexture(void)
 	{
 		Context::FrameBufferRenderTarget bufTarget;
 		bufTarget.bufferHandle = u32(ObjectHandle(m_FBO));
-		bufTarget.bufferTarget = u32(bufferTarget::DRAW_FRAMEBUFFER);
+		bufTarget.bufferTarget = u32(bufferTarget::DRAW_FRAMEBUFFER());
 		bufTarget.attachment = u32(bufferAttachment::COLOR_ATTACHMENT0);
 		bufTarget.textureTarget = u32(textureTarget::TEXTURE_2D);
 		bufTarget.textureHandle = m_pTexture->name;
@@ -122,7 +122,7 @@ void ColorBufferToRDRAM::_initFBTexture(void)
 	// check if everything is OK
 	assert(!gfxContext.isFramebufferError());
 
-	gfxContext.bindFramebuffer(graphics::bufferTarget::DRAW_FRAMEBUFFER, graphics::ObjectHandle::defaultFramebuffer);
+	gfxContext.bindFramebuffer(graphics::bufferTarget::DRAW_FRAMEBUFFER(), graphics::ObjectHandle::defaultFramebuffer);
 
 	m_bufferReader = gfxContext.createColorBufferReader(m_pTexture);
 	m_readback.reset(m_bufferReader->numSlots);
@@ -232,9 +232,9 @@ bool ColorBufferToRDRAM::_prepareCopy(u32& _startAddress)
 		blitParams.mask = blitMask::COLOR_BUFFER;
 		wnd.getDrawer().blitOrCopyTexturedRect(blitParams);
 
-		gfxContext.bindFramebuffer(bufferTarget::READ_FRAMEBUFFER, m_FBO);
+		gfxContext.bindFramebuffer(bufferTarget::READ_FRAMEBUFFER(), m_FBO);
 	} else {
-		gfxContext.bindFramebuffer(bufferTarget::READ_FRAMEBUFFER, readBuffer);
+		gfxContext.bindFramebuffer(bufferTarget::READ_FRAMEBUFFER(), readBuffer);
 	}
 
 	m_frameCount = curFrame;

@@ -240,7 +240,7 @@ void FrameBuffer::resolveMultisampledTexture(bool _bForce)
 
 	gfxContext.blitFramebuffers(blitParams);
 
-	gfxContext.bindFramebuffer(bufferTarget::READ_FRAMEBUFFER, ObjectHandle::defaultFramebuffer);
+	gfxContext.bindFramebuffer(bufferTarget::READ_FRAMEBUFFER(), ObjectHandle::defaultFramebuffer);
 
 	frameBufferList().setCurrentDrawBuffer();
 	m_resolved = true;
@@ -319,7 +319,7 @@ CachedTexture * FrameBuffer::_getSubTexture(u32 _t)
 
 	gfxContext.blitFramebuffers(blitParams);
 
-	gfxContext.bindFramebuffer(bufferTarget::READ_FRAMEBUFFER, ObjectHandle::defaultFramebuffer);
+	gfxContext.bindFramebuffer(bufferTarget::READ_FRAMEBUFFER(), ObjectHandle::defaultFramebuffer);
 
 	frameBufferList().setCurrentDrawBuffer();
 
@@ -361,7 +361,7 @@ CachedTexture * FrameBuffer::_copyFrameBufferTexture()
 
 	gfxContext.blitFramebuffers(blitParams);
 
-	gfxContext.bindFramebuffer(bufferTarget::READ_FRAMEBUFFER, ObjectHandle::defaultFramebuffer);
+	gfxContext.bindFramebuffer(bufferTarget::READ_FRAMEBUFFER(), ObjectHandle::defaultFramebuffer);
 	frameBufferList().setCurrentDrawBuffer();
 
 	m_copied = true;
@@ -448,7 +448,7 @@ void FrameBufferList::init()
 {
 	 m_pCurrent = nullptr;
 	 m_pCopy = nullptr;
-	 gfxContext.bindFramebuffer(bufferTarget::DRAW_FRAMEBUFFER, ObjectHandle::defaultFramebuffer);
+	 gfxContext.bindFramebuffer(bufferTarget::DRAW_FRAMEBUFFER(), ObjectHandle::defaultFramebuffer);
 	 m_prevColorImageHeight = 0;
 	 m_overscan.init();
 	 gli_vi_state_init(&m_rdpUpdate);
@@ -489,9 +489,9 @@ void FrameBufferList::clearBuffersChanged()
 void FrameBufferList::setCurrentDrawBuffer() const
 {
 	if (m_pCurrent != nullptr)
-		gfxContext.bindFramebuffer(bufferTarget::DRAW_FRAMEBUFFER, ObjectHandle(m_pCurrent->m_FBO));
+		gfxContext.bindFramebuffer(bufferTarget::DRAW_FRAMEBUFFER(), ObjectHandle(m_pCurrent->m_FBO));
 	else if (m_fbs.count != 0)
-		gfxContext.bindFramebuffer(bufferTarget::DRAW_FRAMEBUFFER, ObjectHandle(const_cast<FrameBufferList *>(this)->_at(m_fbs.count - 1)->m_FBO));
+		gfxContext.bindFramebuffer(bufferTarget::DRAW_FRAMEBUFFER(), ObjectHandle(const_cast<FrameBufferList *>(this)->_at(m_fbs.count - 1)->m_FBO));
 }
 
 FrameBuffer * FrameBufferList::findBuffer(u32 _startAddress)
@@ -530,7 +530,7 @@ void FrameBufferList::_destroyRemoved(const u8 * _removed, u32 _count)
 		FrameBuffer * pBuffer = _slot(_removed[i]);
 		if (pBuffer == m_pCurrent) {
 			m_pCurrent = nullptr;
-			gfxContext.bindFramebuffer(bufferTarget::DRAW_FRAMEBUFFER, ObjectHandle::defaultFramebuffer);
+			gfxContext.bindFramebuffer(bufferTarget::DRAW_FRAMEBUFFER(), ObjectHandle::defaultFramebuffer);
 		}
 		pBuffer->~FrameBuffer();
 	}
@@ -597,7 +597,7 @@ void FrameBufferList::saveBuffer(u32 _address, u16 _format, u16 _size, u16 _widt
 		gli_StereoFrames_wasEntered(m_pCurrent->m_startAddress)) {
 		gli_StereoFrames_captureLeftEye(m_pCurrent);
 		// The copy binds the screen; leave the state as the walk had it
-		gfxContext.bindFramebuffer(bufferTarget::DRAW_FRAMEBUFFER, ObjectHandle(m_pCurrent->m_FBO));
+		gfxContext.bindFramebuffer(bufferTarget::DRAW_FRAMEBUFFER(), ObjectHandle(m_pCurrent->m_FBO));
 	}
 
 	if (m_pCurrent != nullptr &&
@@ -792,7 +792,7 @@ void FrameBufferList::attachDepthBuffer()
 
 		if (goodDepthBufferTexture) {
 			pCurrent->m_pDepthBuffer = pDepthBuffer;
-			gli_depth_set_attachment(pDepthBuffer, pCurrent->m_FBO, u32(bufferTarget::DRAW_FRAMEBUFFER));
+			gli_depth_set_attachment(pDepthBuffer, pCurrent->m_FBO, u32(bufferTarget::DRAW_FRAMEBUFFER()));
 			if (config.frameBufferEmulation.N64DepthCompare != 0)
 				gli_depth_bind_image_texture(pDepthBuffer, pCurrent->m_FBO);
 		} else
@@ -855,7 +855,7 @@ void FrameBufferList::_renderScreenSizeBuffer()
 		gliden64_vulkan_shown(pBuffer->m_startAddress, pBuffer->m_width, pBuffer->m_size,
 			static_cast<u32>(pBuffer->m_pTexture->realHeight / pBuffer->m_scale), pBuffer->m_scale, srcCoord, dstCoord);
 
-	gfxContext.bindFramebuffer(bufferTarget::DRAW_FRAMEBUFFER, ObjectHandle::defaultFramebuffer);
+	gfxContext.bindFramebuffer(bufferTarget::DRAW_FRAMEBUFFER(), ObjectHandle::defaultFramebuffer);
 
 	gfxContext.clearColorBuffer(0.0f, 0.0f, 0.0f, 0.0f);
 
@@ -882,12 +882,12 @@ void FrameBufferList::_renderScreenSizeBuffer()
 
 	drawer.blitOrCopyTexturedRect(blitParams);
 
-	gfxContext.bindFramebuffer(bufferTarget::READ_FRAMEBUFFER, ObjectHandle::defaultFramebuffer);
+	gfxContext.bindFramebuffer(bufferTarget::READ_FRAMEBUFFER(), ObjectHandle::defaultFramebuffer);
 
 	if (config.stereo.mode != stereoOff)
 		gli_gSPStereoEndFrame();
 	wnd.swapBuffers();
-	gfxContext.bindFramebuffer(bufferTarget::DRAW_FRAMEBUFFER, ObjectHandle(pBuffer->m_FBO));
+	gfxContext.bindFramebuffer(bufferTarget::DRAW_FRAMEBUFFER(), ObjectHandle(pBuffer->m_FBO));
 	if (config.frameBufferEmulation.forceDepthBufferClear != 0) {
 		drawer.clearDepthBuffer();
 	}
@@ -980,11 +980,11 @@ void FrameBufferList::OverscanBuffer::setInputBuffer(const FrameBuffer *  _pBuff
 void FrameBufferList::OverscanBuffer::activate()
 {
 	if (!m_enabled) {
-		gfxContext.bindFramebuffer(bufferTarget::DRAW_FRAMEBUFFER, ObjectHandle::defaultFramebuffer);
+		gfxContext.bindFramebuffer(bufferTarget::DRAW_FRAMEBUFFER(), ObjectHandle::defaultFramebuffer);
 		return;
 	}
 
-	gfxContext.bindFramebuffer(bufferTarget::DRAW_FRAMEBUFFER, m_FBO);
+	gfxContext.bindFramebuffer(bufferTarget::DRAW_FRAMEBUFFER(), m_FBO);
 }
 
 void FrameBufferList::OverscanBuffer::draw(u32 _fullHeight, bool _PAL, s32 _x, u32 _windowWidth, bool _clear)
@@ -995,7 +995,7 @@ void FrameBufferList::OverscanBuffer::draw(u32 _fullHeight, bool _PAL, s32 _x, u
 	DisplayWindow & wnd = dwnd();
 	GraphicsDrawer & drawer = wnd.getDrawer();
 
-	gfxContext.bindFramebuffer(bufferTarget::DRAW_FRAMEBUFFER, ObjectHandle::defaultFramebuffer);
+	gfxContext.bindFramebuffer(bufferTarget::DRAW_FRAMEBUFFER(), ObjectHandle::defaultFramebuffer);
 	GraphicsDrawer::BlitOrCopyRectParams blitParams;
 	const auto & overscan = _PAL ? config.frameBufferEmulation.overscanPAL : config.frameBufferEmulation.overscanNTSC;
 	const s32 left = static_cast<s32>(overscan.left * m_scale);
@@ -1036,11 +1036,11 @@ void FrameBufferList::renderBuffer()
 
 	RdpUpdateResult rdpRes;
 	if (!gli_vi_update(&m_rdpUpdate, &rdpRes)) {
-		gfxContext.bindFramebuffer(bufferTarget::DRAW_FRAMEBUFFER, ObjectHandle::defaultFramebuffer);
+		gfxContext.bindFramebuffer(bufferTarget::DRAW_FRAMEBUFFER(), ObjectHandle::defaultFramebuffer);
 		gfxContext.clearColorBuffer(0.0f, 0.0f, 0.0f, 0.0f);
 		dwnd().swapBuffers();
 		if (m_pCurrent != nullptr)
-			gfxContext.bindFramebuffer(bufferTarget::DRAW_FRAMEBUFFER, ObjectHandle(m_pCurrent->m_FBO));
+			gfxContext.bindFramebuffer(bufferTarget::DRAW_FRAMEBUFFER(), ObjectHandle(m_pCurrent->m_FBO));
 		return;
 	}
 
@@ -1198,7 +1198,7 @@ void FrameBufferList::renderBuffer()
 			drawer.copyTexturedRect(blitParams);
 		}
 
-		gfxContext.bindFramebuffer(bufferTarget::READ_FRAMEBUFFER, ObjectHandle::defaultFramebuffer);
+		gfxContext.bindFramebuffer(bufferTarget::READ_FRAMEBUFFER(), ObjectHandle::defaultFramebuffer);
 		m_overscan.draw(vFullHeight, rdpRes.vi_ispal, eyeOffset, static_cast<u32>(eyeWidth) * eyes, eye == 0);
 	}
 
@@ -1208,7 +1208,7 @@ void FrameBufferList::renderBuffer()
 	gli_gSPImmersivePresent(pBuffer->m_startAddress);
 	wnd.swapBuffers();
 	if (m_pCurrent != nullptr) {
-		gfxContext.bindFramebuffer(bufferTarget::DRAW_FRAMEBUFFER, ObjectHandle(m_pCurrent->m_FBO));
+		gfxContext.bindFramebuffer(bufferTarget::DRAW_FRAMEBUFFER(), ObjectHandle(m_pCurrent->m_FBO));
 	}
 	/* Resident Evil 2 draws its characters with the depth test on and never
 	 * clears the depth buffer, so from the second frame on every character
@@ -1527,7 +1527,7 @@ FrameBuffer * gli_fb_find_tmp(u32 _address)
 
 void gli_fb_bind_draw(const FrameBuffer * _pBuffer)
 {
-	gfxContext.bindFramebuffer(bufferTarget::DRAW_FRAMEBUFFER, ObjectHandle(_pBuffer->m_FBO));
+	gfxContext.bindFramebuffer(bufferTarget::DRAW_FRAMEBUFFER(), ObjectHandle(_pBuffer->m_FBO));
 }
 
 void gli_fb_set_current_draw_buffer(void)
@@ -1625,7 +1625,7 @@ FrameBuffer * _createStereoBuffer(const FrameBuffer * _pMainBuffer)
 	gfxContext.setTextureParameters(setParams);
 
 	bufTarget.bufferHandle = u32(pLeftEye->m_FBO);
-	bufTarget.bufferTarget = u32(bufferTarget::DRAW_FRAMEBUFFER);
+	bufTarget.bufferTarget = u32(bufferTarget::DRAW_FRAMEBUFFER());
 	bufTarget.attachment = u32(bufferAttachment::COLOR_ATTACHMENT0);
 	bufTarget.textureTarget = u32(textureTarget::TEXTURE_2D);
 	bufTarget.textureHandle = pTexture->name;
@@ -1670,7 +1670,7 @@ bool gli_fb_stereo_copy(FrameBuffer * _pBuffer, FrameBuffer ** _ppLeftEye)
 
 	copied = gfxContext.blitFramebuffers(params);
 
-	gfxContext.bindFramebuffer(bufferTarget::DRAW_FRAMEBUFFER, ObjectHandle::defaultFramebuffer);
+	gfxContext.bindFramebuffer(bufferTarget::DRAW_FRAMEBUFFER(), ObjectHandle::defaultFramebuffer);
 	return copied;
 }
 
@@ -1724,7 +1724,7 @@ FrameBuffer * gli_fb_pp_create(const FrameBuffer * _pMainBuffer)
 
 	Context::FrameBufferRenderTarget bufTarget;
 	bufTarget.bufferHandle = u32(pResultBuffer->m_FBO);
-	bufTarget.bufferTarget = u32(bufferTarget::DRAW_FRAMEBUFFER);
+	bufTarget.bufferTarget = u32(bufferTarget::DRAW_FRAMEBUFFER());
 	bufTarget.attachment = u32(bufferAttachment::COLOR_ATTACHMENT0);
 	bufTarget.textureTarget = u32(textureTarget::TEXTURE_2D);
 	bufTarget.textureHandle = pTexture->name;
@@ -1747,10 +1747,10 @@ void gli_fb_pp_draw(FrameBuffer * _pBuffer, FrameBuffer * _pResult, gli_cprog * 
 	} else
 		pTextureOriginal = _pBuffer->m_pTexture;
 
-	gfxContext.bindFramebuffer(bufferTarget::READ_FRAMEBUFFER,
+	gfxContext.bindFramebuffer(bufferTarget::READ_FRAMEBUFFER(),
 		ObjectHandle::defaultFramebuffer);
 
-	gfxContext.bindFramebuffer(bufferTarget::DRAW_FRAMEBUFFER,
+	gfxContext.bindFramebuffer(bufferTarget::DRAW_FRAMEBUFFER(),
 		ObjectHandle(_pResult->m_FBO));
 
 	CachedTexture * pDstTex = _pResult->m_pTexture;
@@ -1773,7 +1773,7 @@ void gli_fb_pp_draw(FrameBuffer * _pBuffer, FrameBuffer * _pResult, gli_cprog * 
 
 	dwnd().getDrawer().copyTexturedRect(copyParams);
 
-	gfxContext.bindFramebuffer(bufferTarget::DRAW_FRAMEBUFFER,
+	gfxContext.bindFramebuffer(bufferTarget::DRAW_FRAMEBUFFER(),
 		ObjectHandle::defaultFramebuffer);
 
 	gfxContext.resetShaderProgram();

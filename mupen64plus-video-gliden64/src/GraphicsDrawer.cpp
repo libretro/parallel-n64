@@ -939,8 +939,8 @@ void GraphicsDrawer::blitOrCopyTexturedRect(const BlitOrCopyRectParams & _params
 	if (gfxContext.blitFramebuffers(blitParams))
 		return;
 
-	gfxContext.bindFramebuffer(bufferTarget::READ_FRAMEBUFFER, _params.readBuffer);
-	gfxContext.bindFramebuffer(bufferTarget::DRAW_FRAMEBUFFER, _params.drawBuffer);
+	gfxContext.bindFramebuffer(bufferTarget::READ_FRAMEBUFFER(), _params.readBuffer);
+	gfxContext.bindFramebuffer(bufferTarget::DRAW_FRAMEBUFFER(), _params.drawBuffer);
 	copyTexturedRect(_params);
 }
 
