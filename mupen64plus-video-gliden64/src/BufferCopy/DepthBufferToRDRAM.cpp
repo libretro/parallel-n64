@@ -31,6 +31,8 @@ DepthBufferToRDRAM::DepthBufferToRDRAM()
 	, m_pDepthTexture(nullptr)
 	, m_pCurFrameBuffer(nullptr)
 {
+	for (u32 i = 0; i < MaxSlots; ++i)
+		m_pbuf[i] = nullptr;
 }
 
 DepthBufferToRDRAM::~DepthBufferToRDRAM()
@@ -51,8 +53,8 @@ void DepthBufferToRDRAM::init()
 	const u32 setting = config.frameBufferEmulation.copyToRDRAM;
 	m_numSlots = setting > 1 ? (setting < MaxSlots ? setting : MaxSlots) : 1;
 	for (u32 i = 0; i < m_numSlots; ++i) {
-		m_pbuf[i].reset(gfxContext.createPixelReadBuffer(DEPTH_TEX_WIDTH * DEPTH_TEX_HEIGHT * sizeof(float)));
-		if (!m_pbuf[i]) {
+		m_pbuf[i] = gfxContext.createPixelReadBuffer(DEPTH_TEX_WIDTH * DEPTH_TEX_HEIGHT * sizeof(float));
+		if (m_pbuf[i] == nullptr) {
 			m_numSlots = i;
 			break;
 		}
@@ -154,8 +156,11 @@ void DepthBufferToRDRAM::destroy() {
 		gli_textures_remove_fb(m_pDepthTexture);
 		m_pDepthTexture = nullptr;
 	}
-	for (u32 i = 0; i < MaxSlots; ++i)
-		m_pbuf[i].reset();
+	for (u32 i = 0; i < MaxSlots; ++i) {
+		if (m_pbuf[i] != nullptr)
+			m_pbuf[i]->ops->destroy(m_pbuf[i]);
+		m_pbuf[i] = nullptr;
+	}
 	m_numSlots = 1;
 }
 
@@ -223,20 +228,22 @@ bool DepthBufferToRDRAM::_prepareCopy(u32& _startAddress, bool _copyChunk)
 
 bool DepthBufferToRDRAM::ready(u32 _slot, bool _wait)
 {
-	return m_pbuf[_slot]->ready(_wait);
+	return m_pbuf[_slot]->ops->ready(m_pbuf[_slot], _wait);
 }
 
 void DepthBufferToRDRAM::write(u32 _slot, const gli_rdram_write & _w)
 {
 	const FramebufferTextureFormats & fbTexFormats = gfxContext.getFramebufferTextureFormats();
-	PixelBufferBinder<PixelReadBuffer> binder(m_pbuf[_slot].get());
+	gli_prb * buffer = m_pbuf[_slot];
+	buffer->ops->bind(buffer);
 	/* converted straight out of the mapped pack buffer */
-	const u8 * pixelData = (const u8*)m_pbuf[_slot]->getDataRange(0, _w.width * _w.height * fbTexFormats.depthFormatBytes);
+	const u8 * pixelData = (const u8*)buffer->ops->map(buffer, 0, _w.width * _w.height * fbTexFormats.depthFormatBytes);
 	m_written = pixelData != nullptr;
-	if (pixelData == nullptr)
-		return;
-	gli_rdram_write_depth((const f32*)pixelData, &_w);
-	m_pbuf[_slot]->closeReadBuffer();
+	if (pixelData != nullptr) {
+		gli_rdram_write_depth((const f32*)pixelData, &_w);
+		buffer->ops->unmap(buffer);
+	}
+	buffer->ops->unbind(buffer);
 }
 
 bool DepthBufferToRDRAM::_copy(u32 _startAddress, u32 _endAddress, bool _sync)
@@ -271,13 +278,15 @@ bool DepthBufferToRDRAM::_copy(u32 _startAddress, u32 _endAddress, bool _sync)
 
 	gfxContext.bindFramebuffer(bufferTarget::READ_FRAMEBUFFER, m_FBO);
 	{
-		PixelBufferBinder<PixelReadBuffer> binder(m_pbuf[slot].get());
+		gli_prb * buffer = m_pbuf[slot];
 		const FramebufferTextureFormats & fbTexFormats = gfxContext.getFramebufferTextureFormats();
-		m_pbuf[slot]->readPixels(x0, y0, width, height, fbTexFormats.depthFormat, fbTexFormats.depthType);
+		buffer->ops->bind(buffer);
+		buffer->ops->read_pixels(buffer, x0, y0, width, height, fbTexFormats.depthFormat, fbTexFormats.depthType);
+		buffer->ops->unbind(buffer);
 	}
 
 	if (_sync) {
-		m_pbuf[slot]->ready(true);
+		m_pbuf[slot]->ops->ready(m_pbuf[slot], true);
 		write(slot, w);
 		if (!m_written)
 			return false;

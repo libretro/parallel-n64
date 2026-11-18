@@ -11,8 +11,16 @@
  * ready once its fence signals: a poll does not wait, a wait does, and
  * the fence goes once seen. The pixel buffer reader maps a slot as it is
  * read and unmaps it on clean-up; the buffer storage reader maps each
- * buffer once. Vulkan's reader has one to eight readbacks. The GL and
- * Vulkan entry points are stubs.
+ * buffer once. Vulkan's reader has one to eight readbacks.
+ *
+ * The depth copy's read-back buffers (Graphics/PixelBuffer.h): GL's a
+ * pixel buffer of the size asked, read into at offset 0 while bound,
+ * fenced; ready polls without waiting, or waits, drops the fence once
+ * seen, and is ready with no read in flight; a map reads at most the
+ * buffer; bound and unbound through the cache; dropped with its fence.
+ * Vulkan's reads depth only for the depth format, maps where its readback
+ * lies once it has landed, and drops its readback. The GL and Vulkan
+ * entry points are stubs.
  *
  *   ./test_gliden64_color_reader
  */
@@ -165,6 +173,10 @@ static u32 binds, bindName, buffersMade, storageMade, mapsPersistent, maps, unma
 static int signalAfter;      /* polls before a fence signals */
 static uintptr_t nextSync = 0x100;
 static void *lastPixels;
+static GLint readX, readY;
+static GLsizei readW, readH;
+static GLenum readFormat, readType;
+static u32 readBound;
 
 void gli_gl_bind_buffer(void *_cache, u32 _target, u32 _name)
 {
@@ -180,11 +192,27 @@ static void APIENTRY buffer_storage(GLenum _t, GLsizeiptr _s, const void *_d, GL
 	check((_f & GL_MAP_PERSISTENT_BIT) != 0 && (_f & GL_MAP_READ_BIT) != 0, "storage persistent and readable");
 	storageMade++;
 }
-static void APIENTRY buffer_data(GLenum _t, GLsizeiptr _s, const void *_d, GLenum _u) { (void)_t; (void)_s; (void)_d; (void)_u; }
+static GLsizeiptr dataSize;
+static GLenum dataUsage, dataTarget;
+static u32 dataBound;
+static void APIENTRY buffer_data(GLenum _t, GLsizeiptr _s, const void *_d, GLenum _u)
+{
+	check(_d == NULL, "buffer data to come");
+	dataTarget = _t;
+	dataSize = _s;
+	dataUsage = _u;
+	dataBound = bindName;
+}
 static u8 mapped[4][4096];
+static GLintptr mapOffset;
+static GLsizeiptr mapLength;
+static GLbitfield mapAccess;
 static void *APIENTRY map_range(GLenum _t, GLintptr _o, GLsizeiptr _l, GLbitfield _a)
 {
-	(void)_t; (void)_o; (void)_l;
+	(void)_t;
+	mapOffset = _o;
+	mapLength = _l;
+	mapAccess = _a;
 	if (_a & GL_MAP_PERSISTENT_BIT)
 		mapsPersistent++;
 	return mapped[maps++ & 3];
@@ -192,7 +220,8 @@ static void *APIENTRY map_range(GLenum _t, GLintptr _o, GLsizeiptr _l, GLbitfiel
 static GLboolean APIENTRY unmap(GLenum _t) { (void)_t; unmaps++; return GL_TRUE; }
 static void APIENTRY read_pixels(GLint _x, GLint _y, GLsizei _w, GLsizei _h, GLenum _f, GLenum _t, void *_p)
 {
-	(void)_x; (void)_y; (void)_w; (void)_h; (void)_f; (void)_t;
+	readX = _x; readY = _y; readW = _w; readH = _h; readFormat = _f; readType = _t;
+	readBound = bindName;
 	readPixelsTo++;
 	lastPixels = _p;
 }
@@ -285,20 +314,100 @@ static void test_gl(void)
 	gli_cbr_delete(r);
 }
 
+/* the depth copy's read-back buffer on GL */
+static void test_gl_prb(void)
+{
+	gli_prb *b;
+	u32 madeBefore = buffersMade, deletesBefore = deletes, syncsBefore;
+	void *p;
+
+	binds = 0;
+	b = gli_gl_prb_new(&binds, 4096);
+	check(b != NULL && buffersMade == madeBefore + 1, "a pixel buffer");
+	check(dataTarget == GL_PIXEL_PACK_BUFFER && dataSize == 4096 && dataUsage == GL_DYNAMIC_READ,
+		"as large as asked, for reading");
+	check(dataBound != 0 && bindName == 0 && binds == 2, "its data made while bound, then unbound");
+
+	/* nothing read: ready, no wait */
+	clientWaits = 0;
+	check(b->ops->ready(b, 0) && b->ops->ready(b, 1) && clientWaits == 0, "ready with no read in flight");
+
+	b->ops->bind(b);
+	check(bindName == dataBound, "bound through the cache");
+	readPixelsTo = 0;
+	b->ops->read_pixels(b, 3, 4, 50, 60, GL_DEPTH_COMPONENT, GL_FLOAT);
+	check(readPixelsTo == 1 && lastPixels == NULL && readBound == dataBound, "read into the bound buffer, from its start");
+	check(readX == 3 && readY == 4 && readW == 50 && readH == 60 && readFormat == GL_DEPTH_COMPONENT && readType == GL_FLOAT,
+		"the rows and format asked");
+	b->ops->unbind(b);
+	check(bindName == 0, "unbound through the cache");
+
+	/* the fence: a poll does not wait */
+	signalAfter = 1;
+	clientWaits = 0;
+	syncsBefore = deletedSyncs;
+	check(!b->ops->ready(b, 0) && clientWaits == 1 && deletedSyncs == syncsBefore, "a poll, not landed");
+	check(b->ops->ready(b, 0) && deletedSyncs == syncsBefore + 1, "landed: the fence goes");
+	clientWaits = 0;
+	check(b->ops->ready(b, 0) && clientWaits == 0, "and is not polled again");
+
+	/* a wait waits */
+	b->ops->read_pixels(b, 0, 0, 1, 1, GL_DEPTH_COMPONENT, GL_FLOAT);
+	syncsBefore = deletedSyncs;
+	b->ops->read_pixels(b, 0, 0, 1, 1, GL_DEPTH_COMPONENT, GL_FLOAT);
+	check(deletedSyncs == syncsBefore + 1, "a new read's fence replaces the last");
+	signalAfter = 3;
+	clientWaits = 0;
+	check(b->ops->ready(b, 1) && clientWaits == 4, "a wait goes on until the fence signals");
+
+	/* a map: at most the buffer, for reading */
+	p = b->ops->map(b, 16, 100);
+	check(p != NULL && mapOffset == 16 && mapLength == 100 && mapAccess == GL_MAP_READ_BIT, "a map of the range asked, read");
+	unmaps = 0;
+	b->ops->unmap(b);
+	check(unmaps == 1, "unmapped");
+	b->ops->map(b, 0, 100000);
+	check(mapLength == 4096, "at most the buffer mapped");
+	b->ops->unmap(b);
+
+	/* dropped with its fence */
+	b->ops->read_pixels(b, 0, 0, 1, 1, GL_DEPTH_COMPONENT, GL_FLOAT);
+	syncsBefore = deletedSyncs;
+	b->ops->destroy(b);
+	check(deletes == deletesBefore + 1 && deletedSyncs == syncsBefore + 1, "dropped with its buffer and fence");
+	b = gli_gl_prb_new(&binds, 64);
+	syncsBefore = deletedSyncs;
+	b->ops->destroy(b);
+	check(deletedSyncs == syncsBefore, "no fence dropped where none was");
+}
+
 /* ---- Vulkan ---- */
 
 static u32 readbacks, readbacksDeleted, readbackWaits;
+static int readbackLanded = 1;
+static void *lastDeleted;
 static u8 rbData[8][64];
 struct vkr_readback { int index; };
 static struct vkr_readback rbs[8];
 
 vkr_readback *vkr_readback_new(vkr_renderer *_r, size_t _bytes) { (void)_r; (void)_bytes; rbs[readbacks].index = (int)readbacks; return &rbs[readbacks++]; }
-void vkr_readback_delete(vkr_renderer *_r, vkr_readback *_rb) { (void)_r; (void)_rb; readbacksDeleted++; }
+void vkr_readback_delete(vkr_renderer *_r, vkr_readback *_rb) { (void)_r; lastDeleted = _rb; readbacksDeleted++; }
+static int fboDepth = -1;
+static unsigned fboW, fboH;
+static int fboX, fboY;
+static vkr_renderer *fboRenderer;
+void vkr_readback_fbo(vkr_renderer *_r, vkr_readback *_rb, int _x, int _y, unsigned _w, unsigned _hgt, int _depth)
+{
+	(void)_rb;
+	fboRenderer = _r;
+	fboX = _x; fboY = _y; fboW = _w; fboH = _hgt;
+	fboDepth = _depth;
+}
 void vkr_readback_tex(vkr_renderer *_r, vkr_readback *_rb, unsigned _t, int _x, int _y, unsigned _w, unsigned _h)
 {
 	(void)_r; (void)_rb; (void)_t; (void)_x; (void)_y; (void)_w; (void)_h;
 }
-int vkr_readback_ready(vkr_renderer *_r, vkr_readback *_rb, int _wait) { (void)_r; (void)_rb; readbackWaits += _wait; return 1; }
+int vkr_readback_ready(vkr_renderer *_r, vkr_readback *_rb, int _wait) { (void)_r; (void)_rb; readbackWaits += _wait; return _wait || readbackLanded; }
 const void *vkr_readback_data(vkr_readback *_rb) { return rbData[_rb->index]; }
 
 static void test_vk(void)
@@ -329,12 +438,43 @@ static void test_vk(void)
 	r = gli_vk_cbr_new((vkr_renderer *)&tex, &tex);
 	check(r->numSlots == 1, "at least one");
 	gli_cbr_delete(r);
+
+	/* the depth copy's read-back buffer */
+	{
+		gli_prb *b;
+		vkr_readback *rb;
+		u8 *p;
+		readbacks = 0;
+		b = gli_vk_prb_new((vkr_renderer *)&tex, 4096);
+		rb = &rbs[0];
+		check(b != NULL && readbacks == 1, "Vulkan: a readback for the depth copy");
+		b->ops->read_pixels(b, 1, 2, 30, 40, GLI_CF_DEPTH, 0x1406);
+		check(fboDepth == 1 && fboX == 1 && fboY == 2 && fboW == 30 && fboH == 40 && fboRenderer == (vkr_renderer *)&tex,
+			"depth read for the depth format");
+		b->ops->read_pixels(b, 0, 0, 1, 1, GLI_CF_RGBA, 0x1401);
+		check(fboDepth == 0, "colour for the rest");
+		readbackLanded = 0;
+		readbackWaits = 0;
+		check(!b->ops->ready(b, 0) && readbackWaits == 0, "a poll does not wait");
+		check(b->ops->ready(b, 1) && readbackWaits == 1, "a wait waits");
+		readbackLanded = 1;
+		readbackWaits = 0;
+		p = (u8 *)b->ops->map(b, 8, 16);
+		check(p == rbData[0] + 8 && readbackWaits == 1, "mapped where it lies, once landed");
+		b->ops->bind(b);
+		b->ops->unbind(b);
+		b->ops->unmap(b);
+		readbacksDeleted = 0;
+		b->ops->destroy(b);
+		check(readbacksDeleted == 1 && lastDeleted == rb, "its readback dropped");
+	}
 }
 
 int main(void)
 {
 	test_shared();
 	test_gl();
+	test_gl_prb();
 	test_vk();
 	if (failures) {
 		printf("%d failed\n", failures);

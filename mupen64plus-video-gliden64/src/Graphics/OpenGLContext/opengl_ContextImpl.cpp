@@ -162,18 +162,15 @@ void ContextImpl::init()
 	}
 
 	{
-		BufferManipulationObjectFactory bufferObjectFactory(m_glInfo, *m_cachedFunctions.get());
 		{
 			static const gli_fb_formats unset = GLI_FB_FORMATS_DEFAULT;
 			m_fbTexFormats = unset;
 		}
-		bufferObjectFactory.getFramebufferTextureFormats(m_fbTexFormats);
-		m_createFramebuffer.reset(bufferObjectFactory.getCreateFramebufferObject());
-		m_createRenderbuffer.reset(bufferObjectFactory.getCreateRenderbuffer());
-		m_initRenderbuffer.reset(bufferObjectFactory.getInitRenderbuffer());
-		m_addFramebufferRenderTarget.reset(bufferObjectFactory.getAddFramebufferRenderTarget());
-		m_createPixelReadBuffer.reset(bufferObjectFactory.createPixelReadBuffer());
-		m_blitFramebuffers.reset(bufferObjectFactory.getBlitFramebuffers());
+		gli_gl_fb_formats(&m_glInfo, &m_fbTexFormats);
+		m_bufferObjects.info = &m_glInfo;
+		m_bufferObjects.bindFramebuffer = m_cachedFunctions->getCachedBindFramebuffer();
+		m_bufferObjects.bindRenderbuffer = m_cachedFunctions->getCachedBindRenderbuffer();
+		m_bufferObjects.enableScissor = m_cachedFunctions->getCachedEnable(graphics::enable::SCISSOR_TEST);
 	}
 
 	{
@@ -192,10 +189,6 @@ void ContextImpl::destroy()
 	m_init2DTexture.reset();
 	m_set2DTextureParameters.reset();
 
-	m_createFramebuffer.reset();
-	m_createRenderbuffer.reset();
-	m_initRenderbuffer.reset();
-	m_addFramebufferRenderTarget.reset();
 	if (m_graphicsDrawer != nullptr)
 		m_graphicsDrawer->ops->destroy(m_graphicsDrawer);
 	m_graphicsDrawer = nullptr;
@@ -419,7 +412,7 @@ void ContextImpl::getFramebufferTextureFormats(gli_fb_formats & _formats)
 
 graphics::ObjectHandle ContextImpl::createFramebuffer()
 {
-	return m_createFramebuffer->createFramebuffer();
+	return graphics::ObjectHandle(gli_gl_create_framebuffer(&m_bufferObjects));
 }
 
 void ContextImpl::deleteFramebuffer(graphics::ObjectHandle _name)
@@ -452,22 +445,22 @@ void ContextImpl::deleteRenderbuffer(graphics::ObjectHandle _name)
 
 graphics::ObjectHandle ContextImpl::createRenderbuffer()
 {
-	return m_createRenderbuffer->createRenderbuffer();
+	return graphics::ObjectHandle(gli_gl_create_renderbuffer());
 }
 
 void ContextImpl::initRenderbuffer(const gli_init_renderbuffer_params & _params)
 {
-	m_initRenderbuffer->initRenderbuffer(_params);
+	gli_gl_init_renderbuffer(&m_bufferObjects, &_params);
 }
 
 void ContextImpl::addFrameBufferRenderTarget(const gli_fb_render_target & _params)
 {
-	m_addFramebufferRenderTarget->addFrameBufferRenderTarget(_params);
+	gli_gl_add_render_target(&m_bufferObjects, &_params);
 }
 
 bool ContextImpl::blitFramebuffers(const gli_blit_params & _params)
 {
-	return m_blitFramebuffers->blitFramebuffers(_params);
+	return gli_gl_blit_framebuffers(&m_bufferObjects, &_params);
 }
 
 void ContextImpl::setDrawBuffers(u32 _num)
@@ -476,11 +469,11 @@ void ContextImpl::setDrawBuffers(u32 _num)
 	glDrawBuffers(_num, targets);
 }
 
-graphics::PixelReadBuffer * ContextImpl::createPixelReadBuffer(size_t _sizeInBytes)
+gli_prb * ContextImpl::createPixelReadBuffer(size_t _sizeInBytes)
 {
-	if (m_createPixelReadBuffer)
-		return m_createPixelReadBuffer->createPixelReadBuffer(_sizeInBytes);
-	return nullptr;
+	if (m_glInfo.isGLES2)
+		return nullptr;
+	return gli_gl_prb_new(m_cachedFunctions->getCachedBindBuffer(), _sizeInBytes);
 }
 
 gli_cbr * ContextImpl::createColorBufferReader(CachedTexture * _pTexture)

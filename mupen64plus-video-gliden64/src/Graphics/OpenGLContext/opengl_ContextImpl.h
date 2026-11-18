@@ -106,7 +106,7 @@ namespace opengl {
 
 		/*---------------Pixelbuffer-------------*/
 
-		graphics::PixelReadBuffer * createPixelReadBuffer(size_t _sizeInBytes) override;
+		gli_prb * createPixelReadBuffer(size_t _sizeInBytes) override;
 
 		gli_cbr * createColorBufferReader(CachedTexture * _pTexture) override;
 
@@ -165,12 +165,7 @@ namespace opengl {
 		std::unique_ptr<Update2DTexture> m_update2DTexture;
 		std::unique_ptr<Set2DTextureParameters> m_set2DTextureParameters;
 
-		std::unique_ptr<CreateFramebufferObject> m_createFramebuffer;
-		std::unique_ptr<CreateRenderbuffer> m_createRenderbuffer;
-		std::unique_ptr<InitRenderbuffer> m_initRenderbuffer;
-		std::unique_ptr<AddFramebufferRenderTarget> m_addFramebufferRenderTarget;
-		std::unique_ptr<CreatePixelReadBuffer> m_createPixelReadBuffer;
-		std::unique_ptr<BlitFramebuffers> m_blitFramebuffers;
+		gli_gl_buffer_objects m_bufferObjects;
 		gli_fb_formats m_fbTexFormats;
 
 		gli_gl_drawer * m_graphicsDrawer = nullptr;

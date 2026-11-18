@@ -170,9 +170,9 @@ namespace graphics {
 
 		/*---------------Pixelbuffer-------------*/
 
-		static PixelReadBuffer * createPixelReadBuffer(size_t _sizeInBytes)
+		static gli_prb * createPixelReadBuffer(size_t _sizeInBytes)
 		{
-			return static_cast<PixelReadBuffer *>(gli_ctx.ops->createPixelReadBuffer(gli_ctx.impl, _sizeInBytes));
+			return gli_ctx.ops->createPixelReadBuffer(gli_ctx.impl, _sizeInBytes);
 		}
 
 		static gli_cbr * createColorBufferReader(CachedTexture * _pTexture)

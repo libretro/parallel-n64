@@ -3,6 +3,7 @@
 #include "GLFunctions.h"
 #include "opengl_GLInfo.h"
 #include "opengl_CachedFunctions.h"
+#include "opengl_BufferManipulationObjectFactory.h"
 
 extern "C" {
 /* glsm holds the state across frames (glsmsym.h) */
@@ -125,6 +126,22 @@ void CachedBindBuffer::bind(graphics::Parameter _target, graphics::ObjectHandle 
 extern "C" void gli_gl_bind_buffer(void * _cache, u32 _target, u32 _name)
 {
 	static_cast<CachedBindBuffer *>(_cache)->bind(graphics::Parameter(_target), graphics::ObjectHandle(_name));
+}
+
+/* for C: the buffer objects (opengl_BufferManipulationObjectFactory.h) */
+extern "C" void gli_gl_bind_framebuffer(void * _cache, u32 _target, u32 _name)
+{
+	static_cast<CachedBindFramebuffer *>(_cache)->bind(graphics::Parameter(_target), graphics::ObjectHandle(_name));
+}
+
+extern "C" void gli_gl_bind_renderbuffer(void * _cache, u32 _target, u32 _name)
+{
+	static_cast<CachedBindRenderbuffer *>(_cache)->bind(graphics::Parameter(_target), graphics::ObjectHandle(_name));
+}
+
+extern "C" void gli_gl_enable_cached(void * _cache, int _enable)
+{
+	static_cast<CachedEnable *>(_cache)->enable(_enable != 0);
 }
 
 /*---------------CachedBindTexture-------------*/

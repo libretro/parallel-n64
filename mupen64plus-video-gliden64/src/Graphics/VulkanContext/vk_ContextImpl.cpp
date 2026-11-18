@@ -299,28 +299,6 @@ private:
 	int m_alpha;
 };
 
-/*---------------Readers-------------*/
-
-class VkPixelReadBuffer : public PixelReadBuffer
-{
-public:
-	VkPixelReadBuffer(size_t _bytes) : m_rb(vkr_readback_new(g_r, _bytes)) {}
-	~VkPixelReadBuffer() { vkr_readback_delete(g_r, m_rb); }
-	void readPixels(s32 _x, s32 _y, u32 _w, u32 _h, Parameter _format, Parameter) override {
-		vkr_readback_fbo(g_r, m_rb, _x, _y, _w, _h, _format == Parameter(colorFormat::DEPTH) ? 1 : 0);
-	}
-	void * getDataRange(u32 _offset, u32) override {
-		vkr_readback_ready(g_r, m_rb, 1);
-		return const_cast<u8*>(static_cast<const u8*>(vkr_readback_data(m_rb))) + _offset;
-	}
-	void closeReadBuffer() override {}
-	void bind() override {}
-	void unbind() override {}
-	bool ready(bool _wait) override { return vkr_readback_ready(g_r, m_rb, _wait ? 1 : 0) != 0; }
-private:
-	vkr_readback * m_rb;
-};
-
 /*---------------Context-------------*/
 
 class VkContextImpl : public ContextImpl
@@ -453,7 +431,7 @@ public:
 			_p.filter == GLI_TP_FILTER_LINEAR ? 1 : 0) != 0;
 	}
 	void setDrawBuffers(u32) override {}
-	PixelReadBuffer * createPixelReadBuffer(size_t _bytes) override { return new VkPixelReadBuffer(_bytes); }
+	gli_prb * createPixelReadBuffer(size_t _bytes) override { return gli_vk_prb_new(g_r, _bytes); }
 	gli_cbr * createColorBufferReader(CachedTexture * _t) override { return gli_vk_cbr_new(g_r, _t); }
 
 	bool isCombinerProgramBuilderObsolete() override { return m_optionsBits != gli_combiner_options_bits(); }

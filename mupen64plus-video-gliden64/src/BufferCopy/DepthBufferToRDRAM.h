@@ -6,9 +6,7 @@
 #include "DeferredReadback.h"
 #include "../gli_rdram_write.h"
 
-namespace graphics {
-	class PixelReadBuffer;
-}
+struct gli_prb;
 
 struct gli_tex;
 typedef struct gli_tex CachedTexture;
@@ -46,7 +44,7 @@ private:
 
 	graphics::ObjectHandle m_FBO;
 	/* one read-back buffer per read in flight, all allocated at init */
-	std::unique_ptr<graphics::PixelReadBuffer> m_pbuf[MaxSlots];
+	struct gli_prb * m_pbuf[MaxSlots];
 	u32 m_numSlots;
 	bool m_written;
 	DeferredReadback<gli_rdram_write, MaxSlots> m_readback;

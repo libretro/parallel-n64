@@ -100,7 +100,7 @@ namespace graphics {
 			return I(_p)->T::blitFramebuffers(*_params);
 		}
 		static void setDrawBuffers(void * _p, u32 _num) { I(_p)->T::setDrawBuffers(_num); }
-		static void * createPixelReadBuffer(void * _p, size_t _bytes) { return I(_p)->T::createPixelReadBuffer(_bytes); }
+		static gli_prb * createPixelReadBuffer(void * _p, size_t _bytes) { return I(_p)->T::createPixelReadBuffer(_bytes); }
 		static void * createColorBufferReader(void * _p, void * _texture)
 		{
 			return I(_p)->T::createColorBufferReader(static_cast<CachedTexture *>(_texture));

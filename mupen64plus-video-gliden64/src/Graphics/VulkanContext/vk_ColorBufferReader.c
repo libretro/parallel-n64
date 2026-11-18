@@ -1,8 +1,12 @@
-/* Vulkan's color buffer reader (vk_ColorBufferReader.h). C89.
+/* Vulkan's color buffer reader (vk_ColorBufferReader.h), and the depth
+ * copy's read-back buffer at the end. C89.
  *
  * Each slot is a readback of the renderer's, whose memory the rows are
  * read in, where they lie; a read that waits is slot 0's. */
+#include <stdlib.h>
+
 #include "vk_ColorBufferReader.h"
+#include "Graphics/gli_params.h"
 #include "Config.h"
 
 #define MAX_SLOTS 8
@@ -77,4 +81,61 @@ gli_cbr *gli_vk_cbr_new(vkr_renderer *_renderer, struct gli_tex *_texture)
 	for (i = 0; i < n; ++i)
 		r->rb[i] = vkr_readback_new(_renderer, _texture->textureBytes);
 	return &r->base;
+}
+
+/* ---- the depth copy's read-back buffer (Graphics/PixelBuffer.h) ---- */
+
+typedef struct vk_prb
+{
+	gli_prb base;
+	vkr_renderer *renderer;
+	vkr_readback *rb;
+} vk_prb;
+
+static void prb_read_pixels(gli_prb *_buffer, s32 _x, s32 _y, u32 _width, u32 _height, u32 _format, u32 _type)
+{
+	vk_prb *b = (vk_prb *)_buffer;
+	(void)_type;
+	vkr_readback_fbo(b->renderer, b->rb, _x, _y, _width, _height, _format == GLI_CF_DEPTH ? 1 : 0);
+}
+
+static bool prb_ready(gli_prb *_buffer, bool _wait)
+{
+	vk_prb *b = (vk_prb *)_buffer;
+	return vkr_readback_ready(b->renderer, b->rb, _wait ? 1 : 0) != 0;
+}
+
+static void *prb_map(gli_prb *_buffer, u32 _offset, u32 _range)
+{
+	vk_prb *b = (vk_prb *)_buffer;
+	(void)_range;
+	vkr_readback_ready(b->renderer, b->rb, 1);
+	return (u8 *)vkr_readback_data(b->rb) + _offset;
+}
+
+static void prb_nothing(gli_prb *_buffer)
+{
+	(void)_buffer;
+}
+
+static void prb_destroy(gli_prb *_buffer)
+{
+	vk_prb *b = (vk_prb *)_buffer;
+	vkr_readback_delete(b->renderer, b->rb);
+	free(b);
+}
+
+static const gli_prb_ops prb_ops = {
+	prb_read_pixels, prb_ready, prb_map, prb_nothing, prb_nothing, prb_nothing, prb_destroy
+};
+
+gli_prb *gli_vk_prb_new(vkr_renderer *_renderer, size_t _bytes)
+{
+	vk_prb *b = (vk_prb *)malloc(sizeof(*b));
+	if (b == NULL)
+		return NULL;
+	b->base.ops = &prb_ops;
+	b->renderer = _renderer;
+	b->rb = vkr_readback_new(_renderer, _bytes);
+	return &b->base;
 }

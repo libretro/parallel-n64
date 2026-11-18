@@ -1,4 +1,5 @@
-/* GL's color buffer readers (opengl_ColorBufferReader.h). C89.
+/* GL's color buffer readers (opengl_ColorBufferReader.h), and the depth
+ * copy's read-back buffer at the end. C89.
  *
  * With buffer storage, a ring of buffers mapped once, persistently; with
  * pixel buffers, a ring mapped as each read is taken; with neither,
@@ -6,6 +7,7 @@
  * has as many buffers as copyToRDRAM asks for, at least one, at most
  * three, and its waits go by fences. */
 #include <stddef.h>
+#include <stdlib.h>
 
 #include "opengl_ColorBufferReader.h"
 #include "GLFunctions.h"
@@ -231,4 +233,95 @@ static const gli_cbr_ops pixels_ops = {
 gli_cbr *gli_gl_cbr_new_read_pixels(struct gli_tex *_texture)
 {
 	return gli_cbr_new(sizeof(gli_cbr), &pixels_ops, _texture);
+}
+
+/* ---- the depth copy's read-back buffer (Graphics/PixelBuffer.h) ---- */
+
+typedef struct gl_prb
+{
+	gli_prb base;
+	void *bindCache;
+	u32 size;
+	GLuint pbo;
+	GLsync fence;
+} gl_prb;
+
+static void prb_read_pixels(gli_prb *_buffer, s32 _x, s32 _y, u32 _width, u32 _height, u32 _format, u32 _type)
+{
+	gl_prb *b = (gl_prb *)_buffer;
+	glReadPixels(_x, _y, _width, _height, (GLenum)_format, (GLenum)_type, 0);
+	/* polled by ready, so the read can be left in flight */
+	if (b->fence != 0)
+		glDeleteSync(b->fence);
+	b->fence = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
+}
+
+static bool prb_ready(gli_prb *_buffer, bool _wait)
+{
+	gl_prb *b = (gl_prb *)_buffer;
+	GLenum res;
+	if (b->fence == 0)
+		return 1;
+	res = glClientWaitSync(b->fence, GL_SYNC_FLUSH_COMMANDS_BIT, 0);
+	while (_wait && res == GL_TIMEOUT_EXPIRED)
+		res = glClientWaitSync(b->fence, 0, 1000000000);
+	if (res == GL_TIMEOUT_EXPIRED)
+		return 0;
+	glDeleteSync(b->fence);
+	b->fence = 0;
+	return 1;
+}
+
+static void *prb_map(gli_prb *_buffer, u32 _offset, u32 _range)
+{
+	gl_prb *b = (gl_prb *)_buffer;
+	if (_range > b->size)
+		_range = b->size;
+	return glMapBufferRange(GL_PIXEL_PACK_BUFFER, _offset, _range, GL_MAP_READ_BIT);
+}
+
+static void prb_unmap(gli_prb *_buffer)
+{
+	(void)_buffer;
+	glUnmapBuffer(GL_PIXEL_PACK_BUFFER);
+}
+
+static void prb_bind(gli_prb *_buffer)
+{
+	gl_prb *b = (gl_prb *)_buffer;
+	gli_gl_bind_buffer(b->bindCache, GL_PIXEL_PACK_BUFFER, b->pbo);
+}
+
+static void prb_unbind(gli_prb *_buffer)
+{
+	gl_prb *b = (gl_prb *)_buffer;
+	gli_gl_bind_buffer(b->bindCache, GL_PIXEL_PACK_BUFFER, 0);
+}
+
+static void prb_destroy(gli_prb *_buffer)
+{
+	gl_prb *b = (gl_prb *)_buffer;
+	if (b->fence != 0)
+		glDeleteSync(b->fence);
+	glDeleteBuffers(1, &b->pbo);
+	free(b);
+}
+
+static const gli_prb_ops prb_ops = {
+	prb_read_pixels, prb_ready, prb_map, prb_unmap, prb_bind, prb_unbind, prb_destroy
+};
+
+gli_prb *gli_gl_prb_new(void *_bindCache, size_t _bytes)
+{
+	gl_prb *b = (gl_prb *)calloc(1, sizeof(*b));
+	if (b == NULL)
+		return NULL;
+	b->base.ops = &prb_ops;
+	b->bindCache = _bindCache;
+	b->size = (u32)_bytes;
+	glGenBuffers(1, &b->pbo);
+	gli_gl_bind_buffer(_bindCache, GL_PIXEL_PACK_BUFFER, b->pbo);
+	glBufferData(GL_PIXEL_PACK_BUFFER, (GLsizeiptr)_bytes, NULL, GL_DYNAMIC_READ);
+	gli_gl_bind_buffer(_bindCache, GL_PIXEL_PACK_BUFFER, 0);
+	return &b->base;
 }

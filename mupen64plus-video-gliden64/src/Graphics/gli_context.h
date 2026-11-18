@@ -21,6 +21,7 @@ extern "C" {
 struct Combiner;
 struct gli_cprog;
 struct gli_combiner_table;
+struct gli_prb;
 
 /* a parameter left unset: the backend leaves that state as it is */
 #define GLI_PARAM_INVALID 0xFFFFFFFFu
@@ -246,7 +247,7 @@ typedef struct gli_context_ops
 	void (*initRenderbuffer)(void *_impl, const gli_init_renderbuffer_params *_params);
 	bool (*blitFramebuffers)(void *_impl, const gli_blit_params *_params);
 	void (*setDrawBuffers)(void *_impl, u32 _num);
-	void *(*createPixelReadBuffer)(void *_impl, size_t _sizeInBytes);
+	struct gli_prb *(*createPixelReadBuffer)(void *_impl, size_t _sizeInBytes);
 	void *(*createColorBufferReader)(void *_impl, void *_texture);
 	/* shaders */
 	bool (*isCombinerProgramBuilderObsolete)(void *_impl);
