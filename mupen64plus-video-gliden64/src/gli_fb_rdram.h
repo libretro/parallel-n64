@@ -85,6 +85,25 @@ void gli_fb_set_clear_params(gli_fb *_fb, u32 _fillcolor, s32 _ulx, s32 _uly, s3
  * its copy. Unless @_force, once per swap @_swapCount */
 int gli_fb_is_valid(gli_fb *_fb, int _force, u32 _swapCount);
 
+/* Its GPU side (FrameBufferTextures.c): its frame buffer and texture made
+ * and, with the others it made, let go; set up as the buffer at @_address,
+ * its RDRAM copy storage lent from @_list,
+ * a @_width wide image of @_format and @_size, at the scale the config and
+ * window give; its multisampled texture resolved, again when @_bForce; and
+ * the texture tile @_t samples, a part of it where the tile wraps, or the
+ * background, copied when @_drawnInto, the buffer drawn into now */
+struct gli_tex;
+void gli_fb_make(gli_fb *_fb);
+void gli_fb_free(gli_fb *_fb);
+struct gli_fb_list;
+void gli_fb_init(gli_fb *_fb, struct gli_fb_list *_list, u32 _address, u16 _format, u16 _size, u16 _width, int _cfb);
+void gli_fb_resolve_texture(gli_fb *_fb, int _bForce);
+struct gli_tex *gli_fb_get_texture(gli_fb *_fb, u32 _t, int _drawnInto);
+struct gli_tex *gli_fb_get_texture_bg(gli_fb *_fb, u32 _t, int _drawnInto);
+/* @_pTexture made a @_width x @_height image of @_format and @_size at
+ * @_scale, sampled nearest, and attached to frame buffer @_fbo */
+void gli_fb_attach_texture(struct gli_tex *_pTexture, u32 _fbo, u16 _width, u16 _height, f32 _scale, u16 _format, u16 _size);
+
 /* How many of @_height lines of @_stride bytes at @_address fit in RDRAM */
 u32 cutHeight(u32 _address, u32 _height, u32 _stride);
 

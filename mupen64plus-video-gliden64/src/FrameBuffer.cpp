@@ -42,402 +42,6 @@ ObjectHandle ObjectHandle::defaultFramebuffer;
 using namespace std;
 using namespace graphics;
 
-FrameBuffer::FrameBuffer()
-{
-	memset(static_cast<gli_fb *>(this), 0, sizeof(gli_fb));
-	m_loadType = LOADTYPE_BLOCK;
-	m_pTexture = gli_textures_add_fb(u32(config.video.multisampling != 0 ?
-		textureTarget::TEXTURE_2D_MULTISAMPLE : textureTarget::TEXTURE_2D));
-	m_FBO = u32(gfxContext.createFramebuffer());
-}
-
-FrameBuffer::~FrameBuffer()
-{
-	gfxContext.deleteFramebuffer(ObjectHandle(m_FBO));
-	gfxContext.deleteFramebuffer(ObjectHandle(m_resolveFBO));
-	gfxContext.deleteFramebuffer(ObjectHandle(m_SubFBO));
-	gfxContext.deleteFramebuffer(ObjectHandle(m_copyFBO));
-
-	gli_textures_remove_fb(m_pTexture);
-	gli_textures_remove_fb(m_pResolveTexture);
-	gli_textures_remove_fb(m_pSubTexture);
-	gli_textures_remove_fb(m_pFrameBufferCopyTexture);
-}
-
-static
-void _initFrameBufferTexture(u32 _address, u16 _width, u16 _height, f32 _scale, u16 _format, u16 _size, CachedTexture *_pTexture)
-{
-	const FramebufferTextureFormats & fbTexFormats = gfxContext.getFramebufferTextureFormats();
-
-	_pTexture->width = (u16)(u32)(_width * _scale);
-	_pTexture->height = (u16)(u32)(_height * _scale);
-	_pTexture->format = _format;
-	_pTexture->size = _size;
-	_pTexture->clampS = 1;
-	_pTexture->clampT = 1;
-	_pTexture->address = _address;
-	_pTexture->clampWidth = _width;
-	_pTexture->clampHeight = _height;
-	_pTexture->frameBufferTexture = GLI_TEX_FB_ONE_SAMPLE;
-	_pTexture->maskS = 0;
-	_pTexture->maskT = 0;
-	_pTexture->mirrorS = 0;
-	_pTexture->mirrorT = 0;
-	_pTexture->realWidth = _pTexture->width;
-	_pTexture->realHeight = _pTexture->height;
-	_pTexture->textureBytes = _pTexture->realWidth * _pTexture->realHeight;
-	if (_size > G_IM_SIZ_8b)
-		_pTexture->textureBytes *= fbTexFormats.colorFormatBytes;
-	else
-		_pTexture->textureBytes *= fbTexFormats.monochromeFormatBytes;
-}
-
-void FrameBuffer::_initTexture(u16 _width, u16 _height, u16 _format, u16 _size, CachedTexture *_pTexture)
-{
-	_initFrameBufferTexture(m_startAddress, _width, _height, m_scale, _format, _size, _pTexture);
-}
-
-static
-void _setAndAttachBufferTexture(ObjectHandle _fbo, CachedTexture *_pTexture, u32 _t, bool _multisampling)
-{
-	const FramebufferTextureFormats & fbTexFormat = gfxContext.getFramebufferTextureFormats();
-	Context::InitTextureParams initParams;
-	initParams.handle = u32(_pTexture->name);
-	initParams.textureUnitIndex = u32(textureIndices::Tex[_t]);
-	if (_multisampling)
-		initParams.msaaLevel = config.video.multisampling;
-	initParams.width = _pTexture->realWidth;
-	initParams.height = _pTexture->realHeight;
-	if (_pTexture->size > G_IM_SIZ_8b) {
-		initParams.internalFormat = u32(fbTexFormat.colorInternalFormat);
-		initParams.format = u32(fbTexFormat.colorFormat);
-		initParams.dataType = u32(fbTexFormat.colorType);
-	} else {
-		initParams.internalFormat = u32(fbTexFormat.monochromeInternalFormat);
-		initParams.format = u32(fbTexFormat.monochromeFormat);
-		initParams.dataType = u32(fbTexFormat.monochromeType);
-	}
-	gfxContext.init2DTexture(initParams);
-
-	if (!_multisampling) {
-		Context::TexParameters texParams;
-		texParams.handle = u32(_pTexture->name);
-		texParams.target = u32(textureTarget::TEXTURE_2D);
-		texParams.textureUnitIndex = u32(textureIndices::Tex[_t]);
-		texParams.minFilter = u32(textureParameters::FILTER_NEAREST);
-		texParams.magFilter = u32(textureParameters::FILTER_NEAREST);
-		gfxContext.setTextureParameters(texParams);
-	}
-
-	Context::FrameBufferRenderTarget bufTarget;
-	bufTarget.bufferHandle = u32(_fbo);
-	bufTarget.bufferTarget = u32(bufferTarget::FRAMEBUFFER);
-	bufTarget.attachment = u32(bufferAttachment::COLOR_ATTACHMENT0);
-	bufTarget.textureTarget = u32(_multisampling ? textureTarget::TEXTURE_2D_MULTISAMPLE : textureTarget::TEXTURE_2D);
-	bufTarget.textureHandle = _pTexture->name;
-	gfxContext.addFrameBufferRenderTarget(bufTarget);
-	assert(!gfxContext.isFramebufferError());
-}
-
-void FrameBuffer::_setAndAttachTexture(ObjectHandle _fbo, CachedTexture *_pTexture, u32 _t, bool _multisampling)
-{
-	_setAndAttachBufferTexture(_fbo, _pTexture, _t, _multisampling);
-}
-
-bool FrameBuffer::isAuxiliary() const
-{
-	return gli_fb_is_auxiliary(this) != 0;
-}
-
-void FrameBuffer::init(u32 _address, u16 _format, u16 _size, u16 _width, bool _cfb)
-{
-	m_startAddress = _address;
-	m_width = _width;
-	m_height = _cfb ? VI.height : 1;
-//	m_height = VI.height;
-	m_size = _size;
-	updateEndAddress();
-	if (isAuxiliary() && config.frameBufferEmulation.copyAuxToRDRAM != 0) {
-		m_scale = 1.0f;
-	} else if (config.frameBufferEmulation.nativeResFactor != 0 && config.frameBufferEmulation.enable != 0) {
-		m_scale = static_cast<float>(config.frameBufferEmulation.nativeResFactor);
-	} else {
-		m_scale = dwnd().getScaleX();
-	}
-	m_cfb = _cfb;
-	m_cleared = false;
-	m_fingerprint = false;
-	m_swapCount = dwnd().getBuffersSwapCount();
-
-	const u16 maxHeight = gli_VI_GetMaxBufferHeight(_width);
-	_initTexture(_width, maxHeight, _format, _size, m_pTexture);
-	frameBufferList().lendRdramCopy(this, (_width * maxHeight) << _size >> 1);
-
-	if (config.video.multisampling != 0) {
-		_setAndAttachTexture(ObjectHandle(m_FBO), m_pTexture, 0, true);
-		m_pTexture->frameBufferTexture = GLI_TEX_FB_MULTI_SAMPLE;
-
-		m_pResolveTexture = gli_textures_add_fb(u32(textureTarget::TEXTURE_2D));
-		_initTexture(_width, maxHeight, _format, _size, m_pResolveTexture);
-		m_resolveFBO = u32(gfxContext.createFramebuffer());
-		_setAndAttachTexture(ObjectHandle(m_resolveFBO), m_pResolveTexture, 0, false);
-		assert(!gfxContext.isFramebufferError());
-
-		gfxContext.bindFramebuffer(bufferTarget::FRAMEBUFFER, ObjectHandle(m_FBO));
-	} else
-		_setAndAttachTexture(ObjectHandle(m_FBO), m_pTexture, 0, false);
-
-//	gfxContext.clearColorBuffer(0.0f, 0.0f, 0.0f, 0.0f);
-}
-
-void FrameBuffer::updateEndAddress()
-{
-	gli_fb_update_end_address(this);
-}
-
-void FrameBuffer::setBufferClearParams(u32 _fillcolor, s32 _ulx, s32 _uly, s32 _lrx, s32 _lry)
-{
-	gli_fb_set_clear_params(this, _fillcolor, _ulx, _uly, _lrx, _lry);
-}
-
-void FrameBuffer::copyRdram()
-{
-	gli_fb_save_rdram(this);
-}
-
-void FrameBuffer::setDirty()
-{
-	gli_fb_set_dirty(this);
-}
-
-bool FrameBuffer::isValid(bool _forceCheck) const
-{
-	/* the check stamps the swap it ran in */
-	return gli_fb_is_valid(const_cast<FrameBuffer *>(this), _forceCheck, dwnd().getBuffersSwapCount()) != 0;
-}
-
-void FrameBuffer::resolveMultisampledTexture(bool _bForce)
-{
-	if (!gli_ctx.multisampling)
-		return;
-
-	if (m_resolved && !_bForce)
-		return;
-
-	Context::BlitFramebuffersParams blitParams;
-	blitParams.readBuffer = u32(m_FBO);
-	blitParams.drawBuffer = u32(m_resolveFBO);
-	blitParams.srcX0 = 0;
-	blitParams.srcY0 = 0;
-	blitParams.srcX1 = m_pTexture->realWidth;
-	blitParams.srcY1 = m_pTexture->realHeight;
-	blitParams.dstX0 = 0;
-	blitParams.dstY0 = 0;
-	blitParams.dstX1 = m_pResolveTexture->realWidth;
-	blitParams.dstY1 = m_pResolveTexture->realHeight;
-	blitParams.mask = u32(blitMask::COLOR_BUFFER);
-	blitParams.filter = u32(textureParameters::FILTER_NEAREST);
-
-	gfxContext.blitFramebuffers(blitParams);
-
-	gfxContext.bindFramebuffer(bufferTarget::READ_FRAMEBUFFER(), ObjectHandle::defaultFramebuffer);
-
-	frameBufferList().setCurrentDrawBuffer();
-	m_resolved = true;
-}
-
-bool FrameBuffer::_initSubTexture(u32 _t)
-{
-	if (m_SubFBO == 0)
-		m_SubFBO = u32(gfxContext.createFramebuffer());
-
-	gDPTile * pTile = gSP.textureTile[_t];
-	if (pTile->lrs < pTile->uls || pTile->lrt < pTile->ult)
-		return false;
-	const u32 width = pTile->lrs - pTile->uls + 1;
-	const u32 height = pTile->lrt - pTile->ult + 1;
-
-	if (m_pSubTexture != nullptr) {
-		if (m_pSubTexture->size == m_pTexture->size &&
-			m_pSubTexture->clampWidth == width &&
-			m_pSubTexture->clampHeight == height)
-			return true;
-		gli_textures_remove_fb(m_pSubTexture);
-	}
-
-	m_pSubTexture = gli_textures_add_fb(u32(textureTarget::TEXTURE_2D));
-	_initTexture(width, height, m_pTexture->format, m_pTexture->size, m_pSubTexture);
-
-	m_pSubTexture->clampS = pTile->clamps;
-	m_pSubTexture->clampT = pTile->clampt;
-	m_pSubTexture->offsetS = 0.0f;
-	m_pSubTexture->offsetT = 0.0f;
-
-
-	_setAndAttachTexture(ObjectHandle(m_SubFBO), m_pSubTexture, _t, false);
-
-	return true;
-}
-
-CachedTexture * FrameBuffer::_getSubTexture(u32 _t)
-{
-	if (!gli_ctx.blitFramebuffer)
-		return m_pTexture;
-
-	if (!_initSubTexture(_t))
-		return m_pTexture;
-
-	s32 x0 = (s32)(m_pTexture->offsetS * m_scale);
-	s32 y0 = (s32)(m_pTexture->offsetT * m_scale);
-	s32 copyWidth = m_pSubTexture->realWidth;
-	if (x0 + copyWidth > m_pTexture->realWidth)
-		copyWidth = m_pTexture->realWidth - x0;
-	s32 copyHeight = m_pSubTexture->realHeight;
-	if (y0 + copyHeight > m_pTexture->realHeight)
-		copyHeight = m_pTexture->realHeight - y0;
-
-	ObjectHandle readFBO(m_FBO);
-	if (gli_ctx.weakBlitFramebuffer &&
-			m_pTexture->frameBufferTexture == GLI_TEX_FB_MULTI_SAMPLE) {
-		resolveMultisampledTexture(true);
-		readFBO = ObjectHandle(m_resolveFBO);
-	}
-
-	Context::BlitFramebuffersParams blitParams;
-	blitParams.readBuffer = u32(readFBO);
-	blitParams.drawBuffer = u32(m_SubFBO);
-	blitParams.srcX0 = x0;
-	blitParams.srcY0 = y0;
-	blitParams.srcX1 = x0 + copyWidth;
-	blitParams.srcY1 = y0 + copyHeight;
-	blitParams.dstX0 = 0;
-	blitParams.dstY0 = 0;
-	blitParams.dstX1 = copyWidth;
-	blitParams.dstY1 = copyHeight;
-	blitParams.mask = u32(blitMask::COLOR_BUFFER);
-	blitParams.filter = u32(textureParameters::FILTER_NEAREST);
-
-	gfxContext.blitFramebuffers(blitParams);
-
-	gfxContext.bindFramebuffer(bufferTarget::READ_FRAMEBUFFER(), ObjectHandle::defaultFramebuffer);
-
-	frameBufferList().setCurrentDrawBuffer();
-
-	return m_pSubTexture;
-}
-
-void FrameBuffer::_initCopyTexture()
-{
-	m_copyFBO = u32(gfxContext.createFramebuffer());
-	m_pFrameBufferCopyTexture = gli_textures_add_fb(u32(config.video.multisampling != 0 ?
-		textureTarget::TEXTURE_2D_MULTISAMPLE : textureTarget::TEXTURE_2D));
-	_initTexture(m_width, gli_VI_GetMaxBufferHeight(m_width), m_pTexture->format, m_pTexture->size, m_pFrameBufferCopyTexture);
-	_setAndAttachTexture(ObjectHandle(m_copyFBO), m_pFrameBufferCopyTexture, 0, config.video.multisampling != 0);
-	if (config.video.multisampling != 0)
-		m_pFrameBufferCopyTexture->frameBufferTexture = GLI_TEX_FB_MULTI_SAMPLE;
-}
-
-CachedTexture * FrameBuffer::_copyFrameBufferTexture()
-{
-	if (m_copied)
-		return m_pFrameBufferCopyTexture;
-
-	if (m_pFrameBufferCopyTexture == nullptr)
-		_initCopyTexture();
-
-	Context::BlitFramebuffersParams blitParams;
-	blitParams.readBuffer = u32(m_FBO);
-	blitParams.drawBuffer = u32(m_copyFBO);
-	blitParams.srcX0 = 0;
-	blitParams.srcY0 = 0;
-	blitParams.srcX1 = m_pTexture->realWidth;
-	blitParams.srcY1 = m_pTexture->realHeight;
-	blitParams.dstX0 = 0;
-	blitParams.dstY0 = 0;
-	blitParams.dstX1 = m_pTexture->realWidth;
-	blitParams.dstY1 = m_pTexture->realHeight;
-	blitParams.mask = u32(blitMask::COLOR_BUFFER);
-	blitParams.filter = u32(textureParameters::FILTER_NEAREST);
-
-	gfxContext.blitFramebuffers(blitParams);
-
-	gfxContext.bindFramebuffer(bufferTarget::READ_FRAMEBUFFER(), ObjectHandle::defaultFramebuffer);
-	frameBufferList().setCurrentDrawBuffer();
-
-	m_copied = true;
-	return m_pFrameBufferCopyTexture;
-}
-
-CachedTexture * FrameBuffer::getTexture(u32 _t)
-{
-	const bool getDepthTexture = m_isDepthBuffer &&
-								 gDP.colorImage.address == gDP.depthImageAddress &&
-								 m_pDepthBuffer != nullptr &&
-								 (config.generalEmulation.hacks & hack_ZeldaMM) == 0;
-	CachedTexture *pTexture = getDepthTexture ? m_pDepthBuffer->m_pDepthBufferTexture : m_pTexture;
-
-	if (this == frameBufferList().getCurrent()) {
-		if (gli_ctx.textureBarrier)
-			gfxContext.textureBarrier();
-		else if (gli_ctx.blitFramebuffer)
-			pTexture = getDepthTexture ? gli_depth_copy_texture(m_pDepthBuffer, this) : _copyFrameBufferTexture();
-	}
-
-	const u32 shift = (gSP.textureTile[_t]->imageAddress - m_startAddress) >> (m_size - 1);
-	const u32 factor = m_width;
-	if (m_loadType == LOADTYPE_TILE) {
-		pTexture->offsetS = (float)(m_loadTileOrigin.uls + (shift % factor));
-		pTexture->offsetT = (float)(m_loadTileOrigin.ult + shift / factor);
-	} else {
-		pTexture->offsetS = (float)(shift % factor);
-		pTexture->offsetT = (float)(shift / factor);
-	}
-
-	if (!getDepthTexture && (gSP.textureTile[_t]->clamps == 0 || gSP.textureTile[_t]->clampt == 0))
-		pTexture = _getSubTexture(_t);
-
-	pTexture->scaleS = m_scale / (float)pTexture->realWidth;
-	pTexture->scaleT = m_scale / (float)pTexture->realHeight;
-
-	if (gSP.textureTile[_t]->shifts > 10)
-		pTexture->shiftScaleS = (float)(1 << (16 - gSP.textureTile[_t]->shifts));
-	else if (gSP.textureTile[_t]->shifts > 0)
-		pTexture->shiftScaleS = 1.0f / (float)(1 << gSP.textureTile[_t]->shifts);
-	else
-		pTexture->shiftScaleS = 1.0f;
-
-	if (gSP.textureTile[_t]->shiftt > 10)
-		pTexture->shiftScaleT = (float)(1 << (16 - gSP.textureTile[_t]->shiftt));
-	else if (gSP.textureTile[_t]->shiftt > 0)
-		pTexture->shiftScaleT = 1.0f / (float)(1 << gSP.textureTile[_t]->shiftt);
-	else
-		pTexture->shiftScaleT = 1.0f;
-
-	return pTexture;
-}
-
-CachedTexture * FrameBuffer::getTextureBG(u32 _t)
-{
-	CachedTexture *pTexture = m_pTexture;
-
-	if (this == frameBufferList().getCurrent()) {
-		if (gli_ctx.textureBarrier)
-			gfxContext.textureBarrier();
-		else if (gli_ctx.blitFramebuffer)
-			pTexture = _copyFrameBufferTexture();
-	}
-
-	pTexture->scaleS = m_scale / (float)pTexture->realWidth;
-	pTexture->scaleT = m_scale / (float)pTexture->realHeight;
-
-	pTexture->shiftScaleS = 1.0f;
-	pTexture->shiftScaleT = 1.0f;
-
-	pTexture->offsetS = gSP.bgImage.imageX;
-	pTexture->offsetT = gSP.bgImage.imageY;
-	return pTexture;
-}
-
 FrameBufferList & FrameBufferList::get()
 {
 	static FrameBufferList frameBufferList;
@@ -575,7 +179,7 @@ void FrameBufferList::_createScreenSizeBuffer()
 	if (VI.height == 0)
 		return;
 	FrameBuffer & buffer = _addFront();
-	buffer.init(VI.width * 2, G_IM_FMT_RGBA, G_IM_SIZ_16b, VI.width, false);
+	buffer.init(&m_fbs, VI.width * 2, G_IM_FMT_RGBA, G_IM_SIZ_16b, VI.width, false);
 }
 
 void FrameBufferList::saveBuffer(u32 _address, u16 _format, u16 _size, u16 _width, bool _cfb)
@@ -673,7 +277,7 @@ void FrameBufferList::saveBuffer(u32 _address, u16 _format, u16 _size, u16 _widt
 	if  (bNew) {
 		// Wasn't found or removed, create a new one
 		FrameBuffer & buffer = _addFront();
-		buffer.init(_address, _format, _size, _width, _cfb);
+		buffer.init(&m_fbs, _address, _format, _size, _width, _cfb);
 		m_pCurrent = &buffer;
 		gli_r2cb_copy_buffer_from_rdram(m_pCurrent);
 		if (_cfb)
@@ -989,14 +593,8 @@ void FrameBufferList::OverscanBuffer::setInputBuffer(const FrameBuffer *  _pBuff
 	gli_textures_remove_fb(m_pTexture);
 	m_pTexture = gli_textures_add_fb(u32(textureTarget::TEXTURE_2D));
 	const CachedTexture * pSrcTexture = _pBuffer->m_pTexture;
-	_initFrameBufferTexture(0,
-		_pBuffer->m_width,
-		gli_VI_GetMaxBufferHeight(_pBuffer->m_width),
-		_pBuffer->m_scale,
-		pSrcTexture->format,
-		pSrcTexture->size,
-		m_pTexture);
-	_setAndAttachBufferTexture(m_FBO, m_pTexture, 0, false);
+	gli_fb_attach_texture(m_pTexture, u32(m_FBO), _pBuffer->m_width, gli_VI_GetMaxBufferHeight(_pBuffer->m_width),
+		_pBuffer->m_scale, pSrcTexture->format, pSrcTexture->size);
 	m_scale = _pBuffer->m_scale;
 	m_drawingWidth = m_bufferWidth = m_pTexture->width;
 	m_bufferHeight = m_pTexture->height;
@@ -1276,11 +874,12 @@ void FrameBufferList::fillRDRAM(s32 ulx, s32 uly, s32 lrx, s32 lry)
 
 void gli_fb_activate_texture(u32 t, u32 _frameBufferAddress)
 {
-	FrameBuffer * pBuffer = frameBufferList().getBuffer(_frameBufferAddress);
+	FrameBufferList & list = frameBufferList();
+	FrameBuffer * pBuffer = list.getBuffer(_frameBufferAddress);
 	if (pBuffer == nullptr)
 		return;
 
-	CachedTexture *pTexture = pBuffer->getTexture(t);
+	CachedTexture *pTexture = gli_fb_get_texture(pBuffer, t, pBuffer == list.getCurrent());
 	if (pTexture == nullptr)
 		return;
 
@@ -1291,11 +890,12 @@ void gli_fb_activate_texture(u32 t, u32 _frameBufferAddress)
 
 void gli_fb_activate_texture_bg(u32 t, u32 _frameBufferAddress)
 {
-	FrameBuffer * pBuffer = frameBufferList().getBuffer(_frameBufferAddress);
+	FrameBufferList & list = frameBufferList();
+	FrameBuffer * pBuffer = list.getBuffer(_frameBufferAddress);
 	if (pBuffer == nullptr)
 		return;
 
-	CachedTexture *pTexture = pBuffer->getTextureBG(t);
+	CachedTexture *pTexture = gli_fb_get_texture_bg(pBuffer, t, pBuffer == list.getCurrent());
 	if (pTexture == nullptr)
 		return;
 
@@ -1437,7 +1037,8 @@ u32 gli_fb_width(const FrameBuffer * _pBuffer)
 
 bool gli_fb_is_valid_scanout(FrameBuffer * _pBuffer)
 {
-	return _pBuffer->isValid(true);
+	/* the check stamps the swap it ran in */
+	return gli_fb_is_valid(_pBuffer, 1, dwnd().getBuffersSwapCount()) != 0;
 }
 
 bool gli_fb_rendered_uncopied(const FrameBuffer * _pBuffer)

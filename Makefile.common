@@ -403,6 +403,7 @@ SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/BufferCopy/RDRAMtoColorBuffer.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/BufferCopy/DepthBufferToRDRAM.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/BufferCopy/ColorBufferToRDRAM.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/GraphicsDrawer.c
+SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/FrameBufferTextures.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/Graphics/VulkanContext/vk_ColorBufferReader.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/Combiner.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/CombinerTable.c

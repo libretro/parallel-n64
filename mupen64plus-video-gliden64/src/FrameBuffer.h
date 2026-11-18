@@ -15,33 +15,27 @@ struct gDPTile;
 struct DepthBuffer;
 
 
+/* its GPU side is FrameBufferTextures.c's, its RDRAM side FrameBufferRdram.c's */
 struct FrameBuffer : gli_fb
 {
-	FrameBuffer();
-	~FrameBuffer();
+	FrameBuffer() { gli_fb_make(this); }
+	~FrameBuffer() { gli_fb_free(this); }
 	/* owns its RDRAM copy */
 	FrameBuffer(const FrameBuffer &) = delete;
 	FrameBuffer & operator=(const FrameBuffer &) = delete;
-	void init(u32 _address, u16 _format, u16 _size, u16 _width, bool _cfb);
-	void updateEndAddress();
-	void resolveMultisampledTexture(bool _bForce = false);
-	CachedTexture * getTexture(u32 _t);
-	CachedTexture * getTextureBG(u32 _t);
-	void setBufferClearParams(u32 _fillcolor, s32 _ulx, s32 _uly, s32 _lrx, s32 _lry);
-	void copyRdram();
-	void setDirty();
-	bool isValid(bool _forceCheck) const;
-	bool isAuxiliary() const;
-
-
-private:
-	void _initTexture(u16 _width, u16 _height, u16 _format, u16 _size, CachedTexture *_pTexture);
-	void _setAndAttachTexture(graphics::ObjectHandle _fbo, CachedTexture *_pTexture, u32 _t, bool _multisampling);
-	bool _initSubTexture(u32 _t);
-	void _initCopyTexture();
-	CachedTexture * _copyFrameBufferTexture();
-	CachedTexture * _getSubTexture(u32 _t);
-
+	void init(gli_fb_list * _list, u32 _address, u16 _format, u16 _size, u16 _width, bool _cfb)
+	{
+		gli_fb_init(this, _list, _address, _format, _size, _width, _cfb);
+	}
+	void updateEndAddress() { gli_fb_update_end_address(this); }
+	void resolveMultisampledTexture(bool _bForce = false) { gli_fb_resolve_texture(this, _bForce); }
+	void setBufferClearParams(u32 _fillcolor, s32 _ulx, s32 _uly, s32 _lrx, s32 _lry)
+	{
+		gli_fb_set_clear_params(this, _fillcolor, _ulx, _uly, _lrx, _lry);
+	}
+	void copyRdram() { gli_fb_save_rdram(this); }
+	void setDirty() { gli_fb_set_dirty(this); }
+	bool isAuxiliary() const { return gli_fb_is_auxiliary(this) != 0; }
 };
 
 class FrameBufferList
