@@ -22,25 +22,6 @@ GLuint gli_glsl_rect_program(const GLchar *const *_vertex, GLsizei _vertexCount,
 
 #ifdef __cplusplus
 }
-
-#include <string>
-#include <sstream>
-
-namespace glsl {
-	struct Utils {
-		template <typename T>
-		static std::string to_string(T value)
-		{
-#ifdef OS_ANDROID
-			std::ostringstream os ;
-			os << value ;
-			return os.str() ;
-#else
-			return std::to_string(value);
-#endif
-		}
-	};
-}
 #endif
 
 #endif

@@ -2,8 +2,8 @@
 #define GLI_GLSL_PROGRAMS_H
 
 /* The GLSL programs' C face, for the GL context: the combiner program
- * builder, which is still C++ (glsl_CombinerProgramBuilder.cpp), the
- * special shaders (glsl_SpecialShadersFactory.c) and the shader storage
+ * builder (glsl_CombinerProgramBuilder.c), the special shaders
+ * (glsl_SpecialShadersFactory.c) and the shader storage
  * (glsl_ShaderStorage.c). C89. */
 
 #include <stddef.h>
@@ -20,7 +20,7 @@ struct gli_cprog;
 struct gli_gl_cache1;
 struct gli_combiner_table;
 
-typedef struct gli_glsl_builder gli_glsl_builder;   /* glsl::CombinerProgramBuilder */
+typedef struct gli_glsl_builder gli_glsl_builder;
 typedef struct gli_glsl_special gli_glsl_special;
 
 /* programs for @_info, used through the program cache @_useProgram */

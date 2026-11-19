@@ -8,7 +8,6 @@
 #include "GraphicsDrawer.h"
 #include "gDP.h"
 #include "CombinerKey.h"
-#include "Graphics/CombinerProgram.h"
 
 #include "CombinerMux.h"
 

@@ -405,6 +405,7 @@ SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/GLSL/glsl_Combi
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/GLSL/glsl_CombinerProgramUniformFactory.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/GLSL/glsl_ShaderStorage.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/GLSL/glsl_SpecialShadersFactory.c
+SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/GLSL/glsl_CombinerProgramBuilder.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/BufferCopy/RDRAMtoColorBuffer.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/BufferCopy/DepthBufferToRDRAM.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/BufferCopy/ColorBufferToRDRAM.c
@@ -488,9 +489,6 @@ SOURCES_C     += $(VIDEODIR_PARALLEL)/parallel-rdp/parallel-rdp/rdp_worker.c
 SOURCES_C     += $(VIDEODIR_PARALLEL)/parallel-rdp/parallel-rdp/temporal_upscaler.c
 endif
 INCFLAGS      += -I$(VIDEODIR_PARALLEL)/parallel-rdp/vulkan-headers/include -I$(VIDEODIR_PARALLEL)/parallel-rdp/parallel-rdp -I$(CORE_DIR)/src/api -I$(VIDEODIR_GLIDEN64)/src/Graphics/VulkanContext
-
-SOURCES_CXX   += \
-    $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/GLSL/glsl_CombinerProgramBuilder.cpp
 
 # GLideNHQ's texture filters, its gzip files, its resampler, its quantizer,
 # its image files, its checksums, pool and buffers, and its texture caches

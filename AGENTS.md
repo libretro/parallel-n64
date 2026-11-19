@@ -115,7 +115,7 @@ Know which layer you are changing. Having one does not give you the next.
 | Recipes (what to build) | `<system>/ParallelN64/parallel_rdp_pipelines.bin`, `pipeline_record.h` | portable |
 | Driver blob | `<system>/ParallelN64/parallel_rdp_pipeline_cache.bin` | one device and driver |
 | Live `VkPipeline` | `Program::get_pipeline` | this device |
-| GL binaries / keys | `glsl_ShaderStorage.cpp` | GL vendor and version / portable |
+| GL binaries / keys | `glsl_ShaderStorage.c` | GL vendor and version / portable |
 
 ### parallel-RDP
 
@@ -186,10 +186,10 @@ Know which layer you are changing. Having one does not give you the next.
   explicit ownership.
 - On a combiner miss, where the driver compiles on its own threads
   (`GL_KHR_parallel_shader_compile`), the ubershader
-  (`CombinerProgramBuilder::buildCombinerProgramAsync`) draws while the key's
+  (`build_async` in `glsl_CombinerProgramBuilder.c`) draws while the key's
   own program compiles. A driver without the extension stays on the ubershader
   until the next load builds the keys from the journal. It must draw the same:
-  anything added to `compileCombiner` goes into `_uberCombiner` too, and
+  anything added to `compile_combiner` goes into `uber_combiner` too, and
   `tools/ci/gliden64_ubershader.py` holds the two to the same frames, with
   `GLIDEN64_GL_STRICT` aborting on a draw that has to compile.
 - Every ubershader variant is finished at load, and every copy and fill key is
@@ -224,7 +224,7 @@ Know which layer you are changing. Having one does not give you the next.
 - Blending and depth clamp are dynamic state where the device allows
   (`VK_EXT_extended_dynamic_state3`): a state left out of the pipeline key is
   a pipeline never built. `GLIDEN64_VULKAN_NO_EDS3` runs the other path.
-- Anything added to `compileCombiner` goes into `vkr_write_combiner` too.
+- Anything added to `compile_combiner` goes into `vkr_write_combiner` too.
   `tools/ci/gliden64_vulkan.py` holds Vulkan to GL frame for frame.
 - Vertices and combiner values are written once, final, into the frame's
   ring. Values are the `CombinerValues` the GL backend also reads. Textures

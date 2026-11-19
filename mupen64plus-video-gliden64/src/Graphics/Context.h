@@ -5,7 +5,6 @@
 #include <Combiner.h>
 #include "ObjectHandle.h"
 #include "Parameter.h"
-#include "CombinerProgram.h"
 #include "PixelBuffer.h"
 #include "FramebufferTextureFormats.h"
 
