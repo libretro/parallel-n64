@@ -429,7 +429,7 @@ namespace glsl {
 				_fragmentEnd->write(ssFragmentShader);
 
 			m_program =
-				graphics::ObjectHandle(Utils::createRectShaderProgram(ssVertexShader.str().data(), ssFragmentShader.str().data()));
+				graphics::ObjectHandle(gli_glsl_rect_program(ssVertexShader.str().data(), ssFragmentShader.str().data()));
 		}
 
 		~SpecialShader()
@@ -491,6 +491,29 @@ namespace glsl {
 	};
 
 	/*---------------FXAAShader-------------*/
+
+	/* a shader part of the lines glsl_FXAA.c holds */
+	class FXAAShaderPart : public ShaderPart
+	{
+	public:
+		FXAAShaderPart(const char *const * _lines)
+		{
+			for (; *_lines != nullptr; ++_lines)
+				m_part += *_lines;
+		}
+	};
+
+	class FXAAVertexShader : public FXAAShaderPart
+	{
+	public:
+		FXAAVertexShader(const opengl::GLInfo &) : FXAAShaderPart(gli_glsl_fxaa_vertex()) {}
+	};
+
+	class FXAAFragmentShader : public FXAAShaderPart
+	{
+	public:
+		FXAAFragmentShader(const opengl::GLInfo &) : FXAAShaderPart(gli_glsl_fxaa_fragment()) {}
+	};
 
 	typedef SpecialShader<FXAAVertexShader, FXAAFragmentShader> FXAAShaderBase;
 
@@ -559,7 +582,7 @@ namespace glsl {
 			fragmentMain.write(ssFragmentShader);
 
 			m_program =
-				graphics::ObjectHandle(Utils::createRectShaderProgram(ssVertexShader.str().data(), ssFragmentShader.str().data()));
+				graphics::ObjectHandle(gli_glsl_rect_program(ssVertexShader.str().data(), ssFragmentShader.str().data()));
 
 			gli_gl_use_program(m_useProgram, u32(m_program));
 			GLint loc = glGetUniformLocation(GLuint(m_program), "uTex0");

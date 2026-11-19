@@ -240,9 +240,9 @@ CombinerProgramImpl * _readCombinerProgram(StorageReader & _in,
 
 	GLuint program = glCreateProgram();
 	const bool isRect = _cmbKey.isRectKey();
-	glsl::Utils::locateAttributes(program, isRect, cmbInputs.usesTexture());
+	gli_glsl_locate_attributes(program, isRect, cmbInputs.usesTexture());
 	glProgramBinary(program, binaryFormat, binary, binaryLength);
-	if (!glsl::Utils::checkProgramLinkStatus(program, true)) {
+	if (!gli_glsl_link_ok(program, 1)) {
 		glDeleteProgram(program);
 		return nullptr;
 	}

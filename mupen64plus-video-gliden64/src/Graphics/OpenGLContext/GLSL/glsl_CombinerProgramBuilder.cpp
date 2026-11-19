@@ -2226,7 +2226,7 @@ graphics::CombinerProgram * CombinerProgramBuilder::buildCombinerProgram(Combine
 
 	const std::string strFragmentShader(_fragmentSource(combinerInputs, strCombiner, bUseLod, bUseTextures, bUseHWLight, nullptr));
 	GLuint program = _startProgram(strFragmentShader, bIsRect, bUseTextures, true);
-	assert(Utils::checkProgramLinkStatus(program));
+	assert(gli_glsl_link_ok(program, 0));
 
 	CombinerUniforms uniforms;
 	m_uniformFactory->buildUniforms(program, combinerInputs, _key, uniforms);
@@ -2360,7 +2360,7 @@ GLuint CombinerProgramBuilder::_startProgram(const std::string & _fragment, bool
 	glCompileShader(fragmentShader);
 
 	GLuint program = glCreateProgram();
-	Utils::locateAttributes(program, bIsRect, bUseTextures);
+	gli_glsl_locate_attributes(program, bIsRect, bUseTextures);
 	if (bIsRect)
 		glAttachShader(program, bUseTextures ? m_vertexShaderTexturedRect : m_vertexShaderRect);
 	else
@@ -2647,7 +2647,7 @@ void CombinerProgramBuilder::_finishUber(UberVariant & _variant)
 	GLint linked = GL_FALSE;
 	glGetProgramiv(_variant.handle, GL_LINK_STATUS, &linked);
 	if (linked == GL_FALSE) {
-		Utils::checkProgramLinkStatus(_variant.handle, true);
+		gli_glsl_link_ok(_variant.handle, 1);
 		_variant.failed = true;
 		if (getenv("GLIDEN64_GL_STRICT") != nullptr)
 			abort();

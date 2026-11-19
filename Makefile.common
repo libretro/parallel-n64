@@ -399,6 +399,8 @@ SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/opengl_BufferMa
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/opengl_TextureManipulationObjectFactory.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/opengl_CachedFunctions.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/opengl_ContextImpl.c
+SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/GLSL/glsl_Utils.c
+SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/GLSL/glsl_FXAA.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/BufferCopy/RDRAMtoColorBuffer.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/BufferCopy/DepthBufferToRDRAM.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/BufferCopy/ColorBufferToRDRAM.c
@@ -487,10 +489,8 @@ SOURCES_CXX   += \
     $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/GLSL/glsl_CombinerProgramBuilder.cpp          \
     $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/GLSL/glsl_CombinerProgramImpl.cpp             \
     $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/GLSL/glsl_CombinerProgramUniformFactory.cpp   \
-    $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/GLSL/glsl_FXAA.cpp                            \
     $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/GLSL/glsl_ShaderStorage.cpp                   \
-    $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/GLSL/glsl_SpecialShadersFactory.cpp           \
-    $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/GLSL/glsl_Utils.cpp
+    $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/GLSL/glsl_SpecialShadersFactory.cpp
 
 # GLideNHQ's texture filters, its gzip files, its resampler, its quantizer,
 # its image files, its checksums, pool and buffers, and its texture caches
