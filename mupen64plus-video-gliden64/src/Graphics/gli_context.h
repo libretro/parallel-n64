@@ -9,6 +9,7 @@
  * pass as pointers. */
 
 #include <stddef.h>
+#include <stdint.h>
 #include <boolean.h>
 #include "Types.h"
 #include "gli_params.h"
@@ -249,15 +250,19 @@ typedef struct gli_context_ops
 	void *(*createColorBufferReader)(void *_impl, void *_texture);
 	/* shaders */
 	bool (*isCombinerProgramBuilderObsolete)(void *_impl);
-	bool (*isCombinerUberOnly)(void *_impl);
 	void (*resetCombinerProgramBuilder)(void *_impl);
 	/* a program for @_key; the async one NULL where it cannot defer */
 	struct gli_cprog *(*createCombinerProgram)(void *_impl, struct Combiner *_color, struct Combiner *_alpha, u64 _key);
 	struct gli_cprog *(*createCombinerProgramAsync)(void *_impl, struct Combiner *_color, struct Combiner *_alpha, u64 _key);
-	bool (*saveShadersStorage)(void *_impl, const struct gli_combiner_table *_combiners);
+	/* the shader storage: read into @_combiners at load, keys written
+	 * down as they are met by the journal it opens, which @_known is
+	 * given what was written down that the load did not read; the
+	 * programs stored as it closes */
 	bool (*loadShadersStorage)(void *_impl, struct gli_combiner_table *_combiners);
-	/* into @_path, @_size bytes at most */
-	void (*getCombinerJournalPath)(void *_impl, char *_path, size_t _size, u32 *_version);
+	struct combiner_journal *(*openCombinerJournal)(void *_impl,
+		void (*_known)(void *_ctx, uint64_t _key, unsigned _hwl), void *_ctx);
+	bool (*closeShadersStorage)(void *_impl, const struct gli_combiner_table *_combiners,
+		struct combiner_journal *_journal);
 	struct gli_cprog *(*createDepthFogShader)(void *_impl);
 	struct gli_cprog *(*createTexrectDrawerDrawShader)(void *_impl);
 	struct gli_cprog *(*createTexrectDrawerClearShader)(void *_impl);

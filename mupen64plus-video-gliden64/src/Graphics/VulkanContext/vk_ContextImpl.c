@@ -15,6 +15,7 @@
 #include <FrameBuffer.h>
 #include <DisplayWindow.h>
 #include <CombinerKey.h>
+#include <CombinerKeyJournal.h>
 #include <CombinerMux.h>
 #include <PluginAPI.h>
 #include <gli_combiner.h>
@@ -685,8 +686,6 @@ static bool builder_obsolete(void *_p)
 	return CTX(_p)->optionsBits != gli_combiner_options_bits();
 }
 
-static bool is_uber_only(void *_p) { (void)_p; return 0; }
-
 static void reset_builder(void *_p)
 {
 	if (!builder_obsolete(_p))
@@ -695,13 +694,27 @@ static void reset_builder(void *_p)
 	create(CTX(_p));
 }
 
-static bool save_shaders_storage(void *_p, const struct gli_combiner_table *_combiners) { (void)_p; (void)_combiners; return 0; }
 static bool load_shaders_storage(void *_p, struct gli_combiner_table *_combiners) { (void)_p; (void)_combiners; return 0; }
 
-static void get_combiner_journal_path(void *_p, char *_path, size_t _size, u32 *_version)
+/* the keys of every game, in one journal kept beside the pipelines */
+static struct combiner_journal *open_combiner_journal(void *_p,
+	void (*_known)(void *_ctx, uint64_t _key, unsigned _hwl), void *_ctx)
+{
+	char path[PLUGIN_PATH_SIZE + 64];
+	u32 version;
+	(void)_p;
+	journal_path(path, sizeof(path), &version);
+	combiner_journal_read(path, version, _known, _ctx);
+	return combiner_journal_open(path, version);
+}
+
+static bool close_shaders_storage(void *_p, const struct gli_combiner_table *_combiners,
+	struct combiner_journal *_journal)
 {
 	(void)_p;
-	journal_path(_path, _size, _version);
+	(void)_combiners;
+	combiner_journal_close(_journal);
+	return 0;
 }
 
 static void reset_shader_program(void *_p) { (void)_p; vkr_use(g_r, NULL); }
@@ -866,9 +879,9 @@ static const gli_context_ops vk_ops = {
 	get_framebuffer_texture_formats, create_framebuffer, delete_framebuffer, bind_framebuffer,
 	add_render_target, create_renderbuffer, delete_renderbuffer, init_renderbuffer, blit_framebuffers, set_draw_buffers,
 	create_pixel_read_buffer, create_color_buffer_reader,
-	builder_obsolete, is_uber_only, reset_builder,
-	build_combiner, build_combiner, save_shaders_storage, load_shaders_storage,
-	get_combiner_journal_path, depth_fog_shader, texrect_draw_shader,
+	builder_obsolete, reset_builder,
+	build_combiner, build_combiner, load_shaders_storage,
+	open_combiner_journal, close_shaders_storage, depth_fog_shader, texrect_draw_shader,
 	texrect_clear_shader, texrect_copy_shader, gamma_correction_shader,
 	fxaa_shader,
 	reset_shader_program,

@@ -64,14 +64,14 @@ struct gli_cprog *gli_glsl_ops_fxaa_shader(void *_programs);
  * for; NULL when it has none */
 const struct gli_cprog *gli_glsl_async_program(struct gli_cprog *_program);
 
-/* the shader storage on disk */
-bool gli_glsl_save_storage(const gli_gl_info *_info, struct gli_gl_cache1 *_useProgram,
-	const struct gli_combiner_table *_combiners);
+/* the shader storage on disk, a file a game: read at load, the keys
+ * met appended by the journal it opens, the programs not stored yet
+ * appended as it closes */
 bool gli_glsl_load_storage(const gli_gl_info *_info, struct gli_gl_cache1 *_useProgram,
 	struct gli_combiner_table *_combiners);
-/* the combiner keys' journal into @_path, @_size bytes at most */
-void gli_glsl_journal_path(const gli_gl_info *_info, struct gli_gl_cache1 *_useProgram,
-	char *_path, size_t _size, u32 *_version);
+struct combiner_journal *gli_glsl_open_journal(void);
+bool gli_glsl_close_storage(const struct gli_combiner_table *_combiners,
+	struct combiner_journal *_journal);
 
 #ifdef __cplusplus
 }

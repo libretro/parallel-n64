@@ -15,6 +15,7 @@ import argparse, glob, os, random, struct, subprocess, sys, tempfile
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from parallel_rdp_regress import fetch  # noqa: E402
+from gliden64_keys_journal import records  # noqa: E402
 
 KROM = ["cube32", "rottri32", "rottri32aa"]
 OPTIONS = ["parallel-n64-gfxplugin=gliden64", "parallel-n64-rspplugin=hle",
@@ -156,11 +157,11 @@ def compare(a, name, rom, frames):
     with tempfile.TemporaryDirectory() as tmp:
         base = run(a, rom, os.path.join(tmp, "own"), {"GLIDEN64_UBERSHADER": "off"}, frames)
         run(a, rom, os.path.join(tmp, "count"), {"GLIDEN64_UBERSHADER": "off"}, 2, STORAGE)
-        keys = glob.glob(os.path.join(tmp, "count", "ParallelN64", "shaders", "*.keys"))
+        caches = glob.glob(os.path.join(tmp, "count", "ParallelN64", "shaders", "GLideN64.*.cache"))
         count = 0
-        if keys:
-            with open(keys[0]) as f:
-                count = len(f.read().split("\n")) - 4
+        if caches:
+            keys, programs, _ = records(caches[0])
+            count = len(set(keys) | set(programs))
         if not base:
             print("FAILED: %s presented nothing" % name)
             return 1

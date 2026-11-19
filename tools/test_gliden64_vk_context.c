@@ -30,6 +30,7 @@
 #include <DisplayWindow.h>
 #include <CombinerKey.h>
 #include <CombinerMux.h>
+#include <CombinerKeyJournal.h>
 #include <PluginAPI.h>
 #include <PaletteTexture.h>
 #include <NoiseTexture.h>
@@ -283,6 +284,27 @@ static int hwLighting;
 bool gli_isHWLightingAllowed(void) { return hwLighting; }
 void gli_palette_update(void) { say("palette"); }
 void gli_api_user_cache_path(char *_p, size_t _size) { strncpy(_p, "/cache", _size); }
+/* the journal: where it was read and opened, for which version */
+static int journalObj;
+static char journalRead[128], journalOpened[128];
+static uint32_t journalVersion;
+static combiner_journal_t *journalClosed;
+unsigned combiner_journal_read(const char *_path, uint32_t _version, combiner_journal_key_t _cb, void *_ctx)
+{
+	strcpy(journalRead, _path);
+	journalVersion = _version;
+	_cb(_ctx, 0x77, 1);
+	return 1;
+}
+combiner_journal_t *combiner_journal_open(const char *_path, uint32_t _version)
+{
+	strcpy(journalOpened, _path);
+	check(_version == journalVersion, "opened for the version read");
+	return (combiner_journal_t *)&journalObj;
+}
+void combiner_journal_close(combiner_journal_t *_j) { journalClosed = _j; }
+static u64 knownKey;
+static void known(void *_ctx, uint64_t _key, unsigned _hwl) { knownKey = _key + _hwl + (u64)(size_t)_ctx; }
 
 static unsigned groupsAsked;
 static CombinerNeeds needsAsked;
@@ -1092,11 +1114,9 @@ static void test_specials(void)
 
 static void test_builder(void)
 {
-	char path[128];
-	u32 version = 0;
 	optionsBits = 5;
 	start();
-	check(!ops->isCombinerProgramBuilderObsolete(ctx) && !ops->isCombinerUberOnly(ctx), "current with the options");
+	check(!ops->isCombinerProgramBuilderObsolete(ctx), "current with the options");
 	clear_log();
 	ops->resetCombinerProgramBuilder(ctx);
 	check(log_[0] == '\0', "not made again");
@@ -1106,11 +1126,13 @@ static void test_builder(void)
 	ops->resetCombinerProgramBuilder(ctx);
 	check(strncmp(log_, "destroy:1 create window:", 24) == 0, "made again");
 	check(!ops->isCombinerProgramBuilderObsolete(ctx), "with the options it was made with");
-	ops->getCombinerJournalPath(ctx, path, sizeof(path), &version);
-	check(strcmp(path, "/cache/GLideN64.vulkan.keys.journal") == 0 && version == 1, "the journal's path and version");
-	ops->getCombinerJournalPath(ctx, path, 10, &version);
-	check(strlen(path) == 9, "cut to its size");
-	check(!ops->saveShadersStorage(ctx, NULL) && !ops->loadShadersStorage(ctx, NULL), "no shader storage");
+	check(!ops->loadShadersStorage(ctx, NULL), "no shader storage");
+	check(ops->openCombinerJournal(ctx, known, (void *)(size_t)0x100) == (combiner_journal_t *)&journalObj, "a journal");
+	check(strcmp(journalRead, "/cache/GLideN64.vulkan.keys.journal") == 0 && journalVersion == 1, "the journal's path and version");
+	check(strcmp(journalOpened, journalRead) == 0, "read, then opened to append");
+	check(knownKey == 0x178, "what it holds to the caller");
+	check(!ops->closeShadersStorage(ctx, NULL, (combiner_journal_t *)&journalObj) &&
+		journalClosed == (combiner_journal_t *)&journalObj, "closed: the journal");
 	stop();
 }
 

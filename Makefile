@@ -2495,7 +2495,7 @@ test_gliden64_glsl_program$(EXE_EXT): tools/test_gliden64_glsl_program.c $(VIDEO
 
 test_gliden64_glsl_storage$(EXE_EXT): tools/test_gliden64_glsl_storage.c $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/GLSL/glsl_ShaderStorage.c $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/GLSL/glsl_CombinerProgramImpl.c \
 		$(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/GLSL/glsl_CombinerProgramImpl.h $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/GLSL/glsl_CombinerProgramUniformFactory.c $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/GLSL/glsl_Utils.c $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/GLSL/glsl_Programs.h $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/GLSL/glsl_StdHash.h
-	$(CC) -std=c89 -D_DEFAULT_SOURCE -Werror=implicit-function-declaration $(CHECK_CFLAGS) $(CHECK_SANITIZE) -D__LIBRETRO__ -DM64P_PLUGIN_API \
+	$(CC) -std=c89 -D_DEFAULT_SOURCE -Werror=implicit-function-declaration $(CHECK_CFLAGS) $(CHECK_SANITIZE) -D__LIBRETRO__ -DM64P_PLUGIN_API -Dmalloc=test_malloc -Drealloc=test_realloc \
 		-I$(VIDEODIR_GLIDEN64)/src -I$(VIDEODIR_GLIDEN64)/src/Graphics \
 		-isystem $(ROOT_DIR)/libretro -isystem $(ROOT_DIR)/libretro/glsym -isystem $(LIBRETRO_COMM_DIR)/include \
 		-isystem mupen64plus-core/src -isystem mupen64plus-core/src/api \

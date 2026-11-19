@@ -5,7 +5,6 @@
  * for its key through a virtual call. Here they are in a hash table by
  * key, in one global, and the current program's key is read from it. */
 #include <stdlib.h>
-#include <retro_miscellaneous.h>
 
 #include "gli_combiner.h"
 #include "CombinerKey.h"
@@ -16,7 +15,7 @@
 #include "gDP.h"
 #include "Graphics/gli_context.h"
 
-gli_combiner_info gli_cmb = { NULL, { NULL, 0, 0 }, NULL, NULL, NULL, 0, 0, 1 };
+gli_combiner_info gli_cmb = { NULL, { NULL, 0, 0 }, NULL, NULL, NULL, 0, 1 };
 
 static void program_free(gli_cprog **_program)
 {
@@ -87,50 +86,22 @@ static void journal_key(void *_ctx, uint64_t _key, unsigned _hwl)
 	gli_GBI_hwlSupported = hwl;
 }
 
-/* Keys a session that crashed wrote down are built now, at load, and are
- * in what this session saves: shadersLoaded does not count them. */
-static void open_keys_journal(void)
-{
-	char path[PATH_MAX_LENGTH];
-	u32 version = 0;
-	gli_ctx.ops->getCombinerJournalPath(gli_ctx.impl, path, sizeof(path), &version);
-	combiner_journal_read(path, version, journal_key, NULL);
-	gli_cmb.journal = combiner_journal_open(path, version);
-}
-
-static void close_keys_journal(bool _saved)
-{
-	u32 version = 0;
-	combiner_journal_close(gli_cmb.journal);
-	gli_cmb.journal = NULL;
-	/* An ubershader-only driver has no program of these keys to save: the
-	 * journal is how the next load builds them. */
-	if (_saved && !gli_ctx.ops->isCombinerUberOnly(gli_ctx.impl)) {
-		char path[PATH_MAX_LENGTH];
-		gli_ctx.ops->getCombinerJournalPath(gli_ctx.impl, path, sizeof(path), &version);
-		combiner_journal_remove(path);
-	}
-}
-
 void gli_combiner_init(void)
 {
 	gli_ctx.ops->resetCombinerProgramBuilder(gli_ctx.impl);
 	gli_cmb.current = NULL;
-	gli_cmb.shadersLoaded = 0;
 	if (gli_cmb.table.slots == NULL)
 		gli_combiners_make(&gli_cmb.table, GLI_COMBINER_SLOTS);
 
-	if (config.generalEmulation.enableShadersStorage != 0) {
-		if (gli_ctx.ops->loadShadersStorage(gli_ctx.impl, &gli_cmb.table))
-			gli_cmb.shadersLoaded = gli_cmb.table.count;
-		else
-			gli_combiners_clear(&gli_cmb.table);
-	}
+	if (config.generalEmulation.enableShadersStorage != 0 &&
+			!gli_ctx.ops->loadShadersStorage(gli_ctx.impl, &gli_cmb.table))
+		gli_combiners_clear(&gli_cmb.table);
 
 	build_fixed_keys();
 
+	/* keys written down where the load does not read them are built now */
 	if (config.generalEmulation.enableShadersStorage != 0)
-		open_keys_journal();
+		gli_cmb.journal = gli_ctx.ops->openCombinerJournal(gli_ctx.impl, journal_key, NULL);
 
 	program_free(&gli_cmb.shadowmap);
 	gli_cmb.shadowmap = gli_ctx.ops->createDepthFogShader(gli_ctx.impl);
@@ -146,11 +117,9 @@ void gli_combiner_destroy(void)
 	program_free(&gli_cmb.texrectCopy);
 	gli_cmb.current = NULL;
 	if (config.generalEmulation.enableShadersStorage != 0) {
-		const bool saved = gli_cmb.shadersLoaded >= gli_cmb.table.count ||
-			gli_ctx.ops->saveShadersStorage(gli_ctx.impl, &gli_cmb.table);
-		close_keys_journal(saved);
+		gli_ctx.ops->closeShadersStorage(gli_ctx.impl, &gli_cmb.table, gli_cmb.journal);
+		gli_cmb.journal = NULL;
 	}
-	gli_cmb.shadersLoaded = 0;
 	gli_combiners_clear(&gli_cmb.table);
 }
 

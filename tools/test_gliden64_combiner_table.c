@@ -6,7 +6,8 @@
  * other key, a second of the same key take the first's place, the table
  * hand them back lowest key first (the shader storage saves them in that
  * order), double past half full with all of them still found, and free
- * each once when cleared, keeping its slots.
+ * each once when cleared, keeping its slots, and only what was put after
+ * when cleared again.
  *
  *   ./test_gliden64_combiner_table
  */
@@ -100,7 +101,16 @@ int main(void)
       once &= freed[i] == 1;
    check(once, "cleared: each freed once");
    check(t.count == 0 && t.slots != NULL && gli_combiners_find(&t, key_of(5)) == NULL, "cleared: empty, its slots kept");
+
+   /* filled again after: only the new ones handed back and freed */
+   for (i = 0; i < 3; i++)
+      gli_combiners_put(&t, &programs[10 + i]);
+   n = gli_combiners_sorted(&t, sorted);
+   check(n == 3 && t.count == 3 && gli_combiners_find(&t, key_of(11)) == &programs[11], "filled again");
+   gli_combiners_clear(&t);
+   check(freed[10] == 2 && freed[12] == 2 && freed[13] == 1 && freed[9] == 1, "cleared again: the new ones");
    free(t.slots);
+   free(t.order);
 
    printf("test_gliden64_combiner_table: %s\n", failures ? "FAIL" : "ok");
    return failures != 0;

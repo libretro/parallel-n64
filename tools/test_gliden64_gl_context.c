@@ -121,7 +121,7 @@ gli_gl_drawer *gli_gl_drawer_new_unbuffered(const gli_gl_info *_i, gli_gl_attrib
 }
 
 /* the programs */
-struct gli_glsl_builder { int id; int obsolete; int uber; };
+struct gli_glsl_builder { int id; int obsolete; };
 struct gli_glsl_special { int id; };
 static struct gli_glsl_builder builders[8];
 static struct gli_glsl_special specials[8];
@@ -135,13 +135,11 @@ gli_glsl_builder *gli_glsl_builder_new(const gli_gl_info *_i, struct gli_gl_cach
 	programCacheSeen = _u;
 	b->id = ++buildersMade;
 	b->obsolete = 0;
-	b->uber = 0;
 	say("builder");
 	return b;
 }
 void gli_glsl_builder_delete(gli_glsl_builder *_b) { lastFreedBuilder = _b->id; buildersFreed++; say("builder-free"); }
 bool gli_glsl_builder_obsolete(const gli_glsl_builder *_b) { return _b->obsolete != 0; }
-bool gli_glsl_builder_uber_only(const gli_glsl_builder *_b) { return _b->uber != 0; }
 static int lastAsync;
 static u64 lastKey;
 static struct gli_cprog progObj;
@@ -184,20 +182,19 @@ struct gli_cprog *gli_glsl_ops_gamma_correction_shader(void *_p) { return specia
 struct gli_cprog *gli_glsl_ops_fxaa_shader(void *_p) { return special_made(_p, GLI_GLSL_FXAA); }
 static const gli_gl_info *storageInfo;
 static gli_gl_cache1 *storageCache;
-bool gli_glsl_save_storage(const gli_gl_info *_i, struct gli_gl_cache1 *_u, const struct gli_combiner_table *_c)
-{
-	(void)_c; storageInfo = _i; storageCache = _u; say("save"); return 1;
-}
 bool gli_glsl_load_storage(const gli_gl_info *_i, struct gli_gl_cache1 *_u, struct gli_combiner_table *_c)
 {
 	(void)_c; storageInfo = _i; storageCache = _u; say("load"); return 0;
 }
-void gli_glsl_journal_path(const gli_gl_info *_i, struct gli_gl_cache1 *_u, char *_p, size_t _s, u32 *_v)
+static int journalObj;
+static const struct gli_combiner_table *closedTable;
+static struct combiner_journal *closedJournal;
+struct combiner_journal *gli_glsl_open_journal(void) { say("journal"); return (struct combiner_journal *)&journalObj; }
+bool gli_glsl_close_storage(const struct gli_combiner_table *_c, struct combiner_journal *_j)
 {
-	storageInfo = _i; storageCache = _u;
-	strncpy(_p, "journal", _s);
-	*_v = 5;
+	closedTable = _c; closedJournal = _j; say("close"); return 1;
 }
+static void known(void *_ctx, uint64_t _key, unsigned _hwl) { (void)_ctx; (void)_key; (void)_hwl; say("known"); }
 
 /* ---- stub GL ---- */
 
@@ -361,9 +358,6 @@ static void test_life(void)
 	ops->resetCombinerProgramBuilder(c);
 	check(logged("builder builder-free special special-free "), "new programs, each before the old goes");
 	check(lastFreedBuilder == 1 && specialFrom == &builders[1], "the special shaders from the new builder");
-	check(!ops->isCombinerUberOnly(c), "not uber only");
-	builders[1].uber = 1;
-	check(ops->isCombinerUberOnly(c), "uber only as the builder says");
 
 	/* started again: the cache kept, and the clamp mode back to clipping */
 	ops->enable(c, GLI_EN_DITHER, 1);
@@ -376,7 +370,7 @@ static void test_life(void)
 	clear_log();
 	ops->destroy(c);
 	check(logged("textures-free drawer-free builder-free "), "stopped: textures, drawer, builder");
-	check(ops->isCombinerProgramBuilderObsolete(c) && !ops->isCombinerUberOnly(c), "no builder once stopped");
+	check(ops->isCombinerProgramBuilderObsolete(c), "no builder once stopped");
 	clear_log();
 	ops->free_impl(c);
 	check(logged("special-free "), "freed: the special shaders");
@@ -584,8 +578,6 @@ static void test_queries(void)
 	gli_gl_info i = desktop();
 	void *c = start(&i);
 	u32 f;
-	char path[16];
-	u32 version = 0;
 	gli_bind_image_texture_params image;
 
 	check(ops->getMaxTextureSize(c) == 4096 && queried == GL_MAX_TEXTURE_SIZE, "largest texture");
@@ -633,10 +625,13 @@ static void test_queries(void)
 		ops->createFXAAShader(c);
 		check(lastWhich == GLI_GLSL_FXAA, "FXAA");
 		check(specialBy == &specials[(specialsMade - 1) & 7], "by the context's special shaders");
-		check(ops->saveShadersStorage(c, NULL) && storageCache == &cache->useProgram && storageInfo != NULL, "storage saved");
-		check(!ops->loadShadersStorage(c, NULL) && storageCache == &cache->useProgram, "and loaded");
-		ops->getCombinerJournalPath(c, path, sizeof(path), &version);
-		check(strcmp(path, "journal") == 0 && version == 5, "the journal's path");
+		clear_log();
+		check(!ops->loadShadersStorage(c, NULL) && storageCache == &cache->useProgram && storageInfo != NULL, "storage loaded");
+		check(ops->openCombinerJournal(c, known, NULL) == (struct combiner_journal *)&journalObj, "the journal on it");
+		check(ops->closeShadersStorage(c, (const struct gli_combiner_table *)&journalObj,
+			(struct combiner_journal *)&journalObj) && closedTable == (const void *)&journalObj &&
+			closedJournal == (struct combiner_journal *)&journalObj, "closed with the table and journal");
+		check(logged("load journal close "), "the load reads all the file holds");
 		programUsed = 99;
 		cache->useProgram.v = 4;
 		ops->resetShaderProgram(c);

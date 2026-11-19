@@ -26,11 +26,16 @@ struct journal_entry
 struct combiner_journal
 {
    RFILE               *file;
+   /* key records appended to the existing file at @path, opened on the
+    * journal's thread when the first key comes */
+   char                *path;
    sthread_t           *thread;
    retro_eventcount_t   work;
    retro_atomic_size_t  head; /* the GL thread's */
    retro_atomic_size_t  tail; /* the journal thread's */
    retro_atomic_int_t   stop;
+   int                  dropped; /* the GL thread's: a key not queued */
+   int                  lost;    /* the journal thread's: keys not written */
    struct journal_entry queue[QUEUE_SIZE];
 };
 
@@ -51,6 +56,15 @@ static size_t format_line(char *line, const struct journal_entry *entry)
    write_hex(line + 17, entry->hwl, 1);
    line[18] = '\n';
    return LINE_SIZE;
+}
+
+/* a key record of a file of records */
+static size_t format_record(char *out, const struct journal_entry *entry)
+{
+   out[0] = COMBINER_JOURNAL_RECORD_KEY;
+   out[1] = (char)(entry->hwl & 15);
+   memcpy(out + 2, &entry->key, sizeof(entry->key));
+   return COMBINER_JOURNAL_RECORD_SIZE;
 }
 
 static void journal_thread(void *data)
@@ -84,14 +98,32 @@ static void journal_thread(void *data)
          continue;
       }
 
-      while (tail != head && used < sizeof(lines))
+      while (tail != head && used + LINE_SIZE <= sizeof(lines))
       {
-         used += format_line(lines + used, &j->queue[tail & (QUEUE_SIZE - 1)]);
+         const struct journal_entry *entry = &j->queue[tail & (QUEUE_SIZE - 1)];
+         used += j->path ? format_record(lines + used, entry) : format_line(lines + used, entry);
          tail++;
       }
+      if (j->path && !j->file && !j->lost
+            && (j->file = filestream_open(j->path,
+                  RETRO_VFS_FILE_ACCESS_READ_WRITE | RETRO_VFS_FILE_ACCESS_UPDATE_EXISTING,
+                  RETRO_VFS_FILE_ACCESS_HINT_NONE)))
+         filestream_seek(j->file, 0, RETRO_VFS_SEEK_POSITION_END);
       /* what reached the OS survives the process */
-      filestream_write(j->file, lines, (int64_t)used);
-      filestream_flush(j->file);
+      if (j->file)
+      {
+         const int written = filestream_write(j->file, lines, (int64_t)used) == (int64_t)used;
+         const int flushed = filestream_flush(j->file) == 0;
+         if ((!written || !flushed) && j->path)
+         {
+            /* nothing written after a record cut short */
+            filestream_close(j->file);
+            j->file = NULL;
+            j->lost = 1;
+         }
+      }
+      else if (j->path)
+         j->lost = 1;
       retro_atomic_store_release_size(&j->tail, tail);
    }
 }
@@ -143,6 +175,55 @@ combiner_journal_t *combiner_journal_open(const char *path, uint32_t version)
    return NULL;
 }
 
+combiner_journal_t *combiner_journal_append(const char *path)
+{
+   combiner_journal_t *j;
+   size_t len;
+
+   if (!path || !(j = (combiner_journal_t*)calloc(1, sizeof(*j))))
+      return NULL;
+   retro_atomic_size_init(&j->head, 0);
+   retro_atomic_size_init(&j->tail, 0);
+   retro_atomic_int_init(&j->stop, 0);
+   len = strlen(path) + 1;
+   if ((j->path = (char*)malloc(len)))
+   {
+      memcpy(j->path, path, len);
+      if (retro_eventcount_init(&j->work))
+      {
+         if ((j->thread = sthread_create(journal_thread, j)))
+            return j;
+         retro_eventcount_free(&j->work);
+      }
+      free(j->path);
+   }
+   free(j);
+   return NULL;
+}
+
+/* stops the thread, the queue written */
+static void journal_stop(combiner_journal_t *j)
+{
+   retro_atomic_store_release_int(&j->stop, 1);
+   retro_eventcount_notify(&j->work);
+   sthread_join(j->thread);
+   retro_eventcount_free(&j->work);
+}
+
+RFILE *combiner_journal_detach(combiner_journal_t *j, int *whole)
+{
+   RFILE *file;
+   *whole = 0;
+   if (!j)
+      return NULL;
+   journal_stop(j);
+   file = j->file;
+   *whole = !j->dropped && !j->lost;
+   free(j->path);
+   free(j);
+   return file;
+}
+
 int combiner_journal_push(combiner_journal_t *j, uint64_t key, unsigned hwl)
 {
    size_t head;
@@ -151,7 +232,10 @@ int combiner_journal_push(combiner_journal_t *j, uint64_t key, unsigned hwl)
       return 0;
    head = retro_atomic_load_acquire_size(&j->head);
    if (head - retro_atomic_load_acquire_size(&j->tail) >= QUEUE_SIZE)
+   {
+      j->dropped = 1;
       return 0;
+   }
    j->queue[head & (QUEUE_SIZE - 1)].key = key;
    j->queue[head & (QUEUE_SIZE - 1)].hwl = hwl;
    retro_atomic_store_release_size(&j->head, head + 1);
@@ -161,14 +245,10 @@ int combiner_journal_push(combiner_journal_t *j, uint64_t key, unsigned hwl)
 
 void combiner_journal_close(combiner_journal_t *j)
 {
-   if (!j)
-      return;
-   retro_atomic_store_release_int(&j->stop, 1);
-   retro_eventcount_notify(&j->work);
-   sthread_join(j->thread);
-   retro_eventcount_free(&j->work);
-   filestream_close(j->file);
-   free(j);
+   int whole;
+   RFILE *file = combiner_journal_detach(j, &whole);
+   if (file)
+      filestream_close(file);
 }
 
 #else
@@ -177,6 +257,19 @@ combiner_journal_t *combiner_journal_open(const char *path, uint32_t version)
 {
    (void)path;
    (void)version;
+   return NULL;
+}
+
+combiner_journal_t *combiner_journal_append(const char *path)
+{
+   (void)path;
+   return NULL;
+}
+
+RFILE *combiner_journal_detach(combiner_journal_t *j, int *whole)
+{
+   (void)j;
+   *whole = 0;
    return NULL;
 }
 
@@ -256,9 +349,4 @@ unsigned combiner_journal_read(const char *path, uint32_t version,
    }
    free(data);
    return count;
-}
-
-void combiner_journal_remove(const char *path)
-{
-   filestream_delete(path);
 }

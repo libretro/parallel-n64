@@ -536,17 +536,6 @@ static void *create_color_buffer_reader(void *_p, void *_texture)
 
 /*---------------Shaders-------------*/
 
-static bool is_uber_only(void *_p)
-{
-	gl_context *c = CTX(_p);
-	return c->programs.builder != NULL && gli_glsl_builder_uber_only(c->programs.builder);
-}
-
-static bool save_shaders_storage(void *_p, const struct gli_combiner_table *_combiners)
-{
-	gl_context *c = CTX(_p);
-	return gli_glsl_save_storage(&c->info, &c->cache.useProgram, _combiners);
-}
 
 static bool load_shaders_storage(void *_p, struct gli_combiner_table *_combiners)
 {
@@ -554,10 +543,21 @@ static bool load_shaders_storage(void *_p, struct gli_combiner_table *_combiners
 	return gli_glsl_load_storage(&c->info, &c->cache.useProgram, _combiners);
 }
 
-static void get_combiner_journal_path(void *_p, char *_path, size_t _size, u32 *_version)
+/* the load read all the file holds */
+static struct combiner_journal *open_combiner_journal(void *_p,
+	void (*_known)(void *_ctx, uint64_t _key, unsigned _hwl), void *_ctx)
 {
-	gl_context *c = CTX(_p);
-	gli_glsl_journal_path(&c->info, &c->cache.useProgram, _path, _size, _version);
+	(void)_p;
+	(void)_known;
+	(void)_ctx;
+	return gli_glsl_open_journal();
+}
+
+static bool close_shaders_storage(void *_p, const struct gli_combiner_table *_combiners,
+	struct combiner_journal *_journal)
+{
+	(void)_p;
+	return gli_glsl_close_storage(_combiners, _journal);
 }
 
 static void reset_shader_program(void *_p)
@@ -655,9 +655,9 @@ static const gli_context_ops gl_ops = {
 	get_framebuffer_texture_formats, create_framebuffer, delete_framebuffer, bind_framebuffer,
 	add_render_target, create_renderbuffer, delete_renderbuffer, init_renderbuffer, blit_framebuffers, set_draw_buffers,
 	create_pixel_read_buffer, create_color_buffer_reader,
-	builder_obsolete, is_uber_only, reset_builder,
-	gli_glsl_ops_build, gli_glsl_ops_build_async, save_shaders_storage, load_shaders_storage,
-	get_combiner_journal_path, gli_glsl_ops_depth_fog_shader, gli_glsl_ops_texrect_draw_shader,
+	builder_obsolete, reset_builder,
+	gli_glsl_ops_build, gli_glsl_ops_build_async, load_shaders_storage,
+	open_combiner_journal, close_shaders_storage, gli_glsl_ops_depth_fog_shader, gli_glsl_ops_texrect_draw_shader,
 	gli_glsl_ops_texrect_clear_shader, gli_glsl_ops_texrect_copy_shader, gli_glsl_ops_gamma_correction_shader,
 	gli_glsl_ops_fxaa_shader,
 	reset_shader_program,

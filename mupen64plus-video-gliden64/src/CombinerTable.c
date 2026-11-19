@@ -23,9 +23,18 @@ gli_cprog *gli_combiners_find(const gli_combiner_table *_table, u64 _key)
 bool gli_combiners_make(gli_combiner_table *_table, u32 _slots)
 {
 	_table->slots = (gli_combiner_entry *)calloc(_slots, sizeof(gli_combiner_entry));
+	/* at most half the slots are filled */
+	_table->order = (u32 *)malloc((_slots / 2 + 1) * sizeof(u32));
 	_table->mask = _slots - 1;
 	_table->count = 0;
-	return _table->slots != NULL;
+	if (_table->slots == NULL || _table->order == NULL) {
+		free(_table->slots);
+		free(_table->order);
+		_table->slots = NULL;
+		_table->order = NULL;
+		return false;
+	}
+	return true;
 }
 
 static void table_insert(gli_combiner_table *_table, gli_cprog *_program)
@@ -38,7 +47,7 @@ static void table_insert(gli_combiner_table *_table, gli_cprog *_program)
 		}
 	_table->slots[i].key = _program->key;
 	_table->slots[i].program = _program;
-	_table->count++;
+	_table->order[_table->count++] = i;
 }
 
 void gli_combiners_put(gli_combiner_table *_table, gli_cprog *_program)
@@ -50,10 +59,10 @@ void gli_combiners_put(gli_combiner_table *_table, gli_cprog *_program)
 		u32 i;
 		if (!gli_combiners_make(&bigger, (_table->mask + 1) * 2))
 			return;
-		for (i = 0; i <= _table->mask; i++)
-			if (_table->slots[i].program != NULL)
-				table_insert(&bigger, _table->slots[i].program);
+		for (i = 0; i < _table->count; i++)
+			table_insert(&bigger, _table->slots[_table->order[i]].program);
 		free(_table->slots);
+		free(_table->order);
 		*_table = bigger;
 	}
 	table_insert(_table, _program);
@@ -68,9 +77,8 @@ static int by_key(const void *_a, const void *_b)
 u32 gli_combiners_sorted(const gli_combiner_table *_table, gli_cprog **_out)
 {
 	u32 i, n = 0;
-	for (i = 0; _table->slots != NULL && i <= _table->mask; i++)
-		if (_table->slots[i].program != NULL)
-			_out[n++] = _table->slots[i].program;
+	for (i = 0; i < _table->count; i++)
+		_out[n++] = _table->slots[_table->order[i]].program;
 	qsort(_out, n, sizeof(*_out), by_key);
 	return n;
 }
@@ -81,11 +89,11 @@ void gli_combiners_clear(gli_combiner_table *_table)
 	u32 i;
 	if (_table->slots == NULL)
 		return;
-	for (i = 0; i <= _table->mask; i++)
-		if (_table->slots[i].program != NULL) {
-			_table->slots[i].program->ops->free_program(_table->slots[i].program);
-			_table->slots[i].program = NULL;
-		}
+	for (i = 0; i < _table->count; i++) {
+		gli_combiner_entry *e = &_table->slots[_table->order[i]];
+		e->program->ops->free_program(e->program);
+		e->program = NULL;
+	}
 	_table->count = 0;
 }
 

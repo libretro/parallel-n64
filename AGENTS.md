@@ -115,7 +115,7 @@ Know which layer you are changing. Having one does not give you the next.
 | Recipes (what to build) | `<system>/ParallelN64/parallel_rdp_pipelines.bin`, `pipeline_record.h` | portable |
 | Driver blob | `<system>/ParallelN64/parallel_rdp_pipeline_cache.bin` | one device and driver |
 | Live `VkPipeline` | `Program::get_pipeline` | this device |
-| GL binaries / keys | `glsl_ShaderStorage.c` | GL vendor and version / portable |
+| GL binaries / keys, one file a game (`shaders/GLideN64.<hash>.OpenGL.cache`) | `glsl_ShaderStorage.c` | GL vendor and version / portable |
 
 ### parallel-RDP
 

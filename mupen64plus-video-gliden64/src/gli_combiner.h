@@ -51,6 +51,8 @@ typedef struct gli_combiner_table
 	gli_combiner_entry *slots;
 	u32 mask;  /* slots - 1, a power of two less one */
 	u32 count;
+	u32 *order; /* the slots in use, as they were filled: count of them,
+	             * so nothing walks the empty ones */
 } gli_combiner_table;
 
 /* As many programs as the C++'s fixed pool of map nodes held, at most half
@@ -75,7 +77,6 @@ typedef struct gli_combiner_info
 	struct combiner_journal *journal;
 	gli_cprog *shadowmap;        /* the depth fog shader */
 	gli_cprog *texrectCopy;      /* the texrect copy shader */
-	u32 shadersLoaded;           /* programs read from the shader storage */
 	bool changed;                /* the program drawn with changed */
 	bool rectMode;
 } gli_combiner_info;
