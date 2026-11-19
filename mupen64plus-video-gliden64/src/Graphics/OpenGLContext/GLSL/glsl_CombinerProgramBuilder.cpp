@@ -11,7 +11,6 @@
 #include "glsl_CombinerProgramImpl.h"
 #include "glsl_CombinerProgramBuilder.h"
 #include <Graphics/CombinerStages.h>
-#include "glsl_CombinerProgramUniformFactory.h"
 #include <NoiseTexture.h>
 #include <Graphics/OpenGLContext/opengl_CachedFunctions.h>
 #include "glsl_SpecialShadersFactory.h"
@@ -2204,7 +2203,7 @@ CombinerInputs CombinerProgramBuilder::compileCombiner(const CombinerKey & _key,
 	return inputs;
 }
 
-graphics::CombinerProgram * CombinerProgramBuilder::buildCombinerProgram(Combiner & _color,
+gli_cprog * CombinerProgramBuilder::buildCombinerProgram(Combiner & _color,
 																		Combiner & _alpha,
 																		const CombinerKey & _key)
 {
@@ -2228,10 +2227,7 @@ graphics::CombinerProgram * CombinerProgramBuilder::buildCombinerProgram(Combine
 	GLuint program = _startProgram(strFragmentShader, bIsRect, bUseTextures, true);
 	assert(gli_glsl_link_ok(program, 0));
 
-	CombinerUniforms uniforms;
-	m_uniformFactory->buildUniforms(program, combinerInputs, _key, uniforms);
-
-	return new CombinerProgramImpl(_key, program, m_useProgram, combinerInputs, std::move(uniforms));
+	return gli_glsl_cprog_new(_key.getMux(), program, m_useProgram, u32(int(combinerInputs)), m_info);
 }
 
 std::string CombinerProgramBuilder::_fragmentSource(const CombinerInputs & combinerInputs, const std::string & strCombiner,
@@ -2488,10 +2484,10 @@ class glsl::CombinerProgramAsync : public graphics::CombinerProgram
 public:
 	CombinerProgramAsync(const CombinerKey & _key, const CombinerInputs & _inputs,
 		CombinerProgramBuilder::UberVariant * _uber, const GLint * _ops, GLint _flags, GLuint _pending,
-		CombinerProgramUniformFactory * _factory, gli_gl_cache1 * _useProgram, int _delay)
+		const opengl::GLInfo * _info, gli_gl_cache1 * _useProgram, int _delay)
 	: graphics::CombinerProgram(&graphics::CombinerProgramOps<CombinerProgramAsync>::table, _key.getMux())
 	, m_key(_key), m_inputs(_inputs), m_uber(_uber), m_flags(_flags), m_pending(_pending)
-	, m_factory(_factory), m_useProgram(_useProgram), m_real(nullptr), m_delay(_delay)
+	, m_info(_info), m_useProgram(_useProgram), m_real(nullptr), m_delay(_delay)
 	{
 		std::copy_n(_ops, 16, m_ops);
 	}
@@ -2504,17 +2500,18 @@ public:
 		}
 		if (m_uber->owner == this)
 			m_uber->owner = nullptr;
-		delete m_real;
+		if (m_real != nullptr)
+			m_real->ops->free_program(m_real);
 	}
 
 	void activate() override
 	{
 		_poll(false);
 		if (m_real != nullptr) {
-			m_real->activate();
+			m_real->ops->activate(m_real);
 			return;
 		}
-		m_uber->program->activate();
+		m_uber->program->ops->activate(m_uber->program);
 		_setStages();
 	}
 
@@ -2522,10 +2519,10 @@ public:
 	{
 		_poll(false);
 		if (m_real != nullptr) {
-			m_real->update(_force);
+			m_real->ops->update(m_real, _force);
 			return;
 		}
-		m_uber->program->update(_force);
+		m_uber->program->ops->update(m_uber->program, _force);
 		_setStages();
 	}
 
@@ -2539,7 +2536,7 @@ public:
 	bool getBinaryForm(std::vector<char> & _buffer) override
 	{
 		_poll(true);
-		return m_real != nullptr && m_real->getBinaryForm(_buffer);
+		return m_real != nullptr && gli_glsl_cprog_binary_append(m_real, _buffer);
 	}
 
 private:
@@ -2575,9 +2572,7 @@ private:
 			glDeleteProgram(program);
 			return;
 		}
-		CombinerUniforms uniforms;
-		m_factory->buildUniforms(program, m_inputs, m_key, uniforms);
-		m_real = new CombinerProgramImpl(m_key, program, m_useProgram, m_inputs, std::move(uniforms));
+		m_real = gli_glsl_cprog_new(m_key.getMux(), program, m_useProgram, u32(int(m_inputs)), m_info);
 	}
 
 	CombinerKey m_key;
@@ -2586,9 +2581,9 @@ private:
 	GLint m_ops[16];
 	GLint m_flags;
 	GLuint m_pending;
-	CombinerProgramUniformFactory * m_factory;
+	const opengl::GLInfo * m_info;
 	gli_gl_cache1 * m_useProgram;
-	CombinerProgramImpl * m_real;
+	gli_cprog * m_real;
 	int m_delay;
 };
 
@@ -2659,9 +2654,9 @@ void CombinerProgramBuilder::_finishUber(UberVariant & _variant)
 		_variant.opsLoc[i] = glGetUniformLocation(_variant.handle, name);
 	}
 	_variant.flagsLoc = glGetUniformLocation(_variant.handle, "uCmbFlags");
-	CombinerUniforms uniforms;
-	m_uniformFactory->buildUniforms(_variant.handle, _variant.inputs, _variant.key, uniforms);
-	_variant.program = new CombinerProgramImpl(_variant.key, _variant.handle, m_useProgram, _variant.inputs, std::move(uniforms));
+	_variant.program = gli_glsl_cprog_new(_variant.key.getMux(), _variant.handle, m_useProgram, u32(int(_variant.inputs)), m_info);
+	if (_variant.program == nullptr)
+		_variant.handle = 0; /* deleted with it */
 }
 
 /* The variant of the ubershader _key draws with: built at load. */
@@ -2723,7 +2718,7 @@ graphics::CombinerProgram * CombinerProgramBuilder::buildCombinerProgramAsync(Co
 			bIsRect, bUseTextures, false);
 
 	return new CombinerProgramAsync(_key, combinerInputs, uber, ops, flags, pending,
-		m_uniformFactory.get(), m_useProgram, m_uberDelay);
+		m_info, m_useProgram, m_uberDelay);
 }
 
 const ShaderPart * CombinerProgramBuilder::getVertexShaderHeader() const
@@ -2812,7 +2807,7 @@ CombinerProgramBuilder::CombinerProgramBuilder(const opengl::GLInfo & _glinfo, g
 	m_vertexShaderTriangle = _createVertexShader(m_vertexHeader.get(), m_vertexTriangle.get(), m_vertexEnd.get());
 	m_vertexShaderTexturedRect = _createVertexShader(m_vertexHeader.get(), m_vertexTexturedRect.get(), m_vertexEnd.get());
 	m_vertexShaderTexturedTriangle = _createVertexShader(m_vertexHeader.get(), m_vertexTexturedTriangle.get(), m_vertexEnd.get());
-	m_uniformFactory.reset(new CombinerProgramUniformFactory(_glinfo));
+	m_info = &_glinfo;
 	m_isGLES2 = _glinfo.isGLES2;
 	// Without the driver's own compile threads a key's program would stall the
 	// draw that wants it: those drivers stay on the ubershader until the next load.
@@ -2840,8 +2835,9 @@ CombinerProgramBuilder::~CombinerProgramBuilder()
 				for (auto & textured : bilerp)
 					for (auto & lod : textured)
 						for (auto & v : lod) {
-							delete v.program;
-							if (v.program == nullptr && v.handle != 0)
+							if (v.program != nullptr)
+								v.program->ops->free_program(v.program);
+							else if (v.handle != 0)
 								glDeleteProgram(v.handle);
 						}
 

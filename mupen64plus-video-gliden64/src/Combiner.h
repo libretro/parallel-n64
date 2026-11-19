@@ -15,16 +15,5 @@
 
 #include "gli_combiner.h"
 
-/* the program drawn with (gli_combiner.h) */
-inline graphics::CombinerProgram * currentCombiner()
-{
-	return static_cast<graphics::CombinerProgram *>(gli_cmb.current);
-}
-
-inline graphics::ShaderProgram * combinerTexrectCopyProgram()
-{
-	return static_cast<graphics::ShaderProgram *>(graphics::combinerProgram(gli_cmb.texrectCopy));
-}
-
 #endif
 

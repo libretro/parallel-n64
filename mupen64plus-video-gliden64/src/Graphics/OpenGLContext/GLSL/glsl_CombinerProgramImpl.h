@@ -1,73 +1,110 @@
-#pragma once
-#include <memory>
-#include <vector>
-#include <Graphics/CombinerProgram.h>
+#ifndef GLI_GLSL_COMBINER_PROGRAM_IMPL_H
+#define GLI_GLSL_COMBINER_PROGRAM_IMPL_H
+/* A GL combiner program (glsl_CombinerProgramImpl.c) and its uniforms
+ * (glsl_CombinerProgramUniformFactory.c). C89. */
+#include <Types.h>
+#include <gli_combiner.h>
 #include <Graphics/CombinerValues.h>
-#include <Graphics/ObjectHandle.h>
 #include <Graphics/OpenGLContext/GLFunctions.h>
-#include "glsl_CombinerInputs.h"
 
-/* the context's program cache (opengl_CachedFunctions.h) */
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/* the context's program cache (opengl_CachedFunctions.h) and what GL has
+ * (opengl_GLInfo.h) */
 struct gli_gl_cache1;
+struct gli_gl_info;
 
-namespace glsl {
+/* how a uniform is sent: glUniform1i, 2i, 4i, 1f, 2f, 3fv, 4fv */
+enum { GLI_GLSL_I1, GLI_GLSL_I2, GLI_GLSL_I4, GLI_GLSL_F1, GLI_GLSL_F2, GLI_GLSL_F3, GLI_GLSL_F4 };
 
-	/* A program's uniforms: this combiner's values, and what of them the
-	 * program has, each sent only when it differs from what it last got. */
-	class CombinerUniforms
-	{
-	public:
-		CombinerUniforms() : m_groups(0), m_values(), m_uploaded() {}
-		void update(bool _force);
+/* a uniform: where it is, where its value sits in CombinerValues, of
+ * what kind and size */
+typedef struct gli_glsl_uniform
+{
+	GLint loc;
+	u16 offset;
+	u8 kind;
+	u8 bytes;
+} gli_glsl_uniform;
 
-		struct Entry {
-			GLint loc;
-			u16 offset;
-			u8 kind;
-			u8 bytes;
-		};
-		struct Sampler {
-			GLint loc;
-			GLint unit;
-		};
-		void _add(GLint _loc, int _kind, u32 _offset);
+/* a sampler and the texture unit it reads */
+typedef struct gli_glsl_sampler
+{
+	GLint loc;
+	GLint unit;
+} gli_glsl_sampler;
 
-		u32 m_groups;
-		std::vector<Entry> m_entries;
-		std::vector<Sampler> m_samplers;
-		CombinerValues m_values;
-		CombinerValues m_uploaded;
-	};
+/* the most a program has: every named uniform, and 8 lights' direction
+ * and colour */
+#define GLI_GLSL_UNIFORMS_MAX (62 + 16)
+#define GLI_GLSL_SAMPLERS_MAX 6
 
-	class CombinerProgramImpl : public graphics::CombinerProgram
-	{
-	public:
-		CombinerProgramImpl(const CombinerKey & _key,
-			GLuint _program,
-			gli_gl_cache1 * _useProgram,
-			const CombinerInputs & _inputs,
-			CombinerUniforms && _uniforms);
-		~CombinerProgramImpl();
+/* A program's uniforms: this combiner's values, and what of them the
+ * program has, each sent only when it differs from what it last got. */
+typedef struct gli_glsl_uniforms
+{
+	u32 groups;
+	u32 count;
+	u32 samplerCount;
+	gli_glsl_uniform entries[GLI_GLSL_UNIFORMS_MAX];
+	gli_glsl_sampler samplers[GLI_GLSL_SAMPLERS_MAX];
+	CombinerValues values;
+	CombinerValues uploaded;
+} gli_glsl_uniforms;
 
-		void activate() override;
-		void update(bool _force) override;
-		const CombinerKey & getKey() const override;
+/* @_uniforms, which starts zeroed, filled with what @_program of the key
+ * @_key and CombinerStages.c's @_inputs reads */
+void gli_glsl_uniforms_build(gli_glsl_uniforms *_uniforms, GLuint _program, u32 _inputs, u64 _key,
+	const struct gli_gl_info *_glinfo);
+/* the values worked out and those changed sent, all of them when @_force,
+ * which also sets the samplers' units (glsl_CombinerProgramImpl.c) */
+void gli_glsl_uniforms_update(gli_glsl_uniforms *_uniforms, int _force);
 
-		bool usesTexture() const override;
-		bool usesTile(u32 _t) const override;
-		bool usesShade() const override;
-		bool usesLOD() const override;
-		bool usesHwLighting() const override;
+/* A GL program for a combine key: its C face, the GL program, the cache
+ * it is used through, what it reads and its uniforms. */
+typedef struct gli_glsl_cprog
+{
+	gli_cprog base;
+	int needUpdate;
+	GLuint program;
+	struct gli_gl_cache1 *useProgram;
+	u32 inputs;
+	gli_glsl_uniforms uniforms;
+} gli_glsl_cprog;
 
-		bool getBinaryForm(std::vector<char> & _buffer) override;
+extern const gli_cprog_ops gli_glsl_cprog_ops;
 
-	private:
-		bool m_bNeedUpdate;
-		CombinerKey m_key;
-		graphics::ObjectHandle m_program;
-		gli_gl_cache1 * m_useProgram;
-		CombinerInputs m_inputs;
-		CombinerUniforms m_uniforms;
-	};
+/* the program for @_key from linked GL @_program, which it owns from here,
+ * its uniforms found; NULL, the GL program deleted, without memory */
+gli_cprog *gli_glsl_cprog_new(u64 _key, GLuint _program, struct gli_gl_cache1 *_useProgram, u32 _inputs,
+	const struct gli_gl_info *_glinfo);
 
+/* A program's stored form: its key, inputs, binary format and length, then
+ * the binary. How much room it takes, 0 when it has none; and it written
+ * to @_out, its length returned, 0 when it is not got or @_room is short. */
+size_t gli_glsl_cprog_binary_size(const gli_cprog *_program);
+size_t gli_glsl_cprog_binary_write(const gli_cprog *_program, char *_out, size_t _room);
+
+#ifdef __cplusplus
 }
+
+#include <vector>
+
+/* the program's stored form appended to @_buffer, left as it was when it
+ * has none */
+static inline bool gli_glsl_cprog_binary_append(const gli_cprog * _program, std::vector<char> & _buffer)
+{
+	const size_t at = _buffer.size();
+	const size_t room = gli_glsl_cprog_binary_size(_program);
+	if (room == 0)
+		return false;
+	_buffer.resize(at + room);
+	const size_t len = gli_glsl_cprog_binary_write(_program, _buffer.data() + at, room);
+	_buffer.resize(at + len);
+	return len != 0;
+}
+#endif
+
+#endif

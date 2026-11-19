@@ -4,8 +4,8 @@
 /* GLideN64's combiners: the programs built for each combine key, the one
  * drawn with, and the shaders beside them (Combiner.c). C89.
  *
- * A program is one of the backend's C++ CombinerProgram classes; C sees it
- * as its gli_cprog base, the table of what its class does and its key. */
+ * A program is the backend's, seen here as its gli_cprog base: the table of
+ * what its kind does, and its key. */
 
 #include <boolean.h>
 #include "Types.h"

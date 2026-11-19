@@ -16,8 +16,6 @@ namespace glsl {
 
 	class ShaderPart;
 	class CombinerInputs;
-	class CombinerProgramUniformFactory;
-	class CombinerProgramImpl;
 	class CombinerProgramAsync;
 
 	class CombinerProgramBuilder
@@ -26,7 +24,7 @@ namespace glsl {
 		CombinerProgramBuilder(const opengl::GLInfo & _glinfo, gli_gl_cache1 * _useProgram);
 		~CombinerProgramBuilder();
 
-		graphics::CombinerProgram * buildCombinerProgram(Combiner & _color, Combiner & _alpha, const CombinerKey & _key);
+		gli_cprog * buildCombinerProgram(Combiner & _color, Combiner & _alpha, const CombinerKey & _key);
 
 		const ShaderPart * getVertexShaderHeader() const;
 
@@ -47,7 +45,7 @@ namespace glsl {
 		{
 			GLuint handle = 0;
 			bool failed = false;
-			CombinerProgramImpl * program = nullptr;
+			gli_cprog * program = nullptr;
 			CombinerProgramAsync * owner = nullptr;
 			GLint opsLoc[16];
 			GLint flagsLoc = -1;
@@ -125,7 +123,7 @@ namespace glsl {
 		ShaderPartPtr m_shaderN64DepthCompare;
 		ShaderPartPtr m_shaderN64DepthRender;
 
-		std::unique_ptr<CombinerProgramUniformFactory> m_uniformFactory;
+		const opengl::GLInfo * m_info;
 
 		GLuint  m_vertexShaderRect;
 		GLuint  m_vertexShaderTriangle;

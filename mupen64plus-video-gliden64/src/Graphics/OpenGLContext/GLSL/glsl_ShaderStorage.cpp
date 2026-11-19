@@ -18,7 +18,7 @@
 #include "glsl_Utils.h"
 #include "glsl_ShaderStorage.h"
 #include "glsl_CombinerProgramImpl.h"
-#include "glsl_CombinerProgramUniformFactory.h"
+#include <Graphics/CombinerStages.h>
 
 using namespace glsl;
 
@@ -211,7 +211,9 @@ bool ShaderStorage::saveShadersStorage(const gli_combiner_table * _combiners) co
 	programs.resize(gli_combiners_sorted(_combiners, programs.data()));
 	for (gli_cprog * program : programs)
 	{
-		if (graphics::combinerProgram(program)->getBinaryForm(shadersOut))
+		/* a GL program's own, else the ubershader's stand-in's */
+		if (program->ops == &gli_glsl_cprog_ops ? gli_glsl_cprog_binary_append(program, shadersOut)
+				: graphics::combinerProgram(program)->getBinaryForm(shadersOut))
 			++totalWritten;
 	}
 	memcpy(shadersOut.data() + countAt, &totalWritten, sizeof(totalWritten));
@@ -220,9 +222,9 @@ bool ShaderStorage::saveShadersStorage(const gli_combiner_table * _combiners) co
 }
 
 static
-CombinerProgramImpl * _readCombinerProgram(StorageReader & _in,
+gli_cprog * _readCombinerProgram(StorageReader & _in,
 	CombinerKey & _cmbKey,
-	CombinerProgramUniformFactory & _uniformFactory,
+	const opengl::GLInfo & _glinfo,
 	gli_gl_cache1 * _useProgram)
 {
 	int inputs = 0;
@@ -236,21 +238,17 @@ CombinerProgramImpl * _readCombinerProgram(StorageReader & _in,
 		_in.ok = false;
 		return nullptr;
 	}
-	CombinerInputs cmbInputs(inputs);
 
 	GLuint program = glCreateProgram();
 	const bool isRect = _cmbKey.isRectKey();
-	gli_glsl_locate_attributes(program, isRect, cmbInputs.usesTexture());
+	gli_glsl_locate_attributes(program, isRect, gli_inputs_texture(u32(inputs)));
 	glProgramBinary(program, binaryFormat, binary, binaryLength);
 	if (!gli_glsl_link_ok(program, 1)) {
 		glDeleteProgram(program);
 		return nullptr;
 	}
 
-	CombinerUniforms uniforms;
-	_uniformFactory.buildUniforms(program, cmbInputs, _cmbKey, uniforms);
-
-	return new CombinerProgramImpl(_cmbKey, program, _useProgram, cmbInputs, std::move(uniforms));
+	return gli_glsl_cprog_new(_cmbKey.getMux(), program, _useProgram, u32(inputs), &_glinfo);
 }
 
 bool ShaderStorage::_loadFromCombinerKeys(gli_combiner_table * _combiners)
@@ -275,7 +273,7 @@ bool ShaderStorage::_loadFromCombinerKeys(gli_combiner_table * _combiners)
 
 	for (u64 i = 0; i < szCombiners && _parseHex(p, end, key); ++i) {
 		gli_cprog * pCombiner = gli_combiner_compile(key, false);
-		graphics::combinerProgram(pCombiner)->update(true);
+		pCombiner->ops->update(pCombiner, true);
 		gli_combiners_put(_combiners, pCombiner);
 	}
 	free(file);
@@ -324,24 +322,22 @@ bool ShaderStorage::loadShadersStorage(gli_combiner_table * _combiners)
 		return _loadFromCombinerKeys(_combiners);
 	}
 
-	CombinerProgramUniformFactory uniformFactory(m_glinfo);
-
 	for (u32 i = 0; i < len; ++i) {
 		u64 mux;
 		if (!in.get(mux))
 			break;
 		CombinerKey cmbKey(mux, false);
 
-		CombinerProgramImpl * pCombiner = _readCombinerProgram(in, cmbKey, uniformFactory, m_useProgram);
+		gli_cprog * pCombiner = _readCombinerProgram(in, cmbKey, m_glinfo, m_useProgram);
 
 		if (pCombiner != nullptr) {
-			pCombiner->update(true);
+			pCombiner->ops->update(pCombiner, true);
 			gli_combiners_put(_combiners, pCombiner);
 		} else {
 			if (!in.ok)
 				break;
 			gli_cprog * pCombinerFromKey = gli_combiner_compile(cmbKey.getMux(), false);
-			graphics::combinerProgram(pCombinerFromKey)->update(true);
+			pCombinerFromKey->ops->update(pCombinerFromKey, true);
 			gli_combiners_put(_combiners, pCombinerFromKey);
 		}
 	}
