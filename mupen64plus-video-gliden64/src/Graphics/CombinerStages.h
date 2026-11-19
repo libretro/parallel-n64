@@ -1,106 +1,45 @@
-#pragma once
-#include <Combiner.h>
-#include <gDP.h>
-#include <GBI.h>
+#ifndef GLI_COMBINER_STAGES_H
+#define GLI_COMBINER_STAGES_H
 
-/* What every backend does to a combiner's stages before writing them. */
+/* What every backend does to a combiner's stages before writing them, and
+ * the inputs they read (CombinerStages.c). C89. */
 
-namespace graphics {
+#include <boolean.h>
+#include "Types.h"
+#include "CombinerMux.h"
+#include "gDP.h"
 
-inline int correctFirstStageParam(int _param)
-{
-	switch (_param) {
-	case G_GCI_TEXEL1:
-		return G_GCI_TEXEL0;
-	case G_GCI_TEXEL1_ALPHA:
-		return G_GCI_TEXEL0_ALPHA;
-	}
-	return _param;
-}
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-inline void correctFirstStageParams(CombinerStage & _stage)
-{
-	for (int i = 0; i < _stage.numOps; ++i) {
-		_stage.op[i].param1 = correctFirstStageParam(_stage.op[i].param1);
-		_stage.op[i].param2 = correctFirstStageParam(_stage.op[i].param2);
-		_stage.op[i].param3 = correctFirstStageParam(_stage.op[i].param3);
-	}
-}
-
-inline int correctSecondStageParam(int _param)
-{
-	switch (_param) {
-	case G_GCI_TEXEL0:
-		return G_GCI_TEXEL1;
-	case G_GCI_TEXEL1:
-		return G_GCI_TEXEL0;
-	case G_GCI_TEXEL0_ALPHA:
-		return G_GCI_TEXEL1_ALPHA;
-	case G_GCI_TEXEL1_ALPHA:
-		return G_GCI_TEXEL0_ALPHA;
-	}
-	return _param;
-}
-
-inline void correctSecondStageParams(CombinerStage & _stage)
-{
-	for (int i = 0; i < _stage.numOps; ++i) {
-		_stage.op[i].param1 = correctSecondStageParam(_stage.op[i].param1);
-		_stage.op[i].param2 = correctSecondStageParam(_stage.op[i].param2);
-		_stage.op[i].param3 = correctSecondStageParam(_stage.op[i].param3);
-	}
-}
+/* the first cycle reads texel 0 for texel 1 */
+void gli_stage_correct_first(CombinerStage *_stage);
+/* the second cycle's texels swapped */
+void gli_stage_correct_second(CombinerStage *_stage);
 
 /* N64 sign extension of the first cycle's result, by how the second reads it */
-inline bool combinedColorC(u32 _cycleType, const gDPCombine & _combine)
-{
-	return _cycleType == G_CYC_2CYCLE && _combine.mRGB1 == G_CCMUX_COMBINED;
-}
-
-inline bool combinedAlphaC(u32 _cycleType, const gDPCombine & _combine)
-{
-	return _cycleType == G_CYC_2CYCLE && _combine.mA1 == G_ACMUX_COMBINED;
-}
-
-inline bool combinedColorABD(u32 _cycleType, const gDPCombine & _combine)
-{
-	if (_cycleType != G_CYC_2CYCLE)
-		return false;
-	if (_combine.aRGB1 == G_CCMUX_COMBINED)
-		return true;
-	if (_combine.saRGB1 == G_CCMUX_COMBINED || _combine.sbRGB1 == G_CCMUX_COMBINED)
-		return _combine.mRGB1 != G_CCMUX_0;
-	return false;
-}
-
-inline bool combinedAlphaABD(u32 _cycleType, const gDPCombine & _combine)
-{
-	if (_cycleType != G_CYC_2CYCLE)
-		return false;
-	if (_combine.aA1 == G_ACMUX_COMBINED)
-		return true;
-	if (_combine.saA1 == G_ACMUX_COMBINED || _combine.sbA1 == G_ACMUX_COMBINED)
-		return _combine.mA1 != G_ACMUX_0;
-	return false;
-}
+bool gli_combined_color_c(u32 _cycleType, const gDPCombine *_combine);
+bool gli_combined_alpha_c(u32 _cycleType, const gDPCombine *_combine);
+bool gli_combined_color_abd(u32 _cycleType, const gDPCombine *_combine);
+bool gli_combined_alpha_abd(u32 _cycleType, const gDPCombine *_combine);
 
 /* Four words a stage: op * 256 + input, -1 to end, INTER keeping its other
  * two inputs in the next two. */
-inline void encodeStage(const CombinerStage & _stage, int * _ops)
-{
-	for (int i = 0; i < 4; ++i)
-		_ops[i] = -1;
-	for (int i = 0; i < _stage.numOps && i < 4; ++i) {
-		const CombinerOp & op = _stage.op[i];
-		if (op.op == INTER) {
-			_ops[0] = (INTER << 8) | op.param1;
-			_ops[1] = op.param2;
-			_ops[2] = op.param3;
-			_ops[3] = -1;
-			return;
-		}
-		_ops[i] = (op.op << 8) | op.param1;
-	}
-}
+void gli_stage_encode(const CombinerStage *_stage, int *_ops);
 
+/* A combiner's inputs: a bit for each G_GCI_ input it reads */
+u32 gli_inputs_add_stage(u32 _inputs, const CombinerStage *_stage);
+bool gli_inputs_tile(u32 _inputs, u32 _tile);
+bool gli_inputs_texture(u32 _inputs);
+bool gli_inputs_lod(u32 _inputs);
+bool gli_inputs_noise(u32 _inputs);
+bool gli_inputs_shade(u32 _inputs);
+bool gli_inputs_shade_color(u32 _inputs);
+bool gli_inputs_hw_lighting(u32 _inputs);
+
+#ifdef __cplusplus
 }
+#endif
+
+#endif

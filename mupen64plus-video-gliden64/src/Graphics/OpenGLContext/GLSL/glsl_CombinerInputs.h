@@ -1,5 +1,6 @@
 #pragma once
 #include <Types.h>
+#include <Graphics/CombinerStages.h>
 
 namespace glsl {
 
@@ -12,23 +13,24 @@ namespace glsl {
 
 		explicit operator int() { return m_inputs; }
 
-		bool usesTile(u32 _t) const;
+		/* CombinerStages.c's tests of its bits */
+		bool usesTile(u32 _t) const { return gli_inputs_tile(u32(m_inputs), _t); }
 
-		bool usesTexture() const;
+		bool usesTexture() const { return gli_inputs_texture(u32(m_inputs)); }
 
-		bool usesLOD() const;
+		bool usesLOD() const { return gli_inputs_lod(u32(m_inputs)); }
 
-		bool usesNoise() const;
+		bool usesNoise() const { return gli_inputs_noise(u32(m_inputs)); }
 
-		bool usesShade() const;
+		bool usesShade() const { return gli_inputs_shade(u32(m_inputs)); }
 
-		bool usesShadeColor() const;
+		bool usesShadeColor() const { return gli_inputs_shade_color(u32(m_inputs)); }
 
-		bool usesHwLighting() const;
+		bool usesHwLighting() const { return gli_inputs_hw_lighting(u32(m_inputs)); }
 
-		void addInput(u32 _input);
+		void addInput(u32 _input) { m_inputs |= 1 << _input; }
 
-		void operator+=(const CombinerInputs & _other);
+		void operator+=(const CombinerInputs & _other) { m_inputs |= _other.m_inputs; }
 
 	private:
 		int m_inputs;

@@ -406,6 +406,8 @@ SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/GraphicsDrawer.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/FrameBufferTextures.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/FrameBuffer.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/Graphics/VulkanContext/vk_ColorBufferReader.c
+SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/Graphics/VulkanContext/vk_ContextImpl.c
+SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/Graphics/CombinerStages.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/Combiner.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/CombinerTable.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/PluginAPI.c
@@ -482,8 +484,6 @@ endif
 INCFLAGS      += -I$(VIDEODIR_PARALLEL)/parallel-rdp/vulkan-headers/include -I$(VIDEODIR_PARALLEL)/parallel-rdp/parallel-rdp -I$(CORE_DIR)/src/api -I$(VIDEODIR_GLIDEN64)/src/Graphics/VulkanContext
 
 SOURCES_CXX   += \
-    $(VIDEODIR_GLIDEN64)/src/Graphics/VulkanContext/vk_ContextImpl.cpp                            \
-    $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/GLSL/glsl_CombinerInputs.cpp                  \
     $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/GLSL/glsl_CombinerProgramBuilder.cpp          \
     $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/GLSL/glsl_CombinerProgramImpl.cpp             \
     $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/GLSL/glsl_CombinerProgramUniformFactory.cpp   \

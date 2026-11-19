@@ -207,8 +207,8 @@ Know which layer you are changing. Having one does not give you the next.
 
 - Written from the ground up in MSVC C89 under
   `src/Graphics/VulkanContext/` (`vk_spirv.c`, `vk_shaders.c`, `vk_renderer.c`,
-  `vk_device.c`); `vk_ContextImpl.cpp` is the C++ boundary and holds no logic
-  of its own. New code here stays C89.
+  `vk_device.c`, and `vk_ContextImpl.c`, which maps GLideN64's context calls
+  to the renderer). New code here stays C89.
 - The rest of GLideN64 moves to C89 a file at a time, leaf files first. A moved
   file goes on `GLIDEN64_C89` so it stays moved; its public functions take a
   `gli_` prefix, because the other plugins export the same C names.
