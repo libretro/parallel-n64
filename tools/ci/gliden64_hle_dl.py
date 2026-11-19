@@ -307,7 +307,11 @@ def run(host, core, rom, tmp, api, plugin="gliden64", glide64_api="opengl", env_
                        env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=60)
     if p.returncode != 0:
         if not quiet:
-            sys.stdout.write(p.stdout.decode("utf-8", "replace")[-2000:])
+            out = p.stdout.decode("utf-8", "replace")
+            # a sanitizer's report from its first line: its end alone is the stack
+            at = min([i for i in (out.find(m) for m in ("runtime error:", "ERROR: AddressSanitizer",
+                                                         "ERROR: LeakSanitizer")) if i >= 0] or [-1])
+            sys.stdout.write(out[out.rfind("\n", 0, at) + 1:][:4000] if at >= 0 else out[-2000:])
         raise RuntimeError("exit %d" % p.returncode)
     raws = sorted(f for f in os.listdir(dump) if f.endswith(".raw"))
     if not raws:

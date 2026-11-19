@@ -47,8 +47,10 @@ extern RDPInfo __RDP;
 #define SRA(exp, sa)    ((signed)(exp) >> (sa))
 #endif
 
+/* the low @b bits of @i sign-extended: shifted up unsigned, as a signed
+ * shift past the sign bit is undefined */
 #ifndef SIGN
-#define SIGN(i, b)      SRA((i) << (32 - (b)), (32 - (b)))
+#define SIGN(i, b)      SRA((uint32_t)(i) << (32 - (b)), (32 - (b)))
 #endif
 
 #ifndef GET_LOW

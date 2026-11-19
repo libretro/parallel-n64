@@ -64,10 +64,6 @@ jobs:
           sudo apt-get install -y -qq build-essential nasm git ca-certificates curl python3 \
             libgl-dev libegl-dev libgles-dev libegl-mesa0 libgl1-mesa-dri mesa-vulkan-drivers libvulkan1 spirv-tools
 
-      - name: Virtual functions defined
-        if: matrix.sanitizer == ''
-        run: python3 tools/ci/check_vtables.py
-
       - name: Ring and drawer unit tests
         run: |
           make platform=unix test_gliden64_ring_segments test_gliden64_gl_drawer
@@ -78,6 +74,10 @@ jobs:
         run: |
           make -j$(nproc) $CORE_FLAGS SANITIZER=${{ matrix.sanitizer }}
           make platform=unix SANITIZER=${{ matrix.sanitizer }} lrhost_gl lrhost $GL_TESTS
+
+      - name: Virtual functions defined
+        if: matrix.sanitizer == ''
+        run: python3 tools/ci/check_vtables.py
 
       - name: GL unit tests
         run: |
