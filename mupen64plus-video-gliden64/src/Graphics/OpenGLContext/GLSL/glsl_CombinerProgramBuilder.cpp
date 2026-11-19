@@ -1,5 +1,4 @@
 #include <string>
-#include <functional>
 #include <assert.h>
 #include <algorithm>
 #include <cstdio>
@@ -2903,9 +2902,4 @@ extern "C" gli_cprog * gli_glsl_ops_build_async(void * _p, Combiner * _color, Co
 extern "C" const gli_cprog * gli_glsl_async_program(gli_cprog * _program)
 {
 	return static_cast<CombinerProgramAsync *>(graphics::combinerProgram(_program))->program();
-}
-
-extern "C" u32 gli_glsl_rom_hash(const char * _romname)
-{
-	return static_cast<u32>(std::hash<std::string>()(_romname));
 }

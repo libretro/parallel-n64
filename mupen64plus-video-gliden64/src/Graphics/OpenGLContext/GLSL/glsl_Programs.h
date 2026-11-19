@@ -63,9 +63,6 @@ struct gli_cprog *gli_glsl_ops_fxaa_shader(void *_programs);
 /* the program the ubershader's stand-in @_program has become, waited
  * for; NULL when it has none */
 const struct gli_cprog *gli_glsl_async_program(struct gli_cprog *_program);
-/* the game's name hashed for the storage's file names, as std::hash
- * hashed it, so the files of before are found */
-u32 gli_glsl_rom_hash(const char *_romname);
 
 /* the shader storage on disk */
 bool gli_glsl_save_storage(const gli_gl_info *_info, struct gli_gl_cache1 *_useProgram,

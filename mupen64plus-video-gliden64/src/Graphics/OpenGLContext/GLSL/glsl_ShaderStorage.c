@@ -18,6 +18,7 @@
 #include "glsl_Utils.h"
 #include "glsl_CombinerProgramImpl.h"
 #include "glsl_Programs.h"
+#include "glsl_StdHash.h"
 
 #define SHADER_STORAGE_FOLDER_NAME "shaders"
 #define FORMAT_VERSION 0x3EU
@@ -136,7 +137,7 @@ static void storage_path(const gli_gl_info *_info, const char *_ext, char *_path
 		len = put_str(_path, len, _size, folderName, sizeof(folderName) - 1);
 
 	len = put_str(_path, len, _size, prefix, sizeof(prefix) - 1);
-	len = put_str(_path, len, _size, hex, put_hex(hex, gli_glsl_rom_hash(RSP.romname), 0));
+	len = put_str(_path, len, _size, hex, put_hex(hex, gli_std_hash_string(RSP.romname), 0));
 	len = put_str(_path, len, _size, api, strlen(api));
 	put_str(_path, len, _size, _ext, strlen(_ext));
 }

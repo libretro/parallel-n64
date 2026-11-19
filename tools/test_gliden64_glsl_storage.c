@@ -25,6 +25,7 @@
 #include "Graphics/OpenGLContext/opengl_CachedFunctions.h"
 #include "Graphics/OpenGLContext/GLSL/glsl_CombinerProgramImpl.h"
 #include "Graphics/OpenGLContext/GLSL/glsl_Programs.h"
+#include "Graphics/OpenGLContext/GLSL/glsl_StdHash.h"
 #include "Graphics/gli_context.h"
 #include "Graphics/CombinerStages.h"
 #include "CombinerKey.h"
@@ -122,8 +123,6 @@ static const char *s_cacheDir = "/cache";
 void gli_api_user_cache_path(char *_strPath, size_t _size) { strncpy(_strPath, s_cacheDir, _size); }
 
 RSPInfo RSP;
-static char s_hashAsked[32];
-u32 gli_glsl_rom_hash(const char *_romname) { strcpy(s_hashAsked, _romname); return 0x8f506950u; }
 
 bool gli_GBI_hwlSupported;
 static u32 s_options = 0x1234u;
@@ -268,28 +267,36 @@ static void reset_combiners(void)
 static gli_gl_info s_info;
 static gli_gl_cache1 s_cache;
 
-#define KEYS "/cache/shaders/GLideN64.8f506950.OpenGL.keys"
-#define SHADERS "/cache/shaders/GLideN64.8f506950.OpenGL.shaders"
+/* named by the game's hash, which test_gliden64_std_hash holds */
+static char s_name[64];
+static char KEYS[64];
+static char SHADERS[64];
 #define HEAD_SIZE (sizeof(u64) + sizeof(int) + sizeof(GLenum) + sizeof(GLint))
 
 static void paths(void)
 {
 	char path[1024];
 	u32 version = 0;
+	char want[1024];
 	strcpy(RSP.romname, "SUPER MARIO 64");
+	sprintf(s_name, "GLideN64.%x", (unsigned)gli_std_hash_string("SUPER MARIO 64"));
+	sprintf(KEYS, "/cache/shaders/%s.OpenGL.keys", s_name);
+	sprintf(SHADERS, "/cache/shaders/%s.OpenGL.shaders", s_name);
 	gli_glsl_journal_path(&s_info, &s_cache, path, sizeof(path), &version);
 	CHECK(version == 5);
-	CHECK(strcmp(path, "/cache/shaders/GLideN64.8f506950.OpenGL.keys.journal") == 0);
+	sprintf(want, "%s.journal", KEYS);
+	CHECK(strcmp(path, want) == 0);
 	CHECK(strcmp(s_mkdirAsked, "/cache/shaders") == 0);
-	CHECK(strcmp(s_hashAsked, "SUPER MARIO 64") == 0);
 	s_info.isGLESX = 1;
 	gli_glsl_journal_path(&s_info, &s_cache, path, sizeof(path), &version);
-	CHECK(strcmp(path, "/cache/shaders/GLideN64.8f506950.GLES.keys.journal") == 0);
+	sprintf(want, "/cache/shaders/%s.GLES.keys.journal", s_name);
+	CHECK(strcmp(path, want) == 0);
 	s_info.isGLESX = 0;
 	/* the shaders folder not made: beside it */
 	s_mkdirOk = 0;
 	gli_glsl_journal_path(&s_info, &s_cache, path, sizeof(path), &version);
-	CHECK(strcmp(path, "/cache/GLideN64.8f506950.OpenGL.keys.journal") == 0);
+	sprintf(want, "/cache/%s.OpenGL.keys.journal", s_name);
+	CHECK(strcmp(path, want) == 0);
 	s_mkdirOk = 1;
 	/* cut to the room given */
 	{
