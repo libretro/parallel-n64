@@ -13,7 +13,7 @@ extern "C" {
 struct FrameBuffer;
 struct DepthBuffer;
 
-/* a graphics::ShaderProgram, opaque to C */
+/* a special shader, opaque here */
 struct gli_cprog;
 
 /* The buffer lists, for C command handlers */

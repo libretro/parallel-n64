@@ -37,7 +37,19 @@ static void APIENTRY s_bind_attrib(GLuint p, GLuint i, const GLchar *n)
 static GLuint APIENTRY s_create_shader(GLenum t)
 { char b[64]; sprintf(b, "shader %s=%u", t == GL_VERTEX_SHADER ? "v" : t == GL_FRAGMENT_SHADER ? "f" : "?", s_next); logf_(b); return s_next++; }
 static void APIENTRY s_shader_source(GLuint s, GLsizei n, const GLchar *const *src, const GLint *len)
-{ char b[160]; sprintf(b, "source %u %d %s %s", s, (int)n, src[0], len == NULL ? "nul" : "len"); logf_(b); }
+{
+	/* the strings joined by '+', each one a part of the source */
+	char b[160];
+	GLsizei i;
+	sprintf(b, "source %u %d ", s, (int)n);
+	for (i = 0; i < n; ++i) {
+		if (i > 0)
+			strcat(b, "+");
+		strcat(b, src[i]);
+	}
+	strcat(b, len == NULL ? " nul" : " len");
+	logf_(b);
+}
 static void APIENTRY s_compile(GLuint s) { char b[32]; sprintf(b, "compile %u", s); logf_(b); }
 static GLuint APIENTRY s_create_program(void) { char b[32]; sprintf(b, "program=%u", s_next); logf_(b); return s_next++; }
 static void APIENTRY s_attach(GLuint p, GLuint s) { char b[32]; sprintf(b, "attach %u %u", p, s); logf_(b); }
@@ -118,17 +130,19 @@ static void checks(void)
 
 static void rect_program(void)
 {
+	static const GLchar *const vs[] = { "VH", "VS", "unused" };
+	static const GLchar *const fs[] = { "FH", "FS", "FE", "unused" };
 	GLuint p;
 	char want[1024];
 
 	reset();
 	s_next = 20;
 	s_link_status = GL_FALSE; /* not asked: the program comes back as made */
-	p = gli_glsl_rect_program("VS", "FS");
+	p = gli_glsl_rect_program(vs, 2, fs, 3);
 	CHECK(p == 22);
 	sprintf(want,
-		"shader v=20;source 20 1 VS nul;compile 20;"
-		"shader f=21;source 21 1 FS nul;compile 21;"
+		"shader v=20;source 20 2 VH+VS nul;compile 20;"
+		"shader f=21;source 21 3 FH+FS+FE nul;compile 21;"
 		"program=22;attr 22 %d aRectPosition;attr 22 %d aTexCoord0;attr 22 %d aTexCoord1;"
 		"attach 22 20;attach 22 21;link 22;delshader 20;delshader 21;",
 		GLI_RECT_ATTRIB_POSITION, GLI_RECT_ATTRIB_TEXCOORD0, GLI_RECT_ATTRIB_TEXCOORD1);

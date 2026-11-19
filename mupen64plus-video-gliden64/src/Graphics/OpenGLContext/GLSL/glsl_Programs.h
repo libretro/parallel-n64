@@ -2,8 +2,8 @@
 #define GLI_GLSL_PROGRAMS_H
 
 /* The GLSL programs' C face, for the GL context: the combiner program
- * builder and the special shaders, which are still C++
- * (glsl_CombinerProgramBuilder.cpp), and the shader storage
+ * builder, which is still C++ (glsl_CombinerProgramBuilder.cpp), the
+ * special shaders (glsl_SpecialShadersFactory.c) and the shader storage
  * (glsl_ShaderStorage.c). C89. */
 
 #include <stddef.h>
@@ -21,7 +21,7 @@ struct gli_gl_cache1;
 struct gli_combiner_table;
 
 typedef struct gli_glsl_builder gli_glsl_builder;   /* glsl::CombinerProgramBuilder */
-typedef struct gli_glsl_special gli_glsl_special;   /* glsl::SpecialShadersFactory */
+typedef struct gli_glsl_special gli_glsl_special;
 
 /* programs for @_info, used through the program cache @_useProgram */
 gli_glsl_builder *gli_glsl_builder_new(const gli_gl_info *_info, struct gli_gl_cache1 *_useProgram);
@@ -29,6 +29,10 @@ void gli_glsl_builder_delete(gli_glsl_builder *_builder);
 /* whether the combiner options it was made for have changed */
 bool gli_glsl_builder_obsolete(const gli_glsl_builder *_builder);
 bool gli_glsl_builder_uber_only(const gli_glsl_builder *_builder);
+/* the headers and end its shaders are made with, which the special shaders
+ * are made with too, held as long as @_builder */
+enum { GLI_GLSL_VERTEX_HEADER, GLI_GLSL_FRAGMENT_HEADER, GLI_GLSL_FRAGMENT_END };
+const char *gli_glsl_builder_part(const gli_glsl_builder *_builder, int _part);
 
 
 /* the special shaders, with @_builder's shader headers */

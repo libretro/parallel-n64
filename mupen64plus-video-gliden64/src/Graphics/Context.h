@@ -6,7 +6,6 @@
 #include "ObjectHandle.h"
 #include "Parameter.h"
 #include "CombinerProgram.h"
-#include "ShaderProgram.h"
 #include "PixelBuffer.h"
 #include "FramebufferTextureFormats.h"
 

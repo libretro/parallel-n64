@@ -12,6 +12,8 @@ namespace glsl {
 		{
 			shader << m_part;
 		}
+		/* its text, for a part written as it is */
+		const char * text() const { return m_part.c_str(); }
 
 	protected:
 		std::string m_part;

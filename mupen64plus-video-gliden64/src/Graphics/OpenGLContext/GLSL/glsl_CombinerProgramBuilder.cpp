@@ -14,7 +14,6 @@
 #include <Graphics/CombinerStages.h>
 #include <NoiseTexture.h>
 #include <Graphics/OpenGLContext/opengl_CachedFunctions.h>
-#include "glsl_SpecialShadersFactory.h"
 #include "glsl_Programs.h"
 
 #define NOISE_STR_(x) #x
@@ -2860,13 +2859,6 @@ struct gli_glsl_builder : CombinerProgramBuilder
 	gli_glsl_builder(const opengl::GLInfo & _info, gli_gl_cache1 * _useProgram) : CombinerProgramBuilder(_info, _useProgram) {}
 };
 
-struct gli_glsl_special : SpecialShadersFactory
-{
-	gli_glsl_special(const opengl::GLInfo & _info, gli_gl_cache1 * _useProgram, const CombinerProgramBuilder & _builder)
-		: SpecialShadersFactory(_info, _useProgram, _builder.getVertexShaderHeader(),
-			_builder.getFragmentShaderHeader(), _builder.getFragmentShaderEnd()) {}
-};
-
 extern "C" gli_glsl_builder * gli_glsl_builder_new(const gli_gl_info * _info, gli_gl_cache1 * _useProgram)
 {
 	return new gli_glsl_builder(*_info, _useProgram);
@@ -2887,6 +2879,15 @@ extern "C" bool gli_glsl_builder_uber_only(const gli_glsl_builder * _builder)
 	return _builder->isUberOnly();
 }
 
+extern "C" const char * gli_glsl_builder_part(const gli_glsl_builder * _builder, int _part)
+{
+	switch (_part) {
+	case GLI_GLSL_VERTEX_HEADER: return _builder->getVertexShaderHeader()->text();
+	case GLI_GLSL_FRAGMENT_HEADER: return _builder->getFragmentShaderHeader()->text();
+	default: return _builder->getFragmentShaderEnd()->text();
+	}
+}
+
 static gli_glsl_programs * programs(void * _p) { return static_cast<gli_glsl_programs *>(_p); }
 
 extern "C" gli_cprog * gli_glsl_ops_build(void * _p, Combiner * _color, Combiner * _alpha, u64 _key)
@@ -2898,24 +2899,6 @@ extern "C" gli_cprog * gli_glsl_ops_build_async(void * _p, Combiner * _color, Co
 {
 	return programs(_p)->builder->buildCombinerProgramAsync(*_color, *_alpha, CombinerKey(_key, false));
 }
-
-extern "C" gli_glsl_special * gli_glsl_special_new(const gli_gl_info * _info, gli_gl_cache1 * _useProgram,
-	const gli_glsl_builder * _builder)
-{
-	return new gli_glsl_special(*_info, _useProgram, *_builder);
-}
-
-extern "C" void gli_glsl_special_delete(gli_glsl_special * _special)
-{
-	delete _special;
-}
-
-extern "C" gli_cprog * gli_glsl_ops_depth_fog_shader(void * _p) { return programs(_p)->special->createShadowMapShader(); }
-extern "C" gli_cprog * gli_glsl_ops_texrect_draw_shader(void * _p) { return programs(_p)->special->createTexrectDrawerDrawShader(); }
-extern "C" gli_cprog * gli_glsl_ops_texrect_clear_shader(void * _p) { return programs(_p)->special->createTexrectDrawerClearShader(); }
-extern "C" gli_cprog * gli_glsl_ops_texrect_copy_shader(void * _p) { return programs(_p)->special->createTexrectCopyShader(); }
-extern "C" gli_cprog * gli_glsl_ops_gamma_correction_shader(void * _p) { return programs(_p)->special->createGammaCorrectionShader(); }
-extern "C" gli_cprog * gli_glsl_ops_fxaa_shader(void * _p) { return programs(_p)->special->createFXAAShader(); }
 
 extern "C" const gli_cprog * gli_glsl_async_program(gli_cprog * _program)
 {

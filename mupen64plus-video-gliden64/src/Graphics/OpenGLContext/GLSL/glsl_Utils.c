@@ -56,17 +56,18 @@ int gli_glsl_link_ok(GLuint _program, int _force)
 #endif
 }
 
-GLuint gli_glsl_rect_program(const char *_strVertex, const char *_strFragment)
+GLuint gli_glsl_rect_program(const GLchar *const *_vertex, GLsizei _vertexCount,
+	const GLchar *const *_fragment, GLsizei _fragmentCount)
 {
 	GLuint vertex_shader_object = glCreateShader(GL_VERTEX_SHADER);
 	GLuint fragment_shader_object;
 	GLuint program;
-	glShaderSource(vertex_shader_object, 1, &_strVertex, NULL);
+	glShaderSource(vertex_shader_object, _vertexCount, _vertex, NULL);
 	glCompileShader(vertex_shader_object);
 	assert(gli_glsl_compile_ok(vertex_shader_object));
 
 	fragment_shader_object = glCreateShader(GL_FRAGMENT_SHADER);
-	glShaderSource(fragment_shader_object, 1, &_strFragment, NULL);
+	glShaderSource(fragment_shader_object, _fragmentCount, _fragment, NULL);
 	glCompileShader(fragment_shader_object);
 	assert(gli_glsl_compile_ok(fragment_shader_object));
 

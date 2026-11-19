@@ -15,8 +15,10 @@ int gli_glsl_compile_ok(GLuint _shader);
 /* whether a program linked: asked under GL_DEBUG or when @_force, else
  * taken as so, as asking waits for the driver */
 int gli_glsl_link_ok(GLuint _program, int _force);
-/* a rect program, texture coordinates bound, from its two sources */
-GLuint gli_glsl_rect_program(const char *_strVertex, const char *_strFragment);
+/* a rect program, texture coordinates bound, from its two sources, each
+ * given as the @_vertexCount and @_fragmentCount strings it is made of */
+GLuint gli_glsl_rect_program(const GLchar *const *_vertex, GLsizei _vertexCount,
+	const GLchar *const *_fragment, GLsizei _fragmentCount);
 
 #ifdef __cplusplus
 }

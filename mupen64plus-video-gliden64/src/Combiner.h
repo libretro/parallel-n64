@@ -9,7 +9,6 @@
 #include "gDP.h"
 #include "CombinerKey.h"
 #include "Graphics/CombinerProgram.h"
-#include "Graphics/ShaderProgram.h"
 
 #include "CombinerMux.h"
 
