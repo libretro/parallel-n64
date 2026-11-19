@@ -55,7 +55,7 @@ void SharpFilter_8888(uint32 *src, uint32 srcwidth, uint32 srcheight, uint32 *de
 
 void SmoothFilter_8888(uint32 *src, uint32 srcwidth, uint32 srcheight, uint32 *dest, uint32 filter);
 
-/* xBRZ (TextureFilters_xbrz.cpp): its tables made, and @factor (2 to 6)
+/* xBRZ (TextureFilters_xbrz.c): its tables made, and @factor (2 to 6)
  * times the texture, its texels ABGR */
 void xbrz_init(void);
 void xbrz_scale_abgr(unsigned factor, const uint32 *src, uint32 *dst, int width, int height);
