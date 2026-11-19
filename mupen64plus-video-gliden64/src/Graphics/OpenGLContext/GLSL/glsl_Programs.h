@@ -2,8 +2,9 @@
 #define GLI_GLSL_PROGRAMS_H
 
 /* The GLSL programs' C face, for the GL context: the combiner program
- * builder, the special shaders and the shader storage, which are still
- * C++ (glsl_CombinerProgramBuilder.cpp). C89. */
+ * builder and the special shaders, which are still C++
+ * (glsl_CombinerProgramBuilder.cpp), and the shader storage
+ * (glsl_ShaderStorage.c). C89. */
 
 #include <stddef.h>
 #include <Types.h>
@@ -54,6 +55,13 @@ struct gli_cprog *gli_glsl_ops_texrect_clear_shader(void *_programs);
 struct gli_cprog *gli_glsl_ops_texrect_copy_shader(void *_programs);
 struct gli_cprog *gli_glsl_ops_gamma_correction_shader(void *_programs);
 struct gli_cprog *gli_glsl_ops_fxaa_shader(void *_programs);
+
+/* the program the ubershader's stand-in @_program has become, waited
+ * for; NULL when it has none */
+const struct gli_cprog *gli_glsl_async_program(struct gli_cprog *_program);
+/* the game's name hashed for the storage's file names, as std::hash
+ * hashed it, so the files of before are found */
+u32 gli_glsl_rom_hash(const char *_romname);
 
 /* the shader storage on disk */
 bool gli_glsl_save_storage(const gli_gl_info *_info, struct gli_gl_cache1 *_useProgram,

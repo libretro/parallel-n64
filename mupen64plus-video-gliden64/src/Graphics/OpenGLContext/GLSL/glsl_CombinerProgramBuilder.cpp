@@ -1,4 +1,5 @@
 #include <string>
+#include <functional>
 #include <assert.h>
 #include <algorithm>
 #include <cstdio>
@@ -14,7 +15,6 @@
 #include <NoiseTexture.h>
 #include <Graphics/OpenGLContext/opengl_CachedFunctions.h>
 #include "glsl_SpecialShadersFactory.h"
-#include "glsl_ShaderStorage.h"
 #include "glsl_Programs.h"
 
 #define NOISE_STR_(x) #x
@@ -2533,10 +2533,11 @@ public:
 	bool usesLOD() const override { return m_inputs.usesLOD(); }
 	bool usesHwLighting() const override { return m_inputs.usesHwLighting(); }
 
-	bool getBinaryForm(std::vector<char> & _buffer) override
+	/* the key's own program, waited for: what the storage keeps */
+	const gli_cprog * program()
 	{
 		_poll(true);
-		return m_real != nullptr && gli_glsl_cprog_binary_append(m_real, _buffer);
+		return m_real;
 	}
 
 private:
@@ -2916,23 +2917,12 @@ extern "C" gli_cprog * gli_glsl_ops_texrect_copy_shader(void * _p) { return prog
 extern "C" gli_cprog * gli_glsl_ops_gamma_correction_shader(void * _p) { return programs(_p)->special->createGammaCorrectionShader(); }
 extern "C" gli_cprog * gli_glsl_ops_fxaa_shader(void * _p) { return programs(_p)->special->createFXAAShader(); }
 
-extern "C" bool gli_glsl_save_storage(const gli_gl_info * _info, gli_gl_cache1 * _useProgram,
-	const gli_combiner_table * _combiners)
+extern "C" const gli_cprog * gli_glsl_async_program(gli_cprog * _program)
 {
-	ShaderStorage storage(*_info, _useProgram);
-	return storage.saveShadersStorage(_combiners);
+	return static_cast<CombinerProgramAsync *>(graphics::combinerProgram(_program))->program();
 }
 
-extern "C" bool gli_glsl_load_storage(const gli_gl_info * _info, gli_gl_cache1 * _useProgram,
-	gli_combiner_table * _combiners)
+extern "C" u32 gli_glsl_rom_hash(const char * _romname)
 {
-	ShaderStorage storage(*_info, _useProgram);
-	return storage.loadShadersStorage(_combiners);
-}
-
-extern "C" void gli_glsl_journal_path(const gli_gl_info * _info, gli_gl_cache1 * _useProgram,
-	char * _path, size_t _size, u32 * _version)
-{
-	ShaderStorage storage(*_info, _useProgram);
-	snprintf(_path, _size, "%s", storage.getKeysJournalPath(*_version).c_str());
+	return static_cast<u32>(std::hash<std::string>()(_romname));
 }

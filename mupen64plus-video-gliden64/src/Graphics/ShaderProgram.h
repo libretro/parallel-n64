@@ -17,7 +17,6 @@ namespace graphics {
 		virtual bool usesShade() const override {return false;}
 		virtual bool usesLOD() const override {return false;}
 		virtual bool usesHwLighting() const override {return false;}
-		virtual bool getBinaryForm(std::vector<char> & _buffer) override {return false;}
 	};
 
 	/* its C face sets its texture size and alpha test too */

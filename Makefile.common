@@ -403,6 +403,7 @@ SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/GLSL/glsl_Utils
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/GLSL/glsl_FXAA.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/GLSL/glsl_CombinerProgramImpl.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/GLSL/glsl_CombinerProgramUniformFactory.c
+SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/GLSL/glsl_ShaderStorage.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/BufferCopy/RDRAMtoColorBuffer.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/BufferCopy/DepthBufferToRDRAM.c
 SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/BufferCopy/ColorBufferToRDRAM.c
@@ -489,7 +490,6 @@ INCFLAGS      += -I$(VIDEODIR_PARALLEL)/parallel-rdp/vulkan-headers/include -I$(
 
 SOURCES_CXX   += \
     $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/GLSL/glsl_CombinerProgramBuilder.cpp          \
-    $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/GLSL/glsl_ShaderStorage.cpp                   \
     $(VIDEODIR_GLIDEN64)/src/Graphics/OpenGLContext/GLSL/glsl_SpecialShadersFactory.cpp
 
 # GLideNHQ's texture filters, its gzip files, its resampler, its quantizer,

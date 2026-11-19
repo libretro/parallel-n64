@@ -89,22 +89,6 @@ size_t gli_glsl_cprog_binary_write(const gli_cprog *_program, char *_out, size_t
 
 #ifdef __cplusplus
 }
-
-#include <vector>
-
-/* the program's stored form appended to @_buffer, left as it was when it
- * has none */
-static inline bool gli_glsl_cprog_binary_append(const gli_cprog * _program, std::vector<char> & _buffer)
-{
-	const size_t at = _buffer.size();
-	const size_t room = gli_glsl_cprog_binary_size(_program);
-	if (room == 0)
-		return false;
-	_buffer.resize(at + room);
-	const size_t len = gli_glsl_cprog_binary_write(_program, _buffer.data() + at, room);
-	_buffer.resize(at + len);
-	return len != 0;
-}
 #endif
 
 #endif
