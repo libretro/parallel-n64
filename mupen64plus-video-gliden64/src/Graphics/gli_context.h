@@ -5,9 +5,8 @@
  * and what it supports. C89.
  *
  * Each backend hands a table of its functions and the object they act on.
- * Handles and parameters are their 32-bit values; the parameter blocks and
- * GLideN64's C++ objects pass as pointers C does not look into. Graphics/
- * Context.h wraps the table for the C++ (gfxContext). */
+ * Handles and parameters are their 32-bit values; the parameter blocks
+ * pass as pointers. */
 
 #include <stddef.h>
 #include <boolean.h>
@@ -26,9 +25,8 @@ struct gli_prb;
 /* a parameter left unset: the backend leaves that state as it is */
 #define GLI_PARAM_INVALID 0xFFFFFFFFu
 
-/* The texture blocks the backends take. Each is made from its _DEFAULT
- * (Graphics/Context.h's C++ blocks are these, made the same way); fields
- * hold handles and the numbers of gli_params.h. */
+/* The texture blocks the backends take. Each is made from its _DEFAULT;
+ * fields hold handles and the numbers of gli_params.h. */
 typedef struct gli_init_texture_params
 {
 	u32 handle;

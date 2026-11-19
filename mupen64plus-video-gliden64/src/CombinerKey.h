@@ -22,35 +22,6 @@ bool gli_combiner_uses_lod(void);
 
 #ifdef __cplusplus
 }
-
-class CombinerKey {
-public:
-	CombinerKey() : m_mux(0) {}
-	explicit CombinerKey(u64 _mux, bool _setModeBits = true)
-		: m_mux(_setModeBits ? gli_combiner_key(_mux) : _mux) {}
-	CombinerKey(const CombinerKey & _other) : m_mux(_other.m_mux) {}
-
-	void operator=(u64 _mux) { m_mux = _mux; }
-	void operator=(const CombinerKey & _other) { m_mux = _other.m_mux; }
-
-	bool operator==(const CombinerKey & _other) const { return m_mux == _other.m_mux; }
-	bool operator<(const CombinerKey & _other) const { return m_mux < _other.m_mux; }
-
-	bool isRectKey() const { return gli_combiner_key_is_rect(m_mux); }
-	bool isHWLSupported() const { return gli_combiner_key_hwl(m_mux); }
-	u32 getCycleType() const { return gli_combiner_key_cycle_type(m_mux); }
-	u32 getBilerp() const { return gli_combiner_key_bilerp(m_mux); }
-	u64 getMux() const { return m_mux; }
-
-	static const CombinerKey & getEmpty()
-	{
-		static CombinerKey emptyKey;
-		return emptyKey;
-	}
-
-private:
-	u64 m_mux;
-};
 #endif
 
 #endif /* COMBINERKEY_H */

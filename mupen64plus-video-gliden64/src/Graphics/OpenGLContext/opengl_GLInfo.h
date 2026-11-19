@@ -66,8 +66,4 @@ int gli_gl_tegra_interlock_broken(const char *_version);
 
 #ifdef __cplusplus
 }
-
-namespace opengl {
-	typedef gli_gl_info GLInfo;
-}
 #endif

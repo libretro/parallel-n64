@@ -1,9 +1,5 @@
 #ifndef _3DMATH_H
 #define _3DMATH_H
-#ifdef __cplusplus
-#include <utility>
-#include "GBI.h"
-#endif
 #include <memory.h>
 #include <string.h>
 #include <retro_inline.h>
@@ -58,13 +54,5 @@ static INLINE float GetFloatMatrixElement(s16 _int, u16 _fract)
 }
 #endif
 
-#ifdef __cplusplus
-inline std::pair<s16, u16> GetIntMatrixElement(f32 _elem)
-{
-	const s32 value = static_cast<s32>(_elem * 65536.0f);
-	return std::pair<s16, u16>(static_cast<s16>(value >> 16), static_cast<u16>(value & 0xFFFF));
-}
-
-#endif
 
 #endif

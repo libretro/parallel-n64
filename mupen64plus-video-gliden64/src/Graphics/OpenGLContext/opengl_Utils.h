@@ -17,20 +17,4 @@ int gli_gl_framebuffer_incomplete(void);
 
 #ifdef __cplusplus
 }
-
-#include "opengl_GLInfo.h"
-
-namespace opengl {
-
-	struct Utils
-	{
-		static bool isExtensionSupported(const opengl::GLInfo & _glinfo, const char * extension)
-		{
-			return gli_gl_has_extension(_glinfo.majorVersion, extension) != 0;
-		}
-		static bool isGLError() { return gli_gl_has_error() != 0; }
-		static bool isFramebufferError() { return gli_gl_framebuffer_incomplete() != 0; }
-	};
-
-}
 #endif
