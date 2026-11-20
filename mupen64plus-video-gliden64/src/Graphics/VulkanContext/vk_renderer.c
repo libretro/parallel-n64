@@ -11,6 +11,7 @@
 #include <queues/mpsc_stack.h>
 #include <streams/file_stream.h>
 #include <compat/strl.h>
+#include <encodings/xxh3.h>
 #include <rdp_worker.h>
 
 #include "vk_device.h"
@@ -319,6 +320,9 @@ struct vkr_renderer
    int strict_own;  /* tools/ci: a client's own pipeline not built ahead is a failure */
    int prewarmed;
    char cache_path[1024];
+   /* the pipeline cache it was lent, to tell whether it changed */
+   size_t cache_size;
+   uint64_t cache_hash;
    VkDeviceSize vb_offset, ib_offset;
    int vb_valid, ib_valid;
    /* vkr_vertex_open's room: where it ends, in which frame's ring */
@@ -3668,70 +3672,56 @@ const vkr_caps *vkr_get_caps(const vkr_renderer *r) { return &r->caps; }
 
 /* ---- the driver's pipeline cache, across sessions ---- */
 
-/* A cache of another GPU or driver, or a damaged one, is a miss. */
-static int load_cache(vkr_renderer *r, const char *path, void **blob, size_t *size)
+/* Whether @blob, @size bytes, is a pipeline cache of this GPU and driver:
+ * one of another, or a damaged one, is a miss. */
+static int cache_fits(const vkr_renderer *r, const void *blob, size_t size)
 {
-   RFILE *f;
-   int64_t n;
-   void *data;
-   const uint32_t *h;
-
-   if (!path || !*path)
+   uint32_t h[4];
+   if (!blob || size < 16 + VK_UUID_SIZE || size > 256u * 1024u * 1024u)
       return 0;
-   f = filestream_open(path, RETRO_VFS_FILE_ACCESS_READ, RETRO_VFS_FILE_ACCESS_HINT_NONE);
-   if (!f)
-      return 0;
-   n = filestream_get_size(f);
-   if (n < 32 || n > 256 * 1024 * 1024)
-   {
-      filestream_close(f);
-      return 0;
-   }
-   data = malloc((size_t)n);
-   if (!data || filestream_read(f, data, n) != n)
-   {
-      free(data);
-      filestream_close(f);
-      return 0;
-   }
-   filestream_close(f);
-   h = (const uint32_t*)data;
-   if (h[0] < 32 || h[1] != VK_PIPELINE_CACHE_HEADER_VERSION_ONE
-         || h[2] != r->props.vendorID || h[3] != r->props.deviceID
-         || memcmp(&h[4], r->props.pipelineCacheUUID, VK_UUID_SIZE) != 0)
-   {
-      free(data);
-      return 0;
-   }
-   *blob = data;
-   *size = (size_t)n;
-   return 1;
+   memcpy(h, blob, sizeof(h));
+   return h[0] >= 16 + VK_UUID_SIZE && h[0] <= size && h[1] == VK_PIPELINE_CACHE_HEADER_VERSION_ONE
+         && h[2] == r->props.vendorID && h[3] == r->props.deviceID
+         && memcmp((const uint8_t*)blob + 16, r->props.pipelineCacheUUID, VK_UUID_SIZE) == 0;
 }
 
+/* The pipeline cache as it is now, in a buffer taken here; NULL where
+ * there is none. @changed set when it is not what the renderer was lent. */
+static void *take_cache(vkr_renderer *r, size_t *size, int *changed)
+{
+   void *data;
+   *size = 0;
+   *changed = 0;
+   if (r->cache == VK_NULL_HANDLE
+         || F(GetPipelineCacheData)(r->device, r->cache, size, NULL) != VK_SUCCESS || !*size
+         || !(data = malloc(*size)))
+      return NULL;
+   if (F(GetPipelineCacheData)(r->device, r->cache, size, data) != VK_SUCCESS)
+   {
+      free(data);
+      *size = 0;
+      return NULL;
+   }
+   *changed = *size != r->cache_size || xxh3_64(data, *size, 0) != r->cache_hash;
+   return data;
+}
+
+/* At its path, where it changed */
 static void save_cache(vkr_renderer *r)
 {
-   size_t size = 0;
+   size_t size;
+   int changed;
    void *data;
-   RFILE *f;
 
-   if (!r->cache_path[0] || r->cache == VK_NULL_HANDLE
-         || F(GetPipelineCacheData)(r->device, r->cache, &size, NULL) != VK_SUCCESS || !size)
+   if (!r->cache_path[0] || !(data = take_cache(r, &size, &changed)))
       return;
-   data = malloc(size);
-   if (!data)
-      return;
-   if (F(GetPipelineCacheData)(r->device, r->cache, &size, data) == VK_SUCCESS)
+   if (changed)
    {
       char dir[1024];
       /* a first run has no directory yet, and the save would be lost */
       fill_pathname_basedir(dir, r->cache_path, sizeof(dir));
       path_mkdir(dir);
-      f = filestream_open(r->cache_path, RETRO_VFS_FILE_ACCESS_WRITE, RETRO_VFS_FILE_ACCESS_HINT_NONE);
-      if (f)
-      {
-         filestream_write(f, data, (int64_t)size);
-         filestream_close(f);
-      }
+      filestream_write_file(r->cache_path, data, (int64_t)size);
    }
    free(data);
 }
@@ -4118,8 +4108,8 @@ static unsigned make_dummy(vkr_renderer *r, int fmt, unsigned samples)
    return h;
 }
 
-vkr_renderer *vkr_create(const struct retro_hw_render_interface_vulkan *vk, const vkr_shader_config *cfg,
-      const char *cache_path)
+vkr_renderer *vkr_create_lent(const struct retro_hw_render_interface_vulkan *vk, const vkr_shader_config *cfg,
+      const void *cache, size_t cache_size)
 {
    vkr_renderer *r = (vkr_renderer*)calloc(1, sizeof(*r));
    PFN_vkGetPhysicalDeviceProperties get_props;
@@ -4131,8 +4121,6 @@ vkr_renderer *vkr_create(const struct retro_hw_render_interface_vulkan *vk, cons
    VkFenceCreateInfo fi;
    VkPipelineCacheCreateInfo pc;
    VkSamplerCreateInfo sci;
-   void *cache_blob = NULL;
-   size_t cache_size = 0;
    unsigned i;
 
    if (!r)
@@ -4244,15 +4232,15 @@ vkr_renderer *vkr_create(const struct retro_hw_render_interface_vulkan *vk, cons
 
    memset(&pc, 0, sizeof(pc));
    pc.sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO;
-   if (load_cache(r, cache_path, &cache_blob, &cache_size))
+   /* the driver takes its own copy of what it is lent */
+   if (cache_fits(r, cache, cache_size))
    {
       pc.initialDataSize = cache_size;
-      pc.pInitialData = cache_blob;
+      pc.pInitialData = cache;
+      r->cache_size = cache_size;
+      r->cache_hash = xxh3_64(cache, cache_size, 0);
    }
    F(CreatePipelineCache)(r->device, &pc, NULL, &r->cache);
-   free(cache_blob);
-   if (cache_path)
-      strlcpy(r->cache_path, cache_path, sizeof(r->cache_path));
 
    memset(&sci, 0, sizeof(sci));
    sci.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
@@ -4296,19 +4284,51 @@ fail:
    return NULL;
 }
 
-void vkr_destroy(vkr_renderer *r)
+/* The file at @cache_path lent where it can be mapped, read once where
+ * not, and closed before the renderer is handed back */
+vkr_renderer *vkr_create(const struct retro_hw_render_interface_vulkan *vk, const vkr_shader_config *cfg,
+      const char *cache_path)
+{
+   vkr_renderer *r;
+   RFILE *f = NULL;
+   const void *blob = NULL;
+   void *copy = NULL;
+   int64_t size = 0;
+
+   if (cache_path && *cache_path && (f = filestream_open(cache_path, RETRO_VFS_FILE_ACCESS_READ,
+         RETRO_VFS_FILE_ACCESS_HINT_FREQUENT_ACCESS)))
+   {
+      blob = filestream_get_mapped_ptr(f, &size);
+      if (!blob && (size = filestream_get_size(f)) > 0 && size <= 256 * 1024 * 1024
+            && (copy = malloc((size_t)size)) && filestream_read(f, copy, size) == size)
+         blob = copy;
+   }
+   r = vkr_create_lent(vk, cfg, blob, blob ? (size_t)size : 0);
+   free(copy);
+   if (f)
+      filestream_close(f);
+   if (r && cache_path)
+      strlcpy(r->cache_path, cache_path, sizeof(r->cache_path));
+   return r;
+}
+
+/* stop admitting, join, drain, then destroy, the pipeline cache handed
+ * back when @cache, or saved at its path */
+static void destroy(vkr_renderer *r, void **cache, size_t *size, int *changed)
 {
    unsigned i;
 
    if (!r)
       return;
-   /* stop admitting, join, drain, then destroy */
    if (r->worker)
       rdp_worker_free(r->worker);
    if (r->device)
    {
       F(DeviceWaitIdle)(r->device);
-      save_cache(r);
+      if (cache)
+         *cache = take_cache(r, size, changed);
+      else
+         save_cache(r);
    }
 
    for (i = 0; i < r->n_frames; i++)
@@ -4407,4 +4427,18 @@ void vkr_destroy(vkr_renderer *r)
    free(r->jobs);
    free(r->programs);
    free(r);
+}
+
+void vkr_destroy(vkr_renderer *r)
+{
+   destroy(r, NULL, NULL, NULL);
+}
+
+void *vkr_destroy_taking_cache(vkr_renderer *r, size_t *size, int *changed)
+{
+   void *cache = NULL;
+   *size = 0;
+   *changed = 0;
+   destroy(r, &cache, size, changed);
+   return cache;
 }

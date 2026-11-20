@@ -56,6 +56,12 @@ int main(void)
 
    filestream_delete(PATH);
 
+   /* a session that meets no key makes no journal */
+   j = combiner_journal_open(PATH, 5);
+   CHECK(j != NULL);
+   combiner_journal_close(j);
+   CHECK(!filestream_exists(PATH));
+
    /* all of them, in order, however the writer keeps up */
    j = combiner_journal_open(PATH, 5);
    CHECK(j != NULL);
@@ -80,6 +86,19 @@ int main(void)
    memset(&s, 0, sizeof(s));
    CHECK(combiner_journal_read(PATH, 5, in_order, &s) == KEYS + 1);
    CHECK(!s.bad);
+
+   /* nor touches one there */
+   {
+      void *before = NULL, *after = NULL;
+      int64_t n0 = 0, n1 = 0;
+      CHECK(filestream_read_file(PATH, &before, &n0));
+      j = combiner_journal_open(PATH, 5);
+      combiner_journal_close(j);
+      CHECK(filestream_read_file(PATH, &after, &n1));
+      CHECK(n0 == n1 && n0 > 0 && !memcmp(before, after, (size_t)n0));
+      free(before);
+      free(after);
+   }
 
    /* garbage lines are skipped */
    append("not a key at all\n0123456789abcdeg 0\n0123456789abcde 7\n");

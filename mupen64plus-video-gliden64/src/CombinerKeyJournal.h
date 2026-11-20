@@ -16,9 +16,11 @@ extern "C" {
 
 typedef struct combiner_journal combiner_journal_t;
 
-/* Appends to the journal at @path, made for @version. NULL when it cannot
- * be opened or the target has no lock-free atomics: keys then only reach
- * the file saved at the end. */
+/* Appends to the journal at @path, made for @version where it is not
+ * there: opened on the journal's thread when the first key comes, so a
+ * session that meets none never touches it. NULL when no thread can be
+ * had or the target has no lock-free atomics: keys then only reach the
+ * file saved at the end. */
 combiner_journal_t *combiner_journal_open(const char *path, uint32_t version);
 
 /* A key record of a file of records: its kind, the four bits, then the

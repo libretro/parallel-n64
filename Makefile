@@ -2374,6 +2374,14 @@ COMBINER_JOURNAL_TEST_SRC := $(VIDEODIR_GLIDEN64)/src/CombinerKeyJournal.c $(LIB
 test_combiner_journal$(EXE_EXT): tools/test_combiner_journal.c $(COMBINER_JOURNAL_TEST_SRC) $(VIDEODIR_GLIDEN64)/src/CombinerKeyJournal.h
 	$(CC) $(CHECK_CFLAGS) $(CHECK_SANITIZE) -I$(VIDEODIR_GLIDEN64)/src -I$(LIBRETRO_COMM_DIR)/include tools/test_combiner_journal.c $(COMBINER_JOURNAL_TEST_SRC) -o $@ $(CHECK_LDFLAGS) $(CHECK_SANITIZE) -lpthread
 
+# Glide64's Vulkan cache, a file a game (tools/test_glitch64_vk_cache.c),
+# read with the VFS's map and without
+test_glitch64_vk_cache$(EXE_EXT): tools/test_glitch64_vk_cache.c $(VIDEODIR_GLIDE)/Glitch64/glitch64_vk_cache.c \
+		$(VIDEODIR_GLIDE)/Glitch64/glitch64_vk_cache.h $(COMBINER_JOURNAL_TEST_SRC)
+	$(CC) $(CHECK_CFLAGS) $(CHECK_SANITIZE) -DHAVE_MMAP -I$(VIDEODIR_GLIDE)/Glitch64 -I$(LIBRETRO_COMM_DIR)/include \
+		tools/test_glitch64_vk_cache.c $(filter-out $(VIDEODIR_GLIDEN64)/%,$(COMBINER_JOURNAL_TEST_SRC)) \
+		-o $@ $(CHECK_LDFLAGS) $(CHECK_SANITIZE) -lpthread
+
 # What a parallel-rdp pipeline miss uses, allocated up front
 test_pipeline_pending$(EXE_EXT): tools/test_pipeline_pending.c $(VIDEODIR_PARALLEL)/parallel-rdp/parallel-rdp/pipeline_pending.h \
 		$(LIBRETRO_COMM_DIR)/rthreads/rthreads.c
@@ -2613,6 +2621,7 @@ test_prsp_dmem_wrap$(EXE_EXT): tools/test_prsp_dmem_wrap.c $(PRSP_TEST_OBJS)
 	$(CC) $(CHECK_CFLAGS) $(CHECK_SANITIZE) -I$(CORE_DIR)/src -c $< -o tools/test_prsp_dmem_wrap.o
 	$(CXX) tools/test_prsp_dmem_wrap.o $(PRSP_TEST_OBJS) -o $@ $(CHECK_SANITIZE) -lpthread -lm
 CORE_CHECKS += test_prsp_dmem_wrap$(EXE_EXT)
+CORE_CHECKS += test_glitch64_vk_cache$(EXE_EXT)
 endif
 
 check-core: $(CORE_CHECKS)

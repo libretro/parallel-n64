@@ -3,8 +3,9 @@
 
 The first session writes down the keys it meets. The second must build them
 all at load: PARALLEL_N64_COMBINER_STRICT aborts if a draw has to compile.
-Rice reaches no combiner on these ROMs, so its keys are written in here, which
-tests that they build at load but not that a draw finds them.
+Rice reaches no combiner on these ROMs, so its keys are written in here (its
+journal made here, as a session that meets no key makes none), which tests
+that they build at load but not that a draw finds them.
 
   combiner_warm_start.py --core parallel_n64_libretro.so --host ./lrhost_gl [--roms krom-roms]
 """
@@ -17,6 +18,7 @@ ROMS = ["cube16", "rottri32", "shade32", "tlut16"]
 PLUGINS = {"gln64": "gln64_*.keys", "rice": "rice_*.keys", "glide64": "glide64_*.keys"}
 SEEDED = {"rice"}
 FRAMES = 40
+JOURNAL_VERSION = 1  # COMBINER_JOURNAL_VERSION
 
 
 def run(a, rom, plugin, sysdir, strict):
@@ -31,9 +33,22 @@ def run(a, rom, plugin, sysdir, strict):
                           timeout=120)
 
 
+def journal_path(sysdir, plugin, rom):
+    """where the plugin's journal for @rom is: named by its header's CRCs,
+    and made only when a first key is met"""
+    with open(rom, "rb") as f:
+        head = f.read(0x18)
+    if head[:1] == b"\x37":  # byte-swapped
+        head = bytes(head[i ^ 1] for i in range(len(head)))
+    return os.path.join(sysdir, "ParallelN64", "shaders", "%s_%s.keys" % (plugin, head[0x10:0x18].hex()))
+
+
 def seed(path, name):
     rnd = random.Random(name)
+    made = not os.path.exists(path)
     with open(path, "a") as f:
+        if made:
+            f.write("gliden64-combiner-keys %08x\n" % JOURNAL_VERSION)
         for flags in range(8):
             f.write("%016x %x\n" % (rnd.getrandbits(64), flags & 3))
 
@@ -53,7 +68,8 @@ def main():
                 first = run(a, rom, plugin, sysdir, False).returncode
                 found = glob.glob(os.path.join(sysdir, "ParallelN64", "shaders", pattern))
                 keys = 0
-                if found and plugin in SEEDED:
+                if plugin in SEEDED:
+                    found = [found[0] if found else journal_path(sysdir, plugin, rom)]
                     seed(found[0], name)
                 if found and plugin == "glide64":
                     keys = 1 if os.path.getsize(found[0]) > 8 else 0

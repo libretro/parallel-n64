@@ -605,7 +605,8 @@ SOURCES_C   += $(VIDEODIR_GLIDE)/Glitch64/glitch64_combiner.c $(VIDEODIR_GLIDE)/
             $(VIDEODIR_GLIDE)/Glitch64/geometry.c \
             $(VIDEODIR_GLIDE)/Glitch64/glitchmain.c \
             $(VIDEODIR_GLIDE)/Glitch64/glitch64_textures.c \
-            $(VIDEODIR_GLIDE)/Glitch64/glitch64_vk.c
+            $(VIDEODIR_GLIDE)/Glitch64/glitch64_vk.c \
+            $(VIDEODIR_GLIDE)/Glitch64/glitch64_vk_cache.c
 ifeq ($(HAVE_GLIDEN64),1)
 # its Vulkan shaders, written with GLideN64's SPIR-V writer
 SOURCES_C   += $(VIDEODIR_GLIDE)/Glitch64/glitch64_vk_shaders.c

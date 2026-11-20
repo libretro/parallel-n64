@@ -116,6 +116,12 @@ Know which layer you are changing. Having one does not give you the next.
 | Driver blob | `<system>/ParallelN64/parallel_rdp_pipeline_cache.bin` | one device and driver |
 | Live `VkPipeline` | `Program::get_pipeline` | this device |
 | GL binaries / keys, one file a game (`shaders/GLideN64.<hash>.OpenGL.cache`) | `glsl_ShaderStorage.c` | GL vendor and version / portable |
+| Glide64 on Vulkan: combiners and the driver blob, one file a game (`shaders/glide64-vulkan_<crcs>.cache`) | `glitch64_vk_cache.c` | portable / one device and driver |
+| GLideN64 on Vulkan: the driver blob and the keys' journal, for every game (`GLideN64.vulkan.keys.journal[.pipelines]`) | `vk_renderer.c`, `CombinerKeyJournal.c` | one device and driver / portable |
+
+A cache file is written only where what it holds changed: a session that
+meets nothing new writes nothing (`tools/ci/vulkan_cache_files.py`,
+`tools/ci/gliden64_keys_journal.py`).
 
 ### parallel-RDP
 

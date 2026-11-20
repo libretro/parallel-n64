@@ -13,6 +13,7 @@ int glitch64_vulkan = 0;
 #include "vk_device.h"
 #include "vk_renderer.h"
 #include "glitch64_vk_shaders.h"
+#include "glitch64_vk_cache.h"
 #include "../../../Graphics/RDP/RDP_state.h"
 #include "../Glide64/rdp.h"
 #include <streams/file_stream.h>
@@ -130,10 +131,18 @@ static struct
 
    vk_own own[VK_OWN_SLOTS];
    unsigned n_own;
+   /* the slots filled, as they were: n_own of them, so nothing walks the
+    * empty ones */
+   unsigned short own_order[VK_OWN];
    int own_dirty;
    vkr_client_layout layout;
    int blend_index;       /* vk_blends' place of the blend set now, -1 none */
-   char journal[PATH_MAX_LENGTH];
+   /* the game's cache file (glitch64_vk_cache.h), read at load; the
+    * journal of before it reads where the file is not there */
+   char cache_path[PATH_MAX_LENGTH];
+   char before_path[PATH_MAX_LENGTH];
+   g64vk_cache cache;
+   int cache_before;
 } vk;
 
 static void set_combiner(const glitch64_n64_combiner *c)
@@ -193,7 +202,7 @@ static vk_own *own_find(const int *key)
             return NULL;
          memcpy(o->key, key, G64VK_KEY_WORDS * sizeof(int));
          o->blends = 0;
-         vk.n_own++;
+         vk.own_order[vk.n_own++] = (unsigned short)(o - vk.own);
          return o;
       }
       if (!memcmp(o->key, key, G64VK_KEY_WORDS * sizeof(int)))
@@ -745,17 +754,10 @@ static vkr_program *make_program(int depth)
  * not): what a game draws again starts on its own shaders. */
 static void journal_load(void)
 {
-   void *data = NULL;
-   int64_t size = 0;
-   const uint32_t *w;
-   size_t n, i;
+   const uint32_t *w = vk.cache.records;
+   size_t n = vk.cache.count, i;
 
-   if (!vk.journal[0] || !filestream_exists(vk.journal)
-         || !filestream_read_file(vk.journal, &data, &size) || !data)
-      return;
-   w = (const uint32_t*)data;
-   n = size >= 8 ? (size_t)(size - 8) / ((G64VK_KEY_WORDS + 1) * 4) : 0;
-   if (size >= 8 && w[0] == VK_JOURNAL_MAGIC && w[1] == VK_JOURNAL_VERSION)
+   if (w)
    {
       vkr_enable(vk.r, VKR_CAP_DEPTH_TEST, 1);
       vkr_depth_write(vk.r, 1);
@@ -763,7 +765,7 @@ static void journal_load(void)
       vkr_enable(vk.r, VKR_CAP_CULL, 0);
       for (i = 0; i < n; i++)
       {
-         const uint32_t *rec = w + 2 + i * (G64VK_KEY_WORDS + 1);
+         const uint32_t *rec = w + i * (G64VK_KEY_WORDS + 1);
          int key[G64VK_KEY_WORDS];
          unsigned b, k;
          vk_own *o;
@@ -785,36 +787,40 @@ static void journal_load(void)
             }
       }
    }
-   free(data);
    vk.own_dirty = 0;
 }
 
-/* At close, when this session met a combiner or a blend function more */
-static void journal_save(void)
+/* The renderer gone, the file written where the combiners met, their
+ * blend functions or the driver's pipeline cache changed, or the files of
+ * before were read: a session that met nothing new writes nothing. The
+ * records from the combiners' keys, which outlive their programs. */
+static void cache_save(void)
 {
-   RFILE *f;
-   uint32_t head[2];
-   unsigned i, k;
+   size_t size = 0;
+   int changed = 0;
+   void *pipelines = vkr_destroy_taking_cache(vk.r, &size, &changed);
+   uint32_t *records;
 
-   if (!vk.journal[0] || !vk.own_dirty)
-      return;
-   f = filestream_open(vk.journal, RETRO_VFS_FILE_ACCESS_WRITE, RETRO_VFS_FILE_ACCESS_HINT_NONE);
-   if (!f)
-      return;
-   head[0] = VK_JOURNAL_MAGIC;
-   head[1] = VK_JOURNAL_VERSION;
-   filestream_write(f, head, sizeof(head));
-   for (i = 0; i < VK_OWN_SLOTS; i++)
-      if (vk.own[i].p)
+   if (vk.cache_path[0] && (vk.own_dirty || vk.cache_before || changed)
+         && (records = (uint32_t*)malloc((size_t)(vk.n_own ? vk.n_own : 1) * (G64VK_KEY_WORDS + 1) * 4)))
+   {
+      unsigned i, k;
+      for (i = 0; i < vk.n_own; i++)
       {
-         uint32_t rec[G64VK_KEY_WORDS + 1];
+         const vk_own *o = &vk.own[vk.own_order[i]];
+         uint32_t *rec = records + (size_t)i * (G64VK_KEY_WORDS + 1);
          for (k = 0; k < G64VK_KEY_WORDS; k++)
-            rec[k] = (uint32_t)vk.own[i].key[k];
-         rec[G64VK_KEY_WORDS] = vk.own[i].blends;
-         filestream_write(f, rec, sizeof(rec));
+            rec[k] = (uint32_t)o->key[k];
+         rec[G64VK_KEY_WORDS] = o->blends;
       }
-   filestream_close(f);
+      g64vk_cache_write(vk.cache_path, vk.before_path, VK_JOURNAL_VERSION, records, vk.n_own,
+            G64VK_KEY_WORDS + 1, pipelines, size);
+      free(records);
+   }
+   free(pipelines);
+   vk.n_own = 0;
    vk.own_dirty = 0;
+   vk.cache_before = 0;
 }
 
 static void prewarm(void)
@@ -852,6 +858,9 @@ static void prewarm(void)
    vkr_color_mask(vk.r, 1, 1);
    journal_load();
    vkr_client_prewarm_wait(vk.r);
+   /* what the file lent is in the renderer now */
+   vk.cache_before = vk.cache.before;
+   g64vk_cache_close(&vk.cache);
 }
 
 uint32_t vk_grSstWinOpen(void)
@@ -867,15 +876,27 @@ uint32_t vk_grSstWinOpen(void)
       vk.spv_ready = 1;
    }
    memset(&cfg, 0, sizeof(cfg));
-   /* the game's combiners, and the driver's pipeline cache beside them */
-   combiner_key_path(vk.journal, sizeof(vk.journal), "glide64-vulkan", gfx_info.HEADER);
+   /* the game's combiners and the driver's pipeline cache, in one file,
+    * lent to the renderer */
+   combiner_key_path(vk.before_path, sizeof(vk.before_path), "glide64-vulkan", gfx_info.HEADER);
+   /* <name>.keys before, <name>.cache now */
    {
-      char cache[PATH_MAX_LENGTH + 16];
-      snprintf(cache, sizeof(cache), "%s.pipelines", vk.journal);
-      vk.r = vkr_create(gliden64_vulkan_interface(), &cfg, cache);
+      size_t n = strlen(vk.before_path);
+      vk.cache_path[0] = '\0';
+      if (n > 4 && n + 1 < sizeof(vk.cache_path))
+      {
+         memcpy(vk.cache_path, vk.before_path, n - 4);
+         strcpy(vk.cache_path + n - 4, "cache");
+      }
    }
+   g64vk_cache_open(&vk.cache, vk.cache_path, vk.before_path, VK_JOURNAL_MAGIC, VK_JOURNAL_VERSION,
+         G64VK_KEY_WORDS + 1);
+   vk.r = vkr_create_lent(gliden64_vulkan_interface(), &cfg, vk.cache.pipelines, vk.cache.pipelines_size);
    if (!vk.r)
+   {
+      g64vk_cache_close(&vk.cache);
       return 0;
+   }
    vkr_set_window(vk.r, (unsigned)width, (unsigned)height);
 
    vk.staging = (uint8_t*)malloc(2048u * 2048u * 4u);
@@ -922,21 +943,19 @@ void vk_grSstWinClose(void)
    for (i = 0; i < vk.n_spare; i++)
       vkr_texture_delete(vk.r, vk.spare[i].handle);
    vk.n_spare = 0;
-   journal_save();
-   for (i = 0; i < VK_OWN_SLOTS; i++)
-      if (vk.own[i].p)
-      {
-         vkr_program_delete(vk.r, vk.own[i].p);
-         vk.own[i].p = NULL;
-      }
-   vk.n_own = 0;
+   for (i = 0; i < vk.n_own; i++)
+   {
+      vk_own *o = &vk.own[vk.own_order[i]];
+      vkr_program_delete(vk.r, o->p);
+      o->p = NULL;
+   }
    if (vk.combiner)
       vkr_program_delete(vk.r, vk.combiner);
    if (vk.depth)
       vkr_program_delete(vk.r, vk.depth);
    if (vk.rb)
       vkr_readback_delete(vk.r, vk.rb);
-   vkr_destroy(vk.r);
+   cache_save();
    vk.r = NULL;
    vk.verts = NULL;
    vk.n_verts = 0;

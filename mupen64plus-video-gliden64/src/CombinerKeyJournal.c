@@ -29,6 +29,10 @@ struct combiner_journal
    /* key records appended to the existing file at @path, opened on the
     * journal's thread when the first key comes */
    char                *path;
+   /* or lines, at @lines_path, made for @version where it is not there,
+    * opened the same way */
+   char                *lines_path;
+   uint32_t             version;
    sthread_t           *thread;
    retro_eventcount_t   work;
    retro_atomic_size_t  head; /* the GL thread's */
@@ -65,6 +69,32 @@ static size_t format_record(char *out, const struct journal_entry *entry)
    out[1] = (char)(entry->hwl & 15);
    memcpy(out + 2, &entry->key, sizeof(entry->key));
    return COMBINER_JOURNAL_RECORD_SIZE;
+}
+
+/* The journal of lines: one there continued past a line a crash may have
+ * cut short, or one made with its header */
+static void open_lines(combiner_journal_t *j)
+{
+   char line[HEADER_LEN + 9];
+
+   if (filestream_exists(j->lines_path))
+   {
+      if ((j->file = filestream_open(j->lines_path,
+            RETRO_VFS_FILE_ACCESS_READ_WRITE | RETRO_VFS_FILE_ACCESS_UPDATE_EXISTING,
+            RETRO_VFS_FILE_ACCESS_HINT_NONE)))
+      {
+         filestream_seek(j->file, 0, RETRO_VFS_SEEK_POSITION_END);
+         filestream_write(j->file, "\n", 1);
+      }
+   }
+   else if ((j->file = filestream_open(j->lines_path, RETRO_VFS_FILE_ACCESS_WRITE,
+         RETRO_VFS_FILE_ACCESS_HINT_NONE)))
+   {
+      memcpy(line, HEADER, HEADER_LEN);
+      write_hex(line + HEADER_LEN, j->version, 8);
+      line[HEADER_LEN + 8] = '\n';
+      filestream_write(j->file, line, (int64_t)sizeof(line));
+   }
 }
 
 static void journal_thread(void *data)
@@ -109,6 +139,8 @@ static void journal_thread(void *data)
                   RETRO_VFS_FILE_ACCESS_READ_WRITE | RETRO_VFS_FILE_ACCESS_UPDATE_EXISTING,
                   RETRO_VFS_FILE_ACCESS_HINT_NONE)))
          filestream_seek(j->file, 0, RETRO_VFS_SEEK_POSITION_END);
+      else if (j->lines_path && !j->file && !j->lost)
+         open_lines(j);
       /* what reached the OS survives the process */
       if (j->file)
       {
@@ -122,83 +154,55 @@ static void journal_thread(void *data)
             j->lost = 1;
          }
       }
-      else if (j->path)
+      else if (j->path || j->lines_path)
          j->lost = 1;
       retro_atomic_store_release_size(&j->tail, tail);
    }
 }
 
-combiner_journal_t *combiner_journal_open(const char *path, uint32_t version)
-{
-   char line[HEADER_LEN + 9];
-   combiner_journal_t *j = (combiner_journal_t*)calloc(1, sizeof(*j));
-
-   if (!j)
-      return NULL;
-   retro_atomic_size_init(&j->head, 0);
-   retro_atomic_size_init(&j->tail, 0);
-   retro_atomic_int_init(&j->stop, 0);
-
-   if (filestream_exists(path))
-   {
-      j->file = filestream_open(path,
-            RETRO_VFS_FILE_ACCESS_READ_WRITE | RETRO_VFS_FILE_ACCESS_UPDATE_EXISTING,
-            RETRO_VFS_FILE_ACCESS_HINT_NONE);
-      if (j->file)
-      {
-         /* ends a line a crash may have cut short */
-         filestream_seek(j->file, 0, RETRO_VFS_SEEK_POSITION_END);
-         filestream_write(j->file, "\n", 1);
-      }
-   }
-   else
-   {
-      j->file = filestream_open(path, RETRO_VFS_FILE_ACCESS_WRITE,
-            RETRO_VFS_FILE_ACCESS_HINT_NONE);
-      if (j->file)
-      {
-         memcpy(line, HEADER, HEADER_LEN);
-         write_hex(line + HEADER_LEN, version, 8);
-         line[HEADER_LEN + 8] = '\n';
-         filestream_write(j->file, line, (int64_t)sizeof(line));
-      }
-   }
-   if (j->file && filestream_flush(j->file) == 0 && retro_eventcount_init(&j->work))
-   {
-      if ((j->thread = sthread_create(journal_thread, j)))
-         return j;
-      retro_eventcount_free(&j->work);
-   }
-   if (j->file)
-      filestream_close(j->file);
-   free(j);
-   return NULL;
-}
-
-combiner_journal_t *combiner_journal_append(const char *path)
+/* A journal whose file opens on its thread when the first key comes: of
+ * records at @path, or of lines made for @version at @lines_path */
+static combiner_journal_t *journal_new(const char *path, const char *lines_path, uint32_t version)
 {
    combiner_journal_t *j;
+   const char *at = path ? path : lines_path;
+   char *copy;
    size_t len;
 
-   if (!path || !(j = (combiner_journal_t*)calloc(1, sizeof(*j))))
+   if (!at || !(j = (combiner_journal_t*)calloc(1, sizeof(*j))))
       return NULL;
    retro_atomic_size_init(&j->head, 0);
    retro_atomic_size_init(&j->tail, 0);
    retro_atomic_int_init(&j->stop, 0);
-   len = strlen(path) + 1;
-   if ((j->path = (char*)malloc(len)))
+   len = strlen(at) + 1;
+   if ((copy = (char*)malloc(len)))
    {
-      memcpy(j->path, path, len);
+      memcpy(copy, at, len);
+      if (path)
+         j->path = copy;
+      else
+         j->lines_path = copy;
+      j->version = version;
       if (retro_eventcount_init(&j->work))
       {
          if ((j->thread = sthread_create(journal_thread, j)))
             return j;
          retro_eventcount_free(&j->work);
       }
-      free(j->path);
+      free(copy);
    }
    free(j);
    return NULL;
+}
+
+combiner_journal_t *combiner_journal_open(const char *path, uint32_t version)
+{
+   return journal_new(NULL, path, version);
+}
+
+combiner_journal_t *combiner_journal_append(const char *path)
+{
+   return journal_new(path, NULL, 0);
 }
 
 /* stops the thread, the queue written */
@@ -220,6 +224,7 @@ RFILE *combiner_journal_detach(combiner_journal_t *j, int *whole)
    file = j->file;
    *whole = !j->dropped && !j->lost;
    free(j->path);
+   free(j->lines_path);
    free(j);
    return file;
 }
