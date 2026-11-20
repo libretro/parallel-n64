@@ -10,11 +10,20 @@
  * this magic and version, and its pipeline cache beside it), marked as
  * read from before. Closed: nothing lent.
  *
+ * Gathered, where the file every game shares is not there: each game's
+ * file of before in a folder, its own or its journal with its pipeline
+ * cache beside it, only those named so; their records each once by key,
+ * the blend bits of every one together, a word after each of the games
+ * that had it, by their names; the largest pipeline cache. Then removed,
+ * only they.
+ *
  * The module is included here, its map through test_get_mapped_ptr, to
  * read without the map too. C89. */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
+#include <file/file_path.h>
 
 #include <streams/file_stream.h>
 #include "glitch64_vk_cache.h"
@@ -253,6 +262,109 @@ int main(void)
       put(BEFORE, journal, 8);
       CHECK(g64vk_cache_write(PATH, BEFORE, VERSION, records, 3, WORDS, pipes, sizeof(pipes)));
       CHECK(!filestream_exists(BEFORE));
+   }
+
+   /* every game's files of before, gathered and removed */
+   {
+      static const char *const keep[4] = { "gather_dir/other.cache", "gather_dir/glide64-vulkan.cache",
+         "gather_dir/glide64-vulkan_x.bin", "gather_dir/glide64-vulkan_.cache" };
+      static uint32_t a[2 * WORDS], b[2 + 3 * WORDS], m[(WORDS + 1) * 4];
+      const uint32_t g1 = g64vk_cache_game_bit("glide64-vulkan_0001", 19);
+      const uint32_t g2 = g64vk_cache_game_bit("glide64-vulkan_0002", 19);
+      uint32_t *got = NULL;
+      void *gp = NULL;
+      unsigned count = 99, k;
+      size_t gsize = 99;
+      path_mkdir("gather_dir");
+      /* none there: nothing */
+      CHECK(!g64vk_cache_gather("gather_dir", "glide64-vulkan_", MAGIC, VERSION, WORDS, WORDS - 1, &got, &count, &gp,
+            &gsize) && !got && !count && !gp && !gsize);
+      CHECK(!g64vk_cache_gather("no_such_dir_here", "glide64-vulkan_", MAGIC, VERSION, WORDS, WORDS - 1, &got, &count,
+            &gp, &gsize));
+      /* a game's own: records 2 and 0; another's journal: 1, 2 again with
+       * another blend bit, 0, and a larger pipeline cache beside it */
+      memcpy(a, records + 2 * WORDS, WORDS * 4);
+      memcpy(a + WORDS, records, WORDS * 4);
+      CHECK(g64vk_cache_write("gather_dir/glide64-vulkan_0001.cache", NULL, VERSION, a, 2, WORDS, pipes, 30));
+      b[0] = MAGIC;
+      b[1] = VERSION;
+      memcpy(b + 2, records + WORDS, WORDS * 4);
+      memcpy(b + 2 + WORDS, records + 2 * WORDS, WORDS * 4);
+      b[2 + 2 * WORDS - 1] |= 0x80000000u;
+      memcpy(b + 2 + 2 * WORDS, records, WORDS * 4);
+      put("gather_dir/glide64-vulkan_0002.keys", b, sizeof(b));
+      put("gather_dir/glide64-vulkan_0002.keys.pipelines", pipes, 50);
+      for (k = 0; k < 4; k++)
+         put(keep[k], "x", 1);
+      CHECK(g64vk_cache_gather("gather_dir", "glide64-vulkan_", MAGIC, VERSION, WORDS, WORDS - 1, &got, &count, &gp,
+            &gsize));
+      CHECK(count == 3 && got != NULL);
+      /* by key, each once, the blend bits of both, the games that had it */
+      CHECK(g1 && !(g1 & (g1 - 1)) && g2 && !(g2 & (g2 - 1)));
+      for (k = 0; k < 3; k++)
+      {
+         memcpy(m + k * (WORDS + 1), records + k * WORDS, WORDS * 4);
+         m[k * (WORDS + 1) + WORDS] = k == 1 ? g2 : g1 | g2;
+      }
+      m[2 * (WORDS + 1) + WORDS - 1] |= 0x80000000u;
+      qsort(m, 3, (WORDS + 1) * 4, by_key);
+      CHECK(got && !memcmp(got, m, 3 * (WORDS + 1) * 4));
+      CHECK(gsize == 50 && gp && !memcmp(gp, pipes, 50));
+      free(got);
+      free(gp);
+      /* a journal of another version among them: there all the same, its
+       * records not */
+      b[1] = VERSION + 1;
+      put("gather_dir/glide64-vulkan_0002.keys", b, sizeof(b));
+      CHECK(g64vk_cache_gather("gather_dir", "glide64-vulkan_", MAGIC, VERSION, WORDS, WORDS - 1, &got, &count, &gp,
+            &gsize));
+      CHECK(count == 2 && gsize == 50);
+      free(got);
+      free(gp);
+      /* removed: only they */
+      g64vk_cache_remove_before("gather_dir", "glide64-vulkan_");
+      CHECK(!filestream_exists("gather_dir/glide64-vulkan_0001.cache") &&
+            !filestream_exists("gather_dir/glide64-vulkan_0002.keys") &&
+            !filestream_exists("gather_dir/glide64-vulkan_0002.keys.pipelines"));
+      for (k = 0; k < 4; k++)
+      {
+         CHECK(filestream_exists(keep[k]));
+         filestream_delete(keep[k]);
+      }
+      /* none left: nothing gathered */
+      CHECK(!g64vk_cache_gather("gather_dir", "glide64-vulkan_", MAGIC, VERSION, WORDS, WORDS - 1, &got, &count, &gp,
+            &gsize) && !count && !got);
+      g64vk_cache_remove_before("no_such_dir_here", "glide64-vulkan_");
+      /* a file of before with no combiners: gathered all the same, to go */
+      CHECK(g64vk_cache_write("gather_dir/glide64-vulkan_0003.cache", NULL, VERSION, NULL, 0, WORDS, pipes, 20));
+      CHECK(g64vk_cache_gather("gather_dir", "glide64-vulkan_", MAGIC, VERSION, WORDS, WORDS - 1, &got, &count, &gp,
+            &gsize) && !count && !got && gsize == 20);
+      free(gp);
+      /* two keys only their last word tells apart: two */
+      memcpy(a, records, WORDS * 4);
+      memcpy(a + WORDS, records, WORDS * 4);
+      a[WORDS + WORDS - 2] ^= 1;
+      CHECK(g64vk_cache_write("gather_dir/glide64-vulkan_0003.cache", NULL, VERSION, a, 2, WORDS, NULL, 0));
+      CHECK(g64vk_cache_gather("gather_dir", "glide64-vulkan_", MAGIC, VERSION, WORDS, WORDS - 1, &got, &count, &gp,
+            &gsize) && count == 2);
+      free(got);
+      free(gp);
+      g64vk_cache_remove_before("gather_dir", "glide64-vulkan_");
+      /* more games than the first rooms for their names */
+      for (k = 0; k < 40; k++)
+      {
+         char name[64];
+         sprintf(name, "gather_dir/glide64-vulkan_%04u.cache", k);
+         CHECK(g64vk_cache_write(name, NULL, VERSION, records + (k % 3) * WORDS, 1, WORDS, NULL, 0));
+      }
+      CHECK(g64vk_cache_gather("gather_dir", "glide64-vulkan_", MAGIC, VERSION, WORDS, WORDS - 1, &got, &count, &gp,
+            &gsize) && count == 3);
+      free(got);
+      free(gp);
+      g64vk_cache_remove_before("gather_dir", "glide64-vulkan_");
+      CHECK(!g64vk_cache_gather("gather_dir", "glide64-vulkan_", MAGIC, VERSION, WORDS, WORDS - 1, &got, &count, &gp,
+            &gsize));
+      rmdir("gather_dir");
    }
 
    clear();

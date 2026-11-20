@@ -2,13 +2,17 @@
 """The Vulkan plugins' cache files: written where something changed, left
 as they are where nothing did.
 
-Glide64 on Vulkan keeps one file a game, glide64-vulkan_<crcs>.cache: a
-header, the combiners met, then the driver's pipeline cache. A first
+Glide64 on Vulkan keeps one file every game shares, glide64-vulkan.cache:
+a header, the combiners met, then the driver's pipeline cache. A first
 session writes it, and a second that meets nothing new leaves it byte for
-byte, unopened for writing. The two files a game had before (its records,
-<name>.keys, and the driver's cache beside them, <name>.keys.pipelines)
-are read into it once and removed. tools/test_glitch64_vk_cache.c covers
-the file.
+byte, unopened for writing; another game shares it, each record with the
+games that drew with it, and a game merges its combiners in where they
+are. Where it is not there, every game's files of before are read into
+it once and removed: a game's own (glide64-vulkan_<crcs>.cache), or
+before those its records
+(<name>.keys) with the driver's cache beside them (<name>.keys.pipelines),
+each combiner once, with the blend functions any drew with.
+tools/test_glitch64_vk_cache.c covers the file.
 
 GLideN64 on Vulkan keeps one file every game shares, GLideN64.Vulkan.cache
 in the shaders folder: a header, the driver's pipeline cache, then the
@@ -28,6 +32,9 @@ import gliden64_hle_dl as g  # noqa: E402
 
 MAGIC = 0x43343647  # "G64C"
 JOURNAL_MAGIC, JOURNAL_VERSION = 0x47364b4a, 2
+# the file every game shares: a record is the key, the blend functions and
+# the games that drew with it; the files of before had no games
+SHARED_VERSION, RECORD = 3, 76
 GLNV, GLNV_VERSION = 0x564E4C47, 1  # "GLNV"
 OLD_JOURNAL_VERSION = 1
 FLIP = 0x0000000011111111
@@ -50,9 +57,9 @@ def whole(path):
     if len(b) < 16:
         return None
     magic, version, count, pipes = struct.unpack_from("<4I", b)
-    if magic != MAGIC or version != JOURNAL_VERSION or 16 + count * 72 + pipes != len(b):
+    if magic != MAGIC or version != SHARED_VERSION or 16 + count * RECORD + pipes != len(b):
         return None
-    return b[16:16 + count * 72], b[16 + count * 72:]
+    return b[16:16 + count * RECORD], b[16 + count * RECORD:]
 
 
 def gliden64_file(path):
@@ -92,12 +99,11 @@ def main():
 
         # Glide64: a first session writes the file, a second leaves it
         g.run(host, core, rom, tmp, "opengl", "glide64", "vulkan")
-        files = glob.glob(os.path.join(shaders, "glide64-vulkan_*"))
-        caches = [f for f in files if f.endswith(".cache")]
-        if len(caches) != 1 or len(files) != 1:
-            fail("glide64: %s, not one cache file" % sorted(os.path.basename(f) for f in files))
+        cache = os.path.join(shaders, "glide64-vulkan.cache")
+        files = glob.glob(os.path.join(shaders, "glide64-vulkan*"))
+        if files != [cache]:
+            fail("glide64: %s, not the one cache file" % sorted(os.path.basename(f) for f in files))
             return 1
-        cache = caches[0]
         parts = whole(cache)
         if parts is None or not parts[0]:
             fail("glide64: the cache file is not whole, or has no combiners")
@@ -107,18 +113,99 @@ def main():
         if state([cache]) != before:
             fail("glide64: a session that met nothing new wrote the cache file")
 
-        # the files of before: read in once, then gone
-        base = cache[:-len(".cache")] + ".keys"
+        # another game: the same file, the first game's combiners kept in it
+        other = os.path.join(tmp, "other64.z64")
+        g.cartridge(other, 1, "Other Game")
+        # its own CRCs (the cartridges have none), and so its own bit
+        with open(other, "r+b") as f:
+            f.seek(0x10)
+            f.write(struct.pack(">2I", 0x12345678, 0x9abcdef0))
+        g.run(host, core, other, tmp, "opengl", "glide64", "vulkan")
+        both = whole(cache)
+        records = lambda b: {b[i:i + 68]: b[i + 68:i + 72] for i in range(0, len(b), RECORD)}
+        if glob.glob(os.path.join(shaders, "glide64-vulkan*")) != [cache] or both is None or \
+                not set(records(parts[0])) <= set(records(both[0])):
+            fail("glide64: another game did not share the file")
+            return 1
+        # each record with the games that drew with it: the first game's
+        # bit on every one of its, the other's on those it met
+        games = lambda b: [struct.unpack_from("<I", b, i + 72)[0] for i in range(0, len(b), RECORD)]
+        bit1 = set(games(parts[0]))
+        bit1 = bit1.pop() if len(bit1) == 1 else 0
+        bit2 = 0
+        for w in games(both[0]):
+            bit2 |= w & ~bit1
+        mine1 = set(records(parts[0]))
+        if not bit1 or bit1 & (bit1 - 1) or not bit2 or bit2 & (bit2 - 1) or \
+                any(not w & bit1 for i, w in zip(range(0, len(both[0]), RECORD), games(both[0]))
+                    if both[0][i:i + 68] in mine1):
+            fail("glide64: the records do not say which game drew with them")
+            return 1
+        parts = both
+
+        # this game's merged in where they are: records without the blend
+        # functions it draws with get them back there, each its own, one
+        # only the other game had gets this one's bit there, one not there
+        # goes at the end; a game's file of before beside it left alone
+        # (only gathered where the one file is not there)
+        recs = [bytearray(parts[0][i:i + RECORD]) for i in range(0, len(parts[0]), RECORD)]
+        want = [bytes(r) for r in recs]
+        blends = [struct.unpack_from("<I", r, 68)[0] for r in recs]
+        if len(recs) >= 4 and len(set(blends)) > 1:
+            b_, c_ = 0, len(recs) - 1
+            for r in recs:
+                struct.pack_into("<I", r, 68, 0)
+            struct.pack_into("<I", recs[b_], 72, bit2)
+            want[b_] = want[b_][:72] + struct.pack("<I", bit2 | bit1)
+            moved = want.pop(c_)
+            want.append(moved[:72] + struct.pack("<I", bit1))
+            del recs[c_]
+            with open(cache, "wb") as f:
+                f.write(struct.pack("<4I", MAGIC, SHARED_VERSION, len(recs), len(parts[1])) + b"".join(recs) + parts[1])
+            stray = os.path.join(shaders, "glide64-vulkan_00000000cccccccc.cache")
+            with open(stray, "wb") as f:
+                f.write(b"left alone")
+            g.run(host, core, rom, tmp, "opengl", "glide64", "vulkan")
+            got = whole(cache)
+            if got is None or got[0] != b"".join(want):
+                fail("glide64: this game's combiners not merged where they are")
+            with open(stray, "rb") as f:
+                if f.read() != b"left alone":
+                    fail("glide64: a file of before removed though the one file was there")
+            os.remove(stray)
+            with open(cache, "wb") as f:
+                f.write(struct.pack("<4I", MAGIC, SHARED_VERSION, len(parts[0]) // RECORD, len(parts[1])) + parts[0] + parts[1])
+        else:
+            fail("glide64: too few combiners to merge into")
+
+        # the files of before: two games', one's own file, the other's
+        # records and pipeline cache; every combiner of theirs in the file,
+        # once, with the blend functions of both; they gone
+        keyed = records(parts[0])
+        # as the files of before had them: no games
+        recs = [k + v for k, v in sorted(keyed.items())]
+        half = max(1, len(recs) // 2)
+        mine = recs[:half] + recs[-1:]
+        theirs = recs[half - 1:]
+        # the last of both, drawn with another blend function in one
+        extra = struct.unpack("<I", theirs[-1][68:])[0] | (1 << 11)
+        theirs[-1] = theirs[-1][:68] + struct.pack("<I", extra)
+        keyed[theirs[-1][:68]] = struct.pack("<I", extra)
+        own = os.path.join(shaders, "glide64-vulkan_00000000aaaaaaaa.cache")
+        with open(own, "wb") as f:
+            f.write(struct.pack("<4I", MAGIC, JOURNAL_VERSION, len(mine), len(parts[1])) + b"".join(mine) + parts[1])
+        base = os.path.join(shaders, "glide64-vulkan_00000000bbbbbbbb.keys")
         with open(base, "wb") as f:
-            f.write(struct.pack("<2I", JOURNAL_MAGIC, JOURNAL_VERSION) + parts[0])
+            f.write(struct.pack("<2I", JOURNAL_MAGIC, JOURNAL_VERSION) + b"".join(theirs))
         with open(base + ".pipelines", "wb") as f:
             f.write(parts[1])
         os.remove(cache)
         g.run(host, core, rom, tmp, "opengl", "glide64", "vulkan")
-        if os.path.exists(base) or os.path.exists(base + ".pipelines"):
+        if glob.glob(os.path.join(shaders, "glide64-vulkan*")) != [cache]:
             fail("glide64: the files of before are still there")
-        if not os.path.exists(cache) or whole(cache) is None or whole(cache)[0] != parts[0]:
-            fail("glide64: the file of the files of before does not hold their combiners")
+        got = whole(cache)
+        if got is None or records(got[0]) != keyed or len(got[0]) != len(parts[0]) // RECORD * RECORD:
+            fail("glide64: the file of the files of before does not hold their combiners, each once")
 
         # GLideN64: one file every game shares, the keys met in it; a
         # second session leaves it
@@ -195,7 +282,7 @@ def main():
 
     if failures == 0:
         print("vulkan cache files: ok (glide64 %d combiners kept, migrated, left alone; gliden64 %d keys of two games "
-              "shared, %d after a crash, %d migrated, left alone)" % (len(parts[0]) // 72, len(met), len(lost), len(want)))
+              "shared, %d after a crash, %d migrated, left alone)" % (len(parts[0]) // RECORD, len(met), len(lost), len(want)))
     return 1 if failures else 0
 
 

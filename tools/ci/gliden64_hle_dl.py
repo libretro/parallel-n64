@@ -548,16 +548,26 @@ def main():
                         ok, detail = False, str(e)
                     print("glide64 %-28s %s (%s)" % ("Vulkan frontend, " + label, "ok" if ok else "FAIL", detail))
                     failures += 0 if ok else 1
-                # the combiners a session met are built at the next one's load:
-                # its second run, as a frontend runs it (nothing waited for),
-                # must draw every one through its own pipeline from the first
-                # frame (strict "own" aborts otherwise), and a first run must not
-                for label, sysdir, runs in (("next session's own shaders", "journal", (("1", True), ("own", True))),
-                                            ("first session's, for contrast", "fresh", (("own", False),))):
+                # the combiners a session met are asked for at the next one's
+                # load, and nothing waits for them: as a frontend runs it, the
+                # shared shaders are all there (strict "1"); a test host, which
+                # waits for those asked for ahead, draws every one through its
+                # own pipeline from the first frame (strict "own" aborts
+                # otherwise), and a first run cannot; where blending is in
+                # the pipelines, each asked for with the blend functions its
+                # combiner drew with
+                for label, sysdir, runs in (("next session's own shaders", "journal",
+                                             (("1", True, True), ("own", False, True))),
+                                            ("same, blending in pipelines", "journal_noeds3",
+                                             (("1", True, True), ("own", False, True))),
+                                            ("first session's, for contrast", "fresh", (("own", False, False),))):
                     ok = True
-                    for mode, want in runs:
-                        extra = {"LRHOST_SYSTEM_DIR": os.path.join(tmp, sysdir), "LRHOST_AS_FRONTEND": "1",
-                                 "GLIDEN64_VULKAN_STRICT": mode}
+                    for mode, frontend, want in runs:
+                        extra = {"LRHOST_SYSTEM_DIR": os.path.join(tmp, sysdir), "GLIDEN64_VULKAN_STRICT": mode}
+                        if sysdir.endswith("noeds3"):
+                            extra["GLIDEN64_VULKAN_NO_EDS3"] = "1"
+                        if frontend:
+                            extra["LRHOST_AS_FRONTEND"] = "1"
                         try:
                             run(os.path.abspath(a.vk), a.core, twos, tmp, "opengl", "glide64", "vulkan", extra, not want)
                             ran = True

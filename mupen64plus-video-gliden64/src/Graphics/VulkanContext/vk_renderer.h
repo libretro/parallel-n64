@@ -234,6 +234,13 @@ vkr_program *vkr_client_new(vkr_renderer *r, const vkr_client_desc *desc);
  * it draws with that none of these were for leaves the draw out. */
 void vkr_client_prewarm(vkr_renderer *r, vkr_program *p);
 void vkr_client_prewarm_wait(vkr_renderer *r);
+/* Or ahead, waited for by nothing: until it is built the client's
+ * fallback draws in its place. 0 where the queue is full and it was left
+ * to its first draw. */
+int vkr_client_prewarm_ahead(vkr_renderer *r, vkr_program *p);
+/* Test hosts (PARALLEL_RDP_TEST_WAIT_PIPELINES) wait for those asked for
+ * ahead, to count them; nothing else does */
+void vkr_client_prewarm_ahead_wait_for_test(vkr_renderer *r);
 /* What its next draws push. */
 void vkr_client_push(vkr_renderer *r, vkr_program *p, const int ops[16], int flags, const float special[4]);
 /* Its uniform block: @bytes of it, at most a CombinerValues. */

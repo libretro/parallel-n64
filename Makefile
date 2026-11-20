@@ -2396,13 +2396,13 @@ check_gliden64_neon: tools/test_gliden64_neon_math.c $(NEON_MATH_SRCS)
 	qemu-arm -L /usr/arm-linux-gnueabihf ./test_gliden64_neon_math_arm
 	qemu-aarch64 -L /usr/aarch64-linux-gnu ./test_gliden64_neon_math_aarch64
 
-# Glide64's Vulkan cache, a file a game (tools/test_glitch64_vk_cache.c),
+# Glide64's Vulkan cache, one file every game shares (tools/test_glitch64_vk_cache.c),
 # read with the VFS's map and without
 test_glitch64_vk_cache$(EXE_EXT): tools/test_glitch64_vk_cache.c $(VIDEODIR_GLIDE)/Glitch64/glitch64_vk_cache.c \
 		$(VIDEODIR_GLIDE)/Glitch64/glitch64_vk_cache.h $(COMBINER_JOURNAL_TEST_SRC)
 	$(CC) $(CHECK_CFLAGS) $(CHECK_SANITIZE) -DHAVE_MMAP -I$(VIDEODIR_GLIDE)/Glitch64 -I$(LIBRETRO_COMM_DIR)/include \
 		tools/test_glitch64_vk_cache.c $(filter-out $(VIDEODIR_GLIDEN64)/%,$(COMBINER_JOURNAL_TEST_SRC)) \
-		-o $@ $(CHECK_LDFLAGS) $(CHECK_SANITIZE) -lpthread
+		$(LIBRETRO_COMM_DIR)/file/retro_dirent.c -o $@ $(CHECK_LDFLAGS) $(CHECK_SANITIZE) -lpthread
 
 # GLideN64's Vulkan cache, one file every game shares (tools/test_gliden64_vk_cache.c),
 # read with the VFS's map and without

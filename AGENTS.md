@@ -115,7 +115,7 @@ Know which layer you are changing. Having one does not give you the next.
 | Recipes (what to build) and the driver blob, one file (`<system>/ParallelN64/parallel_rdp.cache`) | `rdp_pipeline_files.c`, `pipeline_record.h` | portable / one device and driver |
 | Live `VkPipeline` | `Program::get_pipeline` | this device |
 | GL binaries / keys, one file every game shares, the binaries by the options they were built with (`shaders/GLideN64.OpenGL.cache`) | `glsl_ShaderStorage.c` | GL vendor and version / portable |
-| Glide64 on Vulkan: combiners and the driver blob, one file a game (`shaders/glide64-vulkan_<crcs>.cache`) | `glitch64_vk_cache.c` | portable / one device and driver |
+| Glide64 on Vulkan: combiners (with the games that drew with them) and the driver blob, one file every game shares (`shaders/glide64-vulkan.cache`) | `glitch64_vk_cache.c` | portable / one device and driver |
 | GLideN64 on Vulkan: the driver blob and the keys, one file every game shares (`shaders/GLideN64.Vulkan.cache`) | `vk_cache.c`, `vk_ContextImpl.c` | one device and driver / portable |
 
 A cache file is written only where what it holds changed: a session that

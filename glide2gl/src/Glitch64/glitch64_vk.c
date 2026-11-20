@@ -17,6 +17,7 @@ int glitch64_vulkan = 0;
 #include "../../../Graphics/RDP/RDP_state.h"
 #include "../Glide64/rdp.h"
 #include <streams/file_stream.h>
+#include <file/file_path.h>
 #include "../../../mupen64plus-core/src/plugin/plugin.h"
 #include "../../../mupen64plus-video-gliden64/src/CombinerKeyPath.h"
 
@@ -66,6 +67,12 @@ typedef struct vk_own
    vkr_program *p;
    /* the blend functions it drew with (vk_blends' places) */
    uint32_t blends;
+   /* the games that drew with it (g64vk_cache_game_bit) */
+   uint32_t games;
+   /* its slot taken, its program there or not any more */
+   int used;
+   /* its record among those kept (vk.kept), plus one; 0 where none */
+   unsigned at;
 } vk_own;
 
 /* Every blend function Glide64 sets, as the renderer has them: the colour's
@@ -137,12 +144,23 @@ static struct
    int own_dirty;
    vkr_client_layout layout;
    int blend_index;       /* vk_blends' place of the blend set now, -1 none */
-   /* the game's cache file (glitch64_vk_cache.h), read at load; the
-    * journal of before it reads where the file is not there */
+   /* the cache file every game shares (glitch64_vk_cache.h), read at
+    * load; where it is not there, every game's files of before gathered:
+    * their records, each combiner once, and the largest pipeline cache */
+   char cache_folder[PATH_MAX_LENGTH];
    char cache_path[PATH_MAX_LENGTH];
-   char before_path[PATH_MAX_LENGTH];
+   /* this game's bit in a record */
+   uint32_t game_bit;
    g64vk_cache cache;
-   int cache_before;
+   uint32_t *before;
+   unsigned before_count;
+   /* every game's records, lent from the file or the files of before
+    * until the end: written back as they are, this game's merged in */
+   const uint32_t *kept;
+   unsigned kept_count;
+   void *before_pipelines;
+   size_t before_pipelines_size;
+   int migrating;
 } vk;
 
 static void set_combiner(const glitch64_n64_combiner *c)
@@ -174,6 +192,25 @@ static void set_combiner(const glitch64_n64_combiner *c)
 
 /* ---- drawing ---- */
 
+/* the combiner of @key made already, or NULL */
+static vk_own *own_lookup(const uint32_t *key)
+{
+   uint32_t h = 2166136261u;
+   unsigned i;
+
+   for (i = 0; i < G64VK_KEY_WORDS; i++)
+      h = (h ^ key[i]) * 16777619u;
+   for (i = 0; i < VK_OWN_SLOTS; i++)
+   {
+      vk_own *o = &vk.own[(h + i) & (VK_OWN_SLOTS - 1)];
+      if (!o->used)
+         return NULL;
+      if (!memcmp(o->key, key, G64VK_KEY_WORDS * sizeof(int)))
+         return o;
+   }
+   return NULL;
+}
+
 /* The program of these ops and flags: its own, written and built by the
  * renderer's worker while the shared one draws for it; nothing compiles
  * here. A table of fixed size, made at load. */
@@ -202,6 +239,10 @@ static vk_own *own_find(const int *key)
             return NULL;
          memcpy(o->key, key, G64VK_KEY_WORDS * sizeof(int));
          o->blends = 0;
+         /* made for this game: at load for its records, or as it draws */
+         o->games = vk.game_bit;
+         o->used = 1;
+         o->at = 0;
          vk.own_order[vk.n_own++] = (unsigned short)(o - vk.own);
          return o;
       }
@@ -748,15 +789,34 @@ static vkr_program *make_program(int depth)
  * the draw path). The blend pairs are those of Combine.c's A_BLEND and the
  * blend functions of glide64_gDP.c, TexCache.c and Framebuffer_glide64.c:
  * the colour's, and the alpha's. */
+#define VK_CACHE_NAME "glide64-vulkan.cache"
+#define VK_GAME_PREFIX "glide64-vulkan_"
+/* the files of before's records: the key, the blend functions */
+#define VK_OLD_WORDS (G64VK_KEY_WORDS + 1)
+/* the file's: and the games that drew with it */
+#define VK_RECORD_WORDS (G64VK_KEY_WORDS + 2)
+#define VK_CACHE_VERSION 3u
+
+/* a record of a combiner of its own: not a copy's, its ops all in range */
+static int own_record(const uint32_t *rec)
+{
+   unsigned k;
+   if ((int)rec[16] & G64VK_COPY)
+      return 0;
+   for (k = 0; k < 16 && (int)rec[k] >= 0 && (int)rec[k] < GLITCH64_IN_COUNT; k++)
+      ;
+   return k == 16;
+}
+
 /* The combiners an earlier session met, with their own pipelines built at
  * load for the blend functions they drew with (their depth and cull state
  * is dynamic where the device has it, the shared shader stands in where
  * not): what a game draws again starts on its own shaders. */
-static void journal_load(void)
+static void journal_load(const uint32_t *w, size_t n)
 {
-   const uint32_t *w = vk.cache.records;
-   size_t n = vk.cache.count, i;
+   size_t i;
 
+   int ahead = 1;
    if (w)
    {
       vkr_enable(vk.r, VKR_CAP_DEPTH_TEST, 1);
@@ -765,25 +825,31 @@ static void journal_load(void)
       vkr_enable(vk.r, VKR_CAP_CULL, 0);
       for (i = 0; i < n; i++)
       {
-         const uint32_t *rec = w + i * (G64VK_KEY_WORDS + 1);
+         const uint32_t *rec = w + i * VK_RECORD_WORDS;
          int key[G64VK_KEY_WORDS];
          unsigned b, k;
+         uint32_t bits;
          vk_own *o;
+         /* another game's: kept as it is, made if this one draws with it */
+         if (!(rec[G64VK_KEY_WORDS + 1] & vk.game_bit) || !own_record(rec))
+            continue;
          for (k = 0; k < G64VK_KEY_WORDS; k++)
             key[k] = (int)rec[k];
-         if (key[16] & G64VK_COPY)
-            continue;
-         for (k = 0; k < 16 && key[k] >= 0 && key[k] < GLITCH64_IN_COUNT; k++)
-            ;
-         if (k < 16 || !(o = own_find(key)))
+         if (!(o = own_find(key)))
             continue;
          o->blends |= rec[G64VK_KEY_WORDS] & ((1u << VK_BLENDS) - 1);
-         for (b = 0; b < VK_BLENDS; b++)
-            if (o->blends & (1u << b))
+         o->games |= rec[G64VK_KEY_WORDS + 1];
+         if (!o->at)
+            o->at = (unsigned)i + 1;
+         /* asked for ahead, waited for by nothing: until it is built the
+          * shared shader draws in its place, the same; a full queue
+          * leaves the rest to their first draws */
+         for (b = 0, bits = o->blends; bits && ahead; b++, bits >>= 1)
+            if (bits & 1)
             {
                vkr_enable(vk.r, VKR_CAP_BLEND, b != 0);
                vkr_blend(vk.r, vk_blends[b][0], vk_blends[b][1], vk_blends[b][2], vk_blends[b][3]);
-               vkr_client_prewarm(vk.r, o->p);
+               ahead = vkr_client_prewarm_ahead(vk.r, o->p);
             }
       }
    }
@@ -801,26 +867,55 @@ static void cache_save(void)
    void *pipelines = vkr_destroy_taking_cache(vk.r, &size, &changed);
    uint32_t *records;
 
-   if (vk.cache_path[0] && (vk.own_dirty || vk.cache_before || changed)
-         && (records = (uint32_t*)malloc((size_t)(vk.n_own ? vk.n_own : 1) * (G64VK_KEY_WORDS + 1) * 4)))
+   if (vk.cache_path[0] && (vk.own_dirty || vk.migrating || changed)
+         && (records = (uint32_t*)malloc(((size_t)vk.kept_count + vk.n_own + 1) * VK_RECORD_WORDS * 4)))
    {
-      unsigned i, k;
+      /* the records kept as they are, every game's; this one's merged in
+       * where they are, those it met first appended */
+      unsigned i, k, n = vk.kept_count;
+      if (n)
+         memcpy(records, vk.kept, (size_t)n * VK_RECORD_WORDS * 4);
       for (i = 0; i < vk.n_own; i++)
       {
-         const vk_own *o = &vk.own[vk.own_order[i]];
-         uint32_t *rec = records + (size_t)i * (G64VK_KEY_WORDS + 1);
+         vk_own *o = &vk.own[vk.own_order[i]];
+         uint32_t *rec = o->at ? records + (size_t)(o->at - 1) * VK_RECORD_WORDS : NULL;
+         for (k = 0; !rec && k < vk.kept_count; k++)
+            if (!memcmp(records + (size_t)k * VK_RECORD_WORDS, o->key, G64VK_KEY_WORDS * 4))
+               rec = records + (size_t)k * VK_RECORD_WORDS;
+         if (rec)
+         {
+            rec[G64VK_KEY_WORDS] |= o->blends;
+            rec[G64VK_KEY_WORDS + 1] |= o->games;
+            continue;
+         }
+         rec = records + (size_t)n++ * VK_RECORD_WORDS;
          for (k = 0; k < G64VK_KEY_WORDS; k++)
             rec[k] = (uint32_t)o->key[k];
          rec[G64VK_KEY_WORDS] = o->blends;
+         rec[G64VK_KEY_WORDS + 1] = o->games;
       }
-      g64vk_cache_write(vk.cache_path, vk.before_path, VK_JOURNAL_VERSION, records, vk.n_own,
-            G64VK_KEY_WORDS + 1, pipelines, size);
+      /* the file let go before it is written over */
+      g64vk_cache_close(&vk.cache);
+      if (g64vk_cache_write(vk.cache_path, NULL, VK_CACHE_VERSION, records, n,
+            VK_RECORD_WORDS, pipelines, size) && vk.migrating)
+         g64vk_cache_remove_before(vk.cache_folder, VK_GAME_PREFIX);
       free(records);
    }
    free(pipelines);
+   g64vk_cache_close(&vk.cache);
+   free(vk.before);
+   vk.before = NULL;
+   vk.before_count = 0;
+   vk.kept = NULL;
+   vk.kept_count = 0;
+   {
+      unsigned i;
+      for (i = 0; i < vk.n_own; i++)
+         vk.own[vk.own_order[i]].used = 0;
+   }
    vk.n_own = 0;
    vk.own_dirty = 0;
-   vk.cache_before = 0;
+   vk.migrating = 0;
 }
 
 static void prewarm(void)
@@ -856,11 +951,13 @@ static void prewarm(void)
    vkr_color_mask(vk.r, 0, 0);
    vkr_client_prewarm(vk.r, vk.depth);
    vkr_color_mask(vk.r, 1, 1);
-   journal_load();
+   /* the shared shaders' pipelines, every one: the only wait */
    vkr_client_prewarm_wait(vk.r);
-   /* what the file lent is in the renderer now */
-   vk.cache_before = vk.cache.before;
-   g64vk_cache_close(&vk.cache);
+   vk.kept = vk.cache.records ? vk.cache.records : vk.before;
+   vk.kept_count = vk.cache.records ? vk.cache.count : vk.before_count;
+   journal_load(vk.kept, vk.kept_count);
+   /* test hosts wait for those built ahead too, to count them */
+   vkr_client_prewarm_ahead_wait_for_test(vk.r);
 }
 
 uint32_t vk_grSstWinOpen(void)
@@ -876,27 +973,52 @@ uint32_t vk_grSstWinOpen(void)
       vk.spv_ready = 1;
    }
    memset(&cfg, 0, sizeof(cfg));
-   /* the game's combiners and the driver's pipeline cache, in one file,
-    * lent to the renderer */
-   combiner_key_path(vk.before_path, sizeof(vk.before_path), "glide64-vulkan", gfx_info.HEADER);
-   /* <name>.keys before, <name>.cache now */
+   /* the combiners and the driver's pipeline cache, in one file every
+    * game shares, lent to the renderer; where it is not there, what every
+    * game's files of before held */
    {
-      size_t n = strlen(vk.before_path);
-      vk.cache_path[0] = '\0';
-      if (n > 4 && n + 1 < sizeof(vk.cache_path))
-      {
-         memcpy(vk.cache_path, vk.before_path, n - 4);
-         strcpy(vk.cache_path + n - 4, "cache");
-      }
+      const char *system = retro_get_system_directory();
+      fill_pathname_join(vk.cache_folder, system ? system : "", "ParallelN64", sizeof(vk.cache_folder));
+      fill_pathname_join(vk.cache_folder, vk.cache_folder, "shaders", sizeof(vk.cache_folder));
+      path_mkdir(vk.cache_folder);
+      fill_pathname_join(vk.cache_path, vk.cache_folder, VK_CACHE_NAME, sizeof(vk.cache_path));
    }
-   g64vk_cache_open(&vk.cache, vk.cache_path, vk.before_path, VK_JOURNAL_MAGIC, VK_JOURNAL_VERSION,
-         G64VK_KEY_WORDS + 1);
-   vk.r = vkr_create_lent(gliden64_vulkan_interface(), &cfg, vk.cache.pipelines, vk.cache.pipelines_size);
+   {
+      /* this game's bit: of the name its file of before had, the
+       * prefix and the CRCs in hex */
+      static const char hex[] = "0123456789abcdef";
+      char stem[sizeof(VK_GAME_PREFIX) + 16];
+      uint32_t crc[2];
+      unsigned d;
+      crc[0] = *(const uint32_t*)(gfx_info.HEADER + 0x10);
+      crc[1] = *(const uint32_t*)(gfx_info.HEADER + 0x14);
+      memcpy(stem, VK_GAME_PREFIX, sizeof(VK_GAME_PREFIX) - 1);
+      for (d = 0; d < 16; d++)
+         stem[sizeof(VK_GAME_PREFIX) - 1 + d] = hex[(crc[d >> 3] >> (28 - 4 * (d & 7))) & 15];
+      vk.game_bit = g64vk_cache_game_bit(stem, sizeof(VK_GAME_PREFIX) - 1 + 16);
+   }
+   vk.migrating = 0;
+   g64vk_cache_open(&vk.cache, vk.cache_path, NULL, VK_JOURNAL_MAGIC, VK_CACHE_VERSION, VK_RECORD_WORDS);
+   if (!vk.cache.records)
+      vk.migrating = g64vk_cache_gather(vk.cache_folder, VK_GAME_PREFIX, VK_JOURNAL_MAGIC, VK_JOURNAL_VERSION,
+            VK_OLD_WORDS, G64VK_KEY_WORDS, &vk.before, &vk.before_count, &vk.before_pipelines,
+            &vk.before_pipelines_size);
+   vk.r = vk.cache.records
+      ? vkr_create_lent(gliden64_vulkan_interface(), &cfg, vk.cache.pipelines, vk.cache.pipelines_size)
+      : vkr_create_lent(gliden64_vulkan_interface(), &cfg, vk.before_pipelines, vk.before_pipelines_size);
+   free(vk.before_pipelines);
+   vk.before_pipelines = NULL;
+   vk.before_pipelines_size = 0;
    if (!vk.r)
    {
       g64vk_cache_close(&vk.cache);
+      free(vk.before);
+      vk.before = NULL;
+      vk.before_count = 0;
       return 0;
    }
+   vk.kept = NULL;
+   vk.kept_count = 0;
    vkr_set_window(vk.r, (unsigned)width, (unsigned)height);
 
    vk.staging = (uint8_t*)malloc(2048u * 2048u * 4u);

@@ -3057,8 +3057,9 @@ vkr_program *vkr_client_new(vkr_renderer *r, const vkr_client_desc *desc)
    return p;
 }
 
-/* The pipeline of the state set now, built by the worker */
-void vkr_client_prewarm(vkr_renderer *r, vkr_program *p)
+/* The pipeline of the state set now, given to the worker; where the
+ * queue is full, waited for room when @wait, left out where not (0) */
+static int client_prewarm(vkr_renderer *r, vkr_program *p, int wait)
 {
    const vkr_fbo *o = &r->fbos[r->draw_fbo];
    const vkr_image *c = o->color ? &r->images[o->color] : NULL;
@@ -3068,17 +3069,38 @@ void vkr_client_prewarm(vkr_renderer *r, vkr_program *p)
    int rp;
 
    if (!r->draw_fbo || (!c && !d))
-      return;
+      return 1;
    rp = get_render_pass(r, c ? c->format : VK_FORMAT_UNDEFINED, d ? d->format : VK_FORMAT_UNDEFINED,
          c ? c->samples : d->samples);
    if (rp < 0)
-      return;
+      return 1;
    r->st.rp = (unsigned)rp;
    key = state_key(r, 0, 0, 0);
    e = pipe_lookup(r, p->id, key);
    if (!e || retro_atomic_load_acquire_int(&e->status) != PS_EMPTY)
-      return;
+      return 1;
    while (!pipe_queue(r, e, p, VK_NULL_HANDLE, VK_NULL_HANDLE, key))
+   {
+      if (!wait)
+         return 0;
+      rdp_worker_wait(r->worker, jobs_done, r);
+   }
+   return 1;
+}
+
+void vkr_client_prewarm(vkr_renderer *r, vkr_program *p)
+{
+   client_prewarm(r, p, 1);
+}
+
+int vkr_client_prewarm_ahead(vkr_renderer *r, vkr_program *p)
+{
+   return client_prewarm(r, p, 0);
+}
+
+void vkr_client_prewarm_ahead_wait_for_test(vkr_renderer *r)
+{
+   if (r->wait_client)
       rdp_worker_wait(r->worker, jobs_done, r);
 }
 
