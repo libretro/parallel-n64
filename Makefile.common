@@ -514,8 +514,8 @@ SOURCES_CXX   += \
 SOURCES_C += $(VIDEODIR_GLIDEN64)/src/GLideNHQ/txpool.c
 
 ifeq ($(HAVE_NEON),1)
-	SOURCES_CXX   += $(VIDEODIR_GLIDEN64)/src/Neon/3DMathNeon.cpp \
-					 $(VIDEODIR_GLIDEN64)/src/Neon/gSPNeon.cpp
+	SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/Neon/3DMathNeon.c \
+					 $(VIDEODIR_GLIDEN64)/src/Neon/gSPNeon.c
 else
 	SOURCES_C     += $(VIDEODIR_GLIDEN64)/src/3DMath.c
 endif

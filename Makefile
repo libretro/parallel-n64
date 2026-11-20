@@ -2374,6 +2374,26 @@ COMBINER_JOURNAL_TEST_SRC := $(VIDEODIR_GLIDEN64)/src/CombinerKeyJournal.c $(LIB
 test_combiner_journal$(EXE_EXT): tools/test_combiner_journal.c $(COMBINER_JOURNAL_TEST_SRC) $(VIDEODIR_GLIDEN64)/src/CombinerKeyJournal.h
 	$(CC) $(CHECK_CFLAGS) $(CHECK_SANITIZE) -I$(VIDEODIR_GLIDEN64)/src -I$(LIBRETRO_COMM_DIR)/include tools/test_combiner_journal.c $(COMBINER_JOURNAL_TEST_SRC) -o $@ $(CHECK_LDFLAGS) $(CHECK_SANITIZE) -lpthread
 
+# GLideN64's NEON matrix, vector, vertex and lighting code against the C++ it replaced
+# (tools/test_gliden64_neon_math.c), for 32-bit ARM and AArch64 through
+# qemu-user: needs gcc-arm-linux-gnueabihf, gcc-aarch64-linux-gnu and
+# qemu-user. With the sources' C89 checked for both.
+NEON_MATH_SRCS := $(VIDEODIR_GLIDEN64)/src/Neon/3DMathNeon.c $(VIDEODIR_GLIDEN64)/src/Neon/gSPNeon.c
+NEON_MATH_INC := -I$(VIDEODIR_GLIDEN64)/src -I$(LIBRETRO_COMM_DIR)/include -I$(CORE_DIR)/src -I$(CORE_DIR)/src/api \
+	-I$(ROOT_DIR)/libretro -D__NEON_OPT -D__LIBRETRO__ -DM64P_PLUGIN_API
+check_gliden64_neon: tools/test_gliden64_neon_math.c $(NEON_MATH_SRCS)
+	for f in $(NEON_MATH_SRCS); do \
+		arm-linux-gnueabihf-gcc -std=c89 -pedantic -Wno-long-long -Werror=pedantic -Werror=declaration-after-statement \
+			-mcpu=cortex-a7 -mfpu=neon-vfpv4 -mfloat-abi=hard $(NEON_MATH_INC) -fsyntax-only $$f || exit 1; \
+		aarch64-linux-gnu-gcc -std=c89 -pedantic -Wno-long-long -Werror=pedantic -Werror=declaration-after-statement \
+			$(NEON_MATH_INC) -fsyntax-only $$f || exit 1; done
+	arm-linux-gnueabihf-gcc -O2 -mcpu=cortex-a7 -mfpu=neon-vfpv4 -mfloat-abi=hard $(NEON_MATH_INC) \
+		tools/test_gliden64_neon_math.c $(NEON_MATH_SRCS) -o test_gliden64_neon_math_arm -lm
+	aarch64-linux-gnu-gcc -O2 $(NEON_MATH_INC) tools/test_gliden64_neon_math.c $(NEON_MATH_SRCS) \
+		-o test_gliden64_neon_math_aarch64 -lm
+	qemu-arm -L /usr/arm-linux-gnueabihf ./test_gliden64_neon_math_arm
+	qemu-aarch64 -L /usr/aarch64-linux-gnu ./test_gliden64_neon_math_aarch64
+
 # Glide64's Vulkan cache, a file a game (tools/test_glitch64_vk_cache.c),
 # read with the VFS's map and without
 test_glitch64_vk_cache$(EXE_EXT): tools/test_glitch64_vk_cache.c $(VIDEODIR_GLIDE)/Glitch64/glitch64_vk_cache.c \

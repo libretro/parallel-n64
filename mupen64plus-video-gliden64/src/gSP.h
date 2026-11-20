@@ -166,7 +166,7 @@ void gli_gSPLookAt( u32 l, u32 n );
 void gli_gSPLightAcclaim(u32 l, s32 n);
 void gli_gSPLightVertex(SPVertex * _vtx);
 #ifdef __NEON_OPT
-/* Neon/gSPNeon.cpp, called from C */
+/* Neon/gSPNeon.c */
 void gSPTransformVector_NEON(float vtx[4], float mtx[4][4]);
 void gSPInverseTransformVector_NEON(float vec[3], float mtx[4][4]);
 void gSPTransformVertex4NEON(u32 v, float mtx[4][4]);
