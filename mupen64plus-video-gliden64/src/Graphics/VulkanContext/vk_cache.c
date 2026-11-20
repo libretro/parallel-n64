@@ -1,4 +1,4 @@
-/* GLideN64's Vulkan cache, one file a game (vk_cache.h). C89. */
+/* GLideN64's Vulkan cache, one file every game shares (vk_cache.h). C89. */
 #include <stdlib.h>
 #include <string.h>
 

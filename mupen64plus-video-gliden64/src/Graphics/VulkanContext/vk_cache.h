@@ -1,8 +1,9 @@
 #ifndef VK_CACHE_H
 #define VK_CACHE_H
 
-/* GLideN64's Vulkan cache: one file a game, in the shaders folder beside
- * the GL one (GLideN64.<name>.Vulkan.cache).
+/* GLideN64's Vulkan cache: one file every game shares, in the shaders
+ * folder (GLideN64.Vulkan.cache). The N64's combiners are fixed function:
+ * a key is the same whatever the game.
  *
  * A header of three words (the magic, the keys' version, how many bytes
  * of pipeline cache), the driver's pipeline cache, then key records
@@ -11,8 +12,9 @@
  * header and pipeline cache whole is none; the records a crash cut short
  * are cut off.
  *
- * Before it, every game's keys were in one journal (GLideN64.vulkan.keys.
- * journal), with one pipeline cache beside it (.pipelines).
+ * Before it there was a file a game (GLideN64.<name>.Vulkan.cache), and
+ * before those one journal of every game's keys (GLideN64.vulkan.keys.
+ * journal) with a pipeline cache beside it (.pipelines).
  *
  * C89. */
 

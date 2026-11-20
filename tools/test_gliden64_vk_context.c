@@ -2,13 +2,13 @@
  * and the combiner stage helpers (CombinerStages.c), on a stub renderer.
  *
  * Made, started with the shader config from the options and the pipeline
- * cache lent from the game's file, the window sized, the upscaler started
- * or dropped; stopped. The game's file (vk_cache.h): its keys built and
- * appended to; a game without one building the journal of before's and
- * keeping those it draws with, the pipeline cache of before removed;
+ * cache lent from the file every game shares, the window sized, the
+ * upscaler started or dropped; stopped. The file (vk_cache.h): its keys
+ * built and appended to; where it is not there, the keys of each game's
+ * file of before and of the old journal built, each once, the largest
+ * pipeline cache of theirs lent, and they removed once it is written;
  * written at the end where the pipeline cache changed, a key missed the
- * journal or it was not there, with the game's keys, nothing written
- * where nothing changed. Each state call mapped to the renderer: clamp modes,
+ * journal or it was not there, nothing written where nothing changed. Each state call mapped to the renderer: clamp modes,
  * capabilities, culling, depth, viewport, scissor, blending, clears,
  * polygon offset. Textures and render buffers made, filled with their
  * byte counts, updated, lent, given parameters, bound to their units;
@@ -46,8 +46,6 @@
 #include <Graphics/gli_params.h>
 #include <Graphics/CombinerValues.h>
 #include <Graphics/CombinerStages.h>
-#include <Graphics/OpenGLContext/GLSL/glsl_StdHash.h>
-#include <RSP.h>
 #include <file/file_path.h>
 #include "vk_ColorBufferReader.h"
 #include "vk_renderer.h"
@@ -317,7 +315,7 @@ void gli_api_user_cache_path(char *_p, size_t _size) { strncpy(_p, "/cache", _si
 static int journalObj;
 static char journalRead[128];
 static uint32_t journalVersion;
-static u64 oldKeys[3];
+static u64 oldKeys[80];
 static unsigned nOldKeys;
 unsigned combiner_journal_read(const char *_path, uint32_t _version, combiner_journal_key_t _cb, void *_ctx)
 {
@@ -375,26 +373,84 @@ static void known(void *_ctx, uint64_t _key, unsigned _hwl)
 	knownCtx = _ctx;
 }
 
-/* ---- the game's file ---- */
+/* ---- the cache file, and those of before ---- */
 
-RSPInfo RSP;
 static int mkdirOk = 1;
 static char mkdirAsked[600];
 bool path_mkdir(const char *_dir) { strcpy(mkdirAsked, _dir); return mkdirOk != 0; }
-static int oldThere = 1;
-static char deleted[600];
-bool filestream_exists(const char *_path) { return oldThere && strstr(_path, ".pipelines") != NULL; }
-int filestream_delete(const char *_path) { strcpy(deleted, _path); return 0; }
+size_t fill_pathname_join(char *_out, const char *_dir, const char *_name, size_t _size)
+{
+	return (size_t)snprintf(_out, _size, "%s/%s", _dir, _name);
+}
+/* the old journal and its pipeline cache, there or not */
+static int oldThere = 1, journalThere;
+static char deleted[8][600];
+static unsigned nDeleted;
+bool filestream_exists(const char *_path)
+{
+	if (strstr(_path, ".pipelines") != NULL)
+		return oldThere != 0;
+	return journalThere && strstr(_path, "keys.journal") != NULL;
+}
+int filestream_delete(const char *_path)
+{
+	if (nDeleted < 8)
+		strcpy(deleted[nDeleted], _path);
+	nDeleted++;
+	return 0;
+}
+static int was_deleted(const char *_path)
+{
+	unsigned i;
+	for (i = 0; i < nDeleted && i < 8; i++)
+		if (strcmp(deleted[i], _path) == 0)
+			return 1;
+	return 0;
+}
 int filestream_close(RFILE *_f) { fileClosed = _f; return 0; }
 
+/* the shaders folder's names */
+static const char *dirNames[8];
+static unsigned nDirNames, dirAt, dirOpens, dirCloses;
+static int dirObj;
+struct RDIR *retro_opendir(const char *_name)
+{
+	(void)_name;
+	dirOpens++;
+	dirAt = 0;
+	return nDirNames != 0 ? (struct RDIR *)&dirObj : NULL;
+}
+int retro_readdir(struct RDIR *_d) { (void)_d; return dirAt++ < nDirNames; }
+const char *retro_dirent_get_name(struct RDIR *_d) { (void)_d; return dirNames[dirAt - 1]; }
+void retro_closedir(struct RDIR *_d) { (void)_d; dirCloses++; }
+
+/* the file every game shares, and the games' of before */
+#define SHARED "/cache/shaders/GLideN64.Vulkan.cache"
 static int fileFound;
 static const unsigned char fileBlob[5] = { 1, 2, 3, 4, 5 };
 static unsigned char fileRecords[2 * COMBINER_JOURNAL_RECORD_SIZE];
+static const unsigned char gameBlobA[3] = { 7, 7, 7 }, gameBlobB[6] = { 8, 8, 8, 8, 8, 8 };
+static unsigned char gameRecordsA[2 * COMBINER_JOURNAL_RECORD_SIZE], gameRecordsB[2 * COMBINER_JOURNAL_RECORD_SIZE];
 static char cacheOpened[600], cacheClosed[600];
-static unsigned cacheCloses;
+static unsigned cacheCloses, gameOpens, gameCloses;
 void vk_cache_open(vk_cache *_c, const char *_path)
 {
 	memset(_c, 0, sizeof(*_c));
+	if (strstr(_path, "GLideN64.aaaa.Vulkan.cache") != NULL || strstr(_path, "GLideN64.bbbb.Vulkan.cache") != NULL) {
+		const int a = strstr(_path, "aaaa") != NULL;
+		gameOpens++;
+		_c->found = 1;
+		_c->pipelines = a ? gameBlobA : gameBlobB;
+		_c->pipelines_size = a ? sizeof(gameBlobA) : sizeof(gameBlobB);
+		_c->records = a ? gameRecordsA : gameRecordsB;
+		_c->records_size = a ? sizeof(gameRecordsA) : sizeof(gameRecordsB);
+		return;
+	}
+	if (strstr(_path, ".Vulkan.cache") != NULL && strcmp(_path + strlen(_path) - 21, "GLideN64.Vulkan.cache") != 0) {
+		/* another game's, not whole */
+		gameOpens++;
+		return;
+	}
 	strcpy(cacheOpened, _path);
 	if (!fileFound)
 		return;
@@ -418,6 +474,11 @@ unsigned vk_cache_keys(const vk_cache *_c, combiner_journal_key_t _cb, void *_ct
 /* counted where something was open */
 void vk_cache_close(vk_cache *_c, const char *_path)
 {
+	if (_c->found && (_c->records == gameRecordsA || _c->records == gameRecordsB)) {
+		gameCloses++;
+		memset(_c, 0, sizeof(*_c));
+		return;
+	}
 	if (_c->found) {
 		cacheCloses++;
 		strcpy(cacheClosed, _path != NULL ? _path : "-");
@@ -447,11 +508,6 @@ static void record(unsigned char *_r, u64 _key, unsigned _hwl)
 	_r[0] = COMBINER_JOURNAL_RECORD_KEY;
 	_r[1] = (unsigned char)_hwl;
 	memcpy(_r + 2, &_key, sizeof(_key));
-}
-/* the game's file's path, with the shaders folder or not */
-static void game_path(char *_out, int _folder)
-{
-	sprintf(_out, "/cache%s/GLideN64.%x.Vulkan.cache", _folder ? "/shaders" : "", (unsigned)gli_std_hash_string(RSP.romname));
 }
 
 static unsigned groupsAsked;
@@ -1007,6 +1063,8 @@ static void test_combiners(void)
 	clear_log();
 	valuesSent = NULL;
 	p->ops->update(p, 1);
+	check(log_[0] == '\0' && valuesSent == NULL, "forced as it is built: nothing sent, its first draw's update sends them");
+	p->ops->update(p, 0);
 	check(strcmp(log_, "use:0 update-values:51 values:0 ") == 0 && valuesSent != NULL && valuesSent->fogColor[0] == 0.5f,
 		"updated: its groups' values sent from its own");
 
@@ -1320,17 +1378,6 @@ static gli_cprog *program(u64 _key)
 	return ops->createCombinerProgram(ctx, &color, &alpha, _key);
 }
 
-/* the journal of before's keys built, as the combiner's callback does */
-static gli_cprog *built[3];
-static unsigned nBuilt;
-static void build(void *_ctx, uint64_t _key, unsigned _hwl)
-{
-	(void)_ctx;
-	(void)_hwl;
-	if (nBuilt < 3)
-		built[nBuilt++] = program(_key);
-}
-
 static gli_combiner_entry slots[8];
 static u32 order[8];
 static gli_combiner_table table;
@@ -1359,47 +1406,51 @@ static void reset_file(void)
 {
 	writes = 0;
 	writeFails = 0;
-	cacheCloses = 0;
-	cacheClosed[0] = journalRead[0] = journalAppended[0] = deleted[0] = written[0] = '\0';
-	nKnown = nPushed = nBuilt = closedAtWrite = 0;
+	cacheCloses = gameOpens = gameCloses = dirOpens = dirCloses = 0;
+	nDeleted = 0;
+	cacheClosed[0] = journalRead[0] = journalAppended[0] = written[0] = '\0';
+	nKnown = nPushed = closedAtWrite = 0;
 	pushedTo = journalDetached = NULL;
 	fileClosed = NULL;
 	detachWhole = 1;
 	takeChanged = 0;
 	appendFails = 0;
+	nDirNames = 0;
+	nOldKeys = 0;
+	journalThere = 0;
 }
 
 static void test_cache_file(void)
 {
 	const u64 k1 = KEY(G_CYC_1CYCLE, 0, 0, 0x10), k2 = KEY(G_CYC_2CYCLE, 0, 0, 0x20) | ((u64)1 << 59);
 	const u64 k3 = KEY(G_CYC_1CYCLE, 0, 1, 0x30), copy = KEY(G_CYC_COPY, 0, 0, 0x40), fill = KEY(G_CYC_FILL, 0, 0, 0x50);
-	char path[600], bare[600];
+	const u64 k4 = KEY(G_CYC_2CYCLE, 0, 2, 0x05);
 	gli_cprog *p[5];
 	unsigned char rec[COMBINER_JOURNAL_RECORD_SIZE];
 	combiner_journal_t *j;
 
 	memset(&config, 0, sizeof(config));
-	strcpy(RSP.romname, "SUPER MARIO 64");
-	game_path(path, 1);
-	game_path(bare, 0);
 	record(fileRecords, k1, 0);
 	record(fileRecords + COMBINER_JOURNAL_RECORD_SIZE, k2, 1);
 
-	/* the game's file: its pipeline cache lent, its keys built, the
-	 * file let go, cut where a crash cut it, appended to */
+	/* the file: its pipeline cache lent, its keys built, the file let
+	 * go, cut where a crash cut it, appended to; nothing of before looked
+	 * for */
 	reset_file();
 	fileFound = 1;
+	nDirNames = 1;
+	dirNames[0] = "GLideN64.aaaa.Vulkan.cache";
 	config.generalEmulation.enableShadersStorage = 1;
 	start();
-	check(strcmp(mkdirAsked, "/cache/shaders") == 0 && strcmp(cacheOpened, path) == 0, "the game's file, in the shaders folder");
+	check(strcmp(mkdirAsked, "/cache/shaders") == 0 && strcmp(cacheOpened, SHARED) == 0, "the file every game shares");
 	check(createdCacheSize == sizeof(fileBlob) && memcmp(createdCache, fileBlob, sizeof(fileBlob)) == 0, "its pipeline cache lent");
-	check(deleted[0] == '\0', "nothing of before removed");
+	check(nDeleted == 0 && dirOpens == 0 && gameOpens == 0, "nothing of before looked for or removed");
 	j = ops->openCombinerJournal(ctx, known, (void *)&journalObj);
 	check(nKnown == 2 && knownKeys[0] == k1 && knownHwl[0] == 0 && knownKeys[1] == k2 && knownHwl[1] == 1 &&
 		knownCtx == (void *)&journalObj, "its keys built, as they are");
 	check(journalRead[0] == '\0', "not the journal of before");
-	check(cacheCloses == 1 && strcmp(cacheClosed, path) == 0, "let go, cut to its whole records");
-	check(j == (combiner_journal_t *)&journalObj && strcmp(journalAppended, path) == 0, "appended to");
+	check(cacheCloses == 1 && strcmp(cacheClosed, SHARED) == 0, "let go, cut to its whole records");
+	check(j == (combiner_journal_t *)&journalObj && strcmp(journalAppended, SHARED) == 0, "appended to");
 	check(writes == 0, "not written at the load");
 	p[0] = program(k3);
 	p[1] = program(copy);
@@ -1413,10 +1464,10 @@ static void test_cache_file(void)
 	check(fileClosed == JOURNAL_FILE, "the file it appended to closed");
 	free_programs(p, 4);
 	stop();
-	check(writes == 0, "nothing changed: nothing written");
+	check(writes == 0 && nDeleted == 0, "nothing changed: nothing written");
 
-	/* the pipeline cache changed: written, with the game's keys, not
-	 * copy's, fill's or the special shaders' */
+	/* the pipeline cache changed: written, with the keys, not copy's,
+	 * fill's or the special shaders' */
 	reset_file();
 	start();
 	j = ops->openCombinerJournal(ctx, known, NULL);
@@ -1430,7 +1481,7 @@ static void test_cache_file(void)
 	free_programs(p, 5);
 	takeChanged = 1;
 	stop();
-	check(writes == 1 && strcmp(written, path) == 0, "written");
+	check(writes == 1 && strcmp(written, SHARED) == 0, "written");
 	check(writtenBlobSize == sizeof(takenBlob) && memcmp(writtenBlob, takenBlob, sizeof(takenBlob)) == 0,
 		"the pipeline cache handed back");
 	check(writtenRecordsSize == 2 * COMBINER_JOURNAL_RECORD_SIZE, "two keys");
@@ -1438,6 +1489,7 @@ static void test_cache_file(void)
 	check(memcmp(writtenRecords, rec, sizeof(rec)) == 0, "the first as it was put");
 	record(rec, k2, 1);
 	check(memcmp(writtenRecords + COMBINER_JOURNAL_RECORD_SIZE, rec, sizeof(rec)) == 0, "the second, with its bit");
+	check(nDeleted == 0, "nothing of before to remove");
 
 	/* a key the journal did not get to the file */
 	reset_file();
@@ -1468,58 +1520,8 @@ static void test_cache_file(void)
 	stop();
 	check(writes == 1 && writtenRecordsSize == 0, "none kept: written, without a journal to say");
 
-	/* none there: the journal of before's keys built, its pipeline cache
-	 * removed; the file written for the journal to append to */
-	reset_file();
-	fileFound = 0;
-	oldThere = 1;
-	nOldKeys = 3;
-	oldKeys[0] = k1;
-	oldKeys[1] = k2;
-	oldKeys[2] = k3;
-	start();
-	check(createdCacheSize == 0, "no pipeline cache lent");
-	check(strcmp(deleted, "/cache/GLideN64.vulkan.keys.journal.pipelines") == 0, "the pipeline cache of before removed");
-	j = ops->openCombinerJournal(ctx, build, NULL);
-	check(strcmp(journalRead, "/cache/GLideN64.vulkan.keys.journal") == 0 && journalVersion == 1,
-		"the journal of before read, of its version");
-	check(nBuilt == 3 && built[0] != NULL && built[1] != NULL && built[2] != NULL, "its keys built");
-	check(writes == 1 && strcmp(written, path) == 0 && writtenBlobSize == 0 && writtenRecordsSize == 0,
-		"the file made for the journal");
-	check(j == (combiner_journal_t *)&journalObj && strcmp(journalAppended, path) == 0, "appended to");
-	/* the keys of before the game draws with are its own */
-	built[0]->ops->update(built[0], 1);
-	check(nPushed == 0, "not when built");
-	built[0]->ops->activate(built[0]);
-	check(nPushed == 1 && pushed[0] == k1 && pushedHwl[0] == 0 && pushedTo == j, "drawn with: journaled");
-	built[0]->ops->activate(built[0]);
-	built[0]->ops->update(built[0], 0);
-	check(nPushed == 1, "once");
-	built[1]->ops->update(built[1], 0);
-	check(nPushed == 2 && pushed[1] == k2 && pushedHwl[1] == 1, "updated to draw: journaled, with its bit");
-	p[0] = program(fill);
-	p[0]->ops->activate(p[0]);
-	check(nPushed == 2, "one built after: the combiner's");
-	p[1] = built[0];
-	p[2] = built[2];
-	p[3] = built[1];
-	table_of(p, 4);
-	ops->closeShadersStorage(ctx, &table, j);
-	/* the journal stopped: one drawn with after is not journaled */
-	built[2]->ops->activate(built[2]);
-	check(nPushed == 3 && pushedTo == NULL, "after the journal stopped: not to it");
-	free_programs(p, 4);
-	stop();
-	check(writes == 2 && writtenRecordsSize == 2 * COMBINER_JOURNAL_RECORD_SIZE, "written at the end, the two drawn with");
-	record(rec, k1, 0);
-	check(memcmp(writtenRecords, rec, sizeof(rec)) == 0, "the first drawn with");
-	record(rec, k2, 1);
-	check(memcmp(writtenRecords + COMBINER_JOURNAL_RECORD_SIZE, rec, sizeof(rec)) == 0, "the second, not the one never drawn with");
-	nOldKeys = 0;
-
 	/* stopped twice: what the first kept let go, nothing kept */
 	reset_file();
-	fileFound = 1;
 	start();
 	j = ops->openCombinerJournal(ctx, known, NULL);
 	p[0] = program(k3);
@@ -1529,14 +1531,97 @@ static void test_cache_file(void)
 	free_programs(p, 1);
 	stop();
 	check(writes == 0, "no keys kept: the file not written over");
+
+	/* none there: each game's file of before and the old journal read,
+	 * each key once, the largest pipeline cache lent; the old journal's
+	 * pipeline cache removed; the file made for the journal to append to;
+	 * the files of before removed once it is written */
+	reset_file();
 	fileFound = 0;
+	oldThere = 1;
+	journalThere = 1;
+	nOldKeys = 2;
+	oldKeys[0] = k1;
+	oldKeys[1] = k4;
+	record(gameRecordsA, k2, 1);
+	record(gameRecordsA + COMBINER_JOURNAL_RECORD_SIZE, k1, 0);
+	record(gameRecordsB, k3, 0);
+	record(gameRecordsB + COMBINER_JOURNAL_RECORD_SIZE, k2, 1);
+	nDirNames = 7;
+	dirNames[0] = "GLideN64.aaaa.Vulkan.cache";
+	dirNames[1] = "other.txt";
+	dirNames[2] = "GLideN64.bbbb.Vulkan.cache";
+	dirNames[3] = "GLideN64.cccc.OpenGL.cache";
+	dirNames[4] = "GLideN64.dddd.Vulkan.cache";
+	dirNames[5] = "GLideN64.Vulkan.cache.bak";
+	dirNames[6] = "GLideN64..Vulkan.cache";
+	start();
+	check(gameOpens == 3, "each game's file read, not the others");
+	check(gameCloses == 2 && dirCloses == dirOpens && dirOpens == 1, "each let go, the folder too");
+	check(createdCacheSize == sizeof(gameBlobB) && memcmp(createdCache, gameBlobB, sizeof(gameBlobB)) == 0,
+		"the largest pipeline cache lent");
+	check(strcmp(journalRead, "/cache/GLideN64.vulkan.keys.journal") == 0 && journalVersion == 1,
+		"the journal of before read, of its version");
+	check(nDeleted == 1 && was_deleted("/cache/GLideN64.vulkan.keys.journal.pipelines"), "its pipeline cache removed");
+	j = ops->openCombinerJournal(ctx, known, NULL);
+	check(nKnown == 4 && knownKeys[0] == k1 && knownKeys[1] == k3 && knownKeys[2] == k4 && knownKeys[3] == k2,
+		"every key, once, by key");
+	check(knownHwl[0] == 0 && knownHwl[1] == 0 && knownHwl[2] == 1 && knownHwl[3] == 1, "with their bits");
+	check(writes == 1 && strcmp(written, SHARED) == 0 && writtenBlobSize == 0 && writtenRecordsSize == 0,
+		"the file made for the journal");
+	check(j == (combiner_journal_t *)&journalObj && strcmp(journalAppended, SHARED) == 0, "appended to");
+	check(nDeleted == 1, "the files of before kept until it is written whole");
+	p[0] = program(k3);
+	table_of(p, 1);
+	ops->closeShadersStorage(ctx, &table, j);
+	free_programs(p, 1);
+	stop();
+	check(writes == 2 && writtenRecordsSize == COMBINER_JOURNAL_RECORD_SIZE, "written at the end");
+	check(dirCloses == dirOpens && dirOpens == 2, "the folder let go again");
+	check(nDeleted == 5 && was_deleted("/cache/shaders/GLideN64.aaaa.Vulkan.cache") &&
+		was_deleted("/cache/shaders/GLideN64.bbbb.Vulkan.cache") && was_deleted("/cache/shaders/GLideN64.dddd.Vulkan.cache") &&
+		was_deleted("/cache/GLideN64.vulkan.keys.journal"), "then the files of before removed, only they");
+
+	/* the old journal alone, of more keys than the first room: every one
+	 * built, it removed */
+	reset_file();
+	journalThere = 1;
+	oldThere = 0;
+	{
+		unsigned i;
+		nOldKeys = 70;
+		for (i = 0; i < nOldKeys; i++)
+			oldKeys[i] = KEY(G_CYC_1CYCLE, 0, 0, 0x1000 + i * 2);
+	}
+	start();
+	j = ops->openCombinerJournal(ctx, known, NULL);
+	check(nKnown == 70 && knownKeys[0] == KEY(G_CYC_1CYCLE, 0, 0, 0x1000) && knownKeys[3] == KEY(G_CYC_1CYCLE, 0, 0, 0x1006),
+		"every key of the journal, in order");
+	table_of(p, 0);
+	ops->closeShadersStorage(ctx, &table, j);
+	stop();
+	check(nDeleted == 1 && was_deleted("/cache/GLideN64.vulkan.keys.journal"), "the journal alone removed");
+	oldThere = 1;
+
+	/* not written at the end: they stay */
+	reset_file();
+	journalThere = 1;
+	nDirNames = 1;
+	dirNames[0] = "GLideN64.aaaa.Vulkan.cache";
+	start();
+	j = ops->openCombinerJournal(ctx, known, NULL);
+	table_of(p, 0);
+	ops->closeShadersStorage(ctx, &table, j);
+	writeFails = 1;
+	stop();
+	check(writes == 2 && nDeleted == 1, "not written: the files of before kept");
 
 	/* the file not to be made: no journal */
 	reset_file();
 	oldThere = 0;
 	writeFails = 1;
 	start();
-	check(deleted[0] == '\0', "nothing of before to remove");
+	check(nDeleted == 0, "nothing of before to remove");
 	check(ops->openCombinerJournal(ctx, known, NULL) == NULL && journalAppended[0] == '\0', "not made: no journal");
 	stop();
 
@@ -1556,17 +1641,28 @@ static void test_cache_file(void)
 	start();
 	stop();
 	check(writes == 0 && cacheCloses == 1, "unchanged: not written, let go");
+	/* none there: the keys of before kept, they removed */
 	reset_file();
 	fileFound = 0;
+	nDirNames = 1;
+	dirNames[0] = "GLideN64.bbbb.Vulkan.cache";
 	start();
 	stop();
-	check(writes == 1 && writtenRecordsSize == 0 && writtenBlobSize == sizeof(takenBlob), "none there: made, keyless");
+	check(writes == 1 && writtenRecordsSize == 2 * COMBINER_JOURNAL_RECORD_SIZE && writtenBlobSize == sizeof(takenBlob),
+		"none there: made, with the keys of before");
+	record(rec, k3, 0);
+	check(memcmp(writtenRecords, rec, sizeof(rec)) == 0, "by key");
+	check(was_deleted("/cache/shaders/GLideN64.bbbb.Vulkan.cache"), "they removed");
+	reset_file();
+	start();
+	stop();
+	check(writes == 1 && writtenRecordsSize == 0, "none of before: made, keyless");
 
 	/* no shaders folder to be had: beside it */
 	reset_file();
 	mkdirOk = 0;
 	start();
-	check(strcmp(cacheOpened, bare) == 0, "no folder: in the cache folder");
+	check(strcmp(cacheOpened, "/cache/GLideN64.Vulkan.cache") == 0, "no folder: in the cache folder");
 	stop();
 	mkdirOk = 1;
 	oldThere = 1;

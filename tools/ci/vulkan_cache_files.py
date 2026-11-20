@@ -10,13 +10,13 @@ byte, unopened for writing. The two files a game had before (its records,
 are read into it once and removed. tools/test_glitch64_vk_cache.c covers
 the file.
 
-GLideN64 on Vulkan keeps one file a game too, GLideN64.<name>.Vulkan.cache
+GLideN64 on Vulkan keeps one file every game shares, GLideN64.Vulkan.cache
 in the shaders folder: a header, the driver's pipeline cache, then the
-keys met, appended as they are. A second session leaves it; one after a
-crash cuts the torn record off and keeps the keys. A game without it
-builds the keys of the journal every game shared before
-(GLideN64.vulkan.keys.journal) and keeps only those it draws with; the
-pipeline cache shared before goes, the journal stays for the other games.
+keys met, appended as they are (the N64's combiners are fixed function,
+a key the same whatever the game). A second session leaves it; another
+game shares it; one after a crash cuts the torn record off and keeps the
+keys. Where it is not there, the files of before (a file a game, and the
+journal before those) are read into it, every key of theirs, and go.
 tools/test_gliden64_vk_cache.c covers the file.
 
   vulkan_cache_files.py --core parallel_n64_libretro.so --vk ./lrhost_vk
@@ -120,17 +120,17 @@ def main():
         if not os.path.exists(cache) or whole(cache) is None or whole(cache)[0] != parts[0]:
             fail("glide64: the file of the files of before does not hold their combiners")
 
-        # GLideN64: one file a game, the keys met in it; a second session
-        # leaves it
+        # GLideN64: one file every game shares, the keys met in it; a
+        # second session leaves it
         root = os.path.join(tmp, "sys", "ParallelN64")
+        cache = os.path.join(shaders, "GLideN64.Vulkan.cache")
         g.run(host, core, rom, tmp, "vulkan", options=STORAGE)
         files = glob.glob(os.path.join(shaders, "GLideN64.*"))
-        if len(files) != 1 or not files[0].endswith(".Vulkan.cache"):
-            fail("gliden64: %s, not one cache file" % sorted(os.path.basename(f) for f in files))
+        if files != [cache]:
+            fail("gliden64: %s, not the one cache file" % sorted(os.path.basename(f) for f in files))
             return 1
-        cache = files[0]
         if glob.glob(os.path.join(root, "GLideN64.vulkan.*")):
-            fail("gliden64: the files every game shared were written")
+            fail("gliden64: the files of before were written")
         gparts = gliden64_file(cache)
         if gparts is None or not gparts[1] or len(set(gparts[1])) != len(gparts[1]):
             fail("gliden64: the cache file is not whole, has no keys or one twice")
@@ -141,8 +141,18 @@ def main():
         if state([cache]) != before:
             fail("gliden64: a session that met nothing new wrote the cache file")
 
-        # a crash's: keys the ROM does not meet appended, then a record cut
-        # short; the record cut off, the keys kept
+        # another game: the same file, the first game's keys kept in it
+        other = os.path.join(tmp, "other.z64")
+        g.cartridge(other, 1, "Other Game")
+        g.run(host, core, other, tmp, "vulkan", options=STORAGE)
+        both = gliden64_file(cache)
+        if glob.glob(os.path.join(shaders, "GLideN64.*")) != [cache] or both is None or not met <= set(both[1]):
+            fail("gliden64: another game did not share the file")
+            return 1
+        met = set(both[1])
+
+        # a crash's: keys no ROM meets appended, then a record cut short;
+        # the record cut off, the keys kept
         lost = {k ^ FLIP for k in met} - met
         with open(cache, "ab") as f:
             for k in sorted(lost):
@@ -154,30 +164,38 @@ def main():
             fail("gliden64: after a crash: %s" % ("not whole" if after is None else "the keys %d, not %d"
                  % (len(after[1]), len(met | lost))))
 
-        # the files every game shared: their keys built, those drawn with
-        # kept; the pipeline cache gone, the journal left to the others
+        # the files of before: each game's file and the old journal, every
+        # key of theirs kept, each once; they and the old pipeline cache
+        # gone
+        pipes = after[0] if after is not None else b""
         os.remove(cache)
+        keys = sorted(met | lost)
+        half = len(keys) // 2
+        for name, part in (("GLideN64.0000aaaa.Vulkan.cache", keys[:half + 1]),
+                           ("GLideN64.0000bbbb.Vulkan.cache", keys[half:])):
+            with open(os.path.join(shaders, name), "wb") as f:
+                f.write(struct.pack("<3I", GLNV, GLNV_VERSION, len(pipes)) + pipes +
+                        b"".join(b"K\0" + struct.pack("<Q", k) for k in part))
         journal = os.path.join(root, "GLideN64.vulkan.keys.journal")
-        text = "gliden64-combiner-keys %08x\n" % OLD_JOURNAL_VERSION
-        text += "".join("%016x 0\n" % k for k in sorted(met | lost))
+        extra = {k ^ (FLIP << 1) for k in met} - met - lost
         with open(journal, "w") as f:
-            f.write(text)
+            f.write("gliden64-combiner-keys %08x\n" % OLD_JOURNAL_VERSION)
+            f.write("".join("%016x 0\n" % k for k in sorted(extra | set(keys[:2]))))
         with open(journal + ".pipelines", "wb") as f:
             f.write(b"\0" * 64)
         g.run(host, core, rom, tmp, "vulkan", options=STORAGE)
         migrated = gliden64_file(cache) if os.path.exists(cache) else None
-        if migrated is None or set(migrated[1]) != met:
-            fail("gliden64: from the journal of before: %s" % ("no whole file" if migrated is None else
-                 "%d keys, not the %d drawn with" % (len(migrated[1]), len(met))))
-        if os.path.exists(journal + ".pipelines"):
-            fail("gliden64: the pipeline cache every game shared is still there")
-        with open(journal) as f:
-            if f.read() != text:
-                fail("gliden64: the journal every game shared was changed")
+        want = met | lost | extra
+        if migrated is None or set(migrated[1]) != want or len(migrated[1]) != len(want):
+            fail("gliden64: from the files of before: %s" % ("no whole file" if migrated is None else
+                 "%d keys, not their %d" % (len(migrated[1]), len(want))))
+        left = glob.glob(os.path.join(shaders, "GLideN64.*")) + glob.glob(os.path.join(root, "GLideN64.vulkan.*"))
+        if left != [cache]:
+            fail("gliden64: the files of before are still there: %s" % sorted(os.path.basename(f) for f in left))
 
     if failures == 0:
-        print("vulkan cache files: ok (glide64 %d combiners kept, migrated, left alone; gliden64 %d keys kept, "
-              "%d after a crash, migrated, left alone)" % (len(parts[0]) // 72, len(met), len(lost)))
+        print("vulkan cache files: ok (glide64 %d combiners kept, migrated, left alone; gliden64 %d keys of two games "
+              "shared, %d after a crash, %d migrated, left alone)" % (len(parts[0]) // 72, len(met), len(lost), len(want)))
     return 1 if failures else 0
 
 

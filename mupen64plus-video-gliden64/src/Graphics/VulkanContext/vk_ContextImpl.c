@@ -1,12 +1,12 @@
 /* GLideN64's context on the C89 Vulkan renderer: the table gli_context.h
  * calls (gli_vk_context_ops), its parameters mapped to vk_renderer.h, and
  * the combiner and special programs as gli_cprog. C89. */
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include <compat/strl.h>
 #include <file/file_path.h>
+#include <retro_dirent.h>
 
 #include <Config.h>
 #include <gDP.h>
@@ -20,7 +20,6 @@
 #include <CombinerKeyJournal.h>
 #include <CombinerMux.h>
 #include <PluginAPI.h>
-#include <RSP.h>
 #include <gli_combiner.h>
 #include <gli_textures.h>
 #include <gli_tex.h>
@@ -28,7 +27,6 @@
 #include <Graphics/gli_params.h>
 #include <Graphics/CombinerValues.h>
 #include <Graphics/CombinerStages.h>
-#include <Graphics/OpenGLContext/GLSL/glsl_StdHash.h>
 
 #include "vk_ColorBufferReader.h"
 #include "vk_renderer.h"
@@ -133,9 +131,6 @@ typedef struct vk_cprog
 	u32 inputs;       /* CombinerStages.h's bits */
 	unsigned groups;
 	CombinerValues values;
-	/* a key of the journal of before, built at load: the game's once it
-	 * draws with it */
-	unsigned char pending;
 } vk_cprog;
 
 #define CPROG(_p) ((vk_cprog *)(_p))
@@ -175,43 +170,42 @@ static void cprog_give(vk_cprog *_p)
 		free(_p);
 }
 
-/* The game's cache file (vk_cache.h): open from the renderer's start
- * until its keys are read, then appended to by the key journal; written
- * at the end where the pipeline cache changed or a key missed the
- * journal. */
+/* The cache file every game shares (vk_cache.h): open from the
+ * renderer's start until its keys are read, then appended to by the key
+ * journal; written at the end where the pipeline cache changed or a key
+ * missed the journal. The N64's combiners are fixed function: a key is
+ * the same whatever the game. */
 static struct {
 	char path[PLUGIN_PATH_SIZE + 64];
 	vk_cache file;
 	int dirty;
-	/* the keys of before being built */
-	int marking;
 	combiner_journal_t *journal;
-	/* the game's keys at the end, as records */
+	/* the keys at the end, as records */
 	unsigned char *records;
 	size_t recordsSize;
 	int haveRecords;
+	/* where the file is not there: the files of before's keys, each once,
+	 * and the largest pipeline cache of theirs; they go once it is
+	 * written */
+	unsigned char *before;
+	size_t beforeSize, beforeRoom;
+	void *beforePipelines;
+	size_t beforePipelinesSize;
+	int migrating;
 } s_cache;
-
-/* a key of before drawn with: the game's, into its file */
-static void met(vk_cprog *_c)
-{
-	_c->pending = 0;
-	combiner_journal_push(s_cache.journal, _c->base.key, gli_combiner_key_hwl(_c->base.key) ? 1 : 0);
-}
 
 static void cprog_activate(void *_p)
 {
-	if (CPROG(_p)->pending)
-		met(CPROG(_p));
 	vkr_use(g_r, CPROG(_p)->p);
 }
 
 static void cprog_update(void *_p, bool _force)
 {
 	vk_cprog *c = CPROG(_p);
-	/* forced at the load, which builds it */
-	if (c->pending && !_force)
-		met(c);
+	/* forced as it is built (Combiner.c's program_keep): made current,
+	 * it is updated before its first draw, so nothing is sent now */
+	if (_force)
+		return;
 	vkr_use(g_r, c->p);
 	updateCombinerValues(&c->values, c->groups);
 	vkr_values(g_r, c->p, &c->values);
@@ -317,7 +311,6 @@ static gli_cprog *build_combiner(void *_impl, struct Combiner *_color, struct Co
 	c->p = p;
 	c->inputs = inputs;
 	c->groups = combinerValueGroups(&needs);
-	c->pending = (unsigned char)(s_cache.marking != 0);
 	return &c->base;
 }
 
@@ -465,24 +458,127 @@ static void window_size(void)
 	vkr_set_window(g_r, g_window.screenWidth, g_window.screenHeight);
 }
 
-/* every game's keys of before, the pipeline cache beside them */
+/* before: every game's keys in a journal, its pipeline cache beside it;
+ * then a file a game, GLideN64.<name>.Vulkan.cache */
 #define OLD_JOURNAL "/GLideN64.vulkan.keys.journal"
 #define OLD_JOURNAL_VERSION 1u
+#define CACHE_NAME "GLideN64.Vulkan.cache"
+#define GAME_PREFIX "GLideN64."
+#define GAME_SUFFIX ".Vulkan.cache"
 
-/* GLideN64.<name>.Vulkan.cache in the shaders folder, named as GL's is */
-static void cache_path(char *_path, size_t _size)
+/* the shaders folder, made, or the cache folder where it cannot be */
+static void cache_folder(char *_path, size_t _size)
 {
-	char name[48];
 	size_t len;
-
 	gli_api_user_cache_path(_path, _size);
 	len = strlen(_path);
 	strlcat(_path, "/shaders", _size);
-	/* the folder made, or the file beside it */
 	if (!path_mkdir(_path))
 		_path[len] = '\0';
-	sprintf(name, "/GLideN64.%x.Vulkan.cache", (unsigned)gli_std_hash_string(RSP.romname));
-	strlcat(_path, name, _size);
+}
+
+/* a game's file of before */
+static int game_file(const char *_name)
+{
+	const size_t n = strlen(_name), p = sizeof(GAME_PREFIX) - 1, x = sizeof(GAME_SUFFIX) - 1;
+	return n > p + x && strncmp(_name, GAME_PREFIX, p) == 0 && strcmp(_name + n - x, GAME_SUFFIX) == 0;
+}
+
+static void before_key(void *_ctx, uint64_t _key, unsigned _hwl)
+{
+	unsigned char *r;
+	(void)_ctx;
+	if (s_cache.beforeSize + COMBINER_JOURNAL_RECORD_SIZE > s_cache.beforeRoom) {
+		const size_t room = s_cache.beforeRoom * 2 + 64 * COMBINER_JOURNAL_RECORD_SIZE;
+		unsigned char *more = (unsigned char *)realloc(s_cache.before, room);
+		if (more == NULL)
+			return;
+		s_cache.before = more;
+		s_cache.beforeRoom = room;
+	}
+	r = s_cache.before + s_cache.beforeSize;
+	r[0] = COMBINER_JOURNAL_RECORD_KEY;
+	r[1] = (unsigned char)_hwl;
+	memcpy(r + 2, &_key, sizeof(_key));
+	s_cache.beforeSize += COMBINER_JOURNAL_RECORD_SIZE;
+}
+
+static int by_key(const void *_a, const void *_b)
+{
+	u64 a, b;
+	memcpy(&a, (const unsigned char *)_a + 2, sizeof(a));
+	memcpy(&b, (const unsigned char *)_b + 2, sizeof(b));
+	return a < b ? -1 : a > b ? 1 : 0;
+}
+
+/* The files of before: each game's file's keys and the old journal's,
+ * each key once, and the largest pipeline cache; read once, at the load
+ * the file is first made */
+static void gather_before(const char *_folder)
+{
+	char path[PLUGIN_PATH_SIZE + 64];
+	struct RDIR *d = retro_opendir(_folder);
+	size_t i, n = 0;
+
+	if (d != NULL) {
+		while (retro_readdir(d)) {
+			const char *name = retro_dirent_get_name(d);
+			vk_cache c;
+			if (name == NULL || !game_file(name))
+				continue;
+			fill_pathname_join_special(path, _folder, name, sizeof(path));
+			vk_cache_open(&c, path);
+			s_cache.migrating = 1;
+			vk_cache_keys(&c, before_key, NULL);
+			if (c.pipelines_size > s_cache.beforePipelinesSize) {
+				void *copy = malloc(c.pipelines_size);
+				if (copy != NULL) {
+					memcpy(copy, c.pipelines, c.pipelines_size);
+					free(s_cache.beforePipelines);
+					s_cache.beforePipelines = copy;
+					s_cache.beforePipelinesSize = c.pipelines_size;
+				}
+			}
+			vk_cache_close(&c, NULL);
+		}
+		retro_closedir(d);
+	}
+	gli_api_user_cache_path(path, sizeof(path));
+	strlcat(path, OLD_JOURNAL, sizeof(path));
+	if (filestream_exists(path)) {
+		s_cache.migrating = 1;
+		combiner_journal_read(path, OLD_JOURNAL_VERSION, before_key, NULL);
+	}
+	if (s_cache.beforeSize == 0)
+		return;
+	qsort(s_cache.before, s_cache.beforeSize / COMBINER_JOURNAL_RECORD_SIZE, COMBINER_JOURNAL_RECORD_SIZE, by_key);
+	for (i = 0; i < s_cache.beforeSize; i += COMBINER_JOURNAL_RECORD_SIZE)
+		if (n == 0 || by_key(s_cache.before + n - COMBINER_JOURNAL_RECORD_SIZE, s_cache.before + i) != 0) {
+			memmove(s_cache.before + n, s_cache.before + i, COMBINER_JOURNAL_RECORD_SIZE);
+			n += COMBINER_JOURNAL_RECORD_SIZE;
+		}
+	s_cache.beforeSize = n;
+}
+
+/* the files of before removed, the file holding what they did */
+static void remove_before(const char *_folder)
+{
+	char path[PLUGIN_PATH_SIZE + 64];
+	struct RDIR *d = retro_opendir(_folder);
+	if (d != NULL) {
+		while (retro_readdir(d)) {
+			const char *name = retro_dirent_get_name(d);
+			if (name == NULL || !game_file(name))
+				continue;
+			fill_pathname_join_special(path, _folder, name, sizeof(path));
+			filestream_delete(path);
+		}
+		retro_closedir(d);
+	}
+	gli_api_user_cache_path(path, sizeof(path));
+	strlcat(path, OLD_JOURNAL, sizeof(path));
+	if (filestream_exists(path))
+		filestream_delete(path);
 }
 
 static void create(vk_context *_c, const void *_pipelines, size_t _size)
@@ -517,40 +613,49 @@ static void free_impl(void *_p)
 	free(_p);
 }
 
-/* The game's file opened, its pipeline cache lent to the renderer. A
- * game without one is to be written; the pipeline cache of before goes,
- * read by nothing now. */
+/* The file opened, its pipeline cache lent to the renderer. Where it is
+ * not there, what the files of before held is gathered for it, and it is
+ * to be written; the pipeline cache of the old journal goes, read by
+ * nothing now. */
 static void init(void *_p)
 {
+	char folder[PLUGIN_PATH_SIZE + 64];
 	memset(&s_cache, 0, sizeof(s_cache));
-	cache_path(s_cache.path, sizeof(s_cache.path));
+	cache_folder(folder, sizeof(folder));
+	fill_pathname_join_special(s_cache.path, folder, CACHE_NAME, sizeof(s_cache.path));
 	vk_cache_open(&s_cache.file, s_cache.path);
 	if (!s_cache.file.found) {
 		char old[PLUGIN_PATH_SIZE + 64];
 		s_cache.dirty = 1;
+		gather_before(folder);
 		gli_api_user_cache_path(old, sizeof(old));
 		strlcat(old, OLD_JOURNAL ".pipelines", sizeof(old));
 		if (filestream_exists(old))
 			filestream_delete(old);
-	}
-	create(CTX(_p), s_cache.file.pipelines, s_cache.file.pipelines_size);
+		create(CTX(_p), s_cache.beforePipelines, s_cache.beforePipelinesSize);
+	} else
+		create(CTX(_p), s_cache.file.pipelines, s_cache.file.pipelines_size);
+	free(s_cache.beforePipelines);
+	s_cache.beforePipelines = NULL;
+	s_cache.beforePipelinesSize = 0;
 }
 
 /* The renderer gone, the file written where the pipeline cache changed,
  * a key missed it or it was not there: a session that met nothing new
- * writes nothing. Its keys from the end, or from the file still open
- * where the storage was off. */
+ * writes nothing. Its keys from the end; from the file still open, or
+ * the files of before's, where the storage was off. The files of before
+ * go once it is written. */
 static void destroy(void *_p)
 {
 	size_t size = 0;
-	int changed = 0;
+	int changed = 0, written = 0;
 	void *pipelines = vkr_destroy_taking_cache(g_r, &size, &changed);
 	(void)_p;
 	g_r = NULL;
 	if (changed)
 		s_cache.dirty = 1;
 	if (s_cache.dirty && s_cache.haveRecords)
-		vk_cache_write(s_cache.path, pipelines, size, s_cache.records, s_cache.recordsSize);
+		written = vk_cache_write(s_cache.path, pipelines, size, s_cache.records, s_cache.recordsSize);
 	else if (s_cache.dirty && s_cache.file.found) {
 		/* read once, the file let go before it is written */
 		unsigned char *records = (unsigned char *)malloc(s_cache.file.records_size + 1);
@@ -559,14 +664,20 @@ static void destroy(void *_p)
 			memcpy(records, s_cache.file.records, n);
 		vk_cache_close(&s_cache.file, NULL);
 		if (records != NULL)
-			vk_cache_write(s_cache.path, pipelines, size, records, n);
+			written = vk_cache_write(s_cache.path, pipelines, size, records, n);
 		free(records);
 	} else if (s_cache.dirty && config.generalEmulation.enableShadersStorage == 0)
-		/* none there, and no keys to keep */
-		vk_cache_write(s_cache.path, pipelines, size, NULL, 0);
+		/* none there: the keys of before kept */
+		written = vk_cache_write(s_cache.path, pipelines, size, s_cache.before, s_cache.beforeSize);
+	if (written && s_cache.migrating) {
+		char folder[PLUGIN_PATH_SIZE + 64];
+		cache_folder(folder, sizeof(folder));
+		remove_before(folder);
+	}
 	vk_cache_close(&s_cache.file, NULL);
 	free(pipelines);
 	free(s_cache.records);
+	free(s_cache.before);
 	memset(&s_cache, 0, sizeof(s_cache));
 }
 
@@ -790,34 +901,31 @@ static void reset_builder(void *_p)
 
 static bool load_shaders_storage(void *_p, struct gli_combiner_table *_combiners) { (void)_p; (void)_combiners; return 0; }
 
-/* The game's keys built, the file let go and appended to. A game without
- * its file builds the keys of every game in the journal of before, as it
- * did, and keeps those it draws with; its file is written now, for the
- * journal to append to. */
+/* The keys built, the file let go and appended to. Where it was not
+ * there, the files of before's keys are built, and it is written now for
+ * the journal to append to. */
 static struct combiner_journal *open_combiner_journal(void *_p,
 	void (*_known)(void *_ctx, uint64_t _key, unsigned _hwl), void *_ctx)
 {
 	(void)_p;
-	if (s_cache.file.found)
+	if (s_cache.file.found) {
 		vk_cache_keys(&s_cache.file, _known, _ctx);
-	else {
-		char old[PLUGIN_PATH_SIZE + 64];
-		gli_api_user_cache_path(old, sizeof(old));
-		strlcat(old, OLD_JOURNAL, sizeof(old));
-		s_cache.marking = 1;
-		combiner_journal_read(old, OLD_JOURNAL_VERSION, _known, _ctx);
-		s_cache.marking = 0;
-	}
-	if (s_cache.file.found)
 		vk_cache_close(&s_cache.file, s_cache.path);
-	else if (!vk_cache_write(s_cache.path, NULL, 0, NULL, 0))
-		return NULL;
+	} else {
+		vk_cache before;
+		memset(&before, 0, sizeof(before));
+		before.records = s_cache.before;
+		before.records_size = s_cache.beforeSize;
+		vk_cache_keys(&before, _known, _ctx);
+		if (!vk_cache_write(s_cache.path, NULL, 0, NULL, 0))
+			return NULL;
+	}
 	s_cache.journal = combiner_journal_append(s_cache.path);
 	return s_cache.journal;
 }
 
-/* The journal stopped; the game's keys as records, for a file written at
- * the end: those built for it, not those of before it never drew with */
+/* The journal stopped; the keys as records, for a file written at the
+ * end */
 static bool close_shaders_storage(void *_p, const struct gli_combiner_table *_combiners,
 	struct combiner_journal *_journal)
 {
@@ -845,7 +953,7 @@ static bool close_shaders_storage(void *_p, const struct gli_combiner_table *_co
 		const u32 cycle = gli_combiner_key_cycle_type(key);
 		unsigned char *r = s_cache.records + s_cache.recordsSize;
 		/* copy and fill's are built at every start */
-		if (p->ops != &cprog_ops || CCPROG(p)->pending || cycle == G_CYC_COPY || cycle == G_CYC_FILL)
+		if (p->ops != &cprog_ops || cycle == G_CYC_COPY || cycle == G_CYC_FILL)
 			continue;
 		r[0] = COMBINER_JOURNAL_RECORD_KEY;
 		r[1] = (unsigned char)(gli_combiner_key_hwl(key) ? 1 : 0);

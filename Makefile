@@ -2404,7 +2404,7 @@ test_glitch64_vk_cache$(EXE_EXT): tools/test_glitch64_vk_cache.c $(VIDEODIR_GLID
 		tools/test_glitch64_vk_cache.c $(filter-out $(VIDEODIR_GLIDEN64)/%,$(COMBINER_JOURNAL_TEST_SRC)) \
 		-o $@ $(CHECK_LDFLAGS) $(CHECK_SANITIZE) -lpthread
 
-# GLideN64's Vulkan cache, a file a game (tools/test_gliden64_vk_cache.c),
+# GLideN64's Vulkan cache, one file every game shares (tools/test_gliden64_vk_cache.c),
 # read with the VFS's map and without
 test_gliden64_vk_cache$(EXE_EXT): tools/test_gliden64_vk_cache.c $(VIDEODIR_GLIDEN64)/src/Graphics/VulkanContext/vk_cache.c \
 		$(VIDEODIR_GLIDEN64)/src/Graphics/VulkanContext/vk_cache.h $(COMBINER_JOURNAL_TEST_SRC)
