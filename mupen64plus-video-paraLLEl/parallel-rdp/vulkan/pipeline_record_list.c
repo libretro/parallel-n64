@@ -47,13 +47,21 @@ static bool record_in_range(const pipeline_record_t *r)
    return true;
 }
 
+bool pipeline_record_list_valid(const pipeline_record_t *records, size_t count)
+{
+   size_t i;
+   for (i = 0; i < count; i++)
+      if (!record_in_range(&records[i]))
+         return false;
+   return true;
+}
+
 pipeline_record_t *pipeline_record_list_load(const char *path, size_t *count)
 {
    void                          *buf  = NULL;
    int64_t                        len  = 0;
    pipeline_record_list_header_t  h;
    pipeline_record_t             *out;
-   size_t                         i;
 
    *count = 0;
    if (!path || !filestream_read_file(path, &buf, &len) || !buf)
@@ -72,12 +80,11 @@ pipeline_record_t *pipeline_record_list_load(const char *path, size_t *count)
    if (!h.count || !(out = (pipeline_record_t*)malloc(h.count * sizeof(*out))))
       goto fail;
    memcpy(out, (const uint8_t*)buf + sizeof(h), h.count * sizeof(*out));
-   for (i = 0; i < h.count; i++)
-      if (!record_in_range(&out[i]))
-      {
-         free(out);
-         goto fail;
-      }
+   if (!pipeline_record_list_valid(out, h.count))
+   {
+      free(out);
+      goto fail;
+   }
    free(buf);
    *count = h.count;
    return out;

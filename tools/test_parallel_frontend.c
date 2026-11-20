@@ -233,12 +233,10 @@ size_t granite_pipeline_record_table_get(granite_pipeline_record_table_t *table,
 }
 
 static unsigned files_loaded, files_saved;
-void rdp_pipeline_files_load(rdp_pipeline_files_t *f, const char *dir, void **cache, size_t *size)
+void rdp_pipeline_files_load(rdp_pipeline_files_t *f, const char *dir)
 {
 	(void)dir;
 	memset(f, 0, sizeof(*f));
-	*cache = NULL;
-	*size = 0;
 	files_loaded++;
 }
 

@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """parallel-rdp pipelines-ahead lane.
 
-The core keeps the driver's pipeline cache and a list of the pipelines it
-built in the system folder; the next session builds the listed ones on
-the pipeline worker before the first frame needs them. lrhost_vk with
+The core keeps a list of the pipelines it built and the driver's pipeline
+cache in one file in the system folder (ParallelN64/parallel_rdp.cache);
+the next session builds the listed ones on the pipeline worker before the
+first frame needs them. lrhost_vk with
 LRHOST_COUNT_PIPELINES=1 counts the pipelines created on the frame's
 threads (any but the worker) and on the worker.
 
@@ -19,7 +20,7 @@ own:
               none on the frame's threads, the list still serves
   damaged     a byte of the list flipped: ignored, builds as a cold run,
               and writes a whole list again, which the next run takes
-  cut         the list cut short: the same
+  cut         the file cut short: the same
 Every run must present the same frames as the cold one. A list another
 ROM wrote serves the pipelines the two share (shared).
 
@@ -35,7 +36,7 @@ CI runs every case on one ROM and a cold and a warm session on the rest;
   parallel_rdp_pipelines.py --core parallel_n64_libretro.so --host ./lrhost_vk \\
                             [--roms dir] [--out dir] [--full]
 """
-import argparse, os, re, shutil, subprocess, sys, time
+import argparse, os, re, shutil, struct, subprocess, sys, time, zlib
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import parallel_rdp_regress as regress
@@ -44,9 +45,14 @@ ROMS = ["cube32", "zbuf16", "tlut16", "pal8", "maskcm", "alphacov"]
 MODES = {"threaded": ({}, []),
          "single-threaded": ({"PARALLEL_RDP_SINGLE_THREADED_COMMAND": "1"}, []),
          "2x": ({}, ["parallel-n64-upscaling=2x"])}
-# in the system folder, where GLideN64's files are too
-CACHE = os.path.join("ParallelN64", "parallel_rdp_pipeline_cache.bin")
-LIST = os.path.join("ParallelN64", "parallel_rdp_pipelines.bin")
+# in the system folder, where GLideN64's files are too: a header of six
+# words (magic, version, a record's size, records, their CRC, bytes of
+# cache), the records, the driver's cache
+FILE = os.path.join("ParallelN64", "parallel_rdp.cache")
+HEAD = 24
+# the two files before it
+OLD_CACHE = "parallel_rdp_pipeline_cache.bin"
+OLD_LIST = "parallel_rdp_pipelines.bin"
 COUNTS = re.compile(r"pipelines: (\d+) built on the frame's threads, (\d+) on the pipeline worker")
 
 
@@ -72,25 +78,53 @@ def run(args, rom, sysdir, tag, env_extra, options):
     return int(m.group(1)), int(m.group(2)), frames
 
 
+def header(data):
+    """the file's six header words"""
+    return struct.unpack_from("=6I", data)
+
+
 def listed(path):
-    """the number of records in a list; 0 when there is none"""
+    """the number of records in the file; 0 when there is none"""
     try:
         with open(path, "rb") as f:
-            head = f.read(24)
+            head = f.read(HEAD)
     except OSError:
         return 0
+    return header(head)[3] if len(head) == HEAD else 0
+
+
+def listed_old(path):
+    """the number of records in a list of before"""
+    with open(path, "rb") as f:
+        head = f.read(24)
     return int.from_bytes(head[16:20], sys.byteorder) if len(head) == 24 else 0
 
 
-def damage(path, how):
+def drop_cache(sysdir):
+    """the driver's cache taken out of the file, its list kept"""
+    path = os.path.join(sysdir, FILE)
+    with open(path, "rb") as f:
+        data = f.read()
+    h = list(header(data))
+    end = HEAD + h[2] * h[3]
+    h[5] = 0
+    with open(path, "wb") as f:
+        f.write(struct.pack("=6I", *h) + data[HEAD:end])
+
+
+def damage(sysdir, how):
+    path = os.path.join(sysdir, FILE)
     with open(path, "rb") as f:
         data = bytearray(f.read())
+    h = header(data)
     if how == "flip":
-        data[len(data) // 2] ^= 0x10
+        data[HEAD + h[2] * h[3] // 2] ^= 0x10
     elif how == "cut":
         data = data[:len(data) - 7]
     elif how == "uuid":
-        data[0:16] = b"\xa5" * 16
+        # the cache's header, past the list
+        at = HEAD + h[2] * h[3]
+        data[at:at + 16] = b"\xa5" * 16
     with open(path, "wb") as f:
         f.write(bytes(data))
 
@@ -106,9 +140,9 @@ def lane(args, name, mode, env_extra, options, every_case):
     def step(tag, want_frame, prepare=None):
         if prepare:
             prepare()
-        before = listed(os.path.join(sysdir, LIST))
+        before = listed(os.path.join(sysdir, FILE))
         frame, worker, frames = run(args, rom, sysdir, tag, env_extra, options)
-        new = listed(os.path.join(sysdir, LIST)) - before
+        new = listed(os.path.join(sysdir, FILE)) - before
         lines.append("  %-12s %3d on the frame's threads, %3d on the worker, %3d new to the list"
                      % (tag, frame, worker, new))
         if frames != cold_frames[0] and cold_frames[0] is not None:
@@ -127,19 +161,30 @@ def lane(args, name, mode, env_extra, options, every_case):
 
     cold_frames = [None]
     _, _, cold_frames[0] = step("cold", "some")
-    if not os.path.exists(os.path.join(sysdir, LIST)):
+    if listed(os.path.join(sysdir, FILE)) == 0:
         errors.append("cold: no list written")
-    step("warm", 0, lambda: os.remove(os.path.join(sysdir, CACHE)))
+    if glob_old(sysdir):
+        errors.append("cold: the files of before written")
+    step("warm", 0, lambda: drop_cache(sysdir))
     if not every_case:
         return lines, errors
+    # the warm session wrote its cache; the next leaves the file alone
+    path = os.path.join(sysdir, FILE)
+    stamp = (os.stat(path).st_mtime_ns, os.stat(path).st_size)
     step("warm-cache", 0)
-    step("foreign", 0, lambda: damage(os.path.join(sysdir, CACHE), "uuid"))
+    if (os.stat(path).st_mtime_ns, os.stat(path).st_size) != stamp:
+        errors.append("warm-cache: a session that built nothing new wrote the file")
+    step("foreign", 0, lambda: damage(sysdir, "uuid"))
     for how in ("flip", "cut"):
         tag = "damaged" if how == "flip" else "cut"
-        step(tag, "some", lambda h=how: (damage(os.path.join(sysdir, LIST), h),
-                                     os.remove(os.path.join(sysdir, CACHE))))
-        step(tag + "-next", 0, lambda: os.remove(os.path.join(sysdir, CACHE)))
+        step(tag, "some", lambda h=how: (drop_cache(sysdir), damage(sysdir, h)))
+        step(tag + "-next", 0, lambda: drop_cache(sysdir))
     return lines, errors
+
+
+def glob_old(sysdir):
+    return [p for p in (os.path.join(sysdir, "ParallelN64", OLD_CACHE), os.path.join(sysdir, "ParallelN64", OLD_LIST),
+                        os.path.join(sysdir, OLD_CACHE), os.path.join(sysdir, OLD_LIST)) if os.path.exists(p)]
 
 
 def shared(args, first, second):
@@ -153,7 +198,7 @@ def shared(args, first, second):
         os.makedirs(d)
     a_frame, _, a_frames = run(args, regress.fetch(args.roms, second), alone, "alone", {}, [])
     run(args, regress.fetch(args.roms, first), both, "first", {}, [])
-    os.remove(os.path.join(both, CACHE))
+    drop_cache(both)
     b_frame, b_worker, b_frames = run(args, regress.fetch(args.roms, second), both, "second", {}, [])
     line = "  %s after %s: %d on the frame's threads (%d alone), %d on the worker" % (
         second, first, b_frame, a_frame, b_worker)
@@ -266,23 +311,33 @@ def as_frontend(args):
 
 
 def moved_over(args):
-    """Files an earlier build left in the system folder itself are moved
-    into ParallelN64 and used: the session builds none on the frame's
+    """The two files before the one: a list an earlier build left in the
+    system folder itself, and the driver's cache in ParallelN64, are read
+    into the file and removed: the session builds none on the frame's
     threads that the list held, and leaves nothing behind."""
     rom = regress.fetch(args.roms, FULL_ROM)
     sysdir = os.path.abspath(os.path.join(args.out, "moved"))
     shutil.rmtree(sysdir, ignore_errors=True)
     os.makedirs(sysdir)
     run(args, rom, sysdir, "cold", {}, [])
-    os.remove(os.path.join(sysdir, CACHE))
-    old = os.path.join(sysdir, os.path.basename(LIST))
-    os.rename(os.path.join(sysdir, LIST), old)
-    count = listed(old)
+    path = os.path.join(sysdir, FILE)
+    with open(path, "rb") as f:
+        data = f.read()
+    h = header(data)
+    records = data[HEAD:HEAD + h[2] * h[3]]
+    old = os.path.join(sysdir, OLD_LIST)
+    with open(old, "wb") as f:
+        f.write(b"GRPIPELS" + struct.pack("=4I", 1, h[2], h[3], zlib.crc32(records)) + records)
+    old_cache = os.path.join(sysdir, "ParallelN64", OLD_CACHE)
+    with open(old_cache, "wb") as f:
+        f.write(data[HEAD + h[2] * h[3]:])
+    os.remove(path)
+    count = listed_old(old)
     frame, worker, _ = run(args, rom, sysdir, "moved", {}, [])
-    new = listed(os.path.join(sysdir, LIST)) - count
+    new = listed(path) - count
     errors = []
-    if os.path.exists(old):
-        errors.append("the list is still in the system folder")
+    if glob_old(sysdir):
+        errors.append("the files of before are still there: %s" % glob_old(sysdir))
     if count == 0 or new < 0:
         errors.append("the list was not taken (%d records before, %d more after)" % (count, new))
     if frame > max(new, 0):

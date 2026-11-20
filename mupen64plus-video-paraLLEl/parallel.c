@@ -237,15 +237,13 @@ static void build_pipelines_ahead(void)
 static void pipeline_files_load(void)
 {
 	const char *dir = NULL;
-	void *blob;
-	size_t size;
 	if (!environ_cb(RETRO_ENVIRONMENT_GET_SYSTEM_DIRECTORY, &dir))
 		dir = NULL;
-	rdp_pipeline_files_load(&pipeline_files, dir, &blob, &size);
-	/* (one the device does not take is replaced by an empty one) */
+	rdp_pipeline_files_load(&pipeline_files, dir);
+	/* lent from the file (one the device does not take is replaced by an
+	 * empty one) */
 	granite_pipeline_cache_init(device.device, device.table, device.gpu_props.pipelineCacheUUID,
-			(const uint8_t *)blob, size, &device.pipeline_cache);
-	free(blob);
+			(const uint8_t *)pipeline_files.cache, pipeline_files.cache_size, &device.pipeline_cache);
 }
 
 /* Once no thread builds pipelines any more and the device is still there */

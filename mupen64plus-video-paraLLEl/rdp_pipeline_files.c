@@ -48,70 +48,194 @@ bool rdp_pipeline_file_path(const char *system_dir, char *s, size_t len, const c
 	return true;
 }
 
-static bool path_of(const rdp_pipeline_files_t *f, char *s, size_t len, const char *name)
-{
-	return rdp_pipeline_file_path(f->system_dir, s, len, name);
-}
-
 void rdp_pipeline_files_free(rdp_pipeline_files_t *f)
 {
-	free(f->list);
+	if (f->file)
+		filestream_close(f->file);
+	free(f->copy);
+	free(f->before_list);
+	free(f->before_cache);
+	f->file = NULL;
+	f->copy = f->before_list = f->before_cache = NULL;
 	f->list = NULL;
 	f->list_count = 0;
+	f->cache = NULL;
+	f->cache_size = 0;
+	f->before = false;
 }
 
-void rdp_pipeline_files_load(rdp_pipeline_files_t *f, const char *system_dir, void **cache, size_t *cache_size)
+/* no whole file is larger: the most records, and a cache past any a
+ * driver writes */
+#define RDP_PIPELINE_MAX_FILE ((int64_t)RDP_PIPELINE_HEAD + (int64_t)PIPELINE_RECORD_LIST_MAX * \
+		(int64_t)sizeof(pipeline_record_t) + 256 * 1024 * 1024)
+
+/* The file's list and cache lent where it is whole */
+static bool open_file(rdp_pipeline_files_t *f)
+{
+	const uint8_t *data = NULL;
+	int64_t size = 0;
+	uint32_t h[6];
+
+	/* one open; the file lent where it can be mapped, read once where not */
+	if (!(f->file = filestream_open(f->path, RETRO_VFS_FILE_ACCESS_READ, RETRO_VFS_FILE_ACCESS_HINT_FREQUENT_ACCESS)))
+		return false;
+	data = filestream_get_mapped_ptr(f->file, &size);
+	if (!data && (size = filestream_get_size(f->file)) > 0 && size <= RDP_PIPELINE_MAX_FILE
+			&& (f->copy = malloc((size_t)size))
+			&& filestream_read(f->file, f->copy, size) == size)
+		data = (const uint8_t *)f->copy;
+	if (!data || size < RDP_PIPELINE_HEAD)
+		return false;
+	memcpy(h, data, sizeof(h));
+	if (h[0] != RDP_PIPELINE_MAGIC || h[1] != RDP_PIPELINE_VERSION || h[2] != sizeof(pipeline_record_t)
+			|| h[3] > PIPELINE_RECORD_LIST_MAX
+			|| (uint64_t)RDP_PIPELINE_HEAD + (uint64_t)h[3] * sizeof(pipeline_record_t) + h[5] != (uint64_t)size)
+		return false;
+	if (h[5])
+	{
+		f->cache = data + RDP_PIPELINE_HEAD + (size_t)h[3] * sizeof(pipeline_record_t);
+		f->cache_size = h[5];
+	}
+	if (h[3])
+	{
+		const pipeline_record_t *list = (const pipeline_record_t *)(data + RDP_PIPELINE_HEAD);
+		if (encoding_crc32(0, (const uint8_t *)list, (size_t)h[3] * sizeof(*list)) == h[4]
+				&& pipeline_record_list_valid(list, h[3]))
+		{
+			f->list = list;
+			f->list_count = h[3];
+		}
+	}
+	return true;
+}
+
+/* the files of before, copies */
+static void open_before(rdp_pipeline_files_t *f, const char *system_dir)
 {
 	char path[PATH_MAX_LENGTH];
-	void *blob = NULL;
 	int64_t size = 0;
 
-	rdp_pipeline_files_free(f);
-	f->system_dir[0] = '\0';
-	if (system_dir)
-		strlcpy(f->system_dir, system_dir, sizeof(f->system_dir));
-	f->cache_crc = 0;
-	f->cache_size = -1;
-	*cache = NULL;
-	*cache_size = 0;
-
-	if (path_of(f, path, sizeof(path), RDP_PIPELINE_CACHE_FILE) && filestream_read_file(path, &blob, &size) && blob)
+	if (rdp_pipeline_file_path(system_dir, path, sizeof(path), RDP_PIPELINE_LIST_FILE) && filestream_exists(path))
 	{
-		f->cache_crc = encoding_crc32(0, (const uint8_t *)blob, (size_t)size);
-		f->cache_size = size;
-		*cache = blob;
-		*cache_size = (size_t)size;
+		f->before = true;
+		f->list = (const pipeline_record_t *)(f->before_list = pipeline_record_list_load(path, &f->list_count));
 	}
-	if (path_of(f, path, sizeof(path), RDP_PIPELINE_LIST_FILE))
-		f->list = pipeline_record_list_load(path, &f->list_count);
+	if (rdp_pipeline_file_path(system_dir, path, sizeof(path), RDP_PIPELINE_CACHE_FILE) && filestream_exists(path))
+	{
+		f->before = true;
+		if (filestream_read_file(path, &f->before_cache, &size) && f->before_cache && size > 0)
+		{
+			f->cache = f->before_cache;
+			f->cache_size = (size_t)size;
+		}
+	}
+}
+
+void rdp_pipeline_files_load(rdp_pipeline_files_t *f, const char *system_dir)
+{
+	rdp_pipeline_files_free(f);
+	f->path[0] = '\0';
+	if (!rdp_pipeline_file_path(system_dir, f->path, sizeof(f->path), RDP_PIPELINE_FILE))
+		return;
+	if (open_file(f))
+		return;
+	/* not there, or not whole */
+	rdp_pipeline_files_free(f);
+	open_before(f, system_dir);
+}
+
+/* the header, @count records, @size bytes of cache, each from where it
+ * is, replacing @path whole or not at all */
+static bool write_file(const char *path, const pipeline_record_t *list, size_t count,
+		const void *cache, size_t size)
+{
+	uint32_t h[6];
+	RFILE *file;
+	int ret;
+	bool ok;
+
+	h[0] = RDP_PIPELINE_MAGIC;
+	h[1] = RDP_PIPELINE_VERSION;
+	h[2] = sizeof(pipeline_record_t);
+	h[3] = (uint32_t)count;
+	h[4] = encoding_crc32(0, (const uint8_t *)list, count * sizeof(*list));
+	h[5] = (uint32_t)size;
+	if ((size_t)h[5] != size || !(file = filestream_open_atomic(path)))
+		return false;
+	ok = filestream_write(file, h, sizeof(h)) == (int64_t)sizeof(h)
+		&& (!count || filestream_write(file, list, (int64_t)(count * sizeof(*list))) == (int64_t)(count * sizeof(*list)))
+		&& (!size || filestream_write(file, cache, (int64_t)size) == (int64_t)size);
+	ret = filestream_commit_atomic(file, path, ok);
+	/* written but not renamed into place */
+	if (ret == 1)
+	{
+		char tmp[PATH_MAX_LENGTH];
+		if (filestream_atomic_temp_name(tmp, sizeof(tmp), path))
+			filestream_delete(tmp);
+	}
+	return ret == 0;
+}
+
+static void remove_before(const rdp_pipeline_files_t *f)
+{
+	char path[PATH_MAX_LENGTH];
+	char folder[PATH_MAX_LENGTH];
+	fill_pathname_basedir(folder, f->path, sizeof(folder));
+	fill_pathname_join_special(path, folder, RDP_PIPELINE_LIST_FILE, sizeof(path));
+	if (filestream_exists(path))
+		filestream_delete(path);
+	fill_pathname_join_special(path, folder, RDP_PIPELINE_CACHE_FILE, sizeof(path));
+	if (filestream_exists(path))
+		filestream_delete(path);
 }
 
 void rdp_pipeline_files_save(rdp_pipeline_files_t *f, const pipeline_record_t *built, size_t num_built,
 		const void *cache, size_t cache_size)
 {
-	char path[PATH_MAX_LENGTH];
 	pipeline_record_t *merged;
+	void *kept = NULL;
+	size_t count;
+	bool changed;
 
 	/* this session's first, so what is past the cap is the oldest */
 	merged = (pipeline_record_t *)malloc((num_built + f->list_count + 1) * sizeof(*merged));
-	if (merged)
+	if (!merged || !f->path[0])
 	{
-		size_t count;
-		if (num_built)
-			memcpy(merged, built, num_built * sizeof(*merged));
-		if (f->list_count)
-			memcpy(merged + num_built, f->list, f->list_count * sizeof(*merged));
-		count = pipeline_record_list_unique(merged, num_built + f->list_count, PIPELINE_RECORD_LIST_MAX);
-		if ((count != f->list_count || (count && memcmp(merged, f->list, count * sizeof(*merged))))
-				&& path_of(f, path, sizeof(path), RDP_PIPELINE_LIST_FILE))
-			pipeline_record_list_save(path, merged, count);
 		free(merged);
+		rdp_pipeline_files_free(f);
+		return;
 	}
+	if (num_built)
+		memcpy(merged, built, num_built * sizeof(*merged));
+	if (f->list_count)
+		memcpy(merged + num_built, f->list, f->list_count * sizeof(*merged));
+	count = pipeline_record_list_unique(merged, num_built + f->list_count, PIPELINE_RECORD_LIST_MAX);
+	changed = f->before || count != f->list_count || (count && memcmp(merged, f->list, count * sizeof(*merged)));
+	if (!cache || !cache_size)
+	{
+		/* none this time: the one loaded kept */
+		cache = f->cache;
+		cache_size = f->cache_size;
+	}
+	else if (cache_size != f->cache_size || memcmp(cache, f->cache, cache_size))
+		changed = true;
+	/* the file let go before it is written over; the cache kept read
+	 * out of it first */
+	if (changed && cache == f->cache && cache_size && (kept = malloc(cache_size)))
+	{
+		memcpy(kept, cache, cache_size);
+		cache = kept;
+	}
+	if (changed && (cache != f->cache || !cache_size))
+	{
+		const bool before = f->before;
+		if (f->file)
+			filestream_close(f->file);
+		f->file = NULL;
+		if (write_file(f->path, merged, count, cache, cache_size) && before)
+			remove_before(f);
+	}
+	free(kept);
+	free(merged);
 	rdp_pipeline_files_free(f);
-
-	if (cache && cache_size
-			&& ((int64_t)cache_size != f->cache_size
-				|| encoding_crc32(0, (const uint8_t *)cache, cache_size) != f->cache_crc)
-			&& path_of(f, path, sizeof(path), RDP_PIPELINE_CACHE_FILE))
-		filestream_write_file_atomic(path, cache, (int64_t)cache_size);
 }

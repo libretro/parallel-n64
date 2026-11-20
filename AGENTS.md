@@ -112,8 +112,7 @@ Know which layer you are changing. Having one does not give you the next.
 | Layer | Where | Scope |
 | --- | --- | --- |
 | Prebuilt SPIR-V | `shaders/slangmosh.h` (picked by `shader_bank.c`), `upscaler_shaders.h` | every device |
-| Recipes (what to build) | `<system>/ParallelN64/parallel_rdp_pipelines.bin`, `pipeline_record.h` | portable |
-| Driver blob | `<system>/ParallelN64/parallel_rdp_pipeline_cache.bin` | one device and driver |
+| Recipes (what to build) and the driver blob, one file (`<system>/ParallelN64/parallel_rdp.cache`) | `rdp_pipeline_files.c`, `pipeline_record.h` | portable / one device and driver |
 | Live `VkPipeline` | `Program::get_pipeline` | this device |
 | GL binaries / keys, one file a game (`shaders/GLideN64.<hash>.OpenGL.cache`) | `glsl_ShaderStorage.c` | GL vendor and version / portable |
 | Glide64 on Vulkan: combiners and the driver blob, one file a game (`shaders/glide64-vulkan_<crcs>.cache`) | `glitch64_vk_cache.c` | portable / one device and driver |
@@ -121,7 +120,7 @@ Know which layer you are changing. Having one does not give you the next.
 
 A cache file is written only where what it holds changed: a session that
 meets nothing new writes nothing (`tools/ci/vulkan_cache_files.py`,
-`tools/ci/gliden64_keys_journal.py`).
+`tools/ci/gliden64_keys_journal.py`, `tools/ci/parallel_rdp_pipelines.py`).
 
 ### parallel-RDP
 

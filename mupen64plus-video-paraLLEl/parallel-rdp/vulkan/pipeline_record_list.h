@@ -26,6 +26,9 @@ pipeline_record_t *pipeline_record_list_load(const char *path, size_t *count);
 bool pipeline_record_list_save(const char *path,
       const pipeline_record_t *records, size_t count);
 
+/* Whether each of @count records names something a device can build */
+bool pipeline_record_list_valid(const pipeline_record_t *records, size_t count);
+
 /* Drops the records of @records whose pipeline was already listed earlier
  * in it, keeping the first of each and the order, then drops from the end
  * what is past @cap. Returns how many are left. */

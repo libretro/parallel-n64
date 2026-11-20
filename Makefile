@@ -1974,11 +1974,13 @@ test_rdp_intake$(EXE_EXT): tools/test_rdp_intake.c $(VIDEODIR_PARALLEL)/rdp_inta
 	$(CC) -std=c89 -pedantic $(CHECK_CFLAGS) $(CHECK_SANITIZE) -I$(VIDEODIR_PARALLEL) -I$(LIBRETRO_COMM_DIR)/include \
 		tools/test_rdp_intake.c $(VIDEODIR_PARALLEL)/rdp_intake.c -o $@ $(CHECK_LDFLAGS) $(CHECK_SANITIZE)
 
-# The frontend's pipeline files (tools/test_rdp_pipeline_files.c)
+# The frontend's pipeline file (tools/test_rdp_pipeline_files.c), read
+# with the VFS's map and without
 test_rdp_pipeline_files$(EXE_EXT): tools/test_rdp_pipeline_files.c $(VIDEODIR_PARALLEL)/rdp_pipeline_files.c \
 		$(VIDEODIR_PARALLEL)/rdp_pipeline_files.h $(PIPELINE_RECORDS_TEST_SRC)
-	$(CC) -std=c89 -D_DEFAULT_SOURCE $(CHECK_CFLAGS) $(CHECK_SANITIZE) -I$(VIDEODIR_PARALLEL) \
-		-I$(VIDEODIR_PARALLEL)/parallel-rdp/vulkan -I$(LIBRETRO_COMM_DIR)/include $(filter %.c,$^) -o $@ \
+	$(CC) -std=c89 -D_DEFAULT_SOURCE -DHAVE_MMAP $(CHECK_CFLAGS) $(CHECK_SANITIZE) -I$(VIDEODIR_PARALLEL) \
+		-I$(VIDEODIR_PARALLEL)/parallel-rdp/vulkan -I$(LIBRETRO_COMM_DIR)/include \
+		$(filter-out %/rdp_pipeline_files.c,$(filter %.c,$^)) -o $@ \
 		$(CHECK_LDFLAGS) $(CHECK_SANITIZE)
 
 # What the frontend's temporal upscaler is given (tools/test_rdp_upscaler_policy.c)
