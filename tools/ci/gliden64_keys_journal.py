@@ -2,16 +2,18 @@
 """GLideN64: a crash does not lose the combiners a session met, and a
 session that meets nothing new writes nothing.
 
-Each game has one shader cache file: a header, then records. A key's is
-appended as the key is met (tools/test_combiner_journal.c covers writing
-them), a program's binary at a clean exit, only for those not stored yet
+Every game shares one shader cache file: a header, then records. A key's
+is appended as the key is met (tools/test_combiner_journal.c covers writing
+them), a program's binary at a clean exit behind a record of the options it
+was built with, only for those not stored yet
 (tools/test_gliden64_glsl_storage.c covers the file).
 
 Here a session starts on a file a crash left: keys the ROM never meets on
 its end, and a record cut short after them. It must build them, cut the
 torn record off, and keep them. Another session starts on the files of
-before (a keys journal and no cache file): their keys go into the new file
-and the old files go. A session after that changes nothing.
+before, two games' (one's keys journal, another's file of its own): their
+keys go into the shared file and the old files go. A session after that
+changes nothing.
 
   gliden64_keys_journal.py --core parallel_n64_libretro.so --host ./lrhost_gl [--roms krom-roms]
 """
@@ -38,8 +40,8 @@ def run(a, rom, sysdir, frames):
 
 
 def cache_file(sysdir):
-    found = glob.glob(os.path.join(sysdir, "ParallelN64", "shaders", "GLideN64.*.cache"))
-    return found[0] if found else None
+    path = os.path.join(sysdir, "ParallelN64", "shaders", "GLideN64.OpenGL.cache")
+    return path if os.path.exists(path) else None
 
 
 def records(path):
@@ -49,7 +51,7 @@ def records(path):
         b = f.read()
     if b[:4] != b"GLNC":
         raise RuntimeError("%s: not a cache file" % path)
-    p = 16
+    p = 12
     for _ in range(2):
         n, = struct.unpack_from("<I", b, p)
         p += 4 + n
@@ -61,6 +63,8 @@ def records(path):
         key, = struct.unpack_from("<Q", b, p + 2)
         if kind == b"K":
             keys.append(key)
+            p += 10
+        elif kind == b"O":
             p += 10
         elif kind == b"B":
             if p + 22 > len(b):
@@ -126,17 +130,25 @@ def main():
                 print("FAILED: a session that met nothing new changed the file")
                 failures += 1
 
-        # the files of before: read into the file once, then gone
-        base = path[:-len(".cache")]
+        # the files of before, two games': read into the file once, then
+        # gone
+        shaders = os.path.dirname(path)
         os.remove(path)
-        with open(base + ".keys.journal", "w") as f:
+        journal = os.path.join(shaders, "GLideN64.0000abcd.OpenGL.keys.journal")
+        with open(journal, "w") as f:
             f.write("gliden64-combiner-keys %08x\n" % KEYS_FORMAT_VERSION)
             for k in sorted(lost):
                 f.write("%016x 0\n" % k)
             f.write("0123456789ab")  # the line the crash cut short
+        own = os.path.join(shaders, "GLideN64.0000beef.OpenGL.cache")
+        with open(own, "wb") as f:
+            head = b"GLNC" + struct.pack("<3I", KEYS_FORMAT_VERSION, 0x3E, 0)
+            f.write(head + struct.pack("<I", 1) + b"x" + struct.pack("<I", 1) + b"y")
+            for k in sorted(met):
+                f.write(b"K\0" + struct.pack("<Q", k))
         run(a, rom, sysdir, 3)
-        if os.path.exists(base + ".keys.journal"):
-            print("FAILED: the journal of before is still there")
+        if os.path.exists(journal) or os.path.exists(own):
+            print("FAILED: the files of before are still there")
             failures += 1
         if not os.path.exists(path):
             print("FAILED: no cache file from the files of before")

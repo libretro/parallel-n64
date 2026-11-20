@@ -3,12 +3,13 @@
  * calls and stub combiner programs, with the real GL program behind it
  * (glsl_CombinerProgramImpl.c).
  *
- * One file a game, named from the cache folder, the game's hash and GL
- * or GL ES, in the shaders folder or beside it, cut to the room a path
- * has. Its header: the magic, the keys' and the programs' versions, the
- * options' bits, GL's renderer and version. Then records: a key's (its
- * kind, the hardware lighting bit, the key), a program's (its kind, the
- * bit, the key, inputs, format, length and binary).
+ * One file every game shares, named from the cache folder and GL or GL
+ * ES, in the shaders folder or beside it, cut to the room a path has. Its
+ * header: the magic, the keys' and the programs' versions, GL's renderer
+ * and version. Then records: a key's (its kind, the hardware lighting
+ * bit, the key), the options' (its kind, a byte, the options' bits where
+ * a key is), a program's (its kind, the bit, the key, inputs, format,
+ * length and binary), of the options before it.
  *
  * Loaded: opened once, read only, mapped where it can be and read where
  * not; the programs given to GL with their attributes, made programs and
@@ -16,12 +17,15 @@
  * after, once each, with the bit it was met with; a header of other
  * programs: no program read, the keys compiled, the file written again
  * with the header and the keys; another keys' version: nothing read; a
- * record cut short: what comes before read, the file cut to it; no file:
- * the files of before (programs, keys as text and the journal) read,
- * removed, and the file written. Nothing written where nothing changed.
+ * record cut short: what comes before read, the file cut to it; the
+ * programs of other options passed over, their keys compiled, and kept;
+ * no file: every game's files of before (a file a game, and programs,
+ * keys as text and a journal before those) read, removed once the file
+ * is written. Nothing written where nothing changed.
  *
  * The journal opened on the file. Closed: the programs not stored yet
- * appended in one write, each as GL wrote it, the ubershader's stand-ins
+ * appended in one write behind the options, each as GL wrote it, the
+ * ubershader's stand-ins
  * as the program they became, those with no binary left out; none where
  * the builder is obsolete, GL has no binaries or no context; the file
  * written again first where the journal lost a key the file has not.
@@ -47,6 +51,7 @@
 #include "Config.h"
 #include "PluginAPI.h"
 #include <file/file_path.h>
+#include <retro_dirent.h>
 #include <streams/file_stream.h>
 
 /* what is built with it allocates by test_malloc and test_realloc: the
@@ -64,7 +69,7 @@ static int fails;
 #define CHECK(c) do { if (!(c)) { printf("FAIL %s:%d: %s\n", __FILE__, __LINE__, #c); fails++; } } while (0)
 
 /* ---- files, in memory ---- */
-#define FILES 8
+#define FILES 64
 static struct { char path[1100]; char *data; int64_t size; } s_files[FILES];
 static int s_mkdirOk = 1;
 static int s_writes;    /* whole files written */
@@ -278,6 +283,42 @@ static void set_file(const char *_path, const void *_data, size_t _size)
 
 static char s_mkdirAsked[1100];
 bool path_mkdir(const char *_dir) { strcpy(s_mkdirAsked, _dir); return s_mkdirOk != 0; }
+size_t fill_pathname_join(char *_out, const char *_dir, const char *_name, size_t _size)
+{
+	static char joined[2300];
+	sprintf(joined, "%s/%s", _dir, _name);
+	strncpy(_out, joined, _size - 1);
+	_out[_size - 1] = '\0';
+	return strlen(_out);
+}
+
+/* a folder: the files in it, by name */
+static char s_dirPath[1100];
+static int s_dirAt, s_dirObj, s_dirOpens, s_dirCloses, s_dirFails;
+static const char *s_dirName;
+struct RDIR *retro_opendir(const char *_name)
+{
+	strcpy(s_dirPath, _name);
+	s_dirAt = -1;
+	s_dirOpens++;
+	return s_dirFails ? NULL : (struct RDIR *)&s_dirObj;
+}
+int retro_readdir(struct RDIR *_d)
+{
+	const size_t n = strlen(s_dirPath);
+	(void)_d;
+	for (++s_dirAt; s_dirAt < FILES; ++s_dirAt) {
+		const char *p = s_files[s_dirAt].path;
+		if (s_files[s_dirAt].data != NULL && strncmp(p, s_dirPath, n) == 0 && p[n] == '/' &&
+				strchr(p + n + 1, '/') == NULL) {
+			s_dirName = p + n + 1;
+			return 1;
+		}
+	}
+	return 0;
+}
+const char *retro_dirent_get_name(struct RDIR *_d) { (void)_d; return s_dirName; }
+void retro_closedir(struct RDIR *_d) { (void)_d; s_dirCloses++; }
 static const char *s_cacheDir = "/cache";
 void gli_api_user_cache_path(char *_strPath, size_t _size)
 {
@@ -492,9 +533,11 @@ static void reset_combiners(void)
 static gli_gl_info s_info;
 static gli_gl_cache1 s_cache;
 
-/* named by the game's hash, which test_gliden64_std_hash holds */
+/* the file every game shares; a game's files of before, named by its
+ * hash, which test_gliden64_std_hash holds */
 static char s_name[64];
 static char CACHE[96];
+static char OLDCACHE[96];
 static char KEYS[96];
 static char SHADERS[96];
 static char JOURNAL[96];
@@ -507,7 +550,8 @@ static size_t put(char *_out, const void *_v, size_t _n)
 	return _n;
 }
 
-static size_t header_of(char *_out, const char *_magic, u32 _keys, u32 _format, u32 _options,
+/* a header, with the options where a game's file of before had them */
+static size_t header_with(char *_out, const char *_magic, u32 _keys, u32 _format, const u32 *_options,
 	const char *_renderer, const char *_version)
 {
 	size_t at = 0;
@@ -515,7 +559,8 @@ static size_t header_of(char *_out, const char *_magic, u32 _keys, u32 _format, 
 	at += put(_out + at, _magic, 4);
 	at += put(_out + at, &_keys, 4);
 	at += put(_out + at, &_format, 4);
-	at += put(_out + at, &_options, 4);
+	if (_options != NULL)
+		at += put(_out + at, _options, 4);
 	len = (u32)strlen(_renderer);
 	at += put(_out + at, &len, 4);
 	at += put(_out + at, _renderer, len);
@@ -525,10 +570,32 @@ static size_t header_of(char *_out, const char *_magic, u32 _keys, u32 _format, 
 	return at;
 }
 
+static size_t header_of(char *_out, const char *_magic, u32 _keys, u32 _format,
+	const char *_renderer, const char *_version)
+{
+	return header_with(_out, _magic, _keys, _format, NULL, _renderer, _version);
+}
+
 /* this session's */
 static size_t header(char *_out)
 {
-	return header_of(_out, "GLNC", 5, 0x3E, 0x1234u, "Stub Renderer", "4.6 Stub");
+	return header_of(_out, "GLNC", 5, 0x3F, "Stub Renderer", "4.6 Stub");
+}
+
+/* a game's file of before's, of @_options */
+static size_t old_header(char *_out, u32 _options)
+{
+	return header_with(_out, "GLNC", 5, 0x3E, &_options, "Stub Renderer", "4.6 Stub");
+}
+
+/* the programs after it are of @_options */
+static size_t options_record(char *_out, u32 _options)
+{
+	const u64 o = _options;
+	_out[0] = 'O';
+	_out[1] = 0;
+	memcpy(_out + 2, &o, 8);
+	return 10;
 }
 
 static size_t key_record(char *_out, u64 _key)
@@ -588,7 +655,8 @@ static void paths(void)
 	int64_t size = 0;
 	strcpy(RSP.romname, "SUPER MARIO 64");
 	sprintf(s_name, "GLideN64.%x", (unsigned)gli_std_hash_string("SUPER MARIO 64"));
-	sprintf(CACHE, "/cache/shaders/%s.OpenGL.cache", s_name);
+	strcpy(CACHE, "/cache/shaders/GLideN64.OpenGL.cache");
+	sprintf(OLDCACHE, "/cache/shaders/%s.OpenGL.cache", s_name);
 	sprintf(KEYS, "/cache/shaders/%s.OpenGL.keys", s_name);
 	sprintf(SHADERS, "/cache/shaders/%s.OpenGL.shaders", s_name);
 	sprintf(JOURNAL, "/cache/shaders/%s.OpenGL.keys.journal", s_name);
@@ -614,14 +682,14 @@ static void paths(void)
 	s_info.isGLESX = 1;
 	drop_files();
 	load(true);
-	sprintf(want, "/cache/shaders/%s.GLES.cache", s_name);
+	strcpy(want, "/cache/shaders/GLideN64.GLES.cache");
 	CHECK(file_data(want, &size) != NULL);
 	s_info.isGLESX = 0;
 	/* the shaders folder not made: beside it */
 	s_mkdirOk = 0;
 	drop_files();
 	load(true);
-	sprintf(want, "/cache/%s.OpenGL.cache", s_name);
+	strcpy(want, "/cache/GLideN64.OpenGL.cache");
 	CHECK(file_data(want, &size) != NULL);
 	s_mkdirOk = 1;
 	/* cut to the room a path has */
@@ -634,7 +702,7 @@ static void paths(void)
 		load(true);
 		sprintf(want, "%s/shaders", longDir);
 		CHECK(strcmp(s_mkdirAsked, want) == 0);
-		sprintf(want, "%s/shaders/%s.OpenGL.cache", longDir, s_name);
+		sprintf(want, "%s/shaders/GLideN64.OpenGL.cache", longDir);
 		want[PLUGIN_PATH_SIZE - 1] = '\0';
 		CHECK(file_data(want, &size) != NULL);
 		CHECK(gli_glsl_open_journal() != NULL && strlen(s_journalPath) == PLUGIN_PATH_SIZE - 1);
@@ -642,7 +710,7 @@ static void paths(void)
 		/* one short of the room: whole; the room: cut by one */
 		{
 			static char fitDir[PLUGIN_PATH_SIZE];
-			const size_t rest = strlen("/shaders/") + strlen(s_name) + strlen(".OpenGL.cache");
+			const size_t rest = strlen("/shaders/GLideN64.OpenGL.cache");
 			int k;
 			for (k = 0; k < 2; ++k) {
 				const size_t dirLen = PLUGIN_PATH_SIZE - 1 - rest + (size_t)k;
@@ -652,7 +720,7 @@ static void paths(void)
 				s_cacheDir = fitDir;
 				drop_files();
 				load(true);
-				sprintf(want, "%s/shaders/%s.OpenGL.cache", fitDir, s_name);
+				sprintf(want, "%s/shaders/GLideN64.OpenGL.cache", fitDir);
 				want[PLUGIN_PATH_SIZE - 1] = '\0';
 				CHECK(file_data(want, &size) != NULL && strlen(want) == PLUGIN_PATH_SIZE - 1);
 				CHECK(want[PLUGIN_PATH_SIZE - 2] == (k == 0 ? 'e' : 'h'));
@@ -671,7 +739,8 @@ static void records(void)
 	size_t n = header(buf);
 	int64_t size = 0;
 	/* a key; a program, its key after; one GL will not link; a key met with
-	 * hardware lighting; a program again; a rect's program */
+	 * hardware lighting; a program again; a rect's program; these options' */
+	n += options_record(buf + n, 0x1234u);
 	n += key_record(buf + n, 0x21ULL);
 	n += program_record(buf + n, 0x22ULL, 1 << G_GCI_TEXEL0, 0x9001, 4, 0x40);
 	n += key_record(buf + n, 0x22ULL);
@@ -723,9 +792,11 @@ static void records(void)
 		w += key_record(want + w, HWL | 0x24ULL);
 		CHECK(file_is(CACHE, buf, n));
 		CHECK(s_opens == 1 && s_writes == 0 && s_rwOpens == 0);
-		/* closed: the compiled ones with nothing GL made of them left out */
+		/* closed: the compiled ones with nothing GL made of them left out,
+		 * behind the options */
 		close_storage(true);
 		CHECK(s_writes == 1);
+		w += options_record(want + w, 0x1234u);
 		w += program_record(want + w, 0x22ULL, 1 << G_GCI_TEXEL0, 0x8000 + 30, 2, (unsigned char)(30 * 16));
 		w += program_record(want + w, 0x10000000025ULL, 1 << G_GCI_SHADE, 0x8000 + 32, 2, (unsigned char)(32 * 16));
 		CHECK(file_is(CACHE, want, w) && s_appends == 1);
@@ -806,6 +877,7 @@ static void records(void)
 	/* programs stored highest key first: none stored again */
 	reset_combiners();
 	n = header(buf);
+	n += options_record(buf + n, 0x1234u);
 	n += program_record(buf + n, 0x50ULL, 0, 0x9001, 1, 0x40);
 	n += program_record(buf + n, 0x40ULL, 0, 0x9002, 1, 0x40);
 	n += program_record(buf + n, 0x30ULL, 0, 0x9003, 1, 0x40);
@@ -829,6 +901,7 @@ static void records(void)
 		static char more[512];
 		size_t m = n;
 		memcpy(more, buf, n);
+		m += options_record(more + m, 0x1234u);
 		m += program_record(more + m, 0x45ULL, 0, 0x8000 + 23, 2, (unsigned char)(23 * 16));
 		CHECK(s_appends == 1 && file_is(CACHE, more, m));
 	}
@@ -840,6 +913,7 @@ static void records(void)
 		static GLint lens[PROGS];
 		size_t m = header(many);
 		int k;
+		m += options_record(many + m, 0x1234u);
 		reset_combiners();
 		for (k = 0; k < 200; ++k)
 			m += program_record(many + m, 0x1000ULL + 200 - (u64)k, 0, 0x9001, 1, 0x40);
@@ -869,13 +943,13 @@ static void records(void)
 /* a header of other programs, of other keys, and none whole */
 static void headers(void)
 {
-	static const struct { const char *magic; u32 keys, format, options; const char *renderer, *version; } other[] = {
-		{ "GLNC", 5, 0x3D, 0x1234u, "Stub Renderer", "4.6 Stub" },
-		{ "GLNC", 5, 0x3E, 0x1235u, "Stub Renderer", "4.6 Stub" },
-		{ "GLNC", 5, 0x3E, 0x1234u, "Stub Rendered", "4.6 Stub" },
-		{ "GLNC", 5, 0x3E, 0x1234u, "Stub Renderer", "4.5 Stub" },
-		{ "GLNC", 5, 0x3E, 0x1234u, "Stub Renderer!", "4.6 Stub" },
-		{ "GLNC", 5, 0x3E, 0x1234u, "Stub Renderer", "4.6 Stu" },
+	static const struct { const char *magic; u32 keys, format; const char *renderer, *version; } other[] = {
+		{ "GLNC", 5, 0x3D, "Stub Renderer", "4.6 Stub" },
+		{ "GLNC", 5, 0x40, "Stub Renderer", "4.6 Stub" },
+		{ "GLNC", 5, 0x3F, "Stub Rendered", "4.6 Stub" },
+		{ "GLNC", 5, 0x3F, "Stub Renderer", "4.5 Stub" },
+		{ "GLNC", 5, 0x3F, "Stub Renderer!", "4.6 Stub" },
+		{ "GLNC", 5, 0x3F, "Stub Renderer", "4.6 Stu" },
 	};
 	static char buf[512], want[512];
 	size_t n, w;
@@ -885,8 +959,9 @@ static void headers(void)
 	for (i = 0; i < (int)(sizeof(other) / sizeof(other[0])); ++i) {
 		drop_files();
 		reset_combiners();
-		n = header_of(buf, other[i].magic, other[i].keys, other[i].format, other[i].options,
+		n = header_of(buf, other[i].magic, other[i].keys, other[i].format,
 			other[i].renderer, other[i].version);
+		n += options_record(buf + n, 0x1234u);
 		n += program_record(buf + n, HWL | 0x32ULL, 0, 0x9001, 1, 0x40);
 		n += key_record(buf + n, 0x31ULL);
 		set_file(CACHE, buf, n);
@@ -918,7 +993,7 @@ static void headers(void)
 	for (i = 0; i < 2; ++i) {
 		drop_files();
 		reset_combiners();
-		n = header_of(buf, i == 0 ? "GLNB" : "GLNC", i == 0 ? 5 : 4, 0x3E, 0x1234u, "Stub Renderer", "4.6 Stub");
+		n = header_of(buf, i == 0 ? "GLNB" : "GLNC", i == 0 ? 5 : 4, 0x3F, "Stub Renderer", "4.6 Stub");
 		n += key_record(buf + n, 0x31ULL);
 		set_file(CACHE, buf, n);
 		load(true);
@@ -927,7 +1002,7 @@ static void headers(void)
 	/* not written: the keys still compiled */
 	drop_files();
 	reset_combiners();
-	n = header_of(buf, "GLNC", 5, 0x3D, 0x1234u, "Stub Renderer", "4.6 Stub");
+	n = header_of(buf, "GLNC", 5, 0x3D, "Stub Renderer", "4.6 Stub");
 	n += key_record(buf + n, 0x31ULL);
 	set_file(CACHE, buf, n);
 	s_failWrite = ".cache";
@@ -978,6 +1053,19 @@ static void torn(void)
 			CHECK(memcmp(file_data(CACHE, &size), buf, whole[part]) == 0);
 			close_storage(true);
 		}
+	/* cut short after the options: they kept */
+	{
+		size_t o = whole[1];
+		static char opt[512];
+		memcpy(opt, buf, whole[1]);
+		o += options_record(opt + o, 0x1234u);
+		drop_files();
+		reset_combiners();
+		set_file(CACHE, opt, o + 5);
+		load(true);
+		CHECK(file_data(CACHE, &size) != NULL && size == (int64_t)o);
+		close_storage(true);
+	}
 	/* a record of no kind: read to it */
 	drop_files();
 	reset_combiners();
@@ -1078,7 +1166,7 @@ static void before(void)
 	CHECK(s_writes == 0);
 	{
 		int64_t size = 0;
-		CHECK(file_data(CACHE, &size) != NULL && size == (int64_t)(w + 2 + HEAD_SIZE + 3) && s_appends == 1);
+		CHECK(file_data(CACHE, &size) != NULL && size == (int64_t)(w + 10 + 2 + HEAD_SIZE + 3) && s_appends == 1);
 	}
 	s_binLen[50] = 0;
 
@@ -1231,6 +1319,164 @@ static void before(void)
 	drop_files();
 }
 
+/* Two games of other settings: each loads the programs of its options,
+ * compiles the keys of the others', stores its own behind its options,
+ * and keeps the others' */
+static void sections(void)
+{
+	static char buf[512], want[512];
+	size_t n, w;
+	u32 put0;
+	gli_ctx.shaderProgramBinary = 1;
+	drop_files();
+	reset_combiners();
+	n = header(buf);
+	n += key_record(buf + n, 0x71ULL);
+	n += options_record(buf + n, 0x1234u);
+	n += program_record(buf + n, 0x72ULL, 0, 0x9001, 2, 0x40);
+	n += options_record(buf + n, 0x9999u);
+	n += program_record(buf + n, 0x73ULL, 0, 0x9002, 3, 0x50);
+	set_file(CACHE, buf, n);
+	s_nextProgram = 70;
+	s_binLen[70] = 2;
+	reset();
+	load(true);
+	CHECK(strstr(s_log, "binary 70 9001 2 40;") != NULL && strstr(s_log, "9002") == NULL);
+	CHECK(s_putCount == 3 && s_compiledCount == 2 && s_compiled[0].base.key == 0x71ULL && s_compiled[1].base.key == 0x73ULL);
+	CHECK(s_writes == 0 && s_rwOpens == 0 && file_is(CACHE, buf, n));
+	/* closed: the other options' key's program stored behind these, the
+	 * file kept */
+	s_binLen[60] = 4;
+	s_compiled[1].real = gli_glsl_cprog_new(0x73ULL, 60, &s_cache, 0, &s_info);
+	close_storage(true);
+	s_compiled[1].real->ops->free_program((gli_cprog *)s_compiled[1].real);
+	s_compiled[1].real = NULL;
+	memcpy(want, buf, n);
+	w = n + options_record(want + n, 0x1234u);
+	w += program_record(want + w, 0x73ULL, 0, 0x8000 + 60, 4, (unsigned char)(60 * 16));
+	CHECK(s_writes == 0 && s_appends == 1 && file_is(CACHE, want, w));
+	s_binLen[60] = 0;
+
+	/* the other game: its options' programs, both sections kept */
+	reset_combiners();
+	s_options = 0x9999u;
+	s_nextProgram = 80;
+	reset();
+	load(true);
+	CHECK(strstr(s_log, "binary 80 9002 3 50;") != NULL && strstr(s_log, "9001") == NULL &&
+		strstr(s_log, "8000") == NULL);
+	put0 = s_putCount;
+	CHECK(put0 == 3 && s_compiledCount == 2 && s_compiled[0].base.key == 0x71ULL && s_compiled[1].base.key == 0x72ULL);
+	CHECK(s_writes == 0 && file_is(CACHE, want, w));
+	close_storage(true);
+	s_options = 0x1234u;
+	reset_combiners();
+	drop_files();
+}
+
+/* Every game's file of before: its keys, and its programs where they
+ * were built by this GL with these options; those of GL ES, of another
+ * name and the shared file's left alone; removed once the file is
+ * written, kept where it is not */
+static void games(void)
+{
+	static char a[256], b[256], want[256];
+	static char other[96], gles[96];
+	size_t na, nb, w;
+	gli_ctx.shaderProgramBinary = 1;
+	sprintf(other, "/cache/shaders/GLideN64.deadbeef.OpenGL.cache");
+	sprintf(gles, "/cache/shaders/%s.GLES.cache", s_name);
+	na = old_header(a, 0x1234u);
+	na += key_record(a + na, 0x81ULL);
+	na += program_record(a + na, 0x82ULL, 0, 0x9001, 2, 0x40);
+	nb = old_header(b, 0x5555u);
+	nb += key_record(b + nb, 0x81ULL);
+	nb += program_record(b + nb, 0x83ULL, 0, 0x9002, 2, 0x50);
+
+	drop_files();
+	reset_combiners();
+	set_file(OLDCACHE, a, na);
+	set_file(other, b, nb);
+	set_file(gles, a, na);
+	set_file("/cache/shaders/GLideN64.Vulkan.cache", "v", 1);
+	set_file("/cache/shaders/GLideN64..OpenGL.cache", "e", 1);
+	set_file("/cache/shaders/other.txt", "t", 1);
+	set_file("/cache/shaders/GLideN64.dead.OpenGL.cachx", "x", 1);
+	set_file("/cache/shaders/GLideN64.dead.OpenGL.bin", "b", 1);
+	s_nextProgram = 90;
+	s_dirOpens = s_dirCloses = 0;
+	reset();
+	load(true);
+	CHECK(s_dirOpens == 1 && s_dirCloses == 1);
+	CHECK(strstr(s_log, "binary 90 9001 2 40;") != NULL && strstr(s_log, "9002") == NULL);
+	CHECK(s_putCount == 3 && s_compiledCount == 2);
+	w = header(want);
+	w += key_record(want + w, 0x81ULL);
+	w += key_record(want + w, 0x82ULL);
+	w += key_record(want + w, 0x83ULL);
+	CHECK(file_is(CACHE, want, w));
+	CHECK(!filestream_exists(OLDCACHE) && !filestream_exists(other));
+	CHECK(filestream_exists(gles) && filestream_exists("/cache/shaders/GLideN64.Vulkan.cache") &&
+		filestream_exists("/cache/shaders/GLideN64..OpenGL.cache") && filestream_exists("/cache/shaders/other.txt"));
+	CHECK(filestream_exists("/cache/shaders/GLideN64.dead.OpenGL.cachx") &&
+		filestream_exists("/cache/shaders/GLideN64.dead.OpenGL.bin"));
+	close_storage(true);
+
+	/* more games than the first room for their names: each read, each
+	 * removed */
+	{
+		char name[96];
+		int k;
+		drop_files();
+		reset_combiners();
+		for (k = 0; k < 20; ++k) {
+			char one[256];
+			size_t m = old_header(one, 0x5555u);
+			m += key_record(one + m, 0x100ULL + (u64)k);
+			sprintf(name, "/cache/shaders/GLideN64.%04x.OpenGL.cache", k);
+			set_file(name, one, m);
+		}
+		load(true);
+		CHECK(s_compiledCount == 20);
+		for (k = 0; k < 20; ++k) {
+			sprintf(name, "/cache/shaders/GLideN64.%04x.OpenGL.cache", k);
+			CHECK(!filestream_exists(name));
+		}
+		close_storage(true);
+	}
+	/* the folder not to be listed: none read, the file made */
+	drop_files();
+	reset_combiners();
+	set_file(OLDCACHE, a, na);
+	s_dirFails = 1;
+	load(true);
+	s_dirFails = 0;
+	CHECK(s_compiledCount == 0 && filestream_exists(OLDCACHE) && filestream_exists(CACHE));
+	close_storage(true);
+
+	/* not written: they stay */
+	drop_files();
+	reset_combiners();
+	set_file(OLDCACHE, a, na);
+	s_failWrite = "GLideN64.OpenGL.cache";
+	load(true);
+	s_failWrite = NULL;
+	CHECK(filestream_exists(OLDCACHE) && !filestream_exists(CACHE));
+	close_storage(true);
+	CHECK(s_appends == 0 && !filestream_exists(CACHE));
+	/* one cut short, or not one: its whole records, or nothing */
+	drop_files();
+	reset_combiners();
+	set_file(OLDCACHE, a, na - 1);
+	set_file(other, "GLNB", 4);
+	load(true);
+	CHECK(s_compiledCount == 1 && s_compiled[0].base.key == 0x81ULL);
+	CHECK(!filestream_exists(OLDCACHE) && !filestream_exists(other));
+	close_storage(true);
+	reset_combiners();
+	drop_files();
+}
+
 /* a key's program in the table, as compiled */
 /* a key's GL program in the table, with a binary */
 static void compile_one(u64 _key)
@@ -1246,14 +1492,14 @@ static void room(void)
 	static char renderer[1024], want[1100];
 	size_t w;
 	int64_t size = 0;
-	const size_t most = 1024 - 4 - 5 * 4 - 8;
+	const size_t most = 1024 - 4 - 4 * 4 - 8;
 	memset(renderer, 'r', most);
 	renderer[most] = '\0';
 	s_renderer = renderer;
 	drop_files();
 	reset_combiners();
 	load(true);
-	w = header_of(want, "GLNC", 5, 0x3E, 0x1234u, renderer, "4.6 Stub");
+	w = header_of(want, "GLNC", 5, 0x3F, renderer, "4.6 Stub");
 	CHECK(w == 1024 && file_is(CACHE, want, w));
 	close_storage(true);
 	renderer[most] = 'r';
@@ -1266,13 +1512,13 @@ static void room(void)
 	 * file of before left */
 	drop_files();
 	reset_combiners();
-	set_file(CACHE, want, header_of(want, "GLNC", 5, 0x3E, 0x1234u, "Stub Renderer", "4.6 Stub"));
+	set_file(CACHE, want, header_of(want, "GLNC", 5, 0x3F, "Stub Renderer", "4.6 Stub"));
 	load(true);
 	compile_one(0x61ULL);
 	s_whole = 0;
 	close_storage(false);
 	s_whole = 1;
-	CHECK(file_is(CACHE, want, header_of(want, "GLNC", 5, 0x3E, 0x1234u, "Stub Renderer", "4.6 Stub")));
+	CHECK(file_is(CACHE, want, header_of(want, "GLNC", 5, 0x3F, "Stub Renderer", "4.6 Stub")));
 	s_renderer = "Stub Renderer";
 	/* nor memory for it */
 	for (w = 2; w <= 3; ++w) {
@@ -1304,7 +1550,7 @@ static void room(void)
 	s_renderer = "Stub Renderer";
 	s_version = "4.6 Stub";
 	{
-		size_t e = header_of(want, "GLNC", 5, 0x3E, 0x1234u, "", "");
+		size_t e = header_of(want, "GLNC", 5, 0x3F, "", "");
 		CHECK(file_is(CACHE, want, e));
 	}
 	close_storage(true);
@@ -1355,7 +1601,7 @@ static void free_stand_in(void)
 	s_standIn[0].real->ops->free_program((gli_cprog *)s_standIn[0].real);
 }
 
-/* the programs' records it appends, by key: key 4 as its stand-in's
+/* the programs' records it appends, behind the options, by key: key 4 as its stand-in's
  * program 13 (2 bytes), key 3 (program 12, 3 bytes), key 1 (program 10,
  * 5 bytes) */
 static size_t stored(char *_out, int _without)
@@ -1363,7 +1609,7 @@ static size_t stored(char *_out, int _without)
 	static const u64 keys[3] = { 0x4ULL, 0x10000000003ULL, HWL | 0x1ULL };
 	static const GLuint progs[3] = { 13, 12, 10 };
 	static const int inputs[3] = { 1 << G_GCI_TEXEL1, 1 << G_GCI_SHADE, 1 << G_GCI_TEXEL0 };
-	size_t n = 0;
+	size_t n = options_record(_out, 0x1234u);
 	int i;
 	for (i = 0; i < 3; ++i)
 		if (progs[i] != (GLuint)_without)
@@ -1609,6 +1855,8 @@ int main(void)
 	headers();
 	torn();
 	before();
+	sections();
+	games();
 	room();
 	closes();
 	if (fails) {

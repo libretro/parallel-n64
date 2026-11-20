@@ -1,17 +1,20 @@
-/* GLideN64's GL shader storage: the combiner keys a game used and the
- * programs GL built for them, in GL's own binary form, read back at the
- * next start so nothing is compiled while it plays. C89.
+/* GLideN64's GL shader storage: the combiner keys met and the programs GL
+ * built for them, in GL's own binary form, read back at the next start so
+ * nothing is compiled while a game plays. C89.
  *
- * One file a game, of records appended to: a key as it is met (written by
- * the key journal, so a crash loses none), a key's program when the
- * session ends, only those not stored already. A header says what the
- * programs were built for; when that changes, the file is written again
- * with the keys alone. The files of before (.keys, .shaders and the
- * journal) are read once into it and removed. */
+ * One file every game shares (GLideN64.OpenGL.cache, GLideN64.GLES.cache):
+ * the N64's combiners are fixed function, a key the same whatever the
+ * game. Records appended to: a key as it is met (written by the key
+ * journal, so a crash loses none), the programs not stored already when a
+ * session ends, behind a record of the options they were built with: a
+ * game whose settings differ loads none of another's programs and keeps
+ * them all the same. A header says which GL built the programs; when that
+ * changes, the file is written again with the keys alone. The files of
+ * before, a file a game (GLideN64.<name>.OpenGL.cache) and before those
+ * .keys, .shaders and a journal, are read once into it and removed. */
 #include <stdlib.h>
 #include <string.h>
 #include <Types.h>
-#include <RSP.h>
 #include <GBI.h>
 #include <PluginAPI.h>
 #include <CombinerKey.h>
@@ -19,6 +22,7 @@
 #include <Config.h>
 #include <gli_combiner.h>
 #include <file/file_path.h>
+#include <retro_dirent.h>
 #include <streams/file_stream.h>
 #include <Graphics/gli_context.h>
 #include <Graphics/CombinerStages.h>
@@ -26,30 +30,20 @@
 #include "glsl_Utils.h"
 #include "glsl_CombinerProgramImpl.h"
 #include "glsl_Programs.h"
-#include "glsl_StdHash.h"
 
 #define SHADER_STORAGE_FOLDER_NAME "shaders"
-#define FORMAT_VERSION 0x3EU
+#define FORMAT_VERSION 0x3FU
+/* a game's file of before, whose header named the options too */
+#define OLD_FORMAT_VERSION 0x3EU
 #define KEYS_FORMAT_VERSION 0x05U
 #define CACHE_MAGIC "GLNC"
 /* a program's record: its kind and four bits, then its stored form */
 #define RECORD_PROGRAM 'B'
-
-/* @_value in lower case hex written at @_out; how many characters */
-static size_t put_hex(char *_out, u64 _value)
-{
-	static const char digits[] = "0123456789abcdef";
-	char buf[16];
-	int n = 0;
-	size_t len = 0;
-	do {
-		buf[n++] = digits[_value & 0xF];
-		_value >>= 4;
-	} while (_value != 0);
-	while (n > 0)
-		_out[len++] = buf[--n];
-	return len;
-}
+/* the options the program records after it were built with: its kind, a
+ * byte, then the options where a key would be */
+#define RECORD_OPTIONS 'O'
+/* before any options record: none */
+#define NO_OPTIONS (~(u64)0)
 
 /* One hex number, with or without 0x, after any white space */
 static int parse_hex(const char **_p, const char *_end, u64 *_value)
@@ -118,31 +112,38 @@ static size_t put_str(char *_path, size_t _len, size_t _size, const char *_s, si
 	return _len + _n;
 }
 
-/* the storage file for this game, of @_ext, into @_path of @_size */
-static void storage_path(const gli_gl_info *_info, const char *_ext, char *_path, size_t _size)
+/* the shaders folder, made, or the cache folder where it cannot be,
+ * into @_path of @_size; its length */
+static size_t storage_folder(char *_path, size_t _size)
 {
 	static const char folderName[] = "/" SHADER_STORAGE_FOLDER_NAME;
-	static const char prefix[] = "/GLideN64.";
 	char folder[PLUGIN_PATH_SIZE];
-	char hex[16];
-	const char *api = _info->isGLESX ? ".GLES." : ".OpenGL.";
-	size_t folderLen, len;
+	size_t len;
 
 	gli_api_user_cache_path(folder, sizeof(folder));
-	folderLen = strlen(folder);
-
-	len = put_str(_path, 0, _size, folder, folderLen);
+	len = put_str(_path, 0, _size, folder, strlen(folder));
 	/* the folder made, or the files beside it, written over */
 	put_str(_path, len, _size, folderName, sizeof(folderName) - 1);
 	if (path_mkdir(_path))
 		len = put_str(_path, len, _size, folderName, sizeof(folderName) - 1);
-
-	len = put_str(_path, len, _size, prefix, sizeof(prefix) - 1);
-	len = put_str(_path, len, _size, hex, put_hex(hex, gli_std_hash_string(RSP.romname)));
-	len = put_str(_path, len, _size, api, strlen(api));
-	put_str(_path, len, _size, _ext, strlen(_ext));
+	return len;
 }
 
+static const char *api_name(const gli_gl_info *_info)
+{
+	return _info->isGLESX ? "GLES." : "OpenGL.";
+}
+
+/* the file every game shares, into @_path of @_size */
+static void storage_path(const gli_gl_info *_info, char *_path, size_t _size)
+{
+	static const char prefix[] = "/GLideN64.";
+	const char *api = api_name(_info);
+	size_t len = storage_folder(_path, _size);
+	len = put_str(_path, len, _size, prefix, sizeof(prefix) - 1);
+	len = put_str(_path, len, _size, api, strlen(api));
+	put_str(_path, len, _size, "cache", 5);
+}
 
 /* the programs by key, lowest first, from a buffer taken here; NULL when
  * there are none or no memory */
@@ -262,7 +263,7 @@ static void old_shaders(const char *_path, const gli_gl_info *_info, struct gli_
 	}
 	in.p = (const char *)file;
 	in.end = in.p + (size_t)size;
-	if (get(&in, &version, sizeof(version)) && version == FORMAT_VERSION &&
+	if (get(&in, &version, sizeof(version)) && version == OLD_FORMAT_VERSION &&
 			get(&in, &optionsSet, sizeof(optionsSet)) && optionsSet == gli_combiner_options_bits() &&
 			take_string(&in, (const char *)glGetString(GL_RENDERER)) &&
 			take_string(&in, (const char *)glGetString(GL_VERSION)) && get(&in, &len, sizeof(len)))
@@ -292,22 +293,21 @@ static void old_journal_key(void *_ctx, uint64_t _key, unsigned _hwl)
 		compile_key(combiners, _key, _hwl);
 }
 
-/* what the files of before held, into @_combiners, and the files gone */
-static void old_files(const gli_gl_info *_info, struct gli_gl_cache1 *_useProgram,
+/* what a game's three files of before held (@_base with shaders, keys
+ * and keys.journal after it), into @_combiners */
+static void old_files(const char *_base, const gli_gl_info *_info, struct gli_gl_cache1 *_useProgram,
 	gli_combiner_table *_combiners)
 {
 	char shaders[PLUGIN_PATH_SIZE], keys[PLUGIN_PATH_SIZE], journal[PLUGIN_PATH_SIZE];
-	storage_path(_info, "shaders", shaders, sizeof(shaders));
-	storage_path(_info, "keys", keys, sizeof(keys));
-	storage_path(_info, "keys.journal", journal, sizeof(journal));
-	if (!filestream_exists(shaders) && !filestream_exists(keys) && !filestream_exists(journal))
-		return;
+	size_t len = put_str(shaders, 0, sizeof(shaders), _base, strlen(_base));
+	put_str(shaders, len, sizeof(shaders), "shaders", 7);
+	len = put_str(keys, 0, sizeof(keys), _base, strlen(_base));
+	put_str(keys, len, sizeof(keys), "keys", 4);
+	len = put_str(journal, 0, sizeof(journal), _base, strlen(_base));
+	put_str(journal, len, sizeof(journal), "keys.journal", 12);
 	old_shaders(shaders, _info, _useProgram, _combiners);
 	old_keys(keys, _combiners);
 	combiner_journal_read(journal, KEYS_FORMAT_VERSION, old_journal_key, _combiners);
-	filestream_delete(shaders);
-	filestream_delete(keys);
-	filestream_delete(journal);
 }
 
 /*---------------The file-------------*/
@@ -319,6 +319,9 @@ static struct
 	char path[PLUGIN_PATH_SIZE];
 	char header[1024];
 	size_t headerLen;
+	/* a game's file of before's, for this GL and these options */
+	char oldHeader[1024];
+	size_t oldHeaderLen;
 	u64 *keys;
 	u32 keyCount;
 	u64 *programs;
@@ -347,11 +350,12 @@ static void forget(void)
 	s_store.keyCount = s_store.programCount = 0;
 }
 
-/* The header: what the programs are for, into s_store; 0 long when it
- * does not fit */
-static void make_header(void)
+/* A header: which GL the programs are for, and for a game's file of
+ * before the options too, into @_out of @_size; 0 long when it does not
+ * fit */
+static size_t make_header(char *_out, size_t _size, u32 _formatVersion, bool _options)
 {
-	static const u32 keysVersion = KEYS_FORMAT_VERSION, formatVersion = FORMAT_VERSION;
+	static const u32 keysVersion = KEYS_FORMAT_VERSION;
 	const char *renderer = (const char *)glGetString(GL_RENDERER);
 	const char *version = (const char *)glGetString(GL_VERSION);
 	const u32 optionsBits = gli_combiner_options_bits();
@@ -363,18 +367,18 @@ static void make_header(void)
 		version = "";
 	rendererLen = (u32)strlen(renderer);
 	versionLen = (u32)strlen(version);
-	s_store.headerLen = 0;
-	if (sizeof(s_store.header) < 4 + 5 * sizeof(u32) + rendererLen + versionLen)
-		return;
-	put(s_store.header, &len, CACHE_MAGIC, 4);
-	put(s_store.header, &len, &keysVersion, sizeof(keysVersion));
-	put(s_store.header, &len, &formatVersion, sizeof(formatVersion));
-	put(s_store.header, &len, &optionsBits, sizeof(optionsBits));
-	put(s_store.header, &len, &rendererLen, sizeof(rendererLen));
-	put(s_store.header, &len, renderer, rendererLen);
-	put(s_store.header, &len, &versionLen, sizeof(versionLen));
-	put(s_store.header, &len, version, versionLen);
-	s_store.headerLen = len;
+	if (_size < 4 + (_options ? 5 : 4) * sizeof(u32) + rendererLen + versionLen)
+		return 0;
+	put(_out, &len, CACHE_MAGIC, 4);
+	put(_out, &len, &keysVersion, sizeof(keysVersion));
+	put(_out, &len, &_formatVersion, sizeof(_formatVersion));
+	if (_options)
+		put(_out, &len, &optionsBits, sizeof(optionsBits));
+	put(_out, &len, &rendererLen, sizeof(rendererLen));
+	put(_out, &len, renderer, rendererLen);
+	put(_out, &len, &versionLen, sizeof(versionLen));
+	put(_out, &len, version, versionLen);
+	return len;
 }
 
 /* The file written again: the header and a key record of each of the
@@ -426,20 +430,23 @@ static void note(u64 **_keys, u32 *_count, u32 *_room, u64 _key)
 }
 
 /* The records of @_file, @_size bytes, from @_at; where the whole ones
- * end. Its programs go to GL first when @_programs; the keys of the rest
+ * end. Its programs of these options go to GL first when @_programs,
+ * those before an options record being of @_options; the keys of the rest
  * are compiled after, so a key met before its program was stored is not
  * built twice. @_stale set where GL would not take a program: its key's
  * new one is stored, so the old must go. */
-static size_t read_records(const char *_file, size_t _size, size_t _at, bool _programs,
+static size_t read_records(const char *_file, size_t _size, size_t _at, bool _programs, u64 _options,
 	const gli_gl_info *_info, struct gli_gl_cache1 *_useProgram, gli_combiner_table *_combiners,
 	bool *_stale)
 {
+	const u64 mine = gli_combiner_options_bits();
 	reader in;
 	size_t end = _at;
 	u32 room = 0, keyRoom = 0;
 	int pass;
 
 	for (pass = 0; pass < 2; ++pass) {
+		u64 options = _options;
 		in.p = _file + _at;
 		in.end = _file + (pass == 0 ? _size : end);
 		for (;;) {
@@ -448,9 +455,15 @@ static size_t read_records(const char *_file, size_t _size, size_t _at, bool _pr
 			gli_cprog *p = NULL;
 			if (kind == NULL || !get(&in, &key, sizeof(key)))
 				break;
+			if (kind[0] == RECORD_OPTIONS) {
+				options = key;
+				if (pass == 0)
+					end = (size_t)(in.p - _file);
+				continue;
+			}
 			if (kind[0] == RECORD_PROGRAM) {
 				int cut = 0;
-				if (pass == 0 && _programs && gli_combiners_find(_combiners, key) == NULL) {
+				if (pass == 0 && _programs && options == mine && gli_combiners_find(_combiners, key) == NULL) {
 					p = read_program(&in, key, _info, _useProgram, &cut);
 					if (p == NULL && !cut)
 						*_stale = true;
@@ -491,59 +504,197 @@ static size_t read_records(const char *_file, size_t _size, size_t _at, bool _pr
 	return end;
 }
 
+/* @_file of @_size, of the magic, a keys version this build reads and
+ * @_words words after it, and two strings: where its records start, 0
+ * where it is not one */
+static size_t records_at(const char *_file, int64_t _size, unsigned _words)
+{
+	reader in;
+	const char *magic;
+	u32 keysVersion = 0, len;
+	in.p = _file;
+	in.end = _file + _size;
+	/* the keys hold for other programs, while their meaning does */
+	if ((magic = take(&in, 4)) != NULL && memcmp(magic, CACHE_MAGIC, 4) == 0 &&
+			get(&in, &keysVersion, sizeof(keysVersion)) && keysVersion == KEYS_FORMAT_VERSION &&
+			take(&in, _words * sizeof(u32)) != NULL &&
+			get(&in, &len, sizeof(len)) && take(&in, len) != NULL &&
+			get(&in, &len, sizeof(len)) && take(&in, len) != NULL)
+		return (size_t)(in.p - _file);
+	return 0;
+}
+
+/* @_path held, mapped where it can be, read once where not: @_f and
+ * @_copy to let go */
+static const char *hold(const char *_path, RFILE **_f, char **_copy, int64_t *_size)
+{
+	const char *file = NULL;
+	*_copy = NULL;
+	*_size = 0;
+	*_f = filestream_open(_path, RETRO_VFS_FILE_ACCESS_READ, RETRO_VFS_FILE_ACCESS_HINT_FREQUENT_ACCESS);
+	if (*_f == NULL)
+		return NULL;
+	file = (const char *)filestream_get_mapped_ptr(*_f, _size);
+	if (file == NULL && (*_size = filestream_get_size(*_f)) > 0 &&
+			(*_copy = (char *)malloc((size_t)*_size)) != NULL && filestream_read(*_f, *_copy, *_size) == *_size)
+		file = *_copy;
+	return file;
+}
+
+static void let_go(RFILE *_f, char *_copy)
+{
+	free(_copy);
+	if (_f != NULL)
+		filestream_close(_f);
+}
+
+/* a game's file of before: its keys, and its programs where they were
+ * built by this GL with these options */
+static void old_cache(const char *_path, const gli_gl_info *_info, struct gli_gl_cache1 *_useProgram,
+	gli_combiner_table *_combiners)
+{
+	RFILE *f;
+	char *copy;
+	int64_t size;
+	const char *file = hold(_path, &f, &copy, &size);
+	size_t at;
+	bool stale = false;
+	if (file != NULL && (at = records_at(file, size, 2)) != 0) {
+		const bool same = s_store.oldHeaderLen != 0 && (size_t)size >= s_store.oldHeaderLen &&
+			memcmp(file, s_store.oldHeader, s_store.oldHeaderLen) == 0;
+		read_records(file, (size_t)size, at, same && gli_ctx.shaderProgramBinary,
+			gli_combiner_options_bits(), _info, _useProgram, _combiners, &stale);
+	}
+	let_go(f, copy);
+}
+
+/* the names of before in @_folder, of @_api: a game's file, its three
+ * files of before that, and those of a crash's left behind */
+static bool old_name(const char *_name, const char *_api, size_t *_base)
+{
+	static const char *const ext[] = { "cache", "shaders", "keys.journal", "keys" };
+	const size_t n = strlen(_name), a = strlen(_api);
+	const char *dot;
+	unsigned i;
+	if (strncmp(_name, "GLideN64.", 9) != 0 || (dot = strchr(_name + 9, '.')) == NULL || dot == _name + 9 ||
+			strncmp(dot + 1, _api, a) != 0)
+		return false;
+	for (i = 0; i < sizeof(ext) / sizeof(*ext); ++i)
+		if ((size_t)(dot + 1 + a - _name) + strlen(ext[i]) == n && strcmp(dot + 1 + a, ext[i]) == 0) {
+			*_base = (size_t)(dot + 1 + a - _name);
+			return true;
+		}
+	return false;
+}
+
+/* Every game's files of before in @_folder, read into @_combiners; their
+ * names kept in @_names (@_count of them), for when the file is written.
+ * A game's three files are read once, at the first of them. */
+static void old_games(const char *_folder, const gli_gl_info *_info, struct gli_gl_cache1 *_useProgram,
+	gli_combiner_table *_combiners, char ***_names, u32 *_count)
+{
+	struct RDIR *d = retro_opendir(_folder);
+	const char *api = api_name(_info);
+	char **names = NULL;
+	u32 count = 0, room = 0, i, j;
+	*_names = NULL;
+	*_count = 0;
+	if (d == NULL)
+		return;
+	/* the names first: what is read is not listed again */
+	while (retro_readdir(d)) {
+		const char *name = retro_dirent_get_name(d);
+		size_t base, n;
+		char *copy;
+		if (name == NULL || !old_name(name, api, &base))
+			continue;
+		if (count == room) {
+			char **more = (char **)realloc(names, ((size_t)room * 2 + 16) * sizeof(*names));
+			if (more == NULL)
+				break;
+			names = more;
+			room = room * 2 + 16;
+		}
+		n = strlen(name);
+		if ((copy = (char *)malloc(n + 1)) == NULL)
+			break;
+		memcpy(copy, name, n + 1);
+		names[count++] = copy;
+	}
+	retro_closedir(d);
+	for (i = 0; i < count; ++i) {
+		char path[PLUGIN_PATH_SIZE];
+		size_t base;
+		bool seen = false;
+		if (!old_name(names[i], api, &base))
+			continue;
+		fill_pathname_join_special(path, _folder, names[i], sizeof(path));
+		if (strcmp(names[i] + base, "cache") == 0) {
+			old_cache(path, _info, _useProgram, _combiners);
+			continue;
+		}
+		/* the three of a game read once */
+		for (j = 0; j < i && !seen; ++j)
+			seen = strncmp(names[j], names[i], base) == 0 && strcmp(names[j] + base, "cache") != 0;
+		if (!seen) {
+			/* the path but for its ending */
+			path[strlen(path) - strlen(names[i] + base)] = '\0';
+			old_files(path, _info, _useProgram, _combiners);
+		}
+	}
+	*_names = names;
+	*_count = count;
+}
+
 bool gli_glsl_load_storage(const gli_gl_info *_info, struct gli_gl_cache1 *_useProgram,
 	gli_combiner_table *_combiners)
 {
 	RFILE *f;
-	const char *file = NULL;
-	char *copy = NULL;
+	const char *file;
+	char *copy;
 	int64_t size = 0;
 	size_t end = 0;
 	bool same = false, stale = false;
 
 	forget();
-	storage_path(_info, "cache", s_store.path, sizeof(s_store.path));
-	make_header();
+	storage_path(_info, s_store.path, sizeof(s_store.path));
+	s_store.headerLen = make_header(s_store.header, sizeof(s_store.header), FORMAT_VERSION, false);
+	s_store.oldHeaderLen = make_header(s_store.oldHeader, sizeof(s_store.oldHeader), OLD_FORMAT_VERSION, true);
 
 	/* one open; the file lent where it can be mapped, read once where not */
-	f = filestream_open(s_store.path, RETRO_VFS_FILE_ACCESS_READ, RETRO_VFS_FILE_ACCESS_HINT_FREQUENT_ACCESS);
-	if (f != NULL) {
-		file = (const char *)filestream_get_mapped_ptr(f, &size);
-		if (file == NULL && (size = filestream_get_size(f)) > 0 &&
-				(copy = (char *)malloc((size_t)size)) != NULL && filestream_read(f, copy, size) == size)
-			file = copy;
-		if (file != NULL) {
-			reader in;
-			const char *magic;
-			u32 keysVersion = 0, len;
-			in.p = file;
-			in.end = file + size;
-			same = s_store.headerLen != 0 && (size_t)size >= s_store.headerLen &&
-				memcmp(file, s_store.header, s_store.headerLen) == 0;
-			/* the keys hold for other programs, while their meaning does */
-			if ((magic = take(&in, 4)) != NULL && memcmp(magic, CACHE_MAGIC, 4) == 0 &&
-					get(&in, &keysVersion, sizeof(keysVersion)) && keysVersion == KEYS_FORMAT_VERSION &&
-					take(&in, 2 * sizeof(u32)) != NULL &&
-					get(&in, &len, sizeof(len)) && take(&in, len) != NULL &&
-					get(&in, &len, sizeof(len)) && take(&in, len) != NULL)
-				end = read_records(file, (size_t)size, (size_t)(in.p - file),
-					same && gli_ctx.shaderProgramBinary, _info, _useProgram, _combiners, &stale);
-		}
-		free(copy);
-		filestream_close(f);
+	file = hold(s_store.path, &f, &copy, &size);
+	if (file != NULL) {
+		size_t at;
+		same = s_store.headerLen != 0 && (size_t)size >= s_store.headerLen &&
+			memcmp(file, s_store.header, s_store.headerLen) == 0;
+		if ((at = records_at(file, size, 1)) != 0)
+			end = read_records(file, (size_t)size, at, same && gli_ctx.shaderProgramBinary, NO_OPTIONS,
+				_info, _useProgram, _combiners, &stale);
 	}
+	let_go(f, copy);
 
-	if (end == 0)
-		old_files(_info, _useProgram, _combiners);
 	s_store.again = end != 0 && (!same || stale);
 	if (end == 0) {
-		/* not there, of before, or no header whole: written now, for the
-		 * journal to append to */
-		u32 count;
-		gli_cprog **programs = sorted_programs(_combiners, &count);
-		if (programs != NULL || _combiners->count == 0)
-			rewrite(programs, count);
+		/* not there, or no header whole: what the files of before held
+		 * read in, and it written now, for the journal to append to; they
+		 * go once it is */
+		char folder[PLUGIN_PATH_SIZE];
+		char **old;
+		u32 count, oldCount, i;
+		gli_cprog **programs;
+		storage_folder(folder, sizeof(folder));
+		old_games(folder, _info, _useProgram, _combiners, &old, &oldCount);
+		programs = sorted_programs(_combiners, &count);
+		if ((programs != NULL || _combiners->count == 0) && rewrite(programs, count))
+			for (i = 0; i < oldCount; ++i) {
+				char path[PLUGIN_PATH_SIZE];
+				fill_pathname_join_special(path, folder, old[i], sizeof(path));
+				filestream_delete(path);
+			}
 		free(programs);
+		for (i = 0; i < oldCount; ++i)
+			free(old[i]);
+		free(old);
 	} else if (!s_store.again) {
 		/* cut short by a crash past its last whole record */
 		if ((int64_t)end < size && (f = filestream_open(s_store.path,
@@ -624,7 +775,16 @@ bool gli_glsl_close_storage(const gli_combiner_table *_combiners, struct combine
 				gl[i] = NULL;
 			room += n != 0 ? 2 + n : 0;
 		}
-		if (room != 0 && (out = (char *)malloc(room)) != NULL)
+		/* behind the options they were built with */
+		if (room != 0 && (out = (char *)malloc(room + COMBINER_JOURNAL_RECORD_SIZE)) != NULL) {
+			const u64 options = gli_combiner_options_bits();
+			out[0] = RECORD_OPTIONS;
+			out[1] = 0;
+			memcpy(out + 2, &options, sizeof(options));
+			len = COMBINER_JOURNAL_RECORD_SIZE;
+			room += COMBINER_JOURNAL_RECORD_SIZE;
+		}
+		if (out != NULL)
 			for (i = 0; i < count; ++i) {
 				size_t n;
 				if (gl[i] == NULL)
@@ -635,6 +795,9 @@ bool gli_glsl_close_storage(const gli_combiner_table *_combiners, struct combine
 				if (n != 0)
 					len += 2 + n;
 			}
+		/* the options record alone: nothing to store */
+		if (len == COMBINER_JOURNAL_RECORD_SIZE)
+			len = 0;
 		if (len != 0 && f == NULL)
 			f = filestream_open(s_store.path, RETRO_VFS_FILE_ACCESS_READ_WRITE |
 				RETRO_VFS_FILE_ACCESS_UPDATE_EXISTING, RETRO_VFS_FILE_ACCESS_HINT_NONE);
