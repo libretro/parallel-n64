@@ -2,8 +2,13 @@
  * and the combiner stage helpers (CombinerStages.c), on a stub renderer.
  *
  * Made, started with the shader config from the options and the pipeline
- * cache beside the keys journal, the window sized, the upscaler started or
- * dropped; stopped. Each state call mapped to the renderer: clamp modes,
+ * cache lent from the game's file, the window sized, the upscaler started
+ * or dropped; stopped. The game's file (vk_cache.h): its keys built and
+ * appended to; a game without one building the journal of before's and
+ * keeping those it draws with, the pipeline cache of before removed;
+ * written at the end where the pipeline cache changed, a key missed the
+ * journal or it was not there, with the game's keys, nothing written
+ * where nothing changed. Each state call mapped to the renderer: clamp modes,
  * capabilities, culling, depth, viewport, scissor, blending, clears,
  * polygon offset. Textures and render buffers made, filled with their
  * byte counts, updated, lent, given parameters, bound to their units;
@@ -41,8 +46,12 @@
 #include <Graphics/gli_params.h>
 #include <Graphics/CombinerValues.h>
 #include <Graphics/CombinerStages.h>
+#include <Graphics/OpenGLContext/GLSL/glsl_StdHash.h>
+#include <RSP.h>
+#include <file/file_path.h>
 #include "vk_ColorBufferReader.h"
 #include "vk_renderer.h"
+#include "vk_cache.h"
 #include "vk_device.h"
 #include "vk_upscaler.h"
 #include "vk_ContextImpl.h"
@@ -99,17 +108,37 @@ static int renderer_obj;
 static vkr_renderer *const RENDERER = (vkr_renderer *)&renderer_obj;
 static int createFails;
 static vkr_shader_config createdCfg;
-static char createdCache[600];
+/* the pipeline cache it was lent */
+static unsigned char createdCache[16];
+static size_t createdCacheSize;
 static const void *createdIface;
-vkr_renderer *vkr_create(const struct retro_hw_render_interface_vulkan *_vk, const vkr_shader_config *_cfg, const char *_cache)
+vkr_renderer *vkr_create_lent(const struct retro_hw_render_interface_vulkan *_vk, const vkr_shader_config *_cfg,
+	const void *_cache, size_t _size)
 {
 	createdIface = _vk;
 	createdCfg = *_cfg;
-	strcpy(createdCache, _cache != NULL ? _cache : "(null)");
+	createdCacheSize = _cache != NULL ? _size : 0;
+	if (createdCacheSize != 0 && createdCacheSize <= sizeof(createdCache))
+		memcpy(createdCache, _cache, createdCacheSize);
 	say("create");
 	return createFails ? NULL : RENDERER;
 }
-void vkr_destroy(vkr_renderer *_r) { say("destroy:%d", _r == RENDERER); }
+/* the pipeline cache handed back, changed or not */
+static const unsigned char takenBlob[4] = { 9, 8, 7, 6 };
+static int takeChanged;
+void *vkr_destroy_taking_cache(vkr_renderer *_r, size_t *_size, int *_changed)
+{
+	void *b;
+	say("destroy:%d", _r == RENDERER);
+	*_size = 0;
+	*_changed = 0;
+	if (_r == NULL || (b = malloc(sizeof(takenBlob))) == NULL)
+		return NULL;
+	memcpy(b, takenBlob, sizeof(takenBlob));
+	*_size = sizeof(takenBlob);
+	*_changed = takeChanged;
+	return b;
+}
 static vkr_caps caps = { 8192, 16.0f, 8, 4.0f, 1 };
 const vkr_caps *vkr_get_caps(const vkr_renderer *_r) { (void)_r; return &caps; }
 void vkr_set_window(vkr_renderer *_r, unsigned _w, unsigned _h) { (void)_r; say("window:%u:%u", _w, _h); }
@@ -284,27 +313,146 @@ static int hwLighting;
 bool gli_isHWLightingAllowed(void) { return hwLighting; }
 void gli_palette_update(void) { say("palette"); }
 void gli_api_user_cache_path(char *_p, size_t _size) { strncpy(_p, "/cache", _size); }
-/* the journal: where it was read and opened, for which version */
+/* the journal of before: where it was read, for which version, its keys */
 static int journalObj;
-static char journalRead[128], journalOpened[128];
+static char journalRead[128];
 static uint32_t journalVersion;
-static combiner_journal_t *journalClosed;
+static u64 oldKeys[3];
+static unsigned nOldKeys;
 unsigned combiner_journal_read(const char *_path, uint32_t _version, combiner_journal_key_t _cb, void *_ctx)
 {
+	unsigned i;
 	strcpy(journalRead, _path);
 	journalVersion = _version;
-	_cb(_ctx, 0x77, 1);
-	return 1;
+	for (i = 0; i < nOldKeys; i++)
+		_cb(_ctx, oldKeys[i], i & 1);
+	return nOldKeys;
 }
-combiner_journal_t *combiner_journal_open(const char *_path, uint32_t _version)
+/* the journal appended to the game's file */
+static int appendFails;
+static char journalAppended[600];
+combiner_journal_t *combiner_journal_append(const char *_path)
 {
-	strcpy(journalOpened, _path);
-	check(_version == journalVersion, "opened for the version read");
-	return (combiner_journal_t *)&journalObj;
+	strcpy(journalAppended, _path);
+	return appendFails ? NULL : (combiner_journal_t *)&journalObj;
 }
-void combiner_journal_close(combiner_journal_t *_j) { journalClosed = _j; }
-static u64 knownKey;
-static void known(void *_ctx, uint64_t _key, unsigned _hwl) { knownKey = _key + _hwl + (u64)(size_t)_ctx; }
+static int detachWhole = 1;
+static combiner_journal_t *journalDetached;
+/* the file it appended to, handed over */
+static int fileObj;
+static RFILE *const JOURNAL_FILE = (RFILE *)&fileObj;
+static RFILE *fileClosed;
+RFILE *combiner_journal_detach(combiner_journal_t *_j, int *_whole)
+{
+	journalDetached = _j;
+	*_whole = _j != NULL && detachWhole;
+	return _j != NULL ? JOURNAL_FILE : NULL;
+}
+static u64 pushed[8];
+static unsigned pushedHwl[8];
+static unsigned nPushed;
+static combiner_journal_t *pushedTo;
+int combiner_journal_push(combiner_journal_t *_j, uint64_t _key, unsigned _hwl)
+{
+	if (nPushed < 8) {
+		pushed[nPushed] = _key;
+		pushedHwl[nPushed] = _hwl;
+	}
+	nPushed++;
+	pushedTo = _j;
+	return _j != NULL;
+}
+static u64 knownKeys[4];
+static unsigned knownHwl[4], nKnown;
+static void *knownCtx;
+static void known(void *_ctx, uint64_t _key, unsigned _hwl)
+{
+	if (nKnown < 4) {
+		knownKeys[nKnown] = _key;
+		knownHwl[nKnown] = _hwl;
+	}
+	nKnown++;
+	knownCtx = _ctx;
+}
+
+/* ---- the game's file ---- */
+
+RSPInfo RSP;
+static int mkdirOk = 1;
+static char mkdirAsked[600];
+bool path_mkdir(const char *_dir) { strcpy(mkdirAsked, _dir); return mkdirOk != 0; }
+static int oldThere = 1;
+static char deleted[600];
+bool filestream_exists(const char *_path) { return oldThere && strstr(_path, ".pipelines") != NULL; }
+int filestream_delete(const char *_path) { strcpy(deleted, _path); return 0; }
+int filestream_close(RFILE *_f) { fileClosed = _f; return 0; }
+
+static int fileFound;
+static const unsigned char fileBlob[5] = { 1, 2, 3, 4, 5 };
+static unsigned char fileRecords[2 * COMBINER_JOURNAL_RECORD_SIZE];
+static char cacheOpened[600], cacheClosed[600];
+static unsigned cacheCloses;
+void vk_cache_open(vk_cache *_c, const char *_path)
+{
+	memset(_c, 0, sizeof(*_c));
+	strcpy(cacheOpened, _path);
+	if (!fileFound)
+		return;
+	_c->found = 1;
+	_c->pipelines = fileBlob;
+	_c->pipelines_size = sizeof(fileBlob);
+	_c->records = fileRecords;
+	_c->records_size = sizeof(fileRecords);
+}
+unsigned vk_cache_keys(const vk_cache *_c, combiner_journal_key_t _cb, void *_ctx)
+{
+	size_t at;
+	unsigned n = 0;
+	for (at = 0; at + COMBINER_JOURNAL_RECORD_SIZE <= _c->records_size; at += COMBINER_JOURNAL_RECORD_SIZE, n++) {
+		u64 key;
+		memcpy(&key, _c->records + at + 2, sizeof(key));
+		_cb(_ctx, key, _c->records[at + 1]);
+	}
+	return n;
+}
+/* counted where something was open */
+void vk_cache_close(vk_cache *_c, const char *_path)
+{
+	if (_c->found) {
+		cacheCloses++;
+		strcpy(cacheClosed, _path != NULL ? _path : "-");
+	}
+	memset(_c, 0, sizeof(*_c));
+}
+static int writeFails;
+static unsigned writes, closedAtWrite;
+static char written[600];
+static unsigned char writtenBlob[16], writtenRecords[64];
+static size_t writtenBlobSize, writtenRecordsSize;
+int vk_cache_write(const char *_path, const void *_pipelines, size_t _size, const void *_records, size_t _recordsSize)
+{
+	writes++;
+	closedAtWrite = cacheCloses;
+	strcpy(written, _path);
+	writtenBlobSize = _pipelines != NULL ? _size : 0;
+	writtenRecordsSize = _records != NULL ? _recordsSize : 0;
+	if (writtenBlobSize != 0 && writtenBlobSize <= sizeof(writtenBlob))
+		memcpy(writtenBlob, _pipelines, writtenBlobSize);
+	if (writtenRecordsSize != 0 && writtenRecordsSize <= sizeof(writtenRecords))
+		memcpy(writtenRecords, _records, writtenRecordsSize);
+	return !writeFails;
+}
+static void record(unsigned char *_r, u64 _key, unsigned _hwl)
+{
+	_r[0] = COMBINER_JOURNAL_RECORD_KEY;
+	_r[1] = (unsigned char)_hwl;
+	memcpy(_r + 2, &_key, sizeof(_key));
+}
+/* the game's file's path, with the shaders folder or not */
+static void game_path(char *_out, int _folder)
+{
+	sprintf(_out, "/cache%s/GLideN64.%x.Vulkan.cache", _folder ? "/shaders" : "", (unsigned)gli_std_hash_string(RSP.romname));
+}
 
 static unsigned groupsAsked;
 static CombinerNeeds needsAsked;
@@ -315,6 +463,7 @@ void updateCombinerValues(CombinerValues *_v, unsigned _g) { groupsUpdated = _g;
 u32 gli_combiner_key_cycle_type(u64 _key) { return (u32)(_key >> 60) & 3; }
 u32 gli_combiner_key_bilerp(u64 _key) { return (u32)(_key >> 56) & 3; }
 bool gli_combiner_key_is_rect(u64 _key) { return ((_key >> 58) & 1) != 0; }
+bool gli_combiner_key_hwl(u64 _key) { return ((_key >> 59) & 1) != 0; }
 #define KEY(_cycle, _rect, _bilerp, _mux) (((u64)(_cycle) << 60) | ((u64)(_rect) << 58) | ((u64)(_bilerp) << 56) | (_mux))
 
 static FrameBuffer drawnBuffer;
@@ -365,7 +514,12 @@ static void test_create(void)
 		"its filter and multisampling");
 	check(createdCfg.noise_width == NOISE_TEX_WIDTH && createdCfg.noise_height == NOISE_TEX_HEIGHT && createdCfg.interlock == 1,
 		"the noise texture's size; interlock with the N64 depth compare");
-	check(strcmp(createdCache, "/cache/GLideN64.vulkan.keys.journal.pipelines") == 0, "the pipeline cache beside the journal");
+	check(createdCacheSize == 0, "no file: no pipeline cache lent");
+	stop();
+	config.generalEmulation.enableNoise = 1;
+	start();
+	check(createdCfg.noise == 1, "noise from its option");
+	config.generalEmulation.enableNoise = 0;
 	check(has("create window:800:600") && !has("upscaler-init"), "the window sized; no upscaler not offered");
 	check(ops->getClampMode(ctx) == 0 && ops->getTextureUnpackAlignment(ctx) == 1, "clipping on, unpacked a byte at a time");
 	stop();
@@ -1125,15 +1279,298 @@ static void test_builder(void)
 	clear_log();
 	ops->resetCombinerProgramBuilder(ctx);
 	check(strncmp(log_, "destroy:1 create window:", 24) == 0, "made again");
+	check(createdCacheSize == sizeof(takenBlob) && memcmp(createdCache, takenBlob, sizeof(takenBlob)) == 0,
+		"lent the pipeline cache the old one handed back");
 	check(!ops->isCombinerProgramBuilderObsolete(ctx), "with the options it was made with");
 	check(!ops->loadShadersStorage(ctx, NULL), "no shader storage");
-	check(ops->openCombinerJournal(ctx, known, (void *)(size_t)0x100) == (combiner_journal_t *)&journalObj, "a journal");
-	check(strcmp(journalRead, "/cache/GLideN64.vulkan.keys.journal") == 0 && journalVersion == 1, "the journal's path and version");
-	check(strcmp(journalOpened, journalRead) == 0, "read, then opened to append");
-	check(knownKey == 0x178, "what it holds to the caller");
-	check(!ops->closeShadersStorage(ctx, NULL, (combiner_journal_t *)&journalObj) &&
-		journalClosed == (combiner_journal_t *)&journalObj, "closed: the journal");
 	stop();
+
+	/* a pipeline cache that changed there is written at the end */
+	fileFound = 1;
+	config.generalEmulation.enableShadersStorage = 0;
+	optionsBits = 5;
+	start();
+	optionsBits = 6;
+	takeChanged = 1;
+	ops->resetCombinerProgramBuilder(ctx);
+	takeChanged = 0;
+	writes = 0;
+	stop();
+	check(writes == 1, "changed before it was made again: written");
+	optionsBits = 5;
+	start();
+	optionsBits = 6;
+	ops->resetCombinerProgramBuilder(ctx);
+	writes = 0;
+	stop();
+	check(writes == 0, "unchanged: not");
+	fileFound = 0;
+	optionsBits = 5;
+}
+
+static gli_cprog *program(u64 _key)
+{
+	Combiner color, alpha;
+	memset(&color, 0, sizeof(color));
+	memset(&alpha, 0, sizeof(alpha));
+	color.numStages = 1;
+	alpha.numStages = 1;
+	stage(&color.stage[0], 1, LOAD, G_GCI_SHADE, 0, 0, 0, 0);
+	stage(&alpha.stage[0], 1, LOAD, G_GCI_SHADE_ALPHA, 0, 0, 0, 0);
+	return ops->createCombinerProgram(ctx, &color, &alpha, _key);
+}
+
+/* the journal of before's keys built, as the combiner's callback does */
+static gli_cprog *built[3];
+static unsigned nBuilt;
+static void build(void *_ctx, uint64_t _key, unsigned _hwl)
+{
+	(void)_ctx;
+	(void)_hwl;
+	if (nBuilt < 3)
+		built[nBuilt++] = program(_key);
+}
+
+static gli_combiner_entry slots[8];
+static u32 order[8];
+static gli_combiner_table table;
+static void table_of(gli_cprog **_p, u32 _n)
+{
+	u32 i;
+	table.slots = slots;
+	table.order = order;
+	table.mask = 7;
+	table.count = _n;
+	for (i = 0; i < _n; i++) {
+		order[i] = 7 - i;
+		slots[7 - i].key = _p[i]->key;
+		slots[7 - i].program = _p[i];
+	}
+}
+
+static void free_programs(gli_cprog **_p, u32 _n)
+{
+	u32 i;
+	for (i = 0; i < _n; i++)
+		_p[i]->ops->free_program(_p[i]);
+}
+
+static void reset_file(void)
+{
+	writes = 0;
+	writeFails = 0;
+	cacheCloses = 0;
+	cacheClosed[0] = journalRead[0] = journalAppended[0] = deleted[0] = written[0] = '\0';
+	nKnown = nPushed = nBuilt = closedAtWrite = 0;
+	pushedTo = journalDetached = NULL;
+	fileClosed = NULL;
+	detachWhole = 1;
+	takeChanged = 0;
+	appendFails = 0;
+}
+
+static void test_cache_file(void)
+{
+	const u64 k1 = KEY(G_CYC_1CYCLE, 0, 0, 0x10), k2 = KEY(G_CYC_2CYCLE, 0, 0, 0x20) | ((u64)1 << 59);
+	const u64 k3 = KEY(G_CYC_1CYCLE, 0, 1, 0x30), copy = KEY(G_CYC_COPY, 0, 0, 0x40), fill = KEY(G_CYC_FILL, 0, 0, 0x50);
+	char path[600], bare[600];
+	gli_cprog *p[5];
+	unsigned char rec[COMBINER_JOURNAL_RECORD_SIZE];
+	combiner_journal_t *j;
+
+	memset(&config, 0, sizeof(config));
+	strcpy(RSP.romname, "SUPER MARIO 64");
+	game_path(path, 1);
+	game_path(bare, 0);
+	record(fileRecords, k1, 0);
+	record(fileRecords + COMBINER_JOURNAL_RECORD_SIZE, k2, 1);
+
+	/* the game's file: its pipeline cache lent, its keys built, the
+	 * file let go, cut where a crash cut it, appended to */
+	reset_file();
+	fileFound = 1;
+	config.generalEmulation.enableShadersStorage = 1;
+	start();
+	check(strcmp(mkdirAsked, "/cache/shaders") == 0 && strcmp(cacheOpened, path) == 0, "the game's file, in the shaders folder");
+	check(createdCacheSize == sizeof(fileBlob) && memcmp(createdCache, fileBlob, sizeof(fileBlob)) == 0, "its pipeline cache lent");
+	check(deleted[0] == '\0', "nothing of before removed");
+	j = ops->openCombinerJournal(ctx, known, (void *)&journalObj);
+	check(nKnown == 2 && knownKeys[0] == k1 && knownHwl[0] == 0 && knownKeys[1] == k2 && knownHwl[1] == 1 &&
+		knownCtx == (void *)&journalObj, "its keys built, as they are");
+	check(journalRead[0] == '\0', "not the journal of before");
+	check(cacheCloses == 1 && strcmp(cacheClosed, path) == 0, "let go, cut to its whole records");
+	check(j == (combiner_journal_t *)&journalObj && strcmp(journalAppended, path) == 0, "appended to");
+	check(writes == 0, "not written at the load");
+	p[0] = program(k3);
+	p[1] = program(copy);
+	p[2] = program(fill);
+	p[3] = ops->createTexrectCopyShader(ctx);
+	p[0]->ops->activate(p[0]);
+	p[0]->ops->update(p[0], 0);
+	check(nPushed == 0, "a key met now is the combiner's to journal");
+	table_of(p, 4);
+	check(ops->closeShadersStorage(ctx, &table, j) && journalDetached == j, "the journal stopped");
+	check(fileClosed == JOURNAL_FILE, "the file it appended to closed");
+	free_programs(p, 4);
+	stop();
+	check(writes == 0, "nothing changed: nothing written");
+
+	/* the pipeline cache changed: written, with the game's keys, not
+	 * copy's, fill's or the special shaders' */
+	reset_file();
+	start();
+	j = ops->openCombinerJournal(ctx, known, NULL);
+	p[0] = program(k3);
+	p[1] = program(copy);
+	p[2] = program(fill);
+	p[3] = ops->createTexrectCopyShader(ctx);
+	p[4] = program(k2);
+	table_of(p, 5);
+	ops->closeShadersStorage(ctx, &table, j);
+	free_programs(p, 5);
+	takeChanged = 1;
+	stop();
+	check(writes == 1 && strcmp(written, path) == 0, "written");
+	check(writtenBlobSize == sizeof(takenBlob) && memcmp(writtenBlob, takenBlob, sizeof(takenBlob)) == 0,
+		"the pipeline cache handed back");
+	check(writtenRecordsSize == 2 * COMBINER_JOURNAL_RECORD_SIZE, "two keys");
+	record(rec, k3, 0);
+	check(memcmp(writtenRecords, rec, sizeof(rec)) == 0, "the first as it was put");
+	record(rec, k2, 1);
+	check(memcmp(writtenRecords + COMBINER_JOURNAL_RECORD_SIZE, rec, sizeof(rec)) == 0, "the second, with its bit");
+
+	/* a key the journal did not get to the file */
+	reset_file();
+	start();
+	j = ops->openCombinerJournal(ctx, known, NULL);
+	p[0] = program(k3);
+	table_of(p, 1);
+	detachWhole = 0;
+	ops->closeShadersStorage(ctx, &table, j);
+	free_programs(p, 1);
+	stop();
+	check(writes == 1 && writtenRecordsSize == COMBINER_JOURNAL_RECORD_SIZE, "a key missed: written");
+	/* no journal at all */
+	reset_file();
+	appendFails = 1;
+	start();
+	j = ops->openCombinerJournal(ctx, known, NULL);
+	check(j == NULL, "no journal");
+	ops->closeShadersStorage(ctx, NULL, j);
+	stop();
+	check(writes == 0, "no keys to write: not written");
+	reset_file();
+	appendFails = 1;
+	start();
+	j = ops->openCombinerJournal(ctx, known, NULL);
+	table_of(p, 0);
+	ops->closeShadersStorage(ctx, &table, j);
+	stop();
+	check(writes == 1 && writtenRecordsSize == 0, "none kept: written, without a journal to say");
+
+	/* none there: the journal of before's keys built, its pipeline cache
+	 * removed; the file written for the journal to append to */
+	reset_file();
+	fileFound = 0;
+	oldThere = 1;
+	nOldKeys = 3;
+	oldKeys[0] = k1;
+	oldKeys[1] = k2;
+	oldKeys[2] = k3;
+	start();
+	check(createdCacheSize == 0, "no pipeline cache lent");
+	check(strcmp(deleted, "/cache/GLideN64.vulkan.keys.journal.pipelines") == 0, "the pipeline cache of before removed");
+	j = ops->openCombinerJournal(ctx, build, NULL);
+	check(strcmp(journalRead, "/cache/GLideN64.vulkan.keys.journal") == 0 && journalVersion == 1,
+		"the journal of before read, of its version");
+	check(nBuilt == 3 && built[0] != NULL && built[1] != NULL && built[2] != NULL, "its keys built");
+	check(writes == 1 && strcmp(written, path) == 0 && writtenBlobSize == 0 && writtenRecordsSize == 0,
+		"the file made for the journal");
+	check(j == (combiner_journal_t *)&journalObj && strcmp(journalAppended, path) == 0, "appended to");
+	/* the keys of before the game draws with are its own */
+	built[0]->ops->update(built[0], 1);
+	check(nPushed == 0, "not when built");
+	built[0]->ops->activate(built[0]);
+	check(nPushed == 1 && pushed[0] == k1 && pushedHwl[0] == 0 && pushedTo == j, "drawn with: journaled");
+	built[0]->ops->activate(built[0]);
+	built[0]->ops->update(built[0], 0);
+	check(nPushed == 1, "once");
+	built[1]->ops->update(built[1], 0);
+	check(nPushed == 2 && pushed[1] == k2 && pushedHwl[1] == 1, "updated to draw: journaled, with its bit");
+	p[0] = program(fill);
+	p[0]->ops->activate(p[0]);
+	check(nPushed == 2, "one built after: the combiner's");
+	p[1] = built[0];
+	p[2] = built[2];
+	p[3] = built[1];
+	table_of(p, 4);
+	ops->closeShadersStorage(ctx, &table, j);
+	/* the journal stopped: one drawn with after is not journaled */
+	built[2]->ops->activate(built[2]);
+	check(nPushed == 3 && pushedTo == NULL, "after the journal stopped: not to it");
+	free_programs(p, 4);
+	stop();
+	check(writes == 2 && writtenRecordsSize == 2 * COMBINER_JOURNAL_RECORD_SIZE, "written at the end, the two drawn with");
+	record(rec, k1, 0);
+	check(memcmp(writtenRecords, rec, sizeof(rec)) == 0, "the first drawn with");
+	record(rec, k2, 1);
+	check(memcmp(writtenRecords + COMBINER_JOURNAL_RECORD_SIZE, rec, sizeof(rec)) == 0, "the second, not the one never drawn with");
+	nOldKeys = 0;
+
+	/* stopped twice: what the first kept let go, nothing kept */
+	reset_file();
+	fileFound = 1;
+	start();
+	j = ops->openCombinerJournal(ctx, known, NULL);
+	p[0] = program(k3);
+	table_of(p, 1);
+	check(ops->closeShadersStorage(ctx, &table, j), "keys kept");
+	check(!ops->closeShadersStorage(ctx, NULL, NULL), "none: none kept");
+	free_programs(p, 1);
+	stop();
+	check(writes == 0, "no keys kept: the file not written over");
+	fileFound = 0;
+
+	/* the file not to be made: no journal */
+	reset_file();
+	oldThere = 0;
+	writeFails = 1;
+	start();
+	check(deleted[0] == '\0', "nothing of before to remove");
+	check(ops->openCombinerJournal(ctx, known, NULL) == NULL && journalAppended[0] == '\0', "not made: no journal");
+	stop();
+
+	/* the storage off: the file kept open, its keys kept when its
+	 * pipeline cache changed */
+	reset_file();
+	config.generalEmulation.enableShadersStorage = 0;
+	fileFound = 1;
+	start();
+	takeChanged = 1;
+	stop();
+	check(writes == 1 && writtenRecordsSize == sizeof(fileRecords) && memcmp(writtenRecords, fileRecords, sizeof(fileRecords)) == 0,
+		"its keys kept");
+	check(writtenBlobSize == sizeof(takenBlob), "the new pipeline cache");
+	check(closedAtWrite == 1 && cacheCloses == 1 && strcmp(cacheClosed, "-") == 0, "let go before it was written");
+	reset_file();
+	start();
+	stop();
+	check(writes == 0 && cacheCloses == 1, "unchanged: not written, let go");
+	reset_file();
+	fileFound = 0;
+	start();
+	stop();
+	check(writes == 1 && writtenRecordsSize == 0 && writtenBlobSize == sizeof(takenBlob), "none there: made, keyless");
+
+	/* no shaders folder to be had: beside it */
+	reset_file();
+	mkdirOk = 0;
+	start();
+	check(strcmp(cacheOpened, bare) == 0, "no folder: in the cache folder");
+	stop();
+	mkdirOk = 1;
+	oldThere = 1;
+	fileFound = 0;
 }
 
 static void test_draw(void)
@@ -1397,6 +1834,7 @@ int main(void)
 	test_combiners();
 	test_specials();
 	test_builder();
+	test_cache_file();
 	test_draw();
 	test_present();
 	if (failures != 0) {

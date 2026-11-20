@@ -112,15 +112,12 @@ typedef struct vkr_client_desc
 } vkr_client_desc;
 
 /* NULL on a device that cannot do it, or out of memory. The driver's
- * pipeline cache of an earlier session is read from @cache_path (may be
- * NULL), mapped where it can be, and written back there by vkr_destroy
- * where it changed. */
-vkr_renderer *vkr_create(const struct retro_hw_render_interface_vulkan *vk,
-      const vkr_shader_config *cfg, const char *cache_path);
-/* Or lent, @cache_size bytes at @cache, for the call (NULL, 0: none). One
- * of another GPU or driver, or a damaged one, is a miss. */
+ * pipeline cache of an earlier session lent, @cache_size bytes at @cache,
+ * for the call (NULL, 0: none); one of another GPU or driver, or a
+ * damaged one, is a miss. */
 vkr_renderer *vkr_create_lent(const struct retro_hw_render_interface_vulkan *vk,
       const vkr_shader_config *cfg, const void *cache, size_t cache_size);
+/* Destroyed, its pipeline cache let go */
 void vkr_destroy(vkr_renderer *r);
 /* Destroyed, its pipeline cache handed back in a buffer the caller frees
  * (NULL where there is none), @changed set where it is not what the

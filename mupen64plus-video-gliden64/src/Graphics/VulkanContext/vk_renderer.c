@@ -3,14 +3,11 @@
 #include <libretro_vulkan.h>
 
 #include <stdlib.h>
-#include <file/file_path.h>
 #include <string.h>
 
 #include <boolean.h>
 #include <retro_atomic.h>
 #include <queues/mpsc_stack.h>
-#include <streams/file_stream.h>
-#include <compat/strl.h>
 #include <encodings/xxh3.h>
 #include <rdp_worker.h>
 
@@ -319,7 +316,6 @@ struct vkr_renderer
    int wait_client; /* tools: a client's own pipelines waited for */
    int strict_own;  /* tools/ci: a client's own pipeline not built ahead is a failure */
    int prewarmed;
-   char cache_path[1024];
    /* the pipeline cache it was lent, to tell whether it changed */
    size_t cache_size;
    uint64_t cache_hash;
@@ -3706,26 +3702,6 @@ static void *take_cache(vkr_renderer *r, size_t *size, int *changed)
    return data;
 }
 
-/* At its path, where it changed */
-static void save_cache(vkr_renderer *r)
-{
-   size_t size;
-   int changed;
-   void *data;
-
-   if (!r->cache_path[0] || !(data = take_cache(r, &size, &changed)))
-      return;
-   if (changed)
-   {
-      char dir[1024];
-      /* a first run has no directory yet, and the save would be lost */
-      fill_pathname_basedir(dir, r->cache_path, sizeof(dir));
-      path_mkdir(dir);
-      filestream_write_file(r->cache_path, data, (int64_t)size);
-   }
-   free(data);
-}
-
 /* ---- creation ---- */
 static int create_frame(vkr_renderer *r, vkr_frame *f)
 {
@@ -4284,34 +4260,6 @@ fail:
    return NULL;
 }
 
-/* The file at @cache_path lent where it can be mapped, read once where
- * not, and closed before the renderer is handed back */
-vkr_renderer *vkr_create(const struct retro_hw_render_interface_vulkan *vk, const vkr_shader_config *cfg,
-      const char *cache_path)
-{
-   vkr_renderer *r;
-   RFILE *f = NULL;
-   const void *blob = NULL;
-   void *copy = NULL;
-   int64_t size = 0;
-
-   if (cache_path && *cache_path && (f = filestream_open(cache_path, RETRO_VFS_FILE_ACCESS_READ,
-         RETRO_VFS_FILE_ACCESS_HINT_FREQUENT_ACCESS)))
-   {
-      blob = filestream_get_mapped_ptr(f, &size);
-      if (!blob && (size = filestream_get_size(f)) > 0 && size <= 256 * 1024 * 1024
-            && (copy = malloc((size_t)size)) && filestream_read(f, copy, size) == size)
-         blob = copy;
-   }
-   r = vkr_create_lent(vk, cfg, blob, blob ? (size_t)size : 0);
-   free(copy);
-   if (f)
-      filestream_close(f);
-   if (r && cache_path)
-      strlcpy(r->cache_path, cache_path, sizeof(r->cache_path));
-   return r;
-}
-
 /* stop admitting, join, drain, then destroy, the pipeline cache handed
  * back when @cache, or saved at its path */
 static void destroy(vkr_renderer *r, void **cache, size_t *size, int *changed)
@@ -4327,8 +4275,6 @@ static void destroy(vkr_renderer *r, void **cache, size_t *size, int *changed)
       F(DeviceWaitIdle)(r->device);
       if (cache)
          *cache = take_cache(r, size, changed);
-      else
-         save_cache(r);
    }
 
    for (i = 0; i < r->n_frames; i++)

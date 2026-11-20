@@ -2402,6 +2402,15 @@ test_glitch64_vk_cache$(EXE_EXT): tools/test_glitch64_vk_cache.c $(VIDEODIR_GLID
 		tools/test_glitch64_vk_cache.c $(filter-out $(VIDEODIR_GLIDEN64)/%,$(COMBINER_JOURNAL_TEST_SRC)) \
 		-o $@ $(CHECK_LDFLAGS) $(CHECK_SANITIZE) -lpthread
 
+# GLideN64's Vulkan cache, a file a game (tools/test_gliden64_vk_cache.c),
+# read with the VFS's map and without
+test_gliden64_vk_cache$(EXE_EXT): tools/test_gliden64_vk_cache.c $(VIDEODIR_GLIDEN64)/src/Graphics/VulkanContext/vk_cache.c \
+		$(VIDEODIR_GLIDEN64)/src/Graphics/VulkanContext/vk_cache.h $(COMBINER_JOURNAL_TEST_SRC)
+	$(CC) $(CHECK_CFLAGS) $(CHECK_SANITIZE) -DHAVE_MMAP -I$(VIDEODIR_GLIDEN64)/src/Graphics/VulkanContext \
+		-I$(VIDEODIR_GLIDEN64)/src -I$(LIBRETRO_COMM_DIR)/include \
+		tools/test_gliden64_vk_cache.c $(filter-out $(VIDEODIR_GLIDEN64)/%,$(COMBINER_JOURNAL_TEST_SRC)) \
+		-o $@ $(CHECK_LDFLAGS) $(CHECK_SANITIZE) -lpthread
+
 # What a parallel-rdp pipeline miss uses, allocated up front
 test_pipeline_pending$(EXE_EXT): tools/test_pipeline_pending.c $(VIDEODIR_PARALLEL)/parallel-rdp/parallel-rdp/pipeline_pending.h \
 		$(LIBRETRO_COMM_DIR)/rthreads/rthreads.c
@@ -2578,7 +2587,8 @@ test_gliden64_framebuffer$(EXE_EXT): tools/test_gliden64_framebuffer.c $(VIDEODI
 		tools/test_gliden64_framebuffer.c $(VIDEODIR_GLIDEN64)/src/FrameBuffer.c $(VIDEODIR_GLIDEN64)/src/FrameBufferList.c -o $@ $(CHECK_LDFLAGS) $(CHECK_SANITIZE)
 
 test_gliden64_vk_context$(EXE_EXT): tools/test_gliden64_vk_context.c $(VIDEODIR_GLIDEN64)/src/Graphics/VulkanContext/vk_ContextImpl.c \
-		$(VIDEODIR_GLIDEN64)/src/Graphics/CombinerStages.c $(VIDEODIR_GLIDEN64)/src/Graphics/CombinerStages.h
+		$(VIDEODIR_GLIDEN64)/src/Graphics/CombinerStages.c $(VIDEODIR_GLIDEN64)/src/Graphics/CombinerStages.h \
+		$(VIDEODIR_GLIDEN64)/src/Graphics/VulkanContext/vk_cache.h
 	$(CC) -std=c89 -D_DEFAULT_SOURCE -Werror=implicit-function-declaration $(CHECK_CFLAGS) $(CHECK_SANITIZE) -D__LIBRETRO__ -DM64P_PLUGIN_API \
 		-I$(VIDEODIR_GLIDEN64)/src -I$(VIDEODIR_GLIDEN64)/src/Graphics -I$(VIDEODIR_GLIDEN64)/src/Graphics/VulkanContext \
 		-isystem $(ROOT_DIR)/libretro -isystem $(ROOT_DIR)/libretro/glsym -isystem $(LIBRETRO_COMM_DIR)/include \
@@ -2642,6 +2652,7 @@ test_prsp_dmem_wrap$(EXE_EXT): tools/test_prsp_dmem_wrap.c $(PRSP_TEST_OBJS)
 	$(CXX) tools/test_prsp_dmem_wrap.o $(PRSP_TEST_OBJS) -o $@ $(CHECK_SANITIZE) -lpthread -lm
 CORE_CHECKS += test_prsp_dmem_wrap$(EXE_EXT)
 CORE_CHECKS += test_glitch64_vk_cache$(EXE_EXT)
+CORE_CHECKS += test_gliden64_vk_cache$(EXE_EXT)
 endif
 
 check-core: $(CORE_CHECKS)
